@@ -6,7 +6,7 @@
 import { AgentRuntime } from 'adelie-runtime';
 
 import { ApprovalHub } from './approvals.js';
-import { apiKeyFor } from './settings.js';
+import { apiKeyFor, approvalRuntime } from './settings.js';
 
 import type {
   AgentProvider,
@@ -207,6 +207,11 @@ export async function executeTurn(input: TurnInput): Promise<void> {
       return;
     }
 
+    // 审批接线由「我的运行口径」决定（见 settings.ts 的 approvalRuntime）：
+    // 问我的那档把 requestApproval 交给审批中心（审批以 approval_request 帧送到界面），
+    // 只读 / 全放行两档没有交互层，直接把运行时的 approvalPolicy 交给它。
+    const approval = approvalRuntime(input.settings.approvalPolicy);
+
     runtime = new AgentRuntime(provider, [...input.tools], {
       workspacePath: input.workspace,
       // 计划文件写在会话目录里（工作区之外）：它是过程不是交付物，不该出现在
@@ -247,10 +252,14 @@ export async function executeTurn(input: TurnInput): Promise<void> {
         }));
       },
 
-      requestApproval: async (action: PendingAction): Promise<ApprovalDecision> => {
-        pushOrQueue(() => channel.push('approval_request', { actionId: action.id, action }));
-        return approvals.request(action);
-      },
+      ...(approval === 'ask'
+        ? {
+            requestApproval: async (action: PendingAction): Promise<ApprovalDecision> => {
+              pushOrQueue(() => channel.push('approval_request', { actionId: action.id, action }));
+              return approvals.request(action);
+            },
+          }
+        : approval),
     });
 
     // 信号可能在运行时建出来之前就断了（客户端连上立刻断开）：补一次

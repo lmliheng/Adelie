@@ -107,7 +107,8 @@ src/lib/theme.ts            主题应用与 theme-color 同步
 src/lib/shortcuts.ts        键位规格解析 / 事件归一 / 命令过滤（纯函数，单测覆盖）
 src/lib/sections.ts         设置分节与可见性谓词（纯函数，单测覆盖）
 src/lib/router.ts           路径归一 / 部署根 / 路径 → 页面（纯函数，单测覆盖）
-src/components/*            顶栏、侧栏、导航 rail、占位页、时间线卡片、计划卡、验收卡、审批卡、
+src/lib/composer-options.ts 输入区两个下拉的候选与三档审批口径（纯函数，单测覆盖）
+src/components/*            顶栏、侧栏、导航 rail、占位页、时间线卡片、审批卡、输入区控件带、
                             设置、命令面板、用户面板、空态…
 ```
 

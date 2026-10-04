@@ -86,6 +86,12 @@ export interface ConfigPatch {
   apiKey?: string
   maxIterations?: number
   maxTokens?: number | null
+  /**
+   * 审批口径（契约 §2）：`always-ask` / `read-only` / `allow-all`，三档见
+   * `lib/composer-options.ts`。值不合法服务端回 400 `bad_request`。
+   * 它决定的是「我发起的这一轮要不要停下来问我」，所以不是管理员专属。
+   */
+  approvalPolicy?: string
 }
 
 /** 第 2 节：GET /api/models —— 能选哪些模型。内容来自服务端的模型目录 */

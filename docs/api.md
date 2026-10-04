@@ -98,7 +98,7 @@ GET /api/config → 200 {
   "model": { "provider": "deepseek", "model": "deepseek-chat" },
   "baseUrl": null,
   "hasApiKey": true,
-  "approvalPolicy": "auto-reject",
+  "approvalPolicy": "always-ask",
   "limits": { "maxIterations": 50, "maxTokens": null },
   "version": "0.1.0",
   "identity": { "kind": "host"|"user", "name": "本机"|"alice", "isAdmin": true }
@@ -107,7 +107,8 @@ GET /api/config → 200 {
 PATCH /api/config
   body: { "workspace"?: string, "baseUrl"?: string|null, "apiKey"?: string,
           "model"?: { "provider": "deepseek"|"openai"|"kimi"|"qwen", "model"?: string },
-          "maxIterations"?: number, "maxTokens"?: number|null }
+          "maxIterations"?: number, "maxTokens"?: number|null,
+          "approvalPolicy"?: "always-ask"|"read-only"|"allow-all" }
   → 200  同 GET 的形状
 
 GET /api/models → 200 {
@@ -148,6 +149,12 @@ GET /api/models → 200 {
   非管理员改前四个 → 403 `admin_required`（换 provider 连着端点与密钥一起换，所以也算管理员的）。
   界面照这条把字段置灰并写清原因（`packages/web/src/lib/permissions.ts`），
   免得用户点了保存才吃一个 403。配置**按身份存**：主机一份，每个账号各一份。
+- **`approvalPolicy` 是「要不要问我」的三档，也是每个人的**（它决定我发起的这一轮会不会停下来问我，
+  不该由别人替我定）：`always-ask`（默认，需要审批的动作以 `approval_request` 帧送到界面等你拍板）、
+  `read-only`（需要审批的动作一律自动拒绝 —— 只剩读取类工具能跑）、`allow-all`（不问，直接执行）。
+  它**不是**运行时那两个枚举（`auto-approve` / `auto-reject`）的直传：前两档与第三档的差别不只是
+  政策，而是**有没有交互层** —— 只有「不问」的两档才把运行时的 `approvalPolicy` 交下去。
+  这两种情况下的决定都照样记进事件流（`approval` 事件，`source: "policy"` 表示不是人拍的板）。
 - `GET /api/models` 是界面里那两组下拉框的唯一出处（以前抄在 Web 里，加一家厂商要改
   两处，漏掉的那处表现为「服务端支持、界面里选不到」）。它**不含端点**：`envKey` 是环境
   变量**名**（界面用它提示密钥配在哪），不是秘密。`hasApiKey` 按**当前身份**算。

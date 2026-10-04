@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## 未发布 — 输入区有了「这一轮怎么跑」的两个开关
+
+输入区原来只有文本框 + 发送键：想临时换个模型、或者临时放开审批，都得进设置改**全局**配置，
+改完还得记得改回来。现在控制带上有两个下拉（`packages/web/src/components/ComposerToolbar.tsx`）：
+
+- **模型**：只列**当前提供方**的模型，清单唯一出处仍是 `GET /api/models`（界面不硬编码模型名），
+  选中即 `PATCH /api/config`。跨家换模型**不在这里做** —— Adelie 没有上下文压缩路由，换一家就得
+  把别家的历史喂过去，所以换家要新开会话（契约里换家也还是管理员专属）。
+- **审批口径**：三档，改完立刻生效，PATCH 失败会把下拉退回原值并说一句 —— 不留「界面显示改了、
+  服务端没改」的假象。
+
+服务端配合，把 `approvalPolicy` 从**只读常量**改成**每个人自己的设置**（契约 §2 已改）：
+
+- 三档 `always-ask`（默认）/ `read-only` / `allow-all`。它**不是**运行时那两个枚举
+  （`auto-approve` / `auto-reject`）的直传：用户要选的是「要不要问我」，所以「问我」这一档对应的
+  是把 `requestApproval` 交给审批中心（审批以 `approval_request` 帧送到界面），另外两档没有交互层，
+  才把运行时的 `approvalPolicy` 交下去（`packages/server/src/settings.ts` 的 `approvalRuntime()`）。
+  「不问」的两档也照样把决定记进事件流（`approval` 事件，`source: "policy"` 说明不是人拍的板）。
+- 认不出的值 → 400 `bad_request`；库里存坏了（人手改过）→ **退回默认档**而不是静默放行：
+  这个默认值的方向是有意的，错误的默认必须落在「多问一句」那边。
+- 默认档 = 服务上线以来的唯一行为，所以老会话与老客户端不受影响。
+
+**跨版本读法**：`approvalPolicy` 以前报的是运行时的 `'auto-reject'`（常量）。旧会话的事件流里
+没有这个字段，重放不受影响（它只出现在 `GET /api/config` 的响应里，不进事件）。
+
+**验收**：`pnpm -r typecheck` / `test` / `build` 三绿，777 通过 / 7 跳过（server 51 → 55：三档回显、
+非法值 400、`allow-all` 不问即执行、`read-only` 不问即拒绝；web 83 → 92：三档 id 与模型候选的纯逻辑）。
+`node scripts/audit.mjs --with-e2e` 全绿；端到端新增三条断言（模型下拉的显示值 == 服务端记着的值、
+同家换型号后 `provider` 不变、审批口径改 `read-only` 后服务端真的变了），都从页面里 fetch 回来核对。
+
 ## 未发布 — 计划与验收不再由运行时代管（改学 penguin）
 
 用户看过界面后问：为什么「初始计划」卡在那儿不动（每一步都是 ⏳），penguin 的计划是怎么做的；

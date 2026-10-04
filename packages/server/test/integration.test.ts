@@ -36,7 +36,8 @@ describe('adelie-server 契约', () => {
       expect(body['model']).toEqual({ provider: 'deepseek', model: 'deepseek-chat' });
       expect(body['baseUrl']).toBeNull();
       expect(typeof body['hasApiKey']).toBe('boolean');
-      expect(body['approvalPolicy']).toBe('auto-reject');
+      // 审批口径是用户面那三档（不是运行时枚举的直传），默认「每次问我」
+      expect(body['approvalPolicy']).toBe('always-ask');
       expect(body['limits']).toEqual({ maxIterations: 50, maxTokens: null });
       expect(body['version']).toBe('0.1.0');
       // 密钥绝不回显：连字段名都不该出现

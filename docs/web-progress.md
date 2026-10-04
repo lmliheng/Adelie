@@ -31,8 +31,10 @@
 - [x] **2. 移动端剩余排布** —— `docs/issues/web-mobile-layout.md` 里顶栏以外的那几条
   （输入区在窄屏的控制带、抽屉里 rail 的高度预算、横向不溢出）。验收：390×844 与 360×640 下
   `documentElement.scrollWidth === innerWidth`，且新加的控件都能点到（≥40px）。
-- [ ] **3. 输入区一期：模型切换 + 权限** —— `docs/issues/web-composer-toolbar.md` 里只用现有接口的两件
-  （`PATCH /api/config` 改模型、审批策略）。验收：换模型后下一轮真的走新模型（看会话事件里的 provider/model）。
+- [x] **3. 输入区一期：模型切换 + 权限** —— 草稿 `docs/issues/web-composer-toolbar.md`。控制带上两个下拉：
+  模型（只列当前提供方，清单来自 `GET /api/models`）与审批口径三档（`always-ask` / `read-only` / `allow-all`）。
+  服务端把 `approvalPolicy` 从只读常量改成按身份可写的设置。验收：改模型 / 改口径后
+  `GET /api/config` 真的变了（端到端从页面里 fetch 核对），模型下拉的显示值 == 服务端记着的那个。
 - [ ] **4. 成本中心（= 路线图 P4）** —— `docs/issues/web-usage-cost-center.md`；顺带做「会话级 token 累计」
   （上下文环要用它）。验收：`/usage` 页有汇总卡 + 按模型/按会话两张图，数字与 `/api/usage` 对得上。
 - [ ] **5. 项目实体** —— `docs/issues/web-left-rail-navigation.md` 二期上半：`~/.adelie/projects.json` +
@@ -52,6 +54,23 @@
 > rail 是「页面往哪放」，dock 是「面板往哪放」，先有页面再谈面板。
 
 ## 已完成的轮次
+
+- **2026-10-04 · 3** —— 输入区一期（草稿：`docs/issues/web-composer-toolbar.md`）。控制带上两个下拉
+  （新增 `packages/web/src/components/ComposerToolbar.tsx`，`Composer` 因此多了一个 `toolbar` prop ——
+  它继续是哑的，只有 App 知道怎么改配置）：**模型**只列当前提供方（清单唯一出处仍是 `GET /api/models`，
+  界面不硬编码模型名；当前值不在目录里时会补进候选，否则 `<select>` 会静默落到第一项，界面显示与服务端
+  记录就对不上了 —— 这一条钉在 `lib/composer-options.ts` 的单测里）；**审批口径**三档。
+  跨家换模型**不在这里做**：没有上下文压缩路由，换家要新开会话（契约里也还是管理员专属），下拉的
+  `title` 说清这一点。
+  服务端配合：`approvalPolicy` 从只读常量（`'auto-reject'`）改成按身份可写的三档（契约 §2 已改），
+  运行时接线由 `approvalRuntime()` 决定 —— 「问我」这一档交给审批中心，另外两档没有交互层才把
+  运行时的 `approvalPolicy` 交下去。**认不出的值在库里退回默认档**，方向是「多问一句」那边。
+  验证：`pnpm -r typecheck` 全过；`pnpm -r test` 764 → **777 通过 / 7 跳过**（web 83 → 92、server 51 → 55）；
+  `node scripts/audit.mjs --with-e2e` 通过；端到端加了三条断言（模型下拉的显示值 == 服务端记着的值、
+  同家换型号后 `provider` 不变、审批口径改 `read-only` 后服务端真的变了），都是**从页面里 fetch 回来核对**，
+  不看界面自己怎么说。
+  残留：控制带仍只有这两个控件（上下文环 / 思考等级 / 附件 / 技能按草稿排后三期）；设置对话框里的模型
+  入口没动，两处并存（设置里是「换家 + 手填型号」的管理员通道）。
 
 - **2026-10-04 · 1** —— 引入 `lib/router.ts`（纯函数，12 条单测）+ `useRoute` + `NavRail` + `PlaceholderPage`，
   `App.tsx` 按 `pageIdOf(path)` 分派，命令表加六条导航命令；`docs/web-parity.md` §2 的「不搬 router」

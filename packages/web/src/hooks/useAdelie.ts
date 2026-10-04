@@ -19,6 +19,7 @@ import type {
   ConfigInfo,
   ConfigPatch,
   HealthInfo,
+  ModelCatalog,
   PendingActionLike,
   RunFinishedInfo,
   SessionEventLike,
@@ -90,6 +91,9 @@ export interface AdelieController {
   config: { status: LoadStatus; data: ConfigInfo | null; error: string | null }
   loadConfig: () => Promise<void>
   saveConfig: (patch: ConfigPatch) => Promise<boolean>
+  /** 能选哪些模型（`GET /api/models` 的目录）。输入区的模型下拉从这里取候选 */
+  models: { status: LoadStatus; catalog: ModelCatalog | null; error: string | null }
+  loadModels: () => Promise<void>
   tools: { status: LoadStatus; items: ToolInfo[]; error: string | null }
   loadTools: () => Promise<void>
   refreshSessions: () => Promise<void>
@@ -108,6 +112,11 @@ export function useAdelie(): AdelieController {
     error: null,
   })
   const [tools, setTools] = useState<ListState<ToolInfo>>({ status: 'idle', items: [], error: null })
+  const [models, setModels] = useState<{ status: LoadStatus; catalog: ModelCatalog | null; error: string | null }>({
+    status: 'idle',
+    catalog: null,
+    error: null,
+  })
 
   const controllers = useRef(new Map<string, AbortController>())
   /** 增量缓冲：按会话聚合，定时批量写入 state（每帧一次 setState 而不是每个 delta 一次） */
@@ -258,6 +267,17 @@ export function useAdelie(): AdelieController {
     }
   }, [credentials])
 
+  /** 模型目录。失败不阻断任何事 —— 输入区只是少几个候选，当前型号仍照实显示 */
+  const loadModels = useCallback(async () => {
+    setModels((prev) => ({ ...prev, status: 'loading', error: null }))
+    try {
+      const catalog = await api.listModels(credentials)
+      setModels({ status: 'ready', catalog, error: null })
+    } catch (error) {
+      setModels({ status: 'error', catalog: null, error: describeApiError(toApiError(error), credentials) })
+    }
+  }, [credentials])
+
   const loadTools = useCallback(async () => {
     setTools((prev) => ({ ...prev, status: 'loading', error: null }))
     try {
@@ -296,7 +316,7 @@ export function useAdelie(): AdelieController {
         const health = await api.health(credentials, controller.signal)
         if (cancelled) return
         setConnection({ status: 'online', health, error: null })
-        await Promise.all([refreshSessions(), loadConfig()])
+        await Promise.all([refreshSessions(), loadConfig(), loadModels()])
       } catch (error) {
         if (cancelled) return
         const apiError = toApiError(error)
@@ -314,7 +334,7 @@ export function useAdelie(): AdelieController {
       cancelled = true
       controller.abort()
     }
-  }, [attempt, credentials, loadConfig, refreshSessions])
+  }, [attempt, credentials, loadConfig, loadModels, refreshSessions])
 
   const reloadSession = useCallback(
     async (sessionId: string) => {
@@ -578,6 +598,7 @@ export function useAdelie(): AdelieController {
     setTranscript({ status: 'idle', error: null })
     setSessions({ status: 'loading', items: [], error: null })
     setConfig({ status: 'idle', data: null, error: null })
+    setModels({ status: 'idle', catalog: null, error: null })
     setTools({ status: 'idle', items: [], error: null })
   }, [])
 
@@ -619,6 +640,8 @@ export function useAdelie(): AdelieController {
     config,
     loadConfig,
     saveConfig,
+    models,
+    loadModels,
     tools,
     loadTools,
     refreshSessions,

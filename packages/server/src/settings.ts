@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path';
 import { PROVIDER_API_KEY_ENV } from 'adelie-providers';
 import { adelieHome, defaultModelForProvider, isProviderName as isCatalogProviderName, normalizeWorkspaceRoot, userEnvFile } from 'adelie-core';
 
-import type { ModelRef, ProviderName } from 'adelie-core';
+import type { ApprovalPolicy, ModelRef, ProviderName } from 'adelie-core';
 
 /** 密钥文件的权限：只有属主能读写 */
 const SECRET_FILE_MODE = 0o600;
@@ -37,6 +37,47 @@ export interface ServerSettings {
   maxIterations: number;
   /** 累计 token 上限；null 表示不限制 */
   maxTokens: number | null;
+  /** 需要审批的动作怎么办（见 ApprovalMode）。按身份存，是「我的运行口径」 */
+  approvalPolicy: ApprovalMode;
+}
+
+/**
+ * 审批口径（契约 §2 的 `approvalPolicy`）。
+ *
+ * 三档**不是**运行时那两个枚举（运行时的 ApprovalPolicy 只有放行与拒绝）：用户要选的
+ * 是「要不要问我」，而「问我」在服务里对应的是把 `requestApproval` 交给审批中心
+ * （审批走界面）。所以前两档与第三档的区别不只是政策，而是**有没有交互层**。
+ *
+ *   - `always-ask`：需要审批的动作停下来问我（默认，也是服务上线以来的唯一行为）
+ *   - `read-only`：需要审批的动作一律拒绝 —— 只剩读取类工具能跑
+ *   - `allow-all`：不问，直接放行（信任的批处理 / 脚本场景，代价是它真会动手）
+ */
+export type ApprovalMode = 'always-ask' | 'read-only' | 'allow-all';
+
+export const APPROVAL_MODES: readonly ApprovalMode[] = ['always-ask', 'read-only', 'allow-all'];
+
+export const DEFAULT_APPROVAL_MODE: ApprovalMode = 'always-ask';
+
+export function isApprovalMode(value: unknown): value is ApprovalMode {
+  return typeof value === 'string' && (APPROVAL_MODES as readonly string[]).includes(value);
+}
+
+/**
+ * 把审批口径翻成运行时的接线。
+ *
+ * 返回 `'ask'` 表示调用方要提供 `requestApproval`（服务这边交给 ApprovalHub，
+ * 审批以 `approval_request` 帧送到界面）；另外两档没有交互层，直接给出运行时的
+ * `approvalPolicy` —— 运行时要求它必须**显式声明**，不声明就默认拒绝。
+ */
+export function approvalRuntime(mode: ApprovalMode): 'ask' | { approvalPolicy: ApprovalPolicy } {
+  switch (mode) {
+    case 'always-ask':
+      return 'ask';
+    case 'read-only':
+      return { approvalPolicy: 'auto-reject' };
+    case 'allow-all':
+      return { approvalPolicy: 'auto-approve' };
+  }
 }
 
 export const DEFAULT_MAX_ITERATIONS = 50;
@@ -152,6 +193,7 @@ export function defaultSettings(workspace: string, model: ModelRef): ServerSetti
     baseUrl: null,
     maxIterations: DEFAULT_MAX_ITERATIONS,
     maxTokens: null,
+    approvalPolicy: DEFAULT_APPROVAL_MODE,
   };
 }
 

@@ -6,8 +6,10 @@
 //   - 改出来的东西属于谁：配置按身份存（`ctx.settingsFor`），别人的那份动不到。
 import { jsonError, readJsonObject } from '../http.js';
 import {
+  APPROVAL_MODES,
   defaultModelFor,
   hasApiKey,
+  isApprovalMode,
   isProviderName,
   normalizeWorkspace,
   writeApiKey,
@@ -135,6 +137,16 @@ export function registerConfigRoutes(app: Hono<AppEnv>, ctx: ServerContext): voi
       } else {
         return jsonError(c, 400, 'bad_request', 'maxTokens 必须是正整数或 null');
       }
+    }
+
+    // 审批口径：三档（见 settings.ts 的 ApprovalMode）。不是管理员专属 ——
+    // 它决定「我发起的这一轮要不要停下来问我」，是每个人自己的运行口径。
+    if (body['approvalPolicy'] !== undefined) {
+      const raw = body['approvalPolicy'];
+      if (!isApprovalMode(raw)) {
+        return jsonError(c, 400, 'bad_request', `approvalPolicy 只能是 ${APPROVAL_MODES.join(' / ')}`);
+      }
+      next.approvalPolicy = raw;
     }
 
     if (body['apiKey'] !== undefined) {

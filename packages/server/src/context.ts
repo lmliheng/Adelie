@@ -14,7 +14,7 @@ import { DEFAULT_PROVIDER, SessionStore, config, loadUserEnvFile, sessionsRoot }
 import { createProvider as createRealProvider } from 'adelie-providers';
 import { ToolRegistry } from 'adelie-tools';
 
-import { DEFAULT_MAX_ITERATIONS, HOST_KEY, defaultSettings, defaultModelFor, hasApiKey, normalizeWorkspace } from './settings.js';
+import { DEFAULT_MAX_ITERATIONS, DEFAULT_APPROVAL_MODE, HOST_KEY, defaultSettings, defaultModelFor, hasApiKey, isApprovalMode, normalizeWorkspace } from './settings.js';
 import { discoverSessionsOnDisk, locationOptions, sessionEventsFileExists, SessionRegistry } from './sessions.js';
 import { ADMIN_ID, UserStore, usersDbFile } from './users/db.js';
 import { RunRegistry } from './turn.js';
@@ -158,6 +158,10 @@ export function parseStoredSettings(json: string, fallback: AppSettings): AppSet
         ? record['maxIterations']
         : fallback.maxIterations,
     maxTokens: typeof record['maxTokens'] === 'number' ? record['maxTokens'] : null,
+    // 认不出的档位退回默认（「问我」）而不是让它把这一轮变成静默放行
+    approvalPolicy: isApprovalMode(record['approvalPolicy'])
+      ? record['approvalPolicy']
+      : fallback.approvalPolicy,
   };
 }
 
@@ -179,6 +183,7 @@ export function createServerContext(deps: AppDeps = {}): ServerContext {
     baseUrl: deps.baseUrl ?? null,
     maxIterations: deps.maxIterations ?? DEFAULT_MAX_ITERATIONS,
     maxTokens: deps.maxTokens ?? null,
+    approvalPolicy: DEFAULT_APPROVAL_MODE,
   };
 
   /**
@@ -322,9 +327,10 @@ export function createServerContext(deps: AppDeps = {}): ServerContext {
         model: current.model,
         baseUrl: current.baseUrl,
         hasApiKey: hasApiKey(identity.key, current.model.provider),
-        // 运行时总是拿到 requestApproval（契约 §5），这条策略只在「无交互层」时才会
-        // 用到；报出来是为了让界面知道默认口径是拒绝而不是放行。
-        approvalPolicy: 'auto-reject',
+        // 审批口径是「我的运行口径」，按身份存、可写（PATCH /api/config）。
+        // 契约里它报的是用户面那三档（always-ask / read-only / allow-all），
+        // 翻成运行时接线的事在 turn.ts 里做（见 settings.ts 的 approvalRuntime）。
+        approvalPolicy: current.approvalPolicy,
         limits: { maxIterations: current.maxIterations, maxTokens: current.maxTokens },
         version,
         // 界面靠这三条决定：显示登录页还是主界面、要不要显示「用户管理」、

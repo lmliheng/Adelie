@@ -21,6 +21,7 @@ export function Composer({
   stopRequested,
   disabled,
   placeholder,
+  toolbar,
 }: {
   value: string
   onChange: (next: string) => void
@@ -30,6 +31,10 @@ export function Composer({
   stopRequested: boolean
   disabled: boolean
   placeholder: string
+  /** 控制带上的控件（模型 / 审批口径……）。Composer 只管把它们排进 `.composer-tools`：
+   *  这些控件要读配置、要发 PATCH，那是应用的活 —— 输入框一旦开始接这些，它就不再是
+   *  一个能单独看懂的组件了。所以由 App 传一个 <ComposerToolbar> 进来（见 App.tsx）。 */
+  toolbar?: ReactNode
 }): ReactNode {
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const composing = useRef(false)
@@ -88,6 +93,7 @@ export function Composer({
               docs/issues/web-composer-toolbar.md）。把它单独包一层，是为了让手机上
               只有它横滚 —— 整条一起滚的话，放得下六个控件时发送按钮就被推出屏幕了。 */}
           <div className="composer-tools">
+            {toolbar}
             <span className="composer-hints">
               <span>
                 <kbd>Enter</kbd> 发送

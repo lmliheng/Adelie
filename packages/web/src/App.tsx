@@ -15,6 +15,7 @@ import { TopBar } from './components/TopBar'
 import { Sidebar } from './components/Sidebar'
 import { EmptyState, ConnectionPanel } from './components/EmptyState'
 import { Composer } from './components/Composer'
+import { ComposerToolbar } from './components/ComposerToolbar'
 import { TurnView } from './components/TurnView'
 import { TranscriptSkeleton } from './components/Skeleton'
 import { SettingsDialog } from './components/SettingsDialog'
@@ -143,6 +144,9 @@ function Shell({
   const { newSession, removeSession, openSession, saveConfig, loadConfig, loadTools, setCredentials } = adelie
   const openSettings = useCallback(() => setSettingsOpen(true), [])
   const closeSettings = useCallback(() => setSettingsOpen(false), [])
+  // 输入区那两个下拉失败时说的话（改模型 / 改审批口径没成功）。push 本身是稳定的，直接依赖它
+  const pushToast = toast.push
+  const notifyError = useCallback((message: string) => pushToast(message, 'error'), [pushToast])
   const openUsers = useCallback(() => {
     setSettingsSection('users')
     setSettingsOpen(true)
@@ -405,6 +409,14 @@ function Shell({
                 stopRequested={turns.some((turn) => turn.status === 'running' && turn.stopRequested)}
                 disabled={composerDisabled}
                 placeholder={placeholder}
+                toolbar={
+                  <ComposerToolbar
+                    config={adelie.config.data}
+                    catalog={adelie.models.catalog}
+                    saveConfig={saveConfig}
+                    notify={notifyError}
+                  />
+                }
               />
             </>
           )}

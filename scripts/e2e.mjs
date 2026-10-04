@@ -14,6 +14,9 @@
  *
  *   ADELIE_PLAYWRIGHT  能解析 @playwright/test 的 package.json 路径
  *   CHROME_PATH        chromium 可执行文件；不设则在 ~/.cache/ms-playwright 里找最新的
+ *   ADELIE_SERVER_ENTRY 服务端入口；默认是构建产物 packages/server/dist/main.js。
+ *                      指到 src/main.ts 时会自动用仓库里的 tsx 跑源码（用于「服务端还
+ *                      没重建但我想先 e2e 一遍」这种时候）
  *
  * 截图落在 --out（默认 /tmp/adelie-e2e）。
  */
@@ -129,9 +132,12 @@ console.log(`mock 端点   :${mockPort}   adelie-server :${serverPort}`);
 console.log(`截图输出    ${OUT}\n`);
 
 spawnLogged("mock", ["scripts/mock-provider.mjs", "--port", String(mockPort)], {});
+// 默认跑构建产物。指到 .ts 时用 tsx 当 loader —— 还没重建服务端时的逃生口，
+// 免得「想 e2e 一下」被迫先动别人正在改的那个包。
+const serverEntry = process.env.ADELIE_SERVER_ENTRY ?? "packages/server/dist/main.js";
 spawnLogged(
   "server",
-  ["packages/server/dist/main.js"],
+  serverEntry.endsWith(".ts") ? ["--import", "tsx", serverEntry] : [serverEntry],
   {
     PORT: String(serverPort),
     ADELIE_HOST: "127.0.0.1",
@@ -191,6 +197,35 @@ try {
   await delay(1000);
   await page.screenshot({ path: path.join(OUT, "03-done.png"), fullPage: true });
   console.log("\n--- 会话区 ---\n" + (await page.locator('[data-testid="messages"]').innerText()).slice(0, 1200));
+
+  // ── 输入区控件带：模型下拉显示的就是服务端记着的那个模型；两个下拉都真的写进服务端 ──
+  // 显示值对上，顺带证明模型清单是从 GET /api/models 接出来的、且当前值没被 `<select>`
+  // 丢掉（mock 不在真目录里，靠 modelChoices 把当前值补进去）。改值这一步从页面里
+  // fetch 读回 /api/config 核对 —— 不看界面自己怎么说，免得「界面改了、服务端没改」。
+  const modelSelect = page.locator('[data-testid="model-select"]')
+  await modelSelect.waitFor({ timeout: 5000 })
+  const modelValue = await modelSelect.inputValue()
+  if (modelValue !== "mock") failures.push(`模型下拉显示的是「${modelValue}」，期望「mock」`);
+
+  const configBefore = await (await fetch(`${origin}/api/config`)).json();
+  // 挑一个和当前不同的型号（名字从下拉里取，不硬编码目录里的模型名）
+  const otherModel = await page
+    .locator('[data-testid="model-select"] option')
+    .evaluateAll((options, current) => options.map((o) => o.value).find((v) => v !== current) ?? null, modelValue);
+  if (otherModel !== null) {
+    await modelSelect.selectOption(otherModel)
+    await waitFor(`模型在服务端换成 ${otherModel}`, async () => {
+      const current = await (await fetch(`${origin}/api/config`)).json();
+      // 提供方不许跟着变：输入区不跨家换模型（换家要新开会话）
+      return current.model.model === otherModel && current.model.provider === configBefore.model.provider;
+    });
+  }
+
+  await page.locator('[data-testid="approval-select"]').selectOption("read-only")
+  await waitFor("审批口径在服务端改成 read-only", async () => {
+    const current = await (await fetch(`${origin}/api/config`)).json()
+    return current.approvalPolicy === "read-only"
+  })
 
   // ── 左栏导航：URL 真的变、前进后退可用、深链刷新不白屏 ──
   // 这三件事只有真浏览器能验：pushState 之后 React 有没有跟着换页、刷新时服务端有没有把

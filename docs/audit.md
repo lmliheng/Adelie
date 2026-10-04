@@ -32,6 +32,10 @@ CHROME_PATH=~/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome \
   node scripts/audit.mjs --with-e2e
 ```
 
+它默认拉起**构建产物**里的服务端（`packages/server/dist/main.js`）。改了服务端但还没重建时，
+可以 `ADELIE_SERVER_ENTRY=packages/server/src/main.ts` 让它用仓库里的 tsx 跑源码 —— 这是
+「想先验一遍、又不想为了 e2e 先动构建」的逃生口，那条路比默认慢，别写进 CI。
+
 ## 怎么用
 
 ```bash

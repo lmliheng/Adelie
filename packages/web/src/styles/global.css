@@ -1258,6 +1258,46 @@ a {
   }
 }
 
+/* 控制带上的控件组（模型 / 审批口径……）。外层是 `.composer-tools` 的 flex:none 子项，
+   里面自己排一行；不设 min-width，窄屏时它整条跟着控制带一起横滚。 */
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-select {
+  height: 28px;
+  max-width: 12rem;
+  padding: 0 6px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 150ms var(--ease);
+}
+
+.composer-select:hover:not(:disabled) {
+  border-color: var(--gray-400);
+  color: var(--fg);
+}
+
+.composer-select:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* 触屏：下拉也是要点中的目标，跟文本域同一条判据（hover: none）。28px 是桌面上的
+   紧凑值；手指点不准的控件等于没有。 */
+@media (hover: none) {
+  .composer-select {
+    height: 40px;
+  }
+}
+
 .composer-foot {
   display: flex;
   align-items: center;
