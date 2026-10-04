@@ -41,6 +41,8 @@ git merge upstream/develop        # 在 fork/penguin-base 上
    （deepseek / kimi / qwen）、用量与成本页、用户与两档角色、会话归属、桌面壳。
 4. **发布链路**：npm scope、GitHub Pages（PWA）、设计站、Windows 安装包。
 
+进度与每条待办记在 `FORK-PROGRESS.md`（本文件讲「为什么这样改」，它讲「改到哪了」）。
+
 ## 旧的 Adelie 在哪
 
 `main` 分支上是**旧的 Adelie**（自己写的引擎 + 外壳：`adelie-core/providers/tools/runtime`、
