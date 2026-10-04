@@ -1,0 +1,142 @@
+# 发布工作流：打 tag 就出四件产物（npm 包 / Windows 安装包 / Web 压缩包 / PWA 站点）。
+#
+# 为什么拆成四个 job：Windows 安装包只能在 windows-latest 上打（electron-builder 要真的
+# Windows 才能干净地产出签名/资源正确的 exe），Web 与 npm 在 ubuntu 上更便宜，最后用
+# 一个 job 把产物汇总进 Release —— 任何一个环节挂了，Release 不会带着半套产物发出去。
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  # 手动重跑：tag 已经推了但某个 job 失败时，不必再打一个 tag
+  workflow_dispatch:
+
+permissions:
+  contents: write # 建 Release、传附件
+  pages: write # （可选）部署 PWA
+  id-token: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run test
+      - run: pnpm run build
+
+  npm:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          registry-url: https://registry.npmjs.org
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      # 没配 NPM_TOKEN 时明确跳过（打印一行说明），而不是让整个发布挂掉 ——
+      # 安装包与 Web 产物不该因为 npm 没配好就发不出去。
+      - name: 发布到 npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "${NODE_AUTH_TOKEN:-}" ]; then
+            echo "::warning::NPM_TOKEN 未配置，跳过 npm 发布（CLI 与引擎库这次不发）"
+            exit 0
+          fi
+          bash scripts/publish-packages.sh --registry=https://registry.npmjs.org
+
+  windows:
+    needs: verify
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - name: 构建（服务端 → Web → 桌面）
+        run: pnpm run build
+      - name: 打包 Windows 安装包
+        working-directory: packages/desktop
+        run: pnpm exec electron-builder --win --config electron-builder.yml
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-installers
+          path: |
+            packages/desktop/out/*.exe
+            packages/desktop/out/*.blockmap
+          if-no-files-found: error
+
+  web:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter adelie-web build
+      - name: 压缩 Web 产物
+        run: |
+          cd packages/web
+          zip -qr "$RUNNER_TEMP/adelie-web-${GITHUB_REF_NAME#v}.zip" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: packages/web/dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-zip
+          path: ${{ runner.temp }}/adelie-web-*.zip
+          if-no-files-found: error
+      # PWA 要能从手机装，就得有一个 https 地址。没配 ADELIE_DEPLOY_PAGES 就跳过，
+      # 不把「Pages 没开」变成一次失败的发布。
+      - name: 准备 Pages
+        if: vars.ADELIE_DEPLOY_PAGES == 'true'
+        uses: actions/configure-pages@v5
+      - name: 上传 Pages 产物
+        if: vars.ADELIE_DEPLOY_PAGES == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/web/dist
+      - name: 部署 PWA 到 GitHub Pages
+        if: vars.ADELIE_DEPLOY_PAGES == 'true'
+        uses: actions/deploy-pages@v4
+
+  release:
+    needs: [npm, windows, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: 汇总产物清单
+        run: |
+          {
+            echo "## Adelie ${GITHUB_REF_NAME}"
+            echo
+            echo "| 产物 | 文件 |"
+            echo "| --- | --- |"
+            find artifacts -type f \( -name '*.exe' -o -name '*.zip' -o -name '*.blockmap' \) | sed 's|^| |'
+          } > notes.md
+          cat notes.md
+      - name: 建 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "Adelie ${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            $(find artifacts -type f \( -name '*.exe' -o -name '*.zip' \) | tr '\n' ' ')

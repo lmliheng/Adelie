@@ -1,0 +1,32 @@
+{
+  "name": "adelie-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Adelie 后端：会话、SSE 对话流、工具审批、Web 产物托管。",
+  "engines": {
+    "node": ">=24"
+  },
+  "main": "./dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.3",
+    "adelie-core": "workspace:*",
+    "adelie-providers": "workspace:*",
+    "adelie-runtime": "workspace:*",
+    "adelie-tools": "workspace:*",
+    "hono": "^4.13.12"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "tsup": "^8.5.1",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

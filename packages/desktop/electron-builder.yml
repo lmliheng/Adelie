@@ -1,0 +1,58 @@
+# Adelie 桌面安装包的打包配置（Windows 先行）。
+#
+# app 目录就是这个包本身：`pnpm build` 把壳（dist/main.js）与内置服务端（dist/server.js）
+# 打成两个自包含文件，Web 产物从 ../web/dist 映射成 web-dist 一起带走。
+#
+# asar 关掉是有意的：壳 fork 的「服务端」是一个真实文件，agent 还要在用户工作区里起真实
+# 的 shell；摊平的目录能绕开所有 asar 边角（从归档里 fork、解包树的路径分裂），代价是一些
+# inode。也正因为关了 asar，安装包里不该出现的东西必须靠 `files` 明说。
+appId: com.lmliheng.adelie
+productName: Adelie
+copyright: Copyright © 2026 lmliheng
+
+# 声明发布目标才会生成更新元数据（latest.yml 等）；这里不上传，产物由 release 工作流收集
+publish:
+  provider: github
+  owner: lmliheng
+  repo: Adelie
+
+directories:
+  output: out
+  buildResources: build
+
+# 只有运行时真正要的东西
+files:
+  - dist/**/*
+  - "!dist/**/*.map"
+  - package.json
+  - from: ../web/dist
+    to: web-dist
+  - from: ../../brand/icons/adelie.ico
+    to: icon.ico
+
+extraMetadata:
+  name: adelie-desktop
+  description: Adelie — 智能体应用的桌面端（Windows）
+
+win:
+  icon: ../../brand/icons/adelie.ico
+  # 只做 x64：这是绝大多数 Windows 用户；arm64 等有人要再加
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  # 没配签名证书时不要尝试签名（CI 里没有证书，硬签会失败）
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Adelie
+  artifactName: Adelie-Setup-${version}-x64.${ext}
+
+portable:
+  artifactName: Adelie-Portable-${version}-x64.${ext}

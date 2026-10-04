@@ -1,0 +1,36 @@
+# 持续集成：类型检查、构建、测试三件套。
+#
+# 与发布工作流分开：这个每次 push / PR 都跑，那个只在打 tag 时跑（见 release.yml）。
+# 不配任何 secret：打真实 API 的集成测试在没有 key 时自己跳过，其余用例不依赖网络。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 24：core / providers / tools / runtime 的 engines 就写着 >=24
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: 启用 pnpm（版本取自 package.json 的 packageManager）
+        run: corepack enable
+
+      - name: 安装依赖（严格按 lockfile）
+        run: pnpm install --frozen-lockfile
+
+      - name: 类型检查
+        run: pnpm run typecheck
+
+      - name: 测试
+        run: pnpm run test
+
+      - name: 构建
+        run: pnpm run build
