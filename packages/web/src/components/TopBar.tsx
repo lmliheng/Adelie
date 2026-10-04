@@ -88,7 +88,13 @@ export function TopBar({
         </span>
       )}
       {user?.isAdmin === true && (
-        <button type="button" className="iconbtn" onClick={onOpenUsers} aria-label="用户管理" data-testid="open-users">
+        <button
+          type="button"
+          className="iconbtn admin-users"
+          onClick={onOpenUsers}
+          aria-label="用户管理"
+          data-testid="open-users"
+        >
           <Icon name="users" size={18} />
         </button>
       )}

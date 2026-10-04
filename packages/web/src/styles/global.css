@@ -365,6 +365,8 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  /* flex: none —— 顶栏挤的时候按钮会被压窄（手机上实测到 37px），点起来更难 */
+  flex: none;
   width: 40px;
   height: 40px;
   border: 1px solid transparent;
@@ -1998,9 +2000,32 @@ textarea.input {
   padding: 0 8px;
 }
 
-/* 窄屏顶栏塞不下就整块藏起来：手机上没有物理键盘，⌘K 按不出来，
-   留一个占 40px 的入口只会把身份胶囊挤成两行 */
+/* 窄屏顶栏：把「一屏放不下」这件事压到 360px 也成立。
+   撑宽的是顶栏的最小内容宽（brand 87 + 连接点 40 + 身份 99 + 4 个 40px 按钮 + gap），
+   浏览器因此把整页缩到约 0.9 显示 —— 全局降字号，比少一个徽标糟得多。
+   少掉的三样都在别处有入口：用户管理在「设置 → 用户」与命令面板里，
+   身份徽标在设置的身份信息里，命令面板手机上没有物理键盘本来也按不出来 */
 @media (max-width: 560px) {
+  .topbar {
+    gap: 4px;
+  }
+
+  .who {
+    padding: 0 7px;
+  }
+
+  .who-name {
+    max-width: 5.5ch;
+  }
+
+  .who-admin {
+    display: none;
+  }
+
+  .admin-users {
+    display: none;
+  }
+
   .palette-open {
     display: none;
   }
