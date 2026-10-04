@@ -77,4 +77,4 @@
   横屏那档立刻变红（16px / 391px）。
   残留：抽屉手势与背滑、设置对话框的窄屏分节、`.who` / `.conn` 的 hover-only 信息、
   真机安全区（桌面 Chromium 的 `env()` 恒为 0）、横屏下会话列表仍只有 83px。
-  commit __HASH__。
+  commit 17f3a42。
