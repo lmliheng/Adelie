@@ -1,8 +1,8 @@
 # CHANGELOG
 
-## 未发布 — 重构 P1–P2（对照 penguin-harness 的设计）
+## 未发布 — 重构 P1–P3（对照 penguin-harness 的设计）
 
-分六期重构（方案见 docs/redesign.md）。P1 与 P2 已落地并通过全仓验证。
+分六期重构（方案见 docs/redesign.md）。P1、P2、P3 已落地并通过全仓验证。
 
 ### P1 — 模型目录与多厂商
 
@@ -40,6 +40,42 @@
 
 **未接入**：`packages/cli/src/vue-tui/composable/useAgent.ts` 仍硬编码 `DeepSeekProvider`
 （CLI 的实验 TUI 路径，P2 未动）。
+
+### P3 — 用户、两档角色与会话分区
+
+- `adelie-server/src/users/db.ts`：`~/.adelie/adelie.db`（`node:sqlite`，无原生依赖，
+  `busy_timeout` 5s）。表：`users`（播种内置 `admin`，初始无口令）、`auth_sessions`
+  （**只存令牌的 sha256**，30 天）、`sessions`（会话 id → 归属 + 工作区）、`user_settings`。
+- `users/passwords.ts`：scrypt + 随机盐 + `timingSafeEqual`，参数写进哈希串。
+- `identity.ts`：身份解析 **Cookie → Bearer →（回环且未配 token ⇒ 主机管理员）**，
+  配一张**路由权限表**（`none` / `user` / `admin`，最长前缀优先，兜底「要登录」）。
+  判定只在这一个中间件里。401 `unauthorized` 与 403 `admin_required` 分得很清。
+- 新增 `/api/auth/me|login|logout|password` 与 `/api/users[...]`（整片管理员专用）。
+  用户不存在与口令不对回同一个 401（否则是账号枚举器）；**改口令作废该账号的所有令牌**；
+  内置 `admin` 不能删、不能改角色，不能删自己、不能把自己降级。
+- `PATCH /api/config`：`workspace` / `baseUrl` / `provider` / `apiKey` 四个字段管理员专用
+  （403），`model` 与 `limits` 人人可改；`GET /api/config` 多回一个 `identity`。
+- **密钥分文件**：主机身份沿用 `<home>/.adelie/.env`（升级不丢配置），登录用户各写
+  `secrets/<id>.env`（0600）；读时用户身份优先看自己的文件，主机身份保持「环境变量优先」。
+- **会话按人分区**：内置 admin 用共享根（0.1 的会话原地不动），其余每人
+  `sessions/users/<id>/`；归属只从索引读，读别人的回 404；`?scope=all` 只对管理员有效。
+  CLI 建的会话在列之前补进索引，所以它在网页里看得见。
+- Web：身份门（连不上服务端时**不**显示登录页）、登录页（含连接设置）、用户管理弹窗、
+  顶栏身份胶囊、设置弹窗按 `lib/permissions.ts` 置灰无权字段。新增 6 个纯函数测试。
+- 桌面壳**没有改**：它绑回环、不带凭证，走的就是主机管理员那条路 —— 见 docs/redesign.md §12
+  的「一处有意偏离」。
+- 修一个做 P3 时暴露出来的构建缺陷：tsup 默认把 `import 'node:xxx'` 改写成裸标识符，
+  而 `node:sqlite` 只认带前缀的形式，改写后服务端产物一 import 就崩、桌面端连构建都过不去。
+  两个 tsup 配置加 `removeNodeProtocol: false`。
+- 修一处界面文案：登录时口令输错原本提示「服务端地址不对、token 无效」，把人引去改连接
+  设置；现在直接说「用户名或口令不对」。
+
+**验收**：全仓 **703 通过 / 7 跳过**，`typecheck` / `test` / `build` 三绿；另用构建产物起
+服务、Playwright 走了一遍真实的登录流程（匿名 → 主机 → 建号 → 用户登录 → 权限置灰 →
+退出），细节见 docs/redesign.md §12。
+
+**未完成**（都记在 `docs/issues/`）：非管理员仍共用管理员的工作区；登录接口没有速率限制；
+PWA 跨源场景下 Cookie 失效那条路没有真机验过。
 
 ## 0.1.0 — 2026-10-04
 

@@ -8,24 +8,87 @@
 - 传输：请求/响应用 JSON；对话流用 **SSE**（`text/event-stream`），不用 WebSocket —— 单向足够，
   且 `EventSource` 自带断线重连。
 
-## 0. 认证与暴露面
+## 0. 身份与暴露面
 
-单用户、本机优先，没有账号体系。
+这台机器上可以有几个人：一个**主机管理员**，以及管理员建出来的若干**账号**。每次请求
+「是谁」由 `packages/server/src/identity.ts` 一次算清，放进 `c.get('identity')`。
 
-| 场景 | 规则 |
+三种进门的方式，按优先级：
+
+| 顺序 | 凭证 | 结果 |
+| --- | --- | --- |
+| 1 | Cookie `adelie_session`（HttpOnly，登录时下发，30 天） | 某个账号 |
+| 2 | `Authorization: Bearer <token>`，或 `?token=`（EventSource 设不了请求头，手机 PWA 走这条） | 主机 token → 主机管理员；登录令牌 → 某个账号 |
+| 3 | 请求来自回环地址（127.0.0.1 / ::1），且这台机器**没显式配** token | **主机管理员** |
+
+第 3 条是这套设计里唯一的公理：**能读到 `~/.adelie` 的人就是管理员**。桌面壳的窗口、
+`adelie serve` 之后本机浏览器打开的那一页走的都是它 —— 于是单机用户永远看不到登录界面。
+它同时也意味着，多操作系统用户的机器上别人的浏览器也能访问这个回环端口。设
+`ADELIE_TOKEN` 就关掉这条路：那时所有请求（本机也算）都必须带凭证，唯一的豁免是
+`/api/auth/*`（取得身份的入口，堵上它等于把所有人锁在门外）。
+
+Token 从哪来：`ADELIE_TOKEN` 环境变量；没设时服务器启动时随机生成并打印一次（含带 token 的 URL）。
+
+**路由权限表**（前缀 → 要求，最长前缀优先；代码里是数据，判定只在一个中间件里，
+不散在各 handler 的 `if (user.isAdmin)` 中 —— 散开之后加一条路由忘了判断就是一次越权）：
+
+| 前缀 | 要求 |
 | --- | --- |
-| 请求来自回环地址（127.0.0.1 / ::1），且 token 不是用户显式配的 | 放行，不需要凭证 |
-| 远程请求，或 `ADELIE_TOKEN` 已显式设置 | 必须带凭证（回环也一样，用户说了要凭证就要） |
-| 凭证怎么带 | `Authorization: Bearer <token>`，或 `?token=<token>`（EventSource 设不了请求头，手机 PWA 走这条路） |
-| token 从哪来 | `ADELIE_TOKEN` 环境变量；没设时服务器启动时随机生成并打印一次（含带 token 的 URL） |
+| `/api/health`、`/api/auth/*` | `none` |
+| `/api/users`、`/api/shutdown` | `admin` |
+| 其余 `/api/*` | `user`（要登录 —— 默认拒绝，新增路由忘了登记的结果是「要登录」而不是「对所有人敞开」） |
 
-401 响应体固定为 `{ "error": "unauthorized" }`。手机 PWA 连局域网里的服务端时用带 token 的 URL。
+| 状态码 | 响应体 | 什么时候 |
+| --- | --- | --- |
+| 401 | `{ "error": "unauthorized" }` | 没有身份 |
+| 403 | `{ "error": "admin_required", "message": "这个操作需要管理员" }` | 有身份，但这一档不够 |
+
+两者必须分开：混成一个 401 会让界面把「你没权限」显示成「请重新登录」，用户会一直重登。
+
+静态资源（`/`、`/assets/*`）**公开**：浏览器要先拿到应用外壳，才谈得上登录。认证只罩 `/api/*`。
 
 ## 1. 基本
 
 ```
 GET /api/health   → 200 { "ok": true, "name": "adelie", "version": "0.1.0", "uptimeMs": 1234 }
 ```
+
+身份这一组是唯一能拿到身份的地方，所以它们自己不要求身份（§0 的表里是 `none`）：
+
+```
+GET  /api/auth/me       → 200 { "authenticated": true, "user": {
+                                "kind": "host"|"user", "name": "本机"|"alice",
+                                "isAdmin": true, "id": "…"|null, "hasPassword": true } }
+                        （匿名 → 200 { "authenticated": false }，**不是** 401：
+                          界面靠它决定显示登录页还是主界面，它也就不该是一次报错日志）
+POST /api/auth/login    body { "name": "alice", "password": "…" }
+                        → 200 { "user": {…} } + Set-Cookie: adelie_session=…（HttpOnly、SameSite=Lax、30 天）
+                          用户不存在与口令不对返回**同一个** 401（区分开等于送对方一个账号枚举器）
+POST /api/auth/logout   → 204（Cookie 与同一个 Bearer 令牌一起作废 —— 那个令牌既能当
+                          Cookie 也能当 Bearer，只清 Cookie 等于「退出」之后它还活着）
+POST /api/auth/password body { "current"?: "…", "password": "…"|null } → 200 { "user": {…} }
+                          改自己的口令（`null` 清空）；账号已有口令时必须给对 `current`。
+                          **改口令会作废该账号的所有登录令牌**（服务端顺手删 auth_sessions）
+```
+
+用户管理整片是管理员专用（§0 的表里 `/api/users` → `admin`）：
+
+```
+GET    /api/users              → 200 { "users": [ { "id", "name", "isAdmin", "hasPassword",
+                                      "createdAt", "isSelf", "sessionCount" } ] }
+POST   /api/users              body { "name", "password"?, "isAdmin"? } → 201 { "user": {…} }
+DELETE /api/users/:id          → 204（令牌与**会话索引**一起清掉；磁盘上的事件流仍留着）
+POST   /api/users/:id/password body { "password": string|null } → 200 { "user": {…} }
+POST   /api/users/:id/role     body { "isAdmin": boolean } → 200 { "user": {…} }
+```
+
+- 用户名 1–32 个字符，字母 / 数字 / `_` `.` `-`；重名 → 409 `conflict`。
+- 内置账号 `admin` 是**接管这台机器的那把钥匙**：不能删、不能改角色。也不能删自己、
+  不能把自己降成普通用户 —— 会把自己锁在外面。
+- 口令至少 6 位；建号时可以不带口令（先由管理员代管），之后由本人（§1 的 `/api/auth/password`）
+  或管理员（这一组）设。
+- **两档角色**：管理员能管账号、改端点与密钥、设工作区；普通用户其余一切照旧 ——
+  自己的会话、自己的模型偏好、自己的密钥、同一个对话引擎。
 
 ## 2. 配置
 
@@ -37,7 +100,8 @@ GET /api/config → 200 {
   "hasApiKey": true,
   "approvalPolicy": "auto-reject",
   "limits": { "maxIterations": 50, "maxTokens": null },
-  "version": "0.1.0"
+  "version": "0.1.0",
+  "identity": { "kind": "host"|"user", "name": "本机"|"alice", "isAdmin": true }
 }
 
 PATCH /api/config
@@ -73,13 +137,20 @@ GET /api/models → 200 {
   3. 兼容字段 `provider`（平铺）—— 等价于 `{ provider }`，留给手机上缓存了旧前端的
      PWA。等线上没有 0.1 客户端后删。
   其它形状 → 400 `bad_request`。`baseUrl` 与 `apiKey` 都按**当前的** provider 生效。
-- `apiKey` 只写不读：写进 `<home>/.adelie/.env`，键名按提供方查模型目录
+- `apiKey` 只写不读，键名按提供方查模型目录
   （`DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `MOONSHOT_API_KEY` / `DASHSCOPE_API_KEY`），
   文件权限收到 **0600**（写下去的是明文密钥，同机其他用户不该读得到），
   响应里只回 `hasApiKey`。**任何响应体里都不出现密钥。**
+  写哪个文件按身份分：主机身份沿用 `<home>/.adelie/.env`（CLI 与桌面壳都读它，升级时不丢配置），
+  登录用户写 `~/.adelie/secrets/<用户 id>.env`。读的时候反过来 —— **用户身份先看自己的文件**，
+  主机身份保持「环境变量优先」这条老规矩。
+- **`workspace` / `baseUrl` / `provider` / `apiKey` 是管理员的，`model` 与 `limits` 是每个人的。**
+  非管理员改前四个 → 403 `admin_required`（换 provider 连着端点与密钥一起换，所以也算管理员的）。
+  界面照这条把字段置灰并写清原因（`packages/web/src/lib/permissions.ts`），
+  免得用户点了保存才吃一个 403。配置**按身份存**：主机一份，每个账号各一份。
 - `GET /api/models` 是界面里那两组下拉框的唯一出处（以前抄在 Web 里，加一家厂商要改
   两处，漏掉的那处表现为「服务端支持、界面里选不到」）。它**不含端点**：`envKey` 是环境
-  变量**名**（界面用它提示密钥配在哪），不是秘密。
+  变量**名**（界面用它提示密钥配在哪），不是秘密。`hasApiKey` 按**当前身份**算。
 - `workspace` 变更后，会话列表与新建会话都以新工作区为准。
 
 ```
@@ -89,7 +160,8 @@ GET /api/tools → 200 { "tools": [ { "name": "read_file", "description": "...",
 ## 3. 会话
 
 ```
-GET    /api/sessions                → 200 { "sessions": [ { "id", "workspace", "createdAt", "lastActiveAt", "taskCount", "title", "model"?, "lastModel"? } ] }
+GET    /api/sessions                → 200 { "sessions": [ { "id", "workspace", "createdAt", "lastActiveAt", "taskCount", "title", "model"?, "lastModel"?, "owner"? } ] }
+                                       ?scope=all → 所有账号的（**只有管理员**，普通用户传了也只得到自己那几条）
 POST   /api/sessions                body { "workspace"?: string } → 201 { "session": {...} }
 GET    /api/sessions/:id            → 200 { "session": {...}, "runs": [ RestoredRun ], "events": [ StoredSessionEvent ] }
 DELETE /api/sessions/:id            → 204
@@ -99,6 +171,10 @@ GET    /api/sessions/:id/markdown   → 200 text/markdown（导出，见 core �
 - `model` 是这个会话**建的时候**用的模型（会话头），`lastModel` 是最近一轮**实际**用的
   （最后一条 `task_started`）。两者不一致说明会话中途换过模型。老会话（0.1 建的）可能
   两个都没有，所以都是可选的 —— 界面不能假设它一定在。
+- **会话按人分区**：内置 admin 用共享根（v0.1.0 的会话原地不动），其余每人
+  `~/.adelie/sessions/users/<用户 id>/`。归属**只从索引（`sessions` 表）读**，不看请求里带的 id；
+  读别人的会话回 404 而不是 403（403 等于告诉对方「这个 id 存在」）。
+  命令行建的会话在列表之前会被补进索引，所以它在网页里看得见。
 
 `id` 不存在 → 404 `{ "error": "not_found" }`。
 
@@ -147,7 +223,7 @@ POST /api/shutdown → 202 { "ok": true }
 ```
 
 先回响应，再优雅关停（停止接收新连接、等在跑的轮次落盘、退出进程）。**非回环地址一律 401**，
-即使 token 有效 —— 这是一个只给本机用的逃生口。
+即使 token 有效 —— 这是一个只给本机用的逃生口；回环之外还要过 §0 的权限表（`/api/shutdown` → `admin`）。
 
 为什么要它：Windows 上 Electron 的 `child.kill()` 是硬终止，而会话事件是追加写的，
 硬杀会把最后一条事件截成半行。桌面壳因此走「先请求优雅关停，超时再杀」。
@@ -160,4 +236,5 @@ POST /api/shutdown → 202 { "ok": true }
 ## 8. 错误
 
 所有错误都是 JSON：`{ "error": "<code>", "message": "<人读的话>" }`。
-已知 code：`unauthorized` / `not_found` / `busy` / `stale_approval` / `bad_request` / `internal`。
+已知 code：`unauthorized` / `admin_required` / `forbidden` / `conflict` / `not_found` /
+`busy` / `stale_approval` / `bad_request` / `internal`。

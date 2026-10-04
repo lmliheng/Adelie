@@ -190,7 +190,7 @@ output*r3) / 1e6`。好处是调价不用回填历史。
 | --- | --- | --- | --- |
 | **P1** | 模型目录 + Kimi/Qwen 适配 + 密钥 0600 + 空 provider 文件清理 | `pnpm typecheck` / `test` / `build` 全绿；`adelie --provider kimi` 报「缺少 MOONSHOT_API_KEY」而不是「不支持的提供方」；新建 `.env` 是 0600 | **已完成**（真机验过报错文案） |
 | **P2** | `ModelRef` 贯穿 config→会话头→用量；`GET /api/models` 供 Web 渲染 | 换模型后 `GET /api/sessions/:id` 的会话头里能看到 provider+model；Web 设置弹窗不再硬编码清单 | **已完成**（见 §11） |
-| **P3** | 用户表 + Cookie 会话 + 两档角色 + 每用户密钥与会话分区 | 非管理员 PATCH `/api/config` 的 apiKey 得 403；两个用户互看不见对方会话；桌面壳仍无感登录 | 未开始 |
+| **P3** | 用户表 + Cookie 会话 + 两档角色 + 每用户密钥与会话分区 | 非管理员 PATCH `/api/config` 的 apiKey 得 403；两个用户互看不见对方会话；桌面壳仍无感登录 | **已完成**（见 §12） |
 | **P4** | 用量落库 + 成本现算 + `GET /api/usage` + `adelie cost` | 一次真实运行后 `adelie cost` 的 token 数与事件流对得上；改价表后历史成本跟着变 | 未开始 |
 | **P5** | trace 分片索引 / 分析 / 下载 | 跑一次带压缩的会话，`adelie trace` 能列出 >1 个分片 | 未开始 |
 | **P6** | 自省闭环（trace → 技能/指令改动，带审批） | 改动本身在事件流里可回溯，且 Project 策略仍然压得住它 | 未开始 |
@@ -252,3 +252,68 @@ web 47、cli 121、desktop 6），`typecheck` 与 `build` 全绿。
 - `packages/cli/src/vue-tui/composable/useAgent.ts` 仍硬编码 `DeepSeekProvider`
   （CLI 的实验 TUI 路径，未接入 CLI 主流程，P2 未动）
 - `PATCH /api/config` 的平铺 `provider` 兼容分支是**临时**的，等确认线上没有 0.1 客户端后删
+
+## 12. P3 已完成与未完成
+
+**已完成**：账号体系。这台机器上现在可以住几个人，每人有自己的会话、密钥与模型偏好。
+
+服务端（`packages/server`）：
+
+- `users/db.ts`：`~/.adelie/adelie.db`（`node:sqlite`，零原生依赖；`busy_timeout` 5s ——
+  CLI、桌面壳、网页三个进程同时开着是常态）。表：`users` / `auth_sessions`（令牌只存
+  sha256）/ `sessions`（会话 id → 归属 + 工作区）/ `user_settings`。播种内置 `admin`，
+  **初始没有口令** —— 它靠公理进门，不由口令守。
+- `users/passwords.ts`：scrypt(N=16384,r=8,p=1) + 随机盐 + `timingSafeEqual`，参数写进
+  哈希串（将来好换）；登录令牌 30 天，库里只存它的哈希。
+- `identity.ts`：身份解析（Cookie → Bearer → **回环且未配 token ⇒ 主机管理员**）与
+  **路由权限表**（前缀 → `none` / `user` / `admin`，最长前缀优先，兜底「要登录」）。
+  判定只在这一个中间件里，不散进各 handler。
+- `routes/auth.ts`（登录 / 登出 / 我是谁 / 改自己的口令）、`routes/users.ts`（整片管理员）。
+  口令不对与用户不存在回同一个 401（否则它就是账号枚举器）；改口令作废该账号的所有令牌。
+- `routes/config.ts`：`workspace` / `baseUrl` / `provider` / `apiKey` 四个字段管理员专用
+  （403 `admin_required`），`model` 与 `limits` 人人可改。配置按身份存。
+- 密钥分文件：主机身份沿用 `<home>/.adelie/.env`（CLI 与桌面壳都读它，升级不丢配置），
+  登录用户各写 `secrets/<id>.env`（0600）。读时反过来：用户先看自己的，主机保持
+  「环境变量优先」。
+- 会话按人分区：内置 admin 走共享根（v0.1.0 的会话原地不动），其余每人
+  `sessions/users/<id>/`。归属**只从索引读**，读别人的会话回 404（403 等于承认 id 存在）。
+  CLI 建的会话在列之前补进索引，所以它在网页里看得见。
+
+前端（`packages/web`）：身份门（`checking` → `anonymous` → 登录页；`authed` → 主界面），
+登录页（含可折叠的连接设置：服务端地址 + token），用户管理弹窗，顶栏身份胶囊
+（`本机` / 用户名 + 管理员），设置弹窗按 `lib/permissions.ts` 把无权字段置灰并写清原因。
+`useAuth` 有一条要紧的取舍：**连不上服务端时不显示登录页**（网络失败当作「已登录、
+身份未知」），把「服务端没起来」显示成「你没登录」会把人引到一条走不通的路上。
+
+**一处有意偏离 §2**：§2 写的是「桌面壳启动时拿一次性 token 换 Cookie」，实现时改成
+**桌面壳不改，绑回环 + 不带凭证 ⇒ 主机管理员**。理由：那样的壳不必持有任何凭证，
+也就没有「凭证怎么存、怎么轮换」这串问题，而它读得到 `~/.adelie`，本来就是管理员。
+代价是多用户机器上，本机别人的浏览器打开这个回环端口也是管理员 —— 要关掉这条路，
+设 `ADELIE_TOKEN` 即可（那之后连本机都要凭证）。
+
+**P3 的真机验收**（2026-10-04，构建产物起服务，临时 HOME，Playwright + Chromium）：
+
+| 检查 | 结果 |
+| --- | --- |
+| 配了 `ADELIE_TOKEN` 后匿名访问 | 登录页（不是主界面） |
+| 连接设置里填 token | 变成主机身份，顶栏显示「本机 + 管理员」 |
+| 用户管理里建 alice | 列表出现 alice（有口令、0 个会话） |
+| 口令输错 | 提示「用户名或口令不对」（不是「token 无效」那类连接错误文案） |
+| alice / 正确口令登录 | 顶栏显示 alice、没有用户管理入口、有退出登录 |
+| 设置弹窗（alice） | 工作区 / 提供方 / 端点 / 密钥置灰且各有「由管理员设定」的说明，模型名可改 |
+| alice 直连 `GET /api/users` | 403 `admin_required` |
+| 退出登录 | 回登录页，`/api/auth/me` 回到 `authenticated: false` |
+| 浏览器 console | 无脚本错误（只有故意触发的 401 / 403 网络日志） |
+| 不配 token 的本机访问 | 直接进主界面，「本机」管理员，没有登录页 —— 桌面壳走的就是这条 |
+
+全仓 **703 通过 / 7 跳过**（core 82、providers 50、tools 190、runtime 151、server 51、
+web 52、cli 121、desktop 6），`typecheck` / `test` / `build` 三绿。
+
+**未完成**（都记在 `docs/issues/`）：
+
+- 非管理员目前**共用管理员的工作区**：会话是自己的，但 Agent 在哪个目录里跑还是管理员
+  设的那个。§2 里「⚠️ 仅自己名下的分区」这一格只做了一半。
+- 登录接口没有速率限制：口令不会因为反复猜错而被拖慢或锁住。
+- 手机 PWA 跨源（GitHub Pages → 局域网服务端）时 Cookie 不生效，那条路只能靠 Bearer
+  token —— 没有在真实的跨源场景里验过。
+- 桌面壳走回环主机身份这件事本身要不要改，是个待拍板的决策（见上面「一处有意偏离」）。
