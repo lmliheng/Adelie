@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Issue 规则（先读这条）
+    url: https://github.com/lmliheng/Adelie/blob/main/docs/issues.md
+    about: 什么时候开、标题怎么写、正文要哪五段、标签与优先级、什么条件下能关
