@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Adelie — 设计规格</title>
-<meta name="description" content="Adelie（阿德利）的品牌与界面设计规格：标志构成、图标阶梯、配色、界面令牌、四端形态。">
+<title>Adelie — 设计与工作原理</title>
+<meta name="description" content="Adelie（阿德利）的设计与工作原理：架构分层、一轮任务的工作流程、事件流与恢复、发布流程，以及品牌、图标、配色与界面令牌。">
 <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="assets/adelie-glyph.svg" type="image/svg+xml">
@@ -33,6 +33,8 @@
   --border:#1f1f1f; --control-border:#303030;
   --fg:#f3f4f6; --fg-muted:#9ca3af; --fg-faint:#6b7280;
   --accent-bg:#f3f4f6; --accent-fg:#111827;
+  /* 蓝色的底色阶在深色下必须翻过来：浅蓝底 + 白字是看不见的 */
+  --brand-50:#0f1e38; --brand-100:#1e3a68; --brand-300:#35619f;
   --brand-600:#8ab4f8; --brand-700:#8ab4f8;
   --ok:#4ade80; --warn:#fbbf24; --danger:#f87171;
 }
@@ -43,6 +45,7 @@
     --border:#1f1f1f; --control-border:#303030;
     --fg:#f3f4f6; --fg-muted:#9ca3af; --fg-faint:#6b7280;
     --accent-bg:#f3f4f6; --accent-fg:#111827;
+    --brand-50:#0f1e38; --brand-100:#1e3a68; --brand-300:#35619f;
     --brand-600:#8ab4f8; --brand-700:#8ab4f8;
     --ok:#4ade80; --warn:#fbbf24; --danger:#f87171;
   }
@@ -204,7 +207,32 @@ figcaption { color:var(--fg-faint); font-size:13px; margin-top:10px; }
 .shot img { display:block; width:100%; height:auto; }
 .shot figcaption { padding:9px 12px; margin:0; border-top:1px solid var(--border); }
 
-/* 规则 --------------------------------------------------------------- */
+/* 结构与流程图 ------------------------------------------------------- */
+.diagram {
+  border:1px solid var(--border); border-radius:var(--radius-card);
+  background:var(--surface); padding:20px 18px; overflow-x:auto;
+}
+.diagram svg { display:block; width:100%; min-width:620px; height:auto; }
+.dgm .zone { fill:var(--subtle); stroke:var(--border); stroke-width:1; }
+.dgm .zone-title { fill:var(--fg-faint); font:500 12px ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:.04em; }
+.dgm .node { fill:var(--bg); stroke:var(--control-border); stroke-width:1; }
+.dgm .node-accent { fill:var(--brand-50); stroke:var(--brand-300); }
+.dgm .node-ink { fill:var(--accent-bg); stroke:var(--accent-bg); }
+.dgm .t { fill:var(--fg); font:600 15px ui-sans-serif, system-ui, sans-serif; }
+.dgm .t-ink { fill:var(--accent-fg); font:600 15px ui-sans-serif, system-ui, sans-serif; }
+.dgm .s { fill:var(--fg-muted); font:12px ui-sans-serif, system-ui, sans-serif; }
+.dgm .s-ink { fill:var(--accent-fg); font:12px ui-sans-serif, system-ui, sans-serif; opacity:.75; }
+.dgm .mono-t { fill:var(--fg); font:600 14px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dgm .mono-s { fill:var(--fg-faint); font:11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dgm .edge { stroke:var(--fg-faint); stroke-width:1.5; fill:none; marker-end:url(#arrow); }
+.dgm .edge-plain { stroke:var(--fg-faint); stroke-width:1.5; fill:none; }
+.dgm .edge-accent { stroke:var(--brand-500); stroke-width:1.6; fill:none; marker-end:url(#arrow-accent); }
+.dgm .edge-dashed { stroke:var(--fg-faint); stroke-width:1.5; fill:none; stroke-dasharray:6 5; marker-end:url(#arrow); }
+.dgm .el { fill:var(--fg-muted); font:11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.dgm .el-accent { fill:var(--brand-700); font:11px ui-monospace, SFMono-Regular, Menlo, monospace; }
+.legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:12px; color:var(--fg-faint); }
+.legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:middle; }
+
 .rules { display:grid; gap:16px; }
 @media (min-width:760px) { .rules { grid-template-columns:1fr 1fr; } }
 .rule { border:1px solid var(--border); border-radius:var(--radius-card); padding:16px 18px; }
@@ -234,6 +262,13 @@ footer .spacer { margin-left:auto; }
       <stop offset="0" stop-color="#054ac8"/><stop offset="1" stop-color="#015dfc"/>
     </linearGradient>
     <clipPath id="g-plate"><rect width="1024" height="1024" rx="246"/></clipPath>
+    <!-- 流程图箭头：context-stroke 让箭头跟着线走，主题切换不必各画一套 -->
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0.5 L9,4.5 L0,8.5 Z" fill="context-stroke"/>
+    </marker>
+    <marker id="arrow-accent" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto">
+      <path d="M0,0.5 L9,4.5 L0,8.5 Z" fill="context-stroke"/>
+    </marker>
     <!-- 单色字形：肚子、喙、眼环从剪影里挖空 -->
     <mask id="glyph-cuts">
       <rect width="1024" height="1024" fill="#fff"/>
@@ -247,7 +282,7 @@ footer .spacer { margin-left:auto; }
 
 <header class="topbar">
   <svg class="glyph" viewBox="0 0 1024 1024" aria-hidden="true"><path d="M 512 225 C 596 225 652 296 662 388 C 684 470 706 560 706 660 C 706 780 664 840 512 840 C 360 840 318 780 318 660 C 318 560 340 470 362 388 C 372 296 428 225 512 225 Z" fill="currentColor" mask="url(#glyph-cuts)"/></svg>
-  <b>Adelie</b><span class="sep">·</span><span style="color:var(--fg-muted);font-size:13px">设计规格</span>
+  <b>Adelie</b><span class="sep">·</span><span style="color:var(--fg-muted);font-size:13px">设计与工作原理</span>
   <nav>
     <a href="#name">名字</a>
     <a href="#mark">标志</a>
@@ -255,7 +290,11 @@ footer .spacer { margin-left:auto; }
     <a href="#color">配色</a>
     <a href="#tokens">令牌</a>
     <a href="#surfaces">四端</a>
+    <a href="#arch">架构</a>
+    <a href="#flow">流程</a>
+    <a href="#release">发布</a>
     <a href="#rules">规则</a>
+    <a href="#files">文件</a>
     <a href="https://github.com/lmliheng/Adelie">仓库 ↗</a>
   </nav>
   <label class="toggle" title="切换明/暗">
@@ -282,12 +321,13 @@ footer .spacer { margin-left:auto; }
     <div>
       <h1>Adelie</h1>
       <div class="zh">阿德利 · 一个智能体应用</div>
-      <p class="pitch">CLI、Windows 桌面、Web 与可安装的 PWA —— 四张脸，同一套引擎。界面照 GitHub 式的克制来做：实底、1px 发丝边框、系统字体、只留一个蓝色强调。</p>
+      <p class="pitch">CLI、Windows 桌面、Web 与可安装的 PWA —— 四张脸，同一套引擎。引擎干活、外壳呈现、接口是唯一的接缝；一轮任务的每一步都写成事件，界面与「接着聊」都由事件回放重建。界面照 GitHub 式的克制来做：实底、1px 发丝边框、系统字体、只留一个蓝色强调。</p>
       <div class="meta">
         <span class="chip blue">v0.1.0</span>
         <span class="chip">2026-10-04 定稿</span>
         <span class="chip">MIT</span>
         <span class="chip">Node ≥ 24</span>
+        <span class="chip">8 个包 · 约 2.03 万行源码 · 638 个测试</span>
       </div>
     </div>
   </div>
@@ -616,9 +656,326 @@ Adelie-Portable-0.1.0-x64.exe</code></pre>
     </div>
   </section>
 
-  <!-- ============================ 07 规则 ============================ -->
+  <!-- ============================ 07 架构 ============================ -->
+  <section id="arch">
+    <div class="eyebrow"><span class="n">07</span><span>架构</span></div>
+    <h2>引擎干活，外壳呈现，接口是唯一的接缝</h2>
+    <p class="lede">Adelie 只有一条主线：<b>引擎不依赖任何外壳，外壳不实现任何业务</b>。CLI 与服务端是驱动同一个运行时的两个调用方 —— 构造 <span class="mono">AgentRuntime</span>（注入 <span class="mono">onSessionEvent</span> / <span class="mono">onStreamDelta</span> / <span class="mono">requestApproval</span>），调 <span class="mono">run(task)</span>，把事件写到终端或推成 SSE。审批、预算、验收、工具集这些语义只在引擎里存在一处。</p>
+
+    <figure style="margin-top:22px">
+      <div class="diagram">
+        <svg class="dgm" viewBox="0 0 1000 520" role="img" aria-labelledby="fig3t fig3d">
+          <title id="fig3t">Adelie 的分层架构</title>
+          <desc id="fig3d">三种外壳（CLI、桌面壳、Web/PWA）在上面；服务端在中间，只对 Web 与桌面暴露 HTTP + SSE；引擎在最下面，包含 runtime / tools / providers / core 四个包；再往下是模型 API、工作区与 MCP 这些外部世界。</desc>
+
+          <!-- 外壳 -->
+          <rect class="node" x="40" y="14" width="250" height="72" rx="10"/>
+          <text class="mono-t" x="165" y="44" text-anchor="middle">adelie</text>
+          <text class="s" x="165" y="66" text-anchor="middle">CLI · 交互会话与 headless</text>
+
+          <rect class="node" x="330" y="14" width="250" height="72" rx="10"/>
+          <text class="mono-t" x="455" y="44" text-anchor="middle">adelie-desktop</text>
+          <text class="s" x="455" y="66" text-anchor="middle">Electron 壳（Windows）</text>
+
+          <rect class="node" x="620" y="14" width="250" height="72" rx="10"/>
+          <text class="mono-t" x="745" y="44" text-anchor="middle">adelie-web</text>
+          <text class="s" x="745" y="66" text-anchor="middle">React + Vite · PWA</text>
+
+          <!-- 连线 → 服务端 -->
+          <path class="edge-plain" d="M 455 86 V 190" marker-end="url(#arrow)"/>
+          <text class="el" x="465" y="140">fork 子进程</text>
+          <path class="edge-plain" d="M 745 86 V 190" marker-end="url(#arrow)"/>
+          <text class="el" x="735" y="140" text-anchor="end">HTTP + SSE</text>
+
+          <!-- CLI 直接落到引擎 -->
+          <path class="edge-plain" d="M 165 86 V 300" marker-end="url(#arrow)"/>
+          <text class="el" x="175" y="180">进程内直接构造</text>
+          <text class="el" x="175" y="198">AgentRuntime</text>
+
+          <!-- 服务端 -->
+          <rect class="node-accent" x="430" y="190" width="330" height="82" rx="10"/>
+          <text class="mono-t" x="595" y="222" text-anchor="middle">adelie-server</text>
+          <text class="s" x="595" y="246" text-anchor="middle">会话 · SSE 对话流 · 工具审批 · 静态托管</text>
+          <path class="edge-plain" d="M 595 272 V 300" marker-end="url(#arrow)"/>
+
+          <!-- 引擎 -->
+          <rect class="zone" x="40" y="300" width="920" height="152" rx="12"/>
+          <text class="zone-title" x="56" y="324">引擎 · 与服务端 / CLI 同一个进程</text>
+
+          <rect class="node" x="56" y="336" width="205" height="100" rx="8"/>
+          <text class="mono-t" x="70" y="364">adelie-runtime</text>
+          <text class="s" x="70" y="386">ReAct 循环 · 计划</text>
+          <text class="s" x="70" y="404">审批 · 验收 · 预算</text>
+
+          <rect class="node" x="277" y="336" width="205" height="100" rx="8"/>
+          <text class="mono-t" x="291" y="364">adelie-tools</text>
+          <text class="s" x="291" y="386">文件 · Git · 命令</text>
+          <text class="s" x="291" y="404">搜索 · MCP 客户端</text>
+
+          <rect class="node" x="498" y="336" width="205" height="100" rx="8"/>
+          <text class="mono-t" x="512" y="364">adelie-providers</text>
+          <text class="s" x="512" y="386">DeepSeek</text>
+          <text class="s" x="512" y="404">OpenAI 兼容端点</text>
+
+          <rect class="node" x="719" y="336" width="205" height="100" rx="8"/>
+          <text class="mono-t" x="733" y="364">adelie-core</text>
+          <text class="s" x="733" y="386">类型 · 事件流</text>
+          <text class="s" x="733" y="404">会话持久化 · 折叠</text>
+
+          <!-- 外部世界 -->
+          <path class="edge" d="M 500 452 V 480"/>
+          <text class="s" x="500" y="506" text-anchor="middle">模型 API（DeepSeek / OpenAI 兼容端点） · 工作区文件与命令 · MCP 服务</text>
+        </svg>
+      </div>
+      <figcaption>图 3 · 分层架构。桌面壳不是第二个前端：它 fork 服务端、开窗口加载 <span class="mono">http://127.0.0.1:&lt;port&gt;</span>，页面与浏览器里那份完全相同 —— 代价是壳做不了深度集成，好处是四端只有一个前端要维护。</figcaption>
+    </figure>
+
+    <div class="table-wrap" style="margin-top:20px">
+      <table>
+        <thead><tr><th>谁拥有</th><th>内容</th><th>为什么放在这一侧</th></tr></thead>
+        <tbody>
+          <tr><td>引擎</td><td>ReAct 循环、计划与重规划、审批语义、验收、预算闸门、工具集、模型适配、事件流格式、会话持久化</td><td>这些语义只能存在一处，否则四端会各自漂移出一套「什么算完成」</td></tr>
+          <tr><td>外壳</td><td>呈现与交互：终端渲染、SSE 推送、页面与 PWA、桌面窗口与端口管理</td><td>外壳随时可以重写、可以再多一个，而引擎不知道它们存在</td></tr>
+          <tr><td>接缝</td><td><span class="mono">docs/api.md</span> 里那份 HTTP + SSE 契约</td><td>它是唯一的跨进程约定：改接口先改契约，再改两端</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="margin-top:28px">八个包，一个职责</h3>
+    <div class="table-wrap" style="margin-top:10px">
+      <table>
+        <thead><tr><th>包</th><th>行数</th><th>职责</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">adelie-core</td><td class="mono">3290</td><td>类型、事件流与落盘、会话持久化 / 恢复 / 导出、上下文折叠、交付物断言、输出预算（零依赖）</td></tr>
+          <tr><td class="mono">adelie-providers</td><td class="mono">737</td><td>模型适配层：DeepSeek 与任何 OpenAI 兼容端点，流式增量与工具调用</td></tr>
+          <tr><td class="mono">adelie-tools</td><td class="mono">4570</td><td>文件 / Git / 命令 / 搜索工具与注册表、fs-guard 边界、MCP stdio 客户端</td></tr>
+          <tr><td class="mono">adelie-runtime</td><td class="mono">2389</td><td>ReAct 主循环、计划与真 replan、审批闸门、验收、多重预算与成本闸门</td></tr>
+          <tr><td class="mono">adelie-server</td><td class="mono">1661</td><td>HTTP + SSE 后端：会话列表、对话流、审批往返、取消、Web 产物托管</td></tr>
+          <tr><td class="mono">adelie</td><td class="mono">2370</td><td>CLI：交互会话与 headless 三种输出形态，外加 <span class="mono">adelie serve</span></td></tr>
+          <tr><td class="mono">adelie-web</td><td class="mono">4863</td><td>React + Vite 界面与 PWA：时间线、工具卡、审批卡、设置、用量</td></tr>
+          <tr><td class="mono">adelie-desktop</td><td class="mono">394</td><td>Electron 壳：挑端口、fork 内置服务端、单实例、优雅退出</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid g2" style="margin-top:24px">
+      <div class="card">
+        <h3>数据放在哪</h3>
+        <p style="font-size:14px">
+          用户级配置（API Key）：<span class="mono">~/.adelie/.env</span><br>
+          会话事件（JSONL，按工作区索引）：<span class="mono">~/.adelie/sessions/</span>，可用 <span class="mono">ADELIE_SESSIONS_ROOT</span> 覆盖<br>
+          桌面壳的数据与日志：系统 userData 下的 <span class="mono">Adelie/</span><br>
+          工作区指令：工作区根的 <span class="mono">ADELIE.md</span> / <span class="mono">AGENTS.md</span> / <span class="mono">CLAUDE.md</span>
+        </p>
+      </div>
+      <div class="card">
+        <h3>安全边界</h3>
+        <p style="font-size:14px">
+          工具只能在工作区内动文件，所有文件工具过 <span class="mono">fs-guard</span>（resolve + realpath + relative 判定，拒 <span class="mono">..</span> 逃逸与符号链接）。<br>
+          需要审批的动作（写文件、跑命令、网络请求）默认<b>拒绝</b>；有人可问时由人拍板，决定写进事件流。<br>
+          服务端默认只绑回环；绑非回环或显式设了令牌时，<span class="mono">/api/*</span> 必须带凭证。<br>
+          桌面壳只绑回环，且不给页面注入 Node（<span class="mono">nodeIntegration: false</span>、<span class="mono">sandbox: true</span>）。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 08 工作流程 ============================ -->
+  <section id="flow">
+    <div class="eyebrow"><span class="n">08</span><span>工作流程</span></div>
+    <h2>一轮任务怎么跑</h2>
+    <p class="lede">运行时是一个 ReAct 循环：每一轮先构建上下文、让模型决策，再把决策变成动作或答复。动作要过审批闸门、执行要过 fs-guard、每轮开头要过预算闸门；跑完做一次验收。<b>所有状态迁移都写成事件</b>，界面与「接着聊」都由事件回放重建。</p>
+
+    <figure style="margin-top:22px">
+      <div class="diagram">
+        <svg class="dgm" viewBox="0 0 1000 390" role="img" aria-labelledby="fig4t fig4d">
+          <title id="fig4t">一轮任务的主循环</title>
+          <desc id="fig4d">主循环里依次是组装上下文、模型决策、决策分叉、审批闸门、工具执行，执行完把观察带回组装上下文继续下一轮；循环结束条件包括 Final 决策、预算耗尽、无进展、超时、出错与用户打断；循环之后是验收。</desc>
+
+          <rect class="zone" x="20" y="20" width="960" height="250" rx="14"/>
+          <text class="zone-title" x="40" y="48">主循环 · while (!shouldStop())</text>
+          <text class="zone-title" x="960" y="48" text-anchor="end">每轮开头先过预算闸门</text>
+
+          <rect class="node" x="40" y="86" width="150" height="64" rx="8"/>
+          <text class="t" x="115" y="112" text-anchor="middle">组装上下文</text>
+          <text class="s" x="115" y="132" text-anchor="middle">指令 + 计划 + 交付物</text>
+
+          <rect class="node" x="226" y="86" width="150" height="64" rx="8"/>
+          <text class="t" x="301" y="112" text-anchor="middle">模型决策</text>
+          <text class="s" x="301" y="132" text-anchor="middle">流式增量转给界面</text>
+
+          <rect class="node" x="412" y="86" width="150" height="64" rx="8"/>
+          <text class="t" x="487" y="112" text-anchor="middle">决策分叉</text>
+          <text class="s" x="487" y="132" text-anchor="middle">Final · Action · Replan</text>
+
+          <rect class="node" x="598" y="86" width="150" height="64" rx="8"/>
+          <text class="t" x="673" y="112" text-anchor="middle">审批闸门</text>
+          <text class="s" x="673" y="132" text-anchor="middle">要人拍板的先停下</text>
+
+          <rect class="node" x="784" y="86" width="150" height="64" rx="8"/>
+          <text class="t" x="859" y="112" text-anchor="middle">工具执行</text>
+          <text class="s" x="859" y="132" text-anchor="middle">fs-guard 限定工作区</text>
+
+          <path class="edge" d="M 190 118 H 226"/>
+          <path class="edge" d="M 376 118 H 412"/>
+          <path class="edge" d="M 562 118 H 598"/>
+          <path class="edge" d="M 748 118 H 784"/>
+
+          <!-- 观察回灌 -->
+          <path class="edge-accent" d="M 859 150 V 215 H 115 V 150"/>
+          <text class="el-accent" x="490" y="207" text-anchor="middle">观察 · 写进事件流后回灌下一轮</text>
+
+          <!-- 出口 -->
+          <path class="edge" d="M 760 270 V 300"/>
+          <text class="el" x="745" y="291" text-anchor="end">结束条件：Final 决策 · 预算耗尽 · 无进展 · 超时 · 出错 · 用户打断</text>
+
+          <rect class="node-accent" x="610" y="300" width="300" height="64" rx="8"/>
+          <text class="t" x="760" y="326" text-anchor="middle">验收</text>
+          <text class="s" x="760" y="346" text-anchor="middle">交付物断言 + 验收命令</text>
+        </svg>
+      </div>
+      <figcaption>图 4 · 一轮任务的主循环。红色（品牌蓝）那条是唯一的回边：工具的结果变成观察、写进事件流、再回到下一轮的上下文里。模型增量（<span class="mono">delta</span>）走的是另一条路 —— 直接推给界面，不进事件流。</figcaption>
+    </figure>
+
+    <div class="table-wrap" style="margin-top:20px">
+      <table>
+        <thead><tr><th>一步</th><th>做什么</th><th>写进事件流</th></tr></thead>
+        <tbody>
+          <tr><td>0 · 起手</td><td>建运行状态，先把「要做什么」记下来，再让模型出一版初始计划</td><td class="mono">task_started</td></tr>
+          <tr><td>1 · 组装上下文</td><td>工作区指令 + 计划 + 交付物清单 + 历史（超过阈值就折叠成摘要）</td><td class="mono">context_folded</td></tr>
+          <tr><td>2 · 模型决策</td><td>带上工具 schema 问模型；这一轮的正文/思考增量原样转给界面</td><td>—（增量不是状态迁移）</td></tr>
+          <tr><td>3 · 记录决策</td><td><b>动作执行之前</b>落盘：它是「我打算做什么」的意图记录，崩溃时留下的半条记录由恢复流程修补</td><td class="mono">decision</td></tr>
+          <tr><td>4 · 审批</td><td>需要审批的动作停下来问人；无人可问时按策略（默认拒绝）；超时按拒绝处理</td><td class="mono">approval</td></tr>
+          <tr><td>5 · 执行与观察</td><td>过 fs-guard 执行，结果变成观察；失败的观察会带回重规划的机会</td><td class="mono">observation</td></tr>
+          <tr><td>6 · 计划变更</td><td>模型要求重规划时更新计划；跨轮的计划也由它落盘</td><td class="mono">plan_updated</td></tr>
+          <tr><td>7 · 收尾</td><td>先验收（交付物断言 + 验收命令），再写汇总；汇总与重放结果互为校验</td><td class="mono">verification</td> → <span class="mono">stopped</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid g3" style="margin-top:24px">
+      <div class="card">
+        <h3>五个预算闸门</h3>
+        <p style="font-size:14px">
+          迭代次数 <span class="mono">maxIterations</span><br>
+          累计 token <span class="mono">maxTokens</span>（成本闸门）<br>
+          工具调用 <span class="mono">maxToolCalls</span><br>
+          文件变更 <span class="mono">maxFileChanges</span><br>
+          「成功但无进展」<span class="mono">noProgressLimit</span>
+        </p>
+      </div>
+      <div class="card">
+        <h3>为什么会停</h3>
+        <p style="font-size:14px">
+          <span class="mono">task_completed</span> · 正常做完<br>
+          <span class="mono">max_iterations</span> / <span class="mono">max_tool_calls</span> / <span class="mono">max_tokens</span> / <span class="mono">max_file_changes</span> · 撞到闸门<br>
+          <span class="mono">no_progress</span> · 同一个工具反复产出同样的结果<br>
+          <span class="mono">timeout</span> · 超时<br>
+          <span class="mono">user_interrupted</span> · 人打断<br>
+          <span class="mono">error</span> · 执行出错
+        </p>
+      </div>
+      <div class="card">
+        <h3>事件流是唯一事实源</h3>
+        <p style="font-size:14px">
+          一次会话就是一个 JSONL 文件，一行一次状态迁移，八种：<span class="mono">task_started</span> / <span class="mono">decision</span> / <span class="mono">observation</span> / <span class="mono">approval</span> / <span class="mono">plan_updated</span> / <span class="mono">context_folded</span> / <span class="mono">stopped</span> / <span class="mono">verification</span>。<br>
+          界面、「接着聊」、会话导出都由它回放重建。
+        </p>
+      </div>
+    </div>
+
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card">
+        <h3>为什么增量不进事件流</h3>
+        <p style="font-size:14px">模型的流式增量可能半截。事件流是事实源，一份可能半截的中间产物混进去，重放就不再等于真相。所以增量走 <span class="mono">onStreamDelta</span> 直接推给界面，事件流只收「已经发生的状态迁移」。</p>
+      </div>
+      <div class="card">
+        <h3>「接着聊」不等于「接着跑」</h3>
+        <p style="font-size:14px">恢复会话时，历史 run 只影响<b>上下文怎么构造</b>：计划、预算计数、失败历史全部从零开始。旧日志仍然完整，变的只是送进模型的那一份 —— 上下文折叠会单列成 <span class="mono">context_folded</span> 事件，否则「模型怎么忘了前面读过的文件」这个问题只看决策与观察是答不出来的。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 09 发布流程 ============================ -->
+  <section id="release">
+    <div class="eyebrow"><span class="n">09</span><span>发布流程</span></div>
+    <h2>打一个 tag，出四件产物</h2>
+    <p class="lede">发布是自动的，人只做两件事：改版本号、推 tag。剩下的由 <span class="mono">.github/workflows/release.yml</span> 跑 —— 先守门，再并行出三份产物，最后汇总成一个 Release。</p>
+
+    <figure style="margin-top:22px">
+      <div class="diagram">
+        <svg class="dgm" viewBox="0 0 1000 300" role="img" aria-labelledby="fig5t fig5d">
+          <title id="fig5t">发布流水线</title>
+          <desc id="fig5d">推送 v 开头的 tag 后先跑 verify（类型检查、测试、构建），通过后并行跑三个 job：npm 发布、windows-latest 打安装包、ubuntu 构建 Web；最后汇总成 GitHub Release 附件，Web 产物另发一份到 GitHub Pages。</desc>
+
+          <rect class="node-ink" x="20" y="118" width="150" height="64" rx="8"/>
+          <text class="t-ink" x="95" y="146" text-anchor="middle">推 tag</text>
+          <text class="s-ink" x="95" y="166" text-anchor="middle">v0.1.0</text>
+          <path class="edge" d="M 170 150 H 210"/>
+
+          <rect class="node-accent" x="210" y="118" width="170" height="64" rx="8"/>
+          <text class="t" x="295" y="146" text-anchor="middle">verify</text>
+          <text class="s" x="295" y="166" text-anchor="middle">typecheck · test · build</text>
+
+          <path class="edge" d="M 380 150 C 420 150 420 54 460 54"/>
+          <path class="edge" d="M 380 150 H 460"/>
+          <path class="edge" d="M 380 150 C 420 150 420 246 460 246"/>
+
+          <rect class="node" x="460" y="26" width="180" height="56" rx="8"/>
+          <text class="t" x="550" y="50" text-anchor="middle" style="font-size:14px">npm</text>
+          <text class="s" x="550" y="69" text-anchor="middle">已发过的版本自动跳过</text>
+          <path class="edge" d="M 640 54 H 700"/>
+
+          <rect class="node" x="460" y="122" width="180" height="56" rx="8"/>
+          <text class="t" x="550" y="146" text-anchor="middle" style="font-size:14px">windows-latest</text>
+          <text class="s" x="550" y="165" text-anchor="middle">electron-builder --win</text>
+          <path class="edge" d="M 640 150 H 700"/>
+
+          <rect class="node" x="460" y="218" width="180" height="56" rx="8"/>
+          <text class="t" x="550" y="242" text-anchor="middle" style="font-size:14px">ubuntu · web</text>
+          <text class="s" x="550" y="261" text-anchor="middle">vite build + zip</text>
+          <path class="edge" d="M 640 246 H 700"/>
+
+          <rect class="node" x="700" y="26" width="280" height="56" rx="8"/>
+          <text class="s" x="716" y="49">npm registry</text>
+          <text class="mono-s" x="716" y="68">@lmliheng/adelie + 五个库</text>
+
+          <rect class="node" x="700" y="122" width="280" height="56" rx="8"/>
+          <text class="s" x="716" y="145">GitHub Release 附件</text>
+          <text class="mono-s" x="716" y="164">Adelie-Setup / Portable .exe</text>
+
+          <rect class="node" x="700" y="218" width="280" height="56" rx="8"/>
+          <text class="s" x="716" y="241">Release 附件 + GitHub Pages</text>
+          <text class="mono-s" x="716" y="260">adelie-web.zip · PWA 站点</text>
+        </svg>
+      </div>
+      <figcaption>图 5 · 发布流水线。任何一个 job 挂了，汇总那一步就不会跑 —— Release 不会带着半套产物发出去。</figcaption>
+    </figure>
+
+    <div class="grid g2" style="margin-top:20px">
+      <div class="card">
+        <h3>四件产物</h3>
+        <p style="font-size:14px">
+          <b>CLI</b> —— npm 上的 <span class="mono">@lmliheng/adelie</span><br>
+          <b>Windows 桌面</b> —— 安装版与免安装版各一个 exe<br>
+          <b>Web</b> —— 静态产物 zip，丢到任意静态服务器就能跑<br>
+          <b>手机 PWA</b> —— 同一份 Web 产物发到 GitHub Pages，手机打开后添加到主屏幕
+        </p>
+      </div>
+      <div class="card">
+        <h3>要在仓库里配的东西</h3>
+        <p style="font-size:14px">
+          <span class="mono">NPM_TOKEN</span>（Secret）—— 不配就打印一行「未配置，跳过 npm 发布」并继续，其余产物照发<br>
+          <span class="mono">ADELIE_DEPLOY_PAGES=true</span>（Variable）+ Pages 的 Source 设成 GitHub Actions —— 不配就只留 zip 附件<br>
+          两个都不配也能发：产物是分批的，缺谁都不影响另外两件。
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================ 10 规则 ============================ -->
   <section id="rules">
-    <div class="eyebrow"><span class="n">07</span><span>规则</span></div>
+    <div class="eyebrow"><span class="n">10</span><span>规则</span></div>
     <h2>使用规则</h2>
     <div class="rules" style="margin-top:22px">
       <div class="rule do">
@@ -642,9 +999,9 @@ Adelie-Portable-0.1.0-x64.exe</code></pre>
     </div>
   </section>
 
-  <!-- ============================ 08 文件 ============================ -->
+  <!-- ============================ 11 文件 ============================ -->
   <section id="files">
-    <div class="eyebrow"><span class="n">08</span><span>文件</span></div>
+    <div class="eyebrow"><span class="n">11</span><span>文件</span></div>
     <h2>文件与出处</h2>
     <div class="table-wrap" style="margin-top:22px">
       <table>
