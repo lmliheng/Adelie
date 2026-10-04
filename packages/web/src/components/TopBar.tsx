@@ -10,7 +10,13 @@
 import type { ReactNode } from 'react'
 import { Glyph, Icon } from './Icon'
 import { shortenPath } from '../lib/format'
+import { chordLabel, detectPlatform, parseChord } from '../lib/shortcuts'
 import type { ConnectionState } from '../hooks/useAdelie'
+
+// 面板入口上的键位提示是这份表里唯一一处「快捷键要被人看见」的地方。
+// 模块层算一次即可：平台与规格在一次会话里不会变。
+const PALETTE_CHORD = parseChord('mod+k')
+const PLATFORM = detectPlatform(typeof navigator === 'undefined' ? null : navigator)
 
 const LABELS: Record<ConnectionState['status'], string> = {
   checking: '连接中',
@@ -26,6 +32,7 @@ export function TopBar({
   user,
   onToggleTheme,
   onOpenSettings,
+  onOpenPalette,
   onOpenUsers,
   onLogout,
   onToggleSidebar,
@@ -37,6 +44,7 @@ export function TopBar({
   user: { name: string; isAdmin: boolean; kind: string } | null
   onToggleTheme: () => void
   onOpenSettings: () => void
+  onOpenPalette: () => void
   onOpenUsers: () => void
   onLogout: () => void
   onToggleSidebar: () => void
@@ -89,6 +97,17 @@ export function TopBar({
           <Icon name="logout" size={18} />
         </button>
       )}
+      <button
+        type="button"
+        className="iconbtn palette-open"
+        onClick={onOpenPalette}
+        aria-label="打开命令面板"
+        title="命令面板"
+        data-testid="open-palette"
+      >
+        <Icon name="terminal" size={16} />
+        {PALETTE_CHORD !== null && <kbd className="kbd">{chordLabel(PALETTE_CHORD, PLATFORM)}</kbd>}
+      </button>
       <button
         type="button"
         className="iconbtn"

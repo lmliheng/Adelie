@@ -1,21 +1,36 @@
 // src/components/SettingsDialog.tsx
 //
-// 设置：服务端连接（PWA 的关键） + 运行配置（工作区 / provider / model / 预算 / 密钥）。
+// 设置：一个对话框，左侧 rail 分节，右侧按节渲染。
 //
-// apiKey 只写不读（契约第 2 节）：界面永远不回显密钥，只显示「已配置」。
-// 连接测试用**输入框里的值**而不是已保存的值，这样「先测再存」是可能的。
+// 分节规则（哪些节、谁看得见）在 `lib/sections.ts` 里，是纯函数、有单测；这里只负责
+// 把它画出来并按 `section` 挑一屏。原来的三段（连接 / 运行配置 / 工具）保持原样，
+// 只是把「用户」从另一个对话框搬成了这一节 —— 两个入口一套表单，不再有两套 Esc 逻辑。
+//
+// 各节的表单状态仍然留在这个组件里（不是子组件）：切节不卸载状态，来回切不会丢掉
+// 刚填一半的地址或模型名。所以三个节是本地渲染函数，不是组件。
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
+import { UsersPanel } from './UsersPanel'
 import { api, describeApiError, toApiError } from '../api/client'
 import { normalizeBaseUrl, parseConnectionInput, type Credentials } from '../lib/credentials'
 import { canEditField, permissionHint } from '../lib/permissions'
+import { visibleSections, type SettingsSectionId } from '../lib/sections'
 import { durationZh } from '../lib/format'
 import type { ConfigInfo, ConfigPatch, ModelCatalog, ToolInfo } from '../api/types'
+
+/** rail 上的两个分组，按这个顺序画；组里一节都没有就不画这一组 */
+const GROUPS: readonly { id: 'personal' | 'server'; title: string }[] = [
+  { id: 'personal', title: '个人' },
+  { id: 'server', title: '服务端' },
+]
 
 export function SettingsDialog({
   open,
   onClose,
+  section,
+  onSectionChange,
+  isAdmin,
   credentials,
   onSaveCredentials,
   config,
@@ -30,6 +45,10 @@ export function SettingsDialog({
 }: {
   open: boolean
   onClose: () => void
+  /** 当前节；调用方已按身份收窄过（`resolveSection`），这里只画 */
+  section: SettingsSectionId
+  onSectionChange: (next: SettingsSectionId) => void
+  isAdmin: boolean
   credentials: Credentials
   onSaveCredentials: (next: Credentials) => void
   config: ConfigInfo | null
@@ -63,6 +82,7 @@ export function SettingsDialog({
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
 
   const group = catalog?.groups.find((item) => item.id === provider) ?? null
+  const sections = visibleSections({ isAdmin })
 
   // 哪些字段能改由身份决定（判据在 lib/permissions.ts，与服务端那四条一致）。
   // 置灰而不是隐藏：按钮消失会让人以为功能不存在，置灰加一句原因才对得上
@@ -217,6 +237,250 @@ export function SettingsDialog({
     if (ok) setApiKey('')
   }
 
+  const renderConnection = (): ReactNode => (
+    <>
+      <div className="section-title">服务端连接</div>
+      <p className="hint" style={{ color: 'var(--fg-faint)', fontSize: 12, margin: '0 0 12px' }}>
+        留空表示同源（服务端就在本机时用它）。手机 PWA 要填局域网地址，
+        例如 <code>http://192.168.1.5:7370</code>；服务端要求鉴权时再填 token。
+      </p>
+      <div className="field">
+        <label htmlFor="conn-base">服务端地址</label>
+        <input
+          id="conn-base"
+          className="input"
+          value={baseUrlInput}
+          placeholder="留空 = 同源，或 http://192.168.1.5:7370"
+          autoComplete="off"
+          spellCheck={false}
+          onChange={(event) => handleBaseUrlChange(event.target.value)}
+        />
+        <span className="hint">粘贴带 token 的地址会自动拆分出 token</span>
+      </div>
+      <div className="field">
+        <label htmlFor="conn-token">访问 token</label>
+        <input
+          id="conn-token"
+          className="input"
+          type="password"
+          value={tokenInput}
+          placeholder="回环地址访问时不需要"
+          autoComplete="off"
+          onChange={(event) => setTokenInput(event.target.value)}
+        />
+      </div>
+      <div className="errorbox-actions">
+        <button type="button" className="btn btn-secondary" onClick={() => void testConnection()} disabled={testing}>
+          <Icon name="refresh" size={15} />
+          {testing ? '测试中…' : '测试连接'}
+        </button>
+        <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={saving}>
+          {saving ? '保存中…' : '保存'}
+        </button>
+      </div>
+      {testResult !== null && (
+        <p
+          style={{
+            marginTop: 8,
+            fontSize: 12.5,
+            color: testResult.ok ? 'var(--ok)' : 'var(--danger)',
+          }}
+          role="status"
+        >
+          {testResult.text}
+        </p>
+      )}
+      {saved && <p style={{ marginTop: 8, fontSize: 12.5, color: 'var(--ok)' }}>已保存</p>}
+    </>
+  )
+
+  const renderRuntime = (): ReactNode => (
+    <>
+      <div className="section-title">运行配置</div>
+      {configStatus === 'loading' && <div className="skeleton sk-line" style={{ width: '60%' }} />}
+      {configStatus === 'error' && (
+        <div className="errorbox" role="alert">
+          <span className="errorbox-title">
+            <Icon name="alert" size={15} />
+            配置读取失败
+          </span>
+          <span>{configError}</span>
+          <span className="errorbox-actions">
+            <button type="button" className="btn btn-secondary" onClick={loadConfig}>
+              重试
+            </button>
+          </span>
+        </div>
+      )}
+      {configStatus === 'ready' && config !== null && (
+        <>
+          <div className="field">
+            <label htmlFor="cfg-workspace">工作区</label>
+            <input
+              id="cfg-workspace"
+              className="input"
+              value={workspace}
+              spellCheck={false}
+              disabled={!mayEdit('workspace')}
+              onChange={(event) => setWorkspace(event.target.value)}
+            />
+            <span className="hint">
+              {mayEdit('workspace')
+                ? '改工作区会切换会话列表（旧会话仍留在旧工作区）'
+                : permissionHint(identity, 'workspace')}
+            </span>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="cfg-provider">provider</label>
+              <select
+                id="cfg-provider"
+                className="input"
+                value={provider}
+                disabled={!mayEdit('provider')}
+                onChange={(event) => {
+                  const next = event.target.value
+                  setProvider(next)
+                  // 换家时把模型名也换成新家的默认值：旧名字发给别家几乎必然 400。
+                  // 默认值由服务端的模型目录给出，界面不自己编。
+                  const target = catalog?.groups.find((item) => item.id === next)
+                  const fallback = target?.models.find((m) => m.default === true)?.id
+                    ?? target?.models[0]?.id
+                    ?? ''
+                  setModel(fallback)
+                }}
+              >
+                {/* 清单来自服务端；万一没拉到，至少能把当前这一家列出来 */}
+                {(catalog?.groups ?? [{ id: provider, label: provider, envKey: '', hasApiKey: config?.hasApiKey ?? false, models: [] }]).map(
+                  (item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.id} — {item.label}
+                    </option>
+                  ),
+                )}
+              </select>
+              <span className="hint">
+                {mayEdit('provider') ? (
+                  group === null ? (
+                    ''
+                  ) : (
+                    <>
+                      密钥读 <code>{group.envKey}</code>
+                      {group.hasApiKey ? '（已配置）' : '（尚未配置）'}
+                    </>
+                  )
+                ) : (
+                  permissionHint(identity, 'provider')
+                )}
+              </span>
+            </div>
+            <div className="field">
+              <label htmlFor="cfg-model">model</label>
+              {/* datalist 而不是 select：候选来自目录，但名字仍然可以手填 ——
+                  各家的型号迭代很快，界面不该拦着一个还没进目录的新模型 */}
+              <input
+                id="cfg-model"
+                className="input"
+                list="cfg-model-options"
+                value={model}
+                spellCheck={false}
+                placeholder={group?.models[0]?.id ?? '模型名'}
+                onChange={(event) => setModel(event.target.value)}
+              />
+              <datalist id="cfg-model-options">
+                {(group?.models ?? []).map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+          </div>
+          <div className="field">
+            <label htmlFor="cfg-baseurl">模型 baseUrl</label>
+            <input
+              id="cfg-baseurl"
+              className="input"
+              value={modelBaseUrl}
+              placeholder="留空 = 用 provider 默认地址"
+              spellCheck={false}
+              disabled={!mayEdit('baseUrl')}
+              onChange={(event) => setModelBaseUrl(event.target.value)}
+            />
+            {!mayEdit('baseUrl') && <span className="hint">{permissionHint(identity, 'baseUrl')}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="cfg-key">API key</label>
+            <input
+              id="cfg-key"
+              className="input"
+              type="password"
+              value={apiKey}
+              placeholder={config.hasApiKey ? '已配置（留空 = 不修改）' : '尚未配置'}
+              autoComplete="off"
+              disabled={!mayEdit('apiKey')}
+              onChange={(event) => setApiKey(event.target.value)}
+            />
+            <span className="hint">
+              {mayEdit('apiKey')
+                ? '只写不读：服务端不会把密钥回传给浏览器'
+                : permissionHint(identity, 'apiKey')}
+            </span>
+          </div>
+          <div className="grid-2">
+            <div className="field">
+              <label htmlFor="cfg-iterations">最大迭代数</label>
+              <input
+                id="cfg-iterations"
+                className="input"
+                type="number"
+                min={1}
+                value={maxIterations}
+                onChange={(event) => setMaxIterations(event.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="cfg-tokens">token 上限</label>
+              <input
+                id="cfg-tokens"
+                className="input"
+                type="number"
+                min={0}
+                placeholder="留空 = 不限制"
+                value={maxTokens}
+                onChange={(event) => setMaxTokens(event.target.value)}
+              />
+            </div>
+          </div>
+          <div className="errorbox-actions">
+            <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={saving}>
+              {saving ? '保存中…' : '保存运行配置'}
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  )
+
+  const renderTools = (): ReactNode => (
+    <>
+      <div className="section-title">可用工具</div>
+      {toolsStatus === 'loading' && <div className="skeleton sk-line" style={{ width: '50%' }} />}
+      {toolsStatus === 'error' && <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>{toolsError}</p>}
+      {toolsStatus === 'ready' && (
+        <div className="tool-list listbox">
+          {tools.map((tool) => (
+            <div className="tool-row" key={tool.name}>
+              <code>{tool.name}</code>
+              {tool.requiresApproval && <span className="chip chip-brand">需审批</span>}
+              <span>{tool.description}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  )
+
   return (
     <div
       className="dialog-scrim"
@@ -224,7 +488,7 @@ export function SettingsDialog({
         if (event.target === event.currentTarget) onClose()
       }}
     >
-      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={dialogRef}>
+      <div className="dialog is-wide" role="dialog" aria-modal="true" aria-labelledby={titleId} ref={dialogRef}>
         <div className="dialog-head">
           <Icon name="gear" size={16} />
           <h2 id={titleId}>设置</h2>
@@ -233,244 +497,36 @@ export function SettingsDialog({
           </button>
         </div>
 
-        <div className="dialog-body">
-          <section>
-            <div className="section-title">服务端连接</div>
-            <p className="hint" style={{ color: 'var(--fg-faint)', fontSize: 12, margin: '0 0 12px' }}>
-              留空表示同源（服务端就在本机时用它）。手机 PWA 要填局域网地址，
-              例如 <code>http://192.168.1.5:7370</code>；服务端要求鉴权时再填 token。
-            </p>
-            <div className="field">
-              <label htmlFor="conn-base">服务端地址</label>
-              <input
-                id="conn-base"
-                className="input"
-                value={baseUrlInput}
-                placeholder="留空 = 同源，或 http://192.168.1.5:7370"
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(event) => handleBaseUrlChange(event.target.value)}
-              />
-              <span className="hint">粘贴带 token 的地址会自动拆分出 token</span>
-            </div>
-            <div className="field">
-              <label htmlFor="conn-token">访问 token</label>
-              <input
-                id="conn-token"
-                className="input"
-                type="password"
-                value={tokenInput}
-                placeholder="回环地址访问时不需要"
-                autoComplete="off"
-                onChange={(event) => setTokenInput(event.target.value)}
-              />
-            </div>
-            <div className="errorbox-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => void testConnection()} disabled={testing}>
-                <Icon name="refresh" size={15} />
-                {testing ? '测试中…' : '测试连接'}
-              </button>
-              <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={saving}>
-                {saving ? '保存中…' : '保存'}
-              </button>
-            </div>
-            {testResult !== null && (
-              <p
-                style={{
-                  marginTop: 8,
-                  fontSize: 12.5,
-                  color: testResult.ok ? 'var(--ok)' : 'var(--danger)',
-                }}
-                role="status"
-              >
-                {testResult.text}
-              </p>
-            )}
-            {saved && <p style={{ marginTop: 8, fontSize: 12.5, color: 'var(--ok)' }}>已保存</p>}
-          </section>
-
-          <section>
-            <div className="section-title">运行配置</div>
-            {configStatus === 'loading' && <div className="skeleton sk-line" style={{ width: '60%' }} />}
-            {configStatus === 'error' && (
-              <div className="errorbox" role="alert">
-                <span className="errorbox-title">
-                  <Icon name="alert" size={15} />
-                  配置读取失败
-                </span>
-                <span>{configError}</span>
-                <span className="errorbox-actions">
-                  <button type="button" className="btn btn-secondary" onClick={loadConfig}>
-                    重试
-                  </button>
-                </span>
-              </div>
-            )}
-            {configStatus === 'ready' && config !== null && (
-              <>
-                <div className="field">
-                  <label htmlFor="cfg-workspace">工作区</label>
-                  <input
-                    id="cfg-workspace"
-                    className="input"
-                    value={workspace}
-                    spellCheck={false}
-                    disabled={!mayEdit('workspace')}
-                    onChange={(event) => setWorkspace(event.target.value)}
-                  />
-                  <span className="hint">
-                    {mayEdit('workspace')
-                      ? '改工作区会切换会话列表（旧会话仍留在旧工作区）'
-                      : permissionHint(identity, 'workspace')}
-                  </span>
-                </div>
-                <div className="grid-2">
-                  <div className="field">
-                    <label htmlFor="cfg-provider">provider</label>
-                    <select
-                      id="cfg-provider"
-                      className="input"
-                      value={provider}
-                      disabled={!mayEdit('provider')}
-                      onChange={(event) => {
-                        const next = event.target.value
-                        setProvider(next)
-                        // 换家时把模型名也换成新家的默认值：旧名字发给别家几乎必然 400。
-                        // 默认值由服务端的模型目录给出，界面不自己编。
-                        const target = catalog?.groups.find((item) => item.id === next)
-                        const fallback = target?.models.find((m) => m.default === true)?.id
-                          ?? target?.models[0]?.id
-                          ?? ''
-                        setModel(fallback)
-                      }}
+        <div className="settings-body">
+          <nav className="settings-rail" aria-label="设置分节">
+            {GROUPS.map((band) => {
+              const items = sections.filter((item) => item.group === band.id)
+              if (items.length === 0) return null
+              return (
+                <div className="rail-group" key={band.id}>
+                  <div className="rail-group-title">{band.title}</div>
+                  {items.map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      className={`rail-item${item.id === section ? ' is-active' : ''}`}
+                      aria-current={item.id === section ? 'true' : undefined}
+                      onClick={() => onSectionChange(item.id)}
                     >
-                      {/* 清单来自服务端；万一没拉到，至少能把当前这一家列出来 */}
-                      {(catalog?.groups ?? [{ id: provider, label: provider, envKey: '', hasApiKey: config?.hasApiKey ?? false, models: [] }]).map(
-                        (item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.id} — {item.label}
-                          </option>
-                        ),
-                      )}
-                    </select>
-                    <span className="hint">
-                      {mayEdit('provider') ? (
-                        group === null ? (
-                          ''
-                        ) : (
-                          <>
-                            密钥读 <code>{group.envKey}</code>
-                            {group.hasApiKey ? '（已配置）' : '（尚未配置）'}
-                          </>
-                        )
-                      ) : (
-                        permissionHint(identity, 'provider')
-                      )}
-                    </span>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cfg-model">model</label>
-                    {/* datalist 而不是 select：候选来自目录，但名字仍然可以手填 ——
-                        各家的型号迭代很快，界面不该拦着一个还没进目录的新模型 */}
-                    <input
-                      id="cfg-model"
-                      className="input"
-                      list="cfg-model-options"
-                      value={model}
-                      spellCheck={false}
-                      placeholder={group?.models[0]?.id ?? '模型名'}
-                      onChange={(event) => setModel(event.target.value)}
-                    />
-                    <datalist id="cfg-model-options">
-                      {(group?.models ?? []).map((item) => (
-                        <option key={item.id} value={item.id}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </datalist>
-                  </div>
+                      {item.title}
+                    </button>
+                  ))}
                 </div>
-                <div className="field">
-                  <label htmlFor="cfg-baseurl">模型 baseUrl</label>
-                  <input
-                    id="cfg-baseurl"
-                    className="input"
-                    value={modelBaseUrl}
-                    placeholder="留空 = 用 provider 默认地址"
-                    spellCheck={false}
-                    disabled={!mayEdit('baseUrl')}
-                    onChange={(event) => setModelBaseUrl(event.target.value)}
-                  />
-                  {!mayEdit('baseUrl') && <span className="hint">{permissionHint(identity, 'baseUrl')}</span>}
-                </div>
-                <div className="field">
-                  <label htmlFor="cfg-key">API key</label>
-                  <input
-                    id="cfg-key"
-                    className="input"
-                    type="password"
-                    value={apiKey}
-                    placeholder={config.hasApiKey ? '已配置（留空 = 不修改）' : '尚未配置'}
-                    autoComplete="off"
-                    disabled={!mayEdit('apiKey')}
-                    onChange={(event) => setApiKey(event.target.value)}
-                  />
-                  <span className="hint">
-                    {mayEdit('apiKey')
-                      ? '只写不读：服务端不会把密钥回传给浏览器'
-                      : permissionHint(identity, 'apiKey')}
-                  </span>
-                </div>
-                <div className="grid-2">
-                  <div className="field">
-                    <label htmlFor="cfg-iterations">最大迭代数</label>
-                    <input
-                      id="cfg-iterations"
-                      className="input"
-                      type="number"
-                      min={1}
-                      value={maxIterations}
-                      onChange={(event) => setMaxIterations(event.target.value)}
-                    />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="cfg-tokens">token 上限</label>
-                    <input
-                      id="cfg-tokens"
-                      className="input"
-                      type="number"
-                      min={0}
-                      placeholder="留空 = 不限制"
-                      value={maxTokens}
-                      onChange={(event) => setMaxTokens(event.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="errorbox-actions">
-                  <button type="button" className="btn btn-primary" onClick={() => void save()} disabled={saving}>
-                    {saving ? '保存中…' : '保存运行配置'}
-                  </button>
-                </div>
-              </>
-            )}
-          </section>
+              )
+            })}
+          </nav>
 
-          <section>
-            <div className="section-title">可用工具</div>
-            {toolsStatus === 'loading' && <div className="skeleton sk-line" style={{ width: '50%' }} />}
-            {toolsStatus === 'error' && <p style={{ fontSize: 12.5, color: 'var(--danger)' }}>{toolsError}</p>}
-            {toolsStatus === 'ready' && (
-              <div className="tool-list listbox">
-                {tools.map((tool) => (
-                  <div className="tool-row" key={tool.name}>
-                    <code>{tool.name}</code>
-                    {tool.requiresApproval && <span className="chip chip-brand">需审批</span>}
-                    <span>{tool.description}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+          <div className="settings-pane">
+            {section === 'connection' && renderConnection()}
+            {section === 'runtime' && renderRuntime()}
+            {section === 'tools' && renderTools()}
+            {section === 'users' && <UsersPanel credentials={credentials} active />}
+          </div>
         </div>
       </div>
     </div>

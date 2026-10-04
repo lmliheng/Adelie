@@ -1751,3 +1751,257 @@ textarea.input {
   color: var(--fg-muted);
   margin-bottom: 12px;
 }
+
+/* ── 设置：rail 分节 ─────────────────────────────────────── */
+
+/* 设置比别的对话框宽：左边多一条 rail。宽屏下让内容区自己滚，
+   对话框本身不滚，rail 才能一直贴在最上面 */
+.dialog.is-wide {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+@media (min-width: 760px) {
+  .dialog.is-wide {
+    max-width: 46rem;
+  }
+}
+
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+@media (min-width: 760px) {
+  .settings-body {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+/* 窄屏：rail 变成头部一条横向滚动的标签栏；宽屏：竖排一列 */
+.settings-rail {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+  flex: none;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.settings-rail .rail-group {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.settings-rail .rail-group-title {
+  display: none;
+}
+
+@media (min-width: 760px) {
+  .settings-rail {
+    flex-direction: column;
+    gap: 2px;
+    width: 176px;
+    flex: 0 0 176px;
+    overflow-x: visible;
+    overflow-y: auto;
+    padding: 14px 10px;
+    border-bottom: none;
+    border-right: 1px solid var(--border);
+  }
+
+  .settings-rail .rail-group {
+    flex-direction: column;
+    gap: 2px;
+    margin-bottom: 12px;
+  }
+
+  .settings-rail .rail-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .settings-rail .rail-group-title {
+    display: block;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--fg-faint);
+  }
+}
+
+.rail-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--fg-muted);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  white-space: nowrap;
+  transition: background-color 150ms var(--ease), color 150ms var(--ease), border-color 150ms var(--ease);
+}
+
+.rail-item:hover {
+  background: var(--subtle);
+  color: var(--fg);
+}
+
+.rail-item.is-active {
+  background: var(--subtle);
+  border-color: var(--border);
+  color: var(--fg);
+  font-weight: 500;
+}
+
+.settings-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--control-border) transparent;
+  padding: 16px;
+}
+
+/* ── 命令面板 ────────────────────────────────────────────── */
+
+.palette {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 32rem;
+  max-height: 70dvh;
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.18);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (min-width: 700px) {
+  .palette {
+    border-radius: var(--radius-card);
+  }
+}
+
+.palette-input {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-faint);
+}
+
+.palette-field {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 14.5px;
+  outline: none;
+}
+
+.palette-field::placeholder {
+  color: var(--fg-faint);
+}
+
+.palette-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--control-border) transparent;
+  padding: 6px;
+}
+
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 13.5px;
+  text-align: left;
+}
+
+.palette-item.is-active {
+  background: var(--subtle);
+  border-color: var(--border);
+}
+
+.palette-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-group {
+  font-size: 11.5px;
+  color: var(--fg-faint);
+}
+
+.palette-empty {
+  padding: 14px 10px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--fg-faint);
+}
+
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--subtle);
+  color: var(--fg-faint);
+  font-family: inherit;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* 顶栏里的面板入口：不是方形的 iconbtn，要容下键位提示 */
+.palette-open {
+  gap: 6px;
+  width: auto;
+  padding: 0 8px;
+}
+
+/* 窄屏顶栏塞不下就整块藏起来：手机上没有物理键盘，⌘K 按不出来，
+   留一个占 40px 的入口只会把身份胶囊挤成两行 */
+@media (max-width: 560px) {
+  .palette-open {
+    display: none;
+  }
+}

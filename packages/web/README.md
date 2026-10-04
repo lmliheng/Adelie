@@ -90,7 +90,8 @@ public/sw.js                手写 Service Worker（外壳预缓存 / api 不缓
 public/icons/               PWA 图标（由 scripts/render-pwa-icons.mjs 从 brand/ 生成，别手改）
 scripts/render-pwa-icons.mjs 复制 brand/icons/ 的原图 + 按 SVG 渲染缺的尺寸（开发期脚本）
 src/main.tsx                挂载 + 注册 SW
-src/App.tsx                 组装：顶栏 / 侧栏 / 对话区 / 输入框 / 设置 / Toast
+src/App.tsx                 组装：顶栏 / 侧栏 / 对话区 / 输入框 / 命令面板 / 设置 / Toast
+                           （唯一一份命令表与唯一的键位分发器也在这里）
 src/api/client.ts           fetch 封装、ApiError、POST 的 SSE 流式读取（唯一出口）
 src/api/sse.ts              SSE 分帧解析（纯函数，单测覆盖）
 src/api/types.ts            docs/api.md 的 wire 类型
@@ -102,7 +103,10 @@ src/lib/history.ts          事件 → 轮次（回放用）
 src/lib/credentials.ts      凭据读写 + 地址归一化（纯函数，单测覆盖）
 src/lib/format.ts           时间 / token / 时长文案
 src/lib/theme.ts            主题应用与 theme-color 同步
-src/components/*            顶栏、侧栏、时间线卡片、计划卡、验收卡、审批卡、设置、空态…
+src/lib/shortcuts.ts        键位规格解析 / 事件归一 / 命令过滤（纯函数，单测覆盖）
+src/lib/sections.ts         设置分节与可见性谓词（纯函数，单测覆盖）
+src/components/*            顶栏、侧栏、时间线卡片、计划卡、验收卡、审批卡、设置、命令面板、
+                            用户面板、空态…
 ```
 
 ## 重新生成 PWA 图标
@@ -129,7 +133,7 @@ node packages/web/scripts/render-pwa-icons.mjs
 
 把 `ADELIE_API_PROXY` 指到它，就能把流式解析、时间线、审批、断流提示全部走一遍。
 `data-testid`（`approval` / `send` / `messages` / `tool-card` / `tool-body` / `open-settings` /
-`sidebar-toggle`）就是给这类端到端脚本用的钩子。
+`open-palette` / `open-users` / `sidebar-toggle`）就是给这类端到端脚本用的钩子。
 
 ## 已知边界
 
