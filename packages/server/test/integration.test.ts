@@ -32,8 +32,8 @@ describe('adelie-server 契约', () => {
       const body = await res.json() as Record<string, unknown>;
 
       expect(body['workspace']).toBe(harness.workspace);
-      expect(body['provider']).toBe('deepseek');
-      expect(body['model']).toBe('deepseek-chat');
+      // 模型是一条引用（provider + 模型名），不是两个平铺字段
+      expect(body['model']).toEqual({ provider: 'deepseek', model: 'deepseek-chat' });
       expect(body['baseUrl']).toBeNull();
       expect(typeof body['hasApiKey']).toBe('boolean');
       expect(body['approvalPolicy']).toBe('auto-reject');
@@ -47,18 +47,26 @@ describe('adelie-server 契约', () => {
       const res = await fetch(`${harness.base}/api/config`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'deepseek-reasoner', maxIterations: 7, maxTokens: 1234 }),
+        body: JSON.stringify({
+          model: { provider: 'deepseek', model: 'deepseek-reasoner' },
+          maxIterations: 7,
+          maxTokens: 1234,
+        }),
       });
       expect(res.status).toBe(200);
       const body = await res.json() as Record<string, unknown>;
-      expect(body['model']).toBe('deepseek-reasoner');
+      expect(body['model']).toEqual({ provider: 'deepseek', model: 'deepseek-reasoner' });
       expect(body['limits']).toEqual({ maxIterations: 7, maxTokens: 1234 });
 
       // 改回去，免得影响后面的用例
       await fetch(`${harness.base}/api/config`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'deepseek-chat', maxIterations: 50, maxTokens: null }),
+        body: JSON.stringify({
+          model: { provider: 'deepseek', model: 'deepseek-chat' },
+          maxIterations: 50,
+          maxTokens: null,
+        }),
       });
     });
 
@@ -66,7 +74,7 @@ describe('adelie-server 契约', () => {
       const res = await fetch(`${harness.base}/api/config`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider: 'gemini' }),
+        body: JSON.stringify({ model: { provider: 'gemini' } }),
       });
       expect(res.status).toBe(400);
       const body = await res.json() as Record<string, unknown>;

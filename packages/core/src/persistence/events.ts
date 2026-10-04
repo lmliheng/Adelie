@@ -18,6 +18,7 @@ import type {
   TokenUsageRecord,
 } from '../types/ReAct.js';
 import type { TokenUsage } from '../types/AgentProvider.js';
+import type { ModelRef } from '../types/ModelRef.js';
 
 /**
  * 行格式版本。
@@ -42,6 +43,16 @@ export interface TaskStartedPayload {
   taskId: string;
   taskDescription: string;
   startTime: number;
+  /**
+   * 这一轮用的是哪个模型。
+   *
+   * 记在 run 头上而不是只在配置里：同一个会话可以在中途换模型（换一次就是新的一段
+   * 上下文），用量与成本要按「这一轮到底是谁算的」归属。配置只有一个当下值，
+   * 回头再看历史时就没了 —— 而账单与复盘看的都是历史。
+   *
+   * 可选：0.1 的会话没有这条，读回来当「未知」处理。
+   */
+  model?: ModelRef;
 }
 
 export interface DecisionPayload {

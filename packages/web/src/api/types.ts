@@ -24,11 +24,16 @@ export interface HealthInfo {
   uptimeMs: number
 }
 
+/** 「用哪个模型」：提供方与模型名是一条引用，不拆成两个平铺字段（契约 §2） */
+export interface ModelRefInfo {
+  provider: string
+  model: string
+}
+
 /** 第 2 节：运行配置。apiKey 只写不读，所以这里只有 hasApiKey */
 export interface ConfigInfo {
   workspace: string
-  provider: string
-  model: string
+  model: ModelRefInfo
   baseUrl: string | null
   hasApiKey: boolean
   approvalPolicy: string
@@ -36,15 +41,40 @@ export interface ConfigInfo {
   version: string
 }
 
-/** 第 2 节：PATCH /api/config 的请求体 */
+/**
+ * 第 2 节：PATCH /api/config 的请求体。
+ *
+ * `model` 是一条引用：provider 必给；只给 provider 表示「用这一家的默认模型」
+ * （服务端按模型目录决定是哪个）。
+ */
 export interface ConfigPatch {
   workspace?: string
-  provider?: string
-  model?: string
+  model?: { provider: string; model?: string }
   baseUrl?: string | null
   apiKey?: string
   maxIterations?: number
   maxTokens?: number | null
+}
+
+/** 第 2 节：GET /api/models —— 能选哪些模型。内容来自服务端的模型目录 */
+export interface CatalogModel {
+  id: string
+  label: string
+  default?: boolean
+}
+
+export interface CatalogGroup {
+  id: string
+  label: string
+  /** 密钥所在的环境变量**名**（不是密钥本身），用来告诉用户该配哪一个 */
+  envKey: string
+  hasApiKey: boolean
+  models: CatalogModel[]
+}
+
+export interface ModelCatalog {
+  default: string
+  groups: CatalogGroup[]
 }
 
 /** 第 2 节：GET /api/tools */

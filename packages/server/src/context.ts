@@ -5,7 +5,7 @@
 // 「配置改了但会话列表还按老工作区查」这类漂移会散落在每个 handler 里。
 import { statSync } from 'node:fs';
 
-import { SessionStore, config, loadUserEnvFile } from 'adelie-core';
+import { DEFAULT_PROVIDER, SessionStore, config, loadUserEnvFile } from 'adelie-core';
 import { createProvider as createRealProvider } from 'adelie-providers';
 import { ToolRegistry } from 'adelie-tools';
 
@@ -14,13 +14,13 @@ import { DEFAULT_MAX_ITERATIONS, defaultModelFor, hasApiKey, normalizeWorkspace 
 import { RunRegistry } from './turn.js';
 import { readServerVersion } from './version.js';
 
-import type { ProviderName, Tool } from 'adelie-core';
+import type { ModelRef, ProviderName, Tool } from 'adelie-core';
 import type { ProviderFactory, ProviderRequest } from './turn.js';
 
 export interface AppSettings {
   workspace: string;
-  provider: ProviderName;
-  model: string;
+  /** 当前用哪个模型：提供方与模型名是一条引用，不拆成两个字段 */
+  model: ModelRef;
   baseUrl: string | null;
   maxIterations: number;
   maxTokens: number | null;
@@ -96,11 +96,10 @@ export function createServerContext(deps: AppDeps = {}): ServerContext {
     loadUserEnvFile();
   }
 
-  const provider = deps.provider ?? 'deepseek';
+  const provider = deps.provider ?? DEFAULT_PROVIDER;
   const settings: AppSettings = {
     workspace: normalizeWorkspace(deps.workspace ?? process.cwd()),
-    provider,
-    model: deps.model ?? defaultModelFor(provider),
+    model: { provider, model: deps.model ?? defaultModelFor(provider) },
     baseUrl: deps.baseUrl ?? null,
     maxIterations: deps.maxIterations ?? DEFAULT_MAX_ITERATIONS,
     maxTokens: deps.maxTokens ?? null,
@@ -120,7 +119,11 @@ export function createServerContext(deps: AppDeps = {}): ServerContext {
   const locate = (sessionId: string): LocatedSession => {
     // 会话归属的工作区在创建时定死；本进程建过就按那个来，否则按当前配置
     const workspace = registry.workspaceOf(sessionId) ?? settings.workspace;
-    const store = new SessionStore(workspace, sessionId, locationOptions(deps.sessionsRoot));
+    // 把当前模型交给 store：**新**会话的会话头会记下它；已有会话头不会被改写
+    const store = new SessionStore(workspace, sessionId, {
+      ...locationOptions(deps.sessionsRoot),
+      model: settings.model,
+    });
     return {
       workspace,
       store,
@@ -141,10 +144,10 @@ export function createServerContext(deps: AppDeps = {}): ServerContext {
     locate,
     configView: () => ({
       workspace: settings.workspace,
-      provider: settings.provider,
+      // 一个对象，不是两个平铺字段：界面因此不可能把它俩改歪
       model: settings.model,
       baseUrl: settings.baseUrl,
-      hasApiKey: hasApiKey(settings.provider),
+      hasApiKey: hasApiKey(settings.model.provider),
       // 运行时总是拿到 requestApproval（契约 §5），这条策略只在「无交互层」时才会
       // 用到；报出来是为了让界面知道默认口径是拒绝而不是放行。
       approvalPolicy: 'auto-reject',

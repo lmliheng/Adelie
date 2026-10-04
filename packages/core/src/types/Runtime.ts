@@ -1,8 +1,20 @@
 import type { PendingAction, ApprovalDecision, ApprovalPolicy } from './Tool.js'
 import type { DeliverableSpec, ModelDecision, Observation, PlanState } from './ReAct.js'
 import type { StreamDelta } from './AgentProvider.js'
+import type { ModelRef } from './ModelRef.js'
 import type { OutputBudget } from '../output-budget.js'
 import type { SessionEventInput } from '../persistence/events.js'
+
+/**
+ * `run()` 的附加信息。
+ *
+ * 现在是「这一轮用哪个模型」一件事。运行时**不解释**它 —— 不读 provider、不看
+ * 模型名，只是原样记进 run 头（`task_started.model`）。引擎因此仍然不知道有哪些
+ * 厂商，而用量与成本能在事后按模型切开归属。
+ */
+export interface RunOptions {
+    model?: ModelRef;
+}
 
 /**
  * 上一段对话中的一次 run。

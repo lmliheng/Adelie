@@ -8,7 +8,7 @@
 
 import { createSseParser, type SseFrame } from './sse'
 import { authHeaders, resolveRequestUrl, type Credentials } from '../lib/credentials'
-import type { ConfigInfo, ConfigPatch, HealthInfo, SessionDetail, SessionSummary, ToolInfo } from './types'
+import type { ConfigInfo, ConfigPatch, HealthInfo, ModelCatalog, SessionDetail, SessionSummary, ToolInfo } from './types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -146,6 +146,11 @@ export const api = {
 
   patchConfig: (target: Credentials, patch: ConfigPatch) =>
     request<ConfigInfo>(target, '/api/config', { method: 'PATCH', body: patch }),
+
+  // 能选哪些模型由服务端的模型目录决定：界面不再自己抄一份清单，
+  // 否则「服务端支持 kimi、设置里却选不到」这种漂移迟早会发生
+  listModels: (target: Credentials, signal?: AbortSignal) =>
+    request<ModelCatalog>(target, '/api/models', signal === undefined ? {} : { signal }),
 
   listTools: (target: Credentials, signal?: AbortSignal) =>
     request<{ tools: ToolInfo[] }>(target, '/api/tools', signal === undefined ? {} : { signal }).then(

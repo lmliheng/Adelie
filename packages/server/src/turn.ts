@@ -20,12 +20,13 @@ import type {
   Tool,
 } from 'adelie-core';
 import type { SessionStore } from 'adelie-core';
+import type { ProviderName } from 'adelie-core';
 import type { SseChannel } from './sse.js';
 import type { ServerSettings } from './settings.js';
 
 /** 建 provider 所需的全部可变输入。测试注入的假 provider 也照这个形状收 */
 export interface ProviderRequest {
-  provider: ServerSettings['provider'];
+  provider: ProviderName;
   model: string;
   baseUrl: string | null;
   apiKey: string | undefined;
@@ -173,10 +174,10 @@ export async function executeTurn(input: TurnInput): Promise<void> {
     let provider: AgentProvider;
     try {
       provider = input.createProvider({
-        provider: input.settings.provider,
-        model: input.settings.model,
+        provider: input.settings.model.provider,
+        model: input.settings.model.model,
         baseUrl: input.settings.baseUrl,
-        apiKey: apiKeyFor(input.settings.provider),
+        apiKey: apiKeyFor(input.settings.model.provider),
       });
     } catch (error) {
       // 建 provider 就失败（协议名不对、依赖缺失）：还没开会话，直接报错收尾
@@ -232,7 +233,8 @@ export async function executeTurn(input: TurnInput): Promise<void> {
 
     // run() 的同步段已经交出 task_started（runId 已就位），所以这一句之后
     // 才会有别的帧 —— run_started 必然是流里的第一帧。
-    const running = runtime.run(input.task);
+    // 模型作为这一轮的标签交进去：引擎不解释它，只记进 run 头，供用量与成本归属。
+    const running = runtime.run(input.task, { model: input.settings.model });
     channel.push('run_started', { runId, task: input.task });
 
     const result = await running;

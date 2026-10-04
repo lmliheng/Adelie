@@ -7,12 +7,14 @@ import { existsSync } from 'node:fs';
 import {
   SessionStore,
   deleteSession,
+  isModelRef,
   listSessions,
   renderSessionMarkdown,
   replaySession,
 } from 'adelie-core';
 
 import type {
+  ModelRef,
   PriorRun,
   RestoredRun,
   SessionSummary,
@@ -29,6 +31,15 @@ export interface SessionView {
   lastActiveAt: number;
   taskCount: number;
   title: string | null;
+  /**
+   * 这个会话**建的时候**用哪个模型（来自会话头），以及最近一轮**实际**用的哪个
+   * （来自最后一条 task_started）。两者不一致，说明这个会话中途换过模型 ——
+   * 列表里能看出来，比回头翻事件流省事。
+   *
+   * 老会话（0.1 建的）两者都没有，所以都是可选。
+   */
+  model?: ModelRef;
+  lastModel?: ModelRef;
 }
 
 /** 标题取首个任务的前若干字符：太长会把列表撑成一堆换行 */
@@ -81,13 +92,28 @@ export function sessionTitle(events: readonly StoredSessionEvent[]): string | nu
   return null;
 }
 
+/** 最后一条 run 头里记的模型（事件流是 `unknown`，所以走判据而不是断言） */
+export function lastRunModel(events: readonly StoredSessionEvent[]): ModelRef | undefined {
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const event = events[i]!;
+    if (event.type !== 'task_started') continue;
+    const payload = event.payload as Partial<TaskStartedPayload>;
+    // 最靠后的那条即使没带模型，也说明它比更早的更新 —— 到此为止
+    return isModelRef(payload.model) ? payload.model : undefined;
+  }
+  return undefined;
+}
+
 export function buildSessionView(input: {
   sessionId: string;
   workspace: string;
   createdAt: number;
   lastActiveAt: number;
   events: readonly StoredSessionEvent[];
+  /** 会话头里记的模型；老会话没有 */
+  model?: ModelRef | undefined;
 }): SessionView {
+  const lastModel = lastRunModel(input.events);
   return {
     id: input.sessionId,
     workspace: input.workspace,
@@ -95,6 +121,8 @@ export function buildSessionView(input: {
     lastActiveAt: input.lastActiveAt,
     taskCount: countTaskStarted(input.events),
     title: sessionTitle(input.events),
+    ...(input.model !== undefined ? { model: input.model } : {}),
+    ...(lastModel !== undefined ? { lastModel } : {}),
   };
 }
 
@@ -121,6 +149,7 @@ export function readSessionSnapshot(
       createdAt: summary.createdAt,
       lastActiveAt: summary.lastActiveAt,
       events,
+      model: store.readMeta()?.model,
     }),
     events,
     runs: restored.runs,
@@ -141,6 +170,7 @@ export function listSessionViews(
       createdAt: summary.createdAt,
       lastActiveAt: summary.lastActiveAt,
       events: store.readEvents(),
+      model: store.readMeta()?.model,
     });
   });
 }

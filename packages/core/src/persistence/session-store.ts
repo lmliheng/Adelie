@@ -42,6 +42,7 @@ import {
   sessionsCollectionDir,
   workspaceIndexFile,
 } from './paths.js';
+import { isModelRef, type ModelRef } from '../types/ModelRef.js';
 
 /** 会话头。一次写入，之后只读 —— 它不参与重放，作用是让会话可被发现与解释 */
 export interface SessionMeta {
@@ -50,6 +51,16 @@ export interface SessionMeta {
   /** 创建时的绝对路径原文。分区用规范化路径，人核对要看原文 */
   workspaceRoot: string;
   schemaVersion: number;
+  /**
+   * 建这个会话时用的模型。
+   *
+   * 会话头记「出生时」的模型，run 头记「每一轮」的模型：前者用来解释「这个会话是
+   * 跟谁聊的」，后者用来归属用量。中途换过模型的会话，两者会不一致 —— 这不是
+   * 冲突，正是要能看出来。
+   *
+   * 可选：0.1 建的会话没有这条。
+   */
+  model?: ModelRef;
 }
 
 export interface SessionSummary {
@@ -75,6 +86,14 @@ export interface StoreLocationOptions {
 export interface SessionStoreOptions extends StoreLocationOptions {
   /** 时钟，仅测试注入 */
   now?: (() => number) | undefined;
+  /**
+   * 建会话时记录用哪个模型。只对**新会话**生效：已有会话头的模型不会被后来的
+   * 进程改写（会话头一次写入的语义，和 createdAt 一样）。
+   *
+   * `| undefined` 是显式写的：本仓库开了 `exactOptionalPropertyTypes`，调用方
+   * 在转发一个「可能没有」的引用时需要能传 undefined。
+   */
+  model?: ModelRef | undefined;
 }
 
 /** 读「最后一个事件」时的尾部窗口。单条事件超过它时会退回整体读取 */
@@ -206,6 +225,7 @@ export class SessionStore {
       createdAt: (this.options.now ?? Date.now)(),
       workspaceRoot: this.workspaceRoot,
       schemaVersion: SESSION_EVENT_SCHEMA_VERSION,
+      ...(this.options.model !== undefined ? { model: this.options.model } : {}),
     };
 
     // 'wx'：只在文件不存在时创建。已有会话的创建时间不允许被后来的进程改写。
@@ -283,11 +303,14 @@ export function readSessionMeta(
   try {
     const raw = JSON.parse(text) as Partial<SessionMeta>;
     if (typeof raw.sessionId !== 'string' || typeof raw.createdAt !== 'number') return null;
+    // model 是后来加的字段：形状不对就当没有（老会话头本来也没有），不让它把恢复带崩
+    const model = isModelRef(raw.model) ? raw.model : undefined;
     return {
       sessionId: raw.sessionId,
       createdAt: raw.createdAt,
       workspaceRoot: typeof raw.workspaceRoot === 'string' ? raw.workspaceRoot : '',
       schemaVersion: typeof raw.schemaVersion === 'number' ? raw.schemaVersion : 0,
+      ...(model !== undefined ? { model } : {}),
     };
   } catch {
     // 会话头损坏不致命：事件流仍在，恢复照常，只是创建时间要退回第一条事件的时间

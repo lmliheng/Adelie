@@ -10,7 +10,7 @@ import { Icon } from './Icon'
 import { api, describeApiError, toApiError } from '../api/client'
 import { normalizeBaseUrl, parseConnectionInput, type Credentials } from '../lib/credentials'
 import { durationZh } from '../lib/format'
-import type { ConfigInfo, ConfigPatch, ToolInfo } from '../api/types'
+import type { ConfigInfo, ConfigPatch, ModelCatalog, ToolInfo } from '../api/types'
 
 export function SettingsDialog({
   open,
@@ -58,6 +58,10 @@ export function SettingsDialog({
   const [apiKey, setApiKey] = useState('')
   const [maxIterations, setMaxIterations] = useState('')
   const [maxTokens, setMaxTokens] = useState('')
+  // 能选哪些模型：来自 GET /api/models（服务端的模型目录）。拉不到就退回手填
+  const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
+
+  const group = catalog?.groups.find((item) => item.id === provider) ?? null
 
   // loadConfig / loadTools 是父组件传进来的函数：不放进 effect 依赖，而是用 ref 取最新的一份。
   // 否则父组件每次渲染换一个新的箭头函数就会让这个 effect 反复跑，而 effect 里又 setState，
@@ -79,12 +83,23 @@ export function SettingsDialog({
   useEffect(() => {
     if (config === null) return
     setWorkspace(config.workspace)
-    setProvider(config.provider)
-    setModel(config.model)
+    setProvider(config.model.provider)
+    setModel(config.model.model)
     setModelBaseUrl(config.baseUrl ?? '')
     setMaxIterations(String(config.limits.maxIterations))
     setMaxTokens(config.limits.maxTokens === null ? '' : String(config.limits.maxTokens))
   }, [config])
+
+  // 模型清单跟着配置一起拉。失败不报错：手填模型名一直可用，缺清单只是少几个候选
+  useEffect(() => {
+    if (!open) return
+    const controller = new AbortController()
+    api
+      .listModels(credentials, controller.signal)
+      .then((data) => setCatalog(data))
+      .catch(() => setCatalog(null))
+    return () => controller.abort()
+  }, [credentials, open])
 
   // Esc 关闭 + Tab 锁在对话框内 + 关闭后焦点回到触发元素
   useEffect(() => {
@@ -167,8 +182,8 @@ export function SettingsDialog({
     }
 
     const patch: ConfigPatch = { workspace }
-    if (provider !== '') patch.provider = provider
-    if (model !== '') patch.model = model
+    // 模型与提供方一起提交：它们是一条引用。只给 provider 时服务端会落到那一家的默认模型
+    patch.model = model.trim() === '' ? { provider } : { provider, model: model.trim() }
     if (modelBaseUrl !== (config?.baseUrl ?? '')) patch.baseUrl = modelBaseUrl === '' ? null : modelBaseUrl
     const iterations = Number(maxIterations)
     if (Number.isFinite(iterations) && iterations > 0) patch.maxIterations = Math.floor(iterations)
@@ -293,26 +308,54 @@ export function SettingsDialog({
                       id="cfg-provider"
                       className="input"
                       value={provider}
-                      onChange={(event) => setProvider(event.target.value)}
+                      onChange={(event) => {
+                        const next = event.target.value
+                        setProvider(next)
+                        // 换家时把模型名也换成新家的默认值：旧名字发给别家几乎必然 400。
+                        // 默认值由服务端的模型目录给出，界面不自己编。
+                        const target = catalog?.groups.find((item) => item.id === next)
+                        const fallback = target?.models.find((m) => m.default === true)?.id
+                          ?? target?.models[0]?.id
+                          ?? ''
+                        setModel(fallback)
+                      }}
                     >
-                      <option value="deepseek">deepseek</option>
-                      <option value="openai">openai</option>
-                      {/* kimi / qwen 走的是同一套 chat/completions 协议，服务端各有一组
-                          默认端点与密钥变量（见 adelie-core 的模型目录）。这份清单迟早
-                          要从服务端拿（GET /api/models），而不是抄一份在界面里。 */}
-                      <option value="kimi">kimi</option>
-                      <option value="qwen">qwen</option>
+                      {/* 清单来自服务端；万一没拉到，至少能把当前这一家列出来 */}
+                      {(catalog?.groups ?? [{ id: provider, label: provider, envKey: '', hasApiKey: config?.hasApiKey ?? false, models: [] }]).map(
+                        (item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.id} — {item.label}
+                          </option>
+                        ),
+                      )}
                     </select>
+                    {group !== null && (
+                      <span className="hint">
+                        密钥读 <code>{group.envKey}</code>
+                        {group.hasApiKey ? '（已配置）' : '（尚未配置）'}
+                      </span>
+                    )}
                   </div>
                   <div className="field">
                     <label htmlFor="cfg-model">model</label>
+                    {/* datalist 而不是 select：候选来自目录，但名字仍然可以手填 ——
+                        各家的型号迭代很快，界面不该拦着一个还没进目录的新模型 */}
                     <input
                       id="cfg-model"
                       className="input"
+                      list="cfg-model-options"
                       value={model}
                       spellCheck={false}
+                      placeholder={group?.models[0]?.id ?? '模型名'}
                       onChange={(event) => setModel(event.target.value)}
                     />
+                    <datalist id="cfg-model-options">
+                      {(group?.models ?? []).map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </datalist>
                   </div>
                 </div>
                 <div className="field">

@@ -101,6 +101,14 @@ export const MODEL_CATALOG: readonly ProviderGroup[] = [
 /** 目录里所有提供方的 id，顺序即展示顺序 */
 export const PROVIDER_NAMES: readonly ProviderName[] = MODEL_CATALOG.map((group) => group.id);
 
+/**
+ * 没给 `--provider` / 配置里也没写时用哪一家。
+ *
+ * 只在这里写一次：以前 'deepseek' 同时在 CLI、服务端、Web 三处各写了一遍，
+ * 改默认值得记得改三处，而漏掉的那处表现为「命令行是这家、界面是那家」。
+ */
+export const DEFAULT_PROVIDER: ProviderName = 'deepseek';
+
 /** 目录里所有密钥环境变量名。用户级 `.env` 该读哪些键，就是它 */
 export const PROVIDER_ENV_KEYS: readonly string[] = MODEL_CATALOG.map((group) => group.envKey);
 

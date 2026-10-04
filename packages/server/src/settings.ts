@@ -12,15 +12,18 @@ import { dirname } from 'node:path';
 import { PROVIDER_API_KEY_ENV } from 'adelie-providers';
 import { defaultModelForProvider, isProviderName as isCatalogProviderName, normalizeWorkspaceRoot, userEnvFile } from 'adelie-core';
 
-import type { ProviderName } from 'adelie-core';
+import type { ModelRef, ProviderName } from 'adelie-core';
 
 /** 密钥文件的权限：只有属主能读写 */
 const SECRET_FILE_MODE = 0o600;
 
 export interface ServerSettings {
   workspace: string;
-  provider: ProviderName;
-  model: string;
+  /**
+   * 当前用哪个模型。提供方不再是独立字段 —— 它是这条引用的一半，分开存就会出现
+   * 「provider 是 kimi、model 还是 deepseek-chat」这种自相矛盾的状态。
+   */
+  model: ModelRef;
   /** 覆盖提供方端点；null 表示用该提供方的默认端点 */
   baseUrl: string | null;
   maxIterations: number;

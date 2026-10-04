@@ -10,11 +10,20 @@
 
 import chalk from 'chalk';
 
+import { PROVIDER_NAMES, defaultModelForProvider, formatModelRef, isProviderName, parseModelRef } from 'adelie-core';
+
 import { displayWidth, truncateToWidth } from './terminal-width.js';
+import type { ModelRef } from 'adelie-core';
 
 /** 会话内可变的配置项。改它们只影响后续任务，不动已落盘的历史 */
 export interface SessionSettings {
-  model: string;
+  /**
+   * 当前用哪个模型。
+   *
+   * 是一条引用而不是一个名字：换模型既可能只是换型号，也可能是换一家厂商 ——
+   * 后者要连端点与密钥一起换，所以提供方必须跟着模型名走，不能分开存。
+   */
+  model: ModelRef;
   workspace: string;
 }
 
@@ -161,15 +170,40 @@ export const SLASH_COMMANDS: readonly SlashCommand[] = [
     description: '切换模型',
     takesArg: true,
     run: (arg, host) => {
-      const name = arg.trim();
-      if (name === '') {
-        host.print(chalk.dim(`当前模型 ${host.state.model}`));
-        host.print(chalk.dim('用法：/model <名称>，下一轮任务起生效'));
+      const raw = arg.trim();
+      if (raw === '') {
+        host.print(chalk.dim(`当前模型 ${formatModelRef(host.state.model)}`));
+        host.print(chalk.dim('用法：/model <提供方>/<模型>（如 kimi/kimi-latest），或 /model <模型名> 只换型号'));
         return;
       }
 
-      host.state.model = name;
-      host.print(chalk.green(`✓ 模型已切换为 ${name}`) + chalk.dim('（下一轮任务起生效）'));
+      // 带斜杠的按「提供方/模型」解析；只给名字就沿用当前提供方
+      const parsed = parseModelRef(raw);
+      if (parsed !== null) {
+        host.state.model = parsed;
+        host.print(chalk.green(`✓ 模型已切换为 ${formatModelRef(parsed)}`) + chalk.dim('（下一轮任务起生效）'));
+        return;
+      }
+
+      // 写了个提供方 id 但没给模型名：这是最容易犯的错，直接把正确写法说出来
+      if (isProviderName(raw)) {
+        host.print(
+          chalk.yellow(`✗ ${raw} 是提供方，不是模型名`) +
+          chalk.dim(`。想换到它：/model ${raw}/<模型名>，例如 /model ${raw}/${defaultModelForProvider(raw)}`),
+        );
+        return;
+      }
+
+      if (raw.includes('/')) {
+        host.print(chalk.red(`✗ 认不出 ${raw}：写法是 <提供方>/<模型>，提供方得是 ${PROVIDER_NAMES.join(' / ')}`));
+        return;
+      }
+
+      host.state.model = { provider: host.state.model.provider, model: raw };
+      host.print(
+        chalk.green(`✓ 模型已切换为 ${formatModelRef(host.state.model)}`) +
+        chalk.dim('（下一轮任务起生效）'),
+      );
     },
   },
   {

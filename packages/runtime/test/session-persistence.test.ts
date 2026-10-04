@@ -141,6 +141,35 @@ describe('事件在状态迁移点上被交出', () => {
     expect(result.state.stopReason).toEqual({ type: 'task_completed' });
     expect(runtime.getPersistenceStatus()).toEqual({ degraded: false, error: null });
   });
+
+  it('run 头记下这一轮用哪个模型（引擎不解释，只记）', async () => {
+    const provider = new ScriptedProvider([{ type: 'Final', answer: '完成' }]);
+    const events: SessionEventInput[] = [];
+    const runtime = makeRuntime(provider, workspace, {
+      onSessionEvent: (event: SessionEventInput) => events.push(event),
+    });
+
+    await runtime.run('跑一轮', { model: { provider: 'kimi', model: 'kimi-latest' } });
+
+    const started = events.find((event) => event.type === 'task_started');
+    expect((started?.payload as { model?: unknown }).model).toEqual({
+      provider: 'kimi',
+      model: 'kimi-latest',
+    });
+  });
+
+  it('不给模型时 run 头就不带这个字段（老调用方行为不变）', async () => {
+    const provider = new ScriptedProvider([{ type: 'Final', answer: '完成' }]);
+    const events: SessionEventInput[] = [];
+    const runtime = makeRuntime(provider, workspace, {
+      onSessionEvent: (event: SessionEventInput) => events.push(event),
+    });
+
+    await runtime.run('跑一轮');
+
+    const started = events.find((event) => event.type === 'task_started');
+    expect('model' in (started?.payload as unknown as Record<string, unknown>)).toBe(false);
+  });
 });
 
 describe('落盘 → 重放 → 接着聊', () => {

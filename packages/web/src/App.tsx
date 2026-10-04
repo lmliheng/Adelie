@@ -139,8 +139,8 @@ export function App(): ReactNode {
           status={adelie.sessions.status}
           error={adelie.sessions.error}
           workspace={adelie.config.data?.workspace ?? null}
-          provider={adelie.config.data?.provider ?? null}
-          model={adelie.config.data?.model ?? null}
+          provider={adelie.config.data?.model.provider ?? null}
+          model={adelie.config.data?.model.model ?? null}
           open={sidebarOpen}
           onOpenSession={handleOpenSession}
           onNewSession={handleNewSession}

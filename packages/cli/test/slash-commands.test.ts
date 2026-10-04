@@ -54,7 +54,7 @@ function recorder(options: {
     sessions: () => '（会话列表）',
     sessionAdmin: (arg) => `（会话子命令：${arg}）`,
     usage: () => '（用法）',
-    state: { model: 'deepseek-chat', workspace: 'C:\\ws' },
+    state: { model: { provider: 'deepseek', model: 'deepseek-chat' }, workspace: 'C:\\ws' },
     switchWorkspace: options.switchWorkspace ?? ((path) => ({ ok: true, path })),
     apiKeyStatus: () => '（Key 现状）',
     saveApiKey: (key) => {
@@ -142,20 +142,36 @@ describe('命令表本身', () => {
 });
 
 describe('会话配置类命令', () => {
-  it('/model 切换后续任务使用的模型', async () => {
+  it('/model 换型号：只给模型名时沿用当前提供方', async () => {
     const { host, printed } = recorder();
     await dispatch('/model deepseek-v4-pro', host);
 
-    expect(host.state.model).toBe('deepseek-v4-pro');
-    expect(printed.join('\n')).toContain('deepseek-v4-pro');
+    expect(host.state.model).toEqual({ provider: 'deepseek', model: 'deepseek-v4-pro' });
+    expect(printed.join('\n')).toContain('deepseek/deepseek-v4-pro');
+  });
+
+  it('/model 换家：`提供方/模型` 连提供方一起换', async () => {
+    const { host } = recorder();
+    await dispatch('/model kimi/kimi-latest', host);
+
+    expect(host.state.model).toEqual({ provider: 'kimi', model: 'kimi-latest' });
+  });
+
+  it('/model 只写提供方时报错，并把正确写法说出来', async () => {
+    const { host, printed } = recorder();
+    await dispatch('/model kimi', host);
+
+    // 没换掉：把它当成模型名发出去，等于下一次请求必然 400
+    expect(host.state.model).toEqual({ provider: 'deepseek', model: 'deepseek-chat' });
+    expect(printed.join('\n')).toContain('/model kimi/');
   });
 
   it('/model 不带参数只报告当前模型，不改动它', async () => {
     const { host, printed } = recorder();
     await dispatch('/model', host);
 
-    expect(host.state.model).toBe('deepseek-chat');
-    expect(printed.join('\n')).toContain('deepseek-chat');
+    expect(host.state.model).toEqual({ provider: 'deepseek', model: 'deepseek-chat' });
+    expect(printed.join('\n')).toContain('deepseek/deepseek-chat');
   });
 
   it('/cd 成功时换掉任务的工作区，并说明会话归属没有跟着变', async () => {

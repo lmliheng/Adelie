@@ -2,6 +2,7 @@
 export * from './types/AgentProvider.js';
 export * from './types/Args.js';
 export * from './types/Message.js';
+export * from './types/ModelRef.js';
 export * from './types/ReAct.js';
 export * from './types/Runtime.js';
 export * from './types/Tool.js';

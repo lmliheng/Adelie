@@ -48,6 +48,8 @@ export function registerSessionRoutes(app: Hono, ctx: ServerContext): void {
         createdAt: now,
         lastActiveAt: now,
         events: [],
+        // 空会话还没写盘，会话头也还不存在 —— 模型按当前配置报，与它落盘时一致
+        model: ctx.settings.model,
       }),
     }, 201);
   });

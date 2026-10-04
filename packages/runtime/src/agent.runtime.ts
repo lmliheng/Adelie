@@ -24,6 +24,7 @@ import type {
 } from 'adelie-core';
 
 import type { AgentRuntimeConfig } from 'adelie-core'
+import type { RunOptions } from 'adelie-core'
 import type { SessionEventInput } from 'adelie-core';
 import { applyOutputBudget, resolveContextBudget, NO_OUTPUT_PLACEHOLDER, normalizeDeliverables } from 'adelie-core';
 import { planContextFold, foldObservationContent, summarizePriorRun, estimatePriorRunsTokens } from 'adelie-core';
@@ -252,7 +253,7 @@ export class AgentRuntime {
     /**
      * 执行一个任务
      */
-    async run(taskDescription: string): Promise<{
+    async run(taskDescription: string, options: RunOptions = {}): Promise<{
         state: AgentRunState;
         verification?: TaskVerificationResult;
     }> {
@@ -263,12 +264,14 @@ export class AgentRuntime {
         this.pendingFailureNudge = null;
 
         // 会话事件的第一条。会话跨 run，run 的边界只由它表达（不在目录结构里分）
+        // 模型原样记下、不做解释：运行时仍旧不知道有哪些厂商，但事后能按模型归属用量
         this.emit({
             type: 'task_started',
             payload: {
                 taskId: this.state.taskId,
                 taskDescription,
                 startTime: this.state.startTime,
+                ...(options.model !== undefined ? { model: options.model } : {}),
             },
         });
 

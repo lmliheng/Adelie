@@ -53,6 +53,7 @@ import { loadUserEnvFile } from 'adelie-core';
 
 import { SessionStore, listSessions } from 'adelie-core';
 import { userEnvFile, normalizeWorkspaceRoot } from 'adelie-core';
+import { formatModelRef } from 'adelie-core';
 import { formatSessionList, resolveResumeTarget } from 'adelie-core';
 import { deleteSession, renderSessionMarkdown } from 'adelie-core';
 
@@ -628,10 +629,13 @@ async function main(): Promise<void> {
   // 全局安装后没有 npm script 帮忙传 --env-file，而那个参数相对当前工作目录解析，
   // 在用户任意目录下敲命令时指不到家目录里的文件，所以这里自己加载。
   //
-  // 读之前先记一笔「环境里本来有没有」：/auth 要据此说清写进文件到底生不生效
-  // （环境变量优先，文件里的值会被环境里的值盖住）。读过之后就分辨不出来了。
-  const keyEnvName = PROVIDER_API_KEY_ENV[args.provider];
-  const keyFromEnvironment = process.env[keyEnvName] !== undefined;
+  // 读之前先把**四家**都记一笔「环境里本来有没有」：/auth 要据此说清写进文件到底
+  // 生不生效（环境变量优先，文件里的值会被环境里的值盖住），而会话中途可以换家
+  // （`/model kimi/...`），到时候要报的是新家那一个变量。读过就分辨不出来了。
+  const envKeyWasSet = new Set<string>();
+  for (const envName of Object.values(PROVIDER_API_KEY_ENV)) {
+    if (process.env[envName] !== undefined) envKeyWasSet.add(envName);
+  }
   loadUserEnvFile();
 
   // 启动时先确认能拿到 key：别让用户配了半天才发现缺。
@@ -667,7 +671,11 @@ async function main(): Promise<void> {
       );
     }
   } else {
-    session = SessionStore.open(workspacePath);
+    // 新会话把「建它的时候用哪个模型」写进会话头：中途换过模型之后回头看，这一点
+    // 是解释历史的第一条线索。恢复的会话不写（会话头一次写入，后来的进程不覆盖）
+    session = SessionStore.open(workspacePath, undefined, {
+      model: { provider: args.provider, model: args.model },
+    });
   }
 
   const registry = ToolRegistry.createDefault(config.tools.eager);
@@ -786,7 +794,7 @@ async function main(): Promise<void> {
     usage: () => USAGE,
 
     state: {
-      model: args.model,
+      model: { provider: args.provider, model: args.model },
       workspace: workspacePath,
     },
 
@@ -801,11 +809,14 @@ async function main(): Promise<void> {
       return { ok: true, path: target };
     },
 
-    apiKeyStatus: () =>
-      keyFromEnvironment
-        ? `API Key 来自环境变量 ${keyEnvName}` +
+    // 报告的是**当前**提供方那个变量：会话中途换了家，这里就得跟着变
+    apiKeyStatus: () => {
+      const envName = PROVIDER_API_KEY_ENV[host.state.model.provider];
+      return envKeyWasSet.has(envName)
+        ? `API Key 来自环境变量 ${envName}` +
           chalk.dim(`（环境变量优先，写入 ${userEnvFile()} 不会盖过它）`)
-        : `API Key 来自用户级文件 ${userEnvFile()}（${keyEnvName}）`,
+        : `API Key 来自用户级文件 ${userEnvFile()}（${envName}）`;
+    },
 
     // mcp / mcpConfig 都在下面才连上：这个闭包只会在交互循环里被调用（那时早已就绪），
     // 所以这里引用后声明的 const 是安全的，不必为了「定义顺序」把连接提前到 host 之前
@@ -817,7 +828,8 @@ async function main(): Promise<void> {
 
     saveApiKey: (key) => {
       try {
-        writeUserEnvKey(args.provider, key);
+        // 同上：写的是当前提供方那一个变量，而不是启动时那一家
+        writeUserEnvKey(host.state.model.provider, key);
         return { ok: true };
       } catch (error) {
         return { ok: false, reason: (error as Error).message };
@@ -842,7 +854,7 @@ async function main(): Promise<void> {
     console.log(panel('会话', [
       ['工作区', host.state.workspace],
       ['会话', `${session.sessionId}  ${chalk.dim(sessionNote)}`],
-      ['模型', `${host.state.model}  ${chalk.dim(`· 迭代上限 ${args.maxIterations} 轮`)}`],
+      ['模型', `${formatModelRef(host.state.model)}  ${chalk.dim(`· 迭代上限 ${args.maxIterations} 轮`)}`],
       ...(instructions !== null
         ? [['指令', `${instructions.file}  ${chalk.dim(`· ${formatCount(instructions.content.length)} 字符${instructions.truncated ? '（已截断）' : ''}`)}`] as const]
         : []),
@@ -897,13 +909,17 @@ async function main(): Promise<void> {
 
   /** 每轮一个全新的 runtime：state 不跨轮复用，历史靠 history 传递 */
   async function runOne(task: string): Promise<{ state: AgentRunState; verification: TaskVerificationResult | undefined; answer: string | undefined }> {
-    // 模型与 key 每轮现取：/model 与 /auth 只改会话配置，改完的下一轮就该用上新值
-    // 提供方每轮现取：--provider 是启动参数，中途不可变（换协议要换密钥与端点，
-    // 「切换」在语义上就是换一次启动）。/auth 写的也是当前提供方那个环境变量。
-    const provider = createProvider(args.provider, {
-      apiKey: requireApiKey(args.provider),
-      modelName: host.state.model,
-      ...(args.baseUrl !== undefined ? { baseUrl: args.baseUrl } : {}),
+    // 模型与 key 每轮现取：/model 与 /auth 只改会话配置，改完的下一轮就该用上新值。
+    // 提供方也跟着当前模型走 —— `/model kimi/xxx` 是合法的，换家就要换端点与密钥
+    // 变量，所以这里读的是 host.state.model.provider，而不是启动时的 --provider。
+    const active = host.state.model;
+    const provider = createProvider(active.provider, {
+      apiKey: requireApiKey(active.provider),
+      modelName: active.model,
+      // --base-url 是给启动时那一家用的：中途换到别家还带着它，等于把请求发错地方
+      ...(args.baseUrl !== undefined && active.provider === args.provider
+        ? { baseUrl: args.baseUrl }
+        : {}),
     });
 
     /**
@@ -1018,7 +1034,7 @@ async function main(): Promise<void> {
       }),
     });
 
-    const result = await runtime.run(task);
+    const result = await runtime.run(task, { model: host.state.model });
 
     const last = result.state.decisions[result.state.decisions.length - 1];
     const answer = last?.type === 'Final' ? last.answer : undefined;
