@@ -50,3 +50,38 @@ export function findFreePort(host = "127.0.0.1"): Promise<number> {
     });
   });
 }
+
+/**
+ * 这个端口现在能不能绑定。
+ *
+ * 判据是**试着 listen 一次**而不是「查系统里有没有人占用」：桌面壳要的正是「我能不能
+ * 绑上」这个答案，而 EADDRINUSE 是唯一会挡住它的错误。
+ */
+export function isPortAvailable(port: number, host = "127.0.0.1"): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = createServer();
+    server.unref();
+    server.once("error", () => resolve(false));
+    server.listen(port, host, () => {
+      server.close(() => resolve(true));
+    });
+  });
+}
+
+/**
+ * 「先用上次那个端口，不行再让内核分配」。
+ *
+ * 为什么值得多这一步：界面是**按 origin** 存在浏览器里的（localStorage 里的连接设置、
+ * 主题、侧栏开合都在 `<scheme>://<host>:<port>` 这个键下）。每次启动换端口 = 每次都是
+ * 一个新站点，用户会看到「我设置过的全没了」。固定端口还让地址栏里的
+ * `http://127.0.0.1:7370` 与 `adelie serve` 打印的那条一致，肌肉记忆能攒下来。
+ */
+export async function choosePort(
+  memory: PortMemory,
+  host = "127.0.0.1",
+): Promise<{ port: number; reused: boolean }> {
+  if (memory.lastPort !== null && (await isPortAvailable(memory.lastPort, host))) {
+    return { port: memory.lastPort, reused: true };
+  }
+  return { port: await findFreePort(host), reused: false };
+}

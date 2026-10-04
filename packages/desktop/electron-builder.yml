@@ -27,6 +27,10 @@ files:
   - package.json
   - from: ../web/dist
     to: web-dist
+  # 自带 CLI（终端里的 `adelie`）：整份 dist 原样带走，链接由 cli-install.ts 装到用户 PATH。
+  # cli.js 旁边要能找到 assets/ 与 web-dist/，所以是目录级拷贝，不是只拷一个文件。
+  - from: ../cli/dist
+    to: cli-dist
   - from: ../../brand/icons/adelie.ico
     to: icon.ico
 

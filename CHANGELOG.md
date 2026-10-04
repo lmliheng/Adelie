@@ -1,5 +1,80 @@
 # CHANGELOG
 
+## 未发布 — 桌面壳对齐（端口记忆 / 托盘 / 日志 / 自带 CLI）
+
+对照 penguin 桌面端的功能清单（`docs/research/penguin-desktop-features.md`，71 条）补齐第一批，
+逐条状态与后续顺序见 `docs/desktop-parity.md`。这一批的共同点是**都不需要原生模块或外部服务**，
+因此能在没有图形界面的机器上真跑验证（Linux + Xvfb，见下）。
+
+### 端口记忆：界面状态不再每次重启就丢
+
+壳原来每次启动都向内核要一个新的随机端口，而界面（连接设置、主题、侧栏开合）是按 `origin`
+存在浏览器里的 —— 端口一变就是另一个站点，用户看到的是「我设过的全没了」。
+
+- `port-memory.ts` 补上 `isPortAvailable` / `choosePort`：先试上次那个端口，绑不上才让内核
+  分配；最终端口写进 `<userData>/port.json`（0600）。
+- 真跑两次确认：第二次的日志是「端口 36931（沿用上次）」。
+
+### 窗口尺寸与位置
+
+- 新增 `window-state.ts`：解析 / 序列化 + `stateFromBounds` + `clampToWorkArea`。读回来的坐标
+  **永远**先夹进某块屏幕的 `workArea` —— 换了显示器、拔了外接屏之后，上次那组坐标可能整个在
+  可见区之外，症状是「点了图标没反应」。
+- 关窗 / 拖拽 / 改尺寸时落盘（400ms 合并），用 `getNormalBounds()` 而不是 `getBounds()`：
+  最大化时后者是整屏，存下来就把原始尺寸丢了。
+
+### 托盘与菜单
+
+- `tray-prefs.ts` / `tray-menu.ts`（纯逻辑）+ `tray.ts`（Electron 胶水）：菜单**每次弹出前重建**，
+  Linux 认常驻菜单而 Windows / macOS 左键唤起窗口；图标与「关窗留守」偏好存
+  `<userData>/tray.json`。
+- 关窗留守要**三个条件同时成立**（没在退出中、托盘图标真的在、偏好是开的）：否则会造出
+  「没窗口也没托盘图标、进程还在跑」这种用户逃不出去的状态。托盘创建失败（精简的桌面环境里
+  `new Tray` 会抛）只记日志、不阻断启动 —— `hasIcon()` 因此回 false，关窗就真的退出。
+- 新增 `app-menu.ts`：文件（数据目录 / 日志 / 退出）、编辑与视图（复用 `role`）、帮助（关于）。
+
+### 日志
+
+- 新增 `desktop-log.ts`：每行一条 ISO 时间戳，超过 5 MB 轮换成 `.1`，**写失败就静默关掉**
+  （日志坏了不能影响应用）。渲染进程崩溃、无响应、加载失败各落一行，内置服务端的
+  stdout/stderr 接进同一个文件。
+- 启动失败的对话框带上日志路径 —— 用户报「打不开」时能直接把文件发过来。
+
+### 自带 CLI：装了桌面版，终端里就能敲 `adelie`
+
+- `cli-link.ts` / `cli-install.ts` + `main.ts` 启动时调一次。启动脚本用
+  `ELECTRON_RUN_AS_NODE=1` 把应用自带的运行时当 Node 跑自带 CLI，因此**用户不需要装 Node**。
+- 两条「绝不」：不覆盖不是我们写的 `adelie`（判据是脚本里的 marker），不从 dmg 挂载点 /
+  AppTranslocation 装（那两个位置写出去的链接会悬空）。
+- 打包时把 `packages/cli/dist` 整份搬成 `<app>/cli-dist`，**不用 tsup 再打一遍**：那份产物已经
+  过 CLI 自己的构建与 npm 安装验证，里面 `assets/`、`web-dist/` 的相对位置都是它预期的。
+- 每次启动自修复（应用搬过家会留下悬空链接）；POSIX 上 `~/.local/bin` 不在 PATH 时写进日志
+  提醒，Windows 上把目录并进**用户** Path（走 `[Environment]`，不用会截断的 `setx`）。
+
+### 外链与导航
+
+- 新增 `links.ts`：`sameOrigin` 与 `isOpenableUrl`（只放行 `http` / `https` / `mailto`）。
+- 主窗口补上 `will-navigate` 守卫：界面是 SPA（路由走 `pushState`），所以「要导航离开本站」
+  一定是外链或误点 —— 交给系统浏览器，窗口原地不动。少了这条，一个普通 `<a href>` 就能把
+  应用窗口顶成别人的网页，而且没有后退键。
+
+### 修复：开发态的窗口图标一直是空的
+
+取图标时找的是 `brand/icons/icon.png`，而仓库里只有 `128x128/256x256/512x512.png` ——
+`existsSync` 一路为假，`BrowserWindow` 与（新加的）托盘都拿不到图标。现在按「存在的文件」
+取；打包后仍走 `<app>/icon.ico`。
+
+### 验证
+
+- desktop 包新增 77 个单测（合计 767 通过 / 7 跳过）；`node scripts/audit.mjs` 无新增发现。
+- **真机冒烟（Linux + `xvfb-run`，`--no-sandbox`）**：启动 → 端口沿用 → 内置服务端就绪 →
+  页面加载无失败 → 托盘图标建起来 → CLI 装到 `~/.local/bin/adelie` 并能跑出 `adelie 0.1.0`
+  → `SIGTERM` 后走正常退出序列（`before-quit` 收尾、窗口状态落盘、无残留进程）。
+- 顺带纠正一处认识：**Electron 自己**接住 SIGINT / SIGTERM 并走正常退出序列，主进程里的
+  `process.on("SIGTERM")` 不会被调用（已实测），所以没有为信号加监听器。
+- **没验证**：Windows 打包后的形态（`cli-dist` 的实际布局、写注册表那条路）——
+  `docs/issues/desktop-windows-cli-unverified.md`。
+
 ## 未发布 — 自检方法与发布产物清理
 
 ### 新增：应用体检（`node scripts/audit.mjs`）
