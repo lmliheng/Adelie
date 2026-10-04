@@ -65,9 +65,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: 构建（服务端 → Web → 桌面）
         run: pnpm run build
+      # `--publish never` 不是可省的：打包在 CI 里跑、又在 tag 上，electron-builder 会默认
+      # 按 `onTagOrDraft` 自动发布，而那里没有 GH_TOKEN —— 它会直接抛
+      # 「GitHub Personal Access Token is not set」把整个 job 打挂。挂 Release 附件是下面
+      # release job 用 `gh` 做的事，这里只出安装包。
       - name: 打包 Windows 安装包
         working-directory: packages/desktop
-        run: pnpm exec electron-builder --win --config electron-builder.yml
+        run: pnpm exec electron-builder --win --publish never --config electron-builder.yml
       - uses: actions/upload-artifact@v4
         with:
           name: windows-installers

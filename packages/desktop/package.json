@@ -4,11 +4,12 @@
   "private": true,
   "type": "module",
   "description": "Adelie 桌面壳（Windows）：Electron 启动内置服务端，窗口加载 http://127.0.0.1:<port>。",
+  "author": "liheng <liheng@csu.edu.cn>",
   "main": "dist/main.js",
   "scripts": {
     "build": "tsup",
     "start": "electron .",
-    "pack:win": "electron-builder --win --config electron-builder.yml",
+    "pack:win": "electron-builder --win --publish never --config electron-builder.yml",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
