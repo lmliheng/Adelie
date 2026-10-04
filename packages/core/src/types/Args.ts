@@ -3,13 +3,18 @@
 export type OutputFormat = 'text' | 'json' | 'stream-json';
 
 /**
- * 提供方（协议族）。
+ * 提供方（协议族）的 id。
  *
- * `openai` 指的是 `/chat/completions` 这一套协议而不是某一家厂商：Moonshot、通义、
- * 智谱、本机的 Ollama / vLLM 都能用它，靠 baseUrl 指到对应端点。
- * anthropic 与 gemini 是另一套协议，尚未实现。
+ * 这里是**联合类型**而不是 `string`：它决定密钥读哪个环境变量、默认端点在哪、
+ * 有哪些模型可选，所以不该允许一个拼错的名字悄悄走到运行时。具体的端点、密钥
+ * 环境变量与模型清单在 `config/model-catalog.ts` 的目录里 —— 加一家厂商要先
+ * 在这里加一个字面量，目录里少一组会被类型检查挡下。
+ *
+ * `openai` 指的还是 `/chat/completions` 这一套协议而不是某一家厂商：本机的
+ * Ollama / vLLM 之类都能用它，把 `baseUrl` 指过去即可。Kimi 与通义（兼容模式）
+ * 走的是同一套协议，因此在目录里各占一组、各自钉住自己的端点与密钥变量。
  */
-export type ProviderName = 'deepseek' | 'openai';
+export type ProviderName = 'deepseek' | 'openai' | 'kimi' | 'qwen';
 
 export interface CliArgs {
   /**

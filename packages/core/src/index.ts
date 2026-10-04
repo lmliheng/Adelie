@@ -15,4 +15,5 @@ export * from './persistence/resume.js';
 export * from './persistence/session-store.js';
 export * from './persistence/session-export.js';
 export * from './config/default.js';
+export * from './config/model-catalog.js';
 export * from './config/user-env.js';

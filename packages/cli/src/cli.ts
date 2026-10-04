@@ -13,7 +13,7 @@
 //   --resume[=会话ID]   接上一个会话（不带 ID 时接本工作区最后活跃的那个）
 //   --list              只列出本工作区的会话，然后退出
 //   --task "任务"       只跑一条任务然后退出（不进入交互）
-//   --model 名称        模型名，默认 deepseek-chat
+//   --model 名称        模型名，默认跟着提供方走
 //   --max-iterations N  单条任务的循环上限，默认 50
 //   --max-tokens N      累计 token 上限（成本闸门），达到即停；默认不限制
 //   --output-format F   输出形态（text / json / stream-json），只与 --task 一起用
@@ -30,6 +30,7 @@
 import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -85,9 +86,10 @@ const USAGE = `用法: adelie [工作区路径] [选项]
   --resume[=会话ID]   接上一个会话（不带 ID 时接本工作区最后活跃的那个）
   --list              只列出本工作区的会话，然后退出
   --task "任务"       只跑一条任务然后退出（不进入交互）
-  --model 名称        模型名，默认 deepseek-chat
-  --provider 名称     提供方，默认 deepseek；openai 指 /chat/completions 协议，
-                      配 --base-url 可接 Moonshot / 通义 / 智谱 / 本机 Ollama / vLLM
+  --model 名称        模型名，默认跟着提供方走（见 core 的模型目录）
+  --provider 名称     提供方，默认 deepseek；认得 deepseek / openai / kimi / qwen，
+                      其中 openai 指 /chat/completions 协议，配 --base-url 可接
+                      智谱 / 本机 Ollama / vLLM 等任何兼容端点
   --base-url URL      覆盖提供方端点（不传就用该提供方的默认端点）
   --max-iterations N  单条任务的循环上限，默认 50
   --max-tokens N      累计 token 上限（成本闸门），达到即停；默认不限制
@@ -133,6 +135,9 @@ function formatCount(n: number): string {
 }
 
 
+/** 密钥文件（用户级 .env）的权限：只有属主能读写 */
+const SECRET_FILE_MODE = 0o600;
+
 /**
  * 取当前可用的 API Key。
  *
@@ -155,12 +160,16 @@ function requireApiKey(provider: ProviderName): string {
 /**
  * 把 API Key 写进用户级 .env，并让它对当前进程立刻生效。
  *
- * 只替换 `DEEPSEEK_API_KEY` 那一行，其余内容原样保留：这个文件是用户的配置文件
+ * 只替换当前提供方那一行，其余内容原样保留：这个文件是用户的配置文件
  * 而不是本应用的私有文件（`loadUserEnvFile` 会把里面**所有**键都装进环境），
  * 整份覆写等于替用户删掉别人的变量。
  *
- * 注意它不一定能决定下次启动用哪个 key：环境变量优先，若 DEEPSEEK_API_KEY 本来
- * 就由环境给出，这里写的值会被它盖住。/auth 会把这件事说清楚（见 apiKeyStatus）。
+ * 权限务必收到 0600：写下去的是明文密钥，默认权限（0644）等于同机其他用户
+ * 也能拿去用。已存在的文件不会被 `mode` 改写（那是 open(2) 的创建参数），
+ * 所以还要补一次 chmod，把从旧版本升上来的 0644 文件一并修掉。
+ *
+ * 注意它不一定能决定下次启动用哪个 key：环境变量优先，若该变量本来就由环境
+ * 给出，这里写的值会被它盖住。/auth 会把这件事说清楚（见 apiKeyStatus）。
  */
 function writeUserEnvKey(provider: ProviderName, key: string): void {
   const envName = PROVIDER_API_KEY_ENV[provider];
@@ -175,7 +184,13 @@ function writeUserEnvKey(provider: ProviderName, key: string): void {
     .filter((line, index, lines) => !(line === '' && index === lines.length - 1));
 
   mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, [...kept, `${envName}=${key}`, ''].join('\n'), 'utf8');
+  writeFileSync(file, [...kept, `${envName}=${key}`, ''].join('\n'), { encoding: 'utf8', mode: SECRET_FILE_MODE });
+  try {
+    chmodSync(file, SECRET_FILE_MODE);
+  } catch {
+    // 改不动权限不该让「配 key」整个失败（某些文件系统不支持），但得让用户知道
+    console.warn(`[adelie] 改不动 ${file} 的权限，它可能仍是其他用户可读的`);
+  }
 
   process.env[envName] = key;
 }

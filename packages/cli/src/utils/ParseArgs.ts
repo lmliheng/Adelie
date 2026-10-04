@@ -1,5 +1,6 @@
 
 
+import { PROVIDER_NAMES, defaultModelForProvider } from 'adelie-core'
 import type { CliArgs, OutputFormat, ProviderName } from 'adelie-core'
 
 /** 需要接值的开关：写成 --name value 与 --name=value 两种都认 */
@@ -12,7 +13,9 @@ const VALUE_FLAGS = new Set([
 /** 顶层命令：出现在第一个位置参数上（`adelie serve`），不是开关 */
 const COMMANDS = ['serve'] as const;
 
-const PROVIDERS: readonly ProviderName[] = ['deepseek', 'openai'];
+// 认得哪几家由 core 的模型目录说了算：加一家厂商在那里加一组，这里不必动 ——
+// 两处各写一份的后果是「目录里有、命令行不认」，而报错还说这个提供方不存在
+const PROVIDERS: readonly ProviderName[] = PROVIDER_NAMES;
 
 const OUTPUT_FORMATS: readonly OutputFormat[] = ['text', 'json', 'stream-json'];
 
@@ -113,7 +116,8 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     resumeSessionId: values.get('--resume'),
     list: switches.has('--list'),
     task: values.get('--task'),
-    model: values.get('--model') ?? 'deepseek-chat',
+    // 默认模型跟着提供方走：各家的名字不一样，写死一个只对 deepseek 成立
+    model: values.get('--model') ?? defaultModelForProvider(provider),
     provider,
     baseUrl,
     maxIterations,

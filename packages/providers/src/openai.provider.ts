@@ -12,10 +12,16 @@
 // Moonshot、通义、智谱、以及本机的 Ollama / vLLM，只要把 baseUrl 指过去。
 
 import type { AgentProviderConfig } from 'adelie-core'
+import { defaultBaseUrlForProvider } from 'adelie-core'
 import { DeepSeekProvider } from './deepseek.provider.js'
 
-/** 未显式配置 baseUrl 时使用的默认端点 */
-export const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1/chat/completions'
+/**
+ * 未显式配置 baseUrl 时使用的默认端点。
+ *
+ * 值取自 core 的模型目录：端点属于「厂商的事实」，与密钥变量、模型清单放在一处，
+ * 加一家厂商就只改那张表。
+ */
+export const DEFAULT_OPENAI_BASE_URL = defaultBaseUrlForProvider('openai')
 
 export class OpenAIProvider extends DeepSeekProvider {
     override readonly name: string = 'openai'

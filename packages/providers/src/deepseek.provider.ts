@@ -14,7 +14,7 @@ import type {
     JsonSchemaObject,
 } from 'adelie-core'
 import { REQUEST_REPLAN_TOOL, BATCH_TOOL } from 'adelie-core'
-import { normalizeDeliverables } from 'adelie-core'
+import { defaultBaseUrlForProvider, normalizeDeliverables } from 'adelie-core'
 import type { ChatMessage, AssistantMessage } from 'adelie-core'
 import type { ModelDecision, Action, BatchAction, PlanStep } from 'adelie-core'
 
@@ -26,8 +26,8 @@ import type { ModelDecision, Action, BatchAction, PlanStep } from 'adelie-core'
  * 除此之外不做决策，运行时的循环、预算、审批都不在这里。
  */
 
-/** 未显式配置 baseUrl 时使用的默认端点 */
-export const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com/v1/chat/completions'
+/** 未显式配置 baseUrl 时使用的默认端点（值来自 core 的模型目录，那里是唯一出处） */
+export const DEFAULT_DEEPSEEK_BASE_URL = defaultBaseUrlForProvider('deepseek')
 
 /**
  * 控制流入口。它们不是可执行工具，只用于让模型主动触发状态迁移

@@ -297,6 +297,11 @@ export function SettingsDialog({
                     >
                       <option value="deepseek">deepseek</option>
                       <option value="openai">openai</option>
+                      {/* kimi / qwen 走的是同一套 chat/completions 协议，服务端各有一组
+                          默认端点与密钥变量（见 adelie-core 的模型目录）。这份清单迟早
+                          要从服务端拿（GET /api/models），而不是抄一份在界面里。 */}
+                      <option value="kimi">kimi</option>
+                      <option value="qwen">qwen</option>
                     </select>
                   </div>
                   <div className="field">

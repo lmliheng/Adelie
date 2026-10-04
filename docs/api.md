@@ -42,12 +42,21 @@ GET /api/config → 200 {
 }
 
 PATCH /api/config
-  body: { "workspace"?: string, "provider"?: "deepseek"|"openai", "model"?: string,
-          "baseUrl"?: string|null, "apiKey"?: string, "maxIterations"?: number, "maxTokens"?: number|null }
+  body: { "workspace"?: string, "provider"?: "deepseek"|"openai"|"kimi"|"qwen",
+          "model"?: string, "baseUrl"?: string|null, "apiKey"?: string,
+          "maxIterations"?: number, "maxTokens"?: number|null }
   → 200  同 GET 的形状
 ```
 
-- `apiKey` 只写不读：写进 `<home>/.adelie/.env`（`DEEPSEEK_API_KEY` / `OPENAI_API_KEY`），
+- 提供方只有这四个 id，它们同时也是 `adelie-core` 的模型目录（`config/model-catalog.ts`）
+  里的组 id：端点、密钥环境变量、可选模型都写在那张表里，加一家厂商 = 加一组。
+  `kimi` 是 Moonshot、`qwen` 是阿里云 DashScope 的兼容模式，两者都走
+  `/chat/completions`，与 `openai` 同协议、只是端点与密钥变量不同。
+  引擎不认识 `--base-url` 之外的厂商细节：`model` 一律作为裸字符串透传，不校验。
+
+- `apiKey` 只写不读：写进 `<home>/.adelie/.env`，键名按提供方查模型目录
+  （`DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `MOONSHOT_API_KEY` / `DASHSCOPE_API_KEY`），
+  文件权限收到 **0600**（写下去的是明文密钥，同机其他用户不该读得到），
   响应里只回 `hasApiKey`。**任何响应体里都不出现密钥。**
 - `workspace` 变更后，会话列表与新建会话都以新工作区为准。
 

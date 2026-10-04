@@ -27,6 +27,17 @@ git push origin main --tags
 tag 一推，工作流就跑：`verify` 先跑三件套，绿了之后三件事并行（npm / Windows 安装包 / Web），
 最后 `release` 把安装包与 Web 压缩包挂到 GitHub Release 上。
 
+**最后一步：把产物镜像到 3004**（国内下 GitHub 太慢，用户要的是能直接下的地址）：
+
+```bash
+# 在服务器上，拉最新一版的附件到 /opt/adelie-design/downloads/<tag>/，
+# 顺带算 sha256 并重生成 downloads/index.json（设计页的下载列表读的就是它）
+bash brand/site/fetch-release.sh          # 不带参数 = 取最新 release
+bash brand/site/fetch-release.sh v0.1.1   # 或指定 tag
+```
+
+产物不放进 git（两个 exe 加起来 200MB+），只落在部署目录里，因此**换机器要重跑一次**这个脚本。
+
 ## 需要在仓库里配的东西
 
 | 名字 | 类型 | 作用 | 不配会怎样 |

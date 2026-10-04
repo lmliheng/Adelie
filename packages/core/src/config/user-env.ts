@@ -11,15 +11,20 @@
 // 应用认识的那几个 —— 所以那个文件只该放配置。
 
 import { existsSync } from 'node:fs';
+import { PROVIDER_ENV_KEYS } from './model-catalog.js';
 import { userEnvFile } from 'adelie-core';
 
 /**
  * 本应用从用户级 .env 读取的键。
  *
+ * 就是模型目录里那些密钥变量 —— 从目录派生而不是手抄一份，是为了让「加一家
+ * 厂商」只需要改目录：漏在这里的后果是那家的 key 写进文件却不生效，
+ * 而现象只是「配了还是说没配」。
+ *
  * 列出来是为了定义「环境变量优先」的判据：这些键只要都已由环境变量给出，就
  * 连文件都不必打开。
  */
-const KEYS_FROM_USER_ENV = ['DEEPSEEK_API_KEY'] as const;
+const KEYS_FROM_USER_ENV: readonly string[] = PROVIDER_ENV_KEYS;
 
 /**
  * 加载用户级 .env，把本应用用到、而环境变量里还没有的键补上。
