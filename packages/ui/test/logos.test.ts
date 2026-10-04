@@ -1,11 +1,11 @@
 /**
  * The logos: a preset provider draws its brand mark in currentColor, an unknown group id a letter
- * tile inked through one scheme-following value, and the penguin emblem the asset its caller names.
+ * tile inked through one scheme-following value, and the app emblem the asset its caller names.
  */
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import { avatarTile } from "../src/components/icons/avatars/avatar";
-import { PenguinLogo } from "../src/components/icons/logos/penguin-logo";
+import { AppLogo } from "../src/components/icons/logos/app-logo";
 import { ProviderLogo } from "../src/components/icons/logos/provider-logo";
 import { renderStatic } from "../src/testing";
 
@@ -25,10 +25,10 @@ describe("ProviderLogo", () => {
   });
 });
 
-describe("PenguinLogo", () => {
+describe("AppLogo", () => {
   it("shows the asset the app names, decoratively", () => {
-    const html = renderStatic(createElement(PenguinLogo, { src: "/penguin-logo.svg" }));
-    expect(html).toContain('src="/penguin-logo.svg"');
+    const html = renderStatic(createElement(AppLogo, { src: "/adelie-icon.svg" }));
+    expect(html).toContain('src="/adelie-icon.svg"');
     expect(html).toContain('alt=""');
     expect(html).toContain('aria-hidden="true"');
   });

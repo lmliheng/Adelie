@@ -251,7 +251,7 @@ export function TopBar({
   return (
     <header className="g-topbar">
       <a className="g-brand" href={homeHref(BASE, state)}>
-        <img src={`${BASE}/penguin-logo.svg`} alt="" width={24} height={24} />
+        <img src={`${BASE}/adelie-icon.svg`} alt="" width={24} height={24} />
         <strong>{S.brand.title}</strong>
       </a>
       <nav className="g-links" aria-label={S.site.pages}>

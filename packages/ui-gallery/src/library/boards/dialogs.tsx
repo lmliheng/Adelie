@@ -149,7 +149,7 @@ export function DialogsBoard() {
       <BoardGroup title={t.lightbox} aside={t.lightboxHint}>
         <div className="lib-row">
           <ZoomableImage
-            src={`${BASE}/penguin-logo.svg`}
+            src={`${BASE}/adelie-icon.svg`}
             alt={t.lightboxAlt}
             className="h-16 w-16"
           />

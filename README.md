@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="packages/web/public/penguin-logo.svg" alt="PenguinHarness logo" width="88" />
+  <img src="packages/web/public/adelie-icon.svg" alt="Adelie logo" width="88" />
 </p>
 
 <h1 align="center">PenguinHarness</h1>
