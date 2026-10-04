@@ -17,6 +17,9 @@
 // 改这张表即可，不必动代码。
 
 import type { ProviderName } from '../types/Args.js';
+// 只借类型：运行时那条依赖是反过来的（rates.ts 读这张表），`import type` 编译后不留代码，
+// 所以两边不会真的互相 import。
+import type { ModelRates } from '../usage/rates.js';
 
 export interface CatalogModel {
   /** 请求里真正下发的模型名 */
@@ -25,6 +28,16 @@ export interface CatalogModel {
   readonly label: string;
   /** 该组未指定模型时用的那一个；每组至多一个 */
   readonly default?: boolean;
+  /**
+   * 牌价（美元 / 百万 token）。
+   *
+   * **只标我们真的知道牌价的那些**：不知道就不写，查询时按「未定价」处理并在界面上
+   * 说出来 —— 编一个数字比留空更坏，因为它会让人按错的钱做决定。价格是数据、不是逻辑：
+   * 改价只影响之后的查询，历史行里的 token 不动（成本永远现算，见 `usage/rates.ts`）。
+   *
+   * kimi / qwen 只公布人民币价（按汇率换算是另一种猜法），所以这里留空。
+   */
+  readonly rates?: ModelRates;
 }
 
 export interface ProviderGroup {
@@ -53,9 +66,11 @@ export const MODEL_CATALOG: readonly ProviderGroup[] = [
     baseUrl: 'https://api.deepseek.com/v1/chat/completions',
     clientType: 'chat-completions',
     models: [
-      { id: 'deepseek-chat', label: '对话（默认）', default: true },
+      // 牌价（USD / 百万 token，2026-10 抄自官方定价页）：缓存价按官方的「命中前缀缓存」档
+      { id: 'deepseek-chat', label: '对话（默认）', default: true, rates: { input: 0.27, cacheRead: 0.07, output: 1.1 } },
+      // 这个名字不在官方目录里（本仓库自己的候选）：**不标价**，查询时按未定价处理
       { id: 'deepseek-flash', label: '快而省' },
-      { id: 'deepseek-reasoner', label: '推理' },
+      { id: 'deepseek-reasoner', label: '推理', rates: { input: 0.55, cacheRead: 0.14, output: 2.19 } },
     ],
   },
   {
@@ -65,8 +80,8 @@ export const MODEL_CATALOG: readonly ProviderGroup[] = [
     baseUrl: 'https://api.openai.com/v1/chat/completions',
     clientType: 'chat-completions',
     models: [
-      { id: 'gpt-4o-mini', label: '小模型（默认）', default: true },
-      { id: 'gpt-4o', label: '大模型' },
+      { id: 'gpt-4o-mini', label: '小模型（默认）', default: true, rates: { input: 0.15, cacheRead: 0.075, output: 0.6 } },
+      { id: 'gpt-4o', label: '大模型', rates: { input: 2.5, cacheRead: 1.25, output: 10 } },
     ],
   },
   {

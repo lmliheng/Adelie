@@ -17,3 +17,5 @@ export * from './persistence/session-export.js';
 export * from './config/default.js';
 export * from './config/model-catalog.js';
 export * from './config/user-env.js';
+export * from './usage/rates.js';
+export * from './usage/aggregate.js';
