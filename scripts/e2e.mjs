@@ -192,12 +192,58 @@ try {
   await page.screenshot({ path: path.join(OUT, "03-done.png"), fullPage: true });
   console.log("\n--- 会话区 ---\n" + (await page.locator('[data-testid="messages"]').innerText()).slice(0, 1200));
 
+  // ── 左栏导航：URL 真的变、前进后退可用、深链刷新不白屏 ──
+  // 这三件事只有真浏览器能验：pushState 之后 React 有没有跟着换页、刷新时服务端有没有把
+  // `/agents` 落回 index.html。它们是「页面能分享出去」的全部前提。
+  const NAV = [
+    ["projects", "项目"],
+    ["agents", "智能体"],
+    ["models", "模型"],
+    ["plugins", "插件"],
+    ["usage", "成本中心"],
+  ];
+  const titleIs = (text) => document.querySelector("#page-title")?.textContent === text;
+  for (const [id, label] of NAV) {
+    await page.locator(`[data-testid="nav-${id}"]`).click();
+    await page.waitForFunction(titleIs, label, { timeout: 5000 });
+    const { pathname } = new URL(page.url());
+    if (pathname !== `/${id}`) failures.push(`点「${label}」后 URL 是 ${pathname}，期望 /${id}`);
+  }
+  await page.screenshot({ path: path.join(OUT, "05-nav-usage.png") });
+
+  await page.goBack();
+  await page.waitForFunction(titleIs, "插件", { timeout: 5000 });
+
+  await page.goto(`${origin}/agents`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector("#page-title", { timeout: 15000 });
+  const deepTitle = await page.locator("#page-title").innerText();
+  if (deepTitle !== "智能体") failures.push(`深链 /agents 显示的是「${deepTitle}」，期望「智能体」`);
+
+  await page.getByRole("button", { name: "回到对话" }).click();
+  await page.waitForSelector("textarea", { timeout: 15000 });
+  if (new URL(page.url()).pathname !== "/chat") failures.push("「回到对话」没把 URL 换回 /chat");
+
   const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const mobilePage = await mobile.newPage();
   await mobilePage.goto(origin, { waitUntil: "domcontentloaded" });
   await mobilePage.waitForSelector("textarea", { timeout: 15000 });
   await delay(500);
   await mobilePage.screenshot({ path: path.join(OUT, "04-mobile.png") });
+
+  // 手机上没有常驻侧栏，导航在抽屉里：打开抽屉 → 点一项 → 抽屉自己收起来
+  await mobilePage.locator('[data-testid="sidebar-toggle"]').click();
+  await delay(300);
+  await mobilePage.screenshot({ path: path.join(OUT, "06-mobile-rail.png") });
+  const overflow = await mobilePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  if (overflow > 0) failures.push(`手机上横向溢出 ${overflow}px（抽屉打开时）`);
+  await mobilePage.locator('[data-testid="nav-agents"]').click();
+  await mobilePage.waitForSelector("#page-title", { timeout: 5000 });
+  // 抽屉是 `transform: translateX(-100%)` 藏起来的，`isVisible()` 仍为 true，
+  // 所以看类名：点完导航它必须自己收起来（不然手机上换页后还挡着内容）
+  const drawerOpen = await mobilePage
+    .locator('[data-testid="sidebar"]')
+    .evaluate((el) => el.classList.contains("is-open"));
+  if (drawerOpen) failures.push("点导航后抽屉没关上");
 
   const created = path.join(workDir, "ADELIE_E2E.md");
   console.log(`\n工作区文件 ${created}: ${existsSync(created) ? "存在 ✓" : "不存在 ✗"}`);

@@ -90,12 +90,13 @@ public/sw.js                手写 Service Worker（外壳预缓存 / api 不缓
 public/icons/               PWA 图标（由 scripts/render-pwa-icons.mjs 从 brand/ 生成，别手改）
 scripts/render-pwa-icons.mjs 复制 brand/icons/ 的原图 + 按 SVG 渲染缺的尺寸（开发期脚本）
 src/main.tsx                挂载 + 注册 SW
-src/App.tsx                 组装：顶栏 / 侧栏 / 对话区 / 输入框 / 命令面板 / 设置 / Toast
+src/App.tsx                 组装：顶栏 / 侧栏（含左栏导航） / 页面 / 输入框 / 命令面板 / 设置 / Toast
                            （唯一一份命令表与唯一的键位分发器也在这里）
 src/api/client.ts           fetch 封装、ApiError、POST 的 SSE 流式读取（唯一出口）
 src/api/sse.ts              SSE 分帧解析（纯函数，单测覆盖）
 src/api/types.ts            docs/api.md 的 wire 类型
 src/hooks/useAdelie.ts      状态机：连接 / 会话 / 流 / 审批 / 配置
+src/hooks/useRoute.ts       路由的浏览器那一半（pushState + popstate）
 src/hooks/useTheme.ts       深浅色（跟随系统 + 手动持久化）
 src/hooks/useToast.ts       轻提示
 src/lib/timeline.ts         事件 → 时间线条目（纯函数，单测覆盖）
@@ -105,9 +106,16 @@ src/lib/format.ts           时间 / token / 时长文案
 src/lib/theme.ts            主题应用与 theme-color 同步
 src/lib/shortcuts.ts        键位规格解析 / 事件归一 / 命令过滤（纯函数，单测覆盖）
 src/lib/sections.ts         设置分节与可见性谓词（纯函数，单测覆盖）
-src/components/*            顶栏、侧栏、时间线卡片、计划卡、验收卡、审批卡、设置、命令面板、
-                            用户面板、空态…
+src/lib/router.ts           路径归一 / 部署根 / 路径 → 页面（纯函数，单测覆盖）
+src/components/*            顶栏、侧栏、导航 rail、占位页、时间线卡片、计划卡、验收卡、审批卡、
+                            设置、命令面板、用户面板、空态…
 ```
+
+**路由**是自写的 60 行（`lib/router.ts` + `hooks/useRoute.ts`），没有引 react-router：
+`base: './'` 下 `basename` 有歧义（`'./'` 不是合法 basename），而部署根已经在
+`register-sw.ts` 里解过一次（`new URL('.', document.baseURI)`），沿用同一招更省事。
+五个导航页现在是占位（`components/PlaceholderPage.tsx`），推进顺序见
+[`docs/web-progress.md`](../../docs/web-progress.md)。
 
 ## 重新生成 PWA 图标
 
@@ -133,7 +141,7 @@ node packages/web/scripts/render-pwa-icons.mjs
 
 把 `ADELIE_API_PROXY` 指到它，就能把流式解析、时间线、审批、断流提示全部走一遍。
 `data-testid`（`approval` / `send` / `messages` / `tool-card` / `tool-body` / `open-settings` /
-`open-palette` / `open-users` / `sidebar-toggle`）就是给这类端到端脚本用的钩子。
+`open-palette` / `open-users` / `sidebar-toggle` / `nav-<页面id>`）就是给这类端到端脚本用的钩子。
 
 ## 已知边界
 

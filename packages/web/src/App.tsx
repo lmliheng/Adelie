@@ -19,15 +19,18 @@ import { TurnView } from './components/TurnView'
 import { TranscriptSkeleton } from './components/Skeleton'
 import { SettingsDialog } from './components/SettingsDialog'
 import { CommandPalette } from './components/CommandPalette'
+import { PlaceholderPage } from './components/PlaceholderPage'
 import { LoginScreen } from './components/LoginScreen'
 import { ToastHost } from './components/ToastHost'
 import { useAdelie } from './hooks/useAdelie'
 import { useAuth, type AuthState } from './hooks/useAuth'
+import { useRoute } from './hooks/useRoute'
 import { useTheme } from './hooks/useTheme'
 import { useToast, type ToastController } from './hooks/useToast'
 import { loadCredentials, saveCredentials, type Credentials } from './lib/credentials'
 import { parseChord, resolveShortcut, type KeyChord, type ShortcutCommand } from './lib/shortcuts'
 import { resolveSection, type SettingsSectionId } from './lib/sections'
+import { HOME_PATH, NAV_PAGES, navPageOf, pageIdOf } from './lib/router'
 
 // 键位在模块层解析一次，命令表每轮渲染直接引用（解析不会变，也就没必要放进 useMemo 的依赖）
 const PALETTE_CHORD = parseChord('mod+k')
@@ -94,6 +97,10 @@ function Shell({
 }): ReactNode {
   const adelie = useAdelie()
   const { theme, toggle } = useTheme()
+  // 路由：路径 → 页面。五个导航页一期只是占位（见 PlaceholderPage），但 URL 已经是真的：
+  // 可分享、可前进后退、刷新不退化成对话页。
+  const { path, navigate } = useRoute()
+  const pageId = pageIdOf(path) ?? 'chat'
 
   const [draft, setDraft] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -144,6 +151,7 @@ function Shell({
   const closePalette = useCallback(() => setPaletteOpen(false), [])
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
   const toggleSidebar = useCallback(() => setSidebarOpen((value) => !value), [])
+  const goHome = useCallback(() => navigate(HOME_PATH), [navigate])
   const handleLogout = useCallback(() => {
     void auth.logout()
   }, [auth])
@@ -214,6 +222,15 @@ function Shell({
         ...optionalChord(SETTINGS_CHORD),
         run: openSettings,
       },
+      // 导航没有键位：五条命令是给面板用的（顺带让面板能到 rail 到不了的地方，
+      // 比如窄屏抽屉关着的时候）。
+      { id: 'nav.chat', title: '回到对话', group: '导航', run: goHome },
+      ...NAV_PAGES.map((page) => ({
+        id: `nav.${page.id}`,
+        title: `打开${page.label}`,
+        group: '导航',
+        run: () => navigate(page.path),
+      })),
     ]
     if (user?.isAdmin === true) {
       list.push({ id: 'settings.users', title: '用户管理', group: '服务端', adminOnly: true, run: openUsers })
@@ -228,8 +245,10 @@ function Shell({
   }, [
     adelie.retryConnection,
     connectionBroken,
+    goHome,
     handleLogout,
     handleNewSession,
+    navigate,
     openPalette,
     openSettings,
     openUsers,
@@ -274,6 +293,7 @@ function Shell({
         onOpenUsers={openUsers}
         onLogout={handleLogout}
         onToggleSidebar={toggleSidebar}
+        onHome={goHome}
       />
 
       {connectionBroken && turns.length > 0 && (
@@ -306,14 +326,20 @@ function Shell({
           provider={adelie.config.data?.model.provider ?? null}
           model={adelie.config.data?.model.model ?? null}
           open={sidebarOpen}
+          path={path}
+          onNavigate={navigate}
           onOpenSession={handleOpenSession}
           onNewSession={handleNewSession}
           onDeleteSession={handleDeleteSession}
           onClose={closeSidebar}
         />
 
-        <main className="chat" aria-label="对话">
-          {connectionBroken ? (
+        <main className="chat" aria-label={pageId === 'chat' ? '对话' : (navPageOf(pageId)?.label ?? '页面')}>
+          {pageId !== 'chat' ? (
+            // 五个导航页一期是占位：`connectionBroken` 也照样显示（它们是本地页面，
+            // 断网时看「这一页打算做什么」比看一块重试面板有用）。
+            <PlaceholderPage id={pageId} onNavigate={navigate} />
+          ) : connectionBroken ? (
             <div className="messages">
               <ConnectionPanel
                 status={adelie.connection.status === 'unauthorized' ? 'unauthorized' : 'offline'}
@@ -351,16 +377,7 @@ function Shell({
                   </div>
                 )}
 
-                {showEmpty && (
-                  <EmptyState
-                    disabled={composerDisabled}
-                    workspace={adelie.config.data?.workspace ?? null}
-                    onPick={(text) => {
-                      setDraft(text)
-                      send(text)
-                    }}
-                  />
-                )}
+                {showEmpty && <EmptyState />}
 
                 {turns.map((turn) => (
                   <TurnView

@@ -29,6 +29,12 @@ export type IconName =
   | 'user'
   | 'users'
   | 'logout'
+  | 'chat'
+  | 'folder'
+  | 'robot'
+  | 'cube'
+  | 'plug'
+  | 'chart'
 
 const PATHS: Record<IconName, ReactNode> = {
   menu: (
@@ -157,6 +163,41 @@ const PATHS: Record<IconName, ReactNode> = {
       <path d="M14 5.5H6.5a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5H14" />
       <path d="M16.5 12H10" />
       <path d="M14 9.5 16.5 12 14 14.5" />
+    </>
+  ),
+  // 下面五个是主导航（rail）用的：项目 / 智能体 / 模型 / 插件 / 成本中心
+  chat: (
+    <>
+      <path d="M5 5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9.5L5.5 19v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z" />
+    </>
+  ),
+  folder: <path d="M3 7.5a2 2 0 0 1 2-2h3.4l1.8 2H19a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-9Z" />,
+  robot: (
+    <>
+      <rect x="4.5" y="8" width="15" height="11" rx="3" />
+      <path d="M12 4.5V8" />
+      <path d="M9.5 12.5v1M14.5 12.5v1" />
+      <path d="M9.5 16.5h5" />
+    </>
+  ),
+  cube: (
+    <>
+      <path d="M12 3.5 20 8v8l-8 4.5L4 16V8l8-4.5Z" />
+      <path d="M4 8l8 4.5L20 8" />
+      <path d="M12 12.5V20.5" />
+    </>
+  ),
+  plug: (
+    <>
+      <path d="M9 3v5M15 3v5" />
+      <path d="M6 8h12v3.5a6 6 0 0 1-12 0V8Z" />
+      <path d="M12 17.5V21" />
+    </>
+  ),
+  chart: (
+    <>
+      <path d="M4.5 20V11M9.5 20V4.5M14.5 20v-6.5M19.5 20V8" />
+      <path d="M2.5 20h19" />
     </>
   ),
 }

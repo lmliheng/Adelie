@@ -1,29 +1,16 @@
 // src/components/EmptyState.tsx
 //
-// 空态：这是新用户看到的第一个界面，所以它必须自己解释「这个应用是干什么的」，
-// 并给四个**真的执行得起来**的示例任务（点了直接发送，不是教学文案）。
+// 空态：新会话的第一屏。
+//
+// 只留「这是什么」—— 字形 + 品牌行 + 一句话标题。原来的用法说明段与四张示例任务卡
+// 已按用户要求删掉：那一屏的下一步是去输入框，而不是先读一段介绍再点别人写好的任务。
 //
 // 视觉上是 web-design 允许的唯一装饰：点阵背景 + 品牌字形。
 
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 
-const EXAMPLES: Array<{ text: string; hint: string }> = [
-  { text: '读一遍这个仓库的 README，指出里面过时的地方', hint: '读取与分析' },
-  { text: '找出项目里的类型错误并修掉，最后跑一遍测试', hint: '修改 + 验证' },
-  { text: '写一个 scripts/release.mjs，按日期打包 dist 目录', hint: '新建文件' },
-  { text: '给 packages/core 的公开函数补上缺失的单元测试', hint: '补测试' },
-]
-
-export function EmptyState({
-  onPick,
-  disabled,
-  workspace,
-}: {
-  onPick: (text: string) => void
-  disabled: boolean
-  workspace: string | null
-}): ReactNode {
+export function EmptyState(): ReactNode {
   return (
     <section className="empty" aria-label="开始使用">
       <div className="empty-flourish">
@@ -35,26 +22,6 @@ export function EmptyState({
       <h1 className="empty-title">
         让 Adelie 在你的<em>工作区</em>里动手做完
       </h1>
-      <p className="empty-sub">
-        它会读文件、改代码、跑命令，每一步都留在时间线上
-        {workspace !== null && `（工作区 ${workspace}）`}。危险操作会先问你。
-      </p>
-      <div className="examples">
-        {EXAMPLES.map((example, index) => (
-          <button
-            type="button"
-            key={example.text}
-            className="example-card"
-            disabled={disabled}
-            onClick={() => onPick(example.text)}
-          >
-            <span className="example-num">
-              {String(index + 1).padStart(2, '0')} · {example.hint}
-            </span>
-            <span className="example-text">{example.text}</span>
-          </button>
-        ))}
-      </div>
     </section>
   )
 }

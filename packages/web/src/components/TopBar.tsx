@@ -36,6 +36,7 @@ export function TopBar({
   onOpenUsers,
   onLogout,
   onToggleSidebar,
+  onHome,
 }: {
   connection: ConnectionState
   workspace: string | null
@@ -48,6 +49,8 @@ export function TopBar({
   onOpenUsers: () => void
   onLogout: () => void
   onToggleSidebar: () => void
+  /** 品牌回到首页（对话页）。用 navigate 而不是整页跳转 */
+  onHome: () => void
 }): ReactNode {
   const title =
     connection.status === 'online'
@@ -66,7 +69,15 @@ export function TopBar({
         <Icon name="menu" size={18} />
       </button>
       {/* 回到部署根（相对 base 下 '/ ' 会跑出子路径） */}
-      <a className="brand" href={import.meta.env.BASE_URL} aria-label="Adelie 首页">
+      <a
+        className="brand"
+        href={import.meta.env.BASE_URL}
+        aria-label="Adelie 首页"
+        onClick={(event) => {
+          event.preventDefault()
+          onHome()
+        }}
+      >
         <Glyph size={24} />
         <span className="brand-name">Adelie</span>
       </a>

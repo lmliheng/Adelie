@@ -7,6 +7,7 @@
 
 import { useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
+import { NavRail } from './NavRail'
 import { SessionListSkeleton } from './Skeleton'
 import { relativeTime, shortenPath } from '../lib/format'
 import type { SessionSummary } from '../api/types'
@@ -21,6 +22,8 @@ export function Sidebar({
   provider,
   model,
   open,
+  path,
+  onNavigate,
   onOpenSession,
   onNewSession,
   onDeleteSession,
@@ -35,6 +38,9 @@ export function Sidebar({
   provider: string | null
   model: string | null
   open: boolean
+  /** 当前路由（给 rail 标出在哪一页） */
+  path: string
+  onNavigate: (next: string) => void
   onOpenSession: (id: string) => void
   onNewSession: () => void
   onDeleteSession: (id: string) => void
@@ -44,7 +50,16 @@ export function Sidebar({
   const [busyNew, setBusyNew] = useState(false)
 
   return (
-    <aside className={`sidebar${open ? ' is-open' : ''}`} aria-label="会话列表" data-testid="sidebar">
+    <aside className={`sidebar${open ? ' is-open' : ''}`} aria-label="导航与会话" data-testid="sidebar">
+      {/* 导航在会话列表之上、同一个抽屉里：手机上打开抽屉一次就能既换页又换会话 */}
+      <NavRail
+        path={path}
+        onNavigate={(next) => {
+          onNavigate(next)
+          onClose()
+        }}
+      />
+
       <div className="sidebar-head">
         <button
           type="button"
