@@ -2,17 +2,21 @@
 //
 // 事件的读写本身在 core 的 SessionStore / replaySession 里，这里只做「面向 HTTP
 // 的形状」——列表项多出来的 workspace / taskCount / title 不在存储层，由事件流派生。
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 import {
   SessionStore,
   deleteSession,
   isModelRef,
+  isSessionId,
   listSessions,
   renderSessionMarkdown,
   replaySession,
+  sessionsRoot,
 } from 'adelie-core';
 
+import type { Dirent } from 'node:fs';
 import type {
   ModelRef,
   PriorRun,
@@ -22,6 +26,7 @@ import type {
   StoredSessionEvent,
   TaskStartedPayload,
 } from 'adelie-core';
+import type { SessionOwnerRow } from './users/db.js';
 
 /** 契约里的会话对象。`id` 是 SessionStore 的 sessionId，这里换成契约字段名 */
 export interface SessionView {
@@ -40,6 +45,11 @@ export interface SessionView {
    */
   model?: ModelRef;
   lastModel?: ModelRef;
+  /**
+   * 会话的主人。**只有管理员看到别人的会话时才带**：看自己的会话时它是冗余的，
+   * 而界面上多一个字段就要多一次判断。
+   */
+  owner?: { id: string; name: string };
 }
 
 /** 标题取首个任务的前若干字符：太长会把列表撑成一堆换行 */
@@ -112,6 +122,8 @@ export function buildSessionView(input: {
   events: readonly StoredSessionEvent[];
   /** 会话头里记的模型；老会话没有 */
   model?: ModelRef | undefined;
+  /** 主人的名字；只有「管理员看别人的会话」这一个场景会传 */
+  owner?: { id: string; name: string } | undefined;
 }): SessionView {
   const lastModel = lastRunModel(input.events);
   return {
@@ -123,6 +135,7 @@ export function buildSessionView(input: {
     title: sessionTitle(input.events),
     ...(input.model !== undefined ? { model: input.model } : {}),
     ...(lastModel !== undefined ? { lastModel } : {}),
+    ...(input.owner !== undefined ? { owner: input.owner } : {}),
   };
 }
 
@@ -173,6 +186,100 @@ export function listSessionViews(
       model: store.readMeta()?.model,
     });
   });
+}
+
+/**
+ * 磁盘上某个根目录下有哪些会话（不查索引）。
+ *
+ * 用途只有一个：把「CLI 直接写出来的会话」补进索引。分区的目录名是工作区的哈希，
+ * 反推不回来，所以工作区得从每个分区的 `index.json` 里读 —— 那是派生快照，
+ * 缺了或坏了就跳过它：宁可少补几条，也不要猜一个工作区路径然后读错地方。
+ */
+export function discoverSessionsOnDisk(
+  root: string | undefined,
+): { sessionId: string; workspace: string }[] {
+  const base = root ?? sessionsRoot();
+  let partitions: string[];
+  try {
+    partitions = readdirSync(base, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith('ws-'))
+      .map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+
+  const found: { sessionId: string; workspace: string }[] = [];
+  for (const partition of partitions) {
+    const workspace = readWorkspaceOfPartition(join(base, partition));
+    if (workspace === null) continue;
+
+    const collection = join(base, partition, 'sessions');
+    let entries: Dirent[];
+    try {
+      entries = readdirSync(collection, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !isSessionId(entry.name)) continue;
+      // 只有真的落了事件或会话头才算会话：空目录是「打开过又立刻退出」留下的
+      const dir = join(collection, entry.name);
+      if (!existsSync(join(dir, 'events.jsonl')) && !existsSync(join(dir, 'meta.json'))) continue;
+      found.push({ sessionId: entry.name, workspace });
+    }
+  }
+  return found;
+}
+
+/** 分区里的 `index.json` 记着它的工作区原文；读不到或形状不对返回 null */
+function readWorkspaceOfPartition(partitionDir: string): string | null {
+  const file = join(partitionDir, 'index.json');
+  if (!existsSync(file)) return null;
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+    if (typeof parsed !== 'object' || parsed === null) return null;
+    const value = (parsed as Record<string, unknown>)['workspaceRoot'];
+    return typeof value === 'string' && value !== '' ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 一个身份能看到的会话，**从索引里读**。
+ *
+ * 列表从索引读而不是从磁盘扫：磁盘上只有「哪些目录存在」，没有「属于谁」。
+ * 每次列都顺手补一遍索引，于是命令行建的会话下一次刷新就会出现。
+ */
+export function listSessionViewsFor(
+  rows: readonly SessionOwnerRow[],
+  rootOf: (ownerId: string) => string | undefined,
+  owners: ReadonlyMap<string, string>,
+  viewerId: string,
+  isAdmin: boolean,
+): SessionView[] {
+  const views: SessionView[] = [];
+  for (const row of rows) {
+    const options = locationOptions(rootOf(row.userId));
+    const store = new SessionStore(row.workspace, row.sessionId, options);
+    const events = store.readEvents();
+    if (events.length === 0) continue;
+
+    const summary = store.summary();
+    views.push(buildSessionView({
+      sessionId: row.sessionId,
+      workspace: row.workspace,
+      createdAt: summary?.createdAt ?? row.createdAt,
+      lastActiveAt: summary?.lastActiveAt ?? row.createdAt,
+      events,
+      model: store.readMeta()?.model,
+      // 只有管理员可能看到别人的会话；看自己的时不带 owner，界面因此不必判断
+      ...(row.userId === viewerId || !isAdmin
+        ? {}
+        : { owner: { id: row.userId, name: owners.get(row.userId) ?? row.userId } }),
+    }));
+  }
+  return views.sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export function sessionEventsFileExists(store: SessionStore): boolean {

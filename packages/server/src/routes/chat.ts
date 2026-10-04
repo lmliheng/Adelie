@@ -3,13 +3,15 @@ import { replaySession } from 'adelie-core';
 import { streamSSE } from 'hono/streaming';
 
 import { jsonError, readJsonObject } from '../http.js';
+import { identityOf } from '../identity.js';
 import { SseChannel } from '../sse.js';
 import { executeTurn } from '../turn.js';
 
 import type { Hono } from 'hono';
+import type { AppEnv } from '../identity.js';
 import type { ServerContext } from '../context.js';
 
-export function registerChatRoutes(app: Hono, ctx: ServerContext): void {
+export function registerChatRoutes(app: Hono<AppEnv>, ctx: ServerContext): void {
   app.post('/api/sessions/:id/messages', async (c) => {
     const sessionId = c.req.param('id');
     const body = await readJsonObject(c);
@@ -19,8 +21,10 @@ export function registerChatRoutes(app: Hono, ctx: ServerContext): void {
       return jsonError(c, 400, 'bad_request', 'text 必须是非空字符串');
     }
 
-    const { workspace, store, known } = ctx.locate(sessionId);
-    if (!known) return jsonError(c, 404, 'not_found', `会话不存在：${sessionId}`);
+    const identity = identityOf(c);
+    const { workspace, store, known, allowed } = ctx.locate(sessionId, identity);
+    // 别人的会话与不存在的会话回同一条 404：见 routes/sessions.ts 的同名说明
+    if (!known || !allowed) return jsonError(c, 404, 'not_found', '会话不存在');
 
     // 同一条会话同时只能有一轮在跑（契约 §4）。占位与检查都是同步的，
     // 两条并发请求不会都通过。
@@ -36,8 +40,9 @@ export function registerChatRoutes(app: Hono, ctx: ServerContext): void {
       workspaceRoot: workspace,
     }).runs;
 
-    // 配置快照：本轮开跑之后 PATCH /api/config 不该改掉正在跑的这轮
-    const settings = { ...ctx.settings };
+    // 配置快照：本轮开跑之后 PATCH /api/config 不该改掉正在跑的这轮。
+    // 取的是**这个身份**的配置 —— 同一台机器上，别人改了模型不该影响我这一轮。
+    const settings = { ...ctx.settingsFor(identity) };
     const channel = new SseChannel();
 
     return streamSSE(c, async (stream) => {
@@ -54,6 +59,8 @@ export function registerChatRoutes(app: Hono, ctx: ServerContext): void {
         task: text,
         workspace,
         settings,
+        // 密钥按**发出这条消息的人**取：同一台机器上每个人的密钥文件是分开的
+        secretsKey: identity.key,
         store,
         priorRuns,
         tools: ctx.tools,
@@ -80,8 +87,8 @@ export function registerChatRoutes(app: Hono, ctx: ServerContext): void {
 
   app.post('/api/sessions/:id/cancel', (c) => {
     const sessionId = c.req.param('id');
-    const { known } = ctx.locate(sessionId);
-    if (!known) return jsonError(c, 404, 'not_found', `会话不存在：${sessionId}`);
+    const { known, allowed } = ctx.locate(sessionId, identityOf(c));
+    if (!known || !allowed) return jsonError(c, 404, 'not_found', '会话不存在');
 
     // 没有在跑的一轮时也回 202：取消是幂等的，重复点两下不该是错误
     ctx.runs.get(sessionId)?.cancel();
@@ -102,8 +109,8 @@ export function registerChatRoutes(app: Hono, ctx: ServerContext): void {
       return jsonError(c, 400, 'bad_request', 'decision 只能是 approve 或 deny');
     }
 
-    const { known } = ctx.locate(sessionId);
-    if (!known) return jsonError(c, 404, 'not_found', `会话不存在：${sessionId}`);
+    const { known, allowed } = ctx.locate(sessionId, identityOf(c));
+    if (!known || !allowed) return jsonError(c, 404, 'not_found', '会话不存在');
 
     const slot = ctx.runs.get(sessionId);
     const accepted = slot?.approvals.decide(actionId, decision === 'approve' ? 'approve' : 'reject');

@@ -121,6 +121,13 @@ export interface TurnInput {
   task: string;
   workspace: string;
   settings: ServerSettings;
+  /**
+   * 去哪个密钥文件里取密钥：`host` 或用户 id（见 settings.ts 的 secretFileFor）。
+   *
+   * 它必须跟着请求走，不能从 settings 里推 —— 同一份配置（同一个模型）在不同用户
+   * 手里对应不同的密钥，账单也就落给不同的人。
+   */
+  secretsKey: string;
   store: SessionStore;
   priorRuns: readonly PriorRun[];
   tools: readonly Tool[];
@@ -177,7 +184,7 @@ export async function executeTurn(input: TurnInput): Promise<void> {
         provider: input.settings.model.provider,
         model: input.settings.model.model,
         baseUrl: input.settings.baseUrl,
-        apiKey: apiKeyFor(input.settings.model.provider),
+        apiKey: apiKeyFor(input.secretsKey, input.settings.model.provider),
       });
     } catch (error) {
       // 建 provider 就失败（协议名不对、依赖缺失）：还没开会话，直接报错收尾

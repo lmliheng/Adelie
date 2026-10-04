@@ -17,6 +17,7 @@ import { isLoopbackAddress } from './auth.js';
 import type { ServerType } from '@hono/node-server';
 import type { Hono } from 'hono';
 import type { AppDeps } from './context.js';
+import type { AppEnv } from './identity.js';
 
 export interface StartServerOptions extends AppDeps {
   /** 监听端口；0 表示由系统分配。默认取 PORT，再退回 7370 */
@@ -26,7 +27,7 @@ export interface StartServerOptions extends AppDeps {
 }
 
 export interface StartedServer {
-  app: Hono;
+  app: Hono<AppEnv>;
   server: ServerType;
   hostname: string;
   port: number;

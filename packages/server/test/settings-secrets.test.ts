@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { ENV_FILE_ENV, defaultModelForProvider } from 'adelie-core';
-import { defaultModelFor, isProviderName, writeApiKey } from '../src/settings.js';
+import { apiKeyFor, defaultModelFor, isProviderName, secretFileFor, writeApiKey } from '../src/settings.js';
 
 const ENV_KEYS = ['DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'DASHSCOPE_API_KEY'] as const;
 
@@ -17,6 +17,7 @@ describe('密钥文件', () => {
   let dir = '';
   let file = '';
   let savedFile: string | undefined;
+  let savedHome: string | undefined;
   const savedEnv = new Map<string, string | undefined>();
 
   beforeEach(() => {
@@ -24,6 +25,10 @@ describe('密钥文件', () => {
     file = join(dir, '.env');
     savedFile = process.env[ENV_FILE_ENV];
     process.env[ENV_FILE_ENV] = file;
+    // 用户密钥文件落在 adelieHome()/secrets/ 下，而 adelieHome 读 HOME —— 指到临时目录，
+    // 否则测试会往开发机的 ~/.adelie 里写东西
+    savedHome = process.env['HOME'];
+    process.env['HOME'] = dir;
     for (const key of ENV_KEYS) {
       savedEnv.set(key, process.env[key]);
       delete process.env[key];
@@ -33,6 +38,8 @@ describe('密钥文件', () => {
   afterEach(() => {
     if (savedFile === undefined) delete process.env[ENV_FILE_ENV];
     else process.env[ENV_FILE_ENV] = savedFile;
+    if (savedHome === undefined) delete process.env['HOME'];
+    else process.env['HOME'] = savedHome;
     for (const [key, value] of savedEnv) {
       if (value === undefined) delete process.env[key];
       else process.env[key] = value;
@@ -47,7 +54,7 @@ describe('密钥文件', () => {
   }
 
   it('新建的密钥文件是 0600', () => {
-    writeApiKey('kimi', 'sk-moonshot-test');
+    writeApiKey('host', 'kimi', 'sk-moonshot-test');
     expect(modeOf(file)).toBe(0o600);
     expect(readFileSync(file, 'utf8')).toContain('MOONSHOT_API_KEY=sk-moonshot-test');
   });
@@ -58,14 +65,14 @@ describe('密钥文件', () => {
     chmodSync(file, 0o644);
     expect(modeOf(file)).toBe(0o644);
 
-    writeApiKey('deepseek', 'sk-new');
+    writeApiKey('host', 'deepseek', 'sk-new');
     expect(modeOf(file)).toBe(0o600);
   });
 
   it('只替换本提供方那一行，别家的 key 原样留着', () => {
-    writeApiKey('kimi', 'sk-kimi');
-    writeApiKey('qwen', 'sk-qwen');
-    writeApiKey('kimi', 'sk-kimi-2');
+    writeApiKey('host', 'kimi', 'sk-kimi');
+    writeApiKey('host', 'qwen', 'sk-qwen');
+    writeApiKey('host', 'kimi', 'sk-kimi-2');
 
     const content = readFileSync(file, 'utf8');
     expect(content).toContain('MOONSHOT_API_KEY=sk-kimi-2');
@@ -73,9 +80,33 @@ describe('密钥文件', () => {
     expect(content).not.toContain('sk-kimi\n'); // 旧的那一行被换掉了
   });
 
-  it('写进去的密钥对当前进程立刻生效', () => {
-    writeApiKey('qwen', 'sk-dashscope');
+  it('写进去的密钥对当前进程立刻生效（主机身份）', () => {
+    writeApiKey('host', 'qwen', 'sk-dashscope');
     expect(process.env.DASHSCOPE_API_KEY).toBe('sk-dashscope');
+  });
+
+  it('用户身份写的是自己的文件，且不污染进程环境', () => {
+    writeApiKey('a1b2c3', 'kimi', 'sk-user');
+
+    const own = secretFileFor('a1b2c3');
+    expect(own).toBe(join(dir, '.adelie', 'secrets', 'a1b2c3.env'));
+    expect(readFileSync(own, 'utf8')).toContain('MOONSHOT_API_KEY=sk-user');
+    expect(modeOf(own)).toBe(0o600);
+    // 进程环境是全局的：把某个用户的密钥塞进去等于让所有用户共用它
+    expect(process.env.MOONSHOT_API_KEY).toBeUndefined();
+  });
+
+  it('用户自己配的密钥压过主机的兜底；主机身份则相反（环境变量优先）', () => {
+    writeApiKey('host', 'deepseek', 'sk-host');
+    writeApiKey('u1', 'deepseek', 'sk-mine');
+
+    // 用户身份：自己的文件优先 —— 否则账单会落在主机的额度上
+    expect(apiKeyFor('u1', 'deepseek')).toBe('sk-mine');
+    // 主机身份：环境变量优先（v0.1.0 的规矩，CLI 的提示就是照它写的）
+    process.env.DEEPSEEK_API_KEY = 'sk-from-env';
+    expect(apiKeyFor('host', 'deepseek')).toBe('sk-from-env');
+    delete process.env.DEEPSEEK_API_KEY;
+    expect(apiKeyFor('host', 'deepseek')).toBe('sk-host');
   });
 });
 
