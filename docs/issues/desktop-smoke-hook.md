@@ -1,6 +1,7 @@
 ---
 title: "desktop: 仓库里没有可复用的无人值守冒烟钩子，这次的验证是一次性外部脚本"
 labels: [欠账, scope:desktop, P2]
+issue: 14
 ---
 
 ## 现象

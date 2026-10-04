@@ -1,6 +1,7 @@
 ---
 title: "desktop: Windows 打包形态下的自带 CLI 安装与用户 Path 写入没在真 Windows 上跑过"
 labels: [未验证, scope:desktop, P2]
+issue: 16
 ---
 
 ## 现象

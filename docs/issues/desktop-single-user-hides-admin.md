@@ -1,6 +1,7 @@
 ---
 title: "desktop: 单机桌面模式下要不要隐藏「用户管理」—— 要人拍板"
 labels: [决策, scope:desktop, P2]
+issue: 13
 ---
 
 ## 现象

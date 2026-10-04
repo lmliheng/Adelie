@@ -1,6 +1,7 @@
 ---
 title: "desktop: 同一个数据根上可以同时跑起多个服务端 —— 没有锁，也不附着已有实例"
 labels: [欠账, scope:desktop, P2]
+issue: 10
 ---
 
 ## 现象

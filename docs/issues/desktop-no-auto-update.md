@@ -1,6 +1,7 @@
 ---
 title: "desktop: 装了 0.1.0 之后没有任何更新路径，而打包配置已经声明了 GitHub 发布源"
 labels: [欠账, scope:desktop, P2]
+issue: 11
 ---
 
 ## 现象

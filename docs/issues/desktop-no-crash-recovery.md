@@ -1,6 +1,7 @@
 ---
 title: "desktop: 壳没有崩溃自愈 —— 服务端退出后界面就停在那儿，页面崩了也不会重载"
 labels: [欠账, scope:desktop, P2]
+issue: 12
 ---
 
 ## 现象

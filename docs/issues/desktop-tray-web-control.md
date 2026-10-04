@@ -1,6 +1,7 @@
 ---
 title: "desktop: 托盘开关与托盘菜单语言只能改文件，界面里没有入口"
 labels: [欠账, scope:desktop, P3]
+issue: 15
 ---
 
 ## 现象

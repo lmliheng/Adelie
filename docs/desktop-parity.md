@@ -19,7 +19,7 @@
 1. **Adelie 的桌面端只有一个人用，且壳与内嵌服务端之间没有凭证。** 服务端绑 `127.0.0.1`，
    把「能读到 `~/.adelie` 的人」认成主机管理员（`packages/server/src/identity.ts`）。
    于是 Penguin 那一整套「壳怎么把登录态交给界面」在 Adelie 下没有对应物 ——
-   这不是省略，是 `docs/issues/desktop-shell-loopback-identity.md`（issue #3）里那条取舍的结果。
+   这不是省略，是 `docs/issues/desktop-shell-loopback-identity.md`（#3）里那条取舍的结果。
 2. **Adelie 的界面目前只有「会话 + 时间线 + 设置」这一片**（`packages/web/src/components/`）。
    终端面板、文件浏览器、内置浏览器都不存在，所以 Penguin 那些「挂在面板上的桌面能力」
    在 Adelie 下缺的不只是桌面那一半，而是整个功能面。
@@ -79,13 +79,13 @@ CLI 装好并能跑出 `adelie 0.1.0` → `SIGTERM` 后走正常退出序列（`
 
 | 待办 | 草稿 | 档 |
 | --- | --- | --- |
-| 崩溃自愈（服务端重启 + 界面重载，都要退避） | `docs/issues/desktop-no-crash-recovery.md` | P2，无新依赖 |
-| 自动更新（接入 / 判定 / 调度 / 状态 / 签名，Penguin 的 5 条合成一条） | `docs/issues/desktop-no-auto-update.md` | P2；**签名是阻塞项** |
-| 托盘开关与语言由界面控制（新增 `/api/desktop/tray`） | `docs/issues/desktop-tray-web-control.md` | P3，要改契约 |
-| 无人值守冒烟钩子（`ADELIE_DESKTOP_SMOKE`） | `docs/issues/desktop-smoke-hook.md` | P2，是下面那条的前提 |
-| 同一个数据根上起多个服务端（写 `server.lock` + 附着已有实例） | `docs/issues/desktop-attach-running-server.md` | P2 |
-| Windows 打包形态下的 CLI 安装与 Path 写入未验证 | `docs/issues/desktop-windows-cli-unverified.md` | P2，未验证 |
-| 单机桌面模式要不要隐藏用户管理 | `docs/issues/desktop-single-user-hides-admin.md` | P2，**要人拍板** |
+| 崩溃自愈（服务端重启 + 界面重载，都要退避） | `docs/issues/desktop-no-crash-recovery.md`（#12） | P2，无新依赖 |
+| 自动更新（接入 / 判定 / 调度 / 状态 / 签名，Penguin 的 5 条合成一条） | `docs/issues/desktop-no-auto-update.md`（#11） | P2；**签名是阻塞项** |
+| 托盘开关与语言由界面控制（新增 `/api/desktop/tray`） | `docs/issues/desktop-tray-web-control.md`（#15） | P3，要改契约 |
+| 无人值守冒烟钩子（`ADELIE_DESKTOP_SMOKE`） | `docs/issues/desktop-smoke-hook.md`（#14） | P2，是下面那条的前提 |
+| 同一个数据根上起多个服务端（写 `server.lock` + 附着已有实例） | `docs/issues/desktop-attach-running-server.md`（#10） | P2 |
+| Windows 打包形态下的 CLI 安装与 Path 写入未验证 | `docs/issues/desktop-windows-cli-unverified.md`（#16） | P2，未验证 |
+| 单机桌面模式要不要隐藏用户管理 | `docs/issues/desktop-single-user-hides-admin.md`（#13） | P2，**要人拍板** |
 
 ### 还没开草稿的小项（先记在这里，别让它只活在聊天记录里）
 
