@@ -77,6 +77,37 @@ describe('会话 CLI 的参数解析', () => {
     expect(parseArgs(['-v']).version).toBe(false);
   });
 
+  it('默认命令是 chat，第一个位置参数可以是工作区', () => {
+    expect(parseArgs([]).command).toBe('chat');
+    expect(parseArgs(['/tmp/ws']).command).toBe('chat');
+    expect(parseArgs(['/tmp/ws']).workspacePath).toBe('/tmp/ws');
+  });
+
+  it('serve 是顶层命令，后面还能跟工作区', () => {
+    const args = parseArgs(['serve', '--host', '0.0.0.0', '--port', '7371']);
+    expect(args.command).toBe('serve');
+    expect(args.serveHost).toBe('0.0.0.0');
+    expect(args.servePort).toBe(7371);
+    expect(args.serveToken).toBeUndefined();
+
+    const withWorkspace = parseArgs(['serve', '/tmp/ws']);
+    expect(withWorkspace.command).toBe('serve');
+    expect(withWorkspace.workspacePath).toBe('/tmp/ws');
+  });
+
+  it('serve 的端口与 token 参数要挡住写错的值', () => {
+    expect(parseArgs(['serve', '--port', '0']).servePort).toBe(0);
+    expect(() => parseArgs(['serve', '--port', '70000'])).toThrow(/--port/);
+    expect(() => parseArgs(['serve', '--port', 'abc'])).toThrow(/--port/);
+    expect(() => parseArgs(['serve', '--token', ''])).toThrow(/--token/);
+  });
+
+  it('--port / --host / --token 只在 serve 下成立，否则直接报错', () => {
+    expect(() => parseArgs(['--port', '7371'])).toThrow(/serve/);
+    expect(() => parseArgs(['/tmp/ws', '--host', '0.0.0.0'])).toThrow(/serve/);
+    expect(() => parseArgs(['--token', 'abc'])).toThrow(/serve/);
+  });
+
   it('--yes 默认关闭：无人值守的放行必须显式声明', () => {
     expect(parseArgs([]).yes).toBe(false);
     expect(parseArgs(['--yes']).yes).toBe(true);

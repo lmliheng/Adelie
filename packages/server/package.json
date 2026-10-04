@@ -1,7 +1,6 @@
 {
   "name": "adelie-server",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Adelie 后端：会话、SSE 对话流、工具审批、Web 产物托管。",
   "engines": {
@@ -10,7 +9,7 @@
   "main": "./dist/index.js",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsup",
+    "build": "tsup && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
@@ -28,5 +27,20 @@
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
+  },
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   }
 }

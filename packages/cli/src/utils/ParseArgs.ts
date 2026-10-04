@@ -5,7 +5,12 @@ import type { CliArgs, OutputFormat, ProviderName } from 'adelie-core'
 /** 需要接值的开关：写成 --name value 与 --name=value 两种都认 */
 const VALUE_FLAGS = new Set([
   '--task', '--model', '--provider', '--base-url', '--max-iterations', '--max-tokens', '--output-format',
+  // serve 专用
+  '--port', '--host', '--token',
 ]);
+
+/** 顶层命令：出现在第一个位置参数上（`adelie serve`），不是开关 */
+const COMMANDS = ['serve'] as const;
 
 const PROVIDERS: readonly ProviderName[] = ['deepseek', 'openai'];
 
@@ -42,8 +47,7 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     positional.push(arg);
   }
 
-  const maxIterations = Number(values.get('--max-iterations') ?? 50);
-  if (!Number.isInteger(maxIterations) || maxIterations < 1) {
+  const maxIterations = Number(values.get('--max-iterations') ?? 50);  if (!Number.isInteger(maxIterations) || maxIterations < 1) {
     throw new Error('--max-iterations 必须是正整数');
   }
 
@@ -77,7 +81,32 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     throw new Error('--output-format 只与 --task 一起用（一次性跑完才有可序列化的结果）');
   }
 
+  // ---- 顶层命令：第一个位置参数是命令名（`adelie serve`），其余位置参数仍是工作区 ----
+  const first = positional[0];
+  const command: CliArgs['command'] =
+    first !== undefined && (COMMANDS as readonly string[]).includes(first)
+      ? ((positional.shift() as 'serve') satisfies CliArgs['command'])
+      : 'chat';
+
+  const servePortRaw = values.get('--port');
+  const servePort = servePortRaw === undefined ? undefined : Number(servePortRaw);
+  if (servePort !== undefined && (!Number.isInteger(servePort) || servePort < 0 || servePort > 65535)) {
+    throw new Error('--port 必须是 0–65535 的整数（0 表示由系统分配）');
+  }
+  const serveToken = values.get('--token');
+  if (serveToken !== undefined && serveToken.trim() === '') {
+    throw new Error('--token 不能是空字符串（不想配凭证就别传它）');
+  }
+  const serveHost = values.get('--host');
+
+  // 只有 serve 认识这三个开关。会话模式下静默忽略，等于让人以为「已经换了端口」——
+  // 与 --output-format 同一条规矩：不给退场的开关。
+  if (command !== 'serve' && (servePort !== undefined || serveHost !== undefined || serveToken !== undefined)) {
+    throw new Error('--port / --host / --token 只与 `adelie serve` 一起用');
+  }
+
   return {
+    command,
     workspacePath: positional[0] ?? process.cwd(),
     // --resume 不带值也成立，所以它在 values 里存在即为指定了会话 ID
     resume: switches.has('--resume') || values.has('--resume'),
@@ -93,6 +122,9 @@ export function parseArgs(argv: readonly string[]): CliArgs {
     yes: switches.has('--yes'),
     help: switches.has('--help') || switches.has('-h'),
     version: switches.has('--version'),
+    servePort,
+    serveHost,
+    serveToken,
     dev: switches.has('--dev'),
   };
 }

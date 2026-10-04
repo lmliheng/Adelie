@@ -56,6 +56,8 @@ import { formatSessionList, resolveResumeTarget } from 'adelie-core';
 import { deleteSession, renderSessionMarkdown } from 'adelie-core';
 
 import { SLASH_COMMANDS, parseCommand, renderCommandHelp } from './utils/slash-commands.js';
+import { runServe } from './commands/serve.js';
+import { PACKAGE_NAME, PACKAGE_VERSION } from './version.js';
 import { displayWidth } from './utils/terminal-width.js';
 import { InputAborted, readLine } from './utils/input-line.js';
 
@@ -72,22 +74,12 @@ import { parseArgs } from './utils/ParseArgs.js'
 
 
 
-/**
- * 版本号从包自己的 package.json 读：源码跑（tsx src/cli.ts）与构建产物（dist/cli.js）
- * 都在包根下，所以 `../package.json` 两种跑法都指得对。读不到时退化成 0.0.0，
- * 不让 `--version` 变成一个崩溃点。
- */
-const PACKAGE_NAME = 'adelie';
-const PACKAGE_VERSION = (() => {
-  try {
-    const raw = readFileSync(new URL('../package.json', import.meta.url), 'utf-8');
-    return (JSON.parse(raw) as { version?: string }).version ?? '0.0.0';
-  } catch {
-    return '0.0.0';
-  }
-})();
-
 const USAGE = `用法: adelie [工作区路径] [选项]
+      adelie serve [选项]              起 Web / PWA 用的后端，浏览器或手机连上去用
+
+命令:
+  serve               把界面后端跑起来（Ctrl+C 停止）。给手机连要加 --host 0.0.0.0，
+                      它会在绑非回环地址时打印一个带 token 的地址
 
 选项:
   --resume[=会话ID]   接上一个会话（不带 ID 时接本工作区最后活跃的那个）
@@ -107,6 +99,11 @@ const USAGE = `用法: adelie [工作区路径] [选项]
   --dev               逐轮打印送入模型的输入量与缓存命中量
   --version           打印版本号然后退出
   --help              打印本用法
+
+serve 选项:
+  --port N            监听端口，默认 7370（0 = 由系统分配）
+  --host H            监听地址，默认 127.0.0.1；--host 0.0.0.0 才能被手机访问
+  --token S           访问凭证；绑非回环时不给就随机生成一个并打印出来
 
 退出码（仅 --task 模式）：任务完成且验收没有判不通过时为 0，否则为 1；用法错误为 1。
 结构化输出下无人可问审批，需要审批的动作默认按拒绝处理（记录在结果的 approvals 里）；
@@ -598,6 +595,11 @@ async function main(): Promise<void> {
   }
   if (args.version) {
     console.log(`${PACKAGE_NAME} ${PACKAGE_VERSION}`);
+    return;
+  }
+  if (args.command === 'serve') {
+    // serve 不需要 API Key（真正要用 key 的是浏览器里发起的那一轮），所以放在 requireApiKey 之前
+    await runServe(args);
     return;
   }
   if (args.list) {

@@ -12,6 +12,13 @@ export type OutputFormat = 'text' | 'json' | 'stream-json';
 export type ProviderName = 'deepseek' | 'openai';
 
 export interface CliArgs {
+  /**
+   * 顶层命令。
+   *
+   * `chat`（默认）是会话模式：交互式或 `--task` 一次性跑完。
+   * `serve` 起 Web / PWA 用的后端（`adelie serve`），把界面交给浏览器或手机。
+   */
+  command: 'chat' | 'serve';
   workspacePath: string;
   resume: boolean;
   resumeSessionId: string | undefined;
@@ -30,5 +37,11 @@ export interface CliArgs {
   help: boolean;
   /** 只打印版本号然后退出 */
   version: boolean;
+  /** `serve` 专用：监听端口；不传用服务端默认（7370，可用 PORT 覆盖） */
+  servePort: number | undefined;
+  /** `serve` 专用：监听地址；不传用 127.0.0.1（给手机连要显式 `--host 0.0.0.0`） */
+  serveHost: string | undefined;
+  /** `serve` 专用：访问凭证；绑非回环时服务端没给就自己随机生成一个 */
+  serveToken: string | undefined;
   dev:boolean; // 调试模式
 }

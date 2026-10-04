@@ -25,7 +25,7 @@ export function createApp(deps: AppDeps = {}): Hono {
   // 也就没机会在后续请求里带上 token（契约 §0 的「带 token 的 URL」正是为了这个）。
   app.use('/api/*', createAuthMiddleware({
     token: deps.token ?? null,
-    alwaysRequireToken: (deps.token ?? null) !== null,
+    alwaysRequireToken: deps.alwaysRequireToken ?? ((deps.token ?? null) !== null),
   }));
 
   app.get('/api/health', (c) => c.json({

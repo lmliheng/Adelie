@@ -32,12 +32,13 @@ fi
 
 cd "$(dirname "$0")/.."
 
-# 拓扑顺序：库在前，依赖它们的 cli 在后
+# 拓扑顺序：库在前，依赖它们的 server 与 cli 在后
 PACKAGES=(
   packages/core
   packages/providers
   packages/tools
   packages/runtime
+  packages/server
   packages/cli
 )
 

@@ -14,8 +14,8 @@
 
 | 场景 | 规则 |
 | --- | --- |
-| 请求来自回环地址（127.0.0.1 / ::1）且未显式设置 `ADELIE_TOKEN` | 放行，不需要 token |
-| 绑定了非回环地址（`--host 0.0.0.0`）或 `ADELIE_TOKEN` 已设置 | 必须带凭证 |
+| 请求来自回环地址（127.0.0.1 / ::1），且 token 不是用户显式配的 | 放行，不需要凭证 |
+| 远程请求，或 `ADELIE_TOKEN` 已显式设置 | 必须带凭证（回环也一样，用户说了要凭证就要） |
 | 凭证怎么带 | `Authorization: Bearer <token>`，或 `?token=<token>`（EventSource 设不了请求头，手机 PWA 走这条路） |
 | token 从哪来 | `ADELIE_TOKEN` 环境变量；没设时服务器启动时随机生成并打印一次（含带 token 的 URL） |
 

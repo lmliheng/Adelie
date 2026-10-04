@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <!-- viewport-fit=cover：PWA 全屏（standalone）时安全区由 CSS 的 env(safe-area-inset-*) 处理。 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Adelie — 你的工作区智能体</title>
+    <meta
+      name="description"
+      content="Adelie：在你的工作区里读文件、改代码、跑命令的智能体。Web、手机 PWA 与 CLI 共用同一套会话与事件流。"
+    />
+    <!-- 主题色两条并按系统偏好切换；用户手动切主题时由应用改写（见 src/lib/theme.ts） -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+    <!-- 全部用相对路径：构建产物的 base 是 './'，同一份 dist 要能挂在站点根，也要能挂在
+         GitHub Pages 的 /Adelie/ 子路径下（绝对路径在子路径下会 404）。 -->
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="adelie-glyph.svg" type="image/svg+xml" />
+    <link rel="icon" href="icons/icon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Adelie" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

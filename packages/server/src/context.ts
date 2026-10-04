@@ -45,6 +45,13 @@ export interface AppDeps {
   host?: string;
   /** 显式配置的 token；给了就表示「所有请求都要凭证」 */
   token?: string | null;
+  /**
+   * 是否连回环请求也要凭证。
+   *
+   * 省略时按「token 非空即要求」——那是直接 `createApp` 的场景（测试、嵌入式）。
+   * `startServer` 会显式传：绑非回环时**自动生成**的 token 只挡远程，本机仍免凭证。
+   */
+  alwaysRequireToken?: boolean;
   /** Web 构建产物目录；显式覆盖 ADELIE_WEB_DIST */
   webDist?: string | null;
   provider?: ProviderName;

@@ -107,6 +107,10 @@ export function startServer(options: StartServerOptions = {}): Promise<StartedSe
       ...appDeps,
       host,
       token,
+      // 「所有请求都要凭证」只在 token 是**用户显式配的**时成立。绑 0.0.0.0 时自动生成
+      // 的那个只挡远程：本机浏览器打开打印出来的那条带 token 的地址当然能用，但直接用
+      // http://127.0.0.1:端口 也该能用 —— 回环请求本来就是可信的（契约 §0 第一行）。
+      alwaysRequireToken: configured !== null && configured !== '',
       webDist,
       onShutdown: async () => {
         await close();

@@ -1,0 +1,13 @@
+{
+  // 只产出类型声明。JS 由 tsup 打包（dts 走不了：tsup 内置的 rollup-plugin-dts
+  // 是针对 TypeScript 5.x 编的，本仓库用的是 7.x，运行时会崩）。分两步的代价是
+  // 构建脚本多一条命令，好处是声明仍由项目自己的 tsc 生成。
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src/**/*"]
+}
