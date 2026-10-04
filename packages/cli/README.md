@@ -1,0 +1,13 @@
+
+全局安装使用：
+```bash
+npm install -g adelie
+```
+在C:\Users\{用户名}\.adelie下加.env文件
+```.env
+DEEPSEEK_API_KEY=xxx
+```
+运行
+```bash
+adelie
+```

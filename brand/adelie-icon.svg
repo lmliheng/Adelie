@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Adelie">
+  <title>Adelie</title>
+  <desc>Adelie mark: an Adelie penguin — the white ring around each eye is the species' signature — standing inside the blue orbit that PenguinHarness draws around its agents.</desc>
+  <defs>
+    <clipPath id="plate">
+      <rect x="0" y="0" width="1024" height="1024" rx="246" />
+    </clipPath>
+    <linearGradient id="body" x1="318" y1="225" x2="706" y2="840" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1a2a49" />
+      <stop offset=".5" stop-color="#0e1c37" />
+      <stop offset="1" stop-color="#070f1e" />
+    </linearGradient>
+    <linearGradient id="orbit" x1="212" y1="830" x2="812" y2="230" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0b2963" />
+      <stop offset=".45" stop-color="#054ac8" />
+      <stop offset="1" stop-color="#015dfc" />
+    </linearGradient>
+    <linearGradient id="bill" x1="474" y1="415" x2="550" y2="534" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#054ac8" />
+      <stop offset="1" stop-color="#015dfc" />
+    </linearGradient>
+  </defs>
+
+  <g clip-path="url(#plate)">
+    <!-- plate: the white rounded square PenguinHarness draws its penguin on -->
+    <rect width="1024" height="1024" fill="#fefefe" />
+
+    <!-- orbit: the harness's blue sweep; the penguin stands in it, so only its two tails show -->
+    <circle cx="512" cy="530" r="300" fill="none" stroke="url(#orbit)" stroke-width="30" />
+
+    <!-- the Adelie: bowling-pin silhouette, black back and head, white belly -->
+    <path
+      d="M 512 225 C 596 225 652 296 662 388 C 684 470 706 560 706 660 C 706 780 664 840 512 840
+         C 360 840 318 780 318 660 C 318 560 340 470 362 388 C 372 296 428 225 512 225 Z"
+      fill="url(#body)" />
+    <ellipse cx="512" cy="705" rx="124" ry="130" fill="#fefefe" />
+
+    <!-- the species' signature: the white ring around each eye -->
+    <circle cx="448" cy="356" r="46" fill="none" stroke="#fefefe" stroke-width="24" />
+    <circle cx="576" cy="356" r="46" fill="none" stroke="#fefefe" stroke-width="24" />
+
+    <!-- bill -->
+    <path d="M 512 415 C 542 440 552 470 549 492 C 546 514 532 528 512 534 C 492 528 478 514 475 492
+             C 472 470 482 440 512 415 Z" fill="url(#bill)" />
+  </g>
+</svg>

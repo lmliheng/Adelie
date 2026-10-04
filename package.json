@@ -1,0 +1,29 @@
+{
+  "name": "adelie",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Adelie — 一个智能体应用：CLI、Windows 桌面、Web 与可安装 PWA，同一套引擎。",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build",
+    "dev": "concurrently -n server,web -c cyan,magenta \"pnpm dev:server\" \"pnpm dev:web\"",
+    "dev:server": "pnpm --filter adelie-server dev",
+    "dev:web": "pnpm --filter adelie-web dev",
+    "adelie": "tsx packages/cli/src/cli.ts",
+    "serve": "tsx packages/server/src/main.ts",
+    "desktop": "pnpm --filter adelie-desktop start",
+    "icons": "node brand/render-icons.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "concurrently": "^10.0.4",
+    "tsx": "catalog:",
+    "typescript": "catalog:"
+  },
+  "packageManager": "pnpm@12.5.1"
+}
