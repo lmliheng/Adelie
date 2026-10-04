@@ -6,7 +6,7 @@
 #   - 顺序要明确（core → providers/tools → runtime → cli）。依赖解析不到版本时，
 #     递归发布会在**发了一半之后**才报错，那时 npm 上已经留下几个半成品；
 #   - 已经发过的版本要跳过而不是报错，「重跑一次工作流」应当总是安全的；
-#   - 私有包（server / web / desktop）不能顺手带出去。
+#   - 私有包（web / desktop）不能顺手带出去：它们不在下面的 PACKAGES 里。
 #
 # 用法：
 #   bash scripts/publish-packages.sh --registry=https://registry.npmjs.org [--dry-run]
