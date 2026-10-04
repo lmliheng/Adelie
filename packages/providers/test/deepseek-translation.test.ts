@@ -170,8 +170,9 @@ describe('DeepSeekProvider 边界翻译', () => {
         await provider.decide(userMessage, [readFileTool]);
 
         const names = lastRequestBody().tools.map((t: any) => t.function.name);
-        expect(names).toContain('request_replan');
+        // 只剩 batch：request_replan 随计划状态机一起删了（计划现在是模型自己维护的文件）
         expect(names).toContain('batch');
+        expect(names).not.toContain('request_replan');
     });
 
     it('未传入工具时请求体不包含 tools 字段', async () => {
@@ -269,77 +270,6 @@ describe('DeepSeekProvider 边界翻译', () => {
 
         expect(decision.type).toBe('Final');
         expect(decision.type === 'Final' && decision.answer).toContain('package.json');
-    });
-
-    it('重新规划入口的调用翻译为重新规划决策', async () => {
-        const newPlan = JSON.stringify({
-            reason: '文件不存在，需要先搜索',
-            newPlan: [
-                {
-                    id: '1',
-                    description: '搜索目标文件',
-                    status: 'pending',
-                    dependsOn: [],
-                    completionCriteria: '找到文件路径',
-                },
-            ],
-        });
-        fetchMock.mockResolvedValue(
-            deepSeekResponse([toolCallChoice([{ id: 'call_replan', name: 'request_replan', args: newPlan }])]),
-        );
-
-        const decision = (await provider.decide(userMessage, [readFileTool])).decision;
-
-        expect(decision.type).toBe('Replan');
-        if (decision.type === 'Replan') {
-            expect(decision.reason).toContain('搜索');
-            expect(decision.newPlan).toHaveLength(1);
-        }
-    });
-
-    it('重新规划的交付物声明一并收敛（裸字符串写法也认）', async () => {
-        const newPlan = JSON.stringify({
-            reason: '任务要产出报告文件',
-            newPlan: [{ id: '1', description: '产出报告', completionCriteria: '文件已写出' }],
-            // 模型的输出不可信：混进空路径、重复项与裸字符串，只应留下能核对的那些
-            deliverables: [
-                { path: 'results/weather.md', contains: '北京' },
-                { path: 'results/weather.md', contains: '重复项应被去掉' },
-                { path: '' },
-                'notes.md',
-            ],
-        });
-        fetchMock.mockResolvedValue(
-            deepSeekResponse([toolCallChoice([{ id: 'call_replan', name: 'request_replan', args: newPlan }])]),
-        );
-
-        const decision = (await provider.decide(userMessage, [readFileTool])).decision;
-
-        expect(decision.type).toBe('Replan');
-        if (decision.type === 'Replan') {
-            // 重复的路径只留第一次出现的那条（后写的 contains 不该覆盖前面的）
-            expect(decision.deliverables).toEqual([
-                { path: 'results/weather.md', contains: '北京' },
-                { path: 'notes.md' },
-            ]);
-        }
-    });
-
-    it('没有交付物声明时不产出该字段（空数组与没声明同义）', async () => {
-        const newPlan = JSON.stringify({
-            reason: '常规重规划',
-            newPlan: [{ id: '1', description: '继续', completionCriteria: '完成' }],
-        });
-        fetchMock.mockResolvedValue(
-            deepSeekResponse([toolCallChoice([{ id: 'call_replan', name: 'request_replan', args: newPlan }])]),
-        );
-
-        const decision = (await provider.decide(userMessage, [readFileTool])).decision;
-
-        expect(decision.type).toBe('Replan');
-        if (decision.type === 'Replan') {
-            expect(decision.deliverables).toBeUndefined();
-        }
     });
 
     it('批量入口的调用翻译为批量动作决策', async () => {

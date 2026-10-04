@@ -18,10 +18,8 @@ import type {
     ObservationPayload,
     StoppedPayload,
     TaskStartedPayload,
-    VerificationPayload,
-    PlanUpdatedPayload,
 } from './events.js';
-import type { Observation, ModelDecision, PlanState, StopReason } from '../types/ReAct.js';
+import type { Observation, ModelDecision, StopReason } from '../types/ReAct.js';
 
 /** 单条观察导出时的正文上限：导出是给人读的，不是搬运动辄几 MB 的原始输出 */
 const MAX_OBSERVATION_CHARS = 2000;
@@ -110,9 +108,6 @@ function renderEventBody(event: StoredSessionEvent, maxObservationChars: number)
             const started = payload as unknown as TaskStartedPayload;
             return [`任务：${started.taskDescription}`];
         }
-        case 'plan_updated': {
-            return renderPlan((payload as unknown as PlanUpdatedPayload).plan);
-        }
         case 'decision': {
             const decisionPayload = payload as unknown as DecisionPayload;
             return renderDecision(decisionPayload.decision);
@@ -132,17 +127,6 @@ function renderEventBody(event: StoredSessionEvent, maxObservationChars: number)
         case 'stopped': {
             return renderStopped(payload as unknown as StoppedPayload);
         }
-        case 'verification': {
-            const { verification } = payload as unknown as VerificationPayload;
-            return [
-                `验收：${verification.passed ? '通过' : '不通过'}`,
-                `判据：${verification.verificationStatus}`,
-                '',
-                '```text',
-                clip(verification.details, 1500),
-                '```',
-            ];
-        }
         default: {
             // 未知类型：解析阶段特意放行（见 events.ts 的说明），导出时也不能当它不存在 ——
             // 「这份日志来自另一个版本」正是阅读时要看出来的事。给一段 JSON 兜底。
@@ -161,18 +145,6 @@ function renderStopped(stopped: StoppedPayload): string[] {
     ];
 }
 
-function renderPlan(plan: PlanState | undefined): string[] {
-    if (!plan) return ['（计划缺失）'];
-
-    const lines = [`计划 v${plan.version}（目标：${plan.originalGoal}）`, ''];
-    plan.steps.forEach((step, index) => {
-        const mark = step.status === 'completed' ? 'x' : ' ';
-        lines.push(`- [${mark}] ${index + 1}. ${step.description}`);
-        lines.push(`      完成判据：${step.completionCriteria}`);
-    });
-    return lines;
-}
-
 function renderDecision(decision: ModelDecision | undefined): string[] {
     if (!decision) return ['（决策缺失）'];
 
@@ -187,13 +159,6 @@ function renderDecision(decision: ModelDecision | undefined): string[] {
             lines.push(`批量动作 ${decision.actions.length} 个：`);
             decision.actions.forEach((action, index) => {
                 lines.push(`  ${index + 1}. ${action.tool}(${safeStringify(action.params ?? {})})`);
-            });
-            break;
-        }
-        case 'Replan': {
-            lines.push(`重新规划：${decision.reason}`);
-            decision.newPlan.forEach((step, index) => {
-                lines.push(`  ${index + 1}. ${step.description}`);
             });
             break;
         }

@@ -6,7 +6,7 @@
 
 import { afterEach, describe, expect, it } from 'vitest';
 import { AgentRuntime } from '../src/agent.runtime.js';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type {
     AgentProvider,
     AgentProviderConfig,
@@ -102,7 +102,7 @@ describe('上下文折叠', () => {
     }
 
     it('没超预算时不折：工具结果原样送进去', async () => {
-        const provider = new RecordingProvider([initialPlanDecision(), ...steps(4), { type: 'Final', answer: '完成' }]);
+        const provider = new RecordingProvider([...steps(4), { type: 'Final', answer: '完成' }]);
         const workspaceDir = createTestWorkspace({ 'src/a.ts': 'export const a = 1;\n' });
         workspaces.push(workspaceDir);
 
@@ -122,7 +122,7 @@ describe('上下文折叠', () => {
 
     it('超预算后较早的观察变成摘要，最近的仍是原文', async () => {
         const events: string[] = [];
-        const provider = new RecordingProvider([initialPlanDecision(), ...steps(10), { type: 'Final', answer: '完成' }]);
+        const provider = new RecordingProvider([...steps(10), { type: 'Final', answer: '完成' }]);
         const workspaceDir = createTestWorkspace({ 'src/a.ts': 'export const a = 1;\n' });
         workspaces.push(workspaceDir);
         const runtime = new AgentRuntime(provider, [new LoudTool(LONG_PAYLOAD)], {
@@ -151,7 +151,7 @@ describe('上下文折叠', () => {
     });
 
     it('折叠不破坏工具调用与结果的配对', async () => {
-        const provider = new RecordingProvider([initialPlanDecision(), ...steps(10), { type: 'Final', answer: '完成' }]);
+        const provider = new RecordingProvider([...steps(10), { type: 'Final', answer: '完成' }]);
         const workspaceDir = createTestWorkspace({ 'src/a.ts': 'export const a = 1;\n' });
         workspaces.push(workspaceDir);
 
@@ -178,13 +178,12 @@ describe('上下文折叠', () => {
     });
 
     it('历史 run 超出预算时整段折成一行摘要', async () => {
-        const provider = new RecordingProvider([initialPlanDecision(), { type: 'Final', answer: '完成' }]);
+        const provider = new RecordingProvider([{ type: 'Final', answer: '完成' }]);
         const workspaceDir = createTestWorkspace({ 'src/a.ts': 'export const a = 1;\n' });
         workspaces.push(workspaceDir);
 
         const priorRun = {
             taskDescription: `上一轮的长任务${'x'.repeat(6000)}`,
-            plan: { originalGoal: '上一轮', steps: [], currentStepIndex: 0, version: 1 },
             decisions: [{ type: 'Action' as const, tool: 'loud_tool', params: { n: 1 }, thought: '做' }],
             observations: [{
                 action: { type: 'Action' as const, tool: 'loud_tool', params: { n: 1 } },
@@ -200,8 +199,7 @@ describe('上下文折叠', () => {
             priorRuns: [priorRun, priorRun],
         } as never).run('接着聊');
 
-        // 首轮请求是「只做规划」的那一次，它不带历史（见 runPlanning）；
-        // 带历史的是之后的那次，取最后一次请求来看。
+        // 本轮目标与历史都在这（唯一的）一次请求里。
         const last = provider.requests[provider.requests.length - 1]!;
         const foldedRuns = last.filter(
             message => message.role === 'user' && message.content.includes('这段历史已折叠'),

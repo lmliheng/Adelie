@@ -33,29 +33,12 @@ afterEach(() => {
   rmSync(workspace, { recursive: true, force: true });
 });
 
-/** 造一个有内容的会话：规划 → 一次调用 → 收尾 */
+/** 造一个有内容的会话：一次调用 → 收尾 */
 function seedSession(sessionId: string, now: () => number): SessionStore {
   const store = new SessionStore(workspace, sessionId, { root, now });
   store.append({
     type: 'task_started',
     payload: { taskId: 't1', taskDescription: '把 README 补一段', startTime: now() },
-  });
-  store.append({
-    type: 'plan_updated',
-    payload: {
-      plan: {
-        originalGoal: '把 README 补一段',
-        version: 1,
-        currentStepIndex: 0,
-        steps: [{
-          id: 's1',
-          description: '读 README',
-          status: 'completed',
-          dependsOn: [],
-          completionCriteria: '看到文件内容',
-        }],
-      },
-    },
   });
   store.append({
     type: 'decision',
@@ -97,17 +80,16 @@ function seedSession(sessionId: string, now: () => number): SessionStore {
 }
 
 describe('会话导出', () => {
-  it('导出的是事件流本身：任务、计划、决策、观察、停止原因都在', () => {
+  it('导出的是事件流本身：任务、决策、观察、停止原因都在', () => {
     const store = seedSession(SESSION_A, () => 1_700_000_000_000);
     const markdown = renderSessionMarkdown(store.readEvents());
 
     expect(markdown).toContain('# 会话记录');
     expect(markdown).toContain('把 README 补一段');
-    expect(markdown).toContain('- [x] 1. 读 README');
     expect(markdown).toContain('read_file');
     expect(markdown).toContain('停止：任务完成');
     // 事件顺序就是因果顺序，不能被重排
-    expect(markdown.indexOf('### #1 task_started')).toBeLessThan(markdown.indexOf('### #5 stopped'));
+    expect(markdown.indexOf('### #1 task_started')).toBeLessThan(markdown.indexOf('### #4 stopped'));
   });
 
   it('写出「送出的量」而不只是原始产出 —— 这是事后归因 token 的唯一线索', () => {

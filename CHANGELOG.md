@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## 未发布 — 计划与验收不再由运行时代管（改学 penguin）
+
+用户看过界面后问：为什么「初始计划」卡在那儿不动（每一步都是 ⏳），penguin 的计划是怎么做的；
+验收机制 penguin 也没体现，不需要就删掉。查证与改动：
+
+**问题在哪。** 运行时原来有一套计划状态机：进入循环前先跑一个规划轮，要求模型用
+`request_replan` 提交步骤列表；步骤状态（pending / completed / …）**由模型自己维护**。
+但全仓库除了重放时的 `filter`，**没有任何地方写过 `completed`** —— 短任务不会调那个入口，
+于是任务明明 `task_completed`，界面上的计划还停在 `0/N 步`。这不是显示 bug，是设计里缺一条闭环：
+状态机要求模型维护状态，而运行时没有任何机制保证它维护。
+
+**penguin 怎么做。** 全仓没有 `plan_updated` 事件、没有 `PlanState`、没有 `request_replan` 工具；
+计划只是提示词里的一句话（`packages/core/src/state/default-config.ts`）：长任务先把计划写进
+Session scratchpad 的 `PLAN.md`，每完成一步就更新它，**验证过再勾掉**。验收同理 —— 守则里写的是
+「用项目自己的命令验证」，没有运行时验收子系统。
+
+**于是删掉两套自造机制：**
+
+- 计划：规划轮、`request_replan` 工具、`PlanStep` / `PlanState`、`plan_updated` 事件、版本号与
+  依赖图、兜底计划、Web 的 `PlanCard` 全部删除。改为 `AgentRuntimeConfig.scratchpadDir`
+  （新增）+ 提示词里给出计划文件的**绝对路径**：server 传会话目录（`store.dir`），CLI 传
+  `session.dir`；该目录同时进 `allowedPaths`，模型才写得了。计划文件刻意放在工作区**之外** ——
+  它是过程不是交付物，不该脏了用户的 `git status`。
+- 验收：`verifyTask()`、`TaskVerificationResult`、交付物断言（`deliverables.ts`）、`verification`
+  事件、`run_finished.verification`、Web 的 `VerificationCard`、CLI 的验收结论渲染全部删除。
+  一轮「成功」现在只有一条判据：`stopReason.type === 'task_completed'`。
+- 「自动重规划」改名「回灌失败上下文」（`shouldNudgeAfterFailures`）：行为不变，文案改成
+  「换一种做法再试……换过三种不同的做法还是同一个错就停下来」，不再提规划。
+
+**顺带修掉一个被规划轮掩盖的顺序 bug。** 契约要求 `run_started` 是流里的第一帧；规划轮的决策是
+`Replan`（不产正文），所以第一帧一直是对的。规划轮一删，第一轮就可能同步流出 `delta` ——
+`run_started` 还没推出去（要等 `run()` 把控制权交回调用方）。现在 `run_started` 之前的帧先排队
+（`packages/server/src/turn.ts` 的 `pushOrQueue`），出队后顺序不变。
+
+**老会话仍然读得出来。** 重放把认不得的事件类型跳过（不计成坏行），界面把它渲染成一行
+「未识别的事件类型：plan_updated（这份历史来自另一个版本）」—— 不静默丢，也不崩。
+
+**验收**：全仓 `typecheck` / `test` / `build` 三绿，**762 通过 / 7 跳过**（删掉的是专门测这两套
+机制的用例：runtime 的 initial-plan / replan / verification / deliverables、core 的 deliverables、
+CLI 的 8 条验收用例、Web 的 3 条计划与验收用例）；`node scripts/audit.mjs --with-e2e` 全绿
+（端到端真浏览器跑完一条任务：`runs=1`、事件 6 条、`stopReason: task_completed`、console 无 error）；
+另外在真部署（4000）上核对了旧会话的渲染与新导航，无 console 报错。
+
 ## 未发布 — 桌面壳对齐（端口记忆 / 托盘 / 日志 / 自带 CLI）
 
 对照 penguin 桌面端的功能清单（`docs/research/penguin-desktop-features.md`，71 条）补齐第一批，

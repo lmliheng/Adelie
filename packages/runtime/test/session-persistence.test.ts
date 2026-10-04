@@ -16,7 +16,7 @@ import { ReadFileTool } from 'adelie-tools';
 import { SessionStore } from 'adelie-core';
 import { resolveResumeTarget } from 'adelie-core';
 
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type { SessionEventInput } from 'adelie-core';
 import type {
   AgentProvider,
@@ -37,8 +37,8 @@ class ScriptedProvider implements AgentProvider {
   private index = 0;
 
   constructor(script: ModelDecision[]) {
-    // 脚本第一位留给规划轮
-    this.script = [initialPlanDecision(), ...script];
+    // 脚本按进入循环后的轮次顺序消费
+    this.script = script;
   }
 
   updateConfig(): void {
@@ -53,9 +53,9 @@ class ScriptedProvider implements AgentProvider {
   }
 }
 
-/** 第一次进入 ReAct 循环时真正送出去的消息（第 0 次是规划轮） */
+/** 第一次进入 ReAct 循环时真正送出去的消息（第 0 次请求） */
 function firstLoopMessages(provider: ScriptedProvider): ChatMessage[] {
-  const call = provider.seen[1];
+  const call = provider.seen[0];
   if (!call) throw new Error('运行没有进入 ReAct 循环');
   return call.messages;
 }
@@ -86,7 +86,7 @@ afterEach(() => {
 });
 
 describe('事件在状态迁移点上被交出', () => {
-  it('按 task_started → plan → 决策/观察 → stopped → verification 的顺序产出', async () => {
+  it('按 task_started → 决策/观察 → stopped 的顺序产出', async () => {
     const provider = new ScriptedProvider([
       { type: 'Action', tool: 'read_file', params: { path: 'a.txt' }, thought: '读文件' },
       { type: 'Final', answer: '完成' },
@@ -101,12 +101,10 @@ describe('事件在状态迁移点上被交出', () => {
 
     expect(events.map((event) => event.type)).toEqual([
       'task_started',
-      'plan_updated',
       'decision',
       'observation',
       'decision',
       'stopped',
-      'verification',
     ]);
   });
 

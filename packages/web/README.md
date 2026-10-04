@@ -134,9 +134,9 @@ node packages/web/scripts/render-pwa-icons.mjs
 
 - `GET /api/health` / `/api/config` / `/api/tools` / `/api/sessions`（含一条历史会话）先回上；
 - `POST /api/sessions/:id/messages` 按 `event: delta\ndata: {...}\n\n` 分帧，依次发
-  `run_started` → `delta(reasoning)` → `event(plan_updated/decision/observation)` →
+  `run_started` → `delta(reasoning)` → `event(decision/observation)` →
   `approval_request`（等到 `POST /api/sessions/:id/approvals` 再往下走）→ `delta(content)` →
-  `event(verification/stopped)` → `run_finished` → `done`；
+  `event(stopped)` → `run_finished` → `done`；
 - `GET /api/sessions/:id` 回同一批事件（`{v,seq,ts,type,payload}`），这样刷新页面能验证历史回放。
 
 把 `ADELIE_API_PROXY` 指到它，就能把流式解析、时间线、审批、断流提示全部走一遍。

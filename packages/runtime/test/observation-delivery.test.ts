@@ -8,7 +8,7 @@
 //   2. 每条记录下来的观察都得有这份度量，包括「没能执行」的那些失败观察。
 import { describe, it, expect, afterEach } from 'vitest';
 import { AgentRuntime } from '../src/agent.runtime.js';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type {
     AgentProvider,
     AgentProviderConfig,
@@ -92,7 +92,6 @@ describe('观察的送出量度量', () => {
         const { state, sent } = await runOnce(
             [new SizedTool(200_000)],
             [
-                initialPlanDecision(),
                 { type: 'Action', tool: 'sized_tool', params: { n: 1 }, thought: '做' },
             ],
         );
@@ -115,7 +114,6 @@ describe('观察的送出量度量', () => {
         const { state } = await runOnce(
             [new SizedTool(10)],
             [
-                initialPlanDecision(),
                 { type: 'Action', tool: 'sized_tool', params: { n: 1 }, thought: '做' },
             ],
         );
@@ -130,7 +128,6 @@ describe('观察的送出量度量', () => {
         const { state } = await runOnce(
             [new SizedTool(10)],
             [
-                initialPlanDecision(),
                 // 不存在的工具：走 pushFailureObservation 那条路
                 { type: 'Action', tool: 'no_such_tool', params: {}, thought: '做' },
             ],

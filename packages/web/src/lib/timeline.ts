@@ -15,7 +15,6 @@
 import type { SessionEventLike } from '../api/types'
 
 export type ToolStatus = 'pending' | 'ok' | 'failed'
-export type StepStatus = 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'
 
 export interface ToolEntry {
   kind: 'tool'
@@ -40,43 +39,6 @@ export interface ToolEntry {
   /** 这一批动作里有几个（>1 表示模型一轮下了多个工具调用） */
   batchSize: number
   thought: string | null
-}
-
-export interface PlanStepView {
-  id: string
-  description: string
-  status: StepStatus
-}
-
-export interface PlanEntry {
-  kind: 'plan'
-  id: string
-  at: number
-  version: number
-  originalGoal: string
-  steps: PlanStepView[]
-  currentStepIndex: number
-  /** 后面还有更新的计划版本 —— 旧版本默认折叠 */
-  superseded: boolean
-  /** 本次重规划的原因（只有 replan 事件有） */
-  reason: string | null
-  /** 这次任务声明的交付物路径 */
-  deliverables: string[]
-}
-
-export interface VerificationEntry {
-  kind: 'verification'
-  id: string
-  at: number
-  passed: boolean
-  verificationStatus: string
-  tests: { passed: number; failed: number; output: string }
-  typeCheckPassed: boolean | null
-  typeCheckOutput: string
-  diffSummary: string
-  details: string
-  deliverables: Array<{ path: string; ok: boolean; detail: string }>
-  layers: { regression: { executed: boolean; passed: boolean }; deliverables: { declared: number; passed: boolean } } | null
 }
 
 export interface ApprovalEntry {
@@ -111,13 +73,7 @@ export interface UnknownEntry {
   type: string
 }
 
-export type TimelineEntry =
-  | ToolEntry
-  | PlanEntry
-  | VerificationEntry
-  | ApprovalEntry
-  | FoldedEntry
-  | UnknownEntry
+export type TimelineEntry = ToolEntry | ApprovalEntry | FoldedEntry | UnknownEntry
 
 export interface RunSummary {
   usage: { promptTokens: number; completionTokens: number; totalTokens: number; cacheHitTokens: number | null } | null
@@ -130,15 +86,13 @@ export interface RunSummary {
 
 export interface TimelineView {
   entries: TimelineEntry[]
-  /** 最新一版计划（用来在会话顶部/轮次头部显示当前进度） */
-  plan: PlanEntry | null
   /** run 汇总（stopped 事件），没有就是 null */
   summary: RunSummary | null
   /** 这一轮的最终回答（Final 决策），历史回放时它是正文来源 */
   answer: string | null
 }
 
-const EMPTY_VIEW: TimelineView = { entries: [], plan: null, summary: null, answer: null }
+const EMPTY_VIEW: TimelineView = { entries: [], summary: null, answer: null }
 
 /** 工具名 → 中文标签。仅用于显示，认不出就显示原名 */
 const TOOL_LABELS: Record<string, string> = {
@@ -160,23 +114,10 @@ const TOOL_LABELS: Record<string, string> = {
   tool_call: '调用工具',
 }
 
-const STEP_MARKS: Record<string, string> = {
-  pending: '○',
-  in_progress: '◐',
-  completed: '✓',
-  failed: '✗',
-  skipped: '–',
-}
-
-export function stepMark(status: string): string {
-  return STEP_MARKS[status] ?? '○'
-}
-
 export function mapEventsToTimeline(events: readonly SessionEventLike[]): TimelineView {
   if (events.length === 0) return EMPTY_VIEW
 
   const entries: TimelineEntry[] = []
-  const plans: PlanEntry[] = []
   // 先配对：某条决策吃掉了哪些观察。被吃掉的观察不再单独成卡，
   // 否则一次工具调用会在时间线上出现两遍（「调用」一次、「结果」一次）。
   const pairs = pairObservations(events)
@@ -200,15 +141,9 @@ export function mapEventsToTimeline(events: readonly SessionEventLike[]): Timeli
         if (text !== null && text !== '') answer = text
         continue
       }
-      if (type === 'Replan') {
-        const newPlan = asRecord(decision)
-        const planEntry = buildPlanEntry(id, at, newPlan, asString(newPlan?.['reason']), false)
-        if (planEntry !== null) {
-          plans.push(planEntry)
-          entries.push(planEntry)
-        }
-        continue
-      }
+      // 计划不再是运行时状态：它是模型自己用普通文件工具维护的一个文件
+      // （会话草稿目录里的 PLAN.md），所以在时间线上就是普通的写/改文件工具卡，
+      // 这里不再有 Replan 决策一类需要特判的形状。
       const actions = collectActions(decision)
       if (actions.length === 0) continue
       const observations = pairs.byDecision.get(index) ?? []
@@ -239,22 +174,6 @@ export function mapEventsToTimeline(events: readonly SessionEventLike[]): Timeli
           observation === null ? null : { result: observation['result'], delivery: observation['delivery'] },
         ),
       )
-      continue
-    }
-
-    if (event.type === 'plan_updated') {
-      const plan = asRecord(payload?.['plan'])
-      const planEntry = buildPlanEntry(id, at, plan, null, false)
-      if (planEntry !== null) {
-        plans.push(planEntry)
-        entries.push(planEntry)
-      }
-      continue
-    }
-
-    if (event.type === 'verification') {
-      const verification = asRecord(payload?.['verification'])
-      entries.push(buildVerificationEntry(id, at, verification))
       continue
     }
 
@@ -299,13 +218,9 @@ export function mapEventsToTimeline(events: readonly SessionEventLike[]): Timeli
     entries.push({ kind: 'unknown', id, at, type: event.type })
   }
 
-  // 计划版本：只有最后一版是「当前」，前面的标成 superseded 以便默认折叠
-  const latestPlan = (plans.length > 0 ? plans[plans.length - 1] : null) ?? null
-  for (const plan of plans) {
-    if (latestPlan !== null && plan !== latestPlan) plan.superseded = true
-  }
-
-  return { entries, plan: latestPlan, summary, answer }
+  // 计划与验收都不是运行时事件：前者是模型自己维护的文件（普通工具卡），
+  // 后者是模型自己跑的项目命令（普通工具卡）。时间线上不再有它们的专门条目。
+  return { entries, summary, answer }
 }
 
 interface RawAction {
@@ -418,100 +333,12 @@ function pairObservations(events: readonly SessionEventLike[]): {
         consumed.add(cursor)
         continue
       }
-      if (candidate.type === 'decision' || candidate.type === 'plan_updated' || candidate.type === 'stopped') break
+      if (candidate.type === 'decision' || candidate.type === 'stopped') break
     }
     if (observations.length > 0) byDecision.set(index, observations)
   }
 
   return { byDecision, consumed }
-}
-
-function buildPlanEntry(
-  id: string,
-  at: number,
-  plan: Record<string, unknown> | null,
-  reason: string | null,
-  superseded: boolean,
-): PlanEntry | null {
-  if (plan === null) return null
-  const rawSteps = plan['steps']
-  const steps: PlanStepView[] = Array.isArray(rawSteps)
-    ? rawSteps.map((step, index) => {
-        const record = asRecord(step) ?? {}
-        return {
-          id: asString(record['id']) ?? `s${index}`,
-          description: asString(record['description']) ?? '',
-          status: normalizeStepStatus(asString(record['status'])),
-        }
-      })
-    : []
-  const deliverables = Array.isArray(plan['deliverables'])
-    ? plan['deliverables']
-        .map((item) => asString(asRecord(item)?.['path']))
-        .filter((path): path is string => path !== null)
-    : []
-
-  return {
-    kind: 'plan',
-    id,
-    at,
-    version: asNumber(plan['version']) ?? 1,
-    originalGoal: asString(plan['originalGoal']) ?? '',
-    steps,
-    currentStepIndex: asNumber(plan['currentStepIndex']) ?? 0,
-    superseded,
-    reason: reason === null || reason === '' ? null : reason,
-    deliverables,
-  }
-}
-
-function buildVerificationEntry(id: string, at: number, verification: Record<string, unknown> | null): VerificationEntry {
-  const tests = asRecord(verification?.['testResults'])
-  const deliverables = Array.isArray(verification?.['deliverables'])
-    ? verification['deliverables'].map((item) => {
-        const record = asRecord(item) ?? {}
-        return {
-          path: asString(record['path']) ?? '',
-          ok: record['ok'] === true,
-          detail: asString(record['detail']) ?? '',
-        }
-      })
-    : []
-  const layers = asRecord(verification?.['layers'])
-  const regression = asRecord(layers?.['regression'])
-  const deliverableLayer = asRecord(layers?.['deliverables'])
-  const typeCheckPassedRaw = verification?.['typeCheckPassed']
-
-  return {
-    kind: 'verification',
-    id,
-    at,
-    passed: verification?.['passed'] === true,
-    verificationStatus: asString(verification?.['verificationStatus']) ?? 'unknown',
-    tests: {
-      passed: asNumber(tests?.['passed']) ?? 0,
-      failed: asNumber(tests?.['failed']) ?? 0,
-      output: asString(tests?.['output']) ?? '',
-    },
-    typeCheckPassed: typeof typeCheckPassedRaw === 'boolean' ? typeCheckPassedRaw : null,
-    typeCheckOutput: asString(verification?.['typeCheckOutput']) ?? '',
-    diffSummary: asString(verification?.['diffSummary']) ?? '',
-    details: asString(verification?.['details']) ?? '',
-    deliverables,
-    layers:
-      layers === null
-        ? null
-        : {
-            regression: {
-              executed: regression?.['executed'] === true,
-              passed: regression?.['passed'] === true,
-            },
-            deliverables: {
-              declared: asNumber(deliverableLayer?.['declared']) ?? 0,
-              passed: deliverableLayer?.['passed'] === true,
-            },
-          },
-  }
 }
 
 function buildSummary(payload: Record<string, unknown> | null): RunSummary {
@@ -652,11 +479,6 @@ function buildResultDetail(data: unknown, errorText: string | null): string | nu
   if (data === null || data === undefined) return null
   if (typeof data === 'string') return data.length > 20_000 ? `${data.slice(0, 20_000)}\n… （已截断显示）` : data
   return safeJson(data)
-}
-
-function normalizeStepStatus(raw: string | null): StepStatus {
-  if (raw === 'in_progress' || raw === 'completed' || raw === 'failed' || raw === 'skipped') return raw
-  return 'pending'
 }
 
 /** 中间省略的截断：前缀 + 尾缀，比只留前缀更容易判断内容 */

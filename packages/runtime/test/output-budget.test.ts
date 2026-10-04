@@ -19,7 +19,7 @@ import {
 } from 'adelie-core';
 import type { OutputBudget } from 'adelie-core';
 import { AgentRuntime } from '../src/agent.runtime.js';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type { Tool, ToolParams, ToolResult, ValidationResult } from 'adelie-core';
 import type { AgentRuntimeConfig } from 'adelie-core';
 import type { AgentProvider, AgentProviderConfig, ModelResponse } from 'adelie-core';
@@ -76,15 +76,12 @@ async function captureToolResultContent(
         async decide(incoming: ChatMessage[]): Promise<ModelResponse> {
             turn += 1;
 
-            // 第一轮是进入循环前的规划轮，这里只取计划
+            // 第一轮发出动作，此时还没有任何历史
             if (turn === 1) {
-                return { decision: initialPlanDecision(), rawContent: '' };
-            }
-            if (turn === 2) {
                 return { decision: { type: 'Action', tool: tool.name, params: {}, thought: '产生输出' }, rawContent: '' };
             }
 
-            // 第三轮才带上了执行结果
+            // 第二轮才带上了执行结果
             for (const message of incoming) {
                 if (message.role === 'tool') captured.push((message as ToolMessage).content);
             }

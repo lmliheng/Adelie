@@ -54,7 +54,7 @@ node packages/server/dist/main.js
 
 `run_started` → `delta`* / `event`* / `approval_request`* → `run_finished` → `done`。
 `event` 承载运行时的状态迁移（`decision` / `observation` / `approval` /
-`plan_updated` / `context_folded` / `stopped` / `verification`）。
+`context_folded` / `stopped`）。
 
 同一条会话同时只能跑一轮：再发一条返回 409 `busy`。
 

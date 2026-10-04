@@ -2,12 +2,12 @@
 //
 // 时间线：把 mapEventsToTimeline 的条目按类型派发到对应卡片。
 // 折叠/上下文折叠这类「解释模型为什么变了」的事件用一行文字带过，不占卡片空间。
+// 没有计划卡与验收卡：计划是模型自己维护的文件（PLAN.md），验收是模型自己跑的项目命令，
+// 两者都是普通的工具调用，跟着 tool 条目走。
 
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 import { ToolCard } from './ToolCard'
-import { PlanCard } from './PlanCard'
-import { VerificationCard } from './VerificationCard'
 import { relativeTime } from '../lib/format'
 import { describeStopReason, type TimelineEntry } from '../lib/timeline'
 
@@ -22,10 +22,6 @@ export function Timeline({ entries }: { entries: TimelineEntry[] }): ReactNode {
         switch (entry.kind) {
           case 'tool':
             return <ToolCard entry={entry} key={entry.id} />
-          case 'plan':
-            return <PlanCard entry={entry} key={entry.id} />
-          case 'verification':
-            return <VerificationCard entry={entry} key={entry.id} />
           case 'approval':
             return (
               <div className="turn-meta" key={entry.id}>
@@ -51,7 +47,9 @@ export function Timeline({ entries }: { entries: TimelineEntry[] }): ReactNode {
             return (
               <div className="turn-meta" key={entry.id}>
                 <Icon name="alert" size={13} />
-                <span>未识别的事件类型：{entry.type}（前端版本可能落后于服务端）</span>
+                {/* 不静默丢：这段历史来自另一个版本的引擎（例：早先的计划状态机写下的
+                    plan_updated），说清楚比装作没看见好 */}
+                <span>未识别的事件类型：{entry.type}（这份历史来自另一个版本）</span>
               </div>
             )
         }

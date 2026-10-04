@@ -9,7 +9,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { AgentRuntime } from '../src/agent.runtime.js';
 import { ReadFileTool } from 'adelie-tools';
 import { DERIVED_CONTEXT_TOKEN_BUDGET, DEFAULT_OUTPUT_BUDGET } from 'adelie-core';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type { AgentProvider, AgentProviderConfig, ModelResponse, TokenUsage } from 'adelie-core';
 import type { AgentRuntimeConfig } from 'adelie-core';
 import type { ChatMessage } from 'adelie-core';
@@ -53,11 +53,6 @@ class FailingProvider implements AgentProvider {
 function readTwiceScript(): Array<{ decision: ModelDecision; usage?: TokenUsage }> {
     return [
         {
-            // 规划轮：同样是真实的模型调用，用量计入累计消耗
-            decision: initialPlanDecision(),
-            usage: { promptTokens: 5, completionTokens: 2, totalTokens: 7 },
-        },
-        {
             decision: { type: 'Action', tool: 'read_file', params: { path: 'src/a.ts' }, thought: '第一次' },
             usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
         },
@@ -75,14 +70,6 @@ function readTwiceScript(): Array<{ decision: ModelDecision; usage?: TokenUsage 
 /** 每一轮都报缓存命中量的脚本：用于累加口径与「命中 + 未命中 = 输入量」的核对 */
 function cachedScript(): Array<{ decision: ModelDecision; usage?: TokenUsage }> {
     return [
-        {
-            // 规划轮：一次都没命中（0 是「确实为 0」，与「拿不到」不同）
-            decision: initialPlanDecision(),
-            usage: {
-                promptTokens: 100, completionTokens: 2, totalTokens: 102,
-                cacheHitTokens: 0, cacheMissTokens: 100,
-            },
-        },
         {
             decision: { type: 'Action', tool: 'read_file', params: { path: 'src/a.ts' }, thought: '第一次' },
             usage: {
@@ -129,9 +116,9 @@ describe('上下文度量', () => {
         expect(state.contextSize.tokens).toBe(30);
         expect(state.contextSize.source).toBe('measured');
 
-        // 累计消耗 = 各轮之和（含进入循环前的那次规划调用）
-        expect(state.tokenUsage.promptTokens).toBe(65);
-        expect(state.tokenUsage.totalTokens).toBe(7 + 15 + 27 + 33);
+        // 累计消耗 = 各轮之和
+        expect(state.tokenUsage.promptTokens).toBe(10 + 20 + 30);
+        expect(state.tokenUsage.totalTokens).toBe(15 + 27 + 33);
 
         // 两个口径必须不同，不能是同一个数字
         expect(state.contextSize.tokens).not.toBe(state.tokenUsage.promptTokens);
@@ -207,8 +194,8 @@ describe('上下文度量', () => {
         const { state } = await runtimeFor(new ScriptedProvider(cachedScript())).run('读两次');
         const { tokenUsage } = state;
 
-        expect(tokenUsage.cacheHitTokens).toBe(0 + 180 + 290);
-        expect(tokenUsage.cacheMissTokens).toBe(100 + 20 + 10);
+        expect(tokenUsage.cacheHitTokens).toBe(180 + 290);
+        expect(tokenUsage.cacheMissTokens).toBe(20 + 10);
         expect(tokenUsage.cacheComplete).toBe(true);
 
         // 不变量：两者是累计输入量的分解，不是并列的第三、第四个口径 ——

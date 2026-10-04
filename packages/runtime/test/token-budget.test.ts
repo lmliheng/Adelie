@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AgentRuntime } from '../src/agent.runtime.js';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type {
     AgentProvider,
     AgentProviderConfig,
@@ -76,7 +76,7 @@ describe('token 成本闸门', () => {
             params: { n: i + 1 },
             thought: '继续',
         }));
-        return new AgentRuntime(new UsageProvider([initialPlanDecision(), ...decisions]), [new NoopTool()], {
+        return new AgentRuntime(new UsageProvider(decisions), [new NoopTool()], {
             workspacePath: workspaceDir,
             maxIterations: 20,
             ...config,
@@ -84,7 +84,7 @@ describe('token 成本闸门', () => {
     }
 
     it('累计用量达到上限即停止，停止原因是 max_tokens', async () => {
-        // 每轮 650 tokens，上限 2000 —— 第 4 轮开始就超了（规划轮也计入累计）
+        // 每轮 650 tokens，上限 2000 —— 第 4 轮开始就超了
         const { state } = await runtimeWith({ maxTokens: 2000 }).run('一直做下去');
 
         expect(state.stopReason?.type).toBe('max_tokens');

@@ -3,7 +3,7 @@ import { AgentRuntime } from '../../src/agent.runtime.js';
 import { ReadFileTool } from 'adelie-tools';
 import { EditFileTool } from 'adelie-tools';
 import { SearchCodeTool } from 'adelie-tools';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanResponse } from '../setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from '../setup.js';
 import type { AgentProvider, ModelResponse, AgentProviderConfig } from 'adelie-core';
 import type { ChatMessage } from 'adelie-core';
 import type { ModelDecision } from 'adelie-core';
@@ -25,8 +25,7 @@ class MockProvider implements AgentProvider {
     private callIndex = 0;
 
     constructor(responses: ModelResponse[]) {
-        // 队列第一位留给规划轮：运行时进入循环前会先请求一次初始计划
-        this.responses = [initialPlanResponse(), ...responses];
+        this.responses = responses;
     }
 
     async decide(messages: ChatMessage[], tools: any[]): Promise<ModelResponse> {

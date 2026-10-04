@@ -1,5 +1,5 @@
 import type { PendingAction, ApprovalDecision, ApprovalPolicy } from './Tool.js'
-import type { DeliverableSpec, ModelDecision, Observation, PlanState } from './ReAct.js'
+import type { ModelDecision, Observation } from './ReAct.js'
 import type { StreamDelta } from './AgentProvider.js'
 import type { ModelRef } from './ModelRef.js'
 import type { OutputBudget } from '../output-budget.js'
@@ -20,12 +20,14 @@ export interface RunOptions {
  * 上一段对话中的一次 run。
  *
  * 恢复会话时由调用方从会话事件流派生后交进来。这里只带**派生消息所需的事实**
- * （任务目标、当时的计划、决策、观察），不带 messages —— messages 是运行时从
+ * （任务目标、决策、观察），不带 messages —— messages 是运行时从
  * 这些事实派生的视图，存进来就等于存了两份会各自漂移的历史。
+ *
+ * 也不带计划：计划是模型自己的一个文件（`PLAN.md`），它本来就留在磁盘上，
+ * 恢复会话时模型自己会去读它。
  */
 export interface PriorRun {
     taskDescription: string;
-    plan: PlanState;
     decisions: ModelDecision[];
     observations: Observation[];
 }
@@ -72,22 +74,15 @@ export interface AgentRuntimeConfig {
      */
     approvalTimeoutMs?: number;
 
-    /** 验收命令的单条执行超时（毫秒），默认 120000 */
-    verificationTimeoutMs?: number;
-
     /**
-     * 调用方直接声明的交付物断言（相对工作区路径），与模型在计划里声明的一起核对。
+     * 会话的草稿目录（工作区之外）。
      *
-     * 两边都收是因为它们的来路不同：模型从任务描述里读出「该产出什么」（人没写死），
-     * 调用方用参数钉死自己知道的那部分（CI / eval 场景）。
+     * 计划文件写在这里：`<scratchpadDir>/PLAN.md`。**刻意放在工作区之外** ——
+     * 计划是过程不是交付物，落进用户的仓库会污染 git status，也会被 search_code
+     * 之类搜到（同 penguin 的 scratchpad）。提供时这个目录对本会话的模型可写。
+     * 不提供时退回 `<workspacePath>/PLAN.md`（CLI 单次运行、测试这类没有会话目录的场景）。
      */
-    deliverables?: DeliverableSpec[];
-
-    /**
-     * 同一个工具反复失败时，允许「回灌失败上下文、让模型重新规划」的次数，默认 1。
-     * 用完之后仍失败就停止运行（原来是一次都不给机会，直接以 error 收尾）。
-     */
-    maxReplanAttempts?: number;
+    scratchpadDir?: string;
 
     /**
      * 「成功但无进展」的判定阈值：同一工具产出相同结果达到这个次数就停止运行。
@@ -145,8 +140,6 @@ export interface AgentRuntimeConfig {
      * 与 `onSessionEvent` 分开是有意的：增量**不是状态迁移**，它既不进事件流、
      * 也不进 `AgentRunState`，所以它没有"事实"的身份，绝不能靠事件流来承载 ——
      * 那会让一份可能半截的中间产物混进唯一事实源里。
-     *
-     * 规划轮不转（那一轮的产品是计划，它的参数 JSON 没人要看）。
      */
     onStreamDelta?: (delta: StreamDelta) => void;
 }

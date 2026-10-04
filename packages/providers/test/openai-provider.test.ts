@@ -71,11 +71,12 @@ describe('OpenAI 兼容提供方', () => {
         const body = JSON.parse(String(calls[0]!.init.body)) as Record<string, any>;
         expect(body.model).toBe('gpt-4o');
         expect(body.stream).toBeUndefined();
-        // 工具声明随请求下发，且控制流入口（重新规划/批量）也在
+        // 工具声明随请求下发，且控制流入口（批量）也在
         const names = (body.tools as Array<{ function: { name: string } }>).map(t => t.function.name);
         expect(names).toContain('read_file');
-        expect(names).toContain('request_replan');
         expect(names).toContain('batch');
+        // 计划不再是运行时的状态机，所以没有 request_replan 这个入口了
+        expect(names).not.toContain('request_replan');
 
         // 继承来的翻译仍然生效：tool_calls -> Action
         expect(result.decision).toMatchObject({ type: 'Action', tool: 'read_file', params: { path: 'a.ts' } });

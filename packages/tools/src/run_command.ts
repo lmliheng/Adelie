@@ -143,9 +143,9 @@ export class RunCommandTool implements Tool<RunCommandParams> {
                     params: params as unknown as Record<string, unknown>,
                 },
                 contextSnapshot: {
-                    currentPlan: '执行命令',
+                    // 工具自己发起的审批没有对话上下文可引：任务目标由运行时补
+                    taskDescription: '',
                     recentHistory: '',
-                    currentStep: 'run_command',
                 },
             },
             preview: {

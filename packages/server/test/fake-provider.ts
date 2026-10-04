@@ -31,29 +31,11 @@ export class ScriptedProvider implements AgentProvider {
     const decision = this.script[this.index] ?? { type: 'Final' as const, answer: '结束' };
     this.index += 1;
 
-    // 规划轮不产正文（与真实 provider 一致：那一轮的产品是计划），其余轮次
     // 先流出一点正文 —— 契约里的 delta 帧就来自这条路径。
-    if (onDelta !== undefined && decision.type !== 'Replan') {
+    if (onDelta !== undefined) {
       onDelta({ content: `（第 ${this.index} 轮）` });
     }
 
     return { decision, rawContent: '' };
   }
-}
-
-/** 规划轮的固定响应：运行时要求模型经 request_replan 提交步骤列表 */
-export function planDecision(): ModelDecision {
-  return {
-    type: 'Replan',
-    reason: '初始规划',
-    newPlan: [
-      {
-        id: 'step-1',
-        description: '读一下说明文件',
-        status: 'pending',
-        dependsOn: [],
-        completionCriteria: '文件内容已确认',
-      },
-    ],
-  };
 }

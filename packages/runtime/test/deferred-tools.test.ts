@@ -16,7 +16,7 @@ import { ReadFileTool } from 'adelie-tools';
 import { MoveFileTool } from 'adelie-tools';
 import { config } from 'adelie-core';
 
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type {
     AgentProvider,
     AgentProviderConfig,
@@ -37,8 +37,8 @@ class CapturingProvider implements AgentProvider {
     private index = 0;
 
     constructor(script: ModelDecision[]) {
-        // 脚本第一位留给规划轮
-        this.script = [initialPlanDecision(), ...script];
+        // 脚本按进入循环后的轮次顺序消费
+        this.script = script;
     }
 
     updateConfig(): void {
@@ -298,7 +298,7 @@ describe('运行时：声明集与桥解包', () => {
 
         await runtimeFor(provider, registry).run('随便走一轮');
 
-        // 第一次请求是规划轮（用 PLANNING_SYSTEM_PROMPT），延迟清单在主循环的系统提示里
+        // 延迟清单在主循环的系统提示里
         const messages = provider.seen[provider.seen.length - 1]!.messages;
         const system = messages.find((m) => m.role === 'system');
         const content = typeof system?.content === 'string' ? system.content : '';

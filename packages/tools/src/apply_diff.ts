@@ -138,9 +138,9 @@ export class ApplyDiffTool implements Tool<ApplyDiffParams> {
                         params: params as unknown as Record<string, unknown>,
                     },
                     contextSnapshot: {
-                        currentPlan: '修改文件',
+                        // 工具自己发起的审批没有对话上下文可引：任务目标由运行时补
+                        taskDescription: '',
                         recentHistory: '',
-                        currentStep: 'apply_diff',
                     },
                 },
                 preview: {

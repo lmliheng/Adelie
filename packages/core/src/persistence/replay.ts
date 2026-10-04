@@ -10,9 +10,7 @@ import type {
   ApprovalRecord,
   ModelDecision,
   Observation,
-  PlanState,
   StopReason,
-  TaskVerificationResult,
 } from '../types/ReAct.js';
 import type { PriorRun } from '../types/Runtime.js';
 import { isKnownEventType, type StoredSessionEvent } from './events.js';
@@ -22,7 +20,6 @@ export interface RestoredRun extends PriorRun {
   taskId: string;
   startTime: number;
   stopReason?: StopReason;
-  verification?: TaskVerificationResult;
   /** 这次 run 里的审批记录（审计用，不参与消息派生） */
   approvals: ApprovalRecord[];
 }
@@ -135,21 +132,6 @@ export function replaySession(
         break;
       }
 
-      case 'plan_updated': {
-        const plan = readPlan(event.payload);
-        if (plan === null) {
-          stats.skippedMalformed += 1;
-          continue;
-        }
-        if (current === null) {
-          stats.orphaned += 1;
-          continue;
-        }
-        current.plan = plan;
-        stats.applied += 1;
-        break;
-      }
-
       // 折叠只影响「送出哪一份历史」，不改变任何状态：采纳但不动 state，
       // 让它照常计入 applied（它不是未知类型，也不是坏行）。
       case 'context_folded': {
@@ -180,44 +162,18 @@ export function replaySession(
         stats.applied += 1;
         break;
       }
-
-      case 'verification': {
-        if (current === null) {
-          stats.orphaned += 1;
-          continue;
-        }
-        const verification = readVerification(event.payload);
-        if (verification === null) {
-          stats.skippedMalformed += 1;
-          continue;
-        }
-        current.verification = verification;
-        stats.applied += 1;
-        break;
-      }
     }
   }
 
   return { sessionId: context.sessionId, workspaceRoot: context.workspaceRoot, runs, stats };
 }
 
-/**
- * 计划尚未落盘时用的占位计划。
- *
- * 计划与任务目标是两条独立的事件（前者可能缺失，例如规划轮就崩了），
- * 缺计划不能让整段历史作废 —— 用只含目标的空计划补上。
- */
+/** 一条 `task_started` 开一段 run；决策与观察随后附加上来 */
 function newRun(started: { taskId: string; taskDescription: string; startTime: number }): RestoredRun {
   return {
     taskId: started.taskId,
     taskDescription: started.taskDescription,
     startTime: started.startTime,
-    plan: {
-      originalGoal: started.taskDescription,
-      steps: [],
-      currentStepIndex: 0,
-      version: 1,
-    },
     decisions: [],
     observations: [],
     approvals: [],
@@ -284,20 +240,6 @@ function readObservation(payload: unknown): Observation | null {
   return record.observation as Observation;
 }
 
-function readPlan(payload: unknown): PlanState | null {
-  const record = asRecord(payload);
-  if (record === null) return null;
-
-  const plan = asRecord(record.plan);
-  if (plan === null) return null;
-  if (typeof plan.originalGoal !== 'string') return null;
-  if (!Array.isArray(plan.steps)) return null;
-  if (typeof plan.currentStepIndex !== 'number') return null;
-  if (typeof plan.version !== 'number') return null;
-
-  return record.plan as PlanState;
-}
-
 function readStopped(payload: unknown): { stopReason?: StopReason; iterationCount?: number } {
   const record = asRecord(payload);
   if (record === null) return {};
@@ -309,15 +251,4 @@ function readStopped(payload: unknown): { stopReason?: StopReason; iterationCoun
       : {}),
     ...(typeof record.iterationCount === 'number' ? { iterationCount: record.iterationCount } : {}),
   };
-}
-
-function readVerification(payload: unknown): TaskVerificationResult | null {
-  const record = asRecord(payload);
-  if (record === null) return null;
-
-  const verification = asRecord(record.verification);
-  if (verification === null) return null;
-  if (typeof verification.passed !== 'boolean') return null;
-
-  return record.verification as TaskVerificationResult;
 }

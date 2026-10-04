@@ -13,7 +13,7 @@ import {
 } from '../src/project-instructions.js';
 import { AgentRuntime } from '../src/agent.runtime.js';
 import { ReadFileTool } from 'adelie-tools';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type {
     AgentProvider,
     AgentProviderConfig,
@@ -139,7 +139,6 @@ describe('工作区指令进入系统提示', () => {
             'src/a.ts': 'export const a = 1;\n',
         });
         const provider = new RecordingProvider([
-            initialPlanDecision(),
             { type: 'Final', answer: '完成' },
         ]);
 
@@ -148,9 +147,9 @@ describe('工作区指令进入系统提示', () => {
             maxIterations: 5,
         } as never).run('看看效果');
 
-        // 第 1 次请求是规划轮（独立提示词），之后的循环轮都要带上工作区指令
-        expect(provider.requests.length).toBeGreaterThanOrEqual(2);
-        for (const messages of provider.requests.slice(1)) {
+        // 循环里的每一次请求都要带上工作区指令
+        expect(provider.requests.length).toBeGreaterThanOrEqual(1);
+        for (const messages of provider.requests) {
             expect(messages[0]!.role).toBe('system');
             expect(messages[0]!.content).toContain('提交信息用中文，测试用 vitest。');
             expect(messages[0]!.content).toContain('ADELIE.md');
@@ -160,7 +159,6 @@ describe('工作区指令进入系统提示', () => {
     it('没有指令文件时系统提示与本来的样子一致（不留下空段落）', async () => {
         const dir = workspace({ 'src/a.ts': 'export const a = 1;\n' });
         const provider = new RecordingProvider([
-            initialPlanDecision(),
             { type: 'Final', answer: '完成' },
         ]);
 
@@ -169,7 +167,7 @@ describe('工作区指令进入系统提示', () => {
             maxIterations: 5,
         } as never).run('看看效果');
 
-        const system = provider.requests[1]![0]!.content;
+        const system = provider.requests[0]![0]!.content;
         expect(system).not.toContain('工作区指令');
         expect(system).toContain('你是一个 AI 编码助手');
     });
@@ -177,10 +175,10 @@ describe('工作区指令进入系统提示', () => {
     it('运行中途改文件不影响本次运行（前缀一变，缓存全失效）', async () => {
         const dir = workspace({ 'ADELIE.md': '第一版规矩' });
         const provider = new RecordingProvider(
-            [initialPlanDecision(), { type: 'Action', tool: 'read_file', params: { path: 'ADELIE.md' } }, { type: 'Final', answer: '完成' }],
-            // 第 2 次请求（循环第一轮）之后、第 3 次之前改文件
+            [{ type: 'Action', tool: 'read_file', params: { path: 'ADELIE.md' } }, { type: 'Final', answer: '完成' }],
+            // 第 1 次请求（循环第一轮）之后、第 2 次之前改文件
             (callIndex) => {
-                if (callIndex === 2) writeFileSync(join(dir, 'ADELIE.md'), '第二版规矩', 'utf-8');
+                if (callIndex === 1) writeFileSync(join(dir, 'ADELIE.md'), '第二版规矩', 'utf-8');
             },
         );
 
@@ -189,8 +187,8 @@ describe('工作区指令进入系统提示', () => {
             maxIterations: 5,
         } as never).run('看看效果');
 
-        expect(provider.requests.length).toBeGreaterThanOrEqual(3);
-        const later = provider.requests[2]![0]!.content;
+        expect(provider.requests.length).toBeGreaterThanOrEqual(2);
+        const later = provider.requests[1]![0]!.content;
         expect(later).toContain('第一版规矩');
         expect(later).not.toContain('第二版规矩');
     });

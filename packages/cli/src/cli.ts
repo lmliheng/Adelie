@@ -67,7 +67,7 @@ import type { SlashCommand, SlashCommandHost } from './utils/slash-commands.js';
 import type { SessionEventInput } from 'adelie-core';
 import type { ObservationPayload, DecisionPayload } from 'adelie-core';
 import type { PriorRun } from 'adelie-core';
-import type { AgentRunState, ContextSizeMetric, StopReason, TaskVerificationResult } from 'adelie-core';
+import type { AgentRunState, ContextSizeMetric, StopReason } from 'adelie-core';
 import type { PendingAction, ApprovalDecision } from 'adelie-core';
 import type { CliArgs, ProviderName } from 'adelie-core'
 import type { McpConfigLoad, McpConnectedServer } from 'adelie-tools';
@@ -108,7 +108,7 @@ serve 选项:
   --host H            监听地址，默认 127.0.0.1；--host 0.0.0.0 才能被手机访问
   --token S           访问凭证；绑非回环时不给就随机生成一个并打印出来
 
-退出码（仅 --task 模式）：任务完成且验收没有判不通过时为 0，否则为 1；用法错误为 1。
+退出码（仅 --task 模式）：停止原因为「任务完成」时为 0，否则为 1；用法错误为 1。
 结构化输出下无人可问审批，需要审批的动作默认按拒绝处理（记录在结果的 approvals 里）；
 确实要让它改文件时显式加 --yes。
 
@@ -124,7 +124,6 @@ ${renderCommandHelp(SLASH_COMMANDS)}`;
 function priorRunOf(state: AgentRunState, taskDescription: string): PriorRun {
   return {
     taskDescription,
-    plan: state.plan,
     decisions: state.decisions,
     observations: state.observations,
   };
@@ -303,61 +302,18 @@ export function describeStopReason(reason: StopReason | undefined): { text: stri
 
 
 /**
- * 验收结论的展示。
- *
- * 分两层说，因为两层回答不同的问题：回归测试 = 「没弄坏原来的东西」，
- * 交付物 = 「这次要的东西出来了没有」。只给一个通过/不通过，会让人以为
- * 测试全绿就等于任务完成 —— 老实现正是如此（没有交付物这一层）。
- *
- * 不通过时把缺哪条列出来：光说「失败」的话，用户还得回去翻 trace 才知道缺什么。
- */
-export function describeVerification(
-  verification: TaskVerificationResult | undefined,
-): { text: string; tone: Tone } | null {
-  if (verification === undefined) return null;
-
-  if (verification.verificationStatus === 'unavailable') {
-    return { text: '不可判定（没有测试脚本，本次也没声明交付物）', tone: 'note' };
-  }
-
-  // 老会话重放出来的记录没有 layers / deliverables 字段，取不到就不摆这一层
-  const regression = verification.layers?.regression;
-  const deliverableLayer = verification.layers?.deliverables;
-  const checks = verification.deliverables ?? [];
-
-  const parts: string[] = [];
-  if (regression?.executed) {
-    parts.push(`回归测试${regression.passed ? '通过' : '失败'}`);
-  }
-  if (deliverableLayer !== undefined && deliverableLayer.declared > 0) {
-    const ok = checks.filter((check) => check.ok).length;
-    parts.push(`交付物 ${ok}/${deliverableLayer.declared} 通过`);
-  }
-
-  const missing = checks.filter((check) => !check.ok).map((check) => check.path);
-  if (missing.length > 0) parts.push(`缺：${missing.join('、')}`);
-
-  return {
-    text: `${parts.join(' · ')}（${verification.passed ? '整体通过' : '整体不通过'}）`,
-    tone: verification.passed ? 'ok' : 'bad',
-  };
-}
-
-/**
  * 这次运行算不算成功 —— 进程退出码的唯一依据。
  *
- * 只判两件事：停止原因是不是「完成」，以及验收有没有给出反例。
- * 「验收不可判定」（工作区既没有测试、任务也没声明交付物）不算失败：它是**没法判**，
- * 不是**判为失败**。这和 `passed` 的口径不同（不可判定不等于通过），刻意分开 ——
- * 退出码要用于 CI 分流，把「没跑上验证手段」当成失败会让这个开关对非代码任务失效。
+ * 只看一件事：停止原因是不是「完成」。
+ *
+ * 原来还要看运行时的验收结论（回归测试 + 交付物），那套子系统已经删掉：计划与验收
+ * 现在都交给模型自己维护（写 PLAN.md、跑项目自己的命令），运行时不再替它判「做完了没有」。
+ * 判据于是退回单一的一条 —— 与 penguin 同口径：模型宣称完成即完成，真伪由提示词
+ * 教它自查，而不是由运行时再拦一道。把「没跑上验证手段」当失败会让这个开关对
+ * 非代码任务失效，这也是不再由运行时判验收的原因之一。
  */
-export function isRunSuccessful(
-  state: AgentRunState,
-  verification: TaskVerificationResult | undefined,
-): boolean {
-  if (state.stopReason?.type !== 'task_completed') return false;
-  if (verification?.verificationStatus !== 'executed') return true;
-  return verification.passed;
+export function isRunSuccessful(state: AgentRunState): boolean {
+  return state.stopReason?.type === 'task_completed';
 }
 
 /**
@@ -366,28 +322,29 @@ export function isRunSuccessful(
  * 字段与 state 同构，只加三样 state 里没有的：`ok`（这次成没成）、`task`（跑的是什么）
  * 与 `answer`（模型的收尾发言）。同构是有意的 —— CI 里比对的就是 trace 里那套口径，
  * 换个名字就得维护一张对照表。
+ *
+ * 没有 `verification` 字段：运行时验收子系统已删，`ok` 直接按 stopReason 判（见
+ * isRunSuccessful），不再有第二份结论可以带出来。
  */
 export function buildHeadlessResult(input: {
   task: string;
   sessionId: string;
   state: AgentRunState;
-  verification: TaskVerificationResult | undefined;
   answer: string | undefined;
   persistence: { degraded: boolean; error: string | null };
 }): Record<string, unknown> {
-  const { task, sessionId, state, verification, answer, persistence } = input;
+  const { task, sessionId, state, answer, persistence } = input;
 
   return {
     task,
     sessionId,
-    ok: isRunSuccessful(state, verification),
+    ok: isRunSuccessful(state),
     stopReason: state.stopReason ?? null,
     decisions: state.decisions.length,
     toolCalls: state.toolCallCount,
     tokenUsage: state.tokenUsage,
     contextSize: state.contextSize,
     approvals: state.approvals,
-    verification: verification ?? null,
     answer: answer ?? null,
     persistence,
   };
@@ -908,7 +865,7 @@ async function main(): Promise<void> {
   }
 
   /** 每轮一个全新的 runtime：state 不跨轮复用，历史靠 history 传递 */
-  async function runOne(task: string): Promise<{ state: AgentRunState; verification: TaskVerificationResult | undefined; answer: string | undefined }> {
+  async function runOne(task: string): Promise<{ state: AgentRunState; answer: string | undefined }> {
     // 模型与 key 每轮现取：/model 与 /auth 只改会话配置，改完的下一轮就该用上新值。
     // 提供方也跟着当前模型走 —— `/model kimi/xxx` 是合法的，换家就要换端点与密钥
     // 变量，所以这里读的是 host.state.model.provider，而不是启动时的 --provider。
@@ -951,6 +908,9 @@ async function main(): Promise<void> {
 
     const runtime = new AgentRuntime(provider, tools, {
       workspacePath: host.state.workspace,
+      // 计划文件写在会话目录里（工作区之外）：它是过程不是交付物，
+      // 落进工作区会脏了用户的 git status（与 server 侧同一处约定）。
+      scratchpadDir: session.dir,
       maxIterations: args.maxIterations,
       // 只有显式给了上限才传：undefined 与 0 都表示「不限制」
       ...(args.maxTokens !== undefined ? { maxTokens: args.maxTokens } : {}),
@@ -1048,7 +1008,6 @@ async function main(): Promise<void> {
         task,
         sessionId: session.sessionId,
         state: result.state,
-        verification: result.verification,
         answer,
         persistence,
       });
@@ -1058,7 +1017,7 @@ async function main(): Promise<void> {
 
       // 这一轮照样成为下一轮的历史（--task 下没有下一轮，但这是同一套路径）
       history.push(priorRunOf(result.state, task));
-      return { state: result.state, verification: result.verification, answer };
+      return { state: result.state, answer };
     }
 
     if (answer !== undefined) {
@@ -1075,15 +1034,12 @@ async function main(): Promise<void> {
     const { tokenUsage: usage, contextSize } = result.state;
     const stop = describeStopReason(result.state.stopReason);
     const cache = describeCacheUsage(usage);
-    const verification = describeVerification(result.verification);
 
     ensureNewline();
 
     console.log('');
     console.log(panel('本轮结果', [
       ['停止', marked(stop.tone, stop.text)],
-      // 验收紧跟在停止原因之后：这两个结论一起回答「这一轮到底成了没有」
-      ...(verification !== null ? [['验收', paint(verification.tone, verification.text)] as const] : []),
       ['决策', `${result.state.decisions.length} 轮 ${chalk.dim('·')} 工具 ${result.state.toolCallCount} 次`],
       ['消耗', `${formatCount(usage.totalTokens)} tokens ` +
         chalk.dim(`（输入 ${formatCount(usage.promptTokens)} / 输出 ${formatCount(usage.completionTokens)}）`)],
@@ -1121,7 +1077,7 @@ async function main(): Promise<void> {
     // 这一轮成为下一轮的历史
     history.push(priorRunOf(result.state, task));
 
-    return { state: result.state, verification: result.verification, answer };
+    return { state: result.state, answer };
   }
 
   try {
@@ -1130,7 +1086,7 @@ async function main(): Promise<void> {
       const outcome = await runOne(args.task);
       // 退出码是 headless 形态的一半：CI 拿不到结构化产物时，至少能用它分流。
       // 只在一次性模式设 —— 交互式会话里某一轮失败不该决定整个进程的结局。
-      process.exitCode = isRunSuccessful(outcome.state, outcome.verification) ? 0 : 1;
+      process.exitCode = isRunSuccessful(outcome.state) ? 0 : 1;
       return;
     }
 

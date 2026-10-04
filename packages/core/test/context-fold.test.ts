@@ -129,7 +129,6 @@ describe('历史 run 摘要', () => {
     it('说清做了什么、折了多少、怎么恢复', () => {
         const run: PriorRun = {
             taskDescription: '把 README 改成中文',
-            plan: { originalGoal: '把 README 改成中文', steps: [], currentStepIndex: 0, version: 1 },
             decisions: [{ type: 'Final', answer: '完成' }],
             observations: [{ action: { type: 'Action', tool: 'read_file', params: {} }, result: { success: true, data: 'x' }, timestamp: 0 }],
         };

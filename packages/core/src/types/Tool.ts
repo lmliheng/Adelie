@@ -163,9 +163,9 @@ export interface PendingAction {
         };
         /** 当时对话上下文的快照（用于审计） */
         contextSnapshot: {
-            currentPlan: string;
+            /** 这一轮的任务目标 */
+            taskDescription: string;
             recentHistory: string;
-            currentStep: string;
         };
     };
 

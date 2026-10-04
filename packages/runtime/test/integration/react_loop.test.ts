@@ -17,7 +17,7 @@ import { MoveFileTool } from 'adelie-tools';
 import { ApplyDiffTool } from 'adelie-tools';
 import { GitOperationTool } from 'adelie-tools';
 import { FetchUrlTool } from 'adelie-tools';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from '../setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from '../setup.js';
 import type { Tool, ToolParams, ToolContext, ToolResult } from 'adelie-core';
 import type { AgentProvider, ToolDefinition, AgentProviderConfig, ModelResponse } from 'adelie-core';
 import type { ChatMessage } from 'adelie-core';
@@ -41,8 +41,8 @@ class MockProvider implements AgentProvider {
     private currentIndex = 0
 
     constructor(decisions: ModelDecision[]) {
-        // 脚本第一位留给规划轮：运行时进入循环前会先请求一次初始计划
-        this.decisions = [initialPlanDecision(), ...decisions]
+        // 脚本按进入循环后的轮次顺序消费
+        this.decisions = decisions
     }
 
     updateConfig(config: Partial<AgentProviderConfig>): void {
@@ -378,66 +378,6 @@ console.log(greet('World'));
         expect(result.state.iterationCount).toBeLessThanOrEqual(3);
     });
 
-    it('应该能处理 Replan 决策', async () => {
-        const decisions: ModelDecision[] = [
-            {
-                type: 'Action',
-                tool: 'read_file',
-                params: { path: 'non_existent.ts' },
-                thought: '尝试读取文件',
-            },
-            {
-                type: 'Replan',
-                reason: '文件不存在，需要先查找正确的文件名',
-                thought: '需要调整策略',
-                newPlan: [
-                    {
-                        id: '1',
-                        description: '列出当前目录下的文件',
-                        status: 'pending',
-                        dependsOn: [],
-                        completionCriteria: '已获取文件列表',
-                    },
-                    {
-                        id: '2',
-                        description: '读取正确的文件',
-                        status: 'pending',
-                        dependsOn: ['step-1'],
-                        completionCriteria: '已读取文件内容',
-                    },
-                ],
-            },
-            {
-                type: 'Action',
-                tool: 'list_files',
-                params: { pattern: '*' },
-                thought: '列出所有文件',
-            },
-            {
-                type: 'Final',
-                answer: '已通过重新规划完成任务',
-                thought: '任务完成',
-            },
-        ];
-
-        runtime = new AgentRuntime(
-            new MockProvider(decisions),
-            tools,
-            {
-                workspacePath: workspaceDir,
-                maxIterations: 10,
-                // 无人可问的集成测试：显式放行（默认策略是拒绝）
-                approvalPolicy: 'auto-approve',
-            }
-        );
-
-        const result = await runtime.run('读取不存在的文件，然后重新规划');
-
-        expect(result.state.stopReason?.type).toBe('task_completed');
-        expect(result.state.plan.version).toBe(2);  // 计划被更新过一次
-    });
-
-
     it('工具反复失败时：先把失败上下文回灌给模型，再决定是否继续（原来直接停下来报错）', async () => {
         // 三次读取都失败，且参数各不相同（真实 trace 里模型就是这么「微调」的）：
         // 若参数完全相同，先撞上的是「重复动作」守卫，走不到回灌这条路
@@ -480,7 +420,7 @@ console.log(greet('World'));
 
         const result = await runtime.run('读取 non_existent.ts');
 
-        // 三次失败之后模型拿到一次「重新规划/换做法」的机会，于是它给出了 Final。
+        // 三次失败之后模型拿到一次「换一种做法」的失败上下文，于是它给出了 Final。
         // 旧行为是在第三次失败时直接置 error 收摊，模型连一次改道的机会都没有。
         expect(result.state.stopReason?.type).toBe('task_completed');
         expect(result.state.observations.length).toBe(3);
@@ -583,8 +523,8 @@ console.log(greet('World'));
         expect(result.state.stopReason?.type).toBe('task_completed');
         expect(result.state.toolCallCount).toBe(5);
         // 并发度是直接信号：5 个任务、上限 2，运行过程中必须真的同时到过 2 个。
-        // 这里原先是断言 run() 的墙钟上界（elapsed < 400ms），但 run() 结束时会
-        // 真实执行验收命令（npm test），耗时不再只反映批量并发，该代理指标已失效。
+        // 这里原先是断言 run() 的墙钟上界（elapsed < 400ms），墙钟会掺进环境的抖动；
+        // 直接记录同时在跑的数量才是这一条要钉的事实。
         expect(maxObservedConcurrent).toBe(2);
     });
 });

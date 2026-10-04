@@ -1,38 +1,30 @@
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { AgentProvider, ToolDefinition, TokenUsage } from 'adelie-core';
-import { REQUEST_REPLAN_TOOL, BATCH_TOOL } from 'adelie-core';
+import { BATCH_TOOL } from 'adelie-core';
 import type { ChatMessage, AssistantMessage, ToolMessage, ToolCall } from 'adelie-core';
 
 import type {
     ModelDecision,
     AgentRunState,
-    PlanState,
-    PlanStep,
     Observation,
     ObservationDelivery,
     StopReason,
-    TaskVerificationResult,
     FileChange,
     Action,
     ApprovalRecord,
-    DeliverableSpec,
-    DeliverableCheck,
 } from 'adelie-core';
 
 import type { AgentRuntimeConfig } from 'adelie-core'
 import type { RunOptions } from 'adelie-core'
 import type { SessionEventInput } from 'adelie-core';
-import { applyOutputBudget, resolveContextBudget, NO_OUTPUT_PLACEHOLDER, normalizeDeliverables } from 'adelie-core';
+import { applyOutputBudget, resolveContextBudget, NO_OUTPUT_PLACEHOLDER } from 'adelie-core';
 import { planContextFold, foldObservationContent, summarizePriorRun, estimatePriorRunsTokens } from 'adelie-core';
 import type { ContextFoldPlan } from 'adelie-core';
 import type { ContextBudgetJudgement } from 'adelie-core';
 import { splitDeclaredTools, TOOL_CALL, TOOL_SEARCH } from 'adelie-tools';
 import { resolveDeferredToolCall } from 'adelie-tools';
-import { resolveInWorkspace } from 'adelie-tools';
 import { loadProjectInstructions, formatProjectInstructions } from './project-instructions.js';
 import type { ProjectInstructions } from './project-instructions.js';
 import { MODIFYING_TOOLS } from 'adelie-tools'
@@ -85,82 +77,6 @@ function firstLineOf(description: string): string {
         : line;
 }
 
-/**
- * 把一个计划渲染成提示词里的一段文本。
- *
- * 提到模块层是因为它有两个调用方：当前 run（`this.state.plan`）与恢复进来的
- * 历史 run（各自的计划快照）。两者必须走同一套渲染 —— 两套写法迟早会漂移。
- */
-function formatPlan(plan: PlanState): string {
-    const steps = plan.steps
-        .map((s, i) => {
-            const status = s.status === 'completed' ? '✅' :
-                s.status === 'failed' ? '❌' :
-                    s.status === 'skipped' ? '⏭️' :
-                        s.status === 'in_progress' ? '🔄' : '⏳';
-            return `${status} Step ${i + 1}: ${s.description}`;
-        })
-        .join('\n');
-
-    // 交付物一并渲染：它是验收时会真的去核对的清单，模型有权知道自己承诺了什么。
-    // 不渲染的话，「没产出」这件事要到运行结束才由验收揭晓，中间没有任何提示。
-    const deliverables = plan.deliverables ?? [];
-    const deliverableLines = deliverables.length === 0
-        ? ''
-        : `\n交付物（验收时逐条核对）:\n${deliverables
-            .map(d => `- ${d.path}${d.contains ? `（内容需包含「${d.contains}」）` : ''}`)
-            .join('\n')}`;
-
-    return `当前计划 (v${plan.version}):
-${steps}${deliverableLines}`;
-}
-
-/**
- * 模型没有提交初始计划时使用的兜底步骤。
- *
- * 计划是推进任务的手段而不是前置条件：规划轮拿不到计划时用它保底，
- * 让循环照常开始，而不是把整个任务拦在规划阶段。
- */
-const FALLBACK_PLAN_STEPS: PlanStep[] = [
-    {
-        id: 'step-1',
-        description: '理解需求和代码结构',
-        status: 'pending',
-        dependsOn: [],
-        completionCriteria: '已理解任务目标和相关代码',
-    },
-    {
-        id: 'step-2',
-        description: '实现代码变更',
-        status: 'pending',
-        dependsOn: ['step-1'],
-        completionCriteria: '代码变更已完成并通过类型检查',
-    },
-    {
-        id: 'step-3',
-        description: '运行测试验证',
-        status: 'pending',
-        dependsOn: ['step-2'],
-        completionCriteria: '所有测试通过',
-    },
-];
-
-/**
- * 规划轮的提示词。
- *
- * 与循环内的系统提示分开：这一轮唯一的产品是计划，执行类工具的调用
- * 在这一轮既无人消费、也不计入预算。
- */
-const PLANNING_SYSTEM_PROMPT = `你是 AI 编码助手。这一轮只做规划：把任务拆成可依次执行、可独立判断完成的步骤，不要执行任何操作。
-
-要求：
-- 通过 ${REQUEST_REPLAN_TOOL} 提交步骤列表，不要调用其他工具。
-- 每个步骤的 completionCriteria 必须写清「怎么算这一步完成了」。
-- 步骤之间的先后依赖用 dependsOn 标明，取值是其他步骤的 id。
-- 任务要求产出具体文件时，把它们的路径写进 deliverables（相对工作区）；运行时会逐条核对，这是「任务完成」的判据之一。
-- deliverables 只写任务明确要求产出的文件：纯问答 / 解释类任务留空，不要为了留痕而造文件。
-- 步骤范围以任务本身为界，不要拆出与任务无关的步骤。`;
-
 /** 一次动作执行内的审批决定缓存，使同一动作只问一次 */
 interface ApprovalCache {
     decision: ApprovalDecision | null;
@@ -178,7 +94,10 @@ interface ApprovalCache {
  * 5. 支持 Human-in-the-Loop 确认
  *
  * 不负责「决策从哪来」——那是 Provider 的边界翻译职责（见 design.md D1）。
- * 本类只消费内部决策词汇表（Action / Replan / Final / BatchAction）。
+ * 本类只消费内部决策词汇表（Action / Final / BatchAction）。
+ *
+ * 也不负责「计划」：计划是模型自己的一个文件（`PLAN.md`，见 `planFile()`），
+ * 运行时只告诉它文件在哪，不解析、不维护、不进事件流。
  */
 export class AgentRuntime {
     private provider: AgentProvider;
@@ -189,18 +108,22 @@ export class AgentRuntime {
 
     private failureHistory: FailureRecord[] = [];
     private readonly MAX_RETRIES_PER_TOOL = 3;
-    private readonly RETRY_WINDOW_MS = 60000; // 1分钟内同一工具失败超过3次则触发replan
+    private readonly RETRY_WINDOW_MS = 60000; // 1 分钟内同一工具失败达到阈值就回灌一次失败上下文
     private readonly maxConcurrency: number
     /** 未配置审批回调时，只告警一次，避免自动放行被静默吞掉 */
     private approvalWarned = false;
 
     /**
-     * 每个工具已经用掉几次「重新规划」机会。
+     * 每个工具已经回灌过几次失败上下文。
      *
      * 触发时不再直接停机，而是先把失败上下文回灌给模型一次；仍失败才停。
-     * 模型提交 Replan 后清空（见 handleReplan）—— 那是真的换了路线。
+     * 这是「同一处的同一个错误换了三种修法还在」的机械版本 —— 与提示词里的
+     * 那条守则同一个意思（见 buildSystemPrompt）。
      */
-    private replanAttempts = new Map<string, number>();
+    private failureNudges = new Map<string, number>();
+
+    /** 同一个工具最多回灌几次失败上下文，用完仍失败就停机 */
+    private readonly MAX_FAILURE_NUDGES = 1;
 
     /** 待回灌的失败工具名；下一轮构建上下文时用掉即清空 */
     private pendingFailureNudge: string | null = null;
@@ -253,14 +176,11 @@ export class AgentRuntime {
     /**
      * 执行一个任务
      */
-    async run(taskDescription: string, options: RunOptions = {}): Promise<{
-        state: AgentRunState;
-        verification?: TaskVerificationResult;
-    }> {
+    async run(taskDescription: string, options: RunOptions = {}): Promise<{ state: AgentRunState }> {
         // 1. 初始化运行状态
         this.state = this.initializeState(taskDescription);
         this.approvalWarned = false;
-        this.replanAttempts = new Map();
+        this.failureNudges = new Map();
         this.pendingFailureNudge = null;
 
         // 会话事件的第一条。会话跨 run，run 的边界只由它表达（不在目录结构里分）
@@ -276,21 +196,14 @@ export class AgentRuntime {
         });
 
         try {
-            // 2. 生成初始计划
-            await this.createInitialPlan(taskDescription);
-
-            // 3. 进入主循环
+            // 2. 进入主循环
             while (!this.shouldStop()) {
-                // 3.1 构建上下文消息（真实消息序列）
+                // 2.1 构建上下文消息（真实消息序列）
                 const messages = this.buildContextMessages();
 
                 const toolDefinitions = this.buildToolDefinitions();
 
-                // 3.2 让模型决策
-                //
-                // 增量只在主循环里转出去：这一轮的产出是给人看的答复或动作，
-                // 而规划轮（createInitialPlan）的产出是计划，流出来的只是
-                // request_replan 的参数 JSON，没人要看。
+                // 2.2 让模型决策（增量原样转给调用方：模型正在说的话就是这一轮的产品）
                 const response = await this.provider.decide(
                     messages,
                     toolDefinitions,
@@ -298,10 +211,10 @@ export class AgentRuntime {
                 );
                 const decision = response.decision;
 
-                // 3.3 记录用量与当前上下文大小
+                // 2.3 记录用量与当前上下文大小
                 this.recordUsage(response.usage, messages);
 
-                // 3.4 记录决策
+                // 2.4 记录决策
                 this.state.decisions.push(decision);
                 this.state.iterationCount++;
 
@@ -317,7 +230,7 @@ export class AgentRuntime {
                     },
                 });
 
-                // 3.5 处理决策
+                // 2.5 处理决策
                 const shouldContinue = await this.processDecision(decision);
 
                 if (!shouldContinue) {
@@ -325,16 +238,9 @@ export class AgentRuntime {
                 }
             }
 
-            // 4. 执行验收
-            const verification = await this.verifyTask();
-
             this.emitRunEnd();
-            this.emit({ type: 'verification', payload: { verification } });
 
-            return {
-                state: this.state,
-                verification,
-            };
+            return { state: this.state };
 
         } catch (error) {
             // 发生未预期的错误时，记录并停止
@@ -413,13 +319,7 @@ export class AgentRuntime {
     private initializeState(taskDescription: string): AgentRunState {
         return {
             taskId: crypto.randomUUID(),
-            plan: {
-                originalGoal: taskDescription,
-                steps: [],
-                currentStepIndex: 0,
-                version: 1,
-                deliverables: [],
-            },
+            taskDescription,
             decisions: [],
             observations: [],
             toolCallCount: 0,
@@ -496,69 +396,6 @@ export class AgentRuntime {
             ...(this.config.outputBudget !== undefined ? { outputBudget: this.config.outputBudget } : {}),
             ...(this.config.contextTokenBudget !== undefined ? { contextTokenBudget: this.config.contextTokenBudget } : {}),
         });
-    }
-
-    /**
-     * 生成初始计划
-     *
-     * 规划是进入循环前的独立一轮模型调用：运行时下发已注册的工具声明，
-     * 要求模型通过 `request_replan` 提交步骤列表 —— 这是协议里唯一能携带
-     * 结构化计划的通道（见 design.md D1，决策从哪来由 Provider 翻译）。
-     *
-     * 本轮只取计划：不执行工具、不计入迭代与工具调用预算，但用量照常计入
-     * 累计消耗（它同样是一次真实的模型调用）。
-     *
-     * 模型没按协议提交计划、或这一轮调用失败时回落到兜底计划，
-     * 让循环照常开始，而不是把整个任务拦在规划阶段。
-     */
-    private async createInitialPlan(taskDescription: string): Promise<void> {
-        const toolDefinitions = this.buildToolDefinitions();
-
-        // 没有可执行工具时控制流入口不会被声明，模型也就没有提交计划的通道，
-        // 这一轮请求注定拿不到计划 —— 直接跳过，不做无谓的调用。
-        //
-        // 跳过时照样要落 plan_updated：事件流是重建计划的唯一来源，只把 steps
-        // 设进内存的话，重放出来的会话会是个没有计划的会话。
-        if (toolDefinitions.length === 0) {
-            this.state.plan.steps = cloneFallbackPlan();
-            this.applyDeliverables([]);
-            this.emit({ type: 'plan_updated', payload: { plan: this.snapshotPlan() } });
-            return;
-        }
-
-        const messages: ChatMessage[] = [
-            { role: 'system', content: PLANNING_SYSTEM_PROMPT },
-            {
-                role: 'user',
-                content: `任务目标: ${taskDescription}\n\n请先给出执行计划：调用 ${REQUEST_REPLAN_TOOL} 提交步骤列表。`,
-            },
-        ];
-
-        let steps: PlanStep[] = [];
-        let declared: unknown;
-
-        try {
-            const response = await this.provider.decide(messages, toolDefinitions);
-            this.recordUsage(response.usage, messages);
-
-            if (response.decision.type === 'Replan') {
-                steps = normalizePlanSteps(response.decision.newPlan);
-                declared = response.decision.deliverables;
-            }
-        } catch (error) {
-            console.warn(`[AgentRuntime] 初始计划生成失败，改用兜底计划: ${(error as Error).message}`);
-        }
-
-        if (steps.length === 0) {
-            console.warn(
-                `[AgentRuntime] 模型未通过 ${REQUEST_REPLAN_TOOL} 提交初始计划，改用兜底计划`
-            );
-            steps = cloneFallbackPlan();
-        }
-
-        this.state.plan.steps = steps;
-        this.applyDeliverables(declared);
-        this.emit({ type: 'plan_updated', payload: { plan: this.snapshotPlan() } });
     }
 
     /**
@@ -744,7 +581,7 @@ export class AgentRuntime {
      * 把观察按决策轮分组。
      *
      * 观察本身不带轮次，但消耗规则是确定的：Action 消耗 1 条、BatchAction 消耗 N 条
-     * （N = 子动作数），Replan / Final 不消耗。与 `deriveRunMessages` 的游标口径一致。
+     * （N = 子动作数），Final 不消耗。与 `deriveRunMessages` 的游标口径一致。
      */
     private observationRounds(): Observation[][] {
         const rounds: Observation[][] = [];
@@ -799,8 +636,6 @@ export class AgentRuntime {
         switch (decision.type) {
             case 'Action':
                 return this.executeAction(decision);
-            case 'Replan':
-                return this.handleReplan(decision);
             case 'Final':
                 this.state.stopReason = { type: 'task_completed' };
                 return false;
@@ -965,7 +800,7 @@ export class AgentRuntime {
         const approvalCache: ApprovalCache = { decision: null };
         const ctx: ToolContext = {
             workspaceRoot: this.config.workspacePath,
-            allowedPaths: [this.config.workspacePath],  // 后续由 fs-guard 管理
+            allowedPaths: this.allowedPaths(),  // 判定由 fs-guard 做（工作区 + 计划文件所在目录）
             runId: this.state.taskId,
             requestApproval: (pending) => this.approveOnce(approvalCache, pending),
             signal: controller.signal
@@ -1042,21 +877,22 @@ export class AgentRuntime {
 
                 console.warn(`工具 ${effective.tool} 执行失败:`, result.error);
 
-                // 同一工具反复失败：先真的给模型一次重新规划的机会，而不是直接收摊
-                if (this.shouldAutoReplan(effective.tool)) {
-                    const attempts = (this.replanAttempts.get(effective.tool) ?? 0) + 1;
-                    this.replanAttempts.set(effective.tool, attempts);
+                // 同一工具反复失败：先把失败上下文回灌给模型一次，而不是直接收摊
+                // （提示词里那条守则是「同一个错误换了三种修法还在就停下来」，
+                // 这里是它的机械版本：给一次机会，给完还失败就停）。
+                if (this.shouldNudgeAfterFailures(effective.tool)) {
+                    const nudges = (this.failureNudges.get(effective.tool) ?? 0) + 1;
+                    this.failureNudges.set(effective.tool, nudges);
 
-                    if (attempts > (this.config.maxReplanAttempts ?? 1)) {
+                    if (nudges > this.MAX_FAILURE_NUDGES) {
                         this.state.stopReason = {
                             type: 'error',
-                            message: `工具 ${effective.tool} 在重新规划后仍反复失败，停止运行`,
+                            message: `工具 ${effective.tool} 在回灌失败上下文后仍反复失败，停止运行`,
                         };
                         return false;
                     }
 
-                    // 下一轮的上下文里会带上这段失败上下文（见 buildContextMessages）：
-                    // 名字叫「需要重新规划」，就得真的给模型一次重新规划的机会。
+                    // 下一轮的上下文里会带上这段失败上下文（见 buildContextMessages）。
                     //
                     // 同时清掉该工具已累积的失败记录：否则窗口计数还是满的，模型换了做法
                     // 再失败一次就立刻停机 —— 那次尝试等于白给。
@@ -1247,10 +1083,10 @@ export class AgentRuntime {
     /**
      * 该工具在最近一个时间窗内的失败次数是否已达阈值。
      *
-     * 历史包袱：方法名与提示语里写的是「连续失败」，实际统计的是**窗口内**的失败次数
-     * （run_test/PRD.md §6.3）。这里保留判定口径，只把文案改成与事实一致的说法。
+     * 历史包袱：判定口径是**窗口内**的失败次数，不是字面意义上的「连续」
+     * （run_test/PRD.md §6.3）。文案与事实对齐，口径保持不动。
      */
-    private shouldAutoReplan(toolName: string): boolean {
+    private shouldNudgeAfterFailures(toolName: string): boolean {
         const now = Date.now();
         const recentFailures = this.failureHistory.filter(
             f => f.tool === toolName && (now - f.timestamp) < this.RETRY_WINDOW_MS
@@ -1275,9 +1111,8 @@ export class AgentRuntime {
                 thought: action.thought || '',
                 decision: action,
                 contextSnapshot: {
-                    currentPlan: this.formatPlanState(),
+                    taskDescription: this.state.taskDescription,
                     recentHistory: JSON.stringify(this.state.decisions.slice(-5)),
-                    currentStep: this.state.plan.steps[this.state.plan.currentStepIndex]?.description || '',
                 },
             },
             preview: {
@@ -1416,55 +1251,6 @@ export class AgentRuntime {
 
 
     /**
-     * 处理重新规划
-     */
-    private async handleReplan(decision: ModelDecision & { type: 'Replan' }): Promise<boolean> {
-        // 1. 当前步骤如果还没了结，记成失败（已经 completed 的不要被覆盖）
-        const currentStep = this.state.plan.steps[this.state.plan.currentStepIndex];
-        if (currentStep && (currentStep.status === 'pending' || currentStep.status === 'in_progress')) {
-            currentStep.status = 'failed';
-        }
-
-        // 2. 创建新计划版本
-        //
-        //    旧计划里**已经了结**的步骤（completed / failed / skipped）作为历史保留：
-        //    之前只 filter(completed)，而当时全仓库没有任何地方把步骤置为 completed，
-        //    于是这个 filter 恒为空集 —— 每次 replan 都把已经做过的进展整体丢掉。
-        this.state.plan.version++;
-        const settled = this.state.plan.steps.filter(
-            s => s.status === 'completed' || s.status === 'failed' || s.status === 'skipped'
-        );
-        this.state.plan.steps = [
-            ...settled,
-            // 添加新的步骤
-            ...decision.newPlan.map((step, index) => ({
-                ...step,
-                id: `v${this.state.plan.version}-step-${index + 1}`,
-            })),
-        ];
-
-        // 3. 当前步骤指向新的第一个未完成步骤
-        const nextIndex = this.state.plan.steps.findIndex(s => s.status === 'pending');
-        this.state.plan.currentStepIndex = nextIndex === -1 ? 0 : nextIndex;
-
-        // 4. 重新规划是真的换了路线：把「反复失败」的计数清零，让模型有新的机会
-        this.replanAttempts = new Map();
-        this.failureHistory = [];
-
-        // 5. 交付物声明跟着一起收敛（新增的并入，已有的保留）
-        this.applyDeliverables(decision.deliverables);
-
-        this.emit({ type: 'plan_updated', payload: { plan: this.snapshotPlan() } });
-
-        // 走 stderr：这是诊断输出，不是调用方的产物。headless（--output-format json）
-        // 下 stdout 只有一行 JSON，多一行日志就整体不可解析了 —— 运行时没有理由
-        // 往 stdout 写东西。终端里两者都看得见，差别只在重定向时。
-        console.error(`计划已更新到 v${this.state.plan.version}，原因: ${decision.reason}`);
-
-        return true;
-    }
-
-    /**
      * 构建发送给模型的上下文消息
      *
      * 从运行时记录的决策与观察重建真实消息序列：助手消息携带工具调用，
@@ -1492,14 +1278,14 @@ export class AgentRuntime {
 
             messages.push({
                 role: 'user',
-                content: `任务目标: ${run.taskDescription}\n\n${formatPlan(run.plan)}`,
+                content: `任务目标: ${run.taskDescription}`,
             });
             messages.push(...this.deriveRunMessages(run.decisions, run.observations, 0));
         });
 
         messages.push({
             role: 'user',
-            content: `任务目标: ${this.state.plan.originalGoal}\n\n${this.formatPlanState()}`,
+            content: `任务目标: ${this.state.taskDescription}`,
         });
         // 当前 run 的观察按「保留最近 N 条」折叠：N 由折叠计划给，未超预算时等于全部
         const foldBefore = Math.max(0, this.state.observations.length - fold.keepObservations);
@@ -1516,9 +1302,9 @@ export class AgentRuntime {
             messages.push({
                 role: 'user',
                 content:
-                    `工具 ${tool} 连续失败多次，最近一次的错误是：${recent?.error ?? '（未记录）'}\n` +
-                    '请重新规划：用 request_replan 提交一份新的步骤列表（把已完成的步骤标为 completed），' +
-                    '或换一种做法再试。不要重复同样的调用。',
+                    `工具 ${tool} 在最近一分钟内已经失败多次，最近一次的错误是：${recent?.error ?? '（未记录）'}\n` +
+                    '换一种做法再试，不要重复同样的调用。如果换过三种不同的做法还是同一个错，' +
+                    '就停下来把卡点说清楚，而不是继续试。',
             });
         }
 
@@ -1576,9 +1362,6 @@ export class AgentRuntime {
                     });
                     break;
                 }
-                case 'Replan':
-                    messages.push({ role: 'assistant', content: `[重新规划] ${decision.reason}` });
-                    break;
                 case 'Final':
                     messages.push({ role: 'assistant', content: decision.answer });
                     break;
@@ -1740,7 +1523,7 @@ export class AgentRuntime {
         this.lastFoldSignature = signature;
         if (!plan.folded) return;
 
-        // 日志走 stderr：headless 的 stdout 只有一行 JSON（理由同 handleReplan）
+        // 日志走 stderr：headless 的 stdout 只有一行 JSON，多一行日志就整体不可解析
         console.error(`[AgentRuntime] 上下文超出预算，已折叠较早的历史：${plan.reason}`);
         this.emit({
             type: 'context_folded',
@@ -1767,9 +1550,12 @@ export class AgentRuntime {
 - 需要读取或修改文件、执行命令时，调用相应工具。
 - 工具的执行结果会在下一轮作为工具结果返回给你。
 - 当你不再需要调用任何工具时，直接给出最终答复，任务就此结束。
-- 计划要跟着进度走：完成一步后，用 ${REQUEST_REPLAN_TOOL} 提交更新后的步骤列表，把该步标为 completed
-  （跳过某步标 skipped、失败标 failed）。计划如果不可行，也用同一个入口换一份新的。
-- 每轮给你的「当前计划」里的状态由你自己维护：不提交更新，它就永远停在 ⏳ —— 那份计划也就没有参考价值。
+- 任务不是一两步就能做完时，先把计划写进计划文件：${this.planFile()}
+  写成「任务概述 + 分步条目」，每完成一步就更新它；每一步验证过再开始下一步，
+  亲眼看到它work了才把这一步划掉。计划文件在工作区之外，不会污染用户的项目。
+- 交付前用项目自己的命令验证（测试 / 类型检查 / 构建 / lint）：看不到通过就不算做完，
+  不要把「应该没问题」当成结论。
+- 同一处的同一个错误换过三种修法还在，就停下来把卡点说清楚，而不是继续试。
 - 若多个动作之间没有依赖关系，可调用 ${BATCH_TOOL} 一次性提交以并发执行。
 
 注意事项：
@@ -1839,335 +1625,31 @@ export class AgentRuntime {
     }
 
     /**
-     * 格式化当前计划状态
+     * 计划文件的绝对路径。
+     *
+     * 有会话草稿目录时放那儿（工作区之外），否则退回工作区根 —— CLI 单次运行、
+     * 测试这类没有会话目录的场景。名字固定为 `PLAN.md`：同一会话下一轮醒来时，
+     * 模型凭这个名字就能找回自己上次写到哪儿了（同 penguin 的 PLAN.md）。
      */
-    private formatPlanState(): string {
-        return formatPlan(this.state.plan);
+    private planFile(): string {
+        return join(this.config.scratchpadDir ?? this.config.workspacePath, 'PLAN.md');
     }
 
     /**
-     * 取当前计划的深拷贝，供事件使用。
+     * 模型可写的根：工作区 + 计划文件所在的草稿目录。
      *
-     * 计划是就地改的（`plan.version++`、`plan.steps = [...]`），直接把引用交出去
-     * 会让「已经交出的事件」被后续改动改写。事件一旦发出就应当是不变的。
+     * 计划文件在工作区之外，而文件工具一律走 fs-guard 的边界判定 ——
+     * 不把草稿目录列进来，模型就写不了自己的计划文件。
      */
-    private snapshotPlan(): PlanState {
-        return {
-            originalGoal: this.state.plan.originalGoal,
-            currentStepIndex: this.state.plan.currentStepIndex,
-            version: this.state.plan.version,
-            steps: this.state.plan.steps.map(step => ({ ...step, dependsOn: [...step.dependsOn] })),
-            deliverables: (this.state.plan.deliverables ?? []).map(spec => ({ ...spec })),
-        };
-    }
-
-    /**
-     * 收敛这次计划带来的交付物声明，与调用方声明的一起写进计划。
-     *
-     * 三个来路合并而不是互相覆盖：
-     *   - 模型在计划里声明的（它从任务描述里读出来的）；
-     *   - config.deliverables（调用方钉死的，CI / eval 场景）；
-     *   - 计划里原有的（重规划时保留，避免一次 Replan 把先前的承诺悄悄抹掉）。
-     *
-     * 因此验收只会变严、不会变松：声明过的东西不会因为后来一次重规划而不再核对。
-     * 同一路径多处声明时取后者（config 优先于模型 —— 人和脚本写的比模型稳）。
-     */
-    private applyDeliverables(declared: unknown): void {
-        const merged = new Map<string, DeliverableSpec>();
-        for (const spec of this.state.plan.deliverables ?? []) merged.set(spec.path, spec);
-        for (const spec of normalizeDeliverables(declared)) merged.set(spec.path, spec);
-        for (const spec of normalizeDeliverables(this.config.deliverables)) merged.set(spec.path, spec);
-        this.state.plan.deliverables = [...merged.values()];
-    }
-
-
-    /**
-     * 验证任务是否完成
-     *
-     * 由运行时自行推断并执行验证手段，结论不取自模型自述
-     * （见 task-verification spec）。
-     *
-     * 分两层，因为两层回答的是不同问题：
-     *   - regression：仓库自带的测试 / 类型检查还过不过（「没弄坏原来的东西」）；
-     *   - deliverables：这次任务承诺产出的文件在不在、内容对不对（「要的东西出来了没有」）。
-     * 老实现只有第一层，且把它当成任务完成与否的全部判据 —— 于是「写一份 weather.md」
-     * 这类任务只要没弄坏测试就能拿到 passed: true，即便 weather.md 根本不存在。
-     */
-    private async verifyTask(): Promise<TaskVerificationResult> {
-        const workspaceRoot = this.config.workspacePath;
-        const diffSummary = this.buildDiffSummary();
-        const commands = this.inferVerificationCommands(workspaceRoot);
-
-        // 交付物断言先跑：它不依赖工作区有没有测试脚本，且离「任务本身」更近
-        const deliverables = this.checkDeliverables();
-        const deliverablesLayer = {
-            declared: deliverables.length,
-            // 一条都没声明时不算阻碍（没有声明就没有承诺可核对）
-            passed: deliverables.every(check => check.ok),
-        };
-
-        const timeoutMs = this.config.verificationTimeoutMs ?? 120000;
-        let testResults = { passed: 0, failed: 0, output: '' };
-        let typeCheckPassed: boolean | null = null;
-        let typeCheckOutput = '';
-        const details: string[] = [];
-        let regressionPassed = true;
-
-        for (const command of commands) {
-            const outcome = this.runVerificationCommand(command.command, workspaceRoot, timeoutMs);
-
-            if (command.kind === 'test') {
-                testResults = { ...parseTestCounts(outcome.output), output: outcome.output };
-            } else {
-                typeCheckPassed = outcome.ok;
-                typeCheckOutput = outcome.output;
-            }
-
-            details.push(`${command.kind} [${command.command}] -> ${outcome.ok ? '通过' : '失败'} (exit ${outcome.status})`);
-            if (!outcome.ok) regressionPassed = false;
-        }
-
-        const regression = { executed: commands.length > 0, passed: regressionPassed };
-        const passed = regressionPassed && deliverablesLayer.passed;
-
-        // 两层都没跑成才是「不可判定」。老实现只看仓库有没有 test 脚本，
-        // 于是声明了交付物的任务即便逐条核对完了，也被记成不可判定（其实是判得出的）。
-        if (!regression.executed && deliverablesLayer.declared === 0) {
-            return {
-                passed: false,
-                verificationStatus: 'unavailable',
-                testResults,
-                typeCheckPassed,
-                typeCheckOutput,
-                diffSummary,
-                completionCriteriaMet: false,
-                details: '工作区未声明测试脚本，也不存在类型检查配置，验收结论不可判定（不可判定不等于通过）',
-                deliverables,
-                layers: { regression, deliverables: deliverablesLayer },
-            };
-        }
-
-        for (const check of deliverables) {
-            details.push(`deliverable [${check.path}] -> ${check.ok ? '通过' : '失败'}（${check.detail}）`);
-        }
-
-        const completed = this.state.stopReason?.type === 'task_completed';
-
-        return {
-            passed,
-            verificationStatus: 'executed',
-            testResults,
-            typeCheckPassed,
-            typeCheckOutput,
-            diffSummary,
-            completionCriteriaMet: completed && passed,
-            details: details.join('\n'),
-            deliverables,
-            layers: { regression, deliverables: deliverablesLayer },
-        };
-    }
-
-    /**
-     * 逐条核对交付物断言：文件在不在、内容含不含声明的那段文本。
-     *
-     * 判定刻意做得很小 —— 不解释、不调模型。验收的结论要能复现、要在 CI 里被信任，
-     * 所以这里只做「存在 + 子串包含」两件事，剩下的判断留给读结论的人。
-     *
-     * 边界走 fs-guard 的同一套解析（resolve + realpath + relative），不另写一遍：
-     * 交付物声明同样来自模型，`../../etc/passwd` 这种路径一样可能出现在里面。
-     */
-    private checkDeliverables(): DeliverableCheck[] {
-        const workspaceRoot = this.config.workspacePath;
-
-        return (this.state.plan.deliverables ?? []).map(spec => {
-            const guarded = resolveInWorkspace(workspaceRoot, spec.path, [workspaceRoot]);
-            if (!guarded.allowed) {
-                return { path: spec.path, ok: false, detail: `${spec.path}：${guarded.reason ?? '路径不合法'}` };
-            }
-
-            let stat;
-            try {
-                stat = statSync(guarded.resolved);
-            } catch {
-                return { path: spec.path, ok: false, detail: `${spec.path}：文件不存在` };
-            }
-            if (!stat.isFile()) {
-                return { path: spec.path, ok: false, detail: `${spec.path}：存在但不是文件` };
-            }
-
-            if (spec.contains === undefined) {
-                return { path: spec.path, ok: true, detail: `${spec.path}：存在` };
-            }
-
-            let content: string;
-            try {
-                content = readFileSync(guarded.resolved, 'utf-8');
-            } catch (error) {
-                return { path: spec.path, ok: false, detail: `${spec.path}：无法读取（${(error as Error).message}）` };
-            }
-
-            const matched = content.includes(spec.contains);
-            return {
-                path: spec.path,
-                ok: matched,
-                detail: matched
-                    ? `${spec.path}：存在且包含「${spec.contains}」`
-                    : `${spec.path}：缺少「${spec.contains}」`,
-            };
-        });
-    }
-
-    /**
-     * 从工作区推断验证手段：优先项目声明的测试脚本，存在类型检查配置时追加。
-     *
-     * 类型检查只在工作区**本地**存在 typescript 时才纳入：不擅自安装依赖，
-     * 也避免「配置存在但工具不可用」被误报为类型检查失败（那种情形记为未执行）。
-     */
-    private inferVerificationCommands(
-        workspaceRoot: string
-    ): Array<{ kind: 'test' | 'typecheck'; command: string }> {
-        const commands: Array<{ kind: 'test' | 'typecheck'; command: string }> = [];
-
-        const packageJsonPath = join(workspaceRoot, 'package.json');
-        if (existsSync(packageJsonPath)) {
-            try {
-                const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-                if (pkg?.scripts?.test) {
-                    commands.push({ kind: 'test', command: 'npm test' });
-                }
-            } catch {
-                // 配置不可解析时视为没有声明测试脚本
-            }
-        }
-
-        const localTsc = join(workspaceRoot, 'node_modules', 'typescript', 'bin', 'tsc');
-        if (existsSync(join(workspaceRoot, 'tsconfig.json')) && existsSync(localTsc)) {
-            commands.push({ kind: 'typecheck', command: `node "${localTsc}" --noEmit` });
-        }
-
-        return commands;
-    }
-
-    /**
-     * 实际执行一条验证命令。
-     */
-    private runVerificationCommand(
-        command: string,
-        cwd: string,
-        timeoutMs: number
-    ): { ok: boolean; status: number; output: string } {
-        const result = spawnSync(command, {
-            cwd,
-            shell: true,
-            timeout: timeoutMs,
-            encoding: 'utf-8',
-            maxBuffer: 10 * 1024 * 1024,
-        });
-
-        const output = [result.stdout, result.stderr]
-            .filter((part): part is string => typeof part === 'string' && part.length > 0)
-            .join('\n');
-
-        return { ok: result.status === 0, status: result.status ?? -1, output };
-    }
-
-    /**
-     * 变更摘要：列出运行期间实际改动过的文件。
-     */
-    private buildDiffSummary(): string {
-        const paths = [...new Set(this.state.fileChanges.map(change => change.path))];
-
-        if (paths.length === 0) {
-            return '运行期间没有文件变更';
-        }
-
-        return `共改动 ${paths.length} 个文件：\n${paths.map(path => `- ${path}`).join('\n')}`;
+    private allowedPaths(): string[] {
+        const dirs = this.config.scratchpadDir;
+        return dirs === undefined
+            ? [this.config.workspacePath]
+            : Array.from(new Set([this.config.workspacePath, dirs]));
     }
 }
 
-
-/**
- * 兜底计划的新副本。
- *
- * 每次运行都拿到独立的步骤对象：计划状态在运行中会被改写（状态、当前步骤索引），
- * 共用一份常量会让上一次运行的结果泄漏到下一次。
- */
-function cloneFallbackPlan(): PlanStep[] {
-    return FALLBACK_PLAN_STEPS.map(step => ({ ...step, dependsOn: [...step.dependsOn] }));
-}
-
-/**
- * 把模型提交的步骤规范成合法计划（PlanStep 的类型约束）。
- *
- * 模型输出是不可信的，即使它已经过一次边界翻译：id 可能缺失或重复、
- * dependsOn 可能指向不存在的步骤甚至指向自己、状态可能自报已完成。
- * 这里统一收敛到「id 唯一 + 依赖闭合 + 全部 pending」的形状，
- * 使计划可以直接驱动后续的步骤推进。
- *
- * id 一律按位置重编：模型声明的 id 只用于解析依赖关系，它的取值本身
- * 不参与计划语义。没有描述的步骤无法推进也无法交代，直接丢弃。
- */
-function normalizePlanSteps(raw: unknown): PlanStep[] {
-    if (!Array.isArray(raw)) return [];
-
-    const kept: Record<string, unknown>[] = [];
-    for (const entry of raw) {
-        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) continue;
-        const candidate = entry as Record<string, unknown>;
-        const description = typeof candidate.description === 'string' ? candidate.description.trim() : '';
-        if (!description) continue;
-        kept.push(candidate);
-    }
-
-    // 先建立「模型声明的 id → 运行时重编后的 id」映射，重复声明只认第一次出现
-    const idMap = new Map<string, string>();
-    kept.forEach((entry, index) => {
-        const declared = typeof entry.id === 'string' ? entry.id.trim() : '';
-        if (declared && !idMap.has(declared)) {
-            idMap.set(declared, stepId(index));
-        }
-    });
-
-    return kept.map((entry, index) => {
-        const id = stepId(index);
-        return {
-            id,
-            description: (entry.description as string).trim(),
-            // 新计划一律从 pending 开始，不接受模型自报已完成
-            status: 'pending',
-            dependsOn: normalizeDependencies(entry.dependsOn, idMap, id),
-            completionCriteria: typeof entry.completionCriteria === 'string' ? entry.completionCriteria : '',
-        };
-    });
-}
-
-/** 计划步骤的 id 编号口径，与 handleReplan 的位置编号保持一致 */
-function stepId(index: number): string {
-    return `step-${index + 1}`;
-}
-
-/**
- * 解析依赖：只保留能落到计划内的引用，丢掉未知 id 与自引用。
- */
-function normalizeDependencies(raw: unknown, idMap: Map<string, string>, selfId: string): string[] {
-    if (!Array.isArray(raw)) return [];
-
-    const dependencies: string[] = [];
-    for (const entry of raw) {
-        if (typeof entry !== 'string') continue;
-        const resolved = idMap.get(entry.trim());
-        if (!resolved || resolved === selfId || dependencies.includes(resolved)) continue;
-        dependencies.push(resolved);
-    }
-    return dependencies;
-}
-
-/**
- * 判定一次成功的工具调用是否真的产出了内容。
- *
- * null / undefined / 空字符串 / 空数组 / 空对象都算「没有输出」，
- * 此时送入模型的应当是明确的占位说明，而不是空内容。
- */
+/** 工具产出是否算「有内容」（无进展判定用） */
 function hasOutputPayload(data: unknown): boolean {
     if (data === null || data === undefined) return false;
     if (typeof data === 'string') return data.trim() !== '';
@@ -2216,31 +1698,6 @@ function accumulateTokenCount(current: number | null, delta: number | undefined)
  * 匹配前必须先剥掉 ANSI 颜色转义：测试运行器默认输出彩色汇总行，
  * 形如 `\u001b[2m  Tests \u001b[22m \u001b[1m\u001b[32m86 passed\u001b[39m`，
  * 转义序列是非空白字符，不剥掉会直接匹配失败、计数恒为 0。
- */
-function parseTestCounts(output: string): { passed: number; failed: number } {
-    const plain = output.replace(/\u001b\[[0-9;]*m/g, '');
-    const match = plain.match(/Tests\s+(?:(\d+)\s+failed\s*\|\s*)?(\d+)\s+passed/);
-    if (!match) {
-        return { passed: 0, failed: 0 };
-    }
-    return {
-        passed: Number(match[2] ?? 0),
-        failed: Number(match[1] ?? 0),
-    };
-}
-
-
-/**
- * 消息序列合法性清理（见 design.md D5）。
- *
- * DeepSeek 官方明确 Chat Completion API 不支持中途插入 tool calls，因此提交前
- * 必须保证：每个工具调用都有结果、每个结果都有对应的调用。
- *
- * 规则：
- *   - 只保留「调用与结果都存在」的工具调用；无结果的调用被移除
- *   - 无对应调用的工具结果被丢弃
- *   - 调用被全部移除的助手消息降级为纯文本（文本为空则整条丢弃）
- *   - 连续的纯文本助手消息合并
  */
 export function sanitizeMessageSequence(messages: ChatMessage[]): ChatMessage[] {
     const calledIds = new Set<string>();

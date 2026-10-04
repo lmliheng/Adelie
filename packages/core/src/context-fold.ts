@@ -135,9 +135,6 @@ export function estimatePriorRunsTokens(runs: readonly PriorRun[]): number {
 
     for (const run of runs) {
         chars += run.taskDescription.length;
-        for (const step of run.plan.steps) {
-            chars += step.description.length + step.completionCriteria.length;
-        }
 
         for (const decision of run.decisions) {
             switch (decision.type) {
@@ -148,9 +145,6 @@ export function estimatePriorRunsTokens(runs: readonly PriorRun[]): number {
                     for (const action of decision.actions) {
                         chars += action.tool.length + JSON.stringify(action.params ?? {}).length;
                     }
-                    break;
-                case 'Replan':
-                    chars += decision.reason.length + decision.newPlan.length * 60;
                     break;
                 case 'Final':
                     chars += decision.answer.length;

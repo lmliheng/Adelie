@@ -6,7 +6,6 @@ export * from './types/ModelRef.js';
 export * from './types/ReAct.js';
 export * from './types/Runtime.js';
 export * from './types/Tool.js';
-export * from './deliverables.js';
 export * from './context-fold.js';
 export * from './output-budget.js';
 export * from './persistence/events.js';

@@ -192,9 +192,9 @@ POST /api/sessions/:id/messages
 | --- | --- | --- |
 | `run_started` | `{ "runId": "...", "task": "..." }` | 这一轮开始 |
 | `delta` | `{ "kind": "content"\|"reasoning", "text": "..." }` | 模型增量，原样转发自 `onStreamDelta` |
-| `event` | `{ "type": "<SessionEventType>", "payload": {...}, "timestamp": 123 }` | 运行时的状态迁移事件（decision / observation / plan_updated / approval / stopped / verification / context_folded） |
+| `event` | `{ "type": "<SessionEventType>", "payload": {...}, "timestamp": 123 }` | 运行时的状态迁移事件（decision / observation / approval / context_folded / stopped） |
 | `approval_request` | `{ "actionId": "...", "action": PendingAction }` | 需要人工拍板，等第 5 节的决定 |
-| `run_finished` | `{ "runId", "stopReason", "verification", "usage": { promptTokens, completionTokens, totalTokens }, "fileChanges": [...], "iterations" }` | 这一轮结束 |
+| `run_finished` | `{ "runId", "stopReason", "usage": { promptTokens, completionTokens, totalTokens }, "fileChanges": [...], "iterations" }` | 这一轮结束 |
 | `error` | `{ "message": "..." }` | 运行之外的失败（装配、provider 构造）。运行期失败由 `run_finished.stopReason` 表达 |
 | `done` | `{}` | 流结束标记，客户端据此收尾 |
 

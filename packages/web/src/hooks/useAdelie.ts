@@ -681,7 +681,6 @@ function normalizeRunFinished(record: Record<string, unknown> | null): RunFinish
   return {
     runId: typeof record?.['runId'] === 'string' ? record['runId'] : '',
     stopReason: record?.['stopReason'] ?? null,
-    verification: record?.['verification'] ?? null,
     usage:
       usage === null || typeof usage['totalTokens'] !== 'number'
         ? null

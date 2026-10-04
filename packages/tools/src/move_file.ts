@@ -127,9 +127,9 @@ export class MoveFileTool implements Tool<MoveFileParams> {
                         params: params as unknown as Record<string, unknown>,
                     },
                     contextSnapshot: {
-                        currentPlan: '移动文件',
+                        // 工具自己发起的审批没有对话上下文可引：任务目标由运行时补
+                        taskDescription: '',
                         recentHistory: '',
-                        currentStep: 'move_file',
                     },
                 },
                 preview: {

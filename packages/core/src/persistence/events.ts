@@ -12,9 +12,7 @@ import type {
   FileChange,
   ModelDecision,
   Observation,
-  PlanState,
   StopReason,
-  TaskVerificationResult,
   TokenUsageRecord,
 } from '../types/ReAct.js';
 import type { TokenUsage } from '../types/AgentProvider.js';
@@ -33,10 +31,8 @@ export type SessionEventType =
   | 'decision'
   | 'observation'
   | 'approval'
-  | 'plan_updated'
   | 'context_folded'
-  | 'stopped'
-  | 'verification';
+  | 'stopped';
 
 /** 一次 run 的开始。会话跨 run，run 的边界只由本事件表达（不在目录结构里） */
 export interface TaskStartedPayload {
@@ -75,10 +71,6 @@ export interface ApprovalPayload {
   approval: ApprovalRecord;
 }
 
-export interface PlanUpdatedPayload {
-  plan: PlanState;
-}
-
 /**
  * 上下文折叠：这一轮起，更早的历史以摘要形式送进模型（见 context-fold）。
  *
@@ -104,19 +96,13 @@ export interface StoppedPayload {
   fileChanges: FileChange[];
 }
 
-export interface VerificationPayload {
-  verification: TaskVerificationResult;
-}
-
 export interface SessionEventPayloads {
   task_started: TaskStartedPayload;
   decision: DecisionPayload;
   observation: ObservationPayload;
   approval: ApprovalPayload;
-  plan_updated: PlanUpdatedPayload;
   context_folded: ContextFoldedPayload;
   stopped: StoppedPayload;
-  verification: VerificationPayload;
 }
 
 /** 调用方交出去的事件：`v` / `seq` / `ts` 由存储补齐，不由调用方指定 */
@@ -181,9 +167,7 @@ export function isKnownEventType(type: string): type is SessionEventType {
     type === 'decision' ||
     type === 'observation' ||
     type === 'approval' ||
-    type === 'plan_updated' ||
     type === 'context_folded' ||
-    type === 'stopped' ||
-    type === 'verification'
+    type === 'stopped'
   );
 }

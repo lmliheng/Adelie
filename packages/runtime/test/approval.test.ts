@@ -7,7 +7,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AgentRuntime } from '../src/agent.runtime.js';
 import { ReadFileTool } from 'adelie-tools';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type { Tool, ToolParams, ToolContext, ToolResult, ValidationResult, PendingAction } from 'adelie-core';
 import type { AgentProvider, AgentProviderConfig, ModelResponse } from 'adelie-core';
 import type { ChatMessage } from 'adelie-core';
@@ -70,7 +70,7 @@ class GuardedTool implements Tool<ToolParams> {
             source: {
                 thought: '工具内部申请',
                 decision: { type: 'Action', tool: this.name, params: {} },
-                contextSnapshot: { currentPlan: '', recentHistory: '', currentStep: '' },
+                contextSnapshot: { taskDescription: '', recentHistory: '' },
             },
             preview: {
                 tool: this.name,
@@ -131,8 +131,6 @@ describe('人工审批', () => {
     ): AgentRuntime {
         return new AgentRuntime(
             new ScriptedProvider([
-                // 脚本第一位留给规划轮，审批相关的决策从进入循环后开始
-                initialPlanDecision(),
                 { type: 'Action', tool: tool.name, params: { path: 'src/a.ts' }, thought: '动手' },
                 { type: 'Final', answer: '完成' },
             ]),
@@ -199,7 +197,6 @@ describe('人工审批', () => {
         const approver = vi.fn(async () => 'approve' as const);
         const runtime = new AgentRuntime(
             new ScriptedProvider([
-                initialPlanDecision(),
                 { type: 'Action', tool: 'read_file', params: { path: 'src/a.ts' }, thought: '读取' },
                 { type: 'Final', answer: '完成' },
             ]),
@@ -248,7 +245,6 @@ describe('人工审批', () => {
 
         const runtime = new AgentRuntime(
             new ScriptedProvider([
-                initialPlanDecision(),
                 {
                     type: 'BatchAction',
                     thought: '两件都要审批',
@@ -286,7 +282,6 @@ describe('人工审批', () => {
 
         const runtime = new AgentRuntime(
             new ScriptedProvider([
-                initialPlanDecision(),
                 {
                     type: 'BatchAction',
                     thought: '经信封调用两件需审批的事',
@@ -323,7 +318,6 @@ describe('人工审批', () => {
 
         const runtime = new AgentRuntime(
             new ScriptedProvider([
-                initialPlanDecision(),
                 {
                     type: 'BatchAction',
                     thought: '同时读两处',
@@ -368,7 +362,6 @@ describe('人工审批：审计、超时与默认策略', () => {
         const events: Array<{ type: string; payload: unknown }> = [];
         const runtime = new AgentRuntime(
             new ScriptedProvider([
-                initialPlanDecision(),
                 { type: 'Action', tool: tool.name, params: { path: 'src/a.ts' }, thought: '动手' },
                 { type: 'Final', answer: '完成' },
             ]),

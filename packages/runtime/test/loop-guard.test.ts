@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AgentRuntime } from '../src/agent.runtime.js';
-import { createTestWorkspace, cleanupTestWorkspace, initialPlanDecision } from './setup.js';
+import { createTestWorkspace, cleanupTestWorkspace } from './setup.js';
 import type {
     AgentProvider,
     AgentProviderConfig,
@@ -99,7 +99,7 @@ describe('循环守卫', () => {
         tools: Tool<ToolParams>[],
         config: Record<string, unknown> = {},
     ): AgentRuntime {
-        return new AgentRuntime(new ScriptedProvider([initialPlanDecision(), ...decisions]), tools, {
+        return new AgentRuntime(new ScriptedProvider(decisions), tools, {
             workspacePath: workspaceDir,
             maxIterations: 20,
             ...config,
@@ -172,7 +172,7 @@ describe('循环守卫', () => {
 
         const { state } = await runtimeWith([call('1'), call('2'), call('3'), call('4'), call('5')], [tool]).run('取数');
 
-        // 同工具的失败累积到阈值时先撞上「需要重新规划」那条守卫，所以这里允许两种停止原因；
+        // 同工具的失败累积到阈值时先撞上「回灌失败上下文」那条守卫，所以这里允许两种停止原因；
         // 关键是不无限重试：第 4 次调用就没再发生。
         expect(['no_progress', 'error']).toContain(state.stopReason?.type);
         expect(tool.calls.length).toBeLessThanOrEqual(3);

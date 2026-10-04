@@ -10,7 +10,7 @@ import { serve } from '@hono/node-server';
 
 import { createApp } from '../src/app.js';
 import { UserStore } from '../src/users/db.js';
-import { ScriptedProvider, planDecision } from './fake-provider.js';
+import { ScriptedProvider } from './fake-provider.js';
 
 import type { ServerType } from '@hono/node-server';
 import type { ModelDecision } from 'adelie-core';
@@ -72,7 +72,7 @@ export async function startHarness(options: { token?: string | null } = {}): Pro
     users,
 
     script(...decisions: ModelDecision[]): ScriptedProvider {
-      const provider = new ScriptedProvider([planDecision(), ...decisions]);
+      const provider = new ScriptedProvider([...decisions]);
       scripts.push(provider);
       return provider;
     },

@@ -149,7 +149,6 @@ describe('adelie-server 契约', () => {
       expect(types).toContain('decision');
       expect(types).toContain('observation');
       expect(types).toContain('stopped');
-      expect(types).toContain('verification');
       // task_started 由 run_started 表达，不该重复出现在 event 帧里
       expect(types).not.toContain('task_started');
 

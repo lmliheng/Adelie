@@ -162,7 +162,6 @@ export interface TokenUsageLike {
 export interface RunFinishedInfo {
   runId: string
   stopReason: unknown
-  verification: unknown
   usage: TokenUsageLike | null
   fileChanges: Array<{ tool: string; path: string; at?: number }>
   iterations: number | null

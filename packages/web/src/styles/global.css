@@ -1113,58 +1113,6 @@ a {
   margin-top: 8px;
 }
 
-/* 计划 */
-
-.plan-steps {
-  display: flex;
-  flex-direction: column;
-}
-
-.plan-step {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 5px 0;
-  font-size: 13px;
-  color: var(--fg-muted);
-  border-bottom: 1px solid var(--border);
-}
-
-.plan-step:last-child {
-  border-bottom: 0;
-}
-
-.plan-step.is-current {
-  color: var(--fg);
-  font-weight: 500;
-}
-
-.plan-step.is-completed {
-  color: var(--fg-faint);
-  text-decoration: line-through;
-  text-decoration-color: var(--border);
-}
-
-.plan-step.is-failed {
-  color: var(--danger);
-}
-
-.step-mark {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12px;
-  width: 14px;
-  flex: none;
-  color: var(--fg-faint);
-}
-
-.plan-step.is-completed .step-mark {
-  color: var(--ok);
-}
-
-.plan-step.is-failed .step-mark {
-  color: var(--danger);
-}
-
 /* 审批 */
 
 .approval {

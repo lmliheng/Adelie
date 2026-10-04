@@ -2,8 +2,12 @@ import type { ToolResult } from './Tool.js'
 
 /**
  * @三种决策
+ *
+ * 没有「重新规划」这一种：计划不是运行时状态，而是模型自己的工作文件
+ * （`PLAN.md`，见 AgentRuntimeConfig.planFile）—— 换路线就是把那个文件改掉，
+ * 不需要一条专门的控制流。
  */
-export type ModelDecision = Action | Replan | Final | BatchAction
+export type ModelDecision = Action | Final | BatchAction
 
 export interface Action {
     type: 'Action';
@@ -20,16 +24,6 @@ export interface Action {
      * 存在时运行时 MUST 拒绝执行该动作并记录失败观察。
      */
     paramsParseError?: string;
-}
-
-
-export interface Replan {
-    type: 'Replan';
-    reason: string;         // 为什么需要重新规划
-    newPlan: PlanStep[];    // 新的步骤列表
-    /** 见 DeliverableSpec；不传表示这次重规划没有新的交付物声明 */
-    deliverables?: DeliverableSpec[];
-    thought?: string;
 }
 
 
@@ -51,54 +45,12 @@ export interface BatchAction {
     thought?: string;
 }
 
-export interface PlanStep {
-    id: string;             // 步骤的唯一标识
-    description: string;    // 步骤描述，如 "查找用户登录接口的位置"
-    status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'skipped'; // 状态（skipped = 有意跳过，如已被别的步骤顺带完成）
-    dependsOn: string[];    // 依赖的其他步骤 ID
-    completionCriteria: string; // 如何判断此步骤完成，如 "找到包含 login 的路由定义"
-}
-
-/**
- * 交付物断言：这次任务承诺产出什么。
- *
- * 与 PlanStep.completionCriteria 的分工：那条是写给模型看的行为约定（自由文本，
- * 运行时刻不出真假）；这条是运行时可判定的断言 —— 验收时逐条核对文件是否存在、
- * 内容是否匹配。没有它，「天气 md 没产出」的任务照样能拿到 passed: true。
- */
-export interface DeliverableSpec {
-    /** 相对工作区的路径 */
-    path: string;
-    /** 可选：文件内容必须包含这段文本 */
-    contains?: string;
-}
-
-/** 单条交付物断言的核对结果 */
-export interface DeliverableCheck {
-    path: string;
-    ok: boolean;
-    /** 人可读的结论（不存在 / 缺内容 / 通过 / 落在工作区之外） */
-    detail: string;
-}
-
-export interface PlanState {
-    originalGoal: string;   // 用户的原始需求
-    steps: PlanStep[];      // 所有步骤
-    currentStepIndex: number; // 当前正在执行的步骤索引
-    version: number;        // 计划版本号，每次 replan 递增
-    /**
-     * 这次任务应当产出的文件。验收时逐条核对（见 task-verification）。
-     * 可选：老会话重放出来的计划没有这个字段。
-     */
-    deliverables?: DeliverableSpec[];
-}
-
 /**
  * @RuntimeState
  */
 export interface AgentRunState {
     taskId: string;                 // 运行任务的唯一 ID
-    plan: PlanState;                // 当前计划
+    taskDescription: string;        // 这一轮的任务目标（原来挂在 plan.originalGoal 上）
     decisions: ModelDecision[];     // 所有历史决策
     observations: Observation[];    // 所有历史观察
     toolCallCount: number;          // 工具调用总次数
@@ -259,46 +211,3 @@ export type StopReason =
     | { type: 'task_completed' } // 任务完成
     | { type: 'user_interrupted' } // 用户打断
     | { type: 'error'; message: string }; // 执行错误
-
-
-
-/**
- * @结果
- *
- * 验收结论由运行时自行产出，不取自模型自述（见 task-verification spec）。
- */
-export interface TaskVerificationResult {
-    /** 验收是否通过。verificationStatus 为 unavailable 时恒为 false（不可判定不等于通过） */
-    passed: boolean;
-    /** executed = 实际执行了验证手段；unavailable = 工作区没有可用的验证手段 */
-    verificationStatus: 'executed' | 'unavailable';
-    testResults: { passed: number; failed: number; output: string };
-    /** null 表示未执行类型检查（工作区没有类型检查配置），不等于失败 */
-    typeCheckPassed: boolean | null;
-    typeCheckOutput: string;
-    diffSummary: string;            // 代码变更摘要
-    completionCriteriaMet: boolean; // 运行以「完成」结束，且两层验收都通过
-    details: string;                // 详细说明，含实际执行的命令与结论
-    /**
-     * 交付物断言的逐条结果（未声明交付物时为空数组）。
-     * 这是「任务真的产出了它承诺的东西吗」那一层，与回归测试层相互独立。
-     */
-    deliverables: DeliverableCheck[];
-    /**
-     * 验收分层结论。分开摆的理由：回归测试全绿只说明「没弄坏原来的东西」，
-     * 交付物断言才回答「这次要的东西出来了没有」—— 两者混成一个 passed 时，
-     * 前者会盖住后者（老实现就是这个毛病）。
-     */
-    layers: {
-        regression: {
-            /** 工作区里存在可执行的验证手段（测试脚本 / 类型检查） */
-            executed: boolean;
-            passed: boolean;
-        };
-        deliverables: {
-            /** 声明的交付物条数；0 表示这次没有声明，此时不计入验收 */
-            declared: number;
-            passed: boolean;
-        };
-    };
-}

@@ -11,7 +11,7 @@ Adelie 只有一条主线：**引擎干活，外壳呈现，接口是唯一的�
                │         adelie-server ──────────┘   HTTP + SSE（docs/api.md）
                ▼                ▼
         ┌──────────────────────────────────────────────────────────┐
-        │  adelie-runtime    ReAct 循环、计划、审批、验收、预算      │
+        │  adelie-runtime    ReAct 循环、审批、预算、上下文折叠      │
         │  adelie-tools      文件 / Git / 命令 / 搜索 / MCP          │
         │  adelie-providers  四家模型，一套 /chat/completions 协议   │
         │  adelie-core       类型、事件流、会话持久化、上下文折叠      │
@@ -22,14 +22,20 @@ Adelie 只有一条主线：**引擎干活，外壳呈现，接口是唯一的�
 
 **引擎不依赖任何外壳，外壳不实现任何业务。** CLI 与服务器是用同一种方式驱动运行时的两个调用方：
 构造 `AgentRuntime`（注入 `onSessionEvent` / `onStreamDelta` / `requestApproval`），调 `run(task)`，
-把事件写到终端或推成 SSE。审批、预算、验收、工具集这些语义只在引擎里存在一处。
+把事件写到终端或推成 SSE。审批、预算、工具集这些语义只在引擎里存在一处。
+
+**计划与验收不在这张图里，因为它们不是引擎的一部分**（2026-10-04 改）：前者是模型自己用文件
+工具维护的一份 `PLAN.md`（写在会话目录里，工作区之外），后者是提示词要求模型跑的项目自己的
+命令（测试 / 类型检查 / 构建）。运行时既不解析计划、也不替模型判「做完了没有」——
+这正是 penguin 的做法，早先那套状态机要求模型自己维护步骤状态，而没有任何机制保证它维护。
+
 
 **桌面壳是壳，不是第二个前端。** 它挑一个空闲端口、fork 服务端、开窗口加载
 `http://127.0.0.1:<port>` —— 页面与浏览器里那份完全一样。代价是壳无法做「深度集成」，
 好处是四端只有一个前端要维护。
 
 **会话事件流是唯一事实源。** 运行时把每次状态迁移写成事件（`task_started` / `decision` /
-`observation` / `plan_updated` / `approval` / `context_folded` / `stopped` / `verification`），
+`observation` / `approval` / `context_folded` / `stopped`），
 落盘成 JSONL，界面与「接着聊」都由它回放重建。模型增量（`delta`）**不进**事件流：
 它可能半截，进了就会让一份中间产物混进事实源。
 
@@ -39,6 +45,7 @@ Adelie 只有一条主线：**引擎干活，外壳呈现，接口是唯一的�
 | --- | --- |
 | 用户级配置（API Key） | `~/.adelie/.env` |
 | 会话事件（JSONL，按工作区索引） | `~/.adelie/sessions/`，`ADELIE_SESSIONS_ROOT` 可覆盖 |
+| 计划的 `PLAN.md`（模型自己写） | 同上，会话目录里（工作区之外，不脏用户的仓库） |
 | 桌面壳的数据与 `server.log` | 系统 userData 目录下的 `Adelie/`（源码运行是 `Adelie (dev)`） |
 | 工作区指令 | 工作区根的 `ADELIE.md` / `AGENTS.md` / `CLAUDE.md` |
 

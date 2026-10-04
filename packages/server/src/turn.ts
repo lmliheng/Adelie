@@ -146,6 +146,21 @@ export async function executeTurn(input: TurnInput): Promise<void> {
   let runId = '';
 
   /**
+   * `run_started` 之前发生的帧，先排队。
+   *
+   * 契约要求 `run_started` 是流里的第一帧，而运行时是**同步**跑进循环的：
+   * `run()` 的第一句就交出 `task_started`（runId 的来源），紧接着第一轮决策
+   * 就可能流出正文 —— 那时 `run_started` 还没推出去（它要等 `run()` 把控制权
+   * 交回调用方）。不排队的话，客户端收到的第一个帧是 `delta`，与契约不符。
+   */
+  let runStarted = false;
+  const queuedFrames: Array<() => void> = [];
+  const pushOrQueue = (push: () => void): void => {
+    if (runStarted) push();
+    else queuedFrames.push(push);
+  };
+
+  /**
    * 取消这一轮。
    *
    * 运行时没有取消入口：`AgentRuntimeConfig` 里没有 signal，`run()` 也不接受中断，
@@ -194,6 +209,9 @@ export async function executeTurn(input: TurnInput): Promise<void> {
 
     runtime = new AgentRuntime(provider, [...input.tools], {
       workspacePath: input.workspace,
+      // 计划文件写在会话目录里（工作区之外）：它是过程不是交付物，不该出现在
+      // 用户的 git status 里。目录就是事件流所在的那一个，本来就存在。
+      scratchpadDir: input.store.dir,
       maxIterations: input.settings.maxIterations,
       ...(input.settings.maxTokens !== null ? { maxTokens: input.settings.maxTokens } : {}),
       eagerTools: input.eagerTools,
@@ -203,10 +221,10 @@ export async function executeTurn(input: TurnInput): Promise<void> {
         // 取消之后不再把增量转给客户端：那一轮已经不算数了
         if (cancelled) return;
         if (delta.content !== undefined) {
-          channel.push('delta', { kind: 'content', text: delta.content });
+          pushOrQueue(() => channel.push('delta', { kind: 'content', text: delta.content! }));
         }
         if (delta.reasoningContent !== undefined) {
-          channel.push('delta', { kind: 'reasoning', text: delta.reasoningContent });
+          pushOrQueue(() => channel.push('delta', { kind: 'reasoning', text: delta.reasoningContent! }));
         }
       },
 
@@ -222,15 +240,15 @@ export async function executeTurn(input: TurnInput): Promise<void> {
         const stored = input.store.append(outgoing);
         if (outgoing.type === 'task_started') return;
 
-        channel.push('event', {
+        pushOrQueue(() => channel.push('event', {
           type: stored.type,
           payload: stored.payload,
           timestamp: stored.ts,
-        });
+        }));
       },
 
       requestApproval: async (action: PendingAction): Promise<ApprovalDecision> => {
-        channel.push('approval_request', { actionId: action.id, action });
+        pushOrQueue(() => channel.push('approval_request', { actionId: action.id, action }));
         return approvals.request(action);
       },
     });
@@ -243,6 +261,9 @@ export async function executeTurn(input: TurnInput): Promise<void> {
     // 模型作为这一轮的标签交进去：引擎不解释它，只记进 run 头，供用量与成本归属。
     const running = runtime.run(input.task, { model: input.settings.model });
     channel.push('run_started', { runId, task: input.task });
+    // 排着的帧可以出去了：顺序是 run_started 在前，其余按发生顺序跟在后面
+    runStarted = true;
+    for (const push of queuedFrames.splice(0)) push();
 
     const result = await running;
     const state = result.state;
@@ -252,7 +273,6 @@ export async function executeTurn(input: TurnInput): Promise<void> {
       // 取消是一票否决：运行时可能正处在一轮决策的收尾上，把原因写成了别的
       // （例如同一瞬间产出的 Final 会把 stopReason 写成 task_completed）。
       stopReason: cancelled ? { type: 'user_interrupted' } : (state.stopReason ?? null),
-      verification: result.verification ?? null,
       usage: {
         promptTokens: state.tokenUsage.promptTokens,
         completionTokens: state.tokenUsage.completionTokens,

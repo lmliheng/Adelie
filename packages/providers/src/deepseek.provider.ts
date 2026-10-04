@@ -13,10 +13,10 @@ import type {
     DeepseekToolDefinition,
     JsonSchemaObject,
 } from 'adelie-core'
-import { REQUEST_REPLAN_TOOL, BATCH_TOOL } from 'adelie-core'
-import { defaultBaseUrlForProvider, normalizeDeliverables } from 'adelie-core'
+import { BATCH_TOOL } from 'adelie-core'
+import { defaultBaseUrlForProvider } from 'adelie-core'
 import type { ChatMessage, AssistantMessage } from 'adelie-core'
-import type { ModelDecision, Action, BatchAction, PlanStep } from 'adelie-core'
+import type { ModelDecision, Action, BatchAction } from 'adelie-core'
 
 /**
  * @Deepseek Provider
@@ -29,64 +29,7 @@ import type { ModelDecision, Action, BatchAction, PlanStep } from 'adelie-core'
 /** 未显式配置 baseUrl 时使用的默认端点（值来自 core 的模型目录，那里是唯一出处） */
 export const DEFAULT_DEEPSEEK_BASE_URL = defaultBaseUrlForProvider('deepseek')
 
-/**
- * 控制流入口。它们不是可执行工具，只用于让模型主动触发状态迁移
- * （见 design.md D3）：Final 由「本轮没有工具调用」回落产生，模型因此失去在
- * 完成轮次里携带声明的能力，需要主动表达意图时必须另开工具入口。
- *
- * 名字定义在 types/AgentProvider.ts 的协议契约层，这里只是本地引用。
- */
-const PLAN_STEP_SCHEMA = {
-    type: 'object',
-    properties: {
-        id: { type: 'string', description: '步骤的唯一标识' },
-        description: { type: 'string', description: '步骤描述' },
-        status: {
-            type: 'string',
-            enum: ['pending', 'in_progress', 'completed', 'failed', 'skipped'],
-            description: '步骤状态，新步骤一律为 pending',
-        },
-        dependsOn: {
-            type: 'array',
-            items: { type: 'string' },
-            description: '依赖的其他步骤 id',
-        },
-        completionCriteria: { type: 'string', description: '如何判断此步骤完成' },
-    },
-    required: ['description'],
-} as const
-
 const CONTROL_FLOW_TOOLS: ToolDefinition[] = [
-    {
-        name: REQUEST_REPLAN_TOOL,
-        description:
-            '当前计划不可行时，提交一份新的步骤列表以重新规划。仅在你确信原计划无法继续时使用；一般性的试错请直接调用工具。',
-        parameters: {
-            type: 'object',
-            properties: {
-                reason: { type: 'string', description: '为什么需要重新规划' },
-                newPlan: {
-                    type: 'array',
-                    description: '新的步骤列表，按执行顺序排列',
-                    items: PLAN_STEP_SCHEMA,
-                },
-                deliverables: {
-                    type: 'array',
-                    description:
-                        '这次任务最终应当产出的文件（相对工作区路径）。运行时会逐条核对文件是否存在、内容是否匹配；任务要求产出具体文件时不要漏，也不要拿它当步骤清单用。',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            path: { type: 'string', description: '相对工作区根目录的文件路径，如 results/weather.md' },
-                            contains: { type: 'string', description: '可选：文件内容必须包含的文本' },
-                        },
-                        required: ['path'],
-                    },
-                },
-            },
-            required: ['reason', 'newPlan'],
-        },
-    },
     {
         name: BATCH_TOOL,
         description:
@@ -441,7 +384,6 @@ export class DeepSeekProvider implements AgentProvider {
 
     /**
      * 翻译规则（见 design.md D2/D3/D4）：
-     *   - 单个 request_replan 调用 -> Replan
      *   - 单个 batch 调用        -> BatchAction（携带的动作数组）
      *   - 单个工具调用           -> Action
      *   - 多个工具调用           -> BatchAction（顺序与响应一致）
@@ -451,10 +393,6 @@ export class DeepSeekProvider implements AgentProvider {
             const only = toolCalls[0]!;
             const name = only.function.name;
 
-            if (name === REQUEST_REPLAN_TOOL) {
-                const replan = this.toReplanDecision(only, message);
-                if (replan) return replan;
-            }
             if (name === BATCH_TOOL) {
                 const batch = this.toBatchDecision(only, message);
                 if (batch) return batch;
@@ -503,26 +441,6 @@ export class DeepSeekProvider implements AgentProvider {
         };
     }
 
-    private toReplanDecision(tc: DeepSeekToolCall, message: DeepSeekMessage): ModelDecision | null {
-        const parsed = this.parseArguments(tc.function.arguments);
-        if (!parsed.ok) return null;
-
-        const { reason, newPlan, deliverables } = parsed.value;
-        if (!Array.isArray(newPlan) || newPlan.length === 0) return null;
-
-        const normalizedDeliverables = normalizeDeliverables(deliverables);
-
-        return {
-            type: 'Replan',
-            reason: typeof reason === 'string' && reason ? reason : '未提供重新规划的原因',
-            newPlan: newPlan.map((step, index) => this.toPlanStep(step, index)),
-            // 一条都没收敛出来时干脆不带这个字段：空数组与「没声明」在语义上应当同义，
-            // 多带一个空数组只会让下游多一条无意义的分支。
-            ...(normalizedDeliverables.length > 0 ? { deliverables: normalizedDeliverables } : {}),
-            thought: message.content?.trim() || '请求重新规划',
-        };
-    }
-
     private toBatchDecision(tc: DeepSeekToolCall, message: DeepSeekMessage): ModelDecision | null {
         const parsed = this.parseArguments(tc.function.arguments);
         if (!parsed.ok) return null;
@@ -550,20 +468,6 @@ export class DeepSeekProvider implements AgentProvider {
             type: 'BatchAction',
             actions: mapped,
             thought: message.content?.trim() || `批量提交 ${mapped.length} 个动作`,
-        };
-    }
-
-    private toPlanStep(step: unknown, index: number): PlanStep {
-        const s = (step && typeof step === 'object') ? (step as Record<string, unknown>) : {};
-        return {
-            id: typeof s.id === 'string' && s.id ? s.id : `replan-step-${index + 1}`,
-            description: typeof s.description === 'string' ? s.description : '',
-            // 新步骤一律从 pending 开始，不接受模型自报已完成
-            status: 'pending',
-            dependsOn: Array.isArray(s.dependsOn)
-                ? s.dependsOn.filter((d): d is string => typeof d === 'string')
-                : [],
-            completionCriteria: typeof s.completionCriteria === 'string' ? s.completionCriteria : '',
         };
     }
 

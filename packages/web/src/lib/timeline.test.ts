@@ -107,90 +107,13 @@ describe('mapEventsToTimeline：工具调用与结果合成一张卡', () => {
   })
 })
 
-describe('mapEventsToTimeline：计划 / 验收 / 审批 / 其它事件', () => {
-  const plan = (version: number, status: string): SessionEventLike => ({
-    type: 'plan_updated',
-    ts: version * 10,
-    payload: {
-      plan: {
-        originalGoal: '把 README 的错别字改掉',
-        version,
-        currentStepIndex: 0,
-        steps: [
-          { id: 's1', description: '找错别字', status },
-          { id: 's2', description: '改掉', status: 'pending' },
-        ],
-        deliverables: [{ path: 'README.md' }],
-      },
-    },
-  })
-
-  it('计划版本保留每一版，只有最后一版不是 superseded', () => {
-    const view = mapEventsToTimeline([plan(1, 'in_progress'), plan(2, 'completed')])
-    const plans = view.entries.filter((entry) => entry.kind === 'plan')
-    expect(plans).toHaveLength(2)
-    if (plans[0]?.kind !== 'plan' || plans[1]?.kind !== 'plan') throw new Error('应该是计划条目')
-    expect(plans[0].superseded).toBe(true)
-    expect(plans[1].superseded).toBe(false)
-    expect(plans[1].steps[0]?.status).toBe('completed')
-    expect(plans[1].deliverables).toEqual(['README.md'])
-    expect(view.plan?.version).toBe(2)
-  })
-
-  it('Replan 决策也进时间线，并带上原因', () => {
-    const view = mapEventsToTimeline([
-      {
-        type: 'decision',
-        ts: 5,
-        payload: {
-          decision: {
-            type: 'Replan',
-            reason: '原计划漏了测试',
-            newPlan: { originalGoal: 'g', version: 2, currentStepIndex: 0, steps: [{ id: 'a', description: '补测试', status: 'pending' }] },
-          },
-        },
-      },
-    ])
-    const entry = view.entries[0]
-    if (entry?.kind !== 'plan') throw new Error('应该是计划条目')
-    expect(entry.reason).toBe('原计划漏了测试')
-  })
-
+describe('mapEventsToTimeline：决策 / 审批 / 其它事件', () => {
   it('Final 决策成为 answer，且不产生时间线条目', () => {
     const view = mapEventsToTimeline([
       { type: 'decision', ts: 9, payload: { decision: { type: 'Final', answer: '改好了，共 3 处。' } } },
     ])
     expect(view.answer).toBe('改好了，共 3 处。')
     expect(view.entries).toHaveLength(0)
-  })
-
-  it('verification 保留分层结论与交付物断言（不让测试全绿盖住没产出）', () => {
-    const view = mapEventsToTimeline([
-      {
-        type: 'verification',
-        ts: 20,
-        payload: {
-          verification: {
-            passed: false,
-            verificationStatus: 'executed',
-            testResults: { passed: 12, failed: 0, output: 'all green' },
-            typeCheckPassed: true,
-            typeCheckOutput: '',
-            diffSummary: 'M README.md',
-            completionCriteriaMet: false,
-            details: '交付物 README.md 不存在',
-            deliverables: [{ path: 'README.md', ok: false, detail: '不存在' }],
-            layers: { regression: { executed: true, passed: true }, deliverables: { declared: 1, passed: false } },
-          },
-        },
-      },
-    ])
-    const entry = view.entries[0]
-    if (entry?.kind !== 'verification') throw new Error('应该是验收条目')
-    expect(entry.passed).toBe(false)
-    expect(entry.layers?.regression.passed).toBe(true)
-    expect(entry.layers?.deliverables.passed).toBe(false)
-    expect(entry.deliverables).toEqual([{ path: 'README.md', ok: false, detail: '不存在' }])
   })
 
   it('approval / context_folded 各自成条目，认不出的类型也不丢', () => {
@@ -266,8 +189,6 @@ describe('mapEventsToTimeline：坏数据免疫', () => {
     const view = mapEventsToTimeline([
       { type: 'decision', ts: 1, payload: null },
       { type: 'observation', ts: 2, payload: 'not-an-object' },
-      { type: 'plan_updated', ts: 3, payload: [] },
-      { type: 'verification', ts: 4, payload: 42 },
       { type: 'stopped', ts: 5, payload: null },
     ])
     // 只有 observation 会出一条（它本身是「有结果的卡片」），其余尽力降级
@@ -276,7 +197,7 @@ describe('mapEventsToTimeline：坏数据免疫', () => {
   })
 
   it('空事件流返回空视图', () => {
-    expect(mapEventsToTimeline([])).toEqual({ entries: [], plan: null, summary: null, answer: null })
+    expect(mapEventsToTimeline([])).toEqual({ entries: [], summary: null, answer: null })
   })
 
   it('观测没有对应决策时，仍然出现在时间线上', () => {

@@ -127,9 +127,9 @@ export class GitOperationTool implements Tool<GitOperationParams> {
                             params: params as unknown as Record<string, unknown>,
                         },
                         contextSnapshot: {
-                            currentPlan: 'Git 操作',
+                            // 工具自己发起的审批没有对话上下文可引：任务目标由运行时补
+                            taskDescription: '',
                             recentHistory: '',
-                            currentStep: 'git_operation',
                         },
                     },
                     preview: {

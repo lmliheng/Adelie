@@ -40,9 +40,10 @@
 统计：注册表内 15 个工具（常驻 8 + 延迟 5 + 桥 2）；其中 7 个声明了 `outputBudget`，
 8 个靠全局默认兜底。
 
-另有两个**协议工具不在注册表、也不可执行**，只用于触发状态迁移（定义见
-`src/types/AgentProvider.ts`）：`request_replan`、`batch`。它们由 Provider 负责声明与翻译，
-运行时只引用名字，所以不出现在上表。
+另有一个**协议工具不在注册表、也不可执行**，只用于触发状态迁移（定义见
+`src/types/AgentProvider.ts`）：`batch`。它由 Provider 负责声明与翻译，运行时只引用名字，
+所以不出现在上表。（2026-10-04：另一个协议工具 `request_replan` 随运行时的计划状态机一起删了
+—— 计划现在是模型自己用文件工具维护的 `PLAN.md`，见 `docs/architecture.md`。）
 
 ---
 
@@ -295,9 +296,9 @@
 
 | 候选工具 | 缺口的证据 | 同类实现 | 注意 |
 |---|---|---|---|
-| `ask_user_question`（模型主动提问） | 你现在只有**审批**通道（`ToolContext.requestApproval` / `PendingAction`），没有「模型发问、用户回答」通道；`FALLBACK_PLAN_STEPS` 说明计划拿不到时只能兜底 | Qwen Code 有 `ask_user_question`；Claude Code 有 `AskUserQuestion` | 与审批模态区分开：审批是「准不准」，提问是「信息不够」 |
-| `todo_write`（模型自维护任务清单） | 无 | Claude Code 有 `TodoWrite`（此前读 `sdk-tools.d.ts` 已确认）；Qwen Code 侧本会话未见同名工具 | **先评估与现有 `request_replan`/`PlanState` 的关系**——你已有运行时计划状态机，别做出两套并行状态 |
-| `enter_plan_mode` / `exit_plan_mode` | 你的规划是自动触发的 `createInitialPlan`，没有「用户主动进入只读规划」这一态 | Qwen Code、Claude Code 都有 | 属于产品形态决定，不是能力缺口 |
+| `ask_user_question`（模型主动提问） | 你现在只有**审批**通道（`ToolContext.requestApproval` / `PendingAction`），没有「模型发问、用户回答」通道；运行时没有任何「问一句」的通道 | Qwen Code 有 `ask_user_question`；Claude Code 有 `AskUserQuestion` | 与审批模态区分开：审批是「准不准」，提问是「信息不够」 |
+| `todo_write`（模型自维护任务清单） | 无 | Claude Code 有 `TodoWrite`（此前读 `sdk-tools.d.ts` 已确认）；Qwen Code 侧本会话未见同名工具 | **先想清楚与 `PLAN.md` 的关系**：计划已经是模型自己维护的文件，再给一个工具化的清单就是两套并行状态 —— 要么不做，要么把文件那套换掉（2026-10-04 的前车之鉴：运行时状态机 + 要求模型自己维护状态，最后没有任何写入方） |
+| `enter_plan_mode` / `exit_plan_mode` | 没有「用户主动进入只读规划」这一态 | Qwen Code、Claude Code 都有 | 属于产品形态决定，不是能力缺口（原来的 `createInitialPlan` 规划轮已随计划状态机删除） |
 | 子代理（`agent` / `task`） | 无 | Qwen Code 有 `agent`（含 Explore 等专职子代理） | 收益是上下文隔离；成本是递归调用与预算控制，风险最高的一项 |
 
 ### C. 结构扩展类

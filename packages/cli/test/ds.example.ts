@@ -51,8 +51,6 @@ async function main() {
     if (succeeded.length > 0) {
         console.log('首个成功观察:', JSON.stringify(succeeded[0]!.action.tool), JSON.stringify(succeeded[0]!.result.data).slice(0, 200));
     }
-
-    // console.log('验收结论:', JSON.stringify(result.verification, null, 2));
 }
 
 main().catch(console.error);

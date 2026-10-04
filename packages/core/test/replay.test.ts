@@ -3,7 +3,7 @@
 // 覆盖由事件流重放会话历史：
 //   - run 的边界由 task_started 表达，会话跨 run
 //   - 未知类型 / 损坏载荷只计数不抛错（恢复的价值是「尽量接上」而不是严格拒绝）
-//   - 计划缺失时兜底，不让整段历史作废
+//   - 事件稀疏时也能还原出任务目标与决策
 //   - stopped 的汇总与重放结果互为校验
 
 import { describe, it, expect } from 'vitest';
@@ -50,19 +50,6 @@ function observationOf(tool: string): unknown {
   };
 }
 
-function plannedPlan(): unknown {
-  return {
-    plan: {
-      originalGoal: '任务一',
-      currentStepIndex: 0,
-      version: 1,
-      steps: [
-        { id: 'step-1', description: '读文件', status: 'pending', dependsOn: [], completionCriteria: '读到' },
-      ],
-    },
-  };
-}
-
 function stoppedPayload(iterationCount: number): unknown {
   return {
     stopReason: { type: 'task_completed' },
@@ -74,15 +61,14 @@ function stoppedPayload(iterationCount: number): unknown {
 }
 
 describe('重放一次完整的 run', () => {
-  it('决策、观察、计划与停止原因都被还原', () => {
+  it('决策、观察与停止原因都被还原', () => {
     const restored = replaySession(
       [
         taskStarted(1, 'task-1', '任务一'),
-        event(2, 'plan_updated', plannedPlan()),
-        event(3, 'decision', { decision: readFileAction }),
-        event(4, 'observation', observationOf('read_file')),
-        event(5, 'decision', { decision: finalDecision }),
-        event(6, 'stopped', stoppedPayload(2)),
+        event(2, 'decision', { decision: readFileAction }),
+        event(3, 'observation', observationOf('read_file')),
+        event(4, 'decision', { decision: finalDecision }),
+        event(5, 'stopped', stoppedPayload(2)),
       ],
       CONTEXT,
     );
@@ -94,12 +80,11 @@ describe('重放一次完整的 run', () => {
     expect(run.taskDescription).toBe('任务一');
     expect(run.decisions).toHaveLength(2);
     expect(run.observations).toHaveLength(1);
-    expect(run.plan.steps).toHaveLength(1);
     expect(run.stopReason).toEqual({ type: 'task_completed' });
 
     // 汇总与重放自洽：iterationCount 与决策数一致
     expect(restored.stats.summaryMismatches).toBe(0);
-    expect(restored.stats.applied).toBe(6);
+    expect(restored.stats.applied).toBe(5);
   });
 
   it('第二个 task_started 开启新 run，两个 run 各自独立', () => {
@@ -190,14 +175,13 @@ describe('容错', () => {
         taskStarted(1, 'task-1', '任务一'),
         event(2, 'decision', {}),                       // 缺 decision
         event(3, 'observation', { observation: {} }),   // 缺 action / result
-        event(4, 'plan_updated', { plan: { steps: [] } }),
-        event(5, 'decision', { decision: finalDecision }),
+        event(4, 'decision', { decision: finalDecision }),
       ],
       CONTEXT,
     );
 
     expect(restored.runs[0]!.decisions).toHaveLength(1);
-    expect(restored.stats.skippedMalformed).toBe(3);
+    expect(restored.stats.skippedMalformed).toBe(2);
   });
 
   it('task_started 之前的事件算孤儿，不会被塞进任何 run', () => {
@@ -213,14 +197,13 @@ describe('容错', () => {
     expect(restored.stats.orphaned).toBe(1);
   });
 
-  it('计划事件缺失时用只含目标的空计划兜底', () => {
+  it('只有 task_started 与决策时也能还原任务目标与决策', () => {
     const restored = replaySession(
       [taskStarted(1, 'task-1', '任务一'), event(2, 'decision', { decision: finalDecision })],
       CONTEXT,
     );
 
-    expect(restored.runs[0]!.plan.originalGoal).toBe('任务一');
-    expect(restored.runs[0]!.plan.steps).toEqual([]);
+    expect(restored.runs[0]!.taskDescription).toBe('任务一');
     expect(restored.runs[0]!.decisions).toHaveLength(1);
   });
 
