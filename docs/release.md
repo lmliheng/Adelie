@@ -48,3 +48,9 @@ tag 一推，工作流就跑：`verify` 先跑三件套，绿了之后三件事�
   改写成具体版本，版本不一致时依赖会解析不到。
 - web / desktop 是 private，不参与 npm，但版本号跟着走，方便对着 Release 找人。
   （`adelie-server` 可发布：桌面壳要单独装它，`adelie serve` 也在运行时加载它。）
+- **入口两份，靠 `publishConfig` 切换**：工作区里的六个包一律 `main` / `types` / `exports` 指向
+  `./src/index.ts`，`pnpm pack` / `pnpm publish` 时再按 `publishConfig` 换成 `./dist/*`。
+  不这样做的话，干净克隆上 `pnpm typecheck` 会死在 `Cannot find module 'adelie-core'`（或 `adelie-server`）——
+  类型检查跑在构建之前，而 `dist` 还不存在。发版前用
+  `pnpm --filter adelie-server pack --pack-destination /tmp` 并解包看一眼 `package.json`，
+  确认里面指向的是 `dist`。
