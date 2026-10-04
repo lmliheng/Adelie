@@ -233,6 +233,24 @@ figcaption { color:var(--fg-faint); font-size:13px; margin-top:10px; }
 .legend { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:12px; color:var(--fg-faint); }
 .legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:middle; }
 
+/* 下载列表 -------------------------------------------------------------
+ * 内容来自 /downloads/index.json（由 brand/site/fetch-release.sh 生成）。
+ * 发新版本只重跑那个脚本，这一页一个字都不用改。 */
+.dl { display:grid; gap:12px; margin-top:20px; }
+@media (min-width:820px) { .dl { grid-template-columns:1fr 1fr; } }
+.dl-empty { color:var(--fg-faint); font-size:14px; }
+.dl-item { display:flex; flex-direction:column; gap:5px; border:1px solid var(--border); border-radius:var(--radius-card); padding:16px 18px; }
+.dl-label { font-weight:600; font-size:15px; }
+.dl-desc { color:var(--fg-muted); font-size:13px; }
+.dl-name,
+.dl-hash { font-family:ui-monospace, SFMono-Regular, Menlo, monospace; word-break:break-all; color:var(--fg-faint); }
+.dl-name { font-size:12px; }
+.dl-hash { font-size:11px; }
+.dl-size { font-size:12px; color:var(--fg-muted); }
+.dl-get { margin-top:10px; align-self:flex-start; padding:7px 14px; border-radius:var(--radius-control); background:var(--accent-bg); color:var(--accent-fg); font-size:13px; font-weight:500; transition:opacity .15s var(--ease); }
+.dl-get:hover { opacity:.85; }
+.dl-note { margin-top:14px; font-size:12px; color:var(--fg-faint); }
+
 .rules { display:grid; gap:16px; }
 @media (min-width:760px) { .rules { grid-template-columns:1fr 1fr; } }
 .rule { border:1px solid var(--border); border-radius:var(--radius-card); padding:16px 18px; }
@@ -284,6 +302,7 @@ footer .spacer { margin-left:auto; }
   <svg class="glyph" viewBox="0 0 1024 1024" aria-hidden="true"><path d="M 512 225 C 596 225 652 296 662 388 C 684 470 706 560 706 660 C 706 780 664 840 512 840 C 360 840 318 780 318 660 C 318 560 340 470 362 388 C 372 296 428 225 512 225 Z" fill="currentColor" mask="url(#glyph-cuts)"/></svg>
   <b>Adelie</b><span class="sep">·</span><span style="color:var(--fg-muted);font-size:13px">设计与工作原理</span>
   <nav>
+    <a href="#downloads">下载</a>
     <a href="#name">名字</a>
     <a href="#mark">标志</a>
     <a href="#ladder">图标</a>
@@ -331,6 +350,17 @@ footer .spacer { margin-left:auto; }
       </div>
     </div>
   </div>
+
+  <!-- ============================ 下载 ============================ -->
+  <section id="downloads">
+    <div class="eyebrow"><span class="n">↓</span><span>下载</span></div>
+    <h2>拿一份回去装</h2>
+    <p class="lede">产物就放在这台服务器上，不绕 GitHub —— 那边慢的时候这里照样能下。桌面端目前只有 Windows x64 一份（Electron 壳）；Web 包解压到任意静态服务器即可，PWA 也在里面。列表由 <span class="mono">/downloads/index.json</span> 渲染，发新版本只需在服务器上重跑一次 <span class="mono">bash brand/site/fetch-release.sh</span>。</p>
+    <div id="dl-list" class="dl" data-state="loading">
+      <div class="dl-empty">正在读下载清单……</div>
+    </div>
+    <p class="dl-note" id="dl-note"></p>
+  </section>
 
   <!-- ============================ 01 名字 ============================ -->
   <section id="name">
@@ -1048,6 +1078,66 @@ Adelie-Portable-0.1.0-x64.exe</code></pre>
     root.setAttribute('data-theme', next);
     try { localStorage.setItem('adelie-design-theme', next); } catch (e) {}
   });
+})();
+
+// 下载列表：清单在服务器上（/downloads/index.json），页面只负责渲染。
+// 读不到就退回 GitHub Releases —— 这一页是静态的，别让一个 fetch 失败变成白屏。
+(function () {
+  var box = document.getElementById('dl-list');
+  if (!box) return;
+  var note = document.getElementById('dl-note');
+
+  function humanSize(n) {
+    if (!n && n !== 0) return '';
+    var mib = n / 1048576;
+    if (mib >= 1) return mib.toFixed(1) + ' MiB';
+    return (n / 1024).toFixed(0) + ' KiB';
+  }
+
+  function render(versions) {
+    var html = '';
+    versions.forEach(function (v) {
+      (v.files || []).forEach(function (f) {
+        html += '<div class="dl-item">' +
+          '<div class="dl-label">' + esc(f.label || '发布附件') + '</div>' +
+          (f.desc ? '<div class="dl-desc">' + esc(f.desc) + '</div>' : '') +
+          '<div class="dl-name">' + esc(f.name) + '</div>' +
+          '<div class="dl-size">' + humanSize(f.size) + ' · ' + esc(v.tag) + '</div>' +
+          '<div class="dl-hash">sha256 ' + esc(f.sha256) + '</div>' +
+          '<a class="dl-get" href="' + esc(f.url) + '" download>下载</a>' +
+          '</div>';
+      });
+    });
+    if (!html) {
+      box.innerHTML = '<div class="dl-empty">清单是空的 —— 服务器上还没镜像任何产物。</div>';
+      box.setAttribute('data-state', 'empty');
+      return;
+    }
+    box.innerHTML = html;
+    box.setAttribute('data-state', 'ready');
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  fetch('/downloads/index.json', { cache: 'no-cache' })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (data) {
+      render(data.versions || []);
+      if (note) note.textContent = '清单生成于 ' + ((data.versions[0] || {}).generated_at || '未知时间') + '；每个文件都带 sha256，下载后可用 certutil -hashfile <文件> SHA256 核对。';
+    })
+    .catch(function () {
+      box.innerHTML = '<div class="dl-empty">读不到服务器上的下载清单。</div>';
+      box.setAttribute('data-state', 'error');
+      if (note) {
+        note.innerHTML = '这台服务器上还没镜像产物，或者清单没生成。临时可以去 ' +
+          '<a href="https://github.com/lmliheng/Adelie/releases">GitHub Releases</a> 下载；' +
+          '在服务器上跑 <span class="mono">bash brand/site/fetch-release.sh</span> 即可把最新一版镜像过来。';
+      }
+    });
 })();
 </script>
 </body>

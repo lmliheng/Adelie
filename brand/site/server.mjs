@@ -5,7 +5,10 @@
 //
 // 为什么自己写而不是 `python3 -m http.server`：那个默认不设 Cache-Control、
 // 目录列表全开、也没有并发上限意识。这里要的东西很少——MIME、缓存头、
-// 路径越界防护、健康检查——加起来一个文件就够。
+// 路径越界防护、区间请求、健康检查——加起来一个文件就够。
+//
+// 为什么还要支持 Range：这里同时托管桌面的安装包（100MB 量级）。下载中断后
+// 能不能续传，取决于服务端认不认 `Range: bytes=`；不认就得从零再来一次。
 
 import { createServer } from 'node:http';
 import { createReadStream, statSync } from 'node:fs';
@@ -16,6 +19,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(process.env.ROOT ?? dirname(fileURLToPath(import.meta.url)));
 const HOST = process.env.HOST ?? '0.0.0.0';
 const PORT = Number(process.env.PORT ?? 3004);
+// 单次响应的读盘块大小：下载 100MB 的安装包时，64KiB 比默认的 16KiB 少几轮系统调用。
+const CHUNK = 64 * 1024;
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -32,11 +37,19 @@ const MIME = {
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
   '.txt': 'text/plain; charset=utf-8',
+  // 发布产物
+  '.exe': 'application/vnd.microsoft.portable-executable',
+  '.zip': 'application/zip',
+  '.dmg': 'application/x-apple-diskimage',
+  '.gz': 'application/gzip',
+  '.tgz': 'application/gzip',
+  '.msi': 'application/x-msi',
+  '.blockmap': 'application/octet-stream',
 };
 
 // 图片可以长期缓存（文件名不变就意味着内容不变），页面与样式一律回源校验：
 // 这一页是拿来给人看的规格，改一个字就该立刻看到，不该等缓存过期。
-const IMMUTABLE = new Set(['.png', '.ico', '.jpg', '.jpeg', '.webp', '.woff2']);
+const IMMUTABLE = new Set(['.png', '.ico', '.jpg', '.jpeg', '.webp', '.woff2', '.exe', '.zip', '.dmg', '.tgz', '.gz', '.msi']);
 
 function resolveTarget(urlPath) {
   let pathname;
@@ -52,10 +65,16 @@ function resolveTarget(urlPath) {
   return abs;
 }
 
+// 两件事分清楚：send 是「一个完整响应，写完就结束」，begin 只写头、正文交给调用方
+// 边读边灌。混用它们是这类小服务器最容易犯的错 —— 头写完就 end()，正文再也出不去。
 function send(res, status, headers, body) {
   res.writeHead(status, headers);
   if (body === undefined) res.end();
   else res.end(body);
+}
+
+function begin(res, status, headers) {
+  res.writeHead(status, headers);
 }
 
 function notFound(res) {
@@ -64,6 +83,32 @@ function notFound(res) {
     '<p><b>404</b> —— 这个地址上没有东西。</p>' +
     '<p><a href="/">回到 Adelie 设计规格</a></p>';
   send(res, 404, { 'content-type': MIME['.html'], 'cache-control': 'no-store' }, body);
+}
+
+// 只解析单区间 `bytes=a-b` / `bytes=a-` / `bytes=-n`。多区间（逗号）在这个场景里
+// 收益为零，直接当整文件发，省得写 multipart/byteranges。
+function parseRange(header, size) {
+  if (!header) return null;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!m) return null;
+  const [, rawStart, rawEnd] = m;
+  if (rawStart === '' && rawEnd === '') return null;
+  let start;
+  let end;
+  if (rawStart === '') {
+    // 后缀区间：最后 n 字节
+    const suffix = Number(rawEnd);
+    if (!Number.isFinite(suffix) || suffix <= 0) return 'unsatisfiable';
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  } else {
+    start = Number(rawStart);
+    end = rawEnd === '' ? size - 1 : Number(rawEnd);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+    if (end > size - 1) end = size - 1;
+  }
+  if (start > end || start >= size) return 'unsatisfiable';
+  return { start, end };
 }
 
 const server = createServer((req, res) => {
@@ -109,24 +154,47 @@ const server = createServer((req, res) => {
   function serve(abs, st) {
     const ext = extname(abs).toLowerCase();
     const etag = `W/"${st.size.toString(16)}-${st.mtimeMs.toString(16)}"`;
-    if (req.headers['if-none-match'] === etag) {
-      send(res, 304, { etag, 'cache-control': cacheFor(ext) });
-      return;
-    }
-    const headers = {
+    // 发布产物一律当附件下载：浏览器别猜、也别想着内联渲染一个 .exe
+    const isDownload = abs.startsWith(join(ROOT, 'downloads') + sep);
+    const base = {
       'content-type': MIME[ext] ?? 'application/octet-stream',
-      'content-length': String(st.size),
       'last-modified': st.mtime.toUTCString(),
       etag,
       'cache-control': cacheFor(ext),
       'x-content-type-options': 'nosniff',
+      'accept-ranges': 'bytes',
     };
-    if (method === 'HEAD') {
-      send(res, 200, headers);
+    if (isDownload) base['content-disposition'] = `attachment; filename="${abs.slice(abs.lastIndexOf(sep) + 1)}"`;
+
+    if (req.headers['if-none-match'] === etag && !req.headers.range) {
+      send(res, 304, base);
       return;
     }
-    res.writeHead(200, headers);
-    createReadStream(abs).pipe(res);
+
+    const range = parseRange(req.headers.range, st.size);
+    if (range === 'unsatisfiable') {
+      send(res, 416, { ...base, 'content-range': `bytes */${st.size}`, 'cache-control': 'no-store' });
+      return;
+    }
+
+    if (range) {
+      const { start, end } = range;
+      const headers206 = { ...base, 'content-length': String(end - start + 1), 'content-range': `bytes ${start}-${end}/${st.size}` };
+      if (method === 'HEAD') {
+        send(res, 206, headers206);
+        return;
+      }
+      begin(res, 206, headers206);
+      createReadStream(abs, { start, end, highWaterMark: CHUNK }).on('error', () => res.destroy()).pipe(res);
+      return;
+    }
+
+    if (method === 'HEAD') {
+      send(res, 200, { ...base, 'content-length': String(st.size) });
+      return;
+    }
+    begin(res, 200, { ...base, 'content-length': String(st.size) });
+    createReadStream(abs, { highWaterMark: CHUNK }).on('error', () => res.destroy()).pipe(res);
   }
 
   function redirectIndex(res2, u) {
