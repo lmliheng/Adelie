@@ -90,7 +90,7 @@ POST   /api/users/:id/role     body { "isAdmin": boolean } → 200 { "user": {�
 - **两档角色**：管理员能管账号、改端点与密钥、设工作区；普通用户其余一切照旧 ——
   自己的会话、自己的模型偏好、自己的密钥、同一个对话引擎。
 
-## 2. 配置
+## 2. 配置、目录与用量
 
 ```
 GET /api/config → 200 {
@@ -115,8 +115,10 @@ GET /api/models → 200 {
   "default": "deepseek",
   "groups": [ { "id": "deepseek", "label": "DeepSeek", "envKey": "DEEPSEEK_API_KEY",
                 "hasApiKey": true,
-                "models": [ { "id": "deepseek-chat", "label": "对话（默认）", "default": true },
-                            { "id": "deepseek-reasoner", "label": "推理" } ] } ]
+                "models": [ { "id": "deepseek-chat", "label": "对话（默认）", "default": true,
+                              "rates": { "input": 0.27, "cacheRead": 0.07, "output": 1.1 } },
+                            { "id": "deepseek-reasoner", "label": "推理",
+                              "rates": { "input": 0.55, "cacheRead": 0.14, "output": 2.19 } } ] } ]
 }
 ```
 
@@ -158,7 +160,42 @@ GET /api/models → 200 {
 - `GET /api/models` 是界面里那两组下拉框的唯一出处（以前抄在 Web 里，加一家厂商要改
   两处，漏掉的那处表现为「服务端支持、界面里选不到」）。它**不含端点**：`envKey` 是环境
   变量**名**（界面用它提示密钥配在哪），不是秘密。`hasApiKey` 按**当前身份**算。
+- 模型上可选的 `rates` 是**牌价**：`{ input, cacheRead?, output }`，单位**美元 / 百万 token**
+  （与各家定价页同一口径，界面省一次心算）。`cacheRead` 省略表示「这家没公布缓存价」，
+  那时命中的输入按 `input` 算 —— 会高估，但在注释里认下了这件事。**没有 `rates` 就是没定价**：
+  人民币报价的厂商（kimi / qwen）与目录外手填的模型名都留空，界面照实说「未定价」，
+  不编一个数字。这张表也只在这里下发一处，界面**不自己抄一份**。
 - `workspace` 变更后，会话列表与新建会话都以新工作区为准。
+
+```
+GET /api/usage[?from=<epoch ms | ISO>&to=<...>&scope=all] → 200 {
+  "summary": { "today": Totals, "last7d": Totals, "total": Totals },
+  "byModel":   [ { "provider": "deepseek", "model": "deepseek-chat", ...Totals } ],
+  "bySession": [ { "sessionId": "...", "lastActiveAt": 1759600000000, ...Totals } ],
+  "series":    [ { "date": "2026-10-04", ...Totals } ],
+  "sessionsScanned": 12, "unreadableSessions": 0,
+  "now": 1759600000000
+}
+Totals = { "runs": 3, "inputTokens": 3000, "outputTokens": 1500, "totalTokens": 4500,
+           "costUsd": 0.0024, "unpricedRuns": 0 }
+```
+
+- **报表是派生视图，不是一张表**：服务端扫这个身份看得见的那几条会话，把每一轮的
+  token 从事件流里读出来（`task_started` 给模型、`stopped.tokenUsage` 给用量），
+  当场聚合。**只落 token、成本永远现算** —— 调价、促销一变，历史行不该变成谎话。
+  量真的大到扫不动了再落库（`docs/issues/web-usage-cost-center.md` 的三期）。
+- `Totals.costUsd` 只累计**有价**的轮次；`unpricedRuns` 数的是没价的那几轮。
+  两者要一起看：光标着 `costUsd: 0` 会让人以为「没花钱」，实际可能是「没定价」。
+  钱的算法与价目表一致：`未命中输入 × input + 命中输入 × (cacheRead ?? input) + 输出 × output`，
+  命中数取自 `stopped.tokenUsage` 的 `cacheHitTokens`（provider 没报就整段按输入价 —— 会高估）。
+- `summary` 三档是**按运行结束时间**分的：`today` / `last7d` 由服务端用**服务器本地时区**
+  切（响应里的 `now` 就是那个「现在」），`total` 是窗口内全部。`from` / `to` 是**闭区间**，
+  且作用在**所有桶**上（给了 `from` 之后 `total` 也变成「窗口内的合计」）。
+  `series` 按本地日期分桶、从早到晚，给折线图用（空桶不补 —— 补零是界面的事）。
+- 能看到哪些会话与 `GET /api/sessions` 同一条规矩：默认只看自己的，管理员可 `?scope=all`
+  （普通用户传了静默忽略）。`sessionsScanned` 是**真的读了事件**的会话数（空会话不算），
+  `unreadableSessions` 是读不动的（目录删了一半、权限不足）—— 少算了几条要说得出来。
+- `from` / `to` 认不出来 → 400 `bad_request`（**不猜**成 0 或「现在」）；`from > to` 同样 400。
 
 ```
 GET /api/tools → 200 { "tools": [ { "name": "read_file", "description": "...", "requiresApproval": false } ] }
@@ -197,7 +234,7 @@ POST /api/sessions/:id/messages
 
 | event | data | 说明 |
 | --- | --- | --- |
-| `run_started` | `{ "runId": "...", "task": "..." }` | 这一轮开始 |
+| `run_started` | `{ "runId": "...", "task": "...", "model": { "provider": "deepseek", "model": "deepseek-chat" } }` | 这一轮开始 |
 | `delta` | `{ "kind": "content"\|"reasoning", "text": "..." }` | 模型增量，原样转发自 `onStreamDelta` |
 | `event` | `{ "type": "<SessionEventType>", "payload": {...}, "timestamp": 123 }` | 运行时的状态迁移事件（decision / observation / approval / context_folded / stopped） |
 | `approval_request` | `{ "actionId": "...", "action": PendingAction }` | 需要人工拍板，等第 5 节的决定 |
@@ -206,6 +243,8 @@ POST /api/sessions/:id/messages
 | `done` | `{}` | 流结束标记，客户端据此收尾 |
 
 - 运行时的 `task_started` 事件不单独转发（它就是 `run_started`）；其余事件类型原样出现在 `event` 帧里。
+  `run_started` 里的 `model` 是**这一轮**实际用的模型（同一件事在事件流的 `task_started.payload.model`
+  里，回放时从那里读）—— 界面靠它把这一轮的 token 按价目表折成钱：模型中途换过，只按当前配置算就会算错。
 - 同一条会话同时只能有一轮在跑：再发 → 409 `{ "error": "busy" }`（删除正在跑的会话同样是 409）。
 - `POST /api/sessions/:id/cancel` → 202，中止当前轮。收尾原因为 `user_interrupted`
   —— core 的 `StopReason` 里没有 `cancelled` 这一项，这是语义对应的那个。取消在**下一个循环边界**生效：

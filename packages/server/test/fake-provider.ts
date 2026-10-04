@@ -8,6 +8,7 @@ import type {
   ModelDecision,
   ModelResponse,
   StreamDelta,
+  TokenUsage,
   ToolDefinition,
 } from 'adelie-core';
 
@@ -17,7 +18,14 @@ export class ScriptedProvider implements AgentProvider {
 
   private index = 0;
 
-  constructor(private readonly script: ModelDecision[]) {}
+  /**
+   * `usage` 是**每一轮**决策都报的用量（真实 provider 每轮报一次，运行时按轮累加）。
+   * 不传时等于「这家 provider 不报用量」—— 那正是 `TokenUsageRecord.complete = false` 的场景。
+   */
+  constructor(
+    private readonly script: ModelDecision[],
+    private readonly usage?: TokenUsage,
+  ) {}
 
   updateConfig(): void {
     // 测试用，无需实现
@@ -36,6 +44,6 @@ export class ScriptedProvider implements AgentProvider {
       onDelta({ content: `（第 ${this.index} 轮）` });
     }
 
-    return { decision, rawContent: '' };
+    return { decision, rawContent: '', ...(this.usage === undefined ? {} : { usage: this.usage }) };
   }
 }

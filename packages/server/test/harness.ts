@@ -13,7 +13,7 @@ import { UserStore } from '../src/users/db.js';
 import { ScriptedProvider } from './fake-provider.js';
 
 import type { ServerType } from '@hono/node-server';
-import type { ModelDecision } from 'adelie-core';
+import type { ModelDecision, TokenUsage } from 'adelie-core';
 
 export interface Harness {
   workspace: string;
@@ -22,6 +22,8 @@ export interface Harness {
   base: string;
   /** 排下一轮对话要用的脚本：规划轮自动补上 */
   script(...decisions: ModelDecision[]): ScriptedProvider;
+  /** 同上，但这一轮还会报用量（成本用例要给得出真实数字，假 provider 不会自己去数 token） */
+  scriptWithUsage(usage: TokenUsage, ...decisions: ModelDecision[]): ScriptedProvider;
   post(path: string, body?: unknown, init?: RequestInit): Promise<Response>;
   /** 带 Cookie 的 GET（P3 的所有权用例要用它） */
   get(path: string, init?: RequestInit): Promise<Response>;
@@ -73,6 +75,12 @@ export async function startHarness(options: { token?: string | null } = {}): Pro
 
     script(...decisions: ModelDecision[]): ScriptedProvider {
       const provider = new ScriptedProvider([...decisions]);
+      scripts.push(provider);
+      return provider;
+    },
+
+    scriptWithUsage(usage: TokenUsage, ...decisions: ModelDecision[]): ScriptedProvider {
+      const provider = new ScriptedProvider([...decisions], usage);
       scripts.push(provider);
       return provider;
     },

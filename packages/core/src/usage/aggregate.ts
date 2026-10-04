@@ -28,6 +28,15 @@ export interface UsageRun {
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
+  /**
+   * 命中 / 未命中前缀缓存的输入 token（响应没给这个数时是 `null`）。
+   *
+   * 单列出来是为了算钱：命中的那部分按 `cacheRead` 计价，与输入价能差四倍
+   * （deepseek 0.07 对 0.27），把它按输入价算会系统性高估。`UsageTotals` 里不带它 ——
+   * 报表看的是 token 总量，缓存只是它的一个分解。
+   */
+  cacheHitTokens: number | null;
+  cacheMissTokens: number | null;
   /** 这一轮是怎么结束的。`unknown` = 没有 `stopped`（进程被杀、事件流断在半路） */
   status: UsageRunStatus;
   /** 这一轮没有价格（模型不在价目表里）；金额因此是「已知部分的下界」 */
@@ -133,7 +142,7 @@ export function runsFromEvents(
 
     const payload = event.payload as { tokenUsage?: unknown; stopReason?: unknown };
     const usage = payload.tokenUsage as
-      | { promptTokens?: unknown; completionTokens?: unknown; totalTokens?: unknown }
+      | { promptTokens?: unknown; completionTokens?: unknown; totalTokens?: unknown; cacheHitTokens?: unknown; cacheMissTokens?: unknown }
       | undefined;
     const promptTokens = numberOf(usage?.promptTokens);
     const completionTokens = numberOf(usage?.completionTokens);
@@ -154,6 +163,8 @@ export function runsFromEvents(
       inputTokens: promptTokens,
       outputTokens: completionTokens,
       totalTokens: numberOf(usage?.totalTokens) || promptTokens + completionTokens,
+      cacheHitTokens: numberOfOrNull(usage?.cacheHitTokens),
+      cacheMissTokens: numberOfOrNull(usage?.cacheMissTokens),
       status: statusOf(payload.stopReason),
       unpriced: ratesFor(started.provider, started.model) === null,
     });
@@ -168,7 +179,15 @@ export function costOfRun(run: UsageRun): number | null {
   const rates = ratesFor(run.provider, run.model);
   if (rates === null) return null;
   return estimateCostUsd(
-    { promptTokens: run.inputTokens, completionTokens: run.outputTokens, totalTokens: run.totalTokens },
+    {
+      promptTokens: run.inputTokens,
+      completionTokens: run.outputTokens,
+      totalTokens: run.totalTokens,
+      // 缓存字段整段带上：`cacheHitTokens` 是「确实命中」的计数（0 与「不知道」不同），
+      // 两个都缺时成本按输入价算 —— 与 rates.ts 的口径一致
+      ...(run.cacheHitTokens === null ? {} : { cacheHitTokens: run.cacheHitTokens }),
+      ...(run.cacheMissTokens === null ? {} : { cacheMissTokens: run.cacheMissTokens }),
+    },
     rates,
   );
 }
@@ -265,6 +284,16 @@ export function aggregateUsage(
 
 function numberOf(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/**
+ * 与 `numberOf` 不同：**0 与「不知道」不能混同**。
+ *
+ * 缓存命中数是「0 = 一次都没命中」与「null = 这家没报这个数」两件事，混同之后
+ * 「缓存一点没命中」与「缓存信息拿不到」在报表上长得一模一样，而它们的成本算得不一样。
+ */
+function numberOfOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : null;
 }
 
 /** 事件里的模型是 wire 上的数据（`unknown`）：只认长得像 `{ provider, model }` 的那些 */

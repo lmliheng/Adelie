@@ -13,6 +13,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerChatRoutes } from './routes/chat.js';
 import { registerConfigRoutes } from './routes/config.js';
 import { registerSessionRoutes } from './routes/sessions.js';
+import { registerUsageRoutes } from './routes/usage.js';
 import { registerUserRoutes } from './routes/users.js';
 import { frontendMissingPage, resolveWebDist, serveDistFile, wantsHtml } from './static.js';
 
@@ -40,6 +41,7 @@ export function createApp(deps: AppDeps = {}): Hono<AppEnv> {
   registerUserRoutes(app, ctx);
   registerConfigRoutes(app, ctx);
   registerSessionRoutes(app, ctx);
+  registerUsageRoutes(app, ctx);
   registerChatRoutes(app, ctx);
 
   // ---- 优雅关闭 ----

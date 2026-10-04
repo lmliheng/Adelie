@@ -53,6 +53,8 @@ function run(partial: Partial<UsageRun>): UsageRun {
     inputTokens: 0,
     outputTokens: 0,
     totalTokens: 0,
+    cacheHitTokens: null,
+    cacheMissTokens: null,
     status: 'completed',
     unpriced: false,
     ...partial,
@@ -64,7 +66,7 @@ describe('事件流 → 逐轮用量', () => {
     const events: StoredSessionEvent[] = [
       event(1, 'task_started', { taskId: 'r1', taskDescription: '干活', model: { provider: 'openai', model: 'gpt-4o-mini' } }, NOW - 2 * HOUR),
       event(2, 'decision', {}, NOW - 2 * HOUR + 1000),
-      event(3, 'stopped', { stopReason: { type: 'task_completed' }, tokenUsage: { promptTokens: 100, completionTokens: 20, totalTokens: 120 } }, NOW - 2 * HOUR + 5000),
+      event(3, 'stopped', { stopReason: { type: 'task_completed' }, tokenUsage: { promptTokens: 100, completionTokens: 20, totalTokens: 120, cacheHitTokens: 80, cacheMissTokens: 20 } }, NOW - 2 * HOUR + 5000),
     ];
 
     const runs = runsFromEvents(events, { sessionId: 's1' });
@@ -77,9 +79,23 @@ describe('事件流 → 逐轮用量', () => {
       inputTokens: 100,
       outputTokens: 20,
       totalTokens: 120,
+      // 缓存的两个数原样带过来（算钱要用）；没报这个数的 provider 是 null，不是 0
+      cacheHitTokens: 80,
+      cacheMissTokens: 20,
       status: 'completed',
       unpriced: false,
     });
+  });
+
+  it('provider 没报缓存数时是 null —— 与「命中 0」不是一件事', () => {
+    const events: StoredSessionEvent[] = [
+      event(1, 'task_started', { taskId: 'r1' }, NOW - HOUR),
+      event(2, 'stopped', { stopReason: { type: 'task_completed' }, tokenUsage: { promptTokens: 10, completionTokens: 1, totalTokens: 11 } }, NOW),
+    ];
+
+    const run = runsFromEvents(events, { sessionId: 's1' })[0]!;
+    expect(run.cacheHitTokens).toBeNull();
+    expect(run.cacheMissTokens).toBeNull();
   });
 
   it('task_started 没带模型时用会话头兜底，两者都没有才记 unknown', () => {
@@ -199,5 +215,33 @@ describe('聚合报表', () => {
     const report = aggregateUsage([one], { now: NOW }, { sessionsScanned: 1, unreadableSessions: 0 });
 
     expect(report.summary.total.costUsd).toBeCloseTo(costOfRun(one)!, 9);
+  });
+
+  it('缓存命中数进了钱：同一个 token 数，命中越多越便宜', () => {
+    // deepseek-chat：输入 0.27、缓存命中 0.07（差近四倍）。100k 输入全命中 ≈ 0.007，
+    // 全未命中 ≈ 0.027 —— 把缓存按输入价算会高估到四倍
+    const cached = run({
+      inputTokens: 100_000,
+      outputTokens: 0,
+      totalTokens: 100_000,
+      cacheHitTokens: 100_000,
+      cacheMissTokens: 0,
+    });
+    const uncached = run({ inputTokens: 100_000, outputTokens: 0, totalTokens: 100_000 });
+
+    expect(costOfRun(cached)).toBeCloseTo(0.007, 6);
+    expect(costOfRun(uncached)).toBeCloseTo(0.027, 6);
+    expect(costOfRun(cached)!).toBeLessThan(costOfRun(uncached)!);
+  });
+
+  it('只有命中数、没有未命中数时：余下的输入按输入价算，不重复计命中的', () => {
+    // 100k 输入里 60k 命中：60k×0.07 + 40k×0.27 = 0.0042 + 0.0108
+    const partial = run({
+      inputTokens: 100_000,
+      outputTokens: 0,
+      totalTokens: 100_000,
+      cacheHitTokens: 60_000,
+    });
+    expect(costOfRun(partial)).toBeCloseTo(0.015, 6);
   });
 });

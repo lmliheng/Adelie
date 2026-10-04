@@ -269,7 +269,9 @@ export async function executeTurn(input: TurnInput): Promise<void> {
     // 才会有别的帧 —— run_started 必然是流里的第一帧。
     // 模型作为这一轮的标签交进去：引擎不解释它，只记进 run 头，供用量与成本归属。
     const running = runtime.run(input.task, { model: input.settings.model });
-    channel.push('run_started', { runId, task: input.task });
+    // 这一轮的模型也交给客户端：它要按同一份价目表把这一轮的 token 折成钱
+    // （事件流里 task_started 的 model 在回放时能读到，实时流里只有这一帧能带）
+    channel.push('run_started', { runId, task: input.task, model: input.settings.model });
     // 排着的帧可以出去了：顺序是 run_started 在前，其余按发生顺序跟在后面
     runStarted = true;
     for (const push of queuedFrames.splice(0)) push();
