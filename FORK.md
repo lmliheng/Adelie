@@ -36,7 +36,8 @@ git merge upstream/develop        # 在 fork/penguin-base 上
 
 1. **跑起来**：本机安装、构建、测试、起服务、真浏览器看一眼。先证明基座在这台机器上是活的。
 2. **自有化**：包名 `@prismshadow/*` → Adelie 自己的 scope；数据根 `~/.penguin` → `~/.adelie`；
-   端口、图标、文案、README；上游的 `landing` / `docs` / `ui-gallery` / `hmr` 四个包逐个人拍板去留。
+   端口、图标、文案、README；上游的 `landing`（已删）/ `docs`（留作内部参考）/ `ui-gallery`
+   （留）/ `hmr`（`packages/server` 的依赖，必留）。
 3. **接回 Adelie 已经做过的东西**，或判定上游已经覆盖、直接删：审批口径三档、模型目录
    （deepseek / kimi / qwen）、用量与成本页、用户与两档角色、会话归属、桌面壳。
 4. **发布链路**：npm scope、GitHub Pages（PWA）、设计站、Windows 安装包。
@@ -47,8 +48,9 @@ git merge upstream/develop        # 在 fork/penguin-base 上
 
 `main` 分支上是**旧的 Adelie**（自己写的引擎 + 外壳：`adelie-core/providers/tools/runtime`、
 `@lmliheng/adelie` CLI、Electron 桌面壳、Web/PWA、六个 npm 包、设计站与发布流水线）。
-它没有被删：`main` 就是它的落点，四件已发布的产物也都还在线上。要不要下架或重发，等新基座
-能跑起来之后由人拍板。
+它没有被删：`main` 就是它的落点。用户 2026-10-05 定了两件事：**落点仍是 `lmliheng/Adelie`**
+（何时把新基座变成默认分支、旧 `main` 怎么留档，等发布期一起定），旧的四件产物**要按新基座更新**
+（重发新版，不是下架）。
 
 > 工作方式：动这份基座用 `git worktree`（`/root/adelie-fork`），**不要**在 `/root/Adelie`
 > 的工作区里切分支 —— `adelie-web.service` 直接读 `/root/Adelie/packages/{server/dist,web/dist}`，

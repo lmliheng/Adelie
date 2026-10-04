@@ -17,9 +17,9 @@ fail_test() {
   exit 1
 }
 
-# The auto-mode rule lives in three implementations that cannot import from each other: the two
-# installers and the download page on penguin.ooo. Nothing but this check keeps their constants in
-# step, so a threshold edited in one place fails here instead of shipping three different rules.
+# The auto-mode rule lives in two implementations that cannot import from each other (a POSIX shell
+# has no floats, PowerShell does). Nothing but this check keeps their constants in step, so a
+# threshold edited in one place fails here instead of shipping two different rules.
 check_shared_constant() {
   csc_label="$1"
   csc_expected="$2"
@@ -30,12 +30,10 @@ check_shared_constant() {
   done
 }
 
-LANDING_RULE="packages/landing/src/lib/download-source.ts"
-check_shared_constant "the GitHub minimum" "262144" install.sh install.ps1 "$LANDING_RULE"
+check_shared_constant "the GitHub minimum" "262144" install.sh install.ps1
 # The same 1.5, written as an integer percent in install.sh because a POSIX shell has no floats.
 check_shared_constant "the OSS switch ratio" "SPEED_PROBE_OSS_SWITCH_RATIO_PERCENT=150" install.sh
 check_shared_constant "the OSS switch ratio" '$SpeedProbeOssSwitchRatio = 1.5' install.ps1
-check_shared_constant "the OSS switch ratio" "SPEED_PROBE_OSS_SWITCH_RATIO = 1.5;" "$LANDING_RULE"
 
 # --- The launchers the release packages ship verbatim (scripts/launchers/). They are the only
 #     spelling of the payload layout, so moving where web/ or node/ sits fails here rather than
@@ -629,97 +627,5 @@ run_online_case pinned-network network v0.1.4 failure 2
 run_online_case pinned-legacy legacy v0.1.4 success 2
 grep -q "/releases/v0.1.4/$HOST_ASSET\$" "$WORK_DIR/pinned-legacy.log" \
   || fail_test "pinned legacy did not prefer the pinned OSS asset"
-
-# --- Stable penguin.ooo forwarder: prefer a validated immutable OSS release, but fall back to
-#     GitHub when the metadata probe fails. The real installer uses a local fixture here so the
-#     test isolates bootstrap routing from bundle download behavior above. ---
-run_forwarder_case() {
-  name="$1"
-  mode="$2"
-  expected_requests="$3"
-  source="${4:-auto}"
-  version="${5:-}"
-  expected="${6:-success}"
-  speed_probe="${7:-0}"
-  CASE_LOG="$WORK_DIR/$name.log"
-  CASE_OUTPUT="$WORK_DIR/$name.output"
-  CASE_INSTALL="$WORK_DIR/$name-install"
-  : > "$CASE_LOG"
-  if [ -n "$version" ]; then
-    archive=""
-  else
-    archive="$ARTIFACT_DIR/$HOST_ASSET"
-  fi
-  set +e
-  if [ "$speed_probe" = "__unset" ]; then
-    unset PENGUIN_DOWNLOAD_SPEED_PROBE
-    REQUEST_LOG="$CASE_LOG" MODE="$mode" PATH="$STUB_BIN:$PATH" \
-      HOME="$WORK_DIR/$name-home" PENGUIN_INSTALL_DIR="$CASE_INSTALL" \
-      PENGUIN_ARCHIVE="$archive" PENGUIN_VERSION="$version" \
-      PENGUIN_DOWNLOAD_SOURCE="$source" PENGUIN_DOWNLOAD_BASE_URL="" \
-      PENGUIN_DOWNLOAD_FALLBACK_BASE_URL="" \
-      sh "$ROOT_DIR/packages/landing/public/install.sh" >"$CASE_OUTPUT" 2>&1
-  else
-    REQUEST_LOG="$CASE_LOG" MODE="$mode" PATH="$STUB_BIN:$PATH" \
-      HOME="$WORK_DIR/$name-home" PENGUIN_INSTALL_DIR="$CASE_INSTALL" \
-      PENGUIN_ARCHIVE="$archive" PENGUIN_VERSION="$version" \
-      PENGUIN_DOWNLOAD_SOURCE="$source" PENGUIN_DOWNLOAD_BASE_URL="" \
-      PENGUIN_DOWNLOAD_FALLBACK_BASE_URL="" PENGUIN_DOWNLOAD_SPEED_PROBE="$speed_probe" \
-      sh "$ROOT_DIR/packages/landing/public/install.sh" >"$CASE_OUTPUT" 2>&1
-  fi
-  status=$?
-  set -e
-  if [ "$expected" = "success" ]; then
-    [ "$status" -eq 0 ] || fail_test "$name unexpectedly failed"
-  else
-    [ "$status" -ne 0 ] || fail_test "$name unexpectedly succeeded"
-  fi
-  [ "$(wc -l < "$CASE_LOG" | tr -d ' ')" -eq "$expected_requests" ] \
-    || fail_test "$name made an unexpected number of requests"
-  ! grep -q "aliyuncs.com" "$CASE_OUTPUT" \
-    || fail_test "$name exposed the OSS URL in normal output"
-}
-
-run_forwarder_case forwarder-oss forwarder-oss 2
-grep -q "/latest.json\$" "$WORK_DIR/forwarder-oss.log" \
-  || fail_test "OSS forwarder did not request release metadata first"
-grep -q "/releases/v0.0.0-test/install.sh\$" "$WORK_DIR/forwarder-oss.log" \
-  || fail_test "OSS forwarder did not request the versioned installer"
-
-run_forwarder_case forwarder-auto-github forwarder-auto-github 2
-grep -q "github.com/.*/releases/latest/download/install.sh\$" "$WORK_DIR/forwarder-auto-github.log" \
-  || fail_test "forwarder did not fall back to the GitHub installer"
-
-run_forwarder_case forwarder-invalid-metadata forwarder-invalid-metadata 2
-grep -q "github.com/.*/releases/latest/download/install.sh\$" "$WORK_DIR/forwarder-invalid-metadata.log" \
-  || fail_test "invalid OSS metadata did not fall back to the GitHub installer"
-
-run_forwarder_case forwarder-github canonical 1 github
-grep -q "github.com/.*/releases/latest/download/install.sh\$" "$WORK_DIR/forwarder-github.log" \
-  || fail_test "forced GitHub mode did not request the GitHub installer"
-
-run_forwarder_case forwarder-forced-oss-no-fallback forced-oss-payload 2 oss v0.0.0-test failure
-! grep -q "github.com" "$WORK_DIR/forwarder-forced-oss-no-fallback.log" \
-  || fail_test "forced OSS mode unexpectedly fell back to GitHub"
-
-run_forwarder_case forwarder-pinned canonical 3 auto v0.0.0-test
-[ "$(sed -n '1p' "$WORK_DIR/forwarder-pinned.log")" = \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test/install.sh" ] \
-  || fail_test "pinned forwarder did not request the versioned installer"
-[ "$(sed -n '2p' "$WORK_DIR/forwarder-pinned.log")" = \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test/$HOST_ASSET" ] \
-  || fail_test "pinned installer did not keep the selected release version"
-
-run_forwarder_case forwarder-speed-probe-handoff speed-probe-github-fast 7 auto v0.0.0-test success 1
-[ "$(sed -n '1p' "$WORK_DIR/forwarder-speed-probe-handoff.log")" = \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test/install.sh" ] \
-  || fail_test "speed probe handoff forwarder did not fetch the versioned OSS installer"
-! grep -q "penguin-harness-releases.oss-cn-beijing.aliyuncs.com/.*/$HOST_ASSET\$" "$WORK_DIR/forwarder-speed-probe-handoff.log" \
-  || fail_test "forwarder locked the payload source to OSS instead of letting the installer speed probe"
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/forwarder-speed-probe-handoff.log" \
-  || fail_test "forwarder locked the payload source instead of letting the installer speed probe"
-run_forwarder_case forwarder-speed-probe-default-handoff speed-probe-github-fast 7 auto v0.0.0-test success __unset
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/forwarder-speed-probe-default-handoff.log" \
-  || fail_test "forwarder handoff did not leave speed probing enabled by default"
 
 echo "Installer bundle, offline, rollback and online tests passed."

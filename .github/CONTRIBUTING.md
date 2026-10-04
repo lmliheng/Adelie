@@ -130,7 +130,6 @@ single data directory (`~/.penguin/data`) and a single message protocol (OmniMes
 | [`packages/server`](../packages/server)   | `@prismshadow/penguin-server` | Web backend: HTTP API + SSE streaming, multi-user auth, Project authorization, usage stats              |
 | [`packages/web`](../packages/web)         | `@prismshadow/penguin-web`    | Web App: multi-session chat, Agent/skill/model management, Trace observability, evaluation center       |
 | [`plugins/*`](../plugins) | `@penguinharness/<name>` | The built-in plugins, one npm package each: skills (software development, model development, agent development/tuning, …) and session hooks (goal mode, skill summaries); the loader lives in `packages/core` |
-| [`packages/landing`](../packages/landing) | —                             | Product landing page (this repo's website)                                                              |
 | [`packages/docs`](../packages/docs)       | —                             | Documentation site (bilingual, deployed under `/docs/`)                                                 |
 | [`plugins/*`](../plugins) | `@prismshadow/penguin-plugin-*` | Plugin packages a Project asks for on the Plugins page (its `[plugins]` table) — a directory of their own because nothing else in the harness depends on one                        |
 
@@ -207,10 +206,9 @@ pnpm test:e2e                                        # core live-model e2e, need
   tagged on a green CI, lost its macOS installers to a runner-image change, and shipped again
   as 0.2.11). To re-check outside a release branch:
   `gh workflow run desktop-build.yml --ref <branch> -f require_macos_signing=true -f require_windows_signing=true`.
-- README assets under `assets/readme/` are generated — the benchmark charts from the
-  landing benchmark data, and the demo screenshots via
-  `node packages/landing/scripts/capture-readme-demo.mjs` (build first; needs Playwright
-  chromium). Regenerate rather than hand-editing.
+- README assets under `assets/readme/` are generated — the benchmark charts come from the
+  landing benchmark data, and the demo screenshots from the (now-removed) landing site's
+  capture script. Regenerate rather than hand-editing.
 
 ## Reporting a bug or proposing a feature
 

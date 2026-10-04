@@ -15,7 +15,6 @@
  * | ---- | ---------------------------------- | -------------------------- | ------------------------------------ |
  * | 7364 | installed server / Web UI          | `~/.penguin/data`          | `DEFAULT_SERVER_PORT` below          |
  * | 7365 | `pnpm dev:web` (Vite)              | none (proxies to 7368)     | `packages/web/vite.config.ts`        |
- * | 7366 | `pnpm dev:landing` (Vite)          | none (static)              | `packages/landing/vite.config.ts`    |
  * | 7367 | `pnpm dev:docs` (Vite)             | none (static)              | `packages/docs/vite.config.ts`       |
  * | 7368 | `pnpm dev:server` (dev backend)    | `~/.penguin/dev-data`      | `packages/server/package.json` `dev` |
  * | 7369 | `pnpm penguin web` (dev CLI)       | `~/.penguin/dev-data-cli`  | the root and cli `penguin` scripts   |

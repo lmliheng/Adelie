@@ -90,7 +90,6 @@ userData 目录随其名称一并搬家，Chromium 配置文件也跟着走，�
 | [`packages/server`](../packages/server)   | `@prismshadow/penguin-server` | Web 后端：HTTP API + SSE 流式传输、多用户认证、Project 鉴权、用量统计       |
 | [`packages/web`](../packages/web)         | `@prismshadow/penguin-web`    | Web App：多会话聊天，Agent/Skill/模型管理，Trace 可观测性，评测中心         |
 | [`plugins/*`](../plugins) | `@penguinharness/<name>` | 内置插件，一插件一 npm 包：Skill（软件开发、模型开发、Agent 开发/调优……）与会话钩子（目标模式、技能沉淀）；loader 在 `packages/core` |
-| [`packages/landing`](../packages/landing) | —                             | 产品落地页（本仓库的官网）                                                 |
 | [`packages/docs`](../packages/docs)       | —                             | 文档站（双语，部署在 `/docs/` 下）                                          |
 
 职责按事实来源划分：**SDK** 拥有协议与执行（消息解析、Agent 循环、工具），**Server** 拥有多用户运行时
@@ -147,9 +146,8 @@ pnpm test:e2e                                        # core 的真实模型 e2e�
   的问题要用掉一个版本号（0.2.10 在 CI 全绿时打了 tag，因运行器镜像变化丢了 macOS 安装包，只得以 0.2.11
   重新发布）。在发布分支之外想补验一次：
   `gh workflow run desktop-build.yml --ref <分支> -f require_macos_signing=true -f require_windows_signing=true`。
-- `assets/readme/` 下的 README 素材是生成物——基准测试图表由落地页的基准数据生成，演示截图由
-  `node packages/landing/scripts/capture-readme-demo.mjs` 生成（需先构建；需要 Playwright chromium）。
-  请重新生成，而不要手工编辑。
+- `assets/readme/` 下的 README 素材是生成物——基准测试图表由落地页的基准数据生成，演示截图由已删掉的
+  落地页里那个截图脚本生成。请重新生成，而不要手工编辑。
 
 ## 报告缺陷或提出功能建议
 

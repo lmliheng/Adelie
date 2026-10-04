@@ -47,8 +47,7 @@ $OssReleaseRoot = "$OssOrigin/releases"
 $GitHubReleaseRoot = "$Repo/releases/download"
 $GitHubLatestBase = "$Repo/releases/latest/download"
 $Asset = "penguin-win32-x64.zip"
-# Auto-mode source selection, one rule shared by install.ps1, install.sh and the download page on
-# penguin.ooo (packages/landing/src/lib/download-source.ts):
+# Auto-mode source selection, one rule shared by install.ps1 and install.sh:
 #
 #   1. Measure GitHub on the release's large probe file. At or above
 #      $SpeedProbeGitHubMinBytesPerSecond it wins outright and OSS is never touched.
@@ -76,9 +75,9 @@ $PayloadName = "payload.zip"
 $EmbeddedReleaseVersion = "__PENGUIN_RELEASE_VERSION__"
 
 function Fail([string]$Message) {
-  # `throw` rather than `exit`: the penguin.ooo forwarder runs this installer as an in-memory
-  # script block (see packages/landing/public/install.ps1), where `exit` would terminate the
-  # user's whole PowerShell session. `throw` aborts cleanly in both file and script-block runs.
+  # `throw` rather than `exit`: a caller that runs this installer as an in-memory script block
+  # (rather than as a file) would otherwise have `exit` terminate its whole PowerShell session.
+  # `throw` aborts cleanly in both file and script-block runs.
   throw "error: $Message"
 }
 

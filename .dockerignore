@@ -23,7 +23,6 @@ packages/desktop/stage
 # Artifacts of running things locally.
 **/test-results
 **/playwright-report
-packages/landing/.blog-assets
 **/*.log
 
 # Local configuration, and the symlinks a development checkout carries to reach the design

@@ -46,8 +46,7 @@ SOURCE_MODE="${PENGUIN_DOWNLOAD_SOURCE:-auto}"
 DOWNLOAD_BASE_URL="${PENGUIN_DOWNLOAD_BASE_URL:-}"
 DOWNLOAD_FALLBACK_BASE_URL="${PENGUIN_DOWNLOAD_FALLBACK_BASE_URL:-}"
 DOWNLOAD_SPEED_PROBE="${PENGUIN_DOWNLOAD_SPEED_PROBE:-1}"
-# Auto-mode source selection, one rule shared by install.sh, install.ps1 and the download page on
-# penguin.ooo (packages/landing/src/lib/download-source.ts):
+# Auto-mode source selection, one rule shared by install.sh and install.ps1:
 #
 #   1. Measure GitHub on the release's large probe file. At or above
 #      SPEED_PROBE_GITHUB_MIN_BYTES_PER_SECOND it wins outright and OSS is never touched.

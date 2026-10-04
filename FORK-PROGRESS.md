@@ -35,7 +35,19 @@
       4000 / 7370 对齐，避免两个产品抢端口。
 - [ ] 2.4 **README 与包元数据**：根 `README.md` 换成 Adelie 自己的说明 + 「基于 PenguinHarness」的
       来源声明（`FORK.md` 已有，README 里指过去即可）。
-- [ ] 2.5 **上游 `landing` / `docs` / `ui-gallery` / `hmr` 四个包的去留**：逐个人拍板（卡点 A）。
+- [x] 2.5 **上游 `landing` / `docs` / `ui-gallery` / `hmr` 的去留（2026-10-05 定，用户「看你」）**：
+      - **删 `packages/landing`**（官网 + 博客 + 下载页，163 文件 / 3.0M）：整站都是上游产品的宣传
+        与 `penguin.ooo` 链接，对 Adelie 没有一处价值。连带删掉只为它存在的
+        `scripts/build-site.mjs` 与 `.github/workflows/pages.yml`（把落地页 + 文档站组装成
+        penguin.ooo 那一个 Pages 站），并清理各处引用：README 的 logo、root scripts 的
+        `dev:landing` / `build:site`、CI 的过滤器、`scripts/test-installer.sh` 里那段
+        「penguin.ooo 转发器」用例（转发器没了，被测对象也就没了）、`.oxlintrc` 的 `.blog-assets`、
+        `.gitignore` / `.dockerignore` 的忽略项、`packages/core` 端口表里的 7366 行、
+        两个安装脚本注释里的指向。
+      - **留 `packages/docs`**：它是引擎的配置 / 接口 / 快速开始文档（双语），不是宣传；留作内部参考，
+        不发布、不改品牌 —— 品牌改写与要不要上线，等发布期一起定。
+      - **留 `packages/ui-gallery`**：改界面时的组件参照工具；依赖没装就不装。
+      - **留 `packages/hmr`**：`packages/server` 的 workspace 依赖，删了服务端起不来。
 
 ### 3. 把旧 Adelie 已经做过的东西接回来
 
@@ -50,16 +62,42 @@
 
 - [ ] 4.1 npm scope：`@prismshadow/penguin-*` → Adelie 自己的 scope（旧包是 `@lmliheng/adelie`、
       `adelie-core` / `adelie-server` / `adelie-web` / `adelie-desktop` 等）。**只和发布一起做** ——
-      内部改名 968 个文件、零功能收益，放到这里一次做完。
-- [ ] 4.2 GitHub Pages（PWA）、设计站、Windows 安装包三条流水线按新仓库结构重写。
-- [ ] 4.3 旧的四件已发布产物怎么处置（卡点 B）。
+      内部改名 968 个文件、零功能收益，放到这里一次做完。`@prismshadow/agenthub` 是**外部**包
+      （见下），改名时不能碰。
+- [ ] 4.2 GitHub Pages（PWA）、设计站、Windows 安装包三条流水线按新仓库结构重写
+      （上游那条 Pages 流水线已随 `landing` 删掉）。
+- [ ] 4.3 **旧的四件产物要更新**（用户 2026-10-05 定：按新基座重发新版，不是下架）。
 
-## 卡点（要用户拍板才动的）
+## 本机部署（2026-10-05）
 
-- **A. 上游四个包的去留**：`landing`（宣传页，393 处品牌字）、`docs`（文档站，223 处）、
-  `ui-gallery`（组件画廊）、`hmr`（热更新宿主）—— 留哪些、删哪些。
-- **B. 旧的四件产物**：已上线的 PWA、六个 npm 包、Windows 安装包，要不要下架 / 重发。
-- **C. 仓库落点**：新基座仍发在 `lmliheng/Adelie`（`main` 是旧 Adelie）还是另开仓库。
+| | |
+| --- | --- |
+| 单元 | `adelie-app.service`（`/etc/systemd/system/`）—— 新基座的 Web 服务端 |
+| 端口 | **3004**（`HOST=0.0.0.0`，ufw 与 `/root/egress-whitelist/config.json` 都已登记） |
+| 数据根 | `/root/adelie-data`（工作区 `/root/adelie-data/workspace`） |
+| 代码 | `/root/adelie-fork` 的 `packages/server/dist/index.js` + `packages/web/dist` |
+| 首次登录 | 启动输出里的 claim 链接（同内容也写在 `/root/adelie-data/首次登录链接.txt`，0600）；打开它认领内置管理员 `admin` 并设密码。忘了密码：停服务后 `penguin server reset-admin-password` |
+| 旧地址 | 上游设计规格页已从 3004 让到 **3003**（`adelie-design.service`，同步改了单元与端口表）；旧 Adelie Web 仍在 4000（`adelie-web.service`） |
+
+要跑真任务还得在这个新实例里配模型 key（数据根独立，读不到旧实例的 `.project_config.toml`）。
+
+## 两个运行时事实（改名时别踩）
+
+- **`@prismshadow/agenthub` 是外部 npm 包**（0.4.15，Apache-2.0，「AgentHub — the LLM API Hub for
+  the Agent era」）：`packages/core` 与 `packages/cli` 的依赖，提供 `AutoLLMClient`，把
+  OpenAI / Anthropic / Gemini / Bedrock 各家的 SDK 抹平成一个接口。不是我们的代码，
+  scope 改名时必须排除（另有 `@prismshadow/example-*`、`penguin-plugin-sandbox-*` 要按归属分别判断）。
+- **上游自有网关是代码里的默认端点**：`https://token.penguin.ooo/api`（`PENGUIN_GO_BASE_URL`）、
+  `https://go.penguin.ooo/modelscope`、`https://penguin.ooo/`。这些是**他们的服务**，
+  哪天关掉就会影响 Adelie —— 发布前要么确认继续可用，要么改成自己的（用户本来就走
+  deepseek / kimi / qwen 直连 key 的路线）。
+
+## 已拍板（2026-10-05，用户）
+
+- **A. 上游四个包**：见 2.5 —— 用户「看你」，按上面办（删 `landing`，留 `docs` / `ui-gallery` / `hmr`）。
+- **B. 旧的四件产物**：**更新**（按新基座重发新版），不下架。
+- **C. 仓库落点**：仍是 `lmliheng/Adelie`。`main` 现在是旧 Adelie，新基座长在 `fork/penguin-base`；
+  何时把新基座变成默认分支、旧 `main` 怎么留档，等发布期一起定。
 
 ## 已完成的轮次
 
@@ -70,3 +108,5 @@
 | 2026-10-04 | 1 | 本机装、构建、起服务、真浏览器看一眼 | 安装 3.2s 全 hard-link；`pnpm -r build` 全绿（web 2.58MB JS / 787KB gzip）；`PORT=7391` 起来后 Playwright 截图 `fork-look/01-app.png`，console 无 error | 无（环境动作） |
 | 2026-10-05 | 1 | 复跑基座测试 | ui 999 / core 1346+5skip / server 2552+2skip / cli 509 / web 2886+2skip，合计 **8292 passed / 9 skipped / 0 failed**，`EXIT=0` | 无（环境动作） |
 | 2026-10-05 | 2.1a | 界面品牌名换成 Adelie（appName ×2 + `index.html` 标题 + 4 个端到端断言） | web typecheck 过；`pnpm --filter …web test` 236 文件 / 2886 通过；重建 dist 后在 7391 起服务，Playwright：标签页 `Chat · Adelie`、顶栏可见 `Adelie`、console 无 error | 见本行提交 |
+| 2026-10-05 | 2.5 | 删掉上游官网 `packages/landing`（163 文件）与只为它存在的 `scripts/build-site.mjs`、`.github/workflows/pages.yml`，并清理 README / CI / 安装测试 / 端口表 / 忽略文件里的引用 | `pnpm lint` 0 警告；六个包 typecheck 过；`pnpm install --lockfile-only` 刷新锁文件（-93 行）；`sh scripts/test-installer.sh` 通过；core 1346 / ui 999 / cli 509 / web 2886 全绿；server 先因 `dist/install.sh` 副本过期报 2 条失败，重建 server 后 **179 文件 / 2552 通过 / 2 跳过**；`pnpm format:check` 干净 | 见本行提交 |
+| 2026-10-05 | 部署 | 新 Adelie 起在 **3004**（`adelie-app.service`，数据根 `/root/adelie-data`）；上游设计规格页让到 3003 | `curl` 127.0.0.1 与外网地址都 200；Playwright 打开 3004 是 `Sign in · Adelie`、唯一 4xx 是登录前的 `/api/me` 401（预期）；`ss` 确认 3004 绑 0.0.0.0；ufw 与运维面板端口表已登记 3003/3004 | 无（环境动作） |

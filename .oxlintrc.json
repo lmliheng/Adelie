@@ -22,7 +22,6 @@
     "**/build/**",
     "**/node_modules/**",
     "packages/desktop/release/**",
-    "packages/landing/.blog-assets/**",
     "packages/web/dist-app/**"
   ]
 }
