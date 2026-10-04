@@ -34,3 +34,10 @@ jobs:
 
       - name: 构建
         run: pnpm run build
+
+      # 体检补的是上面三件套看不见的那一半：契约与实现有没有分叉、产物里有没有已删源的
+      # 残渣、密钥有没有被打出来、issue 草稿是不是写全了（见 docs/audit.md）。
+      # --no-gates：三个闸门上面刚跑过，不重复。
+      # --fail-on=P2：契约漂移与产物残渣这一档也要挡住，P3 的提醒不挡发布。
+      - name: 应用体检（静态部分）
+        run: node scripts/audit.mjs --no-gates --fail-on=P2

@@ -11,6 +11,7 @@
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "build": "pnpm -r build",
+    "audit": "node scripts/audit.mjs",
     "dev": "concurrently -n server,web -c cyan,magenta \"pnpm dev:server\" \"pnpm dev:web\"",
     "dev:server": "pnpm --filter adelie-server dev",
     "dev:web": "pnpm --filter adelie-web dev",

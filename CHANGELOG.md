@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## 未发布 — 自检方法与发布产物清理
+
+### 新增：应用体检（`node scripts/audit.mjs`）
+
+一条命令回答「这个应用现在有没有毛病」。它替人干的是「该看哪儿」这件**可枚举**的事，
+剩下需要判断的才是人的活。规则与用法见 `docs/audit.md`（`pnpm run audit` 也行 ——
+裸的 `pnpm audit` 是 pnpm 自带的依赖漏洞扫描，两回事）。
+
+- 十二条检查，每条都对应一类**已经发生过**的事故：三个闸门（typecheck / test / build）、
+  契约路由与代码一一对应、前端请求路径都在契约里、错误码与契约 §8 对齐、权限表每一行
+  对着真路由、issue 草稿合规、源码里的欠账标记、提供方没绕开模型目录、密钥卫生
+  （值不进仓库/不进日志/文件 0600）、产物没有已删源的残渣、版本与 workspace 依赖声明、
+  文档里自认未验证的结论。
+- 只报告、不修东西；每条发现都带 `文件:行` 或命令作证据；`--fail-on` 决定哪一档开始挡
+  发布（默认 P1，CI 用 P2），**已经记进草稿的发现不挡门槛**（由 issue 跟踪，把 CI 一直
+  挂红只会让人开始忽略它）。
+- 挂进 CI（`.github/workflows/ci.yml`）：`--no-gates --fail-on=P2`。三个闸门 CI 本来就
+  单独跑，体检补的是它们看不见的那一半。
+
+### 修复：构建不再把已删源的文件留在发布包里
+
+`tsc` 只写不删：删掉 `anthropic.provider.ts` / `gemini.provider.ts` 之后，
+`packages/providers/dist/` 里那四个 `.js` / `.d.ts` 还活着，而 `package.json` 的 `files`
+就是 `["dist", "README.md"]` —— 它们会跟着发布包发出去。
+
+- 新增 `scripts/clean-dist.mjs`：各包的 `build` 先清 `dist` 再编译（core / providers /
+  tools / runtime / cli）。CLI 也需要它：SSR 构建下 vite 默认不清 `outDir`。
+- 脚本自己带护栏：只肯删 `packages/<包名>/dist`，其余路径一律拒绝退出（一个被
+  `pnpm build` 顺带调用的删除脚本，写错一个变量的代价太大）。
+- 这条原本是 `docs/issues/release-build-does-not-clean-dist.md` 草稿（还没同步到
+  GitHub），修完即删：它属于这次提交与这份 CHANGELOG。
+- 体检里的「产物与源码一致」那一项就是它的回归检查。
+
 ## 未发布 — 重构 P1–P3（对照 penguin-harness 的设计）
 
 分六期重构（方案见 docs/redesign.md）。P1、P2、P3 已落地并通过全仓验证。

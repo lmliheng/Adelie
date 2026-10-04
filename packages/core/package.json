@@ -29,7 +29,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run --passWithNoTests",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "node ../../scripts/clean-dist.mjs && tsc -p tsconfig.build.json"
   },
   "dependencies": {},
   "devDependencies": {
