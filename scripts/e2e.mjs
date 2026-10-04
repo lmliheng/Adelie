@@ -198,22 +198,38 @@ try {
   await page.screenshot({ path: path.join(OUT, "03-done.png"), fullPage: true });
   console.log("\n--- 会话区 ---\n" + (await page.locator('[data-testid="messages"]').innerText()).slice(0, 1200));
 
-  // ── 输入区控件带：模型下拉显示的就是服务端记着的那个模型；两个下拉都真的写进服务端 ──
-  // 显示值对上，顺带证明模型清单是从 GET /api/models 接出来的、且当前值没被 `<select>`
-  // 丢掉（mock 不在真目录里，靠 modelChoices 把当前值补进去）。改值这一步从页面里
-  // fetch 读回 /api/config 核对 —— 不看界面自己怎么说，免得「界面改了、服务端没改」。
-  const modelSelect = page.locator('[data-testid="model-select"]')
-  await modelSelect.waitFor({ timeout: 5000 })
-  const modelValue = await modelSelect.inputValue()
-  if (modelValue !== "mock") failures.push(`模型下拉显示的是「${modelValue}」，期望「mock」`);
-
+  // ── 输入区控件带：模型触发件显示的就是服务端记着的那个模型；两个面板都真的写进服务端 ──
+  // 控件带上的两个控件是「胶囊触发件 + portal 面板」（见 components/ComposerMenu）：点触发件
+  // 开面板、点行选中。显示值对上，顺带证明模型清单是从 GET /api/models 接出来的、且当前值
+  // 没被丢掉（mock 不在真目录里，靠 modelChoices 把当前值补进去 → 显示裸 id）。改值这一步
+  // 从页面里 fetch 读回 /api/config 核对 —— 不看界面自己怎么说，免得「界面改了、服务端没改」。
   const configBefore = await (await fetch(`${origin}/api/config`)).json();
-  // 挑一个和当前不同的型号（名字从下拉里取，不硬编码目录里的模型名）
-  const otherModel = await page
-    .locator('[data-testid="model-select"] option')
-    .evaluateAll((options, current) => options.map((o) => o.value).find((v) => v !== current) ?? null, modelValue);
+  const catalog = await (await fetch(`${origin}/api/models`)).json();
+
+  const modelTrigger = page.locator('[data-testid="model-select"]');
+  await modelTrigger.waitFor({ timeout: 5000 });
+  // 触发件显示目录里的 label；目录里没有（比如 mock）就退回裸 id —— 与 modelChoices 同一条规则
+  const catalogModel = catalog.groups
+    ?.find((g) => g.id === configBefore.model.provider)
+    ?.models?.find((m) => m.id === configBefore.model.model);
+  const expectedModelLabel = catalogModel?.label ?? configBefore.model.model;
+  const shownModel = (await modelTrigger.innerText()).trim();
+  if (shownModel !== expectedModelLabel) {
+    failures.push(`模型触发件显示的是「${shownModel}」，期望「${expectedModelLabel}」`);
+  }
+
+  // 点触发件开面板；型号从面板里取，不硬编码目录里的模型名
+  await modelTrigger.click();
+  const modelMenu = page.locator('[data-menu="model"]');
+  await modelMenu.waitFor({ timeout: 5000 });
+  const otherModel = await modelMenu
+    .locator('[data-value]')
+    .evaluateAll(
+      (rows, current) => rows.map((r) => r.getAttribute("data-value")).find((v) => v !== current) ?? null,
+      configBefore.model.model,
+    );
   if (otherModel !== null) {
-    await modelSelect.selectOption(otherModel)
+    await modelMenu.locator(`[data-value="${otherModel}"]`).click();
     await waitFor(`模型在服务端换成 ${otherModel}`, async () => {
       const current = await (await fetch(`${origin}/api/config`)).json();
       // 提供方不许跟着变：输入区不跨家换模型（换家要新开会话）
@@ -221,7 +237,10 @@ try {
     });
   }
 
-  await page.locator('[data-testid="approval-select"]').selectOption("read-only")
+  await page.locator('[data-testid="approval-select"]').click();
+  const approvalMenu = page.locator('[data-menu="approval"]');
+  await approvalMenu.waitFor({ timeout: 5000 });
+  await approvalMenu.locator('[data-value="read-only"]').click();
   await waitFor("审批口径在服务端改成 read-only", async () => {
     const current = await (await fetch(`${origin}/api/config`)).json()
     return current.approvalPolicy === "read-only"

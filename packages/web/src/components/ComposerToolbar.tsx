@@ -1,14 +1,18 @@
 // src/components/ComposerToolbar.tsx
 //
-// 输入区控制带上的两个下拉：**模型** 与 **审批口径**。
+// 输入区控制带上的两个菜单：**模型** 与 **审批口径**。
 //
-// 为什么单独一个组件：Composer 是哑的（只管把节点排进 `.composer-tools`），而这两个
-// 控件要读配置、要发 `PATCH /api/config`、要在失败时说一句 —— 那些是应用的活。把它从
-// 输入框里拆出来，输入框才能继续「看一遍就懂」。
+// 外观照搬 penguin 的输入卡底部：一个胶囊触发件（标记 + 当前值 + 紧凑箭头）加一个
+// portal 出来的面板（标题条 + 行 + 打勾 + 脚注）。触发件与面板都在 ComposerMenu 里，
+// 这里只负责「读配置、发 PATCH、失败说一句」这些应用的活 —— 于是输入框（Composer）
+// 仍然只管把节点排进 `.composer-tools`，看一遍就懂。
+//
+// 为什么单独一个组件：这两个控件要读配置、要发 `PATCH /api/config`、要在失败时说一句。
+// 把它从输入框里拆出来，输入框才能继续「看一遍就懂」。
 //
 // 跨提供方切换**不做**：Adelie 没有上下文压缩路由，换一家就得把别家的历史喂过去，
-// 所以换家要新开会话（契约里换家还是管理员专属）。这个下拉只列当前提供方的模型，
-// 别家的东西一律不出现，用 title 说明去哪换。
+// 所以换家要新开会话（契约里换家还是管理员专属）。这个菜单只列当前提供方的模型，
+// 别家的东西一律不出现，脚注里说明去哪换。
 //
 // 失败处理：控件是**受控**的，显示值 = 「正在提交的那个」??「服务端记着的那个」。
 // PATCH 失败就把前一半清回 null，显示值自己回到服务端那份 —— 不留「界面显示改了、
@@ -17,6 +21,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { APPROVAL_OPTIONS, approvalOption, modelChoices } from '../lib/composer-options'
 import type { ConfigInfo, ConfigPatch, ModelCatalog } from '../api/types'
+import { ComposerMenu } from './ComposerMenu'
 
 export function ComposerToolbar({
   config,
@@ -41,7 +46,11 @@ export function ComposerToolbar({
   const currentApproval = approvalOption(config?.approvalPolicy ?? '')
 
   const choices = useMemo(() => modelChoices(catalog, provider, currentModel), [catalog, provider, currentModel])
-  const approval = approvalOption(pendingApproval ?? currentApproval.id)
+  const modelValue = pendingModel ?? currentModel
+  // 目录里没有这个型号（手填的 / 清单没拉到）就退回裸 id，触发件上总得有东西
+  const modelLabel = choices.find((model) => model.id === modelValue)?.label ?? modelValue
+  const approvalValue = pendingApproval ?? currentApproval.id
+  const approval = approvalOption(approvalValue)
 
   const changeModel = async (next: string): Promise<void> => {
     // provider 为空说明配置还没读到，这时不提交；同值不必打一次 PATCH
@@ -67,57 +76,41 @@ export function ComposerToolbar({
 
   return (
     <div className="composer-toolbar">
-      {/* 标签给屏幕阅读器：控制带只有几十像素高，肉眼看下拉里的模型名就知道是什么 */}
-      <label className="sr-only" htmlFor="composer-model">
-        模型
-      </label>
-      <select
-        id="composer-model"
-        className="composer-select"
-        data-testid="model-select"
-        title={
-          provider === ''
-            ? '正在读取配置…'
-            : `只列 ${provider} 这一家的模型；换一家提供方要新开会话`
-        }
-        value={pendingModel ?? currentModel}
+      <ComposerMenu
+        label="模型"
+        title="模型"
+        glyph="cube"
+        testId="model-select"
+        menuName="model"
+        value={modelValue}
+        display={modelLabel === '' ? '模型读取中…' : modelLabel}
         disabled={busy || choices.length === 0}
-        onChange={(event) => {
-          void changeModel(event.target.value)
+        options={choices.map((model) => ({ value: model.id, label: model.label, detail: model.id }))}
+        note={provider === '' ? '正在读取配置…' : `只列 ${provider} 这一家的模型；换一家提供方要新开会话`}
+        onPick={(next) => {
+          void changeModel(next)
         }}
-      >
-        {choices.length === 0 && <option value="">模型读取中…</option>}
-        {choices.map((model) => (
-          <option key={model.id} value={model.id}>
-            {model.label}
-          </option>
-        ))}
-      </select>
+      />
 
-      <label className="sr-only" htmlFor="composer-approval">
-        审批口径
-      </label>
-      <select
-        id="composer-approval"
-        className="composer-select"
-        data-testid="approval-select"
-        title={approval.hint}
-        value={approval.id}
+      <ComposerMenu
+        label="审批口径"
+        title="审批口径"
+        glyph="shield"
+        testId="approval-select"
+        menuName="approval"
+        value={approvalValue}
+        display={config === null ? '读取中…' : approval.label}
         disabled={busy || config === null}
-        onChange={(event) => {
-          void changeApproval(event.target.value)
+        options={APPROVAL_OPTIONS.map((option) => ({
+          value: option.id,
+          label: option.label,
+          detail: option.hint,
+        }))}
+        note={config === null ? undefined : approval.hint}
+        onPick={(next) => {
+          void changeApproval(next)
         }}
-      >
-        {config === null ? (
-          <option value={approval.id}>审批口径读取中…</option>
-        ) : (
-          APPROVAL_OPTIONS.map((option) => (
-            <option key={option.id} value={option.id} title={option.hint}>
-              {option.label}
-            </option>
-          ))
-        )}
-      </select>
+      />
     </div>
   )
 }

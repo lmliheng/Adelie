@@ -1266,35 +1266,165 @@ a {
   gap: 8px;
 }
 
-.composer-select {
-  height: 28px;
+/* 触发件（模型 / 审批口径……）：无边框的**灰墨胶囊**，照搬 penguin 的 ToolbarTrigger ——
+   标记 + 当前值 + 紧凑箭头。桌面 32px；hover 才出现柔和底色并转正文色；禁用半透明。
+   原生 `<select>` 的边框、系统蓝高亮都是浏览器给的，跟输入卡不是一套，所以一律自绘。 */
+.composer-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 32px;
   max-width: 12rem;
-  padding: 0 6px;
-  border: 1px solid var(--control-border);
+  padding: 0 8px;
+  border: 0;
   border-radius: var(--radius-control);
-  background: var(--surface);
+  background: none;
   color: var(--fg-muted);
   font: inherit;
   font-size: 12px;
   cursor: pointer;
-  transition: border-color 150ms var(--ease);
+  transition: background-color 150ms var(--ease), color 150ms var(--ease);
 }
 
-.composer-select:hover:not(:disabled) {
-  border-color: var(--gray-400);
+.composer-trigger:hover:not(:disabled) {
+  background: var(--subtle);
   color: var(--fg);
 }
 
-.composer-select:disabled {
-  opacity: 0.6;
-  cursor: default;
+/* 深色下 --subtle 比卡片底色还暗，hover 会读成一个洞而不是一点提升；沿用本仓另一套
+   控件（.iconbtn）的深色 hover 步进。 */
+.dark .composer-trigger:hover:not(:disabled) {
+  background: #1a1a1a;
 }
 
-/* 触屏：下拉也是要点中的目标，跟文本域同一条判据（hover: none）。28px 是桌面上的
+.composer-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.composer-trigger-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 紧凑箭头：Icon 的 chevron 朝右，转 90° 变朝下 */
+.composer-trigger-caret {
+  display: inline-flex;
+  color: var(--fg-faint);
+  transform: rotate(90deg);
+}
+
+/* 触屏：触发件也是要点中的目标，跟文本域同一条判据（hover: none）。32px 是桌面上的
    紧凑值；手指点不准的控件等于没有。 */
 @media (hover: none) {
-  .composer-select {
+  .composer-trigger {
     height: 40px;
+    padding: 0 10px;
+  }
+}
+
+/* 面板：portal 到 body、position: fixed（坐标由 lib/anchor 的纯函数算），所以不受控制带
+   横滚（overflow-x: auto）的裁剪。标题条 + 行 + 脚注，行是 role=menuitemradio。 */
+.composer-menu {
+  position: fixed;
+  z-index: 60;
+  width: max-content;
+  min-width: 12rem;
+  max-width: min(26rem, calc(100vw - 16px));
+  overflow-y: auto;
+  padding: 4px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 12px 32px rgb(15 23 42 / 0.14), 0 2px 6px rgb(15 23 42 / 0.08);
+  color: var(--fg);
+  font-size: 12px;
+}
+
+.dark .composer-menu {
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.4);
+}
+
+.composer-menu-title {
+  padding: 4px 12px 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--fg-muted);
+  font-weight: 600;
+}
+
+.composer-menu-list {
+  padding: 4px 0;
+}
+
+.composer-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 0;
+  background: none;
+  color: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.composer-menu-row:hover:not(:disabled),
+.composer-menu-row:focus-visible {
+  background: var(--subtle);
+}
+
+.dark .composer-menu-row:hover:not(:disabled),
+.dark .composer-menu-row:focus-visible {
+  background: #1a1a1a;
+}
+
+.composer-menu-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.composer-menu-row-label {
+  flex: none;
+  font-weight: 500;
+}
+
+.composer-menu-row-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--fg-faint);
+}
+
+/* 当前项：行尾固定的打勾位（非当前项也留位，几行才对得齐） */
+.composer-menu-row-check {
+  display: inline-flex;
+  flex: none;
+  width: 14px;
+  margin-left: auto;
+  color: var(--brand-600);
+}
+
+.composer-menu-note {
+  max-width: 22rem;
+  padding: 6px 12px 4px;
+  border-top: 1px solid var(--border);
+  color: var(--fg-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* 触屏下面板里的行同样按手指来 */
+@media (hover: none) {
+  .composer-menu-row {
+    min-height: 44px;
   }
 }
 
@@ -1347,14 +1477,6 @@ kbd {
   padding: 0 4px;
   color: var(--fg-muted);
   background: var(--subtle);
-}
-
-.disclaimer {
-  max-width: 48rem;
-  margin: 8px auto 0;
-  font-size: 11px;
-  color: var(--fg-faint);
-  text-align: center;
 }
 
 /* ── 空态 ───────────────────────────────────────────────── */

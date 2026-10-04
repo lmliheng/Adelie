@@ -121,9 +121,6 @@ export function Composer({
           )}
         </div>
       </form>
-      <p className="disclaimer">
-        Adelie 会在工作区里读写文件、执行命令；需要审批的操作会先停下来问你。
-      </p>
     </div>
   )
 }
