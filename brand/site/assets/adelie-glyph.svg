@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Adelie">
+  <title>Adelie — glyph</title>
+  <desc>Single-colour Adelie glyph for navigation bars, terminal headers and favicons: the penguin's belly, bill and the ring around each eye are cut out of the silhouette so one ink colour is enough. Inherits currentColor.</desc>
+  <defs>
+    <mask id="cuts">
+      <rect width="1024" height="1024" fill="#fff" />
+      <ellipse cx="512" cy="705" rx="124" ry="130" fill="#000" />
+      <circle cx="448" cy="356" r="46" fill="none" stroke="#000" stroke-width="24" />
+      <circle cx="576" cy="356" r="46" fill="none" stroke="#000" stroke-width="24" />
+      <path d="M 512 415 C 542 440 552 470 549 492 C 546 514 532 528 512 534 C 492 528 478 514 475 492
+               C 472 470 482 440 512 415 Z" fill="#000" />
+    </mask>
+  </defs>
+  <path
+    d="M 512 225 C 596 225 652 296 662 388 C 684 470 706 560 706 660 C 706 780 664 840 512 840
+       C 360 840 318 780 318 660 C 318 560 340 470 362 388 C 372 296 428 225 512 225 Z"
+    fill="currentColor" mask="url(#cuts)" />
+</svg>

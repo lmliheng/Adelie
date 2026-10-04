@@ -68,6 +68,7 @@ CLI 命令：`adelie`
 | `brand/icons/icon-{64,48,32,16}.png` | 小尺寸自查组 |
 | `brand/icons/adelie.ico` | Windows 图标，内含 16/32/48/64/128/256 六帧 |
 | `brand/preview.png` | 白 / 灰 / 黑三种底上的自查图 |
+| `brand/site/` | 设计规格页（一页说清标志、图标阶梯、配色、令牌、四端），另有 `deploy.sh` 发布到服务器 3004 |
 
 重新生成全部位图：
 
