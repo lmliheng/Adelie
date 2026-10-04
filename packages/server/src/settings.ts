@@ -185,6 +185,29 @@ export function writeApiKey(key: string, provider: ProviderName, value: string):
   if (key === HOST_KEY) process.env[envName] = value;
 }
 
+/**
+ * 真正发请求之前的密钥体检。
+ *
+ * 为什么要有它：没有密钥时请求照样发得出去，真端点回的是
+ * `401 … "Your api key: ****ined is invalid"` —— 那是 `Bearer ${undefined}` 的字面量。
+ * 那句话既不说缺的是哪个变量，也不说去哪儿配，而它长得像「密钥错了」，于是人会去翻
+ * 密钥文件（那里本来就是空的，翻不出东西）。这里的说法是「缺什么、去哪配」。
+ *
+ * 自定义端点（baseUrl 非空）**不拦**：本机 mock 与兼容网关自己决定要不要密钥，
+ * 端到端冒烟走的正是那条路（服务端不发密钥，mock 端点也不看它）。
+ */
+export function missingApiKeyMessage(
+  provider: ProviderName,
+  apiKey: string | undefined,
+  baseUrl: string | null,
+): string | null {
+  if (apiKey !== undefined || baseUrl !== null) return null;
+  return (
+    `没有可用的密钥：请先设置 ${PROVIDER_API_KEY_ENV[provider]}，` +
+    `或在设置里把密钥填给「${provider}」。填好之后这一轮重发一次就行。`
+  );
+}
+
 /** 身份的默认运行配置。用户配置从它派生，所以「没配过」的人看到的也是这套默认值 */
 export function defaultSettings(workspace: string, model: ModelRef): ServerSettings {
   return {

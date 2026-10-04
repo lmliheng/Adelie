@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { ENV_FILE_ENV, defaultModelForProvider } from 'adelie-core';
-import { apiKeyFor, defaultModelFor, isProviderName, secretFileFor, writeApiKey } from '../src/settings.js';
+import { apiKeyFor, defaultModelFor, isProviderName, missingApiKeyMessage, secretFileFor, writeApiKey } from '../src/settings.js';
 
 const ENV_KEYS = ['DEEPSEEK_API_KEY', 'MOONSHOT_API_KEY', 'DASHSCOPE_API_KEY'] as const;
 
@@ -125,5 +125,28 @@ describe('提供方与默认模型', () => {
     expect(defaultModelFor('deepseek')).toBe('deepseek-chat');
     expect(defaultModelFor('kimi')).toBe('kimi-latest');
     expect(defaultModelFor('qwen')).toBe('qwen-plus');
+  });
+});
+
+describe('发请求之前的密钥体检', () => {
+  it('没有密钥、也没配自定义端点：说清缺哪个变量、去哪配', () => {
+    const message = missingApiKeyMessage('deepseek', undefined, null);
+
+    expect(message).not.toBeNull();
+    expect(message!).toContain('DEEPSEEK_API_KEY');
+    expect(message!).toContain('没有可用的密钥');
+  });
+
+  it('有密钥就放行', () => {
+    expect(missingApiKeyMessage('deepseek', 'sk-x', null)).toBeNull();
+  });
+
+  it('配了自定义端点不拦 —— 本机 mock 与兼容网关自己决定要不要密钥', () => {
+    expect(missingApiKeyMessage('openai', undefined, 'http://127.0.0.1:9/mock')).toBeNull();
+  });
+
+  it('每家给的是自己那个变量名', () => {
+    expect(missingApiKeyMessage('kimi', undefined, null)!).toContain('MOONSHOT_API_KEY');
+    expect(missingApiKeyMessage('qwen', undefined, null)!).toContain('DASHSCOPE_API_KEY');
   });
 });

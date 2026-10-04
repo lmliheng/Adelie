@@ -14,7 +14,17 @@ import { DEFAULT_PROVIDER, SessionStore, config, loadUserEnvFile, sessionsRoot }
 import { createProvider as createRealProvider } from 'adelie-providers';
 import { ToolRegistry } from 'adelie-tools';
 
-import { DEFAULT_MAX_ITERATIONS, DEFAULT_APPROVAL_MODE, HOST_KEY, defaultSettings, defaultModelFor, hasApiKey, isApprovalMode, normalizeWorkspace } from './settings.js';
+import {
+  DEFAULT_APPROVAL_MODE,
+  DEFAULT_MAX_ITERATIONS,
+  HOST_KEY,
+  defaultModelFor,
+  defaultSettings,
+  hasApiKey,
+  isApprovalMode,
+  missingApiKeyMessage,
+  normalizeWorkspace,
+} from './settings.js';
 import { discoverSessionsOnDisk, locationOptions, sessionEventsFileExists, SessionRegistry } from './sessions.js';
 import { ADMIN_ID, UserStore, usersDbFile } from './users/db.js';
 import { RunRegistry } from './turn.js';
@@ -195,12 +205,19 @@ export function createServerContext(deps: AppDeps = {}): ServerContext {
    */
   const userSettings = new Map<string, AppSettings>();
 
-  const createProvider: ProviderFactory = deps.createProvider ?? ((request: ProviderRequest) =>
-    createRealProvider(request.provider, {
+  const createProvider: ProviderFactory = deps.createProvider ?? ((request: ProviderRequest) => {
+    // 没有密钥就别把请求发出去：真端点会用 `Bearer undefined` 换回一句
+    // 「api key: ****ined is invalid」，而那是**密钥缺失**被说成了「密钥错误」
+    // （见 settings.ts 的 missingApiKeyMessage）。注入自定义工厂的场景不受影响。
+    const missing = missingApiKeyMessage(request.provider, request.apiKey, request.baseUrl);
+    if (missing !== null) throw new Error(missing);
+
+    return createRealProvider(request.provider, {
       modelName: request.model,
       ...(request.apiKey !== undefined ? { apiKey: request.apiKey } : {}),
       ...(request.baseUrl !== null ? { baseUrl: request.baseUrl } : {}),
-    }));
+    });
+  });
 
   const registry = new SessionRegistry();
   const runs = new RunRegistry();

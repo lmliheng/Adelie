@@ -32,16 +32,34 @@
   **一次只搬一条**，搬完写清「搬的是哪条、为什么值得、测试里怎么体现」。不要一次全搬。
   **进度（2026-10-04）：已搬「命令非交互地跑」**（见「已完成的轮次」）。还剩：搜索只从 CWD 往下、
   路径解析不了先缩小范围、名字没见过的先去查；「独立调用同轮发出」Adelie 已有弱版（`batch` 工具）。
-- [ ] **3. 跨版本事件的读法再确认** —— 重放会跳过认不得的事件类型，界面渲染成一行
-  「未识别的事件类型：X（这份历史来自另一个版本）」（2026-10-04 已改）。还没看的：`session export`
-  对这类事件的呈现（现在落到 JSON 兜底分支）、以及 `docs/` 里是否还有段落把已删的
-  `plan_updated` / `verification` 当现行机制描述。做法：导出一段含旧事件的会话看一眼，grep 全仓
-  文档。**只改真错的地方**，历史存档（`packages/cli/run_test/`、CHANGELOG 里已发布的条目）不动。
+- [x] **3. 跨版本事件的读法再确认** —— 重放会跳过认不得的事件类型，界面渲染成一行
+  「未识别的事件类型：X（这份历史来自另一个版本）」（2026-10-04 已改）。CLI 的 `/session export`
+  与服务端的 `GET /api/sessions/:id/markdown` **共用**同一个渲染器（`renderSessionMarkdown`），
+  未知类型在摘要里点出条数与类型、正文里给一段 JSON 兜底；`docs/` 与各 README 里**没有**把
+  `plan_updated` / `verification` 当现行机制描述的段落（只有本台账自己在说它们已删）。**已确认，没改代码**，
+  证据见「已完成的轮次 · 2」。
 
 > 条目 2 与 3 谁先谁后都行；条目 1 优先 —— 它是这一轮改动的直接验收（现在卡在 key 上）。
 
 ## 已完成的轮次
 
+- **2026-10-04 · 2** —— 条目 3（跨版本事件的读法）**确认，没改代码**：CLI 的 `/session export` 与
+  服务端的 `GET /api/sessions/:id/markdown` 走的是同一个 `renderSessionMarkdown`
+  （`packages/core/src/persistence/session-export.ts`），它对认不得的类型有两层处理 ——
+  摘要里点出「未知事件类型：N 条（plan_updated、verification）」，正文里逐条给一段 JSON 兜底，
+  不静默丢也不崩。在 4000 的真部署上拿一份含旧事件的会话导出看过（11 条事件里 3 条是旧机制留下的），
+  输出与预期一致。文档侧 grep 过 `docs/` 与各 README：只有「验收 = 验收标准」这种同字不同义的用法，
+  以及本台账自己在说它们已删 —— 没有段落把它俩当现行机制描述。
+
+  **同一轮顺带修掉一个真实报错**（发现路径就是上面那次导出：那份旧会话里有一条
+  `401 … "Your api key: ****ined is invalid"`）——**没配密钥时服务端照样发请求**，
+  `Authorization: Bearer ${undefined}` 把「密钥缺失」变成了「密钥错误」：那句话既不说是哪个变量缺，
+  也不说去哪配。现在真端点这条路在**发请求之前**就拦下来，理由是「没有可用的密钥：请先设置
+  `DEEPSEEK_API_KEY`……」（`packages/server/src/settings.ts` 的 `missingApiKeyMessage`，
+  接线在默认 provider 工厂里）。自定义端点（`baseUrl` 非空）**不拦** —— 本机 mock 与兼容网关
+  自己决定要不要密钥，端到端冒烟走的正是那条路。
+  验证：服务端 `typecheck` 通过、测试 55 → 59（四种情形：缺密钥 / 有密钥 / 自定义端点 / 每家变量名），
+  4000 真部署上发一条消息拿到的是那句人话（见提交里的记录）。
 - **2026-10-04 · 1** —— 提示词守则逐条对照的第一条：把 penguin `# Tool use` 里的
   「Run commands non-interactively（`-y`/`--yes`、no editors/pagers/REPLs）」搬进
   `buildSystemPrompt()` —— 值得搬的理由是它的失败方式最隐蔽：命令等输入时**不报错、只是挂着**，
