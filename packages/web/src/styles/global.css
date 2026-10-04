@@ -195,6 +195,8 @@ a {
   display: flex;
   align-items: center;
   gap: 8px;
+  /* 回对话首页是手机上的常用动作，别让它只有 32px 高 */
+  min-height: 40px;
   padding: 4px 2px;
   border: 0;
   background: none;
@@ -417,6 +419,10 @@ a {
     z-index: 50;
     transform: translateX(-100%);
     transition: transform 200ms var(--ease);
+    /* 抽屉盖住顶栏，于是也盖住了顶栏那份安全区留白：刘海屏上第一条导航会躲在状态栏
+       （或灵动岛）下面，底部那条会被 home 指示条压住。自己再留一份。 */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
   .sidebar.is-open {
@@ -467,7 +473,8 @@ a {
   align-items: center;
   gap: 9px;
   width: 100%;
-  min-height: 36px;
+  /* 40px 是触屏上「点得准」的下限：手机上 rail 是主导航，36px 实测会点偏 */
+  min-height: 40px;
   padding: 6px 10px;
   border: 1px solid transparent;
   border-radius: var(--radius-control);
@@ -498,6 +505,27 @@ a {
 /* 当前页的图标用品牌蓝：会话列表那条用的是左侧竖条，两者要能一眼区分开 */
 .nav-item.is-active svg {
   color: var(--brand-600);
+}
+
+/* 抽屉里的 rail 排成两列。
+ *
+ * 竖排一列时它是 6×40 + 间距 ≈ 264px，而抽屉的可用高度就是手机屏幕高 —— 在 360×640 上
+ * 它先吃掉四成，留给会话列表的只剩 265px；横屏 640×360 时更极端：列表被挤到 16px，
+ * 底部的会话信息直接被切出屏幕（实测）。两列之后 rail 约 144px，六个入口仍然一眼全在
+ * （不藏进横向滚动里 —— 这是手机上的主导航，藏一半比多占几十像素糟）。 */
+@media (max-width: 1023px) {
+  .nav-rail {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  /* 两列之后每格约 122px，标签再长也不许把图标挤出去 */
+  .nav-item span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 .sidebar-head {
@@ -1273,10 +1301,42 @@ a {
   color: var(--fg-faint);
 }
 
+/* 触屏：文本域是输入区里唯一的主要目标，一行时实测 34px，比 web-design 的下限矮。
+   判据用 hover: none 而不是宽度断点 —— 该在意的是「手指」而不是「屏多宽」，
+   640 宽的横屏手机同样算。 */
+@media (hover: none) {
+  .composer textarea {
+    min-height: 40px;
+  }
+}
+
 .composer-foot {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 输入区的控制带（窄屏）：附件 / 权限 / 模型 / 技能……将来都排在这一条上
+   （见 docs/issues/web-composer-toolbar.md）。放不下时**只有它**横滚 —— 整条一起滚
+   会把发送按钮推出屏幕，那是这一屏最要紧的一个按钮。放上来的控件一律 `flex: none`，
+   宁可滑动也不要把谁压到 40px 以下：手机上点不准的按钮等于没有。 */
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.composer-tools > * {
+  flex: none;
+}
+
+/* 发送 / 停止：钉在右侧，不参与上面那条的滚动 */
+.composer-foot > .btn {
+  flex: none;
 }
 
 .composer-hints {
@@ -2100,5 +2160,28 @@ textarea.input {
 
   .palette-open {
     display: none;
+  }
+}
+
+/* 更窄的屏（320–360）：顶栏的最小内容宽仍有约 334px，320 的视口因此被浏览器撑到
+   334 —— 整页缩到 0.96 显示，字变小、点偏（与上一轮 433px 那次同一个毛病，只是幅度小）。
+   这里不再藏任何东西（身份与连接点都得留着），只把每一处的间距与内边距各收一点。 */
+@media (max-width: 360px) {
+  .topbar {
+    gap: 2px;
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+
+  .brand {
+    gap: 6px;
+  }
+
+  .conn {
+    padding: 0 6px;
+  }
+
+  .who {
+    padding: 0 5px;
   }
 }

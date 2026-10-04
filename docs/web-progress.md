@@ -28,7 +28,7 @@
   （说清是什么、卡在哪、草稿在哪）。URL 可分享、可前进后退、深链刷新不白屏。
   草稿：`docs/issues/web-left-rail-navigation.md`。验收：`/agents` 直接打开落在智能体页；
   rail 高亮跟着 URL；命令面板里有六条导航命令。
-- [ ] **2. 移动端剩余排布** —— `docs/issues/web-mobile-layout.md` 里顶栏以外的那几条
+- [x] **2. 移动端剩余排布** —— `docs/issues/web-mobile-layout.md` 里顶栏以外的那几条
   （输入区在窄屏的控制带、抽屉里 rail 的高度预算、横向不溢出）。验收：390×844 与 360×640 下
   `documentElement.scrollWidth === innerWidth`，且新加的控件都能点到（≥40px）。
 - [ ] **3. 输入区一期：模型切换 + 权限** —— `docs/issues/web-composer-toolbar.md` 里只用现有接口的两件
@@ -62,3 +62,19 @@
   那一屏只留字形 + 品牌行 + 一句话标题，`EmptyState` 因此不再需要任何 props；
   输入框下方那句常驻提示（`Composer` 的 `.disclaimer`）保留，它不只在空态出现。
   残留：五个页面是占位；`/chat/:sessionId` 深链未做（会话 id 还没进 URL）。
+
+- **2026-10-04 · 2** —— 手机排布（草稿：`docs/issues/web-mobile-layout.md`）。
+  **抽屉里的 rail 从「6×40 竖排」改成两列**（243 → 145px：360×640 上会话列表 265 → 363px，
+  横屏 640×360 上从 **16px** 回到 83px，且抽屉底部信息不再被切出屏幕）；抽屉自己补
+  `env(safe-area-inset-*)`（它盖住顶栏，也就盖掉了顶栏那份留白）；`.nav-item` 与 `.brand`
+  提到 40px、触屏下文本域 40px；**输入区的控制带**单独包成 `.composer-tools` —— 窄屏只滚
+  这一层，发送按钮钉在右侧（整条一起滚会把发送推出屏幕），塞 6 个模拟控件验过。
+  另外发现：**320×568 上布局视口被撑到 334**（整页缩到 0.96，与上一轮 433px 同一类病），
+  收窄顶栏间距后回到 320。
+  验证：`pnpm --filter adelie-web typecheck / test / build` 全过（83 条单测）；
+  `scripts/e2e.mjs` 的手机段从一档扩成四档（390/360/320/640×360），每档断言溢出为 0、
+  可点元素 ≥40px、抽屉里至少剩一条会话行、底部不被切 —— 反向验过：把旧排布打回去，
+  横屏那档立刻变红（16px / 391px）。
+  残留：抽屉手势与背滑、设置对话框的窄屏分节、`.who` / `.conn` 的 hover-only 信息、
+  真机安全区（桌面 Chromium 的 `env()` 恒为 0）、横屏下会话列表仍只有 83px。
+  commit __HASH__。

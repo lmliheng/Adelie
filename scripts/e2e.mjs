@@ -223,27 +223,88 @@ try {
   await page.waitForSelector("textarea", { timeout: 15000 });
   if (new URL(page.url()).pathname !== "/chat") failures.push("「回到对话」没把 URL 换回 /chat");
 
-  const mobile = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
-  const mobilePage = await mobile.newPage();
-  await mobilePage.goto(origin, { waitUntil: "domcontentloaded" });
-  await mobilePage.waitForSelector("textarea", { timeout: 15000 });
-  await delay(500);
-  await mobilePage.screenshot({ path: path.join(OUT, "04-mobile.png") });
+  // ── 手机排布：最窄的四种屏幕都要「一屏放得下」 ──
+  //
+  // 手机是 PWA 的主场景，而这类毛病只在真视口里现形：内容比视口宽，浏览器会把**整页**
+  // 缩小显示（等于全局降字号，还更容易点错）。所以每个视口各量一次 —— 曾经只量 390 时
+  // 看着是好的，320 上却已经在缩放。横屏那一档量的是抽屉的高度预算：rail + 会话头 +
+  // 底部信息三段固定高度，留给会话列表的必须还够看一条。
+  const MOBILE = [
+    { name: "390×844", width: 390, height: 844 },
+    { name: "360×640", width: 360, height: 640 },
+    { name: "320×568", width: 320, height: 568 },
+    { name: "640×360 横屏", width: 640, height: 360 },
+  ];
+  let firstMobile = true;
+  for (const vp of MOBILE) {
+    const context = await browser.newContext({
+      viewport: { width: vp.width, height: vp.height },
+      isMobile: true,
+      hasTouch: true,
+      deviceScaleFactor: 2,
+    });
+    const mobilePage = await context.newPage();
+    await mobilePage.goto(origin, { waitUntil: "domcontentloaded" });
+    await mobilePage.waitForSelector("textarea", { timeout: 15000 });
+    await delay(400);
+    if (firstMobile) await mobilePage.screenshot({ path: path.join(OUT, "04-mobile.png") });
 
-  // 手机上没有常驻侧栏，导航在抽屉里：打开抽屉 → 点一项 → 抽屉自己收起来
-  await mobilePage.locator('[data-testid="sidebar-toggle"]').click();
-  await delay(300);
-  await mobilePage.screenshot({ path: path.join(OUT, "06-mobile-rail.png") });
-  const overflow = await mobilePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  if (overflow > 0) failures.push(`手机上横向溢出 ${overflow}px（抽屉打开时）`);
-  await mobilePage.locator('[data-testid="nav-agents"]').click();
-  await mobilePage.waitForSelector("#page-title", { timeout: 5000 });
-  // 抽屉是 `transform: translateX(-100%)` 藏起来的，`isVisible()` 仍为 true，
-  // 所以看类名：点完导航它必须自己收起来（不然手机上换页后还挡着内容）
-  const drawerOpen = await mobilePage
-    .locator('[data-testid="sidebar"]')
-    .evaluate((el) => el.classList.contains("is-open"));
-  if (drawerOpen) failures.push("点导航后抽屉没关上");
+    const closedOverflow = await mobilePage.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    if (closedOverflow > 0) failures.push(`${vp.name} 合上抽屉时横向溢出 ${closedOverflow}px`);
+
+    // 手机上没有常驻侧栏，导航在抽屉里：打开抽屉 → 点一项 → 抽屉自己收起来
+    await mobilePage.locator('[data-testid="sidebar-toggle"]').click();
+    await delay(300);
+    if (firstMobile) await mobilePage.screenshot({ path: path.join(OUT, "06-mobile-rail.png") });
+
+    const drawer = await mobilePage.evaluate(() => {
+      const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect() ?? null;
+      const targets = [];
+      // 输入区那条控制带是给后面几期控件带准备的位置，一起量：新控件放进来也不许变小
+      for (const el of document.querySelectorAll(".nav-item, .composer-foot button, .composer-foot a")) {
+        const r = el.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) continue;
+        targets.push({ label: (el.textContent ?? "").trim().slice(0, 8) || el.getAttribute("aria-label"), w: Math.round(r.width), h: Math.round(r.height) });
+      }
+      return {
+        overflow: document.documentElement.scrollWidth - window.innerWidth,
+        targets,
+        listHeight: rect(".session-list")?.height ?? 0,
+        footBottom: rect(".sidebar-foot")?.bottom ?? 0,
+        innerHeight: window.innerHeight,
+      };
+    });
+
+    if (drawer.overflow > 0) failures.push(`${vp.name} 抽屉打开时横向溢出 ${drawer.overflow}px`);
+    const tiny = drawer.targets.filter((t) => t.w < 40 || t.h < 40);
+    if (tiny.length > 0) {
+      failures.push(`${vp.name} 有 ${tiny.length} 个可点元素小于 40px：${tiny.map((t) => `${t.label} ${t.w}×${t.h}`).join("、")}`);
+    }
+    // 一条会话行 52px —— 抽屉里至少得完整露出一个人能点中的会话
+    if (drawer.listHeight < 52) failures.push(`${vp.name} 抽屉里的会话列表只剩 ${Math.round(drawer.listHeight)}px（rail 占太多）`);
+    if (drawer.footBottom > drawer.innerHeight + 1) {
+      failures.push(`${vp.name} 抽屉底部的信息被切出屏幕（${Math.round(drawer.footBottom)} > ${drawer.innerHeight}）`);
+    }
+
+    if (firstMobile) {
+      await mobilePage.locator('[data-testid="nav-agents"]').click();
+      await mobilePage.waitForSelector("#page-title", { timeout: 5000 });
+      // 抽屉是 `transform: translateX(-100%)` 藏起来的，`isVisible()` 仍为 true，
+      // 所以看类名：点完导航它必须自己收起来（不然手机上换页后还挡着内容）
+      const drawerOpen = await mobilePage
+        .locator('[data-testid="sidebar"]')
+        .evaluate((el) => el.classList.contains("is-open"));
+      if (drawerOpen) failures.push("点导航后抽屉没关上");
+    }
+
+    console.log(
+      `手机排布    ${vp.name}  溢出 ${drawer.overflow}px · 会话列表 ${Math.round(drawer.listHeight)}px · ` +
+        `${drawer.targets.length} 个可点元素全部 ≥40px`,
+    );
+
+    await context.close();
+    firstMobile = false;
+  }
 
   const created = path.join(workDir, "ADELIE_E2E.md");
   console.log(`\n工作区文件 ${created}: ${existsSync(created) ? "存在 ✓" : "不存在 ✗"}`);

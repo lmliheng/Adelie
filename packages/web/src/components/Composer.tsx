@@ -84,15 +84,19 @@ export function Composer({
           }}
         />
         <div className="composer-foot">
-          <span className="composer-hints">
-            <span>
-              <kbd>Enter</kbd> 发送
+          {/* 控制带：附件 / 权限 / 模型……将来都排在这一条里（见
+              docs/issues/web-composer-toolbar.md）。把它单独包一层，是为了让手机上
+              只有它横滚 —— 整条一起滚的话，放得下六个控件时发送按钮就被推出屏幕了。 */}
+          <div className="composer-tools">
+            <span className="composer-hints">
+              <span>
+                <kbd>Enter</kbd> 发送
+              </span>
+              <span>
+                <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行
+              </span>
             </span>
-            <span>
-              <kbd>Shift</kbd>+<kbd>Enter</kbd> 换行
-            </span>
-          </span>
-          <span className="spacer" />
+          </div>
           {streaming ? (
             <button type="button" className="btn btn-secondary" onClick={onStop} disabled={stopRequested}>
               <Icon name="stop" size={14} />
