@@ -14,7 +14,7 @@
 import type { PeakWindows } from "../features/models/model-grouping";
 
 export const zh = {
-  appName: "PenguinHarness",
+  appName: "Adelie",
 
   nav: {
     chat: "对话",

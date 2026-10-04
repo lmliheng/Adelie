@@ -72,7 +72,7 @@ test("switching accounts: B does not restore A's draft; both drafts coexist", as
   await page.getByLabel("密码", { exact: true }).fill(P);
   await page.locator('button[type="submit"]').click();
   await page.waitForURL(/\/chat/);
-  await expect(page.getByRole("heading", { name: "PenguinHarness" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Adelie" })).toBeVisible();
 
   // The leak's regression point: B's input area must be empty (before the fix, it would restore A's body and selections).
   await expect(ta).toHaveValue("");

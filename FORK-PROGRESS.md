@@ -21,9 +21,14 @@
 
 ### 2. 自有化（改名、数据根、端口）
 
-- [ ] 2.1 **界面品牌**：`packages/ui` 与 `packages/web` 里用户看得见的名字、图标、标题、文案
-      （`packages/ui/src/components/icons/logos/penguin-logo.tsx`、`boot.ts`、`packages/web/public/*`、
-      `index.html` 标题与 `<meta>`）。验收：起服务截图，界面里不再出现 PenguinHarness / 企鹅图标。
+- [x] 2.1a **界面品牌名**：`appName` 换成 "Adelie" —— 顶栏标题与浏览器标签页标题都由它来
+      （`packages/web/src/lib/strings.ts`、`strings-en.ts`、`index.html` 的 `<title>`），
+      端到端断言里的角色名跟着改。验收：起服务后标签页是 `Chat · Adelie`，顶栏右上角写 Adelie。
+- [ ] 2.1b **图标与散落文案**：`packages/web/public/penguin-logo.svg` 还是企鹅图案（登录页、
+      新建对话页、通知图标、favicon 都用它），`packages/ui` 的 `PenguinLogo` 组件与导出名也是；
+      另有 ~30 处散文里的 "PenguinHarness"（`strings*.ts`）。要一次做完，先定图标。
+- [ ] 2.1c **界面里其它产品字**：`packages/ui/test/logos.test.ts`、`no-app-strings.test.ts`
+      这类断言把品牌字当契约的地方过一遍。
 - [ ] 2.2 **数据根**：`~/.penguin` → `~/.adelie`；`PENGUIN_HOME` 等环境变量名是否跟着改，先定口径
       （建议：变量名改成 `ADELIE_*`，并在 `resolveRoot()` 里兼容读一次旧名，方便旧数据迁过来）。
 - [ ] 2.3 **端口与 profile 默认值**：服务器默认端口、CLI 默认端口（现在是 7369）与旧 Adelie 的
@@ -64,3 +69,4 @@
 | 2026-10-04 | 1 | 写 `FORK.md`（来源、许可证义务、要改什么、旧 Adelie 在哪） | 文件存在，随基座一并推送 | `f30a91b8` |
 | 2026-10-04 | 1 | 本机装、构建、起服务、真浏览器看一眼 | 安装 3.2s 全 hard-link；`pnpm -r build` 全绿（web 2.58MB JS / 787KB gzip）；`PORT=7391` 起来后 Playwright 截图 `fork-look/01-app.png`，console 无 error | 无（环境动作） |
 | 2026-10-05 | 1 | 复跑基座测试 | ui 999 / core 1346+5skip / server 2552+2skip / cli 509 / web 2886+2skip，合计 **8292 passed / 9 skipped / 0 failed**，`EXIT=0` | 无（环境动作） |
+| 2026-10-05 | 2.1a | 界面品牌名换成 Adelie（appName ×2 + `index.html` 标题 + 4 个端到端断言） | web typecheck 过；`pnpm --filter …web test` 236 文件 / 2886 通过；重建 dist 后在 7391 起服务，Playwright：标签页 `Chat · Adelie`、顶栏可见 `Adelie`、console 无 error | 见本行提交 |

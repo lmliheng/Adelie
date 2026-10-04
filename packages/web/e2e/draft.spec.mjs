@@ -70,7 +70,7 @@ test("draft: pick model/approval -> reload restores them -> send creates the ses
 
   // No Session exists yet: entering the site lands on the draft page (the brand heading marks the draft page).
   await page.goto(`${BASE}/chat`);
-  await expect(page.getByRole("heading", { name: "PenguinHarness" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Adelie" })).toBeVisible();
 
   const ta = page.getByPlaceholder(/输入消息/);
 
@@ -204,7 +204,7 @@ test("draft: pick model/approval -> reload restores them -> send creates the ses
     .getByText(wsLabel, { exact: true })
     .locator("xpath=ancestor::div[contains(@class,'items-center')][1]");
   await wsHeader.getByRole("button", { name: "在此工作区新建对话" }).click();
-  await expect(page.getByRole("heading", { name: "PenguinHarness" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Adelie" })).toBeVisible();
   await expect(page.getByLabel("Workspace")).toContainText(wsLabel);
 
   // Regression (review): the route-state prefill applies once per navigation only — after the

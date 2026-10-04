@@ -60,7 +60,7 @@ test("clicking the current Project in the dropdown: Agent and Session lists must
   // Agent list and lands on the draft page (the brand heading marks the draft page); operating
   // the dropdown midway through would get closed by a subsequent re-render.
   const generalAgent = page.getByText("General Agent").first();
-  const draftTitle = page.getByRole("heading", { name: "PenguinHarness" });
+  const draftTitle = page.getByRole("heading", { name: "Adelie" });
   await expect(generalAgent).toBeVisible();
   await expect(draftTitle).toBeVisible();
 

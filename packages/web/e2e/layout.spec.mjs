@@ -897,7 +897,7 @@ test("layout: no page grows the document (absolute descendants stay in their scr
 
 test("layout: login — blank start, non-crossing traces, lang/theme controls", async ({ page }) => {
   await page.goto(`${BASE}/login`);
-  await page.getByRole("heading", { name: "PenguinHarness" }).waitFor();
+  await page.getByRole("heading", { name: "Adelie" }).waitFor();
 
   // The only graphic asset is the brand penguin logo above the form; the
   // background still has only the trace animation, and the page must have no other img elements.

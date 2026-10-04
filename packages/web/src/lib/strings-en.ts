@@ -9,7 +9,7 @@ import type { PeakWindows } from "../features/models/model-grouping";
 import type { Strings } from "./strings";
 
 export const en: Strings = {
-  appName: "PenguinHarness",
+  appName: "Adelie",
 
   nav: {
     chat: "Chat",
