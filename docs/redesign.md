@@ -186,16 +186,16 @@ output*r3) / 1e6`。好处是调价不用回填历史。
 
 ## 9. 分期与验收
 
-| 期 | 内容 | 验收（可运行的检查） |
-| --- | --- | --- |
-| **P1（本轮）** | 模型目录 + Kimi/Qwen 适配 + 密钥 0600 + 空 provider 文件清理 | `pnpm typecheck` / `test` / `build` 全绿；`adelie --provider kimi` 报「缺少 MOONSHOT_API_KEY」而不是「不支持的提供方」；新建 `.env` 是 0600 |
-| **P2** | `ModelRef` 贯穿 config→会话头→用量；`GET /api/models` 供 Web 渲染 | 换模型后 `GET /api/sessions/:id` 的会话头里能看到 provider+model；Web 设置弹窗不再硬编码清单 |
-| **P3** | 用户表 + Cookie 会话 + 两档角色 + 每用户密钥与会话分区 | 非管理员 PATCH `/api/config` 的 apiKey 得 403；两个用户互看不见对方会话；桌面壳仍无感登录 |
-| **P4** | 用量落库 + 成本现算 + `GET /api/usage` + `adelie cost` | 一次真实运行后 `adelie cost` 的 token 数与事件流对得上；改价表后历史成本跟着变 |
-| **P5** | trace 分片索引 / 分析 / 下载 | 跑一次带压缩的会话，`adelie trace` 能列出 >1 个分片 |
-| **P6** | 自省闭环（trace → 技能/指令改动，带审批） | 改动本身在事件流里可回溯，且 Project 策略仍然压得住它 |
+| 期 | 内容 | 验收（可运行的检查） | 状态 |
+| --- | --- | --- | --- |
+| **P1** | 模型目录 + Kimi/Qwen 适配 + 密钥 0600 + 空 provider 文件清理 | `pnpm typecheck` / `test` / `build` 全绿；`adelie --provider kimi` 报「缺少 MOONSHOT_API_KEY」而不是「不支持的提供方」；新建 `.env` 是 0600 | **已完成**（真机验过报错文案） |
+| **P2** | `ModelRef` 贯穿 config→会话头→用量；`GET /api/models` 供 Web 渲染 | 换模型后 `GET /api/sessions/:id` 的会话头里能看到 provider+model；Web 设置弹窗不再硬编码清单 | **已完成**（见 §11） |
+| **P3** | 用户表 + Cookie 会话 + 两档角色 + 每用户密钥与会话分区 | 非管理员 PATCH `/api/config` 的 apiKey 得 403；两个用户互看不见对方会话；桌面壳仍无感登录 | 未开始 |
+| **P4** | 用量落库 + 成本现算 + `GET /api/usage` + `adelie cost` | 一次真实运行后 `adelie cost` 的 token 数与事件流对得上；改价表后历史成本跟着变 | 未开始 |
+| **P5** | trace 分片索引 / 分析 / 下载 | 跑一次带压缩的会话，`adelie trace` 能列出 >1 个分片 | 未开始 |
+| **P6** | 自省闭环（trace → 技能/指令改动，带审批） | 改动本身在事件流里可回溯，且 Project 策略仍然压得住它 | 未开始 |
 
-## 10. 本轮（P1）已完成与未完成
+## 10. P1 已完成与未完成
 
 **已完成**（`adelie-core` 的模型目录、`adelie-providers` 的 kimi/qwen、
 CLI/服务端的目录接入、密钥 0600，外加 26 个新测试）：
@@ -209,5 +209,46 @@ CLI/服务端的目录接入、密钥 0600，外加 26 个新测试）：
 - `packages/web`：设置弹窗可选 kimi / qwen（**临时**，P2 改为从 `GET /api/models` 拉）
 - 删掉两个 0 字节的 `anthropic.provider.ts` / `gemini.provider.ts`
 
-**未完成**（就是上表的 P2–P6）：`ModelRef` 还没有贯穿到会话头与用量；用户表、trace
-分片、成本现算、自省闭环都还没动手。
+**P1 的真机验收**（2026-10-04）：
+
+```
+$ HOME=/tmp/adelie-accept node packages/cli/dist/cli.js --provider kimi --model kimi-k2-0905-preview -p hi
+缺少 MOONSHOT_API_KEY（--provider kimi 用的就是它）。请把它设为环境变量，或写入：
+  /tmp/adelie-accept/.adelie/.env
+```
+
+## 11. P2 已完成与未完成
+
+**已完成**：模型引用 `{ provider, model }` 从配置一路贯穿到会话头与事件头。
+
+- `packages/core/src/types/ModelRef.ts`：`formatModelRef`（只用于显示）、
+  `parseModelRef`（只切第一个斜杠）、`sameModelRef`、`isModelRef`
+- `SessionMeta.model`（会话头）、`task_started.payload.model`（每一轮）、
+  `SessionView.model` / `lastModel`
+- 服务端 `GET /api/models`（下拉框的唯一出处）、`PATCH /api/config` 收 `model` 对象、
+  会话视图带 `model` / `lastModel`
+- CLI `/model 提供方/模型`、Web 设置弹窗从 `/api/models` 渲染
+
+**P2 的真机验收**（2026-10-04，本地服务端 3021，空的临时 HOME）：
+
+| 检查 | 结果 |
+| --- | --- |
+| `PATCH {"model":{"provider":"kimi"}}`（换家、不带 model） | 落到 `kimi/kimi-latest` |
+| 同家再发 `provider`（model 省略） | 保持原型号不回落 |
+| `PATCH {"model":"gpt-4o-mini"}`（裸字符串） | 只换型号，提供方不动 |
+| `PATCH {"model":{"provider":"anthropic"}}` | `400 provider 只能是 deepseek / openai / kimi / qwen` |
+| 旧客户的平铺 `{"provider":"qwen"}` | 按换家处理 → `qwen/qwen-plus` |
+| 会话头里读到的东西 | `model: kimi/kimi-latest`（出生时）、`lastModel: openai/gpt-4o`（最近一轮实际用的） |
+| 0.1 的老会话头（没有 `model` 字段） | 照常返回，只是没有 `model` / `lastModel`，不报错 |
+| 会话头/事件头里的 `model` 形状不对 | 当作「没有这条信息」，200 返回，恢复不受影响 |
+| 界面（420×760，Playwright） | 四家提供方都在下拉里；模型用 `datalist`，换到 kimi 自动填 `kimi-latest`；提示「密钥读 MOONSHOT_API_KEY（尚未配置）」；console 无错误 |
+
+全仓 **684 通过 / 7 跳过**（core 82、providers 50、tools 190、runtime 151、server 37、
+web 47、cli 121、desktop 6），`typecheck` 与 `build` 全绿。
+
+**未完成**：
+
+- 用量与成本（P4）还没落库 —— `ModelRef` 只是**有了归属的键**，还没有按它聚合的账本
+- `packages/cli/src/vue-tui/composable/useAgent.ts` 仍硬编码 `DeepSeekProvider`
+  （CLI 的实验 TUI 路径，未接入 CLI 主流程，P2 未动）
+- `PATCH /api/config` 的平铺 `provider` 兼容分支是**临时**的，等确认线上没有 0.1 客户端后删

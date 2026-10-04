@@ -29,7 +29,7 @@ pnpm desktop                             # 桌面壳：Electron 起内置服务�
 ```
 packages/
   core/         adelie-core        类型、预算、会话持久化、上下文折叠（零依赖）
-  providers/    adelie-providers   模型适配层：DeepSeek / OpenAI 兼容端点
+  providers/    adelie-providers   模型适配层：目录驱动的四家（DeepSeek / OpenAI / Kimi / 通义）
   tools/        adelie-tools       文件 / Git / 命令 / 搜索 / MCP 工具与注册表
   runtime/      adelie-runtime     ReAct 循环、审批、计划、验收、成本闸门
   server/       adelie-server      HTTP + SSE：会话、对话流、审批、Web 托管

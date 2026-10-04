@@ -32,8 +32,7 @@ GET /api/health   → 200 { "ok": true, "name": "adelie", "version": "0.1.0", "u
 ```
 GET /api/config → 200 {
   "workspace": "/abs/path",
-  "provider": "deepseek",
-  "model": "deepseek-chat",
+  "model": { "provider": "deepseek", "model": "deepseek-chat" },
   "baseUrl": null,
   "hasApiKey": true,
   "approvalPolicy": "auto-reject",
@@ -42,22 +41,45 @@ GET /api/config → 200 {
 }
 
 PATCH /api/config
-  body: { "workspace"?: string, "provider"?: "deepseek"|"openai"|"kimi"|"qwen",
-          "model"?: string, "baseUrl"?: string|null, "apiKey"?: string,
+  body: { "workspace"?: string, "baseUrl"?: string|null, "apiKey"?: string,
+          "model"?: { "provider": "deepseek"|"openai"|"kimi"|"qwen", "model"?: string },
           "maxIterations"?: number, "maxTokens"?: number|null }
   → 200  同 GET 的形状
+
+GET /api/models → 200 {
+  "default": "deepseek",
+  "groups": [ { "id": "deepseek", "label": "DeepSeek", "envKey": "DEEPSEEK_API_KEY",
+                "hasApiKey": true,
+                "models": [ { "id": "deepseek-chat", "label": "对话（默认）", "default": true },
+                            { "id": "deepseek-reasoner", "label": "推理" } ] } ]
+}
 ```
 
+- **「用哪个模型」是一条引用 `{ provider, model }`，不是两个平铺字段。** provider 是
+  有穷联合（写错编不过），模型名是自由字符串（各家迭代太快，不由我们认证）。
+  core 的 `types/ModelRef.ts` 定义形状，`formatModelRef` 给人看的
+  `deepseek/deepseek-chat` **只用于显示**，要从字符串反解请用 `parseModelRef`（只切第一个
+  斜杠，模型名自己允许带斜杠）。
 - 提供方只有这四个 id，它们同时也是 `adelie-core` 的模型目录（`config/model-catalog.ts`）
   里的组 id：端点、密钥环境变量、可选模型都写在那张表里，加一家厂商 = 加一组。
   `kimi` 是 Moonshot、`qwen` 是阿里云 DashScope 的兼容模式，两者都走
   `/chat/completions`，与 `openai` 同协议、只是端点与密钥变量不同。
   引擎不认识 `--base-url` 之外的厂商细节：`model` 一律作为裸字符串透传，不校验。
-
+- `PATCH` 里 `model` 的三种写法：
+  1. 对象 `{ provider, model }` —— `provider` 必给；`model` 省略时，提供方没变就沿用
+     当前的模型名，变了就落到新家的默认值（把 deepseek 的名字发给 Moonshot 几乎必然
+     换来一次 400）。
+  2. 裸字符串 —— 只换模型名，提供方不动（0.1 的客户端就是这么发的）。
+  3. 兼容字段 `provider`（平铺）—— 等价于 `{ provider }`，留给手机上缓存了旧前端的
+     PWA。等线上没有 0.1 客户端后删。
+  其它形状 → 400 `bad_request`。`baseUrl` 与 `apiKey` 都按**当前的** provider 生效。
 - `apiKey` 只写不读：写进 `<home>/.adelie/.env`，键名按提供方查模型目录
   （`DEEPSEEK_API_KEY` / `OPENAI_API_KEY` / `MOONSHOT_API_KEY` / `DASHSCOPE_API_KEY`），
   文件权限收到 **0600**（写下去的是明文密钥，同机其他用户不该读得到），
   响应里只回 `hasApiKey`。**任何响应体里都不出现密钥。**
+- `GET /api/models` 是界面里那两组下拉框的唯一出处（以前抄在 Web 里，加一家厂商要改
+  两处，漏掉的那处表现为「服务端支持、界面里选不到」）。它**不含端点**：`envKey` 是环境
+  变量**名**（界面用它提示密钥配在哪），不是秘密。
 - `workspace` 变更后，会话列表与新建会话都以新工作区为准。
 
 ```
@@ -67,12 +89,16 @@ GET /api/tools → 200 { "tools": [ { "name": "read_file", "description": "...",
 ## 3. 会话
 
 ```
-GET    /api/sessions                → 200 { "sessions": [ { "id", "workspace", "createdAt", "lastActiveAt", "taskCount", "title" } ] }
+GET    /api/sessions                → 200 { "sessions": [ { "id", "workspace", "createdAt", "lastActiveAt", "taskCount", "title", "model"?, "lastModel"? } ] }
 POST   /api/sessions                body { "workspace"?: string } → 201 { "session": {...} }
 GET    /api/sessions/:id            → 200 { "session": {...}, "runs": [ RestoredRun ], "events": [ StoredSessionEvent ] }
 DELETE /api/sessions/:id            → 204
 GET    /api/sessions/:id/markdown   → 200 text/markdown（导出，见 core 的 renderSessionMarkdown）
 ```
+
+- `model` 是这个会话**建的时候**用的模型（会话头），`lastModel` 是最近一轮**实际**用的
+  （最后一条 `task_started`）。两者不一致说明会话中途换过模型。老会话（0.1 建的）可能
+  两个都没有，所以都是可选的 —— 界面不能假设它一定在。
 
 `id` 不存在 → 404 `{ "error": "not_found" }`。
 

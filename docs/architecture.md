@@ -13,7 +13,7 @@ Adelie 只有一条主线：**引擎干活，外壳呈现，接口是唯一的�
         ┌──────────────────────────────────────────────────────────┐
         │  adelie-runtime    ReAct 循环、计划、审批、验收、预算      │
         │  adelie-tools      文件 / Git / 命令 / 搜索 / MCP          │
-        │  adelie-providers  DeepSeek / OpenAI 兼容端点              │
+        │  adelie-providers  四家模型，一套 /chat/completions 协议   │
         │  adelie-core       类型、事件流、会话持久化、上下文折叠      │
         └──────────────────────────────────────────────────────────┘
 ```
