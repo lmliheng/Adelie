@@ -1,6 +1,7 @@
 ---
 title: "cli: 实验 TUI 仍硬编码 DeepSeekProvider，换不到别家"
 labels: [欠账, scope:cli, P3]
+issue: 2
 ---
 
 ## 欠了什么

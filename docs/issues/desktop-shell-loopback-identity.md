@@ -1,6 +1,7 @@
 ---
 title: "desktop: 桌面壳走回环主机身份而不是换 Cookie —— 要不要改由人拍板"
 labels: [决策, scope:desktop, P2]
+issue: 3
 ---
 
 ## 现象

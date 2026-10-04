@@ -7,7 +7,8 @@
 //      如果每跑一次都新开一条 issue，草稿区就会变成污染的源头而不是记录。
 //      所以正文里埋一个隐藏标记 `<!-- adelie-issue:<slug> -->`，推之前先按它查。
 //   2. 标签不依赖仓库里预先存在。GitHub 对不存在的标签是 422 而不是「自动建」，
-//      于是「先建标签」这一步必须有人做 —— 交给脚本，别交给记性。
+//      于是「先建标签」这一步必须有人做 —— 交给脚本，别交给记性。建标签用
+//      `POST /labels`（不是旧的 `PUT /labels/{name}`，见 ensureLabels 的注释）。
 //   3. 同步成功要把编号写回草稿：有了编号，提交信息才能写 `Fixes #N`，
 //      而没有标记的草稿下次还会被当成新的推一遍。
 //
@@ -146,14 +147,42 @@ async function listIssues(token, repo) {
   return found;
 }
 
-/** 标签必须先存在：不存在的标签会让创建请求以 422 整个失败，而不是只丢掉那个标签 */
+/**
+ * 标签必须先存在：不存在的标签会让创建 issue 的请求以 422 整个失败，而不是只丢掉那个标签。
+ *
+ * 用 `POST /labels` 而不是旧的 `PUT /labels/{name}`：后者在有些网络出口下会被拦成 404
+ * （2026-10-04 实测：同一个 token 直连 GitHub API 时 PUT 全 404、GET/POST/PATCH 正常），
+ * 而 404 与「标签不存在」在报错里长得一模一样，会让人往权限上查半天。已经存在的标签
+ * 会回 422，那不是错误 —— 顺手把颜色同步一下就好。
+ *
+ * 建不出来（权限、网络）只警告不中断：标签是元数据，正文才是内容，不该因为它丢掉正文。
+ */
 async function ensureLabels(token, repo, names) {
+  const ready = new Set();
   for (const name of names) {
-    await api(token, 'PUT', `/repos/${repo}/labels/${encodeURIComponent(name)}`, {
-      name,
-      color: LABEL_COLORS[name] ?? FALLBACK_COLOR,
-    });
+    try {
+      await api(token, 'POST', `/repos/${repo}/labels`, {
+        name,
+        color: LABEL_COLORS[name] ?? FALLBACK_COLOR,
+      });
+      ready.add(name);
+    } catch (error) {
+      if (/HTTP 422/.test(String(error))) {
+        // 已经存在：颜色可能与我们的表不一致，改一次；改不动也不影响发 issue
+        try {
+          await api(token, 'PATCH', `/repos/${repo}/labels/${encodeURIComponent(name)}`, {
+            color: LABEL_COLORS[name] ?? FALLBACK_COLOR,
+          });
+        } catch {
+          /* 颜色不重要 */
+        }
+        ready.add(name);
+        continue;
+      }
+      console.warn(`警告：建标签 ${name} 失败（${String(error)}），这条 issue 会不带它。`);
+    }
   }
+  return ready;
 }
 
 /** 同步成功后把编号写回草稿：下次就认得出这条已经推过了 */
@@ -222,12 +251,18 @@ async function main() {
       continue;
     }
 
-    await ensureLabels(token, repo, draft.labels);
-    const issue = await api(token, 'POST', `/repos/${repo}/issues`, {
-      title: draft.title,
-      body: `${draft.body}\n\n${markerOf(draft.slug)}`,
-      labels: draft.labels,
-    });
+    const ready = await ensureLabels(token, repo, draft.labels);
+    const labels = draft.labels.filter((name) => ready.has(name));
+    const body = `${draft.body}\n\n${markerOf(draft.slug)}`;
+    let issue;
+    try {
+      issue = await api(token, 'POST', `/repos/${repo}/issues`, { title: draft.title, body, labels });
+    } catch (error) {
+      // 标签这一层出问题时不要连带丢掉正文：先不带标签发出去，再说明情况
+      if (labels.length === 0) throw error;
+      console.warn(`警告：带标签创建失败（${String(error)}），改为不带标签创建。`);
+      issue = await api(token, 'POST', `/repos/${repo}/issues`, { title: draft.title, body });
+    }
     writeBackIssueNumber(draft.path, readFileSync(draft.path, 'utf8'), issue.number);
     console.log(`创建 #${issue.number}  ${draft.title}`);
     created += 1;

@@ -1,6 +1,7 @@
 ---
 title: "web: PWA 跨源登录（GitHub Pages → 局域网服务端）没有真机验过"
 labels: [未验证, scope:web, P2]
+issue: 9
 ---
 
 ## 结论是什么

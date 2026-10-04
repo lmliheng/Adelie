@@ -1,6 +1,7 @@
 ---
 title: "providers: Kimi 与通义的端点、模型 id 从未发过真实请求"
 labels: [未验证, scope:providers, P2]
+issue: 5
 ---
 
 ## 结论是什么

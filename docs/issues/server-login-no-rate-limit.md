@@ -1,6 +1,7 @@
 ---
 title: "server: 登录接口没有速率限制，口令可以一直猜"
 labels: [欠账, scope:server, P2]
+issue: 8
 ---
 
 ## 现象

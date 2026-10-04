@@ -1,6 +1,7 @@
 ---
 title: "server: 非管理员的会话是自己的，但工作区还是管理员的那一个"
 labels: [决策, scope:server, P1]
+issue: 6
 ---
 
 ## 现象

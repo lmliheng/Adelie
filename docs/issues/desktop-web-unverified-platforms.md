@@ -1,6 +1,7 @@
 ---
 title: "desktop,web: Windows 安装包、Electron 窗口与 PWA 都没在真机上装过"
 labels: [未验证, scope:desktop, P2]
+issue: 4
 ---
 
 ## 结论是什么

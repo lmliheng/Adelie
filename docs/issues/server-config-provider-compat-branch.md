@@ -1,6 +1,7 @@
 ---
 title: "server: PATCH /api/config 的平铺 provider 兼容分支是临时的"
 labels: [欠账, scope:server, P3]
+issue: 7
 ---
 
 ## 欠了什么
