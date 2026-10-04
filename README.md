@@ -17,7 +17,7 @@ pnpm desktop                             # 桌面壳：Electron 起内置服务�
 
 | 形态 | 跑在哪 | 怎么起 |
 | --- | --- | --- |
-| **CLI** | 任何有 Node ≥24 的地方 | `npm i -g adelie` 然后 `adelie` |
+| **CLI** | 任何有 Node ≥24 的地方 | `npm i -g @lmliheng/adelie` 然后 `adelie` |
 | **Windows 桌面** | 自己的进程 + 内置服务端 | 安装 `Adelie-Setup-<version>-x64.exe` |
 | **Web** | 本机服务端托管的页面 | `adelie serve` 然后打开 `http://127.0.0.1:7370` |
 | **手机 PWA** | 手机上安装的网页 | `adelie serve --host 0.0.0.0`，手机打开带 token 的地址 → 添加到主屏幕 |

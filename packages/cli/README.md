@@ -1,7 +1,7 @@
 
 全局安装使用：
 ```bash
-npm install -g adelie
+npm install -g @lmliheng/adelie
 ```
 在C:\Users\{用户名}\.adelie下加.env文件
 ```.env

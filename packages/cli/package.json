@@ -1,5 +1,5 @@
 {
-  "name": "adelie",
+  "name": "@lmliheng/adelie",
   "version": "0.1.0",
   "description": "Adelie CLI：交互式会话与一次性任务，跑在 adelie-runtime 之上。",
   "bin": {

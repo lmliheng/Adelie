@@ -1,7 +1,7 @@
 /**
  * `adelie serve`：把 Web / PWA 用的后端起起来。
  *
- * 为什么放在 CLI 里而不是让用户自己去跑 `adelie-server`：装一次 `npm i -g adelie`
+ * 为什么放在 CLI 里而不是让用户自己去跑 `adelie-server`：装一次 `npm i -g @lmliheng/adelie`
  * 就同时得到了终端与界面两条路。「桌面」那条走 Electron 壳（它自己 fork 服务端），
  * 「手机」那条就是这里 —— 在电脑上 `adelie serve --host 0.0.0.0`，手机打开打印出来的
  * 地址，添加到主屏幕即可。
@@ -59,7 +59,7 @@ async function loadServer(): Promise<ServerModule> {
     try {
       require.resolve('adelie-server');
     } catch {
-      hint = '看起来它没装好。重装一次：npm i -g adelie（或 pnpm add adelie-server）';
+      hint = '看起来它没装好。重装一次：npm i -g @lmliheng/adelie（或 pnpm add adelie-server）';
     }
     throw new Error(`起不了界面后端：${(error as Error).message}\n${hint}`);
   }

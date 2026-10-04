@@ -4,7 +4,7 @@
 
 | 产物 | 谁做 | 放在哪 |
 | --- | --- | --- |
-| `adelie`（CLI）与五个库（core / providers / tools / runtime / server） | `scripts/publish-packages.sh` → npm | npm registry |
+| `@lmliheng/adelie`（CLI）与五个库（core / providers / tools / runtime / server） | `scripts/publish-packages.sh` → npm | npm registry |
 | `Adelie-Setup-<version>-x64.exe` + `Adelie-Portable-<version>-x64.exe` | `windows-latest` 上 `electron-builder --win` | GitHub Release 附件 |
 | `adelie-web-<version>.zip`（Web 静态产物 + PWA） | ubuntu 上 `vite build` | GitHub Release 附件 |
 | 可安装的 PWA（同一份 Web 产物） | GitHub Pages（可选，见下） | `https://lmliheng.github.io/Adelie/` |
@@ -43,9 +43,12 @@ tag 一推，工作流就跑：`verify` 先跑三件套，绿了之后三件事�
 
 ## 版本号约定
 
-- 可发布的六个包（core / providers / tools / runtime / server / adelie）版本号必须一致 ——
+- 可发布的六个包（core / providers / tools / runtime / server / `@lmliheng/adelie`）版本号必须一致 ——
   `pnpm-workspace.yaml` 里的 catalog 只管工具版本，包与包之间的 `workspace:*` 在发布时会被
   改写成具体版本，版本不一致时依赖会解析不到。
+- **CLI 为什么带 scope**：不带 scope 的 `adelie` 被 npm 的相似名保护挡下了 ——
+  `403 Package name too similar to existing package dexie`。改成 `@lmliheng/adelie` 就能发，
+  命令名不变（`bin` 仍是 `adelie`）。六个引擎库里只有 CLI 撞上这条规则。
 - web / desktop 是 private，不参与 npm，但版本号跟着走，方便对着 Release 找人。
   （`adelie-server` 可发布：桌面壳要单独装它，`adelie serve` 也在运行时加载它。）
 - **入口两份，靠 `publishConfig` 切换**：工作区里的六个包一律 `main` / `types` / `exports` 指向

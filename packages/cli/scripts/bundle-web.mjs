@@ -1,7 +1,7 @@
 /**
  * 把 Web 构建产物复制进 CLI 包（`dist/web-dist`）。
  *
- * 为什么要把一个前端塞进 CLI 包：`npm i -g adelie` 之后再敲 `adelie serve`，用户期望
+ * 为什么要把一个前端塞进 CLI 包：`npm i -g @lmliheng/adelie` 之后再敲 `adelie serve`，用户期望
  * 直接看到界面，而不是一句「找不到前端产物」。这三四百 KB 换的是「装一次，终端和界面
  * 两条路都能走」。
  *
