@@ -182,6 +182,58 @@ const gates = {
   },
 };
 
+/**
+ * 端到端冒烟：真服务端 + 真引擎 + 假模型端点 + 真浏览器（scripts/e2e.mjs）。
+ *
+ * 这是这套检查里唯一一条回答「能不能用」而不是「看着对不对」的：它发一条任务、批一次
+ * 审批、检查工作区里**真的**落了文件、浏览器 console 没有 error。所以它也是唯一需要
+ * 外部条件的（playwright 与 chromium）—— 缺条件时**跳过并说明**，不算失败：把「这台
+ * 机器没装浏览器」报成应用的缺陷，几次之后这种报告就没人看了。
+ *
+ * 默认不跑（要 `--with-e2e`）：几十秒起步，且需要构建产物已就绪。
+ */
+const e2e = {
+  id: 'e2e',
+  title: '端到端冒烟（真服务端 + 真引擎 + 假模型 + 真浏览器）',
+  heavy: true,
+  optIn: true,
+  run() {
+    let output = '';
+    try {
+      output = execFileSync('node', ['scripts/e2e.mjs'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+        timeout: 300000,
+        maxBuffer: 16 * 1024 * 1024,
+      });
+    } catch (error) {
+      output = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+      const missing = /找不到 @playwright\/test|Cannot find module|chromium|ENOENT/.test(output);
+      if (missing && !/E2E/.test(output)) {
+        return { findings: [], notes: ['跳过：本机没有可用的 playwright / chromium'] };
+      }
+      return {
+        findings: [{
+          level: 'P1',
+          title: '端到端冒烟不通过',
+          detail: '这一条红了说明「四端共用同一套东西」这句话现在不成立：先修它，别的结论都要打折。',
+          evidence: output.trim().split('\n').slice(-15).join('\n'),
+        }],
+        notes: [],
+      };
+    }
+    // 只留结论行：e2e 的完整输出是给人看的界面文字，体检里只要「落了文件、没 console
+    // 错误、回放得到、停在哪」这四句。
+    const summary = output
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => /^(E2E|工作区文件|console errors|回放|stopReason)/.test(line))
+      .join(' / ');
+    return { findings: [], notes: [summary === '' ? '通过' : summary] };
+  },
+};
+
 /** 契约与实现的路由有没有分叉。文档写了代码没有 = 骗人；代码有文档没写 = 藏私 */
 const routesInDocs = {
   id: 'routes-in-docs',
@@ -603,6 +655,7 @@ const unverifiedClaims = {
 
 const CHECKS = [
   gates,
+  e2e,
   routesInDocs,
   routePermissions,
   webApiPaths,
@@ -621,9 +674,10 @@ const CHECKS = [
 // ---------------------------------------------------------------------------
 
 function parseArgs(argv) {
-  const options = { gates: true, json: false, only: null, failOn: 'P1' };
+  const options = { gates: true, e2e: false, json: false, only: null, failOn: 'P1' };
   for (const arg of argv) {
     if (arg === '--no-gates') options.gates = false;
+    else if (arg === '--with-e2e') options.e2e = true;
     else if (arg === '--json') options.json = true;
     else if (arg.startsWith('--only=')) options.only = arg.slice('--only='.length).split(',').map((s) => s.trim()).filter(Boolean);
     else if (arg.startsWith('--fail-on=')) {
@@ -634,9 +688,10 @@ function parseArgs(argv) {
       }
       options.failOn = level;
     } else if (arg === '--help' || arg === '-h') {
-      console.log('用法: node scripts/audit.mjs [--no-gates] [--only=id,id] [--fail-on=P0|P1|P2|P3] [--json]');
+      console.log('用法: node scripts/audit.mjs [--no-gates] [--with-e2e] [--only=id,id] [--fail-on=P0|P1|P2|P3] [--json]');
       console.log(`检查项：${CHECKS.map((check) => check.id).join(' / ')}`);
-      console.log('默认 --fail-on=P1：只有 P0/P1 会让退出码非零。CI 用 P2，本地随手跑用默认。');
+      console.log('默认 --fail-on=P1：只有 P0/P1 会让退出码非零。CI 用 P2，发版前用 P3。');
+      console.log('--with-e2e：额外跑端到端冒烟（要构建产物 + playwright + chromium，几十秒）。');
       process.exit(0);
     } else {
       console.error(`不认识的参数：${arg}`);
@@ -650,6 +705,7 @@ function main() {
   const options = parseArgs(process.argv.slice(2));
   const selected = CHECKS.filter((check) => {
     if (options.only !== null) return options.only.includes(check.id);
+    if (check.optIn === true) return options.e2e;
     return options.gates || !check.heavy;
   });
 

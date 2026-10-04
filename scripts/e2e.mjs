@@ -31,7 +31,13 @@ const outArg = process.argv.indexOf("--out");
 const OUT = outArg === -1 ? path.join(tmpdir(), "adelie-e2e") : process.argv[outArg + 1];
 mkdirSync(OUT, { recursive: true });
 
-/** playwright 的出处：不硬编码某个检出，给一个可覆盖的默认值 */
+/**
+ * playwright 的出处：不硬编码某个检出，给一个可覆盖的默认值。
+ *
+ * `@playwright/test` 与 `playwright-core` 都认 —— 这里只用 `chromium.launch()`，两者
+ * 在这一处的 API 完全一样，而 `playwright-core` 常常是机器上唯一现成的那个（它不带
+ * 浏览器，浏览器由 CHROME_PATH / ms-playwright 缓存提供）。
+ */
 function resolvePlaywright() {
   const explicit = process.env.ADELIE_PLAYWRIGHT;
   const candidates = [
@@ -39,16 +45,19 @@ function resolvePlaywright() {
     path.join(REPO, "packages", "web", "package.json"),
     "/root/penguin-harness/packages/landing/package.json",
   ].filter((value) => typeof value === "string");
+  const modules = ["@playwright/test", "playwright-core"];
   for (const candidate of candidates) {
-    try {
-      return createRequire(candidate)("@playwright/test");
-    } catch {
-      /* 试下一个 */
+    for (const name of modules) {
+      try {
+        return { name, lib: createRequire(candidate)(name) };
+      } catch {
+        /* 试下一个 */
+      }
     }
   }
   throw new Error(
-    "找不到 @playwright/test。装一个（pnpm add -D @playwright/test -w）或把 ADELIE_PLAYWRIGHT " +
-      "指到能解析它的 package.json。",
+    "找不到 @playwright/test 或 playwright-core。装一个（pnpm add -D @playwright/test -w）" +
+      "或把 ADELIE_PLAYWRIGHT 指到能解析它的 package.json。",
   );
 }
 
@@ -66,8 +75,10 @@ function resolveChrome() {
   return undefined;
 }
 
-const { chromium } = resolvePlaywright();
+const playwright = resolvePlaywright();
+const { chromium } = playwright.lib;
 const CHROME = resolveChrome();
+console.log(`[e2e] playwright 来自 ${playwright.name}${CHROME === undefined ? '' : `，chromium ${CHROME}`}`);
 
 const freePort = () =>
   new Promise((resolve, reject) => {

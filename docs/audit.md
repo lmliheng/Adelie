@@ -20,11 +20,24 @@ Adelie 是一条长期产品线：一次对话会被压缩、会被忘掉，而�
 | issue 草稿少一段、少个标签，同步脚本整个失败 | 草稿合规（`issue-drafts`） |
 | 包之间靠 workspace 软链跑得通，装出去 ERR_MODULE_NOT_FOUND | 依赖有声明、版本一致（`consistency`） |
 
+唯一一条回答「能不能用」而不是「看着对不对」的是**端到端冒烟**（`e2e`，要
+`--with-e2e`）：真服务端 + 真引擎 + 假模型端点 + 真浏览器，发一条任务、批一次审批、
+检查工作区里真的落了文件、console 没有 error。它需要外部条件（playwright 与 chromium），
+缺条件时**跳过并说明**，不算失败 —— 把「这台机器没装浏览器」报成应用的缺陷，几次之后
+这种报告就没人看了。
+
+```bash
+ADELIE_PLAYWRIGHT=/path/to/dir/with/playwright/package.json \
+CHROME_PATH=~/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome \
+  node scripts/audit.mjs --with-e2e
+```
+
 ## 怎么用
 
 ```bash
 node scripts/audit.mjs                 # 全套：闸门 + 静态检查（提交前、发版前）
 node scripts/audit.mjs --no-gates      # 只跑静态检查，秒级（改一行之后跑这个）
+node scripts/audit.mjs --with-e2e      # 再加端到端冒烟（几十秒，要浏览器）
 node scripts/audit.mjs --json          # 给别的工具吃
 node scripts/audit.mjs --only=dist-clean,secrets
 node scripts/audit.mjs --fail-on=P3    # 连提醒也要挡（发版前的严格模式）
