@@ -35,8 +35,12 @@
   模型（只列当前提供方，清单来自 `GET /api/models`）与审批口径三档（`always-ask` / `read-only` / `allow-all`）。
   服务端把 `approvalPolicy` 从只读常量改成按身份可写的设置。验收：改模型 / 改口径后
   `GET /api/config` 真的变了（端到端从页面里 fetch 核对），模型下拉的显示值 == 服务端记着的那个。
-- [ ] **4. 成本中心（= 路线图 P4）** —— `docs/issues/web-usage-cost-center.md`；顺带做「会话级 token 累计」
+- [x] **4. 成本中心（= 路线图 P4）** —— `docs/issues/web-usage-cost-center.md`；顺带做「会话级 token 累计」
   （上下文环要用它）。验收：`/usage` 页有汇总卡 + 按模型/按会话两张图，数字与 `/api/usage` 对得上。
+  **2026-10-04 晚完成**：接口 `GET /api/usage`（core 的数据层 + 服务端聚合，见 CHANGELOG「成本中心」）；
+  页面 `packages/web/src/components/UsagePage.tsx`（三卡 + 按天折线 + 按模型/按会话两张表，会话行可点开）；
+  每轮统计行加了金额（`lib/usage.ts` 的 `costOfUsage`）。会话级累计数据已经在 `bySession` 里，
+  第 11 条的上下文环还需要「模型的上下文上限表」，那一半留着。
 - [ ] **5. 项目实体** —— `docs/issues/web-left-rail-navigation.md` 二期上半：`~/.adelie/projects.json` +
   `GET/POST/DELETE /api/projects`，会话归属项目，工作区由项目带。要动服务端与契约。
 - [ ] **6. 智能体实体** —— 同上二期下半：`~/.adelie/agents/<id>/` 目录约定、`GET/PUT /api/agents/:id/config`，
@@ -54,6 +58,24 @@
 > rail 是「页面往哪放」，dock 是「面板往哪放」，先有页面再谈面板。
 
 ## 已完成的轮次
+
+- **2026-10-04 · 4** —— 成本中心（草稿：`docs/issues/web-usage-cost-center.md`）。接口
+  `GET /api/usage`（契约 §2 新增）扫这个身份看得见的会话、把每轮 token 从事件流读出来现算，
+  聚合出 `summary`（今天 / 最近 7 天 / 累计）+ `byModel` + `bySession` + 按天的 `series`；
+  价目表随 `GET /api/models` 的 `rates` 下发；`run_started` 帧带上这一轮的 `model`
+  （实时流里没有 `task_started`，而每轮的金额要按这一轮实际用的模型算）。页面
+  `components/UsagePage.tsx`：三张汇总卡（未定价的轮次会在卡上说「其中 N 轮未定价，不计入金额」，
+  否则 `$0` 会被读成「没花钱」）+ 按天的成本折线（手写 inline SVG）+ 按模型 / 按会话两张表
+  （会话行可点开）。每轮统计行也加了金额（`lib/usage.ts` 的 `costOfUsage`）。
+  **用户同时在真机上发现的三个界面问题一起修了**（他没有把这三件事算作新条目，都记在这一轮里）：
+  输入框没贴底（`.app` 的 grid 三行只有两个孩子 → `.shell` 落进 auto 行）、正文没按 Markdown
+  渲染（`white-space: pre-wrap` → 新增 `components/Markdown.tsx`）、执行中看不出在动
+  （工具卡走光 + 活体点 + 会走秒的「执行中」胶囊）。
+  验证：`pnpm -r typecheck` 全过；`pnpm --filter adelie-core test` 91、`adelie-server` 65、
+  `adelie-web` 126；`node scripts/audit.mjs --no-gates` 无新发现；`node scripts/e2e.mjs` 全部通过，
+  新增两条断言（正文真的渲染出 `ul`/`strong`/`code`/`pre`；输入框底边与视口底边差 ≤2px）与
+  一条对账（成本中心「累计」卡的数字 == `/api/usage`）。4000 真部署上核对：`.shell` 844px 吃满
+  900px 视口、`/usage` 显示 `$0.004996 / 16k tokens / 5 轮` 与接口逐字一致、console 无 error。
 
 - **2026-10-04 · 3** —— 输入区一期（草稿：`docs/issues/web-composer-toolbar.md`）。控制带上两个下拉
   （新增 `packages/web/src/components/ComposerToolbar.tsx`，`Composer` 因此多了一个 `toolbar` prop ——

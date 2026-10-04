@@ -1,5 +1,50 @@
 # CHANGELOG
 
+## 未发布 — 输入框贴底、正文按 Markdown 渲染、执行中有动感
+
+三件事都是用户在真机上看到的，顺序就是他提的顺序。
+
+1. **输入框原来没贴在底部**（用户原话「页面底部对话框有 bug」）。根因不在输入框，而在
+   `packages/web/src/styles/global.css` 的骨架：`.app` 用 `grid-template-rows: auto auto 1fr`
+   声明了三行，假定「顶栏 + 横幅 + 主体」三个孩子**都在场**，而横幅只在连接断了才出现 ——
+   正常打开时 `.shell` 落进第二行（auto，高度由内容撑），第三行的 `1fr` 空着。实测 `.app`
+   的三行是 `56px / 592px / 251px`：输入框停在半空，下面留一大片白。改成 flex 列（`.shell`
+   自己吃满剩余高度），与有没有横幅无关。端到端加了「输入框底边与视口底边差 ≤ 2px」这条断言。
+2. **正文不再把 Markdown 源码直接显示出来**。此前 `.msg-assistant` 是 `white-space: pre-wrap`，
+   一段带列表或代码的回答就是一大块没排版的文本。新增 `packages/web/src/components/Markdown.tsx`
+   （react-markdown + remark-gfm）：标题分级、列表、任务列表、表格自己横向滚、行内代码与围栏
+   代码块各有底色，外链一律 `target="_blank" rel="noreferrer"`。三处照 penguin 的做法：
+   插件表与组件映射是**模块常量**（react-markdown 把 `components.pre` 当元素类型用，每次渲染
+   现造一个函数会让所有代码块每帧卸载重挂）、`memo` 认 `text` 的身份、流式期间用 `useDeferredValue`
+   把重排降到后台优先级。
+3. **执行中看得出在动**：还在跑的工具卡顶上有一条走光、图标在呼吸；新出现的卡片自己长出来；
+   「执行记录」标题上一颗活体点；汇总行从静止的「执行中」换成**会走秒的胶囊**
+   （`hooks/useElapsed.ts`，每秒一跳，它显示的是这一轮真的开始了多久）。动作只碰
+   opacity / transform / background-position，不改布局；`prefers-reduced-motion` 里全部关掉。
+4. 端到端把「正文真的是渲染出来的」也钉住了：mock 的收尾正文改成带列表 / 行内代码 / 围栏代码块的
+   Markdown，断言渲染结果里真的出现 `ul`、`strong`、`code`、`pre code`，且 `**` 不再出现在正文里。
+
+验收：web `typecheck` / `test`（126 通过）/ `build` 通过；`node scripts/audit.mjs --no-gates` 没有新发现；
+`node scripts/e2e.mjs` 全部通过（含上面两条新断言，手机四档仍然 0px 溢出、console 无 error）。
+4000 真部署上核对：输入框贴底（`.shell` 844px 吃满 900px 视口）、明暗两套都正常。
+
+## 未发布 — 成本中心（= 路线图 P4）：接口 + 页面
+
+`GET /api/usage` 扫这个身份看得见的会话、把每轮的 token 从事件流里读出来当场聚合
+（`summary: { today, last7d, total }` + `byModel` + `bySession` + 按天的 `series`），
+界面 `/usage` 是**三张汇总卡 + 一条按天的成本折线 + 两张表**（按模型 / 按会话，会话行可点开）。
+数字与接口对得上的这条验收标准由端到端来跑：拿 `/api/usage` 的返回值与界面上「累计」卡比对。
+
+- **只落 token、成本永远现算**（`packages/core/src/usage/rates.ts`）：事件里存的是观测（token），
+  钱是读的时候按牌价乘出来的 —— 调价之后历史行不会变成谎话。命中缓存的那部分按 `cacheRead`
+  计价（deepseek 0.07 对输入价 0.27），没报缓存数的 provider 整段按输入价算并认下会高估。
+- **没有牌价就是「未定价」，绝不猜**：`deepseek-flash` 不在官方目录里，kimi / qwen 只公布人民币价，
+  一律留空。界面上金额显示为「未定价 / N 轮无牌价」，汇总卡上写「其中 N 轮未定价，不计入金额」——
+  只显示 `$0` 会被读成「没花钱」。
+- 价目表随 `GET /api/models` 下发（单位：美元 / 百万 token），界面不自己抄一份。
+- `run_started` 帧带上这一轮的 `model`：实时流里没有 `task_started`（它由 `run_started` 表达），
+  而每轮的金额要按**这一轮实际用的模型**算 —— 会话中途换过模型时，按当前配置算会算错。
+
 ## 未发布 — 没配密钥时不再假装「密钥错了」
 
 在 4000 上导出一份旧会话时看到的：事件流里躺着

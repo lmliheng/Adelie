@@ -20,13 +20,15 @@ import type {
   ConfigPatch,
   HealthInfo,
   ModelCatalog,
+  ModelRefInfo,
   PendingActionLike,
   RunFinishedInfo,
+  RunStartedInfo,
   SessionEventLike,
   SessionSummary,
   ToolInfo,
 } from '../api/types'
-import { buildTurns } from '../lib/history'
+import { buildTurns, modelRefOf } from '../lib/history'
 import {
   loadCredentials,
   saveCredentials,
@@ -43,6 +45,13 @@ export interface TurnState {
   task: string
   at: number
   status: TurnStatus
+  /**
+   * 这一轮用的模型。实时流来自 `run_started` 帧，回放来自 `task_started.payload.model`。
+   *
+   * 为什么要留着它：**每轮的成本要靠它**。会话中途换过模型时，按当前配置里的模型
+   * 去查价目表会算错钱，而钱一旦显示出来没人会去怀疑它。
+   */
+  model: ModelRefInfo | null
   events: SessionEventLike[]
   content: string
   reasoning: string
@@ -219,9 +228,15 @@ export function useAdelie(): AdelieController {
           return
         }
         case 'run_started': {
-          const runId = record?.['runId']
-          if (typeof runId !== 'string') return
-          mutateTurn(sessionId, turnId, (turn) => ({ ...turn, runId }))
+          // 实时流的第一帧：它带着这一轮真正用的模型（契约 §4）。事件流里的
+          // `task_started` 在实时流里被它取代，所以模型只能从这一帧拿。
+          const started = normalizeRunStarted(record)
+          if (started === null) return
+          mutateTurn(sessionId, turnId, (turn) => ({
+            ...turn,
+            runId: started.runId,
+            model: started.model ?? turn.model,
+          }))
           return
         }
         case 'run_finished': {
@@ -349,6 +364,8 @@ export function useAdelie(): AdelieController {
             task: turn.task,
             at: turn.at,
             status: stopped ? ('done' as TurnStatus) : ('interrupted' as TurnStatus),
+            // 回放时模型在 task_started 里（实时流那条路走 run_started 帧）
+            model: turn.model,
             events: turn.events,
             content: '',
             reasoning: '',
@@ -450,6 +467,8 @@ export function useAdelie(): AdelieController {
         task: trimmed,
         at: Date.now(),
         status: 'running',
+        // 还没开跑，模型未知：`run_started` 帧一到就填上（不按当前配置猜，见 TurnState.model）
+        model: null,
         events: [],
         content: '',
         reasoning: '',
@@ -688,6 +707,19 @@ function normalizePendingAction(action: Record<string, unknown>): PendingActionL
     status: typeof action['status'] === 'string' ? action['status'] : 'pending',
     expiresAt: typeof action['expiresAt'] === 'number' ? action['expiresAt'] : Date.now(),
   }
+}
+
+/**
+ * `run_started` 帧 → TurnState 要的两个字段（契约 §4）。
+ *
+ * 帧里没有 runId 时返回 null（那一帧认不出来，宁可不动）。模型是可选的：老服务端不带它，
+ * 这时保留轮次上已有的值，而不是把它清成 null —— 清掉就等于「本来能算的钱也不算了」。
+ */
+function normalizeRunStarted(record: Record<string, unknown> | null): RunStartedInfo | null {
+  const runId = record?.['runId']
+  if (typeof runId !== 'string' || runId === '') return null
+  const model = modelRefOf(record?.['model'])
+  return model === null ? { runId } : { runId, model }
 }
 
 function normalizeRunFinished(record: Record<string, unknown> | null): RunFinishedInfo {

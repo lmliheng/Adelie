@@ -21,6 +21,7 @@ import { TranscriptSkeleton } from './components/Skeleton'
 import { SettingsDialog } from './components/SettingsDialog'
 import { CommandPalette } from './components/CommandPalette'
 import { PlaceholderPage } from './components/PlaceholderPage'
+import { UsagePage } from './components/UsagePage'
 import { LoginScreen } from './components/LoginScreen'
 import { ToastHost } from './components/ToastHost'
 import { useAdelie } from './hooks/useAdelie'
@@ -175,6 +176,15 @@ function Shell({
       openSession(id)
     },
     [openSession],
+  )
+  // 成本中心的会话表：点一行 = 打开那条会话**并回到对话页**。只 openSession 不换页面的话，
+  // 用户点了没看到任何变化（他还在成本中心这一页），会以为这一行不可点。
+  const handleOpenSessionFromUsage = useCallback(
+    (id: string) => {
+      openSession(id)
+      navigate(HOME_PATH)
+    },
+    [navigate, openSession],
   )
 
   const connectionBroken = adelie.connection.status === 'offline' || adelie.connection.status === 'unauthorized'
@@ -339,8 +349,16 @@ function Shell({
         />
 
         <main className="chat" aria-label={pageId === 'chat' ? '对话' : (navPageOf(pageId)?.label ?? '页面')}>
-          {pageId !== 'chat' ? (
-            // 五个导航页一期是占位：`connectionBroken` 也照样显示（它们是本地页面，
+          {pageId === 'usage' ? (
+            // 成本中心的数字来自服务端（那里当场扫事件流），所以它要凭证与身份：
+            // `isAdmin` 决定给不给「含其他账号的会话」这个开关（契约 §2 的 scope=all）
+            <UsagePage
+              credentials={credentials}
+              isAdmin={user?.isAdmin === true}
+              onOpenSession={handleOpenSessionFromUsage}
+            />
+          ) : pageId !== 'chat' ? (
+            // 其余四个导航页还是占位：`connectionBroken` 也照样显示（它们是本地页面，
             // 断网时看「这一页打算做什么」比看一块重试面板有用）。
             <PlaceholderPage id={pageId} onNavigate={navigate} />
           ) : connectionBroken ? (
@@ -387,6 +405,7 @@ function Shell({
                   <TurnView
                     key={turn.id}
                     turn={turn}
+                    catalog={adelie.models.catalog}
                     onDecide={(decision, remember) => {
                       void adelie.decideApproval(turn, decision, remember).then(() => {
                         if (decision === 'deny') toast.push('已拒绝这次操作')

@@ -8,14 +8,17 @@
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
 import { ToolCard } from './ToolCard'
-import { relativeTime } from '../lib/format'
+import { compactNumber, durationZh, relativeTime } from '../lib/format'
+import { formatUsd } from '../lib/usage'
 import { describeStopReason, type TimelineEntry } from '../lib/timeline'
 
-export function Timeline({ entries }: { entries: TimelineEntry[] }): ReactNode {
+export function Timeline({ entries, running = false }: { entries: TimelineEntry[]; running?: boolean }): ReactNode {
   if (entries.length === 0) return null
   return (
     <div className="timeline">
       <span className="timeline-label">
+        {/* 还在跑：标题上也点一颗活体点，让人一眼看出这一屏是「活的」 */}
+        {running && <span className="live-dot" aria-hidden="true" />}
         执行记录 · {entries.length} 步
       </span>
       {entries.map((entry) => {
@@ -77,32 +80,52 @@ function describeSource(source: string): string {
 /** run 汇总：用量 / 迭代 / 停止原因，一行小字 */
 export function TurnMeta({
   usage,
+  cost,
   iterations,
   toolCalls,
   stopReason,
   at,
   running,
+  elapsedSeconds,
 }: {
   usage: { promptTokens: number; completionTokens: number; totalTokens: number } | null
+  /**
+   * 这一轮的钱（`costOfUsage` 算出来的，USD）。**null = 不显示金额**：
+   * 模型未知、或这一轮用的模型在价目表里没有牌价。这时宁可只说 token，
+   * 也不按当前配置猜一个数字 —— 猜出来的钱比不显示更坏（它会被人当成事实）。
+   */
+  cost: number | null
   iterations: number | null
   toolCalls: number | null
   stopReason: unknown
   at: number
   running: boolean
+  /** 跑着的时候走到第几秒（`useElapsed`）；不跑时是 0，不显示 */
+  elapsedSeconds: number
 }): ReactNode {
   const stop = describeStopReason(stopReason)
+  // 口径与 /usage 页一致：token 用 k/M 缩写，钱用 formatUsd（小额不会被抹成 $0）。
+  // 输入 / 输出 / 合计三个数在 title 里 —— 占一整行读起来是噪声，但它们也不该丢。
+  const usageDetail =
+    usage === null
+      ? undefined
+      : `输入 ${usage.promptTokens} · 输出 ${usage.completionTokens} · 共 ${usage.totalTokens} tokens`
   return (
     <div className="turn-meta">
       {running && (
         <>
-          <span className="chip chip-brand">执行中</span>
+          <span className="chip chip-live">
+            <span className="live-dot" aria-hidden="true" />
+            执行中 · {durationZh(elapsedSeconds)}
+          </span>
           <span className="dot" />
         </>
       )}
       {usage !== null && (
         <>
-          <span>
-            输入 {usage.promptTokens} · 输出 {usage.completionTokens} · 共 {usage.totalTokens} tokens
+          <span title={usageDetail}>
+            {compactNumber(usage.totalTokens)} tokens
+            {cost === null ? '' : ` · ${formatUsd(cost)}`}
           </span>
           <span className="dot" />
         </>

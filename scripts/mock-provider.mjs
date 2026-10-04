@@ -64,7 +64,20 @@ function scriptFor(messages) {
   return {
     kind: 'content',
     reasoning: '文件已经创建好了，收尾。',
-    content: '已创建 ADELIE_E2E.md，里面有这次端到端运行写入的一行字。',
+    // 收尾正文带上几种 Markdown：端到端要能看出「正文是渲染出来的，不是把源码显示出来」
+    // （列表 / 行内代码 / 围栏代码块 —— 这三样一段纯文本回话里最容易分辨）
+    content: [
+      '已创建 ADELIE_E2E.md，里面有这次端到端运行写入的一行字。',
+      '',
+      '这次顺手验到的：',
+      '',
+      '- **审批链**：`create_file` 要人工点批准',
+      '- **流式**：正文是切块送来的',
+      '',
+      '```bash',
+      'cat ADELIE_E2E.md',
+      '```',
+    ].join('\n'),
     finish: 'stop',
   };
 }

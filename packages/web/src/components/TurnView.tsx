@@ -8,19 +8,26 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
+import { Markdown } from './Markdown'
 import { Timeline, TurnMeta } from './Timeline'
 import { ApprovalCard } from './ApprovalCard'
 import { mapEventsToTimeline } from '../lib/timeline'
 import { duration } from '../lib/format'
+import { useElapsed } from '../hooks/useElapsed'
+import { costOfUsage, ratesForModel } from '../lib/usage'
+import type { ModelCatalog } from '../api/types'
 import type { TurnState } from '../hooks/useAdelie'
 
 export function TurnView({
   turn,
+  catalog,
   onDecide,
   onRetry,
   onReload,
 }: {
   turn: TurnState
+  /** 价目表（`GET /api/models` 的目录）。查不到价就不显示金额，见下面那条注释 */
+  catalog: ModelCatalog | null
   onDecide: (decision: 'approve' | 'deny', remember: boolean) => void
   onRetry: () => void
   onReload: () => void
@@ -46,10 +53,19 @@ export function TurnView({
       ? null
       : ((turn.contentStartedAt ?? (running ? Date.now() : turn.reasoningStartedAt)) - turn.reasoningStartedAt) / 1000
 
-  const usage = turn.finished?.usage ?? view.summary?.usage ?? null
+  // 用量两处都有，**优先事件流那份**：只有 `stopped.tokenUsage` 带「缓存命中数」，而钱
+  // 要吃它（`run_finished.usage` 只有三个总数，契约 §4）。/usage 页读的也是这一份，
+  // 于是这一行与那一页才是同一笔账 —— 否则命中缓存的轮次在这里会被系统性高估。
+  const usage = view.summary?.usage ?? turn.finished?.usage ?? null
+  // 钱用这一轮**自己的**模型查价（run_started / task_started 带下来的，见 TurnState.model）。
+  // 模型未知、或它没有牌价时 `costOfUsage` 返回 null —— 这时只显示 token，不显示金额：
+  // 按当前配置猜一个数字比不显示更坏，因为猜出来的钱会被当成事实。
+  const cost = costOfUsage(usage, ratesForModel(catalog, turn.model))
   const iterations = turn.finished?.iterations ?? view.summary?.iterations ?? null
   const toolCalls = view.summary?.toolCalls ?? null
   const stopReason = turn.finished !== null ? turn.finished.stopReason : (view.summary?.stopReason ?? null)
+  // 跑着的时候界面得「会走」：这一轮从开始到现在多久（每秒一跳，见 useElapsed）
+  const elapsedSeconds = useElapsed(turn.at, running)
 
   return (
     <article className="turn column">
@@ -78,10 +94,7 @@ export function TurnView({
 
       <section aria-label="回答">
         {content !== '' ? (
-          <div className="msg-assistant">
-            {content}
-            {running && <span className="stream-cursor" aria-hidden="true" />}
-          </div>
+          <Markdown text={content} streaming={running} className="msg-assistant md-body" />
         ) : running ? (
           <span className="dots" role="status" aria-label="正在生成回答">
             <span />
@@ -91,7 +104,7 @@ export function TurnView({
         ) : null}
       </section>
 
-      <Timeline entries={view.entries} />
+      <Timeline entries={view.entries} running={running} />
 
       {turn.approval !== null && <ApprovalCard action={turn.approval} onDecide={onDecide} />}
 
@@ -131,11 +144,13 @@ export function TurnView({
 
       <TurnMeta
         usage={usage}
+        cost={cost}
         iterations={iterations}
         toolCalls={toolCalls}
         stopReason={stopReason}
         at={turn.at}
         running={running}
+        elapsedSeconds={elapsedSeconds}
       />
     </article>
   )

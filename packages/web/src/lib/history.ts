@@ -6,7 +6,7 @@
 // `events` 是扁平的一条流（持久层的唯一事实源），而 run 边界只由 task_started 表达。
 // 按它切分，回放出来的对话结构与实时流一样是「用户说一句 → 一轮执行」。
 
-import type { SessionEventLike } from '../api/types'
+import type { ModelRefInfo, SessionEventLike } from '../api/types'
 
 export interface Turn {
   /** runId（task_started 的 taskId）或位置 id */
@@ -17,6 +17,29 @@ export interface Turn {
   events: SessionEventLike[]
   /** 开始时间 */
   at: number
+  /**
+   * 这一轮用的模型（`task_started.payload.model`）。
+   *
+   * 回放时没有 `run_started` 帧，模型只能从事件流里读；而**每轮的成本要靠它** ——
+   * 会话中途换过模型时，按当前配置算钱会算错，所以必须跟着轮次走。
+   */
+  model: ModelRefInfo | null
+}
+
+/**
+ * wire 上的模型：只认长得像 `{ provider, model }` 的对象。
+ *
+ * 事件流与 `run_started` 帧里都有它，两处的收窄规则必须一样 —— 分开写迟早会分叉
+ * （一边认字符串简写、另一边不认，就是两处对同一轮显示不同的模型）。
+ */
+export function modelRefOf(value: unknown): ModelRefInfo | null {
+  const record = asRecord(value)
+  if (record === null) return null
+  const provider = record['provider']
+  const model = record['model']
+  if (typeof provider !== 'string' || typeof model !== 'string') return null
+  if (provider === '' || model === '') return null
+  return { provider, model }
 }
 
 export function buildTurns(events: readonly SessionEventLike[]): Turn[] {
@@ -34,6 +57,7 @@ export function buildTurns(events: readonly SessionEventLike[]): Turn[] {
         task: asString(payload?.['taskDescription']) ?? '',
         events: [event],
         at: asNumber(payload?.['startTime']) ?? event.ts,
+        model: modelRefOf(payload?.['model']),
       }
       turns.push(current)
       continue
@@ -42,7 +66,7 @@ export function buildTurns(events: readonly SessionEventLike[]): Turn[] {
     if (current === null) {
       // task_started 之前的事件：老日志或异常中止的轮次。单独成一轮而不是丢弃，
       // 否则这些工具记录会在界面上凭空消失（历史不完整比多一块更糟）。
-      current = { id: `orphan-${index}`, task: '', events: [], at: event.ts }
+      current = { id: `orphan-${index}`, task: '', events: [], at: event.ts, model: null }
       turns.push(current)
     }
     current.events.push(event)

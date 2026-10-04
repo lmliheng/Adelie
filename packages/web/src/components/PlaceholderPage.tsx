@@ -5,6 +5,9 @@
 // 上下文留在界面上（下一轮接手时不用翻文档才知道这一页打算长什么样）。
 //
 // 文案与 `docs/issues/web-*.md` 一一对应；改那一页之前先看草稿。
+//
+// 成本中心已经**不再是占位**（第 4 条做掉了，见 components/UsagePage.tsx），所以它从
+// COPY 里搬走了 —— 这里的键就是「还是占位的那些页」，少一页就少一个键。
 
 import type { ReactNode } from 'react'
 import { Icon } from './Icon'
@@ -19,7 +22,10 @@ interface PageCopy {
   draft: string
 }
 
-const COPY: Record<Exclude<PageId, 'chat'>, PageCopy> = {
+/** 还是占位的页面（`usage` 已实现，不在其中） */
+export type PlaceholderId = Exclude<PageId, 'chat' | 'usage'>
+
+const COPY: Record<PlaceholderId, PageCopy> = {
   projects: {
     what: '一个项目 = 一个工作区 + 一套默认模型 + 它名下的会话。现在工作区只是「设置 → 运行配置」里的一个字符串，还没有「几个项目切着用」这件事。',
     deps: ['服务端新增 GET/POST /api/projects（清单存 ~/.adelie/projects.json）', '会话按项目归属（现在只有工作区路径）'],
@@ -40,18 +46,13 @@ const COPY: Record<Exclude<PageId, 'chat'>, PageCopy> = {
     deps: ['技能目录与清单（skills/*/SKILL.md）', '钩子运行时：在子进程里跑脚本'],
     draft: 'docs/issues/web-left-rail-navigation.md',
   },
-  usage: {
-    what: '成本中心：用了多少 token、花了多少钱、哪家最贵、失败了多少次。成本按当次价格现算，不写进历史行。',
-    deps: ['每轮落一行用量（带项目 / 智能体归属）', '价格表', 'GET /api/usage'],
-    draft: 'docs/issues/web-usage-cost-center.md',
-  },
 }
 
 export function PlaceholderPage({
   id,
   onNavigate,
 }: {
-  id: Exclude<PageId, 'chat'>
+  id: PlaceholderId
   onNavigate: (next: string) => void
 }): ReactNode {
   const page = navPageOf(id)

@@ -94,11 +94,26 @@ export interface ConfigPatch {
   approvalPolicy?: string
 }
 
+/**
+ * 牌价：美元 / 百万 token（契约 §2）。`cacheRead` 省略表示这家没公布缓存价，
+ * 那时命中的输入按 `input` 算（会高估，core 的 `usage/rates.ts` 里认下了这件事）。
+ */
+export interface ModelRates {
+  input: number
+  cacheRead?: number
+  output: number
+}
+
 /** 第 2 节：GET /api/models —— 能选哪些模型。内容来自服务端的模型目录 */
 export interface CatalogModel {
   id: string
   label: string
   default?: boolean
+  /**
+   * 牌价。**缺席 = 没定价**（人民币报价的厂商、目录外手填的模型名），界面照实说
+   * 「未定价」而不是编一个数字 —— 编价格比留空更坏，这一点与 core 一致。
+   */
+  rates?: ModelRates
 }
 
 export interface CatalogGroup {
@@ -164,6 +179,18 @@ export interface TokenUsageLike {
   cacheMissTokens?: number | null
 }
 
+/**
+ * `run_started` 帧（契约 §4）。
+ *
+ * 实时流里没有 `task_started`（它由这一帧表达），而这一帧带着**这一轮真正用的模型**：
+ * 会话中途换过模型时，按当前配置去查价目表会算错钱，所以模型必须跟着帧走。
+ */
+export interface RunStartedInfo {
+  runId: string
+  task?: string
+  model?: ModelRefInfo
+}
+
 /** `run_finished` 帧（第 4 节） */
 export interface RunFinishedInfo {
   runId: string
@@ -178,4 +205,46 @@ export interface SessionDetail {
   session: SessionSummary
   runs: unknown[]
   events: SessionEventLike[]
+}
+
+/**
+ * 一个桶里的用量合计（契约 §2 的 `Totals`）。
+ *
+ * `costUsd` 只累计**有价**的那些轮，`unpricedRuns` 数的是没价的 —— 两者必须一起看：
+ * 光标着 0 会读成「没花钱」，实际可能是「没定价」。
+ */
+export interface UsageTotals {
+  runs: number
+  inputTokens: number
+  outputTokens: number
+  totalTokens: number
+  costUsd: number
+  unpricedRuns: number
+}
+
+export type UsageModelTotals = UsageTotals & { provider: string; model: string }
+
+export type UsageSessionTotals = UsageTotals & { sessionId: string; lastActiveAt: number }
+
+/** 按**本地日期**分桶（`YYYY-MM-DD`），从早到晚 */
+export type UsageDayTotals = UsageTotals & { date: string }
+
+/**
+ * `GET /api/usage`（契约 §2）。
+ *
+ * 它是服务端当场扫事件流算出来的**派生视图**，不是一张表：只落 token、成本永远现算，
+ * 所以这里的钱是「按今天的牌价算出来的一个视图」。界面不再自己聚合第二遍 ——
+ * 两份聚合迟早对不上，而那时候没人知道该信谁。
+ */
+export interface UsageReport {
+  summary: { today: UsageTotals; last7d: UsageTotals; total: UsageTotals }
+  byModel: UsageModelTotals[]
+  bySession: UsageSessionTotals[]
+  series: UsageDayTotals[]
+  /** 真的读了事件的会话数（空会话不算） */
+  sessionsScanned: number
+  /** 读不动的那几条（删了一半、权限不足）—— 少算了几条要说得出来 */
+  unreadableSessions: number
+  /** 服务端的「现在」：今天 / 最近 7 天的分界由它定，界面不该有自己的表 */
+  now: number
 }

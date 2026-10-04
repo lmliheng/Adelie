@@ -146,15 +146,22 @@ a {
 
 /* ── 骨架布局 ───────────────────────────────────────────── */
 
+/* 用 flex 而不是 `grid-template-rows: auto auto 1fr`：那三行假定「顶栏 + 横幅 + 主体」
+ * 三个孩子**同时**在场，而横幅只在连接断了才出现 —— 正常打开时 `.shell` 会落到第二行
+ * （auto，高度由内容撑），第三行的 1fr 空着，于是输入框既不贴底、下面还留一大片空白
+ * （2026-10-04 在 4000 上实测 `.app` 的行是 56px / 592px / 251px）。flex 里 `.shell`
+ * 自己吃满剩余高度，与「有没有横幅」无关。
+ */
 .app {
-  display: grid;
-  grid-template-rows: auto auto 1fr;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
 }
 
 .shell {
+  flex: 1 1 auto;
   display: grid;
   grid-template-columns: 1fr;
   min-height: 0;
@@ -777,6 +784,232 @@ a {
   color: var(--fg-muted);
 }
 
+/* ── 成本中心（components/UsagePage.tsx） ──────────────────
+ *
+ * 三张汇总卡 + 一条折线 + 两张表。刻意的取舍：卡片是「一眼看完」的层，表格才是查细节的
+ * 层，所以卡片给大字号与 tabular-nums（数字对齐才看得出差别），表格给紧凑的行距。
+ * 宽表**只让表格自己滚**（`.usage-table-wrap`），整页横向滚会把侧栏也推走。
+ */
+
+.usage {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+  max-width: 62rem;
+  margin: 0 auto;
+}
+
+.usage-scope {
+  margin-left: auto;
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+.usage-cards {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+}
+
+.usage-card {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.usage-card-label {
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.usage-card-cost {
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-card-meta {
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+/* 「N 轮未定价」是提醒不是错误：用 warn 色，但别做成红色的报警条 */
+.usage-card-note {
+  font-size: 11.5px;
+  color: var(--warn);
+}
+
+.usage-chart-card {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.usage-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.usage-axis {
+  fill: var(--fg-faint);
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.usage-axis-line {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.usage-line {
+  fill: none;
+  stroke: var(--brand-600);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.usage-point {
+  fill: var(--brand-600);
+}
+
+.usage-chart-note {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+.usage-section {
+  display: grid;
+  gap: 8px;
+}
+
+.usage-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+}
+
+.usage-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.usage-table th,
+.usage-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.usage-table thead th {
+  background: var(--subtle);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+
+.usage-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.usage-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-table td.usage-none {
+  text-align: center;
+  color: var(--fg-faint);
+}
+
+.usage-model {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px;
+}
+
+.usage-provider,
+.usage-sep {
+  color: var(--fg-faint);
+}
+
+.usage-sep {
+  margin: 0 2px;
+}
+
+.usage-note {
+  display: block;
+  font-size: 11px;
+  color: var(--warn);
+}
+
+.usage-unpriced {
+  color: var(--fg-faint);
+}
+
+/* 会话 id 是可点的：做一个看得出来的链接，但落点别只在一行文字那么薄 */
+.usage-session {
+  padding: 4px 6px;
+  margin-left: -6px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--brand-700);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.usage-session:hover {
+  background: var(--subtle);
+  text-decoration: underline;
+}
+
+.usage-when {
+  font-size: 12.5px;
+  color: var(--fg-muted);
+}
+
+.usage-empty-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.usage-foot {
+  margin: 0;
+  font-size: 12px;
+  color: var(--fg-faint);
+}
+
+.usage-foot code {
+  font-size: 11.5px;
+  color: var(--fg-muted);
+}
+
+/* 独立的「正在××」小字（也用于成本中心的加载态）；`.field .hint` 仍然更具体 */
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+
 .turn {
   animation: rise 280ms var(--ease);
   display: flex;
@@ -811,9 +1044,179 @@ a {
 
 .msg-assistant {
   color: var(--fg);
-  white-space: pre-wrap;
   overflow-wrap: anywhere;
   border-left: 2px solid transparent;
+}
+
+/* ── Markdown 正文（components/Markdown.tsx） ──────────────
+ *
+ * 助手写的是 Markdown，这一块负责让它**读起来像文档**：标题分级、列表缩进、
+ * 代码块有自己的底、表格能横向滚。风格照 GitHub：实底、发丝线、不引阴影，
+ * 颜色全走 token，于是明暗两套自动成立（---dark 只换变量）。
+ */
+
+.md-body {
+  overflow-wrap: anywhere;
+}
+
+.md-body > :first-child {
+  margin-top: 0;
+}
+
+.md-body > :last-child {
+  margin-bottom: 0;
+}
+
+.md-body p {
+  margin: 0 0 10px;
+}
+
+.md-body h1,
+.md-body h2,
+.md-body h3,
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  margin: 18px 0 8px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.md-body h1 {
+  font-size: 1.45em;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.md-body h2 {
+  font-size: 1.25em;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.md-body h3 {
+  font-size: 1.1em;
+}
+
+.md-body h4,
+.md-body h5,
+.md-body h6 {
+  font-size: 1em;
+}
+
+.md-body ul,
+.md-body ol {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+
+.md-body li + li {
+  margin-top: 3px;
+}
+
+.md-body li > ul,
+.md-body li > ol {
+  margin: 4px 0 0;
+}
+
+/* 任务列表：GFM 的 `- [ ]` 会渲染成 checkbox，方块点不该再占一个项目符号 */
+.md-body li.task-list-item {
+  list-style: none;
+  margin-left: -20px;
+}
+
+.md-body input[type='checkbox'] {
+  margin: 0 6px 0 0;
+  vertical-align: -1px;
+}
+
+.md-body code {
+  background: var(--subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-size: 0.9em;
+}
+
+.md-body pre {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: var(--subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  overflow-x: auto;
+}
+
+.md-body pre code {
+  background: none;
+  border: 0;
+  padding: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.md-body blockquote {
+  margin: 0 0 12px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--border);
+  color: var(--fg-muted);
+}
+
+/* 宽表格整页横向滚会把侧栏也推走：让表格自己滚（GitHub 的同一招） */
+.md-body table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+}
+
+.md-body th,
+.md-body td {
+  border: 1px solid var(--border);
+  padding: 5px 9px;
+  text-align: left;
+}
+
+.md-body thead th {
+  background: var(--subtle);
+  font-weight: 600;
+}
+
+.md-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+.md-body a {
+  color: var(--brand-700);
+  text-decoration: none;
+}
+
+.md-body a:hover {
+  text-decoration: underline;
+}
+
+.md-body img {
+  max-width: 100%;
+  border-radius: var(--radius-control);
+}
+
+.md-body del {
+  color: var(--fg-muted);
+}
+
+/* 正在流时，光标挂在最后一个块级元素的末尾 —— 这样它跟着文字走，而不是掉到下一行 */
+.md-body[data-streaming='true'] > :last-child::after {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--brand-600);
+  animation: pulse 1.1s var(--ease) infinite;
 }
 
 .stream-cursor {
@@ -900,6 +1303,27 @@ a {
 .chip-danger {
   color: var(--danger);
   border-color: var(--danger-border);
+}
+
+/* 「还在跑」的胶囊：一个会呼吸的点 + 走秒。它是这一屏唯一在说「此时此刻」的东西 */
+.chip-live {
+  color: var(--brand-700);
+  border-color: color-mix(in srgb, var(--brand-500) 25%, transparent);
+  background: color-mix(in srgb, var(--brand-500) 8%, transparent);
+}
+
+.dark .chip-live {
+  color: var(--brand-300);
+  border-color: color-mix(in srgb, var(--brand-300) 25%, transparent);
+}
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: pulse 1.1s var(--ease) infinite;
 }
 
 /* 思考过程 */
@@ -1020,6 +1444,47 @@ a {
 .tl-card.is-failed .tl-icon {
   color: var(--danger);
   background: var(--danger-bg);
+}
+
+/* ── 执行中的动感 ─────────────────────────────────────────
+ * 「agent 正在干活」要看得出来，这是产品的主画面：新出现的卡片自己长出来，还在跑的那张
+ * 顶上有一条走光、图标在呼吸。动作只碰 opacity / transform / background-position，
+ * 不改布局 —— 于是列表不会因为动画而跳动。`prefers-reduced-motion` 里上面那条
+ * `* { animation: none }` 会把它们全部关掉，卡片直接显示终态。
+ */
+
+.tl-card {
+  animation: rise 200ms var(--ease) both;
+}
+
+.tl-card.is-pending {
+  position: relative;
+  border-color: color-mix(in srgb, var(--brand-500) 30%, var(--border));
+}
+
+.tl-card.is-pending::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 2px;
+  background-image: linear-gradient(90deg, transparent, var(--brand-500), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: sweep 1.6s linear infinite;
+}
+
+@keyframes sweep {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+
+.tl-card.is-pending .tl-icon {
+  color: var(--brand-600);
+  animation: pulse 1.2s var(--ease) infinite;
 }
 
 .tl-tool {

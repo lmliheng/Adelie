@@ -17,6 +17,7 @@ import type {
   SessionDetail,
   SessionSummary,
   ToolInfo,
+  UsageReport,
   UserInfo,
 } from './types'
 
@@ -215,6 +216,27 @@ export const api = {
     request<{ tools: ToolInfo[] }>(target, '/api/tools', signal === undefined ? {} : { signal }).then(
       (data) => data.tools ?? [],
     ),
+
+  /**
+   * 用量与成本（契约 §2）。`scopeAll` 只有管理员有意义，普通用户传了服务端静默忽略 ——
+   * 界面照这条把开关只给管理员看。
+   *
+   * 查询串只在真的有参数时才拼：`/api/usage?` 这种空 `?` 虽然也能用，但请求路径与契约
+   * 里写的那一条不再逐字一致，而前端路径要对得上契约（scripts/audit.mjs 的 web-api-paths）。
+   */
+  usage: (
+    target: Credentials,
+    params: { from?: number; to?: number; scopeAll?: boolean } = {},
+    signal?: AbortSignal,
+  ) => {
+    const search = new URLSearchParams()
+    if (params.from !== undefined) search.set('from', String(params.from))
+    if (params.to !== undefined) search.set('to', String(params.to))
+    if (params.scopeAll === true) search.set('scope', 'all')
+    const query = search.toString()
+    const path = query === '' ? '/api/usage' : `/api/usage?${query}`
+    return request<UsageReport>(target, path, signal === undefined ? {} : { signal })
+  },
 
   cancel: (target: Credentials, id: string) =>
     request<unknown>(target, `/api/sessions/${encodeURIComponent(id)}/cancel`, { method: 'POST' }),

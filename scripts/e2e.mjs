@@ -198,6 +198,37 @@ try {
   await page.screenshot({ path: path.join(OUT, "03-done.png"), fullPage: true });
   console.log("\n--- 会话区 ---\n" + (await page.locator('[data-testid="messages"]').innerText()).slice(0, 1200));
 
+  // ── 正文是渲染出来的 Markdown（components/Markdown.tsx）──
+  // 以前这里 `white-space: pre-wrap` 把源码直接显示出来：一段带列表和代码的回答就是
+  // 一大块没排版的文本。判据落在**渲染结果**上（真的出现了 ul / code / pre），并且
+  // 语法符号本身不该再露出来（`**` 还在正文里 = 根本没渲染）。
+  const markdown = await page.locator('[data-testid="messages"] .md-body').last().evaluate((el) => ({
+    list: el.querySelector("ul > li") !== null,
+    bold: el.querySelector("strong") !== null,
+    inlineCode: el.querySelector("p code, li code") !== null,
+    fenced: el.querySelector("pre code") !== null,
+    rawMarkers: (el.textContent ?? "").includes("**"),
+  }));
+  if (!markdown.list || !markdown.bold || !markdown.inlineCode || !markdown.fenced) {
+    failures.push(`正文没有按 Markdown 渲染：${JSON.stringify(markdown)}`);
+  }
+  if (markdown.rawMarkers) {
+    failures.push("正文里还留着 Markdown 语法符号（**），说明渲染没生效");
+  }
+
+  // ── 输入框贴在视口底部（2026-10-04 用户报的「对话框有 bug」）──
+  // 根因是 `.app` 用 `grid-template-rows: auto auto 1fr` 时孩子只有两个，`.shell` 落进
+  // 第二行的 auto 里、第三行空着 —— 输入框悬在半空，下面留一大片白色。这条断言把它钉住：
+  // 输入框底边与视口底边不许差过 2px（安全区在桌面 Chromium 里恒为 0）。
+  const composerGap = await page.evaluate(() => {
+    const el = document.querySelector(".composer-wrap");
+    if (el === null) return null;
+    return Math.round(window.innerHeight - el.getBoundingClientRect().bottom);
+  });
+  if (composerGap === null || Math.abs(composerGap) > 2) {
+    failures.push(`输入框没有贴底：底边与视口底边差 ${composerGap}px`);
+  }
+
   // ── 输入区控件带：模型触发件显示的就是服务端记着的那个模型；两个面板都真的写进服务端 ──
   // 控件带上的两个控件是「胶囊触发件 + portal 面板」（见 components/ComposerMenu）：点触发件
   // 开面板、点行选中。显示值对上，顺带证明模型清单是从 GET /api/models 接出来的、且当前值
@@ -264,6 +295,29 @@ try {
     if (pathname !== `/${id}`) failures.push(`点「${label}」后 URL 是 ${pathname}，期望 /${id}`);
   }
   await page.screenshot({ path: path.join(OUT, "05-nav-usage.png") });
+
+  // ── 成本中心：页面上的数字与 /api/usage 对得上 ──
+  // 这一页的验收标准就是这句。比对的是**接口返回的数**与**界面上显示的数** ——
+  // 不看界面自己怎么说，两边都从同一份事件流算出来才对得上。
+  const usageApi = await (await fetch(`${origin}/api/usage`)).json();
+  const totalCard = await page.locator(".usage-card").last().evaluate((el) => ({
+    cost: el.querySelector(".usage-card-cost")?.textContent ?? "",
+    meta: el.querySelector(".usage-card-meta")?.textContent ?? "",
+    note: el.querySelector(".usage-card-note")?.textContent ?? "",
+  }));
+  const apiTotal = usageApi.summary.total;
+  if (!totalCard.meta.includes(`${apiTotal.runs} 轮`)) {
+    failures.push(`成本中心的「累计」卡没写轮次 ${apiTotal.runs}：${totalCard.meta}`);
+  }
+  const shownCost = Number(totalCard.cost.replace("$", ""));
+  // 金额按显示值比（界面会按自己的位数截断/补齐），差过一厘就算对不上
+  if (!Number.isFinite(shownCost) || Math.abs(shownCost - apiTotal.costUsd) > 0.001) {
+    failures.push(`成本中心的「累计」金额是 $${shownCost}，接口说 $${apiTotal.costUsd}`);
+  }
+  // 有未定价的轮次时卡上必须说出来 —— 否则 `$0` 会被读成「没花钱」
+  if (apiTotal.unpricedRuns > 0 && !/未定价/.test(totalCard.note)) {
+    failures.push(`累计卡上有 ${apiTotal.unpricedRuns} 轮未定价，界面没说：${totalCard.note}`);
+  }
 
   await page.goBack();
   await page.waitForFunction(titleIs, "插件", { timeout: 5000 });
