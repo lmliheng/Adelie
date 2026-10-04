@@ -8,7 +8,17 @@
 
 import { createSseParser, type SseFrame } from './sse'
 import { authHeaders, resolveRequestUrl, type Credentials } from '../lib/credentials'
-import type { ConfigInfo, ConfigPatch, HealthInfo, ModelCatalog, SessionDetail, SessionSummary, ToolInfo } from './types'
+import type {
+  AuthMe,
+  ConfigInfo,
+  ConfigPatch,
+  HealthInfo,
+  ModelCatalog,
+  SessionDetail,
+  SessionSummary,
+  ToolInfo,
+  UserInfo,
+} from './types'
 
 export class ApiError extends Error {
   readonly status: number
@@ -49,8 +59,14 @@ export function toApiError(error: unknown): ApiError {
 export function describeApiError(error: ApiError, target: Credentials): string {
   if (error.code === 'aborted') return '请求已取消'
   if (error.code === 'offline') return '未连接到 Adelie 服务端'
-  if (error.isAuth) return '未授权：服务端地址不对或 token 无效'
+  if (error.isAuth) return '未授权：服务端地址不对、token 无效，或登录态已过期'
   switch (error.code) {
+    case 'admin_required':
+      return '这个操作需要管理员'
+    case 'forbidden':
+      return error.message || '被拒绝了'
+    case 'conflict':
+      return error.message || '和已有数据冲突'
     case 'busy':
       return '这一轮还在执行中，等它结束或先停止'
     case 'stale_approval':
@@ -83,7 +99,11 @@ async function request<T>(target: Credentials, path: string, options: RequestOpt
     response = await fetch(resolveRequestUrl(target.baseUrl, path), {
       method: options.method ?? 'GET',
       headers,
-      // 同源请求带 cookie 没意义（单用户 token 鉴权），keepalive 又会限制体积；显式省略
+      // 带上 Cookie：登录态是 HttpOnly 的 `adelie_session`，脚本读不到它，
+      // 只能由浏览器自动附上 —— 这是「同源部署（服务端托管前端）就无需任何凭证配置」
+      // 的那条路。跨源（GitHub Pages 上的 PWA 指向局域网服务端）时 Cookie 不生效，
+      // 那条路用 Bearer token 兜底，见 lib/permissions 与 LoginScreen。
+      credentials: 'include',
       ...(options.body === undefined ? {} : { body: JSON.stringify(options.body) }),
       ...(options.signal === undefined ? {} : { signal: options.signal }),
     })
@@ -123,6 +143,45 @@ async function readError(response: Response): Promise<ApiError> {
 export const api = {
   health: (target: Credentials, signal?: AbortSignal) =>
     request<HealthInfo>(target, '/api/health', signal === undefined ? {} : { signal }),
+
+  // ---- 身份（契约 §1）----
+
+  /** 我是谁。匿名也会正常返回（`authenticated: false`），不是错误 */
+  me: (target: Credentials, signal?: AbortSignal) =>
+    request<AuthMe>(target, '/api/auth/me', signal === undefined ? {} : { signal }),
+
+  login: (target: Credentials, name: string, password: string) =>
+    request<{ user: UserInfo }>(target, '/api/auth/login', { method: 'POST', body: { name, password } }),
+
+  logout: (target: Credentials) => request<void>(target, '/api/auth/logout', { method: 'POST' }),
+
+  changePassword: (target: Credentials, body: { current?: string; password: string | null }) =>
+    request<{ user: UserInfo }>(target, '/api/auth/password', { method: 'POST', body }),
+
+  // ---- 用户管理（只有管理员能调用；非管理员会拿到 403 admin_required）----
+
+  listUsers: (target: Credentials, signal?: AbortSignal) =>
+    request<{ users: UserInfo[] }>(target, '/api/users', signal === undefined ? {} : { signal }).then(
+      (data) => data.users ?? [],
+    ),
+
+  createUser: (target: Credentials, body: { name: string; password?: string; isAdmin?: boolean }) =>
+    request<{ user: UserInfo }>(target, '/api/users', { method: 'POST', body }).then((data) => data.user),
+
+  deleteUser: (target: Credentials, id: string) =>
+    request<void>(target, `/api/users/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+
+  setUserPassword: (target: Credentials, id: string, password: string | null) =>
+    request<{ user: UserInfo }>(target, `/api/users/${encodeURIComponent(id)}/password`, {
+      method: 'POST',
+      body: { password },
+    }).then((data) => data.user),
+
+  setUserRole: (target: Credentials, id: string, isAdmin: boolean) =>
+    request<{ user: UserInfo }>(target, `/api/users/${encodeURIComponent(id)}/role`, {
+      method: 'POST',
+      body: { isAdmin },
+    }).then((data) => data.user),
 
   listSessions: (target: Credentials, signal?: AbortSignal) =>
     request<{ sessions: SessionSummary[] }>(target, '/api/sessions', signal === undefined ? {} : { signal }).then(
@@ -188,6 +247,7 @@ export async function streamMessage(
     response = await fetch(resolveRequestUrl(target.baseUrl, `/api/sessions/${encodeURIComponent(sessionId)}/messages`), {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'text/event-stream', ...authHeaders(target.token) },
+      credentials: 'include',
       body: JSON.stringify({ text }),
       signal,
     })

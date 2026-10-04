@@ -1,12 +1,16 @@
 // src/App.tsx
 //
-// 组装：顶栏 + 会话侧栏 + 对话区（或连接/加载/空态）+ 输入框 + 设置 + Toast。
+// 组装：**身份门** + 顶栏 + 会话侧栏 + 对话区（或连接/加载/空态）+ 输入框 + 设置 + Toast。
 //
-// 状态全在 useAdelie 里，这里只做三件事：把状态映射成界面分支、维护纯视图状态
-// （抽屉、设置开关、草稿、滚动跟随）、把用户动作转成一个调用。
+// 身份门在 P3 加进来：服务端说「你是匿名」时先登录，其余一律照旧。本机打开
+// （回环、没配 token）的那位服务端直接认成管理员，所以桌面壳看不到这一层。
+//
+// 主界面用 `key` 重挂而不是把身份透进 useAdelie：登录态一变，会话列表、配置、
+// 工具表全都要按新身份重取，让 hook 按原样重新跑一遍比在它内部逐处判断干净。
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './components/Icon'
+import { Glyph } from './components/Icon'
 import { TopBar } from './components/TopBar'
 import { Sidebar } from './components/Sidebar'
 import { EmptyState, ConnectionPanel } from './components/EmptyState'
@@ -14,19 +18,75 @@ import { Composer } from './components/Composer'
 import { TurnView } from './components/TurnView'
 import { TranscriptSkeleton } from './components/Skeleton'
 import { SettingsDialog } from './components/SettingsDialog'
+import { LoginScreen } from './components/LoginScreen'
+import { UsersDialog } from './components/UsersDialog'
 import { ToastHost } from './components/ToastHost'
 import { useAdelie } from './hooks/useAdelie'
+import { useAuth, type AuthState } from './hooks/useAuth'
 import { useTheme } from './hooks/useTheme'
-import { useToast } from './hooks/useToast'
+import { useToast, type ToastController } from './hooks/useToast'
+import { loadCredentials, saveCredentials, type Credentials } from './lib/credentials'
 
 export function App(): ReactNode {
+  const [credentials, setCredentials] = useState<Credentials>(() => loadCredentials())
+  const auth = useAuth(credentials)
+  const toast = useToast()
+
+  const applyCredentials = useCallback((next: Credentials) => {
+    saveCredentials(next)
+    setCredentials(next)
+  }, [])
+
+  if (auth.status === 'checking') {
+    return (
+      <div className="app">
+        <div className="boot">
+          <Glyph size={36} />
+          <span>连接中…</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (auth.status === 'anonymous') {
+    return (
+      <div className="app">
+        <LoginScreen credentials={credentials} onSaveCredentials={applyCredentials} login={auth.login} />
+        <ToastHost toasts={toast.toasts} onDismiss={toast.dismiss} />
+      </div>
+    )
+  }
+
+  return (
+    <Shell
+      // 身份或连接变了就整片重挂：会话、配置、工具表都要按新身份重取
+      key={`${credentials.baseUrl}|${credentials.token}|${auth.epoch}`}
+      auth={auth}
+      credentials={credentials}
+      onSaveCredentials={applyCredentials}
+      toast={toast}
+    />
+  )
+}
+
+function Shell({
+  auth,
+  credentials,
+  onSaveCredentials,
+  toast,
+}: {
+  auth: AuthState
+  credentials: Credentials
+  onSaveCredentials: (next: Credentials) => void
+  toast: ToastController
+}): ReactNode {
   const adelie = useAdelie()
   const { theme, toggle } = useTheme()
-  const toast = useToast()
 
   const [draft, setDraft] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [usersOpen, setUsersOpen] = useState(false)
 
   const messagesRef = useRef<HTMLDivElement | null>(null)
   /** 用户往上翻历史时不再强行拉到底，只在贴底时跟随 */
@@ -69,8 +129,13 @@ export function App(): ReactNode {
   const { newSession, removeSession, openSession, saveConfig, loadConfig, loadTools, setCredentials } = adelie
   const openSettings = useCallback(() => setSettingsOpen(true), [])
   const closeSettings = useCallback(() => setSettingsOpen(false), [])
+  const closeUsers = useCallback(() => setUsersOpen(false), [])
+  const openUsers = useCallback(() => setUsersOpen(true), [])
   const closeSidebar = useCallback(() => setSidebarOpen(false), [])
   const toggleSidebar = useCallback(() => setSidebarOpen((value) => !value), [])
+  const handleLogout = useCallback(() => {
+    void auth.logout()
+  }, [auth])
   const handleNewSession = useCallback(() => {
     void newSession().then((id) => {
       if (id === null) toast.push('新建会话失败，检查服务端连接', 'error')
@@ -101,14 +166,19 @@ export function App(): ReactNode {
       ? '描述要 Adelie 做什么，发送时会新建一个会话'
       : '描述要 Adelie 做什么…'
 
+  const user = auth.me?.user ?? null
+
   return (
     <div className="app">
       <TopBar
         connection={adelie.connection}
         workspace={adelie.config.data?.workspace ?? null}
         theme={theme}
+        user={user === null ? null : { name: user.name, isAdmin: user.isAdmin, kind: user.kind }}
         onToggleTheme={toggle}
         onOpenSettings={openSettings}
+        onOpenUsers={openUsers}
+        onLogout={handleLogout}
         onToggleSidebar={toggleSidebar}
       />
 
@@ -233,8 +303,8 @@ export function App(): ReactNode {
       <SettingsDialog
         open={settingsOpen}
         onClose={closeSettings}
-        credentials={adelie.credentials}
-        onSaveCredentials={setCredentials}
+        credentials={credentials}
+        onSaveCredentials={onSaveCredentials}
         config={adelie.config.data}
         configStatus={adelie.config.status}
         configError={adelie.config.error}
@@ -245,6 +315,8 @@ export function App(): ReactNode {
         toolsError={adelie.tools.error}
         loadTools={loadTools}
       />
+
+      <UsersDialog open={usersOpen} onClose={closeUsers} credentials={credentials} />
 
       <ToastHost toasts={toast.toasts} onDismiss={toast.dismiss} />
     </div>

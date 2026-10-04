@@ -39,6 +39,38 @@ export interface ConfigInfo {
   approvalPolicy: string
   limits: { maxIterations: number; maxTokens: number | null }
   version: string
+  /** 这次请求是以谁的名义发出的。界面靠它决定哪些字段可编辑、要不要显示「用户」 */
+  identity: IdentityInfo
+}
+
+/** 身份（契约 §0）。`host` = 本机上没登录的那位（他就是管理员） */
+export interface IdentityInfo {
+  kind: string
+  name: string
+  isAdmin: boolean
+}
+
+/** 第 1 节：GET /api/auth/me。匿名时只有 authenticated: false */
+export interface AuthMe {
+  authenticated: boolean
+  user?: {
+    kind: string
+    name: string
+    isAdmin: boolean
+    id: string | null
+    hasPassword: boolean
+  }
+}
+
+/** 第 1 节：用户管理里的一个账号 */
+export interface UserInfo {
+  id: string
+  name: string
+  isAdmin: boolean
+  hasPassword: boolean
+  createdAt: number
+  isSelf: boolean
+  sessionCount: number
 }
 
 /**

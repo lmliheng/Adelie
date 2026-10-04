@@ -1598,3 +1598,156 @@ textarea.input {
   scrollbar-width: thin;
   scrollbar-color: var(--control-border) transparent;
 }
+
+/* ── 登录页与身份 ────────────────────────────────────────
+   只在两处出现：服务端说「你是匿名」时的整页登录（本机打开的人永远看不到），
+   以及顶栏右上角那个「我现在是谁」。样式沿用对话框那套令牌与边框，
+   理由是这两处不该长得像另一个应用。 */
+
+.login-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+  background: var(--bg);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 22rem;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  padding: 24px;
+}
+
+.login-mark {
+  display: flex;
+  justify-content: center;
+  color: var(--brand-600);
+}
+
+.login-title {
+  margin-top: 10px;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+.login-sub {
+  margin: 4px 0 18px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  text-align: center;
+}
+
+.login-error {
+  margin: -4px 0 12px;
+  font-size: 12.5px;
+  color: var(--danger);
+}
+
+.login-connection-toggle {
+  margin-top: 8px;
+}
+
+.login-foot {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--fg-faint);
+}
+
+.boot {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--fg-faint);
+  font-size: 13px;
+}
+
+.who {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px;
+  color: var(--fg-muted);
+  max-width: 12rem;
+}
+
+.who-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.who-admin {
+  font-size: 10.5px;
+  color: var(--brand-600);
+  border-left: 1px solid var(--border);
+  padding-left: 6px;
+}
+
+.dark .who-admin {
+  color: var(--brand-300);
+}
+
+.users-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.users-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--subtle);
+}
+
+.users-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.users-meta {
+  font-size: 11.5px;
+  color: var(--fg-faint);
+}
+
+.users-row .btn {
+  height: 28px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--fg-muted);
+  margin-bottom: 12px;
+}

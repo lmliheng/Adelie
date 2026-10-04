@@ -1,8 +1,8 @@
-// 认证：单用户、本机优先，没有账号体系（契约 §0）。
+// 认证的底料：请求从哪来、带没带 token（契约 §0，身份的判定在 identity.ts）。
 //
-// 判据只有两条：请求是不是从回环地址来的，以及 token 有没有被显式设置。
-// 这里刻意不引入会话 cookie / 登录态 —— 客户端是同一台机器上的浏览器或桌面壳，
-// 跨机的那个场景（手机 PWA）由契约里的「带 token 的 URL」覆盖。
+// 这个文件只回答两个问题：请求是不是从回环地址来的，以及 token 有没有被显式设置。
+// 「是谁」（Cookie / Bearer / 回环 ⇒ 主机管理员）与「哪条路由要什么身份」都在
+// identity.ts —— 那里一处定，别处不再判。
 import { getConnInfo } from '@hono/node-server/conninfo';
 import type { Context, MiddlewareHandler } from 'hono';
 

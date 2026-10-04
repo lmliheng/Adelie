@@ -9,6 +9,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { Icon } from './Icon'
 import { api, describeApiError, toApiError } from '../api/client'
 import { normalizeBaseUrl, parseConnectionInput, type Credentials } from '../lib/credentials'
+import { canEditField, permissionHint } from '../lib/permissions'
 import { durationZh } from '../lib/format'
 import type { ConfigInfo, ConfigPatch, ModelCatalog, ToolInfo } from '../api/types'
 
@@ -62,6 +63,13 @@ export function SettingsDialog({
   const [catalog, setCatalog] = useState<ModelCatalog | null>(null)
 
   const group = catalog?.groups.find((item) => item.id === provider) ?? null
+
+  // 哪些字段能改由身份决定（判据在 lib/permissions.ts，与服务端那四条一致）。
+  // 置灰而不是隐藏：按钮消失会让人以为功能不存在，置灰加一句原因才对得上
+  // 「为什么我不能改」这个问题。
+  const identity = config?.identity ?? null
+  const mayEdit = (field: 'workspace' | 'baseUrl' | 'provider' | 'apiKey' | 'model' | 'limits'): boolean =>
+    canEditField(identity, field)
 
   // loadConfig / loadTools 是父组件传进来的函数：不放进 effect 依赖，而是用 ref 取最新的一份。
   // 否则父组件每次渲染换一个新的箭头函数就会让这个 effect 反复跑，而 effect 里又 setState，
@@ -181,16 +189,26 @@ export function SettingsDialog({
       return // 换服务端后配置要重新拉，先让用户看到新连接的结果
     }
 
-    const patch: ConfigPatch = { workspace }
+    // 只提交这个身份**有权改**的字段：把无权字段一起发过去只会换回一个 403，
+    // 于是「保存」这个按钮在普通用户手里永远失败 —— 而他明明只改了模型
+    const patch: ConfigPatch = {}
+    if (mayEdit('workspace')) patch.workspace = workspace
     // 模型与提供方一起提交：它们是一条引用。只给 provider 时服务端会落到那一家的默认模型
-    patch.model = model.trim() === '' ? { provider } : { provider, model: model.trim() }
-    if (modelBaseUrl !== (config?.baseUrl ?? '')) patch.baseUrl = modelBaseUrl === '' ? null : modelBaseUrl
+    if (mayEdit('provider')) {
+      patch.model = model.trim() === '' ? { provider } : { provider, model: model.trim() }
+    } else if (mayEdit('model')) {
+      // 普通用户只能改型号：provider 原样带上（服务端不拦「同家换型号」）
+      patch.model = { provider: config?.model.provider ?? provider, model: model.trim() }
+    }
+    if (mayEdit('baseUrl') && modelBaseUrl !== (config?.baseUrl ?? '')) {
+      patch.baseUrl = modelBaseUrl === '' ? null : modelBaseUrl
+    }
     const iterations = Number(maxIterations)
     if (Number.isFinite(iterations) && iterations > 0) patch.maxIterations = Math.floor(iterations)
     const tokens = maxTokens.trim() === '' ? null : Number(maxTokens)
     if (tokens === null || Number.isFinite(tokens)) patch.maxTokens = tokens
     // 密钥只在填了新值时才提交（空 = 不修改）
-    if (apiKey.trim() !== '') patch.apiKey = apiKey.trim()
+    if (mayEdit('apiKey') && apiKey.trim() !== '') patch.apiKey = apiKey.trim()
 
     setSaving(true)
     const ok = await saveConfig(patch)
@@ -297,9 +315,14 @@ export function SettingsDialog({
                     className="input"
                     value={workspace}
                     spellCheck={false}
+                    disabled={!mayEdit('workspace')}
                     onChange={(event) => setWorkspace(event.target.value)}
                   />
-                  <span className="hint">改工作区会切换会话列表（旧会话仍留在旧工作区）</span>
+                  <span className="hint">
+                    {mayEdit('workspace')
+                      ? '改工作区会切换会话列表（旧会话仍留在旧工作区）'
+                      : permissionHint(identity, 'workspace')}
+                  </span>
                 </div>
                 <div className="grid-2">
                   <div className="field">
@@ -308,6 +331,7 @@ export function SettingsDialog({
                       id="cfg-provider"
                       className="input"
                       value={provider}
+                      disabled={!mayEdit('provider')}
                       onChange={(event) => {
                         const next = event.target.value
                         setProvider(next)
@@ -329,12 +353,20 @@ export function SettingsDialog({
                         ),
                       )}
                     </select>
-                    {group !== null && (
-                      <span className="hint">
-                        密钥读 <code>{group.envKey}</code>
-                        {group.hasApiKey ? '（已配置）' : '（尚未配置）'}
-                      </span>
-                    )}
+                    <span className="hint">
+                      {mayEdit('provider') ? (
+                        group === null ? (
+                          ''
+                        ) : (
+                          <>
+                            密钥读 <code>{group.envKey}</code>
+                            {group.hasApiKey ? '（已配置）' : '（尚未配置）'}
+                          </>
+                        )
+                      ) : (
+                        permissionHint(identity, 'provider')
+                      )}
+                    </span>
                   </div>
                   <div className="field">
                     <label htmlFor="cfg-model">model</label>
@@ -366,8 +398,10 @@ export function SettingsDialog({
                     value={modelBaseUrl}
                     placeholder="留空 = 用 provider 默认地址"
                     spellCheck={false}
+                    disabled={!mayEdit('baseUrl')}
                     onChange={(event) => setModelBaseUrl(event.target.value)}
                   />
+                  {!mayEdit('baseUrl') && <span className="hint">{permissionHint(identity, 'baseUrl')}</span>}
                 </div>
                 <div className="field">
                   <label htmlFor="cfg-key">API key</label>
@@ -378,9 +412,14 @@ export function SettingsDialog({
                     value={apiKey}
                     placeholder={config.hasApiKey ? '已配置（留空 = 不修改）' : '尚未配置'}
                     autoComplete="off"
+                    disabled={!mayEdit('apiKey')}
                     onChange={(event) => setApiKey(event.target.value)}
                   />
-                  <span className="hint">只写不读：服务端不会把密钥回传给浏览器</span>
+                  <span className="hint">
+                    {mayEdit('apiKey')
+                      ? '只写不读：服务端不会把密钥回传给浏览器'
+                      : permissionHint(identity, 'apiKey')}
+                  </span>
                 </div>
                 <div className="grid-2">
                   <div className="field">

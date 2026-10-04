@@ -26,6 +26,9 @@ export type IconName =
   | 'offline'
   | 'shield'
   | 'sparkle'
+  | 'user'
+  | 'users'
+  | 'logout'
 
 const PATHS: Record<IconName, ReactNode> = {
   menu: (
@@ -133,6 +136,27 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <path d="M12 4l1.6 4.4L18 10l-4.4 1.6L12 16l-1.6-4.4L6 10l4.4-1.6L12 4Z" />
       <path d="M18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" />
+    </>
+  ),
+  user: (
+    <>
+      <circle cx="12" cy="8" r="3.4" />
+      <path d="M5 20c0-3.3 3.1-5.5 7-5.5s7 2.2 7 5.5" />
+    </>
+  ),
+  users: (
+    <>
+      <circle cx="9.5" cy="8.5" r="3" />
+      <path d="M3.5 19.5c0-3 2.7-5 6-5s6 2 6 5" />
+      <path d="M16 6.2a3 3 0 0 1 0 5.6" />
+      <path d="M17.5 19.5c0-2-0.6-3.5-1.7-4.6" />
+    </>
+  ),
+  logout: (
+    <>
+      <path d="M14 5.5H6.5a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5H14" />
+      <path d="M16.5 12H10" />
+      <path d="M14 9.5 16.5 12 14 14.5" />
     </>
   ),
 }
