@@ -66,6 +66,7 @@
     "@lmliheng/data-analysis": "workspace:*",
     "@lmliheng/goal": "workspace:*",
     "@lmliheng/humanizer": "workspace:*",
+    "@lmliheng/lesson-video": "workspace:*",
     "@lmliheng/model-development": "workspace:*",
     "@lmliheng/skill-porting": "workspace:*",
     "@lmliheng/software-development": "workspace:*",

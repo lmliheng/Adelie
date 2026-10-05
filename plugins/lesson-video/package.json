@@ -1,0 +1,33 @@
+{
+  "name": "@lmliheng/lesson-video",
+  "version": "0.3.1",
+  "description": "Narrated vertical lesson videos (1080x1920) from a script: an HTML slide deck driven by time, edge-tts voice-over with word-level timing, Playwright frame capture, ffmpeg mux, cover art and publishing copy.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmliheng/Adelie.git",
+    "directory": "plugins/lesson-video"
+  },
+  "keywords": [
+    "adelie-plugin",
+    "penguin-harness",
+    "video",
+    "1080x1920",
+    "vertical",
+    "tts",
+    "edge-tts",
+    "playwright",
+    "ffmpeg",
+    "slides"
+  ],
+  "files": [
+    "plugin.json",
+    "icon.svg",
+    "README.md",
+    "skills",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <title>Kaggle 房价预测 · 封面</title>
+    <style>
+      /* 竖屏封面：与课件同一套视觉语言（纯黑 + 点阵 + 单一蓝强调），一帧定格、无动画 */
+      :root {
+        --bg: #000;
+        --surface: #0d0d0d;
+        --border: #1f1f1f;
+        --border-2: #303030;
+        --fg: #f3f4f6;
+        --fg-muted: #9ca3af;
+        --fg-faint: #6b7280;
+        --brand: #8ab4f8;
+        --brand-deep: #4285f4;
+        --brand-tint: #1a2b45;
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-font-smoothing: antialiased;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 1080px;
+        height: 100%;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          "Microsoft YaHei", "PingFang SC", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+      }
+
+      #grid {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(138, 180, 248, 0.12) 1.8px, transparent 1.8px);
+        background-size: 76px 76px;
+      }
+      #num {
+        position: absolute;
+        right: -70px;
+        bottom: -190px;
+        font-size: 900px;
+        font-weight: 700;
+        line-height: 0.78;
+        color: rgba(66, 133, 244, 0.11);
+        letter-spacing: -0.06em;
+        user-select: none;
+      }
+
+      #top {
+        position: absolute;
+        left: 96px;
+        right: 150px;
+        top: 104px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      #brand {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-size: 32px;
+        color: var(--fg-faint);
+        letter-spacing: 0.02em;
+      }
+      #brand .mark {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px 12px 12px 5px;
+        background: var(--brand-deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        font-weight: 700;
+        color: #08111f;
+      }
+      #wm {
+        font-size: 26px;
+        color: var(--fg-faint);
+        opacity: 0.55;
+        font-family: Consolas, "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      #mid {
+        position: absolute;
+        left: 96px;
+        right: 120px;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0;
+      }
+      .badge {
+        align-self: flex-start;
+        background: var(--brand-tint);
+        color: var(--brand);
+        font-size: 38px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        padding: 14px 34px;
+        border-radius: 9999px;
+        margin-bottom: 52px;
+      }
+      .title {
+        font-size: 134px;
+        font-weight: 600;
+        letter-spacing: -0.045em;
+        line-height: 1.12;
+        margin: 0;
+      }
+      .title .ln {
+        display: block;
+      }
+      .title .hi {
+        color: var(--brand);
+      }
+      .rule {
+        width: 230px;
+        height: 7px;
+        background: var(--brand-deep);
+        border-radius: 4px;
+        margin: 56px 0 44px;
+      }
+      .sub {
+        font-size: 48px;
+        line-height: 1.42;
+        color: var(--fg-muted);
+        margin: 0;
+      }
+      .sub .ln {
+        display: block;
+      }
+      .pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        margin-top: 54px;
+      }
+      .pill {
+        border: 1px solid var(--border-2);
+        border-radius: 9999px;
+        padding: 14px 32px;
+        font-size: 34px;
+        color: var(--fg-muted);
+      }
+
+      #foot {
+        position: absolute;
+        left: 96px;
+        right: 150px;
+        bottom: 110px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 36px;
+        color: var(--fg-muted);
+      }
+      #foot .cta {
+        background: var(--fg);
+        color: #111827;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 18px 42px;
+        font-size: 34px;
+      }
+
+      /* 主页 3:4 版：内容居中不变，只把字号与留白收一点，避免上下被裁 */
+      .h34 .title {
+        font-size: 118px;
+      }
+      .h34 .sub {
+        font-size: 44px;
+      }
+      .h34 .badge {
+        font-size: 34px;
+        margin-bottom: 44px;
+      }
+      .h34 .rule {
+        margin: 46px 0 38px;
+      }
+      .h34 .pills {
+        margin-top: 46px;
+      }
+      .h34 #foot {
+        bottom: 80px;
+      }
+      .h34 #num {
+        font-size: 760px;
+        bottom: -160px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="grid"></div>
+    <div id="num"></div>
+    <div id="top">
+      <div id="brand"><span class="mark" id="brand-mark"></span><span id="brand-text"></span></div>
+      <div id="wm"></div>
+    </div>
+    <div id="mid">
+      <div class="badge" id="badge"></div>
+      <h1 class="title" id="title"></h1>
+      <div class="rule"></div>
+      <p class="sub" id="sub"></p>
+      <div class="pills" id="pills"></div>
+    </div>
+    <div id="foot">
+      <span id="foot-left"></span>
+      <span class="cta" id="cta"></span>
+    </div>
+    <script>
+      "use strict";
+      const esc = (s) =>
+        String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      window.__init = function (c, size) {
+        if (size === "3x4") document.body.classList.add("h34");
+        const brand = c.brand || "";
+        document.getElementById("brand-text").textContent = brand;
+        // 台标字母 / 右上角水印 / 右下角 CTA 都从数据来：没给就自动取首字、或整块隐藏
+        document.getElementById("brand-mark").textContent =
+          c.mark || brand.trim().slice(0, 1) || "▶";
+        const wm = document.getElementById("wm");
+        wm.textContent = c.wm || "";
+        wm.style.display = c.wm ? "" : "none";
+        const cta = document.getElementById("cta");
+        cta.textContent = c.cta || "";
+        cta.style.display = c.cta ? "" : "none";
+        document.getElementById("badge").textContent =
+          "第 " + c.no + " 集" + (c.tag ? " · " + c.tag : "");
+        document.getElementById("title").innerHTML = c.titleLines
+          .map(
+            (l, i) =>
+              `<span class="ln${i === c.titleLines.length - 1 && c.hiLast !== false ? " hi" : ""}">${esc(l)}</span>`,
+          )
+          .join("");
+        document.getElementById("sub").innerHTML = c.subLines
+          .map((l) => `<span class="ln">${esc(l)}</span>`)
+          .join("");
+        document.getElementById("pills").innerHTML = c.pills
+          .map((p) => `<span class="pill">${esc(p)}</span>`)
+          .join("");
+        document.getElementById("num").textContent = c.no;
+        document.getElementById("foot-left").textContent = c.foot || "Kaggle 房价预测 · 16 集";
+        document.title = c.no + " " + c.titleLines.join("");
+      };
+    </script>
+  </body>
+</html>

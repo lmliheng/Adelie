@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kaggle 房价预测 · 竖屏课件</title>
+    <style>
+      /* 1080x1920 竖屏课件：所有样式都从时间 t 计算，不含 CSS 过渡，保证逐帧可复现 */
+      :root {
+        --bg: #000;
+        --surface: #0d0d0d;
+        --border: #1f1f1f;
+        --border-2: #303030;
+        --fg: #f3f4f6;
+        --fg-muted: #9ca3af;
+        --fg-faint: #6b7280;
+        --brand: #8ab4f8;
+        --brand-deep: #4285f4;
+        --brand-tint: #1a2b45;
+        --amber: #f0b429;
+        --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+      }
+      * {
+        box-sizing: border-box;
+        -webkit-font-smoothing: antialiased;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          "Microsoft YaHei", "PingFang SC", ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+      }
+      code,
+      pre,
+      .mono {
+        font-family: Consolas, "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      /* 常驻背景：点阵网格，随整条片子极缓慢平移 —— 页面切换时的“连续性”来源 */
+      #bg {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(rgba(138, 180, 248, 0.1) 1.6px, transparent 1.6px);
+        background-size: 72px 72px;
+      }
+
+      #bar {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1080px;
+        height: 8px;
+        background: #141414;
+        z-index: 40;
+      }
+      #barfill {
+        height: 100%;
+        width: 0;
+        background: var(--brand-deep);
+      }
+
+      #brand {
+        position: absolute;
+        left: 150px;
+        top: 172px;
+        z-index: 35;
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        font-size: 30px;
+        color: var(--fg-faint);
+        letter-spacing: 0.02em;
+      }
+      #brand .mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px 10px 10px 4px;
+        background: var(--brand-deep);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        font-weight: 700;
+        color: #08111f;
+      }
+      /* 常驻水印：右上角，与正文右边界对齐 */
+      #wm {
+        position: absolute;
+        right: 178px;
+        top: 180px;
+        z-index: 35;
+        font-size: 26px;
+        letter-spacing: 0.02em;
+        color: var(--fg-faint);
+        opacity: 0.62;
+        font-family: Consolas, "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .scene {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1080px;
+        height: 1920px;
+        padding: 300px 185px 450px 150px;
+        display: none;
+        flex-direction: column;
+        justify-content: flex-start;
+        will-change: transform, opacity;
+      }
+      .scene.on {
+        display: flex;
+      }
+      .scene.center {
+        justify-content: center;
+        padding-bottom: 620px;
+      }
+
+      .kicker {
+        font-size: 30px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--brand);
+        margin-bottom: 30px;
+      }
+      /* text-wrap:balance —— 标题折行时左右均衡，避免最后一行只剩一两个字（安全区变窄后尤其明显） */
+      .stitle {
+        font-size: 68px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1.24;
+        margin: 0 0 62px;
+        text-wrap: balance;
+      }
+
+      /* 开场 */
+      .hero {
+        font-size: 132px;
+        font-weight: 600;
+        letter-spacing: -0.045em;
+        line-height: 1.06;
+        margin: 0 0 30px;
+        text-wrap: balance;
+      }
+      .hero-sub {
+        font-size: 48px;
+        color: var(--fg-muted);
+        line-height: 1.5;
+        margin: 0 0 54px;
+      }
+      .rule {
+        width: 220px;
+        height: 5px;
+        background: var(--brand-deep);
+        border-radius: 3px;
+        margin-bottom: 48px;
+      }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+      }
+      .tag {
+        border: 1px solid var(--border-2);
+        border-radius: 9999px;
+        padding: 12px 26px;
+        font-size: 32px;
+        color: var(--fg-muted);
+      }
+
+      /* 要点 */
+      .item {
+        display: flex;
+        gap: 26px;
+        align-items: flex-start;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        padding: 34px 38px;
+        margin-bottom: 30px;
+      }
+      .item .dot {
+        flex: 0 0 auto;
+        width: 16px;
+        height: 16px;
+        border-radius: 9999px;
+        background: var(--brand-deep);
+        margin-top: 20px;
+      }
+      .item .tx {
+        font-size: 42px;
+        line-height: 1.5;
+      }
+      .item .tx em {
+        font-style: normal;
+        color: var(--brand);
+      }
+
+      /* 数学 */
+      .formula-card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        padding: 38px 40px;
+        margin-bottom: 32px;
+        border-left: 6px solid var(--border-2);
+      }
+      .formula-card.hi {
+        border-left-color: var(--brand-deep);
+        background: var(--brand-tint);
+      }
+      .fc-label {
+        font-size: 30px;
+        color: var(--fg-faint);
+        margin-bottom: 22px;
+      }
+      .fc-body {
+        font-size: 50px;
+        line-height: 1.6;
+        color: var(--fg);
+      }
+      .fc-body sup,
+      .fc-body sub {
+        font-size: 0.62em;
+      }
+      .frac {
+        display: inline-flex;
+        flex-direction: column;
+        vertical-align: middle;
+        text-align: center;
+        margin: 0 6px;
+        font-size: 0.78em;
+        line-height: 1.15;
+      }
+      .frac b {
+        font-weight: 600;
+        border-bottom: 2px solid currentColor;
+        padding: 0 8px;
+      }
+      .frac i {
+        font-style: normal;
+        padding: 0 8px;
+      }
+
+      /* 密集型：公式卡 ≥4 张时收紧，保证不越过 y=1470 的字幕安全线 */
+      .scene.dense .stitle {
+        font-size: 56px;
+        margin-bottom: 36px;
+      }
+      .scene.dense .formula-card {
+        padding: 22px 32px;
+        margin-bottom: 18px;
+      }
+      .scene.dense .fc-label {
+        font-size: 24px;
+        margin-bottom: 10px;
+      }
+      .scene.dense .fc-body {
+        font-size: 38px;
+        line-height: 1.5;
+      }
+
+      /* 代码 */
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+      .card-hd {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 20px 26px;
+        border-bottom: 1px solid var(--border);
+        font-size: 26px;
+        color: var(--fg-faint);
+      }
+      .card-hd .dots {
+        display: flex;
+        gap: 9px;
+      }
+      .card-hd .dots i {
+        width: 14px;
+        height: 14px;
+        border-radius: 9999px;
+        background: var(--border-2);
+        display: block;
+      }
+      .card-bd {
+        padding: 22px 24px 26px;
+        font-size: 23px;
+        line-height: 1.7;
+        white-space: pre;
+        overflow: hidden;
+      }
+      .ln {
+        display: block;
+      }
+      .k {
+        color: #ff7b72;
+      } /* keyword */
+      .s {
+        color: #a5d6ff;
+      } /* string */
+      .c {
+        color: #6b7280;
+      } /* comment */
+      .n {
+        color: #79c0ff;
+      } /* number */
+      .f {
+        color: #d2a8ff;
+      } /* call */
+      .m {
+        color: var(--fg-muted);
+      }
+
+      .notes {
+        margin-top: 30px;
+      }
+      .note {
+        display: flex;
+        gap: 20px;
+        font-size: 32px;
+        color: var(--fg-muted);
+        line-height: 1.55;
+        margin-bottom: 18px;
+      }
+      .note .n-dot {
+        flex: 0 0 auto;
+        width: 12px;
+        height: 12px;
+        border-radius: 9999px;
+        background: var(--brand);
+        margin-top: 16px;
+      }
+
+      /* 结尾 */
+      .outro {
+        font-size: 104px;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        line-height: 1.12;
+        margin: 0 0 28px;
+        text-wrap: balance;
+      }
+      .outro-sub {
+        font-size: 44px;
+        color: var(--fg-muted);
+        margin: 0 0 64px;
+      }
+      .cta {
+        display: inline-block;
+        background: var(--fg);
+        color: #111827;
+        font-size: 40px;
+        font-weight: 600;
+        border-radius: 10px;
+        padding: 22px 46px;
+      }
+
+      /* 字幕 */
+      #subs {
+        position: absolute;
+        left: 0;
+        top: 1490px;
+        width: 1080px;
+        height: 230px;
+        z-index: 30;
+        text-align: center;
+      }
+      .sub {
+        position: absolute;
+        left: 110px;
+        width: 860px;
+        text-align: center;
+        font-size: 46px;
+        line-height: 1.34;
+        font-weight: 600;
+        text-shadow: 0 2px 18px rgba(0, 0, 0, 0.95);
+      }
+      .sub.prev {
+        top: 0;
+        font-size: 36px;
+        font-weight: 400;
+        color: var(--fg-faint);
+      }
+      .sub.cur {
+        top: 66px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bg"></div>
+    <div id="brand"><span class="mark" id="brand-mark"></span><span id="brand-text"></span></div>
+    <div id="wm"></div>
+    <div id="scenes"></div>
+    <div id="subs">
+      <div class="sub prev" id="sub-prev"></div>
+      <div class="sub cur" id="sub-cur"></div>
+    </div>
+    <div id="bar"><div id="barfill"></div></div>
+
+    <script>
+      "use strict";
+      const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+      /* ---------- 极简 Python 语法高亮（离线、确定性） ---------- */
+      const PY_MASTER =
+        /(#[^\n]*)|('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")|\b(\d+\.?\d*)\b|\b(from|import|def|class|return|if|elif|else|for|in|while|with|as|not|and|or|None|True|False|lambda|self|print)\b|([A-Za-z_][A-Za-z_0-9]*)(?=\()/g;
+      function highlight(src) {
+        let out = "",
+          last = 0,
+          m;
+        PY_MASTER.lastIndex = 0;
+        while ((m = PY_MASTER.exec(src)) !== null) {
+          out += esc(src.slice(last, m.index));
+          const [full, comment, str, num, kw, fn] = m;
+          const cls = comment ? "c" : str ? "s" : num ? "n" : kw ? "k" : "f";
+          out += `<span class="${cls}">${esc(full)}</span>`;
+          last = m.index + full.length;
+        }
+        out += esc(src.slice(last));
+        return out;
+      }
+      /* 代码行逐行出现：整段在 reveal 秒内走完，长幕短幕都合适 */
+      function codeLines(code, dur, reveal) {
+        const lines = code.split("\n");
+        const n = lines.length;
+        const secs = Math.min(reveal || 4.5, (dur || 10) * 0.55);
+        const start = 0.04 * (dur || 10);
+        const step = n > 1 ? (secs - start) / (n - 1) : 0;
+        return lines
+          .map(
+            (l, i) =>
+              `<span class="ln" data-at="${Math.max(0, start + i * step).toFixed(2)}">${l ? highlight(l) : " "}</span>`,
+          )
+          .join("");
+      }
+
+      /* ---------- 各幕模板 ---------- */
+      const T = {
+        title: (s) => `
+    <div class="kicker" data-r="0.02">${esc(s.kicker)}</div>
+    <h1 class="hero" data-r="0.06">${esc(s.title)}</h1>
+    <div class="rule" data-r="0.12"></div>
+    <p class="hero-sub" data-r="0.16">${esc(s.sub)}</p>
+    <div class="tags">${(s.tags || []).map((t, i) => `<span class="tag" data-r="${(0.24 + i * 0.07).toFixed(2)}">${esc(t)}</span>`).join("")}</div>`,
+
+        points: (s) => `
+    <div class="kicker" data-r="0.02">${esc(s.kicker)}</div>
+    <h2 class="stitle" data-r="0.06">${esc(s.title)}</h2>
+    ${(s.items || [])
+      .map(
+        (t, i) => `<div class="item" data-r="${(0.16 + i * 0.17).toFixed(2)}">
+        <span class="dot"></span><div class="tx">${t}</div></div>`,
+      )
+      .join("")}`,
+
+        math: (s) => `
+    <div class="kicker" data-r="0.02">${esc(s.kicker)}</div>
+    <h2 class="stitle" data-r="0.06">${esc(s.title)}</h2>
+    ${(s.steps || [])
+      .map(
+        (st, i) => `<div class="formula-card${st.hi ? " hi" : ""}" ${at(st, 0.16 + i * 0.24)}>
+        <div class="fc-label">${esc(st.label)}</div>
+        <div class="fc-body">${st.formula}</div></div>`,
+      )
+      .join("")}`,
+
+        code: (s) => `
+    <div class="kicker" data-r="0.02">${esc(s.kicker)}</div>
+    <h2 class="stitle" data-r="0.06">${esc(s.title)}</h2>
+    <div class="card" data-r="0.10">
+      <div class="card-hd"><span class="dots"><i></i><i></i><i></i></span>${esc(s.file)}</div>
+      <div class="card-bd">${codeLines(s.code, s.dur, s.code_reveal)}</div>
+    </div>`,
+
+        source: (s) => `
+    <div class="kicker" data-r="0.02">${esc(s.kicker)}</div>
+    <h2 class="stitle" data-r="0.06">${esc(s.title)}</h2>
+    <div class="card" data-r="0.10">
+      <div class="card-hd"><span class="dots"><i></i><i></i><i></i></span>${esc(s.file)}</div>
+      <div class="card-bd">${codeLines(s.code, s.dur, s.code_reveal)}</div>
+    </div>
+    <div class="notes">${(s.notes || [])
+      .map(
+        (t, i) =>
+          `<div class="note" ${at(t, 0.56 + i * 0.12)}><span class="n-dot"></span><span>${esc(typeof t === "string" ? t : t.text)}</span></div>`,
+      )
+      .join("")}</div>`,
+
+        outro: (s) => `
+    <div class="kicker" data-r="0.02">${esc(s.kicker)}</div>
+    <h2 class="outro" data-r="0.08">${esc(s.title)}</h2>
+    <p class="outro-sub" data-r="0.16">${esc(s.sub)}</p>
+    <div ${at({ at: s.cta_at }, 0.3)}><span class="cta">${esc(s.cta)}</span></div>`,
+      };
+
+      /* 出现时机：优先用脚本里写死的秒数 at（贴着讲解走），否则按场景进度比例 r */
+      function at(item, r) {
+        return item && item.at !== undefined ? `data-at="${item.at}"` : `data-r="${r.toFixed(2)}"`;
+      }
+
+      /* ---------- 缓动：与设计规范同一条 cubic-bezier(.2,.7,.3,1) ---------- */
+      function cubicBezier(x1, y1, x2, y2) {
+        const A = (a, b) => 1 - 3 * b + 3 * a,
+          B = (a, b) => 3 * b - 6 * a,
+          C = (a) => 3 * a;
+        const calc = (t, a, b) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
+        const slope = (t, a, b) => 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a);
+        return (x) => {
+          if (x <= 0) return 0;
+          if (x >= 1) return 1;
+          let t = x;
+          for (let i = 0; i < 8; i++) {
+            const d = slope(t, x1, x2);
+            if (Math.abs(d) < 1e-6) break;
+            t -= (calc(t, x1, x2) - x) / d;
+          }
+          return calc(t, y1, y2);
+        };
+      }
+      const ease = cubicBezier(0.2, 0.7, 0.3, 1);
+      const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+
+      /* ---------- 全局状态 ---------- */
+      let L = null,
+        scenes = [];
+      const els = [];
+
+      function __init(lesson) {
+        L = lesson;
+        const meta = lesson.meta;
+        const brand = meta.brand || meta.series || "";
+        document.getElementById("brand-text").textContent = brand;
+        // 台标字母与右上角水印都来自数据：meta.mark / meta.wm，没给就自动取首字 / 整块隐藏
+        document.getElementById("brand-mark").textContent =
+          meta.mark || brand.trim().slice(0, 1) || "▶";
+        const wm = document.getElementById("wm");
+        wm.textContent = meta.wm || "";
+        wm.style.display = meta.wm ? "" : "none";
+        const host = document.getElementById("scenes");
+        scenes = lesson.scenes;
+        scenes.forEach((s) => {
+          const el = document.createElement("div");
+          el.className = "scene";
+          if (s.type === "title" || s.type === "outro") el.classList.add("center");
+          if (s.type === "math" && (s.steps || []).length >= 4) el.classList.add("dense");
+          el.innerHTML = T[s.type](s);
+          host.appendChild(el);
+          els.push({
+            def: s,
+            el,
+            rev: [...el.querySelectorAll("[data-r],[data-at]")].map((n) => ({
+              n,
+              // data-at 是相对本幕的秒数；data-r 是场景进度比例，统一折成秒
+              at:
+                n.dataset.at !== undefined
+                  ? parseFloat(n.dataset.at)
+                  : parseFloat(n.dataset.r) * s.dur,
+            })),
+          });
+        });
+      }
+
+      function seek(t) {
+        const total = L.duration;
+        document.getElementById("barfill").style.width = clamp01(t / total) * 100 + "%";
+        document.getElementById("bg").style.backgroundPosition =
+          `${(-t * 11).toFixed(1)}px ${(-t * 7).toFixed(1)}px`;
+
+        // 字幕：当前句 + 上一句
+        const subs = L.subtitles;
+        let idx = -1;
+        for (let i = 0; i < subs.length; i++) if (t >= subs[i].start) idx = i;
+        const cur = subs[idx],
+          prev = idx > 0 ? subs[idx - 1] : null;
+        const elCur = document.getElementById("sub-cur"),
+          elPrev = document.getElementById("sub-prev");
+        if (cur && t <= cur.end + 0.5) {
+          elCur.textContent = cur.text;
+          elCur.style.opacity = Math.min(
+            clamp01((t - cur.start) / 0.14),
+            clamp01((cur.end + 0.28 - t) / 0.2),
+          );
+          if (prev && t < cur.start + 0.9) {
+            elPrev.textContent = prev.text;
+            elPrev.style.opacity = clamp01((cur.start + 0.9 - t) / 0.5) * 0.75;
+          } else {
+            elPrev.textContent = "";
+            elPrev.style.opacity = 0;
+          }
+        } else {
+          elCur.style.opacity = 0;
+          elPrev.style.opacity = 0;
+        }
+
+        els.forEach(({ def, el, rev }, i) => {
+          const local = t - def.start;
+          if (local < 0 || local > def.dur) {
+            el.classList.remove("on");
+            return;
+          }
+          el.classList.add("on");
+          const p = clamp01(local / def.dur);
+          const enter = ease(clamp01(local / 0.42)); // 进场 0.42s
+          const leave = ease(clamp01((def.dur - local) / 0.3)); // 出场 0.30s
+          const a = Math.min(enter, leave);
+          el.style.opacity = a;
+          el.style.transform = `translateY(${((1 - enter) * 46 - (1 - leave) * 34).toFixed(2)}px)`;
+          rev.forEach(({ n, at }) => {
+            // 逐帧算，不用 CSS 过渡 —— 进场固定 0.38s，与幕长无关
+            const q = ease(clamp01((local - at) / 0.38));
+            n.style.opacity = q;
+            n.style.transform = `translateY(${((1 - q) * 24).toFixed(2)}px)`;
+          });
+        });
+      }
+
+      window.__init = __init;
+      window.seek = seek;
+    </script>
+  </body>
+</html>

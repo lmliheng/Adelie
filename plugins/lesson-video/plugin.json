@@ -1,0 +1,9 @@
+{
+  "description": "Produce a narrated vertical lesson video (1080x1920) and its cover art from a written script: an HTML slide deck driven purely by time, edge-tts voice-over with word-level timing, Playwright frame capture, and an ffmpeg mux with edge safe areas left empty for mobile app buttons — plus a pre-render self-check for text overflow, and publishing copy with at most five tags.",
+  "description_zh": "把写好的讲稿做成竖屏教学视频（1080×1920）与配套封面：HTML 课件按时间轴定格、edge-tts 逐词对齐配音、Playwright 逐帧截图、ffmpeg 合成，两侧与上部按手机 App 按钮留出安全区，渲染前先自检越界与裁切，并给出标签不超过五个的发布文案。",
+  "short_description": "Narrated 1080x1920 lesson video from a script: HTML deck + edge-tts + ffmpeg.",
+  "short_description_zh": "讲稿一键成竖屏教学视频（1080×1920）：HTML 课件 + edge-tts + ffmpeg，含封面与发布文案。",
+  "version": "2026.10.06.1",
+  "category": "office-productivity",
+  "preinstall": false
+}

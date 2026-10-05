@@ -1,0 +1,14 @@
+[
+  {
+    "id": "demo-gap",
+    "no": "1",
+    "brand": "示例教程 · 1 集",
+    "wm": "@GitHub/your-handle",
+    "cta": "关注抖音号 your-handle",
+    "titleLines": ["一句话", "讲一件事"],
+    "subLines": ["两行副标题，每行别超过二十来个字", "第二行放一个真实数字"],
+    "pills": ["标签一", "标签二", "标签三"],
+    "tag": "示例",
+    "foot": "示例系列 · 第 1 集"
+  }
+]

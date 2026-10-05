@@ -1,0 +1,53 @@
+{
+  "id": "demo-gap",
+  "series": "示例系列",
+  "episode": "第 1 集 · 示例",
+  "brand": "示例教程 · 1 集",
+  "wm": "@GitHub/your-handle",
+  "voice": "zh-CN-YunxiNeural",
+  "rate": "+18%",
+  "gap": 0.3,
+  "scenes": [
+    {
+      "id": "s1",
+      "type": "title",
+      "kicker": "第 1 集 · 示例",
+      "title": "一集三分钟，讲清一件事",
+      "sub": "标题、要点、代码，三幕都要有",
+      "tags": ["示例", "竖屏", "课件"],
+      "narration": "这一集是模板示例。三分钟讲一件事，画面由时间轴驱动，配音和字幕都是从同一份脚本里长出来的。"
+    },
+    {
+      "id": "s2",
+      "type": "points",
+      "kicker": "01 · 要点",
+      "title": "要点幕：三行字就够",
+      "items": [
+        "每行一句话，<em>关键词</em>用 em 标蓝",
+        "cue 写在 content 上，配音念到就出现",
+        "整幕内容不能越过 y=1470 的字幕安全线"
+      ],
+      "narration": "要点幕放三行就够。关键词用 em 标出来，配音念到哪个词，哪一行就跟着出现，不用手算时间。"
+    },
+    {
+      "id": "s3",
+      "type": "code",
+      "kicker": "02 · 代码",
+      "title": "代码幕：行宽是关键",
+      "file": "demo.py",
+      "code": "def hello(name):\n    return f\"hi {name}\"",
+      "code_reveal": 3,
+      "narration": "代码幕要注意行宽，太长的行会被卡片裁掉，渲染前的自检会告你哪一行越界。"
+    },
+    {
+      "id": "s4",
+      "type": "outro",
+      "kicker": "下一集",
+      "title": "把标题写在这里",
+      "sub": "副标题写一句就够了",
+      "cta": "关注抖音号 your-handle",
+      "cta_cue": "关注",
+      "narration": "好，这一集就到这。关注我，下一集见。"
+    }
+  ]
+}
