@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Badge, CloseIcon, NoticeStrip, Skeleton, useDialogLayer } from "@prismshadow/penguin-ui";
+import { Badge, CloseIcon, NoticeStrip, Skeleton, useDialogLayer } from "@lmliheng/penguin-ui";
 import type {
   HarnessHistoryEntry,
   IfaceChange,
@@ -20,7 +20,7 @@ import type {
   ModuleChange,
   VersionHistoryDiffResponse,
   VersionHistoryResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import * as api from "../../api/endpoints";
 import { formatDateTime } from "../../lib/format";
 import { S } from "../../lib/strings";

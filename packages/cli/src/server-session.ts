@@ -1,6 +1,6 @@
 /**
  * Session/agent API helpers shared by the server-backed commands (run / chat / ls /
- * input / logs / schedule). DTO shapes come from `@prismshadow/penguin-server/api`
+ * input / logs / schedule). DTO shapes come from `@lmliheng/penguin-server/api`
  * (type-only — nothing of the server is loaded at runtime).
  */
 import path from "node:path";
@@ -12,8 +12,8 @@ import type {
   SessionInfo,
   SessionResponse,
   SessionsResponse,
-} from "@prismshadow/penguin-server/api";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-server/api";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import { resolveSessionRef, ServerClient } from "./client.js";
 import { dim } from "./render.js";
 import type { Messages } from "./i18n.js";

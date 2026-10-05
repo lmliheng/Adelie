@@ -6,7 +6,7 @@
  * hold.
  */
 import { describe, expect, it } from "vitest";
-import type { SessionInfo } from "@prismshadow/penguin-server/api";
+import type { SessionInfo } from "@lmliheng/penguin-server/api";
 import { heldRouteSession } from "../src/features/chat/session-project";
 
 const row = (sessionId: string) => ({ sessionId }) as SessionInfo;

@@ -14,8 +14,8 @@
  * - An under-cap streamed body passes through intact (the cap re-feeds what it counted).
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { assistantText } from "@prismshadow/penguin-core";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+import { assistantText } from "@lmliheng/penguin-core";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import { bodyLimitBytes, MIN_ATTACHMENT_MB } from "../src/services/attachment-limits.js";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";
 import { createTestApp, provisionUser, waitFor } from "./helpers.js";

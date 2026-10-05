@@ -21,7 +21,7 @@
  */
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
-import { agentsDir, buildScheduledMessage, userText } from "@prismshadow/penguin-core";
+import { agentsDir, buildScheduledMessage, userText } from "@lmliheng/penguin-core";
 import type { ScheduleStateRow } from "../db/repos/schedules.js";
 import { cacheable, statMtime } from "../internal/mtime-gate.js";
 import type { ErrorSink } from "./error-recorder.js";
@@ -30,8 +30,8 @@ import { latestSlotAt, slotInWindow } from "./schedule-file.js";
 import { ScheduleFileCache, readScheduleFile, validateScheduleModelRef } from "./schedule-store.js";
 import type { ScheduleConfigSource } from "./schedule-store.js";
 import type { ScheduleServerEvent } from "../api/types.js";
-import { Component, Interface, Use } from "@prismshadow/penguin-core/kernel";
-import type { ClassCtx } from "@prismshadow/penguin-core/kernel";
+import { Component, Interface, Use } from "@lmliheng/penguin-core/kernel";
+import type { ClassCtx } from "@lmliheng/penguin-core/kernel";
 import { userChannelKey } from "../http/routes/events.js";
 import type { Channels, Clock, Paths } from "../hmr/capabilities.js";
 import type { Schedules, Scheduling, SessionIndex } from "../mechanisms/sessions.js";

@@ -15,7 +15,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import type { MouseEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { Md } from "@prismshadow/penguin-ui";
+import { Md } from "@lmliheng/penguin-ui";
 import { WorkspaceLinksProvider } from "../src/features/chat/workspace-links";
 import { replyLinkBehavior, resolveReplyLink } from "../src/lib/reply-link";
 

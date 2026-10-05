@@ -37,6 +37,7 @@ import type {
   DesktopUpdateStatusResponse,
   DirectorySkillsResponse,
   DirCreateResponse,
+  DirDeleteResponse,
   DirListResponse,
   EndpointModelListResponse,
   FilesStatResponse,
@@ -112,7 +113,7 @@ import type {
   WorkflowInfo,
   WorkspaceFilesResponse,
   WorkspaceSearchResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 // The catalog decides which groups publish a balance, as it does on the server.
 import { providerInfo } from "../../../../core/dist/state/model-catalog.js";
 import { READ_ONLY } from "./errors";
@@ -748,7 +749,7 @@ router
     const page = Number.isFinite(limit) && limit > 0 ? rows.slice(offset, offset + limit) : rows;
     const response: { sessions: SessionInfo[] } & Partial<
       Pick<
-        import("@prismshadow/penguin-server/api").SessionsResponse,
+        import("@lmliheng/penguin-server/api").SessionsResponse,
         "counts" | "workspaceCounts" | "workspaceLatest"
       >
     > = { sessions: page };
@@ -792,6 +793,26 @@ router
     listing.entries.push({ name, path, kind: "dir" });
     store.f.dirs[path] = { path, parent, entries: [] };
     return json({ path } satisfies DirCreateResponse, 201);
+  })
+  // The picker's "Delete", the pair of the one above: the demo's little filesystem drops the
+  // folder it just created, so the parent the picker reloads no longer lists it. Only an empty
+  // folder goes — the server refuses anything else and never deletes a tree — and only this
+  // server's own filesystem, which is what the machine-scoped listing's absence says.
+  .delete("/api/projects/:projectId/dirs", ({ store, body }): unknown => {
+    const input = record(body);
+    const target = typeof input.path === "string" ? input.path : "";
+    const listing = store.f.dirs[target];
+    if (listing === undefined) fail(404, "dir_not_found", `Directory does not exist: ${target}.`);
+    if (listing.entries.length > 0) {
+      fail(409, "dir_not_empty", `Directory is not empty: ${target}.`);
+    }
+    delete store.f.dirs[target];
+    // The parent listing, when the demo's filesystem holds one: a root has none.
+    const parent = listing.parent === null ? undefined : store.f.dirs[listing.parent];
+    if (parent !== undefined) {
+      parent.entries = parent.entries.filter((entry) => entry.path !== target);
+    }
+    return { path: target } satisfies DirDeleteResponse;
   })
   // Only the desktop app's own window may ask macOS for a folder, and the gallery is not one.
   .post("/api/projects/:projectId/dirs/access", () =>

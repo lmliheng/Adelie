@@ -6,7 +6,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import type { MeResponse, UploadLimits, UserInfo } from "@prismshadow/penguin-server/api";
+import type { MeResponse, UploadLimits, UserInfo } from "@lmliheng/penguin-server/api";
 import * as api from "../api/endpoints";
 import { ApiError, setUnauthorizedHandler } from "../api/client";
 import { probeSession } from "../api/session-probe";

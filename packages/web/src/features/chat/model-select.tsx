@@ -7,8 +7,8 @@
  * composer's other switch picker, the `/agent` handoff, is the UI package's PickerList.
  */
 import { useState } from "react";
-import type { ModelInfo, ModelRefDto } from "@prismshadow/penguin-server/api";
-import { ModelSelect } from "@prismshadow/penguin-ui";
+import type { ModelInfo, ModelRefDto } from "@lmliheng/penguin-server/api";
+import { ModelSelect } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { sameModelRef } from "../models/model-grouping";
 import { modelLabel } from "./model-picker-logic";

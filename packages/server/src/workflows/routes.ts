@@ -16,7 +16,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Hono } from "hono";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { AppEnv } from "../auth/middleware.js";
 import { HttpError } from "../http/errors.js";
 import { requireValidId } from "../http/validate.js";

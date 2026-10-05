@@ -15,7 +15,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import type { AppEnv } from "../src/auth/middleware.js";
-import type { Hmr } from "@prismshadow/penguin-hmr";
+import type { Hmr } from "@lmliheng/penguin-hmr";
 import { platformHttpSeam } from "../src/hmr/http-seam.js";
 import type { PlatformApi } from "../src/hmr/platform.js";
 import { apiClient, createTestApp, loginAdmin } from "./helpers.js";

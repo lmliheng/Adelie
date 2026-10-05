@@ -16,9 +16,9 @@ import {
   ACCENT_PRESETS,
   resolveAccent as resolveListed,
   THEME_ACCENT_PRESETS,
-} from "@prismshadow/penguin-ui";
-import type { ThemeId } from "@prismshadow/penguin-ui";
-import type { AccentChoice } from "@prismshadow/penguin-ui/boot";
+} from "@lmliheng/penguin-ui";
+import type { ThemeId } from "@lmliheng/penguin-ui";
+import type { AccentChoice } from "@lmliheng/penguin-ui/boot";
 
 /** The stored value for "no preset": the theme's own accent, no `data-accent` on the root. */
 export const THEME_ACCENT: AccentChoice = "neutral";

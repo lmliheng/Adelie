@@ -16,7 +16,7 @@
  *   every plugin it is behind on, and counts distinct plugins as the notice does.
  */
 import { describe, expect, it } from "vitest";
-import type { InstalledPluginsResponse } from "@prismshadow/penguin-server/api";
+import type { InstalledPluginsResponse } from "@lmliheng/penguin-server/api";
 import {
   availablePluginRows,
   installedPluginRows,

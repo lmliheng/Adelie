@@ -4,7 +4,7 @@
  * the display statuses, what the search matches, and the whole-file toggle body.
  */
 import { describe, expect, it } from "vitest";
-import type { ProjectScheduleItem, ScheduleItem } from "@prismshadow/penguin-server/api";
+import type { ProjectScheduleItem, ScheduleItem } from "@lmliheng/penguin-server/api";
 import {
   SCHEDULE_FILTERS,
   pendingScheduleSessions,

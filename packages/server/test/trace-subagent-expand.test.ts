@@ -20,8 +20,8 @@ import {
   toolCall,
   toolCallOutput,
   userText,
-} from "@prismshadow/penguin-core";
-import type { OmniMessage, SessionMetaPayload } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { OmniMessage, SessionMetaPayload } from "@lmliheng/penguin-core";
 import type { TraceService } from "../src/services/trace-service.js";
 import { makeTraceHarness } from "./helpers.js";
 

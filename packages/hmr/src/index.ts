@@ -1,5 +1,5 @@
 /**
- * @prismshadow/penguin-hmr — the hot-update MECHANISM, and nothing else.
+ * @lmliheng/penguin-hmr — the hot-update MECHANISM, and nothing else.
  *
  * What a deployment does is not in this package and must never be: see README.md, which
  * states the rule and the reason it is enforced by a package boundary rather than by

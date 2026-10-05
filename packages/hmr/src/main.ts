@@ -17,7 +17,7 @@
  * be built over it while the first generation is still coming up.
  */
 import zlib from "node:zlib";
-import type { Instance, Park } from "@prismshadow/penguin-core/kernel";
+import type { Instance, Park } from "@lmliheng/penguin-core/kernel";
 import type { HmrHost, UpgradeAllTarget, UpgradeOutcome } from "./host.js";
 import { isBlobName } from "./host.js";
 

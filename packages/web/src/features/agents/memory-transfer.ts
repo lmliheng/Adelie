@@ -15,7 +15,7 @@ import type {
   MemoryImportMode,
   MemoryScopeExport,
   MemoryTransferFile,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { S } from "../../lib/strings";
 
 /** Format marker of a scope document, typed against the DTO so this literal cannot drift from the server's. */

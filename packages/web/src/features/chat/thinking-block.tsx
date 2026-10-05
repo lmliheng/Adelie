@@ -2,7 +2,7 @@
  * A thinking item of the session's stream, drawn by the shared UI package's `ThinkingBlock`:
  * this binds the item's streaming and stop state to the row's run state and labels.
  */
-import { ThinkingBlock } from "@prismshadow/penguin-ui";
+import { ThinkingBlock } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import type { ThinkingItem } from "../../lib/omni/stream-model";
 

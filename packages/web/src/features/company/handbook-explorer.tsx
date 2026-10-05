@@ -16,9 +16,9 @@
  * The rows themselves are `handbook-tree.ts`'s (`handbookTreeRows`); folders start collapsed and
  * the page expands the ones above the selected document.
  */
-import type { OrgHandbookFile } from "@prismshadow/penguin-server/api";
-import { FileTree } from "@prismshadow/penguin-ui";
-import type { TreeToggle } from "@prismshadow/penguin-ui";
+import type { OrgHandbookFile } from "@lmliheng/penguin-server/api";
+import { FileTree } from "@lmliheng/penguin-ui";
+import type { TreeToggle } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { formatBytes, formatDateTime, formatRelativeShort } from "../../lib/format";
 import type { Locale } from "../../state/locale";

@@ -7,7 +7,7 @@
  * the machine's own persisted record, never from the job slot.
  */
 import { describe, expect, it } from "vitest";
-import type { MachineInfo, MachineJob, MachinesResponse } from "@prismshadow/penguin-server/api";
+import type { MachineInfo, MachineJob, MachinesResponse } from "@lmliheng/penguin-server/api";
 import {
   anyJobPending,
   behindMachines,

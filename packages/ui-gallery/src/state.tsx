@@ -21,7 +21,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { applyThemeAttributes } from "@prismshadow/penguin-ui/boot";
+import { applyThemeAttributes } from "@lmliheng/penguin-ui/boot";
 import { asAccentChoice, resolveAccent } from "./lib/accents";
 import { replaceSearch, usePrefersDark, useSearch } from "./lib/location";
 import { probeAccents, probeTokens } from "./lib/token-probe";

@@ -3,7 +3,7 @@
  * than imported from core: the gallery does not depend on the core package, and the contract
  * already carries every shape the app reads off the wire, so deriving keeps one source.
  */
-import type { MessagesLiveTail, ServerEvent } from "@prismshadow/penguin-server/api";
+import type { MessagesLiveTail, ServerEvent } from "@lmliheng/penguin-server/api";
 
 export type OmniMessage = MessagesLiveTail["fragments"][number];
 export type OmniPayload = OmniMessage["payload"];

@@ -16,7 +16,7 @@ import type {
   OrgChannelMessage,
   OrgSessionsResponse,
   OrganizationSummary,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   createCompanyStore,
   isCompanyEvent,

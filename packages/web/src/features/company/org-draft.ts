@@ -10,7 +10,7 @@
  * Project's). Storage is injectable (work-mode.ts convention: vitest runs in Node with no
  * localStorage) and every read degrades to "no draft" rather than throwing at a dialog open.
  */
-import type { ModelRefDto } from "@prismshadow/penguin-server/api";
+import type { ModelRefDto } from "@lmliheng/penguin-server/api";
 
 /** Minimal storage interface (the subset of localStorage used here); tests inject an in-memory one. */
 export interface DraftStorage {

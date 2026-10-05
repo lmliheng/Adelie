@@ -33,8 +33,8 @@ import {
   PENGUIN_GO_PROVIDER_ID,
   catalogEntryFor,
   catalogModelEntries,
-} from "@prismshadow/penguin-core/model-catalog";
-import type { ModelsResponse } from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-core/model-catalog";
+import type { ModelsResponse } from "@lmliheng/penguin-server/api";
 import { fractionOff } from "./model-grouping";
 import type { RowState } from "./models-page";
 

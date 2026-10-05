@@ -7,7 +7,7 @@
  * come from the active dictionary, the dates from the caller's locale, and "today" from the
  * `now` the caller passes.
  */
-import type { ScheduleItem } from "@prismshadow/penguin-server/api";
+import type { ScheduleItem } from "@lmliheng/penguin-server/api";
 import { S } from "../../lib/strings";
 import { formatMonthDay, localYmd } from "../../lib/format";
 import type { Locale } from "../../state/locale";

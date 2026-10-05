@@ -1,5 +1,5 @@
 /** 空状态: the page placeholder with and without an action, and the dashed slot form. */
-import { Button, EmptyState, SettingsEmpty } from "@prismshadow/penguin-ui";
+import { Button, EmptyState, SettingsEmpty } from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

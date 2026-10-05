@@ -2,7 +2,7 @@
  * Repo for the project_members table: only member
  * authorization relationships — the owner is never in this table.
  */
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { Members } from "../../mechanisms/projects.js";
 

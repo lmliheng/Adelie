@@ -18,7 +18,7 @@ import {
   PasswordInput,
   AppLogo,
   Segmented,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { S } from "../lib/strings";
 import { apiErrorText } from "../lib/api-error";
 import { useDocumentTitle } from "../lib/use-document-title";

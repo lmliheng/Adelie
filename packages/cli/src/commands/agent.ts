@@ -11,7 +11,7 @@
  * Docs: /docs/cli § "penguin agent".
  */
 import type { Command } from "commander";
-import type { AgentCreateResponse, AgentSummary } from "@prismshadow/penguin-server/api";
+import type { AgentCreateResponse, AgentSummary } from "@lmliheng/penguin-server/api";
 import { resolveConnection, resolveProjectId, ServerClient } from "../client.js";
 import { listAgents } from "../server-session.js";
 import { renderTable } from "../table.js";

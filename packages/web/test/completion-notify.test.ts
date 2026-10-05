@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createCompletionTracker } from "../src/lib/completion-notify";
 import type { ObservedSession } from "../src/lib/completion-notify";
-import type { SessionStatus } from "@prismshadow/penguin-server/api";
+import type { SessionStatus } from "@lmliheng/penguin-server/api";
 
 const row = (sessionId: string, status: SessionStatus): ObservedSession => ({
   sessionId,

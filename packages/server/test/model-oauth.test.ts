@@ -25,7 +25,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { APP_URL, presetModelEntries, providerInfo } from "@prismshadow/penguin-core/model-catalog";
+import { APP_URL, presetModelEntries, providerInfo } from "@lmliheng/penguin-core/model-catalog";
 import type {
   ModelOAuthCodeResponse,
   ModelOAuthStartResponse,
@@ -49,7 +49,7 @@ import type { FetchFake } from "./fixtures/fetch.js";
 import { sessionRow } from "./fixtures/session.js";
 import { apiClient, createTestApp, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 /** The catalog group under test; the flow exists only because this entry declares it. */
 const TOKENDANCE = providerInfo("tokendance")!;

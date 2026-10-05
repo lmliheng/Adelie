@@ -10,7 +10,7 @@
  * succession and the key only contains the Project/Session ID, the later user would recover the
  * previous user's text, Workspace, model selection, and handoff target — a cross-account information leak.
  */
-import type { ApprovalMode, SessionSandbox } from "@prismshadow/penguin-server/api";
+import type { ApprovalMode, SessionSandbox } from "@lmliheng/penguin-server/api";
 
 const APPROVAL_MODES: ApprovalMode[] = ["always-ask", "read-only", "allow-all", "deny-all"];
 

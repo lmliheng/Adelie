@@ -25,7 +25,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { strToU8, unzipSync, zipSync } from "fflate";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { skillsDir, librarySkill, loadPreinstalledPlugins } from "@prismshadow/penguin-core";
+import { skillsDir, librarySkill, loadPreinstalledPlugins } from "@lmliheng/penguin-core";
 import type {
   AgentCreateResponse,
   AgentsResponse,

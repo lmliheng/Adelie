@@ -11,7 +11,7 @@
  */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import type { AgentSummary, ProjectSummary } from "@prismshadow/penguin-server/api";
+import type { AgentSummary, ProjectSummary } from "@lmliheng/penguin-server/api";
 import { useStore } from "zustand/react";
 import { createStore } from "zustand/vanilla";
 import * as api from "../api/endpoints";

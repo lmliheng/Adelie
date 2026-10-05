@@ -23,7 +23,7 @@ describe("EntityHeader", () => {
   );
 
   it("names the thing with a level-1 heading on its rung, not in mono", () => {
-    expect(html).toMatch(/<h1 class="[^"]*--ui-h1-size[^"]*">@penguinharness\/goal<\/h1>/);
+    expect(html).toMatch(/<h1 class="[^"]*--ui-h1-size[^"]*">@lmliheng\/goal<\/h1>/);
     expect(html).not.toContain("ui-display");
     expect(/<h1 class="([^"]*)"/.exec(html)![1]).not.toContain("font-mono");
   });

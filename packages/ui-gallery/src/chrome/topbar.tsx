@@ -10,7 +10,7 @@
  * At phone width the links and controls leave the bar for the drawer (chrome/site.tsx), where
  * every control has its label, and a menu button opens it.
  */
-import { THEME_IDS } from "@prismshadow/penguin-ui";
+import { THEME_IDS } from "@lmliheng/penguin-ui";
 import type { ReactNode } from "react";
 import { accentPresetsOf, accentSwatch, THEME_ACCENT } from "../lib/accents";
 import { BASE } from "../lib/location";

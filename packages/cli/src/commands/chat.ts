@@ -25,9 +25,9 @@
  */
 import { createInterface, type Interface } from "node:readline";
 import type { Command } from "commander";
-import { VERSION } from "@prismshadow/penguin-core";
-import type { ApprovalDecision, OmniMessage, ToolCallPayload } from "@prismshadow/penguin-core";
-import type { SessionInfo } from "@prismshadow/penguin-server/api";
+import { VERSION } from "@lmliheng/penguin-core";
+import type { ApprovalDecision, OmniMessage, ToolCallPayload } from "@lmliheng/penguin-core";
+import type { SessionInfo } from "@lmliheng/penguin-server/api";
 import { StreamRenderer, dim, renderHistory } from "../render.js";
 import { parseGoalCommand } from "../goal-command.js";
 import { parseThinkingCommand, resolveThinkingLevel } from "../thinking-command.js";

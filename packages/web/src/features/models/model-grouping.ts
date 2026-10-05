@@ -16,12 +16,8 @@
  * the identity, so a profile that has never dragged a group sees exactly the catalog
  * order. Storage stays out of this module: the caller loads the array and passes it in.
  */
-import {
-  MODEL_PROVIDERS,
-  catalogEntryFor,
-  offPeakAt,
-} from "@prismshadow/penguin-core/model-catalog";
-import type { ModelProviderInfo, OffPeakDiscount } from "@prismshadow/penguin-core/model-catalog";
+import { MODEL_PROVIDERS, catalogEntryFor, offPeakAt } from "@lmliheng/penguin-core/model-catalog";
+import type { ModelProviderInfo, OffPeakDiscount } from "@lmliheng/penguin-core/model-catalog";
 
 import { orderModelGroups } from "./model-group-order";
 

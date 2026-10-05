@@ -93,8 +93,8 @@ The full chain CI runs is `pnpm build`, `pnpm format:check`, `pnpm typecheck`, `
 Pick the narrowest evidence that would actually fail for this change's regression:
 
 ```sh
-pnpm --filter @prismshadow/penguin-core exec vitest run test/model-catalog.test.ts   # one file, ~1s
-pnpm --filter @prismshadow/penguin-web test                                          # one package
+pnpm --filter @lmliheng/penguin-core exec vitest run test/model-catalog.test.ts   # one file, ~1s
+pnpm --filter @lmliheng/penguin-web test                                          # one package
 ```
 
 | Changed | Run |

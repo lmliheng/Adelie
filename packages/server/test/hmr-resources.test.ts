@@ -13,9 +13,9 @@ import {
   schema,
   type,
   upgrade,
-} from "@prismshadow/penguin-core/kernel";
-import type { Json } from "@prismshadow/penguin-core/kernel";
-import { HotResources } from "@prismshadow/penguin-hmr";
+} from "@lmliheng/penguin-core/kernel";
+import type { Json } from "@lmliheng/penguin-core/kernel";
+import { HotResources } from "@lmliheng/penguin-hmr";
 import { TerminalManager } from "../src/terminal/manager.js";
 import type { TerminalSession } from "../src/terminal/session.js";
 import { DECLARED_RESOURCES as PARKED, packagedPlatform } from "../src/hmr/platform.js";

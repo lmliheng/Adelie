@@ -10,7 +10,7 @@
  * from when there is more than one, and a case's files come from the machine that listed it.
  */
 import { useEffect, useState } from "react";
-import type { BenchmarkCaseSummary, BenchmarkEvaluation } from "@prismshadow/penguin-server/api";
+import type { BenchmarkCaseSummary, BenchmarkEvaluation } from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   Button,
@@ -33,8 +33,8 @@ import {
   makeRangeGeom,
   segmentPoints,
   useChartWidth,
-} from "@prismshadow/penguin-ui";
-import type { ChartPaint } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { ChartPaint } from "@lmliheng/penguin-ui";
 import type { MergedBenchmark, MergedCase } from "../../lib/benchmark-merge";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

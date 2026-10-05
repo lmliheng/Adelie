@@ -3,7 +3,7 @@
  * (src/features/ai-create/default-agent.ts).
  */
 import { describe, expect, it } from "vitest";
-import type { AgentSummary } from "@prismshadow/penguin-server/api";
+import type { AgentSummary } from "@lmliheng/penguin-server/api";
 import { pickDefaultAgent } from "../src/features/ai-create/default-agent";
 
 const agent = (agentId: string) => ({ agentId }) as AgentSummary;

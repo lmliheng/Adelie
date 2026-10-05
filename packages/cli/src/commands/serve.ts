@@ -6,7 +6,7 @@
  *   penguin web [--port <port>] [--host <host>] [--no-open] [--app <project>/<agent>/<workflow>[/<tab>]]
  *
  * Both are entry points into the same service process: after setting PORT / HOST, it
- * dynamically imports `@prismshadow/penguin-server` (whose entry point handles dotenv
+ * dynamically imports `@lmliheng/penguin-server` (whose entry point handles dotenv
  * loading and graceful shutdown on its own), so the two never listen on separate ports
  * in parallel. Port/host priority: command-line option > existing environment variable
  * (including .env) > default 7364 / 127.0.0.1. `penguin web` additionally polls until the
@@ -28,12 +28,8 @@
 import { spawn } from "node:child_process";
 import type { ChildProcess } from "node:child_process";
 import path from "node:path";
-import {
-  DEFAULT_SERVER_PORT,
-  SERVER_RESTART_EXIT_CODE,
-  resolveRoot,
-} from "@prismshadow/penguin-core";
-import { liveServerLock } from "@prismshadow/penguin-server/lock";
+import { DEFAULT_SERVER_PORT, SERVER_RESTART_EXIT_CODE, resolveRoot } from "@lmliheng/penguin-core";
+import { liveServerLock } from "@lmliheng/penguin-server/lock";
 import type { Command } from "commander";
 import type { Messages, WebProbeFailureKind } from "../i18n.js";
 import { registerResetPasswordCommand } from "./reset-password.js";
@@ -127,7 +123,7 @@ export function cliEntryFor(argv1: string | undefined): string | null {
  * or null. The server itself re-checks on startup (the in-process backstop); checking
  * here keeps the friendly path — `penguin server` refuses with the URL, `penguin web`
  * simply opens the existing instance. Locks live per data root, so a second server on a
- * DIFFERENT root is untouched. See @prismshadow/penguin-server/lock.
+ * DIFFERENT root is untouched. See @lmliheng/penguin-server/lock.
  */
 async function existingInstanceUrl(): Promise<string | null> {
   const lock = await liveServerLock(resolveRoot());
@@ -210,7 +206,7 @@ async function startServer(
     supervise(cliEntry, host, port, t);
     return { host, port };
   }
-  await import("@prismshadow/penguin-server");
+  await import("@lmliheng/penguin-server");
   return { host, port };
 }
 

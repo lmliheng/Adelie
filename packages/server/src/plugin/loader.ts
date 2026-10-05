@@ -23,11 +23,7 @@
 import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
 import { parse as parseToml } from "smol-toml";
-import {
-  effectivePluginTable,
-  parsePluginTables,
-  projectConfigPath,
-} from "@prismshadow/penguin-core";
+import { effectivePluginTable, parsePluginTables, projectConfigPath } from "@lmliheng/penguin-core";
 import { findPackageJSON } from "node:module";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
@@ -38,11 +34,11 @@ import type {
   ModuleClass,
   ModuleDef,
   Resources,
-} from "@prismshadow/penguin-core/kernel";
-import { moduleDefOf, parseManifest } from "@prismshadow/penguin-core/kernel";
+} from "@lmliheng/penguin-core/kernel";
+import { moduleDefOf, parseManifest } from "@lmliheng/penguin-core/kernel";
 import { unpackedAssetsDir } from "../hmr/asset-archives.js";
 import { readManifest } from "../hmr/manifest.js";
-import type { Plugin } from "@prismshadow/penguin-core/plugin";
+import type { Plugin } from "@lmliheng/penguin-core/plugin";
 import type { LoadedPlugin } from "./host.js";
 import { PluginHost, pluginHostFrom } from "./host.js";
 import platformTable from "../ifaces.json" with { type: "json" };

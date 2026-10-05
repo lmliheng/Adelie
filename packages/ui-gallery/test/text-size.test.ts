@@ -16,7 +16,7 @@ import {
   FONT_CJK_OPTIONS,
   FONT_LATIN_OPTIONS,
   TEXT_SIZE_PX,
-} from "@prismshadow/penguin-ui/boot";
+} from "@lmliheng/penguin-ui/boot";
 import { appFrameSrc } from "../src/app/frame";
 import {
   CJK_FONTS,

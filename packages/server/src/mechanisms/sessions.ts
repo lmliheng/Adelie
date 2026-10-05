@@ -1,12 +1,12 @@
 /**
  * The sessions mechanisms: what a node may require, declared apart from what implements it.
  */
-import { Interface } from "@prismshadow/penguin-core/kernel";
-import type { Opaque } from "@prismshadow/penguin-core/kernel";
+import { Interface } from "@lmliheng/penguin-core/kernel";
+import type { Opaque } from "@lmliheng/penguin-core/kernel";
 import type { SessionSource, ApprovalMode } from "../api/types.js";
 import type { SessionRow } from "../db/repos/sessions.js";
-import type { ThinkingLevelName } from "@prismshadow/penguin-core";
-import type { SandboxSettings } from "@prismshadow/penguin-core/plugin";
+import type { ThinkingLevelName } from "@lmliheng/penguin-core";
+import type { SandboxSettings } from "@lmliheng/penguin-core/plugin";
 import type { ScheduleStateRow } from "../db/repos/schedules.js";
 import type { ScheduleFileCache } from "../runtime/schedule-store.js";
 import type { ScheduleEntryView } from "../runtime/scheduler.js";

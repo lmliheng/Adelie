@@ -165,7 +165,7 @@ describe("font licences", () => {
     const missing = fontDependencies
       .filter((dependency) => !mirrored.includes(`${family(dependency)}.txt`))
       .map((dependency) => `${dependency} → src/fonts/LICENSES/${family(dependency)}.txt`);
-    expect(missing, "Run `pnpm --filter @prismshadow/penguin-ui sync:font-licenses`.").toEqual([]);
+    expect(missing, "Run `pnpm --filter @lmliheng/penguin-ui sync:font-licenses`.").toEqual([]);
   });
 
   it("are not kept for fonts the package no longer depends on or vendors", () => {

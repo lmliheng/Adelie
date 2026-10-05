@@ -11,7 +11,7 @@
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MODEL_CATALOG } from "@prismshadow/penguin-core";
+import { MODEL_CATALOG } from "@lmliheng/penguin-core";
 import type { ModelBalanceResponse, ProjectCreateResponse } from "../src/api/types.js";
 import {
   BALANCE_CACHE_MS,

@@ -7,7 +7,7 @@
  * new document starts with; and how a relative link inside a document resolves to another.
  */
 import { describe, expect, it } from "vitest";
-import type { OrgHandbookFile } from "@prismshadow/penguin-server/api";
+import type { OrgHandbookFile } from "@lmliheng/penguin-server/api";
 import {
   HANDBOOK_INDEX,
   ancestorFolders,

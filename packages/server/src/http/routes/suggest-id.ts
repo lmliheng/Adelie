@@ -25,7 +25,7 @@
  * the organization service, recorded as the organization's.
  */
 import { Hono } from "hono";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { SemanticIdKind } from "../../api/types.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import type { Log } from "../../hmr/capabilities.js";

@@ -6,8 +6,8 @@
  * with a confirmation dialog.
  */
 import { useCallback, useEffect, useState } from "react";
-import type { UserInfo } from "@prismshadow/penguin-server/api";
-import { Badge, Button, Input, Modal, PasswordInput } from "@prismshadow/penguin-ui";
+import type { UserInfo } from "@lmliheng/penguin-server/api";
+import { Badge, Button, Input, Modal, PasswordInput } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

@@ -41,7 +41,7 @@ import type {
   ModelTestRequest,
   ModelUpdateEntry,
   ModelVisionDetectRequest,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   Button,
   Checkbox,
@@ -71,7 +71,7 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
@@ -96,12 +96,12 @@ import {
   providerEnvFallbackKey,
   providerInfo,
   unroutableVendorModel,
-} from "@prismshadow/penguin-core/model-catalog";
+} from "@lmliheng/penguin-core/model-catalog";
 import type {
   FastModeProtocol,
   ModelProviderBridgeAuth,
   ModelProviderInfo,
-} from "@prismshadow/penguin-core/model-catalog";
+} from "@lmliheng/penguin-core/model-catalog";
 import {
   allGroupKeys,
   discountedPrice,

@@ -29,7 +29,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react";
-import type { DesktopPrivacyPane, DirListResponse } from "@prismshadow/penguin-server/api";
+import type { DesktopPrivacyPane, DirListResponse } from "@lmliheng/penguin-server/api";
 import {
   Button,
   CloseIcon,
@@ -49,7 +49,7 @@ import {
   toastError,
   toastSuccess,
   useRowContextMenu,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { writeClipboard } from "../../lib/clipboard";

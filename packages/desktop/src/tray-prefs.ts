@@ -27,7 +27,7 @@ import path from "node:path";
 import type {
   DesktopTrayCommandMessage,
   DesktopTrayStatusMessage,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import type { TrayLocale } from "./tray-menu.js";
 
 /** Preference file name, inside the app's userData directory. */

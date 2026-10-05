@@ -5,7 +5,7 @@ description: Use whenever the user wants to build an agent application — their
 
 # Penguin Harness SDK
 
-`@prismshadow/penguin-core` is the TypeScript SDK this agent itself runs on. Use it to build your own AI apps:
+`@lmliheng/penguin-core` is the TypeScript SDK this agent itself runs on. Use it to build your own AI apps:
 
 - An **Agent** loads its state (prompts, tools, skills) from `<root>/<project_id>/agents/<agent_id>/`. Creating an Agent whose directory is empty initializes it with defaults.
 - A **Session** is one conversation of an Agent inside a **Workspace** directory.
@@ -44,10 +44,10 @@ If neither counted source yields a key, **stop immediately and ask the user to c
 ## Setup
 
 ```bash
-npm install @prismshadow/penguin-core tsx
+npm install @lmliheng/penguin-core tsx
 ```
 
-If the package is not on your npm registry (it is developed in the Adelie monorepo and may not be published), develop inside a checkout of the Adelie repo instead: add your app as a workspace package under `packages/`, depend on `"@prismshadow/penguin-core": "workspace:*"`, then `pnpm install && pnpm build` at the repo root. Tell the user which route you took.
+If the package is not on your npm registry (it is developed in the Adelie monorepo and may not be published), develop inside a checkout of the Adelie repo instead: add your app as a workspace package under `packages/`, depend on `"@lmliheng/penguin-core": "workspace:*"`, then `pnpm install && pnpm build` at the repo root. Tell the user which route you took.
 
 Configure a model for the app's data root, in this order — stop at the first that works:
 
@@ -67,7 +67,7 @@ The raw `run()` stream mixes model, event and session-meta payloads — always n
 ```ts
 import path from "node:path";
 import readline from "node:readline/promises";
-import { createAgent, isModelMessage, userText } from "@prismshadow/penguin-core";
+import { createAgent, isModelMessage, userText } from "@lmliheng/penguin-core";
 
 const agent = await createAgent({ root: path.join(import.meta.dirname, "penguin_data") });
 const session = await agent.createSession({ workspaceDir: process.cwd() });
@@ -108,7 +108,7 @@ Modern models think before answering and accept images; the stream and the input
 **Images in.** Build image input with `imageUrlMessage` (a web URL or a base64 data URL) beside `userText` in the same `run` input:
 
 ```ts
-import { imageUrlMessage, userText } from "@prismshadow/penguin-core";
+import { imageUrlMessage, userText } from "@lmliheng/penguin-core";
 session.run([userText(question), ...images.map(imageUrlMessage)], { ... });
 ```
 
@@ -151,7 +151,7 @@ find corpus -type f ! -regex '.*\.\(md\|mdx\|txt\|html?\)$' -delete && rm -rf co
 ```ts
 import fs from "node:fs";
 import path from "node:path";
-import { createAgent } from "@prismshadow/penguin-core";
+import { createAgent } from "@lmliheng/penguin-core";
 
 const ROOT = import.meta.dirname;
 const walk = (d: string): string[] =>
@@ -248,7 +248,7 @@ export function search(index: Index, query: string, k = 6): Chunk[] {
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { createAgent, isModelMessage, userText } from "@prismshadow/penguin-core";
+import { createAgent, isModelMessage, userText } from "@lmliheng/penguin-core";
 import { loadIndex, search } from "./rag.ts";
 
 const ROOT = import.meta.dirname;
@@ -379,8 +379,8 @@ The root manifest is named `Workflow`; it requires the host, provides the handle
     "modules": [
       {
         "name": "Workflow",
-        "requires": { "host": { "iface": "@prismshadow/penguin-server#WorkflowHost", "from": "Host" } },
-        "provides": { "main": "@prismshadow/penguin-server#WorkflowMain" },
+        "requires": { "host": { "iface": "@lmliheng/penguin-server#WorkflowHost", "from": "Host" } },
+        "provides": { "main": "@lmliheng/penguin-server#WorkflowMain" },
         "contributes": {
           "WebModule.sessionTabs": [
             { "id": "demo.main", "key": "main", "title": "Demo", "titleZh": "演示", "renderer": { "iframe": { "src": "ui/index.html" } } }
@@ -393,7 +393,7 @@ The root manifest is named `Workflow`; it requires the host, provides the handle
 ```
 
 ```ts
-import type { WorkflowPackage } from "@prismshadow/penguin-server/plugin";
+import type { WorkflowPackage } from "@lmliheng/penguin-server/plugin";
 
 export default {
   modules: {
@@ -425,7 +425,7 @@ export default {
 
 **TypeScript, checked by the server.** There is no build step to run, no `tsconfig.json` to write and nothing to `npm install`: the server builds one program from `index.ts` (and the `.ts` files it imports, with `.js` in the import specifier as NodeNext asks) under options it fixes itself — `strict` among them — refuses the load on any diagnostic, reporting file, line and reason, and otherwise emits into `.build/<revision>/` and imports that. `satisfies WorkflowPackage` is what types `use.host` and `req`; without it `strict` refuses the untyped parameters. A folder holding `index.js` or `index.mjs` instead is refused outright.
 
-**Types come from the harness that runs you.** One machine can run several harnesses — a release, a checkout, a platform someone pushed with interfaces of its own — and none of them is a version on npm, so `@prismshadow/penguin-server/plugin` is not a package here: the first time the server loads the folder it writes `.harness/plugin.d.ts`, rendered from ITS OWN interface table, and that is what the import resolves to. Create `package.json` and a minimal `index.ts`, let the server load it once, then read `.harness/plugin.d.ts` for the exact `WorkflowHost` this harness offers. The server then leaves `.harness/` alone: it is the record of what the workflow was written against, and a later generation of the platform is COMPARED with it, by the TypeScript compiler, both for what the workflow requires and what it provides — a host method you rely on that has since gone is a load error naming it, not a failure on the first call. To move a workflow onto the harness that runs it now, delete `.harness/` and fix what the compiler then reports.
+**Types come from the harness that runs you.** One machine can run several harnesses — a release, a checkout, a platform someone pushed with interfaces of its own — and none of them is a version on npm, so `@lmliheng/penguin-server/plugin` is not a package here: the first time the server loads the folder it writes `.harness/plugin.d.ts`, rendered from ITS OWN interface table, and that is what the import resolves to. Create `package.json` and a minimal `index.ts`, let the server load it once, then read `.harness/plugin.d.ts` for the exact `WorkflowHost` this harness offers. The server then leaves `.harness/` alone: it is the record of what the workflow was written against, and a later generation of the platform is COMPARED with it, by the TypeScript compiler, both for what the workflow requires and what it provides — a host method you rely on that has since gone is a load error naming it, not a failure on the first call. To move a workflow onto the harness that runs it now, delete `.harness/` and fix what the compiler then reports.
 
 **Tabs are contributions.** Each entry under `WebModule.sessionTabs` is one tab beside the chat: `key` (unique in the workflow, part of the full-page URL), `title` / `titleZh`, and a `renderer` whose `iframe.src` is a file under `ui/`. Several entries make several tabs; none makes a server-only workflow. It is the same slot, written the same way, a plugin contributes to — the host opens it to workflows and scopes the tab to this Agent. A slot the host has not opened (`WebModule.pages`, say) is refused by name.
 

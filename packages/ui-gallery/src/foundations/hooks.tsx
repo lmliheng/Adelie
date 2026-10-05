@@ -14,7 +14,7 @@
  * tree sample indents its rows the way a host does — by the inset and the indent tokens — so the
  * three themes' guides land on the same columns as in the modules.
  */
-import { HOOKS } from "@prismshadow/penguin-ui";
+import { HOOKS } from "@lmliheng/penguin-ui";
 import type { CSSProperties, ReactNode } from "react";
 import { useGallery } from "../state";
 import { Glyph, NAV_GLYPHS, SAMPLE_GLYPHS, ShellSpecimen } from "./shared";

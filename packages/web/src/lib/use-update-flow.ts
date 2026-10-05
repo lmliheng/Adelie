@@ -13,8 +13,8 @@
  */
 import { useEffect, useRef } from "react";
 import { createStore, useStore } from "zustand";
-import type { UpdateJobStatus } from "@prismshadow/penguin-server/api";
-import { toastError, toastInfo, toastSuccess } from "@prismshadow/penguin-ui";
+import type { UpdateJobStatus } from "@lmliheng/penguin-server/api";
+import { toastError, toastInfo, toastSuccess } from "@lmliheng/penguin-ui";
 import * as api from "../api/endpoints";
 import { S } from "./strings";
 import { apiErrorText } from "./api-error";

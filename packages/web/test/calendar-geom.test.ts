@@ -7,7 +7,7 @@
  * built with the local Date constructor, so the assertions hold in every timezone.
  */
 import { describe, expect, it } from "vitest";
-import type { OrgCalendarItem } from "@prismshadow/penguin-server/api";
+import type { OrgCalendarItem } from "@lmliheng/penguin-server/api";
 import {
   MAX_INSTANCES_PER_EVENT,
   addDays,

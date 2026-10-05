@@ -11,7 +11,7 @@ import {
   DisclosureRow,
   GlyphIcon,
   ICONS,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 
 export function HarnessInjectedBanner({ text }: { text: string }) {

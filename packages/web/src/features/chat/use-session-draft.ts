@@ -19,7 +19,7 @@
  * resets the refs to the new session's initial values.
  */
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { ModelRefDto } from "@prismshadow/penguin-server/api";
+import type { ModelRefDto } from "@lmliheng/penguin-server/api";
 import { useAuth } from "../../state/auth";
 import { clearDraft, loadDraft, saveDraft, sessionDraftKey } from "./draft-cache";
 import type { DraftCache } from "./draft-cache";

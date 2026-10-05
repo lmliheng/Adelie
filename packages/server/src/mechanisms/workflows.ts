@@ -15,7 +15,7 @@
  * serve a UI file, and the version history every successful load appends to — which is
  * what makes an Agent's own edits to its workflow reversible.
  */
-import { Interface } from "@prismshadow/penguin-core/kernel";
+import { Interface } from "@lmliheng/penguin-core/kernel";
 
 /** A request the workflow's handler receives (the HTTP shape, minus the transport). */
 export interface WorkflowRequest {
@@ -64,7 +64,7 @@ export interface WorkflowInput {
   text: string;
 }
 
-/** What a workflow provides (its manifest: `provides: { main: "@prismshadow/penguin-server#WorkflowMain" }`). */
+/** What a workflow provides (its manifest: `provides: { main: "@lmliheng/penguin-server#WorkflowMain" }`). */
 @Interface()
 export abstract class WorkflowMain {
   abstract handle(request: WorkflowRequest): Promise<WorkflowResponse>;

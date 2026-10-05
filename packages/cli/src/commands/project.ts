@@ -5,7 +5,7 @@
  * Docs: /docs/cli § "penguin project".
  */
 import type { Command } from "commander";
-import type { ProjectsResponse } from "@prismshadow/penguin-server/api";
+import type { ProjectsResponse } from "@lmliheng/penguin-server/api";
 import { resolveConnection, ServerClient } from "../client.js";
 import { renderTable } from "../table.js";
 import type { Messages } from "../i18n.js";

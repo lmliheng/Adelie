@@ -15,7 +15,7 @@
  * masked. Ours win on a collision.
  */
 import type { MachineApi } from "./machine-api.js";
-import type { ModelEntry, ModelRef } from "@prismshadow/penguin-core";
+import type { ModelEntry, ModelRef } from "@lmliheng/penguin-core";
 import type {
   ModelInfo,
   ModelRefDto,

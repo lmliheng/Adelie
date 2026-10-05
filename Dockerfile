@@ -142,8 +142,8 @@ ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 RUN set -eux; \
     pnpm install --frozen-lockfile; \
     pnpm --config.verify-deps-before-run=false \
-      --filter "@prismshadow/penguin-cli..." \
-      --filter "@prismshadow/penguin-web" \
+      --filter "@lmliheng/penguin-cli..." \
+      --filter "@lmliheng/penguin-web" \
       build
 
 # The payload layout every release artifact uses, and the one scripts/launchers/penguin
@@ -152,7 +152,7 @@ RUN set -eux; \
 # The hoisted node-linker is part of that recipe — it keeps paths short enough for Windows,
 # and it is the layout `npm rebuild` walks in the next stage.
 RUN set -eux; \
-    pnpm --config.node-linker=hoisted --filter @prismshadow/penguin-cli --prod deploy "$PWD/out/penguin/lib"; \
+    pnpm --config.node-linker=hoisted --filter @lmliheng/penguin-cli --prod deploy "$PWD/out/penguin/lib"; \
     cp -r packages/web/dist out/penguin/web; \
     mkdir -p /opt/penguin; \
     mv out/penguin/lib /opt/penguin/lib; \

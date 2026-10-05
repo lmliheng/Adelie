@@ -6,7 +6,7 @@
  * join made elsewhere has to be re-read, and the immutable live append.
  */
 import { describe, expect, it } from "vitest";
-import type { OrgChannelMessage } from "@prismshadow/penguin-server/api";
+import type { OrgChannelMessage } from "@lmliheng/penguin-server/api";
 import {
   INITIAL_DAYS_MAX,
   INITIAL_MESSAGES,

@@ -19,7 +19,7 @@ import {
   QWEN_OFF_PEAK,
   catalogEntryFor,
   effectivePricing,
-} from "@prismshadow/penguin-core/model-catalog";
+} from "@lmliheng/penguin-core/model-catalog";
 import {
   discountedPrice,
   groupModelRows,

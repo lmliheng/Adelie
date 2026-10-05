@@ -9,7 +9,7 @@
  *   emptiness on its own.
  */
 import { describe, expect, it } from "vitest";
-import type { OrgTicketDetail, OrgTicketHistoryEntry } from "@prismshadow/penguin-server/api";
+import type { OrgTicketDetail, OrgTicketHistoryEntry } from "@lmliheng/penguin-server/api";
 import { ticketHistoryRows, ticketSummaryCounts } from "../src/features/company/ticket-history";
 
 const entry = (over: Partial<OrgTicketHistoryEntry> = {}): OrgTicketHistoryEntry => ({

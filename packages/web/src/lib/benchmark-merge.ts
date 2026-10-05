@@ -29,7 +29,7 @@ import type {
   BenchmarkCaseSummary,
   BenchmarkEvaluation,
   BenchmarkSummary,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 
 /** One server's answer about a Project's Agents, with the machine that gave it. */
 export interface AgentSource {

@@ -19,8 +19,8 @@ import {
   toolCall,
   userText,
   withOrigin,
-} from "@prismshadow/penguin-core/omnimessage";
-import type { OmniMessage, TokenCounts } from "@prismshadow/penguin-core/omnimessage";
+} from "@lmliheng/penguin-core/omnimessage";
+import type { OmniMessage, TokenCounts } from "@lmliheng/penguin-core/omnimessage";
 import type {
   MessagesLiveTail,
   MessagesPageInfo,
@@ -28,7 +28,7 @@ import type {
   PendingSteeringInfo,
   ServerEvent,
   SessionStatus,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { OLDER_UNITS, TAIL_UNITS, createStreamController } from "../src/lib/omni/stream-controller";
 import type { MessagesPageQuery, StreamController } from "../src/lib/omni/stream-controller";
 import { approvalKey, findToolCard } from "../src/lib/omni/stream-model";

@@ -23,7 +23,7 @@
 import {
   DEFAULT_MAX_CONTEXT_LENGTH,
   effectiveMaxContextLength,
-} from "@prismshadow/penguin-core/context-limits";
+} from "@lmliheng/penguin-core/context-limits";
 
 /** Default upper bound when a model has no configured context window. */
 export const DEFAULT_CONTEXT_WINDOW = 128000;

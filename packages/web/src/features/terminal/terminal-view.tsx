@@ -65,7 +65,7 @@ export type TerminalStatus = "connecting" | "ready" | "exited" | "error";
  * The screen's own palette, one per appearance. Two things matter here.
  *
  * The surface colours are the app's, not a terminal's: `#121212`/`#ffffff` are the default
- * theme's canvas (`themes/github.css` in @prismshadow/penguin-ui) and its neutral ink, and the
+ * theme's canvas (`themes/github.css` in @lmliheng/penguin-ui) and its neutral ink, and the
  * selection matches its `::selection`. A panel docked inside the app that brought its
  * own charcoal along read as a foreign window sitting on top of it.
  *

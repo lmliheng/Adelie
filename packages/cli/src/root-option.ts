@@ -6,7 +6,7 @@
  * root. Two copies of that rule is two chances for one of them to drift.
  */
 import path from "node:path";
-import { resolveRoot } from "@prismshadow/penguin-core";
+import { resolveRoot } from "@lmliheng/penguin-core";
 
 /** Data root: `--root` first (relative paths against cwd), else `ADELIE_HOME` / ~/.adelie/data. */
 export function resolveRootOption(root: string | undefined): string {

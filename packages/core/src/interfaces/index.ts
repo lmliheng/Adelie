@@ -2,7 +2,7 @@
  * Internal SDK interface contracts, split by which side of `context_engine` needs them:
  * `./llm.ts` (the model request), `./environment.ts` (tool execution and the environment's
  * management plane), and `./shared.ts` (the vocabulary both genuinely need). This barrel is
- * the published `@prismshadow/penguin-core/interfaces` entry and re-exports all three, so
+ * the published `@lmliheng/penguin-core/interfaces` entry and re-exports all three, so
  * every existing import path keeps working.
  *
  * `context_engine` only handles OmniMessage: the content crossing all three boundaries is

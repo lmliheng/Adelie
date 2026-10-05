@@ -16,10 +16,7 @@
  * - The session list marks the Sessions of every Agent out of one answer.
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import type {
-  ProjectScheduleItem,
-  ProjectSchedulesResponse,
-} from "@prismshadow/penguin-server/api";
+import type { ProjectScheduleItem, ProjectSchedulesResponse } from "@lmliheng/penguin-server/api";
 import { pendingScheduleSessions } from "../src/features/schedules/schedule-panel-state";
 import {
   noteScheduleEvent,

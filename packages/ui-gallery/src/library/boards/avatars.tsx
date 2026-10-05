@@ -8,7 +8,7 @@ import {
   ICON_SIZE,
   USER_AVATAR_SIZE,
   UserAvatar,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

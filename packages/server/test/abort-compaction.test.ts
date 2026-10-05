@@ -11,8 +11,8 @@
  * - Given an idle Session, an abort answers 204 and starts nothing.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { compactionBegin, compactionEnd } from "@prismshadow/penguin-core";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+import { compactionBegin, compactionEnd } from "@lmliheng/penguin-core";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";
 import { apiClient, createTestApp, provisionUser, waitFor } from "./helpers.js";
 import type { TestApp } from "./helpers.js";

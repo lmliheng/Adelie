@@ -441,13 +441,13 @@ How messages travel along these surfaces, and every ordering guarantee, is cover
 
 ## Builders and guards
 
-`@prismshadow/penguin-core` exports all protocol types, plus:
+`@lmliheng/penguin-core` exports all protocol types, plus:
 
 - a builder per message kind in `builders.ts`: `userText`, `assistantText`, `toolCall`, `toolCallOutput`, `partialText`, `tokenUsage`, `withOrigin`, `emptyTokenCounts`, `addTokenCounts`, and more;
 - runtime guards: `isCompleteModelMessage`, `isPartialPayload`, `isModelMessage`, `isEventMessage`, `isSessionMeta`.
 
 ```ts
-import { userText, isCompleteModelMessage } from "@prismshadow/penguin-core";
+import { userText, isCompleteModelMessage } from "@lmliheng/penguin-core";
 
 const prompt = userText("List the files in the current directory");
 // { timestamp: "…", type: "model_msg", payload: { type: "text", role: "user", text: "…" } }

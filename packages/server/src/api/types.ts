@@ -17,15 +17,15 @@ import type {
   CompactionMode,
   OmniMessage,
   ToolCallPayload,
-} from "@prismshadow/penguin-core/omnimessage";
+} from "@lmliheng/penguin-core/omnimessage";
 import type {
   MCPServerConfig,
   ThinkingLevelName,
   ToolDefinitionConfig,
-} from "@prismshadow/penguin-core/interfaces";
+} from "@lmliheng/penguin-core/interfaces";
 // Build/harness identity is not an interface contract — it ships from the barrel (core's version-info.ts).
-import type { HarnessInfo, VersionReport, HarnessHistory } from "@prismshadow/penguin-core";
-import type { IfacesDiff } from "@prismshadow/penguin-hmr";
+import type { HarnessInfo, VersionReport, HarnessHistory } from "@lmliheng/penguin-core";
+import type { IfacesDiff } from "@lmliheng/penguin-hmr";
 import type { WorkflowInfo } from "../mechanisms/workflows.js";
 
 // ---------------------------------------------------------------------------
@@ -4007,7 +4007,7 @@ export interface PluginReadmeResponse {
  */
 export type VersionResponse = VersionReport;
 
-export type { HarnessHistoryEntry, IfacesSummary } from "@prismshadow/penguin-core";
+export type { HarnessHistoryEntry, IfacesSummary } from "@lmliheng/penguin-core";
 export type {
   WorkflowInfo,
   WorkflowVersion,
@@ -4026,7 +4026,7 @@ export interface VersionRollbackResponse {
 
 /** GET /api/version/history/diff?from=&to=: what changed between two stored interface tables. */
 export type VersionHistoryDiffResponse = IfacesDiff;
-export type { IfaceChange, IfacesDiff, MemberChange, ModuleChange } from "@prismshadow/penguin-hmr";
+export type { IfaceChange, IfacesDiff, MemberChange, ModuleChange } from "@lmliheng/penguin-hmr";
 
 /**
  * GET /api/version/update-check: newest published release vs the running version.

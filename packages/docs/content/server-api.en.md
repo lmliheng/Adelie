@@ -1155,8 +1155,8 @@ The bundled Web App connects in this order:
 
 ## Type Imports
 
-All DTO types can be imported, type-only, from the server package's `@prismshadow/penguin-server/api` subpath:
+All DTO types can be imported, type-only, from the server package's `@lmliheng/penguin-server/api` subpath:
 
 ```ts
-import type { ServerEvent, SessionInfo } from "@prismshadow/penguin-server/api";
+import type { ServerEvent, SessionInfo } from "@lmliheng/penguin-server/api";
 ```

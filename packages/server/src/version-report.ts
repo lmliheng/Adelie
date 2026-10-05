@@ -11,8 +11,8 @@
  * (see ./hmr/manifest.ts), and is exported as its own entry point so the CLI can reach it
  * without pulling in a server: the module graph here is core plus a `node:fs` read.
  */
-import { buildInfo } from "@prismshadow/penguin-core";
-import type { VersionReport } from "@prismshadow/penguin-core";
+import { buildInfo } from "@lmliheng/penguin-core";
+import type { VersionReport } from "@lmliheng/penguin-core";
 import { readHarnessInfo } from "./hmr/manifest.js";
 
 /**

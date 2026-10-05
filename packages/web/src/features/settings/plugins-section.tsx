@@ -20,7 +20,7 @@
  * nothing here says "restart".
  */
 import { useEffect, useRef, useState } from "react";
-import type { PluginConfigEntry, PluginConfigField } from "@prismshadow/penguin-server/api";
+import type { PluginConfigEntry, PluginConfigField } from "@lmliheng/penguin-server/api";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
@@ -44,7 +44,7 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 
 /** The picker's value for this server; a machine id is never this short. */
 const THIS_SERVER = "*";

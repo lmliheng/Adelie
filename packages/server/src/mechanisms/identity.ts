@@ -1,7 +1,7 @@
 /**
  * The identity mechanisms: what a node may require, declared apart from what implements it.
  */
-import { Interface } from "@prismshadow/penguin-core/kernel";
+import { Interface } from "@lmliheng/penguin-core/kernel";
 import type { UserRow } from "../db/repos/users.js";
 import type { AuthSessionRow, SessionViaValue } from "../db/repos/auth-sessions.js";
 import type { UserInfo } from "../api/types.js";

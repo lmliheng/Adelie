@@ -5,7 +5,7 @@
  * server reads. Files are the truth for company mode; nothing here touches SQLite.
  */
 import path from "node:path";
-import { projectDir } from "@prismshadow/penguin-core";
+import { projectDir } from "@lmliheng/penguin-core";
 import type { OrgTicketStatus } from "../api/types.js";
 
 /** The kanban columns in board order; each is a directory under `tickets/<yyyy-mm>/`. */

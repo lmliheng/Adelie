@@ -17,7 +17,7 @@ import type {
 } from "../api/types.js";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";
-import { Component } from "@prismshadow/penguin-core/kernel";
+import { Component } from "@lmliheng/penguin-core/kernel";
 import type { WorkspaceFiles } from "../mechanisms/workspace.js";
 
 /** Per-file read cap (a safety limit since preview/download reads the whole file into memory). */

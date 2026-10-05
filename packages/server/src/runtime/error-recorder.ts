@@ -53,7 +53,7 @@
  */
 import { formatLocalDate } from "../internal/dates.js";
 import { HttpError } from "../http/errors.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Clock } from "../hmr/capabilities.js";
 import type { ErrorLog, Errors } from "../mechanisms/observability.js";
 

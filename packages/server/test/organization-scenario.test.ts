@@ -10,7 +10,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { parseOrgTriggerMessage } from "@prismshadow/penguin-core";
+import { parseOrgTriggerMessage } from "@lmliheng/penguin-core";
 import { DEFAULT_CHANNEL_ID } from "../src/organization/paths.js";
 import { makeOrgHarness } from "./org-harness.js";
 import type { OrgHarness } from "./org-harness.js";

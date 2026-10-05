@@ -22,7 +22,7 @@ import type {
   BuiltinBrowserStatus,
   BuiltinBrowserTab,
   BuiltinBrowserTabsResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import type { Messages } from "./i18n.js";
 import { renderTable } from "./table.js";
 

@@ -38,7 +38,7 @@ import {
   Modal,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

@@ -19,7 +19,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { parse as parseToml } from "smol-toml";
-import { benchmarksDir } from "@prismshadow/penguin-core";
+import { benchmarksDir } from "@lmliheng/penguin-core";
 import type {
   BenchmarkCasesResponse,
   BenchmarkCreateRequest,

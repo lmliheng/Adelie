@@ -48,7 +48,7 @@ import type {
   SessionCategory,
   SessionCategoryCounts,
   SessionInfo,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   Badge,
@@ -87,8 +87,8 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
-import type { SidebarDropTarget } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { SidebarDropTarget } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { formatRelativeShort } from "../../lib/format";

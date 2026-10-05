@@ -31,7 +31,7 @@ import {
   userText,
   isCompleteModelMessage,
   type OmniMessage,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 
 const AGENT_ID = "self-improve-demo";
 const PROJECT_ID = "default_project";

@@ -21,7 +21,7 @@
  * the same as having nothing — in every one of those cases the page degrades to exactly what
  * it did before there was a cache.
  */
-import type { AgentSummary, SessionInfo } from "@prismshadow/penguin-server/api";
+import type { AgentSummary, SessionInfo } from "@lmliheng/penguin-server/api";
 
 const SESSIONS_PREFIX = "penguin.machineSessions.";
 const AGENTS_PREFIX = "penguin.machineAgents.";

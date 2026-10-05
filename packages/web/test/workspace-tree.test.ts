@@ -23,7 +23,7 @@
  *   still fenced as a quotation, never text for the draft.
  */
 import { describe, expect, it } from "vitest";
-import type { WorkspaceFileEntry, WorkspaceSearchHit } from "@prismshadow/penguin-server/api";
+import type { WorkspaceFileEntry, WorkspaceSearchHit } from "@lmliheng/penguin-server/api";
 import { blockedStorage, memoryStorage } from "./helpers/storage";
 import {
   type ComposerReference,

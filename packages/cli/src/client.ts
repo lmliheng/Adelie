@@ -23,8 +23,8 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { resolveRoot } from "@prismshadow/penguin-core";
-import { liveServerLock } from "@prismshadow/penguin-server/lock";
+import { resolveRoot } from "@lmliheng/penguin-core";
+import { liveServerLock } from "@lmliheng/penguin-server/lock";
 import type { Messages } from "./i18n.js";
 
 /** Session-id shape (core's convention); a full id needs no directory search. */

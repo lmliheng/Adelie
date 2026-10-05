@@ -6,7 +6,7 @@
  * /v1beta/models/<id>:…, and every OpenAI-compatible client posts /chat/completions.
  */
 import { describe, expect, it } from "vitest";
-import { MODEL_CATALOG } from "@prismshadow/penguin-core/model-catalog";
+import { MODEL_CATALOG } from "@lmliheng/penguin-core/model-catalog";
 import { protocolPathForModel } from "../src/features/models/protocol-path";
 
 describe("protocolPathForModel", () => {

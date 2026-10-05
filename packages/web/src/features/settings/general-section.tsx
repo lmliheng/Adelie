@@ -10,7 +10,7 @@
  * request answered rather than on what was clicked.
  */
 import { useState, useSyncExternalStore } from "react";
-import { PrefRow, Segmented, ToggleRow } from "@prismshadow/penguin-ui";
+import { PrefRow, Segmented, ToggleRow } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import {
   enableNotifications,

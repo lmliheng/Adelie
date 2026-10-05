@@ -10,7 +10,7 @@
  *   where no fork is possible the chip cannot block a send; with both chips, the handoff wins.
  */
 import { describe, expect, it } from "vitest";
-import type { AgentSummary } from "@prismshadow/penguin-server/api";
+import type { AgentSummary } from "@lmliheng/penguin-server/api";
 import { filterAgents, stagedSendRoute } from "../src/features/chat/agent-handoff";
 
 const agent = (agentId: string, name?: string): AgentSummary => ({

@@ -28,9 +28,9 @@ import type {
   TraceModelSegment,
   TraceOtherSpan,
   TraceToolSpan,
-} from "@prismshadow/penguin-server/api";
-import { Dot, Legend, TimelineBar, namedHint } from "@prismshadow/penguin-ui";
-import type { ChartPaint, LegendItem } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-server/api";
+import { Dot, Legend, TimelineBar, namedHint } from "@lmliheng/penguin-ui";
+import type { ChartPaint, LegendItem } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { humanizeDuration } from "../../lib/format";
 import { packToolLanes, toolSpanBounds } from "./lane-packing";

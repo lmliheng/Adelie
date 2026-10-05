@@ -20,7 +20,7 @@ import type {
   ModelBalanceReading,
   ModelBalanceResponse,
   PinnedBalance,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { formatMoney } from "../../lib/format";

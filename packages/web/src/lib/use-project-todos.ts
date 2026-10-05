@@ -27,7 +27,7 @@
  * from after it.
  */
 import { useEffect, useState } from "react";
-import type { ModelsResponse, UsageErrorsPage } from "@prismshadow/penguin-server/api";
+import type { ModelsResponse, UsageErrorsPage } from "@lmliheng/penguin-server/api";
 import * as api from "../api/endpoints";
 import { presetRange } from "../features/usage/usage-controls";
 

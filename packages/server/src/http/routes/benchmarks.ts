@@ -13,7 +13,7 @@
  * along with the evaluations[] from scoreboard.yaml.
  */
 import { Hono, type Context } from "hono";
-import { isValidId } from "@prismshadow/penguin-core";
+import { isValidId } from "@lmliheng/penguin-core";
 import type { AppEnv } from "../../auth/middleware.js";
 import type { BenchmarkCreateResponse, CaseMaterial } from "../../api/types.js";
 import type { BenchmarkCaseInput } from "../../services/benchmark-service.js";

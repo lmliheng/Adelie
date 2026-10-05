@@ -9,7 +9,7 @@
  * mid-stream (opening tag written, closing tag not yet) therefore reads as plain text
  * rather than disappearing until the model closes the block.
  */
-import { extractSummary } from "@prismshadow/penguin-core/markers";
+import { extractSummary } from "@lmliheng/penguin-core/markers";
 import type { CompactionItem } from "./stream-model";
 
 /**

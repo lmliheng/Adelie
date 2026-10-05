@@ -9,7 +9,7 @@
  *   without a short name fails here instead of shipping a card that reads as the wire name.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import { BUILTIN_TOOL_FACTORIES } from "@prismshadow/penguin-core";
+import { BUILTIN_TOOL_FACTORIES } from "@lmliheng/penguin-core";
 import { setActiveStrings, zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";
 import { toolDisplayName } from "../src/lib/tool-alias";

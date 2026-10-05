@@ -11,10 +11,10 @@ import {
   defaultProjectConfig,
   projectConfigPath,
   renderProjectConfigToml,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import { ProjectConfigService } from "../src/services/project-config-service.js";
 import { makeTempRoot } from "./helpers.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 const P = "project-cfg";
 const PRICED = {

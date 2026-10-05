@@ -14,7 +14,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import * as tar from "tar";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { agentStateDir, snapshotsDir } from "@prismshadow/penguin-core";
+import { agentStateDir, snapshotsDir } from "@lmliheng/penguin-core";
 import type {
   AgentCreateResponse,
   AgentImportResponse,

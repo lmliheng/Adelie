@@ -13,7 +13,7 @@
  * current model first (always summarizing), then opens the next context on the target; a
  * Session that never ran switches inline.
  */
-import { DEFAULT_PROJECT_ID } from "@prismshadow/penguin-core";
+import { DEFAULT_PROJECT_ID } from "@lmliheng/penguin-core";
 import type { Messages } from "./i18n.js";
 
 /** A model reference as the server API spells it. */

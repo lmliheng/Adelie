@@ -22,9 +22,9 @@ trap cleanup EXIT
 if [ "${SKIP_BUILD:-0}" != "1" ]; then
   echo "== build core/server/web =="
   (cd "$ROOT" \
-    && pnpm --filter @prismshadow/penguin-core build \
-    && pnpm --filter @prismshadow/penguin-server build \
-    && pnpm --filter @prismshadow/penguin-web build) || { echo "BUILD FAILED"; exit 1; }
+    && pnpm --filter @lmliheng/penguin-core build \
+    && pnpm --filter @lmliheng/penguin-server build \
+    && pnpm --filter @lmliheng/penguin-web build) || { echo "BUILD FAILED"; exit 1; }
 fi
 
 echo "== start mock LLM =="

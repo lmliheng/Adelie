@@ -8,7 +8,7 @@
  * on local calendar days through the Date API's local accessors, so a test built with
  * `new Date(y, m, d)` reads the same in every timezone.
  */
-import type { OrgCalendarItem, OrgCalendarOutcome } from "@prismshadow/penguin-server/api";
+import type { OrgCalendarItem, OrgCalendarOutcome } from "@lmliheng/penguin-server/api";
 import { packToolLanes } from "../traces/lane-packing";
 
 export type CalendarView = "month" | "week" | "day";

@@ -30,7 +30,7 @@
  */
 import { Hono } from "hono";
 import type { Context } from "hono";
-import { isValidId } from "@prismshadow/penguin-core";
+import { isValidId } from "@lmliheng/penguin-core";
 import type {
   OrgApprovalMode,
   OrgLanguage,
@@ -41,7 +41,7 @@ import type {
 } from "../../api/types.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import type { SessionVia } from "../../auth/service.js";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Settings } from "../../mechanisms/settings.js";
 import type { ProjectLifecycle } from "../../mechanisms/projects.js";
 import { TICKET_ID_PATTERN } from "../../organization/files.js";

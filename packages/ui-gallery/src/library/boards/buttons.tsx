@@ -3,7 +3,7 @@
  * link in a sentence and on its own, and the keyboard hint.
  */
 import type { MouseEvent } from "react";
-import { Button, GlyphIcon, ICONS, IconButton, Kbd, Link, PlusIcon } from "@prismshadow/penguin-ui";
+import { Button, GlyphIcon, ICONS, IconButton, Kbd, Link, PlusIcon } from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

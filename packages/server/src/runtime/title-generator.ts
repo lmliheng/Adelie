@@ -27,7 +27,7 @@ import {
   stripConversationMarkers,
   tokenUsage,
   truncateTitle,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type { ServerEvent } from "../api/types.js";
 import type { ChannelHub } from "./channel.js";
 import type { ErrorSink } from "./error-recorder.js";

@@ -7,7 +7,7 @@
  * made it easy to flip the direction in one place and leave the others wrong — so the choice is
  * made here once, and the drawings live in the shared registry.
  */
-import { ICONS } from "@prismshadow/penguin-ui";
+import { ICONS } from "@lmliheng/penguin-ui";
 
 export const STAT_ICONS = {
   /** Input (arrow rising from the baseline: tokens sent up to the model) */

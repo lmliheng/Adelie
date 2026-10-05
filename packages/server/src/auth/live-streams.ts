@@ -18,7 +18,7 @@
  * opened by the previous generation are no longer listed here — their own heartbeat is what
  * ends them, on the same schedule as any other.
  */
-import { Component, Interface } from "@prismshadow/penguin-core/kernel";
+import { Component, Interface } from "@lmliheng/penguin-core/kernel";
 
 /** LiveStreams: the mechanism LiveStreamRegistry implements. */
 @Interface()

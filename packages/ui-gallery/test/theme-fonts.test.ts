@@ -2,8 +2,8 @@
  * The fonts page's defaults table prints what the package states for every theme, and names the
  * platform's face only where the package does.
  */
-import { THEME_IDS } from "@prismshadow/penguin-ui";
-import { SYSTEM_FONT, THEME_FONTS } from "@prismshadow/penguin-ui/boot";
+import { THEME_IDS } from "@lmliheng/penguin-ui";
+import { SYSTEM_FONT, THEME_FONTS } from "@lmliheng/penguin-ui/boot";
 import { describe, expect, it } from "vitest";
 import { isSystemFont, themeFontRows } from "../src/lib/theme-fonts";
 import { zh } from "../src/strings";

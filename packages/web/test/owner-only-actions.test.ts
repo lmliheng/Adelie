@@ -14,7 +14,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { BenchmarkSummary, ProjectSummary } from "@prismshadow/penguin-server/api";
+import type { BenchmarkSummary, ProjectSummary } from "@lmliheng/penguin-server/api";
 import { UnpublishedNotice } from "../src/features/benchmark/benchmark-detail-page";
 import { BenchmarkCard, BenchmarkCreateButtons } from "../src/features/benchmark/benchmark-page";
 import { traceImportTargets } from "../src/features/settings/trace-import-row";

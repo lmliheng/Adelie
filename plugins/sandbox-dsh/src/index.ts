@@ -1,5 +1,5 @@
 /**
- * @prismshadow/penguin-plugin-sandbox-dsh — the DeepSeek Harness sandbox ecosystem
+ * @lmliheng/penguin-plugin-sandbox-dsh — the DeepSeek Harness sandbox ecosystem
  * behind this harness's own sandbox interface.
  *
  * A PLUGIN PACKAGE, not part of the platform: a Project asks for it on the Plugins page
@@ -21,13 +21,13 @@
  * them fails THIS load — reported fail-closed by the service — instead of failing the
  * whole platform bundle's import.
  */
-import { Bind, Component } from "@prismshadow/penguin-core/plugin";
+import { Bind, Component } from "@lmliheng/penguin-core/plugin";
 import type {
   ConfinedArgv,
   Plugin,
   SandboxProvider,
   SandboxProviderSource,
-} from "@prismshadow/penguin-core/plugin";
+} from "@lmliheng/penguin-core/plugin";
 
 /** Mount the stock DSH chain on a bare cordis Context — exactly how DSH's own tests mount it. */
 export async function loadDshAdaptor(): Promise<SandboxProvider | null> {

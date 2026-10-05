@@ -7,7 +7,7 @@
  * listening on. The session runtime, the title generator and the sessions route all
  * publish through this, so the audience rule is written once.
  */
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { ServerEvent } from "../api/types.js";
 import type { Channels } from "../hmr/capabilities.js";
 import type { ChannelHub } from "../runtime/channel.js";

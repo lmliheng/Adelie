@@ -34,7 +34,7 @@ import {
   catalogEntryFor,
   offPeakAt,
   offPeakScheduledRefs,
-} from "@prismshadow/penguin-core/model-catalog";
+} from "@lmliheng/penguin-core/model-catalog";
 import type {
   UsageModelSums,
   UsageGroupModelSums,
@@ -50,7 +50,7 @@ import {
   localDateMinusDays,
 } from "../internal/dates.js";
 import { badRequest } from "../http/validate.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Clock } from "../hmr/capabilities.js";
 import type { ErrorLog, UsageQueries, UsageStore } from "../mechanisms/observability.js";
 import type { ProjectConfigStore } from "../mechanisms/projects.js";

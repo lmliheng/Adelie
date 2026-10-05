@@ -34,7 +34,7 @@
  */
 import { useLayoutEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { Tooltip, usePrefersReducedMotion } from "@prismshadow/penguin-ui";
+import { Tooltip, usePrefersReducedMotion } from "@lmliheng/penguin-ui";
 import { revealDistancePx, revealDurationMs, titleDisclosure } from "../../lib/title-reveal";
 
 export function Truncated({

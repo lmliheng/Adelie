@@ -18,8 +18,8 @@ import {
   TONES,
   UpdateDot,
   UpdatePill,
-} from "@prismshadow/penguin-ui";
-import type { ActivityIconState, BadgeVariant, RunState } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { ActivityIconState, BadgeVariant, RunState } from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

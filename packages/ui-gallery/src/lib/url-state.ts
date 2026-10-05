@@ -14,10 +14,10 @@
  * gallery's root applies them through the package's `applyThemeAttributes`, so a size or a font
  * pairing chosen here is what a user of the app would have chosen in its Settings.
  */
-import { DEFAULT_THEME_ID, THEME_IDS } from "@prismshadow/penguin-ui";
-import type { ThemeId } from "@prismshadow/penguin-ui";
-import { DEFAULT_TEXT_SIZE, TEXT_SIZES } from "@prismshadow/penguin-ui/boot";
-import type { TextSize } from "@prismshadow/penguin-ui/boot";
+import { DEFAULT_THEME_ID, THEME_IDS } from "@lmliheng/penguin-ui";
+import type { ThemeId } from "@lmliheng/penguin-ui";
+import { DEFAULT_TEXT_SIZE, TEXT_SIZES } from "@lmliheng/penguin-ui/boot";
+import type { TextSize } from "@lmliheng/penguin-ui/boot";
 import { ACCENT_IDS, THEME_ACCENT } from "./accents";
 import { CJK_FONTS, LATIN_FONTS, LEGACY_SIZES } from "./themes";
 import type { FontCjk, FontLatin } from "./themes";

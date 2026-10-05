@@ -55,8 +55,8 @@ import {
   toolCall,
   toolCallOutput,
   withOrigin,
-} from "@prismshadow/penguin-core";
-import type { OmniMessage, StopReason } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { OmniMessage, StopReason } from "@lmliheng/penguin-core";
 import type { ProjectCreateResponse, UsageErrorsPage, UsageResponse } from "../src/api/types.js";
 import { openDatabase } from "../src/db/database.js";
 import { ErrorsRepo } from "../src/db/repos/errors.js";
@@ -73,7 +73,7 @@ import { MessagingConnectionClosedError } from "../src/runtime/messaging/qq-api.
 import { StreamErrorWatcher } from "../src/runtime/stream-error-watcher.js";
 import { apiClient, createTestApp, loginAdmin, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 function row(date: string, o: Partial<ErrorRecordInsert> = {}): ErrorRecordInsert {
   return {

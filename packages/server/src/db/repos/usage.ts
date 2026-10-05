@@ -6,7 +6,7 @@
  * raw Token sums (a model_id shared across providers is aggregated separately; never concatenated).
  */
 import type { UsageGroupBy } from "../../api/types.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { UsageStore } from "../../mechanisms/observability.js";
 

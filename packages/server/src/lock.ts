@@ -9,7 +9,7 @@
  * lock that fails the liveness check is stale and is simply overwritten by the next
  * server.
  *
- * Published as `@prismshadow/penguin-server/lock` (side-effect-free) so the CLI and the
+ * Published as `@lmliheng/penguin-server/lock` (side-effect-free) so the CLI and the
  * desktop shell can pre-check a root without importing the package entry, which starts
  * listening.
  */

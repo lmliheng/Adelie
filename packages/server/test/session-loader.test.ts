@@ -7,8 +7,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createAgent, saveProjectConfig, sessionMeta, userText } from "@prismshadow/penguin-core";
-import type { SessionMetaPayload } from "@prismshadow/penguin-core";
+import { createAgent, saveProjectConfig, sessionMeta, userText } from "@lmliheng/penguin-core";
+import type { SessionMetaPayload } from "@lmliheng/penguin-core";
 import { createCoreSessionLoader } from "../src/runtime/session-manager.js";
 import { SessionSources } from "../src/runtime/session-sources.js";
 import type { SessionRow } from "../src/db/repos/sessions.js";

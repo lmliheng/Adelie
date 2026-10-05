@@ -14,8 +14,8 @@
  * The session lands in `<root>/cli-session.json` (0600) rather than a shell's history.
  * Docs: /docs/cli § "penguin auth".
  */
-import { mintApiToken } from "@prismshadow/penguin-server/auth-token";
-import { liveServerLock } from "@prismshadow/penguin-server/lock";
+import { mintApiToken } from "@lmliheng/penguin-server/auth-token";
+import { liveServerLock } from "@lmliheng/penguin-server/lock";
 import type { Command } from "commander";
 import {
   call,

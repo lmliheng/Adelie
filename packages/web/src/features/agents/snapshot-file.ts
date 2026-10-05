@@ -1,5 +1,5 @@
 /** Picking and reading Agent State snapshot packages (`<agentId>-v<n>.tar.gz`). */
-import { buttonClass } from "@prismshadow/penguin-ui";
+import { buttonClass } from "@lmliheng/penguin-ui";
 
 /**
  * The button look on the `<a download>` / `<label>` the transfer actions and the snapshot picker

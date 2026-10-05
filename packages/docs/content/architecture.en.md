@@ -3,7 +3,7 @@ title: Architecture
 description: How the SDK, Server, CLI and Web App divide responsibilities, and how the three-interface boundary and OmniMessage organize the system.
 ---
 
-PenguinHarness is a pnpm monorepo. Its center is the execution engine in `@prismshadow/penguin-core`. The Server ships with the product as the Human implementation of that engine: it runs every Task. SDK embedders can also drive the engine directly.
+PenguinHarness is a pnpm monorepo. Its center is the execution engine in `@lmliheng/penguin-core`. The Server ships with the product as the Human implementation of that engine: it runs every Task. SDK embedders can also drive the engine directly.
 
 The Web App and the CLI are clients of the Server over HTTP and SSE, and the desktop app wraps the Server and the Web App in one window. This page covers the layers, the engine's three-interface boundary, the [data flow of one Task](#data-flow-of-one-task), where each responsibility lives, and the source layout.
 
@@ -146,7 +146,7 @@ packages/
 
 ```text
 packages/web/src
-├── api/          # fetch wrapper · one function per API (DTOs type-only from @prismshadow/penguin-server/api) · SSE wrapper
+├── api/          # fetch wrapper · one function per API (DTOs type-only from @lmliheng/penguin-server/api) · SSE wrapper
 ├── state/        # auth / project / sessions / company / theme / locale contexts
 ├── lib/omni/     # OmniMessage stream → view-model reducer; connect-first + dedup stream controller
 ├── components/   # ui primitives (modal / drawer / select …) and the app layout

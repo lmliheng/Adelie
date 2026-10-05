@@ -49,7 +49,7 @@ import type {
   SessionCategoryCounts,
   SessionInfo,
   SessionStatus,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { useStore } from "zustand/react";
 import { createStore } from "zustand/vanilla";
 import * as api from "../api/endpoints";

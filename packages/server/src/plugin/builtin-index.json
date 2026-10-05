@@ -1,6 +1,6 @@
 [
   {
-    "name": "@prismshadow/penguin-plugin-sandbox-bwrap",
+    "name": "@lmliheng/penguin-plugin-sandbox-bwrap",
     "version": "0.2.2",
     "description": "Bubblewrap sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",
     "authors": ["Prism Shadow"],
@@ -10,7 +10,7 @@
     "categories": ["sandbox"]
   },
   {
-    "name": "@prismshadow/penguin-plugin-sandbox-seatbelt",
+    "name": "@lmliheng/penguin-plugin-sandbox-seatbelt",
     "version": "0.2.2",
     "description": "macOS Seatbelt sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",
     "authors": ["Prism Shadow"],
@@ -20,7 +20,7 @@
     "categories": ["sandbox"]
   },
   {
-    "name": "@prismshadow/penguin-plugin-sandbox-wsl",
+    "name": "@lmliheng/penguin-plugin-sandbox-wsl",
     "version": "0.2.2",
     "description": "WSL sandbox backend for Adelie on Windows: commands run in a dedicated WSL2 distro under bubblewrap, with Windows interop switched off.",
     "authors": ["Prism Shadow"],
@@ -30,7 +30,7 @@
     "categories": ["sandbox"]
   },
   {
-    "name": "@prismshadow/penguin-plugin-sandbox-dsh",
+    "name": "@lmliheng/penguin-plugin-sandbox-dsh",
     "version": "0.2.2",
     "description": "DeepSeek Harness sandbox adaptor for Adelie: the DSH local backend chain behind the harness's own sandbox interface.",
     "authors": ["Prism Shadow"],

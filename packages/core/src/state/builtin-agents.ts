@@ -1,5 +1,5 @@
 /**
- * Preset content for builtin Agents; the plugin library lives in @prismshadow/penguin-plugins
+ * Preset content for builtin Agents; the plugin library lives in @lmliheng/penguin-plugins
  * (the library files are read live when building the preset).
  *
  * - Every Project comes with a single builtin Agent: `default_agent` (the General Agent, the

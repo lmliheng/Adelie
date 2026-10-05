@@ -9,11 +9,7 @@
  */
 import { useId } from "react";
 import type { ReactNode } from "react";
-import type {
-  OrgStatus,
-  OrgTicketPriority,
-  OrgTicketStatus,
-} from "@prismshadow/penguin-server/api";
+import type { OrgStatus, OrgTicketPriority, OrgTicketStatus } from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   Badge,
@@ -26,8 +22,8 @@ import {
   Notice,
   ProgressBar,
   Ring,
-} from "@prismshadow/penguin-ui";
-import type { BadgeStyle, ToneName } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { BadgeStyle, ToneName } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { formatMoney, formatPercent } from "../../lib/format";
 import { toneDot, toneInk } from "../../lib/tone";

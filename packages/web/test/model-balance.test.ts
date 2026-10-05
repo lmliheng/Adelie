@@ -7,7 +7,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { ModelBalanceResponse } from "@prismshadow/penguin-server/api";
+import type { ModelBalanceResponse } from "@lmliheng/penguin-server/api";
 import {
   displayBalance,
   formatAmount,

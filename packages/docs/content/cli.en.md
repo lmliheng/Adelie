@@ -5,7 +5,7 @@ description: Every penguin command and subcommand, with its options, defaults, o
 
 This page documents every `penguin` command. It opens with how the CLI reaches a server and the conventions all commands share, then gives each command a summary, its usage, an options table and examples.
 
-The CLI ships as the npm package `@prismshadow/penguin-cli`, and the command is `penguin`. Bare `penguin` prints help. `-v, --version` prints the running build's one-line identity, and `penguin version --json` prints all of it. On startup the CLI loads a `.env` file from the working directory.
+The CLI ships as the npm package `@lmliheng/penguin-cli`, and the command is `penguin`. Bare `penguin` prints help. `-v, --version` prints the running build's one-line identity, and `penguin version --json` prints all of it. On startup the CLI loads a `.env` file from the working directory.
 
 The CLI is a thin client of the server. Every session-facing command (`run`, `chat`, `ls`, `input`, `logs`, `agent`, `project`, `cost`, `schedule`, `org`, `browser`) sends HTTP requests to a PenguinHarness server and renders the replies. Tasks run on the server, Sessions live in its index, and the Web App sees everything the CLI creates, and the other way round. Only `config` still edits the Project's files directly, and `server` / `web` start the service itself.
 
@@ -785,7 +785,7 @@ The flag is `--release`, not `--version`, because `-v, --version` is the CLI's o
 | Install kind | How it upgrades |
 | --- | --- |
 | Tarball (`install.sh`, default `~/.penguin`) | Re-runs the official installer, keeping the install directory and whether the package bundles a Node runtime |
-| Global npm, pnpm, yarn or bun install | Runs that package manager's global install of `@prismshadow/penguin-cli@<target>`. If the manager cannot be identified, prints the command instead of guessing |
+| Global npm, pnpm, yarn or bun install | Runs that package manager's global install of `@lmliheng/penguin-cli@<target>`. If the manager cannot be identified, prints the command instead of guessing |
 | Source checkout | Refused: update it with `git pull` and a rebuild |
 | The desktop app's bundled CLI | Refused: it is replaced when the app updates, so check for updates from the app menu |
 | Unrecognized layout | Refused: reinstall with the official installer, or upgrade with the package manager you used |

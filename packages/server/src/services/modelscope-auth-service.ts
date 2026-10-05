@@ -16,8 +16,8 @@
  * immediately before each upstream request, silently rotating the access token near expiry.
  */
 import { randomBytes } from "node:crypto";
-import { Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
-import { MODELSCOPE_PROVIDER_ID } from "@prismshadow/penguin-core/model-catalog";
+import { Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import { MODELSCOPE_PROVIDER_ID } from "@lmliheng/penguin-core/model-catalog";
 import { HttpError } from "../http/errors.js";
 import { Config } from "../hmr/capabilities.js";
 import type {

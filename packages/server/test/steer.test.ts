@@ -24,8 +24,8 @@ import {
   toolCall,
   userSteeringText,
   userText,
-} from "@prismshadow/penguin-core";
-import type { ApproveFn, OmniMessage } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { ApproveFn, OmniMessage } from "@lmliheng/penguin-core";
 import type { RuntimeSession } from "../src/runtime/session-manager.js";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";
 import { apiClient, createTestApp, provisionUser, waitFor } from "./helpers.js";

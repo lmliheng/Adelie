@@ -4,7 +4,7 @@
  * menus. One table, so a panel never has two names or two marks.
  */
 import type { ReactNode } from "react";
-import { GlyphIcon, ICONS, ICON_SIZE } from "@prismshadow/penguin-ui";
+import { GlyphIcon, ICONS, ICON_SIZE } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import type { PanelKind } from "./dock-state";

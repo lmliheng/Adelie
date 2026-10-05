@@ -27,15 +27,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
-import type { ModelRefDto, UsageBucket, UsageResponse } from "@prismshadow/penguin-server/api";
-import {
-  Input,
-  PageFrame,
-  PageHeader,
-  Select,
-  Skeleton,
-  TodoNotice,
-} from "@prismshadow/penguin-ui";
+import type { ModelRefDto, UsageBucket, UsageResponse } from "@lmliheng/penguin-server/api";
+import { Input, PageFrame, PageHeader, Select, Skeleton, TodoNotice } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
@@ -44,7 +37,7 @@ import { useUpdateBadges } from "../../lib/use-update-badges";
 import { dismissTodo } from "../../lib/todo-dismissals";
 import { refreshProjectTodos } from "../../lib/use-project-todos";
 import { formatMoney, humanizeTokens } from "../../lib/format";
-import { catalogEntryFor } from "@prismshadow/penguin-core/model-catalog";
+import { catalogEntryFor } from "@lmliheng/penguin-core/model-catalog";
 import { useProject } from "../../state/project";
 import { useTheme } from "../../state/theme";
 import { TrendChart } from "./trend-chart";

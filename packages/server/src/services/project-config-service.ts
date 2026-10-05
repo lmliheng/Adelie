@@ -51,13 +51,13 @@ import {
   modelEnvPreviewKey,
   resolveModelCredential,
   userText,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import {
   VENDOR_ENDPOINTS,
   providerInfo,
   unaddableModel,
   unroutableVendorModel,
-} from "@prismshadow/penguin-core/model-catalog";
+} from "@lmliheng/penguin-core/model-catalog";
 import type {
   PluginTables,
   CommandPolicyRule,
@@ -67,7 +67,7 @@ import type {
   ModelRef,
   OmniMessage,
   ProjectConfig,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   ChatDefaultsDto,
   CommandPolicyDto,
@@ -104,7 +104,7 @@ import {
   classifyVisionProbeError,
 } from "./vision-detect.js";
 import type { PricingRates, TieredRates } from "./usage-service.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type {
   ModelPromotion,

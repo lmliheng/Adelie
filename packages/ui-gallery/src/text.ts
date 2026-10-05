@@ -3,7 +3,7 @@
  * their groups, the theme display names, and the breadcrumb's qualifiers — all from the
  * dictionaries.
  */
-import type { ThemeId } from "@prismshadow/penguin-ui";
+import type { ThemeId } from "@lmliheng/penguin-ui";
 import type { SurfaceGroupId, SurfaceId } from "./app/surfaces";
 import { THEME_ACCENT } from "./lib/accents";
 import type { TopicGroupId, TopicId } from "./library/topics";

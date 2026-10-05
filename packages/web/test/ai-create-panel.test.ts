@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { AgentSummary } from "@prismshadow/penguin-server/api";
+import type { AgentSummary } from "@lmliheng/penguin-server/api";
 import { AiCreatePanel } from "../src/features/ai-create/ai-create-panel";
 import { composeAiPrompt } from "../src/features/ai-create/ai-create-prompt";
 import { S } from "../src/lib/strings";

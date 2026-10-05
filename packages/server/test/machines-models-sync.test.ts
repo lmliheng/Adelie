@@ -15,7 +15,7 @@ import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { describe, expect, it } from "vitest";
 import { serve } from "@hono/node-server";
-import type { ModelEntry } from "@prismshadow/penguin-core";
+import type { ModelEntry } from "@lmliheng/penguin-core";
 import type { ModelsResponse, ModelsUpdateRequest } from "../src/api/types.js";
 import { planModelSync, syncModelsToMachine } from "../src/machines/models-sync.js";
 import type { LocalModels } from "../src/machines/models-sync.js";

@@ -37,7 +37,7 @@ import {
   memoryScopeDir,
   parseMemoryFrontmatter,
   readWorkspaceMarker,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   MemoryFileInfo,
   MemoryFilesResponse,
@@ -51,7 +51,7 @@ import type {
 } from "../api/types.js";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type { AgentConfig, Memory } from "../mechanisms/agents.js";
 

@@ -21,7 +21,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { parse as parseToml, stringify as stringifyToml } from "smol-toml";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
-import { benchmarksDir } from "@prismshadow/penguin-core";
+import { benchmarksDir } from "@lmliheng/penguin-core";
 import type {
   BenchmarkCaseScore,
   BenchmarkCaseSummary,
@@ -36,7 +36,7 @@ import type {
 } from "../api/types.js";
 import type { WorkspaceFileContent, WorkspaceFileReadOptions } from "./workspace-files-service.js";
 import { HttpError } from "../http/errors.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Paths } from "../hmr/capabilities.js";
 import type { Benchmarks } from "../mechanisms/agents.js";
 import type { WorkspaceFiles } from "../mechanisms/workspace.js";

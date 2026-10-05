@@ -15,10 +15,10 @@
  * screen away.
  */
 import { useId, useState } from "react";
-import { FONT_CREDITS } from "@prismshadow/penguin-ui/fonts-credits";
-import type { FontCredit } from "@prismshadow/penguin-ui/fonts-credits";
-import type { ThemeId } from "@prismshadow/penguin-ui";
-import { Chevron, ICON_GAP } from "@prismshadow/penguin-ui";
+import { FONT_CREDITS } from "@lmliheng/penguin-ui/fonts-credits";
+import type { FontCredit } from "@lmliheng/penguin-ui/fonts-credits";
+import type { ThemeId } from "@lmliheng/penguin-ui";
+import { Chevron, ICON_GAP } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 
 /** A theme id in the reader's words. */

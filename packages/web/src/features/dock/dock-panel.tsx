@@ -51,8 +51,8 @@ import {
   MenuSeparator,
   ResizeHandle,
   usePointerDrag,
-} from "@prismshadow/penguin-ui";
-import type { DockPickerChoice, DockTabItem } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { DockPickerChoice, DockTabItem } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import { chordKeys } from "../../components/ui/chord-kbd";

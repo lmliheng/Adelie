@@ -31,7 +31,7 @@
  * (`terminals()`, `attachStream()`) instead.
  */
 import type { MiddlewareHandler } from "hono";
-import type { Hmr } from "@prismshadow/penguin-hmr";
+import type { Hmr } from "@lmliheng/penguin-hmr";
 import type { PlatformApi } from "./platform.js";
 import { noPlatformResponse } from "./starting.js";
 

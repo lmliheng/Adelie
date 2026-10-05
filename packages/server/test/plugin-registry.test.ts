@@ -236,7 +236,7 @@ describe("the registry routes", () => {
   });
 
   it("requires auth, then serves a listed entry's readme from the package on this machine", async () => {
-    const name = "@prismshadow/penguin-plugin-sandbox-bwrap";
+    const name = "@lmliheng/penguin-plugin-sandbox-bwrap";
     const url = `/api/plugins/registry/readme?name=${encodeURIComponent(name)}`;
     expect((await t.app.request(url)).status).toBe(401);
 

@@ -7,7 +7,7 @@
  * already holds. Same-tab only by design — other tabs (and the stripped localStorage cache)
  * pick the new defaults up on their next /chat/new mount.
  */
-import type { ChatDefaultsDto, ModelRefDto } from "@prismshadow/penguin-server/api";
+import type { ChatDefaultsDto, ModelRefDto } from "@lmliheng/penguin-server/api";
 
 export const CHAT_DEFAULTS_CHANGED_EVENT = "penguin:chat-defaults-changed";
 

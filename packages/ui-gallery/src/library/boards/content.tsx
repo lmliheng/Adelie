@@ -12,8 +12,8 @@ import {
   InlineCode,
   Prose,
   Text,
-} from "@prismshadow/penguin-ui";
-import type { HeadingLevel, TextVariant } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { HeadingLevel, TextVariant } from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

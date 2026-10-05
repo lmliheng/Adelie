@@ -20,7 +20,7 @@
  * wrongly delete still-valid data within the cap. The first line of defense is
  * ErrorRecorder's short-window deduplication.
  */
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { ErrorLog } from "../../mechanisms/observability.js";
 

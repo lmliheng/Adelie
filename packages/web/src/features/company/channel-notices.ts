@@ -14,7 +14,7 @@
  * `budget`. A parameter the server omitted renders as an empty string rather than throwing —
  * a malformed notice must not take the stream down with it.
  */
-import type { OrgChannelNotice, OrgChannelNoticeKind } from "@prismshadow/penguin-server/api";
+import type { OrgChannelNotice, OrgChannelNoticeKind } from "@lmliheng/penguin-server/api";
 import type { Strings } from "../../lib/strings";
 import { parsePrincipal } from "./principals";
 

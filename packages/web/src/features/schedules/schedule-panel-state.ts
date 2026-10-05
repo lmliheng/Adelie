@@ -4,7 +4,7 @@
  * what the search box matches, and which state glyph a row wears. Kept apart from the panel
  * so the rules run in the node-only unit tests (test/schedule-panel-state.test.ts).
  */
-import type { ScheduleItem, ScheduleStatus } from "@prismshadow/penguin-server/api";
+import type { ScheduleItem, ScheduleStatus } from "@lmliheng/penguin-server/api";
 
 export type ScheduleFilter = "all" | "active" | "paused" | "completed";
 

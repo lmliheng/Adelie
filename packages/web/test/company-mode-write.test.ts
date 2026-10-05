@@ -12,7 +12,7 @@ import type {
   ServerSettings,
   ServerSettingsResponse,
   ServerSettingsUpdateRequest,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { writeCompanyMode } from "../src/features/settings/company-mode-write";
 
 const settings = (companyMode: boolean): ServerSettings => ({

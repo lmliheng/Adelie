@@ -1,6 +1,6 @@
 /**
  * API endpoint wrappers: one function per API.
- * DTO types come from @prismshadow/penguin-server/api (**type import only**, resolved via
+ * DTO types come from @lmliheng/penguin-server/api (**type import only**, resolved via
  * tsconfig paths to the server contract file types.ts; must not be a value import — server
  * code must not enter the browser bundle).
  */
@@ -233,8 +233,8 @@ import type {
   BuiltinBrowserStatus,
   BuiltinBrowserTab,
   DesktopBrowserCommand,
-} from "@prismshadow/penguin-server/api";
-import type { MCPServerConfig } from "@prismshadow/penguin-core/interfaces";
+} from "@lmliheng/penguin-server/api";
+import type { MCPServerConfig } from "@lmliheng/penguin-core/interfaces";
 import { apiFetch, apiFetchWithMeta } from "./client";
 import { machineForSession, rememberSessionMachine } from "../lib/session-machines";
 import { apiUrl } from "../lib/server-context";

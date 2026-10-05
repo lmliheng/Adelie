@@ -10,8 +10,8 @@
  * in the editor. There is no unbind action — removing a credential is the secret field's
  * clear checkbox.
  */
-import type { MessagingChannel } from "@prismshadow/penguin-server/api";
-import { Button, Modal } from "@prismshadow/penguin-ui";
+import type { MessagingChannel } from "@lmliheng/penguin-server/api";
+import { Button, Modal } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import {
   MessagingBindingBody,

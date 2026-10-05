@@ -10,7 +10,7 @@ import type {
   BuiltinBrowserMetrics,
   BuiltinBrowserServerEvent,
   BuiltinBrowserTab,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   INITIAL_BROWSER_STATE,
   activeTab,

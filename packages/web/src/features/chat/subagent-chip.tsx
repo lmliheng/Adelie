@@ -5,7 +5,7 @@
  * discoverable with the panel closed, and is announced in the row's name), and opens the
  * subagents panel focused on the child through ctx.onOpenSubagent.
  */
-import { SubagentChip } from "@prismshadow/penguin-ui";
+import { SubagentChip } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { hasPendingWithinOrigin } from "../../lib/omni/stream-model";
 import type { StreamModel } from "../../lib/omni/stream-model";

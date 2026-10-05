@@ -34,7 +34,7 @@ import type {
   OrgTicketPriority,
   OrgTicketStatus,
   OrgTicketUpdateRequest,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import type { ReactNode } from "react";
 import {
   Button,
@@ -59,7 +59,7 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

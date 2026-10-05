@@ -17,7 +17,7 @@ import { initialAdminPasswordPath } from "../src/initial-password.js";
 import { acquireServerLock } from "../src/lock.js";
 import { resetAdminPassword } from "../src/reset-admin-password.js";
 import { makeTempRoot } from "./helpers.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 describe("resetAdminPassword", () => {
   const roots: string[] = [];

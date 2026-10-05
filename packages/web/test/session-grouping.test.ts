@@ -27,7 +27,7 @@
  *   the newer of its stamp and its loaded rows, the temp group last; a count of zero forms none.
  */
 import { describe, expect, it } from "vitest";
-import type { SessionCategoryCounts, SessionInfo } from "@prismshadow/penguin-server/api";
+import type { SessionCategoryCounts, SessionInfo } from "@lmliheng/penguin-server/api";
 import {
   SIDEBAR_PAGE_SIZE,
   TEMP_WORKSPACE_GROUP_KEY,

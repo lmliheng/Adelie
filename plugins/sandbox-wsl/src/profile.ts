@@ -38,7 +38,7 @@
  * distro uses one of them, not both.
  */
 import path from "node:path";
-import type { SandboxPolicy } from "@prismshadow/penguin-core/plugin";
+import type { SandboxPolicy } from "@lmliheng/penguin-core/plugin";
 
 /** Where WSL mounts the Windows drives inside a distro (its default automount root). */
 export const MOUNT_ROOT = "/mnt";

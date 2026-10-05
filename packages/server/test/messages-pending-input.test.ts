@@ -19,8 +19,8 @@ import {
   mcpConnectEnd,
   requestBegin,
   sessionMeta,
-} from "@prismshadow/penguin-core";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import type { MessagesResponse } from "../src/api/types.js";
 import type { RuntimeSession } from "../src/runtime/session-manager.js";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";

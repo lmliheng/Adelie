@@ -836,7 +836,7 @@ describe("theme import order", () => {
     web: join(WEB_DIR, "src", "styles.css"),
     ...(existsSync(GALLERY) ? { gallery: join(GALLERY, "src", "styles.css") } : {}),
   };
-  const IMPORT = /@import\s+["']@prismshadow\/penguin-ui\/themes\/([\w-]+)\.css["']/g;
+  const IMPORT = /@import\s+["']@lmliheng\/penguin-ui\/themes\/([\w-]+)\.css["']/g;
 
   for (const [name, file] of Object.entries(entries)) {
     it(`${name}: imports every theme once, the default (${DEFAULT_THEME_ID}.css) first`, () => {

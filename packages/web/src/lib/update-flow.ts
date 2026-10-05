@@ -23,7 +23,7 @@ import type {
   UpdateJobPhase,
   UpdateJobStatus,
   VersionResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import type { AccountMenuSession } from "./account-menu";
 import { offersClientUpdate } from "./desktop-update";
 import { updateCheckOutcome } from "./use-version-info";

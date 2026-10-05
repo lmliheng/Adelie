@@ -35,7 +35,7 @@ import {
   USER_SCOPE_KEY,
   memoryDir,
   memoryScopeDir,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   AgentConfigResponse,
   MemoryFileResponse,

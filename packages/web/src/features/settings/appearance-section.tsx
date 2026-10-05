@@ -19,8 +19,8 @@ import {
   SwatchPicker,
   THEME_IDS,
   ToggleRow,
-} from "@prismshadow/penguin-ui";
-import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZES } from "@prismshadow/penguin-ui/boot";
+} from "@lmliheng/penguin-ui";
+import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZES } from "@lmliheng/penguin-ui/boot";
 import { S } from "../../lib/strings";
 import * as api from "../../api/endpoints";
 import { isDesktopShellWindow } from "../../lib/account-menu";

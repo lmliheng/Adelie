@@ -1,5 +1,5 @@
 {
-  "name": "@prismshadow/penguin-web",
+  "name": "@lmliheng/penguin-web",
   "version": "0.2.13",
   "private": true,
   "type": "module",
@@ -13,8 +13,8 @@
     "test:e2e": "bash e2e/run.sh"
   },
   "dependencies": {
-    "@prismshadow/penguin-core": "workspace:*",
-    "@prismshadow/penguin-ui": "workspace:*",
+    "@lmliheng/penguin-core": "workspace:*",
+    "@lmliheng/penguin-ui": "workspace:*",
     "@xterm/addon-clipboard": "^0.1.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "@prismshadow/penguin-server": "workspace:*",
+    "@lmliheng/penguin-server": "workspace:*",
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.1.0",

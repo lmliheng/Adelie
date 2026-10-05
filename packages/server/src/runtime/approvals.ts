@@ -23,7 +23,7 @@ import type {
   ApproveFn,
   OmniMessage,
   ToolCallPayload,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 
 export interface PendingApproval {
   toolCall: OmniMessage<ToolCallPayload>;

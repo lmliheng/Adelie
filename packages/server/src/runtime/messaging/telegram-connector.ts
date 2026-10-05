@@ -64,8 +64,8 @@ import {
   TelegramApiError,
   createTelegramTransport,
 } from "./telegram-api.js";
-import { Bind, Component, Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
-import type { ClassCtx, Opaque } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import type { ClassCtx, Opaque } from "@lmliheng/penguin-core/kernel";
 import type { MessagingTuning } from "./bridge.js";
 
 /** The Telegram binding's stored config document (`messaging_bindings.config_json`). */

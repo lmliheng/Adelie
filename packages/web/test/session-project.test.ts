@@ -4,7 +4,7 @@
  * the route names when the loaded list does not hold it.
  */
 import { describe, expect, it } from "vitest";
-import type { SessionInfo } from "@prismshadow/penguin-server/api";
+import type { SessionInfo } from "@lmliheng/penguin-server/api";
 import {
   resolveRoutedSession,
   sessionForProject,

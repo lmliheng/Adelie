@@ -31,7 +31,7 @@ import type {
   TelegramBindingPutRequest,
   TelegramTestRequest,
   WeChatBindingPutRequest,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 
 /** Default Feishu open-platform domain (shown prefilled; Lark tenants overwrite it). */
 export const FEISHU_DEFAULT_DOMAIN = "https://open.feishu.cn";

@@ -9,8 +9,8 @@
  * leaves it plain.
  */
 import { useState } from "react";
-import { providerInfo } from "@prismshadow/penguin-core/model-catalog";
-import { Button, CloseButton, ICON_GAP, ProviderLogo } from "@prismshadow/penguin-ui";
+import { providerInfo } from "@lmliheng/penguin-core/model-catalog";
+import { Button, CloseButton, ICON_GAP, ProviderLogo } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 
 /** The group the banner connects: it is TokenDance's by name, so it names the group too. */

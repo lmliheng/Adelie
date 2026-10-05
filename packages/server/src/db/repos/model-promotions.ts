@@ -7,7 +7,7 @@
  * those writers runs again. Both replace methods swap their whole set in one transaction, so
  * a reader never sees half of one.
  */
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { ModelPromotion, ModelPromotions } from "../../mechanisms/projects.js";
 

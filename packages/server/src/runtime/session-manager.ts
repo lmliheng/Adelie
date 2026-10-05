@@ -46,7 +46,7 @@ import {
   parseUserSteeringText,
   tracesDir,
   userText,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   ApproveFn,
   BackgroundCommandInfo,
@@ -65,7 +65,7 @@ import type {
   TextPayload,
   ThinkingLevelName,
   ToolDetachResult,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   ModelRefDto,
   PendingFollowUpInfo,
@@ -88,9 +88,9 @@ import { asSessionSource } from "./session-sources.js";
 import { StreamErrorWatcher } from "./stream-error-watcher.js";
 import type { TitleNotifier } from "./title-generator.js";
 import type { UsageContext } from "./usage-recorder.js";
-import { Component, Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
 import type { SessionService as SessionServiceImpl } from "../services/session-service.js";
-import type { ClassCtx, Opaque } from "@prismshadow/penguin-core/kernel";
+import type { ClassCtx, Opaque } from "@lmliheng/penguin-core/kernel";
 import { Sandbox, SandboxModule } from "../sandbox/service.js";
 import { SessionService } from "../services/session-service.js";
 import { ModelScopeAuth } from "../services/modelscope-auth-service.js";
@@ -107,7 +107,7 @@ import type { Settings } from "../mechanisms/settings.js";
 import type { MessagingBindings } from "../mechanisms/messaging.js";
 import type { OrgCache } from "../mechanisms/organization.js";
 import { enabledMessagingChannel } from "./messaging/enabled-channel.js";
-import { MODELSCOPE_PROVIDER_ID } from "@prismshadow/penguin-core/model-catalog";
+import { MODELSCOPE_PROVIDER_ID } from "@lmliheng/penguin-core/model-catalog";
 
 /**
  * 409 for when there's nothing to compact: give the specific reason rather than a

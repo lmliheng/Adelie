@@ -12,8 +12,8 @@
  * - It resolves with the last page's total, the walk's final word on the file's length.
  */
 import { describe, expect, it } from "vitest";
-import type { OmniMessage } from "@prismshadow/penguin-core/omnimessage";
-import type { TraceEventsResponse } from "@prismshadow/penguin-server/api";
+import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
+import type { TraceEventsResponse } from "@lmliheng/penguin-server/api";
 import {
   MAX_TRACE_EVENT_PAGES,
   loadTraceEventPages,

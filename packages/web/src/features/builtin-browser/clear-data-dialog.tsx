@@ -4,7 +4,7 @@
  * on each opening; the confirm stays disabled while none is.
  */
 import { useEffect, useState } from "react";
-import { Checkbox, ConfirmModal, toastError, toastSuccess } from "@prismshadow/penguin-ui";
+import { Checkbox, ConfirmModal, toastError, toastSuccess } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import type { BuiltinBrowserStorage } from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";

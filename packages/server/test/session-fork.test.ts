@@ -30,8 +30,8 @@ import {
   tokenUsage,
   tracesDir,
   userText,
-} from "@prismshadow/penguin-core";
-import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@lmliheng/penguin-core";
 import type {
   MessagesResponse,
   ProjectCreateResponse,

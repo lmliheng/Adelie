@@ -25,7 +25,7 @@ import {
 } from "../client.js";
 import { getSessionMessages, resolveSessionTarget } from "../server-session.js";
 import { SessionStream, nextFrameOrDeadline } from "../server-task.js";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import type { Messages } from "../i18n.js";
 
 export function registerLogsCommand(program: Command, t: Messages): void {

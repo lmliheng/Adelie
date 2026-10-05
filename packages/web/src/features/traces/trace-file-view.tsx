@@ -24,14 +24,14 @@
  * clicking a bar scrolls to the corresponding message and pins the highlight for PIN_MS.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { OmniMessage } from "@prismshadow/penguin-core/omnimessage";
+import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
 import type {
   TraceAnalysisResponse,
   TraceModelSegment,
   TraceOtherSpan,
   TraceTaskStats,
   TraceToolSpan,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   Badge,
   Card,
@@ -41,7 +41,7 @@ import {
   Skeleton,
   StatChip,
   TokenDonut,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

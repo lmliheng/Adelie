@@ -27,7 +27,7 @@
  *   layout.
  */
 import { describe, expect, it } from "vitest";
-import type { DirEntryInfo, DirListResponse } from "@prismshadow/penguin-server/api";
+import type { DirEntryInfo, DirListResponse } from "@lmliheng/penguin-server/api";
 import {
   EMPTY_HISTORY,
   NO_EDITS,

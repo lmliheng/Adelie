@@ -4,13 +4,13 @@
  * contributes lands on the same slots the built-in modules use.
  */
 import { describe, expect, it } from "vitest";
-import type { ModuleDef } from "@prismshadow/penguin-core/kernel";
-import { parseManifest, boot, initialDoc } from "@prismshadow/penguin-core/kernel";
-import { HotResources } from "@prismshadow/penguin-hmr";
+import type { ModuleDef } from "@lmliheng/penguin-core/kernel";
+import { parseManifest, boot, initialDoc } from "@lmliheng/penguin-core/kernel";
+import { HotResources } from "@lmliheng/penguin-hmr";
 import { PluginHost, PLUGINS_RESOURCE_ID, pluginHostFrom } from "../src/plugin/host.js";
 import { PENGUIN_FAMILY, HMR_INTERFACES_RESOURCE_ID } from "../src/hmr/capabilities.js";
 import { packagedPlatform } from "../src/hmr/platform.js";
-import type { SandboxProvider } from "@prismshadow/penguin-core/plugin";
+import type { SandboxProvider } from "@lmliheng/penguin-core/plugin";
 
 const provider = (name: string): SandboxProvider => ({
   dimensions: ["fs-write"],

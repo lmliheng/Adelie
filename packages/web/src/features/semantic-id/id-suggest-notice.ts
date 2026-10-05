@@ -13,7 +13,7 @@
  * how the user learns the id in the box is a placeholder, and losing it over an unrecognized
  * code would be the worse failure.
  */
-import type { SemanticIdSuggestResponse } from "@prismshadow/penguin-server/api";
+import type { SemanticIdSuggestResponse } from "@lmliheng/penguin-server/api";
 import type { Strings } from "../../lib/strings";
 
 /** The field's own dictionary slice — `S.semanticId.idSuggest`. */

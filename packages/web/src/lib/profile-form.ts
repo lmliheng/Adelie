@@ -7,7 +7,7 @@
  * runs in Node with no DOM (the same reason `settings-sections.ts` holds the dialog's
  * visibility rules rather than the dialog), so the rules live here rather than inside the JSX.
  */
-import type { UserInfo } from "@prismshadow/penguin-server/api";
+import type { UserInfo } from "@lmliheng/penguin-server/api";
 
 /** What the nickname row's two buttons would do, given the stored profile and the typed text. */
 export interface ProfileControls {

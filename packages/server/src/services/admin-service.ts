@@ -19,7 +19,7 @@ import { ADMIN_USER_ID, MIN_PASSWORD_LENGTH, toUserInfo } from "../auth/service.
 import type { PasswordHasher } from "../auth/password.js";
 import type { UserRow } from "../db/repos/users.js";
 import { SEMANTIC_ID_RULE, USERNAME_PATTERN } from "./ids.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Clock } from "../hmr/capabilities.js";
 import type { LiveStreams } from "../auth/live-streams.js";
 import type { Admin, AuthSessions, Users } from "../mechanisms/identity.js";

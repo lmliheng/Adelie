@@ -23,7 +23,7 @@
  * decoded in Chromium and compared exactly (threshold 0) — any differing pixel fails, and a diff
  * image with the differing pixels in red is written for inspection. Exit code 1 on any difference.
  *
- * Prereqs: `pnpm --filter "@prismshadow/penguin-server..." build`, each variant's web dist, and
+ * Prereqs: `pnpm --filter "@lmliheng/penguin-server..." build`, each variant's web dist, and
  * Playwright's Chromium. Local only; never committed output.
  */
 import http from "node:http";

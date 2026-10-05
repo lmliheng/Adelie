@@ -3,8 +3,8 @@
  * (`data-slot="icon"`, which a theme that draws its own tone mark hides), and with actions — then
  * the Notice built on it in its three variants with its action slots, and the page to-do.
  */
-import { Button, Dot, ICONS, Notice, NoticeStrip, TodoNotice } from "@prismshadow/penguin-ui";
-import type { NoticeStripTone } from "@prismshadow/penguin-ui";
+import { Button, Dot, ICONS, Notice, NoticeStrip, TodoNotice } from "@lmliheng/penguin-ui";
+import type { NoticeStripTone } from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

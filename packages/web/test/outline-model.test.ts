@@ -9,7 +9,7 @@ import { handoffMessage } from "../src/features/chat/agent-handoff";
 import {
   buildBackgroundTaskDoneMessage,
   buildScheduledMessage,
-} from "@prismshadow/penguin-core/markers";
+} from "@lmliheng/penguin-core/markers";
 import {
   OUTLINE_MIN_TURNS,
   OUTLINE_WINDOW_AFTER,

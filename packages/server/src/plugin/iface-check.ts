@@ -20,13 +20,7 @@
  */
 import os from "node:os";
 import path from "node:path";
-import type {
-  IfaceDecl,
-  IfaceTable,
-  Manifest,
-  Sig,
-  TypeExpr,
-} from "@prismshadow/penguin-core/kernel";
+import type { IfaceDecl, IfaceTable, Manifest, Sig, TypeExpr } from "@lmliheng/penguin-core/kernel";
 import type { TypeScript } from "./typescript.js";
 
 export class IfaceRenderError extends Error {}

@@ -14,7 +14,7 @@
  * - A member removed from the Project stops hearing about its Sessions.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { assistantText } from "@prismshadow/penguin-core";
+import { assistantText } from "@lmliheng/penguin-core";
 import type { ServerEvent } from "../src/api/types.js";
 import { userChannelKey } from "../src/http/routes/events.js";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";

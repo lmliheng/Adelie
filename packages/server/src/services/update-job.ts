@@ -32,7 +32,7 @@
  * A platform hot-swap while a run is in flight builds a fresh service that knows nothing of
  * it; the child finishes on its own and only its status is lost. Rare enough to accept.
  */
-import { Component, Interface } from "@prismshadow/penguin-core/kernel";
+import { Component, Interface } from "@lmliheng/penguin-core/kernel";
 import { spawn } from "node:child_process";
 import type { UpdateJobPhase, UpdateJobStatus, UpdateRunResponse } from "../api/types.js";
 

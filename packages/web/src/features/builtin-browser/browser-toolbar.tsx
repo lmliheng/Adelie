@@ -11,7 +11,7 @@
  */
 import { useState } from "react";
 import type { ReactNode, Ref } from "react";
-import type { BuiltinBrowserTab } from "@prismshadow/penguin-server/api";
+import type { BuiltinBrowserTab } from "@lmliheng/penguin-server/api";
 import {
   CloseIcon,
   Dropdown,
@@ -22,7 +22,7 @@ import {
   MenuItem,
   MenuSeparator,
   Tooltip,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import { AddressBar } from "./address-bar";

@@ -6,7 +6,7 @@
  * it was written in, and only a history joined from two disks is ordered by time.
  */
 import { describe, expect, it } from "vitest";
-import type { BenchmarkEvaluation, BenchmarkSummary } from "@prismshadow/penguin-server/api";
+import type { BenchmarkEvaluation, BenchmarkSummary } from "@lmliheng/penguin-server/api";
 import { mergeAgents, mergeBenchmarks, mergeBenchmarkCases } from "../src/lib/benchmark-merge";
 
 const MACHINE = "noeSE0FFHhNXl2J5";

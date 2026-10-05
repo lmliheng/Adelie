@@ -15,20 +15,20 @@
  */
 import fsp from "node:fs/promises";
 import path from "node:path";
-import { Component, Interface, Use } from "@prismshadow/penguin-core/kernel";
-import type { ClassCtx } from "@prismshadow/penguin-core/kernel";
-import { atomicWriteFile } from "@prismshadow/penguin-core";
+import { Component, Interface, Use } from "@lmliheng/penguin-core/kernel";
+import type { ClassCtx } from "@lmliheng/penguin-core/kernel";
+import { atomicWriteFile } from "@lmliheng/penguin-core";
 import type {
   HarnessHistory,
   HarnessHistoryEntry,
   HarnessInfo,
   IfacesSummary,
   RollbackFailure,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import table from "../ifaces.json" with { type: "json" };
 import { readHarnessInfo } from "../hmr/manifest.js";
 import { readPushedBuild } from "../hmr/pushed-build.js";
-import { summarizeTable } from "@prismshadow/penguin-hmr";
+import { summarizeTable } from "@lmliheng/penguin-hmr";
 import type {
   Channels,
   Clock,

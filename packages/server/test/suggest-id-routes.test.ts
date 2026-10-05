@@ -11,7 +11,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { agentsDir, benchmarksDir } from "@prismshadow/penguin-core";
+import { agentsDir, benchmarksDir } from "@lmliheng/penguin-core";
 import type {
   AgentsResponse,
   BenchmarkCreateRequest,

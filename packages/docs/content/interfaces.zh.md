@@ -7,12 +7,12 @@ description: 引擎背后的 Human、LLM 与 Environment 契约，附完整签�
 
 本页沿一轮运行的控制流展开：[Human 边界](#human-边界)、[LLM 契约](#llminterface)、[审批回调](#approvefn)和 [Environment 契约](#environmentinterface)。结尾介绍[子 Agent](#子-agent-接口) 和[视觉](#visiondescriberservice)服务，以及[扩展点](#扩展点)。
 
-所有类型都从 `@prismshadow/penguin-core` 导出。源码位于 `packages/core/src/interfaces/`：
+所有类型都从 `@lmliheng/penguin-core` 导出。源码位于 `packages/core/src/interfaces/`：
 
 - `llm.ts`：模型侧需要的类型。
 - `environment.ts`：Environment 侧需要的类型。
 - `shared.ts`：两侧真正共用的词汇。
-- `index.ts`：`@prismshadow/penguin-core/interfaces` 子路径背后的聚合导出入口。
+- `index.ts`：`@lmliheng/penguin-core/interfaces` 子路径背后的聚合导出入口。
 
 ## 三条边界
 
@@ -281,7 +281,7 @@ interface ConfinedSpawn {
   env?: Readonly<Record<string, string>>;   // entries the sandbox runner itself needs, laid over the command's env
 }
 
-// The policy itself (@prismshadow/penguin-core/plugin). "danger-full-access" with no network cut
+// The policy itself (@lmliheng/penguin-core/plugin). "danger-full-access" with no network cut
 // and no masked path is the sandbox off.
 type SandboxSettings = {
   mode: "read-only" | "workspace-write" | "danger-full-access";

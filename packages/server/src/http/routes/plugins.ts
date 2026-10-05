@@ -46,7 +46,7 @@ import {
   userPluginInstalled,
   userPluginRoots,
   userPluginsDir,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   AgentPluginsInstallResponse,
   PluginDirectoryResponse,
@@ -62,7 +62,7 @@ import type { Config, Hmr } from "../../hmr/capabilities.js";
 import type { AgentConfig } from "../../mechanisms/agents.js";
 import type { Access } from "../../mechanisms/projects.js";
 import type { Sessions as ManagerIface } from "../../runtime/session-manager.js";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import { agentHooksRoutes } from "./hooks.js";
 import { builtinPluginRegistry } from "../../plugin/registry.js";
 import { pluginBases } from "../../plugin/loader.js";

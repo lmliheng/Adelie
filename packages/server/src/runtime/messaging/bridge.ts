@@ -72,8 +72,8 @@
  * rather than dropped quietly, and none of it is posted into the chat (see
  * messagingFilesNotSentRecords).
  */
-import { imageUrlMessage, scratchpadDir, userText } from "@prismshadow/penguin-core";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+import { imageUrlMessage, scratchpadDir, userText } from "@lmliheng/penguin-core";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import type { MessagingDeliveryError, MessagingRuntimeStatus } from "../../api/types.js";
 import type { MessagingBindingRow } from "../../db/repos/messaging-bindings.js";
 import { INLINE_IMAGE_MAX_BYTES, toAttachmentLimits } from "../../services/attachment-limits.js";
@@ -103,8 +103,8 @@ import {
   isImageFileName,
 } from "./media.js";
 import { replyFileMentions } from "./reply-files.js";
-import { Component, Interface, Bind, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
-import type { Slot, ClassCtx } from "@prismshadow/penguin-core/kernel";
+import { Component, Interface, Bind, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import type { Slot, ClassCtx } from "@lmliheng/penguin-core/kernel";
 import type { QQScanTransportHandle } from "./qq-scan.js";
 import { QQScanService, createQQScanTransport } from "./qq-scan.js";
 import type { AppEnv } from "../../auth/middleware.js";

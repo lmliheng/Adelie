@@ -27,8 +27,8 @@ import {
   parsePluginVersion,
   removeHook,
   replaceSkillDirectory,
-} from "@prismshadow/penguin-core";
-import type { HookCommand, HookManifest } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { HookCommand, HookManifest } from "@lmliheng/penguin-core";
 import type { AgentHooksResponse, HookItem } from "../../api/types.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import type { PluginsRouteDeps } from "./plugins.js";

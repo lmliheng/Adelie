@@ -62,7 +62,7 @@ import {
   setVisionModel,
   unaddableModel,
   unroutableVendorModel,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import { parseApprovalAnswer } from "../approval.js";
 import { resolveRootOption } from "../root-option.js";
 import { getMessages, maskApiKey, type Messages } from "../i18n.js";

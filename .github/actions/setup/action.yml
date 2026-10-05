@@ -13,7 +13,7 @@ inputs:
   build:
     description: >-
       pnpm --filter arguments naming what to build, comma separated (e.g.
-      "@prismshadow/penguin-core..."). Empty builds nothing — a job that only reads
+      "@lmliheng/penguin-core..."). Empty builds nothing — a job that only reads
       sources, such as the Prettier gate, needs no dist at all.
     required: false
     default: ""

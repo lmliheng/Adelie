@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ConfirmModal } from "@prismshadow/penguin-ui";
+import { ConfirmModal } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 
 export function useSaveConfirm(): {

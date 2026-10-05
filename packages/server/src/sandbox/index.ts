@@ -5,7 +5,7 @@
  *
  * The vocabulary it routes ON is not here. `SandboxPolicy`, `SandboxProvider`,
  * `ConfinedArgv` and the mode/dimension unions belong to the plugin contract in
- * `@prismshadow/penguin-core/plugin`, because a backend is written against those names
+ * `@lmliheng/penguin-core/plugin`, because a backend is written against those names
  * and nothing else. What this directory holds is the embedder's half: which policy reaches
  * which backend, the settings behind it, and the fail-closed behaviour when nothing covers
  * the request.

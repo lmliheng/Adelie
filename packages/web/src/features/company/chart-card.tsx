@@ -35,7 +35,7 @@
  */
 import { useEffect } from "react";
 import type { ReactNode } from "react";
-import type { OrgEmployeeItem, OrgEmployeeState } from "@prismshadow/penguin-server/api";
+import type { OrgEmployeeItem, OrgEmployeeState } from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   Dot,
@@ -45,8 +45,8 @@ import {
   ICON_SIZE,
   Legend,
   useRowContextMenu,
-} from "@prismshadow/penguin-ui";
-import type { ToneName } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { ToneName } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { formatMoney, formatPercent } from "../../lib/format";
 import { toneDot, toneInk } from "../../lib/tone";

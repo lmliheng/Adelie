@@ -2,7 +2,7 @@
  * Writes a bearer secret to a 0600 file, refusing to follow a symlink parked at the path:
  * someone who can write the directory but not read the file could otherwise redirect the write
  * into a file they CAN read. Hence unlink + exclusive create, and chmod on the fd rather than
- * the path. Exported as `@prismshadow/penguin-server/secret-file` so the CLI shares it.
+ * the path. Exported as `@lmliheng/penguin-server/secret-file` so the CLI shares it.
  */
 import fs from "node:fs";
 

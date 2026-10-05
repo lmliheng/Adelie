@@ -1,4 +1,4 @@
-import type { SessionInfo } from "@prismshadow/penguin-server/api";
+import type { SessionInfo } from "@lmliheng/penguin-server/api";
 
 /**
  * The Session the route names: the loaded list's row when it holds one, otherwise the row a

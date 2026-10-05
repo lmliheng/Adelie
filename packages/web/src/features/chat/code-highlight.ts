@@ -6,7 +6,7 @@
  * The worker client is imported on the first call, not up front, so it stays in a chunk of its own
  * that a session with no code block never fetches — as it did when the code block imported it.
  */
-import type { CodeHighlighter } from "@prismshadow/penguin-ui";
+import type { CodeHighlighter } from "@lmliheng/penguin-ui";
 
 export const highlightCode: CodeHighlighter = (code, language, options) =>
   import("./highlighter").then((mod) => mod.highlightToHtml(code, language, options));

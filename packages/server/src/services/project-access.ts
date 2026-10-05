@@ -9,7 +9,7 @@
 import type { ProjectRole, ProjectSummary } from "../api/types.js";
 import { HttpError } from "../http/errors.js";
 import type { ProjectRow } from "../db/repos/projects.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Access, Members, ProjectConfigStore, Projects } from "../mechanisms/projects.js";
 
 @Component()

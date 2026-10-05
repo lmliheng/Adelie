@@ -6,7 +6,7 @@
  * runs, not ones the first request answers. The server builds one program from the entry
  * (and whatever it imports), under options the HOST fixes — `strict`, NodeNext; a
  * `tsconfig.json` in the folder is not consulted, so a workflow cannot switch strictness
- * off for itself. `@prismshadow/penguin-server/plugin` resolves to the types the harness
+ * off for itself. `@lmliheng/penguin-server/plugin` resolves to the types the harness
  * wrote into the folder (./harness-types.ts), never to a package: what the workflow was
  * written against. Whether that still fits this platform is ../plugin/iface-check.ts.
  *
@@ -27,7 +27,7 @@ import { harnessTypesFile } from "./harness-types.js";
 export const ENTRY = "index.ts";
 export const BUILD_DIR = ".build";
 /** The module a workflow imports its types from. */
-export const TYPES_MODULE = "@prismshadow/penguin-server/plugin";
+export const TYPES_MODULE = "@lmliheng/penguin-server/plugin";
 const CHECK_FILE = "__workflow_check__.ts";
 const CHECK_SOURCE = `import type { WorkflowPackage } from ${JSON.stringify(TYPES_MODULE)};
 import pkg from "./index.js";

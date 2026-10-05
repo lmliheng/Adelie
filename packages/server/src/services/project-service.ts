@@ -16,7 +16,7 @@ import {
   DEFAULT_PROJECT_NAME,
   projectDir,
   provisionProjectAgents,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type { MemberInfo, ProjectRole, ProjectSummary } from "../api/types.js";
 import { HttpError } from "../http/errors.js";
 import type { ProjectRow } from "../db/repos/projects.js";
@@ -28,7 +28,7 @@ import {
   SEMANTIC_ID_PATTERN,
   SEMANTIC_ID_RULE,
 } from "./ids.js";
-import { Component, Use, Interface } from "@prismshadow/penguin-core/kernel";
+import { Component, Use, Interface } from "@lmliheng/penguin-core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type {
   Access,

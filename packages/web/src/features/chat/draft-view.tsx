@@ -51,7 +51,7 @@ import type {
   SessionSandbox,
   SkillMetadataItem,
   TaskInputPart,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   Chevron,
@@ -60,7 +60,7 @@ import {
   MenuItem,
   AppLogo,
   toastError,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { UNCONFINED } from "../../lib/permission-level";

@@ -32,7 +32,7 @@ import type {
   SkillMetadataItem,
   SubagentRuntimeInfo,
   TaskInputPart,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   EmptyState,
@@ -41,7 +41,7 @@ import {
   StatusIcon,
   Text,
   toastError,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { ApiError } from "../../api/client";
 import { abortSubagent, getAgentSkills, messageSubagent, patchSession } from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";

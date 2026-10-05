@@ -7,7 +7,7 @@
  * that silently omits its answer is indistinguishable from a broken feature. Identified by
  * machine id and labelled by ssh alias.
  */
-import type { MachineInfo, MachinesResponse } from "@prismshadow/penguin-server/api";
+import type { MachineInfo, MachinesResponse } from "@lmliheng/penguin-server/api";
 import { S } from "./strings";
 
 /** One machine a workspace can live on, and whether it can be browsed right now. */

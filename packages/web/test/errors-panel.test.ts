@@ -14,7 +14,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { UsageErrorItem, UsageErrors } from "@prismshadow/penguin-server/api";
+import type { UsageErrorItem, UsageErrors } from "@lmliheng/penguin-server/api";
 import { ErrorsPanel, errorsClearScopeText } from "../src/features/usage/errors-panel";
 import type { ErrorsFilters } from "../src/features/usage/errors-panel";
 import { formatDateTime } from "../src/lib/format";

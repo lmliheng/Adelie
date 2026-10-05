@@ -11,7 +11,7 @@
  * later desk and ticket Session of that employee is opened on), and the desk is renewed — a
  * new desk Session on that model, recorded as the desk, the previous one kept in its history.
  */
-import type { ModelRefDto, OrgDeskResponse } from "@prismshadow/penguin-server/api";
+import type { ModelRefDto, OrgDeskResponse } from "@lmliheng/penguin-server/api";
 
 /** The three calls this needs, so a test can stand in for the API. */
 export interface DeskModelApi {

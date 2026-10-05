@@ -27,7 +27,7 @@
  * fields and its account identity stay. The repo does not interpret the document; each
  * channel's connector and route own its shape.
  */
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { MessagingBindings } from "../../mechanisms/messaging.js";
 

@@ -20,8 +20,8 @@ import type {
   AgentCompactionConfigDto,
   AgentKernelUpdateResponse,
   AgentModelConfigDto,
-} from "@prismshadow/penguin-server/api";
-import type { ToolDefinitionConfig, ToolPermission } from "@prismshadow/penguin-core/interfaces";
+} from "@lmliheng/penguin-server/api";
+import type { ToolDefinitionConfig, ToolPermission } from "@lmliheng/penguin-core/interfaces";
 import {
   Button,
   Card,
@@ -49,8 +49,8 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
-import type { OptionMenuChoice } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { OptionMenuChoice } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

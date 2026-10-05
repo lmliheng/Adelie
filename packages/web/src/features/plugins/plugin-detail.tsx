@@ -9,14 +9,14 @@
  * on hand at once and nothing here is fetched per directory.
  */
 import { useEffect, useState } from "react";
-import { Badge, FileBrowser, ICONS, Modal } from "@prismshadow/penguin-ui";
-import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@prismshadow/penguin-ui";
+import { Badge, FileBrowser, ICONS, Modal } from "@lmliheng/penguin-ui";
+import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { baseName } from "../../lib/workspace-tree";
 import { useLocale } from "../../state/locale";
 import { getPluginFiles } from "../../api/endpoints";
-import type { PluginItem } from "@prismshadow/penguin-server/api";
+import type { PluginItem } from "@lmliheng/penguin-server/api";
 import { SkillTile } from "../skills/skill-icon-view";
 import { localizedText } from "../chat/skill-use";
 

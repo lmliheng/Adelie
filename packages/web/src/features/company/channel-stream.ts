@@ -8,7 +8,7 @@
  * immutable append a live message goes through, and when a join made on another surface
  * obliges the view to re-read its own detail.
  */
-import type { OrgChannelMessage } from "@prismshadow/penguin-server/api";
+import type { OrgChannelMessage } from "@lmliheng/penguin-server/api";
 import { parsePrincipal } from "./principals";
 
 /** One day file as loaded: the organization-timezone date and its messages in file order. */

@@ -12,7 +12,7 @@
  * terminal snapshot (up to date, downloaded) cannot change between clicks.
  */
 import { useEffect, useReducer } from "react";
-import type { DesktopUpdateStatus } from "@prismshadow/penguin-server/api";
+import type { DesktopUpdateStatus } from "@lmliheng/penguin-server/api";
 import * as api from "../api/endpoints";
 import { clientCheckSettle } from "./desktop-update";
 import type { ClientCheckSettle } from "./desktop-update";

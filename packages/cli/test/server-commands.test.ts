@@ -11,7 +11,7 @@ import {
   partialText,
   userText,
   type OmniMessage,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import { cli } from "../src/index.js";
 import { getMessages } from "../src/i18n.js";
 import { FakeServer } from "./fake-server.js";

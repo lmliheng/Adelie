@@ -20,9 +20,9 @@ import {
   requestAuthority,
   createPreviewTokenSigner,
 } from "../../services/preview-token.js";
-import { Interface, Bind, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
+import { Interface, Bind, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
 import type { AppEnv } from "../../auth/middleware.js";
-import type { ClassCtx } from "@prismshadow/penguin-core/kernel";
+import type { ClassCtx } from "@lmliheng/penguin-core/kernel";
 import type { SessionIndex } from "../../mechanisms/sessions.js";
 import type { WorkspaceFiles } from "../../mechanisms/workspace.js";
 

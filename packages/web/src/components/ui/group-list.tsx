@@ -4,7 +4,7 @@
  * icon, and the group pager in the sidebar's words. The rows themselves — the group header, the
  * lazy folder, the "more" row and the pager — are the shared UI package's.
  */
-import { GlyphIcon, ICONS, ICON_SIZE, Pager } from "@prismshadow/penguin-ui";
+import { GlyphIcon, ICONS, ICON_SIZE, Pager } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import type { SessionSortMode } from "../../lib/session-order";
 

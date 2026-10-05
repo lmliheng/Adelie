@@ -3,7 +3,7 @@
  * output item for item.
  */
 import { describe, expect, it } from "vitest";
-import type { TokenUsagePayload } from "@prismshadow/penguin-core/omnimessage";
+import type { TokenUsagePayload } from "@lmliheng/penguin-core/omnimessage";
 import {
   addLlmDuration,
   addToolExecution,

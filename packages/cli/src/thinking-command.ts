@@ -16,8 +16,8 @@
  *   never writes back to the Agent config.
  * - `/thinking` bare shows the Session's pinned level, else the Agent's configured level.
  */
-import { DEFAULT_CHAT_THINKING_LEVELS } from "@prismshadow/penguin-core";
-import type { DefaultChatThinkingLevel, ThinkingLevelName } from "@prismshadow/penguin-core";
+import { DEFAULT_CHAT_THINKING_LEVELS } from "@lmliheng/penguin-core";
+import type { DefaultChatThinkingLevel, ThinkingLevelName } from "@lmliheng/penguin-core";
 import type { Messages } from "./i18n.js";
 
 /** Parses one level token (trimmed, case-insensitive); null when it is not a selectable level. */

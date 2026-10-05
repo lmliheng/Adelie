@@ -11,17 +11,17 @@
  * covers fails closed — never a silent unconfined run, and never a silently dropped
  * dimension.
  */
-import type { SpawnConfiner } from "@prismshadow/penguin-core";
+import type { SpawnConfiner } from "@lmliheng/penguin-core";
 import type {
   SandboxDimension,
   SandboxPolicy,
   SandboxProvider,
   SandboxProviderSource,
   SandboxSettings,
-} from "@prismshadow/penguin-core/plugin";
+} from "@lmliheng/penguin-core/plugin";
 import { providerDimensions, requestedDimensions } from "./dimensions.js";
-import { Interface, Module, Provide } from "@prismshadow/penguin-core/kernel";
-import type { Slot, ClassCtx, Json } from "@prismshadow/penguin-core/kernel";
+import { Interface, Module, Provide } from "@lmliheng/penguin-core/kernel";
+import type { Slot, ClassCtx, Json } from "@lmliheng/penguin-core/kernel";
 
 interface MountedProvider {
   name: string;

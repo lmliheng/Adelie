@@ -99,7 +99,7 @@ export const KEY_RULES: readonly KeyRule[] = [
     kind: "exact",
     key: "penguin.themeId",
     scope: "browser",
-    why: "Which theme renders the app (the key lives in @prismshadow/penguin-ui/boot); pure appearance.",
+    why: "Which theme renders the app (the key lives in @lmliheng/penguin-ui/boot); pure appearance.",
   },
   {
     kind: "exact",

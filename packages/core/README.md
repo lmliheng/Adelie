@@ -1,11 +1,11 @@
-# @prismshadow/penguin-core
+# @lmliheng/penguin-core
 
 The Adelie SDK and execution engine: the ReAct loop (`context_engine`), the OmniMessage protocol, the LLM / Environment interface contracts, Agent State and append-only Traces.
 
 The engine speaks only OmniMessage and delegates everything else through two swappable interfaces — `LLMInterface` (models, via the [`@prismshadow/agenthub`](https://www.npmjs.com/package/@prismshadow/agenthub) gateway) and `EnvironmentInterface` (tool execution). The SDK caller is the Human boundary: one entry point, `session.run`, streams the whole loop.
 
 ```ts
-import { createAgent, isCompleteModelMessage, userText } from "@prismshadow/penguin-core";
+import { createAgent, isCompleteModelMessage, userText } from "@lmliheng/penguin-core";
 
 const agent = await createAgent({ agentId: "default_agent" });
 const session = await agent.createSession({ workspaceDir: process.cwd() });
@@ -32,9 +32,9 @@ A single `run` drives a complete Task: streaming output, per-call approvals, con
 ## Development
 
 ```bash
-pnpm --filter @prismshadow/penguin-core build       # tsup → dist/ (exports point at dist)
-pnpm --filter @prismshadow/penguin-core typecheck
-pnpm --filter @prismshadow/penguin-core test
+pnpm --filter @lmliheng/penguin-core build       # tsup → dist/ (exports point at dist)
+pnpm --filter @lmliheng/penguin-core typecheck
+pnpm --filter @lmliheng/penguin-core test
 pnpm test:e2e                                       # live-model e2e (needs DEEPSEEK_API_KEY)
 ```
 

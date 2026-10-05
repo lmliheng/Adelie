@@ -21,7 +21,7 @@ import type {
   OrgChartResponse,
   OrgSessionsResponse,
   SessionStatus,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   deskRows,
   liveEmployeeStates,

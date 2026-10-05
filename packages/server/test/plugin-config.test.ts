@@ -5,7 +5,7 @@
  * masked at the API and kept when the mask is sent back, every save handed to the watchers.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { parseManifest } from "@prismshadow/penguin-core/kernel";
+import { parseManifest } from "@lmliheng/penguin-core/kernel";
 import type { PluginConfigResponse } from "../src/api/types.js";
 import {
   PluginConfigError,

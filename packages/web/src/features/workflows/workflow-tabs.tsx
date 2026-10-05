@@ -10,8 +10,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import type { WorkflowInfo, WorkflowVersion } from "@prismshadow/penguin-server/api";
-import { Button, NoticeStrip } from "@prismshadow/penguin-ui";
+import type { WorkflowInfo, WorkflowVersion } from "@lmliheng/penguin-server/api";
+import { Button, NoticeStrip } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { formatDateTime } from "../../lib/format";
 import { useShortcutLabel } from "../../lib/shortcuts/use-keymap";

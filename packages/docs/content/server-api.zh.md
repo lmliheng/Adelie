@@ -1155,8 +1155,8 @@ export type ServerEvent =
 
 ## 类型导入
 
-所有 DTO 类型都能以仅类型导入的方式，从服务器包的 `@prismshadow/penguin-server/api` 子路径引入：
+所有 DTO 类型都能以仅类型导入的方式，从服务器包的 `@lmliheng/penguin-server/api` 子路径引入：
 
 ```ts
-import type { ServerEvent, SessionInfo } from "@prismshadow/penguin-server/api";
+import type { ServerEvent, SessionInfo } from "@lmliheng/penguin-server/api";
 ```

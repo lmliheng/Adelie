@@ -38,7 +38,7 @@ uses the project's default model, so no model id is hard-coded in the script.
 
 ## 3. Run the example
 
-From the repo root (build the workspace first so `@prismshadow/penguin-core` resolves to its
+From the repo root (build the workspace first so `@lmliheng/penguin-core` resolves to its
 `dist/`):
 
 ```bash

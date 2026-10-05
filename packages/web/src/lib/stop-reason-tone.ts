@@ -1,4 +1,4 @@
-import type { ToneName } from "@prismshadow/penguin-ui";
+import type { ToneName } from "@lmliheng/penguin-ui";
 
 /**
  * A Task's `stop_reason` as a badge tone. A completed run usually shows no badge at all; an

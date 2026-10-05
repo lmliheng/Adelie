@@ -35,7 +35,7 @@
  * - A session_created for this Project reloads wherever it happened; another Project's never.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ServerEvent, SessionInfo, SessionsResponse } from "@prismshadow/penguin-server/api";
+import type { ServerEvent, SessionInfo, SessionsResponse } from "@lmliheng/penguin-server/api";
 import { applyUserEvent, createSessionsStore, liveSessionStatuses } from "../src/state/sessions";
 import { forgetSessionMachines, machineForSession } from "../src/lib/session-machines";
 import { cachedMachineSessions, rememberMachineSessions } from "../src/lib/machine-cache";

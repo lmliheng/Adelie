@@ -4,7 +4,7 @@
  * offering one that cannot be reached would fail at the first click instead of the choice.
  */
 import { describe, expect, it } from "vitest";
-import type { MachineInfo, MachinesResponse } from "@prismshadow/penguin-server/api";
+import type { MachineInfo, MachinesResponse } from "@lmliheng/penguin-server/api";
 import {
   isElsewhere,
   machineLabel,

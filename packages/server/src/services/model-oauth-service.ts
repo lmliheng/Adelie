@@ -24,11 +24,11 @@
  * minutes anyway, and no key exists until the exchange runs).
  */
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { APP_URL, providerInfo } from "@prismshadow/penguin-core/model-catalog";
-import type { ModelProviderOAuth } from "@prismshadow/penguin-core/model-catalog";
+import { APP_URL, providerInfo } from "@lmliheng/penguin-core/model-catalog";
+import type { ModelProviderOAuth } from "@lmliheng/penguin-core/model-catalog";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { ModelOAuth, ProjectConfigStore } from "../mechanisms/projects.js";
 
 /** How the user gets the authorization code back to the harness. */

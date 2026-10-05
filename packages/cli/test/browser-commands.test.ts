@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { BuiltinBrowserExecResult, BuiltinBrowserTab } from "@prismshadow/penguin-server/api";
+import type { BuiltinBrowserExecResult, BuiltinBrowserTab } from "@lmliheng/penguin-server/api";
 import { cli } from "../src/index.js";
 import { getMessages } from "../src/i18n.js";
 import { localMinute, RETURN_LIMIT, renderExec } from "../src/browser-output.js";

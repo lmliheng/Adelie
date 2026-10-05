@@ -23,7 +23,7 @@ Other fixed ports (`packages/core/src/internal/ports.ts`): 7364 installed server
 7369 `pnpm penguin web` (data root `~/.penguin/dev-data-cli` — its own, so it can serve while an
 Agent it hosts runs `pnpm dev`; the lock is per root). On a shared box, `ss -tln` before assuming
 one is free; `PORT=` inline moves it. The gallery's port is strict — a busy 7372 fails instead of
-drifting, because quoted gallery links and `pnpm --filter @prismshadow/penguin-ui-gallery shots`
+drifting, because quoted gallery links and `pnpm --filter @lmliheng/penguin-ui-gallery shots`
 name it.
 
 The user's installed app, server and CLI all use `~/.penguin/data` — their real Agents, Sessions

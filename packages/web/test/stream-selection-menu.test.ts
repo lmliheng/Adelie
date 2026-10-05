@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement, isValidElement } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ICONS } from "@prismshadow/penguin-ui";
+import { ICONS } from "@lmliheng/penguin-ui";
 import { LinkMenuRows, SelectionMenuRows } from "../src/features/chat/stream-selection-menu";
 import type { CapturedSelection } from "../src/features/chat/stream-selection-menu";
 import type { ComposerControl } from "../src/features/chat/chat-input";
@@ -27,8 +27,8 @@ import { en } from "../src/lib/strings-en";
 /** Toasts raised during a test (the real store would leave its dismiss timers running). */
 const toasts = vi.hoisted(() => [] as string[]);
 
-vi.mock("@prismshadow/penguin-ui", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@prismshadow/penguin-ui")>();
+vi.mock("@lmliheng/penguin-ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@lmliheng/penguin-ui")>();
   return {
     ...actual,
     toastSuccess: (text: string) => {

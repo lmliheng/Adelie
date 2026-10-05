@@ -4,7 +4,7 @@
  * and "found" requires the release to be named so the toast and row have something to show.
  */
 import { describe, expect, it } from "vitest";
-import type { UpdateCheckResponse } from "@prismshadow/penguin-server/api";
+import type { UpdateCheckResponse } from "@lmliheng/penguin-server/api";
 import { updateCheckOutcome } from "../src/lib/use-version-info";
 
 function response(overrides: Partial<UpdateCheckResponse>): UpdateCheckResponse {

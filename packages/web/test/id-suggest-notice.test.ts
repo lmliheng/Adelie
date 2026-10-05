@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import type {
   SemanticIdSuggestReason,
   SemanticIdSuggestResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { idSuggestNotice } from "../src/features/semantic-id/id-suggest-notice";
 import { zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";

@@ -1,4 +1,4 @@
-import type { OrgChannelNoticeKind } from "@prismshadow/penguin-server/api";
+import type { OrgChannelNoticeKind } from "@lmliheng/penguin-server/api";
 
 /**
  * CLI text internationalization (i18n).
@@ -1755,7 +1755,7 @@ const en: Messages = {
     unknownInstall: (modulePath) =>
       `Cannot tell how this penguin was installed (running from ${modulePath}), so it will not be replaced. Re-install with the official installer, or upgrade with the package manager you used.`,
     npmUnknownManager: (globalRoot, target) =>
-      `This is a global install under ${globalRoot}, but the package manager that owns it could not be identified. Upgrade it yourself with that manager, e.g. \`npm install -g @prismshadow/penguin-cli@${target}\`.`,
+      `This is a global install under ${globalRoot}, but the package manager that owns it could not be identified. Upgrade it yourself with that manager, e.g. \`npm install -g @lmliheng/penguin-cli@${target}\`.`,
     windowsUnsupported: () =>
       "The official installer is a POSIX shell script and does not run on Windows. Re-install from the GitHub Releases page, or use a global npm install instead.",
     windowsGlobalInstall: (command) =>
@@ -2651,7 +2651,7 @@ const zh: Messages = {
     unknownInstall: (modulePath) =>
       `无法判断当前 penguin 的安装方式（运行自 ${modulePath}），因此不会替换它。请用官方安装脚本重新安装，或用你当初使用的包管理器升级。`,
     npmUnknownManager: (globalRoot, target) =>
-      `这是位于 ${globalRoot} 的全局安装，但无法确定是哪个包管理器安装的。请自行用该包管理器升级，例如 \`npm install -g @prismshadow/penguin-cli@${target}\`。`,
+      `这是位于 ${globalRoot} 的全局安装，但无法确定是哪个包管理器安装的。请自行用该包管理器升级，例如 \`npm install -g @lmliheng/penguin-cli@${target}\`。`,
     windowsUnsupported: () =>
       "官方安装脚本是 POSIX shell 脚本，无法在 Windows 上运行。请从 GitHub Releases 页面重新安装，或改用 npm 全局安装。",
     windowsGlobalInstall: (command) =>

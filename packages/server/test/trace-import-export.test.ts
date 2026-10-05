@@ -8,7 +8,7 @@
  * endpoints. Import is owner-only, mirroring the Agent snapshot import.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { OmniMessage, SessionMetaPayload } from "@prismshadow/penguin-core";
+import type { OmniMessage, SessionMetaPayload } from "@lmliheng/penguin-core";
 import type {
   AgentTracesResponse,
   ProjectCreateResponse,

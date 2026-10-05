@@ -1,6 +1,6 @@
-import { Component, Module, moduleDefOf, Use } from "@prismshadow/penguin-core/kernel";
-import type { ManifestTable, ModuleClass, ModuleDef } from "@prismshadow/penguin-core/kernel";
-import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME } from "@prismshadow/penguin-core";
+import { Component, Module, moduleDefOf, Use } from "@lmliheng/penguin-core/kernel";
+import type { ManifestTable, ModuleClass, ModuleDef } from "@lmliheng/penguin-core/kernel";
+import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME } from "@lmliheng/penguin-core";
 import table from "./ifaces.json" with { type: "json" };
 import type { HmrCapabilities, ReassemblyChange } from "./hmr/capabilities.js";
 import {

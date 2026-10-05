@@ -6,7 +6,7 @@
  * agent as a whole (the settings tab opens a new Session). Picking one opens the AI creation
  * dialog with that prompt filled in, and the same rows are the dialog's clickable examples.
  */
-import { GlyphIcon, ICONS, ICON_GAP, ICON_SIZE } from "@prismshadow/penguin-ui";
+import { GlyphIcon, ICONS, ICON_GAP, ICON_SIZE } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import type { AiExample } from "../ai-create";
 

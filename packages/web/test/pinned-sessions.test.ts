@@ -13,7 +13,7 @@
  *   rows ignore pins and a pin of a deleted Session surfaces nothing.
  */
 import { describe, expect, it } from "vitest";
-import type { SessionInfo } from "@prismshadow/penguin-server/api";
+import type { SessionInfo } from "@lmliheng/penguin-server/api";
 import {
   loadPinnedSessions,
   pinnedSessionsKey,

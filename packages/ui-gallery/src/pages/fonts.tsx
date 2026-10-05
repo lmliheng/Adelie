@@ -9,7 +9,7 @@
  *   family, weight and style, with the number of `unicode-range` slices and their load status.
  * - Licences: the licence texts under the package's `fonts/LICENSES/`.
  */
-import { THEME_IDS } from "@prismshadow/penguin-ui";
+import { THEME_IDS } from "@lmliheng/penguin-ui";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { FontReadoutLine } from "../chrome/font-readout";

@@ -9,7 +9,7 @@
  * Nothing about a package is rewritten. Its `package.json`, its `exports`, its `dist/` and its
  * `README.md` reach the target as the package's own build produced them; a dependency it
  * declares is installed beside it the way npm installs it anywhere. The SDK's runtime is not
- * among those dependencies — a plugin compiles against `@prismshadow/penguin-core`'s types
+ * among those dependencies — a plugin compiles against `@lmliheng/penguin-core`'s types
  * (a devDependency) and shares the host's copy at run time.
  *
  * A builtin plugin bundles what it runs. Every file in the prefix is a blob a push carries

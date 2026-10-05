@@ -60,7 +60,7 @@ files:
   - from: ../web/dist
     to: web-dist
 # The app's own metadata, which the workspace package.json cannot carry: deb and AppImage
-# derive package and executable names from `name`, where "@prismshadow/…" is invalid, and
+# derive package and executable names from `name`, where "@lmliheng/…" is invalid, and
 # fpm refuses to build without a homepage. It does NOT decide the app data directory: the
 # shell calls app.setName() before anything reads userData, so that keeps the name
 # src/app-identity.ts chooses per form.

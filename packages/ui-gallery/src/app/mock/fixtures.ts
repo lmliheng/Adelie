@@ -41,7 +41,7 @@ import type {
   VaultResponse,
   VersionResponse,
   WorkspaceFileEntry,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 // The built-in catalog, as the app reads it (the same built module the app imports): the model
 // table is every preset it seeds a Project with, so the app's "sync presets" badge stays quiet.
 import {

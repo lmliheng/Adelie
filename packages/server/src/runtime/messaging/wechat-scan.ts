@@ -1,5 +1,5 @@
-import { Interface, Module, Provide } from "@prismshadow/penguin-core/kernel";
-import type { Opaque } from "@prismshadow/penguin-core/kernel";
+import { Interface, Module, Provide } from "@lmliheng/penguin-core/kernel";
+import type { Opaque } from "@lmliheng/penguin-core/kernel";
 /**
  * WeChat scan-to-connect: binding the official claw bot by scanning a QR code in WeChat.
  *

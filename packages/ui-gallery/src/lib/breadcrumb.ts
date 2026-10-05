@@ -12,8 +12,8 @@
  * so one quote still means one view. The caller passes every name already localized; this file
  * only spells the address.
  */
-import { DEFAULT_TEXT_SIZE } from "@prismshadow/penguin-ui/boot";
-import type { TextSize } from "@prismshadow/penguin-ui/boot";
+import { DEFAULT_TEXT_SIZE } from "@lmliheng/penguin-ui/boot";
+import type { TextSize } from "@lmliheng/penguin-ui/boot";
 import { TEXT_SIZE_PX_NUMBER } from "./themes";
 
 export interface BreadcrumbParts {

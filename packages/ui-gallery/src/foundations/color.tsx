@@ -6,8 +6,8 @@
  * chart series as bars; the code and diff colours on a hunk. Every value, with its contrast
  * ratios, is in the tokens drawer.
  */
-import { ACCENT_PRESETS, TONES } from "@prismshadow/penguin-ui";
-import type { ThemeId, ThemeModeName, ToneName } from "@prismshadow/penguin-ui";
+import { ACCENT_PRESETS, TONES } from "@lmliheng/penguin-ui";
+import type { ThemeId, ThemeModeName, ToneName } from "@lmliheng/penguin-ui";
 import type { CSSProperties } from "react";
 import geekCss from "../../../ui/src/themes/geek.css?raw";
 import githubCss from "../../../ui/src/themes/github.css?raw";

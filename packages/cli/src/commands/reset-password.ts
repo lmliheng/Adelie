@@ -12,8 +12,8 @@
  * Docs: /docs/cli § "penguin server / penguin web".
  */
 import path from "node:path";
-import { resolveRoot } from "@prismshadow/penguin-core";
-import { resetAdminPassword } from "@prismshadow/penguin-server/reset-admin-password";
+import { resolveRoot } from "@lmliheng/penguin-core";
+import { resetAdminPassword } from "@lmliheng/penguin-server/reset-admin-password";
 import type { Command } from "commander";
 import type { Messages } from "../i18n.js";
 

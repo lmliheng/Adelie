@@ -31,8 +31,8 @@
  * the sandbox service) is created before the page, and a sandbox backend reading its own
  * group is created after the provider: one node for both would close that circle.
  */
-import { Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
-import type { ClassCtx, Slot } from "@prismshadow/penguin-core/kernel";
+import { Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import type { ClassCtx, Slot } from "@lmliheng/penguin-core/kernel";
 import type {
   PluginConfigEntry,
   PluginConfigField,

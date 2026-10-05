@@ -5,7 +5,7 @@
       "packages/web/src/lib/icon-scale": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/icon-scale.ts",
           "names": ["ICON_SIZE", "ICON_GAP"]
         }
@@ -13,7 +13,7 @@
       "packages/web/src/components/ui/glyph-icon": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/glyph-icon/glyph-icon.tsx",
           "names": ["GlyphIcon"]
         }
@@ -21,7 +21,7 @@
       "packages/web/src/components/ui/chevron": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/chevron/chevron.tsx",
           "names": ["Chevron"]
         }
@@ -29,7 +29,7 @@
       "packages/web/src/components/ui/icons": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/marks/marks.tsx",
           "names": [
             "ChevronDown",
@@ -42,13 +42,13 @@
         },
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/actions/close-button/close-button.tsx",
           "names": ["CloseButton"]
         },
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/icons.ts",
           "names": [
             "INFO_ICON→ICONS.info",
@@ -99,7 +99,7 @@
       "packages/web/src/components/ui/group-list": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/icons.ts",
           "names": [
             "FOLDER_ICON→ICONS.folder",
@@ -114,7 +114,7 @@
       "packages/web/src/components/ui/session-row-menu": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/icons.ts",
           "names": [
             "PIN_ICON→ICONS.pin",
@@ -129,7 +129,7 @@
       "packages/web/src/components/ui/agent-avatar": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/avatars/agent-avatar.tsx",
           "names": ["AgentAvatar"]
         }
@@ -137,7 +137,7 @@
       "packages/web/src/components/ui/user-avatar": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/avatars/user-avatar.tsx",
           "names": ["UserAvatar", "USER_AVATAR_SIZE"]
         }
@@ -145,7 +145,7 @@
       "packages/web/src/lib/avatar": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/avatars/avatar.ts",
           "names": ["avatarHue", "avatarTile", "avatarInitial"]
         }
@@ -153,7 +153,7 @@
       "packages/web/src/components/ui/provider-logo": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/logos/provider-logo.tsx",
           "names": ["ProviderLogo"]
         }
@@ -161,7 +161,7 @@
       "packages/web/src/components/ui/penguin-logo": [
         {
           "owner": "WP-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/logos/penguin-logo.tsx",
           "names": ["PenguinLogo"]
         }
@@ -169,7 +169,7 @@
       "packages/web/src/components/ui/status-icon": [
         {
           "owner": "WP-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/status-icon/status-icon.tsx",
           "names": ["StatusIcon", "RunState"]
         }
@@ -177,7 +177,7 @@
       "packages/web/src/components/ui/session-activity-icon": [
         {
           "owner": "WP-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/activity-icon/activity-icon.tsx",
           "names": ["SessionActivityIcon→ActivityIcon", "BackgroundTasksMark", "ScheduleMark"]
         },
@@ -191,7 +191,7 @@
       "packages/web/src/components/ui/update-dot": [
         {
           "owner": "WP-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/icons/update-dot/update-dot.tsx",
           "names": ["UpdateDot", "UpdatePill", "UPDATE_DOT_INLINE", "UpdateDotSize"]
         }
@@ -199,13 +199,13 @@
       "packages/web/src/components/ui/badge": [
         {
           "owner": "WP-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/feedback/badge/badge.tsx",
           "names": ["Badge"]
         },
         {
           "owner": "WP-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/tokens.ts",
           "names": ["BadgeTone→ToneName"]
         },
@@ -219,7 +219,7 @@
       "packages/web/src/components/ui/skeleton": [
         {
           "owner": "WP-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/feedback/skeleton/skeleton.tsx",
           "names": ["Skeleton", "SkeletonList", "SkeletonCard"]
         }
@@ -227,7 +227,7 @@
       "packages/web/src/components/ui/empty-state": [
         {
           "owner": "WP-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/feedback/empty-state/empty-state.tsx",
           "names": ["EmptyState", "SettingsEmpty"]
         }
@@ -235,7 +235,7 @@
       "packages/web/src/components/ui/button": [
         {
           "owner": "WP-C",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/actions/button/button.tsx",
           "names": ["Button", "ButtonProps", "labelButtonClass→buttonClass"]
         }
@@ -243,7 +243,7 @@
       "packages/web/src/components/ui/copy-button": [
         {
           "owner": "WP-C",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/actions/copy-button/copy-button.tsx",
           "names": ["CopyButton", "useCopied", "CopiedStatus", "CopyCheckGlyph"]
         },
@@ -257,7 +257,7 @@
       "packages/web/src/components/ui/hidden-file-input": [
         {
           "owner": "WP-C",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/actions/hidden-file-input/hidden-file-input.tsx",
           "names": ["HiddenFileInput"]
         }
@@ -267,13 +267,13 @@
       "packages/web/src/components/ui/field": [
         {
           "owner": "W2-0",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/menu-panel/menu-panel.tsx",
           "names": ["menuPanelClass", "menuRowClass", "menuRowTone", "ChoiceCheck"]
         },
         {
           "owner": "W2-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/field/field.tsx",
           "names": ["Field", "FieldLabel", "FieldHint", "FieldError", "RequiredMark", "controlBase"]
         }
@@ -281,7 +281,7 @@
       "packages/web/src/components/ui/input": [
         {
           "owner": "W2-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/input/input.tsx",
           "names": [
             "Input",
@@ -300,7 +300,7 @@
       "packages/web/src/components/ui/password-input": [
         {
           "owner": "W2-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/password-input/password-input.tsx",
           "names": ["PasswordInput"]
         }
@@ -308,7 +308,7 @@
       "packages/web/src/components/ui/use-portal-panel": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/portal-panel/use-portal-panel.ts",
           "names": ["usePortalPanel", "PortalPanelPosition"]
         }
@@ -316,7 +316,7 @@
       "packages/web/src/lib/context-menu": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/portal-panel/use-portal-panel.ts",
           "names": ["scrollMovesAnchor"]
         }
@@ -324,7 +324,7 @@
       "packages/web/src/components/ui/info-popover": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/info-popover/info-popover.tsx",
           "names": ["InfoPopover"]
         }
@@ -332,7 +332,7 @@
       "packages/web/src/components/ui/help-fold": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/info-popover/help-fold.tsx",
           "names": ["HelpFold"]
         }
@@ -340,7 +340,7 @@
       "packages/web/src/components/ui/select": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/select/select.tsx",
           "names": ["Select", "SelectProps"]
         }
@@ -348,7 +348,7 @@
       "packages/web/src/components/ui/option-menu": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/select/option-menu.tsx",
           "names": ["OptionMenu", "OptionMenuChoice", "rowDescClass"]
         }
@@ -356,7 +356,7 @@
       "packages/web/src/features/chat/model-select": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/picker-list/picker-list.tsx",
           "names": ["PickerList"]
         }
@@ -364,7 +364,7 @@
       "packages/web/src/components/ui/switch": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/switch/switch.tsx",
           "names": ["Switch", "SwitchProps"]
         }
@@ -372,7 +372,7 @@
       "packages/web/src/components/ui/segmented": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/segmented/segmented.tsx",
           "names": ["Segmented"]
         }
@@ -380,7 +380,7 @@
       "packages/web/src/features/settings/setting-row": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/pref-row/pref-row.tsx",
           "names": ["PrefRow"]
         }
@@ -388,7 +388,7 @@
       "packages/web/src/features/settings/section-shell": [
         {
           "owner": "W2-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/pref-row/pref-row.tsx",
           "names": ["SectionShell→SettingsSection"]
         }
@@ -398,13 +398,13 @@
       "packages/web/src/components/ui/modal": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/modal/modal.tsx",
           "names": ["Modal", "ModalProps"]
         },
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/esc-layers/esc-layers.ts",
           "names": [
             "pushEscLayer",
@@ -419,7 +419,7 @@
       "packages/web/src/components/ui/confirm-modal": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/confirm-modal/confirm-modal.tsx",
           "names": ["ConfirmModal"]
         },
@@ -433,7 +433,7 @@
       "packages/web/src/components/ui/paged-dialog": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/paged-dialog/paged-dialog.tsx",
           "names": ["PagedDialog", "PagedDialogItem", "PagedDialogGroup"]
         }
@@ -441,7 +441,7 @@
       "packages/web/src/components/ui/drawer": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/drawer/drawer.tsx",
           "names": ["Drawer", "DrawerProps"]
         }
@@ -449,7 +449,7 @@
       "packages/web/src/components/ui/sheet": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/drawer/sheet.tsx",
           "names": ["Sheet", "SheetProps", "SheetSnap"]
         }
@@ -457,7 +457,7 @@
       "packages/web/src/components/ui/image-zoom": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/lightbox/lightbox.tsx",
           "names": ["ZoomableImage"]
         }
@@ -465,7 +465,7 @@
       "packages/web/src/lib/spring": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/motion/spring.ts",
           "names": [
             "SPRING_DEFAULT",
@@ -481,7 +481,7 @@
       "packages/web/src/lib/sheet-physics": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/motion/sheet-physics.ts",
           "names": ["project", "rubberband", "nearestSnap"]
         }
@@ -489,7 +489,7 @@
       "packages/web/src/components/ui/use-reduced-motion": [
         {
           "owner": "W3-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/motion/use-reduced-motion.ts",
           "names": ["usePrefersReducedMotion"]
         }
@@ -497,7 +497,7 @@
       "packages/web/src/components/ui/dropdown": [
         {
           "owner": "W3-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/dropdown/dropdown.tsx",
           "names": ["Dropdown", "DropdownPortal"]
         }
@@ -505,7 +505,7 @@
       "packages/web/src/components/ui/form-picker": [
         {
           "owner": "W3-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/forms/select/form-picker.tsx",
           "names": ["FormPicker"]
         }
@@ -513,7 +513,7 @@
       "packages/web/src/components/ui/context-menu": [
         {
           "owner": "W3-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/portal-panel/use-row-context-menu.ts",
           "names": ["useRowContextMenu", "RowContextMenu", "ContextMenuRowProps"]
         }
@@ -521,7 +521,7 @@
       "packages/web/src/lib/context-menu": [
         {
           "owner": "W3-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/portal-panel/context-menu.ts",
           "names": [
             "AnchorRect",
@@ -548,7 +548,7 @@
       "packages/web/src/components/ui/tooltip": [
         {
           "owner": "W3-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/tooltip/tooltip.tsx",
           "names": [
             "Tooltip",
@@ -574,7 +574,7 @@
       "packages/web/src/components/ui/toast": [
         {
           "owner": "W3-C",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/toaster/toaster.tsx",
           "names": ["Toaster", "toastSuccess", "toastError", "toastInfo", "toastAttention"]
         }
@@ -582,7 +582,7 @@
       "packages/web/src/components/ui/notice-strip": [
         {
           "owner": "W3-C",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/feedback/notice/notice-strip.tsx",
           "names": ["NoticeStrip", "NOTICE_TONE", "NoticeTone"]
         }
@@ -592,7 +592,7 @@
       "packages/web/src/components/ui/tabs": [
         {
           "owner": "W4-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/navigation/tabs/tabs.tsx",
           "names": ["Tabs", "TabItem"]
         }
@@ -600,7 +600,7 @@
       "packages/web/src/components/ui/group-list": [
         {
           "owner": "W4-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/navigation/group-header/group-header.tsx",
           "names": ["GroupHeader", "FolderSection", "MoreRow"]
         }
@@ -608,7 +608,7 @@
       "packages/web/src/features/ai-create/create-buttons": [
         {
           "owner": "W4-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/actions/create-buttons/create-buttons.tsx",
           "names": ["CreateButtons", "CreateButtonsProps"]
         }
@@ -624,7 +624,7 @@
       "packages/web/src/components/ui/todo-notice": [
         {
           "owner": "W4-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/feedback/todo-notice/todo-notice.tsx",
           "names": ["TodoNotice"]
         }
@@ -646,7 +646,7 @@
       "packages/web/src/features/chat/disclosure-row": [
         {
           "owner": "W4-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/layout/disclosure-row/disclosure-row.tsx",
           "names": [
             "DisclosureRow",
@@ -668,7 +668,7 @@
       "packages/web/src/features/chat/live-duration": [
         {
           "owner": "W4-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/feedback/duration-slot/duration-slot.tsx",
           "names": ["LiveDuration", "useElapsedPast"]
         }
@@ -676,7 +676,7 @@
       "packages/web/src/features/company/shared": [
         {
           "owner": "W4-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/data/stat-tile/stat-tile.tsx",
           "names": ["StatTile"]
         }
@@ -684,7 +684,7 @@
       "packages/web/src/features/company/org-layout": [
         {
           "owner": "W4-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/layout/ruled-section/ruled-section.tsx",
           "names": ["OrgSection→RuledSection"]
         }
@@ -694,7 +694,7 @@
       "packages/web/src/features/chat/md": [
         {
           "owner": "W5-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/content/prose/prose.tsx",
           "names": ["Md", "SETTLED_MD_COMPONENTS"]
         },
@@ -708,7 +708,7 @@
       "packages/web/src/lib/markdown-plugins": [
         {
           "owner": "W5-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/content/prose/markdown-plugins.ts",
           "names": ["REMARK_PLUGINS", "REHYPE_PLUGINS", "NO_REHYPE_PLUGINS"]
         }
@@ -716,7 +716,7 @@
       "packages/web/src/features/chat/code-block": [
         {
           "owner": "W5-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/content/code-block/code-block.tsx",
           "names": ["CodeBlock", "CodeSurface"]
         }
@@ -724,7 +724,7 @@
       "packages/web/src/features/chat/code-languages": [
         {
           "owner": "W5-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/content/code-block/code-languages.ts",
           "names": [
             "languageForExtension",
@@ -741,7 +741,7 @@
       "packages/web/src/features/dock/use-pointer-drag": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/layout/resize-handle/use-pointer-drag.ts",
           "names": ["usePointerDrag"]
         }
@@ -749,7 +749,7 @@
       "packages/web/src/lib/file-tree": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/files/file-tree/tree-rows.ts",
           "names": ["FileTreeRow", "TreeKeyAction", "subtreeEnd", "treeKeyStep"]
         }
@@ -757,7 +757,7 @@
       "packages/web/src/components/ui/file-tree": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/files/file-tree/file-tree.tsx",
           "names": ["FileTree", "TreeToggle"]
         }
@@ -765,7 +765,7 @@
       "packages/web/src/components/ui/file-browser": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/files/file-browser/file-browser.tsx",
           "names": ["FileBrowser", "FileBrowserPreview", "FileBrowserPreviewKind"]
         },
@@ -779,7 +779,7 @@
       "packages/web/src/features/chat/workspace-file-menu": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/files/workspace-file-menu/workspace-file-menu.tsx",
           "names": ["WorkspaceFileMenuRows", "FileMenuTarget"]
         }
@@ -787,7 +787,7 @@
       "packages/web/src/features/chat/workspace-editor": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/content/workspace-file-editor/workspace-file-editor.tsx",
           "names": ["WorkspaceFileEditor"]
         }
@@ -795,13 +795,13 @@
       "packages/web/src/lib/workspace-tree": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/navigation/breadcrumbs/crumb-fit.ts",
           "names": ["CRUMB_ELLIPSIS", "CrumbLayout", "visibleCrumbSegments", "splitFileName"]
         },
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/layout/resize-handle/resize-handle.tsx",
           "names": ["TREE_DIVIDER_PX→RESIZE_HANDLE_PX"]
         }
@@ -809,7 +809,7 @@
       "packages/web/src/lib/frontmatter": [
         {
           "owner": "W7-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/content/prose/frontmatter.ts",
           "names": ["bodyWithoutFrontmatter"]
         }
@@ -859,7 +859,7 @@
       "packages/web/src/features/chat/step-banner": [
         {
           "owner": "W6-A2",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/chat/step-banner/step-banner.tsx",
           "names": ["StepBanner"]
         }
@@ -867,7 +867,7 @@
       "packages/web/src/features/chat/approval-buttons": [
         {
           "owner": "W6-A2",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/chat/approval-block/approval-block.tsx",
           "names": ["ApprovalButtons"]
         }
@@ -875,7 +875,7 @@
       "packages/web/src/features/chat/assistant-reply-body": [
         {
           "owner": "W6-A1",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/chat/assistant-text/assistant-text.tsx",
           "names": ["AssistantReplyBody→AssistantText"]
         }
@@ -883,7 +883,7 @@
       "packages/web/src/features/chat/streaming-caret": [
         {
           "owner": "W6-A1",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/chat/assistant-text/streaming-caret.tsx",
           "names": ["StreamingCaret"]
         }
@@ -891,7 +891,7 @@
       "packages/web/src/features/chat/use-stream-reveal": [
         {
           "owner": "W6-A1",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/chat/assistant-text/use-stream-reveal.ts",
           "names": ["useStreamReveal"]
         }
@@ -899,7 +899,7 @@
       "packages/web/src/lib/stream-style": [
         {
           "owner": "W6-A1",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/chat/assistant-text/stream-style.ts",
           "names": [
             "StreamStyle",
@@ -913,7 +913,7 @@
         },
         {
           "owner": "W6-A1",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/tokens.ts",
           "names": ["StreamRevealMode→StreamReveal"]
         }
@@ -921,7 +921,7 @@
       "packages/web/src/features/chat/message-files-card": [
         {
           "owner": "W6-A1",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/chat/changes-card/changes-card.tsx",
           "names": ["PathLabel"]
         }
@@ -939,7 +939,7 @@
       "packages/web/src/features/palette/command-palette": [
         {
           "owner": "W8-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/command-palette/command-palette.tsx",
           "names": ["CommandPalette"]
         }
@@ -947,7 +947,7 @@
       "packages/web/src/lib/command-palette": [
         {
           "owner": "W8-B",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/overlays/command-palette/command-palette.tsx",
           "names": ["PaletteAction", "filterPaletteActions"]
         }
@@ -955,7 +955,7 @@
       "packages/web/src/components/ui/chart": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/marks/marks.tsx",
           "names": [
             "ChartArc",
@@ -977,13 +977,13 @@
         },
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/marks/timeline-bar.tsx",
           "names": ["TimelineBar"]
         },
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/marks/geom.ts",
           "names": ["BAR_W", "curvePath", "fitBarWidth", "roundCoord"]
         }
@@ -991,7 +991,7 @@
       "packages/web/src/components/ui/chart/marks": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/marks/marks.tsx",
           "names": [
             "ChartPaint",
@@ -1016,7 +1016,7 @@
       "packages/web/src/components/ui/chart/geom": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/marks/geom.ts",
           "names": ["roundCoord", "curvePath", "BAR_W", "fitBarWidth"]
         }
@@ -1024,7 +1024,7 @@
       "packages/web/src/components/ui/chart/timeline-bar": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/marks/timeline-bar.tsx",
           "names": ["TimelineBar"]
         }
@@ -1032,7 +1032,7 @@
       "packages/web/src/lib/chart-style": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/chart-style.ts",
           "names": [
             "ChartCurve",
@@ -1049,7 +1049,7 @@
       "packages/web/src/features/usage/chart-svg": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/chart-frame/chart-frame.tsx",
           "names": ["LINE_HIT_H", "LineHits", "useChartWidth", "ChartFrame"]
         }
@@ -1057,7 +1057,7 @@
       "packages/web/src/features/usage/chart-geom": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/chart-frame/chart-geom.ts",
           "names": [
             "CHART_H",
@@ -1090,7 +1090,7 @@
       "packages/web/src/components/ui/token-donut": [
         {
           "owner": "W8-A",
-          "target": "@prismshadow/penguin-ui",
+          "target": "@lmliheng/penguin-ui",
           "dest": "packages/ui/src/components/charts/token-donut/token-donut.tsx",
           "names": ["TokenDonut"]
         }

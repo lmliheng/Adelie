@@ -9,7 +9,7 @@
  * the header and every reference to it render the localized 全员频道 / "All hands" label
  * instead, so one organization reads the same in both languages whatever its files say.
  */
-import type { OrgChannelItem, OrgChannelMember } from "@prismshadow/penguin-server/api";
+import type { OrgChannelItem, OrgChannelMember } from "@lmliheng/penguin-server/api";
 
 /** The all-hands channel's id; reserved, so no other channel may take it. */
 export const DEFAULT_CHANNEL_ID = "default_channel";

@@ -24,7 +24,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { bootModules, Component, parseManifest, Use } from "@prismshadow/penguin-core/kernel";
+import { bootModules, Component, parseManifest, Use } from "@lmliheng/penguin-core/kernel";
 import type {
   ClassCtx,
   IfaceDecl,
@@ -32,8 +32,8 @@ import type {
   Manifest,
   ModuleDef,
   ModuleTree,
-} from "@prismshadow/penguin-core/kernel";
-import { userText } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core/kernel";
+import { userText } from "@lmliheng/penguin-core";
 import table from "../ifaces.json" with { type: "json" };
 import type { ServerEvent } from "../api/types.js";
 import type { Channels, Clock, Hmr, Log, Paths } from "../hmr/capabilities.js";
@@ -72,7 +72,7 @@ import {
   type WorkflowFolder,
 } from "./store.js";
 
-const PKG = "@prismshadow/penguin-server";
+const PKG = "@lmliheng/penguin-server";
 export const HOST_MODULE = "Host";
 export const ROOT_MODULE = "Workflow";
 export const HOST_IFACE = `${PKG}#WorkflowHost`;

@@ -4,7 +4,7 @@
  * loaded; change-derived rows while it is not), and the deleted-key filter set.
  */
 import { describe, expect, it } from "vitest";
-import type { MemoryFileInfo, MemoryScopeInfo } from "@prismshadow/penguin-server/api";
+import type { MemoryFileInfo, MemoryScopeInfo } from "@lmliheng/penguin-server/api";
 import type { MemoryChangeRow } from "../src/lib/omni/memory-changes";
 import {
   buildMemoryList,

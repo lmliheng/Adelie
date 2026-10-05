@@ -13,7 +13,7 @@
  * the mode in effect ticked instead of a list with nothing selected. Picking any other mode
  * drops it from the list.
  */
-import type { ApprovalMode, SessionInfo } from "@prismshadow/penguin-server/api";
+import type { ApprovalMode, SessionInfo } from "@lmliheng/penguin-server/api";
 
 /** Every approval mode, in the picker's order. */
 export const APPROVAL_MODES: readonly ApprovalMode[] = [

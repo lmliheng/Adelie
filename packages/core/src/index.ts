@@ -1,5 +1,5 @@
 /**
- * @prismshadow/penguin-core — public entry point for the Adelie core SDK.
+ * @lmliheng/penguin-core — public entry point for the Adelie core SDK.
  *
  * Exports the OmniMessage protocol, the three interface contracts (Human/LLM/Environment),
  * and the runtime entry points for Agent / Session / context_engine along with their

@@ -13,7 +13,7 @@
  *   with an employee's title as detail, a prefix match ranked above a substring match.
  */
 import { describe, expect, it } from "vitest";
-import type { OrgChannelItem } from "@prismshadow/penguin-server/api";
+import type { OrgChannelItem } from "@lmliheng/penguin-server/api";
 import {
   CHANNEL_ID_PATTERN,
   DEFAULT_CHANNEL_ID,

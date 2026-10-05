@@ -83,15 +83,15 @@ import {
   toastSuccess,
   useCopied,
   useRowContextMenu,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import type {
   EditorScroll,
   FileMenuTarget,
   PreviewView,
   TreeToggle,
   WorkspaceFileMenuLabels,
-} from "@prismshadow/penguin-ui";
-import type { WorkspaceSearchHit } from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-ui";
+import type { WorkspaceSearchHit } from "@lmliheng/penguin-server/api";
 import { ApiError } from "../../api/client";
 import { filesApi, filesScopeKey } from "../../api/workspace-files";
 import type { FilesScope } from "../../api/workspace-files";

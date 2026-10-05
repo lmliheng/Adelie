@@ -7,7 +7,7 @@
  * shortcuts folder in shortcuts-folder.tsx — and a folder row that reads differently from its
  * neighbours would be read as a different kind of thing.
  */
-import { Chevron, ICON_SIZE } from "@prismshadow/penguin-ui";
+import { Chevron, ICON_SIZE } from "@lmliheng/penguin-ui";
 
 export function ExampleFolderRow({
   open,

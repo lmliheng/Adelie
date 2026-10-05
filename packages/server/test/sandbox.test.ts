@@ -4,9 +4,9 @@
  * settings' ride on the parked platform context.
  */
 import { describe, expect, it, vi } from "vitest";
-import { boot, initialDoc, parseManifest } from "@prismshadow/penguin-core/kernel";
-import type { Json } from "@prismshadow/penguin-core/kernel";
-import { HotResources } from "@prismshadow/penguin-hmr";
+import { boot, initialDoc, parseManifest } from "@lmliheng/penguin-core/kernel";
+import type { Json } from "@lmliheng/penguin-core/kernel";
+import { HotResources } from "@lmliheng/penguin-hmr";
 import { PENGUIN_FAMILY, HMR_INTERFACES_RESOURCE_ID } from "../src/hmr/capabilities.js";
 import { packagedPlatform } from "../src/hmr/platform.js";
 import { PluginHost, PLUGINS_RESOURCE_ID } from "../src/plugin/host.js";
@@ -16,7 +16,7 @@ import type {
   SandboxPolicy,
   SandboxProvider,
   SandboxProviderSource,
-} from "@prismshadow/penguin-core/plugin";
+} from "@lmliheng/penguin-core/plugin";
 
 const ARGV = ["bash", "-lc", "echo hi"] as const;
 const OPTS = { cwd: "/work/project/sub", workspaceDir: "/work/project" };
@@ -310,7 +310,7 @@ describe("sandbox settings ride the parked context across a swap", () => {
           manifest: parseManifest({
             name: "observer",
             requires: {
-              sandbox: { iface: "@prismshadow/penguin-server#Sandbox", from: "SandboxModule" },
+              sandbox: { iface: "@lmliheng/penguin-server#Sandbox", from: "SandboxModule" },
             },
             provides: {},
             contributes: {},

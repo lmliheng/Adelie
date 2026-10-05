@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AgentSummary } from "@prismshadow/penguin-server/api";
+import type { AgentSummary } from "@lmliheng/penguin-server/api";
 import { agentOf } from "../src/state/project";
 
 const agent = (agentId: string) => ({ agentId }) as AgentSummary;

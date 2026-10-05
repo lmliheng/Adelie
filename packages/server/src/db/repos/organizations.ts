@@ -8,7 +8,7 @@
  * until its next calendar sweep carries them, so dropping it loses those digests and nothing
  * else — the changes themselves live in the ticket files and the all-hands channel.
  */
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { OrgCache } from "../../mechanisms/organization.js";
 import type { OrgCalendarOutcome, OrgTicketChange } from "../../api/types.js";

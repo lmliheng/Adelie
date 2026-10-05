@@ -6,7 +6,7 @@
  * There is no single upgrade mechanism, because there is no single install mechanism: the
  * documented path is the tarball installer (install.sh unpacks bin/lib/web/node into
  * PENGUIN_INSTALL_DIR, default ~/.adelie), some users have a global npm install of
- * @prismshadow/penguin-cli, and developers run out of a source checkout. This command works out
+ * @lmliheng/penguin-cli, and developers run out of a source checkout. This command works out
  * which one it is from the real path of the running CLI and upgrades the way that install was
  * made — never by guessing. A source checkout is refused outright: overwriting a working tree
  * would destroy uncommitted work.
@@ -31,7 +31,7 @@
  * therefore fully loaded before any action runs, every message it will print is resolved up front,
  * and after the child exits it only removes its own temp directory, writes already-computed
  * strings and sets an exit code. It never `import()`s anything (the CLI's only dynamic import is
- * `@prismshadow/penguin-server`, reachable solely from the serve commands), and never re-reads a
+ * `@lmliheng/penguin-server`, reachable solely from the serve commands), and never re-reads a
  * file. On POSIX an unlinked file stays valid for whoever has it open, so the running process is
  * unaffected.
  *
@@ -61,7 +61,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync, realpathSync } from "no
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { VERSION, compareVersions, normalizeVersion } from "@prismshadow/penguin-core";
+import { VERSION, compareVersions, normalizeVersion } from "@lmliheng/penguin-core";
 import type { Command } from "commander";
 import type { InstallerSource, Messages } from "../i18n.js";
 
@@ -138,7 +138,7 @@ function segments(p: string): string[] {
  *   app's own Electron runtime as Node and updates it with the app;
  * - source checkout — `…/packages/cli/{src,dist}/index.{ts,js}` (also how a `pnpm link`-ed dev
  *   build looks once the bin symlink is resolved);
- * - npm global — the path runs through `node_modules/@prismshadow/penguin-cli/`;
+ * - npm global — the path runs through `node_modules/@lmliheng/penguin-cli/`;
  * - tarball — `<installDir>/lib/dist/index.js`, the layout install.sh unpacks.
  *
  * Order matters: a checkout is checked first so a repo that happens to live under a directory
@@ -164,10 +164,10 @@ export function detectInstall(modulePath: string, runtime?: { electron: boolean 
     return { kind: "source" };
   }
 
-  // …/node_modules/@prismshadow/penguin-cli/…
+  // …/node_modules/@lmliheng/penguin-cli/…
   const nmIdx = parts.findIndex(
     (seg, i) =>
-      seg === "node_modules" && parts[i + 1] === "@prismshadow" && parts[i + 2] === "penguin-cli",
+      seg === "node_modules" && parts[i + 1] === "@lmliheng" && parts[i + 2] === "penguin-cli",
   );
   if (nmIdx >= 0) {
     return { kind: "npm", globalRoot: join(nmIdx + 1) };
@@ -206,7 +206,7 @@ export function globalInstallCommand(
   manager: PackageManager,
   version: string,
 ): { command: string; args: string[] } {
-  const spec = `@prismshadow/penguin-cli@${version}`;
+  const spec = `@lmliheng/penguin-cli@${version}`;
   if (manager === "pnpm") return { command: "pnpm", args: ["add", "-g", spec] };
   if (manager === "yarn") return { command: "yarn", args: ["global", "add", spec] };
   if (manager === "bun") return { command: "bun", args: ["add", "-g", spec] };

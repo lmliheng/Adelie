@@ -21,7 +21,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { HookItem } from "@prismshadow/penguin-server/api";
+import type { HookItem } from "@lmliheng/penguin-server/api";
 import {
   Badge,
   Button,
@@ -41,7 +41,7 @@ import {
   toastError,
   toastSuccess,
   useCopied,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

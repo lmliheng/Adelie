@@ -4,7 +4,7 @@
  * imports the built dist/launcher.js to write the launcher scripts into this package's
  * bin/, which electron-builder then ships inside the app directory.
  *
- * The launchers run the bundled @prismshadow/penguin-cli on the app's own Electron
+ * The launchers run the bundled @lmliheng/penguin-cli on the app's own Electron
  * runtime as Node (ELECTRON_RUN_AS_NODE), so an installed desktop app provides a
  * working `penguin` command without any system Node installation. How bin/ reaches
  * PATH is per platform (see cli-install.ts and build/linux/*.tpl for the deb variant).

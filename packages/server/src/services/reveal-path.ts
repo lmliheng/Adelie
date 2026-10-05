@@ -13,7 +13,7 @@
  */
 import { spawn } from "node:child_process";
 import path from "node:path";
-import { Component } from "@prismshadow/penguin-core/kernel";
+import { Component } from "@lmliheng/penguin-core/kernel";
 import type { FileReveal } from "../mechanisms/workspace.js";
 
 /** The command that reveals `filePath` on `platform`. Pure; exported for unit tests. */

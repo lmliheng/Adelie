@@ -357,7 +357,7 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
     // Where core itself sits in that checkout: its own injected copy, deep under .pnpm.
     const core = path.join(
       root,
-      "node_modules/.pnpm/@prismshadow+penguin-core@file+packages+core/node_modules/@prismshadow/penguin-core",
+      "node_modules/.pnpm/@lmliheng+penguin-core@file+packages+core/node_modules/@lmliheng/penguin-core",
     );
     await fs.mkdir(core, { recursive: true });
     return { root, source, injected, core };

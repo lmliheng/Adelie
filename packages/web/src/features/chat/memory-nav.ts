@@ -8,7 +8,7 @@
  * memory's detail; entering through the panel toggle (or any entry without a target) lands
  * on the list. Back always returns to the list.
  */
-import type { MemoryFileInfo, MemoryScopeInfo } from "@prismshadow/penguin-server/api";
+import type { MemoryFileInfo, MemoryScopeInfo } from "@lmliheng/penguin-server/api";
 import type {
   MemoryChangeOp,
   MemoryChangeRow,

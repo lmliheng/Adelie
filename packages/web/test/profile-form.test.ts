@@ -7,7 +7,7 @@
  * writes, which is the half a regression would land on silently.
  */
 import { describe, expect, it } from "vitest";
-import type { UserInfo } from "@prismshadow/penguin-server/api";
+import type { UserInfo } from "@lmliheng/penguin-server/api";
 import { profileControls } from "../src/lib/profile-form";
 
 /** An account with nothing set: the state every account predating the Profile page is in. */

@@ -16,9 +16,9 @@ import type {
   BenchmarkCaseSummary,
   CaseMaterial,
   WorkspaceFileEntry,
-} from "@prismshadow/penguin-server/api";
-import { Badge, FileBrowser } from "@prismshadow/penguin-ui";
-import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-server/api";
+import { Badge, FileBrowser } from "@lmliheng/penguin-ui";
+import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { joinWorkspacePath } from "../../lib/file-path";

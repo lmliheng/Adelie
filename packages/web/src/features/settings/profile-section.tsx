@@ -27,7 +27,7 @@
  */
 import { useState } from "react";
 import type { ChangeEvent } from "react";
-import type { UpdateProfileRequest } from "@prismshadow/penguin-server/api";
+import type { UpdateProfileRequest } from "@lmliheng/penguin-server/api";
 import {
   Button,
   HiddenFileInput,
@@ -37,7 +37,7 @@ import {
   UserAvatar,
   buttonClass,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

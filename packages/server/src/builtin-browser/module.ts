@@ -11,8 +11,8 @@
  * UI events go to every admin who has the event stream open; the browser is the admin's tool
  * (see routes.ts), and a channel nobody listens on is not opened for it.
  */
-import { Bind, Component, Interface, Module, Use } from "@prismshadow/penguin-core/kernel";
-import type { ClassCtx, Opaque } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Interface, Module, Use } from "@lmliheng/penguin-core/kernel";
+import type { ClassCtx, Opaque } from "@lmliheng/penguin-core/kernel";
 import type { Hono } from "hono";
 import type { AppEnv } from "../auth/middleware.js";
 import type { Channels, Desktop, Log, Paths } from "../hmr/capabilities.js";

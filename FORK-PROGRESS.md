@@ -848,3 +848,47 @@ systemctl enable --now penguin-server
   逐个发这 14 个包，一条命令的事，等一句准话。
 - `@prismshadow/penguin-{core,server,cli}` 仍在**上游 scope** 里、同样发不上去；要让整条链都进
   `@lmliheng`，是另一次改名（宿主包名、安装脚本、桌面打包坐标、文档都会动），这轮没碰。
+
+## 宿主包也换成 `@lmliheng`（2026-10-05，用户点单）
+
+### 用户说的
+
+「宿主包一起换成我的 scope」
+
+### 做了什么
+
+- 全仓 `@prismshadow/penguin*` → `@lmliheng/penguin*`：9 个工作区包改名 —— core、server、cli 是
+  对外发布的三个，ui/web/desktop/docs/hmr/ui-gallery 是 private；`examples/*` 的示例包名一并改。
+- 826 个文件（含 `pnpm-lock.yaml`，由 `pnpm install` 重写）：源码 import、样式表
+  `@import "@lmliheng/penguin-ui/theme.css"`、CI 的 `--filter` 选择器、release.yml 的 deploy 与
+  publish 步骤、Dockerfile、安装脚本、docs、`.agents/` 下的技能说明。
+- 三处 sed 抓不到的写法手工改：`packages/cli/src/commands/update.ts` 里把 npm 全局路径拆成两段判断的
+  `"@prismshadow" && "penguin-cli"`（漏改会让自更新认不出 npm 全局安装）；几个测试正则里的
+  `@prismshadow\/penguin-ui`（斜杠被转义）；desktop `electron-builder.yml` 注释里的示例 scope。
+- **没改**：`@prismshadow/agenthub`（第三方依赖，hiyouga 发布，82 处）及 `pnpm-workspace.yaml` 里对它的
+  `minimumReleaseAgeExclude` 条目；`FORK.md`/`README.zh.md` 里作为「要被替换的旧名」出现的
+  `@prismshadow/*` 文字；changelog 与 `RELEASE-v0.2.0.md`（历史记录）。
+- 顺带补了上一轮留下的红：`packages/ui-gallery` 的 mock 路由缺
+  `DELETE /api/projects/:projectId/dirs`（上一轮做「删除空目录」时没给画廊补，
+  `test/mock-api.test.ts` 因此一直红着）。
+
+### 验证
+
+- `pnpm install`：9 个工作区包全部新名；lockfile 里 `@lmliheng/penguin*` 35 处、旧名 0 处。
+- `pnpm -r build` 全绿（desktop 的 build-assets 按新名打了 4 个沙箱插件包）。
+- `pnpm -r test` 全绿：docs 62、ui 1000、core 1350、sandbox-seatbelt 17、sandbox-wsl 25、
+  sandbox-dsh 5、sandbox-bwrap 24、server 2592、cli 505、web 2891、desktop 279、ui-gallery 131。
+- `pnpm typecheck` 全包 Done；`pnpm lint` 0；`pnpm format:check` 干净（名字变短后有几处 import 需要
+  重新折行，已 `prettier --write`）。
+- 按 release.yml 手工走了一遍发布链路：`pnpm --config.node-linker=hoisted --filter @lmliheng/penguin-cli
+  --prod deploy out/penguin/lib`（356 个包，`node_modules/@lmliheng/` 下 14 个插件 + core/server 齐全）→
+  `node scripts/build-plugins.mjs --out out/penguin/lib/plugins` →
+  `out/penguin/lib/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/package.json` 在。
+  跑完把 `out/` 删了（暂存物，不入库）。
+
+### 后果 / 待办
+
+- 整条链（core/server/cli + 14 个插件）现在都在 `@lmliheng` 下，**都还没发过 npm**：安装、自更新
+  （`penguin update` 打的是 `@lmliheng/penguin-cli@<version>`）和发版之前，得先手工首发布一次；
+  `node scripts/check-publishable.mjs --registry --strict` 会列出要补的名字。
+- 桌面壳的 Windows AppUserModelID 是 `com.lmliheng.adelie`（早先品牌轮次已改），与包 scope 无关，没动。

@@ -18,7 +18,7 @@
  *   once however it is spelled, and stands on the budget alone without a live state.
  */
 import { describe, expect, it } from "vitest";
-import type { OrgFinanceEmployee, OrgFinanceTicket } from "@prismshadow/penguin-server/api";
+import type { OrgFinanceEmployee, OrgFinanceTicket } from "@lmliheng/penguin-server/api";
 import {
   budgetTone,
   dailyBreaks,

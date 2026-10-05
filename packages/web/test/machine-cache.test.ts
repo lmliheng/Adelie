@@ -9,7 +9,7 @@
  * - A storage that refuses is not an error: the answer is merely not remembered.
  */
 import { beforeEach, describe, expect, it } from "vitest";
-import type { AgentSummary, SessionInfo } from "@prismshadow/penguin-server/api";
+import type { AgentSummary, SessionInfo } from "@lmliheng/penguin-server/api";
 import {
   CACHED_ROWS_PER_MACHINE,
   cachedMachineAgents,

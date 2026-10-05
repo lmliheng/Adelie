@@ -11,7 +11,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
-import type { OmniMessage, TextPayload } from "@prismshadow/penguin-core";
+import type { OmniMessage, TextPayload } from "@lmliheng/penguin-core";
 
 /** The model id the endpoint stands in for (routed to the Anthropic Messages client). */
 export const MOCK_MODEL_ID = "claude-4-8";

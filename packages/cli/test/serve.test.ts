@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import path from "node:path";
 import { Command } from "commander";
-import { DEFAULT_SERVER_PORT } from "@prismshadow/penguin-core";
+import { DEFAULT_SERVER_PORT } from "@lmliheng/penguin-core";
 import {
   DEFAULT_HOST,
   DEFAULT_PORT,

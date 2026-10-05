@@ -12,7 +12,7 @@
  * - Foreign and unknown Sessions are 404s, as on every Session route.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { BackgroundCommandInfo, ToolDetachResult } from "@prismshadow/penguin-core";
+import type { BackgroundCommandInfo, ToolDetachResult } from "@lmliheng/penguin-core";
 import type { SessionProcessesResponse } from "../src/api/types.js";
 import type { RuntimeSession } from "../src/runtime/session-manager.js";
 import { adoptSession, fakeSession, sessionRow, uniqueSessionId } from "./fixtures/session.js";

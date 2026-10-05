@@ -4,7 +4,7 @@
  * notice banner disappears once passwordIsInitial clears. Shared by the sidebar user menu and the notice banner.
  */
 import { useEffect, useState } from "react";
-import { Button, Modal, PasswordInput } from "@prismshadow/penguin-ui";
+import { Button, Modal, PasswordInput } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

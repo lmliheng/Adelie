@@ -4,7 +4,7 @@
  * use-desktop-update.ts owns the polling and the armed watch; these keep the decisions
  * pure (vitest runs node-only here, so nothing renders — same split as account-menu.ts).
  */
-import type { DesktopUpdateStatus } from "@prismshadow/penguin-server/api";
+import type { DesktopUpdateStatus } from "@lmliheng/penguin-server/api";
 import { isDesktopShellWindow } from "./account-menu";
 import type { AccountMenuSession } from "./account-menu";
 

@@ -6,7 +6,7 @@
  * Docs: /docs/cli § "Approval modes (--approve)"; /docs/tools § "Approval".
  */
 import { createInterface } from "node:readline";
-import type { ApprovalDecision, ApproveFn } from "@prismshadow/penguin-core";
+import type { ApprovalDecision, ApproveFn } from "@lmliheng/penguin-core";
 import { defaultMessages } from "./i18n.js";
 import type { Messages } from "./i18n.js";
 

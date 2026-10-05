@@ -33,8 +33,8 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { agentDir } from "@prismshadow/penguin-core";
-import type { IfaceTable } from "@prismshadow/penguin-core/kernel";
+import { agentDir } from "@lmliheng/penguin-core";
+import type { IfaceTable } from "@lmliheng/penguin-core/kernel";
 import type { WorkflowInfo, WorkflowVersion } from "../src/api/types.js";
 import { apiClient, createTestApp, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
@@ -42,8 +42,8 @@ import type { TestApp } from "./helpers.js";
 const PROJECT = "owner-wf";
 const AGENT = "default_agent";
 const BASE = `/api/projects/${PROJECT}/agents/${AGENT}/workflows`;
-const HOST_KEY = "@prismshadow/penguin-server#WorkflowHost";
-const MAIN_KEY = "@prismshadow/penguin-server#WorkflowMain";
+const HOST_KEY = "@lmliheng/penguin-server#WorkflowHost";
+const MAIN_KEY = "@lmliheng/penguin-server#WorkflowMain";
 
 const TAB = {
   id: "demo.board",
@@ -72,7 +72,7 @@ function packageJson(modules: unknown[] = [MANIFEST], extra: Record<string, unkn
 }
 
 function indexSource(greeting: string): string {
-  return `import type { WorkflowPackage } from "@prismshadow/penguin-server/plugin";
+  return `import type { WorkflowPackage } from "@lmliheng/penguin-server/plugin";
 
 export default {
   modules: {
@@ -506,7 +506,7 @@ describe("editing a workflow", { timeout: 30_000 }, () => {
       packageJson([
         {
           ...MANIFEST,
-          requires: { host: { iface: "@prismshadow/penguin-server#Workflows", from: "Host" } },
+          requires: { host: { iface: "@lmliheng/penguin-server#Workflows", from: "Host" } },
         },
       ]),
     );
@@ -514,7 +514,7 @@ describe("editing a workflow", { timeout: 30_000 }, () => {
     const broken = ((await res.json()) as { workflow: WorkflowInfo }).workflow;
     // Named before anything runs: the host gave this workflow no types for that interface.
     expect(broken.error).toContain(
-      "requires.host '@prismshadow/penguin-server#Workflows': not among the types this workflow was written against",
+      "requires.host '@lmliheng/penguin-server#Workflows': not among the types this workflow was written against",
     );
     expect(await (await owner.get(`${base}/demo/api/`)).json()).toMatchObject({
       greeting: "hello",

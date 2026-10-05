@@ -15,14 +15,14 @@
  *   dictionary.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCENT_PRESET_IDS, THEME_IDS } from "@prismshadow/penguin-ui";
+import { ACCENT_PRESET_IDS, THEME_IDS } from "@lmliheng/penguin-ui";
 import {
   FONT_CJK_OPTIONS,
   FONT_LATIN_OPTIONS,
   TEXT_SIZES,
   THEME_STORAGE_KEYS,
   applyThemeAttributes,
-} from "@prismshadow/penguin-ui/boot";
+} from "@lmliheng/penguin-ui/boot";
 import { effectiveAccent, readThemePrefs } from "../src/state/theme-prefs";
 import { fontChoices } from "../src/features/settings/appearance-section";
 import { setActiveStrings, zh } from "../src/lib/strings";

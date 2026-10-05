@@ -16,7 +16,7 @@ import {
   MessageImage,
   MessageMeta,
   MessageRow,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { useLocale } from "../../state/locale";
 import { formatMessageTime } from "../../lib/format";

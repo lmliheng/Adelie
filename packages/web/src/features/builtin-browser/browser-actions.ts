@@ -2,8 +2,8 @@
  * The built-in browser's round trips to the server, each paired with the local change that
  * makes it feel immediate. Components call these; none of them throws.
  */
-import type { BuiltinBrowserTab } from "@prismshadow/penguin-server/api";
-import { toastError } from "@prismshadow/penguin-ui";
+import type { BuiltinBrowserTab } from "@lmliheng/penguin-server/api";
+import { toastError } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { apiErrorText } from "../../lib/api-error";

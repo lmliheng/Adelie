@@ -15,7 +15,7 @@
  */
 import { describe, expect, it } from "vitest";
 import path from "node:path";
-import { resolveRoot } from "@prismshadow/penguin-core";
+import { resolveRoot } from "@lmliheng/penguin-core";
 import { resolveServerConfig } from "../src/config.js";
 
 const base = { PENGUIN_HOME: "/tmp/penguin-config-test" };

@@ -24,7 +24,7 @@ irm https://penguin.ooo/install.ps1 | iex
 ```
 
 ```bash tab="npm (any platform)"
-npm install -g @prismshadow/penguin-cli
+npm install -g @lmliheng/penguin-cli
 ```
 
 Check the install:
@@ -200,9 +200,9 @@ The data root is `~/.penguin/data` by default (`%USERPROFILE%\.penguin\data` on 
 
 | Package | Description |
 | --- | --- |
-| `@prismshadow/penguin-cli` | Command-line tool that provides the `penguin` command |
-| `@prismshadow/penguin-core` | SDK for creating agents and Sessions from code |
-| `@prismshadow/penguin-server` | Web service, including the Web App assets |
+| `@lmliheng/penguin-cli` | Command-line tool that provides the `penguin` command |
+| `@lmliheng/penguin-core` | SDK for creating agents and Sessions from code |
+| `@lmliheng/penguin-server` | Web service, including the Web App assets |
 | `@lmliheng/*` | The built-in plugins, one package each (Skills and session hooks); core loads them |
 
 All packages are published under the Apache-2.0 license.

@@ -39,7 +39,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { DropOverlay } from "@prismshadow/penguin-ui";
+import { DropOverlay } from "@lmliheng/penguin-ui";
 import { dropRegionAction, isFileDrag } from "../../lib/file-drop";
 import type { DragSignal, DropRegionAction } from "../../lib/file-drop";
 import { S } from "../../lib/strings";

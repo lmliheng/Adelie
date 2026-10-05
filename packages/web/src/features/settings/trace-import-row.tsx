@@ -18,7 +18,7 @@
  */
 import { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { AgentSummary, ProjectSummary } from "@prismshadow/penguin-server/api";
+import type { AgentSummary, ProjectSummary } from "@lmliheng/penguin-server/api";
 import {
   HiddenFileInput,
   PrefRow,
@@ -26,7 +26,7 @@ import {
   UploadIcon,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

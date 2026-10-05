@@ -1,9 +1,9 @@
 /**
- * @prismshadow/penguin-plugin-sandbox-bwrap — a bubblewrap sandbox backend.
+ * @lmliheng/penguin-plugin-sandbox-bwrap — a bubblewrap sandbox backend.
  *
  * A PLUGIN PACKAGE, not part of the platform: a Project asks for it on the Plugins page
  * and the harness resolves it from the installation (see the server's plugin/loader.ts).
- * It compiles against the `@prismshadow/penguin-core/plugin` surface (types, plus the
+ * It compiles against the `@lmliheng/penguin-core/plugin` surface (types, plus the
  * decorators its bundle carries) and has no runtime dependency on the harness — and
  * none on the DSH ecosystem either:
  * it talks to `bwrap` directly and implements every dimension of the sandbox interface,
@@ -36,14 +36,14 @@ import { accessSync, constants, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { Bind, Component, Interface, Use } from "@prismshadow/penguin-core/plugin";
+import { Bind, Component, Interface, Use } from "@lmliheng/penguin-core/plugin";
 import type {
   ConfinedArgv,
   Plugin,
   SandboxPolicy,
   SandboxProvider,
   SandboxProviderSource,
-} from "@prismshadow/penguin-core/plugin";
+} from "@lmliheng/penguin-core/plugin";
 
 /** Default probe budget; a probe that hangs must not hang the first spawn forever. */
 const PROBE_TIMEOUT_MS = 5_000;

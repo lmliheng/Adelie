@@ -9,8 +9,8 @@
  * - A foreign or unknown Session is a 404, as on every other Session route.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { approvalDecision, assistantText, toolCall, userText } from "@prismshadow/penguin-core";
-import type { ApproveFn, OmniMessage } from "@prismshadow/penguin-core";
+import { approvalDecision, assistantText, toolCall, userText } from "@lmliheng/penguin-core";
+import type { ApproveFn, OmniMessage } from "@lmliheng/penguin-core";
 import type { RetryNowResponse } from "../src/api/types.js";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";
 import { apiClient, createTestApp, provisionUser, waitFor } from "./helpers.js";

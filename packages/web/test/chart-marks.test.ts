@@ -1,6 +1,6 @@
 /**
  * The Web App's charts draw every mark through the package's chart primitives
- * (`@prismshadow/penguin-ui`: ChartBar, ChartLine, ChartArc, TimelineBar, …) and the charts built
+ * (`@lmliheng/penguin-ui`: ChartBar, ChartLine, ChartArc, TimelineBar, …) and the charts built
  * on them (ChartFrame, Ring, Sparkline, TokenDonut), never with shapes, paint or geometry of their
  * own. What each primitive draws is the package's `chart-marks.test.ts`, which holds the
  * package's own charts to the same rule.

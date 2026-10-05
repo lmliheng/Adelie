@@ -13,7 +13,7 @@
  * Docs: /docs/cli § "penguin ls".
  */
 import type { Command } from "commander";
-import type { SessionInfo } from "@prismshadow/penguin-server/api";
+import type { SessionInfo } from "@lmliheng/penguin-server/api";
 import {
   resolveAgentId,
   resolveConnection,

@@ -15,7 +15,7 @@
  *   marking breaks where buckets were skipped; per-entity counts stay with their buckets.
  */
 import { describe, expect, it } from "vitest";
-import type { UsageSeriesPoint } from "@prismshadow/penguin-server/api";
+import type { UsageSeriesPoint } from "@lmliheng/penguin-server/api";
 import {
   bucketAxisLabel,
   bucketFullLabel,

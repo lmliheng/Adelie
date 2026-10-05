@@ -20,7 +20,7 @@ import { scanSourceRoots, unscannedRoots } from "../src/testing";
 import { PACKAGE_DIR, REPO_ROOT, SRC_DIR } from "./helpers/paths";
 
 const APP_DICTIONARY = /(?:^|\/)(?:lib\/strings|strings-en)(?:\.tsx?)?$/;
-const APP_PACKAGE = /^@prismshadow\/penguin-web(?:\/|$)/;
+const APP_PACKAGE = /^@lmliheng\/penguin-web(?:\/|$)/;
 
 /** Every refused shape in one source text, as "line: what". `path` places relative specifiers. */
 function appStringReaches(path: string, text: string): string[] {
@@ -98,8 +98,8 @@ describe("the package's copy", () => {
     expect(hits('import { zh } from "../../../../../web/src/i18n";')).toEqual([
       "1: imports ../../../../../web/src/i18n, outside packages/ui",
     ]);
-    expect(hits('export { en } from "@prismshadow/penguin-web/strings-en";')).toEqual([
-      "1: imports @prismshadow/penguin-web/strings-en",
+    expect(hits('export { en } from "@lmliheng/penguin-web/strings-en";')).toEqual([
+      "1: imports @lmliheng/penguin-web/strings-en",
     ]);
     expect(hits('const m = await import("../lib/strings");')).toEqual([
       "1: imports ../lib/strings",

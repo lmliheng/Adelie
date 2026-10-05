@@ -5,7 +5,7 @@ description: 所有 penguin 命令和子命令的选项、默认值、输出结�
 
 本页收录所有 `penguin` 命令。开头先说明 CLI 如何连接服务器，以及所有命令共享的约定；随后逐条介绍每个命令，各配一段概述、用法、选项表和示例。
 
-CLI 以 npm 包 `@prismshadow/penguin-cli` 发布，命令名为 `penguin`。直接运行 `penguin` 会打印帮助。`-v, --version` 打印当前构建的一行标识信息，`penguin version --json` 则打印完整信息。启动时，CLI 会从工作目录加载 `.env` 文件。
+CLI 以 npm 包 `@lmliheng/penguin-cli` 发布，命令名为 `penguin`。直接运行 `penguin` 会打印帮助。`-v, --version` 打印当前构建的一行标识信息，`penguin version --json` 则打印完整信息。启动时，CLI 会从工作目录加载 `.env` 文件。
 
 CLI 是服务器的瘦客户端。所有面向会话的命令（`run`、`chat`、`ls`、`input`、`logs`、`agent`、`project`、`cost`、`schedule`、`org`、`browser`）都向 PenguinHarness 服务器发送 HTTP 请求，并渲染返回结果。Task 在服务器上运行，Session 存放在服务器的索引里；CLI 创建的一切 Web App 都能看到，反过来也一样。只有 `config` 仍直接编辑 Project 的文件，`server` / `web` 则负责启动服务本身。
 
@@ -785,7 +785,7 @@ penguin update             # upgrade to the latest release, after confirming
 | 安装类型 | 升级方式 |
 | --- | --- |
 | 压缩包（`install.sh`，默认 `~/.penguin`） | 重新运行官方安装器，保留原安装目录以及安装包是否自带 Node 运行时 |
-| npm、pnpm、yarn 或 bun 全局安装 | 用对应的包管理器全局安装 `@prismshadow/penguin-cli@<target>`。无法识别包管理器时，打印命令而不是猜测 |
+| npm、pnpm、yarn 或 bun 全局安装 | 用对应的包管理器全局安装 `@lmliheng/penguin-cli@<target>`。无法识别包管理器时，打印命令而不是猜测 |
 | 源码检出 | 拒绝：请用 `git pull` 加重新构建来更新 |
 | 桌面应用内置的 CLI | 拒绝：应用更新时会随之替换，请从应用菜单检查更新 |
 | 无法识别的布局 | 拒绝：请用官方安装器重新安装，或用当初的包管理器升级 |

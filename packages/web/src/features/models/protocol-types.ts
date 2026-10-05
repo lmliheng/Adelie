@@ -10,7 +10,7 @@ import {
   modelEnvPreviewKey,
   providerClientType,
   providerInfo,
-} from "@prismshadow/penguin-core/model-catalog";
+} from "@lmliheng/penguin-core/model-catalog";
 
 /**
  * AgentHub's generic protocol client types, in detection order (custom / user-defined

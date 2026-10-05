@@ -1,5 +1,5 @@
 {
-  "name": "@prismshadow/penguin-ui-gallery",
+  "name": "@lmliheng/penguin-ui-gallery",
   "version": "0.2.13",
   "private": true,
   "type": "module",
@@ -13,14 +13,14 @@
     "shots": "node scripts/shots.mjs"
   },
   "dependencies": {
-    "@prismshadow/penguin-ui": "workspace:*",
+    "@lmliheng/penguin-ui": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "@prismshadow/penguin-core": "workspace:*",
-    "@prismshadow/penguin-web": "workspace:*",
+    "@lmliheng/penguin-core": "workspace:*",
+    "@lmliheng/penguin-web": "workspace:*",
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.1.0",

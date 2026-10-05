@@ -4,7 +4,7 @@
  * streams a reply and settles, an approval decides the pending command, an abort stops a run.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { ServerEvent } from "@prismshadow/penguin-server/api";
+import type { ServerEvent } from "@lmliheng/penguin-server/api";
 import { catalogEntryFor } from "../../core/dist/state/model-catalog.js";
 import { catalogDelta } from "../../web/src/features/models/catalog-sync";
 import { buildFixtures } from "../src/app/mock/fixtures";

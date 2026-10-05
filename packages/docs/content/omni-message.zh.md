@@ -441,13 +441,13 @@ type StopReason = "completed" | "aborted" | "retryable" | "fatal";
 
 ## 构造与判别
 
-`@prismshadow/penguin-core` 导出全部协议类型，此外还有：
+`@lmliheng/penguin-core` 导出全部协议类型，此外还有：
 
 - `builders.ts` 里每种消息的构造函数：`userText`、`assistantText`、`toolCall`、`toolCallOutput`、`partialText`、`tokenUsage`、`withOrigin`、`emptyTokenCounts`、`addTokenCounts` 等；
 - 运行时判别函数：`isCompleteModelMessage`、`isPartialPayload`、`isModelMessage`、`isEventMessage`、`isSessionMeta`。
 
 ```ts
-import { userText, isCompleteModelMessage } from "@prismshadow/penguin-core";
+import { userText, isCompleteModelMessage } from "@lmliheng/penguin-core";
 
 const prompt = userText("List the files in the current directory");
 // { timestamp: "…", type: "model_msg", payload: { type: "text", role: "user", text: "…" } }

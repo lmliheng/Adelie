@@ -23,7 +23,7 @@
 # such zips are still accepted, from -Version pins and -ArchivePath files alike.
 #
 # There is no -Universal on Windows: where the zip is unsuitable, install Node.js >= 24 and run
-# `npm install -g @prismshadow/penguin-cli` instead.
+# `npm install -g @lmliheng/penguin-cli` instead.
 #
 # The data dir (%USERPROFILE%\.adelie\data by default) sits under the install home but is never touched by
 # reinstall/upgrade (which only replace bin/lib/web/node/git). Upgrading = re-running this installer.
@@ -193,7 +193,7 @@ if ($DownloadBaseUrl -and $DownloadFallbackBaseUrl) {
 
 # --- Platform preconditions: 64-bit Windows; the only Windows package is x64 (ARM64 runs it emulated) ---
 if (-not [Environment]::Is64BitOperatingSystem) {
-  Fail "32-bit Windows is not supported. Install Node.js >= 24 and use: npm install -g @prismshadow/penguin-cli"
+  Fail "32-bit Windows is not supported. Install Node.js >= 24 and use: npm install -g @lmliheng/penguin-cli"
 }
 if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
   Write-Host "note: no native ARM64 package yet; installing the x64 package (runs via emulation)."

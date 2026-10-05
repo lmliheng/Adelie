@@ -29,12 +29,12 @@ import {
   toolCall,
   toolCallOutput,
   userText,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import {
   buildBackgroundTaskDoneMessage,
   buildHandoffMessage,
-} from "@prismshadow/penguin-core/markers";
-import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core/markers";
+import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@lmliheng/penguin-core";
 import { decodeCursor, encodeCursor } from "../src/services/message-window.js";
 import type { TraceService } from "../src/services/trace-service.js";
 import { makeTempRoot, makeTraceHarness, writeTraceFile } from "./helpers.js";

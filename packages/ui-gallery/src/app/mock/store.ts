@@ -8,7 +8,7 @@
  * One store per document (a frame is a document), created on first use for the frame's
  * language, and re-creatable for tests. Nothing here touches the DOM.
  */
-import type { ServerEvent, SessionInfo } from "@prismshadow/penguin-server/api";
+import type { ServerEvent, SessionInfo } from "@lmliheng/penguin-server/api";
 import { buildFixtures, DEFAULT_MODEL } from "./fixtures";
 import type { DemoFixtures } from "./fixtures";
 import { IDS } from "./ids";

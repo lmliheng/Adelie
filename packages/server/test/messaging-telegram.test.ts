@@ -56,9 +56,9 @@ import {
   modelVisiblePath,
   scratchpadDir,
   toolCall,
-} from "@prismshadow/penguin-core";
-import type { ApproveFn, OmniMessage } from "@prismshadow/penguin-core";
-import { wire } from "@prismshadow/penguin-core/kernel";
+} from "@lmliheng/penguin-core";
+import type { ApproveFn, OmniMessage } from "@lmliheng/penguin-core";
+import { wire } from "@lmliheng/penguin-core/kernel";
 import type {
   FeishuBindingResponse,
   MessagingBindingsResponse,

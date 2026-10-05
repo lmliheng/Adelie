@@ -19,11 +19,7 @@
  * task files itself; the toggle never stops the server from firing configured tasks.
  */
 import { useCallback, useEffect, useState } from "react";
-import type {
-  ScheduleItem,
-  SchedulesResponse,
-  ScheduleStatus,
-} from "@prismshadow/penguin-server/api";
+import type { ScheduleItem, SchedulesResponse, ScheduleStatus } from "@lmliheng/penguin-server/api";
 import {
   Badge,
   Button,
@@ -39,8 +35,8 @@ import {
   TableRow,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
-import type { BadgeStyle } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { BadgeStyle } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

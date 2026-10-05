@@ -8,8 +8,8 @@
  * move, on text they have read. Mounted fresh on every open, like AiCreateModal.
  */
 import { useState } from "react";
-import type { AgentSummary } from "@prismshadow/penguin-server/api";
-import { Button, GlyphIcon, ICONS, Modal } from "@prismshadow/penguin-ui";
+import type { AgentSummary } from "@lmliheng/penguin-server/api";
+import { Button, GlyphIcon, ICONS, Modal } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { agentDisplayName } from "../../state/project";
 import { AiCreatePanel, composeAiPrompt } from "../ai-create";

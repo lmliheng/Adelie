@@ -11,7 +11,7 @@
 import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { OrgHandbookFile } from "@prismshadow/penguin-server/api";
+import type { OrgHandbookFile } from "@lmliheng/penguin-server/api";
 import { HandbookExplorer } from "../src/features/company/handbook-explorer";
 import {
   HANDBOOK_INDEX,

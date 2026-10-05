@@ -715,7 +715,7 @@ export const en: GalleryStrings = {
       besideTip: "Opens to the right of its trigger",
       belowTip: "Opens under its trigger",
       command:
-        "pnpm --filter @prismshadow/penguin-web exec vitest run test/session-activity.test.ts --reporter verbose",
+        "pnpm --filter @lmliheng/penguin-web exec vitest run test/session-activity.test.ts --reporter verbose",
     },
     tabs: {
       basic: "Tab switcher",

@@ -12,21 +12,21 @@ import {
   DEFAULT_THEME_ID,
   THEME_IDS,
   resolveAccent,
-} from "@prismshadow/penguin-ui";
-import type { ThemeId } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { ThemeId } from "@lmliheng/penguin-ui";
 import {
   FONT_CJK_OPTIONS,
   FONT_LATIN_OPTIONS,
   THEME_STORAGE_KEYS,
   readTextSize,
-} from "@prismshadow/penguin-ui/boot";
+} from "@lmliheng/penguin-ui/boot";
 import type {
   AccentChoice,
   FontCjk,
   FontLatin,
   TextSize,
   ThemeAttributes,
-} from "@prismshadow/penguin-ui/boot";
+} from "@lmliheng/penguin-ui/boot";
 
 export type { FontCjk, FontLatin, TextSize };
 

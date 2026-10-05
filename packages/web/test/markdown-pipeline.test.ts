@@ -19,7 +19,7 @@ const SHARED_MODULE = "packages/ui/src/components/content/prose/markdown-plugins
 /** Where a renderer in each root takes the lists from. */
 const HOME: Record<string, string> = {
   ui: 'from "./markdown-plugins"',
-  web: 'from "@prismshadow/penguin-ui"',
+  web: 'from "@lmliheng/penguin-ui"',
 };
 
 describe("the Markdown pipeline every renderer shares", () => {

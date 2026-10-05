@@ -63,7 +63,7 @@ import {
   userSteeringText,
   userText,
   withOrigin,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   ApproveFn,
   GenerativeModelParameters,
@@ -71,7 +71,7 @@ import type {
   LLMOutcome,
   OmniMessage,
   TextPayload,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type { ServerEvent } from "../src/api/types.js";
 import { openDatabase } from "../src/db/database.js";
 import { HttpError } from "../src/http/errors.js";
@@ -87,7 +87,7 @@ import type { TitleRequest } from "../src/runtime/title-generator.js";
 import type { UsageContext } from "../src/runtime/usage-recorder.js";
 import { fakeSession } from "./fixtures/session.js";
 import { waitFor } from "./helpers.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 const ROW: SessionRow = {
   sessionId: "session-1",

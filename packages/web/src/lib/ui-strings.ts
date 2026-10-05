@@ -6,7 +6,7 @@
  * Each value is read from the dictionary itself rather than from the live `S`, so the two objects
  * are built once and keep their identity across renders.
  */
-import type { UiStrings } from "@prismshadow/penguin-ui";
+import type { UiStrings } from "@lmliheng/penguin-ui";
 import { zh } from "./strings";
 import type { Strings } from "./strings";
 import { en } from "./strings-en";

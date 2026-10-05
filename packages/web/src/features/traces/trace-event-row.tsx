@@ -19,11 +19,11 @@ import {
   REMARK_PLUGINS,
   RequiredMark,
   ZoomableImage,
-} from "@prismshadow/penguin-ui";
-import type { BadgeStyle } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { BadgeStyle } from "@lmliheng/penguin-ui";
 import ReactMarkdown from "react-markdown";
 import { S } from "../../lib/strings";
-import type { OmniMessage } from "@prismshadow/penguin-core/omnimessage";
+import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
 import { formatTime, humanizeTokens } from "../../lib/format";
 import { stopReasonTone } from "../../lib/stop-reason-tone";
 

@@ -165,7 +165,7 @@ output = 1.142857
 
 ```toml
 [plugins]
-"@prismshadow/penguin-plugin-sandbox-bwrap" = "*"
+"@lmliheng/penguin-plugin-sandbox-bwrap" = "*"
 "@scope/name" = "1.2.3"
 "@scope/other" = { version = "1.2" }
 ```

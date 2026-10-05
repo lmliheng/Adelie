@@ -22,10 +22,10 @@ import {
   agentVaultPath,
   snapshotsDir,
   systemConfigPath,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type { Snapshots } from "../mechanisms/agents.js";
 

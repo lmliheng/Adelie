@@ -55,7 +55,7 @@ import {
   isPartialPayload,
   parseBackgroundTaskDoneMessage,
   parseUserSteeringText,
-} from "@prismshadow/penguin-core/omnimessage";
+} from "@lmliheng/penguin-core/omnimessage";
 import type {
   ApprovalDecision,
   CompactionMode,
@@ -67,8 +67,8 @@ import type {
   SessionMetaPayload,
   StopReason,
   TokenUsagePayload,
-} from "@prismshadow/penguin-core/omnimessage";
-import type { TracePosition } from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-core/omnimessage";
+import type { TracePosition } from "@lmliheng/penguin-server/api";
 import {
   addLlmDuration,
   addToolExecution,

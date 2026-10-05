@@ -6,7 +6,7 @@
 import type {
   BuiltinBrowserLoadWarning,
   BuiltinBrowserMetrics,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { S } from "../../lib/strings";
 import type { Strings } from "../../lib/strings";
 

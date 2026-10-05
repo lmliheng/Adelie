@@ -12,7 +12,7 @@
  *
  * Pure, no React: unit-tested in test/context-parts.test.ts, rendered by context-gauge.tsx.
  */
-import type { SessionContextResponse } from "@prismshadow/penguin-server/api";
+import type { SessionContextResponse } from "@lmliheng/penguin-server/api";
 import { CONTEXT_PART_COLORS } from "../../lib/category-colors";
 
 /** The six parts, by the DTO field each reads. Callers resolve a key to its label at render time — `S` is a live binding and must not be captured in a module constant. */

@@ -39,15 +39,15 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { agentsDir, isSessionMeta, tracesDir } from "@prismshadow/penguin-core";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+import { agentsDir, isSessionMeta, tracesDir } from "@lmliheng/penguin-core";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import type { TraceFileRow, TraceSessionRow } from "../db/repos/trace-index.js";
 import { TraceIndexRepo } from "../db/repos/trace-index.js";
 import { cacheable, statMtime } from "../internal/mtime-gate.js";
 import { readTraceHead } from "../internal/trace-head.js";
 import { asSessionSource } from "../runtime/session-sources.js";
 import { fallbackTitle } from "../runtime/title-generator.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Paths } from "../hmr/capabilities.js";
 import type { TraceIndex, TraceIndexStore } from "../mechanisms/traces.js";
 import type { SessionOrigins } from "../mechanisms/sessions.js";

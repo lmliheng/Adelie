@@ -28,7 +28,7 @@ import type {
   MemoryImportMode,
   MemoryScopeExport,
   MemoryScopeInfo,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   Button,
   Card,
@@ -59,8 +59,8 @@ import {
   toastError,
   toastSuccess,
   useCopied,
-} from "@prismshadow/penguin-ui";
-import type { SheetSnap } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { SheetSnap } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

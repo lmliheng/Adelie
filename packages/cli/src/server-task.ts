@@ -19,9 +19,9 @@ import {
   isHookContinue,
   isHookInput,
   isModelMessage,
-} from "@prismshadow/penguin-core";
-import type { ApprovalDecision, OmniMessage, ToolCallPayload } from "@prismshadow/penguin-core";
-import type { GoalServerEvent } from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-core";
+import type { ApprovalDecision, OmniMessage, ToolCallPayload } from "@lmliheng/penguin-core";
+import type { GoalServerEvent } from "@lmliheng/penguin-server/api";
 import { ServerClient } from "./client.js";
 import type { SseFrame } from "./client.js";
 import { dim, humanizeTokens } from "./render.js";

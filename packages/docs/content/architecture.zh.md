@@ -3,7 +3,7 @@ title: 架构总览
 description: SDK、Server、CLI 和 Web App 如何分工，以及三接口边界与 OmniMessage 如何组织整个系统。
 ---
 
-PenguinHarness 是一个 pnpm monorepo，核心是 `@prismshadow/penguin-core` 里的执行引擎。Server 是随产品交付的 Human 实现，所有 Task 都由它运行；SDK 嵌入方也可以直接驱动引擎。
+PenguinHarness 是一个 pnpm monorepo，核心是 `@lmliheng/penguin-core` 里的执行引擎。Server 是随产品交付的 Human 实现，所有 Task 都由它运行；SDK 嵌入方也可以直接驱动引擎。
 
 Web App 和 CLI 经 HTTP 与 SSE 访问 Server，桌面应用则把 Server 和 Web App 装进同一个窗口。本页依次介绍分层结构、引擎的三接口边界、[一个 Task 的数据流](#一个-task-的数据流)、各项职责的归属和源码结构。
 
@@ -146,7 +146,7 @@ packages/
 
 ```text
 packages/web/src
-├── api/          # fetch wrapper · one function per API (DTOs type-only from @prismshadow/penguin-server/api) · SSE wrapper
+├── api/          # fetch wrapper · one function per API (DTOs type-only from @lmliheng/penguin-server/api) · SSE wrapper
 ├── state/        # auth / project / sessions / company / theme / locale contexts
 ├── lib/omni/     # OmniMessage stream → view-model reducer; connect-first + dedup stream controller
 ├── components/   # ui primitives (modal / drawer / select …) and the app layout

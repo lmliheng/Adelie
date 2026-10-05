@@ -6,7 +6,7 @@
  * nothing renders). The rule therefore lives here as a pure predicate that the menu
  * consumes — see test/account-menu.test.ts.
  */
-import type { MeResponse } from "@prismshadow/penguin-server/api";
+import type { MeResponse } from "@lmliheng/penguin-server/api";
 
 /** The two fields of `GET /api/me` that describe who is asking, and from where. */
 export interface AccountMenuSession {

@@ -10,7 +10,7 @@
  * - A file path splits on either separator, a root keeping its own separator as the directory.
  */
 import { describe, expect, it } from "vitest";
-import type { SessionContextResponse } from "@prismshadow/penguin-server/api";
+import type { SessionContextResponse } from "@lmliheng/penguin-server/api";
 import { contextComposition, splitFilePath } from "../src/features/chat/context-parts";
 
 function response(over: Partial<SessionContextResponse> = {}): SessionContextResponse {

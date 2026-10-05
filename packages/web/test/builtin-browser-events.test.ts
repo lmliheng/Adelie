@@ -5,7 +5,7 @@
  * this screen — and a resync tells the layer to re-read the registry.
  */
 import { describe, expect, it } from "vitest";
-import type { BuiltinBrowserServerEvent, ServerEvent } from "@prismshadow/penguin-server/api";
+import type { BuiltinBrowserServerEvent, ServerEvent } from "@lmliheng/penguin-server/api";
 import { applyUserEvent, createSessionsStore } from "../src/state/sessions";
 import {
   isBuiltinBrowserEvent,

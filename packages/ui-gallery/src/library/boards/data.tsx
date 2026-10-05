@@ -23,7 +23,7 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

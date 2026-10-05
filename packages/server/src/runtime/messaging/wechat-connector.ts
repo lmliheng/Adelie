@@ -97,8 +97,8 @@ import type {
   WeChatTransport,
 } from "./wechat-api.js";
 import { WECHAT_API_BASE, createWeChatTransport } from "./wechat-api.js";
-import { Bind, Component, Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
-import type { Opaque } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import type { Opaque } from "@lmliheng/penguin-core/kernel";
 import type { MessagingTuning } from "./bridge.js";
 
 /** The WeChat binding's stored config document (`messaging_bindings.config_json`). */

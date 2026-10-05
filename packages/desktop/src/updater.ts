@@ -34,7 +34,7 @@ import electronUpdater from "electron-updater";
 import type {
   DesktopUpdateStatus,
   DesktopUpdaterCommandMessage,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { resolveProfile } from "./app-identity.js";
 import { logLine } from "./desktop-log.js";
 import { feedUrlOverride, updateSupport } from "./update-support.js";

@@ -14,7 +14,7 @@ import type {
   MachineJob,
   MachinePhase,
   MachinesResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import type { Tone } from "../../lib/tone";
 
 export type MachineReading =

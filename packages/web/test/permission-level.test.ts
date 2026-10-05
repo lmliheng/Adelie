@@ -8,7 +8,7 @@
  * - Each level wears its own glyph, so the level never depends on colour alone.
  */
 import { describe, expect, it } from "vitest";
-import type { SessionSandbox } from "@prismshadow/penguin-server/api";
+import type { SessionSandbox } from "@lmliheng/penguin-server/api";
 import {
   PERMISSION_LEVEL_GLYPH,
   firstUnavailableBackend,

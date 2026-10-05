@@ -12,7 +12,7 @@
  * browser having shown a toast, not about the user: a second browser is a second first time,
  * and a preferences round trip would decide it too late to toast on the click that caused it.
  */
-import { BetaBadge } from "@prismshadow/penguin-ui";
+import { BetaBadge } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 
 /** The localStorage key remembering that this browser has shown the beta notice. */

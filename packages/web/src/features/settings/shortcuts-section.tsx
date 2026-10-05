@@ -8,13 +8,7 @@
  * tab never receives ⌘W; ⌘P takes over the browser's Print; the desktop menu also carries ⌘R).
  */
 import { useState } from "react";
-import {
-  Button,
-  ConfirmModal,
-  GlyphIcon,
-  ICON_SIZE,
-  SettingsSection,
-} from "@prismshadow/penguin-ui";
+import { Button, ConfirmModal, GlyphIcon, ICON_SIZE, SettingsSection } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { conflictsOf, findConflicts, type Conflict } from "../../lib/shortcuts/conflicts";
 import { currentHost, currentPlatform } from "../../lib/shortcuts/platform";

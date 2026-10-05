@@ -13,7 +13,7 @@
  * duplicates the bridge-modal flows.
  */
 import { useEffect, useState } from "react";
-import type { SessionInfo } from "@prismshadow/penguin-server/api";
+import type { SessionInfo } from "@lmliheng/penguin-server/api";
 import {
   GlyphIcon,
   ICONS,
@@ -21,7 +21,7 @@ import {
   Md,
   SkeletonList,
   bodyWithoutFrontmatter,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { formatRelativeDate } from "../../lib/format";

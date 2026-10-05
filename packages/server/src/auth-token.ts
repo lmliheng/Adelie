@@ -10,7 +10,7 @@ import { openExistingDatabase } from "./db/database.js";
 import { AuthSessionsRepo } from "./db/repos/auth-sessions.js";
 import type { SessionViaValue } from "./db/repos/auth-sessions.js";
 import { UsersRepo } from "./db/repos/users.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 /** An hour: long enough for a controller to finish, short enough to forget. */
 export const CLI_TOKEN_TTL_MS = 60 * 60_000;

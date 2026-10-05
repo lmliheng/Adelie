@@ -27,8 +27,8 @@
  *   covered through its route in errors.test.ts).
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { sessionMeta, tokenUsage, withOrigin } from "@prismshadow/penguin-core";
-import type { SessionMetaPayload, TokenCounts } from "@prismshadow/penguin-core";
+import { sessionMeta, tokenUsage, withOrigin } from "@lmliheng/penguin-core";
+import type { SessionMetaPayload, TokenCounts } from "@lmliheng/penguin-core";
 import { ORIGIN_MODELS_MAX, UsageRecorder } from "../src/runtime/usage-recorder.js";
 import { ErrorsRepo } from "../src/db/repos/errors.js";
 import { UsageRepo } from "../src/db/repos/usage.js";
@@ -37,7 +37,7 @@ import type { PricingRates } from "../src/services/usage-service.js";
 import { openDatabase } from "../src/db/database.js";
 import { enumerateBuckets, enumerateTsBuckets, formatLocalDate } from "../src/internal/dates.js";
 import type { DatabaseSync } from "node:sqlite";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 const CTX = {
   projectId: "project-x",

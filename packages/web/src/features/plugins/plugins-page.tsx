@@ -47,7 +47,7 @@ import type {
   PluginIndexEntry,
   PluginItem,
   SkillMetadataItem,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   Badge,
@@ -72,7 +72,7 @@ import {
   UpdateDot,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

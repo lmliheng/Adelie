@@ -1,9 +1,9 @@
 /**
  * The plugin host: the plugins this process loaded, as module definitions the
  * platform boots as children of its tree. Kept out of ./index.ts so the published
- * `@prismshadow/penguin-server/plugin` subpath stays types only.
+ * `@lmliheng/penguin-server/plugin` subpath stays types only.
  */
-import type { IfaceTable, ModuleDef, Resources } from "@prismshadow/penguin-core/kernel";
+import type { IfaceTable, ModuleDef, Resources } from "@lmliheng/penguin-core/kernel";
 
 /** One loaded plugin: the package, its modules and stand-ins with manifests paired to code, and its generated table. */
 export interface LoadedPlugin {

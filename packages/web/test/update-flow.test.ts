@@ -12,7 +12,7 @@ import type {
   DesktopUpdateStatus,
   UpdateCheckResponse,
   UpdateJobStatus,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   NO_LOCAL,
   clientFlow,

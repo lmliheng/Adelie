@@ -219,7 +219,7 @@ try {
       // core, and core has to be rebuilt first for it to inline the current one.
       const res = spawnSync(
         "pnpm",
-        ["--filter", "@prismshadow/penguin-core", "--filter", "@prismshadow/penguin-cli", "build"],
+        ["--filter", "@lmliheng/penguin-core", "--filter", "@lmliheng/penguin-cli", "build"],
         // shell on Windows: pnpm is a .cmd shim there (see ensureInstalled).
         { cwd: ROOT, stdio: "inherit", shell: process.platform === "win32" },
       );

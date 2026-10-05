@@ -69,7 +69,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { createPortal } from "react-dom";
-import type { SessionContextResponse } from "@prismshadow/penguin-server/api";
+import type { SessionContextResponse } from "@lmliheng/penguin-server/api";
 import {
   ConfirmModal,
   ContextRing,
@@ -77,7 +77,7 @@ import {
   Legend,
   usePointerDrag,
   usePortalPanel,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { getSessionContext } from "../../api/endpoints";
 import {
   MIN_COMPACTION_THRESHOLD,

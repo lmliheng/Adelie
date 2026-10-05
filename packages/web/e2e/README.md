@@ -8,8 +8,8 @@ rendering, path hidden by default). The LLM is driven by `mock-llm.mjs` (a mock 
 Messages SSE endpoint) — no network access.
 
 ```sh
-pnpm --filter @prismshadow/penguin-web test:e2e          # build + start the server + run the tests
-SKIP_BUILD=1 pnpm --filter @prismshadow/penguin-web test:e2e   # skip the build
+pnpm --filter @lmliheng/penguin-web test:e2e          # build + start the server + run the tests
+SKIP_BUILD=1 pnpm --filter @lmliheng/penguin-web test:e2e   # skip the build
 ```
 
 The first run requires `npx playwright install chromium`.

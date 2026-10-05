@@ -11,7 +11,7 @@
 import { spawn } from "node:child_process";
 import { mkdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { atomicWriteFile } from "@prismshadow/penguin-core";
+import { atomicWriteFile } from "@lmliheng/penguin-core";
 import type { Language } from "./i18n.js";
 
 const BEGIN = "# >>> Adelie ADELIE_LANG >>>";

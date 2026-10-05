@@ -23,7 +23,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 import type { MeResponse, ProjectsResponse } from "../src/api/types.js";
 import { bootAppDeps } from "../src/app.js";
 import { hashPassword, ScryptHasher } from "../src/auth/password.js";

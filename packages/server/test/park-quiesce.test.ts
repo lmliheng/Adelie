@@ -7,11 +7,11 @@
  * terminals-only there), with fake ptys standing in for delivered resources.
  */
 import { describe, expect, it, vi } from "vitest";
-import { boot, initialDoc, upgrade } from "@prismshadow/penguin-core/kernel";
-import { HotResources } from "@prismshadow/penguin-hmr";
+import { boot, initialDoc, upgrade } from "@lmliheng/penguin-core/kernel";
+import { HotResources } from "@lmliheng/penguin-hmr";
 import { packagedPlatform } from "../src/hmr/platform.js";
 import type { PlatformApi } from "../src/hmr/platform.js";
-import type { Instance } from "@prismshadow/penguin-core/kernel";
+import type { Instance } from "@lmliheng/penguin-core/kernel";
 import { PENGUIN_FAMILY, HMR_INTERFACES_RESOURCE_ID } from "../src/hmr/capabilities.js";
 import { TerminalManager } from "../src/terminal/manager.js";
 import type { TerminalSession } from "../src/terminal/session.js";

@@ -28,8 +28,8 @@ import {
   resumeTrace,
   scratchpadDir,
   tracesDir,
-} from "@prismshadow/penguin-core";
-import type { CompactionMode, OmniMessage } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { CompactionMode, OmniMessage } from "@lmliheng/penguin-core";
 import type {
   AgentTraceSessionEntry,
   AgentTracesResponse,
@@ -76,7 +76,7 @@ import type {
 import { buildContextBreakdown, emptyContextBreakdown } from "./context-breakdown.js";
 import { sessionIdCreatedAt } from "./session-service.js";
 import { TraceIndexService, traceFilePath } from "./trace-index.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Paths } from "../hmr/capabilities.js";
 import type { TraceIndex, TraceIndexStore, Traces } from "../mechanisms/traces.js";
 import type { SessionIndex, SessionOrigins } from "../mechanisms/sessions.js";

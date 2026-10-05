@@ -40,7 +40,7 @@ import { SCHEMA_SQL } from "../src/db/schema.js";
 import { MessagingBindingsRepo } from "../src/db/repos/messaging-bindings.js";
 import { SessionsRepo } from "../src/db/repos/sessions.js";
 import type { SessionRow } from "../src/db/repos/sessions.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 const sqlite = process.getBuiltinModule("node:sqlite");
 

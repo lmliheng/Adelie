@@ -28,7 +28,7 @@
  * Docs: /docs/cli § "penguin run".
  */
 import type { Command } from "commander";
-import { VERSION } from "@prismshadow/penguin-core";
+import { VERSION } from "@lmliheng/penguin-core";
 import { StreamRenderer, dim } from "../render.js";
 import { parseDurationMs } from "../duration.js";
 import { parseTokenBudget, UNLIMITED_BUDGET } from "../goal-command.js";

@@ -25,7 +25,7 @@
  * Pure decisions only (vitest runs node-only here, so nothing renders and nothing fetches);
  * `use-project-todos.ts` wires them to the live stores and turns a count into localized copy.
  */
-import type { AgentSummary, UsageErrorsPage } from "@prismshadow/penguin-server/api";
+import type { AgentSummary, UsageErrorsPage } from "@lmliheng/penguin-server/api";
 import type { CatalogDelta } from "../features/models/catalog-sync";
 
 /** The four trails, in sidebar order. Also the key each dismissal is stored under. */

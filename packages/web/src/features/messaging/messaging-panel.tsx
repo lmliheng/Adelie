@@ -13,7 +13,7 @@
  * Status polling is gated on `active` (the dock keeps hidden tabs mounted): a hidden tab
  * neither polls nor loses the form state it accumulated.
  */
-import { Button, Skeleton } from "@prismshadow/penguin-ui";
+import { Button, Skeleton } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import {
   MessagingBindingBody,

@@ -3,7 +3,7 @@
  * relationships; the display name lives in project_config.toml.
  */
 import type { ProjectRole } from "../../api/types.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { Projects } from "../../mechanisms/projects.js";
 

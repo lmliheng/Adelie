@@ -21,7 +21,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SERVER_PORT } from "@prismshadow/penguin-core";
+import { DEFAULT_SERVER_PORT } from "@lmliheng/penguin-core";
 
 const cliDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(cliDir, "..", "..");

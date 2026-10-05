@@ -16,11 +16,7 @@
  * while the AI path stays open to everyone — asking the agent is a message, not a write.
  */
 import { useEffect, useState } from "react";
-import type {
-  ProjectScheduleItem,
-  ScheduleItem,
-  SessionInfo,
-} from "@prismshadow/penguin-server/api";
+import type { ProjectScheduleItem, ScheduleItem, SessionInfo } from "@lmliheng/penguin-server/api";
 import {
   Badge,
   ConfirmModal,
@@ -37,7 +33,7 @@ import {
   Switch,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

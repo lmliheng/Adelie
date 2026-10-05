@@ -1,13 +1,13 @@
 /**
  * The whole CLI as a plain function: commander commands over
- * @prismshadow/penguin-core, returning an exit code.
+ * @lmliheng/penguin-core, returning an exit code.
  *
  * Built twice: into this package's `penguin` binary (penguin.ts), and — as the CLI
  * artifact pushed to POST /api/hmr/upgrade — into the bundle `penguin-hmr` loads from
  * the HMR store instead (see scripts/deploy.mjs).
  */
 import { Command, CommanderError } from "commander";
-import { buildInfo } from "@prismshadow/penguin-core";
+import { buildInfo } from "@lmliheng/penguin-core";
 import { registerAuthCommand } from "./commands/auth.js";
 import { registerConfigCommand } from "./commands/config.js";
 import { registerRunCommand } from "./commands/run.js";

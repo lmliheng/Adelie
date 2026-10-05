@@ -16,7 +16,7 @@
  * chat input docked at the bottom of the screen opens upward.
  */
 import { useState } from "react";
-import type { ApprovalMode, SessionSandbox } from "@prismshadow/penguin-server/api";
+import type { ApprovalMode, SessionSandbox } from "@lmliheng/penguin-server/api";
 import {
   Dropdown,
   GlyphIcon,
@@ -25,7 +25,7 @@ import {
   MenuLabel,
   MenuRadioItem,
   MenuSeparator,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import {

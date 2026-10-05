@@ -22,7 +22,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 import table from "../src/ifaces.json" with { type: "json" };
 import {
   HarnessHistoryStore,
@@ -30,7 +30,7 @@ import {
   KEEP_VERSIONS,
 } from "../src/services/harness-history.js";
 import zlib from "node:zlib";
-import { diffIfaces } from "@prismshadow/penguin-hmr";
+import { diffIfaces } from "@lmliheng/penguin-hmr";
 import type { VersionHistoryDiffResponse, VersionHistoryResponse } from "../src/api/types.js";
 import {
   apiClient,

@@ -37,7 +37,7 @@ penguin config model add \
 
 ## 3. 运行示例
 
-从仓库根目录（先构建 workspace，好让 `@prismshadow/penguin-core` 解析到它的 `dist/`）：
+从仓库根目录（先构建 workspace，好让 `@lmliheng/penguin-core` 解析到它的 `dist/`）：
 
 ```bash
 pnpm install

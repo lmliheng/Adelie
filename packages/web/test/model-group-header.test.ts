@@ -11,8 +11,8 @@
  * something comes after it.
  */
 import { describe, expect, it } from "vitest";
-import { MODEL_PROVIDERS, providerInfo } from "@prismshadow/penguin-core/model-catalog";
-import type { ModelProviderInfo } from "@prismshadow/penguin-core/model-catalog";
+import { MODEL_PROVIDERS, providerInfo } from "@lmliheng/penguin-core/model-catalog";
+import type { ModelProviderInfo } from "@lmliheng/penguin-core/model-catalog";
 import {
   connectionStatus,
   dividerAfterBalance,

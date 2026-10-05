@@ -12,7 +12,7 @@
  * have it shut down at process exit. Spawning anything — a shell, a pty, a connection —
  * is the platform's business and lives there.
  */
-import type { Resources } from "@prismshadow/penguin-core/kernel";
+import type { Resources } from "@lmliheng/penguin-core/kernel";
 
 export class HotResources implements Resources {
   private readonly map = new Map<string, { resource: unknown; dispose?: () => void }>();

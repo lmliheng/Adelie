@@ -15,7 +15,7 @@
  * every mounted hook.
  */
 import { useEffect, useState } from "react";
-import type { UpdateCheckResponse, VersionResponse } from "@prismshadow/penguin-server/api";
+import type { UpdateCheckResponse, VersionResponse } from "@lmliheng/penguin-server/api";
 import * as api from "../api/endpoints";
 
 let versionCache: VersionResponse | null = null;

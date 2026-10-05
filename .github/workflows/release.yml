@@ -16,11 +16,11 @@
 #   one version per tag, multiple versions coexist. Releases up to v0.1.5 shipped raw program
 #   archives under the same names plus *-offline wrappers; the installers keep accepting that
 #   legacy layout for pinned versions.
-# - publish-npm: publish the whole chain (the @lmliheng/* plugin packages -> @prismshadow/penguin-core
-#   -> @prismshadow/penguin-server -> @prismshadow/penguin-cli) to npm at the tag version.
+# - publish-npm: publish the whole chain (the @lmliheng/* plugin packages -> @lmliheng/penguin-core
+#   -> @lmliheng/penguin-server -> @lmliheng/penguin-cli) to npm at the tag version.
 #   core serves the penguin-sdk Skill's `npm install`; server ships the built web assets inside
 #   the package (web-dist/, its default web dir falls back to it), so `npm install -g
-#   @prismshadow/penguin-cli` alone yields a working `penguin` incl. the Web UI (needs Node >= 24).
+#   @lmliheng/penguin-cli` alone yields a working `penguin` incl. the Web UI (needs Node >= 24).
 #   The publish flow mirrors AgentHub's publish.yml: OIDC trusted publishing (environment: npm +
 #   id-token: write, no token). A Trusted Publisher can only be configured in the settings page of a
 #   package that ALREADY EXISTS on the registry, so a brand-new package cannot be first-published by
@@ -46,7 +46,7 @@ name: Release
 
 # Fork note (Adelie, 2026-10-05): upstream's release pipeline is dispatch-only here. On a tag push
 # it would build the penguin/ one-line-installer bundles and publish @lmliheng/* and
-# @prismshadow/penguin-* to npm -- the upstream product, out of our fork. None of that is Adelie's,
+# @lmliheng/penguin-* to npm -- the upstream product, out of our fork. None of that is Adelie's,
 # and an accidental `git push --tags` must not be able to start it. Adelie's own release pipeline is
 # still to be written (FORK-PROGRESS.md 4.2); until then this file is kept for reference and can
 # only be run by hand, from the Actions tab.
@@ -218,11 +218,11 @@ jobs:
       # operator adds it. One prefix serves every payload below (native parts per platform).
       - name: Assemble penguin/ (lib + web + bin + plugins)
         run: |
-          pnpm --config.node-linker=hoisted --filter @prismshadow/penguin-cli --prod deploy "$PWD/out/penguin/lib"
+          pnpm --config.node-linker=hoisted --filter @lmliheng/penguin-cli --prod deploy "$PWD/out/penguin/lib"
           cp -r packages/web/dist out/penguin/web
           install -D -m 755 scripts/launchers/penguin out/penguin/bin/penguin
           node scripts/build-plugins.mjs --out out/penguin/lib/plugins
-          test -f out/penguin/lib/plugins/node_modules/@prismshadow/penguin-plugin-sandbox-bwrap/package.json
+          test -f out/penguin/lib/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/package.json
 
       # Program payloads: linux runtimes use .tar.xz, darwin .tar.gz (nodejs.org naming);
       # node/ is only lightly trimmed (drop share/doc and share/man, keep the rest). Payloads
@@ -533,7 +533,7 @@ jobs:
       contents: read
     environment:
       name: npm
-      url: https://www.npmjs.com/package/@prismshadow/penguin-cli
+      url: https://www.npmjs.com/package/@lmliheng/penguin-cli
     steps:
       - uses: actions/checkout@v5
         with:
@@ -621,9 +621,9 @@ jobs:
       - name: Build and test
         run: |
           pnpm -r build
-          pnpm --filter @prismshadow/penguin-core test
-          pnpm --filter @prismshadow/penguin-server test
-          pnpm --filter @prismshadow/penguin-cli test
+          pnpm --filter @lmliheng/penguin-core test
+          pnpm --filter @lmliheng/penguin-server test
+          pnpm --filter @lmliheng/penguin-cli test
 
       # Copy LICENSE into the package dirs (the files allowlist includes it, so artifacts ship the license)
       # and the built web assets into the server package (web-dist/, in its files allowlist: an npm install
@@ -656,7 +656,7 @@ jobs:
           # deps, rewritten to their versions at publish time, so they must exist first.
           for dir in plugins/*/; do
             # Read the name and the private flag out of the manifest rather than building a name
-            # from the directory: plugins/sandbox-* are @prismshadow/penguin-plugin-sandbox-* and
+            # from the directory: plugins/sandbox-* are @lmliheng/penguin-plugin-sandbox-* and
             # private, so a derived name queries a package that does not exist and filters to
             # nothing. Publishing is driven by what each package says it is.
             name="$(node -p "require('./$dir/package.json').name")"
@@ -672,7 +672,7 @@ jobs:
             pnpm --filter "$name" publish --access public --no-git-checks
           done
           for pkg in core server cli; do
-            name="@prismshadow/penguin-$pkg"
+            name="@lmliheng/penguin-$pkg"
             if [ -n "$(npm view "$name@$V" version 2>/dev/null || true)" ]; then
               echo "$name@$V already on the registry, skipping."
               continue

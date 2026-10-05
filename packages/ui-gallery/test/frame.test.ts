@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import vm from "node:vm";
 import { describe, expect, it } from "vitest";
-import { THEME_STORAGE_KEYS } from "@prismshadow/penguin-ui/boot";
+import { THEME_STORAGE_KEYS } from "@lmliheng/penguin-ui/boot";
 import {
   APP_FRAME_PATH,
   APP_LANG_KEY,

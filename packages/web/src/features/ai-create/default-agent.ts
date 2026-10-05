@@ -8,7 +8,7 @@
  * any other agent may lack. The first agent is the fallback for a Project whose default agent
  * was deleted; an empty list yields null and the caller disables sending.
  */
-import type { AgentSummary } from "@prismshadow/penguin-server/api";
+import type { AgentSummary } from "@lmliheng/penguin-server/api";
 
 export const DEFAULT_AGENT_ID = "default_agent";
 

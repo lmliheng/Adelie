@@ -14,8 +14,8 @@
  * failed its check or runs on another platform is named with its reason, never left out. It is
  * a code contribution, so it must not require plugin configuration itself.
  */
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
-import type { SandboxMode, SandboxSettings as Policy } from "@prismshadow/penguin-core/plugin";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
+import type { SandboxMode, SandboxSettings as Policy } from "@lmliheng/penguin-core/plugin";
 import type { PluginConfigNotice } from "../api/types.js";
 import { PluginConfig } from "../plugin/config.js";
 import type { SettingsGroupStatus } from "../plugin/config.js";

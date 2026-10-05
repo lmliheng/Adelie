@@ -9,7 +9,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { atomicWriteFile } from "@prismshadow/penguin-core";
+import { atomicWriteFile } from "@lmliheng/penguin-core";
 import type { BuiltinBrowserSettings } from "../api/types.js";
 
 export function settingsFile(root: string): string {

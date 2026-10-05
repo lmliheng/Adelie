@@ -4,7 +4,7 @@
  * subscriber. Module level and free of dependencies, because the connection outlives every
  * page and the session list's store has no business knowing what the browser does with them.
  */
-import type { BuiltinBrowserServerEvent, ServerEvent } from "@prismshadow/penguin-server/api";
+import type { BuiltinBrowserServerEvent, ServerEvent } from "@lmliheng/penguin-server/api";
 
 export function isBuiltinBrowserEvent(ev: ServerEvent): ev is BuiltinBrowserServerEvent {
   return (

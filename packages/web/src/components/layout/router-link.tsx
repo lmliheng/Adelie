@@ -4,7 +4,7 @@
  * click navigates in place, and says which link is the current page.
  */
 import { Link, matchPath } from "react-router";
-import type { NavRowLinkProps } from "@prismshadow/penguin-ui";
+import type { NavRowLinkProps } from "@lmliheng/penguin-ui";
 
 /** A package row's link as the router's own: the row's classes, state and content, navigating in place. */
 export function renderRouterLink(link: NavRowLinkProps) {

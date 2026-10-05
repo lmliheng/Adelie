@@ -6,7 +6,7 @@
  * sits muted on the right. Renders nothing where this session can update nothing. A Menu row,
  * like the menu's other entries.
  */
-import { MenuItem, Spinner } from "@prismshadow/penguin-ui";
+import { MenuItem, Spinner } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { updateRowModel } from "../../lib/update-flow";
 import type { UpdateFlow } from "../../lib/update-flow";

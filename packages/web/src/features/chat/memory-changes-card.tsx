@@ -12,7 +12,7 @@
  * filtered out (deletedKeys) — the row disappears here just as it does from the panel's list;
  * the whole card hides when nothing survives.
  */
-import { ChangesCard, ICONS } from "@prismshadow/penguin-ui";
+import { ChangesCard, ICONS } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import type { MemoryChangeRow } from "../../lib/omni/memory-changes";
 import { memoryRowKey } from "../../lib/omni/memory-changes";

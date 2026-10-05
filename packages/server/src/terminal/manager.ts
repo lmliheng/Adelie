@@ -12,7 +12,7 @@
  *   whatever it is running) alive — that is the entire point of a server-side terminal.
  */
 import fsp from "node:fs/promises";
-import type { Resources, Opaque, ClassCtx, Json } from "@prismshadow/penguin-core/kernel";
+import type { Resources, Opaque, ClassCtx, Json } from "@lmliheng/penguin-core/kernel";
 import path from "node:path";
 import { HttpError } from "../http/errors.js";
 import { spawnHelperHint } from "./spawn-helper.js";
@@ -22,7 +22,7 @@ import {
   type CreateTerminalSessionOptions,
   type TerminalSessionInfo,
 } from "./session.js";
-import { Interface, Bind, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
+import { Interface, Bind, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
 import type { AppEnv } from "../auth/middleware.js";
 import type { Hono } from "hono";
 import { Hmr, ResourceGroups } from "../hmr/capabilities.js";

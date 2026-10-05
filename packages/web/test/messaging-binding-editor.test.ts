@@ -22,7 +22,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { MessagingChannel } from "@prismshadow/penguin-server/api";
+import type { MessagingChannel } from "@lmliheng/penguin-server/api";
 import {
   MessagingBindingBody,
   MessagingBindingHelp,
@@ -31,7 +31,7 @@ import {
   type MessagingChannelFacts,
 } from "../src/features/messaging/messaging-binding-editor";
 import { emptyMessagingForm } from "../src/features/messaging/messaging-binding-form";
-import { UiStringsProvider } from "@prismshadow/penguin-ui";
+import { UiStringsProvider } from "@lmliheng/penguin-ui";
 import { S, setActiveStrings, zh } from "../src/lib/strings";
 import { uiStringsOf } from "../src/lib/ui-strings";
 import { en } from "../src/lib/strings-en";

@@ -21,7 +21,7 @@
  */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { hasEscLayers } from "@prismshadow/penguin-ui";
+import { hasEscLayers } from "@lmliheng/penguin-ui";
 import { App } from "./app";
 import { bootInstallScope, watchInstallScope } from "./lib/install-scope";
 // The global shortcut dispatcher installs itself at module evaluation (a React effect would

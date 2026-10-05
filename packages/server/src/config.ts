@@ -17,7 +17,7 @@ import {
   LEGACY_ROOT_ENV,
   resolveRoot,
   ROOT_ENV,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import { checkoutCliEntry } from "./services/cli-shim.js";
 
 export interface ServerConfig {

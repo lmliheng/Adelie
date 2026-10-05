@@ -31,7 +31,7 @@ import type {
   DesktopBrowserEvent,
   DesktopBrowserEventMessage,
   DesktopBrowserReplyMessage,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   BUILTIN_BROWSER_PARTITION,
   BUILTIN_BROWSER_PROTOCOL_VERSION,

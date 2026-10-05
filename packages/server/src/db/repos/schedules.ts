@@ -7,7 +7,7 @@
  * (registerOrSync resets the trigger state); a change to the file content fingerprint
  * only clears the disabled flag (the file becomes effective again after reconciliation).
  */
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { Schedules } from "../../mechanisms/sessions.js";
 

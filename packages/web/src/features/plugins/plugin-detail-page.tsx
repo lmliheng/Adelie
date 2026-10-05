@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import type { PluginIndexEntry } from "@prismshadow/penguin-server/api";
+import type { PluginIndexEntry } from "@lmliheng/penguin-server/api";
 import ReactMarkdown from "react-markdown";
 import {
   Button,
@@ -26,7 +26,7 @@ import {
   REMARK_PLUGINS,
   Skeleton,
   useCopied,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

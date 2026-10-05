@@ -30,7 +30,7 @@
  * the call site — so no extra row appears in the happy path.
  */
 import { useState } from "react";
-import { ChevronDown, Dropdown, Menu, MenuRadioItem, Spinner } from "@prismshadow/penguin-ui";
+import { ChevronDown, Dropdown, Menu, MenuRadioItem, Spinner } from "@lmliheng/penguin-ui";
 // This menu is an OptionMenu by hand (its trigger lives inside the base URL field, which
 // OptionMenu cannot do), so it takes its rows from the Menu family rather than re-spelling
 // them — a change to the family reaches it.

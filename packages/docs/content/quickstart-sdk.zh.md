@@ -1,9 +1,9 @@
 ---
 title: SDK
-description: 用 @prismshadow/penguin-core 在自己的 TypeScript 程序里创建 Agent 与 Session。
+description: 用 @lmliheng/penguin-core 在自己的 TypeScript 程序里创建 Agent 与 Session。
 ---
 
-`@prismshadow/penguin-core` 就是 CLI 与服务端内部运行的那个引擎，可以直接嵌入你自己的程序。在本页中，你会安装 SDK、为它准备可用的模型，并运行第一个程序：创建 Agent，启动 Session，打印模型的回复。
+`@lmliheng/penguin-core` 就是 CLI 与服务端内部运行的那个引擎，可以直接嵌入你自己的程序。在本页中，你会安装 SDK、为它准备可用的模型，并运行第一个程序：创建 Agent，启动 Session，打印模型的回复。
 
 ## 开始之前
 
@@ -15,7 +15,7 @@ description: 用 @prismshadow/penguin-core 在自己的 TypeScript 程序里创�
 在项目目录里安装这个包：
 
 ```bash
-npm install @prismshadow/penguin-core
+npm install @lmliheng/penguin-core
 ```
 
 ## 配置模型
@@ -25,7 +25,7 @@ SDK 与桌面应用、CLI 读取同一个数据目录 `~/.penguin/data`。在[�
 如果这台机器上还没有配置过模型，最省事的办法是装上 CLI，在 CLI 里配置一次：
 
 ```bash
-npm install -g @prismshadow/penguin-cli
+npm install -g @lmliheng/penguin-cli
 penguin config model add --provider deepseek --model-id deepseek-flash --api-key sk-... --set-default
 ```
 
@@ -38,7 +38,7 @@ penguin config model add --provider deepseek --model-id deepseek-flash --api-key
 把下面的程序保存到项目里，然后运行：
 
 ```ts
-import { createAgent, isCompleteModelMessage, userText } from "@prismshadow/penguin-core";
+import { createAgent, isCompleteModelMessage, userText } from "@lmliheng/penguin-core";
 
 const agent = await createAgent({ agentId: "default_agent" });
 const session = await agent.createSession({ workspaceDir: process.cwd() });

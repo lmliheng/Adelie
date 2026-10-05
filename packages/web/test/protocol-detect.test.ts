@@ -11,7 +11,7 @@ import {
   MODEL_CATALOG,
   modelEnvPreviewKey,
   resolveModelEnv,
-} from "@prismshadow/penguin-core/model-catalog";
+} from "@lmliheng/penguin-core/model-catalog";
 import { zh as ZH } from "../src/lib/strings";
 import { en as EN } from "../src/lib/strings-en";
 import { clientTypeAfterProviderChange, rowToEntry } from "../src/features/models/models-page";

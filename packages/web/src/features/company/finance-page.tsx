@@ -32,7 +32,7 @@ import type {
   OrgBudgetAlert,
   OrgEmployeeState,
   OrgFinanceResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   AgentAvatar,
   Badge,
@@ -58,7 +58,7 @@ import {
   noAutofill,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

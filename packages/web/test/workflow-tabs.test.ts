@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { WorkflowInfo } from "@prismshadow/penguin-server/api";
+import type { WorkflowInfo } from "@lmliheng/penguin-server/api";
 import {
   appPageTab,
   settleActiveTab,

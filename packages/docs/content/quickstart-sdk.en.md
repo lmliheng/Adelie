@@ -1,9 +1,9 @@
 ---
 title: SDK
-description: Create agents and Sessions from your own TypeScript program with @prismshadow/penguin-core.
+description: Create agents and Sessions from your own TypeScript program with @lmliheng/penguin-core.
 ---
 
-`@prismshadow/penguin-core` is the same engine the CLI and the server run inside, and it embeds directly into your own program. On this page you install the SDK, make a model available to it, and run a first program that creates an agent, starts a Session and prints the model's replies.
+`@lmliheng/penguin-core` is the same engine the CLI and the server run inside, and it embeds directly into your own program. On this page you install the SDK, make a model available to it, and run a first program that creates an agent, starts a Session and prints the model's replies.
 
 ## Before you begin
 
@@ -15,7 +15,7 @@ description: Create agents and Sessions from your own TypeScript program with @p
 In your project directory, install the package:
 
 ```bash
-npm install @prismshadow/penguin-core
+npm install @lmliheng/penguin-core
 ```
 
 ## Configure a model
@@ -25,7 +25,7 @@ The SDK reads the same data root as the desktop app and the CLI, `~/.penguin/dat
 If this machine has no model configured yet, the shortest path is to install the CLI and configure one there:
 
 ```bash
-npm install -g @prismshadow/penguin-cli
+npm install -g @lmliheng/penguin-cli
 penguin config model add --provider deepseek --model-id deepseek-flash --api-key sk-... --set-default
 ```
 
@@ -38,7 +38,7 @@ You can also keep credentials off disk entirely. When a model entry has no inlin
 Save this program in your project and run it:
 
 ```ts
-import { createAgent, isCompleteModelMessage, userText } from "@prismshadow/penguin-core";
+import { createAgent, isCompleteModelMessage, userText } from "@lmliheng/penguin-core";
 
 const agent = await createAgent({ agentId: "default_agent" });
 const session = await agent.createSession({ workspaceDir: process.cwd() });

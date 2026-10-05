@@ -7,12 +7,12 @@ The `context_engine` depends on three interfaces: Human, LLM and Environment. Al
 
 This page follows a turn's control flow: [the Human boundary](#the-human-boundary), the [LLM contract](#llminterface), the [approval callback](#approvefn) and the [Environment contract](#environmentinterface). It ends with the [subagent](#subagent-interfaces) and [vision](#visiondescriberservice) services and the [extension seams](#extension-seams).
 
-All types are exported by `@prismshadow/penguin-core`. The source lives in `packages/core/src/interfaces/`:
+All types are exported by `@lmliheng/penguin-core`. The source lives in `packages/core/src/interfaces/`:
 
 - `llm.ts`: what the model side needs.
 - `environment.ts`: what the Environment side needs.
 - `shared.ts`: the vocabulary both sides genuinely need.
-- `index.ts`: the barrel behind the `@prismshadow/penguin-core/interfaces` subpath.
+- `index.ts`: the barrel behind the `@lmliheng/penguin-core/interfaces` subpath.
 
 ## The three boundaries
 
@@ -281,7 +281,7 @@ interface ConfinedSpawn {
   env?: Readonly<Record<string, string>>;   // entries the sandbox runner itself needs, laid over the command's env
 }
 
-// The policy itself (@prismshadow/penguin-core/plugin). "danger-full-access" with no network cut
+// The policy itself (@lmliheng/penguin-core/plugin). "danger-full-access" with no network cut
 // and no masked path is the sandbox off.
 type SandboxSettings = {
   mode: "read-only" | "workspace-write" | "danger-full-access";

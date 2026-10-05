@@ -50,8 +50,8 @@ import {
   toastInfo,
   usePointerDrag,
   usePrefersReducedMotion,
-} from "@prismshadow/penguin-ui";
-import type { SpringDriver } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { SpringDriver } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import { toneInk } from "../../lib/tone";

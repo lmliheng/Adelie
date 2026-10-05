@@ -34,7 +34,7 @@
  * Docs: /docs/cli § "penguin schedule".
  */
 import type { Command } from "commander";
-import type { ScheduleItem, SchedulesResponse } from "@prismshadow/penguin-server/api";
+import type { ScheduleItem, SchedulesResponse } from "@lmliheng/penguin-server/api";
 import {
   resolveAgentId,
   resolveConnection,

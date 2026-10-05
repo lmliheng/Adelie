@@ -14,13 +14,13 @@
  * added to session-manager's active table (state idle).
  */
 import fs from "node:fs/promises";
-import { agentsDir, createAgent, isSessionMeta } from "@prismshadow/penguin-core";
+import { agentsDir, createAgent, isSessionMeta } from "@lmliheng/penguin-core";
 import type {
   AgentAssembly,
   ControlEnvContext,
   ProxyEnvPolicy,
   SpawnConfiner,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   ApprovalMode,
   MessagingChannel,
@@ -42,7 +42,7 @@ import { matchesWorkspaceGroup } from "./workspace-group.js";
 import type { TraceIndex, TraceIndexStore } from "../mechanisms/traces.js";
 import type { SessionIndex, SessionOrigins } from "../mechanisms/sessions.js";
 import type { ProjectConfigStore } from "../mechanisms/projects.js";
-import type { SandboxDimension, SandboxSettings } from "@prismshadow/penguin-core/plugin";
+import type { SandboxDimension, SandboxSettings } from "@lmliheng/penguin-core/plugin";
 
 const SANDBOX_MODE_RANK: Record<SandboxSettings["mode"], number> = {
   "read-only": 0,

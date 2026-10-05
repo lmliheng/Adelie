@@ -11,7 +11,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ICONS } from "@prismshadow/penguin-ui";
+import { ICONS } from "@lmliheng/penguin-ui";
 import { MemoryChangesCard } from "../src/features/chat/memory-changes-card";
 import type { MemoryChangeRow } from "../src/lib/omni/memory-changes";
 import { S, setActiveStrings, zh } from "../src/lib/strings";

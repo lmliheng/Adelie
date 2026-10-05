@@ -14,7 +14,7 @@
  */
 import { Hono } from "hono";
 import type { Context, MiddlewareHandler } from "hono";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import type {
   DesktopTrayPatch,
   DesktopTrayStatusResponse,

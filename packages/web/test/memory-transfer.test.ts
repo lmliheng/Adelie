@@ -6,7 +6,7 @@
  * default mode destroys nothing, and every mode that does report exactly which memories.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import type { MemoryScopeExport } from "@prismshadow/penguin-server/api";
+import type { MemoryScopeExport } from "@lmliheng/penguin-server/api";
 import { S, setActiveStrings, zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";
 import {

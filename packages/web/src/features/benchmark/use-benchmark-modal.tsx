@@ -23,7 +23,7 @@ import type {
   BenchmarkSummary,
   ModelRefDto,
   ModelsResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   Button,
   FieldHint,
@@ -36,7 +36,7 @@ import {
   Segmented,
   Select,
   Textarea,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { formatScore } from "../../lib/format";

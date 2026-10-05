@@ -7,7 +7,7 @@ import type {
   BuiltinBrowserImportBrowser,
   BuiltinBrowserImportRequest,
   BuiltinBrowserImportSource,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 
 export interface SourceGroup {
   browser: BuiltinBrowserImportBrowser;

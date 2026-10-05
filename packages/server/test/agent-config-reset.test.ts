@@ -8,7 +8,7 @@
  *   the config is not touched.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { defaultSystemConfig } from "@prismshadow/penguin-core";
+import { defaultSystemConfig } from "@lmliheng/penguin-core";
 import type { AgentConfigResponse, ProjectCreateResponse } from "../src/api/types.js";
 import { apiClient, createTestApp, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";

@@ -22,8 +22,8 @@
  *   relayed — only its HTTP status.
  */
 import { createHash } from "node:crypto";
-import { providerInfo } from "@prismshadow/penguin-core/model-catalog";
-import type { ModelProviderBalance } from "@prismshadow/penguin-core/model-catalog";
+import { providerInfo } from "@lmliheng/penguin-core/model-catalog";
+import type { ModelProviderBalance } from "@lmliheng/penguin-core/model-catalog";
 import type {
   ModelBalanceAmount,
   ModelBalanceFailure,

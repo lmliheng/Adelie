@@ -13,7 +13,7 @@
  */
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { CodeHighlighterProvider, Toaster, TooltipLayer } from "@prismshadow/penguin-ui";
+import { CodeHighlighterProvider, Toaster, TooltipLayer } from "@lmliheng/penguin-ui";
 import { highlightCode } from "../../../web/src/features/chat/code-highlight";
 import { LocaleProvider, LocaleScope } from "../../../web/src/state/locale";
 import { ThemeProvider } from "../../../web/src/state/theme";

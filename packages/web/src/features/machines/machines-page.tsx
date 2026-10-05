@@ -24,7 +24,7 @@
  * schedule (probe-schedule.ts) so a machine that went quiet is noticed without a tap.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { MachineInfo, MachineJob, MachinesResponse } from "@prismshadow/penguin-server/api";
+import type { MachineInfo, MachineJob, MachinesResponse } from "@lmliheng/penguin-server/api";
 import {
   Button,
   ChevronDown,
@@ -38,7 +38,7 @@ import {
   SearchInput,
   Skeleton,
   toastError,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { useProject } from "../../state/project";
 import { useLocale } from "../../state/locale";

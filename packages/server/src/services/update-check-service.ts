@@ -16,12 +16,12 @@
  * cannot import the CLI package (the dependency runs the other way), hence the small
  * duplication. fetch and the clock are injectable so tests never touch the network.
  */
-import { BUILD_DATE, VERSION, compareVersions, normalizeVersion } from "@prismshadow/penguin-core";
+import { BUILD_DATE, VERSION, compareVersions, normalizeVersion } from "@lmliheng/penguin-core";
 import type { UpdateCheckResponse } from "../api/types.js";
-import { Bind, Component, Interface, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Interface, Use } from "@lmliheng/penguin-core/kernel";
 import type { AppEnv } from "../auth/middleware.js";
 import type { Hono } from "hono";
-import type { ClassCtx, Opaque } from "@prismshadow/penguin-core/kernel";
+import type { ClassCtx, Opaque } from "@lmliheng/penguin-core/kernel";
 import { versionRoutes } from "../http/routes/version.js";
 import type { Clock, Config, Lifecycle } from "../hmr/capabilities.js";
 import type { UpdateJob } from "./update-job.js";

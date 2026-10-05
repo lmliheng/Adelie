@@ -10,18 +10,14 @@
  *
  * The line format and its placement are not defined here: they are shared with core's
  * `[attached image: …]` producer and the Web renderer that parses both
- * (`@prismshadow/penguin-core/markers` → attachment-lines.ts, plus `appendAttachmentLines`),
+ * (`@lmliheng/penguin-core/markers` → attachment-lines.ts, plus `appendAttachmentLines`),
  * so the two conventions cannot drift apart.
  */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomBytes } from "node:crypto";
-import {
-  appendAttachmentLines,
-  attachedFileLine,
-  modelVisiblePath,
-} from "@prismshadow/penguin-core";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+import { appendAttachmentLines, attachedFileLine, modelVisiblePath } from "@lmliheng/penguin-core";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";
 import type { AttachmentLimits } from "./attachment-limits.js";

@@ -12,8 +12,8 @@
  * shares the live reply's grid cell), so the frame does not grow line by line as text arrives.
  */
 import { useEffect, useMemo, useState } from "react";
-import { AssistantText, STREAM_REVEALS, usePrefersReducedMotion } from "@prismshadow/penguin-ui";
-import type { StreamReveal } from "@prismshadow/penguin-ui";
+import { AssistantText, STREAM_REVEALS, usePrefersReducedMotion } from "@lmliheng/penguin-ui";
+import type { StreamReveal } from "@lmliheng/penguin-ui";
 import { streamScript } from "../../app/mock/stream-script";
 import { streamingAnswer } from "../../app/mock/transcripts";
 import { BoardGroup, ReplayButton } from "../../foundations/shared";

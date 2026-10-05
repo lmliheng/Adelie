@@ -47,7 +47,7 @@ CLI of the checkout it was started from: it writes a launcher at `<root>/bin/pen
 pointing at `packages/cli/dist/penguin.js` and puts that directory at the front of every
 command's PATH. Nothing rebuilds that file while a dev server runs — `tsx watch` covers the
 server's own sources only — so after editing the CLI, run
-`pnpm --filter @prismshadow/penguin-cli build` (or restart `pnpm dev`) before asking an
+`pnpm --filter @lmliheng/penguin-cli build` (or restart `pnpm dev`) before asking an
 Agent to use it.
 
 One rule when bypassing the dev commands: **rebuild skills/core through pnpm, in that
@@ -125,13 +125,13 @@ single data directory (`~/.penguin/data`) and a single message protocol (OmniMes
 
 | Package                                   | Name                          | Role                                                                                                    |
 | ----------------------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------- |
-| [`packages/core`](../packages/core)       | `@prismshadow/penguin-core`   | SDK & engine: ReAct loop, OmniMessage protocol, LLM/Environment interface contracts, Agent State, Trace |
-| [`packages/cli`](../packages/cli)         | `@prismshadow/penguin-cli`    | The `penguin` command: REPL, one-shot runs, model & vault config, service launcher                      |
-| [`packages/server`](../packages/server)   | `@prismshadow/penguin-server` | Web backend: HTTP API + SSE streaming, multi-user auth, Project authorization, usage stats              |
-| [`packages/web`](../packages/web)         | `@prismshadow/penguin-web`    | Web App: multi-session chat, Agent/skill/model management, Trace observability, evaluation center       |
+| [`packages/core`](../packages/core)       | `@lmliheng/penguin-core`   | SDK & engine: ReAct loop, OmniMessage protocol, LLM/Environment interface contracts, Agent State, Trace |
+| [`packages/cli`](../packages/cli)         | `@lmliheng/penguin-cli`    | The `penguin` command: REPL, one-shot runs, model & vault config, service launcher                      |
+| [`packages/server`](../packages/server)   | `@lmliheng/penguin-server` | Web backend: HTTP API + SSE streaming, multi-user auth, Project authorization, usage stats              |
+| [`packages/web`](../packages/web)         | `@lmliheng/penguin-web`    | Web App: multi-session chat, Agent/skill/model management, Trace observability, evaluation center       |
 | [`plugins/*`](../plugins) | `@lmliheng/<name>` | The built-in plugins, one npm package each: skills (software development, model development, agent development/tuning, …) and session hooks (goal mode, skill summaries); the loader lives in `packages/core` |
 | [`packages/docs`](../packages/docs)       | —                             | Documentation site (bilingual, deployed under `/docs/`)                                                 |
-| [`plugins/*`](../plugins) | `@prismshadow/penguin-plugin-*` | Plugin packages a Project asks for on the Plugins page (its `[plugins]` table) — a directory of their own because nothing else in the harness depends on one                        |
+| [`plugins/*`](../plugins) | `@lmliheng/penguin-plugin-*` | Plugin packages a Project asks for on the Plugins page (its `[plugins]` table) — a directory of their own because nothing else in the harness depends on one                        |
 
 Responsibilities split by source of truth: the **SDK** owns protocol and execution
 (message parsing, the agent loop, tools), the **Server** owns the multi-user runtime
@@ -159,7 +159,7 @@ End-to-end suites (optional locally, slower):
 
 ```bash
 npx playwright install chromium                      # once
-pnpm --filter @prismshadow/penguin-web test:e2e      # browser e2e against a mock LLM
+pnpm --filter @lmliheng/penguin-web test:e2e      # browser e2e against a mock LLM
 pnpm test:e2e                                        # core live-model e2e, needs DEEPSEEK_API_KEY
 ```
 

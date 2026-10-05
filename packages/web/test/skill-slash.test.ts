@@ -13,7 +13,7 @@
  *   uses, which names the picked skills in the UI language.
  */
 import { describe, expect, it } from "vitest";
-import type { SkillMetadataItem } from "@prismshadow/penguin-server/api";
+import type { SkillMetadataItem } from "@lmliheng/penguin-server/api";
 import {
   filterSkills,
   localizedShortText,

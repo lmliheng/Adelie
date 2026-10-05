@@ -11,7 +11,7 @@
  * "last 24 hours" serves hours, and every calendar range is drawn per day,
  * week or month by its length.
  */
-import type { UsageGranularity, UsageSeriesPoint } from "@prismshadow/penguin-server/api";
+import type { UsageGranularity, UsageSeriesPoint } from "@lmliheng/penguin-server/api";
 import { cacheHitRate } from "../../lib/format";
 import { SERIES_COLORS } from "../../lib/category-colors";
 

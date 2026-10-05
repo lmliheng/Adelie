@@ -15,7 +15,7 @@
  *   latest version" included — as updated with a restart needed.
  */
 import { describe, expect, it } from "vitest";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 import {
   INITIAL_PROGRESS,
   UpdateJobService,
@@ -188,7 +188,7 @@ describe("classifyUpdateRun", () => {
     for (const refusal of [
       "This penguin runs from a source checkout, so there is nothing to download — update it with `git pull` and rebuild (`pnpm install && pnpm -r build`).",
       "Cannot tell how this penguin was installed (running from /opt/penguin/cli.js), so it will not be replaced. Re-install with the official installer, or upgrade with the package manager you used.",
-      "This is a global install under /usr/lib/node_modules, but the package manager that owns it could not be identified. Upgrade it yourself with that manager, e.g. `npm install -g @prismshadow/penguin-cli@0.3.0`.",
+      "This is a global install under /usr/lib/node_modules, but the package manager that owns it could not be identified. Upgrade it yourself with that manager, e.g. `npm install -g @lmliheng/penguin-cli@0.3.0`.",
       "The official installer is a POSIX shell script and does not run on Windows. Re-install from the GitHub Releases page, or use a global npm install instead.",
       "On Windows, penguin cannot run your package manager for you: Node will not execute an npm/pnpm/yarn `.cmd` shim without a shell.",
     ]) {

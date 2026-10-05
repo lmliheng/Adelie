@@ -31,7 +31,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Hono } from "hono";
-import { projectDir } from "@prismshadow/penguin-core";
+import { projectDir } from "@lmliheng/penguin-core";
 import type {
   DirAccessResponse,
   DirCreateResponse,
@@ -42,7 +42,7 @@ import type {
 import type { AppEnv } from "../../auth/middleware.js";
 import { HttpError } from "../errors.js";
 import { requireValidId } from "../validate.js";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import { directorySkillsRoutes } from "./directory-skills.js";
 import type { Desktop, DesktopApi, Paths } from "../../hmr/capabilities.js";
 import type { Access } from "../../mechanisms/projects.js";

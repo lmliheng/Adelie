@@ -10,7 +10,7 @@
  */
 import { createHash } from "node:crypto";
 import { Hono } from "hono";
-import { isValidId } from "@prismshadow/penguin-core";
+import { isValidId } from "@lmliheng/penguin-core";
 import type {
   ProjectSchedulesResponse,
   ScheduleItem,
@@ -52,7 +52,7 @@ import {
   validateScheduleModelRef,
   writeScheduleFile,
 } from "../../runtime/schedule-store.js";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Config } from "../../hmr/capabilities.js";
 import type { Access, ProjectConfigStore } from "../../mechanisms/projects.js";
 import type { Schedules, Scheduling } from "../../mechanisms/sessions.js";

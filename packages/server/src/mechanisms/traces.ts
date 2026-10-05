@@ -1,7 +1,7 @@
 /**
  * The traces mechanisms: what a node may require, declared apart from what implements it.
  */
-import { Interface } from "@prismshadow/penguin-core/kernel";
+import { Interface } from "@lmliheng/penguin-core/kernel";
 import type {
   SessionCategory,
   AgentTracesResponse,
@@ -40,7 +40,7 @@ import type {
   ToolCallOutputPayload,
   ToolCallPayload,
   ToolListReadyPayload,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   ForkTraceResult,
   MessagesPageRequest,

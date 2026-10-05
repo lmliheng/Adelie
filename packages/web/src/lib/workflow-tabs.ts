@@ -12,7 +12,7 @@
  * disappearing (folder removed, Agent switched) falls back to Chat rather than leaving
  * the strip pointing at nothing.
  */
-import type { WorkflowInfo } from "@prismshadow/penguin-server/api";
+import type { WorkflowInfo } from "@lmliheng/penguin-server/api";
 import { apiUrl } from "./server-context";
 
 export interface WorkflowTab {

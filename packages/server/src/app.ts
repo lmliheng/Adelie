@@ -23,7 +23,7 @@ import type { Context, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { bodyLimitBytes, toAttachmentLimits } from "./services/attachment-limits.js";
 import type { DatabaseSync } from "node:sqlite";
-import type { ModuleTree } from "@prismshadow/penguin-core/kernel";
+import type { ModuleTree } from "@lmliheng/penguin-core/kernel";
 import type { ServerConfig } from "./config.js";
 import { applyProxySettings, mergedNoProxy } from "./net/proxy.js";
 import {
@@ -117,8 +117,8 @@ import { UpdateCheckService } from "./services/update-check-service.js";
 import { UpdateJobService } from "./services/update-job.js";
 import { UsageService } from "./services/usage-service.js";
 import { WorkspaceFilesService } from "./services/workspace-files-service.js";
-import { HmrHost, hmrControl } from "@prismshadow/penguin-hmr";
-import type { Hmr } from "@prismshadow/penguin-hmr";
+import { HmrHost, hmrControl } from "@lmliheng/penguin-hmr";
+import type { Hmr } from "@lmliheng/penguin-hmr";
 import type { PlatformApi, ServerHmrHost } from "./hmr/platform.js";
 import { packagedPlatform } from "./hmr/platform.js";
 import { platformHttpSeam } from "./hmr/http-seam.js";
@@ -130,7 +130,7 @@ import {
 } from "./services/preview-token.js";
 import type { PreviewTokenSigner } from "./services/preview-token.js";
 
-import type { ControlEnvContext, ProxyEnvPolicy, SpawnConfiner } from "@prismshadow/penguin-core";
+import type { ControlEnvContext, ProxyEnvPolicy, SpawnConfiner } from "@lmliheng/penguin-core";
 import { declined } from "./hmr/hono-seam.js";
 import { AgentsRepo } from "./db/repos/agents.js";
 import { MembersRepo } from "./db/repos/members.js";
@@ -169,7 +169,7 @@ import { machinesRoutes } from "./http/routes/machines.js";
 import { UsageRecorder } from "./runtime/usage-recorder.js";
 import { previewRoutes } from "./http/routes/preview.js";
 import { MachinesService } from "./machines/service.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 import type { Settings } from "./mechanisms/settings.js";
 import type { Errors } from "./mechanisms/observability.js";
 import type { Access } from "./mechanisms/projects.js";

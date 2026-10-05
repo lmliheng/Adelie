@@ -22,8 +22,8 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { parseSkillFrontmatter, PLUGIN_NAME_PATTERN } from "@prismshadow/penguin-core";
-import type { SkillMetadata } from "@prismshadow/penguin-core";
+import { parseSkillFrontmatter, PLUGIN_NAME_PATTERN } from "@lmliheng/penguin-core";
+import type { SkillMetadata } from "@lmliheng/penguin-core";
 import { HttpError } from "../http/errors.js";
 import {
   MAX_ARCHIVE_FILES,

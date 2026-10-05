@@ -18,7 +18,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { agentDir } from "@prismshadow/penguin-core";
+import { agentDir } from "@lmliheng/penguin-core";
 import type { WorkflowVersion } from "../mechanisms/workflows.js";
 
 export const STATE_FILE = "state.json";

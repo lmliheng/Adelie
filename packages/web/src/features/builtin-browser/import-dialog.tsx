@@ -7,8 +7,8 @@ import { useEffect, useState } from "react";
 import type {
   BuiltinBrowserImportResult,
   BuiltinBrowserImportSource,
-} from "@prismshadow/penguin-server/api";
-import { Button, Checkbox, FieldLabel, Input, Modal, Radio } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-server/api";
+import { Button, Checkbox, FieldLabel, Input, Modal, Radio } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";

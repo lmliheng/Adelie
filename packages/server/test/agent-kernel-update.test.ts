@@ -20,7 +20,7 @@ import {
   VAULT_PLACEHOLDER,
   defaultSystemConfig,
   systemConfigPath,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   AgentConfigResponse,
   AgentKernelUpdateResponse,

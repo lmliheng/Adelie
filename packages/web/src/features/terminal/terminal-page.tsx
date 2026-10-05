@@ -24,7 +24,7 @@
  * status dot, the "+") stay, each naming itself.
  */
 import { useCallback, useMemo, useState } from "react";
-import { ConfirmModal, GlyphIcon, ICONS, ICON_SIZE } from "@prismshadow/penguin-ui";
+import { ConfirmModal, GlyphIcon, ICONS, ICON_SIZE } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { useCoarsePointer } from "../../lib/use-coarse-pointer";
 import { useVisualViewportHeight } from "../../lib/use-visual-viewport-height";

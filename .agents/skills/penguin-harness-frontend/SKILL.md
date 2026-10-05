@@ -74,12 +74,12 @@ Two forms, and **a title decides between them, not taste**:
 > **The circled "?" may only appear beside a title. It must never stand alone on its own line.
 > Where it would stand alone, use the fold.**
 
-- **A title is present** → `InfoPopover` (`@prismshadow/penguin-ui`). A circled "?"
+- **A title is present** → `InfoPopover` (`@lmliheng/penguin-ui`). A circled "?"
   immediately after the section heading, the table column header, or the field label — the last of
   those via `Field`/`Input`/`Textarea`/`PasswordInput`'s `info` prop. The "?" is an *anchored*
   mark: it reads as help only because it modifies the title it sits against, and it borrows that
   title's meaning instead of restating it.
-- **No title on the surface** → `HelpFold` (`@prismshadow/penguin-ui`). A compact row that
+- **No title on the surface** → `HelpFold` (`@lmliheng/penguin-ui`). A compact row that
   names itself and expands its explanation inline underneath. This is the Agent settings tabs:
   their name lives in the tab bar and the panel does not repeat it, so a "?" at the top of the
   panel would be a mark modifying nothing. A neighbouring `<Button>` does not rescue it — a
@@ -108,7 +108,7 @@ which is why the control needs an id. The UI package's `test/field.test.ts` guar
 
 ## Icons
 
-One renderer: `GlyphIcon` from `@prismshadow/penguin-ui`. A 24×24 path stroked at the theme's
+One renderer: `GlyphIcon` from `@lmliheng/penguin-ui`. A 24×24 path stroked at the theme's
 `--ui-icon-stroke` (1.7 in Primer), `stroke="currentColor"`, `fill="none"` (or `filled` for an "on"
 state); pass `decor="nav|group|menu|empty"` only where a label beside it already says what it says.
 Do not hand-write an `<svg>` or a `const *_ICON = "M…"` for a line icon — the paths live in one
@@ -144,7 +144,7 @@ menu rows, `OptionMenu`'s row titles, `Textarea` and `FormPicker` all read it, s
 whole family at once.
 
 The rungs are **relative, not the pixel values their names suggest**. `FONT_SCALE_PX` (in
-`@prismshadow/penguin-ui/boot`, applied before first paint and by `theme.tsx`) sets the root font
+`@lmliheng/penguin-ui/boot`, applied before first paint and by `theme.tsx`) sets the root font
 size per tier (16/18/20px, default 18) and no stylesheet overrides a `--text-*`, so
 `text-xs` is 13.5px at the default tier rather than 12px, and every rung tracks the user's setting.
 
@@ -210,7 +210,7 @@ exercise CJK behaviour. Comments, test names and every other string are English.
 ## Popups: portal, do not absolutely position
 
 Anything that overlays — a menu, a picker, an info popover — uses `usePortalPanel`
-(`@prismshadow/penguin-ui`) and `createPortal` to `document.body`, positioned `fixed`
+(`@lmliheng/penguin-ui`) and `createPortal` to `document.body`, positioned `fixed`
 against viewport coordinates. An in-place absolute panel is a DOM descendant of its trigger, so any
 ancestor with `overflow-x-auto` clips it vertically (the CSS spec forces the visible axis to `auto`
 when the other is not visible), and auditing every call site's ancestor chain is not a plan.
@@ -249,8 +249,8 @@ outside a `Menu` is a plain button, for a panel that mixes rows with a search bo
 ## Verify
 
 ```sh
-pnpm --filter @prismshadow/penguin-web typecheck
-pnpm --filter @prismshadow/penguin-web test
+pnpm --filter @lmliheng/penguin-web typecheck
+pnpm --filter @lmliheng/penguin-web test
 pnpm format && pnpm format:check
 ```
 

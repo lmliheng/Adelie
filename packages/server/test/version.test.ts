@@ -20,7 +20,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { VERSION } from "@prismshadow/penguin-core";
+import { VERSION } from "@lmliheng/penguin-core";
 import { versionReport } from "../src/version-report.js";
 import type {
   RestartResponse,
@@ -38,7 +38,7 @@ import { fakeFetch } from "./fixtures/fetch.js";
 import type { FetchScript } from "./fixtures/fetch.js";
 import { apiClient, createTestApp, loginAdmin, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 
 function releaseResponse(tag: string): Response {
   return new Response(

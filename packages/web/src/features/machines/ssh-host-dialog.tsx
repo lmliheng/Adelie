@@ -15,8 +15,8 @@ import type {
   MachinesResponse,
   SshHostRequest,
   SshHostResponse,
-} from "@prismshadow/penguin-server/api";
-import { Button, Input, Modal, NoticeStrip, toastSuccess } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-server/api";
+import { Button, Input, Modal, NoticeStrip, toastSuccess } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

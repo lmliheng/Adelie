@@ -24,8 +24,8 @@ import type {
   MessagingBindingInfo,
   QQBindingInfo,
   QQScanPollResponse,
-} from "@prismshadow/penguin-server/api";
-import { Button, toastError, toastSuccess } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-server/api";
+import { Button, toastError, toastSuccess } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";

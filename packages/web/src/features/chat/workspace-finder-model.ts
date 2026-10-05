@@ -13,7 +13,7 @@ import type {
   DesktopPrivacyPane,
   DirEntryInfo,
   DirListResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   TEMP_WORKSPACE_GROUP_KEY,
   isTempWorkspace,

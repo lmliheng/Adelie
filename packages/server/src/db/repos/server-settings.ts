@@ -8,7 +8,7 @@ import {
   DEFAULT_ATTACHMENT_MAX_MB,
   DEFAULT_ATTACHMENT_TOTAL_MB,
 } from "../../services/attachment-limits.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { Settings } from "../../mechanisms/settings.js";
 

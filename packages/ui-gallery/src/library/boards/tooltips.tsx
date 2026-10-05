@@ -1,5 +1,5 @@
 /** 悬停提示: the package's one tooltip, by attribute (read by the frame's TooltipLayer) and by component, and on a truncated line. */
-import { Button, ICONS, Tooltip } from "@prismshadow/penguin-ui";
+import { Button, ICONS, Tooltip } from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

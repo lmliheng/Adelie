@@ -20,7 +20,7 @@
 import { useMemo } from "react";
 import type { ReactNode } from "react";
 import type { Components, Options } from "react-markdown";
-import { CopiedStatus, GlyphIcon, ICONS, ICON_SIZE, Md, useCopied } from "@prismshadow/penguin-ui";
+import { CopiedStatus, GlyphIcon, ICONS, ICON_SIZE, Md, useCopied } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { STAT_ICONS } from "../../lib/stat-icons";
 import { codePath, pathKind, pathLabel, spellAsWritten, splitPaths } from "./path-capsules";

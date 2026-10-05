@@ -5,7 +5,7 @@
  */
 import type { SessionSource } from "../../api/types.js";
 import { asSessionSource } from "../../runtime/session-sources.js";
-import { Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { TraceIndexStore } from "../../mechanisms/traces.js";
 

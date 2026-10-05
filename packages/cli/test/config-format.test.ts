@@ -6,7 +6,7 @@
  * inline; fully empty columns are omitted automatically.
  */
 import { describe, expect, it } from "vitest";
-import type { ProjectConfig } from "@prismshadow/penguin-core";
+import type { ProjectConfig } from "@lmliheng/penguin-core";
 import { formatModelRows } from "../src/commands/config.js";
 
 describe("formatModelRows", () => {

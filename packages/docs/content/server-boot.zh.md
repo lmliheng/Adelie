@@ -22,7 +22,7 @@ description: 从进程入口到 App 开始服务的组装顺序、各子系统�
 | 入口 | 机制 |
 | --- | --- |
 | 直接运行 | `node dist/index.js`（`server/package.json` 里的 `start`） |
-| CLI（`penguin server` / `penguin web`） | 设好 `PORT`/`HOST` 并导出 `PENGUIN_CLI_ENTRY`，然后以**受监管的子进程**运行 Server，由子进程导入 `@prismshadow/penguin-server` |
+| CLI（`penguin server` / `penguin web`） | 设好 `PORT`/`HOST` 并导出 `PENGUIN_CLI_ENTRY`，然后以**受监管的子进程**运行 Server，由子进程导入 `@lmliheng/penguin-server` |
 | CLI 自动启动 | CLI 命令发现没有运行中的 Server 时，以 `PORT=0` 派生一个分离的 `server` 子命令，等数据根的锁生效后再接入 |
 | 桌面应用 | `utilityProcess.fork` 拉起一个**独立**的 Server 进程，并注入它需要的环境变量 |
 
@@ -181,7 +181,7 @@ createInner
 
 ### 插件契约
 
-插件契约（`Plugin`、各装饰器，以及沙箱词汇表）声明在 SDK 里，即 `@prismshadow/penguin-core/plugin`；`@prismshadow/penguin-server/plugin` 导出插件模块可以 require 的接口（`Sandbox`、`Terminals`、`Sessions`、`AgentService`、`Messaging`、`Http` 等），只有类型。
+插件契约（`Plugin`、各装饰器，以及沙箱词汇表）声明在 SDK 里，即 `@lmliheng/penguin-core/plugin`；`@lmliheng/penguin-server/plugin` 导出插件模块可以 require 的接口（`Sandbox`、`Terminals`、`Sessions`、`AgentService`、`Messaging`、`Http` 等），只有类型。
 
 装饰器是插件随身携带的唯一一段 SDK 运行时。它们把记录写在类自身上，所以插件 bundle 里的那份和宿主读到的是同一样东西。
 
@@ -196,14 +196,14 @@ createInner
 | 子系统 | 构建位置 | 对外表面 |
 | --- | --- | --- |
 | 配置 | `config.ts` 的 `resolveServerConfig`（②） | `ServerConfig`；监听后唯一一次改写是回填真实端口 |
-| 单实例锁 | `lock.ts`（③ 预检，④ 在监听回调中取锁） | 包子路径 `@prismshadow/penguin-server/lock`；CLI 与桌面应用用它做启动前探测 |
+| 单实例锁 | `lock.ts`（③ 预检，④ 在监听回调中取锁） | 包子路径 `@lmliheng/penguin-server/lock`；CLI 与桌面应用用它做启动前探测 |
 | 数据库 | `db/database.ts` 的 `openDatabase`（⑥ 首步） | `db/repos/*` 仓储类；WAL、外键、按版本顺序执行的迁移（`db/migrations.ts`，版本记在 `PRAGMA user_version`） |
 | 认证 | `auth/service.ts`——**App 级**（每个 App 各建一份）；进程级的值（`auth/runtime-state.ts`，含本地 API token）在 ⑥ 发布 | `/api/auth/*`、支持 cookie 与 Bearer token 的 `authMiddleware`、终端 WS 升级的鉴权 |
 | Project / Session | `services/*`——**App 级**（在 create 内组装） | `/api/projects/**`、`/api/sessions/**`（路由细目见 [Server API](/server-api)） |
 | Agent 运行时 | `runtime/session-manager.ts`——**App 级** | 任务 / 审批 / 中止 / 压缩路由与 SSE `GET /api/sessions/:sessionId/stream`；内部经 `createAgent` 委托给 core |
 | 事件 | `runtime/channel.ts` 的 `ChannelHub`（⑥，进程级；SSE 流跨热替换存活） | 用户级 SSE `GET /api/events`；`ServerEvent` 类型族 |
 | Scheduler | `runtime/scheduler.ts`——**App 级**（随 create 启停） | schedules 路由；执行结果发布进 ChannelHub |
-| HMR 宿主 / 平台 | `@prismshadow/penguin-hmr`（`HmrHost`、`hmrMain`）与 `hmr/platform.ts`（平台） | `PlatformApi`（`info` / `log` / `http` / `terminals` / `attachStream` / `business` / `shutdown` / `drained`，外加内核的 `park`）；`/api/hmr/*`（含 `POST /api/hmr/upgrade`）是平台贡献的路由组，推送的新一代若不提供这组路由，会在提交前被拒 |
+| HMR 宿主 / 平台 | `@lmliheng/penguin-hmr`（`HmrHost`、`hmrMain`）与 `hmr/platform.ts`（平台） | `PlatformApi`（`info` / `log` / `http` / `terminals` / `attachStream` / `business` / `shutdown` / `drained`，外加内核的 `park`）；`/api/hmr/*`（含 `POST /api/hmr/upgrade`）是平台贡献的路由组，推送的新一代若不提供这组路由，会在提交前被拒 |
 | 终端 | `terminal/`——**App 级** | `/api/terminals*` 路由组、WS `GET /api/terminals/:id/stream`；pty 寄存在注册表中，跨热替换存活 |
 | 插件宿主 | 每个 App 的 `create()` 构建，在提交时登记进注册表供下一个 App 复用；⑤ `loadPlugins` 为早于这一改动的平台构建一份，在 ⑥ 发布 | 一个 npm 包：生成的 `ifaces.json`（模块载荷）、默认导出 `{ modules?: [<class>, …], replaces?: [<class>, …] }`；配置面是各 Project 的 `.project_config.toml` 中的 `[plugins]` 表，经 `/api/projects/:projectId/plugins/installed` 写入 |
 | 沙箱 | `sandbox/service.ts`——**App 级**（一个模块；后端向它的 `providers` 槽位投递） | 插件模块向 `SandboxModule.providers` 投递的一条 contribution；约束经 core 的 spawn 接缝落到命令与钩子脚本上，Session 的策略经 core 的 `sandboxPolicy` 接缝交给文件工具 |

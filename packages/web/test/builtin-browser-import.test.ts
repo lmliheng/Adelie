@@ -4,7 +4,7 @@
  * Keychain note, and the request the chosen options make.
  */
 import { describe, expect, it } from "vitest";
-import type { BuiltinBrowserImportSource } from "@prismshadow/penguin-server/api";
+import type { BuiltinBrowserImportSource } from "@lmliheng/penguin-server/api";
 import {
   groupSources,
   importRequest,

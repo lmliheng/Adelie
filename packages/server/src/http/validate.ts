@@ -7,7 +7,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Context } from "hono";
-import { isValidId } from "@prismshadow/penguin-core";
+import { isValidId } from "@lmliheng/penguin-core";
 import { HttpError } from "./errors.js";
 
 export function badRequest(message: string): HttpError {

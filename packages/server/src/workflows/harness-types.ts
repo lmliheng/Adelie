@@ -6,7 +6,7 @@
  * not install its types: the first load writes them into `<workflow>/.harness/`, rendered
  * from THIS platform's interface table —
  *
- *   plugin.d.ts   what `@prismshadow/penguin-server/plugin` resolves to for this workflow
+ *   plugin.d.ts   what `@lmliheng/penguin-server/plugin` resolves to for this workflow
  *                 (./compile.ts): `WorkflowHost`, `WorkflowMain` and what they reach, plus
  *                 the shape of the default export
  *   ifaces.json   the slice of the table those declarations were rendered from — the
@@ -23,7 +23,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import type { IfaceTable } from "@prismshadow/penguin-core/kernel";
+import type { IfaceTable } from "@lmliheng/penguin-core/kernel";
 import { renderDts } from "../plugin/iface-check.js";
 
 export const HARNESS_DIR = ".harness";
@@ -71,10 +71,10 @@ running harness's types afresh.
 ## Files
 
 - \`package.json\` — \`"type": "module"\`, and the manifest under \`penguin.modules\`: a module named
-  \`Workflow\` that requires \`host\` (\`@prismshadow/penguin-server#WorkflowHost\`, from \`Host\`),
-  provides \`main\` (\`@prismshadow/penguin-server#WorkflowMain\`) and contributes its tabs.
+  \`Workflow\` that requires \`host\` (\`@lmliheng/penguin-server#WorkflowHost\`, from \`Host\`),
+  provides \`main\` (\`@lmliheng/penguin-server#WorkflowMain\`) and contributes its tabs.
 - \`index.ts\` — TypeScript, never JavaScript. \`export default { modules: { Workflow: { create(ctx) {
-  … } } } } satisfies WorkflowPackage\`, types imported from \`@prismshadow/penguin-server/plugin\`
+  … } } } } satisfies WorkflowPackage\`, types imported from \`@lmliheng/penguin-server/plugin\`
   (it resolves to \`.harness/plugin.d.ts\`; nothing to install).
 - \`ui/\` — pages and their assets. A page calls the workflow's handler at \`../api/<path>\`.
 

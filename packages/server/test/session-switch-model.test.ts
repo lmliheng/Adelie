@@ -26,8 +26,8 @@ import {
   sessionMeta,
   tokenUsage,
   toolListReady,
-} from "@prismshadow/penguin-core";
-import type { OmniMessage, StopReason, TokenCounts } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { OmniMessage, StopReason, TokenCounts } from "@lmliheng/penguin-core";
 import type {
   ModelRefDto,
   ServerEvent,

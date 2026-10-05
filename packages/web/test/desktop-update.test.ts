@@ -11,7 +11,7 @@
  * the pure helpers, not a rendered row (account-menu.test.ts convention).
  */
 import { describe, expect, it } from "vitest";
-import type { DesktopUpdateStatus } from "@prismshadow/penguin-server/api";
+import type { DesktopUpdateStatus } from "@lmliheng/penguin-server/api";
 import {
   CLIENT_CHECK_TIMEOUT_MS,
   clientCheckSettle,

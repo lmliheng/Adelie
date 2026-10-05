@@ -5,7 +5,7 @@
  * material it came from so the two file spaces cannot collide.
  */
 import { describe, expect, it } from "vitest";
-import type { WorkspaceFileEntry } from "@prismshadow/penguin-server/api";
+import type { WorkspaceFileEntry } from "@lmliheng/penguin-server/api";
 import { caseTreeRows } from "../src/features/benchmark/benchmark-case-browser";
 import type { CaseMaterialSpec } from "../src/features/benchmark/benchmark-case-browser";
 

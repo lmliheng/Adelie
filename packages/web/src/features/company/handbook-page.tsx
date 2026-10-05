@@ -19,7 +19,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
-import type { OrgHandbookFile, OrgHandbookFileResponse } from "@prismshadow/penguin-server/api";
+import type { OrgHandbookFile, OrgHandbookFileResponse } from "@lmliheng/penguin-server/api";
 import {
   Badge,
   Button,
@@ -36,8 +36,8 @@ import {
   Textarea,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
-import type { TreeToggle } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { TreeToggle } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

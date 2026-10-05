@@ -4,7 +4,7 @@
  * warnings are new (one toast each).
  */
 import { describe, expect, it } from "vitest";
-import type { BuiltinBrowserMetrics } from "@prismshadow/penguin-server/api";
+import type { BuiltinBrowserMetrics } from "@lmliheng/penguin-server/api";
 import {
   formatMemory,
   heavyTabMemory,

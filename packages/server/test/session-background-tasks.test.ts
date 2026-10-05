@@ -12,7 +12,7 @@
  *   `session_state` does: never a stranger's live channel.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { BackgroundCommandInfo, BackgroundSubagentInfo } from "@prismshadow/penguin-core";
+import type { BackgroundCommandInfo, BackgroundSubagentInfo } from "@lmliheng/penguin-core";
 import type { ServerEvent, SessionResponse, SessionsResponse } from "../src/api/types.js";
 import { userChannelKey } from "../src/http/routes/events.js";
 import type { RuntimeSession } from "../src/runtime/session-manager.js";

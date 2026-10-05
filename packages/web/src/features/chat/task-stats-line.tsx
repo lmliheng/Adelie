@@ -27,8 +27,8 @@
  * itself doesn't render a separate one (otherwise two copy buttons would pop up in the same spot).
  */
 import { useState } from "react";
-import type { TracePosition } from "@prismshadow/penguin-server/api";
-import { ConfirmModal, CopyButton, Spinner, StatChip } from "@prismshadow/penguin-ui";
+import type { TracePosition } from "@lmliheng/penguin-server/api";
+import { ConfirmModal, CopyButton, Spinner, StatChip } from "@lmliheng/penguin-ui";
 import { formatTaskStats } from "../../lib/omni/task-stats";
 import type { TaskStats } from "../../lib/omni/task-stats";
 import {

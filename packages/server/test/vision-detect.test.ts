@@ -8,7 +8,7 @@
  * Getting that backwards would silently disable vision on a working model.
  */
 import { describe, expect, it } from "vitest";
-import type { LLMOutcome } from "@prismshadow/penguin-core";
+import type { LLMOutcome } from "@lmliheng/penguin-core";
 import {
   VISION_PROBE_IMAGE,
   VISION_PROBE_MAX_TOKENS,

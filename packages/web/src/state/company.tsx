@@ -56,10 +56,10 @@ import type {
   OrganizationSummary,
   ServerEvent,
   UiPrefs,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import { useStore } from "zustand/react";
 import { createStore } from "zustand/vanilla";
-import { toastAttention } from "@prismshadow/penguin-ui";
+import { toastAttention } from "@lmliheng/penguin-ui";
 import * as api from "../api/endpoints";
 import { apiErrorText } from "../lib/api-error";
 import { S } from "../lib/strings";

@@ -8,8 +8,8 @@ import {
   SkeletonCard,
   SkeletonList,
   StatusIcon,
-} from "@prismshadow/penguin-ui";
-import type { ProgressBarSize, StatusIconSize } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { ProgressBarSize, StatusIconSize } from "@lmliheng/penguin-ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

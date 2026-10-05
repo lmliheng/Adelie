@@ -21,7 +21,7 @@
  * this editor is not a bound at all. The numbers here drive the counters and the disabled states;
  * `test/user-shortcuts.test.ts` fails if the two copies drift apart.
  */
-import type { DraftShortcut } from "@prismshadow/penguin-server/api";
+import type { DraftShortcut } from "@lmliheng/penguin-server/api";
 import { randomHex } from "../../lib/random-id";
 
 /** A saved shortcut, as stored and as rendered. Re-exported from the API type so the two cannot drift. */

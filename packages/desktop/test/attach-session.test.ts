@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import type { MintedVia, MintTokenResult } from "@prismshadow/penguin-server/auth-token";
+import type { MintedVia, MintTokenResult } from "@lmliheng/penguin-server/auth-token";
 import {
   ATTACH_SESSION_TTL_MS,
   createSignInGuard,

@@ -11,8 +11,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import { CommandSessionManager } from "@prismshadow/penguin-core";
-import type { SandboxPolicy } from "@prismshadow/penguin-core/plugin";
+import { CommandSessionManager } from "@lmliheng/penguin-core";
+import type { SandboxPolicy } from "@lmliheng/penguin-core/plugin";
 import { canonicalPath, createSeatbeltProvider } from "../src/index.js";
 
 const ws = canonicalPath(mkdtempSync(path.join(tmpdir(), "penguin-seatbelt-live-")));

@@ -9,7 +9,7 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
-import { EmptyState, Spinner } from "@prismshadow/penguin-ui";
+import { EmptyState, Spinner } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import type { ChatItem } from "../../lib/omni/stream-model";
 import type { MemoryChangeRow } from "../../lib/omni/memory-changes";

@@ -13,7 +13,7 @@
  */
 import { useCallback } from "react";
 import { useNavigate } from "react-router";
-import type { ModelRefDto } from "@prismshadow/penguin-server/api";
+import type { ModelRefDto } from "@lmliheng/penguin-server/api";
 import { useAuth } from "../../state/auth";
 import { useProject } from "../../state/project";
 import { DRAFT_SESSION_ID } from "../chat/chat-page";

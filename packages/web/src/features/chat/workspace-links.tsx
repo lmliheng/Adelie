@@ -11,8 +11,8 @@
  */
 import { useMemo } from "react";
 import type { ReactNode } from "react";
-import { ProseLinksProvider } from "@prismshadow/penguin-ui";
-import type { ProseLinkResolver } from "@prismshadow/penguin-ui";
+import { ProseLinksProvider } from "@lmliheng/penguin-ui";
+import type { ProseLinkResolver } from "@lmliheng/penguin-ui";
 import { replyLinkBehavior } from "../../lib/reply-link";
 
 export function WorkspaceLinksProvider({

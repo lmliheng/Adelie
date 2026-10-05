@@ -189,7 +189,7 @@ async function compileEntry(entry, outfile) {
     logLevel: "silent",
     banner: { js: ESM_CJS_BANNER },
     alias: {
-      "@prismshadow/penguin-core/kernel": require.resolve("@prismshadow/penguin-core/kernel"),
+      "@lmliheng/penguin-core/kernel": require.resolve("@lmliheng/penguin-core/kernel"),
     },
     // The pushed bundle lands under `<root>/hmr/store/`, outside any checkout, so its own
     // revision has to be inlined here or it can never be recovered: `penguin version` from
@@ -293,7 +293,7 @@ async function main() {
     log("reusing the existing web dist");
   } else {
     log("building the web dist…");
-    execFileSync("pnpm", ["--filter", "@prismshadow/penguin-web", "build"], {
+    execFileSync("pnpm", ["--filter", "@lmliheng/penguin-web", "build"], {
       cwd: ROOT,
       stdio: "inherit",
     });

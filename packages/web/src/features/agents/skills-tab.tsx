@@ -19,7 +19,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
-import type { SkillMetadataItem } from "@prismshadow/penguin-server/api";
+import type { SkillMetadataItem } from "@lmliheng/penguin-server/api";
 import {
   Button,
   Card,
@@ -41,7 +41,7 @@ import {
   toastError,
   toastSuccess,
   useCopied,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

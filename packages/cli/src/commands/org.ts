@@ -71,7 +71,7 @@ import type {
   OrgTicketsResponse,
   OrganizationDetail,
   OrganizationsResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   resolveAgentId,
   resolveConnection,

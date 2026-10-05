@@ -4,10 +4,10 @@
 #   PENGUIN_TEST_HOST=<ssh-destination> \
 #     .agents/scripts/remote-test.sh <worktree> [--build "<pkg> <pkg>"] -- <pnpm args...>
 #
-#   PENGUIN_TEST_HOST=box .agents/scripts/remote-test.sh . -- --filter @prismshadow/penguin-web test
+#   PENGUIN_TEST_HOST=box .agents/scripts/remote-test.sh . -- --filter @lmliheng/penguin-web test
 #   PENGUIN_TEST_HOST=box .agents/scripts/remote-test.sh ~/dev/penguin-harness-wt/foo \
-#       --build "@prismshadow/penguin-core @prismshadow/penguin-server" -- \
-#       --filter @prismshadow/penguin-cli exec vitest run test/agent-porting.test.ts
+#       --build "@lmliheng/penguin-core @lmliheng/penguin-server" -- \
+#       --filter @lmliheng/penguin-cli exec vitest run test/agent-porting.test.ts
 #
 # Tests run on the developer's own machine by default; this script exists for the times the user
 # asks for a different one, and it is never the automatic choice. The destination comes from the

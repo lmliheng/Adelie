@@ -28,7 +28,7 @@
  *   unbreakable line as a last resort, and yields chunks every renderer accepts.
  */
 import { describe, expect, it } from "vitest";
-import { attachedFileLine } from "@prismshadow/penguin-core";
+import { attachedFileLine } from "@lmliheng/penguin-core";
 import { MESSAGING_TEXT_CHUNK_CHARS } from "../src/runtime/messaging/bridge.js";
 import { chunkMarkdown, isSafeUrl, parseMarkdown } from "../src/runtime/messaging/markdown.js";
 import { feishuCardOf, feishuMarkdownOf } from "../src/runtime/messaging/feishu-card.js";

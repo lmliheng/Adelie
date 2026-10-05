@@ -10,8 +10,8 @@
  * different questions.
  */
 import { useEffect, useState } from "react";
-import type { OrgChannelItem } from "@prismshadow/penguin-server/api";
-import { Button, ConfirmModal, Input, Modal, Textarea } from "@prismshadow/penguin-ui";
+import type { OrgChannelItem } from "@lmliheng/penguin-server/api";
+import { Button, ConfirmModal, Input, Modal, Textarea } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

@@ -10,8 +10,8 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Hono } from "hono";
-import { McpToolProvider, resolveMCPServer } from "@prismshadow/penguin-core";
-import type { MCPServerConfig } from "@prismshadow/penguin-core";
+import { McpToolProvider, resolveMCPServer } from "@lmliheng/penguin-core";
+import type { MCPServerConfig } from "@lmliheng/penguin-core";
 import type {
   AgentConfigResponse,
   AgentConfigUpdateRequest,

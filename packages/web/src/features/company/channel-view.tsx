@@ -36,7 +36,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { OrgChannelDetail, OrgChannelMessage } from "@prismshadow/penguin-server/api";
+import type { OrgChannelDetail, OrgChannelMessage } from "@lmliheng/penguin-server/api";
 import {
   Button,
   ChannelBubble,
@@ -49,8 +49,8 @@ import {
   Skeleton,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
-import type { ChannelSender } from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
+import type { ChannelSender } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

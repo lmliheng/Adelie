@@ -4,7 +4,7 @@
  * requests is worth telling the user about. Kept out of the page so they are unit-testable
  * (vitest runs node-only, no DOM).
  */
-import type { SessionProcessInfo } from "@prismshadow/penguin-server/api";
+import type { SessionProcessInfo } from "@lmliheng/penguin-server/api";
 import { ApiError } from "../../api/client";
 
 /**

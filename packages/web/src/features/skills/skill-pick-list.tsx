@@ -17,8 +17,8 @@
  * user can see.
  */
 import { useState } from "react";
-import type { SkillMetadataItem } from "@prismshadow/penguin-server/api";
-import { ICON_SIZE, MenuItem, SearchInput } from "@prismshadow/penguin-ui";
+import type { SkillMetadataItem } from "@lmliheng/penguin-server/api";
+import { ICON_SIZE, MenuItem, SearchInput } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { useLocale } from "../../state/locale";
 import { filterSkills, localizedShortText } from "../chat/skill-use";

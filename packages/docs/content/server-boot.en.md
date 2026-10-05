@@ -22,7 +22,7 @@ Four mechanisms start the server. All of them converge: the same env vars drive 
 | Entry | Mechanism |
 | --- | --- |
 | Direct | `node dist/index.js` (`start` in `server/package.json`) |
-| CLI (`penguin server` / `penguin web`) | Sets `PORT`/`HOST` and exports `PENGUIN_CLI_ENTRY`, then runs the server as a **supervised child process** that imports `@prismshadow/penguin-server` |
+| CLI (`penguin server` / `penguin web`) | Sets `PORT`/`HOST` and exports `PENGUIN_CLI_ENTRY`, then runs the server as a **supervised child process** that imports `@lmliheng/penguin-server` |
 | CLI auto-start | A CLI command that finds no running server spawns a detached `server` subcommand with `PORT=0` and attaches once the root's lock is live |
 | Desktop | `utilityProcess.fork` launches a separate server process with the server's env injected |
 
@@ -181,7 +181,7 @@ The plugin routes hand their edit to the re-assembly, which writes it in its own
 
 ### The plugin contract
 
-The plugin contract — `Plugin`, the decorators, and the sandbox vocabulary — is declared in the SDK at `@prismshadow/penguin-core/plugin`. `@prismshadow/penguin-server/plugin` exports the interfaces a plugin module may require (`Sandbox`, `Terminals`, `Sessions`, `AgentService`, `Messaging`, `Http`, …), types only.
+The plugin contract — `Plugin`, the decorators, and the sandbox vocabulary — is declared in the SDK at `@lmliheng/penguin-core/plugin`. `@lmliheng/penguin-server/plugin` exports the interfaces a plugin module may require (`Sandbox`, `Terminals`, `Sessions`, `AgentService`, `Messaging`, `Http`, …), types only.
 
 The decorators are the SDK's only runtime a plugin carries. They record on the class itself, so the copy in a plugin's bundle and the host's read the same thing.
 
@@ -196,14 +196,14 @@ Each subsystem's construction site and external surface. Step numbers ① to ⑫
 | Subsystem | Constructed | External surface |
 | --- | --- | --- |
 | Config | `config.ts` `resolveServerConfig` (②) | `ServerConfig`; its only post-listen mutation writes back the real port |
-| Single-instance lock | `lock.ts` (③ pre-check, ④ acquire in the listen callback) | Package subpath `@prismshadow/penguin-server/lock`; the CLI and Desktop use it for pre-launch probing |
+| Single-instance lock | `lock.ts` (③ pre-check, ④ acquire in the listen callback) | Package subpath `@lmliheng/penguin-server/lock`; the CLI and Desktop use it for pre-launch probing |
 | Database | `db/database.ts` `openDatabase` (first step of ⑥) | Repo classes under `db/repos/*`; WAL, foreign keys, ordered versioned migrations (`db/migrations.ts`, stamped in `PRAGMA user_version`) |
 | Auth | `auth/service.ts` — **App-level** (built per App); the process-scoped values (`auth/runtime-state.ts`, the local API token among them) are published in ⑥ | `/api/auth/*`, the cookie and Bearer-token `authMiddleware`, and authentication of terminal WS upgrades |
 | Project / Session | `services/*` — **App-level** (assembled in create) | `/api/projects/**`, `/api/sessions/**` (route details in [Server API](/server-api)) |
 | Agent runtime | `runtime/session-manager.ts` — **App-level** | Task / approval / abort / compact routes and SSE `GET /api/sessions/:sessionId/stream`; delegates to core via `createAgent` |
 | Events | `runtime/channel.ts` `ChannelHub` (⑥, process-level; SSE streams survive swaps) | User-level SSE `GET /api/events`; the `ServerEvent` type family |
 | Scheduler | `runtime/scheduler.ts` — **App-level** (started/stopped by create) | The schedules routes; publishes results into the ChannelHub |
-| HMR host / platform | `@prismshadow/penguin-hmr` (`HmrHost`, `hmrMain`) and `hmr/platform.ts` (the platform) | `PlatformApi` (`info` / `log` / `http` / `terminals` / `attachStream` / `business` / `shutdown` / `drained`, plus the kernel's `park`); `/api/hmr/*`, including `POST /api/hmr/upgrade`, is a route group the platform contributes — a pushed generation that does not serve it is refused before commit |
+| HMR host / platform | `@lmliheng/penguin-hmr` (`HmrHost`, `hmrMain`) and `hmr/platform.ts` (the platform) | `PlatformApi` (`info` / `log` / `http` / `terminals` / `attachStream` / `business` / `shutdown` / `drained`, plus the kernel's `park`); `/api/hmr/*`, including `POST /api/hmr/upgrade`, is a route group the platform contributes — a pushed generation that does not serve it is refused before commit |
 | Terminals | `terminal/` — **App-level** | `/api/terminals*` route group, WS `GET /api/terminals/:id/stream`; ptys are parked and survive swaps |
 | Plugin host | built by each App's `create()` and registered at its commit for the next App to reuse; ⑤ `loadPlugins` publishes one in ⑥ for platforms that predate this | an npm package: its generated `ifaces.json` (the module payload), a default export `{ modules?: [<class>, …], replaces?: [<class>, …] }`; the configuration surface is the `[plugins]` table of each Project's `.project_config.toml`, written through `/api/projects/:projectId/plugins/installed` |
 | Sandbox | `sandbox/service.ts` — **App-level** (a module; backends contribute to its `providers` slot) | a `SandboxModule.providers` contribution from a plugin module; enforcement reaches commands and hook scripts through core's spawn seam, and the Session's policy reaches the file tools through core's `sandboxPolicy` seam |

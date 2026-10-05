@@ -13,7 +13,7 @@ import { createHash } from "node:crypto";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Hono } from "hono";
 import type { AppEnv } from "../src/auth/middleware.js";
-import { HmrHost } from "@prismshadow/penguin-hmr";
+import { HmrHost } from "@lmliheng/penguin-hmr";
 import type { PlatformApi } from "../src/hmr/platform.js";
 import { packagedPlatform } from "../src/hmr/platform.js";
 import { readHarnessInfo } from "../src/hmr/manifest.js";

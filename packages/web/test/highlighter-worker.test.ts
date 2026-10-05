@@ -3,7 +3,7 @@
  *
  * Tokenizing is linear in the size of the input and runs to completion once it starts, so the
  * viewer's responsiveness depends on it happening in a worker. The engine lives in the shared UI
- * package on its own subpath (`@prismshadow/penguin-ui/highlighter`, which the package's code
+ * package on its own subpath (`@lmliheng/penguin-ui/highlighter`, which the package's code
  * surfaces never import — they ask the highlighter the app hands them), and the app decides where
  * it runs. Three edits would quietly undo that without failing a build or looking wrong in
  * review: calling the engine directly from a component, turning the client's fallback
@@ -47,7 +47,7 @@ describe("the highlighting worker", () => {
   it("owns the only static import of the engine", () => {
     const importers = sources(SRC)
       .filter(([, src]) =>
-        /^import\s(?!type\s)[^;]*from "@prismshadow\/penguin-ui\/highlighter"/m.test(src),
+        /^import\s(?!type\s)[^;]*from "@lmliheng\/penguin-ui\/highlighter"/m.test(src),
       )
       .map(([path]) => path);
     expect(importers).toEqual(["features/chat/highlighter.worker.ts"]);
@@ -55,7 +55,7 @@ describe("the highlighting worker", () => {
 
   it("leaves the client's own use of the engine dynamic, as its fallback", () => {
     const client = readFileSync(join(CHAT, "highlighter.ts"), "utf8");
-    expect(client).toMatch(/await import\("@prismshadow\/penguin-ui\/highlighter"\)/);
+    expect(client).toMatch(/await import\("@lmliheng\/penguin-ui\/highlighter"\)/);
   });
 
   it("is what the app hands the package's code surfaces, loaded on the first block", () => {

@@ -11,7 +11,7 @@
  * Trace once per process lifetime.
  */
 import type { SessionSource } from "../api/types.js";
-import { Component } from "@prismshadow/penguin-core/kernel";
+import { Component } from "@lmliheng/penguin-core/kernel";
 import type { SessionOrigins } from "../mechanisms/sessions.js";
 
 /**

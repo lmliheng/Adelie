@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { userText } from "@prismshadow/penguin-core";
+import { userText } from "@lmliheng/penguin-core";
 import { isHumanInput } from "../src/runtime/session-manager.js";
 
 describe("isHumanInput", () => {

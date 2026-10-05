@@ -10,7 +10,7 @@ programs below are downloaded by the release workflow (`.github/workflows/releas
 alongside the application inside the release archives. The fonts are part of the built web assets:
 the build takes the MiSans files from this repository and copies every other font out of an npm
 dependency. The web assets ship wherever the Web App does, and that includes npm:
-`@prismshadow/penguin-cli` depends on `@prismshadow/penguin-server`, whose package carries them as
+`@lmliheng/penguin-cli` depends on `@lmliheng/penguin-server`, whose package carries them as
 `web-dist/`. Installing from npm therefore bundles the fonts, but none of those programs.
 
 What earns an entry is a third-party work redistributed **as its own file**, or third-party code
@@ -307,7 +307,7 @@ Email: mengfanqi@xiaomi.com
 ## GenericAgent — the built-in browser's page scripts
 
 Adapted into this repository's source, so present wherever the server ships: every release archive,
-the desktop application, and the `@prismshadow/penguin-server` npm package.
+the desktop application, and the `@lmliheng/penguin-server` npm package.
 
 The built-in browser's page scripts under `packages/server/src/builtin-browser/page-scripts/` (the
 DOM simplification that `penguin browser scan` returns, and the change monitor behind

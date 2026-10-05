@@ -15,7 +15,7 @@ import { describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { encode } from "uqr";
-import type { QQBindingInfo, QQScanPollResponse } from "@prismshadow/penguin-server/api";
+import type { QQBindingInfo, QQScanPollResponse } from "@lmliheng/penguin-server/api";
 import { ApiError } from "../src/api/client";
 import { QQScanConnect, QrCode, qqScanStep } from "../src/features/messaging/qq-scan-connect";
 import type { QQScanTally } from "../src/features/messaging/qq-scan-connect";

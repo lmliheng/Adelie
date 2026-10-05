@@ -4,9 +4,9 @@
  * pricing replaced by recording fakes and the clock under test control. Shared by the runtime
  * and scenario suites so both exercise the same seams the app binds in production.
  */
-import { saveProjectConfig } from "@prismshadow/penguin-core";
-import { wire } from "@prismshadow/penguin-core/kernel";
-import type { OmniMessage } from "@prismshadow/penguin-core";
+import { saveProjectConfig } from "@lmliheng/penguin-core";
+import { wire } from "@lmliheng/penguin-core/kernel";
+import type { OmniMessage } from "@lmliheng/penguin-core";
 import type { ServerEvent } from "../src/api/types.js";
 import { openDatabase } from "../src/db/database.js";
 import { MembersRepo } from "../src/db/repos/members.js";

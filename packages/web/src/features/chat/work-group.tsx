@@ -12,8 +12,8 @@
  * - A pending approval anywhere in the group forces it open: the approval buttons live inside.
  * - The duration is `summarizeWork`'s span; it ticks only while an item is in flight.
  */
-import { WorkGroup } from "@prismshadow/penguin-ui";
-import type { WorkGroupProps } from "@prismshadow/penguin-ui";
+import { WorkGroup } from "@lmliheng/penguin-ui";
+import type { WorkGroupProps } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { approvalKey } from "../../lib/omni/stream-model";
 import type { ChatItem } from "../../lib/omni/stream-model";

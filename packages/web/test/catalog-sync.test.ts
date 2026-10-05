@@ -17,8 +17,8 @@ import {
   catalogEntryFor,
   catalogModelEntries,
   presetModelEntries,
-} from "@prismshadow/penguin-core/model-catalog";
-import type { ModelsResponse } from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-core/model-catalog";
+import type { ModelsResponse } from "@lmliheng/penguin-server/api";
 import { catalogDelta, syncRowsWithCatalog } from "../src/features/models/catalog-sync";
 import { presetUpdateTodo } from "../src/lib/todo-badges";
 import { noticeCounts } from "../src/lib/bulk-update";

@@ -2,7 +2,7 @@
  * Server process entry point: the whole startup lifecycle, as one ordered sequence.
  *
  * Importing this module STARTS the server — the CLI runs a server in its own process by
- * `await import("@prismshadow/penguin-server")` and nothing else, so main() is invoked at
+ * `await import("@lmliheng/penguin-server")` and nothing else, so main() is invoked at
  * module scope rather than exported.
  *
  * main() comes first in the file and is the sequence itself: each step is one PenguinServer
@@ -19,11 +19,11 @@ import path from "node:path";
 import type { Server as HttpServer } from "node:http";
 import { config as loadDotenv } from "dotenv";
 import { serve } from "@hono/node-server";
-import { SERVER_RESTART_EXIT_CODE } from "@prismshadow/penguin-core";
+import { SERVER_RESTART_EXIT_CODE } from "@lmliheng/penguin-core";
 import { bootAppDeps, createApp } from "./app.js";
-import { HmrHost, hmrMain } from "@prismshadow/penguin-hmr";
-import type { Hmr } from "@prismshadow/penguin-hmr";
-import type { Instance } from "@prismshadow/penguin-core/kernel";
+import { HmrHost, hmrMain } from "@lmliheng/penguin-hmr";
+import type { Hmr } from "@lmliheng/penguin-hmr";
+import type { Instance } from "@lmliheng/penguin-core/kernel";
 import { packagedPlatform } from "./hmr/platform.js";
 import { startingResponse } from "./hmr/starting.js";
 import type { PlatformApi, ServerHmrHost } from "./hmr/platform.js";

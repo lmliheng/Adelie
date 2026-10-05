@@ -4,7 +4,7 @@
  * Types, plus the five decorators — the same ones the harness's own modules are written
  * with (core kernel/decorators.ts: no imports, so a plugin's bundle carries them and
  * nothing else of the SDK). The host that drives a plugin lives in whatever embeds this
- * SDK (for the harness, `@prismshadow/penguin-server/plugin`); a plugin reaches THAT with
+ * SDK (for the harness, `@lmliheng/penguin-server/plugin`); a plugin reaches THAT with
  * `import type` only and stays a self-contained library that happens to satisfy an
  * interface.
  *
@@ -34,7 +34,7 @@
  * packaged boot and each hot-swap boot alike — so what a module registers never
  * survives into a generation it did not register with. What it may require is what the
  * host publishes as interfaces (for the harness: everything under
- * `@prismshadow/penguin-server/plugin`); the requirement is checked structurally,
+ * `@lmliheng/penguin-server/plugin`); the requirement is checked structurally,
  * at signature level, before the module is created.
  */
 import type { ModuleClass } from "../kernel/decorators.js";

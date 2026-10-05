@@ -29,7 +29,7 @@
  * `placeholderSemanticId` is the floor — a valid, dated, obviously-temporary id, so the dialog
  * is never left with nothing to put in the box.
  */
-import { isValidId } from "@prismshadow/penguin-core";
+import { isValidId } from "@lmliheng/penguin-core";
 import type { SemanticIdKind } from "../api/types.js";
 import { PROJECT_ID_MAX_LENGTH, PROJECT_SUFFIX_PATTERN, SEMANTIC_ID_PATTERN } from "./ids.js";
 

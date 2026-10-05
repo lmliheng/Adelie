@@ -10,7 +10,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import fs from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import { systemConfigPath } from "@prismshadow/penguin-core";
+import { systemConfigPath } from "@lmliheng/penguin-core";
 import type { AgentConfigResponse, ProjectCreateResponse } from "../src/api/types.js";
 import { apiClient, createTestApp, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";

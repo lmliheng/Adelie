@@ -10,7 +10,7 @@
  * not a source: prepareNewChatDraft releases it first, or the leftover of one "+" click would
  * stand in for the Project's defaults on every later "New chat".
  */
-import type { AgentSummary, ChatDefaultsDto } from "@prismshadow/penguin-server/api";
+import type { AgentSummary, ChatDefaultsDto } from "@lmliheng/penguin-server/api";
 import { pickDefaultAgent } from "../ai-create/default-agent";
 import { clearDraft, draftKey, loadDraft, saveDraft } from "./draft-cache";
 import type { DraftCache, DraftStorage } from "./draft-cache";

@@ -1,5 +1,5 @@
-import { Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
-import type { Opaque, Slot, ClassCtx } from "@prismshadow/penguin-core/kernel";
+import { Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import type { Opaque, Slot, ClassCtx } from "@lmliheng/penguin-core/kernel";
 import { Hono } from "hono";
 import type { AppEnv } from "../auth/middleware.js";
 import { Config, Log } from "../hmr/capabilities.js";

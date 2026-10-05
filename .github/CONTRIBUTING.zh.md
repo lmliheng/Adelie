@@ -40,7 +40,7 @@ Vite 依赖缓存（`packages/web/node_modules/.vite`）——该缓存仅以 lo
 该预处理步骤还会构建 `packages/cli`：开发版 server 会把它所在检出的 CLI 交给它运行的 Agent——在
 `<root>/bin/penguin` 写下一个指向 `packages/cli/dist/penguin.js` 的启动脚本，并把该目录置于每条命令
 PATH 的最前。dev server 运行期间没有任何东西会重建那个文件（`tsx watch` 只覆盖 server 自身的源码），
-因此改完 CLI 源码后，要先跑 `pnpm --filter @prismshadow/penguin-cli build`（或重启 `pnpm dev`），
+因此改完 CLI 源码后，要先跑 `pnpm --filter @lmliheng/penguin-cli build`（或重启 `pnpm dev`），
 再让 Agent 去用它。
 
 绕开 dev 命令时有一条规则：**通过 pnpm 重新构建 skills/core，并按此顺序**（`pnpm build`，或重启
@@ -85,10 +85,10 @@ userData 目录随其名称一并搬家，Chromium 配置文件也跟着走，�
 
 | 包                                        | 名称                          | 职责                                                                        |
 | ----------------------------------------- | ----------------------------- | --------------------------------------------------------------------------- |
-| [`packages/core`](../packages/core)       | `@prismshadow/penguin-core`   | SDK 与引擎：ReAct 循环、OmniMessage 协议、LLM/Environment 接口契约、Agent State、Trace |
-| [`packages/cli`](../packages/cli)         | `@prismshadow/penguin-cli`    | `penguin` 命令：REPL、单次运行、模型与 vault 配置、服务启动器               |
-| [`packages/server`](../packages/server)   | `@prismshadow/penguin-server` | Web 后端：HTTP API + SSE 流式传输、多用户认证、Project 鉴权、用量统计       |
-| [`packages/web`](../packages/web)         | `@prismshadow/penguin-web`    | Web App：多会话聊天，Agent/Skill/模型管理，Trace 可观测性，评测中心         |
+| [`packages/core`](../packages/core)       | `@lmliheng/penguin-core`   | SDK 与引擎：ReAct 循环、OmniMessage 协议、LLM/Environment 接口契约、Agent State、Trace |
+| [`packages/cli`](../packages/cli)         | `@lmliheng/penguin-cli`    | `penguin` 命令：REPL、单次运行、模型与 vault 配置、服务启动器               |
+| [`packages/server`](../packages/server)   | `@lmliheng/penguin-server` | Web 后端：HTTP API + SSE 流式传输、多用户认证、Project 鉴权、用量统计       |
+| [`packages/web`](../packages/web)         | `@lmliheng/penguin-web`    | Web App：多会话聊天，Agent/Skill/模型管理，Trace 可观测性，评测中心         |
 | [`plugins/*`](../plugins) | `@lmliheng/<name>` | 内置插件，一插件一 npm 包：Skill（软件开发、模型开发、Agent 开发/调优……）与会话钩子（目标模式、技能沉淀）；loader 在 `packages/core` |
 | [`packages/docs`](../packages/docs)       | —                             | 文档站（双语，部署在 `/docs/` 下）                                          |
 
@@ -116,7 +116,7 @@ Agent 读到的是同一个目录。
 
 ```bash
 npx playwright install chromium                      # 一次即可
-pnpm --filter @prismshadow/penguin-web test:e2e      # 针对 mock LLM 的浏览器 e2e
+pnpm --filter @lmliheng/penguin-web test:e2e      # 针对 mock LLM 的浏览器 e2e
 pnpm test:e2e                                        # core 的真实模型 e2e，需要 DEEPSEEK_API_KEY
 ```
 

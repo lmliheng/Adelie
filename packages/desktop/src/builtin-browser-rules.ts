@@ -13,7 +13,7 @@ import type {
   DesktopBrowserCommand,
   DesktopBrowserCommandMessage,
   DesktopBrowserCookie,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import type { TrayLocale } from "./tray-menu.js";
 
 /** The guests' own session: independent sign-ins and profile, persisted under userData. */

@@ -10,7 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Command } from "commander";
-import { agentVaultPath, DEFAULT_PROJECT_ID } from "@prismshadow/penguin-core";
+import { agentVaultPath, DEFAULT_PROJECT_ID } from "@lmliheng/penguin-core";
 import { registerConfigCommand } from "../src/commands/config.js";
 import { getMessages } from "../src/i18n.js";
 

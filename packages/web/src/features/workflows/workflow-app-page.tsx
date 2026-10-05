@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
-import type { PaletteAction } from "@prismshadow/penguin-ui";
+import type { PaletteAction } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { useShortcutLabel } from "../../lib/shortcuts/use-keymap";
 import { S } from "../../lib/strings";

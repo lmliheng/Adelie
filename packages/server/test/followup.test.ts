@@ -16,8 +16,8 @@
  * The queued count on task_state events is covered by the session-manager suite.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { approvalDecision, assistantText, toolCall, userText } from "@prismshadow/penguin-core";
-import type { ApproveFn, OmniMessage } from "@prismshadow/penguin-core";
+import { approvalDecision, assistantText, toolCall, userText } from "@lmliheng/penguin-core";
+import type { ApproveFn, OmniMessage } from "@lmliheng/penguin-core";
 import type { TaskCreateResponse } from "../src/api/types.js";
 import type { RecallStore } from "../src/runtime/session-manager.js";
 import { adoptSession, fakeSession, uniqueSessionId } from "./fixtures/session.js";

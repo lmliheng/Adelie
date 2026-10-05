@@ -112,13 +112,13 @@ https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
 ```bash
 # 装依赖（跳过 desktop / electron：它要下一个运行时，跑 Web 用不到）
 pnpm install --frozen-lockfile \
-  --filter @prismshadow/penguin-core --filter @prismshadow/penguin-ui \
-  --filter @prismshadow/penguin-server --filter @prismshadow/penguin-web \
-  --filter @prismshadow/penguin-cli --filter @prismshadow/penguin-hmr
+  --filter @lmliheng/penguin-core --filter @lmliheng/penguin-ui \
+  --filter @lmliheng/penguin-server --filter @lmliheng/penguin-web \
+  --filter @lmliheng/penguin-cli --filter @lmliheng/penguin-hmr
 
 # 构建（core 的导出指向 dist/，不先构建就跑不起来）
-pnpm -r --filter @prismshadow/penguin-core --filter @prismshadow/penguin-server \
-        --filter @prismshadow/penguin-web run build
+pnpm -r --filter @lmliheng/penguin-core --filter @lmliheng/penguin-server \
+        --filter @lmliheng/penguin-web run build
 
 # 起服务端 + 已构建的 Web 前端
 cd packages/server
@@ -131,7 +131,7 @@ API key 才能跑任务。
 
 > [!WARNING]
 > 上游 README 里的那些方式 —— `curl https://penguin.ooo/install.sh | sh`、
-> `npm install -g @prismshadow/penguin-cli`、`docker run hiyouga/penguinharness`、
+> `npm install -g @lmliheng/penguin-cli`、`docker run hiyouga/penguinharness`、
 > <https://penguin.ooo/download> 上的桌面安装包 —— 装出来的是 **PenguinHarness**，不是 Adelie。
 > 那些渠道在 Adelie 发布自己的产物之前，仍然属于上游。
 

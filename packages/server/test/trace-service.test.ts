@@ -24,13 +24,13 @@ import {
   toolCallOutput,
   userText,
   withOrigin,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 import type {
   OmniMessage,
   SessionMetaPayload,
   TokenCounts,
   StopReason,
-} from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
 
 // Traces written before the stop-reason convergence carry the retired spellings; analysis
 // must keep reading them, so these fixtures write them through a cast.
@@ -38,7 +38,7 @@ const legacyEnd = (status: string) => requestEnd(status as StopReason);
 import type { TraceService } from "../src/services/trace-service.js";
 import type { SessionRow } from "../src/db/repos/sessions.js";
 import { openDatabase } from "../src/db/database.js";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 import { ErrorsRepo } from "../src/db/repos/errors.js";
 import { UsageRepo } from "../src/db/repos/usage.js";
 import { SessionSources } from "../src/runtime/session-sources.js";

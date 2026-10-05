@@ -11,8 +11,8 @@
  *   instead).
  * Docs: /docs/server-api § "Streaming (SSE)".
  */
-import type { OmniMessage } from "@prismshadow/penguin-core/omnimessage";
-import type { ServerEvent } from "@prismshadow/penguin-server/api";
+import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
+import type { ServerEvent } from "@lmliheng/penguin-server/api";
 import { apiUrl } from "../lib/server-context";
 import { machineForSession } from "../lib/session-machines";
 

@@ -17,8 +17,8 @@
  *     the fenced block a preview selection becomes, and where each of them may be spliced
  *     into a draft that is already half typed.
  */
-import type { FileBrowserPreviewKind, FileTreeRow } from "@prismshadow/penguin-ui";
-import type { WorkspaceFileEntry, WorkspaceSearchHit } from "@prismshadow/penguin-server/api";
+import type { FileBrowserPreviewKind, FileTreeRow } from "@lmliheng/penguin-ui";
+import type { WorkspaceFileEntry, WorkspaceSearchHit } from "@lmliheng/penguin-server/api";
 import { joinWorkspacePath } from "./file-path";
 
 // ------------------------------------------------------------------------------- layout

@@ -7,7 +7,7 @@
  */
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { ModelsResponse } from "@prismshadow/penguin-server/api";
+import type { ModelsResponse } from "@lmliheng/penguin-server/api";
 import {
   Button,
   CopyButton,
@@ -15,7 +15,7 @@ import {
   PageFrame,
   PageHeader,
   Skeleton,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import type { MergedBenchmark } from "../../lib/benchmark-merge";
 import { nameOnMachine } from "../../lib/workspace-machines";

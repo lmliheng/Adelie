@@ -4,7 +4,7 @@
  * never the text the message will carry. The composer draws one per staged reference, above its
  * text body.
  */
-import { Chip, GlyphIcon, ICONS } from "@prismshadow/penguin-ui";
+import { Chip, GlyphIcon, ICONS } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { excerptLabel } from "../../lib/selection-menu";
 import { lineSuffix } from "../../lib/workspace-tree";

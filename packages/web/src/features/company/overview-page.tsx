@@ -29,7 +29,7 @@ import type {
   OrgChartResponse,
   OrgTicketStatus,
   OrganizationDetail,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 import {
   Badge,
   Button,
@@ -43,7 +43,7 @@ import {
   Segmented,
   Text,
   toastError,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

@@ -2,7 +2,7 @@
  * The accent choice: the rail offers the active theme's own list after 随主题, a choice survives a
  * theme that does not list it, and the URL accepts every theme's ids and nothing else.
  */
-import { THEME_ACCENT_PRESETS, THEME_IDS } from "@prismshadow/penguin-ui";
+import { THEME_ACCENT_PRESETS, THEME_IDS } from "@lmliheng/penguin-ui";
 import { describe, expect, it } from "vitest";
 import {
   ACCENT_IDS,

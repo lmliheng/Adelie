@@ -17,7 +17,7 @@
  *
  * Pure, and free of Electron: the minter is a parameter, so the tests drive every outcome.
  */
-import type { MintedVia, MintTokenResult } from "@prismshadow/penguin-server/auth-token";
+import type { MintedVia, MintTokenResult } from "@lmliheng/penguin-server/auth-token";
 import { isAppUrl } from "./util.js";
 
 /**

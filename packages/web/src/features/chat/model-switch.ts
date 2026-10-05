@@ -12,7 +12,7 @@
  * names (see sessionRowStale). A compaction that fails streams no meta, and the Session stays
  * on the model it was on.
  */
-import type { ModelRefDto, SessionInfo, SessionStatus } from "@prismshadow/penguin-server/api";
+import type { ModelRefDto, SessionInfo, SessionStatus } from "@lmliheng/penguin-server/api";
 import { sameModelRef } from "../models/model-grouping";
 import { trailingCompaction } from "./thinking-level";
 import type { ThinkingSwitchItem } from "./thinking-level";

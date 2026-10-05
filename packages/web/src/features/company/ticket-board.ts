@@ -9,7 +9,7 @@ import type {
   OrgTicketItem,
   OrgTicketStatus,
   OrgTicketsResponse,
-} from "@prismshadow/penguin-server/api";
+} from "@lmliheng/penguin-server/api";
 
 /** The five kanban columns, in lifecycle order. */
 export const TICKET_COLUMNS: readonly OrgTicketStatus[] = [

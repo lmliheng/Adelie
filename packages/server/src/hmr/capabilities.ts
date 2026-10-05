@@ -21,20 +21,20 @@
  * registry.
  */
 import type { DatabaseSync } from "node:sqlite";
-import type { Resources, Opaque, ModuleClass } from "@prismshadow/penguin-core/kernel";
+import type { Resources, Opaque, ModuleClass } from "@lmliheng/penguin-core/kernel";
 import type { ServerConfig } from "../config.js";
 import type { AuthRuntimeState } from "../auth/runtime-state.js";
 import { newAuthRuntimeState } from "../auth/runtime-state.js";
 import type { ChannelHub, Channel } from "../runtime/channel.js";
 import type { ProxySettings } from "../net/proxy.js";
-import type { HmrHost, Hmr as HmrControlOf } from "@prismshadow/penguin-hmr";
+import type { HmrHost, Hmr as HmrControlOf } from "@lmliheng/penguin-hmr";
 import type { PlatformApi } from "./platform.js";
 
 /** The control object the entry built (hmrMain): `current()` and `upgrade()`. */
 export type HmrControlApi = HmrControlOf<PlatformApi>;
 import type { DesktopService } from "../services/desktop-service.js";
 import type { LifecycleService } from "../services/lifecycle-service.js";
-import { Interface, Component, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
+import { Interface, Component, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
 
 /**
  * What one side of the seam speaks: a family, and a Go-style structural interface per

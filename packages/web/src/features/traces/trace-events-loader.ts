@@ -12,7 +12,7 @@
  * the next offset is only known from the page before it (a page may come back short), and a
  * reader looking at round one does not benefit from round nine's page racing it.
  */
-import type { TraceEventsResponse } from "@prismshadow/penguin-server/api";
+import type { TraceEventsResponse } from "@lmliheng/penguin-server/api";
 
 /**
  * Hard stop on the number of requests one walk may make. With the endpoint's 1000-event page

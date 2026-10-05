@@ -3,7 +3,7 @@
  * dual-theme HTML. The package's code components never import it: `CodeSurface` asks a
  * {@link CodeHighlighter} it is handed (by prop or by `CodeHighlighterProvider`), and the app
  * decides where the engine runs — the Web App runs it on a worker and falls back to this thread.
- * So it is published on its own subpath (`@prismshadow/penguin-ui/highlighter`), which a worker can
+ * So it is published on its own subpath (`@lmliheng/penguin-ui/highlighter`), which a worker can
  * import without React, and kept out of the root barrel, so no static import of the barrel can put
  * a copy of Shiki in the entry chunk.
  *

@@ -21,11 +21,11 @@ PenguinHarness 由下面这些组件构成。它们共用同一个数据目录�
 
 | 组件 | 包名 | 说明 |
 | --- | --- | --- |
-| SDK | `@prismshadow/penguin-core` | 核心引擎：ReAct 循环、[OmniMessage 协议](/omni-message)、LLM 与 Environment 的[接口契约](/interfaces)、Agent State 与 Trace。 |
-| CLI | `@prismshadow/penguin-cli` | `penguin` 命令：交互式 REPL、单次 Task 运行，以及模型与 Vault 配置。 |
-| Server | `@prismshadow/penguin-server` | Web 服务端：HTTP [API 与 SSE 流式通道](/server-api)、多用户认证、Project 授权和用量统计。 |
-| Web App | `@prismshadow/penguin-web` | 浏览器界面：多会话对话、Agent 管理、插件库、模型配置、Trace 观测和评估中心。 |
-| 桌面应用 | `@prismshadow/penguin-desktop` | 把 Web App 做成独立应用，支持 macOS、Windows 和 Linux。它内嵌服务端，并会装好 `penguin` 命令。 |
+| SDK | `@lmliheng/penguin-core` | 核心引擎：ReAct 循环、[OmniMessage 协议](/omni-message)、LLM 与 Environment 的[接口契约](/interfaces)、Agent State 与 Trace。 |
+| CLI | `@lmliheng/penguin-cli` | `penguin` 命令：交互式 REPL、单次 Task 运行，以及模型与 Vault 配置。 |
+| Server | `@lmliheng/penguin-server` | Web 服务端：HTTP [API 与 SSE 流式通道](/server-api)、多用户认证、Project 授权和用量统计。 |
+| Web App | `@lmliheng/penguin-web` | 浏览器界面：多会话对话、Agent 管理、插件库、模型配置、Trace 观测和评估中心。 |
+| 桌面应用 | `@lmliheng/penguin-desktop` | 把 Web App 做成独立应用，支持 macOS、Windows 和 Linux。它内嵌服务端，并会装好 `penguin` 命令。 |
 
 ## 三大支柱
 

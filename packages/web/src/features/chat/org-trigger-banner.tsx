@@ -4,7 +4,7 @@
  * trigger, the event / message / ticket it names, and the budget line — the same shape as the
  * scheduled-task banner beside it. The trigger's body renders as usual below.
  */
-import { Badge } from "@prismshadow/penguin-ui";
+import { Badge } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { formatDateTime } from "../../lib/format";
 import { summarizeOrgTrigger } from "./org-trigger";

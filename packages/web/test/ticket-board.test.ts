@@ -13,7 +13,7 @@
  * - The tickets the server flagged invalid are listed in column order.
  */
 import { describe, expect, it } from "vitest";
-import type { OrgTicketItem, OrgTicketsResponse } from "@prismshadow/penguin-server/api";
+import type { OrgTicketItem, OrgTicketsResponse } from "@lmliheng/penguin-server/api";
 import {
   allTickets,
   boardColumns,

@@ -1,6 +1,6 @@
 # Built-in plugins
 
-The Adelie plugin library. Each plugin is its own npm package — `@lmliheng/<name>`, a directory under `plugins/` — with a `plugin.json` manifest (and an `icon.svg` beside it: the icon of everything the plugin ships, which its installed skills and hook package inherit) plus the content it ships: **skills** (`skills/<name>/SKILL.md`, installed into an Agent's `agent_state/skills/`) and/or a **hook package** (`hooks/*.mjs`, installed into `agent_state/hooks/<plugin>/` with a generated `hooks.json`). The loader lives in `@prismshadow/penguin-core`, which depends on these packages and reads their directories at runtime — the files are the source of truth.
+The Adelie plugin library. Each plugin is its own npm package — `@lmliheng/<name>`, a directory under `plugins/` — with a `plugin.json` manifest (and an `icon.svg` beside it: the icon of everything the plugin ships, which its installed skills and hook package inherit) plus the content it ships: **skills** (`skills/<name>/SKILL.md`, installed into an Agent's `agent_state/skills/`) and/or a **hook package** (`hooks/*.mjs`, installed into `agent_state/hooks/<plugin>/` with a generated `hooks.json`). The loader lives in `@lmliheng/penguin-core`, which depends on these packages and reads their directories at runtime — the files are the source of truth.
 
 Versions are dates with a sequence number — `YYYY.MM.DD.N` — on the manifest and on every skill a plugin ships (the manifest's dated version is the plugin's own; the package's npm version follows the release). Skills follow the "index first, body on demand" design: only their metadata is injected into an Agent's system prompt; the Agent reads the full `SKILL.md` via shell when it actually needs it. Hook scripts are plain Node (builtins only): the harness runs them as subprocesses at the loop's hook points with `{ hook, session_id, trace_path }` on stdin and reads their JSON answer from stdout.
 
@@ -32,6 +32,6 @@ Included plugins, by category (`PLUGIN_CATEGORIES` in `packages/core/src/plugins
 The plugins are data, not code — there is nothing to build here. The loader, its types and their tests live in `packages/core`:
 
 ```bash
-pnpm --filter @prismshadow/penguin-core build       # includes the plugin loader
-pnpm --filter @prismshadow/penguin-core test        # loader, README tables, the hook scripts against fake Traces
+pnpm --filter @lmliheng/penguin-core build       # includes the plugin loader
+pnpm --filter @lmliheng/penguin-core test        # loader, README tables, the hook scripts against fake Traces
 ```

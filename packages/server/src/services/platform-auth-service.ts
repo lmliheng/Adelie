@@ -8,8 +8,8 @@
  * metadata remain outside Adelie.
  */
 import { randomBytes } from "node:crypto";
-import { Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";
-import { PENGUIN_GO_PROVIDER_ID } from "@prismshadow/penguin-core/model-catalog";
+import { Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import { PENGUIN_GO_PROVIDER_ID } from "@lmliheng/penguin-core/model-catalog";
 import { HttpError } from "../http/errors.js";
 import { Config } from "../hmr/capabilities.js";
 import type { ProjectConfigStore } from "../mechanisms/projects.js";

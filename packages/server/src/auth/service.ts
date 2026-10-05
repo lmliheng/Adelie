@@ -16,7 +16,7 @@ import type { SessionViaValue, AuthSessionsRepo } from "../db/repos/auth-session
 import type { AuthRuntimeState } from "./runtime-state.js";
 import { verifyAccountPassword, verifyPassword } from "./password.js";
 import type { PasswordHasher } from "./password.js";
-import { Component, Use, Interface } from "@prismshadow/penguin-core/kernel";
+import { Component, Use, Interface } from "@lmliheng/penguin-core/kernel";
 import type { AuthState, Clock, Config } from "../hmr/capabilities.js";
 import type { Auth, AuthSessions, Users } from "../mechanisms/identity.js";
 

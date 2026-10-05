@@ -22,8 +22,8 @@ import {
   toolCallOutput,
   toolListReady,
   userText,
-} from "@prismshadow/penguin-core";
-import type { OmniMessage, SessionMetaPayload, ToolDefinition } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { OmniMessage, SessionMetaPayload, ToolDefinition } from "@lmliheng/penguin-core";
 import {
   buildContextBreakdown,
   compactionThresholdFor,

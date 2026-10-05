@@ -4,7 +4,7 @@
  * app's to know, so this formats the chord and the shared `Kbd` draws it, in its plain look; the
  * caller supplies the colour.
  */
-import { Kbd } from "@prismshadow/penguin-ui";
+import { Kbd } from "@lmliheng/penguin-ui";
 import { formatChord } from "../../lib/shortcuts/format";
 import { currentPlatform } from "../../lib/shortcuts/platform";
 import { keyboardLayout } from "../../lib/shortcuts/store";

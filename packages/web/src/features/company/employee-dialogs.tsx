@@ -10,7 +10,7 @@
  * calls the API; the renewal is its own confirmation and needs no second one.
  */
 import { useEffect, useState } from "react";
-import type { OrgEmployeeItem, OrgHireRequest } from "@prismshadow/penguin-server/api";
+import type { OrgEmployeeItem, OrgHireRequest } from "@lmliheng/penguin-server/api";
 import {
   Button,
   ConfirmModal,
@@ -27,7 +27,7 @@ import {
   Textarea,
   toastError,
   toastSuccess,
-} from "@prismshadow/penguin-ui";
+} from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

@@ -34,17 +34,13 @@
  * restored on the previous list, and the answer is "did not take".
  */
 import { Hono } from "hono";
-import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
+import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { AppEnv } from "../../auth/middleware.js";
 import type { InstalledPlugin, InstalledPluginsResponse } from "../../api/types.js";
 import { HttpError } from "../errors.js";
 import { readJson, requireValidId } from "../validate.js";
 import type { DatabaseSync } from "node:sqlite";
-import {
-  effectivePluginTable,
-  PLUGIN_MACHINE_ID,
-  type PluginTables,
-} from "@prismshadow/penguin-core";
+import { effectivePluginTable, PLUGIN_MACHINE_ID, type PluginTables } from "@lmliheng/penguin-core";
 import type { Config, Db, Hmr, Reassembly, ReassemblyChange } from "../../hmr/capabilities.js";
 import {
   discoverBuiltinPlugins,

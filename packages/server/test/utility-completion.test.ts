@@ -6,7 +6,7 @@
  * dead end is checked for carrying its reason rather than a bare "no answer".
  */
 import fs from "node:fs/promises";
-import { wire } from "@prismshadow/penguin-core/kernel";
+import { wire } from "@lmliheng/penguin-core/kernel";
 import { describe, expect, it } from "vitest";
 import {
   assistantText,
@@ -17,8 +17,8 @@ import {
   thinkingMessage,
   tokenUsage,
   emptyTokenCounts,
-} from "@prismshadow/penguin-core";
-import type { LLMOutcome, OmniMessage } from "@prismshadow/penguin-core";
+} from "@lmliheng/penguin-core";
+import type { LLMOutcome, OmniMessage } from "@lmliheng/penguin-core";
 import {
   ProjectConfigService,
   collectUtilityCompletion,
