@@ -892,3 +892,66 @@ systemctl enable --now penguin-server
   （`penguin update` 打的是 `@lmliheng/penguin-cli@<version>`）和发版之前，得先手工首发布一次；
   `node scripts/check-publishable.mjs --registry --strict` 会列出要补的名字。
 - 桌面壳的 Windows AppUserModelID 是 `com.lmliheng.adelie`（早先品牌轮次已改），与包 scope 无关，没动。
+
+## 首次发布到 npm：`@lmliheng/*` 整条链 0.2.13（2026-10-05，用户点单）
+
+### 用户说的
+
+「发」
+
+### 为什么这次必须手工发
+
+`release.yml` 的 `publish-npm` 走 OIDC trusted publishing，而 trusted publisher 是**逐包**配置的：
+registry 上还不存在的名字没有配置可查，OIDC 换不到 token，流程到它那儿就 404。所以新名字得先由人拿
+能建包的凭据发一次（这一条也写在 release.yml 的注释里）。这次就是把 17 个名字（3 个宿主包 + 14 个
+对外插件）一次性首发布。
+
+### 做了什么
+
+在 `/root/adelie-fork` 按 `release.yml` 的步骤手工走一遍（凭据取自 vault 的 `NPM_TOKEN`，
+`npm whoami` = `lmliheng`）：
+
+1. `pnpm -r build` 重建全部产物。
+2. 备料（CI 里由 release.yml 现做，手工跑就得自己来）：`cp LICENSE` 进 `packages/{core,server,cli}/`
+   与每个 `plugins/*/`；`packages/web/dist` → `packages/server/web-dist`。
+3. 14 个对外插件逐个 `pnpm --filter <name> publish --access public --no-git-checks`
+   —— `plugins/sandbox-*` 那 4 个是 private，跳过。
+4. 再按依赖顺序发 `@lmliheng/penguin-core` → `@lmliheng/penguin-server` → `@lmliheng/penguin-cli`。
+
+17 个包都落在 **`0.2.13`**（仓库当前的 dev 版本）。
+
+### 踩到的坑：npm 的 staged 发布是延迟，不是失败
+
+- 三个包（`agent-company`、`data-analysis`、`skill-porting`）发完当场 `npm view` 全是 404：
+  `data-analysis`/`skill-porting` 的 packument 里当时只有一个 `0.0.0-stage` 占位版本，
+  `agent-company` 连 packument 都是 404（只有 `/name/0.2.13` 这个版本端点是 200）。
+  这是 npm 的 **staged 发布**：版本先入库，包文档延迟几分钟才放出来。
+- 这期间重发会拿到 `403 Cannot publish over the previously published versions`，或
+  `409 Cannot publish over previously staged version`（后者就是 npm/cli#9889，**至今 open**）。
+  `npm stage list` 与 `/-/stage` 都是空的，没有 stage-id 可以 reject；granular token 也
+  **不能 unpublish**（403），那个占位版本删不掉。
+- **判断：等几分钟就好，不要升版本号** —— 升了等于白扔一个号。`data-analysis`、`skill-porting`
+  的包文档先出来，`agent-company` 到 16:01:15 才出现，之后 17 个名字全部可解析。
+- 顺带记一笔中途差点误判的事：已发布的 `penguin-cli@0.2.13` / `penguin-core@0.2.13` 精确依赖
+  `@lmliheng/data-analysis@0.2.13`，在它包文档出来之前 `npm install` 会 E404。那是上面这个延迟的
+  表现，不是真的断链。
+
+### 验证（都是真跑出来的）
+
+- 17 个名字的版本端点与 packument 现在全 200。
+- `node scripts/check-publishable.mjs --registry --strict` 通过：`registry: all 17 published names
+  already exist`（此前它会列出全部 17 个「从未发布」）。
+- 空目录真装：`npm install @lmliheng/penguin-cli@0.2.13` → 400 个包，`node_modules/.bin/penguin
+  --version` = `v0.2.3-8-g5cf857f6`。
+- 14 个插件包一起干跑解析：`added 14 packages`。
+
+### 收尾 / 待办
+
+- 发布时暂存的 21 份 `LICENSE` 副本（`packages/{core,server,cli}/` + `plugins/*/`）已删，工作树除了
+  下面那个未跟踪文件之外是干净的。
+- **没 push**（用户说不用），远端还是旧状态。
+- registry 上留着 `data-analysis`/`skill-porting` 的 `0.0.0-stage` 占位版本，删不掉，无害。
+- 下次真发版：tag 一个高于 0.2.13 的版本即可 —— CI 会把 root + 所有工作区包 + 插件一起 stamp 成 tag
+  版本，这 17 个名字已经存在，OIDC 就能直接发。
+- `RELEASE-v0.2.3.md`（仓库根，**未跟踪**）是 v0.2.3 桌面发布那轮的正文，v0.2.0/1/2 三份都已入库、
+  只有它漏了。这一轮没动它，要不要补一个提交由用户定。
