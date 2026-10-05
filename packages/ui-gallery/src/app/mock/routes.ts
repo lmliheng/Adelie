@@ -36,6 +36,7 @@ import type {
   DesktopTrayStatusResponse,
   DesktopUpdateStatusResponse,
   DirectorySkillsResponse,
+  DirCreateResponse,
   DirListResponse,
   EndpointModelListResponse,
   FilesStatResponse,
@@ -771,6 +772,26 @@ router
   .get("/api/projects/:projectId/machines/:machineId/dirs", ({ store, query }): DirListResponse => {
     const path = query.get("path") || "/home/demo";
     return store.f.dirs[path] ?? { path, parent: "/home/demo", entries: [] };
+  })
+  // The picker's "New folder": made for real in the demo's own little filesystem, so the folder
+  // it just made is there when the picker reloads the parent — the same round trip as the app's.
+  .post("/api/projects/:projectId/dirs", ({ store, body }): unknown => {
+    const input = record(body);
+    const parent = typeof input.parent === "string" ? input.parent : "";
+    const name = typeof input.name === "string" ? input.name : "";
+    if (name === "") fail(400, "dir_name_empty", "Enter a folder name.");
+    if (name === "." || name === ".." || /[\\/]/.test(name)) {
+      fail(400, "dir_name_invalid", "A folder name cannot be a path, `.` or `..`.");
+    }
+    const listing = store.f.dirs[parent];
+    if (listing === undefined) fail(404, "dir_not_found", `Directory does not exist: ${parent}.`);
+    if (listing.entries.some((entry) => entry.name === name)) {
+      fail(409, "dir_exists", `Something is already there: ${parent}/${name}.`);
+    }
+    const path = parent.endsWith("/") ? `${parent}${name}` : `${parent}/${name}`;
+    listing.entries.push({ name, path, kind: "dir" });
+    store.f.dirs[path] = { path, parent, entries: [] };
+    return json({ path } satisfies DirCreateResponse, 201);
   })
   // Only the desktop app's own window may ask macOS for a folder, and the gallery is not one.
   .post("/api/projects/:projectId/dirs/access", () =>
