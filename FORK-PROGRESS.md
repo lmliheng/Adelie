@@ -96,12 +96,13 @@
       （见下），改名时不能碰。
 - [ ] 4.2 发布流水线重写：上游三条都还是上游的 —— `.github/workflows/release.yml`（tag 触发，
       **已改成只能手动触发**，见下）负责安装包与 npm；`docker.yml` 的 `push: branches: [main]`
-      会把镜像推到 Docker Hub `hiyouga/penguinharness`（默认分支已切到 `fork/penguin-base`，
-      `main` 不再有人推，所以不会触发；真要动 `main` 之前先处理它）；`desktop-build.yml` 的
-      `push: release/**`；Pages 那条已随 `landing` 删掉。
-      **另外**：`ci.yml`（11 个 job）的触发面仍只写 `main`，新主线跑不到它 —— 要么把它接到
-      `fork/penguin-base` 并让它真跑绿，要么按 Adelie 自己的仓库结构重写；在那之前 GitHub 上
-      没有 CI 信号（README 里那条 CI 徽章已经撤掉，不留假象）。
+      **已删**（它会以 `hiyouga/penguinharness` 这个上游镜像名与账号推 Docker Hub，本仓没凭据只能
+      失败），保留 PR 冒烟与手动 dispatch；`desktop-build.yml` 的 `push: release/**`；Pages 那条已
+      随 `landing` 删掉。
+      **另外**：`ci.yml`（22 个 job）的触发面是 `main`，而主线就是 `main`，所以每次推送都真跑 ——
+      2026-10-05 的 run `37264190544`（`1ac076f7`）**22 个 job 全绿**，含此前唯一红的
+      `installer-windows`。README 里那条 CI 徽章仍按撤掉的状态（要按 Adelie 自己的仓库结构重写
+      流水线仍属 4.x）。
 - [ ] 4.3 **旧的四件产物要更新**（用户 2026-10-05 定：按新基座重发新版，不是下架）。
 
 ## 发布 v0.2.0（2026-10-05）
@@ -210,6 +211,24 @@ node scripts/build-plugins.mjs --out out/penguin/lib/plugins
   在旧仓库 `brand/site`（现在的 `legacy/main`）**，已冻结不再维护，所以部署副本从这一刻起与源分叉；
   改动前的文件备份在 `/opt/adelie-design/index.html.bak-20261005`。
 
+**2026-10-05 重打（用户「重新打安装包，不动线上服务，3004 可以停止了」）**：第三轮收尾提交
+`1ac076f7` 之后按同样步骤重打了三件，覆盖 `/opt/adelie-design/downloads/v0.2.0/` 并按新包重生成
+`index.json`（v0.1.0 旧 Adelie 那三件原样保留）。版本戳 `VERSION=0.2.0`、`BUILD_DATE=2026-10-05`、
+`BUILD_COMMIT=1ac076f7` —— **没有升版本号**：GitHub 上那个 v0.2.0 Release 也没有资产，升 v0.2.1 得先
+建 tag + Release，否则 `penguin update --check` 会「报得出新版却装不了」。三件体积
+`adelie-linux-x64.tar.gz` 107.0 MiB / `adelie-win32-x64.zip` 141.1 MiB / `adelie-universal.tar.gz`
+52.3 MiB。
+
+验证（都不是推测）：三件 `sha256sum -c` 通过；linux-x64 在隔离 HOME 里真离线装 ——
+`penguin version --json` 报 `{"version":"0.2.0","channel":"release","buildDate":"2026-10-05",
+"commit":"1ac076f7…","node":"24.18.0"}`，`penguin update --check` 报 `Installed 0.2.0 · latest 0.2.0`
+（证明更新源确已指向 Adelie），`bin/penguin web` 在 7398 起得来（`/` 302 → `<title>Adelie</title>`，
+用完已停）；win 包结构抽查（外层 `install.cmd`/`install.ps1`/`payload.zip`/`payload.zip.sha256`，
+payload 内 `node/node.exe`、`git/usr/bin/sh.exe`、`git/etc/profile`、`bin/penguin.cmd`、
+`package-manifest.json` 写着 `win32-x64`）；包内 `install.sh` 已确认是新版（`REPO=lmliheng/Adelie`、
+`auto | github`、无 OSS 字样）；3003 的 `/downloads/index.json` 与三个资产都 200，页面 200。**3003 与
+4000 两个服务全程没停**（这次只停了 3004，见「本机部署」一节）。中间物 `out/` 用完已清理。
+
 ## 主线切到 main 之后：CI / Docker 的真实现状（2026-10-05）
 
 把新基座并进 `main` 之后，`ci.yml`（11 个 job）与 `docker.yml` 的 `push: main` 第一次真的跑起来了。
@@ -220,13 +239,16 @@ node scripts/build-plugins.mjs --out out/penguin/lib/plugins
 | ❌ → ✅ | `test (core)` / `test-macos (core)` / `test-windows (core)` | `core/test/plugins.test.ts`：**README 里找不到插件分类表**（用户当天把 README 正文删到只剩头部） | **已修**（用户选 b）：给 `README_TABLES` 加 `optional`，根 README 没表就跳过，`plugins/README.md` 与 `README.zh.md` 仍必查；CI `37261735096` 三条**实测转绿**（提交 `7cf248d4`） |
 | ❌ | `test (rest)` / `test-windows (rest)` / `test-macos (rest)` | `packages/desktop/test/launcher.test.ts` 的夹具还写着 `penguinharness`，而代码算出来的目录名已是 `Adelie` —— 2.1c 改名漏了这个夹具 | **已修**（夹具改成 `Adelie`，本地 `vitest run --root packages/desktop` 308 全绿；改前该文件确有一条红） |
 | ❌ | `test-macos (server)` | `test/workflows.test.ts`「notices an Agent's FIRST workflow」在 macOS 上返回 `{}` —— **同一个测试在 Linux 与 Windows 上都是绿的**，看着像 macOS 跑机的抖动 | 记录，暂不动 |
-| ❌ | `installer-windows` | `scripts/test-installer.ps1`：`forwarder-oss returned an unexpected result`（在线下载源选择那条用例） | 记录。**不是改名引起的**：2.1c 对 `install.ps1/.sh/.cmd` 只改了提示语字符串，没碰 `test-installer.ps1`，也没碰两边共用的常量；要查得有一台 Windows/pwsh |
+| ❌ → ✅ | `installer-windows` | `scripts/test-installer.ps1`：`forwarder-oss returned an unexpected result` —— 那条转发器用例读的是 `packages/landing/public/install.ps1`，而 `packages/landing` 早在 2.5 就删了（**不是改名引起的**） | **已修**：第三轮把整组转发器用例连同旧安装脚本的 OSS/探针用例一起重写掉；CI run `37264190544` 实测转绿 |
 | ❌ | `Docker` | `push: main` 会把镜像**以 `hiyouga/penguinharness` 的名义推到 Docker Hub**（上游的镜像名与账号），而本仓没有 Docker Hub 凭据，只能失败 | **已处置**：删掉 `push: branches: [main]` 这条触发（带注释说明），保留 PR 的构建冒烟与手动 dispatch |
 
 **2026-10-05 复核（CI `37261735096`，支线 `main` @ `7cf248d4`）**：22 个 job 里 20 个绿，
 README 插件表那三条已闭，macOS 那条重跑即绿（确系跑机抖动）—— **只剩 `installer-windows` 一条红**
 （以及汇总 job `ci` 随之红）。这正是台账 4.2 里「把 ci.yml 接到新主线并让它真跑绿」那一条要收的尾，
 现在它只剩一个具体目标了。
+
+**2026-10-05 再复核（CI `37264190544`，`main` @ `1ac076f7`）**：**22 个 job 全绿**，
+`installer-e2e` 与 `installer-windows` 都过 —— 4.2 里「让 `ci.yml` 真跑绿」这半条到此收尾。
 
 ## 主线三件事（2026-10-05，用户点单）
 
