@@ -84,6 +84,8 @@
         `DOWNLOAD_FALLBACK_BASE_URL` / `DOWNLOAD_SOURCE` / `DOWNLOAD_SPEED_PROBE` / `COMMAND`，
         以及 build 戳 `__PENGUIN_RELEASE_VERSION__` / `__PENGUIN_BUILD_GIT__` —— `install.sh` 是运行中的 CLI
         从 Releases 现下的脚本，旧 CLI × 新脚本要各说各话，属 4.x 的发布链路。
+        （注：另一条线 2026-10-05 已经把桌面壳的 bundle id / 打包坐标换成 Adelie 自己的
+        ——`a59342b4`——但**没有动环境变量名**，所以上面那批仍按原样留在桌面壳里。）
       - **上游服务**：`PENGUIN_GO*`（`token.penguin.ooo` 的 provider id 与环境键），不是我们的服务，不动。
       - 顺带记录：`PENGUIN_HINT` / `PENGUIN_KEEP_ATTRS` 是注入页脚本里的局部变量、`PENGUIN_FAMILY` 是 HMR
         family 常量，都不是环境变量，未动；`packages/docs/`、`.agents/`（= `.claude/` 软链）、`changelog/`
