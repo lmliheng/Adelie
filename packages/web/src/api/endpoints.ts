@@ -1574,10 +1574,13 @@ export const importPluginArchive = (body: PluginUploadRequest) =>
   apiFetch<PluginImportResponse>("/api/plugins/upload", { method: "POST", body });
 
 /**
- * The same import, fetched server-side from a URL: a zip link, a GitHub repository
- * (`https://github.com/<owner>/<repo>`, default branch) or a GitHub tree URL
- * (`…/tree/<ref>/<subdir>`, whose subdirectory is the plugin root). Same 409 `plugin_exists`
- * as the upload, and the same admin-only gate.
+ * The same import, fetched server-side from an address or an npm package: a zip or `.tgz` link, a
+ * GitHub repository (`https://github.com/<owner>/<repo>`, default branch), a GitHub tree URL
+ * (`…/tree/<ref>/<subdir>`, whose subdirectory is the plugin root), or a package name
+ * (`@scope/name[@version]`, `npm:@scope/name`, an npmjs.com package page) — installed under the
+ * package's own name, without its scope. Same 409 `plugin_exists` as the upload, the same
+ * admin-only gate, and its own codes for what npm can answer (404 `npm_package_not_found`,
+ * 404 `npm_version_not_found`, 400 `npm_registry_failed`, 400 `integrity_failed`).
  */
 export const importPluginFromUrl = (body: PluginDownloadRequest) =>
   apiFetch<PluginImportResponse>("/api/plugins/download", { method: "POST", body });

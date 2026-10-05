@@ -733,3 +733,56 @@ systemctl enable --now penguin-server
 
 遗留：`qq-webui-proxy.service` 与 napcat 容器仍按旧路径工作（靠符号链接）。要彻底改成
 `/root/.adelie/data`，得同时改那个单元并重建容器（会重连 QQ，这次没做）。
+
+## 插件从 npm 导入（2026-10-05，用户点单）
+
+### 问了什么
+
+「插件那里能不能支持 npm，把我的 penguin harness 插件仓库转移到 npm，然后 npm 导入插件，可以吗。」
+
+### 先答事实（都核过）
+
+- 插件本来就是 npm 包：每个 `plugins/<name>/` 带 `package.json`（`@penguinharness/<name>`，
+  `files: [plugin.json, icon.svg, skills, hooks, LICENSE]`），仓库的发布流水线每发一版就把它们推上 npm
+  （`.github/workflows/release.yml` 里 `for dir in plugins/*/` + `pnpm publish --access public`）。
+  registry 上 `@penguinharness/{use-firecrawl,goal,data-analysis,agent-company}` 等已有 0.2.9–0.2.13。
+- **导入侧先前只认 zip**：`POST /api/plugins/download` 走 `normalizePluginUrl` + fflate 的 `unzipSync`，
+  填一个 npm 名字只会被当成普通链接去抓。所以「能不能」= 能，但要写代码。
+
+### 这一轮做的
+
+- 新 `packages/server/src/services/tar-archive.ts`：同步、只在内存里的 tar 读取器 —— ustar `prefix`、
+  pax `x` 扩展头、GNU `L` 长名、base-256 size、成员校验和；目录/链接/设备成员跳过且不跟随路径。
+  `gunzipBounded` 用 `zlib.gunzipSync` 的 `maxOutputLength` 兜住解压炸弹（64MB），`untarBounded` 复用
+  `skill-import-limits` 那套 caps（200 文件 / 单文件 5MB / 合计 20MB），成员路径逐个查绝对路径、反斜杠与 `..`。
+- `packages/server/src/services/plugin-download.ts`：`parseNpmPluginSpec`（`npm:@scope/name[@版本]`、
+  npmjs.com 包页、registry packument 地址、裸包名）＋ `resolvePluginSource`（npm → 抓 packument，
+  取版本与 `dist.tarball`，把 `dist.integrity` 一并带上）＋ `fetchPluginArchive` 校验 SRI。
+  非 npm 输入照旧走 `normalizePluginUrl`；`.tgz` 直链也会由来名推名字。
+- `packages/server/src/http/routes/plugins.ts`：`parsePluginArchive` 按 magic bytes 分流 zip / gzip-tar，
+  根定位、命名、caps、路径校验全部共用一份；npm 包按去掉 scope 的包名安装
+  （`@scope/use-firecrawl` → `use-firecrawl`），tarball 那层 `package/` 不当名字（没给 name 就 400）。
+  新错误码 `npm_package_not_found` / `npm_version_not_found` / `npm_registry_failed` / `integrity_failed`。
+- 网页端：下载框的 label/hint/placeholder/描述、导入规则第 1–4 条、`importErrors` 两个语言都补 npm 形态；
+  `pluginNameFromUrl` 认 npm 说明符与 npmjs.com 包页（覆盖确认里那行名字）。
+
+### 验证
+
+- `pnpm --filter @prismshadow/penguin-server test`：180 文件 / 2592 通过 / 2 跳过；
+  `packages/web`：236 文件 / 2891 通过 / 2 跳过；`pnpm typecheck` 全包 Done；`pnpm lint` 0；
+  `pnpm format:check` 干净。
+- 新测 `packages/server/test/plugin-npm-import.test.ts`（18 例）：手写 ustar/pax tarball 的解析、
+  路径穿越与截断、解压炸弹、caps、说明符解析、路由端到端（stub 注册表 + tarball）。
+  `packages/web/test/plugin-import.test.ts` 加了两例 npm 命名。
+- 真网络：registry 上真的 `@penguinharness/use-firecrawl@0.2.13` tarball 过了 `parsePluginArchive`
+  （4 个文件 + `package.json`，都在 `package/` 下）；`resolvePluginSource("npm:@penguinharness/goal")`
+  与 npmjs.com 包页都解析到 `…/goal-0.2.13.tgz` 并带回 `sha512-…`；不存在的包回 `404 npm_package_not_found`。
+
+### 没做（卡在这两点，等拍板）
+
+- **没有发 npm**：台账纪律里「不发 npm」还在；且 `@penguinharness` 的 maintainer 是 `hiyouga`
+  （registry maintainers 字段），`lmliheng` 的 token 发不上去。要发得先定 scope —— `@lmliheng` 名下 0 个包，
+  可发；改名有两种做法：改仓库里 19 个 `package.json` 的 `name`（会牵到 `packages/cli`、`packages/server`
+  的 `workspace:*` 依赖与 core 的 `PLUGIN_PKG_PREFIX`，`packages/core/src/plugins/index.ts`），
+  或者只在发布时把包名换成自有 scope 临时发。
+- 运行时生效要重装/重建服务端（现在跑的是 `/root/.adelie` 那份 0.2.3）。

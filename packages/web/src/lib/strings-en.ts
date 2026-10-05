@@ -2136,10 +2136,10 @@ export const en: Strings = {
      */
     importRulesTitle: "Plugin import rules",
     importRules: [
-      "The source is a local zip, or a URL: a direct zip link, a GitHub repository (its default branch), or a directory inside one (\u2026/tree/<ref>/<subdir>).",
-      "The archive must be a zip carrying plugin.json; the plugin root is the shallowest directory holding one, and two of them at the same depth are refused.",
-      "The name is taken in this order: what you type here \u2192 the name the URL carries (a directory URL's last segment, a repository URL's repository name, a zip link's file name) \u2192 the plugin root's directory name; letters, digits, underscores and hyphens only. Importing from a repository URL therefore installs it under the repository's name.",
-      "Caps: an uploaded zip is at most 14 MB and a downloaded archive 32 MB; after unpacking, only the plugin root counts \u2014 200 files, 5 MB each, 20 MB in total.",
+      "The source is a local zip, or an address or npm package: a direct zip link, a GitHub repository (its default branch), a directory inside one (\u2026/tree/<ref>/<subdir>), or an npm package (@scope/name, @scope/name@1.2.3, npm:@scope/name \u2014 no version means `latest`).",
+      "The archive must be a zip carrying plugin.json, or an npm tgz (the tarball the registry serves for that version, checked against the checksum it published); the plugin root is the shallowest directory holding plugin.json, and two of them at the same depth are refused.",
+      "The name is taken in this order: what you type here \u2192 the name the source carries (a directory URL's last segment, a repository URL's repository name, an archive link's file name, an npm package's name without its scope) \u2192 the plugin root's directory name; letters, digits, underscores and hyphens only. Importing from a repository URL therefore installs it under the repository's name.",
+      "Caps: an uploaded zip is at most 14 MB, a downloaded archive 32 MB and an npm tarball 64 MB once unpacked; after unpacking, only the plugin root counts \u2014 200 files, 5 MB each, 20 MB in total.",
       "A name a built-in plugin already holds cannot be imported (pick another); a user plugin of the same name is confirmed first, and overwriting replaces every one of its files.",
     ],
     /**
@@ -2187,13 +2187,14 @@ export const en: Strings = {
     /** Sits under the field, and holds the submit back, while the typed name breaks the rule the server applies to the directory a plugin is installed into. */
     pluginNameInvalid: "Letters, digits, underscores and hyphens only (^[A-Za-z0-9_-]+$).",
     /** Remote download dialog. */
-    downloadTitle: "Download a plugin from a URL",
-    downloadUrlLabel: "Plugin URL",
+    downloadTitle: "Download a plugin from a URL or npm",
+    downloadUrlLabel: "Plugin URL or npm package name",
     downloadUrlHint:
-      "A direct zip link, or a GitHub repository URL (https://github.com/<owner>/<repo>, default branch) or a directory inside one (\u2026/tree/<ref>/<subdir>)",
-    downloadUrlPlaceholder: "https://github.com/<owner>/<repo> or https://\u2026/plugin.zip",
+      "A direct zip/tgz link, a GitHub repository URL (https://github.com/<owner>/<repo>, default branch) or a directory inside one (\u2026/tree/<ref>/<subdir>), or an npm package (@scope/name, @scope/name@1.2.3, npm:@scope/name \u2014 no version means `latest`)",
+    downloadUrlPlaceholder:
+      "@scope/name, https://github.com/<owner>/<repo> or https://\u2026/plugin.zip",
     downloadDesc:
-      "The archive must carry plugin.json; for a GitHub repository or directory URL the shallowest directory containing plugin.json becomes the plugin root.",
+      "The archive must carry plugin.json; for a GitHub repository or directory URL the shallowest directory containing plugin.json becomes the plugin root; for an npm package the server fetches the tarball of that version from the registry and checks the checksum it published.",
     downloadAction: "Download and import",
     /** "User" badge on a card whose plugin comes from the user plugin directory rather than the build. */
     userBadge: "User",
@@ -2222,9 +2223,15 @@ export const en: Strings = {
       plugin_builtin:
         "A built-in plugin cannot be overwritten or deleted (import it under another name).",
       unsupported_url:
-        "That URL is not supported: use a direct zip link, or a GitHub repository or directory URL.",
+        "That address is not supported: use a direct zip/tgz link, a GitHub repository or directory URL, or an npm package name.",
       blocked_url: "That URL was refused (an internal address, or one that is not allowed).",
       download_failed: "The download failed \u2014 check that the URL is reachable.",
+      npm_package_not_found: "npm has no such package.",
+      npm_version_not_found:
+        "npm has no such version; use an exact version or a dist-tag (such as latest).",
+      npm_registry_failed: "Could not read npm \u2014 try again in a moment.",
+      integrity_failed:
+        "The archive that came back does not match the checksum the registry published; the import was refused.",
       invalid_plugin: "The archive carries no valid plugin.json.",
       plugin_too_large: "The plugin archive exceeds the server's size limit.",
     },

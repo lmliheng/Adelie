@@ -64,6 +64,35 @@ describe("pluginNameFromUrl", () => {
     expect(pluginNameFromUrl("https://example.com/x.zip?token=abc#frag")).toBe("x");
     expect(pluginNameFromUrl("https://github.com/acme/my-plugin/")).toBe("my-plugin");
   });
+
+  it("names an npm package without its scope, whichever way the package is written", () => {
+    // The server installs under the package's own name — the scope is the publisher, and the
+    // package's directory (which is what carries plugin.json) is `package/` in every tarball.
+    expect(pluginNameFromUrl("@acme/data-analysis")).toBe("data-analysis");
+    expect(pluginNameFromUrl("@acme/data-analysis@2026.9.14.1")).toBe("data-analysis");
+    expect(pluginNameFromUrl("npm:@acme/data-analysis")).toBe("data-analysis");
+    expect(pluginNameFromUrl("data-analysis")).toBe("data-analysis");
+    expect(pluginNameFromUrl("npm:use-firecrawl@0.2.13")).toBe("use-firecrawl");
+    expect(pluginNameFromUrl("https://www.npmjs.com/package/@acme/data-analysis")).toBe(
+      "data-analysis",
+    );
+    expect(pluginNameFromUrl("https://www.npmjs.com/package/data-analysis/v/0.2.13")).toBe(
+      "data-analysis",
+    );
+  });
+
+  it("keeps a repository and a package apart, and leaves the shape of an archive link alone", () => {
+    // The name rule is a precedence the confirmation has to reproduce: a GitHub URL is still a
+    // repository's name, an npmjs.com page that is not a package page names nothing, and another
+    // host's `/package/` path is that host's business.
+    expect(pluginNameFromUrl("https://github.com/acme/my-plugin")).toBe("my-plugin");
+    expect(pluginNameFromUrl("https://www.npmjs.com/settings/acme/tokens")).toBe("tokens");
+    expect(pluginNameFromUrl("https://example.com/package/thing.zip")).toBe("thing");
+    // A tarball link is named like a zip: the file stem, both suffixes dropped.
+    expect(pluginNameFromUrl("https://example.com/releases/use-firecrawl-0.2.13.tgz")).toBe(
+      "use-firecrawl-0.2.13",
+    );
+  });
 });
 
 describe("pluginNameInvalid", () => {

@@ -2173,15 +2173,15 @@ export const zh = {
      * The import rules, shown as one numbered block at the foot of BOTH dialogs: they are the
      * shape a plugin has to arrive in, not the property of one source, and a reader who opened
      * the wrong dialog should still learn them. Ordered, because the name is decided by a
-     * precedence the reader has to walk (typed → URL → the archive's own layout), and that order
-     * is the trap a repository URL sets: it carries the repository's name.
+     * precedence the reader has to walk (typed → the source's own name → the archive's own
+     * layout), and that order is the trap a repository URL sets: it carries the repository's name.
      */
     importRulesTitle: "插件导入规则",
     importRules: [
-      "来源是本地 zip，或一个地址——zip 直链、GitHub 仓库地址（取默认分支）、仓库内目录地址（…/tree/<分支>/<子目录>）。",
-      "压缩包必须是含 plugin.json 的 zip；插件根取归档里最浅一层含 plugin.json 的目录，同一层出现多个则拒绝。",
-      "插件名依次取：你填的名字 → 地址自带的名字（目录地址取末段目录名、仓库地址取仓库名、zip 链接取文件名）→ 插件根的目录名；只能用字母、数字、下划线和中划线。所以从仓库地址导入会装成仓库名。",
-      "上传的 zip 不超过 14 MB，远程归档不超过 32 MB；解包后只统计插件根之下：200 个文件、单文件 5 MB、合计 20 MB。",
+      "来源是本地 zip，或一个地址／npm 包——zip 直链、GitHub 仓库地址（取默认分支）、仓库内目录地址（…/tree/<分支>/<子目录>）、npm 包名（@scope/名称、@scope/名称@1.2.3、npm:@scope/名称；不写版本就取 latest）。",
+      "压缩包必须是含 plugin.json 的 zip，或 npm 的 tgz（从 registry 取对应版本的 tarball 并校验其校验和）；插件根取归档里最浅一层含 plugin.json 的目录，同一层出现多个则拒绝。",
+      "插件名依次取：你填的名字 → 来源自带的名字（目录地址取末段目录名、仓库地址取仓库名、压缩包链接取文件名、npm 包取去掉 scope 的包名）→ 插件根的目录名；只能用字母、数字、下划线和中划线。所以从仓库地址导入会装成仓库名。",
+      "上传的 zip 不超过 14 MB，远程归档不超过 32 MB，npm 的 tgz 解压后不超过 64 MB；解包后只统计插件根之下：200 个文件、单文件 5 MB、合计 20 MB。",
       "内置插件占用的名字不能导入（换个名字）；同名用户插件会先问一次是否覆盖，覆盖即替换其全部文件。",
     ],
     /**
@@ -2229,13 +2229,14 @@ export const zh = {
     /** Sits under the field, and holds the submit back, while the typed name breaks the rule the server applies to the directory a plugin is installed into. */
     pluginNameInvalid: "只能用字母、数字、下划线和中划线（^[A-Za-z0-9_-]+$）。",
     /** Remote download dialog. */
-    downloadTitle: "远程下载插件",
-    downloadUrlLabel: "插件地址",
+    downloadTitle: "从地址或 npm 下载插件",
+    downloadUrlLabel: "插件地址或 npm 包名",
     downloadUrlHint:
-      "zip 直链，或 GitHub 仓库地址（https://github.com/<owner>/<repo>，取默认分支）与仓库内目录地址（…/tree/<ref>/<subdir>）",
-    downloadUrlPlaceholder: "https://github.com/<owner>/<repo> 或 https://…/plugin.zip",
+      "zip／tgz 直链，GitHub 仓库地址（https://github.com/<owner>/<repo>，取默认分支）与仓库内目录地址（…/tree/<ref>/<subdir>），或 npm 包（@scope/name、@scope/name@1.2.3、npm:@scope/name；不写版本则取 latest）",
+    downloadUrlPlaceholder:
+      "@scope/name、https://github.com/<owner>/<repo> 或 https://…/plugin.zip",
     downloadDesc:
-      "压缩包需带有 plugin.json；GitHub 仓库或目录地址会自动选取最浅一层含 plugin.json 的目录作为插件根。",
+      "压缩包需带有 plugin.json；GitHub 仓库或目录地址会自动选取最浅一层含 plugin.json 的目录作为插件根；npm 包由服务端向 registry 取该版本的 tarball，并核对它公布的校验和。",
     downloadAction: "下载并导入",
     /** "User" badge on a card whose plugin comes from the user plugin directory rather than the build. */
     userBadge: "用户",
@@ -2261,9 +2262,13 @@ export const zh = {
     importErrors: {
       plugin_exists: "已存在同名用户插件。",
       plugin_builtin: "内置插件不能被覆盖或删除（导入同名插件请另起一个名字）。",
-      unsupported_url: "该地址不受支持：请填 zip 直链，或 GitHub 仓库／目录地址。",
+      unsupported_url: "该地址不受支持：请填 zip／tgz 直链、GitHub 仓库／目录地址，或 npm 包名。",
       blocked_url: "该地址被拒绝（内网或其他不允许的地址）。",
       download_failed: "下载失败，请确认该地址可以访问。",
+      npm_package_not_found: "npm 上没有这个包。",
+      npm_version_not_found: "npm 上没有这个版本；请填确切版本号或 dist-tag（如 latest）。",
+      npm_registry_failed: "读取 npm 失败，请稍后重试。",
+      integrity_failed: "下载到的压缩包与 registry 公布的校验和不一致，已拒绝导入。",
       invalid_plugin: "压缩包里没有合法的 plugin.json。",
       plugin_too_large: "插件包超过了服务端的大小上限。",
     },

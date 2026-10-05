@@ -3887,15 +3887,23 @@ export interface PluginUploadRequest {
 }
 
 /**
- * POST /api/plugins/download: the same import, fetched server-side from a URL. Accepts a zip
- * archive, a GitHub repository URL (`https://github.com/<owner>/<repo>`, the default branch) or
- * a GitHub tree URL (`…/tree/<ref>/<subdir>` — `subdir` picks the plugin root inside the
- * archive), and answers the same errors as the upload route above, plus 400 `unsupported_url`
- * (not an http(s) URL, or a GitHub page that is not a repository or tree), 400 `blocked_url`
- * (a loopback, private or link-local host) and 400 `download_failed` (the request or its
- * status). Admin-only.
+ * POST /api/plugins/download: the same import, fetched server-side from a URL or from npm. Accepts
+ * a zip archive or a `.tgz`, a GitHub repository URL (`https://github.com/<owner>/<repo>`, the
+ * default branch), a GitHub tree URL (`…/tree/<ref>/<subdir>` — `subdir` picks the plugin root
+ * inside the archive), or an npm package (`@scope/name[@version]`, `npm:@scope/name`, the package
+ * page on npmjs.com; without a version, whatever `latest` is when the request runs). Answers the
+ * same errors as the upload route above, plus 400 `unsupported_url` (not an http(s) URL, or a
+ * GitHub page that is not a repository or tree), 400 `blocked_url` (a loopback, private or
+ * link-local host), 400 `download_failed` (the request or its status), 404 `npm_package_not_found`
+ * / 404 `npm_version_not_found`, 400 `npm_registry_failed` (the registry could not be read) and 400
+ * `integrity_failed` (the bytes are not what the registry published). Admin-only.
  */
 export interface PluginDownloadRequest {
+  /**
+   * The plugin's address, or its npm package name. Named `url` because that is what it usually is;
+   * everything npm takes (`npm:` specifiers, a bare `@scope/name`, npmjs.com and registry URLs) is
+   * read as a package name by the server.
+   */
   url: string;
   /** Overrides the derived plugin name. */
   name?: string;

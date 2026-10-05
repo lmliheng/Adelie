@@ -71,18 +71,23 @@ export function pluginNameBody(name: string): { name?: string } {
  * The plugin name a URL names, for the overwrite confirmation's copy — the name the server
  * would derive, read off the address the user pasted.
  *
+ * - an npm package (a bare `@scope/name`, an `npm:` specifier, an npmjs.com package page) names
+ *   the package WITHOUT its scope: the scope names a publisher, and the plugin is installed
+ *   under the name the package publishes under (`@acme/use-firecrawl` → `use-firecrawl`);
  * - `https://github.com/<owner>/<repo>` names the repo (a trailing `.git` included: the address
  *   bar hands one back when it was copied from the clone button);
  * - `…/tree/<ref>/<subdir…>` names the plugin root, i.e. the LAST segment of the subdirectory —
  *   the subdirectory IS the plugin (see the route's shallowest-plugin.json rule), and the ref
  *   in front of it names a commit rather than anything the user will recognize;
- * - anything else names its last segment with a `.zip` suffix dropped: a direct link to the
- *   archive.
+ * - anything else names its last segment with an archive suffix dropped: a direct link to the
+ *   zip or npm tarball.
  *
  * Query and fragment are stripped first: neither names anything, and a pasted address usually
  * ends in a trailing slash, which would otherwise leave an empty last segment.
  */
 export function pluginNameFromUrl(url: string): string {
+  const npm = pluginNameFromNpm(url);
+  if (npm !== undefined) return npm;
   const segments = url
     .trim()
     .replace(/[?#].*$/, "")
@@ -94,8 +99,55 @@ export function pluginNameFromUrl(url: string): string {
   if (tree !== -1 && segments.length <= tree + 2) return segments[tree - 1] ?? "";
   const last = segments[segments.length - 1] ?? "";
   // A tree URL points at a directory, so its last segment is already the name; everywhere else
-  // the last segment is a file (`plugin.zip`) or a repo (`plugin.git`).
-  return tree === -1 ? last.replace(/\.(zip|git)$/i, "") : last;
+  // the last segment is a file (`plugin.zip`, `plugin.tgz`) or a repo (`plugin.git`).
+  return tree === -1 ? last.replace(/\.(zip|tgz|tar\.gz|git)$/i, "") : last;
+}
+
+/** An npm package name: `name` or `@scope/name`, in the character set npm allows (the server's own reader, copied). */
+const NPM_PACKAGE_NAME = /^(?:@[A-Za-z0-9._~!*'()-]+\/)?[A-Za-z0-9._~!*'()-]+$/;
+
+/**
+ * The unscoped package name this text names as an npm package, or undefined when it names none —
+ * a client copy of the server's reader (services/plugin-download.ts), here for the same reason as
+ * the name pattern above: the web resolves the server's wire types, never its source, and both
+ * sides have to read the same input the same way for the confirmation to name the right plugin.
+ *
+ * The version is dropped because it is not part of the folder; the scope is dropped because the
+ * plugin is installed under the package's own name (the server's rule, and the reason importing
+ * `@acme/data-analysis` installs `data-analysis`).
+ */
+function pluginNameFromNpm(text: string): string | undefined {
+  const trimmed = text.trim();
+  let spec = trimmed;
+  if (/^npm:/i.test(trimmed)) {
+    spec = trimmed.slice("npm:".length).trim();
+  } else if (/^https?:\/\//i.test(trimmed)) {
+    // Only npmjs.com's PACKAGE page is a package: an account or search page names none, and
+    // another host's `/package/…` path is that site's business (the server fetches it as a link).
+    if (!/^https?:\/\/(?:www\.)?npmjs\.com\/package\//i.test(trimmed)) return undefined;
+    const parts = trimmed
+      .replace(/[?#].*$/, "")
+      .split("/")
+      .filter(Boolean);
+    const marker = parts.indexOf("package");
+    const first = marker === -1 ? undefined : parts[marker + 1];
+    if (first === undefined) return undefined;
+    const scoped = first.startsWith("@");
+    const name = scoped ? `${first}/${parts[marker + 2] ?? ""}` : first;
+    if (name.endsWith("/") || !NPM_PACKAGE_NAME.test(name)) return undefined;
+    return unscopedName(name);
+  }
+  // `name@version` / `@scope/name@version`: the scope's own `@` is the first character, so only a
+  // later one separates a version.
+  const at = spec.lastIndexOf("@");
+  const name = at > 0 ? spec.slice(0, at) : spec;
+  if (!NPM_PACKAGE_NAME.test(name)) return undefined;
+  return unscopedName(name);
+}
+
+/** `@scope/name` → `name` (the folder a plugin is installed under). */
+function unscopedName(name: string): string {
+  return name.startsWith("@") ? name.slice(name.indexOf("/") + 1) : name;
 }
 
 /** The name inside the 409 the plugin routes answer with: "A user plugin named <name> is already installed." */

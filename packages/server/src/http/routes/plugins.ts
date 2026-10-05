@@ -4,7 +4,7 @@
  *   GET    /api/plugins                                   # the built-in library by category (any logged-in user)
  *   GET    /api/plugins/directory                         # the user plugin directory (any logged-in user)
  *   POST   /api/plugins/upload                            # install a plugin from an uploaded zip (admin)
- *   POST   /api/plugins/download                          # install a plugin fetched from a URL (admin)
+ *   POST   /api/plugins/download                          # install a plugin fetched from a URL or npm (admin)
  *   GET    /api/plugins/:plugin/files                     # the files a library plugin ships, for the detail view's browser
  *   GET    /api/plugins/:plugin/archive                   # export a plugin as a zip (any logged-in user)
  *   DELETE /api/plugins/:plugin                           # uninstall a user plugin (admin)
@@ -95,9 +95,10 @@ import {
 } from "../../services/plugin-library.js";
 import {
   fetchPluginArchive,
-  normalizePluginUrl,
   pluginArchiveTooLarge,
+  resolvePluginSource,
 } from "../../services/plugin-download.js";
+import { gunzipBounded, isGzip, tarEntryNames, untarBounded } from "../../services/tar-archive.js";
 import { assertSafeEntryPath, MAX_ARCHIVE_BYTES } from "./skills.js";
 import { unzipBounded } from "../../services/skill-import-limits.js";
 
@@ -190,51 +191,77 @@ function pluginRootIn(paths: readonly string[], subdir: string): string {
 
 /**
  * Decodes an uploaded or downloaded archive into the files of one plugin. Everything a client
- * supplies is checked here, before a byte is written: the zip's declared sizes through
- * `unzipBounded` (which is where the caps have to be enforced — see that module), every entry
- * path against zip-slip, the plugin root's ambiguity, and the name against the plugin-name
- * rule. Directories the archive declares are skipped: the paths of the files recreate them.
+ * supplies is checked here, before a byte is written: the declared sizes through `unzipBounded` /
+ * `untarBounded` (which is where the caps have to be enforced — see those modules), every entry
+ * path against traversal, the plugin root's ambiguity, and the name against the plugin-name rule.
+ * Directories the archive declares are skipped: the paths of the files recreate them.
+ *
+ * Two formats reach this function, and it does not care which: a zip (an operator's upload, a
+ * GitHub archive, an exported plugin) and the gzipped tar npm publishes (see
+ * services/plugin-download.ts). The signature bytes decide, and everything after that — the root,
+ * the caps, the naming — is the same question about the same kind of content.
  */
 export function parsePluginArchive(
   archive: Buffer,
   options: { name?: string; subdir?: string } = {},
 ): ParsedPluginArchive {
   // Two passes, because an archive is not necessarily a plugin: a GitHub tree download is a
-  // whole repository with one plugin somewhere inside it. The first pass reads the central
-  // directory alone — every entry name, nothing inflated — to find the plugin root; the second
-  // inflates that root's files only. So the caps bound the PLUGIN (200 files, 5MB each, 20MB
+  // whole repository with one plugin somewhere inside it. The first pass reads the entry names
+  // alone — a zip's central directory, a tar's headers — to find the plugin root; the second
+  // unpacks that root's files only. So the caps bound the PLUGIN (200 files, 5MB each, 20MB
   // total, the same numbers an upload of a single plugin gets) instead of failing on the
   // repository that happens to be wrapped around it, and a hundred-megabyte checkout is never
   // expanded to serve a thirty-file plugin.
   const bytes = new Uint8Array(archive);
+  const tarball = isGzip(bytes);
+  // A tarball is gunzipped first, and that happens before any of the above: its headers are only
+  // reachable through the compression, so its own module bounds what one may inflate to.
+  const opened = tarball ? gunzipBounded(bytes) : bytes;
   let names: string[];
   try {
-    names = entryNames(bytes);
-  } catch {
-    throw badRequest("The archive is not a valid zip file.");
+    names = tarball ? tarEntryNames(opened) : entryNames(bytes);
+  } catch (err) {
+    if (err instanceof HttpError) throw err;
+    throw badRequest(
+      tarball ? "The archive is not a valid npm tarball." : "The archive is not a valid zip file.",
+    );
   }
   if (names.length === 0) throw badRequest("The archive contains no files.");
   const root = pluginRootIn(names, options.subdir ?? "");
   const prefix = root === "" ? "" : `${root}/`;
   let entries: Record<string, Uint8Array>;
   try {
-    entries = unzipBounded(bytes, (name) => prefix === "" || name.startsWith(prefix));
+    entries = tarball
+      ? untarBounded(opened, (name) => prefix === "" || name.startsWith(prefix))
+      : unzipBounded(bytes, (name) => prefix === "" || name.startsWith(prefix));
   } catch (err) {
-    // The caps arrive as 400s of their own; anything else means the bytes are not a zip.
+    // The caps arrive as 400s of their own; anything else means the bytes are not that format.
     if (err instanceof HttpError) throw err;
-    throw badRequest("The archive is not a valid zip file.");
+    throw badRequest(
+      tarball ? "The archive is not a valid npm tarball." : "The archive is not a valid zip file.",
+    );
   }
   const rootFiles: Record<string, Uint8Array> = {};
   for (const [entry, data] of Object.entries(entries)) {
     if (entry.endsWith("/")) continue;
-    assertSafeEntryPath(entry);
+    // The tar reader checked its own member paths as it walked them — the walk is what chooses the
+    // root, so it cannot be deferred; a zip's central directory carries them unchecked, and this
+    // is where they are checked.
+    if (!tarball) assertSafeEntryPath(entry);
     rootFiles[entry.slice(prefix.length)] = data;
   }
-  // The archive's own layout names the plugin unless the request says otherwise; an archive
-  // with plugin.json at its root has no directory to take a name from.
-  const name = options.name ?? (root === "" ? undefined : path.basename(root));
+  // The archive's own layout names the plugin unless the request says otherwise. Two layouts
+  // cannot: plugin.json at the archive's root, and a tarball — which npm wraps in a `package/`
+  // directory that names the publisher's package format rather than anybody's plugin.
+  const named =
+    tarball && root === "package" ? undefined : root === "" ? undefined : path.basename(root);
+  const name = options.name ?? named;
   if (name === undefined) {
-    throw badRequest("name is required when the archive carries plugin.json at its root.");
+    throw badRequest(
+      tarball
+        ? "name is required for a tarball: npm wraps every package in a `package/` directory, which names the format rather than the plugin."
+        : "name is required when the archive carries plugin.json at its root.",
+    );
   }
   if (!PLUGIN_NAME_PATTERN.test(name)) {
     throw new HttpError(400, "invalid_plugin", `Not a valid plugin name: ${name}`);
@@ -328,16 +355,19 @@ export function pluginLibraryRoutes(deps: PluginsRouteDeps): Hono<AppEnv> {
     );
   });
 
-  // Install one plugin from a URL the operator names (admin). The whole download runs
-  // server-side: the server is what has the network position to reach it, and the archive is
-  // validated by the same parser the upload route uses, whichever way the bytes arrived.
+  // Install one plugin from what the operator names (admin): an address, or an npm package
+  // (`@scope/name[@version]`, or the `npm:` spelling — see resolvePluginSource). The whole
+  // download runs server-side: the server is what has the network position to reach it, and the
+  // archive is validated by the same parser the upload route uses, whichever way the bytes
+  // arrived. An npm name costs two requests (the packument, then the tarball it points at); the
+  // checksum the packument carries comes back with the source and is verified on the bytes.
   app.post("/download", async (c) => {
     requireAdmin(c);
     const body = await readJson(c);
     const url = requireString(body, "url", { minLen: 1, maxLen: 2048 });
     const requestedName = optionalString(body, "name", { maxLen: 128 });
     const requestedSubdir = optionalString(body, "subdir", { maxLen: 512 });
-    const source = normalizePluginUrl(url);
+    const source = await resolvePluginSource(url);
     const archive = await fetchPluginArchive(source);
     if (archive.byteLength === 0) throw badRequest("The download is empty.");
     // What the request says wins over what the URL suggests: a name is what the operator asked
