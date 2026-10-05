@@ -15,6 +15,9 @@
  * (Desktop, Documents, Downloads) looks exactly like that, and an empty list sent people
  * looking for files that were there all along.
  *
+ * POST /api/projects/:p/dirs makes one folder inside the folder being browsed, which is the
+ * picker's "New folder": see the route for what it refuses.
+ *
  * POST /api/projects/:p/dirs/access is the picker's way out of that refusal in the desktop
  * app: see the route.
  *
@@ -24,7 +27,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Hono } from "hono";
-import type { DirAccessResponse, DirEntryInfo, DirListResponse } from "../../api/types.js";
+import type {
+  DirAccessResponse,
+  DirCreateResponse,
+  DirEntryInfo,
+  DirListResponse,
+} from "../../api/types.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import { HttpError } from "../errors.js";
 import { requireValidId } from "../validate.js";
@@ -73,6 +81,41 @@ export function dirsRoutes(deps: DirsRouteDeps): Hono<AppEnv> {
       // its sidebar, and probing 26 letters on every folder change would be waste.
       ...(home && process.platform === "win32" ? { roots: await driveRoots() } : {}),
     } satisfies DirListResponse);
+  });
+
+  /**
+   * The picker's "New folder": `parent` is the folder on screen, `name` the single segment to
+   * make inside it. The name is joined here rather than taken as a path, so a caller cannot
+   * walk out of the folder it is looking at with a separator or a `..` — the whole point of
+   * putting the box in the picker is that what it makes lands where the user can see it.
+   *
+   * It makes exactly one folder: `recursive` is off, so a typo in `parent` is a 404 rather than
+   * a silent tree of new folders, and a name already taken is a 409 the picker can point at
+   * rather than a silent success. 201 with the path made, which is what the picker selects.
+   */
+  app.post("/", async (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectAccess(c.var.user.userId, projectId);
+
+    const body = (await c.req.json().catch(() => null)) as {
+      parent?: unknown;
+      name?: unknown;
+    } | null;
+    const parent = typeof body?.parent === "string" ? body.parent.trim() : "";
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    if (!path.isAbsolute(parent)) {
+      throw new HttpError(400, "dir_not_absolute", "Directory must be an absolute path.");
+    }
+    const bad = dirNameError(name);
+    if (bad !== null) throw bad;
+
+    const target = path.join(parent, name);
+    try {
+      await fs.mkdir(target);
+    } catch (err) {
+      throw dirCreateError(err, target);
+    }
+    return c.json({ path: target } satisfies DirCreateResponse, 201);
   });
 
   /**
@@ -137,6 +180,54 @@ export function dirReadError(err: unknown, dir: string): HttpError {
     return new HttpError(404, "dir_not_found", `Directory does not exist: ${dir}.`);
   }
   return new HttpError(500, "dir_read_failed", `Could not read this directory: ${dir}.`);
+}
+
+/**
+ * Why a folder name cannot be made, or null when it can. A name is ONE segment: a separator
+ * (either spelling — a name travels between machines), `.`/`..`, or the empty string would
+ * either escape the folder on screen or name nothing, and a NUL is not a path at all. What is
+ * left is checked by the filesystem, not here: a name the platform dislikes (`*` on Windows)
+ * comes back as a create error, not as this route's own opinion.
+ */
+export function dirNameError(name: string): HttpError | null {
+  if (name === "") {
+    return new HttpError(400, "dir_name_empty", "Enter a folder name.");
+  }
+  if (name === "." || name === ".." || /[\\/]/.test(name) || name.includes("\0")) {
+    return new HttpError(400, "dir_name_invalid", "A folder name cannot be a path, `.` or `..`.");
+  }
+  return null;
+}
+
+/**
+ * The HTTP answer for a `mkdir` that failed. "Already there" is its own code so the picker can
+ * say the name is taken and keep the box open with what was typed; a name the platform refuses
+ * (a reserved one, a character its filesystem will not hold) is a 400 rather than a 500, since
+ * it is the input and not the server that is wrong.
+ */
+export function dirCreateError(err: unknown, target: string): HttpError {
+  const code = (err as NodeJS.ErrnoException | null)?.code;
+  if (code === "EEXIST") {
+    return new HttpError(409, "dir_exists", `Something is already there: ${target}.`);
+  }
+  if (code === "EACCES" || code === "EPERM") {
+    return new HttpError(
+      403,
+      "dir_permission_denied",
+      `The server is not allowed to write here: ${path.dirname(target)}.`,
+    );
+  }
+  if (code === "ENOENT" || code === "ENOTDIR") {
+    return new HttpError(
+      404,
+      "dir_not_found",
+      `Directory does not exist: ${path.dirname(target)}.`,
+    );
+  }
+  if (code === "EINVAL" || code === "ENAMETOOLONG") {
+    return new HttpError(400, "dir_name_invalid", `That folder name cannot be used: ${target}.`);
+  }
+  return new HttpError(500, "dir_create_failed", `Could not create this folder: ${target}.`);
 }
 
 /**

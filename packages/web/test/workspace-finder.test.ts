@@ -286,13 +286,20 @@ describe("the context menu", () => {
     expect(finderMenuItems({ ...folder, kind: "file" }, false)).toEqual(["copyPath"]);
   });
 
-  it("acts on the open folder from the list's empty space, with Refresh", () => {
+  it("acts on the open folder from the list's empty space, with New folder and Refresh", () => {
     expect(finderMenuItems({ kind: "here", path: "/p", machine: null }, false)).toEqual([
       "choose",
+      "newFolder",
       "addToQuickAccess",
       "copyPath",
       "refresh",
     ]);
+  });
+
+  it("never offers a folder row New folder: a row acts on itself, not on the folder on screen", () => {
+    const folder = { kind: "folder" as const, path: "/p/a", machine: null };
+    expect(finderMenuItems(folder, false)).not.toContain("newFolder");
+    expect(finderMenuItems({ ...folder, kind: "file" }, false)).not.toContain("newFolder");
   });
 });
 

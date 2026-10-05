@@ -8,7 +8,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { DirListResponse, ProjectCreateResponse } from "../src/api/types.js";
+import type {
+  DirCreateResponse,
+  DirListResponse,
+  ProjectCreateResponse,
+} from "../src/api/types.js";
 import { dirReadError } from "../src/http/routes/dirs.js";
 import { apiClient, createTestApp, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
@@ -87,4 +91,80 @@ describe("dirs api", () => {
       );
     },
   );
+});
+
+describe("dir create api", () => {
+  let t: TestApp;
+  let owner: ReturnType<typeof apiClient>;
+  let projectId: string;
+  let dir: string;
+
+  const createUrl = () => `/api/projects/${projectId}/dirs`;
+  const listUrl = (p: string) => `${createUrl()}?path=${encodeURIComponent(p)}`;
+  const create = (parent: unknown, name: unknown) => owner.post(createUrl(), { parent, name });
+
+  beforeEach(async () => {
+    t = await createTestApp();
+    const a = await provisionUser(t.app, "owner_mkdir");
+    owner = apiClient(t.app, a.cookie);
+    const created = (await (
+      await owner.post("/api/projects", { projectId: "owner_mkdir-dirs", name: "mkdir project" })
+    ).json()) as ProjectCreateResponse;
+    projectId = created.project.projectId;
+    dir = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "penguin-mkdir-")));
+  });
+
+  afterEach(async () => {
+    await t.cleanup();
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  });
+
+  it("makes one folder and answers with its path", async () => {
+    const res = await create(dir, "notes");
+    expect(res.status).toBe(201);
+    expect(((await res.json()) as DirCreateResponse).path).toBe(path.join(dir, "notes"));
+    expect((await fs.stat(path.join(dir, "notes"))).isDirectory()).toBe(true);
+    // Visible to the picker straight away, since that is what the answer is for.
+    const listing = (await (await owner.get(listUrl(dir))).json()) as DirListResponse;
+    expect(listing.entries.map((e) => e.name)).toContain("notes");
+  });
+
+  it("refuses a name that is a path, `.`, `..` or empty, without touching the disk", async () => {
+    for (const [name, code] of [
+      ["a/b", "dir_name_invalid"],
+      ["a\\b", "dir_name_invalid"],
+      ["..", "dir_name_invalid"],
+      [".", "dir_name_invalid"],
+      ["", "dir_name_empty"],
+    ] as const) {
+      const res = await create(dir, name);
+      expect([res.status, ((await res.json()) as { error: { code: string } }).error.code]).toEqual([
+        400,
+        code,
+      ]);
+    }
+    // Nothing was made: a rejected name never reaches the filesystem as a path.
+    expect(await fs.readdir(dir)).toEqual([]);
+  });
+
+  it("keeps a name already taken a 409, and a parent that is not there a 404", async () => {
+    await fs.mkdir(path.join(dir, "taken"));
+    expect((await create(dir, "taken")).status).toBe(409);
+    expect((await create(path.join(dir, "gone"), "child")).status).toBe(404);
+  });
+
+  it("needs an absolute parent", async () => {
+    expect((await create("relative", "child")).status).toBe(400);
+  });
+
+  it("is refused to a caller who may not see the Project", async () => {
+    const stranger = await provisionUser(t.app, "stranger_mkdir");
+    const res = await apiClient(t.app, stranger.cookie).post(createUrl(), {
+      parent: dir,
+      name: "nope",
+    });
+    // The Project does not exist for this caller, so the route is not theirs to reach.
+    expect([403, 404]).toContain(res.status);
+    expect(await fs.readdir(dir)).toEqual([]);
+  });
 });

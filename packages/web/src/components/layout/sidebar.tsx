@@ -2367,7 +2367,10 @@ export function Sidebar({
               open={listSettingsOpen}
               setOpen={setListSettingsOpen}
               portal={{ direction: "down", align: "right" }}
-              menuClass="w-40"
+              // Sized to the rows, never to a guess: a fixed narrow width clipped "Group by
+              // workspace" to "Group by work…", and the rows are the only thing that knows how
+              // wide they have to be. Same idiom as the finder's own menu.
+              menuClass="w-max min-w-40 max-w-[calc(100vw-2rem)]"
               button={
                 <SidebarControl
                   label={S.chat.listSettings}

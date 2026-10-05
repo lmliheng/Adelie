@@ -119,6 +119,7 @@ const PLACE_ICON: Record<Place["key"], string> = {
 const MENU_ICON: Record<FinderMenuItem, string> = {
   open: ICONS.folderOpen,
   choose: CHECK_ICON,
+  newFolder: ICONS.folderPlus,
   addToQuickAccess: ICONS.pin,
   removeFromQuickAccess: ICONS.pin,
   copyPath: STAT_ICONS.copy,
@@ -212,6 +213,15 @@ export function WorkspaceFinder({
   /** The selected row, by path — survives a reload and a filter that keeps it. */
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  /**
+   * The name box while a folder is being made. Only this server can be asked to make one — a
+   * machine browsed over ssh lists folders and nothing else — so the box is not offered while
+   * another machine is on screen. `creating` holds the request, so Enter twice makes one folder.
+   */
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const newFolderRef = useRef<HTMLInputElement>(null);
   /** The address bar is a path field (clicked, or ⌘⇧G) rather than breadcrumbs; the draft is what it holds. */
   const [addressEditing, setAddressEditing] = useState(false);
   const [addressDraft, setAddressDraft] = useState("");
@@ -268,6 +278,8 @@ export function WorkspaceFinder({
         setView({ path: res.path, listing: res, error: null });
         setSelected(opts.select ?? null);
         setFilter("");
+        setNewFolderOpen(false);
+        setNewFolderName("");
         if (opts.record !== false) setHistory((h) => historyVisit(h, res.path));
       })
       .catch((err: unknown) => {
@@ -278,6 +290,8 @@ export function WorkspaceFinder({
         setView({ path: target, listing: null, error: err });
         setSelected(null);
         setFilter("");
+        setNewFolderOpen(false);
+        setNewFolderName("");
         if (opts.record !== false && target !== "") setHistory((h) => historyVisit(h, target));
       })
       .finally(() => {
@@ -411,6 +425,17 @@ export function WorkspaceFinder({
   const chooseTarget = selectedEntry?.path ?? view.listing?.path ?? null;
   const platform = view.listing?.platform ?? homeListing?.platform;
   const crumbs = splitBreadcrumbs(view.path);
+  /** "New folder" is offered only where it can be honoured: this server's own filesystem. */
+  const canCreateFolder = machine === null && view.error === null && view.listing !== null;
+
+  // Opening the box puts the caret in it, selected, so a name is typed straight over any
+  // suggestion the browser made. Keyed on the box alone: re-running per keystroke would fight
+  // the typing it is there to serve.
+  useEffect(() => {
+    if (!newFolderOpen) return;
+    newFolderRef.current?.focus();
+    newFolderRef.current?.select();
+  }, [newFolderOpen]);
 
   // Keep the selected row in sight as the keyboard moves it.
   useEffect(() => {
@@ -464,6 +489,40 @@ export function WorkspaceFinder({
   const refresh = () => {
     const path = view.listing?.path ?? view.path;
     if (path !== "") load(path, { record: false, select: selected });
+  };
+
+  /** Opens the name box, with the filter cleared so the folder about to be made is visible in the list. */
+  const startNewFolder = () => {
+    if (!canCreateFolder) return;
+    setFilter("");
+    setNewFolderName("");
+    setNewFolderOpen(true);
+  };
+
+  /**
+   * Makes the folder the box names, then reveals it: the folder on screen is re-read with the
+   * new one selected, so what was made is on screen rather than merely reported. A refusal —
+   * a name taken, one the system will not accept — leaves the box open with what was typed,
+   * since the name is the thing to change; the reason is shown as a toast, which can speak
+   * while the box keeps the caret.
+   */
+  const createFolder = () => {
+    const parent = view.listing?.path ?? null;
+    const name = newFolderName.trim();
+    if (parent === null || creating) return;
+    if (name === "") {
+      newFolderRef.current?.focus();
+      return;
+    }
+    setCreating(true);
+    api
+      .createDir(projectId, parent, name)
+      .then((res) => load(parent, { record: false, select: res.path }))
+      .catch((err: unknown) => {
+        toastError(apiErrorText(err));
+        newFolderRef.current?.focus();
+      })
+      .finally(() => setCreating(false));
   };
 
   /**
@@ -566,6 +625,11 @@ export function WorkspaceFinder({
       case "choose":
         onChoose(target.path, target.machine);
         return;
+      case "newFolder":
+        // The menu only carries this row for the folder on screen of this server (see the
+        // panel's item filter), so there is nothing to re-root: the box opens where we stand.
+        startNewFolder();
+        break;
       case "addToQuickAccess":
       case "removeFromQuickAccess":
         editQuickAccess(target.path, target.machine, item === "addToQuickAccess");
@@ -589,6 +653,8 @@ export function WorkspaceFinder({
         return f.open;
       case "choose":
         return target.kind === "here" ? f.chooseCurrent : f.chooseThis;
+      case "newFolder":
+        return f.newFolder;
       case "addToQuickAccess":
         return f.addToQuickAccess;
       case "removeFromQuickAccess":
@@ -609,6 +675,9 @@ export function WorkspaceFinder({
   const menuTargetAt = (
     at: EventTarget | null,
   ): { target: FinderMenuTarget; el: HTMLElement } | null => {
+    // A text field keeps its own menu: the name box sits inside the list's box, so without
+    // this the folder behind it would answer a right-click the field was asked.
+    if (at instanceof Element && at.closest("input, textarea") !== null) return null;
     const el =
       at instanceof Element
         ? at.closest<HTMLElement>("[data-finder-path], [data-finder-here]")
@@ -1147,6 +1216,19 @@ export function WorkspaceFinder({
         >
           <GlyphIcon d={ICONS.refresh} size={ICON_SIZE.iconButton} />
         </button>
+        {/* Like Refresh, the phone reaches this from the list's context menu — the toolbar
+            keeps only the navigation there, where the address bar needs the width. */}
+        {canCreateFolder && (
+          <button
+            type="button"
+            className={`${navButtonClass} hidden sm:block`}
+            data-tooltip={f.newFolder}
+            aria-label={f.newFolder}
+            onClick={startNewFolder}
+          >
+            <GlyphIcon d={ICONS.folderPlus} size={ICON_SIZE.iconButton} />
+          </button>
+        )}
       </div>
       {addressBar}
       <label className="relative flex shrink-0 items-center">
@@ -1235,84 +1317,129 @@ export function WorkspaceFinder({
     );
   } else if (view.listing === null) {
     body = <p className="px-4 py-3 text-xs text-gray-400">{S.common.loading}</p>;
-  } else if (entries.length === 0) {
+  } else if (entries.length === 0 && !newFolderOpen) {
     body = (
       <p className="px-4 py-3 text-xs text-gray-400">
         {filter.trim() !== "" ? f.noMatch(filter.trim()) : f.empty}
       </p>
     );
   } else {
-    body = entries.map((entry, i) => {
-      const folder = isFolder(entry);
-      const isSel = i === selIndex;
-      const accent = isSel && listFocused;
-      return (
-        <div
-          key={entry.path}
-          id={`${listId}-${i}`}
-          role="option"
-          // Named by the folder alone: the date and the enter button are the row's furniture.
-          aria-label={entry.name}
-          aria-selected={isSel}
-          aria-disabled={folder ? undefined : true}
-          data-tooltip={folder ? entry.path : f.fileNotSelectable}
-          data-finder-path={entry.path}
-          data-finder-kind={folder ? "folder" : "file"}
-          onClick={() => {
-            if (!folder) return;
-            if (isCoarsePointer()) openEntry(entry.path);
-            else setSelected(entry.path);
+    // The name box rides at the head of the list, where the folder it will make will appear, and
+    // an otherwise-empty folder shows it instead of "this folder is empty".
+    const newFolderRow = newFolderOpen ? (
+      <div className="flex select-none items-center gap-1 py-1 pl-3 pr-2">
+        <GlyphIcon d={ICONS.folder} size={ICON_SIZE.rowLead} className="shrink-0 text-gray-400" />
+        <input
+          ref={newFolderRef}
+          value={newFolderName}
+          aria-label={f.newFolder}
+          placeholder={f.newFolderName}
+          data-tooltip={f.newFolderHint}
+          disabled={creating}
+          {...noAutofill}
+          onChange={(e) => setNewFolderName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              // The finder's own Enter opens the selected folder; this Enter makes the folder.
+              e.stopPropagation();
+              createFolder();
+            } else if (e.key === "Escape") {
+              // Escape closes the box, not the finder (see the wrapper's key map).
+              e.preventDefault();
+              e.stopPropagation();
+              setNewFolderOpen(false);
+            }
           }}
-          onDoubleClick={() => folder && openEntry(entry.path)}
-          className={`flex select-none items-center ${ICON_GAP.menu} py-1 pl-3 pr-2 text-sm ${
-            !folder
-              ? "cursor-default text-gray-400 dark:text-gray-600"
-              : isSel
-                ? listFocused
-                  ? "bg-accent text-accent-fg"
-                  : "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
-                : "cursor-default text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800/60"
-          }`}
-        >
-          <GlyphIcon
-            d={folder ? ICONS.folder : ICONS.file}
-            size={ICON_SIZE.rowLead}
-            className={`shrink-0 ${accent ? "" : "text-gray-400"}`}
-          />
-          <span className="min-w-0 flex-1 truncate">{entry.name}</span>
-          <span
-            className={`hidden w-36 shrink-0 text-xs tabular-nums sm:block ${accent ? "" : "text-gray-400 dark:text-gray-500"}`}
-          >
-            {entry.mtime !== undefined ? formatDateTime(new Date(entry.mtime).toISOString()) : "—"}
-          </span>
-          {/* A second way into a folder beside the double click — one a touch screen, a
+          // Focus moving away — to the list, to another control — abandons the new folder, the
+          // way Explorer's does; a request already in flight is left to finish.
+          onBlur={() => {
+            if (!creating) setNewFolderOpen(false);
+          }}
+          className="h-6 min-w-0 flex-1 rounded-sm border border-gray-300 bg-white px-1.5 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:border-gray-400 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+        />
+      </div>
+    ) : null;
+    body = (
+      <>
+        {newFolderRow}
+        {entries.length === 0
+          ? null
+          : entries.map((entry, i) => {
+              const folder = isFolder(entry);
+              const isSel = i === selIndex;
+              const accent = isSel && listFocused;
+              return (
+                <div
+                  key={entry.path}
+                  id={`${listId}-${i}`}
+                  role="option"
+                  // Named by the folder alone: the date and the enter button are the row's furniture.
+                  aria-label={entry.name}
+                  aria-selected={isSel}
+                  aria-disabled={folder ? undefined : true}
+                  data-tooltip={folder ? entry.path : f.fileNotSelectable}
+                  data-finder-path={entry.path}
+                  data-finder-kind={folder ? "folder" : "file"}
+                  onClick={() => {
+                    if (!folder) return;
+                    if (isCoarsePointer()) openEntry(entry.path);
+                    else setSelected(entry.path);
+                  }}
+                  onDoubleClick={() => folder && openEntry(entry.path)}
+                  className={`flex select-none items-center ${ICON_GAP.menu} py-1 pl-3 pr-2 text-sm ${
+                    !folder
+                      ? "cursor-default text-gray-400 dark:text-gray-600"
+                      : isSel
+                        ? listFocused
+                          ? "bg-accent text-accent-fg"
+                          : "bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
+                        : "cursor-default text-gray-800 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800/60"
+                  }`}
+                >
+                  <GlyphIcon
+                    d={folder ? ICONS.folder : ICONS.file}
+                    size={ICON_SIZE.rowLead}
+                    className={`shrink-0 ${accent ? "" : "text-gray-400"}`}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{entry.name}</span>
+                  <span
+                    className={`hidden w-36 shrink-0 text-xs tabular-nums sm:block ${accent ? "" : "text-gray-400 dark:text-gray-500"}`}
+                  >
+                    {entry.mtime !== undefined
+                      ? formatDateTime(new Date(entry.mtime).toISOString())
+                      : "—"}
+                  </span>
+                  {/* A second way into a folder beside the double click — one a touch screen, a
               trackpad and a first-time user all find. Out of the tab order: the list's own
               Enter is the keyboard's way in. A file keeps the slot empty so dates line up. */}
-          {folder ? (
-            <button
-              type="button"
-              tabIndex={-1}
-              aria-label={f.openFolder(entry.name)}
-              data-tooltip={f.open}
-              onClick={(e) => {
-                e.stopPropagation();
-                openEntry(entry.path);
-              }}
-              onDoubleClick={(e) => e.stopPropagation()}
-              className={`flex w-6 shrink-0 justify-center rounded py-0.5 transition-colors duration-150 ${
-                accent
-                  ? "text-current"
-                  : "text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100"
-              }`}
-            >
-              <GlyphIcon d={ENTER_ICON} size={ICON_SIZE.inlineGlyph} />
-            </button>
-          ) : (
-            <span className="w-6 shrink-0" aria-hidden />
-          )}
-        </div>
-      );
-    });
+                  {folder ? (
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      aria-label={f.openFolder(entry.name)}
+                      data-tooltip={f.open}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEntry(entry.path);
+                      }}
+                      onDoubleClick={(e) => e.stopPropagation()}
+                      className={`flex w-6 shrink-0 justify-center rounded py-0.5 transition-colors duration-150 ${
+                        accent
+                          ? "text-current"
+                          : "text-gray-400 hover:text-gray-900 dark:text-gray-500 dark:hover:text-gray-100"
+                      }`}
+                    >
+                      <GlyphIcon d={ENTER_ICON} size={ICON_SIZE.inlineGlyph} />
+                    </button>
+                  ) : (
+                    <span className="w-6 shrink-0" aria-hidden />
+                  )}
+                </div>
+              );
+            })}
+      </>
+    );
   }
 
   const clear = clearButton({
@@ -1382,8 +1509,9 @@ export function WorkspaceFinder({
               data-finder-here=""
               // A listbox only while it holds rows: a message (empty, loading, an error with
               // its Retry) is not an option, and the pane stays focusable either way so the
-              // keyboard chords keep working from it.
-              role={hasRows ? "listbox" : "region"}
+              // keyboard chords keep working from it. The name box is not an option either, so
+              // the list steps out of the role while it is up.
+              role={hasRows && !newFolderOpen ? "listbox" : "region"}
               tabIndex={0}
               aria-label={crumbs[crumbs.length - 1]?.label ?? title}
               aria-busy={loading}
@@ -1420,16 +1548,18 @@ export function WorkspaceFinder({
           button={null}
         >
           <Menu density="sm">
-            {finderMenuItems(menuTarget, inQuickAccess(menuTarget.path, menuTarget.machine)).map(
-              (item) => (
+            {finderMenuItems(menuTarget, inQuickAccess(menuTarget.path, menuTarget.machine))
+              // Making a folder is this server's own filesystem work: a machine browsed over ssh
+              // lists folders and cannot be asked to make one, so the row is not offered there.
+              .filter((item) => item !== "newFolder" || menuTarget.machine === null)
+              .map((item) => (
                 <MenuItem
                   key={item}
                   glyph={MENU_ICON[item]}
                   label={menuLabel(item, menuTarget)}
                   onSelect={() => runMenuItem(item, menuTarget)}
                 />
-              ),
-            )}
+              ))}
           </Menu>
         </Dropdown>
       )}

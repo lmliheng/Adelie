@@ -39,6 +39,7 @@ import type {
   DesktopPrivacyPane,
   DesktopUpdateStatusResponse,
   DirAccessResponse,
+  DirCreateResponse,
   DirectorySkillsResponse,
   DirListResponse,
   EndpointModelListRequest,
@@ -732,6 +733,17 @@ export const listDirs = (projectId: string, path = "", machineId?: string | null
     : apiFetch<DirListResponse>(
         `/api/projects/${encodeURIComponent(projectId)}/machines/${encodeURIComponent(machineId)}/dirs?path=${encodeURIComponent(path)}`,
       );
+
+/**
+ * Makes one folder inside `parent` (the picker's "New folder"). `name` is a single segment, not
+ * a path, and only this server can be asked: a machine browsed over ssh lists folders, and the
+ * picker offers no "New folder" while it is browsing one.
+ */
+export const createDir = (projectId: string, parent: string, name: string) =>
+  apiFetch<DirCreateResponse>(`/api/projects/${encodeURIComponent(projectId)}/dirs`, {
+    method: "POST",
+    body: { parent, name },
+  });
 
 /**
  * Asks the desktop shell to read a folder macOS refused, in the app's own name — what makes

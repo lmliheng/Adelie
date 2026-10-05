@@ -351,13 +351,19 @@ export interface FinderMenuTarget {
 }
 
 export type FinderMenuItem =
-  "open" | "choose" | "addToQuickAccess" | "removeFromQuickAccess" | "copyPath" | "refresh";
+  | "open"
+  | "choose"
+  | "newFolder"
+  | "addToQuickAccess"
+  | "removeFromQuickAccess"
+  | "copyPath"
+  | "refresh";
 
 /**
  * The context menu's rows, the way Explorer orders them: what opening the thing does first,
  * then choosing it, then Quick access, then copying its path. A file row only copies (files
  * are listed for context and cannot be picked); the empty space acts on the open folder, and
- * adds Refresh as Explorer's background menu does.
+ * adds New folder and Refresh as Explorer's background menu does.
  */
 export function finderMenuItems(
   target: FinderMenuTarget,
@@ -366,7 +372,7 @@ export function finderMenuItems(
   if (target.kind === "file") return ["copyPath"];
   const quick = inQuickAccess ? "removeFromQuickAccess" : "addToQuickAccess";
   return target.kind === "here"
-    ? ["choose", quick, "copyPath", "refresh"]
+    ? ["choose", "newFolder", quick, "copyPath", "refresh"]
     : ["open", "choose", quick, "copyPath"];
 }
 

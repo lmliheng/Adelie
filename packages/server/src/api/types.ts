@@ -1668,6 +1668,10 @@ export interface DirListResponse {
   /** Windows only, on the home request (no `path`): the drive roots that exist. */
   roots?: string[];
 }
+/** The answer to making one folder: its absolute path, for the picker to reveal and select. */
+export interface DirCreateResponse {
+  path: string;
+}
 
 /** One Skill found in a picked directory: metadata plus which of the two layouts it came from. */
 export interface DirectorySkillItem extends SkillMetadataItem {

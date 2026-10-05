@@ -2521,6 +2521,12 @@ export const zh = {
       open: "打开",
       /** Accessible name of the enter button at the end of a folder row. */
       openFolder: (name: string): string => `打开「${name}」`,
+      /** The toolbar button and the context-menu row that make a folder in the folder on screen. */
+      newFolder: "新建文件夹",
+      /** The name box's placeholder while a new folder is being made. */
+      newFolderName: "文件夹名称",
+      /** The name box's accessible name and tooltip: Enter makes it, Escape cancels. */
+      newFolderHint: "输入名称后按 Enter 创建，按 Esc 取消",
       chooseThis: "选择此文件夹",
       chooseCurrent: "选择当前文件夹",
       copyPath: "复制路径",
@@ -4978,6 +4984,10 @@ Benchmark：
       dir_not_absolute: "目录必须是绝对路径。",
       dir_not_found: "该目录不存在或不可访问。",
       dir_permission_denied: "没有读取该目录的权限。",
+      dir_name_empty: "请输入文件夹名称。",
+      dir_name_invalid: "文件夹名称不能是路径、`.` 或 `..`，也不能含有系统不接受的字符。",
+      dir_exists: "这个名称已被占用。",
+      dir_create_failed: "无法创建该文件夹。",
       not_a_dir: "该路径不是目录。",
       path_not_found: "该路径不存在。",
       reveal_failed: "无法打开文件夹。",
