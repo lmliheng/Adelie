@@ -63,8 +63,8 @@ function scripted(script: Script): MachineChannel & { calls: Call[] } {
     if (command.includes("PROCESSOR_ARCHITECTURE")) return ok(identity());
     if (command.includes("sh -s") || command.includes("powershell")) {
       ran = true;
-      onLine?.("PenguinHarness 0.2.4 installed");
-      return { ...ok("PenguinHarness 0.2.4 installed\n"), code: script.installExit ?? 0 };
+      onLine?.("Adelie 0.2.4 installed");
+      return { ...ok("Adelie 0.2.4 installed\n"), code: script.installExit ?? 0 };
     }
     return ok("");
   };
@@ -153,7 +153,7 @@ describe("installOnRemote", () => {
     expect(calls[3]!.command).toContain("uname -s -m");
     expect(progress).toContain("linux-x64.");
     // The far side's own output is relayed as it arrives, not withheld until exit.
-    expect(progress).toContain("PenguinHarness 0.2.4 installed");
+    expect(progress).toContain("Adelie 0.2.4 installed");
   });
 
   it("calls an install that ran cleanly and changed nothing a failure", async () => {
@@ -298,7 +298,7 @@ describe("installOnRemote", () => {
       layout: RELEASE,
     });
     expect(outcome).toMatchObject({ kind: "failed", step: "install" });
-    expect((outcome as { detail: string }).detail).toContain("PenguinHarness 0.2.4 installed");
+    expect((outcome as { detail: string }).detail).toContain("Adelie 0.2.4 installed");
   });
 
   it("reports ssh's own words when the session cannot be opened", async () => {

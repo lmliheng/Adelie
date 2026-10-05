@@ -3,7 +3,7 @@
 # Example: an Agent that improves itself (local, on an AMD GPU via Ollama)
 
 This example is the **"Recursive Self-Improvement"** pillar in runnable code. Using only the
-PenguinHarness SDK, the agent runs the self-improvement loop on **itself** — and the key point is
+Adelie SDK, the agent runs the self-improvement loop on **itself** — and the key point is
 that the improvement is authored by the *agent*, not hardcoded by the script:
 
 1. **Evaluate** — the agent attempts a constrained task and is scored against a rubric (plain code).
@@ -48,7 +48,7 @@ The agent closes the gap by **learning the convention from a passing example** a
 its own `AGENTS.md` — and in the recursive script, by locking down the fixed constants once it has
 seen several examples.
 
-## 1–2. Serve the model and point PenguinHarness at it
+## 1–2. Serve the model and point Adelie at it
 
 ```bash
 export HIP_VISIBLE_DEVICES=0        # optional: pin a specific AMD GPU

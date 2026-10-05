@@ -96,8 +96,7 @@ export const zh = {
       configure: "配置 ssh 主机",
       editTitle: "配置 ssh 主机",
       saved: (alias: string) => `已更新 ${alias} 的 ssh 配置。`,
-      foreign:
-        "这一段不是由 PenguinHarness 写入的，可能带有这里不认识的选项；请直接编辑 ~/.ssh/config。",
+      foreign: "这一段不是由 Adelie 写入的，可能带有这里不认识的选项；请直接编辑 ~/.ssh/config。",
     },
     /** The verbs. */
     add: "添加机器…",
@@ -338,7 +337,7 @@ export const zh = {
     },
     /** The panel where the browser cannot run; the title, then why. */
     unavailableTitle: "内置浏览器不可用",
-    unavailableDesktop: "内置浏览器只能在 PenguinHarness 桌面应用中使用。",
+    unavailableDesktop: "内置浏览器只能在 Adelie 桌面应用中使用。",
     unavailableShell: "当前桌面应用版本过旧，请更新后使用内置浏览器。",
     unavailableWindow: "没有可以显示浏览器的应用窗口。",
     openFailed: (reason: string): string => `无法打开标签页：${reason}`,
@@ -742,7 +741,7 @@ export const zh = {
     ready: (v: string | null) => (v !== null ? `v${v} 已就绪` : "更新已就绪"),
     readyBodyRelease: "重启服务即可运行新版本，正在运行的任务会被打断；服务回来后页面会自动刷新。",
     /** Mirrors the shell's native restart prompt: the interruption warning must not disappear on the web path. */
-    readyBodyClient: "PenguinHarness 将重启以完成更新，正在运行的任务会被打断。",
+    readyBodyClient: "Adelie 将重启以完成更新，正在运行的任务会被打断。",
     /** Nothing supervises the server process (not started through penguin web / penguin server), so the restart is the user's. */
     readyBodyManual:
       "新版本已安装。当前服务不是由 penguin web 或 penguin server 托管，无法从这里重启：请在终端重新运行 penguin web（或 penguin server）。",
@@ -924,7 +923,7 @@ export const zh = {
     claimFailedTitle: "登录链接已失效",
     /** Desktop deployment: the shell mints a fresh link every time it starts, so restarting it is the way back in. */
     claimFailedDesktop:
-      "这个一次性登录链接已被使用或已失效。重启 PenguinHarness 桌面应用即可生成新的登录链接并自动登录；也可以在下方用账号密码登录。",
+      "这个一次性登录链接已被使用或已失效。重启 Adelie 桌面应用即可生成新的登录链接并自动登录；也可以在下方用账号密码登录。",
     /** Everywhere else: nobody at this browser can mint a link, so the way in is the form below or whoever runs the server. */
     claimFailedServer:
       "首次登录链接在服务端设置密码后即失效，重启服务端也会换发新的链接。请在下方用账号密码登录，或向管理员索取新的登录链接。",
@@ -1205,7 +1204,7 @@ export const zh = {
       ["{{DATE}}", "当前日期"],
       [
         "{{PROJECT_DIR}}",
-        "PenguinHarness 应用数据根目录（存放全部 Agent 数据与 Project 级数据；不是本次任务的工作目录）",
+        "Adelie 应用数据根目录（存放全部 Agent 数据与 Project 级数据；不是本次任务的工作目录）",
       ],
       ["{{AGENT_ID}}", "当前 Agent id"],
       ["{{CWD}}", "Workspace 绝对路径"],
@@ -2313,7 +2312,7 @@ export const zh = {
     importPromptTail: (projectId: string, agentId: string): string =>
       [
         "先完整阅读来源，逐个审查脚本有没有恶意行为（外传数据、改动来源之外的文件、执行来路不明的命令等），确认安全后再继续。",
-        '然后产出一个 PenguinHarness 钩子包：一份 hooks.json（name、description、description_zh、version（格式 YYYY.MM.DD.N），以及各钩子点的命令列表 stop / pre_tool_use / user_prompt，每项为 { "command": "<脚本相对路径>", "timeout": <秒> }）加上纯 Node 的 .mjs 脚本（只用内置模块）。用不到的钩子点可以省略或写成 []；user_prompt 的条目可以另加 "trigger": "prompt"（缺省：用户每次提交 Prompt 时运行）或 "host"（只在宿主按包名启动该包的流程时运行）。',
+        '然后产出一个 Adelie 钩子包：一份 hooks.json（name、description、description_zh、version（格式 YYYY.MM.DD.N），以及各钩子点的命令列表 stop / pre_tool_use / user_prompt，每项为 { "command": "<脚本相对路径>", "timeout": <秒> }）加上纯 Node 的 .mjs 脚本（只用内置模块）。用不到的钩子点可以省略或写成 []；user_prompt 的条目可以另加 "trigger": "prompt"（缺省：用户每次提交 Prompt 时运行）或 "host"（只在宿主按包名启动该包的流程时运行）。',
         '脚本契约：stdin 收到一份 JSON——stop 点为 { "hook": "stop", "session_id", "trace_path" }（trace_path 是 Session 正在写入的 Trace 文件，无 Trace 时缺省），pre_tool_use 点另有 tool_name、tool_call_id、arguments（原始参数 JSON 串），user_prompt 点带 trace_path、scratchpad_dir 与 prompt（用户的消息文本）；stdout 为空即无意见，否则一份 JSON 回答——stop 点 { "decision": "continue" | "stop", "input", "reason", "output", "subagent"? }，pre_tool_use 点 { "decision": "allow" | "deny", "reason", "output" }，user_prompt 点 { "context" }，它在每条 Prompt 中紧随用户消息发出；退出码非零、stdout 不是 JSON 或超时都按失败记录、不采纳。',
         `把它安装到 Project「${projectId}」中 Agent「${agentId}」的 agent_state/hooks/<name>/ 目录（目录名即包名，须匹配 ^[A-Za-z0-9_-]+$），最后向我说明它做什么、在哪个钩子点触发。`,
       ].join("\n"),
@@ -2551,7 +2550,7 @@ export const zh = {
         "macOS 阻止了对此文件夹的访问。点「允许访问」向 macOS 申请，macOS 询问时选择允许。",
       /** Asked, and the folder is still refused: a packaged app. */
       deniedMacRefused:
-        "系统没有放行。若「文件与文件夹」里没有 PenguinHarness，请在「完全磁盘访问权限」里用 + 添加它，然后再试。",
+        "系统没有放行。若「文件与文件夹」里没有 Adelie，请在「完全磁盘访问权限」里用 + 添加它，然后再试。",
       /** Asked, and the folder is still refused: a development instance, whose reads macOS charges to its terminal. */
       deniedMacRefusedDev:
         "这是未打包的开发实例：macOS 把它的文件访问算在启动它的终端名下。请在「文件与文件夹」里放行该终端（或给它完全磁盘访问权限），再试。",
@@ -3583,7 +3582,7 @@ Benchmark：
     troubleConnError:
       "连接状态显示错误？检查凭证是否正确；飞书还需确认 API 域名与事件订阅方式（长连接）。",
     troubleOnePoller:
-      "Telegram 提示已有其他程序在轮询？一个 Bot Token 同一时刻只能被一个程序使用——关闭正在占用它的另一个 PenguinHarness 服务端或机器人脚本，或为该会话单独建一个机器人。手动执行的 getUpdates（例如用 curl 查看 Telegram 那边积压了什么）同样算作「另一个程序」：跑它之前先在这里停用连接。而且手动查看也可能把它们丢掉——任何带 offset 的调用都会确认它之前的全部更新，应用自己的下一次连接也会清空积压——所以复测请重新发一条新消息，而不是指望刚才看到的那几条。",
+      "Telegram 提示已有其他程序在轮询？一个 Bot Token 同一时刻只能被一个程序使用——关闭正在占用它的另一个 Adelie 服务端或机器人脚本，或为该会话单独建一个机器人。手动执行的 getUpdates（例如用 curl 查看 Telegram 那边积压了什么）同样算作「另一个程序」：跑它之前先在这里停用连接。而且手动查看也可能把它们丢掉——任何带 offset 的调用都会确认它之前的全部更新，应用自己的下一次连接也会清空积压——所以复测请重新发一条新消息，而不是指望刚才看到的那几条。",
     troubleGroupPrivacy:
       "在 Telegram 群里发消息，机器人毫无反应？Telegram 的 Group Privacy 默认开启，此时不担任该群管理员的机器人只能收到明确指向它的命令（如 /start@your_bot）和对它自己消息的回复，普通群消息根本不会送达，连接本身也没有任何异常。把机器人设为该群的管理员即可单独解决，管理员始终收到全部消息。也可以到 @BotFather 用 /setprivacy 关闭 Group Privacy，然后把机器人移出该群再重新拉入——已在的群不会自动生效。",
     /** WeChat has no group inbound at all — the answer to "I @-ed it in a group and nothing happened". */
@@ -4214,7 +4213,7 @@ Benchmark：
     displayNameHint: "留空则使用组织 id",
     mission: "使命",
     missionHint: "一句话说明这个组织存在的目的；CEO 的初始化会话从它开始",
-    missionPlaceholder: "例如：为 PenguinHarness 维护文档站，并每周发布一期更新摘要",
+    missionPlaceholder: "例如：为 Adelie 维护文档站，并每周发布一期更新摘要",
     /** The three examples under the mission field (org-examples.ts holds their order). */
     missionExampleHint: "点一下填入使命",
     missionExamples: {
@@ -5046,7 +5045,7 @@ Benchmark：
       ticket_session_failed: "无法发起工单会话。",
       handbook_file_not_found: "该文档已不存在。",
       handbook_index_required: "手册索引（README.md）不能删除。",
-      browser_unavailable: "内置浏览器不可用：它需要 PenguinHarness 桌面应用处于打开状态。",
+      browser_unavailable: "内置浏览器不可用：它需要 Adelie 桌面应用处于打开状态。",
       source_not_found: "找不到这个浏览器配置文件。",
       shell_unreachable: "无法联系桌面应用。",
       timeout: "操作超时，请重试。",

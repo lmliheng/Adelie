@@ -333,7 +333,7 @@ export class TelegramApiError extends MessagingChannelError {
  */
 function conflictText(description: string): string | null {
   if (/terminated by other getUpdates/i.test(description)) {
-    return "another program is already polling this bot — one bot token can serve only one PenguinHarness server at a time";
+    return "another program is already polling this bot — one bot token can serve only one Adelie server at a time";
   }
   if (/webhook is active/i.test(description)) {
     return "a webhook is set on this bot, which blocks polling — remove it and the connection recovers on its own";

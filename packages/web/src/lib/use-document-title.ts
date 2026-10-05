@@ -1,5 +1,5 @@
 /**
- * Sync the browser tab title (document.title): "{title} · PenguinHarness"
+ * Sync the browser tab title (document.title): "{title} · Adelie"
  * when a page title is set, falling back to the app name otherwise. Called
  * at the top level of each page component, updating instantly on route
  * changes or title changes (e.g. an auto-generated Session title delivered

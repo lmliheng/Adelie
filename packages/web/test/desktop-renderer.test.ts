@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { isElectronRenderer } from "../src/lib/desktop-renderer";
 
 const ELECTRON_UA =
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) PenguinHarness/0.2.13 Chrome/146.0.7680.0 Electron/43.2.0 Safari/537.36";
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Adelie/0.2.13 Chrome/146.0.7680.0 Electron/43.2.0 Safari/537.36";
 const CHROME_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36";
 const FIREFOX_UA =

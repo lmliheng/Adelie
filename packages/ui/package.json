@@ -3,7 +3,7 @@
   "version": "0.2.13",
   "private": true,
   "type": "module",
-  "description": "PenguinHarness shared UI: design tokens, the three themes, bundled fonts and the component set the Web App and the gallery render.",
+  "description": "Adelie shared UI: design tokens, the three themes, bundled fonts and the component set the Web App and the gallery render.",
   "sideEffects": [
     "**/*.css"
   ],

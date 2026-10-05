@@ -135,7 +135,7 @@ describe("model-catalog", () => {
     expect(oauth.authorizeUrl).toBe("https://tokendance.space/auth");
     expect(oauth.exchangeUrl).toBe("https://tokendance.space/portal/api/v1/auth/keys");
     // The key's name is also the app name the authorization page shows.
-    expect(oauth.keyName).toBe("PenguinHarness");
+    expect(oauth.keyName).toBe("Adelie");
   });
 
   it("exactly the bridged groups publish an authorization flow, and each names its own", () => {
@@ -1815,7 +1815,7 @@ describe("attributionHeaders (how the harness names itself to the gateways that 
   it("OpenRouter gets its three attribution headers, on the preset base URL and on any custom one", () => {
     const expected = {
       "HTTP-Referer": "https://penguin.ooo/",
-      "X-OpenRouter-Title": "PenguinHarness",
+      "X-OpenRouter-Title": "Adelie",
       "X-OpenRouter-Categories": "cli-agent,personal-agent",
     };
     expect(attributionHeaders(providerInfo("openrouter")!.gatewayBaseUrl)).toEqual(expected);
@@ -1862,7 +1862,7 @@ describe("attributionHeaders (how the harness names itself to the gateways that 
     const sessionId = "session-2026-09-14-10-30-00-a1b2c3d4";
     expect(attributionHeaders("https://openrouter.ai/api/v1", sessionId)).toEqual({
       "HTTP-Referer": "https://penguin.ooo/",
-      "X-OpenRouter-Title": "PenguinHarness",
+      "X-OpenRouter-Title": "Adelie",
       "X-OpenRouter-Categories": "cli-agent,personal-agent",
     });
     expect(attributionHeaders("https://tokendance.space/gateway/v1", sessionId)).toEqual({

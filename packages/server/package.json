@@ -2,7 +2,7 @@
   "name": "@prismshadow/penguin-server",
   "version": "0.2.13",
   "type": "module",
-  "description": "PenguinHarness web server: multi-user authentication and authorization, Session execution with SSE streaming, and usage accounting, built on @prismshadow/penguin-core.",
+  "description": "Adelie web server: multi-user authentication and authorization, Session execution with SSE streaming, and usage accounting, built on @prismshadow/penguin-core.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

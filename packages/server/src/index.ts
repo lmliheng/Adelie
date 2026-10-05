@@ -143,7 +143,7 @@ class PenguinServer {
     const existing = await liveServerLock(this.config.root);
     if (existing === null) return;
     console.error(
-      `Another PenguinHarness server is already running on this data root (pid ${existing.pid}).`,
+      `Another Adelie server is already running on this data root (pid ${existing.pid}).`,
     );
     console.error(`Existing instance: http://localhost:${existing.port}/`);
     process.exit(EXIT_ALREADY_RUNNING);

@@ -1,6 +1,6 @@
 ---
 name: penguin-sdk
-description: Use whenever the user wants to build an agent application — their own program with an embedded agent, such as an AI app, an agentic app or a RAG app. This is writing application code on the Penguin Harness SDK, not configuring an Agent State inside PenguinHarness. Covers self-contained projects, the createSession/run streaming loop with thinking and image messages, wiring the user's existing tools in as CLI commands, and a complete RAG recipe that ingests documents into a knowledge base and answers with citations behind a web UI. Also use it for workflows — the tabs and pages beside the chat that an Agent keeps in its own `workflows/` folder inside PenguinHarness: building one, changing it, restoring an earlier version, and removing a tab or a whole workflow when the user wants the custom UI gone.
+description: Use whenever the user wants to build an agent application — their own program with an embedded agent, such as an AI app, an agentic app or a RAG app. This is writing application code on the Penguin Harness SDK, not configuring an Agent State inside Adelie. Covers self-contained projects, the createSession/run streaming loop with thinking and image messages, wiring the user's existing tools in as CLI commands, and a complete RAG recipe that ingests documents into a knowledge base and answers with citations behind a web UI. Also use it for workflows — the tabs and pages beside the chat that an Agent keeps in its own `workflows/` folder inside Adelie: building one, changing it, restoring an earlier version, and removing a tab or a whole workflow when the user wants the custom UI gone.
 ---
 
 # Penguin Harness SDK
@@ -19,7 +19,7 @@ If the user's message only invokes this skill (e.g. "use penguin-sdk skill") wit
 
 ## Project location
 
-Create the app in the current workspace directory by default (the `CWD` value from your Environment section), as a self-contained project — do not place it under `<app_data_dir>` (PenguinHarness's app data root) or depend on any path outside the project folder. When creating the app's agent, the data root defaults **under the working directory (CWD)** too: point `createAgent({ root })` at a directory inside the project, resolved from the source file so it stays relative:
+Create the app in the current workspace directory by default (the `CWD` value from your Environment section), as a self-contained project — do not place it under `<app_data_dir>` (Adelie's app data root) or depend on any path outside the project folder. When creating the app's agent, the data root defaults **under the working directory (CWD)** too: point `createAgent({ root })` at a directory inside the project, resolved from the source file so it stays relative:
 
 ```ts
 const agent = await createAgent({ root: path.join(import.meta.dirname, "penguin_data") });
@@ -47,7 +47,7 @@ If neither counted source yields a key, **stop immediately and ask the user to c
 npm install @prismshadow/penguin-core tsx
 ```
 
-If the package is not on your npm registry (it is developed in the PenguinHarness monorepo and may not be published), develop inside a checkout of the PenguinHarness repo instead: add your app as a workspace package under `packages/`, depend on `"@prismshadow/penguin-core": "workspace:*"`, then `pnpm install && pnpm build` at the repo root. Tell the user which route you took.
+If the package is not on your npm registry (it is developed in the Adelie monorepo and may not be published), develop inside a checkout of the Adelie repo instead: add your app as a workspace package under `packages/`, depend on `"@prismshadow/penguin-core": "workspace:*"`, then `pnpm install && pnpm build` at the repo root. Tell the user which route you took.
 
 Configure a model for the app's data root, in this order — stop at the first that works:
 
@@ -346,7 +346,7 @@ http.createServer(async (req, res) => {
 
 ## Workflows: pages and server code the Agent keeps for itself
 
-Inside PenguinHarness an Agent can hold *workflows*: small plugin packages in its own directory, written in TypeScript, that the server boots as module trees, shows as tabs beside the chat, reloads on every file change, and versions so any edit can be undone. This is the same module mechanism the server itself is built from — manifests as data, everything checked before any code runs — so a workflow that does not type-check, that was written against an interface version this server no longer fits, or whose manifests do not hold together fails to load with the problem named, while the previous version keeps serving.
+Inside Adelie an Agent can hold *workflows*: small plugin packages in its own directory, written in TypeScript, that the server boots as module trees, shows as tabs beside the chat, reloads on every file change, and versions so any edit can be undone. This is the same module mechanism the server itself is built from — manifests as data, everything checked before any code runs — so a workflow that does not type-check, that was written against an interface version this server no longer fits, or whose manifests do not hold together fails to load with the problem named, while the previous version keeps serving.
 
 **Start here — the whole loop is files.** You need nothing but your file tools: no HTTP API, no port, no login, no server source. Do not go looking for the running server, its bundle or a checkout of the repository, and do not probe its API — everything you need to know is written into the workflow folder by the server itself.
 

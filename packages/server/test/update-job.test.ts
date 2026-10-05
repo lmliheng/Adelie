@@ -200,7 +200,7 @@ describe("classifyUpdateRun", () => {
     // "Already on the latest version" means the INSTALL is current: only this older, in-memory
     // process is missing a restart.
     for (const output of [
-      "Upgrade 0.1.2 -> 0.1.3\nPenguinHarness 0.1.3 installed. Run `penguin --version` in a new shell to confirm.",
+      "Upgrade 0.1.2 -> 0.1.3\nAdelie 0.1.3 installed. Run `penguin --version` in a new shell to confirm.",
       "Already on the latest version (0.1.3); nothing to do.",
     ]) {
       expect(classifyUpdateRun(0, output)).toEqual({

@@ -54,7 +54,7 @@ export type RemoteArch = "x64" | "arm64";
 export interface RemoteIdentity {
   platform: RemotePlatform;
   arch: RemoteArch;
-  /** Version of the PenguinHarness installed there, or null when there is none. */
+  /** Version of the Adelie installed there, or null when there is none. */
   installedVersion: string | null;
   /** Raw text of the remote data root's hmr/harness.json, or null when nothing was pushed. */
   harness: string | null;

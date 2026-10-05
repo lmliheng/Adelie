@@ -135,9 +135,7 @@ describe("LAUNCHER_MARKER", () => {
 
 describe("shellQuote", () => {
   it("wraps a plain value in single quotes", () => {
-    expect(shellQuote("/Applications/PenguinHarness.app")).toBe(
-      "'/Applications/PenguinHarness.app'",
-    );
+    expect(shellQuote("/Applications/Adelie.app")).toBe("'/Applications/Adelie.app'");
   });
 
   it("splices embedded single quotes so the word never closes early", () => {
@@ -156,7 +154,7 @@ describe("appleScriptString", () => {
 });
 
 describe("adminSymlinkAppleScript", () => {
-  const target = "/Applications/PenguinHarness.app/Contents/Resources/app/bin/penguin";
+  const target = "/Applications/Adelie.app/Contents/Resources/app/bin/penguin";
   const link = "/usr/local/bin/penguin";
 
   /** The shell command osascript would run: the AppleScript literal, unescaped. */
@@ -177,17 +175,17 @@ describe("adminSymlinkAppleScript", () => {
     // What a user gets by keeping the app in a folder named with an apostrophe — and what
     // an attacker gets to write if the two escapers are not applied, since this command
     // runs with administrator privileges.
-    const evil = "/Users/anne/Anne's Apps'; touch /tmp/pwned; '/PenguinHarness.app/bin/penguin";
+    const evil = "/Users/anne/Anne's Apps'; touch /tmp/pwned; '/Adelie.app/bin/penguin";
     const command = shellCommandOf(adminSymlinkAppleScript(evil, link));
     expect(command).toBe(`mkdir -p '/usr/local/bin' && ln -sf ${shellQuote(evil)} '${link}'`);
     // The injected segment survives only as literal text inside the quoted word.
     expect(command).not.toContain("&& touch");
-    expect(command).not.toContain("; touch /tmp/pwned; '/PenguinHarness");
+    expect(command).not.toContain("; touch /tmp/pwned; '/Adelie");
   });
 });
 
 describe("mergeWindowsUserPath", () => {
-  const bin = "C:\\Program Files\\PenguinHarness\\resources\\app\\bin";
+  const bin = "C:\\Program Files\\Adelie\\resources\\app\\bin";
 
   it("appends to an existing value with a semicolon", () => {
     expect(mergeWindowsUserPath("C:\\other", bin)).toBe(`C:\\other;${bin}`);

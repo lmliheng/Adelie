@@ -6,9 +6,9 @@ set "INSTALL_EXIT_CODE=%ERRORLEVEL%"
 
 echo.
 if "%INSTALL_EXIT_CODE%"=="0" (
-  echo PenguinHarness offline installation completed.
+  echo Adelie offline installation completed.
 ) else (
-  echo PenguinHarness offline installation failed.
+  echo Adelie offline installation failed.
 )
 
 echo.

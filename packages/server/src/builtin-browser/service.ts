@@ -97,10 +97,10 @@ export interface Importer {
 
 const UNAVAILABLE: Record<BuiltinBrowserUnavailableReason, string> = {
   not_desktop:
-    "The built-in browser needs the PenguinHarness desktop app, and this server is not running inside it.",
+    "The built-in browser needs the Adelie desktop app, and this server is not running inside it.",
   shell_unsupported:
     "This installation of the desktop app is too old to host the built-in browser; update the app.",
-  no_window: "No PenguinHarness window took the tab; open the app window and try again.",
+  no_window: "No Adelie window took the tab; open the app window and try again.",
 };
 
 /** 503 `browser_unavailable`, with the reason the routes put beside the code. */

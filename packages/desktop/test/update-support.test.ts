@@ -11,7 +11,7 @@ describe("updateSupport", () => {
   });
 
   it("supports Linux only when running as an AppImage", () => {
-    const env = { APPIMAGE: "/opt/PenguinHarness.AppImage" };
+    const env = { APPIMAGE: "/opt/Adelie.AppImage" };
     expect(updateSupport({ isPackaged: true, profile: "release", platform: "linux", env })).toEqual(
       {
         supported: true,

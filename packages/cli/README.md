@@ -1,6 +1,6 @@
 # @prismshadow/penguin-cli
 
-The PenguinHarness command line. Installs the `penguin` command: an interactive REPL, a one-shot task runner, model / vault configuration, and the launcher for the Web service.
+The Adelie command line. Installs the `penguin` command: an interactive REPL, a one-shot task runner, model / vault configuration, and the launcher for the Web service.
 
 ```bash
 npm install -g @prismshadow/penguin-cli   # requires Node >= 24
@@ -36,4 +36,4 @@ pnpm --filter @prismshadow/penguin-cli typecheck
 pnpm --filter @prismshadow/penguin-cli test
 ```
 
-Part of [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0
+Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0

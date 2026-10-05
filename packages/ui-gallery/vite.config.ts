@@ -112,7 +112,7 @@ export default defineConfig({
     },
   },
   worker: { format: "es" },
-  // Fixed PenguinHarness dev port; the allocation table lives in core's internal/ports.ts.
+  // Fixed Adelie dev port; the allocation table lives in core's internal/ports.ts.
   server: { port: 7372, strictPort: true },
   preview: { port: 7372, strictPort: true },
 });

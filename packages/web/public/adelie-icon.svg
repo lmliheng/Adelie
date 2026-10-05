@@ -22,7 +22,7 @@
   </defs>
 
   <g clip-path="url(#plate)">
-    <!-- plate: the white rounded square PenguinHarness draws its penguin on -->
+    <!-- plate: the white rounded square Adelie draws its penguin on -->
     <rect width="1024" height="1024" fill="#fefefe" />
 
     <!-- orbit: the harness's blue sweep; the penguin stands in it, so only its two tails show -->

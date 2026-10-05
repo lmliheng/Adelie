@@ -2,7 +2,7 @@
   {
     "name": "@prismshadow/penguin-plugin-sandbox-bwrap",
     "version": "0.2.2",
-    "description": "Bubblewrap sandbox backend for PenguinHarness: filesystem confinement plus network isolation and path masking.",
+    "description": "Bubblewrap sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
     "repository": "https://github.com/Prism-Shadow/penguin-harness",
@@ -12,7 +12,7 @@
   {
     "name": "@prismshadow/penguin-plugin-sandbox-seatbelt",
     "version": "0.2.2",
-    "description": "macOS Seatbelt sandbox backend for PenguinHarness: filesystem confinement plus network isolation and path masking.",
+    "description": "macOS Seatbelt sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
     "repository": "https://github.com/Prism-Shadow/penguin-harness",
@@ -22,7 +22,7 @@
   {
     "name": "@prismshadow/penguin-plugin-sandbox-wsl",
     "version": "0.2.2",
-    "description": "WSL sandbox backend for PenguinHarness on Windows: commands run in a dedicated WSL2 distro under bubblewrap, with Windows interop switched off.",
+    "description": "WSL sandbox backend for Adelie on Windows: commands run in a dedicated WSL2 distro under bubblewrap, with Windows interop switched off.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
     "repository": "https://github.com/Prism-Shadow/penguin-harness",
@@ -32,7 +32,7 @@
   {
     "name": "@prismshadow/penguin-plugin-sandbox-dsh",
     "version": "0.2.2",
-    "description": "DeepSeek Harness sandbox adaptor for PenguinHarness: the DSH local backend chain behind the harness's own sandbox interface.",
+    "description": "DeepSeek Harness sandbox adaptor for Adelie: the DSH local backend chain behind the harness's own sandbox interface.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
     "repository": "https://github.com/Prism-Shadow/penguin-harness",

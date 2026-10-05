@@ -1629,7 +1629,7 @@ describe("machines API", () => {
       expect(res.status).toBe(201);
       expect(written).toEqual([
         [
-          "# Added by PenguinHarness on 2026-08-24T12:00:00.000Z",
+          "# Added by Adelie on 2026-08-24T12:00:00.000Z",
           "Host orchid-2",
           "  HostName 10.0.0.9",
           "  User k",
@@ -1653,7 +1653,7 @@ describe("machines API", () => {
     });
 
     const CONFIG = [
-      "# Added by PenguinHarness on 2026-08-01T00:00:00.000Z",
+      "# Added by Adelie on 2026-08-01T00:00:00.000Z",
       "Host nas",
       "  HostName 10.0.0.2",
       "",
@@ -1683,7 +1683,7 @@ describe("machines API", () => {
       expect(ok.status).toBe(200);
       expect(written).toHaveLength(1);
       expect(written[0]!.split("\n").slice(0, 5)).toEqual([
-        "# Added by PenguinHarness on 2026-08-24T12:00:00.000Z",
+        "# Added by Adelie on 2026-08-24T12:00:00.000Z",
         "Host nas",
         "  HostName 10.0.0.3",
         "  User deploy",

@@ -105,7 +105,7 @@ const CHANNEL_LINKS = {
     // @BotFather", opening on /newbot and the token it returns — which is this fold's
     // steps, one level deeper. NOT /bots/tutorial: that one is "From BotFather to 'Hello
     // World'", and past its token section it is about downloading an IDE and picking a
-    // framework, i.e. about WRITING a bot. Nobody here is writing one — PenguinHarness is
+    // framework, i.e. about WRITING a bot. Nobody here is writing one — Adelie is
     // the bot. The fragment is a plain document anchor present in the served HTML, so it
     // lands where it says (unlike a hash route, which the server never sees).
     tutorial: "https://core.telegram.org/bots/features#botfather",

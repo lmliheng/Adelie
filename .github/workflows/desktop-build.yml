@@ -322,7 +322,7 @@ jobs:
           $installer = Join-Path $outDir "penguin-desktop-win32-x64.exe"
           $latest = Join-Path $outDir "latest.yml"
           $blockmap = "$installer.blockmap"
-          $appExe = Join-Path $outDir "win-unpacked/PenguinHarness.exe"
+          $appExe = Join-Path $outDir "win-unpacked/Adelie.exe"
           $elevateExe = Join-Path $outDir "win-unpacked/resources/elevate.exe"
           $appUpdate = Join-Path $outDir "win-unpacked/resources/app-update.yml"
 
@@ -540,8 +540,8 @@ jobs:
           }
 
           apps=(
-            packages/desktop/out/mac-arm64/PenguinHarness.app
-            packages/desktop/out/mac/PenguinHarness.app
+            packages/desktop/out/mac-arm64/Adelie.app
+            packages/desktop/out/mac/Adelie.app
           )
           for app in "${apps[@]}"; do
             if [[ ! -d "$app" ]]; then

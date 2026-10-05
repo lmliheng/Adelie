@@ -158,7 +158,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
 
   const project: ProjectSummary = {
     projectId: IDS.project,
-    name: L("PenguinHarness 演示", "PenguinHarness demo"),
+    name: L("Adelie 演示", "Adelie demo"),
     role: "owner",
     ownerUserId: user.userId,
     createdAt: iso(ago(120)),
@@ -633,13 +633,10 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
             source: "builtin",
             name: "penguin-sdk",
             description:
-              "Build with the PenguinHarness SDK: the Session, Agent State and OmniMessage APIs.",
-            descriptionZh:
-              "使用 PenguinHarness SDK 开发：Session、Agent State 与 OmniMessage 接口。",
+              "Build with the Adelie SDK: the Session, Agent State and OmniMessage APIs.",
+            descriptionZh: "使用 Adelie SDK 开发：Session、Agent State 与 OmniMessage 接口。",
             version: "2026.09.11.1",
-            skills: [
-              skill("penguin-sdk", "PenguinHarness SDK 用法", "How to use the PenguinHarness SDK"),
-            ],
+            skills: [skill("penguin-sdk", "Adelie SDK 用法", "How to use the Adelie SDK")],
             hooks: [],
           },
           {
@@ -796,7 +793,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         name: "@penguinharness/sandbox-bwrap",
         version: "0.2.13",
         description: "Confines agent commands with bubblewrap on Linux.",
-        authors: ["PenguinHarness"],
+        authors: ["Adelie"],
         license: "MIT",
         repository: "https://github.com/prismshadow/penguin-harness",
         keywords: ["linux", "sandbox"],
@@ -807,7 +804,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         name: "@penguinharness/sandbox-seatbelt",
         version: "0.2.13",
         description: "Confines agent commands with Seatbelt on macOS.",
-        authors: ["PenguinHarness"],
+        authors: ["Adelie"],
         license: "MIT",
         repository: "https://github.com/prismshadow/penguin-harness",
         keywords: ["macos", "sandbox"],
@@ -818,7 +815,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         name: "@penguinharness/messaging-feishu",
         version: "0.2.12",
         description: "Relays a Session to a Feishu bot.",
-        authors: ["PenguinHarness"],
+        authors: ["Adelie"],
         license: "MIT",
         keywords: ["messaging", "feishu"],
         categories: ["messaging"],

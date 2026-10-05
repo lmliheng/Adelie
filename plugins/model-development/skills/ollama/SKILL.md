@@ -76,7 +76,7 @@ PARAMETER num_ctx 32768
 ollama create qwen3.5-32k -f Modelfile
 ```
 
-## Register with PenguinHarness
+## Register with Adelie
 
 Model configuration is the penguin CLI's job — `penguin config model add` registers an endpoint and `penguin config model list` shows what has been registered. A pulled Ollama model is not visible to Penguin until you add it:
 

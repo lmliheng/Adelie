@@ -5,7 +5,7 @@ description: Complete software-engineering tasks — investigate and review code
 
 # Software Engineering
 
-This skill guides PenguinHarness through general software-engineering work, including code investigation, reviews, bug fixes, features, refactors, and verified handoff.
+This skill guides Adelie through general software-engineering work, including code investigation, reviews, bug fixes, features, refactors, and verified handoff.
 
 ## Before you start
 

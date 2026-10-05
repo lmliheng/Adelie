@@ -3,7 +3,7 @@
   "version": "0.2.2",
   "private": true,
   "type": "module",
-  "description": "Bubblewrap sandbox backend for PenguinHarness: filesystem confinement plus network isolation and path masking.",
+  "description": "Bubblewrap sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {

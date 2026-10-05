@@ -1,11 +1,11 @@
 name: Bug report
-description: Something in PenguinHarness does not do what it says it does.
+description: Something in Adelie does not do what it says it does.
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Please search the open issues first, and check whether the newest release already fixes it — PenguinHarness has no maintenance branches, so a fix only ever arrives in a later version.
+        Please search the open issues first, and check whether the newest release already fixes it — Adelie has no maintenance branches, so a fix only ever arrives in a later version.
 
         **Never paste credentials.** A data root holds provider API keys, messaging bot tokens and Vault entries in readable form, so `system_config.yaml`, `.env`, a Trace and a full log are all likely to carry a secret. Quote the few lines that matter. If the bug *is* a leak or another security problem, do not file it here — follow the [security policy](https://github.com/Prism-Shadow/penguin-harness/blob/main/.github/SECURITY.md).
 

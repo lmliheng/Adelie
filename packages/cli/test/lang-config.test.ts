@@ -35,16 +35,16 @@ describe("upsertBlock", () => {
   it("appends a marked block when none exists", () => {
     const out = upsertBlock("export PATH=/x\n", "export PENGUIN_LANG=zh");
     expect(out).toContain("export PATH=/x");
-    expect(out).toContain("# >>> PenguinHarness PENGUIN_LANG >>>");
+    expect(out).toContain("# >>> Adelie PENGUIN_LANG >>>");
     expect(out).toContain("export PENGUIN_LANG=zh");
-    expect(out).toContain("# <<< PenguinHarness PENGUIN_LANG <<<");
+    expect(out).toContain("# <<< Adelie PENGUIN_LANG <<<");
   });
 
   it("replaces the block in place and is idempotent", () => {
     const first = upsertBlock("", "export PENGUIN_LANG=zh");
     const second = upsertBlock(first, "export PENGUIN_LANG=en");
     // Only one block remains, with its content replaced by the latest value.
-    expect(second.match(/PenguinHarness PENGUIN_LANG/g)?.length).toBe(2); // begin + end markers
+    expect(second.match(/Adelie PENGUIN_LANG/g)?.length).toBe(2); // begin + end markers
     expect(second).toContain("export PENGUIN_LANG=en");
     expect(second).not.toContain("export PENGUIN_LANG=zh");
     // Writing the same value again is stable (the block does not keep growing).
@@ -80,7 +80,7 @@ describe("applyLanguageToRc", () => {
     const updated = await readFile(rcPath, "utf8");
     expect(updated).toContain("export PENGUIN_LANG=en");
     expect(updated).not.toContain("export PENGUIN_LANG=zh");
-    expect(updated.match(/# >>> PenguinHarness/g)?.length).toBe(1);
+    expect(updated.match(/# >>> Adelie/g)?.length).toBe(1);
   });
 
   it("creates nested config dir for fish", async () => {

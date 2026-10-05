@@ -150,7 +150,7 @@ async function realPathOrResolve(dir: string): Promise<string> {
 }
 
 /**
- * Whether a Workspace is one PenguinHarness created for a Session itself, i.e. it sits under
+ * Whether a Workspace is one Adelie created for a Session itself, i.e. it sits under
  * some Agent's `workspaces/` directory (`<project>/agents/<agent>/workspaces/tmp-xxxxxxxx`).
  *
  * Temporary Workspaces get no Memory, because one is allocated per Session (see

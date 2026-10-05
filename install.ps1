@@ -1,4 +1,4 @@
-# PenguinHarness one-line installer for Windows.
+# Adelie one-line installer for Windows.
 #
 #   irm https://penguin.ooo/install.ps1 | iex
 #
@@ -639,17 +639,17 @@ try {
       $ErrorActionPreference = $PreviousErrorActionPreference
     }
     if ($VersionExitCode -ne 0) {
-      Fail "installed PenguinHarness failed to run (exit code $VersionExitCode). See the error above."
+      Fail "installed Adelie failed to run (exit code $VersionExitCode). See the error above."
     }
     $InstalledVersion = $VersionOutput | Select-Object -First 1
     if ([string]::IsNullOrWhiteSpace([string]$InstalledVersion)) {
-      Fail "installed PenguinHarness returned an empty version."
+      Fail "installed Adelie returned an empty version."
     }
   } catch {
     $InstallFailure = $_
     try {
       Restore-PreviousInstall -InstallDir $InstallDir -OldDir $OldDir -MovedOld $MovedOld -MovedNew $MovedNew
-      Write-Host "Previous PenguinHarness installation restored."
+      Write-Host "Previous Adelie installation restored."
     } catch {
       throw "error: installation failed and automatic rollback was incomplete. Original error: $($InstallFailure.Exception.Message) Rollback error: $($_.Exception.Message) Previous files may remain in $OldDir"
     }
@@ -726,7 +726,7 @@ if (-not $NoModifyPath) {
 }
 
 Write-Host ""
-Write-Host "PenguinHarness $InstalledVersion installed to $InstallDir"
+Write-Host "Adelie $InstalledVersion installed to $InstallDir"
 if ($PathUpdateMessage) {
   Write-Host ""
   Write-Host $PathUpdateMessage

@@ -14,8 +14,8 @@ import { dirname, join } from "node:path";
 import { atomicWriteFile } from "@prismshadow/penguin-core";
 import type { Language } from "./i18n.js";
 
-const BEGIN = "# >>> PenguinHarness PENGUIN_LANG >>>";
-const END = "# <<< PenguinHarness PENGUIN_LANG <<<";
+const BEGIN = "# >>> Adelie PENGUIN_LANG >>>";
+const END = "# <<< Adelie PENGUIN_LANG <<<";
 
 export type ShellKind = "zsh" | "bash" | "fish" | "unknown";
 
@@ -58,7 +58,7 @@ export function resolveShellRc(shell: string | undefined, home: string): ShellRc
   };
 }
 
-/** Insert or update the marked PenguinHarness block in place within the text; leaves the rest of the content unchanged. */
+/** Insert or update the marked Adelie block in place within the text; leaves the rest of the content unchanged. */
 export function upsertBlock(content: string, bodyLine: string): string {
   const block = `${BEGIN}\n${bodyLine}\n${END}`;
   const begin = content.indexOf(BEGIN);

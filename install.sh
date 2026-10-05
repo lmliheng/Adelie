@@ -1,5 +1,5 @@
 #!/bin/sh
-# PenguinHarness one-line installer.
+# Adelie one-line installer.
 #
 #   curl -fsSL https://github.com/Prism-Shadow/penguin-harness/releases/latest/download/install.sh | sh
 #
@@ -248,7 +248,7 @@ rollback_install() {
     echo "error: automatic rollback was incomplete; previous files remain in $OLD_DIR" >&2
     return 1
   fi
-  echo "Previous PenguinHarness installation restored." >&2
+  echo "Previous Adelie installation restored." >&2
 }
 
 cleanup() {
@@ -718,10 +718,10 @@ done
 # The launcher resolves lib/, web/ and node/ relative to itself, so staging is a faithful
 # preflight that catches macOS execution policy and runtime/package failures before replacement.
 if candidate_version="$("$STAGING/bin/penguin" --version)"; then
-  [ -n "$candidate_version" ] || fail "candidate PenguinHarness returned an empty version."
+  [ -n "$candidate_version" ] || fail "candidate Adelie returned an empty version."
 else
   candidate_status=$?
-  fail "candidate PenguinHarness failed to run (exit status $candidate_status). See the error above."
+  fail "candidate Adelie failed to run (exit status $candidate_status). See the error above."
 fi
 
 mkdir -p "$OLD_DIR"
@@ -749,10 +749,10 @@ done
 # Verify again from the final path before deleting the backup. Keep stderr visible so platform
 # policy, permission and runtime errors are not disguised as an "unknown" version.
 if installed_version="$("$INSTALL_DIR/bin/penguin" --version)"; then
-  [ -n "$installed_version" ] || fail "installed PenguinHarness returned an empty version."
+  [ -n "$installed_version" ] || fail "installed Adelie returned an empty version."
 else
   version_status=$?
-  fail "installed PenguinHarness failed to run (exit status $version_status); the previous installation will be restored. See the error above."
+  fail "installed Adelie failed to run (exit status $version_status); the previous installation will be restored. See the error above."
 fi
 
 SWAP_ACTIVE=0
@@ -780,7 +780,7 @@ else
 fi
 
 echo ""
-echo "PenguinHarness $installed_version installed to $INSTALL_DIR"
+echo "Adelie $installed_version installed to $INSTALL_DIR"
 if [ "$PATH_MISSING" -eq 1 ]; then
   echo ""
   echo "note: installation succeeded, but $BIN_DIR is not on your PATH. Add it to your shell profile:"

@@ -1,4 +1,4 @@
-# The official PenguinHarness server image: `penguin server` on 0.0.0.0:7364, serving the
+# The official Adelie server image: `penguin server` on 0.0.0.0:7364, serving the
 # Web App, with the data root at /data.
 #
 #   docker build -t penguin-harness:dev .
@@ -202,8 +202,8 @@ FROM base
 ARG PENGUIN_VERSION=dev
 ARG PENGUIN_COMMIT
 
-LABEL org.opencontainers.image.title="PenguinHarness" \
-      org.opencontainers.image.description="PenguinHarness server and Web App" \
+LABEL org.opencontainers.image.title="Adelie" \
+      org.opencontainers.image.description="Adelie server and Web App" \
       org.opencontainers.image.url="https://penguin.ooo" \
       org.opencontainers.image.source="https://github.com/Prism-Shadow/penguin-harness" \
       org.opencontainers.image.licenses="Apache-2.0" \

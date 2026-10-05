@@ -1,6 +1,6 @@
 # @prismshadow/penguin-core
 
-The PenguinHarness SDK and execution engine: the ReAct loop (`context_engine`), the OmniMessage protocol, the LLM / Environment interface contracts, Agent State and append-only Traces.
+The Adelie SDK and execution engine: the ReAct loop (`context_engine`), the OmniMessage protocol, the LLM / Environment interface contracts, Agent State and append-only Traces.
 
 The engine speaks only OmniMessage and delegates everything else through two swappable interfaces — `LLMInterface` (models, via the [`@prismshadow/agenthub`](https://www.npmjs.com/package/@prismshadow/agenthub) gateway) and `EnvironmentInterface` (tool execution). The SDK caller is the Human boundary: one entry point, `session.run`, streams the whole loop.
 
@@ -38,4 +38,4 @@ pnpm --filter @prismshadow/penguin-core test
 pnpm test:e2e                                       # live-model e2e (needs DEEPSEEK_API_KEY)
 ```
 
-Part of [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0
+Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0

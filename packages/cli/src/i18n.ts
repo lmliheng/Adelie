@@ -986,7 +986,7 @@ function headerEn(
   model: string,
 ): string {
   return [
-    `PenguinHarness ${kind} v${version}`,
+    `Adelie ${kind} v${version}`,
     `Agent: ${agentId}`,
     `Workspace: ${workspace}`,
     `Model: ${model}`,
@@ -1001,7 +1001,7 @@ function headerZh(
   model: string,
 ): string {
   return [
-    `PenguinHarness ${kind} v${version}`,
+    `Adelie ${kind} v${version}`,
     `Agent：${agentId}`,
     `Workspace：${workspace}`,
     `模型：${model}`,
@@ -1009,7 +1009,7 @@ function headerZh(
 }
 
 const en: Messages = {
-  cliDescription: "PenguinHarness CLI",
+  cliDescription: "Adelie CLI",
   versionDesc: "output the version number",
   common: {
     projectId: "Project id",
@@ -1544,8 +1544,7 @@ const en: Messages = {
     available: () => "available",
     unavailable: (reason) => `unavailable (${reason})`,
     unavailableHint: (reason) => {
-      const base =
-        "The built-in browser needs the PenguinHarness desktop app, and the app must be open";
+      const base = "The built-in browser needs the Adelie desktop app, and the app must be open";
       if (reason === "shell_unsupported")
         return `${base}: this desktop app is too old for it, so update the app.`;
       if (reason === "no_window") return `${base}: it has no open window, so open it.`;
@@ -1657,7 +1656,7 @@ const en: Messages = {
     app: "Open one workflow page as the whole app: <project>/<agent>/<workflow>[/<tab>] (Ctrl+P or Ctrl+Shift+P in the page opens the command palette to leave)",
   },
   auth: {
-    desc: "Sign in to a PenguinHarness server from the terminal",
+    desc: "Sign in to an Adelie server from the terminal",
     loginDesc: "Sign in with a password and remember the session",
     statusDesc: "Show the remembered session, if there is one",
     logoutDesc: "Revoke the remembered session and forget it",
@@ -1701,7 +1700,7 @@ const en: Messages = {
   resetPassword: {
     desc: "Reset the Web admin account so the next server start prints a new first-login link (the server must be stopped)",
     serverRunning: (url) =>
-      `A PenguinHarness server is running on this data root: ${url}\n` +
+      `An Adelie server is running on this data root: ${url}\n` +
       `Stop it first, then run \`penguin server reset-admin-password\` again.`,
     noDatabase: (dbPath) =>
       `No Web database at ${dbPath} — nothing to reset. ` +
@@ -1719,7 +1718,7 @@ const en: Messages = {
     json: "Print the full build info as JSON (the body of GET /api/version)",
   },
   update: {
-    desc: "Upgrade this PenguinHarness install in place",
+    desc: "Upgrade this Adelie install in place",
     check: "Only report the current and latest versions; change nothing",
     releaseOpt:
       "Target a specific release tag instead of the latest (e.g. v0.1.2 or 0.1.2); named --release because -v/--version is the CLI's own version flag",
@@ -1749,12 +1748,12 @@ const en: Messages = {
       "Not running in a terminal, so the confirmation cannot be answered. Re-run with --yes to upgrade non-interactively.",
     cancelled: () => "Cancelled; nothing was changed.",
     done: (version) =>
-      `PenguinHarness ${version} installed. Run \`penguin --version\` in a new shell to confirm.`,
+      `Adelie ${version} installed. Run \`penguin --version\` in a new shell to confirm.`,
     failed: () => "Upgrade failed; the previous install was left in place where possible.",
     sourceCheckout: () =>
       "This penguin runs from a source checkout, so there is nothing to download — update it with `git pull` and rebuild (`pnpm install && pnpm -r build`).",
     desktopApp: () =>
-      "This penguin ships inside the PenguinHarness desktop app and is replaced when the app updates — check for updates from the application menu.",
+      "This penguin ships inside the Adelie desktop app and is replaced when the app updates — check for updates from the application menu.",
     unknownInstall: (modulePath) =>
       `Cannot tell how this penguin was installed (running from ${modulePath}), so it will not be replaced. Re-install with the official installer, or upgrade with the package manager you used.`,
     npmUnknownManager: (globalRoot, target) =>
@@ -1947,7 +1946,7 @@ const en: Messages = {
   vaultListEmpty: () => "The vault is empty. Add one with `penguin config vault set`.",
   webReady: (url) => `Web UI ready: ${url}`,
   serverAlreadyRunning: (url) =>
-    `A PenguinHarness server is already running on this data root: ${url}\n` +
+    `An Adelie server is already running on this data root: ${url}\n` +
     `Stop it first, or point PENGUIN_HOME at a separate data root.`,
   webAlreadyRunning: (url) =>
     `Already running on this data root — opening the existing instance: ${url}`,
@@ -1955,7 +1954,7 @@ const en: Messages = {
     const hint = {
       timeout:
         `The connection timed out. Check whether a firewall or security application is blocking it. ` +
-        `Allow PenguinHarness to communicate on local port ${port}.`,
+        `Allow Adelie to communicate on local port ${port}.`,
       refused:
         "Nothing accepted the connection. Check whether the server exited or HOST/PORT points somewhere else.",
       reset:
@@ -1970,7 +1969,7 @@ const en: Messages = {
 };
 
 const zh: Messages = {
-  cliDescription: "PenguinHarness CLI",
+  cliDescription: "Adelie CLI",
   versionDesc: "输出版本号",
   common: {
     projectId: "Project id",
@@ -2462,7 +2461,7 @@ const zh: Messages = {
     available: () => "可用",
     unavailable: (reason) => `不可用（${reason}）`,
     unavailableHint: (reason) => {
-      const base = "内置浏览器需要 PenguinHarness 桌面应用，且应用必须处于打开状态";
+      const base = "内置浏览器需要 Adelie 桌面应用，且应用必须处于打开状态";
       if (reason === "shell_unsupported") return `${base}：当前桌面应用版本过旧，请更新应用。`;
       if (reason === "no_window") return `${base}：应用当前没有打开的窗口，请打开它。`;
       if (reason === "not_desktop") return `${base}：当前服务器不是在桌面应用中运行的。`;
@@ -2569,7 +2568,7 @@ const zh: Messages = {
     app: "以某个 workflow 页面占满整个应用打开：<project>/<agent>/<workflow>[/<tab>]（页面内按 Ctrl+P 或 Ctrl+Shift+P 打开命令面板可退出）",
   },
   auth: {
-    desc: "在终端里登录 PenguinHarness 服务",
+    desc: "在终端里登录 Adelie 服务",
     loginDesc: "用密码登录并记住会话",
     statusDesc: "显示已记住的会话",
     logoutDesc: "吊销并忘记已记住的会话",
@@ -2611,7 +2610,7 @@ const zh: Messages = {
   resetPassword: {
     desc: "重置 Web 管理员账号，下次启动服务时会打印新的首次登录链接（须先停止服务）",
     serverRunning: (url) =>
-      `该数据根目录已有 PenguinHarness 服务在运行：${url}\n` +
+      `该数据根目录已有 Adelie 服务在运行：${url}\n` +
       `请先停止它，再重新执行 \`penguin server reset-admin-password\`。`,
     noDatabase: (dbPath) =>
       `${dbPath} 处没有 Web 数据库，无可重置。请先执行 \`penguin web\` 启动一次服务以创建管理员账号。`,
@@ -2626,7 +2625,7 @@ const zh: Messages = {
     json: "以 JSON 输出完整构建信息（即 GET /api/version 的响应体）",
   },
   update: {
-    desc: "原地升级当前的 PenguinHarness 安装",
+    desc: "原地升级当前的 Adelie 安装",
     check: "只报告当前版本与最新版本，不做任何修改",
     releaseOpt:
       "指定目标版本而不是最新版（如 v0.1.2 或 0.1.2）；之所以叫 --release，是因为 -v/--version 是 CLI 自身的版本参数",
@@ -2652,13 +2651,12 @@ const zh: Messages = {
     confirm: () => "确认继续？[y/N] ",
     needsYes: () => "当前不在终端中，无法回答确认提示。请加 --yes 以非交互方式升级。",
     cancelled: () => "已取消，未做任何修改。",
-    done: (version) =>
-      `PenguinHarness ${version} 安装完成。在新 shell 中执行 \`penguin --version\` 确认。`,
+    done: (version) => `Adelie ${version} 安装完成。在新 shell 中执行 \`penguin --version\` 确认。`,
     failed: () => "升级失败；在可能的情况下已保留原有安装。",
     sourceCheckout: () =>
       "当前 penguin 运行自源码检出，无需下载——请用 `git pull` 更新并重新构建（`pnpm install && pnpm -r build`）。",
     desktopApp: () =>
-      "当前 penguin 随 PenguinHarness 桌面应用一同分发，会在应用更新时一并替换——请从应用菜单检查更新。",
+      "当前 penguin 随 Adelie 桌面应用一同分发，会在应用更新时一并替换——请从应用菜单检查更新。",
     unknownInstall: (modulePath) =>
       `无法判断当前 penguin 的安装方式（运行自 ${modulePath}），因此不会替换它。请用官方安装脚本重新安装，或用你当初使用的包管理器升级。`,
     npmUnknownManager: (globalRoot, target) =>
@@ -2838,11 +2836,11 @@ const zh: Messages = {
   vaultListEmpty: () => "vault 为空。用 `penguin config vault set` 添加。",
   webReady: (url) => `Web 界面已就绪：${url}`,
   serverAlreadyRunning: (url) =>
-    `该数据根目录已有 PenguinHarness 服务在运行：${url}\n请先停止它，或用 PENGUIN_HOME 指定另一个数据根目录。`,
+    `该数据根目录已有 Adelie 服务在运行：${url}\n请先停止它，或用 PENGUIN_HOME 指定另一个数据根目录。`,
   webAlreadyRunning: (url) => `该数据根目录已有服务在运行，打开既有实例：${url}`,
   webProbeFailed: (url, detail, kind, port) => {
     const hint = {
-      timeout: `连接超时。请检查防火墙或安全软件是否拦截。请允许 PenguinHarness 在本机端口 ${port} 上通信。`,
+      timeout: `连接超时。请检查防火墙或安全软件是否拦截。请允许 Adelie 在本机端口 ${port} 上通信。`,
       refused: "没有进程接受连接。请检查服务是否已经退出，或 HOST/PORT 是否指向了其他地址。",
       reset: "连接在收到 HTTP 响应前已关闭。请检查本机安全软件后重试。",
       permission: "操作系统拒绝了连接。请检查防火墙或安全策略权限。",

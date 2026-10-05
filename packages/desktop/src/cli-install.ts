@@ -87,7 +87,7 @@ async function attemptDarwin(force: boolean): Promise<Attempt> {
     return {
       ok: false,
       result: "deferred",
-      detail: `The app is running from ${appPath}, which will not stay there. Move PenguinHarness to your Applications folder and open it from there; the command installs itself on that launch.`,
+      detail: `The app is running from ${appPath}, which will not stay there. Move Adelie to your Applications folder and open it from there; the command installs itself on that launch.`,
     };
   }
   const desired = path.join(binDir(), "penguin");
@@ -251,7 +251,7 @@ export async function ensureCliCommand(): Promise<void> {
 function showResult(win: BrowserWindow | null, ok: boolean, detail: string): void {
   const opts = {
     type: ok ? ("info" as const) : ("error" as const),
-    title: "PenguinHarness",
+    title: "Adelie",
     message: ok
       ? "The 'penguin' command is installed."
       : "Could not install the 'penguin' command.",
@@ -275,7 +275,7 @@ export async function installCliCommand(win: BrowserWindow | null): Promise<void
   if (outcome.result === "foreign") {
     const opts = {
       type: "warning" as const,
-      title: "PenguinHarness",
+      title: "Adelie",
       message: "Something else already provides the 'penguin' command.",
       detail: `${outcome.detail}\n\nReplace it with this app's command? The file it replaces is not backed up.`,
       buttons: ["Replace", "Cancel"],

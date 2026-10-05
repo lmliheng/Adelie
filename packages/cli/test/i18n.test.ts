@@ -170,7 +170,7 @@ describe("getMessages", () => {
       expect(m.browser.errorLine("no_such_tab", "gone")).toContain("no_such_tab");
       expect(m.browser.errorLine("no_such_tab", "gone")).toContain("gone");
       for (const reason of [undefined, "not_desktop", "shell_unsupported", "no_window"]) {
-        expect(m.browser.unavailableHint(reason)).toContain("PenguinHarness");
+        expect(m.browser.unavailableHint(reason)).toContain("Adelie");
       }
       expect(m.browser.tabHead(12, "Orders", "https://a.example/", false)).toContain("12");
       expect(m.browser.sourceNotFound("safari", ["chrome"])).toContain("safari");

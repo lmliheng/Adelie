@@ -1,5 +1,5 @@
 /**
- * Where PenguinHarness lives on a machine, as a function of this instance's PROFILE.
+ * Where Adelie lives on a machine, as a function of this instance's PROFILE.
  *
  * The desktop shell runs as one of two profiles — release, or the dev instance that runs
  * beside it on its own data root (`packages/desktop/src/app-identity.ts`) — and the shell

@@ -1,6 +1,6 @@
 ---
 name: browser-automation
-description: Drive the PenguinHarness desktop app's built-in browser from the shell with `penguin browser` — open pages, read them as simplified HTML or text, act with JavaScript and trusted clicks and typing, and pull structured data out of them (orders, search results, tables), signed in with the user's own accounts. Use it for any task on a website that needs a real browser or the user's sign-in, such as finding an Amazon order.
+description: Drive the Adelie desktop app's built-in browser from the shell with `penguin browser` — open pages, read them as simplified HTML or text, act with JavaScript and trusted clicks and typing, and pull structured data out of them (orders, search results, tables), signed in with the user's own accounts. Use it for any task on a website that needs a real browser or the user's sign-in, such as finding an Amazon order.
 ---
 
 # Browser automation
@@ -17,7 +17,7 @@ If the user's message only names this skill without a task, ask what they want d
 penguin browser status
 ```
 
-`status: available` is followed by the open tabs. `status: unavailable (…)` (exit code 1) means the desktop app is not what runs this conversation, or it has no window open: tell the user that the built-in browser needs the PenguinHarness desktop app, open, and stop there — never answer from guessed page content.
+`status: available` is followed by the open tabs. `status: unavailable (…)` (exit code 1) means the desktop app is not what runs this conversation, or it has no window open: tell the user that the built-in browser needs the Adelie desktop app, open, and stop there — never answer from guessed page content.
 
 A `warning:` line under `memory:` means the browser is using too much memory or holds too many tabs. Close the tabs you opened and no longer need (`penguin browser close <tab-id>`) before opening more, and reuse a tab (`open` without `--new-tab`) where you can.
 

@@ -2,7 +2,7 @@
   <img src="packages/web/public/adelie-icon.svg" alt="Adelie logo" width="88" />
 </p>
 
-<h1 align="center">PenguinHarness</h1>
+<h1 align="center">Adelie</h1>
 
 <p align="center"><strong>Open-source, local-first multi-agent app development platform</strong><br />Fully automate <strong>building</strong> · <strong>optimizing</strong> · <strong>deploying</strong> AI applications</p>
 
@@ -38,16 +38,16 @@
 </p>
 
 <p align="center">
-  <a href="https://www.producthunt.com/products/penguinharness?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-penguinharness" target="_blank" rel="noopener noreferrer"><img alt="PenguinHarness - Let Agents Autonomously Build Better Agents for $0.02 | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202577&amp;theme=light&amp;t=1784804711946" /></a>
+  <a href="https://www.producthunt.com/products/penguinharness?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-penguinharness" target="_blank" rel="noopener noreferrer"><img alt="Adelie - Let Agents Autonomously Build Better Agents for $0.02 | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202577&amp;theme=light&amp;t=1784804711946" /></a>
 </p>
 
 <p align="center">English | <a href="README.zh.md">简体中文</a></p>
 
-## Why PenguinHarness
+## Why Adelie
 
-> With LangChain, you build agents by hand — at 1× speed.<br />With PenguinHarness, agents build agents — at 100×.
+> With LangChain, you build agents by hand — at 1× speed.<br />With Adelie, agents build agents — at 100×.
 
-PenguinHarness runs on your computer or server and automates the agent app lifecycle from creation and evaluation to optimization and deployment. Three reasons define the platform:
+Adelie runs on your computer or server and automates the agent app lifecycle from creation and evaluation to optimization and deployment. Three reasons define the platform:
 
 ### 1. 🏆 Outstanding results at tens of times less cost
 
@@ -56,7 +56,7 @@ A deliberately minimal toolset over clean low-level interfaces: fewer tool calls
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/readme/benchmark-dark.svg" />
-    <img src="assets/readme/benchmark-light.svg" alt="Benchmark: PenguinHarness leads the data-analysis suite and ties OpenAI Codex on coding, at a small fraction of both rivals' cost" width="920" />
+    <img src="assets/readme/benchmark-light.svg" alt="Benchmark: Adelie leads the data-analysis suite and ties OpenAI Codex on coding, at a small fraction of both rivals' cost" width="920" />
   </picture>
 </p>
 
@@ -64,7 +64,7 @@ A deliberately minimal toolset over clean low-level interfaces: fewer tool calls
 
 ### 2. ⚡ One sentence generates a runnable agent app
 
-Describe what you need in one sentence. PenguinHarness builds the complete agent application — scaffold, code, and run instructions, end to end:
+Describe what you need in one sentence. Adelie builds the complete agent application — scaffold, code, and run instructions, end to end:
 
 ```text
 Collect the docs from https://github.com/ericbuess/claude-code-docs and build a RAG app that answers Claude Code questions as a configuration expert, citing its sources.
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/9b7033e8-f08a-4c3f-bd33-547896664e6e
 
 ### 3. 🧬 Native agent self-evolution engine
 
-With PenguinHarness Skills, an agent evaluates and optimizes itself: run the benchmark, find the lost points, ship version N+1 — with a snapshot before every round and every request observable in the Trace view.
+With Adelie Skills, an agent evaluates and optimizes itself: run the benchmark, find the lost points, ship version N+1 — with a snapshot before every round and every request observable in the Trace view.
 
 https://github.com/user-attachments/assets/922d13a6-5ffc-4685-9a39-352f02f9afc0
 
@@ -263,20 +263,20 @@ See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full workspace guide: dev
 
 ## Contributors
 
-Thanks to everyone who has contributed to PenguinHarness!
+Thanks to everyone who has contributed to Adelie!
 
 <p align="center">
-  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="PenguinHarness contributors" /></a>
+  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="Adelie contributors" /></a>
 </p>
 
 ## Citation
 
-If you use PenguinHarness in your research, please cite:
+If you use Adelie in your research, please cite:
 
 ```bibtex
 @software{penguinharness2026,
   author  = {{PrismShadow Team}},
-  title   = {PenguinHarness: Efficient Self-Improving Harness for Everyone},
+  title   = {Adelie: Efficient Self-Improving Harness for Everyone},
   year    = {2026},
   url     = {https://github.com/Prism-Shadow/penguin-harness},
   license = {Apache-2.0}

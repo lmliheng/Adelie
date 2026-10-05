@@ -290,9 +290,9 @@ export function messagingInboundFileFailedNotice(fileName: string, reason: strin
 }
 
 export const MESSAGING_APPROVAL_NOTICE =
-  "A tool call is waiting for your approval in the PenguinHarness web UI. 有工具调用正在等待你在网页端审批。";
+  "A tool call is waiting for your approval in the Adelie web UI. 有工具调用正在等待你在网页端审批。";
 export const MESSAGING_TEST_MESSAGE =
-  "PenguinHarness test message: this Session's messaging binding works. 测试消息：该会话的消息绑定工作正常。";
+  "Adelie test message: this Session's messaging binding works. 测试消息：该会话的消息绑定工作正常。";
 
 /**
  * Per-file ceilings for a mirrored file, and how many of them one run may send.

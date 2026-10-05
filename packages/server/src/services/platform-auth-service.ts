@@ -5,7 +5,7 @@
  * wire protocol is different from OAuth/PKCE, though: the server registers a device secret,
  * polls the one-time delivery, validates its API key and model catalog, then adds newly
  * advertised models while writing the key across the provider group. Account and balance
- * metadata remain outside PenguinHarness.
+ * metadata remain outside Adelie.
  */
 import { randomBytes } from "node:crypto";
 import { Interface, Module, Provide, Use } from "@prismshadow/penguin-core/kernel";

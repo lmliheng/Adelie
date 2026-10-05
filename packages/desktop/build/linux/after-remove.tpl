@@ -1,7 +1,7 @@
 #!/bin/bash
 # Deb post-remove (electron-builder deb.afterRemove). Overriding the option REPLACES
 # electron-builder's default template, so this file is that default (app-builder-lib
-# templates/linux/after-remove.tpl, v26.15.3) verbatim, plus the marked PenguinHarness
+# templates/linux/after-remove.tpl, v26.15.3) verbatim, plus the marked Adelie
 # section removing the `penguin` CLI launcher link installed by after-install.tpl.
 
 # Delete the link to the binary
@@ -13,7 +13,7 @@ else
     rm -f '/usr/bin/${executable}'
 fi
 
-# PenguinHarness: remove the penguin CLI launcher link, but only if it is ours.
+# Adelie: remove the penguin CLI launcher link, but only if it is ours.
 if [ -L '/usr/bin/penguin' ] && [ "`readlink '/usr/bin/penguin'`" = '/opt/${sanitizedProductName}/resources/app/bin/penguin' ]; then
     rm -f '/usr/bin/penguin'
 fi

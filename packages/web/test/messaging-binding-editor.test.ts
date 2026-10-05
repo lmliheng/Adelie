@@ -182,7 +182,7 @@ describe("MessagingBindingBody", () => {
     // a row that already carries a switch, a label and a status word cut this one to
     // "Conflict: ter", which tells the reader nothing they can act on.
     const lastError =
-      "getUpdates failed: another program is already polling this bot — one bot token can serve only one PenguinHarness server at a time (code 409)";
+      "getUpdates failed: another program is already polling this bot — one bot token can serve only one Adelie server at a time (code 409)";
     const html = render(
       stateOf("telegram", {
         telegram: {

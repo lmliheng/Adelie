@@ -123,7 +123,7 @@ export function validateHostEntry(entry: SshHostEntry): SshHostProblem | null {
  */
 export function renderHostBlock(entry: SshHostEntry, at: Date): string {
   const lines = [
-    `# Added by PenguinHarness on ${at.toISOString()}`,
+    `# Added by Adelie on ${at.toISOString()}`,
     `Host ${entry.alias.trim()}`,
     `  HostName ${entry.hostName.trim()}`,
   ];
@@ -136,7 +136,7 @@ export function renderHostBlock(entry: SshHostEntry, at: Date): string {
 }
 
 /** The comment `renderHostBlock` leads with; a block that carries it is one this app wrote. */
-const MARKER = /^# Added by PenguinHarness on /;
+const MARKER = /^# Added by Adelie on /;
 const OPTION = /^(\S+)\s+(.*)$/;
 
 /** A host block found in a config: its lines (`start` to `end`, exclusive), what it says, and whether this app wrote it. */

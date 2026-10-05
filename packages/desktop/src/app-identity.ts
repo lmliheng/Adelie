@@ -59,8 +59,8 @@ export function resolveProfile(opts: { argv: readonly string[]; isPackaged: bool
 /** The identity for this profile: release, or dev-suffixed so both can run side by side. */
 export function appIdentity(profile: Profile): AppIdentity {
   return profile === "release"
-    ? { name: "PenguinHarness", appUserModelId: "com.prismshadow.penguinharness" }
-    : { name: "PenguinHarness-Dev", appUserModelId: "com.prismshadow.penguinharness.dev" };
+    ? { name: "Adelie", appUserModelId: "com.prismshadow.penguinharness" }
+    : { name: "Adelie-Dev", appUserModelId: "com.prismshadow.penguinharness.dev" };
 }
 
 /**

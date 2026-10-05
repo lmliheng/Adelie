@@ -1,5 +1,5 @@
 /**
- * In-process fake PenguinHarness server for CLI tests: stubs `globalThis.fetch` with a
+ * In-process fake Adelie server for CLI tests: stubs `globalThis.fetch` with a
  * handler covering exactly the endpoints the server-backed commands touch (the current
  * user, session create/get/patch, tasks/steer/compact/switch-model/abort, SSE stream,
  * messages, agents, projects, usage, schedules, organizations and their channels, and — through

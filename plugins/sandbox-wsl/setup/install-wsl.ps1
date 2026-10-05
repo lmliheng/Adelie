@@ -1,4 +1,4 @@
-# Installs WSL for the PenguinHarness WSL sandbox. Runs ELEVATED, once: the harness raises the
+# Installs WSL for the Adelie WSL sandbox. Runs ELEVATED, once: the harness raises the
 # Windows consent prompt for this script, or a person runs it from an administrator PowerShell.
 #
 #   powershell -ExecutionPolicy Bypass -File install-wsl.ps1 -Log C:\path\install.log

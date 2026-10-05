@@ -2,7 +2,7 @@
 
 # 示例：用一个 Agent 构建另一个 Agent（本地，经 Ollama 跑在 AMD GPU 上）
 
-这个示例是 **“构建 Agent 的 Harness”** 支柱的可运行版本。仅用 PenguinHarness SDK，它会：
+这个示例是 **“构建 Agent 的 Harness”** 支柱的可运行版本。仅用 Adelie SDK，它会：
 
 1. **构建**一个全新的 Agent（`commit-helper`）——用 `agent-initialization` skill 驱动 `default_agent`，
    根据一句大白话需求把它搭建出来；然后
@@ -22,7 +22,7 @@ ollama serve &          # 若尚未作为服务运行
 ollama pull qwen3.6:35b
 ```
 
-## 2. 把 PenguinHarness 指向它（一次即可）
+## 2. 把 Adelie 指向它（一次即可）
 
 ```bash
 penguin config model add \

@@ -1,4 +1,4 @@
-# Minimal PenguinHarness deployment. `docker compose up -d`, then read the first-login
+# Minimal Adelie deployment. `docker compose up -d`, then read the first-login
 # link out of `docker compose logs penguin`.
 #
 # See https://penguin.ooo/docs/quickstart-docker for the first sign-in, upgrades, running

@@ -85,7 +85,7 @@ export const en: Strings = {
       editTitle: "Configure ssh host",
       saved: (alias: string) => `Updated ${alias} in the ssh config.`,
       foreign:
-        "This block was not written by PenguinHarness and may carry options this form does not know; edit it in ~/.ssh/config.",
+        "This block was not written by Adelie and may carry options this form does not know; edit it in ~/.ssh/config.",
     },
     add: "Add machines…",
     addSelected: (count: number) => `Enable these ${count}`,
@@ -285,7 +285,7 @@ export const en: Strings = {
       cdp: "sending a DevTools command",
     },
     unavailableTitle: "Built-in browser unavailable",
-    unavailableDesktop: "The built-in browser runs in the PenguinHarness desktop app.",
+    unavailableDesktop: "The built-in browser runs in the Adelie desktop app.",
     unavailableShell: "This desktop app is too old for the built-in browser. Update it to use it.",
     unavailableWindow: "No app window is available to show the browser.",
     openFailed: (reason: string): string => `Could not open a tab: ${reason}`,
@@ -683,8 +683,7 @@ export const en: Strings = {
     readyBodyRelease:
       "Restart the service to run the new version. Running tasks will be interrupted; this page reloads once the service is back.",
     /** Mirrors the shell's native restart prompt: the interruption warning must not disappear on the web path. */
-    readyBodyClient:
-      "PenguinHarness will restart to finish updating. Running tasks will be interrupted.",
+    readyBodyClient: "Adelie will restart to finish updating. Running tasks will be interrupted.",
     /** Nothing supervises the server process (not started through penguin web / penguin server), so the restart is the user's. */
     readyBodyManual:
       "The new version is installed. This service is not supervised by penguin web or penguin server, so it cannot be restarted from here: re-run penguin web (or penguin server) in a terminal.",
@@ -873,7 +872,7 @@ export const en: Strings = {
     claimFailedTitle: "Sign-in link no longer works",
     /** Desktop deployment: the shell mints a fresh link every time it starts, so restarting it is the way back in. */
     claimFailedDesktop:
-      "This one-time sign-in link has already been used or has expired. Restart the PenguinHarness desktop app to get a fresh link and be signed in automatically, or sign in with your username and password below.",
+      "This one-time sign-in link has already been used or has expired. Restart the Adelie desktop app to get a fresh link and be signed in automatically, or sign in with your username and password below.",
     /** Everywhere else: nobody at this browser can mint a link, so the way in is the form below or whoever runs the server. */
     claimFailedServer:
       "The first-login link stops working once the server has a password, and a restart replaces it with a new one. Sign in with your username and password below, or ask your administrator for a new sign-in link.",
@@ -1161,7 +1160,7 @@ export const en: Strings = {
       ["{{DATE}}", "Current date"],
       [
         "{{PROJECT_DIR}}",
-        "PenguinHarness app data root — all agents' data and project-level data; not the task working directory",
+        "Adelie app data root — all agents' data and project-level data; not the task working directory",
       ],
       ["{{AGENT_ID}}", "Current agent id"],
       ["{{CWD}}", "Absolute Workspace path"],
@@ -2277,7 +2276,7 @@ export const en: Strings = {
     importPromptTail: (projectId: string, agentId: string): string =>
       [
         "Read the source in full first and review every script for malicious behavior (exfiltrating data, touching files outside its source, running unknown commands); continue only once it is safe.",
-        'Then produce a PenguinHarness hook package: a hooks.json (name, description, description_zh, version in the YYYY.MM.DD.N format, and one command list per hook point — stop / pre_tool_use / user_prompt — each entry { "command": "<script path relative to the package>", "timeout": <seconds> }) plus plain Node .mjs scripts using builtin modules only. A hook point the package does not use may be left out or []; a user_prompt entry may add "trigger": "prompt" (every prompt the user submits, the default) or "host" (only when the host starts the package\'s flow by name).',
+        'Then produce an Adelie hook package: a hooks.json (name, description, description_zh, version in the YYYY.MM.DD.N format, and one command list per hook point — stop / pre_tool_use / user_prompt — each entry { "command": "<script path relative to the package>", "timeout": <seconds> }) plus plain Node .mjs scripts using builtin modules only. A hook point the package does not use may be left out or []; a user_prompt entry may add "trigger": "prompt" (every prompt the user submits, the default) or "host" (only when the host starts the package\'s flow by name).',
         'Script contract: stdin carries one JSON object — at the stop point { "hook": "stop", "session_id", "trace_path" } (trace_path is the Trace file the Session is writing, absent without a Trace); the pre_tool_use point adds tool_name, tool_call_id and arguments (the raw argument JSON string); the user_prompt point carries trace_path, scratchpad_dir and prompt (the user\'s message text). Empty stdout means no opinion; otherwise stdout is one JSON answer — stop: { "decision": "continue" | "stop", "input", "reason", "output", "subagent"? }, pre_tool_use: { "decision": "allow" | "deny", "reason", "output" }, user_prompt: { "context" }, which is sent right behind the user\'s message on every prompt. A non-zero exit, non-JSON stdout or a timeout is recorded as a failure and ignored.',
         `Install it into agent_state/hooks/<name>/ of agent "${agentId}" in Project "${projectId}" (the directory name is the package name and must match ^[A-Za-z0-9_-]+$), then tell me what it does and at which hook point it fires.`,
       ].join("\n"),
@@ -2506,7 +2505,7 @@ export const en: Strings = {
         "macOS is blocking access to this folder. Use “Allow access” to ask macOS for it, and allow it when macOS asks.",
       /** Asked, and the folder is still refused: a packaged app. */
       deniedMacRefused:
-        "macOS did not allow it. If PenguinHarness is not listed under Files and Folders, add it under Full Disk Access with +, then retry.",
+        "macOS did not allow it. If Adelie is not listed under Files and Folders, add it under Full Disk Access with +, then retry.",
       /** Asked, and the folder is still refused: a development instance, whose reads macOS charges to its terminal. */
       deniedMacRefusedDev:
         "This is an unpackaged development instance: macOS counts its file access against the terminal that started it. Allow that terminal under Files and Folders (or give it Full Disk Access), then retry.",
@@ -3541,7 +3540,7 @@ Scenarios:
     troubleConnError:
       "Connection status shows an error? Check the credentials; for Feishu also confirm the API domain and the long-connection event subscription.",
     troubleOnePoller:
-      "Telegram reports that another program is polling? A Bot Token serves exactly one program at a time — close the other PenguinHarness server or bot script using it, or give this conversation a bot of its own. A getUpdates you run by hand (a curl to see what Telegram has queued) is that other program too: disable the connection here before running one. Inspecting them by hand can also discard them — any call you pass an offset to confirms everything before it, and the app's own next connect drops the backlog — so retest with a freshly sent message rather than the ones you just looked at.",
+      "Telegram reports that another program is polling? A Bot Token serves exactly one program at a time — close the other Adelie server or bot script using it, or give this conversation a bot of its own. A getUpdates you run by hand (a curl to see what Telegram has queued) is that other program too: disable the connection here before running one. Inspecting them by hand can also discard them — any call you pass an offset to confirms everything before it, and the app's own next connect drops the backlog — so retest with a freshly sent message rather than the ones you just looked at.",
     troubleGroupPrivacy:
       "The bot ignores everything you say in a Telegram group? Telegram's Group Privacy is on by default, and under it a bot that is not an administrator of the group receives only commands addressed to it (such as /start@your_bot) and replies to its own messages — ordinary group messages are never delivered at all, and the connection itself looks perfectly healthy. Making the bot an administrator of that group fixes it on its own, since administrators always receive every message. Otherwise turn Group Privacy off with /setprivacy in @BotFather, then remove the bot from the group and add it back — a group it is already in does not pick up the change.",
     /** WeChat has no group inbound at all — the answer to "I @-ed it in a group and nothing happened". */
@@ -4187,8 +4186,7 @@ Scenarios:
     mission: "Mission",
     missionHint:
       "One sentence on why this organization exists; the CEO's first session starts from it",
-    missionPlaceholder:
-      "e.g. Maintain the PenguinHarness docs site and publish a weekly update digest",
+    missionPlaceholder: "e.g. Maintain the Adelie docs site and publish a weekly update digest",
     /** The three examples under the mission field (org-examples.ts holds their order). */
     missionExampleHint: "Click to fill the mission",
     missionExamples: {
@@ -5046,7 +5044,7 @@ Scenarios:
       handbook_file_not_found: "That document no longer exists.",
       handbook_index_required: "The handbook index (README.md) cannot be deleted.",
       browser_unavailable:
-        "The built-in browser is unavailable: it needs the PenguinHarness desktop app to be open.",
+        "The built-in browser is unavailable: it needs the Adelie desktop app to be open.",
       source_not_found: "That browser profile was not found.",
       shell_unreachable: "The desktop app could not be reached.",
       timeout: "That took too long. Try again.",

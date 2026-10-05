@@ -2,7 +2,7 @@
 
 # 示例：一个自我改进的 Agent（本地，经 Ollama 跑在 AMD GPU 上）
 
-这个示例是 **“递归自我进化”** 支柱的可运行版本。仅用 PenguinHarness SDK，Agent 就在**自己身上**跑完
+这个示例是 **“递归自我进化”** 支柱的可运行版本。仅用 Adelie SDK，Agent 就在**自己身上**跑完
 自我进化循环——而关键在于：这次改进是由 *Agent 自己*产出的，不是脚本硬编码写死的：
 
 1. **评估（Evaluate）** —— Agent 尝试一个约束型任务，并按 rubric（普通代码）打分。
@@ -42,7 +42,7 @@ skill 按一份*私有* rubric 驱动。
 Agent 通过**从一份通过范例里学到约定**、并把它写进自己的 `AGENTS.md` 来弥合这个缺口——在递归脚本里，
 更进一步：见过多份范例后，把其中的固定常量锁定下来。
 
-## 1–2. 提供模型并把 PenguinHarness 指向它
+## 1–2. 提供模型并把 Adelie 指向它
 
 ```bash
 export HIP_VISIBLE_DEVICES=0        # 可选：指定某张 AMD GPU

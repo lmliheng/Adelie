@@ -1,8 +1,8 @@
-# 参与 PenguinHarness 开发
+# 参与 Adelie 开发
 
 [English](CONTRIBUTING.md)
 
-感谢你参与建设 PenguinHarness！本指南涵盖工作区搭建、日常命令、质量门禁，以及仓库的工作规则。
+感谢你参与建设 Adelie！本指南涵盖工作区搭建、日常命令、质量门禁，以及仓库的工作规则。
 
 参与本项目受 [行为准则](CODE_OF_CONDUCT.zh.md) 约束。安全问题不要开公开 issue——
 [安全策略](SECURITY.zh.md) 说明了应该发往何处。
@@ -63,7 +63,7 @@ web/server 消费的是快照副本，只有当该包的 `build` 脚本经由 pn
 该变量未设置或为空时才生效（`scripts/run-with-env.mjs`），因此一个已导出的值会静默盖过全部默认值；
 而导出 `PENGUIN_HOME=~/.penguin/data` 会把 `pnpm dev:server` 放到发行版/CLI 的根目录上，那里已经有
 一个运行中的桌面应用持有锁。桌面开发外壳还多隔离一层：未打包的运行会取一个带 dev 后缀的应用标识
-（`PenguinHarness-Dev`），拥有自己的 userData 目录、单实例锁与固定端口，并且即使在没有该环境变量的
+（`Adelie-Dev`），拥有自己的 userData 目录、单实例锁与固定端口，并且即使在没有该环境变量的
 情况下启动（`pnpm --dir packages/desktop start`）也默认使用 `~/.penguin/dev-data`——因此它可以与已
 安装的发行版并排运行，两个实例互不可见。每次未打包启动都会打印它选中的这一对：
 `[shell] dev instance '<name>' on data root <root>`。
@@ -152,7 +152,7 @@ pnpm test:e2e                                        # core 的真实模型 e2e�
 ## 报告缺陷或提出功能建议
 
 从 [issue 表单](https://github.com/Prism-Shadow/penguin-harness/issues/new/choose) 提交。一份缺陷报告
-附上版本（`penguin version`）、PenguinHarness 的安装方式、操作系统，以及问题是否在全新的数据根目录上
+附上版本（`penguin version`）、Adelie 的安装方式、操作系统，以及问题是否在全新的数据根目录上
 依然出现（`PENGUIN_HOME=/tmp/penguin-check penguin ...`），价值会高得多——最后这一条能把代码缺陷与
 旧版本遗留的状态区分开。永远不要把 API Key、机器人 Token、`system_config.yaml` 或 `.env` 贴进
 issue：数据根目录以明文保存 Provider 凭据，而 issue 是公开且永久的。

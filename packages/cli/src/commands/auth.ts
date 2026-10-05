@@ -1,5 +1,5 @@
 /**
- * `penguin auth` — signing in to a PenguinHarness server from a terminal.
+ * `penguin auth` — signing in to an Adelie server from a terminal.
  *
  *   penguin auth login  [--server <url>] [--user-id <id>] [--password <pw>] [--print] [--root <dir>]
  *   penguin auth status [--root <dir>]

@@ -2,7 +2,7 @@
   <img src="packages/web/public/adelie-icon.svg" alt="Adelie logo" width="88" />
 </p>
 
-<h1 align="center">PenguinHarness</h1>
+<h1 align="center">Adelie</h1>
 
 <p align="center"><strong>开源、本地的多 Agent 应用自动开发平台</strong><br />全自动<strong>创建</strong> · <strong>优化</strong> · <strong>部署</strong> AI 应用</p>
 
@@ -38,16 +38,16 @@
 </p>
 
 <p align="center">
-  <a href="https://www.producthunt.com/products/penguinharness?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-penguinharness" target="_blank" rel="noopener noreferrer"><img alt="PenguinHarness - Let Agents Autonomously Build Better Agents for $0.02 | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202577&amp;theme=light&amp;t=1784804711946" /></a>
+  <a href="https://www.producthunt.com/products/penguinharness?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-penguinharness" target="_blank" rel="noopener noreferrer"><img alt="Adelie - Let Agents Autonomously Build Better Agents for $0.02 | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202577&amp;theme=light&amp;t=1784804711946" /></a>
 </p>
 
 <p align="center"><a href="README.md">English</a> | 简体中文</p>
 
-## 为什么选择 PenguinHarness
+## 为什么选择 Adelie
 
-> 使用 LangChain，以 1 倍速度人工构建 Agent；<br />使用 PenguinHarness，以 100 倍速度用 Agent 构建 Agent。
+> 使用 LangChain，以 1 倍速度人工构建 Agent；<br />使用 Adelie，以 100 倍速度用 Agent 构建 Agent。
 
-PenguinHarness 运行在你的电脑或服务器上，自动串联 Agent 应用的创建、评测、优化与部署。三个递进的理由定义了这个平台：
+Adelie 运行在你的电脑或服务器上，自动串联 Agent 应用的创建、评测、优化与部署。三个递进的理由定义了这个平台：
 
 ### 1. 🏆 以几十分之一的成本，跑出优异的效果
 
@@ -56,7 +56,7 @@ PenguinHarness 运行在你的电脑或服务器上，自动串联 Agent 应用�
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="assets/readme/benchmark-dark.svg" />
-    <img src="assets/readme/benchmark-light.svg" alt="Benchmark：PenguinHarness 在数据分析题库准确率最高、编程题库与 OpenAI Codex 持平，成本仅为两者的零头" width="920" />
+    <img src="assets/readme/benchmark-light.svg" alt="Benchmark：Adelie 在数据分析题库准确率最高、编程题库与 OpenAI Codex 持平，成本仅为两者的零头" width="920" />
   </picture>
 </p>
 
@@ -64,7 +64,7 @@ PenguinHarness 运行在你的电脑或服务器上，自动串联 Agent 应用�
 
 ### 2. ⚡ 一句话生成可运行的 Agent 应用
 
-用一句话描述需求，PenguinHarness 自动构建完整的 Agent 应用——脚手架、代码、运行说明，一步到位：
+用一句话描述需求，Adelie 自动构建完整的 Agent 应用——脚手架、代码、运行说明，一步到位：
 
 ```text
 收集 https://github.com/ericbuess/claude-code-docs 的文档，做一个化身 Claude Code 配置专家、回答带来源引用的 RAG 问答应用。
@@ -78,7 +78,7 @@ https://github.com/user-attachments/assets/604eb626-0a5d-4a62-87e3-14ebade1cd5f
 
 ### 3. 🧬 原生 Agent 自进化引擎
 
-借助 PenguinHarness 技能库，Agent 自己评估、自己优化：跑 Benchmark、找失分点、发布 N+1 版——每轮之前自动快照，每个请求都可在轨迹观测中回放。
+借助 Adelie 技能库，Agent 自己评估、自己优化：跑 Benchmark、找失分点、发布 N+1 版——每轮之前自动快照，每个请求都可在轨迹观测中回放。
 
 https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
 
@@ -263,20 +263,20 @@ pnpm dev                     # 服务端 + Web 一起启动（带前缀日志，
 
 ## 贡献者
 
-感谢每一位为 PenguinHarness 作出贡献的开发者！
+感谢每一位为 Adelie 作出贡献的开发者！
 
 <p align="center">
-  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="PenguinHarness 贡献者" /></a>
+  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="Adelie 贡献者" /></a>
 </p>
 
 ## 引用
 
-如果 PenguinHarness 对你的研究有帮助，请引用：
+如果 Adelie 对你的研究有帮助，请引用：
 
 ```bibtex
 @software{penguinharness2026,
   author  = {{PrismShadow Team}},
-  title   = {PenguinHarness: Efficient Self-Improving Harness for Everyone},
+  title   = {Adelie: Efficient Self-Improving Harness for Everyone},
   year    = {2026},
   url     = {https://github.com/Prism-Shadow/penguin-harness},
   license = {Apache-2.0}

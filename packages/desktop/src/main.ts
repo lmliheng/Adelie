@@ -167,7 +167,7 @@ let rendererDeaths = 0;
 let rendererHealthyTimer: NodeJS.Timeout | null = null;
 
 // app.name, not a literal: a dev run raises this box while the installed build may be
-// running beside it, and a dialog titled "PenguinHarness" cannot be attributed to either.
+// running beside it, and a dialog titled "Adelie" cannot be attributed to either.
 function fatal(context: string, err: unknown): void {
   const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
   dialog.showErrorBox(app.name, `${context}\n\n${detail}`);

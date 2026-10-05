@@ -1,5 +1,5 @@
 /**
- * PenguinHarness plugin library: the built-in plugins and the loader that reads them (part
+ * Adelie plugin library: the built-in plugins and the loader that reads them (part
  * of core — hooks, skills and their loading all live in one SDK).
  *
  * The library has two sources, loaded the same way and distinguished only by

@@ -92,9 +92,9 @@ function mentionKeyRegex(mentions: readonly FeishuMention[]): RegExp {
  *
  * A LEADING mention of this bot is dropped instead of named, when its open id is known: the
  * bridge feeds inbound text to the model exactly as if it had been typed into the web
- * composer, and a `@PenguinHarness` in front of the sentence would announce the channel the
+ * composer, and a `@Adelie` in front of the sentence would announce the channel the
  * message came through. Only that addressing prefix goes — this bot named further in ("why
- * did @PenguinHarness stop replying?") is a word the user chose, and it reads as itself like
+ * did @Adelie stop replying?") is a word the user chose, and it reads as itself like
  * anyone else's. An unknown id (see FeishuApiClient.botOpenId) only means the prefix is named
  * too — the confusion the placeholder caused is gone either way.
  *

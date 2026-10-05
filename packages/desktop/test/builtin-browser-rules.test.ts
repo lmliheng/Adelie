@@ -136,7 +136,7 @@ describe("plainChromeUserAgent", () => {
   it("drops Electron's token and the app's", () => {
     expect(
       plainChromeUserAgent(
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) PenguinHarness/0.2.13 Chrome/140.0.7339.80 Electron/43.2.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Adelie/0.2.13 Chrome/140.0.7339.80 Electron/43.2.0 Safari/537.36",
       ),
     ).toBe(
       "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.80 Safari/537.36",
@@ -146,7 +146,7 @@ describe("plainChromeUserAgent", () => {
   it("copes with an app name that has a space in it", () => {
     expect(
       plainChromeUserAgent(
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) PenguinHarness Dev/0.2.13 Chrome/140.0.0.0 Electron/43.2.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Adelie Dev/0.2.13 Chrome/140.0.0.0 Electron/43.2.0 Safari/537.36",
       ),
     ).toBe(
       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",

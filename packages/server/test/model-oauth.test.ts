@@ -98,7 +98,7 @@ describe("authorize URL", () => {
     expect(q.get("code_challenge")).toBe(challenge);
     expect(q.get("code_challenge_method")).toBe("S256");
     expect(q.get("app_url")).toBe(APP_URL);
-    expect(q.get("key_name")).toBe("PenguinHarness");
+    expect(q.get("key_name")).toBe("Adelie");
     // The two URL-valued parameters travel escaped, never raw.
     expect(url).toContain("app_url=https%3A%2F%2Fpenguin.ooo%2F");
     expect(url).toContain("callback_url=http%3A%2F%2F127.0.0.1%3A8123%2F");
@@ -434,7 +434,7 @@ describe("model-oauth routes", () => {
     expect(q.get("callback_url")).toBe(
       `http://localhost${base()}/callback?flow=${encodeURIComponent(body.flowId)}`,
     );
-    expect(q.get("key_name")).toBe("PenguinHarness");
+    expect(q.get("key_name")).toBe("Adelie");
     expect(q.get("app_url")).toBe(APP_URL);
 
     expect((await member.post(`${base()}/start`, { provider: "tokendance" })).status).toBe(403);

@@ -47,7 +47,7 @@ function packApp(name: string): string {
 
 describe("syncSymlink (the macOS form)", () => {
   it("installs when nothing is there", () => {
-    const desired = packApp("PenguinHarness.app");
+    const desired = packApp("Adelie.app");
     const link = path.join(tmp, "usr-local-bin", "penguin");
 
     expect(syncSymlink(link, desired, false)).toEqual({
@@ -58,7 +58,7 @@ describe("syncSymlink (the macOS form)", () => {
   });
 
   it("does nothing when it already points at this app", () => {
-    const desired = packApp("PenguinHarness.app");
+    const desired = packApp("Adelie.app");
     const link = path.join(tmp, "bin", "penguin");
     syncSymlink(link, desired, false);
     const before = fs.lstatSync(link).mtimeMs;
@@ -72,12 +72,9 @@ describe("syncSymlink (the macOS form)", () => {
     // previous location leaves behind: the link is ours, and its target is gone.
     const link = path.join(tmp, "bin", "penguin");
     fs.mkdirSync(path.dirname(link), { recursive: true });
-    fs.symlinkSync(
-      "/Volumes/PenguinHarness/PenguinHarness.app/Contents/Resources/app/bin/penguin",
-      link,
-    );
+    fs.symlinkSync("/Volumes/Adelie/Adelie.app/Contents/Resources/app/bin/penguin", link);
     expect(fs.existsSync(link)).toBe(false); // dangling
-    const desired = packApp("PenguinHarness.app");
+    const desired = packApp("Adelie.app");
 
     expect(syncSymlink(link, desired, false).action).toBe("installed");
     expect(fs.readlinkSync(link)).toBe(desired);
@@ -88,14 +85,14 @@ describe("syncSymlink (the macOS form)", () => {
     const link = path.join(tmp, "bin", "penguin");
     fs.mkdirSync(path.dirname(link), { recursive: true });
     fs.symlinkSync(stale, link);
-    const desired = packApp("PenguinHarness.app");
+    const desired = packApp("Adelie.app");
 
     expect(syncSymlink(link, desired, false).action).toBe("installed");
     expect(fs.readlinkSync(link)).toBe(desired);
   });
 
   it("never replaces a penguin this app did not write", () => {
-    const desired = packApp("PenguinHarness.app");
+    const desired = packApp("Adelie.app");
     const link = path.join(tmp, "bin", "penguin");
     fs.mkdirSync(path.dirname(link), { recursive: true });
     // A regular file: an npm global install, a Homebrew shim, the user's own script.
@@ -109,7 +106,7 @@ describe("syncSymlink (the macOS form)", () => {
   });
 
   it("never follows a foreign symlink either", () => {
-    const desired = packApp("PenguinHarness.app");
+    const desired = packApp("Adelie.app");
     const theirs = path.join(tmp, "dot-penguin", "bin", "penguin");
     fs.mkdirSync(path.dirname(theirs), { recursive: true });
     fs.writeFileSync(theirs, "#!/bin/sh\necho tarball\n", { mode: 0o755 });
@@ -122,7 +119,7 @@ describe("syncSymlink (the macOS form)", () => {
   });
 
   it("replaces a foreign command only when forced, which only the menu item does", () => {
-    const desired = packApp("PenguinHarness.app");
+    const desired = packApp("Adelie.app");
     const link = path.join(tmp, "bin", "penguin");
     fs.mkdirSync(path.dirname(link), { recursive: true });
     fs.writeFileSync(link, "#!/bin/sh\necho not ours\n", { mode: 0o755 });
@@ -223,10 +220,7 @@ describe("inspect helpers", () => {
 describe("isVolatileAppLocation", () => {
   it("refuses to install from a mounted dmg", () => {
     expect(
-      isVolatileAppLocation(
-        "/Volumes/PenguinHarness/PenguinHarness.app/Contents/Resources/app",
-        "darwin",
-      ),
+      isVolatileAppLocation("/Volumes/Adelie/Adelie.app/Contents/Resources/app", "darwin"),
     ).toBe(true);
   });
 
@@ -235,16 +229,16 @@ describe("isVolatileAppLocation", () => {
     // link into it dies with the session.
     expect(
       isVolatileAppLocation(
-        "/private/var/folders/x/AppTranslocation/1B2C/d/PenguinHarness.app/Contents/Resources/app",
+        "/private/var/folders/x/AppTranslocation/1B2C/d/Adelie.app/Contents/Resources/app",
         "darwin",
       ),
     ).toBe(true);
   });
 
   it("installs normally from Applications", () => {
-    expect(
-      isVolatileAppLocation("/Applications/PenguinHarness.app/Contents/Resources/app", "darwin"),
-    ).toBe(false);
+    expect(isVolatileAppLocation("/Applications/Adelie.app/Contents/Resources/app", "darwin")).toBe(
+      false,
+    );
   });
 
   it("is a macOS rule only", () => {

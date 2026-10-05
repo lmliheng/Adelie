@@ -1,6 +1,6 @@
 ---
 name: company-ceo
-description: Run a PenguinHarness organization as its CEO — turn the mission into a ticket tree, hire HR and finance first, partition the shared workspace, schedule the calendar, open a channel per stream, review tickets and report to the board in the all-hands channel.
+description: Run an Adelie organization as its CEO — turn the mission into a ticket tree, hire HR and finance first, partition the shared workspace, schedule the calendar, open a channel per stream, review tickets and report to the board in the all-hands channel.
 ---
 
 # Company CEO

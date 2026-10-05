@@ -1,5 +1,5 @@
 /**
- * Signing in to a PenguinHarness server from a terminal, and remembering it.
+ * Signing in to an Adelie server from a terminal, and remembering it.
  *
  * Everything else this CLI does works on the data root directly — `config`, `run`, `chat` all
  * open files, never a socket. This is the one place that talks to a running server as a

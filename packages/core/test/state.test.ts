@@ -133,7 +133,7 @@ describe("loadAgentState", () => {
       // The default system Prompt states the Agent's identity, without repeating tool details
       // already in the tool schema (Suggested workflows only points to the run_subagent
       // delegation entry point).
-      expect(state.systemConfig.system_prompt).toContain("PenguinHarness");
+      expect(state.systemConfig.system_prompt).toContain("Adelie");
       expect(state.systemConfig.system_prompt).not.toContain("exec_command");
       // Personality pins the reply language to the user's own (the tool schema asks the same of
       // every call description, so the two can't disagree).
@@ -232,7 +232,7 @@ describe("loadAgentState", () => {
     const first = await loadAgentState({ init: {} });
     const second = await loadAgentState({ init: {} });
     expect(second.systemConfig.system_prompt).toBe(first.systemConfig.system_prompt);
-    expect(second.systemConfig.system_prompt).toContain("PenguinHarness");
+    expect(second.systemConfig.system_prompt).toContain("Adelie");
     expect(second.agentsMd).toBe(first.agentsMd);
     // The tool config is fully preserved on the load path.
     expect(second.systemConfig.tools?.builtin?.[0]?.name).toBe("read_file");
@@ -497,7 +497,7 @@ describe("assembleSystemPrompt", () => {
       }),
     );
     expect(prompt).toContain("AGENTS.md");
-    expect(prompt).toContain("PenguinHarness");
+    expect(prompt).toContain("Adelie");
     // The default template wraps AGENTS.md in a [developer_instructions] block.
     expect(prompt).toContain("[developer_instructions]");
     expect(prompt).toContain("[/developer_instructions]");

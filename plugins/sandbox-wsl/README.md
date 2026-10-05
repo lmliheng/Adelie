@@ -1,6 +1,6 @@
 # @prismshadow/penguin-plugin-sandbox-wsl
 
-A Windows sandbox backend for PenguinHarness. Each agent command runs in a dedicated WSL2 distro (Ubuntu by default), as an unprivileged account, under [bubblewrap](https://github.com/containers/bubblewrap).
+A Windows sandbox backend for Adelie. Each agent command runs in a dedicated WSL2 distro (Ubuntu by default), as an unprivileged account, under [bubblewrap](https://github.com/containers/bubblewrap).
 
 | Dimension  | How                                                                                        |
 | ---------- | ------------------------------------------------------------------------------------------ |

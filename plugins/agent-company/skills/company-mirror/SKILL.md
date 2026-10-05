@@ -1,6 +1,6 @@
 ---
 name: company-mirror
-description: Run a PenguinHarness organization that mirrors a real company — one digital twin per real colleague, each twin's desk bound to that colleague's chat bot, twins answering what the handbook already knows and relaying the rest to one another instead of hiring, scheduling and filing tickets.
+description: Run an Adelie organization that mirrors a real company — one digital twin per real colleague, each twin's desk bound to that colleague's chat bot, twins answering what the handbook already knows and relaying the rest to one another instead of hiring, scheduling and filing tickets.
 ---
 
 # Company Mirror

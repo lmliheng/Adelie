@@ -1,5 +1,5 @@
 /**
- * OmniMessage — PenguinHarness's primary message protocol.
+ * OmniMessage — Adelie's primary message protocol.
  *
  * All messages share one envelope: `timestamp` (ISO 8601 UTC), `type`, and `payload`.
  * The outer `type` falls into three categories:
@@ -154,7 +154,7 @@ export interface SessionMetaPayload {
  * Provider-fidelity payload (mirrors AgentHub's `Fidelity`): an arbitrary JSON-style object of
  * wire-level data the LLM client records to reproduce the original message on replay — thinking
  * signatures, phase labels, encrypted reasoning, the upstream reasoning field name, etc. Opaque
- * to PenguinHarness: written to the Trace as-is and passed back verbatim; some models **require**
+ * to Adelie: written to the Trace as-is and passed back verbatim; some models **require**
  * it when history is replayed (e.g. Claude thinking signatures, GPT-5 encrypted reasoning) —
  * losing it breaks Session resumption.
  */

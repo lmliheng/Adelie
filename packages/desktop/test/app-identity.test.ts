@@ -19,13 +19,13 @@ function builderValue(key: string): string {
 describe("resolveProfile", () => {
   it("an unpackaged run is dev, a packaged one release", () => {
     expect(resolveProfile({ argv: ["electron", "."], isPackaged: false })).toBe("dev");
-    expect(resolveProfile({ argv: ["PenguinHarness.exe"], isPackaged: true })).toBe("release");
+    expect(resolveProfile({ argv: ["Adelie.exe"], isPackaged: true })).toBe("release");
   });
 
   it("--dev puts a packaged build on the dev profile", () => {
     // The point of the switch: one installed exe launched twice, once bare and once with
     // --dev, yields two identities and so two instances side by side.
-    expect(resolveProfile({ argv: ["PenguinHarness.exe", "--dev"], isPackaged: true })).toBe("dev");
+    expect(resolveProfile({ argv: ["Adelie.exe", "--dev"], isPackaged: true })).toBe("dev");
   });
 
   it("--dev is exact — a prefix or a value-carrying form does not match", () => {
@@ -53,7 +53,7 @@ describe("appIdentity", () => {
     expect(dev.name).not.toBe(appIdentity("release").name);
     expect(dev.appUserModelId).not.toBe(appIdentity("release").appUserModelId);
     expect(dev).toEqual({
-      name: "PenguinHarness-Dev",
+      name: "Adelie-Dev",
       appUserModelId: "com.prismshadow.penguinharness.dev",
     });
   });

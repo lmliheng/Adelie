@@ -25,11 +25,11 @@ describe("openLogFile", () => {
 
   it("creates its directory and stamps every line", () => {
     const log = openLogFile({ file, now: at });
-    log.line("[shell] dev instance 'PenguinHarness Dev' on data root /tmp/x");
+    log.line("[shell] dev instance 'Adelie Dev' on data root /tmp/x");
     log.line("[shell] a renderer is gone: window 1 (crashed, exit code 11)");
     log.close();
     expect(read()).toBe(
-      "2026-09-29T08:00:00.000Z [shell] dev instance 'PenguinHarness Dev' on data root /tmp/x\n" +
+      "2026-09-29T08:00:00.000Z [shell] dev instance 'Adelie Dev' on data root /tmp/x\n" +
         "2026-09-29T08:00:00.000Z [shell] a renderer is gone: window 1 (crashed, exit code 11)\n",
     );
   });

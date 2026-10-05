@@ -82,7 +82,7 @@ export default defineConfig({
   // the build fails outright rather than shipping something subtly wrong, which is the good case.
   worker: { format: "es" },
   server: {
-    // Fixed PenguinHarness dev port (stands alone — vite configs cannot import core TS,
+    // Fixed Adelie dev port (stands alone — vite configs cannot import core TS,
     // so the numbers are literals here; the allocation table lives in core's internal/ports.ts).
     port: 7365,
     proxy: {

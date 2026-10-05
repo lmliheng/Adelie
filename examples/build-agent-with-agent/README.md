@@ -3,7 +3,7 @@
 # Example: an Agent that builds another Agent (local, on an AMD GPU via Ollama)
 
 This example is the **"Harness for Building Agents"** pillar in runnable code. Using only the
-PenguinHarness SDK, it:
+Adelie SDK, it:
 
 1. **builds** a brand-new agent (`commit-helper`) by driving `default_agent` with the
    `agent-initialization` skill from a plain-language requirement, then
@@ -23,7 +23,7 @@ ollama serve &          # if not already running as a service
 ollama pull qwen3.6:35b
 ```
 
-## 2. Point PenguinHarness at it (once)
+## 2. Point Adelie at it (once)
 
 ```bash
 penguin config model add \

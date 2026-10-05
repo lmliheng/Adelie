@@ -177,7 +177,7 @@ export function modelOAuthCallbackRoutes(deps: ModelOauthRouteDeps): Hono<AppEnv
       return c.html(
         resultPage(
           "Authorization failed",
-          "This link is incomplete. Return to PenguinHarness and start a new authorization.",
+          "This link is incomplete. Return to Adelie and start a new authorization.",
         ),
         400,
       );
@@ -190,7 +190,7 @@ export function modelOAuthCallbackRoutes(deps: ModelOauthRouteDeps): Hono<AppEnv
       const message =
         err instanceof HttpError
           ? err.message
-          : "Something went wrong. Return to PenguinHarness and start a new authorization.";
+          : "Something went wrong. Return to Adelie and start a new authorization.";
       // A refusal is a page, not an API error: every one of them answers 400, and the
       // service's own sentence is what tells the person what to do about it.
       return c.html(resultPage("Authorization failed", message), 400);
@@ -198,7 +198,7 @@ export function modelOAuthCallbackRoutes(deps: ModelOauthRouteDeps): Hono<AppEnv
     return c.html(
       resultPage(
         "Authorization received",
-        "Return to PenguinHarness — it finishes the authorization and reports the outcome there. You can close this tab.",
+        "Return to Adelie — it finishes the authorization and reports the outcome there. You can close this tab.",
       ),
     );
   });

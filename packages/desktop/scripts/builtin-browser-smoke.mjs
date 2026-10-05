@@ -248,7 +248,7 @@ async function run() {
   const ua = await evaluate(tabId, "navigator.userAgent");
   check(
     "sites see a plain Chrome user agent",
-    !/Electron|PenguinHarness|penguin/i.test(ua) && /Chrome\//.test(ua),
+    !/Electron|Adelie|penguin/i.test(ua) && /Chrome\//.test(ua),
     ua,
   );
   check(

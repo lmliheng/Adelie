@@ -33,7 +33,7 @@ const json = (status: number, body: unknown): Response => jsonResponse(body, sta
 
 const deliveryBody = {
   status: "claimed",
-  client: { id: "penguin-harness", displayName: "PenguinHarness" },
+  client: { id: "penguin-harness", displayName: "Adelie" },
   user: { id: 7, username: "penguin-go-user", displayName: "Penguin Go User", avatarUrl: null },
   apiKey: "ignored-top-level-key",
   connection: {

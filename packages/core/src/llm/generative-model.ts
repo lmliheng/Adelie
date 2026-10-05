@@ -241,7 +241,7 @@ export function mergeOmniToUniMessage(messages: OmniMessage[]): UniMessage {
 // ---------------------------------------------------------------------------
 
 /**
- * Converts AgentHub `UsageMetadata` into PenguinHarness `TokenCounts`.
+ * Converts AgentHub `UsageMetadata` into Adelie `TokenCounts`.
  *
  * Conversion rules (AgentHub UsageMetadata → OmniMessage TokenCounts, null treated as 0):
  *   - `cache_read  = cached_tokens` (input tokens served from cache hits);

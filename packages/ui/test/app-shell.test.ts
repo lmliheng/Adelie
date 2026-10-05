@@ -64,7 +64,7 @@ describe("MobileTopBar", () => {
   it("is the phone's bar, its drawer button named by the caller and hinted only with a badge", () => {
     const plain = renderStatic(
       createElement(MobileTopBar, {
-        title: "PenguinHarness",
+        title: "Adelie",
         menuLabel: "Sessions",
         onMenu: () => {},
       }),
@@ -72,10 +72,10 @@ describe("MobileTopBar", () => {
     expect(classTokens(plain)).toContain("md:hidden");
     expect(plain).toContain('aria-label="Sessions"');
     expect(plain).not.toContain("data-tooltip");
-    expect(plain).toContain('<span class="text-sm font-semibold">PenguinHarness</span>');
+    expect(plain).toContain('<span class="text-sm font-semibold">Adelie</span>');
     const badged = renderStatic(
       createElement(MobileTopBar, {
-        title: "PenguinHarness",
+        title: "Adelie",
         menuLabel: "Sessions · Update available",
         menuHint: "Update available",
         menuBadge: createElement("i", { "aria-hidden": true }),

@@ -59,7 +59,7 @@ If the port is taken, pick a free one — never kill a process already listening
 
 ## Tool calling — required for agents
 
-Agent harnesses (PenguinHarness included) send `tools` with their requests. vLLM must opt in at startup:
+Agent harnesses (Adelie included) send `tools` with their requests. vLLM must opt in at startup:
 
 ```bash
 vllm serve Qwen/Qwen3.5-0.8B --enable-auto-tool-choice --tool-call-parser hermes
@@ -73,7 +73,7 @@ Choose the parser for the model family — e.g. `hermes` for Qwen models, `llama
 curl http://localhost:8000/v1/models
 ```
 
-## Register with PenguinHarness
+## Register with Adelie
 
 Model configuration is the penguin CLI's job — `penguin config model add` registers an endpoint and `penguin config model list` shows what has been registered. A served model is not visible to Penguin until you add it:
 

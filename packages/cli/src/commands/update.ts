@@ -122,7 +122,7 @@ function segments(p: string): string[] {
  * Pure and shape-based on purpose: it touches neither the filesystem nor the environment beyond
  * what is passed in, so every branch is unit-testable. The three layouts are unambiguous:
  *
- * - desktop app — the CLI bundled into the PenguinHarness desktop app, which runs it on the
+ * - desktop app — the CLI bundled into the Adelie desktop app, which runs it on the
  *   app's own Electron runtime as Node and updates it with the app;
  * - source checkout — `…/packages/cli/{src,dist}/index.{ts,js}` (also how a `pnpm link`-ed dev
  *   build looks once the bin symlink is resolved);

@@ -5,11 +5,7 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const SIGNED_BASENAMES = new Set([
-  "PenguinHarness.exe",
-  "elevate.exe",
-  "penguin-desktop-win32-x64.exe",
-]);
+const SIGNED_BASENAMES = new Set(["Adelie.exe", "elevate.exe", "penguin-desktop-win32-x64.exe"]);
 
 function isGitBundleExecutable(file) {
   return file.split(path.sep).includes("git");

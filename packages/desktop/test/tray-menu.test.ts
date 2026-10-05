@@ -13,7 +13,7 @@ import type { TrayLocale } from "../src/tray-menu.js";
 describe("trayMenuTemplate", () => {
   it("lists the actions in order, separated into groups", () => {
     const template = trayMenuTemplate({
-      appName: "PenguinHarness",
+      appName: "Adelie",
       closeToTray: true,
       locale: "en",
     });
@@ -30,18 +30,17 @@ describe("trayMenuTemplate", () => {
   });
 
   it("names the app in the first entry, dev suffix included", () => {
+    expect(trayMenuTemplate({ appName: "Adelie", closeToTray: true, locale: "en" })[0]?.label).toBe(
+      "Open Adelie",
+    );
     expect(
-      trayMenuTemplate({ appName: "PenguinHarness", closeToTray: true, locale: "en" })[0]?.label,
-    ).toBe("Open PenguinHarness");
-    expect(
-      trayMenuTemplate({ appName: "PenguinHarness Dev", closeToTray: true, locale: "en" })[0]
-        ?.label,
-    ).toBe("Open PenguinHarness Dev");
+      trayMenuTemplate({ appName: "Adelie Dev", closeToTray: true, locale: "en" })[0]?.label,
+    ).toBe("Open Adelie Dev");
   });
 
   it("shows the close-to-tray preference as a checkbox", () => {
     for (const closeToTray of [true, false]) {
-      const item = trayMenuTemplate({ appName: "PenguinHarness", closeToTray, locale: "en" }).find(
+      const item = trayMenuTemplate({ appName: "Adelie", closeToTray, locale: "en" }).find(
         (entry) => entry.action === "toggle-close-to-tray",
       );
       expect(item).toEqual({
@@ -71,12 +70,12 @@ describe("trayMenuTemplate", () => {
   });
 
   it("draws every entry in the language it is given", () => {
-    const zh = trayMenuTemplate({ appName: "PenguinHarness", closeToTray: true, locale: "zh" });
-    const en = trayMenuTemplate({ appName: "PenguinHarness", closeToTray: true, locale: "en" });
+    const zh = trayMenuTemplate({ appName: "Adelie", closeToTray: true, locale: "zh" });
+    const en = trayMenuTemplate({ appName: "Adelie", closeToTray: true, locale: "en" });
     // Same entries, same order, different wording: the language must not change the menu.
     expect(zh.map((i) => i.action ?? i.type)).toEqual(en.map((i) => i.action ?? i.type));
     expect(zh.map((i) => i.label)).toEqual([
-      "打开 PenguinHarness",
+      "打开 Adelie",
       undefined,
       "新建会话",
       "模型",
@@ -86,7 +85,7 @@ describe("trayMenuTemplate", () => {
       "退出",
     ]);
     // The app name is a proper noun and survives translation.
-    expect(zh[0]?.label).toContain("PenguinHarness");
+    expect(zh[0]?.label).toContain("Adelie");
   });
 
   it("carries the same wording keys in both languages", () => {

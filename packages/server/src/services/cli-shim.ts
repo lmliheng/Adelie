@@ -59,7 +59,7 @@ function posixQuote(value: string): string {
 export function posixShimScript(execPath: string, entry: string, electron: boolean): string {
   return [
     "#!/bin/sh",
-    "# penguin CLI shim, rewritten by the PenguinHarness server at every start.",
+    "# penguin CLI shim, rewritten by the Adelie server at every start.",
     "# Runs the CLI of the harness that serves this data root, on that server's own runtime.",
     ...(electron ? ["export ELECTRON_RUN_AS_NODE=1"] : []),
     `exec ${posixQuote(execPath)} ${posixQuote(entry)} "$@"`,
@@ -74,7 +74,7 @@ export function posixShimScript(execPath: string, entry: string, electron: boole
 export function windowsShimScript(execPath: string, entry: string, electron: boolean): string {
   return [
     "@echo off",
-    "rem penguin CLI shim, rewritten by the PenguinHarness server at every start.",
+    "rem penguin CLI shim, rewritten by the Adelie server at every start.",
     "rem Runs the CLI of the harness that serves this data root, on that server's own runtime.",
     "setlocal",
     ...(electron ? ['set "ELECTRON_RUN_AS_NODE=1"'] : []),

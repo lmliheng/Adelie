@@ -300,7 +300,7 @@ export class ModelOAuthService implements ModelOAuth {
       throw new HttpError(
         409,
         "model_oauth_flow_used",
-        "This authorization has already been used. Start a new one in PenguinHarness.",
+        "This authorization has already been used. Start a new one in Adelie.",
       );
     }
     flow.code = input.code;

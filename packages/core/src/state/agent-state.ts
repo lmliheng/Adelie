@@ -114,7 +114,7 @@ export interface SessionEnvironmentValues {
   cwd: string;
   /** The Agent id this Session belongs to (system Prompt placeholder {{AGENT_ID}}). */
   agentId: string;
-  /** Absolute path to this Project's directory — PenguinHarness's app data root, injected via {{PROJECT_DIR}} and shown to the model as the Environment's "App Data Dir" line (Agent State/scratchpad paths live under its `agents/`). */
+  /** Absolute path to this Project's directory — Adelie's app data root, injected via {{PROJECT_DIR}} and shown to the model as the Environment's "App Data Dir" line (Agent State/scratchpad paths live under its `agents/`). */
   projectDir: string;
   /** The session model's provider group (system Prompt placeholder {{PROVIDER}}; paired with modelId to form the model reference). */
   provider: string;

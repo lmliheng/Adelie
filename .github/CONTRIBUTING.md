@@ -1,8 +1,8 @@
-# Contributing to PenguinHarness
+# Contributing to Adelie
 
 [中文版](CONTRIBUTING.zh.md)
 
-Thanks for helping build PenguinHarness! This guide covers the workspace setup, daily
+Thanks for helping build Adelie! This guide covers the workspace setup, daily
 commands, quality gates, and the repo's working rules.
 
 Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). A security
@@ -84,7 +84,7 @@ it into your shell: those defaults apply only when the variable is unset or empt
 (`scripts/run-with-env.mjs`), so an exported value silently wins over all of them, and an
 exported `PENGUIN_HOME=~/.penguin/data` puts `pnpm dev:server` on the release/CLI root
 where a running desktop app already holds the lock. The desktop dev shell isolates one
-step further: an unpackaged run takes a dev-suffixed app identity (`PenguinHarness-Dev`)
+step further: an unpackaged run takes a dev-suffixed app identity (`Adelie-Dev`)
 with its own userData directory, single-instance lock, and sticky port, and defaults to
 `~/.penguin/dev-data` even when launched without the env var
 (`pnpm --dir packages/desktop start`) — so it runs side by side with an installed release
@@ -93,7 +93,7 @@ it picked: `[shell] dev instance '<name>' on data root <root>`.
 
 That dev profile is a switch, not a property of being unpackaged: an installed release
 build launched with `--dev` (a second shortcut whose target ends in `--dev`, or
-`PenguinHarness.exe --dev`) takes the same dev identity and `~/.penguin/dev-data`, so one
+`Adelie.exe --dev`) takes the same dev identity and `~/.penguin/dev-data`, so one
 installation runs twice side by side — the release instance on your real data and a
 second one on a scratch root — without a checkout. It runs the release's own code, so it
 is a way to try the app against separate data, not a way to see uncommitted changes. A
@@ -213,7 +213,7 @@ pnpm test:e2e                                        # core live-model e2e, need
 ## Reporting a bug or proposing a feature
 
 Open an issue from the [issue forms](https://github.com/Prism-Shadow/penguin-harness/issues/new/choose).
-A bug report is worth far more with the version (`penguin version`), how PenguinHarness
+A bug report is worth far more with the version (`penguin version`), how Adelie
 was installed, the OS, and whether the problem survives a fresh data root
 (`PENGUIN_HOME=/tmp/penguin-check penguin ...`) — that last one separates a code defect
 from a state left behind by an earlier version. Never paste an API key, a bot token,

@@ -325,7 +325,7 @@ export function initUpdater(getWindow: () => BrowserWindow | null): void {
       manualCheckInFlight = false;
       void dialog.showMessageBox({
         type: "info",
-        message: "PenguinHarness is up to date.",
+        message: "Adelie is up to date.",
         detail: `Version ${app.getVersion()} is the latest release.`,
         buttons: ["OK"],
       });
@@ -571,7 +571,7 @@ async function promptDownload(version: string, parent: BrowserWindow | null): Pr
     type: "info" as const,
     message: `Version ${version} is available.`,
     detail:
-      "Download it now? PenguinHarness keeps running while it downloads, and you will be asked to restart when it is ready.",
+      "Download it now? Adelie keeps running while it downloads, and you will be asked to restart when it is ready.",
     buttons: ["Download", "Later"],
     defaultId: 0,
     cancelId: 1,
@@ -588,7 +588,7 @@ async function promptRestart(version: string, parent: BrowserWindow | null): Pro
   const options = {
     type: "info" as const,
     message: `Version ${version} is ready to install.`,
-    detail: "PenguinHarness will restart to finish updating. Running tasks will be interrupted.",
+    detail: "Adelie will restart to finish updating. Running tasks will be interrupted.",
     buttons: ["Restart now", "Later"],
     defaultId: 0,
     cancelId: 1,

@@ -56,7 +56,7 @@ const HARDENED_ENV: NodeJS.ProcessEnv = {
  * `PENGUIN_WEB_DIST` is *not* internal — it is a documented deployment override (see the
  * configuration reference and the server README) — and is stripped anyway because it names this
  * installation's front-end build. In the self-development case an Agent that starts a
- * PenguinHarness server would otherwise serve the deployment's assets instead of the ones it just
+ * Adelie server would otherwise serve the deployment's assets instead of the ones it just
  * built in the workspace, silently and with no error to read.
  *
  * `FORCE_COLOR` / `CLICOLOR_FORCE` are color-forcing overrides that Node (and the chalk-family

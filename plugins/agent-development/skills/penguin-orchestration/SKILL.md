@@ -1,11 +1,11 @@
 ---
 name: penguin-orchestration
-description: Drive PenguinHarness itself from a shell — list and create agents and sessions, send and steer messages mid-flight, and query costs and scheduled tasks via the penguin CLI over the local server.
+description: Drive Adelie itself from a shell — list and create agents and sessions, send and steer messages mid-flight, and query costs and scheduled tasks via the penguin CLI over the local server.
 ---
 
 # Penguin Orchestration
 
-The `penguin` CLI is a thin client of the PenguinHarness server. Inside a harness agent session it reaches the same server that is running you, so you can orchestrate the platform yourself: list and create agents, start conversations with them, steer those conversations while they run, and query costs and scheduled tasks.
+The `penguin` CLI is a thin client of the Adelie server. Inside a harness agent session it reaches the same server that is running you, so you can orchestrate the platform yourself: list and create agents, start conversations with them, steer those conversations while they run, and query costs and scheduled tasks.
 
 ## Before you start
 

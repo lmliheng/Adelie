@@ -5,7 +5,7 @@ description: Create a company-mode organization together with the user — colle
 
 # Company Setup
 
-Company mode is the second work mode of PenguinHarness: a Project's Agents organized into a **company** — a CEO at the root of a reporting tree, one standing desk session per employee, a calendar as the only periodic driver, a ticket board that carries the work, channels where `@` mentions interrupt, and monthly budgets that pause spending before it runs away. Creating one takes six facts and a single command.
+Company mode is the second work mode of Adelie: a Project's Agents organized into a **company** — a CEO at the root of a reporting tree, one standing desk session per employee, a calendar as the only periodic driver, a ticket board that carries the work, channels where `@` mentions interrupt, and monthly budgets that pause spending before it runs away. Creating one takes six facts and a single command.
 
 This skill is how you collect those six facts and run that command. **It ends there.** You never hire, never schedule a calendar event and never file a ticket: creation produces the CEO and nothing else, and the CEO does the rest — after it has proposed a plan and the board (the humans of the Project) has answered.
 
@@ -54,7 +54,7 @@ Before running anything, put all six answers on one screen, in the user's langua
 ```text
 Organization  co_plugin_marketplace  (Project: default_project)
 Name          Plugin Marketplace
-Mission       Build a PenguinHarness plugin marketplace, promote it into the top three search results, and earn from paid featured slots.
+Mission       Build an Adelie plugin marketplace, promote it into the top three search results, and earn from paid featured slots.
 Workspace     default (the organization's own workspace/)
 Model         Project default
 CEO budget    100 USD / month  — the whole company's cap
@@ -77,7 +77,7 @@ A complete invocation of the summary above:
 ```bash
 penguin org create --org-id co_plugin_marketplace \
   --name "Plugin Marketplace" \
-  --mission "Build a PenguinHarness plugin marketplace, promote it into the top three search results, and earn from paid featured slots." \
+  --mission "Build an Adelie plugin marketplace, promote it into the top three search results, and earn from paid featured slots." \
   --ceo-budget 100
 ```
 
