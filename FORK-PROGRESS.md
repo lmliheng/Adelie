@@ -328,6 +328,75 @@ Esc 只关输入框、弹窗还在；空白处右键菜单里有「New folder」
 `/downloads/index.json` 三个版本各 3 件，v0.2.1 三个资产都 200，页面下载区渲染出 v0.2.1 卡片在前。
 中间物 `out/`、`/tmp/adelie-pack`、`/tmp/adelie-verify*`、`/tmp/adelie-win` 已清，磁盘回到 2.4G。
 
+## v0.2.2：默认项目名 default、中文文案、手机上的导入 Trace 与草稿（2026-10-05，用户点单）
+
+用户原话六件：「初始 project 名改成 default」「新建 project 按钮改成新建项目」「项目管理也一样」
+「谁做的新建 project，一半中文一半英文的」「设置里导入 trace 部分 移动端不适配，出现了按钮覆盖」
+「还有草稿生成了无法删除」。提交 `e960d0b1`（修复）、`2d6abe83`（`RELEASE-v0.2.2.md`），tag
+**`v0.2.2`** = `2d6abe83`。
+
+### ① 初始 Project 名叫 `default`（不是 id `default_project`）
+
+- 采纳（不是创建）共享的那个 `default_project` 时从来没写过显示名，`/api/projects` 的
+  `ProjectSummary.name` 于是缺省，前端 `projectDisplayName` 回落到 id —— 侧栏顶部、新建对话页、
+  导入 Trace 的项目选择器里显示的都是 `default_project`。
+- 修法：core 新增 `DEFAULT_PROJECT_NAME = "default"`；`ProjectConfigService.ensureDisplayName(projectId, name)`
+  只在「该 Project 已有配置文件、且没有名字」时写入（`readTable` 为 null 直接返回，**绝不凭空空建
+  Project**）；两处调用：`provisionInitialProject` 的采纳分支，以及 **`Startup.setup()` 的启动扫描** ——
+  后者是给已有安装的：那种根的 admin 早就存在，`seedAdmin` 会直接 early-return，只在采纳路径补名字
+  就永远补不上。
+- 非 admin 那条路径不动（`<username>-default_project`，显示名 = 用户名，`auth.test.ts` 一直钉着）。
+- 测试三条：采纳后名字是 `default` 且文件里有 `name = "default"`；**已经带名字的（操作者/旧 CLI 起的）
+  不被覆盖**；**老根下一次启动后补上**、且启动本身在空根里不会建出任何 Project。
+
+### ② 中文界面里的 `Project` 一律改「项目」
+
+- `strings.ts`（zh）里 68 处 `Project` 译成「项目」：侧栏菜单「新建项目 / 项目设置」、新建对话框
+  「项目 ID / 留空则使用项目 ID 作为名称」、项目设置各处、删除项目、模型页「项目默认」、插件页、
+  用量页、组织、报错码，全一并去掉中英混排；`default_project` 这类 id 字面量不翻译，英文字典不变。
+- 文件头的文案规矩也改了：Project 的界面名与 Agent 的「智能体」同级。**CLI 的 zh 文案（`cli/src/i18n.ts`）
+  这轮没动**（用户说的是界面；要一起改的话另开一轮）。
+
+### ③ 设置 → 通用 → 导入 Trace：手机宽度不再压住
+
+- 症状：390px 下三个控件（项目 / Agent / 选择文件）压在行标题上，最右的「选择文件」还切出屏幕。
+- 根因在 `PrefRow` 本身：默认主题的 `ui-field` 是**不换行** flex，控制槽 `shrink-0`，控制组再
+  `flex-wrap` 也没有可用宽度可用（geek 主题自己有 grid + `max-width:100%`，所以只有默认主题中招）。
+- 修法：行改 `flex flex-wrap … gap-x-4 gap-y-2`，控制槽加 `ml-auto max-w-full` —— 放不下整行落到下一行
+  并靠右，被 `max-w-full` 卡住后控制组自己再换行。桌面宽度不变；这一改对其它设置行同样有效。
+
+### ④ 草稿会话在触摸屏上删不掉
+
+- 草稿行的删除按钮原本只有 `group-hover` 才显形；触摸屏没有 hover，按钮永远 opacity 0 —— 而它是
+  这一行唯一的出口（Session 行还有右键/长按菜单）。桌面鼠标悬停其实点得到，所以只在手机上是死路。
+- 修法：改成 `opacity-100 sm:opacity-0 sm:group-hover:opacity-100`（sm 以下常显，sm 以上悬停/聚焦显形），
+  与消息脚注的复制按钮同一条规则。
+
+### ⑤ 升级到 0.2.2 与安装包
+
+- tag `v0.2.2` = `2d6abe83` 已推 `origin`；GitHub Release **v0.2.2**（正文取 `RELEASE-v0.2.2.md` 去掉
+  一级标题，非草稿、latest、**无资产**）。
+- 三件安装包按同样形状重打，落 `/opt/adelie-design/downloads/v0.2.2/`，版本戳 `VERSION=0.2.2`、
+  `BUILD_DATE=2026-10-05`、`BUILD_COMMIT=2d6abe83`；顶层 `/downloads/index.json` 现在
+  **v0.2.2 → v0.2.1 → v0.2.0 → v0.1.0**。
+- **打包脚本这轮换了写法（`pack-assemble-022.sh` / `build-payloads-022.sh` / `build-bundles-022.sh`，
+  都在会话 scratchpad，未入库）**：磁盘当时只剩 2.3G，而上一版一次要 ~1.5G 峰值，于是改成**边做边清** ——
+  每个 target 建完 payload 就删它的 stage 与下载物、每个 bundle 封好就删它的 stage 与 payload、
+  拷进下载目录后再删 `out/bundles`。实测峰值只到 ~0.3G（`out/penguin` ~250M 常驻），打完清掉 `out/`
+  后磁盘仍有 **2.0G**；Downloads 目录从 814M 涨到 1.1G。**下轮要打包照这个顺序做。**
+- 验证（实测）：三件 `sha256sum -c` 通过；linux-x64 在隔离 HOME 里真离线装 —— `penguin version --json`
+  = `0.2.2` / release / `2026-10-05` / `2d6abe83…` / node 24.18.0，`penguin update --check` 报
+  `Installed 0.2.2 · latest 0.2.2`，装出来的实例在 7398 起得来（`<title>Adelie</title>`），
+  **全新认领后 `/api/projects` 直接报 `{"projectId":"default_project","name":"default"}`**，
+  装出的 `web/assets/*.js` 里有「项目 ID」（文案修复确实进包）；win 包外层
+  `install.cmd`/`install.ps1`/`payload.zip`/`payload.zip.sha256`，payload 26078 项含
+  `bin/penguin.cmd`、`git/usr/bin/sh.exe`、`package-manifest.json`，脚本里没有残留占位符且写的是 0.2.2；
+  3003 页面渲染出 v0.2.2 三件在前，内外网地址都 200。
+- 浏览器实测（本机临时实例 + **改动之前就建好的数据根**）：项目切换器与导入 Trace 的项目选择器都显示
+  `default`（升级路径）；菜单「新建项目 / 项目设置」；新建对话框全中文；390px 下导入行标题与三个控件
+  分两行、右缘不出屏；触摸手机上草稿删除按钮 `opacity=1`、点开确认后草稿与「草稿」分组一起消失；
+  桌面端静止 `0` / 悬停 `1`，行为与从前一致。
+
 ## 主线切到 main 之后：CI / Docker 的真实现状（2026-10-05）
 
 把新基座并进 `main` 之后，`ci.yml`（11 个 job）与 `docker.yml` 的 `push: main` 第一次真的跑起来了。
@@ -504,3 +573,5 @@ README 插件表那三条已闭，macOS 那条重跑即绿（确系跑机抖动�
 | 2026-10-05 | 主线收尾 | 「主线三件事」的收尾：桌面更新源去 OSS/探针、根安装脚本去 OSS/探针并指向 Adelie、插件元数据 `repository` 指向 Adelie；顺带修 web 更新弹窗的上游 Releases 链接；`scripts/test-installer.{sh,ps1}` 同步重写 | `sh scripts/test-installer.sh` 通过；`pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1346 · server 2552 · cli 505 · web 2886 · desktop 279 全绿 | 见本行提交 |
 | 2026-10-05 | 第四轮 | 工作区选择器支持**新建文件夹**（server `POST /dirs` + Finder 工具栏/右键菜单/内联命名框）；侧栏列表选项下拉不再截断文案；画廊 mock 补 `createDir` 路由；写 `RELEASE-v0.2.1.md` | `pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；`pnpm -r test` **8837 通过 / 14 跳过 / 0 失败**（docs 62 · core 1346 · ui 999 · server 2557 · cli 505 · web 2887 · desktop 279 · ui-gallery 131 · 四个沙箱插件 71）；浏览器实跑建目录/重名/右键菜单 | `301b80a6` `1e3c7c5c` `19ea80fa` |
 | 2026-10-05 | 第四轮 | 升级 **v0.2.1**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.1/`（`BUILD_COMMIT=19ea80fa`）；3003 下载区导语不再写死版本；3004 `disable` | 见「v0.2.1：工作区新建文件夹、侧栏下拉与插件手动更新」一节 | tag `v0.2.1` = `19ea80fa` |
+| 2026-10-05 | 第五轮 | 初始 Project 名补成 `default`（core 常量 + `ensureDisplayName` + 启动扫描 + 三条测试）；zh 字典 68 处 `Project` → 「项目」；`PrefRow` 手机宽度改为可换行、导入 Trace 不再压住；草稿行删除按钮在触摸屏上常显 | `pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；`pnpm -r test` **8840 通过 / 14 跳过 / 0 失败**（docs 62 · core 1346 · ui 1000 · server 2559 · cli 505 · web 2887 · desktop 279 · ui-gallery 131 · 四个沙箱插件 71）；浏览器实测四项（含**老数据根升级**、390px 触摸屏） | `e960d0b1` |
+| 2026-10-05 | 第五轮 | 升级 **v0.2.2**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.2/`（`BUILD_COMMIT=2d6abe83`），打包脚本改「边做边清」把峰值从 1.5G 压到 ~0.3G | 见「v0.2.2：默认项目名 default、中文文案、手机上的导入 Trace 与草稿」一节 | tag `v0.2.2` = `2d6abe83` |
