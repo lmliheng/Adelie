@@ -146,12 +146,18 @@ function DropRing() {
 
 /**
  * The page nav: the pinned entries, which always show, then the rest in a group that folds away,
- * and under them a slim, full-width toggle whose caret points up while the rows show (fold them)
+ * and under them a small centered toggle whose caret points up while the rows show (fold them)
  * and down once they are folded (the way back). The fold slides: the group's row track tweens
  * between `0fr` and `1fr` under the theme's layout motion while the rows fade, and the list below
  * glides up with it. The rows stay mounted for the tween but turn inert while folded, so a
- * zero-height row is never focusable or clickable. The toggle's resting band is the column's one
- * fill at rest: it reads as the seam between the nav and the list below it.
+ * zero-height row is never focusable or clickable.
+ *
+ * The toggle is a short pill, centered on the column rather than spanning it (2026-10-06): as a
+ * full-width band it painted a 272px wash of ink under the nav that read as one more row of the
+ * list, and the column's own fill is not a thing the reader should have to parse. At this size it
+ * is visibly a control in the seam between the nav and the list, and its `data-tooltip` — which
+ * only appears where the words are not already on screen, an icon-only button being exactly that
+ * case — is what tells the reader which way the caret goes.
  *
  * With nothing to fold (`foldable={false}`) neither the group nor its toggle is drawn. With
  * `drop`, the group and its toggle band are one drop target, ringed while a drag it would take is
@@ -211,7 +217,7 @@ export function SidebarNavGroup({
             aria-expanded={!collapsed}
             aria-label={label}
             data-tooltip={label}
-            className={`flex h-4 w-full items-center justify-center rounded-md ${NAV_FILL.selected} text-fg-subtle transition-colors duration-150 hover:bg-fg/10 hover:text-fg`}
+            className={`mx-auto flex h-5 w-16 items-center justify-center rounded-full ${NAV_FILL.selected} text-fg-subtle transition-colors duration-150 hover:bg-fg/10 hover:text-fg`}
           >
             <ChevronFlip up={!collapsed} />
           </button>
