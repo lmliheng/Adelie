@@ -24,6 +24,7 @@ import { PluginDetailPage } from "./features/plugins/plugin-detail-page";
 import { UsagePage } from "./features/usage/usage-page";
 import { BenchmarkPage } from "./features/benchmark/benchmark-page";
 import { BenchmarkDetailPage } from "./features/benchmark/benchmark-detail-page";
+import { SchedulesPage } from "./features/schedules/schedules-page";
 import { TerminalPage } from "./features/terminal/terminal-page";
 import { OrgIndexRedirect, OrgLayout } from "./features/company/org-layout";
 import { OverviewPage } from "./features/company/overview-page";
@@ -53,6 +54,7 @@ const BUILTIN_PAGES: Record<string, React.ComponentType> = {
   UsagePage,
   BenchmarkPage,
   BenchmarkDetailPage,
+  SchedulesPage,
 };
 
 function renderPage(page: PageEntry): React.ReactNode {

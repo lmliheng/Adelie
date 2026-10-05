@@ -91,6 +91,12 @@ export const en: GalleryStrings = {
         "The Agent settings' schedule tab: periods, next fire time, the bound Session and model.",
       how: "Agents › Agent settings › the Schedules tab.",
     },
+    "schedules-project": {
+      title: "Schedules (whole Project)",
+      description:
+        "Every Agent's scheduled tasks in this Project, grouped by Agent: enable, edit and delete them all here, and see the files that failed to parse.",
+      how: "The avatar at the bottom left › the account menu › Schedules.",
+    },
     plugins: {
       title: "Plugins",
       description:

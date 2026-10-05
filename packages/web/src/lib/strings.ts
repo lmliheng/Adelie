@@ -1985,6 +1985,15 @@ export const zh = {
     panelNoMatch: "没有匹配的定时任务",
     /** The panel's body on the draft page, where no Session exists yet. */
     panelDraftEmpty: "发送第一条消息后即可为这段对话安排定时任务",
+    /**
+     * The scheduled-tasks page (features/schedules/schedules-page.tsx): every Agent's tasks in
+     * the Project, grouped by the Agent that owns each file. Reached from the account menu, so
+     * `pageTitle` is also the row's wording there.
+     */
+    pageTitle: "定时任务",
+    pageDesc: "本项目所有 Agent 的定时任务，可在此统一启停、编辑与删除。",
+    pageEmpty: "本项目还没有定时任务",
+    pageGroupCount: (n: number): string => `${n} 个任务`,
     /** Accessible name of a row's overflow menu (edit / delete). */
     rowActions: "更多操作",
     /** The human schedule line under a task's name (schedule-describe.ts). */

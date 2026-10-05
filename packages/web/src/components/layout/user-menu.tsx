@@ -1,8 +1,9 @@
 /**
  * The account menu, shared by both avatars that open one: the pinned sidebar's user row and
  * the collapsed rail's avatar. One component rather than a copy per anchor — the rows
- * (Settings, the update entry, sign out) and the dialog behind the first of them must
- * stay the same menu from either side, and a second copy is how two menus drift apart.
+ * (Settings, the scheduled-tasks page, the update entry, sign out) and the dialog behind the
+ * first of them must stay the same menu from either side, and a second copy is how two menus
+ * drift apart.
  *
  * Only the trigger differs, so the trigger is the caller's: it is handed the menu's own open
  * state, which is what keeps "what opening means" here rather than in two places.
@@ -114,12 +115,23 @@ export function UserMenu({
                 setSettingsOpen(true);
               }}
             />
-            {/* Update entry, directly under the settings entry rather than on a page inside
-                it: one row for both backends (the server release here, the shell's own
-                updater in the desktop window), naming where the update flow stands and
-                opening the update modal — where the flow is explained and acted on. The
-                modal is mounted by the app layout, so it outlives this menu. Hidden where
-                this session can update nothing (a browser signed into a desktop-mode
+            {/* The Project's scheduled tasks, the one page reached from here rather than from
+                the sidebar: it is a Project-wide inventory visited now and then, not a
+                workspace. A plain row of its own, right under the settings dialog's entry —
+                both leave this menu, and the two navigations belong together. */}
+            <MenuItem
+              label={S.schedule.pageTitle}
+              onSelect={() => {
+                setOpen(false);
+                navigate("/schedules");
+              }}
+            />
+            {/* Update entry, under the two navigation rows rather than on a page inside the
+                settings dialog: one row for both backends (the server release here, the
+                shell's own updater in the desktop window), naming where the update flow
+                stands and opening the update modal — where the flow is explained and acted
+                on. The modal is mounted by the app layout, so it outlives this menu. Hidden
+                where this session can update nothing (a browser signed into a desktop-mode
                 server, see updateModeFor). */}
             <UpdateRow
               onOpen={() => {

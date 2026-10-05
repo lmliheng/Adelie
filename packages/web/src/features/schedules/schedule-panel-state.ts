@@ -1,14 +1,26 @@
 /**
- * Pure state of the chat dock's scheduled-tasks panel: which of the Project's tasks belong to
- * the conversation on screen, how the filter chips bucket the server's display statuses,
- * what the search box matches, and which state glyph a row wears. Kept apart from the panel
- * so the rules run in the node-only unit tests (test/schedule-panel-state.test.ts).
+ * Pure state of the surfaces that list the Project's scheduled tasks: how the filter chips
+ * bucket the server's display statuses, what the search box matches, which state glyph a row
+ * wears, and the chips' wording. Kept apart from the components so the rules run in the
+ * node-only unit tests (test/schedule-panel-state.test.ts), and shared by both listers — the
+ * chat dock's panel and the scheduled-tasks page — so the two filter one list the same way.
  */
 import type { ScheduleItem, ScheduleStatus } from "@lmliheng/penguin-server/api";
+import { S } from "../../lib/strings";
 
 export type ScheduleFilter = "all" | "active" | "paused" | "completed";
 
 export const SCHEDULE_FILTERS: readonly ScheduleFilter[] = ["all", "active", "paused", "completed"];
+
+/** The chips' wording, from the active dictionary (read at render time, so a locale switch relabels them). */
+export function scheduleFilterLabels(): Record<ScheduleFilter, string> {
+  return {
+    all: S.schedule.filterAll,
+    active: S.schedule.filterActive,
+    paused: S.schedule.filterPaused,
+    completed: S.schedule.filterCompleted,
+  };
+}
 
 /**
  * The chip a status sits under. `disabled` is "paused" — the switch on the row resumes it —

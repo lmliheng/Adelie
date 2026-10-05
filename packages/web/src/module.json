@@ -114,6 +114,17 @@
         "renderer": {
           "builtin": "BenchmarkDetailPage"
         }
+      },
+      {
+        "id": "web.schedules",
+        "key": "schedules",
+        "path": "/schedules",
+        "nav": "none",
+        "admin": false,
+        "released": true,
+        "renderer": {
+          "builtin": "SchedulesPage"
+        }
       }
     ]
   }

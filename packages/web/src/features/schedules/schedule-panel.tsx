@@ -16,38 +16,28 @@
  * while the AI path stays open to everyone — asking the agent is a message, not a write.
  */
 import { useEffect, useState } from "react";
-import type { ProjectScheduleItem, ScheduleItem, SessionInfo } from "@lmliheng/penguin-server/api";
+import type { ProjectScheduleItem, SessionInfo } from "@lmliheng/penguin-server/api";
 import {
-  Badge,
   ConfirmModal,
-  Dropdown,
-  GlyphIcon,
-  ICONS,
-  ICON_SIZE,
-  Menu,
-  MenuItem,
   SearchInput,
   Segmented,
   SettingsEmpty,
   SkeletonList,
-  Switch,
   toastError,
   toastSuccess,
 } from "@lmliheng/penguin-ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
-import { toneInk } from "../../lib/tone";
-import { useLocale } from "../../state/locale";
 import { useProject } from "../../state/project";
 import { AiCreateButtons } from "../ai-create/ai-create-buttons";
-import { describeSchedule } from "./schedule-describe";
 import { ScheduleAiModal } from "./schedule-ai-modal";
 import { ScheduleFormModal } from "./schedule-form-modal";
+import { ScheduleRow } from "./schedule-row";
 import {
   SCHEDULE_FILTERS,
   filterSchedules,
-  scheduleGlyph,
+  scheduleFilterLabels,
   sessionSchedules,
 } from "./schedule-panel-state";
 import type { ScheduleFilter } from "./schedule-panel-state";
@@ -57,69 +47,6 @@ import { toggleBody } from "./schedule-upsert";
 
 /** How often the list refetches while on screen — about the server's own re-read cadence for the schedule directory. */
 const REFRESH_MS = 30_000;
-
-/** The state marks: a filled play for an armed task, pause bars, a check for the settled states. */
-const PLAY_ICON = "M7 4l13 8-13 8z";
-const PAUSE_ICON = "M8 4v16M16 4v16";
-const CHECK_ICON = "M5 12l4 4L19 6";
-
-/** The row's leading state glyph; an invalid file wears the info circle in the danger tone, its reason in the tooltip. */
-function StateGlyph({ item }: { item: ScheduleItem }) {
-  const glyph = scheduleGlyph(item.status);
-  const name = S.schedule.statusNames[item.status] ?? item.status;
-  const tone =
-    glyph === "play" ? toneInk.success : glyph === "alert" ? toneInk.danger : toneInk.muted;
-  const d =
-    glyph === "play"
-      ? PLAY_ICON
-      : glyph === "pause"
-        ? PAUSE_ICON
-        : glyph === "check"
-          ? CHECK_ICON
-          : ICONS.info;
-  return (
-    <span className={`shrink-0 ${tone}`} data-tooltip={item.invalidReason ?? name}>
-      <GlyphIcon d={d} size={ICON_SIZE.rowLead} filled={glyph === "play"} />
-      <span className="sr-only">{name}</span>
-    </span>
-  );
-}
-
-/** A row's overflow menu: edit, and delete in the destructive treatment (small Menu rows). */
-function RowMenu({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
-  const [open, setOpen] = useState(false);
-  const item = (fn: () => void) => () => {
-    setOpen(false);
-    fn();
-  };
-  return (
-    <Dropdown
-      open={open}
-      setOpen={setOpen}
-      portal={{ direction: "down", align: "right" }}
-      menuClass="w-32"
-      button={
-        <button
-          type="button"
-          data-tooltip={S.schedule.rowActions}
-          aria-label={S.schedule.rowActions}
-          aria-haspopup="menu"
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-          className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-        >
-          <GlyphIcon d={ICONS.ellipsis} size={ICON_SIZE.rowLead} filled />
-        </button>
-      }
-    >
-      <Menu density="sm">
-        <MenuItem glyph={ICONS.pencil} label={S.common.edit} onSelect={item(onEdit)} />
-        {/* The glyph inherits the row's red. */}
-        <MenuItem glyph={ICONS.trash} label={S.common.delete} danger onSelect={item(onDelete)} />
-      </Menu>
-    </Dropdown>
-  );
-}
 
 export interface SchedulePanelProps {
   session: SessionInfo;
@@ -131,7 +58,6 @@ export interface SchedulePanelProps {
 
 export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePanelProps) {
   const { currentProject, agents, reloadAgents } = useProject();
-  const { locale } = useLocale();
   const projectId = currentProject?.projectId ?? null;
   const isOwner = currentProject?.role === "owner";
   // The shared store's list, narrowed to this conversation; only the first load's failure shows
@@ -207,12 +133,7 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
   const openAi = (initial: string) => setAi({ initial });
   const visible = items === null ? [] : filterSchedules(items, filter, query);
   const searching = query.trim() !== "";
-  const filterLabels: Record<ScheduleFilter, string> = {
-    all: S.schedule.filterAll,
-    active: S.schedule.filterActive,
-    paused: S.schedule.filterPaused,
-    completed: S.schedule.filterCompleted,
-  };
+  const filterLabels = scheduleFilterLabels();
 
   return (
     <div className="h-full overflow-y-auto p-3">
@@ -267,53 +188,18 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
           <SettingsEmpty>{S.schedule.panelNoMatch}</SettingsEmpty>
         ) : (
           <ul className="space-y-1">
-            {visible.map((item) => {
-              const line = describeSchedule(item, locale);
-              return (
-                <li
-                  key={item.name}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-800/60"
-                >
-                  <StateGlyph item={item} />
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="truncate text-sm text-gray-800 dark:text-gray-100"
-                        // The name leads the tooltip, not just the prompt: a task name is a
-                        // file name and truncates in a dock this narrow, and the panel would
-                        // otherwise be the one surface that cannot show it in full.
-                        data-tooltip={`${item.name}\n${item.prompt}`}
-                        data-tooltip-content="text"
-                      >
-                        {item.name}
-                      </span>
-                      {item.queued && <Badge variant="solid">{S.schedule.queued}</Badge>}
-                    </div>
-                    <div
-                      className="truncate text-xs text-gray-500 dark:text-gray-400"
-                      data-tooltip={item.invalidReason ?? line}
-                      data-tooltip-content="text"
-                    >
-                      {line}
-                    </div>
-                  </div>
-                  {isOwner && (
-                    <>
-                      <Switch
-                        checked={item.enabled}
-                        disabled={busy}
-                        aria-label={item.enabled ? S.schedule.disable : S.schedule.enable}
-                        onChange={() => void toggle(item)}
-                      />
-                      <RowMenu
-                        onEdit={() => setForm({ editing: item })}
-                        onDelete={() => setDeleting({ agentId: item.agentId, name: item.name })}
-                      />
-                    </>
-                  )}
-                </li>
-              );
-            })}
+            {visible.map((item) => (
+              <li key={item.name}>
+                <ScheduleRow
+                  item={item}
+                  owner={isOwner}
+                  busy={busy}
+                  onToggle={() => void toggle(item)}
+                  onEdit={() => setForm({ editing: item })}
+                  onDelete={() => setDeleting({ agentId: item.agentId, name: item.name })}
+                />
+              </li>
+            ))}
           </ul>
         )}
 

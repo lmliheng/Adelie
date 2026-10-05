@@ -1933,6 +1933,16 @@ export const en: Strings = {
     panelNoMatch: "No matching scheduled tasks",
     /** The panel's body on the draft page, where no Session exists yet. */
     panelDraftEmpty: "Send the first message, then schedule tasks for this conversation",
+    /**
+     * The scheduled-tasks page (features/schedules/schedules-page.tsx): every Agent's tasks in
+     * the Project, grouped by the Agent that owns each file. Reached from the account menu, so
+     * `pageTitle` is also the row's wording there.
+     */
+    pageTitle: "Scheduled tasks",
+    pageDesc:
+      "Every Agent's scheduled tasks in this Project; enable, edit and delete them all here.",
+    pageEmpty: "No scheduled tasks in this Project yet",
+    pageGroupCount: (n: number): string => (n === 1 ? "1 task" : `${n} tasks`),
     /** Accessible name of a row's overflow menu (edit / delete). */
     rowActions: "More actions",
     /** The human schedule line under a task's name (schedule-describe.ts). */

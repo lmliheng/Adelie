@@ -43,7 +43,7 @@ const ALLOWLIST: Readonly<Record<string, readonly [number, string]>> = {
   "features/company/shared.tsx": [2, "W4"],
   "features/models/models-page.tsx": [4, "W4"],
   "features/plugins/plugins-page.tsx": [2, "W4"],
-  "features/schedules/schedule-panel.tsx": [3, "W4"],
+  "features/schedules/schedule-row.tsx": [3, "W4"],
   "features/schedules/schedule-suggestions.tsx": [3, "W4"],
   "features/semantic-id/semantic-id-field.tsx": [1, "W2"],
   "features/settings/shortcuts-section.tsx": [1, "W10"],

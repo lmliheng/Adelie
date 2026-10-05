@@ -1,11 +1,16 @@
 /**
- * A Project's scheduled tasks, as a tiny module-level store shared by the two surfaces that read
+ * A Project's scheduled tasks, as a tiny module-level store shared by the surfaces that read
  * them: the session list's alarm-clock mark (which of the listed Sessions have a task still to
- * fire) and the dock's scheduled-tasks panel (the open conversation's own tasks, listed). They
- * must never disagree about whether a conversation has tasks, so they read one cache rather than
- * fetching one each.
+ * fire), the dock's scheduled-tasks panel (the open conversation's own tasks, listed) and the
+ * scheduled-tasks page (every Agent's tasks in the Project). They must never disagree about
+ * whether a conversation has tasks, so they read one cache rather than fetching one each.
  *
- * The scope is the whole Project because that is what the two surfaces need between them: the
+ * One answer carries both what the server listed and the task files it could not parse. The
+ * list is what every reader draws; the page is the only one that also shows the skipped files,
+ * since it is the surface that manages the Project's tasks as a whole — but they come from the
+ * same read, so the page never has to ask a second time.
+ *
+ * The scope is the whole Project because that is what the surfaces need between them: the
  * session list draws every Agent's Sessions — workspace, time and agent grouping all mix them —
  * while the panel is one conversation of one of them. Read per agent, the list answered only the
  * panel: every other Agent's rows wore no mark, and because the chat page moves the current Agent
@@ -28,14 +33,19 @@
  * kilobytes back for exactly the blank-then-refetch this cache exists to remove.
  */
 import { useEffect, useSyncExternalStore } from "react";
-import type { ProjectScheduleItem } from "@lmliheng/penguin-server/api";
+import type { ProjectScheduleItem, ProjectSchedulesResponse } from "@lmliheng/penguin-server/api";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
+
+/** A task file the server could not parse, with the agent whose directory holds it. */
+export type InvalidScheduleFile = ProjectSchedulesResponse["invalidFiles"][number];
 
 interface Entry {
   projectId: string;
   /** Null until this Project has answered once; a refetch keeps the list it already has. */
   items: ProjectScheduleItem[] | null;
+  /** Files the server skipped, same answer as the list: the page surfaces them, the dock panel does not. */
+  invalidFiles: InvalidScheduleFile[];
   /** Last failure text, cleared by the next success. The panel shows it only while `items` is null. */
   error: string | null;
   /** This Project's request: concurrent readers share it, another Project gets its own. */
@@ -53,6 +63,7 @@ function entryFor(projectId: string): Entry {
   const created: Entry = {
     projectId,
     items: null,
+    invalidFiles: [],
     error: null,
     inflight: null,
     readers: 0,
@@ -90,6 +101,11 @@ export function scheduleError(projectId: string | null): string | null {
   return peek(projectId)?.error ?? null;
 }
 
+/** The files this Project's last answer reported as unparseable — empty before it has answered. */
+export function scheduleInvalidFiles(projectId: string | null): InvalidScheduleFile[] {
+  return peek(projectId)?.invalidFiles ?? [];
+}
+
 /**
  * Re-reads one Project's list. The Project is an argument rather than whatever the store last
  * pointed at, which is what makes the request always the one the caller asked for: concurrent
@@ -104,6 +120,7 @@ export function refreshSchedules(projectId: string | null): Promise<void> {
     try {
       const res = await api.listProjectSchedules(projectId);
       entry.items = res.schedules;
+      entry.invalidFiles = res.invalidFiles;
       entry.error = null;
     } catch (e) {
       // The list it already has stays: a refetch failing is not news that the tasks are gone.
@@ -181,7 +198,11 @@ export function subscribeSchedules(listener: () => void): () => void {
 export function useProjectSchedules(
   projectId: string | null,
   refreshKey: string,
-): { items: ProjectScheduleItem[] | null; error: string | null } {
+): {
+  items: ProjectScheduleItem[] | null;
+  invalidFiles: InvalidScheduleFile[];
+  error: string | null;
+} {
   useSyncExternalStore(subscribeSchedules, schedulesVersion, schedulesVersion);
   // Held for as long as this reader is mounted, and deliberately not keyed on `refreshKey`:
   // moving between two conversations of one Project must not release the entry and take it again.
@@ -191,6 +212,7 @@ export function useProjectSchedules(
   }, [projectId, refreshKey]);
   return {
     items: scheduleItems(projectId),
+    invalidFiles: scheduleInvalidFiles(projectId),
     error: scheduleError(projectId),
   };
 }

@@ -105,6 +105,12 @@ export const zh = {
       description: "智能体设置的定时任务标签页：周期、下次触发、绑定的会话与模型。",
       how: "智能体 › 智能体设置 › 定时任务标签页。",
     },
+    "schedules-project": {
+      title: "定时任务（全项目）",
+      description:
+        "本项目的定时任务总表：按 Agent 分组，可统一启停、编辑与删除，解析失败的文件也在这里列出。",
+      how: "左下角头像 › 账号菜单 › 定时任务。",
+    },
     plugins: {
       title: "插件市场",
       description: "插件库按分类列出，带搜索与筛选；已安装的 Skill 与钩子按智能体显示。",
