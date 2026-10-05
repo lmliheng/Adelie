@@ -166,7 +166,8 @@ multi-agent app development platform, built on PenguinHarness」，话题加
 ## 本机安装包与 3003 下载站（2026-10-05）
 
 用户：「把安装包放到3003端口，我好安装，不用给别人用」。v0.2.0 的 GitHub Release **没有附件**
-（源码版），所以安装包是**在本机按上游 `release.yml` 的步骤现打**的，落在 3003 那台静态站上：
+（源码版），所以安装包是**在本机按上游 `release.yml` 的步骤现打**的，落在 3003 那台静态站上
+（v0.2.1 同样处理，见下面「v0.2.1」一节）：
 
 | 产物 | 目标 | 说明 |
 | --- | --- | --- |
@@ -175,7 +176,8 @@ multi-agent app development platform, built on PenguinHarness」，话题加
 | `adelie-universal.tar.gz`（53 MiB） | 任意平台 | 不带运行时，目标机器要有 Node ≥ 24 |
 
 下载地址：<http://64.83.2.109:3003/downloads/v0.2.0/>（页面「下载」一节从
-`/downloads/index.json` 渲染，v0.1.0 旧 Adelie 那三件原样保留）。**装完的命令与数据根仍是
+`/downloads/index.json` 渲染，v0.1.0 旧 Adelie 那三件原样保留；**v0.2.1 之后这个地址是
+<http://64.83.2.109:3003/downloads/v0.2.1/>**，清单里三版并列）。**装完的命令与数据根仍是
 上游拼写**（`penguin`、`~/.penguin`）—— 改名归 2.2 / 2.3，这里不动。
 
 **怎么重打（可复现，脚本在本会话 scratchpad，未入库）**：
@@ -228,6 +230,103 @@ payload 内 `node/node.exe`、`git/usr/bin/sh.exe`、`git/etc/profile`、`bin/pe
 `package-manifest.json` 写着 `win32-x64`）；包内 `install.sh` 已确认是新版（`REPO=lmliheng/Adelie`、
 `auto | github`、无 OSS 字样）；3003 的 `/downloads/index.json` 与三个资产都 200，页面 200。**3003 与
 4000 两个服务全程没停**（这次只停了 3004，见「本机部署」一节）。中间物 `out/` 用完已清理。
+
+## v0.2.1：工作区新建文件夹、侧栏下拉与插件手动更新（2026-10-05，用户点单）
+
+用户原话四件：**①「3004 关闭自启动」②「Agent 不用自动装插件，要手动更新，用户才能自己管控插件」
+③「你看能不能优化一下这个左侧的下拉按钮，原本下拉有点丑」④「工作区创建里没有创建目录的功能」**，
+另加 **⑤「为什么不升级 0.2.1，你升级」**。提交 `301b80a6`（功能）+ `1e3c7c5c`（画廊 mock）+
+`19ea80fa`（发布说明），tag **`v0.2.1`** = `19ea80fa`。
+
+### ① 3004 关掉开机自启 —— 环境动作
+
+`systemctl disable adelie-app.service` → 打印
+`Removed "/etc/systemd/system/multi-user.target.wants/adelie-app.service"`；`is-enabled` = `disabled`、
+`is-active` = `inactive`（服务此前已 stop）。**单元与数据根 `/root/adelie-data` 都留着**，
+要再起用 `systemctl start adelie-app`。
+
+### ② 插件保持手动 —— 不动代码，只拍板
+
+用户这句是**替现有产品行为拍板**，不是报缺陷：现在就没有「自动装插件」这回事。三层各自的行为是
+（见「主线三件事」一节）：
+
+| 层 | 谁更新 | 怎么更新 |
+| --- | --- | --- |
+| 应用本体（`bin`/`lib`/`web`/`node`） | `penguin update` | 用户跑；只换程序，不碰数据根 |
+| 插件库 → Agent 上的副本 | **用户手动** | 插件页标出哪些 Agent「落后于库」，一键或批量重装（覆盖该 Agent 的本地改动） |
+| Agent 内核（`system_config.yaml`） | **用户手动** | Agent 设置「内核」一节推进，且只推进仍等于默认值的 tab |
+
+所以**代码没动**，只把「要不要更自动」那个待问事项关掉。
+
+### ③ 侧栏下拉不再截断（WORKSPACES 那排的列表选项）
+
+那个下拉的面板宽度写死 `w-40`（160px），而 `Group by workspace` 一行放不下 —— 面板里显示成
+`Group by work…`，这就是「有点丑」在哪。`packages/web/src/components/layout/sidebar.tsx` 里把这个
+Dropdown 的 `menuClass` 改成按内容自适应：`w-max min-w-40 max-w-[calc(100vw-2rem)]`（与 Finder 自己
+那个右键菜单同一写法）。面板是 `portal={{direction:"down",align:"right"}}` 出去的，不受侧栏
+`overflow-hidden` 裁剪；重建 web 产物后在浏览器里实测「Group by workspace」完整显示、面板右缘与
+触发图标对齐。
+
+> **左侧栏顶部那个 Project 切换下拉（`default_project ▾`）没动，是有意的**：它的面板是
+> `left-0 right-0`（与触发按钮同宽），因为 `<aside>` 是 `overflow-hidden`，面板一旦比触发按钮宽就会
+> 被裁掉，所以不能也改成内容自适应宽度。若用户指的其实是它，要另做方案（例如把面板 portal 出去）。
+
+### ④ 工作区创建可以新建文件夹
+
+**服务端**（`packages/server/src/http/routes/dirs.ts`）：新增 `POST /api/projects/:p/dirs`
+`{ parent, name }`。
+
+- 只建一层，**不递归**：`parent` 写错是 404，不会悄悄长出一棵树。
+- `name` 必须是**单个名字**：空 → `dir_name_empty`；含 `/` 或 `\`、`.`、`..`、NUL →
+  `dir_name_invalid`。名字由路由自己 `path.join`，调用方无法用分隔符走出当前目录（新增
+  `dirNameError`）。
+- 失败各有其码（新增 `dirCreateError`）：`EEXIST` → 409 `dir_exists`、`ENOENT`/`ENOTDIR` → 404、
+  `EACCES`/`EPERM` → 403 `dir_permission_denied`、`EINVAL`/`ENAMETOOLONG` → 400，其余 500
+  `dir_create_failed`。新类型 `DirCreateResponse`。
+
+**前端**（`packages/web/src/features/chat/workspace-finder.{tsx,model.ts}`、`api/endpoints.ts`）：
+
+- 工具栏多一个「新建文件夹」（folder-plus）；手机上工具栏放不下，那一项在**列表空白处的右键菜单**里
+  （和「刷新」一样，`finderMenuItems` 的 `here` 一支多了 `newFolder`）。
+- 列表首行是内联命名框：Enter 创建、Esc 只关输入框（不关弹窗）、失焦放弃、请求在飞时不重复建；
+  空文件夹里也显示这个框（不再显示「此文件夹为空」）。
+- 建成后重读该目录并**选中新文件夹**；同名等失败给一条 toast 并保留输入的名字。
+- **只对本机服务器提供**：`machine !== null`（ssh 浏览的机器）时不出现这一项 —— 那边的
+  `listDirs` 只列目录，服务端没有对应的建目录能力。
+- 文案 zh/en：`newFolder` / `newFolderName` / `newFolderHint` + 四个新错误码。
+- 画廊的 mock API 也补了这条路由（`packages/ui-gallery/src/app/mock/routes.ts`），否则
+  `mock-api.test.ts`「每个 wrapper 都有 mock 路由」那条会红。
+
+**验证（都不是推测）**：server 新增 5 条用例（建成并可见 / 非法名不动盘 / 409 与 404 / 相对路径 /
+跨 Project 拒绝）；web 的 `finderMenuItems` 用例更新。浏览器里真跑了一遍：地址栏进
+`/tmp/adelie-nf-check` → 工具栏「新建文件夹」→ 输入 `made-in-adelie` → Enter → **磁盘上真的建出来了**、
+列表里新文件夹被选中；再输入已存在的 `existing` → toast「That name is already taken.」且输入框保留；
+Esc 只关输入框、弹窗还在；空白处右键菜单里有「New folder」。
+
+### ⑤ 升级到 0.2.1
+
+- 建 tag `v0.2.1`（= `19ea80fa`）并推送到 `origin`；建 GitHub Release **v0.2.1**
+  （正文取 `RELEASE-v0.2.1.md` 去掉一级标题，非草稿、latest，**仍不带资产**）。
+- 按同样步骤重打三件安装包，落 `/opt/adelie-design/downloads/v0.2.1/`，版本戳 `VERSION=0.2.1`、
+  `BUILD_DATE=2026-10-05`、`BUILD_COMMIT=19ea80fa`；顶层 `/downloads/index.json` 现在按
+  **v0.2.1 → v0.2.0 → v0.1.0** 排列（生成脚本改成"本次在最前 + 其余按版本号从新到旧"，旧的两个
+  版本目录原样保留）。
+- 3003 页面下载区的导语原来写死「Adelie **v0.2.0**」，改成不写版本的「Adelie（新基座…）的安装包，
+  每版一列，最新一版在最前面」（改动前的文件备份成 `index.html.bak-20261005-v021`）。
+
+**v0.2.1 三件的验证（都不是推测）**：三件 `sha256sum -c` 通过
+（linux `46641faf…` · win `0f7c76d2…` · universal `3af7cd1c…`）；linux-x64 在隔离 HOME 里真离线装 ——
+装完打印 `Adelie v0.2.1 installed`、`payload checksum OK`，`penguin version --json` 报
+`{"version":"0.2.1","channel":"release","buildDate":"2026-10-05","commit":"19ea80fa…","node":"24.18.0"}`，
+`penguin update --check` 报 `Installed 0.2.1 · latest 0.2.1`（证明更新源确已指向 Adelie 且报得出这一版），
+`bin/penguin web` 在 7399 起得来（`/` → `<title>Adelie</title>`，用完已停），且装出来的
+`lib/node_modules/@prismshadow/penguin-server/dist/index.js` 里确有 `dir_create_failed` /
+`dir_name_invalid` / `dir_exists`（**新建文件夹真的进了包**）；win 包结构抽查（外层
+`install.cmd`/`install.ps1`/`payload.zip`/`payload.zip.sha256`，payload 内 `node/node.exe`、
+`git/usr/bin/sh.exe`、`git/etc/profile`、`bin/penguin.cmd`、`package-manifest.json` = `win32-x64`，
+外层脚本里的 `EmbeddedReleaseVersion = "v0.2.1"`）；3003 内网与外网（`64.83.2.109:3003`）都 200，
+`/downloads/index.json` 三个版本各 3 件，v0.2.1 三个资产都 200，页面下载区渲染出 v0.2.1 卡片在前。
+中间物 `out/`、`/tmp/adelie-pack`、`/tmp/adelie-verify*`、`/tmp/adelie-win` 已清，磁盘回到 2.4G。
 
 ## 主线切到 main 之后：CI / Docker 的真实现状（2026-10-05）
 
@@ -334,8 +433,10 @@ README 插件表那三条已闭，macOS 那条重跑即绿（确系跑机抖动�
    手动点一次「升级内核」只推进**仍等于默认值**的 tab，用户改过的 tab 原样保留并在结果里列出来。
    `KERNEL_VERSION` 是日期串，内置默认值一变就得跟着推进（`core/test/kernel-version.test.ts` 钉哈希）。
 
-**要问用户的一句**：第 2 层要不要更自动（应用升级后自动重装 Agent 上的插件副本）？代价是会覆盖
-Agent 上对插件内容的本地改动 —— 现在的产品行为是「提示 + 一键批量更新」，先不动。
+**已拍板（2026-10-05，用户）**：第 2 层**保持手动**——用户原话「Agent 不用自动装插件，要手动更新，
+用户才能自己管控插件」。也就是说**现在的产品行为就是对的，代码不动**：应用本体升级只换
+`bin`/`lib`/`web`/`node`（不碰数据根），插件库随应用换新，但 Agent 上那份副本不自动跟着换，插件页
+标出「落后于库」并由用户点一键（或批量）重装。上面那个「要不要更自动」的问题到此关闭。
 
 ## 本机部署（2026-10-05）
 
@@ -348,8 +449,10 @@ Agent 上对插件内容的本地改动 —— 现在的产品行为是「提示
 | 首次登录 | 2026-10-05 用户自己设了管理员密码（值不进仓库），首次登录链接**已作废**；现在用 用户名 `admin` + 那个密码登录。忘了密码：停服务后 `penguin server reset-admin-password`，再启动会打印新的认领链接（步骤见 `/root/adelie-data/首次登录链接.txt`，0600） |
 | 旧地址 | 上游设计规格页已从 3004 让到 **3003**（`adelie-design.service`，同步改了单元与端口表）；旧 Adelie Web 仍在 4000（`adelie-web.service`） |
 
-> **2026-10-05（用户要求）**：`adelie-app.service`（3004）已 `systemctl stop`，端口已释放；
-> 单元仍 `enabled`，**重启机器会自己回来**，要不要 `disable` 等用户发话。3003 / 4000 未动。
+> **2026-10-05（用户要求）**：`adelie-app.service`（3004）先 `systemctl stop`，随后按用户
+> 「3004 关闭自启动」`systemctl disable` —— `is-enabled` = `disabled`、`is-active` = `inactive`，
+> **重启机器不会再自己起来**。服务单元与数据根 `/root/adelie-data` 都留着，要再起用
+> `systemctl start adelie-app` 即可。3003 / 4000 未动。
 
 要跑真任务还得在这个新实例里配模型 key（数据根独立，读不到旧实例的 `.project_config.toml`）。
 
@@ -399,3 +502,5 @@ Agent 上对插件内容的本地改动 —— 现在的产品行为是「提示
 | 2026-10-05 | 主线 | 默认分支定名 **`main`**（新基座并进 `main`、旧 Adelie 存 `legacy/main`、删 `fork/penguin-base`）；v0.2.0 安装包本机现打后放 **3003**；删 `docker.yml` 的 `push:main`；修 desktop 夹具 | `GET /repos` 报 `default_branch: main`；三个包 `.sha256` 自检 + linux 包在隔离 HOME 里真离线装（`penguin version --json` = `0.2.0`/release）；桌面测试 308 全绿；CI run `37258858438`：`test(rest)` 一族由红转绿、Docker 未触发 | 见本行提交 |
 | 2026-10-05 | 主线 | README 插件表断言放宽（用户选的 b）+ 删掉模型里的「官方推荐」+ 更新链路指向 Adelie（CLI / server / Web） | 见「主线三件事」一节 | 见本行提交 |
 | 2026-10-05 | 主线收尾 | 「主线三件事」的收尾：桌面更新源去 OSS/探针、根安装脚本去 OSS/探针并指向 Adelie、插件元数据 `repository` 指向 Adelie；顺带修 web 更新弹窗的上游 Releases 链接；`scripts/test-installer.{sh,ps1}` 同步重写 | `sh scripts/test-installer.sh` 通过；`pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1346 · server 2552 · cli 505 · web 2886 · desktop 279 全绿 | 见本行提交 |
+| 2026-10-05 | 第四轮 | 工作区选择器支持**新建文件夹**（server `POST /dirs` + Finder 工具栏/右键菜单/内联命名框）；侧栏列表选项下拉不再截断文案；画廊 mock 补 `createDir` 路由；写 `RELEASE-v0.2.1.md` | `pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；`pnpm -r test` **8837 通过 / 14 跳过 / 0 失败**（docs 62 · core 1346 · ui 999 · server 2557 · cli 505 · web 2887 · desktop 279 · ui-gallery 131 · 四个沙箱插件 71）；浏览器实跑建目录/重名/右键菜单 | `301b80a6` `1e3c7c5c` `19ea80fa` |
+| 2026-10-05 | 第四轮 | 升级 **v0.2.1**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.1/`（`BUILD_COMMIT=19ea80fa`）；3003 下载区导语不再写死版本；3004 `disable` | 见「v0.2.1：工作区新建文件夹、侧栏下拉与插件手动更新」一节 | tag `v0.2.1` = `19ea80fa` |
