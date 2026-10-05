@@ -362,11 +362,11 @@ jobs:
         run: |
           cd desktop-artifacts
           sha256sum -- \
-            penguin-desktop-*.AppImage \
-            penguin-desktop-*.deb \
-            penguin-desktop-*.dmg \
-            penguin-desktop-*.zip \
-            penguin-desktop-*.exe \
+            adelie-desktop-*.AppImage \
+            adelie-desktop-*.deb \
+            adelie-desktop-*.dmg \
+            adelie-desktop-*.zip \
+            adelie-desktop-*.exe \
             latest*.yml \
             *.blockmap > SHA256SUMS.desktop
 
@@ -420,11 +420,11 @@ jobs:
             dist-artifacts/SHA256SUMS
             dist-artifacts/probe-*.bin
             dist-artifacts/release-download-manifest.tsv
-            desktop-artifacts/penguin-desktop-*.AppImage
-            desktop-artifacts/penguin-desktop-*.deb
-            desktop-artifacts/penguin-desktop-*.dmg
-            desktop-artifacts/penguin-desktop-*.zip
-            desktop-artifacts/penguin-desktop-*.exe
+            desktop-artifacts/adelie-desktop-*.AppImage
+            desktop-artifacts/adelie-desktop-*.deb
+            desktop-artifacts/adelie-desktop-*.dmg
+            desktop-artifacts/adelie-desktop-*.zip
+            desktop-artifacts/adelie-desktop-*.exe
             desktop-artifacts/latest*.yml
             desktop-artifacts/*.blockmap
             desktop-artifacts/SHA256SUMS.desktop

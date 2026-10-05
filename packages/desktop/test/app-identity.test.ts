@@ -54,7 +54,7 @@ describe("appIdentity", () => {
     expect(dev.appUserModelId).not.toBe(appIdentity("release").appUserModelId);
     expect(dev).toEqual({
       name: "Adelie-Dev",
-      appUserModelId: "com.prismshadow.penguinharness.dev",
+      appUserModelId: "com.lmliheng.adelie.dev",
     });
   });
 });

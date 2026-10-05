@@ -58,9 +58,13 @@ export function resolveProfile(opts: { argv: readonly string[]; isPackaged: bool
 
 /** The identity for this profile: release, or dev-suffixed so both can run side by side. */
 export function appIdentity(profile: Profile): AppIdentity {
+  // Adelie's own bundle id, not the upstream product's: it is what the earlier Adelie
+  // desktop release installed under, so this shell upgrades that install instead of
+  // landing beside it, and it must stay equal to electron-builder.yml's appId (the
+  // release-profile test reads the two back to each other).
   return profile === "release"
-    ? { name: "Adelie", appUserModelId: "com.prismshadow.penguinharness" }
-    : { name: "Adelie-Dev", appUserModelId: "com.prismshadow.penguinharness.dev" };
+    ? { name: "Adelie", appUserModelId: "com.lmliheng.adelie" }
+    : { name: "Adelie-Dev", appUserModelId: "com.lmliheng.adelie.dev" };
 }
 
 /**

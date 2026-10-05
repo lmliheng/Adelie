@@ -319,7 +319,7 @@ jobs:
           }
 
           $outDir = "packages/desktop/out"
-          $installer = Join-Path $outDir "penguin-desktop-win32-x64.exe"
+          $installer = Join-Path $outDir "adelie-desktop-win32-x64.exe"
           $latest = Join-Path $outDir "latest.yml"
           $blockmap = "$installer.blockmap"
           $appExe = Join-Path $outDir "win-unpacked/Adelie.exe"
@@ -589,11 +589,11 @@ jobs:
           name: desktop-${{ runner.os }}
           if-no-files-found: error
           path: |
-            packages/desktop/out/penguin-desktop-*.AppImage
-            packages/desktop/out/penguin-desktop-*.deb
-            packages/desktop/out/penguin-desktop-*.dmg
-            packages/desktop/out/penguin-desktop-*.zip
-            packages/desktop/out/penguin-desktop-*.exe
+            packages/desktop/out/adelie-desktop-*.AppImage
+            packages/desktop/out/adelie-desktop-*.deb
+            packages/desktop/out/adelie-desktop-*.dmg
+            packages/desktop/out/adelie-desktop-*.zip
+            packages/desktop/out/adelie-desktop-*.exe
             # Update metadata: electron-updater reads latest*.yml from the Release, and
             # the blockmaps are what make differential downloads possible. Without these
             # the installers ship but nothing can auto-update.

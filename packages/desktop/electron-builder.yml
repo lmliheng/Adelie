@@ -1,4 +1,4 @@
-# electron-builder config for the desktop shell installers.
+# electron-builder config for the Adelie desktop shell installers.
 #
 # The app directory is this package itself: `pnpm build` emits self-contained bundles of
 # the shell, the server and the CLI into dist/ (see tsup.config.ts). The one dependency tree
@@ -12,20 +12,28 @@
 # files sidestep every asar edge (fork-from-archive, unpacked-tree resolution splits)
 # at the cost of some inodes.
 #
-# macOS release artifacts are Developer ID signed and notarized in CI when the signing
-# secrets are present. Windows release artifacts are Authenticode-signed through EVSign
-# during packaging so update metadata is generated from the final signed bytes. Unsigned
-# dry-run builds remain possible outside the release path.
-appId: com.prismshadow.penguinharness
+# Fork note (Adelie, 2026-10-05): this config used to carry the upstream product's
+# identity — its bundle id, its GitHub coordinates, its artifact names and its EVSign
+# certificate. Adelie ships under its own, so every one of those names Adelie now. Adelie
+# has no code-signing certificate yet, which is why the Windows signature policy below is
+# off rather than pinned to somebody else's publisher: the release artifacts are unsigned
+# (macOS builds are not produced at all until an Apple Developer ID exists).
+#
+# Adelie's own bundle id — the one the earlier Adelie desktop release shipped under, so a
+# machine that has that build keeps ONE Adelie: this build upgrades it instead of landing
+# beside it. `src/app-identity.ts` must return this exact value for the release profile;
+# its unit test reads it back from here.
+appId: com.lmliheng.adelie
 productName: Adelie
 # Declaring the publish target is what makes electron-builder emit the update metadata
 # (latest.yml / latest-mac.yml / latest-linux.yml and the .blockmap files) next to the
-# installers; nothing is uploaded from here — the release workflow attaches the artifacts
-# it collected. electron-updater reads the same metadata from the Release.
+# installers; nothing is uploaded from here — Adelie's release attaches the artifacts it
+# collected. electron-updater reads the same metadata from the Release, and the shell's
+# feed is set to this same repository in src/updater.ts.
 publish:
   provider: github
-  owner: Prism-Shadow
-  repo: penguin-harness
+  owner: lmliheng
+  repo: Adelie
 directories:
   output: out
 # Everything the app runs, and nothing else. The mapped entry is the web build, which the
@@ -57,8 +65,8 @@ files:
 # shell calls app.setName() before anything reads userData, so that keeps the name
 # src/app-identity.ts chooses per form.
 extraMetadata:
-  name: penguin-harness-desktop
-  homepage: https://github.com/Prism-Shadow/penguin-harness
+  name: adelie-desktop
+  homepage: https://github.com/lmliheng/Adelie
 asar: false
 # Nothing to rebuild: the only native module is node-pty, staged into dist/node_modules as
 # the binaries its npm tarball prebuilds (darwin, win32) or as the binding pnpm's install
@@ -88,11 +96,11 @@ mac:
     NSDownloadsFolderUsageDescription: Adelie needs access to your Downloads when an agent's workspace is a folder in it.
     NSRemovableVolumesUsageDescription: Adelie needs access to removable volumes when an agent's workspace is on one.
     NSNetworkVolumesUsageDescription: Adelie needs access to network volumes when an agent's workspace is on one.
-  # Version-less artifact names, following the CLI bundles (penguin-darwin-arm64.tar.gz):
-  # the version lives in the Release tag and SHA256SUMS.desktop, so the download page and
-  # the OSS mirror manifest can address every installer by a stable name — and GitHub's
-  # `releases/latest/download/<name>` stays a working static link across releases.
-  artifactName: penguin-desktop-darwin-${arch}.${ext}
+  # Version-less artifact names, following the CLI bundles (adelie-darwin-arm64.tar.gz):
+  # the version lives in the Release tag, so the download page can address every installer
+  # by a stable name — and GitHub's `releases/latest/download/<name>` stays a working
+  # static link across releases.
+  artifactName: adelie-desktop-darwin-${arch}.${ext}
   target:
     - target: dmg
       arch: [arm64, x64]
@@ -103,32 +111,29 @@ win:
   # Same source PNG; electron-builder converts it to the multi-size ico embedded in the
   # exe (>=256px required).
   icon: build/icon.png
-  artifactName: penguin-desktop-win32-${arch}.${ext}
-  verifyUpdateCodeSignature: true
+  artifactName: adelie-desktop-win32-${arch}.${ext}
+  # Adelie has no code-signing certificate yet, so there is nothing to check a downloaded
+  # update against — and with a publisherName configured, electron-updater would read our
+  # own unsigned installer as "not signed by the expected publisher" and refuse to install
+  # it. This states that plainly; Windows shows its SmartScreen warning for the unsigned
+  # installer. Turn it back on together with the first signed release, and give
+  # signtoolOptions a `publisherName` list then: the current identity first, the previous
+  # ones after it, each in the full-DN and bare-CN forms the verifier compares, so a client
+  # installed by an older signed release still accepts the next rotation's builds.
+  verifyUpdateCodeSignature: false
   signExts:
     - Adelie.exe
     - elevate.exe
-    - penguin-desktop-win32-x64.exe
+    - adelie-desktop-win32-x64.exe
     - .__uninstaller.exe
     - "!.exe"
   signtoolOptions:
+    # EVSign, the upstream project's signing service; build/evsign.cjs signs only when
+    # EVSIGN_KEY is configured and logs a skip otherwise, so an unsigned build stays
+    # possible (which is what Adelie produces today).
     sign: build/evsign.cjs
     signingHashAlgorithms:
       - sha256
-    # electron-updater checks a downloaded update against the publisherName the
-    # *installed* client recorded, so this list is forward policy rather than a
-    # description of today's certificate: the current identity, then the previous
-    # one, each in both the full-DN and bare-CN forms the verifier compares. A
-    # client shipped by this release therefore still accepts the next rotation's
-    # builds. Removing the key is not the way to stop pinning a name — a missing
-    # publisherName reads as "nothing to verify" and installs whatever was fetched.
-    # Drop an identity only once no supported client was installed by a release
-    # that signed with it.
-    publisherName:
-      - "CN=NaisNet Technology Co., Ltd., O=NaisNet Technology Co., Ltd."
-      - "NaisNet Technology Co., Ltd."
-      - CN=RushRush Network Technology Ltd, O=RushRush Network Technology Ltd
-      - RushRush Network Technology Ltd
   target:
     - target: nsis
       arch: [x64]
@@ -150,14 +155,13 @@ linux:
   icon: build/icons
   # Pinned rather than derived from the app name, which the deb postinst templates also
   # interpolate (build/linux/*.tpl).
-  executableName: penguin-harness
+  executableName: adelie
   # ${arch} expands to each Linux target's own convention — x86_64 for AppImage, amd64
-  # for deb — so the published names are penguin-desktop-linux-x86_64.AppImage and
-  # penguin-desktop-linux-amd64.deb; the OSS mirror manifest and the landing download
-  # page name them accordingly.
-  artifactName: penguin-desktop-linux-${arch}.${ext}
+  # for deb — so the published names are adelie-desktop-linux-x86_64.AppImage and
+  # adelie-desktop-linux-amd64.deb.
+  artifactName: adelie-desktop-linux-${arch}.${ext}
   category: Development
-  maintainer: Prism Shadow <zheng@prismshadow.com>
+  maintainer: lmliheng <0110230306@csu.edu.cn>
   target:
     - target: AppImage
       arch: [x64]
