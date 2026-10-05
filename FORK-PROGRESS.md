@@ -673,3 +673,63 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-05 | 第五轮 | 初始 Project 名补成 `default`（core 常量 + `ensureDisplayName` + 启动扫描 + 三条测试）；zh 字典 68 处 `Project` → 「项目」；`PrefRow` 手机宽度改为可换行、导入 Trace 不再压住；草稿行删除按钮在触摸屏上常显 | `pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；`pnpm -r test` **8840 通过 / 14 跳过 / 0 失败**（docs 62 · core 1346 · ui 1000 · server 2559 · cli 505 · web 2887 · desktop 279 · ui-gallery 131 · 四个沙箱插件 71）；浏览器实测四项（含**老数据根升级**、390px 触摸屏） | `e960d0b1` |
 | 2026-10-05 | 第五轮 | 升级 **v0.2.2**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.2/`（`BUILD_COMMIT=2d6abe83`），打包脚本改「边做边清」把峰值从 1.5G 压到 ~0.3G | 见「v0.2.2：默认项目名 default、中文文案、手机上的导入 Trace 与草稿」一节 | tag `v0.2.2` = `2d6abe83` |
 | 2026-10-05 | 2.2b | 控制面环境变量改名：25 个名字 / 77 个文件 / 388 处 `PENGUIN_*` → `ADELIE_*`（会话、API、语言、终端、审批与测试脚手架那批；注释、zh/en 文案、插件技能契约、`docker/compose.yaml` 一起改）；`core` 的剥离规则注释补写「为什么仍留两个前缀」 | 六包 typecheck 过；`pnpm lint` 0 警告；`pnpm format:check` 干净（两处超宽行交给 prettier）；core **1350 / 5 跳过**、ui **1000**、web **2887 / 2 跳过**、cli **505**、server **2563 / 2 跳过**（首跑 1 条红是 `dist/install.ps1` 副本过期，重建 server 后转绿）—— 0 失败；运行时实测：`ADELIE_LANG=zh` 出中文帮助、旧名 `PENGUIN_LANG=zh` 不再生效、`ADELIE_SEED_ADMIN_PASSWORD` 起服务不再打印 claim 链接；浏览器（7431，数据根 `/root/adelie-fork-data`）标题 `Sign in · Adelie`、console 唯一 error 是登录前 `/api/me` 401；推送后 CI run `37302398244` **22 个 job 全绿**（含本机按纪律没跑的 desktop 一族，等于替桌面壳那半边也验了一遍） | 见本行提交 |
+
+## 服务迁移：PenguinHarness → Adelie（2026-10-05，用户定的方案 A）
+
+用户要求「把 penguin harness 的 service 迁到 Adelie」，在端口两案里选了 **A：Adelie 接管 7364** ——
+已放行的设备与 `penguin` 命令都不用改配置。这是**环境动作**，仓库代码一行没动。
+
+| | 迁移前 | 迁移后 |
+| --- | --- | --- |
+| 单元 | `penguin-server.service`（`/root/.penguin` 的 `penguin server`） | `adelie-server.service`（`/root/.adelie` 的 `penguin server`） |
+| 端口 | 7364（`HOST=0.0.0.0`） | 7364（不变，ufw 一条都没改） |
+| 程序 | `/root/.penguin` = PenguinHarness `v0.2.13-99-g18d7c137` | `/root/.adelie` = **Adelie v0.2.3**（`adelie-linux-x64` Release，离线装） |
+| 数据根 | `/root/.penguin/data`（5.6G） | `/root/.adelie/data`（`mv` 过去，同一分区） |
+| `penguin` 命令 | `/root/.local/bin/penguin` → `/root/.penguin/bin/penguin` | → `/root/.adelie/bin/penguin`（`install.sh` 自己改的） |
+
+按顺序做的事：
+
+1. **备份留证**到 `/root/migration-20261005/`：`sqlite3 … ".backup"` 的 `web.db` 一致性快照、
+   四个单元文件、`/root/egress-whitelist/config.json`、数据根清单、`ufw status numbered`、
+   bundle 的 sha256 自检（`9ba6e674…`，MATCH）。
+2. **离线装 Adelie v0.2.3**：`tar -xzf /opt/adelie-design/downloads/v0.2.3/adelie-linux-x64.tar.gz` →
+   `PENGUIN_INSTALL_DIR=/root/.adelie sh install.sh`（payload 校验和 OK，输出
+   `Adelie v0.2.3 installed to /root/.adelie`）。
+3. `systemctl stop penguin-server`（停之前核过：7364 上没有客户端连接）→
+   `mv /root/.penguin/data /root/.adelie/data` → 旧路径留符号链接
+   `ln -s /root/.adelie/data /root/.penguin/data`。**必须留这个链接**：`qq-webui-proxy.service` 的
+   `ExecStart`/`Documentation` 与 napcat 容器的三个 bind mount（`…/qq-napcat/data/{config,qq,plugins}`）
+   都写死了旧路径，链接一撤就断。
+4. 新增 `/etc/systemd/system/adelie-server.service`（`Environment=ADELIE_HOME=/root/.adelie/data`、
+   `ExecStart=/root/.local/bin/penguin server`、`SyslogIdentifier=adelie-server`）→ `daemon-reload` →
+   `enable --now`；旧单元 `systemctl disable penguin-server` —— **单元文件与 `/root/.penguin` 安装都留着**。
+5. `/root/egress-whitelist/config.json`：7364 那条的名字 `PenguinHarness` → `Adelie`、单元 →
+   `adelie-server.service`，`penguin.tokenFile` → `/root/.adelie/data/api-token`；3004 那条改名
+   「Adelie（3004 预览）」免得两条同名。重启面板后 `ufw status numbered` 与重启前逐字相同。
+
+验证（都是真跑出来的）：
+
+- `ss -tlnp`：`0.0.0.0:7364` 归 adelie-server 的 node；`is-active` / `is-enabled` = active / enabled。
+- 起服务的 journal：`Data root: /root/.adelie/data` · `SQLite: /root/.adelie/data/web.db` ·
+  `Web dist: /root/.adelie/web` · `Agent CLI: /root/.adelie/data/bin/penguin -> /root/.adelie/lib/dist/penguin.js`
+  （服务端把自己那份 CLI 写进了数据根的 `bin/penguin`，不再是旧装那份）；无 error。
+- HTTP：`127.0.0.1:7364/` 200、`<title>Adelie</title>`、`/api/me` 401（未登录，预期）；
+  **从笔记本（ufw 已放行的 36.148.251.233）访问 `http://64.83.2.109:7364/` 也是 200 + `Adelie` 标题**。
+- 数据：`PRAGMA integrity_check` = ok；`users 2 / projects 7 / agents 13 / sessions 2334`；
+  `penguin project ls` 列出 admin 名下 6 个项目（第 7 个 `zhaoyukun-default_project` 归别人、对 admin 不可见，
+  目录仍在）；`GET /api/projects/self_evolution/agents` 拿到 default_agent（17 技能 / 1 hook / 2 vault 键）；
+  `GET /api/sessions/<sid>/messages` 读得出 20:32 那条会话的历史。`penguin version` = `v0.2.3`。
+- 迁移前挂在旧服务 cgroup 里的那个 4000 预览进程（上一会话手工起的 Adelie，数据根 `/root/adelie-preview`）
+  **随 `systemctl stop penguin-server` 一起收到 SIGTERM 退出**（它自己的日志 21:45:55
+  `Received SIGTERM, shutting down…`）。它的数据副本原样留在 `/root/adelie-preview`，要再起来照原命令即可。
+
+回滚：
+
+```bash
+systemctl disable --now adelie-server
+rm /root/.penguin/data && mv /root/.adelie/data /root/.penguin/data
+systemctl enable --now penguin-server
+```
+
+遗留：`qq-webui-proxy.service` 与 napcat 容器仍按旧路径工作（靠符号链接）。要彻底改成
+`/root/.adelie/data`，得同时改那个单元并重建容器（会重连 QQ，这次没做）。
