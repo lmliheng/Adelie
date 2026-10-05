@@ -81,14 +81,20 @@
         `ROOT_ENV` / `LEGACY_ROOT_ENV` 同一规则）。读侧接上的地方：`server` 的 `config.ts`（那五个）、
         `http/routes/version.ts` 的 `CLI_ENTRY`、`machines/layout.ts` 的 `PROFILE`、CLI 三个命令的
         `WEB_DB`、core 的 `BUNDLED_SHELL`；`packages/server/README.md` 的环境表与各处注释跟上。
-        **写侧一个都没改**（理由见下），所以这一条还不能勾掉。
+        **写侧一个都没改**（理由见下），所以这一条还不能勾掉 —— 到 2026-10-06 第七轮才把**不是桌面壳
+        写的那两处**改掉（见下一条）。
+      - **写侧做了一半（2026-10-06，第七轮）**：**不是桌面壳写的那两处已经改用 Adelie 的名字** ——
+        两个启动脚本 `scripts/launchers/penguin{,.cmd}` 现在导出 `ADELIE_WEB_DIST`（显式的旧名
+        `PENGUIN_WEB_DIST` 仍照办：新名 > 旧名 > 本安装的 `web/`，与 `ADELIE_HOME` 同一写法）与
+        `ADELIE_BUNDLED_SHELL`；`penguin server|web`（`packages/cli/src/commands/serve.ts`）导出的入口
+        改叫 `ADELIE_CLI_ENTRY`。读侧本来就两个都认，新旧搭配都跑得通（实测见「已完成的轮次」）。
       - **还差什么（做这一条时要一起收的尾）**：
-        1. **写侧**：桌面壳（`packages/desktop/src/{server-process,launcher,web-dist}.ts` 现在仍导出 /
-           传 `PENGUIN_PROFILE` / `PENGUIN_CLI_ENTRY` / `PENGUIN_WEB_DIST` / `PENGUIN_DESKTOP_TOKEN` /
-           `PENGUIN_PORT_FILE` / `PENGUIN_BUNDLED_SHELL`）、两个启动脚本 `scripts/launchers/penguin{,.cmd}`
-           的 `PENGUIN_BUNDLED_SHELL`、CLI 的 `penguin server|web` 导出的 `PENGUIN_CLI_ENTRY`、
-           `machines/commands.ts` 写进远端命令的 `PENGUIN_PROFILE`（远端可能是旧安装，这一处要留旧名
-           更久）。桌面壳按纪律本机没碰（3.5 才决定取哪个桌面壳）。
+        1. **写侧剩下的全在桌面壳一侧**：`packages/desktop/src/{server-process,launcher,web-dist}.ts`
+           仍导出 / 传 `PENGUIN_PROFILE` / `PENGUIN_CLI_ENTRY` / `PENGUIN_WEB_DIST` / `PENGUIN_DESKTOP_TOKEN` /
+           `PENGUIN_PORT_FILE` / `PENGUIN_BUNDLED_SHELL`（读侧两个都认，所以今天也跑得通）。桌面壳按纪律
+           本机没碰（依赖没装、3.5 才决定取哪个桌面壳），这一批等那一步一起改。
+           `machines/commands.ts` 写进远端命令的 `PENGUIN_PROFILE` 也是**有意留着**：远端可能是一台还没
+           升级的安装、只认旧名；等那一步的语义定下来（探测远端版本，或两个都写）再说。
         2. **本机部署**：`adelie-app.service`（3004，已 stop + disable）仍设 `PENGUIN_HOME` /
            `PENGUIN_WEB_DIST` / `PENGUIN_CLI_ENTRY`；读侧现在两条都认，所以不改也能跑，要在发布版
            里换新名得连单元一起改（发布动作）。
@@ -694,6 +700,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-05 | 第五轮 | 升级 **v0.2.2**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.2/`（`BUILD_COMMIT=2d6abe83`），打包脚本改「边做边清」把峰值从 1.5G 压到 ~0.3G | 见「v0.2.2：默认项目名 default、中文文案、手机上的导入 Trace 与草稿」一节 | tag `v0.2.2` = `2d6abe83` |
 | 2026-10-05 | 2.2b | 控制面环境变量改名：25 个名字 / 77 个文件 / 388 处 `PENGUIN_*` → `ADELIE_*`（会话、API、语言、终端、审批与测试脚手架那批；注释、zh/en 文案、插件技能契约、`docker/compose.yaml` 一起改）；`core` 的剥离规则注释补写「为什么仍留两个前缀」 | 六包 typecheck 过；`pnpm lint` 0 警告；`pnpm format:check` 干净（两处超宽行交给 prettier）；core **1350 / 5 跳过**、ui **1000**、web **2887 / 2 跳过**、cli **505**、server **2563 / 2 跳过**（首跑 1 条红是 `dist/install.ps1` 副本过期，重建 server 后转绿）—— 0 失败；运行时实测：`ADELIE_LANG=zh` 出中文帮助、旧名 `PENGUIN_LANG=zh` 不再生效、`ADELIE_SEED_ADMIN_PASSWORD` 起服务不再打印 claim 链接；浏览器（7431，数据根 `/root/adelie-fork-data`）标题 `Sign in · Adelie`、console 唯一 error 是登录前 `/api/me` 401；推送后 CI run `37302398244` **22 个 job 全绿**（含本机按纪律没跑的 desktop 一族，等于替桌面壳那半边也验了一遍） | 见本行提交 |
 | 2026-10-06 | 2.2c（前半） | 边界面部署变量的**读侧**同时认 Adelie 的名字与旧名：core 新增 `state/boundary-env.ts`（`ADELIE_*` ← 旧 `PENGUIN_*` 的表 + 读取函数，新名优先）；接上 server 的 `config.ts`（WEB_DIST / WEB_DB / PORT_FILE / DESKTOP_TOKEN / CLI_ENTRY）、version 路由的 CLI_ENTRY、`machines/layout.ts` 的 PROFILE、CLI 三个命令的 WEB_DB、core 的 BUNDLED_SHELL，server README 的环境表与各处注释跟上。**写侧一个没改**（桌面壳按纪律没碰），所以 2.2c 仍未勾掉，「还差什么」写在条目里 | 六个包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1359 / 5 跳过 · server 2594 / 2 跳过 · cli 505 · ui 1000 · web 2877 / 2 跳过，**0 失败**；真起服务三次（数据根 `/root/adelie-fork-data/alias-*`，端口 7451 只用新名 / 7452 只用旧名 / 7453 两名并存）：三次都 302 → 登录页 `<title>Adelie</title>`，日志里的 SQLite 与 Web dist 都对，端口文件按各自的名字落盘；并存那次落的是新名的 `new.db` / `new.port`，旧名的 `old.db` / `old.port` 与 `PENGUIN_HOME` 指的旧根**一个都没建** | `83acbdf0` |
+| 2026-10-06 | 2.2c（写侧的非桌面壳部分） | 边界面变量**写侧的两处**（都不是桌面壳写的）改用 Adelie 的名字：两个启动脚本 `scripts/launchers/penguin{,.cmd}` 导出 `ADELIE_WEB_DIST`（操作者显式的旧名 `PENGUIN_WEB_DIST` 仍照办，新名优先）与 `ADELIE_BUNDLED_SHELL`；`penguin server|web` 导出 `ADELIE_CLI_ENTRY`。跟着改的地方：`scripts/test-installer.sh` 对两个启动脚本的守卫、core 剥离用例新增这两个新名、`config.ts` / `update-job.ts` / `session-manager.ts` 的注释与 `server/README.md` 的写法说明。桌面壳一侧与 `machines/commands.ts` 有意未动（见 2.2c 的「还差什么」） | 六包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净、`sh scripts/test-installer.sh` 通过；core 1359（+5 跳过）· server 2600（+2 跳过）· cli 505 · web 2877（+2 跳过）· ui 1003，**0 失败**；启动脚本用桩 CLI 实测四种环境（默认 / 只给旧名 / 两名并存取新名 / 显式 `ADELIE_HOME`），旧名覆盖仍生效；真起服务两次（经 CLI 起，7455/7456，数据根 `/root/adelie-fork-data/write-side*`）：日志 `Agent CLI: <root>/bin/penguin -> …/packages/cli/dist/penguin.js`、**子进程 environ 里是 `ADELIE_CLI_ENTRY`、没有旧名**、`ADELIE_WEB_DIST` 指哪就服务哪；浏览器打开 7456 是 `登录 · Adelie`，唯一 console error 是登录前 `/api/me` 401 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、

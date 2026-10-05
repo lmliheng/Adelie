@@ -312,6 +312,11 @@ describe("harness environment variables never reach a spawned command", () => {
     // The post-rename spelling of the same setting, exported by the installed launcher: both
     // prefixes are the rule, so a root named the new way has to be stripped exactly like the old.
     "ADELIE_HOME",
+    // What Adelie itself writes today: `penguin server|web` exports ADELIE_CLI_ENTRY and the
+    // installed launcher exports ADELIE_WEB_DIST (the pre-rename spellings above are still
+    // stripped too — the desktop shell and existing deployments keep writing those).
+    "ADELIE_CLI_ENTRY",
+    "ADELIE_WEB_DIST",
     // A sample of the PENGUIN_* the prefix rule covers that no by-name list ever named: the
     // resolved shell, the release feed, the UI language and the install location. Whether these
     // specific ones are set at run time is beside the point — the rule is the prefix, and a new
@@ -341,6 +346,8 @@ describe("harness environment variables never reach a spawned command", () => {
     process.env.PENGUIN_HOME = "/home/someone/.penguin/data";
     process.env.PENGUIN_WEB_DB = "/home/someone/.penguin/data/web.db";
     process.env.ADELIE_HOME = "/home/someone/.adelie/data";
+    process.env.ADELIE_CLI_ENTRY = "/opt/adelie/lib/dist/index.js";
+    process.env.ADELIE_WEB_DIST = "/opt/adelie/web";
     process.env.ADELIE_SHELL = "/opt/penguin/bin/bash";
     process.env.PENGUIN_UPDATE_FEED_URL = "https://example.invalid/feed";
     process.env.ADELIE_LANG = "zh";

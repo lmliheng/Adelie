@@ -112,8 +112,9 @@ export interface ServerConfig {
   /**
    * The CLI entry script this harness offers to the Agents it runs — the file the
    * `<root>/bin/penguin` shim execs (see services/cli-shim.ts). `ADELIE_CLI_ENTRY` when
-   * set (`PENGUIN_CLI_ENTRY` is read too — `penguin server|web` still exports that spelling and
-   * the desktop shell passes it, see state/boundary-env.ts): `penguin server|web` exports its own
+   * set (`PENGUIN_CLI_ENTRY` is read too — the desktop shell passes that spelling, and its
+   * launch environment is not built in this repository, see state/boundary-env.ts):
+   * `penguin server|web` exports its own
    * entry there, and the desktop shell passes
    * the bundled one to the server it forks. Otherwise the entry of the checkout this
    * server was started from, when it has a built one. Null = no CLI to offer, and no shim

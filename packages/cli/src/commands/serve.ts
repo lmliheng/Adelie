@@ -11,7 +11,7 @@
  * in parallel. Port/host priority: command-line option > existing environment variable
  * (including .env) > default 7364 / 127.0.0.1. `penguin web` additionally polls until the
  * service is ready, prints the URL, and opens a browser per-platform (`--no-open`
- * disables this). Before the import, PENGUIN_CLI_ENTRY is exported (when node can re-run
+ * disables this). Before the import, ADELIE_CLI_ENTRY is exported (when node can re-run
  * this entry) so the server's admin self-update endpoint can invoke `penguin update`.
  *
  * Supervision: when plain node can re-run this entry, the service runs as a CHILD process
@@ -199,7 +199,7 @@ async function startServer(
   // run) the variable stays unset and the endpoint reports "unsupported".
   const cliEntry = cliEntryFor(process.argv[1]);
   if (cliEntry !== null) {
-    process.env.PENGUIN_CLI_ENTRY = cliEntry;
+    process.env.ADELIE_CLI_ENTRY = cliEntry;
   }
   // The same re-runnable entry is what makes supervision possible: the child is exactly
   // this command again, marked as the child so it does not supervise in turn.

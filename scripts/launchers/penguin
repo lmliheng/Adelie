@@ -16,7 +16,11 @@ while [ -h "$SOURCE" ]; do
 done
 DIR=$(dirname "$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)")
 
-export PENGUIN_WEB_DIST="${PENGUIN_WEB_DIST:-$DIR/web}"
+# The front-end build this install serves. Adelie's own spelling wins, then the pre-rename
+# PENGUIN_WEB_DIST a launcher from an older release (or an operator's shell rc) set — the reader
+# accepts both and prefers this one (core's state/boundary-env.ts), so honoring the old name here
+# is what keeps an explicit override working across the rename.
+export ADELIE_WEB_DIST="${ADELIE_WEB_DIST:-${PENGUIN_WEB_DIST:-$DIR/web}}"
 # The data root this install owns. The installer lays the program out in a program directory and
 # keeps the data root inside it (`<program>/data`) — that is where an install made before Adelie
 # spelled its environment Adelie's way has its Agents, Sessions and usage, so exporting the path

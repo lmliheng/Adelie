@@ -7,8 +7,9 @@
  * the next start (which is also how a failed run is retried).
  *
  * How the self-update works: `penguin server|web` exports its own entry script path as
- * PENGUIN_CLI_ENTRY — the pre-rename spelling of ADELIE_CLI_ENTRY, and the config parser
- * reads both — before importing this server, and the job re-runs that script as
+ * ADELIE_CLI_ENTRY — the pre-rename PENGUIN_CLI_ENTRY is read as well, because the desktop
+ * shell still hands the server that spelling — before importing this server, and the job
+ * re-runs that script as
  * `node <entry> update --yes` — the CLI's update command owns all install-kind detection,
  * download and replacement logic (packages/cli/src/commands/update.ts). A server started
  * any other way (tests, a custom embedding) has no CLI to run and reports "unsupported".

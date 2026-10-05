@@ -22,7 +22,7 @@ The full route tables and the SSE protocol are documented in the [Server API ref
 | `ADELIE_WEB_DB` (was `PENGUIN_WEB_DB`) | SQLite file path | `<root>/web.db` |
 | `ADELIE_WEB_DIST` (was `PENGUIN_WEB_DIST`) | Front-end build dir (static hosting + SPA fallback when present) | `../web/dist`, or the bundled `web-dist/` in the npm package |
 | `ADELIE_TRUST_PROXY` | Trust `x-forwarded-proto` (`1` to enable): it opens the hot-update network gate over proxied HTTPS and marks session cookies `Secure` — only behind a reverse proxy that sets/strips the header itself | unset (untrusted) |
-| `ADELIE_CLI_ENTRY` (was `PENGUIN_CLI_ENTRY`) | CLI entry script offered to the Agents this server runs: it is written into `<root>/bin/penguin` and put at the front of every command's PATH | `penguin server\|web` and the desktop shell set it; otherwise the entry of the checkout this server was started from, when it has one |
+| `ADELIE_CLI_ENTRY` (was `PENGUIN_CLI_ENTRY`) | CLI entry script offered to the Agents this server runs: it is written into `<root>/bin/penguin` and put at the front of every command's PATH | `penguin server\|web` sets it under that name, the desktop shell passes the pre-rename one; otherwise the entry of the checkout this server was started from, when it has one |
 
 Every deployment variable above keeps reading the spelling in parentheses: its writer is outside
 this repository (the desktop shell's launch environment, an existing deployment's unit file, an

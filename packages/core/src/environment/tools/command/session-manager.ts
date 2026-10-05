@@ -50,8 +50,10 @@ const HARDENED_ENV: NodeJS.ProcessEnv = {
  * a particular port should be told so in its own invocation (or through the vault), never by
  * ambient inheritance.
  *
- * `PENGUIN_CLI_ENTRY` is internal plumbing: the CLI uses it to tell the server which script to
- * re-run for self-update. It means nothing to any other program and leaks the install path.
+ * `ADELIE_CLI_ENTRY` is internal plumbing: the CLI writes it to tell the server which script to
+ * re-run for self-update (the by-name entry below still lists the pre-rename `PENGUIN_CLI_ENTRY`,
+ * which is what the desktop shell hands the server). It means nothing to any other program and
+ * leaks the install path.
  *
  * `PENGUIN_WEB_DIST` is *not* internal — it is a documented deployment override (see the
  * configuration reference and the server README) — and is stripped anyway because it names this
@@ -106,7 +108,8 @@ const STRIPPED_ENV_KEYS = new Set([
  * Twenty-five existed when this was written and a by-name list had caught seven.
  *
  * Two prefixes because the installation carries two spellings of the same settings today:
- * `ADELIE_*` is Adelie's own — the installed launcher exports `ADELIE_HOME` — and `PENGUIN_*` is
+ * `ADELIE_*` is Adelie's own — the installed launcher exports `ADELIE_HOME`, `ADELIE_WEB_DIST`
+ * and `ADELIE_BUNDLED_SHELL` — and `PENGUIN_*` is
  * the pre-rename spelling that existing deployments, systemd units and scripts still set, with
  * the data root read from either. It is not only history: the settings whose *other* end is a
  * program Adelie does not build in this repository (the desktop shell's launch environment, the

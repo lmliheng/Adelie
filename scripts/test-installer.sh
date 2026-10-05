@@ -23,11 +23,11 @@ fail_test() {
 LAUNCHER_SH="$ROOT_DIR/scripts/launchers/penguin"
 LAUNCHER_CMD="$ROOT_DIR/scripts/launchers/penguin.cmd"
 [ -x "$LAUNCHER_SH" ] || fail_test "scripts/launchers/penguin is missing or not executable"
-for marker in 'PENGUIN_WEB_DIST:-$DIR/web' '$DIR/node/bin/node' '$DIR/lib/dist/penguin.js'; do
+for marker in 'ADELIE_WEB_DIST:-${PENGUIN_WEB_DIST:-$DIR/web}' '$DIR/node/bin/node' '$DIR/lib/dist/penguin.js'; do
   grep -qF "$marker" "$LAUNCHER_SH" || fail_test "the POSIX launcher does not carry $marker"
 done
 sh -n "$LAUNCHER_SH" || fail_test "the POSIX launcher is not valid sh"
-for marker in '%DIR%\web' '%DIR%\node\node.exe' '%DIR%\lib\dist\penguin.js'; do
+for marker in 'set "ADELIE_WEB_DIST=%DIR%\web"' 'set "ADELIE_BUNDLED_SHELL=%DIR%\git\usr\bin\sh.exe"' '%DIR%\node\node.exe' '%DIR%\lib\dist\penguin.js'; do
   grep -qF "$marker" "$LAUNCHER_CMD" || fail_test "the Windows launcher does not carry $marker"
 done
 # .gitattributes keeps this one CRLF, the only form cmd.exe is fully reliable with.
