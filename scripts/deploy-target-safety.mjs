@@ -9,7 +9,7 @@
 const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1", "[::1]"]);
 
 /**
- * Refuses a target that would send PENGUIN_ADMIN_PASSWORD in the clear: deploy.mjs's
+ * Refuses a target that would send ADELIE_ADMIN_PASSWORD in the clear: deploy.mjs's
  * login() posts it as a JSON body, and `http://` to anything off this machine puts it
  * on the wire readable by anyone on the path. `https://` is always fine; plain
  * `http://` is only fine to a loopback hostname (the documented `ssh -L` tunnel case —
@@ -21,7 +21,7 @@ export function unsafePlaintextTarget(urlStr) {
   if (url.protocol === "https:") return null;
   if (LOOPBACK_HOSTNAMES.has(url.hostname.toLowerCase())) return null;
   return (
-    `refusing to send PENGUIN_ADMIN_PASSWORD in plaintext to ${url.protocol}//${url.hostname} — ` +
+    `refusing to send ADELIE_ADMIN_PASSWORD in plaintext to ${url.protocol}//${url.hostname} — ` +
     "serve over https:// instead, or reach the target through an `ssh -L` tunnel to 127.0.0.1."
   );
 }

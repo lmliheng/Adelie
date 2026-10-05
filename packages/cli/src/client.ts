@@ -5,10 +5,10 @@
  *
  * Connection resolution order (first hit wins):
  *   1. `--server <url>` — an explicit target. A non-loopback URL requires
- *      PENGUIN_API_TOKEN: the on-disk token file belongs to the LOCAL data root and must
+ *      ADELIE_API_TOKEN: the on-disk token file belongs to the LOCAL data root and must
  *      never be sent to a remote host.
- *   2. `PENGUIN_API_URL` — the same, from the environment. Server-driven sessions inject
- *      it (with PENGUIN_API_TOKEN) into tool subprocesses, which is how an agent's own
+ *   2. `ADELIE_API_URL` — the same, from the environment. Server-driven sessions inject
+ *      it (with ADELIE_API_TOKEN) into tool subprocesses, which is how an agent's own
  *      `penguin` calls find the server that runs them.
  *   3. A live `server.lock` at the data root (ADELIE_HOME or ~/.adelie/data): attach to
  *      the running local server on `http://localhost:<port>`.
@@ -16,7 +16,7 @@
  *      lock, attach. The loser of a two-CLI spawn race exits with code 3 ("already
  *      running"), which the lock poll absorbs — it finds the winner's lock either way.
  *
- * Token resolution: PENGUIN_API_TOKEN, else `<root>/api-token` (written by the server
+ * Token resolution: ADELIE_API_TOKEN, else `<root>/api-token` (written by the server
  * each boot). A 401 with a file-sourced token re-reads the file once and retries — the
  * server may have restarted (and rotated the token) since the first read.
  */
@@ -156,11 +156,11 @@ export async function resolveConnection(
   t: Messages,
 ): Promise<Connection> {
   const root = resolveRoot();
-  const explicit = opts.server?.trim() || process.env.PENGUIN_API_URL?.trim() || "";
+  const explicit = opts.server?.trim() || process.env.ADELIE_API_URL?.trim() || "";
   if (explicit !== "") {
     const url = normalizeServerUrl(explicit, t);
     const loopback = isLoopbackUrl(url);
-    if (!loopback && !process.env.PENGUIN_API_TOKEN?.trim()) {
+    if (!loopback && !process.env.ADELIE_API_TOKEN?.trim()) {
       throw new Error(t.client.remoteNeedsToken(url.origin));
     }
     return { baseUrl: url.origin, root, autoStarted: false, loopback };
@@ -212,7 +212,7 @@ export class ServerClient {
     readonly conn: Connection,
     private readonly t: Messages,
   ) {
-    const envToken = process.env.PENGUIN_API_TOKEN?.trim();
+    const envToken = process.env.ADELIE_API_TOKEN?.trim();
     if (envToken) {
       this.token = envToken;
       this.tokenSource = "env";
@@ -432,12 +432,12 @@ export async function resolveSessionRef(
 // Shared option defaults
 // ---------------------------------------------------------------------------
 
-/** `--project-id` default chain: flag > PENGUIN_PROJECT_ID > default_project. */
+/** `--project-id` default chain: flag > ADELIE_PROJECT_ID > default_project. */
 export function resolveProjectId(flag: string | undefined): string {
-  return flag?.trim() || process.env.PENGUIN_PROJECT_ID?.trim() || "default_project";
+  return flag?.trim() || process.env.ADELIE_PROJECT_ID?.trim() || "default_project";
 }
 
-/** `--agent-id` default chain: flag > PENGUIN_AGENT_ID > default_agent. */
+/** `--agent-id` default chain: flag > ADELIE_AGENT_ID > default_agent. */
 export function resolveAgentId(flag: string | undefined): string {
-  return flag?.trim() || process.env.PENGUIN_AGENT_ID?.trim() || "default_agent";
+  return flag?.trim() || process.env.ADELIE_AGENT_ID?.trim() || "default_agent";
 }

@@ -12,7 +12,7 @@ describe("resolveShellRc", () => {
     const zsh = resolveShellRc("/bin/zsh", "/home/u");
     expect(zsh.kind).toBe("zsh");
     expect(zsh.rcPath).toBe(join("/home/u", ".zshrc"));
-    expect(zsh.body("zh")).toBe("export PENGUIN_LANG=zh");
+    expect(zsh.body("zh")).toBe("export ADELIE_LANG=zh");
 
     const bash = resolveShellRc("/usr/bin/bash", "/home/u");
     expect(bash.kind).toBe("bash");
@@ -21,7 +21,7 @@ describe("resolveShellRc", () => {
     const fish = resolveShellRc("/usr/local/bin/fish", "/home/u");
     expect(fish.kind).toBe("fish");
     expect(fish.rcPath).toBe(join("/home/u", ".config", "fish", "config.fish"));
-    expect(fish.body("en")).toBe("set -gx PENGUIN_LANG en");
+    expect(fish.body("en")).toBe("set -gx ADELIE_LANG en");
   });
 
   it("falls back to ~/.profile for an unknown shell", () => {
@@ -33,31 +33,31 @@ describe("resolveShellRc", () => {
 
 describe("upsertBlock", () => {
   it("appends a marked block when none exists", () => {
-    const out = upsertBlock("export PATH=/x\n", "export PENGUIN_LANG=zh");
+    const out = upsertBlock("export PATH=/x\n", "export ADELIE_LANG=zh");
     expect(out).toContain("export PATH=/x");
-    expect(out).toContain("# >>> Adelie PENGUIN_LANG >>>");
-    expect(out).toContain("export PENGUIN_LANG=zh");
-    expect(out).toContain("# <<< Adelie PENGUIN_LANG <<<");
+    expect(out).toContain("# >>> Adelie ADELIE_LANG >>>");
+    expect(out).toContain("export ADELIE_LANG=zh");
+    expect(out).toContain("# <<< Adelie ADELIE_LANG <<<");
   });
 
   it("replaces the block in place and is idempotent", () => {
-    const first = upsertBlock("", "export PENGUIN_LANG=zh");
-    const second = upsertBlock(first, "export PENGUIN_LANG=en");
+    const first = upsertBlock("", "export ADELIE_LANG=zh");
+    const second = upsertBlock(first, "export ADELIE_LANG=en");
     // Only one block remains, with its content replaced by the latest value.
-    expect(second.match(/Adelie PENGUIN_LANG/g)?.length).toBe(2); // begin + end markers
-    expect(second).toContain("export PENGUIN_LANG=en");
-    expect(second).not.toContain("export PENGUIN_LANG=zh");
+    expect(second.match(/Adelie ADELIE_LANG/g)?.length).toBe(2); // begin + end markers
+    expect(second).toContain("export ADELIE_LANG=en");
+    expect(second).not.toContain("export ADELIE_LANG=zh");
     // Writing the same value again is stable (the block does not keep growing).
-    const third = upsertBlock(second, "export PENGUIN_LANG=en");
+    const third = upsertBlock(second, "export ADELIE_LANG=en");
     expect(third).toBe(second);
   });
 
   it("preserves surrounding content when replacing", () => {
-    const base = "line1\n" + upsertBlock("", "export PENGUIN_LANG=zh") + "line2\n";
-    const out = upsertBlock(base, "export PENGUIN_LANG=en");
+    const base = "line1\n" + upsertBlock("", "export ADELIE_LANG=zh") + "line2\n";
+    const out = upsertBlock(base, "export ADELIE_LANG=en");
     expect(out.startsWith("line1\n")).toBe(true);
     expect(out.endsWith("line2\n")).toBe(true);
-    expect(out).toContain("export PENGUIN_LANG=en");
+    expect(out).toContain("export ADELIE_LANG=en");
   });
 });
 
@@ -73,13 +73,13 @@ describe("applyLanguageToRc", () => {
     expect(kind).toBe("zsh");
     expect(rcPath).toBe(join(home, ".zshrc"));
     const content = await readFile(rcPath, "utf8");
-    expect(content).toContain("export PENGUIN_LANG=zh");
+    expect(content).toContain("export ADELIE_LANG=zh");
 
     // Switching the language again updates the file in place instead of appending.
     await applyLanguageToRc("en", { shell: "/bin/zsh", home });
     const updated = await readFile(rcPath, "utf8");
-    expect(updated).toContain("export PENGUIN_LANG=en");
-    expect(updated).not.toContain("export PENGUIN_LANG=zh");
+    expect(updated).toContain("export ADELIE_LANG=en");
+    expect(updated).not.toContain("export ADELIE_LANG=zh");
     expect(updated.match(/# >>> Adelie/g)?.length).toBe(1);
   });
 
@@ -88,6 +88,6 @@ describe("applyLanguageToRc", () => {
     const { rcPath } = await applyLanguageToRc("en", { shell: "/usr/bin/fish", home });
     expect(rcPath).toBe(join(home, ".config", "fish", "config.fish"));
     const content = await readFile(rcPath, "utf8");
-    expect(content).toContain("set -gx PENGUIN_LANG en");
+    expect(content).toContain("set -gx ADELIE_LANG en");
   });
 });

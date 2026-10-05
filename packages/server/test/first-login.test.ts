@@ -113,7 +113,7 @@ describe("the first-login link", () => {
 
   /**
    * The one reachable way to set a password WITHOUT going through setInitialPassword's
-   * revocation: a pinned seed (PENGUIN_SEED_ADMIN_PASSWORD, which every test app has) makes
+   * revocation: a pinned seed (ADELIE_SEED_ADMIN_PASSWORD, which every test app has) makes
    * the current password knowable, so the ordinary change-password door opens. The link must
    * die there too — the invariant is "any password set on the admin ends the link", not "the
    * door we expected ends it".

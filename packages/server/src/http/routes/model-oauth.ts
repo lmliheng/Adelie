@@ -54,7 +54,7 @@ const CODE_RE = /^[A-Za-z0-9._~-]{1,512}$/;
  * all work without configuration.
  *
  * `x-forwarded-proto` / `x-forwarded-host` are caller-supplied and are honoured only when
- * the deployment says a reverse proxy sets them (PENGUIN_TRUST_PROXY=1) — the same opt-in
+ * the deployment says a reverse proxy sets them (ADELIE_TRUST_PROXY=1) — the same opt-in
  * the hot-update network gate requires, and for the same reason: without it anyone who can
  * reach the bind could choose where the authorization lands.
  */

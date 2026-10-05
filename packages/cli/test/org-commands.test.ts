@@ -16,10 +16,10 @@ import { FakeServer } from "./fake-server.js";
 const t = getMessages("en");
 
 /** The control environment a desk or ticket session carries: every test starts without it and restores what was there. */
-const ENV_KEYS = ["PENGUIN_ORG_ID", "PENGUIN_AGENT_ID", "PENGUIN_SESSION_ID", "PENGUIN_PROJECT_ID"];
+const ENV_KEYS = ["ADELIE_ORG_ID", "ADELIE_AGENT_ID", "ADELIE_SESSION_ID", "ADELIE_PROJECT_ID"];
 const saved = new Map<string, string | undefined>();
 
-/** The desk session the CLI is assumed to run inside when PENGUIN_SESSION_ID is set below. */
+/** The desk session the CLI is assumed to run inside when ADELIE_SESSION_ID is set below. */
 const DESK_SESSION = "session-2026-09-02-10-00-00-de5c0001";
 
 let server: FakeServer;
@@ -37,7 +37,7 @@ beforeEach(() => {
   server = new FakeServer();
   uninstall = server.install();
   server.addOrg({ orgId: "acme", name: "Acme", mission: "Ship the site" });
-  process.env.PENGUIN_ORG_ID = "acme";
+  process.env.ADELIE_ORG_ID = "acme";
   stdout = [];
   stderr = [];
   outSpy = vi.spyOn(process.stdout, "write").mockImplementation((chunk) => {
@@ -230,7 +230,7 @@ describe("penguin org create", () => {
     expect(server.orgs.has("delta")).toBe(false);
   });
 
-  it("create's --org-id names the organization to create; PENGUIN_ORG_ID never fills it in", async () => {
+  it("create's --org-id names the organization to create; ADELIE_ORG_ID never fills it in", async () => {
     expect(await cli(["org", "create", "--mission", "m"])).toBe(1);
     expect(err()).toContain("--org-id");
     expect(server.requests.some((r) => r.method === "POST")).toBe(false);
@@ -360,9 +360,9 @@ describe("penguin org hire / employee set / leave", () => {
 });
 
 describe("penguin org desk", () => {
-  it("show defaults the employee to PENGUIN_AGENT_ID and opens the desk when there is none; renew POSTs a fresh one", async () => {
+  it("show defaults the employee to ADELIE_AGENT_ID and opens the desk when there is none; renew POSTs a fresh one", async () => {
     server.addEmployee("acme", { agentId: "dev1" });
-    process.env.PENGUIN_AGENT_ID = "dev1";
+    process.env.ADELIE_AGENT_ID = "dev1";
     expect(await cli(["org", "desk", "show"])).toBe(0);
     expect(lastRequest("GET", "/employees/dev1/desk")).toBeDefined();
     const first = String(org().desks.get("dev1")!.sessionId);
@@ -380,7 +380,7 @@ describe("penguin org desk", () => {
 describe("penguin org calendar", () => {
   beforeEach(() => {
     server.addEmployee("acme", { agentId: "dev1" });
-    process.env.PENGUIN_AGENT_ID = "dev1";
+    process.env.ADELIE_AGENT_ID = "dev1";
   });
 
   it("add posts the event under the calling employee, enabled, with --start-at now resolved to the current instant", async () => {
@@ -525,8 +525,8 @@ describe("penguin org ticket (writes carry the calling session)", () => {
     server.addEmployee("acme", { agentId: "dev1", title: "Developer" });
     // The CLI runs inside dev1's desk session: the control environment names it.
     server.addSession({ sessionId: DESK_SESSION, agentId: "dev1" });
-    process.env.PENGUIN_SESSION_ID = DESK_SESSION;
-    process.env.PENGUIN_AGENT_ID = "dev1";
+    process.env.ADELIE_SESSION_ID = DESK_SESSION;
+    process.env.ADELIE_AGENT_ID = "dev1";
   });
 
   it("create posts goal, criteria, owner, parent, notify list, priority and due, attributed to the session", async () => {
@@ -694,8 +694,8 @@ describe("penguin org ticket (writes carry the calling session)", () => {
   });
 
   it("outside a session and outside an Agent the writes carry no identity", async () => {
-    delete process.env.PENGUIN_SESSION_ID;
-    delete process.env.PENGUIN_AGENT_ID;
+    delete process.env.ADELIE_SESSION_ID;
+    delete process.env.ADELIE_AGENT_ID;
     server.addTicket("acme", { ticketId: "2026-09-02-site", title: "Site" });
     expect(await cli(["org", "ticket", "progress", "2026-09-02-site", "-m", "note"])).toBe(0);
     expect(lastRequest("POST", "/tickets/2026-09-02-site/progress")?.body).toEqual({
@@ -705,7 +705,7 @@ describe("penguin org ticket (writes carry the calling session)", () => {
     expect(lastRequest("POST", "/tickets/2026-09-02-site/unblock")?.body).toEqual({});
   });
 
-  it("start runs the ticket session as PENGUIN_AGENT_ID, carries the calling session, and prints the bare session id (--json: {sessionId})", async () => {
+  it("start runs the ticket session as ADELIE_AGENT_ID, carries the calling session, and prints the bare session id (--json: {sessionId})", async () => {
     server.addTicket("acme", { ticketId: "2026-09-02-site", title: "Site", owner: "agent:ceo" });
     expect(
       await cli([
@@ -741,8 +741,8 @@ describe("penguin org ticket (writes carry the calling session)", () => {
     });
 
     // Outside a session the body names neither employee nor session: the server picks the owner.
-    delete process.env.PENGUIN_AGENT_ID;
-    delete process.env.PENGUIN_SESSION_ID;
+    delete process.env.ADELIE_AGENT_ID;
+    delete process.env.ADELIE_SESSION_ID;
     stdout.length = 0;
     expect(await cli(["org", "ticket", "start", "2026-09-02-site", "--json"])).toBe(0);
     expect(lastRequest("POST", "/tickets/2026-09-02-site/start")?.body).toEqual({});
@@ -774,7 +774,7 @@ describe("penguin org ticket (writes carry the calling session)", () => {
       "session-2026-09-02-10-00-00-abcd0002",
     ]);
 
-    delete process.env.PENGUIN_SESSION_ID;
+    delete process.env.ADELIE_SESSION_ID;
     expect(await cli(["org", "ticket", "attach", "2026-09-02-site"])).toBe(1);
     expect(err()).toContain("--session");
   });
@@ -930,7 +930,7 @@ describe("penguin org channel", () => {
   const employeeInSession = (agentId: string) => {
     server.addEmployee("acme", { agentId });
     server.addSession({ sessionId: DESK_SESSION, agentId });
-    process.env.PENGUIN_SESSION_ID = DESK_SESSION;
+    process.env.ADELIE_SESSION_ID = DESK_SESSION;
   };
 
   it("ls lists the channels — the all-hands label, member counts, unread and @me; --json passes the response", async () => {
@@ -970,7 +970,7 @@ describe("penguin org channel", () => {
     // answer the employee as the signed-in person and list every channel.
     expect(lastRequest("GET", "/channels")?.search).toBe(`?sessionId=${DESK_SESSION}`);
 
-    delete process.env.PENGUIN_SESSION_ID;
+    delete process.env.ADELIE_SESSION_ID;
     stdout.length = 0;
     expect(await cli(["org", "channel", "ls", "--json"])).toBe(0);
     const asPerson = JSON.parse(out()) as { channels: Array<{ channelId: string }> };
@@ -1096,7 +1096,7 @@ describe("penguin org channel", () => {
     expect(org().channels.get("site")!.members).toEqual(["user:admin"]);
     expect(out()).toBe(`${t.org.channelLeft("site")}\n`);
 
-    delete process.env.PENGUIN_SESSION_ID;
+    delete process.env.ADELIE_SESSION_ID;
     stdout.length = 0;
     expect(await cli(["org", "channel", "leave", "site"])).toBe(0);
     expect(lastRequest("DELETE", `/members/${encodeURIComponent("user:admin")}`)?.search).toBe("");
@@ -1116,7 +1116,7 @@ describe("penguin org channel", () => {
     expect(org().channels.get("site")!.members).toEqual(["user:admin"]);
 
     server.addChannel("acme", "marketing", { members: ["user:admin", "agent:dev1"] });
-    process.env.PENGUIN_SESSION_ID = DESK_SESSION;
+    process.env.ADELIE_SESSION_ID = DESK_SESSION;
     expect(await cli(["org", "channel", "remove", "marketing", "user:admin"])).toBe(1);
     expect(err()).toContain("An employee removes only itself from a channel.");
     expect(org().channels.get("marketing")!.members).toEqual(["user:admin", "agent:dev1"]);
@@ -1282,7 +1282,7 @@ describe("penguin org channel", () => {
     expect(org().channels.get("site")!.messages).toHaveLength(1);
     expect(org().channels.get(DEFAULT)!.messages).toHaveLength(1);
 
-    delete process.env.PENGUIN_SESSION_ID;
+    delete process.env.ADELIE_SESSION_ID;
     expect(await cli(["org", "channel", "send", "-m", "plain"])).toBe(0);
     expect(lastRequest("POST", `/channels/${DEFAULT}/messages`)?.body).toEqual({ text: "plain" });
   });
@@ -1300,14 +1300,14 @@ describe("penguin org channel", () => {
     expect(org().channels.get("site")!.messages).toEqual([]);
 
     // An employee reads and posts only in the channels it belongs to.
-    process.env.PENGUIN_SESSION_ID = DESK_SESSION;
+    process.env.ADELIE_SESSION_ID = DESK_SESSION;
     expect(await cli(["org", "channel", "tail", "--channel", "site"])).toBe(1);
     expect(err()).toContain("not_a_member");
     expect(await cli(["org", "channel", "show", "site"])).toBe(1);
     expect(err()).toContain("not_a_member");
     expect(await cli(["org", "channel", "send", "--channel", "site", "-m", "hi"])).toBe(1);
     expect(err()).toContain("not_a_member");
-    delete process.env.PENGUIN_SESSION_ID;
+    delete process.env.ADELIE_SESSION_ID;
 
     // An unknown channel is a 404, and so is an id no channel could carry.
     expect(await cli(["org", "channel", "show", "nope"])).toBe(1);
@@ -1359,10 +1359,10 @@ describe("penguin org finance", () => {
 });
 
 describe("--org-id resolution", () => {
-  it("defaults to PENGUIN_ORG_ID; with neither, the command fails before any request", async () => {
-    delete process.env.PENGUIN_ORG_ID;
+  it("defaults to ADELIE_ORG_ID; with neither, the command fails before any request", async () => {
+    delete process.env.ADELIE_ORG_ID;
     expect(await cli(["org", "show"])).toBe(1);
-    expect(err()).toContain("PENGUIN_ORG_ID");
+    expect(err()).toContain("ADELIE_ORG_ID");
     expect(server.requests).toHaveLength(0);
 
     expect(await cli(["org", "show", "--org-id", "acme"])).toBe(0);

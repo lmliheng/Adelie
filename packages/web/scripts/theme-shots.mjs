@@ -482,7 +482,7 @@ async function capture(args) {
       PENGUIN_WEB_DIST: variants[0].dist,
       PORT: String(SRV_PORT),
       HOST: "127.0.0.1",
-      PENGUIN_SEED_ADMIN_PASSWORD: ADMIN_PASSWORD,
+      ADELIE_SEED_ADMIN_PASSWORD: ADMIN_PASSWORD,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });

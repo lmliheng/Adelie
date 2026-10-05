@@ -1887,7 +1887,7 @@ describe("organization runtime", () => {
         { userId: "alice" },
       );
       const ceoDesk = await service.desk(P, ORG, CEO, {});
-      // The CEO's desk ran the command, but PENGUIN_AGENT_ID says HR: the narrower fact wins.
+      // The CEO's desk ran the command, but ADELIE_AGENT_ID says HR: the narrower fact wins.
       const withProgress = await service.progressTicket(P, ORG, t.ticketId, "looked at it", {
         userId: "alice",
         sessionId: ceoDesk.sessionId,

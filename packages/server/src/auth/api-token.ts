@@ -9,7 +9,7 @@
  * `penguin server reset-admin-password` stands on (whoever can run it owns web.db
  * anyway) — and agents driving their own harness through the CLI is the product feature
  * this token exists for (server-driven Sessions hand it to tool subprocesses as
- * PENGUIN_API_TOKEN). Rotation per boot bounds the life of any leaked copy to the
+ * ADELIE_API_TOKEN). Rotation per boot bounds the life of any leaked copy to the
  * process that minted it.
  */
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
@@ -29,7 +29,7 @@ export function mintApiToken(): string {
  * Persists the boot token (owner-only file, tmp + rename so a concurrent reader never
  * sees a partial write). Best-effort like the initial-password file: an exotic read-only
  * root must not stop the server — local CLI callers then fall back to
- * PENGUIN_API_TOKEN.
+ * ADELIE_API_TOKEN.
  */
 export function storeApiToken(root: string, token: string): void {
   try {

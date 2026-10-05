@@ -306,7 +306,7 @@ describe("harness environment variables never reach a spawned command", () => {
     "PENGUIN_WEB_DIST",
     "PENGUIN_DESKTOP_TOKEN",
     "PENGUIN_PORT_FILE",
-    "PENGUIN_SEED_ADMIN_PASSWORD",
+    "ADELIE_SEED_ADMIN_PASSWORD",
     "PENGUIN_HOME",
     "PENGUIN_WEB_DB",
     // The post-rename spelling of the same setting, exported by the installed launcher: both
@@ -316,9 +316,9 @@ describe("harness environment variables never reach a spawned command", () => {
     // resolved shell, the release feed, the UI language and the install location. Whether these
     // specific ones are set at run time is beside the point — the rule is the prefix, and a new
     // variable added next release has to be covered without anyone remembering this file.
-    "PENGUIN_SHELL",
+    "ADELIE_SHELL",
     "PENGUIN_UPDATE_FEED_URL",
-    "PENGUIN_LANG",
+    "ADELIE_LANG",
     "PENGUIN_INSTALL_DIR",
   ] as const;
   const saved: Partial<Record<(typeof KEYS)[number], string | undefined>> = {};
@@ -335,15 +335,15 @@ describe("harness environment variables never reach a spawned command", () => {
     // would let an Agent-run command call the server's shutdown endpoint.
     process.env.PENGUIN_DESKTOP_TOKEN = "secret-desktop-token";
     process.env.PENGUIN_PORT_FILE = "/tmp/port-file";
-    process.env.PENGUIN_SEED_ADMIN_PASSWORD = "penguin-0000";
+    process.env.ADELIE_SEED_ADMIN_PASSWORD = "penguin-0000";
     // The data roots this very process is serving from. Inherited, they aim an Agent-started
     // harness at the running one's data — where the lock is already held, so it cannot start.
     process.env.PENGUIN_HOME = "/home/someone/.penguin/data";
     process.env.PENGUIN_WEB_DB = "/home/someone/.penguin/data/web.db";
     process.env.ADELIE_HOME = "/home/someone/.adelie/data";
-    process.env.PENGUIN_SHELL = "/opt/penguin/bin/bash";
+    process.env.ADELIE_SHELL = "/opt/penguin/bin/bash";
     process.env.PENGUIN_UPDATE_FEED_URL = "https://example.invalid/feed";
-    process.env.PENGUIN_LANG = "zh";
+    process.env.ADELIE_LANG = "zh";
     process.env.PENGUIN_INSTALL_DIR = "/opt/penguin";
   });
   afterEach(() => {
@@ -439,14 +439,14 @@ describe("harness environment variables never reach a spawned command", () => {
   it("a PENGUIN_* nobody has invented yet is stripped, because the rule is the prefix", async () => {
     // The point of matching on the prefix: this variable exists in no list, and a feature that
     // adds one next release inherits the protection without anyone editing this file.
-    process.env.PENGUIN_SOME_FUTURE_SETTING = "leaked";
+    process.env.ADELIE_SOME_FUTURE_SETTING = "leaked";
     try {
       const res = await runTool(env, "exec_command", {
-        cmd: `node -e "console.log('X=[' + (process.env.PENGUIN_SOME_FUTURE_SETTING ?? '') + ']')"`,
+        cmd: `node -e "console.log('X=[' + (process.env.ADELIE_SOME_FUTURE_SETTING ?? '') + ']')"`,
       });
       expect(res.output).toContain("X=[]");
     } finally {
-      delete process.env.PENGUIN_SOME_FUTURE_SETTING;
+      delete process.env.ADELIE_SOME_FUTURE_SETTING;
     }
   });
 
@@ -494,22 +494,22 @@ describe("harness environment variables never reach a spawned command", () => {
     // relies on (the vault stands in for all of them here): the host's copy of the name is
     // set to a different value to prove the child's value came from the injection, not
     // through inheritance.
-    const savedInherited = process.env.PENGUIN_API_URL;
-    process.env.PENGUIN_API_URL = "http://inherited.invalid";
+    const savedInherited = process.env.ADELIE_API_URL;
+    process.env.ADELIE_API_URL = "http://inherited.invalid";
     const vaultEnv = new Environment({
       workspaceDir: tmp,
       toolConfig: sessionConfig(),
-      vault: { PENGUIN_API_URL: "http://injected.example" },
+      vault: { ADELIE_API_URL: "http://injected.example" },
     });
     try {
       const res = await runTool(vaultEnv, "exec_command", {
-        cmd: `node -e "console.log('A=[' + (process.env.PENGUIN_API_URL ?? '') + ']')"`,
+        cmd: `node -e "console.log('A=[' + (process.env.ADELIE_API_URL ?? '') + ']')"`,
       });
       expect(res.output).toContain("A=[http://injected.example]");
     } finally {
       vaultEnv.dispose();
-      if (savedInherited === undefined) delete process.env.PENGUIN_API_URL;
-      else process.env.PENGUIN_API_URL = savedInherited;
+      if (savedInherited === undefined) delete process.env.ADELIE_API_URL;
+      else process.env.ADELIE_API_URL = savedInherited;
     }
   });
 });
@@ -611,9 +611,9 @@ describe("confineSpawn seam rewrites the exact argv a command spawns", () => {
       argv: [
         process.execPath,
         "-e",
-        "console.log('RUNNER=' + process.env.PENGUIN_RUNNER_MARK + ' PATH=' + (process.env.PATH ?? '').length)",
+        "console.log('RUNNER=' + process.env.ADELIE_RUNNER_MARK + ' PATH=' + (process.env.PATH ?? '').length)",
       ],
-      env: { PENGUIN_RUNNER_MARK: "set-by-confiner" },
+      env: { ADELIE_RUNNER_MARK: "set-by-confiner" },
     });
     const res = await runTool(confinedEnv, "exec_command", { cmd: "echo original" });
     expect(res.output).toContain("RUNNER=set-by-confiner");
@@ -744,28 +744,28 @@ describe("proxyEnv policy governs the proxy variables commands inherit", () => {
 describe("controlEnv injects the host's harness-control variables into commands", () => {
   // The hosting server threads a controlEnv getter through Environment ->
   // CommandSessionManager so commands the Agent runs can drive the harness back through
-  // the CLI/API (PENGUIN_API_URL / PENGUIN_API_TOKEN / the Session coordinates).
+  // the CLI/API (ADELIE_API_URL / ADELIE_API_TOKEN / the Session coordinates).
 
   it("injected PENGUIN_* variables reach the child even though inherited ones are stripped", async () => {
-    // The host process's own PENGUIN_API_URL must NOT leak through inheritance; the same
+    // The host process's own ADELIE_API_URL must NOT leak through inheritance; the same
     // name from controlEnv must arrive — injection happens after the prefix strip.
-    process.env.PENGUIN_API_URL = "http://inherited.example:1";
+    process.env.ADELIE_API_URL = "http://inherited.example:1";
     const controlled = new Environment({
       workspaceDir: tmp,
       toolConfig: sessionConfig(),
       controlEnv: () => ({
-        PENGUIN_API_URL: "http://localhost:7364",
-        PENGUIN_SESSION_ID: "session-x",
+        ADELIE_API_URL: "http://localhost:7364",
+        ADELIE_SESSION_ID: "session-x",
       }),
     });
     try {
       const res = await runTool(controlled, "exec_command", {
-        cmd: `node -e "console.log('U=[' + (process.env.PENGUIN_API_URL ?? '') + '] S=[' + (process.env.PENGUIN_SESSION_ID ?? '') + ']')"`,
+        cmd: `node -e "console.log('U=[' + (process.env.ADELIE_API_URL ?? '') + '] S=[' + (process.env.ADELIE_SESSION_ID ?? '') + ']')"`,
       });
       expect(res.output).toContain("U=[http://localhost:7364] S=[session-x]");
     } finally {
       controlled.dispose();
-      delete process.env.PENGUIN_API_URL;
+      delete process.env.ADELIE_API_URL;
     }
   });
 
@@ -773,12 +773,12 @@ describe("controlEnv injects the host's harness-control variables into commands"
     const controlled = new Environment({
       workspaceDir: tmp,
       toolConfig: sessionConfig(),
-      vault: { PENGUIN_API_TOKEN: "vault-token", KEEP_ME: "vault-kept" },
-      controlEnv: () => ({ PENGUIN_API_TOKEN: "boot-token" }),
+      vault: { ADELIE_API_TOKEN: "vault-token", KEEP_ME: "vault-kept" },
+      controlEnv: () => ({ ADELIE_API_TOKEN: "boot-token" }),
     });
     try {
       const res = await runTool(controlled, "exec_command", {
-        cmd: `node -e "console.log('T=[' + (process.env.PENGUIN_API_TOKEN ?? '') + '] K=[' + (process.env.KEEP_ME ?? '') + ']')"`,
+        cmd: `node -e "console.log('T=[' + (process.env.ADELIE_API_TOKEN ?? '') + '] K=[' + (process.env.KEEP_ME ?? '') + ']')"`,
       });
       expect(res.output).toContain("T=[boot-token] K=[vault-kept]");
     } finally {
@@ -791,10 +791,10 @@ describe("controlEnv injects the host's harness-control variables into commands"
     const controlled = new Environment({
       workspaceDir: tmp,
       toolConfig: sessionConfig(),
-      controlEnv: () => ({ PENGUIN_API_TOKEN: token }),
+      controlEnv: () => ({ ADELIE_API_TOKEN: token }),
     });
     try {
-      const read = `node -e "console.log('T=[' + (process.env.PENGUIN_API_TOKEN ?? '') + ']')"`;
+      const read = `node -e "console.log('T=[' + (process.env.ADELIE_API_TOKEN ?? '') + ']')"`;
       expect((await runTool(controlled, "exec_command", { cmd: read })).output).toContain(
         "T=[first]",
       );

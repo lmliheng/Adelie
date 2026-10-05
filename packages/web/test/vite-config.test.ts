@@ -3,7 +3,7 @@
  *
  * - The dev server's `/api` proxy defaults to the development backend (7368, not the installed
  *   server's 7364), follows PORT, treats an empty PORT as unset rather than as port 80, and is
- *   replaced outright by PENGUIN_API_PROXY unless that is empty.
+ *   replaced outright by ADELIE_API_PROXY unless that is empty.
  * - KaTeX's stylesheet ships woff2 only: the woff and truetype fallbacks are dropped, and a
  *   stylesheet without them is left untouched.
  */
@@ -23,14 +23,14 @@ describe("apiProxyTarget", () => {
     expect(apiProxyTarget({ PORT: "9999" })).toBe("http://127.0.0.1:9999");
   });
 
-  it("PENGUIN_API_PROXY replaces the whole target, PORT and all", () => {
-    expect(apiProxyTarget({ PORT: "9999", PENGUIN_API_PROXY: "http://10.0.0.2:8080" })).toBe(
+  it("ADELIE_API_PROXY replaces the whole target, PORT and all", () => {
+    expect(apiProxyTarget({ PORT: "9999", ADELIE_API_PROXY: "http://10.0.0.2:8080" })).toBe(
       "http://10.0.0.2:8080",
     );
   });
 
-  it("an empty PENGUIN_API_PROXY falls back instead of proxying to nowhere", () => {
-    expect(apiProxyTarget({ PENGUIN_API_PROXY: "" })).toBe("http://127.0.0.1:7368");
+  it("an empty ADELIE_API_PROXY falls back instead of proxying to nowhere", () => {
+    expect(apiProxyTarget({ ADELIE_API_PROXY: "" })).toBe("http://127.0.0.1:7368");
   });
 });
 

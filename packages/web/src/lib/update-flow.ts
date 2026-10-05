@@ -48,7 +48,7 @@ export type UpdateFlow =
   /** No check has answered yet. */
   | { kind: "unknown" }
   | { kind: "checking" }
-  /** Checks are turned off (PENGUIN_UPDATE_CHECK=off); the Releases page is the only way to look. */
+  /** Checks are turned off (ADELIE_UPDATE_CHECK=off); the Releases page is the only way to look. */
   | { kind: "disabled" }
   | { kind: "up-to-date"; version: string | null }
   /** A newer release is offered; nothing has been fetched. `canInstall` is false for a non-admin on a server. */

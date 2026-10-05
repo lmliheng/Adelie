@@ -96,7 +96,7 @@ function optNumber(body: Body, key: string): number | undefined {
   return value;
 }
 
-/** The session an Agent's CLI names (PENGUIN_SESSION_ID), so the window can follow its work. */
+/** The session an Agent's CLI names (ADELIE_SESSION_ID), so the window can follow its work. */
 function sessionIdOf(body: Body): string | undefined {
   const id = optString(body, "sessionId");
   return id === undefined || id === "" ? undefined : id.slice(0, 200);

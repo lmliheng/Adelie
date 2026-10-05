@@ -126,7 +126,7 @@ describe("preview origin derivation", () => {
     // A wildcard bind (0.0.0.0 / ::) no longer qualifies: localhost may resolve to ::1,
     // which 0.0.0.0 never serves, so the preview URL would refuse the connection while
     // /api/me claimed isolation. Only a loopback-name bind offers a loopback preview; the
-    // rest fall back and must set PENGUIN_PREVIEW_ORIGIN.
+    // rest fall back and must set ADELIE_PREVIEW_ORIGIN.
     expect(
       resolvePreviewTarget("http://localhost:7364/x", "localhost:7364", null, {
         host: "0.0.0.0",
@@ -150,7 +150,7 @@ describe("preview origin derivation", () => {
   });
 
   it("refuses a configured origin that matches the App request's host", () => {
-    // PENGUIN_PREVIEW_ORIGIN pointing back at the host the App is being used on is no
+    // ADELIE_PREVIEW_ORIGIN pointing back at the host the App is being used on is no
     // boundary: "isolated" previews would be same-origin with the App (and the UI would
     // mount an allow-same-origin iframe onto them). Must degrade to null so
     // previewIsolated reports false and the safe same-origin sandbox engages.
@@ -310,7 +310,7 @@ describe("preview route", () => {
     expect(me.previewIsolated).toBe(true);
   });
 
-  it("leaves the loopback guard off when PENGUIN_PREVIEW_ORIGIN is set", async () => {
+  it("leaves the loopback guard off when ADELIE_PREVIEW_ORIGIN is set", async () => {
     // With a configured preview origin, previews no longer use 127.0.0.1, so it is an
     // ordinary App host and must not be redirected/refused (deployments enforce the
     // equivalent at their reverse proxy). A guarded app would 302 this to localhost.

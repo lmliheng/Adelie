@@ -6,15 +6,15 @@
  *
  * Builds the web dist, compiles the platform and cli entries, and pushes all three as ONE
  * atomic version to POST /api/hmr/upgrade. Authentication is an admin session established
- * per run: PENGUIN_ADMIN_PASSWORD is read from the environment and exchanged for a cookie,
+ * per run: ADELIE_ADMIN_PASSWORD is read from the environment and exchanged for a cookie,
  * so no credential of any kind is written to disk — a file holding an admin-equivalent
  * secret is readable by everything running as this user, agent shells included, which makes
  * the file itself the vulnerability.
  *
  * Usage:
- *   PENGUIN_ADMIN_PASSWORD=… node scripts/deploy.mjs 53531
- *   PENGUIN_ADMIN_PASSWORD=… node scripts/deploy.mjs 53531 --skip-web-build
- *   PENGUIN_ADMIN_PASSWORD=… node scripts/deploy.mjs https://box.example.com
+ *   ADELIE_ADMIN_PASSWORD=… node scripts/deploy.mjs 53531
+ *   ADELIE_ADMIN_PASSWORD=… node scripts/deploy.mjs 53531 --skip-web-build
+ *   ADELIE_ADMIN_PASSWORD=… node scripts/deploy.mjs https://box.example.com
  */
 import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
@@ -65,8 +65,8 @@ function pushSource() {
 function usage(problem) {
   console.error(
     `${problem}\n\n` +
-      "Usage: PENGUIN_ADMIN_PASSWORD=… node scripts/deploy.mjs <port|url> [--skip-web-build]\n" +
-      "       PENGUIN_API_TOKEN=$(cat <root>/api-token) node scripts/deploy.mjs <port|url>\n" +
+      "Usage: ADELIE_ADMIN_PASSWORD=… node scripts/deploy.mjs <port|url> [--skip-web-build]\n" +
+      "       ADELIE_API_TOKEN=$(cat <root>/api-token) node scripts/deploy.mjs <port|url>\n" +
       "  <port>  a port on this machine (an ssh -L tunnel to the target runtime, or a local server)\n" +
       "  <url>   a full origin, when the target is not reached over loopback\n",
   );
@@ -80,12 +80,10 @@ if (target === undefined) usage("[deploy] no target given.");
 // Two credentials, either one: the admin password (exchanged for a cookie), or the
 // runtime's own local API token (`<root>/api-token`, admin-equivalent — see
 // server/src/auth/api-token.ts), sent as a Bearer. A local push needs no password.
-const ADMIN_PASSWORD = process.env.PENGUIN_ADMIN_PASSWORD;
-const API_TOKEN = process.env.PENGUIN_API_TOKEN;
+const ADMIN_PASSWORD = process.env.ADELIE_ADMIN_PASSWORD;
+const API_TOKEN = process.env.ADELIE_API_TOKEN;
 if (!ADMIN_PASSWORD && !API_TOKEN)
-  usage(
-    "[deploy] set PENGUIN_ADMIN_PASSWORD or PENGUIN_API_TOKEN (the runtime's <root>/api-token).",
-  );
+  usage("[deploy] set ADELIE_ADMIN_PASSWORD or ADELIE_API_TOKEN (the runtime's <root>/api-token).");
 
 /** A bare port means this machine's loopback (typically an ssh -L tunnel to the real target). */
 const baseUrl = /^\d+$/.test(target) ? `http://127.0.0.1:${target}` : target.replace(/\/+$/, "");

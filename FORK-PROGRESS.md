@@ -63,18 +63,31 @@
       「`PENGUIN_` / `ADELIE_` 两前缀」（不扩的话 `ADELIE_HOME` 会漏进 Agent 跑的命令，而它指的正是服务端
       自己在用的那个根 —— 启动脚本会把它导出来）。CLI 文案 / 注释、`packages/core` 里的端口表、示例
       `examples/self-improving-agent/*` 里写死的 `~/.penguin/data` 一并改。
-- [ ] 2.2b **剩下的 `PENGUIN_*` 变量名**（约 38 个名字、全仓 ~4400 处）：`PENGUIN_PROFILE` /
-      `PENGUIN_WEB_DB` / `PENGUIN_LANG` / `PENGUIN_API_TOKEN` / `PENGUIN_INSTALL_DIR` … 本轮**没动** ——
-      纯改名、零功能收益，而 200 来个测试用例都在设 `PENGUIN_HOME`（它们顺带钉住了兼容别名，改一遍等于
-      把这份覆盖也换掉），一次做完更省事：建议与 4.1 的 scope 改名并作一批。这一批里还剩三处「本机也带
-      `~/.penguin`」的，各有原因：**桌面壳的 dev 根** `~/.penguin/dev-data`
-      （`packages/desktop/src/app-identity.ts`，被 `desktop` 的脚本与 `cli/test/dev-entry-isolation.test.ts`
-      一起钉住 —— desktop 本机不可构建，按纪律没碰）；**远程机器布局**
-      （`server/src/machines/layout.ts`：`~/.penguin` / `~/.penguin-dev`，探针 + 安装 + 数据根 + 启动命令
-      自洽，改名要连探针一起，属迁移动作）；**dev 数据根** `~/.penguin/dev-data*`（`ports.ts` 表里那几行）。
-      文档面同样的道理：`packages/docs/`（2.5 定的「留作内部参考、不发布不改品牌」）、
-      `plugins/*/skills/*/SKILL.md` 里「全局根是 `~/.penguin/data`」那几句、`CONTRIBUTING.md`、
-      ui-gallery 的演示路径、web 的 `path-capsules.ts` 注释 —— 全是纯文案，等一次「全量换字」一起做。
+- [x] 2.2b **控制面变量改名**（2026-10-05）：把 Adelie 自己产、自己消的那批 `PENGUIN_*` 环境变量改成
+      `ADELIE_*` —— 25 个名字 / 77 个文件：`AGENT_ID`、`SESSION_ID`、`PROJECT_ID`、`ORG_ID`、`API_URL`、
+      `API_TOKEN`、`API_PROXY`、`LANG`、`SHELL`、`TERMINAL`、`SUPERVISED`、`SERVE_CHILD`、`TRUST_PROXY`、
+      `PREVIEW_ORIGIN`、`UPDATE_CHECK`、`PASSWORD`、`SEED_ADMIN_PASSWORD`、`ADMIN_PASSWORD`，加上测试脚手架
+      （`E2E`、`TEST_HELPER`、`TEST_CHROMIUM`、`RUNNER_MARK`、`VAULT_ADDED`、`VAULT_TEST_KEY`、
+      `SOME_FUTURE_SETTING`）。源码注释、zh/en 文案、`plugins/*/skills/*/SKILL.md` 里的契约说明、
+      `docker/compose.yaml` 的示例环境一并跟上。
+      **旧名不再生效**（2.2a 的 `PENGUIN_HOME` 除外）：这批变量的两端都是本仓库自己的代码，没有外部所有者，
+      因此不设兼容别名 —— 升级后 shell rc / systemd 里请改用新名。`core` 的子进程剥离规则**仍保留两个前缀**：
+      边界面那批（见 2.2c）今天仍写作 `PENGUIN_*`，且既有部署的单元文件还在设它们。
+- [ ] 2.2c **边界面变量名**（本轮没动，每一个的另一端都在本仓库之外）：
+      - **桌面壳 / 启动器 / 既有部署**：`PROFILE`、`WEB_DIST`、`WEB_DB`、`CLI_ENTRY`、`PORT_FILE`、
+        `DESKTOP_TOKEN`、`BUNDLED_SHELL`、`DESKTOP_SMOKE`、`DESKTOP_SMOKE_SHOT`、`NO_LOGIN_SHELL_ENV`、
+        `UPDATE_FEED_URL`、`UPDATE_SOURCE`、`UPDATE_SPEED_PROBE`、`BB_SMOKE_BUNDLE` —— `packages/desktop`
+        本机按纪律没碰（3.5 才决定桌面壳取哪个），而且 `adelie-app.service` 这类既有单元现在仍设
+        `PENGUIN_HOME` / `PENGUIN_WEB_DIST` / `PENGUIN_CLI_ENTRY`。要做就得与桌面壳同一批改，或在
+        服务端 / CLI 的读侧同时认两个名字。
+      - **安装器与发布协议**：`VERSION` / `INSTALL_DIR` / `ARCHIVE` / `DOWNLOAD_BASE_URL` /
+        `DOWNLOAD_FALLBACK_BASE_URL` / `DOWNLOAD_SOURCE` / `DOWNLOAD_SPEED_PROBE` / `COMMAND`，
+        以及 build 戳 `__PENGUIN_RELEASE_VERSION__` / `__PENGUIN_BUILD_GIT__` —— `install.sh` 是运行中的 CLI
+        从 Releases 现下的脚本，旧 CLI × 新脚本要各说各话，属 4.x 的发布链路。
+      - **上游服务**：`PENGUIN_GO*`（`token.penguin.ooo` 的 provider id 与环境键），不是我们的服务，不动。
+      - 顺带记录：`PENGUIN_HINT` / `PENGUIN_KEEP_ATTRS` 是注入页脚本里的局部变量、`PENGUIN_FAMILY` 是 HMR
+        family 常量，都不是环境变量，未动；`packages/docs/`、`.agents/`（= `.claude/` 软链）、`changelog/`
+        三个文档面按 2.5 的口径不动 —— `.agents/` 是上游自己的开发技能文档，那里的 `PENGUIN_*` 对上游而言是对的。
 - [ ] 2.3 **端口与 profile 默认值**：服务器默认端口、CLI 默认端口（现在是 7369）与旧 Adelie 的
       4000 / 7370 对齐，避免两个产品抢端口。
 - [x] 2.4 **README 与包元数据**（2026-10-05）：根 `README.md` 与 `README.zh.md` 重写成 Adelie 自己的
@@ -657,3 +670,4 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-05 | 2.2a | 数据根与安装目录改成 Adelie 自己的：默认 `~/.adelie/data` 与 `~/.adelie`、变量 `ADELIE_HOME`（旧名 `PENGUIN_HOME` 仍读，弹夹在 `resolveRoot()`）、两个启动脚本导出 `ADELIE_HOME=<程序目录>/data`（保住旧装的数据所在）、子进程剥离规则扩到两个前缀；CLI 文案/注释/示例跟上 | 六个包 typecheck 全过；`pnpm lint` 0 警告；`pnpm format:check` 干净；core 1350 / server 2563 / cli 505 / ui 1000 / web 2887 全绿；`test-installer.sh` 通过；启动脚本与「隔离 HOME 离线装进 `~/.adelie`」真跑过；新旧两种数据根各起服务 + 浏览器看过（唯一 4xx 是登录前 401） | 见本行提交 |
 | 2026-10-05 | 第五轮 | 初始 Project 名补成 `default`（core 常量 + `ensureDisplayName` + 启动扫描 + 三条测试）；zh 字典 68 处 `Project` → 「项目」；`PrefRow` 手机宽度改为可换行、导入 Trace 不再压住；草稿行删除按钮在触摸屏上常显 | `pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；`pnpm -r test` **8840 通过 / 14 跳过 / 0 失败**（docs 62 · core 1346 · ui 1000 · server 2559 · cli 505 · web 2887 · desktop 279 · ui-gallery 131 · 四个沙箱插件 71）；浏览器实测四项（含**老数据根升级**、390px 触摸屏） | `e960d0b1` |
 | 2026-10-05 | 第五轮 | 升级 **v0.2.2**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.2/`（`BUILD_COMMIT=2d6abe83`），打包脚本改「边做边清」把峰值从 1.5G 压到 ~0.3G | 见「v0.2.2：默认项目名 default、中文文案、手机上的导入 Trace 与草稿」一节 | tag `v0.2.2` = `2d6abe83` |
+| 2026-10-05 | 2.2b | 控制面环境变量改名：25 个名字 / 77 个文件 / 388 处 `PENGUIN_*` → `ADELIE_*`（会话、API、语言、终端、审批与测试脚手架那批；注释、zh/en 文案、插件技能契约、`docker/compose.yaml` 一起改）；`core` 的剥离规则注释补写「为什么仍留两个前缀」 | 六包 typecheck 过；`pnpm lint` 0 警告；`pnpm format:check` 干净（两处超宽行交给 prettier）；core **1350 / 5 跳过**、ui **1000**、web **2887 / 2 跳过**、cli **505**、server **2563 / 2 跳过**（首跑 1 条红是 `dist/install.ps1` 副本过期，重建 server 后转绿）—— 0 失败；运行时实测：`ADELIE_LANG=zh` 出中文帮助、旧名 `PENGUIN_LANG=zh` 不再生效、`ADELIE_SEED_ADMIN_PASSWORD` 起服务不再打印 claim 链接；浏览器（7431，数据根 `/root/adelie-fork-data`）标题 `Sign in · Adelie`、console 唯一 error 是登录前 `/api/me` 401 | 见本行提交 |

@@ -112,10 +112,10 @@ export interface MeResponse {
   user: UserInfo;
   /**
    * Whether Workspace HTML previews open on a separate origin (the loopback
-   * counterpart of the App host, or PENGUIN_PREVIEW_ORIGIN when set). False means this
+   * counterpart of the App host, or ADELIE_PREVIEW_ORIGIN when set). False means this
    * deployment has no usable preview origin —
    * the App is reached on something other than a loopback name and
-   * PENGUIN_PREVIEW_ORIGIN is unset — so previews fall back to the same-origin sandbox,
+   * ADELIE_PREVIEW_ORIGIN is unset — so previews fall back to the same-origin sandbox,
    * where `localStorage`, cookies and third-party embeds do not work. Computed per
    * request, since it depends on the host the caller is using.
    */
@@ -4033,7 +4033,7 @@ export interface UpdateCheckResponse {
   publishedAt: string | null;
   /** When this result was produced (ISO 8601) — a cached result keeps its original timestamp. */
   checkedAt: string;
-  /** Present (true) when update checks are turned off via PENGUIN_UPDATE_CHECK=off; no network call was made. */
+  /** Present (true) when update checks are turned off via ADELIE_UPDATE_CHECK=off; no network call was made. */
   disabled?: true;
   /** Why the lookup failed: unreachable network / GitHub rate limit / unusable response. */
   error?: "network" | "rate_limited" | "bad_response";
@@ -5137,14 +5137,14 @@ export interface OrgTicketBlockRequest {
 export interface OrgTicketProgressRequest {
   text: string;
   /**
-   * The calling session (CLI: PENGUIN_SESSION_ID); the session is booked as a contributing
+   * The calling session (CLI: ADELIE_SESSION_ID); the session is booked as a contributing
    * session and the history entry is attributed to its employee. Honoured only for a request
    * carrying the local API token — the control environment's credential; a signed-in user's
    * write is attributed to the user.
    */
   sessionId?: string;
   /**
-   * The calling employee's Agent id (CLI: PENGUIN_AGENT_ID from the control environment), the
+   * The calling employee's Agent id (CLI: ADELIE_AGENT_ID from the control environment), the
    * identity a write is recorded under; it wins over the session's employee, is honoured only
    * with the local API token, like sessionId, and is ignored — the write falls back to the
    * session's employee, then to the person — when it names no employee.
@@ -5153,7 +5153,7 @@ export interface OrgTicketProgressRequest {
 }
 
 export interface OrgTicketStartRequest {
-  /** The employee the ticket session runs as (CLI: PENGUIN_AGENT_ID); defaults to the ticket owner. */
+  /** The employee the ticket session runs as (CLI: ADELIE_AGENT_ID); defaults to the ticket owner. */
   agentId?: string;
   message?: string;
   /** Another directory inside the shared workspace; defaults to the employee's desk workspace. */
@@ -5172,7 +5172,7 @@ export interface OrgChannelMessageSendRequest {
   text: string;
   refs?: { ticket?: string; session?: string; replyTo?: string };
   /**
-   * The calling session (CLI: PENGUIN_SESSION_ID): the message is sent as its Agent and
+   * The calling session (CLI: ADELIE_SESSION_ID): the message is sent as its Agent and
    * inherits its hop. Honoured only for a request carrying the local API token — the control
    * environment's credential; a signed-in user's message is sent as the user, at hop 0.
    */

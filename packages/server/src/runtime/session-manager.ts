@@ -2614,15 +2614,15 @@ export class SessionsModule {
         const token = authState.apiToken;
         const orgId = orgCache.ownerOfSession(ctx.sessionId)?.orgId ?? null;
         return {
-          PENGUIN_API_URL: `http://${host}:${config.port}`,
-          ...(token !== null ? { PENGUIN_API_TOKEN: token } : {}),
-          PENGUIN_PROJECT_ID: ctx.projectId,
-          PENGUIN_AGENT_ID: ctx.agentId,
-          PENGUIN_SESSION_ID: ctx.sessionId,
+          ADELIE_API_URL: `http://${host}:${config.port}`,
+          ...(token !== null ? { ADELIE_API_TOKEN: token } : {}),
+          ADELIE_PROJECT_ID: ctx.projectId,
+          ADELIE_AGENT_ID: ctx.agentId,
+          ADELIE_SESSION_ID: ctx.sessionId,
           // A desk or ticket session also learns its organization, so `penguin org` needs no
           // --org-id inside it. Looked up per spawn from the cache the ledger and the tickets
           // project into.
-          ...(orgId !== null ? { PENGUIN_ORG_ID: orgId } : {}),
+          ...(orgId !== null ? { ADELIE_ORG_ID: orgId } : {}),
         };
       },
       // The directory core puts at the FRONT of PATH for every command an Agent runs (and for

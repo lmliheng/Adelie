@@ -23,7 +23,7 @@
  * before the snapshot is taken; still running at expiry prints the current latest text
  * plus the still-running note, exit 0 (`--timeout 0` snapshots immediately).
  *
- * The fragment search scopes to the project (PENGUIN_PROJECT_ID / default_project);
+ * The fragment search scopes to the project (ADELIE_PROJECT_ID / default_project);
  * a full session id needs no scope.
  * Docs: /docs/cli § "penguin input".
  */

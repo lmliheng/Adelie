@@ -4,7 +4,7 @@
  * Dev server listens on 7365; `/api` is proxied to the **development** backend (127.0.0.1:7368 --
  * `pnpm dev:server`, deliberately not the installed server's 7364, which is routinely running at the
  * same time). Honors PORT so overriding the backend port moves the proxy with it, and
- * PENGUIN_API_PROXY overrides the whole target. SSE (text/event-stream) passes through http-proxy
+ * ADELIE_API_PROXY overrides the whole target. SSE (text/event-stream) passes through http-proxy
  * transparently, no special config needed.
  * The vitest config is kept separate in vitest.config.ts (its embedded vite 5 types conflict with this
  * package's vite 7 plugin types, hence the separate file to avoid the clash).
@@ -19,7 +19,7 @@ import type { Plugin } from "vite";
 import { penguinUi } from "../ui/src/vite-plugin";
 
 /**
- * Resolves the `/api` proxy target: PENGUIN_API_PROXY replaces it outright, otherwise the
+ * Resolves the `/api` proxy target: ADELIE_API_PROXY replaces it outright, otherwise the
  * development backend on PORT — the same variable `pnpm dev:server` binds — defaulting to 7368.
  *
  * Empty counts as unset, as everywhere else PORT is read in this repo (server/src/config.ts,
@@ -32,7 +32,7 @@ import { penguinUi } from "../ui/src/vite-plugin";
  * `server.proxy` cannot be exercised without starting a dev server).
  */
 export function apiProxyTarget(env: Record<string, string | undefined> = process.env): string {
-  return env.PENGUIN_API_PROXY || `http://127.0.0.1:${env.PORT || "7368"}`;
+  return env.ADELIE_API_PROXY || `http://127.0.0.1:${env.PORT || "7368"}`;
 }
 
 /**

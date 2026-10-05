@@ -15,12 +15,12 @@
  * this entry) so the server's admin self-update endpoint can invoke `penguin update`.
  *
  * Supervision: when plain node can re-run this entry, the service runs as a CHILD process
- * (`node <entry> server …`, marked PENGUIN_SERVE_CHILD=1) and this process stays behind
+ * (`node <entry> server …`, marked ADELIE_SERVE_CHILD=1) and this process stays behind
  * as its supervisor — it forwards the terminal's signals, exits with the child's code, and
  * relaunches the child when it exits with core's SERVER_RESTART_EXIT_CODE. That exit is
  * what the Web App's "restart to update" asks for once `penguin update` has replaced the
  * install: the relaunch re-resolves the same entry path, which now holds the new release.
- * The child is told a supervisor is there (PENGUIN_SUPERVISED=1); a dev run through tsx
+ * The child is told a supervisor is there (ADELIE_SUPERVISED=1); a dev run through tsx
  * cannot be re-spawned by node and runs in-process as before, where the server reports
  * that a restart must be done by hand.
  * Docs: /docs/cli § "penguin server / penguin web".
@@ -135,7 +135,7 @@ async function existingInstanceUrl(): Promise<string | null> {
 }
 
 /** Marks the service child a supervising `penguin server|web` spawned: it runs the server in-process. */
-export const SERVE_CHILD_ENV = "PENGUIN_SERVE_CHILD";
+export const SERVE_CHILD_ENV = "ADELIE_SERVE_CHILD";
 
 /** What the supervisor does when its child exits (pure; exported for unit tests). */
 export function supervisorDecision(
@@ -160,7 +160,7 @@ function supervise(cliEntry: string, host: string, port: number, t: Messages): v
   const spawnChild = (): void => {
     child = spawn(process.execPath, [cliEntry, "server", "--port", String(port), "--host", host], {
       stdio: "inherit",
-      env: { ...process.env, [SERVE_CHILD_ENV]: "1", PENGUIN_SUPERVISED: "1" },
+      env: { ...process.env, [SERVE_CHILD_ENV]: "1", ADELIE_SUPERVISED: "1" },
     });
     child.on("exit", (code, signal) => {
       const decision = supervisorDecision({ code, signal }, stopping);

@@ -118,7 +118,7 @@ function buildTerminalEnv(
   Object.assign(env, extra ?? {});
   env.TERM = "xterm-256color";
   env.COLORTERM = "truecolor";
-  env.PENGUIN_TERMINAL = "1";
+  env.ADELIE_TERMINAL = "1";
   env.PWD = cwd;
   // Inherited from the server process; a pty is not that server and these would point the
   // shell (and anything it starts) at the wrong runtime.

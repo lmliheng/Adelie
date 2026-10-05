@@ -246,7 +246,7 @@ class PenguinServer {
    *
    * Nothing is printed in desktop mode: the shell's own window signs in through its one-shot
    * token, so a link in a log would be a credential nobody needs. Nothing is printed either
-   * when the pinned PENGUIN_SEED_ADMIN_PASSWORD is still the admin's actual password — the
+   * when the pinned ADELIE_SEED_ADMIN_PASSWORD is still the admin's actual password — the
    * operator knows it. The pin alone is not enough: an offline reset-admin-password replaces
    * the password with an unknowable one while the pin stays configured, and the rescue flow
    * IS this link, so the gate verifies the pin against the hash rather than trusting it.

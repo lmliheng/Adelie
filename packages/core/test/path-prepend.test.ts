@@ -80,7 +80,7 @@ describe("pathPrependPrefix", () => {
   });
 
   it("a shell whose PATH syntax is not one of those gets nothing at all", () => {
-    // fish has no `export`; an unrecognized PENGUIN_SHELL basename is anyone's guess. A
+    // fish has no `export`; an unrecognized ADELIE_SHELL basename is anyone's guess. A
     // prefix in the wrong dialect would fail every command, so neither gets one — the
     // child-environment prepend still applies to both.
     expect(pathPrependPrefix("fish", ["/a"])).toBe("");

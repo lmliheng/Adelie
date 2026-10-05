@@ -1,6 +1,6 @@
 /**
  * `penguin browser`, driven through `cli()` in-process against the fake server's built-in
- * browser handler: each command's request (method, path, body — PENGUIN_SESSION_ID included
+ * browser handler: each command's request (method, path, body — ADELIE_SESSION_ID included
  * where the API takes it), the three sources of an exec script (argument, --file, stdin),
  * --save, the output contract of scan / exec / click / import / history, and the one-line
  * errors with exit code 1, API errors and argument errors alike.
@@ -187,7 +187,7 @@ describe("status and tabs", () => {
 
 describe("open, switch, close", () => {
   it("open navigates the active tab, a bare host as typed (the server picks its scheme)", async () => {
-    process.env.PENGUIN_SESSION_ID = SESSION;
+    process.env.ADELIE_SESSION_ID = SESSION;
     routes["POST /tabs/active/navigate"] = () => ({ body: { tab: ORDERS } });
     expect(await cli(["browser", "open", " amazon.com/your-orders/orders "])).toBe(0);
     expect(lastBody()).toEqual({ url: "amazon.com/your-orders/orders", sessionId: SESSION });
@@ -263,7 +263,7 @@ describe("scan", () => {
 
 describe("exec", () => {
   it("sends the script with its options and prints the labelled lines", async () => {
-    process.env.PENGUIN_SESSION_ID = SESSION;
+    process.env.ADELIE_SESSION_ID = SESSION;
     routes["POST /tabs/active/exec"] = () => ({
       body: execResult({
         value: { added: true },
@@ -469,7 +469,7 @@ describe("click, type, screenshot, cdp", () => {
   });
 
   it("type sends the text, the selector and submit", async () => {
-    process.env.PENGUIN_SESSION_ID = SESSION;
+    process.env.ADELIE_SESSION_ID = SESSION;
     routes["POST /tabs/12/type"] = () => ({ body: execResult({ diff: { changed: 1 } }) });
     expect(
       await cli([
@@ -717,7 +717,7 @@ describe("errors", () => {
   });
 
   it("no server running means the desktop app is not running; nothing is auto-started", async () => {
-    delete process.env.PENGUIN_API_URL;
+    delete process.env.ADELIE_API_URL;
     expect(await cli(["browser", "tabs"])).toBe(1);
     expect(err()).toBe(`error: browser_unavailable: ${t.browser.unavailableHint(undefined)}\n`);
     expect(server.requests).toEqual([]);

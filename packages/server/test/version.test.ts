@@ -9,7 +9,7 @@
  *   the fresh outcome is what later plain checks see.
  * - A rate-limit answer reads as rate_limited, any other bad status or body as bad_response;
  *   a latest release that is not newer is no update.
- * - PENGUIN_UPDATE_CHECK=off answers disabled and never dials out, forced or not.
+ * - ADELIE_UPDATE_CHECK=off answers disabled and never dials out, forced or not.
  * - A success is cached for an hour and a failure for ten minutes.
  * - The update job is admin-only; before any run it is idle, and a server not launched through
  *   the CLI finishes it at once as unsupported, readable afterwards.
@@ -210,8 +210,8 @@ describe("UpdateCheckService", () => {
     expect(result.updateAvailable).toBe(false);
   });
 
-  it("never dials out under PENGUIN_UPDATE_CHECK=off, forced or not", async () => {
-    const check = updateCheck(() => releaseResponse("v99.0.0"), { PENGUIN_UPDATE_CHECK: "off" });
+  it("never dials out under ADELIE_UPDATE_CHECK=off, forced or not", async () => {
+    const check = updateCheck(() => releaseResponse("v99.0.0"), { ADELIE_UPDATE_CHECK: "off" });
     for (const force of [false, true]) {
       const result = await check.service.check(force);
       expect(result.disabled).toBe(true);
@@ -312,7 +312,7 @@ describe("POST /api/version/update", () => {
 
 describe("POST /api/version/restart", () => {
   it("is admin-only, and refuses when nothing supervises the process", async () => {
-    // Tests boot unsupervised (PENGUIN_SUPERVISED unset): exiting would stop a service nobody
+    // Tests boot unsupervised (ADELIE_SUPERVISED unset): exiting would stop a service nobody
     // brings back, so the route says so instead of leaving.
     const t = await createTestApp();
     try {

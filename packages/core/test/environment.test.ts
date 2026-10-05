@@ -251,11 +251,11 @@ describe("Environment.executeTool — vault env injection", () => {
       workspaceDir: tmp,
       toolConfig: makeToolConfig(),
       // PAGER is a hardened entry (HARDENED_ENV); a same-named vault entry must not override it.
-      vault: { PENGUIN_VAULT_TEST_KEY: "vault-secret-value", PAGER: "less" },
+      vault: { ADELIE_VAULT_TEST_KEY: "vault-secret-value", PAGER: "less" },
     });
     const call = toolCall({
       name: "exec_command",
-      arguments: JSON.stringify({ cmd: 'echo "k=$PENGUIN_VAULT_TEST_KEY pager=$PAGER"' }),
+      arguments: JSON.stringify({ cmd: 'echo "k=$ADELIE_VAULT_TEST_KEY pager=$PAGER"' }),
       toolCallId: "call_vault",
     });
 
@@ -272,7 +272,7 @@ describe("Environment.executeTool — vault env injection", () => {
     const env = new Environment({
       workspaceDir: tmp,
       toolConfig: makeToolConfig(),
-      vault: { PENGUIN_VAULT_TEST_KEY: "old-value" },
+      vault: { ADELIE_VAULT_TEST_KEY: "old-value" },
     });
     try {
       expect((await env.listTools()).map((t) => t.name)).toEqual(["exec_command"]);
@@ -298,7 +298,7 @@ describe("Environment.executeTool — vault env injection", () => {
       // values (and only those — the replaced entry is gone, not merged).
       env.reconfigure({
         toolConfig: makeToolConfig(),
-        vault: { PENGUIN_VAULT_TEST_KEY: "new-value", PENGUIN_VAULT_ADDED: "added" },
+        vault: { ADELIE_VAULT_TEST_KEY: "new-value", ADELIE_VAULT_ADDED: "added" },
       });
       expect(env.toolPermission("exec_command")).toBe("rw");
       const messages = await collect(
@@ -306,7 +306,7 @@ describe("Environment.executeTool — vault env injection", () => {
           toolCall: toolCall({
             name: "exec_command",
             arguments: JSON.stringify({
-              cmd: 'echo "k=$PENGUIN_VAULT_TEST_KEY added=$PENGUIN_VAULT_ADDED"',
+              cmd: 'echo "k=$ADELIE_VAULT_TEST_KEY added=$ADELIE_VAULT_ADDED"',
             }),
             toolCallId: "call_revault",
           }),
@@ -321,7 +321,7 @@ describe("Environment.executeTool — vault env injection", () => {
         env.executeTool({
           toolCall: toolCall({
             name: "exec_command",
-            arguments: JSON.stringify({ cmd: 'echo "k=[$PENGUIN_VAULT_TEST_KEY]"' }),
+            arguments: JSON.stringify({ cmd: 'echo "k=[$ADELIE_VAULT_TEST_KEY]"' }),
             toolCallId: "call_cleared",
           }),
         }),
@@ -341,7 +341,7 @@ describe("Environment.executeTool — vault env injection", () => {
     });
     const call = toolCall({
       name: "exec_command",
-      arguments: JSON.stringify({ cmd: 'echo "k=[$PENGUIN_VAULT_TEST_KEY]"' }),
+      arguments: JSON.stringify({ cmd: 'echo "k=[$ADELIE_VAULT_TEST_KEY]"' }),
       toolCallId: "call_no_vault",
     });
 

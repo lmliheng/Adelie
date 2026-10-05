@@ -116,7 +116,7 @@ export function registerAuthCommand(program: Command, t: Messages): void {
         if (server === null) return fail(t.auth.noServer(root));
         // A script cannot answer a prompt, so a non-interactive password suppresses both
         // questions; the account is only asked for when the password will be too.
-        const given = opts.password ?? process.env.PENGUIN_PASSWORD;
+        const given = opts.password ?? process.env.ADELIE_PASSWORD;
         const userId =
           opts.userId ??
           (given === undefined && process.stdin.isTTY === true

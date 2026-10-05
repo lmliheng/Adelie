@@ -1,32 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { getMessages, maskApiKey, resolveLanguage } from "../src/i18n.js";
 
-describe("resolveLanguage (env PENGUIN_LANG, default en)", () => {
+describe("resolveLanguage (env ADELIE_LANG, default en)", () => {
   let prev: string | undefined;
   beforeEach(() => {
-    prev = process.env.PENGUIN_LANG;
+    prev = process.env.ADELIE_LANG;
   });
   afterEach(() => {
-    if (prev === undefined) delete process.env.PENGUIN_LANG;
-    else process.env.PENGUIN_LANG = prev;
+    if (prev === undefined) delete process.env.ADELIE_LANG;
+    else process.env.ADELIE_LANG = prev;
   });
 
   it("defaults to en when unset", () => {
-    delete process.env.PENGUIN_LANG;
+    delete process.env.ADELIE_LANG;
     expect(resolveLanguage()).toBe("en");
   });
   it("matches zh exactly (case-insensitive, trimmed)", () => {
-    process.env.PENGUIN_LANG = "zh";
+    process.env.ADELIE_LANG = "zh";
     expect(resolveLanguage()).toBe("zh");
-    process.env.PENGUIN_LANG = "  ZH  ";
+    process.env.ADELIE_LANG = "  ZH  ";
     expect(resolveLanguage()).toBe("zh");
   });
   it("falls back to en for non-exact zh prefixes and anything else", () => {
-    process.env.PENGUIN_LANG = "zh-CN"; // no longer prefix-matched -> en
+    process.env.ADELIE_LANG = "zh-CN"; // no longer prefix-matched -> en
     expect(resolveLanguage()).toBe("en");
-    process.env.PENGUIN_LANG = "fr";
+    process.env.ADELIE_LANG = "fr";
     expect(resolveLanguage()).toBe("en");
-    process.env.PENGUIN_LANG = "en";
+    process.env.ADELIE_LANG = "en";
     expect(resolveLanguage()).toBe("en");
   });
 });
@@ -108,7 +108,7 @@ describe("getMessages", () => {
       expect(m.ls.empty("proj-x")).toContain("proj-x");
       expect(m.agent.created("helper", "proj-x")).toContain("helper");
       expect(m.client.autoStarted("http://localhost:1", "/log")).toContain("http://localhost:1");
-      expect(m.client.remoteNeedsToken("https://r")).toContain("PENGUIN_API_TOKEN");
+      expect(m.client.remoteNeedsToken("https://r")).toContain("ADELIE_API_TOKEN");
       expect(m.client.noToken("http://l", "/root/api-token")).toContain("/root/api-token");
       expect(m.client.httpError(500, "boom", "detail")).toContain("500");
       expect(m.client.sessionAmbiguous("ab", ["s1", "s2"])).toContain("s1");
@@ -152,8 +152,8 @@ describe("getMessages", () => {
       // The company-mode family: descriptions, the control-environment default, confirmations.
       expect(m.org.lsDesc.length).toBeGreaterThan(0);
       expect(m.org.ticketCreateDesc.length).toBeGreaterThan(0);
-      expect(m.org.orgId).toContain("PENGUIN_ORG_ID");
-      expect(m.org.orgIdMissing()).toContain("PENGUIN_ORG_ID");
+      expect(m.org.orgId).toContain("ADELIE_ORG_ID");
+      expect(m.org.orgIdMissing()).toContain("ADELIE_ORG_ID");
       expect(m.org.hireTargetConflict()).toContain("--new-agent");
       expect(m.org.statusInvalid("bogus")).toContain("bogus");
       expect(m.org.created("acme", "session-x")).toContain("session-x");

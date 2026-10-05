@@ -27,14 +27,14 @@
  *   penguin org handbook list | show [path] | write <path> (-m <text> | --file <f>) | rm <path>
  *   penguin org finance [--period <yyyy-mm>]
  *
- * Every subcommand takes `--org-id` (default: PENGUIN_ORG_ID, the variable company mode
+ * Every subcommand takes `--org-id` (default: ADELIE_ORG_ID, the variable company mode
  * adds to the control environment of desk and ticket sessions; there is no default
  * organization), `--project-id`, `--json` and `--server`. The same environment
  * identifies the caller: `--agent-id` on the calendar commands and the desk positional
- * default to PENGUIN_AGENT_ID; `ticket start` sends it as the employee the ticket
+ * default to ADELIE_AGENT_ID; `ticket start` sends it as the employee the ticket
  * session runs as (its own `--agent-id` enlists a colleague on the caller's own ticket,
  * and outside a session the server picks the ticket owner); the ticket writes and
- * the channel writes carry PENGUIN_SESSION_ID in their body so the file records the
+ * the channel writes carry ADELIE_SESSION_ID in their body so the file records the
  * employee rather than the token's user, and `ticket attach` attaches that session by
  * default. The reads that depend on who is asking — `channel ls`, `channel show`,
  * `channel tail` — and the member DELETE behind `leave` / `remove` carry the same
@@ -137,14 +137,14 @@ function refuseDotSegments(value: string, t: Messages): boolean {
 
 /**
  * Resolves the organization's coordinates and connects. `--org-id` defaults to
- * PENGUIN_ORG_ID and to nothing else; it is read before the connection so a missing one
+ * ADELIE_ORG_ID and to nothing else; it is read before the connection so a missing one
  * never auto-starts a server. Null after the error.
  */
 async function orgScope(
   opts: { orgId?: string; projectId?: string; server?: string },
   t: Messages,
 ): Promise<OrgScope | null> {
-  const orgId = opts.orgId?.trim() || process.env.PENGUIN_ORG_ID?.trim() || "";
+  const orgId = opts.orgId?.trim() || process.env.ADELIE_ORG_ID?.trim() || "";
   if (orgId === "") {
     fail(t, t.org.orgIdMissing());
     return null;
@@ -168,9 +168,9 @@ function scoped(cmd: Command, t: Messages): Command {
     .option("--server <url>", t.common.server);
 }
 
-/** The calling session (the control environment's PENGUIN_SESSION_ID), when the CLI runs inside one. */
+/** The calling session (the control environment's ADELIE_SESSION_ID), when the CLI runs inside one. */
 function callerSessionId(): string | undefined {
-  return process.env.PENGUIN_SESSION_ID?.trim() || undefined;
+  return process.env.ADELIE_SESSION_ID?.trim() || undefined;
 }
 
 /**
@@ -182,7 +182,7 @@ function callerSessionId(): string | undefined {
  */
 function actorFields(): { sessionId?: string; agentId?: string } {
   const sessionId = callerSessionId();
-  const agentId = process.env.PENGUIN_AGENT_ID?.trim() || undefined;
+  const agentId = process.env.ADELIE_AGENT_ID?.trim() || undefined;
   return {
     ...(sessionId !== undefined ? { sessionId } : {}),
     ...(agentId !== undefined ? { agentId } : {}),
@@ -1198,7 +1198,7 @@ export function registerOrgCommand(program: Command, t: Messages): void {
     // employee may start a session only on a ticket it owns, and anyone else's is a 403.
     const agentId =
       (typeof opts.agentId === "string" ? opts.agentId.trim() : "") ||
-      process.env.PENGUIN_AGENT_ID?.trim() ||
+      process.env.ADELIE_AGENT_ID?.trim() ||
       undefined;
     const res = await scope.client.request<OrgTicketStartResponse>(
       "POST",

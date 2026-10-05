@@ -658,7 +658,7 @@ export const en: Strings = {
     checkingBody: "Checking for updates…",
     upToDate: "You're on the latest version",
     checkFailed: "Update check failed — try again later",
-    checkDisabled: "Update checks are disabled (PENGUIN_UPDATE_CHECK=off)",
+    checkDisabled: "Update checks are disabled (ADELIE_UPDATE_CHECK=off)",
     releaseNotes: "Release notes",
     openReleases: "Open the Releases page",
     /** What "download and update" does, per backend. */
@@ -1970,7 +1970,7 @@ export const en: Strings = {
      * Instruction tail of the settings tab's dialog: the task is created for one agent, in a
      * new Session unless the user names one. The CLI form spells every flag, `--agent-id`
      * above all: the prompt runs in a conversation with the Project's default agent, so the
-     * server injects THAT agent into PENGUIN_AGENT_ID, and an `add` without the flag writes
+     * server injects THAT agent into ADELIE_AGENT_ID, and an `add` without the flag writes
      * the task into the wrong agent's schedule directory. The TOML keys are named only in
      * the file branch, so they are never read as flags of the command beside them.
      */
@@ -3574,7 +3574,7 @@ Scenarios:
     uploadHere: "Upload here",
     openInNewTab: "Open in new tab",
     previewNotIsolatedHint:
-      "This address has no separate preview origin, so the page opens sandboxed: localStorage, cookies and third-party embeds will not work. Reach the app over 127.0.0.1 or localhost, or set PENGUIN_PREVIEW_ORIGIN.",
+      "This address has no separate preview origin, so the page opens sandboxed: localStorage, cookies and third-party embeds will not work. Reach the app over 127.0.0.1 or localhost, or set ADELIE_PREVIEW_ORIGIN.",
     refresh: "Refresh",
     /** The Workspace root, as the breadcrumbs and the drop overlay name it. "." is what a
      *  shell calls the working directory, so it needs no translation. */

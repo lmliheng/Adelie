@@ -48,7 +48,7 @@ afterEach(async () => {
 });
 
 /** A confiner's answer that names the helper as it is, with a runner entry so it reads as confined. */
-const marked = (): ConfinedSpawn => ({ argv: fsWorkerArgv(), env: { PENGUIN_TEST_HELPER: "1" } });
+const marked = (): ConfinedSpawn => ({ argv: fsWorkerArgv(), env: { ADELIE_TEST_HELPER: "1" } });
 
 describe("the helper's port", () => {
   let host: SandboxedFsHost;
@@ -165,10 +165,10 @@ describe("one helper per Session", () => {
       // The same answer again: the same helper. Another answer: a fresh one.
       await host.portFor(marked()).stat(tmp);
       expect(starts).toHaveLength(1);
-      const b = host.portFor({ argv: fsWorkerArgv(), env: { PENGUIN_TEST_HELPER: "2" } });
+      const b = host.portFor({ argv: fsWorkerArgv(), env: { ADELIE_TEST_HELPER: "2" } });
       await b.stat(tmp);
       expect(starts).toHaveLength(2);
-      expect(starts[1]!.env).toEqual({ PENGUIN_TEST_HELPER: "2" });
+      expect(starts[1]!.env).toEqual({ ADELIE_TEST_HELPER: "2" });
     } finally {
       host.dispose();
     }
@@ -229,7 +229,7 @@ describe("the file tools through the helper", () => {
   /** A confiner that names the helper as it is, plus a runner entry — enough for the Environment to route through it. */
   const confining: SpawnConfiner = (argv) => ({
     argv: [...argv],
-    env: { PENGUIN_TEST_HELPER: "1" },
+    env: { ADELIE_TEST_HELPER: "1" },
   });
 
   async function execute(env: Environment, name: string, args: Record<string, unknown>) {

@@ -11,7 +11,7 @@
  * ends, then prints the stats line. Exit 0 on completed; a goal run exits 0 only when
  * the goal outcome is `complete`.
  *
- * - Defaults: project/agent from PENGUIN_PROJECT_ID / PENGUIN_AGENT_ID (else
+ * - Defaults: project/agent from ADELIE_PROJECT_ID / ADELIE_AGENT_ID (else
  *   default_project / default_agent); Workspace = the CLI's cwd (resolved locally —
  *   server and CLI share the machine in the default flow); model = the Project default;
  *   approval mode allow-all (the historical run default).

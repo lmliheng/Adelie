@@ -3,7 +3,7 @@ import type { OrgChannelNoticeKind } from "@prismshadow/penguin-server/api";
 /**
  * CLI text internationalization (i18n).
  *
- * Language comes from the `PENGUIN_LANG` env var (`en` / `zh`), defaulting to English (en) —
+ * Language comes from the `ADELIE_LANG` env var (`en` / `zh`), defaulting to English (en) —
  * independent of Project config or CLI options. This module centralizes all user-visible text:
  * command/option help descriptions and runtime output, one implementation per language.
  */
@@ -20,7 +20,7 @@ export type WebProbeFailureKind =
 
 /** Resolve the language from the env var; `zh` matches exactly, everything else falls back to English (see comment #2). */
 export function resolveLanguage(): Language {
-  const v = (process.env.PENGUIN_LANG ?? "").trim().toLowerCase();
+  const v = (process.env.ADELIE_LANG ?? "").trim().toLowerCase();
   return v === "zh" ? "zh" : "en";
 }
 
@@ -42,7 +42,7 @@ export interface Messages {
     thinking: string;
     /** Machine-readable output (raw JSON instead of the rendered/tabular form). */
     json: string;
-    /** --server: explicit server URL (overrides PENGUIN_API_URL, the local lock and auto-start). */
+    /** --server: explicit server URL (overrides ADELIE_API_URL, the local lock and auto-start). */
     server: string;
     /** --timeout: soft-yield wait budget on run/input/logs -f (30s / 5m / 2h / bare seconds). */
     timeout: string;
@@ -297,7 +297,7 @@ export interface Messages {
     handbookWriteDesc: string;
     handbookRmDesc: string;
     financeDesc: string;
-    /** --org-id: the organization (defaults to PENGUIN_ORG_ID, the control environment of desk and ticket sessions). */
+    /** --org-id: the organization (defaults to ADELIE_ORG_ID, the control environment of desk and ticket sessions). */
     orgId: string;
     /** create's --org-id: the id to create (never taken from the environment). */
     newOrgId: string;
@@ -324,7 +324,7 @@ export interface Messages {
     /** create's --ceo-budget: the CEO's monthly USD, which is the whole company's. */
     ceoBudget: string;
     duties: string;
-    /** calendar's --agent-id: the employee the event belongs to (defaults to PENGUIN_AGENT_ID); a filter on `ls`. */
+    /** calendar's --agent-id: the employee the event belongs to (defaults to ADELIE_AGENT_ID); a filter on `ls`. */
     calendarAgentId: string;
     calendarTitle: string;
     /** ticket ls filters. */
@@ -377,7 +377,7 @@ export interface Messages {
     refSession: string;
     /** finance's --period: yyyy-mm (default: the current month). */
     period: string;
-    /** No --org-id and no PENGUIN_ORG_ID: there is no default organization. */
+    /** No --org-id and no ADELIE_ORG_ID: there is no default organization. */
     orgIdMissing(): string;
     /** hire: --agent-id XOR --new-agent. */
     hireTargetConflict(): string;
@@ -657,7 +657,7 @@ export interface Messages {
   /** Server-connection layer: resolution, auto-start, tokens, streams. */
   client: {
     invalidServerUrl(value: string): string;
-    /** --server names a non-loopback URL and no PENGUIN_API_TOKEN is set (the local token file must not travel). */
+    /** --server names a non-loopback URL and no ADELIE_API_TOKEN is set (the local token file must not travel). */
     remoteNeedsToken(url: string): string;
     /** No server reachable and auto-start was disabled by the caller. */
     noServer(): string;
@@ -681,7 +681,7 @@ export interface Messages {
     timeoutInvalid(value: string): string;
     /** Soft-yield detach: the wait budget expired, the task keeps running server-side. */
     stillRunning(shortId: string): string;
-    /** Caller-context lookup failed (PENGUIN_SESSION_ID names a session this server cannot answer for): plain defaults apply. */
+    /** Caller-context lookup failed (ADELIE_SESSION_ID names a session this server cannot answer for): plain defaults apply. */
     callerDefaultsFailed(sessionId: string): string;
     /** Dim stderr note naming the session a bare `logs` / `input` resolved to (the agent's most recent). */
     latestSession(sessionId: string): string;
@@ -1024,7 +1024,7 @@ const en: Messages = {
       "Thinking level for this session: low, medium, high, xhigh, or max (defaults to the Agent's configured level)",
     json: "Print raw JSON instead of the rendered output",
     server:
-      "Server URL to connect to (defaults to PENGUIN_API_URL, then the local running server, then auto-start)",
+      "Server URL to connect to (defaults to ADELIE_API_URL, then the local running server, then auto-start)",
     timeout:
       "Wait at most this long (30s / 5m / 2h, or bare seconds), then detach and leave the task running (exit 0)",
     latestAgentId: "Agent whose most recent session is used when no session id is given",
@@ -1071,8 +1071,7 @@ const en: Messages = {
     refProvider: "Provider group of the referenced entry (see `penguin config model list`)",
     listDesc: "List the Project's models (API keys hidden)",
     removeDesc: "Remove a model from the Project (clears the default / vision pointers naming it)",
-    langDesc:
-      "Set the interface language (en|zh); persists PENGUIN_LANG to your shell startup file",
+    langDesc: "Set the interface language (en|zh); persists ADELIE_LANG to your shell startup file",
     langArg: "Language: en or zh",
     vaultDesc: "Manage an Agent's vault (environment variables injected into its shell commands)",
     vaultSetDesc: "Set a vault environment variable (added or overwritten)",
@@ -1267,7 +1266,7 @@ const en: Messages = {
     handbookRmDesc: "Delete a handbook document (the index cannot be deleted)",
     financeDesc: "Spend per employee (along the reporting line) and per ticket, against budgets",
     orgId:
-      "Organization id (defaults to PENGUIN_ORG_ID, set inside desk and ticket sessions; no other default)",
+      "Organization id (defaults to ADELIE_ORG_ID, set inside desk and ticket sessions; no other default)",
     newOrgId:
       "Id of the organization to create (letters, digits, underscores; also its directory name)",
     mission: "The organization's mission",
@@ -1291,7 +1290,7 @@ const en: Messages = {
       "The CEO's monthly budget in USD, which is the whole company's (budgets accumulate along the reporting line)",
     duties: "Duties, in prose",
     calendarAgentId:
-      "Employee the event belongs to (defaults to PENGUIN_AGENT_ID); on ls, list only this employee's events",
+      "Employee the event belongs to (defaults to ADELIE_AGENT_ID); on ls, list only this employee's events",
     calendarTitle: "Event title",
     statusFilter: "Only this column: proposed, in_progress, review, done or rejected",
     ownerFilter: "Only tickets owned by this principal (agent:<id> / user:<id>)",
@@ -1317,7 +1316,7 @@ const en: Messages = {
     startAgentId:
       "Which employee the session runs as: a colleague you enlist on your own ticket (defaults to you inside a session, otherwise the ticket's owner)",
     attachSession:
-      "The session to attach, full id or unique fragment (defaults to PENGUIN_SESSION_ID)",
+      "The session to attach, full id or unique fragment (defaults to ADELIE_SESSION_ID)",
     channelOpt: "Channel to read or write in (default: default_channel, the all-hands channel)",
     channelName: "Display name (defaults to the id)",
     channelPurpose: "What the channel is for",
@@ -1333,7 +1332,7 @@ const en: Messages = {
     refSession: "Session the message refers to",
     period: "Month to report (yyyy-mm; defaults to the current month)",
     orgIdMissing: () =>
-      "No organization given: pass --org-id <id>, or set PENGUIN_ORG_ID (desk and ticket sessions carry it in their environment).",
+      "No organization given: pass --org-id <id>, or set ADELIE_ORG_ID (desk and ticket sessions carry it in their environment).",
     hireTargetConflict: () =>
       "Pass exactly one of --agent-id (an existing Agent) and --new-agent (create one).",
     newAgentFieldsOnly: () => "--name, --description and --skills describe --new-agent only.",
@@ -1351,7 +1350,7 @@ const en: Messages = {
     pathSegmentInvalid: (value) =>
       `Invalid name "${value}": "." and ".." are neither an id nor a handbook path.`,
     attachSessionMissing: () =>
-      "No session to attach: pass --session <id>, or run inside a session (PENGUIN_SESSION_ID).",
+      "No session to attach: pass --session <id>, or run inside a session (ADELIE_SESSION_ID).",
     created: (orgId, ceoDeskSessionId) =>
       `Organization ${orgId} created${ceoDeskSessionId !== undefined ? ` (CEO desk session ${ceoDeskSessionId})` : ""}.`,
     hired: (agentId, title, reportsTo) =>
@@ -1613,7 +1612,7 @@ const en: Messages = {
   client: {
     invalidServerUrl: (value) => `Invalid server URL "${value}": expected http(s)://host[:port].`,
     remoteNeedsToken: (url) =>
-      `${url} is not this machine: set PENGUIN_API_TOKEN to authenticate against a remote server (the local api-token file never leaves its own data root).`,
+      `${url} is not this machine: set ADELIE_API_TOKEN to authenticate against a remote server (the local api-token file never leaves its own data root).`,
     noServer: () => "No running server found for this data root.",
     autoStartUnavailable: () =>
       "No running server found, and this CLI entry cannot auto-start one (development run). Start it yourself with `penguin server`.",
@@ -1621,9 +1620,9 @@ const en: Messages = {
       `The auto-started server did not come up. Its output is in ${logPath}.`,
     autoStarted: (url, logPath) => `Started a local server at ${url} (log: ${logPath}).`,
     noToken: (url, tokenPath) =>
-      `${url} rejected the request (401) and no API token is available: set PENGUIN_API_TOKEN, or make sure the server's token file is readable at ${tokenPath}.`,
+      `${url} rejected the request (401) and no API token is available: set ADELIE_API_TOKEN, or make sure the server's token file is readable at ${tokenPath}.`,
     authFailed: (url) =>
-      `${url} rejected the API token (401). If the server restarted, its token rotated — check PENGUIN_API_TOKEN, or let the CLI read the current api-token file.`,
+      `${url} rejected the API token (401). If the server restarted, its token rotated — check ADELIE_API_TOKEN, or let the CLI read the current api-token file.`,
     httpError: (status, code, message) =>
       `Server error ${status} (${code})${message ? `: ${message}` : ""}`,
     sessionNotFound: (ref, projectId) =>
@@ -1661,7 +1660,7 @@ const en: Messages = {
     logoutDesc: "Revoke the remembered session and forget it",
     server: "Server URL (default: the server running on this data root)",
     userId: "Account to sign in as (asked for when omitted; default admin)",
-    password: "Password (also read from PENGUIN_PASSWORD; prompted when neither is given)",
+    password: "Password (also read from ADELIE_PASSWORD; prompted when neither is given)",
     print: "Also print the session token to stdout",
     accountPrompt: (fallback) => `Account [${fallback}]: `,
     prompt: (userId) => `Password for ${userId}: `,
@@ -1907,8 +1906,8 @@ const en: Messages = {
   langInvalid: (value) => `Invalid language "${value}". Use en or zh.`,
   langWindowsUnsupported: (lang) =>
     `penguin config lang persists via POSIX shell startup files, which Windows does not have.\n` +
-    `Set the user environment variable instead: setx PENGUIN_LANG ${lang} (new terminals pick it up).`,
-  langSet: (lang, rcPath) => `Language set to ${lang}; wrote PENGUIN_LANG to ${rcPath}.`,
+    `Set the user environment variable instead: setx ADELIE_LANG ${lang} (new terminals pick it up).`,
+  langSet: (lang, rcPath) => `Language set to ${lang}; wrote ADELIE_LANG to ${rcPath}.`,
   langRestartConfirm: () => "Open a new shell now to apply? [y/N] ",
   langRestart: () => "Opening a new shell with the new language (type exit to return)…",
   langRestartHint: (rcPath) => `Open a new terminal, or run: source ${rcPath}`,
@@ -1974,7 +1973,7 @@ const zh: Messages = {
       "审批模式：allow-all（全部放行，缺省）、deny-all（全部拒绝）、read-only（自动放行只读工具，其余仍逐个询问）、always-ask（逐个询问）",
     thinking: "本会话的思考等级：low、medium、high、xhigh 或 max（缺省用 Agent 配置的等级）",
     json: "输出原始 JSON，不做渲染",
-    server: "要连接的服务器地址（缺省依次取 PENGUIN_API_URL、本机运行中的服务器、自动拉起）",
+    server: "要连接的服务器地址（缺省依次取 ADELIE_API_URL、本机运行中的服务器、自动拉起）",
     timeout:
       "最长等待时长（30s / 5m / 2h，或纯数字秒数）；到时脱开、任务继续在服务端运行（退出码 0）",
     latestAgentId: "省略 session id 时，取哪个 Agent 的最近一次会话",
@@ -2017,7 +2016,7 @@ const zh: Messages = {
     refProvider: "引用条目的 provider 分组（见 `penguin config model list`）",
     listDesc: "列出当前 Project 的模型（API key 隐藏）",
     removeDesc: "从当前 Project 删除一个模型（指向它的默认模型 / 视觉模型设置一并清空）",
-    langDesc: "设置界面语言（en|zh）；将 PENGUIN_LANG 写入 shell 启动文件并持久化",
+    langDesc: "设置界面语言（en|zh）；将 ADELIE_LANG 写入 shell 启动文件并持久化",
     langArg: "语言：en 或 zh",
     vaultDesc: "管理 Agent vault（注入该 Agent shell 命令的环境变量）",
     vaultSetDesc: "写入一个 vault 环境变量（不存在则新增，存在则覆盖）",
@@ -2193,7 +2192,7 @@ const zh: Messages = {
     handbookWriteDesc: "用 -m 或 --file 的内容创建或替换一份手册文档",
     handbookRmDesc: "删除一份手册文档（索引不可删）",
     financeDesc: "支出：按员工（沿汇报线累计）与按工单，对照预算",
-    orgId: "组织 id（缺省取 PENGUIN_ORG_ID，工位会话与工单会话内自带；此外没有缺省值）",
+    orgId: "组织 id（缺省取 ADELIE_ORG_ID，工位会话与工单会话内自带；此外没有缺省值）",
     newOrgId: "要创建的组织 id（字母、数字、下划线；同时是目录名）",
     mission: "组织的使命",
     orgName: "显示名（缺省同 id）",
@@ -2211,7 +2210,7 @@ const zh: Messages = {
     budget: "月预算（美元），含该员工及其全部下属",
     ceoBudget: "CEO 的月预算（美元）；预算沿汇报线累计，CEO 的预算就是整家公司的",
     duties: "职责描述",
-    calendarAgentId: "日程项所属员工（缺省 PENGUIN_AGENT_ID）；ls 上只列该员工的日程项",
+    calendarAgentId: "日程项所属员工（缺省 ADELIE_AGENT_ID）；ls 上只列该员工的日程项",
     calendarTitle: "日程项标题",
     statusFilter: "只看这一列：proposed、in_progress、review、done 或 rejected",
     ownerFilter: "只看该负责人的工单（agent:<id> / user:<id>）",
@@ -2235,7 +2234,7 @@ const zh: Messages = {
     startWorkspace: "公共工作区内的另一个目录（缺省为该员工工位的 Workspace）",
     startAgentId:
       "会话以哪名员工的身份运行：可以拉同事来做自己名下的工单（会话内缺省为你自己，否则为工单负责人）",
-    attachSession: "要挂接的会话，完整 id 或唯一片段（缺省 PENGUIN_SESSION_ID）",
+    attachSession: "要挂接的会话，完整 id 或唯一片段（缺省 ADELIE_SESSION_ID）",
     channelOpt: "要读取或写入的频道（缺省 default_channel，即全员频道）",
     channelName: "显示名（缺省同 id）",
     channelPurpose: "频道用途",
@@ -2250,7 +2249,7 @@ const zh: Messages = {
     refSession: "消息关联的会话",
     period: "统计月份（yyyy-mm；缺省当月）",
     orgIdMissing: () =>
-      "未指定组织：请传 --org-id <id>，或设置 PENGUIN_ORG_ID（工位会话与工单会话的环境里自带）。",
+      "未指定组织：请传 --org-id <id>，或设置 ADELIE_ORG_ID（工位会话与工单会话的环境里自带）。",
     hireTargetConflict: () =>
       "--agent-id（既有 Agent）与 --new-agent（新建）二选一，且必须给一个。",
     newAgentFieldsOnly: () => "--name、--description 与 --skills 只用于描述 --new-agent。",
@@ -2266,7 +2265,7 @@ const zh: Messages = {
     countInvalid: (value) => `-n 值「${value}」无效：应为正整数。`,
     pathSegmentInvalid: (value) => `名称「${value}」无效：「.」与「..」既不是 id，也不是手册路径。`,
     attachSessionMissing: () =>
-      "没有可挂接的会话：请传 --session <id>，或在会话内运行（PENGUIN_SESSION_ID）。",
+      "没有可挂接的会话：请传 --session <id>，或在会话内运行（ADELIE_SESSION_ID）。",
     created: (orgId, ceoDeskSessionId) =>
       `已创建组织 ${orgId}${ceoDeskSessionId !== undefined ? `（CEO 工位会话 ${ceoDeskSessionId}）` : ""}。`,
     hired: (agentId, title, reportsTo) =>
@@ -2520,16 +2519,16 @@ const zh: Messages = {
   client: {
     invalidServerUrl: (value) => `服务器地址「${value}」无效：应为 http(s)://host[:port]。`,
     remoteNeedsToken: (url) =>
-      `${url} 不是本机：连接远端服务器须设置 PENGUIN_API_TOKEN（本机的 api-token 文件不会发往其它主机）。`,
+      `${url} 不是本机：连接远端服务器须设置 ADELIE_API_TOKEN（本机的 api-token 文件不会发往其它主机）。`,
     noServer: () => "该数据根目录没有正在运行的服务器。",
     autoStartUnavailable: () =>
       "没有正在运行的服务器，且当前 CLI 入口无法自动拉起（开发态运行）。请自行执行 `penguin server`。",
     autoStartFailed: (logPath) => `自动启动的服务器未能就绪，输出见 ${logPath}。`,
     autoStarted: (url, logPath) => `已在本机启动服务器 ${url}（日志：${logPath}）。`,
     noToken: (url, tokenPath) =>
-      `${url} 拒绝了请求（401），且没有可用的 API token：请设置 PENGUIN_API_TOKEN，或确认服务器的 token 文件可读（${tokenPath}）。`,
+      `${url} 拒绝了请求（401），且没有可用的 API token：请设置 ADELIE_API_TOKEN，或确认服务器的 token 文件可读（${tokenPath}）。`,
     authFailed: (url) =>
-      `${url} 拒绝了 API token（401）。服务器重启会轮换 token——检查 PENGUIN_API_TOKEN，或让 CLI 读取最新的 api-token 文件。`,
+      `${url} 拒绝了 API token（401）。服务器重启会轮换 token——检查 ADELIE_API_TOKEN，或让 CLI 读取最新的 api-token 文件。`,
     httpError: (status, code, message) =>
       `服务器错误 ${status}（${code}）${message ? `：${message}` : ""}`,
     sessionNotFound: (ref, projectId) =>
@@ -2566,7 +2565,7 @@ const zh: Messages = {
     logoutDesc: "吊销并忘记已记住的会话",
     server: "服务地址（默认：该数据根上正在运行的服务）",
     userId: "登录的账号（不给时会询问；默认 admin）",
-    password: "密码（也可用 PENGUIN_PASSWORD；都没给时会提示输入）",
+    password: "密码（也可用 ADELIE_PASSWORD；都没给时会提示输入）",
     print: "同时把会话令牌打印到 stdout",
     accountPrompt: (fallback) => `账号 [${fallback}]：`,
     prompt: (userId) => `${userId} 的密码：`,
@@ -2796,8 +2795,8 @@ const zh: Messages = {
   langInvalid: (value) => `无效的语言 "${value}"。请使用 en 或 zh。`,
   langWindowsUnsupported: (lang) =>
     `penguin config lang 通过 POSIX shell 启动文件持久化语言，Windows 上没有对应机制。\n` +
-    `请改为设置用户环境变量：setx PENGUIN_LANG ${lang}（新终端生效）。`,
-  langSet: (lang, rcPath) => `语言已设为 ${lang}；已将 PENGUIN_LANG 写入 ${rcPath}。`,
+    `请改为设置用户环境变量：setx ADELIE_LANG ${lang}（新终端生效）。`,
+  langSet: (lang, rcPath) => `语言已设为 ${lang}；已将 ADELIE_LANG 写入 ${rcPath}。`,
   langRestartConfirm: () => "现在打开新 shell 使其生效？[y/N] ",
   langRestart: () => "正在打开使用新语言的新 shell（输入 exit 可返回）……",
   langRestartHint: (rcPath) => `请打开新终端，或执行：source ${rcPath}`,

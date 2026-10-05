@@ -29,7 +29,7 @@
  * found in models; `model remove` reports the same condition itself, since removal is
  * idempotent in core, and clears the default / vision pointers that named the removed entry.
  * `--root` specifies the data root directory (priority: option >
- * ADELIE_HOME > ~/.adelie/data). The UI language is controlled by the PENGUIN_LANG
+ * ADELIE_HOME > ~/.adelie/data). The UI language is controlled by the ADELIE_LANG
  * environment variable; `config lang` writes it into the shell startup file and restarts
  * the shell to take effect.
  * Docs: /docs/cli § "penguin config".

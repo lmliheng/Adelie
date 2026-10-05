@@ -24,7 +24,7 @@
  * Interpreting the CLI's outcome: `penguin update` exits non-zero only when an upgrade was
  * attempted and failed; refusals (source checkout, unrecognized layout, Windows) print a
  * message and exit 0. Exit codes alone therefore cannot separate "updated" from
- * "unsupported", so the spawn forces PENGUIN_LANG=en and classifies by the refusal
+ * "unsupported", so the spawn forces ADELIE_LANG=en and classifies by the refusal
  * messages' stable English fragments (packages/cli/src/i18n.ts, `update` section). That
  * matching is reliable here because the spawned CLI and this server ship in lockstep from
  * the same install — the strings can never be from a different release than this code.
@@ -125,10 +125,10 @@ export type UpdateRunner = (
 
 export const spawnUpdateRunner: UpdateRunner = (cliEntry, onOutput) =>
   new Promise((resolve) => {
-    // PENGUIN_LANG=en pins the CLI's output language so classifyUpdateRun's markers match
+    // ADELIE_LANG=en pins the CLI's output language so classifyUpdateRun's markers match
     // regardless of the deployment's configured CLI language.
     const child = spawn(process.execPath, [cliEntry, "update", "--yes"], {
-      env: { ...process.env, PENGUIN_LANG: "en" },
+      env: { ...process.env, ADELIE_LANG: "en" },
       stdio: ["ignore", "pipe", "pipe"],
     });
     const forward = (chunk: Buffer) => onOutput(chunk.toString("utf8"));

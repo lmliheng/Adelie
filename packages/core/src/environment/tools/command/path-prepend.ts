@@ -59,7 +59,7 @@ function powerShellQuote(value: string): string {
  * — untouched, and still the one whose exit status the shell reports.
  *
  * `""` for an empty list, and for any shell whose PATH syntax is not one of the three
- * below — `fish`, and whatever basename `PENGUIN_SHELL` names. A prefix in the wrong
+ * below — `fish`, and whatever basename `ADELIE_SHELL` names. A prefix in the wrong
  * dialect would not misconfigure PATH, it would fail every command, so an unrecognized
  * shell keeps the child-environment prepend and nothing more.
  */

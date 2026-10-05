@@ -96,7 +96,7 @@ function nullableString(
 /**
  * The body's `sessionId` is an identity claim — "this write comes from inside that Session" —
  * and the only credential that backs it is the boot's local API token: `controlEnv` (app.ts)
- * hands it to a Session's subprocesses together with PENGUIN_SESSION_ID, and holding it is
+ * hands it to a Session's subprocesses together with ADELIE_SESSION_ID, and holding it is
  * already admin authority. A cookie proves a person, not a session, so a cookie-authenticated
  * claim is dropped and the write is attributed to that person; otherwise any Project member
  * could quote the CEO desk session id `GET /:orgId` returns and write as `agent:<org>_ceo`.
@@ -113,7 +113,7 @@ function callerSessionId(
 
 /**
  * Who performs this write. `agentId` is the same kind of identity claim as `sessionId` — the
- * `PENGUIN_AGENT_ID` a Session hands its command subprocesses — and is backed by the same
+ * `ADELIE_AGENT_ID` a Session hands its command subprocesses — and is backed by the same
  * credential, so a cookie-authenticated body's `agentId` is dropped. It names the operator
  * more precisely than the session does, so the service prefers it.
  *

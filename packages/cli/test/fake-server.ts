@@ -3,7 +3,7 @@
  * handler covering exactly the endpoints the server-backed commands touch (the current
  * user, session create/get/patch, tasks/steer/compact/switch-model/abort, SSE stream,
  * messages, agents, projects, usage, schedules, organizations and their channels, and — through
- * the `builtinBrowser` handler a test sets — the built-in browser). Connection resolution is pinned via PENGUIN_API_URL
+ * the `builtinBrowser` handler a test sets — the built-in browser). Connection resolution is pinned via ADELIE_API_URL
  * (a loopback URL, so no token gate) and PENGUIN_HOME points at a scratch directory so
  * nothing of the developer's real data root is read.
  *
@@ -296,24 +296,24 @@ export class FakeServer {
   install(): () => void {
     this.savedFetch = globalThis.fetch;
     for (const key of [
-      "PENGUIN_API_URL",
-      "PENGUIN_API_TOKEN",
+      "ADELIE_API_URL",
+      "ADELIE_API_TOKEN",
       "PENGUIN_HOME",
-      "PENGUIN_SESSION_ID",
-      "PENGUIN_PROJECT_ID",
-      "PENGUIN_AGENT_ID",
-      "PENGUIN_ORG_ID",
+      "ADELIE_SESSION_ID",
+      "ADELIE_PROJECT_ID",
+      "ADELIE_AGENT_ID",
+      "ADELIE_ORG_ID",
     ]) {
       this.savedEnv.set(key, process.env[key]);
     }
     this.scratch = fs.mkdtempSync(path.join(os.tmpdir(), "penguin-cli-test-"));
     process.env.PENGUIN_HOME = this.scratch;
-    process.env.PENGUIN_API_URL = "http://127.0.0.1:7399";
-    delete process.env.PENGUIN_API_TOKEN;
-    delete process.env.PENGUIN_SESSION_ID;
-    delete process.env.PENGUIN_PROJECT_ID;
-    delete process.env.PENGUIN_AGENT_ID;
-    delete process.env.PENGUIN_ORG_ID;
+    process.env.ADELIE_API_URL = "http://127.0.0.1:7399";
+    delete process.env.ADELIE_API_TOKEN;
+    delete process.env.ADELIE_SESSION_ID;
+    delete process.env.ADELIE_PROJECT_ID;
+    delete process.env.ADELIE_AGENT_ID;
+    delete process.env.ADELIE_ORG_ID;
     globalThis.fetch = ((input: string | URL | Request, init?: RequestInit) =>
       this.handle(input, init)) as typeof globalThis.fetch;
     return () => this.uninstall();

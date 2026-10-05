@@ -17,7 +17,7 @@
  *
  * Every command takes `--json` (the response DTO as one line) and `--server`; the commands that
  * act on a page take `--tab <id|active>`, `active` by default. Inside a session,
- * PENGUIN_SESSION_ID travels as `sessionId`, so the app can show which conversation is driving
+ * ADELIE_SESSION_ID travels as `sessionId`, so the app can show which conversation is driving
  * the browser. What is printed is browser-output.ts; an error is one line on stderr,
  * `error: <code>: <message>`, with exit code 1.
  *
@@ -175,9 +175,9 @@ function normalizeUrl(raw: string): string {
   return raw.trim();
 }
 
-/** The calling session (PENGUIN_SESSION_ID), for the bodies that accept one. */
+/** The calling session (ADELIE_SESSION_ID), for the bodies that accept one. */
 function session(): { sessionId?: string } {
-  const id = process.env.PENGUIN_SESSION_ID?.trim();
+  const id = process.env.ADELIE_SESSION_ID?.trim();
   return id ? { sessionId: id } : {};
 }
 

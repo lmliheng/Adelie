@@ -23,10 +23,10 @@ If that call answers `404`, company mode is off for this server (System settings
 
 ## Which Project the organization lands in
 
-Inside a harness agent session every command subprocess carries `PENGUIN_API_URL`, `PENGUIN_API_TOKEN` and `PENGUIN_PROJECT_ID`, and `penguin org create` reads that last one as its `--project-id` — so you normally pass no flag and the organization is created in the Project you are running in. Check which one that is before you create anything:
+Inside a harness agent session every command subprocess carries `ADELIE_API_URL`, `ADELIE_API_TOKEN` and `ADELIE_PROJECT_ID`, and `penguin org create` reads that last one as its `--project-id` — so you normally pass no flag and the organization is created in the Project you are running in. Check which one that is before you create anything:
 
 ```bash
-echo "${PENGUIN_PROJECT_ID:-default_project}"
+echo "${ADELIE_PROJECT_ID:-default_project}"
 ```
 
 Name the Project in the summary. Pass `--project-id <id>` only when the user explicitly wants a different one.
@@ -81,7 +81,7 @@ penguin org create --org-id co_plugin_marketplace \
   --ceo-budget 100
 ```
 
-- `--org-id` is the id to create; unlike every other `penguin org` command it never comes from `PENGUIN_ORG_ID`.
+- `--org-id` is the id to create; unlike every other `penguin org` command it never comes from `ADELIE_ORG_ID`.
 - Omit `--name`, `--workspace` and the model pair when the user took the defaults. `--ceo-budget` defaults to 100, so it may be omitted too — but pass it whenever the user named a number, including `0`. Omit `--language` unless the user asked for a working language other than the mission's own.
 - The command prints the new organization's id and the CEO's desk session id. Errors surface verbatim: `409 org_exists` (the id, or the CEO's Agent id `<org_id>_ceo`, is taken), `400` with the reason for a bad id, an empty mission, a missing workspace directory or an unconfigured model. Fix the one field and run it again — creation is all-or-nothing and leaves nothing behind when it fails.
 

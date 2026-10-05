@@ -37,7 +37,7 @@ export interface ServerConfig {
   /** Frontend static assets directory; whether it's enabled is decided by checking existence when the app is assembled. */
   webDist: string;
   /**
-   * Origin that serves Workspace HTML previews (PENGUIN_PREVIEW_ORIGIN), e.g.
+   * Origin that serves Workspace HTML previews (ADELIE_PREVIEW_ORIGIN), e.g.
    * `https://preview.example.com`. It must differ from the App origin by **hostname** —
    * cookies ignore ports, so a second port would still share the session cookie. Unset
    * is the norm locally: the loopback counterpart (`127.0.0.1` <-> `localhost`) is
@@ -55,7 +55,7 @@ export interface ServerConfig {
    */
   modelscopeBridgeUrl: string;
   /**
-   * Fixed initial password for the seeded built-in admin (PENGUIN_SEED_ADMIN_PASSWORD),
+   * Fixed initial password for the seeded built-in admin (ADELIE_SEED_ADMIN_PASSWORD),
    * used by automated tests and e2e. Null is the norm: the seed then generates a random
    * password that is hashed and discarded unseen, and the account is claimed through the
    * first-login link instead.
@@ -78,7 +78,7 @@ export interface ServerConfig {
    */
   desktopToken: string | null;
   /**
-   * Whether `penguin server|web` supervises this process (PENGUIN_SUPERVISED=1) and relaunches
+   * Whether `penguin server|web` supervises this process (ADELIE_SUPERVISED=1) and relaunches
    * it when it exits with core's SERVER_RESTART_EXIT_CODE — what makes the web UI's "restart
    * to update" possible. False under a direct server start, a dev run, or the desktop shell.
    *
@@ -94,7 +94,7 @@ export interface ServerConfig {
    */
   portFile: string | null;
   /**
-   * Trust `x-forwarded-proto` from the request (PENGUIN_TRUST_PROXY=1). Off by default:
+   * Trust `x-forwarded-proto` from the request (ADELIE_TRUST_PROXY=1). Off by default:
    * the header is caller-supplied, so on a non-loopback bind an untrusted caller could
    * set it to `https` to walk through the hot-update network gate (hmr/routes.ts) while
    * actually speaking plaintext — or get session cookies stamped `Secure` over plain HTTP,
@@ -150,7 +150,7 @@ function defaultCliEntry(): string | null {
 }
 
 /**
- * Validates PENGUIN_PREVIEW_ORIGIN into a bare origin, or throws. An unparseable value
+ * Validates ADELIE_PREVIEW_ORIGIN into a bare origin, or throws. An unparseable value
  * is a hard failure rather than a silent fallback: falling back would quietly serve
  * previews same-origin, which is the configuration this variable exists to avoid.
  */
@@ -160,10 +160,10 @@ function normalizePreviewOrigin(raw: string | undefined): string | null {
   try {
     url = new URL(raw.trim());
   } catch {
-    throw new Error(`Invalid PENGUIN_PREVIEW_ORIGIN=${raw} (expected an absolute origin)`);
+    throw new Error(`Invalid ADELIE_PREVIEW_ORIGIN=${raw} (expected an absolute origin)`);
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error(`Invalid PENGUIN_PREVIEW_ORIGIN=${raw} (only http/https are supported)`);
+    throw new Error(`Invalid ADELIE_PREVIEW_ORIGIN=${raw} (only http/https are supported)`);
   }
   return url.origin;
 }
@@ -226,7 +226,7 @@ export function normalizeModelScopeBridgeUrl(raw: string | undefined): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
 }
 
-/** Parses server config from environment variables (PORT / HOST / ADELIE_HOME / PENGUIN_WEB_DIST / PENGUIN_WEB_DB / PENGUIN_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / PENGUIN_SEED_ADMIN_PASSWORD / PENGUIN_DESKTOP_TOKEN / PENGUIN_PORT_FILE / PENGUIN_TRUST_PROXY / PENGUIN_CLI_ENTRY). */
+/** Parses server config from environment variables (PORT / HOST / ADELIE_HOME / PENGUIN_WEB_DIST / PENGUIN_WEB_DB / ADELIE_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / ADELIE_SEED_ADMIN_PASSWORD / PENGUIN_DESKTOP_TOKEN / PENGUIN_PORT_FILE / ADELIE_TRUST_PROXY / PENGUIN_CLI_ENTRY). */
 export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   // The root is read off the passed environment rather than `process.env` (this function takes
   // one so tests can hand it a fabricated environment), so the two names are spelled here as
@@ -251,17 +251,17 @@ export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): Serve
     port,
     dbPath: env.PENGUIN_WEB_DB ?? path.join(root, "web.db"),
     webDist: env.PENGUIN_WEB_DIST ?? defaultWebDist(),
-    previewOrigin: normalizePreviewOrigin(env.PENGUIN_PREVIEW_ORIGIN),
+    previewOrigin: normalizePreviewOrigin(env.ADELIE_PREVIEW_ORIGIN),
     penguinGoOrigin: normalizePenguinGoOrigin(env.PENGUIN_GO_ORIGIN),
     modelscopeBridgeUrl: normalizeModelScopeBridgeUrl(env.MODELSCOPE_BRIDGE_URL),
     // An empty/whitespace value is treated as unset, which leaves the seed to generate one.
-    seedAdminPassword: env.PENGUIN_SEED_ADMIN_PASSWORD?.trim() || null,
+    seedAdminPassword: env.ADELIE_SEED_ADMIN_PASSWORD?.trim() || null,
     authSessionTtlMs: 30 * DAY_MS,
     authSessionRenewMs: 29 * DAY_MS,
     desktopToken,
     portFile: env.PENGUIN_PORT_FILE?.trim() || null,
-    trustProxy: env.PENGUIN_TRUST_PROXY === "1",
-    supervised: env.PENGUIN_SUPERVISED === "1",
+    trustProxy: env.ADELIE_TRUST_PROXY === "1",
+    supervised: env.ADELIE_SUPERVISED === "1",
     cliEntry: env.PENGUIN_CLI_ENTRY?.trim() || defaultCliEntry(),
   };
 }

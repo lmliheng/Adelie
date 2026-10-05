@@ -191,7 +191,7 @@ The `budget:` line of every trigger block is your period-to-date spend (yours pl
 
 ## Command reference
 
-Inside a desk or ticket session `PENGUIN_ORG_ID` is injected beside the usual control variables, so `--org-id` is never needed. `--agent-id` on `calendar` and the positional `<agent_id>` of `desk` default to you (`PENGUIN_AGENT_ID`); `ticket start` runs the ticket session as you unless its own `--agent-id` enlists a colleague on your ticket; `ticket progress` and `ticket attach` take the current session from `PENGUIN_SESSION_ID`.
+Inside a desk or ticket session `ADELIE_ORG_ID` is injected beside the usual control variables, so `--org-id` is never needed. `--agent-id` on `calendar` and the positional `<agent_id>` of `desk` default to you (`ADELIE_AGENT_ID`); `ticket start` runs the ticket session as you unless its own `--agent-id` enlists a colleague on your ticket; `ticket progress` and `ticket attach` take the current session from `ADELIE_SESSION_ID`.
 
 ```bash
 penguin org ls [--project-id <id>] [--json]

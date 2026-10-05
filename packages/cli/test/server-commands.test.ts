@@ -318,7 +318,7 @@ describe("penguin schedule ls", () => {
   });
 });
 
-describe("caller-context defaults (PENGUIN_SESSION_ID inheritance)", () => {
+describe("caller-context defaults (ADELIE_SESSION_ID inheritance)", () => {
   it("run inherits workspace/model/approve from the calling session and pins its thinking level on the new session", async () => {
     const caller = server.addSession({
       sessionId: "session-2026-08-25-10-00-00-ca11e001",
@@ -328,7 +328,7 @@ describe("caller-context defaults (PENGUIN_SESSION_ID inheritance)", () => {
       approvalMode: "always-ask",
       thinkingLevel: "high",
     });
-    process.env.PENGUIN_SESSION_ID = caller.sessionId;
+    process.env.ADELIE_SESSION_ID = caller.sessionId;
     const code = await cli(["run", "-m", "child job"]);
     expect(code).toBe(0);
     const create = server.requests.find((r) => r.method === "POST" && r.path.endsWith("/sessions"));
@@ -352,7 +352,7 @@ describe("caller-context defaults (PENGUIN_SESSION_ID inheritance)", () => {
       approvalMode: "always-ask",
       thinkingLevel: "high",
     });
-    process.env.PENGUIN_SESSION_ID = caller.sessionId;
+    process.env.ADELIE_SESSION_ID = caller.sessionId;
     const code = await cli(["run", "-m", "x", "--workspace", "/elsewhere", "--thinking", "low"]);
     expect(code).toBe(0);
     const create = server.requests.find((r) => r.method === "POST" && r.path.endsWith("/sessions"));
@@ -369,7 +369,7 @@ describe("caller-context defaults (PENGUIN_SESSION_ID inheritance)", () => {
   });
 
   it("a failed caller lookup warns (dim, stderr) and falls back to the plain defaults", async () => {
-    process.env.PENGUIN_SESSION_ID = "session-2026-08-25-10-00-00-deadc0de"; // unknown to the server
+    process.env.ADELIE_SESSION_ID = "session-2026-08-25-10-00-00-deadc0de"; // unknown to the server
     const code = await cli(["run", "-m", "x"]);
     expect(code).toBe(0);
     expect(stderr.join("")).toContain("session-2026-08-25-10-00-00-deadc0de");
@@ -379,7 +379,7 @@ describe("caller-context defaults (PENGUIN_SESSION_ID inheritance)", () => {
     expect(create?.body?.approvalMode).toBeUndefined();
   });
 
-  it("outside an agent (no PENGUIN_SESSION_ID) nothing changes", async () => {
+  it("outside an agent (no ADELIE_SESSION_ID) nothing changes", async () => {
     await cli(["run", "-m", "x"]);
     const create = server.requests.find((r) => r.method === "POST" && r.path.endsWith("/sessions"));
     expect(create?.body?.workspace).toBe(process.cwd());

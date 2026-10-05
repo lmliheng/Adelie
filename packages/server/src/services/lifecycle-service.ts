@@ -5,7 +5,7 @@
  *
  * The supervisor is `penguin server|web`, which runs the service as a child process and
  * respawns it on SERVER_RESTART_EXIT_CODE (core); it announces itself with
- * PENGUIN_SUPERVISED=1. Under anything else — the server entry started directly, a dev
+ * ADELIE_SUPERVISED=1. Under anything else — the server entry started directly, a dev
  * run, the desktop shell (which updates the whole app, not the server) — a restart request
  * is refused rather than honored: exiting would stop the service with nobody to bring it
  * back, and the page tells the user to restart by hand instead.
@@ -18,7 +18,7 @@ export class LifecycleService {
 
   constructor(private readonly supervisedFlag: boolean) {}
 
-  /** Whether a supervisor relaunches this process on the restart exit code (PENGUIN_SUPERVISED=1). */
+  /** Whether a supervisor relaunches this process on the restart exit code (ADELIE_SUPERVISED=1). */
   supervised(): boolean {
     return this.supervisedFlag;
   }

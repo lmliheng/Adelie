@@ -138,7 +138,7 @@ export class AuthService implements Auth {
     // any insert, so a configuration typo cannot create a trivially weak privileged account.
     if (password.length < MIN_PASSWORD_LENGTH) {
       throw new Error(
-        `PENGUIN_SEED_ADMIN_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+        `ADELIE_SEED_ADMIN_PASSWORD must be at least ${MIN_PASSWORD_LENGTH} characters.`,
       );
     }
     const user: UserRow = {

@@ -121,10 +121,10 @@ describe("resolveShell — POSIX", () => {
     expect(shell).toEqual({ command: "bash", args: ["-lc"], name: "bash" });
   });
 
-  it("PENGUIN_SHELL still wins over the whole POSIX chain", () => {
+  it("ADELIE_SHELL still wins over the whole POSIX chain", () => {
     const shell = resolveShell({
       platform: "linux",
-      env: { PENGUIN_SHELL: "/usr/bin/fish", PATH: "/bin" },
+      env: { ADELIE_SHELL: "/usr/bin/fish", PATH: "/bin" },
       exists: has("/bin/bash"),
     });
     expect(shell).toEqual({ command: "/usr/bin/fish", args: ["-lc"], name: "fish" });
@@ -203,11 +203,11 @@ describe("resolveShell — win32 probing", () => {
   });
 });
 
-describe("resolveShell — PENGUIN_SHELL override", () => {
+describe("resolveShell — ADELIE_SHELL override", () => {
   it("wins on every platform and keeps POSIX-style args for a POSIX shell path", () => {
     const shell = resolveShell({
       platform: "linux",
-      env: { PENGUIN_SHELL: "/usr/bin/zsh" },
+      env: { ADELIE_SHELL: "/usr/bin/zsh" },
     });
     expect(shell).toEqual({ command: "/usr/bin/zsh", args: ["-lc"], name: "zsh" });
   });
@@ -215,7 +215,7 @@ describe("resolveShell — PENGUIN_SHELL override", () => {
   it("uses PowerShell-style args when the basename is pwsh (case/extension-insensitive)", () => {
     const shell = resolveShell({
       platform: "win32",
-      env: { PENGUIN_SHELL: "C:\\Program Files\\PowerShell\\7\\pwsh.EXE" },
+      env: { ADELIE_SHELL: "C:\\Program Files\\PowerShell\\7\\pwsh.EXE" },
       whichAll: which({ bash: ["C:\\Program Files\\Git\\bin\\bash.exe"] }),
     });
     expect(shell).toEqual({
@@ -226,19 +226,19 @@ describe("resolveShell — PENGUIN_SHELL override", () => {
   });
 
   it("uses PowerShell-style args for a bare powershell name", () => {
-    const shell = resolveShell({ platform: "win32", env: { PENGUIN_SHELL: "powershell" } });
+    const shell = resolveShell({ platform: "win32", env: { ADELIE_SHELL: "powershell" } });
     expect(shell).toEqual({ command: "powershell", args: POWERSHELL_ARGS, name: "powershell" });
   });
 
   it("uses cmd-style args when the basename is cmd", () => {
-    const shell = resolveShell({ platform: "win32", env: { PENGUIN_SHELL: "cmd" } });
+    const shell = resolveShell({ platform: "win32", env: { ADELIE_SHELL: "cmd" } });
     expect(shell).toEqual({ command: "cmd", args: ["/d", "/s", "/c"], name: "cmd" });
   });
 
-  it("ignores a blank PENGUIN_SHELL", () => {
+  it("ignores a blank ADELIE_SHELL", () => {
     const shell = resolveShell({
       platform: "linux",
-      env: { PENGUIN_SHELL: "  ", PATH: "/usr/bin:/bin" },
+      env: { ADELIE_SHELL: "  ", PATH: "/usr/bin:/bin" },
       exists: has("/bin/bash"),
     });
     expect(shell).toEqual({ command: "bash", args: ["-lc"], name: "bash" });
@@ -282,10 +282,10 @@ describe("resolveShell — the bundled MinGit bash (PENGUIN_BUNDLED_SHELL)", () 
     expect(shell.command).toBe(BUNDLED);
   });
 
-  it("still loses to an explicit PENGUIN_SHELL", () => {
+  it("still loses to an explicit ADELIE_SHELL", () => {
     const shell = resolveShell({
       platform: "win32",
-      env: { PENGUIN_SHELL: "pwsh", PENGUIN_BUNDLED_SHELL: BUNDLED },
+      env: { ADELIE_SHELL: "pwsh", PENGUIN_BUNDLED_SHELL: BUNDLED },
       exists: bundledExists,
     });
     expect(shell).toEqual({ command: "pwsh", args: POWERSHELL_ARGS, name: "pwsh" });

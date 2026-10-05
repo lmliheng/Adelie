@@ -10,7 +10,7 @@
  * retries; nothing is surfaced as an error (the footer simply shows nothing, and "no update
  * known" hides the reminder and every badge). The server caches its own lookup for an hour
  * and shares one in-flight call, so an app load costs no outbound request of its own, and
- * `PENGUIN_UPDATE_CHECK=off` still answers without dialing out at all. forceUpdateCheck is
+ * `ADELIE_UPDATE_CHECK=off` still answers without dialing out at all. forceUpdateCheck is
  * the user asking directly: it refetches past the server's TTL and broadcasts the result to
  * every mounted hook.
  */

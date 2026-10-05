@@ -32,7 +32,7 @@ export function resolveWorkspace(flag: string | undefined, fallback = process.cw
 
 /**
  * The calling session's live values, when this CLI runs inside a harness agent
- * (server-driven sessions inject PENGUIN_SESSION_ID into tool subprocesses): a session
+ * (server-driven sessions inject ADELIE_SESSION_ID into tool subprocesses): a session
  * created here defaults each UNSPECIFIED field to the caller's — workspace, the model
  * pair, approval mode and thinking level — the same inheritance `run_subagent` applies
  * to spawned children, so the two surfaces read as one convention. Per field the
@@ -43,7 +43,7 @@ export async function callerSessionContext(
   client: ServerClient,
   t: Messages,
 ): Promise<SessionInfo | null> {
-  const sessionId = process.env.PENGUIN_SESSION_ID?.trim();
+  const sessionId = process.env.ADELIE_SESSION_ID?.trim();
   if (!sessionId) return null;
   try {
     return await getSessionInfo(client, sessionId);

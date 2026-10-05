@@ -199,7 +199,7 @@ describe("chat /verbose (tool-output collapsing)", () => {
   });
 });
 
-describe("chat caller-context defaults (PENGUIN_SESSION_ID inheritance)", () => {
+describe("chat caller-context defaults (ADELIE_SESSION_ID inheritance)", () => {
   it("a new chat inside an agent inherits workspace/model/approve and pins the caller's thinking", async () => {
     const caller = server.addSession({
       sessionId: "session-2026-08-25-10-00-00-ca11c0de",
@@ -209,7 +209,7 @@ describe("chat caller-context defaults (PENGUIN_SESSION_ID inheritance)", () => 
       approvalMode: "read-only",
       thinkingLevel: "xhigh",
     });
-    process.env.PENGUIN_SESSION_ID = caller.sessionId;
+    process.env.ADELIE_SESSION_ID = caller.sessionId;
     const out = await driveChat(["/thinking", "/exit"]);
     const created = [...server.sessions.values()].find((x) => x.sessionId !== caller.sessionId)!;
     expect(created.workspace).toBe("/callers/dir");

@@ -8,7 +8,7 @@
  * a normal response with `error` set and `latestVersion` null. Outcomes are cached
  * in-memory (success for 1 hour, failure for 10 minutes) so a sidebar that opens on every
  * page load cannot hammer GitHub's unauthenticated rate limit; concurrent requests share
- * one in-flight lookup. `PENGUIN_UPDATE_CHECK=off` disables the lookup entirely (no
+ * one in-flight lookup. `ADELIE_UPDATE_CHECK=off` disables the lookup entirely (no
  * network call), for air-gapped or privacy-sensitive deployments.
  *
  * The request mirrors the CLI's fetchLatestVersion (packages/cli/src/commands/update.ts):
@@ -61,7 +61,7 @@ export class GlobalFetch implements HttpFetch {
 export class UpdateCheckService implements UpdateCheck {
   @Use() private readonly http!: HttpFetch;
   @Use() private readonly clock!: Clock;
-  /** Environment to read PENGUIN_UPDATE_CHECK from; a test wires its own. */
+  /** Environment to read ADELIE_UPDATE_CHECK from; a test wires its own. */
   private env: Record<string, string | undefined> = process.env;
   private cached: { response: UpdateCheckResponse; expiresAt: number } | null = null;
   private inflight: Promise<UpdateCheckResponse> | null = null;
@@ -73,12 +73,12 @@ export class UpdateCheckService implements UpdateCheck {
    * exists to shield GitHub's unauthenticated rate limit from *passive* checks fired
    * by every sidebar open, and an explicit user click is rare enough to press through
    * it. Everything else is unchanged: the opt-out stays authoritative (force never
-   * dials out under PENGUIN_UPDATE_CHECK=off), the outcome lands in the same cache
+   * dials out under ADELIE_UPDATE_CHECK=off), the outcome lands in the same cache
    * (subsequent passive checks reuse it), and concurrent callers — forced or not —
    * still share one in-flight lookup.
    */
   async check(force = false): Promise<UpdateCheckResponse> {
-    if (this.env["PENGUIN_UPDATE_CHECK"] === "off") {
+    if (this.env["ADELIE_UPDATE_CHECK"] === "off") {
       return {
         currentVersion: VERSION,
         buildDate: BUILD_DATE,

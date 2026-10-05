@@ -720,7 +720,7 @@ export const zh = {
     checkingBody: "正在检查更新…",
     upToDate: "已是最新版本",
     checkFailed: "检查更新失败，请稍后重试",
-    checkDisabled: "更新检查已关闭（PENGUIN_UPDATE_CHECK=off）",
+    checkDisabled: "更新检查已关闭（ADELIE_UPDATE_CHECK=off）",
     releaseNotes: "更新说明",
     openReleases: "打开 Releases 页面",
     /** What "download and update" does, per backend. */
@@ -2020,7 +2020,7 @@ export const zh = {
      * Instruction tail of the settings tab's dialog: the task is created for one agent, in a
      * new Session unless the user names one. The CLI form spells every flag, `--agent-id`
      * above all: the prompt runs in a conversation with the Project's default agent, so the
-     * server injects THAT agent into PENGUIN_AGENT_ID, and an `add` without the flag writes
+     * server injects THAT agent into ADELIE_AGENT_ID, and an `add` without the flag writes
      * the task into the wrong agent's schedule directory. The TOML keys are named only in
      * the file branch, so they are never read as flags of the command beside them.
      */
@@ -3622,7 +3622,7 @@ Benchmark：
     uploadHere: "上传到此文件夹",
     openInNewTab: "新页面打开",
     previewNotIsolatedHint:
-      "当前访问地址无法提供独立预览源，页面将以沙箱模式打开：localStorage、Cookie 与第三方 embed 不可用。经 127.0.0.1 或 localhost 访问，或配置 PENGUIN_PREVIEW_ORIGIN 即可解除。",
+      "当前访问地址无法提供独立预览源，页面将以沙箱模式打开：localStorage、Cookie 与第三方 embed 不可用。经 127.0.0.1 或 localhost 访问，或配置 ADELIE_PREVIEW_ORIGIN 即可解除。",
     refresh: "刷新",
     /** The Workspace root, as the breadcrumbs and the drop overlay name it. "." is what a
      *  shell calls the working directory, so it needs no translation. */

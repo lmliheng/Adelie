@@ -5,7 +5,7 @@
  * — Windows has none by default, and a POSIX box can be launched with a PATH that has none —
  * so the resolver picks the best available shell once per process:
  *
- * 1. `PENGUIN_SHELL` (explicit executable name or path) always wins, on every platform;
+ * 1. `ADELIE_SHELL` (explicit executable name or path) always wins, on every platform;
  *    the argument shape is inferred from its basename (see below).
  * 2. Otherwise, non-Windows uses `bash -lc` — but only after confirming a `bash` exists.
  *    A GUI-launched app inherits the desktop session's PATH, not a login shell's, and a
@@ -28,7 +28,7 @@
  * 5. Only then `pwsh` (PowerShell 7+), and finally `powershell` (Windows PowerShell 5.1,
  *    always present). These remain reachable for npm installs, which ship no bundle.
  *
- * Argument shapes by basename (also applied to `PENGUIN_SHELL` values):
+ * Argument shapes by basename (also applied to `ADELIE_SHELL` values):
  * - `pwsh` / `powershell` -> `-NoLogo -NoProfile -Command <cmd>`
  * - `cmd`                 -> `/d /s /c <cmd>`
  * - anything else         -> `-lc <cmd>` (bash/zsh/sh-style login shell)
@@ -70,7 +70,7 @@ export interface ResolveShellOptions {
 
 /** Basename without a trailing .exe/.cmd/.bat/.ps1 extension, lowercased ("C:\...\pwsh.EXE" -> "pwsh"). */
 function shellBasename(command: string): string {
-  // path.win32 handles both separators, so PENGUIN_SHELL=/usr/bin/zsh still yields "zsh".
+  // path.win32 handles both separators, so ADELIE_SHELL=/usr/bin/zsh still yields "zsh".
   return path.win32
     .basename(command)
     .replace(/\.(exe|cmd|bat|ps1)$/i, "")
@@ -190,7 +190,7 @@ export function resolveShell(opts: ResolveShellOptions = {}): ShellInvocation {
   const platform = opts.platform ?? process.platform;
   const env = opts.env ?? process.env;
 
-  const explicit = env.PENGUIN_SHELL?.trim();
+  const explicit = env.ADELIE_SHELL?.trim();
   if (explicit) {
     const name = shellBasename(explicit);
     return { command: explicit, args: argsForShell(name), name };

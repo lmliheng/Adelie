@@ -47,7 +47,7 @@ export function hmrRoutes(deps: HmrRouteDeps): Hono<AppEnv> {
       // where the caller is not a trusted party). Only a request's own URL scheme (real
       // TLS terminated by this process) counts unless the deployment explicitly says a
       // reverse proxy is in front and strips/overwrites the header itself
-      // (PENGUIN_TRUST_PROXY=1 / config.trustProxy) — the same opt-in a real proxy setup
+      // (ADELIE_TRUST_PROXY=1 / config.trustProxy) — the same opt-in a real proxy setup
       // requires anyway.
       const proto = deps.config.trustProxy
         ? (c.req.header("x-forwarded-proto") ?? new URL(c.req.url).protocol.replace(":", ""))

@@ -8,7 +8,7 @@
  * expects the shell their OS gives them, with their own profile in effect — the prompt,
  * the aliases, the PATH edits. So the two resolvers stay separate on purpose.
  *
- * `PENGUIN_SHELL` is honoured first on every platform, so a user who has already told the
+ * `ADELIE_SHELL` is honoured first on every platform, so a user who has already told the
  * harness which shell to use is not asked twice.
  */
 import { spawnSync } from "node:child_process";
@@ -57,7 +57,7 @@ export function resolveDefaultShell(
   platform: NodeJS.Platform = process.platform,
   opts: ResolveTerminalShellOptions = {},
 ): string {
-  const explicit = env.PENGUIN_SHELL?.trim();
+  const explicit = env.ADELIE_SHELL?.trim();
   if (explicit) return explicit;
   if (platform !== "win32") return env.SHELL || "/bin/sh";
 

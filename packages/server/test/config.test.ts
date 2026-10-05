@@ -4,7 +4,7 @@
  * - An empty PORT (the common `PORT=` line in `.env`) reads as unset, never as port 0; an
  *   explicit value takes effect and an explicit "0" is kept (bind a random free port); a
  *   non-integer or out-of-range value throws. This matches the CLI's resolvePort.
- * - PENGUIN_SEED_ADMIN_PASSWORD: unset, empty or blank leaves the seed unpinned (null, so the
+ * - ADELIE_SEED_ADMIN_PASSWORD: unset, empty or blank leaves the seed unpinned (null, so the
  *   seed generates its own); a value is kept trimmed; desktop mode changes neither.
  * - PENGUIN_CLI_ENTRY: a value is kept trimmed; a blank one falls through to the checkout
  *   lookup like an unset one.
@@ -69,11 +69,11 @@ describe("resolveServerConfig: seed password", () => {
     expect(resolveServerConfig({ ...base }).seedAdminPassword).toBeNull();
     for (const blank of ["", "  "]) {
       expect(
-        resolveServerConfig({ ...base, PENGUIN_SEED_ADMIN_PASSWORD: blank }).seedAdminPassword,
+        resolveServerConfig({ ...base, ADELIE_SEED_ADMIN_PASSWORD: blank }).seedAdminPassword,
       ).toBeNull();
     }
     expect(
-      resolveServerConfig({ ...base, PENGUIN_SEED_ADMIN_PASSWORD: " penguin-9999 " })
+      resolveServerConfig({ ...base, ADELIE_SEED_ADMIN_PASSWORD: " penguin-9999 " })
         .seedAdminPassword,
     ).toBe("penguin-9999");
   });
@@ -84,7 +84,7 @@ describe("resolveServerConfig: seed password", () => {
     const desktop = { ...base, PENGUIN_DESKTOP_TOKEN: "tok" };
     expect(resolveServerConfig(desktop).seedAdminPassword).toBeNull();
     expect(
-      resolveServerConfig({ ...desktop, PENGUIN_SEED_ADMIN_PASSWORD: "penguin-2026" })
+      resolveServerConfig({ ...desktop, ADELIE_SEED_ADMIN_PASSWORD: "penguin-2026" })
         .seedAdminPassword,
     ).toBe("penguin-2026");
   });

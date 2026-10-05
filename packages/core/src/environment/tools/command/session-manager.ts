@@ -94,7 +94,7 @@ const STRIPPED_ENV_KEYS = new Set([
   "PENGUIN_DESKTOP_TOKEN",
   "PENGUIN_PORT_FILE",
   // Pinned seed password (tests/e2e): a credential, not a data-selection setting.
-  "PENGUIN_SEED_ADMIN_PASSWORD",
+  "ADELIE_SEED_ADMIN_PASSWORD",
 ]);
 
 /**
@@ -108,12 +108,15 @@ const STRIPPED_ENV_KEYS = new Set([
  * Two prefixes because the installation carries two spellings of the same settings today:
  * `ADELIE_*` is Adelie's own — the installed launcher exports `ADELIE_HOME` — and `PENGUIN_*` is
  * the pre-rename spelling that existing deployments, systemd units and scripts still set, with
- * the data root read from either. Covering one and not the other would let the *other* through,
- * and the name that leaks would be the one naming the root this process is serving from.
+ * the data root read from either. It is not only history: the settings whose *other* end is a
+ * program Adelie does not build in this repository (the desktop shell's launch environment, the
+ * installer a running CLI downloads) are deliberately still spelled `PENGUIN_*`, so those names
+ * are read as well as written today. Covering one and not the other would let the *other*
+ * through, and the name that leaks would be the one naming the root this process is serving from.
  *
  * Outbound proxy settings are the deliberate exception to "the harness's environment stays out of
  * the child", and they are not `PENGUIN_*` — they are HTTP_PROXY and friends, governed by
- * {@link PROXY_ENV_KEYS} and the host's policy just below. `PENGUIN_TRUST_PROXY` only looks like
+ * {@link PROXY_ENV_KEYS} and the host's policy just below. `ADELIE_TRUST_PROXY` only looks like
  * one: it decides whether the server trusts an inbound `x-forwarded-proto`, and means nothing to
  * a child.
  *
@@ -213,7 +216,7 @@ export class CommandSessionManager {
    */
   private readonly proxyEnv: (() => ProxyEnvPolicy | null) | undefined;
   /**
-   * Harness-control variables (PENGUIN_API_URL / PENGUIN_API_TOKEN / the Session
+   * Harness-control variables (ADELIE_API_URL / ADELIE_API_TOKEN / the Session
    * coordinates, see {@link EnvironmentConfig.controlEnv}): injected on every spawn AFTER
    * the vault, so the host's sanctioned wiring wins over a vault entry of the same name.
    * A getter like `proxyEnv`, re-read at every spawn. Absent = nothing injected.

@@ -142,7 +142,7 @@ const CEO_WORKSPACE = "ceo";
 /**
  * Who performs a write: a person (route user) or, through the control-env token from the
  * control environment of a session, that session's employee. `agentId` is the employee the
- * command subprocess was handed (`PENGUIN_AGENT_ID`) and it wins over the session, so a
+ * command subprocess was handed (`ADELIE_AGENT_ID`) and it wins over the session, so a
  * command run from a subagent or a nested session of an employee is still recorded as that
  * employee; `sessionId` answers when there is no Agent id to go by.
  */
@@ -209,7 +209,7 @@ export class OrganizationService {
     return this.deps.now?.() ?? Date.now();
   }
 
-  /** The organization a session belongs to, for the `PENGUIN_ORG_ID` control variable. */
+  /** The organization a session belongs to, for the `ADELIE_ORG_ID` control variable. */
   orgIdOfSession(sessionId: string): string | null {
     return this.deps.cache.ownerOfSession(sessionId)?.orgId ?? null;
   }
@@ -270,7 +270,7 @@ export class OrganizationService {
    * The principal a write is recorded under: the Agent id the caller carries when it names an
    * employee of this organization, else the employee of the calling session, else the person.
    * The Agent id comes first because it is the narrower fact — the session may be a desk that
-   * spawned the command, while `PENGUIN_AGENT_ID` names exactly who ran it.
+   * spawned the command, while `ADELIE_AGENT_ID` names exactly who ran it.
    */
   private actorPrincipal(org: LoadedOrg, actor: Actor): string {
     if (actor.agentId !== undefined && org.byId.has(actor.agentId)) {

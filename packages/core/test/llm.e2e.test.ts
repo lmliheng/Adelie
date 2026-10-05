@@ -2,7 +2,7 @@
  * GenerativeModel live e2e. The whole suite is it.skip by default and stays offline;
  * requires an explicit opt-in to run against a real endpoint (this avoids ordinary unit
  * test runs firing real network requests just because an API key happens to be present):
- *   PENGUIN_E2E=1 pnpm test          # or pnpm test:e2e
+ *   ADELIE_E2E=1 pnpm test          # or pnpm test:e2e
  * The key comes from .env (gitignored) or an environment variable; the provider is picked
  * by whichever key is available (CI uses DeepSeek).
  */
@@ -19,7 +19,7 @@ const PROVIDERS = [
   { key: "DEEPSEEK_API_KEY", modelId: "deepseek-v4-flash" },
 ] as const;
 const provider = PROVIDERS.find((p) => process.env[p.key]);
-const runLive = process.env.PENGUIN_E2E === "1" && provider !== undefined;
+const runLive = process.env.ADELIE_E2E === "1" && provider !== undefined;
 const maybe = runLive ? it : it.skip;
 
 describe(`GenerativeModel live e2e (${provider?.modelId ?? "skipped"})`, () => {
@@ -71,7 +71,7 @@ describe(`GenerativeModel live e2e (${provider?.modelId ?? "skipped"})`, () => {
 // verifies EventTranslator's in-Session uniqueness (#n suffix) and outbound restoration
 // (functionResponse paired by function name) round-trip on the real API. Runs only when explicitly
 // opted in with GEMINI_API_KEY set.
-const runGemini = process.env.PENGUIN_E2E === "1" && process.env.GEMINI_API_KEY !== undefined;
+const runGemini = process.env.ADELIE_E2E === "1" && process.env.GEMINI_API_KEY !== undefined;
 const maybeGemini = runGemini ? it : it.skip;
 
 describe(`GenerativeModel live e2e (gemini-3.5-flash: tool_call_id uniquification${runGemini ? "" : ", skipped"})`, () => {

@@ -1416,7 +1416,7 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
   // what it would grant is a preview of the victim's own file.
   //
   // With no usable preview origin (the App is reached on something other than a loopback
-  // name and PENGUIN_PREVIEW_ORIGIN is unset), this falls back to the sandboxed
+  // name and ADELIE_PREVIEW_ORIGIN is unset), this falls back to the sandboxed
   // same-origin preview: the page still renders, but storage and third-party embeds do
   // not. The UI flags that ahead of time via `previewIsolated` on /api/me.
   app.get("/:sessionId/files/preview-redirect", async (c) => {

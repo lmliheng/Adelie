@@ -96,7 +96,7 @@ export function hostOnly(hostHeader: string): string {
  * `localhost` are distinct hosts for cookie purposes, so serving previews from the
  * other one isolates them with no extra port, no DNS, and nothing to configure.
  * Returns null for any other host (LAN IP, real domain) — those need an explicit
- * PENGUIN_PREVIEW_ORIGIN, and the caller degrades to the same-origin sandbox.
+ * ADELIE_PREVIEW_ORIGIN, and the caller degrades to the same-origin sandbox.
  */
 export function loopbackCounterpart(host: string): string | null {
   const h = host.toLowerCase();
@@ -120,7 +120,7 @@ export function loopbackCounterpart(host: string): string | null {
  *
  * Null for non-loopback binds (wildcard, LAN IP, a bare `::1`): they can't offer a loopback
  * preview the IPv6 companion listener actually serves, so they must set
- * PENGUIN_PREVIEW_ORIGIN and otherwise fall back to the same-origin sandbox.
+ * ADELIE_PREVIEW_ORIGIN and otherwise fall back to the same-origin sandbox.
  */
 export function loopbackHostRoles(bindHost: string): { app: string; preview: string } | null {
   const h = bindHost.trim().toLowerCase();
@@ -149,7 +149,7 @@ export function requestAuthority(requestUrl: string, hostHeader: string | undefi
 
 /**
  * Where previews for this request should be served from: the configured origin when
- * PENGUIN_PREVIEW_ORIGIN is set, otherwise the loopback counterpart of the host the
+ * ADELIE_PREVIEW_ORIGIN is set, otherwise the loopback counterpart of the host the
  * caller is using. Null when neither applies — or when the configured origin's host is
  * the request's own host (no boundary) — and the caller degrades to the same-origin
  * sandbox rather than silently serving unisolated content.

@@ -97,7 +97,7 @@ jobs:
       - name: Start the container
         run: |
           docker run -d --name penguin -p 127.0.0.1:7364:7364 \
-            -e PENGUIN_SEED_ADMIN_PASSWORD=ci-password-123 \
+            -e ADELIE_SEED_ADMIN_PASSWORD=ci-password-123 \
             -v penguin-data:/data \
             penguin-harness:pr
 
