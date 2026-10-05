@@ -150,6 +150,17 @@ export function agentVaultPath(root: string, projectId: string, agentId: string)
   return path.join(agentStateDir(root, projectId, agentId), ".vault.toml");
 }
 
+/**
+ * `<root>/users/<userId>/.vault.toml`, the user-level vault (see state/user-vault.ts): the
+ * secrets one USER owns, a peer of the Project directories rather than something inside one —
+ * the same credential is usually wanted in several Projects, and it must outlive any of them.
+ * Hidden and 0600 like the Agent-level `.vault.toml` (same trade-offs, one scope up); the
+ * `users/` directory itself does not exist until the first entry is written.
+ */
+export function userVaultPath(root: string, userId: string): string {
+  return path.join(root, "users", userId, ".vault.toml");
+}
+
 /** `<agentStateDir>/tools`, reserved for user-defined Tool config. */
 export function toolsDir(root: string, projectId: string, agentId: string): string {
   return path.join(agentStateDir(root, projectId, agentId), "tools");

@@ -479,6 +479,63 @@ router
     ctx.store.f.vault[agentId] = next;
     return next;
   })
+  // The signed-in account's own vault (the account menu's dialog) and the assign step that copies
+  // from it into an Agent's table. Values are masked on the way out here too — the fixture holds
+  // no plaintext at all, which is the same promise the server makes.
+  .get("/api/me/vault", (ctx): VaultResponse => ctx.store.f.userVault)
+  .put("/api/me/vault", (ctx): VaultResponse => {
+    const entries = record(ctx.body).entries;
+    const previous = ctx.store.f.userVault.entries;
+    if (!Array.isArray(entries)) return ctx.store.f.userVault;
+    const next: VaultResponse = {
+      entries: (entries as Array<{ key: string; value?: string }>).map((e) => ({
+        key: e.key,
+        valueMasked:
+          typeof e.value === "string"
+            ? `${e.value.slice(0, 3)}…${e.value.slice(-3)}`
+            : (previous.find((p) => p.key === e.key)?.valueMasked ?? "***"),
+      })),
+    };
+    ctx.store.f.userVault = next;
+    return next;
+  })
+  .post("/api/me/vault/import", (ctx): VaultResponse => {
+    const body = record(ctx.body);
+    const table: unknown =
+      typeof body.json === "string" ? (JSON.parse(body.json) as unknown) : body;
+    if (table === null || typeof table !== "object" || Array.isArray(table))
+      fail(400, "bad_request", 'json must be an object of "KEY": "value" pairs.');
+    const stored = new Map(ctx.store.f.userVault.entries.map((e) => [e.key, e.valueMasked]));
+    for (const [key, value] of Object.entries(table as Record<string, unknown>)) {
+      stored.set(
+        key,
+        typeof value === "string" ? `${value.slice(0, 3)}…${value.slice(-3)}` : "***",
+      );
+    }
+    const next: VaultResponse = {
+      entries: [...stored].map(([key, valueMasked]) => ({ key, valueMasked })),
+    };
+    ctx.store.f.userVault = next;
+    return next;
+  })
+  .post(
+    "/api/projects/:projectId/agents/:agentId/vault/assign-user-vault",
+    (ctx): VaultResponse => {
+      const agentId = agentOf(ctx).agentId;
+      const wanted = record(ctx.body).keys;
+      const keys = Array.isArray(wanted) ? (wanted as string[]) : [];
+      const userEntries = ctx.store.f.userVault.entries;
+      const missing = keys.filter((key) => !userEntries.some((e) => e.key === key));
+      if (missing.length > 0)
+        fail(400, "bad_request", `Not in your user vault: ${missing.join(", ")}.`);
+      const previous = ctx.store.f.vault[agentId]?.entries ?? [];
+      const kept = previous.filter((entry) => !keys.includes(entry.key));
+      const copied = userEntries.filter((entry) => keys.includes(entry.key));
+      const next: VaultResponse = { entries: [...kept, ...copied] };
+      ctx.store.f.vault[agentId] = next;
+      return next;
+    },
+  )
   .post(
     "/api/projects/:projectId/agents/:agentId/vault/template-placeholder",
     (ctx): AgentVaultConfigDto => {

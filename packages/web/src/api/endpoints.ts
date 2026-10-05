@@ -210,6 +210,8 @@ import type {
   UsageResponse,
   VaultResponse,
   VaultUpdateRequest,
+  UserVaultAssignRequest,
+  UserVaultImportRequest,
   InstalledPluginsResponse,
   VersionHistoryDiffResponse,
   VersionHistoryResponse,
@@ -548,6 +550,30 @@ export const insertVaultPlaceholder = (projectId: string, agentId: string) =>
   apiFetch<AgentVaultConfigDto>(
     `/api/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}/vault/template-placeholder`,
     { method: "POST", body: {} },
+  );
+
+// The signed-in user's own vault (user-level: `<root>/users/<userId>/.vault.toml`) ---------------
+// No Project in the path: it is the account's own table, readable and writable by nobody else.
+
+export const getUserVault = () => apiFetch<VaultResponse>("/api/me/vault");
+
+/** Whole-table replace, the same body as {@link putVault}: keys absent from the body are deleted, an entry without a value keeps the stored one. */
+export const putUserVault = (body: VaultUpdateRequest) =>
+  apiFetch<VaultResponse>("/api/me/vault", { method: "PUT", body });
+
+/** Imports a whole pasted JSON object into the table (merged: a same-named key is overwritten, the rest stay); the server parses and validates it, so a bad entry comes back as a 400 naming it. */
+export const importUserVault = (body: UserVaultImportRequest) =>
+  apiFetch<VaultResponse>("/api/me/vault/import", { method: "POST", body });
+
+/** Copies the named keys from the caller's own user vault into this agent's vault — a one-off copy (same key overwrites, the agent's other entries stay). */
+export const assignUserVaultToAgent = (
+  projectId: string,
+  agentId: string,
+  body: UserVaultAssignRequest,
+) =>
+  apiFetch<VaultResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}/vault/assign-user-vault`,
+    { method: "POST", body },
   );
 
 /** Inserts the {{SKILLS}} placeholder into the agent's prompt template — migrating a legacy hardcoded # Skills section verbatim when one is present (idempotent). */

@@ -9,6 +9,12 @@
  * value is injected only into the exec_command subprocess environment, never into
  * the model context.
  *
+ * "Assign user secrets" copies the account's own global secrets (the user-level vault behind the
+ * account menu's User secrets row) into this table, one selected key at a time, and says in its
+ * own copy that it is a copy: the Agent keeps the value it was given, so a later change to the
+ * global entry has to be assigned again. Nothing here links the two tables — the runtime injects
+ * this file and only this file.
+ *
  * Prompt-injection controls (usePromptInjection): the vault.enabled switch, the
  * {{VAULT}}-placeholder alert (with legacy-template migration) and the editable
  * vault.prompt section, mirroring the Memory tab — owner-only, like the table edits.
@@ -17,6 +23,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { VaultEntryInfo, VaultUpdateRequest } from "@lmliheng/penguin-server/api";
 import {
   Button,
+  Checkbox,
   ConfirmModal,
   HelpFold,
   Input,
@@ -75,6 +82,15 @@ export function VaultTab({
   const [deleting, setDeleting] = useState<string | null>(null);
   // Existing key pending overwrite confirmation (adding a key that's already configured replaces its value).
   const [overwriting, setOverwriting] = useState<string | null>(null);
+  /**
+   * Assign-user-secrets dialog: the account's global table (null while loading, and after a
+   * failed load) and the key names ticked in it. Read fresh on every open rather than cached —
+   * the global table is edited from the account menu, which this tab has no way to hear about.
+   */
+  const [assigning, setAssigning] = useState(false);
+  const [globalEntries, setGlobalEntries] = useState<VaultEntryInfo[] | null>(null);
+  const [globalError, setGlobalError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
 
   const load = useCallback(async () => {
     if (!projectId || !agentId) return;
@@ -164,6 +180,49 @@ export function VaultTab({
     setDeleting(null);
   };
 
+  /** Open the assign dialog: an empty selection and a fresh read of the account's global table. */
+  const openAssign = async () => {
+    setAssigning(true);
+    setGlobalEntries(null);
+    setGlobalError(null);
+    setSelected(new Set());
+    try {
+      setGlobalEntries((await api.getUserVault()).entries);
+    } catch (e) {
+      setGlobalError(apiErrorText(e));
+    }
+  };
+
+  const toggleSelected = (key: string, on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  };
+
+  /**
+   * Assign the ticked global secrets to this Agent: a copy into its own vault, so the response is
+   * this tab's refreshed table. The global table is untouched and no later edit to it follows —
+   * see the dialog's own note.
+   */
+  const confirmAssign = async () => {
+    if (!projectId || !agentId || selected.size === 0) return;
+    setBusy(true);
+    try {
+      const res = await api.assignUserVaultToAgent(projectId, agentId, { keys: [...selected] });
+      setEntries(res.entries);
+      toastSuccess(S.vault.assign.done(selected.size));
+      void reloadAgents();
+      setAssigning(false);
+    } catch (e) {
+      setGlobalError(apiErrorText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!projectId) return null;
 
   return (
@@ -233,6 +292,17 @@ export function VaultTab({
         />
       )}
 
+      {/* Assigning the account's own global secrets. Its own line under the add buttons, with the
+          one sentence that decides whether a user trusts it: what it does is copy. */}
+      {isOwner && entries !== null && (
+        <div className="space-y-1.5">
+          <Button size="sm" disabled={busy} onClick={() => void openAssign()}>
+            {S.vault.assign.open}
+          </Button>
+          <p className="text-xs text-gray-500 dark:text-gray-400">{S.vault.assign.hint}</p>
+        </div>
+      )}
+
       {promptSection}
 
       <Modal
@@ -282,6 +352,84 @@ export function VaultTab({
               if (e.key === "Enter" && !busy) void addEntry();
             }}
           />
+        </div>
+      </Modal>
+
+      {/* Assign user secrets: the account's global table, ticked per key. Read-only here — this
+          dialog copies, it does not edit the source (that is the account menu's dialog). Every
+          global key is offered, including one this Agent already has: a same-named key replaces
+          this table's value, which is the whole point of assigning again after a rotation. */}
+      <Modal
+        open={assigning}
+        title={S.vault.assign.title}
+        onClose={() => setAssigning(false)}
+        widthClass="sm:max-w-lg"
+        footer={
+          <>
+            <Button size="sm" onClick={() => setAssigning(false)}>
+              {S.common.cancel}
+            </Button>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={busy || selected.size === 0}
+              onClick={() => void confirmAssign()}
+            >
+              {S.vault.assign.confirm}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+            {S.vault.assign.overwritten}
+          </p>
+          {globalError !== null ? (
+            <p className="text-xs text-red-600 dark:text-red-400">{globalError}</p>
+          ) : globalEntries === null ? (
+            <SkeletonList rows={3} />
+          ) : globalEntries.length === 0 ? (
+            <SettingsEmpty>{S.vault.assign.empty}</SettingsEmpty>
+          ) : (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {S.vault.assign.selected(selected.size)}
+                </span>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={busy}
+                  onClick={() =>
+                    setSelected(
+                      selected.size === globalEntries.length
+                        ? new Set()
+                        : new Set(globalEntries.map((e) => e.key)),
+                    )
+                  }
+                >
+                  {S.vault.assign.all}
+                </Button>
+              </div>
+              <div className="overflow-y-auto rounded-md border border-gray-200 dark:border-gray-800">
+                {globalEntries.map((entry) => (
+                  <div
+                    key={entry.key}
+                    className="flex items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0 dark:border-gray-800/60"
+                  >
+                    <Checkbox
+                      checked={selected.has(entry.key)}
+                      onChange={(on) => toggleSelected(entry.key, on)}
+                      label={<span className="font-mono text-xs">{entry.key}</span>}
+                    />
+                    <span className="shrink-0 font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {entry.valueMasked}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </Modal>
 

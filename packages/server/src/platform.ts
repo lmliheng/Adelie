@@ -105,6 +105,7 @@ import { AuthService, InitialProjectProvisioner } from "./auth/service.js";
 import { AdminService } from "./services/admin-service.js";
 import { Scheduler, ScheduleSessionCreator, ScheduleTaskRunner } from "./runtime/scheduler.js";
 import { AgentConfigService } from "./services/agent-config-service.js";
+import { UserVaultService } from "./services/user-vault-service.js";
 import { SnapshotService } from "./services/snapshot-service.js";
 import { AgentRoutes } from "./services/agent-routes.js";
 import { AgentService } from "./services/agent-service.js";
@@ -122,6 +123,7 @@ import { TerminalRelay } from "./machines/terminal-relay.js";
 import { ProjectAdminRoutes } from "./http/routes/projects.js";
 import { AdminRoutes } from "./http/routes/admin.js";
 import { MeRoutes } from "./http/routes/me.js";
+import { UserVaultRoutes } from "./http/routes/user-vault.js";
 import { AuthRoutes } from "./http/routes/auth.js";
 import {
   DesktopPrivacySettingsRoutes,
@@ -162,6 +164,7 @@ import {
 } from "./mechanisms/observability.js";
 import { TraceIndex, TraceIndexStore, Traces } from "./mechanisms/traces.js";
 import { AgentConfig, AgentLifecycle, Benchmarks, Memory, Snapshots } from "./mechanisms/agents.js";
+import { UserVault } from "./mechanisms/vault.js";
 import { FileReveal, WorkspaceFiles } from "./mechanisms/workspace.js";
 import { Settings, UiPrefsStore } from "./mechanisms/settings.js";
 import { MessagingBindings } from "./mechanisms/messaging.js";
@@ -277,6 +280,7 @@ export class RuntimeModule {}
     AdminService,
     AdminRoutes,
     MeRoutes,
+    UserVaultRoutes,
     AuthRoutes,
   ],
   exports: [Users, AuthSessions, Auth, Admin, PasswordHasher, LiveStreams],
@@ -391,13 +395,14 @@ export class TracesModule {}
 @Module({
   children: [
     AgentConfigService,
+    UserVaultService,
     SnapshotService,
     AgentService,
     MemoryService,
     BenchmarkService,
     AgentRoutes,
   ],
-  exports: [AgentConfig, Snapshots, AgentLifecycle, Memory, Benchmarks],
+  exports: [AgentConfig, UserVault, Snapshots, AgentLifecycle, Memory, Benchmarks],
 })
 export class AgentsModule {}
 

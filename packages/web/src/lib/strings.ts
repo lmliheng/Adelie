@@ -969,6 +969,31 @@ export const zh = {
     passwordMismatch: "两次输入的新密码不一致",
     initialPasswordBanner: "当前账号正在使用初始密码，建议尽快修改",
     changeNow: "去修改",
+    /**
+     * The user-level vault dialog (the account menu's 用户密钥 row): this account's own
+     * key-value table, stored outside every Project. The copy explains what the table is and,
+     * just as important, that it reaches no agent on its own — assigning is a separate step
+     * taken in the agent's own settings.
+     */
+    userVault: {
+      title: "用户密钥",
+      desc: "你自己的全局密钥（存于数据根的 users 目录）。它们不属于任何项目，可以一条条添加，也可以整段 JSON 导入。写在这里不会自动进入任何智能体——在「智能体设置 › 密钥保险柜」里把它「分配」给某个智能体，分配是一次性拷贝。",
+      add: "添加",
+      addTitle: "添加全局密钥",
+      import: "导入 JSON",
+      importTitle: "导入 JSON",
+      importHint:
+        '粘贴整段 JSON 对象，例如 {"OPENAI_API_KEY": "sk-…"}。导入会合并进现有密钥：同名覆盖，其余保留；某一条不合法时整次导入不生效，并指出是哪一条。',
+      importPlaceholder: '{\n  "OPENAI_API_KEY": "sk-…",\n  "GITHUB_TOKEN": "ghp_…"\n}',
+      importSubmit: "导入",
+      jsonLabel: "JSON 对象",
+      empty: "还没有全局密钥",
+      remove: "删除",
+      deleteTitle: "删除全局密钥",
+      deleteConfirm: (key: string): string => `确认删除全局密钥「${key}」？值不可恢复。`,
+      overwriteTitle: "覆盖已有全局密钥",
+      overwriteConfirm: (key: string): string => `「${key}」已存在，保存将覆盖原值且不可恢复。`,
+    },
   },
 
   admin: {
@@ -1902,6 +1927,23 @@ export const zh = {
         "- 不要在回复里复述任何值，不要读取 .vault.toml。",
         `- 最后运行 \`penguin config vault list --agent-id ${agentId} --project-id ${projectId} --root <数据根目录>\` 列出键名。`,
       ].join("\n"),
+    /**
+     * Assigning the account's own global secrets into this Agent (the user-level vault dialog
+     * lives in the account menu). The copy says what the operation IS — a one-off copy into this
+     * Agent's own vault, not a link to the global entry — because that is the one thing a user
+     * cannot see from the table that results.
+     */
+    assign: {
+      open: "从用户密钥分配",
+      title: "分配用户密钥",
+      hint: "把你的全局密钥拷贝进本智能体；之后全局密钥改了，要重新分配才会同步。",
+      empty: "你的用户密钥里还没有条目——先在左下角账号菜单 ›「用户密钥」里添加。",
+      selected: (n: number): string => `已选 ${n} 条`,
+      all: "全选",
+      confirm: "分配",
+      done: (n: number): string => `已分配 ${n} 条到本智能体`,
+      overwritten: "同名密钥会覆盖本智能体原有的值",
+    },
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "启用密钥保险柜",

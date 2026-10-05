@@ -917,6 +917,33 @@ export const en: Strings = {
     passwordMismatch: "New passwords do not match",
     initialPasswordBanner: "This account is using its initial password. Please change it soon.",
     changeNow: "Change now",
+    /**
+     * The user-level vault dialog (the account menu's "User secrets" row): this account's own
+     * key-value table, stored outside every Project. The copy explains what the table is and,
+     * just as important, that it reaches no agent on its own — assigning is a separate step
+     * taken in the agent's own settings.
+     */
+    userVault: {
+      title: "User secrets",
+      desc: "Your own global secrets (stored in the users directory of the data root). They belong to no Project, and they can be added one at a time or pasted in as one JSON object. Nothing here reaches an agent by itself — assign them to an agent under Agent settings › Vault, and note that assigning is a one-off copy.",
+      add: "Add",
+      addTitle: "Add global secret",
+      import: "Import JSON",
+      importTitle: "Import JSON",
+      importHint:
+        'Paste a whole JSON object, e.g. {"OPENAI_API_KEY": "sk-…"}. The import merges into the stored secrets: a same-named key is overwritten, the rest stay; one invalid entry fails the whole import and is named.',
+      importPlaceholder: '{\n  "OPENAI_API_KEY": "sk-…",\n  "GITHUB_TOKEN": "ghp_…"\n}',
+      importSubmit: "Import",
+      jsonLabel: "JSON object",
+      empty: "No global secrets yet",
+      remove: "Remove",
+      deleteTitle: "Delete global secret",
+      deleteConfirm: (key: string): string =>
+        `Delete the global secret "${key}"? Its value cannot be recovered.`,
+      overwriteTitle: "Overwrite existing global secret",
+      overwriteConfirm: (key: string): string =>
+        `"${key}" already exists — saving will overwrite its value, which cannot be recovered.`,
+    },
   },
 
   admin: {
@@ -1844,6 +1871,24 @@ export const en: Strings = {
         "- Never repeat a value back in your reply, and never read .vault.toml.",
         `- Finish with \`penguin config vault list --agent-id ${agentId} --project-id ${projectId} --root <data root>\` to list the key names.`,
       ].join("\n"),
+    /**
+     * Assigning the account's own global secrets into this Agent (the user-level vault dialog
+     * lives in the account menu). The copy says what the operation IS — a one-off copy into this
+     * Agent's own vault, not a link to the global entry — because that is the one thing a user
+     * cannot see from the table that results.
+     */
+    assign: {
+      open: "Assign user secrets",
+      title: "Assign user secrets",
+      hint: "Copies your global secrets into this agent; a later change to a global secret needs another assign to reach it.",
+      empty:
+        "Your user secrets are empty — add some under the account menu first (bottom left) › User secrets.",
+      selected: (n: number): string => `${n} selected`,
+      all: "Select all",
+      confirm: "Assign",
+      done: (n: number): string => `Assigned ${n} to this agent`,
+      overwritten: "A same-named key overwrites the agent's own value",
+    },
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "Enable vault",

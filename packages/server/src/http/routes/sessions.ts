@@ -144,6 +144,7 @@ import type { TraceIndex, Traces } from "../../mechanisms/traces.js";
 import type { FileReveal, WorkspaceFiles } from "../../mechanisms/workspace.js";
 import type { Machines } from "../../machines/service.js";
 import type { AgentConfig, AgentLifecycle } from "../../mechanisms/agents.js";
+import type { UserVault } from "../../mechanisms/vault.js";
 import type { Settings } from "../../mechanisms/settings.js";
 import type { LiveStreams } from "../../auth/live-streams.js";
 import type { Auth } from "../../mechanisms/identity.js";
@@ -1628,6 +1629,7 @@ export class SessionApiRoutes {
   @Use() private readonly machines!: Machines;
   @Use() private readonly sessionService!: SessionServiceIface;
   @Use() private readonly agentConfig!: AgentConfig;
+  @Use() private readonly userVault!: UserVault;
   @Use() private readonly agents!: AgentLifecycle;
   @Use() private readonly messaging!: Messaging;
   @Use() private readonly schedulesRepo!: Schedules;
@@ -1740,7 +1742,12 @@ export class SessionApiRoutes {
       traceIndex: this.traceIndex,
     });
     this.agentConfigRoutes = agentConfigRoutes({ agentConfigService, manager, access });
-    this.vaultRoutes = vaultRoutes({ agentConfigService, manager, access });
+    this.vaultRoutes = vaultRoutes({
+      agentConfigService,
+      manager,
+      access,
+      userVault: this.userVault,
+    });
     this.agentSessionsRoutes = agentSessionsRoutes(sessionsDeps);
     this.usageRoutes = usageRoutes({ access, usageService: this.usage });
     this.workspaceFilesRoutes = workspaceFilesRoutes({

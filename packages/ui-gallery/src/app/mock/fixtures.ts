@@ -112,6 +112,8 @@ export interface DemoFixtures {
   update: UpdateCheckResponse;
   memory: Record<string, { overview: MemoryOverviewResponse; files: MemoryFileResponse[] }>;
   vault: Record<string, VaultResponse>;
+  /** The signed-in account's own vault — the user-level table `/api/me/vault` serves. */
+  userVault: VaultResponse;
   workspace: { entries: Record<string, WorkspaceFileEntry[]>; content: Record<string, string> };
   chatDefaults: ChatDefaultsDto;
   commandPolicy: CommandPolicyDto;
@@ -1097,6 +1099,15 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     [IDS.agents.notes]: { entries: [] },
   };
 
+  // One entry the docs Agent already has (the assign step overwrites it) and one it does not, so
+  // the picker in the Agent settings tab has both a "name already there" and a new key to show.
+  const userVault: VaultResponse = {
+    entries: [
+      { key: "GITHUB_TOKEN", valueMasked: "ghp_…9x2Q" },
+      { key: "OPENAI_API_KEY", valueMasked: "sk-…4f7a" },
+    ],
+  };
+
   const file = (name: string, sizeBytes: number, days: number): WorkspaceFileEntry => ({
     name,
     kind: "file",
@@ -1435,6 +1446,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     update,
     memory,
     vault,
+    userVault,
     workspace,
     chatDefaults,
     commandPolicy,

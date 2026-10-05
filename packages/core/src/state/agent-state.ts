@@ -82,9 +82,15 @@ import {
   toolsDir,
 } from "./paths.js";
 
-/** project_id / agent_id / skill_name only allow letters, digits, underscore `_`, and hyphen `-` (prevents path traversal). */
+/**
+ * project_id / agent_id / skill_name / user_id only allow letters, digits, underscore `_`, and
+ * hyphen `-` (prevents path traversal). `user_id` is here because a user-level vault names the
+ * account's own directory under `<root>/users/` (see state/user-vault.ts): the ids are minted
+ * by the server (`^[a-z][a-z0-9_]{1,31}$`) and this is the belt-and-braces check before any
+ * path is built from one.
+ */
 const ID_PATTERN = /^[A-Za-z0-9_-]+$/;
-export type IdKind = "project_id" | "agent_id" | "skill_name";
+export type IdKind = "project_id" | "agent_id" | "skill_name" | "user_id";
 
 export function isValidId(id: string): boolean {
   return ID_PATTERN.test(id);

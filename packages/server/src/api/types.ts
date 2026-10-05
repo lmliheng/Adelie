@@ -1085,6 +1085,33 @@ export interface VaultUpdateRequest {
 }
 
 // ---------------------------------------------------------------------------
+// User-level vault (the signed-in user's own secrets: <root>/users/<userId>/.vault.toml)
+// Read as {@link VaultResponse} and written through {@link VaultUpdateRequest}, exactly like
+// the Agent-level table: one entry shape, one set of rules, masked on the way out.
+// ---------------------------------------------------------------------------
+
+/**
+ * POST /api/me/vault/import body: the whole import in one object, as the pasted JSON TEXT.
+ * Parsed and validated server-side rather than in the browser, so a syntax error and a bad
+ * entry both come back as a 400 naming what is wrong with which entry. The import merges into
+ * the stored table (a key already there is overwritten, keys absent from the body stay) — the
+ * paste flow is additive; removing an entry is the table's own delete, i.e. the PUT above.
+ */
+export interface UserVaultImportRequest {
+  json: string;
+}
+
+/**
+ * POST …/agents/:agentId/vault/assign-user-vault body: the user-level entries to copy into
+ * that Agent's vault. A one-off copy, not a link — the Agent keeps the value it was given, and
+ * a later change to the user-level entry does not reach it.
+ */
+export interface UserVaultAssignRequest {
+  /** Vault key names; every one must exist in the caller's own user-level vault. */
+  keys: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Agent and its config (system_config.yaml + AGENTS.md)
 // ---------------------------------------------------------------------------
 

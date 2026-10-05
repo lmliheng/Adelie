@@ -1,15 +1,15 @@
 /**
  * The account menu, shared by both avatars that open one: the pinned sidebar's user row and
  * the collapsed rail's avatar. One component rather than a copy per anchor — the rows
- * (Settings, the scheduled-tasks page, the update entry, sign out) and the dialog behind the
- * first of them must stay the same menu from either side, and a second copy is how two menus
- * drift apart.
+ * (Settings, the user-level vault, the scheduled-tasks page, the update entry, sign out) and the
+ * dialog behind the first of them must stay the same menu from either side, and a second copy is
+ * how two menus drift apart.
  *
  * Only the trigger differs, so the trigger is the caller's: it is handed the menu's own open
  * state, which is what keeps "what opening means" here rather than in two places.
  *
- * The settings dialog is mounted OUTSIDE the panel: the panel's children unmount the moment
- * the menu closes, and the settings row closes the menu as it opens the dialog.
+ * The dialogs are mounted OUTSIDE the panel: the panel's children unmount the moment the menu
+ * closes, and a row closes the menu as it opens its dialog.
  *
  * The panel heads itself with the account it belongs to — avatar, nickname, and the id under
  * it once a nickname stands in for it. Both anchors are avatars, and the rail's is nothing but
@@ -23,6 +23,7 @@ import type { DropdownPortal } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { useAuth } from "../../state/auth";
 import { UpdateRow } from "../account/update-row";
+import { UserVaultDialog } from "../account/user-vault-dialog";
 import { openUpdateModal } from "../../lib/use-update-flow";
 import { SettingsDialog } from "../../features/settings/settings-dialog";
 import { onSettingsRequest } from "../../features/settings/settings-request";
@@ -53,6 +54,8 @@ export function UserMenu({
   const { user, logout, desktopMode } = useAuth();
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** The account's own global secrets, the one row here that edits data rather than navigating. */
+  const [vaultOpen, setVaultOpen] = useState(false);
   /** The page a request asked for; the menu's own row asks for none (the viewer's first). */
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey | undefined>(undefined);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
@@ -115,6 +118,16 @@ export function UserMenu({
                 setSettingsOpen(true);
               }}
             />
+            {/* The account's own global secrets. A row here rather than a settings page because
+                it is not a preference: it is the table of secrets the Agent vault's "assign"
+                step reads from, and it belongs next to the account it belongs to. */}
+            <MenuItem
+              label={S.account.userVault.title}
+              onSelect={() => {
+                setOpen(false);
+                setVaultOpen(true);
+              }}
+            />
             {/* The Project's scheduled tasks, the one page reached from here rather than from
                 the sidebar: it is a Project-wide inventory visited now and then, not a
                 workspace. A plain row of its own, right under the settings dialog's entry —
@@ -159,6 +172,9 @@ export function UserMenu({
         onClose={() => setSettingsOpen(false)}
         {...(settingsSection !== undefined ? { section: settingsSection } : {})}
       />
+      {/* The account's own secrets, mounted here like the settings dialog so it outlives the
+          menu that opened it. */}
+      <UserVaultDialog open={vaultOpen} onClose={() => setVaultOpen(false)} />
       {/* Signing out is confirmed first: the row sits in a menu of harmless entries, and a
           slip would end the session and land on the login page. Mounted beside the settings
           dialog, outside the dropdown, so it outlives the menu that opened it. */}
