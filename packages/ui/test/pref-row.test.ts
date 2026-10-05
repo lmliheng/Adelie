@@ -38,6 +38,17 @@ describe("PrefRow", () => {
     expect(row).not.toContain("Light or dark look of the app.");
     expect(row).toContain("Applies at once.");
   });
+
+  it("wraps instead of overlapping when the control cannot fit beside the label", () => {
+    // A phone-width row whose control group is wider than the line: the row breaks, the control
+    // takes a line of its own (pushed to the end edge) and is capped at the row's width so it can
+    // wrap inside itself — the Trace-import row's three pickers are what this exists for.
+    const tokens = classTokens(row);
+    expect(tokens).toEqual(expect.arrayContaining(["flex-wrap", "gap-x-4", "gap-y-2"]));
+    const control = row.slice(row.indexOf('data-slot="control"'));
+    expect(control).toContain("ml-auto");
+    expect(control).toContain("max-w-full");
+  });
 });
 
 describe("SettingRow", () => {

@@ -11,7 +11,12 @@
  * Project provisioning at signup.
  */
 import fs from "node:fs/promises";
-import { DEFAULT_PROJECT_ID, projectDir, provisionProjectAgents } from "@prismshadow/penguin-core";
+import {
+  DEFAULT_PROJECT_ID,
+  DEFAULT_PROJECT_NAME,
+  projectDir,
+  provisionProjectAgents,
+} from "@prismshadow/penguin-core";
 import type { MemberInfo, ProjectRole, ProjectSummary } from "../api/types.js";
 import { HttpError } from "../http/errors.js";
 import type { ProjectRow } from "../db/repos/projects.js";
@@ -193,8 +198,9 @@ export class ProjectService implements ProjectLifecycle {
    * Initial Project provisioned at signup:
    * the built-in admin adopts `default_project` (if the directory already exists,
    * it's adopted directly without overwriting existing config — shared with the
-   * CLI); other users get `<username>-default_project` created, with display name
-   * defaulting to the username.
+   * CLI), named `default` when it carries no name of its own; other users get
+   * `<username>-default_project` created, with display name defaulting to the
+   * username.
    */
   async provisionInitialProject(user: UserRow, isAdmin: boolean): Promise<void> {
     if (!isAdmin) {
@@ -209,6 +215,9 @@ export class ProjectService implements ProjectLifecycle {
     // models at all; a default_project already configured via the CLI is left
     // as-is).
     const seeded = await this.projectConfig.ensurePresetModels(projectId);
+    // Same treatment for the label: an adopted directory has no name, and every surface
+    // would otherwise show the raw id (`default_project`). Only filled in when unset.
+    await this.projectConfig.ensureDisplayName(projectId, DEFAULT_PROJECT_NAME);
     this.projects.insert({
       projectId,
       ownerUserId: user.userId,

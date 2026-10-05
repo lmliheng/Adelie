@@ -2812,7 +2812,7 @@ export function Sidebar({
   );
 }
 
-/** Single parked-draft row: first line of the unsent text + hover delete (opening resumes the draft at `/chat/<draft-id>`). */
+/** Single parked-draft row: first line of the unsent text + delete (opening resumes the draft at `/chat/<draft-id>`). */
 function DraftRow({
   entry,
   active,
@@ -2849,12 +2849,16 @@ function DraftRow({
           />
         </button>
         <div className="flex shrink-0 items-center">
+          {/* Always on below `sm`, hover/focus-revealed from `sm` up — the same rule the message
+              footer's copy button follows. A parked draft is the ONE row whose only exit is this
+              button (a Session also has the row menu), and `group-hover` never matches on a touch
+              screen, so a hover-only button left drafts undeletable on a phone. */}
           <button
             type="button"
             data-tooltip={S.chat.deleteDraft}
             aria-label={S.chat.deleteDraft}
             onClick={onDelete}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 opacity-0 transition-[opacity,background-color,color] duration-150 hover:bg-gray-300/60 hover:text-red-600 focus-visible:opacity-100 group-hover:opacity-100 dark:hover:bg-gray-700 dark:hover:text-red-400"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 opacity-100 transition-[opacity,background-color,color] duration-150 hover:bg-gray-300/60 hover:text-red-600 focus-visible:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 dark:hover:bg-gray-700 dark:hover:text-red-400"
           >
             <Icon d={ICONS.trash} size={14} />
           </button>

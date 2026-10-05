@@ -1,5 +1,6 @@
 import { Component, Module, moduleDefOf, Use } from "@prismshadow/penguin-core/kernel";
 import type { ManifestTable, ModuleClass, ModuleDef } from "@prismshadow/penguin-core/kernel";
+import { DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME } from "@prismshadow/penguin-core";
 import table from "./ifaces.json" with { type: "json" };
 import type { HmrCapabilities, ReassemblyChange } from "./hmr/capabilities.js";
 import {
@@ -192,8 +193,15 @@ export class Startup {
   @Use() private readonly sessionService!: SessionServiceIface;
   @Use() private readonly machines!: Machines;
   @Use() private readonly errors!: Errors;
+  @Use() private readonly projectConfig!: ProjectConfigStore;
 
   async setup() {
+    // The shared default Project's display name, on every start rather than only where it is
+    // adopted (auth/service.ts seedAdmin adopts it once, and that seed early-returns on any
+    // root that already has its admin): an install older than this behavior would go on
+    // showing the raw id as the Project's label. Idempotent and file-guarded — a root without
+    // that Project's config file is untouched, so nothing is ever created here.
+    await this.projectConfig.ensureDisplayName(DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME);
     // Schedule scheduler: startup reconciliation (missed, don't backfill) + periodic scan.
     await this.scheduler.start();
     // Company mode's scheduler: same lifetime and the same startup rule (reconcile once,

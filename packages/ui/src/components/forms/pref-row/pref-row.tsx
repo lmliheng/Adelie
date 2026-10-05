@@ -56,9 +56,15 @@ export function PrefRow({
   return (
     // ui-field: a theme may lay the label and the control out its own way (stacked, or as a
     // table row); the hint rides inside the label slot, under the label, in every theme.
-    <div className="ui-field flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
+    //
+    // Wrapping is the default theme's answer to a control wider than the phone it is read on
+    // (the Trace-import row's three pickers are the case that forced it): the row breaks, the
+    // control takes a line of its own — `ml-auto` keeps it to the end edge the side-by-side
+    // layout puts it on — and `max-w-full` caps it at the row's width so a control group of its
+    // own can wrap inside itself instead of running off the screen over the label beside it.
+    <div className="ui-field flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3.5 first:pt-0 last:pb-0">
       <PrefRowLabel label={label} hint={hint} info={info} />
-      <div data-slot="control" className="shrink-0">
+      <div data-slot="control" className="ml-auto max-w-full shrink-0">
         {children}
       </div>
     </div>

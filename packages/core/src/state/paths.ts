@@ -11,6 +11,16 @@ import path from "node:path";
 /** Default Project id used when none is specified. */
 export const DEFAULT_PROJECT_ID = "default_project";
 
+/**
+ * Display name of the shared default Project (`DEFAULT_PROJECT_ID`). It is backfilled when that
+ * Project is adopted rather than created: its directory is older than the Web onboarding and was
+ * never written a name, and the UI falls back to showing the raw id (`default_project`), which
+ * reads like a path rather than a label. A name the operator (or an older CLI) already set is
+ * never overwritten, and the id itself is left alone — it names the directory, every Workspace
+ * path and the CLI's own default chain.
+ */
+export const DEFAULT_PROJECT_NAME = "default";
+
 /** Default Agent id used when none is specified. */
 export const DEFAULT_AGENT_ID = "default_agent";
 

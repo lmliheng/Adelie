@@ -604,6 +604,22 @@ export class ProjectConfigService implements ProjectConfigStore {
   }
 
   /**
+   * Backfills a display name for a Project that was **adopted** rather than created through
+   * `writeInitialConfig` — the shared `default_project` (see provisionInitialProject and
+   * Startup's boot sweep): its directory predates the Web onboarding, so it carries no name and
+   * every surface fell back to showing the raw id. Only writes when no name is stored (an empty
+   * one counts as none): a name the operator or an older CLI set is left alone, exactly like
+   * ensurePresetModels leaves configured models alone. A Project with **no config file at all**
+   * is left untouched too — this never brings a Project into existence.
+   */
+  async ensureDisplayName(projectId: string, name: string): Promise<void> {
+    const table = await this.readTable(projectId);
+    if (table === null) return;
+    if (typeof table.name === "string" && table.name !== "") return;
+    await this.writeRaw(projectId, { ...table, name });
+  }
+
+  /**
    * Rewrites the display name, preserving every other field (models, credentials, default
    * model): read-modify-write of the same toml, like ensurePresetModels. The id itself is
    * immutable — only this label changes.

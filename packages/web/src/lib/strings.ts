@@ -5,7 +5,9 @@
  * state/locale.tsx, which calls `setActiveStrings` to switch and remounts the whole
  * tree keyed by locale, so `S.x` reads in components always reflect the current
  * language (module-level constants do not update on switch — keep reads inside components).
- * Keep domain terms capitalized in English — Workspace, Token, Task, Session, Project, Trace.
+ * Keep domain terms capitalized in English — Workspace, Token, Task, Session, Trace. zh names the
+ * Project SURFACE 「项目」 the way it names the Agent surface「智能体」: the switcher, the create /
+ * settings dialogs and every label that points at one. The English dictionary keeps "Project".
  * "agent" is a common noun: lowercase mid-sentence, capitalized only at the start of a
  * label/sentence or in a proper name (Agent State, AgentHub). zh names the SURFACE
  * 「智能体」 — the nav entry, the grouping option, the panel — and keeps "Agent" as-is
@@ -451,8 +453,8 @@ export const zh = {
     /** Trace import: the two pickers' accessible names, the pick-a-file action, and its outcomes. */
     importTrace: "导入 Trace",
     importTraceInfo:
-      "上传从其他部署导出的 .jsonl 轨迹文件，它会成为所选 Agent 的一个会话。目的地的两个部分都在这里选择：导入接口按 Agent 划分——轨迹文件自带的 session_meta 无法指认本机的 Agent，其中的 agent_state 路径属于导出它的那台机器——而 Project 需要明确指定，因为本对话框不显示当前是哪一个，也因此可以导入到当前打开之外的 Project。导出在对话的 Trace 面板中进行。",
-    importTraceProject: "导入到 Project",
+      "上传从其他部署导出的 .jsonl 轨迹文件，它会成为所选 Agent 的一个会话。目的地的两个部分都在这里选择：导入接口按 Agent 划分——轨迹文件自带的 session_meta 无法指认本机的 Agent，其中的 agent_state 路径属于导出它的那台机器——而项目需要明确指定，因为本对话框不显示当前是哪一个，也因此可以导入到当前打开之外的项目。导出在对话的 Trace 面板中进行。",
+    importTraceProject: "导入到项目",
     importTraceAgent: "导入到 Agent",
     importTracePick: "选择文件",
     importTraceRunning: "导入中…",
@@ -976,27 +978,27 @@ export const zh = {
     createUser: "新增用户",
     initialPassword: "初始密码",
     initialPasswordFlag: "初始密码",
-    defaultProjectNote: (id: string): string => `将自动创建默认 Project：${id}`,
+    defaultProjectNote: (id: string): string => `将自动创建默认项目：${id}`,
     resetPassword: "重置密码",
     resetPasswordTitle: (u: string): string => `重置 ${u} 的密码`,
     resetPasswordNote: "重置后该用户的登录会话全部失效，需用新密码重新登录",
     deleteUserTitle: (u: string): string => `删除用户 ${u}`,
     deleteUserConfirm: (u: string): string =>
-      `将删除用户 ${u} 及其名下全部 Project（含数据目录），不可恢复。`,
+      `将删除用户 ${u} 及其名下全部项目（含数据目录），不可恢复。`,
   },
 
   project: {
-    switcher: "Project",
-    create: "新建 Project",
-    createTitle: "新建 Project",
-    id: "Project id",
+    switcher: "项目",
+    create: "新建项目",
+    createTitle: "新建项目",
+    id: "项目 ID",
     idHint: "2~64 位：小写字母开头，仅小写字母、数字与下划线；创建后不可修改",
     idPrefixHint: "id 固定以「用户名-」为前缀，后接小写字母、数字或下划线；创建后不可修改",
     displayName: "显示名",
     /** Create dialog only: leaving the name empty falls back to the id. In Project settings the saved name cannot be blanked. */
-    displayNameHint: "留空则使用 Project id 作为名称",
-    settings: "Project 设置",
-    settingsTitle: "Project 设置",
+    displayNameHint: "留空则使用项目 ID 作为名称",
+    settings: "项目设置",
+    settingsTitle: "项目设置",
     members: "成员",
     addMember: "添加成员",
     removeMember: "移除",
@@ -1014,7 +1016,7 @@ export const zh = {
     settingsTabMembers: "成员",
     settingsTabDefaults: "默认值",
     settingsTabSecurity: "安全策略",
-    projectIdLabel: "Project ID",
+    projectIdLabel: "项目 ID",
     deleteProjectDesc: "项目目录将被递归删除，不可恢复。",
     /** Security-policy page (Project settings): disclosed by the "?" beside the tab heading. */
     commandPolicyInfo:
@@ -1033,13 +1035,12 @@ export const zh = {
     commandPolicyRulePattern: "正则表达式",
     commandPolicyRuleDesc: "描述",
     commandPolicyInvalidPattern: "正则表达式无效",
-    deleteProject: "删除 Project",
-    deleteConfirm: "确认删除该 Project？项目目录将被递归删除，不可恢复。",
+    deleteProject: "删除项目",
+    deleteConfirm: "确认删除该项目？项目目录将被递归删除，不可恢复。",
     deleteDefaultForbidden: "default_project 与 CLI 共用，不允许在 Web 端删除",
-    deleteLastForbidden:
-      "这是当前账号最后一个 Project，删除后将无 Project 可用；请先创建新的 Project",
+    deleteLastForbidden: "这是当前账号最后一个项目，删除后将无项目可用；请先创建新的项目",
     noCredentialTitle: "尚未配置模型 credential",
-    noCredentialBody: "当前 Project 的默认模型尚未配置 API key，发起对话前请先前往模型页配置。",
+    noCredentialBody: "当前项目的默认模型尚未配置 API key，发起对话前请先前往模型页配置。",
     goToModels: "前往模型页",
     later: "稍后再说",
   },
@@ -1058,7 +1059,7 @@ export const zh = {
     placeholder: "描述你想要什么，越具体越好",
     /** Accessible name of the prompt box (it has no visible label). */
     promptLabel: "提示词",
-    noAgent: "当前 Project 还没有智能体",
+    noAgent: "当前项目还没有智能体",
   },
 
   agent: {
@@ -1114,7 +1115,7 @@ export const zh = {
      */
     aiCreateTitle: "用 AI 创建 Agent",
     aiCreateIntro:
-      "描述这个智能体要做什么、面向谁、产出什么；执行的智能体会用 agent-initialization 技能在当前 Project 里创建它。",
+      "描述这个智能体要做什么、面向谁、产出什么；执行的智能体会用 agent-initialization 技能在当前项目里创建它。",
     aiCreatePlaceholder: "例如：创建一个帮我把会议录音整理成待办清单的智能体…",
     aiExamples: [
       {
@@ -1154,7 +1155,7 @@ export const zh = {
       },
     ],
     aiCreateTail: [
-      "请使用 agent-initialization 技能，在当前 Project 中按上面的描述新建一个智能体：",
+      "请使用 agent-initialization 技能，在当前项目中按上面的描述新建一个智能体：",
       "- 上面给了 agent id 就用它，否则取一个简短的语义 id（小写字母开头，可含数字、下划线或连字符）；目标目录已存在时停下来告诉我，不要覆盖。",
       "- 以 default_agent 的 system_config.yaml 为底，设置它的 name、description 与 version，把角色与行为规则写进它的 agent_state/AGENTS.md。",
       "- 只从插件库（default_agent 已安装的技能目录）复制它真正需要的技能，不要多装。",
@@ -1204,7 +1205,7 @@ export const zh = {
       ["{{DATE}}", "当前日期"],
       [
         "{{PROJECT_DIR}}",
-        "Adelie 应用数据根目录（存放全部 Agent 数据与 Project 级数据；不是本次任务的工作目录）",
+        "Adelie 应用数据根目录（存放全部 Agent 数据与项目级数据；不是本次任务的工作目录）",
       ],
       ["{{AGENT_ID}}", "当前 Agent id"],
       ["{{CWD}}", "Workspace 绝对路径"],
@@ -1470,7 +1471,7 @@ export const zh = {
     aiAddTail: (projectId: string): string =>
       [
         "请使用 penguin-config 技能完成上面的配置：",
-        "- 下面每条命令都要带 `--root <数据根目录>`，即环境信息中 App Data Dir 的上级目录。命令的环境里没有这个值，不带 `--root` 会配置到另一个数据根目录，本 Project 什么也拿不到。",
+        "- 下面每条命令都要带 `--root <数据根目录>`，即环境信息中 App Data Dir 的上级目录。命令的环境里没有这个值，不带 `--root` 会配置到另一个数据根目录，本项目什么也拿不到。",
         `- 每个模型执行一次 \`penguin config model add --provider <分组名> --model-id <上游模型 id> --project-id ${projectId} --root <数据根目录> [--base-url <端点>] [--client-type openai] [--api-key <key>] [--context-window <n>] [--price-cache-read <n> --price-cache-write <n> --price-output <n>]\`：\`--provider\` 必填，\`--model-id\` 用网关自己的模型 id；OpenAI 兼容端点加 \`--client-type openai --base-url <端点>\`。`,
         "- 来源是网页时先抓取页面：优先加我点名的模型，没有点名就选最常用的，最多 10 个左右。",
         "- 需要 API key 而我没给时只问我一次；我不提供就把 key 留空，并告诉我到模型库页补填。",
@@ -1897,7 +1898,7 @@ export const zh = {
     ],
     aiAddTail: (agentId: string, projectId: string): string =>
       [
-        `请使用 penguin-config 技能，把上面的密钥写进智能体 ${agentId} 的保险柜（Project ${projectId}）：`,
+        `请使用 penguin-config 技能，把上面的密钥写进智能体 ${agentId} 的保险柜（项目 ${projectId}）：`,
         "- 下面每条命令都要带 `--root <数据根目录>`，即环境信息中 App Data Dir 的上级目录。命令的环境里没有这个值，不带 `--root` 会写到另一个数据根目录，这个智能体的保险柜仍然是空的。",
         `- 每个密钥执行一次 \`penguin config vault set --key <键名> --value <值> --agent-id ${agentId} --project-id ${projectId} --root <数据根目录>\`；只需创建键名时，值先填占位符 TODO，并告诉我该键的用途与申请地址。`,
         "- 不要在回复里复述任何值，不要读取 .vault.toml。",
@@ -1963,7 +1964,7 @@ export const zh = {
     sessionEmpty: "该 Agent 暂无 Session",
     workspace: "Workspace",
     model: "Model",
-    modelDefault: "Project 默认",
+    modelDefault: "项目默认",
     deleteTitle: "删除定时任务",
     deleteConfirm: (name: string): string => `确认删除定时任务「${name}」？`,
     /** Toasts after a write. A schedule fires on its own clock, so none of them mentions when a conversation picks the change up: there is nothing to pick up. */
@@ -2076,7 +2077,7 @@ export const zh = {
   plugins: {
     installedTitle: "已安装的插件",
     installedDesc:
-      "当前 Project 要求的插件，以及其中哪些正在被本进程运行。服务器能自行重组时，改动无需重启即可生效；重组会中止所有 Project 正在进行的 Agent 运行。",
+      "当前项目要求的插件，以及其中哪些正在被本进程运行。服务器能自行重组时，改动无需重启即可生效；重组会中止所有项目正在进行的 Agent 运行。",
     installedEmpty: "还没有安装任何插件。",
     stateActive: "运行中",
     builtin: "内置",
@@ -2094,7 +2095,7 @@ export const zh = {
     deploymentFailedToast: (name: string, reason: string) => `${name} 加载失败：${reason}`,
     applyConfirmInstall: (name: string) => `安装 ${name}？`,
     applyConfirmRemove: (name: string) => `移除 ${name}？`,
-    applyConfirmBody: "所有 Project 中正在进行的 Agent 运行都会被中止。",
+    applyConfirmBody: "所有项目中正在进行的 Agent 运行都会被中止。",
     pageTitle: "插件",
     /** The header's machine picker: which machine's plugins the page shows and edits. */
     viewMachine: "机器",
@@ -2112,7 +2113,7 @@ export const zh = {
     /** Header icon button opening the Settings dialog on its Plugins page (admin only). */
     openSettings: "插件设置",
     pageDesc:
-      "所有插件在一个列表里。插件库里的随本次构建自带（技能和／或钩子包——快捷调用，或安装到 Agent）；当前 Project 要求的模块插件在服务端运行，市场里其余的可以为它安装。",
+      "所有插件在一个列表里。插件库里的随本次构建自带（技能和／或钩子包——快捷调用，或安装到 Agent）；当前项目要求的模块插件在服务端运行，市场里其余的可以为它安装。",
     /** The list's header: how many plugins are installed — the library's (shipped, every Agent may use them) plus the module plugins this Project lists. */
     installedSection: (n: number): string => `已安装的插件 (${n})`,
     /** The second list: registry entries this Project does not ask for yet. */
@@ -2274,7 +2275,7 @@ export const zh = {
       "该 Agent 已安装的钩子包（agent_state/hooks/）：harness 在循环的钩子点运行的脚本，例如每个 Task 结束后。卸载会删除整个钩子包目录。",
     agentTabEmpty: "尚未安装任何钩子包",
     /** Members see the switch state but cannot flip it (appended to the tab description). */
-    readOnlyHint: "启用钩子的开关仅 Project owner 可用。",
+    readOnlyHint: "启用钩子的开关仅项目所有者可用。",
     /** The agents page's hook-count stat (hover title / accessible name). */
     hookCount: (n: number): string => `${n} 个钩子包`,
     exportHook: "打包导出",
@@ -2309,7 +2310,7 @@ export const zh = {
         "先完整阅读来源，逐个审查脚本有没有恶意行为（外传数据、改动来源之外的文件、执行来路不明的命令等），确认安全后再继续。",
         '然后产出一个 Adelie 钩子包：一份 hooks.json（name、description、description_zh、version（格式 YYYY.MM.DD.N），以及各钩子点的命令列表 stop / pre_tool_use / user_prompt，每项为 { "command": "<脚本相对路径>", "timeout": <秒> }）加上纯 Node 的 .mjs 脚本（只用内置模块）。用不到的钩子点可以省略或写成 []；user_prompt 的条目可以另加 "trigger": "prompt"（缺省：用户每次提交 Prompt 时运行）或 "host"（只在宿主按包名启动该包的流程时运行）。',
         '脚本契约：stdin 收到一份 JSON——stop 点为 { "hook": "stop", "session_id", "trace_path" }（trace_path 是 Session 正在写入的 Trace 文件，无 Trace 时缺省），pre_tool_use 点另有 tool_name、tool_call_id、arguments（原始参数 JSON 串），user_prompt 点带 trace_path、scratchpad_dir 与 prompt（用户的消息文本）；stdout 为空即无意见，否则一份 JSON 回答——stop 点 { "decision": "continue" | "stop", "input", "reason", "output", "subagent"? }，pre_tool_use 点 { "decision": "allow" | "deny", "reason", "output" }，user_prompt 点 { "context" }，它在每条 Prompt 中紧随用户消息发出；退出码非零、stdout 不是 JSON 或超时都按失败记录、不采纳。',
-        `把它安装到 Project「${projectId}」中 Agent「${agentId}」的 agent_state/hooks/<name>/ 目录（目录名即包名，须匹配 ^[A-Za-z0-9_-]+$），最后向我说明它做什么、在哪个钩子点触发。`,
+        `把它安装到项目「${projectId}」中 Agent「${agentId}」的 agent_state/hooks/<name>/ 目录（目录名即包名，须匹配 ^[A-Za-z0-9_-]+$），最后向我说明它做什么、在哪个钩子点触发。`,
       ].join("\n"),
     uninstallConfirmTitle: (name: string): string => `卸载 ${name}`,
     uninstallConfirmBody: (name: string, agent: string): string =>
@@ -2328,7 +2329,7 @@ export const zh = {
     pageTitle: "插件市场",
     empty: "暂无插件",
     /** Card metadata: the entry's package specifier doubles as the install string. */
-    specifierHint: "包名，即 Project 插件列表里写的那串",
+    specifierHint: "包名，即项目插件列表里写的那串",
     back: "返回插件市场",
     readme: "说明文档",
     noReadme: "该插件暂无说明文档。",
@@ -2338,7 +2339,7 @@ export const zh = {
     authors: "作者",
     license: "许可证",
     copySpecifier: "复制包名",
-    installHint: "在插件市场页安装：该行的「安装」按钮会为当前 Project 要求它。",
+    installHint: "在插件市场页安装：该行的「安装」按钮会为当前项目要求它。",
   },
 
   skills: {
@@ -2727,7 +2728,7 @@ Penguin 视觉风格（见 web-design 技能），默认深色。手机端侧边
         label: "搭建自定义工作流界面：Agent 指挥台",
         desc: "聊天旁的 Workflow 标签页：把一个任务同时派给多个 Agent，实时看每个 Session 的状态",
         prompt:
-          "给你自己做一个 Workflow：聊天旁边的一张「指挥台」标签页。我输入一个任务、勾选本 Project 里的一个或多个 Agent，" +
+          "给你自己做一个 Workflow：聊天旁边的一张「指挥台」标签页。我输入一个任务、勾选本项目里的一个或多个 Agent，" +
           "它就为每个 Agent 开一个 Session 并行跑起来。每次运行是一张卡片，带实时的动态状态（排队、运行中、完成）和耗时，" +
           "刷新页面后看板仍在。再加第二张标签页放统计——各 Agent 的运行次数与平均耗时——以及一个占满整个应用的按钮，当作大屏来用。" +
           "颜色一律取自主题变量，明暗两种主题下都要好看。",
@@ -3776,9 +3777,9 @@ Benchmark：
       })[preset],
     errorsClearRangeCustom: (from: string, to: string): string => `在 ${from} 至 ${to} 区间内`,
     errorsClearScope: (count: number, range: string): string =>
-      `将删除本 Project ${range}的 ${count} 条错误记录，其余时间段的记录保留。`,
+      `将删除本项目 ${range}的 ${count} 条错误记录，其余时间段的记录保留。`,
     errorsClearScopeAgent: (count: number, range: string, agentId: string): string =>
-      `将删除本 Project 中 Agent「${agentId}」${range}的 ${count} 条错误记录，其他 Agent 与其余时间段的记录保留。`,
+      `将删除本项目中 Agent「${agentId}」${range}的 ${count} 条错误记录，其他 Agent 与其余时间段的记录保留。`,
     errorsClearIrreversible: "此操作不可恢复。",
     errorsClearDone: (count: number): string => `已删除 ${count} 条错误记录`,
   },
@@ -3954,7 +3955,7 @@ Benchmark：
       cases: { id: string; score: string; cost: string; duration: string; sessionIds: string[] }[];
     }): string =>
       "请解释下面这次 Benchmark 评估的结果。只做阅读与分析：不要修改这套 Benchmark，也不要修改被测智能体。\n\n" +
-      `- benchmark_id：\`${p.benchmarkId}\`（Project 的 \`benchmarks/${p.benchmarkId}/\`，记分板为 \`benchmarks/${p.benchmarkId}/scoreboard.yaml\`）\n` +
+      `- benchmark_id：\`${p.benchmarkId}\`（项目的 \`benchmarks/${p.benchmarkId}/\`，记分板为 \`benchmarks/${p.benchmarkId}/scoreboard.yaml\`）\n` +
       `- 评估时间：${p.time}\n` +
       `- 系列标签：${p.label}\n` +
       `- 被测版本：v${p.version}\n` +
@@ -4003,7 +4004,7 @@ Benchmark：
       latest: { time: string; score: string; runs: { score: string; sessionId: string }[] } | null;
     }): string =>
       "请解释下面这道 Benchmark 题目考的是什么、怎样才算答好。题目创建即冻结，只做阅读与分析，不要修改这套 Benchmark。\n\n" +
-      `- benchmark_id：\`${p.benchmarkId}\`（Project 的 \`benchmarks/${p.benchmarkId}/\`）\n` +
+      `- benchmark_id：\`${p.benchmarkId}\`（项目的 \`benchmarks/${p.benchmarkId}/\`）\n` +
       `- case_id：\`${p.caseId}\`\n` +
       `- 题干：\`benchmarks/${p.benchmarkId}/${p.caseId}/statement/README.md\`\n` +
       `- 评分细则：\`benchmarks/${p.benchmarkId}/${p.caseId}/rubric/README.md\`\n` +
@@ -4056,7 +4057,7 @@ Benchmark：
       "- 出题手法：隐藏的先验条件、模糊或不完整的输入、互相冲突的材料、严格的交付格式；不要靠堆行数、堆规则来加难度\n" +
       "- desired_baseline_score：`<50`（上文另有要求时以上文为准）\n" +
       "- pilot_iteration_limit：`4`（上文另有要求时以上文为准）\n\n" +
-      "Benchmark 与 Agent 平级：在 Project 的 `benchmarks/<benchmark_id>/` 下（不在被测智能体目录内）创建 `benchmark_config.toml`" +
+      "Benchmark 与 Agent 平级：在项目的 `benchmarks/<benchmark_id>/` 下（不在被测智能体目录内）创建 `benchmark_config.toml`" +
       "（title、description、runs = 1；不记录被测智能体）、" +
       "每题一个 `CASE-NNN-<slug>/`（`statement/README.md` 为题干，`rubric/README.md` 为评分细则，每题满分 100 分，细则不得泄露到题干）" +
       "以及 `scoreboard.yaml`（初始为 `evaluations: []`；每条 evaluation 记录被测的 `agent_id`、`version`、成对的 `provider` / `model_id` 与 `thinking_level`）。" +
@@ -4065,7 +4066,7 @@ Benchmark：
     // New Benchmark, manual mode: the form.
     manualCreateTitle: "手动创建 Benchmark",
     manualCreateIntro:
-      "填好标题、题干与评分细则后，目录结构会按技能约定写入 Project 的 benchmarks/ 下；Benchmark 与 Agent 平级，之后可以用它评测任意智能体。",
+      "填好标题、题干与评分细则后，目录结构会按技能约定写入项目的 benchmarks/ 下；Benchmark 与 Agent 平级，之后可以用它评测任意智能体。",
     idField: "Benchmark id",
     idHint: "目录名即标识：仅字母、数字、_ 和 -，例如 report-writing-v1",
     /** The id field's generation clause: a Benchmark is named by its title, not a display name. */
@@ -4114,7 +4115,7 @@ Benchmark：
       "该智能体没有安装 agent-evaluation 技能，多半无法完成评估——建议换用默认智能体，或先为它安装 agent-tuning 插件。",
     evaluateSessionModel: "评估会话使用的模型",
     evaluateSessionModelHint:
-      "派发与汇总评测的模型，缺省为 Project 默认模型；被测智能体用的是它自己配置的模型，不在这里改",
+      "派发与汇总评测的模型，缺省为项目默认模型；被测智能体用的是它自己配置的模型，不在这里改",
     evaluateRunsHint: "每道题跑几次取平均；缺省为 Benchmark 配置的次数",
     evaluateNoteField: "说明",
     evaluateNotePlaceholder: "例如：这一轮用来确认上次优化的效果，重点看引用规范那两道题",
@@ -4122,7 +4123,7 @@ Benchmark：
     evaluateTail: (p: { targetAgentId: string; benchmarkId: string; runs: number }): string =>
       "请使用 `agent-evaluation` Skill，在这套已冻结的 Benchmark 上评估被测智能体。\n\n" +
       `- test_agent_id：\`${p.targetAgentId}\`\n` +
-      `- benchmark_id：\`${p.benchmarkId}\`（Project 的 \`benchmarks/${p.benchmarkId}/\`，与 Agent 平级）\n` +
+      `- benchmark_id：\`${p.benchmarkId}\`（项目的 \`benchmarks/${p.benchmarkId}/\`，与 Agent 平级）\n` +
       `- runs：\`${p.runs}\`\n\n` +
       "通过 `run_subagent` 按完整的 Case × runs 矩阵评测，每个矩阵单元一个自调用的子会话（省略 `agent_id`），并在每个子会话的 prompt 里写明使用 `agent-evaluation` Skill——不要自己打分，也不要绕过这个技能；" +
       "评测 Runtime 取被测智能体当前配置的模型与思考等级。校验每条返回结果的 `agent_id`、`provider`、`model_id` 与 `thinking_level` 完全一致，" +
@@ -4138,7 +4139,7 @@ Benchmark：
     testedAgentHint: "优化改的是它的 Agent State；分数记在它名下，只与它自己同标签的历史分数比较",
     sessionModel: "优化会话使用的模型",
     sessionModelHint:
-      "做分析与改动的模型，缺省为 Project 默认模型；评测被测智能体时沿用基线记录的模型，不在这里改",
+      "做分析与改动的模型，缺省为项目默认模型；评测被测智能体时沿用基线记录的模型，不在这里改",
     optimizeRunsHint: "每个候选版本每道题跑几次取平均",
     roundLimitField: "最多轮数",
     roundLimitHint: "每轮一个改动；评测完整才算一轮",
@@ -4159,7 +4160,7 @@ Benchmark：
     }): string =>
       "请使用 `agent-optimization` Skill，针对已冻结的 Benchmark 优化被测智能体。\n\n" +
       `- test_agent_id：\`${p.targetAgentId}\`\n` +
-      `- benchmark_id：\`${p.benchmarkId}\`（Project 的 \`benchmarks/${p.benchmarkId}/\`，与 Agent 平级）\n` +
+      `- benchmark_id：\`${p.benchmarkId}\`（项目的 \`benchmarks/${p.benchmarkId}/\`，与 Agent 平级）\n` +
       `- runs：\`${p.runs}\`\n` +
       `- desired_score：\`>=${p.targetScore}\`\n` +
       `- candidate_round_limit：\`${p.roundLimit}\`\n\n` +
@@ -4204,7 +4205,7 @@ Benchmark：
       "组织是一群员工 Agent 按汇报线协作：一位 CEO、它招募的员工、共享的看板与频道，以及驱动它们的日程。新建一个组织，先和 CEO 谈谈使命。",
     /** The page a stale deep link lands on: the organization it names is gone. */
     orgGoneTitle: "组织不存在",
-    orgGoneBody: "它可能已被删除，或者你不再能访问它所属的 Project。",
+    orgGoneBody: "它可能已被删除，或者你不再能访问它所属的项目。",
     backToOrgs: "回到组织列表",
     /** Create dialog. */
     createTitle: "新建组织",
@@ -4243,14 +4244,14 @@ Benchmark：
     modelField: "模型",
     modelInfo:
       "工位会话与工单会话默认使用的模型；员工在组织图里另有指定时以员工的为准。改动从下一次工作轮起生效。",
-    modelHint: "留空则使用 Project 的默认模型",
+    modelHint: "留空则使用项目的默认模型",
     /** The picker offers models only, so the way back to the Project default is its own control. */
-    modelClear: "改回 Project 默认",
+    modelClear: "改回项目默认",
     /** The stored model is no longer in the Project's model list. */
-    modelStale: "这个模型已不在 Project 的模型列表里",
-    modelProjectDefault: "Project 默认",
-    modelProjectDefaultNamed: (name: string): string => `Project 默认（${name}）`,
-    modelsLoadFailed: "模型列表读取失败；仍可按 Project 默认模型创建",
+    modelStale: "这个模型已不在项目的模型列表里",
+    modelProjectDefault: "项目默认",
+    modelProjectDefaultNamed: (name: string): string => `项目默认（${name}）`,
+    modelsLoadFailed: "模型列表读取失败；仍可按项目默认模型创建",
     workspaceField: "公司工作区",
     workspaceInfo:
       "员工共同工作的目录：每位员工的工作区是它的一个子目录（或整个目录），工位会话与工单会话都在其中运行。",
@@ -4288,9 +4289,9 @@ Benchmark：
     pause: "暂停组织",
     resume: "恢复组织",
     deleteOrg: "删除组织",
-    deleteOrgDesc: "把组织移入 Project 的回收目录。员工保留为 Agent，对话也保留。",
+    deleteOrgDesc: "把组织移入项目的回收目录。员工保留为 Agent，对话也保留。",
     deleteOrgConfirm:
-      "组织会从公司模式里消失。组织的文件移入 Project 的回收目录（organizations/.trash），可以手工移回来恢复。员工仍是 Project 的 Agent；工位与工单的对话会保留，但组织不在了，就没有页面再列出它们。要再次使用这个 id，需先删除旧 CEO 的 Agent。只是想让组织停下来而不丢任何东西，请改用暂停。",
+      "组织会从公司模式里消失。组织的文件移入项目的回收目录（organizations/.trash），可以手工移回来恢复。员工仍是项目的 Agent；工位与工单的对话会保留，但组织不在了，就没有页面再列出它们。要再次使用这个 id，需先删除旧 CEO 的 Agent。只是想让组织停下来而不丢任何东西，请改用暂停。",
     deleteOrgTypeId: (orgId: string) => `输入 ${orgId} 以确认`,
     deleted: (orgId: string) => `组织 ${orgId} 已删除`,
     pauseInfo:
@@ -4437,7 +4438,7 @@ Benchmark：
       hireNew: "新建 Agent",
       agent: "Agent",
       pickAgent: "选择 Agent…",
-      noAgentsLeft: "本 Project 没有可招募的 Agent",
+      noAgentsLeft: "本项目没有可招募的 Agent",
       agentId: "Agent id",
       agentIdHint: "2~64 位：小写字母开头，仅小写字母、数字与下划线",
       agentName: "名称",
@@ -4494,7 +4495,7 @@ Benchmark：
       /** Hire and edit dialogs: the two sections, the current value, and the field hints. */
       hireAgentSection: "Agent",
       hirePositionSection: "职位",
-      agentHint: "只列出本 Project 中尚未加入组织的 Agent",
+      agentHint: "只列出本项目中尚未加入组织的 Agent",
       budgetPlaceholder: "例如 30",
       clearBudget: "设为不限",
       currentValue: (value: string): string => `当前：${value}`,
@@ -4805,7 +4806,7 @@ Benchmark：
       channelLoadFailed: "频道加载失败",
       /** The "?" beside the channel name, in its two kinds. */
       allHandsInfo:
-        "全员频道随组织一起创建：组织里的每个人都在这里——每位员工、每位 Project 成员，你也在这里看——谁也不能退出，也不能归档；预算告警等系统通知都发在这里。",
+        "全员频道随组织一起创建：组织里的每个人都在这里——每位员工、每位项目成员，你也在这里看——谁也不能退出，也不能归档；预算告警等系统通知都发在这里。",
       channelInfo:
         "受邀频道：员工只能由成员邀请进来，@ 也只在频道成员之间送达；人可以自行加入，并且可以阅读任何频道。",
       /** Why the all-hands channel's menu has no archive row; what that channel IS stays in the "?" above. */
@@ -4937,7 +4938,7 @@ Benchmark：
     networkError: "网络错误，请检查连接",
     modelCredentialMissing: (modelId: string) =>
       `模型 ${modelId} 还没有可用的 API key，请先在「模型」页为它配置`,
-    noDefaultModel: "该 Project 还没有默认模型，请先在「模型」页添加模型并设为默认",
+    noDefaultModel: "该项目还没有默认模型，请先在「模型」页添加模型并设为默认",
     /** Localized text for the common server error codes (server error messages are English-only); looked up by ApiError.code in apiErrorText, falling back to the raw message for unmapped codes. */
     byCode: {
       invalid_credentials: "用户名或密码错误。",
@@ -4949,19 +4950,19 @@ Benchmark：
       not_found: "资源不存在，或你没有访问权限。",
       internal: "服务器内部错误，请稍后重试。",
       agent_not_found: "该 Agent 已不存在。",
-      unknown_agent: "该 Agent 不存在于本 Project。",
+      unknown_agent: "该 Agent 不存在于本项目。",
       agent_exists: "该 Agent id 已被占用。",
       agent_deleting: "该 Agent 正在删除中。",
-      project_exists: "该 Project id 已被占用。",
-      project_not_found: "该 Project 已不存在，或你没有访问权限。",
+      project_exists: "该项目 ID 已被占用。",
+      project_not_found: "该项目已不存在，或你没有访问权限。",
       modelscope_refresh_failed: "魔搭授权连续自动续期失败，请在「模型」页重新授权。",
-      cannot_delete_last_project: "这是最后一个 Project，不能删除。",
+      cannot_delete_last_project: "这是最后一个项目，不能删除。",
       user_exists: "该用户名已被占用。",
       user_not_found: "该用户已不存在。",
       cannot_delete_admin: "内置 admin 不可删除。",
-      member_not_found: "该用户不是本 Project 的成员。",
-      already_member: "该用户已是本 Project 的成员。",
-      already_owner: "该用户已是本 Project 的所有者。",
+      member_not_found: "该用户不是本项目的成员。",
+      already_member: "该用户已是本项目的成员。",
+      already_owner: "该用户已是本项目的所有者。",
       memory_import_confirm_required: "本次导入会覆盖或删除已有记忆，请确认后继续。",
       schedule_exists: "已存在同名定时任务。",
       schedule_not_found: "该定时任务已不存在。",
@@ -5009,7 +5010,7 @@ Benchmark：
       // compacted that they have never spoken.
       compaction_not_configured: "该 Agent 没有配置上下文压缩。",
       same_model: "本会话已在使用该模型。",
-      model_not_configured: "所选模型不在本 Project 的模型配置中。",
+      model_not_configured: "所选模型不在本项目的模型配置中。",
       model_unavailable: "所选模型暂不可用（例如还没有 API key），请先在「模型」页配置。",
       nothing_to_compact: "当前上下文还没有可压缩的内容（尚未完成一轮对话）。",
       already_compacted: "刚刚压缩过，之后还没有新的对话，无需重复压缩。",

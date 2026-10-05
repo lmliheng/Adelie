@@ -120,6 +120,8 @@ export abstract class ProjectConfigStore {
   abstract writeRaw(projectId: string, data: RawTable): Promise<void>;
   abstract writeInitialConfig(projectId: string, name: string): Promise<void>;
   abstract ensurePresetModels(projectId: string): Promise<boolean>;
+  /** Fills in a display name for an adopted Project that has none (see the implementation's own doc). */
+  abstract ensureDisplayName(projectId: string, name: string): Promise<void>;
   abstract seedPresetPromotions(projectId: string): Promise<void>;
   abstract getName(projectId: string): Promise<string | undefined>;
   abstract setName(projectId: string, name: string): Promise<void>;

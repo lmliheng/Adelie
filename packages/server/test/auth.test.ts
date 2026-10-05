@@ -23,10 +23,12 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { wire } from "@prismshadow/penguin-core/kernel";
 import type { MeResponse, ProjectsResponse } from "../src/api/types.js";
 import { bootAppDeps } from "../src/app.js";
 import { hashPassword, ScryptHasher } from "../src/auth/password.js";
 import { generateInitialAdminPassword } from "../src/auth/service.js";
+import { ProjectConfigService } from "../src/services/project-config-service.js";
 import {
   apiClient,
   createTestApp,
@@ -84,6 +86,12 @@ describe("auth", () => {
     const projects = (await (await api.get("/api/projects")).json()) as ProjectsResponse;
     expect(projects.projects.map((p) => p.projectId)).toContain("default_project");
     expect(projects.projects[0]!.role).toBe("owner");
+    // Adopted, not created: its directory predates the Web onboarding, so the name is
+    // backfilled — without it every surface shows the raw id as the Project's label.
+    expect(projects.projects[0]!.name).toBe("default");
+    await expect(
+      fs.readFile(path.join(t.root, "default_project", ".project_config.toml"), "utf8"),
+    ).resolves.toContain('name = "default"');
     // default_agent has been initialized (directory exists).
     await expect(
       fs.access(path.join(t.root, "default_project", "agents", "default_agent", "agent_state")),
@@ -93,6 +101,53 @@ describe("auth", () => {
     await t.deps.authService.seedAdmin();
     expect(t.deps.db.prepare("SELECT COUNT(*) AS n FROM users").get()?.n).toBe(1);
     await loginAdmin(t.app);
+  });
+
+  it("an adopted default_project keeps the name it already carries", async () => {
+    // The operator (or an older CLI) named it first; the backfill must not overwrite that.
+    t = await createTestApp({
+      beforeSeed: async (root) => {
+        await wire(ProjectConfigService, { paths: { root } }).writeRaw("default_project", {
+          name: "cli-work",
+        });
+      },
+    });
+    const { cookie } = await loginAdmin(t.app);
+    const api = apiClient(t.app, cookie);
+    const projects = (await (await api.get("/api/projects")).json()) as ProjectsResponse;
+    expect(projects.projects[0]!.name).toBe("cli-work");
+  });
+
+  it("names the shared default_project on a later boot, when adoption is long past", async () => {
+    const root = await makeTempRoot();
+    const boot = async () =>
+      flattenForTests(await bootAppDeps(testConfig(root), replacementsFor({ log: () => {} })));
+    const file = path.join(root, "default_project", ".project_config.toml");
+
+    // A boot over an empty root must not bring the Project into existence on its own.
+    const first = await boot();
+    await expect(fs.access(file)).rejects.toThrow();
+    await first.authService.seedAdmin();
+    expect(await fs.readFile(file, "utf8")).toContain('name = "default"');
+    first.channels.dispose();
+    first.db.close();
+
+    // As an install that adopted the Project before the backfill existed looks on disk, and
+    // with its admin already in place — so seeding early-returns and only the boot sweep runs.
+    const older = (await fs.readFile(file, "utf8"))
+      .split("\n")
+      .filter((line) => !line.startsWith("name = "))
+      .join("\n");
+    await fs.writeFile(file, older);
+    const second = await boot();
+    try {
+      expect(await fs.readFile(file, "utf8")).toContain('name = "default"');
+      expect(second.db.prepare("SELECT COUNT(*) AS n FROM users").get()?.n).toBe(0);
+    } finally {
+      second.channels.dispose();
+      second.db.close();
+      await fs.rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+    }
   });
 
   it("admin-created: default Project is <userId>-default_project, name defaults", async () => {
