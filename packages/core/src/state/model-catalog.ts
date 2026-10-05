@@ -201,12 +201,6 @@ export interface ModelProviderInfo {
    * call sites keep answering as one.
    */
   clientType?: string;
-  /**
-   * The group the product recommends, captioned as such on the models page. It marks the
-   * GROUP, not a position: a user who drags the group elsewhere keeps the caption with it,
-   * and the default sequence below is what places it first for everyone else.
-   */
-  recommended?: boolean;
 }
 
 /** A single built-in model's catalog entry (`modelId` is the upstream id; paired with `provider` it forms the catalog's unique key). */
@@ -301,8 +295,8 @@ export const MODELSCOPE_PROVIDER_ID = "modelscope";
 /**
  * Provider list (web model page groups in this order BY DEFAULT — a user's dragged
  * arrangement is stored per Project and wins over this sequence; see the web's
- * model-group-order.ts). The sequence is a hand-curated display order: TokenDance leads as
- * the recommended group, Penguin Go follows, then OpenCode Go, then DeepSeek as the default
+ * model-group-order.ts). The sequence is a hand-curated display order: TokenDance leads,
+ * Penguin Go follows, then OpenCode Go, then DeepSeek as the default
  * model's provider, and custom
  * (custom OpenAI-protocol models) is always last; in between, gateways and first-party
  * vendors are interleaved by expected use rather than sorted by kind. Only this default
@@ -330,7 +324,6 @@ export const MODEL_PROVIDERS: ModelProviderInfo[] = [
     apiKeyUrl: "https://tokendance.space/keys",
     modelsUrl: "https://tokendance.space/models",
     gatewayBaseUrl: TOKENDANCE_BASE_URL,
-    recommended: true,
     // https://tokendance.space/docs/api-key-oauth
     oauth: {
       authorizeUrl: "https://tokendance.space/auth",

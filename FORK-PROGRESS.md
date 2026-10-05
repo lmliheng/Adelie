@@ -227,6 +227,83 @@ node scripts/build-plugins.mjs --out out/penguin/lib/plugins
 都还没闭。这正是台账 4.2 里「把 ci.yml 接到新主线并让它真跑绿」那一条要收的尾 —— 现在它有了具体的
 清单，不再是一句话。
 
+## 主线三件事（2026-10-05，用户点单）
+
+用户原话三条：**①「删除模型里的官方推荐」 ②「插件，agent升级，是怎么做的，我下载最新版都要更新」
+③「最新版更新指向 adelie，不再是 penguin」**，另加一句「b」——README 那条断言取放宽方案。
+
+### b. README 插件表断言放宽（用户选 b）
+
+`core/test/plugins.test.ts` 的 `README_TABLES` 给每份文件加了 `optional` 标志：根 `README.md` 标
+`optional: true` —— 你 02:55Z 把正文删到只剩头部，是你自己的编辑，**不还原**，所以它没有表就跳过
+这条守卫；`plugins/README.md` 与 `README.zh.md` 仍是必查。**表放回来就自动重新生效**（只有"没有
+表"这一种情况被容忍）。这条一改，CI 那三个 `test (core)` 的红应该跟着绿，下一轮用 CI 复核。
+
+### ① 模型库里的「官方推荐」删掉了
+
+- `core/src/state/model-catalog.ts`：删 `ModelProviderInfo.recommended` 字段与 TokenDance 上的
+  `recommended: true`，顺序注释改成「TokenDance leads」。
+- `web/src/features/models/models-page.tsx`：删掉分组标题栏上那枚金色「官方推荐」胶囊（连同它那段
+  配色注释）；`strings.ts` / `strings-en.ts` 的 `recommendedGroup` 文案一起删。
+- 测试改成反向守卫：`MODEL_PROVIDERS.some((p) => "recommended" in p)` 必须为 `false`；
+  `model-group-expansion` 那条「首组展开」不再靠 `recommended` 断言，仍钉 `tokendance` 在首位。
+- `docs/content/models.{en,zh}.md`：两处「The recommended group / 推荐分组」与分组说明里那句
+  「TokenDance 分组带有官方推荐标签」一并删掉。
+- **默认分组顺序没有动**（TokenDance 仍在最前），变的只是把它标成「官方」的那块 UI。
+
+### ③ 更新链路指向 Adelie
+
+只动了**用户手上这套安装**（CLI + server + Web）里决定「去哪找新版、装哪个包」的地方：
+
+- `cli/src/commands/update.ts`：`REPO_SLUG` → `lmliheng/Adelie`；**删掉 OSS 镜像那一整条臂**
+  （`OSS_ORIGIN` / `OSS_RELEASE_ROOT` / `parseOssLatestManifest` / `fetchOssLatestRelease` 与
+  `installerCandidates` 的 oss 候选），`DownloadSource` / `ReleaseDiscovery` 收成 `auto|github` /
+  `pinned|github`，`resolveRelease` 不再需要 source 参数。理由是那个 OSS 桶是**上游自己的镜像**：
+  留着它，两边同名 tag（都有 `v0.2.0`）下会把**上游的 payload** 装进 Adelie。自己搭镜像的运维仍有
+  `PENGUIN_DOWNLOAD_BASE_URL` 可用。
+- `cli/src/i18n.ts`：`InstallerSource` 去掉 `"oss"`、删 `ossUnavailable` 文案，
+  `invalidDownloadSource` 改成「必须是 auto 或 github」，`installerFetchFailed` 去掉 oss 分支。
+  刻意**保留** `PENGUIN_DOWNLOAD_SOURCE` 的校验：写 `oss` 直接报错，而不是放行到子进程里让
+  `install.sh` 按它去取上游的包。
+- `server/src/services/update-check-service.ts`：`REPO_SLUG` → `lmliheng/Adelie`（Web 那条
+  「有新版本」提示的比对对象）。
+- `web/src/lib/update-flow.ts`：`releaseUrlFor()` 的发布页链接 → Adelie 的 Releases。
+- 验证：`pnpm typecheck` 八个包全过；`pnpm lint` 0 警告；`pnpm format:check` 干净；
+  core 1346 · web 2886 · cli 505 · server 2552 · docs 62 全绿。
+
+**这条还没做完的部分（下一轮接着做）**：
+
+| 没做的 | 为什么这轮没做 | 做完的判据 |
+| --- | --- | --- |
+| `packages/desktop`（`updater.ts` / `update-source.ts` / `menu.ts`） | 它的自动更新是「速度探测 + OSS 镜像 feed」整套子系统（`update-source.ts` 364 行 + 612 行测试），拆它要单独一轮；Adelie 目前也**没有**桌面产物发布 | 桌面 feed 指向 `lmliheng/Adelie` 且没有 OSS 臂；`vitest --root packages/desktop` 全绿 |
+| 根目录 `install.sh` / `install.ps1` | 里面的 `REPO` 与 `OSS_ORIGIN` 还是上游的；`scripts/test-installer.{sh,ps1}` 用断言把这两个常量与 OSS 探针行为钉住了，改它得连那套测试一起重写 | 两个安装脚本指向 Adelie 且不再提 OSS；`sh scripts/test-installer.sh` 与 CI 的 `installer-windows` 通过 |
+| `server/src/plugin/builtin-index.json` 那四行 `repository` | 那是插件的来源元数据，不是更新链路 | 随桌面 / 发布那一轮统一口径 |
+| Adelie Release 没有资产 | 所以现在 `penguin update` 会答「已是最新」（v0.2.0 = 当前版本），不会去装任何东西 —— 这是对的行为；真要能升级，得按上游同名的资产形状（install.sh + payload + 校验和）发一版；用户「不想给别人用」的那套包在 3003 | 发一版带资产的 Release 后，`penguin update --check` 报得出新版本 |
+
+### ② 插件与 Agent 的升级是怎么做的（答用户问）
+
+三层，互相独立：
+
+1. **应用本体**：`penguin update`（Web 的更新弹窗走 `POST /api/version/update`，后台跑
+   `node <cli> update --yes`）。它从运行着的 CLI 自己的真实路径判断安装形态（tarball / npm 全局 /
+   源码检出 / 桌面），**源码检出直接拒绝**，Windows 上的 npm 全局安装也拒绝并让你自己跑那条命令。
+   升级只替换 `bin/lib/web/node`，**数据根 `~/.penguin/data` 不碰**。
+2. **插件**：应用自带一个插件库（`plugins/*` 由 `scripts/build-plugins.mjs` 打包装进
+   `lib/plugins`，索引是 `server/src/plugin/builtin-index.json`）。换新版本 = **库里的副本**换新。
+   但 Agent 上装过的是**副本**（技能写进 `agent_state/skills/<name>/`、hook 包写进
+   `agent_state/hooks/<plugin>/`），不会自己跟着换；插件页会**检测到「落后于库」**
+   （`AgentSummary.pluginUpdates`）并给出更新入口：「update installs」旋转按钮 / 每个 Agent 一行，
+   语义就是**重装一次** —— 会覆盖那个 Agent 上对插件内容的本地改动，确认框里写明了版本 old → new
+   与这条代价，也支持多 Agent 批量更新。所以「下载最新版之后旧插件还在用旧内容」是设计如此、
+   一键可修，不是 bug。
+3. **Agent 的内核**：Agent 的 `system_config.yaml` 在创建时就烘焙好，**永不自动升级**。每个 tab 的
+   哈希与内置默认值比对，Agent 设置页「内核」一节显示 `当前 <内核版本> · 最新 <当前代>`，
+   手动点一次「升级内核」只推进**仍等于默认值**的 tab，用户改过的 tab 原样保留并在结果里列出来。
+   `KERNEL_VERSION` 是日期串，内置默认值一变就得跟着推进（`core/test/kernel-version.test.ts` 钉哈希）。
+
+**要问用户的一句**：第 2 层要不要更自动（应用升级后自动重装 Agent 上的插件副本）？代价是会覆盖
+Agent 上对插件内容的本地改动 —— 现在的产品行为是「提示 + 一键批量更新」，先不动。
+
 ## 本机部署（2026-10-05）
 
 | | |
@@ -283,3 +360,5 @@ node scripts/build-plugins.mjs --out out/penguin/lib/plugins
 | 2026-10-05 | 2.4 + 发布 | 两份 README 重写成「Adelie 是 PenguinHarness 的 fork」的诚实版（来源声明、上游渠道与商标归属、从源码运行的安装节、上游路线图/贡献者/引用/协议改标）；写 `RELEASE-v0.2.0.md` 当发布正文；把上游那条 tag 触发的 release 流水线改成只能手动触发 | `pnpm lint` 0 警告；`pnpm format:check` 干净；五份工作流用仓库自带 `yaml` 逐份解析通过，`release.yml` 的 `on` 只剩 `workflow_dispatch`；`git ls-remote` 复核远端分支与 tag | 见本行提交 |
 | 2026-10-05 | 发布 | 建出 v0.2.0 的 GitHub Release（源码版正文、无资产、标为 latest），tag 与分支头同一提交 | `POST /repos/lmliheng/Adelie/releases` → 201；`/releases/latest` = `v0.2.0`；`actions/runs` 建 Release 前后都是 26 条（没有触发工作流）；真浏览器看发布页与仓库首页：正文渲染正常、绿 `Latest` 徽章、无 4xx | Release id `403323149` |
 | 2026-10-05 | 发布 | 旧 `main` 留档成 `legacy/main`，仓库**默认分支切到 `fork/penguin-base`**；仓库 About（描述 + 话题）改成「基于 PenguinHarness」的说法 | `git push origin legacy/main` = `7fb74262`；`PATCH /repos/lmliheng/Adelie` `default_branch` → 200；`GET /repos` 复核 `default_branch=fork/penguin-base`、description/topics 已换；真浏览器看仓库首页：分支选择器是 `fork/penguin-base`、About 新描述、Releases 侧栏 v0.2.0 Latest、正文就是写明 fork 的 README，无 4xx | 见本行提交 |
+| 2026-10-05 | 主线 | 默认分支定名 **`main`**（新基座并进 `main`、旧 Adelie 存 `legacy/main`、删 `fork/penguin-base`）；v0.2.0 安装包本机现打后放 **3003**；删 `docker.yml` 的 `push:main`；修 desktop 夹具 | `GET /repos` 报 `default_branch: main`；三个包 `.sha256` 自检 + linux 包在隔离 HOME 里真离线装（`penguin version --json` = `0.2.0`/release）；桌面测试 308 全绿；CI run `37258858438`：`test(rest)` 一族由红转绿、Docker 未触发 | 见本行提交 |
+| 2026-10-05 | 主线 | README 插件表断言放宽（用户选的 b）+ 删掉模型里的「官方推荐」+ 更新链路指向 Adelie（CLI / server / Web） | 见「主线三件事」一节 | 见本行提交 |

@@ -22,7 +22,6 @@ import {
   normalizeVersion,
   normalizeHttpsBaseUrl,
   parseDownloadSource,
-  parseOssLatestManifest,
   payloadSourceEnv,
   planUpdate,
   registerUpdateCommand,
@@ -172,33 +171,29 @@ describe("normalizeVersion / compareVersions", () => {
 describe("installerUrl", () => {
   it("resolves the latest release when no version is pinned", () => {
     expect(installerUrl()).toBe(
-      "https://github.com/Prism-Shadow/penguin-harness/releases/latest/download/install.sh",
+      "https://github.com/lmliheng/Adelie/releases/latest/download/install.sh",
     );
   });
   it("pins a tag, normalising the v prefix", () => {
-    const expected =
-      "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.1.2/install.sh";
+    const expected = "https://github.com/lmliheng/Adelie/releases/download/v0.1.2/install.sh";
     expect(installerUrl("0.1.2")).toBe(expected);
     expect(installerUrl("v0.1.2")).toBe(expected);
   });
 });
 
 describe("release source selection", () => {
-  const ossOrigin = "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com";
-  const githubApi = "https://api.github.com/repos/Prism-Shadow/penguin-harness/releases/latest";
-  const manifest = {
-    schemaVersion: 1,
-    tag: "v0.2.1",
-    version: "0.2.1",
-    releaseBaseUrl: `${ossOrigin}/releases/v0.2.1`,
-  };
+  const githubApi = "https://api.github.com/repos/lmliheng/Adelie/releases/latest";
+  const githubBase = "https://github.com/lmliheng/Adelie/releases/download";
   const t = getMessages("en");
 
-  it("accepts the same auto/oss/github environment contract as the installers", () => {
+  it("accepts the installer's environment contract, minus the mirror Adelie does not have", () => {
     expect(parseDownloadSource(undefined)).toBe("auto");
     expect(parseDownloadSource("auto")).toBe("auto");
-    expect(parseDownloadSource("oss")).toBe("oss");
     expect(parseDownloadSource("github")).toBe("github");
+    // Upstream's OSS mirror went with upstream's repository, and `oss` is refused rather than
+    // silently downgraded to auto: the value must not travel on to the child installer, which
+    // still understands it and would fetch upstream's payload for an identical tag.
+    expect(parseDownloadSource("oss")).toBeNull();
     expect(parseDownloadSource("OSS")).toBeNull();
     expect(parseDownloadSource("mirror")).toBeNull();
   });
@@ -226,124 +221,46 @@ describe("release source selection", () => {
     });
   });
 
-  it("validates latest.json's schema, tag, and fixed OSS release base", () => {
-    expect(parseOssLatestManifest(manifest)).toEqual({
-      version: "0.2.1",
-      tag: "v0.2.1",
-      discoveredFrom: "oss",
-    });
-    expect(parseOssLatestManifest({ ...manifest, schemaVersion: 2 })).toBeNull();
-    expect(parseOssLatestManifest({ ...manifest, tag: "../bad" })).toBeNull();
-    expect(
-      parseOssLatestManifest({ ...manifest, releaseBaseUrl: "https://example.com/v0.2.1" }),
-    ).toBeNull();
-  });
-
-  it("auto discovers latest through OSS without touching GitHub when metadata is valid", async () => {
+  it("discovers the newest release from Adelie's own Releases API", async () => {
     const calls: string[] = [];
     const fetcher = async (url: string) => {
       calls.push(url);
-      return new Response(JSON.stringify(manifest), { status: 200 });
-    };
-    await expect(resolveRelease("auto", undefined, t, fetcher)).resolves.toMatchObject({
-      tag: "v0.2.1",
-      discoveredFrom: "oss",
-    });
-    expect(calls).toEqual([`${ossOrigin}/latest.json`]);
-  });
-
-  it("auto falls back to GitHub discovery when OSS metadata is unavailable", async () => {
-    const calls: string[] = [];
-    const fetcher = async (url: string) => {
-      calls.push(url);
-      if (url === `${ossOrigin}/latest.json`) return new Response("unavailable", { status: 503 });
       return new Response(JSON.stringify({ tag_name: "v0.2.2" }), { status: 200 });
     };
-    await expect(resolveRelease("auto", undefined, t, fetcher)).resolves.toEqual({
+    await expect(resolveRelease(undefined, t, fetcher)).resolves.toEqual({
       version: "0.2.2",
       tag: "v0.2.2",
       discoveredFrom: "github",
     });
-    expect(calls).toEqual([`${ossOrigin}/latest.json`, githubApi]);
+    expect(calls).toEqual([githubApi]);
   });
 
-  it("forced oss is strict, while forced github skips OSS", async () => {
-    const ossCalls: string[] = [];
-    const unavailable = async (url: string) => {
-      ossCalls.push(url);
-      return new Response("unavailable", { status: 503 });
-    };
-    await expect(resolveRelease("oss", undefined, t, unavailable)).rejects.toThrow(
-      t.update.ossUnavailable(),
-    );
-    expect(ossCalls).toEqual([`${ossOrigin}/latest.json`]);
-
-    const githubCalls: string[] = [];
-    const github = async (url: string) => {
-      githubCalls.push(url);
-      return new Response(JSON.stringify({ tag_name: "v0.2.2" }), { status: 200 });
-    };
-    await expect(resolveRelease("github", undefined, t, github)).resolves.toMatchObject({
-      tag: "v0.2.2",
-      discoveredFrom: "github",
-    });
-    expect(githubCalls).toEqual([githubApi]);
-  });
-
-  it("a requested release skips discovery and produces same-tag source candidates", async () => {
+  it("a requested release skips discovery and produces its same-tag candidate", async () => {
     let fetched = false;
     const shouldNotFetch = async () => {
       fetched = true;
       throw new Error("unexpected fetch");
     };
-    const release = await resolveRelease("auto", "0.2.0", t, shouldNotFetch);
+    const release = await resolveRelease("0.2.0", t, shouldNotFetch);
     expect(fetched).toBe(false);
-    expect(installerCandidates("auto", release)).toEqual([
-      {
-        source: "oss",
-        baseUrl: `${ossOrigin}/releases/v0.2.0`,
-        url: `${ossOrigin}/releases/v0.2.0/install.sh`,
-      },
+    expect(installerCandidates(release)).toEqual([
       {
         source: "github",
-        baseUrl: "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.2.0",
-        url: "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.2.0/install.sh",
+        baseUrl: `${githubBase}/v0.2.0`,
+        url: `${githubBase}/v0.2.0/install.sh`,
       },
     ]);
   });
 
-  it("auto stays on GitHub when OSS latest discovery failed", () => {
-    const release = {
-      version: "0.2.2",
-      tag: "v0.2.2",
-      discoveredFrom: "github" as const,
-    };
-    expect(installerCandidates("auto", release).map((candidate) => candidate.source)).toEqual([
-      "github",
-    ]);
-    expect(installerCandidates("github", release).map((candidate) => candidate.source)).toEqual([
-      "github",
-    ]);
-    expect(installerCandidates("oss", release).map((candidate) => candidate.source)).toEqual([
-      "oss",
-    ]);
-  });
-
-  it("installer transport failure falls back to the matching GitHub tag", async () => {
-    const release = parseOssLatestManifest(manifest);
-    expect(release).not.toBeNull();
-    const candidates = installerCandidates("auto", release!);
+  it("an installer the only source cannot serve ends in null, not a silent success", async () => {
+    const release = { version: "0.2.0", tag: "v0.2.0", discoveredFrom: "github" as const };
     const calls: string[] = [];
-    const fetcher = async (url: string) => {
+    const downloaded = await downloadInstaller(installerCandidates(release), async (url) => {
       calls.push(url);
-      return url.includes("aliyuncs.com")
-        ? new Response("unavailable", { status: 503 })
-        : new Response("#!/bin/sh\n", { status: 200 });
-    };
-    const downloaded = await downloadInstaller(candidates, fetcher);
-    expect(downloaded?.candidate.source).toBe("github");
-    expect(downloaded?.script).toBe("#!/bin/sh\n");
-    expect(calls).toEqual(candidates.map((candidate) => candidate.url));
+      return new Response("gone", { status: 404 });
+    });
+    expect(downloaded).toBeNull();
+    expect(calls).toEqual([`${githubBase}/v0.2.0/install.sh`]);
   });
 });
 
@@ -426,17 +343,14 @@ describe("buildInstallerInvocation (preserves the shape of the install being upg
         installDir: "/home/me/.penguin",
         hasBundledNode: true,
         version: "0.2.0",
-        downloadBaseUrl:
-          "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.2.0",
-        downloadFallbackBaseUrl:
-          "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.2.0",
+        downloadBaseUrl: "https://mirror.example/releases/v0.2.0",
+        downloadFallbackBaseUrl: "https://github.com/lmliheng/Adelie/releases/download/v0.2.0",
       }).env,
     ).toEqual({
       PENGUIN_VERSION: "v0.2.0",
-      PENGUIN_DOWNLOAD_BASE_URL:
-        "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.2.0",
+      PENGUIN_DOWNLOAD_BASE_URL: "https://mirror.example/releases/v0.2.0",
       PENGUIN_DOWNLOAD_FALLBACK_BASE_URL:
-        "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.2.0",
+        "https://github.com/lmliheng/Adelie/releases/download/v0.2.0",
     });
   });
 
@@ -459,16 +373,14 @@ describe("buildInstallerInvocation (preserves the shape of the install being upg
 
   it("keeps explicit mirrors strict but delegates non-explicit payload source selection", () => {
     const candidate = {
-      source: "oss" as const,
-      baseUrl: "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.2.0",
-      url: "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.2.0/install.sh",
-      fallbackBaseUrl: "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.2.0",
+      source: "configured" as const,
+      baseUrl: "https://mirror.example/releases/v0.2.0",
+      url: "https://mirror.example/releases/v0.2.0/install.sh",
+      fallbackBaseUrl: "https://github.com/lmliheng/Adelie/releases/download/v0.2.0",
     };
     expect(payloadSourceEnv(candidate, true)).toEqual({
-      downloadBaseUrl:
-        "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.2.0",
-      downloadFallbackBaseUrl:
-        "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.2.0",
+      downloadBaseUrl: "https://mirror.example/releases/v0.2.0",
+      downloadFallbackBaseUrl: "https://github.com/lmliheng/Adelie/releases/download/v0.2.0",
     });
     expect(payloadSourceEnv(candidate, false)).toEqual({
       downloadBaseUrl: "",
@@ -477,20 +389,20 @@ describe("buildInstallerInvocation (preserves the shape of the install being upg
   });
 
   it("localizes the source list and connector in installer download failures", () => {
-    expect(getMessages("en").update.installerFetchFailed(["oss", "github"])).toBe(
-      "Could not download the installer from the OSS mirror or GitHub. Check your network and retry.",
+    expect(getMessages("en").update.installerFetchFailed(["github"])).toBe(
+      "Could not download the installer from GitHub. Check your network and retry.",
     );
-    expect(getMessages("zh").update.installerFetchFailed(["oss"])).toBe(
-      "无法从 OSS 镜像下载安装脚本。请检查网络后重试。",
+    expect(getMessages("en").update.installerFetchFailed(["configured", "github"])).toBe(
+      "Could not download the installer from the configured mirror or GitHub. Check your network and retry.",
     );
     expect(getMessages("zh").update.installerFetchFailed(["github"])).toBe(
       "无法从 GitHub 下载安装脚本。请检查网络后重试。",
     );
-    expect(getMessages("zh").update.installerFetchFailed(["oss", "github"])).toBe(
-      "无法从 OSS 镜像或 GitHub 下载安装脚本。请检查网络后重试。",
-    );
     expect(getMessages("zh").update.installerFetchFailed(["configured"])).toBe(
       "无法从配置的镜像下载安装脚本。请检查网络后重试。",
+    );
+    expect(getMessages("zh").update.installerFetchFailed(["configured", "github"])).toBe(
+      "无法从配置的镜像或 GitHub 下载安装脚本。请检查网络后重试。",
     );
   });
 });

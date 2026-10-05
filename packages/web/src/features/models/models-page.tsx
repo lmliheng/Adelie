@@ -1507,29 +1507,6 @@ export function ModelsPage() {
                       {/* The chevron follows the name and its count rather than the row's far
                           edge, so it reads as part of the group it folds. */}
                       <Chevron open={open} className="text-gray-400" />
-                      {/* The recommendation rides the collapse bar itself, so it is read with
-                          the group's name rather than as a caption floating above the
-                          section. `shrink-0` keeps it whole: the vendor name beside it is
-                          the element allowed to truncate on a narrow page. */}
-                      {group.provider.recommended && (
-                        // Not a `Badge`: every Badge tone is a status or `neutral`, and an
-                        // endorsement is neither, which is the category tone.ts keeps out on
-                        // purpose. Unfilled, like the card marks below it: an outline
-                        // is enough to make it a pill, and a block of colour on the collapse
-                        // bar competes with the vendor name it is endorsing. It gives way on
-                        // a narrow row before the name does.
-                        //
-                        // Gold, and the darker end of it: `yellow-700` (#a16207) is the last
-                        // rung that still clears 4.5:1 against this bar's gray-50 — 12px bold
-                        // is not WCAG "large text", so the brighter golds above it are not
-                        // available in light mode. Dark mode takes yellow-400, the bright
-                        // gold, which clears it comfortably on this app's near-black. The
-                        // ring is the text's own hue at 40%, in both themes: a ring brighter
-                        // than the words it encloses reads as a highlighter, not as gold.
-                        <span className="hidden shrink-0 whitespace-nowrap rounded-full border border-yellow-700/40 px-2 py-0.5 text-xs font-semibold text-yellow-700 @lg:inline dark:border-yellow-400/40 dark:text-yellow-400">
-                          {S.models.recommendedGroup}
-                        </span>
-                      )}
                     </button>
                     {actions.length > 0 && (
                       <div className="ml-auto flex shrink-0 items-center gap-2 py-1">

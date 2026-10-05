@@ -1566,11 +1566,6 @@ export const zh = {
     visionBadge: "视觉",
     /** Light-yellow badge on zero-cost models (all three price buckets 0, e.g. the :free variants and openrouter/free). */
     freeBadge: "免费",
-    /**
-     * Caption above a provider group the catalog marks as recommended. It travels with the
-     * group, so a user who drags that group elsewhere still sees why it is called out.
-     */
-    recommendedGroup: "官方推荐",
     /** Badge on a row the seller is currently discounting: the rate off its list price. */
     discountBadge: (pct: number): string => `省 ${pct}%`,
     discountTitle: (pct: number): string => `促销价：已在牌价基础上打 ${pct}% 折扣`,

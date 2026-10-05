@@ -1519,12 +1519,6 @@ export const en: Strings = {
     fastModeBadge: "Fast",
     visionBadge: "Vision",
     freeBadge: "Free",
-    /**
-     * Rides the group's own collapse bar, which on this group carries five actions — the most
-     * crowded row on the page. One word, because the vendor name beside it is what a reader
-     * needs first and is the element that truncates.
-     */
-    recommendedGroup: "Recommended",
     discountBadge: (pct: number): string => `${pct}% off`,
     discountTitle: (pct: number): string => `Promotion: ${pct}% off the list price`,
     offPeakTitle: (pct: number, peak: PeakWindows): string => {

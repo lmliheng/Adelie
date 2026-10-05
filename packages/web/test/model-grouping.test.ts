@@ -88,7 +88,7 @@ describe("groupModelRows", () => {
     expect(groups[4]!.provider.envKey).toBe("OPENAI_API_KEY");
     expect(groups[4]!.rows.map((r) => r.modelId)).toEqual(["weird-model"]);
     // Group order matches MODEL_PROVIDERS, whose sequence is hand-curated (gateways and
-    // first-party vendors interleaved): the recommended TokenDance first, then Penguin Go,
+    // first-party vendors interleaved): TokenDance first, then Penguin Go,
     // OpenCode Go and DeepSeek, with custom last. This is the page's DEFAULT — the
     // stored per-Project order applied below overrides it.
     expect(MODEL_PROVIDERS.map((p) => p.id)).toEqual([

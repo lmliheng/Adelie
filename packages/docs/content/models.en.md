@@ -16,7 +16,7 @@ Each Project has its own model table: the models its conversations can use, grou
 
 In the sidebar, select **Models**. Models are listed in groups, one per provider.
 
-- **Groups.** Built-in groups follow the order in [Built-in provider groups](#built-in-provider-groups). Groups you create follow them, sorted by name. A built-in group with no models is hidden; **Custom** is always shown. The **TokenDance** group carries a **Recommended** tag.
+- **Groups.** Built-in groups follow the order in [Built-in provider groups](#built-in-provider-groups). Groups you create follow them, sorted by name. A built-in group with no models is hidden; **Custom** is always shown.
 - **Open and close groups.** Select a group's header to open or close it. On your first visit only the TokenDance group is open. The browser remembers which groups you opened, per Project.
 - **Reorder groups.** Drag a group's header to move it. The order is saved in this browser, per Project, and the model picker in the chat uses the same order. Dragging is not available on touch screens or while searching.
 - **Search.** Type in **Search models: id / name / provider** to show only the matching models. While you search, every matching group is open.
@@ -433,7 +433,7 @@ The table below lists the built-in groups and the environment variables their mo
 
 | Provider | API key env var | Notes |
 | --- | --- | --- |
-| tokendance | `OPENAI_API_KEY` | The recommended group. OpenAI-compatible gateway, preset base URL `https://tokendance.space/gateway/v1`; model ids are bare, with no vendor prefix (e.g. `glm-5.3`, `kimi-k3`); pricing is the gateway's own CNY rates, several of them currently discounted |
+| tokendance | `OPENAI_API_KEY` | OpenAI-compatible gateway, preset base URL `https://tokendance.space/gateway/v1`; model ids are bare, with no vendor prefix (e.g. `glm-5.3`, `kimi-k3`); pricing is the gateway's own CNY rates, several of them currently discounted |
 | penguin-go | `PENGUIN_GO_API_KEY` | Preset relay group, fixed base URL `https://token.penguin.ooo/api`; its header connects for you or takes a key you enter by hand. See [The Penguin Go group](#the-penguin-go-group) |
 | opencode-go | `OPENAI_API_KEY` | OpenCode Go subscription gateway. Each model pins its own protocol: Chat Completions or Responses at `https://opencode.ai/zen/go/v1`, Anthropic Messages at `https://opencode.ai/zen/go` (that client's variable is `ANTHROPIC_API_KEY`). See [The OpenCode Go group](#the-opencode-go-group) |
 | deepseek | `DEEPSEEK_API_KEY` | Group of the default model |

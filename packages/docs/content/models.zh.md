@@ -16,7 +16,7 @@ description: 为 Project 添加模型，设置 API key 和默认模型，选择�
 
 在侧边栏选择**模型库**。模型按分组列出，每个供应商一个分组。
 
-- **分组**：内置分组按[内置供应商分组](#内置供应商分组)里的顺序排列；你创建的分组排在后面，按名称排序。没有模型的内置分组会隐藏；**Custom** 始终显示。**TokenDance** 分组带有**官方推荐**标签。
+- **分组**：内置分组按[内置供应商分组](#内置供应商分组)里的顺序排列；你创建的分组排在后面，按名称排序。没有模型的内置分组会隐藏；**Custom** 始终显示。
 - **展开和收起分组**：点击分组标题即可展开或收起。首次访问时只有 TokenDance 分组是展开的。浏览器会记住你展开过哪些分组，按 Project 分别记录。
 - **调整分组顺序**：拖动分组标题即可移动分组。顺序保存在当前浏览器里，按 Project 分别记录；对话中的模型选择器也用同样的顺序。触摸屏上或搜索时不能拖动。
 - **搜索**：在**搜索模型：id / 名称 / 厂商**里输入，就只显示匹配的模型。搜索期间，所有包含匹配模型的分组都会展开。
@@ -432,7 +432,7 @@ PenguinHarness 升级可能改变内置的预置模型目录。一旦发生，Pr
 
 | 供应商 | API key 环境变量 | 说明 |
 | --- | --- | --- |
-| tokendance | `OPENAI_API_KEY` | 推荐分组。OpenAI 兼容网关，预置 base URL `https://tokendance.space/gateway/v1`；模型 id 为裸名称，不带供应商前缀（如 `glm-5.3`、`kimi-k3`）；价格采用网关自己的人民币费率，目前有几项在打折 |
+| tokendance | `OPENAI_API_KEY` | OpenAI 兼容网关，预置 base URL `https://tokendance.space/gateway/v1`；模型 id 为裸名称，不带供应商前缀（如 `glm-5.3`、`kimi-k3`）；价格采用网关自己的人民币费率，目前有几项在打折 |
 | penguin-go | `PENGUIN_GO_API_KEY` | 预置的中转分组，固定 base URL `https://token.penguin.ooo/api`；分组标题栏可以为你连接取得 key，也可以手动填写。见 [Penguin Go 分组](#penguin-go-分组) |
 | opencode-go | `OPENAI_API_KEY` | OpenCode Go 订阅网关。每个模型各自固定协议：Chat Completions 或 Responses 走 `https://opencode.ai/zen/go/v1`，Anthropic Messages 走 `https://opencode.ai/zen/go`（该客户端的变量是 `ANTHROPIC_API_KEY`）。见 [OpenCode Go 分组](#opencode-go-分组) |
 | deepseek | `DEEPSEEK_API_KEY` | 默认模型所在的分组 |

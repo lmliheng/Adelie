@@ -41,9 +41,9 @@ describe("defaultExpandedProviders", () => {
   it("contains exactly the leading catalog group, and follows it when the curation changes", () => {
     expect([...defaultExpandedProviders()]).toEqual([MODEL_PROVIDERS[0]!.id]);
     // The group that leads is a product decision, so it is spelled out once here: the page
-    // opens on the recommended group rather than on whichever id used to be hard-coded.
+    // opens on the first group of the catalog's own order rather than on whichever id used to
+    // be hard-coded.
     expect(MODEL_PROVIDERS[0]!.id).toBe("tokendance");
-    expect(MODEL_PROVIDERS[0]!.recommended).toBe(true);
   });
 
   it("returns a fresh set per call (React state must not share one mutable instance)", () => {

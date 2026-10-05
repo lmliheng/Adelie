@@ -48,8 +48,8 @@ describe("model-catalog", () => {
     expect(new Set(pairs).size).toBe(pairs.length);
     const ids = MODEL_CATALOG.map((m) => m.modelId);
     expect(MODEL_CATALOG[0]!.provider).toBe("deepseek");
-    // Group order is hand-curated, interleaving gateways and first-party vendors: the
-    // recommended TokenDance first, the prebuilt Penguin Go group next, OpenCode Go third,
+    // Group order is hand-curated, interleaving gateways and first-party vendors: TokenDance
+    // first, the prebuilt Penguin Go group next, OpenCode Go third,
     // DeepSeek after it, and vLLM last
     // among the vendors (self-hosted, so nothing in it runs until the user names a server)
     // and custom always last. This is the page's DEFAULT only — a Project that has reordered
@@ -74,10 +74,9 @@ describe("model-catalog", () => {
       "vllm",
       "custom",
     ]);
-    // Exactly one group is marked recommended, and it is the one that leads the default
-    // order: the caption and the placement are two statements of the same curation.
-    expect(MODEL_PROVIDERS.filter((p) => p.recommended).map((p) => p.id)).toEqual(["tokendance"]);
-    expect(providerInfo("tokendance")!.recommended).toBe(true);
+    // No group is flagged as a product recommendation any more: the models page shows every
+    // built-in group the same way, and the default order above is the only curation left.
+    expect(MODEL_PROVIDERS.some((p) => "recommended" in p)).toBe(false);
     expect(providerInfo("siliconflow")!.label).toBe("SiliconFlow");
     expect(providerInfo("minimax")!.label).toBe("MiniMax");
     expect(providerInfo("minimax")!.envKey).toBe("MINIMAX_API_KEY");

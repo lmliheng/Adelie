@@ -272,19 +272,29 @@ describe("parseSkillFrontmatter", () => {
  * table for human readers, and nothing else reads those tables. Derived from the library
  * rather than pinned, so adding a plugin — or filing it under the wrong heading — fails here
  * instead of leaving a table quietly wrong; the docs pages get the same guard from docs'
- * skills-sync test.
+ * skills-sync test. A file may opt out of carrying the table at all (the `optional` flag).
  */
 const README_TABLES = [
   {
     label: "plugins/README.md",
     file: "../../../plugins/README.md",
     heading: (c: PluginCategory) => c.title,
+    optional: false,
   },
-  { label: "README.md", file: "../../../README.md", heading: (c: PluginCategory) => c.title },
+  // Adelie (2026-10-05): the English root README no longer repeats this table — its body was
+  // reduced to the header block on purpose, so the file is allowed to carry no table at all.
+  // Only its ABSENCE is tolerated: put a table back and the guard below re-arms on it.
+  {
+    label: "README.md",
+    file: "../../../README.md",
+    heading: (c: PluginCategory) => c.title,
+    optional: true,
+  },
   {
     label: "README.zh.md",
     file: "../../../README.zh.md",
     heading: (c: PluginCategory) => c.titleZh ?? c.title,
+    optional: false,
   },
 ];
 
@@ -306,10 +316,13 @@ function readmeTableRows(markdown: string): Array<{ group: string; plugins: stri
 }
 
 describe("README category tables", () => {
-  for (const { label, file, heading } of README_TABLES) {
+  for (const { label, file, heading, optional } of README_TABLES) {
     it(`${label} names exactly the library's plugins, each under its own category`, async () => {
       const markdown = await fs.readFile(path.resolve(import.meta.dirname, file), "utf8");
       const rows = readmeTableRows(markdown);
+      // An `optional` file with no table opts out of the guard (see the flag's note); every
+      // other file must carry it, and a malformed header still fails there.
+      if (optional && rows.length === 0) return;
       expect(rows.length, `no Category/分类 table found in ${label}`).toBeGreaterThan(0);
       const groups = loadPluginGroups();
       expect(rows.map((row) => row.group).sort()).toEqual(groups.map(heading).sort());

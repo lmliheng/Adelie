@@ -27,8 +27,13 @@ import type { Clock, Config, Lifecycle } from "../hmr/capabilities.js";
 import type { UpdateJob } from "./update-job.js";
 import type { HarnessHistoryIface } from "./harness-history.js";
 
-/** Repository the released artifacts come from (same slug as cli/update.ts's REPO_SLUG). */
-const REPO_SLUG = "Prism-Shadow/penguin-harness";
+/**
+ * Repository the released artifacts come from (same slug as cli/update.ts's REPO_SLUG).
+ *
+ * Adelie's own, since 2026-10-05: upstream's slug sat here before, so the Web App's update
+ * reminder compared this build against PenguinHarness releases and offered to install one.
+ */
+const REPO_SLUG = "lmliheng/Adelie";
 /** Releases API endpoint for the newest published release. */
 export const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO_SLUG}/releases/latest`;
 

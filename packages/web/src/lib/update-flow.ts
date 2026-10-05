@@ -79,9 +79,13 @@ export interface FlowLocal {
 
 export const NO_LOCAL: FlowLocal = { checking: false, downloadRequested: false, restart: "none" };
 
-/** The Releases page of one version — the client mode's release-notes link (the shell names a version, never a URL). */
+/**
+ * The Releases page of one version — the client mode's release-notes link (the shell names a
+ * version, never a URL). Adelie's own repository: this link used to open PenguinHarness's
+ * releases, which is a different product whose tags reuse these version numbers.
+ */
 export function releaseUrlFor(version: string): string {
-  return `https://github.com/Prism-Shadow/penguin-harness/releases/tag/v${version}`;
+  return `https://github.com/lmliheng/Adelie/releases/tag/v${version}`;
 }
 
 export interface ReleaseInputs {

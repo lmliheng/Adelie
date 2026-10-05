@@ -13,8 +13,9 @@
  *
  * Release discovery and installer download use the same environment contract as the public
  * installer entry point: an explicit PENGUIN_DOWNLOAD_BASE_URL has highest download priority;
- * otherwise auto prefers the OSS latest pointer and immutable release when fetching the versioned
- * installer, then lets that installer choose the large payload source for the same tag. The
+ * otherwise the target comes from Adelie's own GitHub Releases (discovered through the Releases
+ * API, fetched from that tag's immutable directory) and the installer then chooses the large
+ * payload source for the same tag. The
  * target-a-specific-release flag is spelled
  * `--release <tag>` rather than `--version <tag>`: commander's program-level
  * `-v, --version` intercepts a subcommand's own `--version` when it is written with a space, so
@@ -69,17 +70,28 @@ import type { InstallerSource, Messages } from "../i18n.js";
 // unit-tested surface.
 export { compareVersions, normalizeVersion };
 
-/** Repository the released artifacts come from — the same repo install.sh downloads from. */
-export const REPO_SLUG = "Prism-Shadow/penguin-harness";
+/**
+ * Repository the released artifacts come from — Adelie's own, since 2026-10-05.
+ *
+ * Upstream's slug sat here before, and with it an Adelie install discovered — and, given a
+ * newer upstream tag, upgraded itself to — a PenguinHarness release. The two projects also
+ * reuse version numbers, so "same tag" never means "same product".
+ */
+export const REPO_SLUG = "lmliheng/Adelie";
 /** Releases API endpoint for the newest published release. */
 export const LATEST_RELEASE_API = `https://api.github.com/repos/${REPO_SLUG}/releases/latest`;
 /** Public roots shared with the stable installer entry point. */
-export const OSS_ORIGIN = "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com";
-export const OSS_RELEASE_ROOT = `${OSS_ORIGIN}/releases`;
 export const GITHUB_RELEASE_ROOT = `https://github.com/${REPO_SLUG}/releases/download`;
 
-export type DownloadSource = "auto" | "oss" | "github";
-export type ReleaseDiscovery = "pinned" | "oss" | "github";
+/**
+ * Where an update may come from. Adelie publishes to one source only — its own GitHub Releases —
+ * so upstream's second source, an Alibaba Cloud OSS mirror of the same assets, is gone rather
+ * than left pointing at upstream's bucket: a mirror is per-project, and fetching from upstream's
+ * would hand an Adelie install a PenguinHarness payload under an identical tag. An operator who
+ * runs a mirror of their own still has PENGUIN_DOWNLOAD_BASE_URL for it.
+ */
+export type DownloadSource = "auto" | "github";
+export type ReleaseDiscovery = "pinned" | "github";
 
 export interface ResolvedRelease {
   version: string;
@@ -264,7 +276,7 @@ export function installerUrl(version?: string): string {
 /** Normalizes the environment contract without silently accepting misspellings. */
 export function parseDownloadSource(value: string | undefined): DownloadSource | null {
   const source = value || "auto";
-  return source === "auto" || source === "oss" || source === "github" ? source : null;
+  return source === "auto" || source === "github" ? source : null;
 }
 
 /** Accepts only absolute HTTPS bases before any remote installer code is downloaded. */
@@ -290,26 +302,6 @@ export function configuredInstallerCandidate(
     url: `${baseUrl}/install.sh`,
     ...(fallbackBaseUrl ? { fallbackBaseUrl } : {}),
   };
-}
-
-function isReleaseTag(value: string): boolean {
-  return /^v[0-9A-Za-z][0-9A-Za-z._-]*$/.test(value);
-}
-
-/** Validates OSS latest.json exactly like the public forwarders, including its fixed bucket base. */
-export function parseOssLatestManifest(value: unknown): ResolvedRelease | null {
-  if (typeof value !== "object" || value === null) return null;
-  const manifest = value as {
-    schemaVersion?: unknown;
-    tag?: unknown;
-    releaseBaseUrl?: unknown;
-  };
-  if (manifest.schemaVersion !== 1 || typeof manifest.tag !== "string") return null;
-  if (!isReleaseTag(manifest.tag)) return null;
-  if (manifest.releaseBaseUrl !== `${OSS_RELEASE_ROOT}/${manifest.tag}`) return null;
-  const version = normalizeVersion(manifest.tag);
-  if (!version) return null;
-  return { version, tag: manifest.tag, discoveredFrom: "oss" };
 }
 
 /**
@@ -341,27 +333,11 @@ export async function fetchLatestVersion(t: Messages, fetcher: FetchLike = fetch
   return normalizeVersion(tag);
 }
 
-/** Resolves and validates the OSS latest pointer; callers decide whether failure is strict. */
-export async function fetchOssLatestRelease(
-  t: Messages,
-  fetcher: FetchLike = fetch,
-): Promise<ResolvedRelease> {
-  try {
-    const res = await fetcher(`${OSS_ORIGIN}/latest.json`, {
-      signal: AbortSignal.timeout(8_000),
-    });
-    if (!res.ok) throw new Error(String(res.status));
-    const release = parseOssLatestManifest(await res.json());
-    if (!release) throw new Error("invalid manifest");
-    return release;
-  } catch {
-    throw new Error(t.update.ossUnavailable());
-  }
-}
-
-/** Resolves one immutable target tag before planning or downloading anything. */
+/**
+ * Resolves one immutable target tag before planning or downloading anything: the `--release` pin
+ * when given, Adelie's newest published release otherwise.
+ */
 export async function resolveRelease(
-  source: DownloadSource,
   requestedRelease: string | undefined,
   t: Messages,
   fetcher: FetchLike = fetch,
@@ -371,43 +347,24 @@ export async function resolveRelease(
     return { version, tag: `v${version}`, discoveredFrom: "pinned" };
   }
 
-  if (source !== "github") {
-    try {
-      return await fetchOssLatestRelease(t, fetcher);
-    } catch (error) {
-      if (source === "oss") throw error;
-    }
-  }
-
   const version = await fetchLatestVersion(t, fetcher);
   return { version, tag: `v${version}`, discoveredFrom: "github" };
 }
 
 /**
- * Produces immutable, same-tag installer candidates. If auto had to discover the target through
- * GitHub because OSS metadata was unavailable, it follows the forwarder and stays on GitHub.
+ * The immutable installer candidate for a resolved release: Adelie's own GitHub tag directory.
+ * A one-element list, kept in this shape because `downloadInstaller` walks candidates in order and
+ * the explicit-mirror path hands it the same shape.
  */
-export function installerCandidates(
-  source: DownloadSource,
-  release: ResolvedRelease,
-): InstallerCandidate[] {
+export function installerCandidates(release: ResolvedRelease): InstallerCandidate[] {
   const githubBase = `${GITHUB_RELEASE_ROOT}/${release.tag}`;
-  const github: InstallerCandidate = {
-    source: "github",
-    baseUrl: githubBase,
-    url: `${githubBase}/install.sh`,
-  };
-  if (source === "github" || (source === "auto" && release.discoveredFrom === "github")) {
-    return [github];
-  }
-
-  const ossBase = `${OSS_RELEASE_ROOT}/${release.tag}`;
-  const oss: InstallerCandidate = {
-    source: "oss",
-    baseUrl: ossBase,
-    url: `${ossBase}/install.sh`,
-  };
-  return source === "auto" ? [oss, github] : [oss];
+  return [
+    {
+      source: "github",
+      baseUrl: githubBase,
+      url: `${githubBase}/install.sh`,
+    },
+  ];
 }
 
 /** Downloads fully before execution; transport failure advances only to the next same-tag source. */
@@ -564,9 +521,12 @@ export function registerUpdateCommand(program: Command, t: Messages): void {
     .option("-y, --yes", t.update.yes)
     .action(async (opts: { check?: boolean; release?: string; yes?: boolean }) => {
       const current = VERSION;
+      // The installer's own source knob is read here as well, and only to be checked: Adelie has
+      // one source, so a stale `oss` (upstream's mirror, which install.sh still understands) is
+      // refused up front rather than passed down to a script that would fetch upstream's payload.
       const source = parseDownloadSource(process.env.PENGUIN_DOWNLOAD_SOURCE);
       if (!source) throw new Error(t.update.invalidDownloadSource());
-      const release = await resolveRelease(source, opts.release, t);
+      const release = await resolveRelease(opts.release, t);
       const target = release.version;
       const modulePath = selfPath();
       const defaultInstallDir = path.join(homedir(), ".penguin");
@@ -632,7 +592,7 @@ export function registerUpdateCommand(program: Command, t: Messages): void {
         }
         candidates = [configuredInstallerCandidate(explicitBase, explicitFallback)];
       } else {
-        candidates = installerCandidates(source, release);
+        candidates = installerCandidates(release);
       }
       const downloaded = await downloadInstaller(candidates);
       if (!downloaded) {
