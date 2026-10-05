@@ -34,7 +34,7 @@ export interface Messages {
     modelId: string;
     /** run/chat's --provider: must be given together with --model-id (the group is never inferred). */
     provider: string;
-    /** Data root directory option (priority: --root > PENGUIN_HOME > ~/.penguin/data). */
+    /** Data root directory option (priority: --root > ADELIE_HOME > ~/.adelie/data). */
     root: string;
     workspace: string;
     approve: string;
@@ -1016,7 +1016,7 @@ const en: Messages = {
     modelId: "Model to use (upstream model id; defaults to the Project default model)",
     provider:
       "Provider group of --model-id; required whenever --model-id is given (the group is never inferred)",
-    root: "Data root directory (overrides PENGUIN_HOME and ~/.penguin/data)",
+    root: "Data root directory (overrides ADELIE_HOME and ~/.adelie/data)",
     workspace: "Workspace directory; must already exist (defaults to the current directory)",
     approve:
       "Approval mode: allow-all (auto-approve, default), deny-all (auto-reject), read-only (auto-approve read-only tools, prompt for the rest), always-ask (prompt per tool)",
@@ -1939,7 +1939,7 @@ const en: Messages = {
   webReady: (url) => `Web UI ready: ${url}`,
   serverAlreadyRunning: (url) =>
     `An Adelie server is already running on this data root: ${url}\n` +
-    `Stop it first, or point PENGUIN_HOME at a separate data root.`,
+    `Stop it first, or point ADELIE_HOME at a separate data root.`,
   webAlreadyRunning: (url) =>
     `Already running on this data root — opening the existing instance: ${url}`,
   webProbeFailed: (url, detail, kind, port) => {
@@ -1968,7 +1968,7 @@ const zh: Messages = {
     agentId: "Agent id",
     modelId: "本次使用的模型（上游模型 id；默认 Project 默认模型）",
     provider: "--model-id 的 provider 分组；给出 --model-id 时必须一并给出（分组不作任何推断）",
-    root: "数据根目录（优先于 PENGUIN_HOME 与 ~/.penguin/data）",
+    root: "数据根目录（优先于 ADELIE_HOME 与 ~/.adelie/data）",
     workspace: "Workspace 目录，须为已存在目录（默认当前目录）",
     approve:
       "审批模式：allow-all（全部放行，缺省）、deny-all（全部拒绝）、read-only（自动放行只读工具，其余仍逐个询问）、always-ask（逐个询问）",
@@ -2825,7 +2825,7 @@ const zh: Messages = {
   vaultListEmpty: () => "vault 为空。用 `penguin config vault set` 添加。",
   webReady: (url) => `Web 界面已就绪：${url}`,
   serverAlreadyRunning: (url) =>
-    `该数据根目录已有 Adelie 服务在运行：${url}\n请先停止它，或用 PENGUIN_HOME 指定另一个数据根目录。`,
+    `该数据根目录已有 Adelie 服务在运行：${url}\n请先停止它，或用 ADELIE_HOME 指定另一个数据根目录。`,
   webAlreadyRunning: (url) => `该数据根目录已有服务在运行，打开既有实例：${url}`,
   webProbeFailed: (url, detail, kind, port) => {
     const hint = {

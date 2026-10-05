@@ -5,7 +5,7 @@
 # Options:
 #   $env:PENGUIN_VERSION = "vX.Y.Z"     choose a version (same as -Version vX.Y.Z); a published Release
 #                                         installer defaults to its own version, an unstamped source copy to latest
-#   $env:PENGUIN_INSTALL_DIR = "<dir>"  install dir; default $env:USERPROFILE\.penguin
+#   $env:PENGUIN_INSTALL_DIR = "<dir>"  install dir; default $env:USERPROFILE\.adelie
 #   $env:PENGUIN_ARCHIVE = "<file>"     install a local Release zip without network access (same as -ArchivePath)
 #   $env:PENGUIN_DOWNLOAD_SOURCE = "auto|github" choose the online source; default auto (GitHub Releases)
 #   $env:PENGUIN_DOWNLOAD_BASE_URL = "https://..." exact online asset directory selected by the stable forwarder
@@ -25,8 +25,9 @@
 # There is no -Universal on Windows: where the zip is unsuitable, install Node.js >= 24 and run
 # `npm install -g @prismshadow/penguin-cli` instead.
 #
-# The data dir (%USERPROFILE%\.penguin\data) sits under the install home but is never touched by
+# The data dir (%USERPROFILE%\.adelie\data by default) sits under the install home but is never touched by
 # reinstall/upgrade (which only replace bin/lib/web/node/git). Upgrading = re-running this installer.
+# The launcher exports the root it lives under, so an install made before the rename keeps its data.
 #
 # Docs: https://penguin.ooo/docs/quickstart-cli
 param(
@@ -139,7 +140,7 @@ function Restore-PreviousInstall(
 # --- Resolve options (parameters win over env vars, mirroring install.sh's --version) ---
 if (-not $Version) { $Version = if ($env:PENGUIN_VERSION) { $env:PENGUIN_VERSION } else { "" } }
 if (-not $InstallDir) {
-  $InstallDir = if ($env:PENGUIN_INSTALL_DIR) { $env:PENGUIN_INSTALL_DIR } else { Join-Path $env:USERPROFILE ".penguin" }
+  $InstallDir = if ($env:PENGUIN_INSTALL_DIR) { $env:PENGUIN_INSTALL_DIR } else { Join-Path $env:USERPROFILE ".adelie" }
 }
 if (-not $ArchivePath) {
   $ArchivePath = if ($env:PENGUIN_ARCHIVE) { $env:PENGUIN_ARCHIVE } else { "" }
@@ -297,7 +298,7 @@ try {
 
   # --- Extract into staging, then swap by same-volume renames. Keep the previous dirs in .old.$PID
   #    until the installed command runs successfully; any move or launch failure restores them.
-  #    The data dir (%USERPROFILE%\.penguin\data) is never part of the swap. ---
+  #    The data dir (%USERPROFILE%\.adelie\data by default) is never part of the swap. ---
   New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
   $Staging = Join-Path $InstallDir ".staging.$PID"
   $OldDir = Join-Path $InstallDir ".old.$PID"

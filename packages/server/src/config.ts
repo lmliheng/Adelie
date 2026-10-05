@@ -2,7 +2,7 @@
  * Server runtime config (ServerConfig) — parsed from environment variables.
  *
  * The data root directory is shared with the SDK / CLI (`resolveRoot()`:
- * PENGUIN_HOME or ~/.penguin/data); the SQLite index database defaults to
+ * ADELIE_HOME or ~/.adelie/data); the SQLite index database defaults to
  * `<root>/web.db` (overridable via PENGUIN_WEB_DB, tests use ":memory:").
  * In production, the SPA is served statically once the frontend build output
  * directory (PENGUIN_WEB_DIST, the bundled web-dist/, or ../web/dist) is
@@ -12,7 +12,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { DEFAULT_SERVER_PORT, resolveRoot } from "@prismshadow/penguin-core";
+import {
+  DEFAULT_SERVER_PORT,
+  LEGACY_ROOT_ENV,
+  resolveRoot,
+  ROOT_ENV,
+} from "@prismshadow/penguin-core";
 import { checkoutCliEntry } from "./services/cli-shim.js";
 
 export interface ServerConfig {
@@ -221,9 +226,12 @@ export function normalizeModelScopeBridgeUrl(raw: string | undefined): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
 }
 
-/** Parses server config from environment variables (PORT / HOST / PENGUIN_HOME / PENGUIN_WEB_DIST / PENGUIN_WEB_DB / PENGUIN_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / PENGUIN_SEED_ADMIN_PASSWORD / PENGUIN_DESKTOP_TOKEN / PENGUIN_PORT_FILE / PENGUIN_TRUST_PROXY / PENGUIN_CLI_ENTRY). */
+/** Parses server config from environment variables (PORT / HOST / ADELIE_HOME / PENGUIN_WEB_DIST / PENGUIN_WEB_DB / PENGUIN_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / PENGUIN_SEED_ADMIN_PASSWORD / PENGUIN_DESKTOP_TOKEN / PENGUIN_PORT_FILE / PENGUIN_TRUST_PROXY / PENGUIN_CLI_ENTRY). */
 export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
-  const root = env.PENGUIN_HOME ?? resolveRoot();
+  // The root is read off the passed environment rather than `process.env` (this function takes
+  // one so tests can hand it a fabricated environment), so the two names are spelled here as
+  // well as in `resolveRoot()` — imported constants, not literals, so they cannot drift.
+  const root = env[ROOT_ENV] ?? env[LEGACY_ROOT_ENV] ?? resolveRoot();
   // An empty PORT string is treated as unset (the common `.env` case of an empty
   // `PORT=`): Number("") === 0 would pass the range check and bind to a random
   // port; this matches the CLI's resolvePort convention.

@@ -10,7 +10,7 @@
  *   2. `PENGUIN_API_URL` — the same, from the environment. Server-driven sessions inject
  *      it (with PENGUIN_API_TOKEN) into tool subprocesses, which is how an agent's own
  *      `penguin` calls find the server that runs them.
- *   3. A live `server.lock` at the data root (PENGUIN_HOME or ~/.penguin/data): attach to
+ *   3. A live `server.lock` at the data root (ADELIE_HOME or ~/.adelie/data): attach to
  *      the running local server on `http://localhost:<port>`.
  *   4. Auto-start: spawn a detached `node <cli entry> server` with PORT=0, wait for its
  *      lock, attach. The loser of a two-CLI spawn race exits with code 3 ("already

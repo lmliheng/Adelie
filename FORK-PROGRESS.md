@@ -51,8 +51,30 @@
       服务端测试会看到旧名字 —— 先 `pnpm --filter …core build` 再跑测试。
 - 遗留（不在这条里）：`~/.penguin`、`PENGUIN_*` 环境变量、`penguin` 命令名（2.2 / 2.3），
       npm scope `@prismshadow/*`（4.1），以及 `penguin.ooo` 那几个上游服务地址（不能瞎改，见下）。
-- [ ] 2.2 **数据根**：`~/.penguin` → `~/.adelie`；`PENGUIN_HOME` 等环境变量名是否跟着改，先定口径
-      （建议：变量名改成 `ADELIE_*`，并在 `resolveRoot()` 里兼容读一次旧名，方便旧数据迁过来）。
+- [x] 2.2a **数据根与安装目录**（2026-10-05）：`~/.penguin` → `~/.adelie`，变量 `PENGUIN_HOME` →
+      `ADELIE_HOME`（旧名仍读一次，作兼容别名）。逐处：`core/src/state/paths.ts` 的 `resolveRoot()`
+      （导出 `ROOT_ENV` / `LEGACY_ROOT_ENV` 两个常量，避免别处再写一遍字符串）；`server/src/config.ts`
+      从**传入的** env 对象里按同一优先级取（导入那两个常量）；`install.sh` / `install.ps1` 的默认安装目录
+      → `~/.adelie`（`PENGUIN_INSTALL_DIR` 这个变量名本轮不动，见 2.2b）；`cli/src/commands/update.ts` 的
+      `defaultInstallDir`；**两个启动脚本** `scripts/launchers/penguin{,.cmd}` 导出
+      `ADELIE_HOME="${ADELIE_HOME:-${PENGUIN_HOME:-$DIR/data}}"` —— 安装器的「数据根在程序目录下的
+      `data/`」这一约定因此保住，升级不会把旧装的数据「变没」（旧装仍在 `~/.penguin`，装的又是老启动脚本，
+      所以新版本必须自己会算这个路径）；`core` 把子进程环境的剥离规则从「`PENGUIN_` 前缀」扩成
+      「`PENGUIN_` / `ADELIE_` 两前缀」（不扩的话 `ADELIE_HOME` 会漏进 Agent 跑的命令，而它指的正是服务端
+      自己在用的那个根 —— 启动脚本会把它导出来）。CLI 文案 / 注释、`packages/core` 里的端口表、示例
+      `examples/self-improving-agent/*` 里写死的 `~/.penguin/data` 一并改。
+- [ ] 2.2b **剩下的 `PENGUIN_*` 变量名**（约 38 个名字、全仓 ~4400 处）：`PENGUIN_PROFILE` /
+      `PENGUIN_WEB_DB` / `PENGUIN_LANG` / `PENGUIN_API_TOKEN` / `PENGUIN_INSTALL_DIR` … 本轮**没动** ——
+      纯改名、零功能收益，而 200 来个测试用例都在设 `PENGUIN_HOME`（它们顺带钉住了兼容别名，改一遍等于
+      把这份覆盖也换掉），一次做完更省事：建议与 4.1 的 scope 改名并作一批。这一批里还剩三处「本机也带
+      `~/.penguin`」的，各有原因：**桌面壳的 dev 根** `~/.penguin/dev-data`
+      （`packages/desktop/src/app-identity.ts`，被 `desktop` 的脚本与 `cli/test/dev-entry-isolation.test.ts`
+      一起钉住 —— desktop 本机不可构建，按纪律没碰）；**远程机器布局**
+      （`server/src/machines/layout.ts`：`~/.penguin` / `~/.penguin-dev`，探针 + 安装 + 数据根 + 启动命令
+      自洽，改名要连探针一起，属迁移动作）；**dev 数据根** `~/.penguin/dev-data*`（`ports.ts` 表里那几行）。
+      文档面同样的道理：`packages/docs/`（2.5 定的「留作内部参考、不发布不改品牌」）、
+      `plugins/*/skills/*/SKILL.md` 里「全局根是 `~/.penguin/data`」那几句、`CONTRIBUTING.md`、
+      ui-gallery 的演示路径、web 的 `path-capsules.ts` 注释 —— 全是纯文案，等一次「全量换字」一起做。
 - [ ] 2.3 **端口与 profile 默认值**：服务器默认端口、CLI 默认端口（现在是 7369）与旧 Adelie 的
       4000 / 7370 对齐，避免两个产品抢端口。
 - [x] 2.4 **README 与包元数据**（2026-10-05）：根 `README.md` 与 `README.zh.md` 重写成 Adelie 自己的
@@ -552,6 +574,65 @@ README 插件表那三条已闭，macOS 那条重跑即绿（确系跑机抖动�
   默认分支切到 `fork/penguin-base`（旧 `main` 另存 `legacy/main` = `7fb74262` 留档），仓库 About
   改成「基于 PenguinHarness」的说法。细节见「发布 v0.2.0」一节。
 
+## 数据根改名：`~/.penguin` → `~/.adelie`（2026-10-05，条目 2.2a）
+
+一次无人值守的自主推进，只做这一条：**本机数据根与安装目录换成 Adelie 自己的家，变量名跟上，旧名字继续认**。
+19 个文件，都在仓库里，没有新依赖、没有切版本号、没发 npm、没发安装包。
+
+### 口径（这条本来就写着「先定口径」）
+
+| 东西 | 旧 | 新 | 兼容 |
+| --- | --- | --- | --- |
+| 数据根默认值 | `~/.penguin/data` | **`~/.adelie/data`** | 不存在旧默认值，是新装的默认 |
+| 数据根变量 | `PENGUIN_HOME` | **`ADELIE_HOME`** | 旧名仍读；两个都设时新名赢 |
+| 安装目录默认值 | `~/.penguin` | **`~/.adelie`** | `PENGUIN_INSTALL_DIR` 仍认（名字没改） |
+| 其余 `PENGUIN_*` | — | — | **本轮不动**，见 2.2b |
+
+**为什么必须连启动脚本一起改**：安装器的约定是「数据根在程序目录下的 `data/`」——于是默认装到
+`~/.penguin` 的旧装，它的数据根就是 `~/.penguin/data`，而这个路径**不来自任何环境变量**，是
+`resolveRoot()` 自己算出来的。新代码把默认值挪到 `~/.adelie/data` 之后，旧装里那份数据就会「找不到」
+（文件还在，界面里像是空了）。所以 `scripts/launchers/penguin{,.cmd}` 现在导出
+`ADELIE_HOME="${ADELIE_HOME:-${PENGUIN_HOME:-$DIR/data}}"`：**装在哪，数据根就是那里的 `data/`**，
+与安装器原先的约定一致，升级换代时旧数据照旧读得到。
+
+**为什么顺手扩了环境剥离规则**：`core` 把 `PENGUIN_*` 从 Agent 跑的命令里剥掉，就是为了别让
+「服务端自己在用的那个数据根」漏进子进程（`core/src/environment/tools/command/session-manager.ts`）。
+名字一改，规则不跟上就等于开了一个新口子 —— 而且漏出去的那个变量恰好是数据根。现在两个前缀都剥。
+
+### 验证（都不是推测）
+
+- **静态**：`pnpm --filter …core|server|ui|cli|web|hmr run typecheck` 六个包全过；`pnpm lint`
+  0 警告 0 错误（2007 文件）；`pnpm format:check` 干净。
+- **测试**：core **1350 通过 / 5 跳过**（比上轮 +4：`resolveRoot` 三个新用例 + 环境剥离的新前缀用例）·
+  server **2563 / 2 跳过**（+4：数据根优先级、`web.db` 跟着根走）· cli **505** · ui **1000** ·
+  web **2887 / 2 跳过** —— **0 失败**。200 来个只设旧名 `PENGUIN_HOME` 的用例全绿，等于整套兼容别名
+  被真跑了一遍。
+- **安装脚本**：`sh scripts/test-installer.sh` 通过（含它对两个启动脚本的守卫）。
+- **启动脚本单独实测**（假程序目录 + 一个打印 `resolveRoot()` 的桩 CLI）：无变量 → `<程序目录>/data`；
+  设 `ADELIE_HOME` → 用它；只设旧名 `PENGUIN_HOME` → 沿用；不经启动脚本的裸 `node` → `~/.adelie/data`。
+- **真离线装一遍**：隔离 HOME，用**本仓库的** `install.sh --archive payload.tar.gz --universal`
+  → 装进 `~/.adelie`，`~/.penguin` **没有被创建**；再把仓库的启动脚本放进那个真实布局跑一遍
+  → 数据根解析为 `~/.adelie/data`；把同一棵树搬到 `~/.penguin` 形状（模拟改名前的安装）→
+  `~/.penguin/data`，即旧数据仍然找得到。
+- **真起服务**：`ADELIE_HOME=/tmp/… PENGUIN_PROFILE=dev PORT=7408 node dist/index.js`，用 Playwright +
+  本机 chromium 打开：标题 `Sign in · Adelie`、登录页正常、**唯一 4xx 是登录前的 `/api/me` 401**；
+  用旧名 `PENGUIN_HOME` 起的两个实例（7401 / 7404）同样照常服务 —— 兼容读旧名这条是跑出来的，不是推的。
+- 中间物已清（`/tmp` 回到 2.0G 可用），3003 / 3004 / 4000 全程没碰。
+
+### 一个没解释清楚的现象（留个记录，下一轮留意）
+
+第一次起服务（全新数据根，7403）时，进程 4 分钟 83–91% CPU、端口在 LISTEN 但任何请求都不回；
+**同一份代码、同一个根、同一套启动形状**随后重跑（7406 / 7407 / 7408）都是秒级应答，`--prof` 采样里
+也没有热的 JS 函数（54% 落在 native/GC）。当时唯一特别的是上一次 Playwright 的 `networkidle` 超时把
+chromium 丢在**导航中途**（没关掉）。没能复现，所以**没有改任何代码**，只记在这里。
+
+### 与另一条线的交汇
+
+本轮开工时 `git status --short` 是干净的（那时 `main` 头是 `2d6abe83`，台账里「已完成的轮次」最后一行
+还是第四轮）。开工后一分钟（15:01）另一条线在这个 worktree 里提交了 `188990af`「记第五轮（…）与
+v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮改的文件没有重叠**；本轮的改动都还在工作区里、
+按本行的提交上去（`git diff` 只含本轮自己的内容）。下一轮开工时照纪律先看 `git status --short`。
+
 ## 已完成的轮次
 
 | 日期 | 条目 | 做了什么 | 验证 | 提交 |
@@ -573,5 +654,6 @@ README 插件表那三条已闭，macOS 那条重跑即绿（确系跑机抖动�
 | 2026-10-05 | 主线收尾 | 「主线三件事」的收尾：桌面更新源去 OSS/探针、根安装脚本去 OSS/探针并指向 Adelie、插件元数据 `repository` 指向 Adelie；顺带修 web 更新弹窗的上游 Releases 链接；`scripts/test-installer.{sh,ps1}` 同步重写 | `sh scripts/test-installer.sh` 通过；`pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1346 · server 2552 · cli 505 · web 2886 · desktop 279 全绿 | 见本行提交 |
 | 2026-10-05 | 第四轮 | 工作区选择器支持**新建文件夹**（server `POST /dirs` + Finder 工具栏/右键菜单/内联命名框）；侧栏列表选项下拉不再截断文案；画廊 mock 补 `createDir` 路由；写 `RELEASE-v0.2.1.md` | `pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；`pnpm -r test` **8837 通过 / 14 跳过 / 0 失败**（docs 62 · core 1346 · ui 999 · server 2557 · cli 505 · web 2887 · desktop 279 · ui-gallery 131 · 四个沙箱插件 71）；浏览器实跑建目录/重名/右键菜单 | `301b80a6` `1e3c7c5c` `19ea80fa` |
 | 2026-10-05 | 第四轮 | 升级 **v0.2.1**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.1/`（`BUILD_COMMIT=19ea80fa`）；3003 下载区导语不再写死版本；3004 `disable` | 见「v0.2.1：工作区新建文件夹、侧栏下拉与插件手动更新」一节 | tag `v0.2.1` = `19ea80fa` |
+| 2026-10-05 | 2.2a | 数据根与安装目录改成 Adelie 自己的：默认 `~/.adelie/data` 与 `~/.adelie`、变量 `ADELIE_HOME`（旧名 `PENGUIN_HOME` 仍读，弹夹在 `resolveRoot()`）、两个启动脚本导出 `ADELIE_HOME=<程序目录>/data`（保住旧装的数据所在）、子进程剥离规则扩到两个前缀；CLI 文案/注释/示例跟上 | 六个包 typecheck 全过；`pnpm lint` 0 警告；`pnpm format:check` 干净；core 1350 / server 2563 / cli 505 / ui 1000 / web 2887 全绿；`test-installer.sh` 通过；启动脚本与「隔离 HOME 离线装进 `~/.adelie`」真跑过；新旧两种数据根各起服务 + 浏览器看过（唯一 4xx 是登录前 401） | 见本行提交 |
 | 2026-10-05 | 第五轮 | 初始 Project 名补成 `default`（core 常量 + `ensureDisplayName` + 启动扫描 + 三条测试）；zh 字典 68 处 `Project` → 「项目」；`PrefRow` 手机宽度改为可换行、导入 Trace 不再压住；草稿行删除按钮在触摸屏上常显 | `pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；`pnpm -r test` **8840 通过 / 14 跳过 / 0 失败**（docs 62 · core 1346 · ui 1000 · server 2559 · cli 505 · web 2887 · desktop 279 · ui-gallery 131 · 四个沙箱插件 71）；浏览器实测四项（含**老数据根升级**、390px 触摸屏） | `e960d0b1` |
 | 2026-10-05 | 第五轮 | 升级 **v0.2.2**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.2/`（`BUILD_COMMIT=2d6abe83`），打包脚本改「边做边清」把峰值从 1.5G 压到 ~0.3G | 见「v0.2.2：默认项目名 default、中文文案、手机上的导入 Trace 与草稿」一节 | tag `v0.2.2` = `2d6abe83` |

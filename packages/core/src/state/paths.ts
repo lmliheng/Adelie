@@ -1,7 +1,7 @@
 /**
  * Local directory layout for Agent State and Project config.
  *
- * Strictly follows the `~/.penguin/data/<project>/agents/<agent>/...` structure.
+ * Strictly follows the `~/.adelie/data/<project>/agents/<agent>/...` structure.
  * This module only provides constants and pure path functions; it never creates directories or reads/writes files.
  * Docs: /docs/sessions-and-traces § "Data layout".
  */
@@ -25,13 +25,33 @@ export const DEFAULT_PROJECT_NAME = "default";
 export const DEFAULT_AGENT_ID = "default_agent";
 
 /**
+ * Environment variable naming the data root, in Adelie's own spelling. Exported so the places
+ * that read the root out of a plain env object (the server's config parser, which takes the
+ * environment as an argument rather than from `process.env`) cannot drift from the rule here.
+ */
+export const ROOT_ENV = "ADELIE_HOME";
+
+/**
+ * The data root's pre-rename name, still read after `ROOT_ENV`. Every install made before Adelie
+ * spelled its environment Adelie's way sets this one (the launcher script and the systemd units
+ * of existing deployments do), so dropping it would point those installs at an empty default root
+ * and make their Agents, Sessions and usage look gone. Kept as long as those installs exist;
+ * setting the new name wins when both are present.
+ */
+export const LEGACY_ROOT_ENV = "PENGUIN_HOME";
+
+/**
  * Resolves the local data root directory.
- * Prefers the `PENGUIN_HOME` environment variable, otherwise falls back to `~/.penguin/data`
- * (under the hidden `~/.penguin` home so it never collides with unrelated folders, and in a
- * `data/` subdir kept separate from the installer's binaries under `~/.penguin`).
+ * `ROOT_ENV` (`ADELIE_HOME`) wins, then `LEGACY_ROOT_ENV`; with neither set the default is
+ * `~/.adelie/data` — under the hidden `~/.adelie` home so it never collides with unrelated
+ * folders, and in a `data/` subdir kept separate from the installer's binaries under the same home.
  */
 export function resolveRoot(): string {
-  return process.env.PENGUIN_HOME ?? path.join(os.homedir(), ".penguin", "data");
+  return (
+    process.env[ROOT_ENV] ??
+    process.env[LEGACY_ROOT_ENV] ??
+    path.join(os.homedir(), ".adelie", "data")
+  );
 }
 
 /** `<root>/<projectId>`. */

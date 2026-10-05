@@ -15,9 +15,35 @@
  */
 import { describe, expect, it } from "vitest";
 import path from "node:path";
+import { resolveRoot } from "@prismshadow/penguin-core";
 import { resolveServerConfig } from "../src/config.js";
 
 const base = { PENGUIN_HOME: "/tmp/penguin-config-test" };
+
+describe("resolveServerConfig: data root", () => {
+  it("still honors the pre-rename PENGUIN_HOME", () => {
+    expect(resolveServerConfig({ ...base }).root).toBe(base.PENGUIN_HOME);
+  });
+
+  it("honors ADELIE_HOME, and prefers it over the pre-rename name", () => {
+    expect(resolveServerConfig({ ADELIE_HOME: "/tmp/adelie-config-test" }).root).toBe(
+      "/tmp/adelie-config-test",
+    );
+    expect(resolveServerConfig({ ADELIE_HOME: "/tmp/adelie-config-test", ...base }).root).toBe(
+      "/tmp/adelie-config-test",
+    );
+  });
+
+  it("falls back to the root shared with the SDK / CLI when neither name is set", () => {
+    expect(resolveServerConfig({}).root).toBe(resolveRoot());
+  });
+
+  it("puts the index database inside whichever root was chosen", () => {
+    expect(resolveServerConfig({ ADELIE_HOME: "/tmp/adelie-config-test" }).dbPath).toBe(
+      path.join("/tmp/adelie-config-test", "web.db"),
+    );
+  });
+});
 
 describe("resolveServerConfig: PORT parsing", () => {
   it("reads an empty PORT as unset, not as port 0", () => {

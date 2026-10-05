@@ -66,10 +66,11 @@ const HARDENED_ENV: NodeJS.ProcessEnv = {
  * colors on". The vault still wins, so a user who genuinely wants forced color in commands can
  * set it there.
  *
- * Every `PENGUIN_*` variable is removed as well — see {@link HARNESS_ENV_PREFIX}. That covers
- * `PENGUIN_HOME` and `PENGUIN_WEB_DB`, which select the *data* an Agent-started harness works
- * against. They were once left inheriting on the grounds that the self-development case may
- * legitimately want the same data root, but inheriting them is not that decision being made — it
+ * Every `PENGUIN_*` and `ADELIE_*` variable is removed as well — see {@link HARNESS_ENV_PREFIXES}.
+ * That covers `PENGUIN_HOME` / `ADELIE_HOME` and `PENGUIN_WEB_DB`, which select the *data* an
+ * Agent-started harness works against. They were once left inheriting on the grounds that the
+ * self-development case may legitimately want the same data root, but inheriting them is not that
+ * decision being made — it
  * is an accident of where this process happens to be running. Whenever an Agent spawns a command
  * the harness is by definition up, holding `<root>/server.lock`, so an Agent-started server on the
  * inherited root cannot start at all; it exits 3 against a lock whose owner is the very process
@@ -97,12 +98,18 @@ const STRIPPED_ENV_KEYS = new Set([
 ]);
 
 /**
- * Every variable named `PENGUIN_*` is this installation's own configuration — where its data
- * lives, which shell it resolved, which release feed it checks, which language its UI speaks —
- * and none of it describes the command an Agent is running. Stripping by prefix rather than by
- * name is the point: the harness reads two dozen of them today and gains more with each feature,
- * and a list has to be remembered at exactly the moment nobody is thinking about it. Twenty-five
- * existed when this was written and a by-name list had caught seven.
+ * Every variable named `PENGUIN_*` or `ADELIE_*` is this installation's own configuration — where
+ * its data lives, which shell it resolved, which release feed it checks, which language its UI
+ * speaks — and none of it describes the command an Agent is running. Stripping by prefix rather
+ * than by name is the point: the harness reads two dozen of them today and gains more with each
+ * feature, and a list has to be remembered at exactly the moment nobody is thinking about it.
+ * Twenty-five existed when this was written and a by-name list had caught seven.
+ *
+ * Two prefixes because the installation carries two spellings of the same settings today:
+ * `ADELIE_*` is Adelie's own — the installed launcher exports `ADELIE_HOME` — and `PENGUIN_*` is
+ * the pre-rename spelling that existing deployments, systemd units and scripts still set, with
+ * the data root read from either. Covering one and not the other would let the *other* through,
+ * and the name that leaks would be the one naming the root this process is serving from.
  *
  * Outbound proxy settings are the deliberate exception to "the harness's environment stays out of
  * the child", and they are not `PENGUIN_*` — they are HTTP_PROXY and friends, governed by
@@ -112,7 +119,7 @@ const STRIPPED_ENV_KEYS = new Set([
  *
  * The vault still wins, so any single variable that is genuinely wanted can be set there.
  */
-const HARNESS_ENV_PREFIX = "PENGUIN_";
+const HARNESS_ENV_PREFIXES = ["PENGUIN_", "ADELIE_"] as const;
 
 /**
  * Proxy variables removed IN ADDITION when the host supplies a proxy policy (`proxyEnv`,
@@ -142,7 +149,8 @@ function hostEnvForChild(policy: ProxyEnvPolicy | null): NodeJS.ProcessEnv {
   // child as PORT. On POSIX the two are distinct names and only the exact one exists.
   for (const [key, value] of Object.entries(process.env)) {
     const name = key.toUpperCase();
-    if (STRIPPED_ENV_KEYS.has(name) || name.startsWith(HARNESS_ENV_PREFIX)) continue;
+    if (STRIPPED_ENV_KEYS.has(name) || HARNESS_ENV_PREFIXES.some((p) => name.startsWith(p)))
+      continue;
     if (policy !== null && PROXY_ENV_KEYS.has(name)) continue;
     if (policy?.mode === "inject" && name === "NO_PROXY") continue;
     env[key] = value;

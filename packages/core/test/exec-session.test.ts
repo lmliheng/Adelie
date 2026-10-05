@@ -309,6 +309,9 @@ describe("harness environment variables never reach a spawned command", () => {
     "PENGUIN_SEED_ADMIN_PASSWORD",
     "PENGUIN_HOME",
     "PENGUIN_WEB_DB",
+    // The post-rename spelling of the same setting, exported by the installed launcher: both
+    // prefixes are the rule, so a root named the new way has to be stripped exactly like the old.
+    "ADELIE_HOME",
     // A sample of the PENGUIN_* the prefix rule covers that no by-name list ever named: the
     // resolved shell, the release feed, the UI language and the install location. Whether these
     // specific ones are set at run time is beside the point — the rule is the prefix, and a new
@@ -337,6 +340,7 @@ describe("harness environment variables never reach a spawned command", () => {
     // harness at the running one's data — where the lock is already held, so it cannot start.
     process.env.PENGUIN_HOME = "/home/someone/.penguin/data";
     process.env.PENGUIN_WEB_DB = "/home/someone/.penguin/data/web.db";
+    process.env.ADELIE_HOME = "/home/someone/.adelie/data";
     process.env.PENGUIN_SHELL = "/opt/penguin/bin/bash";
     process.env.PENGUIN_UPDATE_FEED_URL = "https://example.invalid/feed";
     process.env.PENGUIN_LANG = "zh";
@@ -443,6 +447,21 @@ describe("harness environment variables never reach a spawned command", () => {
       expect(res.output).toContain("X=[]");
     } finally {
       delete process.env.PENGUIN_SOME_FUTURE_SETTING;
+    }
+  });
+
+  it("an ADELIE_* nobody has invented yet is stripped by the same prefix rule", async () => {
+    // Adelie's own spelling joined the rule when the data root moved: the installed launcher
+    // exports ADELIE_HOME, so an Adelie install's serving process has it set, and a rule that
+    // covered only PENGUIN_* would hand an Agent-started harness this process's own root.
+    process.env.ADELIE_SOME_FUTURE_SETTING = "leaked";
+    try {
+      const res = await runTool(env, "exec_command", {
+        cmd: `node -e "console.log('Y=[' + (process.env.ADELIE_SOME_FUTURE_SETTING ?? '') + ']')"`,
+      });
+      expect(res.output).toContain("Y=[]");
+    } finally {
+      delete process.env.ADELIE_SOME_FUTURE_SETTING;
     }
   });
 

@@ -17,6 +17,13 @@ done
 DIR=$(dirname "$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)")
 
 export PENGUIN_WEB_DIST="${PENGUIN_WEB_DIST:-$DIR/web}"
+# The data root this install owns. The installer lays the program out in a program directory and
+# keeps the data root inside it (`<program>/data`) — that is where an install made before Adelie
+# spelled its environment Adelie's way has its Agents, Sessions and usage, so exporting the path
+# here is what carries them across an upgrade: without it the new CLI would resolve Adelie's
+# default root (~/.adelie/data) instead and that install's data would look gone. An explicit
+# ADELIE_HOME wins, then the pre-2.2 PENGUIN_HOME, then this install's own `data/`.
+export ADELIE_HOME="${ADELIE_HOME:-${PENGUIN_HOME:-$DIR/data}}"
 if [ -x "$DIR/node/bin/node" ]; then
   exec "$DIR/node/bin/node" "$DIR/lib/dist/penguin.js" "$@"
 fi

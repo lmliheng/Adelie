@@ -60,8 +60,8 @@ const devServer = runWithEnvDefaults(serverScripts["dev"]);
 const devCli = runWithEnvDefaults(rootScripts["penguin"]);
 const devDesktop = runWithEnvDefaults(rootScripts["desktop"]);
 
-/** The installed server/CLI root, `~/.penguin/data` (core's resolveRoot() default). */
-const installedRoot = path.join(os.homedir(), ".penguin", "data");
+/** The installed server/CLI root, `~/.adelie/data` (core's resolveRoot() default). */
+const installedRoot = path.join(os.homedir(), ".adelie", "data");
 
 describe("dev entry point isolation (ports and data roots)", () => {
   it("dev:server and the dev CLI each declare a port and a data root", () => {

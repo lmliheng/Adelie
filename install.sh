@@ -6,7 +6,7 @@
 # Options:
 #   PENGUIN_VERSION=vX.Y.Z    choose a version (same as --version vX.Y.Z); a published Release
 #                              installer defaults to its own version, an unstamped source copy to latest
-#   PENGUIN_INSTALL_DIR=<dir> install dir; default ~/.penguin
+#   PENGUIN_INSTALL_DIR=<dir> install dir; default ~/.adelie
 #   PENGUIN_ARCHIVE=<file>    install a local Release archive without network access (same as --archive <file>)
 #   PENGUIN_DOWNLOAD_SOURCE=auto|github choose the online source; default auto (GitHub Releases)
 #   PENGUIN_DOWNLOAD_BASE_URL=<url> exact online asset directory selected by the stable forwarder
@@ -24,7 +24,7 @@
 # v0.1.5 shipped the program tree directly (top-level penguin/); such archives are still
 # accepted, from --version pins and --archive files alike.
 #
-# The data dir (~/.penguin/data) sits under the install home but is never touched by reinstall/upgrade (which only replace bin/lib/web/node).
+# The data dir (~/.adelie/data by default) sits under the install home but is never touched by reinstall/upgrade (which only replace bin/lib/web/node). The launcher exports the root it lives under, so an install made before the rename (at ~/.penguin) keeps reading its own data there.
 #
 # Docs: https://penguin.ooo/docs/quickstart-cli
 set -eu
@@ -33,7 +33,7 @@ REPO="https://github.com/lmliheng/Adelie"
 GITHUB_RELEASE_ROOT="$REPO/releases/download"
 GITHUB_LATEST_BASE="$REPO/releases/latest/download"
 VERSION="${PENGUIN_VERSION:-}"
-INSTALL_DIR="${PENGUIN_INSTALL_DIR:-$HOME/.penguin}"
+INSTALL_DIR="${PENGUIN_INSTALL_DIR:-$HOME/.adelie}"
 BIN_DIR="$HOME/.local/bin"
 MODIFY_PATH=1
 UNIVERSAL=0

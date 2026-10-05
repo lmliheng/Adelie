@@ -71,7 +71,7 @@ Reviewed-by: Aurora Team
 `;
 
 function rootDir(): string {
-  return process.env.PENGUIN_HOME ?? path.join(os.homedir(), ".penguin", "data");
+  return process.env.ADELIE_HOME ?? path.join(os.homedir(), ".adelie", "data");
 }
 function agentStateDir(): string {
   return path.join(rootDir(), PROJECT_ID, "agents", AGENT_ID, "agent_state");

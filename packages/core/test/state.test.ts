@@ -70,9 +70,11 @@ import { sessionEnvironment } from "../src/internal/session-support.js";
 
 let tmpRoot: string;
 let prevHome: string | undefined;
+let prevAdelieHome: string | undefined;
 
 beforeEach(async () => {
   prevHome = process.env.PENGUIN_HOME;
+  prevAdelieHome = process.env.ADELIE_HOME;
   tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "penguin-state-"));
   process.env.PENGUIN_HOME = tmpRoot;
 });
@@ -82,6 +84,11 @@ afterEach(async () => {
     delete process.env.PENGUIN_HOME;
   } else {
     process.env.PENGUIN_HOME = prevHome;
+  }
+  if (prevAdelieHome === undefined) {
+    delete process.env.ADELIE_HOME;
+  } else {
+    process.env.ADELIE_HOME = prevAdelieHome;
   }
   // Retries: when a test times out, vitest runs this cleanup while the test's un-cancelled
   // init may still be writing files, so an immediate recursive rm can hit ENOTEMPTY on
@@ -99,8 +106,27 @@ async function exists(p: string): Promise<boolean> {
 }
 
 describe("paths / resolveRoot", () => {
-  it("honors PENGUIN_HOME", () => {
+  it("still honors the pre-rename PENGUIN_HOME when ADELIE_HOME is unset", () => {
     expect(resolveRoot()).toBe(tmpRoot);
+  });
+
+  it("honors ADELIE_HOME", () => {
+    const own = path.join(tmpRoot, "adelie-home");
+    process.env.ADELIE_HOME = own;
+    expect(resolveRoot()).toBe(own);
+  });
+
+  it("prefers ADELIE_HOME over the pre-rename name when both are set", () => {
+    const own = path.join(tmpRoot, "adelie-home");
+    process.env.PENGUIN_HOME = path.join(tmpRoot, "legacy-home");
+    process.env.ADELIE_HOME = own;
+    expect(resolveRoot()).toBe(own);
+  });
+
+  it("defaults to ~/.adelie/data with neither name set", () => {
+    delete process.env.PENGUIN_HOME;
+    delete process.env.ADELIE_HOME;
+    expect(resolveRoot()).toBe(path.join(os.homedir(), ".adelie", "data"));
   });
 });
 

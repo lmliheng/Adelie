@@ -5,7 +5,7 @@
  *
  * There is no single upgrade mechanism, because there is no single install mechanism: the
  * documented path is the tarball installer (install.sh unpacks bin/lib/web/node into
- * PENGUIN_INSTALL_DIR, default ~/.penguin), some users have a global npm install of
+ * PENGUIN_INSTALL_DIR, default ~/.adelie), some users have a global npm install of
  * @prismshadow/penguin-cli, and developers run out of a source checkout. This command works out
  * which one it is from the real path of the running CLI and upgrades the way that install was
  * made — never by guessing. A source checkout is refused outright: overwriting a working tree
@@ -51,7 +51,7 @@
  * which would interpolate a user-supplied release tag into a command line — both cases are refused
  * up front with the command the user should run themselves.
  *
- * The data root (~/.penguin/data) is never touched — the installer only replaces bin/lib/web/node
+ * The data root (~/.adelie/data) is never touched — the installer only replaces bin/lib/web/node
  * — and the confirmation prompt says so, because that is the thing users worry about.
  * Docs: /docs/cli § "penguin update".
  */
@@ -217,7 +217,7 @@ export function globalInstallCommand(
  * Builds the argv and environment for re-running install.sh, preserving the shape of the install
  * being upgraded rather than the defaults:
  *
- * - `PENGUIN_INSTALL_DIR` is passed whenever the install is not at the default `~/.penguin`, or
+ * - `PENGUIN_INSTALL_DIR` is passed whenever the install is not at the default `~/.adelie`, or
  *   the upgrade would silently relocate it;
  * - `--universal` is passed when the current install has no bundled `node/` directory, or the user
  *   would silently gain a runtime they deliberately did not install (and lose it in reverse);
@@ -462,7 +462,7 @@ export function planUpdate(input: {
   install: InstallInfo;
   modulePath: string;
   platform: string;
-  /** `~/.penguin`, passed in rather than read, so the tarball branch stays pure. */
+  /** `~/.adelie`, passed in rather than read, so the tarball branch stays pure. */
   defaultInstallDir: string;
 }): UpdatePlan {
   const { current, target, install } = input;
@@ -529,7 +529,7 @@ export function registerUpdateCommand(program: Command, t: Messages): void {
       const release = await resolveRelease(opts.release, t);
       const target = release.version;
       const modulePath = selfPath();
-      const defaultInstallDir = path.join(homedir(), ".penguin");
+      const defaultInstallDir = path.join(homedir(), ".adelie");
       const plan = planUpdate({
         current,
         target,

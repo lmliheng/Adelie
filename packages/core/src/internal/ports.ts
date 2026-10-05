@@ -13,7 +13,7 @@
  *
  * | port | who                                | data root                  | where                                |
  * | ---- | ---------------------------------- | -------------------------- | ------------------------------------ |
- * | 7364 | installed server / Web UI          | `~/.penguin/data`          | `DEFAULT_SERVER_PORT` below          |
+ * | 7364 | installed server / Web UI          | `~/.adelie/data`           | `DEFAULT_SERVER_PORT` below          |
  * | 7365 | `pnpm dev:web` (Vite)              | none (proxies to 7368)     | `packages/web/vite.config.ts`        |
  * | 7367 | `pnpm dev:docs` (Vite)             | none (static)              | `packages/docs/vite.config.ts`       |
  * | 7368 | `pnpm dev:server` (dev backend)    | `~/.penguin/dev-data`      | `packages/server/package.json` `dev` |
@@ -22,10 +22,16 @@
  * | 7372 | `pnpm dev:gallery` (Vite)          | none (static)              | `packages/ui-gallery/vite.config.ts` |
  *
  * The desktop app binds no fixed port in either form (PORT=0 with a per-instance sticky
- * preference); its release profile shares `~/.penguin/data` with the CLI by design and its
+ * preference); its release profile shares `~/.adelie/data` with the CLI by design and its
  * dev profile — an unpackaged run, or any build launched with `--dev` — takes
  * `~/.penguin/dev-data` (see `packages/desktop/src/app-identity.ts`). The
  * web e2e harness runs on 8930/8931 against a throwaway root (`packages/web/e2e/run.sh`).
+ *
+ * Only the release data root is Adelie's own `~/.adelie/data`: the `dev-data` roots above
+ * deliberately keep the pre-rename `~/.penguin` home, because the desktop's dev shell names
+ * `~/.penguin/dev-data` as the root it shares with `dev:server` (`app-identity.ts`, and the
+ * desktop test that pins it) — the two must move together, and the desktop tree is not
+ * buildable here. Moving them is the remainder of ledger item 2.2.
  *
  * The development backend deliberately does **not** share 7364 with an installed one: the
  * two are routinely running at once, and before they were split, `pnpm dev` either failed

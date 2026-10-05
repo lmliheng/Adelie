@@ -9,6 +9,11 @@ rem then break the plain `penguin` command. Batch files are exempt from that pol
 setlocal
 set "DIR=%~dp0.."
 if not defined PENGUIN_WEB_DIST set "PENGUIN_WEB_DIST=%DIR%\web"
+rem The data root this install owns: the installer keeps it inside the program directory as
+rem data\, which is where an install made before the rename keeps its Agents and Sessions.
+rem An explicit ADELIE_HOME wins, then the pre-2.2 PENGUIN_HOME, then this install's own data\.
+if not defined ADELIE_HOME if defined PENGUIN_HOME set "ADELIE_HOME=%PENGUIN_HOME%"
+if not defined ADELIE_HOME set "ADELIE_HOME=%DIR%\data"
 if exist "%DIR%\git\usr\bin\sh.exe" set "PENGUIN_BUNDLED_SHELL=%DIR%\git\usr\bin\sh.exe"
 if exist "%DIR%\node\node.exe" (
   "%DIR%\node\node.exe" "%DIR%\lib\dist\penguin.js" %*

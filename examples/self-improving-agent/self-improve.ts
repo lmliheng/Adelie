@@ -69,9 +69,9 @@ When a task lists explicit rules or an exact output format, follow this discipli
    sentence count, bullet count, word count), fixing any mismatch first.
 `;
 
-/** rootDir mirrors the SDK's resolveRoot(): PENGUIN_HOME or ~/.penguin/data. */
+/** rootDir mirrors the SDK's resolveRoot(): ADELIE_HOME or ~/.adelie/data. */
 function rootDir(): string {
-  return process.env.PENGUIN_HOME ?? path.join(os.homedir(), ".penguin", "data");
+  return process.env.ADELIE_HOME ?? path.join(os.homedir(), ".adelie", "data");
 }
 
 function agentStateDir(): string {
