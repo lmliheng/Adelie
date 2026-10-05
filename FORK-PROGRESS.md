@@ -1223,3 +1223,84 @@ v0.2.3 的 Release 有两处对不上，`penguin update` 因此必然失败：
 ### 待办
 
 - **这四条还没到线上**：现网 7364 跑的是 v0.3.0 的发布产物，这些改动要下一个版本（0.3.1）才看得见。
+
+## 发布 v0.3.1：GitHub Release + npm + 现网原地更新（2026-10-06，用户点单）
+
+### 用户说的
+
+「发成 0.3.1，然后原地更新」。v0.3.1 的内容就是上一节的四条界面改动，外加另一条线（2.2c
+读侧：`ADELIE_*` 与旧 `PENGUIN_*` 两个拼写都认）—— 那条线由并发的自进化会话提交，**在同一棵
+主工作树里**。
+
+### 为什么版本戳提交要在独立工作树里做
+
+主工作树 `/root/adelie-fork` 有一场并发的自进化会话在同一个分支上随时提交。要打 tag 就必须
+把树冻住，否则 `pnpm -r build` 与 tag 之间会混进别人的半成品。做法：版本戳提交 `7fc64596`
+（root + 9 个工作区包 + 16 个插件包 → 0.3.1、`packages/core/src/index.ts` 的 `VERSION`、
+新增 `RELEASE-v0.3.1.md`）落在 `main` 上，然后用 `git worktree add --detach /tmp/rel-0.3.1
+v0.3.1` 检出一棵**干净、带自己 node_modules 的树**跑全部门禁、打包与 npm 发布。这样主工作树
+里并发的提交一条也不会被卷进 tag。（四个私有 sandbox 插件仍留在 0.2.2 —— `builtin-registry`
+会比对它们的版本，跟着升反而错。）
+
+### 做了什么
+
+1. **门禁（干净树 `/tmp/rel-0.3.1`，先 `pnpm -r build` 再 typecheck）**：build ✓ ·
+   `pnpm typecheck` 8 个包 Done · `pnpm lint` 0 · `pnpm format:check` 干净 ·
+   `pnpm -r test` **8878 通过 / 14 跳过 / 0 失败**。日志 `/tmp/gate31-*.log`。
+2. **CLI 三件包**：`penguin-linux-x64.tar.gz` 112280308、`penguin-win32-x64.zip` 148034563、
+   `penguin-universal.tar.gz` 55009840，各带 `.sha256`（`sha256sum -c` 全 OK），外加
+   `install.sh` / `install.ps1`。
+3. **离线隔离安装验证**（干净 HOME、不联网）：`penguin version` = `v0.3.1` /
+   buildDate `2026-10-06` / commit `7fc64596`；用这份产物起 web 服务 200；产物里能搜到
+   「导入与编写规则」，搜不到 TokenDance 横幅文案、`.banner-shimmer` 和那条已删的
+   localStorage 键；显式 `en-US` 打开登录页也仍是中文（默认中文生效）。
+4. **npm 整条链 19 个包**（3 个宿主 + 16 个插件）发到 0.3.1，逐个 `✅ Published`；抽样
+   `penguin-cli` / `core` / `server` / `goal` / `use-firecrawl` 在 registry 上已是 0.3.1。
+   发布后把 npm 发布脚本改回原状的 `cleanup` 也跑了，工作树干净。
+5. **GitHub Release**：id `404060105`，14 个资产，`make_latest: "true"`；`releases/latest`
+   指向 v0.3.1。实测下载 `.../latest/download/latest-linux.yml` 与
+   `.../download/v0.3.1/install.sh` 都是 200。
+6. **现网原地更新**：`penguin update --check` 报「Installed 0.3.0 · latest 0.3.1」→
+   `penguin update --yes`（下载 tar 包、两级 checksum 都过）→ `systemctl restart
+   adelie-server`。
+
+### 桌面端 Linux 产物为什么是本机打的
+
+打这一版的时候 GitHub Actions 正处于 degraded_performance（`githubstatus.com` 的
+`Actions degraded_performance`）。第一次 dispatch（run `37363428805`）：macOS ✓、Windows ✓，
+**ubuntu-latest 排队 15 分钟后被取消**。再 dispatch 一次（run `37365164133`），三个作业全部
+排队 20 分钟一个都没起来，于是把它取消，**在本机的 tag 工作树里用与 CI 完全同一条命令**打：
+
+```
+pnpm --dir packages/desktop exec electron-builder --linux --publish never
+```
+
+（`BUILD_DATE` 按本机发布日盖成 2026-10-06，与 CLI 三件包同口径；Electron 二进制与
+electron-builder 的 appimage/fpm 工具链都命中本机缓存，没有额外下载。）Windows 的 exe 仍来自
+CI（run `37363428805` 的 `desktop-Windows` artifact，size 与 sha512 与该 artifact 的
+`latest.yml` 一致）；macOS 依旧不发。三个平台都有的那一版安装包仍只有 CI 能给，这一版
+Linux 是本机产物 —— **下个版本若 Actions 已恢复，Linux 应回到 CI 里打。**
+
+### 验证（都是真跑出来的）
+
+- 桌面端 Linux：`latest-linux.yml` 里 AppImage 的 `sha512` / `size` 与文件实际值逐字节相符
+  （153442229 字节）；`app-update.yml` 指向 `lmliheng/Adelie`（github provider）；打包树里
+  `resources/app/web-dist/index.html` 存在。
+- AppImage 冒烟：在 `xvfb-run` 下用干净 `HOME` 启动，内嵌服务端把界面与 API 都服务起来
+  （`GET /api/projects/…/agents` 200、`/api/version/update-check` 200），是超时收工而不是崩溃。
+- 现网：`systemctl is-active adelie-server` = active、7364 在监听（新 PID）、`penguin version`
+  = `v0.3.1`、`GET /` 200 且 `<title>Adelie</title>`；线上前端产物里能搜到「导入与编写规则」与
+  `rulesLink`，搜不到 TokenDance 横幅；数据根 `/root/.adelie/data` 里的 `default_project` 等原样
+  在，`/root/.penguin/data → /root/.adelie/data` 软链没动。只换了 `bin` `lib` `web` `node`。
+
+### 收尾 / 待办
+
+- **OSS 镜像还没做**：用户已把 AccessKey 写进 vault（`OSS_ACCESS_KEY_ID` /
+  `OSS_ACCESS_KEY_SECRET`），但**还缺 Bucket、Region/Endpoint、是否公开读或走 CDN/HTTPS
+  域名、目录前缀**，而且运行中的服务缓存了 vault，这两个变量要重启服务（或新会话）才进得来。
+  拿到参数后：① 写推资产的脚本（可改 `scripts/publish-release-to-oss.sh`）② 把桌面端的镜像
+  地址做成可配置（落盘配置，而非只能靠 `PENGUIN_UPDATE_FEED_URL` 环境变量）③ 默认 feed 指镜像。
+  已发布的 0.3.1 资产可以事后补传。
+- **用户贴在聊天里的那对 AccessKey 应当轮换**（值已进对话上下文）。
+- 用户新提的两条（用户级全局密钥 + JSON 导入 + 分发给 Agent；默认头像改成 Adelie 图标）留给
+  0.3.2，代码还没动。
