@@ -1344,3 +1344,69 @@ OSS 那对象 AccessKey 已经写进密钥库、「Buucket 你不能自己管理
 ### 顺带（提交 `763f3cd7`）
 
 `scripts/publish-release-to-oss.sh` 的重写与上面的镜像一起提交。
+
+## 插件库再添两个并发上 npm：lesson-video、requirements-box（2026-10-06，用户点单）
+
+### 用户说的
+
+「好，不错，这个需求箱功能可以发布到插件，对了，我的 github 插件库又提交了一个插件，你正好把
+那个插件更新到 npm 包」—— 两件事：把「需求箱」（我们这两周在用的那套：一页收需求 + 定时巡台 +
+每轮邮件）做成插件发布；把 `lmliheng/penguin-plugins` 里新提交的那个插件发到 npm。
+
+### lesson-video（提交 `b873c041`）
+
+- 来源是 `lmliheng/penguin-plugins` 的提交 `2fe9b0e8`，那边叫 `@penguinharness/lesson-video@0.1.0`。
+- 按本仓库插件规矩对齐：包名 `@lmliheng/lesson-video`、版本跟当前 dev 版本 `0.3.1`、补
+  `repository.directory` 与 `LICENSE`（`files` 里也加上）、`SKILL.md` frontmatter 只留
+  `name` + `description` 并补 `## Before you start`、整包过一遍 prettier。
+- 接进 `packages/{core,cli,desktop}/package.json`（`workspace:*`）—— 内置插件靠宿主包的
+  `dependencies` 经 Node 解析（`builtinRoots()`），不写就在库里看不见。
+- 三处「必须提到每个插件」的守卫同步：`plugins/README.md`、`README.zh.md`、
+  `packages/docs/content/skills.{zh,en}.md`。
+- lint 报过 `render.mjs` 重复 import `node:url`，修掉后 amend 进同一个提交。
+
+### requirements-box（提交 `2f62dc0f`）
+
+线上那套需求箱（`/opt/adelie-design`）**不在任何 git 仓库里**，这一轮把它做成可分发的插件：
+
+- `plugins/requirements-box/`：`requirements.mjs`（服务本体，零依赖）、`requirements.html`
+  （那一页）、**新写的 `serve.mjs`**（独立服务器：只有这一页与它的接口，其余 302 到 `/requirements`，
+  另有 `/healthz`）、**新写的 `install.mjs`**、`patrol.md`（巡台准则模板，从
+  `/root/evolution/REQUIREMENTS.md` 泛化而来）、`box.config.example.json`。
+- **服务本体去掉写死的本机路径**：改成「环境变量 > 同目录 `box.config.json` > 中性默认值」，
+  新增 `patrolMissing()` 报错，`spawnPatrol` 里没配的参数就不传（传空串会被当成真的 id）。
+  改动同样上了现网：新建 `/opt/adelie-design/box.config.json`，重启后节奏、条目、口令、页面
+  全部照旧（90m / 22:00Z / 6 条 / 无口令 401 / 页面 200）。
+- `plugin.json` 版本 `2026.10.06.1`、分类 `office-productivity`、`preinstall: false`。
+
+### 端到端验证（装一份、真跑一遍）
+
+- `install.mjs` 空跑 `--print-only` 看计划 → 真装到 `/tmp/reqbox-e2e-…`：文件、口令（`key.txt` 0600、
+  数据目录 0700）、`box.config.json`、巡台 `.toml` 都落地。
+- 起 `serve.mjs`（3400，没碰 3003 / 7364）：`/healthz` 200、页面 200、接口无口令 401、坏口令 401、
+  建条目 201、空标题 400、改状态 200、乱状态 400、`patrol` 读写并真的把 `.toml` 的 `period` 改成
+  90m、归档后不让改 409、未知 id 404、手动触发开工 200 且从 CLI 输出里读到了会话号、
+  60 秒内再点 429。
+- Playwright 打开那一页截图：样式完整、无 console 报错、巡台卡片与列表都在。
+- **验证里抓到两个真问题，已修**（`2f62dc0f`）：① 定时任务 prompt 拼串缺一个空格，印出来是
+  「标成 blocked并写清…」；② `--workspace` 指向不存在的目录时不在安装时报错，而是等到用户点
+  「现在就做」才蹦一个 `spawn … ENOENT`（spawn 的 `cwd` 不存在）—— 现在装的时候就拦住并说清原因。
+
+### 门禁与发布
+
+- 干净工作树 `/tmp/plugin-rel`（detached，`pnpm install --frozen-lockfile`）上：`pnpm typecheck`
+  八包 + 四个沙箱插件全过、`pnpm lint` 0/0、`pnpm format:check` 干净、`pnpm -r test` 退出码 0。
+- `pnpm --filter <name> publish --access public --no-git-checks` → `@lmliheng/lesson-video@0.3.1`
+  与 `@lmliheng/requirements-box@0.3.1` 都 `✅ Published`。两个包名首发（此前 404）。
+- registry 复核：lesson-video 的版本端点先 404（staged 延迟，等了两分钟），随后两个都 200；
+  把两个 tarball 拉回来对照本仓库逐文件一致（`requirements-box` 12 个文件、`lesson-video` 14 个，
+  只差 npm 给 `package.json` 补的那个行尾换行）。**没有升版本号去催**。
+- 主线推上 `origin/main`：`5489c88d..2f62dc0f`。
+
+### 口径说明（避免误会）
+
+- 中间那个提交（`b873c041`）里的插件计数最初写成 18，**是错的**：那时候库里是 17 个（16 + 
+  lesson-video），18 是再加 requirements-box 之后的数。已把那个提交 amend 成 17、后一个提交写 18，
+  两个提交各自都能过 `plugins.test.ts`。
+- 插件有两个版本号，别混：`plugin.json` 里的是**日期序号**（`2026.10.06.1`，改了落地内容就要升），
+  npm 包版本跟仓库 dev 版本走（现在 `0.3.1`）。
