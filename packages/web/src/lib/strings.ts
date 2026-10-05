@@ -2119,6 +2119,15 @@ export const zh = {
     /** The second list: registry entries this Project does not ask for yet. */
     availableSection: (n: number): string => `可安装 (${n})`,
     notInstalled: "未安装",
+    /** The market shelf's per-Agent state tag on a library plugin's card (marketState): about the Agent the page is working with, not the deployment. */
+    marketState: { installed: "已安装", updatable: "可更新", available: "未安装" },
+    /** Tooltip of that tag, naming the Agent it is about (the page always has one selected when the tag is drawn). */
+    marketStateHint: (agent: string) =>
+      `以当前选中的 Agent（${agent}）为准：未安装可以一键装到它，可更新表示它装的副本落后于本次构建的版本。`,
+    /** The shelf's one-click install button, naming the Agent it installs to. */
+    marketInstall: (agent: string) => `安装到 ${agent}`,
+    /** The shelf's one-click update button, on a copy the server lists as behind the library. */
+    marketUpdate: (agent: string) => `更新 ${agent} 上的副本`,
     /** The filter column beside the lists, and the empty result. */
     filterCategories: "分类",
     filterKind: "包含",

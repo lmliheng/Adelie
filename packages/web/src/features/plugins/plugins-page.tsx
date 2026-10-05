@@ -12,7 +12,12 @@
  * (single-line truncation, falling back to the full description when missing) + a line below
  * both with what the plugin contains ("N skills", one "<event> hook" badge per hook point)
  * and its metadata (version · usage count "used by N Agents"); group and card copy follow the
- * UI language (localizedText / localizedShortText), and groups have no description. Icon
+ * UI language (localizedText / localizedShortText), and groups have no description. The tag
+ * line carries the market shelf's state for the Agent the page is working with —
+ * not installed / installed / updatable (marketState, off the server's own list of installs it
+ * says are behind) — and the action row leads with that shelf's one-click button: a labelled
+ * "Install to <agent>" when that Agent has nothing of the plugin, the update confirmation the
+ * Rotate button opens when its copy is behind, nothing when it is current. Icon
  * buttons for actions (copy goes into aria-label and title) —
  * - Rotate "update installs" (shown only when the server lists some Agent's installed copy
  *   behind the library — `AgentSummary.pluginUpdates`; the page never compares versions
@@ -165,6 +170,28 @@ export function installedPluginVersion(
     if (version !== undefined) return version;
   }
   return undefined;
+}
+
+/**
+ * What the market shelf offers for one plugin on the Agent the page is working with: the three
+ * states a card carries — not installed, installed and current, installed but behind — as one
+ * value, so the state tag, the one-click button and its wording cannot describe different
+ * things.
+ *
+ * `outdated` comes from `AgentSummary.pluginUpdates` (the server's own comparison of an
+ * installed copy against the library), never from comparing versions here: a plugin is
+ * "updatable" when the server already says that Agent's copy is behind, and the button then
+ * runs the same reinstall the per-Agent "Update" runs.
+ */
+export type MarketState = "available" | "installed" | "updatable";
+
+export function marketState(
+  plugin: PluginParts,
+  installs: AgentInstalls | undefined,
+  outdated: boolean,
+): MarketState {
+  if (!pluginInstalled(plugin, installs)) return "available";
+  return outdated ? "updatable" : "installed";
 }
 
 /**
@@ -1410,6 +1437,21 @@ function PluginCard({
     currentInstalls === undefined
       ? undefined
       : plugin.skills.find((skill) => currentInstalls.skills.has(skill.name));
+  // The shelf's state on the Agent the page is working with (undefined when none is selected):
+  // the card says what a click would do there — install the plugin, or bring a copy the server
+  // lists as behind up to the library's version — and quick start becomes usable once the
+  // optimistic install has moved that Agent's snapshot.
+  const marketAgent = currentAgent;
+  const market =
+    marketAgent === null
+      ? undefined
+      : marketState(
+          plugin,
+          installed.get(marketAgent.agentId),
+          outdated.includes(marketAgent.agentId),
+        );
+  /** The display name of that Agent, for the copies that have to say which one they act on. */
+  const marketAgentName = marketAgent === null ? undefined : agentDisplayName(marketAgent);
 
   // The card's detail Modal (the model library's card pattern): what the plugin ships,
   // with a per-skill SKILL.md reader.
@@ -1487,6 +1529,13 @@ function PluginCard({
           )}
           {plugin.skills.length > 0 && <Tag mono>{S.skills.skillCount(plugin.skills.length)}</Tag>}
           {plugin.hooks.length > 0 && <Tag mono>{S.hooks.hookCount(plugin.hooks.length)}</Tag>}
+          {/* The shelf's state, relative to the Agent the page is working with: the same value
+              the one-click button acts on, named so the reader knows which Agent it is about. */}
+          {market !== undefined && (
+            <Tag title={S.plugins.marketStateHint(marketAgentName ?? "")}>
+              {S.plugins.marketState[market]}
+            </Tag>
+          )}
         </div>
       </button>
       {detailOpen && (
@@ -1495,6 +1544,34 @@ function PluginCard({
       {/* Actions: equal-square light icon buttons in a single row, vertically centered at the
           card's right edge (copy goes into aria-label and title). */}
       <div className="flex shrink-0 items-center justify-center gap-1.5">
+        {/* The shelf's one-click action, on the Agent the page is working with: install when that
+            Agent holds nothing of this plugin, or the update an outdated copy gets elsewhere on
+            the card (that one confirms first, because it overwrites installed files). The card's
+            primary action, so it carries a label rather than a glyph; with no Agent selected
+            there is nothing to install to and the shelf's state is not shown either. */}
+        {market === "available" && marketAgent !== null && (
+          <Button
+            size="sm"
+            className="h-8 shrink-0"
+            aria-label={`${S.plugins.marketInstall(marketAgentName ?? "")} ${plugin.name}`}
+            title={S.plugins.marketInstall(marketAgentName ?? "")}
+            onClick={() => void onToggleInstall(marketAgent.agentId, plugin, true)}
+          >
+            {S.plugins.install}
+          </Button>
+        )}
+        {market === "updatable" && marketAgent !== null && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="h-8 shrink-0"
+            aria-label={`${S.plugins.marketUpdate(marketAgentName ?? "")} ${plugin.name}`}
+            title={S.plugins.marketUpdate(marketAgentName ?? "")}
+            onClick={() => setPendingUpdate([marketAgent.agentId])}
+          >
+            {S.skills.updateAction}
+          </Button>
+        )}
         {/* Light (secondary): an update nudge, not the card's primary action. The last stop on
             the plugins trail, so it carries the dot itself — straddling the top-right corner of
             the button's border, the anchoring rule update-dot.tsx states for a button. The mark

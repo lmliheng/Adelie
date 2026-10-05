@@ -2078,6 +2078,15 @@ export const en: Strings = {
     /** The second list: registry entries this Project does not ask for yet. */
     availableSection: (n: number): string => `Available (${n})`,
     notInstalled: "not installed",
+    /** The market shelf's per-Agent state tag on a library plugin's card (marketState): about the Agent the page is working with, not the deployment. */
+    marketState: { installed: "Installed", updatable: "Update", available: "Not installed" },
+    /** Tooltip of that tag, naming the Agent it is about (the page always has one selected when the tag is drawn). */
+    marketStateHint: (agent: string) =>
+      `About the selected agent, ${agent}: not installed means one click installs it there, and Update means its copy is behind this build's version.`,
+    /** The shelf's one-click install button, naming the Agent it installs to. */
+    marketInstall: (agent: string) => `Install to ${agent}`,
+    /** The shelf's one-click update button, on a copy the server lists as behind the library. */
+    marketUpdate: (agent: string) => `Update the copy on ${agent}`,
     /** The filter column beside the lists, and the empty result. */
     filterCategories: "Categories",
     filterKind: "Contains",

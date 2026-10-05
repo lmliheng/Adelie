@@ -8,6 +8,8 @@
  * - A plugin is installed on an Agent once any part of it is there (a skill, or its hook
  *   package), read off the two installed lists; nothing is installed for an Agent with no
  *   snapshot or for a plugin that ships nothing.
+ * - The market shelf's state for one Agent is not installed / installed / updatable, the third
+ *   only ever off the server's own list of installs it says are behind.
  * - The installed version is the hook package's where there is one, else the first installed
  *   skill's, and undefined where the plugin is not installed.
  * - The per-plugin reminder names the Agents the server lists as behind on it, in list order
@@ -21,6 +23,7 @@ import {
   availablePluginRows,
   installedPluginRows,
   installedPluginVersion,
+  marketState,
   outdatedAgentIds,
   pluginInstalled,
   pluginUpdatePlan,
@@ -142,6 +145,27 @@ describe("pluginInstalled", () => {
   it("is false for an Agent with no snapshot yet, and for a plugin that ships nothing", () => {
     expect(pluginInstalled(SKILL_ONLY, undefined)).toBe(false);
     expect(pluginInstalled({ name: "empty", skills: [], hooks: [] }, installs({}, {}))).toBe(false);
+  });
+});
+
+describe("marketState", () => {
+  it("reads not installed for an Agent holding none of the plugin, so the shelf offers the one click", () => {
+    expect(marketState(SKILL_ONLY, undefined, false)).toBe("available");
+    expect(marketState(SKILL_ONLY, installs({ other: "2026.07.01.1" }, {}), false)).toBe(
+      "available",
+    );
+  });
+
+  it("is installed when that Agent's copy is current, and updatable when the server lists it behind", () => {
+    const there = installs({ "web-design": "2026.08.01.1" }, {});
+    expect(marketState(SKILL_ONLY, there, false)).toBe("installed");
+    // The flag is the server's own comparison (AgentSummary.pluginUpdates), never re-derived from
+    // the two version strings here — so the tag and the library's update badge cannot disagree.
+    expect(marketState(SKILL_ONLY, there, true)).toBe("updatable");
+  });
+
+  it("never calls a plugin the Agent does not have updatable, whatever the server lists", () => {
+    expect(marketState(HOOK_ONLY, installs({}, {}), true)).toBe("available");
   });
 });
 
