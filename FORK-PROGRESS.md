@@ -1120,3 +1120,79 @@ v0.2.3 的 Release 有两处对不上，`penguin update` 因此必然失败：
 - Release 上同时存在 `adelie-*`（v0.2.3 那套命名）与 `penguin-*`（这一版）两种资产名，属于口径
   过渡期，4.2 统一。
 - macOS 桌面端仍未签名，`latest-mac.yml` 没发，所以 macOS 拿不到更新。
+
+## 用户看完 0.3.0 提的六条（2026-10-06，用户点单）
+
+### 用户说的
+
+1. 定时任务能跨项目展示吗
+2. 新建工作区，你做了目录删除吗
+3. 插件导入界面的字太多了，能不能另起一个 dialog
+4. 模型库这块的每次都要展示的连接 tokendance 给去了
+5. 新建会话的快捷指令打开了合不上
+6. 系统默认改成中文和人民币计费
+
+两条是问句（1、2），四条是改动（3–6）；改动落在提交 `eaa818fa`。
+
+### 1. 定时任务能不能跨项目展示 —— 现状：不能
+
+`/schedules` 是**单 Project** 的：它读 `/api/projects/:p/schedules`（项目级接口），分组用的
+`agent_state/schedule/` 又天然属于某个 Project 的某个 Agent。跨项目展示要三件事，前两件是新的：
+
+- **一个跨项目的读接口**：服务端要遍历当前用户能读的 Project，把各自的 schedules 合成一份、
+  每行带上 `projectId` 与项目名（现在的响应里没有项目这一维）。
+- **界面上的项目这一维**：组头要看得出是哪个项目下的哪个 Agent；筛选/搜索要么只收窄组内行，
+  要么加一个项目筛选。
+- **创建时的归属**：任务文件的目录就是它的归属，且终生不变 —— 现在的「新建」是按当前项目列出
+  Agent，跨项目视图下必须先选项目、再选 Agent，这一步是设计选择，没有默认答案。
+
+所以这一条没有动手，等用户拍板要做成什么样。
+
+### 2. 新建工作区的目录删除 —— 做了
+
+提交 `e4cd22a8`（feat(web,server): 工作区选择器支持删除空目录）里的就是它，而**新建工作区用的
+正是同一个组件**：侧栏的「+」→ `WorkspaceSelect` → `WorkspaceFinder`（`chat/workspace-finder.tsx`），
+草稿页的那颗工作区胶囊也是它。删除的入口有三处：文件夹行的右键菜单、空白处的右键菜单、以及
+工具栏（作用于选中的那一行）；二次确认卡片写明「只能删空文件夹、不可恢复」。
+
+服务端 `DELETE /api/projects/:p/dirs` 的语义是窄的：非空 409 `dir_not_empty`（**绝不递归**）、
+根目录 403 `dir_root_protected`、Project 目录及其祖先 403 `dir_project_protected`、文件
+400 `not_a_dir`，判断全走 realpath，软链绕不过去。异机目标（ssh 浏览的机器）上「新建」与「删除」
+两行一并去掉，因为那条路径不在这台机器上。
+
+现网 0.3.0 产物核对：`/root/.adelie/lib/.../penguin-server/dist/index.js` 里有 `dir_root_protected`，
+`/root/.adelie/web/assets/*.js` 里有「删除文件夹「…」？只能删除空文件夹，里面还有内容时服务端会
+拒绝，且删除不可恢复。」所以线上那份确实带着这个功能。
+
+### 3–6. 四条改动（提交 `eaa818fa`）
+
+- **默认中文 + 默认人民币**（`state/locale.tsx`、`state/theme.tsx`）：没存过偏好时语言取 `zh`、
+  显示货币取 `CNY`，不再跟随设备语言与 USD。「跟随系统」仍是设置里的一个选项，存过偏好的照旧。
+  价格仍是 USD/million tokens 存储、`USD_TO_CNY = 7` 换算，变的只是默认的显示口径。
+- **快捷指令文件夹能合上**（`chat/folder-row.tsx`、`chat/shortcuts-folder.tsx`、`chat/draft-view.tsx`）：
+  那一行原本是「页签」——点开就开着、再点无效，而箭头一直在承诺一个不存在的折叠。改成
+  disclosure：`onOpen` → `onToggle`。
+- **模型库不再自动铺 TokenDance 连接横幅**：删掉 `features/models/tokendance-banner.tsx`、它专用的
+  `.banner-shimmer`（keyframes + 渐变）与 `penguin.tokenDanceBannerDismissed` 登记。横幅是「没配 key
+  就出现」的，每次进页面都把分组列表往下推；而 TokenDance 分组自己的「连接」入口（带状态点）
+  本来就在，横幅不是唯一去处。
+- **插件导入的规则收进独立 dialog**：两个导入对话框底部原来各铺两段编号列表（导入规则 + 编写
+  规则），字多到把字段和确认按钮挤下去。改成底部一个「导入与编写规则」文字入口，点开标题为
+  「插件导入与编写规则」的模态，内容仍是同一个 `PluginRules` 面板。Escape 只关规则那一层。
+
+### 验证
+
+- 门禁：`pnpm typecheck` 8 包 Done · `pnpm lint` 0 · `pnpm format:check` 干净 ·
+  `pnpm --filter @lmliheng/penguin-web test` 236 文件 / **2877 通过 / 2 跳过 / 0 失败**（少了 4 例：
+  TokenDance 横幅那两块的用例随组件一起删了）· `pnpm --filter @lmliheng/penguin-ui-gallery test`
+  131 通过。
+- 真页面（ui-gallery 的 framed app，7372，脚本 `check-user-six.mjs`，**30 条断言全过**）：
+  不带 `lang` 参数时界面是中文、显式 `lang=en` 时是英文（对照）；模型库里 517 处价格都是 `¥`、
+  没有 `$`、没有横幅文案也没有 `.banner-shimmer`，而分组自己的「未连接 / 连接」还在；新建会话页
+  的「我的快捷指令」进来是合着的、点开 `aria-expanded=true` 且看得见「新建快捷指令」、再点收回
+  `false` 且那行不见、还能再展开；上传与下载两个对话框里都不再铺规则、各有一个「导入与编写规则」
+  入口，点开叠出第二个 dialog（两段编号列表、14 MB 与命名优先级都在），Escape 只关规则那层。
+
+### 待办
+
+- **这四条还没到线上**：现网 7364 跑的是 v0.3.0 的发布产物，这些改动要下一个版本（0.3.1）才看得见。
