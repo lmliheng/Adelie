@@ -206,9 +206,9 @@ describe("mergeWindowsUserPath", () => {
   });
 
   it("matches case-insensitively and ignores quotes and trailing slashes", () => {
-    expect(
-      mergeWindowsUserPath(`c:\\program files\\penguinharness\\RESOURCES\\app\\BIN`, bin),
-    ).toBeNull();
+    // The fixture spells the same directory differently (drive letter and the two path
+    // segments in another case) — it must still be recognized as already present.
+    expect(mergeWindowsUserPath(`c:\\program files\\Adelie\\RESOURCES\\app\\BIN`, bin)).toBeNull();
     expect(mergeWindowsUserPath(`"${bin}"`, bin)).toBeNull();
     expect(mergeWindowsUserPath(`${bin}\\`, bin)).toBeNull();
   });

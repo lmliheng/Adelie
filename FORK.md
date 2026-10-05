@@ -1,6 +1,7 @@
 # Adelie 是 PenguinHarness 的一个 fork
 
-这个仓库（`lmliheng/Adelie`）的 `fork/penguin-base` 分支，**整棵代码树来自 PenguinHarness**，
+这个仓库（`lmliheng/Adelie`）的 `main` 分支，**整棵代码树来自 PenguinHarness**
+（2026-10-05 之前这条线叫 `fork/penguin-base`，当天并入 `main` 并删掉旧名），
 不是我们自己写的。这份文件说明来源、许可证义务、以及 Adelie 打算在这个基座上改什么 ——
 Apache-2.0 第 4 条要求把改动说清楚，所以它不是可选的。
 
@@ -18,7 +19,7 @@ Apache-2.0 第 4 条要求把改动说清楚，所以它不是可选的。
 
 ```bash
 git fetch upstream
-git merge upstream/develop        # 在 fork/penguin-base 上
+git merge upstream/develop        # 在 main 上
 ```
 
 ## 许可证义务（照做，别省）
@@ -46,12 +47,14 @@ git merge upstream/develop        # 在 fork/penguin-base 上
 
 ## 旧的 Adelie 在哪
 
-`main` 分支上是**旧的 Adelie**（自己写的引擎 + 外壳：`adelie-core/providers/tools/runtime`、
-`@lmliheng/adelie` CLI、Electron 桌面壳、Web/PWA、六个 npm 包、设计站与发布流水线）。
-它没有被删：`main` 就是它的落点（2026-10-05 发布 v0.2.0 时又存了一条 `legacy/main`，指向旧
-`main` 当时的尖端 `7fb74262`，双保险）。用户 2026-10-05 定了三件事：**落点仍是 `lmliheng/Adelie`**；
-旧的四件产物**要按新基座更新**（重发新版，不是下架）；**默认分支切到 `fork/penguin-base`**
-（2026-10-05 发布当天做的），旧 `main` 留档不删。
+`legacy/main` 分支上是**旧的 Adelie**（自己写的引擎 + 外壳：`adelie-core/providers/tools/runtime`、
+`@lmliheng/adelie` CLI、Electron 桌面壳、Web/PWA、六个 npm 包、设计站与发布流水线），工作区是
+`/root/Adelie`。它没有被删，只是不再是主线：2026-10-05 把新基座并进 `main` 之前，先把旧 `main`
+当时的尖端 `7fb74262` 存成 `legacy/main` —— 名字换了，历史一点没丢。用户 2026-10-05 定了三件事：
+**落点仍是 `lmliheng/Adelie`**；
+旧的四件产物**要按新基座更新**（重发新版，不是下架）；**默认分支是 `main`**
+（2026-10-05 发布当天把新基座并进 `main`、切了默认分支，并删掉旧名 `fork/penguin-base`），
+旧 `main` 留档不删（现名 `legacy/main`）。
 
 > 工作方式：动这份基座用 `git worktree`（`/root/adelie-fork`），**不要**在 `/root/Adelie`
 > 的工作区里切分支 —— `adelie-web.service` 直接读 `/root/Adelie/packages/{server/dist,web/dist}`，

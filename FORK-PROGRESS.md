@@ -1,16 +1,20 @@
-# fork 推进台账（`fork/penguin-base`）
+# Adelie 推进台账（`main`）
 
 > Adelie 从 2026-10-04 起改用 PenguinHarness 的整棵代码树当基座（用户定的「B」方案）。
-> 决定原文与背景在 `FORK.md`；这份文件是**这条分支上的工作量台账**，与 `main` 上那两本
-> （`docs/engine-progress.md`、`docs/web-progress.md`，都是旧 Adelie 的）无关 —— `main` 是旧的、
-> 自写的 Adelie，已经冻结，不再往上加东西。
+> 决定原文与背景在 `FORK.md`；这份文件是**主线上的工作量台账**。
+>
+> **分支口径（2026-10-05 起）**：主线就叫 **`main`**（仓库默认分支）—— 它是新基座，
+> 2026-10-05 从原来的 `fork/penguin-base` 并过来、旧名已删。**旧的、自写的 Adelie 现在叫
+> `legacy/main`**（尖端 `7fb74262`），工作区在 `/root/Adelie`，已经冻结，不再往上加东西；
+> 旧 Adelie 那两本台账（`docs/engine-progress.md`、`docs/web-progress.md`）在 `legacy/main` 上。
+> 这份文件里 2026-10-05 之前的记录写的是 `fork/penguin-base`，指的正是今天的 `main`。
 
 ## 纪律（每轮开工前读一遍）
 
-- 在 `git worktree` 检出的 `/root/adelie-fork` 里干活，**不要在 `/root/Adelie` 的工作区切分支**：
-  `adelie-web.service` 直接读 `/root/Adelie/packages/{server,web}/dist`，切过去会把线上那个
-  旧 Adelie Web 换成另一份服务端。
-- `/root/penguin-harness` 只读，是 `upstream` remote 的来源；`main` 不动。
+- 在 `git worktree` 检出的 `/root/adelie-fork` 里干活（**分支 `main`**），**不要在 `/root/Adelie`
+  的工作区切分支**：那个工作区挂在 `legacy/main`（旧 Adelie）上，而 `adelie-web.service` 直接读
+  `/root/Adelie/packages/{server,web}/dist`，切过去会把线上那个旧 Adelie Web 换成另一份服务端。
+- `/root/penguin-harness` 只读，是 `upstream` remote 的来源；`legacy/main` 不动。
 - Apache-2.0 义务照 `FORK.md`：保留 `LICENSE` 与 `THIRD-PARTY-NOTICES.md`、不留上游商标做我们的
   名号，改动要看得出来（台账 + 提交说明）。
 - 每一条都要有可复现的命令与输出才算完成；卡在需要用户拍板或需要新凭证时，**停在那一项上写清卡点**，
@@ -138,19 +142,90 @@ mp4 被本机出口白名单挡了，与仓库无关）。
 压缩」，所以本轮是直接拿用户给的 token 值调 API 的，没等着环境变量注入。下一轮起用 `$GH_TOKEN`
 即可（`env | grep GH_TOKEN` 验证）。**token 值是用户贴在对话里的**，建议用完就轮换/撤销。
 
-**待用户定 → 已拍板（2026-10-05，用户「按你的来」）**：**默认分支已切到 `fork/penguin-base`**
-（`PATCH /repos/lmliheng/Adelie` 的 `default_branch`，HTTP 200）。切之前先把旧 Adelie 的 `main`
-留了档：`legacy/main` = `7fb74262`（旧 `main` 尖端，已推到 origin；`main` 本身没动）。
-顺手把仓库「About」也改成 fork 的说法，否则首页仍是旧 Adelie 的描述 —— 描述改成
+**待用户定 → 已拍板（2026-10-05，用户「按你的来」，随后又「按你的改进，把主仓库改成main」）**：
+分支口径最终定为 **主线就叫 `main`**，仓库默认分支也是 `main`。做过的事按顺序：先把旧 Adelie 的
+`main`（尖端 `7fb74262`）另存成 `legacy/main` 推上去（`main` 本身没动）；把新基座提交并进 `main`
+（`git checkout -B main` + `git push --force origin main`；旧历史在 `legacy/main` 里，什么都没丢）；
+`PATCH /repos/lmliheng/Adelie` 把 `default_branch` 设成 `main`；删掉旧名分支 `fork/penguin-base`
+（本地 + 远端，提交全在 `main` 上）。随后把仓库 About 也改成 fork 的说法：描述
 「本地优先的多智能体应用开发平台，构建在 PenguinHarness（Apache-2.0）之上 · A local-first
-multi-agent app development platform, built on PenguinHarness」，话题加了
-`penguin-harness` / `multi-agent` / `llm` / `local-first` / `agent`；`homepage` 本来就是空的，
-没动。真浏览器复核仓库首页：分支选择器是 `fork/penguin-base`、About 是新描述与新话题、
-Releases 侧栏是 v0.2.0 Latest、正文渲染的就是那份写明 fork 的 README，无 4xx。
+multi-agent app development platform, built on PenguinHarness」，话题加
+`penguin-harness` / `multi-agent` / `llm` / `local-first` / `agent`。
+
+**中途撞上的一件事**：用户 2026-10-05 02:55Z 在网页上直接编辑了 `README.md`（提交 `fba193a3`
+「Update README.md」），**把正文删到只剩头部**（图标、标题、`built on PenguinHarness` 副标题、
+三张徽章、IMPORTANT 声明、中英切换，共 28 行；`## Why Adelie` 及其后的 180 行全删了）——
+那次编辑落在当时的默认分支 `fork/penguin-base` 上，已随 ff 并进 `main`（**没有还原，那是用户的编辑**）。
+后果：**README 里现在没有任何安装说明**。要不要补一段指向 3003 下载站的短说明，等用户发话。
 
 **还没接的**：CI（`.github/workflows/ci.yml`，11 个 job）的触发面仍只写 `main`，
 新主线 `fork/penguin-base` 上的推送不会跑 CI —— README 里那条 CI 徽章当时一并撤掉了，所以
 不存在「徽章说绿实际没跑」的假象。要不要把它接到新主线（并让它真跑绿），归 4.2 一起定。
+
+## 本机安装包与 3003 下载站（2026-10-05）
+
+用户：「把安装包放到3003端口，我好安装，不用给别人用」。v0.2.0 的 GitHub Release **没有附件**
+（源码版），所以安装包是**在本机按上游 `release.yml` 的步骤现打**的，落在 3003 那台静态站上：
+
+| 产物 | 目标 | 说明 |
+| --- | --- | --- |
+| `adelie-linux-x64.tar.gz`（107 MiB） | Linux x64 | 自带 Node 24.18.0；解开 → `./install.sh` |
+| `adelie-win32-x64.zip`（142 MiB） | Windows x64 | 自带 Node + MinGit；解开 → `install.cmd` |
+| `adelie-universal.tar.gz`（53 MiB） | 任意平台 | 不带运行时，目标机器要有 Node ≥ 24 |
+
+下载地址：<http://64.83.2.109:3003/downloads/v0.2.0/>（页面「下载」一节从
+`/downloads/index.json` 渲染，v0.1.0 旧 Adelie 那三件原样保留）。**装完的命令与数据根仍是
+上游拼写**（`penguin`、`~/.penguin`）—— 改名归 2.2 / 2.3，这里不动。
+
+**怎么重打（可复现，脚本在本会话 scratchpad，未入库）**：
+
+```bash
+# 1) 装配程序目录（上游 release.yml 的同一步）
+pnpm --config.node-linker=hoisted --filter @prismshadow/penguin-cli --prod deploy "$PWD/out/penguin/lib"
+cp -r packages/web/dist out/penguin/web
+install -D -m 755 scripts/launchers/penguin out/penguin/bin/penguin
+node scripts/build-plugins.mjs --out out/penguin/lib/plugins
+# 2) 版本戳（照上游 Stamp release version 那步）：临时把 packages/core/src/index.ts 的
+#    VERSION/BUILD_DATE/BUILD_COMMIT 改成 0.2.0 / 2026-10-05 / <当前 sha>，重建 core/server/cli/web，
+#    构建完 git checkout 还原 —— 装出来的 penguin version 报 v0.2.0（release 通道），
+#    而仓库源码里的包版本仍是上游的 0.2.13（版本号统一归 4.1）
+# 3) 每个目标加运行时（nodejs.org 官方包 + MinGit）后 tar/zip 成 payload
+# 4) 封成上游那种扁平包（安装脚本 + payload + payload 校验和），外层命名 adelie-*
+# 5) 拷到 /opt/adelie-design/downloads/v0.2.0/ 并重生成 downloads/index.json
+```
+
+**验证过的**（不是推测）：三个包的外层 `sha256` 自检通过；**把 linux-x64 包在隔离 HOME 里
+真离线装了一遍** —— `install.sh` 认到同目录的 payload、校验通过、装出 `bin/lib/web/node`，
+`penguin version --json` 报 `{"version":"0.2.0","channel":"release","buildDate":"2026-10-05",
+"commit":"fba193a3…","node":"24.18.0"}`；用装出来的 `bin/penguin web` 在 7399 起服务，`/` 返回
+302 到 `localhost:7399` 后是 `<title>Adelie</title>`，数据根里落了 `web.db` / `api-token`
+（用完已停掉该进程）。Windows 包只做了结构与内容抽查（`node/node.exe`、`git/usr/bin/sh.exe`、
+`git/etc/profile`、`bin/penguin.cmd`、`package-manifest.json` 写着 `win32-x64`），**没在真 Windows
+上装过**；darwin / arm64 两个目标没打（本机装不到）。
+
+**两个副产物**：
+- `.gitignore` 加了 `out/` —— 本机打包会在仓库里生成 `out/`，不忽略的话 `git status` 就脏了，
+  自主推进那轮会因此收工。
+- 3003 页面「下载」那段的说明文字改了（原来只讲旧 Adelie 的 Electron 壳与 Web 包）。**那份页面的源
+  在旧仓库 `brand/site`（现在的 `legacy/main`）**，已冻结不再维护，所以部署副本从这一刻起与源分叉；
+  改动前的文件备份在 `/opt/adelie-design/index.html.bak-20261005`。
+
+## 主线切到 main 之后：CI / Docker 的真实现状（2026-10-05）
+
+把新基座并进 `main` 之后，`ci.yml`（11 个 job）与 `docker.yml` 的 `push: main` 第一次真的跑起来了。
+结果与处置：
+
+| 结果 | job | 原因 | 处置 |
+| --- | --- | --- | --- |
+| ❌ | `test (core)` / `test-macos (core)` / `test-windows (core)` | `core/test/plugins.test.ts`：**README 里找不到插件分类表**（用户当天把 README 正文删到只剩头部） | **等用户拍板**：补回那两张表，或把这条断言改成「README 没写插件就不检查」 |
+| ❌ | `test (rest)` / `test-windows (rest)` / `test-macos (rest)` | `packages/desktop/test/launcher.test.ts` 的夹具还写着 `penguinharness`，而代码算出来的目录名已是 `Adelie` —— 2.1c 改名漏了这个夹具 | **已修**（夹具改成 `Adelie`，本地 `vitest run --root packages/desktop` 308 全绿；改前该文件确有一条红） |
+| ❌ | `test-macos (server)` | `test/workflows.test.ts`「notices an Agent's FIRST workflow」在 macOS 上返回 `{}` —— **同一个测试在 Linux 与 Windows 上都是绿的**，看着像 macOS 跑机的抖动 | 记录，暂不动 |
+| ❌ | `installer-windows` | `scripts/test-installer.ps1`：`forwarder-oss returned an unexpected result`（在线下载源选择那条用例） | 记录。**不是改名引起的**：2.1c 对 `install.ps1/.sh/.cmd` 只改了提示语字符串，没碰 `test-installer.ps1`，也没碰两边共用的常量；要查得有一台 Windows/pwsh |
+| ❌ | `Docker` | `push: main` 会把镜像**以 `hiyouga/penguinharness` 的名义推到 Docker Hub**（上游的镜像名与账号），而本仓没有 Docker Hub 凭据，只能失败 | **已处置**：删掉 `push: branches: [main]` 这条触发（带注释说明），保留 PR 的构建冒烟与手动 dispatch |
+
+也就是说：**CI 目前不是全绿**，上面三条（README 插件表、macOS server 抖动、Windows 安装脚本用例）
+都还没闭。这正是台账 4.2 里「把 ci.yml 接到新主线并让它真跑绿」那一条要收的尾 —— 现在它有了具体的
+清单，不再是一句话。
 
 ## 本机部署（2026-10-05）
 

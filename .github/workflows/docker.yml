@@ -35,8 +35,13 @@ on:
         required: false
         default: true
         type: boolean
-  push:
-    branches: [main]
+  # Fork note (Adelie, 2026-10-05): the push-to-main arm is gone. On a push to main it built and
+  # PUBLISHED the image as `hiyouga/penguinharness` on Docker Hub -- upstream's name, upstream's
+  # registry account, out of our fork -- and with no Docker Hub credentials it could only ever fail
+  # (which is what the very first push of our new mainline produced). The pull-request arm below is
+  # kept: it builds and runs the image without publishing, which is the signal worth having, and
+  # `workflow_dispatch` keeps the publish path available by hand. Adelie's own image, if it ever
+  # gets one, belongs in a rewritten pipeline (FORK-PROGRESS.md 4.2).
   # Same trigger policy as ci.yml: only a pull request whose base is main, and only when it
   # touches the image.
   pull_request:

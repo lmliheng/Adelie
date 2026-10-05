@@ -8,6 +8,9 @@ dist/
 *.tsbuildinfo
 # web assets copied into the server package at npm publish time
 packages/server/web-dist/
+# local release packaging (the same out/ the release workflow assembles on CI: bin + lib + web,
+# then payloads/ and bundles/ beside it). Reproducible, never committed.
+out/
 
 # secrets / local config
 .env
