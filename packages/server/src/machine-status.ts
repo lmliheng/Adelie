@@ -34,7 +34,7 @@ export interface MachineStatus {
   machineId: string | null;
 }
 
-/** `dbPath` may be elsewhere (PENGUIN_WEB_DB), as everywhere else that reads this database. */
+/** `dbPath` may be elsewhere (ADELIE_WEB_DB, or its pre-rename PENGUIN_WEB_DB), as everywhere else that reads this database. */
 export async function readMachineStatus(
   root: string,
   dbPath: string = path.join(root, "web.db"),

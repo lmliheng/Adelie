@@ -14,6 +14,7 @@
  * The session lands in `<root>/cli-session.json` (0600) rather than a shell's history.
  * Docs: /docs/cli § "penguin auth".
  */
+import { boundaryEnv } from "@lmliheng/penguin-core";
 import { mintApiToken } from "@lmliheng/penguin-server/auth-token";
 import { liveServerLock } from "@lmliheng/penguin-server/lock";
 import type { Command } from "commander";
@@ -221,11 +222,12 @@ export function registerAuthCommand(program: Command, t: Messages): void {
       }
       const root = resolveRootOption(opts.root);
       // A session row written straight into web.db (auth-token.ts); no server needed, and safe
-      // while one runs. PENGUIN_WEB_DB honored as everywhere else, or the token would be
-      // minted into a file the live server never reads.
+      // while one runs. ADELIE_WEB_DB (or its pre-rename spelling) honored as everywhere else,
+      // or the token would be minted into a file the live server never reads.
+      const dbPath = boundaryEnv(process.env, "webDb");
       const result = mintApiToken(root, {
         userId: opts.userId,
-        ...(process.env.PENGUIN_WEB_DB ? { dbPath: process.env.PENGUIN_WEB_DB } : {}),
+        ...(dbPath ? { dbPath } : {}),
         ...(ttl === undefined ? {} : { ttlMs: ttl * 1000 }),
       });
       if (result.outcome === "no_server") {

@@ -19,6 +19,7 @@
  * route says so (`no_supervisor`) instead of stopping a service nobody would bring back,
  * and the page shows the manual restart hint.
  */
+import { boundaryEnv } from "@lmliheng/penguin-core";
 import { versionReport } from "../../version-report.js";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -127,7 +128,10 @@ export function versionRoutes(deps: VersionRouteDeps): Hono<AppEnv> {
     // `penguin update` resolves the release itself.
     const check = await deps.updateCheck.check(false);
     const target = check.updateAvailable ? check.latestVersion : null;
-    const cliEntry = process.env.PENGUIN_CLI_ENTRY ?? null;
+    // The entry is only interesting when the operator (or the desktop shell) pinned one:
+    // this route re-runs it, so the checkout fallback config resolves would be the wrong
+    // answer here. Both spellings of the name are read — see state/boundary-env.ts.
+    const cliEntry = boundaryEnv(process.env, "cliEntry") ?? null;
     return c.json(deps.updateJob.start(cliEntry, target) satisfies UpdateJobStatus);
   });
 

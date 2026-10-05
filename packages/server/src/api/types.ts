@@ -122,8 +122,8 @@ export interface MeResponse {
   previewIsolated: boolean;
   /**
    * Whether this server runs in desktop mode (spawned by the desktop shell with
-   * PENGUIN_DESKTOP_TOKEN). The web app then hides the logout entry, the
-   * initial-password banner and the self-update entry.
+   * ADELIE_DESKTOP_TOKEN, or its pre-rename PENGUIN_DESKTOP_TOKEN). The web app then hides
+   * the logout entry, the initial-password banner and the self-update entry.
    */
   desktopMode: boolean;
   /**
@@ -4365,8 +4365,9 @@ export interface MachineInfo {
    */
   status: MachineServerStatus | null;
   /**
-   * The data root the server there runs on (`PENGUIN_HOME`). This instance's PROFILE decides
-   * it — a dev instance names the machine's dev root and never the release one beside it
+   * The data root the server there runs on (`ADELIE_HOME`, or the pre-rename `PENGUIN_HOME`
+   * the install commands still spell). This instance's PROFILE decides it — a dev instance
+   * names the machine's dev root and never the release one beside it
    * (machines/layout.ts) — which is exactly what a reader looking at two instances of this
    * page needs to tell them apart. Written in that machine's own spelling once its platform
    * is known, and in the POSIX one before that; for `local` it is this process's own root,

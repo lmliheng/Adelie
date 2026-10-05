@@ -453,8 +453,10 @@ describe("asking `penguin server status` in the machine's own dialect", () => {
 
   it("carries the profile to the far side, so a server started there reaches on in the same one", () => {
     // That server has a machines service of its own, and it reads its layout from
-    // PENGUIN_PROFILE. Without the variable a dev-profile server would reach the NEXT
-    // machine's release installation — the profile would hold for exactly one hop.
+    // PENGUIN_PROFILE (or ADELIE_PROFILE — both are read; the command spells the pre-rename
+    // one because the far side may be an older install). Without the variable a dev-profile
+    // server would reach the NEXT machine's release installation — the profile would hold for
+    // exactly one hop.
     expect(readServerStateCommand("linux", DEV)).toContain(" PENGUIN_PROFILE=dev ");
     expect(readServerStateCommand("win32", DEV)).toContain('set "PENGUIN_PROFILE=dev" & ');
     // Named for release too: an account exporting the variable cannot flip a release server.
@@ -634,11 +636,16 @@ describe("startRemoteServer", () => {
 });
 
 describe("remote layout", () => {
-  it("is the release installation unless PENGUIN_PROFILE says dev", () => {
+  it("is the release installation unless PENGUIN_PROFILE (or ADELIE_PROFILE) says dev", () => {
     expect(profileFromEnv({})).toBe("release");
     expect(profileFromEnv({ PENGUIN_PROFILE: "release" })).toBe("release");
     expect(profileFromEnv({ PENGUIN_PROFILE: "dev" })).toBe("dev");
     expect(profileFromEnv({ PENGUIN_PROFILE: "anything-else" })).toBe("release");
+    // Adelie's own spelling, which wins: the shell that sets PROFILE is the pre-rename writer
+    // whose other end is outside this repository (core's state/boundary-env.ts).
+    expect(profileFromEnv({ ADELIE_PROFILE: "dev" })).toBe("dev");
+    expect(profileFromEnv({ ADELIE_PROFILE: "dev", PENGUIN_PROFILE: "release" })).toBe("dev");
+    expect(profileFromEnv({ ADELIE_PROFILE: " release " })).toBe("release");
   });
 
   it("keeps the two profiles apart on every axis: program, data root, port", () => {

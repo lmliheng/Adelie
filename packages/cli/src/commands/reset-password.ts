@@ -4,15 +4,16 @@
  *
  * The admin resets every other user from the user-management page, but nothing can
  * reset the admin itself once its password is forgotten. This subcommand of `penguin
- * server` closes that gap from the machine owning the data root (PENGUIN_HOME or the
- * default root, PENGUIN_WEB_DB honored for the database path): it refuses while a live
+ * server` closes that gap from the machine owning the data root (ADELIE_HOME or the
+ * default root, ADELIE_WEB_DB — or its pre-rename spelling — honored for the database
+ * path): it refuses while a live
  * server owns the root (web.db is single-writer), otherwise the built-in admin returns to
  * the unclaimed state with its sessions revoked, and the next server start prints a fresh
  * first-login link to claim it through (reset-admin-password.ts).
  * Docs: /docs/cli § "penguin server / penguin web".
  */
 import path from "node:path";
-import { resolveRoot } from "@lmliheng/penguin-core";
+import { boundaryEnv, resolveRoot } from "@lmliheng/penguin-core";
 import { resetAdminPassword } from "@lmliheng/penguin-server/reset-admin-password";
 import type { Command } from "commander";
 import type { Messages } from "../i18n.js";
@@ -24,7 +25,7 @@ export function registerResetPasswordCommand(server: Command, t: Messages): void
     .description(t.resetPassword.desc)
     .action(async () => {
       const root = resolveRoot();
-      const dbPath = process.env.PENGUIN_WEB_DB ?? path.join(root, "web.db");
+      const dbPath = boundaryEnv(process.env, "webDb") ?? path.join(root, "web.db");
       const result = await resetAdminPassword(root, dbPath);
       switch (result.outcome) {
         case "server_running":

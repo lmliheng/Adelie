@@ -18,7 +18,9 @@
  *    resolves into the Windows system directory is ignored: that is the WSL launcher, which
  *    runs commands inside a Linux distro with a different filesystem view (and fails outright
  *    when no distro is configured).
- * 4. Then `PENGUIN_BUNDLED_SHELL` — the MinGit bash the Windows package ships (see the
+ * 4. Then `ADELIE_BUNDLED_SHELL` (the pre-rename `PENGUIN_BUNDLED_SHELL` is still read — the
+ *    launcher shim that sets it ships with the installers, so its writer is outside this
+ *    repository) — the MinGit bash the Windows package ships (see the
  *    release workflow), advertised by the launcher shims as an absolute path. It comes
  *    *after* the PATH probe on purpose: a user's own Git for Windows carries the full MSYS
  *    userland (curl, tar, less, perl …), while MinGit carries ~60 core tools, so when both
@@ -45,6 +47,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { boundaryEnv } from "../../../state/boundary-env.js";
 
 /** A resolved shell invocation: `spawn(command, [...args, cmd])` runs `cmd` in that shell. */
 export interface ShellInvocation {
@@ -213,7 +216,7 @@ export function resolveShell(opts: ResolveShellOptions = {}): ShellInvocation {
   // The bundled MinGit bash (installed-package layout only; absent for npm installs). Reported
   // to the model as "bash" rather than its filename: MinGit installs GNU bash under the name
   // `sh`, and the Skill ecosystem targets bash, so "sh" would understate what it can run.
-  const bundled = env.PENGUIN_BUNDLED_SHELL?.trim();
+  const bundled = boundaryEnv(env, "bundledShell")?.trim();
   if (bundled && exists(bundled)) {
     return { command: bundled, args: ["-lc"], name: "bash" };
   }

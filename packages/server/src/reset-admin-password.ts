@@ -28,7 +28,7 @@ export type ResetAdminPasswordResult =
   /** Returned to the unclaimed state: start the server and open the first-login link it prints. */
   | { outcome: "reset" };
 
-/** `dbPath` may be elsewhere (PENGUIN_WEB_DB); `root` stays the root, which the sweep needs. */
+/** `dbPath` may be elsewhere (ADELIE_WEB_DB, or its pre-rename PENGUIN_WEB_DB); `root` stays the root, which the sweep needs. */
 export async function resetAdminPassword(
   root: string,
   dbPath: string = path.join(root, "web.db"),

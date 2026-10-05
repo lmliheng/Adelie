@@ -245,7 +245,7 @@ describe("resolveShell — ADELIE_SHELL override", () => {
   });
 });
 
-describe("resolveShell — the bundled MinGit bash (PENGUIN_BUNDLED_SHELL)", () => {
+describe("resolveShell — the bundled MinGit bash (ADELIE_BUNDLED_SHELL, pre-rename too)", () => {
   const BUNDLED = "C:\\Users\\u\\.penguin\\git\\usr\\bin\\sh.exe";
   /** An exists() stub answering true only for the bundled path. */
   const bundledExists = (p: string) => p === BUNDLED;
@@ -280,6 +280,19 @@ describe("resolveShell — the bundled MinGit bash (PENGUIN_BUNDLED_SHELL)", () 
       exists: bundledExists,
     });
     expect(shell.command).toBe(BUNDLED);
+  });
+
+  it("reads ADELIE_BUNDLED_SHELL too, and prefers it over the pre-rename spelling", () => {
+    // The launcher shim that advertises this path ships inside the installers, so Adelie names
+    // it itself while the installers still export the old spelling (state/boundary-env.ts).
+    const renamed = "C:\\Users\\u\\adelie\\git\\usr\\bin\\sh.exe";
+    const shell = resolveShell({
+      platform: "win32",
+      env: { ADELIE_BUNDLED_SHELL: renamed, PENGUIN_BUNDLED_SHELL: BUNDLED },
+      whichAll: which({ pwsh: ["C:\\pwsh.exe"] }),
+      exists: (p) => p === renamed || p === BUNDLED,
+    });
+    expect(shell).toEqual({ command: renamed, args: ["-lc"], name: "bash" });
   });
 
   it("still loses to an explicit ADELIE_SHELL", () => {

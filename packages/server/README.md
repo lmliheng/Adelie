@@ -5,7 +5,7 @@ The Adelie Web backend — the Web implementation of the SDK's Human boundary. H
 ## Architecture
 
 - **HTTP**: Hono + `@hono/node-server`; the `http` module (src/http/app.ts) assembles the business surface from every module's `HttpModule.routes` contributions and binds no port (tests drive it via `app.request()`); `index.ts` is the startup entry (dotenv, graceful shutdown).
-- **Storage**: SQLite via Node's built-in `node:sqlite` (WAL) holds only indexes and aggregates (users, auth sessions, Project authorization, Agent/Session indexes, usage, UI prefs, error records). Agent State, Traces and Workspaces stay as files under `~/.penguin/data/<project>/agents/<agent>/`, fully shared with the SDK and CLI.
+- **Storage**: SQLite via Node's built-in `node:sqlite` (WAL) holds only indexes and aggregates (users, auth sessions, Project authorization, Agent/Session indexes, usage, UI prefs, error records). Agent State, Traces and Workspaces stay as files under `~/.adelie/data/<project>/agents/<agent>/`, fully shared with the SDK and CLI.
 - **Runtime**: a session manager keeps active Sessions (get-or-resume-or-heal, per-Session mutex, run/compact driving); approvals surface over SSE as `approval_request` and decisions re-read the stored approval mode each time; interrupts converge pending approvals to deny before aborting; a scheduler fires `agent_state/schedule/*.toml` tasks while the service runs.
 - **SSE**: per-channel monotonic event ids with a bounded replay buffer (1000 events / 2MB); reconnects replay from `Last-Event-ID` or receive `resync_required`; heartbeat comment every 20s.
 - **Usage**: `token_usage` events are persisted row by row; costs are computed at query time from current per-model pricing.
@@ -18,11 +18,16 @@ The full route tables and the SSE protocol are documented in the [Server API ref
 | Variable | Meaning | Default |
 | --- | --- | --- |
 | `PORT` / `HOST` | Listen port / address | `7364` / `127.0.0.1` |
-| `PENGUIN_HOME` | Data root (shared with SDK/CLI) | `~/.penguin/data` |
-| `PENGUIN_WEB_DB` | SQLite file path | `<root>/web.db` |
-| `PENGUIN_WEB_DIST` | Front-end build dir (static hosting + SPA fallback when present) | `../web/dist`, or the bundled `web-dist/` in the npm package |
+| `ADELIE_HOME` (was `PENGUIN_HOME`) | Data root (shared with SDK/CLI) | `~/.adelie/data` |
+| `ADELIE_WEB_DB` (was `PENGUIN_WEB_DB`) | SQLite file path | `<root>/web.db` |
+| `ADELIE_WEB_DIST` (was `PENGUIN_WEB_DIST`) | Front-end build dir (static hosting + SPA fallback when present) | `../web/dist`, or the bundled `web-dist/` in the npm package |
 | `ADELIE_TRUST_PROXY` | Trust `x-forwarded-proto` (`1` to enable): it opens the hot-update network gate over proxied HTTPS and marks session cookies `Secure` — only behind a reverse proxy that sets/strips the header itself | unset (untrusted) |
-| `PENGUIN_CLI_ENTRY` | CLI entry script offered to the Agents this server runs: it is written into `<root>/bin/penguin` and put at the front of every command's PATH | `penguin server\|web` and the desktop shell set it; otherwise the entry of the checkout this server was started from, when it has one |
+| `ADELIE_CLI_ENTRY` (was `PENGUIN_CLI_ENTRY`) | CLI entry script offered to the Agents this server runs: it is written into `<root>/bin/penguin` and put at the front of every command's PATH | `penguin server\|web` and the desktop shell set it; otherwise the entry of the checkout this server was started from, when it has one |
+
+Every deployment variable above keeps reading the spelling in parentheses: its writer is outside
+this repository (the desktop shell's launch environment, an existing deployment's unit file, an
+older launcher script), so both names are accepted while those writers move over — see
+`packages/core/src/state/boundary-env.ts`.
 
 `.env` in the process cwd is loaded automatically.
 

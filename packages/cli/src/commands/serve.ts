@@ -119,8 +119,9 @@ export function cliEntryFor(argv1: string | undefined): string | null {
  */
 /**
  * Pre-start lock check: the App URL of a live server already owning the data root this
- * process would use (same resolution as the server: PENGUIN_HOME or the default root),
- * or null. The server itself re-checks on startup (the in-process backstop); checking
+ * process would use (same resolution as the server: ADELIE_HOME, or the pre-rename
+ * PENGUIN_HOME, or the default root), or null. The server itself re-checks on startup (the
+ * in-process backstop); checking
  * here keeps the friendly path — `penguin server` refuses with the URL, `penguin web`
  * simply opens the existing instance. Locks live per data root, so a second server on a
  * DIFFERENT root is untouched. See @lmliheng/penguin-server/lock.

@@ -1,5 +1,6 @@
 /**
- * Desktop mode (PENGUIN_DESKTOP_TOKEN): the shell that spawned this server proves itself
+ * Desktop mode (ADELIE_DESKTOP_TOKEN, or the pre-rename PENGUIN_DESKTOP_TOKEN the shell still
+ * exports): the shell that spawned this server proves itself
  * with a per-launch random token, which backs two endpoints with different consumption
  * rules:
  *

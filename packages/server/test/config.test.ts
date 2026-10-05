@@ -6,8 +6,10 @@
  *   non-integer or out-of-range value throws. This matches the CLI's resolvePort.
  * - ADELIE_SEED_ADMIN_PASSWORD: unset, empty or blank leaves the seed unpinned (null, so the
  *   seed generates its own); a value is kept trimmed; desktop mode changes neither.
- * - PENGUIN_CLI_ENTRY: a value is kept trimmed; a blank one falls through to the checkout
- *   lookup like an unset one.
+ * - ADELIE_CLI_ENTRY (or the pre-rename PENGUIN_CLI_ENTRY): a value is kept trimmed; a blank one
+ *   falls through to the checkout lookup like an unset one.
+ * - The deployment names live in two spellings while their writers are outside this repository
+ *   (core's state/boundary-env.ts): ADELIE_* wins, PENGUIN_* still reads.
  * - PENGUIN_GO_ORIGIN accepts a loopback HTTP origin for integration work and refuses anything
  *   that is not a bare origin, or plaintext HTTP to another host.
  * - MODELSCOPE_BRIDGE_URL may carry a path prefix but refuses plaintext HTTP, credentials, a
@@ -90,8 +92,13 @@ describe("resolveServerConfig: seed password", () => {
   });
 });
 
-describe("resolveServerConfig: PENGUIN_CLI_ENTRY parsing", () => {
+describe("resolveServerConfig: ADELIE_CLI_ENTRY parsing", () => {
   it("keeps a value trimmed — it is what the <root>/bin/penguin shim execs", () => {
+    expect(
+      resolveServerConfig({ ...base, ADELIE_CLI_ENTRY: " /opt/adelie/dist/penguin.js " }).cliEntry,
+    ).toBe("/opt/adelie/dist/penguin.js");
+    // The pre-rename name is still what `penguin server|web` exports and the desktop shell
+    // passes, so a deployment that only sets it keeps working.
     expect(
       resolveServerConfig({ ...base, PENGUIN_CLI_ENTRY: " /opt/penguin/dist/penguin.js " })
         .cliEntry,
@@ -102,9 +109,43 @@ describe("resolveServerConfig: PENGUIN_CLI_ENTRY parsing", () => {
     // What the lookup finds depends on whether this checkout has built its CLI, so the
     // claim here is only that a blank value is not treated as an entry (see cli-shim.test.ts
     // for checkoutCliEntry itself).
-    const blank = resolveServerConfig({ ...base, PENGUIN_CLI_ENTRY: "   " }).cliEntry;
+    const blank = resolveServerConfig({ ...base, ADELIE_CLI_ENTRY: "   " }).cliEntry;
     expect(blank).toBe(resolveServerConfig({ ...base }).cliEntry);
     expect(blank === null || blank?.endsWith(`${path.sep}penguin.js`)).toBe(true);
+  });
+});
+
+describe("resolveServerConfig: the deployment names read in both spellings", () => {
+  it("prefers the ADELIE_* spelling of every one of them", () => {
+    const config = resolveServerConfig({
+      ...base,
+      ADELIE_WEB_DIST: "/srv/adelie/web",
+      PENGUIN_WEB_DIST: "/opt/penguin/web",
+      ADELIE_WEB_DB: "/srv/adelie/web.db",
+      PENGUIN_WEB_DB: "/opt/penguin/web.db",
+      ADELIE_PORT_FILE: "/run/adelie.port",
+      PENGUIN_PORT_FILE: "/run/penguin.port",
+      ADELIE_DESKTOP_TOKEN: " adelie-token ",
+      PENGUIN_DESKTOP_TOKEN: "penguin-token",
+    });
+    expect(config.webDist).toBe("/srv/adelie/web");
+    expect(config.dbPath).toBe("/srv/adelie/web.db");
+    expect(config.portFile).toBe("/run/adelie.port");
+    expect(config.desktopToken).toBe("adelie-token");
+  });
+
+  it("keeps reading the pre-rename spelling an existing deployment or the shell sets", () => {
+    const config = resolveServerConfig({
+      ...base,
+      PENGUIN_WEB_DIST: "/opt/penguin/web",
+      PENGUIN_WEB_DB: "/opt/penguin/web.db",
+      PENGUIN_PORT_FILE: "/run/penguin.port",
+      PENGUIN_DESKTOP_TOKEN: "penguin-token",
+    });
+    expect(config.webDist).toBe("/opt/penguin/web");
+    expect(config.dbPath).toBe("/opt/penguin/web.db");
+    expect(config.portFile).toBe("/run/penguin.port");
+    expect(config.desktopToken).toBe("penguin-token");
   });
 });
 

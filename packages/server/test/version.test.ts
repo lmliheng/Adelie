@@ -267,14 +267,22 @@ describe("UpdateCheckService", () => {
 describe("POST /api/version/update", () => {
   let t: TestApp;
   let savedEntry: string | undefined;
+  let savedRenamed: string | undefined;
   beforeEach(async () => {
+    // Both spellings: the route reads ADELIE_CLI_ENTRY first and PENGUIN_CLI_ENTRY after it
+    // (core's state/boundary-env.ts), so clearing only one of them would leave the other
+    // leaking in from the environment the test was started with.
     savedEntry = process.env.PENGUIN_CLI_ENTRY;
+    savedRenamed = process.env.ADELIE_CLI_ENTRY;
     delete process.env.PENGUIN_CLI_ENTRY;
+    delete process.env.ADELIE_CLI_ENTRY;
     t = await createTestApp();
   });
   afterEach(async () => {
     if (savedEntry === undefined) delete process.env.PENGUIN_CLI_ENTRY;
     else process.env.PENGUIN_CLI_ENTRY = savedEntry;
+    if (savedRenamed === undefined) delete process.env.ADELIE_CLI_ENTRY;
+    else process.env.ADELIE_CLI_ENTRY = savedRenamed;
     await t.cleanup();
   });
 

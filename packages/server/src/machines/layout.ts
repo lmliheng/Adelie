@@ -3,8 +3,9 @@
  *
  * The desktop shell runs as one of two profiles — release, or the dev instance that runs
  * beside it on its own data root (`packages/desktop/src/app-identity.ts`) — and the shell
- * hands that choice to its server as `PENGUIN_PROFILE`. A profile names a data-root family,
- * and it holds on every machine the instance touches: a dev instance installs to, starts,
+ * hands that choice to its server as `PENGUIN_PROFILE`, the pre-rename spelling of
+ * `ADELIE_PROFILE` (both are read; see core's state/boundary-env.ts). A profile names a data-root
+ * family, and it holds on every machine the instance touches: a dev instance installs to, starts,
  * probes and connects to a machine's DEV installation, never the release one there — so a
  * connect from the dev instance cannot stop the release server a person is using on that
  * machine, and the two keep separate Agents, Sessions and pushed versions on both ends.
@@ -25,7 +26,7 @@
  * Pure, and the only place either path is spelled: every command in this directory takes a
  * layout rather than naming `~/.penguin` itself.
  */
-import { DEFAULT_DEV_SERVER_PORT, DEFAULT_SERVER_PORT } from "@lmliheng/penguin-core";
+import { DEFAULT_DEV_SERVER_PORT, DEFAULT_SERVER_PORT, boundaryEnv } from "@lmliheng/penguin-core";
 
 export type Profile = "release" | "dev";
 
@@ -41,9 +42,10 @@ export interface RemoteLayout {
   ownsCommand: boolean;
 }
 
-/** `PENGUIN_PROFILE=dev` selects the dev profile; anything else is release. */
+/** `ADELIE_PROFILE=dev` (or the pre-rename `PENGUIN_PROFILE`, still read) selects the dev
+ * profile; anything else is release. */
 export function profileFromEnv(env: NodeJS.ProcessEnv): Profile {
-  return env.PENGUIN_PROFILE?.trim() === "dev" ? "dev" : "release";
+  return boundaryEnv(env, "profile")?.trim() === "dev" ? "dev" : "release";
 }
 
 export function remoteLayoutFor(profile: Profile): RemoteLayout {

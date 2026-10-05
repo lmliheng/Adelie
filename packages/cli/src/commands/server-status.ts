@@ -9,6 +9,7 @@
  * Docs: /docs/cli § "penguin server / penguin web".
  */
 import path from "node:path";
+import { boundaryEnv } from "@lmliheng/penguin-core";
 import { readMachineStatus } from "@lmliheng/penguin-server/machine-status";
 import type { Command } from "commander";
 import type { Messages } from "../i18n.js";
@@ -22,9 +23,9 @@ export function registerStatusCommand(server: Command, t: Messages): void {
     .option("--root <dir>", t.common.root)
     .action(async (opts: { root?: string }) => {
       const root = resolveRootOption(opts.root);
-      // PENGUIN_WEB_DB honored as everywhere else, or this reads an identity out of a
-      // database the live server never writes to.
-      const dbPath = process.env.PENGUIN_WEB_DB ?? path.join(root, "web.db");
+      // ADELIE_WEB_DB (or its pre-rename spelling) honored as everywhere else, or this reads an
+      // identity out of a database the live server never writes to.
+      const dbPath = boundaryEnv(process.env, "webDb") ?? path.join(root, "web.db");
       process.stdout.write(JSON.stringify(await readMachineStatus(root, dbPath)) + "\n");
     });
 }

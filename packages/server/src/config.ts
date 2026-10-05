@@ -3,16 +3,19 @@
  *
  * The data root directory is shared with the SDK / CLI (`resolveRoot()`:
  * ADELIE_HOME or ~/.adelie/data); the SQLite index database defaults to
- * `<root>/web.db` (overridable via PENGUIN_WEB_DB, tests use ":memory:").
+ * `<root>/web.db` (overridable via ADELIE_WEB_DB, tests use ":memory:").
  * In production, the SPA is served statically once the frontend build output
- * directory (PENGUIN_WEB_DIST, the bundled web-dist/, or ../web/dist) is
+ * directory (ADELIE_WEB_DIST, the bundled web-dist/, or ../web/dist) is
  * detected to exist.
+ * The five deployment variables below are read in both spellings — see
+ * core's state/boundary-env.ts for why their writers are outside this repository.
  * Docs: /docs/configuration § "Environment variables".
  */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  boundaryEnv,
   DEFAULT_SERVER_PORT,
   LEGACY_ROOT_ENV,
   resolveRoot,
@@ -71,7 +74,8 @@ export interface ServerConfig {
    */
   authSessionRenewMs: number;
   /**
-   * Desktop mode (PENGUIN_DESKTOP_TOKEN): the per-launch token minted by the desktop
+   * Desktop mode (ADELIE_DESKTOP_TOKEN; the pre-rename PENGUIN_DESKTOP_TOKEN is read too): the
+   * per-launch token minted by the desktop
    * shell. Non-null enables the one-shot claim link and the Bearer-token shutdown
    * endpoints and requires a loopback HOST — desktop mode passes the token through a
    * URL, which must never leave the machine.
@@ -88,7 +92,8 @@ export interface ServerConfig {
    */
   supervised: boolean;
   /**
-   * Port announcement file (PENGUIN_PORT_FILE): once the App is up, the actual
+   * Port announcement file (ADELIE_PORT_FILE; PENGUIN_PORT_FILE is read too): once the App is up,
+   * the actual
    * bound port is written here — the supervising process's way to learn the port when
    * it starts the server with PORT=0.
    */
@@ -106,8 +111,10 @@ export interface ServerConfig {
   trustProxy: boolean;
   /**
    * The CLI entry script this harness offers to the Agents it runs — the file the
-   * `<root>/bin/penguin` shim execs (see services/cli-shim.ts). `PENGUIN_CLI_ENTRY` when
-   * set: `penguin server|web` exports its own entry there, and the desktop shell passes
+   * `<root>/bin/penguin` shim execs (see services/cli-shim.ts). `ADELIE_CLI_ENTRY` when
+   * set (`PENGUIN_CLI_ENTRY` is read too — `penguin server|web` still exports that spelling and
+   * the desktop shell passes it, see state/boundary-env.ts): `penguin server|web` exports its own
+   * entry there, and the desktop shell passes
    * the bundled one to the server it forks. Otherwise the entry of the checkout this
    * server was started from, when it has a built one. Null = no CLI to offer, and no shim
    * is written.
@@ -226,7 +233,7 @@ export function normalizeModelScopeBridgeUrl(raw: string | undefined): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
 }
 
-/** Parses server config from environment variables (PORT / HOST / ADELIE_HOME / PENGUIN_WEB_DIST / PENGUIN_WEB_DB / ADELIE_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / ADELIE_SEED_ADMIN_PASSWORD / PENGUIN_DESKTOP_TOKEN / PENGUIN_PORT_FILE / ADELIE_TRUST_PROXY / PENGUIN_CLI_ENTRY). */
+/** Parses server config from environment variables (PORT / HOST / ADELIE_HOME / ADELIE_WEB_DIST / ADELIE_WEB_DB / ADELIE_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / ADELIE_SEED_ADMIN_PASSWORD / ADELIE_DESKTOP_TOKEN / ADELIE_PORT_FILE / ADELIE_TRUST_PROXY / ADELIE_CLI_ENTRY; each of the deployment names is also read in its pre-rename `PENGUIN_*` spelling, see state/boundary-env.ts). */
 export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   // The root is read off the passed environment rather than `process.env` (this function takes
   // one so tests can hand it a fabricated environment), so the two names are spelled here as
@@ -240,7 +247,7 @@ export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): Serve
     throw new Error(`Invalid port configuration PORT=${env.PORT}`);
   }
   const host = env.HOST ?? "127.0.0.1";
-  const desktopToken = env.PENGUIN_DESKTOP_TOKEN?.trim() || null;
+  const desktopToken = boundaryEnv(env, "desktopToken")?.trim() || null;
   // Desktop mode redeems its token through a URL: never allow it off loopback.
   if (desktopToken !== null && host !== "127.0.0.1" && host !== "localhost") {
     throw new Error(`Desktop mode requires a loopback HOST (got HOST=${host})`);
@@ -249,8 +256,8 @@ export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): Serve
     root,
     host,
     port,
-    dbPath: env.PENGUIN_WEB_DB ?? path.join(root, "web.db"),
-    webDist: env.PENGUIN_WEB_DIST ?? defaultWebDist(),
+    dbPath: boundaryEnv(env, "webDb") ?? path.join(root, "web.db"),
+    webDist: boundaryEnv(env, "webDist") ?? defaultWebDist(),
     previewOrigin: normalizePreviewOrigin(env.ADELIE_PREVIEW_ORIGIN),
     penguinGoOrigin: normalizePenguinGoOrigin(env.PENGUIN_GO_ORIGIN),
     modelscopeBridgeUrl: normalizeModelScopeBridgeUrl(env.MODELSCOPE_BRIDGE_URL),
@@ -259,9 +266,9 @@ export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): Serve
     authSessionTtlMs: 30 * DAY_MS,
     authSessionRenewMs: 29 * DAY_MS,
     desktopToken,
-    portFile: env.PENGUIN_PORT_FILE?.trim() || null,
+    portFile: boundaryEnv(env, "portFile")?.trim() || null,
     trustProxy: env.ADELIE_TRUST_PROXY === "1",
     supervised: env.ADELIE_SUPERVISED === "1",
-    cliEntry: env.PENGUIN_CLI_ENTRY?.trim() || defaultCliEntry(),
+    cliEntry: boundaryEnv(env, "cliEntry")?.trim() || defaultCliEntry(),
   };
 }

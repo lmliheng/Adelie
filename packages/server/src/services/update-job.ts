@@ -6,8 +6,9 @@
  * process: a start while one runs joins it, and the finished status stays readable until
  * the next start (which is also how a failed run is retried).
  *
- * How the self-update works: `penguin server|web` exports PENGUIN_CLI_ENTRY (its own entry
- * script path) before importing this server, and the job re-runs that script as
+ * How the self-update works: `penguin server|web` exports its own entry script path as
+ * PENGUIN_CLI_ENTRY — the pre-rename spelling of ADELIE_CLI_ENTRY, and the config parser
+ * reads both — before importing this server, and the job re-runs that script as
  * `node <entry> update --yes` — the CLI's update command owns all install-kind detection,
  * download and replacement logic (packages/cli/src/commands/update.ts). A server started
  * any other way (tests, a custom embedding) has no CLI to run and reports "unsupported".

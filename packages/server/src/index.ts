@@ -290,7 +290,8 @@ class PenguinServer {
   }
 
   /**
-   * Announces the port (PENGUIN_PORT_FILE), the last step of startup. The port is bound
+   * Announces the port (ADELIE_PORT_FILE; PENGUIN_PORT_FILE is read too), the last step of
+   * startup. The port is bound
    * long before this — a client that arrives early is answered rather than refused — but
    * the announcement means the App is up, because that is what a reader waits for: the
    * desktop shell opens its window on it. Between the bind and here every request gets the
@@ -368,12 +369,13 @@ class PenguinServer {
     console.log(`SQLite: ${this.config.dbPath}`);
     // Named for the same reason the data root is: it is the one path the static tail
     // serves from when no pushed web version is restored, and the only trace of a wrong
-    // PENGUIN_WEB_DIST or a missing build is otherwise a 404 on every page.
+    // ADELIE_WEB_DIST (the pre-rename PENGUIN_WEB_DIST is read too) or a missing build is
+    // otherwise a 404 on every page.
     console.log(`Web dist: ${this.config.webDist}`);
     if (!fs.existsSync(path.join(this.config.webDist, "index.html"))) {
       console.warn(
         `[server] Web dist has no index.html; the Web App answers 404 unless a pushed web ` +
-          `version is restored. Build packages/web or point PENGUIN_WEB_DIST at a build.`,
+          `version is restored. Build packages/web or point ADELIE_WEB_DIST at a build.`,
       );
     }
     if (this.config.desktopToken !== null) console.log("Desktop mode: enabled");
@@ -526,7 +528,7 @@ class PenguinServer {
 /** Exit code for "another server already owns this data root" (see lock.ts). */
 const EXIT_ALREADY_RUNNING = 3;
 
-/** Port announcement (PENGUIN_PORT_FILE): tmp + rename, so a polling reader never sees a partial write. */
+/** Port announcement (ADELIE_PORT_FILE, or the pre-rename PENGUIN_PORT_FILE): tmp + rename, so a polling reader never sees a partial write. */
 function writePortFile(file: string, port: number): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.${process.pid}.tmp`;
