@@ -21,8 +21,8 @@
  *                             below for why the whole mark cannot survive 16 pixels.
  *
  * Regenerate: node packages/desktop/scripts/render-icon.mjs
- * Rasterizes via the Playwright chromium already installed for packages/landing (no new
- * dependency; precedent: packages/landing/scripts/capture-readme-demo.mjs). Each size is
+ * Rasterizes via the Playwright chromium the Web App's tests already install (no new
+ * dependency for this package). Each size is
  * rendered at its native resolution (no downscaling), with a transparent background so
  * the SVG's rounded-rect clip keeps the corners transparent.
  */
@@ -39,10 +39,10 @@ const BUILD_DIR = path.join(PKG_DIR, "build");
 const ICON_SET_DIR = path.join(BUILD_DIR, "icons");
 const TRAY_DIR = path.join(BUILD_DIR, "tray");
 
-// Resolve @playwright/test from the landing package's context (it is not a dependency
-// of this package, and must not become one).
-const requireLanding = createRequire(path.join(REPO_ROOT, "packages", "landing", "package.json"));
-const { chromium } = requireLanding("@playwright/test");
+// Resolve @playwright/test from a package that already carries it (the Web App's own test
+// dependency — it is not a dependency of this package, and must not become one).
+const requireHost = createRequire(path.join(REPO_ROOT, "packages", "web", "package.json"));
+const { chromium } = requireHost("@playwright/test");
 
 const svgSource = readFileSync(SVG_PATH, "utf8");
 const dataUrl = (svg) => `data:image/svg+xml;base64,${Buffer.from(svg, "utf8").toString("base64")}`;
@@ -64,19 +64,29 @@ const svgDataUrl = dataUrl(svgSource);
  * Matched on the body path's gradient reference rather than its geometry, so a reworked
  * illustration fails the render loudly instead of quietly shipping the wrong shape.
  */
-const BODY_FILL = 'fill="url(#a)"';
+// The body is identified by the gradient it is painted with, newest name first: Adelie's own
+// artwork calls it `#body`, the pre-rename PenguinHarness artwork called it `#a`.
+const BODY_FILLS = ['fill="url(#body)"', 'fill="url(#a)"'];
 function penguinOutline(source) {
-  const path = source.match(/<path\s+fill="url\(#a\)"\s+d="([^"]+)"/)?.[1];
-  if (path === undefined) return null;
-  // Subpaths start at M or m; the second one is the belly, cut out of the first.
-  const subpaths = path.match(/[Mm][^Mm]*/g) ?? [];
-  return subpaths.length === 2 ? subpaths[0] : null;
+  // Attributes are not matched in any fixed order or on one line: pick the path tag that
+  // carries a body fill, then take its `d`.
+  for (const tag of source.match(/<path\b[^>]*>/g) ?? []) {
+    if (!BODY_FILLS.some((fill) => tag.includes(fill))) continue;
+    const d = tag.match(/\sd="([^"]+)"/)?.[1];
+    if (d === undefined) continue;
+    // Subpaths start at M or m. Adelie's artwork draws the belly as its own ellipse, so the
+    // body is a single subpath; the pre-rename artwork cut the belly out of the body, which
+    // reads as two — there the first subpath is the outline with the belly solid.
+    const subpaths = d.match(/[Mm][^Mm]*/g) ?? [];
+    return subpaths.length === 1 || subpaths.length === 2 ? subpaths[0] : null;
+  }
+  return null;
 }
 const outline = penguinOutline(svgSource);
 if (outline === null) {
   console.error(
     `[render-icon] could not take the penguin's outline out of ${path.relative(REPO_ROOT, SVG_PATH)}: ` +
-      `expected one ${BODY_FILL} path of exactly two subpaths (the outline and the belly cut from it). ` +
+      `expected one body path (${BODY_FILLS.join(" or ")}) of one or two subpaths. ` +
       `Check the artwork and update penguinOutline().`,
   );
   process.exit(1);
