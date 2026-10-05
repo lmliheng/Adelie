@@ -11,15 +11,12 @@
  *   cap; removing closes the gap and ignores unknown ids.
  * - The suggested title is the first non-empty line, one line, capped; nothing for an empty
  *   composer.
- * - The user folder's tallest state stays within one row of the tallest built-in folder, so the
- *   examples block does not move as folders are switched.
  * - The caps match the server's copy, which enforces them (read from the server module's
  *   source: the server package is a type-only dependency of the Web App).
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { EXAMPLE_FOLDERS } from "../src/features/chat/example-tasks";
 import {
   SHORTCUT_MAX_COUNT,
   SHORTCUT_PROMPT_MAX,
@@ -195,17 +192,6 @@ describe("defaultShortcutTitle — the name suggested when saving what was typed
   it("suggests nothing for an empty composer", () => {
     expect(defaultShortcutTitle("")).toBe("");
     expect(defaultShortcutTitle("   \n  ")).toBe("");
-  });
-});
-
-describe("the examples block keeps its height", () => {
-  it("keeps the user folder within one row of the built-in ones", () => {
-    // Its tallest state is either the cap with no add row, or one below the cap plus the add
-    // row — both SHORTCUT_MAX_COUNT rows. The cap is what holds this, not a pinned height with
-    // a scrollbar inside it.
-    const tallestBuiltIn = Math.max(...EXAMPLE_FOLDERS.map((f) => f.tasks.length));
-    const tallestUser = Math.max(SHORTCUT_MAX_COUNT, SHORTCUT_MAX_COUNT - 1 + 1);
-    expect(tallestUser - tallestBuiltIn).toBeLessThanOrEqual(1);
   });
 });
 

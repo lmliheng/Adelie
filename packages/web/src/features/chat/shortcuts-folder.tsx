@@ -1,18 +1,15 @@
 /**
- * The examples block's last folder: the shortcuts the user saved themselves.
+ * The folder under the new-chat input card: the shortcuts the user saved themselves.
  *
- * It behaves like a built-in folder on the way out — a click FILLS the composer and sends
- * nothing — and differs from one in three ways, each of which is why it lives here rather than in
- * the registry:
+ * A click FILLS the composer and sends nothing — the composer keeps the text until the user
+ * sends it. Three things about it are its own rather than a built-in folder's:
  *
  * - **Its rows are server state**, per user (`ui_prefs.draftShortcuts`), fetched on mount and
  *   written back on every change. Optimistic: the list updates first and rolls back with a toast
  *   if the write fails, because the value being written is already on screen.
- * - **Its length is the user's**, not the registry's — but bounded to SHORTCUT_MAX_COUNT, chosen
- *   so the folder plus its New-shortcut row stays within a row of a built-in folder's height. The
- *   examples block reserves no scroll area, and rather than pinning a height and scrolling inside
- *   it, the cap is what keeps this folder the same shape as its siblings: no scrollbar, and the
- *   block below moves by at most one row.
+ * - **Its length is the user's**, bounded to SHORTCUT_MAX_COUNT. There is no scroll area and no
+ *   pinned height: past the cap the New-shortcut row is what the editor refuses, so the folder
+ *   cannot grow into a list that needs scrolling.
  * - **Its rows carry their own actions.** Edit and delete are plain icon buttons that are always
  *   visible, deliberately not the sidebar's hover-revealed pair: those rows have a long-press menu
  *   behind them on touch, and these have nothing, so hover-gating would put a user's own prompts
@@ -34,7 +31,7 @@ import {
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
-import { ExampleFolderRow, exampleRowClass } from "./example-folder-row";
+import { FolderRow, folderRowClass } from "./folder-row";
 import {
   SHORTCUT_MAX_COUNT,
   SHORTCUT_PROMPT_MAX,
@@ -49,16 +46,9 @@ import {
 import type { ShortcutDraft, UserShortcut } from "./user-shortcuts";
 
 /**
- * Folder id for the user's shortcuts. Not a member of EXAMPLE_FOLDERS: that registry is the
- * catalog this product ships, and everything in it resolves its copy through the locale
- * dictionary — this folder's rows are the user's own text in whatever language they wrote it.
- */
-export const SHORTCUTS_FOLDER_ID = "shortcuts";
-
-/**
- * Lightning bolt (lucide zap): the folder's mark. Not the bookmark it might suggest — the folders
- * themselves already behave bookmark-style (exactly one open), so that glyph would name the
- * mechanism every folder shares instead of what this one holds.
+ * Lightning bolt (lucide zap): the folder's mark. Not the bookmark it might suggest — the row
+ * itself already behaves bookmark-style (open once, then it stays open), so that glyph would
+ * name the mechanism instead of what this folder holds.
  */
 const SHORTCUTS_GLYPH =
   "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z";
@@ -157,7 +147,7 @@ export function ShortcutsFolder({
 
   return (
     <div>
-      <ExampleFolderRow
+      <FolderRow
         open={open}
         glyph={SHORTCUTS_GLYPH}
         label={S.chat.shortcuts.folder}
@@ -166,8 +156,8 @@ export function ShortcutsFolder({
       />
 
       {open && (
-        /* No fixed height and no scroll: SHORTCUT_MAX_COUNT bounds this folder to a built-in
-           folder's height plus the New-shortcut row. */
+        /* No fixed height and no scroll: SHORTCUT_MAX_COUNT bounds the folder, so it cannot grow
+           into a list that needs one. */
         <div className="mt-0.5 pl-4">
           {loaded && (
             <ul className="space-y-1">
@@ -175,9 +165,9 @@ export function ShortcutsFolder({
                 <li key={shortcut.id} className="flex items-center gap-1">
                   <button
                     type="button"
-                    data-tooltip={`${shortcut.title}\n${S.chat.exampleFillHint}`}
+                    data-tooltip={`${shortcut.title}\n${S.chat.shortcutFillHint}`}
                     onClick={() => onFill(shortcut.prompt)}
-                    className={`flex min-w-0 flex-1 items-center gap-2 ${exampleRowClass}`}
+                    className={`flex min-w-0 flex-1 items-center gap-2 ${folderRowClass}`}
                   >
                     <span className="min-w-0 flex-1 truncate">{shortcut.title}</span>
                   </button>
@@ -202,7 +192,7 @@ export function ShortcutsFolder({
                     type="button"
                     data-tooltip={S.chat.shortcuts.newFromComposer}
                     onClick={startCreate}
-                    className={`flex w-full items-center gap-2 ${exampleRowClass}`}
+                    className={`flex w-full items-center gap-2 ${folderRowClass}`}
                   >
                     <PlusIcon size={ICON_SIZE.inlineGlyph} />
                     <span className="min-w-0 flex-1 truncate">{S.chat.shortcuts.new}</span>

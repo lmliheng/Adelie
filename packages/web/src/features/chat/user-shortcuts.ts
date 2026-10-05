@@ -8,13 +8,12 @@
  * doing the thing again; a prompt the user typed and named cannot. Losing it by opening the app
  * on another machine, or by clearing site data, would be losing their work.
  *
- * **A shortcut is a title and a prompt, and pins no Skills.** A built-in example is authored
- * against the Skill catalog this product ships, so it can name the Skills its prompt depends on;
- * a prompt the user saved has no such guarantee, and the Agent it will eventually run under is
- * picked *after* the click. Pinning would therefore mean either silently dropping names the
- * selected Agent lacks, or growing the editor a Skill picker whose contents change with a
- * selection made elsewhere on the page. The composer's own Skills dropdown is one click away and
- * keeps working: a shortcut fills the text and leaves the selection exactly as the user set it.
+ * **A shortcut is a title and a prompt, and pins no Skills.** The prompt is the user's own text,
+ * written before the Agent it will run under is picked; pinning would therefore mean either
+ * silently dropping names the selected Agent lacks, or growing the editor a Skill picker whose
+ * contents change with a selection made elsewhere on the page. The composer's own Skills dropdown
+ * is one click away and keeps working: a shortcut fills the text and leaves the selection exactly
+ * as the user set it.
  *
  * **The caps are duplicated on the server on purpose** (`services/draft-shortcuts.ts`), which is
  * where they are enforced — ui_prefs is a free-form JSON column, so a bound that lives only in
@@ -31,7 +30,7 @@ export type UserShortcut = DraftShortcut;
 export const SHORTCUT_MAX_COUNT = 3;
 /** Longest title, in characters: what one folder row shows without truncating. */
 export const SHORTCUT_TITLE_MAX = 40;
-/** Longest prompt body, in characters: about three times the longest built-in example. */
+/** Longest prompt body, in characters: a saved prompt is one thing to ask, not a brief. */
 export const SHORTCUT_PROMPT_MAX = 4000;
 
 /**

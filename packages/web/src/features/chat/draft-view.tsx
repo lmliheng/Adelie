@@ -56,7 +56,6 @@ import {
   AgentAvatar,
   Chevron,
   Dropdown,
-  ICONS,
   MenuItem,
   AppLogo,
   toastError,
@@ -80,10 +79,7 @@ import type { ComposerControl } from "./chat-input";
 import { APPROVAL_MODES } from "./approval-mode";
 import { adoptDockScope } from "../dock/dock-state";
 import { setDockCwd } from "../dock/dock-terminal";
-import { EXAMPLE_FOLDERS } from "./example-tasks";
-import type { ExampleFolderId, ExampleTask } from "./example-tasks";
-import { ExampleFolderRow, exampleRowClass } from "./example-folder-row";
-import { SHORTCUTS_FOLDER_ID, ShortcutsFolder } from "./shortcuts-folder";
+import { ShortcutsFolder } from "./shortcuts-folder";
 import { clearDraft, draftKey, loadDraft, saveDraft } from "./draft-cache";
 import type { DraftCache } from "./draft-cache";
 import {
@@ -131,25 +127,6 @@ function saveAppliedRouteKey(field: RouteStateField, key: string): void {
     /* best-effort: the dedup marker falls back to the per-mount ref */
   }
 }
-
-/**
- * One glyph per example folder, 16×16. Icons live on the folder rather than on each example:
- * with the examples reduced to single-line titles, a column of per-row icons was noise
- * competing with the titles, while the folder row is exactly where a glyph earns its place —
- * it is what you scan to pick a category.
- *
- * webapps: a browser window (chrome bar + two dots). agents: the registry's robot itself — the
- * one glyph in the app that means "agent", worn by the sidebar's Agents entry and its grouping
- * option — imported rather than copied, because a hand-copied duplicate is what silently drifts
- * the day that glyph is redrawn. schedules: a clock face with hands — the plainest mark for
- * "fires on a timer", and distinct from the hourglass that already means a Session is waiting.
- */
-const FOLDER_GLYPHS: Record<ExampleFolderId, string> = {
-  webapps:
-    "M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6zM3 9h18M6 6.5h.01M9 6.5h.01",
-  agents: ICONS.robot,
-  schedules: "M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20M12 6.5V12l3.5 2",
-};
 
 export function DraftView({
   projectId,
@@ -523,11 +500,8 @@ export function DraftView({
   // mount render would trigger ChatInput's pruning effect and wrongly clear the
   // quick-invoke preselection.
   const [agentSkills, setAgentSkills] = useState<SkillMetadataItem[]>([]);
-  /** Whether the skills fetch for the current Agent has settled — the example task waits for it so its `[use_skills]` pinning doesn't silently depend on network timing. */
-  const [skillsLoaded, setSkillsLoaded] = useState(false);
   useEffect(() => {
     setAgentSkills((prev) => (prev.length > 0 ? [] : prev));
-    setSkillsLoaded(false);
     if (!agentId) return;
     let cancelled = false;
     api
@@ -535,10 +509,7 @@ export function DraftView({
       .then((res) => {
         if (!cancelled) setAgentSkills(res.skills);
       })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setSkillsLoaded(true);
-      });
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -825,40 +796,32 @@ export function DraftView({
   );
 
   /**
-   * Example tasks: a click FILLS the composer — the prompt into the text body, the example's
-   * skills into the skills dropdown — and sends nothing. The user reads what landed, edits it
-   * if they want, and presses Send, which then builds the very message this card used to
-   * submit by itself (the `[use_skills]` block is the send path's job, so the textarea never
-   * shows a marker block). Filling is instant and local: there is no busy state and no
-   * in-flight guard to keep here, and everything else — where the prompt goes when text is
-   * already typed, focus, the caret — is the composer's, reached through this handle.
+   * The composer handle this page drives. The dock's panels reach the same draft through it,
+   * and the shortcuts folder below the input card fills the composer with it.
    */
   const ownComposerRef = useRef<ComposerControl | null>(null);
   const composerRef = pageComposerRef ?? ownComposerRef;
-  const fillExample = useCallback((task: ExampleTask) => {
-    // S is a live binding swapped on locale change: read the prompt at click time, not at render.
-    composerRef.current?.fillPrompt(S.chat.exampleTasks[task.id].prompt, task.skills);
-  }, []);
   /**
-   * A saved shortcut takes the same path with no Skills to pin: its prompt is the user's own text,
-   * not a card authored against the Skill catalog this product ships (see user-shortcuts.ts). An
-   * empty pin list leaves the composer's Skill selection exactly as the user set it.
+   * A saved shortcut FILLS the composer — its prompt into the text body, no Skills pinned —
+   * and sends nothing; the user reads what landed, edits it if they want, and presses Send.
+   * Filling is instant and local: there is no busy state and no in-flight guard to keep here,
+   * and everything else — where the prompt goes when text is already typed, focus, the caret —
+   * is the composer's, reached through this handle. No Skills are pinned because the prompt is
+   * the user's own text, not a card authored against the Skill catalog this product ships (see
+   * user-shortcuts.ts).
    */
   const fillShortcut = useCallback((prompt: string) => {
     composerRef.current?.fillPrompt(prompt, []);
   }, []);
 
   /**
-   * The open example folder — bookmark-style, and ALWAYS exactly one: selecting another closes
-   * the previous, and clicking the open one is a no-op rather than collapsing it. Never
-   * nullable on purpose. With the folders kept within one row of each other, "one open" is
-   * what keeps the block's height near-constant: the examples area can neither collapse to
-   * bare folder rows nor grow to the whole catalog, so switching folders moves what sits
-   * below it by at most one row.
+   * Whether the shortcuts folder below the input card is open. Closed on arrival: the new-chat
+   * screen offers nothing to click but the input card, and a block of canned or saved prompts
+   * under it is one more thing to read past. Opening it is a one-way move — the row is a tab,
+   * not a disclosure (see shortcuts-folder.tsx), and with a single folder there is nothing to
+   * switch to.
    */
-  const [openFolder, setOpenFolder] = useState<ExampleFolderId | typeof SHORTCUTS_FOLDER_ID>(
-    EXAMPLE_FOLDERS[0].id,
-  );
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const selectedAgent = agents.find((a) => a.agentId === agentId) ?? null;
 
@@ -870,11 +833,11 @@ export function DraftView({
   return (
     <div className="anim-fade flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-6 md:px-4">
       {/*
-       * Vertical layout: everything visible — brand, input card, ownership pills, example tasks —
-       * lives in ONE block between two empty flex-1 spacers, so the block is centred and the free
-       * space above and below it is exactly equal. The brand deliberately sits inside that block
-       * rather than in the upper spacer: keeping it in the spacer made the upper gap shorter than
-       * the lower one by the brand's own height, which pushed the card up the viewport and left
+       * Vertical layout: everything visible — brand, input card, ownership pills, the shortcuts
+       * folder — lives in ONE block between two empty flex-1 spacers, so the block is centred and
+       * the free space above and below it is exactly equal. The brand deliberately sits inside that
+       * block rather than in the upper spacer: keeping it in the spacer made the upper gap shorter
+       * than the lower one by the brand's own height, which pushed the card up the viewport and left
        * the slash menu — it opens upward, `bottom-full` — too little room, so it clipped against
        * the top of this scroll container. When the viewport is too short the spacers collapse to
        * nothing, the container's own py-6 keeps the content off the edges, and the page falls back
@@ -951,59 +914,14 @@ export function DraftView({
           <FilesPanelToggle available={workspace.trim() !== ""} />
         </div>
 
-        {/* Example tasks: canned builds showing off the one-sentence → app flow; a click fills
-            the composer with the prompt and the user sends it (see fillPrompt). The last folder
-            is the user's own saved prompts (see shortcuts-folder.tsx).
-            Bookmark-style folders with ALWAYS exactly one open — selecting another closes the
-            previous, and the open one cannot be collapsed. The block is therefore four folder
-            rows plus one folder's rows, with every folder kept within one row of the others
-            (3–4 examples each; the user folder is capped so its shortcuts plus its add row come
-            to the same), so switching folders moves what sits below by at most one row and no
-            folder needs a scroll container — a scrollbar inside a short showcase reads as a
-            defect. Each example is a single-line title; its one-sentence description rides in
-            the row tooltip rather than a second line. Rows stay disabled until the Agent's
-            installed skills are known — that is all a fill still waits for, and without it the
-            preselect would silently drop the example's skills (a saved shortcut pins none, so
-            it never waits). */}
+        {/* The user's own saved prompts, the only folder left under the input card (see
+            shortcuts-folder.tsx): a click fills the composer with the prompt and the user
+            sends it. Closed on arrival, so the new-chat screen is the brand, the input card
+            and the two ownership pills unless the reader asks for more. */}
         <div className="mt-6 space-y-1">
-          {EXAMPLE_FOLDERS.map((folder) => {
-            const open = folder.id === openFolder;
-            return (
-              <div key={folder.id}>
-                <ExampleFolderRow
-                  open={open}
-                  glyph={FOLDER_GLYPHS[folder.id]}
-                  label={S.chat.exampleFolders[folder.id]}
-                  count={folder.tasks.length}
-                  onOpen={() => setOpenFolder(folder.id)}
-                />
-
-                {open && (
-                  <ul className="mt-0.5 space-y-1 pl-4">
-                    {folder.tasks.map((task) => {
-                      const copy = S.chat.exampleTasks[task.id];
-                      return (
-                        <li key={task.id}>
-                          <button
-                            type="button"
-                            data-tooltip={`${copy.desc}\n${S.chat.exampleFillHint}`}
-                            disabled={!skillsLoaded}
-                            onClick={() => fillExample(task)}
-                            className={`flex w-full items-center gap-2 ${exampleRowClass}`}
-                          >
-                            <span className="min-w-0 flex-1 truncate">{copy.label}</span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            );
-          })}
           <ShortcutsFolder
-            open={openFolder === SHORTCUTS_FOLDER_ID}
-            onOpen={() => setOpenFolder(SHORTCUTS_FOLDER_ID)}
+            open={shortcutsOpen}
+            onOpen={() => setShortcutsOpen(true)}
             readComposerText={() => textRef.current}
             onFill={fillShortcut}
           />

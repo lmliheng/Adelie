@@ -1,15 +1,10 @@
 /**
- * The header row of one draft-screen example folder.
- *
- * A tab, not a disclosure: the open folder stays open (clicking it is a no-op) and carries the
- * block's whole body, so exactly one folder's rows are ever on screen. It lives in its own module
- * because two callers render it — the built-in folders in draft-view.tsx and the user's own
- * shortcuts folder in shortcuts-folder.tsx — and a folder row that reads differently from its
- * neighbours would be read as a different kind of thing.
+ * The header row of the draft screen's folder of saved prompts: a tab, not a disclosure — the
+ * open folder stays open (clicking it is a no-op) and carries the body below it.
  */
 import { Chevron, ICON_SIZE } from "@lmliheng/penguin-ui";
 
-export function ExampleFolderRow({
+export function FolderRow({
   open,
   glyph,
   label,
@@ -58,11 +53,10 @@ export function ExampleFolderRow({
 }
 
 /**
- * The class string of one row inside an open folder — an example, or a saved shortcut. Shared for
- * the same reason as the header: the two lists sit in the same block and must read as one list
- * shape. Layout (flex, width) is the caller's, since a shortcut row also carries its own actions.
+ * The class string of one shortcut row — shared with the header above so the two read as one
+ * block. Layout (flex, width) is the caller's, since a row also carries its own actions.
  */
-export const exampleRowClass =
+export const folderRowClass =
   "rounded-md px-2 py-1.5 text-left text-sm text-gray-600 transition-colors duration-150 " +
   "hover:bg-gray-100 hover:text-gray-900 disabled:cursor-default disabled:opacity-60 " +
   "disabled:hover:bg-transparent dark:text-gray-400 dark:hover:bg-gray-800/70 dark:hover:text-gray-200";
