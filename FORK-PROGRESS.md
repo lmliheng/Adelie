@@ -212,9 +212,9 @@ multi-agent app development platform, built on PenguinHarness」，话题加
 | `adelie-win32-x64.zip`（142 MiB） | Windows x64 | 自带 Node + MinGit；解开 → `install.cmd` |
 | `adelie-universal.tar.gz`（53 MiB） | 任意平台 | 不带运行时，目标机器要有 Node ≥ 24 |
 
-下载地址：<http://64.83.2.109:3003/downloads/v0.2.0/>（页面「下载」一节从
-`/downloads/index.json` 渲染，v0.1.0 旧 Adelie 那三件原样保留；**v0.2.1 之后这个地址是
-<http://64.83.2.109:3003/downloads/v0.2.1/>**，清单里三版并列）。**装完的命令与数据根仍是
+包落在本机开发区那台静态站上（页面「下载」一节从 `/downloads/index.json` 渲染，v0.1.0 旧
+Adelie 那三件原样保留，清单里三版并列）—— **那是开发机，地址不写进任何文档，也不对外
+分发**。**装完的命令与数据根仍是
 上游拼写**（`penguin`、`~/.penguin`）—— 改名归 2.2 / 2.3，这里不动。
 
 **怎么重打（可复现，脚本在本会话 scratchpad，未入库）**：
@@ -361,7 +361,7 @@ Esc 只关输入框、弹窗还在；空白处右键菜单里有「New folder」
 `dir_name_invalid` / `dir_exists`（**新建文件夹真的进了包**）；win 包结构抽查（外层
 `install.cmd`/`install.ps1`/`payload.zip`/`payload.zip.sha256`，payload 内 `node/node.exe`、
 `git/usr/bin/sh.exe`、`git/etc/profile`、`bin/penguin.cmd`、`package-manifest.json` = `win32-x64`，
-外层脚本里的 `EmbeddedReleaseVersion = "v0.2.1"`）；3003 内网与外网（`64.83.2.109:3003`）都 200，
+外层脚本里的 `EmbeddedReleaseVersion = "v0.2.1"`）；3003 内网与外网都 200，
 `/downloads/index.json` 三个版本各 3 件，v0.2.1 三个资产都 200，页面下载区渲染出 v0.2.1 卡片在前。
 中间物 `out/`、`/tmp/adelie-pack`、`/tmp/adelie-verify*`、`/tmp/adelie-win` 已清，磁盘回到 2.4G。
 
@@ -714,7 +714,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
   `Web dist: /root/.adelie/web` · `Agent CLI: /root/.adelie/data/bin/penguin -> /root/.adelie/lib/dist/penguin.js`
   （服务端把自己那份 CLI 写进了数据根的 `bin/penguin`，不再是旧装那份）；无 error。
 - HTTP：`127.0.0.1:7364/` 200、`<title>Adelie</title>`、`/api/me` 401（未登录，预期）；
-  **从笔记本（ufw 已放行的 36.148.251.233）访问 `http://64.83.2.109:7364/` 也是 200 + `Adelie` 标题**。
+  **从笔记本（ufw 已放行的那个出口）访问 7364 的外网地址也是 200 + `Adelie` 标题**。
 - 数据：`PRAGMA integrity_check` = ok；`users 2 / projects 7 / agents 13 / sessions 2334`；
   `penguin project ls` 列出 admin 名下 6 个项目（第 7 个 `zhaoyukun-default_project` 归别人、对 admin 不可见，
   目录仍在）；`GET /api/projects/self_evolution/agents` 拿到 default_agent（17 技能 / 1 hook / 2 vault 键）；
@@ -955,3 +955,23 @@ registry 上还不存在的名字没有配置可查，OIDC 换不到 token，流
   版本，这 17 个名字已经存在，OIDC 就能直接发。
 - `RELEASE-v0.2.3.md`（仓库根，**未跟踪**）是 v0.2.3 桌面发布那轮的正文，v0.2.0/1/2 三份都已入库、
   只有它漏了。这一轮没动它，要不要补一个提交由用户定。
+
+## 文档口径修正：开发区那台机不写进发布正文与文档（2026-10-05，用户点单）
+
+### 用户说的
+
+「release和文档里不能写开发区那台机的地址（`http://<开发区主机>/…`）相关的内容……这个服务器是
+我们的开发区，不是给别人下载用的」
+
+### 做了什么
+
+- 三份发布正文里的下载站地址删掉：`RELEASE-v0.2.1.md`、`RELEASE-v0.2.2.md`（这两版 Release
+  本来就没有附件，改成「安装包由本机脚本按上游 `release.yml` 的步骤现打，不上传、不对外分发」）、
+  `RELEASE-v0.2.3.md`（改成只指向 GitHub Release —— v0.2.3 的 Release 是有附件的）。
+- 已发布的 GitHub Release 正文（v0.2.1 / v0.2.2 / v0.2.3）用 API 改成同样的口径 —— 正文是公开的，
+  留着地址等于把开发区当下载站对外发。
+- 本台账里那几处地址一并去掉：下载地址那段改成「包落在本机开发区那台静态站上，地址不写进任何文档」；
+  两处「内外网都 200」只留结论；7364 那句去掉 IP（顺手也去掉了笔记本的出口 IP —— 这份台账在公开
+  仓库里）。
+- **口径**：3003 那台静态站只当开发区内部交付用（用户原话「不用给别人用」），任何对外文本
+  （Release 正文、README、发布正文、文档）都不写它的地址；安装包对外只走 GitHub Release。
