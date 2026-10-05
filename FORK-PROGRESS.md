@@ -1304,3 +1304,43 @@ Linux 是本机产物 —— **下个版本若 Actions 已恢复，Linux 应回�
 - **用户贴在聊天里的那对 AccessKey 应当轮换**（值已进对话上下文）。
 - 用户新提的两条（用户级全局密钥 + JSON 导入 + 分发给 Agent；默认头像改成 Adelie 图标）留给
   0.3.2，代码还没动。
+
+## OSS 镜像上线 + 侧栏折叠条改小（2026-10-06，用户点单）
+
+### 用户说的
+
+OSS 那对象 AccessKey 已经写进密钥库、「Buucket 你不能自己管理创建吗，其他的看你自行配置」、
+以及「左侧的成本中心，评估中心这块的展开/搜索的按钮太长了，颜色又比较深，改成中间一小块展开
+收缩，同时添加 tip」。
+
+### OSS 镜像（用户账号下新建的 Bucket）
+
+- **Bucket**：`adelie-releases`，**cn-hangzhou**（跟着账号里已有的 `fast-node-server` 选同一
+  个地域），Standard / LRS。**ACL `public-read` + 单独把这个 Bucket 的「阻止公共访问」关掉** ——
+  新建 Bucket 默认是开的，建完匿名读还是 403，关掉这一个 Bucket 才通（账号级别的设置与另外两个
+  Bucket 没动，`fast-node-server` 本来就是 public-read）。
+- **布局**：`releases/<tag>/…` 不可变、一年缓存；`latest/…` 是同一批字节的稳定名字（`no-cache`），
+  客户端只认它；`latest.json` 记录最新 tag 与两个基址。
+- **脚本**：`scripts/publish-release-to-oss.sh` 按 Adelie 的 14 件资产重写（上游那份列的是
+  `penguin-desktop-*`、darwin 包、SHA256SUMS 与 manifest 探针，Adelie 一个都不产）。上传后**逐个
+  下载回来比对 sha256**；`releases/<tag>/` 里已存在的对象只有字节相同才放行，不同就报错。
+- **v0.3.1 已镜像**：upload 750MB + 回读校验 1.5GB，14/14 对象逐字节一致；匿名 `GET` 200、
+  `Range` 206。实测段速：上传 ~3.5 MiB/s、回读 ~6 MiB/s。
+- 客户端怎么用（三处同一个地址）：
+  `PENGUIN_DOWNLOAD_BASE_URL=https://adelie-releases.oss-cn-hangzhou.aliyuncs.com/latest`（安装脚本
+  与 `penguin update`）、`PENGUIN_UPDATE_FEED_URL=https://adelie-releases.oss-cn-hangzhou.aliyuncs.com/latest`
+  （桌面端 generic feed）。
+- **还没做的**：桌面端把镜像设成**默认** feed（现在默认仍是 GitHub，镜像只能靠上面那个环境
+  变量指过去）。下一版做，带上 GitHub 回退。
+
+### 侧栏折叠条（提交 `9d781b53`）
+
+`packages/ui/src/components/shell/sidebar-frame/sidebar-frame.tsx`：页签分组下面那条折叠控件
+原本是满宽（272px）16px 高的灰带（`bg-fg/7`），铺在导航与列表之间像列表里多出来的一行。改成
+**居中 64×20 的 pill**（`mx-auto … rounded-full`），其余不变；提示用的是既有的 `data-tooltip`
+（只在屏上没有同样的字时才出现，纯图标按钮正是这种情形）。ui 1000 测试、ui-gallery 131 测试
+通过；真页面在 github 深色、modern 深色、geek 浅色三种主题下各截了一张。**未发版**。
+
+### 顺带（提交 `763f3cd7`）
+
+`scripts/publish-release-to-oss.sh` 的重写与上面的镜像一起提交。
