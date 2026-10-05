@@ -1,0 +1,12 @@
+{
+  "name": "wechat-mp-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "description": "微信小程序后台自动化脚本（登录/切号/密钥/IP 白名单/隐私指引/提审/撤回）的依赖清单",
+  "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "jsqr": "^1.4.0",
+    "playwright": "^1.63.0",
+    "pngjs": "^7.0.0"
+  }
+}

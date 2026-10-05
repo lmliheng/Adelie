@@ -1,0 +1,12 @@
+{
+  "pages": ["pages/index/index", "pages/about/about"],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTitleText": "待办清单",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f7f8"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

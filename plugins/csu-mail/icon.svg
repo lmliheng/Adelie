@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="CSU mail">
+  <rect x="6" y="14" width="52" height="36" rx="5" fill="#2f6fed"/>
+  <path d="M8 18.5 32 36 56 18.5" fill="none" stroke="#eaf1ff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8 46.5 25 33M56 46.5 39 33" fill="none" stroke="#eaf1ff" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="49" cy="47" r="10" fill="#0b3ea8"/>
+  <path d="M44 47h10M49 42v10" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"/>
+</svg>

@@ -21,6 +21,7 @@
     "@lmliheng/agent-tuning": "workspace:*",
     "@lmliheng/browser-automation": "workspace:*",
     "@lmliheng/continual-learning": "workspace:*",
+    "@lmliheng/csu-mail": "workspace:*",
     "@lmliheng/data-analysis": "workspace:*",
     "@lmliheng/goal": "workspace:*",
     "@lmliheng/humanizer": "workspace:*",
@@ -29,7 +30,8 @@
     "@lmliheng/software-development": "workspace:*",
     "@lmliheng/use-bento-slides": "workspace:*",
     "@lmliheng/use-firecrawl": "workspace:*",
-    "@lmliheng/use-claude-code": "workspace:*"
+    "@lmliheng/use-claude-code": "workspace:*",
+    "@lmliheng/wechat-miniprogram": "workspace:*"
   },
   "devDependencies": {
     "@lmliheng/penguin-cli": "workspace:*",

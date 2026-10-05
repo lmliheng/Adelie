@@ -1,0 +1,9 @@
+{
+  "description": "Manage a Coremail mailbox (CSU student mail, mail.csu.edu.cn) without going through the unified auth portal: create a client app password once, then list, search, read and send mail over IMAP/SMTP from the shell, keeping a copy in the Sent folder.",
+  "description_zh": "绕开统一身份认证管理 Coremail 邮箱（中南大学学生邮箱）：生成客户端专用密码，再用 IMAP/SMTP 从命令行查信、检索、读信、发信，并在「已发送」留底。",
+  "short_description": "Coremail mailbox over IMAP/SMTP with an app password, no CAS.",
+  "short_description_zh": "Coremail 邮箱免 CAS 收发信：专用密码 + IMAP/SMTP，发信自动留底。",
+  "version": "2026.10.02.3",
+  "category": "office-productivity",
+  "preinstall": false
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@lmliheng/csu-mail",
+  "version": "0.2.13",
+  "description": "Manage a Coremail mailbox (CSU student mail, mail.csu.edu.cn) over IMAP/SMTP with a client app password instead of the unified auth portal — create the app password once, then list, search, read and send mail from the shell, with a copy kept in the Sent folder.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmliheng/Adelie.git",
+    "directory": "plugins/csu-mail"
+  },
+  "files": [
+    "plugin.json",
+    "icon.svg",
+    "skills",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

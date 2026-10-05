@@ -1,0 +1,25 @@
+{
+  "description": "简单待办清单小程序",
+  "appid": "wxTEMPLATE_PLACEHOLDER",
+  "projectname": "todo-miniprogram",
+  "compileType": "miniprogram",
+  "miniprogramRoot": "./",
+  "libVersion": "latest",
+  "setting": {
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "urlCheck": false,
+    "coverView": true,
+    "ignoreDevUnusedFiles": false,
+    "ignoreUploadUnusedFiles": true
+  },
+  "packOptions": {
+    "ignore": [
+      { "type": "folder", "value": "node_modules" },
+      { "type": "folder", "value": "tools" },
+      { "type": "file", "value": "README.md" }
+    ]
+  }
+}

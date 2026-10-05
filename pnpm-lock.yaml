@@ -63,6 +63,9 @@ importers:
       '@lmliheng/continual-learning':
         specifier: workspace:*
         version: link:../../plugins/continual-learning
+      '@lmliheng/csu-mail':
+        specifier: workspace:*
+        version: link:../../plugins/csu-mail
       '@lmliheng/data-analysis':
         specifier: workspace:*
         version: link:../../plugins/data-analysis
@@ -96,6 +99,9 @@ importers:
       '@lmliheng/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@lmliheng/wechat-miniprogram':
+        specifier: workspace:*
+        version: link:../../plugins/wechat-miniprogram
       '@modelcontextprotocol/client':
         specifier: ^2.0.0
         version: 2.0.0
@@ -148,6 +154,9 @@ importers:
       '@lmliheng/continual-learning':
         specifier: workspace:*
         version: link:../../plugins/continual-learning
+      '@lmliheng/csu-mail':
+        specifier: workspace:*
+        version: link:../../plugins/csu-mail
       '@lmliheng/data-analysis':
         specifier: workspace:*
         version: link:../../plugins/data-analysis
@@ -175,6 +184,9 @@ importers:
       '@lmliheng/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@lmliheng/wechat-miniprogram':
+        specifier: workspace:*
+        version: link:../../plugins/wechat-miniprogram
       '@modelcontextprotocol/client':
         specifier: ^2.0.0
         version: 2.0.0
@@ -233,6 +245,9 @@ importers:
       '@lmliheng/continual-learning':
         specifier: workspace:*
         version: link:../../plugins/continual-learning
+      '@lmliheng/csu-mail':
+        specifier: workspace:*
+        version: link:../../plugins/csu-mail
       '@lmliheng/data-analysis':
         specifier: workspace:*
         version: link:../../plugins/data-analysis
@@ -260,6 +275,9 @@ importers:
       '@lmliheng/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@lmliheng/wechat-miniprogram':
+        specifier: workspace:*
+        version: link:../../plugins/wechat-miniprogram
     devDependencies:
       '@lmliheng/penguin-cli':
         specifier: workspace:*
@@ -638,6 +656,8 @@ importers:
 
   plugins/continual-learning: {}
 
+  plugins/csu-mail: {}
+
   plugins/data-analysis: {}
 
   plugins/goal: {}
@@ -719,6 +739,8 @@ importers:
   plugins/use-claude-code: {}
 
   plugins/use-firecrawl: {}
+
+  plugins/wechat-miniprogram: {}
 
 packages:
 
@@ -1426,6 +1448,9 @@ packages:
   '@lmliheng/continual-learning@file:plugins/continual-learning':
     resolution: {directory: plugins/continual-learning, type: directory}
 
+  '@lmliheng/csu-mail@file:plugins/csu-mail':
+    resolution: {directory: plugins/csu-mail, type: directory}
+
   '@lmliheng/data-analysis@file:plugins/data-analysis':
     resolution: {directory: plugins/data-analysis, type: directory}
 
@@ -1468,6 +1493,9 @@ packages:
 
   '@lmliheng/use-firecrawl@file:plugins/use-firecrawl':
     resolution: {directory: plugins/use-firecrawl, type: directory}
+
+  '@lmliheng/wechat-miniprogram@file:plugins/wechat-miniprogram':
+    resolution: {directory: plugins/wechat-miniprogram, type: directory}
 
   '@malept/cross-spawn-promise@2.0.0':
     resolution: {integrity: sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg==}
@@ -5501,6 +5529,8 @@ snapshots:
 
   '@lmliheng/continual-learning@file:plugins/continual-learning': {}
 
+  '@lmliheng/csu-mail@file:plugins/csu-mail': {}
+
   '@lmliheng/data-analysis@file:plugins/data-analysis': {}
 
   '@lmliheng/goal@file:plugins/goal': {}
@@ -5516,6 +5546,7 @@ snapshots:
       '@lmliheng/agent-tuning': file:plugins/agent-tuning
       '@lmliheng/browser-automation': file:plugins/browser-automation
       '@lmliheng/continual-learning': file:plugins/continual-learning
+      '@lmliheng/csu-mail': file:plugins/csu-mail
       '@lmliheng/data-analysis': file:plugins/data-analysis
       '@lmliheng/goal': file:plugins/goal
       '@lmliheng/humanizer': file:plugins/humanizer
@@ -5527,6 +5558,7 @@ snapshots:
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
       '@lmliheng/use-claude-code': file:plugins/use-claude-code
       '@lmliheng/use-firecrawl': file:plugins/use-firecrawl
+      '@lmliheng/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
       commander: 13.1.0
@@ -5549,6 +5581,7 @@ snapshots:
       '@lmliheng/agent-tuning': file:plugins/agent-tuning
       '@lmliheng/browser-automation': file:plugins/browser-automation
       '@lmliheng/continual-learning': file:plugins/continual-learning
+      '@lmliheng/csu-mail': file:plugins/csu-mail
       '@lmliheng/data-analysis': file:plugins/data-analysis
       '@lmliheng/goal': file:plugins/goal
       '@lmliheng/humanizer': file:plugins/humanizer
@@ -5558,6 +5591,7 @@ snapshots:
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
       '@lmliheng/use-claude-code': file:plugins/use-claude-code
       '@lmliheng/use-firecrawl': file:plugins/use-firecrawl
+      '@lmliheng/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
       arktype: 2.2.3
@@ -5578,6 +5612,7 @@ snapshots:
       '@lmliheng/agent-tuning': file:plugins/agent-tuning
       '@lmliheng/browser-automation': file:plugins/browser-automation
       '@lmliheng/continual-learning': file:plugins/continual-learning
+      '@lmliheng/csu-mail': file:plugins/csu-mail
       '@lmliheng/data-analysis': file:plugins/data-analysis
       '@lmliheng/goal': file:plugins/goal
       '@lmliheng/humanizer': file:plugins/humanizer
@@ -5587,6 +5622,7 @@ snapshots:
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
       '@lmliheng/use-claude-code': file:plugins/use-claude-code
       '@lmliheng/use-firecrawl': file:plugins/use-firecrawl
+      '@lmliheng/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
       arktype: 2.2.3
@@ -5674,6 +5710,8 @@ snapshots:
   '@lmliheng/use-claude-code@file:plugins/use-claude-code': {}
 
   '@lmliheng/use-firecrawl@file:plugins/use-firecrawl': {}
+
+  '@lmliheng/wechat-miniprogram@file:plugins/wechat-miniprogram': {}
 
   '@malept/cross-spawn-promise@2.0.0':
     dependencies:

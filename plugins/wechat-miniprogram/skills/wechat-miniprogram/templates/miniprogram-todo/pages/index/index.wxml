@@ -1,0 +1,55 @@
+<view class="page">
+  <view class="header">
+    <view class="header__title">待办清单</view>
+    <view class="header__stat">
+      <text class="stat__num">{{counts.active}}</text>
+      <text class="stat__label">进行中</text>
+      <text class="stat__sep">·</text>
+      <text class="stat__num">{{counts.done}}</text>
+      <text class="stat__label">已完成</text>
+    </view>
+  </view>
+
+  <view class="composer">
+    <input
+      class="composer__input"
+      value="{{input}}"
+      placeholder="添加一条待办…"
+      placeholder-class="composer__placeholder"
+      confirm-type="done"
+      maxlength="80"
+      bindinput="onInput"
+      bindconfirm="addTodo"
+    />
+    <button class="composer__btn" size="mini" bindtap="addTodo">添加</button>
+  </view>
+
+  <view class="tabs">
+    <view class="tab {{filter === 'all' ? 'tab_active' : ''}}" data-filter="all" bindtap="setFilter">全部</view>
+    <view class="tab {{filter === 'active' ? 'tab_active' : ''}}" data-filter="active" bindtap="setFilter">进行中</view>
+    <view class="tab {{filter === 'done' ? 'tab_active' : ''}}" data-filter="done" bindtap="setFilter">已完成</view>
+  </view>
+
+  <view class="list">
+    <view class="item {{item.done ? 'item_done' : ''}}" wx:for="{{visible}}" wx:key="id">
+      <view class="item__check" data-id="{{item.id}}" bindtap="toggleTodo">
+        <view class="item__box">{{item.done ? '✓' : ''}}</view>
+      </view>
+      <view class="item__body" data-id="{{item.id}}" bindtap="toggleTodo">
+        <text class="item__text">{{item.text}}</text>
+        <text class="item__time">{{item.timeText}}</text>
+      </view>
+      <view class="item__del" data-id="{{item.id}}" catchtap="removeTodo">删除</view>
+    </view>
+
+    <view class="empty" wx:if="{{visible.length === 0}}">
+      <view class="empty__title">{{counts.total === 0 ? '还没有待办' : '这个筛选下是空的'}}</view>
+      <view class="empty__desc">在上面的输入框里写一条，回车或点「添加」</view>
+    </view>
+  </view>
+
+  <view class="footer">
+    <view class="footer__btn" bindtap="clearDone">清空已完成</view>
+    <view class="footer__btn" bindtap="goAbout">关于</view>
+  </view>
+</view>

@@ -1,0 +1,14 @@
+{
+  "name": "todo-miniprogram",
+  "version": "1.0.0",
+  "private": true,
+  "description": "简单待办清单小程序（微信）",
+  "scripts": {
+    "validate": "node tools/validate.js",
+    "upload": "node upload.js",
+    "preview": "node preview.js"
+  },
+  "devDependencies": {
+    "miniprogram-ci": "^2.1.31"
+  }
+}

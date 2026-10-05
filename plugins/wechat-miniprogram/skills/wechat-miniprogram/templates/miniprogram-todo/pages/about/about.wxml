@@ -1,0 +1,24 @@
+<view class="page">
+  <view class="card">
+    <view class="card__title">待办清单</view>
+    <view class="card__desc">一个离线可用的极简待办小程序，数据只存在你的手机里（wx.setStorage），不联网、不上传。</view>
+  </view>
+
+  <view class="card">
+    <view class="row">
+      <text class="row__k">版本</text>
+      <text class="row__v">{{version}}</text>
+    </view>
+    <view class="row">
+      <text class="row__k">上次启动</text>
+      <text class="row__v">{{lastLaunch || '—'}}</text>
+    </view>
+  </view>
+
+  <view class="tips">
+    <view class="tips__title">怎么用</view>
+    <view class="tips__item">· 顶部输入框写内容，回车或点「添加」</view>
+    <view class="tips__item">· 点条目或左侧圆圈切换完成状态</view>
+    <view class="tips__item">· 右侧「删除」删单条，「清空已完成」批量清理</view>
+  </view>
+</view>

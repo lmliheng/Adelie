@@ -1,0 +1,9 @@
+{
+  "description": "Publish a WeChat mini-program end to end from a headless Linux server: log in to mp.weixin.qq.com by QR, switch from a public account to the mini-program backend, read the AppID, reset the code-upload private key, whitelist the server IP, upload with miniprogram-ci, hand the user a verified preview QR, fill the mandatory user-privacy policy, submit for review and publish.",
+  "description_zh": "在无桌面的 Linux 服务器上把微信小程序从代码做到发布：扫码登录 mp.weixin.qq.com、从公众号后台切到小程序后台、取 AppID 与上传密钥、加 IP 白名单、用 miniprogram-ci 上传、交付校验过的预览码、填写必填的用户隐私保护指引、提交审核与发布。",
+  "short_description": "WeChat mini-program: login, upload, privacy policy, review, publish.",
+  "short_description_zh": "微信小程序全流程：扫码登录与切号、上传、隐私指引、提交审核与发布。",
+  "version": "2026.10.01.1",
+  "category": "software-development",
+  "preinstall": false
+}

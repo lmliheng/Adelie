@@ -975,3 +975,41 @@ registry 上还不存在的名字没有配置可查，OIDC 换不到 token，流
   仓库里）。
 - **口径**：3003 那台静态站只当开发区内部交付用（用户原话「不用给别人用」），任何对外文本
   （Release 正文、README、发布正文、文档）都不写它的地址；安装包对外只走 GitHub Release。
+
+## 两个外部插件入库并发布到 npm（2026-10-05，用户点单）
+
+### 用户说的
+
+「你怎么没把我的插件仓库的两插件传到 npm」—— `lmliheng/penguin-plugins` 里的 `csu-mail` 与
+`wechat-miniprogram`。上一轮首发布时它们**根本不在这棵树里**（在另一个仓库），所以没发。
+
+### 做了什么
+
+- 两个插件从 `lmliheng/penguin-plugins` 搬进 `plugins/`，按 fork 的插件规矩对齐：`package.json`
+  改名 `@lmliheng/<name>`、版本跟当前 dev 版本 `0.2.13`、补 `repository.directory` 与 `LICENSE`；
+  删掉误入库的 `__pycache__`。
+- `SKILL.md` 的 frontmatter 按本仓库约定瘦身（文件里只留 `name` + `description`；`version` 与
+  `short_description(_zh)` 归 `plugin.json`，安装时盖章），并补上每个内置技能都有的
+  `## Before you start`。
+- `wechat-miniprogram` 补 `category: software-development` —— 原来没有分类会掉进 Other 组，而
+  `plugins.test.ts` 断言库里四个分类都有人、不留 Other。
+- 接进依赖链：`packages/{core,cli,desktop}/package.json` 各加两条 `workspace:*`。内置插件是靠宿主
+  包的 `dependencies` 经 Node 解析出来的（`builtinRoots()`），不写这两条，插件就在库里看不见。
+- 同步三处「必须提到每个插件」的守卫：`plugins/README.md` 与 `README.zh.md` 的分类表、
+  `packages/docs/content/skills.{zh,en}.md` 的插件表、`packages/core/test/plugins.test.ts` 的 14 → 16。
+- 发布：`pnpm --filter <name> publish --access public --no-git-checks`，`@lmliheng/csu-mail@0.2.13`
+  与 `@lmliheng/wechat-miniprogram@0.2.13` 都 `✅ Published`。
+- 搬进来的 25 个脚本/模板按本仓库 prettier 重新格式化（它们来自另一个仓库，没过这边的门禁）。
+
+### 验证
+
+- `pnpm -r test` 全绿：docs 62 · ui 1000 · core 1350(+5 跳过) · server 2592(+2 跳过) · cli 505 ·
+  web 2891(+2 跳过) · desktop 279 · ui-gallery 131 · 四个沙箱插件 71。
+- `pnpm typecheck` 八包过；`pnpm lint` 0 警告；`pnpm format:check` 干净。
+- registry：两个新名字的版本端点都 200。
+
+### 没做 / 待办
+
+- **没删 `lmliheng/penguin-plugins`**（用户要求"传上去之后删"）：放在最后一步，等 npm 与这个仓库
+  这两份备份都推上去、插件市场不再依赖那个仓库的 URL 之后再删（令牌有 `delete_repo` 权限）。
+- 插件市场、「按需发版 + 邮件汇报」的定时循环都还没做；设计与计划写在 `/root/evolution/PLAN.md`。

@@ -1,0 +1,49 @@
+.card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 32rpx 28rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.card__title {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.card__desc {
+  margin-top: 14rpx;
+  font-size: 27rpx;
+  color: #7e8081;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 14rpx 0;
+}
+
+.row__k {
+  color: #7e8081;
+  font-size: 28rpx;
+}
+
+.row__v {
+  font-size: 28rpx;
+}
+
+.tips {
+  padding: 0 8rpx;
+}
+
+.tips__title {
+  font-size: 28rpx;
+  font-weight: 600;
+  margin-bottom: 12rpx;
+}
+
+.tips__item {
+  font-size: 27rpx;
+  color: #7e8081;
+  line-height: 1.9;
+}
