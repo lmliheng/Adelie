@@ -217,15 +217,16 @@ node scripts/build-plugins.mjs --out out/penguin/lib/plugins
 
 | 结果 | job | 原因 | 处置 |
 | --- | --- | --- | --- |
-| ❌ | `test (core)` / `test-macos (core)` / `test-windows (core)` | `core/test/plugins.test.ts`：**README 里找不到插件分类表**（用户当天把 README 正文删到只剩头部） | **等用户拍板**：补回那两张表，或把这条断言改成「README 没写插件就不检查」 |
+| ❌ → ✅ | `test (core)` / `test-macos (core)` / `test-windows (core)` | `core/test/plugins.test.ts`：**README 里找不到插件分类表**（用户当天把 README 正文删到只剩头部） | **已修**（用户选 b）：给 `README_TABLES` 加 `optional`，根 README 没表就跳过，`plugins/README.md` 与 `README.zh.md` 仍必查；CI `37261735096` 三条**实测转绿**（提交 `7cf248d4`） |
 | ❌ | `test (rest)` / `test-windows (rest)` / `test-macos (rest)` | `packages/desktop/test/launcher.test.ts` 的夹具还写着 `penguinharness`，而代码算出来的目录名已是 `Adelie` —— 2.1c 改名漏了这个夹具 | **已修**（夹具改成 `Adelie`，本地 `vitest run --root packages/desktop` 308 全绿；改前该文件确有一条红） |
 | ❌ | `test-macos (server)` | `test/workflows.test.ts`「notices an Agent's FIRST workflow」在 macOS 上返回 `{}` —— **同一个测试在 Linux 与 Windows 上都是绿的**，看着像 macOS 跑机的抖动 | 记录，暂不动 |
 | ❌ | `installer-windows` | `scripts/test-installer.ps1`：`forwarder-oss returned an unexpected result`（在线下载源选择那条用例） | 记录。**不是改名引起的**：2.1c 对 `install.ps1/.sh/.cmd` 只改了提示语字符串，没碰 `test-installer.ps1`，也没碰两边共用的常量；要查得有一台 Windows/pwsh |
 | ❌ | `Docker` | `push: main` 会把镜像**以 `hiyouga/penguinharness` 的名义推到 Docker Hub**（上游的镜像名与账号），而本仓没有 Docker Hub 凭据，只能失败 | **已处置**：删掉 `push: branches: [main]` 这条触发（带注释说明），保留 PR 的构建冒烟与手动 dispatch |
 
-也就是说：**CI 目前不是全绿**，上面三条（README 插件表、macOS server 抖动、Windows 安装脚本用例）
-都还没闭。这正是台账 4.2 里「把 ci.yml 接到新主线并让它真跑绿」那一条要收的尾 —— 现在它有了具体的
-清单，不再是一句话。
+**2026-10-05 复核（CI `37261735096`，支线 `main` @ `7cf248d4`）**：22 个 job 里 20 个绿，
+README 插件表那三条已闭，macOS 那条重跑即绿（确系跑机抖动）—— **只剩 `installer-windows` 一条红**
+（以及汇总 job `ci` 随之红）。这正是台账 4.2 里「把 ci.yml 接到新主线并让它真跑绿」那一条要收的尾，
+现在它只剩一个具体目标了。
 
 ## 主线三件事（2026-10-05，用户点单）
 
@@ -237,7 +238,8 @@ node scripts/build-plugins.mjs --out out/penguin/lib/plugins
 `core/test/plugins.test.ts` 的 `README_TABLES` 给每份文件加了 `optional` 标志：根 `README.md` 标
 `optional: true` —— 你 02:55Z 把正文删到只剩头部，是你自己的编辑，**不还原**，所以它没有表就跳过
 这条守卫；`plugins/README.md` 与 `README.zh.md` 仍是必查。**表放回来就自动重新生效**（只有"没有
-表"这一种情况被容忍）。这条一改，CI 那三个 `test (core)` 的红应该跟着绿，下一轮用 CI 复核。
+表"这一种情况被容忍）。**已用 CI 复核**：`7cf248d4` 推上去后 `test (core)` / `test-macos (core)` /
+`test-windows (core)` 三条转绿（run `37261735096`）。
 
 ### ① 模型库里的「官方推荐」删掉了
 
