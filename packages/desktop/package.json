@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/penguin-desktop",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "description": "Adelie desktop app: Electron shell running @lmliheng/penguin-server as a utilityProcess, window on http://localhost (same-origin HTTP/SSE, no private IPC).",

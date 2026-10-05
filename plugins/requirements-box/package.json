@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/requirements-box",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A requirements box: one keyed page where the user files what they want done, a scheduled task that wakes the agent to work through them, and a per-round report by mail — the service being a single dependency-free Node file with a JSON store and a keyed API, the patrol protocol one markdown file.",
   "license": "Apache-2.0",
   "repository": {
