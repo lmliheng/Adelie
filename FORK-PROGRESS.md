@@ -1038,3 +1038,85 @@ registry 上还不存在的名字没有配置可查，OIDC 换不到 token，流
   再给账号 → 停在「缺密码」且提示里带 `CSU_CAS_PASSWORD`。
 - `CSU_CAS_ADDRESS=... python3 mail.py check` → 报的是缺 `CSU_MAIL_AUTHCODE`，不是缺地址。
 - 门禁：core 插件测试 21 过；`prettier --check` 干净；`oxlint` 0 警告。
+
+## 发布 v0.3.0：GitHub Release + npm 整条链 + 现网原地更新（2026-10-06，用户点单）
+
+### 用户说的
+
+「你看着更一个小版本吧」+「原地更新目前这个服务」。
+
+### 为什么是 0.3.0 而不是 0.2.4
+
+npm 上的 `@lmliheng/*` 首次发布落在 **0.2.13**（见上一节），所以 0.2.4 在 npm 线是**降级**。
+0.3.0 在三条线上都是前进：tag 线（v0.2.3 → v0.3.0）、npm 线（0.2.13 → 0.3.0）、桌面端更新线
+（已装 0.2.3 → 0.3.0）。
+
+### 做了什么
+
+1. **提交 `26e4079b`**（`chore(release): v0.3.0 —— 版本戳与发布正文`）：root + 9 个工作区包 +
+   16 个对外插件包的 `package.json` → 0.3.0，`packages/core/src/index.ts` 的 `VERSION = "0.3.0"`
+   （`BUILD_DATE` / `BUILD_COMMIT` 源码里仍是 `null`，由发布步骤盖章），新增 `RELEASE-v0.3.0.md`。
+   注解 tag `v0.3.0` 已 push，`main` = `origin/main` = `26e4079b`。
+2. **四个私有 sandbox 插件（bwrap / dsh / seatbelt / wsl）不动**：上游从 0.2.2 起就把它们与发布
+   列车分开 —— `packages/server/src/plugin/builtin-index.json` 里列的是 0.2.2，而
+   `plugin-registry.test.ts:194` 会比对两处，升了它们这条测试就红。
+3. **桌面端产物**：dispatch `desktop-build.yml`（run 37353829720，ref = v0.3.0）三平台全绿，取
+   Windows / Linux 两个 artifact 上传；macOS 不发（未签名）。两份 `latest*.yml` 的 version 是
+   0.3.0，sha512/size 与安装包逐条核对一致。
+4. **CLI 三件包在本机装配**（照 `release.yml` 的 build 作业复现，脚本
+   `pack-cli-0.3.0.sh`）：`pnpm -r build` → `pnpm --config.node-linker=hoisted --filter
+   @lmliheng/penguin-cli --prod deploy` → web 资产 → launcher → `build-plugins.mjs` → 载荷 →
+   按 `package-release-bundles.sh` 的布局打 `penguin-{linux-x64,win32-x64,universal}`。
+5. **GitHub Release v0.3.0**（<https://github.com/lmliheng/Adelie/releases/tag/v0.3.0>）：14 个资产
+   = 桌面 6 件（exe + blockmap + AppImage + deb + `latest.yml` + `latest-linux.yml`）+ CLI
+   三件包与各自 `.sha256` + `install.sh` / `install.ps1`，`make_latest`。
+6. **npm 整条链 0.3.0**：照 `release.yml` 的 `publish-npm` 作业手工走（脚本 `publish-npm-0.3.0.sh`
+   → 日志 `publish-npm-0.3.0.log`），凭据 vault 的 `NPM_TOKEN`：盖章 → `pnpm -r build` →
+   三个包测试 → LICENSE 与 `web-dist` 备料 → 16 个插件 → core → server → cli，共 **19 个包**。
+7. **现网原地更新**：`/root/.adelie`（7364）从 0.2.3 升到 0.3.0，`systemctl restart
+   adelie-server`。
+
+### 修掉的两处「原地更新根本走不通」
+
+v0.2.3 的 Release 有两处对不上，`penguin update` 因此必然失败：
+
+- Release **没有附 `install.sh` / `install.ps1`**（三个 URL 实测 404），而 `penguin update` 第一步
+  就是取它（`packages/cli/src/commands/update.ts` 的 `installerCandidates()`）；
+- Release 上 CLI 包名是 `adelie-<target>`，而 `install.sh` / `install.ps1` /
+  `scripts/package-release-bundles.sh` 一律按 `penguin-<target>` 取（实测 adelie-* 200、
+  penguin-* 404）。
+
+这一版按**仓库自己的口径**发（`penguin-*` + 附两个安装脚本），一行代码没改；把产物名统一成
+`adelie-*` 归 4.2 的流水线重写，届时安装脚本与打包脚本要一起改。
+
+### 验证（都是真跑出来的）
+
+- **Release**：`/releases/latest` 返回 v0.3.0、14 个资产全 `uploaded`；`install.sh`、
+  `penguin-linux-x64.tar.gz`、`latest.yml` 三个下载 URL 跟随重定向实测 200。
+- **原地更新**：`penguin update --check` 认出 0.3.0 → `penguin update --yes` 真下载 Release 的
+  `install.sh` + `penguin-linux-x64.tar.gz`，`Bundle checksum OK` / `Payload checksum OK` →
+  `Adelie v0.3.0 installed to /root/.adelie`。重启后服务 `active (running)`、7364 在听、
+  `penguin version` = `0.3.0 / v0.3.0 / release / buildDate 2026-10-06 / commit 26e4079b`；
+  `GET /` 200 且 `<title>Adelie</title>`。**只换了 `bin/ lib/ web/`**（时间戳是升级那一刻），
+  `data/`、`sessions/`、`.env`、`adelie.db` 全是旧时间戳没动，`/root/.penguin/data` 软链完好。
+- **CLI 包隔离装**：新 HOME 里离线装 `penguin-linux-x64.tar.gz` → `penguin version --json` 带
+  buildDate/commit，`bin/penguin web` 起在 7397，`GET /` → 302 → 200 / `<title>Adelie</title>`。
+- **npm**：19 个名字的 `0.3.0` 与 `dist-tags.latest` 全部可见（staged 发布是分钟级延迟，16 个插件
+  是分两批出现的：8 → 14 → 16，**等就行，不要升版本号**）；空 prefix 真装
+  `npm install -g @lmliheng/penguin-cli@0.3.0` → 16 个插件 + core + server 全部解析，
+  `penguin version --json` = 0.3.0 带 commit，`@lmliheng/penguin-server/web-dist` 18M 在包里
+  （`index.html` 是 `<title>Adelie</title>` + `adelie-icon.svg`，新页面文案也在），
+  用它起服务在 7398 → `GET /` 200 / `<title>Adelie</title>`（验证进程已杀，端口已释放）。
+- **门禁**：typecheck 8 包 Done、lint 0、prettier 干净、测试 **8871 通过 / 9 跳过 / 0 失败**；
+  发布前又单独复跑三个包：core 1350、server 2592、cli 505，与全量一致。
+
+### 收尾 / 待办
+
+- 发布时暂存的 LICENSE 副本与 `packages/server/web-dist` 已删，`packages/core/src/index.ts` 已
+  `git checkout` 还原，工作树干净（`git status` 空）。注意 `plugins/csu-mail/` 与
+  `plugins/wechat-miniprogram/` **本来就带一个已入库的 LICENSE**，删副本时要用 `git checkout` 还原。
+- npm 上 `data-analysis` / `skill-porting` 仍留着首发布的 `0.0.0-stage` 占位版本，删不掉（granular
+  token 没有 unpublish 权限），无害。
+- Release 上同时存在 `adelie-*`（v0.2.3 那套命名）与 `penguin-*`（这一版）两种资产名，属于口径
+  过渡期，4.2 统一。
+- macOS 桌面端仍未签名，`latest-mac.yml` 没发，所以 macOS 拿不到更新。
