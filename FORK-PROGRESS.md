@@ -780,9 +780,71 @@ systemctl enable --now penguin-server
 
 ### 没做（卡在这两点，等拍板）
 
-- **没有发 npm**：台账纪律里「不发 npm」还在；且 `@penguinharness` 的 maintainer 是 `hiyouga`
-  （registry maintainers 字段），`lmliheng` 的 token 发不上去。要发得先定 scope —— `@lmliheng` 名下 0 个包，
-  可发；改名有两种做法：改仓库里 19 个 `package.json` 的 `name`（会牵到 `packages/cli`、`packages/server`
-  的 `workspace:*` 依赖与 core 的 `PLUGIN_PKG_PREFIX`，`packages/core/src/plugins/index.ts`），
-  或者只在发布时把包名换成自有 scope 临时发。
+- **没有发 npm**（后来用户点了名，见下一节）：台账纪律里「不发 npm」还在；且 `@penguinharness` 的
+  maintainer 是 `hiyouga`（registry maintainers 字段），`lmliheng` 的 token 发不上去。
+  **更正**：我先前写「`@lmliheng` 名下 0 个包」是错的 —— 我拿 npm 官网才认的 `scope:` 限定词去查
+  registry search API，它对不认识的限定词返回 0。按 `maintainer:lmliheng` 查，该账号共 17 个包
+  （12 个 `@lmliheng/*` + 5 个无 scope 的 `adelie-core`/`adelie-server`/`adelie-runtime`/
+  `adelie-providers`/`adelie-tools`）。
 - 运行时生效要重装/重建服务端（现在跑的是 `/root/.adelie` 那份 0.2.3）。
+
+## 插件包 scope 换成 `@lmliheng`（2026-10-05，用户点单）
+
+### 用户说的
+
+「改成我的npm仓库，lliheng，为什么有0个包呢，我npm账号里还有至少5个包」
+
+### 先更正我上一节写错的那句
+
+- 用户写的 `lliheng` 在 npm 上查不到（`maintainer:lliheng` 命中 0）。账号是 **`lmliheng`**：
+  vault 里 `NPM_TOKEN` 的 `npm whoami` = `lmliheng`，`maintainer:lmliheng` 命中 **17 个包** ——
+  `@lmliheng/{rag-chunk,acode,acode-core,acode-tools,acode-runtime,acode-providers,acode-publish-probe,
+  agent,acode-write-probe,filesystem-mcp,ai_git,adelie}` 共 12 个带 scope，外加 `adelie-core`、
+  `adelie-server`、`adelie-runtime`、`adelie-providers`、`adelie-tools` 5 个无 scope 的。
+- 我说「0 个」的原因：我用的是 npm **官网**才认的 `scope:lmliheng` 限定词打 registry 的 search API，
+  它不报错、直接返回 0 条。以后查账号名下用 `maintainer:<user>`。
+
+### 做了什么
+
+- **14 个对外发布的插件包改名**：`plugins/<name>/package.json` 的 `name` 从 `@penguinharness/<name>`
+  改成 `@lmliheng/<name>`（agent-company、agent-development、agent-tuning、browser-automation、
+  continual-learning、data-analysis、goal、humanizer、model-development、skill-porting、
+  software-development、use-bento-slides、use-claude-code、use-firecrawl）。
+- **loader 的前缀**：`packages/core/src/plugins/index.ts` 的 `PLUGIN_PKG_PREFIX` → `"@lmliheng/"`；
+  三个宿主包的依赖表跟着改（`packages/core`、`packages/cli`、`packages/desktop` 各 14 条
+  `workspace:*`）。
+- 连带改的引用：core 的 `state/{paths,plugin-store}.ts` 注释与 `test/plugins.test.ts` 夹具、
+  desktop 的 `preflight.mjs`/`verify-packed-cli.mjs`（按前缀筛依赖那两处）、desktop 的
+  `build-assets.mjs`/`tsup.config.ts`/`electron-builder.yml`、cli 的 `tsup.config.ts`、
+  server 的 `api/types.ts` 与 `services/plugin-download.ts` 注释、`plugins/README.md`、
+  `packages/docs/content/{skills,quickstart-cli}.{en,zh}.md`、`.github/CONTRIBUTING{,.zh}.md`、
+  `.github/workflows/release.yml` 注释、`Dockerfile` 注释、`scripts/check-publishable.mjs` 注释、
+  ui-gallery 的 mock 数据、`packages/ui/test/entity-header.test.ts`、以及上一轮那个
+  `packages/server/test/plugin-npm-import.test.ts` 的示例包名。共 46 个文件（`pnpm-lock.yaml` 由
+  `pnpm install` 重写）。
+- **没改**：`changelog/**` 与 `RELEASE-v0.2.0.md`（历史记录，照旧写上游名号）；4 个沙箱后端
+  `@prismshadow/penguin-plugin-sandbox-*`（private，从不发布，改名会牵到 vendor 脚本，这次不动）；
+  Docker Hub 镜像名 `hiyouga/penguinharness`（另一个话题）。
+
+### 验证
+
+- `pnpm install` 重建链接与 lockfile：`packages/{core,cli,desktop}/node_modules/@lmliheng/` 下 14 个包齐全。
+- **踩到一个真坑并修掉**：core 的 `dist/` 是旧构建，里面 `PLUGIN_PKG_PREFIX` 还是旧 scope，于是
+  按新依赖表筛不出任何插件 —— 服务端 7 个文件 19 例失败（`/api/plugins` 返回空库、default_agent 没有预装技能）。
+  `pnpm --filter @prismshadow/penguin-core build` 之后全绿。**这条是给以后改名的人看的：core 改了源码
+  必须重建，否则跑测试的 server 会读到旧 dist。**
+- `packages/core` 63 文件 / 1350 通过；`packages/server` 180 文件 / 2592 通过 / 2 跳过；
+  `packages/web` 236 文件 / 2891 通过 / 2 跳过；`packages/cli` 34 文件 / 505 通过；
+  `pnpm typecheck` 全包 Done；`pnpm lint` 0；`pnpm format:check` 干净。
+- 发布预演：`pnpm --filter @lmliheng/goal publish --dry-run --no-git-checks --access public` →
+  `@lmliheng/goal@0.2.13 → registry.npmjs.org`（dry run，没上传）。
+- `node scripts/check-publishable.mjs --registry --strict` → 这 14 个名字**在 npm 上还不存在**，
+  而发布流水线用的是逐包配置的 trusted publishing，OIDC 换不来一个不存在的名字 →
+  正式发版前得先手工首发布一次（这就是它打印的那句 "first publish needed"）。
+
+### 没做 / 待拍板
+
+- **没有真的 publish**（上一轮说的就是「改名 + dry-run，发不发你说」）：`npm publish --access public`
+  逐个发这 14 个包，一条命令的事，等一句准话。
+- `@prismshadow/penguin-{core,server,cli}` 仍在**上游 scope** 里、同样发不上去；要让整条链都进
+  `@lmliheng`，是另一次改名（宿主包名、安装脚本、桌面打包坐标、文档都会动），这轮没碰。

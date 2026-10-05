@@ -351,7 +351,7 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
     );
     const injected = path.join(
       root,
-      "node_modules/.pnpm/@penguinharness+sample@file+plugins+sample/node_modules/@penguinharness/sample",
+      "node_modules/.pnpm/@lmliheng+sample@file+plugins+sample/node_modules/@lmliheng/sample",
     );
     await fs.mkdir(injected, { recursive: true });
     // Where core itself sits in that checkout: its own injected copy, deep under .pnpm.
@@ -364,7 +364,7 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
   }
 
   it("prefers the repo's plugins/<name>/ over pnpm's injected copy inside a workspace checkout", async () => {
-    const c = await checkout({ workspaceFile: true, packageName: "@penguinharness/sample" });
+    const c = await checkout({ workspaceFile: true, packageName: "@lmliheng/sample" });
     try {
       expect(workspacePluginRoot("sample", c.injected, c.core)).toBe(c.source);
     } finally {
@@ -373,7 +373,7 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
   });
 
   it("keeps the resolved copy outside a workspace: an npm install and the packed app have no workspace file", async () => {
-    const c = await checkout({ workspaceFile: false, packageName: "@penguinharness/sample" });
+    const c = await checkout({ workspaceFile: false, packageName: "@lmliheng/sample" });
     try {
       expect(workspacePluginRoot("sample", c.injected, c.core)).toBe(c.injected);
     } finally {
@@ -382,7 +382,7 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
   });
 
   it("keeps the resolved copy when the workspace directory is not that package", async () => {
-    const c = await checkout({ workspaceFile: true, packageName: "@penguinharness/other" });
+    const c = await checkout({ workspaceFile: true, packageName: "@lmliheng/other" });
     try {
       expect(workspacePluginRoot("sample", c.injected, c.core)).toBe(c.injected);
     } finally {

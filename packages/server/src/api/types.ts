@@ -3783,7 +3783,7 @@ export interface HookItem {
 
 /**
  * Where a library plugin comes from: `builtin` = shipped with the build (the
- * `@penguinharness/*` packages under the repo's `plugins/`), `user` = installed by an operator
+ * `@lmliheng/*` packages under the repo's `plugins/`), `user` = installed by an operator
  * into the user plugin directory (a remote download or a local upload), which is the only kind
  * the library can also delete again.
  */

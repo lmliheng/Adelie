@@ -24,9 +24,9 @@ const pkgDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = path.join(pkgDir, "out");
 const ownPkg = JSON.parse(fs.readFileSync(path.join(pkgDir, "package.json"), "utf8"));
 const version = ownPkg.version;
-/** The plugin packages the bundled loader will look for: every @penguinharness/* in this package's dependencies (the one field the packaged manifest keeps). */
+/** The plugin packages the bundled loader will look for: every @lmliheng/* in this package's dependencies (the one field the packaged manifest keeps). */
 const pluginNames = Object.keys(ownPkg.dependencies ?? {}).filter((name) =>
-  name.startsWith("@penguinharness/"),
+  name.startsWith("@lmliheng/"),
 );
 
 /** Every `resources/app` directory under out/, in both platform layouts. */

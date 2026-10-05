@@ -1,5 +1,5 @@
 {
-  "name": "@penguinharness/browser-automation",
+  "name": "@lmliheng/browser-automation",
   "version": "0.2.13",
   "description": "Drive the Adelie desktop app's built-in browser with penguin browser — read pages as simplified HTML or text, act with JavaScript and trusted clicks and typing, extract structured data, and import sign-ins from the system browser.",
   "license": "Apache-2.0",

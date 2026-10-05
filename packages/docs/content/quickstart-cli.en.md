@@ -203,7 +203,7 @@ The data root is `~/.penguin/data` by default (`%USERPROFILE%\.penguin\data` on 
 | `@prismshadow/penguin-cli` | Command-line tool that provides the `penguin` command |
 | `@prismshadow/penguin-core` | SDK for creating agents and Sessions from code |
 | `@prismshadow/penguin-server` | Web service, including the Web App assets |
-| `@penguinharness/*` | The built-in plugins, one package each (Skills and session hooks); core loads them |
+| `@lmliheng/*` | The built-in plugins, one package each (Skills and session hooks); core loads them |
 
 All packages are published under the Apache-2.0 license.
 

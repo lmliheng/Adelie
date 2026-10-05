@@ -8,7 +8,7 @@
  * - `dist/node_modules/node-pty` — the one dependency the bundler cannot absorb, because the
  *   server loads it as a native module through a runtime `require` and node-pty's own loader
  *   then resolves its binary package-relative. See src/pty-payload.ts. (The plugin library is
- *   not staged here: the @penguinharness/* packages are this package's `dependencies`, which
+ *   not staged here: the @lmliheng/* packages are this package's `dependencies`, which
  *   electron-builder collects into the packed app's node_modules and pnpm links for a source
  *   run, and core's bundled loader resolves them by name from the bundle's own location. The
  *   server's web-dist lookup is likewise satisfied by electron-builder's file mapping when

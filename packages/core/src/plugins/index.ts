@@ -4,7 +4,7 @@
  *
  * The library has two sources, loaded the same way and distinguished only by
  * `LibraryPlugin.source`: the built-ins (a plugin is its own npm package,
- * `@penguinharness/<name>`, `plugins/<name>/` in the repo; resolved through Node from the host
+ * `@lmliheng/<name>`, `plugins/<name>/` in the repo; resolved through Node from the host
  * package's dependency list — see pluginRoots) and the user plugin directory
  * (`<data root>/plugins`, see userPluginDirs), where a remote download or a local upload lands.
  * A user plugin of the same name as a built-in is not loaded — the built-in wins — and a user
@@ -275,7 +275,7 @@ function packageRoot(): string {
 }
 const PKG_ROOT = packageRoot();
 /** npm-name prefix of the per-plugin packages (the host package's dependencies name them). */
-const PLUGIN_PKG_PREFIX = "@penguinharness/";
+const PLUGIN_PKG_PREFIX = "@lmliheng/";
 
 /**
  * The pnpm workspace root above `from`, or null outside a workspace checkout: the directory
@@ -325,7 +325,7 @@ export function workspacePluginRoot(
 
 /**
  * Where the plugin directories live, name → absolute root. Each plugin is its own npm package
- * (`@penguinharness/<name>`, `plugins/<name>/` in the repo): the host package's `dependencies`
+ * (`@lmliheng/<name>`, `plugins/<name>/` in the repo): the host package's `dependencies`
  * name them (core, the CLI, and the desktop app — whose packaged manifest keeps that field
  * and nothing else, so `devDependencies` would not survive into an installer), and each is
  * resolved through Node from this module's own location, so the lookup walks the same

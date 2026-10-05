@@ -19,7 +19,7 @@ import { ESM_CJS_BANNER } from "../../scripts/esm-cjs-banner.mjs";
  * tree. Two things cannot be absorbed: node-pty, a native module the server reaches through a
  * runtime `require` whose loader resolves the binary relative to its own package directory —
  * build-assets.mjs stages a package directory for it at dist/node_modules/node-pty (see
- * src/pty-payload.ts) — and the @penguinharness/* plugin packages, data directories the
+ * src/pty-payload.ts) — and the @lmliheng/* plugin packages, data directories the
  * bundled core loader resolves by package name from the bundle's own location, which travel
  * as this package's declared dependencies (electron-builder collects them, pnpm links them).
  */

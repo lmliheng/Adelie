@@ -16,7 +16,7 @@
 #   one version per tag, multiple versions coexist. Releases up to v0.1.5 shipped raw program
 #   archives under the same names plus *-offline wrappers; the installers keep accepting that
 #   legacy layout for pinned versions.
-# - publish-npm: publish the whole chain (the @penguinharness/* plugin packages -> @prismshadow/penguin-core
+# - publish-npm: publish the whole chain (the @lmliheng/* plugin packages -> @prismshadow/penguin-core
 #   -> @prismshadow/penguin-server -> @prismshadow/penguin-cli) to npm at the tag version.
 #   core serves the penguin-sdk Skill's `npm install`; server ships the built web assets inside
 #   the package (web-dist/, its default web dir falls back to it), so `npm install -g
@@ -45,7 +45,7 @@
 name: Release
 
 # Fork note (Adelie, 2026-10-05): upstream's release pipeline is dispatch-only here. On a tag push
-# it would build the penguin/ one-line-installer bundles and publish @penguinharness/* and
+# it would build the penguin/ one-line-installer bundles and publish @lmliheng/* and
 # @prismshadow/penguin-* to npm -- the upstream product, out of our fork. None of that is Adelie's,
 # and an accidental `git push --tags` must not be able to start it. Adelie's own release pipeline is
 # still to be written (FORK-PROGRESS.md 4.2); until then this file is kept for reference and can
@@ -652,7 +652,7 @@ jobs:
           done
           rm -rf packages/server/web-dist
           cp -r packages/web/dist packages/server/web-dist
-          # The @penguinharness/* plugin packages go first: core declares them as workspace:*
+          # The @lmliheng/* plugin packages go first: core declares them as workspace:*
           # deps, rewritten to their versions at publish time, so they must exist first.
           for dir in plugins/*/; do
             # Read the name and the private flag out of the manifest rather than building a name

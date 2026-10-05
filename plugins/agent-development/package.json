@@ -1,5 +1,5 @@
 {
-  "name": "@penguinharness/agent-development",
+  "name": "@lmliheng/agent-development",
   "version": "0.2.13",
   "description": "Agent development on Adelie: build on the SDK, call any model through one unified LLM API, manage models and secrets, and orchestrate agents, sessions, costs and schedules.",
   "license": "Apache-2.0",

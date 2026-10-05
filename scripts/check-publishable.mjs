@@ -74,7 +74,7 @@ console.log(
 if (!process.argv.includes("--registry")) process.exit(0);
 
 // Everything the release publishes: the non-private packages above, plus every plugin — the
-// release loops `plugins/*/` and publishes each as `@penguinharness/<dir>`.
+// release loops `plugins/*/` and publishes each as `@lmliheng/<dir>`.
 // Read each plugin's own name and private flag rather than deriving a name from its directory:
 // `plugins/sandbox-*` are `@prismshadow/penguin-plugin-sandbox-*` and private, so a name built
 // from the directory names a package that does not exist and never will.

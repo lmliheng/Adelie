@@ -203,7 +203,7 @@ Windows 上还有以下不同：
 | `@prismshadow/penguin-cli` | 命令行工具，提供 `penguin` 命令 |
 | `@prismshadow/penguin-core` | SDK，用代码创建 Agent 与 Session |
 | `@prismshadow/penguin-server` | Web 服务，含 Web App 的静态资源 |
-| `@penguinharness/*` | 内置插件，每个插件一个包（Skill 与会话钩子），由 core 加载 |
+| `@lmliheng/*` | 内置插件，每个插件一个包（Skill 与会话钩子），由 core 加载 |
 
 所有包均以 Apache-2.0 许可证发布。
 

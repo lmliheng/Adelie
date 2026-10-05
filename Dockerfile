@@ -132,7 +132,7 @@ RUN set -eux; \
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 
 # `<pkg>...` selects a package together with its workspace dependencies, so the CLI filter
-# pulls core, server and the @penguinharness/* plugin packages in topological order; web is
+# pulls core, server and the @lmliheng/* plugin packages in topological order; web is
 # named separately because nothing depends on it — its dist is what web/ ships. The rest of
 # the workspace (desktop, docs, landing) is installed but never built.
 #

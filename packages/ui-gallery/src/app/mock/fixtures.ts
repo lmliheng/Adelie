@@ -762,7 +762,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
   const installedPlugins: InstalledPluginsResponse = {
     plugins: [
       {
-        specifier: "@penguinharness/sandbox-bwrap",
+        specifier: "@lmliheng/sandbox-bwrap",
         active: true,
         builtin: true,
         modules: ["sandbox.bwrap"],
@@ -772,7 +772,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         here: true,
       },
       {
-        specifier: "@penguinharness/messaging-feishu",
+        specifier: "@lmliheng/messaging-feishu",
         active: false,
         builtin: false,
         modules: ["messaging.feishu"],
@@ -782,7 +782,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         here: false,
       },
     ],
-    shipped: ["@penguinharness/sandbox-bwrap", "@penguinharness/sandbox-seatbelt"],
+    shipped: ["@lmliheng/sandbox-bwrap", "@lmliheng/sandbox-seatbelt"],
     file: ".project_config.toml",
     machineId: "demo-machine-0001",
     restartPending: false,
@@ -790,7 +790,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
   const pluginIndex: PluginIndexResponse = {
     plugins: [
       {
-        name: "@penguinharness/sandbox-bwrap",
+        name: "@lmliheng/sandbox-bwrap",
         version: "0.2.13",
         description: "Confines agent commands with bubblewrap on Linux.",
         authors: ["Adelie"],
@@ -801,7 +801,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         updatedAt: Math.floor(ago(19) / 1000),
       },
       {
-        name: "@penguinharness/sandbox-seatbelt",
+        name: "@lmliheng/sandbox-seatbelt",
         version: "0.2.13",
         description: "Confines agent commands with Seatbelt on macOS.",
         authors: ["Adelie"],
@@ -812,7 +812,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         updatedAt: Math.floor(ago(19) / 1000),
       },
       {
-        name: "@penguinharness/messaging-feishu",
+        name: "@lmliheng/messaging-feishu",
         version: "0.2.12",
         description: "Relays a Session to a Feishu bot.",
         authors: ["Adelie"],
@@ -824,11 +824,11 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     ],
   };
   const readmes: Record<string, string> = {
-    "@penguinharness/sandbox-bwrap":
-      '# sandbox-bwrap\n\nRuns every agent command inside a bubblewrap namespace: the Workspace is writable, the rest of the filesystem read-only, and the network follows the Session\'s sandbox level.\n\n```toml\n[plugins]\nsandbox-bwrap = "@penguinharness/sandbox-bwrap"\n```\n',
-    "@penguinharness/sandbox-seatbelt":
+    "@lmliheng/sandbox-bwrap":
+      '# sandbox-bwrap\n\nRuns every agent command inside a bubblewrap namespace: the Workspace is writable, the rest of the filesystem read-only, and the network follows the Session\'s sandbox level.\n\n```toml\n[plugins]\nsandbox-bwrap = "@lmliheng/sandbox-bwrap"\n```\n',
+    "@lmliheng/sandbox-seatbelt":
       "# sandbox-seatbelt\n\nThe macOS counterpart of sandbox-bwrap, on Seatbelt profiles.\n",
-    "@penguinharness/messaging-feishu":
+    "@lmliheng/messaging-feishu":
       "# messaging-feishu\n\nBinds a Session to a Feishu bot so replies reach a chat.\n",
   };
 

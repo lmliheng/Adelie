@@ -11,7 +11,7 @@
  * question (http/routes/plugins.ts + services/tar-archive.ts), not this module's — a plain
  * download link is passed through untouched.
  *
- * Why npm at all: every plugin in the library IS an npm package (`@penguinharness/<name>`, see
+ * Why npm at all: every plugin in the library IS an npm package (`@lmliheng/<name>`, see
  * plugins/README.md), so an operator publishes theirs there and installs it here by name, without
  * a repository checkout or a zip to hand around. That is what the registry lookup below is for —
  * a name and an optional version in, the tarball npm serves for them out.

@@ -1,6 +1,6 @@
 /**
  * The user plugin directory (`<root>/plugins`): the library's second source beside the
- * `@penguinharness/*` packages the build ships (see plugins/index.ts). One directory per
+ * `@lmliheng/*` packages the build ships (see plugins/index.ts). One directory per
  * plugin, laid out exactly like a plugin package — `plugin.json`, `icon.svg`, `skills/`,
  * `hooks/` — so the loader needs no second format: these are the writers a remote download and
  * a local upload go through, and the remover the management UI's delete calls.

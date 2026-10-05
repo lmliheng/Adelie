@@ -42,7 +42,7 @@ npm's trusted publishing is configured **per package**. A name that does not exi
 configuration, so the OIDC token exchange 404s, and the release job carries no fallback credential
 — the first publish of a new name needs a person with npm rights, done once, before the tag.
 
-0.2.13 cost a run to learn this: company mode brought `@penguinharness/agent-company`, plugins
+0.2.13 cost a run to learn this: company mode brought `@lmliheng/agent-company`, plugins
 publish in directory order, it sorts first, and the job died on it before `core`, `server` or `cli`
 were reached.
 

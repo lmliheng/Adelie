@@ -2,7 +2,7 @@
 #
 # The app directory is this package itself: `pnpm build` emits self-contained bundles of
 # the shell, the server and the CLI into dist/ (see tsup.config.ts). The one dependency tree
-# electron-builder collects is the @penguinharness/* plugin packages this package.json
+# electron-builder collects is the @lmliheng/* plugin packages this package.json
 # declares — data-only directories the bundled server's plugin loader resolves by name from
 # the app's node_modules (never imported, so bundling has nothing to absorb). Everything
 # else inside an installer is described by `files` below.

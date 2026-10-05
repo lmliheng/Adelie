@@ -263,7 +263,7 @@ plugins/<plugin>/
 - A plugin built around someone else's product carries a `use-` prefix (`use-firecrawl`), so the name says what it is for rather than claiming the product.
 - Versions are compared by date, then by sequence number: `2026.08.29.10` follows `2026.08.29.9`.
 - The manifest's `version` is the version of everything the plugin ships. It is separate from the package's npm version, which follows the release. There is no other version scheme.
-- Every plugin is its own npm package, `@penguinharness/<name>`, at `plugins/<name>/` in the repository. The loader in `@prismshadow/penguin-core` reads the plugin names from the host package's dependency list and resolves each package through Node. The desktop app declares the same packages as dependencies, and its installer packs them. At runtime the plugin files are the source of truth for library content and are read on every call.
+- Every plugin is its own npm package, `@lmliheng/<name>`, at `plugins/<name>/` in the repository. The loader in `@prismshadow/penguin-core` reads the plugin names from the host package's dependency list and resolves each package through Node. The desktop app declares the same packages as dependencies, and its installer packs them. At runtime the plugin files are the source of truth for library content and are read on every call.
 
 ### Skill file format
 

@@ -13,7 +13,7 @@ describe("EntityHeader", () => {
       EntityHeader,
       {
         media: createElement("img", { alt: "", src: "/logo.svg" }),
-        name: "@penguinharness/goal",
+        name: "@lmliheng/goal",
         meta: "v0.2.9",
         description: "Keeps the agent on its goal.",
         actions: createElement("button", { type: "button" }, "Install"),

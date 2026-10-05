@@ -220,7 +220,7 @@ Nothing else in the corpus changed, so the index rebuild took 12.4 ms [1].
       thinking:
         "Publishing is irreversible and touches a registry outside the workspace, so this call goes through approval even though the session allows most commands.",
       allowed:
-        "Published `@penguinharness/docs-expert@2026.9.14.1`. The registry lists the new version and the tarball is 48.2 KB.",
+        "Published `@lmliheng/docs-expert@2026.9.14.1`. The registry lists the new version and the tarball is 48.2 KB.",
       denied:
         "Not published. The package is built and ready in `dist/`; run the publish yourself when you want it out.",
     },
@@ -348,8 +348,7 @@ rank("如何配置 hooks？", index)[0].source;
       prompt: "测试通过了。把文档包发布到 npm。",
       thinking:
         "发布不可撤销，而且会触及工作区之外的注册表，所以即使这个会话允许大多数命令，这一步也要经过审批。",
-      allowed:
-        "已发布 `@penguinharness/docs-expert@2026.9.14.1`。注册表已列出新版本，压缩包 48.2 KB。",
+      allowed: "已发布 `@lmliheng/docs-expert@2026.9.14.1`。注册表已列出新版本，压缩包 48.2 KB。",
       denied: "没有发布。包已经构建好放在 `dist/`，需要时自行运行发布命令即可。",
     },
     streaming: {
@@ -716,7 +715,7 @@ export function approvalOutcome(
   return decision === "allow"
     ? {
         output:
-          "npm notice publishing @penguinharness/docs-expert@2026.9.14.1\nnpm notice 48.2 KB dist/index.js\n+ @penguinharness/docs-expert@2026.9.14.1",
+          "npm notice publishing @lmliheng/docs-expert@2026.9.14.1\nnpm notice 48.2 KB dist/index.js\n+ @lmliheng/docs-expert@2026.9.14.1",
         text: c.allowed,
       }
     : { output: "Tool call denied by user.", text: c.denied };

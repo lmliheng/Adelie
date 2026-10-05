@@ -214,8 +214,8 @@ describe("parsePluginArchive, on a tarball", () => {
 
 describe("parseNpmPluginSpec", () => {
   it("reads the explicit spelling, with and without a version", () => {
-    expect(parseNpmPluginSpec("npm:@penguinharness/use-firecrawl")).toEqual({
-      name: "@penguinharness/use-firecrawl",
+    expect(parseNpmPluginSpec("npm:@lmliheng/use-firecrawl")).toEqual({
+      name: "@lmliheng/use-firecrawl",
     });
     expect(parseNpmPluginSpec("npm:use-firecrawl@0.2.13")).toEqual({
       name: "use-firecrawl",
@@ -236,15 +236,15 @@ describe("parseNpmPluginSpec", () => {
       name: "data-analysis",
       version: "2026.9.14.1",
     });
-    expect(parseNpmPluginSpec("https://www.npmjs.com/package/@penguinharness/goal")).toEqual({
-      name: "@penguinharness/goal",
+    expect(parseNpmPluginSpec("https://www.npmjs.com/package/@lmliheng/goal")).toEqual({
+      name: "@lmliheng/goal",
     });
     expect(parseNpmPluginSpec("https://www.npmjs.com/package/goal/v/0.2.13")).toEqual({
       name: "goal",
       version: "0.2.13",
     });
-    expect(parseNpmPluginSpec("https://registry.npmjs.org/@penguinharness%2Fgoal")).toEqual({
-      name: "@penguinharness/goal",
+    expect(parseNpmPluginSpec("https://registry.npmjs.org/@lmliheng%2Fgoal")).toEqual({
+      name: "@lmliheng/goal",
     });
   });
 

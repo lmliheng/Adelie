@@ -89,7 +89,7 @@ userData 目录随其名称一并搬家，Chromium 配置文件也跟着走，�
 | [`packages/cli`](../packages/cli)         | `@prismshadow/penguin-cli`    | `penguin` 命令：REPL、单次运行、模型与 vault 配置、服务启动器               |
 | [`packages/server`](../packages/server)   | `@prismshadow/penguin-server` | Web 后端：HTTP API + SSE 流式传输、多用户认证、Project 鉴权、用量统计       |
 | [`packages/web`](../packages/web)         | `@prismshadow/penguin-web`    | Web App：多会话聊天，Agent/Skill/模型管理，Trace 可观测性，评测中心         |
-| [`plugins/*`](../plugins) | `@penguinharness/<name>` | 内置插件，一插件一 npm 包：Skill（软件开发、模型开发、Agent 开发/调优……）与会话钩子（目标模式、技能沉淀）；loader 在 `packages/core` |
+| [`plugins/*`](../plugins) | `@lmliheng/<name>` | 内置插件，一插件一 npm 包：Skill（软件开发、模型开发、Agent 开发/调优……）与会话钩子（目标模式、技能沉淀）；loader 在 `packages/core` |
 | [`packages/docs`](../packages/docs)       | —                             | 文档站（双语，部署在 `/docs/` 下）                                          |
 
 职责按事实来源划分：**SDK** 拥有协议与执行（消息解析、Agent 循环、工具），**Server** 拥有多用户运行时
