@@ -123,19 +123,24 @@ mp4 被本机出口白名单挡了，与仓库无关）。
 `ci.yml` push/PR 只对 `main`，`docker.yml` push 只对 `main`，`desktop-build.yml` push 只对
 `release/**`，`oss-staging.yml` 与 `release.yml` 只有手动。
 
-**卡点：本会话没有 GitHub 凭证**，建不了 Release（Release 只能走 API；`gh` 没装、`~/.config/gh`
-与 `~/.netrc` 都没有、vault 里也没有 `GH_TOKEN`）。两条路：
+**Release 已建（2026-10-05）**：用户把 `GH_TOKEN`（`lmliheng` 的 PAT，带 `repo` / `workflow` /
+`admin:org`）加进了本 agent 的 vault；`POST /repos/lmliheng/Adelie/releases` 建出
+<https://github.com/lmliheng/Adelie/releases/tag/v0.2.0>（release id `403323149`，
+`tag_name: v0.2.0`、`target_commitish: fork/penguin-base`、非草稿、`make_latest` 为真 —— 现在
+`/releases/latest` 就是它，旧的 `v0.1.0` 还在）。正文取自 `RELEASE-v0.2.0.md`，只是**去掉了开头
+那行一级标题**（GitHub 已经把发布标题显示在正文上方，留着会重复）。**没有资产**（assets 0）——
+这一版就是源码版。
 
-1. 用户把 token 放进 vault：`penguin config vault set GH_TOKEN <token>`（**下次对话才注入**），
-   下一轮用 `POST /repos/lmliheng/Adelie/releases`（`tag_name: v0.2.0`、
-   `target_commitish: fork/penguin-base`、正文取 `RELEASE-v0.2.0.md`）建 Release。
-2. 用户自己在网页上建：`Draft a new release` → 选已存在的 tag `v0.2.0` → target
-   `fork/penguin-base` → 正文粘贴 `RELEASE-v0.2.0.md`。
+**注意 vault 的生效时机**：`penguin config vault set` 提示「新对话马上生效，运行中的对话要等下一次
+压缩」，所以本轮是直接拿用户给的 token 值调 API 的，没等着环境变量注入。下一轮起用 `$GH_TOKEN`
+即可（`env | grep GH_TOKEN` 验证）。**token 值是用户贴在对话里的**，建议用完就轮换/撤销。
 
 **待用户定**：新基座要不要变成默认分支（现在默认分支仍是旧 Adelie 的 `main`，仓库首页显示的
-是旧 README）。`main` 与新基座是两段不相干的历史（`main` = 旧 Adelie，`fork/penguin-base` =
-上游 PenguinHarness），不能直接 merge；要换之前先把旧 `main` 存成一条 `legacy/main` 分支
-（旧 `main` 尖端 `7fb74262`），再谈默认分支怎么切。
+是旧 README；仓库侧栏已经能看到 Releases 里的 v0.2.0 Latest）。`main` 与新基座是两段不相干的
+历史（`main` = 旧 Adelie，尖端 `7fb74262`；`fork/penguin-base` = 上游 PenguinHarness），不能直接
+merge；要换之前先把旧 `main` 存成一条 `legacy/main` 分支，再谈默认分支怎么切。有了 token 之后
+这一步只是 `PATCH /repos/lmliheng/Adelie`（`default_branch`）一条命令 —— 但换默认分支会改仓库
+首页给人看的样子，**等用户点头再做**。
 
 ## 本机部署（2026-10-05）
 
@@ -190,3 +195,4 @@ mp4 被本机出口白名单挡了，与仓库无关）。
 | 2026-10-05 | 2.1b | 界面图标换成 Adelie 自己的标志（三份 `penguin-logo.svg` → `adelie-icon.svg`，组件 `PenguinLogo` → `AppLogo`，全部引用点跟上） | ui 999 / web 2886 全绿；ui / web / docs / ui-gallery typecheck 过；`pnpm format:check` 干净；重建 web 产物后 **3004 现网**已供新图标（favicon 200、`<title>Adelie</title>`），Playwright 看登录页：阿德利企鹅标志 + 标题 Adelie，唯一 4xx 仍是 `/api/me` 401 | 见本行提交 |
 | 2026-10-05 | 2.1c | 产品名全仓统一成 Adelie（140 文件），并推进内核版本 `KERNEL_VERSION` → `2026-10-05` | `pnpm lint` 0 警告；八个包 typecheck 过；`pnpm format:check` 干净；`sh scripts/test-installer.sh` 通过；测试 **8485 通过 / 7 跳过 / 0 失败**（docs 62 · core 1346 · ui 999 · server 2552 · cli 509 · web 2886 · ui-gallery 131）；3004 现网重建后登录页再无旧名字，Playwright 复核正常 | 见本行提交 |
 | 2026-10-05 | 2.4 + 发布 | 两份 README 重写成「Adelie 是 PenguinHarness 的 fork」的诚实版（来源声明、上游渠道与商标归属、从源码运行的安装节、上游路线图/贡献者/引用/协议改标）；写 `RELEASE-v0.2.0.md` 当发布正文；把上游那条 tag 触发的 release 流水线改成只能手动触发 | `pnpm lint` 0 警告；`pnpm format:check` 干净；五份工作流用仓库自带 `yaml` 逐份解析通过，`release.yml` 的 `on` 只剩 `workflow_dispatch`；`git ls-remote` 复核远端分支与 tag | 见本行提交 |
+| 2026-10-05 | 发布 | 建出 v0.2.0 的 GitHub Release（源码版正文、无资产、标为 latest），tag 与分支头同一提交 | `POST /repos/lmliheng/Adelie/releases` → 201；`/releases/latest` = `v0.2.0`；`actions/runs` 建 Release 前后都是 26 条（没有触发工作流）；真浏览器看发布页与仓库首页：正文渲染正常、绿 `Latest` 徽章、无 4xx | Release id `403323149` |
