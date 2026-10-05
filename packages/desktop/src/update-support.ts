@@ -49,8 +49,45 @@ export function feedUrlOverride(env: NodeJS.ProcessEnv): string | null {
   }
 }
 
-// Adelie fork note (2026-10-05): PENGUIN_UPDATE_SOURCE and PENGUIN_UPDATE_SPEED_PROBE lived
-// here. They chose between two feeds — upstream's GitHub Releases and an Alibaba Cloud OSS
-// mirror of the same assets — and Adelie has exactly one feed, its own GitHub Releases, so
-// both knobs are gone rather than left accepting values that no longer mean anything. A
-// deployment that runs a mirror of its own points PENGUIN_UPDATE_FEED_URL at it.
+/**
+ * Adelie's own GitHub Releases, where the release assets are published: the source of truth, and
+ * the feed a check falls back to when the mirror does not answer.
+ */
+export const GITHUB_FEED = {
+  provider: "github" as const,
+  owner: "lmliheng",
+  repo: "Adelie",
+};
+
+/** The human-facing page the same feed belongs to (the error dialog's "Open Releases"). */
+export const RELEASES_URL = "https://github.com/lmliheng/Adelie/releases";
+
+/**
+ * The Alibaba Cloud OSS mirror of those assets — the same bytes, served from `latest/` under
+ * version-less names (see `scripts/publish-release-to-oss.sh`). It is the default feed, not a
+ * replacement: Adelie's users are in China, where github.com is slow to unusable, and a check
+ * that cannot reach the mirror goes to GitHub Releases instead.
+ */
+export const MIRROR_FEED_URL = "https://adelie-releases.oss-cn-hangzhou.aliyuncs.com/latest";
+
+/** Which of the three feeds a check is pointed at. */
+export type UpdateFeedKind = "override" | "mirror" | "github";
+
+/**
+ * The feed a check starts from: an explicit `PENGUIN_UPDATE_FEED_URL` (a deployment's own mirror,
+ * or the local server an end-to-end update test stands up) wins over everything, the OSS mirror is
+ * the default.
+ */
+export function initialFeedKind(env: NodeJS.ProcessEnv): UpdateFeedKind {
+  return feedUrlOverride(env) !== null ? "override" : "mirror";
+}
+
+/**
+ * Whether a failed check on this feed is retried against GitHub Releases. Only the mirror falls
+ * back: it is a convenience copy of the Release assets, so GitHub still holds what the check was
+ * looking for. An override is an instruction about which feed to use, and a check that quietly
+ * went elsewhere would answer a different question than the one that was asked.
+ */
+export function fallsBackToGithub(kind: UpdateFeedKind): boolean {
+  return kind === "mirror";
+}

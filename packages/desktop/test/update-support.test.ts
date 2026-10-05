@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { feedUrlOverride, updateSupport } from "../src/update-support.js";
+import {
+  GITHUB_FEED,
+  MIRROR_FEED_URL,
+  fallsBackToGithub,
+  feedUrlOverride,
+  initialFeedKind,
+  updateSupport,
+} from "../src/update-support.js";
 
 describe("updateSupport", () => {
   it("supports packaged macOS and Windows builds", () => {
@@ -65,5 +72,38 @@ describe("feedUrlOverride", () => {
   });
 });
 
-// The source/probe switches (PENGUIN_UPDATE_SOURCE, PENGUIN_UPDATE_SPEED_PROBE) are gone with
-// the second feed; PENGUIN_UPDATE_FEED_URL above is what remains for a deployment's own mirror.
+describe("the default feed", () => {
+  it("is Adelie's own OSS mirror, over https, with /latest as the generic feed its assets live under", () => {
+    // The mirror is a generic feed: electron-updater appends `/latest.yml` (Windows) or
+    // `/latest-linux.yml` (Linux) to this URL, which is exactly what publish-release-to-oss.sh
+    // uploads to `latest/`.
+    expect(MIRROR_FEED_URL).toBe("https://adelie-releases.oss-cn-hangzhou.aliyuncs.com/latest");
+    expect(new URL(MIRROR_FEED_URL).protocol).toBe("https:");
+  });
+
+  it("is this fork's GitHub Releases when a check falls back, not upstream's", () => {
+    // Both projects reuse version numbers: a feed left pointing at PenguinHarness would offer —
+    // and install — a PenguinHarness build over this app.
+    expect(GITHUB_FEED).toEqual({ provider: "github", owner: "lmliheng", repo: "Adelie" });
+  });
+});
+
+describe("initialFeedKind", () => {
+  it("starts from the mirror, or from an explicit PENGUIN_UPDATE_FEED_URL when one is set", () => {
+    expect(initialFeedKind({})).toBe("mirror");
+    expect(initialFeedKind({ PENGUIN_UPDATE_FEED_URL: "http://127.0.0.1:8080/feed" })).toBe(
+      "override",
+    );
+    // An unusable override is not a feed; the check still starts from the mirror.
+    expect(initialFeedKind({ PENGUIN_UPDATE_FEED_URL: "file:///etc/passwd" })).toBe("mirror");
+  });
+});
+
+describe("fallsBackToGithub", () => {
+  it("retries the mirror against GitHub Releases, and leaves an override alone", () => {
+    expect(fallsBackToGithub("mirror")).toBe(true);
+    expect(fallsBackToGithub("override")).toBe(false);
+    // Already the fallback: a second failure is the answer, not another retry.
+    expect(fallsBackToGithub("github")).toBe(false);
+  });
+});
