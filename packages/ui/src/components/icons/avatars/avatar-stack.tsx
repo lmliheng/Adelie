@@ -3,9 +3,9 @@
  * a benchmark has tested. The avatars are decorative — the names belong to the caller's tooltip
  * or label, since a row of initials names nobody — while the count stays readable text.
  *
- * Each avatar is ringed in the canvas colour so overlapping tiles stay apart; the ring follows
- * the avatar's own outline (a disc for an account, the tile's fixed corner for an agent), which
- * is geometry of the tile rather than a theme radius.
+ * Each avatar is ringed in the canvas colour so overlapping discs stay apart; every avatar is a
+ * disc now that both defaults are the Adelie mark, so the ring is one geometry, not a theme
+ * radius.
  */
 import { AgentAvatar } from "./agent-avatar";
 import { UserAvatar } from "./user-avatar";
@@ -20,9 +20,6 @@ export interface AvatarStackItem {
   /** An account's stored image; an agent has none. */
   src?: string;
 }
-
-/** An agent tile's corner: `rx="5"` on its 24-unit box, at the rendered size. */
-const tileRadius = (size: number) => (size * 5) / 24;
 
 export function AvatarStack({
   items,
@@ -45,8 +42,7 @@ export function AvatarStack({
         {shown.map((item) => (
           <span
             key={`${item.kind ?? "agent"}:${item.id}`}
-            className="flex shrink-0 ring-2 ring-canvas"
-            style={{ borderRadius: item.kind === "user" ? "50%" : tileRadius(size) }}
+            className="flex shrink-0 rounded-full ring-2 ring-canvas"
           >
             {item.kind === "user" ? (
               <UserAvatar userId={item.id} displayName={item.name} avatar={item.src} size={size} />

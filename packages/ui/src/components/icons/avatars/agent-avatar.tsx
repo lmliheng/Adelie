@@ -1,48 +1,29 @@
 /**
- * An agent's avatar: its initial as coloured ink on a light tinted tile (the letter-tile style
- * `ProviderLogo` also draws for user-defined model groups).
+ * An agent's avatar.
  *
- * The colour hashes the agent's id — not its display name — so it survives renames; the initial
- * comes from the display name when the caller has one, falling back to the id. The ink follows
- * the colour scheme through one `light-dark()` value, keeping ≥ 4.5:1 on the tile for every hue
- * in both modes (see `avatar.ts`).
+ * An agent has no picture of its own, so it draws the Adelie mark — the same brand emblem the app
+ * icon and the account's own default avatar carry. This used to be a letter tile: the agent's
+ * initial as coloured ink on a hue hashed from its id. That told agents apart at a glance, but it
+ * also made every agent a different colour of the same placeholder, and a product whose agents are
+ * its subject should sign them with its own mark (user decision, 2026-10-06: "默认智能体头像改成
+ * Adelie 图标").
+ *
+ * `id` and `name` stay in the signature — every call site passes them, and a caller that knows an
+ * agent's name is not wrong to say so — but the mark needs neither. The letter-tile helpers in
+ * `avatar.ts` are still what `ProviderLogo` draws a user-defined model group with.
  */
-import { avatarInitial, avatarTile } from "./avatar";
+import { AdelieMark } from "../logos/adelie-mark";
 
 export function AgentAvatar({
-  id,
-  name,
   size = 18,
   className,
 }: {
+  /** The agent's id. No longer drawn; kept so call sites stay as they are. */
   id: string;
-  /** Display name supplying the initial; omitted, the id's initial is used. */
+  /** Display name. No longer drawn, for the reason above. */
   name?: string;
   size?: number;
   className?: string;
 }) {
-  const tile = avatarTile(id);
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={className}
-      aria-hidden
-      role="img"
-    >
-      <rect x="0" y="0" width="24" height="24" rx="5" fill={tile.bg} />
-      <text
-        x="12"
-        y="12"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fontSize="13"
-        fontWeight="700"
-        style={{ fill: tile.ink }}
-      >
-        {avatarInitial(name ?? "", id)}
-      </text>
-    </svg>
-  );
+  return <AdelieMark size={size} className={`rounded-full ${className ?? ""}`} />;
 }

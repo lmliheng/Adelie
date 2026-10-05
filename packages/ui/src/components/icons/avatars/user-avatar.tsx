@@ -3,19 +3,17 @@
  * account menu's header, a profile page's preview.
  *
  * Two states, one component. With an avatar stored it is that image, cropped to the circle;
- * without one it is a letter disc — the foreground colour with the initial in the canvas colour,
- * which is deliberately NOT the tinted hashed tile `AgentAvatar` uses: an account is the one
- * identity the viewer already knows, so it does not need a colour to be told apart from its
- * neighbours, and there is only ever one of it on screen. The initial follows the nickname once
- * there is one, falling back to the id, so the disc changes with the name rather than
- * contradicting it.
+ * without one it is the Adelie mark — the account has not said who it is, so it is the app that
+ * answers, rather than a letter disc that would be a name (the first letter of the nickname, or
+ * of the id) dressed up as a picture. The stored image still wins: the mark is the default, not a
+ * badge.
  *
- * `size` is in pixels and the letter's size is derived from it, rather than both coming from the
- * type scale: the disc is a fixed box, so a letter that grew with the user's font-size setting
- * would outgrow it at the largest tier.
+ * `size` is in pixels and the mark is scaled to it, rather than both coming from the type scale:
+ * the disc is a fixed box, so a mark that grew with the user's font-size setting would outgrow it
+ * at the largest tier.
  */
 import type { CSSProperties, ReactNode } from "react";
-import { avatarInitial } from "./avatar";
+import { AdelieMark } from "../logos/adelie-mark";
 
 /**
  * The sizes a user avatar is drawn at, named by the slot rather than by the number (the
@@ -25,22 +23,17 @@ import { avatarInitial } from "./avatar";
  */
 export const USER_AVATAR_SIZE = { tile: 28, preview: 64 } as const;
 
-/** The letter's share of the disc: large enough to read at 28px, still inside the circle at 64. */
-const INITIAL_RATIO = 0.45;
-
 export function UserAvatar({
-  userId,
-  displayName,
   avatar,
   size = USER_AVATAR_SIZE.tile,
   className,
   children,
 }: {
-  /** The account's id — the fallback initial. */
+  /** The account's id. Unused while no image is stored — the mark carries no initial. */
   userId: string;
-  /** Nickname, when set: it supplies the initial. */
+  /** Nickname, when set. Unused while no image is stored, for the reason above. */
   displayName?: string;
-  /** Stored avatar as a URL (a data URL from a profile upload); absent, the letter disc is drawn. */
+  /** Stored avatar as a URL (a data URL from a profile upload); absent, the Adelie mark is drawn. */
   avatar?: string;
   /** Edge length in pixels — pass a `USER_AVATAR_SIZE` rung. */
   size?: number;
@@ -48,29 +41,22 @@ export function UserAvatar({
   /** Overlay slot, positioned against this disc: a trigger hangs its update dot here. */
   children?: ReactNode;
 }) {
-  const who = displayName ?? userId;
   const box: CSSProperties = { width: size, height: size };
   if (avatar !== undefined) {
     return (
       <span className={`relative block shrink-0 ${className ?? ""}`} style={box}>
         {/* object-cover, though a stored avatar is usually square already: one written by an API
             client rather than by a cropping upload must still fill the circle, not stretch into
-            it. alt="" for the reason the letter disc is aria-hidden — see below. */}
+            it. alt="" because the mark below is decorative too: the avatar is never the account's
+            name — every anchor it sits in already names the account. */}
         <img src={avatar} alt="" className="h-full w-full rounded-full object-cover" style={box} />
         {children}
       </span>
     );
   }
   return (
-    <span
-      // Decorative, like the image above: the mark is never the account's name. Every anchor
-      // this sits in already names the account, in its own accessible name or in the text
-      // beside it, so announcing a bare initial as well would only repeat the first letter.
-      aria-hidden
-      className={`relative flex shrink-0 items-center justify-center rounded-full bg-fg font-bold text-canvas ${className ?? ""}`}
-      style={{ ...box, fontSize: Math.round(size * INITIAL_RATIO) }}
-    >
-      {avatarInitial(who, userId)}
+    <span className={`relative block shrink-0 ${className ?? ""}`} style={box}>
+      <AdelieMark size={size} className="rounded-full" />
       {children}
     </span>
   );

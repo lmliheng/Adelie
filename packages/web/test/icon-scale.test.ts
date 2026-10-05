@@ -102,8 +102,13 @@ describe("stroke weights", () => {
     // A theme's lighter or heavier line family (1.6, 1.4) is never a literal: it is the
     // `--ui-icon-stroke` token below, which GlyphIcon reads.
     const allowed = new Set(["1", "1.5", "1.7", "2", "2.2"]);
+    // The brand mark is not a line-family glyph: it is the app icon's own artwork inlined
+    // (`logos/adelie-mark.tsx`), so its weights — 30 and 24 — are the asset's 1024-unit grid,
+    // the same way the caret's 1.5 belongs to its smaller one.
+    const BRAND_MARK = "packages/ui/src/components/icons/logos/adelie-mark.tsx";
     const strays: string[] = [];
     for (const [id, src] of FILES) {
+      if (id === BRAND_MARK) continue;
       for (const m of src.matchAll(/strokeWidth="([0-9.]+)"/g)) {
         if (!allowed.has(m[1] ?? "")) strays.push(`${id}: ${m[1]}`);
       }

@@ -1,36 +1,39 @@
 /**
- * The avatars' markup: an agent tile inks its initial through one scheme-following value (no
- * dark-mode class), an account's disc is drawn in tokens, and a stack shows a few avatars then
- * a count, with the avatars themselves hidden from assistive technology.
+ * The avatars' markup: both defaults are the Adelie mark — an account that stored no image, and an
+ * agent, which never has one — a stored account image still wins over it, and a stack shows a few
+ * discs then a count, with the avatars themselves hidden from assistive technology.
  */
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
 import { AgentAvatar } from "../src/components/icons/avatars/agent-avatar";
-import { avatarTile } from "../src/components/icons/avatars/avatar";
 import { AvatarStack } from "../src/components/icons/avatars/avatar-stack";
 import { USER_AVATAR_SIZE, UserAvatar } from "../src/components/icons/avatars/user-avatar";
 import { classTokens, renderStatic } from "../src/testing";
 
+/** The mark's white plate — what tells an Adelie mark apart from any other inline svg. */
+const PLATE = "#fefefe";
+
 describe("AgentAvatar", () => {
-  it("draws the name's initial on the id's tile, inked with light-dark()", () => {
+  it("draws the Adelie mark, not the initial's letter tile", () => {
     const html = renderStatic(createElement(AgentAvatar, { id: "docs-expert", name: "docs" }));
-    const tile = avatarTile("docs-expert");
-    expect(html).toContain(`fill="${tile.bg}"`);
-    expect(html).toContain(`fill:${tile.ink}`);
-    expect(html).toContain(">D</text>");
-    expect(html).not.toContain("dark:");
+    expect(html).toContain("<svg");
+    expect(html).toContain(PLATE);
     expect(html).toContain('aria-hidden="true"');
+    expect(html).not.toContain("</text>");
+    expect(html).not.toContain(">D<");
   });
 });
 
 describe("UserAvatar", () => {
-  it("draws the nickname's initial on a token disc when no image is stored", () => {
+  it("draws the Adelie mark when no image is stored, circle-cropped", () => {
     const html = renderStatic(
       createElement(UserAvatar, { userId: "admin", displayName: "zoe", size: 28 }),
     );
-    expect(classTokens(html)).toEqual(expect.arrayContaining(["bg-fg", "text-canvas"]));
-    expect(html).toContain(">Z</span>");
-    expect(html).toContain('aria-hidden="true"');
+    expect(html).toContain("<svg");
+    expect(html).toContain(PLATE);
+    expect(classTokens(html)).toContain("rounded-full");
+    expect(html).toContain("width:28px");
+    expect(html).not.toContain(">Z<");
   });
 
   it("shows a stored image cropped to the circle, with no alternative text of its own", () => {
@@ -44,6 +47,7 @@ describe("UserAvatar", () => {
     expect(html).toContain('src="data:image/png;base64,AAAA"');
     expect(html).toContain('alt=""');
     expect(html).toContain("width:64px");
+    expect(html).not.toContain(PLATE);
   });
 });
 
@@ -61,7 +65,7 @@ describe("AvatarStack", () => {
     expect(html).not.toMatch(/>\+\d/);
   });
 
-  it("hides the avatars from assistive technology and draws an account as a disc", () => {
+  it("hides the avatars from assistive technology and rings every disc the same way", () => {
     const html = renderStatic(
       createElement(AvatarStack, {
         items: [
@@ -72,7 +76,8 @@ describe("AvatarStack", () => {
       }),
     );
     expect(html).toMatch(/^<span class="[^"]*"><span class="flex -space-x-1" aria-hidden="true">/);
-    expect(html).toContain("border-radius:50%");
-    expect(classTokens(html)).toEqual(expect.arrayContaining(["ring-canvas", "bg-fg"]));
+    expect(classTokens(html)).toEqual(
+      expect.arrayContaining(["ring-canvas", "rounded-full", "ring-2"]),
+    );
   });
 });

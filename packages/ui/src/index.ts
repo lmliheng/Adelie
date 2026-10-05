@@ -21,6 +21,7 @@ export * from "./components/icons/marks/marks";
 export * from "./components/icons/spinner/spinner";
 export * from "./components/icons/logos/provider-logo";
 export * from "./components/icons/logos/app-logo";
+export * from "./components/icons/logos/adelie-mark";
 export * from "./components/icons/avatars/avatar";
 export * from "./components/icons/avatars/agent-avatar";
 export * from "./components/icons/avatars/user-avatar";
