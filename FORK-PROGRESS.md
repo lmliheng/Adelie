@@ -1331,7 +1331,8 @@ OSS 那对象 AccessKey 已经写进密钥库、「Buucket 你不能自己管理
   与 `penguin update`）、`PENGUIN_UPDATE_FEED_URL=https://adelie-releases.oss-cn-hangzhou.aliyuncs.com/latest`
   （桌面端 generic feed）。
 - **还没做的**：桌面端把镜像设成**默认** feed（现在默认仍是 GitHub，镜像只能靠上面那个环境
-  变量指过去）。下一版做，带上 GitHub 回退。
+  变量指过去）。下一版做，带上 GitHub 回退。—— **已在 v0.3.2 做完**（`5648d16a`，见本文件
+  「发布 v0.3.2」一节）。
 
 ### 侧栏折叠条（提交 `9d781b53`）
 
@@ -1410,3 +1411,80 @@ OSS 那对象 AccessKey 已经写进密钥库、「Buucket 你不能自己管理
   两个提交各自都能过 `plugins.test.ts`。
 - 插件有两个版本号，别混：`plugin.json` 里的是**日期序号**（`2026.10.06.1`，改了落地内容就要升），
   npm 包版本跟仓库 dev 版本走（现在 `0.3.1`）。
+
+## 发布 v0.3.2：需求箱三条急件 + 现网原地更新（2026-10-06，需求箱巡台轮）
+
+### 用户要了什么
+
+需求箱（3003）里用户点了「**现在就跑一轮**」，箱子里三条 `priority: high`：
+
+| 需求 | 提交 |
+| --- | --- |
+| req-4 用户级全局密钥（键值对 + 整段 JSON 导入 + 分发给某个 Agent） | `a2782629` |
+| req-5 默认用户头像 / 默认智能体头像都改成 Adelie 图标 | `9597f3c3` |
+| req-6 桌面端默认从 OSS 镜像检查更新，不通回退 GitHub Releases | `5648d16a` |
+
+普通需求的 req-7（把上一节那条 `9d781b53` 侧栏折叠条带上线）按它自己的口径由这一版顺带满足。
+
+### 三条怎么做的
+
+- **req-4 用户级密钥**：存储 `<数据根>/users/<userId>/.vault.toml`（0600、隐藏、原子写、清空即删
+  文件），`paths.ts` 加 `userVaultPath`、`IdKind` 加 `user_id`；服务端新增 `UserVault` 机制 +
+  `user-vault-service` + `/api/me/vault`（GET/PUT）与 `/api/me/vault/import`（POST）、
+  `POST …/vault/assign-user-vault`（owner-only）；Web 加「用户密钥」页与 Agent 密钥页的
+  「从用户密钥分配」。**语义定了「一次性拷贝」**：分配是写进那个 Agent 自己的 `.vault.toml`
+  （同名覆盖、其他保留），不动 core 的运行时注入路径，全局值之后改了要重新分配 —— 界面上与文档里
+  都写明了。要「全局改一次处处跟着变」是另一条需求。
+- **req-5 默认头像**：新增 `packages/ui/src/components/icons/logos/adelie-mark.tsx`，把品牌标记
+  的 path 内联进 UI 包（原来只有 `packages/web/public/adelie-icon.svg`，UI 包不该反向依赖它），
+  三个渐变 id 用 `useId` 去重（一页几百个头像），裁剪 `viewBox="170 170 684 684"` 比 app 图标更紧
+  （最小场景 18px）；`user-avatar` / `agent-avatar` 的默认分支改画它，`avatar-stack` 描边统一。
+  新增 `packages/ui/test/adelie-mark.test.ts` 逐条比对 svg 的 path 防漂移；两处守卫各加一条
+  写明理由的豁免（`ui/test/deslop.test.ts` 规则 20 的 `hexHomes`、`web/test/icon-scale.test.ts`
+  的 stroke 字面量 —— 品牌标记的颜色/描边是资产自己的身份数据）。
+- **req-6 桌面端 feed**：`update-support.ts` 新增 `GITHUB_FEED` / `RELEASES_URL` /
+  `MIRROR_FEED_URL`（generic）与 `UpdateFeedKind` / `initialFeedKind()` / `fallsBackToGithub()`；
+  `updater.ts` 的 `applyFeed()` 换成 `setFeed(kind)` 并跟踪 `activeFeed`，每次 `check()` 从默认
+  feed 起步（回退不粘到下一轮），`handleCheckError` 只对 `mirror` 回退 —— `override`
+  （`PENGUIN_UPDATE_FEED_URL`）永不回退，否则端到端升级测试会在坏 URL 上打转。
+
+### 桌面包为什么 Linux 本机打、Windows 走 CI
+
+`desktop-build.yml`（ref = tag，signing=false）三平台全绿，Windows 的 exe/blockmap 直接取；
+Linux 按用户口径在本机打（`pnpm --dir packages/desktop exec electron-builder --linux --publish never`）。
+上一次 Actions degraded 时 ubuntu 作业被取消过，这轮虽然恢复（三平台都起来了），口径仍照用户的话执行。
+
+### 验证（都是真跑出来的）
+
+- 四道门禁在主工作树与发布树（`git worktree add --detach /tmp/rel-0.3.2 v0.3.2`）各跑一遍：
+  typecheck 8 包、lint 0/0、format 干净、`pnpm -r test` **8891 通过 / 14 跳过 / 0 失败**。
+- req-6 的真验证：本机打的 AppImage 在 `xvfb-run` + 干净 HOME 下启动，`desktop.log` 里
+  `[updater] feed: mirror https://adelie-releases.oss-cn-hangzhou.aliyuncs.com/latest (GitHub Releases as fallback)`
+  → `checking` → `up to date (0.3.1)`，**没有回退行**。
+- req-4 的真验证：起真服务 curl 逐条（掩码 / 非法键名 400 / JSON 导入 / 分配 / 401）+ 真浏览器 8 张截图。
+- req-5 的真验证：ui-gallery（7372）头像板与真页面 `/s/agents` 浅色深色各截图，18–64px 五档，
+  控制台 0 错误。
+
+### 发布与上线
+
+- 版本戳 `3787c897`（root + 9 工作区包 + 18 对外插件包 → 0.3.2、core 的 `VERSION`、
+  `RELEASE-v0.3.2.md`）、注解 tag `v0.3.2`；`main` 推到 `f60d422d`。
+- **CI 红过一次**：tag 那一提交的 `test-windows (server-2)` 上 `test/user-vault.test.ts` 断言
+  POSIX 的 `0600`，Windows 的 `chmod` 只切只读位、报 `0o666` —— 测试的移植性问题。`f60d422d`
+  加平台守卫后 main 上 22 个作业全绿（run `37378302759`）。
+- npm：`@lmliheng/` 下 21 个包发到 `0.3.2`（3 宿主 + 18 插件；四个 sandbox 插件是 private，跳过）。
+  发布脚本的 `cleanup` 也跑了 —— 它只还原 `csu-mail` / `wechat-miniprogram` 两个入库的 LICENSE，
+  本轮新增的 `lesson-video` / `requirements-box` 也有入库的 LICENSE，会被一并删掉，手工
+  `git checkout` 还原（脚本里已记下这个坑）。
+- GitHub Release id `404124352`（14 件资产）→ OSS 镜像 `releases/v0.3.2/` 与 `latest/` 都已是 0.3.2。
+- 现网 `/root/.adelie`：`penguin update --yes` 升级成功（两级 checksum 过，只换 `bin/lib/web/node`），
+  `penguin version` = `v0.3.2`。
+
+### 重启现网时的一个坑
+
+agent 自己就跑在 `adelie-server.service` 里（会话的 shell 挂在 `penguin.js server --port 7364` 下），
+`systemctl restart adelie-server` 会把这次会话连同没写完的记账一起掐掉。做法是：先把归档、PATCH、
+邮件、记账、这份进度全部写完，再用**脱离服务 cgroup 的瞬时单元**下发重启，并让那个脚本在服务回来后
+自己核验（`is-active` / 7364 在听 / 新 PID / `GET /` 200 / `penguin version`），结果写到
+`/root/evolution/requirements/runs/2026-10-06-0500/post-restart-verify.txt`。
+
