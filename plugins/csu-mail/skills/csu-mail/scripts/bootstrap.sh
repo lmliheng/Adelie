@@ -26,11 +26,17 @@ AGENT_ID="${AGENT_ID:-default_agent}"
 PASSWORD_NAME="${PASSWORD_NAME:-agent-server}"
 MODE="${CSU_LOGIN_MODE:-cas}"
 
+# 密钥库里的键名以实际写进去的为准，这里两套都认、一律折成插件原本的名字。2026-10-05 用户写的是
+# CSU_CAS_PASSWORD / CSU_CAS_ADDRESS；插件文档一直写的是 CSU_CAS_PASS / CSU_MAIL_ADDR。重命名要
+# 重新抄一遍明文，不值得 —— 兼容读一遍即可。
+CSU_MAIL_ADDR="${CSU_MAIL_ADDR:-${CSU_CAS_ADDRESS:-}}"
+CSU_CAS_PASS="${CSU_CAS_PASS:-${CSU_CAS_PASSWORD:-}}"
+
 die() { echo "✗ $*" >&2; exit 1; }
 
-[ -n "${CSU_MAIL_ADDR:-}" ] || die "请设置 CSU_MAIL_ADDR（邮箱地址，如 学号@csu.edu.cn）"
+[ -n "${CSU_MAIL_ADDR:-}" ] || die "请设置 CSU_MAIL_ADDR（或 CSU_CAS_ADDRESS）：邮箱地址，如 学号@csu.edu.cn"
 [ -n "${CSU_CAS_USER:-}" ] || die "请设置 CSU_CAS_USER（统一身份认证账号，通常是学号）"
-[ -n "${CSU_CAS_PASS:-}" ] || die "请设置 CSU_CAS_PASS（统一身份认证密码）"
+[ -n "${CSU_CAS_PASS:-}" ] || die "请设置 CSU_CAS_PASS（或 CSU_CAS_PASSWORD）：统一身份认证密码"
 
 [ -n "${CSU_MAIL_AUTHCODE:-}" ] && { echo "✓ 环境里已经有 CSU_MAIL_AUTHCODE（长度 ${#CSU_MAIL_AUTHCODE}），无需引导。"; echo "  直接自检即可：$PYTHON $HERE/mail.py check"; exit 0; }
 

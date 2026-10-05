@@ -127,12 +127,12 @@ def main():
     ap = argparse.ArgumentParser(description="登录网页邮箱换 sid（仅引导时使用）")
     ap.add_argument("--mode", choices=["cas", "direct"], default=os.environ.get("CSU_LOGIN_MODE", "cas"))
     ap.add_argument("--user", default=os.environ.get("CSU_CAS_USER", ""))
-    ap.add_argument("--password", default=os.environ.get("CSU_CAS_PASS", ""))
+    ap.add_argument("--password", default=os.environ.get("CSU_CAS_PASS") or os.environ.get("CSU_CAS_PASSWORD", ""))
     ap.add_argument("--service", default=SERVICE)
     ap.add_argument("--out", default="mail_session.json")
     a = ap.parse_args()
     if not a.user or not a.password:
-        sys.exit("需要 CSU_CAS_USER / CSU_CAS_PASS（或用 --user/--password）")
+        sys.exit("需要 CSU_CAS_USER / CSU_CAS_PASS（或 CSU_CAS_PASSWORD；也可用 --user/--password）")
 
     if a.mode == "direct":
         s, sid = direct_login(a.user, a.password)

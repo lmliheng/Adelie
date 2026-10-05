@@ -1013,3 +1013,28 @@ registry 上还不存在的名字没有配置可查，OIDC 换不到 token，流
 - **没删 `lmliheng/penguin-plugins`**（用户要求"传上去之后删"）：放在最后一步，等 npm 与这个仓库
   这两份备份都推上去、插件市场不再依赖那个仓库的 URL 之后再删（令牌有 `delete_repo` 权限）。
 - 插件市场、「按需发版 + 邮件汇报」的定时循环都还没做；设计与计划写在 `/root/evolution/PLAN.md`。
+
+## csu-mail 认两套密钥库键名（2026-10-05，用户点单）
+
+### 用户说的
+
+「我已经写入vault了，但键可能不一样」—— 实际写的是 `CSU_CAS_USER`、`CSU_CAS_PASSWORD`、
+`CSU_CAS_ADDRESS`；插件文档一路写的是 `CSU_CAS_USER`、`CSU_CAS_PASS`、`CSU_MAIL_ADDR`。
+（`CSU_MAIL_AUTHCODE` 还没有 —— 专用密码本来就要靠首次引导生成。）
+
+### 做了什么
+
+- 插件里三个脚本都改成**两套名字都认**：`bootstrap.sh` 把 `CSU_CAS_ADDRESS` / `CSU_CAS_PASSWORD`
+  折成 `CSU_MAIL_ADDR` / `CSU_CAS_PASS`；`cas_login.py` 的 `--password` 与 `mail.py` 的 `addr()`
+  各自加一个回退。重命名要把明文重抄一遍，不值得。
+- 写入密钥库的仍是插件自己的名字（`CSU_MAIL_ADDR` + `CSU_MAIL_AUTHCODE`），所以引导之后日常收发信
+  只需要这两个。
+- `plugins/csu-mail/plugin.json` 版本 `2026.10.02.3` → `2026.10.05.1`（改了安装时落地的内容，
+  按仓库规矩必须升版本）。
+
+### 验证
+
+- `CSU_CAS_ADDRESS=... bash bootstrap.sh` → 停在「缺账号」而不是「缺地址」（说明地址被认了）；
+  再给账号 → 停在「缺密码」且提示里带 `CSU_CAS_PASSWORD`。
+- `CSU_CAS_ADDRESS=... python3 mail.py check` → 报的是缺 `CSU_MAIL_AUTHCODE`，不是缺地址。
+- 门禁：core 插件测试 21 过；`prettier --check` 干净；`oxlint` 0 警告。

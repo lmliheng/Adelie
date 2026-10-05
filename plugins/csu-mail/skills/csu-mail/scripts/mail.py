@@ -39,9 +39,9 @@ _ADDR = ""
 
 
 def addr() -> str:
-    a = _ADDR or os.environ.get("CSU_MAIL_ADDR", "").strip()
+    a = _ADDR or os.environ.get("CSU_MAIL_ADDR", "").strip() or os.environ.get("CSU_CAS_ADDRESS", "").strip()
     if not a:
-        sys.exit("缺少邮箱地址：设置环境变量 CSU_MAIL_ADDR，或用 --addr 指定")
+        sys.exit("缺少邮箱地址：设置环境变量 CSU_MAIL_ADDR（或 CSU_CAS_ADDRESS），或用 --addr 指定")
     return a
 
 

@@ -49,6 +49,10 @@ PLAYWRIGHT_MODULE=/path/to/node_modules/playwright-core CHROME_PATH=/path/to/chr
 **账号密码从哪来**：问用户要，或放进密钥库（`CSU_CAS_USER` / `CSU_CAS_PASS`）——
 绝不写进代码或仓库；引导完成后这两个变量就该删掉，日常收发信用不到它们。
 
+**键名的别名**（2026-10-05 加）：脚本同时认 `CSU_CAS_ADDRESS`（= 邮箱地址）与 `CSU_CAS_PASSWORD`
+（= 统一身份认证密码）这两个名字 —— 密钥库里叫什么就用什么，不必为了对齐插件文档重抄一遍明文。
+引导写进密钥库的是插件自己的名字：`CSU_MAIL_ADDR` 与 `CSU_MAIL_AUTHCODE`。
+
 **登录只做一次，失败不要重试**：CAS 短时间高频失败会触发风控甚至冻结账号（2026-10-02 真实发生过一次）。
 
 ## 二、系统事实（实测）
