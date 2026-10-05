@@ -64,6 +64,8 @@ https://github.com/user-attachments/assets/604eb626-0a5d-4a62-87e3-14ebade1cd5f
 
 https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
 
+*上面这张对比图和两段录屏，都出自上游 PenguinHarness 作者对该代码库的实测与录屏 —— Adelie 用的就是同一套引擎与界面，所以它们说的就是这份 fork 的能力；录屏里露出的产品名是上游改名前的品牌。*
+
 ## 内置插件库
 
 开箱内置四类插件（文档在这个仓库的 [`packages/docs`](packages/docs) 里）——Skill，以及驱动目标模式与持续学习的会话钩子；Agent 也能编写并优化自己的 Skill：

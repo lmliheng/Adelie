@@ -67,6 +67,8 @@ With Adelie Skills, an agent evaluates and optimizes itself: run the benchmark, 
 
 https://github.com/user-attachments/assets/922d13a6-5ffc-4685-9a39-352f02f9afc0
 
+*The benchmark and the two recordings above are the upstream PenguinHarness authors' own results and screen captures of this codebase — Adelie ships that same engine and UI, so they describe what this fork does. The product name visible in the recordings is the base's pre-rename branding.*
+
 ## Built-in plugins
 
 Four plugin categories ship in the box (the docs live in [`packages/docs`](packages/docs) in this tree) — skills, plus the session hooks that drive goal mode and continual learning; agents can also write and optimize their own skills:
