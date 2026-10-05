@@ -1,0 +1,1470 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>需求箱 · Adelie</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --brand-50: #e8f0fe;
+        --brand-300: #8ab4f8;
+        --brand-500: #4285f4;
+        --brand-600: #1a73e8;
+        --brand-700: #0b57d0;
+        --gray-50: #f9fafb;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-400: #9ca3af;
+        --gray-500: #6b7280;
+        --gray-600: #4b5563;
+        --gray-900: #111827;
+        --bg: #ffffff;
+        --surface: #ffffff;
+        --border: var(--gray-200);
+        --control-border: var(--gray-300);
+        --fg: var(--gray-900);
+        --fg-muted: var(--gray-600);
+        --fg-faint: var(--gray-500);
+        --accent-bg: #111827;
+        --accent-fg: #ffffff;
+        --radius-control: 6px;
+        --radius-card: 12px;
+        --ease: cubic-bezier(0.2, 0.7, 0.3, 1);
+      }
+      .dark {
+        color-scheme: dark;
+        --bg: #000000;
+        --surface: #0d0d0d;
+        --border: #1f1f1f;
+        --control-border: #303030;
+        --fg: #f3f4f6;
+        --fg-muted: #9ca3af;
+        --fg-faint: #6b7280;
+        --accent-bg: #f3f4f6;
+        --accent-fg: #111827;
+        --brand-600: #8ab4f8;
+        --brand-700: #8ab4f8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+        -webkit-font-smoothing: antialiased;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      code,
+      .mono,
+      kbd {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 16px;
+        border-bottom: 1px solid var(--border);
+        background: color-mix(in srgb, var(--bg) 85%, transparent);
+        backdrop-filter: blur(8px);
+      }
+      .mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: var(--brand-500);
+        color: #fff;
+        display: grid;
+        place-items: center;
+        font-weight: 600;
+      }
+      .brand {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+      }
+      .grow {
+        flex: 1;
+      }
+      main {
+        max-width: 52rem;
+        margin: 0 auto;
+        padding: 24px 16px 64px;
+      }
+      h1 {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        margin: 8px 0 4px;
+      }
+      .lede {
+        color: var(--fg-muted);
+        margin: 0 0 20px;
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        font-size: 13px;
+        color: var(--fg-muted);
+        margin: 0 0 6px;
+      }
+      input[type="text"],
+      input[type="time"],
+      input[type="datetime-local"],
+      textarea,
+      select {
+        width: 100%;
+        border: 1px solid var(--control-border);
+        border-radius: var(--radius-control);
+        background: var(--bg);
+        color: var(--fg);
+        padding: 8px 12px;
+        font: inherit;
+        margin-bottom: 14px;
+      }
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+        line-height: 1.6;
+      }
+      input:focus-visible,
+      textarea:focus-visible,
+      select:focus-visible,
+      button:focus-visible,
+      a:focus-visible {
+        outline: none;
+        border-color: var(--gray-400);
+        box-shadow: 0 0 0 2px rgb(156 163 175 / 0.3);
+      }
+      button {
+        font: inherit;
+        cursor: pointer;
+        border-radius: var(--radius-control);
+        transition:
+          color,
+          background-color,
+          border-color 150ms var(--ease);
+      }
+      .primary {
+        background: var(--accent-bg);
+        color: var(--accent-fg);
+        border: 1px solid transparent;
+        padding: 8px 14px;
+        font-weight: 500;
+      }
+      .primary:hover {
+        opacity: 0.9;
+      }
+      .primary[disabled] {
+        opacity: 0.5;
+        cursor: default;
+      }
+      .secondary {
+        background: var(--surface);
+        color: var(--fg);
+        border: 1px solid var(--control-border);
+        padding: 6px 10px;
+      }
+      .secondary:hover {
+        background: var(--gray-100);
+      }
+      .dark .secondary:hover {
+        background: #1f1f1f;
+      }
+      .icon-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--fg-muted);
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+      }
+      .icon-btn:hover {
+        background: var(--gray-100);
+        color: var(--fg);
+      }
+      .dark .icon-btn:hover {
+        background: #1f1f1f;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .chip {
+        border-radius: 9999px;
+        border: 1px solid var(--border);
+        padding: 2px 10px;
+        font-size: 12px;
+        color: var(--fg-muted);
+        white-space: nowrap;
+      }
+      .chip.new {
+        background: var(--brand-50);
+        border-color: var(--brand-100, #d2e3fc);
+        color: var(--brand-700);
+      }
+      .dark .chip.new {
+        background: rgb(138 180 248 / 0.12);
+        border-color: rgb(138 180 248 / 0.3);
+      }
+      .chip.doing {
+        border-color: var(--control-border);
+        color: var(--fg);
+      }
+      .chip.done {
+        border-color: #bbf7d0;
+        background: #f0fdf4;
+        color: #15803d;
+      }
+      .dark .chip.done {
+        background: rgb(34 197 94 / 0.12);
+        border-color: rgb(34 197 94 / 0.3);
+        color: #86efac;
+      }
+      .chip.blocked {
+        border-color: #fde68a;
+        background: #fffbeb;
+        color: #b45309;
+      }
+      .dark .chip.blocked {
+        background: rgb(245 158 11 / 0.12);
+        border-color: rgb(245 158 11 / 0.3);
+        color: #fcd34d;
+      }
+      .chip.rejected {
+        color: var(--fg-faint);
+      }
+      .chip.withdrawn {
+        color: var(--fg-faint);
+        text-decoration: line-through;
+      }
+      .item {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+        padding: 16px;
+        margin-bottom: 12px;
+      }
+      .item h2 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      .meta {
+        font-size: 12px;
+        color: var(--fg-faint);
+      }
+      .detail {
+        white-space: pre-wrap;
+        margin: 10px 0 0;
+        color: var(--fg);
+      }
+      .result {
+        margin-top: 10px;
+        border-left: 2px solid var(--brand-300);
+        padding: 2px 0 2px 10px;
+        color: var(--fg-muted);
+        white-space: pre-wrap;
+      }
+      .muted {
+        color: var(--fg-faint);
+        font-size: 12px;
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+      }
+      .actions .link-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--fg-muted);
+        padding: 4px 8px;
+        font-size: 13px;
+      }
+      .actions .link-btn:hover {
+        background: var(--gray-100);
+        color: var(--fg);
+      }
+      .dark .actions .link-btn:hover {
+        background: #1f1f1f;
+      }
+      .actions .link-btn.danger:hover {
+        color: #b91c1c;
+      }
+      .dark .actions .link-btn.danger:hover {
+        color: #f87171;
+      }
+      .list {
+        max-height: 34rem;
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: var(--control-border) transparent;
+      }
+      .item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        flex: none;
+        accent-color: var(--brand-500);
+        cursor: pointer;
+      }
+      .batch {
+        border: 1px solid var(--border);
+        border-radius: var(--radius-card);
+        background: var(--surface);
+        padding: 12px 16px;
+        margin-bottom: 12px;
+      }
+      .live {
+        border: 1px solid var(--brand-300);
+        background: var(--brand-50);
+        color: var(--brand-700);
+        border-radius: var(--radius-card);
+        padding: 10px 14px;
+        margin-bottom: 12px;
+        font-size: 13px;
+      }
+      .dark .live {
+        background: rgb(138 180 248 / 0.12);
+        border-color: rgb(138 180 248 / 0.3);
+        color: #8ab4f8;
+      }
+      .pulse {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        margin-right: 8px;
+        border-radius: 50%;
+        background: currentColor;
+        vertical-align: 1px;
+        animation: blink 1.6s ease-in-out infinite;
+      }
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.25;
+        }
+      }
+      .batch input[type="datetime-local"] {
+        width: auto;
+        margin: 0;
+      }
+      .batch .link-btn {
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--fg-muted);
+        padding: 4px 8px;
+        font-size: 13px;
+      }
+      .batch .link-btn:hover {
+        background: var(--gray-100);
+        color: var(--fg);
+      }
+      .dark .batch .link-btn:hover {
+        background: #1f1f1f;
+      }
+      .skeleton {
+        background: var(--gray-100);
+        border-radius: 6px;
+        height: 74px;
+        margin-bottom: 12px;
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+      .dark .skeleton {
+        background: #1f1f1f;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.5;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+      .toast {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        z-index: 20;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        font-size: 13px;
+        animation: rise 280ms var(--ease);
+      }
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: none;
+        }
+      }
+      .error-box {
+        border-radius: 8px;
+        padding: 10px 12px;
+        font-size: 13px;
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fecaca;
+        margin-bottom: 14px;
+      }
+      .dark .error-box {
+        background: #450a0a;
+        color: #f87171;
+        border-color: #7f1d1d;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      @media (min-width: 640px) {
+        .grid-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 0 14px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <span class="mark" aria-hidden="true">A</span>
+      <span class="brand">需求箱</span>
+      <span class="muted" id="cadence">Adelie 每两小时来看一次</span>
+      <span class="grow"></span>
+      <button
+        class="icon-btn"
+        id="theme"
+        type="button"
+        aria-label="切换深浅色"
+        data-tooltip="切换深浅色"
+      >
+        ◐
+      </button>
+      <button
+        class="icon-btn"
+        id="refresh"
+        type="button"
+        aria-label="刷新列表"
+        data-tooltip="刷新列表"
+      >
+        ⟳
+      </button>
+    </header>
+
+    <main>
+      <h1>要 Adelie 做什么</h1>
+      <p class="lede">
+        写下来就行：能做的它会做掉（改代码、过门禁、发版、更新服务），做完给你发邮件并在这里归档；
+        做不了或需要你拍板的，也会先发邮件问你。
+      </p>
+
+      <section id="gate" class="card" hidden>
+        <label for="key">口令</label>
+        <p class="muted" style="margin: 0 0 10px">
+          这一页在公网上，读写都要口令；口令在你手上那份地址的
+          <code>?key=</code> 后面，填一次就记住了。
+        </p>
+        <input type="text" id="key" autocomplete="off" spellcheck="false" placeholder="粘贴口令" />
+        <button class="primary" id="key-save" type="button">进去</button>
+      </section>
+
+      <section id="compose" class="card" hidden>
+        <form id="form" autocomplete="off">
+          <label for="title">一句话需求</label>
+          <input
+            type="text"
+            id="title"
+            maxlength="200"
+            placeholder="例：左侧栏那个折叠条太长了，改小一点"
+            required
+          />
+
+          <label for="detail">详细说明（可省）</label>
+          <textarea
+            id="detail"
+            maxlength="20000"
+            placeholder="想要的样子、在哪一页、什么情况触发…写得越具体，它越不会问回来"
+          ></textarea>
+
+          <div class="grid-2">
+            <div>
+              <label for="priority">紧急程度</label>
+              <select id="priority">
+                <option value="normal">普通</option>
+                <option value="high">急</option>
+              </select>
+            </div>
+            <div>
+              <label for="when">排到（可省）</label>
+              <input type="datetime-local" id="when" />
+            </div>
+          </div>
+          <p class="muted" style="margin: -6px 0 14px">
+            留空就是尽快；填了时间，Adelie
+            到那个点之前不碰它（夜里、周末、等某个东西上线，都可以这么排）。
+          </p>
+
+          <div class="row">
+            <button class="primary" type="submit" id="submit">提交需求</button>
+            <span class="muted" id="hint">Ctrl / ⌘ + Enter 也能提交</span>
+          </div>
+        </form>
+      </section>
+
+      <section id="patrol" class="card" hidden>
+        <div class="row" style="margin-bottom: 4px">
+          <h2 style="font-size: 15px; font-weight: 600; margin: 0">巡台节奏</h2>
+          <span class="grow"></span>
+          <span class="chip" id="patrol-state">读不到</span>
+        </div>
+        <p class="muted" style="margin: 0 0 14px" id="patrol-next">—</p>
+
+        <div class="grid-2">
+          <div>
+            <label for="patrol-mode">怎么排</label>
+            <select id="patrol-mode">
+              <option value="interval">每隔几小时</option>
+              <option value="daily">每天一个点</option>
+            </select>
+          </div>
+          <div id="patrol-every-wrap">
+            <label for="patrol-every">间隔</label>
+            <select id="patrol-every">
+              <option value="30m">每 30 分钟</option>
+              <option value="1h">每 1 小时</option>
+              <option value="90m">每 1.5 小时</option>
+              <option value="2h">每 2 小时</option>
+              <option value="3h">每 3 小时</option>
+              <option value="4h">每 4 小时</option>
+              <option value="6h">每 6 小时</option>
+              <option value="8h">每 8 小时</option>
+              <option value="12h">每 12 小时</option>
+              <option value="24h">每 24 小时</option>
+            </select>
+          </div>
+          <div id="patrol-daily-wrap" hidden>
+            <label for="patrol-daily">每天几点</label>
+            <input type="time" id="patrol-daily" />
+          </div>
+        </div>
+
+        <div class="row">
+          <button class="primary" id="patrol-save" type="button">保存节奏</button>
+          <button class="secondary" id="patrol-pause" type="button">暂停巡台</button>
+          <button class="secondary" id="run-now" type="button">现在就跑一轮</button>
+          <span class="muted">改完不用重启，30 秒内生效</span>
+        </div>
+      </section>
+
+      <section>
+        <div class="row" style="margin-bottom: 10px">
+          <h2 style="font-size: 17px; font-weight: 600; margin: 0">需求列表</h2>
+          <span class="grow"></span>
+          <select id="filter" style="width: auto; margin: 0; padding: 4px 8px">
+            <option value="">全部（不含已归档）</option>
+            <option value="new,doing">进行中</option>
+            <option value="blocked">等你拍板</option>
+            <option value="done">已完成</option>
+            <option value="rejected,withdrawn">不做 / 撤回</option>
+            <option value="archived">已归档</option>
+          </select>
+        </div>
+        <div id="status-line" class="muted" style="margin-bottom: 10px"></div>
+        <div id="live" class="live" hidden></div>
+        <div id="batch" class="batch" hidden>
+          <div class="row">
+            <span class="muted" id="batch-count">已选 0 条</span>
+            <span class="grow"></span>
+            <button class="link-btn" id="batch-clear" type="button">取消选择</button>
+          </div>
+          <div class="row" style="margin-top: 8px">
+            <button class="primary" id="batch-run" type="button">现在就做</button>
+            <button class="secondary" id="batch-high" type="button">标为急</button>
+            <button class="secondary" id="batch-normal" type="button">改回普通</button>
+            <button class="secondary" id="batch-withdraw" type="button">撤回</button>
+          </div>
+          <div class="row" style="margin-top: 8px">
+            <input type="datetime-local" id="batch-when" aria-label="批量排到" />
+            <button class="secondary" id="batch-schedule" type="button">排到</button>
+            <button class="secondary" id="batch-unschedule" type="button">取消排期</button>
+            <span class="muted">排到 = 到那个点之前不动；取消排期 = 恢复成尽快</span>
+          </div>
+        </div>
+        <div id="list" class="list" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        var STORE_KEY = "adelie.requirements.key";
+        var THEME_KEY = "adelie.requirements.theme";
+        var params = new URLSearchParams(location.search);
+        var fromUrl = params.get("key");
+        if (fromUrl) {
+          localStorage.setItem(STORE_KEY, fromUrl);
+          history.replaceState(null, "", "/requirements");
+        }
+        var key = localStorage.getItem(STORE_KEY) || "";
+
+        var els = {
+          gate: document.getElementById("gate"),
+          compose: document.getElementById("compose"),
+          key: document.getElementById("key"),
+          keySave: document.getElementById("key-save"),
+          form: document.getElementById("form"),
+          title: document.getElementById("title"),
+          detail: document.getElementById("detail"),
+          priority: document.getElementById("priority"),
+          when: document.getElementById("when"),
+          submit: document.getElementById("submit"),
+          list: document.getElementById("list"),
+          filter: document.getElementById("filter"),
+          statusLine: document.getElementById("status-line"),
+          live: document.getElementById("live"),
+          cadence: document.getElementById("cadence"),
+          patrol: document.getElementById("patrol"),
+          patrolState: document.getElementById("patrol-state"),
+          patrolNext: document.getElementById("patrol-next"),
+          patrolMode: document.getElementById("patrol-mode"),
+          patrolEvery: document.getElementById("patrol-every"),
+          patrolEveryWrap: document.getElementById("patrol-every-wrap"),
+          patrolDaily: document.getElementById("patrol-daily"),
+          patrolDailyWrap: document.getElementById("patrol-daily-wrap"),
+          patrolSave: document.getElementById("patrol-save"),
+          patrolPause: document.getElementById("patrol-pause"),
+          runNow: document.getElementById("run-now"),
+          batch: document.getElementById("batch"),
+          batchCount: document.getElementById("batch-count"),
+          batchClear: document.getElementById("batch-clear"),
+          batchRun: document.getElementById("batch-run"),
+          batchHigh: document.getElementById("batch-high"),
+          batchNormal: document.getElementById("batch-normal"),
+          batchWithdraw: document.getElementById("batch-withdraw"),
+          batchWhen: document.getElementById("batch-when"),
+          batchSchedule: document.getElementById("batch-schedule"),
+          batchUnschedule: document.getElementById("batch-unschedule"),
+        };
+
+        // 深浅色跟着系统走，选过就记住。
+        var saved = localStorage.getItem(THEME_KEY);
+        var dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        function paintTheme() {
+          document.documentElement.classList.toggle("dark", dark);
+        }
+        paintTheme();
+        document.getElementById("theme").addEventListener("click", function () {
+          dark = !dark;
+          localStorage.setItem(THEME_KEY, dark ? "dark" : "light");
+          paintTheme();
+        });
+
+        function api(path, options) {
+          var opts = options || {};
+          opts.headers = Object.assign({ "x-adelie-key": key }, opts.headers || {});
+          return fetch("/api/requirements" + path, opts).then(function (res) {
+            return res.json().then(function (body) {
+              if (!res.ok) throw new Error(body && body.error ? body.error : "HTTP " + res.status);
+              return body;
+            });
+          });
+        }
+
+        function toast(text) {
+          var el = document.createElement("div");
+          el.className = "toast";
+          el.setAttribute("role", "status");
+          el.textContent = text;
+          document.body.appendChild(el);
+          setTimeout(function () {
+            el.remove();
+          }, 3600);
+        }
+
+        function showError(text) {
+          var box = document.getElementById("error-box");
+          if (!box) {
+            box = document.createElement("div");
+            box.id = "error-box";
+            box.className = "error-box";
+            els.list.parentNode.insertBefore(box, els.list);
+          }
+          box.textContent = text;
+        }
+        function clearError() {
+          var box = document.getElementById("error-box");
+          if (box) box.remove();
+        }
+
+        var LABELS = {
+          new: "待处理",
+          doing: "在做",
+          done: "已完成",
+          blocked: "等你拍板",
+          rejected: "不做",
+          withdrawn: "已撤回",
+        };
+        function fmt(iso) {
+          try {
+            return new Date(iso).toLocaleString("zh-CN", { hour12: false });
+          } catch (e) {
+            return iso;
+          }
+        }
+        /** `datetime-local` 的值是本地时间，接口收的是 ISO；两边各转一次。 */
+        function isoFromWhenInput(value) {
+          return value ? new Date(value).toISOString() : "";
+        }
+        function whenInputFromIso(iso) {
+          if (!iso) return "";
+          var d = new Date(iso);
+          var pad = function (n) {
+            return String(n).padStart(2, "0");
+          };
+          return (
+            d.getFullYear() +
+            "-" +
+            pad(d.getMonth() + 1) +
+            "-" +
+            pad(d.getDate()) +
+            "T" +
+            pad(d.getHours()) +
+            ":" +
+            pad(d.getMinutes())
+          );
+        }
+
+        /**
+         * 巡台节奏。这一块读写的是背后那个定时任务（多久来看一次），不是某一条需求的时间 ——
+         * 需求自己的「排到」在上面那条表单里。服务端只认「起点 + 固定间隔」，所以「每天一个点」
+         * 就是间隔 24 小时、起点对齐到那个钟点。
+         */
+        var PERIOD_LABEL = {
+          "30m": "30 分钟",
+          "1h": "1 小时",
+          "90m": "1.5 小时",
+          "2h": "2 小时",
+          "3h": "3 小时",
+          "4h": "4 小时",
+          "6h": "6 小时",
+          "8h": "8 小时",
+          "12h": "12 小时",
+          "24h": "24 小时",
+        };
+        var patrol = null;
+
+        function paintPatrol() {
+          var p = patrol;
+          if (!p) return;
+          var isDaily = p.mode === "daily";
+          els.patrolMode.value = isDaily ? "daily" : "interval";
+          els.patrolEveryWrap.hidden = isDaily;
+          els.patrolDailyWrap.hidden = !isDaily;
+          if (isDaily && p.daily_at) els.patrolDaily.value = p.daily_at;
+          if (!isDaily && p.period && PERIOD_LABEL[p.period]) els.patrolEvery.value = p.period;
+
+          els.patrolState.className = "chip" + (p.enabled ? "" : " withdrawn");
+          els.patrolState.textContent = p.enabled ? "在跑" : "已暂停";
+          els.patrolPause.textContent = p.enabled ? "暂停巡台" : "恢复巡台";
+          paintPatrolNext();
+
+          if (!p.enabled) els.cadence.textContent = "巡台已暂停";
+          else if (isDaily) els.cadence.textContent = "Adelie 每天 " + p.daily_at + " 来看一次";
+          else
+            els.cadence.textContent =
+              "Adelie 每 " + (PERIOD_LABEL[p.period] || p.period) + "来看一次";
+        }
+
+        function paintPatrolNext() {
+          if (!patrol) return;
+          var line = patrol.enabled
+            ? "下一次巡台：" + fmt(patrol.next_at) + "（本机时间）"
+            : "暂停中 —— 已经提上来的需求都还在，恢复之后照常处理。";
+          if (lastRun && lastRun.at) {
+            line +=
+              " · 上次手动叫它：" +
+              fmt(lastRun.at) +
+              (lastRun.session_id ? "（" + lastRun.session_id + "）" : "");
+          }
+          els.patrolNext.textContent = line;
+        }
+
+        function loadPatrol() {
+          return Promise.all([
+            api("/patrol"),
+            api("/run").catch(function () {
+              return null;
+            }),
+          ])
+            .then(function (res) {
+              patrol = res[0].patrol;
+              lastRun = res[1] ? res[1].last : null;
+              els.patrol.hidden = false;
+              paintPatrol();
+            })
+            .catch(function (err) {
+              els.patrol.hidden = false;
+              els.patrolState.textContent = "读不到";
+              els.patrolNext.textContent = "巡台节奏没读出来：" + err.message;
+            });
+        }
+
+        function savePatrol(body, done) {
+          els.patrolSave.disabled = true;
+          api("/patrol", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(body),
+          })
+            .then(function (res) {
+              clearError();
+              patrol = res.patrol;
+              paintPatrol();
+              toast(done);
+            })
+            .catch(function (err) {
+              showError("节奏没改上：" + err.message);
+            })
+            .then(function () {
+              els.patrolSave.disabled = false;
+            });
+        }
+
+        /**
+         * 批量。选中的条目一起改（紧急程度 / 排期 / 撤回），或者一起交给 Adelie 现在就做 ——
+         * 「现在就做」不只是排队：它让平台**立刻开一个会话**开工，不等下一个整点。
+         */
+        var selected = {};
+        var lastRun = null;
+        var cooldownUntil = 0;
+
+        function selectedIds() {
+          return Object.keys(selected).filter(function (id) {
+            return selected[id];
+          });
+        }
+
+        function paintBatch() {
+          var ids = selectedIds();
+          els.batch.hidden = ids.length === 0;
+          els.batchCount.textContent = "已选 " + ids.length + " 条";
+        }
+
+        function tickCooldown() {
+          var left = Math.ceil((cooldownUntil - Date.now()) / 1000);
+          if (left > 0) {
+            // 服务端也是 60 秒冷却，这里跟着倒计时，免得点了才发现被拒。
+            els.runNow.disabled = true;
+            els.runNow.textContent = "刚叫过，等 " + left + " 秒";
+            els.batchRun.disabled = true;
+            setTimeout(tickCooldown, 500);
+            return;
+          }
+          els.runNow.disabled = false;
+          els.runNow.textContent = "现在就跑一轮";
+          els.batchRun.disabled = false;
+        }
+
+        function runNow(ids) {
+          var what = ids.length ? "这 " + ids.length + " 条" : "一轮巡台";
+          if (
+            !confirm(
+              "让 Adelie 现在就跑" +
+                what +
+                "？它会立刻开一个新会话开工（改代码、过门禁、按口径发版）。",
+            )
+          ) {
+            return;
+          }
+          els.runNow.disabled = true;
+          els.batchRun.disabled = true;
+          api("/run", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ ids: ids }),
+          })
+            .then(function (body) {
+              clearError();
+              lastRun = { at: body.at, ids: body.ids, session_id: body.session_id };
+              cooldownUntil = Date.now() + 60000;
+              tickCooldown();
+              selected = {};
+              paintBatch();
+              toast(
+                body.session_id
+                  ? "已经叫醒它了：" + body.session_id
+                  : "已经叫醒它了，会话马上出现在列表里",
+              );
+              paintPatrolNext();
+              return load();
+            })
+            .catch(function (err) {
+              showError("没叫起来：" + err.message);
+              els.runNow.disabled = false;
+              els.batchRun.disabled = false;
+            });
+        }
+
+        /** 批量改：逐条走各自那条已经验过的 PATCH，一次错只影响那一条。 */
+        function batchPatch(body, done) {
+          var ids = selectedIds();
+          if (ids.length === 0) return;
+          els.batchRun.disabled = true;
+          Promise.all(
+            ids.map(function (id) {
+              return api("/" + id, {
+                method: "PATCH",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(body),
+              });
+            }),
+          )
+            .then(function () {
+              clearError();
+              toast(done + "：" + ids.length + " 条");
+            })
+            .catch(function (err) {
+              showError("批量没做完：" + err.message);
+            })
+            .then(function () {
+              selected = {};
+              paintBatch();
+              els.batchRun.disabled = false;
+              return load();
+            });
+        }
+
+        function chip(text, extra) {
+          var el = document.createElement("span");
+          el.className = "chip" + (extra ? " " + extra : "");
+          el.textContent = text;
+          return el;
+        }
+
+        /**
+         * 一条需求的卡片。没归档的带「编辑」和「撤回」：提错了、想补一句、想换个紧急程度，
+         * 都不必再提一条。归档了的是记录，不再改（服务端也拦着）。
+         */
+        function renderCard(item) {
+          var card = document.createElement("article");
+          card.className = "item";
+          var editing = false;
+
+          function paint() {
+            card.textContent = "";
+
+            var row = document.createElement("div");
+            row.className = "row";
+            // 归档了的是记录，不能改也就不给选；其余每条一个勾选框，选中后上面那条批量栏才出现。
+            if (!item.archived_at) {
+              var box = document.createElement("input");
+              box.type = "checkbox";
+              box.checked = !!selected[item.id];
+              box.setAttribute("aria-label", "选中 " + item.id);
+              box.addEventListener("change", function () {
+                selected[item.id] = box.checked;
+                paintBatch();
+              });
+              row.appendChild(box);
+            }
+            row.appendChild(chip(LABELS[item.status] || item.status, item.status));
+            if (item.priority === "high") row.appendChild(chip("急"));
+            if (item.not_before) row.appendChild(chip("排到 " + fmt(item.not_before)));
+            var meta = document.createElement("span");
+            meta.className = "meta";
+            meta.textContent = item.id + " · 提交于 " + fmt(item.created_at);
+            row.appendChild(meta);
+            card.appendChild(row);
+
+            if (editing) {
+              var titleInput = document.createElement("input");
+              titleInput.type = "text";
+              titleInput.maxLength = 200;
+              titleInput.value = item.title;
+              titleInput.setAttribute("aria-label", "需求标题");
+              titleInput.style.marginTop = "10px";
+
+              var detailInput = document.createElement("textarea");
+              detailInput.value = item.detail || "";
+              detailInput.maxLength = 20000;
+              detailInput.setAttribute("aria-label", "详细说明");
+
+              var prioritySelect = document.createElement("select");
+              prioritySelect.setAttribute("aria-label", "紧急程度");
+              [
+                ["normal", "普通"],
+                ["high", "急"],
+              ].forEach(function (pair) {
+                var opt = document.createElement("option");
+                opt.value = pair[0];
+                opt.textContent = pair[1];
+                if (item.priority === pair[0]) opt.selected = true;
+                prioritySelect.appendChild(opt);
+              });
+
+              var whenInput = document.createElement("input");
+              whenInput.type = "datetime-local";
+              whenInput.value = whenInputFromIso(item.not_before);
+              whenInput.setAttribute("aria-label", "排到（留空就是尽快）");
+              whenInput.title = "留空就是尽快";
+
+              card.appendChild(titleInput);
+              card.appendChild(detailInput);
+              card.appendChild(prioritySelect);
+              card.appendChild(whenInput);
+
+              var actions = document.createElement("div");
+              actions.className = "actions";
+              var save = document.createElement("button");
+              save.type = "button";
+              save.className = "primary";
+              save.textContent = "保存";
+              save.disabled = true;
+              // 没改过就别让点，免得手滑存一次空改动。
+              function dirty() {
+                return (
+                  titleInput.value.trim() !== item.title ||
+                  detailInput.value.trim() !== (item.detail || "") ||
+                  prioritySelect.value !== item.priority ||
+                  isoFromWhenInput(whenInput.value) !== (item.not_before || "")
+                );
+              }
+              [titleInput, detailInput, prioritySelect, whenInput].forEach(function (el) {
+                el.addEventListener("input", function () {
+                  save.disabled = !dirty();
+                });
+                el.addEventListener("change", function () {
+                  save.disabled = !dirty();
+                });
+              });
+              save.addEventListener("click", function () {
+                if (!titleInput.value.trim()) {
+                  showError("标题不能为空");
+                  return;
+                }
+                save.disabled = true;
+                api("/" + item.id, {
+                  method: "PATCH",
+                  headers: { "content-type": "application/json" },
+                  body: JSON.stringify({
+                    title: titleInput.value,
+                    detail: detailInput.value,
+                    priority: prioritySelect.value,
+                    not_before: isoFromWhenInput(whenInput.value),
+                  }),
+                })
+                  .then(function (body) {
+                    clearError();
+                    item = body.item;
+                    editing = false;
+                    editingCards -= 1;
+                    toast("已保存：" + item.id);
+                    paint();
+                  })
+                  .catch(function (err) {
+                    showError("没保存上：" + err.message);
+                    save.disabled = false;
+                  });
+              });
+              var cancel = document.createElement("button");
+              cancel.type = "button";
+              cancel.className = "link-btn";
+              cancel.textContent = "取消";
+              cancel.addEventListener("click", function () {
+                editing = false;
+                editingCards -= 1;
+                paint();
+              });
+              actions.appendChild(save);
+              actions.appendChild(cancel);
+              card.appendChild(actions);
+              titleInput.focus();
+              return;
+            }
+
+            var h = document.createElement("h2");
+            h.textContent = item.title;
+            card.appendChild(h);
+
+            if (item.detail) {
+              var p = document.createElement("p");
+              p.className = "detail";
+              p.textContent = item.detail;
+              card.appendChild(p);
+            }
+            if (item.result) {
+              var r = document.createElement("p");
+              r.className = "result";
+              r.textContent = item.result;
+              card.appendChild(r);
+            }
+            if (item.events && item.events.length > 1) {
+              var last = item.events[item.events.length - 1];
+              var note = document.createElement("p");
+              note.className = "muted";
+              note.style.margin = "8px 0 0";
+              note.textContent = "最近： " + last.note + "（" + fmt(last.at) + "）";
+              card.appendChild(note);
+            }
+            if (item.archived_at) {
+              var arch = document.createElement("p");
+              arch.className = "muted";
+              arch.style.margin = "8px 0 0";
+              arch.textContent = "已归档 " + fmt(item.archived_at);
+              card.appendChild(arch);
+              return;
+            }
+
+            var actions = document.createElement("div");
+            actions.className = "actions";
+            var edit = document.createElement("button");
+            edit.type = "button";
+            edit.className = "link-btn";
+            edit.textContent = "编辑";
+            edit.addEventListener("click", function () {
+              editing = true;
+              editingCards += 1; // 编辑期间不自动刷新，免得把填了一半的表单冲掉
+              paint();
+            });
+            actions.appendChild(edit);
+
+            var withdraw = document.createElement("button");
+            withdraw.type = "button";
+            withdraw.className = "link-btn danger";
+            withdraw.textContent = "撤回";
+            withdraw.addEventListener("click", function () {
+              if (!confirm("撤回「" + item.title + "」？撤回之后这一条不再被处理，记录还在。"))
+                return;
+              api("/" + item.id, {
+                method: "PATCH",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ status: "withdrawn", note: "用户自己在页面上撤回" }),
+              })
+                .then(function (body) {
+                  item = body.item;
+                  toast("已撤回：" + item.id);
+                  paint();
+                })
+                .catch(function (err) {
+                  showError("没撤回成：" + err.message);
+                });
+            });
+            actions.appendChild(withdraw);
+            card.appendChild(actions);
+          }
+
+          paint();
+          return card;
+        }
+
+        function render(items) {
+          els.list.textContent = "";
+          if (!items.length) {
+            var empty = document.createElement("p");
+            empty.className = "muted";
+            empty.style.padding = "12px 2px";
+            empty.textContent = "这里还空着 —— 上面的框里写一条就成了。";
+            els.list.appendChild(empty);
+            paintLive(items);
+            return;
+          }
+          items
+            .slice()
+            .reverse()
+            .forEach(function (item) {
+              els.list.appendChild(renderCard(item));
+            });
+          paintLive(items);
+        }
+
+        /**
+         * 「它到底动没动」这件事必须写在页面上。被叫起来的那一轮不是立刻就有回音的：会话要先读
+         * 需求、再动手，几十秒后才把条目标成「在做」。中间这段什么提示都没有，看着就像没反应 ——
+         * 所以只要列表里有「在做」的条目（不管是手动叫的还是定时那一轮），顶上就亮一条。
+         */
+        function paintLive(items) {
+          var doing = (items || []).filter(function (i) {
+            return i.status === "doing";
+          });
+          if (doing.length === 0) {
+            var fresh = lastRun && lastRun.at && Date.now() - lastRun.at < 180000;
+            if (!fresh) {
+              els.live.hidden = true;
+              return;
+            }
+            els.live.hidden = false;
+            els.live.textContent = "";
+            var d0 = document.createElement("span");
+            d0.className = "pulse";
+            els.live.appendChild(d0);
+            els.live.appendChild(
+              document.createTextNode(
+                "刚叫醒它" +
+                  (lastRun.session_id ? "（会话 " + lastRun.session_id + "）" : "") +
+                  "，它正在读需求，过一会儿这里就会自己冒出「在做」的条目。",
+              ),
+            );
+            return;
+          }
+          els.live.hidden = false;
+          els.live.textContent = "";
+          var dot = document.createElement("span");
+          dot.className = "pulse";
+          els.live.appendChild(dot);
+          var text =
+            "Adelie 正在做：" +
+            doing
+              .map(function (i) {
+                return i.id;
+              })
+              .join("、") +
+            "。不用手动刷新 —— 这一页每 " +
+            Math.round(REFRESH_MS / 1000) +
+            " 秒自己看一次。";
+          if (lastRun && lastRun.at) {
+            text +=
+              "（上次手动叫它 " +
+              fmt(lastRun.at) +
+              (lastRun.session_id ? "，会话 " + lastRun.session_id : "") +
+              "）";
+          }
+          els.live.appendChild(document.createTextNode(text));
+        }
+
+        function load(opts) {
+          var quiet = opts && opts.quiet;
+          if (!quiet) {
+            els.list.textContent = "";
+            for (var i = 0; i < 3; i += 1) {
+              var sk = document.createElement("div");
+              sk.className = "skeleton";
+              els.list.appendChild(sk);
+            }
+          }
+          var filter = els.filter.value;
+          var query = filter === "archived" ? "?archived=1" : filter ? "?status=" + filter : "";
+          return api(query)
+            .then(function (body) {
+              clearError();
+              els.statusLine.textContent = "共 " + body.count + " 条 · 序号已发到 " + body.seq;
+              render(body.items);
+            })
+            .catch(function (err) {
+              // 后台那一遍刷新失败就当没发生：不要把正在看的东西换成一个报错框
+              if (quiet) return;
+              els.list.textContent = "";
+              showError("列表没读出来：" + err.message);
+            });
+        }
+
+        // 页面开着就自己刷新 —— 不然「它动没动」全靠手动按那个 ⟳。
+        var REFRESH_MS = 10000;
+        var editingCards = 0;
+        setInterval(function autoload() {
+          if (document.visibilityState !== "visible") return;
+          if (editingCards > 0) return; // 正在改的那张卡片不能被刷新冲掉
+          load({ quiet: true });
+        }, REFRESH_MS);
+
+        function gate(open) {
+          els.gate.hidden = !open;
+          els.compose.hidden = open;
+          els.patrol.hidden = open;
+          if (open) els.key.focus();
+        }
+
+        els.patrolMode.addEventListener("change", function () {
+          var isDaily = els.patrolMode.value === "daily";
+          els.patrolEveryWrap.hidden = isDaily;
+          els.patrolDailyWrap.hidden = !isDaily;
+          if (isDaily && !els.patrolDaily.value) {
+            els.patrolDaily.value = (patrol && patrol.daily_at) || "09:00";
+          }
+        });
+
+        els.patrolSave.addEventListener("click", function () {
+          if (els.patrolMode.value === "daily") {
+            if (!els.patrolDaily.value) {
+              showError("先选一个钟点");
+              return;
+            }
+            savePatrol(
+              { daily_at: els.patrolDaily.value },
+              "改成每天 " + els.patrolDaily.value + " 巡一次",
+            );
+            return;
+          }
+          var period = els.patrolEvery.value;
+          savePatrol({ period: period }, "改成每 " + (PERIOD_LABEL[period] || period) + "巡一次");
+        });
+
+        els.patrolPause.addEventListener("click", function () {
+          var next = !(patrol && patrol.enabled);
+          savePatrol({ enabled: next }, next ? "巡台已恢复" : "巡台已暂停");
+        });
+
+        els.runNow.addEventListener("click", function () {
+          runNow([]);
+        });
+
+        els.batchClear.addEventListener("click", function () {
+          selected = {};
+          paintBatch();
+          load();
+        });
+        els.batchRun.addEventListener("click", function () {
+          runNow(selectedIds());
+        });
+        els.batchHigh.addEventListener("click", function () {
+          batchPatch({ priority: "high" }, "标为急");
+        });
+        els.batchNormal.addEventListener("click", function () {
+          batchPatch({ priority: "normal" }, "改回普通");
+        });
+        els.batchWithdraw.addEventListener("click", function () {
+          var ids = selectedIds();
+          if (ids.length === 0) return;
+          if (!confirm("撤回选中的 " + ids.length + " 条？撤回之后不再处理，记录还在。")) return;
+          batchPatch({ status: "withdrawn", note: "用户自己在页面上批量撤回" }, "已撤回");
+        });
+        els.batchSchedule.addEventListener("click", function () {
+          if (!els.batchWhen.value) {
+            showError("先选一个时间");
+            return;
+          }
+          batchPatch(
+            { not_before: isoFromWhenInput(els.batchWhen.value) },
+            "排到 " + els.batchWhen.value.replace("T", " "),
+          );
+        });
+        els.batchUnschedule.addEventListener("click", function () {
+          batchPatch({ not_before: "" }, "取消排期");
+        });
+
+        els.keySave.addEventListener("click", function () {
+          key = els.key.value.trim();
+          if (!key) return;
+          localStorage.setItem(STORE_KEY, key);
+          api("")
+            .then(function (body) {
+              clearError();
+              gate(false);
+              els.statusLine.textContent = "共 " + body.count + " 条 · 序号已发到 " + body.seq;
+              render(body.items);
+              loadPatrol();
+            })
+            .catch(function (err) {
+              showError("口令不对或者服务没起来：" + err.message);
+            });
+        });
+
+        // Enter 提交要避开输入法组字状态：中文输入时那个 Enter 只是上屏。
+        els.form.addEventListener("keydown", function (e) {
+          if (
+            e.key === "Enter" &&
+            (e.ctrlKey || e.metaKey) &&
+            !(e.isComposing || e.keyCode === 229)
+          ) {
+            e.preventDefault();
+            els.form.requestSubmit();
+          }
+        });
+
+        els.form.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var title = els.title.value.trim();
+          if (!title) return;
+          els.submit.disabled = true;
+          api("", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              title: title,
+              detail: els.detail.value,
+              priority: els.priority.value,
+              not_before: isoFromWhenInput(els.when.value),
+            }),
+          })
+            .then(function (body) {
+              els.title.value = "";
+              els.detail.value = "";
+              els.when.value = "";
+              toast("已提交：" + body.item.id + "，Adelie 下次巡台会看到它");
+              return load();
+            })
+            .catch(function (err) {
+              showError("没提交上去：" + err.message);
+            })
+            .then(function () {
+              els.submit.disabled = false;
+            });
+        });
+
+        els.filter.addEventListener("change", load);
+        document.getElementById("refresh").addEventListener("click", function () {
+          load().then(function () {
+            toast("已刷新");
+          });
+          loadPatrol();
+        });
+
+        if (key) {
+          gate(false);
+          load();
+          loadPatrol();
+        } else {
+          gate(true);
+        }
+      })();
+    </script>
+  </body>
+</html>

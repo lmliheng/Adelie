@@ -87,6 +87,9 @@ importers:
       '@lmliheng/penguin-server':
         specifier: workspace:*
         version: file:packages/server(supports-color@10.2.2)(zod@4.4.3)
+      '@lmliheng/requirements-box':
+        specifier: workspace:*
+        version: link:../../plugins/requirements-box
       '@lmliheng/skill-porting':
         specifier: workspace:*
         version: link:../../plugins/skill-porting
@@ -175,6 +178,9 @@ importers:
       '@lmliheng/model-development':
         specifier: workspace:*
         version: link:../../plugins/model-development
+      '@lmliheng/requirements-box':
+        specifier: workspace:*
+        version: link:../../plugins/requirements-box
       '@lmliheng/skill-porting':
         specifier: workspace:*
         version: link:../../plugins/skill-porting
@@ -269,6 +275,9 @@ importers:
       '@lmliheng/model-development':
         specifier: workspace:*
         version: link:../../plugins/model-development
+      '@lmliheng/requirements-box':
+        specifier: workspace:*
+        version: link:../../plugins/requirements-box
       '@lmliheng/skill-porting':
         specifier: workspace:*
         version: link:../../plugins/skill-porting
@@ -676,6 +685,8 @@ importers:
   plugins/lesson-video: {}
 
   plugins/model-development: {}
+
+  plugins/requirements-box: {}
 
   plugins/sandbox-bwrap:
     devDependencies:
@@ -1492,6 +1503,9 @@ packages:
   '@lmliheng/penguin-server@file:packages/server':
     resolution: {directory: packages/server, type: directory}
     engines: {node: '>=24'}
+
+  '@lmliheng/requirements-box@file:plugins/requirements-box':
+    resolution: {directory: plugins/requirements-box, type: directory}
 
   '@lmliheng/skill-porting@file:plugins/skill-porting':
     resolution: {directory: plugins/skill-porting, type: directory}
@@ -5570,6 +5584,7 @@ snapshots:
       '@lmliheng/model-development': file:plugins/model-development
       '@lmliheng/penguin-core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
       '@lmliheng/penguin-server': file:packages/server(supports-color@10.2.2)
+      '@lmliheng/requirements-box': file:plugins/requirements-box
       '@lmliheng/skill-porting': file:plugins/skill-porting
       '@lmliheng/software-development': file:plugins/software-development
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
@@ -5604,6 +5619,7 @@ snapshots:
       '@lmliheng/humanizer': file:plugins/humanizer
       '@lmliheng/lesson-video': file:plugins/lesson-video
       '@lmliheng/model-development': file:plugins/model-development
+      '@lmliheng/requirements-box': file:plugins/requirements-box
       '@lmliheng/skill-porting': file:plugins/skill-porting
       '@lmliheng/software-development': file:plugins/software-development
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
@@ -5636,6 +5652,7 @@ snapshots:
       '@lmliheng/humanizer': file:plugins/humanizer
       '@lmliheng/lesson-video': file:plugins/lesson-video
       '@lmliheng/model-development': file:plugins/model-development
+      '@lmliheng/requirements-box': file:plugins/requirements-box
       '@lmliheng/skill-porting': file:plugins/skill-porting
       '@lmliheng/software-development': file:plugins/software-development
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
@@ -5719,6 +5736,8 @@ snapshots:
       - supports-color
       - utf-8-validate
       - zod
+
+  '@lmliheng/requirements-box@file:plugins/requirements-box': {}
 
   '@lmliheng/skill-porting@file:plugins/skill-porting': {}
 

@@ -224,6 +224,7 @@ Agent 可以在 Task 中重写自己的 `SKILL.md`。结合 Benchmark 评估和�
 | | `continual-learning` | Task 运行超过 30 轮才结束时，把 Task 的精简摘录交给后台子 Agent，由它把有长期价值的发现沉淀到 Agent 的 Skill 中（不预装） |
 | | `csu-mail` | 管理中南大学 Coremail 邮箱（`mail.csu.edu.cn`）：一次性生成客户端专用密码，之后用 IMAP/SMTP 从命令行查信、检索、读信、发信，并在「已发送」留底——日常收发信完全不碰统一身份认证（不预装） |
 | | `lesson-video` | 把写好的讲稿做成竖屏教学视频（1080×1920，抖音 / Reels 规格）与配套封面：HTML 课件按时间轴定格、edge-tts 逐词对齐配音、Playwright 逐帧截图、ffmpeg 合成，两侧与上部按手机 App 按钮留出安全区，渲染前先自检越界与裁切，并给出标签不超过五个的发布文案（不预装：需要时从插件库安装） |
+| | `requirements-box` | 立起一个需求箱：一页受口令保护的表单让用户随手提需求（可编辑、撤回、多条勾选批量处理、按条目排期），一个定时任务按节奏叫 Agent 来做，每轮一封邮件汇报。服务是一个零依赖的 Node 文件（JSON 存储、带口令的 GET/POST/PATCH 接口、它自己那一页、以及立刻开会话开工的按钮），巡台协议是一份可改写的 Markdown，安装脚本把文件摆好并登记定时任务（不预装：需要时从插件库安装） |
 | 软件开发 | `software-development` | 端到端的软件开发，包含两个 Skill：`software-engineering`（在最小范围内调查、实现和验证）和 `web-design`（生成 Web UI 用的 Penguin 视觉语言） |
 | | `use-claude-code` | 通过 SSH 在远程主机上运行 Claude Code：持久 expect 会话、带 stdin 修复的无头 `-p` 模式、tmux 驱动的交互式 TUI，以及多轮连续性（不预装：需要时从插件库安装） |
 | | `wechat-miniprogram` | 在无桌面的 Linux 服务器上把微信小程序从代码做到发布：扫码登录 mp.weixin.qq.com、从公众号后台切到小程序后台、取 AppID 与上传密钥、加 IP 白名单、用 miniprogram-ci 上传、交付校验过的预览码、填写必填的用户隐私保护指引、提交审核与发布（不预装） |

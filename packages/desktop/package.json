@@ -27,6 +27,7 @@
     "@lmliheng/humanizer": "workspace:*",
     "@lmliheng/lesson-video": "workspace:*",
     "@lmliheng/model-development": "workspace:*",
+    "@lmliheng/requirements-box": "workspace:*",
     "@lmliheng/skill-porting": "workspace:*",
     "@lmliheng/software-development": "workspace:*",
     "@lmliheng/use-bento-slides": "workspace:*",

@@ -1,0 +1,8 @@
+{
+  "dataDir": "/opt/adelie-design-requirements",
+  "patrolToml": "/root/.adelie/data/self_evolution/agents/default_agent/agent_state/schedule/requirements-triage.toml",
+  "penguinBin": "/root/.adelie/data/bin/penguin",
+  "project": "self_evolution",
+  "agent": "default_agent",
+  "workspace": "/root/adelie-fork"
+}
