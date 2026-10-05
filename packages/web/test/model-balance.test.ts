@@ -1,11 +1,8 @@
 /**
  * Group balances in the Web App: how an amount reads (balance.ts) — in the vendor's own figures
  * and in the display currency — what the header and the sidebar show for each state of a
- * reading (group-balance.tsx), how the per-account pin is read back out of the free-form prefs,
- * and the TokenDance banner: its per-browser dismissal, and a sweep that rides the brand name.
+ * reading (group-balance.tsx), and how the per-account pin is read back out of the free-form prefs.
  */
-import { createElement } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ModelBalanceResponse } from "@lmliheng/penguin-server/api";
 import {
@@ -16,14 +13,7 @@ import {
   parsePinnedBalance,
 } from "../src/features/models/balance";
 import { balanceView } from "../src/features/models/group-balance";
-import {
-  TOKENDANCE_BANNER_DISMISSED_KEY,
-  TokenDanceBanner,
-  bannerDismissed,
-  splitBrand,
-} from "../src/features/models/tokendance-banner";
-import { S, zh } from "../src/lib/strings";
-import { en } from "../src/lib/strings-en";
+import { S } from "../src/lib/strings";
 
 const reading: ModelBalanceResponse = {
   ok: true,
@@ -144,46 +134,5 @@ describe("the pinned balance", () => {
     expect(isPinned(pin, "p2", "tokendance")).toBe(false);
     expect(isPinned(pin, "p1", "deepseek")).toBe(false);
     expect(isPinned(null, "p1", "tokendance")).toBe(false);
-  });
-});
-
-describe("the TokenDance banner's dismissal", () => {
-  it("is remembered per browser under its own key", () => {
-    const store = new Map<string, string>();
-    const storage = {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => void store.set(key, value),
-    };
-    expect(bannerDismissed(storage)).toBe(false);
-    storage.setItem(TOKENDANCE_BANNER_DISMISSED_KEY, "1");
-    expect(bannerDismissed(storage)).toBe(true);
-  });
-
-  it("a storage that refuses to answer shows the banner rather than failing", () => {
-    const broken = {
-      getItem: (): string | null => {
-        throw new Error("denied");
-      },
-      setItem: () => undefined,
-    };
-    expect(bannerDismissed(broken)).toBe(false);
-  });
-});
-
-describe("the TokenDance banner's sweep", () => {
-  it("rides the brand name alone, in both languages", () => {
-    for (const text of [zh.models.tokenDanceBanner, en.models.tokenDanceBanner]) {
-      const parts = splitBrand(text, "TokenDance");
-      expect(parts, text).not.toBeNull();
-      expect(`${parts![0]}TokenDance${parts![1]}`).toBe(text);
-    }
-    const html = renderToStaticMarkup(createElement(TokenDanceBanner, { onConnect: () => {} }));
-    expect(html.match(/banner-shimmer/g)).toHaveLength(1);
-    expect(html).toContain('<span class="banner-shimmer">TokenDance</span>');
-  });
-
-  it("leaves a wording without the name plain", () => {
-    expect(splitBrand("Connect your wallet", "TokenDance")).toBeNull();
-    expect(splitBrand("TokenDance", "")).toBeNull();
   });
 });

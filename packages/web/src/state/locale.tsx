@@ -4,6 +4,10 @@
  * then remounts the whole tree keyed on locale so every `S.x` read immediately reflects the
  * new language; the preference persists to localStorage. The shared UI package's accessibility
  * fallbacks (a close cross's name, a "Copied" announcement) are handed the same language here.
+ *
+ * With nothing stored the language is **zh**, not "follow the device": this product is written
+ * for a Chinese-reading owner first, and an English device language is not evidence that its
+ * reader wants the English dictionary. "system" stays as a choice the Appearance settings offer.
  */
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -42,10 +46,11 @@ function resolve(lang: LangPref): Locale {
   return lang === "system" ? systemLocale() : lang;
 }
 
+/** No stored preference → zh (see this module's header); a stored one is honoured as-is. */
 function initialLang(): LangPref {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored === "zh" || stored === "en" || stored === "system") return stored;
-  return "system";
+  return "zh";
 }
 
 export function LocaleProvider({ children }: { children: ReactNode }) {

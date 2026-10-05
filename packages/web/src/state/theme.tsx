@@ -109,8 +109,9 @@ function initialToolAliases(): boolean {
   return localStorage.getItem(TOOL_ALIASES_KEY) !== "0";
 }
 
+/** No stored preference → CNY (this product bills a Chinese-reading owner first); a stored one is honoured as-is. */
 function initialCurrency(): Currency {
-  return localStorage.getItem(CURRENCY_KEY) === "CNY" ? "CNY" : "USD";
+  return localStorage.getItem(CURRENCY_KEY) === "USD" ? "USD" : "CNY";
 }
 
 function systemDark(): boolean {

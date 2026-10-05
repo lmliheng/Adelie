@@ -17,12 +17,11 @@
  * name rule while it is typed, so a name the route would answer 400 for cannot reach the
  * submit button.
  *
- * Both dialogs end with the same panel of rules (see PluginRules), in two lists: what the import
- * takes — which sources, where the plugin root is found, the precedence the plugin NAME is
- * decided by, the size caps, and what happens on a name collision — and what a plugin has to be,
- * for whoever is about to publish one. It sits at the foot so the reader meets each rule just
- * after the control it governs, and it is identical in both dialogs because it describes the
- * shape a plugin has to arrive in rather than one source's mechanics.
+ * The rules (see PluginRules) sit behind one link at the foot of each dialog instead of opening
+ * under it: two numbered lists of prose, one about what an import takes and one about what a
+ * plugin has to be, are reference material for whoever is about to publish one — not something
+ * to read every time a plugin is installed, and as a panel it pushed the fields and the confirm
+ * button off the screen. The link keeps them one click away, in the same two blocks.
  *
  * Admin-only by the server's own rule: the plugin directory is a server-level resource shared
  * by every Project, so a member cannot write into it — the caller (plugins-page) renders this
@@ -33,7 +32,10 @@ import type { ChangeEvent } from "react";
 import {
   Button,
   ConfirmModal,
+  GlyphIcon,
   HiddenFileInput,
+  ICONS,
+  ICON_SIZE,
   Input,
   Modal,
   toastError,
@@ -121,6 +123,43 @@ function RuleList({ title, rules }: { title: string; rules: readonly string[] })
   );
 }
 
+/**
+ * The same rules in a dialog of their own, opened by the link at the foot of each import dialog.
+ * The body is the shared PluginRules panel verbatim, so the two surfaces cannot drift; only the
+ * frame around it is new.
+ */
+function PluginRulesDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal
+      open={open}
+      title={S.plugins.rulesTitle}
+      onClose={onClose}
+      widthClass="sm:max-w-lg"
+      footer={
+        <Button size="sm" onClick={onClose}>
+          {S.common.close}
+        </Button>
+      }
+    >
+      <PluginRules />
+    </Modal>
+  );
+}
+
+/** The opener: a text button where the panel used to sit, so the rules stay at the same foot. */
+function RulesLink({ onClick }: { onClick: () => void }) {
+  return (
+    <Button
+      variant="link"
+      size="xs"
+      leading={<GlyphIcon d={ICONS.helpCircle} size={ICON_SIZE.inlineGlyph} />}
+      onClick={onClick}
+    >
+      {S.plugins.rulesLink}
+    </Button>
+  );
+}
+
 export function PluginImportActions({
   onImported,
 }: {
@@ -138,6 +177,9 @@ export function PluginImportActions({
   const [downloadName, setDownloadName] = useState("");
   // The 409 confirmation, and the only state both flows share.
   const [pending, setPending] = useState<PendingOverwrite | null>(null);
+  // The rules dialog is shared by both import dialogs: they describe one plugin shape, so a
+  // single open flag keeps the two from stacking two copies of the same prose.
+  const [rulesOpen, setRulesOpen] = useState(false);
 
   const uploadNameInvalid = pluginNameInvalid(uploadName);
   const downloadNameInvalid = pluginNameInvalid(downloadName);
@@ -334,7 +376,7 @@ export function PluginImportActions({
             error={uploadNameInvalid ? S.plugins.pluginNameInvalid : undefined}
             autoComplete="off"
           />
-          <PluginRules />
+          <RulesLink onClick={() => setRulesOpen(true)} />
         </div>
       </Modal>
 
@@ -385,9 +427,14 @@ export function PluginImportActions({
             error={downloadNameInvalid ? S.plugins.pluginNameInvalid : undefined}
             autoComplete="off"
           />
-          <PluginRules />
+          <RulesLink onClick={() => setRulesOpen(true)} />
         </div>
       </Modal>
+
+      {/* The rules, one click from either dialog's foot. Above the overwrite confirmation in the
+          DOM, because it is opened from a dialog that is still on screen and closes with ESC
+          before that one does. */}
+      <PluginRulesDialog open={rulesOpen} onClose={() => setRulesOpen(false)} />
 
       {/* Overwrite confirmation: the dialog that asked stays underneath (its Cancel returns to
           it, file and name both intact), and confirm resends the same request with

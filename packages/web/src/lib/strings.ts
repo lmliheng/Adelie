@@ -1654,8 +1654,6 @@ export const zh = {
     /** Pin toggle before a balance: keeps it beside the user name in the sidebar, one at a time. */
     pinBalance: "常驻到用户名旁",
     unpinBalance: "取消常驻",
-    /** The banner above every group: TokenDance's own connect flow, pitched as the way to skip keys. */
-    tokenDanceBanner: "连接 TokenDance 钱包，无需手动配置模型密钥",
     oauthTitle: (label: string): string => `从「${label}」授权新建 API key`,
     oauthIntro: (label: string, n: number): string =>
       `将在你的 ${label} 账户下新建一个 API key，并写入该分组下全部 ${n} 个模型，覆盖它们当前的 key。`,
@@ -2187,6 +2185,10 @@ export const zh = {
     importDownloading: "下载中…",
     /** Client-side refusal of a picked zip over the decoded-archive cap; the file is dropped unread, so the server's own 413 never has to be earned. */
     importTooLarge: (mb: number): string => `插件包不能超过 ${mb} MB，请压缩后重试`,
+    /** The link at the foot of both import dialogs that opens the rules; see rulesTitle. */
+    rulesLink: "导入与编写规则",
+    /** The dialog those rules now live in, where they used to be printed under the dialogs. */
+    rulesTitle: "插件导入与编写规则",
     /**
      * The import rules, shown as one numbered block at the foot of BOTH dialogs: they are the
      * shape a plugin has to arrive in, not the property of one source, and a reader who opened

@@ -1,5 +1,6 @@
 /**
- * The plugin rules panel (src/features/plugins/plugin-import-dialog.tsx).
+ * The plugin rules panel (src/features/plugins/plugin-import-dialog.tsx), and the dialog it now
+ * lives in rather than under the import dialogs' fields.
  *
  * It states, at the point where an operator is naming a plugin, the rules the form cannot show.
  * Two of them carry the weight: leave the name empty and it comes from the SOURCE — and a GitHub
@@ -71,7 +72,13 @@ describe("PluginRules", () => {
     expect(authoring).toContain("不要写死默认值");
   });
 
-  it("is rendered by both import dialogs, upload and download", () => {
-    expect(source.match(/<PluginRules \/>/g) ?? []).toHaveLength(2);
+  it("hangs off a link in both import dialogs, and opens in a dialog of its own", () => {
+    // One opener per import dialog: the rules are the same for both, so both must reach them.
+    expect(
+      source.match(/<RulesLink onClick=\{\(\) => setRulesOpen\(true\)\} \/>/g) ?? [],
+    ).toHaveLength(2);
+    // …and one panel, inside the dialog the openers open — not printed under the fields.
+    expect(source.match(/<PluginRules \/>/g) ?? []).toHaveLength(1);
+    expect(source).toContain("<PluginRulesDialog open={rulesOpen}");
   });
 });

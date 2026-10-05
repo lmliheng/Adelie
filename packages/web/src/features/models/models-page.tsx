@@ -20,8 +20,9 @@
  * with that group pre-filled. The protocol follows group semantics: custom / user-defined
  * groups pick or detect it, a group that pins one (vLLM) hands it to every entry. The "get
  * model id / API key" external links sit next to the corresponding input's label in the
- * dialogs, never in the header. A TokenDance banner above the groups offers its connect flow
- * until the group holds a key. The group list ends with an "add group" action (user-defined
+ * dialogs, never in the header. Nothing is pitched above the groups: a group carries its own
+ * Connect action (with a status dot), and that is the one entry to authorizing it. The group
+ * list ends with an "add group" action (user-defined
  * groups share custom's semantics; the group appears once the first model saves successfully —
  * groups are carried by the model entry's provider field, not persisted separately). The
  * header also holds an owner-only "sync presets" action next to the search box (union-merge
@@ -163,7 +164,6 @@ import {
 import type { GroupHeaderAction } from "./group-header";
 import { GroupBalance } from "./group-balance";
 import { isPinned, usePinnedBalance } from "./balance";
-import { TOKENDANCE_PROVIDER_ID, TokenDanceBanner } from "./tokendance-banner";
 
 /**
  * The authorization flows a group's Connect dialog can run, keyed by the flow named in that
@@ -1188,10 +1188,6 @@ export function ModelsPage() {
   const oauthFlow = oauthFor === null ? undefined : providerInfo(oauthFor)?.bridgeAuth?.flow;
   const oauthKeyAuth = oauthFlow === undefined ? null : KEY_AUTH[oauthFlow];
 
-  /** TokenDance's rows, for the banner: shown while the group has models and none of them a key. */
-  const tokenDanceRows = rows?.filter((row) => row.provider === TOKENDANCE_PROVIDER_ID) ?? [];
-  const showTokenDanceBanner = tokenDanceRows.length > 0 && !groupKeyStored(tokenDanceRows);
-
   /**
    * One of a group header's actions (group-header.ts decides which, and in what order). Every
    * button keeps an accessible name of "action group" and a title; on a narrow header the ones
@@ -1413,17 +1409,6 @@ export function ModelsPage() {
           />
         )}
       </PageHeader>
-
-      {/* Above every group, while the TokenDance group has models but no key: its own connect
-          flow, pitched as the way to skip setting keys by hand. */}
-      {isOwner && showTokenDanceBanner && (
-        <TokenDanceBanner
-          onConnect={() => {
-            keyLanded.current = false;
-            setOauthFor(TOKENDANCE_PROVIDER_ID);
-          }}
-        />
-      )}
 
       {rows === null ? (
         <SkeletonList rows={4} />

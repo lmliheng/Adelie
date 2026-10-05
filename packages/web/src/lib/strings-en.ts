@@ -1600,8 +1600,6 @@ export const en: Strings = {
     /** Pin toggle before a balance: keeps it beside the user name in the sidebar, one at a time. */
     pinBalance: "Pin beside your name",
     unpinBalance: "Unpin",
-    /** The banner above every group: TokenDance's own connect flow, pitched as the way to skip keys. */
-    tokenDanceBanner: "Connect your TokenDance wallet — no model keys to set by hand",
     oauthTitle: (label: string): string => `Authorize a new ${label} API key`,
     oauthIntro: (label: string, n: number): string =>
       `A new API key will be created on your ${label} account and written to all ${n} models in this group, replacing the key they use now.`,
@@ -2146,6 +2144,10 @@ export const en: Strings = {
     /** Client-side refusal of a picked zip over the decoded-archive cap; the file is dropped unread, so the server's own 413 never has to be earned. */
     importTooLarge: (mb: number): string =>
       `A plugin archive cannot exceed ${mb} MB \u2014 compress it and try again`,
+    /** The link at the foot of both import dialogs that opens the rules; see rulesTitle. */
+    rulesLink: "Import and authoring rules",
+    /** The dialog those rules now live in, where they used to be printed under the dialogs. */
+    rulesTitle: "Plugin import and authoring rules",
     /**
      * The import rules, shown as one numbered block at the foot of BOTH dialogs: they are the
      * shape a plugin has to arrive in, not the property of one source, and a reader who opened

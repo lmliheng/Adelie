@@ -917,11 +917,12 @@ export function DraftView({
         {/* The user's own saved prompts, the only folder left under the input card (see
             shortcuts-folder.tsx): a click fills the composer with the prompt and the user
             sends it. Closed on arrival, so the new-chat screen is the brand, the input card
-            and the two ownership pills unless the reader asks for more. */}
+            and the two ownership pills unless the reader asks for more — and its own header
+            folds it back up. */}
         <div className="mt-6 space-y-1">
           <ShortcutsFolder
             open={shortcutsOpen}
-            onOpen={() => setShortcutsOpen(true)}
+            onToggle={() => setShortcutsOpen((open) => !open)}
             readComposerText={() => textRef.current}
             onFill={fillShortcut}
           />

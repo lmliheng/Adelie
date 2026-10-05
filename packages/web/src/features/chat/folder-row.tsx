@@ -1,6 +1,7 @@
 /**
- * The header row of the draft screen's folder of saved prompts: a tab, not a disclosure — the
- * open folder stays open (clicking it is a no-op) and carries the body below it.
+ * The header row of the draft screen's folder of saved prompts: a disclosure that toggles. It
+ * was a tab once — open it and it stayed open — and the row's own chevron then promised a
+ * collapse it did not have, so the click now flips the state it shows.
  */
 import { Chevron, ICON_SIZE } from "@lmliheng/penguin-ui";
 
@@ -9,7 +10,7 @@ export function FolderRow({
   glyph,
   label,
   count,
-  onOpen,
+  onToggle,
 }: {
   open: boolean;
   /** 24x24 path for the folder's own mark — what the eye scans to pick a category. */
@@ -17,13 +18,14 @@ export function FolderRow({
   label: string;
   /** Rows inside the folder, shown right of the name — a bare count, or `used/limit` where one applies. */
   count: number | string;
-  onOpen: () => void;
+  /** Flip the folder: opening shows the body below, closing puts it away again. */
+  onToggle: () => void;
 }) {
   return (
     <button
       type="button"
       aria-expanded={open}
-      onClick={onOpen}
+      onClick={onToggle}
       className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left transition-colors duration-150 ${
         open ? "bg-gray-100 dark:bg-gray-800/70" : "hover:bg-gray-100 dark:hover:bg-gray-800/70"
       }`}

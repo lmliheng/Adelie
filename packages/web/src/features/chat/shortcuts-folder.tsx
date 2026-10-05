@@ -46,9 +46,9 @@ import {
 import type { ShortcutDraft, UserShortcut } from "./user-shortcuts";
 
 /**
- * Lightning bolt (lucide zap): the folder's mark. Not the bookmark it might suggest — the row
- * itself already behaves bookmark-style (open once, then it stays open), so that glyph would
- * name the mechanism instead of what this folder holds.
+ * Lightning bolt (lucide zap): the folder's mark. A bookmark glyph would name the mechanism —
+ * the rows inside are what get clicked to fill the composer — rather than what this folder
+ * holds, and the header's own chevron already says open or shut.
  */
 const SHORTCUTS_GLYPH =
   "M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z";
@@ -84,12 +84,13 @@ function RowAction({
 
 export function ShortcutsFolder({
   open,
-  onOpen,
+  onToggle,
   readComposerText,
   onFill,
 }: {
   open: boolean;
-  onOpen: () => void;
+  /** Flip the folder open or shut; the header row carries the chevron that shows which it is. */
+  onToggle: () => void;
   /** The composer's current text, read at click time — a new shortcut starts from what was typed. */
   readComposerText: () => string;
   /** Hand the saved prompt to the composer. Pins no Skills; see user-shortcuts.ts. */
@@ -152,7 +153,7 @@ export function ShortcutsFolder({
         glyph={SHORTCUTS_GLYPH}
         label={S.chat.shortcuts.folder}
         count={`${shortcuts.length}/${SHORTCUT_MAX_COUNT}`}
-        onOpen={onOpen}
+        onToggle={onToggle}
       />
 
       {open && (
