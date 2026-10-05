@@ -48,9 +48,10 @@ git merge upstream/develop        # 在 fork/penguin-base 上
 
 `main` 分支上是**旧的 Adelie**（自己写的引擎 + 外壳：`adelie-core/providers/tools/runtime`、
 `@lmliheng/adelie` CLI、Electron 桌面壳、Web/PWA、六个 npm 包、设计站与发布流水线）。
-它没有被删：`main` 就是它的落点。用户 2026-10-05 定了两件事：**落点仍是 `lmliheng/Adelie`**
-（何时把新基座变成默认分支、旧 `main` 怎么留档，等发布期一起定），旧的四件产物**要按新基座更新**
-（重发新版，不是下架）。
+它没有被删：`main` 就是它的落点（2026-10-05 发布 v0.2.0 时又存了一条 `legacy/main`，指向旧
+`main` 当时的尖端 `7fb74262`，双保险）。用户 2026-10-05 定了三件事：**落点仍是 `lmliheng/Adelie`**；
+旧的四件产物**要按新基座更新**（重发新版，不是下架）；**默认分支切到 `fork/penguin-base`**
+（2026-10-05 发布当天做的），旧 `main` 留档不删。
 
 > 工作方式：动这份基座用 `git worktree`（`/root/adelie-fork`），**不要**在 `/root/Adelie`
 > 的工作区里切分支 —— `adelie-web.service` 直接读 `/root/Adelie/packages/{server/dist,web/dist}`，

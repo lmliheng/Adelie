@@ -92,9 +92,12 @@
       （见下），改名时不能碰。
 - [ ] 4.2 发布流水线重写：上游三条都还是上游的 —— `.github/workflows/release.yml`（tag 触发，
       **已改成只能手动触发**，见下）负责安装包与 npm；`docker.yml` 的 `push: branches: [main]`
-      会把镜像推到 Docker Hub `hiyouga/penguinharness`（现在不触发，因为默认分支还是旧 main；
-      **哪天把新基座变成默认分支，这条要先处理**）；`desktop-build.yml` 的 `push: release/**`；
-      Pages 那条已随 `landing` 删掉。
+      会把镜像推到 Docker Hub `hiyouga/penguinharness`（默认分支已切到 `fork/penguin-base`，
+      `main` 不再有人推，所以不会触发；真要动 `main` 之前先处理它）；`desktop-build.yml` 的
+      `push: release/**`；Pages 那条已随 `landing` 删掉。
+      **另外**：`ci.yml`（11 个 job）的触发面仍只写 `main`，新主线跑不到它 —— 要么把它接到
+      `fork/penguin-base` 并让它真跑绿，要么按 Adelie 自己的仓库结构重写；在那之前 GitHub 上
+      没有 CI 信号（README 里那条 CI 徽章已经撤掉，不留假象）。
 - [ ] 4.3 **旧的四件产物要更新**（用户 2026-10-05 定：按新基座重发新版，不是下架）。
 
 ## 发布 v0.2.0（2026-10-05）
@@ -135,12 +138,19 @@ mp4 被本机出口白名单挡了，与仓库无关）。
 压缩」，所以本轮是直接拿用户给的 token 值调 API 的，没等着环境变量注入。下一轮起用 `$GH_TOKEN`
 即可（`env | grep GH_TOKEN` 验证）。**token 值是用户贴在对话里的**，建议用完就轮换/撤销。
 
-**待用户定**：新基座要不要变成默认分支（现在默认分支仍是旧 Adelie 的 `main`，仓库首页显示的
-是旧 README；仓库侧栏已经能看到 Releases 里的 v0.2.0 Latest）。`main` 与新基座是两段不相干的
-历史（`main` = 旧 Adelie，尖端 `7fb74262`；`fork/penguin-base` = 上游 PenguinHarness），不能直接
-merge；要换之前先把旧 `main` 存成一条 `legacy/main` 分支，再谈默认分支怎么切。有了 token 之后
-这一步只是 `PATCH /repos/lmliheng/Adelie`（`default_branch`）一条命令 —— 但换默认分支会改仓库
-首页给人看的样子，**等用户点头再做**。
+**待用户定 → 已拍板（2026-10-05，用户「按你的来」）**：**默认分支已切到 `fork/penguin-base`**
+（`PATCH /repos/lmliheng/Adelie` 的 `default_branch`，HTTP 200）。切之前先把旧 Adelie 的 `main`
+留了档：`legacy/main` = `7fb74262`（旧 `main` 尖端，已推到 origin；`main` 本身没动）。
+顺手把仓库「About」也改成 fork 的说法，否则首页仍是旧 Adelie 的描述 —— 描述改成
+「本地优先的多智能体应用开发平台，构建在 PenguinHarness（Apache-2.0）之上 · A local-first
+multi-agent app development platform, built on PenguinHarness」，话题加了
+`penguin-harness` / `multi-agent` / `llm` / `local-first` / `agent`；`homepage` 本来就是空的，
+没动。真浏览器复核仓库首页：分支选择器是 `fork/penguin-base`、About 是新描述与新话题、
+Releases 侧栏是 v0.2.0 Latest、正文渲染的就是那份写明 fork 的 README，无 4xx。
+
+**还没接的**：CI（`.github/workflows/ci.yml`，11 个 job）的触发面仍只写 `main`，
+新主线 `fork/penguin-base` 上的推送不会跑 CI —— README 里那条 CI 徽章当时一并撤掉了，所以
+不存在「徽章说绿实际没跑」的假象。要不要把它接到新主线（并让它真跑绿），归 4.2 一起定。
 
 ## 本机部署（2026-10-05）
 
@@ -178,8 +188,9 @@ merge；要换之前先把旧 `main` 存成一条 `legacy/main` 分支，再谈�
 
 - **A. 上游四个包**：见 2.5 —— 用户「看你」，按上面办（删 `landing`，留 `docs` / `ui-gallery` / `hmr`）。
 - **B. 旧的四件产物**：**更新**（按新基座重发新版），不下架。
-- **C. 仓库落点**：仍是 `lmliheng/Adelie`。`main` 现在是旧 Adelie，新基座长在 `fork/penguin-base`；
-  何时把新基座变成默认分支、旧 `main` 怎么留档，等发布期一起定。
+- **C. 仓库落点**：仍是 `lmliheng/Adelie`。**2026-10-05 发布 v0.2.0 时定了后续两件并当场做完**：
+  默认分支切到 `fork/penguin-base`（旧 `main` 另存 `legacy/main` = `7fb74262` 留档），仓库 About
+  改成「基于 PenguinHarness」的说法。细节见「发布 v0.2.0」一节。
 
 ## 已完成的轮次
 
@@ -196,3 +207,4 @@ merge；要换之前先把旧 `main` 存成一条 `legacy/main` 分支，再谈�
 | 2026-10-05 | 2.1c | 产品名全仓统一成 Adelie（140 文件），并推进内核版本 `KERNEL_VERSION` → `2026-10-05` | `pnpm lint` 0 警告；八个包 typecheck 过；`pnpm format:check` 干净；`sh scripts/test-installer.sh` 通过；测试 **8485 通过 / 7 跳过 / 0 失败**（docs 62 · core 1346 · ui 999 · server 2552 · cli 509 · web 2886 · ui-gallery 131）；3004 现网重建后登录页再无旧名字，Playwright 复核正常 | 见本行提交 |
 | 2026-10-05 | 2.4 + 发布 | 两份 README 重写成「Adelie 是 PenguinHarness 的 fork」的诚实版（来源声明、上游渠道与商标归属、从源码运行的安装节、上游路线图/贡献者/引用/协议改标）；写 `RELEASE-v0.2.0.md` 当发布正文；把上游那条 tag 触发的 release 流水线改成只能手动触发 | `pnpm lint` 0 警告；`pnpm format:check` 干净；五份工作流用仓库自带 `yaml` 逐份解析通过，`release.yml` 的 `on` 只剩 `workflow_dispatch`；`git ls-remote` 复核远端分支与 tag | 见本行提交 |
 | 2026-10-05 | 发布 | 建出 v0.2.0 的 GitHub Release（源码版正文、无资产、标为 latest），tag 与分支头同一提交 | `POST /repos/lmliheng/Adelie/releases` → 201；`/releases/latest` = `v0.2.0`；`actions/runs` 建 Release 前后都是 26 条（没有触发工作流）；真浏览器看发布页与仓库首页：正文渲染正常、绿 `Latest` 徽章、无 4xx | Release id `403323149` |
+| 2026-10-05 | 发布 | 旧 `main` 留档成 `legacy/main`，仓库**默认分支切到 `fork/penguin-base`**；仓库 About（描述 + 话题）改成「基于 PenguinHarness」的说法 | `git push origin legacy/main` = `7fb74262`；`PATCH /repos/lmliheng/Adelie` `default_branch` → 200；`GET /repos` 复核 `default_branch=fork/penguin-base`、description/topics 已换；真浏览器看仓库首页：分支选择器是 `fork/penguin-base`、About 新描述、Releases 侧栏 v0.2.0 Latest、正文就是写明 fork 的 README，无 4xx | 见本行提交 |
