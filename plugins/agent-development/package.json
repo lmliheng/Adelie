@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/agent-development",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Agent development on Adelie: build on the SDK, call any model through one unified LLM API, manage models and secrets, and orchestrate agents, sessions, costs and schedules.",
   "license": "Apache-2.0",
   "repository": {
