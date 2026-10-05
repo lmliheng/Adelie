@@ -40,6 +40,7 @@ import type {
   DesktopUpdateStatusResponse,
   DirAccessResponse,
   DirCreateResponse,
+  DirDeleteResponse,
   DirectorySkillsResponse,
   DirListResponse,
   EndpointModelListRequest,
@@ -743,6 +744,18 @@ export const createDir = (projectId: string, parent: string, name: string) =>
   apiFetch<DirCreateResponse>(`/api/projects/${encodeURIComponent(projectId)}/dirs`, {
     method: "POST",
     body: { parent, name },
+  });
+
+/**
+ * Removes one EMPTY folder (the picker's "Delete"): `path` is absolute and names the folder
+ * itself rather than a name inside another. The server refuses anything but an empty folder —
+ * it never deletes a tree, a file, the root, or the Project's own directory and its parents —
+ * and only this server can be asked, like New folder.
+ */
+export const deleteDir = (projectId: string, path: string) =>
+  apiFetch<DirDeleteResponse>(`/api/projects/${encodeURIComponent(projectId)}/dirs`, {
+    method: "DELETE",
+    body: { path },
   });
 
 /**

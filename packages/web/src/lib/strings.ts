@@ -2528,6 +2528,18 @@ export const zh = {
       newFolderName: "文件夹名称",
       /** The name box's accessible name and tooltip: Enter makes it, Escape cancels. */
       newFolderHint: "输入名称后按 Enter 创建，按 Esc 取消",
+      /** The context-menu row that removes one folder on this server. */
+      deleteFolder: "删除文件夹",
+      /** Names the delete confirmation for assistive tech (the card itself has no title bar). */
+      deleteFolderTitle: "删除文件夹",
+      /**
+       * The delete confirmation: what goes, and the rule the server enforces — only an empty
+       * folder can be removed, and there is no undo (nothing is moved to a trash).
+       */
+      deleteFolderConfirm: (name: string): string =>
+        `删除文件夹「${name}」？只能删除空文件夹，里面还有内容时服务端会拒绝，且删除不可恢复。`,
+      /** The toast after one was removed. */
+      folderDeleted: (name: string): string => `已删除文件夹「${name}」`,
       chooseThis: "选择此文件夹",
       chooseCurrent: "选择当前文件夹",
       copyPath: "复制路径",
@@ -4984,11 +4996,15 @@ Benchmark：
       image_too_large: "图片过大，无法随对话发送。",
       dir_not_absolute: "目录必须是绝对路径。",
       dir_not_found: "该目录不存在或不可访问。",
-      dir_permission_denied: "没有读取该目录的权限。",
+      dir_permission_denied: "没有访问该目录的权限。",
       dir_name_empty: "请输入文件夹名称。",
       dir_name_invalid: "文件夹名称不能是路径、`.` 或 `..`，也不能含有系统不接受的字符。",
       dir_exists: "这个名称已被占用。",
       dir_create_failed: "无法创建该文件夹。",
+      dir_not_empty: "该文件夹不是空的，只能删除空文件夹。",
+      dir_root_protected: "不能删除根目录。",
+      dir_project_protected: "不能删除项目目录，或包含项目目录的上级目录。",
+      dir_delete_failed: "无法删除该文件夹。",
       not_a_dir: "该路径不是目录。",
       path_not_found: "该路径不存在。",
       reveal_failed: "无法打开文件夹。",

@@ -354,6 +354,7 @@ export type FinderMenuItem =
   | "open"
   | "choose"
   | "newFolder"
+  | "delete"
   | "addToQuickAccess"
   | "removeFromQuickAccess"
   | "copyPath"
@@ -361,19 +362,27 @@ export type FinderMenuItem =
 
 /**
  * The context menu's rows, the way Explorer orders them: what opening the thing does first,
- * then choosing it, then Quick access, then copying its path. A file row only copies (files
- * are listed for context and cannot be picked); the empty space acts on the open folder, and
- * adds New folder and Refresh as Explorer's background menu does.
+ * then choosing it, then the folder's own housekeeping (making one inside the folder on screen,
+ * removing the one a row stands for), then Quick access, then copying its path. A file row only
+ * copies (files are listed for context and cannot be picked); the empty space acts on the open
+ * folder, and adds New folder, Delete and Refresh as Explorer's background menu does.
+ *
+ * `local` says the target is on this server's own filesystem. The two rows that change it — New
+ * folder and Delete — are dropped for anything else: a machine browsed over ssh lists folders
+ * and cannot be asked to make or remove one.
  */
 export function finderMenuItems(
   target: FinderMenuTarget,
   inQuickAccess: boolean,
+  local = true,
 ): FinderMenuItem[] {
   if (target.kind === "file") return ["copyPath"];
   const quick = inQuickAccess ? "removeFromQuickAccess" : "addToQuickAccess";
-  return target.kind === "here"
-    ? ["choose", "newFolder", quick, "copyPath", "refresh"]
-    : ["open", "choose", quick, "copyPath"];
+  const items: FinderMenuItem[] =
+    target.kind === "here"
+      ? ["choose", "newFolder", "delete", quick, "copyPath", "refresh"]
+      : ["open", "choose", "delete", quick, "copyPath"];
+  return local ? items : items.filter((item) => item !== "newFolder" && item !== "delete");
 }
 
 /** A Workspace recently used in this Project, and the machine it is on (null: this server). */

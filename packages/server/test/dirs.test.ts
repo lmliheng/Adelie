@@ -10,11 +10,12 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type {
   DirCreateResponse,
+  DirDeleteResponse,
   DirListResponse,
   ProjectCreateResponse,
 } from "../src/api/types.js";
-import { dirReadError } from "../src/http/routes/dirs.js";
-import { apiClient, createTestApp, provisionUser } from "./helpers.js";
+import { dirReadError, isSameOrAbove } from "../src/http/routes/dirs.js";
+import { apiClient, canCreateSymlink, createTestApp, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
 
 const errno = (code: string) => Object.assign(new Error(code), { code });
@@ -166,5 +167,124 @@ describe("dir create api", () => {
     // The Project does not exist for this caller, so the route is not theirs to reach.
     expect([403, 404]).toContain(res.status);
     expect(await fs.readdir(dir)).toEqual([]);
+  });
+});
+
+describe("isSameOrAbove", () => {
+  it("reads a folder and every folder holding it as the same answer", () => {
+    expect(isSameOrAbove("/srv/app", "/srv/app")).toBe(true);
+    expect(isSameOrAbove("/srv/app", "/srv/app/sub")).toBe(true);
+    expect(isSameOrAbove("/srv/app/", "/srv/app/sub/")).toBe(true);
+  });
+
+  it("keeps a sibling and a child apart from its parent", () => {
+    expect(isSameOrAbove("/srv/app", "/srv/app-old")).toBe(false);
+    expect(isSameOrAbove("/srv/app", "/srv")).toBe(false);
+    expect(isSameOrAbove("/srv/app", "/other/app")).toBe(false);
+  });
+});
+
+describe("dir delete api", () => {
+  let t: TestApp;
+  let owner: ReturnType<typeof apiClient>;
+  let projectId: string;
+  let projectDir: string;
+  let dir: string;
+
+  const deleteUrl = () => `/api/projects/${projectId}/dirs`;
+  const listUrl = (p: string) => `${deleteUrl()}?path=${encodeURIComponent(p)}`;
+  const remove = (p: unknown) => owner.delete(deleteUrl(), { path: p });
+  const codeOf = async (res: Response) =>
+    ((await res.json()) as { error: { code: string } }).error.code;
+
+  beforeEach(async () => {
+    t = await createTestApp();
+    const a = await provisionUser(t.app, "owner_rmdir");
+    owner = apiClient(t.app, a.cookie);
+    const created = (await (
+      await owner.post("/api/projects", { projectId: "owner_rmdir-dirs", name: "rmdir project" })
+    ).json()) as ProjectCreateResponse;
+    projectId = created.project.projectId;
+    projectDir = path.join(t.root, projectId);
+    dir = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), "penguin-rmdir-")));
+  });
+
+  afterEach(async () => {
+    await t.cleanup();
+    await fs.rm(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  });
+
+  it("removes one empty folder and answers with its path", async () => {
+    await fs.mkdir(path.join(dir, "gone"));
+    const res = await remove(path.join(dir, "gone"));
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as DirDeleteResponse).path).toBe(path.join(dir, "gone"));
+    await expect(fs.stat(path.join(dir, "gone"))).rejects.toMatchObject({ code: "ENOENT" });
+    // Gone from the picker's next listing too, since that is where the row was.
+    const listing = (await (await owner.get(listUrl(dir))).json()) as DirListResponse;
+    expect(listing.entries.map((e) => e.name)).not.toContain("gone");
+  });
+
+  it("refuses a folder that is not empty, and leaves it whole", async () => {
+    await fs.mkdir(path.join(dir, "full"));
+    await fs.writeFile(path.join(dir, "full", "notes.txt"), "x");
+    await fs.mkdir(path.join(dir, "full", "sub"));
+    const res = await remove(path.join(dir, "full"));
+    expect([res.status, await codeOf(res)]).toEqual([409, "dir_not_empty"]);
+    // Not one entry was touched: there is no recursive delete behind this.
+    expect((await fs.readdir(path.join(dir, "full"))).sort()).toEqual(["notes.txt", "sub"]);
+  });
+
+  it("needs an absolute path", async () => {
+    for (const bad of ["relative", "", undefined]) {
+      expect((await remove(bad)).status).toBe(400);
+    }
+    expect(await codeOf(await remove("relative"))).toBe("dir_not_absolute");
+    expect(await fs.readdir(dir)).toEqual([]);
+  });
+
+  it("refuses a file: this route removes folders", async () => {
+    await fs.writeFile(path.join(dir, "notes.txt"), "x");
+    const res = await remove(path.join(dir, "notes.txt"));
+    expect([res.status, await codeOf(res)]).toEqual([400, "not_a_dir"]);
+    expect((await fs.stat(path.join(dir, "notes.txt"))).isFile()).toBe(true);
+  });
+
+  it("refuses the root", async () => {
+    const res = await remove("/");
+    expect([res.status, await codeOf(res)]).toEqual([403, "dir_root_protected"]);
+    expect((await fs.stat("/")).isDirectory()).toBe(true);
+  });
+
+  it("refuses the Project's own directory and anything above it", async () => {
+    for (const forbidden of [projectDir, t.root]) {
+      const res = await remove(forbidden);
+      expect([res.status, await codeOf(res)]).toEqual([403, "dir_project_protected"]);
+      expect((await fs.stat(forbidden)).isDirectory()).toBe(true);
+    }
+  });
+
+  it("cannot be talked into the Project's directory through a symlink", async () => {
+    if (!canCreateSymlink()) return;
+    const link = path.join(dir, "shortcut");
+    await fs.symlink(projectDir, link, "dir");
+    const res = await remove(link);
+    expect([res.status, await codeOf(res)]).toEqual([403, "dir_project_protected"]);
+    expect((await fs.stat(projectDir)).isDirectory()).toBe(true);
+  });
+
+  it("keeps a folder that is already gone a 404", async () => {
+    const res = await remove(path.join(dir, "never"));
+    expect([res.status, await codeOf(res)]).toEqual([404, "dir_not_found"]);
+  });
+
+  it("is refused to a caller who may not see the Project", async () => {
+    await fs.mkdir(path.join(dir, "keep"));
+    const stranger = await provisionUser(t.app, "stranger_rmdir");
+    const res = await apiClient(t.app, stranger.cookie).delete(deleteUrl(), {
+      path: path.join(dir, "keep"),
+    });
+    expect([403, 404]).toContain(res.status);
+    expect((await fs.stat(path.join(dir, "keep"))).isDirectory()).toBe(true);
   });
 });

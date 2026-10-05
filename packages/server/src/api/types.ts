@@ -1673,6 +1673,11 @@ export interface DirCreateResponse {
   path: string;
 }
 
+/** The answer to removing one empty folder: the absolute path (realpath) that is gone. */
+export interface DirDeleteResponse {
+  path: string;
+}
+
 /** One Skill found in a picked directory: metadata plus which of the two layouts it came from. */
 export interface DirectorySkillItem extends SkillMetadataItem {
   /** `.agents/skills` or `.claude/skills` — shown so the origin of an offered Skill is visible. */

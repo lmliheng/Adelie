@@ -12,8 +12,10 @@
  * - Quick access offers each platform's standard folders that exist there (Windows names
  *   ignoring case), keeps Windows drives apart, takes the user's additions and removals (a
  *   default included), and stores them per machine, reading anything unreadable as none.
- * - The context menu offers open, choose, Quick access and copy on a folder, copy only on a
- *   file, and acts on the open folder (with Refresh) from the list's empty space.
+ * - The context menu offers open, choose, Delete, Quick access and copy on a folder, copy only
+ *   on a file, and acts on the open folder (with New folder, Delete and Refresh) from the
+ *   list's empty space — while a target on another machine carries neither of the two rows that
+ *   would change that machine's filesystem.
  * - Recent folds the newest Session per Workspace across Agents, leaving temporary ones out;
  *   "go to" resolves ~ against the machine's home.
  * - A folder the server may not read gets a box of its own: the desktop app's access request
@@ -274,11 +276,12 @@ describe("quick access", () => {
 });
 
 describe("the context menu", () => {
-  it("offers a folder open, choose, Quick access and copy; a file only copy", () => {
+  it("offers a folder open, choose, Delete, Quick access and copy; a file only copy", () => {
     const folder = { kind: "folder" as const, path: "/p/a", machine: null };
     expect(finderMenuItems(folder, false)).toEqual([
       "open",
       "choose",
+      "delete",
       "addToQuickAccess",
       "copyPath",
     ]);
@@ -286,10 +289,11 @@ describe("the context menu", () => {
     expect(finderMenuItems({ ...folder, kind: "file" }, false)).toEqual(["copyPath"]);
   });
 
-  it("acts on the open folder from the list's empty space, with New folder and Refresh", () => {
+  it("acts on the open folder from the list's empty space, with New folder, Delete and Refresh", () => {
     expect(finderMenuItems({ kind: "here", path: "/p", machine: null }, false)).toEqual([
       "choose",
       "newFolder",
+      "delete",
       "addToQuickAccess",
       "copyPath",
       "refresh",
@@ -300,6 +304,35 @@ describe("the context menu", () => {
     const folder = { kind: "folder" as const, path: "/p/a", machine: null };
     expect(finderMenuItems(folder, false)).not.toContain("newFolder");
     expect(finderMenuItems({ ...folder, kind: "file" }, false)).not.toContain("newFolder");
+  });
+
+  it("never offers Delete for a file: this is the folder picker's own action", () => {
+    const file = { kind: "file" as const, path: "/p/a.txt", machine: null };
+    expect(finderMenuItems(file, false)).not.toContain("delete");
+  });
+
+  it("drops New folder and Delete for a target that is not this server's", () => {
+    // Another machine lists folders over ssh and cannot be asked to make or remove one; the
+    // two rows that would change its filesystem are the ones that go.
+    const here = { kind: "here" as const, path: "/p", machine: "far" };
+    const row = { kind: "folder" as const, path: "/p/a", machine: "far" };
+    expect(finderMenuItems(here, false, false)).toEqual([
+      "choose",
+      "addToQuickAccess",
+      "copyPath",
+      "refresh",
+    ]);
+    expect(finderMenuItems(row, false, false)).toEqual([
+      "open",
+      "choose",
+      "addToQuickAccess",
+      "copyPath",
+    ]);
+    // This server's own folders keep both: New folder on the folder on screen, Delete on either.
+    expect(finderMenuItems({ ...here, machine: null }, false, true)).toContain("newFolder");
+    expect(finderMenuItems({ kind: "folder", path: "/p/a", machine: null }, false, true)).toContain(
+      "delete",
+    );
   });
 });
 

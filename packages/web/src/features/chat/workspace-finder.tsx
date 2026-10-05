@@ -15,6 +15,12 @@
  * The component stays mounted while closed, so it reopens where it was browsing when the host
  * has no Workspace set yet (the sidebar's new-workspace button picks one after another from the
  * same place); with one set, it reopens revealing that folder in its parent.
+ *
+ * It changes the folder it shows in exactly two ways, both on this server's own filesystem: New
+ * folder makes one inside the folder being browsed, and Delete removes one — never a folder
+ * with anything in it, never the root or the Project's own directory, and only after the
+ * confirmation card says so (features/chat/workspace-finder-model.ts decides what either menu
+ * offers).
  */
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -27,6 +33,7 @@ import type { DesktopPrivacyPane, DirListResponse } from "@prismshadow/penguin-s
 import {
   Button,
   CloseIcon,
+  ConfirmModal,
   Dropdown,
   GlyphIcon,
   ICONS,
@@ -120,6 +127,7 @@ const MENU_ICON: Record<FinderMenuItem, string> = {
   open: ICONS.folderOpen,
   choose: CHECK_ICON,
   newFolder: ICONS.folderPlus,
+  delete: ICONS.trash,
   addToQuickAccess: ICONS.pin,
   removeFromQuickAccess: ICONS.pin,
   copyPath: STAT_ICONS.copy,
@@ -222,6 +230,14 @@ export function WorkspaceFinder({
   const [newFolderName, setNewFolderName] = useState("");
   const [creating, setCreating] = useState(false);
   const newFolderRef = useRef<HTMLInputElement>(null);
+  /**
+   * The folder the Delete confirmation is about (null: nothing is being removed), and whether
+   * the request is in flight. Removal is the finder's one irreversible action, so it never
+   * happens on the row that was clicked: that row opens the card, and only the card's own
+   * button sends it.
+   */
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   /** The address bar is a path field (clicked, or ⌘⇧G) rather than breadcrumbs; the draft is what it holds. */
   const [addressEditing, setAddressEditing] = useState(false);
   const [addressDraft, setAddressDraft] = useState("");
@@ -427,6 +443,15 @@ export function WorkspaceFinder({
   const crumbs = splitBreadcrumbs(view.path);
   /** "New folder" is offered only where it can be honoured: this server's own filesystem. */
   const canCreateFolder = machine === null && view.error === null && view.listing !== null;
+  /**
+   * What a toolbar Delete would remove: the row picked, when it is a folder on this server.
+   * The folder on screen is deleted from the list's own menu instead (its empty space), so the
+   * toolbar has one unambiguous subject — the selection the user is looking at.
+   */
+  const deletableSelection =
+    canCreateFolder && selectedEntry !== null && isFolder(selectedEntry)
+      ? selectedEntry.path
+      : null;
 
   // Opening the box puts the caret in it, selected, so a name is typed straight over any
   // suggestion the browser made. Keyed on the box alone: re-running per keystroke would fight
@@ -523,6 +548,45 @@ export function WorkspaceFinder({
         newFolderRef.current?.focus();
       })
       .finally(() => setCreating(false));
+  };
+
+  /**
+   * Asks before removing `path`: the card is the whole transaction, and it carries the one
+   * rule that makes the answer safe to expect — only an empty folder can go. A target on
+   * another machine is not ours to change, exactly as for New folder (a machine browsed over
+   * ssh lists folders and cannot be asked to remove one), so nothing is asked there.
+   */
+  const askDelete = (path: string, onMachine: string | null) => {
+    if (onMachine !== null) return;
+    setDeleteTarget(path);
+  };
+
+  /**
+   * Removes the empty folder the card named. A folder that is not empty — the case the card
+   * warned about — comes back as its own refusal, shown as a toast: unlike a folder name there
+   * is nothing in the dialog to change, so the card closes on the reason rather than staying
+   * open on it. Afterwards the list is read again, since a folder that is gone must not stay on
+   * screen; when the folder removed was the one being browsed, the finder stands in its parent.
+   */
+  const deleteFolder = () => {
+    const target = deleteTarget;
+    if (target === null || deleting) return;
+    setDeleting(true);
+    api
+      .deleteDir(projectId, target)
+      .then((res) => {
+        const removedHere = res.path === view.listing?.path;
+        const parent = removedHere ? parentOf(res.path) : null;
+        setDeleteTarget(null);
+        toastSuccess(f.folderDeleted(baseName(res.path)));
+        if (parent !== null) load(parent, { record: false });
+        else refresh();
+      })
+      .catch((err: unknown) => {
+        setDeleteTarget(null);
+        toastError(apiErrorText(err));
+      })
+      .finally(() => setDeleting(false));
   };
 
   /**
@@ -630,6 +694,11 @@ export function WorkspaceFinder({
         // panel's item filter), so there is nothing to re-root: the box opens where we stand.
         startNewFolder();
         break;
+      case "delete":
+        // Likewise this server's own folders only; what goes is the row the menu stands on —
+        // the folder itself, or the folder on screen when the menu came from empty space.
+        askDelete(target.path, target.machine);
+        break;
       case "addToQuickAccess":
       case "removeFromQuickAccess":
         editQuickAccess(target.path, target.machine, item === "addToQuickAccess");
@@ -655,6 +724,8 @@ export function WorkspaceFinder({
         return target.kind === "here" ? f.chooseCurrent : f.chooseThis;
       case "newFolder":
         return f.newFolder;
+      case "delete":
+        return f.deleteFolder;
       case "addToQuickAccess":
         return f.addToQuickAccess;
       case "removeFromQuickAccess":
@@ -1229,6 +1300,20 @@ export function WorkspaceFinder({
             <GlyphIcon d={ICONS.folderPlus} size={ICON_SIZE.iconButton} />
           </button>
         )}
+        {/* Delete sits beside it — the same filesystem work, on the row that is picked rather
+            than on the folder on screen — and a phone reaches both from the list's context
+            menu, where the toolbar keeps only the navigation. */}
+        {deletableSelection !== null && (
+          <button
+            type="button"
+            className={`${navButtonClass} hidden sm:block`}
+            data-tooltip={f.deleteFolder}
+            aria-label={f.deleteFolder}
+            onClick={() => askDelete(deletableSelection, machine)}
+          >
+            <GlyphIcon d={ICONS.trash} size={ICON_SIZE.iconButton} />
+          </button>
+        )}
       </div>
       {addressBar}
       <label className="relative flex shrink-0 items-center">
@@ -1548,21 +1633,43 @@ export function WorkspaceFinder({
           button={null}
         >
           <Menu density="sm">
-            {finderMenuItems(menuTarget, inQuickAccess(menuTarget.path, menuTarget.machine))
-              // Making a folder is this server's own filesystem work: a machine browsed over ssh
-              // lists folders and cannot be asked to make one, so the row is not offered there.
-              .filter((item) => item !== "newFolder" || menuTarget.machine === null)
-              .map((item) => (
-                <MenuItem
-                  key={item}
-                  glyph={MENU_ICON[item]}
-                  label={menuLabel(item, menuTarget)}
-                  onSelect={() => runMenuItem(item, menuTarget)}
-                />
-              ))}
+            {finderMenuItems(
+              menuTarget,
+              inQuickAccess(menuTarget.path, menuTarget.machine),
+              // Making and removing a folder are this server's own filesystem work, so both
+              // rows are dropped for a target on another machine (one browsed over ssh lists
+              // folders and cannot be asked to change them).
+              menuTarget.machine === null,
+            ).map((item) => (
+              <MenuItem
+                key={item}
+                glyph={MENU_ICON[item]}
+                label={menuLabel(item, menuTarget)}
+                onSelect={() => runMenuItem(item, menuTarget)}
+              />
+            ))}
           </Menu>
         </Dropdown>
       )}
+      {/* Removing a folder is the finder's one irreversible action, so it is asked for and never
+          assumed: the card names the folder, says the rule the server enforces (only an empty
+          folder can go) and waits. It stacks over this dialog of its own accord — Modals are
+          portaled to body and share one Escape stack — so one Escape closes the card and leaves
+          the finder where it was browsing. */}
+      <ConfirmModal
+        open={deleteTarget !== null}
+        title={f.deleteFolderTitle}
+        tone="danger"
+        confirmLabel={S.common.delete}
+        cancelLabel={S.common.cancel}
+        busy={deleting}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={deleteFolder}
+      >
+        <p className="break-all text-sm text-gray-600 dark:text-gray-300">
+          {deleteTarget !== null ? f.deleteFolderConfirm(baseName(deleteTarget)) : ""}
+        </p>
+      </ConfirmModal>
     </Modal>
   );
 }

@@ -2478,6 +2478,18 @@ export const en: Strings = {
       newFolder: "New folder",
       newFolderName: "Folder name",
       newFolderHint: "Type a name and press Enter to create it, Escape to cancel",
+      /** The context-menu row that removes one folder on this server. */
+      deleteFolder: "Delete folder",
+      /** Names the delete confirmation for assistive tech (the card itself has no title bar). */
+      deleteFolderTitle: "Delete folder",
+      /**
+       * The delete confirmation: what goes, and the rule the server enforces — only an empty
+       * folder can be removed, and there is no undo (nothing is moved to a trash).
+       */
+      deleteFolderConfirm: (name: string): string =>
+        `Delete the folder "${name}"? Only an empty folder can be deleted — the server refuses one that still holds anything — and a deleted folder cannot be recovered.`,
+      /** The toast after one was removed. */
+      folderDeleted: (name: string): string => `Deleted the folder "${name}"`,
       chooseThis: "Choose this folder",
       chooseCurrent: "Choose the current folder",
       copyPath: "Copy path",
@@ -4963,12 +4975,17 @@ Scenarios:
       image_too_large: "The image is too large to send inline.",
       dir_not_absolute: "The directory must be an absolute path.",
       dir_not_found: "That directory does not exist or is inaccessible.",
-      dir_permission_denied: "Reading that directory is not allowed.",
+      dir_permission_denied: "The server is not allowed to access that directory.",
       dir_name_empty: "Enter a folder name.",
       dir_name_invalid:
         "A folder name cannot be a path, `.` or `..`, nor contain characters the system refuses.",
       dir_exists: "That name is already taken.",
       dir_create_failed: "Could not create that folder.",
+      dir_not_empty: "That folder is not empty — only an empty folder can be deleted.",
+      dir_root_protected: "The root directory cannot be deleted.",
+      dir_project_protected:
+        "The Project's own directory, or a directory that contains it, cannot be deleted.",
+      dir_delete_failed: "Could not delete that folder.",
       not_a_dir: "That path is not a directory.",
       path_not_found: "That path does not exist.",
       reveal_failed: "Could not open the folder.",

@@ -18,6 +18,10 @@
  * POST /api/projects/:p/dirs makes one folder inside the folder being browsed, which is the
  * picker's "New folder": see the route for what it refuses.
  *
+ * DELETE /api/projects/:p/dirs removes one empty folder, the picker's "Delete": see the route
+ * for what it refuses. It is the picker's only destructive verb, so it takes a folder, never a
+ * file, and never a whole tree: a folder with anything in it is a refusal, not a walk.
+ *
  * POST /api/projects/:p/dirs/access is the picker's way out of that refusal in the desktop
  * app: see the route.
  *
@@ -27,9 +31,11 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Hono } from "hono";
+import { projectDir } from "@prismshadow/penguin-core";
 import type {
   DirAccessResponse,
   DirCreateResponse,
+  DirDeleteResponse,
   DirEntryInfo,
   DirListResponse,
 } from "../../api/types.js";
@@ -38,12 +44,17 @@ import { HttpError } from "../errors.js";
 import { requireValidId } from "../validate.js";
 import { Bind, Component, Use } from "@prismshadow/penguin-core/kernel";
 import { directorySkillsRoutes } from "./directory-skills.js";
-import type { Desktop, DesktopApi } from "../../hmr/capabilities.js";
+import type { Desktop, DesktopApi, Paths } from "../../hmr/capabilities.js";
 import type { Access } from "../../mechanisms/projects.js";
 
 /** What this route group reaches — bound by its module (src/modules). */
 export interface DirsRouteDeps {
   access: Access;
+  /**
+   * The data root, which holds every Project's own directory: what the delete route refuses to
+   * remove (a Project's directory, and anything above it).
+   */
+  root: string;
   /** The desktop shell's service; null when this server was not started by the desktop shell. */
   desktop: Pick<DesktopApi, "requestFolderAccess"> | null;
 }
@@ -116,6 +127,72 @@ export function dirsRoutes(deps: DirsRouteDeps): Hono<AppEnv> {
       throw dirCreateError(err, target);
     }
     return c.json({ path: target } satisfies DirCreateResponse, 201);
+  });
+
+  /**
+   * The picker's "Delete": removes ONE empty folder, the one `path` names. Removal is the only
+   * destructive thing the picker can ask of a filesystem it may browse anywhere on, so the
+   * route is deliberately narrow. The folder must be empty — a folder with anything in it is a
+   * refusal (`dir_not_empty`), never a walk: no recursive delete exists here. A root, the
+   * Project's own directory and anything above it are refused outright, and so is a path that
+   * names a file: this route removes folders.
+   *
+   * Every decision reads the resolved path (`realpath`), so a symlink cannot name a forbidden
+   * folder indirectly, and the answer names the resolved folder — which is the one that was
+   * removed, and the one a picker standing on a link should re-read.
+   */
+  app.delete("/", async (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectAccess(c.var.user.userId, projectId);
+
+    const body = (await c.req.json().catch(() => null)) as { path?: unknown } | null;
+    const requested = typeof body?.path === "string" ? body.path.trim() : "";
+    if (!path.isAbsolute(requested)) {
+      throw new HttpError(400, "dir_not_absolute", "Directory must be an absolute path.");
+    }
+
+    let real: string;
+    let isDir: boolean;
+    try {
+      real = await fs.realpath(requested);
+      isDir = (await fs.stat(real)).isDirectory();
+    } catch (err) {
+      throw dirDeleteError(err, requested);
+    }
+    if (!isDir) throw new HttpError(400, "not_a_dir", "Not a directory.");
+
+    // A root's own parent is itself (`/` on POSIX, `C:\` on Windows). There is nothing above a
+    // root to stand in afterwards, and every path is under one: a root is never a folder to go.
+    if (path.dirname(real) === real) {
+      throw new HttpError(
+        403,
+        "dir_root_protected",
+        `The root directory cannot be deleted: ${real}.`,
+      );
+    }
+    // The Project's own directory holds its config, its Agents and their Sessions, and every
+    // folder above it holds this Project beside others: neither is the picker's to remove.
+    if (isSameOrAbove(real, await resolveProjectDir(deps.root, projectId))) {
+      throw new HttpError(
+        403,
+        "dir_project_protected",
+        `The Project's directory, or one that contains it, cannot be deleted: ${real}.`,
+      );
+    }
+
+    try {
+      // Emptiness is asked before the removal, so "not empty" is one answer on every platform
+      // (Windows reports a folder that still holds something as a permission failure); rmdir
+      // stays the operation itself, so a folder that fills up in between still fails.
+      if ((await fs.readdir(real)).length > 0) {
+        throw new HttpError(409, "dir_not_empty", `The folder is not empty: ${real}.`);
+      }
+      await fs.rmdir(real);
+    } catch (err) {
+      if (err instanceof HttpError) throw err;
+      throw dirDeleteError(err, real);
+    }
+    return c.json({ path: real } satisfies DirDeleteResponse);
   });
 
   /**
@@ -231,6 +308,56 @@ export function dirCreateError(err: unknown, target: string): HttpError {
 }
 
 /**
+ * The HTTP answer for a `rmdir` (or the emptiness check before it) that failed on `dir`. The
+ * same shape as `dirCreateError`; the one refusal a removal has of its own is a folder that
+ * still holds something, which is a 409 with its own code because the user's next step differs
+ * (empty it, or delete nothing at all) — never a retry of the same request.
+ */
+export function dirDeleteError(err: unknown, target: string): HttpError {
+  const code = (err as NodeJS.ErrnoException | null)?.code;
+  if (code === "ENOTEMPTY" || code === "EEXIST") {
+    return new HttpError(409, "dir_not_empty", `The folder is not empty: ${target}.`);
+  }
+  if (code === "EACCES" || code === "EPERM") {
+    return new HttpError(
+      403,
+      "dir_permission_denied",
+      `The server is not allowed to write here: ${path.dirname(target)}.`,
+    );
+  }
+  if (code === "ENOENT" || code === "ENOTDIR" || code === "ELOOP") {
+    return new HttpError(404, "dir_not_found", `Directory does not exist: ${target}.`);
+  }
+  return new HttpError(500, "dir_delete_failed", `Could not delete this folder: ${target}.`);
+}
+
+/**
+ * Whether `above` is `below` itself or one of the folders holding it — what the Project
+ * directory's protection is made of. Both sides are resolved first, so a trailing separator,
+ * a `.`/`..` in the middle and a doubled separator all compare as the folder they name.
+ */
+export function isSameOrAbove(above: string, below: string): boolean {
+  const a = path.resolve(above);
+  const b = path.resolve(below);
+  return a === b || b.startsWith(a.endsWith(path.sep) ? a : `${a}${path.sep}`);
+}
+
+/**
+ * The Project's own directory, resolved where it exists. The data root itself may be reached
+ * through a symlink (`/tmp` and `/var` are on macOS, and an operator may point `ADELIE_HOME`
+ * at one), so comparing a caller's path against the spelling `<root>/<projectId>` alone would
+ * mistake a link to that folder for somewhere else.
+ */
+async function resolveProjectDir(root: string, projectId: string): Promise<string> {
+  const dir = projectDir(root, projectId);
+  try {
+    return await fs.realpath(dir);
+  } catch {
+    return path.resolve(dir);
+  }
+}
+
+/**
  * `requireProjectDir` with the refusal told apart from absence. That helper folds every
  * failure into "does not exist or is inaccessible", which is the right answer where a path is
  * being validated; here it is the question being asked.
@@ -327,10 +454,15 @@ async function driveRoots(): Promise<string[]> {
 export class ProjectsRoutes {
   @Use() private readonly access!: Access;
   @Use() private readonly desktop!: Desktop;
+  @Use() private readonly paths!: Paths;
   @Bind("projects.dirs") dirsRoutes!: Hono<AppEnv>;
   @Bind("projects.dir-skills") dirSkillsRoutes!: Hono<AppEnv>;
   setup() {
-    this.dirsRoutes = dirsRoutes({ access: this.access, desktop: this.desktop.current() });
+    this.dirsRoutes = dirsRoutes({
+      access: this.access,
+      root: this.paths.root,
+      desktop: this.desktop.current(),
+    });
     this.dirSkillsRoutes = directorySkillsRoutes({ access: this.access });
   }
 }
