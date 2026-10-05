@@ -103,10 +103,18 @@
 
 | | |
 | --- | --- |
-| tag | `v0.2.0`（接在旧 Adelie 的 `v0.1.0` 之后；本地 `v0.1.0` 指向旧 Adelie 的 `ae9da1c9`） |
+| tag | `v0.2.0`（接在旧 Adelie 的 `v0.1.0` 之后；旧 `v0.1.0` 指向旧 Adelie 的 `ae9da1c9`） |
 | 分支 | `fork/penguin-base` |
-| 发布正文 | `RELEASE-v0.2.0.md`（仓库根，中英双语问题只在中文 —— 发布正文用中文） |
+| 发布正文 | `RELEASE-v0.2.0.md`（仓库根；发布正文用中文） |
 | 产物 | **没有**。npm 包 / 安装包 / Docker 镜像 / 下载页都属于 4.x |
+
+**推上去后核对过的远端状态**（用匿名 GitHub API 读公开信息）：分支头 = 发布提交、tag `v0.2.0`
+指向同一个提交（注解 tag）、仓库里已有一条旧 Release `v0.1.0`（旧的 Adelie）、`actions/runs`
+总数在推 tag 前后都是 26 条且最新一条仍是 2026-10-04 的 main 推送 —— **推 tag 没有触发任何工作流**。
+另外用真浏览器（playwright-core + 本地 chromium）打开
+<https://github.com/lmliheng/Adelie/blob/fork/penguin-base/README.md> 看过渲染：图标、标题、
+`built on PenguinHarness` 副标题、三张徽章与 IMPORTANT 声明都正常显示，无 4xx（两段上游录屏的
+mp4 被本机出口白名单挡了，与仓库无关）。
 
 **为发布做的一件安全动作**：`.github/workflows/release.yml` 原本 `on: push: tags: ["v*"]`，
 推任何 `v*` tag 都会去构建 `penguin/` 安装包并把 `@penguinharness/*`、`@prismshadow/penguin-*`
