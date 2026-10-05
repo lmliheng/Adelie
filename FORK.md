@@ -45,13 +45,15 @@ git merge upstream/develop        # 在 main 上
 
 进度与每条待办记在 `FORK-PROGRESS.md`（本文件讲「为什么这样改」，它讲「改到哪了」）。
 
-### 已经改掉的两件事（Apache-2.0 §4 要求的改动声明，2026-10-05）
+### 已经改掉的（Apache-2.0 §4 要求的改动声明，2026-10-05 起）
 
 - **更新链路只连 Adelie 自己的 Releases**。`penguin update`、Web 的「有新版本」提示与它的发布页
-  链接都指向 `lmliheng/Adelie`。上游那套 Alibaba Cloud OSS 镜像**没有跟着搬过来**（镜像是项目
-  自己的账号与账单），所以 CLI 的下载源只剩 GitHub，`PENGUIN_DOWNLOAD_SOURCE=oss` 会被明确拒绝
-  而不是默默回落到 auto。`packages/desktop` 与根目录 `install.sh` / `install.ps1` 里**还留着**
-  上游的仓库与镜像地址，两处的收尾判据记在 `FORK-PROGRESS.md`「主线三件事」一节的待办表里。
+  链接、桌面端的自动更新 feed、根目录两个安装脚本，以及插件库的来源元数据
+  （`server/src/plugin/builtin-index.json` 与 `plugins/*/package.json`）都指向 `lmliheng/Adelie`。
+  上游那套 Alibaba Cloud OSS 镜像**没有跟着搬过来**（镜像是项目自己的账号与账单），所以下载源
+  只剩 GitHub，`PENGUIN_DOWNLOAD_SOURCE=oss`（CLI 与两个安装脚本）会被明确拒绝而不是默默回落到
+  auto。桌面端的「速度探测 + 镜像 feed」子系统与安装脚本里的 `SPEED_PROBE_*` 整套也一并删掉了；
+  自建镜像改用自己的 base URL / feed（`PENGUIN_DOWNLOAD_BASE_URL`、`PENGUIN_UPDATE_FEED_URL`）。
 - **模型库里没有「官方推荐」了**。上游把 TokenDance 分组标为 `recommended` 并在模型库页面挂
   「官方推荐 / Recommended」标签；Adelie 删掉了这个标记（推荐哪家网关是上游的商业选择，不是我们
   的）。分组的默认顺序没有变。

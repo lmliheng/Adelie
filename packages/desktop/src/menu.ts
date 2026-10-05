@@ -14,7 +14,9 @@ import { checkForUpdatesManually, updatesAvailableInThisForm } from "./updater.j
 export const INSTALL_CLI_MENU_LABEL = "Install 'penguin' Command…";
 
 const CHECK_FOR_UPDATES_MENU_LABEL = "Check for Updates…";
-const REPO_URL = "https://github.com/Prism-Shadow/penguin-harness";
+// Adelie's own repository: this item used to open upstream PenguinHarness's, which is a
+// different product (2026-10-05).
+const REPO_URL = "https://github.com/lmliheng/Adelie";
 
 export function installAppMenu(opts: {
   includeCliInstall: boolean;

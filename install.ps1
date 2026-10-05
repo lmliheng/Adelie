@@ -1,15 +1,13 @@
 # Adelie one-line installer for Windows.
 #
-#   irm https://penguin.ooo/install.ps1 | iex
+#   irm https://github.com/lmliheng/Adelie/releases/latest/download/install.ps1 | iex
 #
 # Options:
 #   $env:PENGUIN_VERSION = "vX.Y.Z"     choose a version (same as -Version vX.Y.Z); a published Release
 #                                         installer defaults to its own version, an unstamped source copy to latest
 #   $env:PENGUIN_INSTALL_DIR = "<dir>"  install dir; default $env:USERPROFILE\.penguin
 #   $env:PENGUIN_ARCHIVE = "<file>"     install a local Release zip without network access (same as -ArchivePath)
-#   $env:PENGUIN_DOWNLOAD_SOURCE = "auto|oss|github" choose the online source; default auto
-#                                         (speed-probed, with the same-version other source as fallback)
-#   $env:PENGUIN_DOWNLOAD_SPEED_PROBE = "0" disable same-version OSS/GitHub probe timing in auto mode
+#   $env:PENGUIN_DOWNLOAD_SOURCE = "auto|github" choose the online source; default auto (GitHub Releases)
 #   $env:PENGUIN_DOWNLOAD_BASE_URL = "https://..." exact online asset directory selected by the stable forwarder
 #   $env:PENGUIN_DOWNLOAD_FALLBACK_BASE_URL = "https://..." fallback for PENGUIN_DOWNLOAD_BASE_URL
 #   -NoModifyPath                       do not add <install>\bin to the user Path; for a second installation
@@ -41,34 +39,10 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue" # Invoke-WebRequest progress rendering slows downloads massively on PS 5.1
 
-$Repo = "https://github.com/Prism-Shadow/penguin-harness"
-$OssOrigin = "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com"
-$OssReleaseRoot = "$OssOrigin/releases"
+$Repo = "https://github.com/lmliheng/Adelie"
 $GitHubReleaseRoot = "$Repo/releases/download"
 $GitHubLatestBase = "$Repo/releases/latest/download"
 $Asset = "penguin-win32-x64.zip"
-# Auto-mode source selection, one rule shared by install.ps1 and install.sh:
-#
-#   1. Measure GitHub on the release's large probe file. At or above
-#      $SpeedProbeGitHubMinBytesPerSecond it wins outright and OSS is never touched.
-#   2. Only below that is OSS measured, and it takes over only when it is more than
-#      $SpeedProbeOssSwitchRatio of GitHub — a mirror that is merely a little quicker does not
-#      justify its bandwidth bill, and a slow GitHub download still resumes.
-#
-# GitHub is the free source, so every tie and every unmeasurable comparison stays there. The two
-# constants are duplicated because these three implementations cannot import from each other — an
-# installer is a standalone file fetched over the network. Change them in all three at once, which
-# scripts/test-installer.sh pins.
-#
-# The total budget covers the whole probe: manifest, the small reachability pair, and up to two
-# large probes. It is deliberately the sum of their caps, so the second large probe always gets its
-# full window rather than being squeezed into declaring a healthy mirror unreachable.
-$SpeedProbeManifestTimeoutSeconds = 5
-$SpeedProbeSmallTimeoutSeconds = 5
-$SpeedProbeLargeTimeoutSeconds = 8
-$SpeedProbeTotalTimeoutSeconds = 26
-$SpeedProbeGitHubMinBytesPerSecond = 262144
-$SpeedProbeOssSwitchRatio = 1.5
 $PayloadName = "payload.zip"
 # The release workflow replaces this token with the immutable tag before publishing both the
 # standalone installer and the copy sealed inside the Windows bundle.
@@ -116,47 +90,8 @@ function Test-ReleaseTag([string]$Value) {
   return $Value -match '^v[0-9A-Za-z][0-9A-Za-z._-]*$'
 }
 
-function Try-DownloadFile([string]$Uri, [string]$OutFile, [int]$TimeoutSec) {
-  try {
-    Invoke-WebRequest -Uri $Uri -OutFile $OutFile -UseBasicParsing -TimeoutSec $TimeoutSec | Out-Null
-    return $true
-  } catch {
-    Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
-    return $false
-  }
-}
-
-function Get-SpeedProbeTimeoutSec([DateTime]$Deadline, [int]$MaxSec) {
-  $Remaining = [int][Math]::Ceiling(($Deadline - [DateTime]::UtcNow).TotalSeconds)
-  if ($Remaining -le 0) { return 0 }
-  return [Math]::Min($MaxSec, $Remaining)
-}
-
-function Get-OssLatestTag([string]$ManifestPath) {
-  Remove-Item -LiteralPath $ManifestPath -Force -ErrorAction SilentlyContinue
-  try {
-    Invoke-WebRequest -Uri "$OssOrigin/latest.json" -OutFile $ManifestPath -UseBasicParsing -TimeoutSec 8 | Out-Null
-  } catch {
-    Remove-Item -LiteralPath $ManifestPath -Force -ErrorAction SilentlyContinue
-    return ""
-  }
-  try {
-    $Manifest = [IO.File]::ReadAllText($ManifestPath, [Text.UTF8Encoding]::new($false)) | ConvertFrom-Json
-    $CandidateTag = [string]$Manifest.tag
-    $CandidateBase = ([string]$Manifest.releaseBaseUrl).TrimEnd('/')
-    if ([int]$Manifest.schemaVersion -eq 1 -and
-        (Test-ReleaseTag $CandidateTag) -and
-        $CandidateBase -eq "$OssReleaseRoot/$CandidateTag") {
-      return $CandidateTag
-    }
-  } catch {
-  }
-  return ""
-}
-
 function Get-DownloadSourceLabel([string]$BaseUrl) {
   try { $HostName = ([Uri]$BaseUrl).Host } catch { return "configured mirror" }
-  if ($HostName -like "*.aliyuncs.com") { return "OSS mirror" }
   if ($HostName -eq "github.com") { return "GitHub" }
   return "configured mirror"
 }
@@ -177,157 +112,6 @@ function Get-ReleasePair(
     Remove-Item -LiteralPath $ZipPath, $ShaPath -Force -ErrorAction SilentlyContinue
     return $false
   }
-}
-
-function Test-SafeReleaseAssetName([string]$Value) {
-  return $Value -match '^[A-Za-z0-9._+-]+$' -and -not $Value.Contains('..')
-}
-
-function Read-ReleaseDownloadManifest([string]$Tag, [string]$ManifestPath, [DateTime]$Deadline) {
-  Remove-Item -LiteralPath $ManifestPath -Force -ErrorAction SilentlyContinue
-  $TimeoutSec = Get-SpeedProbeTimeoutSec $Deadline $SpeedProbeManifestTimeoutSeconds
-  if ($TimeoutSec -le 0 -or -not (Try-DownloadFile "$OssReleaseRoot/$Tag/release-download-manifest.tsv" $ManifestPath $TimeoutSec)) {
-    $TimeoutSec = Get-SpeedProbeTimeoutSec $Deadline $SpeedProbeManifestTimeoutSeconds
-    if ($TimeoutSec -le 0 -or -not (Try-DownloadFile "$GitHubReleaseRoot/$Tag/release-download-manifest.tsv" $ManifestPath $TimeoutSec)) {
-      return $null
-    }
-  }
-
-  $Lines = [IO.File]::ReadAllLines($ManifestPath, [Text.UTF8Encoding]::new($false))
-  if ($Lines.Count -lt 4) { return $null }
-  if ($Lines[0] -ne "penguin-release-download-manifest`t1`t$Tag") { return $null }
-
-  $SmallProbe = $null
-  $LargeProbe = $null
-  $AssetSize = 0L
-  foreach ($Line in $Lines | Select-Object -Skip 1) {
-    if (-not $Line) { return $null }
-    $Fields = $Line -split "`t"
-    if ($Fields[0] -eq "probe") {
-      if ($Fields.Count -ne 5) { return $null }
-      $Probe = [PSCustomObject]@{
-        Name = [string]$Fields[2]
-        Size = 0L
-        Sha256 = [string]$Fields[4]
-      }
-      if (-not (Test-SafeReleaseAssetName $Probe.Name)) { return $null }
-      $ProbeSize = 0L
-      if (-not [Int64]::TryParse([string]$Fields[3], [ref]$ProbeSize) -or $ProbeSize -le 0) { return $null }
-      $Probe.Size = $ProbeSize
-      if ($Probe.Sha256 -notmatch '^[0-9a-f]{64}$') { return $null }
-      if ($Fields[1] -eq "small") { $SmallProbe = $Probe }
-      if ($Fields[1] -eq "large") { $LargeProbe = $Probe }
-    } elseif ($Fields[0] -eq "asset" -and $Fields.Count -eq 4 -and $Fields[1] -eq $Asset) {
-      # Not part of the decision — an integrity check that this manifest belongs to a release which
-      # actually carries this target's bundle, so a mismatched manifest cannot steer the probe.
-      if (-not [Int64]::TryParse([string]$Fields[2], [ref]$AssetSize) -or $AssetSize -le 0) { return $null }
-    }
-  }
-
-  if (-not $SmallProbe -or -not $LargeProbe -or $AssetSize -le 0) { return $null }
-  [PSCustomObject]@{
-    SmallProbe = $SmallProbe
-    LargeProbe = $LargeProbe
-    AssetSize = $AssetSize
-  }
-}
-
-function Invoke-ProbeDownload(
-  [string]$BaseUrl,
-  [object]$Probe,
-  [string]$Tmp,
-  [string]$Label,
-  [DateTime]$Deadline,
-  [int]$MaxTimeoutSec = $SpeedProbeSmallTimeoutSeconds
-) {
-  $ProbePath = Join-Path $Tmp "probe-$Label-$($Probe.Name)"
-  Remove-Item -LiteralPath $ProbePath -Force -ErrorAction SilentlyContinue
-  $TimeoutSec = Get-SpeedProbeTimeoutSec $Deadline $MaxTimeoutSec
-  if ($TimeoutSec -le 0) {
-    return [PSCustomObject]@{ Ok = $false; Seconds = 0.0 }
-  }
-  $Succeeded = $false
-  $Elapsed = Measure-Command {
-    $Succeeded = Try-DownloadFile "$BaseUrl/$($Probe.Name)" $ProbePath $TimeoutSec
-  }
-  if (-not $Succeeded) {
-    return [PSCustomObject]@{ Ok = $false; Seconds = 0.0 }
-  }
-  try {
-    $Item = Get-Item -LiteralPath $ProbePath -ErrorAction Stop
-    if ($Item.Length -ne $Probe.Size) {
-      return [PSCustomObject]@{ Ok = $false; Seconds = 0.0 }
-    }
-    $ActualHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ProbePath).Hash.ToLowerInvariant()
-    if ($ActualHash -ne $Probe.Sha256) {
-      return [PSCustomObject]@{ Ok = $false; Seconds = 0.0 }
-    }
-  } catch {
-    return [PSCustomObject]@{ Ok = $false; Seconds = 0.0 }
-  }
-  $Seconds = [Math]::Max($Elapsed.TotalSeconds, 0.001)
-  [PSCustomObject]@{ Ok = $true; Seconds = $Seconds }
-}
-
-# Throughput a completed probe measured, in bytes per second; 0 when it did not complete, which
-# sorts it below any real measurement in the comparison below.
-function Get-ProbeBytesPerSecond([object]$Probe, [Int64]$ProbeSize) {
-  if (-not $Probe.Ok) { return 0.0 }
-  return [double]$ProbeSize / [Math]::Max([double]$Probe.Seconds, 0.001)
-}
-
-# The shared rule, in one place: GitHub clears the minimum and wins outright, otherwise the mirror
-# has to beat it by the switch ratio to take over.
-function Select-SpeedProbeSource([double]$GitHubBytesPerSecond, [double]$OssBytesPerSecond) {
-  if ($GitHubBytesPerSecond -ge $SpeedProbeGitHubMinBytesPerSecond) { return "github" }
-  if ($OssBytesPerSecond -gt ($GitHubBytesPerSecond * $SpeedProbeOssSwitchRatio)) { return "oss" }
-  return "github"
-}
-
-function Select-SpeedProbeDownloadSources([string]$Tag, [string]$Tmp) {
-  $Deadline = [DateTime]::UtcNow.AddSeconds($SpeedProbeTotalTimeoutSeconds)
-  $Manifest = Read-ReleaseDownloadManifest $Tag (Join-Path $Tmp "release-download-manifest.tsv") $Deadline
-  if (-not $Manifest) { return $null }
-
-  Write-Host "Testing OSS mirror and GitHub download sources ..."
-  $OssBase = "$OssReleaseRoot/$Tag"
-  $GitHubBase = "$GitHubReleaseRoot/$Tag"
-  $OssSmall = Invoke-ProbeDownload $OssBase $Manifest.SmallProbe $Tmp "oss-small" $Deadline
-  $GitHubSmall = Invoke-ProbeDownload $GitHubBase $Manifest.SmallProbe $Tmp "github-small" $Deadline
-
-  if ($GitHubSmall.Ok -and -not $OssSmall.Ok) {
-    Write-Host "Selected GitHub (OSS mirror probe unavailable)."
-    return [PSCustomObject]@{ BaseUrl = $GitHubBase; FallbackBaseUrl = $OssBase }
-  }
-  if ($OssSmall.Ok -and -not $GitHubSmall.Ok) {
-    Write-Host "Selected OSS mirror (GitHub probe unavailable)."
-    return [PSCustomObject]@{ BaseUrl = $OssBase; FallbackBaseUrl = $GitHubBase }
-  }
-  if (-not $OssSmall.Ok -and -not $GitHubSmall.Ok) { return $null }
-
-  $GitHubLarge = Invoke-ProbeDownload $GitHubBase $Manifest.LargeProbe $Tmp "github-large" $Deadline $SpeedProbeLargeTimeoutSeconds
-  $GitHubBytesPerSecond = Get-ProbeBytesPerSecond $GitHubLarge $Manifest.LargeProbe.Size
-
-  # OSS is measured only once GitHub has failed the minimum: above it GitHub has already won, and
-  # the mirror's bandwidth is not spent on a probe that could not change the answer. Probing runs
-  # one source at a time on purpose — two concurrent transfers share the link and would each read
-  # as half as fast, which an absolute threshold cannot tolerate.
-  $OssBytesPerSecond = 0.0
-  if ($GitHubBytesPerSecond -lt $SpeedProbeGitHubMinBytesPerSecond) {
-    $OssLarge = Invoke-ProbeDownload $OssBase $Manifest.LargeProbe $Tmp "oss-large" $Deadline $SpeedProbeLargeTimeoutSeconds
-    $OssBytesPerSecond = Get-ProbeBytesPerSecond $OssLarge $Manifest.LargeProbe.Size
-  }
-
-  if ((Select-SpeedProbeSource $GitHubBytesPerSecond $OssBytesPerSecond) -eq "github") {
-    if ($GitHubBytesPerSecond -ge $SpeedProbeGitHubMinBytesPerSecond) {
-      Write-Host "Selected GitHub (meets minimum download speed)."
-    } else {
-      Write-Host "Selected GitHub (the OSS mirror was not enough faster to be worth switching)."
-    }
-    return [PSCustomObject]@{ BaseUrl = $GitHubBase; FallbackBaseUrl = $OssBase }
-  }
-  Write-Host "Selected OSS mirror (clearly faster than GitHub here)."
-  return [PSCustomObject]@{ BaseUrl = $OssBase; FallbackBaseUrl = $GitHubBase }
 }
 
 function Restore-PreviousInstall(
@@ -376,11 +160,6 @@ $SourceMode = if ($env:PENGUIN_DOWNLOAD_SOURCE) {
 } else {
   "auto"
 }
-$DownloadSpeedProbe = if ($env:PENGUIN_DOWNLOAD_SPEED_PROBE) {
-  $env:PENGUIN_DOWNLOAD_SPEED_PROBE
-} else {
-  "1"
-}
 # An extracted installer bundle keeps install.cmd, this script, payload.zip and its checksum
 # together. `$PSScriptRoot` is empty for the documented `irm ... | iex` path, so online installs
 # do not accidentally pick up an unrelated archive from the caller's current directory.
@@ -394,11 +173,8 @@ if ($ArchivePath -and $Version) {
 if ($Version -and -not (Test-ReleaseTag $Version)) {
   Fail "invalid release version: $Version"
 }
-if ($SourceMode -notin @("auto", "oss", "github")) {
-  Fail "PENGUIN_DOWNLOAD_SOURCE must be auto, oss, or github"
-}
-if ($DownloadSpeedProbe -notin @("0", "1")) {
-  Fail "PENGUIN_DOWNLOAD_SPEED_PROBE must be 0 or 1"
+if ($SourceMode -notin @("auto", "github")) {
+  Fail "PENGUIN_DOWNLOAD_SOURCE must be auto or github"
 }
 $ResolvedReleaseVersion = if ($Version) {
   $Version
@@ -429,10 +205,9 @@ try {
   # .NET builds where the enum is immutable already default to TLS 1.2+.
 }
 
-# --- Download. Explicit forwarder/configured URLs win. Otherwise a stamped Release installer
-#     uses its own immutable version: auto prefers OSS and falls back only to the same GitHub
-#     tag. An unstamped source-tree installer resolves latest.json first so it also locks one
-#     version before downloading assets. ---
+# --- Download. An explicit forwarder/configured URL wins. Otherwise a stamped Release installer
+#     uses its own immutable version; an unstamped source-tree installer falls back to the
+#     release GitHub currently marks latest. ---
 $Tmp = Join-Path ([IO.Path]::GetTempPath()) "penguin-install-$PID"
 if (Test-Path $Tmp) { Remove-Item -Recurse -Force $Tmp }
 New-Item -ItemType Directory -Path $Tmp | Out-Null
@@ -456,36 +231,10 @@ try {
     $FallbackBaseUrl = $DownloadFallbackBaseUrl
     if ($DownloadBaseUrl) {
       $BaseUrl = $DownloadBaseUrl
-    } elseif ($SourceMode -eq "github") {
-      $BaseUrl = if ($ResolvedReleaseVersion) {
-        "$GitHubReleaseRoot/$ResolvedReleaseVersion"
-      } else {
-        $GitHubLatestBase
-      }
+    } elseif ($ResolvedReleaseVersion) {
+      $BaseUrl = "$GitHubReleaseRoot/$ResolvedReleaseVersion"
     } else {
-      $SelectedTag = $ResolvedReleaseVersion
-      if (-not $SelectedTag) {
-        $SelectedTag = Get-OssLatestTag (Join-Path $Tmp "latest.json")
-      }
-      if ($SelectedTag) {
-        $BaseUrl = "$OssReleaseRoot/$SelectedTag"
-        if ($SourceMode -eq "auto" -and -not $FallbackBaseUrl) {
-          $FallbackBaseUrl = "$GitHubReleaseRoot/$SelectedTag"
-        }
-        if ($SourceMode -eq "auto" -and $DownloadSpeedProbe -eq "1" -and -not $DownloadBaseUrl) {
-          $SpeedProbeSources = Select-SpeedProbeDownloadSources $SelectedTag $Tmp
-          if ($SpeedProbeSources) {
-            $BaseUrl = $SpeedProbeSources.BaseUrl
-            $FallbackBaseUrl = $SpeedProbeSources.FallbackBaseUrl
-          } else {
-            Write-Host "Download source test was inconclusive; using OSS with same-version GitHub fallback."
-          }
-        }
-      } elseif ($SourceMode -eq "oss") {
-        Fail "the OSS mirror is unavailable or its release metadata is invalid."
-      } else {
-        $BaseUrl = $GitHubLatestBase
-      }
+      $BaseUrl = $GitHubLatestBase
     }
 
     # Online: download the canonical bundle; the published checksum is mandatory.

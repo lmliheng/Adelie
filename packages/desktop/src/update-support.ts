@@ -49,45 +49,8 @@ export function feedUrlOverride(env: NodeJS.ProcessEnv): string | null {
   }
 }
 
-export type UpdateSource = "auto" | "oss" | "github";
-
-/**
- * Desktop update source switches. The names are deliberately separate from the installer's
- * PENGUIN_DOWNLOAD_* variables so a CLI-install setting never leaks into the app's
- * background updater.
- */
-export interface UpdateSourceConfig {
-  source: UpdateSource;
-  probe: boolean;
-  /** PENGUIN_UPDATE_SOURCE was set but not one of auto | oss | github. */
-  invalidSource: boolean;
-  /** PENGUIN_UPDATE_SPEED_PROBE was set but not 0 or 1. */
-  invalidProbe: boolean;
-}
-
-export function updateSourceConfig(env: NodeJS.ProcessEnv): UpdateSourceConfig {
-  const rawSource = env.PENGUIN_UPDATE_SOURCE?.trim() ?? "";
-  let source: UpdateSource = "auto";
-  let invalidSource = false;
-  if (rawSource !== "") {
-    if (rawSource === "auto" || rawSource === "oss" || rawSource === "github") {
-      source = rawSource;
-    } else {
-      invalidSource = true;
-    }
-  }
-
-  const rawProbe = env.PENGUIN_UPDATE_SPEED_PROBE?.trim() ?? "";
-  let probe = true;
-  let invalidProbe = false;
-  if (rawProbe !== "") {
-    if (rawProbe === "0") {
-      probe = false;
-    } else if (rawProbe === "1") {
-      probe = true;
-    } else {
-      invalidProbe = true;
-    }
-  }
-  return { source, probe, invalidSource, invalidProbe };
-}
+// Adelie fork note (2026-10-05): PENGUIN_UPDATE_SOURCE and PENGUIN_UPDATE_SPEED_PROBE lived
+// here. They chose between two feeds — upstream's GitHub Releases and an Alibaba Cloud OSS
+// mirror of the same assets — and Adelie has exactly one feed, its own GitHub Releases, so
+// both knobs are gone rather than left accepting values that no longer mean anything. A
+// deployment that runs a mirror of its own points PENGUIN_UPDATE_FEED_URL at it.

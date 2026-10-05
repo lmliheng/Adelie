@@ -5,7 +5,7 @@
     "description": "Bubblewrap sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
-    "repository": "https://github.com/Prism-Shadow/penguin-harness",
+    "repository": "https://github.com/lmliheng/Adelie",
     "keywords": ["linux", "bubblewrap", "network-isolation", "path-masking"],
     "categories": ["sandbox"]
   },
@@ -15,7 +15,7 @@
     "description": "macOS Seatbelt sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
-    "repository": "https://github.com/Prism-Shadow/penguin-harness",
+    "repository": "https://github.com/lmliheng/Adelie",
     "keywords": ["macos", "seatbelt", "network-isolation", "path-masking"],
     "categories": ["sandbox"]
   },
@@ -25,7 +25,7 @@
     "description": "WSL sandbox backend for Adelie on Windows: commands run in a dedicated WSL2 distro under bubblewrap, with Windows interop switched off.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
-    "repository": "https://github.com/Prism-Shadow/penguin-harness",
+    "repository": "https://github.com/lmliheng/Adelie",
     "keywords": ["windows", "wsl", "bubblewrap", "network-isolation", "path-masking"],
     "categories": ["sandbox"]
   },
@@ -35,7 +35,7 @@
     "description": "DeepSeek Harness sandbox adaptor for Adelie: the DSH local backend chain behind the harness's own sandbox interface.",
     "authors": ["Prism Shadow"],
     "license": "Apache-2.0",
-    "repository": "https://github.com/Prism-Shadow/penguin-harness",
+    "repository": "https://github.com/lmliheng/Adelie",
     "keywords": ["linux", "macos", "windows", "dsh", "filesystem-only"],
     "categories": ["sandbox"]
   }

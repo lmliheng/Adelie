@@ -28,7 +28,7 @@ import {
   useUpdateFlowOwner,
 } from "../../lib/use-update-flow";
 
-const RELEASES_URL = "https://github.com/Prism-Shadow/penguin-harness/releases";
+const RELEASES_URL = "https://github.com/lmliheng/Adelie/releases";
 
 export function UpdateModal() {
   useUpdateFlowOwner();

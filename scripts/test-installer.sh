@@ -17,24 +17,6 @@ fail_test() {
   exit 1
 }
 
-# The auto-mode rule lives in two implementations that cannot import from each other (a POSIX shell
-# has no floats, PowerShell does). Nothing but this check keeps their constants in step, so a
-# threshold edited in one place fails here instead of shipping two different rules.
-check_shared_constant() {
-  csc_label="$1"
-  csc_expected="$2"
-  shift 2
-  for csc_file in "$@"; do
-    grep -qF "$csc_expected" "$ROOT_DIR/$csc_file" \
-      || fail_test "$csc_file does not carry $csc_label as \"$csc_expected\""
-  done
-}
-
-check_shared_constant "the GitHub minimum" "262144" install.sh install.ps1
-# The same 1.5, written as an integer percent in install.sh because a POSIX shell has no floats.
-check_shared_constant "the OSS switch ratio" "SPEED_PROBE_OSS_SWITCH_RATIO_PERCENT=150" install.sh
-check_shared_constant "the OSS switch ratio" '$SpeedProbeOssSwitchRatio = 1.5' install.ps1
-
 # --- The launchers the release packages ship verbatim (scripts/launchers/). They are the only
 #     spelling of the payload layout, so moving where web/ or node/ sits fails here rather than
 #     shipping a package whose `penguin` cannot find its own web assets. ---
@@ -421,25 +403,14 @@ BAD_BUNDLE="$WORK_DIR/bad-bundle.tar.gz"
 tar -czf "$BAD_BUNDLE" -C "$BAD_DIR" .
 write_sha256 "$BAD_BUNDLE"
 
-PROBE64="$WORK_DIR/probe-64k.bin"
-PROBE1M="$WORK_DIR/probe-1m.bin"
-dd if=/dev/zero of="$PROBE64" bs=65536 count=1 2>/dev/null
-dd if=/dev/zero of="$PROBE1M" bs=1048576 count=1 2>/dev/null
-PROBE64_HASH="$(sha256sum "$PROBE64" | awk '{ print $1 }')"
-PROBE1M_HASH="$(sha256sum "$PROBE1M" | awk '{ print $1 }')"
-HOST_ASSET_HASH="$(sha256sum "$ARTIFACT_DIR/$HOST_ASSET" | awk '{ print $1 }')"
-SPEED_PROBE_ASSET_SIZE=104857600
-
 cat > "$STUB_BIN/curl" <<'EOF'
 #!/bin/sh
 set -eu
 output=""
 url=""
-writeout=""
 while [ $# -gt 0 ]; do
   case "$1" in
     -o) output="$2"; shift 2 ;;
-    -w | --write-out) writeout="$2"; shift 2 ;;
     -H | --header | --connect-timeout | --max-time | --speed-limit | --speed-time) shift 2 ;;
     -*) shift ;;
     *) url="$1"; shift ;;
@@ -447,65 +418,26 @@ while [ $# -gt 0 ]; do
 done
 printf '%s\n' "$url" >> "$REQUEST_LOG"
 base="${url##*/}"
+# A fixture host that never answers, used to drive the transport-failure fallback.
 case "$MODE:$url" in
-  primary-network:https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/*) exit 7 ;;
-  forced-oss-payload:https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/*/penguin-*) exit 7 ;;
+  primary-network:https://primary.example.test/*) exit 7 ;;
 esac
 case "$MODE:$base" in
-  forwarder-auto-github:latest.json) exit 7 ;;
-  forwarder-invalid-metadata:latest.json)
-    printf '%s\n' '{"schemaVersion":1,"tag":"../invalid","releaseBaseUrl":"https://example.invalid"}' > "$output"
-    ;;
-  canonical:latest.json | outer-sha-mismatch:latest.json | inner-sha-mismatch:latest.json | forwarder-oss:latest.json | forced-oss-payload:latest.json)
-    printf '%s\n' '{"schemaVersion":1,"tag":"v0.0.0-test","releaseBaseUrl":"https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test"}' > "$output"
-    ;;
-  speed-probe-missing-manifest:release-download-manifest.tsv) exit 22 ;;
-  speed-probe-*:release-download-manifest.tsv)
-    {
-      printf 'penguin-release-download-manifest\t1\tv0.0.0-test\n'
-      printf 'probe\tsmall\tprobe-64k.bin\t65536\t%s\n' "$PROBE64_HASH"
-      printf 'probe\tlarge\tprobe-1m.bin\t1048576\t%s\n' "$PROBE1M_HASH"
-      printf 'asset\t%s\t%s\t%s\n' "$HOST_ASSET" "$SPEED_PROBE_ASSET_SIZE" "$HOST_ASSET_HASH"
-    } > "$output"
-    ;;
-  speed-probe-*:probe-64k.bin) cp "$PROBE64" "$output" ;;
-  speed-probe-*:probe-1m.bin) cp "$PROBE1M" "$output" ;;
-  forwarder-oss:install.sh | forced-oss-payload:install.sh | forwarder-auto-github:install.sh | forwarder-invalid-metadata:install.sh | canonical:install.sh | speed-probe-*:install.sh) cp "$ROOT_DIR/install.sh" "$output" ;;
-  404:penguin-*) exit 22 ;;
-  network:penguin-*) exit 7 ;;
   outer-sha-mismatch:penguin-*.sha256) printf '%064d  %s\n' 0 "${base%.sha256}" > "$output" ;;
   outer-sha-mismatch:penguin-*) cp "$ARTIFACT_DIR/$base" "$output" ;;
   inner-sha-mismatch:penguin-*.sha256) cp "$BAD_BUNDLE.sha256" "$output" ;;
   inner-sha-mismatch:penguin-*) cp "$BAD_BUNDLE" "$output" ;;
-  speed-probe-*:penguin-*.sha256) cp "$ARTIFACT_DIR/$base" "$output" ;;
-  speed-probe-*:penguin-*) cp "$ARTIFACT_DIR/$base" "$output" ;;
-  primary-network:penguin-*.sha256) cp "$ARTIFACT_DIR/$base" "$output" ;;
-  primary-network:penguin-*) cp "$ARTIFACT_DIR/$base" "$output" ;;
-  forced-oss-payload:penguin-*.sha256) cp "$ARTIFACT_DIR/$base" "$output" ;;
-  forced-oss-payload:penguin-*) cp "$ARTIFACT_DIR/$base" "$output" ;;
+  network:penguin-*) exit 7 ;;
+  404:penguin-*) exit 22 ;;
   legacy:penguin-*.sha256) cp "$LEGACY_ARCHIVE.sha256" "$output" ;;
   legacy:penguin-*) cp "$LEGACY_ARCHIVE" "$output" ;;
-  canonical:penguin-*.sha256) cp "$ARTIFACT_DIR/$base" "$output" ;;
-  canonical:penguin-*) cp "$ARTIFACT_DIR/$base" "$output" ;;
+  *:penguin-*.sha256) cp "$ARTIFACT_DIR/$base" "$output" ;;
+  *:penguin-*) cp "$ARTIFACT_DIR/$base" "$output" ;;
   *) echo "unexpected fixture request: $url" >&2; exit 2 ;;
 esac
-if [ -n "$writeout" ]; then
-  case "$MODE:$url" in
-    speed-probe-github-fast:https://github.com/*/probe-1m.bin) printf '%s' '0.020 0.120 8738133' ;;
-    speed-probe-github-fast:*aliyuncs.com*/probe-1m.bin) printf '%s' '0.100 2.100 499321' ;;
-    # GitHub under the 262144 minimum, mirror well past 1.5x it: worth paying for.
-    speed-probe-oss-clearly-faster:https://github.com/*/probe-1m.bin) printf '%s' '0.020 10.240 102400' ;;
-    speed-probe-oss-clearly-faster:*aliyuncs.com*/probe-1m.bin) printf '%s' '0.020 3.413 307200' ;;
-    # GitHub equally slow, mirror only 1.4x faster: not worth paying for, GitHub keeps it.
-    speed-probe-oss-not-worth-switching:https://github.com/*/probe-1m.bin) printf '%s' '0.020 10.240 102400' ;;
-    speed-probe-oss-not-worth-switching:*aliyuncs.com*/probe-1m.bin) printf '%s' '0.020 7.314 143360' ;;
-    speed-probe-github-fast:*) printf '%s' '0.020 0.060 1092266' ;;
-    *) printf '%s' '0.010 0.020 3276800' ;;
-  esac
-fi
 EOF
 chmod +x "$STUB_BIN/curl"
-export ARTIFACT_DIR BAD_BUNDLE LEGACY_ARCHIVE ROOT_DIR PROBE64 PROBE1M PROBE64_HASH PROBE1M_HASH HOST_ASSET HOST_ASSET_HASH SPEED_PROBE_ASSET_SIZE
+export ARTIFACT_DIR BAD_BUNDLE LEGACY_ARCHIVE
 
 run_online_case() {
   name="$1"
@@ -517,28 +449,17 @@ run_online_case() {
   download_fallback_base_url="${7:-}"
   installer_path="${8:-$ROOT_DIR/install.sh}"
   source_mode="${9:-auto}"
-  speed_probe="${10:-0}"
   CASE_LOG="$WORK_DIR/$name.log"
   CASE_OUTPUT="$WORK_DIR/$name.output"
   CASE_INSTALL="$WORK_DIR/$name-install"
   : > "$CASE_LOG"
   set +e
-  if [ "$speed_probe" = "__unset" ]; then
-    unset PENGUIN_DOWNLOAD_SPEED_PROBE
-    REQUEST_LOG="$CASE_LOG" MODE="$mode" PATH="$STUB_BIN:$PATH" \
-      HOME="$WORK_DIR/$name-home" PENGUIN_INSTALL_DIR="$CASE_INSTALL" \
-      PENGUIN_VERSION="$version" PENGUIN_DOWNLOAD_BASE_URL="$download_base_url" \
-      PENGUIN_DOWNLOAD_FALLBACK_BASE_URL="$download_fallback_base_url" \
-      PENGUIN_DOWNLOAD_SOURCE="$source_mode" \
-      sh "$installer_path" >"$CASE_OUTPUT" 2>&1
-  else
-    REQUEST_LOG="$CASE_LOG" MODE="$mode" PATH="$STUB_BIN:$PATH" \
-      HOME="$WORK_DIR/$name-home" PENGUIN_INSTALL_DIR="$CASE_INSTALL" \
-      PENGUIN_VERSION="$version" PENGUIN_DOWNLOAD_BASE_URL="$download_base_url" \
-      PENGUIN_DOWNLOAD_FALLBACK_BASE_URL="$download_fallback_base_url" \
-      PENGUIN_DOWNLOAD_SOURCE="$source_mode" PENGUIN_DOWNLOAD_SPEED_PROBE="$speed_probe" \
-      sh "$installer_path" >"$CASE_OUTPUT" 2>&1
-  fi
+  REQUEST_LOG="$CASE_LOG" MODE="$mode" PATH="$STUB_BIN:$PATH" \
+    HOME="$WORK_DIR/$name-home" PENGUIN_INSTALL_DIR="$CASE_INSTALL" \
+    PENGUIN_VERSION="$version" PENGUIN_DOWNLOAD_BASE_URL="$download_base_url" \
+    PENGUIN_DOWNLOAD_FALLBACK_BASE_URL="$download_fallback_base_url" \
+    PENGUIN_DOWNLOAD_SOURCE="$source_mode" \
+    sh "$installer_path" >"$CASE_OUTPUT" 2>&1
   status=$?
   set -e
   if [ "$expected" = "success" ]; then
@@ -550,82 +471,84 @@ run_online_case() {
     || fail_test "$name made an unexpected number of requests"
 }
 
-run_online_case canonical canonical "" success 3
+# Unstamped source-tree installer: no embedded tag, so it follows GitHub's "latest" release.
+run_online_case canonical canonical "" success 2
 [ "$("$WORK_DIR/canonical-install/bin/penguin" --version)" = "fixture-old" ] \
   || fail_test "canonical online install did not produce a working command"
-grep -q "/latest.json\$" "$WORK_DIR/canonical.log" \
-  || fail_test "unstamped installer did not resolve the OSS latest metadata"
-grep -q "/releases/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/canonical.log" \
-  || fail_test "unstamped installer did not lock the resolved OSS release"
+[ "$(sed -n '1p' "$WORK_DIR/canonical.log")" = \
+  "https://github.com/lmliheng/Adelie/releases/latest/download/$HOST_ASSET" ] \
+  || fail_test "unstamped installer did not use the latest GitHub release"
+! grep -qi "aliyuncs" "$WORK_DIR/canonical.log" \
+  || fail_test "installer still reaches the retired OSS mirror"
 
+# A stamped release installer uses its own immutable tag and never resolves "latest".
 run_online_case stamped canonical "" success 2 "" "" "$STAMPED_INSTALLER"
 [ "$(sed -n '1p' "$WORK_DIR/stamped.log")" = \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test/$HOST_ASSET" ] \
-  || fail_test "stamped installer did not select its own immutable OSS release"
-! grep -q "/latest.json\$" "$WORK_DIR/stamped.log" \
-  || fail_test "stamped installer unexpectedly resolved latest metadata"
+  "https://github.com/lmliheng/Adelie/releases/download/v0.0.0-test/$HOST_ASSET" ] \
+  || fail_test "stamped installer did not select its own immutable release"
+! grep -q "/latest/" "$WORK_DIR/stamped.log" \
+  || fail_test "stamped installer unexpectedly resolved the latest release"
 
-run_online_case stamped-fallback primary-network "" success 3 "" "" "$STAMPED_INSTALLER"
-[ "$(sed -n '1p' "$WORK_DIR/stamped-fallback.log")" = \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test/$HOST_ASSET" ] \
-  || fail_test "stamped installer did not try its own OSS release first"
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/stamped-fallback.log" \
-  || fail_test "stamped installer did not fall back to the same GitHub version"
-
-run_online_case speed-probe-github-fast speed-probe-github-fast "" success 6 "" "" "$STAMPED_INSTALLER" auto 1
-[ "$(grep -c "/$HOST_ASSET\$" "$WORK_DIR/speed-probe-github-fast.log" | tr -d ' ')" -eq 1 ] \
-  || fail_test "speed probe selected more than one primary bundle download"
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/speed-probe-github-fast.log" \
-  || fail_test "speed probe did not select GitHub when it met the minimum speed"
-run_online_case speed-probe-default-on speed-probe-github-fast "" success 6 "" "" "$STAMPED_INSTALLER" auto __unset
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/speed-probe-default-on.log" \
-  || fail_test "speed probe was not enabled by default"
-# Below the minimum the mirror is measured too, which is the seventh request of these two cases.
-run_online_case speed-probe-oss-clearly-faster speed-probe-oss-clearly-faster "" success 7 "" "" "$STAMPED_INSTALLER" auto 1
-grep -q "aliyuncs.com/.*/probe-1m.bin\$" "$WORK_DIR/speed-probe-oss-clearly-faster.log" \
-  || fail_test "speed probe did not measure the OSS mirror once GitHub was below the minimum speed"
-grep -q "penguin-harness-releases.oss-cn-beijing.aliyuncs.com/.*/$HOST_ASSET\$" "$WORK_DIR/speed-probe-oss-clearly-faster.log" \
-  || fail_test "speed probe did not switch to OSS when it was clearly faster than a slow GitHub"
-
-run_online_case speed-probe-oss-not-worth-switching speed-probe-oss-not-worth-switching "" success 7 "" "" "$STAMPED_INSTALLER" auto 1
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/speed-probe-oss-not-worth-switching.log" \
-  || fail_test "speed probe left GitHub even though OSS was not faster by the switch ratio"
-
-run_online_case speed-probe-missing-manifest speed-probe-missing-manifest "" success 4 "" "" "$STAMPED_INSTALLER" auto 1
-grep -q "Download source test was inconclusive" "$WORK_DIR/speed-probe-missing-manifest.output" \
-  || fail_test "missing speed probe manifest did not fall back to the compatible source policy"
-
+# GitHub is an accepted explicit source mode and behaves like auto.
 run_online_case stamped-github canonical "" success 2 "" "" "$STAMPED_INSTALLER" github
 grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/stamped-github.log" \
-  || fail_test "stamped installer did not honor forced GitHub mode"
+  || fail_test "stamped installer did not honor explicit GitHub mode"
+
+# The retired OSS mode is rejected before any request leaves the process.
+run_online_case source-mode-oss canonical "" failure 0 "" "" "$ROOT_DIR/install.sh" oss
+grep -q "PENGUIN_DOWNLOAD_SOURCE must be auto or github" "$WORK_DIR/source-mode-oss.output" \
+  || fail_test "retired PENGUIN_DOWNLOAD_SOURCE=oss was not rejected"
+
+# The speed probe is gone: its switch must not exist in either installer...
+! grep -q "PENGUIN_DOWNLOAD_SPEED_PROBE" "$ROOT_DIR/install.sh" \
+  || fail_test "install.sh still reads PENGUIN_DOWNLOAD_SPEED_PROBE"
+! grep -q "PENGUIN_DOWNLOAD_SPEED_PROBE" "$ROOT_DIR/install.ps1" \
+  || fail_test "install.ps1 still reads PENGUIN_DOWNLOAD_SPEED_PROBE"
+# ...and setting it must not change the download flow.
+SPEED_PROBE_LOG="$WORK_DIR/speed-probe-ignored.log"
+: > "$SPEED_PROBE_LOG"
+REQUEST_LOG="$SPEED_PROBE_LOG" MODE=canonical PATH="$STUB_BIN:$PATH" \
+  HOME="$WORK_DIR/speed-probe-ignored-home" PENGUIN_INSTALL_DIR="$WORK_DIR/speed-probe-ignored-install" \
+  PENGUIN_DOWNLOAD_SPEED_PROBE=1 PENGUIN_DOWNLOAD_SOURCE=auto \
+  sh "$ROOT_DIR/install.sh" >"$WORK_DIR/speed-probe-ignored.output" 2>&1 \
+  || fail_test "install failed while PENGUIN_DOWNLOAD_SPEED_PROBE was set"
+[ "$(wc -l < "$SPEED_PROBE_LOG" | tr -d ' ')" -eq 2 ] \
+  || fail_test "PENGUIN_DOWNLOAD_SPEED_PROBE still changes the download flow"
+
+# An explicit base URL overrides source selection entirely.
 run_online_case download-base-override canonical "" success 2 \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test" ""
-grep -q "OSS mirror" "$WORK_DIR/download-base-override.output" \
-  || fail_test "download base override did not identify the OSS mirror"
-! grep -q "aliyuncs.com" "$WORK_DIR/download-base-override.output" \
-  || fail_test "download base override exposed the OSS URL in normal output"
+  "https://mirror.example.test/releases/v0.0.0-test"
+[ "$(sed -n '1p' "$WORK_DIR/download-base-override.log")" = \
+  "https://mirror.example.test/releases/v0.0.0-test/$HOST_ASSET" ] \
+  || fail_test "download base override did not take precedence"
+grep -q "configured mirror" "$WORK_DIR/download-base-override.output" \
+  || fail_test "download base override did not label the configured mirror"
+
+# A transport failure on the primary base URL falls back to the configured fallback.
 run_online_case download-fallback primary-network "" success 3 \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test" \
-  "https://github.com/Prism-Shadow/penguin-harness/releases/download/v0.0.0-test"
+  "https://primary.example.test/releases/v0.0.0-test" \
+  "https://fallback.example.test/releases/v0.0.0-test"
 [ "$(sed -n '1p' "$WORK_DIR/download-fallback.log")" = \
-  "https://penguin-harness-releases.oss-cn-beijing.aliyuncs.com/releases/v0.0.0-test/$HOST_ASSET" ] \
+  "https://primary.example.test/releases/v0.0.0-test/$HOST_ASSET" ] \
   || fail_test "download fallback did not try the primary source first"
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/download-fallback.log" \
-  || fail_test "download fallback did not use the same-version GitHub source"
-! grep -q "aliyuncs.com" "$WORK_DIR/download-fallback.output" \
-  || fail_test "download fallback exposed the OSS URL in normal output"
-run_online_case fallback-without-base primary-network "" success 3 "" \
+grep -q "fallback.example.test/releases/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/download-fallback.log" \
+  || fail_test "download fallback did not use the configured fallback"
+
+# A fallback without a base URL is ignored: the stamped installer keeps its own tag.
+run_online_case fallback-without-base canonical "" success 2 "" \
   "https://example.invalid/releases/v0.0.0-test" "$STAMPED_INSTALLER"
 ! grep -q "example.invalid" "$WORK_DIR/fallback-without-base.log" \
-  || fail_test "fallback without base should not override auto/source fallback"
-grep -q "github.com/.*/releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/fallback-without-base.log" \
-  || fail_test "fallback without base did not keep the internal same-version GitHub fallback"
-run_online_case outer-mismatch outer-sha-mismatch "" failure 3
-run_online_case inner-mismatch inner-sha-mismatch "" failure 3
-run_online_case latest-404 404 "" failure 2
-run_online_case pinned-network network v0.1.4 failure 2
+  || fail_test "fallback without base should not override the source-mode download"
+grep -q "releases/download/v0.0.0-test/$HOST_ASSET\$" "$WORK_DIR/fallback-without-base.log" \
+  || fail_test "fallback without base did not keep the release's own tag"
+
+run_online_case outer-mismatch outer-sha-mismatch "" failure 2
+run_online_case inner-mismatch inner-sha-mismatch "" failure 2
+run_online_case latest-404 404 "" failure 1
+run_online_case pinned-network network v0.1.4 failure 1
 run_online_case pinned-legacy legacy v0.1.4 success 2
-grep -q "/releases/v0.1.4/$HOST_ASSET\$" "$WORK_DIR/pinned-legacy.log" \
-  || fail_test "pinned legacy did not prefer the pinned OSS asset"
+[ "$(sed -n '1p' "$WORK_DIR/pinned-legacy.log")" = \
+  "https://github.com/lmliheng/Adelie/releases/download/v0.1.4/$HOST_ASSET" ] \
+  || fail_test "pinned legacy did not prefer the pinned release asset"
 
 echo "Installer bundle, offline, rollback and online tests passed."

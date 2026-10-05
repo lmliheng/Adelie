@@ -273,13 +273,22 @@ README 插件表那三条已闭，macOS 那条重跑即绿（确系跑机抖动�
 - 验证：`pnpm typecheck` 八个包全过；`pnpm lint` 0 警告；`pnpm format:check` 干净；
   core 1346 · web 2886 · cli 505 · server 2552 · docs 62 全绿。
 
-**这条还没做完的部分（下一轮接着做）**：
+**这条的收尾（2026-10-05，第二轮，已做完）**：
 
-| 没做的 | 为什么这轮没做 | 做完的判据 |
+| 项 | 做了什么 | 验证 |
 | --- | --- | --- |
-| `packages/desktop`（`updater.ts` / `update-source.ts` / `menu.ts`） | 它的自动更新是「速度探测 + OSS 镜像 feed」整套子系统（`update-source.ts` 364 行 + 612 行测试），拆它要单独一轮；Adelie 目前也**没有**桌面产物发布 | 桌面 feed 指向 `lmliheng/Adelie` 且没有 OSS 臂；`vitest --root packages/desktop` 全绿 |
-| 根目录 `install.sh` / `install.ps1` | 里面的 `REPO` 与 `OSS_ORIGIN` 还是上游的；`scripts/test-installer.{sh,ps1}` 用断言把这两个常量与 OSS 探针行为钉住了，改它得连那套测试一起重写 | 两个安装脚本指向 Adelie 且不再提 OSS；`sh scripts/test-installer.sh` 与 CI 的 `installer-windows` 通过 |
-| `server/src/plugin/builtin-index.json` 那四行 `repository` | 那是插件的来源元数据，不是更新链路 | 随桌面 / 发布那一轮统一口径 |
+| `packages/desktop` 的更新源 | 删掉「速度探测 + OSS 镜像 feed」整套：`src/update-source.ts`（364 行）与 `test/update-source.test.ts`（612 行）删除；`update-support.ts` 只留 `updateSupport` / `feedUrlOverride`；`updater.ts` 单源化（自建镜像只剩 `PENGUIN_UPDATE_FEED_URL` 覆盖，去 OSS / 探针 / 回退 feed）；`RELEASES_URL`、`menu.ts` 的 `REPO_URL` 与 GitHub feed 的 owner/repo 全指向 Adelie | `npx tsc --noEmit -p packages/desktop/tsconfig.json` 退出 0；`vitest run --root packages/desktop` 22 文件 / 279 测试全绿（原 308，少的正是删掉的探针用例）；`PENGUIN_UPDATE_SOURCE` / 探针符号全仓 grep 为空 |
+| 根目录 `install.sh` / `install.ps1` | `REPO` → Adelie，删 `OSS_ORIGIN` / `OSS_RELEASE_ROOT`；删速度探测整套（`SPEED_PROBE_*` 常量、`load_release_download_manifest` / `probe_*` / `select_speed_probe_source` / `speed_probe_release_sources` 及 PS 侧同名函数）；`PENGUIN_DOWNLOAD_SOURCE` 收成 `auto\|github`（写 `oss` 直接报错）；不再读 `PENGUIN_DOWNLOAD_SPEED_PROBE`；在线路径只剩 GitHub（stamped 用自身 tag，unstamped 走 latest），`PENGUIN_DOWNLOAD_BASE_URL` 及其 fallback 仍可自建镜像。`scripts/test-installer.{sh,ps1}` 同步重写：删掉共享常量守卫、探针用例与 `packages/landing` 转发器用例（那个目录 2.5 已删，CI 的 `installer-windows` 正是红在这里） | `sh scripts/test-installer.sh` 通过；`pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；重建 server 后 `dist/install.{sh,ps1}` 副本与根一致 |
+| `server/src/plugin/builtin-index.json` 的四行 `repository` | 四行全改成 `https://github.com/lmliheng/Adelie`；同口径把 14 个 `plugins/*/package.json` 的 `repository.url` 也改成 Adelie（`scripts/check-plugin-versions.mjs` 显式排除三级路径的 `package.json`，不受影响） | core 1346 · server 2552 · cli 505 · web 2886 · desktop 279 全绿 |
+
+**顺带补的一处（原 ③ 漏掉）**：`packages/web/src/components/account/update-modal.tsx` 的
+`RELEASES_URL` 还是上游 PenguinHarness 的 Releases —— 更新弹窗「打开发布页」会把用户带到上游项目，
+与 ③ 的目标相悖，改成 Adelie 的 Releases（web 2886 测试全绿，无用例钉这个常量）。
+
+**仍未做完的部分**：
+
+| 没做的 | 为什么没做 | 做完的判据 |
+| --- | --- | --- |
 | Adelie Release 没有资产 | 所以现在 `penguin update` 会答「已是最新」（v0.2.0 = 当前版本），不会去装任何东西 —— 这是对的行为；真要能升级，得按上游同名的资产形状（install.sh + payload + 校验和）发一版；用户「不想给别人用」的那套包在 3003 | 发一版带资产的 Release 后，`penguin update --check` 报得出新版本 |
 
 ### ② 插件与 Agent 的升级是怎么做的（答用户问）
@@ -316,6 +325,9 @@ Agent 上对插件内容的本地改动 —— 现在的产品行为是「提示
 | 代码 | `/root/adelie-fork` 的 `packages/server/dist/index.js` + `packages/web/dist` |
 | 首次登录 | 2026-10-05 用户自己设了管理员密码（值不进仓库），首次登录链接**已作废**；现在用 用户名 `admin` + 那个密码登录。忘了密码：停服务后 `penguin server reset-admin-password`，再启动会打印新的认领链接（步骤见 `/root/adelie-data/首次登录链接.txt`，0600） |
 | 旧地址 | 上游设计规格页已从 3004 让到 **3003**（`adelie-design.service`，同步改了单元与端口表）；旧 Adelie Web 仍在 4000（`adelie-web.service`） |
+
+> **2026-10-05（用户要求）**：`adelie-app.service`（3004）已 `systemctl stop`，端口已释放；
+> 单元仍 `enabled`，**重启机器会自己回来**，要不要 `disable` 等用户发话。3003 / 4000 未动。
 
 要跑真任务还得在这个新实例里配模型 key（数据根独立，读不到旧实例的 `.project_config.toml`）。
 
@@ -364,3 +376,4 @@ Agent 上对插件内容的本地改动 —— 现在的产品行为是「提示
 | 2026-10-05 | 发布 | 旧 `main` 留档成 `legacy/main`，仓库**默认分支切到 `fork/penguin-base`**；仓库 About（描述 + 话题）改成「基于 PenguinHarness」的说法 | `git push origin legacy/main` = `7fb74262`；`PATCH /repos/lmliheng/Adelie` `default_branch` → 200；`GET /repos` 复核 `default_branch=fork/penguin-base`、description/topics 已换；真浏览器看仓库首页：分支选择器是 `fork/penguin-base`、About 新描述、Releases 侧栏 v0.2.0 Latest、正文就是写明 fork 的 README，无 4xx | 见本行提交 |
 | 2026-10-05 | 主线 | 默认分支定名 **`main`**（新基座并进 `main`、旧 Adelie 存 `legacy/main`、删 `fork/penguin-base`）；v0.2.0 安装包本机现打后放 **3003**；删 `docker.yml` 的 `push:main`；修 desktop 夹具 | `GET /repos` 报 `default_branch: main`；三个包 `.sha256` 自检 + linux 包在隔离 HOME 里真离线装（`penguin version --json` = `0.2.0`/release）；桌面测试 308 全绿；CI run `37258858438`：`test(rest)` 一族由红转绿、Docker 未触发 | 见本行提交 |
 | 2026-10-05 | 主线 | README 插件表断言放宽（用户选的 b）+ 删掉模型里的「官方推荐」+ 更新链路指向 Adelie（CLI / server / Web） | 见「主线三件事」一节 | 见本行提交 |
+| 2026-10-05 | 主线收尾 | 「主线三件事」的收尾：桌面更新源去 OSS/探针、根安装脚本去 OSS/探针并指向 Adelie、插件元数据 `repository` 指向 Adelie；顺带修 web 更新弹窗的上游 Releases 链接；`scripts/test-installer.{sh,ps1}` 同步重写 | `sh scripts/test-installer.sh` 通过；`pnpm typecheck` 八包过、`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1346 · server 2552 · cli 505 · web 2886 · desktop 279 全绿 | 见本行提交 |

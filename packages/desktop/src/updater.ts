@@ -17,12 +17,18 @@
  * check or download is manual too, but its outcomes render in the modal that asked, not
  * in dialogs: the native restart prompt follows only a download the native dialog started.
  *
+ * Adelie fork note (2026-10-05): this build publishes to one feed — its own GitHub Releases
+ * (`lmliheng/Adelie`). Upstream's second feed, an Alibaba Cloud OSS mirror of the same
+ * assets, is gone here, and with it the speed probe that chose between the two sources: a
+ * mirror belongs to the project that runs it, and this one has none. What remains is
+ * `PENGUIN_UPDATE_FEED_URL` for a deployment that runs a mirror of its own.
+ *
  * Release builds use Developer ID signing on macOS and Authenticode signing on Windows;
  * unsigned dry-run artifacts can still find updates, but platform trust and release
  * gates only apply to signed release builds. Linux AppImage continues without
  * code-signing for now.
  */
-import { app, dialog, net, shell } from "electron";
+import { app, dialog, shell } from "electron";
 import type { BrowserWindow } from "electron";
 import electronUpdater from "electron-updater";
 import type {
@@ -31,14 +37,7 @@ import type {
 } from "@prismshadow/penguin-server/api";
 import { resolveProfile } from "./app-identity.js";
 import { logLine } from "./desktop-log.js";
-import { feedUrlOverride, updateSourceConfig, updateSupport } from "./update-support.js";
-import {
-  feedLabel,
-  ossFeedUrl,
-  resolveOssLatestTag,
-  selectAutoUpdateFeed,
-} from "./update-source.js";
-import type { FetchFn } from "./update-source.js";
+import { feedUrlOverride, updateSupport } from "./update-support.js";
 import { initialUpdateStatus, nextUpdateStatus } from "./updater-status.js";
 import type { UpdaterEvent } from "./updater-status.js";
 
@@ -49,11 +48,14 @@ const FIRST_CHECK_DELAY_MS = 20_000;
 /** Subsequent automatic checks. */
 const CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
-const RELEASES_URL = "https://github.com/Prism-Shadow/penguin-harness/releases";
+// Adelie's own releases, not upstream's (2026-10-05): the two projects reuse version
+// numbers, so a feed left pointing at PenguinHarness would offer — and install — a
+// PenguinHarness build over this app.
+const RELEASES_URL = "https://github.com/lmliheng/Adelie/releases";
 const GITHUB_FEED = {
   provider: "github" as const,
-  owner: "Prism-Shadow",
-  repo: "penguin-harness",
+  owner: "lmliheng",
+  repo: "Adelie",
 };
 
 function log(line: string): void {
@@ -69,102 +71,19 @@ let downloadInFlight = false;
 /** The running download was started from the native dialog: its outcomes get native dialogs too. */
 let nativeDownload = false;
 
-type FeedState =
-  { phase: "pending" } | { phase: "unavailable" } | { phase: "ready"; fallbackUrl: string | null };
-let feedState: FeedState = { phase: "pending" };
-type FeedRefreshMode = "static" | "github" | "oss" | "auto-probe";
-let feedRefreshMode: FeedRefreshMode = "github";
-let feedRefreshInFlight: Promise<void> | null = null;
-/** The generic URL electron-updater currently points at (null = default GitHub feed). */
-let activeGenericUrl: string | null = null;
-/** The other pinned feed: retrying switches to it, and the pair swaps roles. */
-let otherGenericUrl: string | null = null;
+/**
+ * The feed this build updates from: Adelie's own GitHub Releases, or the generic feed an
+ * explicit PENGUIN_UPDATE_FEED_URL names (a deployment's own mirror). One source, fixed at
+ * init — there is no selection step to wait on, and no second feed to retry against.
+ */
+let overrideFeedUrl: string | null = null;
 
-/** fetch for update-source.ts: Electron's proxy-aware network stack, same as updater downloads. */
-const fetchForUpdateSource: FetchFn = (url, init) =>
-  net.fetch(url, { headers: init.headers, signal: init.signal });
-
-function setGenericFeed(url: string, fallbackUrl: string | null): void {
-  activeGenericUrl = url;
-  otherGenericUrl = fallbackUrl;
-  feedState = { phase: "ready", fallbackUrl };
-  autoUpdater.setFeedURL({ provider: "generic", url });
-}
-
-function setGitHubFeed(): void {
-  activeGenericUrl = null;
-  otherGenericUrl = null;
-  feedState = { phase: "ready", fallbackUrl: null };
-  autoUpdater.setFeedURL(GITHUB_FEED);
-}
-
-function switchToFallbackFeed(reason: string): boolean {
-  if (downloadedVersion !== null || feedState.phase !== "ready" || feedState.fallbackUrl === null) {
-    return false;
-  }
-  const previous = activeGenericUrl;
-  const next = feedState.fallbackUrl;
-  activeGenericUrl = next;
-  otherGenericUrl = previous;
-  feedState = { phase: "ready", fallbackUrl: null };
-  autoUpdater.setFeedURL({ provider: "generic", url: next });
-  log(`${feedLabel(previous ?? next)} update ${reason}; retrying ${feedLabel(next)}`);
-  return true;
-}
-
-function refreshUpdateFeed(): Promise<void> {
-  if (feedRefreshInFlight !== null) return feedRefreshInFlight;
-  feedRefreshInFlight = refreshUpdateFeedOnce().finally(() => {
-    feedRefreshInFlight = null;
-  });
-  return feedRefreshInFlight;
-}
-
-async function refreshUpdateFeedOnce(): Promise<void> {
-  if (feedRefreshMode === "static") return;
-  if (feedRefreshMode === "github") {
-    setGitHubFeed();
+function applyFeed(): void {
+  if (overrideFeedUrl === null) {
+    autoUpdater.setFeedURL(GITHUB_FEED);
     return;
   }
-
-  feedState = { phase: "pending" };
-  if (feedRefreshMode === "oss") {
-    try {
-      const tag = await resolveOssLatestTag(fetchForUpdateSource);
-      if (tag === null) {
-        feedState = { phase: "unavailable" };
-        log(
-          "PENGUIN_UPDATE_SOURCE=oss but the OSS mirror latest.json is unavailable or invalid; updates are disabled for this check.",
-        );
-        return;
-      }
-      setGenericFeed(ossFeedUrl(tag), null);
-      log(`selected OSS update feed (${tag})`);
-    } catch {
-      feedState = { phase: "unavailable" };
-      log("OSS update source selection failed; updates are disabled for this check.");
-    }
-    return;
-  }
-
-  try {
-    const decision = await selectAutoUpdateFeed({
-      fetchFn: fetchForUpdateSource,
-      platform: process.platform,
-      arch: process.arch,
-      log,
-    });
-    if (decision.kind === "pinned") {
-      setGenericFeed(decision.primaryUrl, decision.fallbackUrl);
-      log(`selected ${feedLabel(decision.primaryUrl)} update feed`);
-    } else {
-      setGitHubFeed();
-      log("selected GitHub update feed");
-    }
-  } catch (err) {
-    setGitHubFeed();
-    log(`update source selection failed: ${(err as Error).message}; keeping GitHub update feed.`);
-  }
+  autoUpdater.setFeedURL({ provider: "generic", url: overrideFeedUrl });
 }
 
 function scheduleChecks(): void {
@@ -263,10 +182,6 @@ export function handleUpdaterCommand(action: DesktopUpdaterCommandMessage["actio
       reannounceStatus();
       return;
     }
-    if (feedState.phase === "pending") {
-      reannounceStatus();
-      return;
-    }
     void check();
     return;
   }
@@ -308,8 +223,7 @@ export function initUpdater(getWindow: () => BrowserWindow | null): void {
   }
 
   // Explicit download, explicit install: the user decides both when to fetch and when to
-  // restart. Owning the download call here (rather than autoDownload) is also what lets a
-  // failed package download retry the same tag on the fallback feed.
+  // restart, and each step's failure is reported where that step was asked for.
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.logger = null;
@@ -359,56 +273,13 @@ export function initUpdater(getWindow: () => BrowserWindow | null): void {
     if (downloadInFlight) {
       return;
     }
-    if (switchToFallbackFeed("feed unavailable")) {
-      void autoUpdater.checkForUpdates().catch((retryErr: Error) => {
-        log(`check failed: ${retryErr.message}`);
-      });
-      return;
-    }
     reportUpdaterError(err, "check");
   });
 
-  const override = feedUrlOverride(process.env);
-  if (override) {
-    feedRefreshMode = "static";
-    setGenericFeed(override, null);
-    log(`feed override: ${override}`);
-    scheduleChecks();
-    return;
-  }
-
-  const config = updateSourceConfig(process.env);
-  if (config.invalidSource) {
-    log("PENGUIN_UPDATE_SOURCE has an unsupported value; treated as auto.");
-  }
-  if (config.invalidProbe) {
-    log("PENGUIN_UPDATE_SPEED_PROBE has an unsupported value; treated as 1.");
-  }
-
-  if (config.source === "github") {
-    feedRefreshMode = "github";
-    setGitHubFeed();
-    log("selected GitHub update feed");
-    scheduleChecks();
-    return;
-  }
-
-  if (config.source === "oss") {
-    feedRefreshMode = "oss";
-    void refreshUpdateFeed().finally(scheduleChecks);
-    return;
-  }
-
-  if (!config.probe) {
-    feedRefreshMode = "github";
-    setGitHubFeed();
-    log("selected GitHub update feed");
-    scheduleChecks();
-    return;
-  }
-
-  feedRefreshMode = "auto-probe";
-  void refreshUpdateFeed().finally(scheduleChecks);
+  overrideFeedUrl = feedUrlOverride(process.env);
+  applyFeed();
+  if (overrideFeedUrl !== null) log(`feed override: ${overrideFeedUrl}`);
+  scheduleChecks();
 }
 
 async function check(): Promise<void> {
@@ -424,20 +295,6 @@ async function check(): Promise<void> {
   ) {
     return;
   }
-  await refreshUpdateFeed();
-  if (feedState.phase !== "ready") {
-    const message =
-      feedState.phase === "pending"
-        ? "Update source selection is still in progress."
-        : "The configured update source is unavailable.";
-    log(
-      `check skipped (${feedState.phase === "pending" ? "update source selection pending" : "update source unavailable"})`,
-    );
-    emitStatus({ kind: "error", message });
-    return;
-  }
-  // Each fresh cycle gets its one-shot switch back (the retry path bypasses check()).
-  feedState = { phase: "ready", fallbackUrl: otherGenericUrl };
   try {
     await autoUpdater.checkForUpdates();
   } catch (err) {
@@ -465,40 +322,22 @@ async function startDownload(origin: "native" | "web"): Promise<void> {
   }
   nativeDownload = origin === "native";
   emitStatus({ kind: "download-started", version: status.version });
-  await downloadUpdateWithFallback();
+  await downloadUpdate();
 }
 
 /**
- * One download of the offered release, retried once on the other pinned feed when the
- * package fetch fails there: the retry re-checks on the fallback feed (whose `checking`
- * and same-version `available` the status fold suppresses under the running download)
- * and downloads again if it offers the release.
+ * One download of the offered release. There is no second feed to retry it on, so a failed
+ * package fetch is reported like any other download failure — where the download was asked
+ * for (the page's modal, or the native dialog a menu-driven check ended in).
  */
-async function downloadUpdateWithFallback(): Promise<void> {
+async function downloadUpdate(): Promise<void> {
   if (downloadedVersion !== null || downloadInFlight) return;
   downloadInFlight = true;
   try {
     await autoUpdater.downloadUpdate();
   } catch (err) {
-    const error = err as Error;
     if (downloadedVersion !== null) return;
-    if (switchToFallbackFeed("download failed")) {
-      try {
-        const retryResult = await autoUpdater.checkForUpdates();
-        if (retryResult !== null && retryResult.isUpdateAvailable) {
-          await autoUpdater.downloadUpdate();
-          return;
-        }
-        const message = "The fallback update source did not offer a downloadable update.";
-        log(message);
-        emitStatus({ kind: "error", message });
-        nativeDownload = false;
-      } catch (retryErr) {
-        reportUpdaterError(retryErr as Error, "download");
-      }
-      return;
-    }
-    reportUpdaterError(error, "download");
+    reportUpdaterError(err as Error, "download");
   } finally {
     downloadInFlight = false;
   }
@@ -526,15 +365,6 @@ export async function checkForUpdatesManually(): Promise<void> {
     await promptRestart(downloadedVersion, null);
     return;
   }
-  if (feedState.phase === "pending") {
-    await dialog.showMessageBox({
-      type: "info",
-      message: "Updates are unavailable.",
-      detail: "Update source selection is still in progress; try again in a moment.",
-      buttons: ["OK"],
-    });
-    return;
-  }
   if (status.state === "downloading") {
     // check() would decline anyway; a manual action still answers (the silence rule).
     await dialog.showMessageBox({
@@ -551,15 +381,6 @@ export async function checkForUpdatesManually(): Promise<void> {
   }
   manualCheckInFlight = true;
   await check();
-  if (manualCheckInFlight && feedState.phase === "unavailable") {
-    manualCheckInFlight = false;
-    await dialog.showMessageBox({
-      type: "error",
-      message: "Could not check for updates.",
-      detail: "The configured update source is unavailable. See the updater log for details.",
-      buttons: ["OK"],
-    });
-  }
 }
 
 /**
