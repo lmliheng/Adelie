@@ -97,8 +97,12 @@ describe("user vault api", () => {
       [],
     );
 
-    // On disk: under the data root's users/, outside every Project, 0600.
-    expect((await fs.stat(userVaultFile)).mode & 0o777).toBe(0o600);
+    // On disk: under the data root's users/, outside every Project, 0600 — a POSIX fact
+    // (win32's chmod only toggles the read-only bit, and reports 0o666 here; see the same
+    // guard in cli-shim.test.ts / dirs.test.ts).
+    if (process.platform !== "win32") {
+      expect((await fs.stat(userVaultFile)).mode & 0o777).toBe(0o600);
+    }
     expect(await fs.readFile(userVaultFile, "utf8")).toContain("sk-user-secret-123456");
   });
 
