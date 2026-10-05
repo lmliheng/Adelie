@@ -94,14 +94,15 @@
 | 端口 | **3004**（`HOST=0.0.0.0`，ufw 与 `/root/egress-whitelist/config.json` 都已登记） |
 | 数据根 | `/root/adelie-data`（工作区 `/root/adelie-data/workspace`） |
 | 代码 | `/root/adelie-fork` 的 `packages/server/dist/index.js` + `packages/web/dist` |
-| 首次登录 | 启动输出里的 claim 链接（同内容也写在 `/root/adelie-data/首次登录链接.txt`，0600）；打开它认领内置管理员 `admin` 并设密码。忘了密码：停服务后 `penguin server reset-admin-password` |
+| 首次登录 | 2026-10-05 用户自己设了管理员密码（值不进仓库），首次登录链接**已作废**；现在用 用户名 `admin` + 那个密码登录。忘了密码：停服务后 `penguin server reset-admin-password`，再启动会打印新的认领链接（步骤见 `/root/adelie-data/首次登录链接.txt`，0600） |
 | 旧地址 | 上游设计规格页已从 3004 让到 **3003**（`adelie-design.service`，同步改了单元与端口表）；旧 Adelie Web 仍在 4000（`adelie-web.service`） |
 
 要跑真任务还得在这个新实例里配模型 key（数据根独立，读不到旧实例的 `.project_config.toml`）。
 
-**重启的代价**：服务端自己改了什么（字符串、core 的 dist）**要等一次重启才生效** —— 而重启会换发
-首次登录链接（`/root/adelie-data/首次登录链接.txt` 里那条就作废了）。所以**在用户认领之前不要
-重启**：前端产物是每次请求从磁盘读的，重建 `packages/web/dist` 即时生效，不用重启。
+**重启的代价**：服务端自己改了什么（字符串、core 的 dist）要等一次重启才生效，而**重启会换发首次
+登录链接**。2026-10-05 用户认领之后已经重启过一次，服务端与仓库同步了；此后重启不再打印链接
+（只有 `adminPasswordIsInitial` 为真时才会打印）。前端产物是每请求从磁盘读的，重建
+`packages/web/dist` 即时生效，不用重启。
 
 ## 两个运行时事实（改名时别踩）
 
