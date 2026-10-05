@@ -99,6 +99,10 @@
 
 要跑真任务还得在这个新实例里配模型 key（数据根独立，读不到旧实例的 `.project_config.toml`）。
 
+**重启的代价**：服务端自己改了什么（字符串、core 的 dist）**要等一次重启才生效** —— 而重启会换发
+首次登录链接（`/root/adelie-data/首次登录链接.txt` 里那条就作废了）。所以**在用户认领之前不要
+重启**：前端产物是每次请求从磁盘读的，重建 `packages/web/dist` 即时生效，不用重启。
+
 ## 两个运行时事实（改名时别踩）
 
 - **`@prismshadow/agenthub` 是外部 npm 包**（0.4.15，Apache-2.0，「AgentHub — the LLM API Hub for
