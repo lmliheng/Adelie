@@ -4,42 +4,24 @@
 
 <h1 align="center">Adelie</h1>
 
-<p align="center"><strong>开源、本地的多 Agent 应用自动开发平台</strong><br />全自动<strong>创建</strong> · <strong>优化</strong> · <strong>部署</strong> AI 应用</p>
+<p align="center"><strong>本地优先的多智能体应用开发平台，构建在 PenguinHarness 之上</strong></p>
 
 <p align="center">
-  <a href="https://penguin.ooo/download">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-zh-dark.svg" />
-      <img src="assets/readme/download-zh-light.svg" alt="下载应用" height="44" />
-    </picture>
-  </a>
-</p>
-
-<p align="center">1000+ 模型 · 多平台 · Apache 2.0 · Agent 自进化</p>
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/@prismshadow/penguin-core"><img src="https://img.shields.io/npm/v/@prismshadow/penguin-core" alt="npm 版本" /></a>
-  <a href="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/ci.yml"><img src="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-  <a href="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/pages.yml"><img src="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/pages.yml/badge.svg" alt="Deploy Site" /></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="协议：Apache-2.0" /></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2024-brightgreen" alt="Node >= 24" />
+  <a href="https://github.com/Prism-Shadow/penguin-harness"><img src="https://img.shields.io/badge/%E6%9D%A5%E6%BA%90-PenguinHarness%20%E7%9A%84%20fork-1f6feb" alt="PenguinHarness 的 fork" /></a>
 </p>
 
-<p align="center">
-  <a href="https://penguin.ooo/"><img src="https://img.shields.io/badge/%E5%AE%98%E7%BD%91-penguin.ooo-1f6feb?logo=googlechrome&logoColor=white" alt="官网" /></a>
-  <a href="https://penguin.ooo/docs/"><img src="https://img.shields.io/badge/%E6%96%87%E6%A1%A3-penguin.ooo%2Fdocs-1f6feb?logo=readthedocs&logoColor=white" alt="文档" /></a>
-  <a href="https://penguin.ooo/blog"><img src="https://img.shields.io/badge/%E5%8D%9A%E5%AE%A2-penguin.ooo%2Fblog-1f6feb?logo=rss&logoColor=white" alt="博客" /></a>
-</p>
-
-<p align="center">
-  <a href="https://discord.gg/eFHKqqcU3D"><img src="https://img.shields.io/badge/Discord-%E5%8A%A0%E5%85%A5%E8%AE%A8%E8%AE%BA-5865F2?logo=discord&logoColor=white" alt="Discord" /></a>
-  <a href="https://x.com/code_hiyouga"><img src="https://img.shields.io/badge/X-code%5Fhiyouga-000000?logo=x&logoColor=white" alt="X（Twitter）" /></a>
-  <a href="https://github.com/Prism-Shadow/penguin-harness-community/blob/main/wechat/group.jpg"><img src="https://img.shields.io/badge/%E5%BE%AE%E4%BF%A1-%E4%BA%A4%E6%B5%81%E7%BE%A4-07C160?logo=wechat&logoColor=white" alt="微信群" /></a>
-</p>
-
-<p align="center">
-  <a href="https://www.producthunt.com/products/penguinharness?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-penguinharness" target="_blank" rel="noopener noreferrer"><img alt="Adelie - Let Agents Autonomously Build Better Agents for $0.02 | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202577&amp;theme=light&amp;t=1784804711946" /></a>
-</p>
+> [!IMPORTANT]
+> **Adelie 是 [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness) 的 fork。**
+> 这棵代码树、引擎、Web 前端与协议都来自 PenguinHarness（Apache-2.0）；Adelie 是长在它上面的
+> 产品线 —— 自己的品牌与界面、自己的数据根与端口、自己的发布链路。
+>
+> - 来源、许可证义务、我们改了什么：[`FORK.md`](FORK.md)
+> - 改到哪一步了：[`FORK-PROGRESS.md`](FORK-PROGRESS.md)
+> - 上游自己的渠道（仓库、官网、文档、博客、社区、Discord、X、微信、Product Hunt）是**上游的**，
+>   不是 Adelie 的：<https://github.com/Prism-Shadow/penguin-harness> · <https://penguin.ooo/>
+> - PenguinHarness / PrismShadow 的名字与商标属于上游。Adelie 不拿它们当自己的名号、图标或域名。
 
 <p align="center"><a href="README.md">English</a> | 简体中文</p>
 
@@ -84,7 +66,7 @@ https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
 
 ## 内置插件库
 
-开箱内置四类插件（[文档](https://penguin.ooo/docs/skills)）——Skill，以及驱动目标模式与持续学习的会话钩子；Agent 也能编写并优化自己的 Skill：
+开箱内置四类插件（文档在这个仓库的 [`packages/docs`](packages/docs) 里）——Skill，以及驱动目标模式与持续学习的会话钩子；Agent 也能编写并优化自己的 Skill：
 
 | 分类        | 插件                                                                            |
 | ----------- | ------------------------------------------------------------------------------- |
@@ -113,136 +95,61 @@ https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
 
 ## 系统需求
 
-| 需求项   | 支持情况                                          |
-| -------- | ------------------------------------------------- |
-| 操作系统 | Linux、macOS、Windows 10+                         |
-| 架构     | x64、arm64                                        |
-| 运行时   | 一行安装器自带（经 npm 安装需 Node >= 24）        |
-| 模型     | 至少一个模型的 API key                            |
+| 需求项   | 支持情况                                            |
+| -------- | --------------------------------------------------- |
+| 操作系统 | Linux、macOS、Windows 10+                           |
+| 架构     | x64、arm64                                          |
+| 运行时   | Node >= 24（Adelie 还没有安装包 —— 见「安装」一节） |
+| 模型     | 至少一个模型的 API key                              |
 
-## 安装
+## 安装 —— 先读这一节
 
-优先使用桌面端，也可以在本地电脑或服务器上安装命令行。两种方式共用 `~/.penguin/data` 目录，可自由混用；服务端也可以一条 `docker run` 起来：
-
-- **🖥️ 桌面端应用**——双击安装：内嵌服务端，打开即已登录，全程无需终端。
-- **⌨️ 命令行**——一行命令（或 npm / 离线包）装出 `penguin` 命令，`penguin web` 即在浏览器打开完整 Web 体验 `http://127.0.0.1:7364`（多会话对话、Agent / 技能 / 模型管理、用量统计、轨迹观测、评估中心）。在线安装器自带 Node 运行时，解压即用；升级与重装不触碰数据。
-
-> [!NOTE]
-> 命令行安装后，服务端会以边框提示打印一条首次登录链接（在密码被设置之前每次启动都会重新打印）——打开即可认领内置管理员 `admin` 并设置密码；模型在应用内「模型」页配置。
-
-### 🖥️ 桌面端应用
-
-完整的 Web 体验打包为独立应用：内嵌服务端，打开即已登录——无需终端、无登录页、也不用抄初始密码——并与 CLI 安装共用同一个 `~/.penguin/data` 数据目录，两者可以混用（一个数据目录同一时刻只运行一个服务端；CLI 已启动实例时，应用会直接接入它）。
-
-从[下载页](https://penguin.ooo/download)获取桌面端应用。下载页会自动选择可用的 OSS 加速源，安装包也附于每个 [GitHub Release](https://github.com/Prism-Shadow/penguin-harness/releases)。
-
-| 平台          | 安装包                       |
-| ------------- | ---------------------------- |
-| macOS 11+     | dmg（Apple 芯片 / Intel）    |
-| Windows 10+   | 安装程序（.exe，x64）        |
-| Linux（x64）  | AppImage / deb               |
-
-macOS 安装包已由 Developer ID 签名并公证，Windows 安装程序已 Authenticode 签名，两个平台首次启动都无需额外放行；只有 Linux 是例外：
-
-<details>
-<summary><b>🐧 Linux 双击 AppImage 没有反应？</b></summary>
-
-浏览器下载的 AppImage 默认没有执行权限，赋权一次后即可正常启动（deb 包经包管理器安装，无此问题）：
+**Adelie 还没有发布自己的产物。** 没有 Adelie 的 npm 包、安装包、Docker 镜像或下载页 —— 那是计划的
+最后一步（[`FORK-PROGRESS.md`](FORK-PROGRESS.md) §4）。现在要跑 Adelie，只有从这棵源码树开始：
 
 ```bash
-chmod +x penguin-desktop-linux-x86_64.AppImage
+# 装依赖（跳过 desktop / electron：它要下一个运行时，跑 Web 用不到）
+pnpm install --frozen-lockfile \
+  --filter @prismshadow/penguin-core --filter @prismshadow/penguin-ui \
+  --filter @prismshadow/penguin-server --filter @prismshadow/penguin-web \
+  --filter @prismshadow/penguin-cli --filter @prismshadow/penguin-hmr
+
+# 构建（core 的导出指向 dist/，不先构建就跑不起来）
+pnpm -r --filter @prismshadow/penguin-core --filter @prismshadow/penguin-server \
+        --filter @prismshadow/penguin-web run build
+
+# 起服务端 + 已构建的 Web 前端
+cd packages/server
+PENGUIN_HOME=<数据根> HOST=0.0.0.0 PORT=<端口> node dist/index.js
 ```
 
-</details>
+首次启动会在输出里打印一条「首次登录链接」，在设密码之前每次启动都会打印：打开它认领内置的
+`admin` 账号并设置密码（没有可输入的初始密码）。模型在应用内的**模型库**页配置 —— 新实例要先配一个
+API key 才能跑任务。
 
-### 🐧🍎 Linux / macOS（在线安装）
+> [!WARNING]
+> 上游 README 里的那些方式 —— `curl https://penguin.ooo/install.sh | sh`、
+> `npm install -g @prismshadow/penguin-cli`、`docker run hiyouga/penguinharness`、
+> <https://penguin.ooo/download> 上的桌面安装包 —— 装出来的是 **PenguinHarness**，不是 Adelie。
+> 那些渠道在 Adelie 发布自己的产物之前，仍然属于上游。
+
+包名、数据根与命令名还留着上游的拼写（`@prismshadow/*`、`~/.penguin/data`、`penguin`）—— 改名是
+分期做的，还没做完的部分记在 [`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
+
+## 参与开发
 
 ```bash
-curl -fsSL https://penguin.ooo/install.sh | sh
-penguin web        # 启动服务并打开 http://127.0.0.1:7364
+pnpm install && pnpm build   # 先构建：core 的导出指向 dist/
+pnpm dev                     # 后端 + Web 前端一起起（日志带前缀，依赖只构建一次）
 ```
 
-### 🪟 Windows（在线安装，PowerShell）
+完整的工作区指南见 [CONTRIBUTING.zh.md](.github/CONTRIBUTING.zh.md)（那份文件是上游的，大体仍准确）：
+开发命令、质量门禁、仓库结构、变更日志规则。上游的官网站点 `packages/landing` 已在本 fork 中删除。
 
-```powershell
-irm https://penguin.ooo/install.ps1 | iex
-penguin web        # 启动服务并打开 http://127.0.0.1:7364
-```
+## 上游路线图
 
-### 📦 npm（任意平台，需 Node >= 24）
-
-```bash
-npm install -g @prismshadow/penguin-cli
-penguin web        # 启动服务并打开 http://127.0.0.1:7364
-```
-
-### 🐳 Docker
-
-```bash
-docker run -d --name penguin -p 127.0.0.1:7364:7364 -v penguin-data:/data hiyouga/penguinharness:latest
-docker logs penguin       # 首次登录链接，在本机可原样打开
-```
-
-官方镜像以非特权用户在 `0.0.0.0:7364` 上运行同一个服务端，数据目录落在 `/data` 卷上，提供 `linux/amd64` 与 `linux/arm64`。镜像由本仓库源码构建：`latest` 在每次 push `main` 时重建，每个发布版以精确版本号发布（`hiyouga/penguinharness:0.2.13`），没有会移动的 `stable` 标签。示例把端口发布在宿主机回环上，因此 Web 应用只在运行 Docker 的那台机器上可达（`http://localhost:7364`）；要从网络访问，改为发布到所有接口（`-p 7364:7364`），并尽量置于终结 TLS 的反向代理之后。compose 文件与完整部署说明（反向代理、升级、救援路径）见 [Docker 快速开始](https://penguin.ooo/docs/quickstart-docker)。
-
-<details>
-<summary><b>📴 离线安装（无网环境）</b></summary>
-
-每个 <a href="https://github.com/Prism-Shadow/penguin-harness/releases">GitHub Release</a> 每个目标只附带一个安装包——Linux 与 macOS 各有 x64 / arm64 两种架构，Windows 为 x64，另有不带运行时的 universal 包——同一个文件同时服务在线与离线安装。包内封入程序负载、其 SHA256 校验文件与对应平台的安装器：在有网机器下载这一个文件，拷贝到目标机器，解压一次并运行包内安装器即可——全程无需联网，也不必另外携带校验文件（包内封入的 SHA256 始终强制校验）。
-
-**Linux（arm64 机器换用 `penguin-linux-arm64.tar.gz`）：**
-
-```bash
-mkdir penguin-install
-tar -xzf penguin-linux-x64.tar.gz -C penguin-install
-./penguin-install/install.sh
-```
-
-**macOS（Apple 芯片用 arm64 包，Intel 芯片换用 `penguin-darwin-x64.tar.gz`）：**
-
-```bash
-mkdir penguin-install
-tar -xzf penguin-darwin-arm64.tar.gz -C penguin-install
-./penguin-install/install.sh
-```
-
-**Windows（解压后双击 `install.cmd`，或在 PowerShell 中运行）：**
-
-```powershell
-Expand-Archive penguin-win32-x64.zip -DestinationPath penguin-install
-cd penguin-install
-.\install.cmd
-```
-
-</details>
-
-### 🤖 CLI 与 SDK——面向 Agent
-
-同一引擎、可脚本化——为被 Agent 驱动而生（以及让 Agent 构建 Agent）：
-
-```bash
-penguin config model add --provider deepseek --model-id deepseek-flash --api-key sk-... --set-default
-penguin run -m "Create hello.txt containing Hello, Penguin"   # 单次任务
-penguin chat       # 交互式 REPL（/compact、/clear、/exit、Ctrl-C 中断）
-penguin server     # 无界面服务（与 Web 应用同一套 API）
-```
-
-```ts
-import { createAgent, isCompleteModelMessage, userText } from "@prismshadow/penguin-core";
-
-const agent = await createAgent({ agentId: "default_agent" });
-const session = await agent.createSession({ workspaceDir: process.cwd() });
-
-for await (const output of session.run([userText("Create hello.txt containing hi")], {
-  approve: async () => "allow", // 按工具调用逐个审批
-})) {
-  if (isCompleteModelMessage(output) && output.payload.type === "text") {
-    console.log(output.payload.text);
-  }
-}
-```
-
-## 路线图
+这里是上游项目的路线图，留作了解这个基座往哪走。Adelie 自己的计划在
+[`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
 
 - [ ] Benchmark 套件正式发布
 - [x] 桌面端应用
@@ -252,31 +159,22 @@ for await (const output of session.run([userText("Create hello.txt containing hi
 - [ ] 集成 OpenShell（带权限管控的 shell）
 - 更多规划，敬请期待……
 
-## 参与开发
+## 上游贡献者
 
-```bash
-pnpm install && pnpm build   # 先构建：core 的导出指向 dist/
-pnpm dev                     # 服务端 + Web 一起启动（带前缀日志，依赖只构建一次）
-```
-
-完整工作区指南见 [CONTRIBUTING.zh.md](.github/CONTRIBUTING.zh.md)：开发命令、质量门禁、仓库结构与 changelog 规则。
-
-## 贡献者
-
-感谢每一位为 Adelie 作出贡献的开发者！
+感谢每一位为 PenguinHarness 作出贡献的开发者 —— 这个 fork 建在它的代码之上。
 
 <p align="center">
-  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="Adelie 贡献者" /></a>
+  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="PenguinHarness 贡献者" /></a>
 </p>
 
 ## 引用
 
-如果 Adelie 对你的研究有帮助，请引用：
+如果你用到了这套代码，请引用它的上游项目（Adelie 是它的 fork）：
 
 ```bibtex
 @software{penguinharness2026,
   author  = {{PrismShadow Team}},
-  title   = {Adelie: Efficient Self-Improving Harness for Everyone},
+  title   = {PenguinHarness: Efficient Self-Improving Harness for Everyone},
   year    = {2026},
   url     = {https://github.com/Prism-Shadow/penguin-harness},
   license = {Apache-2.0}
@@ -294,6 +192,7 @@ pnpm dev                     # 服务端 + Web 一起启动（带前缀日志，
 
 ## 协议
 
-[Apache-2.0](LICENSE) © 2026 Prism Shadow
+[Apache-2.0](LICENSE) © 2026 Prism Shadow —— 这是上游的版权。Adelie 是它的 fork，
+以同一协议发布；见 [`FORK.md`](FORK.md)。
 
-由 [LlamaFactory](https://github.com/hiyouga/LlamaFactory) 作者 [Yaowei Zheng](https://github.com/hiyouga)、[PrismShadow AI Team](https://github.com/Prism-Shadow) 与 [Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5) 共同用 ❤️ 构建。
+上游 PenguinHarness 由 [LlamaFactory](https://github.com/hiyouga/LlamaFactory) 作者 [Yaowei Zheng](https://github.com/hiyouga)、[PrismShadow AI Team](https://github.com/Prism-Shadow) 与 [Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5) 共同用 ❤️ 构建。Adelie 是这份工作的 fork。

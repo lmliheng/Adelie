@@ -51,8 +51,16 @@
       （建议：变量名改成 `ADELIE_*`，并在 `resolveRoot()` 里兼容读一次旧名，方便旧数据迁过来）。
 - [ ] 2.3 **端口与 profile 默认值**：服务器默认端口、CLI 默认端口（现在是 7369）与旧 Adelie 的
       4000 / 7370 对齐，避免两个产品抢端口。
-- [ ] 2.4 **README 与包元数据**：根 `README.md` 换成 Adelie 自己的说明 + 「基于 PenguinHarness」的
-      来源声明（`FORK.md` 已有，README 里指过去即可）。
+- [x] 2.4 **README 与包元数据**（2026-10-05）：根 `README.md` 与 `README.zh.md` 重写成 Adelie 自己的
+      说明 + 「基于 PenguinHarness」的来源声明 —— 头部换成 Adelie 图标 / 名字 / `built on
+      PenguinHarness`、一张 `fork of PenguinHarness` 徽章，去掉上游的下载按钮、npm / Pages 徽章与
+      penguin.ooo 那一串渠道徽章，正文加 `> [!IMPORTANT]` 声明（来源、商标归属、上游渠道是上游的）；
+      「安装」一节改成**本仓库实测过的从源码运行方式** + 明确「Adelie 还没有自己的产物」，
+      `> [!WARNING]` 说明上游那些安装方式装出来的是 PenguinHarness；路线图 / 贡献者 / 引用 / 协议
+      四节改标为「上游的」，引用里的 bibtex 名字改回 `PenguinHarness`。包元数据（`package.json`
+      的 name / version）归 4.1，本版没动。
+      **发布说明**：`RELEASE-v0.2.0.md`（仓库根）是 v0.2.0 的发布正文（基于哪个上游 commit、
+      这一版改了什么、怎么跑、许可证义务、待办）。
 - [x] 2.5 **上游 `landing` / `docs` / `ui-gallery` / `hmr` 的去留（2026-10-05 定，用户「看你」）**：
       - **删 `packages/landing`**（官网 + 博客 + 下载页，163 文件 / 3.0M）：整站都是上游产品的宣传
         与 `penguin.ooo` 链接，对 Adelie 没有一处价值。连带删掉只为它存在的
@@ -82,9 +90,44 @@
       `adelie-core` / `adelie-server` / `adelie-web` / `adelie-desktop` 等）。**只和发布一起做** ——
       内部改名 968 个文件、零功能收益，放到这里一次做完。`@prismshadow/agenthub` 是**外部**包
       （见下），改名时不能碰。
-- [ ] 4.2 GitHub Pages（PWA）、设计站、Windows 安装包三条流水线按新仓库结构重写
-      （上游那条 Pages 流水线已随 `landing` 删掉）。
+- [ ] 4.2 发布流水线重写：上游三条都还是上游的 —— `.github/workflows/release.yml`（tag 触发，
+      **已改成只能手动触发**，见下）负责安装包与 npm；`docker.yml` 的 `push: branches: [main]`
+      会把镜像推到 Docker Hub `hiyouga/penguinharness`（现在不触发，因为默认分支还是旧 main；
+      **哪天把新基座变成默认分支，这条要先处理**）；`desktop-build.yml` 的 `push: release/**`；
+      Pages 那条已随 `landing` 删掉。
 - [ ] 4.3 **旧的四件产物要更新**（用户 2026-10-05 定：按新基座重发新版，不是下架）。
+
+## 发布 v0.2.0（2026-10-05）
+
+用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
+
+| | |
+| --- | --- |
+| tag | `v0.2.0`（接在旧 Adelie 的 `v0.1.0` 之后；本地 `v0.1.0` 指向旧 Adelie 的 `ae9da1c9`） |
+| 分支 | `fork/penguin-base` |
+| 发布正文 | `RELEASE-v0.2.0.md`（仓库根，中英双语问题只在中文 —— 发布正文用中文） |
+| 产物 | **没有**。npm 包 / 安装包 / Docker 镜像 / 下载页都属于 4.x |
+
+**为发布做的一件安全动作**：`.github/workflows/release.yml` 原本 `on: push: tags: ["v*"]`，
+推任何 `v*` tag 都会去构建 `penguin/` 安装包并把 `@penguinharness/*`、`@prismshadow/penguin-*`
+发到 npm（上游产物，从我们的 fork 发出去是错的）。已把它改成只剩 `workflow_dispatch`
+（文件头加注释说明缘由），所以推 tag 不会触发任何工作流。其余工作流的触发面已逐份核对：
+`ci.yml` push/PR 只对 `main`，`docker.yml` push 只对 `main`，`desktop-build.yml` push 只对
+`release/**`，`oss-staging.yml` 与 `release.yml` 只有手动。
+
+**卡点：本会话没有 GitHub 凭证**，建不了 Release（Release 只能走 API；`gh` 没装、`~/.config/gh`
+与 `~/.netrc` 都没有、vault 里也没有 `GH_TOKEN`）。两条路：
+
+1. 用户把 token 放进 vault：`penguin config vault set GH_TOKEN <token>`（**下次对话才注入**），
+   下一轮用 `POST /repos/lmliheng/Adelie/releases`（`tag_name: v0.2.0`、
+   `target_commitish: fork/penguin-base`、正文取 `RELEASE-v0.2.0.md`）建 Release。
+2. 用户自己在网页上建：`Draft a new release` → 选已存在的 tag `v0.2.0` → target
+   `fork/penguin-base` → 正文粘贴 `RELEASE-v0.2.0.md`。
+
+**待用户定**：新基座要不要变成默认分支（现在默认分支仍是旧 Adelie 的 `main`，仓库首页显示的
+是旧 README）。`main` 与新基座是两段不相干的历史（`main` = 旧 Adelie，`fork/penguin-base` =
+上游 PenguinHarness），不能直接 merge；要换之前先把旧 `main` 存成一条 `legacy/main` 分支
+（旧 `main` 尖端 `7fb74262`），再谈默认分支怎么切。
 
 ## 本机部署（2026-10-05）
 
@@ -138,3 +181,4 @@
 | 2026-10-05 | 部署 | 新 Adelie 起在 **3004**（`adelie-app.service`，数据根 `/root/adelie-data`）；上游设计规格页让到 3003 | `curl` 127.0.0.1 与外网地址都 200；Playwright 打开 3004 是 `Sign in · Adelie`、唯一 4xx 是登录前的 `/api/me` 401（预期）；`ss` 确认 3004 绑 0.0.0.0；ufw 与运维面板端口表已登记 3003/3004 | 无（环境动作） |
 | 2026-10-05 | 2.1b | 界面图标换成 Adelie 自己的标志（三份 `penguin-logo.svg` → `adelie-icon.svg`，组件 `PenguinLogo` → `AppLogo`，全部引用点跟上） | ui 999 / web 2886 全绿；ui / web / docs / ui-gallery typecheck 过；`pnpm format:check` 干净；重建 web 产物后 **3004 现网**已供新图标（favicon 200、`<title>Adelie</title>`），Playwright 看登录页：阿德利企鹅标志 + 标题 Adelie，唯一 4xx 仍是 `/api/me` 401 | 见本行提交 |
 | 2026-10-05 | 2.1c | 产品名全仓统一成 Adelie（140 文件），并推进内核版本 `KERNEL_VERSION` → `2026-10-05` | `pnpm lint` 0 警告；八个包 typecheck 过；`pnpm format:check` 干净；`sh scripts/test-installer.sh` 通过；测试 **8485 通过 / 7 跳过 / 0 失败**（docs 62 · core 1346 · ui 999 · server 2552 · cli 509 · web 2886 · ui-gallery 131）；3004 现网重建后登录页再无旧名字，Playwright 复核正常 | 见本行提交 |
+| 2026-10-05 | 2.4 + 发布 | 两份 README 重写成「Adelie 是 PenguinHarness 的 fork」的诚实版（来源声明、上游渠道与商标归属、从源码运行的安装节、上游路线图/贡献者/引用/协议改标）；写 `RELEASE-v0.2.0.md` 当发布正文；把上游那条 tag 触发的 release 流水线改成只能手动触发 | `pnpm lint` 0 警告；`pnpm format:check` 干净；五份工作流用仓库自带 `yaml` 逐份解析通过，`release.yml` 的 `on` 只剩 `workflow_dispatch`；`git ls-remote` 复核远端分支与 tag | 见本行提交 |

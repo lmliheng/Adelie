@@ -44,9 +44,13 @@
 #   every push to main; this workflow only decides when the release tags are published.
 name: Release
 
+# Fork note (Adelie, 2026-10-05): upstream's release pipeline is dispatch-only here. On a tag push
+# it would build the penguin/ one-line-installer bundles and publish @penguinharness/* and
+# @prismshadow/penguin-* to npm -- the upstream product, out of our fork. None of that is Adelie's,
+# and an accidental `git push --tags` must not be able to start it. Adelie's own release pipeline is
+# still to be written (FORK-PROGRESS.md 4.2); until then this file is kept for reference and can
+# only be run by hand, from the Actions tab.
 on:
-  push:
-    tags: ["v*"]
   workflow_dispatch:
     inputs:
       tag:

@@ -4,42 +4,27 @@
 
 <h1 align="center">Adelie</h1>
 
-<p align="center"><strong>Open-source, local-first multi-agent app development platform</strong><br />Fully automate <strong>building</strong> · <strong>optimizing</strong> · <strong>deploying</strong> AI applications</p>
+<p align="center"><strong>A local-first multi-agent app development platform, built on PenguinHarness</strong></p>
 
 <p align="center">
-  <a href="https://penguin.ooo/download">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="assets/readme/download-en-dark.svg" />
-      <img src="assets/readme/download-en-light.svg" alt="Download App" height="44" />
-    </picture>
-  </a>
-</p>
-
-<p align="center">1000+ Models · Multi-Platform · Apache 2.0 · Agent Self-Evolution</p>
-
-<p align="center">
-  <a href="https://www.npmjs.com/package/@prismshadow/penguin-core"><img src="https://img.shields.io/npm/v/@prismshadow/penguin-core" alt="npm version" /></a>
-  <a href="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/ci.yml"><img src="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
-  <a href="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/pages.yml"><img src="https://github.com/Prism-Shadow/penguin-harness/actions/workflows/pages.yml/badge.svg" alt="Deploy Site" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache-2.0" /></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A5%2024-brightgreen" alt="Node >= 24" />
+  <a href="https://github.com/Prism-Shadow/penguin-harness"><img src="https://img.shields.io/badge/fork%20of-PenguinHarness-1f6feb" alt="Fork of PenguinHarness" /></a>
 </p>
 
-<p align="center">
-  <a href="https://penguin.ooo/"><img src="https://img.shields.io/badge/Website-penguin.ooo-1f6feb?logo=googlechrome&logoColor=white" alt="Website" /></a>
-  <a href="https://penguin.ooo/docs/"><img src="https://img.shields.io/badge/Docs-penguin.ooo%2Fdocs-1f6feb?logo=readthedocs&logoColor=white" alt="Docs" /></a>
-  <a href="https://penguin.ooo/blog"><img src="https://img.shields.io/badge/Blog-penguin.ooo%2Fblog-1f6feb?logo=rss&logoColor=white" alt="Blog" /></a>
-</p>
-
-<p align="center">
-  <a href="https://discord.gg/eFHKqqcU3D"><img src="https://img.shields.io/badge/Discord-join%20chat-5865F2?logo=discord&logoColor=white" alt="Discord" /></a>
-  <a href="https://x.com/code_hiyouga"><img src="https://img.shields.io/badge/X-code%5Fhiyouga-000000?logo=x&logoColor=white" alt="X (Twitter)" /></a>
-  <a href="https://github.com/Prism-Shadow/penguin-harness-community/blob/main/wechat/group.jpg"><img src="https://img.shields.io/badge/WeChat-user%20group-07C160?logo=wechat&logoColor=white" alt="WeChat" /></a>
-</p>
-
-<p align="center">
-  <a href="https://www.producthunt.com/products/penguinharness?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-penguinharness" target="_blank" rel="noopener noreferrer"><img alt="Adelie - Let Agents Autonomously Build Better Agents for $0.02 | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1202577&amp;theme=light&amp;t=1784804711946" /></a>
-</p>
+> [!IMPORTANT]
+> **Adelie is a fork of [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness).** The code
+> tree, the engine, the Web frontend and the protocol all come from PenguinHarness (Apache-2.0);
+> Adelie is the productised line built on top of it — its own brand and interface, its own data root
+> and ports, its own release pipeline.
+>
+> - Where it came from, what the licence requires, what we changed: [`FORK.md`](FORK.md)
+> - How far the work has got: [`FORK-PROGRESS.md`](FORK-PROGRESS.md)
+> - The upstream project's own channels — repository, website, docs, blog, community, Discord, X,
+>   WeChat, Product Hunt — are **theirs**, not Adelie's: <https://github.com/Prism-Shadow/penguin-harness> ·
+>   <https://penguin.ooo/>
+> - The PenguinHarness and PrismShadow names and marks belong to upstream. Adelie does not use them
+>   as its own name, icon or domain.
 
 <p align="center">English | <a href="README.zh.md">简体中文</a></p>
 
@@ -84,7 +69,7 @@ https://github.com/user-attachments/assets/922d13a6-5ffc-4685-9a39-352f02f9afc0
 
 ## Built-in plugins
 
-Four plugin categories ship in the box ([docs](https://penguin.ooo/docs/skills)) — skills, plus the session hooks that drive goal mode and continual learning; agents can also write and optimize their own skills:
+Four plugin categories ship in the box (the docs live in [`packages/docs`](packages/docs) in this tree) — skills, plus the session hooks that drive goal mode and continual learning; agents can also write and optimize their own skills:
 
 | Category             | Plugins                                                                       |
 | -------------------- | ----------------------------------------------------------------------------- |
@@ -117,132 +102,62 @@ Each family's latest generation only — the app's **Models** page lists every b
 | ------------ | -------------------------------------------------------------------------- |
 | OS           | Linux, macOS, Windows 10+                                                  |
 | Architecture | x64, arm64                                                                 |
-| Runtime      | bundled by the one-line installer (npm installs need Node >= 24)           |
+| Runtime      | Node >= 24 (there is no Adelie installer yet — see Installation)           |
 | Model        | an API key for at least one model                                          |
 
-## Installation
+## Installation — read this first
 
-Start with the desktop app, or install the command line on a workstation or server. Both use the same `~/.penguin/data` root and can be mixed freely; a server is also one `docker run` away:
-
-- **🖥️ Desktop app** — a double-click install: it embeds the server and opens already signed in, no terminal involved.
-- **⌨️ CLI** — a one-line installer (or npm / offline package) puts the `penguin` command on the machine; `penguin web` then serves the full Web experience in your browser at `http://127.0.0.1:7364` (multi-session chat, agent / skill / model management, usage stats, Trace observability, evaluation center). The online installers bundle their own Node runtime — unpack and run; upgrades and reinstalls never touch your data.
-
-> [!NOTE]
-> On a CLI install, the server prints a first-login link as a framed notice on every start until a password is set — open it to claim the built-in `admin` account and choose one. Models are configured on the in-app **Models** page.
-
-### 🖥️ Desktop app
-
-The full Web experience as a standalone application: it embeds the server and opens already signed in — no terminal, no login page, no initial password to copy. It works on the same `~/.penguin/data` root as a CLI install, so the two can be used interchangeably (a data root only ever runs one server; if a CLI-started instance is already up, the app attaches to it).
-
-Download the desktop app from the [download page](https://penguin.ooo/download). The page serves the OSS-accelerated mirror when it is reachable, and every installer is also attached to each [GitHub Release](https://github.com/Prism-Shadow/penguin-harness/releases).
-
-| Platform    | Installers                  |
-| ----------- | --------------------------- |
-| macOS 11+   | dmg (Apple Silicon / Intel) |
-| Windows 10+ | installer (.exe, x64)       |
-| Linux (x64) | AppImage / deb              |
-
-The macOS builds are Developer ID signed and notarized, and the Windows installers are Authenticode signed, so neither platform needs a first-launch unblock. Linux is the one exception:
-
-<details>
-<summary><b>🐧 Linux: double-clicking the AppImage does nothing</b></summary>
-
-Browsers download AppImages without the execute permission. Grant it once and the app starts normally from then on (the deb package installs through the package manager and is not affected):
+**Adelie has not shipped release artifacts of its own yet.** There is no Adelie npm package, no
+Adelie installer, no Adelie Docker image and no Adelie download page: those are the last step of the
+plan ([`FORK-PROGRESS.md`](FORK-PROGRESS.md) §4). Today the only way to run Adelie is from this
+source tree:
 
 ```bash
-chmod +x penguin-desktop-linux-x86_64.AppImage
+# dependencies (skip desktop/electron: it downloads a runtime and is not needed for the Web App)
+pnpm install --frozen-lockfile \
+  --filter @prismshadow/penguin-core --filter @prismshadow/penguin-ui \
+  --filter @prismshadow/penguin-server --filter @prismshadow/penguin-web \
+  --filter @prismshadow/penguin-cli --filter @prismshadow/penguin-hmr
+
+# build (core's exports point at dist/, so build before running anything)
+pnpm -r --filter @prismshadow/penguin-core --filter @prismshadow/penguin-server \
+        --filter @prismshadow/penguin-web run build
+
+# run the server together with the built Web App
+cd packages/server
+PENGUIN_HOME=<data root> HOST=0.0.0.0 PORT=<port> node dist/index.js
 ```
 
-</details>
+The first start prints a first-login link as a framed notice on every start until a password exists —
+open it to claim the built-in `admin` account and set one (there is no initial password to copy).
+Models are configured on the in-app **Models** page, which is where a fresh instance needs an API key
+before it can run anything.
 
-### 🐧🍎 Linux / macOS (online install)
+> [!WARNING]
+> Everything the upstream README offers — `curl https://penguin.ooo/install.sh | sh`,
+> `npm install -g @prismshadow/penguin-cli`, `docker run hiyouga/penguinharness`, the desktop
+> installer on <https://penguin.ooo/download> — installs **PenguinHarness**, not Adelie. Those
+> channels stay upstream's until Adelie publishes its own.
+
+Package names, the data root and the command name still carry the upstream spelling
+(`@prismshadow/*`, `~/.penguin/data`, `penguin`) because the rename is a staged job — what is left
+of it is tracked in [`FORK-PROGRESS.md`](FORK-PROGRESS.md).
+
+## Development
 
 ```bash
-curl -fsSL https://penguin.ooo/install.sh | sh
-penguin web        # start the service and open http://127.0.0.1:7364
+pnpm install && pnpm build   # build first: core's exports point at dist/
+pnpm dev                     # backend + web app together (prefixed logs, deps built once)
 ```
 
-### 🪟 Windows (online install, PowerShell)
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the workspace guide (the file is upstream's and
+largely still describes this tree accurately): dev commands, quality gates, repo layout, changelog
+rule. `packages/landing` (the upstream website) was removed in this fork.
 
-```powershell
-irm https://penguin.ooo/install.ps1 | iex
-penguin web        # start the service and open http://127.0.0.1:7364
-```
+## Upstream roadmap
 
-### 📦 npm (any platform, Node >= 24)
-
-```bash
-npm install -g @prismshadow/penguin-cli
-penguin web        # start the service and open http://127.0.0.1:7364
-```
-
-### 🐳 Docker
-
-```bash
-docker run -d --name penguin -p 127.0.0.1:7364:7364 -v penguin-data:/data hiyouga/penguinharness:latest
-docker logs penguin       # the first-login link, openable as it stands on this machine
-```
-
-The official image runs the same server on `0.0.0.0:7364` with its data root on the `/data` volume, as an unprivileged user, for `linux/amd64` and `linux/arm64`. It is built from this repository's source: `latest` is rebuilt on every push to `main`, and each release is published under its exact version (`hiyouga/penguinharness:0.2.13`) — there is no moving `stable` tag. The example publishes the port on the host's loopback, so the Web App answers only on the machine running Docker (`http://localhost:7364`); to reach it from a network, publish on all interfaces instead (`-p 7364:7364`), preferably behind a reverse proxy that terminates TLS. Compose file and the full deployment notes — reverse proxies, upgrades, the rescue path — are in the [Docker quickstart](https://penguin.ooo/docs/quickstart-docker).
-
-<details>
-<summary><b>📴 Offline install (air-gapped machines)</b></summary>
-
-Every <a href="https://github.com/Prism-Shadow/penguin-harness/releases">GitHub Release</a> attaches exactly one package per target — Linux and macOS in x64 / arm64, Windows in x64, plus a runtime-less universal package — and the same file serves online and offline installation. Each package seals the program payload, its SHA256 checksum and the platform's installer: download the one file on a networked machine, copy it to the target, extract once and run the bundled installer — no network, no separate checksum file to carry (the sealed SHA256 is always verified).
-
-**Linux (on arm64, use `penguin-linux-arm64.tar.gz`):**
-
-```bash
-mkdir penguin-install
-tar -xzf penguin-linux-x64.tar.gz -C penguin-install
-./penguin-install/install.sh
-```
-
-**macOS (Apple silicon shown; on Intel, use `penguin-darwin-x64.tar.gz`):**
-
-```bash
-mkdir penguin-install
-tar -xzf penguin-darwin-arm64.tar.gz -C penguin-install
-./penguin-install/install.sh
-```
-
-**Windows (unzip, then double-click `install.cmd` — or run it in PowerShell):**
-
-```powershell
-Expand-Archive penguin-win32-x64.zip -DestinationPath penguin-install
-cd penguin-install
-.\install.cmd
-```
-
-</details>
-
-### 🤖 CLI & SDK — for agents
-
-The same engine, scriptable — made to be driven by agents (and agents building agents):
-
-```bash
-penguin config model add --provider deepseek --model-id deepseek-flash --api-key sk-... --set-default
-penguin run -m "Create hello.txt containing Hello, Penguin"   # one-shot task
-penguin chat       # interactive REPL (/compact, /clear, /exit, Ctrl-C to interrupt)
-penguin server     # headless service (same API the Web App uses)
-```
-
-```ts
-import { createAgent, isCompleteModelMessage, userText } from "@prismshadow/penguin-core";
-
-const agent = await createAgent({ agentId: "default_agent" });
-const session = await agent.createSession({ workspaceDir: process.cwd() });
-
-for await (const output of session.run([userText("Create hello.txt containing hi")], {
-  approve: async () => "allow", // per-tool-call approval
-})) {
-  if (isCompleteModelMessage(output) && output.payload.type === "text") {
-    console.log(output.payload.text);
-  }
-}
-```
-
-## Roadmap
+This is the upstream project's roadmap, kept here as context for where
+the base is heading. Adelie's own plan is [`FORK-PROGRESS.md`](FORK-PROGRESS.md).
 
 - [ ] Public release of the benchmark suite
 - [x] Desktop app
@@ -252,31 +167,24 @@ for await (const output of session.run([userText("Create hello.txt containing hi
 - [ ] OpenShell integration (permission-governed shell)
 - More to come…
 
-## Development
+## Upstream contributors
 
-```bash
-pnpm install && pnpm build   # build first: core's exports point at dist/
-pnpm dev                     # backend + web app together (prefixed logs, deps built once)
-```
-
-See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the full workspace guide: dev commands, quality gates, repo layout, and the changelog rule.
-
-## Contributors
-
-Thanks to everyone who has contributed to Adelie!
+Thanks to everyone who has contributed to PenguinHarness — the
+codebase this fork is built on.
 
 <p align="center">
-  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="Adelie contributors" /></a>
+  <a href="https://github.com/Prism-Shadow/penguin-harness/graphs/contributors"><img src="https://contrib.rocks/image?repo=Prism-Shadow/penguin-harness" alt="PenguinHarness contributors" /></a>
 </p>
 
 ## Citation
 
-If you use Adelie in your research, please cite:
+If you use this codebase in your research, cite the upstream project it comes from (Adelie is a
+fork of it):
 
 ```bibtex
 @software{penguinharness2026,
   author  = {{PrismShadow Team}},
-  title   = {Adelie: Efficient Self-Improving Harness for Everyone},
+  title   = {PenguinHarness: Efficient Self-Improving Harness for Everyone},
   year    = {2026},
   url     = {https://github.com/Prism-Shadow/penguin-harness},
   license = {Apache-2.0}
@@ -294,6 +202,7 @@ See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for their licenses.
 
 ## License
 
-[Apache-2.0](LICENSE) © 2026 Prism Shadow
+[Apache-2.0](LICENSE) © 2026 Prism Shadow — the upstream copyright. Adelie is a fork of it and
+is released under the same licence; see [`FORK.md`](FORK.md).
 
-Built with ❤️ by [Yaowei Zheng](https://github.com/hiyouga) (author of [LlamaFactory](https://github.com/hiyouga/LlamaFactory)), the [PrismShadow AI Team](https://github.com/Prism-Shadow), and [Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5).
+The upstream PenguinHarness codebase is built with ❤️ by [Yaowei Zheng](https://github.com/hiyouga) (author of [LlamaFactory](https://github.com/hiyouga/LlamaFactory)), the [PrismShadow AI Team](https://github.com/Prism-Shadow), and [Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5). Adelie is a fork of that work.
