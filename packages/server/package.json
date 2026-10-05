@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/penguin-server",
-  "version": "0.2.13",
+  "version": "0.3.0",
   "type": "module",
   "description": "Adelie web server: multi-user authentication and authorization, Session execution with SSE streaming, and usage accounting, built on @lmliheng/penguin-core.",
   "license": "Apache-2.0",
