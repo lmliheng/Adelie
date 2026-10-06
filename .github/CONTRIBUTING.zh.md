@@ -19,11 +19,11 @@ pnpm install
 pnpm build       # 先构建：core 的导出指向 dist/
 
 pnpm dev         # 服务端 + Web 一起启动（带前缀日志，依赖只构建一次）
-pnpm dev:server  # 服务端，127.0.0.1:7368（不是已安装 server 的 7364）
+pnpm dev:server  # 服务端，127.0.0.1:7368（不是已安装 server 的 4000）
 pnpm dev:web     # Web App（Vite），127.0.0.1:7365，/api 代理到 7368
 pnpm dev:docs    # 文档站（Vite），127.0.0.1:7367
 pnpm dev:landing # 落地页（Vite），127.0.0.1:7366
-pnpm penguin ... # 从源码运行 CLI；`penguin web` 服务在 127.0.0.1:7369
+pnpm penguin ... # 从源码运行 CLI；`penguin web` 服务在 127.0.0.1:7370
 pnpm desktop     # 从源码运行桌面应用（先全量构建，再启动 Electron）
 
 BASE_PATH=/ pnpm build:site   # 完全按 Pages 部署的方式组装落地页 + 文档
@@ -55,7 +55,7 @@ web/server 消费的是快照副本，只有当该包的 `build` 脚本经由 pn
 `pnpm desktop` 共用 `~/.penguin/dev-data`；`pnpm penguin` 独占 `~/.penguin/dev-data-cli`，因为一个
 数据根目录同时只接纳一个 server（`<root>/server.lock`），而开发版 CLI 的 `penguin web` 恰恰就是那个
 随后会让 Agent 去执行 `pnpm dev` 的 harness——共用根目录时，那个 Agent 的 `dev:server` 会被 harness
-自己的锁挡住而拒绝启动（正是这种共存关系也已经为它分配了 7369 端口，见
+自己的锁挡住而拒绝启动（正是这种共存关系也已经为它分配了 7370 端口，见
 `packages/core/src/internal/ports.ts`）。若仍要让某条开发 CLI 命令对准 `pnpm dev` 的数据集，就为该条
 命令单独声明——`ADELIE_HOME=~/.penguin/dev-data pnpm penguin ...`，或在支持的子命令上使用
 `--root`。需要另一个根目录？只为需要它的那一条命令内联传入 `ADELIE_HOME`

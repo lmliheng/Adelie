@@ -490,5 +490,5 @@ fi
 echo ""
 echo "Get started:"
 echo "  $PENGUIN_COMMAND --help    # all commands"
-echo "  $PENGUIN_COMMAND web       # start the Web UI at http://127.0.0.1:7364 (a first-login link is printed on first start)"
+echo "  $PENGUIN_COMMAND web       # start the Web UI at http://127.0.0.1:4000 (a first-login link is printed on first start)"
 echo "  $PENGUIN_COMMAND server    # headless server (PORT / HOST to override)"

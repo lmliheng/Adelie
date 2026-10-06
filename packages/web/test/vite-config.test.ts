@@ -2,7 +2,7 @@
  * The helpers vite.config.ts is built from.
  *
  * - The dev server's `/api` proxy defaults to the development backend (7368, not the installed
- *   server's 7364), follows PORT, treats an empty PORT as unset rather than as port 80, and is
+ *   server's 4000), follows PORT, treats an empty PORT as unset rather than as port 80, and is
  *   replaced outright by ADELIE_API_PROXY unless that is empty.
  * - KaTeX's stylesheet ships woff2 only: the woff and truetype fallbacks are dropped, and a
  *   stylesheet without them is left untouched.
@@ -11,7 +11,7 @@ import { describe, expect, it } from "vitest";
 import { apiProxyTarget, dropNonWoff2FontSources } from "../vite.config.js";
 
 describe("apiProxyTarget", () => {
-  it("defaults to the development backend, not the installed server's 7364", () => {
+  it("defaults to the development backend, not the installed server's 4000", () => {
     expect(apiProxyTarget({})).toBe("http://127.0.0.1:7368");
   });
 

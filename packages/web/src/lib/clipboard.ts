@@ -4,7 +4,7 @@
  *
  * `navigator.clipboard` is secure-context-only: it is `undefined` on a plain-HTTP origin
  * that is not localhost, which is exactly the shape a non-loopback `HOST` bind serves (a
- * LAN address, a remote install reached at `http://<host>:7364`). Reaching straight for
+ * LAN address, a remote install reached at `http://<host>:4000`). Reaching straight for
  * it there writes nothing at all, so every copy affordance goes through this entry.
  *
  * The write itself is `copy-to-clipboard`'s: the Clipboard API in a secure context, and

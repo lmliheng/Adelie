@@ -26,7 +26,7 @@ import { checkoutCliEntry } from "./services/cli-shim.js";
 export interface ServerConfig {
   /** Local data root directory (shared with the SDK/CLI). */
   root: string;
-  /** HTTP listen address and port (defaults to 127.0.0.1:7364, deliberately avoiding common ports like 3000/8080). */
+  /** HTTP listen address and port (defaults to 127.0.0.1:4000, Adelie's own Web port — upstream serves on 7364). */
   host: string;
   /**
    * Listen port. `0` asks the OS for an ephemeral port (the desktop shell always does),

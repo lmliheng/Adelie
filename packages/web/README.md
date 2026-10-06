@@ -23,11 +23,11 @@ DTO types are imported type-only from `@lmliheng/penguin-server/api`; no server 
 Prereqs: Node >= 24, pnpm; run `pnpm install` at the repo root first (core must be built — the root `dev:*` scripts handle that).
 
 ```bash
-pnpm dev:server   # backend at 127.0.0.1:7368 (dev port, not the installed server's 7364)
+pnpm dev:server   # backend at 127.0.0.1:7368 (dev port, not the installed server's 4000)
 pnpm dev:web      # Vite dev server at 127.0.0.1:7365; /api proxied (SSE passes through)
 ```
 
-The proxy target defaults to `http://127.0.0.1:7368` — the development backend, kept off the installed server's 7364 so the two can run at once (`PORT` moves both, `ADELIE_API_PROXY` overrides the target outright). Auth is a same-origin HttpOnly cookie, so the proxy keeps everything same-origin.
+The proxy target defaults to `http://127.0.0.1:7368` — the development backend, kept off the installed server's 4000 so the two can run at once (`PORT` moves both, `ADELIE_API_PROXY` overrides the target outright). Auth is a same-origin HttpOnly cookie, so the proxy keeps everything same-origin.
 
 ```bash
 pnpm --filter @lmliheng/penguin-web typecheck

@@ -9,8 +9,8 @@ services:
     restart: unless-stopped
     ports:
       # On the host's loopback: reachable only from the machine running Docker.
-      # To open it to a network, publish on all interfaces instead: "7364:7364".
-      - "127.0.0.1:7364:7364"
+      # To open it to a network, publish on all interfaces instead: "4000:4000".
+      - "127.0.0.1:4000:4000"
     volumes:
       - penguin-data:/data
     # Shutting down interrupts running Tasks and waits for them to wrap up, which can take

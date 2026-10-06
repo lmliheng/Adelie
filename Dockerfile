@@ -1,8 +1,8 @@
-# The official Adelie server image: `penguin server` on 0.0.0.0:7364, serving the
+# The official Adelie server image: `penguin server` on 0.0.0.0:4000, serving the
 # Web App, with the data root at /data.
 #
 #   docker build -t penguin-harness:dev .
-#   docker run -d -p 127.0.0.1:7364:7364 -v penguin-data:/data penguin-harness:dev
+#   docker run -d -p 127.0.0.1:4000:4000 -v penguin-data:/data penguin-harness:dev
 #
 # Published from .github/workflows/docker.yml to Docker Hub as hiyouga/penguinharness.
 # The user-facing contract (first sign-in, volumes, upgrades, reverse proxies) is
@@ -242,7 +242,7 @@ ENV HOME=/home/penguin \
     ADELIE_HOME=/data \
     ADELIE_WEB_DIST=/opt/penguin/web \
     HOST=0.0.0.0 \
-    PORT=7364
+    PORT=4000
 
 WORKDIR /home/penguin
 
@@ -251,7 +251,7 @@ RUN set -eux; \
     chown penguin:penguin /data
 VOLUME ["/data"]
 
-EXPOSE 7364
+EXPOSE 4000
 
 COPY --chmod=0755 docker/entrypoint.sh /usr/local/bin/penguin-entrypoint
 

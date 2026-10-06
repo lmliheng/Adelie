@@ -96,7 +96,7 @@ jobs:
 
       - name: Start the container
         run: |
-          docker run -d --name penguin -p 127.0.0.1:7364:7364 \
+          docker run -d --name penguin -p 127.0.0.1:4000:4000 \
             -e ADELIE_SEED_ADMIN_PASSWORD=ci-password-123 \
             -v penguin-data:/data \
             penguin-harness:pr
@@ -104,7 +104,7 @@ jobs:
       - name: Wait for the server
         run: |
           for _ in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:7364/api/install > /tmp/install.json; then
+            if curl -fsS http://127.0.0.1:4000/api/install > /tmp/install.json; then
               jq -e '.installId | type == "string" and (. | length) > 0' /tmp/install.json
               exit 0
             fi
@@ -121,13 +121,13 @@ jobs:
           code="$(curl -s -o /tmp/login.json -w '%{http_code}' -c /tmp/cookies.txt \
             -H 'content-type: application/json' \
             -d '{"userId":"admin","password":"ci-password-123"}' \
-            http://127.0.0.1:7364/api/auth/login)"
+            http://127.0.0.1:4000/api/auth/login)"
           if [ "$code" != "200" ]; then
             echo "error: login answered $code" >&2
             cat /tmp/login.json >&2
             exit 1
           fi
-          curl -fsS -b /tmp/cookies.txt http://127.0.0.1:7364/api/version > /tmp/version.json
+          curl -fsS -b /tmp/cookies.txt http://127.0.0.1:4000/api/version > /tmp/version.json
           jq -e '.version | type == "string"' /tmp/version.json
 
       # web.db was created by the server itself, so its owner is the euid the server runs as.
@@ -169,13 +169,13 @@ jobs:
         run: |
           docker start penguin
           for _ in $(seq 1 90); do
-            if curl -fsS http://127.0.0.1:7364/api/install > /dev/null; then break; fi
+            if curl -fsS http://127.0.0.1:4000/api/install > /dev/null; then break; fi
             sleep 1
           done
           code="$(curl -s -o /dev/null -w '%{http_code}' \
             -H 'content-type: application/json' \
             -d '{"userId":"admin","password":"ci-password-123"}' \
-            http://127.0.0.1:7364/api/auth/login)"
+            http://127.0.0.1:4000/api/auth/login)"
           if [ "$code" != "200" ]; then
             echo "error: login after restart answered $code" >&2
             docker logs penguin >&2

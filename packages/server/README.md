@@ -17,7 +17,7 @@ The full route tables and the SSE protocol are documented in the [Server API ref
 
 | Variable | Meaning | Default |
 | --- | --- | --- |
-| `PORT` / `HOST` | Listen port / address | `7364` / `127.0.0.1` |
+| `PORT` / `HOST` | Listen port / address | `4000` / `127.0.0.1` |
 | `ADELIE_HOME` (was `PENGUIN_HOME`) | Data root (shared with SDK/CLI) | `~/.adelie/data` |
 | `ADELIE_WEB_DB` (was `PENGUIN_WEB_DB`) | SQLite file path | `<root>/web.db` |
 | `ADELIE_WEB_DIST` (was `PENGUIN_WEB_DIST`) | Front-end build dir (static hosting + SPA fallback when present) | `../web/dist`, or the bundled `web-dist/` in the npm package |

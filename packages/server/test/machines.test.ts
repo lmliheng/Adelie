@@ -673,7 +673,7 @@ describe("remote layout", () => {
     // one a person made by hand are the same installation.
     expect(RELEASE.programDir.posix).toBe("$HOME/.penguin");
     expect(RELEASE.dataRoot.posix).toBe("$HOME/.penguin/data");
-    expect(RELEASE.defaultPort).toBe(7364);
+    expect(RELEASE.defaultPort).toBe(4000);
     expect(DEV.defaultPort).toBe(7371);
   });
 

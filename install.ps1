@@ -488,5 +488,5 @@ if ($PathUpdateMessage) {
 Write-Host ""
 Write-Host "Get started:"
 Write-Host "  $PenguinCommand --help    # all commands"
-Write-Host "  $PenguinCommand web       # start the Web UI at http://127.0.0.1:7364 (a first-login link is printed on first start)"
+Write-Host "  $PenguinCommand web       # start the Web UI at http://127.0.0.1:4000 (a first-login link is printed on first start)"
 Write-Host "  $PenguinCommand server    # headless server (PORT / HOST to override)"

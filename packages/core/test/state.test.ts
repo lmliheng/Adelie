@@ -5,6 +5,7 @@ import { parse as parseToml } from "smol-toml";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { clampYield } from "../src/environment/tools/background/index.js";
 import { DEFAULT_EMPTY_POLL_YIELD_MS } from "../src/environment/tools/command/index.js";
+import { DEFAULT_SERVER_PORT } from "../src/internal/ports.js";
 import {
   AGENT_ID_PLACEHOLDER,
   AGENTS_MD_PLACEHOLDER,
@@ -548,9 +549,10 @@ describe("assembleSystemPrompt", () => {
     const state = await loadAgentState({ init: {} });
     const prompt = assembleSystemPrompt(state);
     // The wording of these rules is tuned freely; what must not drift is what they never say.
-    // Ports: the service numbers are deliberately not listed, so a model cannot read one out
-    // of the prompt and go looking for it.
-    expect(prompt).not.toContain("7364");
+    // Ports: the service number is deliberately not listed, so a model cannot read one out
+    // of the prompt and go looking for it. The check follows core's own constant rather than
+    // repeating the digits, so moving the default cannot leave it guarding a stale number.
+    expect(prompt).not.toContain(String(DEFAULT_SERVER_PORT));
     // Auth/key failures live entirely in Stop rules, as a special case of the
     // unresolvable-error rule: retry once, then stop and ask the user to update the key
     // outside the chat — never through a command that would put the secret on a command line.

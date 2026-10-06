@@ -21,11 +21,11 @@ pnpm install
 pnpm build       # build first: core's exports point at dist/
 
 pnpm dev         # backend + web app together (prefixed logs, deps built once)
-pnpm dev:server  # backend at 127.0.0.1:7368 (not the installed server's 7364)
+pnpm dev:server  # backend at 127.0.0.1:7368 (not the installed server's 4000)
 pnpm dev:web     # web app (Vite) at 127.0.0.1:7365, /api proxied to 7368
 pnpm dev:docs    # docs site (Vite) at 127.0.0.1:7367
 pnpm dev:landing # landing page (Vite) at 127.0.0.1:7366
-pnpm penguin ... # CLI from source; `penguin web` serves at 127.0.0.1:7369
+pnpm penguin ... # CLI from source; `penguin web` serves at 127.0.0.1:7370
 pnpm desktop     # desktop app from source (builds everything first, then Electron)
 
 BASE_PATH=/ pnpm build:site   # assemble landing + docs exactly like the Pages deploy
@@ -74,7 +74,7 @@ your real agents. `pnpm dev`, `pnpm dev:server` and `pnpm desktop` share
 data root admits one server at a time (`<root>/server.lock`) and the dev CLI's
 `penguin web` is exactly the harness that then asks an Agent to run `pnpm dev` — on a
 shared root that Agent's `dev:server` would refuse to start, blocked by the harness's
-own lock (the same coexistence that already gives it port 7369, see
+own lock (the same coexistence that already gives it port 7370, see
 `packages/core/src/internal/ports.ts`). To aim a dev CLI command at the `pnpm dev`
 dataset anyway, say so per command — `ADELIE_HOME=~/.penguin/dev-data pnpm penguin ...`,
 or `--root` where the subcommand takes it. Need a different root?

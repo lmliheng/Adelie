@@ -2,7 +2,7 @@
  * Vite config: React SPA + Tailwind CSS 4.
  *
  * Dev server listens on 7365; `/api` is proxied to the **development** backend (127.0.0.1:7368 --
- * `pnpm dev:server`, deliberately not the installed server's 7364, which is routinely running at the
+ * `pnpm dev:server`, deliberately not the installed server's 4000, which is routinely running at the
  * same time). Honors PORT so overriding the backend port moves the proxy with it, and
  * ADELIE_API_PROXY overrides the whole target. SSE (text/event-stream) passes through http-proxy
  * transparently, no special config needed.

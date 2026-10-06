@@ -13,11 +13,11 @@
  *
  * | port | who                                | data root                  | where                                |
  * | ---- | ---------------------------------- | -------------------------- | ------------------------------------ |
- * | 7364 | installed server / Web UI          | `~/.adelie/data`           | `DEFAULT_SERVER_PORT` below          |
+ * | 4000 | installed server / Web UI          | `~/.adelie/data`           | `DEFAULT_SERVER_PORT` below          |
  * | 7365 | `pnpm dev:web` (Vite)              | none (proxies to 7368)     | `packages/web/vite.config.ts`        |
  * | 7367 | `pnpm dev:docs` (Vite)             | none (static)              | `packages/docs/vite.config.ts`       |
  * | 7368 | `pnpm dev:server` (dev backend)    | `~/.penguin/dev-data`      | `packages/server/package.json` `dev` |
- * | 7369 | `pnpm penguin web` (dev CLI)       | `~/.penguin/dev-data-cli`  | the root and cli `penguin` scripts   |
+ * | 7370 | `pnpm penguin web` (dev CLI)       | `~/.penguin/dev-data-cli`  | the root and cli `penguin` scripts   |
  * | 7371 | a machine's dev-profile server     | `~/.penguin-dev/data` there | `DEFAULT_DEV_SERVER_PORT` below      |
  * | 7372 | `pnpm dev:gallery` (Vite)          | none (static)              | `packages/ui-gallery/vite.config.ts` |
  *
@@ -35,7 +35,16 @@
  * dev entries write are Adelie's, though (`ADELIE_HOME` / `ADELIE_PROFILE`); only these paths
  * are still spelled the old way.
  *
- * The development backend deliberately does **not** share 7364 with an installed one: the
+ * The release port is Adelie's own number, not the one inherited from upstream. 4000 is where
+ * the previous Adelie served its Web UI, so the address people know carries over; upstream
+ * PenguinHarness binds 7364, and since the two products are installable side by side, sharing
+ * the number would make them fight over the socket. The dev CLI takes 7370 — the old Adelie
+ * CLI's `serve` default — and 7370 is a hole in upstream's dev band (7365 / 7368 / 7369 /
+ * 7371 / 7372), so a developer running both trees still gets a free port. The dev backend,
+ * the dev Web server, the gallery and the machine-forward port below keep upstream's numbers:
+ * only the two that a person meets — the installed server and the dev CLI — are Adelie's.
+ *
+ * The development backend deliberately does **not** share 4000 with an installed one: the
  * two are routinely running at once, and before they were split, `pnpm dev` either failed
  * to bind or -- worse -- the Vite proxy silently talked to the installed server instead of
  * the one being worked on. The dev data root is separated for the same reason.
@@ -56,15 +65,18 @@
  * (port, root) pairs above.
  */
 
-/** Default main server / Web UI port; deliberately avoids common defaults like 3000/8080. */
-export const DEFAULT_SERVER_PORT = 7364;
+/** Default main server / Web UI port: Adelie's own number, inherited from the Web UI the
+ * previous Adelie served on 4000 — the address the installer prints and people bookmark.
+ * Upstream PenguinHarness serves on 7364 instead; the table above says why that one is left
+ * to it. Unlike 3000/8080 it is not a default anything else reaches for. */
+export const DEFAULT_SERVER_PORT = 4000;
 
 /**
  * Where a dev-profile instance starts the server it installs on another machine
  * (`packages/server/src/machines/layout.ts`). Its own number because the release-profile
- * server on that machine holds 7364, and the forward's local port must equal the remote
+ * server on that machine holds 4000, and the forward's local port must equal the remote
  * one for Workspace previews to resolve — so the two profiles cannot share a number on
- * either end. Not 7370: the design repository's reading site (`site/`) serves there, on the
- * same developer box whose forward to a machine needs this number free locally.
+ * either end. Not 7370: the dev CLI holds that one (see the table), and this forward's local
+ * port has to stay free on the very developer box that runs the dev CLI.
  */
 export const DEFAULT_DEV_SERVER_PORT = 7371;
