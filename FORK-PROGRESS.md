@@ -1771,3 +1771,17 @@ Adelie 与 PenguinHarness 两棵树也不会撞。条目名字里的「profile �
 
 `packages/web/README.md` 的「Production」一节仍写着 `PENGUIN_WEB_DIST` —— 2.2c 的读侧改名只把 server
 README 的环境表跟上了。这一轮没碰它，它属 2.2c 的文档尾巴。
+
+### 收尾：CI 与汇报
+
+- **推送**：`git push origin main` = `575106bc..e9e585a2`（`3835c0e8` 是本轮的代码提交，`e9e585a2`
+  是台账那一笔）。CI 为 `e9e585a2` 起的 run **`37455104295`**：首跑 `test-macos (server)` 红在
+  `workflows.test.ts > notices an Agent's FIRST workflow`（它给工作流构建留 10 秒，macOS runner 慢，
+  状态文件还没落盘 → `{}`；与端口无关，Linux 那次同文件全绿），`ci` 这个聚合 job 随之标红。
+  用 `rerun-failed-jobs` 重跑那两个 job 后**22 个作业全绿**（`not success: []`）。
+- **汇报邮件没发出去（卡住的地方）**：vault 里的 `CSU_MAIL_AUTHCODE` 被邮箱拒了 ——
+  `mail.py check` 报 IMAP `LOGIN Login error or password error`，`mail.py send` 报 SMTP `535
+  authentication failed`；两次之后按纪律停下，没有继续重试登录（账号与专用密码这一对已经失效或被
+  撤销）。需要在网页邮箱「设置 → 个人信息 → 邮箱密码 → 客户端专用密码」里重建一个，再
+  `penguin config vault set --project-id sjaaj --agent-id default_agent --key CSU_MAIL_AUTHCODE`。
+  这一轮的结论因此只落在本台账里。
