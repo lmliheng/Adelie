@@ -477,9 +477,9 @@ async function capture(args) {
   const srv = spawn("node", [path.join(ROOT, "packages/server/dist/index.js")], {
     env: {
       ...process.env,
-      PENGUIN_HOME: path.join(dataRoot, "home"),
-      PENGUIN_WEB_DB: path.join(dataRoot, "web.db"),
-      PENGUIN_WEB_DIST: variants[0].dist,
+      ADELIE_HOME: path.join(dataRoot, "home"),
+      ADELIE_WEB_DB: path.join(dataRoot, "web.db"),
+      ADELIE_WEB_DIST: variants[0].dist,
       PORT: String(SRV_PORT),
       HOST: "127.0.0.1",
       ADELIE_SEED_ADMIN_PASSWORD: ADMIN_PASSWORD,

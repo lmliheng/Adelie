@@ -38,6 +38,6 @@ pnpm --filter @lmliheng/penguin-web build       # vite build → dist/
 
 ## Production
 
-No separate static server needed: `@lmliheng/penguin-server` auto-hosts `packages/web/dist` (or `PENGUIN_WEB_DIST`) with an SPA fallback — build the web app, start the server, done. The published npm packages bundle the built front end.
+No separate static server needed: `@lmliheng/penguin-server` auto-hosts `packages/web/dist` (or `ADELIE_WEB_DIST`) with an SPA fallback — build the web app, start the server, done. The published npm packages bundle the built front end.
 
 Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0

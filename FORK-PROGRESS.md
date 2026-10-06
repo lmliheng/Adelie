@@ -105,6 +105,12 @@
         变量名全都改用 Adelie 的，**取值一个没动**（`~/.penguin/dev-data`、`~/.penguin/dev-data-cli`
         这些**路径**仍留旧拼写，理由见 `packages/core/src/internal/ports.ts`：那是与桌面壳耦合的那步）。
         细节与实测见「第九轮」一节。
+      - **非桌面壳的收尾·三（2026-10-06，第十一轮）**：第九轮说「非桌面壳的写点收干净了」，这次**连读点一起**
+        重扫，又找出两处**会真的出错**的漏网、一个写点和一处文档尾巴 —— 容器入口 `docker/entrypoint.sh` 取数据根
+        写的是旧名（而 `Dockerfile` 的 `ENV` 早在第九轮就是 `ADELIE_HOME`，也就是**没有任何东西会设那个旧名**）、
+        需求箱插件的 `kit/install.mjs` 把数据根写成「旧名在前」还与 2.2b 已废的 `PENGUIN_PROJECT_ID/AGENT_ID` 对读、
+        `packages/web/scripts/theme-shots.mjs` 的三个变量、`packages/web/README.md` 那一行。四处都改过来了
+        （插件 `plugin.json` 日期版本 +1），改法与验证见「第十一轮」一节。
       - **还差什么（做这一条时要一起收的尾）**：
         1. **写侧剩下的全在桌面壳一侧**：`packages/desktop/src/{server-process,launcher,web-dist}.ts`
            仍导出 / 传 `PENGUIN_PROFILE` / `PENGUIN_CLI_ENTRY` / `PENGUIN_WEB_DIST` / `PENGUIN_DESKTOP_TOKEN` /
@@ -724,6 +730,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-06 | 2.2c（写侧的远端命令） | `machines/commands.ts` 的 `remotePenguin()` 改成**两个名字都写**：远端命令现在同时给出 `ADELIE_HOME` / `PENGUIN_HOME` 与 `ADELIE_PROFILE` / `PENGUIN_PROFILE`（Adelie 的名字在前、两个取值相同），注释里写明为什么不是「探测远端版本」（这条命令落地的 CLI 来自那台机器的 hmr store，可能是更早的发行推上去的、只认旧名；探测要花一次握手且探不准）。顺带把 `machines/layout.ts` 的数据根注释与 `machines.test.ts` 的注解跟上 | 六包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core **1359** / 5 跳过 · server **2601** / 2 跳过（+1 新用例，钉住两个名字与先后）· cli **505** · ui **1003** · web **2877** / 2 跳过，**0 失败**；把 `remotePenguin()` **真生成的那条命令**（不是复述）拿 `sh` 跑了一遍：假 HOME 下桩「node」换成 core 的 `resolveRoot()` / `boundaryEnv()`，四个变量都在且取值一致，解析出的根与 profile 都是这一侧的 dev（`reader-root=$HOME/.penguin-dev/data`、`reader-profile=dev`） | `16368121` |
 | 2026-10-06 | 2.2c（写侧·非桌面壳的一批） | 第八轮漏掉的那批非桌面壳写点改用 Adelie 的名字：两个 `penguin` 脚本、`server` 的 `dev` 脚本、`packages/web/e2e/run.sh` 起服务那行、`Dockerfile` 的 `ENV`、`install.ps1` 生成的 Windows 启动器垫片（与 `scripts/launchers/penguin.cmd` 对齐）；**取值一个没动**，测试守卫与 CONTRIBUTING / 注释跟上 | 六包 typecheck 过 · `pnpm lint` 0 · `pnpm format:check` 干净；cli **506** · ui **1003** · server **2606** / 2 跳过 · web **2888** / 2 跳过（core 那条红来自另一条线正在改的 `README.md` 分类表，非本轮）；脚本行默认值经 `run-with-env.mjs` + 桩解析，新旧拼写逐字相同；`pnpm penguin version` 真跑；按 `web/e2e/run.sh` 那一行的变量名真起一次服务（日志自报数据根 / SQLite / 前端目录都对、标题 Adelie）；整条 e2e 42/69 —— 失败是**旧前端产物**造成的选择器错位，非本轮；`sh scripts/test-installer.sh` 通过；CI run **`37432299704`** 22 个作业全绿（含 `installer-windows`，见下） | `079cf1b4` |
 | 2026-10-06 | 2.3 | 默认端口换成 Adelie 自己的：服务端 `7364` → **`4000`**（旧 Adelie Web 一直在服务的地址，也是本机 ufw / egress-whitelist 里写作「Adelie Web (4000)」的那条）、dev CLI `7369` → **`7370`**（旧 Adelie CLI `adelie serve` 的缺省）。改到的地方：core 常量与端口表（含「为什么是这两个号」）、CLI 帮助文案 zh/en、cli/server/web 三份 README、两份 CONTRIBUTING、install.sh/install.ps1 的上手提示、Dockerfile 的 PORT/EXPOSE、compose 映射、docker 工作流的冒烟地址、两个 dev CLI 脚本、三处测试断言（机器 layout 的 release 默认端口、CLI 默认端口；system prompt 的端口守卫改成跟 core 的常量走） | 六包 typecheck 过 · `pnpm lint` 0 警告 · `pnpm format:check` 干净 · core **1359**/5 跳过 · cli **506** · server **2606**/2 跳过 · web **2896**/2 跳过 · ui **1003**，**0 失败** · `sh scripts/test-installer.sh` 通过 · `docker.yml` 与 `compose.yaml` 用仓库自带 `yaml` 解析通过（触发面仍是 `workflow_call`/`workflow_dispatch`/`pull_request`，没有 main 推送） · 真起服务（端口 7477、数据根 `/root/adelie-fork-data/r10-portcheck`）日志三行对新根，Playwright 打开是 Adelie 登录页、console 唯一 error 是登录前 401 · 4000 全程没有监听、也没被本机绑定（它在「不许动」的名单里，默认值只经常量 + CLI 帮助 + 单测验证） | `3835c0e8` |
+| 2026-10-06 | 2.2c（非桌面壳·三） | `docker/entrypoint.sh` 的数据根改按 `ADELIE_HOME` → 旧名 `PENGUIN_HOME` → `/data` 取（`Dockerfile` 的 `ENV` 早已是新名，旧写法会让 `-e ADELIE_HOME=<挂载点>` 指到 `/data` 上去）；需求箱插件 `kit/install.mjs` 的数据根改成新名在前、project / agent 只读 `ADELIE_*`（`plugin.json` 日期版本 +1）；`packages/web/scripts/theme-shots.mjs` 起服务用的三个变量与 `packages/web/README.md` 那一行跟上 | 见「第十一轮」一节 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -1785,3 +1792,77 @@ README 的环境表跟上了。这一轮没碰它，它属 2.2c 的文档尾巴�
   撤销）。需要在网页邮箱「设置 → 个人信息 → 邮箱密码 → 客户端专用密码」里重建一个，再
   `penguin config vault set --project-id sjaaj --agent-id default_agent --key CSU_MAIL_AUTHCODE`。
   这一轮的结论因此只落在本台账里。
+
+## 第十一轮：容器入口的数据根、截屏脚本与需求箱安装脚本的变量名（2026-10-06，条目 2.2c 的非桌面壳收尾·三）
+
+一次无人值守的自主推进，只做**最靠前的未勾选条目 2.2c** 里**非桌面壳**的那一半。**没有切版本号、没发 npm、
+没发安装包、没发发布汇总**；`legacy/main`、`/root/penguin-harness`、3003 / 3004 / 4000 全程没碰。
+
+### 为什么这一轮还有活可干
+
+第九轮把「非桌面壳的旧名写点」列了 6 处，并写下「到此为止」。这一轮改口径**连读点一起扫**（`PENGUIN_HOME` /
+`_PROFILE` / `_WEB_DIST` / `_WEB_DB` / `_CLI_ENTRY` / `_PORT_FILE` / `_DESKTOP_TOKEN` / `_BUNDLED_SHELL`），
+又找出**两处会真的出错**的漏网、一个写点和一处文档尾巴：
+
+| 位置 | 问题 | 现在 |
+| --- | --- | --- |
+| `docker/entrypoint.sh` | 取数据根写的是 `${PENGUIN_HOME:-/data}`，而 `Dockerfile` 的 `ENV` 第九轮就已经是 `ADELIE_HOME=/data` —— 这个旧名**现在没有任何东西会去设**。于是 `-e ADELIE_HOME=<宿主挂载点>` 时，entrypoint 去 mkdir/chown `/data`，服务端读的却是真正挂进来的那个目录：宿主目录始终归 root，容器里的 uid 1000 写不进去。今天没炸只是因为「回落值恰好也是 /data」 | `data_root="${ADELIE_HOME:-${PENGUIN_HOME:-/data}}"` —— 与 `scripts/launchers/penguin{,.cmd}` 同一条规则（新名优先、旧名仍认），注释写明为什么 |
+| `plugins/requirements-box/skills/requirements-box/kit/install.mjs` | 数据根的优先级写反了：`PENGUIN_HOME ?? ADELIE_HOME`（**旧名在前**），两个都设时插件把定时任务登记到旧根、而服务端读新根，与 core 的 `resolveRoot()` 正好相反；另外 project / agent 只读 `PENGUIN_PROJECT_ID` / `PENGUIN_AGENT_ID`，而 2.2b 已经宣布这两个名字**不再生效** | 新名在前（`ADELIE_HOME ?? PENGUIN_HOME`，与 core 同序）；project / agent 只读 `ADELIE_*`，注释里写明旧名已废 |
+| `packages/web/scripts/theme-shots.mjs` | 截屏脚本起服务时写 `PENGUIN_HOME` / `PENGUIN_WEB_DB` / `PENGUIN_WEB_DIST`（第九轮漏掉的**写点**） | 三个都改成 `ADELIE_*` |
+| `packages/web/README.md` | 「Production」一节仍写 `PENGUIN_WEB_DIST`（第十轮顺带记下的文档尾巴） | `ADELIE_WEB_DIST` |
+
+`plugins/requirements-box/plugin.json` 的日期版本随之 2026.10.06.2 → **2026.10.06.3**（改了安装时落地的内容，
+按仓库规矩要升；npm 包版本仍跟着下一次发版走，这一轮不动）。
+
+### 验证（都不是推测）
+
+- **容器入口真跑三遍**（不是读代码）：拿一个「打印自己环境」的桩当服务，`sh docker/entrypoint.sh sh <桩>` ——
+  只设 `ADELIE_HOME` → 那个根被建出来（uid 1000 所有）、命令以 uid 1000 跑、拿到的是这个根；只设旧名
+  `PENGUIN_HOME` → 旧名照旧生效；两个都设 → **新名赢，旧根没有被建出来**。修复前后同一段逻辑并排跑
+  （`ADELIE_HOME=/mnt/adelie`）：修复前 `data_root=/data`、修复后 `/mnt/adelie`；`sh -n` 过。
+- **按 theme-shots 的变量形状真起一次服务**（数据根在会话 scratchpad，端口 7481 / 7482）：日志里 `Data root` /
+  `SQLite` / `Web dist` 三行都指向新拼写给的值，`GET /` 302 → 跟随重定向 200 且 `<title>Adelie</title>`；
+  用完进程已收、端口已释放（7481 / 7482 都不在监听里）。
+- **需求箱安装脚本真跑 `--print-only` 四种组合**：只用新名 → `<新根>/<新 project>/agents/<新 agent>/agent_state/
+  schedule/…`；两个根都设 → 落在**新**根；只给旧名 → 旧根仍认（而 `PENGUIN_PROJECT_ID` / `PENGUIN_AGENT_ID`
+  已不生效，回落到 `default_project` / `default_agent`，正是 2.2b 定的口径）；显式 `--data-root` 仍然最高。
+  顺带确认这些回落值不是死代码：**本会话的 shell 里 `ADELIE_PROJECT_ID` / `ADELIE_AGENT_ID` / `ADELIE_SESSION_ID`
+  都设着**，从 Agent 里直接跑这个脚本时确实会读到它们。
+- **门禁**：六包 typecheck 全过（core / server / web / ui / cli / hmr）；`pnpm lint` 0 警告 0 错误（2052 文件）；
+  `pnpm format:check` 干净；测试 core **1359** / 5 跳过 · ui **1003** · cli **506** · web **2896** / 2 跳过 ·
+  server **2606** / 2 跳过 · docs **62**，**0 失败**；插件守卫复跑：`core/test/plugins.test.ts` 21 过、
+  server 的 `plugin*` 9 文件 121 过、`scripts/check-plugin-versions.mjs` 过；`sh scripts/test-installer.sh` 过。
+- **收尾 grep**：非桌面壳、非安装器/发布协议、非文档面里剩下的 `PENGUIN_*` 只有三类**有意保留**的 ——
+  core/server 注释里说明「旧名仍读」的文字、测试里钉兼容别名的夹具、`machines/commands.ts` 那条**两个都写**的
+  远端命令；加上两个启动器脚本与 `install.ps1` 垫片里的**兼容分支**（新名优先、旧名兜底，是有意留的）。
+
+### 还差什么（2.2c 仍未勾掉）
+
+1. **桌面壳那半边**：`packages/desktop/src/{server-process,launcher,web-dist,…}.ts` 与它自己的开关
+   （`DESKTOP_SMOKE*` / `NO_LOGIN_SHELL_ENV` / `UPDATE_FEED_URL` / `BB_SMOKE_BUNDLE`），按这一轮的纪律没碰。
+   **但那条「依赖没装、磁盘告急」的理由已经不成立**：`packages/desktop/node_modules` 里 electron /
+   electron-builder / tsup 都在，磁盘 7.3G 可用 —— 下一轮只要用户点头，就可以把这半边做完（本地只跑 node 侧的
+   桌面包测试，不跑 electron）。
+2. **本机部署单元** `adelie-app.service`（3004，已 stop + disable）仍设 `PENGUIN_HOME` / `PENGUIN_WEB_DIST` /
+   `PENGUIN_CLI_ENTRY`：读侧两条都认，改它属发布动作。
+3. **插件里还有三处文本面的旧名**，这一轮**有意没动**，留给用户拍板（换它会牵到「这套插件还要不要在同一份
+   SKILL.md 里同时服务 Adelie 与上游 PenguinHarness」这个口径）：
+   - `plugins/agent-development/skills/penguin-config/SKILL.md`：那句「默认 `PENGUIN_HOME`，然后 `~/.penguin/data`」
+     与「harness 剥掉每一个 `PENGUIN_*`」都已经不是事实（现在是 `ADELIE_HOME` → 旧名 → `~/.adelie/data`，
+     剥的是 `ADELIE_*` / `PENGUIN_*` 两个前缀）。
+   - `plugins/agent-tuning/skills/{agent-optimization,agent-evaluation}/SKILL.md`：用 `PENGUIN_HOME` 当「项目目录的
+     父目录」这个约定的变量名（还让 Agent `export` 它）。它是**唯一在 Adelie 与上游 PenguinHarness 上都成立**
+     的拼写 —— 上游只认旧名；而这几份 SKILL.md 是给 Agent 看的契约文本，改它要连插件日期版本一起升。
+
+### 顺带看到的（不是这一轮的改动）
+
+- **3.1–3.4 大概率已经是「不用移植」**（只做了粗查，留给各自那一条逐条核对）：审批口径上游是四档
+  （`CHAT_APPROVAL_MODES = allow-all | deny-all | read-only | always-ask`，`server/src/runtime/approvals.ts`
+  的语义与旧 Adelie 三档逐条对应，另有无人值守会话直接拒绝、命令策略否决与组织级档位）；
+  模型目录里 deepseek / moonshot / qwen 三组与费率表都在，且比旧 Adelie 那张表细得多；
+  用量与成本页在（`server/src/http/routes/usage.ts` + `web/src/features/usage/usage-page.tsx`）；
+  用户、角色与项目成员也在（`routes/{members,organizations}.ts`、`ProjectRole`）。
+  唯一值得记下来的差异是**默认档**：旧 Adelie 默认「每次问我」，基座默认 `allow-all` —— 这一条**不该改**：
+  无人值守的定时轮次（本文件这些自主轮次、组织的工位会话）靠的就是「不问就干」，而每轮会话自己还能在输入区改档。
+- `packages/web/README.md` 末尾那行来源链接仍写着上游的 `github.com/Prism-Shadow/penguin-harness`
+  （我们的仓库是 `lmliheng/Adelie`）；属品牌那一类，这轮没动。

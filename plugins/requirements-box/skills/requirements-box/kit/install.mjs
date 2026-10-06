@@ -48,16 +48,21 @@ const die = (msg) => {
 if (!flags.dir || flags.dir === true) die("必须给 --dir（服务装到哪个目录）");
 
 const DIR = resolve(String(flags.dir));
+// Data root: Adelie's `ADELIE_HOME` wins, and the pre-rename `PENGUIN_HOME` is still read after it
+// (an operator's shell, or a launcher from before the rename, may export that one) — the same order
+// core's resolveRoot() applies, so this install points at the root the running server actually reads.
 const DATA_ROOT = resolve(
   String(
     flags["data-root"] ??
-      process.env.PENGUIN_HOME ??
       process.env.ADELIE_HOME ??
+      process.env.PENGUIN_HOME ??
       join(homedir(), ".penguin"),
   ),
 );
-const PROJECT = String(flags.project ?? process.env.PENGUIN_PROJECT_ID ?? "default_project");
-const AGENT = String(flags.agent ?? process.env.PENGUIN_AGENT_ID ?? "default_agent");
+// Project / Agent ids are Adelie's spelling only: the pre-rename `PENGUIN_PROJECT_ID` /
+// `PENGUIN_AGENT_ID` were retired with no alias, and nothing exports them any more.
+const PROJECT = String(flags.project ?? process.env.ADELIE_PROJECT_ID ?? "default_project");
+const AGENT = String(flags.agent ?? process.env.ADELIE_AGENT_ID ?? "default_agent");
 const WORKSPACE = resolve(String(flags.workspace ?? process.cwd()));
 const PORT = Number(flags.port ?? 3007);
 const HOST = String(flags.host ?? "127.0.0.1");

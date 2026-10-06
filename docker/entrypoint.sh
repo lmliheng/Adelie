@@ -10,7 +10,10 @@
 # not root, so it just execs the command and the caller owns the mount.
 set -eu
 
-data_root="${PENGUIN_HOME:-/data}"
+# The data root this container owns: `ADELIE_HOME` is the spelling the Dockerfile's ENV above
+# uses, and the pre-rename `PENGUIN_HOME` is still honoured so an existing `-e PENGUIN_HOME=…`
+# keeps working — the new name wins when both are set, the same rule the launcher scripts follow.
+data_root="${ADELIE_HOME:-${PENGUIN_HOME:-/data}}"
 
 if [ "$(id -u)" -eq 0 ]; then
   mkdir -p "$data_root"
