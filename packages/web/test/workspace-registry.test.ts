@@ -6,8 +6,12 @@
  *   drive root kept whole), so it dedups against the paths Sessions report.
  * - Registering prepends the pick; an already registered path, a blank one or a temporary
  *   Workspace changes nothing (the same array comes back). The machine a directory was picked
- *   on is recorded, and the same path on two machines is two Workspaces.
- * - Unregistering drops one machine's entry, alias and all, and nothing when absent.
+ *   on is recorded, and the same path on two machines is two Workspaces. A HIDDEN entry is the
+ *   one exception: picking that directory again clears the stamp (that is the way back on the
+ *   list) and keeps the alias.
+ * - Hiding stamps one machine's pair — alias and all — and stamps an unregistered path too (a
+ *   group the server derives from Sessions has no entry of its own until then); a blank path,
+ *   a blank instant or a temporary Workspace is refused.
  * - An alias is trimmed, a blank one reverts to the basename, the input is never mutated, and
  *   an unchanged alias changes nothing; renaming one machine's entry leaves the other's alone.
  * - Entries round-trip per Project (alias and machine included); nothing stored or no Project
@@ -17,16 +21,20 @@
  * - Merged into the groups, empty registered groups follow the session-backed ones, an alias
  *   relabels a session-backed group too, a temporary path never forms a group, and each
  *   machine gets its own group.
+ * - Dropping the hidden ones takes a session-backed group off the list as long as every chat
+ *   in it predates the removal — and gives it back the moment one was CREATED after it, so a
+ *   live conversation can never be invisible. Per machine, like everything else here.
  */
 import { describe, expect, it } from "vitest";
 import {
+  dropHiddenWorkspaces,
+  hideWorkspace,
   loadWorkspaceRegistry,
   mergeRegisteredWorkspaces,
   normalizeWorkspacePath,
   registerWorkspace,
   saveWorkspaceRegistry,
   setWorkspaceAlias,
-  unregisterWorkspace,
   workspaceRegistryKey,
 } from "../src/lib/workspace-registry";
 import type { WorkspaceEntry, WorkspaceRegistryStorage } from "../src/lib/workspace-registry";
@@ -35,17 +43,21 @@ import type { WorkspaceGroup } from "../src/lib/session-grouping";
 import { blockedStorage, memoryStorage } from "./helpers/storage";
 
 /** Minimal session-derived group (only the fields the merge reads matter). */
-function group(key: string, over: Partial<WorkspaceGroup<{ id: string }>> = {}) {
+function group<T = { id: string }>(key: string, over: Partial<WorkspaceGroup<T>> = {}) {
   return {
     key,
     label: key.split("/").filter(Boolean).pop() ?? "/",
     fullPath: key,
     machineId: null as string | null,
     temp: false,
-    sessions: [] as { id: string }[],
+    sessions: [] as T[],
     ...over,
   };
 }
+
+/** A chat row as dropHiddenWorkspaces reads one: an id plus the instant it was created. */
+type Chat = { id: string; createdAt: string };
+const chat = (id: string, createdAt: string): Chat => ({ id, createdAt });
 
 describe("normalizeWorkspacePath", () => {
   it("trims and drops trailing separators; the filesystem root survives; empty stays empty", () => {
@@ -67,7 +79,7 @@ describe("normalizeWorkspacePath", () => {
   });
 });
 
-describe("registerWorkspace / unregisterWorkspace", () => {
+describe("registerWorkspace / hideWorkspace", () => {
   it("register prepends the normalized pick (newest first) and dedups by normalized form with a same-reference fast exit", () => {
     const empty: readonly WorkspaceEntry[] = [];
     const one = registerWorkspace(empty, "/srv/app/");
@@ -86,10 +98,53 @@ describe("registerWorkspace / unregisterWorkspace", () => {
     expect(registerWorkspace(entries, `${temp}/`)).toBe(entries);
   });
 
-  it("unregister drops the entry — alias and all — and returns the SAME array when the path isn't registered", () => {
+  it("picking a HIDDEN directory again takes it back onto the list: the stamp goes, the alias stays", () => {
+    const entries: readonly WorkspaceEntry[] = [
+      { path: "/a", alias: "Alpha", hiddenAt: "2026-10-06T10:00:00.000Z" },
+      { path: "/b" },
+    ];
+    expect(registerWorkspace(entries, "/a")).toEqual([
+      { path: "/a", alias: "Alpha" },
+      { path: "/b" },
+    ]);
+    // The machine travels with the pair: unhiding this machine's entry leaves the remote one hidden.
+    const both: readonly WorkspaceEntry[] = [
+      { path: "/a", hiddenAt: "2026-10-06T10:00:00.000Z" },
+      { path: "/a", machineId: "noeSE0FFHhNXl2J5", hiddenAt: "2026-10-06T10:00:00.000Z" },
+    ];
+    expect(registerWorkspace(both, "/a").map((e) => e.machineId)).toEqual([
+      undefined,
+      "noeSE0FFHhNXl2J5",
+    ]);
+  });
+});
+
+describe("hideWorkspace", () => {
+  const at = "2026-10-06T10:00:00.000Z";
+
+  it("stamps the pair — alias kept — and stamps an unregistered path too (a session-derived group has no entry yet)", () => {
     const entries: readonly WorkspaceEntry[] = [{ path: "/a", alias: "Alpha" }, { path: "/b" }];
-    expect(unregisterWorkspace(entries, "/a")).toEqual([{ path: "/b" }]);
-    expect(unregisterWorkspace(entries, "/zzz")).toBe(entries);
+    expect(hideWorkspace(entries, "/a", null, at)).toEqual([
+      { path: "/a", alias: "Alpha", hiddenAt: at },
+      { path: "/b" },
+    ]);
+    expect(hideWorkspace(entries, "/zzz", null, at)).toEqual([
+      { path: "/zzz", hiddenAt: at },
+      { path: "/a", alias: "Alpha" },
+      { path: "/b" },
+    ]);
+    // Re-hiding under a new instant rewrites the stamp; the very same instant is a no-op.
+    const hidden = hideWorkspace(entries, "/a", null, at);
+    expect(hideWorkspace(hidden, "/a", null, "2026-10-06T11:00:00.000Z")).not.toBe(hidden);
+    expect(hideWorkspace(hidden, "/a", null, at)).toBe(hidden);
+  });
+
+  it("refuses a blank path, a blank instant and a temporary Workspace (same array back)", () => {
+    const entries: readonly WorkspaceEntry[] = [{ path: "/a" }];
+    expect(hideWorkspace(entries, "   ", null, at)).toBe(entries);
+    expect(hideWorkspace(entries, "/a", null, "  ")).toBe(entries);
+    const temp = "/home/u/.penguin/agents/a/workspaces/tmp-0123abcd";
+    expect(hideWorkspace(entries, temp, null, at)).toBe(entries);
   });
 });
 
@@ -109,6 +164,15 @@ describe("setWorkspaceAlias", () => {
     const named = setWorkspaceAlias(entries, "/a", null, "X");
     expect(setWorkspaceAlias(named, "/a", null, " X ")).toBe(named);
   });
+
+  it("renaming a group the user had removed keeps it removed (the hidden stamp survives the rewrite)", () => {
+    const hidden: readonly WorkspaceEntry[] = [
+      { path: "/a", alias: "Alpha", hiddenAt: "2026-10-06T10:00:00.000Z" },
+    ];
+    expect(setWorkspaceAlias(hidden, "/a", null, "Beta")).toEqual([
+      { path: "/a", alias: "Beta", hiddenAt: "2026-10-06T10:00:00.000Z" },
+    ]);
+  });
 });
 
 describe("persisted registry (per-Project localStorage)", () => {
@@ -124,6 +188,7 @@ describe("persisted registry (per-Project localStorage)", () => {
       [
         { path: "/srv/beta", alias: "Beta" },
         { path: "/srv/app", machineId: "noeSE0FFHhNXl2J5" },
+        { path: "/srv/gone", hiddenAt: "2026-10-06T10:00:00.000Z" },
       ],
       s,
     );
@@ -131,6 +196,7 @@ describe("persisted registry (per-Project localStorage)", () => {
     expect(loadWorkspaceRegistry("p1", s)).toEqual([
       { path: "/srv/beta", alias: "Beta" },
       { path: "/srv/app", machineId: "noeSE0FFHhNXl2J5" },
+      { path: "/srv/gone", hiddenAt: "2026-10-06T10:00:00.000Z" },
     ]);
     expect(loadWorkspaceRegistry("p2", s)).toEqual([{ path: "/other" }]);
   });
@@ -158,6 +224,17 @@ describe("persisted registry (per-Project localStorage)", () => {
       '[7, null, "  ", {"alias": "orphan"}, {"path": "/a", "alias": 5}, {"path": "/b", "alias": "  "}]',
     );
     expect(loadWorkspaceRegistry("p1", s)).toEqual([{ path: "/a" }, { path: "/b" }]);
+    // A junk hidden stamp is dropped rather than carried: it can only HIDE, and an instant we
+    // cannot read must not take a group off the list for good.
+    s.map.set(
+      workspaceRegistryKey("p1"),
+      '[{"path": "/a", "hiddenAt": 7}, {"path": "/b", "hiddenAt": "  "}, {"path": "/c", "hiddenAt": " 2026-10-06T10:00:00.000Z "}]',
+    );
+    expect(loadWorkspaceRegistry("p1", s)).toEqual([
+      { path: "/a" },
+      { path: "/b" },
+      { path: "/c", hiddenAt: "2026-10-06T10:00:00.000Z" },
+    ]);
   });
 
   it("storage throwing (quota/private mode): save does not throw, load yields empty", () => {
@@ -280,18 +357,21 @@ describe("a workspace's machine", () => {
     ]);
   });
 
-  it("removes one machine's workspace, not every entry sharing the path", () => {
+  it("hides one machine's workspace, not the other entry sharing the path", () => {
     const entries: readonly WorkspaceEntry[] = [
       { path: "/srv/app", machineId: "noeSE0FFHhNXl2J5" },
       { path: "/srv/app" },
     ];
-    expect(unregisterWorkspace(entries, "/srv/app", "noeSE0FFHhNXl2J5")).toEqual([
+    expect(
+      hideWorkspace(entries, "/srv/app", "noeSE0FFHhNXl2J5", "2026-10-06T10:00:00.000Z"),
+    ).toEqual([
+      { path: "/srv/app", machineId: "noeSE0FFHhNXl2J5", hiddenAt: "2026-10-06T10:00:00.000Z" },
       { path: "/srv/app" },
     ]);
-    expect(unregisterWorkspace(entries, "/srv/app")).toEqual([
+    expect(hideWorkspace(entries, "/srv/app", null, "2026-10-06T10:00:00.000Z")).toEqual([
+      { path: "/srv/app", hiddenAt: "2026-10-06T10:00:00.000Z" },
       { path: "/srv/app", machineId: "noeSE0FFHhNXl2J5" },
     ]);
-    expect(unregisterWorkspace(entries, "/srv/app", "UNREGISTEREDaaaa")).toBe(entries);
   });
 
   it("merges one group per machine, and an alias relabels only its own", () => {
@@ -315,5 +395,68 @@ describe("a workspace's machine", () => {
     // … and this machine's entry becomes its own empty group, unaliased.
     expect(merged[1]).toMatchObject({ label: "app", machineId: null, fullPath: "/srv/app" });
     expect(merged[1]!.sessions).toEqual([]);
+  });
+});
+
+describe("dropHiddenWorkspaces", () => {
+  const at = "2026-10-06T10:00:00.000Z";
+  const created = (s: Chat) => s.createdAt;
+
+  it("takes a SESSION-BACKED group off the list — the case that used to survive 删除工作区", () => {
+    const groups = [
+      group<Chat>("/srv/app", { sessions: [chat("s1", "2026-10-06T09:00:00.000Z")] }),
+      group<Chat>("/srv/beta", { sessions: [chat("s2", "2026-10-06T09:30:00.000Z")] }),
+    ];
+    const kept = dropHiddenWorkspaces(groups, [{ path: "/srv/app", hiddenAt: at }], created);
+    expect(kept.map((g) => g.key)).toEqual(["/srv/beta"]);
+    // The group itself is untouched: only the list drops it (disk and chats are never edited).
+    expect(groups[0]!.sessions).toEqual([chat("s1", "2026-10-06T09:00:00.000Z")]);
+  });
+
+  it("a chat CREATED after the removal brings the group back — a live conversation is never invisible", () => {
+    const groups = [
+      group<Chat>("/srv/app", {
+        sessions: [chat("s1", "2026-10-06T09:00:00.000Z"), chat("s2", "2026-10-06T10:00:01.000Z")],
+      }),
+    ];
+    expect(dropHiddenWorkspaces(groups, [{ path: "/srv/app", hiddenAt: at }], created)).toBe(
+      groups,
+    );
+  });
+
+  it("drops the empty group the merge adds for a hidden entry (a Workspace with no Sessions)", () => {
+    const groups = [group<Chat>("/srv/app"), group<Chat>("/srv/beta")];
+    expect(dropHiddenWorkspaces(groups, [{ path: "/srv/app", hiddenAt: at }], created)).toEqual([
+      groups[1],
+    ]);
+  });
+
+  it("hides per pair: the same path on another machine is another Workspace and stays", () => {
+    const remote = "noeSE0FFHhNXl2J5";
+    const groups = [
+      group<Chat>("/srv/app", { sessions: [chat("s1", "2026-10-06T09:00:00.000Z")] }),
+      group<Chat>(`${remote}\u0000/srv/app`, {
+        machineId: remote,
+        sessions: [chat("s2", "2026-10-06T09:00:00.000Z")],
+      }),
+    ];
+    const kept = dropHiddenWorkspaces(groups, [{ path: "/srv/app", hiddenAt: at }], created);
+    expect(kept.map((g) => g.key)).toEqual([`${remote}\u0000/srv/app`]);
+  });
+
+  it("an unreadable or unparseable stamp hides nothing; with no hidden entry the INPUT array comes back", () => {
+    const groups = [
+      group<Chat>("/srv/app", { sessions: [chat("s1", "2026-10-06T09:00:00.000Z")] }),
+    ];
+    expect(dropHiddenWorkspaces(groups, [], created)).toBe(groups);
+    expect(dropHiddenWorkspaces(groups, [{ path: "/srv/app" }], created)).toBe(groups);
+    expect(
+      dropHiddenWorkspaces(groups, [{ path: "/srv/app", hiddenAt: "not a date" }], created),
+    ).toBe(groups);
+    // A Session whose stamp the rule cannot read counts as older, never as "in use".
+    const undated = [group<Chat>("/srv/app", { sessions: [{ id: "s1" } as unknown as Chat] })];
+    expect(dropHiddenWorkspaces(undated, [{ path: "/srv/app", hiddenAt: at }], created)).toEqual(
+      [],
+    );
   });
 });

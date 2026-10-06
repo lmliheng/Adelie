@@ -151,12 +151,13 @@ import {
   togglePinnedSession,
 } from "../../lib/pinned-sessions";
 import {
+  dropHiddenWorkspaces,
+  hideWorkspace,
   loadWorkspaceRegistry,
   mergeRegisteredWorkspaces,
   registerWorkspace,
   saveWorkspaceRegistry,
   setWorkspaceAlias,
-  unregisterWorkspace,
 } from "../../lib/workspace-registry";
 import type { WorkspaceEntry } from "../../lib/workspace-registry";
 import {
@@ -734,19 +735,25 @@ export function Sidebar({
    * Workspace the server's counts know (empty until their rows page in — the initial load
    * is each Agent's ten newest conversations, which touch only a few of dozens of
    * Workspaces), by recency with the temp group last, plus the manually-added Workspaces
-   * as empty groups behind them (newest registration first).
+   * as empty groups behind them (newest registration first) — and minus the ones the user
+   * removed from the sidebar (删除工作区), which takes a group with Sessions with it and
+   * gives it back the moment a chat is created there again (dropHiddenWorkspaces).
    */
   const workspaceGroups = useMemo(
     () =>
-      mergeRegisteredWorkspaces(
-        completeWorkspaceGroups(
-          // A Workspace is a directory on a machine: rows from two machines that share a path
-          // string are two groups, and the "+" of each opens a chat on its own machine.
-          groupSessionsByWorkspace(sessions, (s) => machineForSession(s.sessionId)),
-          workspaceGroupCounts,
-          workspaceGroupLatest,
+      dropHiddenWorkspaces(
+        mergeRegisteredWorkspaces(
+          completeWorkspaceGroups(
+            // A Workspace is a directory on a machine: rows from two machines that share a path
+            // string are two groups, and the "+" of each opens a chat on its own machine.
+            groupSessionsByWorkspace(sessions, (s) => machineForSession(s.sessionId)),
+            workspaceGroupCounts,
+            workspaceGroupLatest,
+          ),
+          registeredWorkspaces,
         ),
         registeredWorkspaces,
+        (s) => s.createdAt,
       ),
     [sessions, workspaceGroupCounts, workspaceGroupLatest, registeredWorkspaces],
   );
@@ -1439,17 +1446,20 @@ export function Sidebar({
 
   /**
    * 删除工作区 (confirmed via the shared ConfirmModal, like every destructive-looking
-   * action): drops the sidebar registry entry only — disk and Sessions are never
-   * touched, the confirm copy says exactly that, and re-adding restores it. A group
-   * that still has Sessions simply persists as session-derived.
+   * action): stamps the sidebar registry entry so the group leaves the list — disk and
+   * Sessions are never touched, the confirm copy says exactly that, and picking the
+   * directory again in 新建工作区 brings it back. The stamp works on a group the server
+   * derives from Sessions too (dropHiddenWorkspaces), which is the case that used to
+   * survive the removal; a chat created in the directory after the removal re-reveals it.
    */
   const confirmDeleteWorkspace = () => {
     if (!deletingWorkspace) return;
     applyRegistryChange(
-      unregisterWorkspace(
+      hideWorkspace(
         registeredWorkspaces,
         deletingWorkspace.path,
         deletingWorkspace.machineId,
+        new Date().toISOString(),
       ),
     );
     setDeletingWorkspace(null);
@@ -2697,24 +2707,25 @@ export function Sidebar({
                           <Icon d={ICONS.plus} size={ICON_SIZE.groupHeaderAction} />
                         </button>
                         {/* A group that is one directory (not the merged temporary group):
-                              the overflow right of the "+" — browse its files, and, for a
-                              manually-added (registry-backed) Workspace, rename the alias or
-                              remove it from the sidebar (session-derived groups have no
-                              registry entry for those two to act on). */}
+                              the overflow right of the "+" — browse its files, remove the
+                              group from the sidebar (every Workspace has that, session-derived
+                              ones included: the removal hides the group, it does not delete
+                              anything), and, for a manually-added (registry-backed) Workspace,
+                              rename the alias — an alias lives in the registry entry, which a
+                              session-derived group has none of. */}
                         {fullPath !== null && (
                           <GroupOverflowMenu
                             onBrowse={() => browseFiles(fullPath, group.machineId)}
                             {...(registeredKeys.has(group.key)
-                              ? {
-                                  onRename: () => openRenameWorkspace(fullPath, group.machineId),
-                                  onDelete: () =>
-                                    setDeletingWorkspace({
-                                      path: fullPath,
-                                      machineId: group.machineId,
-                                      label: group.label,
-                                    }),
-                                }
+                              ? { onRename: () => openRenameWorkspace(fullPath, group.machineId) }
                               : {})}
+                            onDelete={() =>
+                              setDeletingWorkspace({
+                                path: fullPath,
+                                machineId: group.machineId,
+                                label: group.label,
+                              })
+                            }
                           />
                         )}
                       </>

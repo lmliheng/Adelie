@@ -2634,7 +2634,7 @@ export const en: Strings = {
     sortManual: "Manual order",
     sortRecent: "Most recent",
     newWorkspaceEntity: "New workspace",
-    /** A Workspace group's overflow (… right of the header "+"): browse its files; a registry-backed group adds alias rename + sidebar-only removal. */
+    /** A Workspace group's overflow (… right of the header "+"): browse its files and remove the group from the sidebar (every Workspace); a registry-backed group also renames its alias. */
     workspaceMenu: "Workspace options",
     renameWorkspace: "Rename workspace",
     renameWorkspaceLabel: "Name",
@@ -2643,7 +2643,7 @@ export const en: Strings = {
     /** A Workspace group's "more" menu: the dock's Files panel on that directory. */
     browseWorkspaceFiles: "Browse files",
     deleteWorkspaceConfirm: (name: string) =>
-      `Remove "${name}"? This only removes the workspace group from the sidebar — the directory on disk and existing chats are untouched, and it can be re-added anytime.`,
+      `Remove "${name}"? Nothing is deleted — the directory on disk and its chats stay as they are; the workspace group, chat rows and all, simply drops off the sidebar. Pick the folder again under "New workspace" to bring it back.`,
     tempWorkspaces: "Temporary workspaces",
     onMachine: (name: string, machine: string) => `${name} [SSH: ${machine}]`,
     machineTag: (machine: string) => `[SSH: ${machine}]`,

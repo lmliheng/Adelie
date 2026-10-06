@@ -7,16 +7,17 @@
  * storage — the model-group-expansion.ts convention) and merge into the grouping as
  * empty groups.
  *
- * An entry is `{ path, machineId?, alias? }`, and the first two together are its identity:
- * one directory on one machine. The alias is a display name set via the group's rename
- * action (it replaces the basename as the group label — for session-backed groups too —
- * while the full path stays in the tooltip; an empty alias reverts to the basename). Loads
- * stay tolerant of the branch's earlier string-only stored shape.
+ * An entry is `{ path, machineId?, alias?, hiddenAt? }`, and the first two together are its
+ * identity: one directory on one machine. The alias is a display name set via the group's
+ * rename action (it replaces the basename as the group label — for session-backed groups
+ * too — while the full path stays in the tooltip; an empty alias reverts to the basename).
+ * Loads stay tolerant of the branch's earlier string-only stored shape.
  *
- * Lifecycle: an entry stays until the group's remove action unregisters it (sidebar-only —
- * disk and Sessions are never touched; with Sessions present the group simply persists as
- * session-derived). Once Sessions exist the entry mostly dedups away at merge, but it
- * still carries the alias and keeps the group visible after those Sessions are gone.
+ * Lifecycle: an entry stays until the group's 删除工作区 hides it (`hiddenAt`, and that works
+ * for a group the server derives from Sessions too — sidebar-only: disk and Sessions are never
+ * touched, and picking the directory again in 新建工作区 takes it back onto the list). Once
+ * Sessions exist the entry mostly dedups away at merge, but it still carries the alias and the
+ * hidden stamp and keeps the group visible after those Sessions are gone.
  */
 import {
   isTempWorkspace,
@@ -26,7 +27,7 @@ import {
 } from "./session-grouping";
 import type { WorkspaceGroup } from "./session-grouping";
 
-/** One registered Workspace: the normalized path, plus an optional display alias. */
+/** One registered Workspace: the normalized path, plus an optional display alias and hidden stamp. */
 export interface WorkspaceEntry {
   path: string;
   /** Display name overriding the path basename (set via the group's rename action; absent = basename). */
@@ -40,6 +41,14 @@ export interface WorkspaceEntry {
    * different directories, so the pair is the identity and `path` alone is not.
    */
   machineId?: string;
+  /**
+   * When the user took this Workspace off the sidebar (ISO 8601; absent = on the list). The
+   * group is left out of it — session-backed or not — while every Session in it is older than
+   * this instant, so a chat CREATED in the directory afterwards brings the group back and a
+   * live conversation never ends up invisible (dropHiddenWorkspaces). Re-registering the pick
+   * clears the stamp: that is the way back onto the list.
+   */
+  hiddenAt?: string;
 }
 
 /**
@@ -97,10 +106,17 @@ function parseEntry(x: unknown): WorkspaceEntry | null {
     const alias = typeof rawAlias === "string" ? rawAlias.trim() : "";
     const rawMachine = (x as { machineId?: unknown }).machineId;
     const machineId = typeof rawMachine === "string" && rawMachine !== "" ? rawMachine : undefined;
+    // Junk stamps are dropped rather than carried: the one thing this field can do is HIDE a
+    // group, and an unparseable instant would hide it for good (dropHiddenWorkspaces skips
+    // entries it cannot read, so the group stays on the list).
+    const rawHidden = (x as { hiddenAt?: unknown }).hiddenAt;
+    const hiddenAt =
+      typeof rawHidden === "string" && rawHidden.trim() !== "" ? rawHidden.trim() : undefined;
     return {
       path: p,
       ...(alias === "" ? {} : { alias }),
       ...(machineId === undefined ? {} : { machineId }),
+      ...(hiddenAt === undefined ? {} : { hiddenAt }),
     };
   }
   return null;
@@ -149,7 +165,8 @@ export function saveWorkspaceRegistry(
  * Registers a picked path: normalized and prepended (newest registration first).
  * Returns the INPUT array unchanged (same reference) for anything unregisterable —
  * callers skip the state update and storage write. Besides the empty path and an
- * already-registered one, a TEMPORARY-workspace path is rejected: the merge below can
+ * already-registered one that is NOT hidden (re-picking a hidden directory is how its group
+ * comes back), a TEMPORARY-workspace path is rejected: the merge below can
  * never give it a group (the merged temp group owns that space), so accepting it would
  * store an entry whose group never appears — no rename/remove overflow to undo it, and
  * re-picking would hit the already-registered exit, leaving a ghost only a
@@ -164,8 +181,19 @@ export function registerWorkspace(
   if (p === "" || isTempWorkspace(p)) return entries;
   // Deduped on the PAIR: the same path on two machines is two different directories, and
   // collapsing them would hide one behind the other with no way to tell which.
-  if (entries.some((e) => sameWorkspace(e, { path: p, machineId }))) return entries;
-  return [{ path: p, ...(machineId === undefined ? {} : { machineId }) }, ...entries];
+  const existing = entries.find((e) => sameWorkspace(e, { path: p, machineId }));
+  if (existing !== undefined && existing.hiddenAt === undefined) return entries;
+  // A HIDDEN entry is the one case where the same pick is not a no-op: picking the directory
+  // again is how the group the user removed comes back, so the stamp goes and the alias stays.
+  const kept = entries.filter((e) => e !== existing);
+  return [
+    {
+      path: p,
+      ...(existing?.alias === undefined ? {} : { alias: existing.alias }),
+      ...(machineId === undefined ? {} : { machineId }),
+    },
+    ...kept,
+  ];
 }
 
 /**
@@ -190,21 +218,85 @@ export function setWorkspaceAlias(
           path: e.path,
           ...(a === "" ? {} : { alias: a }),
           ...(e.machineId === undefined ? {} : { machineId: e.machineId }),
+          // Renaming a group the user had removed must not put it back on the list — and the
+          // stamp has to survive the rewrite, or its group would reappear out of nowhere.
+          ...(e.hiddenAt === undefined ? {} : { hiddenAt: e.hiddenAt }),
         }
       : e,
   );
 }
 
-/** Drops the registry entry (sidebar-only — disk and Sessions are untouched). Same-reference fast exit when the pair isn't registered. */
-export function unregisterWorkspace(
+/**
+ * Takes a Workspace off the sidebar (the group's ⋯ menu → 删除工作区): stamps the pair with the
+ * instant of the removal, which `dropHiddenWorkspaces` reads to leave the group — and the chats
+ * inside it — off the list. Sidebar-only: the directory on disk and every Session in it stay
+ * exactly as they were, and re-picking the directory in 新建工作区 clears the stamp.
+ *
+ * An alias already set on the pair survives the rewrite. Same-reference fast exit for an
+ * unrepresentable path or a pair that is already hidden under the very same instant.
+ */
+export function hideWorkspace(
   entries: readonly WorkspaceEntry[],
   path: string,
-  machineId: string | null = null,
+  machineId: string | null,
+  hiddenAt: string,
 ): readonly WorkspaceEntry[] {
-  const target = { path, ...(machineId === null ? {} : { machineId }) };
-  return entries.some((e) => sameWorkspace(e, target))
-    ? entries.filter((e) => !sameWorkspace(e, target))
-    : entries;
+  const p = normalizeWorkspacePath(path);
+  const at = hiddenAt.trim();
+  if (p === "" || at === "" || isTempWorkspace(p)) return entries;
+  const target = { path: p, ...(machineId === null ? {} : { machineId }) };
+  const entry = entries.find((e) => sameWorkspace(e, target));
+  if (entry?.hiddenAt === at) return entries;
+  return [
+    {
+      path: p,
+      ...(entry?.alias === undefined ? {} : { alias: entry.alias }),
+      ...(machineId === null ? {} : { machineId }),
+      hiddenAt: at,
+    },
+    ...entries.filter((e) => !sameWorkspace(e, target)),
+  ];
+}
+
+/**
+ * Drops the groups the user removed from the sidebar, keyed by `workspaceGroupKey` — the
+ * session-derived ones INCLUDED, which is the whole point: a group with Sessions used to
+ * survive 删除工作区 (the merge only ever drops an empty registry group), so the list kept the
+ * Workspaces the user was done with.
+ *
+ * A hidden entry hides its group only while the group holds no chat CREATED after the removal
+ * instant. A conversation started in that directory since then puts the group back: a live chat
+ * can never be invisible, and the stale stamp simply stops hiding anything (removing it again
+ * writes a fresh one). The empty group the merge adds for a hidden entry is dropped as well, so
+ * the Workspace leaves the list whether it had Sessions or not.
+ *
+ * `createdAt` is injected to keep the rule pure and testable; a Session whose stamp is missing
+ * or unparseable counts as older — it cannot prove the group is in use. Same-reference fast exit
+ * when no entry hides anything.
+ */
+export function dropHiddenWorkspaces<T>(
+  groups: WorkspaceGroup<T>[],
+  entries: readonly WorkspaceEntry[],
+  createdAt: (session: T) => string | null | undefined,
+): WorkspaceGroup<T>[] {
+  const hiddenAt = new Map<string, number>();
+  for (const e of entries) {
+    if (e.hiddenAt === undefined) continue;
+    const at = Date.parse(e.hiddenAt);
+    // An entry we cannot read hides nothing (see parseEntry): the group stays on the list.
+    if (!Number.isNaN(at)) hiddenAt.set(workspaceGroupKey(e.path, e.machineId ?? null), at);
+  }
+  if (hiddenAt.size === 0) return groups;
+  const kept = groups.filter((g) => {
+    const at = hiddenAt.get(g.key);
+    if (at === undefined) return true;
+    return g.sessions.some((s) => {
+      const raw = createdAt(s);
+      const created = raw === null || raw === undefined ? Number.NaN : Date.parse(raw);
+      return Number.isFinite(created) && created > at;
+    });
+  });
+  return kept.length === groups.length ? groups : kept;
 }
 
 /**
@@ -220,6 +312,10 @@ export function unregisterWorkspace(
  * cap: fronting them would push every group with real chats behind 更多分组 as soon as
  * a handful of Workspaces were registered. The sidebar widens the cap when it registers
  * one, so a just-added Workspace is still revealed immediately.
+ *
+ * A HIDDEN entry is nothing special here — it still applies its alias, and the empty group it
+ * adds is dropped right afterwards by dropHiddenWorkspaces, which owns the hiding rule (a group
+ * off the list is a decision about the list, not about the merge).
  */
 export function mergeRegisteredWorkspaces<T>(
   groups: readonly WorkspaceGroup<T>[],

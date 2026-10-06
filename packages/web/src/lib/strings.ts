@@ -2679,7 +2679,7 @@ export const zh = {
     sortManual: "手动排序",
     sortRecent: "最近更新",
     newWorkspaceEntity: "新建工作区",
-    /** A Workspace group's overflow (… right of the header "+"): browse its files; a registry-backed group adds alias rename + sidebar-only removal. */
+    /** A Workspace group's overflow (… right of the header "+"): browse its files and remove the group from the sidebar (every Workspace); a registry-backed group also renames its alias. */
     workspaceMenu: "工作区选项",
     renameWorkspace: "重命名工作区",
     renameWorkspaceLabel: "名称",
@@ -2688,7 +2688,7 @@ export const zh = {
     /** A Workspace group's "more" menu: the dock's Files panel on that directory. */
     browseWorkspaceFiles: "打开文件浏览",
     deleteWorkspaceConfirm: (name: string) =>
-      `确定移除「${name}」？仅从侧边栏移除该工作区分组，不影响磁盘目录与已有会话，可随时重新添加。`,
+      `确定移除「${name}」？不删任何东西：磁盘目录和已有会话都原样留着，只是这个工作区分组连同它的会话行先不在侧边栏显示；重新用「新建工作区」选到这个目录即可恢复。`,
     tempWorkspaces: "临时工作区",
     /** A name that only means something on another machine, written with the ssh alias that reaches it. */
     onMachine: (name: string, machine: string) => `${name} [SSH: ${machine}]`,
