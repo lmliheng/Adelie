@@ -1774,6 +1774,17 @@ Adelie 与 PenguinHarness 两棵树也不会撞。条目名字里的「profile �
   解析通过，`docker.yml` 的触发面仍是 `workflow_call` / `workflow_dispatch` / `pull_request`
   （没有 main 推送，本次推送不会跑它）。
 
+### 收尾：推送与汇报
+
+- **推送**：`git push origin main` = `94854c1b..0c1cc664`（这一轮只有一个提交 `0c1cc664`，代码与台账同一笔）。
+  按纪律没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。
+- **汇报邮件没发出去（第十轮同一处卡点）**：vault 里的 `CSU_MAIL_AUTHCODE` 仍被邮箱拒 ——
+  `mail.py check` 报 IMAP `LOGIN Login error or password error`（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 两个变量
+  都注入到了本会话，长度也对，所以不是「写错项目」那条坑）。按纪律只试了这一次、没有继续重试登录。
+  修法（只能由用户做）：网页邮箱「设置 → 个人信息 → 邮箱密码 → 客户端专用密码」重建一个，再
+  `penguin config vault set --project-id sjaaj --agent-id default_agent --key CSU_MAIL_AUTHCODE`，
+  **下一次新对话**才会注入。这一轮的结论因此只落在本台账里。
+
 ### 顺带看到的（不是这一轮的改动）
 
 `packages/web/README.md` 的「Production」一节仍写着 `PENGUIN_WEB_DIST` —— 2.2c 的读侧改名只把 server
