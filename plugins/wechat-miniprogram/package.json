@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/wechat-miniprogram",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Publish a WeChat mini-program end to end from a headless Linux server: QR login to mp.weixin.qq.com, switching from a public account to the mini-program backend, the AppID and upload key, IP whitelisting, miniprogram-ci upload, the privacy policy, review and release.",
   "license": "Apache-2.0",
   "repository": {
