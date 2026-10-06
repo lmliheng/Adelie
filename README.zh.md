@@ -54,7 +54,12 @@ Adelie 运行在你的电脑或服务器上，自动串联 Agent 应用的创建
 
 这是做出来的成品——一个文档专家：检索增强、引用可点击直达原文、内置示例问题：
 
-https://github.com/user-attachments/assets/604eb626-0a5d-4a62-87e3-14ebade1cd5f
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/rag-app-zh-dark.webp" />
+    <img src="assets/readme/rag-app-zh-light.webp" alt="生成出来的文档专家应用：带编号引用的回答、来源列表与示例问题" width="920" />
+  </picture>
+</p>
 
 **而生成整个 RAG 应用，仅消耗了 0.2 元（$0.02）的 token——使用 DeepSeek V4 Pro 模型。**
 
@@ -62,9 +67,14 @@ https://github.com/user-attachments/assets/604eb626-0a5d-4a62-87e3-14ebade1cd5f
 
 借助 Adelie 技能库，Agent 自己评估、自己优化：跑 Benchmark、找失分点、发布 N+1 版——每轮之前自动快照，每个请求都可在轨迹观测中回放。
 
-https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/evaluation-center-zh-dark.webp" />
+    <img src="assets/readme/evaluation-center-zh-light.webp" alt="评估中心：出题、评估、优化三步，以及一个开箱即用的 Example Benchmark" width="920" />
+  </picture>
+</p>
 
-*上面这张对比图和两段录屏，都出自上游 PenguinHarness 作者对该代码库的实测与录屏 —— Adelie 用的就是同一套引擎与界面，所以它们说的就是这份 fork 的能力；录屏里露出的产品名是上游改名前的品牌。*
+*这份 README 里的图：基准对比图出自上游 PenguinHarness 作者对该代码库的实测——Adelie 用的就是同一套引擎与界面，所以它说的就是这份 fork 的能力；其余截图都是 Adelie 自己的界面，在本机实例上截的。*
 
 ## 内置插件库
 
@@ -76,6 +86,15 @@ https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
 | 软件开发    | `software-development`、`use-claude-code`、`wechat-miniprogram`            |
 | AI 应用开发 | `agent-development`、`model-development`、`skill-porting`、`agent-tuning`       |
 | Agent 公司  | `agent-company`                                                                 |
+
+**插件市场**页把这套插件全列出来：每条读的是插件包自己的 README、版本、许可证与关键词，一键安装。
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/plugin-market-zh-dark.webp" />
+    <img src="assets/readme/plugin-market-zh-light.webp" alt="插件市场：已安装的插件，以及这份构建可安装的插件，带分类与筛选" width="920" />
+  </picture>
+</p>
 
 桌面应用的侧边停靠栏里还内置了一个浏览器。Agent 通过 `penguin browser` 和 `browser-automation` 插件驱动它：读取页面、点击和输入，并提取亚马逊订单这样的数据，登录用的是从你自己的浏览器导入的账号。
 
@@ -97,45 +116,66 @@ https://github.com/user-attachments/assets/aec49ae9-b743-467b-b247-37bedfeaa36e
 
 ## 系统需求
 
-| 需求项   | 支持情况                                            |
-| -------- | --------------------------------------------------- |
-| 操作系统 | Linux、macOS、Windows 10+                           |
-| 架构     | x64、arm64                                          |
-| 运行时   | Node >= 24（Adelie 还没有安装包 —— 见「安装」一节） |
-| 模型     | 至少一个模型的 API key                              |
+| 需求项   | 支持情况                                                       |
+| -------- | -------------------------------------------------------------- |
+| 操作系统 | Windows 10+（x64）、Linux（x64）、macOS（arm64 / x64）         |
+| 运行时   | 安装包自带 Node；用 npm 装或从源码构建才需要 Node >= 24        |
+| 模型     | 至少一个模型供应商的 API Key                                   |
 
-## 安装 —— 先读这一节
+## 安装
 
-**Adelie 还没有发布自己的产物。** 没有 Adelie 的 npm 包、安装包、Docker 镜像或下载页 —— 那是计划的
-最后一步（[`FORK-PROGRESS.md`](FORK-PROGRESS.md) §4）。现在要跑 Adelie，只有从这棵源码树开始：
+Adelie 有自己的产物：桌面安装包、命令行包与 npm 包，每次发布都在
+[GitHub Releases](https://github.com/lmliheng/Adelie/releases) 上，同一份资产也镜像到阿里云 OSS
+（`https://adelie-releases.oss-cn-hangzhou.aliyuncs.com`，给国内的读者）。一次发布是一个整体版本：
+桌面端、命令行、服务端与 Web 前端同号。
+
+### 桌面应用
+
+| 平台           | 产物                                                                   |
+| -------------- | ---------------------------------------------------------------------- |
+| Windows 10+ x64 | `adelie-desktop-win32-x64.exe` —— NSIS 安装器，按用户安装              |
+| Linux x64      | `adelie-desktop-linux-x86_64.AppImage` 或 `adelie-desktop-linux-amd64.deb` |
+| macOS          | 还没打 —— dmg / zip 目标在等一张 Apple 开发者证书                       |
+
+Windows 安装包**还没有代码签名**，SmartScreen 会提示一次（「更多信息 → 仍要运行」）。应用自己会
+检查更新：先读 OSS 镜像上的 `latest.yml`，镜像不通时回退到 GitHub Releases —— 升级走应用里的
+「检查更新」就行。
+
+### 命令行与 Web App
 
 ```bash
-# 装依赖（跳过 desktop / electron：它要下一个运行时，跑 Web 用不到）
-pnpm install --frozen-lockfile \
-  --filter @lmliheng/penguin-core --filter @lmliheng/penguin-ui \
-  --filter @lmliheng/penguin-server --filter @lmliheng/penguin-web \
-  --filter @lmliheng/penguin-cli --filter @lmliheng/penguin-hmr
+# Linux / macOS 一行装好：装在 ~/.adelie，自带 Node 运行时
+curl -fsSL https://github.com/lmliheng/Adelie/releases/latest/download/install.sh | sh
 
-# 构建（core 的导出指向 dist/，不先构建就跑不起来）
-pnpm -r --filter @lmliheng/penguin-core --filter @lmliheng/penguin-server \
-        --filter @lmliheng/penguin-web run build
-
-# 起服务端 + 已构建的 Web 前端
-cd packages/server
-PENGUIN_HOME=<数据根> HOST=0.0.0.0 PORT=<端口> node dist/index.js
+# 或者走 npm（任意平台，机器上要有 Node >= 24）
+npm install -g @lmliheng/penguin-cli
 ```
 
-首次启动会在输出里打印一条「首次登录链接」，在设密码之前每次启动都会打印：打开它认领内置的
-`admin` 账号并设置密码（没有可输入的初始密码）。模型在应用内的**模型库**页配置 —— 新实例要先配一个
-API key 才能跑任务。
+装好之后：
+
+```bash
+penguin web      # 在浏览器里打开与桌面应用同一个界面
+penguin chat     # 或者直接在终端里和 Agent 说话
+```
+
+数据根是 `~/.adelie/data`（`ADELIE_HOME` 可以改；旧的 `PENGUIN_HOME` 仍然认，所以改名之前装的实例
+照样读自己的数据）。升级只替换 `bin/`、`lib/`、`web/`、`node/`，不动数据根：
+
+```bash
+penguin update --check
+penguin update --yes
+```
+
+首次启动会在输出里打印一条「首次登录链接」：打开它认领内置的 `admin` 账号并设置密码（没有可输入的
+初始密码）。模型在应用内的**模型库**页配置 —— 新实例要先配一个 API key 才能跑任务。
 
 > [!WARNING]
-> 上游 README 里的那些方式 —— `curl https://penguin.ooo/install.sh | sh`、
-> `npm install -g @lmliheng/penguin-cli`、`docker run hiyouga/penguinharness`、
+> 上游自己的那些入口 —— `curl https://penguin.ooo/install.sh | sh`、
+> `npm install -g @prismshadow/penguin-cli`、`docker run hiyouga/penguinharness`、
 > <https://penguin.ooo/download> 上的桌面安装包 —— 装出来的是 **PenguinHarness**，不是 Adelie。
-> 那些渠道在 Adelie 发布自己的产物之前，仍然属于上游。
+> Adelie 有自己的安装包、自己的 npm scope 和自己的更新链路，用上面这些。
 
-包名、数据根与命令名还留着上游的拼写（`@prismshadow/*`、`~/.penguin/data`、`penguin`）—— 改名是
+命令名还是 `penguin`，包的词干也还留着 `penguin-`（scope 是 Adelie 自己的 `@lmliheng/*`）；改名是
 分期做的，还没做完的部分记在 [`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
 
 ## 参与开发
