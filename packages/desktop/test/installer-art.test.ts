@@ -66,7 +66,9 @@ describe("NSIS installer artwork", () => {
       // the package dir second; both are inside this package, so the second is the one to try.
       const resolved = path.resolve(pkgDir, value!);
       expect(fs.existsSync(resolved), `nsis.${key} points at a missing file: ${value}`).toBe(true);
-      return path.relative(pkgDir, resolved);
+      // Compare in POSIX form: electron-builder.yml always writes forward slashes, while
+      // path.relative() answers in the platform's own separator (backslashes on Windows).
+      return path.relative(pkgDir, resolved).split(path.sep).join("/");
     };
     expect(configured("installerSidebar")).toBe("build/nsis/installerSidebar.bmp");
     expect(configured("installerHeader")).toBe("build/nsis/installerHeader.bmp");
