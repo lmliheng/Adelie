@@ -8,7 +8,7 @@
  *   GET    /api/plugins/:plugin/files                     # the files a library plugin ships, for the detail view's browser
  *   GET    /api/plugins/:plugin/archive                   # export a plugin as a zip (any logged-in user)
  *   DELETE /api/plugins/:plugin                           # uninstall a user plugin (admin)
- *   GET    /api/plugins/registry                          # the merged plugin index: the builtin entries and the published ones
+ *   GET    /api/plugins/registry                          # the merged plugin index: the curated entries and one per package this build ships
  *   GET    /api/plugins/registry/readme?name=…            # one indexed entry's long-form readme
  *   POST   /api/projects/:p/agents/:a/plugins             # install plugins from the library (any member)
  *
@@ -64,7 +64,7 @@ import type { Access } from "../../mechanisms/projects.js";
 import type { Sessions as ManagerIface } from "../../runtime/session-manager.js";
 import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import { agentHooksRoutes } from "./hooks.js";
-import { builtinPluginRegistry } from "../../plugin/registry.js";
+import { builtinPluginRegistry, shippedPluginNames } from "../../plugin/registry.js";
 import { pluginBases } from "../../plugin/loader.js";
 import type { PluginBase } from "../../plugin/loader.js";
 
@@ -524,9 +524,17 @@ export class PluginRoutes {
   }
 }
 
-export function pluginRegistryRoutes(bases: () => readonly PluginBase[]): Hono<AppEnv> {
+export function pluginRegistryRoutes(
+  bases: () => readonly PluginBase[],
+  root: () => string,
+): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
-  const registry = builtinPluginRegistry(bases);
+  const registry = builtinPluginRegistry({
+    bases,
+    // The shelf is what this build ships: read per call, because a push moves both the
+    // assets prefix the bases name and the library a deployment carries.
+    shipped: () => shippedPluginNames(root(), bases()),
+  });
   app.get("/", async (c) => {
     const body: PluginIndexResponse = { plugins: await registry.index() };
     return c.json(body);
@@ -572,6 +580,9 @@ export class PluginRegistryRoutes {
   @Bind("PluginRegistryRoutes.routes") routes!: Hono<AppEnv>;
   setup() {
     // Read per request: a push moves the shipped prefix to a new assets directory.
-    this.routes = pluginRegistryRoutes(() => pluginBases(this.config.root, this.hmr.assetsDir()));
+    this.routes = pluginRegistryRoutes(
+      () => pluginBases(this.config.root, this.hmr.assetsDir()),
+      () => this.config.root,
+    );
   }
 }

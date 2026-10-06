@@ -10,6 +10,11 @@
  *   snapshot or for a plugin that ships nothing.
  * - The market shelf's state for one Agent is not installed / installed / updatable, the third
  *   only ever off the server's own list of installs it says are behind.
+ * - The installable list is what the deployment SHIPS, described by the registry's entry: the
+ *   shelf carries an entry per plugin package the build carries, skills/hooks packages among
+ *   them, and the server refuses the ones it does not ship.
+ * - A library plugin's market entry is found by its package: the same bare name, or the scoped
+ *   specifier carrying the card's version.
  * - The installed version is the hook package's where there is one, else the first installed
  *   skill's, and undefined where the plugin is not installed.
  * - The per-plugin reminder names the Agents the server lists as behind on it, in list order
@@ -18,11 +23,12 @@
  *   every plugin it is behind on, and counts distinct plugins as the notice does.
  */
 import { describe, expect, it } from "vitest";
-import type { InstalledPluginsResponse } from "@lmliheng/penguin-server/api";
+import type { InstalledPluginsResponse, PluginIndexEntry } from "@lmliheng/penguin-server/api";
 import {
   availablePluginRows,
   installedPluginRows,
   installedPluginVersion,
+  marketEntryFor,
   marketState,
   outdatedAgentIds,
   pluginInstalled,
@@ -95,6 +101,66 @@ describe("plugin rows per machine", () => {
       ["@acme/shared", "unsynced", false],
       ["@acme/gpu-only", "failed", true],
     ]);
+  });
+});
+
+/** One registry entry, as the shelf serves it (the fields the page reads). */
+const entry = (name: string, version = "0.2.2"): PluginIndexEntry => ({
+  name,
+  version,
+  description: `${name} as its package describes it`,
+  authors: ["Prism Shadow"],
+  license: "Apache-2.0",
+});
+
+describe("availablePluginRows", () => {
+  const shipped: InstalledPluginsResponse = {
+    ...deployment,
+    shipped: ["@lmliheng/sandbox-bwrap"],
+  };
+
+  it("offers what the deployment ships, with the registry's entry for it", () => {
+    const rows = availablePluginRows(shipped, [entry("@lmliheng/sandbox-bwrap")]);
+    expect(rows.map((r) => [r.specifier, r.entry?.name, r.shipped])).toEqual([
+      ["@lmliheng/sandbox-bwrap", "@lmliheng/sandbox-bwrap", true],
+    ]);
+  });
+
+  it("leaves out a shelf entry this deployment does not ship, rather than offering one the server refuses", () => {
+    // The shelf carries an entry per plugin package the build carries, and a skills package is
+    // one of them — but a Project cannot ask for it: it installs to an Agent, and the install
+    // endpoint answers `plugin_not_shipped` for anything outside the build's own list.
+    const rows = availablePluginRows(shipped, [
+      entry("@lmliheng/csu-mail", "2026.10.05.1"),
+      entry("@lmliheng/sandbox-bwrap"),
+    ]);
+    expect(rows.map((r) => r.specifier)).toEqual(["@lmliheng/sandbox-bwrap"]);
+  });
+
+  it("offers a shipped package the registry has no entry for, with nothing to describe it", () => {
+    const rows = availablePluginRows(shipped, []);
+    expect(rows.map((r) => [r.specifier, r.entry, r.shipped])).toEqual([
+      ["@lmliheng/sandbox-bwrap", undefined, true],
+    ]);
+  });
+});
+
+describe("marketEntryFor", () => {
+  const card = { name: "csu-mail", version: "2026.10.05.1" };
+
+  it("finds the entry by the package specifier, when it carries the card's version", () => {
+    const index = [entry("@lmliheng/csu-mail", "2026.10.05.1"), entry("@lmliheng/other")];
+    expect(marketEntryFor(card, index)?.name).toBe("@lmliheng/csu-mail");
+  });
+
+  it("takes an entry named by the bare name as it is", () => {
+    expect(marketEntryFor(card, [entry("csu-mail", "2026.10.05.1")])?.name).toBe("csu-mail");
+  });
+
+  it("is undefined for a name and version no entry carries — a user plugin has no package of the build's", () => {
+    expect(marketEntryFor(card, [entry("@lmliheng/csu-mail", "2026.09.01.1")])).toBeUndefined();
+    expect(marketEntryFor(card, [entry("@acme/other")])).toBeUndefined();
+    expect(marketEntryFor(card, [])).toBeUndefined();
   });
 });
 

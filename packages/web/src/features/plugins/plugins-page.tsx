@@ -826,6 +826,7 @@ export function PluginsPage() {
                     plugin={row.plugin}
                     category={row.category}
                     installed={installed}
+                    marketSpecifier={marketEntryFor(row.plugin, index ?? [])?.name ?? null}
                     canDelete={isAdmin}
                     onQuickInvoke={quickInvoke}
                     onToggleInstall={toggleInstall}
@@ -1064,9 +1065,12 @@ export function installedPluginRows(
 }
 
 /**
- * What could be asked for: the registry's entries this Project does not list yet, and what
- * the build ships that the registry does not know (offered with no description — the build
- * has it, so it is installable without a download).
+ * What could be asked for: what the build ships and this Project does not list yet. The
+ * registry is consulted for the entry (description, version, categories) and the build's own
+ * list for the row: the shelf carries an entry per plugin package the build ships — the
+ * library's skills/hooks packages among them, which install to an AGENT and are never a
+ * Project's to ask for — and the server refuses the ones it does not ship, so offering those
+ * here would be a row whose Install answers `plugin_not_shipped`.
  */
 export function availablePluginRows(
   deployment: InstalledPluginsResponse | null,
@@ -1086,13 +1090,16 @@ export function availablePluginRows(
   const rows: ModulePluginRow[] = [];
   for (const entry of index) {
     if (listed.has(entry.name) || seen.has(entry.name)) continue;
+    // Marked seen before the build's list is consulted: an entry this deployment does not ship
+    // has no row at all, rather than the entry-less one the loop below would add for its name.
     seen.add(entry.name);
+    if (!shippedList.includes(entry.name)) continue;
     rows.push({
       kind: "module",
       specifier: entry.name,
       entry,
       state: "none",
-      shipped: shippedList.includes(entry.name),
+      shipped: true,
     });
   }
   for (const name of shippedList) {
@@ -1101,6 +1108,26 @@ export function availablePluginRows(
     rows.push({ kind: "module", specifier: name, entry: undefined, state: "none", shipped: true });
   }
   return rows;
+}
+
+/**
+ * The market entry that describes a library plugin, when the registry has one. The two lists
+ * name the same package differently: the library by the directory its package was read from
+ * (`csu-mail`), the market by the specifier a Project's list would take
+ * (`@lmliheng/csu-mail`) — and a plugin package's version is its own `plugin.json`'s in both,
+ * so a scoped entry of that name carrying the card's version is this plugin's package. A user
+ * plugin has none: it is no package of the build's, and nothing on the shelf describes it.
+ */
+export function marketEntryFor(
+  plugin: Pick<PluginItem, "name" | "version">,
+  index: readonly PluginIndexEntry[],
+): PluginIndexEntry | undefined {
+  return (
+    index.find((entry) => entry.name === plugin.name) ??
+    index.find(
+      (entry) => entry.name.endsWith(`/${plugin.name}`) && entry.version === plugin.version,
+    )
+  );
 }
 
 /**
@@ -1377,6 +1404,7 @@ function PluginCard({
   plugin,
   category,
   installed,
+  marketSpecifier,
   canDelete,
   onQuickInvoke,
   onToggleInstall,
@@ -1388,6 +1416,8 @@ function PluginCard({
   /** The library's category, shown as the row's first tag (the page has no groups). */
   category: string;
   installed: InstalledMap;
+  /** The specifier of the market entry describing this plugin, or null when the registry has none. */
+  marketSpecifier: string | null;
   /** Whether this account may delete, which is the account's admin right and not a Project role (see the page header). */
   canDelete: boolean;
   onQuickInvoke: (skillName: string) => void;
@@ -1539,7 +1569,12 @@ function PluginCard({
         </div>
       </button>
       {detailOpen && (
-        <PluginDetailModal plugin={plugin} meta={meta} onClose={() => setDetailOpen(false)} />
+        <PluginDetailModal
+          plugin={plugin}
+          meta={meta}
+          marketSpecifier={marketSpecifier}
+          onClose={() => setDetailOpen(false)}
+        />
       )}
       {/* Actions: equal-square light icon buttons in a single row, vertically centered at the
           card's right edge (copy goes into aria-label and title). */}

@@ -2204,6 +2204,8 @@ export const zh = {
     noMatch: "没有匹配的插件。",
     /** The description of a shipped package the registry has no entry for. */
     shippedNoEntry: "随本次构建自带；市场里还没有它的条目。",
+    /** The plugin detail Modal's link to the plugin package's own market page (its registry entry). */
+    detailMarketLink: "查看市场条目",
     /** The "built in" tag on a library plugin: it ships with the build and needs no download. */
     libraryBuiltinHint: "随本次构建自带；安装到 Agent 即可在那里使用。",
     /** Plugin count in the group header (small text to the right of the category name). */
@@ -2417,7 +2419,8 @@ export const zh = {
     authors: "作者",
     license: "许可证",
     copySpecifier: "复制包名",
-    installHint: "在插件市场页安装：该行的「安装」按钮会为当前项目要求它。",
+    installHint:
+      "安装分两类：技能／钩子类插件装到 Agent（插件市场页一键安装）；服务端插件由当前项目要求，在它那一行点「安装」。",
   },
 
   skills: {

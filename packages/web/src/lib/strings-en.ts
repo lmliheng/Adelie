@@ -2167,6 +2167,8 @@ export const en: Strings = {
     noMatch: "No plugin matches that.",
     /** The description of a shipped package the registry has no entry for. */
     shippedNoEntry: "Ships with this build; the registry has no entry for it yet.",
+    /** The plugin detail Modal's link to the plugin package's own market page (its registry entry). */
+    detailMarketLink: "View market entry",
     /** The "built in" tag on a library plugin: it ships with the build and needs no download. */
     libraryBuiltinHint: "Ships with this build; install it to an agent to use it there.",
     pluginCount: (n: number): string => (n === 1 ? "1 plugin" : `${n} plugins`),
@@ -2386,7 +2388,7 @@ export const en: Strings = {
     license: "License",
     copySpecifier: "Copy specifier",
     installHint:
-      "Install from the Plugins page: the row's Install button asks the current Project for it.",
+      "Two ways to install: a skills/hooks plugin goes to an agent (one click on the Plugins page); a server plugin is asked for by the current Project, with Install on its row.",
   },
 
   skills: {

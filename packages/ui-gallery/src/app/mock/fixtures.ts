@@ -784,7 +784,11 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         here: false,
       },
     ],
-    shipped: ["@lmliheng/sandbox-bwrap", "@lmliheng/sandbox-seatbelt"],
+    shipped: [
+      "@lmliheng/sandbox-bwrap",
+      "@lmliheng/sandbox-seatbelt",
+      "@lmliheng/messaging-feishu",
+    ],
     file: ".project_config.toml",
     machineId: "demo-machine-0001",
     restartPending: false,
@@ -823,6 +827,28 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         categories: ["messaging"],
         updatedAt: Math.floor(ago(40) / 1000),
       },
+      // The shelf carries an entry per plugin package the build hands out, the library's own
+      // skills packages among them: their market pages hold what a card cannot (license,
+      // authors, keywords) and the package's README. `penguin-sdk` and `web-design` are library
+      // cards above, carrying exactly these versions.
+      {
+        name: "@lmliheng/penguin-sdk",
+        version: "2026.09.11.1",
+        description: "Build with the Adelie SDK: the Session, Agent State and OmniMessage APIs.",
+        authors: ["Prism Shadow"],
+        license: "Apache-2.0",
+        keywords: ["sdk", "agent", "session"],
+        categories: ["ai-app-development"],
+      },
+      {
+        name: "@lmliheng/web-design",
+        version: "2026.09.11.1",
+        description: "Design and build web pages that do not read as templated defaults.",
+        authors: ["Prism Shadow"],
+        license: "Apache-2.0",
+        keywords: ["css", "layout", "typography"],
+        categories: ["software-development"],
+      },
     ],
   };
   const readmes: Record<string, string> = {
@@ -832,6 +858,8 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       "# sandbox-seatbelt\n\nThe macOS counterpart of sandbox-bwrap, on Seatbelt profiles.\n",
     "@lmliheng/messaging-feishu":
       "# messaging-feishu\n\nBinds a Session to a Feishu bot so replies reach a chat.\n",
+    "@lmliheng/penguin-sdk":
+      '# penguin-sdk\n\nBuild an agent application on the SDK: create a Session, run a Prompt, read the stream back as thinking, text and tool events.\n\n```ts\nconst session = await client.createSession({ workspace });\nawait session.run("summarize the changelog");\n```\n',
   };
 
   const evaluation = (

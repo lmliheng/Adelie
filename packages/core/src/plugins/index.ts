@@ -359,6 +359,20 @@ function builtinRoots(): Map<string, string> {
 }
 
 /**
+ * One built-in plugin package's directory, by the bare name the library files it under
+ * (`csu-mail`, not `@lmliheng/csu-mail`), or undefined when this build carries no such plugin.
+ *
+ * For a reader of the PACKAGE rather than of its parsed plugin: the market builds an entry for
+ * each package it ships out of the package's own manifests, and resolving them the way the
+ * library reader does keeps an entry and a card describing the same copy of one package —
+ * including a workspace checkout, where that is the repo's `plugins/<name>/` and not the copy
+ * Node's `node_modules` still holds.
+ */
+export function builtinPluginDir(name: string): string | undefined {
+  return builtinRoots().get(name);
+}
+
+/**
  * Where every plugin is read from, name → its directory and which source it came from: the
  * built-ins first, then the user plugin directory, and only for names no built-in claimed — an
  * import that collides with a plugin the build ships must not be able to shadow it (the API

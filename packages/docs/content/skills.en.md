@@ -23,7 +23,7 @@ A **Skill** is a set of reusable instructions that an agent reads when a task ca
 
 Each card shows the plugin's name, a short description, and a line in the form `v<version> · updated N days ago · used by N agents`. The agent count covers the agents in the current Project that have any part of the plugin installed. The tags below that line give the plugin's category (Office Productivity, Software Development, AI App Development, Agent Company or Other), **built in**, and how many Skills and hook packages it ships.
 
-The details show the full description, the hook points the plugin's hook package runs at, and a file browser. The tree on the left has one folder per Skill, with its `SKILL.md` first and its reference files after it, and a **Hooks** folder for the hook scripts. The preview on the right shows the selected file.
+The details show the full description, the hook points the plugin's hook package runs at, and a file browser. The tree on the left has one folder per Skill, with its `SKILL.md` first and its reference files after it, and a **Hooks** folder for the hook scripts. The preview on the right shows the selected file. Every plugin package this build carries has an entry on the shelf (see [Server plugins](#server-plugins)), so the details also offer **View market entry**, which opens that package's plugin page.
 
 The buttons on the right of a card:
 
@@ -167,7 +167,7 @@ To upload a zip file:
 
 A server plugin extends the server itself rather than an agent: it is an npm package of server modules, such as a sandbox backend. A Project asks for the server plugins it needs, and the server runs every plugin that any of its Projects asks for, so what a plugin contributes is available to every Project.
 
-On the **Plugins** page, a server plugin's row shows its package name, description, version and status, with tags for its categories, **built in** when it ships with PenguinHarness, and its keywords. Select a row to open the plugin's page, with its license, authors, links and documentation. A plugin the registry has no entry for has no page.
+On the **Plugins** page, a server plugin's row shows its package name, description, version and status, with tags for its categories, **built in** when it ships with PenguinHarness, and its keywords. Select a row to open the plugin's page, with its license, authors, links and documentation. The shelf is complete: the four sandbox backends are hand-written entries, and every plugin package this build carries has one of its own (the library's skills/hooks packages included), with version, description, license, category and keywords read from the package itself. Only a plugin imported on this machine has no entry, and therefore no page.
 
 To add a server plugin to the current Project:
 

@@ -9,7 +9,8 @@
  * on hand at once and nothing here is fetched per directory.
  */
 import { useEffect, useState } from "react";
-import { Badge, FileBrowser, ICONS, Modal } from "@lmliheng/penguin-ui";
+import { Link } from "react-router";
+import { Badge, FileBrowser, GlyphIcon, ICONS, Modal } from "@lmliheng/penguin-ui";
 import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
@@ -142,11 +143,14 @@ export function pluginTreeRows(
 export function PluginDetailModal({
   plugin,
   meta,
+  marketSpecifier,
   onClose,
 }: {
   plugin: PluginItem;
   /** The card's metadata line (version · updated · used by N agents), repeated under the title. */
   meta: string;
+  /** The market entry describing this plugin's package, or null when the shelf has none (a user plugin). */
+  marketSpecifier: string | null;
   onClose: () => void;
 }) {
   const { locale } = useLocale();
@@ -226,6 +230,20 @@ export function PluginDetailModal({
           )}
         </div>
       </div>
+
+      {/* The plugin's own market page, when the shelf has an entry for its package: the card
+          shows what the plugin IS (what it ships, its version), the entry what its package is
+          (license, authors, keywords) and the package's README. A user plugin has no entry —
+          it is no package of this build's — so the link is absent rather than broken. */}
+      {marketSpecifier !== null && (
+        <Link
+          to={`/plugins/registry/${marketSpecifier}`}
+          className="mt-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline dark:text-blue-400"
+        >
+          {S.plugins.detailMarketLink}
+          <GlyphIcon d={ICONS.chevronRight} size={12} />
+        </Link>
+      )}
 
       {/* The browser: tree left, preview right (stacked on narrow screens) — the same one the
           Benchmark case dialog draws. SKILL.md shows its body, with the frontmatter the card
