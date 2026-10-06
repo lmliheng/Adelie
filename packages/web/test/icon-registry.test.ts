@@ -34,7 +34,7 @@ const ALLOWLIST: Readonly<Record<string, readonly [number, string]>> = {
   "features/chat/subagents-view.tsx": [1, "W6"],
   "features/chat/task-stats-line.tsx": [1, "W6"],
   "features/chat/workspace-browser.tsx": [1, "W7"],
-  "features/chat/workspace-finder.tsx": [11, "W10"],
+  "features/chat/workspace-finder.tsx": [10, "W10"],
   "features/company/channel-header.tsx": [4, "W6"],
   "features/company/channel-sidebar.tsx": [2, "W4"],
   "features/company/channel-view.tsx": [1, "W6"],

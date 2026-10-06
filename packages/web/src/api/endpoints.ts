@@ -752,15 +752,26 @@ export const listSessions = (
  * Browses directories. With no machine, this server's own filesystem; with one, THAT
  * machine's — listed by this server over ssh, so picking a workspace on another machine
  * needs no second login to that machine's own server.
+ *
+ * `places` asks a home request (empty `path`) for the machine's standard folders and its
+ * locations (drives, volumes, mounts) as well. Only this server discovers them, so the flag
+ * goes on the local route alone; a machine reached over ssh answers with its folders only.
  */
-export const listDirs = (projectId: string, path = "", machineId?: string | null) =>
-  machineId === undefined || machineId === null
+export const listDirs = (
+  projectId: string,
+  path = "",
+  machineId?: string | null,
+  opts?: { places?: boolean },
+) => {
+  const places = opts?.places === true ? "&places=1" : "";
+  return machineId === undefined || machineId === null
     ? apiFetch<DirListResponse>(
-        `/api/projects/${encodeURIComponent(projectId)}/dirs?path=${encodeURIComponent(path)}`,
+        `/api/projects/${encodeURIComponent(projectId)}/dirs?path=${encodeURIComponent(path)}${places}`,
       )
     : apiFetch<DirListResponse>(
         `/api/projects/${encodeURIComponent(projectId)}/machines/${encodeURIComponent(machineId)}/dirs?path=${encodeURIComponent(path)}`,
       );
+};
 
 /**
  * Makes one folder inside `parent` (the picker's "New folder"). `name` is a single segment, not

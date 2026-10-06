@@ -203,11 +203,19 @@
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
-- [ ] 5.2 **插件库「自带 demo」+ 商店条目模型**（上游 `c6a7b6ee` `#726`、`feat/plugin-store`）——
+- [x] **5.2 插件库「自带 demo」+ 商店条目模型**（上游 `c6a7b6ee` `#726`、`feat/plugin-store`）——
       正对插件市场 v1 的货架、一键安装与更新提示；上游把索引条目、桶、demo 快速开始都试过了。
-- [ ] 5.3 **跨机 agents**（`feat/agents-across-machines`、`feat/machine-*`、`feat/port-forwarding`、
-      `feat/company-remote-machines`、`feat/agent-state-handover`）——**先调研再投资**。价值最大：
-      公司跑在 Windows（RTX 5060）那台，现在两台机器之间靠人搬。
+      **2026-10-07 核实：这件事已经做完了**，由另外的巡台会话在 2026-10-06 提交：`2a8f56e7`
+      「插件市场给每个自带插件包一条条目」（core/server/web/docs）、`fcc78f93`「插件市场的卡片加每 Agent
+      状态与一键安装/更新」——`packages/web/src/features/plugins/plugins-page.tsx` 里
+      `marketState` 的 not installed / installed / updatable 三态、`availablePluginRows`、筛选与一键
+      安装/更新都在，两条提交就在本文件的 HEAD 历史里。**本条没有留下需要做的活**（`/root/evolution/PLAN.md`
+      里「插件市场 v1」标的 ⏳ 已过时，那份计划不归本台账管，未改）。
+- [~] 5.3 **跨机 agents**（`feat/agents-across-machines`、`feat/machine-*`、`feat/port-forwarding`、
+      `feat/company-remote-machines`、`feat/agent-state-handover`）——**调研已做完（见文件末尾「跨机评估」
+      一节），落地只做了「跟上游学之二」那一条**。结论：我们自己的跨机子系统已经不小，缺的不是地基而是
+      上游那批修复与「公司模式跑在别的机器上」；而**「这台 Linux 指挥 Windows 生成台」在今天的两侧代码里
+      都还不可能**（Windows 机器连不上，见评估）。价值仍在，但要按评估里的顺序走。
 - [ ] 5.4 **沙箱体系**（上游已进 main：Landlock 让默认 Ubuntu 可用 `234183f5`、权限菜单命名预设
       `9b170c61`、`sandbox-dsh` 在 Windows 走 pwsh `c03e58c4`、建沙箱前先建 scratchpad `cba091e3`、
       后端拆成 npm 包 `1ba104c9`）。我们有四个后端，缺的是「体系」：公司模式下一群 agent 在跑命令。
@@ -1949,3 +1957,125 @@ README 的环境表跟上了。这一轮没碰它，它属 2.2c 的文档尾巴�
 - `pnpm lint` 0 警告 0 错误（2052 文件）；`pnpm format:check` 干净；`packages/server` 的
   `tsc --noEmit` 过，`ifaces.json` 重新生成（它是生成物、`.gitignore` 里，不进提交）。
 - 没有起的服务、没有动的端口；`/root/adelie-fork` 工作树在本轮开始与结束时都只有本轮的文件。
+
+## 跟上游学之二：工作区选择器随被浏览的机器适配（#962，2026-10-07）
+
+用户说「继续」，承接上一条（5.1）往下走。5.2 核实为**已经做完**（见待办 5.2），于是本轮做 5.3 里
+唯一一件「已经在 main 里、规模可控、对 Windows 那台直接有用」的事：上游 `b5a0ae8f`
+（`The Workspace finder adapts to the machine it browses`，#962，17 文件 +1777）。
+
+### 为什么要做
+
+公司跑在 Windows（RTX 5060）那台。在那台机上选工作区时，选择器的左栏过去只会按 Linux 的方式想事情：
+`C:\` 被当成相对路径、盘符要点地址栏手打、`AppData` 与旧式目录链接（点进去只有「拒绝访问」）照列。
+#962 让**被浏览的机器**用自己的规则回答左栏：Windows 给盘符（带卷标与类型）、macOS 给 `/Volumes`、
+Linux 给根与挂载点；标准文件夹按那台机自己的规则找（OneDrive 接管的桌面、中文桌面的 `~/桌面`）；
+Windows 上按隐藏属性过滤，并可只输入 `D:` 打开该盘。
+
+### 做了什么（照上游移植，不是合分支）
+
+- **新服务** `packages/server/src/services/dir-places.ts`（829 行）：Windows 走 PowerShell 报盘符，
+  macOS 读 `/Volumes`，Linux 读 `/proc/mounts` 与 XDG 用户目录。所有平台调用都过 `PlaceEffects`
+  接口，所以每个平台的分支都能在任何机器上跑单测；真机走 `systemEffects`。枚举在子进程里做并限时
+  （PowerShell 5s、cmd 3s），结果缓存 15s（失败也缓存），因为一台断开的网络盘会把 libuv 的线程按
+  几十秒。
+- **路由** `GET /api/projects/:p/dirs`：主目录请求带 `places=1` 时返回 `standardFolders` 与
+  `locations`；Windows 上每条列表标出 `hidden`；`D:` / `d:` 归一成 `D:\`（`normalizeRequestedDir`，
+  纯函数、导出给单测）。旧的 `roots` 字段去掉。
+- **前端**：左栏这一节在 Windows 上仍叫「此电脑」，别处叫「位置」；地址栏根部多一个 `切换位置` 下拉，
+  一次换盘（窄屏左栏收成抽屉时尤其有用）；非 Mac 上 Ctrl+L / Alt+D / F4 编辑地址、F5 刷新当前目录
+  （过去是刷新整个应用）；标准文件夹优先用机器自己给的答案，机器没给才回落到按英文名找。
+- **图标**：finder 里那枚 `DRIVE_ICON` 搬进注册表（`hardDrive`，与上游同一段 path），另加 `plug` 给
+  可移动盘；`packages/web/test/icon-registry.test.ts` 里该文件的白名单从 11 收紧到 10。
+- 变更日志中英双份 `changelog/unreleased/2026-10-07-workspace-finder-per-platform{,zh}.md`（日期与
+  文件名按本仓习惯改成落地日，正文里写明来源是上游 #962 / `b5a0ae8f`）；`packages/docs` 的
+  `server-api.{en,zh}.md` 的 `/dirs` 一节跟着改；画廊 mock 补上 `places=1` 的答案，好在本地看到这一节。
+
+### 怎么移植的
+
+`upstream` 这个 remote 还指向已被删掉的 `/root/penguin-harness`（`git fetch upstream` 直接失败），
+本轮**没有改仓库配置**，只用一次性 URL 抓 `main` 进对象库：
+`git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git main:refs/remotes/gh/main`
+（2 秒，绝大部分对象已在库里），然后 `git apply -3 /tmp/dirplaces.diff` 走三方合并。17 个文件里 12 个
+自动落地（含两个新文件与全部文案、文档、画廊 mock），5 个留冲突：`dirs.ts`、`dirs.test.ts`、
+`workspace-finder-model.ts`、`workspace-finder.tsx`、`web/test/workspace-finder.test.ts`，共 9 处。
+逐处看下来，冲突全是**我们自己的分叉**，不是上游的设计分歧：文件头注释（本仓多了 POST/DELETE/
+access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、列表样式（本仓 `space-y-0.5`，
+上游 `flex flex-col gap-1`）、图标常量（本仓仍留 10 枚字面量 path）。一律「上游的逻辑 + 本仓的样式」。
+
+### 验证（都实跑过）
+
+- 测试：server **182 文件 / 2625 通过 · 4 跳过 · 0 失败**（新增 `dir-places.test.ts` 11 条与
+  `dirs.test.ts` 的 places/裸盘符用例）；web **236 / 2899 通过 · 2 跳过**；ui 1003；docs 62；
+  core 1359 · 5 跳过；cli 506；ui-gallery 131；**0 失败**。
+- 门禁：`pnpm lint` 0 警告 0 错误（2054 文件）；`pnpm format:check` 干净；server 与 web 的
+  `tsc --noEmit` 过。
+- **真机器**：`dirs.test.ts` 里那条「主请求带 `places=1`，不带就不给」走的是真 HTTP 与真文件系统
+  （返回 `locations[0] = {path:"/", kind:"root"}`、`standardFolders` 是对象；Windows 那两条按平台
+  跳过）。另外直接把 `discoverLocalPlaces()` 跑了一遍：11ms 出结果、第二次调用拿到**缓存里的同一个
+  对象**、非 Windows 上 `windowsHiddenNames` 返回空集合而不是抛错。
+- **真浏览器**：`pnpm dev:gallery`（7372，是我自己起的、看完就停了）配 Playwright + 本地 chromium，
+  打开 `/app.html?route=/chat/new&lang=zh` 再点开 finder：左栏依次是「常用 / 位置（文件系统、data）/
+  最近使用 / 机器」，地址栏那颗 `切换位置` 的下拉列出「文件系统、data」，console 无 error。截图
+  `/tmp/finder-open.png`、`/tmp/finder-menu.png`。
+- **没验的**：Windows 与 macOS 两条分支只有单测（这台机器是 Linux）；跨机那条路
+  （`/api/projects/:p/machines/:id/dirs`）本轮没跑，它按设计也不带 places。
+- `pnpm -r test` 里 `packages/desktop` 有 2 条红：`installer-assets.test.ts` 比对
+  `packages/desktop/dist/install.{sh,ps1}`（构建产物、`.gitignore` 里）与仓库根的安装脚本，前者是
+  2026-10-06 早些时候的旧构建（提示里还写着 4000），后者已被 `3835c0e8` 改成新端口。**与本轮无关**，
+  是本地陈旧产物；CI 上 `dist/` 不存在，那条测试自己跳过。
+
+## 跨机评估（2026-10-07，条目 5.3）
+
+### 我们已经有什么（都是本仓文件级证据）
+
+- 服务端 `packages/server/src/machines/`：17 个文件 + `transport/`（`service`、`proxy`、`transport`、
+  `terminal-relay`、`remote-token`、`install-server`、`ssh-config`、`server-control`、`server-state`、
+  `plugins-sync`、`models-sync`、`upgrade`、`detect`、`layout`、`answer`、`machine-api`）。
+- 路由 `packages/server/src/http/routes/machines.ts` **13 个端点**：ssh-hosts 增删查改、probe、
+  install、connect、dirs、release、restart、disconnect、use / stop-using。
+- 库表：`machine`（本机身份）、`machines`、`machine_project`（迁移 4、12）。
+- 前端 `packages/web/src/features/machines/*`（机器页、机器选择器、ssh 主机对话框、probe 排期、
+  匹配规则）。
+- 模型：一台机器归一个 Project；本服务器用 SSH 把**本构建**装到对端，命令走 stdin、TCP 走 SOCKS，
+  请求经 `/server/<machineId>/api/…` 同源转发；`sessions` 表**没有**机器列 —— 机器是 Project 级、
+  前端按前缀改指。
+- 测试：`packages/server/test/machines-*.test.ts` 10 个文件、**186 条全过**（含对真起服务的
+  `syncModelsToMachine`）。
+
+### 缺口（对着上游核过）
+
+- 上游 `main` 里我们还缺的跨机提交只有两条：`dd1b931f`（CI 上把 machine 测试也跑到 Windows，#973，
+  3 文件）与本轮移植的 `b5a0ae8f`（#962）。
+- 其余跨机工作**全在分支上、没进 main**：22 个带 machine 字样的 head —— `feat/agents-across-machines`、
+  `feat/company-remote-machines`、`feat/benchmarks-across-machines`、`feat/machines-simplified`、
+  `feat/machine-transport-ssh-config-io`、`feat/machine-connection-stage-timings`、
+  `feat/workspace-machine-identity`、`feat/plugin-machines`、`fix/machine-events-redial-a-failed-dial`、
+  `fix/machine-events-attach-a-machine-connected-later`、`fix/machine-hop-answers-in-time`、
+  `fix/machine-linked-stopped`、`fix/machines-adopted-table`、`fix/machine-server-own-session`、
+  `fix/model-switch-on-its-machine` 等。**规模没法从 API 量**：GitHub 的 compare 只给前 300 个文件，
+  而且这些分支相对 main 报 94～569 个提交（是血缘分叉，不是它们各自的工作量）。要量得逐个 fetch 下来
+  diff，所以对它们的态度应当是「按需挑补丁」，不是「整体合」。
+- 我们自己的差距不在「有没有跨机」，而在：没有第二台机器做端到端；以及公司模式还不会把活儿派到别的
+  机器上（那需要上游那批分支）。
+
+### 关键限制：Windows 那台今天连不上（两侧代码都拦着）
+
+- `http/routes/machines.ts` 的 connect 明确拒绝 Windows：
+  「A Windows machine cannot be connected yet: its sshd hands commands to cmd.exe, and there is no
+  shell to hold a session on.」——**上游 main 里是同一句话**（`git show gh/main:…/machines.ts` 核过）。
+- 跨机的目录列举 `machines/commands.ts` 的 `listDirsCommand` 是纯 POSIX 的（`$HOME`、`ls -1p`、
+  `sed`、`grep`），一行 Windows 分支都没有。
+- 结论：「这台 Linux 指挥 Windows 生成台」在两侧都还不成立，能跨的是 Linux/macOS 之间。Windows 那台
+  今天的用法只能是它自己起服务、自己开界面 —— 这也正是本轮 #962 对它直接有用的原因（选工作区时能看到
+  盘符、`此电脑`、`D:` 与隐藏项）。要真做到「Linux 指挥 Windows」，先得有「Windows 上也能维持一条
+  会话」这件事（上游拿那 22 个分支在试，没进 main），而且没有第二台机器就无法端到端验证。
+
+### 建议的落地顺序
+
+1. `fix/machine-*` 那批小修复：逐个看补丁，能上就上（我们已有 186 条跨机测试兜底），优先
+   `fix/machine-server-own-session`、`fix/machine-events-redial-a-failed-dial`、
+   `fix/machine-hop-answers-in-time` 这类「不修就会挂」的。
+2. 有第二台 Linux 机器时，把「安装 → 使用 → 跨机建会话 → 插件/模型同步」端到端跑一次。
+3. Windows 侧要么等上游把「Windows 上的会话」做进 main，要么自己评估成本（比前两项都大）。
+4. 公司模式跑在别的机器上（`feat/company-remote-machines`）放在最后：它建立在上面这些之上。

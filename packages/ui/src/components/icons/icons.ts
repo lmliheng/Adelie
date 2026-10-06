@@ -71,6 +71,13 @@ export const ICONS = {
   chip: "M5 5h14v14H5zM9 9h6v6H9zM7.5 5V2.4M12 5V2.4M16.5 5V2.4M7.5 19v2.6M12 19v2.6M16.5 19v2.6M5 7.5H2.4M5 12H2.4M5 16.5H2.4M19 7.5h2.6M19 12h2.6M19 16.5h2.6",
   /** Two stacked server units, each with its own status lamp. */
   server: "M4 4h16v6H4zM4 14h16v6H4zM7 7h.01M7 17h.01",
+  /**
+   * A drive: the box with its lamp, and a platter drawn as the lid's slope. The Workspace
+   * finder's one storage drawing — a fixed disk, a volume and a Linux root all take it.
+   */
+  hardDrive: "M3 13h18v6H3zM5 13l2-8h10l2 8M17 16h.01",
+  /** A plug: two prongs, the body and its cord trailing below (what is plugged in). */
+  plug: "M9 2v4M15 2v4M6 6h12v4a6 6 0 0 1-12 0V6zM12 16v6",
   /** A trophy: cup, two handles and a base. */
   trophy: "M7 4h10v5a5 5 0 0 1-10 0V4zM7 5H4v1a3 3 0 0 0 3 3m10-4h3v1a3 3 0 0 1-3 3M12 14v4m-4 0h8",
   /** A `>_` prompt in a window frame. */
