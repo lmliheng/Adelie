@@ -70,7 +70,7 @@ if [ "${NO_VAULT:-0}" = "1" ]; then
   exit 0
 fi
 
-[ -n "${PROJECT_ID:-}" ] || die "请设置 PROJECT_ID（= 运行环境 App Data Dir 的最后一段，如 /root/.penguin/data/sjaaj -> sjaaj）；
+[ -n "${PROJECT_ID:-}" ] || die "请设置 PROJECT_ID（= 运行环境 App Data Dir 的最后一段，如 /root/.adelie/data/sjaaj -> sjaaj）；
    否则凭据会落进 default_project：密钥库里查得到，Agent 的 shell 里却永远没有这个变量。"
 
 command -v penguin >/dev/null || die "找不到 penguin CLI：请手动写密钥库，或用 NO_VAULT=1 看命令。"

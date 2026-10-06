@@ -102,7 +102,7 @@ CHROME_PATH=/path/to/chrome \
 # ③ 存进密钥库并删掉明文
 #    必须显式带 --project-id / --agent-id：CLI 的默认项目是 default_project，
 #    不带就会写进别的项目的密钥库（密钥库里查得到，环境变量里永远没有）。
-#    项目 id = 运行环境 App Data Dir 的最后一段，如 /root/.penguin/data/asass -> asass
+#    项目 id = 运行环境 App Data Dir 的最后一段，如 /root/.adelie/data/asass -> asass
 P="--project-id <项目id> --agent-id default_agent"
 penguin config vault set $P --key CSU_MAIL_AUTHCODE --value "$(cat secret.txt)" && shred -u secret.txt
 penguin config vault set $P --key CSU_MAIL_ADDR --value "学号@csu.edu.cn"
@@ -150,7 +150,7 @@ $V scripts/mail.py send --to jcc@csu.edu.cn --subject "..." --body-file body.txt
    现象是「密钥库里查得到，Agent 的 shell 里却始终没有这个变量」。2026-10-02 真实踩到：专用密码落进了 `default_project`，
    而 Agent 跑在别的项目里，于是 `mail.py check` 只报「缺少邮箱地址」——**别把它当认证失败去重试登录**。
    查证方法：`penguin config vault list --project-id <项目id> --agent-id default_agent`，
-   项目 id = 运行环境 App Data Dir 的最后一段（`/root/.penguin/data/<项目id>`），列表里有、`env` 里没有就是这个问题。
+   项目 id = 运行环境 App Data Dir 的最后一段（`/root/.adelie/data/<项目id>`），列表里有、`env` 里没有就是这个问题。
    修法：把值重新 set 到正确项目，并清掉写错的那份：`penguin config vault remove --key <KEY> --project-id default_project --agent-id <agent>`。
 
 ## 六、边界

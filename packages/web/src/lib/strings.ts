@@ -1458,7 +1458,7 @@ export const zh = {
      * follows the penguin-config skill — one `penguin config model add` per model with
      * `--provider` mandatory, the config file never touched by hand, `penguin config model list`
      * at the end — and carries the Project id and the data root, which the CLI would otherwise
-     * take from its own defaults (the harness strips `PENGUIN_HOME` from a command's
+     * take from its own defaults (the harness strips `ADELIE_HOME` from a command's
      * environment, so the CLI's default root is not the one the server runs on).
      */
     aiAddTitle: "让 AI 添加模型分组",

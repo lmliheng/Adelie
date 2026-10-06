@@ -4,7 +4,7 @@
  * The problem it exists for: the browser keeps UI state in `localStorage` — the new-chat
  * draft with its Workspace, the sidebar's registered Workspaces, pinned Sessions, seen
  * markers — and `localStorage` has no relationship whatsoever to the data root. In the
- * desktop app it lives in Electron's userData directory, so deleting `PENGUIN_HOME` does
+ * desktop app it lives in Electron's userData directory, so deleting `ADELIE_HOME` does
  * not touch a byte of it. Both halves of every key are compile-time constants
  * (`ADMIN_USER_ID`, `DEFAULT_PROJECT_ID`), so a wipe-and-restart re-provisions the same
  * user and the same Project, the keys line up again, and the state the user thought they

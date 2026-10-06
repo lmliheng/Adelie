@@ -277,7 +277,7 @@ export function parsePluginArchive(
  * carry local edits).
  *
  * The directory is `<config.root>/plugins`, the same one the library reads: the server's data
- * root and the library's user plugin root are one directory, both defined by PENGUIN_HOME.
+ * root and the library's user plugin root are one directory, both defined by ADELIE_HOME.
  */
 async function importPlugin(
   deps: PluginsRouteDeps,

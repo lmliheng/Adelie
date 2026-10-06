@@ -57,7 +57,7 @@ export function parseHostAliases(
 
 /**
  * A remote target's stable name: the SSH identity, `<user>@<alias>`. The Linux account is
- * part of it because each account has its own `~/.penguin` — hence its own server, its own
+ * part of it because each account has its own `~/.adelie` — hence its own server, its own
  * accounts — so `deploy@build-box` and `root@build-box` are two machines as far as anything
  * downstream is concerned.
  * The ALIAS is used rather than the resolved hostname: it is what the user chose, it is

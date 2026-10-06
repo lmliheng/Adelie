@@ -57,15 +57,15 @@ Before launch, snapshot every file under the Case's `statement/` and `rubric/` d
 
 Use an existing verified Penguin CLI or repository-local launcher. Do not install or probe a launcher. Snapshot the isolated Workspace and record the existing Trace files.
 
-Resolve `PROJECT_DIR`, then derive and verify `PROJECT_ID`, then derive and verify `PENGUIN_HOME`. Perform these as separate shell statements in this order. Never compress the assignments onto one command line, derive a value before its input exists, or substitute another Penguin home. Before launch, confirm that `PROJECT_ID` equals the basename of `PROJECT_DIR` and `PENGUIN_HOME` equals its dirname.
+Resolve `PROJECT_DIR`, then derive and verify `PROJECT_ID`, then derive and verify `ADELIE_HOME`. Perform these as separate shell statements in this order. Never compress the assignments onto one command line, derive a value before its input exists, or substitute another data root. Before launch, confirm that `PROJECT_ID` equals the basename of `PROJECT_DIR` and `ADELIE_HOME` equals its dirname.
 
 Start one foreground execution with a fresh top-level Session. With an explicit pair, use:
 
 ```bash
 PROJECT_DIR="<app_data_dir>"   # the App Data Dir value from your Environment section is the project root
 PROJECT_ID="$(basename "$PROJECT_DIR")"
-PENGUIN_HOME="$(dirname "$PROJECT_DIR")"
-export PENGUIN_HOME
+ADELIE_HOME="$(dirname "$PROJECT_DIR")"
+export ADELIE_HOME
 penguin run \
   --message "Read README.md in the current Workspace and complete the task exactly as specified there." \
   --provider "<provider>" --model-id "<model_id>" --project-id "$PROJECT_ID" \

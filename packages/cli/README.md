@@ -17,7 +17,7 @@ penguin chat                                                   # REPL: /compact,
 penguin chat --resume                                          # resume the latest session
 ```
 
-Tool calls go through an approval gate — `--approve allow-all` (default) `| deny-all | read-only | always-ask`. Data lives under `~/.penguin/data` (`PENGUIN_HOME` or `--root` override); model credentials come from the Project config or provider env vars (e.g. `DEEPSEEK_API_KEY`).
+Tool calls go through an approval gate — `--approve allow-all` (default) `| deny-all | read-only | always-ask`. Data lives under `~/.adelie/data` (`ADELIE_HOME`, the pre-rename `PENGUIN_HOME`, or `--root`); model credentials come from the Project config or provider env vars (e.g. `DEEPSEEK_API_KEY`).
 
 Prefer a one-line install with a bundled Node runtime? See [Quickstart → CLI and Web App](https://penguin.ooo/docs/quickstart-cli).
 
