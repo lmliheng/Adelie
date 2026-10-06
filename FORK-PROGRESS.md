@@ -132,8 +132,13 @@
       - 顺带记录：`PENGUIN_HINT` / `PENGUIN_KEEP_ATTRS` 是注入页脚本里的局部变量、`PENGUIN_FAMILY` 是 HMR
         family 常量，都不是环境变量，未动；`packages/docs/`、`.agents/`（= `.claude/` 软链）、`changelog/`
         三个文档面按 2.5 的口径不动 —— `.agents/` 是上游自己的开发技能文档，那里的 `PENGUIN_*` 对上游而言是对的。
-- [ ] 2.3 **端口与 profile 默认值**：服务器默认端口、CLI 默认端口（现在是 7369）与旧 Adelie 的
-      4000 / 7370 对齐，避免两个产品抢端口。
+- [x] 2.3 **端口与 profile 默认值**（2026-10-06，第十轮）：把「人会见到的」两个端口换成 Adelie 自己的 ——
+      服务器默认端口 `7364` → **`4000`**（旧 Adelie Web 的地址，也是本机 ufw 规则与
+      `/root/egress-whitelist/config.json` 里写着「Adelie Web (4000)」的那一条），dev CLI 端口
+      `7369` → **`7370`**（旧 Adelie CLI `adelie serve` 的缺省值，也是它的设计站上写着的那个号）。
+      上游 PenguinHarness 自己的 7364 / 7369 因此留给上游，一台机器上装两个产品时不必再抢同一个
+      socket。**仍然与上游同号的**：`dev:server` 7368、`dev:web` 7365、画廊 7372、机器转发 7371 ——
+      本条只点了上面那两个，这几条留着（它们只在「同一个开发者同时开两棵树」时才撞）。细节见本轮一节。
 - [x] 2.4 **README 与包元数据**（2026-10-05）：根 `README.md` 与 `README.zh.md` 重写成 Adelie 自己的
       说明 + 「基于 PenguinHarness」的来源声明 —— 头部换成 Adelie 图标 / 名字 / `built on
       PenguinHarness`、一张 `fork of PenguinHarness` 徽章，去掉上游的下载按钮、npm / Pages 徽章与
@@ -718,6 +723,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-06 | 2.2c（前半） | 边界面部署变量的**读侧**同时认 Adelie 的名字与旧名：core 新增 `state/boundary-env.ts`（`ADELIE_*` ← 旧 `PENGUIN_*` 的表 + 读取函数，新名优先）；接上 server 的 `config.ts`（WEB_DIST / WEB_DB / PORT_FILE / DESKTOP_TOKEN / CLI_ENTRY）、version 路由的 CLI_ENTRY、`machines/layout.ts` 的 PROFILE、CLI 三个命令的 WEB_DB、core 的 BUNDLED_SHELL，server README 的环境表与各处注释跟上。**写侧一个没改**（桌面壳按纪律没碰），所以 2.2c 仍未勾掉，「还差什么」写在条目里 | 六个包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1359 / 5 跳过 · server 2594 / 2 跳过 · cli 505 · ui 1000 · web 2877 / 2 跳过，**0 失败**；真起服务三次（数据根 `/root/adelie-fork-data/alias-*`，端口 7451 只用新名 / 7452 只用旧名 / 7453 两名并存）：三次都 302 → 登录页 `<title>Adelie</title>`，日志里的 SQLite 与 Web dist 都对，端口文件按各自的名字落盘；并存那次落的是新名的 `new.db` / `new.port`，旧名的 `old.db` / `old.port` 与 `PENGUIN_HOME` 指的旧根**一个都没建** | `83acbdf0` |
 | 2026-10-06 | 2.2c（写侧的远端命令） | `machines/commands.ts` 的 `remotePenguin()` 改成**两个名字都写**：远端命令现在同时给出 `ADELIE_HOME` / `PENGUIN_HOME` 与 `ADELIE_PROFILE` / `PENGUIN_PROFILE`（Adelie 的名字在前、两个取值相同），注释里写明为什么不是「探测远端版本」（这条命令落地的 CLI 来自那台机器的 hmr store，可能是更早的发行推上去的、只认旧名；探测要花一次握手且探不准）。顺带把 `machines/layout.ts` 的数据根注释与 `machines.test.ts` 的注解跟上 | 六包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core **1359** / 5 跳过 · server **2601** / 2 跳过（+1 新用例，钉住两个名字与先后）· cli **505** · ui **1003** · web **2877** / 2 跳过，**0 失败**；把 `remotePenguin()` **真生成的那条命令**（不是复述）拿 `sh` 跑了一遍：假 HOME 下桩「node」换成 core 的 `resolveRoot()` / `boundaryEnv()`，四个变量都在且取值一致，解析出的根与 profile 都是这一侧的 dev（`reader-root=$HOME/.penguin-dev/data`、`reader-profile=dev`） | `16368121` |
 | 2026-10-06 | 2.2c（写侧·非桌面壳的一批） | 第八轮漏掉的那批非桌面壳写点改用 Adelie 的名字：两个 `penguin` 脚本、`server` 的 `dev` 脚本、`packages/web/e2e/run.sh` 起服务那行、`Dockerfile` 的 `ENV`、`install.ps1` 生成的 Windows 启动器垫片（与 `scripts/launchers/penguin.cmd` 对齐）；**取值一个没动**，测试守卫与 CONTRIBUTING / 注释跟上 | 六包 typecheck 过 · `pnpm lint` 0 · `pnpm format:check` 干净；cli **506** · ui **1003** · server **2606** / 2 跳过 · web **2888** / 2 跳过（core 那条红来自另一条线正在改的 `README.md` 分类表，非本轮）；脚本行默认值经 `run-with-env.mjs` + 桩解析，新旧拼写逐字相同；`pnpm penguin version` 真跑；按 `web/e2e/run.sh` 那一行的变量名真起一次服务（日志自报数据根 / SQLite / 前端目录都对、标题 Adelie）；整条 e2e 42/69 —— 失败是**旧前端产物**造成的选择器错位，非本轮；`sh scripts/test-installer.sh` 通过；CI run **`37432299704`** 22 个作业全绿（含 `installer-windows`，见下） | `079cf1b4` |
+| 2026-10-06 | 2.3 | 默认端口换成 Adelie 自己的：服务端 `7364` → **`4000`**（旧 Adelie Web 一直在服务的地址，也是本机 ufw / egress-whitelist 里写作「Adelie Web (4000)」的那条）、dev CLI `7369` → **`7370`**（旧 Adelie CLI `adelie serve` 的缺省）。改到的地方：core 常量与端口表（含「为什么是这两个号」）、CLI 帮助文案 zh/en、cli/server/web 三份 README、两份 CONTRIBUTING、install.sh/install.ps1 的上手提示、Dockerfile 的 PORT/EXPOSE、compose 映射、docker 工作流的冒烟地址、两个 dev CLI 脚本、三处测试断言（机器 layout 的 release 默认端口、CLI 默认端口；system prompt 的端口守卫改成跟 core 的常量走） | 六包 typecheck 过 · `pnpm lint` 0 警告 · `pnpm format:check` 干净 · core **1359**/5 跳过 · cli **506** · server **2606**/2 跳过 · web **2896**/2 跳过 · ui **1003**，**0 失败** · `sh scripts/test-installer.sh` 通过 · `docker.yml` 与 `compose.yaml` 用仓库自带 `yaml` 解析通过（触发面仍是 `workflow_call`/`workflow_dispatch`/`pull_request`，没有 main 推送） · 真起服务（端口 7477、数据根 `/root/adelie-fork-data/r10-portcheck`）日志三行对新根，Playwright 打开是 Adelie 登录页、console 唯一 error 是登录前 401 · 4000 全程没有监听、也没被本机绑定（它在「不许动」的名单里，默认值只经常量 + CLI 帮助 + 单测验证） | `3835c0e8` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -1692,3 +1698,76 @@ web 2877 / 2 跳过，**0 失败**。另外把 `remotePenguin()` **真生成的�
 同一时间线上，巡台某个会话在 13:24 给 `/opt/adelie-design/requirements.mjs` 加了一道「开手动会话前先
 问平台还有没有会话在跑」的守卫（用户口径 A）并重启了服务。**线上那份 mjs 因此跑在插件副本前面**，
 下一次同步插件时要把它带过去。
+
+## 端口换成 Adelie 自己的：服务端 4000、dev CLI 7370（2026-10-06，条目 2.3，第十轮）
+
+一次无人值守的自主推进，只做这一条：把「人会见到的」两个默认端口从上游 PenguinHarness 的号换成
+Adelie 自己的历史号。没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 口径（为什么要动，以及为什么是这两个号）
+
+上游 PenguinHarness 的服务端默认 7364、dev CLI 7369，Adelie 是整棵 fork，于是同一台机器上两个产品
+默认抢同一个 socket —— 这正是条目里那句「避免两个产品抢端口」。旧 Adelie 用的是另外两个号，而且都是
+「人会见到的」：
+
+| 东西 | 旧 Adelie 的号 | 新 Adelie 以前 | 现在 |
+| --- | --- | --- | --- |
+| 服务端 / Web UI（`penguin server`、不带 PORT 的 `penguin web`） | 4000（`adelie-web.service` 一直在服务的地址；本机 ufw 与 egress-whitelist 里也写作「Adelie Web (4000)」） | 7364（= 上游的号） | **4000** |
+| dev CLI（`pnpm penguin web`，数据根 `~/.penguin/dev-data-cli`） | 7370（`adelie serve` 的缺省值，它的设计站上写着的就是这个号） | 7369（= 上游的号） | **7370** |
+
+7370 同时是上游 dev 带里唯一的空位（上游用 7365 / 7368 / 7369 / 7371 / 7372），所以一个开发者同时开
+Adelie 与 PenguinHarness 两棵树也不会撞。条目名字里的「profile 默认值」这一轮**没有需要改的**：
+`ADELIE_PROFILE` 的缺省与 `resolveRoot()` 的取值在 2.2a / 2.2c 里已经定过，这一条只动端口。
+
+### 改了哪些地方
+
+- **唯一真源**：`packages/core/src/internal/ports.ts` —— `DEFAULT_SERVER_PORT` 7364 → 4000；端口表两行
+  （7364 → 4000、7369 → 7370）与表下说明追加一段「为什么是这两个号」。`DEFAULT_DEV_SERVER_PORT` 的
+  注释原本拿「设计站的读数页占着 7370」解释为什么不用 7370，现在改成「7370 归 dev CLI」—— 那条旧理由
+  已经不存在（`/opt/adelie-design` 下没有 `site/` 了），dev CLI 是新的理由。
+- **跟着念出这个号的地方**：CLI 帮助文案 zh/en（`cli/src/i18n.ts`）、`cli/src/commands/serve.ts` 的两处
+  注释、`cli` / `server` / `web` 三份 README、两份 CONTRIBUTING、`install.sh` 与 `install.ps1` 的
+  「Get started」提示、`Dockerfile` 的 `PORT` / `EXPOSE` 与顶部注释、`docker/compose.yaml` 的端口映射、
+  `.github/workflows/docker.yml` 冒烟那几行 `curl` 与 `-p`。
+- **dev CLI 的两个脚本**（根 `package.json` 与 `packages/cli/package.json`）`PORT=7369` → `7370`；
+  取值（数据根等）一个没动。
+- **测试**：`cli/test/serve.test.ts` 的默认端口断言、`server/test/machines.test.ts` 里
+  `RELEASE.defaultPort` 的断言；`core/test/state.test.ts` 那条「system prompt 里不许出现服务端口」的守卫
+  **改成跟 `DEFAULT_SERVER_PORT` 常量走** —— 写死数字的守卫下次改号就会守着一个过时值。
+
+### 没动的（各有理由）
+
+- `packages/server/test/helpers.ts` 与一批机器 / 预览用例里的 `7364`：它们是**夹具值**（「某台机器上
+  服务端的端口」这类示例数据），不是默认值，改它们只是噪音。
+- `packages/docs/content/*`（`configuration.*.md` 的环境表、`quickstart-cli` 的 7364、`cli.*.md` 的
+  `--port` 缺省）：按 2.5 / 2.2c 的口径，`packages/docs/` 留作内部参考，与「数据根默认值」一起等发布期
+  那一轮再动。
+- `packages/desktop/**`：桌面壳不引用这个常量（它按 `PORT=0` 让系统分配，再加每个实例的粘性偏好），
+  本机按纪律没碰。
+- 本机部署 `adelie-server.service`（7364，已 enable）**显式**写着 `PORT=7364`，不受这次改动影响；
+  哪天要让它走新缺省，那是改单元的事，属发布动作。
+
+### 验证（都不是推测）
+
+- **静态**：六个包 typecheck 过；`pnpm lint` 0 警告 0 错误（2052 文件）；`pnpm format:check` 干净。
+- **测试**：重建 core + server 的 dist（server 的测试从 core 的 dist 读模型目录，也读 `dist/install.sh`
+  副本）之后 —— core **1359** / 5 跳过 · cli **506** · server **2606** / 2 跳过 · web **2896** / 2 跳过 ·
+  ui **1003**，**0 失败**。
+- **把号本身真读一遍**：`node` 直接 import core 的 dist → `DEFAULT_SERVER_PORT= 4000`；
+  `pnpm penguin web --help` → `--port <port>  Listen port (falls back to the PORT env var, default 4000)`，
+  而同一行的 run-with-env 默认值就是 `PORT=7370`；`resolvePort(undefined, undefined) → 4000`；
+  server 的缺省来自 `env.PORT || DEFAULT_SERVER_PORT`（`server/src/config.ts`）。
+- **真起服务**：`ADELIE_HOME=/root/adelie-fork-data/r10-portcheck PORT=7477 node dist/index.js` ——
+  日志三行（数据根 / SQLite / Web dist）都指向新根，`GET /` 302 → 登录页，`/api/me` 401（预期）；
+  Playwright 打开：标题 `Adelie`、阿德利企鹅标志与登录表单都在，**console 唯一 error 是登录前的
+  `/api/me` 401**，没有别的报错、没有失败的请求。临时数据根用完已清，端口已释放。
+- **4000 本身没有被绑定**：它在「不许动」的名单里，所以默认值只由常量、CLI 帮助与单测三处验证 ——
+  `ss` 全程确认 4000 上没有监听。
+- `sh scripts/test-installer.sh` 通过；`docker.yml` 与 `docker/compose.yaml` 用仓库自带的 `yaml`
+  解析通过，`docker.yml` 的触发面仍是 `workflow_call` / `workflow_dispatch` / `pull_request`
+  （没有 main 推送，本次推送不会跑它）。
+
+### 顺带看到的（不是这一轮的改动）
+
+`packages/web/README.md` 的「Production」一节仍写着 `PENGUIN_WEB_DIST` —— 2.2c 的读侧改名只把 server
+README 的环境表跟上了。这一轮没碰它，它属 2.2c 的文档尾巴。
