@@ -2109,6 +2109,17 @@ README 的环境表跟上了。这一轮没碰它，它属 2.2c 的文档尾巴�
 - **没有起服务、没有动的端口**：本轮**没有界面改动** —— `web/src/lib/strings.ts` 改的是注释，不产生任何
   渲染差异，所以按纪律没开 Playwright、也没重建 `packages/web/dist`。
 
+### 收尾：推送与汇报
+
+- **推送**：`git push origin main` = `504bd5f8..cbd0612f`（本轮两个提交：代码与文本 `37f710d9`、
+  台账这一笔 `cbd0612f`）。按纪律没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。
+- **汇报邮件没发出去（第四轮卡在同一处）**：vault 里的 `CSU_MAIL_AUTHCODE` 长度 16、注入正常，但邮箱
+  仍拒 —— `python3 mail.py check` 报 IMAP `LOGIN Login error or password error`。按技能纪律
+  **只试这一次、没有重试登录**（那对账号 / 专用密码已经失效或被撤销）。修法（只能由用户做）：网页邮箱
+  「设置 → 个人信息 → 邮箱密码 → 客户端专用密码」重建一个，再
+  `penguin config vault set --project-id sjaaj --agent-id default_agent --key CSU_MAIL_AUTHCODE`，
+  **下一次新对话**才会注入。这一轮的结论因此只落在本台账里。
+
 ## 跟上游学之一：工位 @ 合并（2026-10-06）
 
 用户让「按你的思路进化应用」，第一件做的是清单里的 5.1 —— 公司模式里最直接压钱的那条。
