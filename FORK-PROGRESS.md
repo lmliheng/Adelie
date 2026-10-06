@@ -2020,6 +2020,7 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
   `/tmp/finder-open.png`、`/tmp/finder-menu.png`。
 - **没验的**：Windows 与 macOS 两条分支只有单测（这台机器是 Linux）；跨机那条路
   （`/api/projects/:p/machines/:id/dirs`）本轮没跑，它按设计也不带 places。
+- 推送后 CI run **`37508204400`**（`ab6aa827`）**22 个作业全绿**。
 - `pnpm -r test` 里 `packages/desktop` 有 2 条红：`installer-assets.test.ts` 比对
   `packages/desktop/dist/install.{sh,ps1}`（构建产物、`.gitignore` 里）与仓库根的安装脚本，前者是
   2026-10-06 早些时候的旧构建（提示里还写着 4000），后者已被 `3835c0e8` 改成新端口。**与本轮无关**，
