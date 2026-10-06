@@ -732,6 +732,11 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 > `packages/desktop/{build,scripts,test}` 与 `scripts/capture-readme-shots.mjs` —— 本轮**一个都没
 > 碰**，`git add` 只列自己的 11 个文件。core 那条红正是那份**未提交**的 README 分类表引起的（句式
 > 标题 vs core 的 Title Case 组标题），由它那条线自己收尾。
+>
+> 同一棵树上的另一条线在本次提交前后又推了两次：`ae653c26`（补全英文 README、对齐分类表 —— core
+> 那条红随之消失）与 `ec49bddd`（Windows 安装器带上 Adelie 的侧栏与页眉图）。它自己那次推送的 CI
+> run `37430793086` **在 `test-windows (rest)` 上红**（工作区里还留着一份未提交的 `installer-art`
+> 测试，看着就是它在修），与本轮无关。
 
 ## 服务迁移：PenguinHarness → Adelie（2026-10-05，用户定的方案 A）
 
@@ -1605,10 +1610,13 @@ web 2877 / 2 跳过，**0 失败**。另外把 `remotePenguin()` **真生成的�
 - 门禁：六个包 typecheck 过（core / server / web / ui / cli / hmr）；`pnpm lint` 0 警告；
   `pnpm format:check` 干净。
 - 测试：cli **506**（505 + 新增那条守卫）· ui **1003** · server **2606 / 2 跳过**（首跑 1 条红是
-  `dist/install.ps1` 副本过期 —— 老坑，重建 core + server 后转绿）· web **2888 / 2 跳过**。
-  core 是 **1358 通过 / 1 失败**，那条红**不是本轮的**：另一条线正在改 `README.md`（工作区里未提交
-  地加了一张 Category 表，写的是 `AI app development` 这种句式，而 core 的组标题是 `AI App
+  `dist/install.ps1` 副本过期 —— 老坑，重建 core + server 后转绿）· web **2888 / 2 跳过** · core
+  **1359 / 5 跳过**。
+  core 首跑是 **1358 通过 / 1 失败**，那条红**不是本轮的**：另一条线当时在工作区里改 `README.md`
+  （加了一张 Category 表，写的是 `AI app development` 这种句式，而 core 的组标题是 `AI App
   Development`），`plugins.test.ts` 的 README 表守卫因此报不一致 —— 本轮一个字节都没碰那两个文件。
+  **那条线随后提交了 `ae653c26`（补全英文 README 并对齐分类表），复跑 core 已是 64 文件 / 1359 通过
+  / 5 跳过 / 0 失败**。
 - **默认值真解析一遍**：把脚本行里的 `VAR=value` 原样抽出来交给 `run-with-env.mjs`，命令换成一个打印
   `resolveRoot()` / `boundaryEnv("profile")` 的桩，三个入口各跑两次（新拼写 / 旧拼写）：新拼写下
   `dev:server` → `/root/.penguin/dev-data`、两个 `penguin` → `/root/.penguin/dev-data-cli`，profile
@@ -1630,6 +1638,10 @@ web 2877 / 2 跳过，**0 失败**。另外把 `remotePenguin()` **真生成的�
   改动（改的只是变量名，解析结果逐字未变），又要在这棵正被另一条线使用的树里动 `packages/web/dist`，
   而磁盘只剩 ~0.9G。
 - `sh scripts/test-installer.sh` 通过（含它对两个启动器脚本的守卫）。
+- **推送**：`git push origin main` = `ec49bddd..079cf1b4`（这一轮压在另一条线当天的两条提交上，
+  `a0e3d995` 之后是 `ae653c26` 与 `ec49bddd`）。推送触发的 CI run **`37431844540`** 到本轮收尾时
+  还在跑（18 个作业 in_progress），**所以本轮没有 CI 结论**；其中与这条改动直接相关的是
+  `installer-windows` —— 本机没有 pwsh，`install.ps1` 那个垫片只有它能真跑一遍。
 
 ### 还差什么（2.2c 仍未勾掉）
 
