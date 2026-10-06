@@ -30,6 +30,7 @@ import { zonedDate } from "../src/organization/zoned.js";
 import type { ErrorRecordArgs } from "../src/runtime/error-recorder.js";
 import { DEFAULT_EMPLOYEE_PLUGINS } from "../src/runtime/organization/deps.js";
 import type { OrgDeps } from "../src/runtime/organization/deps.js";
+import { MENTIONS_PER_RUN } from "../src/runtime/organization/reconcile.js";
 import { OrganizationScheduler } from "../src/runtime/organization/scheduler.js";
 import { OrganizationService } from "../src/runtime/organization/service.js";
 import { ProjectConfigService } from "../src/services/project-config-service.js";
@@ -2111,6 +2112,132 @@ describe("organization runtime", () => {
         text: `@${HR} hello?`,
       });
       expect(started).toHaveLength(0);
+    });
+
+    const deskOf = (agentId: string): string =>
+      cache.deskSessions(P, ORG).find((r) => r.agentId === agentId && r.current)!.sessionId;
+
+    it("a busy desk collects its mentions and works them in one run once idle, the context once", async () => {
+      const hrDesk = deskOf(HR);
+      busy.add(hrDesk);
+      const m1 = await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+        text: `@${HR} apply for a slot`,
+      });
+      await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+        text: "unrelated chatter",
+      });
+      const m3 = await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+        text: `@${HR} the field I forgot`,
+      });
+      // A busy desk gets nothing while it works, and the same message scanned again is not queued twice.
+      await scheduler.tickOnce();
+      expect(started).toHaveLength(0);
+      expect(cache.agentsWithDeskMentions(P, ORG)).toEqual([HR]);
+
+      busy.delete(hrDesk);
+      await scheduler.tickOnce();
+      expect(started).toHaveLength(1);
+      expect(started[0]!.sessionId).toBe(hrDesk);
+      const run = parseOrgTriggerMessage(started[0]!.text);
+      expect(run?.origin).toMatchObject({
+        kind: "mention",
+        message: `${m1.id} from user:alice (+1 more)`,
+        channel: DEFAULT_CHANNEL_ID,
+      });
+      expect(run?.rest).toContain("2 channel mentions are waiting for you");
+      expect(run?.rest).toContain(`Message ${m1.id} from user:alice:\n@${HR} apply for a slot`);
+      expect(run?.rest).toContain(`Message ${m3.id} from user:alice:\n@${HR} the field I forgot`);
+      // A line between the two that named nobody is left to `channel tail`.
+      expect(run?.rest).not.toContain("unrelated chatter");
+      expect(run?.rest).toContain(`penguin org channel tail --channel ${DEFAULT_CHANNEL_ID}`);
+
+      // Delivered is delivered: the next pass has nothing for the desk.
+      await scheduler.tickOnce();
+      expect(started).toHaveLength(1);
+    });
+
+    it("waiting mentions outlive the process, and the run carries the highest hop", async () => {
+      const hrDesk = deskOf(HR);
+      const ceoDesk = deskOf(CEO);
+      busy.add(hrDesk);
+      await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+        text: `@${HR} from a person`,
+      });
+      const fromCeo = await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+        text: `@${HR} from the CEO's desk`,
+        sessionId: ceoDesk,
+      });
+      expect(fromCeo.hop).toBe(1);
+      expect(started).toHaveLength(0);
+
+      // A restart (or a hot update replacing the session manager) forgets every in-memory
+      // follow-up; a fresh scheduler over the same database still has both mentions.
+      const restarted = new OrganizationScheduler(deps, { intervalMs: 1_000_000 });
+      busy.delete(hrDesk);
+      await restarted.tickOnce();
+      expect(started).toHaveLength(1);
+      expect(parseOrgTriggerMessage(started[0]!.text)?.rest).toContain("from the CEO's desk");
+      expect(cache.ownerOfSession(hrDesk)?.triggerHop).toBe(1);
+    });
+
+    it("a runner that refuses the run leaves the mentions waiting for the next pass", async () => {
+      startFails = true;
+      const m = await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+        text: `@${HR} are you there`,
+      });
+      expect(started).toHaveLength(0);
+      expect(errors.some((e) => e.code === "org_dispatch_failed")).toBe(true);
+      expect(cache.agentsWithDeskMentions(P, ORG)).toEqual([HR]);
+
+      startFails = false;
+      await scheduler.tickOnce();
+      expect(started).toHaveLength(1);
+      // Alone, it reads exactly as a mention always has.
+      expect(parseOrgTriggerMessage(started[0]!.text)?.origin).toMatchObject({
+        kind: "mention",
+        message: `${m.id} from user:alice`,
+        channel: DEFAULT_CHANNEL_ID,
+      });
+    });
+
+    it("carries at most MENTIONS_PER_RUN per run and says more are waiting", async () => {
+      const hrDesk = deskOf(HR);
+      busy.add(hrDesk);
+      const sent: string[] = [];
+      for (let i = 0; i < MENTIONS_PER_RUN + 1; i++) {
+        sent.push(
+          (
+            await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+              text: `@${HR} item ${i}`,
+            })
+          ).id,
+        );
+      }
+      busy.delete(hrDesk);
+      await scheduler.tickOnce();
+      expect(started).toHaveLength(1);
+      const first = parseOrgTriggerMessage(started[0]!.text);
+      expect(first?.origin.message).toBe(
+        `${sent[0]} from user:alice (+${MENTIONS_PER_RUN - 1} more)`,
+      );
+      expect(first?.rest).toContain("More mentions are still waiting");
+      expect(first?.rest).not.toContain(`item ${MENTIONS_PER_RUN}`);
+
+      await scheduler.tickOnce();
+      expect(started).toHaveLength(2);
+      expect(parseOrgTriggerMessage(started[1]!.text)?.origin.message).toBe(
+        `${sent[MENTIONS_PER_RUN]} from user:alice`,
+      );
+    });
+
+    it("an employee who leaves takes its waiting mentions along", async () => {
+      busy.add(deskOf(HR));
+      await service.sendChannelMessage(P, ORG, "alice", DEFAULT_CHANNEL_ID, {
+        text: `@${HR} one last thing`,
+      });
+      expect(cache.agentsWithDeskMentions(P, ORG)).toEqual([HR]);
+      await service.leave(P, ORG, HR);
+      expect(cache.agentsWithDeskMentions(P, ORG)).toEqual([]);
     });
   });
 

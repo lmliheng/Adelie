@@ -51,7 +51,7 @@ budget: 12.40 / 30.00 USD (41%)      # this period's spend (you + subordinates) 
 
 - `init` — the first run of a new organization's CEO: the mission and the initialization tasks (see `company-ceo`).
 - `event` — a calendar event fired; the body is the event's `prompt`, followed by `## Since your last sweep` when ticket changes are waiting for you.
-- `mention` — someone @-mentioned you in a channel; the body is that message plus up to 20 earlier messages of the same day **in that channel**, quoted. Answer where you were addressed — the `channel:` line names it: `penguin org channel send --channel <channel_id> -m "…"`.
+- `mention` — someone @-mentioned you in a channel; the body is that message plus up to 20 earlier messages of the same day **in that channel**, quoted. Answer where you were addressed — the `channel:` line names it: `penguin org channel send --channel <channel_id> -m "…"`. Mentions that arrive while your desk is busy wait and reach you together in one `mention` run once it is idle: the body lists each one under its channel (`message:` names the first and how many more follow), so answer each in its own channel, and skip the ones you already handled during the run that kept you busy.
 - `ticket_work` — the first message of a ticket session: the ticket file in full (frontmatter and prose) plus the starter's note. Do the work.
 
 The first three arrive at your desk session; `ticket_work` opens a ticket session. A message with no block is a human talking to you directly — answer as in any conversation.

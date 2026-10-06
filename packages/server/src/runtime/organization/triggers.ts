@@ -152,8 +152,9 @@ export type DispatchOutcome = "sent" | "queued" | "skipped";
 
 /**
  * Sends one work run to an employee's desk: opens the desk if needed, prefixes the block,
- * queues behind a running Task (`queueIfBusy`: a busy desk never loses a trigger, it works
- * it next), records the chain hop and notifies the Project's users.
+ * queues behind a running Task (`queueIfBusy`: a busy desk works it next — for as long as this
+ * process lives; mentions therefore wait in `org_desk_mentions` and come here only for an idle
+ * desk), records the chain hop and notifies the Project's users.
  */
 export async function dispatchToDesk(
   deps: OrgDeps,

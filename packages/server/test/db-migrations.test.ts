@@ -56,6 +56,7 @@ function dropCompanyModeTables(db: DatabaseSync): void {
     "org_channel_reads",
     "org_budget_state",
     "org_desk_notices",
+    "org_desk_mentions",
   ]) {
     db.exec(`DROP TABLE IF EXISTS ${table}`);
   }
@@ -114,8 +115,9 @@ function open6(): DatabaseSync {
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   db.exec("DROP TABLE IF EXISTS model_promotions");
   db.exec(PRE_CHANNEL_CHAT_DDL);
-  // SCHEMA_SQL declares the CURRENT shape; migration 8's queue came after 6.
+  // SCHEMA_SQL declares the CURRENT shape; migration 8's queue and migration 13's came after 6.
   db.exec("DROP TABLE IF EXISTS org_desk_notices");
+  db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   db.exec("PRAGMA user_version = 6");
   return db;
 }
@@ -125,6 +127,7 @@ function open7(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
   db.exec("DROP TABLE IF EXISTS org_desk_notices");
+  db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   db.exec("DROP TABLE IF EXISTS model_promotions");
   db.exec("PRAGMA user_version = 7");
@@ -137,6 +140,7 @@ function open8(): DatabaseSync {
   db.exec(SCHEMA_SQL);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   db.exec("DROP TABLE IF EXISTS model_promotions");
+  db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   db.exec("PRAGMA user_version = 8");
   return db;
 }
@@ -146,7 +150,17 @@ function open9(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
+  db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   db.exec("PRAGMA user_version = 9");
+  return db;
+}
+
+/** A database stamped at migration 12: everything the current declaration has but the desk-mention queue. */
+function open12(): DatabaseSync {
+  const db = new sqlite.DatabaseSync(":memory:");
+  db.exec(SCHEMA_SQL);
+  db.exec("DROP TABLE IF EXISTS org_desk_mentions");
+  db.exec("PRAGMA user_version = 12");
   return db;
 }
 
@@ -185,13 +199,14 @@ function openPreProfile(): DatabaseSync {
   return db;
 }
 
-/** Takes everything migrations 6–8 create off a database built from the current declaration. */
+/** Takes everything migrations 6–8 and 13 create off a database built from the current declaration. */
 function dropCompanyTables(db: DatabaseSync): void {
   db.exec(`
     DROP INDEX IF EXISTS idx_org_desk_notices_agent;
     DROP INDEX IF EXISTS idx_org_ticket_sessions_session;
     DROP INDEX IF EXISTS idx_org_sessions_org;
     DROP TABLE IF EXISTS org_desk_notices;
+    DROP TABLE IF EXISTS org_desk_mentions;
     DROP TABLE IF EXISTS org_budget_state;
     DROP TABLE IF EXISTS org_channel_reads;
     DROP TABLE IF EXISTS org_channel_state;
@@ -574,8 +589,9 @@ describe("migration 8 → current: model-promotions", () => {
         "model-provider-auth-tokens",
         "sessions-sandbox",
         "machines-columns",
+        "company-mode-desk-mentions",
       ]);
-      expect(schemaVersion(db)).toBe(12);
+      expect(schemaVersion(db)).toBe(13);
       expect(promotionsTableExists()).toEqual({ "1": 1 });
       expect(authTokensTableExists()).toEqual({ "1": 1 });
 
@@ -596,8 +612,9 @@ describe("migration 8 → current: model-promotions", () => {
         "model-provider-auth-tokens",
         "sessions-sandbox",
         "machines-columns",
+        "company-mode-desk-mentions",
       ]);
-      expect(schemaVersion(db)).toBe(12);
+      expect(schemaVersion(db)).toBe(13);
     } finally {
       db.close();
     }
@@ -618,8 +635,9 @@ describe("migration 9 → current: model-provider-auth-tokens", () => {
         "model-provider-auth-tokens",
         "sessions-sandbox",
         "machines-columns",
+        "company-mode-desk-mentions",
       ]);
-      expect(schemaVersion(db)).toBe(12);
+      expect(schemaVersion(db)).toBe(13);
       expect(tableExists()).toEqual({ "1": 1 });
       db.exec(
         "INSERT INTO users (user_id, password_hash, is_admin, created_at)" +
@@ -642,6 +660,58 @@ describe("migration 9 → current: model-provider-auth-tokens", () => {
       expect(tableExists()).toBeUndefined();
     } finally {
       db.close();
+    }
+  });
+});
+
+describe("migration 12 → current: company-mode-desk-mentions", () => {
+  /** A mention an employee's desk has not been handed yet, as the scan writes it. */
+  const queue = (db: DatabaseSync, messageId: string, agentId = "acme_hr") =>
+    db
+      .prepare(
+        "INSERT OR IGNORE INTO org_desk_mentions (project_id, org_id, agent_id, channel_id, date, message_id, hop)" +
+          " VALUES ('p1', 'acme', ?, 'default_channel', '2026-10-06', ?, 0)",
+      )
+      .run(agentId, messageId);
+
+  it("adds the queue a mention waits in, and the same message queues once per employee", () => {
+    const db = open12();
+    const fresh = new sqlite.DatabaseSync(":memory:");
+    try {
+      fresh.exec(SCHEMA_SQL);
+      expect(shape(db)).not.toBe(shape(fresh));
+      expect(migrate(db).applied).toEqual(["company-mode-desk-mentions"]);
+      expect(schemaVersion(db)).toBe(LATEST_VERSION);
+      expect(shape(db)).toBe(shape(fresh));
+      queue(db, "msg-1");
+      // A pass that dies before its offset moves reads the same line again: it must not queue twice.
+      queue(db, "msg-1");
+      queue(db, "msg-2");
+      // A different employee waiting on the same message is a row of its own.
+      queue(db, "msg-2", "acme_ceo");
+      expect(db.prepare("SELECT message_id FROM org_desk_mentions ORDER BY seq").all()).toEqual([
+        { message_id: "msg-1" },
+        { message_id: "msg-2" },
+        { message_id: "msg-2" },
+      ]);
+    } finally {
+      db.close();
+      fresh.close();
+    }
+  });
+
+  it("down drops the queue with the mentions not delivered yet", () => {
+    const db = open12();
+    const at12 = open12();
+    try {
+      migrate(db);
+      queue(db, "msg-1");
+      rollbackTo(db, 12);
+      expect(schemaVersion(db)).toBe(12);
+      expect(shape(db)).toBe(shape(at12));
+    } finally {
+      db.close();
+      at12.close();
     }
   });
 });

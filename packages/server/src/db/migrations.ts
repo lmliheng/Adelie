@@ -524,6 +524,36 @@ export const MIGRATIONS: readonly Migration[] = [
     // was never this migration's to take away.
     down() {},
   },
+  {
+    version: 13,
+    name: "company-mode-desk-mentions",
+    // Additive: one new table. A channel mention no longer starts a work run of its own
+    // (queued in the desk session's memory when the desk was busy, and lost on a restart);
+    // it waits here until the desk is idle and is delivered with the others in one run.
+    // A predecessor build never reads the table, so a rollback survives it — with whatever
+    // rows are in it left undelivered.
+    swapSafe: true,
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS org_desk_mentions (  -- DERIVED CACHE (company mode): channel mentions waiting for an employee's desk to be idle; dropping it loses only the mentions not delivered yet (the messages stay in the channel files)
+          seq        INTEGER PRIMARY KEY AUTOINCREMENT,
+          project_id TEXT NOT NULL,
+          org_id     TEXT NOT NULL,
+          agent_id   TEXT NOT NULL,
+          channel_id TEXT NOT NULL,
+          date       TEXT NOT NULL,
+          message_id TEXT NOT NULL,
+          hop        INTEGER NOT NULL,
+          UNIQUE (project_id, org_id, agent_id, channel_id, message_id)
+        );
+      `);
+    },
+    // LOSES every mention not delivered yet: the message stays in its channel file, but no
+    // desk run will name it.
+    down(db) {
+      db.exec(`DROP TABLE IF EXISTS org_desk_mentions;`);
+    },
+  },
 ];
 
 /** The highest version this build knows how to reach. */

@@ -3,10 +3,11 @@
  * desk session an employee has, which sessions contribute to a ticket, how far a calendar
  * event or a channel scan has got, what a ticket looked like when it was last notified) or a
  * user's own read cursor. The service rebuilds the projections every reconcile pass, so a
- * dropped table costs one pass of silence, never a wrong answer. `org_desk_notices` is the
- * one queue in the family: the ticket changes an employee has not been told about yet, held
- * until its next calendar sweep carries them, so dropping it loses those digests and nothing
- * else — the changes themselves live in the ticket files and the all-hands channel.
+ * dropped table costs one pass of silence, never a wrong answer. Two queues are the
+ * exception: `org_desk_notices` holds the ticket changes an employee has not been told about
+ * yet until its next calendar sweep carries them, and `org_desk_mentions` holds the channel
+ * mentions until its desk is idle, so dropping either loses only what it has not delivered —
+ * the changes live in the ticket files, the messages in the channel files.
  */
 import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
@@ -79,6 +80,22 @@ export interface OrgDeskNoticeRow {
   ticketId: string;
   change: OrgTicketChange;
   at: string;
+}
+
+/**
+ * One channel mention waiting for an employee's desk to be idle. `seq` is the delivery order
+ * and `hop` the chain hop it arrived with; `date` names the channel day file the message sits
+ * in, so delivery reads it back from the file (the truth) instead of a copy here.
+ */
+export interface OrgDeskMentionRow {
+  seq: number;
+  projectId: string;
+  orgId: string;
+  agentId: string;
+  channelId: string;
+  date: string;
+  messageId: string;
+  hop: number;
 }
 
 /** Where a session belongs, when it belongs to an organization at all. */
@@ -620,6 +637,77 @@ export class OrgCacheRepo implements OrgCache {
       .run(projectId, orgId, agentId);
   }
 
+  // ---- desk mentions (the queue delivered once the desk is idle) ----
+
+  /**
+   * Records a mention for an employee's desk. A message already queued for that employee is
+   * left as it is: a pass that dies after this write but before the channel offset moves reads
+   * the same lines again, and must not queue them twice.
+   */
+  queueDeskMention(row: Omit<OrgDeskMentionRow, "seq">): void {
+    this.db
+      .prepare(
+        `INSERT OR IGNORE INTO org_desk_mentions (project_id, org_id, agent_id, channel_id, date, message_id, hop)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(row.projectId, row.orgId, row.agentId, row.channelId, row.date, row.messageId, row.hop);
+  }
+
+  /** The employees with at least one mention waiting, in the order their oldest one arrived. */
+  agentsWithDeskMentions(projectId: string, orgId: string): string[] {
+    const rows = this.db
+      .prepare(
+        `SELECT agent_id FROM org_desk_mentions WHERE project_id = ? AND org_id = ?
+         GROUP BY agent_id ORDER BY MIN(seq)`,
+      )
+      .all(projectId, orgId) as Array<{ agent_id: string }>;
+    return rows.map((r) => r.agent_id);
+  }
+
+  /**
+   * Up to `limit` of an employee's waiting mentions in delivery order, left in place: they are
+   * removed with {@link dropDeskMentions} only once the run carrying them has started.
+   */
+  peekDeskMentions(
+    projectId: string,
+    orgId: string,
+    agentId: string,
+    limit: number,
+  ): OrgDeskMentionRow[] {
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM org_desk_mentions
+         WHERE project_id = ? AND org_id = ? AND agent_id = ? ORDER BY seq LIMIT ?`,
+      )
+      .all(projectId, orgId, agentId, limit) as Record<string, unknown>[];
+    return rows.map((r) => ({
+      seq: Number(r.seq),
+      projectId: r.project_id as string,
+      orgId: r.org_id as string,
+      agentId: r.agent_id as string,
+      channelId: r.channel_id as string,
+      date: r.date as string,
+      messageId: r.message_id as string,
+      hop: Number(r.hop),
+    }));
+  }
+
+  /** Removes an employee's mentions up to and including `throughSeq` — the ones a run just carried. */
+  dropDeskMentions(projectId: string, orgId: string, agentId: string, throughSeq: number): void {
+    this.db
+      .prepare(
+        "DELETE FROM org_desk_mentions WHERE project_id = ? AND org_id = ? AND agent_id = ? AND seq <= ?",
+      )
+      .run(projectId, orgId, agentId, throughSeq);
+  }
+
+  /** An employee that left takes its undelivered mentions with it: no desk of its will run them. */
+  deleteDeskMentions(projectId: string, orgId: string, agentId: string): void {
+    this.db
+      .prepare("DELETE FROM org_desk_mentions WHERE project_id = ? AND org_id = ? AND agent_id = ?")
+      .run(projectId, orgId, agentId);
+  }
+
   // ---- lifecycle ----
 
   deleteOrg(projectId: string, orgId: string): void {
@@ -632,6 +720,7 @@ export class OrgCacheRepo implements OrgCache {
       "org_channel_reads",
       "org_budget_state",
       "org_desk_notices",
+      "org_desk_mentions",
     ]) {
       this.db
         .prepare(`DELETE FROM ${table} WHERE project_id = ? AND org_id = ?`)
@@ -649,6 +738,7 @@ export class OrgCacheRepo implements OrgCache {
       "org_channel_reads",
       "org_budget_state",
       "org_desk_notices",
+      "org_desk_mentions",
     ]) {
       this.db.prepare(`DELETE FROM ${table} WHERE project_id = ?`).run(projectId);
     }
