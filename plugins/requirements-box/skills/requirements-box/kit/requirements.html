@@ -480,6 +480,7 @@
       <span class="mark" aria-hidden="true">A</span>
       <span class="brand">需求箱</span>
       <span class="muted" id="cadence">Adelie 每两小时来看一次</span>
+      <span class="chip" id="latest-version" hidden></span>
       <span class="grow"></span>
       <button
         class="icon-btn"
@@ -672,6 +673,7 @@
           statusLine: document.getElementById("status-line"),
           live: document.getElementById("live"),
           cadence: document.getElementById("cadence"),
+          latestVersion: document.getElementById("latest-version"),
           patrol: document.getElementById("patrol"),
           patrolState: document.getElementById("patrol-state"),
           patrolNext: document.getElementById("patrol-next"),
@@ -1455,7 +1457,27 @@
             toast("已刷新");
           });
           loadPatrol();
+          loadVersion();
         });
+
+        // 最新版本号：同源的发布清单（/downloads/index.json，发布那一轮写的）第一项就是最新的。
+        // 读不到就整块不显示 —— 插件带的那个独立服务器旁边没有这份清单，也不该显示一个猜的号。
+        function loadVersion() {
+          return fetch("/downloads/index.json", { cache: "no-store" })
+            .then(function (r) {
+              if (!r.ok) throw new Error("HTTP " + r.status);
+              return r.json();
+            })
+            .then(function (data) {
+              var tag = ((data.versions || [])[0] || {}).tag;
+              if (!tag) throw new Error("清单里没有版本号");
+              els.latestVersion.textContent = "最新版本 " + tag;
+              els.latestVersion.hidden = false;
+            })
+            .catch(function () {
+              els.latestVersion.hidden = true;
+            });
+        }
 
         if (key) {
           gate(false);
@@ -1464,6 +1486,7 @@
         } else {
           gate(true);
         }
+        loadVersion();
       })();
     </script>
   </body>

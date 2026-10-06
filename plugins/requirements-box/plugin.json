@@ -3,7 +3,7 @@
   "description_zh": "立起一个需求箱：一页受口令保护的表单让用户提需求，一个定时任务按节奏叫 Agent 来做，每轮一封邮件汇报。服务是一个零依赖的 Node 文件（JSON 存储、带口令的 GET/POST/PATCH 接口、它自己那一页、按条目排期、批量勾选，以及一个立刻开会话开工的按钮），巡台协议是一份 Markdown，安装脚本把两者摆好并登记定时任务。",
   "short_description": "A keyed request page plus a scheduled patrol that works through it.",
   "short_description_zh": "一页收需求的表单 + 定时巡台去做 + 每轮邮件汇报。",
-  "version": "2026.10.06.1",
+  "version": "2026.10.06.2",
   "category": "office-productivity",
   "preinstall": false
 }
