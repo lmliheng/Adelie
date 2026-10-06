@@ -1,11 +1,17 @@
 /**
  * The scheduled-tasks page's pure rules (src/features/schedules/schedule-page-state.ts): how the
- * Project's one flat list of tasks becomes the page's per-Agent groups, and which Agent comes
- * first.
+ * Project's one flat list of tasks becomes the page's per-Agent groups and which Agent comes
+ * first, and how the cross-Project answer becomes the "all projects" overview's groups.
  */
 import { describe, expect, it } from "vitest";
-import type { ProjectScheduleItem } from "@lmliheng/penguin-server/api";
-import { groupSchedulesByAgent } from "../src/features/schedules/schedule-page-state";
+import type {
+  AllProjectSchedulesResponse,
+  ProjectScheduleItem,
+} from "@lmliheng/penguin-server/api";
+import {
+  crossProjectGroups,
+  groupSchedulesByAgent,
+} from "../src/features/schedules/schedule-page-state";
 
 function task(name: string, agentId: string): ProjectScheduleItem {
   return {
@@ -70,5 +76,83 @@ describe("groupSchedulesByAgent", () => {
       ["writer"],
     );
     expect(groups[0]?.items[0]?.agentId).toBe("writer");
+  });
+});
+
+/** One Project of the cross-Project answer, with the Project's own tasks and skipped files. */
+function project(
+  projectId: string,
+  name: string,
+  schedules: ProjectScheduleItem[],
+  invalidFiles: AllProjectSchedulesResponse["projects"][number]["invalidFiles"] = [],
+): AllProjectSchedulesResponse["projects"][number] {
+  return { projectId, name, schedules, invalidFiles };
+}
+
+describe("crossProjectGroups", () => {
+  it("keeps the server's Project order and splits each Project's tasks by their owning Agent", () => {
+    const groups = crossProjectGroups(
+      [
+        project("a", "Alpha", [task("one", "writer"), task("two", "reviewer")]),
+        project("b", "Beta", [task("three", "default_agent")]),
+      ],
+      "all",
+      "",
+    );
+    expect(groups.map((g) => [g.projectId, g.name, g.count])).toEqual([
+      ["a", "Alpha", 2],
+      ["b", "Beta", 1],
+    ]);
+    expect(groups[0]?.groups.map((g) => [g.agentId, g.items.map((i) => i.name)])).toEqual([
+      ["writer", ["one"]],
+      ["reviewer", ["two"]],
+    ]);
+  });
+
+  it("drops a Project the filter leaves empty rather than drawing a heading over nothing", () => {
+    const groups = crossProjectGroups(
+      [
+        project("a", "Alpha", [task("daily-report", "writer")]),
+        project("b", "Beta", [{ ...task("nightly", "writer"), status: "disabled" }]),
+      ],
+      "active",
+      "",
+    );
+    expect(groups.map((g) => g.projectId)).toEqual(["a"]);
+  });
+
+  it("keeps a Project that only has unparseable files, which are never filtered", () => {
+    const groups = crossProjectGroups(
+      [
+        project("a", "Alpha", [task("daily-report", "writer")]),
+        project("b", "Beta", [], [{ agentId: "writer", name: "broken", error: "bad toml" }]),
+      ],
+      "active",
+      "nothing matches this",
+    );
+    expect(groups.map((g) => g.projectId)).toEqual(["b"]);
+    expect(groups[0]?.count).toBe(0);
+    expect(groups[0]?.invalidFiles).toEqual([
+      { agentId: "writer", name: "broken", error: "bad toml" },
+    ]);
+  });
+
+  it("narrows by the search box on names and prompts, across every Project", () => {
+    const groups = crossProjectGroups(
+      [
+        project("a", "Alpha", [task("daily-report", "writer"), task("cleanup", "writer")]),
+        project("b", "Beta", [task("weekly-report", "writer")]),
+      ],
+      "all",
+      "report",
+    );
+    expect(groups.map((g) => [g.projectId, g.groups[0]?.items.map((i) => i.name)])).toEqual([
+      ["a", ["daily-report"]],
+      ["b", ["weekly-report"]],
+    ]);
+  });
+
+  it("answers nothing for a server answer with no Projects (or none yet read)", () => {
+    expect(crossProjectGroups([], "all", "")).toEqual([]);
   });
 });

@@ -23,6 +23,7 @@ import type {
   AgentSkillsResponse,
   AgentsResponse,
   AgentVaultConfigDto,
+  AllProjectSchedulesResponse,
   ApprovalDecisionRequest,
   AuthLoginRequest,
   AuthResponse,
@@ -1544,6 +1545,9 @@ export const listSchedules = (projectId: string, agentId: string) =>
 /** Every agent's scheduled tasks in the Project, each stamped with its agent: what the session list's marks read. */
 export const listProjectSchedules = (projectId: string) =>
   apiFetch<ProjectSchedulesResponse>(`/api/projects/${encodeURIComponent(projectId)}/schedules`);
+
+/** Every Project the account may reach, each with its own tasks: the page's cross-Project overview, in one read-only request. */
+export const listAllSchedules = () => apiFetch<AllProjectSchedulesResponse>("/api/schedules");
 
 export const createSchedule = (
   projectId: string,

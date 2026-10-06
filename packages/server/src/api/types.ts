@@ -3598,6 +3598,24 @@ export interface ProjectSchedulesResponse {
   invalidFiles: Array<{ agentId: string; name: string; error: string }>;
 }
 
+/**
+ * One Project in the cross-Project listing (GET /api/schedules): the Project-wide answer for
+ * every Project the caller may read, so the scheduled-tasks surface can be looked at as a whole
+ * instead of one Project switcher stop at a time. Read-only by design — a write names exactly
+ * one Project, and this view is not where that choice is made.
+ */
+export interface AllProjectSchedulesResponse {
+  /** One entry per Project the caller may reach, in the order listProjects returns them (id order). */
+  projects: Array<{
+    projectId: string;
+    /** The Project's display name; the id when its config carries none. */
+    name: string;
+    /** Every agent's tasks in that Project, as GET /api/projects/:projectId/schedules answers them. */
+    schedules: ProjectScheduleItem[];
+    invalidFiles: ProjectSchedulesResponse["invalidFiles"];
+  }>;
+}
+
 export interface ScheduleUpsertRequest {
   prompt: string;
   enabled: boolean;

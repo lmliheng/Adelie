@@ -2033,6 +2033,17 @@ export const zh = {
     pageTitle: "定时任务",
     pageDesc: "本项目所有 Agent 的定时任务，可在此统一启停、编辑与删除。",
     pageEmpty: "本项目还没有定时任务",
+    /** The page's scope switch: this Project's editable list, or the read-only overview over every Project. */
+    scopeProject: "本项目",
+    scopeAll: "全部项目",
+    /** The header description while the overview is on screen (it is read-only, and says so). */
+    allScopeDesc:
+      "跨项目只读总览：每个项目一段，点「打开」切到那个项目；新建与修改请切回「本项目」。",
+    allScopeEmpty: "还没有任何项目的定时任务",
+    /** The jump on a Project's heading in the overview. */
+    openProject: "打开",
+    openProjectHint: "切到该项目，在那里新建或修改定时任务",
+    openProjectHere: "这就是当前项目，切回本项目视图",
     pageGroupCount: (n: number): string => `${n} 个任务`,
     /** Accessible name of a row's overflow menu (edit / delete). */
     rowActions: "更多操作",

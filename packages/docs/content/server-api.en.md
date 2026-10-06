@@ -477,6 +477,8 @@ The paths below omit the `/api/projects/:projectId` prefix.
 
 Schedule writes are owner only. A task in new-Session mode carries `modelId` and `provider` together or not at all. The pair is checked against the Project's model table when the task is saved, and again when the scheduler reconciles it.
 
+`GET /api/schedules` (with no Project prefix) is the cross-Project read-only overview: one answer holding every Project the caller may reach, each with its own `schedules` and `invalidFiles`, with every row's status derived against one instant. That path has no write verb; a write still names exactly one Project's prefix.
+
 ## Benchmarks
 
 Benchmarks belong to the Project, not to an agent: one Benchmark can evaluate any number of agents, and each evaluation names the agent it tested (`agentId`, or `null` for a record that names none). A summary's `agentIds` lists those agents in the order they first appear. The paths below again omit the `/api/projects/:projectId` prefix.

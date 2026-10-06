@@ -9,6 +9,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { scheduleDir } from "@lmliheng/penguin-core";
 import type {
+  AllProjectSchedulesResponse,
   ProjectCreateResponse,
   ProjectSchedulesResponse,
   ScheduleItem,
@@ -291,5 +292,69 @@ describe("schedules api", () => {
 
     // Same access rule as the per-Agent list: an outsider is told the Project is not there.
     expect((await outsider.get(`/api/projects/${projectId}/schedules`)).status).toBe(404);
+  });
+
+  it("the cross-Project list answers every Project the caller may reach — and only those — in one read-only request", async () => {
+    const other = (await (
+      await owner.post("/api/projects", { projectId: "owner_a-other", name: "other project" })
+    ).json()) as ProjectCreateResponse;
+    const otherId = other.project.projectId;
+    expect(
+      (
+        await owner.post(base, {
+          name: "in-a",
+          prompt: "p",
+          enabled: true,
+          startAt: FUTURE,
+          period: "30m",
+          sessionId: "session-aaa",
+        })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await owner.post(`/api/projects/${otherId}/agents/default_agent/schedules`, {
+          name: "in-b",
+          prompt: "p",
+          enabled: false,
+          startAt: FUTURE,
+        })
+      ).status,
+    ).toBe(201);
+
+    const crossProject = async (
+      client: ReturnType<typeof apiClient>,
+    ): Promise<AllProjectSchedulesResponse> => {
+      const res = await client.get("/api/schedules");
+      expect(res.status).toBe(200);
+      return (await res.json()) as AllProjectSchedulesResponse;
+    };
+
+    // The owner reaches both Projects, each carrying its own tasks and its display name.
+    const mine = await crossProject(owner);
+    const ids = mine.projects.map((p) => p.projectId);
+    expect(ids).toContain(projectId);
+    expect(ids).toContain(otherId);
+    const a = mine.projects.find((p) => p.projectId === projectId);
+    expect(a?.name).toBe("schedule project");
+    expect(a?.schedules.map((s) => [s.agentId, s.name, s.status])).toEqual([
+      ["default_agent", "in-a", "active"],
+    ]);
+    // A one-shot that is switched off: the same statuses the Project-scoped listing derives.
+    expect(mine.projects.find((p) => p.projectId === otherId)?.schedules).toMatchObject([
+      { agentId: "default_agent", name: "in-b", status: "disabled", queued: false },
+    ]);
+
+    // A member reaches the Project they were granted, and nothing else the owner has.
+    const granted = await crossProject(member);
+    expect(granted.projects.map((p) => p.projectId)).toContain(projectId);
+    expect(granted.projects.map((p) => p.projectId)).not.toContain(otherId);
+
+    // Any other account gets its own Projects, with no trace of this one.
+    const theirs = await crossProject(outsider);
+    expect(theirs.projects.map((p) => p.projectId)).not.toContain(projectId);
+
+    // Read-only by construction: this listing has no write verb at all.
+    expect((await owner.post("/api/schedules", { name: "nope" })).status).toBe(404);
   });
 });

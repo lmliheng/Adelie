@@ -21,6 +21,7 @@ import type {
   AgentSkillsResponse,
   AgentsResponse,
   AgentVaultConfigDto,
+  AllProjectSchedulesResponse,
   AuthResponse,
   BenchmarkCasesResponse,
   BuiltinBrowserHistoryResponse,
@@ -1686,6 +1687,19 @@ router
   .get("/api/projects/:projectId/schedules", ({ store }): ProjectSchedulesResponse => ({
     schedules: store.f.schedules,
     invalidFiles: [],
+  }))
+  // The demo data root holds one Project, so the cross-Project overview draws one section here:
+  // what this answers is the *shape* (Projects, each with its own tasks and the name to head it
+  // with), which is what the page is built from.
+  .get("/api/schedules", ({ store }): AllProjectSchedulesResponse => ({
+    projects: [
+      {
+        projectId: store.f.project.projectId,
+        name: store.f.project.name ?? store.f.project.projectId,
+        schedules: store.f.schedules,
+        invalidFiles: [],
+      },
+    ],
   }))
   .post("/api/projects/:projectId/agents/:agentId/schedules", (ctx): unknown => {
     const agent = agentOf(ctx);

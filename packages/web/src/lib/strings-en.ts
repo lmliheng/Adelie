@@ -1985,6 +1985,17 @@ export const en: Strings = {
     pageDesc:
       "Every Agent's scheduled tasks in this Project; enable, edit and delete them all here.",
     pageEmpty: "No scheduled tasks in this Project yet",
+    /** The page's scope switch: this Project's editable list, or the read-only overview over every Project. */
+    scopeProject: "This Project",
+    scopeAll: "All Projects",
+    /** The header description while the overview is on screen (it is read-only, and says so). */
+    allScopeDesc:
+      "A read-only overview across Projects: one section per Project, with Open to switch to it; create and edit on the This Project scope.",
+    allScopeEmpty: "No Project has a scheduled task yet",
+    /** The jump on a Project's heading in the overview. */
+    openProject: "Open",
+    openProjectHint: "Switch to that Project and create or edit its scheduled tasks there",
+    openProjectHere: "This is the current Project; go back to the This Project scope",
     pageGroupCount: (n: number): string => (n === 1 ? "1 task" : `${n} tasks`),
     /** Accessible name of a row's overflow menu (edit / delete). */
     rowActions: "More actions",

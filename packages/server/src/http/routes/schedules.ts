@@ -4,6 +4,7 @@
  *   POST       /api/projects/:p/agents/:a/schedules/template-placeholder  # insert the {{SCHEDULES}} placeholder
  *   GET|PUT|DELETE /api/projects/:p/agents/:a/schedules/:name (name is the file name)
  *   GET        /api/projects/:p/schedules  # every Agent's tasks in the Project, in one list
+ *   GET        /api/schedules              # every Project the caller may reach, in one read-only answer
  * Any member can read; only the owner can modify. The file is declarative intent:
  * POST/PUT fully replace the file, validation always goes through parseScheduleFile
  * (same rules as hand-edited files), and writes take effect immediately via reconciliation.
@@ -12,6 +13,7 @@ import { createHash } from "node:crypto";
 import { Hono } from "hono";
 import { isValidId } from "@lmliheng/penguin-core";
 import type {
+  AllProjectSchedulesResponse,
   ProjectSchedulesResponse,
   ScheduleItem,
   ScheduleStatus,
@@ -265,6 +267,42 @@ export function projectScheduleRoutes(deps: SchedulesRouteDeps): Hono<AppEnv> {
   return app;
 }
 
+/**
+ * The cross-Project listing: every Project the caller may reach, in one answer. The
+ * scheduled-tasks page's "all projects" scope reads this rather than walking the Project
+ * switcher and asking once per Project — one request, and one clock reading for the whole
+ * response, so a task's status and next fire time cannot differ between two Projects because
+ * the listing straddled a slot boundary.
+ *
+ * Read-only, and deliberately so: this route writes nothing, and it names no Project. A write
+ * still goes through the Project-scoped routes (one Project, one owner), which is what keeps
+ * "which Project am I changing" a choice the user makes on a page about that Project.
+ */
+export function allProjectScheduleRoutes(deps: SchedulesRouteDeps): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+
+  app.get("/", async (c) => {
+    const projects = await deps.access.listProjects(c.var.user.userId);
+    const nowMs = Date.now();
+    const res: AllProjectSchedulesResponse = { projects: [] };
+    for (const project of projects) {
+      const { entries, invalid } = await deps.scheduler.listProject(project.projectId);
+      res.projects.push({
+        projectId: project.projectId,
+        name: project.name ?? project.projectId,
+        schedules: entries.map((e) => ({
+          agentId: e.agentId,
+          ...toItem(e.def, e.state, e.queued, nowMs),
+        })),
+        invalidFiles: invalid,
+      });
+    }
+    return c.json(res);
+  });
+
+  return app;
+}
+
 /** Write + register creator + reconcile immediately (API changes take effect right away). */
 async function upsert(
   deps: SchedulesRouteDeps,
@@ -324,6 +362,12 @@ async function readItem(
         auth: "user",
         order: 200,
       },
+      {
+        id: "SchedulerRoutes.allProjectRoutes",
+        prefix: "/api/schedules",
+        auth: "user",
+        order: 200,
+      },
     ],
   },
 })
@@ -336,6 +380,7 @@ export class SchedulerRoutes {
   @Use() private readonly schedulesRepo!: Schedules;
   @Bind("SchedulerRoutes.routes") routes!: Hono<AppEnv>;
   @Bind("SchedulerRoutes.projectRoutes") projectRoutes!: Hono<AppEnv>;
+  @Bind("SchedulerRoutes.allProjectRoutes") allProjectRoutes!: Hono<AppEnv>;
   setup() {
     const deps: SchedulesRouteDeps = {
       agentConfigService: this.agentConfig,
@@ -347,5 +392,6 @@ export class SchedulerRoutes {
     };
     this.routes = scheduleRoutes(deps);
     this.projectRoutes = projectScheduleRoutes(deps);
+    this.allProjectRoutes = allProjectScheduleRoutes(deps);
   }
 }

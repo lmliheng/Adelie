@@ -477,6 +477,8 @@ flow id 指向的流程不存在时返回 `404 platform_auth_flow_not_found`。`
 
 定时任务的写操作仅限所有者。新建 Session 模式的任务，`modelId` 和 `provider` 要么同时携带，要么都不带。保存任务时会对照 Project 的模型表校验这对值；调度器核对任务时还会再校验一次。
 
+`GET /api/schedules`（不带 Project 前缀）是跨项目只读总览：返回调用者能访问的每个 Project，各自带上它自己的 `schedules` 与 `invalidFiles`，一次请求读完，所有行的状态按同一时刻计算。这条路径只有 GET，写操作仍然只有一个 Project 的前缀。
+
 ## Benchmark
 
 Benchmark 属于 Project，不属于某个 Agent：一个 Benchmark 可以评估任意多个 Agent，每次评估都会记录它测试的 Agent（`agentId`；没有对应 Agent 的记录为 `null`）。汇总中的 `agentIds` 按这些 Agent 首次出现的顺序排列。下面的路径同样省略了 `/api/projects/:projectId` 前缀。

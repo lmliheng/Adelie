@@ -91,6 +91,12 @@ The panel's list refreshes:
 
 The alarm clock mark reads the same list and refreshes with it, so the mark and the panel always agree.
 
+## The overview across Projects
+
+The **Scheduled tasks** page in the account menu shows the current Project by default: every Agent's tasks in this Project, with enable, edit and delete. Its scope switch turns to **All Projects** for a read-only overview across them — one section per Project, whose heading carries the Project's name, the number of tasks under it and an **Open** button; Open switches to that Project and puts the page back on the This Project scope. The search box and the state chips apply to both scopes, and a Project whose tasks they all filter out is not drawn.
+
+Nothing on the overview creates, edits or deletes a task: creating one picks an Agent, and an Agent belongs to one Project, so creating always happens on the This Project scope.
+
 ## Limits
 
 - A repeating task runs at most once every 5 minutes: the shortest period is 5 minutes. A shorter period makes the task invalid.
