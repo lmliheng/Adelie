@@ -453,15 +453,31 @@ describe("asking `penguin server status` in the machine's own dialect", () => {
 
   it("carries the profile to the far side, so a server started there reaches on in the same one", () => {
     // That server has a machines service of its own, and it reads its layout from
-    // PENGUIN_PROFILE (or ADELIE_PROFILE — both are read; the command spells the pre-rename
-    // one because the far side may be an older install). Without the variable a dev-profile
-    // server would reach the NEXT machine's release installation — the profile would hold for
-    // exactly one hop.
-    expect(readServerStateCommand("linux", DEV)).toContain(" PENGUIN_PROFILE=dev ");
-    expect(readServerStateCommand("win32", DEV)).toContain('set "PENGUIN_PROFILE=dev" & ');
+    // ADELIE_PROFILE (or the pre-rename PENGUIN_PROFILE — both are read; the command spells
+    // both, see the test below). Without the variable a dev-profile server would reach the
+    // NEXT machine's release installation — the profile would hold for exactly one hop.
+    expect(readServerStateCommand("linux", DEV)).toContain(" ADELIE_PROFILE=dev ");
+    expect(readServerStateCommand("win32", DEV)).toContain('set "ADELIE_PROFILE=dev" & ');
     // Named for release too: an account exporting the variable cannot flip a release server.
-    expect(readServerStateCommand("linux", RELEASE)).toContain(" PENGUIN_PROFILE=release ");
-    expect(startServerCommand(7371, DEV)).toContain(" PENGUIN_PROFILE=dev ");
+    expect(readServerStateCommand("linux", RELEASE)).toContain(" ADELIE_PROFILE=release ");
+    expect(startServerCommand(7371, DEV)).toContain(" ADELIE_PROFILE=dev ");
+  });
+
+  it("names the data root and the profile twice, the pre-rename spelling included", () => {
+    // The CLI that lands there comes out of that machine's hmr store and can still be one
+    // pushed by an earlier release, which reads only the pre-rename spelling. Both names are
+    // written with the same value, Adelie's first, because that is the order the far side's
+    // reader resolves in (core's state/boundary-env.ts). Spelled out rather than assembled:
+    // the pair and its order are the contract, and a name quoted for the wrong shell is
+    // exactly the failure the rest of this file exists to prevent.
+    expect(readServerStateCommand("linux", DEV)).toContain(
+      'env ADELIE_HOME="$HOME/.penguin-dev/data" ADELIE_PROFILE=dev ' +
+        'PENGUIN_HOME="$HOME/.penguin-dev/data" PENGUIN_PROFILE=dev ',
+    );
+    expect(readServerStateCommand("win32", DEV)).toContain(
+      'set "ADELIE_HOME=%USERPROFILE%\\.penguin-dev\\data" & set "ADELIE_PROFILE=dev" & ' +
+        'set "PENGUIN_HOME=%USERPROFILE%\\.penguin-dev\\data" & set "PENGUIN_PROFILE=dev" & ',
+    );
   });
 
   it("a machine whose platform is on record is asked once, in that dialect", async () => {
@@ -552,8 +568,8 @@ describe("reading what `penguin server status` answered", () => {
 describe("startServerCommand", () => {
   it("survives nohup: the data root rides on `env`, never as a bare assignment nohup would run", () => {
     const command = startServerCommand(7371, DEV);
-    expect(command).toContain('nohup env PENGUIN_HOME="$HOME/.penguin-dev/data" ');
-    expect(command).not.toMatch(/nohup PENGUIN_HOME=/);
+    expect(command).toContain('nohup env ADELIE_HOME="$HOME/.penguin-dev/data" ');
+    expect(command).not.toMatch(/nohup (ADELIE_HOME|PENGUIN_HOME)=/);
     expect(command).toContain("server --host 127.0.0.1 --port 7371");
     expect(command).toContain('"$HOME/.penguin-dev/data/server.log"');
   });

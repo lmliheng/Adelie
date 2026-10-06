@@ -88,13 +88,20 @@
         `PENGUIN_WEB_DIST` 仍照办：新名 > 旧名 > 本安装的 `web/`，与 `ADELIE_HOME` 同一写法）与
         `ADELIE_BUNDLED_SHELL`；`penguin server|web`（`packages/cli/src/commands/serve.ts`）导出的入口
         改叫 `ADELIE_CLI_ENTRY`。读侧本来就两个都认，新旧搭配都跑得通（实测见「已完成的轮次」）。
+      - **写侧又补一处（2026-10-06，第八轮）**：`machines/commands.ts` 的 `remotePenguin()`——就是第七轮
+        那处「有意留着、等语义定下来」的写点——选了**两个都写**这一条路：远端命令现在同时给出
+        `ADELIE_HOME` / `PENGUIN_HOME` 与 `ADELIE_PROFILE` / `PENGUIN_PROFILE`，**Adelie 的名字在前**、
+        两侧取值相同。理由：这条命令最终落到哪一版 CLI 手上，取决于那台机器 hmr store 里被推过的那一份
+        （`dist/penguin-hmr.js` 只负责把它取出来），而 store 里可能仍是更早的发行推上去的、只认旧名的
+        那一份；读侧本来就两个都认（核心 `state/boundary-env.ts`，新名优先），所以两个都写就等于
+        对两侧都成立。另一条路（探测远端版本）要花一次握手 —— 这个文件从头到尾都在数握手次数 —— 而且
+        store 里同时可能存在改名两侧的版本，探出来也不一定对。细节与实测见「已完成的轮次」最后一行。
       - **还差什么（做这一条时要一起收的尾）**：
         1. **写侧剩下的全在桌面壳一侧**：`packages/desktop/src/{server-process,launcher,web-dist}.ts`
            仍导出 / 传 `PENGUIN_PROFILE` / `PENGUIN_CLI_ENTRY` / `PENGUIN_WEB_DIST` / `PENGUIN_DESKTOP_TOKEN` /
            `PENGUIN_PORT_FILE` / `PENGUIN_BUNDLED_SHELL`（读侧两个都认，所以今天也跑得通）。桌面壳按纪律
            本机没碰（依赖没装、3.5 才决定取哪个桌面壳），这一批等那一步一起改。
-           `machines/commands.ts` 写进远端命令的 `PENGUIN_PROFILE` 也是**有意留着**：远端可能是一台还没
-           升级的安装、只认旧名；等那一步的语义定下来（探测远端版本，或两个都写）再说。
+           （`machines/commands.ts` 的远端命令写点 2026-10-06 第八轮已改，见上。）
         2. **本机部署**：`adelie-app.service`（3004，已 stop + disable）仍设 `PENGUIN_HOME` /
            `PENGUIN_WEB_DIST` / `PENGUIN_CLI_ENTRY`；读侧现在两条都认，所以不改也能跑，要在发布版
            里换新名得连单元一起改（发布动作）。
@@ -700,7 +707,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-05 | 第五轮 | 升级 **v0.2.2**：tag + GitHub Release（无资产）+ 重打三件安装包放 3003 `/downloads/v0.2.2/`（`BUILD_COMMIT=2d6abe83`），打包脚本改「边做边清」把峰值从 1.5G 压到 ~0.3G | 见「v0.2.2：默认项目名 default、中文文案、手机上的导入 Trace 与草稿」一节 | tag `v0.2.2` = `2d6abe83` |
 | 2026-10-05 | 2.2b | 控制面环境变量改名：25 个名字 / 77 个文件 / 388 处 `PENGUIN_*` → `ADELIE_*`（会话、API、语言、终端、审批与测试脚手架那批；注释、zh/en 文案、插件技能契约、`docker/compose.yaml` 一起改）；`core` 的剥离规则注释补写「为什么仍留两个前缀」 | 六包 typecheck 过；`pnpm lint` 0 警告；`pnpm format:check` 干净（两处超宽行交给 prettier）；core **1350 / 5 跳过**、ui **1000**、web **2887 / 2 跳过**、cli **505**、server **2563 / 2 跳过**（首跑 1 条红是 `dist/install.ps1` 副本过期，重建 server 后转绿）—— 0 失败；运行时实测：`ADELIE_LANG=zh` 出中文帮助、旧名 `PENGUIN_LANG=zh` 不再生效、`ADELIE_SEED_ADMIN_PASSWORD` 起服务不再打印 claim 链接；浏览器（7431，数据根 `/root/adelie-fork-data`）标题 `Sign in · Adelie`、console 唯一 error 是登录前 `/api/me` 401；推送后 CI run `37302398244` **22 个 job 全绿**（含本机按纪律没跑的 desktop 一族，等于替桌面壳那半边也验了一遍） | 见本行提交 |
 | 2026-10-06 | 2.2c（前半） | 边界面部署变量的**读侧**同时认 Adelie 的名字与旧名：core 新增 `state/boundary-env.ts`（`ADELIE_*` ← 旧 `PENGUIN_*` 的表 + 读取函数，新名优先）；接上 server 的 `config.ts`（WEB_DIST / WEB_DB / PORT_FILE / DESKTOP_TOKEN / CLI_ENTRY）、version 路由的 CLI_ENTRY、`machines/layout.ts` 的 PROFILE、CLI 三个命令的 WEB_DB、core 的 BUNDLED_SHELL，server README 的环境表与各处注释跟上。**写侧一个没改**（桌面壳按纪律没碰），所以 2.2c 仍未勾掉，「还差什么」写在条目里 | 六个包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1359 / 5 跳过 · server 2594 / 2 跳过 · cli 505 · ui 1000 · web 2877 / 2 跳过，**0 失败**；真起服务三次（数据根 `/root/adelie-fork-data/alias-*`，端口 7451 只用新名 / 7452 只用旧名 / 7453 两名并存）：三次都 302 → 登录页 `<title>Adelie</title>`，日志里的 SQLite 与 Web dist 都对，端口文件按各自的名字落盘；并存那次落的是新名的 `new.db` / `new.port`，旧名的 `old.db` / `old.port` 与 `PENGUIN_HOME` 指的旧根**一个都没建** | `83acbdf0` |
-| 2026-10-06 | 2.2c（写侧的非桌面壳部分） | 边界面变量**写侧的两处**（都不是桌面壳写的）改用 Adelie 的名字：两个启动脚本 `scripts/launchers/penguin{,.cmd}` 导出 `ADELIE_WEB_DIST`（操作者显式的旧名 `PENGUIN_WEB_DIST` 仍照办，新名优先）与 `ADELIE_BUNDLED_SHELL`；`penguin server|web` 导出 `ADELIE_CLI_ENTRY`。跟着改的地方：`scripts/test-installer.sh` 对两个启动脚本的守卫、core 剥离用例新增这两个新名、`config.ts` / `update-job.ts` / `session-manager.ts` 的注释与 `server/README.md` 的写法说明。桌面壳一侧与 `machines/commands.ts` 有意未动（见 2.2c 的「还差什么」） | 六包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净、`sh scripts/test-installer.sh` 通过；core 1359（+5 跳过）· server 2600（+2 跳过）· cli 505 · web 2877（+2 跳过）· ui 1003，**0 失败**；启动脚本用桩 CLI 实测四种环境（默认 / 只给旧名 / 两名并存取新名 / 显式 `ADELIE_HOME`），旧名覆盖仍生效；真起服务两次（经 CLI 起，7455/7456，数据根 `/root/adelie-fork-data/write-side*`）：日志 `Agent CLI: <root>/bin/penguin -> …/packages/cli/dist/penguin.js`、**子进程 environ 里是 `ADELIE_CLI_ENTRY`、没有旧名**、`ADELIE_WEB_DIST` 指哪就服务哪；浏览器打开 7456 是 `登录 · Adelie`，唯一 console error 是登录前 `/api/me` 401 | `1ded7a94`（补记提交号的是后一条 `docs(progress)`） |
+| 2026-10-06 | 2.2c（写侧的远端命令） | `machines/commands.ts` 的 `remotePenguin()` 改成**两个名字都写**：远端命令现在同时给出 `ADELIE_HOME` / `PENGUIN_HOME` 与 `ADELIE_PROFILE` / `PENGUIN_PROFILE`（Adelie 的名字在前、两个取值相同），注释里写明为什么不是「探测远端版本」（这条命令落地的 CLI 来自那台机器的 hmr store，可能是更早的发行推上去的、只认旧名；探测要花一次握手且探不准）。顺带把 `machines/layout.ts` 的数据根注释与 `machines.test.ts` 的注解跟上 | 六包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core **1359** / 5 跳过 · server **2601** / 2 跳过（+1 新用例，钉住两个名字与先后）· cli **505** · ui **1003** · web **2877** / 2 跳过，**0 失败**；把 `remotePenguin()` **真生成的那条命令**（不是复述）拿 `sh` 跑了一遍：假 HOME 下桩「node」换成 core 的 `resolveRoot()` / `boundaryEnv()`，四个变量都在且取值一致，解析出的根与 profile 都是这一侧的 dev（`reader-root=$HOME/.penguin-dev/data`、`reader-profile=dev`） | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -1495,3 +1502,34 @@ agent 自己就跑在 `adelie-server.service` 里（会话的 shell 挂在 `peng
 自己核验（`is-active` / 7364 在听 / 新 PID / `GET /` 200 / `penguin version`），结果写到
 `/root/evolution/requirements/runs/2026-10-06-0500/post-restart-verify.txt`。
 
+
+## 第八轮：远端命令把两个名字都写上（2026-10-06，条目 2.2c 的写侧收尾）
+
+条目 2.2c 到第七轮只剩「写侧」的尾巴，其中**唯一不在桌面壳一侧**的就是 `machines/commands.ts` 里
+`remotePenguin()` 生成的那条命令 —— 服务端伸到别人机器上的那条。它原先只写旧名（`PENGUIN_HOME` /
+`PENGUIN_PROFILE`），台账当时有意留着，因为「远端可能是一台还没升级的安装」；这一轮把那个待定项定成
+**两个都写**：
+
+- 命令现在以 `ADELIE_HOME` / `ADELIE_PROFILE` 打头，紧跟着旧名的同名变量，四个值两两相同；
+  POSIX 走 `env`、Windows 走 `set`，两副拼写各自的引号规则不动。
+- 为什么不是「探测远端版本」：这条命令最后落进哪一版 CLI，取决于那台机器 hmr store 里被推过的那一份
+  （`dist/penguin-hmr.js` 只负责把它取出来），而 store 里可能仍是更早的发行推上去的 —— 只认旧名的那一份。
+  探测要多花一次 ssh 握手（`commands.ts` 开头的「数握手」那条规矩），而且 store 里同时存在改名两侧的
+  版本时探出来也不一定对。读侧本来就两个都认、新名优先（`core/src/state/boundary-env.ts`），于是
+  「两个都写」让新旧两侧都成立，代价是两个词。
+- 跟着改的是注解与测试，没有别的行为改动：`machines/layout.ts` 的数据根注释说明了两个名字；
+  `machines.test.ts` 把「profile 传过去」那条的断言换到新名，并新增一条**把四个名字和前后顺序一起钉住**
+  的用例（拼写是契约，逐字写死而不是拼出来）。
+
+**验证（都不是推测）**：六包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；
+core 1359 / 5 跳过 · server **2601** / 2 跳过（比上一轮 +1，就是那条新用例）· cli 505 · ui 1003 ·
+web 2877 / 2 跳过，**0 失败**。另外把 `remotePenguin()` **真生成的那条命令**（用 Node 直接 import
+`packages/server/src/machines/commands.ts` 打出来的字符串，不是手抄的复述）交给 `sh -c` 跑：假 HOME 下
+摆好程序目录，把「node」换成读 `resolveRoot()` / `boundaryEnv()` 的桩 —— 四个变量都在且值一致，
+远端解析出的数据根与 profile 都是这一侧的 dev（`reader-root=$HOME/.penguin-dev/data`、
+`reader-profile=dev`）。**Windows 那副拼写只由单测钉住**：本机没有 cmd.exe，与往常一样没在真 Windows
+上跑过。
+
+**这一条还没法勾掉**：2.2c 的写侧剩下 `packages/desktop/src/{server-process,launcher,web-dist}.ts`
+与桌面壳自己的开关，按纪律（依赖没装、3.5 才决定取哪个桌面壳）这一轮没碰；`machines/commands.ts`
+是写侧最后一个不在桌面壳一侧的写点，到此为止。

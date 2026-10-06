@@ -66,13 +66,21 @@ function connectionOptions(target: RemoteTarget): string[] {
  * person at a terminal, not for us. The directory is laid out as bin/ lib/ web/ node/ by
  * install.sh (`PENGUIN_INSTALL_DIR`, which runInstallScriptCommand names), with the
  * launcher exec'ing `node/bin/node lib/dist/…` (scripts/launchers/penguin). The data root
- * rides along as PENGUIN_HOME: the CLI's `server status`, `server stop` and `auth token`
- * all act on the root they are given, and the profile's root is not the default one.
- * The profile rides along too, as PENGUIN_PROFILE: the server started by this command
- * reaches machines of its own, and it reads its layout from that variable (layout.ts) —
- * without it a dev-profile server would reach the NEXT machine's release installation.
- * Named for the release profile as well, so an account that exports the variable cannot
- * turn a release server into a dev one.
+ * rides along: the CLI's `server status`, `server stop` and `auth token` all act on the root
+ * they are given, and the profile's root is not the default one. The profile rides along
+ * too: the server started by this command reaches machines of its own, and it reads its
+ * layout from that variable (layout.ts) — without it a dev-profile server would reach the
+ * NEXT machine's release installation. Named for the release profile as well, so an account
+ * that exports the variable cannot turn a release server into a dev one.
+ *
+ * Both variables are written under BOTH of their names, Adelie's first: `ADELIE_HOME` +
+ * `PENGUIN_HOME`, `ADELIE_PROFILE` + `PENGUIN_PROFILE`. The reader on the far side is not
+ * one program but whichever CLI that machine's hmr store holds, and the store can still hold
+ * one pushed by an earlier release — which reads only the pre-rename spelling. The far side
+ * reads both, new name first (core's state/boundary-env.ts), and the two carry the same
+ * value, so either reader lands on the same root and profile. Probing the machine's version
+ * instead would cost a handshake this file counts, and the store can hold versions from
+ * either side of the rename anyway; two more words in the command cost nothing.
  *
  * `bin/penguin` is the released program, and a release only carries the subcommands this
  * side asks for (`server status`, `auth token`, `server --detach`) once a release has
@@ -96,15 +104,24 @@ function connectionOptions(target: RemoteTarget): string[] {
  * there, it is a different sentence. `%USERPROFILE%` is what install.ps1 defaults to.
  */
 export function remotePenguin(platform: RemotePlatform, layout: RemoteLayout): string {
+  // Each variable twice, Adelie's spelling first — why, see the doc block above.
   if (platform === "win32") {
     const dir = layout.programDir.win;
-    return `set "PENGUIN_HOME=${layout.dataRoot.win}" & set "PENGUIN_PROFILE=${layout.profile}" & "${dir}\\node\\node.exe" "${dir}\\lib\\dist\\penguin-hmr.js"`;
+    return (
+      `set "ADELIE_HOME=${layout.dataRoot.win}" & set "ADELIE_PROFILE=${layout.profile}" & ` +
+      `set "PENGUIN_HOME=${layout.dataRoot.win}" & set "PENGUIN_PROFILE=${layout.profile}" & ` +
+      `"${dir}\\node\\node.exe" "${dir}\\lib\\dist\\penguin-hmr.js"`
+    );
   }
   const dir = layout.programDir.posix;
   // `env`, not a bare `VAR=value` prefix: startServerCommand puts `nohup` in front of this,
   // and nohup takes the first word as the program — a bare assignment there is "no such
   // command", and the server never starts.
-  return `env PENGUIN_HOME="${layout.dataRoot.posix}" PENGUIN_PROFILE=${layout.profile} "${dir}/node/bin/node" "${dir}/lib/dist/penguin-hmr.js"`;
+  return (
+    `env ADELIE_HOME="${layout.dataRoot.posix}" ADELIE_PROFILE=${layout.profile} ` +
+    `PENGUIN_HOME="${layout.dataRoot.posix}" PENGUIN_PROFILE=${layout.profile} ` +
+    `"${dir}/node/bin/node" "${dir}/lib/dist/penguin-hmr.js"`
+  );
 }
 
 /** `ssh <options> <alias> <remote command>`. */

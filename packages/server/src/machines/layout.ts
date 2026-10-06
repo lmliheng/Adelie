@@ -34,7 +34,8 @@ export interface RemoteLayout {
   profile: Profile;
   /** The installer's target (`PENGUIN_INSTALL_DIR`), in each shell's own spelling. */
   programDir: { posix: string; win: string };
-  /** The server's data root there (`PENGUIN_HOME`), in each shell's own spelling. */
+  /** The server's data root there, in each shell's own spelling. `commands.ts` writes it under
+   * both names, Adelie's `ADELIE_HOME` and the pre-rename `PENGUIN_HOME`. */
   dataRoot: { posix: string; win: string };
   /** The port the server is started on when this side has not remembered one. */
   defaultPort: number;
