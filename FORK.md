@@ -39,7 +39,8 @@ git merge upstream/develop        # 在 main 上
 2. **自有化**：包名 `@prismshadow/*` → Adelie 自己的 scope；数据根 `~/.penguin` → `~/.adelie`；
    端口、图标、文案、README；上游的 `landing`（已删）/ `docs`（留作内部参考）/ `ui-gallery`
    （留）/ `hmr`（`packages/server` 的依赖，必留）。
-3. **接回 Adelie 已经做过的东西**，或判定上游已经覆盖、直接删：审批口径三档、模型目录
+3. **接回 Adelie 已经做过的东西**，或判定上游已经覆盖、直接删：~~审批口径三档~~（2026-10-07 **判定
+   上游已覆盖**，对照表与证据见 `FORK-PROGRESS.md` 的「第十二轮」）、模型目录
    （deepseek / kimi / qwen）、用量与成本页、用户与两档角色、会话归属、桌面壳。
 4. **发布链路**：npm scope、GitHub Pages（PWA）、设计站、Windows 安装包。
 

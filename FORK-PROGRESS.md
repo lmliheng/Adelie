@@ -138,6 +138,10 @@
       - 顺带记录：`PENGUIN_HINT` / `PENGUIN_KEEP_ATTRS` 是注入页脚本里的局部变量、`PENGUIN_FAMILY` 是 HMR
         family 常量，都不是环境变量，未动；`packages/docs/`、`.agents/`（= `.claude/` 软链）、`changelog/`
         三个文档面按 2.5 的口径不动 —— `.agents/` 是上游自己的开发技能文档，那里的 `PENGUIN_*` 对上游而言是对的。
+      - **第十二轮（2026-10-07）复核过一次**：非桌面壳剩下的 `PENGUIN_*` 全都只是**有意保留**的（兼容别名与
+        它自己的注释、钉兼容的测试夹具、`machines/commands.ts` 那条两个都写的远端命令）；可做的只剩三件、
+        而且都不在「改代码」这一侧 —— 桌面壳那一半、既有部署单元 `adelie-app.service`、插件里三处文本 ——
+        所以本轮跳过它先做 3.1，理由与选项写在「第十二轮」一节。
 - [x] 2.3 **端口与 profile 默认值**（2026-10-06，第十轮）：把「人会见到的」两个端口换成 Adelie 自己的 ——
       服务器默认端口 `7364` → **`4000`**（旧 Adelie Web 的地址，也是本机 ufw 规则与
       `/root/egress-whitelist/config.json` 里写着「Adelie Web (4000)」的那一条），dev CLI 端口
@@ -171,7 +175,14 @@
 
 ### 3. 把旧 Adelie 已经做过的东西接回来
 
-- [ ] 3.1 审批口径三档（旧 Adelie 的行为约定）对照上游的审批模型，能删就删。
+- [x] 3.1 **审批口径三档**（2026-10-07，第十二轮）：把旧 Adelie 的三档行为逐条对着基座核了一遍，
+      **判定上游已覆盖 —— 没有要移植的代码，也没有要删的东西**（旧：`always-ask`（默认）/ `read-only` /
+      `allow-all`，「每个人的」、PATCH 后立刻生效；基座：**四档**多一个 `deny-all`，挂**每个会话**，
+      另有 Project 默认档与组织档，裁决时重读库、同样立刻生效，决定记成 `approval_decision` 事件，
+      另外多一层「命令策略」在审批之上否决）。**有意保留的两处差异**：基座默认 `allow-all`（定时任务建的
+      会话取的就是这个默认值，而它不是 `client === "org"` 的无人值守会话、拿不到「当场判 deny」的短路 ——
+      改成 `always-ask` 会让这些自主轮次永远挂住）；基座没有旧 Adelie 那个 5 分钟审批超时（挂到人裁决或
+      本轮被中断，中断时 pending 收敛为 deny）。对照表、证据与验证见「第十二轮」一节。
 - [ ] 3.2 模型目录（deepseek / kimi / qwen）与费率表。
 - [ ] 3.3 用量与成本页（旧 Adelie `web` 台账第 4 条那一套：`/api/usage` + 成本中心）。
 - [ ] 3.4 用户与两档角色、会话归属。
@@ -764,6 +775,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-06 | 2.2c（写侧·非桌面壳的一批） | 第八轮漏掉的那批非桌面壳写点改用 Adelie 的名字：两个 `penguin` 脚本、`server` 的 `dev` 脚本、`packages/web/e2e/run.sh` 起服务那行、`Dockerfile` 的 `ENV`、`install.ps1` 生成的 Windows 启动器垫片（与 `scripts/launchers/penguin.cmd` 对齐）；**取值一个没动**，测试守卫与 CONTRIBUTING / 注释跟上 | 六包 typecheck 过 · `pnpm lint` 0 · `pnpm format:check` 干净；cli **506** · ui **1003** · server **2606** / 2 跳过 · web **2888** / 2 跳过（core 那条红来自另一条线正在改的 `README.md` 分类表，非本轮）；脚本行默认值经 `run-with-env.mjs` + 桩解析，新旧拼写逐字相同；`pnpm penguin version` 真跑；按 `web/e2e/run.sh` 那一行的变量名真起一次服务（日志自报数据根 / SQLite / 前端目录都对、标题 Adelie）；整条 e2e 42/69 —— 失败是**旧前端产物**造成的选择器错位，非本轮；`sh scripts/test-installer.sh` 通过；CI run **`37432299704`** 22 个作业全绿（含 `installer-windows`，见下） | `079cf1b4` |
 | 2026-10-06 | 2.3 | 默认端口换成 Adelie 自己的：服务端 `7364` → **`4000`**（旧 Adelie Web 一直在服务的地址，也是本机 ufw / egress-whitelist 里写作「Adelie Web (4000)」的那条）、dev CLI `7369` → **`7370`**（旧 Adelie CLI `adelie serve` 的缺省）。改到的地方：core 常量与端口表（含「为什么是这两个号」）、CLI 帮助文案 zh/en、cli/server/web 三份 README、两份 CONTRIBUTING、install.sh/install.ps1 的上手提示、Dockerfile 的 PORT/EXPOSE、compose 映射、docker 工作流的冒烟地址、两个 dev CLI 脚本、三处测试断言（机器 layout 的 release 默认端口、CLI 默认端口；system prompt 的端口守卫改成跟 core 的常量走） | 六包 typecheck 过 · `pnpm lint` 0 警告 · `pnpm format:check` 干净 · core **1359**/5 跳过 · cli **506** · server **2606**/2 跳过 · web **2896**/2 跳过 · ui **1003**，**0 失败** · `sh scripts/test-installer.sh` 通过 · `docker.yml` 与 `compose.yaml` 用仓库自带 `yaml` 解析通过（触发面仍是 `workflow_call`/`workflow_dispatch`/`pull_request`，没有 main 推送） · 真起服务（端口 7477、数据根 `/root/adelie-fork-data/r10-portcheck`）日志三行对新根，Playwright 打开是 Adelie 登录页、console 唯一 error 是登录前 401 · 4000 全程没有监听、也没被本机绑定（它在「不许动」的名单里，默认值只经常量 + CLI 帮助 + 单测验证） | `3835c0e8` |
 | 2026-10-06 | 2.2c（非桌面壳·三） | `docker/entrypoint.sh` 的数据根改按 `ADELIE_HOME` → 旧名 `PENGUIN_HOME` → `/data` 取（`Dockerfile` 的 `ENV` 早已是新名，旧写法会让 `-e ADELIE_HOME=<挂载点>` 指到 `/data` 上去）；需求箱插件 `kit/install.mjs` 的数据根改成新名在前、project / agent 只读 `ADELIE_*`（`plugin.json` 日期版本 +1）；`packages/web/scripts/theme-shots.mjs` 起服务用的三个变量与 `packages/web/README.md` 那一行跟上 | 见「第十一轮」一节 | 见本行提交 |
+| 2026-10-07 | 3.1 | **审批口径三档判定上游已覆盖**（`FORK.md` 给这一条的判据是「接回 **或判定上游已经覆盖、直接删**」）：把旧 Adelie 三档的行为逐条对着基座核过 —— 四档 ⊃ 旧三档、挂会话 + Project 默认档 + 组织档、裁决时重读库所以改档即时生效、决定记成 `approval_decision` 事件、另有命令策略在审批之上否决；**有意保留的两处差异**（默认 `allow-all`、没有旧 Adelie 那个 5 分钟超时）写清理由 —— 默认档改成 `always-ask` 会让定时任务的自主轮次永远挂住（本轮亲手核出证据链）；`FORK.md` 第 3 条把这一项标成「已判定覆盖」。**本轮没有改代码** | 六包 typecheck 全过；测试 core **1359**/5 跳过 · web **2899**/2 跳过 · ui **1003** · cli **506** · hmr 无用例 · server **182 文件 / 2625 通过 / 4 跳过**（整包三次 2 绿 1 红，红的是 `terminal-stream.test.ts` 那条装载敏感用例、单跑 5/5 全绿，与本轮无关）；没有起服务、没有动的端口 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -1910,6 +1922,83 @@ README 的环境表跟上了。这一轮没碰它，它属 2.2c 的文档尾巴�
   无人值守的定时轮次（本文件这些自主轮次、组织的工位会话）靠的就是「不问就干」，而每轮会话自己还能在输入区改档。
 - `packages/web/README.md` 末尾那行来源链接仍写着上游的 `github.com/Prism-Shadow/penguin-harness`
   （我们的仓库是 `lmliheng/Adelie`）；属品牌那一类，这轮没动。
+
+## 第十二轮：审批口径三档判定上游已覆盖（2026-10-07，条目 3.1）
+
+一次无人值守的自主推进：条目 3.1 的判据写在 `FORK.md` 里 —— 「接回 Adelie 已经做过的东西，**或判定上游
+已经覆盖、直接删**」。这一轮做的是后半句：把旧 Adelie 那三档的行为逐条对着基座核一遍。结论：**上游那套
+是旧约定的超集，没有要移植的代码，也没有要删的东西**，条目就地勾掉，`FORK.md` 的第 3 条也把这一项标成
+「已判定覆盖」。**这一轮没有改任何代码**：改的只有 `FORK.md` 与这份台账，也没有切版本号、没发 npm、
+没发安装包、没发发布汇总；`legacy/main`、`/root/Adelie` 工作区、3003 / 3004 / 4000 全程没碰。
+
+### 对照（左列原文取自 `origin/legacy/main`，右列是基座）
+
+| 旧 Adelie 的行为（`docs/api.md` §4 审批 / `CHANGELOG.md`） | 基座 | 证据 |
+| --- | --- | --- |
+| **三档**：`always-ask`（默认）/ `read-only` / `allow-all` | **四档**：多一个 `deny-all`（不问、一律拒绝）；其余三档的语义逐条相同 | `core/src/state/project-config.ts:131`（`CHAT_APPROVAL_MODES`）、`server/src/api/types.ts:41`、`server/src/runtime/approvals.ts:6-9`、`cli/src/approval.ts:13-19` |
+| 三档的差别不只是政策，而是**有没有交互层**：只有「不问」的两档把运行时的 policy 交下去 | 同一件事，且多一条：**无人值守会话**（`client === "org"`）把「要问人」的那一路**当场判 deny**，不留一个等不到人的 pending | `server/src/runtime/approvals.ts:104-127`（`manual()` 的 `unattended` 分支）、`runtime/session-manager.ts:963` |
+| `approvalPolicy` **是每个人的**（「不该由别人替我定」），PATCH 后**立刻生效** | 挂**每个会话**（更细），另有 Project 级默认档与组织级档；`getMode` **每次裁决都重读库**，所以改档立刻生效 | `server/src/db/schema.ts:86`（`sessions.approval_mode`）、`routes/sessions.ts:708-711`（PATCH + `updateApprovalMode`）、`runtime/session-manager.ts:959-960`、`routes/chat-defaults.ts:69`、`routes/organizations.ts:66`（组织三档 `allow-all` / `read-only` / `deny-all`，没有 `always-ask`） |
+| 决定照样记进事件流（`approval` 事件，`source: "policy"` 表示不是人拍的板） | 记的是 `approval_decision` 事件（决定 + `tool_call_id`）；Trace 里能查到「谁在什么时候批准了什么」，而且裁决等待**不计入** LLM 生成时长 | `core/src/omnimessage/builders.ts:273`、`core/src/internal/command-policy.ts:168`、`server/test/trace-service.test.ts:382` |
+| 旧 Adelie 没有的那一层 | **命令策略**（`.project_config.toml` 的 `[command_policy]`）：命中规则的命令直接 deny，**压过包括 `allow-all` 在内的所有档位**；规则是 Project 的数据、不是代码 | `core/src/internal/command-policy.ts:1-24` |
+| 待审批**超时 5 分钟按拒绝**处理 | **没有超时**：挂着等人裁决，或本轮被中断（中断时 pending 一律收敛为 deny；子 Agent 的 pending 留给用户） | 上游设计，见 `runtime/approvals.ts:4-8`；用例 `session-manager.test.ts:1054`、`session-subagents.test.ts:207` |
+
+两处**有意不一样**、这一轮确认**都不改**：
+
+1. **默认档**：旧 Adelie 默认 `always-ask`，基座默认 `allow-all`（`db/schema.ts:86`、
+   `services/session-service.ts:621`、`web/src/features/chat/draft-view.tsx:211` 三处一致）。
+   **不改的理由这一轮亲手核过**：定时任务建会话（`runtime/scheduler.ts:431`，经 `ScheduleSessionCreator`）
+   **不传审批档**，取的就是这个默认值，而这类会话**不是** `client === "org"` 的无人值守会话 —— 拿不到
+   `unattended` 那条「当场判 deny」的短路。默认档改成 `always-ask`，本文件里这些 4 小时一轮的自主推进
+   会在第一个写文件 / 跑命令的动作上永远挂住。四档都在输入区可改，不耽误人。
+   （第十一轮记过同一个结论，当时是「粗查」；这一轮把它补齐成证据链。）
+2. **审批超时**：基座刻意不留超时（旧 Adelie 5 分钟判拒绝）。挂着的审批在界面上有卡片、被中断时收敛为
+   deny；补一个超时等于改基座行为，条目没要求，没做。
+
+### 验证（都不是推测）
+
+- `pnpm --filter @lmliheng/penguin-{core,server,web,ui,cli,hmr} run typecheck` —— **六个包全过**
+  （server 那步顺带打印 `src/ifaces.json unchanged`，186 接口 / 537 类型）。
+- 六个包的测试：core **1359 通过 / 5 跳过**（64 文件 + 1 个 e2e 跳过） · web **2899 / 2 跳过**（236 文件） ·
+  ui **1003**（127 文件） · cli **506**（34 文件） · hmr 没有用例（`--passWithNoTests`） ·
+  server **182 文件 / 2625 通过 / 4 跳过**。**server 整包跑了三次：2 绿 1 红**；红的那条是
+  `test/terminal-stream.test.ts > replays input modes a program enabled to a reattaching client`
+  （断言重连后的回放帧里有 `\x1b[?25l`），**单独跑该文件 5 次全绿（16/16）**。它是装载敏感的终端回放
+  用例（它自己的注释就写着 `sh -l` 的 profile 输出可能压后），与本轮无关 —— 本轮一行代码都没改。
+  记在这里，留给以后动它的人。
+- 审批语义由既有用例钉住，逐条点名确认都在：`server/test/session-manager.test.ts` 的
+  「always-ask: registers a pending approval and pushes approval_request…」(822)、
+  「approval mode takes effect immediately: after a mid-run PATCH…」(1028)、
+  「abort: pending approvals collapse to deny before the AbortSignal fires」(1054)；
+  `session-subagents.test.ts:207`（`denyMain` 只收本会话的 pending）；
+  `organization-runtime.test.ts:980` / `:1004`（组织档位、改了档要跟着已开的工作位会话）；
+  `cli/test/approval.test.ts:99`（`--approve` 的四档与默认 `allow-all`）。
+- 没有起服务、没有动的端口 —— 这一条没有界面改动，也没有只能靠真模型才能跑的东西。
+
+### 为什么这一轮跳过 2.2c（表上的第一条未勾选条目）
+
+2.2c 剩下的三处，这一轮逐处核过，全都需要你拍板或按本轮纪律不能碰：
+
+1. **桌面壳那一半**（`packages/desktop/src/{server-process,launcher,web-dist,main,login-shell-env}.ts`
+   与 `DESKTOP_SMOKE*` / `NO_LOGIN_SHELL_ENV` / `UPDATE_FEED_URL` / `BB_SMOKE_BUNDLE`）—— 本轮的纪律
+   明写「不要碰 desktop / electron」。**顺手核了那条理由**：`packages/desktop/node_modules` 里
+   electron / electron-builder / tsup 都在（包体在 `node_modules/.pnpm/electron@43.2.0/…`），磁盘
+   **7.0G 可用** —— 「依赖没装、装了要下 100MB+、磁盘告急」今天不成立，真正的阻碍只剩 3.5
+   （上游桌面壳与旧 Adelie 那个取哪个）。**做不做，等你一句话。**
+2. **既有部署单元** `adelie-app.service`（3004，已 stop + disable，仍设旧名）—— 读侧两条都认，
+   改它属发布动作。
+3. **插件里三处文本**（`agent-development/skills/penguin-config/SKILL.md`、
+   `agent-tuning/skills/{agent-optimization,agent-evaluation}/SKILL.md`）—— 换它会牵到「同一份 SKILL.md
+   还要不要同时服务上游 PenguinHarness」这个口径。
+
+另外发现一处**文档尾巴**（不属 3.1，本轮没动）：`packages/cli/README.md:20` 仍写
+「Data lives under `~/.penguin/data` (`PENGUIN_HOME` or `--root` override)」—— 它是 2.2c 的收尾，
+下一轮做 2.2c（或它剩下的部分）时可以顺手带上。
+
+> **2026-10-07 与另一条线的交汇（第十二轮）**：本轮开工时 `git status --short` 是干净的、`main` = `a23bc6c8`。
+> 跑门禁期间那条线在**同一棵树**里把 47 个 `package.json` 的 version 与 `packages/core/src/index.ts` 的
+> `VERSION` 升到 0.3.3，并提交/推送了 `c7db52a7`「chore(release): v0.3.3 —— 版本戳与发布正文」，
+> 所以本轮 HEAD 是 `c7db52a7`（本轮的提交压在它上面）。那些改动是版本戳与发布正文，与本轮改的两个文件
+> 没有重叠，本轮**一个都没碰**（`git add` 只列 `FORK.md` 与 `FORK-PROGRESS.md`）。
 
 ## 跟上游学之一：工位 @ 合并（2026-10-06）
 
