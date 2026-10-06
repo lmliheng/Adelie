@@ -14,7 +14,10 @@
  * The desktop's dev shell deliberately shares `~/.penguin/dev-data` with `dev:server`
  * (a second server on a locked root is its attach-mode case, and the two surfaces
  * sharing one dataset when used alternately is the point), and it binds no fixed port —
- * so it is pinned to that root rather than away from it.
+ * so it is pinned to that root rather than away from it. Its entry is also the one that
+ * still *spells* that root `PENGUIN_HOME`: its reader is the desktop shell, whose read side
+ * is not part of core's `state/boundary-env.ts`, so the two dev entries above are the ones
+ * that must write Adelie's names.
  */
 import { readFileSync } from "node:fs";
 import os from "node:os";
@@ -71,7 +74,28 @@ describe("dev entry point isolation (ports and data roots)", () => {
     ] as const) {
       expect(defaults, `${name} must set its defaults through run-with-env`).not.toBeNull();
       expect(defaults!.PORT, `${name} must pin a port`).toMatch(/^\d+$/);
-      expect(defaults!.PENGUIN_HOME, `${name} must pin a data root`).toBeDefined();
+      expect(defaults!.ADELIE_HOME, `${name} must pin a data root`).toBeDefined();
+    }
+  });
+
+  it("the two dev entries write Adelie's spelling, not the pre-rename one", () => {
+    // The readers accept both spellings (`ADELIE_HOME` since 2.2a, the boundary variables
+    // since core's boundary-env.ts, new name first), so a stale one here would still run —
+    // which is exactly why it has to be pinned: the rename would keep hiding in the dev
+    // scripts otherwise. Only the desktop entry keeps `PENGUIN_HOME` (see the file header).
+    for (const [name, defaults] of [
+      ["dev:server", devServer],
+      ["penguin", devCli],
+    ] as const) {
+      expect(defaults!.ADELIE_PROFILE, `${name} must pin the profile Adelie's way`).toBe("dev");
+      expect(
+        defaults!.PENGUIN_HOME,
+        `${name} must not write the pre-rename root name`,
+      ).toBeUndefined();
+      expect(
+        defaults!.PENGUIN_PROFILE,
+        `${name} must not write the pre-rename profile name`,
+      ).toBeUndefined();
     }
   });
 
@@ -86,8 +110,8 @@ describe("dev entry point isolation (ports and data roots)", () => {
 
   it("no two simultaneously runnable server entries share a data root", () => {
     const roots = [
-      expandHome(devServer!.PENGUIN_HOME!),
-      expandHome(devCli!.PENGUIN_HOME!),
+      expandHome(devServer!.ADELIE_HOME!),
+      expandHome(devCli!.ADELIE_HOME!),
       path.normalize(installedRoot),
     ];
     expect(new Set(roots).size).toBe(roots.length);
@@ -101,7 +125,7 @@ describe("dev entry point isolation (ports and data roots)", () => {
 
   it("the dev desktop shell stays on dev:server's root, by design", () => {
     expect(devDesktop).not.toBeNull();
-    expect(expandHome(devDesktop!.PENGUIN_HOME!)).toBe(expandHome(devServer!.PENGUIN_HOME!));
+    expect(expandHome(devDesktop!.PENGUIN_HOME!)).toBe(expandHome(devServer!.ADELIE_HOME!));
     // No PORT: the embedded server allocates its own (PORT=0 + sticky preference).
     expect(devDesktop!.PORT).toBeUndefined();
   });

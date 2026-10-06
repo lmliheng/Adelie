@@ -57,11 +57,11 @@ web/server 消费的是快照副本，只有当该包的 `build` 脚本经由 pn
 随后会让 Agent 去执行 `pnpm dev` 的 harness——共用根目录时，那个 Agent 的 `dev:server` 会被 harness
 自己的锁挡住而拒绝启动（正是这种共存关系也已经为它分配了 7369 端口，见
 `packages/core/src/internal/ports.ts`）。若仍要让某条开发 CLI 命令对准 `pnpm dev` 的数据集，就为该条
-命令单独声明——`PENGUIN_HOME=~/.penguin/dev-data pnpm penguin ...`，或在支持的子命令上使用
-`--root`。需要另一个根目录？只为需要它的那一条命令内联传入 `PENGUIN_HOME`
-（`PENGUIN_HOME=~/.penguin/dev-data-<topic> pnpm dev`）——绝不要把它 export 进 shell：上述默认值仅在
+命令单独声明——`ADELIE_HOME=~/.penguin/dev-data pnpm penguin ...`，或在支持的子命令上使用
+`--root`。需要另一个根目录？只为需要它的那一条命令内联传入 `ADELIE_HOME`
+（`ADELIE_HOME=~/.penguin/dev-data-<topic> pnpm dev`）——绝不要把它 export 进 shell：上述默认值仅在
 该变量未设置或为空时才生效（`scripts/run-with-env.mjs`），因此一个已导出的值会静默盖过全部默认值；
-而导出 `PENGUIN_HOME=~/.penguin/data` 会把 `pnpm dev:server` 放到发行版/CLI 的根目录上，那里已经有
+而导出 `ADELIE_HOME=~/.penguin/data` 会把 `pnpm dev:server` 放到发行版/CLI 的根目录上，那里已经有
 一个运行中的桌面应用持有锁。桌面开发外壳还多隔离一层：未打包的运行会取一个带 dev 后缀的应用标识
 （`Adelie-Dev`），拥有自己的 userData 目录、单实例锁与固定端口，并且即使在没有该环境变量的
 情况下启动（`pnpm --dir packages/desktop start`）也默认使用 `~/.penguin/dev-data`——因此它可以与已
@@ -70,7 +70,8 @@ web/server 消费的是快照副本，只有当该包的 `build` 脚本经由 pn
 
 这次拆分带来了两处一次性变化。此前直接执行 `pnpm --dir packages/desktop start` 跑在
 `~/.penguin/data`（发行版/CLI 根目录）上，现在跑在 `~/.penguin/dev-data`，因此那样创建的会话不再出现
-在窗口里——若要刻意对着发行版根目录工作，用 `PENGUIN_HOME=~/.penguin/data` 启动。另外开发外壳的
+在窗口里——若要刻意对着发行版根目录工作，用 `PENGUIN_HOME=~/.penguin/data` 启动（外壳读的是改名前的
+拼写；上面那些开发入口写的是 Adelie 的 `ADELIE_HOME`）。另外开发外壳的
 userData 目录随其名称一并搬家，Chromium 配置文件也跟着走，因此窗口按 origin 存储的偏好（主题、语言、
 布局）与记住的端口会重置一次。注意该标识是一个固定名称，而非每个工作副本一个：两份工作副本同时运行
 桌面外壳仍会共用它，第二次启动会聚焦到第一个窗口而不是自己开一个——换一个 `PENGUIN_HOME` 也改变不了
@@ -153,7 +154,7 @@ pnpm test:e2e                                        # core 的真实模型 e2e�
 
 从 [issue 表单](https://github.com/Prism-Shadow/penguin-harness/issues/new/choose) 提交。一份缺陷报告
 附上版本（`penguin version`）、Adelie 的安装方式、操作系统，以及问题是否在全新的数据根目录上
-依然出现（`PENGUIN_HOME=/tmp/penguin-check penguin ...`），价值会高得多——最后这一条能把代码缺陷与
+依然出现（`ADELIE_HOME=/tmp/penguin-check penguin ...`），价值会高得多——最后这一条能把代码缺陷与
 旧版本遗留的状态区分开。永远不要把 API Key、机器人 Token、`system_config.yaml` 或 `.env` 贴进
 issue：数据根目录以明文保存 Provider 凭据，而 issue 是公开且永久的。
 

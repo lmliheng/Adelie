@@ -31,7 +31,9 @@
  * deliberately keep the pre-rename `~/.penguin` home, because the desktop's dev shell names
  * `~/.penguin/dev-data` as the root it shares with `dev:server` (`app-identity.ts`, and the
  * desktop test that pins it) — the two must move together, and the desktop tree is not
- * buildable here. Moving them is the remainder of ledger item 2.2.
+ * buildable here. Moving them is the remainder of ledger item 2.2. The **variable names** the
+ * dev entries write are Adelie's, though (`ADELIE_HOME` / `ADELIE_PROFILE`); only these paths
+ * are still spelled the old way.
  *
  * The development backend deliberately does **not** share 7364 with an installed one: the
  * two are routinely running at once, and before they were split, `pnpm dev` either failed

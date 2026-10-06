@@ -350,7 +350,10 @@ try {
       }
     }
 
-    # --- Launcher shim: shipped in the payload; (re)generated only when missing. There is
+    # --- Launcher shim: shipped in the payload; (re)generated only when missing. The two
+    #     variables it fills in use Adelie's spelling, with the pre-rename PENGUIN_WEB_DIST
+    #     still honored, exactly like scripts/launchers/penguin.cmd — a shim regenerated here
+    #     must not behave differently from the one the payload ships. There is
     #     deliberately no penguin.ps1 launcher — PowerShell would prefer it over penguin.cmd on
     #     PATH, and client Windows defaults to the Restricted execution policy, so a .ps1
     #     launcher makes the plain `penguin` command fail with "running scripts is disabled".
@@ -363,8 +366,9 @@ try {
         '@echo off'
         'setlocal'
         'set "DIR=%~dp0.."'
-        'if not defined PENGUIN_WEB_DIST set "PENGUIN_WEB_DIST=%DIR%\web"'
-        'if exist "%DIR%\git\usr\bin\sh.exe" set "PENGUIN_BUNDLED_SHELL=%DIR%\git\usr\bin\sh.exe"'
+        'if not defined ADELIE_WEB_DIST if defined PENGUIN_WEB_DIST set "ADELIE_WEB_DIST=%PENGUIN_WEB_DIST%"'
+        'if not defined ADELIE_WEB_DIST set "ADELIE_WEB_DIST=%DIR%\web"'
+        'if exist "%DIR%\git\usr\bin\sh.exe" set "ADELIE_BUNDLED_SHELL=%DIR%\git\usr\bin\sh.exe"'
         'if exist "%DIR%\node\node.exe" ('
         '  "%DIR%\node\node.exe" "%DIR%\lib\dist\penguin.js" %*'
         ') else ('

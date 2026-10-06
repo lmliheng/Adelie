@@ -219,12 +219,12 @@ LABEL org.opencontainers.image.title="Adelie" \
 # CLI entry — it would then offer in-container self-update, which installs into a filesystem
 # the next `docker pull` throws away. Through the symlink argv[1] is /usr/local/bin/penguin,
 # extensionless, so the entry stays unset and the update endpoint answers "unsupported".
-# PENGUIN_WEB_DIST below is the other half of what that launcher would have done.
+# ADELIE_WEB_DIST below is the other half of what that launcher would have done.
 COPY --from=native /opt/penguin /opt/penguin
 RUN set -eux; \
     chmod 0755 /opt/penguin/lib/dist/penguin.js; \
     ln -s /opt/penguin/lib/dist/penguin.js /usr/local/bin/penguin; \
-    PENGUIN_HOME=/tmp/penguin-smoke penguin --version; \
+    ADELIE_HOME=/tmp/penguin-smoke penguin --version; \
     rm -rf /tmp/penguin-smoke
 
 # ubuntu:24.04 ships a stock `ubuntu` account already holding uid/gid 1000 — the id a host
@@ -239,8 +239,8 @@ RUN set -eux; \
 # replaces the process's ids without rewriting its environment: without this the server
 # would run as `penguin` while still pointed at root's home.
 ENV HOME=/home/penguin \
-    PENGUIN_HOME=/data \
-    PENGUIN_WEB_DIST=/opt/penguin/web \
+    ADELIE_HOME=/data \
+    ADELIE_WEB_DIST=/opt/penguin/web \
     HOST=0.0.0.0 \
     PORT=7364
 

@@ -76,13 +76,13 @@ data root admits one server at a time (`<root>/server.lock`) and the dev CLI's
 shared root that Agent's `dev:server` would refuse to start, blocked by the harness's
 own lock (the same coexistence that already gives it port 7369, see
 `packages/core/src/internal/ports.ts`). To aim a dev CLI command at the `pnpm dev`
-dataset anyway, say so per command — `PENGUIN_HOME=~/.penguin/dev-data pnpm penguin ...`,
+dataset anyway, say so per command — `ADELIE_HOME=~/.penguin/dev-data pnpm penguin ...`,
 or `--root` where the subcommand takes it. Need a different root?
-Pass `PENGUIN_HOME` inline, for the single
-command that needs it (`PENGUIN_HOME=~/.penguin/dev-data-<topic> pnpm dev`) — never export
+Pass `ADELIE_HOME` inline, for the single
+command that needs it (`ADELIE_HOME=~/.penguin/dev-data-<topic> pnpm dev`) — never export
 it into your shell: those defaults apply only when the variable is unset or empty
 (`scripts/run-with-env.mjs`), so an exported value silently wins over all of them, and an
-exported `PENGUIN_HOME=~/.penguin/data` puts `pnpm dev:server` on the release/CLI root
+exported `ADELIE_HOME=~/.penguin/data` puts `pnpm dev:server` on the release/CLI root
 where a running desktop app already holds the lock. The desktop dev shell isolates one
 step further: an unpackaged run takes a dev-suffixed app identity (`Adelie-Dev`)
 with its own userData directory, single-instance lock, and sticky port, and defaults to
@@ -108,7 +108,8 @@ instance never touches the release server someone is using there
 Two one-time moves came with that split. A bare `pnpm --dir packages/desktop start` used
 to run on `~/.penguin/data` (the release/CLI root) and now runs on `~/.penguin/dev-data`,
 so sessions made that way are no longer in the window — run it with
-`PENGUIN_HOME=~/.penguin/data` to work against the release root on purpose. And the dev
+`PENGUIN_HOME=~/.penguin/data` (the shell reads the pre-rename spelling; the dev entries
+above write Adelie's `ADELIE_HOME`) to work against the release root on purpose. And the dev
 shell's userData directory moved with its name, taking the Chromium profile along, so the
 window's origin-scoped preferences (theme, language, layout) and its remembered port
 start fresh once. Note the identity is one fixed name, not one per checkout: two working
@@ -215,7 +216,7 @@ pnpm test:e2e                                        # core live-model e2e, need
 Open an issue from the [issue forms](https://github.com/Prism-Shadow/penguin-harness/issues/new/choose).
 A bug report is worth far more with the version (`penguin version`), how Adelie
 was installed, the OS, and whether the problem survives a fresh data root
-(`PENGUIN_HOME=/tmp/penguin-check penguin ...`) — that last one separates a code defect
+(`ADELIE_HOME=/tmp/penguin-check penguin ...`) — that last one separates a code defect
 from a state left behind by an earlier version. Never paste an API key, a bot token,
 `system_config.yaml`, or a `.env` into an issue: the data root holds provider credentials
 in plain text, and an issue is public and permanent.

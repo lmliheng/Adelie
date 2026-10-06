@@ -96,6 +96,15 @@
         那一份；读侧本来就两个都认（核心 `state/boundary-env.ts`，新名优先），所以两个都写就等于
         对两侧都成立。另一条路（探测远端版本）要花一次握手 —— 这个文件从头到尾都在数握手次数 —— 而且
         store 里同时可能存在改名两侧的版本，探出来也不一定对。细节与实测见「已完成的轮次」最后一行。
+      - **写侧又补一批（2026-10-06，第九轮）**：第八轮说的「`machines/commands.ts` 是写侧最后一个
+        不在桌面壳一侧的写点」**说早了** —— 仓库里还有一批非桌面壳的写点写着旧名（读侧两个都认，所以
+        一直没暴露）：两个 `penguin` 脚本（根 `package.json` 与 `packages/cli/package.json`）、
+        `packages/server/package.json` 的 `dev` 脚本、`packages/web/e2e/run.sh` 起服务那一行、
+        `Dockerfile` 的 `ENV`、以及 `install.ps1` 在缺 `bin\penguin.cmd` 时**生成**的那个 Windows
+        启动器垫片（它和第七轮改过的 `scripts/launchers/penguin.cmd` 是同一件东西，改完两者拼写一致）。
+        变量名全都改用 Adelie 的，**取值一个没动**（`~/.penguin/dev-data`、`~/.penguin/dev-data-cli`
+        这些**路径**仍留旧拼写，理由见 `packages/core/src/internal/ports.ts`：那是与桌面壳耦合的那步）。
+        细节与实测见「第九轮」一节。
       - **还差什么（做这一条时要一起收的尾）**：
         1. **写侧剩下的全在桌面壳一侧**：`packages/desktop/src/{server-process,launcher,web-dist}.ts`
            仍导出 / 传 `PENGUIN_PROFILE` / `PENGUIN_CLI_ENTRY` / `PENGUIN_WEB_DIST` / `PENGUIN_DESKTOP_TOKEN` /
@@ -708,12 +717,21 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-05 | 2.2b | 控制面环境变量改名：25 个名字 / 77 个文件 / 388 处 `PENGUIN_*` → `ADELIE_*`（会话、API、语言、终端、审批与测试脚手架那批；注释、zh/en 文案、插件技能契约、`docker/compose.yaml` 一起改）；`core` 的剥离规则注释补写「为什么仍留两个前缀」 | 六包 typecheck 过；`pnpm lint` 0 警告；`pnpm format:check` 干净（两处超宽行交给 prettier）；core **1350 / 5 跳过**、ui **1000**、web **2887 / 2 跳过**、cli **505**、server **2563 / 2 跳过**（首跑 1 条红是 `dist/install.ps1` 副本过期，重建 server 后转绿）—— 0 失败；运行时实测：`ADELIE_LANG=zh` 出中文帮助、旧名 `PENGUIN_LANG=zh` 不再生效、`ADELIE_SEED_ADMIN_PASSWORD` 起服务不再打印 claim 链接；浏览器（7431，数据根 `/root/adelie-fork-data`）标题 `Sign in · Adelie`、console 唯一 error 是登录前 `/api/me` 401；推送后 CI run `37302398244` **22 个 job 全绿**（含本机按纪律没跑的 desktop 一族，等于替桌面壳那半边也验了一遍） | 见本行提交 |
 | 2026-10-06 | 2.2c（前半） | 边界面部署变量的**读侧**同时认 Adelie 的名字与旧名：core 新增 `state/boundary-env.ts`（`ADELIE_*` ← 旧 `PENGUIN_*` 的表 + 读取函数，新名优先）；接上 server 的 `config.ts`（WEB_DIST / WEB_DB / PORT_FILE / DESKTOP_TOKEN / CLI_ENTRY）、version 路由的 CLI_ENTRY、`machines/layout.ts` 的 PROFILE、CLI 三个命令的 WEB_DB、core 的 BUNDLED_SHELL，server README 的环境表与各处注释跟上。**写侧一个没改**（桌面壳按纪律没碰），所以 2.2c 仍未勾掉，「还差什么」写在条目里 | 六个包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core 1359 / 5 跳过 · server 2594 / 2 跳过 · cli 505 · ui 1000 · web 2877 / 2 跳过，**0 失败**；真起服务三次（数据根 `/root/adelie-fork-data/alias-*`，端口 7451 只用新名 / 7452 只用旧名 / 7453 两名并存）：三次都 302 → 登录页 `<title>Adelie</title>`，日志里的 SQLite 与 Web dist 都对，端口文件按各自的名字落盘；并存那次落的是新名的 `new.db` / `new.port`，旧名的 `old.db` / `old.port` 与 `PENGUIN_HOME` 指的旧根**一个都没建** | `83acbdf0` |
 | 2026-10-06 | 2.2c（写侧的远端命令） | `machines/commands.ts` 的 `remotePenguin()` 改成**两个名字都写**：远端命令现在同时给出 `ADELIE_HOME` / `PENGUIN_HOME` 与 `ADELIE_PROFILE` / `PENGUIN_PROFILE`（Adelie 的名字在前、两个取值相同），注释里写明为什么不是「探测远端版本」（这条命令落地的 CLI 来自那台机器的 hmr store，可能是更早的发行推上去的、只认旧名；探测要花一次握手且探不准）。顺带把 `machines/layout.ts` 的数据根注释与 `machines.test.ts` 的注解跟上 | 六包 typecheck 过；`pnpm lint` 0 警告、`pnpm format:check` 干净；core **1359** / 5 跳过 · server **2601** / 2 跳过（+1 新用例，钉住两个名字与先后）· cli **505** · ui **1003** · web **2877** / 2 跳过，**0 失败**；把 `remotePenguin()` **真生成的那条命令**（不是复述）拿 `sh` 跑了一遍：假 HOME 下桩「node」换成 core 的 `resolveRoot()` / `boundaryEnv()`，四个变量都在且取值一致，解析出的根与 profile 都是这一侧的 dev（`reader-root=$HOME/.penguin-dev/data`、`reader-profile=dev`） | `16368121` |
+| 2026-10-06 | 2.2c（写侧·非桌面壳的一批） | 第八轮漏掉的那批非桌面壳写点改用 Adelie 的名字：两个 `penguin` 脚本、`server` 的 `dev` 脚本、`packages/web/e2e/run.sh` 起服务那行、`Dockerfile` 的 `ENV`、`install.ps1` 生成的 Windows 启动器垫片（与 `scripts/launchers/penguin.cmd` 对齐）；**取值一个没动**，测试守卫与 CONTRIBUTING / 注释跟上 | 六包 typecheck 过 · `pnpm lint` 0 · `pnpm format:check` 干净；cli **506** · ui **1003** · server **2606** / 2 跳过 · web **2888** / 2 跳过（core 那条红来自另一条线正在改的 `README.md` 分类表，非本轮）；脚本行默认值经 `run-with-env.mjs` + 桩解析，新旧拼写逐字相同；`pnpm penguin version` 真跑；按 `web/e2e/run.sh` 那一行的变量名真起一次服务（日志自报数据根 / SQLite / 前端目录都对、标题 Adelie）；整条 e2e 42/69 —— 失败是**旧前端产物**造成的选择器错位，非本轮；`sh scripts/test-installer.sh` 通过 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
 > `packages/core/src/index.ts` 的 `VERSION`、以及未入库的 `RELEASE-v0.3.1.md`（都是 v0.3.1 的发布
 > 准备）。本轮**一个都没碰**，`git add` 只列了自己的 22 个文件；那批改动仍在工作区里等它那条线自己
 > 提交。
+
+> **2026-10-06 与另一条线的交汇（第九轮）**：开工时 `git status --short` 干净、`main` = `2a8f56e7`
+> （上一轮之后，另一条线提交了「插件市场给每个自带插件包一条条目」与「定时任务页加跨项目只读总览」
+> 两条，都没动这份台账）。本轮进行中，那条线又在同一棵树里改了 `README.md` / `README.zh.md`（加分类
+> 表与截图）、`packages/desktop/electron-builder.yml`，并留下未跟踪的 `assets/readme/*`、
+> `packages/desktop/{build,scripts,test}` 与 `scripts/capture-readme-shots.mjs` —— 本轮**一个都没
+> 碰**，`git add` 只列自己的 11 个文件。core 那条红正是那份**未提交**的 README 分类表引起的（句式
+> 标题 vs core 的 Title Case 组标题），由它那条线自己收尾。
 
 ## 服务迁移：PenguinHarness → Adelie（2026-10-05，用户定的方案 A）
 
@@ -1533,3 +1551,91 @@ web 2877 / 2 跳过，**0 失败**。另外把 `remotePenguin()` **真生成的�
 **这一条还没法勾掉**：2.2c 的写侧剩下 `packages/desktop/src/{server-process,launcher,web-dist}.ts`
 与桌面壳自己的开关，按纪律（依赖没装、3.5 才决定取哪个桌面壳）这一轮没碰；`machines/commands.ts`
 是写侧最后一个不在桌面壳一侧的写点，到此为止。
+
+## 第九轮：写侧剩下的非桌面壳位置（2026-10-06，条目 2.2c 的写侧收尾·二）
+
+第八轮把「写侧最后一个不在桌面壳一侧的写点」记在 `machines/commands.ts` 上，这一轮核对时发现
+**那句话不成立**：仓库里还有一批非桌面壳的位置在写旧名。它们一直没暴露，因为读侧两个都认
+（`ADELIE_*` 优先、旧 `PENGUIN_*` 兜底），跑起来一切正常 —— 也正因为如此，只有逐个 grep 才看得见。
+
+### 改了哪 6 处（都只换变量名，取值一个没动）
+
+| 位置 | 原来 | 现在 | 谁读它 |
+| --- | --- | --- | --- |
+| 根 `package.json` 的 `penguin` 脚本 | `PENGUIN_HOME=~/.penguin/dev-data-cli` + `PENGUIN_PROFILE=dev` | `ADELIE_HOME=…` + `ADELIE_PROFILE=dev` | core 的 `resolveRoot()` / `boundaryEnv()` |
+| `packages/cli/package.json` 的 `penguin` 脚本 | 同上 | 同上 | 同上（这两条必须一致，测试钉着） |
+| `packages/server/package.json` 的 `dev` 脚本 | `PENGUIN_HOME=~/.penguin/dev-data` + `PENGUIN_PROFILE=dev` | `ADELIE_HOME=…` + `ADELIE_PROFILE=dev` | 同上 |
+| `packages/web/e2e/run.sh` 起服务那一行 | `PENGUIN_HOME` / `PENGUIN_WEB_DB` / `PENGUIN_WEB_DIST` | 三个都换 `ADELIE_*` | server 的 `config.ts`（边界变量） |
+| `Dockerfile` 的 `ENV` 与冒烟那一行 | `PENGUIN_HOME` / `PENGUIN_WEB_DIST` | `ADELIE_HOME` / `ADELIE_WEB_DIST` | server / CLI |
+| `install.ps1` 在缺垫片时**生成**的 `bin\penguin.cmd` | 只设 `PENGUIN_WEB_DIST` / `PENGUIN_BUNDLED_SHELL` | 设 `ADELIE_*`，旧名 `PENGUIN_WEB_DIST` 仍照办 | 装出来的那份 CLI |
+
+`install.ps1` 那处值得多说一句：它和第七轮改过的 `scripts/launchers/penguin.cmd` 是**同一件东西**
+（payload 里带的垫片，只在缺文件时重新生成），第七轮只改了前者，于是两者拼写分叉了；这一轮把生成的
+那份也改成与 shipped 的逐行同一规则（新名在前、旧名兜底），不再有「装出来的启动器与包里的启动器
+行为不同」这种状态。
+
+### 没有动的（各有理由，不是漏）
+
+- 根 `package.json` 的 `desktop` 脚本仍写 `PENGUIN_HOME=~/.penguin/dev-data`：它的读者是**桌面壳**
+  （`app-identity.ts`、`main.ts` 直接读 `process.env.PENGUIN_HOME`），桌面壳的读侧**不在**
+  `core/state/boundary-env.ts` 里 —— 改成新名会让开发壳落到默认根上去。这是 2.2c 桌面壳那一半的
+  事，本机按纪律没碰。
+- 那两个**路径**（`~/.penguin/dev-data`、`~/.penguin/dev-data-cli`）：变量名换了、值没换，因为
+  `dev-data` 与桌面壳共用，两者必须一起搬（`packages/core/src/internal/ports.ts` 里写着）。
+- `PENGUIN_INSTALL_DIR` / `PENGUIN_VERSION` / `PENGUIN_ARCHIVE` / `PENGUIN_DOWNLOAD_*` /
+  `__PENGUIN_*__`：安装器与发布协议，属 4.x。
+- `packages/docs/**`、`.agents/**`、`changelog/**`、`RELEASE-v0.2.0.md`：按 2.1c / 2.2c 的口径有意
+  留着（内部参考 / 上游的开发技能 / 历史）。`packages/docs/content/configuration.md` 那张环境变量表
+  因此仍写旧名，跟「数据根默认值」一起等发布期那一轮再动。
+
+### 顺带改的四处「说明」
+
+- `packages/cli/test/dev-entry-isolation.test.ts`：那条漂移守卫原本按 `PENGUIN_HOME` 取两个 dev
+  入口的数据根，改成 `ADELIE_HOME`；**新增一条用例**把「两个 dev 入口写的是 Adelie 的拼写」钉死
+  （旧名必须不出现），桌面壳那条仍按 `PENGUIN_HOME` 断言，文件头写明为什么它是例外。
+- `scripts/run-with-env.mjs`：三处注释例子里的 `PENGUIN_HOME=/somewhere pnpm dev` → `ADELIE_HOME=…`。
+- `.github/CONTRIBUTING{,.zh}.md`：教开发者的那几处（`pnpm penguin` / `pnpm dev` / 报缺陷时的空根
+  检查）改用 `ADELIE_HOME`；**涉及桌面壳的两处保留 `PENGUIN_HOME`**，并各补一句「外壳读的是改名前的
+  拼写」，免得下一个人顺手「修正」错地方。
+- `packages/core/src/internal/ports.ts`：分配表补一句 —— 变的是**变量名**，那几条 `~/.penguin/*`
+  是**路径**，仍等与桌面壳一起搬。
+
+### 验证（都不是推测）
+
+- 门禁：六个包 typecheck 过（core / server / web / ui / cli / hmr）；`pnpm lint` 0 警告；
+  `pnpm format:check` 干净。
+- 测试：cli **506**（505 + 新增那条守卫）· ui **1003** · server **2606 / 2 跳过**（首跑 1 条红是
+  `dist/install.ps1` 副本过期 —— 老坑，重建 core + server 后转绿）· web **2888 / 2 跳过**。
+  core 是 **1358 通过 / 1 失败**，那条红**不是本轮的**：另一条线正在改 `README.md`（工作区里未提交
+  地加了一张 Category 表，写的是 `AI app development` 这种句式，而 core 的组标题是 `AI App
+  Development`），`plugins.test.ts` 的 README 表守卫因此报不一致 —— 本轮一个字节都没碰那两个文件。
+- **默认值真解析一遍**：把脚本行里的 `VAR=value` 原样抽出来交给 `run-with-env.mjs`，命令换成一个打印
+  `resolveRoot()` / `boundaryEnv("profile")` 的桩，三个入口各跑两次（新拼写 / 旧拼写）：新拼写下
+  `dev:server` → `/root/.penguin/dev-data`、两个 `penguin` → `/root/.penguin/dev-data-cli`，profile
+  都是 `dev`，**与旧拼写逐字相同**。
+- **真跑开发入口**：`pnpm penguin version`（用它自己的默认值）→ `v0.3.2-8-g2a8f56e7-dirty`，
+  且 `~/.penguin/dev-data-cli` 没有被建出来（`version` 不碰数据根）。
+- **按那一行的变量名真起一次服务**：从 `packages/web/e2e/run.sh` 里**取出**它写的那几个变量名
+  （`ADELIE_HOME` / `ADELIE_WEB_DB` / `ADELIE_WEB_DIST` / `ADELIE_SEED_ADMIN_PASSWORD`），用它们起
+  `packages/server/dist/index.js`（数据根 `/root/adelie-fork-data/r9-namecheck`，端口 7477/7478）：
+  服务端自报 `Data root:` / `SQLite:` / `Web dist:` 三行都对，根目录里落下 `web.db` / `api-token` /
+  `server.lock`，`GET /` 302 → 200 且标题 `<title>Adelie</title>`、`/api/me` 401（未登录，预期）；
+  两个临时端口用完都已释放。
+- **真跑端到端（这条不是绿的，照实说）**：`SKIP_BUILD=1 bash packages/web/e2e/run.sh` 跑了 14.2 分钟，
+  **42 passed / 27 failed**。失败全是 UI 选择器级的（`getByPlaceholder(/输入消息/) resolved to 2
+  elements`、`toBeVisible` 找不到元素），**与本轮改的那行环境变量无关**：`packages/web/dist` 是今天
+  05:00 的产物，而 13:35（`faeec636`）与 14:08（`2a8f56e7`）两条提交都改了 `packages/web/src`
+  —— 拿旧前端产物跑 Playwright 必然错位。服务端一侧从头到尾是好的：服务在 8930 起得来、mock 在 8931，
+  全程几千条 200（日志在会话 scratchpad 的 `e2e.log`）。**没顺手重建 web 产物再跑一遍**：那既不是本条
+  改动（改的只是变量名，解析结果逐字未变），又要在这棵正被另一条线使用的树里动 `packages/web/dist`，
+  而磁盘只剩 ~0.9G。
+- `sh scripts/test-installer.sh` 通过（含它对两个启动器脚本的守卫）。
+
+### 还差什么（2.2c 仍未勾掉）
+
+- 写侧的桌面壳一侧：`packages/desktop/src/{server-process,launcher,web-dist}.ts` 与其自己的开关
+  （`DESKTOP_SMOKE*` / `NO_LOGIN_SHELL_ENV` / `UPDATE_FEED_URL` / `BB_SMOKE_BUNDLE`），按纪律本机没碰，
+  等 3.5 决定桌面壳取哪个时一起改。**注意**：在这一步之前，`desktop` 脚本与桌面壳的读侧必须继续写
+  / 读旧名，不然开发壳的根会落到默认值。
+- 既有部署 `adelie-app.service`（3004，已 stop + disable）仍设旧名：读侧两条都认，改它属发布动作。
+
