@@ -148,6 +148,16 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
+  # The installer's own artwork, instead of what NSIS draws without it: the welcome and finish
+  # pages would carry NSIS's stock `${NSISDIR}/Contrib/Graphics/Wizard/nsis3-metro.bmp`, and the
+  # inner pages would have a blank header bar. Both sizes are NSIS's fixed ones — 164×314 for the
+  # sidebar, 150×57 for the header, at 24 bits per pixel — and a bitmap of any other size is
+  # ignored in silence, which is why scripts/render-installer-art.mjs draws at exactly these
+  # pixels and test/installer-art.test.ts pins the two files to them. Rendered from the brand
+  # mark, so they change only when it does. The uninstaller reuses the sidebar
+  # (uninstallerSidebar defaults to installerSidebar).
+  installerSidebar: build/nsis/installerSidebar.bmp
+  installerHeader: build/nsis/installerHeader.bmp
 
 linux:
   # Pre-rendered freedesktop icon set (scripts/render-icon.mjs): a directory of NxN.png
