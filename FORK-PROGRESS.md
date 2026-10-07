@@ -2325,10 +2325,20 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
 
 ### 验证（都实跑过）
 
-- core **1359 通过 · 5 跳过**、server **182 文件 / 2625 通过 · 4 跳过**、web **236 / 2899 · 2 跳过**
-  （含拿真目录跑的 `catalog-sync`）、docs 62、cli 506、ui 1003、ui-gallery 131，**0 失败**。
+- core **1359 通过 · 5 跳过**（64 文件 + 1 跳过）、server **182 文件 / 2625 通过 · 4 跳过**、web
+  **236 / 2899 · 2 跳过**（含拿真目录跑的 `catalog-sync`）、cli 506、docs 62、ui 1003、desktop 286、
+  ui-gallery 131，**0 失败**。
 - `pnpm lint` 0 警告 0 错误（2054 文件）、`pnpm format:check` 干净、`pnpm typecheck` 八包全过。
 - 路由那一条是**真跑依赖**得到的结论（上面那次 `AutoLLMClient` 构造），不是照着注释推的。
+
+### 落库与 CI
+
+- 提交 **`437ade9a`**（`feat(core,docs): 模型库加入智谱官方的免费档 GLM-4.7 Flash`，7 个文件、
+  176 增 9 删），已推 `origin/main`（`6f385a82..437ade9a`）。推送前 `HEAD` 与 `origin/main` 已齐平，
+  不需要 rebase。
+- CI run **`37557398424`**：**22 个作业全绿**（typecheck、style (prettier)、plugin versions、
+  npm packaging、installer-e2e、installer-windows、runtime ×3、test(core / rest / server / web-cli)、
+  test-macos ×3、test-windows ×4、ci）。
 
 ### 现网与之后
 
