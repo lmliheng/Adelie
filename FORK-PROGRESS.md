@@ -264,6 +264,25 @@
 - [ ] 5.4 **沙箱体系**（上游已进 main：Landlock 让默认 Ubuntu 可用 `234183f5`、权限菜单命名预设
       `9b170c61`、`sandbox-dsh` 在 Windows 走 pwsh `c03e58c4`、建沙箱前先建 scratchpad `cba091e3`、
       后端拆成 npm 包 `1ba104c9`）。我们有四个后端，缺的是「体系」：公司模式下一群 agent 在跑命令。
+      - **第一块已落地（2026-10-08，第十八轮，提交见该节）**：**建沙箱前先建 Session scratchpad**
+        （上游 `cba091e3`）——`workspace-write` 下服务端在每次受约束的 spawn 之前 `mkdir -p` 那个目录，
+        建不出来就 fail-closed 拒掉这条命令；`SandboxPolicy.writableRoots` 的契约文档一并跟上。
+        选它打头，是因为这五条里只有它**是一条独立的真 bug**（scratchpad 懒创建，缺失期间该 Session 的
+        每条命令与每个 hook 都被 bwrap 的 `Can't find source path` 挡下，删掉它同理），改动小、不依赖
+        其余四条、且本机就能真跑出来。
+      - **还差什么**（四条各自成串，按上游那串的顺序）：
+        1. `234183f5`（Landlock 让默认 Ubuntu 可用）是**一组提交的顶端**：路由改成「谁实现得多谁服务」
+           （`pick()`）、新增 `closed-temp` 维度、插件契约多出 `mechanism` / `limits`、沙箱卡片改成
+           `Enforced here: …` 加一张 More info —— 它自己的说明里就写着依赖本系列更早的
+           「DSH 自带依赖」那几笔。要拿它得连前置一起算，约 1.5k 行、跨 core/server/web/plugins
+           四包，一轮做不完。
+        2. `9b170c61`（权限菜单命名预设）**它自己一次就 6068 增 / 924 删**（设置页的插件配置表整片重写，
+           含 `plugin-config-table.tsx` 436 行），与 web 的文案面重叠，得单独一轮。
+        3. `c03e58c4`（`sandbox-dsh` 在 Windows 走 pwsh、并在拒 bash 时点名它要哪个 shell）：
+           本机没有 Windows 可验，纪律也不许为它装依赖 —— 要么等 3.5 定了桌面壳、要么在 Windows
+           那台真机上验。
+        4. `1ba104c9`（后端拆成 `@penguinharness/sandbox-*` 并发布到 npm）：落点正是 4.1 的 npm scope
+           与发布链路，按纪律留给 4.x 一起做。
 - [ ] 5.5 **长会话与 Trace 的加载性能**（`b8862716` `#958`：窗口化消息 + Trace 行索引 + Trace 图片）。
 - [ ] 5.6 **用量成本「记账时就定价」**（`feat/usage-cost-at-record-time`）——公司审计里 `unpriced = false`
       那个口径就靠它。
@@ -815,6 +834,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-07 | 3.3 | **用量与成本页判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已覆盖、直接删**」）：旧 Adelie 那套（`GET /api/usage` + 成本中心：三卡 + 按模型/按会话两张表 + 一天折线 + 每轮金额）在基座里是**一整套** —— 成本中心 `/api/projects/:p/usage`（四个维度、粒度到分/时/周/月、分页错误表与 owner 清空、模型终身用量）、会话头部的实时与累计成本、上下文环、公司模式的工单/预算财务页；**「只落 token、成本查询时现算」这条原则两家一致**（基座的 `usage_records` 同样不落成本，`server/test/usage.test.ts:76` 的用例名就是 "only Tokens persisted, never cost"）。四处有意保留的差异（成本中心里的按会话明细被图取代、未计价只有布尔 `hasUncosted`、旧的是身份级而基座是项目级、没有 `sessionsScanned` / `unreadableSessions` 这两个扫盘字段）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无测试文件（退出 0），**0 失败**、整条命令 `EXIT=0`；真浏览器看了一次这一页 —— 画廊开发服务器（7381，我自己起的、看完已停）+ Playwright 打开 `app.html?route=/usage&lang=zh`：三卡 + 四张图 + 异常面板 + 三段筛选都在、**console 0 error**，截图 `usage-page.png` 在会话 scratchpad | `d7f2d1ac` |
 | 2026-10-07 | 用户点单 | **左下角账户菜单新增「用户反馈」入口**：一行 + 一个两栏对话框（标题必填 ≤200、详细说明 ≤20000），提交由服务端带口令转进 3003 需求箱的 `POST /api/requirements`；新增 `GET\|POST /api/feedback` 路由与 `ADELIE_FEEDBACK_URL` / `ADELIE_FEEDBACK_KEY` 两个变量，浏览器永远拿不到地址与口令；未配置后端时那一行整条不画；画廊 mock 与中英 changelog 跟上；server 11 条 + web 8 条新用例 | 四道门禁全绿（`pnpm -r test` **8961 通过 / 16 跳过 / 0 失败**）；CI run `37622306652` **22 作业全绿**；现网 7364 源码构建 → 离线 bundle → `install.sh` 原地更新，重启后 `GET /api/feedback` 回 `{ok:true,configured:true}`，一次真实提交走完全程（需求箱 `req-17`，随即归档、在办仍是 2 条），console/日志无 warning | `4e79c473` |
 | 2026-10-07 | 3.4 | **用户与两档角色、会话归属判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：账号（`users` + 管理员用户后端 + 无自助注册）、两档角色（`is_admin`，用户管理页与账户栏都有徽标、每一片管理员面都按它拦 403 `admin_required`）、会话归属（`projects.owner_user_id` + `project_members`，归属轴线是 Project 不是人；看不见的一律 404 而不是 403）逐条对着基座核过；**有意保留的五处差异**（只有一个管理员、角色不可改；没有「回环免凭证即管理员」那条公理，改成本机 API token + 认领链接；没有 `scope=all` 全站会话面；工作区改由每会话自选；口令下限 8 位 + 语义 id 不可改）与理由写进条目。**本轮没有改代码** | 六包 `typecheck` 全过（`ifaces.json unchanged`）· core **1359**/5 跳过 · ui **1003** · server **2636**/4 跳过（183 文件）· cli **506** · web **2907**/2 跳过 · hmr 无测试文件，**0 失败** · 服务端按当前源码重建后在 7411 用一次性数据根起真服务，`verify-34.sh` 21 条真请求逐条核对（含改角色 404、管理员跨项目 404、成员加/移即生效、403/409 各码） · 真浏览器看用户管理页：两行角色徽标、**没有任何改角色的控件**、普通用户看不到这一节，console 0 error | `7d4bc33f` |
+| 2026-10-08 | 5.4（第一块） | **建沙箱前先建 Session scratchpad**（上游 `cba091e3` 移植）：`workspace-write` 下服务端在每次受约束的 spawn 之前 `mkdir -p` 那个目录、建不出来就 fail-closed 拒掉这条命令（点名 scratchpad 与底层 errno）；可写根的绑定收在 `workspace-write` 之内（三个原生后端本来就只在那一档用它）；`SandboxPolicy.writableRoots` 的契约文档跟上；server 3 条 + bwrap 插件 1 条新用例；中英 changelog 一对。**为什么是这一块**：五条上游提交里只有它是一条独立的真 bug、不依赖其余四条 | 六包 `typecheck` 全过 · `pnpm lint` 0 警告、`pnpm format:check` 干净 · core **1359**/5 跳过 · cli **506** · ui **1003** · server **2639**/4 跳过（183 文件）· web **2907**/2 跳过，**0 失败** · bwrap 的 live 套件**真跑**（插件自带 `vendor/`，本机无系统 bwrap 也照跑）：7/7 含新用例 · **反证**：只回退 `service.ts` 再跑，新用例红在 `bwrap: Can't find source path …session-1: No such file or directory`，恢复即绿 · 服务端按源码重建后在 7481 起真服务（`ADELIE_HOME=/root/adelie-fork-data`）：日志三行对新根、`GET /` 200 且 `<title>Adelie</title>`，随后停掉 | `8b257785` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2863,4 +2883,102 @@ journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 
   所以本轮的实际验证对象没有漏）。
 - **留了一地的取证现场**：四个一次性数据根 `/root/adelie-fork-data/r17-34{,b,c,d}` 各约 2M，留着没删
   （它们是这一轮的取证现场）；7411 已释放，3003 / 3004 / 4000 / 7364 / 7369 全程没碰。
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
+
+## 第十八轮：建沙箱前先建 Session scratchpad（2026-10-08，条目 5.4 的第一块）
+
+一次无人值守的自主推进。开工时 `git status --short` 干净、`main` = `origin/main` = `0ab41f4a`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+**选活**：表上最靠前的未勾选条目仍是 **2.2c**，而它「还差什么」那几条（写侧只剩 `packages/desktop/**`、
+既有部署单元 `adelie-app.service` 的变量名、桌面壳自己的开关，加上 2.5 口径下有意留到发布期的
+`packages/docs/**` 与 changelog）一条也没变；下一条 **3.5 桌面壳**本轮纪律明写「不要碰 desktop / electron」，
+**3.6** 要模型 key（新凭证）—— 三条都停在原地。所以按前几轮的先例往下走，做 **5.4 沙箱体系**。
+
+5.4 括注里是**五条上游提交**，这一轮只落地了其中一条：**建沙箱前先建 Session scratchpad**
+（上游 `cba091e3`，`#976`）。挑它的理由：这五条里只有它是一条**独立的真 bug**，不依赖同系列的其他提交，
+改动面小，而且在本机就能真跑出「修好之前会失败」的证据。其余四条为什么这一轮不做、各自还差什么，
+写在条目 5.4 的「还差什么」一栏（Landlock 那条是一组提交的顶端、约 1.5k 行跨四包；权限菜单命名预设
+它自己一次就是 6068 增 / 924 删；`sandbox-dsh` 的 Windows 分支本机没有 Windows 可验；后端拆 npm 包
+落在 4.1 的发布链路上）。
+
+### 这条 bug 是什么（不是推测，是跑出来的）
+
+`workspace-write` 下，Session 的 scratchpad 以可写方式绑定进沙盒，而它是**懒创建**的（第一次有东西
+写入它时才存在）。在它不存在的那段时间里，bubblewrap 会因为 `--bind` 的源路径不存在而**拒绝启动**，
+于是这个 Session 的每一条命令、每一个 hook 都起不来。触发它的两条路都很平常：新建的 Session 里
+第一条命令、以及 scratchpad 被某条命令 / Agent / 用户删掉之后的每一条命令。删掉它同理（本轮的反证
+跑的就是后半条）。
+
+### 改了什么（4 个文件 + 一对 changelog）
+
+- `packages/server/src/sandbox/service.ts`：`confinerFor` 里，受约束的 spawn 之前如果
+  `opts.scratchpadDir` 存在就 `mkdir -p` 它（已存在时是 no-op，内容不动）；**建不出来就抛错、
+  fail-closed**，错误里点名 scratchpad 与底层 errno —— 不把根悄悄丢掉、让命令在一个它被承诺可写的
+  目录上跑。可写根的绑定**收在 `workspace-write` 之内**：其他模式不绑它，所以也不建它。
+- `packages/core/src/plugin/sandbox.ts`：`SandboxPolicy.writableRoots` 的契约写进文档 —— 后端收到
+  策略时每个可写根在宿主上都已经存在，**后端既不创建它、也不跳过缺失的根**；`workspaceRoot` 不在
+  这条契约里（缺 Workspace 是另一个错）。
+- 用例：`packages/server/test/sandbox.test.ts` 三条（缺失即建且后端真的看得见 / 建不出来时
+  fail-closed 且根本不落到后端 / `workspace-write` 之外不绑不建）＋ `plugins/sandbox-bwrap/test/live.test.ts`
+  一条（经**真服务**与**真 bwrap** 连写两次，中间把 scratchpad 整个删掉）。
+- `changelog/unreleased/2026-10-08-sandbox-missing-scratchpad{,.zh}.md`（5.7 的口径，中英各一份）。
+
+### 为什么「收在 workspace-write 之内」不改变任何行为
+
+三个原生后端本来就把 `writableRoots` 的读取放在 `mode === "workspace-write"` 之内，DSH 适配器则完全
+不读这个字段（这一轮逐个核过）：`plugins/sandbox-bwrap/src/index.ts:131-140`（`policy.mode ===
+"workspace-write" ? [workspaceRoot, ...writableRoots] : []`）、`plugins/sandbox-seatbelt/src/index.ts:117-127`
+（同一条件）、`plugins/sandbox-wsl/src/profile.ts:132-140`（`if (policy.mode === "workspace-write")` 才
+逐个绑定）；`plugins/sandbox-dsh` 全仓 grep 无 `writableRoots`。所以「只在这一档给字段」与「每一档都给
+但没人读」对后端是同一件事，换来的是另外两档下不再凭空造出那个目录。
+
+### 移植怎么做的（照上游的设计，不是合分支）
+
+按上游 `cba091e3` 的 diff 手工落到本仓：`packages/core/src/plugin/sandbox.ts` 的 blob 与上游改动前的
+`618d8b93` **逐字节相同**，`packages/server/src/sandbox/service.ts` 只差包 scope（上游 `@prismshadow/`
+= 我们的 `@lmliheng/`），所以两处源码都是照原样落下来的；测试做了三处本地化 —— 包名换成
+`@lmliheng/`、临时目录前缀换成 `adelie-sandbox-svc-`、本仓的 `live.test.ts` 没有上游那份
+`scripts/must-run.mjs` 门闸（本仓这一版是 `describe.skipIf(!usable)`），所以新用例直接接在同一个
+`skipIf` 之下。
+
+### 验证（都不是推测）
+
+- **六包 `typecheck` 全过**（`gen:ifaces` 报 `src/ifaces.json unchanged`，187 接口 / 537 类型）；
+  `pnpm lint` **0 警告 0 错误**（2058 文件）；`pnpm format:check` 干净。
+- **测试**：core **1359 通过 / 5 跳过**（64 文件）· cli **506**（34）· ui **1003**（127）·
+  server **2639 通过 / 4 跳过**（183 文件，比上一轮 +3，正是新加的三条）· web **2907 / 2 跳过**（237）
+  —— **0 失败**。
+- **真 bwrap 的 live 套件真的跑了，不是跳过**：`plugins/sandbox-bwrap` 自带 `vendor/`，本机没有系统
+  `bwrap` 也照跑 —— `7 passed (7)`，含新加的
+  「a command writes to a scratchpad not created yet, or deleted mid-Session」。所以下面这条不是只靠假后端
+  得出的。
+- **反证（这一轮最关键的一条）**：把 `packages/server/src/sandbox/service.ts` 单独退回改动前的版本
+  （先把新版本拷到会话 scratchpad，再 `git checkout -- <file>`），只跑新加的那条 live 用例 ——
+  **红了**，报的正是被测的机理：`bwrap: Can't find source path
+  /root/penguin-bwrap-scratchpad-…/session-1: No such file or directory`；把新版本拷回去，同一套
+  再用例转绿。
+- **服务端真起了一次**（这一条动了服务端加载路径，所以照旧起一次看）：按当前源码重建
+  `packages/server/dist` 后，
+  `ADELIE_HOME=/root/adelie-fork-data ADELIE_PROFILE=dev PORT=7481 node --disable-warning=ExperimentalWarning dist/index.js`
+  —— 日志三行对上新根（`Data root: /root/adelie-fork-data`、`web.db`、Web dist 指向仓库里的
+  `packages/web/dist`），`GET /` 返 200 且 `<title>Adelie</title>`，随后把进程停掉、7481 已释放。
+- **没有改界面，所以没有开浏览器**：本轮只动服务端与插件契约，`packages/web` / `packages/ui` 一个文件
+  没碰（web 的 2907 条用例是照常跑的门禁，不是新证据）。
+
+### 没做 / 还差什么
+
+- **5.4 仍未勾掉**：这一轮只落了五条中的第一条，其余四条与各自的理由写在条目 5.4 里。
+- **桌面壳那一半（2.2c 的尾巴）**、**3.5 / 3.6** 与前几轮一样停在原地，原因同前（纪律不许碰 desktop、
+  3.6 要模型 key）。
+- 中间物：会话 scratchpad 里有 `service.ts.fixed`、`smoke-7481.log`；`/root/adelie-fork-data` 是这几轮
+  一直在用的取证数据根（这一轮只被那次起服务读过/建过 `web.db` 与一份新的认领链接）。
+- `legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+  7364 / 7369 全程没碰；没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交** `8b257785`（4 个源码/测试文件 + 一对 changelog），台账这一笔另起一笔（表格里引用的
+  就是 `8b257785`）。
+- **推送**：`git push origin main`。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
