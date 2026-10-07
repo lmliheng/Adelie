@@ -2342,6 +2342,62 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
 
 ### 现网与之后
 
-7364 那份跑的是 v0.3.1 的已装构建，**没有**这一条；模型页的 Z.AI 分组不允许手工加条目
+当时 7364 那份跑的是 **v0.3.3** 的已装构建（这里原先写的 v0.3.1 是笔误），**没有**这一条；模型页的 Z.AI 分组不允许手工加条目
 （`isAddableGroup` 只认 custom / vLLM / 自定义分组），所以要它出现在界面上得起一次新构建，之后用模型页的
 **同步预置**把它带进既有 Project。本轮按纪律没有碰那份安装。
+
+## 把这条模型滚进现网：源码原地更新，不发版（2026-10-07，用户点单「本服务更新一下」）
+
+### 为什么不是发版
+
+用户 2026-10-05 定的口径：**「更新应用」= commit，攒够阈值才升版本**。`v0.3.3`（今天 03:25 才上的现网）
+之后只有 **1 个功能性提交**（就是上面这条模型，其余 8 个是台账/文档），远不到发版线 —— 所以走的是
+「把当前源码构建后原地滚进 `/root/.adelie`」，版本号仍是 0.3.3。
+
+### 怎么构建的
+
+在一棵干净树（`/tmp/rel-live`，detached 检出 `8299fe3e`）里做，主工作树随时有别的巡台会话在写：
+
+1. `pnpm install --frozen-lockfile` → 按发布工作流的手法把 `BUILD_DATE=2026-10-07`、
+   `BUILD_COMMIT=8299fe3e82aa4bc13514942d48620a94900636b9` 盖进 `packages/core/src/index.ts`。
+   **必须盖 BUILD_DATE**：`resolveBuildInfo()` 拿它区分「release 构建」与「source 构建」（`channel`），
+   留空的话现网会自称 source 构建。
+2. 构建 `penguin-hmr` / `penguin-core` / `penguin-server` / `penguin-cli` / `penguin-web`。
+   第一次漏了 `penguin-hmr`（server 依赖它），补上后过。
+3. `pnpm --filter @lmliheng/penguin-cli --prod deploy out/penguin/lib`、`packages/web/dist → web/`、
+   `scripts/launchers/penguin → bin/penguin`、`build-plugins.mjs → lib/plugins`；`node/` 沿用现装那份
+   （同版本 v24.18.0，不必重下 50MB）。
+
+### 怎么装的（走正规安装路径，不是手工 rsync）
+
+打成与 `scripts/package-release-bundles.sh` 同形的**离线 bundle**（`install.sh` + `payload.tar.gz` +
+`.sha256`），再 `PENGUIN_INSTALL_DIR=/root/.adelie sh install.sh --no-modify-path`。install.sh 自己会
+校验和 → 断言候选版本能跑 → 同盘替换 → 失败自动回滚，`bin/lib/web/node` 四个目录，数据根从不参与替换。
+
+输出：`Payload checksum OK.` / `Adelie v0.3.3 installed to /root/.adelie`。
+
+### 重启怎么做的（自己不能重启自己）
+
+这一轮的会话就跑在 `adelie-server.service` 的 cgroup 里，直接 `systemctl restart` 会把会话连同汇报一起
+掐掉。所以用 `systemd-run`（瞬时单元 `adelie-live-restart`，自己的 cgroup）跑一个脚本：先等 300s 让本轮
+写完，再重启，然后自己核验并写日志。这是 v0.3.3 那次用过的同一手法。
+
+### 核验（实跑）
+
+- `is-active` = active、7364 在听、`GET /` 200（title `Adelie`）、`GET /healthz` 200；MainPID 从
+  1901705 换成 1980708（启动于 09:55:26）。`NRestarts` = 0，`journalctl -p warning` 起服务后**无条目**。
+- 装好的 lib 里 zhipu 组 6 行、含 `glm-4.7-flash`（整册 179 行）；`penguin --version` = `v0.3.3`；
+  `BUILD_DATE = "2026-10-07"`、`BUILD_COMMIT = "8299fe3e…"`。
+- 数据根 `/root/.adelie/data`（17 个顶层条目）与 `/root/.penguin/data → /root/.adelie/data` 软链未动；
+  没有 `.old.*` / `.staging.*` 残留。
+
+### 两个坑（下次别再踩）
+
+1. **重启会重新签发 `/root/.adelie/data/api-token`**。核验脚本在重启前读的令牌，重启后打接口是
+   **401**（64 字节错误体 `{"error":{"code":"unauthorized",...}}`），当时差点误判成「模型没进现网」。
+   核验脚本要在重启**之后**再读令牌。
+2. **接口给的是项目已存的行，不是整册目录**。`GET /api/projects/:p/models` 走
+   `projectConfigService.getModels()`，返回 `default_project` 里存下的 129 行；内置目录有 179 行，
+   `default_project` 缺 **55 条预置**（含 `glm-4.7-flash`）。新预置要靠模型页的**同步预置**带进既有
+   Project，页面据此显示「有新的预置」提示（前端产物里已有这条 id）。所以「服务更新好了」≠「页面上
+   立刻看得见这一条」——这一步是用户在自己项目里的一次点击，本轮没替用户动他的项目配置。
