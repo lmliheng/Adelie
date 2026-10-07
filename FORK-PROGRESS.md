@@ -275,15 +275,28 @@
            （`pick()`）、新增 `closed-temp` 维度、插件契约多出 `mechanism` / `limits`、沙箱卡片改成
            `Enforced here: …` 加一张 More info —— 它自己的说明里就写着依赖本系列更早的
            「DSH 自带依赖」那几笔。要拿它得连前置一起算，约 1.5k 行、跨 core/server/web/plugins
-           四包，一轮做不完。
+           四包，一轮做不完。**第十九轮实测**：`git apply -3` 落它，`packages/{server,web,plugins}`
+           多处冲突（它的设置面与 `9b170c61` 是同一串）。
         2. `9b170c61`（权限菜单命名预设）**它自己一次就 6068 增 / 924 删**（设置页的插件配置表整片重写，
-           含 `plugin-config-table.tsx` 436 行），与 web 的文案面重叠，得单独一轮。
+           含 `plugin-config-table.tsx` 436 行），与 web 的文案面重叠，得单独一轮。**第十九轮实测出了一条
+           更硬的拦路石**：这个补丁要改 `packages/web/src/features/chat/builtin-dock-panels.tsx` 与
+           `chat-dock-context.tsx`，而**这两个文件我们的树里根本没有**（它们由上游那套「dock 面板」重构
+           添加，`grep -rl useChatDock packages/web/src` 为空），`9b170c61` 只是把里面的 props 从
+           `onChangeApprovalMode` / `onChangeSandbox` 并成 `onChangePermission`。所以它不是「一轮的量」，
+           而是「先决定要不要把上游的 dock 面板重构也搬过来」——那件事的落点应当先写进这张表再动手。
         3. `c03e58c4`（`sandbox-dsh` 在 Windows 走 pwsh、并在拒 bash 时点名它要哪个 shell）：
            本机没有 Windows 可验，纪律也不许为它装依赖 —— 要么等 3.5 定了桌面壳、要么在 Windows
-           那台真机上验。
+           那台真机上验。补丁本身能落（`git apply -3` 只有 core 的导出与插件本体两处冲突），
+           但它自己说明里写的那条 live 证据要 `windows-latest`。
         4. `1ba104c9`（后端拆成 `@penguinharness/sandbox-*` 并发布到 npm）：落点正是 4.1 的 npm scope
            与发布链路，按纪律留给 4.x 一起做。
-- [ ] 5.5 **长会话与 Trace 的加载性能**（`b8862716` `#958`：窗口化消息 + Trace 行索引 + Trace 图片）。
+- [x] 5.5 **长会话与 Trace 的加载性能**（`b8862716` `#958`：窗口化消息 + Trace 行索引 + Trace 图片）——
+      **2026-10-08 第十九轮落地**：照上游的改动移植（不是合分支），39 个文件 / +2572 −646，
+      含新服务端 `trace-line-index.ts`（按文件的行索引）、`trace-images.ts`（图片按引用下发）与
+      新的 `GET /api/sessions/:id/trace-image` 路由；web 的 Trace 文件视图改成**按轮次读取**
+      （`trace-rounds.ts`，读文件先取分析、只读展开轮次的事件），删掉被取代的
+      `trace-events-loader.ts` 与它的用例；`lazy` 缩略图落到 ui 的两处卡片。
+      细节与验证见「第十九轮」一节。
 - [ ] 5.6 **用量成本「记账时就定价」**（`feat/usage-cost-at-record-time`）——公司审计里 `unpriced = false`
       那个口径就靠它。
 - [x] **5.7 一个功能提交带一条 `changelog/unreleased/<日期>-<slug>.md`（中英双份）** ——本轮照做；
@@ -835,6 +848,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-07 | 用户点单 | **左下角账户菜单新增「用户反馈」入口**：一行 + 一个两栏对话框（标题必填 ≤200、详细说明 ≤20000），提交由服务端带口令转进 3003 需求箱的 `POST /api/requirements`；新增 `GET\|POST /api/feedback` 路由与 `ADELIE_FEEDBACK_URL` / `ADELIE_FEEDBACK_KEY` 两个变量，浏览器永远拿不到地址与口令；未配置后端时那一行整条不画；画廊 mock 与中英 changelog 跟上；server 11 条 + web 8 条新用例 | 四道门禁全绿（`pnpm -r test` **8961 通过 / 16 跳过 / 0 失败**）；CI run `37622306652` **22 作业全绿**；现网 7364 源码构建 → 离线 bundle → `install.sh` 原地更新，重启后 `GET /api/feedback` 回 `{ok:true,configured:true}`，一次真实提交走完全程（需求箱 `req-17`，随即归档、在办仍是 2 条），console/日志无 warning | `4e79c473` |
 | 2026-10-07 | 3.4 | **用户与两档角色、会话归属判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：账号（`users` + 管理员用户后端 + 无自助注册）、两档角色（`is_admin`，用户管理页与账户栏都有徽标、每一片管理员面都按它拦 403 `admin_required`）、会话归属（`projects.owner_user_id` + `project_members`，归属轴线是 Project 不是人；看不见的一律 404 而不是 403）逐条对着基座核过；**有意保留的五处差异**（只有一个管理员、角色不可改；没有「回环免凭证即管理员」那条公理，改成本机 API token + 认领链接；没有 `scope=all` 全站会话面；工作区改由每会话自选；口令下限 8 位 + 语义 id 不可改）与理由写进条目。**本轮没有改代码** | 六包 `typecheck` 全过（`ifaces.json unchanged`）· core **1359**/5 跳过 · ui **1003** · server **2636**/4 跳过（183 文件）· cli **506** · web **2907**/2 跳过 · hmr 无测试文件，**0 失败** · 服务端按当前源码重建后在 7411 用一次性数据根起真服务，`verify-34.sh` 21 条真请求逐条核对（含改角色 404、管理员跨项目 404、成员加/移即生效、403/409 各码） · 真浏览器看用户管理页：两行角色徽标、**没有任何改角色的控件**、普通用户看不到这一节，console 0 error | `7d4bc33f` |
 | 2026-10-08 | 5.4（第一块） | **建沙箱前先建 Session scratchpad**（上游 `cba091e3` 移植）：`workspace-write` 下服务端在每次受约束的 spawn 之前 `mkdir -p` 那个目录、建不出来就 fail-closed 拒掉这条命令（点名 scratchpad 与底层 errno）；可写根的绑定收在 `workspace-write` 之内（三个原生后端本来就只在那一档用它）；`SandboxPolicy.writableRoots` 的契约文档跟上；server 3 条 + bwrap 插件 1 条新用例；中英 changelog 一对。**为什么是这一块**：五条上游提交里只有它是一条独立的真 bug、不依赖其余四条 | 六包 `typecheck` 全过 · `pnpm lint` 0 警告、`pnpm format:check` 干净 · core **1359**/5 跳过 · cli **506** · ui **1003** · server **2639**/4 跳过（183 文件）· web **2907**/2 跳过，**0 失败** · bwrap 的 live 套件**真跑**（插件自带 `vendor/`，本机无系统 bwrap 也照跑）：7/7 含新用例 · **反证**：只回退 `service.ts` 再跑，新用例红在 `bwrap: Can't find source path …session-1: No such file or directory`，恢复即绿 · 服务端按源码重建后在 7481 起真服务（`ADELIE_HOME=/root/adelie-fork-data`）：日志三行对新根、`GET /` 200 且 `<title>Adelie</title>`，随后停掉 | `8b257785` |
+| 2026-10-08 | 5.5 | **长会话与 Trace 的加载性能**（上游 `b8862716` `#958` 移植）：服务端新增按 Trace 文件的行索引（`trace-line-index.ts`，事件分页不再整文件解析）与图片按引用服务（`trace-images.ts` + `GET /api/sessions/:id/trace-image`），分窗历史页另加 4 MiB 字节预算收口；web 的 Trace 文件视图改成按轮次读取（新 `trace-rounds.ts`，删掉被取代的 `trace-events-loader.ts` 及其用例），上下文环改读分析新增的 `modelContextWindow`；ui 的消息 / 工具卡片缩略图加 `lazy`；中英 changelog 一对。**为什么是这一条**：5.4 剩下四块本轮实测各自压在上游前置上（见该条目），故按台账顺序往下做 | 六包 `typecheck` 全过（187 接口 / 537 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · server **2672**/4 跳过（185 文件，+33）· cli **506** · web **2938**/2 跳过（239 文件，+31）· hmr 无测试文件，`EXIT=0` · 解完冲突后与上游 `trace-file-view.tsx` 逐字比对只差三处 scope 名 · 真服务（7492、`/root/adelie-fork-data`）里用产品自己的导入接口装进一份合成 Trace，真浏览器打开 `/chat/<sid>`：三轮 + 时间线 + 全局统计都渲染，三张图全部由 `/trace-image?…` 以 **200** 下发且 `naturalWidth` 与生成图一致，**console 0 error** | `819c31c1` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2987,4 +3001,87 @@ journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 
   its file tools`（`AssertionError: expected {} to match object { ok: true, … }`，重跑即绿；2026-10-05
   那条记录里 Linux / Windows 两侧都是绿的，同一条）。**与这一轮无关**：那个作业自身也是
   `1 failed | 182 passed (183)` —— 本轮动的 `test/sandbox.test.ts` 在那 182 条里，是绿的。
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
+
+## 第十九轮：长会话与 Trace 的加载性能（2026-10-08，条目 5.5）
+
+一次无人值守的自主推进。开工时 `git status --short` 干净、`main` = `origin/main` = `6959de3d`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+**选活**：2.2c / 3.5 / 3.6 仍是那三条停住的（写侧只剩桌面壳、桌面壳取哪个要用户定、3.6 要模型 key），
+4.1–4.3 与 2.5 按纪律不动。5.4 剩下的四块这一轮**用实测把口径收紧了**（见该条目「还差什么」）：
+`234183f5` 落下来在多包冲突、`9b170c61` 压在我们的树里不存在的上游 dock 面板重构上、
+`c03e58c4` 的 live 证据要 `windows-latest`、`1ba104c9` 属 4.x —— 所以往下做 **5.5**：
+上游 `b8862716` `#958`「长对话与 Trace 文件打开不再卡顿」。它在上游 **main** 上（不是分支）、
+自带成套用例、不引新依赖、本机可验。
+
+### 改了什么（39 个文件 / +2576 −646，5.7 的中英 changelog 一对在内）
+
+- **服务端**：新 `services/trace-line-index.ts`（每个 Trace 文件一份**行索引**：记录字节偏移，
+  最多缓存 32 个文件，文件增长时增量扩展；事件分页据此一次范围读取，不再每页解析整个文件）；
+  新 `services/trace-images.ts` + `GET /api/sessions/:sessionId/trace-image?file=&ordinal=[&i=]`
+  （从 Trace 记录里解出 PNG/JPEG/GIF/WebP，不可变、私有缓存、按项目权限校验）；
+  分窗历史页（`before` / `tailLimit` 的那条读取）把内联 `data:` URL 换成按引用下发，
+  并新增 4 MiB 字节预算收口（一页至少一个 Task、提前收口也带 `before`）；
+  `api/types.ts` 的契约文档、`mechanisms/traces.ts`、`http/validate.ts` 跟上。
+- **web**：Trace 文件视图改成**按轮次读取** —— 打开文件先取分析（每轮的数字与消息下标范围），
+  只读最新一轮的事件、其余轮次点开才读（新 `features/traces/trace-rounds.ts`）；
+  被它取代的 `features/traces/trace-events-loader.ts` 与 `test/trace-events-loader.test.ts` **删掉**；
+  上下文环改读分析新增的 `modelContextWindow`；对话侧的历史窗口与 `lazy` 图片跟上
+  （`lib/omni/stream-{model,controller}.ts`、`lib/session-machines.ts`、`features/chat/*`）。
+- **ui**：`ZoomableImage` / 消息与工具卡片加 `lazy`（缩略图接近视口才取，`picture` 那张不预取）。
+- **docs / 画廊 / changelog**：`docs/content/{chat,server-api}.{en,zh}.md` 与画廊 mock（分析回传
+  `modelContextWindow`）跟上；`changelog/unreleased/2026-10-03-load-performance{,.zh}.md`。
+
+### 移植怎么做的（照上游改动落，不是合分支）
+
+`git apply -3 --exclude=…` 把 `b8862716` 的补丁落到本仓（两个**被删除**的文件整片补丁进不去，
+先排除、再按上游 `git rm`；`git apply` 是原子的，一处失败就整片回滚 —— 第一次就是这么被退回来的）。
+三处冲突逐一解：
+
+- `server/services/trace-service.ts`：只是 import 区（取上游的两条新 import，名字换成我们的 scope）。
+- `ui/.../tool-call-card.tsx`：**我们这一版比上游旧**（上游已把它改成 `DisclosureRow`，我们还在
+  内联布局），所以按语义落上游那 3 行 —— 给缩略图加 `lazy`、更新 props 注释，布局一个没动。
+- `web/features/traces/trace-file-view.tsx`：import 区（`useLayoutEffect` / `RefObject`）取上游版。
+  解完与上游最终版**逐字比对：849 行 / 849 行，只差三处 import 的 scope 名**。
+
+新增文件里 12 处 `@prismshadow/penguin-*` 改成本仓的 `@lmliheng/penguin-*`；本轮新增行里没有
+`PenguinHarness` / `PENGUIN_*` 之类需要再本地化的命名（扫过）。`prettier` 说
+`trace-images.ts` 不合格式，按仓库格式改掉。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` 全过（`gen:ifaces` 报 187 接口 / 537 类型）；`pnpm lint` **0 警告 0 错误**（2064 文件）；
+  `pnpm format:check` 干净。
+- 六包 test（改动定稿后重跑，`EXIT=0`）：core **1359 通过 / 5 跳过**（64 文件）· ui **1003**（127）·
+  server **2672 / 4 跳过**（185 文件，比上一轮 +33，正是新加的行索引 / 图片 / 分窗用例）·
+  cli **506**（34）· web **2938 / 2 跳过**（239 文件，+31）· hmr 无测试文件 —— **0 失败**。
+- **界面真看了一眼**（这一条改了界面，所以照纪律起真服务 + 真浏览器）：按当前源码重建
+  `packages/{ui,server,web}/dist` 后，在 **7492** 用一次性数据根 `ADELIE_HOME=/root/adelie-fork-data`
+  起服务，用服务端自己打印的认领链接登录（这个根上还没有管理员口令），再用**产品自己的**
+  `POST /api/projects/default_project/agents/default_agent/traces/import` 导入一份合成的 Trace
+  （3 轮、一条带两张图的工具输出、一条失败的 `exec_command`），然后打开 `/chat/<sid>`：
+  - 三个轮次、时间线、图例、全局统计（轮次 3 / 工具调用 2 / 输入 19.8k / 输出 2.8k / 成本 ¥0.0248 /
+    输出 TPS 93.3）都渲染出来；
+  - **图片按引用真的跑通了**：页面上三张图（用户那张 `ordinal=2` 与工具输出的 `ordinal=6&i=0` /
+    `i=1`）的 `src` 全是 `/api/sessions/<sid>/trace-image?…`，**三个响应都是 200**，
+    `naturalWidth` 320 / 320 / 120 与生成的两张 PNG 一致（不是破图）；
+  - 对话里的工具卡片展开后那两张缩略图（本轮的 `lazy` 改动）与 Trace 面板都取到了同一批引用图；
+  - **console 0 error / 0 pageerror / 0 requestfailed**；截图四张在会话 scratchpad
+    （`trace-view.png`、`trace-dock-expanded.png`、`transcript-tool-images.png`、`trace-round1-images.png`）。
+  - 服务用完已停，7492 已释放；3003 / 3004 / 4000 / 7364 / 7369 全程没碰。
+
+### 没做 / 还差什么
+
+- 5.6（记账时定价）还没动；`feat/usage-cost-at-record-time` 这条**分支在本机已经没有引用**
+  （`git for-each-ref | grep -i cost` 为空，`/root/penguin-harness` 这个 upstream 路径也已不存在 ——
+  上游提交对象还在本仓里，要拿分支得先想清楚从哪 fetch）。
+- 5.4 的另外三块与 2.2c / 3.5 / 3.6 照旧停在原地，理由见各自条目。
+- 中间物：会话 scratchpad 里有合成 trace、生成脚本与四张截图；`/root/adelie-fork-data` 是这几轮一直在用的
+  取证数据根（这一轮多了一个导入的 Session 与 `bin/penguin`、`web.db`，都是它自己建的）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总邮件；`legacy/main` 与 `/root/Adelie` 工作区全程没碰。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交**见「已完成的轮次」那一行；台账这一笔另起一笔。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
