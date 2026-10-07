@@ -2671,6 +2671,13 @@ process.env.CLIENT_TYPE || options.model`），写成 `client_type` 会被忽略
   两个新文件都在里面，`✓ test/feedback.test.ts (11 tests)` / `✓ test/feedback-dialog.test.ts (8 tests)`。
 - 首跑 `format:check` 报三个服务端文件、`required-mark` 报 `feedback.detailLabel`（详细说明写成「（可不填）」/
   「(optional)」）——都当场改掉：字段是否必填由红 `*` 说，标签与占位符里不写「可选」。
+- **真浏览器跑了一遍这一行**（这一条判的就是「左下角点得到、点了有得填」，所以照旧看了）：画廊开发
+  服务器（`pnpm --filter @lmliheng/penguin-ui-gallery dev --port 7391`，我自己起的、看完已停；上游 dev
+  端口 7372 没占）配 Playwright 打开 `app.html?route=/chat&lang=zh`，点侧栏底部那个账户行 →
+  菜单里「用户反馈」在「定时任务」之后（位置 8 < 13）→ 点开对话框：标题字段带**恰一个**红 `*`、
+  「详细说明」没有记号、两个标签都不写「可选」、标题为空时「提交」不可用、填了就能提交 → 提交后提示
+  「已提交（req-demo-1）」且对话框关闭 → 再打开草稿是空的 → Escape 关得掉。**14 条断言全过、console
+  0 error**，截图 `feedback-entry.png` 与脚本 `check-feedback-entry.mjs` 都在会话 scratchpad。
 - **提交** `4e79c473`（15 个文件、836 增 3 删），推送到 `origin/main`。CI run **`37622306652`**
   **22 个作业全绿**（`NOT SUCCESS: []`，含 `installer-windows`、三个 `runtime` 与四个 `test-windows`）。
 
