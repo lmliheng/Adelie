@@ -2487,7 +2487,8 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
   cli **506**（34）· web **2899 / 2 跳过**（236）· server **182 文件 / 2625 通过 / 4 跳过** ·
   hmr 无测试文件（`vitest run --passWithNoTests`）—— **0 失败**，整条命令 `EXIT=0`。
 - **没有起服务、没有动的端口**：本轮没有界面改动，不需要 Playwright，也没重建 `packages/web/dist`。
-- **推送**：`git push origin main` —— 本轮那一笔是 `eeada99c`（两份台账同一个提交，表格里引用的就是它）。
+- **推送**：`git push origin main` —— 本轮那一笔是 `eeada99c`（两份台账同一个提交，表格里引用的就是它），
+  其后几笔都只动这份台账。
   按纪律没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。**CI（`ci.yml` 对 main 的推送照常触发，
   只动 `*.md` 也不例外）**：`3449c936` 的 run `37565929530` **22 个作业全绿**（`not success: []`）。
 - **汇报邮件：这轮发出去了（修掉了连着四轮的卡点）**。开工自检时 vault 里那条 `CSU_MAIL_AUTHCODE` 仍被
