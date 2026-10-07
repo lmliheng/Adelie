@@ -215,7 +215,11 @@
       实时与累计成本、上下文环、公司模式的工单/预算财务页；**「只落 token、成本查询时现算」这条原则两家
       也一致**（基座的 `usage_records` 同样不落成本）。有意保留的四处差异（明细表被图取代、未计价只有
       布尔、范围轴线、两个扫盘字段）与证据见「第十五轮」一节。**本轮没有改代码**。
-- [ ] 3.4 用户与两档角色、会话归属。
+- [x] 3.4 **用户与两档角色、会话归属**（2026-10-07，第十七轮）：逐条对着基座核完，**判定上游已覆盖 ——
+      没有要移植的代码，也没有要删的东西**：账号（`users` + 管理员用户后端 + 无自助注册）、两档角色
+      （`is_admin`，用户管理页与账户行都有徽标、每一片管理员面都按它拦）、会话归属（`projects.owner_user_id`
+      + `project_members`，看不见的一律 404）都在；**有意保留的差异**写在「第十七轮」一节，其中最实的一条是
+      **只有一个管理员、角色不可改**（旧 Adelie 能升/降管理员，基座没有这条路由，实测 404）。本轮**没有改代码**。
 - [ ] 3.5 桌面壳：上游 `penguin-desktop` 与旧 Adelie 那个取一个。
 - [ ] 3.6 用真模型发一条消息（需要 key；这是步骤 1 唯一没验完的一条）。
 
@@ -810,6 +814,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-07 | 3.2 | **模型目录与费率表判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：旧 Adelie 的四家厂在基座里是 5 组、28 行在架、行行有价，三桶价与旧的 input / cacheRead / output 逐字等价（拿两边**真的**函数比 192 组 token 组合 × 3 套牌价，**最大差 0**）；默认模型 `deepseek / deepseek-flash` 对得上旧的 `DEFAULT_PROVIDER`；基座还多出峰谷档与「无价即未计价」。三处有意保留的差异（Qwen 两组的 `envKey` 是 `OPENAI_API_KEY`、人民币按 7:1 折 USD、没有用户级 `.env`）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无用例文件（`vitest run --passWithNoTests`），**0 失败**、整条 `EXIT=0`；取证脚本 import 的是源码（`state/model-catalog.ts`、`defaultProjectConfig()`、server 的 `requestCostUsd`），输出见「第十四轮」一节；本轮无界面改动，没起服务、没动端口 | `eeada99c` |
 | 2026-10-07 | 3.3 | **用量与成本页判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已覆盖、直接删**」）：旧 Adelie 那套（`GET /api/usage` + 成本中心：三卡 + 按模型/按会话两张表 + 一天折线 + 每轮金额）在基座里是**一整套** —— 成本中心 `/api/projects/:p/usage`（四个维度、粒度到分/时/周/月、分页错误表与 owner 清空、模型终身用量）、会话头部的实时与累计成本、上下文环、公司模式的工单/预算财务页；**「只落 token、成本查询时现算」这条原则两家一致**（基座的 `usage_records` 同样不落成本，`server/test/usage.test.ts:76` 的用例名就是 "only Tokens persisted, never cost"）。四处有意保留的差异（成本中心里的按会话明细被图取代、未计价只有布尔 `hasUncosted`、旧的是身份级而基座是项目级、没有 `sessionsScanned` / `unreadableSessions` 这两个扫盘字段）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无测试文件（退出 0），**0 失败**、整条命令 `EXIT=0`；真浏览器看了一次这一页 —— 画廊开发服务器（7381，我自己起的、看完已停）+ Playwright 打开 `app.html?route=/usage&lang=zh`：三卡 + 四张图 + 异常面板 + 三段筛选都在、**console 0 error**，截图 `usage-page.png` 在会话 scratchpad | `d7f2d1ac` |
 | 2026-10-07 | 用户点单 | **左下角账户菜单新增「用户反馈」入口**：一行 + 一个两栏对话框（标题必填 ≤200、详细说明 ≤20000），提交由服务端带口令转进 3003 需求箱的 `POST /api/requirements`；新增 `GET\|POST /api/feedback` 路由与 `ADELIE_FEEDBACK_URL` / `ADELIE_FEEDBACK_KEY` 两个变量，浏览器永远拿不到地址与口令；未配置后端时那一行整条不画；画廊 mock 与中英 changelog 跟上；server 11 条 + web 8 条新用例 | 四道门禁全绿（`pnpm -r test` **8961 通过 / 16 跳过 / 0 失败**）；CI run `37622306652` **22 作业全绿**；现网 7364 源码构建 → 离线 bundle → `install.sh` 原地更新，重启后 `GET /api/feedback` 回 `{ok:true,configured:true}`，一次真实提交走完全程（需求箱 `req-17`，随即归档、在办仍是 2 条），console/日志无 warning | `4e79c473` |
+| 2026-10-07 | 3.4 | **用户与两档角色、会话归属判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：账号（`users` + 管理员用户后端 + 无自助注册）、两档角色（`is_admin`，用户管理页与账户栏都有徽标、每一片管理员面都按它拦 403 `admin_required`）、会话归属（`projects.owner_user_id` + `project_members`，归属轴线是 Project 不是人；看不见的一律 404 而不是 403）逐条对着基座核过；**有意保留的五处差异**（只有一个管理员、角色不可改；没有「回环免凭证即管理员」那条公理，改成本机 API token + 认领链接；没有 `scope=all` 全站会话面；工作区改由每会话自选；口令下限 8 位 + 语义 id 不可改）与理由写进条目。**本轮没有改代码** | 六包 `typecheck` 全过（`ifaces.json unchanged`）· core **1359**/5 跳过 · ui **1003** · server **2636**/4 跳过（183 文件）· cli **506** · web **2907**/2 跳过 · hmr 无测试文件，**0 失败** · 服务端按当前源码重建后在 7411 用一次性数据根起真服务，`verify-34.sh` 21 条真请求逐条核对（含改角色 404、管理员跨项目 404、成员加/移即生效、403/409 各码） · 真浏览器看用户管理页：两行角色徽标、**没有任何改角色的控件**、普通用户看不到这一节，console 0 error | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2735,3 +2740,120 @@ journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 
 - `packages/docs/content/configuration.{zh,en}.md` 的环境变量表**没动**：按 2.5 / 2.1c 的既定口径，
   `packages/docs/**` 那套留到发布期那一轮一起改（`config.ts` 的注释仍指向 `/docs/configuration § Environment variables`）。
 - 没有切版本号、没有发 npm、没有打发布包、没有发发布汇总邮件。
+
+## 第十七轮：用户与两档角色、会话归属判定上游已覆盖（2026-10-07，条目 3.4）
+
+一次无人值守的自主推进。开工时 `git status --short` 干净、`main` = `origin/main` = `34757951`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+**最靠前的未勾选条目仍是 2.2c**，而它「还差什么」那三条（写侧只剩 `packages/desktop/**`、既有部署单元
+`adelie-app.service` 的变量名、桌面壳自己的开关）一条也没变，且本轮纪律明写「不要碰 desktop / electron」；
+第十二 / 十四 / 十五 / 十六轮都因此跳过它。所以按同样的先例做**下一条可做的 3.4**
+（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）。
+
+本轮**没有改代码**（判定为「上游已覆盖」，没有要移植的东西、也没有要删的东西），没有切版本号、
+没发 npm、没发安装包、没发发布汇总；`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、
+3003 / 3004 / 4000 / 7364 / 7369 全程没碰。
+
+### 判据与结论
+
+**上游已覆盖 —— 没有要移植的代码，也没有要删的东西。** 旧 Adelie 那套「账号 + 两档角色 + 会话归属」
+在基座里都在，而且大多更细：
+
+- **账号**：`users` 表（`user_id` 即登录名、`password_hash`、`is_admin`、`password_is_initial`、
+  `display_name`、`avatar`）+ 管理员专用的用户后端（列表 / 新建 / 重置口令 / 删除）；
+  没有自助注册。
+- **两档角色**：`is_admin` 的两档（内置 `admin` + 其余人），角色在用户管理页与账户行以徽标呈现，
+  服务端每一片管理员面都按它拦（403 `admin_required`）。
+- **会话归属**：会话在索引里有主，但**归属的轴线是 Project 而不是人** —— `projects.owner_user_id`
+  + `project_members`（只存 member 授权），读会话先过 `requireProjectAccess`，看不见的一律
+  **404**（`project_not_found` / `session_not_found`，不泄露存在性）。
+
+### 对照表（旧 Adelie → 基座）
+
+| 旧 Adelie（`origin/legacy/main`） | 基座（`main`） | 判定 |
+| --- | --- | --- |
+| `packages/server/src/users/db.ts`：`users(id, name, password_hash, is_admin, created_at)`；`auth_sessions`（30 天、库里只留 sha256）；`sessions(session_id, user_id, workspace)` 存「谁拥有哪个会话」；`user_settings(user_id, json)` 存每用户运行配置 | `packages/server/src/db/schema.ts:36-58`：`users(user_id, password_hash, is_admin, password_is_initial, display_name, avatar)` + `auth_sessions(token_hash, user_id, expires_at, via)`；`:60-72` `projects(owner_user_id)` + `project_members`（只存 member，owner 不落表）；`:79-96` `sessions(project_id, agent_id, …)` —— **没有 user 列**；`:161` `ui_prefs(user_id, prefs_json)` | 覆盖（归属的轴线从「人」换成「项目」） |
+| 两档角色：`is_admin`，且**可升可降、可以有多个管理员** —— `POST /api/users/:id/role`（不能改内置 admin、不能把自己降级），界面上「升为管理员 / 降为普通」（`routes/users.ts`、`web/src/components/UsersPanel.tsx`） | 同样是两档（`is_admin`），用户管理页有「角色」一列（`管理员` / `用户` 徽标）、账户行给管理员带「管理员」徽标；但**只有内置 `admin` 拿得到这一档**（`auth/service.ts` 只在 `seedAdmin` 写 `isAdmin: true`，`services/admin-service.ts` 的 `createUser` 恒为 `false`），**没有任何改角色的路由**（实测 POST / PUT `/api/admin/users/:id/role` 都是 404 `not_found`） | 覆盖；「角色不可授予」是**有意保留**的差异（见下 1） |
+| 登录：用户名 + 口令 → Cookie（30 天）；`/api/auth/me` 匿名也答（界面靠它决定显示登录页还是主界面） | 同形（`POST /api/auth/login`、Cookie + `GET /api/me`）；另外每次会话记 `via`（`password` / `desktop` / `setup` / `token`）、30 天**滑动续期**、按用户指数退避限速（不存在的账号也走一次占位哈希，不做账号枚举器） | 覆盖（多出 `via` 与限速） |
+| 改自己的口令：`POST /api/auth/password`，没有旧口令时凭「本机身份」放行；管理员重置别人走 `/api/users/:id/password` | `PUT /api/me/password`（要求 `oldPassword`；只有 desktop / setup 会话可免，理由写在 `routes/me.ts:150-160`）；管理员重置走 `/api/admin/users/:userId/password`，并**收回该用户全部会话**（`signOutEverywhere`） | 覆盖 |
+| 删除账号：内置 `admin` 不可删、不能删自己（`routes/users.ts`） | 同（`cannot_delete_admin` / `409`），且删除会**连带删掉他拥有的 Project 与数据目录**，会话 / 成员 / 偏好靠外键级联 | 覆盖（连带清理更全） |
+| 会话归属：看不见的会话回 **404** 而不是 403（文件头写明「403 等于送对方一个会话枚举器」）；`scope=all` 只有管理员有意义；`syncSessionsFromDisk` 只给管理员扫盘补索引 | 同一条规矩：`services/project-access.ts` 的 `requireProjectAccess` 抛 404 `project_not_found`，会话级路由先按索引找 `project_id` 再过它，索引里没有就是 404 `session_not_found`；**管理员不越过 Project 边界**（`listAccessible` = 自己拥有的 ∪ 被授权的） | 覆盖（业主口径不同，见下 3） |
+| 工作区：**只有管理员**能指定，普通用户在管理员给自己定的那个工作区里建会话（`routes/sessions.ts`） | workspace 是**每个会话**的字段，项目成员自己挑，只校验「存在且是目录」（`services/workspace-guard.ts`：可达性由运行服务的操作系统账户的文件权限决定）；Project 的**工作区默认值与安全策略**归 owner 独占、member 只读（`docs/content/web-app.zh.md:181`） | 有意的取舍差异（见下 4） |
+| 每用户分区落盘：非 admin 的会话在 `users/<id>/` 下（`context.ts` 的 `rootForOwner`） | 会话按 `<root>/<project>/agents/<agent>/traces/<session>` 落盘，**每人一份的只有用户级数据**：`<root>/users/<userId>/.vault.toml`（用户密钥库）、`ui_prefs` 行、昵称与头像 | 覆盖（分区键从人换成项目） |
+| 每用户的运行配置（`user_settings` JSON：workspace / model / baseUrl / limits / 审批口径） | 分层：Project 配置（模型、默认值、安全策略）、Agent 的 `system_config.yaml`、会话级 `approval_mode`、用户级密钥库与 `ui_prefs` | 覆盖（分层更细） |
+| 无自助注册（`routes/users.ts` 是唯一建号入口） | 同：`POST /api/auth/register` → 404（auth 路由组自己兜底），账号由管理员在**用户管理**页创建 | 覆盖 |
+| 管理员面整片一份权限表：`packages/server/src/identity.ts` 的 `ROUTE_AUTH` 把 `/api/users` 标成 `admin` | 路由组各自声明 `auth`，管理员面在 handler 入口判 `isAdmin` → 403 `admin_required`（`routes/admin.ts`）；**桌面壳整个拒绝这一片**（403 `desktop_single_user`），理由写在文件头（单用户） | 覆盖 |
+| 没有公司模式 | 公司模式里**没有「用户级角色」**：员工是 Agent，用户只有 Project 的 `owner` / `member` 两种（`organization/` 里 role 一词只出现在给 Agent 看的手册文本里） | 覆盖（不引入第二套角色） |
+
+### 有意保留的差异（都写清理由，不改）
+
+1. **只有一个管理员，角色不可改（这一条最实）**。基座的 `admin` 是「这台机器的所有者」这个身份
+   （认领链接 / 本机 API token / `penguin server reset-admin-password` 是它的三条进出路），不是一枚
+   可以授予出去的徽标：`AdminService.createUser` 恒建普通用户，没有改角色的路由，用户管理页只有
+   新建 / 重置口令 / 删除三个动作（本轮实测：`POST`、`PUT /api/admin/users/<id>/role` 都是 404）。
+   要「接回」旧 Adelie 的升/降管理员，等于把**用户管理、管理员设置、插件导入、内置浏览器导入**
+   这一整片交到第二个人手上 —— 那是安全面的扩张，**要用户拍板**；这一条如果用户要，
+   **是新的待办，不是这一条的尾巴**。
+2. **没有「回环地址免凭证就是管理员」这条公理**。旧 Adelie 把「能读到 `~/.adelie` 的人就是管理员」
+   直接实现成「回环 + 没有 token ⇒ 主机身份（管理员）」，所以单机用户永远不看见登录页；基座把同一个
+   事实表达成**两条需要伸手拿的凭证** —— 启动时打印的首次登录链接（认领内置 admin）与本机
+   `api-token`（CLI / Agent / 桌面壳用的 Bearer）。差别是同一台机器上别人的浏览器不再自动就是管理员。
+   两条路的取舍上游写在 `docs/content/security.zh.md`（「能读到数据根目录，就等于拥有它」那一节）。
+3. **没有「全站会话」这一面**：旧 Adelie 给管理员留了 `scope=all`（看所有人的会话）与扫盘补索引；
+   基座的项目边界对管理员同样成立（本轮实测：admin 读另一个用户的 Project / 会话都是 404），
+   跨项目看钱走公司模式的财务页。**「管理员要不要能看全站会话」如果用户要，同样是新待办。**
+   顺带：基座不需要扫盘补索引 —— CLI 采纳的会话带 `client='cli'` 进同一张索引（Trace 才是真相）。
+4. **工作区不再由管理员分配**，改成每个会话自己挑（只校验目录存在），默认值与安全策略仍是 owner 独占。
+   这让「同一台机器上的多个账号各自开工」不必先找管理员，代价是 workspace 的可达性完全交给运行服务的
+   操作系统账户的文件权限（`workspace-guard.ts` 的文件头写明了这个取舍）。
+5. **口令下限 8 位**（旧的是 6），账号是**语义 id**（`^[a-z][a-z0-9_-]{1,31}$`，创建后不可改），
+   不是旧 Adelie 那种自由用户名；昵称 / 头像是另外两个字段。
+
+### 验证（都是真跑出来的，不是复述）
+
+- **真服务端 + 真请求**（服务端从**当前源码**重建：`hmr → core → server → web` 四包 build，
+  因为仓库里的 `dist` 是 10-07 01:24 / web 是 10-06 的旧产物）。起法：
+
+  ```bash
+  cd packages/server && ADELIE_HOME=/root/adelie-fork-data/r17-34d ADELIE_PROFILE=dev \
+    ADELIE_SEED_ADMIN_PASSWORD=<随机 24 字符，写在 scratchpad，不入库> PORT=7411 \
+    node --disable-warning=ExperimentalWarning dist/index.js
+  ```
+
+  取证脚本 `verify-34.sh`（会话 scratchpad，一次性不入库）跑完 21 条，逐条都是预期的状态码与码值：
+  `admin` 登录 200 / 用户表 `[('admin', True)]` / 建 `tester` 201 且 `isAdmin=False` /
+  **改角色 404** / 管理员读别人的 Project 与会话 **404** / 普通用户读用户管理 403 /
+  自己改口令 204 且新口令能登录、不带旧口令 400 / 成员加进来之前读那条会话 404、加进来之后 200、
+  被移出之后又是 404（会话与项目两级）/ 成员想移除 owner 403 `owner_required` /
+  重复建 `admin` 409 `user_exists` / 删内置 `admin` 409 `cannot_delete_admin` /
+  `POST /api/auth/register` 404。
+- **真浏览器看了一次「用户管理」页**（这一条判的就是「两档角色在界面上成不成立」，所以照旧看了）：
+  用 Playwright（`@playwright/test`，本机 chromium）登录 7411 上的真服务端 ——
+  管理员在设置里看得到**用户管理**这一节，表格是 `用户名 / 角色 / 创建时间 / 操作`，两行分别是
+  `admin`（`初始密码` + `管理员` 徽标）与 `tester`（`用户` 徽标），动作只有 `新增用户` / `重置密码` /
+  `删除`，**没有任何改角色的控件**；左下角账户行写着 `admin 管理员`。普通用户那一侧：设置对话框里
+  **没有**用户管理这一节（只有个人资料 / 通用 / 外观 / 快捷键 / 账户 / 版权信息），侧栏里也没有
+  「机器管理」，console **0 error**。截图 `34-users-page.png` / `34-admin-menu.png` /
+  `34-tester-settings.png` 与脚本 `check-34-ui.js` 都在会话 scratchpad。
+- **门禁**：六包 `typecheck` 全过（`gen:ifaces` 报 `src/ifaces.json unchanged`，187 接口 / 537 类型）。
+- **测试**：core **1359 通过 / 5 跳过**（64 文件）· ui **1003**（127）· server **2636 通过 / 4 跳过**
+  （183 文件）· cli **506**（34）· web **2907 / 2 跳过**（237）· hmr 无测试文件 —— **0 失败**。
+  本轮没有代码改动，所以没有 `changelog/unreleased` 条目（5.7 的口径是「一个功能提交带一条」）。
+
+### 两个顺带记下来的运行时事实
+
+1. **回环绑定时 App 主机是 `localhost`，`127.0.0.1` 是「预览主机」**：`app.ts` 的 canonical-host
+   guard 让预览主机只服务 `/preview/*`，`/api/*` 一律 401「The API is not served on the preview host.」
+   —— 本轮第一次起服务就是拿 `127.0.0.1` 调接口，30 条请求全 401，白查了一轮。**下一步的取证脚本一律
+   用 `localhost`**（`HOST` 是 `0.0.0.0` 时这条守卫不存在，所以线上 3004 那台不受影响）。
+2. **非管理员打开主界面时会看到一条 `/api/projects/<p>/machines` 的 403**：界面探一下这条管理员接口、
+   随后把「机器管理」整条入口藏掉（这是设计：普通用户的侧栏里确实没有它），但浏览器控制台会把它记为
+   一条 failed resource。不影响使用，也不是这一条的事，留个记录。
+
+### 收尾：提交、推送与汇报
+
+- 改动只有两份台账文档（`FORK.md` + `FORK-PROGRESS.md`），没有源代码改动。
+- **推送**：`git push origin main` —— 本轮那一笔就是这段记录所在的提交（表格里引用的就是它）。
+  按纪律没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
