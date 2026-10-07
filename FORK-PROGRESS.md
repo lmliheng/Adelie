@@ -209,7 +209,12 @@
       「无价即未计价」两条；
       默认模型是每个 Project 的 `default_model = deepseek / deepseek-flash`（对应旧 Adelie 的
       `DEFAULT_PROVIDER = 'deepseek'`）。**有意保留的三处差异**写在「第十四轮」一节里。本轮没有改代码。
-- [ ] 3.3 用量与成本页（旧 Adelie `web` 台账第 4 条那一套：`/api/usage` + 成本中心）。
+- [x] 3.3 **用量与成本页**（2026-10-07，第十五轮）：把旧 Adelie `web` 台账第 4 条那一套（`/api/usage`
+      + 成本中心）逐条对着基座核完，**判定上游已覆盖 —— 没有要移植的代码，也没有要删的东西**。基座是
+      一整套：成本中心（`/api/projects/:p/usage` 的四个维度 + 分页错误表 + 模型终身用量）、会话头部的
+      实时与累计成本、上下文环、公司模式的工单/预算财务页；**「只落 token、成本查询时现算」这条原则两家
+      也一致**（基座的 `usage_records` 同样不落成本）。有意保留的四处差异（明细表被图取代、未计价只有
+      布尔、范围轴线、两个扫盘字段）与证据见「第十五轮」一节。**本轮没有改代码**。
 - [ ] 3.4 用户与两档角色、会话归属。
 - [ ] 3.5 桌面壳：上游 `penguin-desktop` 与旧 Adelie 那个取一个。
 - [ ] 3.6 用真模型发一条消息（需要 key；这是步骤 1 唯一没验完的一条）。
@@ -803,6 +808,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-07 | 3.1 | **审批口径三档判定上游已覆盖**（`FORK.md` 给这一条的判据是「接回 **或判定上游已经覆盖、直接删**」）：把旧 Adelie 三档的行为逐条对着基座核过 —— 四档 ⊃ 旧三档、挂会话 + Project 默认档 + 组织档、裁决时重读库所以改档即时生效、决定记成 `approval_decision` 事件、另有命令策略在审批之上否决；**有意保留的两处差异**（默认 `allow-all`、没有旧 Adelie 那个 5 分钟超时）写清理由 —— 默认档改成 `always-ask` 会让定时任务的自主轮次永远挂住（本轮亲手核出证据链）；`FORK.md` 第 3 条把这一项标成「已判定覆盖」。**本轮没有改代码** | 六包 typecheck 全过；测试 core **1359**/5 跳过 · web **2899**/2 跳过 · ui **1003** · cli **506** · hmr 无用例 · server **182 文件 / 2625 通过 / 4 跳过**（整包三次 2 绿 1 红，红的是 `terminal-stream.test.ts` 那条装载敏感用例、单跑 5/5 全绿，与本轮无关）；没有起服务、没有动的端口 | `19b56659` |
 | 2026-10-07 | 2.2c（文本面收尾） | 非桌面壳、非发布面里仍把旧名当「现在」用的地方收干净：6 份插件文本、2 份包 README、5 处源码注释改用 Adelie 的名字；修掉需求箱安装脚本的默认数据根（无变量时 `~/.penguin` → `~/.adelie/data`，与 core 的 `resolveRoot()` 对齐）；4 个插件的日期版本 +1 | 六包 typecheck 过 · `pnpm lint` 0 警告 0 错误（2054 文件）· `pnpm format:check` 干净 · core **1359**/5 跳过 · ui **1003** · cli **506** · web **2899**/2 跳过 · server **182 文件 / 2625 通过 / 4 跳过** · docs **62**，**0 失败** · 安装脚本 `--print-only` 五种组合各真跑一次，修复前后各一次（修复前 `/root/.penguin/…`、修复后 `/root/.adelie/data/…`，与 `resolveRoot()` 一致） · `check-plugin-versions` 过了 | `37f710d9` |
 | 2026-10-07 | 3.2 | **模型目录与费率表判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：旧 Adelie 的四家厂在基座里是 5 组、28 行在架、行行有价，三桶价与旧的 input / cacheRead / output 逐字等价（拿两边**真的**函数比 192 组 token 组合 × 3 套牌价，**最大差 0**）；默认模型 `deepseek / deepseek-flash` 对得上旧的 `DEFAULT_PROVIDER`；基座还多出峰谷档与「无价即未计价」。三处有意保留的差异（Qwen 两组的 `envKey` 是 `OPENAI_API_KEY`、人民币按 7:1 折 USD、没有用户级 `.env`）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无用例文件（`vitest run --passWithNoTests`），**0 失败**、整条 `EXIT=0`；取证脚本 import 的是源码（`state/model-catalog.ts`、`defaultProjectConfig()`、server 的 `requestCostUsd`），输出见「第十四轮」一节；本轮无界面改动，没起服务、没动端口 | `eeada99c` |
+| 2026-10-07 | 3.3 | **用量与成本页判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已覆盖、直接删**」）：旧 Adelie 那套（`GET /api/usage` + 成本中心：三卡 + 按模型/按会话两张表 + 一天折线 + 每轮金额）在基座里是**一整套** —— 成本中心 `/api/projects/:p/usage`（四个维度、粒度到分/时/周/月、分页错误表与 owner 清空、模型终身用量）、会话头部的实时与累计成本、上下文环、公司模式的工单/预算财务页；**「只落 token、成本查询时现算」这条原则两家一致**（基座的 `usage_records` 同样不落成本，`server/test/usage.test.ts:76` 的用例名就是 "only Tokens persisted, never cost"）。四处有意保留的差异（成本中心里的按会话明细被图取代、未计价只有布尔 `hasUncosted`、旧的是身份级而基座是项目级、没有 `sessionsScanned` / `unreadableSessions` 这两个扫盘字段）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无测试文件（退出 0），**0 失败**、整条命令 `EXIT=0`；真浏览器看了一次这一页 —— 画廊开发服务器（7381，我自己起的、看完已停）+ Playwright 打开 `app.html?route=/usage&lang=zh`：三卡 + 四张图 + 异常面板 + 三段筛选都在、**console 0 error**，截图 `usage-page.png` 在会话 scratchpad | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2533,3 +2539,91 @@ process.env.CLIENT_TYPE || options.model`），写成 `client_type` 会被忽略
   `agent-server-2` 的新专用密码 → 写回 `--project-id sjaaj --agent-id default_agent`，再用 `SECRET_OUT`
   的 600 副本把本轮的汇报当场发出去（`SMTP 已投递` + 「已发送」#116，副本已 `shred`）。旧的
   `agent-server` 那条**没有删**（删不删由用户定）。下一个新会话起，注入的就是这个新值。
+
+## 第十五轮：用量与成本页判定上游已覆盖（2026-10-07，条目 3.3）
+
+一次无人值守的自主推进。开工时 `git status --short` 干净、`main` = `origin/main` = `fa8b3f4e`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+**最靠前的未勾选条目是 2.2c**，但它「还差什么」那三条仍全在本轮纪律之外：写侧只剩
+`packages/desktop/**`（本轮明写「不要碰 desktop / electron」）、既有部署单元 `adelie-app.service` 的变量名
+（发布动作）、桌面壳自己的开关（与它同一批）。非桌面壳、非发布面的部分已在第十一轮 / 第十三轮收干净。
+所以按第十二轮 / 第十四轮的先例跳过它，做**下一条可做的 3.3**。本轮**没有改代码**，没有切版本号、
+没发 npm、没发安装包、没发发布汇总；`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、
+3003 / 3004 / 4000 全程没碰。
+
+### 判据与结论
+
+`FORK.md` 第 3 条给这一条的判据是「接回 Adelie 已经做过的东西，**或判定上游已经覆盖、直接删**」。
+逐条核完的结论是**上游已覆盖 —— 没有要移植的代码，也没有要删的东西**：旧 Adelie 的那一页在基座里
+不是「有对应物」，而是**同一件事的更大一版**（多出错误面板、四种精度的时序、按 Agent / 按模型的成功率图、
+峰谷价、模型页的终身用量、公司模式的工单与预算），而且**双方的第一条原则一模一样**：只落 token、
+成本在查询时现算。
+
+### 对照表（旧 Adelie 逐条 → 基座落在哪）
+
+| 旧 Adelie（`origin/legacy/main`） | 基座（`main`） | 判定 |
+| --- | --- | --- |
+| `GET /api/usage[?from&to&scope=all]`（`server/src/routes/usage.ts`）：**身份级** —— 默认只看自己的会话、管理员 `scope=all`；一次请求给出 `summary`（今天 / 最近 7 天 / 累计）+ `byModel` + `bySession` + 按本地日期的 `series` + `sessionsScanned` / `unreadableSessions`；契约在 `docs/api.md:171-198` | `GET /api/projects/:p/usage`：**项目级**，同样三段 `summary`（today / last7d / total），四个 `groupBy`（date / agent / model / session，session 支持 agentId 下钻），零填充的 `series`（`granularity` = minute / hour / day / week / month），加两条与 `series` 逐点对齐的分组序列与 `errors` 统计；另有 `GET|DELETE /usage/errors`（分页明细 / owner 按当前筛选清空）与 `GET /usage/model-totals`（模型终身用量）。`http/routes/usage.ts:1-16`、`services/usage-service.ts:1-22`、契约 `api/types.ts:3348-3389`、`:3478-3489`、`:3527-3562` | 覆盖（同一条轴线更细，另多两条接口） |
+| 三张汇总卡：`SummaryCard today / last7d / total`（`web/src/components/UsagePage.tsx:138-142`，全文件 348 行） | 同样三张卡（今日 / 近 7 天 / 累计，每张 Token / Requests / 成本三行）+ Agent / 模型 / 日期范围三段筛选（`features/usage/usage-page.tsx:1-25`） | 覆盖 |
+| 按模型、按会话**两张表** + 手写 inline SVG 的一天折线（同一份 348 行的文件） | **2×2 图矩阵**：各 Agent 与各模型的「请求数 + 成功率」、Token 三桶堆叠 + 缓存命中率、成本折线，四张共享一条 x 轴（`features/usage/usage-page.tsx`、`usage-charts.tsx`、`trend-chart.tsx`）。**明细表被图取代**：`usage-page.tsx:206` 的注释写明「the detail table has been removed, superseded by the charts above」，所以 `groupBy` 被固定成 `date` | 覆盖（明细表这一处是差异 2） |
+| 每轮的金额写进统计行（`components/TurnView.tsx:57-63`，走 `lib/usage.ts` 的 `costOfUsage`）；`lib/usage.ts` 是**界面侧逐字镜像** core 的算式与价目表 | 每轮**实时**成本 + 会话头部**累计**成本（未计价时带星号）：`features/chat/chat-page.tsx:1042-1075` 用 `getUsage(projectId, { groupBy: "session", agentId })`（`:1060`）取该会话那一行，`lib/header-stats.ts` 决定显示什么；算式只在服务端一处（`requestCostUsd`） | 覆盖（不再需要在界面里镜像一份） |
+| 「未定价」用**轮次计数**说：`Totals.unpricedRuns` + 卡上「其中 N 轮未定价，不计入金额」（`core/src/usage/aggregate.ts` 的 `UsageTotals`） | 布尔 `hasUncosted`（`api/types.ts:3353-3354`）+ 卡上一句「* 只计入配置了价格的模型成本」（`lib/strings.ts` 的 `uncostedNote`）；`server/test/usage.test.ts:233` 的用例名钉着这条语义 | 覆盖（粒度不同，见差异 3） |
+| 会话级 token 累计「给输入区的上下文环用」——那一轮的**残留** | `features/chat/context-gauge.tsx` 的上下文环：读**最近一次主会话请求**的用量（`chat-input.tsx:785`），压缩之后显示「未知 / —」而不是 0 | 覆盖（语义更准，见差异 4 末尾） |
+| 错误只写在设计草稿的二期清单里（「一张 `error_records` + 统计与最近 N 条」） | 已是成品：`error_records` 的统计 + 分页明细 + owner 清空（`http/routes/usage.ts:144-223`、`features/usage/errors-panel.tsx`、`server/test/errors.test.ts`） | 覆盖（超出旧条目） |
+
+### 有意保留的四处差异（都写清理由，不改）
+
+1. **数据来源**：旧 Adelie 每次查询**扫盘上的事件流**，文件头写明「不做第二份真相」
+   （`core/src/usage/aggregate.ts`）；基座记账时往 `usage_records` 落一行（`runtime/usage-recorder.ts`、
+   `db/schema.ts:98`，并带 `(project_id, date)` 与 `(session_id, ts)` 两条索引）。**原则是同一条** ——
+   基座**只落 token、永不落成本**（`server/test/usage.test.ts:76` 的用例名就是
+   `token_usage → one row (the request bucket; only Tokens persisted, never cost)`），价格改了历史行的钱
+   跟着重算（`:250`「price added later: no pricing at insert time; once configured, queries price it
+   immediately」）。差别在代价：基座按索引查一段区间，旧写法每次查询扫一遍会话目录。
+2. **成本中心里的「按会话」明细被图取代**（`usage-page.tsx:206`）。**能力没有丢**：`groupBy=session`
+   （带 agentId 下钻）仍在 API 里、**仍被用着** —— 会话头部那一行的累计成本与 token 分解就是它
+   （`chat-page.tsx:1060`，`server/test/usage.test.ts:283` 钉着分组维度）；跨项目/按工单的钱在公司模式的
+   财务页（`features/company/finance-page.tsx`）。**若要在成本中心里看「哪些会话最贵」的排名，那是新的
+   一条待办，不是这一条的尾巴。**
+3. **「未计价」的粒度**：旧页能说「其中 **N 轮**未定价」，基座只说「**有**未计价的」。要报数得给
+   `UsageBucket` 加一个计数字段并让 `usage-service` 统计 —— 契约要动、零功能收益（界面已经有星号与说明，
+   而「有未计价就别把钱当准数」这句提醒并不因为知道是三轮还是三十轮而更准），不做。
+4. **范围轴线不同，少两个字段**：旧的是**身份级**（默认自己、管理员 `scope=all`），基座是**项目级**
+   （项目内的四个维度）；管理员跨项目看钱走公司模式财务页。旧接口的 `sessionsScanned` /
+   `unreadableSessions`（「少算了几条要说得出来」）在基座**没有对应物**，因为基座不扫盘 —— 也就没有
+   「扫不动」这回事（代价转移到记账那一侧，`usage-recorder` 的用例钉着落库规则）。
+   顺带记一句：旧 Adelie 的上下文环原本想要「会话级累计 token」，基座取的是**最近一次请求**的用量
+   （`chat-input.tsx:785`）—— 后者才回答「上下文还剩多少」，累计量回答不了（那是账单量）；这是有意
+   不同，不改。
+
+### 验证（都不是推测）
+
+- **静态**：六包 `typecheck` 全过（core / server / web / ui / cli / hmr；server 那步照例带 `gen:ifaces`，
+  `src/ifaces.json unchanged`，186 接口 / 537 类型）。
+- **测试**：core **1359 通过 / 5 跳过**（64 文件 + 1 个 e2e 跳过）· ui **1003**（127 文件）·
+  cli **506**（34）· web **2899 / 2 跳过**（236）· server **182 文件 / 2625 通过 / 4 跳过** ·
+  hmr 无测试文件（`vitest run --passWithNoTests`，退出 0）—— **0 失败**，整条命令 `EXIT=0`。
+  与本条直接相关的用例名逐个点过：`usage-recorder`（只落 token）、「summary cards: today / last 7 days /
+  cumulative; Models without pricing flag hasUncosted」、「group aggregation: date … agent/model/session
+  dimensions with agentId drill-down」、「price added later…」、「model totals」、「series zero-filled」
+  （含周/月/时/分与 DST 两节）、`queryErrors` 分页两节、`web/test/header-stats.test.ts` 的 `costText` /
+  `costUncosted`。
+- **真浏览器看了一次这一页**（这一条判的就是「这一页有没有那套东西」，所以照旧看了；本轮没有界面改动、
+  也没重建 `packages/web/dist`）：`pnpm --filter @lmliheng/penguin-ui-gallery dev --port 7381`
+  （我自己起的，看完已停；上游 dev 端口 7372 没占）配 Playwright 打开
+  `http://[::1]:7381/app.html?route=/usage&lang=zh` —— 三张卡（今日 63.9k Token / 3 请求 / ¥0.2443，
+  近 7 天 2.3M / 89 / ¥2.33，累计 8.5M / 333 / ¥10.73）、四张图（各 Agent 与各模型请求与成功率、
+  Token 变化 + 缓存命中率、成本变化）、异常面板（总数 6 / 未预期 1 / 预期内 5 / 最常见 `rate_limited ×1`
+  + 明细表头）、Agent / 模型 / 日期范围三段筛选都在，**console 0 error 且无 pageerror**；
+  截图 `usage-page.png` 与会话 scratchpad 里的取证脚本 `check-usage-page.mjs`（一次性，不入库）。
+- **没有起真服务、没有动的端口**：3003 / 3004 / 4000 / 7364 / 7369 全程没碰；7381 是画廊的开发服务器，
+  我自己起的、已停（`ss` 复核不再监听）。
+
+### 收尾：提交、推送与汇报
+
+- 改动只有两份台账文档（`FORK.md` + `FORK-PROGRESS.md`），没有源代码改动 —— 因此没有
+  `changelog/unreleased` 条目（5.7 的口径是「一个功能提交带一条」）。
+- **推送**：`git push origin main`。
+- **CI**：`ci.yml` 对 `main` 的推送照常触发（只动 `*.md` 也不例外），run 与结论见下。
+- **汇报邮件**：见下（本轮是第十四轮修好专用密码之后的第一轮）。
