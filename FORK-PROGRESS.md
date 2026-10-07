@@ -2778,7 +2778,7 @@ journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 
 | 登录：用户名 + 口令 → Cookie（30 天）；`/api/auth/me` 匿名也答（界面靠它决定显示登录页还是主界面） | 同形（`POST /api/auth/login`、Cookie + `GET /api/me`）；另外每次会话记 `via`（`password` / `desktop` / `setup` / `token`）、30 天**滑动续期**、按用户指数退避限速（不存在的账号也走一次占位哈希，不做账号枚举器） | 覆盖（多出 `via` 与限速） |
 | 改自己的口令：`POST /api/auth/password`，没有旧口令时凭「本机身份」放行；管理员重置别人走 `/api/users/:id/password` | `PUT /api/me/password`（要求 `oldPassword`；只有 desktop / setup 会话可免，理由写在 `routes/me.ts:150-160`）；管理员重置走 `/api/admin/users/:userId/password`，并**收回该用户全部会话**（`signOutEverywhere`） | 覆盖 |
 | 删除账号：内置 `admin` 不可删、不能删自己（`routes/users.ts`） | 同（`cannot_delete_admin` / `409`），且删除会**连带删掉他拥有的 Project 与数据目录**，会话 / 成员 / 偏好靠外键级联 | 覆盖（连带清理更全） |
-| 会话归属：看不见的会话回 **404** 而不是 403（文件头写明「403 等于送对方一个会话枚举器」）；`scope=all` 只有管理员有意义；`syncSessionsFromDisk` 只给管理员扫盘补索引 | 同一条规矩：`services/project-access.ts` 的 `requireProjectAccess` 抛 404 `project_not_found`，会话级路由先按索引找 `project_id` 再过它，索引里没有就是 404 `session_not_found`；**管理员不越过 Project 边界**（`listAccessible` = 自己拥有的 ∪ 被授权的） | 覆盖（业主口径不同，见下 3） |
+| 会话归属：看不见的会话回 **404** 而不是 403（文件头写明「403 等于送对方一个会话枚举器」）；`scope=all` 只有管理员有意义；`syncSessionsFromDisk` 只给管理员扫盘补索引 | 同一条规矩：`services/project-access.ts` 的 `requireProjectAccess` 抛 404 `project_not_found`，会话级路由先按索引找 `project_id` 再过它，索引里没有就是 404 `session_not_found`；**管理员不越过 Project 边界**（`listAccessible` = 自己拥有的 ∪ 被授权的） | 覆盖（归属的口径不同，见下 3） |
 | 工作区：**只有管理员**能指定，普通用户在管理员给自己定的那个工作区里建会话（`routes/sessions.ts`） | workspace 是**每个会话**的字段，项目成员自己挑，只校验「存在且是目录」（`services/workspace-guard.ts`：可达性由运行服务的操作系统账户的文件权限决定）；Project 的**工作区默认值与安全策略**归 owner 独占、member 只读（`docs/content/web-app.zh.md:181`） | 有意的取舍差异（见下 4） |
 | 每用户分区落盘：非 admin 的会话在 `users/<id>/` 下（`context.ts` 的 `rootForOwner`） | 会话按 `<root>/<project>/agents/<agent>/traces/<session>` 落盘，**每人一份的只有用户级数据**：`<root>/users/<userId>/.vault.toml`（用户密钥库）、`ui_prefs` 行、昵称与头像 | 覆盖（分区键从人换成项目） |
 | 每用户的运行配置（`user_settings` JSON：workspace / model / baseUrl / limits / 审批口径） | 分层：Project 配置（模型、默认值、安全策略）、Agent 的 `system_config.yaml`、会话级 `approval_mode`、用户级密钥库与 `ui_prefs` | 覆盖（分层更细） |
@@ -2857,5 +2857,10 @@ journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 
 - **推送**：`git push origin main`（`34757951..7d4bc33f`）—— 本轮那一笔是 `7d4bc33f`（两份台账同一个提交，
   表格里引用的就是它），其后只多一笔「把提交号写回表格」的台账提交。按纪律没有切版本号、没发 npm、
   没发安装包、没发发布汇总邮件。
-- **CI**：`ci.yml` 对 `main` 的推送照常触发（只动 `*.md` 也不例外）。
+- **CI**：`ci.yml` 对 `main` 的推送照常触发（只动 `*.md` 也不例外）—— 本轮推送的那条 run
+  **`37642461974`**（`7d4bc33f`）**22 个作业全绿**（`NOT SUCCESS: []`）。紧接着那笔「把提交号写回表格」的
+  推送在同一个并发组里，被 `ci.yml` 的 `cancel-in-progress: true` 取消（它的 head 也是 `7d4bc33f`，
+  所以本轮的实际验证对象没有漏）。
+- **留了一地的取证现场**：四个一次性数据根 `/root/adelie-fork-data/r17-34{,b,c,d}` 各约 2M，留着没删
+  （它们是这一轮的取证现场）；7411 已释放，3003 / 3004 / 4000 / 7364 / 7369 全程没碰。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
