@@ -202,7 +202,13 @@
       会话取的就是这个默认值，而它不是 `client === "org"` 的无人值守会话、拿不到「当场判 deny」的短路 ——
       改成 `always-ask` 会让这些自主轮次永远挂住）；基座没有旧 Adelie 那个 5 分钟审批超时（挂到人裁决或
       本轮被中断，中断时 pending 收敛为 deny）。对照表、证据与验证见「第十二轮」一节。
-- [ ] 3.2 模型目录（deepseek / kimi / qwen）与费率表。
+- [x] 3.2 **模型目录（deepseek / kimi / qwen）与费率表**（2026-10-07，第十四轮）：逐条对着基座核完，
+      **判定上游已覆盖 —— 没有要移植的代码，也没有要删的东西**：四家厂（deepseek / openai / kimi /
+      qwen）在基座里是 5 个分组、28 行在架条目、**行行有价**（整册 179 行），三桶价（cache_read /
+      cache_write / output）与旧 Adelie 的（input / cacheRead / output）逐字等价，且多出峰谷档与
+      「无价即未计价」两条；
+      默认模型是每个 Project 的 `default_model = deepseek / deepseek-flash`（对应旧 Adelie 的
+      `DEFAULT_PROVIDER = 'deepseek'`）。**有意保留的三处差异**写在「第十四轮」一节里。本轮没有改代码。
 - [ ] 3.3 用量与成本页（旧 Adelie `web` 台账第 4 条那一套：`/api/usage` + 成本中心）。
 - [ ] 3.4 用户与两档角色、会话归属。
 - [ ] 3.5 桌面壳：上游 `penguin-desktop` 与旧 Adelie 那个取一个。
@@ -796,6 +802,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-06 | 2.2c（非桌面壳·三） | `docker/entrypoint.sh` 的数据根改按 `ADELIE_HOME` → 旧名 `PENGUIN_HOME` → `/data` 取（`Dockerfile` 的 `ENV` 早已是新名，旧写法会让 `-e ADELIE_HOME=<挂载点>` 指到 `/data` 上去）；需求箱插件 `kit/install.mjs` 的数据根改成新名在前、project / agent 只读 `ADELIE_*`（`plugin.json` 日期版本 +1）；`packages/web/scripts/theme-shots.mjs` 起服务用的三个变量与 `packages/web/README.md` 那一行跟上 | 见「第十一轮」一节 | 见本行提交 |
 | 2026-10-07 | 3.1 | **审批口径三档判定上游已覆盖**（`FORK.md` 给这一条的判据是「接回 **或判定上游已经覆盖、直接删**」）：把旧 Adelie 三档的行为逐条对着基座核过 —— 四档 ⊃ 旧三档、挂会话 + Project 默认档 + 组织档、裁决时重读库所以改档即时生效、决定记成 `approval_decision` 事件、另有命令策略在审批之上否决；**有意保留的两处差异**（默认 `allow-all`、没有旧 Adelie 那个 5 分钟超时）写清理由 —— 默认档改成 `always-ask` 会让定时任务的自主轮次永远挂住（本轮亲手核出证据链）；`FORK.md` 第 3 条把这一项标成「已判定覆盖」。**本轮没有改代码** | 六包 typecheck 全过；测试 core **1359**/5 跳过 · web **2899**/2 跳过 · ui **1003** · cli **506** · hmr 无用例 · server **182 文件 / 2625 通过 / 4 跳过**（整包三次 2 绿 1 红，红的是 `terminal-stream.test.ts` 那条装载敏感用例、单跑 5/5 全绿，与本轮无关）；没有起服务、没有动的端口 | `19b56659` |
 | 2026-10-07 | 2.2c（文本面收尾） | 非桌面壳、非发布面里仍把旧名当「现在」用的地方收干净：6 份插件文本、2 份包 README、5 处源码注释改用 Adelie 的名字；修掉需求箱安装脚本的默认数据根（无变量时 `~/.penguin` → `~/.adelie/data`，与 core 的 `resolveRoot()` 对齐）；4 个插件的日期版本 +1 | 六包 typecheck 过 · `pnpm lint` 0 警告 0 错误（2054 文件）· `pnpm format:check` 干净 · core **1359**/5 跳过 · ui **1003** · cli **506** · web **2899**/2 跳过 · server **182 文件 / 2625 通过 / 4 跳过** · docs **62**，**0 失败** · 安装脚本 `--print-only` 五种组合各真跑一次，修复前后各一次（修复前 `/root/.penguin/…`、修复后 `/root/.adelie/data/…`，与 `resolveRoot()` 一致） · `check-plugin-versions` 过了 | `37f710d9` |
+| 2026-10-07 | 3.2 | **模型目录与费率表判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：旧 Adelie 的四家厂在基座里是 5 组、28 行在架、行行有价，三桶价与旧的 input / cacheRead / output 逐字等价（拿两边**真的**函数比 192 组 token 组合 × 3 套牌价，**最大差 0**）；默认模型 `deepseek / deepseek-flash` 对得上旧的 `DEFAULT_PROVIDER`；基座还多出峰谷档与「无价即未计价」。三处有意保留的差异（Qwen 两组的 `envKey` 是 `OPENAI_API_KEY`、人民币按 7:1 折 USD、没有用户级 `.env`）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无用例文件（`vitest run --passWithNoTests`），**0 失败**、整条 `EXIT=0`；取证脚本 import 的是源码（`state/model-catalog.ts`、`defaultProjectConfig()`、server 的 `requestCostUsd`），输出见「第十四轮」一节；本轮无界面改动，没起服务、没动端口 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2401,3 +2408,87 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
    `default_project` 缺 **55 条预置**（含 `glm-4.7-flash`）。新预置要靠模型页的**同步预置**带进既有
    Project，页面据此显示「有新的预置」提示（前端产物里已有这条 id）。所以「服务更新好了」≠「页面上
    立刻看得见这一条」——这一步是用户在自己项目里的一次点击，本轮没替用户动他的项目配置。
+
+## 第十四轮：模型目录与费率表判定上游已覆盖（2026-10-07，条目 3.2）
+
+一次无人值守的自主推进。开工时 `git status --short` 干净、`main` 与 `origin/main` 齐平（`d39f9e37`），
+`git merge --ff-only origin/main` 报 `Already up to date`。
+
+**最靠前的未勾选条目本来是 2.2c**，但它的「还差什么」三条全在本轮纪律之外：写侧只剩
+`packages/desktop/**`（本机没装依赖、3.5 才决定取哪个桌面壳）、`adelie-app.service` 的变量名（发布动作）、
+桌面壳自己的开关（与它同一批）。重扫了一遍非桌面壳的 `PENGUIN_*`（546 处，非测试源码 40 个文件）：
+不是兼容别名 / 旧名注释（`boundary-env.ts`、`config.ts`、`docker/entrypoint.sh`、`session-manager.ts` 的
+剥离前缀），就是**有意保留的另外三面** —— `PENGUIN_GO_*`（上游 `token.penguin.ooo` 的服务标识，
+`model-catalog.ts` / web 的四处）、`PENGUIN_FAMILY`（HMR family 常量）、发布链路与安装器协议
+（`install.sh` / `install.ps1` / `scripts/test-installer.*` / `.github/workflows/release.yml` /
+`update.ts` / `install.sh` 的副本 —— 属 4.x）。所以照第十二轮的先例跳过 2.2c，做**下一条可做的：3.2**。
+本轮**没有改代码**，没有切版本号、没发 npm、没发安装包、没发发布汇总；`legacy/main`、
+`/root/penguin-harness`、3003 / 3004 / 4000 全程没碰。
+
+### 判据与结论
+
+`FORK.md` 第 3 条给这一条的判据是「接回 **或判定上游已经覆盖、直接删**」。逐条核完的结论是
+**上游已覆盖 —— 没有要移植的代码，也没有要删的东西**：基座的模型目录与费率表是旧 Adelie 那套的超集。
+
+### 对照表（旧 Adelie 逐条 → 基座落在哪）
+
+| 旧 Adelie（`origin/legacy/main`） | 基座（`main`） | 判定 |
+| --- | --- | --- |
+| 四组 `deepseek` / `openai` / `kimi` / `qwen`（`packages/core/src/config/model-catalog.ts`）：每组 `envKey` / `baseUrl` / `clientType: 'chat-completions'`，条目带 `label` 与每组至多一个 `default` | `packages/core/src/state/model-catalog.ts` 的 `MODEL_PROVIDERS`（15 组）+ `MODEL_CATALOG`（179 行：在架 176 / 退役 3）。这四家对应 **5 组**：`deepseek`、`openai`、`moonshot`、`qwen-pay-as-you-go`、`qwen-token-plan`，合计 28 行在架、**行行有价**。每组同样有 `envKey` / `envBaseUrlKey`，协议既可按组固定也可逐行固定（`openai-chat` / `openai-responses` / `ant-messages` / 各家专有） | 覆盖（分组更多、协议面更细） |
+| 全局 `DEFAULT_PROVIDER = 'deepseek'`、目录里每组一个默认模型 | 默认值是**每个 Project** 的 `default_model`，模板给 `deepseek / deepseek-flash`（`state/project-config.ts:235`，注释写明为什么是它）；「每组的默认模型」这个概念不需要了 | 覆盖 |
+| `rates`：只在知道牌价时写；`ratesFor` 只认 `(provider, model)` 精确匹配；`cacheRead` 省略就按输入价算；查不到返回 `null`，调用方按**未定价**说出来（`usage/rates.ts`） | 三桶价 `ModelPricing{ cache_read, cache_write, output }`（USD/百万 token，`state/project-config.ts:59`）；目录里的 `usd()` / `cny()` 是同一口径（人民币按固定 7:1 换成 USD 存）；**多一档峰谷价** `OffPeakDiscount`（DeepSeek 半价、Qwen 时段价，`offPeakAt` 按供应商自己的时区算）；无价的行 `pricing` 缺席 → `usage-service` 给 `cost = null` 且 `hasUncosted = true`（`services/usage-service.ts:515-524`），界面显示「未计价」 | 覆盖（并多两档能力） |
+| 计费只有乘法、不分层：`输入 × 输入价 + 命中 × cacheRead + 输出 × 输出价`，末尾按 6 位小数收尾（`estimateCostUsd`） | 同一公式：`requestCostUsd`（`services/usage-service.ts:157-166`），另按**记录自己的时间戳**选峰/谷档 | 覆盖 |
+| 用户手填的目录外模型名一律透传，按未定价处理 | 同（`custom` / vLLM / 用户自定义分组都能加条目；未知 id 不猜价） | 覆盖 |
+| 用户级 `.env`（`~/.adelie/.env`）里读 `PROVIDER_ENV_KEYS` —— 四家厂商的 key 名各一个（含 `DASHSCOPE_API_KEY`） | 凭证的正路是**项目配置**（`web.db` 里每个项目一张模型表，可存 key）与 **Agent 密钥库**；`.env` 只在**工作目录**下读（`server/src/index.ts:117` 的 `loadDotenv({quiet:true})`、CLI 的 `dotenv/config`） | 有意保留的差异（见下 3） |
+
+### 验证明细（都是真跑出来的）
+
+取证脚本在 scratchpad（`session-2026-10-07-11-00-29-8461361f/verify-32.mts`，一次性、不入库），
+`cd /root/adelie-fork && pnpm exec tsx <脚本>` —— 它 import 的是**源码**（core 的 `state/model-catalog.ts`、
+`state/project-config.ts`、server 的 `services/usage-service.ts`），不是复述：
+
+1. 四家厂的 5 个分组与键名：`deepseek`（`DEEPSEEK_API_KEY`，在架 2 / 有价 2）、`moonshot`
+   （`MOONSHOT_API_KEY`，3 / 3）、`qwen-pay-as-you-go`（7 / 7）、`qwen-token-plan`（6 / 6）、
+   `openai`（10 / 10）；整册 179 行，这五组 28 行**全部**有价。
+2. 默认模型：`defaultProjectConfig().default_model = {"provider":"deepseek","model_id":"deepseek-flash"}`。
+3. **费率公式等价**：拿旧 Adelie 的 `estimateCostUsd`（从 `origin/legacy/main:.../usage/rates.ts`
+   逐字抄进脚本、只去掉两个 import）与基座真的 `requestCostUsd`，在 192 组 token 组合 × 3 套牌价上对比
+   （对应关系：旧 `input` → 新 `cache_write`、旧 `cacheRead` → 新 `cache_read`），旧侧按 6 位小数收尾后再比，
+   **最大差 0**。
+4. 峰谷档：`offPeakAt(DEEPSEEK_OFF_PEAK, …)` —— 周一 10:00 北京 = `false`（峰）、周一 13:00 北京 = `true`、
+   周六 10:00 北京 = `true`（旧 Adelie 的费率表没有这一档）。
+5. 未计价：`catalogEntryFor("modelscope", "Qwen/Qwen3.8-Max").pricing === undefined` —— ModelScope 一行
+   有意不写价（基座注释写明理由），服务端对这类引用给 `cost = null` + `hasUncosted = true`。
+
+另外核过基座文件头自己写下的取舍（`model-catalog.ts:40`）：**`deepseek-chat` / `deepseek-reasoner`
+这两条旧 Adelie 的 deepseek 条目已被有意排除**（2026-07-24 弃用、AgentHub 无法自动路由），所以
+「把旧目录搬过来」反而会搬进两条不能用的行。
+
+### 有意保留的三处差异（都写清理由，不改）
+
+1. **Qwen 两组的 `envKey` 是 `OPENAI_API_KEY`，不是 `DASHSCOPE_API_KEY`**：基座的网关组记 `OPENAI_*`
+   是因为 AgentHub 的通用客户端读的就是它（`model-catalog.ts:148-155` 的注释说明），旧 Adelie 那个名字
+   改不过去 —— 要改就得动依赖的读取面，属「不引入新依赖 / 最小改动」之外的事。影响：只导出了
+   `DASHSCOPE_API_KEY` 的部署，Qwen 组的 key 要走项目配置里填。Kimi 的 `MOONSHOT_API_KEY` 两家同名。
+2. **人民币牌价按固定 7:1 换成 USD 存**（`cny()`），显示时再按用户设置的货币换回来
+   （`web/src/features/models/models-page.tsx:196`）；旧 Adelie 的取舍是「不换算、干脆留空」。这是
+   「价格是数据」的另一种表述，改它等于改整册 179 行的存法，不做。
+3. **没有用户级 `.env`**（旧 Adelie 的 `config/user-env.ts` 读 `~/.adelie/.env` 的 `PROVIDER_ENV_KEYS`）：
+   基座的 `.env` 属于**用户自己的工作目录**（`PORT` 那类会被用户的项目 `.env` 抢先，这是有意设计，
+   见 `core/src/environment/tools/command/session-manager.ts:46`），凭证的正路是项目配置与 Agent 密钥库。
+   要「接回」等于新造一套读取语义，零功能收益，不做。**这一条如果用户想要，是新的待办，不是这一条的尾巴。**
+
+### 收尾：提交、验证与汇报
+
+- 改动只有两份台账文档（`FORK.md` + `FORK-PROGRESS.md`），没有源代码改动 —— 因此没有 `changelog/unreleased`
+  条目（5.7 的口径是「一个功能提交带一条」）。
+- **门禁**：六包 `typecheck` 全过（core / server / web / ui / cli / hmr，server 那步照例带 `gen:ifaces`）。
+- **测试**（虽然是文档改动，按纪律照跑）：core **1359 通过 / 5 跳过**（64 文件）· ui **1003**（127）·
+  cli **506**（34）· web **2899 / 2 跳过**（236）· server **182 文件 / 2625 通过 / 4 跳过** ·
+  hmr 无测试文件（`vitest run --passWithNoTests`）—— **0 失败**，整条命令 `EXIT=0`。
+- **没有起服务、没有动的端口**：本轮没有界面改动，不需要 Playwright，也没重建 `packages/web/dist`。
+- **汇报邮件没发出去（第十轮 / 第十一轮 / 第十三轮同一处卡点）**：vault 里的 `CSU_MAIL_AUTHCODE` 仍被
+  邮箱拒 —— 本轮 `mail.py check` 一次，IMAP 报 `LOGIN Login error or password error`。按纪律没有继续重试
+  （账号与专用密码这一对已失效或被撤销）。修法只能由用户做：网页邮箱「设置 → 个人信息 → 邮箱密码 →
+  客户端专用密码」重建一个，再 `penguin config vault set --project-id sjaaj --agent-id default_agent
+  --key CSU_MAIL_AUTHCODE`，**下一次新对话**才会注入。本轮的结论因此只落在本台账里。
