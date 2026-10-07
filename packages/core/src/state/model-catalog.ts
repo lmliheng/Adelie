@@ -21,7 +21,9 @@
  * groups' line-ups with their peak/off-peak DeepSeek rows: 2026-09-16; the OpenCode Go group:
  * 2026-09-18 — per each provider's docs; and the ModelScope group, whose preset ids were read
  * from public model pages and endpoint listings — their windows, vision flags and prices are
- * NOT verified and say so on the rows themselves: 2026-09-18 and 2026-09-20).
+ * NOT verified and say so on the rows themselves: 2026-09-18 and 2026-09-20; and the direct
+ * Z.AI glm-4.7-flash row, the group's free tier, read from Z.AI's price list and
+ * 智谱开放平台's free-model page: 2026-10-07).
  * Docs: packages/docs/content/models.{zh,en}.md (site path /docs/models) documents the
  * provider groups and credential resolution described here.
  *
@@ -2726,6 +2728,33 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     contextWindow: 200000,
     pricing: usd(0.2, 1, 3.2),
     supportsVision: false,
+  },
+  {
+    // Zhipu's free tier, and the group's only $0 row: Z.AI's price list
+    // (docs.z.ai/guides/overview/pricing) reads `Free` on all four of its buckets, and
+    // 智谱开放平台 files the model under its own free-model list
+    // (docs.bigmodel.cn/cn/guide/models/free/glm-4.7-flash) — both read 2026-10-07. Text in,
+    // text out; 200K context with a 128K output cap; thinking mode, streaming, function
+    // calling, context caching and MCP.
+    //
+    // It sits below the 5.x rows because it is older, not because it is smaller: Z.AI's
+    // released-notes page dates GLM-4.7-Flash to 2026-01-19 and GLM-5 to 2026-02-12, and the
+    // whole GLM-5 line follows it. The same page calls it the free-tier version of GLM-4.7
+    // (2025-12-22).
+    //
+    // The id cannot be auto-routed. AgentHub 0.4.15 hands a model to its unified GLM client
+    // only when the routing token — client_type, or the id itself — contains `glm-5`, and
+    // this one carries `glm-4.7`; unrouted, AutoLLMClient rejects it outright. So the row
+    // pins the client, exactly as the DeepSeek `deepseek-flash` and MiniMax M3 rows pin
+    // theirs, and it pins no endpoint: the GLM client's own default is Z.AI's, and a
+    // 智谱开放平台 key reaches the same model on the same id through ZAI_BASE_URL.
+    modelId: "glm-4.7-flash",
+    displayName: "GLM-4.7 Flash",
+    provider: "zhipu",
+    contextWindow: 200000,
+    pricing: usd(0, 0, 0),
+    supportsVision: false,
+    clientType: "glm-5.3",
   },
   // -- Moonshot (Kimi) (official CNY pricing) --
   {

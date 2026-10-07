@@ -2289,3 +2289,49 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
 2. 有第二台 Linux 机器时，把「安装 → 使用 → 跨机建会话 → 插件/模型同步」端到端跑一次。
 3. Windows 侧要么等上游把「Windows 上的会话」做进 main，要么自己评估成本（比前两项都大）。
 4. 公司模式跑在别的机器上（`feat/company-remote-machines`）放在最后：它建立在上面这些之上。
+
+## 模型库加入智谱官方的 GLM-4.7 Flash（2026-10-07，用户点单）
+
+用户只给了一页文档（`docs.bigmodel.cn/cn/guide/models/free/glm-4.7-flash`）和一句「模型库添加智谱官方
+4.7 flash」。落点就是内置模型库（`MODEL_CATALOG`）里直连 Z.AI（GLM）那一组——它就是这个分组，
+`apiKeyUrl` 指的正是智谱开放平台的密钥页。
+
+### 事实（都从两个官方页面读的，2026-10-07）
+
+- id 是 `glm-4.7-flash`；**文本进、文本出**；上下文窗口 **200K**，输出上限 **128K**；支持思考模式、
+  流式输出、Function Calling、上下文缓存、MCP。
+- **免费**：Z.AI 的价格页（`docs.z.ai/guides/overview/pricing`）四项（输入、缓存命中、缓存存储、输出）
+  全写 `Free`；智谱开放平台把它列在自己的免费模型页里。
+- 它比 GLM-5 系列**更早**，不是更小：Z.AI 的发布记录里 GLM-4.7 是 2025-12-22、GLM-4.7-Flash 是
+  2026-01-19、GLM-5 是 2026-02-12。所以它排在 zhipu 分组的最末，而不是最前。
+
+### 改了什么
+
+- `packages/core/src/state/model-catalog.ts`：zhipu 组末尾加一条 —— `glm-4.7-flash` /
+  **GLM-4.7 Flash** / `contextWindow: 200000` / `pricing: usd(0, 0, 0)` / `supportsVision: false` /
+  `clientType: "glm-5.3"`；文件头的「数据核对日期」补上 2026-10-07 这一条。
+- **为什么必须固定客户端**：AgentHub 0.4.15 只在路由标记（`client_type`，没有就用 id 本身）里含
+  `glm-5` 时才把模型交给统一的 GLM 客户端，而 `glm-4.7-flash` 带的是 `glm-4.7`。这不是推断——直接拿
+  仓库里真装的 agenthub 构造 `AutoLLMClient` 试过：不固定 → 抛
+  `glm-4.7-flash is not supported. Supported client types: …`；`clientType: "glm-5.3"` → 拿到
+  `GLM5_3Client`。**端点则不固定**：Z.AI 与智谱开放平台用同一个 id 服务这个模型，走哪边由
+  `ZAI_BASE_URL` 决定（与 `deepseek-flash`、MiniMax M3 那两条「只固定客户端」的写法一致）。
+- 测试 `packages/core/test/model-catalog.test.ts`：zhipu 组的 id 顺序钉子里加 `glm-4.7-flash`；$0 条目的
+  白名单加上它（与自建 vLLM、`:free` 同一处理——成本按 0 计、卡片显示免费徽标，而不是「未计价」）；
+  「直连分组不固定 client_type」的循环排除这一条，并单独钉住它的 pin、窗口、vision 与三档 0 价；
+  两处「不自动路由的厂商条目只有两个」的注释改成三个。
+- 文档 `packages/docs/content/models.{zh,en}.md`：预置模型清单加上它，并新增一条「智谱的免费档」说明。
+- 变更日志照 5.7 的习惯写了中英双份 `changelog/unreleased/2026-10-07-glm-4-7-flash{,zh}.md`。
+
+### 验证（都实跑过）
+
+- core **1359 通过 · 5 跳过**、server **182 文件 / 2625 通过 · 4 跳过**、web **236 / 2899 · 2 跳过**
+  （含拿真目录跑的 `catalog-sync`）、docs 62、cli 506、ui 1003、ui-gallery 131，**0 失败**。
+- `pnpm lint` 0 警告 0 错误（2054 文件）、`pnpm format:check` 干净、`pnpm typecheck` 八包全过。
+- 路由那一条是**真跑依赖**得到的结论（上面那次 `AutoLLMClient` 构造），不是照着注释推的。
+
+### 现网与之后
+
+7364 那份跑的是 v0.3.1 的已装构建，**没有**这一条；模型页的 Z.AI 分组不允许手工加条目
+（`isAddableGroup` 只认 custom / vLLM / 自定义分组），所以要它出现在界面上得起一次新构建，之后用模型页的
+**同步预置**把它带进既有 Project。本轮按纪律没有碰那份安装。

@@ -389,14 +389,17 @@ describe("model-catalog", () => {
         m.modelId.endsWith(":free") ||
         m.modelId === "openrouter/free" ||
         m.modelId === "Atria-Dawn-Preview" ||
-        m.modelId === "dots-3-note-preview"
+        m.modelId === "dots-3-note-preview" ||
+        m.modelId === "glm-4.7-flash"
       ) {
         // Self-hosted vLLM and the free-tier gateway rows share one treatment: a genuine $0
         // price (not "unknown"), so costs compute to 0 and the free badge shows. Nobody bills
         // per token for either — a vLLM deployment costs its operator hardware, which no
         // catalog rate expresses. Atria Dawn Preview has no published price yet and is
         // recorded at $0 until the vendor prices it; TokenDance's dots-3-note-preview is the
-        // one free row of its group.
+        // one free row of its group, and GLM-4.7-Flash is Zhipu's own free tier — both
+        // platforms' price lists read `Free` (or file it under the free models) on every
+        // bucket, so the zero is the vendor's, not a placeholder.
         expect(m.pricing, m.modelId).toBeDefined();
         expect([m.pricing!.cache_read, m.pricing!.cache_write, m.pricing!.output]).toEqual([
           0, 0, 0,
@@ -1058,12 +1061,29 @@ describe("model-catalog", () => {
     // These groups' ids are auto-routed by AgentHub, so they carry neither client_type nor a
     // preset base URL — the opposite of the gateway groups above.
     for (const id of ["google", "anthropic", "zhipu", "moonshot"]) {
-      for (const m of MODEL_CATALOG.filter((e) => e.provider === id)) {
+      for (const m of MODEL_CATALOG.filter(
+        (e) => e.provider === id && e.modelId !== "glm-4.7-flash",
+      )) {
         expect(m.clientType, m.modelId).toBeUndefined();
         expect(m.baseUrl, m.modelId).toBeUndefined();
       }
     }
-    // The DeepSeek group is the exception, and only for one row: AgentHub 0.4.11 routes
+    // Z.AI's free GLM-4.7-Flash is the one pinned row of those four groups, and for the
+    // same reason as DeepSeek's below: AgentHub 0.4.15 hands a model to its unified GLM
+    // client on the `glm-5` substring alone, which `glm-4.7-flash` does not carry. The pin
+    // is the client's name and no endpoint — the id is served by both platforms, so the
+    // group's ZAI_BASE_URL decides which one is billed. Free on every bucket, text-only,
+    // 200K context with a 128K output cap (Z.AI's price list and 智谱开放平台's free-model
+    // page, both read 2026-10-07).
+    const glm47f = catalogEntryFor("zhipu", "glm-4.7-flash")!;
+    expect([glm47f.clientType, glm47f.baseUrl]).toEqual(["glm-5.3", undefined]);
+    expect([glm47f.contextWindow, glm47f.supportsVision]).toEqual([200000, false]);
+    expect([
+      glm47f.pricing!.cache_read,
+      glm47f.pricing!.cache_write,
+      glm47f.pricing!.output,
+    ]).toEqual([0, 0, 0]);
+    // The DeepSeek group is the other exception, and only for one row: AgentHub 0.4.11 routes
     // DeepSeek on the `deepseek-v4` substring alone, which the released `deepseek-flash`
     // does not carry, so that row pins the client and inlines the vendor endpoint. Every
     // other row in the group still auto-routes on its own spelling, and the pin comes off
@@ -1081,7 +1101,9 @@ describe("model-catalog", () => {
       expect(m.baseUrl, m.modelId).toBeUndefined();
     }
     // Dictionary order by tier with newer versions of a tier first (same rule the OpenRouter
-    // block follows for the identical Claude line-up).
+    // block follows for the identical Claude line-up). The GLM-4.7 line comes last because
+    // it is older than every GLM-5 row, not because it is smaller: Z.AI dates
+    // GLM-4.7-Flash to 2026-01-19 and GLM-5 to 2026-02-12.
     expect(MODEL_CATALOG.filter((m) => m.provider === "google").map((m) => m.modelId)).toEqual([
       "gemini-3.8-flash",
       "gemini-3.7-flash",
@@ -1098,6 +1120,7 @@ describe("model-catalog", () => {
       "glm-5.2",
       "glm-5.1",
       "glm-5",
+      "glm-4.7-flash",
     ]);
     // Gemini 3.6 / 3.7 / 3.8 Flash: Google halves all three of them through 2026-12-31, and
     // all six of their rows — direct and on OpenRouter — store Google's list price and
@@ -1594,7 +1617,8 @@ describe("resolveModelEnv (PRN-021: env fallback resolved by AgentHub routing ru
     expect(unroutableVendorModel("deepseek", "qwen/qwen3.8-flash-next")).toBe(true);
     expect(unroutableVendorModel("deepseek", "deepseek-v4-pro")).toBe(false);
     // The same id becomes routable the moment the entry pins the protocol itself, which is
-    // what the two vendor presets whose own ids do not route rely on.
+    // what the three vendor presets whose own ids do not route rely on (deepseek-flash,
+    // MiniMax M3 and zhipu's glm-4.7-flash).
     expect(unroutableVendorModel("deepseek", "deepseek-flash")).toBe(true);
     expect(unroutableVendorModel("deepseek", "deepseek-flash", "deepseek-v4")).toBe(false);
     // Every other group decides the protocol without consulting the id.

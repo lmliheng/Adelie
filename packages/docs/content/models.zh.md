@@ -499,7 +499,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - `gemini-3.8-flash`
 - `claude-opus-5` / `claude-opus-4-8` / `claude-sonnet-5`
 - `gpt-6-astra` / `gpt-5.6` / `gpt-5.5`
-- `glm-5.3` / `glm-5.3-flash`
+- `glm-5.3` / `glm-5.3-flash` / `glm-4.7-flash`（智谱官方免费档）
 - `kimi-k3`
 - `qwen3.8-max` / `qwen3.8-flash`
 - `seed-2.1-pro` / `seed-2.1-turbo` / `seed-evolving`
@@ -513,6 +513,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - **OpenAI 出现两次。** OpenAI 全系模型出现了两遍：一次直连（用你自己的 OpenAI key，官方牌价），一次在 OpenRouter 上以 `openai/<id>` 形式（网关费率，随其当前促销活动浮动）。
 - **GLM-5.3 Flash 出现六次。** 分别是直连的 `glm-5.3-flash`、TokenDance 与 OpenCode Go 上的同名条目，以及 OpenRouter 的 `z-ai/glm-5.3-flash`、Fireworks AI 的 `accounts/fireworks/models/glm-5p3-flash` 和 Qwen 按量付费的 `ZHIPU/GLM-5.3-Flash`。每一条都接受图像：AgentHub 的 GLM 客户端只对这一个 GLM id 转发图像内容，其他所有 GLM id 都拒收图像；各网关条目走通用的 OpenAI 兼容客户端，对任何 id 都会携带图像。各条不一致的是价格：每条记录的都是自己卖家收取的价格，所以促销期间彼此不同。
 - **OpenRouter 免费档。** 目录收录了 `:free` 变体 `nvidia/nemotron-3-ultra-550b-a55b:free`，以及 `openrouter/free` 这个统一的免费模型路由（Free Models Router）。它们不花钱，但 OpenRouter 免费档的限流和数据政策仍然适用。
+- **智谱的免费档。** `glm-4.7-flash` 是 Z.AI 分组里唯一的 $0 条目：Z.AI 的价格页四项都写 `Free`，智谱开放平台也把它列在免费模型里。文本输入、文本输出，200K 上下文、128K 输出上限。它的 id 不含 AgentHub 路由 GLM 所需的 `glm-5` 子串，所以这一条像 `deepseek-flash` 与 MiniMax M3 一样固定了 GLM 客户端；端点不固定——两个平台用同一个 id 提供服务，走哪个由 `ZAI_BASE_URL` 决定。它排在 GLM-5 各行之下是因为更早：Z.AI 的发布记录把 GLM-4.7-Flash 记在 2026-01-19，GLM-5 记在 2026-02-12。
 
 ### 价格与促销
 

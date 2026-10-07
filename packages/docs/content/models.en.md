@@ -500,7 +500,7 @@ The preset catalog includes, among others:
 - `gemini-3.8-flash`
 - `claude-opus-5` / `claude-opus-4-8` / `claude-sonnet-5`
 - `gpt-6-astra` / `gpt-5.6` / `gpt-5.5`
-- `glm-5.3` / `glm-5.3-flash`
+- `glm-5.3` / `glm-5.3-flash` / `glm-4.7-flash` (Z.AI's free tier)
 - `kimi-k3`
 - `qwen3.8-max` / `qwen3.8-flash`
 - `seed-2.1-pro` / `seed-2.1-turbo` / `seed-evolving`
@@ -514,6 +514,7 @@ The list is not exhaustive.
 - **OpenAI twice.** The whole OpenAI line-up is listed twice: directly (your own OpenAI key, list prices) and on OpenRouter as `openai/<id>` (the gateway's rates, which follow its running promotions).
 - **GLM-5.3 Flash six times.** It appears directly as `glm-5.3-flash`, under the same id on TokenDance and OpenCode Go, and as OpenRouter's `z-ai/glm-5.3-flash`, Fireworks AI's `accounts/fireworks/models/glm-5p3-flash` and Qwen pay-as-you-go's `ZHIPU/GLM-5.3-Flash`. Every row accepts images: AgentHub's GLM client forwards image parts for this one GLM id, every other GLM id refuses them, and the gateway rows go through the generic OpenAI-compatible clients, which carry images for any id. What the rows do not share is the price: each records what its own seller charges, so they disagree while a promotion runs.
 - **OpenRouter free tier.** The catalog carries the `:free` model variant `nvidia/nemotron-3-ultra-550b-a55b:free` and the `openrouter/free` unified Free Models Router. They cost nothing, but OpenRouter's free-tier rate limits and data policy apply.
+- **Zhipu's free tier.** `glm-4.7-flash` is the Z.AI group's one $0 row: Z.AI's price list reads `Free` on all four of its buckets, and 智谱开放平台 files the model under its free-model list. Text in, text out, 200K context with a 128K output cap. Its id carries none of the `glm-5` substring AgentHub routes GLM on, so the row pins the GLM client the way `deepseek-flash` and MiniMax M3 pin theirs; it pins no endpoint, since both platforms serve the same id — `ZAI_BASE_URL` picks which one is billed. It sits below the GLM-5 rows because it is older: Z.AI dates GLM-4.7-Flash to 2026-01-19 and GLM-5 to 2026-02-12.
 
 ### Prices and promotions
 
