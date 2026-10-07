@@ -809,6 +809,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-07 | 2.2c（文本面收尾） | 非桌面壳、非发布面里仍把旧名当「现在」用的地方收干净：6 份插件文本、2 份包 README、5 处源码注释改用 Adelie 的名字；修掉需求箱安装脚本的默认数据根（无变量时 `~/.penguin` → `~/.adelie/data`，与 core 的 `resolveRoot()` 对齐）；4 个插件的日期版本 +1 | 六包 typecheck 过 · `pnpm lint` 0 警告 0 错误（2054 文件）· `pnpm format:check` 干净 · core **1359**/5 跳过 · ui **1003** · cli **506** · web **2899**/2 跳过 · server **182 文件 / 2625 通过 / 4 跳过** · docs **62**，**0 失败** · 安装脚本 `--print-only` 五种组合各真跑一次，修复前后各一次（修复前 `/root/.penguin/…`、修复后 `/root/.adelie/data/…`，与 `resolveRoot()` 一致） · `check-plugin-versions` 过了 | `37f710d9` |
 | 2026-10-07 | 3.2 | **模型目录与费率表判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：旧 Adelie 的四家厂在基座里是 5 组、28 行在架、行行有价，三桶价与旧的 input / cacheRead / output 逐字等价（拿两边**真的**函数比 192 组 token 组合 × 3 套牌价，**最大差 0**）；默认模型 `deepseek / deepseek-flash` 对得上旧的 `DEFAULT_PROVIDER`；基座还多出峰谷档与「无价即未计价」。三处有意保留的差异（Qwen 两组的 `envKey` 是 `OPENAI_API_KEY`、人民币按 7:1 折 USD、没有用户级 `.env`）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无用例文件（`vitest run --passWithNoTests`），**0 失败**、整条 `EXIT=0`；取证脚本 import 的是源码（`state/model-catalog.ts`、`defaultProjectConfig()`、server 的 `requestCostUsd`），输出见「第十四轮」一节；本轮无界面改动，没起服务、没动端口 | `eeada99c` |
 | 2026-10-07 | 3.3 | **用量与成本页判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已覆盖、直接删**」）：旧 Adelie 那套（`GET /api/usage` + 成本中心：三卡 + 按模型/按会话两张表 + 一天折线 + 每轮金额）在基座里是**一整套** —— 成本中心 `/api/projects/:p/usage`（四个维度、粒度到分/时/周/月、分页错误表与 owner 清空、模型终身用量）、会话头部的实时与累计成本、上下文环、公司模式的工单/预算财务页；**「只落 token、成本查询时现算」这条原则两家一致**（基座的 `usage_records` 同样不落成本，`server/test/usage.test.ts:76` 的用例名就是 "only Tokens persisted, never cost"）。四处有意保留的差异（成本中心里的按会话明细被图取代、未计价只有布尔 `hasUncosted`、旧的是身份级而基座是项目级、没有 `sessionsScanned` / `unreadableSessions` 这两个扫盘字段）与理由写进条目。**本轮没有改代码**，2.2c 因剩下的活全在桌面壳 / 部署一侧而照例跳过 | 六包 typecheck 全过；测试 core **1359**/5 跳过（64 文件）· ui **1003**（127）· cli **506**（34）· web **2899**/2 跳过（236）· server **182 文件 / 2625 通过 / 4 跳过** · hmr 无测试文件（退出 0），**0 失败**、整条命令 `EXIT=0`；真浏览器看了一次这一页 —— 画廊开发服务器（7381，我自己起的、看完已停）+ Playwright 打开 `app.html?route=/usage&lang=zh`：三卡 + 四张图 + 异常面板 + 三段筛选都在、**console 0 error**，截图 `usage-page.png` 在会话 scratchpad | `d7f2d1ac` |
+| 2026-10-07 | 用户点单 | **左下角账户菜单新增「用户反馈」入口**：一行 + 一个两栏对话框（标题必填 ≤200、详细说明 ≤20000），提交由服务端带口令转进 3003 需求箱的 `POST /api/requirements`；新增 `GET\|POST /api/feedback` 路由与 `ADELIE_FEEDBACK_URL` / `ADELIE_FEEDBACK_KEY` 两个变量，浏览器永远拿不到地址与口令；未配置后端时那一行整条不画；画廊 mock 与中英 changelog 跟上；server 11 条 + web 8 条新用例 | 四道门禁全绿（`pnpm -r test` **8961 通过 / 16 跳过 / 0 失败**）；CI run `37622306652` **22 作业全绿**；现网 7364 源码构建 → 离线 bundle → `install.sh` 原地更新，重启后 `GET /api/feedback` 回 `{ok:true,configured:true}`，一次真实提交走完全程（需求箱 `req-17`，随即归档、在办仍是 2 条），console/日志无 warning | `4e79c473` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2631,3 +2632,99 @@ process.env.CLIENT_TYPE || options.model`），写成 `client_type` 会被忽略
 - **汇报邮件：发出去了**（第十四轮修好的那条专用密码在这个新会话里已注入）：`mail.py check` 两条都通
   （IMAP 7 个文件夹 / SMTP 登录成功），`send --to 0110230306@csu.edu.cn` 报 `SMTP 已投递` 且
   「已发送」里能查到这一封（#120，19:09 +0800）—— 没有重试、没有走 CAS 引导。
+
+## 第十六轮：左下角账户菜单的用户反馈入口（2026-10-07，用户点单「在左下角加上用户反馈，反馈后台放3003服务」）
+
+### 做了什么
+
+用户这一轮只给了一句话：界面左下角加一个用户反馈入口，提交落到 3003 那台机上的需求箱
+（`adelie-design.service`，`POST /api/requirements`，口令走 `x-adelie-key`）。落点选在**账户菜单里加一行**：
+那份菜单本身就在左下角，而且展开侧栏的账户行与折叠栏的头像**共用同一份实现**（`user-menu.tsx` 的文件注释
+写着「第二份拷贝就是两份菜单漂移的开始」），另起一行会重复、折叠栏也没有位置。
+
+- **服务端**（`packages/server/src/http/routes/feedback.ts`，新）：`GET /api/feedback` 只回
+  `{ok, configured}` —— 地址与口令都不出浏览器；`POST /api/feedback` 校验标题非空且 ≤200、正文 ≤20000
+  （就是需求箱自己的上限，先判再转发），未配置回 503 `feedback_not_configured`，转发 `{title, detail}` 与
+  `x-adelie-key`（配了才带），10s 超时；对方非 2xx → 502 `feedback_rejected`（带状态码、**不转原文**，
+  那是写给运维的），连不上 → 502 `feedback_unreachable`；成功从 `item.id` 取编号回 `{ok, id?}`。路由组
+  `FeedbackRoutes` 自声明前缀（`auth:"user"`、`order 75`）并登记进 `platform.ts` 的 `ApiModule.children`。
+- **配置**（`config.ts`）：新增 `ADELIE_FEEDBACK_URL` / `ADELIE_FEEDBACK_KEY`，启动时校验（必须绝对
+  http(s)、不许内嵌凭据、空值按未配）。口令只有自己的变量：写进 URL 会跟着请求行进日志。
+- **前端**（`components/account/feedback-dialog.tsx`，新）：挂载时探一次配置，读不到或未配置就把那一行
+  整条藏掉 —— 宁可没有入口，也不给一个只会失败的按钮。对话框两栏，标题带红 `*`（必填），「可选」不写进
+  标签（`required-mark` 规则）；成功弹提示并带出编号；`feedback_not_configured` 用专门文案，其余失败同一句
+  可重试的话。对话框挂在面板**外面**：面板一关子节点就卸载，而这一行是关掉菜单才打开对话框的。
+- **画廊与记录**：`packages/ui-gallery` 的 mock 补上这两条路由（否则「每个包装都有路由」那条测试会红）；
+  `changelog/unreleased/2026-10-07-feedback-entry{,.zh}.md` 中英双份。
+- **测试**：server `test/feedback.test.ts` 11 条（不配后端时报 off 且**一次都不拨号**、提交回 503；配了
+  不泄露地址与口令、转发内容与 key、没配 key 不发头、204 无编号也算成功、拒收 → 502 不转原文、连不上 →
+  502、空标题 → 400 且不拨号、200/20000 边界内通过、未登录 → 401）；web `test/feedback-dialog.test.ts`
+  8 条（静态渲染：关着不画任何东西、两栏与文案、标题的红 `*` 只有一个、两处 `maxLength`、标题为空时提交
+  不可用而取消可用、英文界面说英文；外加失败文案的两个分支）。
+
+### 验证（都不是推测）
+
+- **四道门禁**：`pnpm lint` **0 警告 0 错误**（2058 文件）、`pnpm format:check` 干净、
+  `pnpm typecheck` 八包全过（含四个沙箱插件）、`pnpm -r test` **8961 通过 / 16 跳过 / 0 失败**：
+  docs 62 · ui 1003 · core 1359 + 5 跳过 · server 2636 + 4 跳过（183 文件）· cli 506 ·
+  web 2907 + 2 跳过（237 文件）· desktop 286 · ui-gallery 131 · 四个沙箱插件 71（+5 跳过）。
+  两个新文件都在里面，`✓ test/feedback.test.ts (11 tests)` / `✓ test/feedback-dialog.test.ts (8 tests)`。
+- 首跑 `format:check` 报三个服务端文件、`required-mark` 报 `feedback.detailLabel`（详细说明写成「（可不填）」/
+  「(optional)」）——都当场改掉：字段是否必填由红 `*` 说，标签与占位符里不写「可选」。
+- **提交** `4e79c473`（15 个文件、836 增 3 删），推送到 `origin/main`。CI run **`37622306652`**
+  **22 个作业全绿**（`NOT SUCCESS: []`，含 `installer-windows`、三个 `runtime` 与四个 `test-windows`）。
+
+### 把功能滚进现网 7364
+
+口径仍是 2026-10-05 那条：**「更新应用」= commit，攒够阈值才升版本** —— 这一轮的提交数远不到发版线，
+所以照上一轮的做法把当前源码构建后原地滚进 `/root/.adelie`，版本号仍是 0.3.3。
+
+- **构建**：复用登记过的那棵干净树（`/tmp/rel-0.3.3`，`git fetch` 后 detached 检出 `4e79c473`，
+  `pnpm install --frozen-lockfile` 562ms 全命中），把 `BUILD_DATE=2026-10-07` /
+  `BUILD_COMMIT=4e79c473f84614b4e86f9720f0bf8e651f106fda` 盖进 `packages/core/src/index.ts`，然后
+  `hmr / core / server / cli / web` 五个包各构建一次。
+- **打包**：`pnpm --config.node-linker=hoisted --filter @lmliheng/penguin-cli --prod deploy` → `lib/`、
+  `packages/web/dist` → `web/`、`scripts/launchers/penguin` → `bin/penguin`、`build-plugins.mjs` →
+  `lib/plugins/`（4 个自带插件），`node/` 沿用现装那份（同 v24.18.0，不必重下 50MB），打成与发布同形的离线
+  bundle（`install.sh` + `payload.tar.gz` + `.sha256`）。**注意**：`scripts/package-release-bundles.sh` 要求
+  五个 target 的 payload 齐全，本轮只做 linux-x64，所以它跑到 arm64 会报 `missing payload` —— linux-x64
+  的成品在此之前已经封好（日志里那句 `Created penguin-linux-x64.tar.gz`），本轮用的就是它。
+- **安装**：`PENGUIN_INSTALL_DIR=/root/.adelie sh install.sh --no-modify-path` →
+  `Payload checksum OK.` / `Adelie v0.3.3 installed to /root/.adelie`。装好后核过产物里确实带上了这一轮：
+  `lib/node_modules/@lmliheng/penguin-server/dist/index.js` 里有 `feedback_not_configured`、
+  `web/assets/index-BDmH2BiR.js` 里有「用户反馈」，CLI `--version` = `v0.3.3`、
+  `BUILD_COMMIT = "4e79c473f84614b4e86f9720f0bf8e651f106fda"`。
+- **配置**：`/etc/systemd/system/adelie-server.service` 在 `ADELIE_HOME` 那行之后加
+  `Environment=ADELIE_FEEDBACK_URL=http://127.0.0.1:3003/api/requirements` 与
+  `Environment=ADELIE_FEEDBACK_KEY=<48 字符口令>`。口令由脚本从 `/opt/adelie-design-requirements/key.txt`
+  读进去、**全程没有打印**（只核了「行只有一条、取值与文件逐字相同、长度 48」），随后 `daemon-reload`，
+  再用 `systemctl show -p Environment` 复核两个变量都进了单元（同样不打印取值）。
+- **重启**：这一轮的会话就跑在 `adelie-server.service` 的 cgroup 里，直接重启会把会话连同汇报一起掐掉，
+  所以照 v0.3.3 那次的手法用 `systemd-run`（瞬时单元 `adelie-live-restart`，自己的 cgroup）跑一个脚本：
+  先等 300 秒让本轮写完 → 重启 → 自己核验并写 `/tmp/live-4e79c473-post-restart.log`。结果再由一次性定时
+  任务带回本会话（20:54 触发），本节就是那次核验之后补的。
+
+### 现网核验结果（2026-10-07 20:52，脚本实跑，不是复述）
+
+```
+is-active: active          MainPID: 2067797（原 1980708）      NRestarts: 0
+port 7364: listening       GET / -> 200    GET /healthz -> 200    <title>Adelie</title>
+bundle: assets/index-BDmH2BiR.js（新的前端产物）                 CLI: v0.3.3
+未带令牌 GET /api/feedback -> 401        GET /api/feedback -> {"ok":true,"configured":true}
+POST /api/feedback -> {"ok":true,"id":"req-17"}   需求箱里看得见 req-17，且 archived: True
+在办条目仍是 2 条（req-8 / req-15）        数据根 17 个顶层条目        安装残留（.old.* / .staging.*）0
+journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 `-- No entries --` 占位行，人工复核过）
+```
+
+- 那条自检提交是**真走了整条路**：由左下角那行背后的同一个 `POST /api/feedback` 提交，服务端带口令转进
+  3003，需求箱以 `req-17` 收下（标题写明是自检、无需处理），随即归档 —— 队列内容回到原样。不留这一条就
+  无法证明「提交真的到了 3003」，所以留一条已归档的自检是这一轮的取证方式。
+- 数据根 `/root/.adelie/data` 顶层条目数与开工前一致、无 `.old.*` / `.staging.*` 残留；`api-token` 按每次
+  启动轮换（20:52:07 重签，核验脚本在重启**之后**才读它 —— 上一轮踩过这个坑）。
+- 原始日志与三个一次性脚本（构建、打包、重启核验）留在这一个会话的 scratchpad 里。
+
+### 没做的
+
+- `packages/docs/content/configuration.{zh,en}.md` 的环境变量表**没动**：按 2.5 / 2.1c 的既定口径，
+  `packages/docs/**` 那套留到发布期那一轮一起改（`config.ts` 的注释仍指向 `/docs/configuration § Environment variables`）。
+- 没有切版本号、没有发 npm、没有打发布包、没有发发布汇总邮件。
