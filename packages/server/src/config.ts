@@ -129,6 +129,19 @@ export interface ServerConfig {
    * no CLI to offer and no shim written.
    */
   cliEntry?: string | null;
+  /**
+   * Feedback endpoint (ADELIE_FEEDBACK_URL): the absolute http(s) URL the Web UI's feedback
+   * entry posts to, with ADELIE_FEEDBACK_KEY sent as its `x-adelie-key` header when set. Null
+   * — the default — turns the entry off: an install with no feedback backend has nothing to
+   * send its users' words to, and a button that can only fail is worse than no button.
+   *
+   * The contract is the Adelie requirements box's (`POST /api/requirements`, `{title, detail}`
+   * in, `{ok, item}` out) — the same box the patrol rounds read their work from, so feedback
+   * filed from the UI lands in the queue an Agent already works through.
+   */
+  feedbackUrl: string | null;
+  /** The feedback endpoint's credential (ADELIE_FEEDBACK_KEY), sent as `x-adelie-key`; null when the endpoint takes none. */
+  feedbackKey: string | null;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -234,7 +247,33 @@ export function normalizeModelScopeBridgeUrl(raw: string | undefined): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, "")}`;
 }
 
-/** Parses server config from environment variables (PORT / HOST / ADELIE_HOME / ADELIE_WEB_DIST / ADELIE_WEB_DB / ADELIE_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / ADELIE_SEED_ADMIN_PASSWORD / ADELIE_DESKTOP_TOKEN / ADELIE_PORT_FILE / ADELIE_TRUST_PROXY / ADELIE_CLI_ENTRY; each of the deployment names is also read in its pre-rename `PENGUIN_*` spelling, see state/boundary-env.ts). */
+/**
+ * Validates ADELIE_FEEDBACK_URL into an absolute http(s) URL, or null when unset. A blank
+ * value counts as unset (the common `.env` case of `ADELIE_FEEDBACK_URL=`), and a malformed
+ * one throws here rather than at the first submission: the alternative is a feedback entry
+ * that looks live and answers with a network error the operator cannot connect to a typo.
+ * Credentials in the URL stay rejected — the key has its own variable, and putting it in the
+ * URL would leak it into the journal through the logged request line.
+ */
+export function normalizeFeedbackUrl(raw: string | undefined): string | null {
+  const value = raw?.trim();
+  if (!value) return null;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(`Invalid ADELIE_FEEDBACK_URL=${value} (expected an absolute HTTP(S) URL)`);
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error(`Invalid ADELIE_FEEDBACK_URL=${value} (only http/https are supported)`);
+  }
+  if (url.username !== "" || url.password !== "") {
+    throw new Error(`Invalid ADELIE_FEEDBACK_URL=${value} (put the key in ADELIE_FEEDBACK_KEY)`);
+  }
+  return url.toString();
+}
+
+/** Parses server config from environment variables (PORT / HOST / ADELIE_HOME / ADELIE_WEB_DIST / ADELIE_WEB_DB / ADELIE_PREVIEW_ORIGIN / PENGUIN_GO_ORIGIN / MODELSCOPE_BRIDGE_URL / ADELIE_SEED_ADMIN_PASSWORD / ADELIE_DESKTOP_TOKEN / ADELIE_PORT_FILE / ADELIE_TRUST_PROXY / ADELIE_CLI_ENTRY / ADELIE_FEEDBACK_URL / ADELIE_FEEDBACK_KEY; each of the deployment names is also read in its pre-rename `PENGUIN_*` spelling, see state/boundary-env.ts). */
 export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): ServerConfig {
   // The root is read off the passed environment rather than `process.env` (this function takes
   // one so tests can hand it a fabricated environment), so the two names are spelled here as
@@ -271,5 +310,9 @@ export function resolveServerConfig(env: NodeJS.ProcessEnv = process.env): Serve
     trustProxy: env.ADELIE_TRUST_PROXY === "1",
     supervised: env.ADELIE_SUPERVISED === "1",
     cliEntry: boundaryEnv(env, "cliEntry")?.trim() || defaultCliEntry(),
+    feedbackUrl: normalizeFeedbackUrl(env.ADELIE_FEEDBACK_URL),
+    // An empty value counts as unset: an endpoint that wants no credential gets no header,
+    // rather than an empty one it would have to treat as a wrong key.
+    feedbackKey: env.ADELIE_FEEDBACK_KEY?.trim() || null,
   };
 }

@@ -46,6 +46,9 @@ import type {
   DirListResponse,
   EndpointModelListRequest,
   EndpointModelListResponse,
+  FeedbackConfigResponse,
+  FeedbackRequest,
+  FeedbackResponse,
   FeishuBindingPutRequest,
   FeishuBindingResponse,
   FeishuTestRequest,
@@ -1946,6 +1949,15 @@ export const startUpdateJob = () =>
 /** Admin only: asks the supervised server process to restart into the installed release. */
 export const restartServer = () =>
   apiFetch<RestartResponse>("/api/version/restart", { method: "POST", body: {} });
+
+// Feedback (the sidebar's entry) --------------------------------------------------------
+
+/** Whether this install has a feedback backend. The entry renders only where it does. */
+export const getFeedbackConfig = () => apiFetch<FeedbackConfigResponse>("/api/feedback");
+
+/** Files one submission; `id` names the item the backend created, when it reported one. */
+export const sendFeedback = (body: FeedbackRequest) =>
+  apiFetch<FeedbackResponse>("/api/feedback", { method: "POST", body });
 
 // Desktop client update (desktop-shell sessions only) ----------------------------------
 

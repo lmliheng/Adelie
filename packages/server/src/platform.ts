@@ -70,6 +70,7 @@ import {
 } from "./services/update-check-service.js";
 import { UpdateJobService } from "./services/update-job.js";
 import { HarnessHistoryStore } from "./services/harness-history.js";
+import { FeedbackRoutes } from "./http/routes/feedback.js";
 import { UsersRepo } from "./db/repos/users.js";
 import { AuthSessionsRepo } from "./db/repos/auth-sessions.js";
 import { ServerSettingsRepo } from "./db/repos/server-settings.js";
@@ -449,6 +450,7 @@ export class CompanyModule {}
     WebModule,
     InstallRoutes,
     VersionRoutes,
+    FeedbackRoutes,
     HmrRoutes,
     DesktopRoutes,
     DesktopUpdateRoutes,

@@ -154,6 +154,10 @@ export function testConfig(root: string): ServerConfig {
     // No CLI to offer: nothing is written into the temp root, and no directory is put on
     // the PATH of whatever a test's Agent runs.
     cliEntry: null,
+    // No feedback endpoint: the entry stays hidden, which is what an install without a box
+    // shows. feedback.test.ts builds its own config for the configured cases.
+    feedbackUrl: null,
+    feedbackKey: null,
   };
 }
 

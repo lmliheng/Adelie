@@ -946,6 +946,29 @@ export const en: Strings = {
     },
   },
 
+  /**
+   * The sidebar's feedback entry and the dialog behind it. The words are the user's own — the
+   * dialog promises only where they go, which is the operator's queue, so a note left here is
+   * read and acted on rather than merely archived.
+   */
+  feedback: {
+    title: "Feedback",
+    intro:
+      "Say what you want changed, what went wrong, or anything else. It lands straight in this machine's feedback queue.",
+    titleLabel: "One-line title",
+    titlePlaceholder: "e.g. the sidebar text is too small",
+    detailLabel: "Details",
+    detailPlaceholder: "Where you were and what you expected helps — a paragraph is plenty.",
+    submit: "Send",
+    submitted: "Sent — thank you",
+    submittedWithId: (id: string): string => `Sent (${id}) — thank you`,
+    titleRequired: "A title is required",
+    sendFailed: "Sending failed — try again in a moment",
+    /** Shown when the server has nowhere to send to — names the switch, so the operator can act on it. */
+    notConfigured:
+      "This machine has no feedback endpoint configured (ADELIE_FEEDBACK_URL), so nothing can be sent from here yet.",
+  },
+
   admin: {
     users: "Users",
     roleAdmin: "Admin",

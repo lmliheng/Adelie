@@ -24,6 +24,7 @@ import { S } from "../../lib/strings";
 import { useAuth } from "../../state/auth";
 import { UpdateRow } from "../account/update-row";
 import { UserVaultDialog } from "../account/user-vault-dialog";
+import { FeedbackDialog, useFeedbackChannel } from "../account/feedback-dialog";
 import { openUpdateModal } from "../../lib/use-update-flow";
 import { SettingsDialog } from "../../features/settings/settings-dialog";
 import { onSettingsRequest } from "../../features/settings/settings-request";
@@ -59,6 +60,9 @@ export function UserMenu({
   /** The page a request asked for; the menu's own row asks for none (the viewer's first). */
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey | undefined>(undefined);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
+  /** The feedback row and its dialog; both live here because the row sits inside the panel and
+   *  the dialog must outlive it. */
+  const feedback = useFeedbackChannel();
 
   // Settings can be asked for from outside this menu (see settings-request.ts): the request
   // opens the same dialog, on the page it names.
@@ -139,6 +143,18 @@ export function UserMenu({
                 navigate("/schedules");
               }}
             />
+            {/* Feedback, below the navigation rows: the one row here that files something for
+                the operator rather than opening a page of this account's own. Left out entirely
+                where the install has no endpoint — see the hook. */}
+            {feedback.configured && (
+              <MenuItem
+                label={S.feedback.title}
+                onSelect={() => {
+                  setOpen(false);
+                  feedback.setOpen(true);
+                }}
+              />
+            )}
             {/* Update entry, under the two navigation rows rather than on a page inside the
                 settings dialog: one row for both backends (the server release here, the
                 shell's own updater in the desktop window), naming where the update flow
@@ -175,6 +191,8 @@ export function UserMenu({
       {/* The account's own secrets, mounted here like the settings dialog so it outlives the
           menu that opened it. */}
       <UserVaultDialog open={vaultOpen} onClose={() => setVaultOpen(false)} />
+      {/* Feedback, likewise outside the panel: its row closes the menu as it opens this. */}
+      <FeedbackDialog open={feedback.open} onClose={() => feedback.setOpen(false)} />
       {/* Signing out is confirmed first: the row sits in a menu of harmless entries, and a
           slip would end the session and land on the login page. Mounted beside the settings
           dialog, outside the dropdown, so it outlives the menu that opened it. */}

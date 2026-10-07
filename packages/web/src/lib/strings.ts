@@ -996,6 +996,27 @@ export const zh = {
     },
   },
 
+  /**
+   * The sidebar's feedback entry and the dialog behind it. The words are the user's own — the
+   * dialog promises only where they go, which is the operator's queue, so a note left here is
+   * read and acted on rather than merely archived.
+   */
+  feedback: {
+    title: "用户反馈",
+    intro: "写下你想要的改动、遇到的问题，或者任何一句话。它会被直接收进这台机器的反馈队列。",
+    titleLabel: "一句话标题",
+    titlePlaceholder: "例如：侧栏的字太小",
+    detailLabel: "详细说明",
+    detailPlaceholder: "方便的话说清在哪一步、期望是什么——一段话就够。",
+    submit: "提交",
+    submitted: "已提交，谢谢",
+    submittedWithId: (id: string): string => `已提交（${id}），谢谢`,
+    titleRequired: "标题不能为空",
+    sendFailed: "提交失败，请稍后再试",
+    /** Shown when the server has nowhere to send to — names the switch, so the operator can act on it. */
+    notConfigured: "这台机器还没配反馈后端（ADELIE_FEEDBACK_URL），所以这里暂时收不了。",
+  },
+
   admin: {
     users: "用户管理",
     roleAdmin: "管理员",

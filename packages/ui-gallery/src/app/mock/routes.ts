@@ -41,6 +41,8 @@ import type {
   DirDeleteResponse,
   DirListResponse,
   EndpointModelListResponse,
+  FeedbackConfigResponse,
+  FeedbackResponse,
   FilesStatResponse,
   GoalResponse,
   InstallResponse,
@@ -2074,7 +2076,7 @@ router
   );
 
 // ---------------------------------------------------------------------------------------------
-// Version, self-update, desktop
+// Version and self-update
 // ---------------------------------------------------------------------------------------------
 
 const idleJob: UpdateJobStatus = { state: "idle", targetVersion: null, output: "" };
@@ -2095,7 +2097,31 @@ router
   .post("/api/version/restart", (): RestartResponse => ({
     restarting: false,
     reason: "no_supervisor",
-  }))
+  }));
+
+// ---------------------------------------------------------------------------------------------
+// Feedback: the demo answers as an install that has a queue behind it, so the entry renders
+// ---------------------------------------------------------------------------------------------
+
+/** How many submissions the demo has accepted, so each one is answered with its own item id. */
+let filedFeedback = 0;
+
+router
+  .get("/api/feedback", (): FeedbackConfigResponse => ({ ok: true, configured: true }))
+  .post("/api/feedback", ({ body }): FeedbackResponse => {
+    const title = str(record(body).title).trim();
+    // The title is the one field the server's own route insists on; the demo refuses it here
+    // rather than filing something the queue could not name.
+    if (title === "") fail(400, "bad_request", "A title is required.");
+    filedFeedback += 1;
+    return { ok: true, id: `req-demo-${filedFeedback}` };
+  });
+
+// ---------------------------------------------------------------------------------------------
+// Desktop client update (the shell's own; a browser-only gallery has none)
+// ---------------------------------------------------------------------------------------------
+
+router
   .get("/api/desktop/update", (): DesktopUpdateStatusResponse => ({ status: null }))
   .post("/api/desktop/update/check", () => notFound("Desktop updater"))
   .post("/api/desktop/update/download", () => notFound("Desktop updater"))

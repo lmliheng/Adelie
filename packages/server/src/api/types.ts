@@ -5812,3 +5812,31 @@ export interface DesktopBrowserEventMessage {
   type: "desktop-browser-event";
   event: DesktopBrowserEvent;
 }
+
+// ---------------------------------------------------------------------------
+// Feedback (GET|POST /api/feedback)
+// ---------------------------------------------------------------------------
+
+/**
+ * Whether this install has somewhere to send feedback (ADELIE_FEEDBACK_URL). The sidebar
+ * renders the entry only where the answer is true; the endpoint's address itself is the
+ * server's business and never crosses this boundary.
+ */
+export interface FeedbackConfigResponse {
+  ok: true;
+  configured: boolean;
+}
+
+/** One submission from the feedback entry: a title, and what the user typed under it. */
+export interface FeedbackRequest {
+  /** One line naming the feedback (the box's `title`, at most 200 characters). */
+  title: string;
+  /** The body, at most 20000 characters; may be empty. */
+  detail?: string;
+}
+
+/** The acceptance: `id` names the item the endpoint filed, when it reported one. */
+export interface FeedbackResponse {
+  ok: true;
+  id?: string;
+}
