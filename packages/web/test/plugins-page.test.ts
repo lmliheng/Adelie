@@ -10,6 +10,9 @@
  *   snapshot or for a plugin that ships nothing.
  * - The market shelf's state for one Agent is not installed / installed / updatable, the third
  *   only ever off the server's own list of installs it says are behind.
+ * - That same state divides the page's two sections: a library plugin the working Agent holds
+ *   is listed as installed, one it lacks is offered — never a "not installed" card filed under
+ *   "installed plugins" — while the Project's own module rows are not per-Agent and stay put.
  * - The installable list is what the deployment SHIPS, described by the registry's entry: the
  *   shelf carries an entry per plugin package the build carries, skills/hooks packages among
  *   them, and the server refuses the ones it does not ship.
@@ -23,7 +26,11 @@
  *   every plugin it is behind on, and counts distinct plugins as the notice does.
  */
 import { describe, expect, it } from "vitest";
-import type { InstalledPluginsResponse, PluginIndexEntry } from "@lmliheng/penguin-server/api";
+import type {
+  InstalledPluginsResponse,
+  PluginIndexEntry,
+  PluginItem,
+} from "@lmliheng/penguin-server/api";
 import {
   availablePluginRows,
   installedPluginRows,
@@ -33,6 +40,8 @@ import {
   outdatedAgentIds,
   pluginInstalled,
   pluginUpdatePlan,
+  rowFacets,
+  splitPluginRows,
   type AgentInstalls,
   type PluginParts,
   type PluginView,
@@ -324,5 +333,87 @@ describe("pluginUpdatePlan", () => {
     ]);
     expect(plan.plugins).toEqual(["shared"]);
     expect(plan.perAgent).toHaveLength(3);
+  });
+});
+
+/** A library plugin as the library listing carries it (only the fields the row questions read). */
+const libraryPlugin = (name: string, skills: string[] = [], hooks: string[] = []): PluginItem => ({
+  source: "builtin",
+  name,
+  description: `${name} as its package describes it`,
+  version: "2026.08.01.1",
+  skills: skills.map((s) => ({ name: s, description: "", version: "2026.08.01.1" })),
+  hooks,
+});
+
+/** A library row, the shape `installedPluginRows` builds before the page divides the lists. */
+const libraryRow = (plugin: PluginItem) => ({
+  kind: "library" as const,
+  plugin,
+  category: "Developer",
+});
+
+describe("splitPluginRows", () => {
+  const held = libraryRow(libraryPlugin("web-design", ["web-design"]));
+  const missing = libraryRow(libraryPlugin("csu-mail", ["csu-mail"]));
+  const projectRow = {
+    kind: "module" as const,
+    specifier: "@acme/shared",
+    entry: undefined,
+    state: "active" as const,
+    shipped: false,
+  };
+  const nameOfRow = (row: ReturnType<typeof splitPluginRows>["installed"][number]): string =>
+    row.kind === "library" ? row.plugin.name : row.specifier;
+
+  it("puts a library plugin the working Agent holds under installed, and one it lacks under available", () => {
+    const { installed, available } = splitPluginRows(
+      [held, missing, projectRow],
+      [agent("alpha")],
+      new Map([["alpha", installs({ "web-design": "2026.08.01.1" }, {})]]),
+      "alpha",
+    );
+    // The Project's own module rows are not per-Agent and stay in the installed list.
+    expect(installed.map(nameOfRow)).toEqual(["web-design", "@acme/shared"]);
+    expect(available.map(nameOfRow)).toEqual(["csu-mail"]);
+  });
+
+  it("files a copy the server lists as behind under installed: an update is what that card offers", () => {
+    const { installed, available } = splitPluginRows(
+      [held],
+      [agent("alpha", { name: "web-design", version: "2026.08.01.1" })],
+      new Map([["alpha", installs({ "web-design": "2026.07.01.1" }, {})]]),
+      "alpha",
+    );
+    expect(installed.map(nameOfRow)).toEqual(["web-design"]);
+    expect(available).toEqual([]);
+  });
+
+  it("carries the shelf state it divided by, which is what the filter column counts", () => {
+    const { installed, available } = splitPluginRows(
+      [held, missing],
+      [agent("alpha")],
+      new Map([["alpha", installs({ "web-design": "2026.08.01.1" }, {})]]),
+      "alpha",
+    );
+    // The row keeps the value the card's tag draws: a row filed under "available" can never
+    // count as installed in the state filter either.
+    expect(installed[0]!.kind === "library" && installed[0]!.market).toBe("installed");
+    expect(available[0]!.kind === "library" && available[0]!.market).toBe("available");
+    expect(rowFacets(available[0]!).states).toEqual(["available"]);
+    expect(rowFacets(installed[0]!).states).toEqual(["installed"]);
+    // A row the page never classified (no Agent selected) reads as installed, as it always has.
+    expect(rowFacets(held).states).toEqual(["installed"]);
+  });
+
+  it("moves nothing while no Agent is selected: there is nothing to compare against", () => {
+    const { installed, available } = splitPluginRows(
+      [held, missing, projectRow],
+      [agent("alpha")],
+      new Map([["alpha", installs({ "web-design": "2026.08.01.1" }, {})]]),
+      null,
+    );
+    expect(installed.map(nameOfRow)).toEqual(["web-design", "csu-mail", "@acme/shared"]);
+    expect(available).toEqual([]);
   });
 });

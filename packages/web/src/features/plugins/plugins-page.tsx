@@ -12,7 +12,10 @@
  * (single-line truncation, falling back to the full description when missing) + a line below
  * both with what the plugin contains ("N skills", one "<event> hook" badge per hook point)
  * and its metadata (version · usage count "used by N Agents"); group and card copy follow the
- * UI language (localizedText / localizedShortText), and groups have no description. The tag
+ * UI language (localizedText / localizedShortText), and groups have no description. The page
+ * draws two collapsible sections, and a library plugin sits in the first one exactly when the
+ * Agent the page is working with holds it (splitPluginRows): a card the reader sees tagged
+ * "not installed" is never filed under "installed plugins". The tag
  * line carries the market shelf's state for the Agent the page is working with —
  * not installed / installed / updatable (marketState, off the server's own list of installs it
  * says are behind) — and the action row leads with that shelf's one-click button: a labelled
@@ -683,8 +686,14 @@ export function PluginsPage() {
     await reloadDirectory();
   };
 
-  const allInstalled = installedPluginRows(groups ?? [], locale, deployment, index ?? [], view);
-  const allAvailable = availablePluginRows(deployment, index ?? [], view);
+  // The library's rows, divided by what the Agent the page is working with holds (the value
+  // each card's tag shows), then the module rows the Project does not list yet. The two lists
+  // below are exactly these: nothing else decides which section a row lands in.
+  const libraryRows = installedPluginRows(groups ?? [], locale, deployment, index ?? [], view);
+  const offeredRows = availablePluginRows(deployment, index ?? [], view);
+  const divided = splitPluginRows(libraryRows, agents, installed, currentAgent?.agentId ?? null);
+  const allInstalled = divided.installed;
+  const allAvailable = [...divided.available, ...offeredRows];
   const facets = pluginFacets([...allInstalled, ...allAvailable]);
   const picked = { categories: pickedCategories, kinds: pickedKinds, states: pickedStates };
   const filtering =
@@ -701,6 +710,26 @@ export function PluginsPage() {
     else next.add(value);
     return next;
   };
+  /**
+   * The card a library row draws in EITHER section: it carries its own shelf state, so the one
+   * in the available list says "not installed" and offers that Agent's install button by
+   * itself. Written once because the two sections must not drift apart in what a row can do.
+   */
+  const libraryCard = (row: Extract<PluginRow, { kind: "library" }>) => (
+    <PluginCard
+      key={`library:${row.plugin.name}`}
+      plugin={row.plugin}
+      category={row.category}
+      installed={installed}
+      marketSpecifier={marketEntryFor(row.plugin, index ?? [])?.name ?? null}
+      canDelete={isAdmin}
+      onQuickInvoke={quickInvoke}
+      onToggleInstall={toggleInstall}
+      onUpdateOutdated={updateOutdated}
+      onExport={exportPlugin}
+      onDelete={removePlugin}
+    />
+  );
 
   // The scrollbar gutter stays reserved: a filter that shortens the page below the viewport
   // would otherwise take the scrollbar with it and shift everything sideways at the click.
@@ -810,10 +839,12 @@ export function PluginsPage() {
               aria-label={S.plugins.searchPlaceholder}
               onChange={setQuery}
             />
-            {/* ONE list, one plugin per row, every kind in the same card: what is installed
-                  first — the library's plugins (they ship with the build and every Agent may use
-                  them) and the module plugins this Project asks for — then what could be. A
-                  plugin's category is a tag on its row, not a group around it. */}
+            {/* ONE list, one plugin per row, every kind in the same card: what this Project is
+                  running first — the library's plugins the working Agent holds, and the module
+                  plugins this Project asks for — then what could be: the library plugins no
+                  Agent copy stands behind yet (installable to the working Agent) and the module
+                  plugins the registry offers. A plugin's category is a tag on its row, not a
+                  group around it. */}
             <PluginList
               title={S.plugins.installedSection(installedRows.length)}
               open={installedOpen || filtering}
@@ -821,19 +852,7 @@ export function PluginsPage() {
             >
               {installedRows.map((row) =>
                 row.kind === "library" ? (
-                  <PluginCard
-                    key={`library:${row.plugin.name}`}
-                    plugin={row.plugin}
-                    category={row.category}
-                    installed={installed}
-                    marketSpecifier={marketEntryFor(row.plugin, index ?? [])?.name ?? null}
-                    canDelete={isAdmin}
-                    onQuickInvoke={quickInvoke}
-                    onToggleInstall={toggleInstall}
-                    onUpdateOutdated={updateOutdated}
-                    onExport={exportPlugin}
-                    onDelete={removePlugin}
-                  />
+                  libraryCard(row)
                 ) : (
                   <ModuleRow
                     key={`module:${row.specifier}`}
@@ -862,23 +881,27 @@ export function PluginsPage() {
                 open={availableOpen || filtering}
                 onToggle={() => setAvailableOpen((v) => !v)}
               >
-                {availableRows.map((row) => (
-                  <ModuleRow
-                    key={`module:${row.specifier}`}
-                    specifier={row.specifier}
-                    entry={row.entry}
-                    state={row.state}
-                    shipped={row.shipped}
-                    busy={pendingSpecifier === row.specifier}
-                    blocked={pendingSpecifier !== null && pendingSpecifier !== row.specifier}
-                    onInstall={
-                      isAdmin
-                        ? () => setPendingApply({ specifier: row.specifier, install: true })
-                        : null
-                    }
-                    onRemove={null}
-                  />
-                ))}
+                {availableRows.map((row) =>
+                  row.kind === "library" ? (
+                    libraryCard(row)
+                  ) : (
+                    <ModuleRow
+                      key={`module:${row.specifier}`}
+                      specifier={row.specifier}
+                      entry={row.entry}
+                      state={row.state}
+                      shipped={row.shipped}
+                      busy={pendingSpecifier === row.specifier}
+                      blocked={pendingSpecifier !== null && pendingSpecifier !== row.specifier}
+                      onInstall={
+                        isAdmin
+                          ? () => setPendingApply({ specifier: row.specifier, install: true })
+                          : null
+                      }
+                      onRemove={null}
+                    />
+                  ),
+                )}
               </PluginList>
             )}
             {filtering && installedRows.length === 0 && availableRows.length === 0 && (
@@ -957,7 +980,19 @@ export function PluginsPage() {
 }
 
 /** One row of the page: a library plugin (skills / hooks, installed per Agent) or a module plugin (listed per Project). */
-type PluginRow = { kind: "library"; plugin: PluginItem; category: string } | ModulePluginRow;
+type PluginRow =
+  | {
+      kind: "library";
+      plugin: PluginItem;
+      category: string;
+      /**
+       * What the shelf says for the Agent the page is working with — the value the card's own
+       * state tag shows. Set by {@link splitPluginRows} when the page divides the lists, and read
+       * by `rowFacets`, so the state filter counts a row under the state the reader sees on it.
+       */
+      market?: MarketState;
+    }
+  | ModulePluginRow;
 interface ModulePluginRow {
   kind: "module";
   specifier: string;
@@ -1065,6 +1100,43 @@ export function installedPluginRows(
 }
 
 /**
+ * The library's rows divided the way the two section heads claim, for the Agent the page is
+ * working with: a plugin that Agent holds goes with the installed ones, one it does not goes
+ * with what can be installed there. The decision is `marketState` — the very value the card's
+ * state tag draws — so a card the reader sees tagged "not installed" can never be filed under
+ * "installed plugins". (Before this, every library plugin was listed as installed whether or
+ * not anything had it, and a card inside that list said "not installed": the two disagreed
+ * about the same plugin on the same screen.)
+ *
+ * Module rows are the Project's own list rather than per-Agent state, and stay where they are:
+ * the installed section, where the Project's plugin table has always been shown.
+ *
+ * With no Agent selected there is nothing to compare against — and the cards draw no state tag
+ * either — so the library rows keep their place rather than being called missing from an Agent
+ * nobody named.
+ */
+export function splitPluginRows(
+  rows: readonly PluginRow[],
+  agents: ReadonlyArray<Pick<AgentSummary, "agentId" | "pluginUpdates">>,
+  installs: InstalledMap,
+  currentAgentId: string | null,
+): { installed: PluginRow[]; available: PluginRow[] } {
+  const installed: PluginRow[] = [];
+  const available: PluginRow[] = [];
+  for (const row of rows) {
+    if (row.kind === "module" || currentAgentId === null) {
+      installed.push(row);
+      continue;
+    }
+    const outdated = outdatedAgentIds(agents, row.plugin.name).includes(currentAgentId);
+    const market = marketState(row.plugin, installs.get(currentAgentId), outdated);
+    if (market === "available") available.push({ ...row, market });
+    else installed.push({ ...row, market });
+  }
+  return { installed, available };
+}
+
+/**
  * What could be asked for: what the build ships and this Project does not list yet. The
  * registry is consulted for the entry (description, version, categories) and the build's own
  * list for the row: the shelf carries an entry per plugin package the build ships — the
@@ -1169,6 +1241,16 @@ export const PLUGIN_STATES: readonly PluginState[] = [
   "failed",
 ];
 
+/**
+ * A library row's value on the state filter, off the shelf state the card's tag shows
+ * (`row.market`, set by splitPluginRows): the filter has no "updatable" option — an outdated
+ * copy IS installed — and a row the page never classified (no Agent selected, so no tag is
+ * drawn) reads as installed, which is how this list has always been filed.
+ */
+function libraryState(row: { market?: MarketState }): PluginState {
+  return row.market === "available" ? "available" : "installed";
+}
+
 /** The category a row belongs to, what it carries and what it is here — the three facets the filter column offers. */
 export function rowFacets(row: PluginRow): {
   categories: string[];
@@ -1179,7 +1261,9 @@ export function rowFacets(row: PluginRow): {
     const kinds: PluginKind[] = [];
     if (row.plugin.skills.length > 0) kinds.push("skills");
     if (row.plugin.hooks.length > 0) kinds.push("hooks");
-    return { categories: [row.category], kinds, states: ["installed"] };
+    // The state the card's tag shows, not a blanket "installed": a library plugin the working
+    // Agent does not hold is offered, whichever section the page currently files it under.
+    return { categories: [row.category], kinds, states: [libraryState(row)] };
   }
   const states: PluginState[] =
     row.state === "active"

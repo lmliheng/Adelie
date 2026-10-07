@@ -2211,9 +2211,9 @@ export const zh = {
     openSettings: "插件设置",
     pageDesc:
       "所有插件在一个列表里。插件库里的随本次构建自带（技能和／或钩子包——快捷调用，或安装到 Agent）；当前项目要求的模块插件在服务端运行，市场里其余的可以为它安装。",
-    /** The list's header: how many plugins are installed — the library's (shipped, every Agent may use them) plus the module plugins this Project lists. */
+    /** The list's header: the library's plugins the Agent the page works with holds, plus the module plugins this Project lists. */
     installedSection: (n: number): string => `已安装的插件 (${n})`,
-    /** The second list: registry entries this Project does not ask for yet. */
+    /** The second list: the library's plugins that Agent does not hold, and registry entries this Project does not ask for yet. */
     availableSection: (n: number): string => `可安装 (${n})`,
     notInstalled: "未安装",
     /** The market shelf's per-Agent state tag on a library plugin's card (marketState): about the Agent the page is working with, not the deployment. */
