@@ -2980,5 +2980,11 @@ journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 
 
 - **代码提交** `8b257785`（4 个源码/测试文件 + 一对 changelog），台账这一笔另起一笔（表格里引用的
   就是 `8b257785`）。
-- **推送**：`git push origin main`。
+- **推送**：`git push origin main`（`0ab41f4a..5f6fda5a`）。
+- **CI**：`ci.yml` 对 `main` 的推送照常触发，run **`37672552130`** 跑完 —— **22 个作业里 20 个绿**，
+  两条红是 `test-macos (server)` 与汇总作业 `ci`。看日志，红的就是**那条已知的 macOS 抖动**：
+  `test/workflows.test.ts > a loaded workflow > notices an Agent's FIRST workflow, made with nothing but
+  its file tools`（`AssertionError: expected {} to match object { ok: true, … }`，重跑即绿；2026-10-05
+  那条记录里 Linux / Windows 两侧都是绿的，同一条）。**与这一轮无关**：那个作业自身也是
+  `1 failed | 182 passed (183)` —— 本轮动的 `test/sandbox.test.ts` 在那 182 条里，是绿的。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
