@@ -1611,6 +1611,14 @@ export const en: Strings = {
     baseUrlHint: "Leave empty to use the provider default",
     baseUrlSuffixTitle:
       "The client appends the protocol path shown at the field's right edge to the base URL",
+    /**
+     * Note under a built-in model's read-only base URL / price fields (and their hover title):
+     * both belong to the built-in catalog, which ships and maintains them, so this dialog does
+     * not let the user rewrite them — with the way out named, since the wish behind such an
+     * edit (my own endpoint) is legitimate and has a supported route.
+     */
+    officialLockedHint:
+      "Built-in model: the catalog fixes the endpoint and the three prices, so they cannot be changed here. To point it at your own endpoint, move the row to a custom group first",
     baseUrlRequired: "A base URL is required",
     contextWindowDefaultHint: (n: number): string => `Defaults to ${n} if empty`,
     confirmDeleteTitle: "Delete model",

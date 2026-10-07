@@ -2530,6 +2530,20 @@ function ModelDialog({
   const visionInFlight = useRef<Promise<void> | null>(null);
   const isNew = row === null;
   const preset = row !== null && isPreset(row);
+  /**
+   * Whether this row is still the catalog's own: a built-in model, in the group the catalog
+   * keeps it in, under the id the catalog knows. Its endpoint and its three prices belong to
+   * the catalog — the entry ships with both and 「同步预置」 maintains them — so this dialog
+   * shows them read-only (per owner, 2026-10-07). A row repointed at a proxy is no longer the
+   * catalog's model, and the deliberate way to build one is to move this row into a custom
+   * group first — which is exactly what unlocks the two fields here, because the check reads
+   * the CURRENT reference rather than the identity as loaded (isPreset): moving the row out of
+   * its group unlocks them, an id retyped onto another catalog model keeps them locked (it is
+   * that model now), and an id retyped off the catalog unlocks them (that row is the user's
+   * own). A hand-added row in a vendor group is never a catalog row either — no id there means
+   * the lock, and none of those rows has one.
+   */
+  const official = catalogEntryFor(form.provider, form.modelId.trim()) !== undefined;
   /** The loaded row's running promotion, explained under the price fields. */
   const promotion = fractionOff(row?.discount);
 
@@ -2798,7 +2812,12 @@ function ModelDialog({
     form.clientType.trim().toLowerCase().includes("openai") ||
     form.provider === "custom" ||
     providerInfo(form.provider) === undefined;
-  const baseUrlRequired = form.provider === PENGUIN_GO_PROVIDER_ID || (!preset && openAiLike);
+  // An official row is exempt whatever the group would otherwise require: the field is
+  // read-only there, so requiring it could only mark a row unsaveable over a value nobody can
+  // type — and the endpoint it asks for is the one the catalog already states (a Penguin Go row
+  // arrives with the relay's).
+  const baseUrlRequired =
+    !official && (form.provider === PENGUIN_GO_PROVIDER_ID || (!preset && openAiLike));
   // Custom-like groups (custom + user-defined) pick among AgentHub's generic protocol
   // clients: the base URL field's suffix becomes the protocol picker there, unless the
   // entry carries a legacy vendor-pinned client_type — that keeps the read-only note below
@@ -3394,7 +3413,7 @@ function ModelDialog({
               aria-label={S.models.baseUrl}
               required={baseUrlRequired}
               value={form.baseUrl}
-              disabled={!canEdit}
+              disabled={!canEdit || official}
               invalid={Boolean(fieldErrors.baseUrl)}
               // Editing the URL retires the previous run's verdict: it described the old
               // endpoint, and leaving it up would keep asserting a result for a URL that is
@@ -3416,8 +3435,11 @@ function ModelDialog({
                 paddingRight: `calc(${displayWidthCh(suffixLabel)}ch + ${showProtocolPicker ? "2.25rem" : "1.25rem"})`,
               }}
               // The read-only suffix is hover-transparent (pointer-events-none), so the
-              // explanation rides on the input's title; the picker carries its own.
-              title={S.models.baseUrlSuffixTitle}
+              // explanation rides on the input's title; the picker carries its own. On an
+              // official row that title is the lock note instead: the suffix it would explain
+              // is still shown (the row does route that way), but what the reader needs to know
+              // is why the field will not take an edit.
+              title={official ? S.models.officialLockedHint : S.models.baseUrlSuffixTitle}
               placeholder={preset ? S.models.baseUrlHint : "https://…"}
             />
             {showProtocolPicker ? (
@@ -3437,6 +3459,16 @@ function ModelDialog({
             )}
           </div>
           {fieldErrors.baseUrl && <FieldError>{fieldErrors.baseUrl}</FieldError>}
+          {/* Why the field above (and the price row below) will not take an edit — one line for
+              both, since the lock is one rule. It is shown rather than left to the greyed
+              control alone: a read-only field with no reason reads as a broken one, and the way
+              out (`moveToCustomGroup`, the same action the card offers) is the half of the
+              answer a reader cannot guess. */}
+          {official && (
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              {S.models.officialLockedHint}
+            </p>
+          )}
           {/* No detection verdict is rendered here (per maintainer): a result must not take
               up room in the form. Both outcomes are toasts, and where the protocol ENDED UP
               is already visible in the suffix above, which is the thing that actually holds
@@ -3514,7 +3546,10 @@ function ModelDialog({
               size="sm"
               value={value}
               inputMode="decimal"
-              disabled={!canEdit}
+              // Official rows keep the catalog's list price (see `official`); the value stays
+              // visible, the hover title says why it cannot be typed over.
+              disabled={!canEdit || official}
+              title={official ? S.models.officialLockedHint : undefined}
               error={fieldErrors[key]}
               onChange={(e) => set({ [key]: decimalOnly(e.target.value) })}
               className="text-right font-mono"

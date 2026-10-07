@@ -1660,6 +1660,14 @@ export const zh = {
     baseUrlHint: "留空使用厂商默认地址",
     /** Hover title for the base URL field: explains the in-field suffix (the protocol path the client appends to the base URL); for custom groups that suffix is also the protocol picker. */
     baseUrlSuffixTitle: "客户端会在 base URL 后追加字段右侧的协议路径",
+    /**
+     * Note under a built-in model's read-only base URL / price fields (and their hover title):
+     * both belong to the built-in catalog, which ships and maintains them, so this dialog does
+     * not let the user rewrite them — with the way out named, since the wish behind such an
+     * edit (my own endpoint) is legitimate and has a supported route.
+     */
+    officialLockedHint:
+      "官方内置模型：接入地址与三档价格由内置目录固定，不能在此修改；要用自己的接入点，先把这一行「移到自定义分组」",
     baseUrlRequired: "必须填写 base URL",
     contextWindowDefaultHint: (n: number): string => `留空按 ${n} 计`,
     confirmDeleteTitle: "删除模型",
