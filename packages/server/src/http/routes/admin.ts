@@ -35,8 +35,8 @@ export function adminUsersRoutes(deps: AdminRouteDeps): Hono<AppEnv> {
     await next();
   });
 
-  app.get("/", (c) => {
-    return c.json({ users: deps.adminService.listUsers() } satisfies AdminUsersResponse);
+  app.get("/", async (c) => {
+    return c.json({ users: await deps.adminService.listUsers() } satisfies AdminUsersResponse);
   });
 
   app.post("/", async (c) => {

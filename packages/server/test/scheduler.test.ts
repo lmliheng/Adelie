@@ -73,6 +73,7 @@ describe("scheduler", () => {
       passwordIsInitial: false,
       displayName: null,
       avatar: null,
+      lastLoginAt: null,
       createdAt: "2026-07-16T00:00:00Z",
     });
     const projects = wire(ProjectsRepo, { db: db });

@@ -47,6 +47,7 @@ export function PagedDialog<K extends string>({
   onSelect,
   children,
   closeLabel,
+  widthClass,
 }: {
   open: boolean;
   onClose: () => void;
@@ -59,13 +60,26 @@ export function PagedDialog<K extends string>({
   children: ReactNode;
   /** The close cross's accessible name; defaults to the interface's word for "close". */
   closeLabel?: string;
+  /**
+   * The panel's width class; defaults to `sm:max-w-3xl`. A page whose content is a wide table
+   * (the user backend's six columns, say) asks for more room — the alternative there is a table
+   * the reader has to scroll sideways to reach its own row actions.
+   */
+  widthClass?: string;
 }) {
   const showGroupHeadings = groups.length > 1;
   const activeItem = groups.flatMap((g) => g.items).find((item) => item.key === active);
   const activeLabel = activeItem?.label ?? title;
 
   return (
-    <Modal open={open} onClose={onClose} title={title} headerless bare widthClass="sm:max-w-3xl">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={title}
+      headerless
+      bare
+      widthClass={widthClass ?? "sm:max-w-3xl"}
+    >
       <div className="flex h-[min(40rem,85vh)] flex-col sm:flex-row">
         {/* Rail: vertical on desktop, a horizontal scroller above the pane on narrow screens. */}
         <NavList

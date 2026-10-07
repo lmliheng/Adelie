@@ -16,6 +16,8 @@ export interface UserRow {
   displayName: string | null;
   /** Avatar as a data URL; null = never set. */
   avatar: string | null;
+  /** Most recent successful sign-in (ISO); null = never signed in — an account that exists but has not been used yet. */
+  lastLoginAt: string | null;
   createdAt: string;
 }
 
@@ -27,6 +29,7 @@ function mapRow(r: Record<string, unknown>): UserRow {
     passwordIsInitial: (r.password_is_initial as number) === 1,
     displayName: (r.display_name as string | null) ?? null,
     avatar: (r.avatar as string | null) ?? null,
+    lastLoginAt: (r.last_login_at as string | null) ?? null,
     createdAt: r.created_at as string,
   };
 }
@@ -38,8 +41,8 @@ export class UsersRepo implements Users {
   insert(row: UserRow): void {
     this.db
       .prepare(
-        "INSERT INTO users (user_id, password_hash, is_admin, password_is_initial, display_name, avatar, created_at)" +
-          " VALUES (?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO users (user_id, password_hash, is_admin, password_is_initial, display_name, avatar, last_login_at, created_at)" +
+          " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         row.userId,
@@ -48,6 +51,7 @@ export class UsersRepo implements Users {
         row.passwordIsInitial ? 1 : 0,
         row.displayName,
         row.avatar,
+        row.lastLoginAt,
         row.createdAt,
       );
   }
@@ -73,6 +77,14 @@ export class UsersRepo implements Users {
     this.db
       .prepare("UPDATE users SET password_hash = ?, password_is_initial = ? WHERE user_id = ?")
       .run(passwordHash, isInitial ? 1 : 0, userId);
+  }
+
+  /**
+   * Stamp the account's most recent sign-in, overwriting whatever was there: the column is a
+   * "when did they last get in" fact, not a history (the admin user backend shows the one value).
+   */
+  touchLastLogin(userId: string, at: string): void {
+    this.db.prepare("UPDATE users SET last_login_at = ? WHERE user_id = ?").run(at, userId);
   }
 
   /**

@@ -68,6 +68,25 @@ export interface UserInfo {
    * and a surface with no value draws the letter placeholder instead.
    */
   avatar?: string;
+  /**
+   * Most recent successful sign-in (ISO); omitted while the account has never signed in —
+   * created by an admin, not yet used. The admin user backend shows it as a column.
+   */
+  lastLoginAt?: string;
+  /**
+   * Admin user backend only (`GET /api/admin/users`): lifetime cost in USD of the Projects this
+   * account OWNS, priced at the current rates — every account's own usage included, whoever
+   * caused it, since cost is attributed by the Project it ran in. Omitted when none of that
+   * usage could be priced (nothing ran there, or every model it ran on has no price); a real
+   * figure, `0` included, is always sent. Not money that was charged: it is the same estimate
+   * the cost center draws, read off the recorded usage.
+   */
+  totalCostUsd?: number;
+  /**
+   * Admin user backend, alongside `totalCostUsd`: some of that usage ran on a model this
+   * deployment has no price for, so the figure is a lower bound. Omitted when it is exact.
+   */
+  costUnpriced?: boolean;
   createdAt: string;
 }
 

@@ -974,6 +974,14 @@ export const en: Strings = {
     roleAdmin: "Admin",
     roleUser: "User",
     createUser: "Add user",
+    /** The two read-only columns the user table gained: when the account last signed in, and what its Projects have cost. */
+    lastLogin: "Last sign-in",
+    /** Never signed in: the account exists (an admin created it) but has not been used. */
+    lastLoginNever: "Never",
+    totalCost: "Total cost",
+    /** The cost column's tooltip: what the figure counts, and what an "≥" in front of it means. */
+    costHint:
+      "Every Project this account owns, all of its usage priced at today's rates. A leading ≥ means some of that usage ran on a model with no price, so the figure is a lower bound.",
     initialPassword: "Initial password",
     initialPasswordFlag: "initial password",
     defaultProjectNote: (id: string): string => `A default Project will be created: ${id}`,

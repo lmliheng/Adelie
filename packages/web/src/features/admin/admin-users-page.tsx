@@ -4,6 +4,11 @@
  * Registration is closed: new users are created here, with the initial password set by the admin and
  * communicated offline; deleting a user also deletes all their Projects (including data directories),
  * with a confirmation dialog.
+ *
+ * The table's two middle columns are read-only figures off the server's own list: when the
+ * account last signed in (`lastLoginAt`, absent until it ever does) and what the Projects it
+ * owns have cost in total (`totalCostUsd`, absent while nothing of it could be priced). Nothing
+ * here computes either — the page draws what `GET /api/admin/users` answers.
  */
 import { useCallback, useEffect, useState } from "react";
 import type { UserInfo } from "@lmliheng/penguin-server/api";
@@ -13,11 +18,13 @@ import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { USERNAME_PATTERN } from "../../lib/semantic-id";
-import { formatDateTime } from "../../lib/format";
+import { formatDateTime, formatMoney } from "../../lib/format";
 import { useAuth } from "../../state/auth";
+import { useTheme } from "../../state/theme";
 
 export function AdminUsersSection() {
   const { user, desktopMode } = useAuth();
+  const { currency } = useTheme();
   const [users, setUsers] = useState<UserInfo[] | null>(null);
   const [listError, setListError] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -60,6 +67,12 @@ export function AdminUsersSection() {
                 <th className="whitespace-nowrap px-3 py-2 font-medium">{S.common.username}</th>
                 <th className="whitespace-nowrap px-3 py-2 font-medium">{S.common.role}</th>
                 <th className="whitespace-nowrap px-3 py-2 font-medium">{S.common.created}</th>
+                {/* The two read-only columns: when the account last signed in (so an account
+                    nobody uses stands out) and what its Projects have cost so far. */}
+                <th className="whitespace-nowrap px-3 py-2 font-medium">{S.admin.lastLogin}</th>
+                <th className="whitespace-nowrap px-3 py-2 text-right font-medium">
+                  {S.admin.totalCost}
+                </th>
                 <th className="whitespace-nowrap px-3 py-2 text-right font-medium">
                   {S.common.actions}
                 </th>
@@ -89,6 +102,21 @@ export function AdminUsersSection() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-gray-500 dark:text-gray-400">
                     {formatDateTime(u.createdAt)}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 text-gray-500 dark:text-gray-400">
+                    {u.lastLoginAt !== undefined
+                      ? formatDateTime(u.lastLoginAt)
+                      : S.admin.lastLoginNever}
+                  </td>
+                  {/* Read-only, and a lower bound when some usage had no price (`costUnpriced`):
+                      the "≥" says so without a second line of copy, and the tooltip spells it out. */}
+                  <td
+                    className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-gray-500 dark:text-gray-400"
+                    data-tooltip={S.admin.costHint}
+                  >
+                    {u.totalCostUsd === undefined
+                      ? "—"
+                      : `${u.costUnpriced === true ? "≥ " : ""}${formatMoney(u.totalCostUsd, currency)}`}
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-right">
                     <Button size="sm" variant="ghost" onClick={() => setResetting(u)}>

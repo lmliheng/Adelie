@@ -1,11 +1,13 @@
 /**
  * Admin users backend integration tests: permission boundary (non-admin 403), account
- * creation validation and rollback, password reset (session invalidation), and user
- * deletion (cascading deletion of owned Project).
+ * creation validation and rollback, password reset (session invalidation), user
+ * deletion (cascading deletion of owned Project), and the list's two read-only
+ * columns (last sign-in, owned-Project lifetime cost).
  */
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { saveProjectConfig } from "@lmliheng/penguin-core";
 import type { AdminUsersResponse, MembersResponse } from "../src/api/types.js";
 import { apiClient, createTestApp, loginAdmin, loginUser, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
@@ -148,5 +150,83 @@ describe("admin users backend", () => {
   it("built-in admin cannot be deleted; unknown user 404", async () => {
     expect((await admin.delete("/api/admin/users/admin")).status).toBe(409);
     expect((await admin.delete("/api/admin/users/ghost")).status).toBe(404);
+  });
+
+  /**
+   * The two read-only columns the user backend carries. Both are the server's own figures: the
+   * sign-in stamp AuthService writes on a password login, and the lifetime cost of the Projects
+   * the account OWNS, priced at the current rates.
+   */
+  it("user list: last sign-in is stamped by the login that succeeded, absent for an account never used", async () => {
+    const kate = await provisionUser(t.app, "kate");
+    // Kate has signed in (provisionUser logs her in); "dave" was created and never used.
+    expect(
+      (await admin.post("/api/admin/users", { userId: "dave", password: "password-123" })).status,
+    ).toBe(201);
+    expect(kate.user.lastLoginAt).toBeTruthy();
+
+    const list = (await (await admin.get("/api/admin/users")).json()) as AdminUsersResponse;
+    const byId = new Map(list.users.map((u) => [u.userId, u]));
+    expect(byId.get("admin")!.lastLoginAt).toBeTruthy();
+    expect(byId.get("kate")!.lastLoginAt).toBeTruthy();
+    expect(byId.get("dave")!.lastLoginAt).toBeUndefined();
+    // Nothing has run anywhere, so there is no figure to price — the column reports no cost
+    // rather than a zero the reader cannot tell from "ran for free".
+    expect(byId.get("dave")!.totalCostUsd).toBeUndefined();
+    expect(byId.get("admin")!.costUnpriced).toBeUndefined();
+  });
+
+  it("user list: cost sums the Projects the account owns, and says so when a model has no price", async () => {
+    const kate = await provisionUser(t.app, "kate");
+    // Two models in Kate's own Project: `m-priced` costs (10*1 + 1*2 + 5*3)/1e6 per record,
+    // `m-free` carries no pricing block at all.
+    await saveProjectConfig(t.root, "kate-default_project", {
+      default_model: { provider: "custom", model_id: "m-priced" },
+      models: [
+        {
+          provider: "custom",
+          model_id: "m-priced",
+          pricing: { unit: "usd_per_mtok", cache_read: 1, cache_write: 2, output: 3 },
+        },
+        { provider: "custom", model_id: "m-free" },
+      ],
+    });
+    const insertUsage = (modelId: string, date: string): void => {
+      t.deps.db
+        .prepare(
+          "INSERT INTO usage_records (ts, date, project_id, agent_id, session_id, origin_session_id, provider, model_id, cache_read, cache_write, output, total)" +
+            " VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)",
+        )
+        .run(
+          `${date}T00:00:00.000Z`,
+          date,
+          "kate-default_project",
+          "kate_agent",
+          "s-1",
+          "custom",
+          modelId,
+          10,
+          1,
+          5,
+          16,
+        );
+    };
+    insertUsage("m-priced", "2026-10-01");
+    insertUsage("m-priced", "2026-10-02");
+    // Nobody else's: the admin's own default Project has no usage, and Kate's cost counts only
+    // what her own Project recorded — the figure is per owned Project, not per caller.
+    let list = (await (await admin.get("/api/admin/users")).json()) as AdminUsersResponse;
+    const priced = list.users.find((u) => u.userId === "kate")!;
+    expect(priced.totalCostUsd).toBeCloseTo((2 * (10 * 1 + 1 * 2 + 5 * 3)) / 1e6, 12);
+    expect(priced.costUnpriced).toBeUndefined();
+    expect(list.users.find((u) => u.userId === "admin")!.totalCostUsd).toBeUndefined();
+
+    // A record on a model with no price block makes the sum a lower bound — reported as such
+    // instead of silently dropped.
+    insertUsage("m-free", "2026-10-03");
+    list = (await (await admin.get("/api/admin/users")).json()) as AdminUsersResponse;
+    const bounded = list.users.find((u) => u.userId === "kate")!;
+    expect(bounded.totalCostUsd).toBeCloseTo(priced.totalCostUsd!, 12);
+    expect(bounded.costUnpriced).toBe(true);
   });
 });

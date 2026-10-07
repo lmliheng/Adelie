@@ -15,6 +15,8 @@ export abstract class Users {
   abstract list(): UserRow[];
   abstract count(): number;
   abstract updatePassword(userId: string, passwordHash: string, isInitial: boolean): void;
+  /** Stamp the account's most recent successful sign-in (the admin user backend's "last login" column). */
+  abstract touchLastLogin(userId: string, at: string): void;
   abstract updateProfile(
     userId: string,
     patch: { displayName?: string | null; avatar?: string | null },
@@ -67,7 +69,8 @@ export abstract class Auth {
 /** Admin: the mechanism AdminService implements. */
 @Interface()
 export abstract class Admin {
-  abstract listUsers(): UserInfo[];
+  /** Every account, with last sign-in and owned-Project cost (see AdminService.listUsers). */
+  abstract listUsers(): Promise<UserInfo[]>;
   abstract createUser(userId: string, password: string): Promise<UserInfo>;
   abstract resetPassword(userId: string, password: string): Promise<void>;
   abstract deleteUser(userId: string): Promise<void>;

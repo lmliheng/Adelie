@@ -1022,6 +1022,14 @@ export const zh = {
     roleAdmin: "管理员",
     roleUser: "用户",
     createUser: "新增用户",
+    /** The two read-only columns the user table gained: when the account last signed in, and what its Projects have cost. */
+    lastLogin: "最近登录",
+    /** Never signed in: the account exists (an admin created it) but has not been used. */
+    lastLoginNever: "从未登录",
+    totalCost: "累计开销",
+    /** The cost column's tooltip: what the figure counts, and what an "≥" in front of it means. */
+    costHint:
+      "该用户名下全部项目的历史用量，按当前价格折算。带 ≥ 表示其中有用量所在模型没有价格，这是下限。",
     initialPassword: "初始密码",
     initialPasswordFlag: "初始密码",
     defaultProjectNote: (id: string): string => `将自动创建默认项目：${id}`,

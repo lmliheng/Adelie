@@ -23,6 +23,7 @@ import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Clock } from "../hmr/capabilities.js";
 import type { LiveStreams } from "../auth/live-streams.js";
 import type { Admin, AuthSessions, Users } from "../mechanisms/identity.js";
+import type { UsageQueries } from "../mechanisms/observability.js";
 import type { ProjectLifecycle, Projects } from "../mechanisms/projects.js";
 
 @Component()
@@ -31,20 +32,47 @@ export class AdminService implements Admin {
   @Use() private readonly authSessions!: AuthSessions;
   @Use() private readonly liveStreams!: LiveStreams;
   @Use() private readonly projects!: Projects;
+  @Use() private readonly usage!: UsageQueries;
   @Use() private readonly projectService!: ProjectLifecycle;
   @Use() private readonly clock!: Clock;
   @Use() private readonly hasher!: PasswordHasher;
 
   /**
-   * Every account, for the admin user backend. The avatar is dropped on the way out: a stored
+   * Every account, for the admin user backend, each with the last sign-in its row carries and
+   * the lifetime cost of the Projects it owns. The avatar is dropped on the way out: a stored
    * avatar is a data URL of up to 128 KiB and this list is unpaged, so carrying one per account
    * would answer a table that only shows the nickname with megabytes.
+   *
+   * The cost is summed per Project because pricing is per Project (each one carries its own
+   * configured rates), and it is read at the CURRENT rates for every record ever written — the
+   * one figure the cost center's "cumulative" card shows, extended over everything the account
+   * owns. `costUnpriced` travels with it: a Model this deployment has no price for makes the sum
+   * a lower bound, and a table that presented it as exact would overstate its own accuracy.
    */
-  listUsers(): UserInfo[] {
-    return this.users.list().map((row) => {
+  async listUsers(): Promise<UserInfo[]> {
+    const out: UserInfo[] = [];
+    for (const row of this.users.list()) {
       const { avatar: _avatar, ...info } = toUserInfo(row);
-      return info;
-    });
+      out.push({ ...info, ...(await this.ownedProjectsCost(row.userId)) });
+    }
+    return out;
+  }
+
+  /** One account's owned Projects, priced and summed; `totalCostUsd` is omitted while nothing could be priced. */
+  private async ownedProjectsCost(
+    userId: string,
+  ): Promise<Pick<UserInfo, "totalCostUsd" | "costUnpriced">> {
+    let cost: number | null = null;
+    let unpriced = false;
+    for (const project of this.projects.listByOwner(userId)) {
+      const figure = await this.usage.lifetimeCost(project.projectId);
+      if (figure.cost !== null) cost = (cost ?? 0) + figure.cost;
+      unpriced = unpriced || figure.unpriced;
+    }
+    return {
+      ...(cost !== null ? { totalCostUsd: cost } : {}),
+      ...(unpriced ? { costUnpriced: true } : {}),
+    };
   }
 
   async createUser(userId: string, password: string): Promise<UserInfo> {
@@ -68,6 +96,7 @@ export class AdminService implements Admin {
       passwordIsInitial: true,
       displayName: null,
       avatar: null,
+      lastLoginAt: null,
       createdAt: this.clock.now().toISOString(),
     };
     this.users.insert(user);

@@ -18,6 +18,8 @@
  * - Success counts completed requests over every non-aborted one: a user's Stop is not a model
  *   failure.
  * - Model totals sum every record a model ever wrote, per paired reference, per Project.
+ * - Lifetime cost is that same whole history priced at the current rates, one number per
+ *   Project: null while nothing could be priced, and flagged when a Model has no price.
  * - Series are zero-filled buckets by minute, hour (local clock), day, ISO week or month, with
  *   per-Agent and per-model series aligned to them; a minute series needs a timestamp window,
  *   the range defaults to 30 days, and an oversized series is refused.
@@ -390,6 +392,25 @@ describe("usage-service (cost computed on the fly)", () => {
     const byAgent = await svc.query("p1", { ...range, agentId: "a1" });
     expect(byAgent.byModelSeries.map((s) => s.modelId)).toEqual(["m1"]);
     expect(byAgent.series[0]!.requests).toBe(1);
+  });
+
+  it("lifetimeCost prices every record the Project wrote, and flags a Model with no price", async () => {
+    insert("2026-01-01");
+    insert("2020-03-02", { agentId: "a2" });
+    expect((await service(new Date()).lifetimeCost("p1")).cost).toBeCloseTo(2 * ROW_COST, 12);
+
+    // A reference no pricing table covers cannot be priced: the number is a lower bound, said
+    // out loud, rather than a total that quietly excluded it.
+    insert("2026-07-06", { modelId: "m-unknown" });
+    const bounded = await service(new Date()).lifetimeCost("p1");
+    expect(bounded.cost).toBeCloseTo(2 * ROW_COST, 12);
+    expect(bounded.unpriced).toBe(true);
+
+    // An empty Project has no figure at all — not a zero.
+    expect(await service(new Date()).lifetimeCost("p-empty")).toEqual({
+      cost: null,
+      unpriced: false,
+    });
   });
 });
 

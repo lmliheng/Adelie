@@ -506,6 +506,26 @@ export class UsageService implements UsageQueries {
     };
   }
 
+  /**
+   * The Project's lifetime cost — one unfiltered grouped scan, the same one `modelTotals` runs,
+   * priced at the current rates. Its consumer is a per-account figure (the admin user backend's
+   * cost column), so there is exactly one number: `cost` stays null while nothing could be
+   * priced rather than reporting a zero the caller cannot tell from "ran for free", and
+   * `unpriced` marks a lower bound.
+   */
+  async lifetimeCost(projectId: string): Promise<{ cost: number | null; unpriced: boolean }> {
+    const rows = this.usage.bucketByModel(projectId, {}, this.tiers());
+    const rates = new Map<string, TieredRates | undefined>();
+    for (const r of rows) {
+      const key = refKey(r.provider, r.modelId);
+      if (!rates.has(key)) {
+        rates.set(key, await this.lookupPricing(projectId, r.provider, r.modelId));
+      }
+    }
+    const { cost, hasUncosted } = this.foldBucket(rows, rates);
+    return { cost, unpriced: hasUncosted };
+  }
+
   private foldBucket(
     rows: UsageModelSums[],
     rates: Map<string, TieredRates | undefined>,

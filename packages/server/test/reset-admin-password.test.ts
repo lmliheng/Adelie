@@ -46,6 +46,7 @@ describe("resetAdminPassword", () => {
       passwordIsInitial: false,
       displayName: null,
       avatar: null,
+      lastLoginAt: null,
       createdAt,
     });
     users.insert({
@@ -55,6 +56,7 @@ describe("resetAdminPassword", () => {
       passwordIsInitial: false,
       displayName: null,
       avatar: null,
+      lastLoginAt: null,
       createdAt,
     });
     const sessions = wire(AuthSessionsRepo, { db: db });

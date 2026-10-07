@@ -138,6 +138,13 @@ export function SettingsDialog({
     }),
   );
 
+  /**
+   * The user backend's table carries six columns and two row actions, and the shared width
+   * leaves it scrolling sideways to reach its own buttons: that page asks for a wider panel.
+   * Every other page keeps the default.
+   */
+  const panelWidthClass = current === "users" ? "sm:max-w-5xl" : undefined;
+
   return (
     <PagedDialog
       open={open}
@@ -146,6 +153,7 @@ export function SettingsDialog({
       groups={groups}
       active={current}
       onSelect={setActive}
+      widthClass={panelWidthClass}
     >
       {current === "profile" && <ProfileSection />}
       {current === "general" && <GeneralSection />}

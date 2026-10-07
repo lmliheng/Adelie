@@ -103,6 +103,7 @@ export async function makeOrgHarness(opts: {
     passwordIsInitial: false,
     displayName: null,
     avatar: null,
+    lastLoginAt: null,
     createdAt: "2026-08-01T00:00:00Z",
   });
   const projects = wire(ProjectsRepo, { db });

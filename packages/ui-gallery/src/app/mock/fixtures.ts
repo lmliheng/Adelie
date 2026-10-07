@@ -150,12 +150,19 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     passwordIsInitial: false,
     displayName: L("演示管理员", "Demo Admin"),
     createdAt: iso(ago(120)),
+    // The user table's two read-only columns: this account signed in a little while ago and its
+    // Projects have cost something (some of it on a model with no price, hence the lower bound).
+    lastLoginAt: iso(ago(0.02)),
+    totalCostUsd: 12.4062,
+    costUnpriced: true,
   };
   const member: UserInfo = {
     userId: IDS.users.member,
     isAdmin: false,
     passwordIsInitial: true,
     createdAt: iso(ago(30)),
+    lastLoginAt: iso(ago(2)),
+    totalCostUsd: 0.3187,
   };
 
   const project: ProjectSummary = {

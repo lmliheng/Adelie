@@ -57,7 +57,7 @@ export function generateInitialAdminPassword(): string {
  */
 export type SessionVia = "password" | "desktop" | "setup" | "token";
 
-/** Row -> DTO. The two profile columns are omitted rather than sent as null when unset. */
+/** Row -> DTO. The three optional profile/sign-in columns are omitted rather than sent as null when unset. */
 export function toUserInfo(row: UserRow): UserInfo {
   return {
     userId: row.userId,
@@ -65,6 +65,7 @@ export function toUserInfo(row: UserRow): UserInfo {
     passwordIsInitial: row.passwordIsInitial,
     ...(row.displayName !== null ? { displayName: row.displayName } : {}),
     ...(row.avatar !== null ? { avatar: row.avatar } : {}),
+    ...(row.lastLoginAt !== null ? { lastLoginAt: row.lastLoginAt } : {}),
     createdAt: row.createdAt,
   };
 }
@@ -148,6 +149,7 @@ export class AuthService implements Auth {
       passwordIsInitial: true,
       displayName: null,
       avatar: null,
+      lastLoginAt: null,
       createdAt: this.clock.now().toISOString(),
     };
     this.users.insert(user);
@@ -230,7 +232,14 @@ export class AuthService implements Auth {
     }
     this.loginFailures.delete(userId);
     this.authSessions.deleteExpired(this.clock.now().toISOString());
-    return { user: toUserInfo(row), token: this.issueSession(row.userId, "password") };
+    // The account's last sign-in, stamped on the one path that verified a password. Written
+    // before the DTO is built, so the response's own user carries the value this call set.
+    const at = this.clock.now().toISOString();
+    this.users.touchLastLogin(row.userId, at);
+    return {
+      user: toUserInfo({ ...row, lastLoginAt: at }),
+      token: this.issueSession(row.userId, "password"),
+    };
   }
 
   /**

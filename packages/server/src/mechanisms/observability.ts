@@ -130,6 +130,14 @@ export abstract class UsageQueries {
   abstract queryErrors(projectId: string, q: UsageErrorsQuery): UsageErrorsPage;
   abstract clearErrors(projectId: string, q: UsageErrorsClearQuery): number;
   abstract modelTotals(projectId: string): UsageModelTotals;
+  /**
+   * The Project's lifetime cost: every usage record it ever wrote, folded with the same
+   * per-reference rate lookup `query` uses (current prices). `unpriced` says some of that usage
+   * ran on a model this Project has no price for, so `cost` is a lower bound.
+   */
+  abstract lifetimeCost(
+    projectId: string,
+  ): Promise<Opaque<"LifetimeCost", { cost: number | null; unpriced: boolean }>>;
   abstract costBySession(
     projectId: string,
     sessionIds: readonly string[],

@@ -16,8 +16,9 @@
  * Scenarios:
  * - Given a web.db formed before a column existed, when it is opened, the column is added, the
  *   old rows read back with the grandfathered value, and the column takes writes at once
- *   (sessions' client / has_trace; each messaging_bindings column added since 0.2.5, with
- *   render_markdown the one that starts ON).
+ *   (sessions' client / has_trace; users' last_login_at, whose old rows read as "never signed
+ *   in"; each messaging_bindings column added since 0.2.5, with render_markdown the one that
+ *   starts ON).
  * - Given a database this build already formed, a reopen changes nothing.
  * - Given sessions formed before last_active_at, the open backfills it once from the last
  *   request (else created_at); a later open neither re-runs the backfill nor rewrites a row.
@@ -39,6 +40,7 @@ import { openDatabase } from "../src/db/database.js";
 import { SCHEMA_SQL } from "../src/db/schema.js";
 import { MessagingBindingsRepo } from "../src/db/repos/messaging-bindings.js";
 import { SessionsRepo } from "../src/db/repos/sessions.js";
+import { UsersRepo } from "../src/db/repos/users.js";
 import type { SessionRow } from "../src/db/repos/sessions.js";
 import { wire } from "@lmliheng/penguin-core/kernel";
 
@@ -115,6 +117,41 @@ function rawLastActive(db: DatabaseSync, sessionId: string): unknown {
 }
 
 describe("openDatabase column upgrade", () => {
+  it("adds last_login_at to a users table formed before the column existed", () => {
+    const dbPath = path.join(dir, "web.db");
+    // A database formed before the admin user backend reported sign-ins: users without
+    // last_login_at.
+    seedDatabase(dbPath, (old) => {
+      old.exec(`CREATE TABLE users (
+        user_id             TEXT PRIMARY KEY,
+        password_hash       TEXT NOT NULL,
+        is_admin            INTEGER NOT NULL DEFAULT 0,
+        password_is_initial INTEGER NOT NULL DEFAULT 0,
+        display_name        TEXT,
+        avatar              TEXT,
+        created_at          TEXT NOT NULL
+      );`);
+      old
+        .prepare(
+          `INSERT INTO users (user_id, password_hash, created_at)
+           VALUES ('kate', 'x', '2026-01-01T00:00:00.000Z')`,
+        )
+        .run();
+    });
+
+    const db = openDatabase(dbPath);
+    try {
+      const repo = wire(UsersRepo, { db: db });
+      // The account predating the column reads as "never signed in" rather than failing on a
+      // missing column, and the sign-in stamp takes a write at once.
+      expect(repo.findById("kate")!.lastLoginAt).toBeNull();
+      repo.touchLastLogin("kate", "2026-10-08T00:00:00.000Z");
+      expect(repo.findById("kate")!.lastLoginAt).toBe("2026-10-08T00:00:00.000Z");
+    } finally {
+      db.close();
+    }
+  });
+
   it("adds client/has_trace to a sessions table formed before the columns existed", () => {
     const dbPath = path.join(dir, "web.db");
     // A database formed by the pre-#139 schema: sessions without client / has_trace.
