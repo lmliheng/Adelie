@@ -3,7 +3,10 @@
  * dimensions, capability routing across backends, fail-closed refusal, and the
  * settings' ride on the parked platform context.
  */
-import { describe, expect, it, vi } from "vitest";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { boot, initialDoc, parseManifest } from "@lmliheng/penguin-core/kernel";
 import type { Json } from "@lmliheng/penguin-core/kernel";
 import { HotResources } from "@lmliheng/penguin-hmr";
@@ -38,6 +41,17 @@ function fake(label: string, dimensions?: readonly SandboxDimension[]) {
   };
   return { provider, calls };
 }
+
+const tmpDirs: string[] = [];
+/** A fresh directory on disk, for the cases where the confiner touches the scratchpad. */
+function tmp(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adelie-sandbox-svc-"));
+  tmpDirs.push(dir);
+  return dir;
+}
+afterAll(() => {
+  for (const dir of tmpDirs) fs.rmSync(dir, { recursive: true, force: true });
+});
 
 async function service(entries: Array<[string, SandboxProviderSource]>): Promise<SandboxService> {
   const svc = new SandboxService(entries);
@@ -159,16 +173,74 @@ describe("sandbox service — the built-in interface and its optional dimensions
   });
 
   it("the Session's scratchpad reaches the backend as a further writable root, and without one no such field does", async () => {
+    const scratchpad = path.join(tmp(), "scratchpad", "session-1");
     const dsh = fake("dsh");
     const svc = await service([["dsh-local", dsh.provider]]);
     const confine = svc.confinerFor(() => ({ mode: "workspace-write" }));
-    confine([...ARGV], { ...OPTS, scratchpadDir: "/data/agent/scratchpad/session-1" });
+    confine([...ARGV], { ...OPTS, scratchpadDir: scratchpad });
     confine([...ARGV], OPTS);
     expect(dsh.calls[0]).toMatchObject({
       workspaceRoot: "/work/project",
-      writableRoots: ["/data/agent/scratchpad/session-1"],
+      writableRoots: [scratchpad],
     });
     expect(dsh.calls[1]).not.toHaveProperty("writableRoots");
+  });
+
+  it("a scratchpad missing on disk is created before the backend sees it, and an existing one is left as it is", async () => {
+    // bwrap refuses to start on a missing bind source; a command may delete it mid-Session.
+    const scratchpad = path.join(tmp(), "scratchpad", "session-1");
+    const existed: boolean[] = [];
+    const dsh = fake("dsh");
+    const svc = await service([
+      [
+        "dsh-local",
+        {
+          confine(argv, policy) {
+            existed.push(fs.existsSync(policy.writableRoots![0]!));
+            return dsh.provider.confine(argv, policy);
+          },
+        },
+      ],
+    ]);
+    const confine = () =>
+      svc.confinerFor(() => ({ mode: "workspace-write" }))([...ARGV], {
+        ...OPTS,
+        scratchpadDir: scratchpad,
+      });
+    confine();
+    fs.writeFileSync(path.join(scratchpad, "plan.md"), "keep me");
+    confine();
+    expect(fs.readFileSync(path.join(scratchpad, "plan.md"), "utf8")).toBe("keep me");
+    fs.rmSync(scratchpad, { recursive: true });
+    confine();
+    expect(existed).toEqual([true, true, true]);
+  });
+
+  it("a scratchpad that cannot be created fails closed, naming it, instead of confining without it", async () => {
+    // A file where a parent directory belongs fails mkdir for every user, root included.
+    const blocker = path.join(tmp(), "scratchpad");
+    fs.writeFileSync(blocker, "");
+    const dsh = fake("dsh");
+    const svc = await service([["dsh-local", dsh.provider]]);
+    const confine = svc.confinerFor(() => ({ mode: "workspace-write" }));
+    expect(() =>
+      confine([...ARGV], { ...OPTS, scratchpadDir: path.join(blocker, "session-1") }),
+    ).toThrow(/cannot prepare the Session scratchpad .*session-1 for the sandbox \(E[A-Z]+:/);
+    expect(dsh.calls).toHaveLength(0);
+  });
+
+  it("outside workspace-write the scratchpad is neither bound nor created", async () => {
+    const scratchpad = path.join(tmp(), "scratchpad", "session-1");
+    const bwrap = fake("bwrap", ["fs-write", "network"]);
+    const svc = await service([["penguin-bwrap", bwrap.provider]]);
+    for (const policy of [
+      { mode: "read-only" },
+      { mode: "danger-full-access", network: "none" },
+    ] as const)
+      svc.confinerFor(() => policy)([...ARGV], { ...OPTS, scratchpadDir: scratchpad });
+    expect(bwrap.calls).toHaveLength(2);
+    for (const call of bwrap.calls) expect(call).not.toHaveProperty("writableRoots");
+    expect(fs.existsSync(scratchpad)).toBe(false);
   });
 
   it("requiring a dimension nothing implements is refused, naming what each backend does", async () => {
