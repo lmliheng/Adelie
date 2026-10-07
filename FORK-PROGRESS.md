@@ -2407,7 +2407,39 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
    `projectConfigService.getModels()`，返回 `default_project` 里存下的 129 行；内置目录有 179 行，
    `default_project` 缺 **55 条预置**（含 `glm-4.7-flash`）。新预置要靠模型页的**同步预置**带进既有
    Project，页面据此显示「有新的预置」提示（前端产物里已有这条 id）。所以「服务更新好了」≠「页面上
-   立刻看得见这一条」——这一步是用户在自己项目里的一次点击，本轮没替用户动他的项目配置。
+   立刻看得见这一条」。
+
+### 补进项目（用户随后说「继续 按你的来」）
+
+只补**这一条**，不做整表 union（`default_project` 还缺 54 条历史预置，那是用户自己列表的事，留给模型页
+那个按钮）。做法照页面同一条路：`GET` 拿现有行 → 按 web 的 `toRow` / `rowToEntry` 规则转成提交条目
+（没变的字段一律不带，于是服务端保留用户自己填的 base URL、密钥、输出上限、促销；`discount`/`apiKey`/
+`baseUrl` 都省略）→ 追加新行 → `PUT /api/projects/:p/models`。
+
+- `self_evolution` 175 → **176**、`default_project` 129 → **130**、`sjaj` 129 → **130**、
+  `sjaaj` 183 → **184**，四条都读回校验过：新行 1 条、**原有行一条没丢**、默认模型没变。
+- `acc` / `asass` **在我动手前就已经有了**（两个 `.project_config.toml` 的 mtime 是 09:57 / 09:58，
+  就在重启之后几分钟——别的会话或用户自己已经同步过那两个项目），所以没再碰。
+- `zhaoyukun-default_project` 是 zhaoyukun 的项目（0 行），不属于本轮范围，没动。
+- 新行落库后长这样：`{"provider":"zhipu","modelId":"glm-4.7-flash","displayName":"GLM-4.7 Flash",
+  "contextWindow":200000,"clientType":"glm-5.3","vision":false,"envKey":"ZAI_API_KEY",
+  "pricing":{"cacheRead":0,"cacheWrite":0,"output":0}}` —— `displayName` 是目录补的，`envKey` 是服务端
+  按分组算的。
+
+### pin 的复核（拿**现装**的 agenthub，不是推断）
+
+智谱分组没有可用密钥，发不了真请求，所以直接构造客户端看路由怎么选：
+
+```
+不固定（只给 model）      → ERROR: glm-4.7-flash is not supported. …
+固定 clientType=glm-5.3  → 内层 GLM5_3Client
+```
+
+对照组：zhipu 分组里其余各行的 `clientType` 都是 `None`（id 自带 `glm-5`，AgentHub 自动路由），
+只有这一条是 `glm-5.3` —— 这就是它必须 pin 的原因。
+**注意参数名**：`AutoLLMClient` 的选项是 **`clientType`**（camelCase，`options.clientType ||
+process.env.CLIENT_TYPE || options.model`），写成 `client_type` 会被忽略、退回用 model id 判定，
+于是连 pin 过的那次也会报同一个错——我第一次就是这么被误导的。
 
 ## 第十四轮：模型目录与费率表判定上游已覆盖（2026-10-07，条目 3.2）
 
