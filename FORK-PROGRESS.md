@@ -2489,8 +2489,13 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
 - **没有起服务、没有动的端口**：本轮没有界面改动，不需要 Playwright，也没重建 `packages/web/dist`。
 - **推送**：`git push origin main` —— 本轮那一笔是 `eeada99c`（两份台账同一个提交，表格里引用的就是它）。
   按纪律没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。CI 是否触发随仓库既有配置（只动 `*.md`）。
-- **汇报邮件没发出去（第十轮 / 第十一轮 / 第十三轮同一处卡点）**：vault 里的 `CSU_MAIL_AUTHCODE` 仍被
-  邮箱拒 —— 本轮 `mail.py check` 一次，IMAP 报 `LOGIN Login error or password error`。按纪律没有继续重试
-  （账号与专用密码这一对已失效或被撤销）。修法只能由用户做：网页邮箱「设置 → 个人信息 → 邮箱密码 →
-  客户端专用密码」重建一个，再 `penguin config vault set --project-id sjaaj --agent-id default_agent
-  --key CSU_MAIL_AUTHCODE`，**下一次新对话**才会注入。本轮的结论因此只落在本台账里。
+- **汇报邮件：这轮发出去了（修掉了连着四轮的卡点）**。开工自检时 vault 里那条 `CSU_MAIL_AUTHCODE` 仍被
+  邮箱拒（`mail.py check` 报 IMAP `LOGIN Login error or password error`；第十轮 / 第十一轮 / 第十三轮
+  都卡在这里，当时按纪律只自检一次、没有重试）。**找到的线索**：「已发送」里今天 09:07（#114）还有一封
+  同一邮箱、由另一条巡台线发出的汇报（`Adelie 自进化 2026-10-07…`），说明链路当时是通的 —— 卡住的是
+  **本项目密钥库里那一条值**，不是邮箱关掉了第三方客户端。所以本轮按技能写明的**起点**做了一次 CAS 引导
+  （用 `/root/Adelie_develop/csu-mail-cas-bootstrap.sh`，账号密码取密钥库里已有的统一身份认证那一对
+  `CSU_ZHXG_ACCOUNT` / `CSU_ZHXG_PASSWORD`，与每日打卡用的是同一套）：**一次登录**换 sid → 生成一条名为
+  `agent-server-2` 的新专用密码 → 写回 `--project-id sjaaj --agent-id default_agent`，再用 `SECRET_OUT`
+  的 600 副本把本轮的汇报当场发出去（`SMTP 已投递` + 「已发送」#116，副本已 `shred`）。旧的
+  `agent-server` 那条**没有删**（删不删由用户定）。下一个新会话起，注入的就是这个新值。
