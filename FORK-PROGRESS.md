@@ -3427,6 +3427,13 @@ error: packages/web/src/lib/sandbox-backend-prompt.ts: does not exist in index
 - **CI 上的结论还没有看到**：这一轮的改动要等推送后的 CI run 才知道 Ubuntu 上
   `test (rest)` 是否真的把 bwrap / dsh 的 live 用例跑绿（本机已按同一命令与同一环境变量
   验过，但本机不是 GitHub 的 Ubuntu 24.04、也没有那个 userns 开关）。推送后值得看一眼那条 job。
+- **汇报邮件没发出去（本轮新出现的卡点，与凭据无关）**：本机到中南大学网段
+  `202.197.0.0/16` 现在**整片不通** —— `mail` / `imap` / `smtp` 的 993 / 465 / 443 / 80 全
+  超时、ICMP 100% 丢包（`202.197.61.57` / `202.197.72.14` / `202.197.72.100` / `202.197.64.21`
+  一并不通），同时 `baidu` / `github` / `npm` 正常，本机 `OUTPUT` 链是 `ACCEPT`、路由也照常
+  经网关出去 —— 所以不是本机在拦，是校外那段路或校方一侧。最后一个能查到 CSU 的凭据是
+  `csu-padk.service` 的 2026-10-07 22:15 那一跳。邮件正文留在本会话 scratchpad 的
+  `mail-round22.txt`，并挂了一个一次性定时任务（2026-10-08 22:00 CST）重发。
 - `upstream` remote 指向的 `/root/penguin-harness` **目录已不在**，但上游提交对象仍在本地
   仓库里 —— `git show <commit>` 照常可用，`git fetch upstream` 不可用。
 - `legacy/main`、`/root/Adelie` 工作区、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
@@ -3437,4 +3444,5 @@ error: packages/web/src/lib/sandbox-backend-prompt.ts: does not exist in index
 - **代码提交** `0f70719b`（6 个改动文件 + 5 个新文件 + 一对 changelog，见「已完成的轮次」那一行）；
   台账这一笔另起一笔。
 - **推送**：`git push origin main`。
-- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn` —— **这一轮没发出去**，见上面
+  那条卡点（到 CSU 网段的网络不通，与凭据无关）；正文留在 scratchpad，并挂了一次性重发任务。
