@@ -54,8 +54,9 @@ npm 上整条链同样是 **0.3.4**：`npm install -g @lmliheng/penguin-cli`。
 
 - `pnpm typecheck`（8 个工作区包）、`pnpm lint`（oxlint，0 警告 0 错误）、`pnpm format:check`
   （prettier）全过。
-- 测试全绿：**9037 通过 / 16 跳过 / 0 失败**（docs 62 · ui 1003 · core 1359 · server 2676 ·
-  cli 506 · web 2942 · desktop 286 · ui-gallery 131 · 四个 sandbox 插件 72）。
+- 测试全绿：**9053 通过 / 17 跳过 / 0 失败**（docs 62 · ui 1003 · core 1359(+5 跳过) ·
+  server 2682(+4 跳过) · cli 506 · web 2942(+2 跳过) · desktop 286 · ui-gallery 131 ·
+  四个 sandbox 插件 82）。
 
 ## 已知待办
 
