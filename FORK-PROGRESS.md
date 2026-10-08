@@ -298,7 +298,12 @@
       `trace-events-loader.ts` 与它的用例；`lazy` 缩略图落到 ui 的两处卡片。
       细节与验证见「第十九轮」一节。
 - [ ] 5.6 **用量成本「记账时就定价」**（`feat/usage-cost-at-record-time`）——公司审计里 `unpriced = false`
-      那个口径就靠它。
+      那个口径就靠它。**服务端那一半已做**（2026-10-08，第二十轮，提交见「已完成的轮次」）：用量行在写入
+      时定格成本（`cost` / `cost_settled`，迁移 14）、查询一律不再取价、启动时把没有成本的行补算一次。
+      **core 那一半有意未搬**（`token_usage.pricing` 戳记与 `resolveBilledPricing` / `billedRates`、
+      目录的 `discountUntil` / `discountRateAt`）：我们的逐行促销存在 `web.db` 的 `model_promotions` 表里，
+      core 进程读不到它，盖在事件上的费率会把每一行促销模型都按原价计费。要完整形态得先把促销搬进
+      Project 自己的配置 —— 那一步等用户拍板，理由写在那一轮的「有意未采用」一节与 changelog 里。
 - [x] **5.7 一个功能提交带一条 `changelog/unreleased/<日期>-<slug>.md`（中英双份）** ——本轮照做；
       此前我们自己的改动基本只写本台账，发版说明全靠临时凑。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
@@ -849,6 +854,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-07 | 3.4 | **用户与两档角色、会话归属判定上游已覆盖**（`FORK.md` 第 3 条的判据是「接回 **或判定上游已经覆盖、直接删**」）：账号（`users` + 管理员用户后端 + 无自助注册）、两档角色（`is_admin`，用户管理页与账户栏都有徽标、每一片管理员面都按它拦 403 `admin_required`）、会话归属（`projects.owner_user_id` + `project_members`，归属轴线是 Project 不是人；看不见的一律 404 而不是 403）逐条对着基座核过；**有意保留的五处差异**（只有一个管理员、角色不可改；没有「回环免凭证即管理员」那条公理，改成本机 API token + 认领链接；没有 `scope=all` 全站会话面；工作区改由每会话自选；口令下限 8 位 + 语义 id 不可改）与理由写进条目。**本轮没有改代码** | 六包 `typecheck` 全过（`ifaces.json unchanged`）· core **1359**/5 跳过 · ui **1003** · server **2636**/4 跳过（183 文件）· cli **506** · web **2907**/2 跳过 · hmr 无测试文件，**0 失败** · 服务端按当前源码重建后在 7411 用一次性数据根起真服务，`verify-34.sh` 21 条真请求逐条核对（含改角色 404、管理员跨项目 404、成员加/移即生效、403/409 各码） · 真浏览器看用户管理页：两行角色徽标、**没有任何改角色的控件**、普通用户看不到这一节，console 0 error | `7d4bc33f` |
 | 2026-10-08 | 5.4（第一块） | **建沙箱前先建 Session scratchpad**（上游 `cba091e3` 移植）：`workspace-write` 下服务端在每次受约束的 spawn 之前 `mkdir -p` 那个目录、建不出来就 fail-closed 拒掉这条命令（点名 scratchpad 与底层 errno）；可写根的绑定收在 `workspace-write` 之内（三个原生后端本来就只在那一档用它）；`SandboxPolicy.writableRoots` 的契约文档跟上；server 3 条 + bwrap 插件 1 条新用例；中英 changelog 一对。**为什么是这一块**：五条上游提交里只有它是一条独立的真 bug、不依赖其余四条 | 六包 `typecheck` 全过 · `pnpm lint` 0 警告、`pnpm format:check` 干净 · core **1359**/5 跳过 · cli **506** · ui **1003** · server **2639**/4 跳过（183 文件）· web **2907**/2 跳过，**0 失败** · bwrap 的 live 套件**真跑**（插件自带 `vendor/`，本机无系统 bwrap 也照跑）：7/7 含新用例 · **反证**：只回退 `service.ts` 再跑，新用例红在 `bwrap: Can't find source path …session-1: No such file or directory`，恢复即绿 · 服务端按源码重建后在 7481 起真服务（`ADELIE_HOME=/root/adelie-fork-data`）：日志三行对新根、`GET /` 200 且 `<title>Adelie</title>`，随后停掉 | `8b257785` |
 | 2026-10-08 | 5.5 | **长会话与 Trace 的加载性能**（上游 `b8862716` `#958` 移植）：服务端新增按 Trace 文件的行索引（`trace-line-index.ts`，事件分页不再整文件解析）与图片按引用服务（`trace-images.ts` + `GET /api/sessions/:id/trace-image`），分窗历史页另加 4 MiB 字节预算收口；web 的 Trace 文件视图改成按轮次读取（新 `trace-rounds.ts`，删掉被取代的 `trace-events-loader.ts` 及其用例），上下文环改读分析新增的 `modelContextWindow`；ui 的消息 / 工具卡片缩略图加 `lazy`；中英 changelog 一对。**为什么是这一条**：5.4 剩下四块本轮实测各自压在上游前置上（见该条目），故按台账顺序往下做 | 六包 `typecheck` 全过（187 接口 / 537 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · server **2672**/4 跳过（185 文件，+33）· cli **506** · web **2938**/2 跳过（239 文件，+31）· hmr 无测试文件，`EXIT=0` · 解完冲突后与上游 `trace-file-view.tsx` 逐字比对只差三处 scope 名 · 真服务（7492、`/root/adelie-fork-data`）里用产品自己的导入接口装进一份合成 Trace，真浏览器打开 `/chat/<sid>`：三轮 + 时间线 + 全局统计都渲染，三张图全部由 `/trace-image?…` 以 **200** 下发且 `naturalWidth` 与生成图一致，**console 0 error** | `819c31c1` |
+| 2026-10-08 | 5.6（服务端一半） | **用量成本「记账时就定价」**（上游 `feat/usage-cost-at-record-time` 移植，**只取服务端那一半**）：用量行在写入时定格成本（`usage_records.cost` / `cost_settled`，迁移 14）—— 取 Project 当时为该 provider/model 存下的价，含该行促销与那一刻的峰谷档位；查询侧（成本中心、对话框工具栏、`penguin cost`、公司模式预算、用户管理的累计开销）一律不再取价，只加总已记录的成本；Trace 页仍按「今天的价 × 每个请求自己的时间戳」推导（按小时记忆化），且没有价格的文件不再画成 0；兼容靠启动时一次性补算（`settleUnsettledCosts`，幂等，失败记错误表）。**core 那一半有意未搬**：逐行促销在 `web.db` 的 `model_promotions` 里，core 读不到，盖在事件上的费率会把促销行按原价计费（详见条目 5.6 与 changelog） | 六包 `typecheck` 全过（`gen:ifaces` 187 接口 / 535 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（65 文件）· ui **1003**（127）· cli **506**（34）· server **2682**/4 跳过（185 文件）· web **2942**/2 跳过（239）· hmr 无用例，**0 失败** · **端到端**（复制一份真 pre-cost 数据根，`user_version` 13、`usage_records` 无 cost 列）：起真服务后迁移到 **14**，启动补算把 5 条旧行逐条按自己时间戳定价（高峰 9.142825e-6 / 半价 4.571415e-6 / 无价 NULL，全 `cost_settled=1`，累计 2.742848e-5），成本中心页面上的数字与接口逐字一致、**console 0 error / 0 pageerror / 0 requestfailed** · **不重算的反证**：把磁盘上的价改成两倍再重启，5 条已结算行的成本一个都没动；再手插一条未结算行，重启后按**新价**补算成 1.828565e-5（正好 2 × 9.142825e-6） | `6c30e14a` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -3085,3 +3091,113 @@ journalctl 起服务后无 warning（脚本里那个计数 1 是 journalctl 的 
 
 - **代码提交**见「已完成的轮次」那一行；台账这一笔另起一笔。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
+
+## 第二十轮：用量成本「记账时就定价」的服务端一半（2026-10-08，条目 5.6）
+
+一次无人值守的自主推进。开工时 `git status --short` 干净、`main` = `origin/main` = `93bab95d`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+**选活**：2.2c / 3.5 / 3.6 仍是那三条停住的（写侧只剩桌面壳、桌面壳取哪个要用户定、3.6 要模型 key），
+4.1–4.3 与 2.5 按纪律不动；5.4 剩下的四块已经在第十八 / 十九轮用实测收紧了口径，5.5 上一轮做完。
+所以按顺序落到 **5.6「用量成本记账时就定价」**。
+
+**上游参考怎么拿的**：`feat/usage-cost-at-record-time` 在本机**没有引用**（上一轮记过：`upstream` remote
+指着已不存在的 `/root/penguin-harness`）。这次直接对 GitHub 只读取：
+`git ls-remote https://github.com/Prism-Shadow/penguin-harness.git refs/heads/feat/usage-cost-at-record-time`
+→ `de051170`，再 `git fetch --no-tags <url> feat/usage-cost-at-record-time`（不配 remote，只落
+`FETCH_HEAD`）。分支基线 `691ae72f`（0.2.13），两个提交：`457762fa` 功能、`de051170` changelog 补 PR 链接；
+**上游 main 至今没合它**（`gh/main` = `d56d9ced` 仍是查询时定价）。
+
+### 为什么只搬一半（这一轮的核心判断）
+
+上游那条分支是**两侧一起改**的：core 在请求完成时把「这次请求按什么价计费」盖在 `token_usage` 事件的
+`pricing` 字段上（`resolveBilledPricing`），服务端把它戳进行；查询时用 `billedRates` 按请求自己的时间戳
+推档位。这在他们的树里成立 —— 促销是**目录里**的 `discount` / `discountUntil`，core 看得到。
+
+我们的树不是这样：逐行促销是 **`web.db` 的 `model_promotions` 表**里的一行（`presetPromotions()` 播种，
+`project-config-service.getPricing` 折叠），**core 进程读不到它**。若照搬，core 盖上的费率只有文件里的
+牌价，会把每一行促销模型按原价计费 —— 比现状更错。所以：**core 那一半整片退回**（`git checkout HEAD --
+packages/core packages/web packages/docs`），只搬服务端那一半，并让服务端在**写入时**自己取价
+（`getPricing(projectId, provider, modelId, at)`，本来就已经折叠了促销 + 档位）。
+
+完整形态（把促销搬进 project config、与牌价并排存放，再由 core 盖戳）留给用户拍板，理由与选项写进
+条目 5.6、本轮 changelog 的「有意未采用」一节，以及汇报邮件。
+
+### 落地（27 个文件冲突，逐一解）
+
+`git diff 691ae72f FETCH_HEAD > cost.patch`（3388 行）→ `git apply -3` → 12 个文件带冲突标记。
+服务端与它的用例逐条解：
+
+- `db/migrations.ts`：上游的 `usage-record-cost` 在我们树里要从 version 9 **重编号为 14**（我们最高 13），
+  移到数组末尾；那份错位插入的 `{version: 9}` 冲突块删掉，原有的 `model-promotions` v9 保留。
+- `db/repos/usage.ts`：按我们的方言重写 —— `insert` 同时写 `cost` / `cost_settled`；聚合对 `cost` 求和、
+  数 `uncosted`（原来是按 `PeakTier` 拆行、返回 `peak` 布尔）；新增 `unsettledRefs` / `unsettledRows` /
+  `settle` 支撑补算。上游那套 `peakExpr`（把档位写成 SQL）整段删掉：档位现在只在取价时算一次。
+- `runtime/usage-recorder.ts`：头注释改成「按 Project 自己存的价在写入时定价，不读事件上的 rates」，
+  按自己的时钟时刻调 lookup；取价失败按「无价」处理但照写这一行。
+- `services/project-config-service.ts`：`getPricing` 多收 `at`，新增 `scheduledRateAt`（只对**仍存着目录
+  高峰价**的行按档位折算 —— 手改过的价在两个档位都按原样计费，减半等于凭空造折扣），再折叠促销。
+  这里补了 `offPeakAt` 的导入（typecheck 抓出来的漏网）。
+- `services/usage-service.ts`：删掉 `billedRates` / `legacyRates`，`settleUnsettledCosts` 逐行按 `row.ts`
+  取价；`lifetimeCost` 改成对已记录成本求和。注释里「与升级前页面显示的一致」这句改成准确的表述：
+  促销部分一致，档位改成按行自己（这正是本改动要修的那个两次一天的抖动）。
+- `services/trace-service.ts`：`filePricing` 只解析引用，速率改成**按小时记忆化**的取价
+  （`provider\0modelId\0hour`）—— 档位边界在目录里都是整点，所以一趟分析每个小时只读一次配置。
+- `platform.ts` / `mechanisms/observability.ts` / `mechanisms/projects.ts`：`Startup` 在读完
+  displayName 之后调一次 `settleUnsettledCosts()`（失败记 `usage_cost_settle_failed`，不抛）；`UsageQueries`
+  加这个方法；`getPricing` 的抽象签名跟上传入 `at`。
+- `db/schema.ts` 与 `services/admin-service.ts` 的注释改成新语义（补丁里那两句「成本来自事件携带的费率」
+  与「按当前价读」都不成立）。
+
+用例侧除了逐条改冲突，**还修了三处编译/行为问题**（都不是冲突标记，是合并后留下的）：
+
+1. `test/db-migrations.test.ts` 少了一个 `});` —— 上游那段新的 `pre-cost → current` describe 被并进了
+   `migration 12 → current` 里面，于是后面所有 describe 都多套了一层（typecheck 报 `TS1005`）。补上闭合。
+2. `test/models.test.ts` 的促销用例仍旧断言 `{ peak, offPeak }` 形状（`getPricing` 现在返回单一费率），
+   改成传 `PEAK` / `OFF_PEAK` 两个时刻各断言一次。
+3. `test/project-config-cache.test.ts` 的四处 `getPricing` 少了 `at` 实参。
+
+`trace-service.ts` 里另有一处**语义**要修：上游的 `pricing !== null` 本来是「这个引用有价吗」（null =
+无价），我们改完后 `pricing` 成了「引用解析出来了没」，于是一个没有价格的模型会被画成 0 而不是「没有
+价格」。改成由这一趟真正取到的费率决定 `priced`（`cost ??= 0` 挪到收尾处），并把用例补成
+「不重算 / 无价即没有 cost 字段」。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` 全过（`gen:ifaces` 187 接口 / **535** 类型，少的两条正是删掉的 `TieredRates` /
+  `PeakTier`）；`pnpm lint` **0 警告 0 错误**（2064 文件）；`pnpm format:check` 干净（补丁先带来两处
+  不合格式，已按仓库格式改掉）。
+- 六包 test 全绿：core **1359**/5 跳过（65 文件）· ui **1003**（127）· cli **506**（34）·
+  server **2682**/4 跳过（185 文件）· web **2942**/2 跳过（239）· hmr 无用例文件 —— **0 失败**。
+  新增用例：recorder 的「按自己的时刻取价，同一份高峰价在 20:00 计半价」、服务的
+  「查询只加总、总价不随时钟移动」、settle 段整段按新语义重写。
+- **端到端（真库、真迁移、真补算）**：把一直在用的取证数据根复制一份
+  （`/root/adelie-fork-cost-r20`，库里 `user_version` 13、`usage_records` **没有** cost 列 —— 就是升级前的
+  形态），往里写 5 条旧式行（4 条 `deepseek/deepseek-flash` 分落高峰 / 半价两组、1 条无价模型），
+  按当前源码重建 `packages/server/dist` 后在 **7493** 起真服务：
+  - 迁移跑到 **14**，两列就位；启动补算给每行按**它自己时间戳**的档位定价：高峰 **9.142825e-6**、
+    半价 **4.571415e-6**、无价 **NULL**，全部 `cost_settled = 1`，累计 **2.742848e-5**（= 2 峰 + 2 半价）。
+  - 真浏览器（认领链接登录）打开 `/usage`：三张卡片 345 tokens / 3 requests / ¥0.0001（近 7 天口径，
+    与「累计」卡片同范围 —— 那是基座原有口径）、按模型图里 DeepSeek V4.1 Flash 与 m-unpriced 两条、
+    成本变化图有数；**console 0 error / 0 pageerror / 0 requestfailed**，截图
+    `cost-center.png` 在会话 scratchpad。
+  - **反证一（不重算）**：把磁盘上 `deepseek-flash` 的价改成两倍再重启，5 条已结算行的成本**一个都没动**。
+  - **反证二（补算用的是当前价）**：再手插一条未结算行（同 100/10/5、高峰时刻），重启后补算成
+    **1.828565e-5**（正好 2 × 9.142825e-6）。
+  - 服务用完已停，7493 已释放；3003 / 3004 / 4000 / 7364 / 7369 全程没碰。
+
+### 没做 / 还差什么
+
+- **core 那一半是有意不做的**，不是漏做：`token_usage.pricing` 戳记、`resolveBilledPricing` / `billedRates`、
+  目录的 `discountUntil` / `discountRateAt` 一律没搬。要完整形态得先把促销从 `web.db` 搬进 project config
+  （与牌价并排，有历史可依），再由 core 盖戳 —— **等用户拍板**。
+- 5.4 的另外三块与 2.2c / 3.5 / 3.6 照旧停在原地，理由见各自条目。
+- `packages/server/src/ifaces.json` 是 `.gitignore` 的（重新生成过，但不入库）。
+- 中间物：会话 scratchpad 里有 `cost.patch`、两侧的 `usage.test.ts` 对照、`cost-center-evidence.js`、
+  `cost-center.log` 与 `cost-center.png`；`/root/adelie-fork-cost-r20` 是本轮的取证数据根（复制品）。
+- 没有切版本号、没发 npm、没发安装包；`legacy/main`、`/root/Adelie`、`/root/adelie-fork-data` 全程没碰。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交** `6c30e14a`（见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`，里面点了那个待拍板的卡点。
