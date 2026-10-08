@@ -270,7 +270,10 @@
         选它打头，是因为这五条里只有它**是一条独立的真 bug**（scratchpad 懒创建，缺失期间该 Session 的
         每条命令与每个 hook 都被 bwrap 的 `Can't find source path` 挡下，删掉它同理），改动小、不依赖
         其余四条、且本机就能真跑出来。
-      - **还差什么**（四条各自成串，按上游那串的顺序）：
+      - **第三块已落地（2026-10-08，第二十一轮，提交 `dcb77d05`）**：**`sandbox-dsh` 在 Windows 上
+        拒绝 bash、并在错误里点名它要哪个 shell**（上游 `c03e58c4`）—— 加载即失败 + 逐条拒绝两层都在，
+        用例把平台与会话 shell 注入，所以在 Linux 上也能真跑这两层。细节见「第二十一轮」一节。
+      - **还差什么**（还剩三条各自成串，按上游那串的顺序）：
         1. `234183f5`（Landlock 让默认 Ubuntu 可用）是**一组提交的顶端**：路由改成「谁实现得多谁服务」
            （`pick()`）、新增 `closed-temp` 维度、插件契约多出 `mechanism` / `limits`、沙箱卡片改成
            `Enforced here: …` 加一张 More info —— 它自己的说明里就写着依赖本系列更早的
@@ -284,10 +287,15 @@
            添加，`grep -rl useChatDock packages/web/src` 为空），`9b170c61` 只是把里面的 props 从
            `onChangeApprovalMode` / `onChangeSandbox` 并成 `onChangePermission`。所以它不是「一轮的量」，
            而是「先决定要不要把上游的 dock 面板重构也搬过来」——那件事的落点应当先写进这张表再动手。
-        3. `c03e58c4`（`sandbox-dsh` 在 Windows 走 pwsh、并在拒 bash 时点名它要哪个 shell）：
-           本机没有 Windows 可验，纪律也不许为它装依赖 —— 要么等 3.5 定了桌面壳、要么在 Windows
-           那台真机上验。补丁本身能落（`git apply -3` 只有 core 的导出与插件本体两处冲突），
-           但它自己说明里写的那条 live 证据要 `windows-latest`。
+        3. `c03e58c4`（`sandbox-dsh` 在 Windows 拒 bash、并在错误里点名它要哪个 shell）——
+           **2026-10-08 第二十一轮已落地（`dcb77d05`）**。原先记的拦路石是「这条的 live 证据要
+           `windows-latest`」，这一轮实测把它收窄了：**检查本身与两种拒绝在本机就能真跑** ——
+           上游新增的用例把平台与会话 shell 都做成注入的（11 条里 10 条在 Linux 上跑绿，只有
+           「真实 ACL runner 下跑两种 PowerShell」那一整块是 `describe.skipIf` 的 Windows 专属），
+           产物侧的两处验证（`import(HOST_CORE)` 仍是运行时导入、无可解析 core 时 `hostSessionShell()`
+           返回 `null`）也在本机做完了。**仍未验的**：真 Windows 主机上 pwsh / Windows PowerShell
+           在实 runner 下确实能写工作区内、工作区外被拒 —— 那得有一台 Windows（要么等 3.5 定了
+           桌面壳、要么在 Windows 那台真机上补一次）。细节见「第二十一轮」一节。
         4. `1ba104c9`（后端拆成 `@penguinharness/sandbox-*` 并发布到 npm）：落点正是 4.1 的 npm scope
            与发布链路，按纪律留给 4.x 一起做。
 - [x] 5.5 **长会话与 Trace 的加载性能**（`b8862716` `#958`：窗口化消息 + Trace 行索引 + Trace 图片）——
@@ -855,6 +863,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-08 | 5.4（第一块） | **建沙箱前先建 Session scratchpad**（上游 `cba091e3` 移植）：`workspace-write` 下服务端在每次受约束的 spawn 之前 `mkdir -p` 那个目录、建不出来就 fail-closed 拒掉这条命令（点名 scratchpad 与底层 errno）；可写根的绑定收在 `workspace-write` 之内（三个原生后端本来就只在那一档用它）；`SandboxPolicy.writableRoots` 的契约文档跟上；server 3 条 + bwrap 插件 1 条新用例；中英 changelog 一对。**为什么是这一块**：五条上游提交里只有它是一条独立的真 bug、不依赖其余四条 | 六包 `typecheck` 全过 · `pnpm lint` 0 警告、`pnpm format:check` 干净 · core **1359**/5 跳过 · cli **506** · ui **1003** · server **2639**/4 跳过（183 文件）· web **2907**/2 跳过，**0 失败** · bwrap 的 live 套件**真跑**（插件自带 `vendor/`，本机无系统 bwrap 也照跑）：7/7 含新用例 · **反证**：只回退 `service.ts` 再跑，新用例红在 `bwrap: Can't find source path …session-1: No such file or directory`，恢复即绿 · 服务端按源码重建后在 7481 起真服务（`ADELIE_HOME=/root/adelie-fork-data`）：日志三行对新根、`GET /` 200 且 `<title>Adelie</title>`，随后停掉 | `8b257785` |
 | 2026-10-08 | 5.5 | **长会话与 Trace 的加载性能**（上游 `b8862716` `#958` 移植）：服务端新增按 Trace 文件的行索引（`trace-line-index.ts`，事件分页不再整文件解析）与图片按引用服务（`trace-images.ts` + `GET /api/sessions/:id/trace-image`），分窗历史页另加 4 MiB 字节预算收口；web 的 Trace 文件视图改成按轮次读取（新 `trace-rounds.ts`，删掉被取代的 `trace-events-loader.ts` 及其用例），上下文环改读分析新增的 `modelContextWindow`；ui 的消息 / 工具卡片缩略图加 `lazy`；中英 changelog 一对。**为什么是这一条**：5.4 剩下四块本轮实测各自压在上游前置上（见该条目），故按台账顺序往下做 | 六包 `typecheck` 全过（187 接口 / 537 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · server **2672**/4 跳过（185 文件，+33）· cli **506** · web **2938**/2 跳过（239 文件，+31）· hmr 无测试文件，`EXIT=0` · 解完冲突后与上游 `trace-file-view.tsx` 逐字比对只差三处 scope 名 · 真服务（7492、`/root/adelie-fork-data`）里用产品自己的导入接口装进一份合成 Trace，真浏览器打开 `/chat/<sid>`：三轮 + 时间线 + 全局统计都渲染，三张图全部由 `/trace-image?…` 以 **200** 下发且 `naturalWidth` 与生成图一致，**console 0 error** | `819c31c1` |
 | 2026-10-08 | 5.6（服务端一半） | **用量成本「记账时就定价」**（上游 `feat/usage-cost-at-record-time` 移植，**只取服务端那一半**）：用量行在写入时定格成本（`usage_records.cost` / `cost_settled`，迁移 14）—— 取 Project 当时为该 provider/model 存下的价，含该行促销与那一刻的峰谷档位；查询侧（成本中心、对话框工具栏、`penguin cost`、公司模式预算、用户管理的累计开销）一律不再取价，只加总已记录的成本；Trace 页仍按「今天的价 × 每个请求自己的时间戳」推导（按小时记忆化），且没有价格的文件不再画成 0；兼容靠启动时一次性补算（`settleUnsettledCosts`，幂等，失败记错误表）。**core 那一半有意未搬**：逐行促销在 `web.db` 的 `model_promotions` 里，core 读不到，盖在事件上的费率会把促销行按原价计费（详见条目 5.6 与 changelog） | 六包 `typecheck` 全过（`gen:ifaces` 187 接口 / 535 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（65 文件）· ui **1003**（127）· cli **506**（34）· server **2682**/4 跳过（185 文件）· web **2942**/2 跳过（239）· hmr 无用例，**0 失败** · **端到端**（复制一份真 pre-cost 数据根，`user_version` 13、`usage_records` 无 cost 列）：起真服务后迁移到 **14**，启动补算把 5 条旧行逐条按自己时间戳定价（高峰 9.142825e-6 / 半价 4.571415e-6 / 无价 NULL，全 `cost_settled=1`，累计 2.742848e-5），成本中心页面上的数字与接口逐字一致、**console 0 error / 0 pageerror / 0 requestfailed** · **不重算的反证**：把磁盘上的价改成两倍再重启，5 条已结算行的成本一个都没动；再手插一条未结算行，重启后按**新价**补算成 1.828565e-5（正好 2 × 9.142825e-6） | `6c30e14a` |
+| 2026-10-08 | 5.4（第三块） | **`sandbox-dsh` 在 Windows 上拒绝 bash、并点名它要哪个 shell**（上游 `c03e58c4` `#972` 移植，照改动落、不是合分支）：core 的 plugin 入口新增 `sessionShell` 导出；`loadDshAdaptor()` 在 Windows 上先取会话 shell（从**宿主**的 core，按命名空间读，宿主 core 没有这个导出就跳过检查），是 bash / sh / 其他 MSYS 运行时的程序就**加载即失败**，原因写明改法（`ADELIE_SHELL=pwsh`，没有 PowerShell 7 的机器用 `ADELIE_SHELL=powershell`，然后重启）——加载失败的后端本来就被报为「不可用」，封禁档位因此显示「不可用 + 改法」；`assertAclRunnerCanStart()` 在交给 runner 之前逐条拒绝 MSYS 运行时上的程序（POSIX shell 按名字、MSYS `usr\bin` 下任何程序），是会话 shell 时点 `ADELIE_SHELL`、不是时只说明 runner 起不了这类程序，原生程序放行；插件 README 加「Windows: run command sessions under PowerShell」一节与实测矩阵；中英 changelog 一对。**本地化**：scope `@prismshadow/` → `@lmliheng/`，文案里的 `PENGUIN_SHELL` → 本仓 2.2b 改名后的 `ADELIE_SHELL` | 插件 `typecheck` 过 · **插件测试 15 通过 / 1 跳过**（新 `windows-shells.test.ts` 11 条里 10 条在本机 Linux 上真跑、1 条是 Windows 专属的 `describe.skipIf` 整块；`live.test.ts` 5 条在改了加载路径之后照常真跑，即真实 DSH 链仍能加载与封禁）· 六包 `typecheck` 全过（`src/ifaces.json unchanged`）· `pnpm lint` **0 警告 0 错误**（2065 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · cli **506** · server **2682**/4 跳过 · web **2942**/2 跳过 · hmr 无用例，**0 失败** · **产物侧**：重建后的 `plugins/sandbox-dsh/dist/index.js` 里 `import(HOST_CORE)` 仍是运行时导入（decorators 已内联），把它拷进一个**无可解析 core** 的目录仍能链接、`hostSessionShell()` 返回 `null` · 取证脚本对产物逐例打印两种拒绝与加载拒绝（bash 在 Windows 上被拒、MSYS `usr\bin` 程序被拒、pwsh 与原生 `mingw64\bin\git.exe` 放行、Linux 上一个都不拦）· **仍未验**：真 Windows 主机上两种 PowerShell 在实 runner 下写工作区内 / 工作区外被拒 | `dcb77d05` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -3201,3 +3210,109 @@ packages/core packages/web packages/docs`），只搬服务端那一半，并让
 
 - **代码提交** `6c30e14a`（见「已完成的轮次」那一行）；台账这一笔另起一笔。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`，里面点了那个待拍板的卡点。
+
+## 第二十一轮：sandbox-dsh 在 Windows 上拒绝 bash 并点名它要哪个 shell（2026-10-08，条目 5.4 的第三块）
+
+一次无人值守的自主推进。开工时 `git status --short` 干净、`main` = `origin/main` = `20bc647c`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+**选活**：表上最靠前的未勾选条目仍是 **2.2c**，它的「还差什么」自第十三轮以来一条没变（写侧只剩
+`packages/desktop/**`、既有部署单元 `adelie-app.service` 的变量名、桌面壳自己的开关，外加 2.5 口径下
+有意留到发布期的 `packages/docs/**` 与 changelog）；下一条 **3.5 桌面壳**是「取上游那个还是旧 Adelie
+那个」的用户拍板项，纪律也明写不要碰 desktop / electron；**3.6** 要模型 key（新凭证）。三条都停住，
+于是按前几轮的先例往下走 **5.4 沙箱体系**。5.4 剩下的三条里，`234183f5` 是一组提交的顶端（第十九轮
+实测多包冲突）、`9b170c61` 压在我们树里不存在的上游 dock 面板重构上、`1ba104c9` 属 4.x 的发布链路；
+**只有 `c03e58c4` 是一条自成一体的单提交**（6 个文件 / 328 增），而它原先记的拦路石只是「live 证据
+要 `windows-latest`」—— 这一轮实测把这条收窄了（见下），所以做它。
+
+**上游参考怎么拿的**：提交对象本来就在本仓（前几轮 fetch 过），`git show c03e58c4` 即可，
+`git cat-file -t` 确认；`upstream` 这个 remote 指着已不存在的 `/root/penguin-harness`，本轮没有用它。
+
+### 改了什么（6 个文件 / +336 −6，含中英 changelog 一对）
+
+- **core**（`packages/core/src/plugin/index.ts`）：plugin 入口新增
+  `export { sessionShell } from "../environment/tools/command/shell.js";` —— 它是一次进程内解析、
+  写在系统提示 `Shell:` 行里的那个 shell，供「封禁取决于跑的是哪个程序」的后端读取；文件头那段
+  「这个入口有什么」的注释一并说清为什么它是**宿主**的值、插件为什么必须按命名空间读。
+- **`plugins/sandbox-dsh/src/index.ts`**：
+  - `MSYS_SHELLS` + `unstartable()`：MSYS 运行时（`msys-2.0.dll`，Git for Windows 与 MSYS2 共用）
+    决定哪批程序起不来 —— 那两家自带的 POSIX shell 按名字，以及它们 `usr\bin` 下的任何程序。
+  - `assertSessionShellConfinable(shell, platform)`：Windows 上会话 shell 是这类程序就**抛错**，
+    错误里写明改法（`ADELIE_SHELL=pwsh`，没有 PowerShell 7 的机器用 `ADELIE_SHELL=powershell`，
+    然后重启）；宿主 core 没有这个导出（较旧运行时）时整条检查跳过。
+  - `hostSessionShell()`：从**宿主的** core 取会话 shell —— specifier 放在变量里让打包器留给运行时，
+    再按命名空间读（静态具名 import 会因旧核没有这个导出而**加载失败**）；取不到就返回 `null`。
+  - `assertAclRunnerCanStart(argv, platform, sessionShell)`：交给 runner 之前逐条拒绝；被拒的就是
+    会话 shell 时错误点 `ADELIE_SHELL`，不是会话 shell 时（以 bash 启动的 stdio MCP Server）只说
+    runner 起不了这类程序。原生程序（`mingw64\bin\git.exe` 之类）放行。
+  - `loadDshAdaptor(host)` 多收一个可注入的宿主（平台 + 会话 shell），Windows 上先查再挂载。
+- **`plugins/sandbox-dsh/test/windows-shells.test.ts`**（新，96 行）：平台与会话 shell 都是注入的，
+  所以**加载检查与两种拒绝在每个平台上都真跑**；文件末尾那段真实 runner 的用例由
+  `describe.skipIf` 守（Windows 主机才跑，跑两种 PowerShell 在约束下写工作区内、工作区外被拒）。
+- **`plugins/sandbox-dsh/README.md`**：新增「Windows: run command sessions under PowerShell」一节
+  （实测矩阵、加载失败的表现、两种逐条拒绝），表格里的设置名换成本仓的。
+- **`changelog/unreleased/2026-10-08-sandbox-dsh-windows-shell{,.zh}.md`**（5.7 的口径，中英各一份）。
+
+### 移植怎么做的（照上游的改动落，不是合分支）
+
+`git show c03e58c4 --format="" -- <四个文件> > dsh-shell.patch` → `git apply -3`：
+`README.md` 与那个新测试文件干净落地，`core/plugin/index.ts` 与 `dsh/src/index.ts` 各一处冲突 ——
+**两处都是 import / 注释区的包 scope**（上游写 `@prismshadow/`、本仓是 `@lmliheng/`），按本仓的
+名字解掉。本地化三处：
+
+1. 包 scope `@prismshadow/penguin-core/plugin` → `@lmliheng/penguin-core/plugin`（源码注释里的
+   `HOST_CORE` 说明、`HOST_CORE` 常量、测试的 import 三处）。
+2. 文案里的 `PENGUIN_SHELL` → `ADELIE_SHELL`：本仓 2.2b 已把这批控制面变量改名，用户照上游那句话去
+   设会设到一个**不再生效**的名字上 —— 这不是改写风格，是让改法真的可用（测试的正则、用例名、
+   README 表格、`SESSION_SHELL_FIX` 一起改）。
+3. 测试的临时目录前缀 `penguin-dsh-shells-` → `adelie-dsh-shells-`（与第十八轮对 bwrap 用例的做法一致）。
+
+**有意偏离上游的一处**：上游那个补丁顺手加了一行 `import path from "node:path";`，但它（在上游与在
+本仓）**一处都没用到** —— 本仓 oxlint 不报，仍然删掉，不留死导入。除此之外与上游逐行一致。
+
+### 验证（都不是推测）
+
+- **插件自己**：`typecheck` 过；`pnpm --filter @lmliheng/penguin-plugin-sandbox-dsh test` →
+  **2 文件 / 15 通过 / 1 跳过**。新文件 11 条里 **10 条在 Linux 上真跑**（拒绝 bash、`BASH.EXE`、
+  `dash.exe`、`C:/msys64/usr/bin/env.exe`；放行 pwsh 与原生 git；只有会话 shell 是 bash 时点
+  `ADELIE_SHELL`；Linux 一个都不拦；`loadDshAdaptor({platform:"win32",sessionShell:{command:"sh"}})`
+  真抛；`hostSessionShell()` 的四种注入情形），1 条跳过的是 Windows 专属那一整块。
+  **`live.test.ts` 的 5 条也在本机真跑绿的** —— 这一条动了 `loadDshAdaptor` 的加载路径，所以它能
+  跑起来正说明真实 DSH 链（本机走 Landlock）没有被这次改动碰坏。
+- **六包 `typecheck` 全过**（`gen:ifaces` 报 `src/ifaces.json unchanged`，187 接口 / 535 类型）；
+  `pnpm lint` **0 警告 0 错误**（2065 文件）；`pnpm format:check` 干净。
+- **六包 test 全绿**（`EXIT=0`）：core **1359** / 5 跳过（64 文件）· ui **1003**（127）· cli **506**
+  （34）· server **2682** / 4 跳过（185 文件）· web **2942** / 2 跳过（239）· hmr 无用例文件 ——
+  **0 失败**，与第二十轮的计数逐项相同（这一轮没有动它们的代码，core 只多一行再导出）。
+- **产物侧**（上游说明里那两条，本机复现）：按当前源码重建 `plugins/sandbox-dsh/dist/index.js`
+  之后，`HOST_CORE` 仍是变量、`import(HOST_CORE)` 仍是**运行时**导入（decorators 已内联）；
+  把这份 `index.js` 单拷进一个**没有 node_modules、解析不到 core** 的目录：模块照样链接
+  （`hostSessionShell` 是函数），`hostSessionShell()` 返回 **`null`**。
+- **对产物逐例取证**（脚本在会话 scratchpad，`dsh-shell-evidence.mjs`，import 的是 `dist/index.js`
+  而不是源码）：bash 在 Windows 上被拒（错误里带 `ADELIE_SHELL=pwsh … ADELIE_SHELL=powershell`）、
+  MSYS `usr\bin` 下的程序被拒、pwsh 放行、原生 `mingw64\bin\git.exe` 放行、Linux 上一个都不拦；
+  加载检查：Windows + bash **拒**（错误里写明改法）、Windows + pwsh 放行、Linux + bash 放行、
+  宿主 core 没有导出（`null`）放行；`loadDshAdaptor` 的产品路径在 Windows + bash 下抛的正是那条
+  加载错误；本机（Linux）真实适配器照常加载出 `["fs-write"]`。
+- **仍未验的（写清楚，不当成验过）**：真 Windows 主机上 pwsh / Windows PowerShell 在**真实 ACL
+  runner** 下确实能写工作区内、工作区外被拒 —— 那要一台 Windows。本机没有，纪律也不许为它装依赖；
+  上游那条证据是在 `windows-latest` 上跑的。这一条留在 5.4 的「还差什么」里。
+- **没有改界面**（只是插件与 core 的导出），所以没有起服务、没有开浏览器；也没有动任何端口。
+
+### 没做 / 还差什么
+
+- **5.4 仍未勾掉**：这一轮落的是第三块，剩下的 `234183f5`（Landlock，一组提交的顶端）、
+  `9b170c61`（权限菜单命名预设，压在树里不存在的上游 dock 面板重构上）、`1ba104c9`（拆 npm 包，
+  属 4.x）与各自的理由写在条目 5.4 里。
+- **2.2c / 3.5 / 3.6** 照旧停在原地，原因同前（写侧只剩桌面壳、桌面壳取哪个要用户定、3.6 要模型 key）。
+- 中间物：会话 scratchpad 里有 `dsh-shell-evidence.mjs` 与 `bundle-only/`（拷进去试产物链接的那份
+  `index.js`）；`plugins/sandbox-dsh/dist` 与 `ifaces.json` 是构建产物、本来就不入库。
+- `legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+  7364 / 7369 全程没碰；没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交** `dcb77d05`（4 个源码 / 测试 / README 文件 + 一对 changelog，见「已完成的轮次」那一行）；
+  台账这一笔另起一笔。
+- **推送**：`git push origin main`。
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
