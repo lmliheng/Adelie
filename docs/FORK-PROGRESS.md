@@ -314,10 +314,20 @@
            上游新增的用例把平台与会话 shell 都做成注入的（11 条里 10 条在 Linux 上跑绿，只有
            「真实 ACL runner 下跑两种 PowerShell」那一整块是 `describe.skipIf` 的 Windows 专属），
            产物侧的两处验证（`import(HOST_CORE)` 仍是运行时导入、无可解析 core 时 `hostSessionShell()`
-           返回 `null`）也在本机做完了。**仍未验的**：真 Windows 主机上 pwsh / Windows PowerShell
-           在实 runner 下确实能写工作区内、工作区外被拒 —— 那得有一台 Windows（要么等 3.5 定了
-           桌面壳、要么在 Windows 那台真机上补一次）。细节见「第二十一轮」一节。
-        4. `1ba104c9`（后端拆成 `@penguinharness/sandbox-*` 并发布到 npm）：落点正是 4.1 的 npm scope
+           返回 `null`）也在本机做完了。**当时的「仍未验的」**是真 Windows 主机上 pwsh / Windows
+           PowerShell 在实 runner 下确实能写工作区内、工作区外被拒 —— 那得有一台 Windows。
+           **这一栏 2026-10-09 第二十五轮收掉了**（见下一条）：上游 `82498039`（#974）把那条 live 套件
+           在 Windows 上真跑起来（会话 shell 走 pwsh），CI 的 `test-windows (rest)` 从此必须跑它。
+           细节见「第二十一轮」与「第二十五轮」两节。
+        4. **Windows 上的 live 取证已落地（2026-10-09，第二十五轮，提交见该节）**：上游 `82498039`
+           （#974）—— 这条 live 套件不再在 Windows 上整文件跳过：探针按会话 shell 的语言分成两套
+           （pwsh 那套用 `Set-Content` / `Get-Content`，POSIX 那套照旧），`ADELIE_SHELL=pwsh` 在 adaptor
+           加载之前设好（core 每个进程只解析一次 shell），Windows 上先探一次 pwsh 在不在、不在就把
+           「会话 shell 不是 PowerShell 7」当作开不了交给 `mustRun()`；背景子进程那条断言补上「工作区
+           内的标记文件确实写了」这半边（此前只断言工作区外没写，一个从未跑起来的子进程也能蒙混）；
+           `ci.yml` 的 Windows `rest` 分片声明 `ADELIE_MUST_RUN=sandbox-dsh`，所以跑不起来就是红的。
+           细节与实测见「第二十五轮」一节。
+        5. `1ba104c9`（后端拆成 `@penguinharness/sandbox-*` 并发布到 npm）：落点正是 4.1 的 npm scope
            与发布链路，按纪律留给 4.x 一起做。
 - [x] 5.5 **长会话与 Trace 的加载性能**（`b8862716` `#958`：窗口化消息 + Trace 行索引 + Trace 图片）——
       **2026-10-08 第十九轮落地**：照上游的改动移植（不是合分支），39 个文件 / +2572 −646，
@@ -889,6 +899,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 
 | 2026-10-08 | 5.3（落地顺序①） | **跨机那一批小修复里能上的一次上掉**（上游 `fix/machine-*` 分支，照改动落、不是合分支）：① `7e1dca63` —— 本服务器经 ssh 启动机器的服务端时用 `setsid`（宿主有才用）把它放进自己的会话，连接断掉不会再被 sshd 一起挂死（`nohup` 盖不住：服务端自己起的子进程会重置 SIGHUP），本地化 `PENGUIN_SETSID` → 本仓 2.2b 口径的 `ADELIE_SETSID`；② `a2801c8d` —— 「通往机器的这一跳在浏览器放弃之前作答」：SOCKS 握手期限 20s → 8s、应答之前被关掉的通道立即失败、转发的读 15s 收不到响应头就 `504 machine_not_answering`（写请求不截断），移植落点只有 `machines/proxy.ts` 与 `transport/socks.ts`（上游同时改到的中继层本树没有）；两条的中英 changelog 一对。**另外三条 `fix/machine-*` 逐条核过、一条都没上**：`fix/machine-events-redial-a-failed-dial` 与 `-attach-a-machine-connected-later` 要 `event-hub.ts` / `machine-sockets.ts`（本树没有，属上游未进 main 的那条事件流线）；`fix/machine-linked-stopped` 与 `fix/machine-adopted-table` 的内容本树早已有（由 `48662c0a`（#448）一并带上），落上去是空操作 | 六包 `typecheck` 全过（`src/ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（64 文件）· ui **1007**（127）· server **2690**/4 跳过（185 文件，+8 恰是本轮新用例）· cli **506**（34）· web **2963**/2 跳过（241）· hmr 无测试文件，**0 失败** · 新用例逐条点名跑过：`startServerCommand` 两条（含 Linux 上**真起一个进程**、读 `/proc/<pid>/stat` 断言第 6 字段 = 它自己的 sid）、代理三条（504 / 写不截断 / 通道被关立即 502）、SOCKS 三条（关通道、期限、两个期限的大小关系）· 本轮没有界面改动，所以没起服务、没有动任何端口 | 见本行提交 |
 | 2026-10-09 | 5.3（收尾） | **上游 `main` 上仅剩的那条跨机提交落地**（上游 `dd1b931f` `#973` 移植，照改动落、不是合分支）：`machines-transport-lane.test.ts` 不再在 Windows 上整文件跳过 —— 它此前只为「桩 `ssh` 是 shell 脚本、Windows 上 `execFile` 跑不了」而 `describe.skip`，而 lane 与平台无关，于是子进程改成 Node 自己（`process.execPath -e "setTimeout(…, 200)"`），建临时目录 / 改 `PATH` 的 `beforeEach` 一并删掉；两条计时断言从写死的 380ms 改成相对值（预热后量一次单跑 `alone`，串行 ≥ `alone+150`、并行 < `alone+180`），慢跑机的冷启动因此把两个界一起挪而不是撞红；`.github/workflows/ci.yml` 的 `test-windows` 注释写明剩下的守卫在 Windows 上**没测到什么**（session 的桩 `ssh` 也是 shell 脚本、真 Windows OpenSSH 客户端没量过；`terminal-stream` 只有真 pty、无头 ConPTY 丢控制台；dsh 的 live 套件见它自己的 `TODO(win32)`），`machines-transport-session.test.ts` 加一行指向它。**不带 changelog**（上游这笔自己写着不带：只有测试与 CI 注释、无用户可见行为） | 六包 `typecheck` 全过（`EXIT=0`，`ifaces.json unchanged` 187 接口 / 535 类型，六个 `Done`）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（数目与上一轮逐字一致）· 改到的两个文件点名跑：lane 2 条 + session 8 条 = **10 通过** · lane 文件**连跑 5 次全绿**（1.51–1.54s）· 临时探针 3 轮量出断言用的三个数：`alone` 233/236/238ms、`serial` 478/482/474ms（下限 383/386/388，余量 ~92ms）、`together` 242/239/240ms（上限 413/416/418，余量 ~175ms），跑完即删、`git status` 复核 · `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，`test-windows` 五片不变）· **CI 复核（推送后 run `37830376191`，`ce30bc1c`）：22 个作业全绿**，`test-windows (server-2)` 的日志里是 `✓ test/machines-transport-lane.test.ts (2 tests)` —— **这个文件在 Windows 上真跑了**（改之前是 `↓ 2 skipped`），`test-windows (server-1)` 的 `↓ machines-transport-session (8 tests | 8 skipped)` 与新写的注释逐字对得上 · 本轮无界面改动，未起服务、未动端口 | `d5ee09f4` |
+| 2026-10-09 | 5.4（Windows 取证） | **DSH 的 live 套件在 Windows 上真跑**（上游 `82498039` `#974` 移植，照改动落、不是合分支）：`plugins/sandbox-dsh/test/live.test.ts` 不再在 Windows 上整文件跳过 —— 探针按会话 shell 分成 pwsh / POSIX 两套（`Set-Content` / `Get-Content`、`$ErrorActionPreference = 'Stop'` 加外层 catch），`ADELIE_SHELL=pwsh` 在 adaptor 加载之前设好（core 每进程只解析一次会话 shell），Windows 上先探一次 pwsh、没有就把「会话 shell 不是 PowerShell 7」当开不了的理由交给 `mustRun()`，可用性探针从裸 `true` 改成 `process.execPath`，`DENIED` 补上 .NET 的 `access to the path … is denied`；背景子进程那条断言补上「工作区内的标记文件确实写了」这半边（此前一个从未跑起来的子进程也能蒙混）；`ci.yml` 的 Windows `rest` 分片声明 `must_run: sandbox-dsh`、并把 `ADELIE_MUST_RUN` 接到那一步的环境。**不带 changelog**（上游这笔自己也没带：只有测试与 CI、无用户可见行为，与 `dd1b931f` 同一口径）。**本地化**：`PENGUIN_SHELL` → 本仓 2.2b 口径的 `ADELIE_SHELL`、`PENGUIN_MUST_RUN` → `ADELIE_MUST_RUN`、包名 `@prismshadow/` → `@lmliheng/`、临时目录前缀 `penguin-dsh-live-` → `adelie-dsh-live-` | 插件 `typecheck` 过 · `ADELIE_MUST_RUN=sandbox-dsh` 下插件 **15 通过 / 1 跳过**（`live.test.ts` 5 条在本机真跑、含新加的工作区内标记断言；`windows-shells.test.ts` 10 真跑 + 1 条 Windows 专属跳过）· 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（与上一轮逐字一致）· `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，只有 windows 的 `rest` 带 `must_run: sandbox-dsh`，ubuntu 与 macOS 那两处原样）· 本轮无界面改动，未起服务、未动端口 · **CI 结论见该节** | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -3718,3 +3729,87 @@ $ git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git \
   一次带齐第 22 / 23 / 24 三封的正文路径与主题、先查「已发送」再补发、发完或确认早已发过就删掉自己），
   原来的 `csu-mail-round22-retry`（一次性，早已跑过且被覆盖）与 `csu-mail-round23-retry` 两个任务文件
   **已删掉**，避免三份任务互相重复发信。
+
+## 第二十五轮：DSH 的 live 套件在 Windows 上真跑（2026-10-09，条目 5.4 的 Windows 取证）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 为什么是这一条
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `8c427c17`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+表上最靠前的未勾选条目照旧是 **2.2c**，它的「还差什么」这一轮再核一遍，四条仍全在纪律禁止或明说留到
+发布期的一侧：写侧只剩 `packages/desktop`（本轮明令不碰）、既有部署单元 `adelie-app.service` 与桌面壳
+自己的开关（都是发布动作）；剩下第四条第 4 项是画廊 mock 的演示路径与 `packages/docs` 的环境表，
+按 2.5 / 2.1c 的口径整片留到发布期。**3.5** 是桌面壳取哪个（要用户拍板，且本轮不许碰 desktop）、
+**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动。**5.3** 的落地顺序 ②③④ 要第二台机器 / 等上游。
+**5.6** 的 core 那一半等促销搬进 Project 配置（要拍板）。
+
+**5.4** 这一轮又逐条核了一遍：`234183f5`（#978）与 `9b170c61`（#975）要改的一批文件本树根本没有
+（`git show 234183f5 | git apply -3 --check -` 仍报 `packages/server/src/sandbox/settings-status.ts:
+does not exist in index` 等），属上游「权限菜单预设 + DSH 自带依赖」那一串的前置；`1ba104c9` 属 4.x。
+**剩下来的可做项，正是 5.4 自己「还差什么」里写着的最后一条 —— 「真 Windows 主机上的 live 取证」**
+（第二十一轮把 `c03e58c4` 落地时留下、第二十二轮记回来的那一栏）：上游 `82498039`（#974）
+把 `plugins/sandbox-dsh` 的 live 套件在 Windows 上从「整文件跳过」改成**真跑**（会话 shell 走 pwsh），
+并在 `ci.yml` 里声明它必须跑。这一笔自成一体的两文件改动，是本轮唯一能整块落地、且**本机 + CI 两面都能
+真验**的一条，所以做它。
+
+### 改了什么（上游 `82498039` #974，2 个文件 / +92 −61，照改动落、不是合分支）
+
+- `plugins/sandbox-dsh/test/live.test.ts`：
+  - **Windows 上不再 `describe.skipIf`**。删掉那段「capability gate 在 Windows 上其实开得了、缺的是一套
+    cmd 方言探针」的说明，改成按会话 shell 分两套探针：pwsh 那套用 `Set-Content` / `Get-Content`
+    （`$ErrorActionPreference = 'Stop'` + 外层 `try/catch` 拿拒绝文案），POSIX 那套照旧。
+  - **`ADELIE_SHELL=pwsh` 在 adaptor 加载之前设好**（core 每个进程只解析一次会话 shell），并在旁边留
+    `TODO(win32)`：在 runner 改成起 MSYS bash 之前，被 DSH 封禁的 bash 在 Windows 上仍不保证。
+  - **开不开得了多一道壳的条件**：先跑一次 `'pwsh-' + $PSVersionTable.PSEdition`，Windows 上没有 pwsh
+    就把「会话 shell 不是 PowerShell 7」这一句当作开不了的**理由**交给 `mustRun()`（所以声明了却在
+    没有 pwsh 的机器上跑，是红的、且红得说得清）。
+  - 可用性探针从裸 `true` 改成 `process.execPath`（Windows 上裸 `true` 没有 PATH 条目、会被拒）。
+  - **背景子进程那条断言补上另一半**：子进程先在工作区内写一个 `bg-inside.txt` 标记，然后才断言
+    「工作区外没写成」—— 此前只断言外头没写，一个**从未跑起来的子进程**也能蒙混过关。
+  - `DENIED` 的正则补上 .NET 的 `access to the path … is denied`（ACL runner 的方言）。
+- `.github/workflows/ci.yml`：Windows 的 `rest` 分片声明 `must_run: sandbox-dsh`，并把
+  `ADELIE_MUST_RUN` 接到「Unit tests (vitest)」这一步的环境上（与 ubuntu / macOS 同形）。
+- **不带 changelog**：上游这笔自己就没带（只改测试与 CI，无用户可见行为），与第二十四轮 `dd1b931f`
+  同一口径 —— 加一条会凭空造出「用户能看出变化」的暗示。
+
+**本地化**（不含这三处就是照抄上游、在本仓读不到或写错）：
+
+1. 探针里设的 `PENGUIN_SHELL` → 本仓 2.2b 口径的 `ADELIE_SHELL`（照上游那句话去设会设到一个**不再生效**
+   的名字上，Windows 上等于没设）。
+2. `ci.yml` 的 `PENGUIN_MUST_RUN` → `ADELIE_MUST_RUN`、包名 `@prismshadow/` → `@lmliheng/`
+   （冲突就发生在 `rest` 分片那三行上：本仓的过滤名是 `@lmliheng/*`，取本仓的、把上游的 `must_run`
+   注释与取值并进来）。
+3. 测试的临时目录前缀 `penguin-dsh-live-` → `adelie-dsh-live-`（与第十八 / 二十一轮对 bwrap 与 dsh 用例
+   的做法一致）。
+
+### 验证（都不是推测）
+
+- 插件 `typecheck` 过；`ADELIE_MUST_RUN=sandbox-dsh pnpm --filter @lmliheng/penguin-plugin-sandbox-dsh test`
+  → **2 文件 / 15 通过 / 1 跳过**：`live.test.ts` **5 条在本机真跑**（新加的工作区内标记断言在内）、
+  `windows-shells.test.ts` 11 条里 10 条真跑、1 条仍是那块 Windows 专属的 `describe.skipIf`。
+- 六包 `typecheck` 全过（`gen:ifaces` 打印 `src/ifaces.json unchanged (187 interfaces, 535 types)`）。
+- `pnpm lint` **0 警告 0 错误**（2073 文件）；`pnpm format:check` 干净。
+- 五包 test 逐包 `EXIT=0` 全绿：core **1359 通过 / 5 跳过**（65 文件）· ui **1007**（127）·
+  cli **506**（34）· web **2963 / 2 跳过**（241）· server **185 文件 / 2690 通过 / 4 跳过** ——
+  **0 失败**。数目与上一轮逐字一致（这一笔只动 `plugins/sandbox-dsh` 的测试与 CI 注释）。
+- `ci.yml` 用仓库自带的 `yaml` 解析通过：**11 个 job**；`test-windows` 的五个分片里只有 `rest` 带
+  `must_run: sandbox-dsh`，它那一步的环境是 `{ADELIE_MUST_RUN: ${{ matrix.must_run }}}`；ubuntu 的
+  `rest` 仍是 `sandbox-bwrap,sandbox-dsh` 加 userns 前置步骤、macOS 的仍是
+  `sandbox-seatbelt,sandbox-dsh`（第二十二轮那两处原样）。
+- **唯一一面本机没有的**：真 Windows 上这套 pwsh 探针是否真跑起来 —— 本机没有 Windows（按纪律也没装
+  electron / desktop 那一摊），由推送后的 `test-windows (rest)` 报回来，**结论见下**。
+- 本轮**没有界面改动**（测试与 CI），所以按纪律没有起服务、没有开浏览器、也没有动任何端口。
+
+### 没做 / 还差什么
+
+- **5.4 仍未勾掉**：这一轮收掉的是「真 Windows 主机上的 live 取证」那一栏。剩下三条与条目里写的一样 ——
+  `234183f5`（Landlock，链顶端；同串的 `45885985` / #977 是一条很小的文档 + 拒绝文案 + 一条用例的
+  前置）、`9b170c61`（权限菜单命名预设，压在树里不存在的上游 dock 面板重构上）、`1ba104c9`（拆 npm 包，
+  属 4.x）。
+- **2.2c / 3.5 / 3.6** 照旧停在原地，原因同前（写侧只剩桌面壳、桌面壳取哪个要用户定、3.6 要模型 key）。
+- `refs/adelie-tmp/*` 七个本地临时引用仍在（第 23 轮拉的），没推、没改 remote 配置；本轮没有新增。
