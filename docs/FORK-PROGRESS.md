@@ -8,6 +8,11 @@
 > `legacy/main`**（尖端 `7fb74262`），工作区在 `/root/Adelie`，已经冻结，不再往上加东西；
 > 旧 Adelie 那两本台账（`docs/engine-progress.md`、`docs/web-progress.md`）在 `legacy/main` 上。
 > 这份文件里 2026-10-05 之前的记录写的是 `fork/penguin-base`，指的正是今天的 `main`。
+>
+> **文档位置（2026-10-08 起）**：本 fork 自己的文档收在 `docs/` —— 本文件与 `FORK.md` 在
+> `docs/`，各版本的发布正文在 `docs/releases/`；仓库根只留 `README.md` / `README.zh.md` /
+> `CHANGELOG.md` / `CHANGELOG.zh.md` / `THIRD-PARTY-NOTICES.md` / `LICENSE`。下面 2026-10-08
+> 之前的记录里写的 `RELEASE-v<版本>.md`（仓库根）指的就是今天的 `docs/releases/` 里那份。
 
 ## 纪律（每轮开工前读一遍）
 

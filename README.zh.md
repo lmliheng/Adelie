@@ -17,8 +17,8 @@
 > 这棵代码树、引擎、Web 前端与协议都来自 PenguinHarness（Apache-2.0）；Adelie 是长在它上面的
 > 产品线 —— 自己的品牌与界面、自己的数据根与端口、自己的发布链路。
 >
-> - 来源、许可证义务、我们改了什么：[`FORK.md`](FORK.md)
-> - 改到哪一步了：[`FORK-PROGRESS.md`](FORK-PROGRESS.md)
+> - 来源、许可证义务、我们改了什么：[`FORK.md`](docs/FORK.md)
+> - 改到哪一步了：[`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md)
 > - 上游自己的渠道（仓库、官网、文档、博客、社区、Discord、X、微信、Product Hunt）是**上游的**，
 >   不是 Adelie 的：<https://github.com/Prism-Shadow/penguin-harness> · <https://penguin.ooo/>
 > - PenguinHarness / PrismShadow 的名字与商标属于上游。Adelie 不拿它们当自己的名号、图标或域名。
@@ -176,7 +176,7 @@ penguin update --yes
 > Adelie 有自己的安装包、自己的 npm scope 和自己的更新链路，用上面这些。
 
 命令名还是 `penguin`，包的词干也还留着 `penguin-`（scope 是 Adelie 自己的 `@lmliheng/*`）；改名是
-分期做的，还没做完的部分记在 [`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
+分期做的，还没做完的部分记在 [`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md)。
 
 ## 参与开发
 
@@ -188,10 +188,13 @@ pnpm dev                     # 后端 + Web 前端一起起（日志带前缀，
 完整的工作区指南见 [CONTRIBUTING.zh.md](.github/CONTRIBUTING.zh.md)（那份文件是上游的，大体仍准确）：
 开发命令、质量门禁、仓库结构、变更日志规则。上游的官网站点 `packages/landing` 已在本 fork 中删除。
 
+本 fork 自己的文档收在 [`docs/`](docs/README.md) —— fork 的由来、进度台账与各版本的发布正文 ——
+仓库根只留约定俗成的那几份。
+
 ## 上游路线图
 
 这里是上游项目的路线图，留作了解这个基座往哪走。Adelie 自己的计划在
-[`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
+[`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md)。
 
 - [ ] Benchmark 套件正式发布
 - [x] 桌面端应用
@@ -235,6 +238,6 @@ pnpm dev                     # 后端 + Web 前端一起起（日志带前缀，
 ## 协议
 
 [Apache-2.0](LICENSE) © 2026 Prism Shadow —— 这是上游的版权。Adelie 是它的 fork，
-以同一协议发布；见 [`FORK.md`](FORK.md)。
+以同一协议发布；见 [`FORK.md`](docs/FORK.md)。
 
 上游 PenguinHarness 由 [LlamaFactory](https://github.com/hiyouga/LlamaFactory) 作者 [Yaowei Zheng](https://github.com/hiyouga)、[PrismShadow AI Team](https://github.com/Prism-Shadow) 与 [Fable 5](https://www.anthropic.com/news/claude-fable-5-mythos-5) 共同用 ❤️ 构建。Adelie 是这份工作的 fork。

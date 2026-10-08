@@ -18,8 +18,8 @@
 > Adelie is the productised line built on top of it — its own brand and interface, its own data root
 > and ports, its own release pipeline.
 >
-> - Where it came from, what the licence requires, what we changed: [`FORK.md`](FORK.md)
-> - How far the work has got: [`FORK-PROGRESS.md`](FORK-PROGRESS.md)
+> - Where it came from, what the licence requires, what we changed: [`FORK.md`](docs/FORK.md)
+> - How far the work has got: [`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md)
 > - The upstream project's own channels — repository, website, docs, blog, community, Discord, X,
 >   WeChat, Product Hunt — are **theirs**, not Adelie's: <https://github.com/Prism-Shadow/penguin-harness> ·
 >   <https://penguin.ooo/>
@@ -200,7 +200,7 @@ a new instance needs one API key before it can run a Task.
 
 The command name is still `penguin` and the packages still carry the `penguin-` stem (Adelie's own
 scope, `@lmliheng/*`); the rename is being done in stages and what is left of it is tracked in
-[`FORK-PROGRESS.md`](FORK-PROGRESS.md).
+[`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md).
 
 ## Contributing
 
@@ -213,10 +213,13 @@ The full workspace guide is [CONTRIBUTING.zh.md](.github/CONTRIBUTING.zh.md) (th
 and remains broadly accurate): development commands, quality gates, repository layout, changelog
 rules. The upstream marketing site, `packages/landing`, has been deleted from this fork.
 
+This fork's own docs are collected in [`docs/`](docs/README.md) — the fork story, the progress log and
+every release note — so the repository root stays down to the conventional files.
+
 ## Upstream roadmap
 
 This is the upstream project's roadmap, kept here to show where the base is heading. Adelie's own
-plans live in [`FORK-PROGRESS.md`](FORK-PROGRESS.md).
+plans live in [`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md).
 
 - [ ] Benchmark suite released
 - [x] Desktop app
@@ -260,7 +263,7 @@ See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the full list.
 ## License
 
 [Apache-2.0](LICENSE) © 2026 Prism Shadow — that is upstream's copyright. Adelie is its fork and is
-released under the same licence; see [`FORK.md`](FORK.md).
+released under the same licence; see [`FORK.md`](docs/FORK.md).
 
 Upstream PenguinHarness is built with ❤️ by [Yaowei Zheng](https://github.com/hiyouga), the author of
 [LlamaFactory](https://github.com/hiyouga/LlamaFactory), [PrismShadow AI Team](https://github.com/Prism-Shadow)

@@ -11,8 +11,8 @@
 | 上游 | [Prism-Shadow/penguin-harness](https://github.com/Prism-Shadow/penguin-harness)（Apache-2.0） |
 | 基座提交 | `18d7c137a1f1`（上游 `develop`，2026-10-04 取） |
 | 本版分支 | `fork/penguin-base` |
-| 上游与许可证义务的说明 | [`FORK.md`](FORK.md) |
-| 改到哪一步了 | [`FORK-PROGRESS.md`](FORK-PROGRESS.md) |
+| 上游与许可证义务的说明 | [`FORK.md`](../FORK.md) |
+| 改到哪一步了 | [`FORK-PROGRESS.md`](../FORK-PROGRESS.md) |
 
 ## 这一版改了什么（相对基座）
 
@@ -51,7 +51,7 @@ PENGUIN_HOME=<数据根> HOST=0.0.0.0 PORT=<端口> node dist/index.js
 ```
 
 首次启动会打印一条「首次登录链接」，打开它认领内置 `admin` 账号并设置密码；模型在应用内的
-**模型库**页配置（需要至少一个 API key）。细节见 [README](README.md)。
+**模型库**页配置（需要至少一个 API key）。细节见 [README](../../README.md)。
 
 仓库内各 `package.json` 的版本号仍是上游的编号（`0.2.13`），**这是有意的**：Adelie 的版本号
 （本版 `v0.2.0`，接在旧 Adelie 的 `v0.1.0` 之后）与包版本一起改，属发布链路里 npm scope 改名那一步
@@ -74,7 +74,7 @@ PENGUIN_HOME=<数据根> HOST=0.0.0.0 PORT=<端口> node dist/index.js
 
 Adelie 是 PenguinHarness 的 fork，以同一协议 **Apache-2.0** 发布：`LICENSE`、
 `THIRD-PARTY-NOTICES.md` 与源码里的版权头一律保留；本仓库做过的改动都在提交历史与
-[`FORK-PROGRESS.md`](FORK-PROGRESS.md) 里写明。PenguinHarness / PrismShadow 的名字与商标属于上游，
+[`FORK-PROGRESS.md`](../FORK-PROGRESS.md) 里写明。PenguinHarness / PrismShadow 的名字与商标属于上游，
 Adelie 不拿它们当自己的名号、图标或域名；上游的官网、文档、博客、Discord、X、微信、Product Hunt
 等渠道是上游的，不是 Adelie 的。
 
@@ -82,4 +82,4 @@ Adelie 不拿它们当自己的名号、图标或域名；上游的官网、文�
 
 自有化（数据根、端口、命令名）、接回旧 Adelie 的能力（用量与成本页、模型目录、审批口径、
 用户与角色）、用真模型端到端跑一条消息、npm scope 改名与发布流水线重写、旧四件产物按新基座
-更新重发 —— 清单在 [`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
+更新重发 —— 清单在 [`FORK-PROGRESS.md`](../FORK-PROGRESS.md)。

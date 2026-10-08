@@ -42,7 +42,7 @@
 
 装完的命令与数据根仍是上游拼写（`penguin`、`~/.penguin`）—— 改名归后续版本。
 
-从源码运行、首次登录认领、在应用内配置模型，见 [README](README.md)。
+从源码运行、首次登录认领、在应用内配置模型，见 [README](../../README.md)。
 
 ## 质量门禁（本机跑过）
 
@@ -66,4 +66,4 @@
 
 自有化（数据根、端口、命令名）、接回旧 Adelie 的能力（用量与成本页、模型目录、审批口径、用户与
 角色）、npm scope 改名与发布流水线重写，以及把安装包资产按上游形状发进 GitHub Release —— 清单在
-[`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
+[`FORK-PROGRESS.md`](../FORK-PROGRESS.md)。

@@ -52,7 +52,7 @@
 自动更新读的也是这里。
 
 命令名仍是 `penguin`（npm scope 与命令名改名归 4.1/4.2）。从源码运行、首次登录认领、在应用内
-配置模型，见 [README](README.md)。
+配置模型，见 [README](../../README.md)。
 
 ## 质量门禁（本机跑过）
 
@@ -77,4 +77,4 @@
 - **macOS 安装包**：流水线能出（未签名 dmg/zip），但会被 Gatekeeper 拦，所以不发。
 - 桌面壳与启动器的 `PENGUIN_*` 变量名、桌面 dev 数据根（2.2c）；命令名 `penguin` 与 npm
   scope `@prismshadow/*`（4.1）；发布流水线还没写成 Adelie 自己的（4.2）—— 这一版的安装包是
-  本机脚本 + Actions 手工 dispatch 打的，清单在 [`FORK-PROGRESS.md`](FORK-PROGRESS.md)。
+  本机脚本 + Actions 手工 dispatch 打的，清单在 [`FORK-PROGRESS.md`](../FORK-PROGRESS.md)。
