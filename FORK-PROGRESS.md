@@ -273,6 +273,17 @@
       - **第三块已落地（2026-10-08，第二十一轮，提交 `dcb77d05`）**：**`sandbox-dsh` 在 Windows 上
         拒绝 bash、并在错误里点名它要哪个 shell**（上游 `c03e58c4`）—— 加载即失败 + 逐条拒绝两层都在，
         用例把平台与会话 shell 注入，所以在 Linux 上也能真跑这两层。细节见「第二十一轮」一节。
+      - **第二块已落地（2026-10-08，第二十二轮，提交见该节）**：**CI 真正跑沙盒插件的测试、跑不起来
+        就红**（上游 `e3a9eb66` `#872`）—— Linux 的 `rest` 分片此前是一串写死的包名，`plugins/*`
+        从来没被列进去（4 个沙盒后端包在 Linux CI 上一条都不跑），而即使排上，GitHub 的 Ubuntu 机器
+        默认不给普通程序建 user namespace，bwrap 的 live 用例会整片静默跳过、CI 依旧全绿。现在
+        `rest` 与 macOS / Windows 同形（全仓减去已各自分片的包），矩阵用 `ADELIE_MUST_RUN` 声明
+        「必须真跑」的套件（ubuntu `sandbox-bwrap,sandbox-dsh`、macOS `sandbox-seatbelt,sandbox-dsh`），
+        声明了却开不了就红并带上理由；Ubuntu 的 userns 开关作为作业前置步骤；`sandbox-bwrap` 的
+        live 套件自己用 vitest `globalSetup` 铺好自带的 bubblewrap（vendorer 的「已就位」判据补上
+        「每个架构的 `bin/bwrap` 存在且可执行」）；bwrap 的拒绝理由补上 Ubuntu 的开关。**选它的理由**：
+        5.4 剩下三条各自压在上游前置上（见下），它是这一串里唯一自立、可整块落地、且本机就能真跑
+        验证的一笔。细节见「第二十二轮」一节。
       - **还差什么**（还剩三条各自成串，按上游那串的顺序）：
         1. `234183f5`（Landlock 让默认 Ubuntu 可用）是**一组提交的顶端**：路由改成「谁实现得多谁服务」
            （`pick()`）、新增 `closed-temp` 维度、插件契约多出 `mechanism` / `limits`、沙箱卡片改成
@@ -864,6 +875,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-08 | 5.5 | **长会话与 Trace 的加载性能**（上游 `b8862716` `#958` 移植）：服务端新增按 Trace 文件的行索引（`trace-line-index.ts`，事件分页不再整文件解析）与图片按引用服务（`trace-images.ts` + `GET /api/sessions/:id/trace-image`），分窗历史页另加 4 MiB 字节预算收口；web 的 Trace 文件视图改成按轮次读取（新 `trace-rounds.ts`，删掉被取代的 `trace-events-loader.ts` 及其用例），上下文环改读分析新增的 `modelContextWindow`；ui 的消息 / 工具卡片缩略图加 `lazy`；中英 changelog 一对。**为什么是这一条**：5.4 剩下四块本轮实测各自压在上游前置上（见该条目），故按台账顺序往下做 | 六包 `typecheck` 全过（187 接口 / 537 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · server **2672**/4 跳过（185 文件，+33）· cli **506** · web **2938**/2 跳过（239 文件，+31）· hmr 无测试文件，`EXIT=0` · 解完冲突后与上游 `trace-file-view.tsx` 逐字比对只差三处 scope 名 · 真服务（7492、`/root/adelie-fork-data`）里用产品自己的导入接口装进一份合成 Trace，真浏览器打开 `/chat/<sid>`：三轮 + 时间线 + 全局统计都渲染，三张图全部由 `/trace-image?…` 以 **200** 下发且 `naturalWidth` 与生成图一致，**console 0 error** | `819c31c1` |
 | 2026-10-08 | 5.6（服务端一半） | **用量成本「记账时就定价」**（上游 `feat/usage-cost-at-record-time` 移植，**只取服务端那一半**）：用量行在写入时定格成本（`usage_records.cost` / `cost_settled`，迁移 14）—— 取 Project 当时为该 provider/model 存下的价，含该行促销与那一刻的峰谷档位；查询侧（成本中心、对话框工具栏、`penguin cost`、公司模式预算、用户管理的累计开销）一律不再取价，只加总已记录的成本；Trace 页仍按「今天的价 × 每个请求自己的时间戳」推导（按小时记忆化），且没有价格的文件不再画成 0；兼容靠启动时一次性补算（`settleUnsettledCosts`，幂等，失败记错误表）。**core 那一半有意未搬**：逐行促销在 `web.db` 的 `model_promotions` 里，core 读不到，盖在事件上的费率会把促销行按原价计费（详见条目 5.6 与 changelog） | 六包 `typecheck` 全过（`gen:ifaces` 187 接口 / 535 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（65 文件）· ui **1003**（127）· cli **506**（34）· server **2682**/4 跳过（185 文件）· web **2942**/2 跳过（239）· hmr 无用例，**0 失败** · **端到端**（复制一份真 pre-cost 数据根，`user_version` 13、`usage_records` 无 cost 列）：起真服务后迁移到 **14**，启动补算把 5 条旧行逐条按自己时间戳定价（高峰 9.142825e-6 / 半价 4.571415e-6 / 无价 NULL，全 `cost_settled=1`，累计 2.742848e-5），成本中心页面上的数字与接口逐字一致、**console 0 error / 0 pageerror / 0 requestfailed** · **不重算的反证**：把磁盘上的价改成两倍再重启，5 条已结算行的成本一个都没动；再手插一条未结算行，重启后按**新价**补算成 1.828565e-5（正好 2 × 9.142825e-6） | `6c30e14a` |
 | 2026-10-08 | 5.4（第三块） | **`sandbox-dsh` 在 Windows 上拒绝 bash、并点名它要哪个 shell**（上游 `c03e58c4` `#972` 移植，照改动落、不是合分支）：core 的 plugin 入口新增 `sessionShell` 导出；`loadDshAdaptor()` 在 Windows 上先取会话 shell（从**宿主**的 core，按命名空间读，宿主 core 没有这个导出就跳过检查），是 bash / sh / 其他 MSYS 运行时的程序就**加载即失败**，原因写明改法（`ADELIE_SHELL=pwsh`，没有 PowerShell 7 的机器用 `ADELIE_SHELL=powershell`，然后重启）——加载失败的后端本来就被报为「不可用」，封禁档位因此显示「不可用 + 改法」；`assertAclRunnerCanStart()` 在交给 runner 之前逐条拒绝 MSYS 运行时上的程序（POSIX shell 按名字、MSYS `usr\bin` 下任何程序），是会话 shell 时点 `ADELIE_SHELL`、不是时只说明 runner 起不了这类程序，原生程序放行；插件 README 加「Windows: run command sessions under PowerShell」一节与实测矩阵；中英 changelog 一对。**本地化**：scope `@prismshadow/` → `@lmliheng/`，文案里的 `PENGUIN_SHELL` → 本仓 2.2b 改名后的 `ADELIE_SHELL` | 插件 `typecheck` 过 · **插件测试 15 通过 / 1 跳过**（新 `windows-shells.test.ts` 11 条里 10 条在本机 Linux 上真跑、1 条是 Windows 专属的 `describe.skipIf` 整块；`live.test.ts` 5 条在改了加载路径之后照常真跑，即真实 DSH 链仍能加载与封禁）· 六包 `typecheck` 全过（`src/ifaces.json unchanged`）· `pnpm lint` **0 警告 0 错误**（2065 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · cli **506** · server **2682**/4 跳过 · web **2942**/2 跳过 · hmr 无用例，**0 失败** · **产物侧**：重建后的 `plugins/sandbox-dsh/dist/index.js` 里 `import(HOST_CORE)` 仍是运行时导入（decorators 已内联），把它拷进一个**无可解析 core** 的目录仍能链接、`hostSessionShell()` 返回 `null` · 取证脚本对产物逐例打印两种拒绝与加载拒绝（bash 在 Windows 上被拒、MSYS `usr\bin` 程序被拒、pwsh 与原生 `mingw64\bin\git.exe` 放行、Linux 上一个都不拦）· **仍未验**：真 Windows 主机上两种 PowerShell 在实 runner 下写工作区内 / 工作区外被拒 | `dcb77d05` |
+| 2026-10-08 | 5.4（第二块） | **CI 真正跑沙盒插件的测试、跑不起来就红**（上游 `e3a9eb66` `#872` 移植，照改动落、不是合分支）：Linux 的 `rest` 分片从写死的包名（desktop / docs / ui-gallery）改成与 macOS / Windows 同形的「全仓减去 core / server / web / ui / cli」，build 名单也对齐成 `desktop...,cli...`，于是 `plugins/sandbox-{bwrap,dsh,seatbelt,wsl}` 四个包在 Linux CI 上第一次被跑到；矩阵新增 `must_run`（= `ADELIE_MUST_RUN`）并接到「Unit tests」步骤的环境：ubuntu 声明 `sandbox-bwrap,sandbox-dsh`、macOS 声明 `sandbox-seatbelt,sandbox-dsh`；新增 `scripts/must-run.mjs` + `.d.mts`（一个函数：被声明却开不了就抛错、错误里原样带探测理由；没声明照旧跳过），三个 live 套件的「能不能开」探测改成返回**理由字符串**而不是 `false` 并交给它裁决；Ubuntu 的 user namespace 开关作为作业前置步骤（`sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`，只在 `rest` 分片、名字不提沙盒）；`sandbox-bwrap` 新增 `vitest.config.ts` + `test/global-setup.ts`，让 live 套件自己调 `vendorBwrap()` 铺好自带的 bubblewrap，`scripts/vendor-bwrap.mjs` 的「已就位」判据补上「每个架构的 `bin/bwrap` 存在且可执行」（附 `vendor-bwrap.d.mts`）；bwrap 的拒绝理由补上 Ubuntu 的开关（Debian 之外）。**本地化**：`PENGUIN_MUST_RUN` → 本仓 2.2b 口径的 `ADELIE_MUST_RUN`，包名 `@prismshadow/` → `@lmliheng/` | 插件 `typecheck` 过（4 个沙盒包）· 六包 `typecheck` 全过（`src/ifaces.json unchanged`）· `pnpm lint` **0 警告 0 错误**（2070 文件，+5）· `pnpm format:check` 干净（新文件也在内）· 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · cli **506** · server **2682**/4 跳过 · web **2942**/2 跳过，**0 失败** · `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，`rest` 的 `must_run` 与 userns 步骤逐字核对）· **正向**：`ADELIE_MUST_RUN=sandbox-bwrap,sandbox-dsh` 下 bwrap **25 通过**（live 7 条**真跑**、非跳过）、dsh **15 通过 / 1 跳过**（live 5 条真跑）、未声明的 seatbelt 照旧 `5 skipped`；按 CI 那条 `rest` 命令真跑一遍（本机略过桌面壳）：docs · hmr · ui-gallery · 四个沙盒包全部 `Done` · **反向**：`ADELIE_MUST_RUN=sandbox-seatbelt` 时红，栈指向 `mustRun` 与 `test/live.test.ts:35`，错误为 `ADELIE_MUST_RUN requires sandbox-seatbelt, and this host cannot open it: …`，`EXIT=1` · `mustRun` 语义逐例打印（名字两侧带空格仍命中、拼错的忽略、未声明返回 `false`、`null` 返回 `true`）· **vendorer**：把 `vendor/linux-x64/bin/bwrap` 移走 / 去掉可执行位后，下一次测试打印 `[vendor-bwrap] linux-x64: vendored` 并从缓存重新铺好（字节一致、无网络），再跑一次不再铺 · 真跑 loader 拿到 bwrap 的拒绝信息，两个发行版的开关都在；`platform: win32` 仍返回 `null` · 本轮没改界面，故未起服务、未开浏览器、未动端口 | `0f70719b` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -3313,6 +3325,116 @@ packages/core packages/web packages/docs`），只搬服务端那一半，并让
 ### 收尾：提交、推送与汇报
 
 - **代码提交** `dcb77d05`（4 个源码 / 测试 / README 文件 + 一对 changelog，见「已完成的轮次」那一行）；
+  台账这一笔另起一笔。
+- **推送**：`git push origin main`。
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
+
+## 第二十二轮：CI 真正跑沙盒插件的测试、跑不起来就红（2026-10-08，条目 5.4 的第二块）
+
+### 为什么是这一条
+
+台账「待办」里最靠前的一条未勾选是 **2.2c**，但它剩下的「还差什么」本轮逐条复核后全在纪律禁止
+的一侧（`packages/desktop` 的写点、既有部署单元 `adelie-app.service`、桌面壳自己的开关），
+或明说留到发布期（`packages/docs` 的环境表、`changelog/`）；**3.5** 就是桌面壳（依赖没装、纪律
+不许碰）、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动。于是按前几轮的做法往下找：
+**5.4** 剩下的三条本轮又实测了一遍 ——
+
+```
+$ git show 234183f5 | git apply -3 --check -
+error: packages/server/src/sandbox/settings-status.ts: does not exist in index
+error: packages/web/src/features/settings/plugin-config-field.tsx: does not exist in index
+error: packages/web/src/lib/sandbox-backend-prompt.ts: does not exist in index
+...
+```
+
+—— `234183f5` 与 `9b170c61`（#978 / #975）要改的一批文件本树根本没有，它们是上游那串
+「权限菜单预设 + DSH 自带依赖」的前置产物，不是一轮的量（与本台账此前的记录一致）。
+这一串里**唯一自立、可整块落地、本机就能真跑验证**的一笔，是紧挨在它们前面的
+`e3a9eb66`（#872）—— **CI 从没跑过沙盒插件的测试，而它即使被排上也可能是静默跳过**。
+选它做这一轮。
+
+### 这条 bug 是什么（本机实测，不是推测）
+
+1. **没被排上**：Linux 的 `rest` 分片是一串写死的包名（`desktop` / `docs` / `ui-gallery`），
+   `plugins/*` 从来没在里面 —— 4 个沙盒后端包（`sandbox-bwrap` / `dsh` / `seatbelt` / `wsl`）
+   在 Linux CI 上一条测试都不跑。macOS / Windows 的 `rest` 是「全仓减去 core / server」，所以
+   只有 Linux 漏。
+2. **跳过了也看不出来**：live 用例先探测宿主能否打开沙盒，打不开就整片 `skip`。GitHub 的
+   Ubuntu 机器上默认不允许普通程序建 user namespace（而 `bwrap` 要），就算把包名补上，
+   bwrap 的 live 用例也会全部「跳过」，CI 依旧全绿 —— 跳过与通过看不出区别。
+
+### 改了什么（6 个改动文件 + 5 个新文件 + 一对 changelog）
+
+- `scripts/must-run.mjs`（新）+ `scripts/must-run.d.mts`（新）：`mustRun(suite, cannotOpen)`
+  一个函数。`ADELIE_MUST_RUN`（逗号分隔，名字两侧空格忽略）里点了名的套件，若宿主开不了就
+  **抛错**、错误里原样带上探测给的理由；没点名照旧跳过，拼错的名字当作没点名。类型文件与
+  `scripts/esm-cjs-banner.d.mts` 同一套做法，好让被 typecheck 的插件测试能直接 import。
+- `.github/workflows/ci.yml`：Linux 的 `rest` 从「一串包名」改成与 macOS / Windows 同形的
+  「全仓减去 core / server / web / ui / cli」，build 名单也对齐成 `desktop...,cli...`
+  （以后新增的包默认就会被跑到）；矩阵新增 `must_run`，ubuntu 是
+  `sandbox-bwrap,sandbox-dsh`、macOS 是 `sandbox-seatbelt,sandbox-dsh`，接到「Unit tests」
+  步骤的环境；新增一步「Allow unprivileged user namespaces」
+  （`sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`，只在 `rest` 分片跑，
+  名字刻意不提沙盒）。
+- 三个 live 套件（`sandbox-bwrap` / `dsh` / `seatbelt` 的 `test/live.test.ts`）：「能不能开」
+  的探测从返回 `false` 改成返回**理由字符串**，结果交 `mustRun()` 裁决；文件头的说明补上
+  「除非 `ADELIE_MUST_RUN` 点了它」。
+- `plugins/sandbox-bwrap/vitest.config.ts`（新）+ `test/global-setup.ts`（新）：live 套件用
+  的正是插件自带的 bubblewrap，构建时会铺、裸跑测试不会 —— 让测试自己铺（`vendorBwrap()`）。
+- `scripts/vendor-bwrap.mjs`：`.complete` 标记之外，还要求**每个架构的 `bin/bwrap` 存在且可
+  执行**才算「已就位」；被删掉或去掉了可执行位就从缓存重新铺（不联网），构建那边也一起受益。
+  附 `scripts/vendor-bwrap.d.mts`（新）。
+- `plugins/sandbox-bwrap/src/index.ts`：拒绝理由补上 Ubuntu 的开关（原来只有 Debian 那条
+  sysctl）—— 这条正好是本 CI 步骤改的那个开关，运维在沙盒卡片上看到的就是这句话。
+- `changelog/unreleased/2026-10-08-ci-ubuntu-runs-plugin-suites{,.zh.md}`（新，中英一对）。
+
+**本地化**：`PENGUIN_MUST_RUN` → 本仓 2.2b 口径的 `ADELIE_MUST_RUN`（我们自己的测试脚手架变量），
+包名 `@prismshadow/` → `@lmliheng/`，其余照上游落。
+
+### 验证（都不是推测）
+
+- 四个沙盒插件 `typecheck` 过；六包 `typecheck` 全过（`src/ifaces.json unchanged`）；
+  `pnpm lint` **0 警告 0 错误**（2070 文件，比上一轮多 5 个 —— 正是这轮新增的源文件）；
+  `pnpm format:check` 干净。
+- 六包 test 全绿：core **1359** / 5 跳过 · ui **1003** · cli **506** ·
+  server **2682** / 4 跳过 · web **2942** / 2 跳过，**0 失败**。
+- `ci.yml` 用仓库自带的 `yaml` 解析通过：11 个 job，`rest` 的 `must_run`、四个分片的 `tests`
+  与那个 userns 步骤逐字打印核对。
+- **正向**（`ADELIE_MUST_RUN=sandbox-bwrap,sandbox-dsh`）：bwrap **25 通过**（live 7 条
+  **真跑**、不是跳过）、dsh **15 通过 / 1 跳过**（live 5 条真跑）、没声明的 seatbelt 照旧
+  `5 skipped`（这正是「没声明就照旧」的一半）。再按 CI 那条 `rest` 命令真跑一遍（本机按纪律
+  略过桌面壳，它依赖没装）：docs · hmr · ui-gallery · 四个沙盒包全部 `Done`，无 `ERR_`。
+- **反向**：`ADELIE_MUST_RUN=sandbox-seatbelt` 时**红**，`Exit status 1`，栈指向
+  `scripts/must-run.mjs:12` 与 `test/live.test.ts:35`，错误为
+  `ADELIE_MUST_RUN requires sandbox-seatbelt, and this host cannot open it: …`。
+- `mustRun` 语义逐例打印：`" sandbox-bwrap , sandbox-dsh"`（两侧空格）仍命中、`other` 忽略、
+  未声明时返回 `false`、`null` 返回 `true`、变量为空时返回 `false`。
+- **vendorer**：把 `vendor/linux-x64/bin/bwrap` 移走，下一次测试打印
+  `[vendor-bwrap] linux-x64: vendored` / `linux-arm64: vendored` 并从缓存重新铺好（与移走的
+  那份字节一致，未联网）；改成 `chmod -x` 同样重铺；已经就位时再跑一次不打印、不重铺。
+- 真跑 loader 拿到 bwrap 的拒绝信息，两个发行版的开关都在；`platform: win32` 仍返回 `null`
+  （不是失败，是「不是本机后端」）。
+- 本轮**没改界面**，所以没有起服务、没有开浏览器、也没有动任何端口。
+
+### 没做 / 还差什么
+
+- **5.4 仍未勾掉**：这一轮落的是第二块。剩下的与条目里写的一样 —— `234183f5`（Landlock，
+  一组提交的顶端，本轮又实测了它的前置确实不在本树）、`9b170c61`（权限菜单命名预设，压在
+  上游的 dock 面板重构上）、`1ba104c9`（拆 npm 包，属 4.x），以及真 Windows 主机上的
+  live 取证。
+- **2.2c / 3.5 / 3.6** 照旧停在原地，原因同前（写侧只剩桌面壳、桌面壳取哪个要用户定、
+  3.6 要模型 key）。
+- **CI 上的结论还没有看到**：这一轮的改动要等推送后的 CI run 才知道 Ubuntu 上
+  `test (rest)` 是否真的把 bwrap / dsh 的 live 用例跑绿（本机已按同一命令与同一环境变量
+  验过，但本机不是 GitHub 的 Ubuntu 24.04、也没有那个 userns 开关）。推送后值得看一眼那条 job。
+- `upstream` remote 指向的 `/root/penguin-harness` **目录已不在**，但上游提交对象仍在本地
+  仓库里 —— `git show <commit>` 照常可用，`git fetch upstream` 不可用。
+- `legacy/main`、`/root/Adelie` 工作区、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+  全程没碰；没有切版本号、没发 npm、没发安装包、没发发布汇总邮件。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交** `0f70719b`（6 个改动文件 + 5 个新文件 + 一对 changelog，见「已完成的轮次」那一行）；
   台账这一笔另起一笔。
 - **推送**：`git push origin main`。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`。
