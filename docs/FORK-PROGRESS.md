@@ -265,7 +265,10 @@
       `feat/company-remote-machines`、`feat/agent-state-handover`）——**调研已做完（见文件末尾「跨机评估」
       一节），落地只做了「跟上游学之二」那一条**。**落地顺序①（`fix/machine-*` 那批小修复）2026-10-08
       第二十三轮走了一遍**：能上的两条已上（`7e1dca63` setsid、`a2801c8d` 这一跳先作答），另外三条逐条
-      核过、各自卡在别的前置上（理由见「第二十三轮」一节）。结论：我们自己的跨机子系统已经不小，缺的不是地基而是
+      核过、各自卡在别的前置上（理由见「第二十三轮」一节）。**2026-10-09 第二十四轮**把上游 `main` 上仅剩的
+      那条跨机提交也落了（`dd1b931f` #973：跨机的 per-machine lane 测试在 Windows 上不再无理由跳过、并把
+      Windows 上仍未测到的三处写进 CI 注释）—— 至此评估里说的「上游 `main` 里我们还缺的跨机提交」清零。
+      结论：我们自己的跨机子系统已经不小，缺的不是地基而是
       上游那批修复与「公司模式跑在别的机器上」；而**「这台 Linux 指挥 Windows 生成台」在今天的两侧代码里
       都还不可能**（Windows 机器连不上，见评估）。价值仍在，但要按评估里的顺序走。
 - [ ] 5.4 **沙箱体系**（上游已进 main：Landlock 让默认 Ubuntu 可用 `234183f5`、权限菜单命名预设
@@ -885,6 +888,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-08 | 5.4（第二块） | **CI 真正跑沙盒插件的测试、跑不起来就红**（上游 `e3a9eb66` `#872` 移植，照改动落、不是合分支）：Linux 的 `rest` 分片从写死的包名（desktop / docs / ui-gallery）改成与 macOS / Windows 同形的「全仓减去 core / server / web / ui / cli」，build 名单也对齐成 `desktop...,cli...`，于是 `plugins/sandbox-{bwrap,dsh,seatbelt,wsl}` 四个包在 Linux CI 上第一次被跑到；矩阵新增 `must_run`（= `ADELIE_MUST_RUN`）并接到「Unit tests」步骤的环境：ubuntu 声明 `sandbox-bwrap,sandbox-dsh`、macOS 声明 `sandbox-seatbelt,sandbox-dsh`；新增 `scripts/must-run.mjs` + `.d.mts`（一个函数：被声明却开不了就抛错、错误里原样带探测理由；没声明照旧跳过），三个 live 套件的「能不能开」探测改成返回**理由字符串**而不是 `false` 并交给它裁决；Ubuntu 的 user namespace 开关作为作业前置步骤（`sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`，只在 `rest` 分片、名字不提沙盒）；`sandbox-bwrap` 新增 `vitest.config.ts` + `test/global-setup.ts`，让 live 套件自己调 `vendorBwrap()` 铺好自带的 bubblewrap，`scripts/vendor-bwrap.mjs` 的「已就位」判据补上「每个架构的 `bin/bwrap` 存在且可执行」（附 `vendor-bwrap.d.mts`）；bwrap 的拒绝理由补上 Ubuntu 的开关（Debian 之外）。**本地化**：`PENGUIN_MUST_RUN` → 本仓 2.2b 口径的 `ADELIE_MUST_RUN`，包名 `@prismshadow/` → `@lmliheng/` | 插件 `typecheck` 过（4 个沙盒包）· 六包 `typecheck` 全过（`src/ifaces.json unchanged`）· `pnpm lint` **0 警告 0 错误**（2070 文件，+5）· `pnpm format:check` 干净（新文件也在内）· 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · cli **506** · server **2682**/4 跳过 · web **2942**/2 跳过，**0 失败** · `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，`rest` 的 `must_run` 与 userns 步骤逐字核对）· **正向**：`ADELIE_MUST_RUN=sandbox-bwrap,sandbox-dsh` 下 bwrap **25 通过**（live 7 条**真跑**、非跳过）、dsh **15 通过 / 1 跳过**（live 5 条真跑）、未声明的 seatbelt 照旧 `5 skipped`；按 CI 那条 `rest` 命令真跑一遍（本机略过桌面壳）：docs · hmr · ui-gallery · 四个沙盒包全部 `Done` · **反向**：`ADELIE_MUST_RUN=sandbox-seatbelt` 时红，栈指向 `mustRun` 与 `test/live.test.ts:35`，错误为 `ADELIE_MUST_RUN requires sandbox-seatbelt, and this host cannot open it: …`，`EXIT=1` · `mustRun` 语义逐例打印（名字两侧带空格仍命中、拼错的忽略、未声明返回 `false`、`null` 返回 `true`）· **vendorer**：把 `vendor/linux-x64/bin/bwrap` 移走 / 去掉可执行位后，下一次测试打印 `[vendor-bwrap] linux-x64: vendored` 并从缓存重新铺好（字节一致、无网络），再跑一次不再铺 · 真跑 loader 拿到 bwrap 的拒绝信息，两个发行版的开关都在；`platform: win32` 仍返回 `null` · 本轮没改界面，故未起服务、未开浏览器、未动端口 · **CI（推送后 `8f0e0d8f` 的 run `37768392859`，22 个 job 全绿）**：Ubuntu 的 `test (rest)` 里 userns 步骤回显 `… = 0`、环境为 `ADELIE_MUST_RUN: sandbox-bwrap,sandbox-dsh`，bwrap `✓ test/live.test.ts (7 tests)`（live 真跑）、dsh live 5 条真跑、未声明的 seatbelt 照旧 `5 skipped`，整个分片 docs 62 / desktop 286 / ui-gallery 131 / wsl 25 无一处 `FAIL`；macOS 的 `test-macos (rest)` 环境为 `ADELIE_MUST_RUN: sandbox-seatbelt,sandbox-dsh`，seatbelt live 5 条真跑、dsh live 5 条真跑、未声明的 bwrap `7 skipped` | `0f70719b` |
 
 | 2026-10-08 | 5.3（落地顺序①） | **跨机那一批小修复里能上的一次上掉**（上游 `fix/machine-*` 分支，照改动落、不是合分支）：① `7e1dca63` —— 本服务器经 ssh 启动机器的服务端时用 `setsid`（宿主有才用）把它放进自己的会话，连接断掉不会再被 sshd 一起挂死（`nohup` 盖不住：服务端自己起的子进程会重置 SIGHUP），本地化 `PENGUIN_SETSID` → 本仓 2.2b 口径的 `ADELIE_SETSID`；② `a2801c8d` —— 「通往机器的这一跳在浏览器放弃之前作答」：SOCKS 握手期限 20s → 8s、应答之前被关掉的通道立即失败、转发的读 15s 收不到响应头就 `504 machine_not_answering`（写请求不截断），移植落点只有 `machines/proxy.ts` 与 `transport/socks.ts`（上游同时改到的中继层本树没有）；两条的中英 changelog 一对。**另外三条 `fix/machine-*` 逐条核过、一条都没上**：`fix/machine-events-redial-a-failed-dial` 与 `-attach-a-machine-connected-later` 要 `event-hub.ts` / `machine-sockets.ts`（本树没有，属上游未进 main 的那条事件流线）；`fix/machine-linked-stopped` 与 `fix/machine-adopted-table` 的内容本树早已有（由 `48662c0a`（#448）一并带上），落上去是空操作 | 六包 `typecheck` 全过（`src/ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（64 文件）· ui **1007**（127）· server **2690**/4 跳过（185 文件，+8 恰是本轮新用例）· cli **506**（34）· web **2963**/2 跳过（241）· hmr 无测试文件，**0 失败** · 新用例逐条点名跑过：`startServerCommand` 两条（含 Linux 上**真起一个进程**、读 `/proc/<pid>/stat` 断言第 6 字段 = 它自己的 sid）、代理三条（504 / 写不截断 / 通道被关立即 502）、SOCKS 三条（关通道、期限、两个期限的大小关系）· 本轮没有界面改动，所以没起服务、没有动任何端口 | 见本行提交 |
+| 2026-10-09 | 5.3（收尾） | **上游 `main` 上仅剩的那条跨机提交落地**（上游 `dd1b931f` `#973` 移植，照改动落、不是合分支）：`machines-transport-lane.test.ts` 不再在 Windows 上整文件跳过 —— 它此前只为「桩 `ssh` 是 shell 脚本、Windows 上 `execFile` 跑不了」而 `describe.skip`，而 lane 与平台无关，于是子进程改成 Node 自己（`process.execPath -e "setTimeout(…, 200)"`），建临时目录 / 改 `PATH` 的 `beforeEach` 一并删掉；两条计时断言从写死的 380ms 改成相对值（预热后量一次单跑 `alone`，串行 ≥ `alone+150`、并行 < `alone+180`），慢跑机的冷启动因此把两个界一起挪而不是撞红；`.github/workflows/ci.yml` 的 `test-windows` 注释写明剩下的守卫在 Windows 上**没测到什么**（session 的桩 `ssh` 也是 shell 脚本、真 Windows OpenSSH 客户端没量过；`terminal-stream` 只有真 pty、无头 ConPTY 丢控制台；dsh 的 live 套件见它自己的 `TODO(win32)`），`machines-transport-session.test.ts` 加一行指向它。**不带 changelog**（上游这笔自己写着不带：只有测试与 CI 注释、无用户可见行为） | 六包 `typecheck` 全过（`EXIT=0`，`ifaces.json unchanged` 187 接口 / 535 类型，六个 `Done`）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（数目与上一轮逐字一致）· 改到的两个文件点名跑：lane 2 条 + session 8 条 = **10 通过** · lane 文件**连跑 5 次全绿**（1.51–1.54s）· 临时探针 3 轮量出断言用的三个数：`alone` 233/236/238ms、`serial` 478/482/474ms（下限 383/386/388，余量 ~92ms）、`together` 242/239/240ms（上限 413/416/418，余量 ~175ms），跑完即删、`git status` 复核 · `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，`test-windows` 五片不变）· **仍未验**：真 Windows 上这条真跑起来的样子（本机没有 Windows，等 CI 的 `test-windows (server-2)`）· 本轮无界面改动，未起服务、未动端口 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2345,7 +2349,8 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
 ### 缺口（对着上游核过）
 
 - 上游 `main` 里我们还缺的跨机提交只有两条：`dd1b931f`（CI 上把 machine 测试也跑到 Windows，#973，
-  3 文件）与本轮移植的 `b5a0ae8f`（#962）。
+  3 文件）与本轮移植的 `b5a0ae8f`（#962）。**两条现在都上了** —— `b5a0ae8f` 当轮落地，`dd1b931f`
+  由 2026-10-09 第二十四轮落下，所以「上游 `main` 里还缺的跨机提交」这一栏归零。
 - 其余跨机工作**全在分支上、没进 main**：22 个带 machine 字样的 head —— `feat/agents-across-machines`、
   `feat/company-remote-machines`、`feat/benchmarks-across-machines`、`feat/machines-simplified`、
   `feat/machine-transport-ssh-config-io`、`feat/machine-connection-stage-timings`、
@@ -2379,6 +2384,8 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
    与 `fix/machine-hop-answers-in-time`）；`fix/machine-events-redial-a-failed-dial` 与
    `-attach-a-machine-connected-later` 要的事件流线（`event-hub.ts` / `machine-sockets.ts`）本树没有，
    `fix/machine-linked-stopped` 与 `-adopted-table` 的内容本树早已有 —— 逐条理由与实测见「第二十三轮」一节。
+   **2026-10-09 第二十四轮**把这条的最后一块补上：上游 `main` 里的 `dd1b931f`（#973）也落了，
+   所以「上游 `main` 上还没上的跨机提交」不再有。
 2. 有第二台 Linux 机器时，把「安装 → 使用 → 跨机建会话 → 插件/模型同步」端到端跑一次。
 3. Windows 侧要么等上游把「Windows 上的会话」做进 main，要么自己评估成本（比前两项都大）。
 4. 公司模式跑在别的机器上（`feat/company-remote-machines`）放在最后：它建立在上面这些之上。
@@ -3599,3 +3606,85 @@ $ git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git \
   `csu-mail-round23-retry`（每 6 小时一次，`end_at` = 2026-10-10T12:00:00Z；它同时补发第 22 轮那封
   —— 那封的重试任务已经跑过一轮、同样卡在网络，一次性任务已作废；任务里写明先查「已发送」，确认发过
   就删掉任务文件）。
+
+## 第二十四轮：上游 `main` 上仅剩的那条跨机提交（2026-10-09，条目 5.3 的收尾）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**（依赖没装、磁盘也没必要为它花）。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，它的「还差什么」这一轮再核一遍，四条仍全在纪律禁止或明说留到
+发布期的一侧：写侧只剩 `packages/desktop`（本轮明令不碰）、既有部署单元 `adelie-app.service` 与桌面壳
+自己的开关（都是发布动作）；剩下第四条第 4 项是画廊 mock 的演示路径与 `packages/docs` 的环境表，
+按 2.5 / 2.1c 的口径整片留到发布期。**3.5** 是桌面壳取哪个（要用户拍板，且本轮不许碰 desktop）、
+**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动。**5.4** 剩下的三块（`234183f5` Landlock、
+`9b170c61` 权限菜单预设、`1ba104c9` 拆 npm 包）这一轮又各核了一遍前置：`234183f5` 是
+#975 → #976 → #977 → #978 那条链的顶端（本树缺 #975、#977 两笔，且 #975 压在**上游的 dock 面板重构**
+`1eb13325` #961 上）、`9b170c61` 正是压在同一个 dock 重构上、`1ba104c9` 属 4.x；**5.6** 的 core 那一半
+等促销搬进 Project 配置（要用户拍板）。所以可动的仍然是 **5.3**，而它的「上游 `main` 里还缺的跨机
+提交」是评估里写死的一项：只有 `dd1b931f`（#973）与本轮之前已移植的 `b5a0ae8f`（#962），**这一轮把前者
+落掉，这一栏归零**。
+
+### 改了什么（3 个文件 / +40 −29）
+
+上游 `dd1b931f`「test(server): also test machine on Windows」照改动落，不是合分支；**没有本地化要做的
+地方**（这笔里一个 `PENGUIN_*` 都没有，脚本里的 `penguin-lane-` 临时目录前缀随桩一起删掉了）：
+
+- `packages/server/test/machines-transport-lane.test.ts`：**不再在 Windows 上整文件跳过**。它此前
+  `describe.skip` 的唯一理由是桩 `ssh` 写成了 shell 脚本（`#!/bin/sh\nsleep 0.2`），而 Windows 上
+  `execFile` 跑不了 shell 脚本 —— 但 lane 只关心「同一台机器的两条命令先后、不同机器的一起」，**从不看
+  子进程是什么**，所以子进程改成 Node 自己：`run(process.execPath, ["-e", "setTimeout(() => {}, 200)"])`，
+  连同建临时目录、改 `PATH` 的 `beforeEach` / `afterEach` 一起删掉（第二个用例本来就不需要那个桩）。
+- 计时断言从绝对值改成相对值：先预热一次子进程，再量「单跑一个」的用时 `alone`；
+  **串行**两条同机器的命令 ≥ `alone + 150ms`（等于在第一个子进程之上再加一个 200ms 的睡），
+  **并行**两台机器 < `alone + 180ms`（等于一个子进程的时间加调度噪声）。此前是写死的 380ms ——
+  慢跑机的冷启动会把它撞红，改成相对值后冷启动把两个界一起挪。
+- `.github/workflows/ci.yml` 的 `test-windows` 注释：把「那些 `process.platform` 守卫在 Windows 上
+  **没有测到什么**」写下来，并声明这些**不是保证**——① `machines-transport-session.test.ts` 的桩 `ssh`
+  同样是 shell 脚本，真的 Windows OpenSSH 客户端没被量过；② `terminal-stream.test.ts` 只有真 pty
+  （无头 ConPTY 会丢控制台、node-pty 会漏 IPC rejection），纯终端套件（`terminal.test.ts`）照跑；
+  ③ `plugins/sandbox-dsh` 的 live 套件见它自己的 `TODO(win32)`。
+- `packages/server/test/machines-transport-session.test.ts`：加一行注释指向上面那段（与上游同一处）。
+
+### 这笔为什么不带 changelog
+
+5.7 的习惯是「一个功能提交配一对 changelog」，而上游这笔**自己就写着不带**：只改测试与 CI 注释、
+无用户可见行为。本仓照办 —— 加一条会凭空造出「用户能看出变化」的暗示。三处注释里点到的文件
+（`terminal-stream.test.ts`、`terminal.test.ts`、`plugins/sandbox-dsh/test/live.test.ts` 的
+`TODO(win32)`）本树都在，逐条 `ls` / `grep` 核过，不是照抄一句话。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` 全过（`EXIT=0`，`gen:ifaces` 打印 `src/ifaces.json unchanged (187 interfaces,
+  535 types)`，六个 `Done`）。
+- `pnpm lint` **0 警告 0 错误**（2073 文件）；`pnpm format:check` 干净（`All matched files use
+  Prettier code style!`）。
+- 五包 test 全绿、逐包 `EXIT=0`：core **1359 通过 / 5 跳过**（65 文件）· ui **1007**（127）·
+  cli **506**（34）· web **2963 / 2 跳过**（241）· server **185 文件 / 2690 通过 / 4 跳过** ——
+  **0 失败**。数目与上一轮逐字一致（这笔只动了测试文件本身与一段注释，本就不该有增减）。
+- 改到的两个文件点名跑（`--reporter=verbose`）：`the per-machine lane` 两条 +
+  `the session` 八条 = **10 通过**；lane 那一条 1193ms、`a failure does not stall the lane behind it` 2ms。
+- **改动后的 lane 文件连跑 5 次全绿**（1.51–1.54s），确认那两条计时断言不靠运气。
+- **量出断言用的三个数**（临时探针跑 3 轮，跑完即删、`git status --short` 复核没有多出来的文件）：
+  `alone` 233 / 236 / 238ms，`serial` 478 / 482 / 474ms（下限是 `alone+150` = 383 / 386 / 388，余量 ~92ms），
+  `together` 242 / 239 / 240ms（上限 `alone+180` = 413 / 416 / 418，余量 ~175ms）。两侧都不贴边。
+- `ci.yml` 用仓库自带的 `yaml` 解析通过：**11 个 job**，`test-windows` 仍是
+  `windows-latest` × 五个分片（core / server-1 / server-2 / server-3 / rest），注释落在 `test-windows`
+  的说明块里、`rest` 与 `must_run` 那两处（第 22 轮改的）原样。
+- **仍未验的一面**：真 Windows 上这条是不是真的跑起来 —— 本机没有 Windows（按纪律也没装 electron /
+  desktop 那一摊），只能由推送后的 `test-windows (server-2)` 报回来。这是上游那笔自己在
+  `windows-latest` 上验过的（`✓ test/machines-transport-lane.test.ts (2 tests)`），本仓**未复现**。
+- 本轮**没有界面改动**（测试与 CI 注释），所以按纪律没有起服务、没有开浏览器、也没有动任何端口。
+- `git status --short` 开工时干净、`main` = `4feb3309`；`git fetch origin && git merge --ff-only
+  origin/main` = `Already up to date`。
+
+### 没做 / 还差什么
+
+- **5.3 仍是 `[~]`**：这一轮收掉的是「上游 `main` 上缺的跨机提交」这一栏（现在为零），落地顺序的
+  ②「有第二台 Linux 机器时端到端跑一次」、③ Windows 侧、④ 公司模式跑在别的机器上照旧没动 ——
+  ②要第二台机器，③要上游把「Windows 上的会话」做进 main（或我们自己评估成本），④建立在它们之上。
+- **5.4 / 5.6 的位置没变**：`234183f5` 那条链要连 #975（压在 `1eb13325` dock 面板重构上）与 #977
+  一起拿，`9b170c61` 同一个前置，`1ba104c9` 属 4.x；5.6 的 core 那一半等促销搬进 Project 配置（要拍板）。
+- `refs/adelie-tmp/*` 七个本地临时引用仍在（第 23 轮拉的），没推、没改 remote 配置；本轮没有新增。
