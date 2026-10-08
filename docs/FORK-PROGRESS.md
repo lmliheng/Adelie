@@ -263,7 +263,9 @@
       里「插件市场 v1」标的 ⏳ 已过时，那份计划不归本台账管，未改）。
 - [~] 5.3 **跨机 agents**（`feat/agents-across-machines`、`feat/machine-*`、`feat/port-forwarding`、
       `feat/company-remote-machines`、`feat/agent-state-handover`）——**调研已做完（见文件末尾「跨机评估」
-      一节），落地只做了「跟上游学之二」那一条**。结论：我们自己的跨机子系统已经不小，缺的不是地基而是
+      一节），落地只做了「跟上游学之二」那一条**。**落地顺序①（`fix/machine-*` 那批小修复）2026-10-08
+      第二十三轮走了一遍**：能上的两条已上（`7e1dca63` setsid、`a2801c8d` 这一跳先作答），另外三条逐条
+      核过、各自卡在别的前置上（理由见「第二十三轮」一节）。结论：我们自己的跨机子系统已经不小，缺的不是地基而是
       上游那批修复与「公司模式跑在别的机器上」；而**「这台 Linux 指挥 Windows 生成台」在今天的两侧代码里
       都还不可能**（Windows 机器连不上，见评估）。价值仍在，但要按评估里的顺序走。
 - [ ] 5.4 **沙箱体系**（上游已进 main：Landlock 让默认 Ubuntu 可用 `234183f5`、权限菜单命名预设
@@ -881,6 +883,8 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-08 | 5.6（服务端一半） | **用量成本「记账时就定价」**（上游 `feat/usage-cost-at-record-time` 移植，**只取服务端那一半**）：用量行在写入时定格成本（`usage_records.cost` / `cost_settled`，迁移 14）—— 取 Project 当时为该 provider/model 存下的价，含该行促销与那一刻的峰谷档位；查询侧（成本中心、对话框工具栏、`penguin cost`、公司模式预算、用户管理的累计开销）一律不再取价，只加总已记录的成本；Trace 页仍按「今天的价 × 每个请求自己的时间戳」推导（按小时记忆化），且没有价格的文件不再画成 0；兼容靠启动时一次性补算（`settleUnsettledCosts`，幂等，失败记错误表）。**core 那一半有意未搬**：逐行促销在 `web.db` 的 `model_promotions` 里，core 读不到，盖在事件上的费率会把促销行按原价计费（详见条目 5.6 与 changelog） | 六包 `typecheck` 全过（`gen:ifaces` 187 接口 / 535 类型）· `pnpm lint` 0 警告 0 错误（2064 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（65 文件）· ui **1003**（127）· cli **506**（34）· server **2682**/4 跳过（185 文件）· web **2942**/2 跳过（239）· hmr 无用例，**0 失败** · **端到端**（复制一份真 pre-cost 数据根，`user_version` 13、`usage_records` 无 cost 列）：起真服务后迁移到 **14**，启动补算把 5 条旧行逐条按自己时间戳定价（高峰 9.142825e-6 / 半价 4.571415e-6 / 无价 NULL，全 `cost_settled=1`，累计 2.742848e-5），成本中心页面上的数字与接口逐字一致、**console 0 error / 0 pageerror / 0 requestfailed** · **不重算的反证**：把磁盘上的价改成两倍再重启，5 条已结算行的成本一个都没动；再手插一条未结算行，重启后按**新价**补算成 1.828565e-5（正好 2 × 9.142825e-6） | `6c30e14a` |
 | 2026-10-08 | 5.4（第三块） | **`sandbox-dsh` 在 Windows 上拒绝 bash、并点名它要哪个 shell**（上游 `c03e58c4` `#972` 移植，照改动落、不是合分支）：core 的 plugin 入口新增 `sessionShell` 导出；`loadDshAdaptor()` 在 Windows 上先取会话 shell（从**宿主**的 core，按命名空间读，宿主 core 没有这个导出就跳过检查），是 bash / sh / 其他 MSYS 运行时的程序就**加载即失败**，原因写明改法（`ADELIE_SHELL=pwsh`，没有 PowerShell 7 的机器用 `ADELIE_SHELL=powershell`，然后重启）——加载失败的后端本来就被报为「不可用」，封禁档位因此显示「不可用 + 改法」；`assertAclRunnerCanStart()` 在交给 runner 之前逐条拒绝 MSYS 运行时上的程序（POSIX shell 按名字、MSYS `usr\bin` 下任何程序），是会话 shell 时点 `ADELIE_SHELL`、不是时只说明 runner 起不了这类程序，原生程序放行；插件 README 加「Windows: run command sessions under PowerShell」一节与实测矩阵；中英 changelog 一对。**本地化**：scope `@prismshadow/` → `@lmliheng/`，文案里的 `PENGUIN_SHELL` → 本仓 2.2b 改名后的 `ADELIE_SHELL` | 插件 `typecheck` 过 · **插件测试 15 通过 / 1 跳过**（新 `windows-shells.test.ts` 11 条里 10 条在本机 Linux 上真跑、1 条是 Windows 专属的 `describe.skipIf` 整块；`live.test.ts` 5 条在改了加载路径之后照常真跑，即真实 DSH 链仍能加载与封禁）· 六包 `typecheck` 全过（`src/ifaces.json unchanged`）· `pnpm lint` **0 警告 0 错误**（2065 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · cli **506** · server **2682**/4 跳过 · web **2942**/2 跳过 · hmr 无用例，**0 失败** · **产物侧**：重建后的 `plugins/sandbox-dsh/dist/index.js` 里 `import(HOST_CORE)` 仍是运行时导入（decorators 已内联），把它拷进一个**无可解析 core** 的目录仍能链接、`hostSessionShell()` 返回 `null` · 取证脚本对产物逐例打印两种拒绝与加载拒绝（bash 在 Windows 上被拒、MSYS `usr\bin` 程序被拒、pwsh 与原生 `mingw64\bin\git.exe` 放行、Linux 上一个都不拦）· **仍未验**：真 Windows 主机上两种 PowerShell 在实 runner 下写工作区内 / 工作区外被拒 | `dcb77d05` |
 | 2026-10-08 | 5.4（第二块） | **CI 真正跑沙盒插件的测试、跑不起来就红**（上游 `e3a9eb66` `#872` 移植，照改动落、不是合分支）：Linux 的 `rest` 分片从写死的包名（desktop / docs / ui-gallery）改成与 macOS / Windows 同形的「全仓减去 core / server / web / ui / cli」，build 名单也对齐成 `desktop...,cli...`，于是 `plugins/sandbox-{bwrap,dsh,seatbelt,wsl}` 四个包在 Linux CI 上第一次被跑到；矩阵新增 `must_run`（= `ADELIE_MUST_RUN`）并接到「Unit tests」步骤的环境：ubuntu 声明 `sandbox-bwrap,sandbox-dsh`、macOS 声明 `sandbox-seatbelt,sandbox-dsh`；新增 `scripts/must-run.mjs` + `.d.mts`（一个函数：被声明却开不了就抛错、错误里原样带探测理由；没声明照旧跳过），三个 live 套件的「能不能开」探测改成返回**理由字符串**而不是 `false` 并交给它裁决；Ubuntu 的 user namespace 开关作为作业前置步骤（`sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`，只在 `rest` 分片、名字不提沙盒）；`sandbox-bwrap` 新增 `vitest.config.ts` + `test/global-setup.ts`，让 live 套件自己调 `vendorBwrap()` 铺好自带的 bubblewrap，`scripts/vendor-bwrap.mjs` 的「已就位」判据补上「每个架构的 `bin/bwrap` 存在且可执行」（附 `vendor-bwrap.d.mts`）；bwrap 的拒绝理由补上 Ubuntu 的开关（Debian 之外）。**本地化**：`PENGUIN_MUST_RUN` → 本仓 2.2b 口径的 `ADELIE_MUST_RUN`，包名 `@prismshadow/` → `@lmliheng/` | 插件 `typecheck` 过（4 个沙盒包）· 六包 `typecheck` 全过（`src/ifaces.json unchanged`）· `pnpm lint` **0 警告 0 错误**（2070 文件，+5）· `pnpm format:check` 干净（新文件也在内）· 六包 test 全绿：core **1359**/5 跳过 · ui **1003** · cli **506** · server **2682**/4 跳过 · web **2942**/2 跳过，**0 失败** · `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，`rest` 的 `must_run` 与 userns 步骤逐字核对）· **正向**：`ADELIE_MUST_RUN=sandbox-bwrap,sandbox-dsh` 下 bwrap **25 通过**（live 7 条**真跑**、非跳过）、dsh **15 通过 / 1 跳过**（live 5 条真跑）、未声明的 seatbelt 照旧 `5 skipped`；按 CI 那条 `rest` 命令真跑一遍（本机略过桌面壳）：docs · hmr · ui-gallery · 四个沙盒包全部 `Done` · **反向**：`ADELIE_MUST_RUN=sandbox-seatbelt` 时红，栈指向 `mustRun` 与 `test/live.test.ts:35`，错误为 `ADELIE_MUST_RUN requires sandbox-seatbelt, and this host cannot open it: …`，`EXIT=1` · `mustRun` 语义逐例打印（名字两侧带空格仍命中、拼错的忽略、未声明返回 `false`、`null` 返回 `true`）· **vendorer**：把 `vendor/linux-x64/bin/bwrap` 移走 / 去掉可执行位后，下一次测试打印 `[vendor-bwrap] linux-x64: vendored` 并从缓存重新铺好（字节一致、无网络），再跑一次不再铺 · 真跑 loader 拿到 bwrap 的拒绝信息，两个发行版的开关都在；`platform: win32` 仍返回 `null` · 本轮没改界面，故未起服务、未开浏览器、未动端口 · **CI（推送后 `8f0e0d8f` 的 run `37768392859`，22 个 job 全绿）**：Ubuntu 的 `test (rest)` 里 userns 步骤回显 `… = 0`、环境为 `ADELIE_MUST_RUN: sandbox-bwrap,sandbox-dsh`，bwrap `✓ test/live.test.ts (7 tests)`（live 真跑）、dsh live 5 条真跑、未声明的 seatbelt 照旧 `5 skipped`，整个分片 docs 62 / desktop 286 / ui-gallery 131 / wsl 25 无一处 `FAIL`；macOS 的 `test-macos (rest)` 环境为 `ADELIE_MUST_RUN: sandbox-seatbelt,sandbox-dsh`，seatbelt live 5 条真跑、dsh live 5 条真跑、未声明的 bwrap `7 skipped` | `0f70719b` |
+
+| 2026-10-08 | 5.3（落地顺序①） | **跨机那一批小修复里能上的一次上掉**（上游 `fix/machine-*` 分支，照改动落、不是合分支）：① `7e1dca63` —— 本服务器经 ssh 启动机器的服务端时用 `setsid`（宿主有才用）把它放进自己的会话，连接断掉不会再被 sshd 一起挂死（`nohup` 盖不住：服务端自己起的子进程会重置 SIGHUP），本地化 `PENGUIN_SETSID` → 本仓 2.2b 口径的 `ADELIE_SETSID`；② `a2801c8d` —— 「通往机器的这一跳在浏览器放弃之前作答」：SOCKS 握手期限 20s → 8s、应答之前被关掉的通道立即失败、转发的读 15s 收不到响应头就 `504 machine_not_answering`（写请求不截断），移植落点只有 `machines/proxy.ts` 与 `transport/socks.ts`（上游同时改到的中继层本树没有）；两条的中英 changelog 一对。**另外三条 `fix/machine-*` 逐条核过、一条都没上**：`fix/machine-events-redial-a-failed-dial` 与 `-attach-a-machine-connected-later` 要 `event-hub.ts` / `machine-sockets.ts`（本树没有，属上游未进 main 的那条事件流线）；`fix/machine-linked-stopped` 与 `fix/machine-adopted-table` 的内容本树早已有（由 `48662c0a`（#448）一并带上），落上去是空操作 | 六包 `typecheck` 全过（`src/ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（64 文件）· ui **1007**（127）· server **2690**/4 跳过（185 文件，+8 恰是本轮新用例）· cli **506**（34）· web **2963**/2 跳过（241）· hmr 无测试文件，**0 失败** · 新用例逐条点名跑过：`startServerCommand` 两条（含 Linux 上**真起一个进程**、读 `/proc/<pid>/stat` 断言第 6 字段 = 它自己的 sid）、代理三条（504 / 写不截断 / 通道被关立即 502）、SOCKS 三条（关通道、期限、两个期限的大小关系）· 本轮没有界面改动，所以没起服务、没有动任何端口 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -2371,6 +2375,10 @@ access 那几段）、包名（`@lmliheng/` vs 上游的 `@prismshadow/`）、�
 1. `fix/machine-*` 那批小修复：逐个看补丁，能上就上（我们已有 186 条跨机测试兜底），优先
    `fix/machine-server-own-session`、`fix/machine-events-redial-a-failed-dial`、
    `fix/machine-hop-answers-in-time` 这类「不修就会挂」的。
+   **2026-10-08 第二十三轮走过一遍**：七条分支逐个试落，**上了两条**（`fix/machine-server-own-session`
+   与 `fix/machine-hop-answers-in-time`）；`fix/machine-events-redial-a-failed-dial` 与
+   `-attach-a-machine-connected-later` 要的事件流线（`event-hub.ts` / `machine-sockets.ts`）本树没有，
+   `fix/machine-linked-stopped` 与 `-adopted-table` 的内容本树早已有 —— 逐条理由与实测见「第二十三轮」一节。
 2. 有第二台 Linux 机器时，把「安装 → 使用 → 跨机建会话 → 插件/模型同步」端到端跑一次。
 3. Windows 侧要么等上游把「Windows 上的会话」做进 main，要么自己评估成本（比前两项都大）。
 4. 公司模式跑在别的机器上（`feat/company-remote-machines`）放在最后：它建立在上面这些之上。
@@ -3458,3 +3466,136 @@ error: packages/web/src/lib/sandbox-backend-prompt.ts: does not exist in index
 - **推送**：`git push origin main`。
 - **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn` —— **这一轮没发出去**，见上面
   那条卡点（到 CSU 网段的网络不通，与凭据无关）；正文留在 scratchpad，并挂了一次性重发任务。
+
+## 第二十三轮：跨机那批 `fix/machine-*` 小修复里能上的一次上掉（2026-10-08，条目 5.3 的落地顺序①）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，但它的「还差什么」这一轮又逐条核了一遍，全在纪律禁止或
+明说留到发布期的一侧（`packages/desktop` 的写点、既有部署单元 `adelie-app.service`、桌面壳自己的开关、
+`packages/docs` 的环境表与 `changelog/`）；**3.5** 就是桌面壳（要用户拍板取哪个）、**3.6** 要模型 key、
+**4.1–4.3** 明令不动。**5.4** 剩下的三块（`234183f5` / `9b170c61` / `1ba104c9`）与 **5.6** 的 core 那一半
+（促销要先进 Project 自己的配置）也各自停在前置或拍板上 —— 后两条都排在本条之后。
+
+**5.3 在表上排在 5.4 / 5.6 之前，它自己是 `[~]`，而「跨机评估」一节里把落地顺序写得清清楚楚，
+第 1 条就是「`fix/machine-*` 那批小修复：逐个看补丁，能上就上」**。这一轮做的正是这一条：把
+`fix/machine-*` 七个分支的尖端逐个 `git apply -3 --check` 过一遍，能上的上，不能上的写清卡在哪。
+
+### 先核出一件事实：「哪些还没上」不能只看提交在不在本仓
+
+`refs/adelie-tmp/*`（下面说的本地临时引用）里那几个分支，`git merge-base --is-ancestor <commit> 18d7c137`
+一律是 **no**，看着像「全都没有」。但**内容**早有一条在本树里：`fix/machine-linked-stopped`（`5a7c9d05`）
+讲的两件事 —— 机器卡片把「持有 ssh 会话」当成「已连接」、以及插件同步把「路由不存在」的 404 读成
+「没有这个 Project」—— 本树的 `48662c0a`（`feat(machines): support the machine connection and
+management`，#448）已经一并带上：
+
+```
+$ grep -rn "linkedStopped\|refusal404" packages/web/src/features/machines packages/server/src/machines
+packages/web/src/features/machines/machines-view.ts:35:  | { kind: "linkedStopped" }
+packages/server/src/machines/plugins-sync.ts:84:async function refusal404(api: MachineApi, projectId: string): Promise<string> {
+```
+
+同一条也把 `fix/machine-adopted-table`（`5a6a3db9`）的内容带上了（那张表的迁移补列）。所以这一轮
+**真正的候选只有两条**，两条都上掉了。
+
+### 上了哪两条（照上游的改动落，不是合分支）
+
+**① `7e1dca63`「机器的服务端比启动它的那条 ssh 会话活得久」**（分支 `fix/machine-server-own-session`）：
+`startServerCommand` 在 `command -v setsid` 找得到时（Linux 有，macOS 没有）给启动行加上 `setsid`，
+把对端服务端放进**自己的会话**。此前它属于本侧这条 ssh 会话，连接一断（网络抖动、本侧休眠）sshd 会把
+会话挂断、对端服务端随之而死；`nohup` 盖不住这件事（服务端自己起的子进程会重置 SIGHUP）。后台任务里
+`setsid` 是原地 exec，所以命令打印的 pid 仍是服务端的 pid（就绪探测不受影响）。
+**本地化**：`PENGUIN_SETSID` → 本仓 2.2b 口径的 `ADELIE_SETSID`（新写的一行，没有兼容负担）。
+
+**② `a2801c8d`「通往机器的这一跳在浏览器放弃之前作答」**（分支 `fix/machine-hop-answers-in-time`）：
+- `transport/socks.ts`：拨号在**应答之前被关掉的通道**上立即失败（OpenSSH 的 `-D` 对「那边没人监听」
+  正是这么答的：不回失败码、直接关），握手期限 20s → **8s**（`SOCKS_HANDSHAKE_TIMEOUT_MS` 现在导出）。
+  此前握手计时器随 socket 一起停掉，拨号永不落定 —— 等它的请求也永不落定。
+- `machines/proxy.ts`：转发的 `GET` / `HEAD` 在 **15s**（含拨号，`FORWARD_ANSWER_TIMEOUT_MS`）内收不到
+  响应头，就以 `504 machine_not_answering` 作答并放弃上游请求，机器列表的 `api` 事实记下这次失败；
+  **写请求不截断**（写可以合法地慢，截断会让浏览器重发、重复副作用）。响应头一旦到了，body 照常无期限地流。
+- **移植范围**：上游那笔同时改到的中继层（`socket-relay.ts`、`event-hub.ts`）与它的用法在本树里
+  **根本不存在**，所以只落了这两处，另外把 `machinesProxy()` 的测试钩子
+  `options.answerTimeoutMs` 接上（本树是两参签名，上游是五参）。用例也照本树的签名改了两处调用。
+
+两条都配了中英 changelog 一对（`changelog/unreleased/2026-10-08-machine-{server-own-session,hop-answers-in-time}{,.zh.md}`）。
+
+### 没上的三条，各卡在哪（都是 `git apply -3 --check` 跑出来的，不是推测）
+
+| 上游 | 结果 |
+| --- | --- |
+| `fix/machine-events-redial-a-failed-dial`（`65c08f42`） | `packages/server/src/machines/event-hub.ts`、`machine-sockets.ts`、`test/machines-event-hub.test.ts` **本树没有** —— 它们由上游那条未进 main 的事件流线（`fdb0e10e feat(machines): one event stream per machine`）带来。不是「一轮的量」，是「先决定要不要把那条线搬过来」 |
+| `fix/machine-events-attach-a-machine-connected-later`（`d90538c4`） | 同上（`event-hub.ts` 不存在），且 `routes/machines.ts` 有冲突 |
+| `fix/machine-linked-stopped`（`5a7c9d05`）· `fix/machine-adopted-table`（`5a6a3db9`） | **内容本树早已有**（`48662c0a` #448），落上去是空操作；后者另在 `db/migrations.ts`、`machines/service.ts` 上冲突 |
+
+顺带一条给以后的人：`fix/model-switch-on-its-machine` 的尖端已经不是跨机的东西了 —— 是
+`648e27f1 feat(server,web): the terminal survives a mobile network`（终端文件，`--check` 干净）。
+它属于终端那一条线，**不是这一条的活**，这轮没做，也没有为它开条目（要不要做由用户点单）。
+
+### 怎么拿到的这些补丁
+
+`upstream` remote 指向的 `/root/penguin-harness` **目录仍不在**（`git fetch upstream` 不可用），
+但 GitHub 可达，所以按分支名直接拉：
+
+```
+$ git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git \
+      refs/heads/fix/machine-server-own-session:refs/adelie-tmp/fix/machine-server-own-session
+```
+
+七个分支都拉到本地的 `refs/adelie-tmp/<分支名>`（**不是** remote-tracking 引用，只在本工作树里，
+没推、也没改 `origin` / `upstream` 的配置）。下一轮继续做 5.3 时可以直接用；要清就
+`git update-ref -d refs/adelie-tmp/<分支名>`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` 全过（server 那步打印 `gen-ifaces: src/ifaces.json unchanged (187 interfaces,
+  535 types)`）。
+- `pnpm lint` **0 警告 0 错误**（2073 文件）；`pnpm format:check` 干净。
+- 六包 test 全绿：core **1359 通过 / 5 跳过**（64 文件）· ui **1007**（127 文件）· cli **506**（34 文件）·
+  web **2963 / 2 跳过**（241 文件）· hmr 无测试文件 · server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**、
+  整条 `EXIT=0`。server 比上一轮多 **8** 条，正是本轮新加的用例数（`machines.test.ts` +2、
+  `machines-proxy.test.ts` +3、`machines-transport-socks.test.ts` +3）。
+- 新用例逐条点名跑过（`--reporter=verbose` 里的原行）：
+  - `startServerCommand > starts the server in a session of its own where setsid exists, so a dropped
+    ssh session does not hang it up` ✓ 0ms
+  - `startServerCommand > the launched process leads its own session, and $! is its pid (Linux)` ✓ 8ms
+    —— 这条**真起一个进程**：把生成的命令换成一个替身程序、`sh -c` 跑一遍，读
+    `/proc/<pid>/stat` 的第 6 个字段（session id）断言它等于自己的 pid，然后杀掉。
+  - `the report > answers 504 for a read the machine accepts and never answers, and says so` ✓ 155ms
+    （真起一个只收不答的上游 http server，断言 504 / `machine_not_answering` / 报告里那句 detail /
+    上游这次连接确实被放掉）
+  - `the report > does not cut a write that the machine answers late` ✓ 259ms
+  - `the report > answers a read at once, in the transport's words, when the session closes the
+    channel` ✓ 4ms
+  - `dialThroughSocks` 三条：关通道立即失败（用时 < 期限的 1/4）· 「CONNECT 得不到应答」按自己的话
+    失败 · `SOCKS_HANDSHAKE_TIMEOUT_MS < FORWARD_ANSWER_TIMEOUT_MS < 20_000` ✓
+- 本轮**没有界面改动**（两条移植都在服务端：生成的远端命令与转发/拨号），所以按纪律没有起服务、
+  没有开浏览器、也没有动任何端口。
+- `git status --short` 开工时干净、`main` = `06d8b0c0`；`git fetch origin && git merge --ff-only
+  origin/main` = Already up to date。
+
+### 没做 / 还差什么
+
+- **5.3 仍是 `[~]`**：落地顺序①走完了（能上的上了、不能上的写清了），但 ②「有第二台 Linux 机器时端到端
+  跑一次安装/使用/跨机建会话」、③ Windows 侧、④ 公司模式跑在别的机器上 都还没动 —— ②要第二台机器，
+  ③要上游把「Windows 上的会话」做进 main，④建立在它们之上。
+- **`refs/adelie-tmp/*` 七个引用留在本地**（见上），没推、没改 remote 配置。工作树里没有多余文件。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `0b1bec7a`**（6 个改动文件 + 两对 changelog，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main` = `06d8b0c0..0b1bec7a`；台账这一笔随后推。
+- **汇报邮件没发出去（与凭据无关，第 22 轮同一处卡点）**：本机到中南大学网段 `202.197.0.0/16` 仍整片
+  不通 —— 逐个端口试过 `202.197.64.20:993` / `202.197.64.21:465` / `202.197.64.20:443` 全是 FAIL，
+  `ping 202.197.64.20` 100% 丢包；`mail.py check` **挂住不返回**（`timeout 120` 杀掉，退出 124，连
+  连接都没建成）。凭据本身正常：`CSU_MAIL_ADDR` 21 字符、`CSU_MAIL_AUTHCODE` 16 字符都注入着
+  （只打印长度，没打印明文），`getent hosts` 也照常解析。按技能纪律**只这一次、没有重试登录**（登录类
+  失败会触发风控）。
+  正文留在本会话 scratchpad 的 `mail-round23.txt`，并挂了一个**周期**重发任务
+  `csu-mail-round23-retry`（每 6 小时一次，`end_at` = 2026-10-10T12:00:00Z；它同时补发第 22 轮那封
+  —— 那封的重试任务已经跑过一轮、同样卡在网络，一次性任务已作废；任务里写明先查「已发送」，确认发过
+  就删掉任务文件）。
