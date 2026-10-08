@@ -63,11 +63,24 @@ const DROP_REQUEST_HEADERS = new Set([
 const DROP_RESPONSE_HEADERS = new Set(["set-cookie", "location", "connection", "keep-alive"]);
 
 /**
+ * How long a forwarded read may wait for the machine's first answer (its headers), the dial
+ * included. Under the browser's own 20 s (web api/socket.ts), so the browser hears this answer
+ * rather than giving up first; over the SOCKS handshake deadline (transport/socks.ts), so a
+ * stalled session is reported in that layer's words, not this one's.
+ */
+export const FORWARD_ANSWER_TIMEOUT_MS = 15_000;
+
+/**
  * Forwards one request to the machine's server and streams the answer back — both
  * directions are pipes, so SSE and long downloads flow as they arrive. The socket is the
  * agent's: a dial through the machine's session (transport/connection.ts). node:http rather
  * than fetch: the Host header must be the canonical app host (`localhost:<port>`), and the
  * socket is not one fetch could be handed.
+ *
+ * A READ the machine does not start answering within `answerTimeoutMs` — its headers, dial
+ * included — is answered 504 here: a channel the machine accepted and never answers would
+ * otherwise hold the request, and every retry the browser makes of it, for good. Only reads:
+ * a write may rightly take long, and cutting one would have the browser repeat its effect.
  */
 function proxyThroughSession(
   request: Request,
@@ -75,6 +88,7 @@ function proxyThroughSession(
   agent: http.Agent,
   port: number,
   cookie: string,
+  answerTimeoutMs: number,
   report?: ProxyReport,
 ): Promise<Response> {
   return new Promise((resolve) => {
@@ -96,6 +110,7 @@ function proxyThroughSession(
         headers,
       },
       (res) => {
+        clearTimeout(answering);
         report?.(path.machineId, { ok: true });
         const out = new Headers();
         for (const [name, value] of Object.entries(res.headers)) {
@@ -115,7 +130,29 @@ function proxyThroughSession(
         );
       },
     );
+    // Reads only: see the doc above. A write waits for the machine however long it takes.
+    const reads = request.method === "GET" || request.method === "HEAD";
+    let timedOut = false;
+    const answering = !reads
+      ? undefined
+      : setTimeout(() => {
+          timedOut = true;
+          const detail = `no answer to ${request.method} ${path.remotePath} in ${answerTimeoutMs} ms`;
+          report?.(path.machineId, { ok: false, detail });
+          upstream.destroy();
+          resolve(
+            Response.json(
+              {
+                error: { code: "machine_not_answering", message: `${path.machineId}: ${detail}.` },
+              },
+              { status: 504 },
+            ),
+          );
+        }, answerTimeoutMs);
+    answering?.unref?.();
     upstream.on("error", (err) => {
+      clearTimeout(answering);
+      if (timedOut) return; // answered above; this is the teardown
       report?.(path.machineId, { ok: false, detail: err.message });
       resolve(
         Response.json(
@@ -157,7 +194,10 @@ export function machinesProxy(
     machineId: string,
   ) => Promise<{ agent: http.Agent; port: number; cookie: string } | null>,
   report?: ProxyReport,
+  /** Test hook: how long a forwarded read may wait for its answer (FORWARD_ANSWER_TIMEOUT_MS). */
+  options: { answerTimeoutMs?: number } = {},
 ): (request: Request) => Promise<Response | null> {
+  const answerTimeoutMs = options.answerTimeoutMs ?? FORWARD_ANSWER_TIMEOUT_MS;
   return async (request) => {
     const path = parseProxyPath(new URL(request.url).pathname);
     if (path === null) return null;
@@ -173,6 +213,14 @@ export function machinesProxy(
         { status: 503 },
       );
     }
-    return proxyThroughSession(request, path, target.agent, target.port, target.cookie, report);
+    return proxyThroughSession(
+      request,
+      path,
+      target.agent,
+      target.port,
+      target.cookie,
+      answerTimeoutMs,
+      report,
+    );
   };
 }
