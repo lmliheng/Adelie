@@ -3144,6 +3144,23 @@ export const en: Strings = {
       `Delete draft "${title}"? Unsent content will be discarded.`,
     archiveSession: "Archive",
     unarchiveSession: "Unarchive",
+    /**
+     * Batch processing on the conversation list: the header control beside Search chats turns every
+     * row into a picker, the bar above the list acts on the ticked ones, and leaving the mode
+     * drops the ticks. (Same shape as the requirement box's batch bar.)
+     */
+    batchSelect: "Batch actions",
+    batchSelectRow: (title: string) => `Select "${title}"`,
+    batchCount: (n: number) => `${n} selected`,
+    batchArchive: "Archive selected",
+    batchUnarchive: "Unarchive selected",
+    batchDelete: "Delete selected",
+    batchClear: "Clear selection",
+    batchArchiveDone: (n: number) => `Archived ${n} chats`,
+    batchUnarchiveDone: (n: number) => `Unarchived ${n} chats`,
+    batchDeleteTitle: "Delete selected chats",
+    batchDeleteConfirm: (n: number) =>
+      `Delete the ${n} selected chats? Their messages and Trace will be removed permanently.`,
     /** Per-row ellipsis overflow menu (pin / rename / archive / delete live inside it) and the row-level pin. */
     pinSession: "Pin",
     unpinSession: "Unpin",

@@ -3197,6 +3197,23 @@ export const zh = {
     deleteDraftConfirm: (title: string) => `确定删除草稿「${title}」？未发送的内容将被丢弃。`,
     archiveSession: "归档",
     unarchiveSession: "取消归档",
+    /**
+     * Batch processing on the conversation list: the header control beside 搜索会话 turns every
+     * row into a picker, the bar above the list acts on the ticked ones, and leaving the mode
+     * drops the ticks. (Same shape as the requirement box's batch bar.)
+     */
+    batchSelect: "批量处理",
+    batchSelectRow: (title: string) => `选中「${title}」`,
+    batchCount: (n: number) => `已选 ${n} 条`,
+    batchArchive: "批量归档",
+    batchUnarchive: "批量取消归档",
+    batchDelete: "批量删除",
+    batchClear: "取消选择",
+    batchArchiveDone: (n: number) => `已归档 ${n} 个对话`,
+    batchUnarchiveDone: (n: number) => `已取消归档 ${n} 个对话`,
+    batchDeleteTitle: "删除选中的对话",
+    batchDeleteConfirm: (n: number) =>
+      `确定删除选中的 ${n} 个对话？其消息与 Trace 将被移除，且不可恢复。`,
     /** Per-row ellipsis overflow menu (pin / rename / archive / delete live inside it) and the row-level pin. */
     pinSession: "置顶",
     unpinSession: "取消置顶",

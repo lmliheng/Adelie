@@ -23,6 +23,9 @@
  * `data-title-reveal`. The trailing slot's width is fixed per language (`timeSlot`), so the marks
  * that end the title sit at one x from row to row, and the hover actions are anchored to its right
  * edge so every row's icons form one column.
+ *
+ * With a `selection` the row is a batch picker's row rather than a place to go: its checkbox takes
+ * the leading edge, the row's click ticks it, and the hover actions step aside for the duration.
  */
 import type { DragEvent as ReactDragEvent, MouseEvent as ReactMouseEvent, ReactNode } from "react";
 import { ICON_SIZE } from "../../../icon-scale";
@@ -32,6 +35,7 @@ import {
   ScheduleMark,
 } from "../../icons/activity-icon/activity-icon";
 import type { ActivityIconState } from "../../icons/activity-icon/activity-icon";
+import { Checkbox } from "../../forms/checkbox/checkbox";
 import { AgentAvatar } from "../../icons/avatars/agent-avatar";
 import { GlyphIcon } from "../../icons/glyph-icon/glyph-icon";
 import { ICONS } from "../../icons/icons";
@@ -165,6 +169,12 @@ export interface SessionRowProps {
   activity?: { state: ActivityIconState; label: string } | null;
   /** Approvals waiting: the count in the attention ink, its hint; none at a count of 0. */
   approvals?: { count: number; label: string };
+  /**
+   * Batch picking: the row carries a checkbox before its title, named by `label`, and the whole
+   * row toggles the tick instead of opening the conversation — and the hover actions step aside,
+   * since the row is being chosen rather than acted on one at a time.
+   */
+  selection?: { checked: boolean; label: string; onToggle: () => void };
   /** The compact last-active time at rest; "" draws none. */
   time: string;
   /**
@@ -202,6 +212,7 @@ export function SessionRow({
   background,
   activity = null,
   approvals,
+  selection,
   time,
   timeSlot = "narrow",
   hoverActions,
@@ -264,6 +275,18 @@ export function SessionRow({
           draggable ? "cursor-grab " : ""
         }${active ? NAV_FILL.selected : NAV_FILL.hover}`}
       >
+        {/* The tick stands outside the row's button: a checkbox inside it would be opened by the
+            same click that picks it, and a batch picker is exactly the place where that click must
+            mean one thing. */}
+        {selection !== undefined && (
+          <span className="flex shrink-0 items-center pl-2.5">
+            <Checkbox
+              checked={selection.checked}
+              onChange={selection.onToggle}
+              aria-label={selection.label}
+            />
+          </span>
+        )}
         <button
           type="button"
           data-testid="session-row"
@@ -272,7 +295,10 @@ export function SessionRow({
           // screens replay the held press as a click once the finger lifts.
           onClick={() => {
             if (ctx.consumeLongPressClick()) return;
-            onOpen();
+            // Picking: the row is the target, so its click ticks it — landing in the open
+            // conversation mid-selection would take the list away from the reader.
+            if (selection !== undefined) selection.onToggle();
+            else onOpen();
           }}
           className="flex min-w-0 flex-1 items-center gap-1.5 px-2.5 py-1.5 text-left"
         >
@@ -320,16 +346,24 @@ export function SessionRow({
           }`}
         >
           <div className="peer absolute right-0 top-1/2 flex -translate-y-1/2 items-center">
-            <RowHoverActions
-              actions={hoverActions.map(fromHover)}
-              moreLabel={moreLabel}
-              onMore={ctx.openAt}
-            />
+            {selection === undefined && (
+              <RowHoverActions
+                actions={hoverActions.map(fromHover)}
+                moreLabel={moreLabel}
+                onMore={ctx.openAt}
+              />
+            )}
           </div>
           {time !== "" && (
             <span
               aria-hidden
-              className="pointer-events-none whitespace-nowrap px-1 text-right text-xs tabular-nums text-fg-subtle transition-opacity duration-150 group-hover:opacity-0 peer-focus-within:opacity-0"
+              // The time gives way to the hover actions; while picking, those are absent and the
+              // time is the row's only trailing reading, so it stays put.
+              className={`pointer-events-none whitespace-nowrap px-1 text-right text-xs tabular-nums text-fg-subtle${
+                selection === undefined
+                  ? " transition-opacity duration-150 group-hover:opacity-0 peer-focus-within:opacity-0"
+                  : ""
+              }`}
             >
               {time}
             </span>

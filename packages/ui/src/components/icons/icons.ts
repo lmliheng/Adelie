@@ -196,6 +196,12 @@ export const ICONS = {
   copy: "M9 9h9v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V9zM7 15H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v1",
   /** A checkmark. */
   check: "M5 13l4 4L19 7",
+  /**
+   * A list whose rows are each ticked: three checks on the left, three lines on the right. The
+   * mark for acting on several rows at once — the sidebar's batch selection — told apart from
+   * `check` by the rows it stands beside.
+   */
+  listChecks: "m3 17 2 2 4-4m-6-10 2 2 4-4m-6 6 2 2 4-4M13 6h8M13 12h8M13 18h8",
   /** An archive box with a downward chevron. */
   archive:
     "M3 8h18M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8M4 8l1.5-3h13L20 8M9.5 13.5 12 16l2.5-2.5",

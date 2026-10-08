@@ -4,6 +4,10 @@
  * each name themselves, one reserved box for the live state, and a trailing slot whose time gives
  * way to the hover actions. The row's menu mounts only while open, which a static render never
  * is; what its wiring must keep doing is pinned against the source.
+ *
+ * With a `selection` the row is a batch picker's row: the box leads (outside the button, so ticking
+ * it cannot open the conversation), the row's own click ticks it, and the hover actions and the
+ * time's fade give way.
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -131,6 +135,40 @@ describe("SessionRow", () => {
     expect(SOURCE).toContain("anchorOwner={ctx.anchorOwner}");
     // A menu row hands focus back to the row before it acts.
     expect(SOURCE).toMatch(/ctx\.returnFocus\(\)\?\.focus\(\);\s*ctx\.close\(\);/);
+  });
+});
+
+describe("SessionRow while picking (a batch selection)", () => {
+  const picking = (checked = false) =>
+    row({
+      selection: { checked, label: "选中 Fix the build", onToggle: () => {} },
+    });
+
+  it("puts the tick before the title and outside the button that opens the conversation", () => {
+    const html = picking(true);
+    expect(html).toMatch(/<input type="checkbox"[^>]*checked=""/);
+    expect(html).toContain('aria-label="选中 Fix the build"');
+    // Siblings, not nested: ticking the box must not also open the conversation.
+    expect(html.indexOf('aria-label="选中 Fix the build"')).toBeLessThan(
+      html.indexOf('data-testid="session-row"'),
+    );
+  });
+
+  it("leaves the time standing and takes the hover actions away", () => {
+    const html = picking();
+    expect(html).toContain(">3 分钟前</span>");
+    expect(html).not.toContain('aria-label="归档"');
+    expect(html).not.toContain('aria-label="更多"');
+    expect(classTokens(html)).not.toContain("group-hover:opacity-0");
+  });
+
+  it("makes the row's own click a tick, never a way out of the list", () => {
+    expect(SOURCE).toContain("if (selection !== undefined) selection.onToggle();");
+  });
+
+  it("draws no box at all when the caller is not picking", () => {
+    expect(row()).not.toContain('type="checkbox"');
+    expect(classTokens(row())).toContain("group-hover:opacity-0");
   });
 });
 

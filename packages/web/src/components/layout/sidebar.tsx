@@ -22,7 +22,10 @@
  * localStorage): pinned rows bubble to the top of their group's active list. Each row's
  * trailing slot shows the compact last-active time at rest and swaps to archive + delete
  * icon buttons on hover/focus; the full set (pin, rename, archive, delete) opens as a
- * context menu on right-click, Shift+F10, or a press-and-hold on touch
+ * context menu on right-click, Shift+F10, or a press-and-hold on touch. The header's
+ * batch control beside the search turns the rows into pickers — ticked rows raise a bar
+ * above the list that archives, unarchives or deletes them together (the requirement
+ * box's own batch bar), and leaving the mode drops the ticks.
  * -> bottom user row, which opens the shared account menu (user-menu.tsx).
  * In company mode the shape holds but the objects change: the organization switcher stands
  * where the Project switcher stands, "New channel" where "New chat" is, the organization's
@@ -626,6 +629,17 @@ export function Sidebar({
   /** Session pending delete confirmation (null = none). */
   const [deletingSession, setDeletingSession] = useState<SessionInfo | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
+  /**
+   * Batch processing (the header control beside 搜索会话): while it is on every row is a picker and
+   * the bar above the list acts on the ticked ones. Both are transient — leaving the mode drops the
+   * ticks — because a selection left behind in localStorage would act on rows the reader picked in
+   * another session of the app. The delete confirmation is the batch's own (one dialog over N rows,
+   * rather than N dialogs).
+   */
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchSelected, setBatchSelected] = useState<ReadonlySet<string>>(new Set());
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchConfirmDelete, setBatchConfirmDelete] = useState(false);
   /** Parked draft conversation pending delete confirmation (null = none). */
   const [deletingDraft, setDeletingDraft] = useState<DraftSessionEntry | null>(null);
   /** Parked draft conversations of this user × Project, newest first (reactive module store). */
@@ -1261,12 +1275,16 @@ export function Sidebar({
     }
   };
 
-  const confirmDeleteSession = async () => {
-    if (!deletingSession) return;
-    setDeletingBusy(true);
-    const target = deletingSession;
-    try {
-      await api.deleteSession(target.sessionId);
+  /**
+   * Everything a deleted conversation leaves behind in this column — the store row, its composer
+   * draft, its pin and its manual-order entry — for one row or for a batch. The pins and the order
+   * are pruned from ONE pair of reads, so two removals in a single turn cannot write the first one
+   * back: both state setters would otherwise see the value they had when the turn began.
+   */
+  const forgetDeletedSessions = (targets: readonly SessionInfo[]) => {
+    let pins: ReadonlySet<string> = pinnedSessions;
+    let order: readonly string[] = sessionOrder;
+    for (const target of targets) {
       // remove() also tombstones the id (see the store's isDeleted), which is what keeps the
       // chat page from re-fetching the Session it is still routed at during the frames before
       // the navigate() below lands. Ordering the two is deliberately NOT the mechanism: the
@@ -1277,17 +1295,27 @@ export function Sidebar({
       if (user) clearDraft(sessionDraftKey(user.userId, target.sessionId));
       // Prune its pin and manual-order entry as well (both helpers return the same
       // reference when the id wasn't present — the write is skipped then).
-      const prunedPins = removePinnedSession(pinnedSessions, target.sessionId);
-      if (prunedPins !== pinnedSessions) {
-        setPinnedSessions(prunedPins);
-        savePinnedSessions(currentProjectId, prunedPins);
-      }
+      pins = removePinnedSession(pins, target.sessionId);
       forgetSession(currentProjectId, target.sessionId);
-      const prunedOrder = removeFromSessionOrder(sessionOrder, target.sessionId);
-      if (prunedOrder !== sessionOrder) {
-        setSessionOrder(prunedOrder);
-        saveSessionOrder(currentProjectId, groupMode, prunedOrder);
-      }
+      order = removeFromSessionOrder(order, target.sessionId);
+    }
+    if (pins !== pinnedSessions) {
+      setPinnedSessions(pins);
+      savePinnedSessions(currentProjectId, pins);
+    }
+    if (order !== sessionOrder) {
+      setSessionOrder(order);
+      saveSessionOrder(currentProjectId, groupMode, order);
+    }
+  };
+
+  const confirmDeleteSession = async () => {
+    if (!deletingSession) return;
+    setDeletingBusy(true);
+    const target = deletingSession;
+    try {
+      await api.deleteSession(target.sessionId);
+      forgetDeletedSessions([target]);
       setDeletingSession(null);
       // The deleted session was the one open: jump to this Agent's next conversation, otherwise
       // fall back to the chat home page. Auto-opened conversations are never archived (hidden by
@@ -1313,6 +1341,99 @@ export function Sidebar({
     navigate(to);
     onNavigate?.();
   };
+
+  /**
+   * Batch processing over the conversation list (the header control beside 搜索会话). Leaving the
+   * mode drops the ticks: a selection means nothing outside it, and it must not survive to act on
+   * rows picked in some other visit.
+   */
+  const toggleBatchMode = () => {
+    if (batchMode) {
+      setBatchMode(false);
+      setBatchSelected(new Set());
+      return;
+    }
+    setBatchMode(true);
+  };
+
+  const toggleBatchRow = (sessionId: string) => {
+    setBatchSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(sessionId)) next.delete(sessionId);
+      else next.add(sessionId);
+      return next;
+    });
+  };
+
+  /** The ticked conversations, as the objects the column already loaded (the ticks only ever come from its rows). */
+  const batchTargets = () => sessions.filter((s) => batchSelected.has(s.sessionId));
+
+  /**
+   * 批量归档 / 批量取消归档: one request per ticked conversation, the same per-row PATCH the row's own
+   * menu runs — the server has no bulk route, and a batch that fails halfway must not hide which
+   * rows landed. Archiving the conversation on screen opens the archived folder, or its row would
+   * vanish from the list with no way back (the row menu's toggle does the same).
+   */
+  const batchSetArchived = async (archived: boolean) => {
+    const targets = batchTargets();
+    if (targets.length === 0) return;
+    setBatchBusy(true);
+    try {
+      const results = await Promise.all(
+        targets.map((s) => api.patchSession(s.sessionId, { archived })),
+      );
+      for (const res of results) replace(res.session);
+      const openOne = targets.find((s) => s.sessionId === activeSessionId);
+      if (archived && openOne !== undefined) {
+        setOpenFolders((prev) =>
+          new Set(prev).add(folderKey(sessionGroupKey(openOne), "archived")),
+        );
+      }
+      toastSuccess(
+        archived
+          ? S.chat.batchArchiveDone(targets.length)
+          : S.chat.batchUnarchiveDone(targets.length),
+      );
+      setBatchSelected(new Set());
+    } catch (e) {
+      toastError(apiErrorText(e));
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  /**
+   * 批量删除: the row delete's own confirmation, asked once for the whole selection, then the same
+   * DELETE per row. Deleting the conversation on screen leaves for the next one of its Agent, as the
+   * single delete does — the others are gone from the list, not from what the reader is looking at.
+   */
+  const confirmBatchDelete = async () => {
+    const targets = batchTargets();
+    if (targets.length === 0) return;
+    setBatchBusy(true);
+    try {
+      await Promise.all(targets.map((s) => api.deleteSession(s.sessionId)));
+      forgetDeletedSessions(targets);
+      setBatchConfirmDelete(false);
+      setBatchSelected(new Set());
+      const openOne = targets.find((s) => s.sessionId === activeSessionId);
+      if (openOne !== undefined) {
+        const deleted = new Set(targets.map((s) => s.sessionId));
+        const rest = (byAgent.get(openOne.agentId) ?? []).filter((s) => {
+          const category = sessionCategory(s);
+          return !deleted.has(s.sessionId) && (category === "active" || category === "schedule");
+        });
+        navigate(rest[0] ? `/chat/${rest[0].sessionId}` : "/chat");
+      }
+    } catch (e) {
+      toastError(apiErrorText(e));
+    } finally {
+      setBatchBusy(false);
+    }
+  };
+
+  /** Clear the ticks, staying in the mode (the bar's own control — leaving is the header's toggle). */
+  const clearBatchSelection = () => setBatchSelected(new Set());
 
   /**
    * New chat: enters draft state (/chat/new) without creating a Session — Model / Workspace /
@@ -1512,7 +1633,7 @@ export function Sidebar({
           dragging.id !== s.sessionId &&
           pinnedSessions.has(dragging.id) === pinnedSessions.has(s.sessionId);
         const drag =
-          dragCtx === undefined
+          dragCtx === undefined || batchMode
             ? {}
             : {
                 draggable: true,
@@ -1601,6 +1722,14 @@ export function Sidebar({
             onMessaging={(x) => setMessagingSession(x)}
             onDelete={(x) => setDeletingSession(x)}
             onToggleArchive={(x) => void toggleArchive(x)}
+            {...(batchMode
+              ? {
+                  select: {
+                    checked: batchSelected.has(s.sessionId),
+                    onToggle: () => toggleBatchRow(s.sessionId),
+                  },
+                }
+              : {})}
           />
         );
       })}
@@ -2122,6 +2251,22 @@ export function Sidebar({
         </p>
       </ConfirmModal>
 
+      {/* Batch delete confirmation: the same shared ConfirmModal as the row's own, asked once for
+          the whole selection instead of once per row. */}
+      <ConfirmModal
+        open={batchConfirmDelete}
+        title={S.chat.batchDeleteTitle}
+        confirmLabel={S.common.delete}
+        cancelLabel={S.common.cancel}
+        busy={batchBusy}
+        onClose={() => (batchBusy ? undefined : setBatchConfirmDelete(false))}
+        onConfirm={() => void confirmBatchDelete()}
+      >
+        <p className="text-sm text-gray-600 dark:text-gray-300">
+          {S.chat.batchDeleteConfirm(batchSelected.size)}
+        </p>
+      </ConfirmModal>
+
       {/* Remove-workspace confirmation (shared ConfirmModal, same stop as the other
           destructive-looking actions): the copy is honest about the scope — sidebar
           registry entry only, disk and Sessions untouched, re-addable anytime. */}
@@ -2373,6 +2518,16 @@ export function Sidebar({
                 onClick={() => setSearchOpen(true)}
               />
             )}
+            {/* Batch processing, right beside 搜索会话 (the requirement box's own batch bar is the
+                model): while it is on the rows are pickers and the bar below acts on the ticked
+                ones. */}
+            <SidebarControl
+              label={S.chat.batchSelect}
+              glyph={ICONS.listChecks}
+              active={batchMode}
+              aria-expanded={batchMode}
+              onClick={toggleBatchMode}
+            />
             <Dropdown
               open={listSettingsOpen}
               setOpen={setListSettingsOpen}
@@ -2496,6 +2651,46 @@ export function Sidebar({
               />
             )}
           </SidebarListHeader>
+
+          {/* The batch bar: it stands over the list only while something is ticked, so the column
+              loses no row to a control that has nothing to act on — the same rule the requirement
+              box's batch bar follows. Every action goes through the route the row's own menu
+              already uses (one PATCH or DELETE per conversation), and the delete keeps its
+              confirmation, now asked once for the whole selection. */}
+          {batchMode && batchSelected.size > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-1 rounded-md border border-line-emphasis px-2 py-1.5">
+              <span className="mr-auto px-0.5 text-xs text-fg-muted">
+                {S.chat.batchCount(batchSelected.size)}
+              </span>
+              <Button
+                size="xs"
+                variant="secondary"
+                disabled={batchBusy}
+                onClick={() => void batchSetArchived(true)}
+              >
+                {S.chat.batchArchive}
+              </Button>
+              <Button
+                size="xs"
+                variant="secondary"
+                disabled={batchBusy}
+                onClick={() => void batchSetArchived(false)}
+              >
+                {S.chat.batchUnarchive}
+              </Button>
+              <Button
+                size="xs"
+                variant="danger"
+                disabled={batchBusy}
+                onClick={() => setBatchConfirmDelete(true)}
+              >
+                {S.chat.batchDelete}
+              </Button>
+              <Button size="xs" variant="link" disabled={batchBusy} onClick={clearBatchSelection}>
+                {S.chat.batchClear}
+              </Button>
+            </div>
+          )}
 
           {/* Parked draft conversations (unsent new chats, newest first): pinned above both
           grouping modes — they belong to no Agent or Workspace until sent. Hidden
@@ -2969,6 +3164,7 @@ function SidebarSessionRow({
   lastActive,
   locale,
   agentHint,
+  select,
   draggable = false,
   dropEdge = null,
   onDragStart,
@@ -3001,6 +3197,8 @@ function SidebarSessionRow({
   locale: "zh" | "en";
   /** Agent display name; when set (workspace mode) a small avatar keeps the Agent context visible on the row. */
   agentHint?: string;
+  /** Batch mode: the row is a picker, ticked or not (the label names it after the conversation). */
+  select?: { checked: boolean; onToggle: () => void };
   /** Manual sort: the row can be drag-reordered (the sidebar wires the handlers below). */
   draggable?: boolean;
   /** Drop indicator edge while another row hovers over this one (a thin accent line above/below). */
@@ -3075,6 +3273,15 @@ function SidebarSessionRow({
       menuActions={sessionRowActions(contextMenuActions(canPin), rowState, run)}
       moreLabel={S.chat.moreActions}
       onOpen={() => onOpen(s)}
+      {...(select !== undefined
+        ? {
+            selection: {
+              checked: select.checked,
+              label: S.chat.batchSelectRow(s.title ?? S.chat.defaultSessionTitle),
+              onToggle: select.onToggle,
+            },
+          }
+        : {})}
       draggable={draggable}
       dropEdge={dropEdge}
       {...(onDragStart ? { onDragStart } : {})}
