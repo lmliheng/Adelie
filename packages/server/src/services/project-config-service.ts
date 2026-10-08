@@ -43,6 +43,7 @@ import {
   defaultProjectConfig,
   imageUrlMessage,
   metaMaxTokens,
+  offPeakAt,
   presetPromotions,
   projectConfigFromTable,
   projectConfigPath,
@@ -103,7 +104,7 @@ import {
   classifyVisionProbe,
   classifyVisionProbeError,
 } from "./vision-detect.js";
-import type { PricingRates, TieredRates } from "./usage-service.js";
+import type { PricingRates } from "./usage-service.js";
 import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type {
@@ -190,40 +191,33 @@ function promotedRates(rates: PricingRates, discount: number): PricingRates {
 }
 
 /**
- * Both tiers of a price read from a Project's config.
+ * A price read from a Project's config, at the instant it is billed.
  *
  * A scheduled row stores its PEAK price — the one number that is true whatever hour it is
- * written — and the reduced rate is derived here. Both are returned rather than one of them
- * chosen, because the caller prices a RANGE: a week that straddles a boundary holds Tokens of
- * both kinds, and each is billed at the rate it actually ran at. Choosing here would mean
- * pricing a finished week at whichever tier happened to be in force when someone opened the
- * page, which moves a settled number twice a day.
- *
- * The two tiers differ only while the stored price is still exactly the catalog's peak: once
- * the user has typed their own number, nothing here knows whether it is a peak rate, and
+ * written — and the reduced tier is derived here, from the instant the Request completed or the
+ * record ran. The two differ only while the stored price is still exactly the catalog's peak:
+ * once the user has typed their own number, nothing here knows whether it is a peak rate, and
  * halving it would invent a discount. The models page's badge bails on the same condition, so
  * the card and the bill always agree about what this row costs.
  */
-function tieredRates(provider: string, modelId: string, rates: PricingRates): TieredRates {
+function scheduledRateAt(
+  provider: string,
+  modelId: string,
+  rates: PricingRates,
+  at: Date,
+): PricingRates {
   const entry = catalogEntryFor(provider, modelId);
   const schedule = entry?.offPeakDiscount;
-  if (schedule === undefined || entry?.pricing === undefined)
-    return { peak: rates, offPeak: rates };
+  if (schedule === undefined || entry?.pricing === undefined || Number.isNaN(at.getTime())) {
+    return rates;
+  }
   const peak = entry.pricing;
   const untouched =
     rates.cacheRead === peak.cache_read &&
     rates.cacheWrite === peak.cache_write &&
     rates.output === peak.output;
-  if (!untouched) return { peak: rates, offPeak: rates };
-  const off = (v: number): number => Math.round(v * (1 - schedule.rate) * 1e6) / 1e6;
-  return {
-    peak: rates,
-    offPeak: {
-      cacheRead: off(rates.cacheRead),
-      cacheWrite: off(rates.cacheWrite),
-      output: off(rates.output),
-    },
-  };
+  if (!untouched || !offPeakAt(schedule, at)) return rates;
+  return promotedRates(rates, schedule.rate);
 }
 
 function optStr(v: unknown): string | undefined {
@@ -777,26 +771,25 @@ export class ProjectConfigService implements ProjectConfigStore {
   }
 
   /**
-   * Pricing lookup for usage-recorder: the current pricing for this paired reference (undefined
-   * if none -> cost is NULL). The file holds the list price; a stored promotion takes its
-   * fraction off both tiers, so a scheduled row on a promotion bills the two factors multiplied.
+   * The price a Request on this paired reference is billed at, completing at `at`, or undefined
+   * when the Project stores no price for it (-> the record's cost is NULL). The file holds the
+   * list price and the row's promotion its fraction; both are folded here, at the tier `at` falls
+   * in, so the recorder fixes a Request's cost with the one figure in force when it completed and
+   * the Trace page can ask the same question at a past Request's own timestamp.
    */
   async getPricing(
     projectId: string,
     provider: string,
     modelId: string,
-  ): Promise<TieredRates | undefined> {
+    at: Date,
+  ): Promise<PricingRates | undefined> {
     const raw = await this.readRaw(projectId);
     const entry = asArray(raw.models).find((m) => entryMatches(m, provider, modelId));
     const rates = pricingDtoOf(entry?.pricing);
     if (rates === undefined) return undefined;
-    const tiered = tieredRates(provider, modelId, rates);
+    const scheduled = scheduledRateAt(provider, modelId, rates, at);
     const discount = this.promotions?.get(projectId, provider, modelId);
-    if (discount === undefined) return tiered;
-    return {
-      peak: promotedRates(tiered.peak, discount),
-      offPeak: promotedRates(tiered.offPeak, discount),
-    };
+    return discount === undefined ? scheduled : promotedRates(scheduled, discount);
   }
 
   /**

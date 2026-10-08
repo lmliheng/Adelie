@@ -54,8 +54,8 @@ import type { SessionRow } from "../db/repos/sessions.js";
 import type { TraceFileRow, TraceSessionRow } from "../db/repos/trace-index.js";
 import { HttpError } from "../http/errors.js";
 import { formatLocalDate } from "../internal/dates.js";
-import { ratesAt, requestCostUsd } from "./usage-service.js";
-import type { PricingLookup, TieredRates } from "./usage-service.js";
+import { requestCostUsd } from "./usage-service.js";
+import type { PricingLookup, PricingRates } from "./usage-service.js";
 import type { ProjectConfigStore } from "../mechanisms/projects.js";
 import {
   cloneScanState,
@@ -289,13 +289,14 @@ export class TraceService implements Traces {
   @Use() private readonly sources?: SessionOrigins;
   @Use() private readonly projectConfig?: ProjectConfigStore;
   /**
-   * The Project's current price for a paired reference — the same lookup the cost center
-   * prices `usage_records` with, so the analysis' per-turn cost and the toolbar's figure come
-   * from one price table. Narrow tests wire their own or none; without a price the analysis
-   * carries no cost at all.
+   * What the Project bills for a paired reference, at the instant asked for. The analysis answers
+   * "what these Requests are worth at today's price": each Request is priced with this, at its own
+   * timestamp's tier — it never reads the rates the Request recorded, so after a price change it
+   * can differ from the cost center's fixed figures, which stay the bill. Narrow tests wire their
+   * own or none; without it the analysis carries no cost at all.
    */
-  private lookupPricing: PricingLookup = async (projectId, provider, modelId) =>
-    this.projectConfig?.getPricing(projectId, provider, modelId);
+  private lookupPricing: PricingLookup = async (projectId, provider, modelId, at) =>
+    this.projectConfig?.getPricing(projectId, provider, modelId, at);
   /**
    * Test observability: called with the path of every Trace shard this service reads
    * from disk (windowed-read tests assert an old-window request never touches the
@@ -975,16 +976,16 @@ export class TraceService implements Traces {
   }
 
   /**
-   * The price table the analysis costs a file's Requests against: the Project's current rates
-   * for the model named by the file's own `session_meta` head, in both tiers. Null when there
-   * is no lookup, when the model has no pricing, and for a head that names no provider — such
-   * a Trace is legacy data (core refuses to resume it), and the id alone can exist under
-   * several providers at different prices, so nothing is priced rather than a first match.
+   * What the analysis prices a file's Requests on: the paired reference named by the file's own
+   * `session_meta` head. Null when there is no lookup and for a head that names no provider —
+   * such a Trace is legacy data (core refuses to resume it), and the id alone can exist under
+   * several providers at different prices, so nothing is priced rather than a first match. The
+   * rate itself is asked for per Request (see analyze): it depends on that Request's timestamp.
    */
   private async filePricing(
     projectId: string,
     meta: OmniMessage | undefined,
-  ): Promise<{ provider: string; modelId: string; rates: TieredRates } | null> {
+  ): Promise<{ provider: string; modelId: string } | null> {
     if (meta === undefined) return null;
     const { provider, model_id: modelId } = meta.payload as {
       provider?: unknown;
@@ -992,8 +993,7 @@ export class TraceService implements Traces {
     };
     if (typeof provider !== "string" || provider === "") return null;
     if (typeof modelId !== "string" || modelId === "") return null;
-    const rates = await this.lookupPricing(projectId, provider, modelId);
-    return rates === undefined ? null : { provider, modelId, rates };
+    return { provider, modelId };
   }
 
   /** Performance analysis: derived from a single Trace file. */
@@ -1009,6 +1009,17 @@ export class TraceService implements Traces {
       (m) => isSessionMeta(m) && (m.origin === undefined || m.origin.length === 0),
     );
     const pricing = await this.filePricing(projectId, meta);
+    // The rates the file's Requests are priced at, memoized by hour: a tier boundary is a whole
+    // hour in every schedule the catalog can express, so one lookup per hour a Trace spans is
+    // enough, and a long Trace does not read the Project's config once per Request. Lives only as
+    // long as this analysis.
+    const fileRates = new Map<string, PricingRates | undefined>();
+    // Whether the Project prices this reference AT ALL, which the instant does not affect
+    // (`getPricing` answers undefined only when no price is stored for it). Read off the lookups
+    // this pass already makes: a priced file states a cost for every turn — a turn with no
+    // Request included — so its cards read $0, while a file nothing could price carries no cost
+    // field at all, which is what "no price" means to the card. See the task finalize below.
+    let priced = false;
     const headWindow = (meta?.payload as { model_context_window?: unknown } | undefined)
       ?.model_context_window;
     const modelContextWindow =
@@ -1080,9 +1091,8 @@ export class TraceService implements Traces {
           startTs: "",
           endTs: "",
           tokens: { cacheRead: 0, cacheWrite: 0, output: 0 },
-          // A priced file states a cost for every turn, a turn with no Request included: the
-          // card then reads $0 rather than "no price", which is what an absent field means.
-          ...(pricing !== null ? { cost: 0 } : {}),
+          // `cost` is filled in below: either by the Turn's own Requests, or — for a Turn with
+          // none, on a file whose reference the Project does price — with a zero at finalize.
           llmMs: 0,
           toolMs: 0,
         };
@@ -1362,24 +1372,32 @@ export class TraceService implements Traces {
             t.tokens.cacheWrite += request?.cache_write ?? 0;
             t.tokens.output += request?.output ?? 0;
             if (pricing !== null) {
-              // Priced per Request, at the tier this Request's own timestamp fell in — the
-              // rule the cost center applies to the usage row this same event produced, so
-              // the two figures for one request are the same figure.
-              t.cost =
-                (t.cost ?? 0) +
-                requestCostUsd(
-                  {
-                    cacheRead: request?.cache_read ?? 0,
-                    cacheWrite: request?.cache_write ?? 0,
-                    output: request?.output ?? 0,
-                  },
-                  ratesAt(
-                    pricing.rates,
-                    pricing.provider,
-                    pricing.modelId,
-                    new Date(msg.timestamp),
-                  ),
+              // Priced per Request at the price the Project stores TODAY, at the tier that
+              // Request's own timestamp fell in (see lookupPricing) — the rule it was billed by,
+              // applied to today's price. After a price change this can therefore differ from the
+              // cost center's figure, which stays the bill.
+              const at = new Date(msg.timestamp);
+              const key = `${pricing.provider}\0${pricing.modelId}\0${Math.floor(at.getTime() / 3_600_000)}`;
+              if (!fileRates.has(key)) {
+                fileRates.set(
+                  key,
+                  await this.lookupPricing(projectId, pricing.provider, pricing.modelId, at),
                 );
+              }
+              const rates = fileRates.get(key);
+              if (rates !== undefined) {
+                priced = true;
+                t.cost =
+                  (t.cost ?? 0) +
+                  requestCostUsd(
+                    {
+                      cacheRead: request?.cache_read ?? 0,
+                      cacheWrite: request?.cache_write ?? 0,
+                      output: request?.output ?? 0,
+                    },
+                    rates,
+                  );
+              }
             }
             if (!compactionActive) {
               // The context snapshot only takes non-compaction Requests: tokens
@@ -1550,7 +1568,11 @@ export class TraceService implements Traces {
     // follows above, so a reader adding up the turn cards lands on the totals.
     const apiMs = tasks.reduce((sum, t) => sum + t.llmMs, 0);
     const toolMs = tasks.reduce((sum, t) => sum + t.toolMs, 0);
-    const cost = pricing !== null ? tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0) : undefined;
+    // A file the Project prices states a cost for every Turn, including one that made no
+    // Request (a billed zero, so the card reads $0); a file it prices nothing in carries no cost
+    // at all, which the card draws as "no price". This is where `priced` decides the difference.
+    if (priced) for (const t of tasks) t.cost ??= 0;
+    const cost = priced ? tasks.reduce((sum, t) => sum + (t.cost ?? 0), 0) : undefined;
     return {
       elapsedMs,
       apiMs,

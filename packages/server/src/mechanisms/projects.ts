@@ -33,7 +33,7 @@ import type {
   PluginTables,
   ProjectConfig,
 } from "@lmliheng/penguin-core";
-import type { TieredRates } from "../services/usage-service.js";
+import type { PricingRates } from "../services/usage-service.js";
 import type {
   PlatformModelApplyResult,
   PlatformModelCatalog,
@@ -145,7 +145,8 @@ export abstract class ProjectConfigStore {
     projectId: string,
     provider: string,
     modelId: string,
-  ): Promise<TieredRates | undefined>;
+    at: Date,
+  ): Promise<PricingRates | undefined>;
   abstract detectVision(
     projectId: string,
     req: ModelVisionDetectRequest,

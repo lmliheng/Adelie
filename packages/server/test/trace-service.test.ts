@@ -6,15 +6,18 @@
 import fs from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  DEEPSEEK_OFF_PEAK,
   abortEvent,
   approvalDecision,
   assistantText,
   buildBackgroundTaskDoneMessage,
+  catalogEntryFor,
   compactionBegin,
   compactionEnd,
   imageUrlMessage,
   mcpConnectBegin,
   mcpConnectEnd,
+  offPeakAt,
   requestBegin,
   requestEnd,
   sessionMeta,
@@ -42,7 +45,8 @@ import { wire } from "@lmliheng/penguin-core/kernel";
 import { ErrorsRepo } from "../src/db/repos/errors.js";
 import { UsageRepo } from "../src/db/repos/usage.js";
 import { SessionSources } from "../src/runtime/session-sources.js";
-import { UsageService } from "../src/services/usage-service.js";
+import { UsageRecorder } from "../src/runtime/usage-recorder.js";
+import { UsageService, requestCostUsd } from "../src/services/usage-service.js";
 import type { PricingLookup } from "../src/services/usage-service.js";
 import { makeTempRoot, makeTraceHarness, writeTraceFile } from "./helpers.js";
 
@@ -242,59 +246,86 @@ describe("trace-service", () => {
     ];
   };
 
-  it("prices each Request at the tier its own timestamp ran in, and the file adds up to what the cost center bills the same rows", async () => {
-    // A DeepSeek reference carries the catalog's Beijing-hours schedule; the lookup answers
-    // both tiers, as project-config-service does for a row still at the catalog's price.
+  it("prices each Request at the tier its own timestamp ran in, and the file adds up to what the cost center fixed for the same rows", async () => {
+    // A DeepSeek reference still storing the catalog's peak price bills by the catalog's
+    // Beijing-hours schedule, so the lookup answers as project-config-service does for such a
+    // row: the peak rate inside the windows, half of it outside, for the instant it is asked for.
     const REF = { provider: "deepseek", model_id: "deepseek-flash" };
+    const peak = catalogEntryFor(REF.provider, REF.model_id)!.pricing!;
+    const stored = {
+      cacheRead: peak.cache_read,
+      cacheWrite: peak.cache_write,
+      output: peak.output,
+    };
+    const half = (v: number): number => Math.round(v * 0.5 * 1e6) / 1e6;
+    const offPeakRates = {
+      cacheRead: half(stored.cacheRead),
+      cacheWrite: half(stored.cacheWrite),
+      output: half(stored.output),
+    };
     const lookups: string[] = [];
-    const lookup: PricingLookup = async (projectId, provider, modelId) => {
-      lookups.push(`${projectId}/${provider}/${modelId}`);
-      return {
-        peak: { cacheRead: 1, cacheWrite: 2, output: 4 },
-        offPeak: { cacheRead: 0.5, cacheWrite: 1, output: 2 },
-      };
+    const lookup: PricingLookup = async (projectId, provider, modelId, at) => {
+      lookups.push(`${projectId}/${provider}/${modelId}@${at.toISOString()}`);
+      return offPeakAt(DEEPSEEK_OFF_PEAK, at) ? offPeakRates : stored;
     };
     const priced = makeTraceHarness(root, { lookupPricing: lookup });
     const usage = buckets(10, 1, 5);
-    // Tuesday 10:30 Beijing (peak), Tuesday 21:00 Beijing (off-peak), Sunday 11:00 Beijing
-    // (an hour a weekday bills at peak, off-peak on a weekend).
+    const counts = { cacheRead: 10, cacheWrite: 1, output: 5 };
+    // Tuesday 10:30 Beijing (peak), Tuesday 21:00 Beijing (off-peak), Sunday 11:00 Beijing (an
+    // hour a weekday bills at peak, off-peak on a weekend) and ten minutes after that last one,
+    // which must share its lookup rather than read the Project's config again.
     const stamps = [
       "2026-07-07T02:30:00.000Z",
       "2026-07-07T13:00:00.000Z",
       "2026-07-12T03:00:00.000Z",
+      "2026-07-12T03:10:00.000Z",
     ];
+    /** The instant a turn's usage is stamped at: its request plus the three seconds of `priceTurn`. */
+    const usageAt = (ts: string): string => new Date(Date.parse(ts) + 3000).toISOString();
     try {
       await writeTraceFile(root, P, A, "2026-07-07", S, 1, [
         sessionMeta(metaPayload(REF)),
         ...stamps.flatMap((ts) => priceTurn(ts, usage)),
       ]);
       const a = await priced.service.analyze(P, A, S, 1);
-      const peakCost = (10 * 1 + 1 * 2 + 5 * 4) / 1e6;
-      expect(a.tasks.map((t) => t.cost)).toEqual([peakCost, peakCost / 2, peakCost / 2]);
-      expect(a.cost).toBeCloseTo(peakCost * 2, 12);
-      expect(lookups).toEqual([`${P}/deepseek/deepseek-flash`]);
+      const peakCost = requestCostUsd(counts, stored);
+      const offPeakCost = requestCostUsd(counts, offPeakRates);
+      expect(offPeakCost).toBeLessThan(peakCost);
+      expect(a.tasks.map((t) => t.cost)).toEqual([peakCost, offPeakCost, offPeakCost, offPeakCost]);
+      expect(a.cost).toBeCloseTo(peakCost + offPeakCost * 3, 12);
+      // One lookup per hour a Trace spans, not one per Request: the four stamps fall in three
+      // hours (two of them off-peak for different reasons), and each is asked for at its own
+      // instant.
+      expect(lookups).toEqual([
+        `${P}/deepseek/deepseek-flash@${usageAt(stamps[0]!)}`,
+        `${P}/deepseek/deepseek-flash@${usageAt(stamps[1]!)}`,
+        `${P}/deepseek/deepseek-flash@${usageAt(stamps[2]!)}`,
+      ]);
 
-      // The same three requests as usage rows, priced by the cost center's session grouping —
-      // the figure the conversation toolbar shows — land on the file's total.
+      // The same Requests as the recorder fixes them — each priced at its own completion,
+      // from the same lookup — summed by the cost center's session grouping (the figure the
+      // conversation toolbar shows) land on the file's total.
       const db = openDatabase(":memory:");
       try {
         const rows = wire(UsageRepo, { db });
         for (const ts of stamps) {
-          const at = new Date(Date.parse(ts) + 3000).toISOString();
-          rows.insert({
-            ts: at,
-            date: at.slice(0, 10),
-            projectId: P,
-            agentId: A,
-            sessionId: S,
-            originSessionId: null,
-            provider: REF.provider,
-            modelId: REF.model_id,
-            cacheRead: usage.cache_read,
-            cacheWrite: usage.cache_write,
-            output: usage.output,
-            total: usage.total,
+          const done = new Date(Date.parse(ts) + 3000);
+          const event = tokenUsage(usage, usage);
+          const recorder = wire(UsageRecorder, {
+            usage: rows,
+            clock: { now: () => done },
+            lookupPricing: lookup,
           });
+          await recorder.record(
+            {
+              projectId: P,
+              agentId: A,
+              sessionId: S,
+              provider: REF.provider,
+              modelId: REF.model_id,
+            },
+            event,
+          );
         }
         const center = wire(UsageService, {
           usage: rows,
@@ -317,13 +348,7 @@ describe("trace-service", () => {
     const priced = makeTraceHarness(root, {
       lookupPricing: async (_projectId, provider, modelId) => {
         lookups.push(`${provider}/${modelId}`);
-        // A second tier the schedule gate must never reach for an unscheduled reference.
-        return modelId === "m1"
-          ? {
-              peak: { cacheRead: 1, cacheWrite: 1, output: 1 },
-              offPeak: { cacheRead: 0, cacheWrite: 0, output: 0 },
-            }
-          : undefined;
+        return modelId === "m1" ? { cacheRead: 1, cacheWrite: 1, output: 1 } : undefined;
       },
     });
     try {

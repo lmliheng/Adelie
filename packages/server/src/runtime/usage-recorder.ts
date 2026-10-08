@@ -7,9 +7,14 @@
  *     cost is priced against the actual Model used);
  *   - `token_usage` → inserts one usage_records row: the four token fields come from
  *     `payload.request` (per-Request increment; subagents are recorded one row at a
- *     time, with `session_id` attributed to their owning main Session). Only tokens are
- *     persisted, not cost — pricing may be added later, and cost is computed on the fly
- *     against current pricing when usage-service queries.
+ *     time, with `session_id` attributed to their owning main Session), and the Request's
+ *     cost is FIXED here, from the price the Project stores for that paired reference at
+ *     this instant. Nothing re-prices a row afterwards: a later price edit, preset sync or
+ *     promotion only changes what later Requests cost.
+ *
+ * The price is read from the Project's own config (getPricing, which folds in the row's
+ * promotion), not from the rates a `token_usage` event may carry: a promotion lives in
+ * web.db beside the file's list price, so only this side can state what a Request was billed.
  * The attribution key is always the paired reference `(provider, model_id)` (the same
  * model_id name across different vendors is attributed separately).
  */
@@ -19,6 +24,9 @@ import { formatLocalDate } from "../internal/dates.js";
 import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Clock } from "../hmr/capabilities.js";
 import type { UsageRecording, UsageStore } from "../mechanisms/observability.js";
+import type { ProjectConfigStore } from "../mechanisms/projects.js";
+import { requestCostUsd } from "../services/usage-service.js";
+import type { PricingLookup } from "../services/usage-service.js";
 
 /** Attribution context for one record (top-level Session scope). */
 export interface UsageContext {
@@ -42,6 +50,30 @@ export class UsageRecorder implements UsageRecording {
 
   @Use() private readonly usage!: UsageStore;
   @Use() private readonly clock!: Clock;
+  @Use() private readonly projectConfig!: ProjectConfigStore;
+  private lookupPricing: PricingLookup = (projectId, provider, modelId, at) =>
+    this.projectConfig.getPricing(projectId, provider, modelId, at);
+
+  /**
+   * A record's cost, fixed now: the three buckets at the price the Project stores for this
+   * reference at this instant — `null` when it stores none (an uncosted model). A price that
+   * cannot be read counts as no price: the row is written either way, since losing the Tokens
+   * would be worse than not costing them.
+   */
+  private async costOf(
+    projectId: string,
+    ref: { provider: string; modelId: string },
+    counts: { cacheRead: number; cacheWrite: number; output: number },
+    at: Date,
+  ): Promise<number | null> {
+    try {
+      const rates = await this.lookupPricing(projectId, ref.provider, ref.modelId, at);
+      if (rates === undefined) return null;
+      return requestCostUsd(counts, rates);
+    } catch {
+      return null;
+    }
+  }
 
   /** Consume one outgoing message; messages other than session_meta / token_usage are a no-op. */
   async record(ctx: UsageContext, msg: OmniMessage): Promise<void> {
@@ -91,12 +123,12 @@ export class UsageRecorder implements UsageRecording {
     if (payload.type === "token_usage" && payload.request) {
       // A successful request: persist along with tokens (status defaults to completed).
       const r = payload.request;
+      const counts = { cacheRead: r.cache_read, cacheWrite: r.cache_write, output: r.output };
       this.usage.insert({
         ...base,
-        cacheRead: r.cache_read,
-        cacheWrite: r.cache_write,
-        output: r.output,
+        ...counts,
         total: r.total,
+        cost: await this.costOf(ctx.projectId, ref, counts, now),
       });
       return;
     }
@@ -104,13 +136,14 @@ export class UsageRecorder implements UsageRecording {
     // persist 0 tokens + status, feeding the "model success rate" stat; a successful
     // request is already counted once via the token_usage branch above, not repeated here.
     if (payload.type === "request_end" && payload.status && payload.status !== "completed") {
+      const counts = { cacheRead: 0, cacheWrite: 0, output: 0 };
       this.usage.insert({
         ...base,
-        cacheRead: 0,
-        cacheWrite: 0,
-        output: 0,
+        ...counts,
         total: 0,
         status: payload.status,
+        // Zero, not null, for a priced model: nothing was billed, and the group is not uncosted.
+        cost: await this.costOf(ctx.projectId, ref, counts, now),
       });
     }
   }

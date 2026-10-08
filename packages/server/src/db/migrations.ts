@@ -554,6 +554,33 @@ export const MIGRATIONS: readonly Migration[] = [
       db.exec(`DROP TABLE IF EXISTS org_desk_mentions;`);
     },
   },
+  {
+    version: 14,
+    name: "usage-record-cost",
+    // Two columns with defaults on usage_records, nothing existing rewritten: a platform rolled
+    // back to a predecessor that does not know them keeps inserting rows without a cost, which
+    // simply read unsettled (cost_settled 0) and are settled by the next build that boots.
+    swapSafe: true,
+    up(db) {
+      // Frozen copy of the DDL as of fixing a request's cost at record time; do not re-derive
+      // from schema.ts. ensureColumn because the declarative track may already have added them
+      // (ADOPTION). The rows already in the table are costed by the startup settle
+      // (UsageService.settleUnsettledCosts), not here: pricing them needs each Project's config.
+      ensureColumn(db, "usage_records", "cost", "REAL");
+      ensureColumn(db, "usage_records", "cost_settled", "INTEGER NOT NULL DEFAULT 0");
+    },
+    // LOSES every fixed cost. A build with this migration adds the columns back unsettled and
+    // costs every row again at startup, at the prices the Projects store by then — so a price
+    // changed in between re-prices history, the one thing the columns exist to prevent.
+    // Dropped in reverse order for symmetry with `up`; neither column is indexed, which is what
+    // lets SQLite drop them at all.
+    down(db) {
+      const cols = db.prepare("PRAGMA table_info(usage_records)").all() as { name: string }[];
+      const has = (name: string): boolean => cols.some((c) => c.name === name);
+      if (has("cost_settled")) db.exec("ALTER TABLE usage_records DROP COLUMN cost_settled");
+      if (has("cost")) db.exec("ALTER TABLE usage_records DROP COLUMN cost");
+    },
+  },
 ];
 
 /** The highest version this build knows how to reach. */

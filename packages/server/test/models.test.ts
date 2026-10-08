@@ -52,6 +52,7 @@ import type {
   SessionCreateResponse,
 } from "../src/api/types.js";
 import { ProjectConfigService } from "../src/services/project-config-service.js";
+import type { RuntimeSession } from "../src/runtime/session-manager.js";
 import type { ChannelEvent } from "../src/runtime/channel.js";
 import { jsonResponse, stubFetch } from "./fixtures/fetch.js";
 import { fakeSession, sessionRow } from "./fixtures/session.js";
@@ -978,17 +979,22 @@ describe("model-reference rekeying and the connectivity test", () => {
     expect(toml).not.toContain("openai/gpt-5.5");
   });
 
-  it("a scheduled row answers with both of its rates, from the one stable price on disk", async () => {
-    // No clock is passed and none is wanted: which tier a given request ran in is decided from
-    // that record's own timestamp when the usage is aggregated, so the price lookup's whole job
-    // is to say what the two tiers are. The number on disk is the peak one either way.
+  // 2026-08-31 is a Monday: 01:30Z is 09:30 in Beijing (peak), 12:00Z is 20:00 (off-peak).
+  const PEAK = new Date("2026-08-31T01:30:00Z");
+  const OFF_PEAK = new Date("2026-08-31T12:00:00Z");
+
+  it("a scheduled row stores the one stable price, and the tier is derived from a Request's own instant", async () => {
+    // The number on disk is the peak price whatever the hour; which tier a Request bills at is
+    // decided by when it completed, so the same stored price bills twice as much at 09:30 as at
+    // 20:00 on the same Monday.
     const svc = wire(ProjectConfigService, { paths: { root: t.root } });
-    const rates = await svc.getPricing(projectId, "deepseek", "deepseek-flash");
+    const peak = await svc.getPricing(projectId, "deepseek", "deepseek-flash", PEAK);
     const catalogPeak = catalogEntryFor("deepseek", "deepseek-flash")!.pricing!;
-    expect(rates!.peak.output).toBe(catalogPeak.output);
-    expect(rates!.offPeak.output).toBeCloseTo(catalogPeak.output / 2, 5);
-    expect(rates!.peak.cacheRead).toBe(catalogPeak.cache_read);
-    expect(rates!.offPeak.cacheRead).toBeCloseTo(catalogPeak.cache_read / 2, 6);
+    expect(peak!.output).toBe(catalogPeak.output);
+    expect(peak!.cacheRead).toBe(catalogPeak.cache_read);
+    const off = await svc.getPricing(projectId, "deepseek", "deepseek-flash", OFF_PEAK);
+    expect(off!.output).toBeCloseTo(catalogPeak.output / 2, 5);
+    expect(off!.cacheRead).toBeCloseTo(catalogPeak.cache_read / 2, 6);
   });
 
   it("a hand-edited price on a scheduled row is billed as typed, in both tiers", async () => {
@@ -1012,12 +1018,10 @@ describe("model-reference rekeying and the connectivity test", () => {
     await api.put(url(), { models: entries });
     const svc = wire(ProjectConfigService, { paths: { root: t.root } });
     // Nothing here knows whether 3 is a peak rate, so halving it would invent a discount: the
-    // two tiers collapse to the typed number and the split costs a row and changes nothing.
+    // typed number is what bills, whenever the Request runs.
     const typed = { cacheRead: 1, cacheWrite: 2, output: 3 };
-    expect(await svc.getPricing(projectId, "deepseek", "deepseek-flash")).toEqual({
-      peak: typed,
-      offPeak: typed,
-    });
+    expect(await svc.getPricing(projectId, "deepseek", "deepseek-flash", PEAK)).toEqual(typed);
+    expect(await svc.getPricing(projectId, "deepseek", "deepseek-flash", OFF_PEAK)).toEqual(typed);
   });
 
   it("a stored promotion takes its fraction off the list price on disk, multiplied with a scheduled row's off-peak tier", async () => {
@@ -1030,10 +1034,7 @@ describe("model-reference rekeying and the connectivity test", () => {
       cacheWrite: off(list.cache_write, 0.1),
       output: off(list.output, 0.1),
     };
-    expect(await svc.getPricing(projectId, "tokendance", "glm-5.3-flash")).toEqual({
-      peak: promoted,
-      offPeak: promoted,
-    });
+    expect(await svc.getPricing(projectId, "tokendance", "glm-5.3-flash", PEAK)).toEqual(promoted);
 
     // A scheduled row still at the catalog's peak price, with a promotion of its own: peak bills
     // the promotion alone, off-peak the half-price tier with the promotion taken off it too.
@@ -1052,9 +1053,15 @@ describe("model-reference rekeying and the connectivity test", () => {
         },
       ],
     });
-    const rates = (await svc.getPricing(projectId, "deepseek", "deepseek-v4-flash"))!;
-    expect(rates.peak.output).toBe(off(peak.output, 0.2));
-    expect(rates.offPeak.output).toBe(off(off(peak.output, 0.5), 0.2));
+    const peakRates = (await svc.getPricing(projectId, "deepseek", "deepseek-v4-flash", PEAK))!;
+    expect(peakRates.output).toBe(off(peak.output, 0.2));
+    const offPeakRates = (await svc.getPricing(
+      projectId,
+      "deepseek",
+      "deepseek-v4-flash",
+      OFF_PEAK,
+    ))!;
+    expect(offPeakRates.output).toBe(off(off(peak.output, 0.5), 0.2));
   });
 
   it("PUT discount: a declared one is stored and null clears it; an omitted one survives only on an unrenamed row at an unchanged price", async () => {

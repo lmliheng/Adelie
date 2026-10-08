@@ -46,19 +46,14 @@ describe("project-config read cache", () => {
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  /** This fixture's model has no schedule, so both tiers are the one price it stores. */
+  /** The price this fixture's model stores. Its id has no schedule, so the instant is immaterial. */
   const RATES = { cacheRead: 1, cacheWrite: 2, output: 3 };
+  const AT = new Date("2026-08-31T01:30:00Z");
 
   it("repeat reads cost one readFile: pricing, name and the typed loadConfig view share the cached parse", async () => {
     const reads = vi.spyOn(fs, "readFile");
-    expect(await svc.getPricing(P, "custom", "m1")).toEqual({
-      peak: RATES,
-      offPeak: RATES,
-    });
-    expect(await svc.getPricing(P, "custom", "m1")).toEqual({
-      peak: RATES,
-      offPeak: RATES,
-    });
+    expect(await svc.getPricing(P, "custom", "m1", AT)).toEqual(RATES);
+    expect(await svc.getPricing(P, "custom", "m1", AT)).toEqual(RATES);
     expect(await svc.getName(P)).toBe("cached");
     expect((await svc.loadConfig(P)).models.map((m) => m.model_id)).toEqual(["m1"]);
     expect(reads).toHaveBeenCalledTimes(1);
@@ -70,10 +65,7 @@ describe("project-config read cache", () => {
     await backdate(file, "2026-01-01T00:01:00Z");
     const reads = vi.spyOn(fs, "readFile");
     expect(await svc.getName(P)).toBe("renamed");
-    expect(await svc.getPricing(P, "custom", "m1")).toEqual({
-      peak: RATES,
-      offPeak: RATES,
-    });
+    expect(await svc.getPricing(P, "custom", "m1", AT)).toEqual(RATES);
     expect(reads).toHaveBeenCalledTimes(1);
   });
 
@@ -87,7 +79,7 @@ describe("project-config read cache", () => {
     await backdate(file, "2026-01-01T00:02:00Z"); // Stable, but a different mtime than cached.
     expect(await svc.getName(P)).toBe("edited");
     expect((await svc.loadConfig(P)).models.map((m) => m.model_id)).toEqual(["m2"]);
-    expect(await svc.getPricing(P, "custom", "m1")).toBeUndefined();
+    expect(await svc.getPricing(P, "custom", "m1", AT)).toBeUndefined();
   });
 
   it("a fresh mtime is never cached as clean: reads keep hitting disk until the file has been quiet", async () => {

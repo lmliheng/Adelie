@@ -155,7 +155,7 @@ describe("admin users backend", () => {
   /**
    * The two read-only columns the user backend carries. Both are the server's own figures: the
    * sign-in stamp AuthService writes on a password login, and the lifetime cost of the Projects
-   * the account OWNS, priced at the current rates.
+   * the account OWNS — every record's cost as it was fixed when the row was written.
    */
   it("user list: last sign-in is stamped by the login that succeeded, absent for an account never used", async () => {
     const kate = await provisionUser(t.app, "kate");
@@ -178,8 +178,8 @@ describe("admin users backend", () => {
 
   it("user list: cost sums the Projects the account owns, and says so when a model has no price", async () => {
     const kate = await provisionUser(t.app, "kate");
-    // Two models in Kate's own Project: `m-priced` costs (10*1 + 1*2 + 5*3)/1e6 per record,
-    // `m-free` carries no pricing block at all.
+    // Kate's Project stores a price for `m-priced` — (10*1 + 1*2 + 5*3)/1e6 per record — and none
+    // at all for `m-free`, so a row on the latter is recorded without a cost.
     await saveProjectConfig(t.root, "kate-default_project", {
       default_model: { provider: "custom", model_id: "m-priced" },
       models: [
@@ -191,11 +191,12 @@ describe("admin users backend", () => {
         { provider: "custom", model_id: "m-free" },
       ],
     });
-    const insertUsage = (modelId: string, date: string): void => {
+    /** A row as the recorder writes it: the Tokens, and the cost its Project's price fixed. */
+    const insertUsage = (modelId: string, date: string, cost: number | null): void => {
       t.deps.db
         .prepare(
-          "INSERT INTO usage_records (ts, date, project_id, agent_id, session_id, origin_session_id, provider, model_id, cache_read, cache_write, output, total)" +
-            " VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO usage_records (ts, date, project_id, agent_id, session_id, origin_session_id, provider, model_id, cache_read, cache_write, output, total, cost, cost_settled)" +
+            " VALUES (?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, 1)",
         )
         .run(
           `${date}T00:00:00.000Z`,
@@ -209,21 +210,23 @@ describe("admin users backend", () => {
           1,
           5,
           16,
+          cost,
         );
     };
-    insertUsage("m-priced", "2026-10-01");
-    insertUsage("m-priced", "2026-10-02");
+    const ROW_COST = (10 * 1 + 1 * 2 + 5 * 3) / 1e6;
+    insertUsage("m-priced", "2026-10-01", ROW_COST);
+    insertUsage("m-priced", "2026-10-02", ROW_COST);
     // Nobody else's: the admin's own default Project has no usage, and Kate's cost counts only
     // what her own Project recorded — the figure is per owned Project, not per caller.
     let list = (await (await admin.get("/api/admin/users")).json()) as AdminUsersResponse;
     const priced = list.users.find((u) => u.userId === "kate")!;
-    expect(priced.totalCostUsd).toBeCloseTo((2 * (10 * 1 + 1 * 2 + 5 * 3)) / 1e6, 12);
+    expect(priced.totalCostUsd).toBeCloseTo(2 * ROW_COST, 12);
     expect(priced.costUnpriced).toBeUndefined();
     expect(list.users.find((u) => u.userId === "admin")!.totalCostUsd).toBeUndefined();
 
-    // A record on a model with no price block makes the sum a lower bound — reported as such
-    // instead of silently dropped.
-    insertUsage("m-free", "2026-10-03");
+    // A record whose model had no price when it was written makes the sum a lower bound —
+    // reported as such instead of silently dropped.
+    insertUsage("m-free", "2026-10-03", null);
     list = (await (await admin.get("/api/admin/users")).json()) as AdminUsersResponse;
     const bounded = list.users.find((u) => u.userId === "kate")!;
     expect(bounded.totalCostUsd).toBeCloseTo(priced.totalCostUsd!, 12);

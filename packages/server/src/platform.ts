@@ -198,6 +198,7 @@ export class Startup {
   @Use() private readonly machines!: Machines;
   @Use() private readonly errors!: Errors;
   @Use() private readonly projectConfig!: ProjectConfigStore;
+  @Use() private readonly usage!: UsageQueries;
 
   async setup() {
     // The shared default Project's display name, on every start rather than only where it is
@@ -206,6 +207,15 @@ export class Startup {
     // showing the raw id as the Project's label. Idempotent and file-guarded — a root without
     // that Project's config file is untouched, so nothing is ever created here.
     await this.projectConfig.ensureDisplayName(DEFAULT_PROJECT_ID, DEFAULT_PROJECT_NAME);
+    // Usage rows with no fixed cost yet — from before costs were fixed at record time, or
+    // written by an older build a hot update rolled back to — are costed once, before anything
+    // reads the cost center (COMPATIBILITY: see UsageService.settleUnsettledCosts). Awaited, but
+    // a failure is recorded rather than thrown: the rows then read as uncosted until a later boot.
+    try {
+      await this.usage.settleUnsettledCosts();
+    } catch (err) {
+      this.errors.record({ source: "process", err, code: "usage_cost_settle_failed" });
+    }
     // Schedule scheduler: startup reconciliation (missed, don't backfill) + periodic scan.
     await this.scheduler.start();
     // Company mode's scheduler: same lifetime and the same startup rule (reconcile once,

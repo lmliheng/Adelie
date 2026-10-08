@@ -19,7 +19,7 @@ import type {
   UsageRecordInsert,
   UsageSeriesGranularity,
   UsageSeriesModelSums,
-  PeakTier,
+  UnsettledUsageRow,
 } from "../db/repos/usage.js";
 import type {
   UsageErrorsPage,
@@ -90,22 +90,19 @@ export abstract class Errors {
 @Interface()
 export abstract class UsageStore {
   abstract insert(r: UsageRecordInsert): void;
-  abstract bucketByModel(
-    projectId: string,
-    f?: UsageFilter,
-    tiers?: readonly PeakTier[],
-  ): UsageModelSums[];
+  abstract unsettledRefs(): Array<{ projectId: string; provider: string; modelId: string }>;
+  abstract unsettledRows(projectId: string, provider: string, modelId: string): UnsettledUsageRow[];
+  abstract settle(rows: ReadonlyArray<{ id: number; cost: number | null }>): void;
+  abstract bucketByModel(projectId: string, f?: UsageFilter): UsageModelSums[];
   abstract groupsByModel(
     projectId: string,
     groupBy: UsageGroupBy,
     f?: UsageFilter,
-    tiers?: readonly PeakTier[],
   ): UsageGroupModelSums[];
   abstract seriesByModel(
     projectId: string,
     granularity: UsageSeriesGranularity,
     f?: UsageFilter,
-    tiers?: readonly PeakTier[],
   ): UsageSeriesModelSums[];
   abstract agentSeries(
     projectId: string,
@@ -130,10 +127,12 @@ export abstract class UsageQueries {
   abstract queryErrors(projectId: string, q: UsageErrorsQuery): UsageErrorsPage;
   abstract clearErrors(projectId: string, q: UsageErrorsClearQuery): number;
   abstract modelTotals(projectId: string): UsageModelTotals;
+  /** Fixes the cost of every usage row that has none yet; returns how many it settled. */
+  abstract settleUnsettledCosts(): Promise<number>;
   /**
-   * The Project's lifetime cost: every usage record it ever wrote, folded with the same
-   * per-reference rate lookup `query` uses (current prices). `unpriced` says some of that usage
-   * ran on a model this Project has no price for, so `cost` is a lower bound.
+   * The Project's lifetime cost: every usage record it ever wrote, summed from the costs fixed
+   * when the rows were written. `unpriced` says some of that usage ran on a model this Project
+   * has no price for, so `cost` is a lower bound.
    */
   abstract lifetimeCost(
     projectId: string,

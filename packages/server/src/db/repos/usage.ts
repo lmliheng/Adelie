@@ -1,9 +1,9 @@
 /**
  * usage_records table repo:
- * one row per token_usage (per-request bucket). Stores Token counts only, not cost —
- * cost is computed on the fly by usage-service against current pricing at query time,
- * so every aggregation is broken down by the `(provider, model_id)` pair and returns
- * raw Token sums (a model_id shared across providers is aggregated separately; never concatenated).
+ * one row per token_usage (per-request bucket), with the Request's cost fixed when the row is
+ * written (see usage-recorder) — no aggregation re-prices anything, it sums what was recorded.
+ * Every aggregation is still broken down by the `(provider, model_id)` pair (a model_id shared
+ * across providers is aggregated separately; never concatenated).
  */
 import type { UsageGroupBy } from "../../api/types.js";
 import { Component, Use } from "@lmliheng/penguin-core/kernel";
@@ -27,6 +27,8 @@ export interface UsageRecordInsert {
   total: number;
   /** Request outcome; defaults to completed (success, carries tokens). Failed requests are stored with 0 tokens + status, for success-rate calculations. */
   status?: string;
+  /** The Request's cost in USD, fixed now and never re-derived; null = the model had no price. */
+  cost: number | null;
 }
 
 /** Generic filter: date range + agent / model dimensions (cost center top bar switches by agent/model). */
@@ -53,26 +55,19 @@ export interface UsageModelSums {
   output: number;
   total: number;
   requests: number;
-  /**
-   * Which tier of a time-based price these Tokens ran in, decided from each record's own `ts`.
-   *
-   * A model with no schedule has one price and every row reports `true`. A scheduled one is
-   * summed into two rows per reference, so a week that straddles the boundary is priced at the
-   * rate each request actually ran at — rather than at whichever tier happens to be in force
-   * when someone opens the page, which would move a finished week's cost twice a day.
-   */
-  peak: boolean;
+  /** Sum of the recorded costs (USD); null when no row in the group has one. */
+  cost: number | null;
+  /** Rows in the group with no recorded cost — the model had no price — which makes `cost` a lower bound. */
+  uncosted: number;
 }
 
-/** A time-based price to split an aggregation by: which references carry it, and when it is peak. */
-export interface PeakTier {
-  refs: ReadonlyArray<{ provider: string; modelId: string }>;
-  /** Minutes east of UTC the schedule's local hours are written in. */
-  utcOffsetMinutes: number;
-  /** ISO weekday numbers the windows apply to; a day not listed is off-peak throughout. */
-  peakDays: readonly number[];
-  /** `[startHour, endHour)` in the schedule's own local hours. */
-  peakHours: readonly (readonly [number, number])[];
+/** One usage row still waiting for its cost (see UsageRepo.unsettledRows). */
+export interface UnsettledUsageRow {
+  id: number;
+  ts: string;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
 }
 
 /** Raw Token sums by group key x Model. */
@@ -131,57 +126,25 @@ const GROUP_COLUMNS: Record<UsageGroupBy, string> = {
   session: "session_id",
 };
 
-/**
- * A `1`/`0` expression naming the tier a row's own `ts` fell in, for the references that have
- * one; every other row is `1`, the single price it has.
- *
- * Written from the schedule rather than hardcoded so a second vendor's windows cost one more
- * entry and no more SQL. The hours compare as integers because a window boundary is a whole
- * hour in every schedule the catalog can express; a half-hour boundary would need the minutes.
- * Literals only — the numbers come from the catalog and the references are bound.
- */
-function peakExpr(tiers: readonly PeakTier[]): { sql: string; params: Record<string, string> } {
-  if (tiers.length === 0) return { sql: "1", params: {} };
-  const params: Record<string, string> = {};
-  const branches: string[] = [];
-  tiers.forEach((tier, ti) => {
-    if (tier.refs.length === 0 || tier.peakDays.length === 0) return;
-    const shift = `'${tier.utcOffsetMinutes >= 0 ? "+" : "-"}${Math.abs(tier.utcOffsetMinutes)} minutes'`;
-    const refs = tier.refs.map((ref, ri) => {
-      const p = `t${ti}p${ri}`;
-      const m = `t${ti}m${ri}`;
-      params[p] = ref.provider;
-      params[m] = ref.modelId;
-      return `(provider = :${p} AND model_id = :${m})`;
-    });
-    // `%w` is 0=Sunday; the schedule counts ISO days, so Sunday maps to 7.
-    const day = `CASE CAST(strftime('%w', ts, ${shift}) AS INTEGER) WHEN 0 THEN 7 ELSE CAST(strftime('%w', ts, ${shift}) AS INTEGER) END`;
-    const hour = `CAST(strftime('%H', ts, ${shift}) AS INTEGER)`;
-    const windows = tier.peakHours.map(([from, to]) => `(${hour} >= ${from} AND ${hour} < ${to})`);
-    branches.push(
-      `WHEN (${refs.join(" OR ")}) THEN (CASE WHEN ${day} IN (${tier.peakDays.join(", ")}) AND (${windows.join(" OR ")}) THEN 1 ELSE 0 END)`,
-    );
-  });
-  if (branches.length === 0) return { sql: "1", params: {} };
-  return { sql: `CASE ${branches.join(" ")} ELSE 1 END`, params };
-}
-
 const SUM_COLUMNS = `COALESCE(SUM(cache_read), 0) AS cache_read,
                 COALESCE(SUM(cache_write), 0) AS cache_write,
                 COALESCE(SUM(output), 0) AS output,
                 COALESCE(SUM(total), 0) AS total,
-                COUNT(*) AS requests`;
+                COUNT(*) AS requests,
+                SUM(cost) AS cost,
+                COUNT(*) - COUNT(cost) AS uncosted`;
 
 function toSums(r: Record<string, unknown>): UsageModelSums {
   return {
     provider: r.provider as string,
     modelId: r.model_id as string,
-    peak: r.peak !== 0,
     cacheRead: r.cache_read as number,
     cacheWrite: r.cache_write as number,
     output: r.output as number,
     total: r.total as number,
     requests: r.requests as number,
+    cost: r.cost === null || r.cost === undefined ? null : (r.cost as number),
+    uncosted: r.uncosted as number,
   };
 }
 
@@ -194,8 +157,8 @@ export class UsageRepo implements UsageStore {
       .prepare(
         `INSERT INTO usage_records
            (ts, date, project_id, agent_id, session_id, origin_session_id, provider, model_id,
-            cache_read, cache_write, output, total, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            cache_read, cache_write, output, total, status, cost, cost_settled)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       )
       .run(
         r.ts,
@@ -211,7 +174,58 @@ export class UsageRepo implements UsageStore {
         r.output,
         r.total,
         r.status ?? "completed",
+        r.cost,
       );
+  }
+
+  /**
+   * The paired references (per Project) that still have rows without a fixed cost: rows written
+   * before costs were fixed at record time, or by an older build a hot update rolled back to.
+   */
+  unsettledRefs(): Array<{ projectId: string; provider: string; modelId: string }> {
+    const rows = this.db
+      .prepare(
+        `SELECT DISTINCT project_id, provider, model_id FROM usage_records WHERE cost_settled = 0`,
+      )
+      .all();
+    return rows.map((r) => ({
+      projectId: r.project_id as string,
+      provider: r.provider as string,
+      modelId: r.model_id as string,
+    }));
+  }
+
+  /** One reference's rows still without a fixed cost, with what pricing them needs. */
+  unsettledRows(projectId: string, provider: string, modelId: string): UnsettledUsageRow[] {
+    const rows = this.db
+      .prepare(
+        `SELECT id, ts, cache_read, cache_write, output FROM usage_records
+         WHERE cost_settled = 0 AND project_id = ? AND provider = ? AND model_id = ?`,
+      )
+      .all(projectId, provider, modelId);
+    return rows.map((r) => ({
+      id: r.id as number,
+      ts: r.ts as string,
+      cacheRead: r.cache_read as number,
+      cacheWrite: r.cache_write as number,
+      output: r.output as number,
+    }));
+  }
+
+  /** Fixes the given rows' costs in one transaction; a row settled in the meantime is left alone. */
+  settle(rows: ReadonlyArray<{ id: number; cost: number | null }>): void {
+    if (rows.length === 0) return;
+    const stmt = this.db.prepare(
+      "UPDATE usage_records SET cost = ?, cost_settled = 1 WHERE id = ? AND cost_settled = 0",
+    );
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      for (const r of rows) stmt.run(r.cost, r.id);
+      this.db.exec("COMMIT");
+    } catch (err) {
+      this.db.exec("ROLLBACK");
+      throw err;
+    }
   }
 
   /** WHERE fragment (project + optional date/agent/model) plus named params. */
@@ -263,24 +277,16 @@ export class UsageRepo implements UsageStore {
     return { where: conds.join(" AND "), params };
   }
 
-  /**
-   * Sums (broken down by paired reference, and by price tier where one applies): date range +
-   * optional agent/model filter.
-   */
-  bucketByModel(
-    projectId: string,
-    f: UsageFilter = {},
-    tiers: readonly PeakTier[] = [],
-  ): UsageModelSums[] {
+  /** Sums (broken down by paired reference): date range + optional agent/model filter. */
+  bucketByModel(projectId: string, f: UsageFilter = {}): UsageModelSums[] {
     const { where, params } = this.conds(projectId, f);
-    const peak = peakExpr(tiers);
     const rows = this.db
       .prepare(
-        `SELECT provider, model_id, ${peak.sql} AS peak, ${SUM_COLUMNS}
+        `SELECT provider, model_id, ${SUM_COLUMNS}
          FROM usage_records WHERE ${where}
-         GROUP BY provider, model_id, peak`,
+         GROUP BY provider, model_id`,
       )
-      .all({ ...params, ...peak.params });
+      .all(params);
     return rows.map(toSums);
   }
 
@@ -289,18 +295,16 @@ export class UsageRepo implements UsageStore {
     projectId: string,
     groupBy: UsageGroupBy,
     f: UsageFilter = {},
-    tiers: readonly PeakTier[] = [],
   ): UsageGroupModelSums[] {
     const col = GROUP_COLUMNS[groupBy];
     const { where, params } = this.conds(projectId, f);
-    const peak = peakExpr(tiers);
     const rows = this.db
       .prepare(
-        `SELECT ${col} AS key, provider, model_id, ${peak.sql} AS peak, ${SUM_COLUMNS}
+        `SELECT ${col} AS key, provider, model_id, ${SUM_COLUMNS}
          FROM usage_records WHERE ${where}
-         GROUP BY ${col}, provider, model_id, peak`,
+         GROUP BY ${col}, provider, model_id`,
       )
-      .all({ ...params, ...peak.params });
+      .all(params);
     return rows.map((r) => ({ key: r.key as string, ...toSums(r) }));
   }
 
@@ -314,20 +318,18 @@ export class UsageRepo implements UsageStore {
     projectId: string,
     granularity: UsageSeriesGranularity,
     f: UsageFilter = {},
-    tiers: readonly PeakTier[] = [],
   ): UsageSeriesModelSums[] {
     const expr = BUCKET_EXPRS[granularity];
     const { where, params } = this.conds(projectId, f);
-    const peak = peakExpr(tiers);
     const rows = this.db
       .prepare(
-        `SELECT ${expr} AS key, provider, model_id, ${peak.sql} AS peak, ${SUM_COLUMNS},
+        `SELECT ${expr} AS key, provider, model_id, ${SUM_COLUMNS},
                 COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed,
                 COALESCE(SUM(CASE WHEN status <> 'aborted' THEN 1 ELSE 0 END), 0) AS denominator
          FROM usage_records WHERE ${where}
-         GROUP BY key, provider, model_id, peak`,
+         GROUP BY key, provider, model_id`,
       )
-      .all({ ...params, ...peak.params });
+      .all(params);
     return rows.map((r) => ({
       key: r.key as string,
       ...toSums(r),

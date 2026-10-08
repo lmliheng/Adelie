@@ -43,11 +43,11 @@ export class AdminService implements Admin {
    * avatar is a data URL of up to 128 KiB and this list is unpaged, so carrying one per account
    * would answer a table that only shows the nickname with megabytes.
    *
-   * The cost is summed per Project because pricing is per Project (each one carries its own
-   * configured rates), and it is read at the CURRENT rates for every record ever written — the
-   * one figure the cost center's "cumulative" card shows, extended over everything the account
-   * owns. `costUnpriced` travels with it: a Model this deployment has no price for makes the sum
-   * a lower bound, and a table that presented it as exact would overstate its own accuracy.
+   * The cost is summed per Project because a Project is what carries the price a Request was
+   * billed at, and every record contributes the cost fixed when it was written — the one figure
+   * the cost center's "cumulative" card shows, extended over everything the account owns.
+   * `costUnpriced` travels with it: a Model this deployment had no price for makes the sum a
+   * lower bound, and a table that presented it as exact would overstate its own accuracy.
    */
   async listUsers(): Promise<UserInfo[]> {
     const out: UserInfo[] = [];

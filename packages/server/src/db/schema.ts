@@ -110,8 +110,10 @@ CREATE TABLE IF NOT EXISTS usage_records (
   cache_write       INTEGER NOT NULL,
   output            INTEGER NOT NULL,
   total             INTEGER NOT NULL,         -- from token_usage.request (one row per Request)
-  status            TEXT NOT NULL DEFAULT 'completed'  -- request outcome: completed=success (with tokens); others=failure (0 tokens, for success rate)
-);                                            -- cost is not stored: computed at query time from current pricing
+  status            TEXT NOT NULL DEFAULT 'completed', -- request outcome: completed=success (with tokens); others=failure (0 tokens, for success rate)
+  cost              REAL,                     -- USD, fixed by the recorder when the row is written, from the price the Project stores at that instant; NULL = the model has no price (or the row is not settled yet)
+  cost_settled      INTEGER NOT NULL DEFAULT 0 -- 1 once cost is fixed; 0 = written by a build that did not price rows (settled once at startup)
+);                                            -- rebuildable from the Traces: the token counts still come from token_usage
 CREATE INDEX IF NOT EXISTS idx_usage_project_date ON usage_records(project_id, date);
 CREATE INDEX IF NOT EXISTS idx_usage_session_ts ON usage_records(session_id, ts);  -- (session_id) alone was idx_usage_session (dropped on open): ts makes the last_active_at backfill's MAX(ts) a covering index scan instead of a random row lookup per usage record
 CREATE TABLE IF NOT EXISTS error_records (     -- server-side error capture (the Costs page's "Errors" tab)
