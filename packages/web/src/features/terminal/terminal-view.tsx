@@ -22,6 +22,7 @@ import { LinkClickTracker, openTerminalLink, positionFromPointer } from "./termi
 import { writeClipboard } from "../../lib/clipboard";
 import { TerminalKeyBar, type TerminalControl } from "./terminal-keybar";
 import { NO_MODIFIERS, applyModifiers, hasModifier, type TerminalModifiers } from "./terminal-keys";
+import { selectionSpan, wordAt, type BufferCell, type WordSpan } from "./terminal-selection";
 import { TouchScroll } from "./terminal-touch";
 import { useCoarsePointer } from "../../lib/use-coarse-pointer";
 import { useTheme } from "../../state/theme";
@@ -254,6 +255,25 @@ export function TerminalView({
   const modifiersRef = useRef(modifiers);
   modifiersRef.current = modifiers;
   const [focused, setFocused] = useState(false);
+  // Whether a selection is waiting to be copied. Only the touch key bar reads it: on a
+  // phone the copy has no key of its own, so the bar's copy cap appears exactly while
+  // there is something to copy.
+  const [hasSelection, setHasSelection] = useState(false);
+  // The touch selection mode, armed by the bar's select cap. A mode rather than a gesture
+  // because the obvious gesture belongs to the browser — see the touch block in the effect.
+  const [selectMode, setSelectMode] = useState(false);
+  const selectModeRef = useRef(selectMode);
+  selectModeRef.current = selectMode;
+  /**
+   * Turning the mode off drops the selection with it — the highlight is what the mode is
+   * for, and leaving it behind would hide the caps that came with it.
+   */
+  const toggleSelectMode = (): void => {
+    const next = !selectModeRef.current;
+    selectModeRef.current = next; // before the re-render: a touch may land in between
+    setSelectMode(next);
+    if (!next) termRef.current?.clearSelection();
+  };
   useEffect(() => {
     if (termRef.current) termRef.current.options.theme = terminalTheme(terminalDark);
   }, [terminalDark]);
@@ -383,12 +403,22 @@ export function TerminalView({
         );
       }
 
-      /** Copies the active selection and clears it — the visual ack that the copy happened. */
+      /**
+       * Copies the active selection and clears it — the visual ack that the copy happened.
+       *
+       * Cleared only once the write landed, though. A failed write that also took the
+       * selection away leaves the reader worse off than before the keypress, and it is the
+       * one case the browser could still have rescued: xterm serves the browser's own copy
+       * event out of this same selection, so keeping it is what lets the native path fire
+       * after ours declined. (jsdom's `copy-to-clipboard` refuses; a plain-HTTP origin has
+       * no async clipboard API. Both are real on a LAN address.)
+       */
       const copySelection = (): void => {
         const selection = term.getSelection();
         if (!selection) return;
-        void writeClipboard(selection);
-        term.clearSelection();
+        void writeClipboard(selection).then((copied) => {
+          if (copied && !disposed) term.clearSelection();
+        });
       };
       /** Async-clipboard paste (the paths where no native paste event exists). */
       const pasteFromClipboard = (): void => {
@@ -553,6 +583,147 @@ export function TerminalView({
       container.addEventListener("touchend", () => touchScroll.end(), { signal, passive: true });
       container.addEventListener("touchcancel", () => touchScroll.end(), { signal, passive: true });
 
+      /**
+       * Selecting with a finger, in the mode the key bar's select cap turns on.
+       *
+       * The selection cannot hang off the gesture a phone reaches for first: a press that
+       * rests belongs to the browser, which takes it for its own and stops delivering
+       * touches to the page (measured in Chromium: after a resting press, no touchmove and
+       * no touchend — only pointer events). So it gets an explicit mode instead, one no
+       * gesture recognizer competes for: while it is on, a touch down takes the word under
+       * the finger and the finger's travel extends it. While it is off, every touch here
+       * behaves exactly as it did before — the scroll stays a scroll.
+       */
+      let pressWord: WordSpan | null = null;
+      let dragging = false;
+      /** Where an armed gesture began, until the selection itself is made. */
+      let touchStartPoint: { x: number; y: number } | null = null;
+      /** The buffer cell under a client point; a drag may leave the grid, so it is clamped. */
+      const cellAt = (clientX: number, clientY: number): BufferCell | null => {
+        const screen = term.element?.querySelector(".xterm-screen");
+        if (!screen) return null;
+        const box = screen.getBoundingClientRect();
+        if (box.width <= 0 || box.height <= 0) return null;
+        const pos = positionFromPointer(
+          {
+            x: Math.min(Math.max(clientX, box.left), box.left + box.width - 1),
+            y: Math.min(Math.max(clientY, box.top), box.top + box.height - 1),
+          },
+          { left: box.left, top: box.top, width: box.width, height: box.height },
+          { cols: term.cols, rows: term.rows, viewportY: term.buffer.active.viewportY },
+        );
+        return pos === null ? null : { col: pos.x - 1, row: pos.y - 1 };
+      };
+      /** A touch landed here: take the word it landed on. */
+      const beginSelection = (clientX: number, clientY: number): void => {
+        const cell = cellAt(clientX, clientY);
+        const line = cell === null ? undefined : term.buffer.active.getLine(cell.row);
+        if (cell === null || line === undefined) return;
+        const word = wordAt(line.translateToString(true), cell.col);
+        if (word === null) return; // blank line: nothing to take, and nothing to extend from
+        pressWord = { ...word, row: cell.row };
+        term.select(word.start, cell.row, word.end - word.start);
+      };
+      /** The finger moved with a selection live: extend it from the word to the finger. */
+      const extendSelection = (clientX: number, clientY: number): void => {
+        if (pressWord === null) return;
+        const cell = cellAt(clientX, clientY);
+        if (cell === null) return;
+        const span = selectionSpan(pressWord, cell, term.cols);
+        if (span !== null) term.select(span.col, span.row, span.length);
+      };
+      container.addEventListener(
+        "touchstart",
+        (event) => {
+          pressWord = null;
+          dragging = false;
+          touchStartPoint = null;
+          const touch = event.touches[0];
+          if (!selectModeRef.current || event.touches.length !== 1 || touch === undefined) return;
+          dragging = true;
+          // Deliberately nothing else. Making the selection here stops Chromium from
+          // delivering the rest of the gesture at all — measured: a `term.select()` inside
+          // the touchstart handler is followed by no touchmove and no touchend, only pointer
+          // events, so the drag the mode exists for would never arrive. It is made on the
+          // first movement instead, and at the end when there was none (a tap).
+          touchStartPoint = { x: touch.clientX, y: touch.clientY };
+        },
+        { signal, capture: true, passive: true },
+      );
+      container.addEventListener(
+        "touchmove",
+        (event) => {
+          if (!dragging) return;
+          const touch = event.touches[0];
+          if (touch === undefined) return;
+          // Capture phase, and both calls matter: xterm's viewport would otherwise scroll
+          // the text out from under the finger that is selecting it.
+          event.preventDefault();
+          event.stopPropagation();
+          // The word the gesture took is the one under where it began, or under the cell it
+          // has reached when that beginning was blank padding and held nothing to take.
+          if (pressWord === null) {
+            const from = touchStartPoint ?? { x: touch.clientX, y: touch.clientY };
+            touchStartPoint = null;
+            beginSelection(from.x, from.y);
+          }
+          extendSelection(touch.clientX, touch.clientY);
+        },
+        { signal, capture: true, passive: false },
+      );
+      const endTouch = (event: TouchEvent): void => {
+        if (!dragging) return;
+        dragging = false;
+        const start = touchStartPoint;
+        touchStartPoint = null;
+        if (event.touches.length > 0) {
+          // A second finger is not the end of the gesture.
+          pressWord = null;
+          return;
+        }
+        // No movement at all: this was a tap, and the tap itself is what takes the word.
+        if (pressWord === null && start !== null) beginSelection(start.x, start.y);
+        const selected = pressWord !== null;
+        pressWord = null;
+        if (!selected) {
+          term.clearSelection(); // a touch that took nothing takes the selection away too
+          return;
+        }
+        selectionMade = true; // see swallowTouchMouse
+        event.preventDefault();
+      };
+      container.addEventListener("touchend", endTouch, { signal, capture: true, passive: false });
+      container.addEventListener("touchcancel", endTouch, { signal, capture: true, passive: true });
+
+      /**
+       * Chrome renders a touch as mouse events as well (`mousedown`, then `click`), and xterm
+       * reads a mousedown on its surface as "begin a new selection" — it would replace, or
+       * drop, the one the finger just made. So a gesture that made a selection swallows them.
+       * Only those: `sourceCapabilities.firesTouchEvents` is the browser saying the event came
+       * from a finger (the DOM lib does not type the field, hence the widening below), and a
+       * real mouse never sets it, so a pointer on a touchscreen laptop is untouched. The next
+       * press disarms the guard.
+       */
+      let selectionMade = false;
+      const swallowTouchMouse = (event: MouseEvent): void => {
+        const fromTouch =
+          (event as MouseEvent & { sourceCapabilities?: { firesTouchEvents?: boolean } })
+            .sourceCapabilities?.firesTouchEvents === true;
+        if (!selectionMade || !fromTouch) return;
+        event.preventDefault();
+        event.stopPropagation();
+      };
+      container.addEventListener("mousedown", swallowTouchMouse, { signal, capture: true });
+      container.addEventListener("mouseup", swallowTouchMouse, { signal, capture: true });
+      container.addEventListener("click", swallowTouchMouse, { signal, capture: true });
+      container.addEventListener("pointerdown", () => (selectionMade = false), {
+        signal,
+        capture: true,
+      });
+
+      // What the key bar's copy cap reads, and what makes it show up at all.
+      term.onSelectionChange(() => setHasSelection(term.hasSelection()));
+
       // Click-to-focus anywhere in the view, padding included — finishing a selection drag
       // also lands here, which is fine: focusing xterm's textarea keeps the selection.
       container.addEventListener("mouseup", () => term.focus(), { signal });
@@ -656,6 +827,7 @@ export function TerminalView({
       // dispose, so a bar tap between two attaches is a no-op rather than a throw.
       control.current = {
         send,
+        copy: copySelection,
         paste: pasteFromClipboard,
         focus: () => term.focus(),
         blur: () => term.blur(),
@@ -693,6 +865,9 @@ export function TerminalView({
           modifiers={modifiers}
           onModifiers={setModifiers}
           focused={focused}
+          hasSelection={hasSelection}
+          selectMode={selectMode}
+          onToggleSelect={toggleSelectMode}
         />
       )}
     </div>

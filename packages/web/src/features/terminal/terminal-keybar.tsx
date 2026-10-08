@@ -15,8 +15,12 @@
  * - **Ctrl and Alt are sticky, one shot.** A phone cannot hold a modifier down, so a tap
  *   arms it and the next character typed on the soft keyboard consumes it (the composition
  *   happens on the data path in terminal-view.tsx). Tapping again disarms.
+ * - **Copy appears with a selection.** The select cap arms a mode in which a finger drags a
+ *   selection out of the terminal (terminal-view.tsx); a phone has no Ctrl+C to copy it with,
+ *   so the copy cap shows up for exactly as long as there is something to copy, and costs
+ *   the other caps no width the rest of the time.
  */
-import { GlyphIcon, ICON_SIZE } from "@lmliheng/penguin-ui";
+import { GlyphIcon, ICON_SIZE, ICONS } from "@lmliheng/penguin-ui";
 import { useTerminalChrome } from "./terminal-appearance";
 import { S } from "../../lib/strings";
 import {
@@ -40,6 +44,8 @@ const KEYBOARD_SHOW_ICON =
 export interface TerminalControl {
   /** Writes into the shell's input stream — the bar's keys never reach xterm's key handler. */
   send(data: string): void;
+  /** Copies the current selection (the copy cap's whole job; the surface owns the selection). */
+  copy(): void;
   paste(): void;
   focus(): void;
   blur(): void;
@@ -55,9 +61,22 @@ export interface TerminalKeyBarProps {
   onModifiers: (mods: TerminalModifiers) => void;
   /** Whether xterm currently holds focus — decides which way the keyboard cap points. */
   focused: boolean;
+  /** Whether the terminal has a selection — the one thing the copy cap needs to exist. */
+  hasSelection: boolean;
+  /** Whether the select cap's mode is armed (a finger then drags a selection out). */
+  selectMode: boolean;
+  onToggleSelect: () => void;
 }
 
-export function TerminalKeyBar({ control, modifiers, onModifiers, focused }: TerminalKeyBarProps) {
+export function TerminalKeyBar({
+  control,
+  modifiers,
+  onModifiers,
+  focused,
+  hasSelection,
+  selectMode,
+  onToggleSelect,
+}: TerminalKeyBarProps) {
   const chrome = useTerminalChrome();
   // The caps SHARE the width the way a keyboard row does, rather than each taking what its
   // label needs: the whole set has to be on screen at once, because a cap that must be
@@ -148,6 +167,20 @@ export function TerminalKeyBar({ control, modifiers, onModifiers, focused }: Ter
         children: "^C",
       })}
       {cap({
+        testId: "terminal-key-select",
+        label: S.terminal.touchKeys.select,
+        pressed: selectMode,
+        onPress: onToggleSelect,
+        children: <GlyphIcon d={ICONS.textCursor} size={ICON_SIZE.rowLead} />,
+      })}
+      {hasSelection &&
+        cap({
+          testId: "terminal-key-copy",
+          label: S.terminal.touchKeys.copy,
+          onPress: () => control.current?.copy(),
+          children: <GlyphIcon d={ICONS.copy} size={ICON_SIZE.rowLead} />,
+        })}
+      {cap({
         testId: "terminal-key-paste",
         label: S.terminal.touchKeys.paste,
         onPress: () => control.current?.paste(),
@@ -164,7 +197,7 @@ export function TerminalKeyBar({ control, modifiers, onModifiers, focused }: Ter
           />
         ),
       })}
-      {/* Last on purpose, away from its sibling Ctrl: eleven caps are a hair wider than a
+      {/* Last on purpose, away from its sibling Ctrl: the caps are a hair wider than a
           phone, and this is the one to leave under the fold. Alt on a phone is Alt+. and
           word motion — worth a swipe, not worth a slot ahead of interrupting a command. */}
       {cap({

@@ -225,6 +225,11 @@ export const ICONS = {
    * returns with an arrow. The turn is the whole mark, so it keeps the full bulge.
    */
   wrapText: "M4 6h16M4 12h12a3 3 0 1 1 0 6h-3m2-2-2 2 2 2M4 18h5",
+  /**
+   * A text cursor: the I-beam a text field shows over the character it would insert at, with
+   * the serifs that tell it apart from a plain bar. The mark for selecting text by hand.
+   */
+  textCursor: "M9 5h6M12 5v14M9 19h6",
 
   // --- Messages and actions -----------------------------------------------------------------
 

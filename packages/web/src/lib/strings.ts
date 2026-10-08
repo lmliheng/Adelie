@@ -246,6 +246,10 @@ export const zh = {
       left: "左方向键",
       right: "右方向键",
       interrupt: "中断（Ctrl+C）",
+      /** Arms the touch selection mode; a finger then drags a selection out. */
+      select: "选择文本（打开后在终端上拖动）",
+      /** Shown only while the terminal has a selection. */
+      copy: "复制选区",
       paste: "粘贴",
       hideKeyboard: "收起键盘",
       showKeyboard: "调出键盘",

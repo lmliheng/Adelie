@@ -4,6 +4,10 @@
  * reach the real pty — an arrow that types `[A` into the prompt, or a Ctrl that never
  * composes, looks like a working button and is not one — and that none of it appears where a
  * physical keyboard already exists.
+ *
+ * The same bar is where a phone copies from: xterm has no touch selection, so a press that
+ * rests still makes one (terminal-selection.ts, wired in terminal-view.tsx) and the bar's
+ * copy cap takes it. Both halves are checked against the clipboard the browser really holds.
  */
 import { test, expect } from "@playwright/test";
 import { provisionAndLogin } from "./auth.mjs";
@@ -68,6 +72,55 @@ async function dragFinger(page, from, to) {
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
   await cdp.detach();
+}
+
+/** One finger down at `point` and up again without travelling: a tap. */
+async function touchTap(page, point) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: point.x, y: point.y }],
+  });
+  await page.waitForTimeout(40);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
+/** One finger from `from` to `to`, in steps, then up. */
+async function touchDrag(page, from, to) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", {
+    type: "touchStart",
+    touchPoints: [{ x: from.x, y: from.y }],
+  });
+  const steps = 6;
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: [
+        { x: from.x + ((to.x - from.x) * i) / steps, y: from.y + ((to.y - from.y) * i) / steps },
+      ],
+    });
+  }
+  await page.waitForTimeout(60);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
+/** A point inside the screen, on the buffer row whose text carries `marker`. */
+async function pointOnRow(page, marker, fraction) {
+  const point = await page.evaluate(
+    ({ marker, fraction }) => {
+      const rows = [...document.querySelectorAll(".xterm-rows > div")];
+      const row = rows.filter((r) => r.textContent?.includes(marker)).pop();
+      if (!row) return null;
+      const box = row.getBoundingClientRect();
+      return { x: box.x + box.width * fraction, y: box.y + box.height / 2 };
+    },
+    { marker, fraction },
+  );
+  expect(point, `no row carrying ${marker}`).not.toBeNull();
+  return point;
 }
 
 test.describe("touch", () => {
@@ -159,6 +212,94 @@ test.describe("touch", () => {
     // And back down: earlier content, button 64.
     await dragFinger(page, 0.3, 0.7);
     await expect.poll(() => screenText(page), { timeout: 15000 }).toMatch(/\[<64;\d+;\d+M/);
+  });
+});
+
+test.describe("touch selection", () => {
+  test.use({ viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true });
+
+  const A_ROW = "A".repeat(20);
+  const B_ROW = "B".repeat(20);
+
+  /**
+   * Two dense rows of output: a row of one unbroken run is the shape where "which word did
+   * this touch take" has one answer, so the clipboard can be asserted to the character
+   * instead of to a substring that happens to be somewhere on the line.
+   */
+  async function printTwoRows(page) {
+    await type(page, String.raw`printf '%s\n' ${A_ROW} ${B_ROW}`);
+    await expect.poll(() => screenText(page), { timeout: 15000 }).toContain(B_ROW);
+  }
+
+  const clipboard = (page) => page.evaluate(() => navigator.clipboard.readText());
+
+  test("the select cap arms a mode, and the copy cap copies what it took", async ({ page }) => {
+    await provisionAndLogin(page.request, U, P);
+    await killAllTerminals(page.request);
+    await page.goto(`${BASE}/terminal`);
+    await waitForShell(page, "TOUCH_COPY_1");
+    await printTwoRows(page);
+
+    const selectCap = page.getByTestId("terminal-key-select");
+    const copyCap = page.getByTestId("terminal-key-copy");
+    await expect(selectCap).toHaveAttribute("aria-pressed", "false");
+
+    // Pulling a finger across the output with the mode off is the scroll it has always been,
+    // and leaves nothing to copy — the drags in the test above are that behaviour's own.
+    await touchDrag(page, await pointOnRow(page, A_ROW, 0.2), await pointOnRow(page, B_ROW, 0.2));
+    await expect(copyCap).toHaveCount(0);
+
+    await selectCap.click();
+    await expect(selectCap).toHaveAttribute("aria-pressed", "true");
+    await touchTap(page, await pointOnRow(page, A_ROW, 0.5));
+
+    // One unbroken run is one word, so the touch takes the row and the cap offers it.
+    await expect(copyCap).toBeVisible();
+    await copyCap.click();
+    expect(await clipboard(page)).toBe(A_ROW);
+    // The cap lives exactly as long as the selection does, and the copy cleared it — which
+    // only a write that actually landed does.
+    await expect(copyCap).toHaveCount(0);
+
+    // The mode is still armed, and leaving it is its own tap.
+    await expect(selectCap).toHaveAttribute("aria-pressed", "true");
+    await selectCap.click();
+    await expect(selectCap).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("a finger that travels after the touch extends the selection", async ({ page }) => {
+    await provisionAndLogin(page.request, U, P);
+    await killAllTerminals(page.request);
+    await page.goto(`${BASE}/terminal`);
+    await waitForShell(page, "TOUCH_COPY_2");
+    await printTwoRows(page);
+
+    await page.getByTestId("terminal-key-select").click();
+    // Down through the second row: the selection runs from the word the touch took to the
+    // cell the finger stopped on.
+    await touchDrag(page, await pointOnRow(page, A_ROW, 0.2), await pointOnRow(page, B_ROW, 0.2));
+
+    const copyCap = page.getByTestId("terminal-key-copy");
+    await expect(copyCap).toBeVisible();
+    await copyCap.click();
+    expect(await clipboard(page)).toMatch(new RegExp(`^${A_ROW}\nB{1,20}$`));
+  });
+
+  test("leaving the mode drops the selection", async ({ page }) => {
+    await provisionAndLogin(page.request, U, P);
+    await killAllTerminals(page.request);
+    await page.goto(`${BASE}/terminal`);
+    await waitForShell(page, "TOUCH_COPY_3");
+    await printTwoRows(page);
+
+    const selectCap = page.getByTestId("terminal-key-select");
+    const copyCap = page.getByTestId("terminal-key-copy");
+    await selectCap.click();
+    await touchTap(page, await pointOnRow(page, A_ROW, 0.5));
+    await expect(copyCap).toBeVisible();
+
+    await selectCap.click();
+    await expect(copyCap).toHaveCount(0);
   });
 });
 

@@ -222,6 +222,10 @@ export const en: Strings = {
       left: "Arrow left",
       right: "Arrow right",
       interrupt: "Interrupt (Ctrl+C)",
+      /** Arms the touch selection mode; a finger then drags a selection out. */
+      select: "Select text (then drag on the terminal)",
+      /** Shown only while the terminal has a selection. */
+      copy: "Copy selection",
       paste: "Paste",
       hideKeyboard: "Dismiss the keyboard",
       showKeyboard: "Show the keyboard",
