@@ -370,6 +370,21 @@
       Project 自己的配置 —— 那一步等用户拍板，理由写在那一轮的「有意未采用」一节与 changelog 里。
 - [x] **5.7 一个功能提交带一条 `changelog/unreleased/<日期>-<slug>.md`（中英双份）** ——本轮照做；
       此前我们自己的改动基本只写本台账，发版说明全靠临时凑。
+- [x] **5.8 随包插件的依赖按锁定版本安装、许可证随包发布**（上游 `d56d9ced` `#979`，**2026-10-10 第三十轮
+      落地**，提交见该节）：`scripts/build-plugins.mjs` 装进 builtin prefix 的第三方包改成 `pnpm-lock.yaml`
+      解析出的版本 —— 新增 `scripts/lib/locked-prefix.mjs`（读原生依赖闭包、写进 prefix 的 npm `overrides`、
+      装完按版本与 tarball integrity 对账，不一致就让构建失败）与 `scripts/lib/third-party-notices.mjs`
+      （在 prefix 根写出 `THIRD-PARTY-NOTICES.md`，每个第三方包一节，缺许可证文本即失败）。**为什么是这一条**：
+      它正是第二十九轮末尾记下的那件事（上游戏列顶端「DSH 自带依赖」那一撮里与随包产物直接相关的一笔），
+      而且完全落在 `scripts/` 与两个新测试里 —— 不碰 desktop、不碰界面、不改包名、不改流水线、不发 npm，
+      因而不属 4.x。细节与实测见「第三十轮」一节。
+- [ ] **5.9 评估与优化的会话就是普通会话**（上游 `8a774995` `#969`）：评估中心只留「智能体自己发起的
+      测试会话」，评估与优化对话回到普通会话列表里。**本仓可行性核过**：`git apply -3 --check` 只有
+      `packages/web/src/features/chat/draft-cache.ts` 一处冲突，其余 20 个文件干净 —— 是一轮的量。
+- [ ] **5.10 A2UI 组件（天气 / 时钟 / 倒计时 / 指标）与块重排**（上游 `d695c8c9` `#983`）：**本仓还差前置** ——
+      它要改的 `packages/core/src/a2ui/{catalog,check,fallback,index,rubric,types}.ts` 与
+      `packages/cli/src/a2ui-stream.ts` 本树都没有（那是上游 `bedb1cb8` `#968`「A2UI 块」的产物），
+      要落它得先把 `#968` 那一整套搬过来，属两轮的量。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -929,6 +944,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-09 | 5.4（`#975` 的前置） | **停靠面可以拉到最大，每个停靠面板都是一条注册表定义**（上游 `1eb13325` `#961` 移植，照改动落、不是合分支；24 文件 / +2125 −554）：右侧与底部停靠栏都能经头部的**全屏**按钮、或把边界拖过最大值进入全屏 —— 停在对话工具栏之下，右侧停靠栏盖住自己那一行（开着的底部停靠栏仍显示在它下方），底部停靠栏长到工具栏之下；退出用同一枚按钮（原位变**退出全屏**）或把边界拖回。进出随主题的布局动效（`[data-layout-motion]` 因此也涵盖 `top`/`left`），减弱动效时即时；面板从第一帧起按终点尺寸排版，页面不重新排版、面板不重新挂载，退出后滚动位置 / 文件预览 / 编辑器草稿 / 终端画面原样还在。全屏**不记住**：切换对话、隐藏停靠栏、关掉最后一个标签、被它盖住的停靠栏要显示内容时都会结束；底部停靠栏原先仅触屏可用的「放大到整屏」按钮由它取代。**面板改成注册表**：每种面板是 `features/dock/panel-registry.ts` 里的一条 `DockPanelDefinition`（id、名称、图标、排序、是否提供 + 它的变更订阅、主体组件），`PANEL_KINDS` 与各处 per-kind 分支消失，标签条 / **添加面板** / 空停靠栏的选单 / 快捷方式悬浮球都读它，主体经新的 `useDockPanel()` 取本停靠栏的能力；上一轮那两处内联视图（工作区文件、记忆）因此搬进新的 `builtin-dock-panels.tsx`（`chat-page.tsx` 里两个调用点与两条 import 一起删掉），另有新的 `chat-dock-context.tsx` 与 `panel-context.tsx`；ui 新增 `DOCK_FULLSCREEN_Z` 与 `data-fullscreen` 相位。**为什么是这一条**：它是 5.4 里 `9b170c61`（#975）与 `234183f5`（#978）的前置 —— 后两条要改的 `builtin-dock-panels.tsx` / `chat-dock-context.tsx` 由它引入，本树此前没有（第十九轮记过）；选它之前 `git apply -3 --check` 实测**一处错误都没有**。**本地化**：三处冲突（`browser-layer.tsx` / `panel-meta.tsx` / `chat-page.tsx`）都在 import 区 —— 包 scope 与本仓两处本地新增，逐条解；新文件里 4 处 `@prismshadow/` → `@lmliheng/`；changelog 按本仓惯例改名到本轮日期、去掉上游 PR 链接、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2078 文件，+5）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2976**/2 跳过（**242** 文件，+13 条 = 新的 `panel-registry.test.ts` 与扩写的 `dock-state.test.ts`）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 ui + web 后，一次性数据根 `/root/adelie-fork-data/r27-dock`、7494、真浏览器）：登录 + 建会话 → 点**右侧栏** → 停靠栏打开并列出注册表里的七个面板（智能体面板 / 终端 / 文件浏览 / 记忆 / 轨迹观测 / 远程控制 / 定时任务）→ 打开**文件浏览** → 点**全屏**：`[data-fullscreen]` 变 `full`、按钮变**退出全屏**、对话列被盖住而工具栏与左侧栏保留 → 点**退出全屏**：回到 `null`、布局复原 → 再开**下侧栏**同样列出选单；**console 0 error / 0 pageerror / 页面无一条 4xx**（仅三条 `net::ERR_ABORTED`，是关浏览器时中断的长连接），截图 6 张在 scratchpad · 本轮没动端口，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | `e7a0a5a7` |
 | 2026-10-09 | 5.4（主块） | **权限菜单给出具名沙箱预设**（上游 `9b170c61` `#975` 移植，照改动落、不是合分支；67 文件 / +6107 −919）：权限按钮不再列三段十档，而是列具名预设（完全访问 / 每次询问 / 仅工作区可写 / 只读，管理员另有「更多…」）；沙盒卡片有**启用**开关与一张**预设表**（名称 / 文件 / 网络 / 询问模式 / 操作，行内可拖动排序、图钉决定是否进菜单、「…」菜单可设为默认 / 删除，「添加预设」新增行）。服务端：`PluginConfigField` 多 `table` 类型（固定行 + 类型化列、只存与默认不同的单元格、锁定单元格忽略、可声明 `rowChoice` / `pin` / `columnGroup` / `extensible`），字段多 `advanced` / `hint`，分组可声明布尔 `switch`；沙盒分组改成 `enabled` + `presets` + `defaultPreset`（六个内置预设），自己的 `mode` / `network` 去掉；新 `sandbox/settings-policy.ts`（新会话起点 + 旧文档向后兼容）与 `sandbox/settings-status.ts`（后端状态与「本系统默认该装哪个包」）；会话视图多 `presets` / `advanced` / `switchOn`。Web 的设置页插件配置面整片重写成表，UI 的 `Dropdown` / `Select` / `ConfirmModal` 跟上。**本树缺的三处前置**（typecheck 逼出来的）已补：`ICONS.star`、`S.settings.pluginAction{Title,Run,Confirm}` 中英各三条、以及上游那笔自带的「执行插件操作前先问一句」（补丁父提交里已有、补丁要改到那几行，故一并落下）。**本地化**：`@prismshadow/penguin-*` → `@lmliheng/penguin-*`；沙盒后端推荐包名 `@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）；四份上游 changelog 改名到本轮日期、去 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 547 类型）· `pnpm lint` **0 警告 0 错误**（2101 文件）· `pnpm format:check` 干净（首跑一条，`prettier --write` 后复检通过）· 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（64 文件）· ui **1008**（127）· cli **506**（34）· web **3019**/2 跳过（**247** 文件，+43 = 这笔带来的六个新用例文件与扩写）· server **187 文件 / 2755 通过 / 4 跳过**（+65）—— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 core/server/web 产物 —— server 的 tsup 默认堆会 OOM，`NODE_OPTIONS=--max-old-space-size=4096` 单跑即过；一次性数据根 `/root/adelie-fork-data/r28-presets`、7496、真浏览器）：全新安装开关默认关，权限菜单只有四档审批方式 + 「更多…」→ 「更多…」按设计打开设置对话框的沙盒卡片（只有标题、一条「没有可用后端」提示与开关）→ 点开关弹出**安装后端**对话框，点名的包是 `@lmliheng/penguin-plugin-sandbox-bwrap`（本地化在界面上可见）→ 「暂不」后卡片展开预设表与「添加预设」「高级选项」→ **保存**后刷新重开菜单：变成 **完全访问 / 每次询问 / 仅工作区可写 / 只读**，后两者标「未安装」置灰（本机没有沙盒后端，是设计的诚实标注）→ **console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`），截图 6 张在 scratchpad · 没用到的端口一律没碰，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 · **CI 两跑**：`37922789257` 红在两个 macOS 作业的**服务端声明构建**（OOM，不是测试）—— 与上游同一提交的红点相同，已按仓库既有的 `run-with-env.mjs` 写法给 tsup 一个 4096MB 的默认堆（`a8347184`），详见本轮「CI」一节 | `2e9d53b6` `a8347184` |
 | 2026-10-09 | 5.4（最后一块） | **Linux 沙盒在默认的 Ubuntu 上也能工作 —— 走 Landlock**（上游 `234183f5` `#978` 移植，照改动落、不是合分支；65 文件 / +1523 −258）：路由改成「**实现维度最多的后端负责**」（`SandboxService.pick()`，注册顺序只用于打破平局），bubblewrap 加载得到的地方每条策略仍由它负责、DSH 适配器只在它是仅剩的那一个时服务；新增 **`closed-temp`** 维度（bubblewrap / Seatbelt / WSL 声明，DSH 适配器不声明 —— 它每一级都会在仅工作区可写下放开一个临时目录），关闭「临时目录可写」的策略绝不路由给没有它的后端；core 插件契约多出（都可选）`SandboxProvider.mechanism`（谁在实施，如 `bubblewrap` / `Landlock`）、`SandboxProvider.limits`（本机留下的缺口，中英）与 `ConfinedSpawn.runnerLines`（后端自报的提示行从命令与钩子脚本 stderr 的开头去掉，如老 ABI 上的 `landlock-run: partial enforcement`）；DSH 适配器**在加载时选定并用 `mechanism` 报出它那一级**，两级都不通的主机因此带着 DSH 的原因加载失败，而不是挂上一个拒绝每条命令的后端；沙盒卡片的后端字段 `backend.recommended` 由**单个字符串改成列表**（Linux 两个包），打开开关时按顺序装整张列表，「Backends:」一行改成 `Enforced here: … / Not enforced here: …` 加一个折叠的 **More info**（列出在用后端的缺口、每个已安装但未启用的后端及其原因），没有能隔离网络的后端时「无网络」与「仅本机」一样置灰；四个沙盒插件包升 **0.2.3**（不升的话已装有 0.2.2 的机器会继续跑旧内容、拿不到 `closed-temp` 声明）；Web 那边为「旧服务端只报一个字符串」留了一条向后兼容（`recommendedOf`，带 `TODO(recommended-string-compat)`）。**本地化**：`@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）、`@prismshadow/penguin-*` → `@lmliheng/penguin-*`、`~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（保留「旧名仍读」的说明）；四份上游 changelog 改名到本轮日期、去掉 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 549 类型；core 要**先重建** server 才看得到新契约）· `pnpm lint` **0 警告 0 错误**（2108 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **506**（34）· web **3032**/2 跳过（**248** 文件）· server **189 文件 / 2766 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62**、四个沙箱插件包（bwrap 29 · dsh 21+1 跳过 · seatbelt 17+5 跳过 · wsl 25）全绿 · **界面真跑**（重建 core/server/web 产物 + 一次性数据根 `/root/adelie-fork-data/r29-landlock`、7497、真浏览器）：全新安装点开沙盒卡片的开关后弹出的**安装提示点名两个包、顺序与列表一致**（`@lmliheng/penguin-plugin-sandbox-bwrap 和 @lmliheng/penguin-plugin-sandbox-dsh`，文案写明「两者都可用时，使用封禁范围更大的那个」），卡片与预设表排版正常，**console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`）· **真跑一次 DSH 适配器的加载与约束**：本机（内核 6.1）加载成功、`mechanism` = `Landlock (partial)`，受限命令**在工作区内写成功、在工作区外（`$HOME`）被拒**（`Permission denied`，文件不存在）· 3003 / 3004 / 4000 / 7364 / 7369 与 `/root/penguin-harness` / `/root/Adelie` / `legacy/main` 全程没碰 | `ea92b3ec` |
+| 2026-10-10 | 5.8 | **随包插件的依赖按锁定版本安装、许可证随包发布**（上游 `d56d9ced` `#979` 移植，照改动落、不是合分支；9 文件 / +554 −33）：`scripts/build-plugins.mjs` 装进 builtin prefix 的第三方包改成 `pnpm-lock.yaml` 解析出的版本 —— 新增 `scripts/lib/locked-prefix.mjs`（读原生依赖闭包、写进 prefix 的 npm `overrides`、装完按版本与 tarball integrity 对账，不一致即失败）与 `scripts/lib/third-party-notices.mjs`（在 prefix 根写出 `THIRD-PARTY-NOTICES.md`，每个第三方包一节，缺许可证文本即失败）；闭包计入内容缓存键，`PACK_FORMAT` 13 → 14。**为什么是这一条**：第二十九轮末尾记下的那件事里与随包产物直接相关的一笔，且不属 4.x（不改包名、不改流水线、不发 npm） | 六包 `typecheck` `EXIT=0`（`ifaces.json unchanged` 187 接口 / 549 类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **506**（34）· web **3032**/2 跳过（248）· server **191 文件 / 2775 通过 / 4 跳过**（+9 即本笔新用例）—— **0 失败** · **真跑一次构建**：`node scripts/build-plugins.mjs --out <scratchpad>/prefix` 退出 0，日志 `23 locked third-party packages: verified` / `6 per-platform native binaries: installed`，产出的 prefix 里 cordis **4.0.1** · cosmokit **1.8.2** · schemastery **3.18.1** · koffi **3.1.6**、`overrides` 23 条、`THIRD-PARTY-NOTICES.md` 23 节、四个目标平台的分平台包都在 · **漂移检测拿真产物取证**：干净树 `[]`，改一条 integrity 后被点名、删一条后被点名 · 本轮没改界面，未起服务、未开浏览器，端口一个没动 | `79bfa4c2` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -4449,3 +4465,101 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
   会话 scratchpad 的 `r29/mail-body.txt`；把第 29 轮的正文路径与主题**加进**既有的周期重发任务
   `csu-mail-retry`（现覆盖第 22–29 共八封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、
   先查「已发送」再补发、发完就删掉自己），没有另开新任务。
+
+## 第三十轮：随包插件的依赖按锁定版本安装、许可证随包发布（2026-10-10，条目 5.8）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、3003 / 3004 / 4000 / 7364 / 7369 全程没碰；按本轮纪律
+**没有碰 `packages/desktop` 与 electron**（只读了一处注释，未改）。上游 remote
+`/root/penguin-harness` 本机已不存在（磁盘清理时没了），本轮改按 URL
+`https://github.com/Prism-Shadow/penguin-harness.git` 拉 `main` 到 `refs/adelie-tmp/upstream-main`
+（没推、没改 remote 配置）。
+
+### 为什么是这一条
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `6c67ce74`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+表上最靠前的未勾选条目照旧是 **2.2c**，其「还差什么」四条仍全在纪律禁止或明说留到发布期的一侧
+（写侧只剩 `packages/desktop`、既有部署单元 `adelie-app.service`、桌面壳自己的开关、画廊 mock 与
+`packages/docs` 的环境表）；**3.5** 要用户拍板且本轮不许碰 desktop、**3.6** 要模型 key、
+**4.1–4.3** 明令不动、**5.3** 剩下的落地顺序要第二台机器、**5.6** 的 core 那一半要用户拍板
+（促销搬进 project config）。于是把上游 `main` 拉下来核对：`234183f5`（#978）之后只剩四笔 ——
+`c6a7b6ee`（#726）已由另一条线在 2026-10-06 落地（条目 5.2），余下三笔是 `8a774995`（#969）、
+`d695c8c9`（#983）与 `d56d9ced`（#979）。
+
+**选 #979**：它正是第二十九轮末尾记下的那件事（「上游这一笔假定 DSH 自带依赖 …… 真到发布一份不带依赖的
+安装上，这条链还得按上游系列顶端那一撮收」）里与随包产物直接相关的一笔，而且完全落在 `scripts/` 与两个
+新测试里 —— 不碰 desktop、不碰界面、不改包名、不改流水线、不发 npm，**因而不属 4.x**。另两笔只是先核了
+可行性、记进待办 5.9 / 5.10 备查。
+
+### 改了什么（9 个文件 / +554 −33）
+
+`git show d56d9ced | git apply -3`，**一处冲突都没有**（8 个新文件 + `scripts/build-plugins.mjs` 一处改写）：
+
+- 新增 `scripts/lib/locked-prefix.mjs` + 它的 `.d.mts`：从 `pnpm-lock.yaml` 读出各插件
+  `NATIVE_DEPENDENCIES` 的闭包（importers 的 dependencies → snapshots 的 dependencies /
+  optionalDependencies，按 `TARGET_PLATFORMS` 过滤），给出 `lockedClosure` / `lockCacheInput` /
+  `platformSpecs` / `integrityMismatches`；同一个名字解析出两个版本时抛错（override 只能钉一个）。
+- 新增 `scripts/lib/third-party-notices.mjs` + 它的 `.d.mts`：`readVendoredPackages` 读 prefix 的
+  `node_modules` 树（含嵌套），`thirdPartyNotices` 生成一份按名字与版本排序的文档；koffi 的分平台包不带
+  许可证文件，允许按「同版本、同作者、同许可证 id 且把它列为 optionalDependency 的父包」借文本并写明，
+  其他缺文本的包直接抛错 —— 不完整的许可证清单不发。
+- `scripts/build-plugins.mjs`：闭包写进 prefix 清单的 `overrides`（npm 连传递依赖也装锁定版本）；
+  第二次 `--force` 安装补的分平台包改从闭包取（不再从已装清单推断）；装完读 npm 的隐藏锁文件对账，
+  任何「不在闭包里的包或版本」「锁里列了却没装上」「tarball 的 integrity 与 `resolution.integrity`
+  不同」都让构建失败；在 prefix 根写出 `THIRD-PARTY-NOTICES.md`；锁文件条目计入内容缓存键，
+  `PACK_FORMAT` 13 → 14。
+- `packages/server/test/builtin-prefix-lock.test.ts`（5 条）与 `third-party-notices.test.ts`（4 条）。
+- 中英 changelog 一对（`2026-10-10-builtin-plugin-dependencies-locked`），按本仓惯例改名到本轮日期、
+  去掉上游 PR 行、写明移植出处。
+
+**本地化两处**：测试夹具里的 `@penguinharness/sandbox-dsh` → 本仓的
+`@lmliheng/penguin-plugin-sandbox-dsh`（它只是被忽略集里的一条样例，但按 2.1c 的口径不留上游名号）；
+changelog 里的包数按本树实跑结果写成 **23**（探针按五个目标平台算成 24，读了文件里的
+`TARGET_PLATFORMS` 才发现它只列四个 —— 没有 `darwin-x64`）。**没有改** `PREFIX_MANIFEST.name`
+（`penguin-builtin-plugins`，prefix 自己的 npm 清单名，2.1c 当时有意留着）：它只是随包前缀的包名，
+不在界面上、也不作为我们的名号出现。
+
+### 验证（都不是推测）
+
+- **静态**：六包 `typecheck` 全过（`gen:ifaces` 报 **187 接口 / 549 类型 unchanged**）；`pnpm lint`
+  **0 警告 0 错误**（2114 文件）；`pnpm format:check` 干净。
+- **测试**（逐包 `EXIT=0`，**0 失败**）：core **1368 通过 / 5 跳过**（65 文件）· ui **1008**（127）·
+  cli **506**（34）· web **3032 / 2 跳过**（248 文件）· server **191 文件 / 2775 通过 / 4 跳过**
+  （比上一轮的 2766 多 9 条，正是本笔新加的两个文件）；新加的两个文件单跑 **9 通过**。
+- **真跑一次构建**（这一条的核心主张，本机就能跑）：`node scripts/build-plugins.mjs --out <scratchpad>/prefix`
+  **退出 0**，日志 `6 per-platform native binaries: installed` / `23 locked third-party packages: verified`
+  / `4 builtin plugins: installed (3bee2ba41eb02118)` / `staged 4 plugins (409 files)`。产出的 prefix：
+  `package.json` 有 **23 条 `overrides`** 与 4 条 dependencies；`node_modules` 里 `@deepseek-ai/cordis`
+  **4.0.1**、`cosmokit` **1.8.2**、`schemastery` **3.18.1**、`koffi` **3.1.6**、
+  `@deepseek-ai/node-addon-landlock-run` **0.1.1**（都是锁文件里的版本，而不是 npm 现解析的最新版）；
+  `THIRD-PARTY-NOTICES.md` **23 节**（含 4 个借 koffi 文本的 `@koromix/koffi-*`）；四个目标平台的分平台包
+  （koffi linux-x64 / linux-arm64 / win32-x64 / darwin-arm64 与两个 landlock 启动器）都在。
+- **漂移检测拿真实数据取证**（脚本在会话 scratchpad）：用构建留下的缓存树（那里还留着 npm 的隐藏锁文件 ——
+  发布出去的 prefix 会把它删掉，所以这段对账只能在构建那一刻做），干净树 `integrityMismatches` 返回 `[]`；
+  改写其中一个包的 integrity 后返回
+  `["@koromix/koffi-linux-x64@3.1.6: npm installed sha512-tampered, locked sha512-Xx5mpr…"]`；
+  把该条目删掉后返回 `["…: not in npm's lockfile"]`。
+- **发布面核对**：`buildBuiltinPlugins` 返回的 `files` 是「walk(out) 减去 `.complete` 与 npm 隐藏锁文件」，
+  所以新写的 `THIRD-PARTY-NOTICES.md` 自动进入 `prefixLayout` —— 也就是 `deploy.mjs` 的热推、desktop 的
+  `build-assets`、`release.yml` 的 `lib/plugins` 三处都会带上它（staged prefix 根目录里确实有它）。
+- 本轮**没有改界面**，故未起服务、未开浏览器、未动端口。
+
+### 没做 / 还差什么
+
+- 上游 `234183f5` 之后还剩两笔没落：`8a774995`（#969，评估与优化的会话回到普通会话）与
+  `d695c8c9`（#983，A2UI 组件与块重排）。**已核过可行性并记进待办 5.9 / 5.10**：#969 本仓只差
+  `draft-cache.ts` 一处冲突（一轮的量）；#983 本树还缺前置（`packages/core/src/a2ui/**` 是上游
+  `bedb1cb8` #968 的产物，本树没有，属两轮的量）。
+- 第二十九轮记的那条（DSH 链在**不带依赖的安装**上的解析）**本条只收掉了「版本钉死 + 许可证」**：
+  上游「DSH 自带依赖」那一撮提交仍不在本树，本机的 dsh 包依旧靠 workspace 的 `node_modules` 解析
+  `@deepseek-ai/*`。真要发布一份不带依赖的安装，仍要按上游系列顶端再收一次（不在本台账待办里，备查）。
+- **2.2c / 3.5 / 3.6 / 5.3 / 5.6** 照旧停在原地，原因同前。
+- `refs/adelie-tmp/*` 本轮多了一条 `upstream-main`（拉上游 main 用），没推、没改 remote 配置。
+- 中间物：会话 scratchpad 的 `r30/`（构建日志、产出的 prefix、两个探针脚本）；构建缓存
+  `node_modules/.cache/penguin-plugins/3bee2ba41eb02118` 是 npm 真装出来的那一份（`node_modules` 不入库）。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `79bfa4c2`**（9 个文件 / +554 −33，含中英 changelog 一对）；台账的收尾另起一笔。
