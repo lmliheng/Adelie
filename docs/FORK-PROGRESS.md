@@ -4309,6 +4309,11 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
   复跑，helper 打印「the environment overrides these defaults」并按 1024 跑（照旧 OOM）——
   证明那个值是**默认**而不是硬写。这一笔只动 `packages/server/package.json` 一行，
   `prettier --check` 过；测试与其余包不受影响（没重跑五包全套，CI 会重跑）。
+- **CI 复跑（推送后 run `37924039202`，`6d8b3ce9`）：22 个作业全绿、`NOT SUCCESS: []`** ——
+  红的两个 macOS 分片（`test-macos (server)` / `test-macos (rest)`）都转绿，其余照旧；
+  也就是说这一轮的代码 + 构建修复一起在 CI 的 ubuntu / macOS / windows 三类跑机上都过了。
+  （同一次推送还起过 `37924014933`（`a8347184`），被 `ci.yml` 的 `cancel-in-progress` 按同一
+  concurrency 组取消 —— 认准的是 `6d8b3ce9` 那一跑。）
 
 ### 没做 / 还差什么
 
