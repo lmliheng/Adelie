@@ -92,6 +92,9 @@ import { Component, Interface, Module, Provide, Use } from "@lmliheng/penguin-co
 import type { SessionService as SessionServiceImpl } from "../services/session-service.js";
 import type { ClassCtx, Opaque } from "@lmliheng/penguin-core/kernel";
 import { Sandbox, SandboxModule } from "../sandbox/service.js";
+import { SANDBOX_GROUP } from "../sandbox/settings-store.js";
+import { sandboxEnabledOf, sandboxPresetsOf, sandboxStartOf } from "../sandbox/settings-policy.js";
+import { PluginConfig } from "../plugin/config.js";
 import { SessionService } from "../services/session-service.js";
 import { ModelScopeAuth } from "../services/modelscope-auth-service.js";
 import { TitleGenerator } from "./title-generator.js";
@@ -2532,6 +2535,7 @@ export abstract class SessionServiceIface extends Interface<
     | "sessionStats"
     | "createSession"
     | "defaultSandbox"
+    | "pickSandbox"
     | "updateSandbox"
     | "latestTracePath"
     | "adoptUnmanagedTraceSessions"
@@ -2567,6 +2571,8 @@ export class SessionsModule {
   @Use() private readonly traceIndex!: TraceIndex;
   @Use() private readonly traceStore!: TraceIndexStore;
   @Use(SandboxModule) private readonly sandbox!: Sandbox;
+  /** The Sandbox card's presets live in the sandbox's settings group. */
+  @Use() private readonly pluginConfig!: PluginConfig;
   @Use() private readonly projectEvents!: ProjectEvents;
   @Use() private readonly messagingRepo!: MessagingBindings;
   /** Company-mode caches: which organization owns a Session (read at every command spawn). */
@@ -2584,6 +2590,7 @@ export class SessionsModule {
     const errors = this.errors;
     const projectConfig = this.projectConfig;
     const sandbox = this.sandbox as SandboxService;
+    const pluginConfig = this.pluginConfig;
     const orgCache = this.orgCache;
     const modelScopeAuth = this.modelScopeAuth;
 
@@ -2705,6 +2712,14 @@ export class SessionsModule {
       sandboxDefaults: () => sandbox.currentSettings(),
       sandboxDimensions: () => [...new Set(sandbox.backends().flatMap((b) => b.dimensions))],
       sandboxUnavailable: () => sandbox.failures(),
+      // The Sandbox card's presets, read per view: a rename there reaches the next read.
+      sandboxPresets: () =>
+        sandboxPresetsOf(pluginConfig.schema(SANDBOX_GROUP), pluginConfig.get(SANDBOX_GROUP)),
+      sandboxSwitchOn: () => sandboxEnabledOf(pluginConfig.get(SANDBOX_GROUP)),
+      // The default preset's approval mode, while the switch is on.
+      sandboxDefaultApproval: () =>
+        sandboxStartOf(pluginConfig.schema(SANDBOX_GROUP), pluginConfig.get(SANDBOX_GROUP))
+          .approvalMode,
     });
     this.manager = manager;
     this.sessionService = sessionService;

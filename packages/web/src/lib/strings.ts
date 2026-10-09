@@ -510,6 +510,12 @@ export const zh = {
     pluginSecretClear: "清除已存值",
     /** The Plugins settings page's machine picker: each server keeps its own plugin settings. */
     pluginConfigMachine: "机器",
+    /** A plugin group's action: it runs once on the picked machine, and only the plugin knows what it does. */
+    pluginActionTitle: "执行插件操作",
+    pluginActionRun: "执行",
+    /** `machine` is the picked machine's name, null for this server. */
+    pluginActionConfirm: (action: string, machine: string | null): string =>
+      `在${machine === null ? "本机" : ` ${machine} `}上执行「${action}」？它会立即在那台机器上运行，具体做什么由插件决定。`,
     /** Under a number field whose box does not parse; the save is not sent. */
     pluginFieldNotNumber: "必须是数字",
     uploadLimitsTitle: "上传限制",
@@ -524,6 +530,42 @@ export const zh = {
     uploadLimitsInfo: (count: number, imageMb: number): string =>
       `一条消息最多 ${count} 个附件；对话内嵌图片另有 ${imageMb}MB 上限，不随此设置变化——` +
       `图片会进入对话与轨迹，每次翻阅历史与恢复会话都要重新付出它的体积。`,
+    /** The fold holding the fields a settings group marks advanced. */
+    pluginAdvanced: "高级选项",
+    /** A table cell its row does not let change, beside the lock mark. */
+    pluginCellLocked: "已锁定：此行保持这个取值",
+    pluginCellOn: "开",
+    pluginCellOff: "关",
+    /** A table row's drag handle: what it moves, and how. */
+    pluginTableMove: (row: string) => `移动 ${row}`,
+    pluginTableMoveHint: "拖动，或按上下方向键",
+    /** The add button under an extensible table that names none of its own. */
+    pluginTableAdd: "添加一行",
+    /** After the chosen row's name (the sandbox's default preset): the row choice's title. */
+    pluginTableChosenMarker: (title: string) => `（${title}）`,
+    /** A table row's "…" button: its accessible name and tooltip. */
+    pluginTableRowMenu: (row: string) => `更多操作：${row}`,
+    pluginTableRowMenuHint: "更多操作",
+    /** The row menu's items: make the row the chosen one, and delete a row an administrator added. */
+    pluginTableChoose: "设为默认",
+    pluginTableChosen: "已是默认",
+    pluginTableDelete: "删除",
+    pluginTableDeleteChosen: "请先把其他行设为默认",
+    /** One line of a row's "?" that lists its values: a choice column's value, and what it does. */
+    pluginTableRowValue: (column: string, value: string, does: string | undefined) =>
+      does === undefined ? `${column}：${value}` : `${column}：${value}。${does}`,
+    /** Asked when the Sandbox switch is turned on and the machine has no sandbox backend. */
+    sandboxBackendPrompt: {
+      title: "安装沙盒后端",
+      body: (machine: string, pkg: string) =>
+        `${machine} 没有适用于其操作系统的沙盒后端，新会话暂时无法进入沙盒。是否安装 ${pkg}？`,
+      cost: "安装会重新装载服务器的插件，所有项目中正在进行的 Agent 运行都会停止。无论是否安装，开关都保持打开。",
+      install: "安装",
+      installing: "正在安装…",
+      later: "暂不",
+      dontAsk: "此机器不再询问",
+      noProject: "请先打开一个项目：后端会安装到当前项目。",
+    },
     theme: "主题",
     themeInfo: "应用的整体风格：布局、线条、字体与动效随之改变，内容与其他设置不受影响。",
     /** Display names of the three themes; the ids stay github / modern / geek. */
@@ -2815,10 +2857,36 @@ export const zh = {
         "本服务器没有安装沙盒后端，命令无法被封禁。管理员可在插件页启用适用于本平台的后端（更多…）。",
       noNetworkUnsupported: "本机的沙盒后端不支持断开网络",
       notAvailable: "不可用",
+      adminOnly: "仅管理员",
+      aboveCeiling: "超出了本服务器的沙盒上限：只有管理员可以给会话这么大的权限。",
       backendUnavailable: (name: string, reason: string) =>
         `沙盒后端 ${name} 已启用但未在用：${reason}。管理员可在「更多…」里的沙盒卡片处理。`,
       more: "更多…",
       approval: "审批",
+      custom: "自定义",
+      advancedActive: "高级设置生效中",
+      advancedHint: "本会话另有屏蔽路径或只读的临时目录，来自沙盒卡片；选择预设会保留它们。",
+      blocks: "封住",
+      allows: "放开",
+      nothing: "无",
+      enforceable: "本机可以实施。",
+      needsNoBackend: "不需要沙盒后端。",
+      effects: {
+        "write-outside-workspace": "写工作区之外",
+        "write-anywhere": "写任何文件",
+        network: "全部网络",
+        "network-beyond-localhost": "本机 localhost 之外的网络",
+        "unasked-calls": "不经询问的工具调用（每次调用先问）",
+        "unasked-writes": "不经询问的写入（可能写入的调用先问）",
+        "every-call": "每一次工具调用（全部拒绝）",
+        "files-everywhere": "读写任何文件",
+        "files-in-workspace": "写工作区之内",
+        "read-files": "读取文件",
+        "network-open": "完整网络",
+        localhost: "本机 localhost",
+        "calls-unasked": "所有工具调用，不经询问",
+        "reads-unasked": "只读调用，不经询问",
+      } as Record<string, string>,
     },
     /** Short description (the trigger button shows only the description, not the mode id). */
     approvalModeNames: {

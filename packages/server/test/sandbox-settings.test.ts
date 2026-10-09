@@ -103,9 +103,10 @@ describe("sandbox settings group", () => {
     const entries = await list();
     const sandbox = entries.find((e) => e.name === "sandbox")!;
     expect(entries[0]).toBe(sandbox);
+    // Nothing saved: the switch reads off, and the default preset is the shipped one.
     expect(sandbox.values).toEqual({
-      mode: "danger-full-access",
-      network: "open",
+      enabled: false,
+      defaultPreset: "workspace-write",
       writableTemp: true,
     });
     expect(sandbox.notices).toEqual([
@@ -124,15 +125,41 @@ describe("sandbox settings group", () => {
     apps.push(t);
     const entry = (await list()).find((e) => e.name === "sandbox")!;
     expect(entry.unavailable).toEqual([
-      expect.objectContaining({ field: "network", value: "local" }),
+      // The presets' network column, in every row.
+      expect.objectContaining({ field: "presets", column: "network", value: "local" }),
     ]);
-    const refused = await admin.put("/api/admin/plugin-config", {
+    const refusedCell = await admin.put("/api/admin/plugin-config", {
       name: "sandbox",
-      values: { mode: "workspace-write", network: "local" },
+      values: { presets: { "read-only": { network: "local" } } },
     });
-    expect(refused.status).toBe(400);
-    expect(await refused.text()).toContain("network");
+    expect(refusedCell.status).toBe(400);
+    expect(await refusedCell.text()).toContain("presets.read-only.network");
     // Nothing was stored: the service still runs the defaults.
+    expect(sandbox.currentSettings()).toEqual({ mode: "danger-full-access" });
+    expect((await list()).find((e) => e.name === "sandbox")!.values.presets).toBeUndefined();
+  });
+
+  it("starts new Sessions from the default preset, with the card's temp and masked paths beside it", async () => {
+    const { t, admin, sandbox } = await appWith([]);
+    apps.push(t);
+    const save = (values: Record<string, unknown>) =>
+      admin.put("/api/admin/plugin-config", { name: "sandbox", values });
+    expect(
+      (await save({ enabled: true, defaultPreset: "read-only", maskPaths: ["/secret"] })).status,
+    ).toBe(200);
+    expect(sandbox.currentSettings()).toEqual({ mode: "read-only", maskPaths: ["/secret"] });
+    // A remapped default row is what new Sessions get.
+    expect(
+      (await save({ presets: { "read-only": { mode: "workspace-write", network: "none" } } }))
+        .status,
+    ).toBe(200);
+    expect(sandbox.currentSettings()).toEqual({
+      mode: "workspace-write",
+      network: "none",
+      maskPaths: ["/secret"],
+    });
+    // A default that confines nothing (Full Access) starts Sessions unconfined.
+    expect((await save({ defaultPreset: "full-access" })).status).toBe(200);
     expect(sandbox.currentSettings()).toEqual({ mode: "danger-full-access" });
   });
 
@@ -142,7 +169,12 @@ describe("sandbox settings group", () => {
     apps.push(t);
     const saved = await admin.put("/api/admin/plugin-config", {
       name: "sandbox",
-      values: { mode: "workspace-write", network: "none", maskPaths: [" /etc/x ", "/etc/x", ""] },
+      values: {
+        enabled: true,
+        defaultPreset: "workspace-write",
+        presets: { "workspace-write": { network: "none" } },
+        maskPaths: [" /etc/x ", "/etc/x", ""],
+      },
     });
     expect(saved.status).toBe(200);
     expect(sandbox.currentSettings()).toEqual({
@@ -172,7 +204,7 @@ describe("sandbox settings group", () => {
 
     await admin.put("/api/admin/plugin-config", {
       name: "sandbox",
-      values: { mode: "read-only", network: "open", maskPaths: [], writableTemp: false },
+      values: { defaultPreset: "read-only", maskPaths: [], writableTemp: false },
     });
     expect(sandbox.currentSettings()).toEqual({ mode: "read-only", writableTemp: false });
     spawn();
@@ -181,7 +213,7 @@ describe("sandbox settings group", () => {
 
     const refused = await admin.put("/api/admin/plugin-config", {
       name: "sandbox",
-      values: { mode: "wide-open" },
+      values: { defaultPreset: "wide-open" },
     });
     expect(refused.status).toBe(400);
     // A relative masked path would resolve against the server's working directory.
@@ -230,7 +262,7 @@ describe("sandbox settings group", () => {
     await t.deps.tree.api<SandboxService>("SandboxModule", "sandbox").whenReady();
     await admin.put("/api/admin/plugin-config", {
       name: "sandbox",
-      values: { mode: "workspace-write" },
+      values: { enabled: true },
     });
     const entries = (
       (await (await admin.get("/api/admin/plugin-config")).json()) as PluginConfigResponse
@@ -341,7 +373,7 @@ describe("sandbox settings group", () => {
       const first = await appWith([], dbPath);
       await first.admin.put("/api/admin/plugin-config", {
         name: "sandbox",
-        values: { mode: "read-only" },
+        values: { enabled: true, defaultPreset: "read-only" },
       });
       await first.admin.put("/api/admin/plugin-config", {
         name: "sandbox-test",
