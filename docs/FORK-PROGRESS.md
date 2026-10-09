@@ -312,6 +312,9 @@
            `chat-dock-context.tsx` 与 `features/dock/panel-registry.ts` 的引入者 —— 而 #975 要改的
            头两个文件本树此前根本没有（第十九轮实测记过）。所以这条链上「树里不存在的文件」这一栏
            现在归零：剩下的就是 `9b170c61`（#975，前置已就位）与 `1ba104c9`（属 4.x）。
+           **2026-10-09 第二十八轮把 #975 也落了**（见下条），所以本条（`234183f5` / #978）现在
+           **前置齐了**：它要改的 `packages/server/src/sandbox/settings-status.ts` 已在树里 —— 它是
+           5.4 剩下的唯一一块（`1ba104c9` 属 4.x），但仍是「一组提交的顶端」，得单独一轮。
            落 #961 时 `git apply -3 --check` 是干净的（三处冲突都是 import 区的包 scope 与本仓的两处
            本地新增，见「第二十七轮」一节）。
         2. `9b170c61`（权限菜单命名预设）**它自己一次就 6068 增 / 924 删**（设置页的插件配置表整片重写，
@@ -324,6 +327,9 @@
            **2026-10-09 第二十七轮：那个前置已经落了**（`1eb13325` / #961，见上一条），
            `grep -rl useChatDock packages/web/src` 现在有结果、两个文件都在树里 —— 所以这一条不再卡在
            「文件不存在」上，它剩下的只是规模（6068 增 / 924 删，得单独一轮）。
+           **2026-10-09 第二十八轮已落地**（提交见该节）：69 个文件 / +6125 −935（含四份 changelog 与
+           三处本树缺的前置），`git apply -3` 之后 9 处冲突全在 import 区与「上游已把这一段搬走」的那几行上，
+           逐条解掉；细节与验证见「第二十八轮」一节。
         3. `c03e58c4`（`sandbox-dsh` 在 Windows 拒 bash、并在错误里点名它要哪个 shell）——
            **2026-10-08 第二十一轮已落地（`dcb77d05`）**。原先记的拦路石是「这条的 live 证据要
            `windows-latest`」，这一轮实测把它收窄了：**检查本身与两种拒绝在本机就能真跑** ——
@@ -918,6 +924,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-09 | 5.4（Windows 取证） | **DSH 的 live 套件在 Windows 上真跑**（上游 `82498039` `#974` 移植，照改动落、不是合分支）：`plugins/sandbox-dsh/test/live.test.ts` 不再在 Windows 上整文件跳过 —— 探针按会话 shell 分成 pwsh / POSIX 两套（`Set-Content` / `Get-Content`、`$ErrorActionPreference = 'Stop'` 加外层 catch），`ADELIE_SHELL=pwsh` 在 adaptor 加载之前设好（core 每进程只解析一次会话 shell），Windows 上先探一次 pwsh、没有就把「会话 shell 不是 PowerShell 7」当开不了的理由交给 `mustRun()`，可用性探针从裸 `true` 改成 `process.execPath`，`DENIED` 补上 .NET 的 `access to the path … is denied`；背景子进程那条断言补上「工作区内的标记文件确实写了」这半边（此前一个从未跑起来的子进程也能蒙混）；`ci.yml` 的 Windows `rest` 分片声明 `must_run: sandbox-dsh`、并把 `ADELIE_MUST_RUN` 接到那一步的环境。**不带 changelog**（上游这笔自己也没带：只有测试与 CI、无用户可见行为，与 `dd1b931f` 同一口径）。**本地化**：`PENGUIN_SHELL` → 本仓 2.2b 口径的 `ADELIE_SHELL`、`PENGUIN_MUST_RUN` → `ADELIE_MUST_RUN`、包名 `@prismshadow/` → `@lmliheng/`、临时目录前缀 `penguin-dsh-live-` → `adelie-dsh-live-` | 插件 `typecheck` 过 · `ADELIE_MUST_RUN=sandbox-dsh` 下插件 **15 通过 / 1 跳过**（`live.test.ts` 5 条在本机真跑、含新加的工作区内标记断言；`windows-shells.test.ts` 10 真跑 + 1 条 Windows 专属跳过）· 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（与上一轮逐字一致）· `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，只有 windows 的 `rest` 带 `must_run: sandbox-dsh`，ubuntu 与 macOS 那两处原样）· 本轮无界面改动，未起服务、未动端口 · **CI 两跑各 22 个作业全绿**（`37857700478` / `37858509262`）：Windows `rest` 的日志里 `plugins/sandbox-dsh ✓ test/live.test.ts (5 tests) 5115ms / 5037ms` —— 这条 live 套件**在 Windows 上真跑**（此前是整文件跳过）、五条用例逐条点名，没声明的 bwrap `7 skipped` / seatbelt `5 skipped` 照旧；第一跑里 `windows-shells.test.ts` 的 `powershell runs confined` 在**第一次**尝试被 vitest 的 5s 默认切掉（重试救回，作业仍绿），故顺手修掉（`72a2e112`：`it.each` 带上 60s 与 spawn 的期限对齐），第二跑同一格首次尝试就过（2828ms） | `b7933f58` `72a2e112` |
 | 2026-10-09 | 5.4（Ubuntu userns 那一步） | **Ubuntu 23.10+ 上「怎么让默认 Ubuntu 也能跑 bwrap」这一步成文**（上游 `45885985` `#977` 移植，照改动落、不是合分支；就排在第十八轮已落的 `cba091e3` `#976` 之后）：CLI 快速开始（中英双份）新增 **Ubuntu 上的沙盒** 一节 —— 一份要 root 的 AppArmor profile（`/etc/apparmor.d/adelie-sandbox-bwrap`，路径模式 `@{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap` 覆盖随包带 / 下载到数据根 / 热推送三处）、两种替代做法（换 root 拥有的 bwrap，或全机调低开关）与数据根不在 `~/.adelie` 时的做法；`plugins/sandbox-bwrap/src/index.ts` 的拒绝理由在 Debian 的开关旁点名 Ubuntu 的开关并指向这一节（注释补写「为什么这一处要给指针」）；插件 README 写明要求；`profile.test.ts` 两条用例（两个开关都点名 / 指针）—— 第二条是本轮新行为，**缺了指针的实现在它上面会红**（实测）。**本地化**：包名 `@penguinharness/sandbox-bwrap` → `@lmliheng/penguin-plugin-sandbox-bwrap`、路径 `~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（旧名仍读）、profile 名 `penguin-sandbox-bwrap` → `adelie-sandbox-bwrap`；**并去掉上游那句「桌面 `.deb` 会装这份 profile」**（本树 `packages/desktop/build/linux/after-install.tpl` 要复制的 `resources/apparmor-profile` 全仓没人产出，见本节末） | 插件 `typecheck` 过 · `pnpm --filter …sandbox-bwrap test` **27 通过**（profile 20 + live 7，`EXIT=0`）· 反向取证：把新加的指针从源码里去掉，`-t` 点名跑那条新用例 **1 失败**（19 跳过），恢复后 27 全绿 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· 文档站本机 `vite`（7471，临时起、看完即关）真开浏览器：中英两版标题分别是 `ubuntu-上的沙盒` / `sandbox-on-ubuntu`（与仓库自己的 `slugifyHeading` 算出来的一致）、节内链接 `/settings#沙盒`、`/settings#sandbox` 指向设置页既有标题、**代码块整段完整**、console 无 error、无 4xx，截图见 scratchpad | `493b9160` |
 | 2026-10-09 | 5.4（`#975` 的前置） | **停靠面可以拉到最大，每个停靠面板都是一条注册表定义**（上游 `1eb13325` `#961` 移植，照改动落、不是合分支；24 文件 / +2125 −554）：右侧与底部停靠栏都能经头部的**全屏**按钮、或把边界拖过最大值进入全屏 —— 停在对话工具栏之下，右侧停靠栏盖住自己那一行（开着的底部停靠栏仍显示在它下方），底部停靠栏长到工具栏之下；退出用同一枚按钮（原位变**退出全屏**）或把边界拖回。进出随主题的布局动效（`[data-layout-motion]` 因此也涵盖 `top`/`left`），减弱动效时即时；面板从第一帧起按终点尺寸排版，页面不重新排版、面板不重新挂载，退出后滚动位置 / 文件预览 / 编辑器草稿 / 终端画面原样还在。全屏**不记住**：切换对话、隐藏停靠栏、关掉最后一个标签、被它盖住的停靠栏要显示内容时都会结束；底部停靠栏原先仅触屏可用的「放大到整屏」按钮由它取代。**面板改成注册表**：每种面板是 `features/dock/panel-registry.ts` 里的一条 `DockPanelDefinition`（id、名称、图标、排序、是否提供 + 它的变更订阅、主体组件），`PANEL_KINDS` 与各处 per-kind 分支消失，标签条 / **添加面板** / 空停靠栏的选单 / 快捷方式悬浮球都读它，主体经新的 `useDockPanel()` 取本停靠栏的能力；上一轮那两处内联视图（工作区文件、记忆）因此搬进新的 `builtin-dock-panels.tsx`（`chat-page.tsx` 里两个调用点与两条 import 一起删掉），另有新的 `chat-dock-context.tsx` 与 `panel-context.tsx`；ui 新增 `DOCK_FULLSCREEN_Z` 与 `data-fullscreen` 相位。**为什么是这一条**：它是 5.4 里 `9b170c61`（#975）与 `234183f5`（#978）的前置 —— 后两条要改的 `builtin-dock-panels.tsx` / `chat-dock-context.tsx` 由它引入，本树此前没有（第十九轮记过）；选它之前 `git apply -3 --check` 实测**一处错误都没有**。**本地化**：三处冲突（`browser-layer.tsx` / `panel-meta.tsx` / `chat-page.tsx`）都在 import 区 —— 包 scope 与本仓两处本地新增，逐条解；新文件里 4 处 `@prismshadow/` → `@lmliheng/`；changelog 按本仓惯例改名到本轮日期、去掉上游 PR 链接、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2078 文件，+5）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2976**/2 跳过（**242** 文件，+13 条 = 新的 `panel-registry.test.ts` 与扩写的 `dock-state.test.ts`）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 ui + web 后，一次性数据根 `/root/adelie-fork-data/r27-dock`、7494、真浏览器）：登录 + 建会话 → 点**右侧栏** → 停靠栏打开并列出注册表里的七个面板（智能体面板 / 终端 / 文件浏览 / 记忆 / 轨迹观测 / 远程控制 / 定时任务）→ 打开**文件浏览** → 点**全屏**：`[data-fullscreen]` 变 `full`、按钮变**退出全屏**、对话列被盖住而工具栏与左侧栏保留 → 点**退出全屏**：回到 `null`、布局复原 → 再开**下侧栏**同样列出选单；**console 0 error / 0 pageerror / 页面无一条 4xx**（仅三条 `net::ERR_ABORTED`，是关浏览器时中断的长连接），截图 6 张在 scratchpad · 本轮没动端口，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | `e7a0a5a7` |
+| 2026-10-09 | 5.4（主块） | **权限菜单给出具名沙箱预设**（上游 `9b170c61` `#975` 移植，照改动落、不是合分支；67 文件 / +6107 −919）：权限按钮不再列三段十档，而是列具名预设（完全访问 / 每次询问 / 仅工作区可写 / 只读，管理员另有「更多…」）；沙盒卡片有**启用**开关与一张**预设表**（名称 / 文件 / 网络 / 询问模式 / 操作，行内可拖动排序、图钉决定是否进菜单、「…」菜单可设为默认 / 删除，「添加预设」新增行）。服务端：`PluginConfigField` 多 `table` 类型（固定行 + 类型化列、只存与默认不同的单元格、锁定单元格忽略、可声明 `rowChoice` / `pin` / `columnGroup` / `extensible`），字段多 `advanced` / `hint`，分组可声明布尔 `switch`；沙盒分组改成 `enabled` + `presets` + `defaultPreset`（六个内置预设），自己的 `mode` / `network` 去掉；新 `sandbox/settings-policy.ts`（新会话起点 + 旧文档向后兼容）与 `sandbox/settings-status.ts`（后端状态与「本系统默认该装哪个包」）；会话视图多 `presets` / `advanced` / `switchOn`。Web 的设置页插件配置面整片重写成表，UI 的 `Dropdown` / `Select` / `ConfirmModal` 跟上。**本树缺的三处前置**（typecheck 逼出来的）已补：`ICONS.star`、`S.settings.pluginAction{Title,Run,Confirm}` 中英各三条、以及上游那笔自带的「执行插件操作前先问一句」（补丁父提交里已有、补丁要改到那几行，故一并落下）。**本地化**：`@prismshadow/penguin-*` → `@lmliheng/penguin-*`；沙盒后端推荐包名 `@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）；四份上游 changelog 改名到本轮日期、去 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 547 类型）· `pnpm lint` **0 警告 0 错误**（2101 文件）· `pnpm format:check` 干净（首跑一条，`prettier --write` 后复检通过）· 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（64 文件）· ui **1008**（127）· cli **506**（34）· web **3019**/2 跳过（**247** 文件，+43 = 这笔带来的六个新用例文件与扩写）· server **187 文件 / 2755 通过 / 4 跳过**（+65）—— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 core/server/web 产物 —— server 的 tsup 默认堆会 OOM，`NODE_OPTIONS=--max-old-space-size=4096` 单跑即过；一次性数据根 `/root/adelie-fork-data/r28-presets`、7496、真浏览器）：全新安装开关默认关，权限菜单只有四档审批方式 + 「更多…」→ 「更多…」按设计打开设置对话框的沙盒卡片（只有标题、一条「没有可用后端」提示与开关）→ 点开关弹出**安装后端**对话框，点名的包是 `@lmliheng/penguin-plugin-sandbox-bwrap`（本地化在界面上可见）→ 「暂不」后卡片展开预设表与「添加预设」「高级选项」→ **保存**后刷新重开菜单：变成 **完全访问 / 每次询问 / 仅工作区可写 / 只读**，后两者标「未安装」置灰（本机没有沙盒后端，是设计的诚实标注）→ **console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`），截图 6 张在 scratchpad · 没用到的端口一律没碰，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | `2e9d53b6` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -4174,3 +4181,128 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
   `mail-round27.txt`；把第 27 轮的正文路径与主题**加进**既有的周期重发任务 `csu-mail-retry`
   （现覆盖第 22 / 23 / 24 / 25 / 26 / 27 六封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、
   先查「已发送」再补发、发完就删掉自己），没有另开新任务。
+
+## 第二十八轮：权限菜单给出具名沙箱预设（2026-10-09，条目 5.4 的主块）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 为什么是这一条
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `cbb238af`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+表上最靠前的未勾选条目照旧是 **2.2c**，其「还差什么」四条仍全在纪律禁止或明说留到发布期的一侧
+（写侧只剩 `packages/desktop`、既有部署单元 `adelie-app.service`、桌面壳自己的开关、画廊 mock 与
+`packages/docs` 的环境表）；**3.5** 要用户拍板且本轮不许碰 desktop、**3.6** 要模型 key、**4.1–4.3**
+明令不动。所以做 **5.4 剩下的那一块**：上游 `9b170c61`（#975）—— 第二十七轮把它的前置 #961
+（停靠面全屏 + 面板注册表）落下之后，这条链上「树里不存在的文件」已经归零，它就只是规模问题了。
+
+### 改了什么（67 个文件 / +6107 −919，含四份 changelog）
+
+上游客服端 / Web / UI 三包的一整笔：**权限菜单不再列三段十档，而是列具名预设**。
+
+- **服务端**：`plugin/config.ts` 的 `PluginConfigField` 多一个 `table` 类型（固定行 + 类型化列，
+  只存与默认不同的单元格、按 `<字段>.<行>.<列>` 点名拒绝、锁定单元格忽略读到的值，可声明
+  `rowChoice` / `pin` / `columnGroup` / `extensible`），字段多 `advanced` 与 `hint`，分组可把某个
+  布尔字段声明为 `switch`；沙盒分组改成 `enabled` + `presets` + `defaultPreset`（六个内置预设），
+  自己的 `mode` / `network` 去掉、`writableTemp` / `maskPaths` 移到高级；新 `sandbox/settings-policy.ts`
+  给出新会话的起点（`sandboxStartOf`）与旧文档的向后兼容读法，新 `sandbox/settings-status.ts` 报
+  后端状态与「本系统默认该装哪个包」；会话视图多出 `presets` / `advanced` / `switchOn`。
+- **Web**：设置页的插件配置面整片重写成一张表（`plugin-config-table.tsx` 436 行，另有草稿、字段、
+  单元格、行菜单、折叠等新文件），权限选择器（`permission-select.tsx`）改成按预设渲染，卡片的
+  「?」与悬停说明随之铺开。
+- **UI**：`Dropdown` 的键盘行为、`Select` 的 `info`、`ConfirmModal` 的 `glyph`。
+
+### 移植怎么做的（照上游的改动落，不是合分支）
+
+`git show 9b170c61 | git apply -3 -`，**9 处冲突**逐条解掉，全部落在两类地方：
+
+1. **import 区**（`settings-store.ts` / `session-service.ts` / `permission-select.tsx` /
+   `permission-level.ts` 与其用例 / `chat-dock-context.tsx` / `confirm-modal.tsx` / SKILL.md）——
+   一侧是本仓的 `@lmliheng/` scope、一侧是上游的 `@prismshadow/` 或上游新增的导入，
+   取「上游的新导入 + 本仓 scope」。`session-service.ts` 那一处还连带删掉本仓的两个本地秩表
+   （`SANDBOX_MODE_RANK` / `SANDBOX_NETWORK_RANK`）—— 上游这一笔把它们换成了
+   `services/sandbox-ceiling.ts` 的 `aboveSandboxCeiling`，留着就是死代码。
+2. **上游已经把这一段搬走的地方**（`plugins-section.tsx` 三处）——本仓这一版仍是内联调用点，
+   取上游那一支（`git checkout --theirs`，落定后再把 scope 换掉）。
+
+**三处本树缺的前置**（都靠 `pnpm typecheck` 挨个逼出来的，不是猜的）：
+
+- `ICONS.star` —— 表格的 `pin` 列画的就是它，上游在这笔之前就有了，本树没有。照上游的
+  路径与注释补进 `packages/ui/src/components/icons/icons.ts`（`pin` 与 `wrench` 之间）。
+- `S.settings.pluginActionTitle` / `pluginActionRun` / `pluginActionConfirm` —— 中英各三条，
+  本树没有（见下）。按上游原文补进两份字典，位置与上游一致。
+- **上游那笔自带的「执行插件操作前先问一句」**：补丁的父提交里已经有 `ConfirmModal` 那一整套
+  （本仓没有，是上游另一笔带进来的），而补丁本身要改到那几行，所以它会一起落下来。**决定照收**：
+  它是同一张卡片上的一个连贯行为（插件组操作只在插件自己知道做什么，先问一句是对的），
+  而且不收就得把 `plugins-section.tsx` 手工拆开、与上游那一版越走越远。三个文案键因此一并补齐。
+
+**本地化**（本轮新增行里逐条扫过）：`@prismshadow/penguin-*` → `@lmliheng/penguin-*`；
+**沙盒后端的推荐包名** `@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`
+（`settings-status.ts` 的映射、文档站里的两段、web 的用例）—— 这是**必须改的**：本仓的四个
+沙盒后端包就叫 `@lmliheng/penguin-plugin-sandbox-{bwrap,seatbelt,wsl,dsh}`
+（`packages/server/src/plugin/builtin-index.json`），照上游的名字写，卡片会去装一个不存在的包。
+其余 `PenguinHarness` / `PENGUIN_*` / `~/.penguin` 在本轮新增行里**一处都没有**。
+
+**changelog**（5.7 的口径）：上游那两对（`2026-09-30-simple-sandbox-settings`、
+`2026-10-02-backward-compatibility-sandbox-switch`）按本仓惯例改名到本轮日期、去掉上游 PR 行、
+`Type` 从 `feat` 改成 `feature`、正文里写明「移植自上游 #975」，互链跟着改。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` 全过（`gen:ifaces` 报 187 接口 / 547 类型）；`pnpm lint` **0 警告 0 错误**
+  （2101 文件）；`pnpm format:check` 干净（首跑 `plugin-config-field.tsx` 一条，`prettier --write` 后复检通过）。
+- 五包 test 逐包 `EXIT=0`：core **1359 通过 / 5 跳过**（64 文件）· ui **1008**（127 文件）·
+  cli **506**（34 文件）· web **3019 / 2 跳过**（**247** 文件，比上一轮 +43 条，正是这笔带来的
+  `plugin-config-card` / `plugin-config-draft` / `permission-menu` / `sandbox-backend-prompt` /
+  `advanced-fold` 与扩写的 `permission-level`）· server **187 文件 / 2755 通过 / 4 跳过**
+  （+65 条：`sandbox-switch` / `sandbox-ceiling` 新文件与 `plugin-config` / `session-sandbox` 扩写）
+  —— **0 失败**。另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件）—— 本轮改到了它的内容。
+- **界面真跑了一遍**（这一条改的是界面）：按当前源码重建 `packages/{core,server,web}` 的 dist
+  （server 的 tsup 在本机默认堆下会 `ERR_WORKER_OUT_OF_MEMORY`，加 `NODE_OPTIONS=--max-old-space-size=4096`
+  单跑即过），用**一次性数据根** `/root/adelie-fork-data/r28-presets`（`ADELIE_SEED_ADMIN_PASSWORD`
+  起、不走认领链接）在 **7496** 起服务，Playwright（本机 chromium，1440×900，zh-CN）：
+  - 全新数据根 = 全新安装，**开关默认关闭**：输入框的权限按钮菜单只有四档审批方式
+    （总是询问 / 放行只读 / 全部放行 / 全部拒绝）与「更多…」，这正是「关闭时只列审批方式」那条；
+  - 菜单里的「更多…」按设计打开设置对话框的**沙盒卡片**（`section="plugins"`、`pluginFocus="sandbox"`）：
+    卡片只有标题、一条「没有可用后端」的提示与**启用**开关；点开关 → 弹出**安装后端**的对话框，
+    里面点名的包是 `@lmliheng/penguin-plugin-sandbox-bwrap`（本地化这条在界面上可见）；
+  - 选「暂不」后卡片展开出**预设表**（名称 / 文件 / 网络 / 询问模式 / 操作，首行「关闭（完全访问）」
+    三个单元格标「已锁定」）与「添加预设」「高级选项」；
+  - 点**保存**、刷新页面、重开权限菜单：菜单变成 **完全访问 / 每次询问 / 仅工作区可写 / 只读**，
+    前两者可选、后两者标「未安装」并置灰（本机没有任何沙盒后端，这是设计的诚实标注），
+    按钮自己换成默认预设「仅工作区可写」的图标；「更多…」仍在；
+  - **console 0 error / 0 pageerror / 一条 4xx 都没有**（脚本从进测试页起记账，最后打印 `[]`）；
+  - 截图 6 张（`01-draft` / `02-permission-menu` / `03-sandbox-card-off` / `04-sandbox-card-on` /
+    `05-saved` / `06-menu-with-presets`）与脚本 `presets-smoke.cjs`、`smoke.log` 都在会话 scratchpad，
+    未提交进仓库。服务用完已停（7496 已释放），数据根留着当现场。
+- 本轮**没有碰 `packages/desktop` 与 electron**（依赖没装），所以桌面壳那一侧没有证据 ——
+  它本来也不在这一条里。
+
+### 没做 / 还差什么
+
+- **5.4 仍未勾掉**：这一轮收掉的是它最大的一块（#975）。剩下的是 `234183f5`（#978，Landlock 让
+  默认 Ubuntu 可用）—— 它的前置现在**齐了**（要改的 `settings-status.ts` 已经在树里），但仍是
+  「一组提交的顶端」（`pick()` 路由、`closed-temp` 维度、插件契约的 `mechanism` / `limits`、
+  卡片改 `Enforced here: …`，约 1.5k 行、跨四包，第十九轮实测多处冲突），得单独一轮；
+  `1ba104c9`（拆 npm 包）属 4.x。
+- **2.2c / 3.5 / 3.6** 照旧停在原地，原因同前。
+- **本轮有意**没有把上游 `.agents/skills/penguin-harness-frontend/SKILL.md` 的其余更新搬过来：
+  那个文件本仓这一版整体落后于上游（上游后来加过 dock 面板、提示与按钮换行等整节），
+  本轮只落下这一笔真正相关的那一行（`Select` 的 `info`）。整篇对齐属于 2.5 的口径，没动。
+- **一条顺带记下来的**：上游 `main` 里我们还没落的自立提交仍有若干（`1bf9fccc` #798
+  「热更新时把插件也传过去」、`3850dbed` #526「外部插件索引」、`d929abb33` #960 侧栏按最后活动分页、
+  `d56d9ced` #979 内置前缀的原生依赖按锁文件固定版本并带许可证声明），它们不在本台账的待办里。
+  本轮**踩到一次 #960 的边**：`session-service.ts` 里本仓与「补丁的父提交」之间的 81 行差异，
+  正是 #960 的游标分页 —— 由于 `git apply -3` 以补丁的父提交为底做三路合并，那些差异没有污染本轮的结果
+  （落定后的文件里没有 `SessionListPaging` / `compareActivityDesc`，只有本轮的沙盒改动），
+  但下一轮动这个文件时要留意这条边。
+- `refs/adelie-tmp/*` 七个本地临时引用仍在（第 23 轮拉的），没推、没改 remote 配置；本轮没有新增。
+- 中间物：会话 scratchpad 里有 `presets-smoke.cjs`、6 张截图、`smoke.log`、几份 `tests-*.log`；
+  `/root/adelie-fork-data/r28-presets` 是本轮的取证数据根（留着当现场）。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `2e9d53b6`**（67 个文件 / +6107 −919，见「已完成的轮次」那一行）；台账这一笔另起一笔。
