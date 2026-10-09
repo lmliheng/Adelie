@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/penguin-plugin-sandbox-seatbelt",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "macOS Seatbelt sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",

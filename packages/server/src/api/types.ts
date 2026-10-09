@@ -1529,6 +1529,19 @@ export interface SessionSandbox {
    * (400 `sandbox_unsupported`).
    */
   localNetworkSupported?: boolean;
+  /** Response only, ignored in requests: whether a backend here can enforce `masksPaths`. */
+  maskPathsSupported?: boolean;
+  /**
+   * Response only, ignored in requests: true when this policy hides paths (the Sandbox card's
+   * masked paths, kept by every pick). Where `maskPathsSupported` is false, every level then
+   * refuses every command, and the composer says so.
+   */
+  masksPaths?: boolean;
+  /**
+   * Response only, ignored in requests: the names of the sandbox backends in use here, which the
+   * composer names when a level is beyond what they enforce. Absent with none in use.
+   */
+  backendsInUse?: string[];
   /**
    * Response only, ignored in requests: the sandbox backends that are enabled here but failed
    * to load or failed their check (a WSL distro not set up, a wrong program path), each with
@@ -5611,6 +5624,9 @@ export interface PluginConfigNotice {
   tone: "attention" | "muted" | "progress";
   text: string;
   textZh?: string;
+  /** More about the notice, disclosed under it on request; lines separated by `\n`. */
+  details?: string;
+  detailsZh?: string;
 }
 
 /** One settings group (GET /api/admin/plugin-config): its schema and its values, secrets masked. */
@@ -5630,26 +5646,31 @@ export interface PluginConfigEntry {
   unavailable?: PluginConfigUnavailableDecl[];
   /**
    * For a group whose settings a backend plugin enforces (the sandbox): whether one that
-   * applies to this machine's OS is installed, and which package this OS defaults to. The card
+   * applies to this machine's OS is installed, and which packages this OS defaults to. The card
    * offers to install `recommended` when the group's switch is turned on and none is installed.
    * Asked per read, like the notices; the client never guesses the OS.
    */
   backend?: PluginConfigBackend;
 }
 
-/** Whether a backend that applies to this machine is installed, and this OS's default one. */
+/** Whether a backend that applies to this machine is installed, and this OS's default ones. */
 export interface PluginConfigBackend {
   /** A backend for this OS is installed: loaded, or installed and failing its check. */
   installed: boolean;
-  /** The npm package this OS defaults to; absent on an OS with no default backend. */
-  recommended?: string;
+  /**
+   * The npm packages this OS defaults to, installed together; absent on an OS with no default
+   * backend. Linux names two: bubblewrap, and sandbox-dsh, which confines files through
+   * Landlock where bubblewrap is refused.
+   */
+  recommended?: string[];
 }
 
-/** One enum option a settings group cannot honour on this machine, and why. */
+/** One enum option (or boolean position) a settings group cannot honour on this machine, and why. */
 export interface PluginConfigUnavailableDecl {
   field: string;
   /** A `table` field's column: the option is unavailable in every cell of that column. */
   column?: string;
+  /** An enum option, or a boolean field's position: "true" or "false". */
   value: string;
   reason: string;
   reasonZh?: string;

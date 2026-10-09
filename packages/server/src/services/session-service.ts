@@ -70,7 +70,8 @@ export function sessionSandboxOf(
   switchOn?: boolean,
   ceiling?: SandboxSettings,
 ): SessionSandbox {
-  const advanced = (policy.maskPaths ?? []).length > 0 || policy.writableTemp === false;
+  const masksPaths = (policy.maskPaths ?? []).length > 0;
+  const advanced = masksPaths || policy.writableTemp === false;
   const above = (p: SessionSandboxPreset) =>
     ceiling !== undefined &&
     aboveSandboxCeiling(p, { mode: ceiling.mode, network: networkOf(ceiling) }) !== null;
@@ -80,6 +81,8 @@ export function sessionSandboxOf(
     confinementSupported: dimensions.includes("fs-write"),
     noNetworkSupported: dimensions.includes("network"),
     localNetworkSupported: dimensions.includes("network-local"),
+    maskPathsSupported: dimensions.includes("mask-paths"),
+    ...(masksPaths ? { masksPaths: true } : {}),
     unavailableBackends: unavailable.map(({ name, reason }) => ({ name, reason })),
     ...(presets !== undefined
       ? { presets: presets.map((p) => ({ ...p, ...(above(p) ? { aboveCeiling: true } : {}) })) }
@@ -215,6 +218,8 @@ export interface SessionServiceDeps {
   sandboxDimensions?: () => readonly SandboxDimension[];
   /** The enabled sandbox backends that failed to load or failed their check, with why. */
   sandboxUnavailable?: () => readonly UnavailableSandboxBackend[];
+  /** The names of the sandbox backends in use, in routing preference (none when absent). */
+  sandboxBackends?: () => readonly string[];
   /** The Sandbox card's presets table, in table order (absent: the view carries none). */
   sandboxPresets?: () => readonly SessionSandboxPreset[];
   /** The Sandbox card's switch: whether new Sessions start confined (absent: not reported). */
@@ -242,14 +247,18 @@ export class SessionService {
 
   /** A policy as the composer sees it, with which of its levels this server can enforce. */
   sandboxView(policy: SandboxSettings): SessionSandbox {
-    return sessionSandboxOf(
-      policy,
-      this.sandboxDimensions(),
-      this.deps.sandboxUnavailable?.() ?? [],
-      this.deps.sandboxPresets?.(),
-      this.deps.sandboxSwitchOn?.(),
-      this.defaultSandbox(),
-    );
+    const backends = this.deps.sandboxBackends?.() ?? [];
+    return {
+      ...sessionSandboxOf(
+        policy,
+        this.sandboxDimensions(),
+        this.deps.sandboxUnavailable?.() ?? [],
+        this.deps.sandboxPresets?.(),
+        this.deps.sandboxSwitchOn?.(),
+        this.defaultSandbox(),
+      ),
+      ...(backends.length > 0 ? { backendsInUse: [...backends] } : {}),
+    };
   }
 
   /**

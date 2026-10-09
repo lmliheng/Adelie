@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/penguin-plugin-sandbox-dsh",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "DeepSeek Harness sandbox adaptor for Adelie: the DSH local backend chain behind the harness's own sandbox interface.",

@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/penguin-plugin-sandbox-bwrap",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "type": "module",
   "description": "Bubblewrap sandbox backend for Adelie: filesystem confinement plus network isolation and path masking.",

@@ -271,9 +271,11 @@
       结论：我们自己的跨机子系统已经不小，缺的不是地基而是
       上游那批修复与「公司模式跑在别的机器上」；而**「这台 Linux 指挥 Windows 生成台」在今天的两侧代码里
       都还不可能**（Windows 机器连不上，见评估）。价值仍在，但要按评估里的顺序走。
-- [ ] 5.4 **沙箱体系**（上游已进 main：Landlock 让默认 Ubuntu 可用 `234183f5`、权限菜单命名预设
+- [x] 5.4 **沙箱体系**（上游已进 main：Landlock 让默认 Ubuntu 可用 `234183f5`、权限菜单命名预设
       `9b170c61`、`sandbox-dsh` 在 Windows 走 pwsh `c03e58c4`、建沙箱前先建 scratchpad `cba091e3`、
       后端拆成 npm 包 `1ba104c9`）。我们有四个后端，缺的是「体系」：公司模式下一群 agent 在跑命令。
+      **2026-10-09 第二十九轮落地最后一块 `234183f5`（#978）**，见该节；只剩 `1ba104c9`（拆 npm 包），
+      它属 4.x 的发布链路。
       - **第一块已落地（2026-10-08，第十八轮，提交见该节）**：**建沙箱前先建 Session scratchpad**
         （上游 `cba091e3`）——`workspace-write` 下服务端在每次受约束的 spawn 之前 `mkdir -p` 那个目录，
         建不出来就 fail-closed 拒掉这条命令；`SandboxPolicy.writableRoots` 的契约文档一并跟上。
@@ -315,6 +317,7 @@
            **2026-10-09 第二十八轮把 #975 也落了**（见下条），所以本条（`234183f5` / #978）现在
            **前置齐了**：它要改的 `packages/server/src/sandbox/settings-status.ts` 已在树里 —— 它是
            5.4 剩下的唯一一块（`1ba104c9` 属 4.x），但仍是「一组提交的顶端」，得单独一轮。
+           **2026-10-09 第二十九轮已落地**（提交见该节）——5.4 的代码面到此清零，只剩 `1ba104c9`。
            落 #961 时 `git apply -3 --check` 是干净的（三处冲突都是 import 区的包 scope 与本仓的两处
            本地新增，见「第二十七轮」一节）。
         2. `9b170c61`（权限菜单命名预设）**它自己一次就 6068 增 / 924 删**（设置页的插件配置表整片重写，
@@ -925,6 +928,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-09 | 5.4（Ubuntu userns 那一步） | **Ubuntu 23.10+ 上「怎么让默认 Ubuntu 也能跑 bwrap」这一步成文**（上游 `45885985` `#977` 移植，照改动落、不是合分支；就排在第十八轮已落的 `cba091e3` `#976` 之后）：CLI 快速开始（中英双份）新增 **Ubuntu 上的沙盒** 一节 —— 一份要 root 的 AppArmor profile（`/etc/apparmor.d/adelie-sandbox-bwrap`，路径模式 `@{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap` 覆盖随包带 / 下载到数据根 / 热推送三处）、两种替代做法（换 root 拥有的 bwrap，或全机调低开关）与数据根不在 `~/.adelie` 时的做法；`plugins/sandbox-bwrap/src/index.ts` 的拒绝理由在 Debian 的开关旁点名 Ubuntu 的开关并指向这一节（注释补写「为什么这一处要给指针」）；插件 README 写明要求；`profile.test.ts` 两条用例（两个开关都点名 / 指针）—— 第二条是本轮新行为，**缺了指针的实现在它上面会红**（实测）。**本地化**：包名 `@penguinharness/sandbox-bwrap` → `@lmliheng/penguin-plugin-sandbox-bwrap`、路径 `~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（旧名仍读）、profile 名 `penguin-sandbox-bwrap` → `adelie-sandbox-bwrap`；**并去掉上游那句「桌面 `.deb` 会装这份 profile」**（本树 `packages/desktop/build/linux/after-install.tpl` 要复制的 `resources/apparmor-profile` 全仓没人产出，见本节末） | 插件 `typecheck` 过 · `pnpm --filter …sandbox-bwrap test` **27 通过**（profile 20 + live 7，`EXIT=0`）· 反向取证：把新加的指针从源码里去掉，`-t` 点名跑那条新用例 **1 失败**（19 跳过），恢复后 27 全绿 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· 文档站本机 `vite`（7471，临时起、看完即关）真开浏览器：中英两版标题分别是 `ubuntu-上的沙盒` / `sandbox-on-ubuntu`（与仓库自己的 `slugifyHeading` 算出来的一致）、节内链接 `/settings#沙盒`、`/settings#sandbox` 指向设置页既有标题、**代码块整段完整**、console 无 error、无 4xx，截图见 scratchpad | `493b9160` |
 | 2026-10-09 | 5.4（`#975` 的前置） | **停靠面可以拉到最大，每个停靠面板都是一条注册表定义**（上游 `1eb13325` `#961` 移植，照改动落、不是合分支；24 文件 / +2125 −554）：右侧与底部停靠栏都能经头部的**全屏**按钮、或把边界拖过最大值进入全屏 —— 停在对话工具栏之下，右侧停靠栏盖住自己那一行（开着的底部停靠栏仍显示在它下方），底部停靠栏长到工具栏之下；退出用同一枚按钮（原位变**退出全屏**）或把边界拖回。进出随主题的布局动效（`[data-layout-motion]` 因此也涵盖 `top`/`left`），减弱动效时即时；面板从第一帧起按终点尺寸排版，页面不重新排版、面板不重新挂载，退出后滚动位置 / 文件预览 / 编辑器草稿 / 终端画面原样还在。全屏**不记住**：切换对话、隐藏停靠栏、关掉最后一个标签、被它盖住的停靠栏要显示内容时都会结束；底部停靠栏原先仅触屏可用的「放大到整屏」按钮由它取代。**面板改成注册表**：每种面板是 `features/dock/panel-registry.ts` 里的一条 `DockPanelDefinition`（id、名称、图标、排序、是否提供 + 它的变更订阅、主体组件），`PANEL_KINDS` 与各处 per-kind 分支消失，标签条 / **添加面板** / 空停靠栏的选单 / 快捷方式悬浮球都读它，主体经新的 `useDockPanel()` 取本停靠栏的能力；上一轮那两处内联视图（工作区文件、记忆）因此搬进新的 `builtin-dock-panels.tsx`（`chat-page.tsx` 里两个调用点与两条 import 一起删掉），另有新的 `chat-dock-context.tsx` 与 `panel-context.tsx`；ui 新增 `DOCK_FULLSCREEN_Z` 与 `data-fullscreen` 相位。**为什么是这一条**：它是 5.4 里 `9b170c61`（#975）与 `234183f5`（#978）的前置 —— 后两条要改的 `builtin-dock-panels.tsx` / `chat-dock-context.tsx` 由它引入，本树此前没有（第十九轮记过）；选它之前 `git apply -3 --check` 实测**一处错误都没有**。**本地化**：三处冲突（`browser-layer.tsx` / `panel-meta.tsx` / `chat-page.tsx`）都在 import 区 —— 包 scope 与本仓两处本地新增，逐条解；新文件里 4 处 `@prismshadow/` → `@lmliheng/`；changelog 按本仓惯例改名到本轮日期、去掉上游 PR 链接、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2078 文件，+5）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2976**/2 跳过（**242** 文件，+13 条 = 新的 `panel-registry.test.ts` 与扩写的 `dock-state.test.ts`）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 ui + web 后，一次性数据根 `/root/adelie-fork-data/r27-dock`、7494、真浏览器）：登录 + 建会话 → 点**右侧栏** → 停靠栏打开并列出注册表里的七个面板（智能体面板 / 终端 / 文件浏览 / 记忆 / 轨迹观测 / 远程控制 / 定时任务）→ 打开**文件浏览** → 点**全屏**：`[data-fullscreen]` 变 `full`、按钮变**退出全屏**、对话列被盖住而工具栏与左侧栏保留 → 点**退出全屏**：回到 `null`、布局复原 → 再开**下侧栏**同样列出选单；**console 0 error / 0 pageerror / 页面无一条 4xx**（仅三条 `net::ERR_ABORTED`，是关浏览器时中断的长连接），截图 6 张在 scratchpad · 本轮没动端口，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | `e7a0a5a7` |
 | 2026-10-09 | 5.4（主块） | **权限菜单给出具名沙箱预设**（上游 `9b170c61` `#975` 移植，照改动落、不是合分支；67 文件 / +6107 −919）：权限按钮不再列三段十档，而是列具名预设（完全访问 / 每次询问 / 仅工作区可写 / 只读，管理员另有「更多…」）；沙盒卡片有**启用**开关与一张**预设表**（名称 / 文件 / 网络 / 询问模式 / 操作，行内可拖动排序、图钉决定是否进菜单、「…」菜单可设为默认 / 删除，「添加预设」新增行）。服务端：`PluginConfigField` 多 `table` 类型（固定行 + 类型化列、只存与默认不同的单元格、锁定单元格忽略、可声明 `rowChoice` / `pin` / `columnGroup` / `extensible`），字段多 `advanced` / `hint`，分组可声明布尔 `switch`；沙盒分组改成 `enabled` + `presets` + `defaultPreset`（六个内置预设），自己的 `mode` / `network` 去掉；新 `sandbox/settings-policy.ts`（新会话起点 + 旧文档向后兼容）与 `sandbox/settings-status.ts`（后端状态与「本系统默认该装哪个包」）；会话视图多 `presets` / `advanced` / `switchOn`。Web 的设置页插件配置面整片重写成表，UI 的 `Dropdown` / `Select` / `ConfirmModal` 跟上。**本树缺的三处前置**（typecheck 逼出来的）已补：`ICONS.star`、`S.settings.pluginAction{Title,Run,Confirm}` 中英各三条、以及上游那笔自带的「执行插件操作前先问一句」（补丁父提交里已有、补丁要改到那几行，故一并落下）。**本地化**：`@prismshadow/penguin-*` → `@lmliheng/penguin-*`；沙盒后端推荐包名 `@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）；四份上游 changelog 改名到本轮日期、去 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 547 类型）· `pnpm lint` **0 警告 0 错误**（2101 文件）· `pnpm format:check` 干净（首跑一条，`prettier --write` 后复检通过）· 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（64 文件）· ui **1008**（127）· cli **506**（34）· web **3019**/2 跳过（**247** 文件，+43 = 这笔带来的六个新用例文件与扩写）· server **187 文件 / 2755 通过 / 4 跳过**（+65）—— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 core/server/web 产物 —— server 的 tsup 默认堆会 OOM，`NODE_OPTIONS=--max-old-space-size=4096` 单跑即过；一次性数据根 `/root/adelie-fork-data/r28-presets`、7496、真浏览器）：全新安装开关默认关，权限菜单只有四档审批方式 + 「更多…」→ 「更多…」按设计打开设置对话框的沙盒卡片（只有标题、一条「没有可用后端」提示与开关）→ 点开关弹出**安装后端**对话框，点名的包是 `@lmliheng/penguin-plugin-sandbox-bwrap`（本地化在界面上可见）→ 「暂不」后卡片展开预设表与「添加预设」「高级选项」→ **保存**后刷新重开菜单：变成 **完全访问 / 每次询问 / 仅工作区可写 / 只读**，后两者标「未安装」置灰（本机没有沙盒后端，是设计的诚实标注）→ **console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`），截图 6 张在 scratchpad · 没用到的端口一律没碰，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 · **CI 两跑**：`37922789257` 红在两个 macOS 作业的**服务端声明构建**（OOM，不是测试）—— 与上游同一提交的红点相同，已按仓库既有的 `run-with-env.mjs` 写法给 tsup 一个 4096MB 的默认堆（`a8347184`），详见本轮「CI」一节 | `2e9d53b6` `a8347184` |
+| 2026-10-09 | 5.4（最后一块） | **Linux 沙盒在默认的 Ubuntu 上也能工作 —— 走 Landlock**（上游 `234183f5` `#978` 移植，照改动落、不是合分支；65 文件 / +1523 −258）：路由改成「**实现维度最多的后端负责**」（`SandboxService.pick()`，注册顺序只用于打破平局），bubblewrap 加载得到的地方每条策略仍由它负责、DSH 适配器只在它是仅剩的那一个时服务；新增 **`closed-temp`** 维度（bubblewrap / Seatbelt / WSL 声明，DSH 适配器不声明 —— 它每一级都会在仅工作区可写下放开一个临时目录），关闭「临时目录可写」的策略绝不路由给没有它的后端；core 插件契约多出（都可选）`SandboxProvider.mechanism`（谁在实施，如 `bubblewrap` / `Landlock`）、`SandboxProvider.limits`（本机留下的缺口，中英）与 `ConfinedSpawn.runnerLines`（后端自报的提示行从命令与钩子脚本 stderr 的开头去掉，如老 ABI 上的 `landlock-run: partial enforcement`）；DSH 适配器**在加载时选定并用 `mechanism` 报出它那一级**，两级都不通的主机因此带着 DSH 的原因加载失败，而不是挂上一个拒绝每条命令的后端；沙盒卡片的后端字段 `backend.recommended` 由**单个字符串改成列表**（Linux 两个包），打开开关时按顺序装整张列表，「Backends:」一行改成 `Enforced here: … / Not enforced here: …` 加一个折叠的 **More info**（列出在用后端的缺口、每个已安装但未启用的后端及其原因），没有能隔离网络的后端时「无网络」与「仅本机」一样置灰；四个沙盒插件包升 **0.2.3**（不升的话已装有 0.2.2 的机器会继续跑旧内容、拿不到 `closed-temp` 声明）；Web 那边为「旧服务端只报一个字符串」留了一条向后兼容（`recommendedOf`，带 `TODO(recommended-string-compat)`）。**本地化**：`@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）、`@prismshadow/penguin-*` → `@lmliheng/penguin-*`、`~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（保留「旧名仍读」的说明）；四份上游 changelog 改名到本轮日期、去掉 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 549 类型；core 要**先重建** server 才看得到新契约）· `pnpm lint` **0 警告 0 错误**（2108 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **506**（34）· web **3032**/2 跳过（**248** 文件）· server **189 文件 / 2766 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62**、四个沙箱插件包（bwrap 29 · dsh 21+1 跳过 · seatbelt 17+5 跳过 · wsl 25）全绿 · **界面真跑**（重建 core/server/web 产物 + 一次性数据根 `/root/adelie-fork-data/r29-landlock`、7497、真浏览器）：全新安装点开沙盒卡片的开关后弹出的**安装提示点名两个包、顺序与列表一致**（`@lmliheng/penguin-plugin-sandbox-bwrap 和 @lmliheng/penguin-plugin-sandbox-dsh`，文案写明「两者都可用时，使用封禁范围更大的那个」），卡片与预设表排版正常，**console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`）· **真跑一次 DSH 适配器的加载与约束**：本机（内核 6.1）加载成功、`mechanism` = `Landlock (partial)`，受限命令**在工作区内写成功、在工作区外（`$HOME`）被拒**（`Permission denied`，文件不存在）· 3003 / 3004 / 4000 / 7364 / 7369 与 `/root/penguin-harness` / `/root/Adelie` / `legacy/main` 全程没碰 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -4340,3 +4344,97 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
 ### 收尾：提交、推送与汇报
 
 - **代码提交 `2e9d53b6`**（67 个文件 / +6107 −919，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+
+## 第二十九轮：Linux 沙盒在默认的 Ubuntu 上走 Landlock（2026-10-09，条目 5.4 的最后一块）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 为什么是这一条
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `dae8936a`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+表上最靠前的未勾选条目照旧是 **2.2c**，其「还差什么」四条仍全在纪律禁止或明说留到发布期的一侧
+（写侧只剩 `packages/desktop`、既有部署单元 `adelie-app.service`、桌面壳自己的开关、画廊 mock 与
+`packages/docs` 的环境表）；**3.5** 要用户拍板且本轮不许碰 desktop、**3.6** 要模型 key、**4.1–4.3**
+明令不动。所以做 **5.4 剩下的那一块**：上游 `234183f5`（#978）—— 第二十六到二十八轮把 #977 / #961 /
+#975 依次落下之后，它是这条链上唯一还剩的一块，也是「得单独一轮」的那一轮。
+
+### 改了什么（65 个文件 / +1523 −258，含四份 changelog）
+
+`git show 234183f5 | git apply -3 -`，**16 处冲突**逐条解掉：
+
+| 冲突 | 两侧是什么 | 取哪一支 |
+| --- | --- | --- |
+| 四个插件 `package.json` | 本仓的 `@lmliheng/penguin-plugin-sandbox-*` + `private` ｜ 上游的 `@penguinharness/sandbox-*` 与 `version 0.2.3` | 名字与 `private` 取本仓，**版本取上游的 0.2.3** |
+| `builtin-index.json`（4 处） | 同上（名字 / 版本 / description） | 同上：本仓的名字与 description + 上游的版本 |
+| `settings-status.ts`（2 处） | 本仓的 scope ｜ 上游新增的 import 与 `DEFAULT_BACKEND` → `DEFAULT_BACKENDS` | 上游的新导入与新结构 + 本仓 scope 与本仓的包名 |
+| `sandbox-dsh/src/index.ts` 的 import 区 | 本仓 scope ｜ 上游新增 `node:os` / `node:path` | **只取上游那一支**（上游的重写里已含 `Bind, Component` 那行） |
+| 其余 8 处（四份文档、bwrap 的 README 与其源码注释、两个用例、`plugin-config-heading.tsx`） | 上游的重写 ｜ 本仓的 scope、`~/.adelie` 与旧名说明 | 上游的正文 + 本地化 |
+
+**一条不在冲突区里的漏网**：`plugins/sandbox-bwrap/src/index.ts` 的拒绝文案整行由上游那一笔带来
+（它落在 conflict 之外，`git apply -3` 直接写进文件），里面的包名还是 `@penguinharness/sandbox-dsh`
+—— 逐行扫 diff 时抓出来改掉（`@lmliheng/penguin-plugin-sandbox-dsh`）。
+
+**本地化**：`@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（**必须改**：本仓那四个
+后端包就叫这个名字，照上游写卡片会去装一个不存在的包）、`@prismshadow/penguin-*` → `@lmliheng/penguin-*`、
+`~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（**并保留本仓「旧名仍读」的那句说明** ——
+上游那一版没有它，是本仓 2.2a 的事实，改文档时不能丢）。`changelog/` 里那四份（上游的
+`2026-10-03-sandbox-landlock-floor` 与 `2026-10-03-backward-compatibility-sandbox-recommended` 各中英一份）
+按本仓惯例改名到本轮日期（`2026-10-09-sandbox-landlock-floor` / `2026-10-09-sandbox-recommended-backward-compatibility`）、
+去掉上游 PR 行、正文写明「移植自上游 PenguinHarness（#978，提交 `234183f5`）」、互链跟着改。
+
+### 验证（都不是推测）
+
+- **静态**：六包 `typecheck` 全过（`gen:ifaces` 报 **187 接口 / 549 类型**）—— 注意**core 要先重建**，
+  `packages/server` 是从 core 的 `dist` 读契约的，不重建会报 `SandboxLimit` 未导出、`closed-temp`
+  不是 `SandboxDimension` 那一串；`pnpm lint` **0 警告 0 错误**（2108 文件）；`pnpm format:check` 干净。
+- **测试**（逐包 `EXIT=0`，**0 失败**）：core **1368 通过 / 5 跳过**（65 文件，比上一轮 +9 —— 正是
+  `runner-lines` 这笔）· ui **1008**（127）· cli **506**（34）· web **3032 / 2 跳过**（**248** 文件）
+  · server **189 文件 / 2766 通过 / 4 跳过**；另跑 `@lmliheng/penguin-docs` **62** 与四个沙箱插件包
+  （bwrap **29** · dsh **21 + 1 跳过** · seatbelt **17 + 5 跳过** · wsl **25**）全绿。
+- **界面真跑了一遍**（这一条改的是界面）：按当前源码重建 `packages/{core,server,web}` 的 dist（server 的
+  tsup 现在自带 4096MB 默认堆，第二十八轮那一笔），一次性数据根 `/root/adelie-fork-data/r29-landlock`
+  （`ADELIE_SEED_ADMIN_PASSWORD` 起，不走认领链接）在 **7497** 起服务，Playwright（本机 chromium，
+  1440×900，zh-CN）：
+  - 权限菜单照旧四档审批方式 + 「更多…」，点「更多…」按设计打开设置对话框的沙盒卡片；
+  - 全新数据根 = 全新安装，卡片只有标题、一条「没有可用后端」提示与**启用**开关；**点开关后弹出的安装
+    提示点名两个包、顺序与列表一致** —— `@lmliheng/penguin-plugin-sandbox-bwrap` 与
+    `@lmliheng/penguin-plugin-sandbox-dsh`，并按上游文案写明「两者都可用时，使用封禁范围更大的那个」
+    （这正是 `recommended` 由字符串改成列表在界面上的样子，也是本轮唯一能在这台机器上看到的界面变化）；
+  - 「暂不」后卡片展开预设表与「添加预设」「高级选项」，排版正常；
+  - **console 0 error / 0 pageerror / 一条 4xx 都没有**（脚本从进测试页起记账，最后打印 `[]`）；
+  - 截图 5 张（`01-draft` / `02-permission-menu` / `03-sandbox-card-off` / `04-sandbox-card-on`
+    （安装提示开着）/ `05-card-after-prompt`）与脚本 `landlock-smoke.cjs`、`smoke.log` 都在会话 scratchpad，
+    未提交进仓库。服务用完已停（7497 已释放），数据根留着当现场。
+- **真跑一次 DSH 适配器的加载与约束**（这一条的核心主张，本机就能跑）：把 `plugins/sandbox-dsh` 构建出
+  dist，用一段一次性脚本直接 `loadDshAdaptor()` ——
+  本机（内核 6.1，Landlock ABI 2）**加载成功**，`mechanism` = **`Landlock (partial)`**，`limits` 三条
+  与 `rungLimits` 一致（scratchpad 不可写 / 临时目录是宿主共享的 `/tmp` / 老 ABI 的 ioctl 与截断缺口）；
+  受限命令**在工作区内写成功**（文件在）、**在工作区外（`$HOME`）被拒** —— 退出码 1、
+  `/bin/sh: line 1: /root/r29-outside-*.txt: Permission denied`、文件确实不存在。
+  也就是说「bubblewrap 拒绝时由 Landlock 只约束文件写入」这条在本机是**跑出来的**，不是推的。
+  脚本与日志是 scratchpad 里的 `dsh-probe.mjs` / `dsh-probe.log`。
+- **有意没验的**：Ubuntu 23.10+ 上「bubblewrap 被 userns 限制拒绝 → 适配器接手」那一整条要在那种主机上
+  才成立（本机是 Debian，userns 不受限，bubblewrap 会赢）；服务端那一侧由本笔带来的
+  `test/sandbox-floor.test.ts`（285 行：路由偏好与平局、bwrap 被拒时适配器服务文件而断网请求 fail-closed
+  并带全量原因、卡片标题与 More info 与置灰选项、关临时目录的策略绝不到达适配器）与
+  `session-sandbox-masks.test.ts` 钉住。
+- 本轮**没有碰 `packages/desktop` 与 electron**（依赖没装）。
+
+### 没做 / 还差什么
+
+- **5.4 已勾掉**：代码面到此清零。只剩 `1ba104c9`（沙盒后端拆成 npm 包并发布），属 4.x 的发布链路。
+- **2.2c / 3.5 / 3.6** 照旧停在原地，原因同前。
+- **一件本笔自带、本机看不到的**：上游这一笔假定 DSH「自带依赖」（那撮提交在系列顶端，不在本树），
+  本机的 dsh 包靠 workspace 的 `node_modules` 解析 `@deepseek-ai/*` —— 真到发布一份不带依赖的安装上，
+  这条链还得按上游系列顶端那一撮收（不在本台账的待办里，记在这里备查）。
+- `refs/adelie-tmp/*` 七个本地临时引用仍在（第 23 轮拉的），没推、没改 remote 配置；本轮没有新增。
+- 中间物：会话 scratchpad 里有 `landlock-smoke.cjs` / 5 张截图 / `smoke.log` / `dsh-probe.{mjs,log}` /
+  `PLAN.md`；`/root/adelie-fork-data/r29-landlock` 是本轮的取证数据根（留着当现场）。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交**见「已完成的轮次」那一行；台账这一笔另起一笔。

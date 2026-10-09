@@ -503,6 +503,11 @@ export const zh = {
     pluginsTitle: "插件",
     /** An enum option this machine cannot honour, listed greyed out. */
     pluginOptionUnavailable: (title: string, reason: string) => `${title}（不支持：${reason}）`,
+    /** A switch one of whose positions this machine cannot honour, under the switch. */
+    pluginPositionUnavailable: (position: string, reason: string) =>
+      `本机不支持${position}：${reason}`,
+    pluginPositionOn: "开启",
+    pluginPositionOff: "关闭",
     pluginsInfo:
       "各已装载插件在其包里声明的选项，表单按插件自己的 schema 生成。与插件本身一样是服务器全局的；保存后立即送达插件，无需重启。没有声明选项的插件不会出现在这里。",
     /** A secret field with a stored value: submitting it empty keeps the stored one. */
@@ -557,8 +562,9 @@ export const zh = {
     /** Asked when the Sandbox switch is turned on and the machine has no sandbox backend. */
     sandboxBackendPrompt: {
       title: "安装沙盒后端",
-      body: (machine: string, pkg: string) =>
-        `${machine} 没有适用于其操作系统的沙盒后端，新会话暂时无法进入沙盒。是否安装 ${pkg}？`,
+      body: (machine: string, pkgs: readonly string[]) =>
+        `${machine} 没有适用于其操作系统的沙盒后端，新会话暂时无法进入沙盒。是否安装 ${pkgs.join(" 和 ")}？` +
+        (pkgs.length > 1 ? "两者都可用时，使用封禁范围更大的那个。" : ""),
       cost: "安装会重新装载服务器的插件，所有项目中正在进行的 Agent 运行都会停止。无论是否安装，开关都保持打开。",
       install: "安装",
       installing: "正在安装…",
@@ -2855,7 +2861,10 @@ export const zh = {
       notInstalled: "未安装",
       noBackend:
         "本服务器没有安装沙盒后端，命令无法被封禁。管理员可在插件页启用适用于本平台的后端（更多…）。",
-      noNetworkUnsupported: "本机的沙盒后端不支持断开网络",
+      noNetworkUnsupported: (backends?: string) =>
+        `本机的沙盒只封禁文件${backends !== undefined ? `（${backends} 不隔离网络）` : ""}，无法断开网络`,
+      maskUnsupported: (backends?: string) =>
+        `本会话要对命令隐藏屏蔽路径，但本机没有能屏蔽路径的沙盒后端${backends !== undefined ? `（${backends} 不能屏蔽路径）` : ""}，每条命令都会被拒绝。管理员可在「更多…」里的沙盒卡片清空屏蔽路径。`,
       notAvailable: "不可用",
       adminOnly: "仅管理员",
       aboveCeiling: "超出了本服务器的沙盒上限：只有管理员可以给会话这么大的权限。",

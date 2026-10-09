@@ -191,6 +191,25 @@ describe("the composer's presets", () => {
     expect(presetBlock(FULL, { mode: "read-only", network: "local" })).toBe("local-unsupported");
   });
 
+  // The DSH adaptor alone confines files but masks no paths: every command would be refused.
+  const fsOnly: SessionSandbox = {
+    ...FULL,
+    confinementSupported: true,
+    noNetworkSupported: false,
+    localNetworkSupported: false,
+    maskPathsSupported: false,
+    masksPaths: true,
+  };
+  it.each<[string | null, SessionSandbox]>([
+    ["mask-unsupported", fsOnly],
+    ["no-backend", { ...fsOnly, confinementSupported: false, unavailableBackends: [] }],
+    [null, { ...fsOnly, maskPathsSupported: true }],
+    [null, { ...fsOnly, masksPaths: undefined }],
+    [null, { ...FULL, masksPaths: true }],
+  ])("a policy masking paths blocks every preset with %s (%j)", (block, sandbox) => {
+    expect(new Set(BUILTIN_PRESETS.map((p) => presetBlock(sandbox, p)))).toEqual(new Set([block]));
+  });
+
   it("greys out a preset above the ceiling for a non-admin, never for an admin or the current one", () => {
     const presets = BUILTIN_PRESETS.map((p) =>
       p.mode === "danger-full-access" ? { ...p, aboveCeiling: true as const } : p,
