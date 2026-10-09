@@ -4687,3 +4687,17 @@ Web App —— 后者这次整条链路拆掉：
 - **代码提交 `e20073c3`**（21 个文件 / +98 −87，见「已完成的轮次」那一行）；台账这一笔另起一笔。
 - **推送**：`git push origin main`（`6ba2b25f..e20073c3`）。**没有切版本号、没发 npm、没发安装包、
   没发发布汇总。**
+- **CI（推送后）**：run **`38003667020`**（`f5b163af`，含代码提交 `e20073c3` 与这条台账）——
+  **22 个作业全绿、`NOT SUCCESS: []`**；只改 web / docs / 注释，CI 的矩阵没动，`test (web-cli)` /
+  `test (rest)` 与 macOS / Windows 分片都真跑了这一笔。注：先推的 `e20073c3` 那次 run
+  （`38003636172`）被随后推台账的这次取消 —— 这是 `ci.yml` 的 `cancel-in-progress` 的正常表现，
+  认最后这一笔。
+- **汇报邮件没发出去（第 22–30 轮同一处卡点，与凭据无关）**：本机到中南大学网段
+  `202.197.0.0/16` 仍整片不通 —— `python3 scripts/mail.py check`（csu-mail 技能目录下）在
+  `timeout 60` 里**一行输出都没有、退出 124**；裸 socket 探 `imap.csu.edu.cn:993` /
+  `smtp.csu.edu.cn:465` / `mail.csu.edu.cn:443` 三个都 `TimeoutError`，而同一时刻 `github.com:443`
+  正常。凭据本身正常（`CSU_MAIL_ADDR` 21 字符、`CSU_MAIL_AUTHCODE` 16 字符都注入着，只打印长度）。
+  按技能纪律**只试这一次、没有重试登录**。本轮的正文写在会话 scratchpad 的
+  `mail-round31.txt`；把第 31 轮的正文路径与主题**加进**既有的周期重发任务 `csu-mail-retry`
+  （现覆盖第 22–31 共十封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、先查「已发送」再补发、
+  发完就删掉自己），没有另开新任务。
