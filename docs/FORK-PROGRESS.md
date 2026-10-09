@@ -307,6 +307,13 @@
            README 写明要求、一条新用例。所以这条链如今缺的只剩 `9b170c61`（#975，见下条）与
            `1ba104c9`（属 4.x）；`234183f5` 自己仍要等 #975 —— 它要改的
            `packages/server/src/sandbox/settings-status.ts` 等文件由 #975 引入，本树没有。
+           **2026-10-09 第二十七轮把 #975 的前置落掉了**：上游 `1eb13325`（#961，停靠面的全屏 +
+           每个停靠面板都是一条注册表定义）。它正是 `packages/web/src/features/chat/builtin-dock-panels.tsx`、
+           `chat-dock-context.tsx` 与 `features/dock/panel-registry.ts` 的引入者 —— 而 #975 要改的
+           头两个文件本树此前根本没有（第十九轮实测记过）。所以这条链上「树里不存在的文件」这一栏
+           现在归零：剩下的就是 `9b170c61`（#975，前置已就位）与 `1ba104c9`（属 4.x）。
+           落 #961 时 `git apply -3 --check` 是干净的（三处冲突都是 import 区的包 scope 与本仓的两处
+           本地新增，见「第二十七轮」一节）。
         2. `9b170c61`（权限菜单命名预设）**它自己一次就 6068 增 / 924 删**（设置页的插件配置表整片重写，
            含 `plugin-config-table.tsx` 436 行），与 web 的文案面重叠，得单独一轮。**第十九轮实测出了一条
            更硬的拦路石**：这个补丁要改 `packages/web/src/features/chat/builtin-dock-panels.tsx` 与
@@ -314,6 +321,9 @@
            添加，`grep -rl useChatDock packages/web/src` 为空），`9b170c61` 只是把里面的 props 从
            `onChangeApprovalMode` / `onChangeSandbox` 并成 `onChangePermission`。所以它不是「一轮的量」，
            而是「先决定要不要把上游的 dock 面板重构也搬过来」——那件事的落点应当先写进这张表再动手。
+           **2026-10-09 第二十七轮：那个前置已经落了**（`1eb13325` / #961，见上一条），
+           `grep -rl useChatDock packages/web/src` 现在有结果、两个文件都在树里 —— 所以这一条不再卡在
+           「文件不存在」上，它剩下的只是规模（6068 增 / 924 删，得单独一轮）。
         3. `c03e58c4`（`sandbox-dsh` 在 Windows 拒 bash、并在错误里点名它要哪个 shell）——
            **2026-10-08 第二十一轮已落地（`dcb77d05`）**。原先记的拦路石是「这条的 live 证据要
            `windows-latest`」，这一轮实测把它收窄了：**检查本身与两种拒绝在本机就能真跑** ——
@@ -907,6 +917,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-09 | 5.3（收尾） | **上游 `main` 上仅剩的那条跨机提交落地**（上游 `dd1b931f` `#973` 移植，照改动落、不是合分支）：`machines-transport-lane.test.ts` 不再在 Windows 上整文件跳过 —— 它此前只为「桩 `ssh` 是 shell 脚本、Windows 上 `execFile` 跑不了」而 `describe.skip`，而 lane 与平台无关，于是子进程改成 Node 自己（`process.execPath -e "setTimeout(…, 200)"`），建临时目录 / 改 `PATH` 的 `beforeEach` 一并删掉；两条计时断言从写死的 380ms 改成相对值（预热后量一次单跑 `alone`，串行 ≥ `alone+150`、并行 < `alone+180`），慢跑机的冷启动因此把两个界一起挪而不是撞红；`.github/workflows/ci.yml` 的 `test-windows` 注释写明剩下的守卫在 Windows 上**没测到什么**（session 的桩 `ssh` 也是 shell 脚本、真 Windows OpenSSH 客户端没量过；`terminal-stream` 只有真 pty、无头 ConPTY 丢控制台；dsh 的 live 套件见它自己的 `TODO(win32)`），`machines-transport-session.test.ts` 加一行指向它。**不带 changelog**（上游这笔自己写着不带：只有测试与 CI 注释、无用户可见行为） | 六包 `typecheck` 全过（`EXIT=0`，`ifaces.json unchanged` 187 接口 / 535 类型，六个 `Done`）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（数目与上一轮逐字一致）· 改到的两个文件点名跑：lane 2 条 + session 8 条 = **10 通过** · lane 文件**连跑 5 次全绿**（1.51–1.54s）· 临时探针 3 轮量出断言用的三个数：`alone` 233/236/238ms、`serial` 478/482/474ms（下限 383/386/388，余量 ~92ms）、`together` 242/239/240ms（上限 413/416/418，余量 ~175ms），跑完即删、`git status` 复核 · `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，`test-windows` 五片不变）· **CI 复核（推送后 run `37830376191`，`ce30bc1c`）：22 个作业全绿**，`test-windows (server-2)` 的日志里是 `✓ test/machines-transport-lane.test.ts (2 tests)` —— **这个文件在 Windows 上真跑了**（改之前是 `↓ 2 skipped`），`test-windows (server-1)` 的 `↓ machines-transport-session (8 tests | 8 skipped)` 与新写的注释逐字对得上 · 本轮无界面改动，未起服务、未动端口 | `d5ee09f4` |
 | 2026-10-09 | 5.4（Windows 取证） | **DSH 的 live 套件在 Windows 上真跑**（上游 `82498039` `#974` 移植，照改动落、不是合分支）：`plugins/sandbox-dsh/test/live.test.ts` 不再在 Windows 上整文件跳过 —— 探针按会话 shell 分成 pwsh / POSIX 两套（`Set-Content` / `Get-Content`、`$ErrorActionPreference = 'Stop'` 加外层 catch），`ADELIE_SHELL=pwsh` 在 adaptor 加载之前设好（core 每进程只解析一次会话 shell），Windows 上先探一次 pwsh、没有就把「会话 shell 不是 PowerShell 7」当开不了的理由交给 `mustRun()`，可用性探针从裸 `true` 改成 `process.execPath`，`DENIED` 补上 .NET 的 `access to the path … is denied`；背景子进程那条断言补上「工作区内的标记文件确实写了」这半边（此前一个从未跑起来的子进程也能蒙混）；`ci.yml` 的 Windows `rest` 分片声明 `must_run: sandbox-dsh`、并把 `ADELIE_MUST_RUN` 接到那一步的环境。**不带 changelog**（上游这笔自己也没带：只有测试与 CI、无用户可见行为，与 `dd1b931f` 同一口径）。**本地化**：`PENGUIN_SHELL` → 本仓 2.2b 口径的 `ADELIE_SHELL`、`PENGUIN_MUST_RUN` → `ADELIE_MUST_RUN`、包名 `@prismshadow/` → `@lmliheng/`、临时目录前缀 `penguin-dsh-live-` → `adelie-dsh-live-` | 插件 `typecheck` 过 · `ADELIE_MUST_RUN=sandbox-dsh` 下插件 **15 通过 / 1 跳过**（`live.test.ts` 5 条在本机真跑、含新加的工作区内标记断言；`windows-shells.test.ts` 10 真跑 + 1 条 Windows 专属跳过）· 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（与上一轮逐字一致）· `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，只有 windows 的 `rest` 带 `must_run: sandbox-dsh`，ubuntu 与 macOS 那两处原样）· 本轮无界面改动，未起服务、未动端口 · **CI 两跑各 22 个作业全绿**（`37857700478` / `37858509262`）：Windows `rest` 的日志里 `plugins/sandbox-dsh ✓ test/live.test.ts (5 tests) 5115ms / 5037ms` —— 这条 live 套件**在 Windows 上真跑**（此前是整文件跳过）、五条用例逐条点名，没声明的 bwrap `7 skipped` / seatbelt `5 skipped` 照旧；第一跑里 `windows-shells.test.ts` 的 `powershell runs confined` 在**第一次**尝试被 vitest 的 5s 默认切掉（重试救回，作业仍绿），故顺手修掉（`72a2e112`：`it.each` 带上 60s 与 spawn 的期限对齐），第二跑同一格首次尝试就过（2828ms） | `b7933f58` `72a2e112` |
 | 2026-10-09 | 5.4（Ubuntu userns 那一步） | **Ubuntu 23.10+ 上「怎么让默认 Ubuntu 也能跑 bwrap」这一步成文**（上游 `45885985` `#977` 移植，照改动落、不是合分支；就排在第十八轮已落的 `cba091e3` `#976` 之后）：CLI 快速开始（中英双份）新增 **Ubuntu 上的沙盒** 一节 —— 一份要 root 的 AppArmor profile（`/etc/apparmor.d/adelie-sandbox-bwrap`，路径模式 `@{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap` 覆盖随包带 / 下载到数据根 / 热推送三处）、两种替代做法（换 root 拥有的 bwrap，或全机调低开关）与数据根不在 `~/.adelie` 时的做法；`plugins/sandbox-bwrap/src/index.ts` 的拒绝理由在 Debian 的开关旁点名 Ubuntu 的开关并指向这一节（注释补写「为什么这一处要给指针」）；插件 README 写明要求；`profile.test.ts` 两条用例（两个开关都点名 / 指针）—— 第二条是本轮新行为，**缺了指针的实现在它上面会红**（实测）。**本地化**：包名 `@penguinharness/sandbox-bwrap` → `@lmliheng/penguin-plugin-sandbox-bwrap`、路径 `~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（旧名仍读）、profile 名 `penguin-sandbox-bwrap` → `adelie-sandbox-bwrap`；**并去掉上游那句「桌面 `.deb` 会装这份 profile」**（本树 `packages/desktop/build/linux/after-install.tpl` 要复制的 `resources/apparmor-profile` 全仓没人产出，见本节末） | 插件 `typecheck` 过 · `pnpm --filter …sandbox-bwrap test` **27 通过**（profile 20 + live 7，`EXIT=0`）· 反向取证：把新加的指针从源码里去掉，`-t` 点名跑那条新用例 **1 失败**（19 跳过），恢复后 27 全绿 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· 文档站本机 `vite`（7471，临时起、看完即关）真开浏览器：中英两版标题分别是 `ubuntu-上的沙盒` / `sandbox-on-ubuntu`（与仓库自己的 `slugifyHeading` 算出来的一致）、节内链接 `/settings#沙盒`、`/settings#sandbox` 指向设置页既有标题、**代码块整段完整**、console 无 error、无 4xx，截图见 scratchpad | `493b9160` |
+| 2026-10-09 | 5.4（`#975` 的前置） | **停靠面可以拉到最大，每个停靠面板都是一条注册表定义**（上游 `1eb13325` `#961` 移植，照改动落、不是合分支；24 文件 / +2125 −554）：右侧与底部停靠栏都能经头部的**全屏**按钮、或把边界拖过最大值进入全屏 —— 停在对话工具栏之下，右侧停靠栏盖住自己那一行（开着的底部停靠栏仍显示在它下方），底部停靠栏长到工具栏之下；退出用同一枚按钮（原位变**退出全屏**）或把边界拖回。进出随主题的布局动效（`[data-layout-motion]` 因此也涵盖 `top`/`left`），减弱动效时即时；面板从第一帧起按终点尺寸排版，页面不重新排版、面板不重新挂载，退出后滚动位置 / 文件预览 / 编辑器草稿 / 终端画面原样还在。全屏**不记住**：切换对话、隐藏停靠栏、关掉最后一个标签、被它盖住的停靠栏要显示内容时都会结束；底部停靠栏原先仅触屏可用的「放大到整屏」按钮由它取代。**面板改成注册表**：每种面板是 `features/dock/panel-registry.ts` 里的一条 `DockPanelDefinition`（id、名称、图标、排序、是否提供 + 它的变更订阅、主体组件），`PANEL_KINDS` 与各处 per-kind 分支消失，标签条 / **添加面板** / 空停靠栏的选单 / 快捷方式悬浮球都读它，主体经新的 `useDockPanel()` 取本停靠栏的能力；上一轮那两处内联视图（工作区文件、记忆）因此搬进新的 `builtin-dock-panels.tsx`（`chat-page.tsx` 里两个调用点与两条 import 一起删掉），另有新的 `chat-dock-context.tsx` 与 `panel-context.tsx`；ui 新增 `DOCK_FULLSCREEN_Z` 与 `data-fullscreen` 相位。**为什么是这一条**：它是 5.4 里 `9b170c61`（#975）与 `234183f5`（#978）的前置 —— 后两条要改的 `builtin-dock-panels.tsx` / `chat-dock-context.tsx` 由它引入，本树此前没有（第十九轮记过）；选它之前 `git apply -3 --check` 实测**一处错误都没有**。**本地化**：三处冲突（`browser-layer.tsx` / `panel-meta.tsx` / `chat-page.tsx`）都在 import 区 —— 包 scope 与本仓两处本地新增，逐条解；新文件里 4 处 `@prismshadow/` → `@lmliheng/`；changelog 按本仓惯例改名到本轮日期、去掉上游 PR 链接、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2078 文件，+5）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2976**/2 跳过（**242** 文件，+13 条 = 新的 `panel-registry.test.ts` 与扩写的 `dock-state.test.ts`）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 ui + web 后，一次性数据根 `/root/adelie-fork-data/r27-dock`、7494、真浏览器）：登录 + 建会话 → 点**右侧栏** → 停靠栏打开并列出注册表里的七个面板（智能体面板 / 终端 / 文件浏览 / 记忆 / 轨迹观测 / 远程控制 / 定时任务）→ 打开**文件浏览** → 点**全屏**：`[data-fullscreen]` 变 `full`、按钮变**退出全屏**、对话列被盖住而工具栏与左侧栏保留 → 点**退出全屏**：回到 `null`、布局复原 → 再开**下侧栏**同样列出选单；**console 0 error / 0 pageerror / 页面无一条 4xx**（仅三条 `net::ERR_ABORTED`，是关浏览器时中断的长连接），截图 6 张在 scratchpad · 本轮没动端口，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | `e7a0a5a7` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -4024,3 +4035,129 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
   没有重试登录**。正文留在本会话 scratchpad 的 `mail-round26.txt`；把第 26 轮的正文路径与主题
   **加进**既有的周期重发任务 `csu-mail-retry`（现覆盖第 22 / 23 / 24 / 25 / 26 五封，每 6 小时一次、
   `end_at` 2026-10-12T12:00:00Z、先查「已发送」再补发、发完就删掉自己），没有另开新任务。
+
+## 第二十七轮：把 #975 的前置落了 —— 停靠面的全屏与面板注册表（2026-10-09，条目 5.4 的前置之二）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 为什么是这一条
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `168e04da`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+表上最靠前的未勾选条目照旧是 **2.2c**，这一轮又把它的「还差什么」逐条核了一遍（顺手全仓 grep
+了一遍那批 `PENGUIN_*`）：四条仍全在纪律禁止或明说留到发布期的一侧 —— 写侧只剩 `packages/desktop`
+（本轮明令不碰）、既有部署单元 `adelie-app.service` 与桌面壳自己的开关（都是发布动作）；
+第四条第 4 项是画廊 mock 的演示路径与 `packages/docs` 的环境表，按 2.5 / 2.1c 的口径整片留到发布期。
+`packages/server/test/*` 里剩下的 `PENGUIN_HOME` / `PENGUIN_PROFILE` / `PENGUIN_CLI_ENTRY` 全是**钉兼容**
+的用例（注释里就写着「旧名仍读」）。**3.5** 是桌面壳取哪个（要用户拍板，且本轮不许碰 desktop）、
+**3.6** 要模型 key（卡点，本轮还顺手确认了 `penguin config model list` 只给掩码、拿不到明文，
+所以没有不读用户密钥就拿它去验模型的路）、**4.1–4.3** 明令不动、**5.3** 的落地顺序 ②③④
+要第二台机器 / 等上游、**5.6** 的 core 那一半等促销搬进 Project 配置（要拍板）。
+
+**5.4** 这一轮把剩下的三条又各核了一遍，然后做了一件此前几轮都停在门口的事：
+`234183f5`（#978，Landlock）要等 `9b170c61`（#975），而 **#975 压在树里不存在的
+`packages/web/src/features/chat/builtin-dock-panels.tsx` / `chat-dock-context.tsx` 上** ——
+那两个文件由上游 `1eb13325`（#961，停靠面的全屏 + 面板变成注册表定义）引入，第十九轮记过这一条
+（「先决定要不要把上游的 dock 面板重构也搬过来，那件事的落点应当先写进这张表再动手」）。
+所以这一轮做的就是那个前置：**把 #961 落下来，让这条链上「树里不存在的文件」这一栏归零**。
+
+判断它能落、且值得落的三条实测依据：① `git show 1eb13325 | git apply -3 --check -` **一处错误都没有**
+（同批剩下的 `9b170c61` 报冲突、`234183f5` 报 9 处，`1bf9fccc` / `3850dbed` 之类各有 0～2 处）；
+② 它的文件清单里就有那两个文件（还有 `features/dock/panel-registry.ts`）；③ 它自带成套用例
+（`packages/web/test/panel-registry.test.ts` 新 113 行、`dock-state.test.ts` +143 行、
+`packages/ui/test/dock-frame.test.ts` 与 `packages/web/e2e/dock.spec.mjs` 各一处），
+本机能真跑。
+
+### 改了什么（24 个文件 / +2125 −554，含中英 changelog 一对）
+
+- **ui**（`packages/ui/src/components/shell/dock-frame/dock-frame.tsx` 是主战场，+467 行）：
+  `DockFrame` 多一个 docked → entering → full → exiting 的相位机 —— 内容盒在进入时 `fixed` 到停靠面
+  自己的矩形、再移到被盖住的矩形，退出反向；由 `transitionend` 或一条同样能收尾正在跑的过渡的计时器
+  落定；被盖住的那块（`[data-dock-row]` 或 `[data-dock-area]`）随宿主实时变化。相位挂在
+  `data-fullscreen="entering|full|exiting"` 上，`DOCK_FULLSCREEN_Z` 导出给内置浏览器的页面层用，
+  `theme.css` 的 `[data-layout-motion]` 因此也涵盖 `top` / `left`。
+- **web**（`features/dock/`）：新 `panel-registry.ts` —— 每种面板一条 `DockPanelDefinition`
+  （id、名称、图标、排序、`offered` 与它的变更订阅、`Body`），`PANEL_KINDS` 与各处 per-kind 分支
+  随之消失；新 `panel-context.tsx` 提供 `useDockPanel()`（所在停靠栏、是否为当前标签、进出全屏、
+  经关闭守卫关本标签）；`dock-panel.tsx` / `dock-state.ts` / `dock-launcher.tsx` / `panel-meta.tsx`
+  改成读注册表。新 `features/chat/builtin-dock-panels.tsx` 把七个内置面板的**定义与主体**都注册进去，
+  新 `chat-dock-context.tsx` 是对话页与停靠栏之间的那层；`chat-page.tsx` 因此把「工作区文件」与
+  「记忆」两处内联调用点删掉（`builtin-dock-panels.tsx` 里各自成为一具主体）。
+- **首帧不重排**：内层包装按终点尺寸排版并锚定在顶部与共享边，全景时盒子实时跟随自己的矩形、
+  不走过渡 —— 所以终端不会每一帧重新排版，退出后滚动位置、文件预览、编辑器草稿与终端画面原样还在。
+- **移除**：底部停靠栏那个只有触屏能用的「放大到整屏」按钮（`strings.ts` / `strings-en.ts` 的
+  `maximize` / `restore` 换成 `fullscreen` / `exitFullscreen`，另加 `panelUnavailable`
+  —— 布局里存着、面板尚未注册（插件没加载完）的标签显示它并仍可 × 关闭）。
+- `packages/docs/content/chat.{en,zh}.md` 各加一段「怎么把停靠面拉到最大」；
+  `packages/web/e2e/dock.spec.mjs` 的头部说明补上全屏这一条并加用例。
+- `changelog/unreleased/2026-10-09-dock-fullscreen{,.zh}.md`（5.7 的口径，中英各一份；
+  上游那对按本仓惯例改名到本轮日期、去掉上游 PR 链接、写明「移植自上游 #961」）。
+
+### 移植怎么做的（照上游的改动落，不是合分支）
+
+`git show 1eb13325 | git apply -3 -` —— 21 个文件干净落地，**3 处冲突全在 import 区**，
+逐条解掉（都不是语义冲突）：
+
+1. `features/builtin-browser/browser-layer.tsx`：本仓那一行只有 `toastAttention`，上游多了
+   `DOCK_FULLSCREEN_Z`、包 scope 是 `@prismshadow/` —— 取「两个都导入 + 本仓 scope」。
+2. `features/dock/panel-meta.tsx`：上游把整张表搬进 `panel-registry.ts`、这里只剩读者，
+   而本仓这一版仍从 `strings` / `nav-icons` / `dock-state` 取 `S` / `NAV_ICONS` / `PanelKind`
+   —— 取上游那一支（本仓的 `ICONS` 用法随之消失）。
+3. `features/chat/chat-page.tsx`：本仓比上游多两条本地 import（`WorkspaceBrowser` /
+   `ChatMemoryView`，第一轮「新建文件夹」那条线的产物）—— 上游这一笔把两处调用点搬进了
+   `builtin-dock-panels.tsx`，所以这两条 import 一起删掉（grep 过：全文再无引用）。
+
+新文件里 4 处 `@prismshadow/penguin-*` 换成本仓的 `@lmliheng/penguin-*`（`builtin-dock-panels.tsx`、
+`chat-dock-context.tsx`、`panel-registry.ts` 与其用例）；本轮新增行里没有 `PENGUIN_*` /
+`PenguinHarness` 之类要再本地化的命名（扫过）。`prettier` 与 `oxlint` 都直接过，没有要手工调整的格式。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` 全过（`gen:ifaces` 报 `src/ifaces.json unchanged`，187 接口 / 535 类型）；
+  `pnpm lint` **0 警告 0 错误**（2078 文件，比上一轮多 5 个 —— 正是这轮新增的源文件）；
+  `pnpm format:check` 干净。
+- 五包 test 逐包 `EXIT=0`：core **1359 通过 / 5 跳过**（65 文件）· ui **1007**（127 文件）·
+  cli **506**（34 文件）· web **2976 / 2 跳过**（**242** 文件，比上一轮 +13 条，正是新的
+  `panel-registry.test.ts` 与扩写过的 `dock-state.test.ts`）· server **185 文件 / 2690 通过 / 4 跳过**
+  —— **0 失败**。另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件）—— 本轮改到了它的内容。
+- **界面真跑了一遍**（这一条改的是界面，所以照纪律起真服务 + 真浏览器）：按当前源码重建
+  `packages/{ui,web}/dist` 后，用**一次性数据根** `/root/adelie-fork-data/r27-dock`（`ADELIE_SEED_ADMIN_PASSWORD`
+  起、不走认领链接）在 **7494** 起服务，Playwright（本机 chromium，1440×900）：
+  - 登录后建一个会话进 `/chat/<sid>`，点工具栏的**右侧栏** → 停靠栏打开，选单里列出注册表里的
+    七个面板（智能体面板 / 终端 / 文件浏览 / 记忆 / 轨迹观测 / 远程控制 / 定时任务）——
+    这正是「面板都由注册表命名」这条在界面上的样子；
+  - 打开**文件浏览**，点头部的**全屏** → `[data-fullscreen]` 变成 `full`、那枚按钮的原位变成
+    **退出全屏**（截图里对话列被盖住、带标题与统计的工具栏与左侧栏都保留）；再点**退出全屏** →
+    属性回到 `null`、布局复原（对话列与输入框都回来，侧栏回到常规宽度）；
+  - 再点**下侧栏** → 底部停靠栏打开并同样列出选单；
+  - **console 0 error / 0 pageerror / 页面一条 4xx 都没有**（`response` 监听里 ≥400 的一条都没记到；
+    只有三条 `net::ERR_ABORTED`，那是关掉浏览器时被中断的长连接 `/api/events` 等）；
+  - 截图 6 张（`01-chat` / `02-dock-picker` / `03-dock-files` / `04-fullscreen` / `05-back` /
+    `06-bottom-dock`）与脚本 `dock-smoke.cjs` 都在会话 scratchpad，未提交进仓库。
+  服务用完已停，7494 已释放；3003 / 3004 / 4000 / 7364 / 7369 全程没碰。
+- 本轮**没有碰 `packages/desktop` 与 electron**（依赖没装），所以桌面壳那一侧没有证据 ——
+  它本来也不在这一条里。
+
+### 没做 / 还差什么
+
+- **5.4 仍未勾掉**：这一轮收掉的是「#975 的前置」（#961）。剩下的就是 `9b170c61`（#975，
+  前置**已就位**，剩下的只是它自己的规模：6068 增 / 924 删）与 `1ba104c9`（拆 npm 包，属 4.x）；
+  `234183f5`（#978）等 #975。
+- **2.2c / 3.5 / 3.6** 照旧停在原地，原因同前（写侧只剩桌面壳、桌面壳取哪个要用户定、3.6 要模型 key）。
+- **一条顺带记下来的**：上游 `main` 里我们还没落的自立提交还剩若干（`1bf9fccc` #798
+  「热更新时把插件也传过去」、`3850dbed` #526「外部插件索引」、`d929abb33` #960 侧栏按最后活动分页、
+  `d56d9ced` #979 内置前缀的原生依赖按锁文件固定版本并带上许可证声明 等），它们不在本台账的
+  待办里（5.x 的判据是「对着我们的待办与生意」）—— 要不要做、做哪个，等这几条链走完再由用户点单
+  或下一轮按同样的判据挑。`d56d9ced`（#979）与 `234183f5`（#978）的说明都提到「DSH 自带依赖」那一串，
+  两者可能与 #978 有关，下一轮做 #975 时一并核。
+- `refs/adelie-tmp/*` 七个本地临时引用仍在（第 23 轮拉的），没推、没改 remote 配置；本轮没有新增。
+- 中间物：会话 scratchpad 里有 `dock-smoke.cjs` 与 6 张截图、`pw.txt`（一次性口令）、`tests.log`；
+  `/root/adelie-fork-data/r27-dock` 是本轮的取证数据根（约 2M，留着当现场）。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `e7a0a5a7`**（24 个文件 / +2125 −554，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
