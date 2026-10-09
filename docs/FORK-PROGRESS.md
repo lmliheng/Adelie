@@ -378,9 +378,13 @@
       它正是第二十九轮末尾记下的那件事（上游戏列顶端「DSH 自带依赖」那一撮里与随包产物直接相关的一笔），
       而且完全落在 `scripts/` 与两个新测试里 —— 不碰 desktop、不碰界面、不改包名、不改流水线、不发 npm，
       因而不属 4.x。细节与实测见「第三十轮」一节。
-- [ ] **5.9 评估与优化的会话就是普通会话**（上游 `8a774995` `#969`）：评估中心只留「智能体自己发起的
-      测试会话」，评估与优化对话回到普通会话列表里。**本仓可行性核过**：`git apply -3 --check` 只有
-      `packages/web/src/features/chat/draft-cache.ts` 一处冲突，其余 20 个文件干净 —— 是一轮的量。
+- [x] **5.9 评估与优化的会话就是普通会话**（上游 `8a774995` `#969`，**2026-10-10 第三十一轮落地**，
+      提交见该节）：评估中心只留「智能体自己发起的测试会话」，评估与优化对话回到普通会话列表里。
+      **本仓可行性核过**：`git apply -3 --check` 只有 `packages/web/src/features/chat/draft-cache.ts`
+      一处冲突，其余 20 个文件干净 —— 是一轮的量。落地时那处冲突的实情与本仓已知的落后点一致：
+      我们的 `draft-cache.ts` 没有上游后来加的 `goal` 字段（那一笔不在本树），所以冲突区里
+      「上游删 `source`、留 `goal`」对上「我们留 `source`」，解法是**只删 `source`、不引入 `goal`**
+      （引入会直接 typecheck 失败：接口里没有这个字段），与上游这一笔的意图一致。
 - [ ] **5.10 A2UI 组件（天气 / 时钟 / 倒计时 / 指标）与块重排**（上游 `d695c8c9` `#983`）：**本仓还差前置** ——
       它要改的 `packages/core/src/a2ui/{catalog,check,fallback,index,rubric,types}.ts` 与
       `packages/cli/src/a2ui-stream.ts` 本树都没有（那是上游 `bedb1cb8` `#968`「A2UI 块」的产物），
@@ -945,6 +949,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-09 | 5.4（主块） | **权限菜单给出具名沙箱预设**（上游 `9b170c61` `#975` 移植，照改动落、不是合分支；67 文件 / +6107 −919）：权限按钮不再列三段十档，而是列具名预设（完全访问 / 每次询问 / 仅工作区可写 / 只读，管理员另有「更多…」）；沙盒卡片有**启用**开关与一张**预设表**（名称 / 文件 / 网络 / 询问模式 / 操作，行内可拖动排序、图钉决定是否进菜单、「…」菜单可设为默认 / 删除，「添加预设」新增行）。服务端：`PluginConfigField` 多 `table` 类型（固定行 + 类型化列、只存与默认不同的单元格、锁定单元格忽略、可声明 `rowChoice` / `pin` / `columnGroup` / `extensible`），字段多 `advanced` / `hint`，分组可声明布尔 `switch`；沙盒分组改成 `enabled` + `presets` + `defaultPreset`（六个内置预设），自己的 `mode` / `network` 去掉；新 `sandbox/settings-policy.ts`（新会话起点 + 旧文档向后兼容）与 `sandbox/settings-status.ts`（后端状态与「本系统默认该装哪个包」）；会话视图多 `presets` / `advanced` / `switchOn`。Web 的设置页插件配置面整片重写成表，UI 的 `Dropdown` / `Select` / `ConfirmModal` 跟上。**本树缺的三处前置**（typecheck 逼出来的）已补：`ICONS.star`、`S.settings.pluginAction{Title,Run,Confirm}` 中英各三条、以及上游那笔自带的「执行插件操作前先问一句」（补丁父提交里已有、补丁要改到那几行，故一并落下）。**本地化**：`@prismshadow/penguin-*` → `@lmliheng/penguin-*`；沙盒后端推荐包名 `@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）；四份上游 changelog 改名到本轮日期、去 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 547 类型）· `pnpm lint` **0 警告 0 错误**（2101 文件）· `pnpm format:check` 干净（首跑一条，`prettier --write` 后复检通过）· 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（64 文件）· ui **1008**（127）· cli **506**（34）· web **3019**/2 跳过（**247** 文件，+43 = 这笔带来的六个新用例文件与扩写）· server **187 文件 / 2755 通过 / 4 跳过**（+65）—— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 core/server/web 产物 —— server 的 tsup 默认堆会 OOM，`NODE_OPTIONS=--max-old-space-size=4096` 单跑即过；一次性数据根 `/root/adelie-fork-data/r28-presets`、7496、真浏览器）：全新安装开关默认关，权限菜单只有四档审批方式 + 「更多…」→ 「更多…」按设计打开设置对话框的沙盒卡片（只有标题、一条「没有可用后端」提示与开关）→ 点开关弹出**安装后端**对话框，点名的包是 `@lmliheng/penguin-plugin-sandbox-bwrap`（本地化在界面上可见）→ 「暂不」后卡片展开预设表与「添加预设」「高级选项」→ **保存**后刷新重开菜单：变成 **完全访问 / 每次询问 / 仅工作区可写 / 只读**，后两者标「未安装」置灰（本机没有沙盒后端，是设计的诚实标注）→ **console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`），截图 6 张在 scratchpad · 没用到的端口一律没碰，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 · **CI 两跑**：`37922789257` 红在两个 macOS 作业的**服务端声明构建**（OOM，不是测试）—— 与上游同一提交的红点相同，已按仓库既有的 `run-with-env.mjs` 写法给 tsup 一个 4096MB 的默认堆（`a8347184`），详见本轮「CI」一节 | `2e9d53b6` `a8347184` |
 | 2026-10-09 | 5.4（最后一块） | **Linux 沙盒在默认的 Ubuntu 上也能工作 —— 走 Landlock**（上游 `234183f5` `#978` 移植，照改动落、不是合分支；65 文件 / +1523 −258）：路由改成「**实现维度最多的后端负责**」（`SandboxService.pick()`，注册顺序只用于打破平局），bubblewrap 加载得到的地方每条策略仍由它负责、DSH 适配器只在它是仅剩的那一个时服务；新增 **`closed-temp`** 维度（bubblewrap / Seatbelt / WSL 声明，DSH 适配器不声明 —— 它每一级都会在仅工作区可写下放开一个临时目录），关闭「临时目录可写」的策略绝不路由给没有它的后端；core 插件契约多出（都可选）`SandboxProvider.mechanism`（谁在实施，如 `bubblewrap` / `Landlock`）、`SandboxProvider.limits`（本机留下的缺口，中英）与 `ConfinedSpawn.runnerLines`（后端自报的提示行从命令与钩子脚本 stderr 的开头去掉，如老 ABI 上的 `landlock-run: partial enforcement`）；DSH 适配器**在加载时选定并用 `mechanism` 报出它那一级**，两级都不通的主机因此带着 DSH 的原因加载失败，而不是挂上一个拒绝每条命令的后端；沙盒卡片的后端字段 `backend.recommended` 由**单个字符串改成列表**（Linux 两个包），打开开关时按顺序装整张列表，「Backends:」一行改成 `Enforced here: … / Not enforced here: …` 加一个折叠的 **More info**（列出在用后端的缺口、每个已安装但未启用的后端及其原因），没有能隔离网络的后端时「无网络」与「仅本机」一样置灰；四个沙盒插件包升 **0.2.3**（不升的话已装有 0.2.2 的机器会继续跑旧内容、拿不到 `closed-temp` 声明）；Web 那边为「旧服务端只报一个字符串」留了一条向后兼容（`recommendedOf`，带 `TODO(recommended-string-compat)`）。**本地化**：`@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）、`@prismshadow/penguin-*` → `@lmliheng/penguin-*`、`~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（保留「旧名仍读」的说明）；四份上游 changelog 改名到本轮日期、去掉 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 549 类型；core 要**先重建** server 才看得到新契约）· `pnpm lint` **0 警告 0 错误**（2108 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **506**（34）· web **3032**/2 跳过（**248** 文件）· server **189 文件 / 2766 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62**、四个沙箱插件包（bwrap 29 · dsh 21+1 跳过 · seatbelt 17+5 跳过 · wsl 25）全绿 · **界面真跑**（重建 core/server/web 产物 + 一次性数据根 `/root/adelie-fork-data/r29-landlock`、7497、真浏览器）：全新安装点开沙盒卡片的开关后弹出的**安装提示点名两个包、顺序与列表一致**（`@lmliheng/penguin-plugin-sandbox-bwrap 和 @lmliheng/penguin-plugin-sandbox-dsh`，文案写明「两者都可用时，使用封禁范围更大的那个」），卡片与预设表排版正常，**console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`）· **真跑一次 DSH 适配器的加载与约束**：本机（内核 6.1）加载成功、`mechanism` = `Landlock (partial)`，受限命令**在工作区内写成功、在工作区外（`$HOME`）被拒**（`Permission denied`，文件不存在）· 3003 / 3004 / 4000 / 7364 / 7369 与 `/root/penguin-harness` / `/root/Adelie` / `legacy/main` 全程没碰 | `ea92b3ec` |
 | 2026-10-10 | 5.8 | **随包插件的依赖按锁定版本安装、许可证随包发布**（上游 `d56d9ced` `#979` 移植，照改动落、不是合分支；9 文件 / +554 −33）：`scripts/build-plugins.mjs` 装进 builtin prefix 的第三方包改成 `pnpm-lock.yaml` 解析出的版本 —— 新增 `scripts/lib/locked-prefix.mjs`（读原生依赖闭包、写进 prefix 的 npm `overrides`、装完按版本与 tarball integrity 对账，不一致即失败）与 `scripts/lib/third-party-notices.mjs`（在 prefix 根写出 `THIRD-PARTY-NOTICES.md`，每个第三方包一节，缺许可证文本即失败）；闭包计入内容缓存键，`PACK_FORMAT` 13 → 14。**为什么是这一条**：第二十九轮末尾记下的那件事里与随包产物直接相关的一笔，且不属 4.x（不改包名、不改流水线、不发 npm） | 六包 `typecheck` `EXIT=0`（`ifaces.json unchanged` 187 接口 / 549 类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **506**（34）· web **3032**/2 跳过（248）· server **191 文件 / 2775 通过 / 4 跳过**（+9 即本笔新用例）—— **0 失败** · **真跑一次构建**：`node scripts/build-plugins.mjs --out <scratchpad>/prefix` 退出 0，日志 `23 locked third-party packages: verified` / `6 per-platform native binaries: installed`，产出的 prefix 里 cordis **4.0.1** · cosmokit **1.8.2** · schemastery **3.18.1** · koffi **3.1.6**、`overrides` 23 条、`THIRD-PARTY-NOTICES.md` 23 节、四个目标平台的分平台包都在 · **漂移检测拿真产物取证**：干净树 `[]`，改一条 integrity 后被点名、删一条后被点名 · 本轮没改界面，未起服务、未开浏览器，端口一个没动 | `79bfa4c2` |
+| 2026-10-10 | 5.9 | **评估与优化的会话就是普通会话，「评估任务」折叠夹只收 Agent 启动的被测会话**（上游 `8a774995` `#969` 移植，照改动落、不是合分支；21 文件 / +98 −87，比上游多 2 行是本仓写法的 changelog 一对）：Web App 不再给评估中心「使用」对话框预填的对话打 `source: "benchmark"` 标记 —— `AiChatRequest` 去掉 `source`、`DraftCache` 的类型与 `draftFromUnknown` 去掉它、草稿页的写回与创建请求体去掉它（**Web App 从此一个字段都不发 `source`**）；服务端与 CLI 行为不变（`POST …/sessions` 仍接受 CLI 发来的 `benchmark`），只有 `SessionCreateRequest.source` / `CreateSessionOptions.source` / `SessionMetaPayload.source` 的文档注释改成「被评估的 Test Session 由 `penguin run --source benchmark` 创建」；评估中心 / 对话 / 服务端 API 三份文档（中英）更新。**本树那处冲突的解法**：上游同一段里还留着它自己后加、本树没有的 `goal` 字段 —— 只删 `source`、不引入 `goal`（引入会 typecheck 失败）。changelog 按本仓惯例改名到本轮日期、去上游 PR 行、写明移植出处 | 六包 `typecheck` `EXIT=0`（`ifaces.json unchanged` 187 接口 / 549 类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· 逐包 `EXIT=0`：core **1368**/5 跳过（66 文件）· ui **1008**（127）· cli **507**（34，+1 即本笔新用例）· web **3032**/2 跳过（248 文件，用例数与扩写后的一致）· server **191 文件 / 2775 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 core/server/web 产物后，一次性数据根 `/root/adelie-fork-data/r31-eval`、`localhost:4111`、真浏览器）：评估中心 → Example Benchmark →「使用」→「在新对话中编辑」，预填草稿的 localStorage 里**没有 `source` 字段**（字段是 text / workspace / approvalMode / agentId / modelRef / skills / aiPrefill）；按发送后 Web App 真发的创建请求体是 `{"approvalMode":"allow-all","modelId":"deepseek-flash","provider":"deepseek"}` —— **不带 `source`**（改动前会带 `"source":"benchmark"`）；登录后走查会话列表 / 评估中心 / 预填草稿，**console 0 error、无一条 4xx**（唯一一条是登录前的 `/api/me` 401，是这个 App 的正常首访应答）；创建请求被服务端以 `model_credential_missing` 退回是**环境原因**（空数据根没配模型 key，即 3.6 那个卡点），因此本轮没有真会话可看折叠夹归类 —— 归类规则本身未改，由 `web/test/session-grouping.test.ts` 的改写场景覆盖。截图 6 张在 scratchpad · 端口只用 4111，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -4573,3 +4578,112 @@ changelog 里的包数按本树实跑结果写成 **23**（探针按五个目标
   `r30/mail-round30.txt`；把第 30 轮的正文路径与主题**加进**既有的周期重发任务 `csu-mail-retry`
   （现覆盖第 22–30 共九封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、先查「已发送」再补发、
   发完就删掉自己），没有另开新任务。
+
+## 第三十一轮：评估与优化的会话就是普通会话（2026-10-10，条目 5.9）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**（依赖没装、磁盘也没必要为它花）。
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `6ba2b25f`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+（轮次 prompt 里写的仓库根 `FORK-PROGRESS.md` 不存在 —— 这份台账 2026-10-08 起就在 `docs/`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，其「还差什么」这一轮再核一遍仍全在纪律禁止或明说留到发布期的
+一侧：写侧只剩 `packages/desktop`（本轮明令不碰）、既有部署单元 `adelie-app.service` 与桌面壳自己的
+开关（都是发布动作）、剩下第四条第 4 项是画廊 mock 的演示路径与 `packages/docs` 的环境表（按 2.5 /
+2.1c 的口径整片留到发布期，且画廊不在本轮的 typecheck 门禁里）；**3.5** 是桌面壳取哪个（要用户拍板，
+且本轮不许碰 desktop）、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动；**5.6** 的 core 那一半等
+促销搬进 Project 配置（要用户拍板）。**5.4** 已于第二十九轮清零。于是可动的是 **5.9** —— 它同时还是
+上游 `main` 的**最新一笔**（`refs/adelie-tmp/upstream-main` 的尖端就是 `8a774995`，见下）。
+
+### 改了什么（21 个文件 / +98 −87，含中英 changelog 一对）
+
+上游 `8a774995`（#969「The Evaluate and Optimize conversations are ordinary Sessions」）照改动落，
+不是合分支。会话列表的「评估任务」折叠夹一直按 Trace 的 `session_meta.source === "benchmark"` 归类
+（这条规则没动），而这个标记有两个生产者：CLI 的 `penguin run --source benchmark`（保留），以及
+Web App —— 后者这次整条链路拆掉：
+
+- `packages/web/src/features/ai-create/ai-bridge.ts`：`AiChatRequest` 去掉 `source`，
+  `buildAiDraft` 不再把请求上的标记写进草稿（连同「只对要求它的那次请求携带、否则删掉」那段）。
+- `packages/web/src/features/chat/draft-cache.ts`：`DraftCache` 的类型与 `draftFromUnknown` 去掉
+  它（旧版本存下的草稿读回来就是普通草稿，不需要兼容代码 —— 逐字段解析像丢弃其他未知字段一样丢掉）。
+- `packages/web/src/features/chat/draft-view.tsx`：草稿页的写回（`persistNow`）与 `POST …/sessions`
+  的请求体去掉它；两处依赖数组里跟着去掉 `cached.source`。
+- `packages/web/src/features/benchmark/use-benchmark-modal.tsx`：发请求处不再写 `source: "benchmark"`，
+  头部注释改成「这条对话是普通 Session，只有它经 `penguin run --source benchmark` 启动的被测会话
+  才进折叠夹」。
+- `packages/web/src/features/chat/new-chat.ts`：`prepareNewChatDraft` 的注释不再提「释放评估标记」。
+- 服务端与 CLI **行为不变**：`packages/server/src/api/types.ts`（`SessionSource` 与
+  `SessionCreateRequest.source`）、`session-service.ts` 的 `create()` 参数、
+  `packages/core/src/agent.ts` 的 `CreateSessionOptions.source`、
+  `packages/core/src/omnimessage/types.ts` 的 `SessionMetaPayload.source` 只改文档注释 ——
+  `benchmark` 现在的意思统一成「被评估的 Test Session，由 `penguin run --source benchmark` 创建」。
+- 用例：`packages/cli/test/server-commands.test.ts` 新增一条（`--source benchmark` 把标记放进创建
+  请求体、裸 `penguin run` 不放 —— **CLI 从此是唯一的生产者，此前没有用例钉住这一点**）；
+  `packages/web/test/draft-cache.test.ts` 新增「旧版本存的评估草稿读回来没有标记」一条；
+  `packages/web/test/new-chat.test.ts` 删掉随标记一起消失的那条场景；
+  `packages/web/test/session-grouping.test.ts` 改写场景（被测会话进折叠夹且不自动打开、评估会话是
+  活跃行且是自动打开的那条）。
+- 文档：`packages/docs/content/{chat,evaluation-center,server-api}.{en,zh}.md` 六份都不再写「评估对话
+  归入评估任务」。
+- changelog：中英一对（`changelog/unreleased/2026-10-10-evaluation-tasks-list{,.zh}.md`），按本仓惯例
+  改名到本轮日期、去掉上游 PR 行、写明移植出处。
+
+**本树那处冲突的实情**：上游同一段里还留着它自己后加的 `if (o.goal === true) out.goal = true;`，而
+本树的 `draft-cache.ts` 没有 `goal` 字段（那一笔不在我们树上），所以冲突区是「上游删 `source`、留
+`goal`」对上「我们留 `source`」。解法是**只删 `source`、不引入 `goal`** —— 引入会直接 typecheck 失败
+（`DraftCache` 接口里没有这个字段），而这一笔要的只是删掉标记。**没有本地化要做的名字**：补丁里唯一
+的 `@prismshadow/` 只出现在一处 context 行（测试的 import），三路合并后仍是本仓的 `@lmliheng/`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**：六个 `Done`，`gen:ifaces` 报 `src/ifaces.json unchanged`
+  （187 接口 / 549 类型）。
+- `pnpm lint` **0 警告 0 错误**（2114 文件）。
+- 逐包 test `EXIT=0`：core **1368** / 5 跳过（66 文件）· ui **1008**（127）· cli **507**（34，
+  +1 = 本笔新用例）· web **3032** / 2 跳过（248 文件）· server **191 文件 / 2775 通过 / 4 跳过**
+  —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）。
+- **界面真跑**（先按 `hmr → core → server → web` 逐个重建产物 —— 三个一起 build 会挤爆，见第二十八轮；
+  一次性数据根 `/root/adelie-fork-data/r31-eval`、`localhost:4111`、真浏览器）：
+  1. 登录（`admin` + 一次性口令）→ 会话列表、评估中心渲染正常。
+  2. 评估中心 → `Example Benchmark` →「使用」→ 对话框（评估 / 优化两个标签页）→「在新对话中编辑」：
+     **预填草稿的 localStorage 里没有 `source` 字段** —— 实际内容是
+     `{"text":…,"workspace":"","approvalMode":"allow-all","agentId":"default_agent","modelRef":{…},"skills":["agent-evaluation"],"aiPrefill":true}`；
+     界面上的技能条（`agent-evaluation`）、被测/执行智能体与模型选择都对。
+  3. 在那条草稿上按发送：Web App **真发的**创建请求体是
+     `{"approvalMode":"allow-all","modelId":"deepseek-flash","provider":"deepseek"}` ——
+     **不带 `source`**（改动前这里会带 `"source":"benchmark"`）。
+  4. 走查会话列表 / 评估中心 / 预填草稿：**console 0 error、无一条 4xx**（唯一一条是登录前的
+     `GET /api/me` 401，是这个 App 的正常首访应答）；截图 6 张在会话 scratchpad。
+- **这一轮没能看到的**：折叠夹归类本身需要一个真会话（Trace 的 `session_meta`），而空数据根没有模型
+  key，创建请求被服务端以 `model_credential_missing` 退回（**环境原因**，正是 3.6 那个卡点）—— 所以
+  「评估会话是活跃行、被测会话进折叠夹」这半边只有 `web/test/session-grouping.test.ts` 的用例覆盖，
+  本机没有第二份证据。服务端那半边（`benchmark` 落成 `benchmark` 分类）由既有的
+  `server/test/session-index.test.ts` 覆盖。
+- 端口只用了一次性的 **4111**；3003 / 3004 / 4000 / 7364 / 7369 一个没动。
+
+### 没做 / 还差什么
+
+- 上游 `main` 现在还剩 **一笔**没落：`d695c8c9`（#983，A2UI 组件与块重排）。**本轮的实测**：
+  `git show bedb1cb8 | git apply -3 --check -`（`#968`「A2UI 块」是它的前置，本树没有：
+  `packages/core/src/a2ui/**`、`packages/cli/src/a2ui-stream.ts` 都不存在）——
+  `#968` 自己是 85 文件 / +8111 −50，**17 处冲突**，其中两处是 `packages/landing/src/lib/strings{,-en}.ts`
+  （2.5 已把 `packages/landing` 删掉、补丁里还要改它）。所以 **5.10 不是一轮的量**：下一轮应当先落
+  `#968` 这一整套（照改动落、把 landing 那两处按「本树没有这个文件」跳过），再谈 `#983`。
+- **2.2c / 3.5 / 3.6 / 5.6** 照旧停在原地，原因同前几轮（纪律禁止的一侧或要用户拍板 / 要 key）。
+- `refs/adelie-tmp/*` 没动：仍是第二十三轮那七条 `fix/machine-*` 加第三十轮拉的 `upstream-main`
+  （本轮就是用它读到 `8a774995` 的）；没推、没改 remote 配置。
+- 中间物：会话 scratchpad 里的 `upstream-8a774995.patch`、六个 Playwright 脚本与 6 张截图、
+  `server.log`；取证数据根 `/root/adelie-fork-data/r31-eval`（一次性，留着当现场）。截图与脚本都没入库。
+- 一条与本轮无关但值得记下的坑：**起服务时别把 stdout 接给 `head`** —— 管道读端一退出，服务端此后
+  每个请求都挂住（`curl` 与浏览器都一样），看起来像「服务端不回 Accept-Encoding 带压缩的请求」。
+  本轮先误判成压缩中间件的问题，把日志改成写文件后一切正常（同一份 dist、同一个数据根）。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `e20073c3`**（21 个文件 / +98 −87，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`（`6ba2b25f..e20073c3`）。**没有切版本号、没发 npm、没发安装包、
+  没发发布汇总。**
