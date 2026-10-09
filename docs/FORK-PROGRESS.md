@@ -4439,3 +4439,13 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
 
 - **代码提交 `ea92b3ec`**（66 个文件 / +1628 −263，含本台账的这一笔，见「已完成的轮次」那一行）；
   台账的收尾另起一笔。
+- **CI**：推送后的 run `37950180937`（`7b5dbf28`）**22 个作业全绿、`NOT SUCCESS: []`** ——
+  也就是说这一轮的代码在 ubuntu / macOS / windows 三类跑机上一起过了（第二十八轮给服务端 `tsup`
+  的 4096MB 默认堆这一笔仍然够用，本轮没有再加）。
+- **汇报邮件没发出去（第 22–28 轮同一处卡点，与凭据无关）**：本机到中南大学网段
+  `202.197.0.0/16` 仍整片不通 —— `python3 scripts/mail.py check`（csu-mail 技能目录下）与裸
+  `/dev/tcp/smtp.csu.edu.cn/465`、`/dev/tcp/imap.csu.edu.cn/993` 都超时，而同一时刻
+  `github.com:443` 正常、环境里没有任何代理，所以既不是凭据也不是出口被整体掐断。本轮的正文写在
+  会话 scratchpad 的 `r29/mail-body.txt`；把第 29 轮的正文路径与主题**加进**既有的周期重发任务
+  `csu-mail-retry`（现覆盖第 22–29 共八封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、
+  先查「已发送」再补发、发完就删掉自己），没有另开新任务。
