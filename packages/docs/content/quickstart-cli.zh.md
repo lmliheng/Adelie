@@ -196,6 +196,28 @@ Windows 上还有以下不同：
 
 数据目录默认为 `~/.penguin/data`（Windows 为 `%USERPROFILE%\.penguin\data`）。它位于安装目录之下，但安装和升级都不会改动它。设置环境变量 `PENGUIN_HOME` 可以改用其他目录。模型配置、Session 记录等数据在升级后都会保留。
 
+### Ubuntu 上的沙盒
+
+Linux 沙盒后端 `@lmliheng/penguin-plugin-sandbox-bwrap` 用 bubblewrap 约束命令，需要非特权 user namespace。Ubuntu 23.10 及以后的版本（包括默认的 Ubuntu 24.04）只把它交给带有相应 AppArmor profile 的程序（`kernel.apparmor_restrict_unprivileged_userns` 为 `1`），而安装脚本、npm 安装、Release 压缩包与 Docker 容器都以普通用户运行，装不了 profile。这几种安装上，后端的启动检查会失败，[沙盒](/settings#沙盒)卡片显示 `@lmliheng/penguin-plugin-sandbox-bwrap` 已启用但未在用，原因里带有 `setting up uid map: Permission denied`。
+
+解决办法是为后端自带的 bubblewrap 装一份 profile。这一步需要 root，只做一次：
+
+```bash
+sudo tee /etc/apparmor.d/adelie-sandbox-bwrap >/dev/null <<'EOF'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile adelie-sandbox-bwrap @{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap flags=(unconfined) {
+  userns,
+}
+EOF
+sudo apparmor_parser -r /etc/apparmor.d/adelie-sandbox-bwrap
+```
+
+然后在沙盒卡片上点**保存**，后端会重新检查，无需重启。profile 在每次开机时重新加载。它的路径模式匹配 `~/.adelie` 下后端自带的 bubblewrap 可能被解压到的每个位置：安装目录随包带的插件（`~/.adelie/lib/plugins/`）、下载到数据根目录的插件（`~/.adelie/data/plugins/`），以及热推送携带的插件（位于 `~/.adelie/data/hmr/` 下）。升级会在同一路径上替换这个包，所以后端升级后依然有效。如果 `ADELIE_HOME`（旧名 `PENGUIN_HOME`）或 `PENGUIN_INSTALL_DIR` 指向 `~/.adelie` 之外，再以另一个名字加载一份 profile，把其中的 `@{HOME}/.adelie` 换成那个目录。
+
+这份 profile 作用于该路径上的任何程序，而这个路径你自己就能写入。在与不受信任的用户共用的机器上，改为在沙盒卡片上把 bwrap 程序设为一份属于 root 的副本（例如 `apt install bubblewrap` 装的 `/usr/bin/bwrap`），并在 profile 里写那个路径。另一种做法是用 `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` 对所有程序解除这项限制。要在重启后保留这项设置，把同一行（去掉 `sudo sysctl -w`）写进 `/etc/sysctl.d/` 下的一个文件。
+
 ### 已发布的 npm 包
 
 | 包 | 说明 |

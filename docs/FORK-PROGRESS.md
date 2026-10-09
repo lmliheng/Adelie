@@ -301,6 +301,12 @@
            「DSH 自带依赖」那几笔。要拿它得连前置一起算，约 1.5k 行、跨 core/server/web/plugins
            四包，一轮做不完。**第十九轮实测**：`git apply -3` 落它，`packages/{server,web,plugins}`
            多处冲突（它的设置面与 `9b170c61` 是同一串）。
+           **2026-10-09 第二十六轮把这条链上半独立的那一笔落掉了**：`45885985`（#977）—— 它就排在
+           `cba091e3`（#976，第十八轮已落）之后，是本树唯一还能整块拿下的前置：CLI 快速开始新增
+           「Ubuntu 上的沙盒」一节（含那份要 root 的 AppArmor profile）、后端拒绝文案指向它、
+           README 写明要求、一条新用例。所以这条链如今缺的只剩 `9b170c61`（#975，见下条）与
+           `1ba104c9`（属 4.x）；`234183f5` 自己仍要等 #975 —— 它要改的
+           `packages/server/src/sandbox/settings-status.ts` 等文件由 #975 引入，本树没有。
         2. `9b170c61`（权限菜单命名预设）**它自己一次就 6068 增 / 924 删**（设置页的插件配置表整片重写，
            含 `plugin-config-table.tsx` 436 行），与 web 的文案面重叠，得单独一轮。**第十九轮实测出了一条
            更硬的拦路石**：这个补丁要改 `packages/web/src/features/chat/builtin-dock-panels.tsx` 与
@@ -900,6 +906,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-08 | 5.3（落地顺序①） | **跨机那一批小修复里能上的一次上掉**（上游 `fix/machine-*` 分支，照改动落、不是合分支）：① `7e1dca63` —— 本服务器经 ssh 启动机器的服务端时用 `setsid`（宿主有才用）把它放进自己的会话，连接断掉不会再被 sshd 一起挂死（`nohup` 盖不住：服务端自己起的子进程会重置 SIGHUP），本地化 `PENGUIN_SETSID` → 本仓 2.2b 口径的 `ADELIE_SETSID`；② `a2801c8d` —— 「通往机器的这一跳在浏览器放弃之前作答」：SOCKS 握手期限 20s → 8s、应答之前被关掉的通道立即失败、转发的读 15s 收不到响应头就 `504 machine_not_answering`（写请求不截断），移植落点只有 `machines/proxy.ts` 与 `transport/socks.ts`（上游同时改到的中继层本树没有）；两条的中英 changelog 一对。**另外三条 `fix/machine-*` 逐条核过、一条都没上**：`fix/machine-events-redial-a-failed-dial` 与 `-attach-a-machine-connected-later` 要 `event-hub.ts` / `machine-sockets.ts`（本树没有，属上游未进 main 的那条事件流线）；`fix/machine-linked-stopped` 与 `fix/machine-adopted-table` 的内容本树早已有（由 `48662c0a`（#448）一并带上），落上去是空操作 | 六包 `typecheck` 全过（`src/ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 六包 test 全绿：core **1359**/5 跳过（64 文件）· ui **1007**（127）· server **2690**/4 跳过（185 文件，+8 恰是本轮新用例）· cli **506**（34）· web **2963**/2 跳过（241）· hmr 无测试文件，**0 失败** · 新用例逐条点名跑过：`startServerCommand` 两条（含 Linux 上**真起一个进程**、读 `/proc/<pid>/stat` 断言第 6 字段 = 它自己的 sid）、代理三条（504 / 写不截断 / 通道被关立即 502）、SOCKS 三条（关通道、期限、两个期限的大小关系）· 本轮没有界面改动，所以没起服务、没有动任何端口 | 见本行提交 |
 | 2026-10-09 | 5.3（收尾） | **上游 `main` 上仅剩的那条跨机提交落地**（上游 `dd1b931f` `#973` 移植，照改动落、不是合分支）：`machines-transport-lane.test.ts` 不再在 Windows 上整文件跳过 —— 它此前只为「桩 `ssh` 是 shell 脚本、Windows 上 `execFile` 跑不了」而 `describe.skip`，而 lane 与平台无关，于是子进程改成 Node 自己（`process.execPath -e "setTimeout(…, 200)"`），建临时目录 / 改 `PATH` 的 `beforeEach` 一并删掉；两条计时断言从写死的 380ms 改成相对值（预热后量一次单跑 `alone`，串行 ≥ `alone+150`、并行 < `alone+180`），慢跑机的冷启动因此把两个界一起挪而不是撞红；`.github/workflows/ci.yml` 的 `test-windows` 注释写明剩下的守卫在 Windows 上**没测到什么**（session 的桩 `ssh` 也是 shell 脚本、真 Windows OpenSSH 客户端没量过；`terminal-stream` 只有真 pty、无头 ConPTY 丢控制台；dsh 的 live 套件见它自己的 `TODO(win32)`），`machines-transport-session.test.ts` 加一行指向它。**不带 changelog**（上游这笔自己写着不带：只有测试与 CI 注释、无用户可见行为） | 六包 `typecheck` 全过（`EXIT=0`，`ifaces.json unchanged` 187 接口 / 535 类型，六个 `Done`）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0` 全绿：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（数目与上一轮逐字一致）· 改到的两个文件点名跑：lane 2 条 + session 8 条 = **10 通过** · lane 文件**连跑 5 次全绿**（1.51–1.54s）· 临时探针 3 轮量出断言用的三个数：`alone` 233/236/238ms、`serial` 478/482/474ms（下限 383/386/388，余量 ~92ms）、`together` 242/239/240ms（上限 413/416/418，余量 ~175ms），跑完即删、`git status` 复核 · `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，`test-windows` 五片不变）· **CI 复核（推送后 run `37830376191`，`ce30bc1c`）：22 个作业全绿**，`test-windows (server-2)` 的日志里是 `✓ test/machines-transport-lane.test.ts (2 tests)` —— **这个文件在 Windows 上真跑了**（改之前是 `↓ 2 skipped`），`test-windows (server-1)` 的 `↓ machines-transport-session (8 tests | 8 skipped)` 与新写的注释逐字对得上 · 本轮无界面改动，未起服务、未动端口 | `d5ee09f4` |
 | 2026-10-09 | 5.4（Windows 取证） | **DSH 的 live 套件在 Windows 上真跑**（上游 `82498039` `#974` 移植，照改动落、不是合分支）：`plugins/sandbox-dsh/test/live.test.ts` 不再在 Windows 上整文件跳过 —— 探针按会话 shell 分成 pwsh / POSIX 两套（`Set-Content` / `Get-Content`、`$ErrorActionPreference = 'Stop'` 加外层 catch），`ADELIE_SHELL=pwsh` 在 adaptor 加载之前设好（core 每进程只解析一次会话 shell），Windows 上先探一次 pwsh、没有就把「会话 shell 不是 PowerShell 7」当开不了的理由交给 `mustRun()`，可用性探针从裸 `true` 改成 `process.execPath`，`DENIED` 补上 .NET 的 `access to the path … is denied`；背景子进程那条断言补上「工作区内的标记文件确实写了」这半边（此前一个从未跑起来的子进程也能蒙混）；`ci.yml` 的 Windows `rest` 分片声明 `must_run: sandbox-dsh`、并把 `ADELIE_MUST_RUN` 接到那一步的环境。**不带 changelog**（上游这笔自己也没带：只有测试与 CI、无用户可见行为，与 `dd1b931f` 同一口径）。**本地化**：`PENGUIN_SHELL` → 本仓 2.2b 口径的 `ADELIE_SHELL`、`PENGUIN_MUST_RUN` → `ADELIE_MUST_RUN`、包名 `@prismshadow/` → `@lmliheng/`、临时目录前缀 `penguin-dsh-live-` → `adelie-dsh-live-` | 插件 `typecheck` 过 · `ADELIE_MUST_RUN=sandbox-dsh` 下插件 **15 通过 / 1 跳过**（`live.test.ts` 5 条在本机真跑、含新加的工作区内标记断言；`windows-shells.test.ts` 10 真跑 + 1 条 Windows 专属跳过）· 六包 `typecheck` 全过（`ifaces.json unchanged`，187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过**，**0 失败**（与上一轮逐字一致）· `ci.yml` 用仓库自带 `yaml` 解析通过（11 个 job，只有 windows 的 `rest` 带 `must_run: sandbox-dsh`，ubuntu 与 macOS 那两处原样）· 本轮无界面改动，未起服务、未动端口 · **CI 两跑各 22 个作业全绿**（`37857700478` / `37858509262`）：Windows `rest` 的日志里 `plugins/sandbox-dsh ✓ test/live.test.ts (5 tests) 5115ms / 5037ms` —— 这条 live 套件**在 Windows 上真跑**（此前是整文件跳过）、五条用例逐条点名，没声明的 bwrap `7 skipped` / seatbelt `5 skipped` 照旧；第一跑里 `windows-shells.test.ts` 的 `powershell runs confined` 在**第一次**尝试被 vitest 的 5s 默认切掉（重试救回，作业仍绿），故顺手修掉（`72a2e112`：`it.each` 带上 60s 与 spawn 的期限对齐），第二跑同一格首次尝试就过（2828ms） | `b7933f58` `72a2e112` |
+| 2026-10-09 | 5.4（Ubuntu userns 那一步） | **Ubuntu 23.10+ 上「怎么让默认 Ubuntu 也能跑 bwrap」这一步成文**（上游 `45885985` `#977` 移植，照改动落、不是合分支；就排在第十八轮已落的 `cba091e3` `#976` 之后）：CLI 快速开始（中英双份）新增 **Ubuntu 上的沙盒** 一节 —— 一份要 root 的 AppArmor profile（`/etc/apparmor.d/adelie-sandbox-bwrap`，路径模式 `@{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap` 覆盖随包带 / 下载到数据根 / 热推送三处）、两种替代做法（换 root 拥有的 bwrap，或全机调低开关）与数据根不在 `~/.adelie` 时的做法；`plugins/sandbox-bwrap/src/index.ts` 的拒绝理由在 Debian 的开关旁点名 Ubuntu 的开关并指向这一节（注释补写「为什么这一处要给指针」）；插件 README 写明要求；`profile.test.ts` 两条用例（两个开关都点名 / 指针）—— 第二条是本轮新行为，**缺了指针的实现在它上面会红**（实测）。**本地化**：包名 `@penguinharness/sandbox-bwrap` → `@lmliheng/penguin-plugin-sandbox-bwrap`、路径 `~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（旧名仍读）、profile 名 `penguin-sandbox-bwrap` → `adelie-sandbox-bwrap`；**并去掉上游那句「桌面 `.deb` 会装这份 profile」**（本树 `packages/desktop/build/linux/after-install.tpl` 要复制的 `resources/apparmor-profile` 全仓没人产出，见本节末） | 插件 `typecheck` 过 · `pnpm --filter …sandbox-bwrap test` **27 通过**（profile 20 + live 7，`EXIT=0`）· 反向取证：把新加的指针从源码里去掉，`-t` 点名跑那条新用例 **1 失败**（19 跳过），恢复后 27 全绿 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 187 接口 / 535 类型）· `pnpm lint` **0 警告 0 错误**（2073 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1359**/5 跳过（65 文件）· ui **1007**（127）· cli **506**（34）· web **2963**/2 跳过（241）· server **185 文件 / 2690 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· 文档站本机 `vite`（7471，临时起、看完即关）真开浏览器：中英两版标题分别是 `ubuntu-上的沙盒` / `sandbox-on-ubuntu`（与仓库自己的 `slugifyHeading` 算出来的一致）、节内链接 `/settings#沙盒`、`/settings#sandbox` 指向设置页既有标题、**代码块整段完整**、console 无 error、无 4xx，截图见 scratchpad | 见本行提交 |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -3878,3 +3885,122 @@ Exit status 1
   正文留在本会话 scratchpad 的 `mail-round25.txt`；把第 25 轮的正文路径与主题**加进**既有的周期重发任务
   `csu-mail-retry`（现覆盖第 22 / 23 / 24 / 25 四封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、
   先查「已发送」再补发、发完就删掉自己），没有另开新任务。
+
+## 第二十六轮：Ubuntu 上的 user namespace 那一步成文（2026-10-09，条目 5.4 的前置之一）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369 全程没碰；按本轮纪律
+**没有碰 `packages/desktop` 与 electron**。
+
+### 为什么是这一条
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `872d18f0`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+表上最靠前的未勾选条目照旧是 **2.2c**，它的「还差什么」这一轮再核一遍，四条仍全在纪律禁止或明说留到
+发布期的一侧：写侧只剩 `packages/desktop`（本轮明令不碰）、既有部署单元 `adelie-app.service` 与桌面壳
+自己的开关（都是发布动作）；剩下第四条第 4 项是画廊 mock 的演示路径与 `packages/docs` 的环境表，按
+2.5 / 2.1c 的口径整片留到发布期。**3.5** 是桌面壳取哪个（要用户拍板，且本轮不许碰 desktop）、
+**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的落地顺序 ②③④ 要第二台机器 / 等上游、
+**5.6** 的 core 那一半等促销搬进 Project 配置（要拍板）。
+
+**5.4** 剩下的四条这一轮又逐条核了一遍，其中三条这一轮走不通：`234183f5`（#978，Landlock）与
+`9b170c61`（#975，权限菜单命名预设）要改的一批文件本树根本没有（`packages/server/src/sandbox/
+settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` 都在上游那套「dock 面板
+重构」`1eb13325` `#961` 之后才出现），`1ba104c9`（后端拆 npm 包）属 4.x。**唯一还能整块落地的，就是这一
+串里排在已落地的 `cba091e3`（#976）之后、本树还没有的那一笔：`45885985`（#977）** —— 它只动
+`plugins/sandbox-bwrap` 的两处与 CLI 快速开始，无界面逻辑改动，而且**本机就能真验**（文档站起起来看
+一眼、插件用例真跑）。所以做它。
+
+### 改了什么（照上游 `45885985` `#977` 落，不是合分支；7 个文件 / +119 −2）
+
+- `packages/docs/content/quickstart-cli.zh.md` / `.en.md`：**新增「Ubuntu 上的沙盒」一节**（`###`）——
+  默认 Ubuntu 24.04 的 `kernel.apparmor_restrict_unprivileged_userns=1` 与后端的启动检查失败
+  （`setting up uid map: Permission denied`）、只需做一次的 root 步骤（一份 AppArmor profile，
+  `abi <abi/4.0>` + `userns,`，落在 `/etc/apparmor.d/adelie-sandbox-bwrap`）、profile 的路径模式
+  `@{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/
+  bwrap`（`**` 覆盖这个包在数据根父目录下可能被解压到的每个位置：安装目录随包带的、下载到数据根目录
+  的、热推送携带的），以及两种替代做法（在沙盒卡片上把「bwrap 程序」换成属于 root 的副本，或
+  `sysctl` 全机调低开关）与数据根不在 `~/.adelie` 时的做法。**两处的写法都是照本树实数改的**：
+  `~/.adelie/lib/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-x64/bin/bwrap`
+  在这台机器的现装上真的存在（`ls` 过），三个前缀的来历分别见 `state/paths.ts` 的
+  `userPluginsDir()`、`plugin/loader.ts` 的 `pluginBases()`（`<root>/plugins`、hmr 解包目录、
+  启动器上一级的 `plugins/`）。
+- `plugins/sandbox-bwrap/src/index.ts`：拒不起基础配置时的理由在 Debian 的开关旁点名 Ubuntu 的开关
+  之后，**加上指向这一节的半句**（`see "Sandbox on Ubuntu" in the CLI quickstart`）；上面那段注释补写
+  「为什么这一处要给指针」（卡片上的 reason 是运维唯一能看到的东西，而 Ubuntu 这一侧不是翻个 sysctl
+  就完事、kernel 要的是一份 profile）。
+- `plugins/sandbox-bwrap/README.md`：`Requirements` 里写明 Ubuntu 的要求，并指向 CLI 快速开始那一节。
+- `plugins/sandbox-bwrap/test/profile.test.ts`：上游那条「两个开关都点名」的用例照落；**另加一条**
+  针对本轮新行为的用例（见下）。
+- `changelog/unreleased/2026-10-09-sandbox-ubuntu-userns{,.zh}.md`：一对（上游那对按本仓惯例改名到
+  本轮日期、去掉上游 PR 链接、正文改写成「移植自上游 #977 / `45885985`」）。
+
+**本地化（四处，都是照上游原文写会在本仓读不到或写错的）**：① 包名
+`@penguinharness/sandbox-bwrap` → `@lmliheng/penguin-plugin-sandbox-bwrap`（4.1 的 scope 改名早已落到
+插件包上）；② 路径 `~/.penguin` → `~/.adelie`（2.2a 的数据根与安装目录）；③ 环境变量 `PENGUIN_HOME`
+→ `ADELIE_HOME`（旧名仍读，文档里写明这一点；`PENGUIN_INSTALL_DIR` 仍是安装器的真名，照留）；
+④ profile 名 `penguin-sandbox-bwrap` → `adelie-sandbox-bwrap`（不撞桌面 `.deb` 会装的
+`/etc/apparmor.d/adelie`）。
+
+**一处有意与上游不同**：上游那条新用例只断言两个开关都出现在文案里，而这**两个开关在本树改之前就
+已经在文案里**（第二十二轮本地化时补的 Ubuntu 那个）—— 也就是说照抄过来，这条用例对本轮的改动
+**一条也验不到**。所以除它之外另加了一条「指针」用例（`Sandbox on Ubuntu`），并实测它在去掉指针的
+实现上会红（见「验证」）。多出来的这一条是**我们的**修复，与上游那笔无关。
+
+### 顺手核出的一处：桌面 `.deb` 其实装不了那份 profile（记给 3.5 / 4.x，本轮没动 desktop）
+
+上游那段原文写着「桌面 `.deb` 会为应用装上这样一份 profile，应用启动的 bubblewrap 也在它的覆盖
+之内」。本树 `packages/desktop/build/linux/after-install.tpl` 的 postinst 确实会去做这件事：把
+`/opt/<product>/resources/apparmor-profile` 复制到 `/etc/apparmor.d/<executable>` 并用
+`apparmor_parser --replace --write-cache --skip-read-cache` 加载。但**这份资源全仓没人产出**：
+`grep -rn apparmor`（去掉 `node_modules`）在 `packages/desktop` 只命中两份 `.tpl`，
+`electron-builder.yml` 的 `files` / `deb` 两段没有它，`.github/workflows/desktop-build.yml` 里也没有
+一步写它（`git grep apparmor-profile d56d9ced` 在上游 `main` 上同样只有那份 `.tpl`）。也就是说那份
+`apparmor_parser --skip-kernel-load --debug` 会在缺文件的路径上失败、postinst 打印
+`Skipping the installation of the AppArmor profile` 然后跳过 —— **桌面壳今天不该被当成 Ubuntu 上的
+解法**，所以本轮把这一句去掉了（换成「安装器 / npm / 压缩包 / 容器都以普通用户运行、装不了 profile」）。
+要不要给桌面 `.deb` 补上这份资源，属 3.5（桌面壳取哪个）或 4.x（发布链路）；桌面这一摊按纪律本轮
+没碰、也没装依赖。
+
+### 验证（都不是推测）
+
+- 插件 `typecheck` 过（`plugins/sandbox-bwrap`）；`pnpm --filter @lmliheng/penguin-plugin-sandbox-bwrap
+  test` → **2 文件 / 27 通过**（`profile.test.ts` 20、`live.test.ts` 7），`EXIT=0`。
+- **反向取证**（证明新用例验的是本轮改动）：把 `, see "Sandbox on Ubuntu" in the CLI quickstart`
+  从源码里去掉后，`-t "points at the documented step"` 点名跑 → **1 失败 / 19 跳过**、`EXIT=1`；
+  从备份恢复后 `grep -c "Sandbox on Ubuntu"` 回到 1、整包 27 全绿。
+- 六包 `typecheck`：`EXIT=0`，`gen:ifaces` 打印 `src/ifaces.json unchanged (187 interfaces, 535 types)`，
+  六个 `Done`（**注意**：本轮任务书写的是 `@prismshadow/*` 过滤名，本仓包名早已是 `@lmliheng/*`，
+  照写会得到 `No projects matched`，所以用的是 Adelie 的 scope）。
+- `pnpm lint` **0 警告 0 错误**（2073 文件）；`pnpm format:check` 干净。
+- 五包 test 逐包 `EXIT=0` 全绿：core **1359 通过 / 5 跳过**（65 文件）· ui **1007**（127）·
+  cli **506**（34）· web **2963 / 2 跳过**（241）· server **185 文件 / 2690 通过 / 4 跳过** —— **0 失败**；
+  另跑 **`@lmliheng/penguin-docs` 62 通过**（8 文件）—— 本轮改到了它的内容，这一跑是必须的
+  （它管着 Markdown 的解析、TOC、hash 解码等）。
+- **界面/文档真看一眼**：`packages/docs` 的 `vite` 起在 **7471**（临时起、看完即关，未动
+  3003 / 3004 / 4000 / 7364 / 7369），Playwright（本地 chromium）打开 `/quickstart-cli` 的中英两版：
+  新标题分别是 `Ubuntu 上的沙盒` / `Sandbox on Ubuntu`，**id 分别是 `ubuntu-上的沙盒` /
+  `sandbox-on-ubuntu`**（与仓库自己的 `slugifyHeading` 现算的结果一致）；节内链接
+  `/settings#%E6%B2%99%E7%9B%92`、`/settings#sandbox` 指向设置页既有的 `### 沙盒` / `### Sandbox`
+  （`/settings` 是文档站自己的页，不是 Web App 的哈希路由）；代码块整段完整（截图里逐行核过，含
+  `EOF` 与 `sudo apparmor_parser -r /etc/apparmor.d/adelie-sandbox-bwrap` 那两行）；**console 无 error、
+  无 4xx**。截图在 scratchpad（`docs-ubuntu-sandbox-{zh,en}[-full].png`），未提交进仓库。
+- 本轮**没有改 Web App 的界面**（改的是文档站内容与插件的一条错误文案），所以没有起服务端、没有动
+  3003 / 3004 / 4000。
+
+### 没做 / 还差什么
+
+- **5.4 仍未勾掉**：这一轮收掉的是「这条链上还能整块落地的那一笔」（`45885985` / #977）。剩下的
+  三条与条目里写的一样：`234183f5`（#978，要 #975）、`9b170c61`（#975，压在树里不存在的上游 dock
+  面板重构上）、`1ba104c9`（拆 npm 包，属 4.x）。
+- **2.2c / 3.5 / 3.6** 照旧停在原地，原因同前（写侧只剩桌面壳、桌面壳取哪个要用户定、3.6 要模型 key）。
+- 桌面 `.deb` 那份缺掉的 `apparmor-profile` 资源记在上一节，等 3.5 / 4.x。
+- `refs/adelie-tmp/*` 七个本地临时引用仍在（第 23 轮拉的），没推、没改 remote 配置；本轮没有新增。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `__SHA__`**（7 个文件 / +119 −2，见「已完成的轮次」那一行）；台账两笔 —— 本节所在的
+  这一笔与把提交号写回表格的那一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **汇报邮件**：见下一节的收尾记录。

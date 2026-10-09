@@ -10,6 +10,10 @@ interface — filesystem writes, network isolation and path masking.
   that host has.
 - Unprivileged user namespaces enabled. The backend probes functionally at load and
   declines when the kernel will not grant them, rather than confining less than asked.
+  Ubuntu 23.10 and later (24.04 by default) grant them only to AppArmor-profiled programs
+  (`kernel.apparmor_restrict_unprivileged_userns=1`): the CLI package, the one-line installer, npm
+  and Docker all run as an ordinary user, and installing a profile takes root. The one-time host
+  step is in the CLI quickstart's "Sandbox on Ubuntu" section.
 
 **It brings its own bubblewrap.** The package ships a binary per architecture
 (`vendor/linux-x64`, `vendor/linux-arm64`), pinned by URL and sha256 from conda-forge and

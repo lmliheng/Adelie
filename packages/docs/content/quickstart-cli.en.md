@@ -196,6 +196,28 @@ Other differences on Windows:
 
 The data root is `~/.penguin/data` by default (`%USERPROFILE%\.penguin\data` on Windows). It sits under the install directory, but installing and upgrading never modify it. Set the `PENGUIN_HOME` environment variable to use another directory. Model configuration, Session records and other data are kept across upgrades.
 
+### Sandbox on Ubuntu
+
+The Linux sandbox backend, `@lmliheng/penguin-plugin-sandbox-bwrap`, confines commands with bubblewrap, which needs unprivileged user namespaces. Ubuntu 23.10 and later, including a default Ubuntu 24.04, grant them only to programs that have an AppArmor profile allowing it (`kernel.apparmor_restrict_unprivileged_userns` is `1`), and the install script, the npm install, the release archive and a Docker container all run as an ordinary user, so none of them can install a profile. On those installs the backend's startup check fails, and the [Sandbox](/settings#sandbox) card shows `@lmliheng/penguin-plugin-sandbox-bwrap` as enabled but not in use, with `setting up uid map: Permission denied` in the reason.
+
+To fix this, install a profile for the bubblewrap the backend ships. This takes root once:
+
+```bash
+sudo tee /etc/apparmor.d/adelie-sandbox-bwrap >/dev/null <<'EOF'
+abi <abi/4.0>,
+include <tunables/global>
+
+profile adelie-sandbox-bwrap @{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap flags=(unconfined) {
+  userns,
+}
+EOF
+sudo apparmor_parser -r /etc/apparmor.d/adelie-sandbox-bwrap
+```
+
+Then select **Save** on the Sandbox card. The backend is checked again without a restart. The profile loads again at every boot. Its pattern matches every place the backend's bubblewrap is unpacked under `~/.adelie`: the installation's bundled plugins (`~/.adelie/lib/plugins/`), a download into the data root (`~/.adelie/data/plugins/`) and the plugins a hot push carries (under `~/.adelie/data/hmr/`). An upgrade replaces the package at the same path, so later versions stay covered. If `ADELIE_HOME` (its pre-rename name is `PENGUIN_HOME`) or `PENGUIN_INSTALL_DIR` points outside `~/.adelie`, load a copy of the profile under another name with `@{HOME}/.adelie` replaced by that directory.
+
+The profile applies to whatever program is at that path, and you can write to that path. On a machine shared with users you do not trust, set the bwrap program on the Sandbox card to a root-owned copy, such as `/usr/bin/bwrap` from `apt install bubblewrap`, and name that path in the profile instead. The other option is to lift the restriction for every program with `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`. To keep that setting after a reboot, add the same line without `sudo sysctl -w` to a file in `/etc/sysctl.d/`.
+
 ### Published npm packages
 
 | Package | Description |

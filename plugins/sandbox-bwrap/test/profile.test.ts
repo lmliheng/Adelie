@@ -232,6 +232,19 @@ describe("bwrap on another platform", () => {
       loadPenguinBwrapProvider({ platform: "linux", probe: () => true }),
     ).resolves.toBeDefined();
   });
+
+  it("names the switch of each distribution that gates user namespaces, Ubuntu's included", async () => {
+    const rejection = loadPenguinBwrapProvider({ platform: "linux", probe: () => false });
+    await expect(rejection).rejects.toThrow(/kernel\.unprivileged_userns_clone/);
+    await expect(rejection).rejects.toThrow(/kernel\.apparmor_restrict_unprivileged_userns/);
+  });
+
+  it("points at the documented step, which is the actionable half on Ubuntu", async () => {
+    // Ubuntu's switch alone leaves an operator with nothing to do where no root step has run:
+    // the reason has to name where that step is written down (the CLI quickstart's section).
+    const rejection = loadPenguinBwrapProvider({ platform: "linux", probe: () => false });
+    await expect(rejection).rejects.toThrow(/Sandbox on Ubuntu/);
+  });
 });
 
 describe("the bwrap it runs", () => {
