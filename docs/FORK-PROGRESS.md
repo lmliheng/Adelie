@@ -4563,3 +4563,13 @@ changelog 里的包数按本树实跑结果写成 **23**（探针按五个目标
 ### 收尾：提交、推送与汇报
 
 - **代码提交 `79bfa4c2`**（9 个文件 / +554 −33，含中英 changelog 一对）；台账的收尾另起一笔。
+- **CI**：推送后的 run `37978438044`（`211118da`）**22 个作业全绿、`NOT SUCCESS: []`** ——
+  `test (core)` / `test (server)` / `test (web-cli)` / `test (rest)` 都过（本笔没有碰 CI 的矩阵）。
+- **汇报邮件没发出去（第 22–29 轮同一处卡点，与凭据无关）**：本机到中南大学网段
+  `202.197.0.0/16` 仍整片不通 —— `python3 scripts/mail.py check`（csu-mail 技能目录下）在 IMAP
+  登录处 `TimeoutError: [Errno 110] Connection timed out`，裸 socket 探 `imap.csu.edu.cn:993` /
+  `smtp.csu.edu.cn:465` / `mail.csu.edu.cn:443` 全超时，而同一时刻 `github.com:443` 正常、
+  环境里没有任何代理，所以既不是凭据也不是出口被整体掐断。本轮的正文写在会话 scratchpad 的
+  `r30/mail-round30.txt`；把第 30 轮的正文路径与主题**加进**既有的周期重发任务 `csu-mail-retry`
+  （现覆盖第 22–30 共九封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、先查「已发送」再补发、
+  发完就删掉自己），没有另开新任务。
