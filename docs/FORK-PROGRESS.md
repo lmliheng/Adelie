@@ -4004,6 +4004,18 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
   这一笔与把提交号写回表格的那一笔。
 - **推送**：`git push origin main`（`872d18f0..493b9160`）。**没有切版本号、没发 npm、没发安装包、
   没发发布汇总。**
+### CI 结论（推送后）
+
+- run **`37878494801`**（`09de327f`，含本轮的代码提交 `493b9160` 与台账）**22 个作业全绿**，
+  `not success` 一个都没有。取 `test (rest)` 的日志逐行核对：`packages/docs test` 报
+  **`Test Files 8 passed (8)` / `Tests 62 passed (62)`**（本轮改到的文档内容就在这一跑里）、
+  `plugins/sandbox-bwrap test` 报 **`Test Files 2 passed (2)` / `Tests 27 passed (27)`**，
+  其中 `✓ test/profile.test.ts (20 tests) 21ms`、`✓ test/live.test.ts (7 tests) 2358ms`（该作业的
+  `ADELIE_MUST_RUN: sandbox-bwrap,sandbox-dsh`，所以 live 套件真跑而不是跳过）—— 与本机那几个数逐字
+  一致。
+- 前一次推送（代码提交 `493b9160` 自己的 run `37878312234`）被 **cancel-in-progress 取消**（同组里更
+  晚的那次推送所致，仓库既有的并发设置），与第二十四轮同一现象；算数的是上面那一跑。
+
 - **汇报邮件没发出去（第 22 / 23 / 24 / 25 轮同一处卡点，与凭据无关）**：本机到中南大学网段
   `202.197.0.0/16` 仍整片不通 —— `202.197.64.20:993` 与 `202.197.64.21:465` 两个 TCP 探测都是
   `TimeoutError`（DNS 照常解析，同时 `api.github.com` 200）；`mail.py check` **挂住不返回**
