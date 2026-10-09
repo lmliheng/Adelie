@@ -4160,4 +4160,17 @@ settings-status.ts`、`packages/web/src/features/chat/builtin-dock-panels.tsx` �
 ### 收尾：提交、推送与汇报
 
 - **代码提交 `e7a0a5a7`**（24 个文件 / +2125 −554，见「已完成的轮次」那一行）；台账这一笔另起一笔。
-- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **推送**：`git push origin main`（`168e04da..16df6cc4`）。**没有切版本号、没发 npm、没发安装包、
+  没发发布汇总。**
+- **CI 结论（推送后）**：run **`37898055091`**（`16df6cc4`，含代码提交 `e7a0a5a7` 与台账）
+  **22 个作业全绿**、`NOT SUCCESS: []` —— 这一笔动的是 web / ui（还有文档站的 Markdown），
+  所以 `test (web-cli)` / `test (rest)` / `test-macos (rest)` / `test-windows (rest)` 那几片
+  在 CI 上也真跑了一遍，与上面本机那几个数无关但结论一致。
+- **汇报邮件没发出去（第 22 / 23 / 24 / 25 / 26 轮同一处卡点，与凭据无关）**：本机到中南大学网段
+  `202.197.0.0/16` 仍整片不通 —— `python3 scripts/mail.py check`（csu-mail 技能目录下）
+  **一次都没回**（`timeout 60` 杀掉、退出 124、一行输出都没有，也就是连连接都没建起来）。
+  凭据本身正常：`CSU_MAIL_ADDR` 21 字符、`CSU_MAIL_AUTHCODE` 16 字符都注入着（只打印长度，
+  没打印明文）。按技能纪律**只这一次、没有重试登录**。正文留在本会话 scratchpad 的
+  `mail-round27.txt`；把第 27 轮的正文路径与主题**加进**既有的周期重发任务 `csu-mail-retry`
+  （现覆盖第 22 / 23 / 24 / 25 / 26 / 27 六封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、
+  先查「已发送」再补发、发完就删掉自己），没有另开新任务。
