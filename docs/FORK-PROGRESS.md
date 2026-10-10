@@ -5296,3 +5296,11 @@ UI 包折叠内容区（`packages/ui/src/components/layout/fold/fold.tsx`）的�
   没有重试登录**。本轮的正文写在会话 scratchpad 的 `r35/mail-round35.txt`；把第 35 轮的正文路径与主题
   **加进**既有的周期重发任务 `csu-mail-retry`（现覆盖第 22–35 共十四封、每 6 小时一次、`end_at`
   2026-10-12T12:00:00Z、先查「已发送」再补发、发完就删掉自己），没有另开新任务。
+
+### CI（推送后）
+
+- 第一次 `git push`（代码提交 `8b528f05`）的 run `38062719314` 被第二次推送**取消**（`ci.yml` 的
+  `concurrency: cancel-in-progress`）—— 这是常态，不是红。
+- 第二次推送（台账 `2eda76b1`，含代码提交在内）的 run **`38062873777`**：**22 个作业全绿、`NOT SUCCESS: []`**。
+  本笔只动 server / web / docs 与两份 changelog，矩阵没有动，各分片真跑了这一笔。
+- 这次推送之后只多一条「记 CI」的文档提交，再触发的一次 run 只动 `docs/FORK-PROGRESS.md`，与代码无关。
