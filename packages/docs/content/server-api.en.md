@@ -173,6 +173,22 @@ The sandbox's entry also carries `backend`: `installed` says whether a sandbox b
 
 On PUT, fields the request omits keep their value, `null` or `""` clears one, and a secret sent back as its mask keeps the stored value. A refused field returns `400` `plugin_config_invalid` naming it; a name no group answers to returns `404` `plugin_config_unknown`. The declaring module picks the change up itself, through its watch or at its next read, with no restart.
 
+## Storage Ledger (admin only)
+
+What the data root holds, class by class, and which entries a person could review.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/admin/storage` | The storage ledger: `{report: {root, scannedAt, totalBytes, classes, candidates, sharedEnvGroups, disk, unreadable}}` |
+
+**Nothing here cleans up.** The route reads the root and answers; it takes no query parameter, has no PUT or DELETE beside it, and no part of the server acts on a report by itself — every removal in this design is a decision a person takes, and a report is what they take it against. A stale report cannot cause one either: `referenced` is recomputed from live state when a cleanup would run, so an entry that came alive in between is not acted on.
+
+`root` is the real path that was walked and `scannedAt` is the instant it was observed (ISO), so the report describes that moment rather than the moment it is read. `totalBytes` is the sum of every class, so the classification accounts for the whole root; each class carries its byte, file and entry counts plus how many of its entries are candidates and how many bytes they hold. The classes are `protected` (user data: Agent State, Project configuration, a Workspace the user chose, user vaults, plugins, benchmarks, snapshots), `tmp_workspaces`, `session_drafts`, `traces`, `shared_env`, `trash`, `database` and `other`.
+
+`candidates` lists the reviewable entries, largest first and capped per class (the class totals above stay exact), each with the rules it matched: `empty` and `unreferenced` for a temporary Workspace no Session points at, `orphan` for the drafts of a Session that no longer exists, `idle` for anything judged by silence, `budget` for anything a size cap would evict. A candidate is a claim about provenance, never an action. `sharedEnvGroups` names the shared environments that look like the same toolchain installed more than once, by normalized name (`csu-mail` vs `csumail`) or by what they hold — report only, since two look-alike environments may be at different versions. `disk` carries the volume's free and total bytes (`null` where the platform cannot say), and `unreadable` lists the paths that could not be read (capped), so the report says what it could not see rather than counting it as empty.
+
+Every threshold is off by default except the temporary-Workspace idle rule: the ledger's value is that it names references, budgets and duplicate environments, not that it guesses at timestamps.
+
 ## Machines (admin only)
 
 Installs this server's build on other hosts over ssh and manages the connections to them.

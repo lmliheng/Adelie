@@ -173,6 +173,22 @@ PUT 按如下规则校验：
 
 PUT 时，请求省略的字段保持原值，`null` 或 `""` 清除该字段，密钥按掩码原样送回即保持存储值。被拒的字段返回 `400` `plugin_config_invalid` 并点名该字段；没有分组叫这个名字时返回 `404` `plugin_config_unknown`。声明它的模块自己经 watch 或下次读取拿到改动，无需重启。
 
+## 存储台账（仅管理员）
+
+数据根目录里有什么，按类别列出，以及哪些条目值得人工过目。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/admin/storage` | 存储台账：`{report: {root, scannedAt, totalBytes, classes, candidates, sharedEnvGroups, disk, unreadable}}` |
+
+**这个接口不做任何清理。** 它只读取根目录并返回结果：不接受任何查询参数，旁边没有 PUT 也没有 DELETE，服务器也不会自行依据报告采取动作——这套设计里每一次删除都由人决定，报告只是决定的依据。过期的报告也不会导致删除：真正执行时 `referenced` 会按当时的活性状态重新计算，期间重新活跃起来的条目不会被处理。
+
+`root` 是实际遍历的真实路径，`scannedAt` 是观测发生的那一刻（ISO），因此报告描述的是那一刻而不是被读取的那一刻。`totalBytes` 是各类别之和，也就是说这套分类覆盖整个根目录；每个类别带有自己的字节数、文件数、条目数，以及其中有多少条目是候选、共占多少字节。类别有 `protected`（用户数据：Agent State、Project 配置、用户自选的 Workspace、用户密钥库、插件、Benchmark、快照）、`tmp_workspaces`、`session_drafts`、`traces`、`shared_env`、`trash`、`database` 和 `other`。
+
+`candidates` 列出可供人工审核的条目，按体积从大到小、每个类别有数量上限（上面的类别总计仍是精确值），每条带上命中的规则：没有任何 Session 指向的临时 Workspace 为 `empty` 与 `unreferenced`，Session 已不存在的草稿为 `orphan`，按静默时长判定的为 `idle`，被体积上限挤出的为 `budget`。候选只是对来源的声明，不是动作。`sharedEnvGroups` 列出看起来是同一套工具链装了多份的共享环境，按归一化名称（`csu-mail` 与 `csumail`）或按内容特征归并——只报告：两份相似环境可能版本不同。`disk` 是所在卷的空闲与总字节数（平台无法给出时为 `null`），`unreadable` 列出读不了、被记下来的路径（有上限），报告会说明自己没看到什么，而不是把它当成空的。
+
+除临时 Workspace 的静默规则外，所有阈值默认关闭：这份台账的价值在于点出引用、体积上限和重复环境，而不在于拿时间戳去猜。
+
 ## 机器（仅管理员）
 
 通过 ssh 在其他主机上安装本服务器的构建，并管理与这些主机的连接。

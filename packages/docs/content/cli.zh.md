@@ -256,6 +256,33 @@ penguin cost --days 7 --by model
 penguin cost --from 2026-08-01 --to 2026-08-25 --by agent
 ```
 
+## penguin storage
+
+查看数据根（`ADELIE_HOME`，默认 `~/.adelie/data`）被什么占满：先是每一类数据一行，然后是可供人清理的条目，最后是看起来同一套工具链装了多份的环境。
+
+```bash
+penguin storage [选项]
+```
+
+| 选项 | 说明 | 默认 |
+| --- | --- | --- |
+| `--top <n>` | 打印多少条候选；`0` 表示全部。 | 20 |
+| `--json` / `--server <url>` | 见[全局约定](#全局约定)。 | — |
+
+**本命令只读，也没有任何能让它改变这一点的开关**：它只报告，从不移动或删除文件，Adelie 里也没有任何定时清理在跑。
+
+类别一列覆盖数据根下的每一个字节。用户资产——Agent State、Project 配置、你自己指定的 Workspace、密钥库、插件、基准、快照——会被列出，但永远不会成为清理候选；可能成为候选的是派生数据：临时工作区、会话草稿、轨迹、工具环境、回收站、数据库。候选清单会写明每一行命中的规则：`empty` 空目录、`unreferenced` 无引用（没有任何会话指向的临时工作区）、`session gone` 会话已删除（草稿所属的会话不存在了）、`idle` 静默超期、`over budget` 超出预算（按最旧优先被体积上限选出）。除了临时工作区的静默规则（30 天）之外，所有阈值默认关闭——因此刚装好的机器看到的是一份空清单，而不是一份待办。
+
+同名或同结构的「工具环境」只做分组报告，绝不提议删除：两个看起来一样的环境可能版本不同，是否合并由人点一次决定。
+
+`GET /api/admin/storage` 仅限管理员，因此需要服务器自己的 API token（CLI 连接本机服务器时的默认值）。
+
+```bash
+penguin storage
+penguin storage --top 50
+penguin storage --json
+```
+
 ## penguin schedule
 
 列出并管理 Project 的定时任务。

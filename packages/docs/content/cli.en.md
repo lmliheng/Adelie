@@ -256,6 +256,33 @@ penguin cost --days 7 --by model
 penguin cost --from 2026-08-01 --to 2026-08-25 --by agent
 ```
 
+## penguin storage
+
+Shows what occupies the data root (`ADELIE_HOME`, `~/.adelie/data` by default): one row per class of data, then the entries a person could clean up, then the environments that look like the same toolchain installed twice.
+
+```bash
+penguin storage [options]
+```
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `--top <n>` | How many candidates to print; `0` prints every one. | 20 |
+| `--json` / `--server <url>` | See [Global conventions](#global-conventions). | — |
+
+**This command is read-only, and it has no flag that could change that**: it reports, it never moves or deletes a file, and nothing in Adelie runs a cleanup on a timer.
+
+The class column accounts for every byte under the root. User data — Agent State, Project config, the Workspaces you chose, vaults, plugins, benchmarks, snapshots — is listed but is never a cleanup candidate; the derived classes are the ones that can be: temporary Workspaces, Session drafts, Traces, tool environments, the trash, the database. The candidate list names the rule each row matched: `empty` or `unreferenced` (a temporary Workspace no Session points at), `session gone` (drafts of a deleted Session), `idle` (silent past a threshold), `over budget` (a size cap evicted it, oldest first). Every threshold defaults to off except the temporary-Workspace idle rule (30 days), so a fresh install reports an empty candidate list rather than a to-do list.
+
+`tool environments` that share a name or a shape are grouped and reported, never proposed for deletion: two look-alike environments may be at different versions, and merging them is a change a person triggers.
+
+`GET /api/admin/storage` is admin-only, so the command needs the server's own API token (the CLI's default when it attaches to a local server).
+
+```bash
+penguin storage
+penguin storage --top 50
+penguin storage --json
+```
+
 ## penguin schedule
 
 Lists and manages the Project's scheduled tasks.
