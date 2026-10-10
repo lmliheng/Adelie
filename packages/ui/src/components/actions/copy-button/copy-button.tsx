@@ -94,8 +94,17 @@ export function useCopied(): { copied: boolean; flash: (text: string) => void } 
 }
 
 /** The glyph pair every copy affordance shows: the copy icon, swapping to the check while copied. */
-export function CopyCheckGlyph({ copied, size }: { copied: boolean; size?: number }) {
-  return <GlyphIcon d={copied ? ICONS.check : ICONS.copy} size={size} />;
+export function CopyCheckGlyph({
+  copied,
+  size,
+  glyph,
+}: {
+  copied: boolean;
+  size?: number;
+  /** The idle mark, when this control copies a VARIANT of what the copy glyph means (plain text beside a Markdown copy); the check still replaces it. */
+  glyph?: string;
+}) {
+  return <GlyphIcon d={copied ? ICONS.check : (glyph ?? ICONS.copy)} size={size} />;
 }
 
 /**
@@ -141,6 +150,7 @@ export function CopyButton({
   text,
   label,
   size = "md",
+  glyph,
   className = "",
 }: {
   /** The string to copy, or a getter for content computed at click time (a formatted stats line). */
@@ -148,6 +158,12 @@ export function CopyButton({
   /** Accessible name and tooltip of the copy action; neither changes while copied. */
   label: string;
   size?: keyof typeof SIZE;
+  /**
+   * The idle mark, for a control that copies a variant rather than the plain thing — a conversation
+   * offers a reply both as Markdown and as plain text, and two copy glyphs side by side would name
+   * neither. The check still replaces whatever is passed here while copied.
+   */
+  glyph?: string;
   /** Layout the caller's row needs (`shrink-0`, a margin); the look is the button's own. */
   className?: string;
 }) {
@@ -161,7 +177,7 @@ export function CopyButton({
         onClick={() => flash(typeof text === "function" ? text() : text)}
         className={`${LOOK} ${SIZE[size]} ${className}`}
       >
-        <CopyCheckGlyph copied={copied} />
+        <CopyCheckGlyph copied={copied} glyph={glyph} />
       </button>
       {/* Sibling, not a child: the button's accessible name stays `label`, and `sr-only` is
           position:absolute, so it is not a flex item and disturbs no caller's layout. */}

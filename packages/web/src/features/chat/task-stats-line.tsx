@@ -3,10 +3,12 @@
  * **bottom-left** of the AI reply — input, output, output TPS, elapsed time, and cost (converted
  * in real time from the current Model's pricing, hidden if no pricing is configured); all five
  * share the same basis (this turn's usage), each expressed uniformly as icon + value (no text
- * labels); the reply timestamp and a copy button sit at the end (copies this turn's assistant
- * text, falling back to the stats themselves when there's no text), with the fork action to the
- * right of copy — forking asks for confirmation first (it duplicates the conversation into a new
- * Session up to this reply), while copy stays a plain immediate click. Below sm the row is slimmed
+ * labels); the reply timestamp and the copy buttons sit at the end (the first copies this turn's
+ * assistant text as the Markdown it was written in, falling back to the stats themselves when
+ * there's no text; the second copies the same words as plain text and appears only when there is
+ * a reply body to strip), with the fork action to the right of copy — forking asks for
+ * confirmation first (it duplicates the conversation into a new Session up to this reply), while
+ * copy stays a plain immediate click. Below sm the row is slimmed
  * to fit the width: the TPS chip is dropped and cost/elapsed lose excess decimals (compact
  * formatter variants); desktop shows all five, formatted as always.
  * At ≥sm the whole line is invisible but takes up space by default, surfacing only on hovering
@@ -28,7 +30,14 @@
  */
 import { useState } from "react";
 import type { TracePosition } from "@lmliheng/penguin-server/api";
-import { ConfirmModal, CopyButton, Spinner, StatChip } from "@lmliheng/penguin-ui";
+import {
+  ConfirmModal,
+  CopyButton,
+  ICONS,
+  Spinner,
+  StatChip,
+  markdownToPlainText,
+} from "@lmliheng/penguin-ui";
 import { formatTaskStats } from "../../lib/omni/task-stats";
 import type { TaskStats } from "../../lib/omni/task-stats";
 import {
@@ -149,8 +158,21 @@ export function TaskStatsLine({
           </>
         )}
       </span>
-      {/* Pinned at the row's end, outside the scrollable stats span. */}
+      {/* Pinned at the row's end, outside the scrollable stats span. Two copies, because a
+          reply travels to two kinds of destination: the Markdown as it was written (the copy
+          glyph), and the same words with the markup taken out (plain text) — for pasting where
+          `##` and `**` would otherwise show up literally. They are told apart by their glyphs,
+          since two copy icons side by side would name neither. */}
       <CopyButton text={copyText} label={S.chat.copyReply} size="sm" className="shrink-0" />
+      {assistantText?.trim() && (
+        <CopyButton
+          text={() => markdownToPlainText(assistantText)}
+          label={S.chat.copyReplyPlain}
+          glyph={ICONS.textLines}
+          size="sm"
+          className="shrink-0"
+        />
+      )}
       {/* Fork sits to the RIGHT of copy (review request): copy is the frequent action and
           keeps its accustomed spot; the click only opens the confirmation below — the fork
           request fires on Confirm, never directly. */}

@@ -61,6 +61,20 @@ describe("the copy feedback", () => {
     );
   });
 
+  it("marks a variant's button with the caller's glyph, which the check still replaces", () => {
+    const idle = renderStatic(
+      createElement(CopyButton, { text: "x", label: "Copy as plain text", glyph: ICONS.textLines }),
+    );
+    expect(idle).toContain(`d="${ICONS.textLines}"`);
+    expect(idle).not.toContain(`d="${ICONS.copy}"`);
+
+    const variant = renderStatic(
+      createElement(CopyCheckGlyph, { copied: true, glyph: ICONS.textLines }),
+    );
+    expect(variant).toContain(`d="${ICONS.check}"`);
+    expect(variant).not.toContain(`d="${ICONS.textLines}"`);
+  });
+
   it("announces in the interface's words, or the caller's, once copied", () => {
     expect(renderStatic(createElement(CopiedStatus, { copied: false }))).not.toContain("Copied");
     expect(renderStatic(createElement(CopiedStatus, { copied: true }))).toContain(">Copied<");

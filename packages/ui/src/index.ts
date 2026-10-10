@@ -104,6 +104,7 @@ export * from "./components/overlays/toaster/toaster";
 // `./highlighter` subpath, so no static import of this barrel reaches it.
 export * from "./components/content/prose/prose";
 export * from "./components/content/prose/markdown-plugins";
+export * from "./components/content/prose/plain-text";
 export * from "./components/content/code-block/code-block";
 export * from "./components/content/code-block/code-languages";
 export * from "./components/content/typography/typography";

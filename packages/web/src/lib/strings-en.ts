@@ -3430,6 +3430,7 @@ export const en: Strings = {
     approvalWaiting: "awaiting approval",
     copyCode: "Copy code",
     copyReply: "Copy reply",
+    copyReplyPlain: "Copy as plain text",
     forkSession: "Fork chat from here",
     forkSessionConfirmBody:
       "This copies the conversation up to this reply into a new chat. The original chat stays unchanged.",

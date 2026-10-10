@@ -3475,6 +3475,8 @@ export const zh = {
     approvalWaiting: "待审批",
     copyCode: "复制代码",
     copyReply: "复制回复",
+    /** The reply again, with the Markdown taken out — for pasting where `##` and `**` would show. */
+    copyReplyPlain: "复制纯文本",
     forkSession: "从这里分叉对话",
     forkSessionConfirmBody: "将把这段对话（截至这条回复）复制为一个新对话，原对话保持不变。",
     forkSessionConfirmAction: "分叉",

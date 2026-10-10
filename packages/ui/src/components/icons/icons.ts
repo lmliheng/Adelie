@@ -237,6 +237,12 @@ export const ICONS = {
    * the serifs that tell it apart from a plain bar. The mark for selecting text by hand.
    */
   textCursor: "M9 5h6M12 5v14M9 19h6",
+  /**
+   * Three lines of text with the last one short: a paragraph of words and nothing around them —
+   * no `#`, no `**`, no fence. The mark for taking a reply as plain text. The short last line is
+   * what keeps it from being a hamburger: `menu` is the same three lines, all full width.
+   */
+  textLines: "M4 6h16M4 12h16M4 18h9",
 
   // --- Messages and actions -----------------------------------------------------------------
 
