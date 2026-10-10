@@ -389,6 +389,28 @@
       它要改的 `packages/core/src/a2ui/{catalog,check,fallback,index,rubric,types}.ts` 与
       `packages/cli/src/a2ui-stream.ts` 本树都没有（那是上游 `bedb1cb8` `#968`「A2UI 块」的产物），
       要落它得先把 `#968` 那一整套搬过来，属两轮的量。
+      **2026-10-10 第三十二轮的实测（这一条因此停住，等用户拍板）**：前置 `#968`（`bedb1cb8`，85 文件 /
+      +8111 −50）会给 `packages/ui` 引入**新依赖 `mermaid`（`^11.17.2`，另有 `@…/penguin-core` 一条）**，
+      并给 cli / core / desktop / ui 四个包加一条 workspace 依赖 `@penguinharness/a2ui` —— 轮次纪律写明
+      「不引入新依赖」，所以本轮**没有动它**，仍停在「是否接受 mermaid 这个渲染依赖」上等用户一句话。
+- [x] **5.11 侧栏按最后活动分页、「加载更多」只在底部追加**（上游 `929abb33` `#960`，**2026-10-10 第三十二轮
+      落地**，提交见该节）：`GET …/sessions` 新增 `order=activity`（`lastActiveAt` 降序、相同时按
+      `sessionId` 降序，均按码点比较）与 `before=<lastActiveAt>,<sessionId>` 游标（须配合
+      `order=activity` 与 `limit`、与 `offset` 互斥、格式不对 400）；Web App 的每个侧栏列表改带
+      `order=activity`、每条流从上次读到的最后一行的键接着取，多流合并的列表只画到水位线，因此
+      「加载更多会话 / 展开其余 N 个对话」只在已显示的行之下追加。**为什么是这一条**：它是一条
+      用户看得见的真 bug 修复（时间分组下点「加载更多会话」会把行从「更早」跳进「近一天」），
+      父提交正是本树第十九轮已落地的 `b8862716`（`#958`，加载性能），因而不依赖任何未落的前置、
+      不引入新依赖、不碰 desktop / 包名 / 流水线。
+- [ ] **5.12 会话的 `source` 恒被记录、侧栏把程序开的会话收进一个文件夹**（上游 `e521a9de` `#999`，
+      **前置 = 5.11，已就位**）：`session_meta.source` 变成必填（`user` / `api` / `schedule` /
+      `subagent` / `cli` / `company`），侧栏的「子智能体 / 定时任务 / 评估任务」三个折叠夹并为
+      **一个「后台」折叠夹**、每行带来源标记，公司模式的工位与工单会话不属于任何分类、任何分类列表
+      都不再出现。**本仓可行性（2026-10-10 第三十二轮实测）**：补丁父提交就是本树刚落地的
+      `8a774995`（`#969`），109 文件 / +1791 −953、21 处冲突；但它的上下文与用例**假定 5.11 的
+      `order=activity` + 游标分页已在树里**（`session-service.ts` 的 `skip`、`session-index.test.ts`
+      的游标用例、web store 的水位线），所以在 5.11 落地前它落不干净 —— 5.11 落地后这一条应当能
+      一轮做完（本轮试落它时的补丁留在会话 scratchpad 的 `upstream-e521a9de-999.patch`）。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -950,6 +972,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-09 | 5.4（最后一块） | **Linux 沙盒在默认的 Ubuntu 上也能工作 —— 走 Landlock**（上游 `234183f5` `#978` 移植，照改动落、不是合分支；65 文件 / +1523 −258）：路由改成「**实现维度最多的后端负责**」（`SandboxService.pick()`，注册顺序只用于打破平局），bubblewrap 加载得到的地方每条策略仍由它负责、DSH 适配器只在它是仅剩的那一个时服务；新增 **`closed-temp`** 维度（bubblewrap / Seatbelt / WSL 声明，DSH 适配器不声明 —— 它每一级都会在仅工作区可写下放开一个临时目录），关闭「临时目录可写」的策略绝不路由给没有它的后端；core 插件契约多出（都可选）`SandboxProvider.mechanism`（谁在实施，如 `bubblewrap` / `Landlock`）、`SandboxProvider.limits`（本机留下的缺口，中英）与 `ConfinedSpawn.runnerLines`（后端自报的提示行从命令与钩子脚本 stderr 的开头去掉，如老 ABI 上的 `landlock-run: partial enforcement`）；DSH 适配器**在加载时选定并用 `mechanism` 报出它那一级**，两级都不通的主机因此带着 DSH 的原因加载失败，而不是挂上一个拒绝每条命令的后端；沙盒卡片的后端字段 `backend.recommended` 由**单个字符串改成列表**（Linux 两个包），打开开关时按顺序装整张列表，「Backends:」一行改成 `Enforced here: … / Not enforced here: …` 加一个折叠的 **More info**（列出在用后端的缺口、每个已安装但未启用的后端及其原因），没有能隔离网络的后端时「无网络」与「仅本机」一样置灰；四个沙盒插件包升 **0.2.3**（不升的话已装有 0.2.2 的机器会继续跑旧内容、拿不到 `closed-temp` 声明）；Web 那边为「旧服务端只报一个字符串」留了一条向后兼容（`recommendedOf`，带 `TODO(recommended-string-compat)`）。**本地化**：`@penguinharness/sandbox-*` → `@lmliheng/penguin-plugin-sandbox-*`（必须改，否则卡片会去装一个不存在的包）、`@prismshadow/penguin-*` → `@lmliheng/penguin-*`、`~/.penguin` → `~/.adelie`、`PENGUIN_HOME` → `ADELIE_HOME`（保留「旧名仍读」的说明）；四份上游 changelog 改名到本轮日期、去掉 PR 行、写明移植出处 | 六包 `typecheck` 全过（`ifaces.json` 187 接口 / 549 类型；core 要**先重建** server 才看得到新契约）· `pnpm lint` **0 警告 0 错误**（2108 文件）· `pnpm format:check` 干净 · 五包 test 逐包 `EXIT=0`：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **506**（34）· web **3032**/2 跳过（**248** 文件）· server **189 文件 / 2766 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62**、四个沙箱插件包（bwrap 29 · dsh 21+1 跳过 · seatbelt 17+5 跳过 · wsl 25）全绿 · **界面真跑**（重建 core/server/web 产物 + 一次性数据根 `/root/adelie-fork-data/r29-landlock`、7497、真浏览器）：全新安装点开沙盒卡片的开关后弹出的**安装提示点名两个包、顺序与列表一致**（`@lmliheng/penguin-plugin-sandbox-bwrap 和 @lmliheng/penguin-plugin-sandbox-dsh`，文案写明「两者都可用时，使用封禁范围更大的那个」），卡片与预设表排版正常，**console 0 error / 0 pageerror / 无一条 4xx**（脚本打印 `[]`）· **真跑一次 DSH 适配器的加载与约束**：本机（内核 6.1）加载成功、`mechanism` = `Landlock (partial)`，受限命令**在工作区内写成功、在工作区外（`$HOME`）被拒**（`Permission denied`，文件不存在）· 3003 / 3004 / 4000 / 7364 / 7369 与 `/root/penguin-harness` / `/root/Adelie` / `legacy/main` 全程没碰 | `ea92b3ec` |
 | 2026-10-10 | 5.8 | **随包插件的依赖按锁定版本安装、许可证随包发布**（上游 `d56d9ced` `#979` 移植，照改动落、不是合分支；9 文件 / +554 −33）：`scripts/build-plugins.mjs` 装进 builtin prefix 的第三方包改成 `pnpm-lock.yaml` 解析出的版本 —— 新增 `scripts/lib/locked-prefix.mjs`（读原生依赖闭包、写进 prefix 的 npm `overrides`、装完按版本与 tarball integrity 对账，不一致即失败）与 `scripts/lib/third-party-notices.mjs`（在 prefix 根写出 `THIRD-PARTY-NOTICES.md`，每个第三方包一节，缺许可证文本即失败）；闭包计入内容缓存键，`PACK_FORMAT` 13 → 14。**为什么是这一条**：第二十九轮末尾记下的那件事里与随包产物直接相关的一笔，且不属 4.x（不改包名、不改流水线、不发 npm） | 六包 `typecheck` `EXIT=0`（`ifaces.json unchanged` 187 接口 / 549 类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **506**（34）· web **3032**/2 跳过（248）· server **191 文件 / 2775 通过 / 4 跳过**（+9 即本笔新用例）—— **0 失败** · **真跑一次构建**：`node scripts/build-plugins.mjs --out <scratchpad>/prefix` 退出 0，日志 `23 locked third-party packages: verified` / `6 per-platform native binaries: installed`，产出的 prefix 里 cordis **4.0.1** · cosmokit **1.8.2** · schemastery **3.18.1** · koffi **3.1.6**、`overrides` 23 条、`THIRD-PARTY-NOTICES.md` 23 节、四个目标平台的分平台包都在 · **漂移检测拿真产物取证**：干净树 `[]`，改一条 integrity 后被点名、删一条后被点名 · 本轮没改界面，未起服务、未开浏览器，端口一个没动 | `79bfa4c2` |
 | 2026-10-10 | 5.9 | **评估与优化的会话就是普通会话，「评估任务」折叠夹只收 Agent 启动的被测会话**（上游 `8a774995` `#969` 移植，照改动落、不是合分支；21 文件 / +98 −87，比上游多 2 行是本仓写法的 changelog 一对）：Web App 不再给评估中心「使用」对话框预填的对话打 `source: "benchmark"` 标记 —— `AiChatRequest` 去掉 `source`、`DraftCache` 的类型与 `draftFromUnknown` 去掉它、草稿页的写回与创建请求体去掉它（**Web App 从此一个字段都不发 `source`**）；服务端与 CLI 行为不变（`POST …/sessions` 仍接受 CLI 发来的 `benchmark`），只有 `SessionCreateRequest.source` / `CreateSessionOptions.source` / `SessionMetaPayload.source` 的文档注释改成「被评估的 Test Session 由 `penguin run --source benchmark` 创建」；评估中心 / 对话 / 服务端 API 三份文档（中英）更新。**本树那处冲突的解法**：上游同一段里还留着它自己后加、本树没有的 `goal` 字段 —— 只删 `source`、不引入 `goal`（引入会 typecheck 失败）。changelog 按本仓惯例改名到本轮日期、去上游 PR 行、写明移植出处 | 六包 `typecheck` `EXIT=0`（`ifaces.json unchanged` 187 接口 / 549 类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· 逐包 `EXIT=0`：core **1368**/5 跳过（66 文件）· ui **1008**（127）· cli **507**（34，+1 即本笔新用例）· web **3032**/2 跳过（248 文件，用例数与扩写后的一致）· server **191 文件 / 2775 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 core/server/web 产物后，一次性数据根 `/root/adelie-fork-data/r31-eval`、`localhost:4111`、真浏览器）：评估中心 → Example Benchmark →「使用」→「在新对话中编辑」，预填草稿的 localStorage 里**没有 `source` 字段**（字段是 text / workspace / approvalMode / agentId / modelRef / skills / aiPrefill）；按发送后 Web App 真发的创建请求体是 `{"approvalMode":"allow-all","modelId":"deepseek-flash","provider":"deepseek"}` —— **不带 `source`**（改动前会带 `"source":"benchmark"`）；登录后走查会话列表 / 评估中心 / 预填草稿，**console 0 error、无一条 4xx**（唯一一条是登录前的 `/api/me` 401，是这个 App 的正常首访应答）；创建请求被服务端以 `model_credential_missing` 退回是**环境原因**（空数据根没配模型 key，即 3.6 那个卡点），因此本轮没有真会话可看折叠夹归类 —— 归类规则本身未改，由 `web/test/session-grouping.test.ts` 的改写场景覆盖。截图 6 张在 scratchpad · 端口只用 4111，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | 见本行提交 |
+| 2026-10-10 | 5.11 | **侧栏按最后活动分页、「加载更多」只在底部追加**（上游 `929abb33` `#960` 移植，照改动落、不是合分支；25 文件 / +1845 −238，比上游多 2 行是本仓写法的 changelog 一对）：服务端 `GET …/sessions` 新增 `order=activity`（`lastActiveAt` 降序、相同时按 `sessionId` 降序，均按码点比较、绝不用 `localeCompare`，好让浏览器与服务器只有一个全序）与 `before=<lastActiveAt>,<sessionId>` 游标（返回严格位于该键之后的行；须配合 `order=activity` 与 `limit`、与 `offset` 互斥、格式不对 400），不带 `order` 时仍是创建顺序 + offset 分页、`counts=1` 仍覆盖整表；`http/validate.ts` 解这个游标（`ActivityCursor` / `SessionListOrder` / `SessionListPaging` 从服务里导入）；会话列表用户频道的 `session_state` 事件补上 `projectId`。Web：每个侧栏列表带 `order=activity`，每条流（Agent × 机器 × Workspace 范围）从上次从中读到的最后一行的键接着取，由多条流合并的列表只画到**水位线**（仍有剩余的各流中最新的游标），水位线以下的行留在内存等下一页降线，因此「加载更多会话」「展开其余 N 个对话」只会在已显示的行之下追加；Agent / Workspace 分组与各折叠夹同样处理，折叠夹改按最后活动排序，打开着的对话始终显示、搜索仍覆盖全部已加载行。画廊的模拟列表接口也支持 `order` / `before`，server-api 文档（中英）跟上。**本地化与两处冲突的实情**：包 scope `@prismshadow/` → `@lmliheng/`；画廊 mock 那处冲突里上游的上下文行假定了本树**没有**的 `excludeOrg` / `isOrgRow` 处理（那是另一笔未落的上游改动），解法是只取它的 `order` 分支、保留本树自己的过滤（不引入 `isOrgRow`）；changelog 改名到 `2026-10-10`、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#960，提交 `929abb33`）」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写出 **187 接口 / 552 类型**，+3 正是本笔新增的三个服务契约类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **507**（34）· web **3052**/2 跳过（248 文件，+20）· server **191 文件 / 2780 通过 / 4 跳过**（+5）· docs **62**（8 文件，本轮改到它的内容）· ui-gallery **132**（19 文件，本轮的 mock 路由）· **服务端真跑**（一次性数据根 `/root/adelie-fork-data/r32-sidebar`、`localhost:4121`）：用 `sqlite3` 往索引里种 25 行（创建顺序与活动顺序**故意不一致**），`curl` 实测 `order=activity&limit=3` 按 `lastActiveAt` 降序、`before=<最后一行的键>` 接着取到严格更旧的三行、不带 `order` 仍是创建顺序，五种非法组合（带 `order=created` / 缺 `limit` / 同时给 `offset` / 时间戳不可解析 / `order=recent`）**逐条 400** · **界面真跑**（重建 server + web 产物后用真浏览器）：侧栏发出的请求确实带 `order=activity`（`limit=11&order=activity&category=active&counts=1&excludeOrg=1`，两个 Workspace 分组各自带上一页最后一行的 `before=` 游标续页）；两个分组的行都按活动次序排列（活动序号 00,01,03,04,06,09,12,14,15,17 / 02,05,07,08,10,11,13,16,19,21，各自的升序即「最近活动在前」）；点「展开其余 3 个对话」后该组 13 行、新出现的 3 行（活动序号 18、20、23，界面写「2 天前」）**全在底部**，前 10 行逐字不变（脚本断言 `APPEND_ONLY: True`）；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**，截图与脚本在 scratchpad · 端口只用 4121，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `0945d91a` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -4701,3 +4724,121 @@ Web App —— 后者这次整条链路拆掉：
   `mail-round31.txt`；把第 31 轮的正文路径与主题**加进**既有的周期重发任务 `csu-mail-retry`
   （现覆盖第 22–31 共十封，每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、先查「已发送」再补发、
   发完就删掉自己），没有另开新任务。
+
+## 第三十二轮：侧栏按最后活动分页、「加载更多」只在底部追加（2026-10-10，条目 5.11）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369
+全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**（依赖没装、磁盘也不为它花）。
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `63203798`（另一条线约两小时前发的
+v0.3.5 版本戳），`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+（轮次 prompt 里写的仓库根 `FORK-PROGRESS.md` 不存在 —— 这份台账 2026-10-08 起就在 `docs/`，
+与第三十一轮记的同一件事；prompt 里那串 `--filter @prismshadow/penguin-*` 也已过时，本仓的包名
+是 `@lmliheng/penguin-*`，用旧 scope 会得到 `No projects matched`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，它的「还差什么」本轮再核一遍仍全在纪律禁止或明说留到发布期
+的一侧（写侧只剩 `packages/desktop`、既有部署单元 `adelie-app.service` 与桌面壳自己的开关、
+画廊 mock 的演示路径与 `packages/docs` 的环境表）；**3.5** 要用户拍板且本轮不许碰 desktop、
+**3.6** 要模型 key、**4.1–4.3** 明令不动、**5.6** 的 core 那一半要用户拍板、**5.3** 剩下的要第二台机器。
+
+于是先按上一轮末尾记的那条路走 **5.10**：把上游 `main` 重新拉下来（`refs/adelie-tmp/upstream-main`
+从 `8a774995` 前进到 **`473c9470`**，比上一轮多五笔：`e521a9de` #999、`fd531af0` #956、`af99c537` #1005、
+`517a3d21` #1006、`473c9470` #1000），**实测它的前置 `#968`（`bedb1cb8`）会给 `packages/ui` 引入新依赖
+`mermaid`（`^11.17.2`）并给四个包加一条 workspace 依赖 `@penguinharness/a2ui`** —— 与本轮纪律
+「不引入新依赖」直接冲突，所以 **5.10 停在「是否接受这个渲染依赖」上等用户一句话**（已写进待办里那一节），
+本轮不动它。
+
+接着按「上游最新一笔、且父提交在本树」这条线索试 `#999`（会话的 `source` 恒被记录、侧栏三个折叠夹
+并成一个）——**试落时发现它落不干净**：109 文件里 21 处冲突，而根因不是包名，是**本树缺它假定已在的
+`#960`**（`929abb33`：侧栏按最后活动分页 + `before=` 游标，上游 2026-10-04 那一笔）—— 我们的
+`session-service.ts` 没有 `compareActivityDesc` / `SessionListPaging`，`web/src` 里连
+`order=activity` 这个词都没有，而 `#999` 的服务端与用例都建立在这套分页上。**于是本轮先落它的前置
+`#960`**：它是一条用户看得见的真 bug 修复（时间分组下点「加载更多会话」会把行从「更早」跳进
+「近一天」），父提交正是本树第十九轮已落地的 `b8862716`（`#958`），不依赖任何未落的前置、
+不引入新依赖、不碰 desktop / 包名 / 流水线。`#999` 因此改写进待办 **5.12**（前置已就位，
+补丁留在 scratchpad，下一轮应当一轮做完）。
+
+### 改了什么（25 个文件 / +1845 −238，含中英 changelog 一对）
+
+照上游 `929abb33` 的改动落，不是合分支：
+
+- **服务端**：`GET /api/projects/:projectId/agents/:agentId/sessions` 新增 `order=activity`
+  （`lastActiveAt` 降序、相同时按 `sessionId` 降序，两者都用 `<` / `>` 按码点比较、**绝不用
+  `localeCompare`** —— 游标由浏览器从某一行算出来、服务器拿它切片，两侧必须共享同一个全序）与
+  `before=<lastActiveAt>,<sessionId>`（返回严格位于该键之后的行；须配合 `order=activity` 与
+  `limit`、与 `offset` 互斥、格式不对 400）。不带 `order` 时行为不变（创建顺序 + offset），
+  `counts=1` 的计数仍覆盖整表。实现落在 `services/session-service.ts`（`SessionListOrder` /
+  `ActivityCursor` / `compareActivityDesc` / `SessionListPaging`）与 `http/validate.ts`（游标解析），
+  `http/routes/sessions.ts` 接线，`api/types.ts` 补文档。会话列表用户频道的 `session_state`
+  事件补上 `projectId`（`runtime/session-manager.ts`），列表里没有的当前 Project 的会话开始运行时，
+  Web 从发出事件的机器取回那一行一次并套用最新状态。
+- **Web**：`state/sessions.tsx` 每个侧栏列表带 `order=activity`，每条流（Agent × 机器 × Workspace
+  范围）从上次从中读到的最后一行的键接着取（`watermarkFor` / `cutAtWatermark` /
+  `aggregateWorkspaceCounts` 落在 `lib/session-grouping.ts`，`lib/session-order.ts`、
+  `lib/session-merge.ts` 与 `components/layout/sidebar.tsx` 跟上）：由多条流合并的列表只画到
+  **水位线**（仍有剩余的各流中最新的游标），水位线以下的行留在内存等下一页把线降下来，因此
+  「加载更多会话」「展开其余 N 个对话」只会在已显示的行之下追加；打开着的对话始终显示、搜索
+  仍覆盖全部已加载行，折叠夹改按最后活动排序。
+- **画廊与文档**：`ui-gallery` 的模拟列表接口同样支持 `order` / `before`（`mock/routes.ts`、
+  `mock/store.ts`），`docs/content/server-api.{en,zh}.md` 记下这两个参数。
+- **changelog**：中英一对，按本仓惯例改名到 `2026-10-10`、去掉上游 PR 行、写明移植出处。
+
+**本地化与四处冲突的实情**（`git apply -3` 落，四处冲突都在 import 区或画廊的 mock 上）：
+
+1. `server/src/http/validate.ts` / `web/test/session-grouping.test.ts` / `web/test/sessions-store.test.ts`
+   三处：上游那侧写的是 `@prismshadow/penguin-*`，本仓是 `@lmliheng/penguin-*`，逐条按本仓写法解。
+2. `ui-gallery/src/app/mock/routes.ts`：上游那处的上下文行假定了本树**没有**的 `excludeOrg` /
+   `isOrgRow` 处理（那是另一笔未落的上游改动），**只取它的 `order` 分支**、保留本树自己的过滤，
+   没有顺手把 `isOrgRow` 引进来。
+   （`packages/ui-gallery/src/app/mock/harness-transcript.ts` 是上游 #941 的产物、本树没有，
+   `#999` 才要改到它；本轮这一笔不涉及那个文件。）
+
+### 验证（都不是推测）
+
+- **静态**：六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写出 **187 接口 / 552 类型**，
+  +3 正是本笔新增的三个服务契约类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）·
+  `pnpm format:check` 干净。
+- **测试**（逐包 `EXIT=0`、**0 失败**）：core **1368** / 5 跳过（65 文件）· ui **1008**（127）·
+  cli **507**（34）· web **3052** / 2 跳过（248 文件，比上一轮 +20）· server **191 文件 / 2780 通过 /
+  4 跳过**（+5）· docs **62**（8 文件，本轮改到它的内容）· ui-gallery **132**（19 文件，本轮的 mock
+  路由）· hmr 无用例文件。
+- **服务端真跑**（一次性数据根 `/root/adelie-fork-data/r32-sidebar`、`localhost:4121`、`curl`）：
+  用 `sqlite3` 直接往索引里种 25 行（**故意让创建顺序与活动顺序不一致**：第 `i` 行的活动排名是
+  `7i mod 25`），于是能不靠模型 key 拿到真数据 —— `order=activity&limit=3` 按 `lastActiveAt`
+  降序返回（活动排名 00 / 01 / 03），`before=<最后一行的键>` 接着取到严格更旧的三行（04 / 05 / 06），
+  不带 `order` 仍是创建顺序；五种非法组合（`order=created` 带 before / 缺 `limit` / 同时给 `offset` /
+  时间戳不可解析 / `order=recent`）**逐条 400**。
+- **界面真跑**（重建 server + web 产物后用真浏览器，`zh-CN`）：侧栏发出的请求确实带
+  `order=activity`（`limit=11&order=activity&category=active&counts=1&excludeOrg=1`，两个 Workspace
+  分组各自带上「上一页最后一行的键」续页）；两个分组的行都按活动次序排列（活动排名
+  00,01,03,04,06,09,12,14,15,17 与 02,05,07,08,10,11,13,16,19,21）；点「展开其余 3 个对话」后
+  该组 13 行、新出现的 3 行（活动排名 18、20、23，界面写「2 天前」）**全在底部**，前 10 行逐字不变
+  （脚本断言 `APPEND_ONLY: True`）；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**。
+  截图 3 张、脚本与分析脚本都在会话 scratchpad（未入库）。
+- 端口只用 4121；3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
+
+### 没做 / 还差什么
+
+- **5.10（A2UI）** 停在新依赖上（`mermaid`）—— 等用户拍板；`#968` 与它上面的 `#983` 都还没动。
+- **5.12（`#999`）** 是下一轮的首选：前置（本轮的 `#960`）已就位，`git apply -3 --check` 的 21 处冲突
+  里已经没有「树里不存在这个文件」这一类；试落时的补丁留在会话 scratchpad 的
+  `upstream-e521a9de-999.patch`。
+- 上游 `main` 现在停在 **`473c9470`**（`#1000` 外部程序与 Agent 对话；另有 `#999` / `#956` 五个内置
+  Benchmark / `#1005` / `#1006` 四笔未核）—— 本轮只核了 `#999` 与 `#968`，其余留待下一轮按同一判据挑。
+- **2.2c / 3.5 / 3.6 / 5.6** 照旧停在原地，原因同前几轮。
+- `refs/adelie-tmp/*`：本轮的 `upstream-main` 从 `8a774995` 前进到 `473c9470`（只拉取，没推、
+  没改 remote 配置）。
+- 中间物：会话 scratchpad 的 `r32/`（`#960` 与 `#999` 的补丁、Playwright 脚本与 3 张截图、
+  `server.log`、种数据的 `seed.py`、顺序分析 `analyze.py`、一次性管理员口令文件）；
+  取证数据根 `/root/adelie-fork-data/r32-sidebar`（一次性，留着当现场）。
+- 一条对后面几轮有用的手艺：**空数据根没有模型 key 时也能拿到真界面证据** —— 用 `sqlite3` 往
+  `web.db` 的 `sessions` 表里直接种行（`session_id` / `project_id` / `agent_id` / `workspace` /
+  `created_at` / `last_active_at` 即可），侧栏与列表路由都照常渲染、照常分页，不必等 3.6 那个 key。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `0945d91a`**（25 个文件 / +1845 −238，含中英 changelog 一对）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。
