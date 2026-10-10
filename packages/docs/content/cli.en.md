@@ -259,18 +259,25 @@ penguin cost --from 2026-08-01 --to 2026-08-25 --by agent
 
 ## penguin storage
 
-Shows what occupies the data root (`ADELIE_HOME`, `~/.adelie/data` by default): one row per class of data, then the entries a person could clean up, then the environments that look like the same toolchain installed twice.
+Shows what occupies the data root (`ADELIE_HOME`, `~/.adelie/data` by default): one row per class of data, then the entries a person could clean up, then the environments that look like the same toolchain installed twice. The bare command is the report, spelled short.
 
 ```bash
-penguin storage [options]
+penguin storage [options]                                 # the report
+penguin storage scan                                      # write a bill
+penguin storage plan [<planId>]                           # read one back, or list the recent ones
+penguin storage apply <planId> (--path <path> … | --all)  # move the entries you name
+penguin storage trash [list]
+penguin storage trash restore <id>
+penguin storage trash purge [<id>]
+penguin storage mode [on|off]
 ```
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--top <n>` | How many candidates to print; `0` prints every one. | 20 |
-| `--json` / `--server <url>` | See [Global conventions](#global-conventions). | — |
+| `--top <n>` | How many candidates the report prints; `0` prints every one. | 20 |
+| `--json` / `--server <url>` | See [Global conventions](#global-conventions). Every subcommand takes both. | — |
 
-**This command is read-only, and it has no flag that could change that**: it reports, it never moves or deletes a file, and nothing in Adelie runs a cleanup on a timer.
+**The report is read-only.** It prints, it never moves or deletes a file, and nothing in Adelie runs a cleanup on a timer.
 
 The class column accounts for every byte under the root. User data — Agent State, Project config, the Workspaces you chose, vaults, plugins, benchmarks, snapshots — is listed but is never a cleanup candidate; the derived classes are the ones that can be: temporary Workspaces, Session drafts, Traces, tool environments, the trash, the database. The candidate list names the rule each row matched: `empty` or `unreferenced` (a temporary Workspace no Session points at), `session gone` (drafts of a deleted Session), `idle` (silent past a threshold), `over budget` (a size cap evicted it, oldest first). Every threshold defaults to off except the temporary-Workspace idle rule (30 days), so a fresh install reports an empty candidate list rather than a to-do list.
 
@@ -282,6 +289,30 @@ The class column accounts for every byte under the root. User data — Agent Sta
 penguin storage
 penguin storage --top 50
 penguin storage --json
+```
+
+### The reviewed cleanup
+
+Everything below the report is a deliberate act, and the server refuses all of it until somebody turns the **cleanup mode** on — `penguin storage mode on`, or the switch on the Settings page's Storage tab. While it is off, the report is all this command can do and every write answers `409 storage_mode_off`; while a cleanup is running, another one answers `409 storage_busy`. The mode is off on a machine that never turned it on, and nothing turns it on by itself.
+
+`scan` writes a bill — a plan — under the data root's `storage/plans/` and moves nothing. A bill lists each candidate with its class, size, file count, last-change time, the rule it matched and its path, and marks every entry `move` or `report only`: only temporary Workspaces are executable in this version, and the rest are on the bill so a person can see them and deal with them by hand. The bill carries a fingerprint of its entries and a 24-hour life; acting on it, or any entry changing size or modification time, invalidates it.
+
+`apply` needs the bill's id **and** the paths to move, which is why there is no `--yes` anywhere in this command and no "clean whatever you find": a run naming neither `--path` nor `--all` is refused before the server is even asked. `--all` means every *executable* entry on that bill, never a report-only one. So the sequence is always read the bill, name what should go, then run it.
+
+What a run actually does, per entry, re-checked at that moment: a bill past its day, an entry whose size or modification time has drifted, a path that has gone missing, a temporary Workspace a Session has started using again, a class this version only reports, and a path pinned on the bill each stop the whole run and name themselves (`409 plan_expired`, `plan_stale`, `entry_still_live`, `class_not_executable`, `pinned_path`) instead of being cleared. Nothing is deleted: the entries that pass are renamed into the data root's `.trash/<timestamp>/` with a `manifest.json` beside them, and each one is written to `logs/storage-gc.jsonl` before it moves.
+
+`trash` is where a move lands. `list` (the default) shows each batch with its items and marks the ones past the retention period; `restore <id>` renames the items back where they came from and skips any whose original path is occupied again; `purge [<id>]` is the only deletion in the whole design and is spelled out separately — with an id it removes that batch, without one it removes only the batches past the retention period (14 days by default, set under `mode` or on the Settings page).
+
+An entry can be pinned to keep it off the bill entirely, from the pin button on the Settings page's Storage tab; `mode` prints how many paths are pinned. A pinned path is refused by `apply` even when it is named by hand.
+
+```bash
+penguin storage mode on            # deliberately open the cleanup mode
+penguin storage scan              # write a bill; nothing has moved yet
+penguin storage plan              # the recent bills, newest first
+penguin storage plan 2026-10-10-13-05-22-4f2a
+penguin storage apply 2026-10-10-13-05-22-4f2a --path 'agents/helper/workspaces/tmp-8f3c'
+penguin storage trash             # what a move landed in
+penguin storage trash restore 20261010-130621
 ```
 
 ## penguin schedule

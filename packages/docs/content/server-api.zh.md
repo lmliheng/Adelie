@@ -175,19 +175,39 @@ PUT 时，请求省略的字段保持原值，`null` 或 `""` 清除该字段，
 
 ## 存储台账（仅管理员）
 
-数据根目录里有什么，按类别列出，以及哪些条目值得人工过目。
+数据根目录里有什么，按类别列出，哪些条目值得人工过目，以及读取它的那套「人工审核的清理」。报告随时可读；在清理模式打开之前，所有写操作都返回 `409 storage_mode_off`。
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | GET | `/api/admin/storage` | 存储台账：`{report: {root, scannedAt, totalBytes, classes, candidates, sharedEnvGroups, disk, unreadable}}` |
+| GET | `/api/admin/storage/settings` | 清理模式：`{settings: {enabled, trashTtlDays, pins}}` |
+| PUT | `/api/admin/storage/settings` | 设置 `enabled`、`trashTtlDays`（整天数，1–365）、`pins` 中的任意项，返回存储后的设置。只要有一个字段不合法，整个 PUT 不写入任何东西。 |
+| GET | `/api/admin/storage/plans` | 最近二十份账单，最新在前：`{plans: [{id, createdAt, expiresAt, entries, totalBytes, appliedAt, expired, …}]}` |
+| POST | `/api/admin/storage/plans` | 扫描数据根并写出一份账单：`201` 加 `{plan}`。不写任何其他文件。 |
+| GET | `/api/admin/storage/plans/:planId` | 读一份账单：`{plan}` |
+| POST | `/api/admin/storage/plans/:planId/pin` | 让某个条目从此不进任何账单：`{path, pinned}`（`pinned` 默认为 `true`）返回设置。路径不在数据根内时返回 `400 invalid_pin`。 |
+| POST | `/api/admin/storage/apply` | 把批准过的条目搬进回收站：`{planId, fingerprint, paths}` 返回 `{planId, trashId, moved, failed, freedBytes}`。 |
+| GET | `/api/admin/storage/trash` | 搬移落到了哪里：`{entries: [{id, createdAt, planId, bytes, files, items, expired}], ttlDays}` |
+| POST | `/api/admin/storage/trash/restore` | 把一批放回原处：`{id}` 返回 `{id, restored, skipped, remaining}`。 |
+| POST | `/api/admin/storage/trash/purge` | 唯一的删除：`{id}` 删掉那一批；请求体为空则只删超过保留期的批次。返回 `{purged: [{id, bytes, files}]}`。 |
 
-**这个接口不做任何清理。** 它只读取根目录并返回结果：不接受任何查询参数，旁边没有 PUT 也没有 DELETE，服务器也不会自行依据报告采取动作——这套设计里每一次删除都由人决定，报告只是决定的依据。过期的报告也不会导致删除：真正执行时 `referenced` 会按当时的活性状态重新计算，期间重新活跃起来的条目不会被处理。
+**这里的一切都由人启动。** 没有任何路由挂在定时器上，也没有任何路由接受「策略」：调用方既不能放宽一次扫描的判定范围，也不能要求「把所有无引用的都清掉」——批准的粒度就是一份具体的账单。`GET /api/admin/storage` 只读取根目录并返回，不接受任何查询参数；真正执行时会按当时的活性状态重新测量并复核账单里的每个条目，因此过期的账单不会导致搬移：期间长大了、被改动过或重新活跃起来的目录树会中止这次运行，而不是被清掉一半。同一时刻只有一个写操作在跑，第二个返回 `409 storage_busy`。
 
 `root` 是实际遍历的真实路径，`scannedAt` 是观测发生的那一刻（ISO），因此报告描述的是那一刻而不是被读取的那一刻。`totalBytes` 是各类别之和，也就是说这套分类覆盖整个根目录；每个类别带有自己的字节数、文件数、条目数，以及其中有多少条目是候选、共占多少字节。类别有 `protected`（用户数据：Agent State、Project 配置、用户自选的 Workspace、用户密钥库、插件、Benchmark、快照）、`tmp_workspaces`、`session_drafts`、`traces`、`shared_env`、`trash`、`database` 和 `other`。
 
 `candidates` 列出可供人工审核的条目，按体积从大到小、每个类别有数量上限（上面的类别总计仍是精确值），每条带上命中的规则：没有任何 Session 指向的临时 Workspace 为 `empty` 与 `unreferenced`，Session 已不存在的草稿为 `orphan`，按静默时长判定的为 `idle`，被体积上限挤出的为 `budget`。候选只是对来源的声明，不是动作。`sharedEnvGroups` 列出看起来是同一套工具链装了多份的共享环境，按归一化名称（`csu-mail` 与 `csumail`）或按内容特征归并——只报告：两份相似环境可能版本不同。`disk` 是所在卷的空闲与总字节数（平台无法给出时为 `null`），`unreadable` 列出读不了、被记下来的路径（有上限），报告会说明自己没看到什么，而不是把它当成空的。
 
 除临时 Workspace 的静默规则外，所有阈值默认关闭：这份台账的价值在于点出引用、体积上限和重复环境，而不在于拿时间戳去猜。
+
+### 账单，以及一次运行对它做了什么
+
+账单是数据根下 `storage/plans/<planId>.json` 中的一份文件，id 以写入时的本地时间开头（`2026-10-10-13-05-22-4f2a`）。它为每个候选带一条记录——`{path, class, bytes, files, lastModifiedAt, rules, fingerprint, executable}`——外加覆盖全部条目的指纹与 24 小时寿命。`executable` 表示这一版能不能搬它；可执行的类别列在账单自己的 `executableClasses` 里，目前只有 `tmp_workspaces`——其余类别留在账单上是让人看见并手动处理。
+
+`apply` 是这一组路由里唯一改动数据根的接口，它需要三样东西：账单 id、该账单的 `fingerprint`，以及要搬的路径。没有「全部」也不能点名类别，所以搬走的正是有人在账单上勾选的那些。`paths` 为空返回 `400 nothing_selected`；不是该账单条目的路径返回 `400 unknown_path`；这一版只报告的类别返回 `409 class_not_executable`；超出该类别可触及范围的返回 `400 path_not_allowed`；被 pin 住的返回 `409 pinned_path`。已用过的账单返回 `409 plan_used`，超过一天返回 `409 plan_expired`，指纹不符返回 `409 plan_stale`。随后每个条目会被重新解析、重新测量：已消失或已变动返回 `409 plan_stale`，被 Session 重新用上的 Workspace 返回 `409 entry_still_live`，不再是数据根内目录的路径返回 `409 path_not_allowed`。整批会在搬动任何一条之前先整体校验，所以拒绝时会点名所有导致拒绝的路径。
+
+任何东西都不会被 unlink。通过的条目被重命名进 `<root>/.trash/<时间戳>/items/<原路径>`，旁边留一份 `manifest.json`，并且这次搬移在发生之前就写进 `<root>/logs/storage-gc.jsonl`——所以中途死掉的运行有据可查，重跑也会收敛。同一份日志还记录清理模式的开关、每一次 pin 与 unpin，这正是几个月后回答「这个条目为什么不在账单上了」的依据。
+
+`trash` 列出这些批次；`restore` 把其中的条目重命名回原处，遇到挡路的东西就跳过（`target_exists`、`not_in_trash`）而不是覆盖，等到只剩空目录时整批一并删除。`purge` 是唯一的删除，和其他写操作一样需要清理模式，而且只能触及 `<root>/.trash` 内部：带 id 就删那一批，不带 id 只删超过 `trashTtlDays`（默认 14 天）的批次。
 
 ## 机器（仅管理员）
 

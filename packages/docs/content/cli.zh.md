@@ -259,18 +259,25 @@ penguin cost --from 2026-08-01 --to 2026-08-25 --by agent
 
 ## penguin storage
 
-查看数据根（`ADELIE_HOME`，默认 `~/.adelie/data`）被什么占满：先是每一类数据一行，然后是可供人清理的条目，最后是看起来同一套工具链装了多份的环境。
+查看数据根（`ADELIE_HOME`，默认 `~/.adelie/data`）被什么占满：先是每一类数据一行，然后是可供人清理的条目，最后是看起来同一套工具链装了多份的环境。不带子命令时就是报告本身。
 
 ```bash
-penguin storage [选项]
+penguin storage [选项]                                    # 报告
+penguin storage scan                                      # 出一份账单
+penguin storage plan [<planId>]                           # 读回一份，或列出最近几份
+penguin storage apply <planId> (--path <路径> … | --all)  # 搬走你点名的条目
+penguin storage trash [list]
+penguin storage trash restore <id>
+penguin storage trash purge [<id>]
+penguin storage mode [on|off]
 ```
 
 | 选项 | 说明 | 默认 |
 | --- | --- | --- |
-| `--top <n>` | 打印多少条候选；`0` 表示全部。 | 20 |
-| `--json` / `--server <url>` | 见[全局约定](#全局约定)。 | — |
+| `--top <n>` | 报告打印多少条候选；`0` 表示全部。 | 20 |
+| `--json` / `--server <url>` | 见[全局约定](#全局约定)。每个子命令都接受这两个。 | — |
 
-**本命令只读，也没有任何能让它改变这一点的开关**：它只报告，从不移动或删除文件，Adelie 里也没有任何定时清理在跑。
+**报告本身只读。** 它只打印，从不移动或删除文件，Adelie 里也没有任何定时清理在跑。
 
 类别一列覆盖数据根下的每一个字节。用户资产——Agent State、Project 配置、你自己指定的 Workspace、密钥库、插件、基准、快照——会被列出，但永远不会成为清理候选；可能成为候选的是派生数据：临时工作区、会话草稿、轨迹、工具环境、回收站、数据库。候选清单会写明每一行命中的规则：`empty` 空目录、`unreferenced` 无引用（没有任何会话指向的临时工作区）、`session gone` 会话已删除（草稿所属的会话不存在了）、`idle` 静默超期、`over budget` 超出预算（按最旧优先被体积上限选出）。除了临时工作区的静默规则（30 天）之外，所有阈值默认关闭——因此刚装好的机器看到的是一份空清单，而不是一份待办。
 
@@ -282,6 +289,30 @@ penguin storage [选项]
 penguin storage
 penguin storage --top 50
 penguin storage --json
+```
+
+### 人工审核的清理
+
+报告之外的一切都是刻意的动作，而且在有人打开**清理模式**之前，服务端会拒绝全部写操作——`penguin storage mode on`，或设置页「存储」标签里的开关。模式关闭时，报告就是这条命令能做的全部，任何写操作都返回 `409 storage_mode_off`；一次清理正在跑时，另一次返回 `409 storage_busy`。没被人打开过的机器上模式就是关着的，也没有任何东西会自己打开它。
+
+`scan` 会在数据根的 `storage/plans/` 下写出一份账单（plan），不移动任何东西。账单逐条列出候选：类别、体积、文件数、最后改动时间、命中的规则与路径，并给每条标记 `move`（可搬）或 `report only`（仅报告）：这一版只有临时工作区可执行，其余留在账单上供人看见并手动处理。账单带有自身条目的指纹与 24 小时寿命；一旦被使用过，或任何条目的大小/修改时间变了，它就失效。
+
+`apply` 需要账单 id **和**要搬的路径——所以这条命令里没有任何 `--yes`，也没有「看见什么就清什么」：既不给 `--path` 也不给 `--all` 的运行会在请求服务端之前就被拒绝。`--all` 指的是账单上所有**可执行**条目，从不包含仅报告的那些。所以顺序永远是：读账单、点名、再执行。
+
+真正执行时，逐条当场复核：账单过期、条目大小或修改时间漂移、路径已消失、临时工作区被某个会话重新用上、此类在这一版只报告、以及账单上被 pin 住的路径——任何一条都会中止整批运行并点名自己（`409 plan_expired`、`plan_stale`、`entry_still_live`、`class_not_executable`、`pinned_path`），而不是被顺手清掉。没有任何删除：通过的条目被重命名进数据根的 `.trash/<时间戳>/`，旁边留一份 `manifest.json`，并且每条在搬动之前先写进 `logs/storage-gc.jsonl`。
+
+`trash` 就是搬移的落点。`list`（默认）列出每一批及其条目，并标出超过保留期的批次；`restore <id>` 把条目重命名回原处，原路径已被占用的则跳过；`purge [<id>]` 是整个设计里唯一的删除，且单独成词——带 id 删那一批，不带 id 只删超过保留期的批次（默认 14 天，由 `mode` 与设置页设定）。
+
+条目也可以被 pin 住，从而完全不进账单（设置页「存储」标签上的 pin 按钮）；`mode` 会打印当前 pin 了几条路径。被 pin 的路径即便被人手动点名，`apply` 也会拒绝。
+
+```bash
+penguin storage mode on            # 刻意打开清理模式
+penguin storage scan              # 出一份账单；此时什么都还没动
+penguin storage plan              # 最近的几份账单，最新在前
+penguin storage plan 2026-10-10-13-05-22-4f2a
+penguin storage apply 2026-10-10-13-05-22-4f2a --path 'agents/helper/workspaces/tmp-8f3c'
+penguin storage trash             # 搬移落到了哪里
+penguin storage trash restore 20261010-130621
 ```
 
 ## penguin schedule

@@ -175,19 +175,39 @@ On PUT, fields the request omits keep their value, `null` or `""` clears one, an
 
 ## Storage Ledger (admin only)
 
-What the data root holds, class by class, and which entries a person could review.
+What the data root holds, class by class, which entries a person could review, and the reviewed cleanup that reads it. The report is always available; every write answers `409 storage_mode_off` until the cleanup mode is on.
 
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/api/admin/storage` | The storage ledger: `{report: {root, scannedAt, totalBytes, classes, candidates, sharedEnvGroups, disk, unreadable}}` |
+| GET | `/api/admin/storage/settings` | The cleanup mode: `{settings: {enabled, trashTtlDays, pins}}` |
+| PUT | `/api/admin/storage/settings` | Sets any of `enabled`, `trashTtlDays` (a whole number of days, 1–365) and `pins`, and answers with the stored settings. A PUT naming one bad field writes nothing. |
+| GET | `/api/admin/storage/plans` | The twenty most recent bills, newest first: `{plans: [{id, createdAt, expiresAt, entries, totalBytes, appliedAt, expired, …}]}` |
+| POST | `/api/admin/storage/plans` | Scans the data root and writes a bill: `201` with `{plan}`. Writes no other file. |
+| GET | `/api/admin/storage/plans/:planId` | One bill: `{plan}` |
+| POST | `/api/admin/storage/plans/:planId/pin` | Keeps one entry out of every future bill: `{path, pinned}` (`pinned` defaults to `true`) answers with the settings. A path that is not inside the root is `400 invalid_pin`. |
+| POST | `/api/admin/storage/apply` | Moves the approved entries into the trash: `{planId, fingerprint, paths}` answers with `{planId, trashId, moved, failed, freedBytes}`. |
+| GET | `/api/admin/storage/trash` | What a run moved: `{entries: [{id, createdAt, planId, bytes, files, items, expired}], ttlDays}` |
+| POST | `/api/admin/storage/trash/restore` | Puts one batch back: `{id}` answers with `{id, restored, skipped, remaining}`. |
+| POST | `/api/admin/storage/trash/purge` | The one deletion: `{id}` removes that batch; an empty body removes every batch past the retention. Answers `{purged: [{id, bytes, files}]}`. |
 
-**Nothing here cleans up.** The route reads the root and answers; it takes no query parameter, has no PUT or DELETE beside it, and no part of the server acts on a report by itself — every removal in this design is a decision a person takes, and a report is what they take it against. A stale report cannot cause one either: `referenced` is recomputed from live state when a cleanup would run, so an entry that came alive in between is not acted on.
+**Only a person starts anything here.** No route runs on a timer and none accepts a policy: a caller cannot widen what a scan considers, and cannot ask for "everything unreferenced" — the unit of approval is a specific bill. `GET /api/admin/storage` reads the root and answers and takes no query parameter, and the entries of a bill are re-measured and re-checked against live state when a run starts, so a stale bill cannot cause a move: a tree that grew, was touched or came alive in between stops the run instead of being half-cleaned. One write runs at a time; a second answers `409 storage_busy`.
 
 `root` is the real path that was walked and `scannedAt` is the instant it was observed (ISO), so the report describes that moment rather than the moment it is read. `totalBytes` is the sum of every class, so the classification accounts for the whole root; each class carries its byte, file and entry counts plus how many of its entries are candidates and how many bytes they hold. The classes are `protected` (user data: Agent State, Project configuration, a Workspace the user chose, user vaults, plugins, benchmarks, snapshots), `tmp_workspaces`, `session_drafts`, `traces`, `shared_env`, `trash`, `database` and `other`.
 
 `candidates` lists the reviewable entries, largest first and capped per class (the class totals above stay exact), each with the rules it matched: `empty` and `unreferenced` for a temporary Workspace no Session points at, `orphan` for the drafts of a Session that no longer exists, `idle` for anything judged by silence, `budget` for anything a size cap would evict. A candidate is a claim about provenance, never an action. `sharedEnvGroups` names the shared environments that look like the same toolchain installed more than once, by normalized name (`csu-mail` vs `csumail`) or by what they hold — report only, since two look-alike environments may be at different versions. `disk` carries the volume's free and total bytes (`null` where the platform cannot say), and `unreadable` lists the paths that could not be read (capped), so the report says what it could not see rather than counting it as empty.
 
 Every threshold is off by default except the temporary-Workspace idle rule: the ledger's value is that it names references, budgets and duplicate environments, not that it guesses at timestamps.
+
+### A bill, and what a run does with it
+
+A bill is a plan file under `<root>/storage/plans/<planId>.json`, with an id that starts in the local timestamp it was written (`2026-10-10-13-05-22-4f2a`). It carries one entry per candidate — `{path, class, bytes, files, lastModifiedAt, rules, fingerprint, executable}` — a fingerprint over all of them, and a 24-hour life. `executable` is what this version may move; the classes it may act on are listed in the bill's own `executableClasses`, and today that is `tmp_workspaces` alone — the other classes are on the bill so a person can see them and deal with them by hand.
+
+`apply` is the only route in this group that changes the data root, and it needs three things: the bill's id, that bill's `fingerprint`, and the paths to move. There is no "all" and no class to name, so what moves is exactly what somebody ticked on a bill they were reading. A run with an empty `paths` is `400 nothing_selected`; a path that is not an entry of that bill is `400 unknown_path`; one this version only reports is `409 class_not_executable`; one outside what its class may touch is `400 path_not_allowed`; one that is pinned is `409 pinned_path`. A bill that was already used is `409 plan_used`, one past its day `409 plan_expired`, one whose fingerprint does not match `409 plan_stale`. Each entry is then re-resolved and re-measured: gone or changed is `409 plan_stale`, a Workspace a Session has started using again is `409 entry_still_live`, and a path that is no longer a directory inside the root is `409 path_not_allowed`. The batch is validated as a whole before a single move, so a refusal names every path that caused it.
+
+Nothing is ever unlinked. A passing entry is renamed into `<root>/.trash/<timestamp>/items/<original path>`, with a `manifest.json` beside it, and the move is written to `<root>/logs/storage-gc.jsonl` before it happens — so a run that dies partway is explainable and a rerun converges. The same log records the mode being turned on or off and every pin and unpin, which is what answers "why is this entry not on the bill any more" months later.
+
+`trash` lists those batches; `restore` renames their items back and skips (`target_exists`, `not_in_trash`) whatever is in the way rather than overwriting it, removing the batch once nothing but empty directories is left. `purge` is the one deletion, it needs the cleanup mode like the rest, and it can only reach inside `<root>/.trash`: with an id it removes exactly that batch, without one only the batches past `trashTtlDays` (14 by default).
 
 ## Machines (admin only)
 
