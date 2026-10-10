@@ -5489,3 +5489,13 @@ prompt 里那串 `--filter @prismshadow/penguin-*` 也已过时，本仓包名�
 - **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出，是否现在发版等用户点头。
 - 复制面只有 AI 回复的页脚涉及 Markdown（用户消息复制与选区右键复制本来就是纯文本），所以只改了这里。
 - 默认行为没变（第一个按钮仍是 Markdown）；若用户更想要「设置里一个选项」或「默认纯文本」，改动很小。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `d03446df`**（14 个文件，含 changelog 一对与 `pnpm-lock.yaml`）；台账这一笔另起一笔 `fbc7c57e`。
+- **推送**：`git push origin main`（`95900c3d` → `fbc7c57e`）。
+- **CI（推送后）**：run **`38093564954`** —— **22 个作业全绿、`NOT SUCCESS: []`**。
+- **汇报走飞书**：中南邮箱一轮只探一次 —— `smtp.csu.edu.cn:465` 与 `imap.csu.edu.cn:993` 仍是超时
+  （`timeout 12` 整段被杀，一行输出都没有）；126 的 SMTP 通（`smtp.126.com:465` 握手到 `250 mail`）但
+  **密钥库里没有 126 的授权码**（`send-mail.py --check` 报 `MAIL_ADDRESS / MAIL_AUTHCODE missing`），
+  所以按约定走飞书。
