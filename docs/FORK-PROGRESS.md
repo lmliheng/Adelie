@@ -5177,3 +5177,10 @@ UI 包折叠内容区（`packages/ui/src/components/layout/fold/fold.tsx`）的�
 - run **`38048010289`**（`41cf6af6`，含代码提交 `51a79a02` 与这条台账）：**22 个作业全绿、
   `NOT SUCCESS: []`**。这一笔只动 web / ui 与两份 changelog，矩阵没有动，`test (web-cli)` /
   `test (rest)` 与 macOS / Windows 分片都真跑了这一笔（前两次推送没有触发额外 run）。
+
+> **2026-10-10 与另一条线的交汇（第三十四轮）**：本轮开工时 `git status --short` 干净，两次提交与推送之后
+> 才发现工作区里多出**另一条线**的改动 —— `packages/core/src/state/paths.ts` 新增 `storageDir` /
+> `storagePlansDir` / `storageTrashDir` / `logsDir` / `storageLogFile`（`<root>/storage`、`<root>/.trash`、
+> `<root>/logs` 那套存储清理机制，与 `/root/Adelie_develop/storage-cleanup-design.md` 是同一件事，文件
+> mtime 19:27Z 之后）。**本轮一个都没碰**，`git add` 只列了自己的 11 个文件；那批改动仍在工作区里等它那条线
+> 自己提交 —— 下一轮开工时照纪律先看 `git status --short`。
