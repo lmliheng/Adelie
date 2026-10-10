@@ -31,7 +31,10 @@ import type {
   ProjectSummary,
   ProxyProbeTargetsResponse,
   ServerSettings,
+  StoragePlanView,
   StorageReport,
+  StorageSettings,
+  StorageTrashEntry,
   SessionContextResponse,
   SessionInfo,
   SkillMetadataItem,
@@ -64,6 +67,29 @@ const iso = (ms: number) => new Date(ms).toISOString();
 /** `yyyy-mm-dd` in UTC, which is also what the usage series buckets on. */
 export const dayKey = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
+/**
+ * The local stamp core's storage ids are made of, in the two shapes they take. Local, not UTC, and
+ * by hand rather than through `toISOString`: these names are read by a person looking at the data
+ * root (or at a bill's header) rather than parsed, and they are what makes a bill sort by time as
+ * a string.
+ */
+function localStamp(ms: number): { dashed: string; compact: string } {
+  const at = new Date(ms);
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  const date = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+  const time = `${pad(at.getHours())}-${pad(at.getMinutes())}-${pad(at.getSeconds())}`;
+  return {
+    dashed: `${date}-${time}`,
+    compact: `${date.replace(/-/g, "")}-${time.replace(/-/g, "")}`,
+  };
+}
+
+/** A bill's id as core writes it (`2026-10-08-11-30-45-4f2a1c`): the stamp plus a short suffix. */
+export const planId = (ms: number, suffix: string): string => `${localStamp(ms).dashed}-${suffix}`;
+
+/** A trash entry's id as core writes it (`20261008-113045`): the moment of the run, compact. */
+export const trashId = (ms: number): string => localStamp(ms).compact;
+
 /** A small deterministic generator, so the numbers are stable between reloads and tests. */
 export function seeded(seed: number): () => number {
   let state = seed >>> 0;
@@ -92,8 +118,17 @@ export interface DemoFixtures {
   me: Omit<MeResponse, "user">;
   prefs: UiPrefs;
   serverSettings: ServerSettings;
-  /** The storage ledger the Settings page renders; read-only, so the mock only ever answers it. */
+  /** The storage ledger the Settings page renders; read-only, and what the page measures again. */
   storageReport: StorageReport;
+  /**
+   * The cleanup mode's settings. **Off**, which is what an untouched install has: the gallery
+   * therefore opens on the read-only ledger, and the switch is what brings the rest into view.
+   */
+  storageSettings: StorageSettings;
+  /** The bills the demo world has written, newest first — a scan prepends one. */
+  storagePlans: StoragePlanView[];
+  /** What a move put aside, and what restore and purge act on. */
+  storageTrash: StorageTrashEntry[];
   project: ProjectSummary;
   members: MemberInfo[];
   agents: AgentSummary[];
@@ -1430,6 +1465,12 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     },
   ];
 
+  // The cleanup mode's own clock: a bill written half an hour ago (its day still ahead of it), one
+  // applied with the day before, and a trash entry that a two-week retention has run out on.
+  const storagePlanWrittenMs = ago(0, 30);
+  const storageAppliedPlanMs = ago(1, 90);
+  const storageStaleTrashMs = ago(20);
+
   return {
     lang,
     now,
@@ -1485,7 +1526,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
           files: 23_731,
           entries: 83,
           candidateEntries: 2,
-          candidateBytes: 1_448_000,
+          candidateBytes: 2_360_000,
         },
         {
           class: "session_drafts",
@@ -1539,6 +1580,17 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
           referenced: false,
           rules: ["unreferenced"],
         },
+        // The class's second candidate, so the two that the class summary above counts are both
+        // listed — and so a scan of this world writes the same bill the cleanup fixtures hold.
+        {
+          path: `${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-71c0be14`,
+          class: "tmp_workspaces",
+          bytes: 918_000,
+          files: 7,
+          lastModifiedAt: null,
+          referenced: false,
+          rules: ["empty", "unreferenced"],
+        },
         {
           path: `${IDS.project}/agents/${IDS.agents.docs}/scratchpad/session-2026-09-30-10-00-00-1a2b3c4d`,
           class: "session_drafts",
@@ -1563,6 +1615,131 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       disk: { freeBytes: 8_100_000_000, totalBytes: 52_700_000_000 },
       unreadable: [`${IDS.project}/agents/${IDS.agents.notes}/scratchpad/sealed`],
     },
+    storageSettings: {
+      enabled: false,
+      trashTtlDays: 14,
+      pins: [],
+    },
+    // Two bills, newest first, sharing the ledger's clock above. The newest is still open — nothing
+    // applied it and its day has not passed — so a page that is reloaded adopts it rather than
+    // showing nothing; the older one was applied and is spent, which is what the "a bill is good
+    // for one run" sentence and the "nothing to review" branch are for.
+    storagePlans: [
+      {
+        id: planId(storagePlanWrittenMs, "4f2a1c"),
+        root: "/home/demo/.adelie/data",
+        createdAt: iso(storagePlanWrittenMs),
+        expiresAt: iso(storagePlanWrittenMs + DAY),
+        fingerprint: "9f1c0b7ad4e25360c2a8b1f0d7e64a39",
+        totalBytes: 1_442_000 + 918_000 + 3_460_000,
+        entries: [
+          {
+            path: `${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-8e8a3ace`,
+            class: "tmp_workspaces",
+            bytes: 1_442_000,
+            files: 12,
+            lastModifiedAt: iso(ago(2, 30)),
+            rules: ["unreferenced"],
+            fingerprint: "3b7d19c4028fe64a1c05d9b8e7f30215",
+            executable: true,
+          },
+          // A second temporary Workspace, so "select all of this class" has more than one row to
+          // take — and a candidate the ledger's own list does not show (that list is capped).
+          {
+            path: `${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-71c0be14`,
+            class: "tmp_workspaces",
+            bytes: 918_000,
+            files: 7,
+            lastModifiedAt: null,
+            rules: ["empty", "unreferenced"],
+            fingerprint: "c4a0e1735bd9f28640e1a7b3cd920f58",
+            executable: true,
+          },
+          // The class this version only reports: drawn with its price tag beside it, and with a
+          // box that cannot be ticked, which is the state the page has to be able to show.
+          {
+            path: `${IDS.project}/agents/${IDS.agents.docs}/scratchpad/session-2026-09-30-10-00-00-1a2b3c4d`,
+            class: "session_drafts",
+            bytes: 3_460_000,
+            files: 5,
+            lastModifiedAt: iso(ago(9, 40)),
+            rules: ["orphan"],
+            fingerprint: "7e2b68d1f0c395a8be47120df6a3c8e9",
+            executable: false,
+          },
+        ],
+        excluded: [],
+        executableClasses: ["tmp_workspaces"],
+        appliedAt: null,
+        appliedPaths: [],
+        usable: true,
+        expired: false,
+      },
+      {
+        id: planId(storageAppliedPlanMs, "9d13e7"),
+        root: "/home/demo/.adelie/data",
+        createdAt: iso(storageAppliedPlanMs),
+        expiresAt: iso(storageAppliedPlanMs + DAY),
+        fingerprint: "1d6fa309c8b7e4250af13d9c6b28e740",
+        totalBytes: 2_140_000,
+        entries: [
+          {
+            path: `${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-0c7f19aa`,
+            class: "tmp_workspaces",
+            bytes: 2_140_000,
+            files: 33,
+            lastModifiedAt: iso(ago(1, 200)),
+            rules: ["unreferenced"],
+            fingerprint: "a80c35e1b7d42f9603c8ae51d709b2f4",
+            executable: true,
+          },
+        ],
+        excluded: [],
+        executableClasses: ["tmp_workspaces"],
+        appliedAt: iso(storageAppliedPlanMs),
+        appliedPaths: [`${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-0c7f19aa`],
+        usable: false,
+        expired: true,
+      },
+    ],
+    // What a move put aside. The first entry is the tree the applied bill above moved, and is
+    // inside the retention; the second is past it, so both purge routes — this entry, and
+    // everything past the retention — have something to act on. Restoring either puts its trees
+    // back and takes the entry away, as the server does once the entry holds nothing.
+    storageTrash: [
+      {
+        id: trashId(storageAppliedPlanMs),
+        createdAt: iso(storageAppliedPlanMs),
+        planId: planId(storageAppliedPlanMs, "9d13e7"),
+        bytes: 2_140_000,
+        files: 33,
+        items: [
+          {
+            path: `${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-0c7f19aa`,
+            class: "tmp_workspaces",
+            bytes: 2_140_000,
+            files: 33,
+          },
+        ],
+        expired: false,
+      },
+      {
+        id: trashId(storageStaleTrashMs),
+        createdAt: iso(storageStaleTrashMs),
+        planId: planId(storageStaleTrashMs, "b71e35"),
+        bytes: 620_000,
+        files: 9,
+        items: [
+          {
+            path: `${IDS.project}/agents/${IDS.agents.notes}/scratchpad/session-2026-09-18-15-58-00-5f0c7a91`,
+            class: "session_drafts",
+            bytes: 620_000,
+            files: 9,
+          },
+        ],
+        expired: true,
+      },
+    ],
     project,
     members: [
       { userId: user.userId, role: "owner", createdAt: project.createdAt },

@@ -186,7 +186,17 @@ import type {
   SessionTracesResponse,
   SkillArchiveInstallRequest,
   SteerRequest,
+  StorageApplyRequest,
+  StorageApplyResponse,
+  StoragePinRequest,
+  StoragePlanResponse,
+  StoragePlansResponse,
+  StoragePurgeResponse,
   StorageReportResponse,
+  StorageRestoreResponse,
+  StorageSettingsResponse,
+  StorageSettingsUpdateRequest,
+  StorageTrashResponse,
   SubagentMessageResponse,
   TaskCreateRequest,
   TaskCreateResponse,
@@ -351,6 +361,75 @@ export const adminProbeProxy = (provider: ProxyProbeProvider) =>
  * to answer this, and no route executes a cleanup on the strength of the report it returns.
  */
 export const adminGetStorageReport = () => apiFetch<StorageReportResponse>("/api/admin/storage");
+
+/**
+ * The cleanup mode, machine-wide like the root it describes: `enabled` is off until a person turns
+ * it on, and every route that writes — scanning out a bill, pinning, moving, purging — is refused
+ * with 409 `storage_mode_off` while it is off. `pins` are the paths a person decided to keep.
+ */
+export const adminGetStorageSettings = () =>
+  apiFetch<StorageSettingsResponse>("/api/admin/storage/settings");
+
+/** An omitted field keeps its stored value; the response is the mode as it now stands. */
+export const adminUpdateStorageSettings = (body: StorageSettingsUpdateRequest) =>
+  apiFetch<StorageSettingsResponse>("/api/admin/storage/settings", { method: "PUT", body });
+
+/**
+ * Writes a bill out of the ledger: a walk of the whole root, and a POST because it creates a file
+ * (the plan), not because it moves anything. The bill is a snapshot of one instant, reviewed
+ * before anything acts on it — nothing scans on a timer, so this is only ever somebody's click.
+ */
+export const adminScanStorage = () =>
+  apiFetch<StoragePlanResponse>("/api/admin/storage/plans", { method: "POST", body: {} });
+
+/** The recent bills, newest first — so a page reload can find the one the server still holds. */
+export const adminListStoragePlans = () =>
+  apiFetch<StoragePlansResponse>("/api/admin/storage/plans");
+
+/** One bill, as it stands now (`usable` / `expired` are computed at read time, not stored). */
+export const adminGetStoragePlan = (planId: string) =>
+  apiFetch<StoragePlanResponse>(`/api/admin/storage/plans/${encodeURIComponent(planId)}`);
+
+/**
+ * Keeps one path out of every later bill, or lets it back in. The plan in the path is read first,
+ * so pinning an entry of a bill that is gone is told so rather than answered with a settings blob.
+ */
+export const adminPinStoragePath = (planId: string, body: StoragePinRequest) =>
+  apiFetch<StorageSettingsResponse>(`/api/admin/storage/plans/${encodeURIComponent(planId)}/pin`, {
+    method: "POST",
+    body,
+  });
+
+/**
+ * Moves the approved entries into the trash — the only route that changes the data root, and it
+ * needs a bill's id, **that bill's own fingerprint** and an explicit path list. A fingerprint the
+ * server does not hold a bill for, a bill already spent, or one past its day is refused, so what
+ * moves is exactly what somebody read and ticked.
+ */
+export const adminApplyStoragePlan = (body: StorageApplyRequest) =>
+  apiFetch<StorageApplyResponse>("/api/admin/storage/apply", { method: "POST", body });
+
+/** What moves have put aside: measured now, so a listing never lies about what is on disk. */
+export const adminGetStorageTrash = () =>
+  apiFetch<StorageTrashResponse>("/api/admin/storage/trash");
+
+/** Puts one trash entry's trees back where they came from, refusing whatever is in the way. */
+export const adminRestoreStorageTrash = (id: string) =>
+  apiFetch<StorageRestoreResponse>("/api/admin/storage/trash/restore", {
+    method: "POST",
+    body: { id },
+  });
+
+/**
+ * The one deletion in the API: with an id it removes that trash entry, without one only the
+ * entries past the retention. It never reaches anything that is not already in the trash, and
+ * nothing calls it on a timer.
+ */
+export const adminPurgeStorageTrash = (id?: string) =>
+  apiFetch<StoragePurgeResponse>("/api/admin/storage/trash/purge", {
+    method: "POST",
+    body: id === undefined ? {} : { id },
+  });
 
 // Project & members --------------------------------------------------------------
 

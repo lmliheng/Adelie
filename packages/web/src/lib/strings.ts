@@ -523,16 +523,21 @@ export const zh = {
       `在${machine === null ? "本机" : ` ${machine} `}上执行「${action}」？它会立即在那台机器上运行，具体做什么由插件决定。`,
     /** Under a number field whose box does not parse; the save is not sent. */
     pluginFieldNotNumber: "必须是数字",
-    /** Admin-only sub-page (server-global): the data root's storage ledger. A report, and nothing else. */
+    /**
+     * Admin-only sub-page (server-global): the data root's storage ledger, and the human-reviewed
+     * cleanup that reads it — a report on one side, a bill and its approval on the other.
+     */
     storageTitle: "存储台账",
     /**
-     * The one line at the top of that page's own body: what the page is, and the promise it keeps.
-     * Deliberately visible rather than folded into the heading's "?" — it is what keeps every
-     * figure below from reading as an offer to clear something.
+     * The one line at the top of that page's own body: what the page is, and the promise it keeps
+     * now that it can also move something. Deliberately visible rather than folded into the
+     * heading's "?" — it is what keeps the figures and the buttons below from reading as an offer
+     * to free space automatically.
      */
     storageReportOnly:
-      "这是一份只读报告：本页只测量并列出磁盘上的内容，不会删除任何数据。" +
-      "清理将是另一步，需要人看过之后自己决定——本页不提供这种操作。",
+      "默认是一个字节都不动：清理模式关着的时候，本页只测量并列出磁盘上的内容。" +
+      "开启之后，「重新扫描」写出一份账单，只有你勾选的条目才会被移入回收站——在那里可以恢复。" +
+      "没有任何操作会自动运行，唯一的删除是回收站里的「彻底删除」。",
     /** The page's "?" at the pane heading: what is measured, and what a candidate is (and is not). */
     storageInfo:
       "测量的是本机的数据根目录，一次遍历得出：每个字节按来源归入一个类别，各类别互不重叠，合计即根目录本身的大小。" +
@@ -623,6 +628,114 @@ export const zh = {
     storageUnreadableTitle: "无法读取的路径",
     storageUnreadableHint:
       "这些位置在测量时没有读到，其中的内容没有进入上面的统计，所以上面的数字是下限。",
+    /**
+     * The cleanup mode: the switch a person turns on, and what each position means. Each sentence
+     * names what the OTHER position cannot do, because that difference is the whole page.
+     */
+    storageModeTitle: "清理模式",
+    storageModeLabel: "允许人工审核后的清理",
+    storageModeOn:
+      "已开启：可以扫描出一份账单、把勾选的条目移入回收站，也可以把回收站里的内容恢复回去。" +
+      "删除只发生在「彻底删除」这一步，而且要你自己按下按钮。",
+    storageModeOff:
+      "已关闭：本页只测量并列出磁盘上的内容，扫描、固定、移动和清空都不会发生，没有任何东西会被挪动。" +
+      "这是默认状态，也不会自己改变。",
+    /** The mode's settings could not be read: the page then behaves as if it were off. */
+    storageModeFailed: "无法读取清理模式设置，因此按「已关闭」处理。",
+    /** The hint on every write control the mode gates, so a disabled button says why. */
+    storageModeRequired: "需要先开启清理模式",
+    /** The bill's own state, one sentence each: the difference decides whether a selection may run. */
+    storagePlanStateText: {
+      usable: "尚未执行，且仍在有效期内：勾选的条目可以被移动。",
+      applied: "已经执行过一次。一份账单只对一次执行有效，要再清理请重新扫描。",
+      expired: "已超过有效期。请重新扫描，让账单描述的是现在的磁盘。",
+    },
+    /** The scan that writes a bill; the ledger's own button beside it only measures again. */
+    storageScan: "重新扫描",
+    storageScanning: "扫描中…",
+    storageScanHint:
+      "「重新扫描」会遍历数据根目录并写出一份账单，列出的条目是这次扫描的候选。" +
+      "账单本身不移动任何东西：移动只发生在你勾选条目并按下「执行清理」之后。",
+    storageScanEmpty: "这次扫描没有找到候选条目，因此这份账单里没有可以移动的东西。",
+    storageScanFailed: "扫描失败，没有可以审阅的账单。",
+    /** The bill's own header. */
+    storageBillTitle: "账单",
+    storageBillId: "账单编号",
+    storageBillCreatedAt: "生成时间",
+    storageBillExpiresAt: "有效期至",
+    storageBillTotal: "账单合计",
+    storageBillEntries: (count: number): string => `${count} 个条目`,
+    storageBillHint:
+      "账单是扫描那一刻的快照。执行之前服务器会按现在的情况复核一遍，对不上的条目会被拒绝，而不是照旧被移动。",
+    /** Before any scan has produced one: the page says what to press rather than leaving a void. */
+    storageBillNone: "还没有可审阅的账单。",
+    /** The bill's own columns: the box, the rule that put the row there, and what may be done with it. */
+    storageColSelect: "选中",
+    storageColExecutable: "能否移动",
+    storageColPin: "固定",
+    /** The review: one group per class, and the boxes that decide what may move. */
+    storageBillClassesTitle: "按类别审阅",
+    storageBillGroupTotals: (entries: number, bytes: string): string =>
+      `${entries} 个条目 · ${bytes}`,
+    storageSelectClass: "全选本类",
+    storageUnselectClass: "取消本类",
+    storageSelectClassNothing: "本类没有可移动的条目",
+    /** Whether this version may act on a row at all; the rest are on the bill to be read. */
+    storageExecutable: {
+      yes: "可以移动",
+      no: "仅供查看",
+    },
+    /** The selection: nothing is ticked until a person ticks it, and the page says so. */
+    storageSelectionNone: "尚未勾选任何条目——默认是一个字节都不动。",
+    storageSelectionSummary: (entries: number, bytes: string): string =>
+      `已勾选 ${entries} 个条目，合计 ${bytes}`,
+    /** The pins: what a person decided to keep, and what a bill therefore leaves out. */
+    storagePinsTitle: (count: number): string => `已固定 ${count} 条路径`,
+    storagePinsEmpty: "还没有固定任何路径。",
+    storagePinsHint: "固定的路径不会再出现在之后的任何账单里，直到你取消固定。",
+    storageExcludedTitle: (count: number): string => `这份账单排除了 ${count} 条已固定路径`,
+    storagePin: "固定",
+    storageUnpin: "取消固定",
+    /** The one action that moves something, and what it does when it does it. */
+    storageApply: "执行清理",
+    storageApplying: "清理中…",
+    storageApplyHint: "只移动勾选的条目，而且是移入回收站：可以再恢复，这不是删除。",
+    storageApplyResult: (moved: number, bytes: string): string =>
+      `已移动 ${moved} 个条目，回收 ${bytes}`,
+    storageApplyNothingMoved: "没有条目被移动。",
+    storageApplyTrashId: (id: string): string => `回收站条目：${id}`,
+    storageApplyFailedTitle: "未能移动的条目",
+    storageApplyFailedLine: (path: string, reason: string): string => `${path}：${reason}`,
+    /** The trash: what a move put aside, and the two things a person may do with it. */
+    storageTrashTitle: "回收站",
+    storageTrashHint: (days: number): string =>
+      `移入的条目至少保留 ${days} 天。保留期内没有任何东西会自动删除——删除永远需要你按下按钮。`,
+    storageTrashEmpty: "回收站是空的。",
+    storageColTrashId: "回收站条目",
+    storageColTrashCreated: "移入时间",
+    storageColTrashItems: "条目",
+    storageColTrashState: "状态",
+    storageColTrashActions: "操作",
+    storageTrashStateNames: {
+      fresh: "保留中",
+      expired: "已过保留期",
+    },
+    storageTrashRestore: "恢复",
+    storageTrashRestoring: "恢复中…",
+    storageTrashPurge: "彻底删除",
+    storageTrashPurgeExpired: "彻底删除已过保留期的",
+    storageTrashPurgeWarning:
+      "「彻底删除」是本页唯一的删除操作：回收站里的内容会就此消失，无法恢复。",
+    storageTrashPurgedNothing: "没有可删除的内容。",
+    storageTrashPurged: (count: number, bytes: string): string =>
+      `已彻底删除 ${count} 项，共 ${bytes}`,
+    storageTrashRestored: (restored: number, skipped: number): string =>
+      `已恢复 ${restored} 个条目，跳过 ${skipped} 个`,
+    storageTrashRestoreRemaining: {
+      yes: "回收站条目里还有内容，这次没有全部恢复。",
+      no: "回收站条目已经空了，随之被移除。",
+    },
+    storageTrashSkippedLine: (path: string, reason: string): string => `${path}：${reason}`,
     uploadLimitsTitle: "上传限制",
     /** Its two number fields, both in whole MB. */
     attachmentMaxMb: "单个附件上限（MB）",

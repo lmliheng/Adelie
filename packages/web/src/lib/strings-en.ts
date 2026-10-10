@@ -458,16 +458,21 @@ export const en: Strings = {
       `Run "${action}" on ${machine ?? "this server"}? It runs on that machine right away; what it does is up to the plugin.`,
     /** Under a number field whose box does not parse; the save is not sent. */
     pluginFieldNotNumber: "Must be a number",
-    /** Admin-only sub-page (server-global): the data root's storage ledger. A report, and nothing else. */
+    /**
+     * Admin-only sub-page (server-global): the data root's storage ledger, and the human-reviewed
+     * cleanup that reads it — a report on one side, a bill and its approval on the other.
+     */
     storageTitle: "Storage ledger",
     /**
-     * The one line at the top of that page's own body: what the page is, and the promise it keeps.
-     * Deliberately visible rather than folded into the heading's "?" — it is what keeps every
-     * figure below from reading as an offer to clear something.
+     * The one line at the top of that page's own body: what the page is, and the promise it keeps
+     * now that it can also move something. Deliberately visible rather than folded into the
+     * heading's "?" — it is what keeps the figures and the buttons below from reading as an offer
+     * to free space automatically.
      */
     storageReportOnly:
-      "This is a read-only report: it measures and lists what is on disk and deletes nothing. " +
-      "Cleanup will be a separate step, taken by a person after reading this — the page offers no such action.",
+      "The default is to keep every byte: with the cleanup mode off, this page only measures and lists what is on disk. " +
+      "Once the mode is on, a scan writes a bill and only the entries you tick are moved into the trash — where they can be restored. " +
+      'Nothing runs by itself, and the one deletion is "Delete for good" in the trash.',
     /** The page's "?" at the pane heading: what is measured, and what a candidate is (and is not). */
     storageInfo:
       "The subject is this machine's data root, measured in one walk: every byte lands in exactly one class by provenance, and the total is the root's own size. " +
@@ -562,6 +567,115 @@ export const en: Strings = {
     storageUnreadableTitle: "Paths that could not be read",
     storageUnreadableHint:
       "Nothing under these paths entered the figures above, so those figures are a lower bound.",
+    /**
+     * The cleanup mode: the switch a person turns on, and what each position means. Each sentence
+     * names what the OTHER position cannot do, because that difference is the whole page.
+     */
+    storageModeTitle: "Cleanup mode",
+    storageModeLabel: "Allow cleanup after a human review",
+    storageModeOn:
+      "On: you can scan out a bill, move the entries you tick into the trash, and put what is in the trash back. " +
+      'The only deletion is "Delete for good", and it takes your click.',
+    storageModeOff:
+      "Off: this page only measures and lists what is on disk — no scan, pin, move or purge happens, and nothing is moved. " +
+      "This is the default, and nothing changes it on its own.",
+    /** The mode's settings could not be read: the page then behaves as if it were off. */
+    storageModeFailed: "Could not read the cleanup mode's settings, so this page treats it as off.",
+    /** The hint on every write control the mode gates, so a disabled button says why. */
+    storageModeRequired: "Turn the cleanup mode on first",
+    /** The bill's own state, one sentence each: the difference decides whether a selection may run. */
+    storagePlanStateText: {
+      usable: "Not applied yet, and still within its day: the entries you tick can be moved.",
+      applied: "Already applied once. A bill is good for one run; scan again to clean more.",
+      expired: "Past its day. Scan again so the bill describes the disk as it is now.",
+    },
+    /** The scan that writes a bill; the ledger's own button beside it only measures again. */
+    storageScan: "Scan for a bill",
+    storageScanning: "Scanning…",
+    storageScanHint:
+      "A scan walks the data root and writes out a bill; its entries are what this scan found. " +
+      'The bill moves nothing by itself: a move happens only after you tick entries and press "Clean up".',
+    storageScanEmpty: "This scan found no candidates, so this bill has nothing that could move.",
+    storageScanFailed: "The scan failed, so there is no bill to review.",
+    /** The bill's own header. */
+    storageBillTitle: "Bill",
+    storageBillId: "Bill id",
+    storageBillCreatedAt: "Written at",
+    storageBillExpiresAt: "Good until",
+    storageBillTotal: "Bill total",
+    storageBillEntries: (count: number): string => `${count} entries`,
+    storageBillHint:
+      "A bill is a snapshot of the instant it was written. Before anything moves, the server checks every entry against the disk and live state as they are then, and refuses the ones that no longer match rather than moving them anyway.",
+    /** Before any scan has produced one: the page says what to press rather than leaving a void. */
+    storageBillNone: "There is no bill to review yet.",
+    /** The bill's own columns: the box, the rule that put the row there, and what may be done with it. */
+    storageColSelect: "Select",
+    storageColExecutable: "Movable",
+    storageColPin: "Pin",
+    /** The review: one group per class, and the boxes that decide what may move. */
+    storageBillClassesTitle: "Review by class",
+    storageBillGroupTotals: (entries: number, bytes: string): string =>
+      `${entries} entries · ${bytes}`,
+    storageSelectClass: "Select the class",
+    storageUnselectClass: "Clear the class",
+    storageSelectClassNothing: "Nothing in this class can be moved",
+    /** Whether this version may act on a row at all; the rest are on the bill to be read. */
+    storageExecutable: {
+      yes: "can be moved",
+      no: "report only",
+    },
+    /** The selection: nothing is ticked until a person ticks it, and the page says so. */
+    storageSelectionNone: "Nothing is ticked yet — the default is to keep every byte.",
+    storageSelectionSummary: (entries: number, bytes: string): string =>
+      `${entries} entries selected, ${bytes}`,
+    /** The pins: what a person decided to keep, and what a bill therefore leaves out. */
+    storagePinsTitle: (count: number): string => `${count} pinned paths`,
+    storagePinsEmpty: "No path is pinned yet.",
+    storagePinsHint: "A pinned path never appears on a later bill, until you unpin it.",
+    storageExcludedTitle: (count: number): string => `This bill left out ${count} pinned paths`,
+    storagePin: "Pin",
+    storageUnpin: "Unpin",
+    /** The one action that moves something, and what it does when it does it. */
+    storageApply: "Clean up",
+    storageApplying: "Cleaning up…",
+    storageApplyHint:
+      "Only the entries you ticked are moved, and they are moved into the trash: they can be restored. This is not a deletion.",
+    storageApplyResult: (moved: number, bytes: string): string =>
+      `Moved ${moved} entries, ${bytes}`,
+    storageApplyNothingMoved: "No entry was moved.",
+    storageApplyTrashId: (id: string): string => `Trash entry: ${id}`,
+    storageApplyFailedTitle: "Entries that could not be moved",
+    storageApplyFailedLine: (path: string, reason: string): string => `${path}: ${reason}`,
+    /** The trash: what a move put aside, and the two things a person may do with it. */
+    storageTrashTitle: "Trash",
+    storageTrashHint: (days: number): string =>
+      `What was moved in is kept for at least ${days} days. Nothing is deleted on its own during that time — a deletion always takes your click.`,
+    storageTrashEmpty: "The trash is empty.",
+    storageColTrashId: "Trash entry",
+    storageColTrashCreated: "Moved in",
+    storageColTrashItems: "Entries",
+    storageColTrashState: "State",
+    storageColTrashActions: "Actions",
+    storageTrashStateNames: {
+      fresh: "within retention",
+      expired: "past retention",
+    },
+    storageTrashRestore: "Restore",
+    storageTrashRestoring: "Restoring…",
+    storageTrashPurge: "Delete for good",
+    storageTrashPurgeExpired: "Delete what is past retention",
+    storageTrashPurgeWarning:
+      '"Delete for good" is the only deletion on this page: what is in the trash is gone, and cannot be recovered.',
+    storageTrashPurgedNothing: "There was nothing to delete.",
+    storageTrashPurged: (count: number, bytes: string): string =>
+      `Deleted ${count} entries for good, ${bytes} in all`,
+    storageTrashRestored: (restored: number, skipped: number): string =>
+      `Restored ${restored} entries, skipped ${skipped}`,
+    storageTrashRestoreRemaining: {
+      yes: "The trash entry still holds something, so this restore did not finish it.",
+      no: "The trash entry was empty afterwards and has been removed.",
+    },
+    storageTrashSkippedLine: (path: string, reason: string): string => `${path}: ${reason}`,
     uploadLimitsTitle: "Upload limits",
     /** Its two number fields, both in whole MB. */
     attachmentMaxMb: "Max attachment size (MB)",

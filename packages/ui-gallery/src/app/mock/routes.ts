@@ -85,7 +85,16 @@ import type {
   SchedulesResponse,
   SemanticIdSuggestResponse,
   ServerSettingsResponse,
+  StorageApplyResponse,
+  StoragePlanEntryView,
+  StoragePlanResponse,
+  StoragePlansResponse,
+  StoragePlanView,
+  StoragePurgeResponse,
   StorageReportResponse,
+  StorageRestoreResponse,
+  StorageSettingsResponse,
+  StorageTrashResponse,
   SessionCategory,
   SessionCategoryCounts,
   SessionContextResponse,
@@ -121,8 +130,8 @@ import type {
 // The catalog decides which groups publish a balance, as it does on the server.
 import { providerInfo } from "../../../../core/dist/state/model-catalog.js";
 import { READ_ONLY } from "./errors";
-import { dayKey } from "./fixtures";
-import type { UsageDay } from "./fixtures";
+import { dayKey, planId, trashId } from "./fixtures";
+import type { DemoFixtures, UsageDay } from "./fixtures";
 import { IDS } from "./ids";
 import { empty, fail, json, raw, Router } from "./router";
 import type { RequestContext } from "./router";
@@ -145,6 +154,98 @@ function readOnly(what: string): never {
 
 function notFound(what: string): never {
   return fail(404, "not_found", `${what} not found.`);
+}
+
+/**
+ * The classes the reviewed cleanup may actually move — core's `EXECUTABLE_STORAGE_CLASSES`, which
+ * this file cannot import (that module reaches for `node:crypto`, and the gallery runs in a
+ * browser). A class outside this list is on a bill to be read and not acted on, which is a state
+ * the page draws, so the demo keeps the same one-class answer the server gives.
+ */
+const EXECUTABLE_CLASSES = ["tmp_workspaces"] as const;
+
+/** The mode gates every storage write, as it does on the server: off means nothing may be planned. */
+function assertStorageMode(store: DemoStore): void {
+  if (!store.f.storageSettings.enabled) {
+    fail(409, "storage_mode_off", "Cleanup mode is off, so this is not available.");
+  }
+}
+
+/** One of the demo's bills by id, or the same 404 the server answers with. */
+function findPlan(store: DemoStore, planId: string): StoragePlanView {
+  const plan = store.f.storagePlans.find((candidate) => candidate.id === planId);
+  if (plan === undefined) {
+    fail(404, "plan_not_found", "No plan with that id. Scan again for a new bill.");
+  }
+  return plan;
+}
+
+/** Adds or removes one pin, keeping the list sorted the way the server's does. */
+function changePin(store: DemoStore, path: string, pinned: boolean): void {
+  const current = store.f.storageSettings.pins;
+  store.f.storageSettings.pins = pinned
+    ? [...new Set([...current, path])].sort()
+    : current.filter((existing) => existing !== path);
+}
+
+/** A short deterministic digest, for the fingerprints a bill carries. Not a security boundary. */
+function mockFingerprint(...parts: (string | number)[]): string {
+  let hash = 0x811c9dc5;
+  for (const char of parts.join("\n")) {
+    hash ^= char.charCodeAt(0);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0").repeat(4);
+}
+
+/** Bills scanned in this session, so two ids of the same second do not collide. */
+let scans = 0;
+
+/**
+ * A scan, as the server writes one: the ledger's candidates, minus the paths somebody pinned. The
+ * demo has no disk to walk, so the candidates ARE the scan — which is why a pinned path really does
+ * disappear from the next bill here, exactly as it would there.
+ */
+function scanStoragePlan(f: DemoFixtures, nowMs: number): StoragePlanView {
+  scans += 1;
+  const pins = new Set(f.storageSettings.pins);
+  const excluded: string[] = [];
+  const entries: StoragePlanEntryView[] = [];
+  for (const candidate of f.storageReport.candidates) {
+    if (candidate.rules.length === 0) continue;
+    if (pins.has(candidate.path)) {
+      excluded.push(candidate.path);
+      continue;
+    }
+    entries.push({
+      path: candidate.path,
+      class: candidate.class,
+      bytes: candidate.bytes,
+      files: candidate.files,
+      lastModifiedAt: candidate.lastModifiedAt,
+      rules: candidate.rules,
+      fingerprint: mockFingerprint(candidate.path, candidate.bytes),
+      executable: (EXECUTABLE_CLASSES as readonly string[]).includes(candidate.class),
+    });
+  }
+  const suffix = ((scans * 0x9e3779b1) >>> 0).toString(16).padStart(6, "0").slice(-6);
+  return {
+    id: planId(nowMs, suffix),
+    root: f.storageReport.root,
+    createdAt: new Date(nowMs).toISOString(),
+    // The same day the server gives a bill: it describes one instant, and a day is how long that
+    // description is worth acting on.
+    expiresAt: new Date(nowMs + 86_400_000).toISOString(),
+    fingerprint: mockFingerprint(nowMs, entries.map((entry) => entry.fingerprint).join("\n")),
+    totalBytes: entries.reduce((sum, entry) => sum + entry.bytes, 0),
+    entries,
+    excluded,
+    executableClasses: [...EXECUTABLE_CLASSES],
+    appliedAt: null,
+    appliedPaths: [],
+    usable: true,
+    expired: false,
+  };
 }
 
 /** The cost of a Token bucket at the demo's default rates (USD per million). */
@@ -224,11 +325,165 @@ router
   .get("/api/admin/settings", ({ store }): ServerSettingsResponse => ({
     settings: store.f.serverSettings,
   }))
-  // Read-only by contract: the gallery answers the ledger and nothing else, exactly as the
-  // server does — there is no route here a cleanup could ride on.
+  // The storage ledger's page, and the human-reviewed cleanup that reads it. The mode gates every
+  // write here exactly as it does on the server, so the gallery can be walked through both pages:
+  // off (the ledger alone, which is the default an untouched install has) and on (a bill to review,
+  // a move into the trash, and the one deletion in the demo — `purge`).
   .get("/api/admin/storage", ({ store }): StorageReportResponse => ({
     report: store.f.storageReport,
   }))
+  .get("/api/admin/storage/settings", ({ store }): StorageSettingsResponse => ({
+    settings: store.f.storageSettings,
+  }))
+  .put("/api/admin/storage/settings", ({ store, body }): StorageSettingsResponse => {
+    const update = record(body);
+    store.f.storageSettings = {
+      enabled:
+        typeof update.enabled === "boolean" ? update.enabled : store.f.storageSettings.enabled,
+      trashTtlDays:
+        typeof update.trashTtlDays === "number"
+          ? update.trashTtlDays
+          : store.f.storageSettings.trashTtlDays,
+      pins: Array.isArray(update.pins)
+        ? update.pins.filter((path): path is string => typeof path === "string")
+        : store.f.storageSettings.pins,
+    };
+    return { settings: store.f.storageSettings };
+  })
+  .get("/api/admin/storage/plans", ({ store }): StoragePlansResponse => ({
+    plans: store.f.storagePlans,
+  }))
+  .post("/api/admin/storage/plans", ({ store }): unknown => {
+    assertStorageMode(store);
+    const nowMs = Date.now();
+    const plan = scanStoragePlan(store.f, nowMs);
+    store.f.storagePlans.unshift(plan);
+    return json({ plan } satisfies StoragePlanResponse, 201);
+  })
+  .get("/api/admin/storage/plans/:planId", ({ store, params }): StoragePlanResponse => ({
+    plan: findPlan(store, str(params.planId)),
+  }))
+  .post(
+    "/api/admin/storage/plans/:planId/pin",
+    ({ store, params, body }): StorageSettingsResponse => {
+      assertStorageMode(store);
+      // The bill is read first, as the server reads it: pinning an entry of a bill that is gone is
+      // told so rather than answered with a settings blob.
+      findPlan(store, str(params.planId));
+      const { path, pinned } = record(body);
+      changePin(store, str(path), typeof pinned === "boolean" ? pinned : true);
+      return { settings: store.f.storageSettings };
+    },
+  )
+  .post("/api/admin/storage/apply", ({ store, body }): StorageApplyResponse => {
+    assertStorageMode(store);
+    const request = record(body);
+    const plan = findPlan(store, str(request.planId));
+    if (plan.appliedAt !== null) {
+      fail(409, "plan_used", "This plan has already been applied. Scan again for a new bill.");
+    }
+    if (plan.expired) {
+      fail(409, "plan_expired", "This plan is older than 24 hours. Scan again.");
+    }
+    if (str(request.fingerprint) !== plan.fingerprint) {
+      fail(409, "plan_stale", "The fingerprint does not match this plan. Read the bill again.");
+    }
+    const paths = Array.isArray(request.paths)
+      ? request.paths.filter((path): path is string => typeof path === "string")
+      : [];
+    if (paths.length === 0) {
+      fail(400, "nothing_selected", "Nothing was selected. Approve at least one entry.");
+    }
+    // Checked as the server checks it — the whole batch, before anything moves — so a path the
+    // demo would refuse is refused here too rather than silently taken.
+    const entries = paths.map((path) => {
+      const entry = plan.entries.find((row) => row.path === path);
+      if (entry === undefined) fail(400, "unknown_path", `Not an entry of this plan: ${path}.`);
+      if (!entry.executable) {
+        fail(
+          409,
+          "class_not_executable",
+          `This version does not clean ${entry.class} entries: ${path}.`,
+        );
+      }
+      if (store.f.storageSettings.pins.includes(path)) {
+        fail(409, "pinned_path", `Pinned — it will never be cleaned: ${path}.`);
+      }
+      return entry;
+    });
+    const moved = entries.map((entry) => ({
+      path: entry.path,
+      bytes: entry.bytes,
+      files: entry.files,
+    }));
+    const nowMs = Date.now();
+    const id = moved.length === 0 ? null : trashId(nowMs);
+    if (id !== null) {
+      store.f.storageTrash.unshift({
+        id,
+        createdAt: new Date(nowMs).toISOString(),
+        planId: plan.id,
+        bytes: moved.reduce((sum, item) => sum + item.bytes, 0),
+        files: moved.reduce((sum, item) => sum + item.files, 0),
+        items: entries.map((entry) => ({
+          path: entry.path,
+          class: entry.class,
+          bytes: entry.bytes,
+          files: entry.files,
+        })),
+        expired: false,
+      });
+    }
+    // Spent whatever moved: the demo's ledger is one fixed measurement rather than a walk of a
+    // disk that has changed, so the report keeps showing the trees the trash now holds — the
+    // server would re-measure, and the trash block is where this world shows the move.
+    plan.appliedAt = new Date(nowMs).toISOString();
+    plan.appliedPaths = moved.map((item) => item.path);
+    plan.usable = false;
+    return {
+      planId: plan.id,
+      trashId: id,
+      moved,
+      failed: [],
+      freedBytes: moved.reduce((sum, item) => sum + item.bytes, 0),
+    };
+  })
+  .get("/api/admin/storage/trash", ({ store }): StorageTrashResponse => ({
+    entries: store.f.storageTrash,
+    ttlDays: store.f.storageSettings.trashTtlDays,
+  }))
+  .post("/api/admin/storage/trash/restore", ({ store, body }): StorageRestoreResponse => {
+    assertStorageMode(store);
+    const id = str(record(body).id);
+    const entry = store.f.storageTrash.find((candidate) => candidate.id === id);
+    if (entry === undefined) fail(404, "trash_not_found", "No trash entry with that id.");
+    // Everything is restored and nothing is skipped: the demo has no disk behind it, so the two
+    // reasons the server skips an item (it is not there any more, something else took its path)
+    // cannot arise here. The entry then holds nothing, which is when the server removes it.
+    store.f.storageTrash = store.f.storageTrash.filter((candidate) => candidate.id !== id);
+    return { id, restored: entry.items.map((item) => item.path), skipped: [], remaining: false };
+  })
+  .post("/api/admin/storage/trash/purge", ({ store, body }): StoragePurgeResponse => {
+    assertStorageMode(store);
+    const requested = record(body).id;
+    const id = typeof requested === "string" ? requested : null;
+    if (id !== null && !store.f.storageTrash.some((entry) => entry.id === id)) {
+      fail(404, "trash_not_found", "No trash entry with that id.");
+    }
+    const targets =
+      id === null
+        ? store.f.storageTrash.filter((entry) => entry.expired)
+        : store.f.storageTrash.filter((entry) => entry.id === id);
+    const purged = targets.map((entry) => ({
+      id: entry.id,
+      bytes: entry.bytes,
+      files: entry.files,
+    }));
+    store.f.storageTrash = store.f.storageTrash.filter(
+      (entry) => !purged.some((gone) => gone.id === entry.id),
+    );
+    return { purged };
+  })
   .put("/api/admin/settings", ({ store, body }): ServerSettingsResponse => {
     store.f.serverSettings = { ...store.f.serverSettings, ...record(body) };
     return { settings: store.f.serverSettings };

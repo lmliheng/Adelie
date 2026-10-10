@@ -33,6 +33,7 @@ const SETTINGS_PAGES = [
   "uploads",
   "company",
   "plugins",
+  "storage",
   "users",
 ] as const satisfies readonly SettingsSectionKey[];
 
