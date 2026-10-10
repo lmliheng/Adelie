@@ -19,4 +19,5 @@ export * from "./plugin-store.js";
 export * from "./agent-vault.js";
 export * from "./user-vault.js";
 export * from "./memory.js";
+export * from "./storage.js";
 export * from "./example-benchmark.js";
