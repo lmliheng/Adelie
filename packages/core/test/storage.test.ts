@@ -434,7 +434,12 @@ describe("storage plan", () => {
     const root = await scaffold();
     const workspace = path.join(root, "proj", "agents", "agent", "workspaces", "tmp-one");
     await writeFile(path.join(workspace, "f.md"), "x");
-    expect(await resolveStorageEntry(root, "proj/agents/agent/workspaces/tmp-one")).toBe(workspace);
+    // Against the real path, not the one spelled above: the resolver answers with the realpath, and
+    // a temporary directory is not its own realpath everywhere — macOS's `/var` is a link to
+    // `/private/var`, and Windows hands out a short name for the user's own directory.
+    expect(await resolveStorageEntry(root, "proj/agents/agent/workspaces/tmp-one")).toBe(
+      await fs.realpath(workspace),
+    );
 
     // A file, a missing path and a symlink are all refused: the first two have nothing to move,
     // and a link is the one way a move could take something from outside the root with it.
