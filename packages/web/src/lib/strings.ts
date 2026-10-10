@@ -523,6 +523,106 @@ export const zh = {
       `在${machine === null ? "本机" : ` ${machine} `}上执行「${action}」？它会立即在那台机器上运行，具体做什么由插件决定。`,
     /** Under a number field whose box does not parse; the save is not sent. */
     pluginFieldNotNumber: "必须是数字",
+    /** Admin-only sub-page (server-global): the data root's storage ledger. A report, and nothing else. */
+    storageTitle: "存储台账",
+    /**
+     * The one line at the top of that page's own body: what the page is, and the promise it keeps.
+     * Deliberately visible rather than folded into the heading's "?" — it is what keeps every
+     * figure below from reading as an offer to clear something.
+     */
+    storageReportOnly:
+      "这是一份只读报告：本页只测量并列出磁盘上的内容，不会删除任何数据。" +
+      "清理将是另一步，需要人看过之后自己决定——本页不提供这种操作。",
+    /** The page's "?" at the pane heading: what is measured, and what a candidate is (and is not). */
+    storageInfo:
+      "测量的是本机的数据根目录，一次遍历得出：每个字节按来源归入一个类别，各类别互不重叠，合计即根目录本身的大小。" +
+      "「候选」是条目命中的规则——空目录、无引用、会话已删除、静默超期、超出预算——它是一条关于出处的判断，不是一次操作，" +
+      "而且「仍被引用」要等到真正执行时才重新计算。多数阈值默认关闭，所以候选少并不代表磁盘上没有冗余；" +
+      "「无法读取的路径」列出这次没读到的位置，报告因此不会显得比实际更完整。",
+    /** The report's own header: the root, when it was measured, the total, and the volume's numbers. */
+    storageRoot: "数据根目录",
+    storageMeasuredAt: "测量时间",
+    storageTotal: "合计",
+    storageDiskFree: "磁盘剩余 / 总容量",
+    /** `disk` is null when the volume's own numbers could not be read. */
+    storageDiskUnknown: "未读到磁盘容量",
+    /** The page's only action: measure again (a walk of the whole root, so it is not free). */
+    storageRescan: "重新测量",
+    storageRescanning: "测量中…",
+    storageLoading: "正在测量…",
+    storageFailed: "无法取得存储报告。",
+    /** The class table and its columns. */
+    storageClassesTitle: "按类别",
+    storageColClass: "类别",
+    storageColBytes: "占用",
+    storageColFiles: "文件",
+    storageColEntries: "条目",
+    storageColCandidateEntries: "候选条目",
+    storageColCandidateBytes: "候选占用",
+    /** Class ids in the reader's words; the ids themselves stay protected / tmp_workspaces / … */
+    storageClassNames: {
+      protected: "用户资产",
+      tmp_workspaces: "临时工作区",
+      session_drafts: "会话草稿",
+      traces: "轨迹",
+      shared_env: "工具环境",
+      trash: "回收站",
+      database: "数据库",
+      other: "其他",
+    },
+    /**
+     * What removing one entry of a class would cost, under its name in the class table. `protected`
+     * is never reported as a candidate, so its line says that rather than inventing a price.
+     */
+    storageClassCost: {
+      protected:
+        "你自己的数据：智能体状态、项目配置、你指定的 WorkSpace、密钥库、插件、评估集与快照。它从不成为候选，本页也不会动它。",
+      tmp_workspaces:
+        "工具在临时目录里建的 WorkSpace：清掉会连里面的文件一起消失，正在用它运行的任务会被打断。",
+      session_drafts:
+        "会话草稿：清掉之后，旧消息里附上的图片不再能预览，重新打开那条消息也恢复不了。",
+      traces: "轨迹：清掉之后，历史回放与成本页失去重建来源，那些会话的往返与用量再也算不出来。",
+      shared_env: "为智能体建的工具环境：清掉之后，下次用到它要重新装一遍。",
+      trash: "回收站里的东西：清空它就再也找不回来了。",
+      database: "服务器自己的数据库（账号、会话索引、设置）。清掉它等于丢掉这些状态。",
+      other: "没有归入其他类别的文件：清掉它连内容一起消失，而且没人能说出丢的是什么。",
+    },
+    /** The candidate list: its heading, its empty state, and its columns. */
+    storageCandidatesTitle: "候选条目",
+    storageCandidatesEmpty: "这次测量没有找到候选条目。",
+    storageCandidatesEmptyHint:
+      "这不代表磁盘上没有冗余：多数规则默认关闭，只有确实命中规则的条目才会列在这里。",
+    storageColPath: "路径",
+    storageColLastModified: "最近修改",
+    /** A candidate whose newest mtime could not be read. */
+    storageNeverModified: "读不到",
+    /** Dated on purpose: the value is what the scan saw, and a cleanup recomputes it before acting. */
+    storageColReferenced: "扫描时仍被引用",
+    storageReferencedYes: "是",
+    storageReferencedNo: "否",
+    storageColRules: "命中的规则",
+    /** A candidate the server recorded no rule for — shown rather than left blank. */
+    storageRulesNone: "未记录规则",
+    /** Rule ids in the reader's words; the ids themselves stay empty / orphan / idle / budget / unreferenced. */
+    storageRuleNames: {
+      empty: "空目录",
+      unreferenced: "无引用",
+      orphan: "会话已删除",
+      idle: "静默超期",
+      budget: "超出预算",
+    },
+    /** Duplicate-looking tool environments. Report only — merging them is a person's call. */
+    storageEnvGroupsTitle: "疑似重复的工具环境",
+    storageEnvGroupsHint:
+      "仅供查看：同一个工具可能装了不止一份。合并需要人来决定——两份看起来一样的未必是同一个版本——本页不会动它们。",
+    storageEnvGroupKindName: "同名",
+    storageEnvGroupKindStructure: "结构相似",
+    /** How many environments the group holds. */
+    storageEnvGroupMembers: (count: number): string => `${count} 份`,
+    /** Paths nobody could read: the report says what it does not know. */
+    storageUnreadableTitle: "无法读取的路径",
+    storageUnreadableHint:
+      "这些位置在测量时没有读到，其中的内容没有进入上面的统计，所以上面的数字是下限。",
     uploadLimitsTitle: "上传限制",
     /** Its two number fields, both in whole MB. */
     attachmentMaxMb: "单个附件上限（MB）",

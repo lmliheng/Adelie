@@ -458,6 +458,110 @@ export const en: Strings = {
       `Run "${action}" on ${machine ?? "this server"}? It runs on that machine right away; what it does is up to the plugin.`,
     /** Under a number field whose box does not parse; the save is not sent. */
     pluginFieldNotNumber: "Must be a number",
+    /** Admin-only sub-page (server-global): the data root's storage ledger. A report, and nothing else. */
+    storageTitle: "Storage ledger",
+    /**
+     * The one line at the top of that page's own body: what the page is, and the promise it keeps.
+     * Deliberately visible rather than folded into the heading's "?" — it is what keeps every
+     * figure below from reading as an offer to clear something.
+     */
+    storageReportOnly:
+      "This is a read-only report: it measures and lists what is on disk and deletes nothing. " +
+      "Cleanup will be a separate step, taken by a person after reading this — the page offers no such action.",
+    /** The page's "?" at the pane heading: what is measured, and what a candidate is (and is not). */
+    storageInfo:
+      "The subject is this machine's data root, measured in one walk: every byte lands in exactly one class by provenance, and the total is the root's own size. " +
+      'A "candidate" is the rule an entry matched — empty, unreferenced, orphaned, idle, over budget — a claim about provenance, not an action, and "still referenced" is recomputed at execution time rather than trusted from a report. ' +
+      "Most thresholds are off by default, so few candidates does not mean the disk holds nothing removable; " +
+      "the paths that could not be read are listed, so the report never looks more complete than it is.",
+    /** The report's own header: the root, when it was measured, the total, and the volume's numbers. */
+    storageRoot: "Data root",
+    storageMeasuredAt: "Measured at",
+    storageTotal: "Total",
+    storageDiskFree: "Disk free / total",
+    /** `disk` is null when the volume's own numbers could not be read. */
+    storageDiskUnknown: "Disk figures unreadable",
+    /** The page's only action: measure again (a walk of the whole root, so it is not free). */
+    storageRescan: "Measure again",
+    storageRescanning: "Measuring…",
+    storageLoading: "Measuring…",
+    storageFailed: "Could not read the storage report.",
+    /** The class table and its columns. */
+    storageClassesTitle: "By class",
+    storageColClass: "Class",
+    storageColBytes: "Size",
+    storageColFiles: "Files",
+    storageColEntries: "Entries",
+    storageColCandidateEntries: "Candidates",
+    storageColCandidateBytes: "Candidate size",
+    /** Class ids in the reader's words; the ids themselves stay protected / tmp_workspaces / … */
+    storageClassNames: {
+      protected: "User assets",
+      tmp_workspaces: "Temporary workspaces",
+      session_drafts: "Session drafts",
+      traces: "Traces",
+      shared_env: "Tool environments",
+      trash: "Trash",
+      database: "Database",
+      other: "Other",
+    },
+    /**
+     * What removing one entry of a class would cost, under its name in the class table. `protected`
+     * is never reported as a candidate, so its line says that rather than inventing a price.
+     */
+    storageClassCost: {
+      protected:
+        "Your own data: Agent State, Project configuration, the Workspaces you chose, vaults, plugins, Benchmark material and snapshots. It never becomes a candidate, and nothing here touches it.",
+      tmp_workspaces:
+        "A Workspace a tool made in a temporary directory: clearing it takes the files inside with it, and a run still working in it would be cut off.",
+      session_drafts:
+        "Session drafts: once cleared, images attached to old messages stop previewing, and reopening the message brings nothing back.",
+      traces:
+        "Traces: once cleared, history replay and the cost page lose their rebuild source — those Sessions' rounds and usage can no longer be computed.",
+      shared_env:
+        "An environment built for an Agent: once cleared, the next use has to install it again.",
+      trash: "What is in the trash: emptying it means it cannot be recovered.",
+      database:
+        "The server's own database (accounts, Session index, settings). Clearing it means losing that state.",
+      other:
+        "Files that fitted no other class: clearing one takes its contents with it, and nobody can say what was lost.",
+    },
+    /** The candidate list: its heading, its empty state, and its columns. */
+    storageCandidatesTitle: "Candidates",
+    storageCandidatesEmpty: "This measurement found no candidates.",
+    storageCandidatesEmptyHint:
+      "That does not mean the disk holds nothing removable: most rules are off by default, and only entries that matched one are listed here.",
+    storageColPath: "Path",
+    storageColLastModified: "Last modified",
+    /** A candidate whose newest mtime could not be read. */
+    storageNeverModified: "unreadable",
+    /** Dated on purpose: the value is what the scan saw, and a cleanup recomputes it before acting. */
+    storageColReferenced: "Referenced at scan",
+    storageReferencedYes: "yes",
+    storageReferencedNo: "no",
+    storageColRules: "Matched rules",
+    /** A candidate the server recorded no rule for — shown rather than left blank. */
+    storageRulesNone: "no rule recorded",
+    /** Rule ids in the reader's words; the ids themselves stay empty / orphan / idle / budget / unreferenced. */
+    storageRuleNames: {
+      empty: "Empty",
+      unreferenced: "Unreferenced",
+      orphan: "Session deleted",
+      idle: "Idle past its threshold",
+      budget: "Over budget",
+    },
+    /** Duplicate-looking tool environments. Report only — merging them is a person's call. */
+    storageEnvGroupsTitle: "Possibly duplicated tool environments",
+    storageEnvGroupsHint:
+      "Report only: the same tool may be installed more than once. Merging is a person's decision — two look-alike environments may be at different versions — and nothing here touches them.",
+    storageEnvGroupKindName: "same name",
+    storageEnvGroupKindStructure: "similar structure",
+    /** How many environments the group holds. */
+    storageEnvGroupMembers: (count: number): string => `${count} copies`,
+    /** Paths nobody could read: the report says what it does not know. */
+    storageUnreadableTitle: "Paths that could not be read",
+    storageUnreadableHint:
+      "Nothing under these paths entered the figures above, so those figures are a lower bound.",
     uploadLimitsTitle: "Upload limits",
     /** Its two number fields, both in whole MB. */
     attachmentMaxMb: "Max attachment size (MB)",

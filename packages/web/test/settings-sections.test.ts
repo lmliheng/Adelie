@@ -57,13 +57,15 @@ describe("visibleSettingsSections", () => {
       "uploads",
       "company",
       "plugins",
+      "storage",
       "users",
     ]);
   });
 
   it("gives a non-admin their own pages and nothing server-global", () => {
     // Not "fewer pages" — the exact list. Proxy, upload limits, the company-mode master
-    // switch and user management are admin surfaces, and the whole point of dropping them is that a non-admin is never
+    // switch, the storage ledger and user management are admin surfaces, and the whole point of
+    // dropping them is that a non-admin is never
     // told they exist. Updating is not among them either way: it lives in the sidebar user
     // menu, outside this dialog, for every account.
     expect(plain.map((s) => s.key)).toEqual([
@@ -79,7 +81,9 @@ describe("visibleSettingsSections", () => {
   it("strips the desktop shell's window down to what a token session can use", () => {
     // No account page (no password to change — see offersChangePassword), no user
     // management (single-user server). The profile page stays: an avatar and a nickname need
-    // no password, and this window is the only session a desktop install has.
+    // no password, and this window is the only session a desktop install has. The storage
+    // ledger stays as well: it is the same data root and the same admin, and opening a report
+    // writes nothing the single-user rule is there to protect.
     expect(shell.map((s) => s.key)).toEqual([
       "profile",
       "general",
@@ -90,6 +94,7 @@ describe("visibleSettingsSections", () => {
       "uploads",
       "company",
       "plugins",
+      "storage",
     ]);
   });
 
@@ -107,7 +112,29 @@ describe("visibleSettingsSections", () => {
       "uploads",
       "company",
       "plugins",
+      "storage",
     ]);
+  });
+});
+
+/**
+ * The storage ledger is a read-only report, so nothing but its admin-only visibility separates it
+ * from the pages around it: it sits in the Server group, and a non-admin is answered exactly as
+ * they are for any other page they may not open (settings-sections.ts).
+ */
+describe("the storage report's place in the rail", () => {
+  it("is a Server page, and every admin gets it", () => {
+    for (const sections of [admin, shell, desktopBrowser]) {
+      expect(sections.find((s) => s.key === "storage")).toEqual({
+        key: "storage",
+        group: "server",
+      });
+    }
+  });
+
+  it("is never offered to a non-admin, and asking for it falls back like any forbidden page", () => {
+    expect(plain.map((s) => s.key)).not.toContain("storage");
+    expect(resolveSettingsSection("storage", plain)).toBe("profile");
   });
 });
 

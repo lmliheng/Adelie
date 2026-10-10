@@ -36,6 +36,7 @@ export type SettingsSectionKey =
   | "uploads"
   | "company"
   | "plugins"
+  | "storage"
   | "users";
 
 /** Rail heading a page sits under: the viewer's own preferences vs. the whole server's. */
@@ -77,6 +78,10 @@ const SECTION_RULES: ReadonlyArray<SettingsSection & { visible(viewer: SettingsV
     { key: "company", group: "server", visible: (v) => v.isAdmin },
     // The sandbox, and the options loaded plugins declare (server-global, like the plugins themselves).
     { key: "plugins", group: "server", visible: (v) => v.isAdmin },
+    // The data root's storage ledger: a server-global report an admin reads. Read-only, so unlike
+    // user management below it stays in the desktop shell's window too — that install has the same
+    // data root and the same admin, and nothing here can be written by opening it.
+    { key: "storage", group: "server", visible: (v) => v.isAdmin },
     // Single-user under the desktop shell: the server rejects the admin user routes there.
     { key: "users", group: "server", visible: (v) => v.isAdmin && !v.desktopMode },
   ];

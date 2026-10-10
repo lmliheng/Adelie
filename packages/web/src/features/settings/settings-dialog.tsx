@@ -28,6 +28,7 @@ import { ProxySection } from "./proxy-section";
 import { UploadsSection } from "./uploads-section";
 import { CompanySection } from "./company-section";
 import { PluginsSection } from "./plugins-section";
+import { StorageSection } from "./storage-section";
 import { AdminUsersSection } from "../admin/admin-users-page";
 import { CreditsSection } from "./credits-section";
 
@@ -54,6 +55,8 @@ const SECTION_ICONS: Record<SettingsSectionKey, string> = {
   uploads: "M12 15V4m0 0L7 9m5-5l5 5M4 20h16",
   /** The building the mode switch wears: company mode. */
   company: ICONS.building,
+  /** A drive: the data root's storage ledger. */
+  storage: ICONS.hardDrive,
   /** Puzzle piece: plugins. */
   plugins:
     "M10 4a2 2 0 1 1 4 0v2h3a1 1 0 0 1 1 1v3h-2a2 2 0 1 0 0 4h2v3a1 1 0 0 1-1 1h-3v-2a2 2 0 1 0-4 0v2H7a1 1 0 0 1-1-1v-3h2a2 2 0 1 0 0-4H6V7a1 1 0 0 1 1-1h3V4z",
@@ -107,6 +110,7 @@ export function SettingsDialog({
     uploads: S.settings.uploadLimitsTitle,
     company: S.settings.companyModeTitle,
     plugins: S.settings.pluginsTitle,
+    storage: S.settings.storageTitle,
     users: S.admin.users,
   };
   const groupLabel: Record<SettingsGroupKey, string> = {
@@ -121,6 +125,7 @@ export function SettingsDialog({
     uploads: S.settings.uploadLimitsInfo(uploadLimits.attachmentMaxCount, uploadLimits.imageMaxMb),
     company: S.settings.companyModeServerInfo,
     plugins: S.settings.pluginsInfo,
+    storage: S.settings.storageInfo,
   };
 
   const groups: Array<PagedDialogGroup<SettingsSectionKey>> = settingsGroups(sections).map(
@@ -167,6 +172,7 @@ export function SettingsDialog({
       {current === "plugins" && (
         <PluginsSection {...(pluginFocus !== undefined ? { focus: pluginFocus } : {})} />
       )}
+      {current === "storage" && <StorageSection />}
       {current === "users" && <AdminUsersSection />}
     </PagedDialog>
   );

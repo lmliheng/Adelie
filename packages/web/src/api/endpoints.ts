@@ -186,6 +186,7 @@ import type {
   SessionTracesResponse,
   SkillArchiveInstallRequest,
   SteerRequest,
+  StorageReportResponse,
   SubagentMessageResponse,
   TaskCreateRequest,
   TaskCreateResponse,
@@ -343,6 +344,13 @@ export const adminGetProxyProbeTargets = () =>
  */
 export const adminProbeProxy = (provider: ProxyProbeProvider) =>
   apiFetch<ProxyProbeResponse>(`/api/admin/settings/proxy-probe/${provider}`, { method: "POST" });
+
+/**
+ * The data root's storage ledger (admin): what is on disk, by class, with the entries that
+ * matched a cleanup rule. A measurement and nothing more — the server moves and deletes no file
+ * to answer this, and no route executes a cleanup on the strength of the report it returns.
+ */
+export const adminGetStorageReport = () => apiFetch<StorageReportResponse>("/api/admin/storage");
 
 // Project & members --------------------------------------------------------------
 
