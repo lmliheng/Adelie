@@ -85,6 +85,7 @@ import type {
   SchedulesResponse,
   SemanticIdSuggestResponse,
   ServerSettingsResponse,
+  StorageReportResponse,
   SessionCategory,
   SessionCategoryCounts,
   SessionContextResponse,
@@ -222,6 +223,11 @@ router
   })
   .get("/api/admin/settings", ({ store }): ServerSettingsResponse => ({
     settings: store.f.serverSettings,
+  }))
+  // Read-only by contract: the gallery answers the ledger and nothing else, exactly as the
+  // server does — there is no route here a cleanup could ride on.
+  .get("/api/admin/storage", ({ store }): StorageReportResponse => ({
+    report: store.f.storageReport,
   }))
   .put("/api/admin/settings", ({ store, body }): ServerSettingsResponse => {
     store.f.serverSettings = { ...store.f.serverSettings, ...record(body) };

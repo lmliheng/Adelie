@@ -31,6 +31,7 @@ import type {
   ProjectSummary,
   ProxyProbeTargetsResponse,
   ServerSettings,
+  StorageReport,
   SessionContextResponse,
   SessionInfo,
   SkillMetadataItem,
@@ -91,6 +92,8 @@ export interface DemoFixtures {
   me: Omit<MeResponse, "user">;
   prefs: UiPrefs;
   serverSettings: ServerSettings;
+  /** The storage ledger the Settings page renders; read-only, so the mock only ever answers it. */
+  storageReport: StorageReport;
   project: ProjectSummary;
   members: MemberInfo[];
   agents: AgentSummary[];
@@ -1458,6 +1461,106 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       attachmentMaxMb: 100,
       attachmentTotalMb: 120,
       companyMode: false,
+    },
+    // A ledger with one of everything the page has a branch for: a class that is never a
+    // candidate, three that are, a duplicate-looking environment pair, and one path the scan
+    // could not read (the page shows its gaps rather than rounding them away).
+    storageReport: {
+      root: "/home/demo/.adelie/data",
+      scannedAt: iso(ago(0)),
+      totalBytes: 5_819_900_000,
+      classes: [
+        {
+          class: "protected",
+          bytes: 19_700_000,
+          files: 1269,
+          entries: 43,
+          candidateEntries: 0,
+          candidateBytes: 0,
+        },
+        {
+          class: "tmp_workspaces",
+          bytes: 591_500_000,
+          files: 23_731,
+          entries: 83,
+          candidateEntries: 2,
+          candidateBytes: 1_448_000,
+        },
+        {
+          class: "session_drafts",
+          bytes: 1_500_000_000,
+          files: 56_181,
+          entries: 282,
+          candidateEntries: 1,
+          candidateBytes: 3_460_000,
+        },
+        {
+          class: "traces",
+          bytes: 462_300_000,
+          files: 3344,
+          entries: 51,
+          candidateEntries: 0,
+          candidateBytes: 0,
+        },
+        {
+          class: "shared_env",
+          bytes: 3_220_000_000,
+          files: 101_755,
+          entries: 28,
+          candidateEntries: 0,
+          candidateBytes: 0,
+        },
+        { class: "trash", bytes: 0, files: 0, entries: 0, candidateEntries: 0, candidateBytes: 0 },
+        {
+          class: "database",
+          bytes: 23_900_000,
+          files: 3,
+          entries: 3,
+          candidateEntries: 0,
+          candidateBytes: 0,
+        },
+        {
+          class: "other",
+          bytes: 2_500_000,
+          files: 13,
+          entries: 5,
+          candidateEntries: 0,
+          candidateBytes: 0,
+        },
+      ],
+      candidates: [
+        {
+          path: `${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-8e8a3ace`,
+          class: "tmp_workspaces",
+          bytes: 1_442_000,
+          files: 12,
+          lastModifiedAt: iso(ago(2, 30)),
+          referenced: false,
+          rules: ["unreferenced"],
+        },
+        {
+          path: `${IDS.project}/agents/${IDS.agents.docs}/scratchpad/session-2026-09-30-10-00-00-1a2b3c4d`,
+          class: "session_drafts",
+          bytes: 3_460_000,
+          files: 5,
+          lastModifiedAt: null,
+          referenced: false,
+          rules: ["orphan"],
+        },
+      ],
+      sharedEnvGroups: [
+        {
+          kind: "name",
+          key: "playwright",
+          members: [
+            `${IDS.project}/agents/${IDS.agents.docs}/shared_env/playwright`,
+            `${IDS.project}/agents/${IDS.agents.notes}/shared_env/playwright`,
+          ],
+          bytes: 243_000_000,
+        },
+      ],
+      disk: { freeBytes: 8_100_000_000, totalBytes: 52_700_000_000 },
+      unreadable: [`${IDS.project}/agents/${IDS.agents.notes}/scratchpad/sealed`],
     },
     project,
     members: [

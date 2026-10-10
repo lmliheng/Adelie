@@ -95,7 +95,9 @@ describe("admin storage ledger", () => {
     );
     await fs.mkdir(workspace, { recursive: true });
     await fs.writeFile(path.join(workspace, "scratch.txt"), "left behind\n");
-    const relative = path.relative(t.root, workspace);
+    // The ledger's paths are `/`-separated on every platform (they are what a plan records),
+    // so the lookup normalizes the host's separator rather than assuming it.
+    const relative = path.relative(t.root, workspace).split(path.sep).join("/");
     const candidate = (report: StorageReport) =>
       report.candidates.find((entry) => entry.path === relative);
 

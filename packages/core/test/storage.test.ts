@@ -343,9 +343,11 @@ describe("scanStorage", () => {
   });
 
   // A mode-000 directory is unreadable to the tests' own user but not to root, and CI runs as
-  // an ordinary user while a developer's container often does not. Skipping beats a test that
-  // passes for the wrong reason.
-  it.skipIf(process.getuid?.() === 0)(
+  // an ordinary user while a developer's container often does not; on Windows the mode bits do
+  // not remove read access at all. Skipping beats a test that passes for the wrong reason.
+  // The expected path is the directory's realpath, because the scan walks the root's realpath
+  // (on macOS a temp dir reaches it through /var → /private/var).
+  it.skipIf(process.getuid?.() === 0 || process.platform === "win32")(
     "reports a directory it cannot read instead of throwing or guessing",
     async () => {
       const root = await scaffold();
@@ -354,7 +356,7 @@ describe("scanStorage", () => {
       await fs.chmod(sealed, 0o000);
       try {
         const ledger = await scanStorage(root, emptyLiveSet());
-        expect(ledger.unreadable).toContain(sealed);
+        expect(ledger.unreadable).toContain(await fs.realpath(sealed));
         expect(ledger.classes.find((c) => c.class === "session_drafts")?.entries).toBe(1);
       } finally {
         await fs.chmod(sealed, 0o755);
