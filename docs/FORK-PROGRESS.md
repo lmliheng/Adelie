@@ -247,9 +247,11 @@
 
 ### 5. 跟上游学（2026-10-06 查上游现状后定的顺序）
 
-判据是「对着我们的待办与生意」，不是「上游有什么」。上游 `main` 停在 `2604c5d2`（2026-10-10T07:05Z，
-2026-10-10 第三十四轮拉到时），我们这边它与本文 5.13 之间只差这一笔；更早的 `#1000`（Agent API 与
-`@prismshadow/amsp` 客户端）与 `#956`（五个内置 Benchmark）**尚未落地**，理由见 5.13 与下面各项。
+判据是「对着我们的待办与生意」，不是「上游有什么」。上游 `main` 停在 `60f34c47`（2026-10-10
+第三十五轮拉到时）；比第三十四轮拉的 `2604c5d2` 多三笔 —— `#1002`（本轮落进 5.14）、`#1003`
+（`penguin chat` 用 OSC 133 标记提示符）与 `#1001`（Task 跑着时的粘贴不再被丢掉），后两笔**尚未落地**，
+都是 cli 包、各自一轮的量。更早的 `#1000`（Agent API 与 `@prismshadow/amsp` 客户端）与 `#956`
+（五个内置 Benchmark）**尚未落地**，理由见 5.13 与下面各项。
 
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
@@ -428,6 +430,15 @@
       `#1000` 是 126 文件 / +13867 且引入新外部依赖 `@prismshadow/amsp`，`#1005` / `#1006` 各自要本树没有的
       文件 `terminal-path-first.test.ts` / `pairing-dialog.tsx`，`#956` 的五个内置 Benchmark 内容与链接都
       指向上游自己的 benchmark 仓库、品牌面影响大 → 见「还差什么」等你拍板）。
+- [x] **5.14 等待审批的会话在所有列表里实时标记**（上游 `60f34c47` `#1002`，**2026-10-10 第三十五轮
+      落地**，提交见该节）：侧栏行上的审批标记过去只来自最近一次列表拉取，用户开着另一个对话时，开始
+      等待工具审批的会话要等下一次列表刷新才显示标记。用户通道新增 `session_approvals`
+      （`sessionId` + `count`，归零也发，受众与 `session_state` 相同），`ApprovalRegistry` 多一个
+      `onChange`（一次调用只报一次：一次中断拒掉三个调用＝一个事件），Web App 把它落到行上
+      （`setPendingApprovals`，与 `setBackgroundTasks` 同一条 drop/no-op 规则）。**为什么是这一条**：
+      上游 `main` 比我们多三笔里唯一碰产品主界面（server + web）的一笔，且是一条用户看得见的真缺陷
+      （审批标记不实时），父提交正是本树已落的那条线，因而不依赖未落的前置、不引入新依赖、不碰
+      desktop / 包名 / 流水线；同批的 `#1003` / `#1001` 都在 cli 包，留给后面的轮次。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -992,6 +1003,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-10 | 5.11 | **侧栏按最后活动分页、「加载更多」只在底部追加**（上游 `929abb33` `#960` 移植，照改动落、不是合分支；25 文件 / +1845 −238，比上游多 2 行是本仓写法的 changelog 一对）：服务端 `GET …/sessions` 新增 `order=activity`（`lastActiveAt` 降序、相同时按 `sessionId` 降序，均按码点比较、绝不用 `localeCompare`，好让浏览器与服务器只有一个全序）与 `before=<lastActiveAt>,<sessionId>` 游标（返回严格位于该键之后的行；须配合 `order=activity` 与 `limit`、与 `offset` 互斥、格式不对 400），不带 `order` 时仍是创建顺序 + offset 分页、`counts=1` 仍覆盖整表；`http/validate.ts` 解这个游标（`ActivityCursor` / `SessionListOrder` / `SessionListPaging` 从服务里导入）；会话列表用户频道的 `session_state` 事件补上 `projectId`。Web：每个侧栏列表带 `order=activity`，每条流（Agent × 机器 × Workspace 范围）从上次从中读到的最后一行的键接着取，由多条流合并的列表只画到**水位线**（仍有剩余的各流中最新的游标），水位线以下的行留在内存等下一页降线，因此「加载更多会话」「展开其余 N 个对话」只会在已显示的行之下追加；Agent / Workspace 分组与各折叠夹同样处理，折叠夹改按最后活动排序，打开着的对话始终显示、搜索仍覆盖全部已加载行。画廊的模拟列表接口也支持 `order` / `before`，server-api 文档（中英）跟上。**本地化与两处冲突的实情**：包 scope `@prismshadow/` → `@lmliheng/`；画廊 mock 那处冲突里上游的上下文行假定了本树**没有**的 `excludeOrg` / `isOrgRow` 处理（那是另一笔未落的上游改动），解法是只取它的 `order` 分支、保留本树自己的过滤（不引入 `isOrgRow`）；changelog 改名到 `2026-10-10`、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#960，提交 `929abb33`）」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写出 **187 接口 / 552 类型**，+3 正是本笔新增的三个服务契约类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **507**（34）· web **3052**/2 跳过（248 文件，+20）· server **191 文件 / 2780 通过 / 4 跳过**（+5）· docs **62**（8 文件，本轮改到它的内容）· ui-gallery **132**（19 文件，本轮的 mock 路由）· **服务端真跑**（一次性数据根 `/root/adelie-fork-data/r32-sidebar`、`localhost:4121`）：用 `sqlite3` 往索引里种 25 行（创建顺序与活动顺序**故意不一致**），`curl` 实测 `order=activity&limit=3` 按 `lastActiveAt` 降序、`before=<最后一行的键>` 接着取到严格更旧的三行、不带 `order` 仍是创建顺序，五种非法组合（带 `order=created` / 缺 `limit` / 同时给 `offset` / 时间戳不可解析 / `order=recent`）**逐条 400** · **界面真跑**（重建 server + web 产物后用真浏览器）：侧栏发出的请求确实带 `order=activity`（`limit=11&order=activity&category=active&counts=1&excludeOrg=1`，两个 Workspace 分组各自带上一页最后一行的 `before=` 游标续页）；两个分组的行都按活动次序排列（活动序号 00,01,03,04,06,09,12,14,15,17 / 02,05,07,08,10,11,13,16,19,21，各自的升序即「最近活动在前」）；点「展开其余 3 个对话」后该组 13 行、新出现的 3 行（活动序号 18、20、23，界面写「2 天前」）**全在底部**，前 10 行逐字不变（脚本断言 `APPEND_ONLY: True`）；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**，截图与脚本在 scratchpad · 端口只用 4121，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `0945d91a` |
 | 2026-10-10 | 5.12 | **会话的 `source` 恒被记录、侧栏把程序开的会话收进一个折叠夹**（上游 `e521a9de` `#999` 移植，照改动落、不是合分支；109 文件 / +1799 −953，含本仓写法的 changelog 两对）：core 新增 `omnimessage/source.ts` 的 `normalizeSessionSource`（纯函数，只看得见 Trace 里的值：缺失 → `user`、退休的 `benchmark` → `cli`、野值 → `user`），`SessionSource` 与必填的 `SessionMetaPayload.source`（`user`/`api`/`schedule`/`subagent`/`cli`/`company`）在类型里定义一次，`createSession` 未给来源时记 `user`、恢复的会话把来源带进它开启的每个上下文。server 的 `category` 改为 `active`/`background`/`archived`（列表、`counts`、工作区分组与 Agent Trace 列表同一套），**`company` 会话不属于任何分类**（任何分类形式都不含它，完整列表仍返回它，组织自己的会话接口不变），`excludeOrg` 保留；读取时 `readRecordedSource` 让「Trace 没记来源、索引行 client 为 org」读作 `company`（`unrunSource` 处理还没跑过的工位会话），`POST …/sessions` 只收 `source: "cli"`、`benchmark` 作别名、其余 400。Web 三个折叠夹并成一个「后台会话」折叠夹、每行带来源标记（`session-source-mark.ts`：API 插头 / 定时任务日历 / 子智能体两个机器人 / CLI `>_`），「最近一次对话」与删除后的跳转只选 `user` 行；评估中心「使用」对话框不再打标记。CLI 每个 `penguin run` 会话都是 `cli`、`--source` 隐去、`--source benchmark` 成空操作并打一行说明；agent-evaluation 技能不再传它（agent-tuning 插件版本 +1）。**本树四处差异**：包 scope 全部换回 `@lmliheng/`；`terminalPrompt` 图标上游别处带来、本树没有 → 补进 `packages/ui` 的图标表（一行的裸 `>_` 提示符）；`sidebar.tsx` 批量删除里本树特有的 `category === "schedule"` 改成 `sessionCategory(s) === "active"`（新分类里没有 `schedule`，改完才过 typecheck）；画廊 mock 的 org 工位夹具（`IDS.sessions.orgDesk` + `harness-transcript.ts`）本树没有 → 按「本树没有这个文件」排除，mock 只取其 `excludeOrg` / `isOrgRow` 与三分类，`mock-api.test.ts` 里依赖那个夹具的三条断言相应收窄并在注释里写明缘由 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写出 **189 接口 / 563 类型**，+2/+11 正是本笔的服务契约）· `pnpm lint` **0 警告 0 错误**（2129 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1388**/6 跳过（67 文件，+1 文件 `session-source.test.ts`）· ui **1009**（127）· cli **517**（35 文件）· web **3068**/2 跳过（250 文件，+2）· server **193 文件 / 2795 通过 / 4 跳过**（+2 文件）· docs **62**（8 文件，本轮改到它的内容）· ui-gallery **132**（19 文件）· **服务端真跑**（一次性数据根 `/root/adelie-fork-data/r33-source`、`localhost:4131`）：往 `default_agent` 的 traces 里写 8 个会话（8 个来源各一条 + 一条更早的 `user`），首启的收编扫描把它们按来源分类 —— `curl` 的 `counts=1` 报 `{active:4, background:4, archived:0}`，随后把 `api` 那条置 `archived_at` 后变成 `{active:4, background:3, archived:1}`（**归档优先于来源**）· **界面真跑**（重建 hmr/core/server/web 产物后用真浏览器，`zh-CN`）：侧栏只有一个**后台会话（3）**折叠夹（旧的三个折叠夹已不存在），三行各带来源标记 `>_`（跑一遍评测）/ 两个机器人（检查链接）/ 日历（每晚同步），另有**已归档（1）**含那条归档行（分类外的行不带来源标记）；展开折叠夹的请求是 `…sessions?limit=11&order=activity&category=background&workspaceGroup=%2Ftmp%2Fr33-ws&excludeOrg=1`；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**；截图 3 张与脚本在 scratchpad · 端口只用 4131，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `a5fb9b9d` |
 | 2026-10-10 | 5.13 | **权限菜单带等级的盾牌、思考等级菜单去掉脚注、轨迹面板与文件编辑器不再超出宽度**（上游 `2604c5d2` `#1007` 移植，照改动落、不是合分支；16 文件里落 11 个 / +182 −48，含本仓写法的 changelog 一对）：`lib/permission-level.ts` 新增 `menuRowLevel(row, sandbox)`（预设按它自己的三个值、开关关闭时按审批模式叠加会话保留的策略）、`permissionLevel` 的 `sandbox` 参数收成 `Pick<SessionSandbox, "mode" \| "network">`；`permission-select.tsx` 抽出 `LevelGlyph`，预设行与审批模式行都在名称前带上「选中后按钮会变成的等级」的盾牌（形状 + 色调），行不可用时图标一同变淡，管理员「更多…」带一个**节点**齿轮（不是注册表路径，Console 主题隐藏装饰图标时它仍要在、名称才会对齐），菜单最小宽度 `min-w-44` → `min-w-50`（最长内置行「仅工作区可写 + 仅管理员」在中文下不再截断），按钮自己的 `15` 改成 `ICON_SIZE.iconButton`；`chat-input.tsx` / `chat-page.tsx` 的思考等级菜单去掉 `note` 与 `chat.thinkingLevelChangeNote`（中英两份词典同步删，改由已有的确认框说明代价）；`trace-file-view.tsx` 的全局统计改成**卡片**是容器（`Card className="@container"`）而网格用 `@2xl:grid-cols-3`，窄于它的卡片把三组上下堆叠；`prose.css` 加 `.code-editor.code-wrap { grid-template-columns: minmax(0, 1fr) }`（开启换行时两层固定为滚动框宽度，之前 `auto` 列会被一段不可断的长串撑到它自己的长度）；`test/permission-level.test.ts` 新增一组场景（开关开/关 × 受限/不受限，逐行断言 `menuRowLevel` 等于「选中该项后按钮的等级」，用 `presetPick` / `approvalModePick` 现算）。**有意未取**：`Fold` 的 `min-h-0 min-w-0`（本树没有 `Fold` 组件）与它带到的三个本树没有的文件、两个断言 `data-fold` 类名的用例 —— 用 `--exclude` 排除，见本节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 563 类型）**，本笔不动服务契约）· `pnpm lint` **0 警告 0 错误**（2129 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1388**/6 跳过（67 文件）· ui **1009**（127）· cli **517**（35 文件）· web **3072**/2 跳过（250 文件，+4 正是本笔新增的四个场景）· server **193 文件 / 2795 通过 / 4 跳过** · **界面真跑**（重建 hmr → core → server → web 产物，一次性数据根 `/root/adelie-fork-data/r34-ui`、`localhost:4151`、真浏览器 `zh-CN`，手写一个 Trace 文件当会话）：① 权限菜单（开关关）五行各带盾牌 —— 总是询问/放行只读琥珀、全部放行红、全部拒绝灰、更多…齿轮，面板 198px、逐行 `scrollWidth - clientWidth` 全 0（无截断）；② 把沙盒开关打开（走设置页自己的那条 `PUT /api/admin/plugin-config`，返回 200）后菜单变成 完全访问红 / 每次询问琥珀 / 仅工作区可写琥珀 / 只读绿 / 更多…齿轮，同样无一行截断；③ 思考等级菜单的可见面板文本就是五行 `低(low)中(medium)高(high)极高(xhigh)最高(max)` —— **那条脚注不在了**；④ 轨迹面板的全局统计：停靠栏里卡片 552px 时计算出的 `grid-template-columns` 是**单列** 526px、卡内无一个元素越过右缘（1440 与 1024 两个视口都一样），把停靠栏拖宽到卡片 1128px 后变成**三列** 351px×3 且仍无越界；⑤ 文件编辑器：开启换行时 `.code-editor.code-wrap` 的列是 353px（滚动框 363px），`pre` / `textarea` 都是 353px、滚动框不横向溢出；**反证**：把修复前的规则（`grid-template-columns: auto`）当场注回去，同一处列宽变成 **1629.61px**、两层都 1630px、滚动框横向溢出（1630 vs 363）—— 这正是上游报告的那个 bug；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**；截图 14 张与 6 个 `probe*.cjs` 在 scratchpad · 端口只用 4151，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `51a79a02` |
+| 2026-10-10 | 5.14 | **等待审批的会话在所有列表里实时标记**（上游 `60f34c47` `#1002` 移植，照改动落、不是合分支；11 文件 / +364 −38，含本仓写法的 changelog 一对）：`ApprovalRegistry` 多一个可选的 `onChange`，**一次调用只报一次**（`denyAll` 拒掉三个条目＝一个事件，同 id 重登记＝没有变化），顺带让一个过期的 `resolve` 不能再删掉同 `tool_call_id` 上新登记的那个；`SessionManager` 经 `notifyProjectUsers` 发布 `{ type: "session_approvals", sessionId, count }`（受众与 `session_state` 相同、**归零也发**，`adopt` 与 `ensureEntry` 两条登记路径都接上，发布本身吞掉异常并记日志 —— 关停时数据库可能已经关掉，而一次审批的等待/回答/中断不该因它抛出来）；审批模式自行回答的调用（`allow-all` / `deny-all` / `read-only` 下的只读工具）与无人值守会话当场拒绝的调用**一个事件都不发**；`packages/server/src/api/types.ts` 的 `ServerEvent` 多这一变体；Web App 的 `sessions` store 新增 `setPendingApprovals`（与 `setBackgroundTasks` 同一条 drop/no-op 规则），`applyUserEvent` 收到即落到行上；Server API 文档中英两版列出该事件与触发时机。**顺带**：新用例 `test/session-approvals-events.test.ts` 与 `test/session-manager.test.ts` 里那两条（关停时数据库已关掉仍要拒掉等待中的调用）一并落；本仓那处本地化只有一处 —— 新用例里的 `@prismshadow/penguin-core` 改成 `@lmliheng/penguin-core` | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `pnpm lint` **0 警告 0 错误**（2134 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1395**/6 跳过（67 文件）· ui **1009**（127）· cli **530**（35 文件）· web **3093**/2 跳过（251 文件，+1 组正是本笔新增的 `session_approvals` 场景）· server **195 文件 / 2814 通过 / 4 跳过**（+2 文件、+5 用例：新增那个文件 3 条 + `session-manager.test.ts` 的 2 条）· docs **62**（8 文件，本轮改了它的 server-api 两版）· **界面真跑**（重建 server → web 产物；一次性数据根 `/root/adelie-fork-data/r35-approvals`、`localhost:4171`、`zh-CN` 真浏览器，模型侧用仓库自带的 `packages/web/e2e/mock-llm.mjs` 顶在 `127.0.0.1:4172`，经 `PUT …/models` 的 `custom` provider 接上）：浏览器里开的是**诱饵会话 B**（所以页面并没有订阅等待中那个会话的流），等待中的会话 A 的 Task 由**页面之外**的 API 发起 → A 那一行的审批标记以 `1` 出现（tooltip「1 个待审批」）、从外部回答该调用后**同一行上的标记消失**；两次变化之间 **`…/agents/default_agent/sessions` 列表请求数没有增加**（页面加载那次算 1，之后始终 1），**A 自己的单会话 GET 也没有**（0 → 0），即这个标记只可能来自用户通道的那个事件；**console 0 error**；截图 `01-list-no-mark.png` / `02-list-mark-one.png` / `03-list-mark-cleared.png` 在 scratchpad · 端口只用 4171 / 4172，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `8b528f05` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -5185,3 +5197,102 @@ UI 包折叠内容区（`packages/ui/src/components/layout/fold/fold.tsx`）的�
 > mtime 19:27+08:00 之后；收尾时又长出 `packages/core/src/state/storage.ts`，即那批改动当时还在写）。
 **本轮一个都没碰**，`git add` 只列了自己的 11 个文件；那批改动仍在工作区里等它那条线
 > 自己提交 —— 下一轮开工时照纪律先看 `git status --short`。
+
+## 第三十五轮：等待审批的会话在所有列表里实时标记（2026-10-10，条目 5.14）
+
+### 怎么选的
+
+- **第 0 步同步正常**：开工时 `git status --short` 干净，`main` = `c1fd8cac`（v0.3.6 的版本戳与发布正文），
+  `git fetch origin && git merge --ff-only origin/main` 报 `Already up to date.`（第三十四轮末尾提到的
+  另一条线那批存储清理改动，已经由它自己提交并推上来了）。
+- **待办里最靠前的未勾选条目是 2.2c**，但它的「还差什么」只剩三件、都不在「改代码」这一侧：桌面壳那
+  一半（本机按纪律不碰）、既有部署单元 `adelie-app.service`（发布动作）、桌面壳自己的开关；另有一条有意
+  留给发布期的文本尾巴（`ui-gallery` 的 mock 与 `packages/docs` / `changelog`）。再往下：**3.5** 要选桌面壳
+  （依赖没装、明令本机不碰）、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的 ②③④ 要第二台
+  机器、**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 / 接不接受 `mermaid` 这个新依赖）。所以照前
+  几轮的办法去第 5 节看上游。
+- **上游 `main` 比第三十四轮多三笔**：`/root/penguin-harness` 已不在（`upstream` remote 指着一个不存在的
+  路径），照记忆里的做法按 URL 取到本地 `refs/adelie-tmp/upstream-main`（现在 `60f34c47`）：`#1002`（等待
+  审批的会话实时标记，server + web）、`#1003`（`penguin chat` 的提示符 OSC 133 标记）、`#1001`（Task 跑着时
+  粘贴不再被丢掉）。三条都试过 `git apply -3 --check`，**都干净**。
+- **选 `#1002`**：三笔里唯一碰产品主界面（server + web）的一笔，而且是一条**用户看得见的真缺陷**（审批
+  标记不实时），不依赖任何未落的前置、不引入新依赖、不碰 desktop / 包名 / 流水线 —— 正好是本轮纪律允许的
+  范围。两笔 cli 的留给下一轮（见「没做 / 还差什么」）。
+
+### 改了什么（11 个文件 / +364 −38，含本仓写法的 changelog 一对）
+
+- **`packages/server/src/runtime/approvals.ts`**：`ApprovalRegistry` 多一个可选的 `onChange` 与一个
+  `batch()` 包装 —— `wait` / `denyAll` / `denyMain` 各算**一次**变化，只在计数真的动了时才报（`denyAll` 拒掉
+  三个条目＝一个事件，同 id 重登记＝没有变化）。顺带修掉一个旧隐患：`resolve` 现在先确认 `this.pending.get(id)`
+  还是自己那个 entry 才删 —— 一个过期的 `resolve` 不能再删掉同 `tool_call_id` 上新登记的那个。
+- **`packages/server/src/runtime/session-manager.ts`**：`adopt` 与 `ensureEntry` 两条登记路径都先把 entry
+  建出来、再 `new ApprovalRegistry(() => this.publishApprovals(entry))`；新增 `publishApprovals` 经
+  `notifyProjectUsers` 发 `{ type: "session_approvals", sessionId, count }`，**吞掉异常并记一行日志** ——
+  关停时数据库可能已经关掉，而一次审批的等待 / 回答 / 中断不该因为「列表标记发不出去」抛出来。
+- **`packages/server/src/api/types.ts`**：`ServerEvent` 多一个变体（带注释说明它是什么、受众是谁）。
+- **`packages/web/src/state/sessions.tsx`**：`setPendingApprovals`（与 `setBackgroundTasks` 同一条
+  drop/no-op 规则：没在列表里的 id 忽略、计数相同不动）＋ `applyUserEvent` 里分发这个事件。
+- **`packages/docs/content/server-api.{en,zh}.md`**：用户通道那一行、`ServerEvent` 清单与「什么时候触发」
+  的表各加一处。
+- **用例**：新增 `packages/server/test/session-approvals-events.test.ts`（3 条，真 App + 假 runtime：升级
+  给人 → `count: 1`；回答 → `count: 0` 且陌生人听不到；两个等待中的调用被中断 → 一次事件 `[1, 2, 0]`；
+  `allow-all` → 一个事件都不发）；`test/session-manager.test.ts` 抽出 `parkedRunSession` 并新增一条「库已经
+  关掉仍要拒掉等待中的调用、把运行收干净」（`db.isOpen` 收尾）；`test/session-status-events.test.ts` 新增
+  一组场景并把这个事件加进「不需要反应的事件」清单。
+- **changelog 一对**：改名到本仓日期口径（`2026-10-10-session-approvals-event{,.zh}.md`）、去掉上游 PR 行、
+  写明「移植自上游 PenguinHarness（#1002，提交 `60f34c47`）」。
+- **本地化只有一处**：新用例里的 `@prismshadow/penguin-core` → `@lmliheng/penguin-core`（第一次 typecheck
+  直接报 `TS2307: Cannot find module '@prismshadow/penguin-core'`，改掉即过）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）** —— 新增的是 `ServerEvent` 的一个变体，不进这份契约）。
+- `pnpm lint` **0 警告 0 错误**（2134 文件）· `pnpm format:check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（67 文件）· ui **1009**（127）· cli **530**（35 文件）·
+  web **3093** / 2 跳过（251 文件）· server **195 文件 / 2814 通过 / 4 跳过**（+2 文件、+5 用例）· docs **62**
+  （8 文件，本轮改了它的 server-api 两版）。
+- **界面真跑**（重建 server → web 产物；一次性数据根 `/root/adelie-fork-data/r35-approvals`、`localhost:4171`、
+  `zh-CN` 真浏览器；模型侧不碰外部服务 —— 用**仓库自带的** `packages/web/e2e/mock-llm.mjs` 顶在
+  `127.0.0.1:4172`，经 `PUT /api/projects/<p>/models` 的 `custom` provider 接上，所以这一次是**真跑了一个
+  真会话**，不是手写 Trace）：
+  1. 浏览器里开的是**诱饵会话 B**（页面因此只订阅 B 的流，没有订阅等待中那个会话的流）；等待中的会话 A 的
+     Task 由**页面之外**的 API 发起。
+  2. A 那一行的审批标记以 `1` 出现 —— 读到的 DOM 是 `data-tooltip="1 个待审批"` 的 `1`（截图
+     `02-list-mark-one.png`）；从外部 `POST …/approvals/toolu_mock_1`（`204`）回答该调用后，**同一行上的
+     标记消失**（`03-list-mark-cleared.png`）。
+  3. **两次变化之间没有任何一次列表拉取、也没有 A 自己的单会话 GET**：`…/agents/default_agent/sessions`
+     请求数在页面加载时是 1、之后始终是 1；`/api/sessions/<A>` 始终是 0。也就是说这个标记只可能来自用户
+     通道的那个事件 —— 这正是本笔要证明的那半条。
+  4. **console 0 error**；除登录前的 `/api/me` 401 外没有别的 4xx。
+- **探针本身踩到的一处（记下来免得下轮重犯）**：第一版脚本把「会话列表」的路径写成
+  `/api/projects/<p>/sessions`，而真实的列表请求是 **`/api/projects/<p>/agents/<a>/sessions`**
+  （`?limit=11&order=activity&category=active&counts=1&excludeOrg=1`）—— 于是计数恒为 0，「没有拉列表」这条
+  断言等于没断言。改用正确路径（并加一个诱饵会话、把等待中的会话挪出页面）之后它才是有效的反证。诊断脚本
+  `diag-requests.mjs` 把页面真正发的 31 个请求都打了出来，路径以它为准。
+- 端口只用 **4171（服务端）/ 4172（mock）**；3003 / 3004 / 4000 / 7364 / 7369 一个没碰。两个进程用完已停。
+
+### 没做 / 还差什么
+
+- **上游还有两笔没落**（同一批的另外两条，都在 `packages/cli/src/commands/chat.ts`，各自一轮）：
+  `#1001`（Task 跑着时粘贴保留）与 `#1003`（`penguin chat` 用 OSC 133 标记提示符）。两条的 `git apply -3 --check`
+  本轮都试过、都干净 —— 下一轮的第一顺位。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等你拍板：
+  促销要不要搬进 Project 自己的配置、接不接受 `mermaid` 作为新渲染依赖）。
+- `refs/adelie-tmp/*`：本轮把 `upstream-main` 从 `2604c5d2` 前进到 `60f34c47`（仍只是本地引用，没推、
+  没改 remote 配置）。
+- 中间物：会话 scratchpad 的 `r35/`（`probe.mjs`、`diag-requests.mjs`、3 张截图、`pw.config.mjs` 与一份没用上
+  的 test-runner 版 spec、`mail-round35.txt`）；取证数据根 `/root/adelie-fork-data/r35-approvals`（一次性，
+  留着当现场）。截图与脚本都没入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `8b528f05`**（11 个文件，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **汇报邮件没发出去（第 22–34 轮同一处卡点，与凭据无关）**：`python3 scripts/mail.py check`（csu-mail
+  技能目录下，`timeout 60`）**退出 124、一行输出都没有**；裸 socket 探 `imap.csu.edu.cn:993` 与
+  `smtp.csu.edu.cn:465` 都是 `TimeoutError`（10s），同一时刻 `github.com:443` 秒连。凭据本身正常
+  （`CSU_MAIL_ADDR` 21 字符、`CSU_MAIL_AUTHCODE` 16 字符都注入着，只打印长度）。按技能纪律**只试这一次、
+  没有重试登录**。本轮的正文写在会话 scratchpad 的 `r35/mail-round35.txt`；把第 35 轮的正文路径与主题
+  **加进**既有的周期重发任务 `csu-mail-retry`（现覆盖第 22–35 共十四封、每 6 小时一次、`end_at`
+  2026-10-12T12:00:00Z、先查「已发送」再补发、发完就删掉自己），没有另开新任务。
