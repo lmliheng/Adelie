@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/lesson-video",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Narrated vertical lesson videos (1080x1920) from a script: an HTML slide deck driven by time, edge-tts voice-over with word-level timing, Playwright frame capture, ffmpeg mux, cover art and publishing copy.",
   "license": "Apache-2.0",
   "repository": {
