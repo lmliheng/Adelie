@@ -1,4 +1,8 @@
-import type { OrgChannelNoticeKind } from "@lmliheng/penguin-server/api";
+import type {
+  OrgChannelNoticeKind,
+  StorageCandidateRule,
+  StorageClass,
+} from "@lmliheng/penguin-server/api";
 
 /**
  * CLI text internationalization (i18n).
@@ -203,6 +207,45 @@ export interface Messages {
     colRequests(): string;
     colCost(): string;
     colGroup(dimension: string): string;
+  };
+  /**
+   * `penguin storage`: the data root's storage ledger. Report-only text — there is no
+   * message here for a deletion, because this command has no way to cause one.
+   */
+  storage: {
+    desc: string;
+    top: string;
+    topInvalid(value: string): string;
+    /** Header: the data root, what the ledger accounts for, and the volume when it is known. */
+    heading(
+      root: string,
+      total: string,
+      disk: { free: string; total: string; usedPercent: string } | null,
+    ): string;
+    /** Below the low-free threshold; says what to do (read the list) and what will not happen (nothing acts). */
+    lowFree(free: string): string;
+    colClass(): string;
+    colBytes(): string;
+    colFiles(): string;
+    colEntries(): string;
+    colCandidates(): string;
+    candidateCell(entries: number, bytes: string): string;
+    candidatesHeading(): string;
+    candidatesEmpty(): string;
+    colModified(): string;
+    colRules(): string;
+    colPath(): string;
+    moreCandidates(n: number): string;
+    /** One sentence per class about what clearing it would cost, before anyone picks. */
+    candidateCosts(): string;
+    unknownDate(): string;
+    groupsHeading(): string;
+    groupKind(kind: "name" | "structure"): string;
+    groupLine(kind: string, key: string, members: number, bytes: string): string;
+    unreadableHeading(): string;
+    readOnlyNotice(): string;
+    className(key: StorageClass): string;
+    ruleLabel(rule: StorageCandidateRule): string;
   };
   /** `penguin schedule`: scheduled-task listing and management (a validated writer over the schedules API; the TOML file stays the single source of truth). */
   schedule: {
@@ -1171,6 +1214,68 @@ const en: Messages = {
     colCost: () => "COST",
     colGroup: (dimension) => dimension.toUpperCase(),
   },
+  storage: {
+    desc: "Show what occupies the data root (read-only: this command deletes nothing)",
+    top: "How many candidates to print (0 prints every one)",
+    topInvalid: (value) => `Invalid --top value "${value}": expected zero or a positive integer.`,
+    heading: (root, total, disk) =>
+      disk === null
+        ? `Data root ${root} · ledger total ${total} · volume unknown`
+        : `Data root ${root} · ledger total ${total} · ${disk.free} free of ${disk.total} (${disk.usedPercent}% used)`,
+    lowFree: (free) =>
+      `Low on space: ${free} free. Read the candidates below — none of them is removed until you approve a specific list.`,
+    colClass: () => "CLASS",
+    colBytes: () => "SIZE",
+    colFiles: () => "FILES",
+    colEntries: () => "ENTRIES",
+    colCandidates: () => "CANDIDATES",
+    candidateCell: (entries, bytes) => `${entries} (${bytes})`,
+    candidatesHeading: () =>
+      "Candidates — a report, not a to-do list: nothing is removed without your approval.",
+    candidatesEmpty: () => "Nothing is a candidate under the current thresholds.",
+    colModified: () => "MODIFIED",
+    colRules: () => "WHY",
+    colPath: () => "PATH",
+    moreCandidates: (n) => `… and ${n} more (raise --top, or --top 0 for all).`,
+    candidateCosts: () =>
+      "What clearing each class costs: session drafts — attachments in older messages stop previewing; traces — history replay and the Costs page lose their rebuild source; tool environments — reinstalling the next time the tool is used; temporary workspaces — whatever is inside goes with them.",
+    unknownDate: () => "unknown",
+    groupsHeading: () =>
+      "Environments that look like the same toolchain installed more than once (report only — merging is a change a person triggers):",
+    groupKind: (kind) => (kind === "name" ? "same name" : "same contents"),
+    groupLine: (kind, key, members, bytes) =>
+      `- ${kind} (${key}): ${members} environments, ${bytes} together`,
+    unreadableHeading: () =>
+      "Could not be read (so the totals above are a floor, not a measurement):",
+    readOnlyNotice: () =>
+      "Read-only report. Cleanup happens only after you review a specific candidate list; nothing here removes data, and nothing runs on a timer.",
+    className: (key) =>
+      key === "protected"
+        ? "user data"
+        : key === "tmp_workspaces"
+          ? "temp workspaces"
+          : key === "session_drafts"
+            ? "session drafts"
+            : key === "traces"
+              ? "traces"
+              : key === "shared_env"
+                ? "tool environments"
+                : key === "trash"
+                  ? "trash"
+                  : key === "database"
+                    ? "database"
+                    : "other",
+    ruleLabel: (rule) =>
+      rule === "empty"
+        ? "empty"
+        : rule === "unreferenced"
+          ? "unreferenced"
+          : rule === "orphan"
+            ? "session gone"
+            : rule === "idle"
+              ? "idle"
+              : "over budget",
+  },
   schedule: {
     desc: "Manage scheduled tasks",
     lsDesc: "List the project's scheduled tasks (all agents unless --agent-id is given)",
@@ -2109,6 +2214,66 @@ const zh: Messages = {
     colRequests: () => "请求数",
     colCost: () => "成本",
     colGroup: (dimension) => dimension.toUpperCase(),
+  },
+  storage: {
+    desc: "查看数据根被什么占满（只读：本命令不删除任何东西）",
+    top: "打印多少条候选（0 表示全部）",
+    topInvalid: (value) => `--top 只能是 0 或正整数，收到 "${value}"。`,
+    heading: (root, total, disk) =>
+      disk === null
+        ? `数据根 ${root} · 账本合计 ${total} · 磁盘信息不可用`
+        : `数据根 ${root} · 账本合计 ${total} · 磁盘剩余 ${disk.free} / ${disk.total}（已用 ${disk.usedPercent}%）`,
+    lowFree: (free) =>
+      `磁盘余量偏低（剩 ${free}）。下面列出的是候选，需要你审核具体清单之后才会清理，本命令不会动手。`,
+    colClass: () => "类别",
+    colBytes: () => "占用",
+    colFiles: () => "文件数",
+    colEntries: () => "条目",
+    colCandidates: () => "可清理",
+    candidateCell: (entries, bytes) => `${entries} 条（${bytes}）`,
+    candidatesHeading: () =>
+      "可清理候选 —— 这是一份清单，不是待办：没有你的批准，任何东西都不会被删除。",
+    candidatesEmpty: () => "按当前阈值没有候选。",
+    colModified: () => "最后改动",
+    colRules: () => "命中规则",
+    colPath: () => "路径",
+    moreCandidates: (n) => `…另有 ${n} 条未打印（用 --top 提高上限，--top 0 打印全部）。`,
+    candidateCosts: () =>
+      "各代价先说清：会话草稿 —— 旧消息里的附件图片不再能预览；轨迹 —— 历史回放与成本页失去重建依据；工具环境 —— 下次用到要重新装；临时工作区 —— 里面的东西会随它一起走。",
+    unknownDate: () => "未知",
+    groupsHeading: () => "看起来是同一套工具链装了多份的环境（仅报告，合并需要你手动触发一次）：",
+    groupKind: (kind) => (kind === "name" ? "同名" : "同结构"),
+    groupLine: (kind, key, members, bytes) =>
+      `- ${kind}（${key}）：${members} 个环境，合计 ${bytes}`,
+    unreadableHeading: () => "读不到的部分（所以上面的合计是下限，不是精确值）：",
+    readOnlyNotice: () =>
+      "只读报告。清理只会在你审核一份具体清单之后执行；这里不删数据，也没有任何定时任务在跑。",
+    className: (key) =>
+      key === "protected"
+        ? "用户资产"
+        : key === "tmp_workspaces"
+          ? "临时工作区"
+          : key === "session_drafts"
+            ? "会话草稿"
+            : key === "traces"
+              ? "轨迹"
+              : key === "shared_env"
+                ? "工具环境"
+                : key === "trash"
+                  ? "回收站"
+                  : key === "database"
+                    ? "数据库"
+                    : "其他",
+    ruleLabel: (rule) =>
+      rule === "empty"
+        ? "空目录"
+        : rule === "unreferenced"
+          ? "无引用"
+          : rule === "orphan"
+            ? "会话已删除"
+            : rule === "idle"
+              ? "静默超期"
+              : "超出预算",
   },
   schedule: {
     desc: "管理定时任务",

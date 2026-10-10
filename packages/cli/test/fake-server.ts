@@ -2,7 +2,8 @@
  * In-process fake Adelie server for CLI tests: stubs `globalThis.fetch` with a
  * handler covering exactly the endpoints the server-backed commands touch (the current
  * user, session create/get/patch, tasks/steer/compact/switch-model/abort, SSE stream,
- * messages, agents, projects, usage, schedules, organizations and their channels, and — through
+ * messages, agents, projects, usage, schedules, organizations and their channels, the
+ * admin storage report the `storage` field holds, and — through
  * the `builtinBrowser` handler a test sets — the built-in browser). Connection resolution is pinned via ADELIE_API_URL
  * (a loopback URL, so no token gate) and PENGUIN_HOME points at a scratch directory so
  * nothing of the developer's real data root is read.
@@ -15,6 +16,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import type { StorageReport } from "@lmliheng/penguin-server/api";
 
 type Json = Record<string, unknown>;
 
@@ -214,6 +216,11 @@ export class FakeServer {
   steerMode: "accept" | "reject" = "accept";
   /** When true, a task POST emits `running` + the script's messages but never `idle` — the turn hangs (soft-yield timeout tests). */
   hangTasks = false;
+  /**
+   * GET /api/admin/storage: the ledger `penguin storage` renders. `null` answers 404, so a
+   * test can pin the failure path as well as the happy one.
+   */
+  storage: StorageReport | null = null;
   usage: Json = {
     summary: {
       today: { total: 1000, requests: 2, cost: 0.5, hasUncosted: false },
@@ -1632,6 +1639,13 @@ export class FakeServer {
       });
       const status = answer.status ?? 200;
       return status === 204 ? new Response(null, { status }) : this.json(answer.body ?? {}, status);
+    }
+
+    if (apiPath === "/api/admin/storage") {
+      if (this.storage === null) {
+        return this.error(404, "not_found", "No fake storage report.");
+      }
+      return this.json({ report: this.storage });
     }
 
     // Session create

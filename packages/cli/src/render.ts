@@ -174,6 +174,25 @@ function trimZero(v: number): string {
   return s.endsWith(".0") ? s.slice(0, -2) : s;
 }
 
+/**
+ * Converts a byte count into the unit a person reads on a disk: `0B`, `912B`, `1.2KB`,
+ * `6.0GB`, `1.1TB`. Binary units (1024), like every other size on the filesystem — and the
+ * abbreviation alone (no `i`), because the ledger's numbers come from `stat` and a reader
+ * comparing them against `df` should not have to translate.
+ */
+export function humanizeBytes(n: number): string {
+  const abs = Math.abs(n);
+  if (abs < 1024) return `${n}B`;
+  const units = ["KB", "MB", "GB", "TB", "PB"] as const;
+  let v = n / 1024;
+  let unit = 0;
+  while (Math.abs(v) >= 1024 && unit < units.length - 1) {
+    v /= 1024;
+    unit += 1;
+  }
+  return `${trimZero(v)}${units[unit]}`;
+}
+
 /** Adds an explicit sign to a delta string: non-negative gets a `+` prefix, negative already has its own `-` (context can go negative after compaction shrinks it). */
 function signedDelta(formatted: string): string {
   return formatted.startsWith("-") ? formatted : `+${formatted}`;
