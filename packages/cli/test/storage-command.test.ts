@@ -13,7 +13,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StorageReport } from "@lmliheng/penguin-server/api";
+import type { StoragePlanView, StorageReport } from "@lmliheng/penguin-server/api";
 import { cli } from "../src/index.js";
 import { FakeServer } from "./fake-server.js";
 
@@ -170,8 +170,8 @@ describe("penguin storage", () => {
     // Duplicated environments are reported, not proposed.
     expect(text).toContain("same name (csumail): 2 environments, 88MB together");
     expect(text).toContain("proj/agents/default_agent/shared_env/csu-mail");
-    // And the one sentence that keeps this a report.
-    expect(text).toContain("Read-only report.");
+    // And the one sentence that keeps this a report while the mode is off.
+    expect(text).toContain("Read-only report: cleanup mode is off");
     expect(text).toContain("nothing runs on a timer");
   });
 
@@ -218,15 +218,255 @@ describe("penguin storage", () => {
     expect(out()).toContain("scratchpad/sealed");
   });
 
-  it("sends the read-only GET and nothing else", async () => {
+  it("reads the report and the mode, and writes nothing", async () => {
     server.storage = report();
     expect(await cli(["storage"])).toBe(0);
-    expect(server.requests.map((r) => `${r.method} ${r.path}`)).toEqual(["GET /api/admin/storage"]);
+    // Two GETs, no POST, no PUT: the bare command reports, and the only thing it learns beyond
+    // the ledger is whether cleanup mode is on, which decides its closing sentence.
+    expect(server.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      "GET /api/admin/storage",
+      "GET /api/admin/storage/settings",
+    ]);
+  });
+
+  it("closes the report with the next step once the cleanup mode is on", async () => {
+    server.storage = report();
+    server.storageSettings = { enabled: true, trashTtlDays: 14, pins: [] };
+    expect(await cli(["storage"])).toBe(0);
+    expect(out()).toContain("Cleanup mode is on.");
+    expect(out()).toContain("penguin storage apply <planId> --path <path>");
+    expect(out()).not.toContain("cleanup mode is off");
   });
 
   it("reports a server that has no report to give", async () => {
     server.storage = null;
     expect(await cli(["storage"])).toBe(1);
     expect(err()).toContain("No fake storage report.");
+  });
+});
+
+const TMP = "proj/agents/default_agent/workspaces/tmp-8e8a3ace";
+const DRAFT = "proj/agents/default_agent/scratchpad/session-2026-09-01-00-00-00-aaaaaaaa";
+
+/** A bill with one entry this version may move and one it only reports, like a real one. */
+function planView(over: Partial<StoragePlanView> = {}): StoragePlanView {
+  return {
+    id: "2026-10-10-13-05-22-4f2a",
+    root: "/home/user/.adelie/data",
+    createdAt: "2026-10-10T13:05:22.000Z",
+    expiresAt: "2026-10-11T13:05:22.000Z",
+    fingerprint: "0123456789abcdef0123456789abcdef",
+    totalBytes: 138 * 1024 * 1024,
+    entries: [
+      {
+        path: TMP,
+        class: "tmp_workspaces",
+        bytes: 138 * 1024 * 1024,
+        files: 120,
+        lastModifiedAt: "2026-09-01T04:05:06.000Z",
+        rules: ["unreferenced"],
+        fingerprint: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        executable: true,
+      },
+      {
+        path: DRAFT,
+        class: "session_drafts",
+        bytes: 3_300_000,
+        files: 4,
+        lastModifiedAt: null,
+        rules: ["orphan"],
+        fingerprint: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        executable: false,
+      },
+    ],
+    excluded: [],
+    executableClasses: ["tmp_workspaces"],
+    appliedAt: null,
+    appliedPaths: [],
+    usable: true,
+    expired: false,
+    ...over,
+  };
+}
+
+/**
+ * The reviewed cleanup at the command line: scan, read a bill back, apply a selection, and
+ * empty the trash. Every case here is about the instruction the CLI sends or refuses to send —
+ * the fake server records the requests, and the assertions read them — because that is what a
+ * CLI can get wrong about a destructive operation: naming the wrong paths, or sending none.
+ */
+describe("penguin storage — the reviewed cleanup", () => {
+  it("scans a bill, marks what may be moved, and points at the approval command", async () => {
+    server.storageScan = planView() as unknown as Record<string, unknown>;
+    expect(await cli(["storage", "scan"])).toBe(0);
+
+    const text = out();
+    expect(text).toContain("Plan 2026-10-10-13-05-22-4f2a");
+    expect(text).toContain("2 entries · 138MB");
+    expect(text).toMatch(/temp workspaces\s+138MB\s+120\s+2026-09-01 04:05\s+unreferenced\s+✓/);
+    expect(text).toMatch(/session drafts\s+3.1MB\s+4\s+unknown\s+session gone\s+—/);
+    expect(text).toContain("only moves temp workspaces");
+    expect(text).toContain("Nothing has moved. Approve the entries you select:");
+    expect(server.requests.map((r) => `${r.method} ${r.path}`)).toEqual([
+      "POST /api/admin/storage/plans",
+    ]);
+  });
+
+  it("prints the bill verbatim under --json", async () => {
+    server.storageScan = planView() as unknown as Record<string, unknown>;
+    expect(await cli(["storage", "scan", "--json"])).toBe(0);
+    expect(JSON.parse(out())).toEqual({ plan: planView() });
+  });
+
+  it("lists the plans and reads one back by id", async () => {
+    server.storageScan = planView() as unknown as Record<string, unknown>;
+    await cli(["storage", "scan"]);
+
+    stdout = [];
+    expect(await cli(["storage", "plan"])).toBe(0);
+    expect(out()).toContain("2026-10-10-13-05-22-4f2a");
+    expect(out()).toContain("open");
+
+    stdout = [];
+    expect(await cli(["storage", "plan", "2026-10-10-13-05-22-4f2a"])).toBe(0);
+    expect(out()).toContain("Nothing has moved.");
+    expect(out()).toContain("valid until 2026-10-11 13:05");
+  });
+
+  it("says so when no plan has ever been written, and when an id is not a plan", async () => {
+    expect(await cli(["storage", "plan"])).toBe(0);
+    expect(out()).toContain("No plan has been written yet");
+
+    stdout = [];
+    expect(await cli(["storage", "plan", "2026-01-01-00-00-00-ffffff"])).toBe(1);
+    expect(err()).toContain("No plan 2026-01-01-00-00-00-ffffff.");
+  });
+
+  it("applies the entries it is given, quoting the plan's own fingerprint", async () => {
+    server.storageScan = planView() as unknown as Record<string, unknown>;
+    server.storageApply = {
+      planId: "",
+      trashId: "20261010-130522",
+      moved: [{ path: TMP, bytes: 138 * 1024 * 1024, files: 120 }],
+      failed: [],
+      freedBytes: 138 * 1024 * 1024,
+    };
+    expect(await cli(["storage", "apply", "2026-10-10-13-05-22-4f2a", "--path", TMP])).toBe(0);
+
+    expect(out()).toContain("Moved 1 entry (138MB) into the trash as 20261010-130522.");
+    const apply = server.requests.find((r) => r.path === "/api/admin/storage/apply");
+    expect(apply?.body).toEqual({
+      planId: "2026-10-10-13-05-22-4f2a",
+      fingerprint: "0123456789abcdef0123456789abcdef",
+      paths: [TMP],
+    });
+  });
+
+  it("sends only the moveable entries under --all, and reports what could not move", async () => {
+    server.storageScan = planView() as unknown as Record<string, unknown>;
+    server.storageApply = {
+      planId: "",
+      trashId: "20261010-130522",
+      moved: [],
+      failed: [{ path: TMP, reason: "changed since the scan" }],
+      freedBytes: 0,
+    };
+    expect(await cli(["storage", "apply", "2026-10-10-13-05-22-4f2a", "--all"])).toBe(0);
+    const apply = server.requests.find((r) => r.path === "/api/admin/storage/apply");
+    // The draft directory is on the bill but not in the selection: report-only means the CLI
+    // does not offer it to the server at all.
+    expect((apply?.body as { paths?: string[] })?.paths).toEqual([TMP]);
+    expect(out()).toContain("Nothing was moved (see the failures above).");
+    expect(out()).toContain(`not moved: ${TMP} — changed since the scan`);
+  });
+
+  it("refuses to apply without naming an entry", async () => {
+    server.storageScan = planView() as unknown as Record<string, unknown>;
+    expect(await cli(["storage", "apply", "2026-10-10-13-05-22-4f2a"])).toBe(1);
+    expect(err()).toContain("Nothing selected");
+    // Nothing was asked of the server at all: no plan was read, no approval was sent.
+    expect(server.requests).toEqual([]);
+  });
+
+  it("lists the trash with what each entry holds, and says when it is empty", async () => {
+    server.storageTrash = {
+      entries: [
+        {
+          id: "20261010-130522",
+          createdAt: "2026-10-10T13:05:22.000Z",
+          planId: "2026-10-10-13-05-22-4f2a",
+          bytes: 138 * 1024 * 1024,
+          files: 120,
+          items: [{ path: TMP, class: "tmp_workspaces", bytes: 138 * 1024 * 1024, files: 120 }],
+          expired: true,
+        },
+      ],
+      ttlDays: 14,
+    };
+    expect(await cli(["storage", "trash"])).toBe(0);
+    const text = out();
+    expect(text).toContain("20261010-130522");
+    expect(text).toContain("past the retention (14d)");
+    expect(text).toContain(`20261010-130522  temp workspaces  ${TMP}`);
+
+    stdout = [];
+    server.storageTrash = { entries: [], ttlDays: 14 };
+    expect(await cli(["storage", "trash"])).toBe(0);
+    expect(out()).toContain("The trash is empty.");
+  });
+
+  it("restores an entry, and names what it could not put back", async () => {
+    server.storageRestore = {
+      id: "",
+      restored: [TMP],
+      skipped: [{ path: DRAFT, reason: "target_exists" }],
+      remaining: true,
+    };
+    expect(await cli(["storage", "trash", "restore", "20261010-130522"])).toBe(0);
+    const text = out();
+    expect(text).toContain("Restored 1 entry from 20261010-130522.");
+    expect(text).toContain("The entry still holds what could not be put back.");
+    expect(text).toContain(`not restored: ${DRAFT} — target_exists`);
+    const request = server.requests.find((r) => r.path === "/api/admin/storage/trash/restore");
+    expect(request?.body).toEqual({ id: "20261010-130522" });
+  });
+
+  it("purges the named entry, and says when the retention has nothing to give", async () => {
+    server.storagePurge = {
+      purged: [{ id: "20261010-130522", bytes: 138 * 1024 * 1024, files: 120 }],
+    };
+    expect(await cli(["storage", "trash", "purge", "20261010-130522"])).toBe(0);
+    expect(out()).toContain("Purged 20261010-130522 (138MB).");
+    expect(server.requests.find((r) => r.path === "/api/admin/storage/trash/purge")?.body).toEqual({
+      id: "20261010-130522",
+    });
+
+    stdout = [];
+    server.storagePurge = { purged: [] };
+    expect(await cli(["storage", "trash", "purge"])).toBe(0);
+    expect(out()).toContain("Nothing to purge");
+    // Without an id the body is empty: the server then removes only what is past the retention.
+    expect(server.requests.filter((r) => r.path.endsWith("/trash/purge")).at(-1)?.body).toEqual({});
+  });
+
+  it("shows the cleanup mode and turns it on and off", async () => {
+    expect(await cli(["storage", "mode"])).toBe(0);
+    expect(out()).toContain("Cleanup mode is off. Trash retention 14 days, 0 pinned path(s).");
+
+    stdout = [];
+    expect(await cli(["storage", "mode", "on"])).toBe(0);
+    expect(out()).toContain("Cleanup mode is now on.");
+    expect(server.requests.find((r) => r.method === "PUT")?.body).toEqual({ enabled: true });
+
+    stdout = [];
+    expect(await cli(["storage", "mode", "off"])).toBe(0);
+    expect(out()).toContain("Cleanup mode is now off.");
+    expect(server.storageSettings.enabled).toBe(false);
+  });
+
+  it("refuses a mode it does not know, without asking the server", async () => {
+    expect(await cli(["storage", "mode", "maybe"])).toBe(1);
+    expect(err()).toContain("usage: penguin storage mode [on|off]");
+    expect(server.requests).toEqual([]);
   });
 });

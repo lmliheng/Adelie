@@ -113,6 +113,16 @@ interface Subscriber {
   closed: boolean;
 }
 
+/**
+ * The storage cleanup's settings as the fake stores them — the API's own shape, spelled out here
+ * because the fake answers a PUT by merging a partial of it.
+ */
+interface FakeStorageSettings {
+  enabled: boolean;
+  trashTtlDays: number;
+  pins: string[];
+}
+
 const encoder = new TextEncoder();
 
 /** The fake's fixed clock for company mode (the day file, the period, minted ids). */
@@ -221,6 +231,27 @@ export class FakeServer {
    * test can pin the failure path as well as the happy one.
    */
   storage: StorageReport | null = null;
+  /**
+   * The cleanup mode's settings, as the fake stores and answers them. Off by default, like the
+   * server's own default, and mutated by PUT /api/admin/storage/settings and the pin route so a
+   * test can watch the CLI both read and flip it.
+   */
+  storageSettings: FakeStorageSettings = { enabled: false, trashTtlDays: 14, pins: [] };
+  /**
+   * The plans the fake holds, keyed by id. A scan answers with `storageScan` (404 when it is
+   * null) and files it here, so `plan`, `plan <id>` and `apply` read the same document back.
+   */
+  readonly storagePlans = new Map<string, Json>();
+  /** What POST /api/admin/storage/plans answers: a plan view, or null for a 404. */
+  storageScan: Json | null = null;
+  /** What POST /api/admin/storage/apply answers; the fake moves nothing, it reports. */
+  storageApply: Json = { planId: "", trashId: null, moved: [], failed: [], freedBytes: 0 };
+  /** What GET /api/admin/storage/trash answers. */
+  storageTrash: Json = { entries: [], ttlDays: 14 };
+  /** What POST /api/admin/storage/trash/restore answers. */
+  storageRestore: Json = { id: "", restored: [], skipped: [], remaining: false };
+  /** What POST /api/admin/storage/trash/purge answers. */
+  storagePurge: Json = { purged: [] };
   usage: Json = {
     summary: {
       today: { total: 1000, requests: 2, cost: 0.5, hasUncosted: false },
@@ -1646,6 +1677,60 @@ export class FakeServer {
         return this.error(404, "not_found", "No fake storage report.");
       }
       return this.json({ report: this.storage });
+    }
+
+    // The reviewed cleanup's own surface. It answers what a test told it to and mutates only
+    // the settings it is asked to change — the CLI's job is to send the right shape, and a fake
+    // that also emulated moving files would be testing itself.
+    if (apiPath === "/api/admin/storage/settings") {
+      if (method === "PUT") {
+        // The update is a partial of the stored shape, exactly as the server treats it: a field
+        // the request omits keeps the value the fake is holding.
+        const update = (body ?? {}) as Partial<FakeStorageSettings>;
+        this.storageSettings = { ...this.storageSettings, ...update };
+      }
+      return this.json({ settings: this.storageSettings });
+    }
+    if (apiPath === "/api/admin/storage/plans") {
+      if (method === "POST") {
+        if (this.storageScan === null) {
+          return this.error(404, "not_found", "No fake plan to scan.");
+        }
+        if (typeof this.storageScan.id === "string")
+          this.storagePlans.set(this.storageScan.id, this.storageScan);
+        return this.json({ plan: this.storageScan }, 201);
+      }
+      return this.json({ plans: [...this.storagePlans.values()] });
+    }
+    if (apiPath === "/api/admin/storage/apply") {
+      return this.json({ ...this.storageApply, planId: String(body?.planId ?? "") });
+    }
+    if (apiPath === "/api/admin/storage/trash") {
+      return this.json(this.storageTrash);
+    }
+    if (apiPath === "/api/admin/storage/trash/restore") {
+      return this.json({ ...this.storageRestore, id: String(body?.id ?? "") });
+    }
+    if (apiPath === "/api/admin/storage/trash/purge") {
+      return this.json(this.storagePurge);
+    }
+    let storagePlan = /^\/api\/admin\/storage\/plans\/([^/]+)$/.exec(apiPath);
+    if (storagePlan) {
+      const id = decodeURIComponent(storagePlan[1]!);
+      const plan =
+        this.storagePlans.get(id) ?? (this.storageScan?.id === id ? this.storageScan : null);
+      if (plan === null) return this.error(404, "plan_not_found", `No plan ${id}.`);
+      return this.json({ plan });
+    }
+    storagePlan = /^\/api\/admin\/storage\/plans\/([^/]+)\/pin$/.exec(apiPath);
+    if (storagePlan && method === "POST") {
+      const pin = String(body?.path ?? "");
+      const pinned = body?.pinned !== false;
+      const pins = pinned
+        ? [...new Set([...this.storageSettings.pins, pin])]
+        : this.storageSettings.pins.filter((p) => p !== pin);
+      this.storageSettings = { ...this.storageSettings, pins };
+      return this.json({ settings: this.storageSettings });
     }
 
     // Session create

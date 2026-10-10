@@ -243,9 +243,62 @@ export interface Messages {
     groupKind(kind: "name" | "structure"): string;
     groupLine(kind: string, key: string, members: number, bytes: string): string;
     unreadableHeading(): string;
-    readOnlyNotice(): string;
+    /** Closing sentence of the bare report when the cleanup mode is off. */
+    modeOffNotice(): string;
+    /** Closing sentence of the bare report when the mode is on: what the next step is. */
+    modeOnNotice(): string;
     className(key: StorageClass): string;
     ruleLabel(rule: StorageCandidateRule): string;
+    // ── the reviewed cleanup: scan → plan → apply → trash, and the mode switch ──
+    scanDesc: string;
+    planDesc: string;
+    applyDesc: string;
+    applyPath: string;
+    applyAll: string;
+    applyNoSelection(): string;
+    applyNothing(): string;
+    applyMoved(moved: number, bytes: string, trashId: string): string;
+    applyFailedLine(path: string, reason: string): string;
+    /** The `trash` group itself: what a trash is for, in one line. */
+    trashDesc: string;
+    /** `trash list` (the group's default): the entries a person can restore or purge. */
+    trashListDesc: string;
+    trashRestoreDesc: string;
+    trashPurgeDesc: string;
+    trashEmpty(): string;
+    trashRestored(id: string, restored: number, remaining: boolean): string;
+    trashSkippedLine(path: string, reason: string): string;
+    trashPurgeNothing(): string;
+    trashPurgedLine(id: string, bytes: string): string;
+    /** Days a trash entry is kept; the retention the server reports beside the list. */
+    trashTtlDays(days: number): string;
+    /** Cell of a trash row that is past the retention and may be purged. */
+    expired(ttl: string): string;
+    modeDesc: string;
+    modeUsage(): string;
+    modeIs(enabled: boolean, ttlDays: number, pins: number): string;
+    modeSet(enabled: boolean, ttlDays: number, pins: number): string;
+    billHeading(id: string, entries: number, bytes: string, expires: string): string;
+    billEmpty(): string;
+    billExcluded(n: number): string;
+    billReportOnly(classes: string[]): string;
+    billNotice(id: string): string;
+    billSpent(id: string): string;
+    /** Mark in the bill's table for an entry this version only reports. */
+    reportOnlyMark(): string;
+    /** Mark in the bill's table for an entry an apply would accept. */
+    moveMark(): string;
+    plansEmpty(): string;
+    planStateOpen(): string;
+    planStateApplied(at: string): string;
+    planStateExpired(at: string): string;
+    colExecutable(): string;
+    colPlanId(): string;
+    colCreated(): string;
+    colState(): string;
+    colTrashId(): string;
+    colItems(): string;
+    colExpired(): string;
   };
   /** `penguin schedule`: scheduled-task listing and management (a validated writer over the schedules API; the TOML file stays the single source of truth). */
   schedule: {
@@ -1247,8 +1300,10 @@ const en: Messages = {
       `- ${kind} (${key}): ${members} environments, ${bytes} together`,
     unreadableHeading: () =>
       "Could not be read (so the totals above are a floor, not a measurement):",
-    readOnlyNotice: () =>
-      "Read-only report. Cleanup happens only after you review a specific candidate list; nothing here removes data, and nothing runs on a timer.",
+    modeOffNotice: () =>
+      "Read-only report: cleanup mode is off, so nothing here can move a file. Reviewing a candidate list is the next step — `penguin storage scan`. And nothing runs on a timer.",
+    modeOnNotice: () =>
+      "Cleanup mode is on. `penguin storage scan` writes a bill; `penguin storage apply <planId> --path <path>` moves the entries you select into the trash. Nothing here removes data, and nothing runs on a timer.",
     className: (key) =>
       key === "protected"
         ? "user data"
@@ -1275,7 +1330,67 @@ const en: Messages = {
             : rule === "idle"
               ? "idle"
               : "over budget",
+    scanDesc:
+      "Scan the data root and write a plan you can review (read-only; needs cleanup mode on)",
+    planDesc: "Read a plan back, or list the recent ones when no id is given",
+    applyDesc:
+      "Move the entries you name into the trash: needs the plan's paths (there is no --yes, and no way to clean everything at once)",
+    applyPath: "A path the plan lists (repeatable, or comma-separated)",
+    applyAll:
+      "Move every entry of this plan that this version may move (the plan marks which those are)",
+    applyNoSelection: () =>
+      "Nothing selected: give --path <path> for each entry you reviewed, or --all for every entry the plan marks cleanable.",
+    applyNothing: () => "Nothing was moved (see the failures above).",
+    applyMoved: (moved, bytes, trashId) =>
+      `Moved ${moved} entr${moved === 1 ? "y" : "ies"} (${bytes}) into the trash as ${trashId}.`,
+    applyFailedLine: (path, reason) => `  not moved: ${path} — ${reason}`,
+    trashDesc:
+      "Where a cleanup moves things instead of deleting them: list what is there, put it back, or purge it",
+    trashListDesc: "List what previous cleanups moved (listing removes nothing)",
+    trashRestoreDesc: "Put a trash entry's contents back where they came from",
+    trashPurgeDesc:
+      "Delete a trash entry for good — the named one, or everything past the retention",
+    trashEmpty: () => "The trash is empty.",
+    trashRestored: (id, restored, remaining) =>
+      `Restored ${restored} entr${restored === 1 ? "y" : "ies"} from ${id}.` +
+      (remaining ? " The entry still holds what could not be put back." : ""),
+    trashSkippedLine: (path, reason) => `  not restored: ${path} — ${reason}`,
+    trashPurgeNothing: () => "Nothing to purge (nothing is past the retention).",
+    trashPurgedLine: (id, bytes) => `Purged ${id} (${bytes}).`,
+    trashTtlDays: (days) => `${days}d`,
+    expired: (ttl) => `past the retention (${ttl})`,
+    modeDesc:
+      "Show the cleanup mode, or turn it on/off (off — the default — refuses every cleanup write)",
+    modeUsage: () => "usage: penguin storage mode [on|off]",
+    modeIs: (enabled, ttlDays, pins) =>
+      `Cleanup mode is ${enabled ? "on" : "off"}. Trash retention ${ttlDays} days, ${pins} pinned path(s).`,
+    modeSet: (enabled, ttlDays, pins) =>
+      `Cleanup mode is now ${enabled ? "on" : "off"}. Trash retention ${ttlDays} days, ${pins} pinned path(s).`,
+    billHeading: (id, entries, bytes, expires) =>
+      `Plan ${id} · ${entries} entr${entries === 1 ? "y" : "ies"} · ${bytes} · review it and approve with \`penguin storage apply\` · valid until ${expires}`,
+    billEmpty: () => "No entry is a candidate under the current thresholds.",
+    billExcluded: (n) => `${n} pinned path(s) left out of this plan.`,
+    billReportOnly: (classes) =>
+      `This version only moves ${classes.join(", ")}; every other entry is on the bill to be read, not selected.`,
+    billNotice: (id) =>
+      `Nothing has moved. Approve the entries you select: penguin storage apply ${id} --path <path> (or --all).`,
+    billSpent: (id) =>
+      `This plan cannot be applied (already used, or older than its day). Scan again for a new bill: penguin storage scan.`,
+    reportOnlyMark: () => "—",
+    moveMark: () => "✓",
+    plansEmpty: () => "No plan has been written yet (`penguin storage scan`).",
+    planStateOpen: () => "open",
+    planStateApplied: (at) => `applied ${at}`,
+    planStateExpired: (at) => `expired ${at}`,
+    colExecutable: () => "MOVE",
+    colPlanId: () => "PLAN",
+    colCreated: () => "CREATED",
+    colState: () => "STATE",
+    colTrashId: () => "TRASH",
+    colItems: () => "ITEMS",
+    colExpired: () => "RETENTION",
   },
+
   schedule: {
     desc: "Manage scheduled tasks",
     lsDesc: "List the project's scheduled tasks (all agents unless --agent-id is given)",
@@ -2248,8 +2363,10 @@ const zh: Messages = {
     groupLine: (kind, key, members, bytes) =>
       `- ${kind}（${key}）：${members} 个环境，合计 ${bytes}`,
     unreadableHeading: () => "读不到的部分（所以上面的合计是下限，不是精确值）：",
-    readOnlyNotice: () =>
-      "只读报告。清理只会在你审核一份具体清单之后执行；这里不删数据，也没有任何定时任务在跑。",
+    modeOffNotice: () =>
+      "只读报告：清理模式未开启，这里没有任何操作会移动文件。下一步是审核一份清单 —— penguin storage scan。没有任何定时任务在跑。",
+    modeOnNotice: () =>
+      "清理模式已开启。用 penguin storage scan 生成账单；用 penguin storage apply <账单 id> --path <路径> 把你选中的条目移入回收站。这里不删数据，也没有任何定时任务在跑。",
     className: (key) =>
       key === "protected"
         ? "用户资产"
@@ -2276,6 +2393,58 @@ const zh: Messages = {
             : rule === "idle"
               ? "静默超期"
               : "超出预算",
+    scanDesc: "扫描数据根并写出一份可审核的账单（只读；需要先开启清理模式）",
+    planDesc: "读回一份账单；不给 id 时列出最近的几份",
+    applyDesc: "把你指定的条目移入回收站：必须给出账单里的路径（没有 --yes，也不能一次清空全部）",
+    applyPath: "账单里的一条路径（可重复给出，或用逗号分隔）",
+    applyAll: "移动这份账单里本版本可以移动的全部条目（账单会标出哪些是）",
+    applyNoSelection: () =>
+      "没有选中任何条目：用 --path <路径> 逐条给出你审核过的项，或用 --all 选中账单里全部可清理项。",
+    applyNothing: () => "什么都没移动（原因见上面的失败项）。",
+    applyMoved: (moved, bytes, trashId) =>
+      `已把 ${moved} 个条目（${bytes}）移入回收站 ${trashId}。`,
+    applyFailedLine: (path, reason) => `  未移动：${path} —— ${reason}`,
+    trashDesc: "清理把东西搬去的去处：列出、还原、或彻底清除",
+    trashListDesc: "列出此前清理搬走的东西（列出本身不会删除任何东西）",
+    trashRestoreDesc: "把某个回收站条目的内容放回原处",
+    trashPurgeDesc: "彻底删除一个回收站条目：给 id 删那一个，不给则删所有超过保留期的",
+    trashEmpty: () => "回收站是空的。",
+    trashRestored: (id, restored, remaining) =>
+      `已从 ${id} 还原 ${restored} 个条目。${remaining ? "放不回去的部分仍留在该条目里。" : ""}`,
+    trashSkippedLine: (path, reason) => `  未还原：${path} —— ${reason}`,
+    trashPurgeNothing: () => "没有可清除的条目（没有超过保留期的）。",
+    trashPurgedLine: (id, bytes) => `已清除 ${id}（${bytes}）。`,
+    trashTtlDays: (days) => `${days} 天`,
+    expired: (ttl) => `已过保留期（${ttl}）`,
+    modeDesc: "查看清理模式，或开启/关闭它（默认关闭；关闭时任何清理写操作都会被拒绝）",
+    modeUsage: () => "用法：penguin storage mode [on|off]",
+    modeIs: (enabled, ttlDays, pins) =>
+      `清理模式当前为${enabled ? "开启" : "关闭"}。回收站保留 ${ttlDays} 天，已保留（pin）${pins} 条路径。`,
+    modeSet: (enabled, ttlDays, pins) =>
+      `清理模式已${enabled ? "开启" : "关闭"}。回收站保留 ${ttlDays} 天，已保留（pin）${pins} 条路径。`,
+    billHeading: (id, entries, bytes, expires) =>
+      `账单 ${id} · ${entries} 个条目 · ${bytes} · 审核后用 penguin storage apply 批准 · 有效期至 ${expires}`,
+    billEmpty: () => "按当前阈值没有候选。",
+    billExcluded: (n) => `有 ${n} 条路径已被 pin，未进入本账单。`,
+    billReportOnly: (classes) =>
+      `本版本只能移动${classes.join("、")}；其余条目出现在账单里供阅读，不会被选中。`,
+    billNotice: (id) =>
+      `尚未移动任何东西。批准你选中的条目：penguin storage apply ${id} --path <路径>（或 --all）。`,
+    billSpent: (id) =>
+      `账单 ${id} 已不可执行（已用过，或超过有效期）。重新扫描即可得到新账单：penguin storage scan。`,
+    reportOnlyMark: () => "—",
+    moveMark: () => "✓",
+    plansEmpty: () => "还没有生成过账单（penguin storage scan）。",
+    planStateOpen: () => "待审核",
+    planStateApplied: (at) => `已执行 ${at}`,
+    planStateExpired: (at) => `已过期 ${at}`,
+    colExecutable: () => "可移动",
+    colPlanId: () => "账单",
+    colCreated: () => "创建时间",
+    colState: () => "状态",
+    colTrashId: () => "回收站",
+    colItems: () => "条目",
+    colExpired: () => "保留期",
   },
   schedule: {
     desc: "管理定时任务",
