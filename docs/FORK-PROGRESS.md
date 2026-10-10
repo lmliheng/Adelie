@@ -5437,3 +5437,55 @@ prompt 里那串 `--filter @prismshadow/penguin-*` 也已过时，本仓包名�
   本笔只动 cli / docs 与两份 changelog，矩阵没有动。
 - 之后只多一条「记汇报邮件卡点」的文档提交（`4b695726`），再触发的一次 run 只动
   `docs/FORK-PROGRESS.md`，与代码无关。
+
+## 回复页脚加「复制纯文本」（2026-10-11，用户点单）
+
+### 用户说的
+
+「把对话文本复制加上纯文本选项」—— 回复页脚那个复制按钮给的是 Markdown 源码，粘进聊天窗口、工单或
+文档里，对方看到的是 `##`、`**`、`| --- |` 本身，还得自己删。
+
+### 做了什么（12 个文件 / +539 −9，含 changelog 一对）
+
+- **`packages/ui/src/components/content/prose/plain-text.ts`（新，197 行）**：`markdownToPlainText()`，
+  用与渲染同一套方言的 `unified().use(remarkParse).use(REMARK_PLUGINS)` 解析，再按节点类型走一遍
+  （不做文本替换）：标题 / 强调 / 删除线 / 行内代码去标记；列表保留 `- ` / `N. ` 并按层级缩进
+  （条目内的块用换行连接，嵌套列表才跟着条目文字）；表格按行 `a | b`，去掉那条 `| --- |`；
+  引用去 `>`；链接 `标签 (地址)`（label 就是地址时只写一次）；图片取 alt（没有则地址）；
+  围栏代码原样保留、去掉围栏本身；脚注 `[^id]` + 定义；数学取 TeX；HTML 原样；分割线 / 前置元数据 /
+  链接定义丢弃。
+- **`packages/ui/src/components/actions/copy-button/copy-button.tsx`**：`CopyButton` 与 `CopyCheckGlyph`
+  多一个可选 `glyph`（空闲态的图形；复制成功仍换成对勾）。原行为一字不变。
+- **`packages/ui/src/components/icons/icons.ts`**：新增三横线图标 `textLines`。
+- **`packages/web/src/features/chat/task-stats-line.tsx`**：回复页脚在原复制按钮**之后**再加一个
+  「复制纯文本」（`glyph = textLines`、`size="sm"`），只有这一轮确实有正文时才出现；原来的按钮
+  （复制 Markdown）位置与行为都不动。中英文案 `copyReplyPlain` 两条。
+- **依赖**：`packages/ui` 加 `remark-parse` / `unified`（`@types/mdast` 进 dev），与 `packages/server`
+  同版本，全部命中 store，`pnpm-lock.yaml` 只增这三条。
+- **测试**：ui `test/plain-text.test.ts`（新，11 条，覆盖上面每条规则，含 `$PATH` 这类字面文本不被当成
+  数学）· ui `test/copy-button.test.ts` 加一条 `glyph` 用例 · web `test/reply-copy.test.ts`（新，3 条，
+  静态渲染：两个按钮都在、图形不同、无正文时没有纯文本按钮、跟随界面语言）· web
+  `e2e/reply-copy-plain.spec.mjs`（新，真浏览器点两个按钮读剪贴板）。
+- **changelog 一对**：`changelog/unreleased/2026-10-11-reply-plain-text-copy{,.zh}.md`。
+
+### 验证（都不是推测）
+
+- `pnpm typecheck` **`EXIT=0`**（六包 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，本笔不碰服务契约）·
+  `npx oxlint` **0 警告 0 错误**（2139 文件）· `npx prettier --check .` 干净。
+- `pnpm -r test` **`EXIT=0`**、0 失败：core **1395** / 6 跳过 · ui **1021**（+12 正是本笔） · cli **534** ·
+  web **3096** / 2 跳过（+3 正是本笔） · server **2814** / 4 跳过 · docs **62** · desktop **286** ·
+  ui-gallery **133**。
+- **真浏览器端到端**（自写的单条 harness，照 `packages/web/e2e/run.sh` 起假模型 `127.0.0.1:8931` +
+  临时数据根的服务端 `localhost:8930`，只跑本笔那条 spec）：**1 passed / `PLAYWRIGHT_EXIT=0`**。
+  读回来的剪贴板里，Markdown 那个按钮给的是 `| 指标 | 标识 | 说明 |` + `| --- | --- | --- |`，
+  纯文本那个给的是 `指标 | 标识 | 说明`、没有 `| ---`、没有以 `|` 开头的行、被 autolink 的裸地址
+  只出现一次，按钮旁边的 `aria-live` 区域是「已复制」。
+- **截图核对**：空闲态页脚是「复制图标 + 三横线 + 分叉图标」三个都认得出来，点过之后纯文本那个换成对勾
+  （存在会话 scratchpad 的 `footer2.png` 与 `footer-plain-copy.png`）。
+- 端口只用 **8930 / 8931**；3003 / 4000 / 7364 / 7372 一个没碰；临时进程用完已停。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出，是否现在发版等用户点头。
+- 复制面只有 AI 回复的页脚涉及 Markdown（用户消息复制与选区右键复制本来就是纯文本），所以只改了这里。
+- 默认行为没变（第一个按钮仍是 Markdown）；若用户更想要「设置里一个选项」或「默认纯文本」，改动很小。
