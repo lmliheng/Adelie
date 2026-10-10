@@ -439,6 +439,16 @@
       上游 `main` 比我们多三笔里唯一碰产品主界面（server + web）的一笔，且是一条用户看得见的真缺陷
       （审批标记不实时），父提交正是本树已落的那条线，因而不依赖未落的前置、不引入新依赖、不碰
       desktop / 包名 / 流水线；同批的 `#1003` / `#1001` 都在 cli 包，留给后面的轮次。
+- [x] **5.15 `penguin chat` 在 Task 运行期间的粘贴会被保留**（上游 `8a1868cf` `#1001`，**2026-10-11
+      第三十六轮落地**，提交见该节）：终端里 `penguin chat` 过去会**静默丢掉**运行期间到达的括号粘贴
+      （`if (state !== "idle") return; // ignore paste while running`）—— 文本既没送到模型，屏幕上也没
+      任何提示，而同一时刻键入的一行却会成为插话；Task 刚结束、REPL 还没回到提示符时落下的粘贴同样丢
+      （`watchTask` 返回前的 `askLine` 会把 composer 清掉）。现在粘贴在所有接受消息的状态下都与键入的
+      文本一致：运行中经渲染器回显（先收掉没结束的流式行）、等 Enter 期间压住输出、Enter 把整段（含多行）
+      作为**一条**插话发出；Task 在 Enter 之前结束则留在续行提示符下，下一次 Enter 作为下一条 Prompt 发出；
+      审批询问与退出确认仍不吃粘贴。**为什么是这一条**：上游 `main` 上唯一还没落的两笔（另一笔是
+      `#1003`，见下）之一，是一条用户看得见的真缺陷（粘贴被丢），父提交正是本树已落的那条线，因而不依赖
+      未落的前置、不引入新依赖、不碰 desktop / 包名 / 流水线。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -1004,6 +1014,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-10 | 5.12 | **会话的 `source` 恒被记录、侧栏把程序开的会话收进一个折叠夹**（上游 `e521a9de` `#999` 移植，照改动落、不是合分支；109 文件 / +1799 −953，含本仓写法的 changelog 两对）：core 新增 `omnimessage/source.ts` 的 `normalizeSessionSource`（纯函数，只看得见 Trace 里的值：缺失 → `user`、退休的 `benchmark` → `cli`、野值 → `user`），`SessionSource` 与必填的 `SessionMetaPayload.source`（`user`/`api`/`schedule`/`subagent`/`cli`/`company`）在类型里定义一次，`createSession` 未给来源时记 `user`、恢复的会话把来源带进它开启的每个上下文。server 的 `category` 改为 `active`/`background`/`archived`（列表、`counts`、工作区分组与 Agent Trace 列表同一套），**`company` 会话不属于任何分类**（任何分类形式都不含它，完整列表仍返回它，组织自己的会话接口不变），`excludeOrg` 保留；读取时 `readRecordedSource` 让「Trace 没记来源、索引行 client 为 org」读作 `company`（`unrunSource` 处理还没跑过的工位会话），`POST …/sessions` 只收 `source: "cli"`、`benchmark` 作别名、其余 400。Web 三个折叠夹并成一个「后台会话」折叠夹、每行带来源标记（`session-source-mark.ts`：API 插头 / 定时任务日历 / 子智能体两个机器人 / CLI `>_`），「最近一次对话」与删除后的跳转只选 `user` 行；评估中心「使用」对话框不再打标记。CLI 每个 `penguin run` 会话都是 `cli`、`--source` 隐去、`--source benchmark` 成空操作并打一行说明；agent-evaluation 技能不再传它（agent-tuning 插件版本 +1）。**本树四处差异**：包 scope 全部换回 `@lmliheng/`；`terminalPrompt` 图标上游别处带来、本树没有 → 补进 `packages/ui` 的图标表（一行的裸 `>_` 提示符）；`sidebar.tsx` 批量删除里本树特有的 `category === "schedule"` 改成 `sessionCategory(s) === "active"`（新分类里没有 `schedule`，改完才过 typecheck）；画廊 mock 的 org 工位夹具（`IDS.sessions.orgDesk` + `harness-transcript.ts`）本树没有 → 按「本树没有这个文件」排除，mock 只取其 `excludeOrg` / `isOrgRow` 与三分类，`mock-api.test.ts` 里依赖那个夹具的三条断言相应收窄并在注释里写明缘由 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写出 **189 接口 / 563 类型**，+2/+11 正是本笔的服务契约）· `pnpm lint` **0 警告 0 错误**（2129 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1388**/6 跳过（67 文件，+1 文件 `session-source.test.ts`）· ui **1009**（127）· cli **517**（35 文件）· web **3068**/2 跳过（250 文件，+2）· server **193 文件 / 2795 通过 / 4 跳过**（+2 文件）· docs **62**（8 文件，本轮改到它的内容）· ui-gallery **132**（19 文件）· **服务端真跑**（一次性数据根 `/root/adelie-fork-data/r33-source`、`localhost:4131`）：往 `default_agent` 的 traces 里写 8 个会话（8 个来源各一条 + 一条更早的 `user`），首启的收编扫描把它们按来源分类 —— `curl` 的 `counts=1` 报 `{active:4, background:4, archived:0}`，随后把 `api` 那条置 `archived_at` 后变成 `{active:4, background:3, archived:1}`（**归档优先于来源**）· **界面真跑**（重建 hmr/core/server/web 产物后用真浏览器，`zh-CN`）：侧栏只有一个**后台会话（3）**折叠夹（旧的三个折叠夹已不存在），三行各带来源标记 `>_`（跑一遍评测）/ 两个机器人（检查链接）/ 日历（每晚同步），另有**已归档（1）**含那条归档行（分类外的行不带来源标记）；展开折叠夹的请求是 `…sessions?limit=11&order=activity&category=background&workspaceGroup=%2Ftmp%2Fr33-ws&excludeOrg=1`；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**；截图 3 张与脚本在 scratchpad · 端口只用 4131，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `a5fb9b9d` |
 | 2026-10-10 | 5.13 | **权限菜单带等级的盾牌、思考等级菜单去掉脚注、轨迹面板与文件编辑器不再超出宽度**（上游 `2604c5d2` `#1007` 移植，照改动落、不是合分支；16 文件里落 11 个 / +182 −48，含本仓写法的 changelog 一对）：`lib/permission-level.ts` 新增 `menuRowLevel(row, sandbox)`（预设按它自己的三个值、开关关闭时按审批模式叠加会话保留的策略）、`permissionLevel` 的 `sandbox` 参数收成 `Pick<SessionSandbox, "mode" \| "network">`；`permission-select.tsx` 抽出 `LevelGlyph`，预设行与审批模式行都在名称前带上「选中后按钮会变成的等级」的盾牌（形状 + 色调），行不可用时图标一同变淡，管理员「更多…」带一个**节点**齿轮（不是注册表路径，Console 主题隐藏装饰图标时它仍要在、名称才会对齐），菜单最小宽度 `min-w-44` → `min-w-50`（最长内置行「仅工作区可写 + 仅管理员」在中文下不再截断），按钮自己的 `15` 改成 `ICON_SIZE.iconButton`；`chat-input.tsx` / `chat-page.tsx` 的思考等级菜单去掉 `note` 与 `chat.thinkingLevelChangeNote`（中英两份词典同步删，改由已有的确认框说明代价）；`trace-file-view.tsx` 的全局统计改成**卡片**是容器（`Card className="@container"`）而网格用 `@2xl:grid-cols-3`，窄于它的卡片把三组上下堆叠；`prose.css` 加 `.code-editor.code-wrap { grid-template-columns: minmax(0, 1fr) }`（开启换行时两层固定为滚动框宽度，之前 `auto` 列会被一段不可断的长串撑到它自己的长度）；`test/permission-level.test.ts` 新增一组场景（开关开/关 × 受限/不受限，逐行断言 `menuRowLevel` 等于「选中该项后按钮的等级」，用 `presetPick` / `approvalModePick` 现算）。**有意未取**：`Fold` 的 `min-h-0 min-w-0`（本树没有 `Fold` 组件）与它带到的三个本树没有的文件、两个断言 `data-fold` 类名的用例 —— 用 `--exclude` 排除，见本节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 563 类型）**，本笔不动服务契约）· `pnpm lint` **0 警告 0 错误**（2129 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1388**/6 跳过（67 文件）· ui **1009**（127）· cli **517**（35 文件）· web **3072**/2 跳过（250 文件，+4 正是本笔新增的四个场景）· server **193 文件 / 2795 通过 / 4 跳过** · **界面真跑**（重建 hmr → core → server → web 产物，一次性数据根 `/root/adelie-fork-data/r34-ui`、`localhost:4151`、真浏览器 `zh-CN`，手写一个 Trace 文件当会话）：① 权限菜单（开关关）五行各带盾牌 —— 总是询问/放行只读琥珀、全部放行红、全部拒绝灰、更多…齿轮，面板 198px、逐行 `scrollWidth - clientWidth` 全 0（无截断）；② 把沙盒开关打开（走设置页自己的那条 `PUT /api/admin/plugin-config`，返回 200）后菜单变成 完全访问红 / 每次询问琥珀 / 仅工作区可写琥珀 / 只读绿 / 更多…齿轮，同样无一行截断；③ 思考等级菜单的可见面板文本就是五行 `低(low)中(medium)高(high)极高(xhigh)最高(max)` —— **那条脚注不在了**；④ 轨迹面板的全局统计：停靠栏里卡片 552px 时计算出的 `grid-template-columns` 是**单列** 526px、卡内无一个元素越过右缘（1440 与 1024 两个视口都一样），把停靠栏拖宽到卡片 1128px 后变成**三列** 351px×3 且仍无越界；⑤ 文件编辑器：开启换行时 `.code-editor.code-wrap` 的列是 353px（滚动框 363px），`pre` / `textarea` 都是 353px、滚动框不横向溢出；**反证**：把修复前的规则（`grid-template-columns: auto`）当场注回去，同一处列宽变成 **1629.61px**、两层都 1630px、滚动框横向溢出（1630 vs 363）—— 这正是上游报告的那个 bug；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**；截图 14 张与 6 个 `probe*.cjs` 在 scratchpad · 端口只用 4151，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `51a79a02` |
 | 2026-10-10 | 5.14 | **等待审批的会话在所有列表里实时标记**（上游 `60f34c47` `#1002` 移植，照改动落、不是合分支；11 文件 / +364 −38，含本仓写法的 changelog 一对）：`ApprovalRegistry` 多一个可选的 `onChange`，**一次调用只报一次**（`denyAll` 拒掉三个条目＝一个事件，同 id 重登记＝没有变化），顺带让一个过期的 `resolve` 不能再删掉同 `tool_call_id` 上新登记的那个；`SessionManager` 经 `notifyProjectUsers` 发布 `{ type: "session_approvals", sessionId, count }`（受众与 `session_state` 相同、**归零也发**，`adopt` 与 `ensureEntry` 两条登记路径都接上，发布本身吞掉异常并记日志 —— 关停时数据库可能已经关掉，而一次审批的等待/回答/中断不该因它抛出来）；审批模式自行回答的调用（`allow-all` / `deny-all` / `read-only` 下的只读工具）与无人值守会话当场拒绝的调用**一个事件都不发**；`packages/server/src/api/types.ts` 的 `ServerEvent` 多这一变体；Web App 的 `sessions` store 新增 `setPendingApprovals`（与 `setBackgroundTasks` 同一条 drop/no-op 规则），`applyUserEvent` 收到即落到行上；Server API 文档中英两版列出该事件与触发时机。**顺带**：新用例 `test/session-approvals-events.test.ts` 与 `test/session-manager.test.ts` 里那两条（关停时数据库已关掉仍要拒掉等待中的调用）一并落；本仓那处本地化只有一处 —— 新用例里的 `@prismshadow/penguin-core` 改成 `@lmliheng/penguin-core` | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `pnpm lint` **0 警告 0 错误**（2134 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1395**/6 跳过（67 文件）· ui **1009**（127）· cli **530**（35 文件）· web **3093**/2 跳过（251 文件，+1 组正是本笔新增的 `session_approvals` 场景）· server **195 文件 / 2814 通过 / 4 跳过**（+2 文件、+5 用例：新增那个文件 3 条 + `session-manager.test.ts` 的 2 条）· docs **62**（8 文件，本轮改了它的 server-api 两版）· **界面真跑**（重建 server → web 产物；一次性数据根 `/root/adelie-fork-data/r35-approvals`、`localhost:4171`、`zh-CN` 真浏览器，模型侧用仓库自带的 `packages/web/e2e/mock-llm.mjs` 顶在 `127.0.0.1:4172`，经 `PUT …/models` 的 `custom` provider 接上）：浏览器里开的是**诱饵会话 B**（所以页面并没有订阅等待中那个会话的流），等待中的会话 A 的 Task 由**页面之外**的 API 发起 → A 那一行的审批标记以 `1` 出现（tooltip「1 个待审批」）、从外部回答该调用后**同一行上的标记消失**；两次变化之间 **`…/agents/default_agent/sessions` 列表请求数没有增加**（页面加载那次算 1，之后始终 1），**A 自己的单会话 GET 也没有**（0 → 0），即这个标记只可能来自用户通道的那个事件；**console 0 error**；截图 `01-list-no-mark.png` / `02-list-mark-one.png` / `03-list-mark-cleared.png` 在 scratchpad · 端口只用 4171 / 4172，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `8b528f05` |
+| 2026-10-11 | 5.15 | **`penguin chat` 在 Task 运行期间的粘贴不再被丢掉**（上游 `8a1868cf` `#1001` 移植，照改动落、不是合分支；6 文件 / +260 −7，含本仓写法的 changelog 一对）：`packages/cli/src/commands/chat.ts` 的粘贴分支不再对 `state !== "idle"` 一律 `return`（旧注释就写着 `// ignore paste while running`）—— `state === "running"` 时改走 `renderer.printLine`（先收掉没结束的流式行）并 `syncInputHold()`（等 Enter 期间压住输出），Enter 那一支改成先 `composer.pushTypedLine(line)` 再把整段（含多行粘贴）作为**一条**插话发出；`watchTask` 返回后若 composer 里还有待发的粘贴，就保留它、把续行提示符画回来（此前 `composer.reset()` 会把它清掉）；审批询问回答后重新 `syncInputHold()`。`inputHold` 的判据从「输入行非空」扩成「输入行非空**或** composer 有待发内容」。`packages/docs/content/cli.{en,zh}.md` 的 REPL 表格那一行补上「键入或粘贴」「多行粘贴作为一条消息」以及「Task 先结束时粘贴留下一次 Enter 发」。本仓本地化只有一处：新用例里的 `@prismshadow/penguin-core` → `@lmliheng/penguin-core` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `pnpm lint` **0 警告 0 错误**（2135 文件）· `pnpm format:check` 干净 · `git diff --check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1395**/6 跳过（67 文件）· ui **1009**（127）· cli **534**（36 文件，+1 文件 / +4 用例正是本笔新增的 `chat-paste.test.ts`）· web **3093**/2 跳过（251 文件）· server **195 文件 / 2814 通过 / 4 跳过** · docs **62**（8 文件，本轮改了它的 cli 两版）· **反证**：把 `chat.ts` 换回 `HEAD` 那一版、只跑新用例 → **3 失败 1 通过**（两条粘贴场景 + 审批询问期间压住输出那条），换回本笔后 **4 全过**，即这套用例真的钉住了旧缺陷 · **真终端真跑**（重建 cli 产物；一次性数据根 `/root/adelie-fork-data/r36-paste`、`localhost:4191` 服务端 + 仓库自带 `packages/web/e2e/mock-llm.mjs` 顶在 `127.0.0.1:4192`，经 `PUT …/models` 的 `custom` provider 接上，所以是一个真会话；`penguin chat` 跑在 `script` 给的真 pty 上）：发 `slow text test`（假模型分 40 次、每 200ms 吐一段，约 8s）→ 流到 `chunk-15` 时**在运行中粘贴两行并回车** → 终端上粘贴的两行回显、输出停住、提示符回到 `… `、随后一条 `» steering queued (delivered with the next turn): first pasted line / second pasted line`；过一会儿 `⇪ user: first pasted line` / `⇪ user: second pasted line` 出现（插话真的送达）；服务端日志里那一轮只有 **一次 `POST …/steer`（202）**，会话轨迹里只有**一条** `model_msg` 写着 `[user_steering]\nfirst pasted line\nsecond pasted line\n[/user_steering]` —— 即多行粘贴是**整段一条**，不是两条 · 端口只用 4191 / 4192（真终端取证）+ 4193 未用，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；两个临时进程用完已停 | `755ea330` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -5304,3 +5315,108 @@ UI 包折叠内容区（`packages/ui/src/components/layout/fold/fold.tsx`）的�
 - 第二次推送（台账 `2eda76b1`，含代码提交在内）的 run **`38062873777`**：**22 个作业全绿、`NOT SUCCESS: []`**。
   本笔只动 server / web / docs 与两份 changelog，矩阵没有动，各分片真跑了这一笔。
 - 这次推送之后只多一条「记 CI」的文档提交，再触发的一次 run 只动 `docs/FORK-PROGRESS.md`，与代码无关。
+
+## 第三十六轮：`penguin chat` 在 Task 运行期间的粘贴不再被丢掉（2026-10-11，条目 5.15）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369 全程没碰；
+按本轮纪律**没有碰 `packages/desktop` 与 electron**（依赖没装、磁盘也不为它花）。
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `b356b722`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date.`
+（轮次 prompt 里写的仓库根 `FORK-PROGRESS.md` 仍不存在 —— 这份台账 2026-10-08 起就在 `docs/`；
+prompt 里那串 `--filter @prismshadow/penguin-*` 也已过时，本仓包名是 `@lmliheng/penguin-*`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，本轮再核一遍：非桌面壳、非发布面已经没有可做的 —— 剩下的全在
+纪律禁止或明说留到发布期的一侧（桌面壳那一半、既有部署单元 `adelie-app.service`、桌面壳自己的开关、
+画廊 mock 的演示路径与 `packages/docs` 的环境表）。**3.5** 要用户拍板且本轮不许碰 desktop、
+**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的 ②③④ 要第二台机器、**5.6** 与 **5.10**
+等用户拍板（促销搬进 Project 配置 / 接不接受 `mermaid` 这个新依赖）。
+
+于是照前几轮的做法去上游 `main` 找：`/root/penguin-harness` 已不在（`upstream` remote 仍指着那个不存在的
+路径），按分支 URL 取到本地 `refs/adelie-tmp/upstream-main`。第三十五轮留下的**两笔 cli 提交**就是这里的
+第一顺位，本轮把两笔都量了一遍（都 `git apply -3 --check` 干净、都不引入新依赖、都不碰 desktop / 包名 /
+流水线），按台账里的顺序取了 **`8a1868cf` `#1001`**（Task 运行期间粘贴被静默丢掉）—— 它是一条用户看得见
+的真缺陷，而 `c95ef950` `#1003`（`penguin chat` 用 OSC 133 标记提示符）是给宿主程序用的新能力，
+再往后排一轮。
+
+### 改了什么（6 个文件 / +260 −7，含本仓写法的 changelog 一对）
+
+照上游 `8a1868cf` 的改动落，不是合分支：
+
+- **`packages/cli/src/commands/chat.ts`**：粘贴分支不再对 `state !== "idle"` 一律 `return`（旧注释正是
+  `// ignore paste while running`），改成只挡 `approving` / `confirming-exit`（那两处只收键入的 y/N）；
+  `state === "running"` 时经 `renderer.printLine` 回显（渲染器会先收掉没结束的流式行）并紧跟一次
+  `syncInputHold()`，`idle` 时照旧直接 `out.write`。Enter 那一支在 `running` 下改走
+  `composer.pushTypedLine(line)`：把还在 composer 里的粘贴与这一行合成**一条**插话发出（多行粘贴因此是
+  一条消息，不是好几条）。`watchTask` 返回、状态回 `idle` 时，若 composer 里仍有待发内容，就**保留**它、
+  把续行提示符画回来并等待下一次 Enter（此前无条件 `composer.reset()` 会把它清掉）。
+  审批询问被回答、屏幕解锁之前也补一次 `syncInputHold()`，免得问题期间攒下的输出盖住还在等的粘贴。
+  `syncInputHold` 的判据从「输入行非空」扩成「输入行非空**或** composer 有待发内容」。
+- **`packages/docs/content/cli.{en,zh}.md`**：REPL 表格里「Task 运行期间的输入」那一行改写成「输入或粘贴
+  的任意文本」，写清多行粘贴按 Enter 作为一条消息发出，以及 Task 先结束时「已按 Enter 的行立即发送、
+  尚未按 Enter 的粘贴在下一次按 Enter 时发送」。
+- **`packages/cli/test/chat-paste.test.ts`（新，180 行 / 4 条）**：把真 REPL 跑在假 TTY stdin 上
+  （raw mode + 括号粘贴标记）打本进程内的 `FakeServer`（`hangTasks`）：运行中多行粘贴 + Enter → 只有一次
+  `POST /steer` 且是整段文本、不起新 Task；Task 在 Enter 之前结束 → 下一次 Enter 把它当**下一条 Prompt**
+  发（`POST /tasks`）、没有任何 steer；运行中只按 Enter → 什么都不发；审批询问期间攒下的输出在粘贴发出
+  前不出现在屏幕上。
+- **changelog 一对**：改名到本仓日期口径（`2026-10-11-chat-paste-while-running{,.zh}.md`）、去掉上游
+  PR 行、写明「移植自上游 PenguinHarness（#1001，提交 `8a1868cf`）」。
+- **本地化只有一处**：新用例里的 `@prismshadow/penguin-core` → `@lmliheng/penguin-core`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）** —— 本笔不动服务契约）。
+- `pnpm lint` **0 警告 0 错误**（2135 文件）· `pnpm format:check` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（67 文件）· ui **1009**（127）· cli **534**
+  （36 文件，+1 文件 / +4 用例正是本笔新增的）· web **3093** / 2 跳过（251 文件）· server **195 文件 /
+  2814 通过 / 4 跳过** · docs **62**（8 文件，本轮改了它的 cli 两版）。
+- **反证（新用例真的钉住旧缺陷）**：把 `packages/cli/src/commands/chat.ts` 换回 `HEAD` 那一版、只跑
+  `test/chat-paste.test.ts` → **3 失败 / 1 通过**；换回本笔的版本 → **4 全过**。
+- **真终端真跑**：重建 cli 产物；一次性数据根 `/root/adelie-fork-data/r36-paste`，服务端在
+  `localhost:4191`，模型侧用**仓库自带的** `packages/web/e2e/mock-llm.mjs` 顶在 `127.0.0.1:4192`
+  （经 `PUT /api/projects/default_project/models` 的 `custom` provider 接上，所以是一个真会话）。
+  `penguin chat` 跑在 `script` 给的**真 pty** 上（stdin 是真 TTY，raw mode 与括号粘贴都开着），输入按时间轴
+  送：发 `slow text test`（假模型分 40 段、每 200ms 一段，约 8s）→ 流到 `chunk-15` 时**在运行中粘贴两行并
+  回车** → 再等它跑完 → `/exit`。看到的（终端原始输出存在 scratchpad 的 `tty-raw.log`）：
+  1. 粘贴的两行回显、输出在它之前停住（`chunk-15` 之后是粘贴、之后才是 `chunk-16…`），提示符回到 `… `；
+  2. 紧接着一条 `» steering queued (delivered with the next turn): first pasted line / second pasted line`
+     —— 两行是**一条**插话；
+  3. 稍后 `⇪ user: first pasted line` / `⇪ user: second pasted line` 出现，即插话真的作为用户消息送达；
+  4. 服务端日志里那一轮只有 **一次 `POST /api/sessions/<id>/steer`（202）**，会话轨迹里只有**一条**
+     `model_msg` 写着 `[user_steering]\nfirst pasted line\nsecond pasted line\n[/user_steering]`。
+     **改动前**这里会是零次 steer，粘贴整段消失。
+- 端口只用 **4191（服务端）/ 4192（假模型）**；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；两个临时进程
+  用完已停。
+- **踩到的一处（记下来免得下轮重犯）**：第一次跑真终端会话时 CLI 报 `rejected the API token (401)` ——
+  **本 agent 自己的 harness 会把 `ADELIE_API_TOKEN` / `ADELIE_API_URL` / `ADELIE_PROJECT_ID` 注入子进程**，
+  而 CLI 的令牌解析**环境变量优先于数据根里的 `api-token` 文件**（`client.ts` 的 `ServerClient`），于是它拿
+  着本会话的令牌去连测试服务端。解法是起 CLI 时 `env -u ADELIE_API_TOKEN -u ADELIE_API_URL
+  -u ADELIE_PROJECT_ID -u ADELIE_AGENT_ID -u ADELIE_SESSION_ID`（否则项目 id 也会被 `sjaaj` 顶掉）。
+
+### 没做 / 还差什么
+
+- **上游 `#1003`（`c95ef950`，`penguin chat` 用 OSC 133 标记提示符）是本笔同批的另一条，仍未落** ——
+  仍在 `packages/cli/src/commands/chat.ts`，`git apply -3 --check` 干净、不引入新依赖、一轮的量，
+  **下一轮的第一顺位**。它与本笔改的是同一个文件的相邻位置，落的时候要留意上下文。
+- **上游 `main` 这次比上一轮又走了不少**：本轮拉到的尖端是 **`c65d407a`**（第三十五轮记的是 `60f34c47`），
+  多出 `#1027`（公司模式：在职员工不能删、被删员工不再开新对话、开发模式下员工分组）、`#853`
+  （一个会话排队的 follow-up 上限 16）、`#852`（失败的一次性日历事件重试）、`#850`（org store 的写入改原子、
+  崩掉的 move 可恢复）、`#851`（阻塞工单的 by 主键进图）等。**这些本轮一笔都没核**（量它们的可行性是下一轮
+  选活时的事），只在 5.x 的判据下用过其中的 `#1001`。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等你拍板：
+  促销要不要搬进 Project 自己的配置、接不接受 `mermaid` 作为新渲染依赖）。
+- `refs/adelie-tmp/*`：本轮把 `upstream-main` 从 `60f34c47` 前进到 `c65d407a`（仍只是本地引用，没推、
+  没改 remote 配置）；仍是第二十三轮那七条 `fix/machine-*`。
+- 中间物：会话 scratchpad 的 `r36/`（`1001.patch`、`chat.patched.ts`、`tty-raw.log`、`test-*.log`、
+  上一轮那两笔的 `.stat.txt`、`mail-round36.txt`）；取证数据根 `/root/adelie-fork-data/r36-paste`
+  （一次性，留着当现场）。日志与补丁都没入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `755ea330`**（6 个文件，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
