@@ -82,14 +82,25 @@ exit 1
     expect(spawns()).toHaveLength(1);
     expect(sessionOf("ssh:nas")?.pid).toBe(a.ok ? a.session.pid : -1);
 
+    // Timings are read against a warm-up run of ONE command, not against fixed milliseconds: a
+    // loaded machine (a CI runner) spends the difference spawning `ssh`, which put this
+    // assertion over its old 380 ms bound with the code unchanged.
     let started = Date.now();
+    await conn.exec("sleep 0.2");
+    const alone = Date.now() - started;
+
+    started = Date.now();
     await Promise.all([conn.exec("sleep 0.2"), conn.exec("sleep 0.2")]);
-    expect(Date.now() - started).toBeGreaterThanOrEqual(380);
+    const serial = Date.now() - started;
+    // Queued means the second child's sleep lands after the first: one child's time plus 200 ms.
+    expect(serial).toBeGreaterThanOrEqual(alone + 150);
     // A different machine is a different session: those run side by side.
     const other = connectionTo({ alias: "build-box", user: "deploy" });
     started = Date.now();
     await Promise.all([conn.exec("sleep 0.2"), other.exec("sleep 0.2")]);
-    expect(Date.now() - started).toBeLessThan(380);
+    const together = Date.now() - started;
+    // Together means one child's time plus scheduling noise, not two children's time.
+    expect(together).toBeLessThan(alone + 180);
     expect(spawns()).toHaveLength(2);
   });
 
