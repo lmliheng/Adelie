@@ -4838,7 +4838,25 @@ v0.3.5 版本戳），`git fetch origin && git merge --ff-only origin/main` 报 
   `web.db` 的 `sessions` 表里直接种行（`session_id` / `project_id` / `agent_id` / `workspace` /
   `created_at` / `last_active_at` 即可），侧栏与列表路由都照常渲染、照常分页，不必等 3.6 那个 key。
 
+### 顺手修掉的一处：机器间「串行 / 并行」的计时断言写死了绝对毫秒
+
+与本轮条目无关，但它让这一笔的 CI 红过一次，所以顺手按仓库既有的写法收掉：
+
+- **现象**：`test (server)`（ubuntu）红在 `machines-transport-session.test.ts` 的
+  `is one session however many ask`，`AssertionError: expected 548 to be less than 380` ——
+  **同一提交重跑即绿**（run `38019959586` attempt 2：22 个作业全绿），代码一行没变，所以不是行为回归。
+- **根因**：那两条断言拿 `380` 当界（同机两条命令必须排队 `≥ 380`、两机各一条必须并行 `< 380`），
+  而并行的实际耗时是「一条命令的 `sleep 0.2` + 起 `ssh` 的开销」，负载重的跑机把开销抬到 300ms 以上。
+  这是断言写死了跑机速度，与上一轮（第二十四 / 二十五轮，上游 `dd1b931f` `#973`）修的那条同类。
+- **改法**：照旁边 `machines-transport-lane.test.ts` 的口径改成相对量 —— 先热跑一条命令量出
+  `alone`，排队断言 `≥ alone + 150`、并行断言 `< alone + 180`（`decb5cbf`，只动这一个测试文件）。
+- **本机实测**（5 次空跑 + 4 份并发跑，`npx vitest run test/machines-transport-session.test.ts`）：
+  `alone` 202–206ms、`serial` 404–407ms（余量 ~53ms）、`together` 207–211ms（余量 ~175ms）；
+  改完整个 server 套件复跑 **191 文件 / 2780 通过 / 4 跳过、0 失败**，`pnpm lint` 0 警告、
+  `prettier --check` 干净。
+
 ### 收尾：提交、推送与汇报
 
-- **代码提交 `0945d91a`**（25 个文件 / +1845 −238，含中英 changelog 一对）；台账这一笔另起一笔。
+- **代码提交 `0945d91a`**（25 个文件 / +1845 −238，含中英 changelog 一对），**测试加固提交 `decb5cbf`**
+  （只动 `machines-transport-session.test.ts`）；台账这一笔另起一笔。
 - **推送**：`git push origin main`。
