@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/penguin-cli",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "type": "module",
   "description": "Adelie CLI: interactive REPL and single-task runner over @lmliheng/penguin-core.",
   "license": "Apache-2.0",

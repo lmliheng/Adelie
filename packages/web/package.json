@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/penguin-web",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "private": true,
   "type": "module",
   "description": "Adelie web frontend SPA: React + Vite + Tailwind CSS, rendering conversations streamed over the OmniMessage protocol, plus Agent configuration, model configuration, usage stats, and Traces.",
