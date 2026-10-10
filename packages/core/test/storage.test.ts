@@ -20,9 +20,21 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  buildStoragePlan,
   DEFAULT_STORAGE_POLICY,
   emptyLiveSet,
+  EXECUTABLE_STORAGE_CLASSES,
+  isExecutableStorageClass,
+  isPlannablePath,
+  measureStorageEntry,
+  planDefaultSelection,
+  planEntryFingerprint,
+  planFingerprint,
+  resolveStorageEntry,
   scanStorage,
+  storagePlanId,
+  storageTrashId,
+  STORAGE_PLAN_TTL_MS,
   type StorageLiveSet,
   type StoragePolicy,
 } from "../src/state/storage.js";
@@ -372,5 +384,156 @@ describe("scanStorage", () => {
       expect(ledger.disk.freeBytes).toBeLessThanOrEqual(ledger.disk.totalBytes);
     }
     expect(ledger.root).toBe(await fs.realpath(root));
+  });
+});
+
+/**
+ * The bill a person reviews, and the two filesystem questions an apply asks before a move:
+ * whether a recorded path may be touched at all, and whether it still measures as recorded.
+ *
+ * These are the properties the design's safety rules are made of, and all of them are pure
+ * enough to pin here: the whitelist is a regular expression over the recorded path, the
+ * containment rule is `realpath` against the root, and a fingerprint that ignores content is
+ * exactly as strong as the drift it has to notice.
+ */
+describe("storage plan", () => {
+  it("keeps the classes it may act on to the one whose move is reversible", () => {
+    // Pinning the list, not describing it: widening it is a decision about consequences a
+    // person did not get to read (an image URL that stops resolving, a replay with a hole).
+    expect([...EXECUTABLE_STORAGE_CLASSES]).toEqual(["tmp_workspaces"]);
+    expect(isExecutableStorageClass("tmp_workspaces")).toBe(true);
+    expect(isExecutableStorageClass("session_drafts")).toBe(false);
+    expect(isExecutableStorageClass("traces")).toBe(false);
+    expect(isExecutableStorageClass("shared_env")).toBe(false);
+    expect(isExecutableStorageClass("protected")).toBe(false);
+  });
+
+  it("only admits the recorded paths of an executable class", () => {
+    const ok = "proj/agents/agent/workspaces/tmp-8e8a3ace";
+    expect(isPlannablePath(ok, "tmp_workspaces")).toBe(true);
+    // A Workspace that is not temporary is user data, whatever else is true of it.
+    expect(isPlannablePath("proj/agents/agent/workspaces/mine", "tmp_workspaces")).toBe(false);
+    // Nested below one, above one, or outside the layout: none of them is a temporary Workspace.
+    expect(isPlannablePath(`${ok}/inner`, "tmp_workspaces")).toBe(false);
+    expect(isPlannablePath("proj/agents/agent/workspaces", "tmp_workspaces")).toBe(false);
+    expect(isPlannablePath("proj/agents/agent/agent_state", "tmp_workspaces")).toBe(false);
+    // Escapes and host-specific forms are refused before any filesystem call.
+    expect(isPlannablePath("../outside", "tmp_workspaces")).toBe(false);
+    expect(isPlannablePath("proj/agents/agent/workspaces/tmp-x/../tmp-y", "tmp_workspaces")).toBe(
+      false,
+    );
+    expect(isPlannablePath("proj//agents/agent/workspaces/tmp-x", "tmp_workspaces")).toBe(false);
+    expect(isPlannablePath("/proj/agents/agent/workspaces/tmp-x", "tmp_workspaces")).toBe(false);
+    expect(isPlannablePath("proj\\agents\\agent\\workspaces\\tmp-x", "tmp_workspaces")).toBe(false);
+    // Nothing else has a prefix whitelist yet, so nothing else may be planned.
+    expect(isPlannablePath("proj/agents/agent/scratchpad/s", "session_drafts")).toBe(false);
+    expect(isPlannablePath("web.db", "database")).toBe(false);
+  });
+
+  it("resolves a planned path only inside the root, and only to a real directory", async () => {
+    const root = await scaffold();
+    const workspace = path.join(root, "proj", "agents", "agent", "workspaces", "tmp-one");
+    await writeFile(path.join(workspace, "f.md"), "x");
+    expect(await resolveStorageEntry(root, "proj/agents/agent/workspaces/tmp-one")).toBe(workspace);
+
+    // A file, a missing path and a symlink are all refused: the first two have nothing to move,
+    // and a link is the one way a move could take something from outside the root with it.
+    expect(await resolveStorageEntry(root, "web.db")).toBeNull();
+    expect(await resolveStorageEntry(root, "proj/agents/agent/workspaces/tmp-gone")).toBeNull();
+    await fs.symlink(path.join(root, "proj", "agents"), path.join(root, "link-to-agents"));
+    expect(await resolveStorageEntry(root, "link-to-agents/agent/workspaces/tmp-one")).toBeNull();
+    // Lexical escapes never reach the filesystem.
+    expect(await resolveStorageEntry(root, "../outside")).toBeNull();
+    expect(await resolveStorageEntry(root, "/etc")).toBeNull();
+  });
+
+  it("follows the root's own realpath but refuses a link out of it", async () => {
+    const outside = await tempRoot();
+    await writeFile(
+      path.join(outside, "proj", "agents", "agent", "workspaces", "tmp-out", "f"),
+      "x",
+    );
+    const root = await scaffold();
+    // A directory inside the root that is really somewhere else: `resolveStorageEntry` asks the
+    // parent's realpath, so a linked Workspace directory cannot be planned.
+    await fs.mkdir(path.join(root, "proj", "agents", "agent", "workspaces"), { recursive: true });
+    await fs.symlink(
+      path.join(outside, "proj", "agents", "agent", "workspaces", "tmp-out"),
+      path.join(root, "proj", "agents", "agent", "workspaces", "tmp-out"),
+    );
+    expect(await resolveStorageEntry(root, "proj/agents/agent/workspaces/tmp-out")).toBeNull();
+  });
+
+  it("builds a bill from the candidates, leaving pinned paths out of it entirely", async () => {
+    const root = await scaffold();
+    await writeFile(path.join(root, "proj", "agents", "agent", "workspaces", "tmp-a", "f"), "x");
+    await writeFile(path.join(root, "proj", "agents", "agent", "scratchpad", "s", "f"), "x");
+    const ledger = await scanStorage(root, emptyLiveSet());
+    const pinned = "proj/agents/agent/workspaces/tmp-a";
+
+    const plan = buildStoragePlan(ledger, {
+      id: "2026-01-01-00-00-00-aaaaaa",
+      nowMs: 1_767_225_600_000,
+      pins: new Set([pinned]),
+    });
+
+    // The draft directory stays on the bill (report-only, but it is what a person should see);
+    // the pinned Workspace does not — that is the whole meaning of a pin.
+    expect(plan.entries.map((e) => e.path)).toEqual(["proj/agents/agent/scratchpad/s"]);
+    expect(plan.excluded).toEqual([pinned]);
+    expect(plan.totalBytes).toBe(plan.entries.reduce((sum, entry) => sum + entry.bytes, 0));
+    expect(plan.expiresAtMs - plan.createdAtMs).toBe(STORAGE_PLAN_TTL_MS);
+    // Only the executable class is selected by "all of them", which is what the button means.
+    expect(planDefaultSelection(plan)).toEqual([]);
+
+    // The same ledger without the pin: both candidates are on the bill, and "all of them"
+    // selects exactly the temporary Workspace — the draft list stays visible but unselectable.
+    const open = buildStoragePlan(ledger, { id: "2026-01-01-00-00-00-bbbbbb", nowMs: 0 });
+    expect(open.entries.map((e) => e.path)).toEqual([
+      "proj/agents/agent/workspaces/tmp-a",
+      "proj/agents/agent/scratchpad/s",
+    ]);
+    expect(open.excluded).toEqual([]);
+    expect(planDefaultSelection(open)).toEqual(["proj/agents/agent/workspaces/tmp-a"]);
+  });
+
+  it("fingerprints what a bill said, and notices a tree that changed or vanished", async () => {
+    const root = await scaffold();
+    const workspace = path.join(root, "proj", "agents", "agent", "workspaces", "tmp-drift");
+    await writeFile(path.join(workspace, "f.md"), "one");
+    const ledger = await scanStorage(root, emptyLiveSet());
+    const plan = buildStoragePlan(ledger, { id: "p", nowMs: Date.now() });
+    const entry = plan.entries[0];
+    expect(entry).toBeDefined();
+    if (entry === undefined) return;
+
+    const fingerprint = planEntryFingerprint(entry);
+    expect(fingerprint).toBe(entry.fingerprint);
+    expect(plan.fingerprint).toBe(planFingerprint(plan.entries));
+
+    const measured = async (): Promise<string> => {
+      const now = await measureStorageEntry(workspace);
+      return planEntryFingerprint({
+        path: entry.path,
+        bytes: now?.bytes ?? 0,
+        newestMtimeMs: now?.newestMtimeMs ?? 0,
+      });
+    };
+    expect(await measured()).toBe(entry.fingerprint);
+
+    // A write inside the tree — the drift an approval must not slide past.
+    await writeFile(path.join(workspace, "second.md"), "two");
+    expect(await measured()).not.toBe(entry.fingerprint);
+    // And a tree that is gone measures as nothing at all, rather than as an empty one.
+    await fs.rm(workspace, { recursive: true, force: true });
+    expect(await measureStorageEntry(workspace)).toBeNull();
+  });
+
+  it("names a plan id after the moment of the scan, so ids sort by time", () => {
+    const id = storagePlanId(Date.UTC(2026, 9, 10, 13, 5, 22), "4f2a");
+    // Local time, so the minutes and seconds are what a clock in this time zone showed; the
+    // date part is what makes a directory listing read chronologically.
+    expect(id).toMatch(/^2026-10-\d\d-\d\d-\d\d-22-4f2a$/);
+    expect(storageTrashId(Date.UTC(2026, 9, 10, 13, 5, 22))).toMatch(/^2026\d{4}-\d{6}$/);
   });
 });

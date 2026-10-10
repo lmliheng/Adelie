@@ -39,6 +39,7 @@
  */
 import fs from "node:fs/promises";
 import type { Dirent } from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 
 /** The classes the ledger accounts for. Every byte under the root lands in exactly one. */
@@ -626,6 +627,272 @@ export async function scanStorage(
     sharedEnvGroups: sharedEnvGroups.sort((a, b) => b.bytes - a.bytes),
     disk: await diskFacts(realRoot),
     unreadable: ledger.unreadable,
+  };
+}
+
+/** Whether `target` is `root` itself or something below it. Lexical: both sides are absolute. */
+export function isInsideRoot(root: string, target: string): boolean {
+  const resolved = path.resolve(target);
+  const base = path.resolve(root);
+  return resolved === base || resolved.startsWith(base + path.sep);
+}
+
+/**
+ * Where a planned entry actually is, or null when it may not be touched. Four refusals, in
+ * the order the design's guardrails ask for them: a path with `..` or an absolute form is
+ * refused lexically before any filesystem call; the target must be a real directory rather
+ * than a symlink; it must resolve inside the root; and its realpath must be the path itself,
+ * so no directory above it is a link either.
+ *
+ * The last one is stricter than containment needs and is the version that is easy to state:
+ * a tree is moved only from exactly where the bill recorded it. A link anywhere in the chain
+ * means the recorded path and the real one disagree, and a person reading the bill was looking
+ * at the wrong sentence — a case worth refusing rather than interpreting. A root reached
+ * through a symlinked parent (a home on macOS reaches its data through `/var`) is unaffected:
+ * both sides of the comparison are under the root's own realpath.
+ *
+ * Resolution is per call and never cached: what it answers is exactly the thing that can have
+ * changed since the scan, and a stale answer here is a move of the wrong thing.
+ */
+export async function resolveStorageEntry(
+  root: string,
+  relativePath: string,
+): Promise<string | null> {
+  if (relativePath === "" || relativePath.startsWith("/") || relativePath.includes("\\")) {
+    return null;
+  }
+  if (relativePath.split("/").some((segment) => segment === "" || segment === "..")) return null;
+  const realRoot = await realPathOrResolve(root);
+  const target = path.join(realRoot, ...relativePath.split("/"));
+  if (!isInsideRoot(realRoot, target)) return null;
+  let st;
+  try {
+    st = await fs.lstat(target);
+  } catch {
+    return null;
+  }
+  if (st.isSymbolicLink() || !st.isDirectory()) return null;
+  if ((await realPathOrResolve(target)) !== target) return null;
+  return target;
+}
+
+/**
+ * Measures one entry again, the same way the scan measured it, so an approval can be checked
+ * against the disk as it is now rather than as the scan found it. Null when the entry is
+ * gone — which is drift too, not a silently empty tree.
+ */
+export async function measureStorageEntry(
+  target: string,
+): Promise<{ bytes: number; files: number; newestMtimeMs: number } | null> {
+  try {
+    await fs.lstat(target);
+  } catch {
+    return null;
+  }
+  const measured = await measure(target, []);
+  return { bytes: measured.bytes, files: measured.files, newestMtimeMs: measured.newestMtimeMs };
+}
+
+// ---------------------------------------------------------------------------
+// From candidate to executed: the plan a person approves
+// ---------------------------------------------------------------------------
+/**
+ * The classes a cleanup may actually move in this version. One class at a time, on purpose:
+ * a temporary Workspace is the entry whose whole premise is that nobody points at it, so a
+ * move can be undone by a rename and nothing in a running Session notices. Drafts, Traces and
+ * environments each carry a consequence a person must weigh (an image URL in an old message
+ * stops resolving, a replay loses its shard, a toolchain has to be installed again), and every
+ * one of them deserves its own review rather than riding along with the first switch that
+ * happens to exist. Classes outside this list are reported and planned, never applied.
+ */
+export const EXECUTABLE_STORAGE_CLASSES: readonly StorageClass[] = ["tmp_workspaces"];
+
+export function isExecutableStorageClass(classKey: StorageClass): boolean {
+  return EXECUTABLE_STORAGE_CLASSES.includes(classKey);
+}
+
+/** Short hex digest, for the fingerprints a plan records. Not a security boundary. */
+function hash(input: string): string {
+  return createHash("sha256").update(input).digest("hex");
+}
+
+/**
+ * A temporary Workspace's recorded path: `<project>/agents/<agent>/workspaces/tmp-<suffix>`.
+ * Anchored, one path segment per level, so a plan file edited by hand (or written by an older
+ * version) cannot name `../..`, a nested path inside a Workspace, or a Workspace that is not
+ * temporary.
+ */
+const TEMP_WORKSPACE_PATH = /^[^/]+\/agents\/[^/]+\/workspaces\/tmp-[^/]+$/;
+
+/**
+ * Whether a recorded path is one this class may act on at all — the prefix whitelist of the
+ * design's safety rules, applied to the `/`-separated relative paths a plan records. Purely
+ * lexical: whether the path escapes the root through a symlink is a filesystem question the
+ * server answers with `realpath`, and it asks this first so a plan that was tampered with is
+ * refused before anything is stat'd.
+ */
+export function isPlannablePath(relativePath: string, classKey: StorageClass): boolean {
+  if (relativePath === "" || relativePath.startsWith("/") || relativePath.includes("\\")) {
+    return false;
+  }
+  if (relativePath.split("/").some((segment) => segment === "" || segment === "..")) return false;
+  switch (classKey) {
+    case "tmp_workspaces":
+      return TEMP_WORKSPACE_PATH.test(relativePath);
+    default:
+      // Nothing else is executable yet, so nothing else has a prefix to be checked against —
+      // and answering `true` here would be a whitelist that whitelists everything.
+      return false;
+  }
+}
+
+/**
+ * How long an approved-but-unexecuted plan stays valid. A day is long enough to review a bill
+ * over lunch and short enough that a plan stopped describing the disk a week ago by the time
+ * somebody presses the button; the design asks for exactly this bound, after which the answer
+ * is a fresh scan rather than a guess.
+ */
+export const STORAGE_PLAN_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** One line of a bill: a candidate, and everything needed to prove it has not changed since. */
+export interface StoragePlanEntry {
+  /** Path relative to the root, `/`-separated — what was measured and what a move would name. */
+  path: string;
+  class: StorageClass;
+  bytes: number;
+  files: number;
+  /** Newest modification inside the entry at scan time, epoch ms (0 = nothing could be stat'd). */
+  newestMtimeMs: number;
+  rules: CandidateRule[];
+  /**
+   * The entry as it was measured, as one short hash. Re-measured before a move: a mismatch
+   * means the tree grew, shrank or was touched after the person read the bill, and the answer
+   * is a new scan — never a partial cleanup of something nobody reviewed.
+   */
+  fingerprint: string;
+}
+
+/**
+ * A scan's output, as a file a person reviews: what could go, why, and how big it is. Written
+ * by the server, read by the page and the CLI, and **used once** — `appliedAtMs` is the whole
+ * one-shot rule, so an approval cannot be replayed against a disk that has moved on.
+ */
+export interface StoragePlan {
+  id: string;
+  /** The real path of the root the scan walked. */
+  root: string;
+  createdAtMs: number;
+  expiresAtMs: number;
+  /** Hash over the entries, in order — what an approval quotes back to prove it read this one. */
+  fingerprint: string;
+  /** Sum of `entries`, i.e. what this bill accounts for (not the root's size). */
+  totalBytes: number;
+  entries: StoragePlanEntry[];
+  /** Paths a pin kept out of the bill — why a candidate the report shows is missing from it. */
+  excluded: string[];
+  /** When an apply ran; a plan is valid until then. */
+  appliedAtMs?: number;
+  /** The paths that apply actually moved. */
+  appliedPaths?: string[];
+}
+
+/** The local-time parts of an instant, for the names a person reads in a directory listing. */
+function localStamp(nowMs: number): {
+  date: string;
+  time: string;
+  compact: string;
+} {
+  const at = new Date(nowMs);
+  const pad = (n: number): string => String(n).padStart(2, "0");
+  const date = `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+  const time = `${pad(at.getHours())}-${pad(at.getMinutes())}-${pad(at.getSeconds())}`;
+  return { date, time, compact: `${date.replace(/-/g, "")}-${time.replace(/-/g, "")}` };
+}
+
+/**
+ * A plan id: `2026-10-10-13-05-22-4f2a` — the moment of the scan plus a suffix that keeps two
+ * apart, in the machine's own local time because this name is read by a person looking at the
+ * directory (or at a bill's header) rather than parsed. Ids of the same shape sort by time as
+ * strings, which is all the plan list needs.
+ */
+export function storagePlanId(nowMs: number, suffix: string): string {
+  const stamp = localStamp(nowMs);
+  return `${stamp.date}-${stamp.time}-${suffix}`;
+}
+
+/**
+ * A trash entry's id: `20261010-130522`, the moment of the run. Folders, not files, so the
+ * compact form reads better in a listing; a collision (two runs inside one second, which the
+ * single-writer rule should prevent anyway) is resolved by the caller appending a counter.
+ */
+export function storageTrashId(nowMs: number): string {
+  return localStamp(nowMs).compact;
+}
+
+/**
+ * One entry's fingerprint: what the bill said about this tree, in one short hash. Size and
+ * newest mtime rather than a walk of every file — a plan names hundreds of trees and hashing
+ * their contents would cost more than the cleanup saves — and both change when a tree is
+ * written to, which is the drift an approval has to notice.
+ */
+export function planEntryFingerprint(entry: {
+  path: string;
+  bytes: number;
+  newestMtimeMs: number;
+}): string {
+  return hash(`${entry.path}\n${entry.bytes}\n${Math.round(entry.newestMtimeMs)}`).slice(0, 32);
+}
+
+/** The whole bill's fingerprint, over its entries in order. */
+export function planFingerprint(entries: readonly StoragePlanEntry[]): string {
+  return hash(entries.map((entry) => entry.fingerprint).join("\n")).slice(0, 32);
+}
+
+/** The plan's entries this version may act on — what "全选本类" means, said once, in core. */
+export function planDefaultSelection(plan: StoragePlan): string[] {
+  return plan.entries.filter((entry) => isExecutableStorageClass(entry.class)).map((e) => e.path);
+}
+
+/**
+ * Turns a ledger's candidates into a bill. Pure: the pins are an argument, the id is an
+ * argument, and the clock is an argument — the file it becomes is the server's business.
+ *
+ * Pinned paths are left out entirely (the design's "pin 过的东西不再出现在任何账单里"), which is
+ * why the pin list is applied here rather than filtered out again at each call site: one place
+ * decides what a person may be asked about.
+ */
+export function buildStoragePlan(
+  ledger: StorageLedger,
+  options: { id: string; nowMs: number; pins?: ReadonlySet<string>; ttlMs?: number },
+): StoragePlan {
+  const pins = options.pins ?? new Set<string>();
+  const excluded: string[] = [];
+  const entries: StoragePlanEntry[] = [];
+  for (const candidate of ledger.candidates) {
+    if (candidate.rules.length === 0) continue;
+    if (pins.has(candidate.path)) {
+      excluded.push(candidate.path);
+      continue;
+    }
+    entries.push({
+      path: candidate.path,
+      class: candidate.class,
+      bytes: candidate.bytes,
+      files: candidate.files,
+      newestMtimeMs: candidate.newestMtimeMs,
+      rules: [...candidate.rules],
+      fingerprint: planEntryFingerprint(candidate),
+    });
+  }
+  return {
+    id: options.id,
+    root: ledger.root,
+    createdAtMs: options.nowMs,
+    expiresAtMs: options.nowMs + (options.ttlMs ?? STORAGE_PLAN_TTL_MS),
+    fingerprint: planFingerprint(entries),
+    totalBytes: entries.reduce((sum, entry) => sum + entry.bytes, 0),
+    entries,
+    excluded,
   };
 }
 

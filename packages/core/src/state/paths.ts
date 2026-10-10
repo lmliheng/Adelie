@@ -112,6 +112,42 @@ export function workspacesDir(root: string, projectId: string, agentId: string):
 }
 
 /**
+ * `<root>/storage` — where the cleanup machinery keeps its own records: the plans a person
+ * reviews (`storage/plans/<planId>.json`). One directory for the whole machine rather than one
+ * per Project, because the data root, its disk and its free space are machine-wide facts and a
+ * plan that named candidates from two Projects would otherwise be two plans. Created on the
+ * first scan; absent on an install nobody has ever scanned.
+ */
+export function storageDir(root: string): string {
+  return path.join(root, "storage");
+}
+
+/** `<root>/storage/plans`, one JSON file per scan a person may yet review. */
+export function storagePlansDir(root: string): string {
+  return path.join(storageDir(root), "plans");
+}
+
+/**
+ * `<root>/.trash` — where a cleanup moves things instead of deleting them: one directory per
+ * run (`<yyyymmdd-HHMMSS>/`), each holding a `manifest.json` and the moved trees under their
+ * original relative paths. Dot-prefixed so it reads as machinery rather than as a Project
+ * directory, and inside the data root so a restore is a rename on the same filesystem.
+ */
+export function storageTrashDir(root: string): string {
+  return path.join(root, ".trash");
+}
+
+/** `<root>/logs` — the append-only records of what the machinery did (see `storageLogFile`). */
+export function logsDir(root: string): string {
+  return path.join(root, "logs");
+}
+
+/** `<root>/logs/storage-gc.jsonl`, one JSON line per cleanup action, appended and never rewritten. */
+export function storageLogFile(root: string): string {
+  return path.join(logsDir(root), "storage-gc.jsonl");
+}
+
+/**
  * `<agentDir>/scratchpad/<sessionId>`, one Session's private scratchpad directory. The single
  * Session-scoped storage root shared by every by-product bound to that Session: input images
  * saved as path lines, the goal-mode control file, and Environment's truncated-tool-output
