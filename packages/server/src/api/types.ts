@@ -281,6 +281,91 @@ export interface ServerSettingsResponse {
   settings: ServerSettings;
 }
 
+/**
+ * The data root's storage ledger (GET /api/admin/storage) — what is on disk under
+ * `ADELIE_HOME`, what each thing is for, and what a person could clean up.
+ *
+ * **This is a report and nothing else.** Producing it moves no file and deletes none, and
+ * nothing in the API can execute a cleanup on the strength of a stale report: the class,
+ * rule and reference vocabulary is shared with `@lmliheng/penguin-core`'s storage ledger
+ * (its `storage.ts` is where the rules are defined), and the DTO is spelled out here
+ * rather than imported because this file is the Web contract and takes types from core's
+ * pure subpaths only.
+ */
+export type StorageClass =
+  | "protected"
+  | "tmp_workspaces"
+  | "session_drafts"
+  | "traces"
+  | "shared_env"
+  | "trash"
+  | "database"
+  | "other";
+
+/**
+ * Why an entry is listed as a candidate: `empty` and `unreferenced` for a temporary
+ * Workspace no Session points at, `orphan` for drafts of a Session that no longer exists
+ * (or of one being deleted), `idle` for anything judged by silence, `budget` for anything
+ * a size cap evicted (oldest first). A candidate is a claim about provenance, never an
+ * action.
+ */
+export type StorageCandidateRule = "empty" | "unreferenced" | "orphan" | "idle" | "budget";
+
+export interface StorageClassSummary {
+  class: StorageClass;
+  bytes: number;
+  files: number;
+  entries: number;
+  candidateEntries: number;
+  candidateBytes: number;
+}
+
+export interface StorageCandidate {
+  /** Path relative to the data root, `/`-separated — what a future plan and a pin would record. */
+  path: string;
+  class: StorageClass;
+  bytes: number;
+  files: number;
+  /** Newest modification inside the entry (ISO), or null when nothing could be stat'd. */
+  lastModifiedAt: string | null;
+  /** Whether live state still points at it. Recomputed at execution time, never trusted from a report. */
+  referenced: boolean;
+  rules: StorageCandidateRule[];
+}
+
+/**
+ * Environments that look like the same toolchain installed more than once, by normalized
+ * name (`csu-mail` vs `csumail`) or by what they hold. Report only: two look-alike
+ * environments may be at different versions, so the remedy is a merge a person triggers,
+ * never a deletion.
+ */
+export interface StorageEnvGroup {
+  kind: "name" | "structure";
+  key: string;
+  members: string[];
+  bytes: number;
+}
+
+export interface StorageReport {
+  root: string;
+  /** When this was measured (ISO) — the report describes that instant, not the present. */
+  scannedAt: string;
+  /** Sum of every class; the classification is complete, so this is the root's own size. */
+  totalBytes: number;
+  classes: StorageClassSummary[];
+  /** Candidates, largest first, capped per class; the class totals above stay exact. */
+  candidates: StorageCandidate[];
+  sharedEnvGroups: StorageEnvGroup[];
+  /** The volume's own numbers, so a report can say how close the disk is; null where unknown. */
+  disk: { freeBytes: number; totalBytes: number } | null;
+  /** Paths that could not be read (capped), so a report says so instead of guessing. */
+  unreadable: string[];
+}
+
+export interface StorageReportResponse {
+  report: StorageReport;
+}
+
 /** PUT body: every field optional, omitted fields keep their current value (mirrors prefs). */
 export interface ServerSettingsUpdateRequest {
   proxyForApp?: boolean;

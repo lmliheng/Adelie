@@ -2,6 +2,8 @@
  * Admin user-backend routes: only the built-in admin can use these (403 for non-admins),
  * and desktop mode rejects the whole surface (single-user; 403 `desktop_single_user`).
  * GET|POST /api/admin/users, POST /api/admin/users/:userId/password, DELETE /api/admin/users/:userId.
+ * The other admin surfaces are their own route groups contributed from this component: the
+ * server settings, the settings groups plugins declare, and the read-only storage ledger.
  */
 import { Hono } from "hono";
 import type { AdminUserCreateResponse, AdminUsersResponse } from "../../api/types.js";
@@ -13,10 +15,12 @@ import { pathParam, readJson, requireString } from "../validate.js";
 import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Desktop, Proxy } from "../../hmr/capabilities.js";
 import { adminSettingsRoutes } from "./admin-settings.js";
+import { adminStorageRoutes } from "./admin-storage.js";
 import { adminPluginConfigRoutes } from "./admin-plugin-config.js";
 import { PluginConfigAdmin } from "../../plugin/config-page.js";
 import type { Admin } from "../../mechanisms/identity.js";
 import type { Settings } from "../../mechanisms/settings.js";
+import type { StorageLedgerReader } from "../../services/storage-service.js";
 
 /** What this route group reaches — bound by its module (src/modules). */
 export interface AdminRouteDeps {
@@ -83,6 +87,12 @@ export function adminUsersRoutes(deps: AdminRouteDeps): Hono<AppEnv> {
         auth: "user",
         order: 45,
       },
+      {
+        id: "admin-api.storage",
+        prefix: "/api/admin/storage",
+        auth: "user",
+        order: 50,
+      },
     ],
   },
 })
@@ -92,9 +102,11 @@ export class AdminRoutes {
   @Use() private readonly proxy!: Proxy;
   @Use() private readonly settings!: Settings;
   @Use() private readonly pluginConfigAdmin!: PluginConfigAdmin;
+  @Use() private readonly storage!: StorageLedgerReader;
   @Bind("admin-api.users") usersRoutes!: Hono<AppEnv>;
   @Bind("admin-api.settings") settingsRoutes!: Hono<AppEnv>;
   @Bind("admin-api.plugin-config") pluginConfigRoutes!: Hono<AppEnv>;
+  @Bind("admin-api.storage") storageRoutes!: Hono<AppEnv>;
   setup() {
     this.pluginConfigRoutes = adminPluginConfigRoutes(this.pluginConfigAdmin);
     this.usersRoutes = adminUsersRoutes({
@@ -105,5 +117,6 @@ export class AdminRoutes {
       proxyControl: (settings) => this.proxy.apply(settings),
       serverSettingsRepo: this.settings,
     });
+    this.storageRoutes = adminStorageRoutes({ storage: this.storage });
   }
 }
