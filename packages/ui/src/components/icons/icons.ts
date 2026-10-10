@@ -82,6 +82,8 @@ export const ICONS = {
   trophy: "M7 4h10v5a5 5 0 0 1-10 0V4zM7 5H4v1a3 3 0 0 0 3 3m10-4h3v1a3 3 0 0 1-3 3M12 14v4m-4 0h8",
   /** A `>_` prompt in a window frame. */
   terminalWindow: "M3 5h18v14H3zM7 9l3 3-3 3M13 15h4",
+  /** A bare `>_` prompt, without the window frame `terminalWindow` draws round it. */
+  terminalPrompt: "M4 6l4 4-4 4M12 18h8",
   /** A tower with wings and windows (lucide building-2). */
   building:
     "M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2M10 6h4M10 10h4M10 14h4M10 18h4",
