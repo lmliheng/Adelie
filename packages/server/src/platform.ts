@@ -87,7 +87,7 @@ import { SessionSources } from "./runtime/session-sources.js";
 import { ErrorRecorder } from "./runtime/error-recorder.js";
 import { UsageRecorder } from "./runtime/usage-recorder.js";
 import { UsageService } from "./services/usage-service.js";
-import { StorageLedgerReader, StorageService } from "./services/storage-service.js";
+import { StorageAdmin, StorageService } from "./services/storage-service.js";
 import { ProjectConfigService } from "./services/project-config-service.js";
 import { ModelOAuthService } from "./services/model-oauth-service.js";
 import { PlatformAuth, PlatformAuthProvider } from "./services/platform-auth-service.js";
@@ -391,7 +391,7 @@ export class SandboxSettingsModule {}
 
 @Module({
   children: [ErrorsRepo, ErrorRecorder, UsageRepo, UsageRecorder, UsageService, StorageService],
-  exports: [ErrorLog, Errors, UsageStore, UsageRecording, UsageQueries, StorageLedgerReader],
+  exports: [ErrorLog, Errors, UsageStore, UsageRecording, UsageQueries, StorageAdmin],
 })
 export class ObservabilityModule {}
 

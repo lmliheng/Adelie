@@ -370,6 +370,142 @@ export interface StorageReportResponse {
   report: StorageReport;
 }
 
+/**
+ * The cleanup mode's own settings, machine-wide like the data root they describe (one root,
+ * one disk, one answer) rather than per Project. **`enabled` is off until a person turns it
+ * on**, and everything that writes — scanning out a bill, pinning, moving, purging — is refused
+ * while it is off. `pins` are paths, relative to the root, that a person decided to keep: they
+ * are left out of every bill from then on.
+ */
+export interface StorageSettings {
+  enabled: boolean;
+  /** Days a trash entry is kept before `purge` without an id may remove it. */
+  trashTtlDays: number;
+  pins: string[];
+}
+
+export interface StorageSettingsResponse {
+  settings: StorageSettings;
+}
+
+/** PUT body: every field optional, omitted fields keep their current value (mirrors prefs). */
+export interface StorageSettingsUpdateRequest {
+  enabled?: boolean;
+  trashTtlDays?: number;
+  pins?: string[];
+}
+
+/** One line of a bill, as the page and the CLI read it. */
+export interface StoragePlanEntryView {
+  /** Path relative to the root, `/`-separated — what was measured and what a move names. */
+  path: string;
+  class: StorageClass;
+  bytes: number;
+  files: number;
+  /** Newest modification inside the entry at scan time; null when nothing could be stat'd. */
+  lastModifiedAt: string | null;
+  rules: StorageCandidateRule[];
+  /** The entry as measured, as one short hash — what an apply re-checks before moving it. */
+  fingerprint: string;
+  /**
+   * Whether this version may act on this class at all. False means report-only: the entry is
+   * on the bill because a person should see it, and no selection of it can be executed.
+   */
+  executable: boolean;
+}
+
+/** A scan's output: the bill a person reviews before anything moves. */
+export interface StoragePlanView {
+  id: string;
+  root: string;
+  createdAt: string;
+  expiresAt: string;
+  /** Hash over the entries — quoted back by an approval, and what a stale plan is caught by. */
+  fingerprint: string;
+  /** Sum of the entries: what this bill accounts for, not the root's size. */
+  totalBytes: number;
+  entries: StoragePlanEntryView[];
+  /** Paths a pin kept out of it. */
+  excluded: string[];
+  /** The classes `POST /apply` accepts; everything else on the bill is report-only. */
+  executableClasses: StorageClass[];
+  appliedAt: string | null;
+  appliedPaths: string[];
+  /** Whether it may still be applied: not used, and not past `expiresAt`. */
+  usable: boolean;
+  expired: boolean;
+}
+
+export interface StoragePlanResponse {
+  plan: StoragePlanView;
+}
+
+export interface StoragePlansResponse {
+  plans: StoragePlanView[];
+}
+
+export interface StorageApplyRequest {
+  planId: string;
+  /** The plan's own fingerprint, as read from the bill the person approved. */
+  fingerprint: string;
+  /** The entries to move, by their recorded path. Empty is refused rather than treated as all. */
+  paths: string[];
+}
+
+export interface StorageApplyResponse {
+  planId: string;
+  /** The trash entry the moved trees went into; null when nothing moved. */
+  trashId: string | null;
+  moved: { path: string; bytes: number; files: number }[];
+  /** Entries that were approved and validated but could not be moved; the run continued. */
+  failed: { path: string; reason: string }[];
+  freedBytes: number;
+}
+
+export interface StorageTrashItem {
+  path: string;
+  class: StorageClass;
+  bytes: number;
+  files: number;
+}
+
+/** One run's trash: what it holds, and what putting it back would restore. */
+export interface StorageTrashEntry {
+  id: string;
+  createdAt: string;
+  /** The plan that produced it, when the manifest still says. */
+  planId: string | null;
+  /** Measured now, not read from the manifest: a listing must not lie about what is on disk. */
+  bytes: number;
+  files: number;
+  items: StorageTrashItem[];
+  /** Older than the retention. Nothing removes it on its own; `purge` is a person's command. */
+  expired: boolean;
+}
+
+export interface StorageTrashResponse {
+  entries: StorageTrashEntry[];
+  ttlDays: number;
+}
+
+export interface StorageRestoreResponse {
+  id: string;
+  restored: string[];
+  skipped: { path: string; reason: string }[];
+  /** Whether the trash entry still holds anything (it is removed once it holds nothing). */
+  remaining: boolean;
+}
+
+export interface StoragePurgeResponse {
+  purged: { id: string; bytes: number; files: number }[];
+}
+
+export interface StoragePinRequest {
+  /** Path relative to the root, as the report and a bill record it. */
+  path: string;
+  pinned: boolean;
+}
+
 /** PUT body: every field optional, omitted fields keep their current value (mirrors prefs). */
 export interface ServerSettingsUpdateRequest {
   proxyForApp?: boolean;

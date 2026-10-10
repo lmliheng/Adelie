@@ -20,7 +20,7 @@ import { adminPluginConfigRoutes } from "./admin-plugin-config.js";
 import { PluginConfigAdmin } from "../../plugin/config-page.js";
 import type { Admin } from "../../mechanisms/identity.js";
 import type { Settings } from "../../mechanisms/settings.js";
-import type { StorageLedgerReader } from "../../services/storage-service.js";
+import type { StorageAdmin } from "../../services/storage-service.js";
 
 /** What this route group reaches — bound by its module (src/modules). */
 export interface AdminRouteDeps {
@@ -102,7 +102,7 @@ export class AdminRoutes {
   @Use() private readonly proxy!: Proxy;
   @Use() private readonly settings!: Settings;
   @Use() private readonly pluginConfigAdmin!: PluginConfigAdmin;
-  @Use() private readonly storage!: StorageLedgerReader;
+  @Use() private readonly storage!: StorageAdmin;
   @Bind("admin-api.users") usersRoutes!: Hono<AppEnv>;
   @Bind("admin-api.settings") settingsRoutes!: Hono<AppEnv>;
   @Bind("admin-api.plugin-config") pluginConfigRoutes!: Hono<AppEnv>;
