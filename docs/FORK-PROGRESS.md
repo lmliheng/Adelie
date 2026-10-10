@@ -5420,3 +5420,10 @@ prompt 里那串 `--filter @prismshadow/penguin-*` 也已过时，本仓包名�
 
 - **代码提交 `755ea330`**（6 个文件，见「已完成的轮次」那一行）；台账这一笔另起一笔。
 - **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **汇报邮件没发出去（第 22–35 轮同一处卡点，与凭据无关）**：`python3 scripts/mail.py check`（csu-mail
+  技能目录下，`timeout 60`）**退出 124、一行输出都没有**；裸 socket 探 `imap.csu.edu.cn:993` 与
+  `smtp.csu.edu.cn:465` 都是 `TimeoutError`（10s），同一时刻 `github.com:443` 秒连。凭据本身正常
+  （`CSU_MAIL_ADDR` 21 字符、`CSU_MAIL_AUTHCODE` 16 字符都注入着，只打印长度）。按技能纪律**只试这一次、
+  没有重试登录**。本轮的正文写在会话 scratchpad 的 `r36/mail-round36.txt`；把第 36 轮的正文路径与主题
+  **加进**既有的周期重发任务 `csu-mail-retry`（现覆盖第 22–36 共十五封、每 6 小时一次、`end_at`
+  2026-10-12T12:00:00Z、先查「已发送」再补发、发完就删掉自己），没有另开新任务。
