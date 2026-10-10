@@ -4860,3 +4860,24 @@ v0.3.5 版本戳），`git fetch origin && git merge --ff-only origin/main` 报 
 - **代码提交 `0945d91a`**（25 个文件 / +1845 −238，含中英 changelog 一对），**测试加固提交 `decb5cbf`**
   （只动 `machines-transport-session.test.ts`）；台账这一笔另起一笔。
 - **推送**：`git push origin main`。
+
+### CI（推送后）
+
+- 第一笔（代码 `0945d91a` + 台账 `b0b9001a`）的 run **`38019959586`**：首跑 `test (server)`（ubuntu）红在
+  `machines-transport-session.test.ts` 的计时断言（见上一节），**同一提交重跑（attempt 2）22 个作业全绿**
+  —— `NOT SUCCESS: []`；代码与用例一行没改，所以那次红是跑机负载，不是行为回归。
+- 加固提交 `decb5cbf` + 台账 `406227a4` 的 run **`38020583778`**：**22 个作业全绿、`NOT SUCCESS: []`** ——
+  `test (server)` 的日志里是 `✓ test/machines-transport-session.test.ts (8 tests) 1261ms`（这条用例在 CI 上
+  真跑了、改完的相对界站得住），整个套件 191 文件 / **2771 通过 / 13 跳过**（CI 上多跳过的 9 条是环境所致，
+  本机 4 条）。
+- `ci.yml` 的 `cancel-in-progress` 照旧：一两分钟内连推会取消前一笔的 run，认最后这一笔。
+
+### 汇报邮件（未发出，同一处网络卡点）
+
+- 照 `csu-mail` 技能试了一次（`python3 scripts/mail.py check`，`timeout 60`）：**一行输出都没有、退出 124**
+  —— 与第 22–31 轮同一处卡点，与凭据无关：`imap.csu.edu.cn:993` / `smtp.csu.edu.cn:465` /
+  `mail.csu.edu.cn:443` 三个裸 socket 探针都 `TimeoutError`（8.4s / 16.2s / 8.2s），而同一时刻
+  `github.com:443` 正常；凭据本身正常（只打印长度：`CSU_MAIL_ADDR` 21 字符、`CSU_MAIL_AUTHCODE` 16 字符）。
+  按技能纪律**只试这一次、没有重试登录**。本轮的正文写在会话 scratchpad 的 `r32/mail-round32.txt`；
+  把第 32 轮的正文路径与主题**加进**既有的周期重发任务 `csu-mail-retry`（现覆盖第 22–32 共十一封、
+  每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、先查「已发送」再补发、发完就删掉自己），没有另开新任务。
