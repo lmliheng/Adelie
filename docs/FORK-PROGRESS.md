@@ -247,8 +247,9 @@
 
 ### 5. 跟上游学（2026-10-06 查上游现状后定的顺序）
 
-判据是「对着我们的待办与生意」，不是「上游有什么」。上游 `main` 停在 `d56d9ced`（2026-10-04T18:02Z），
-我们比它少 31 个提交（`18d7c137` 基座 → 今天），另有 221 个分支在推（今天 09:17Z 一波约 180 条）。
+判据是「对着我们的待办与生意」，不是「上游有什么」。上游 `main` 停在 `2604c5d2`（2026-10-10T07:05Z，
+2026-10-10 第三十四轮拉到时），我们这边它与本文 5.13 之间只差这一笔；更早的 `#1000`（Agent API 与
+`@prismshadow/amsp` 客户端）与 `#956`（五个内置 Benchmark）**尚未落地**，理由见 5.13 与下面各项。
 
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
@@ -413,6 +414,20 @@
       `packages/ui` 的图标表）、`sidebar.tsx` 批量删除里本树特有的 `category === "schedule"`（改成
       `sessionCategory(s) === "active"`）、画廊 mock 的 org 工位夹具（本树没有 → 不引入，只留
       `excludeOrg` / `isOrgRow` 与三分类）。
+- [x] **5.13 权限菜单带等级的盾牌、思考等级菜单去掉脚注、轨迹面板与文件编辑器不再超出宽度**（上游 `2604c5d2`
+      `#1007`，**2026-10-10 第三十四轮落地**，提交见该节）：权限菜单每一行（预设，或沙盒开关关闭时的审批模式）
+      在名称前显示选中后权限按钮将呈现的等级盾牌（形状 + 色调），管理员的「更多…」带齿轮、菜单最小宽度
+      `min-w-44` → `min-w-50`；会话的思考等级菜单去掉那条脚注（`note` 与 `thinkingLevelChangeNote` 从两份词典
+      删除，说话的是已有的确认框）；轨迹面板的全局统计按**卡片自身**的宽度（容器查询 `@2xl`）决定三组并排还是
+      上下堆叠，不再按视口；开启换行时文件编辑器的两层固定为滚动框的宽度（`.code-editor.code-wrap` 的
+      `grid-template-columns: minmax(0, 1fr)`）。**有意未取**：上游让折叠内容区不再撑宽的那处（`Fold` 的
+      `min-h-0 min-w-0`）—— 本树没有 `Fold` 组件（它由上游 #966 / #941 引入），`packages/ui` 里三个
+      没有的文件（`layout/fold/fold.tsx`、`test/fold.test.ts`、`test/activity-group.test.ts`）与两个断言着
+      `data-fold` 类名的用例（`disclosure-row` / `group-header`）按「本树没有这个结构」排除。**为什么是这一条**：
+      它是上游 `main` 上唯一一条**不需要新依赖、不碰 desktop / 包名 / 流水线、且能整块落地**的提交（同批的
+      `#1000` 是 126 文件 / +13867 且引入新外部依赖 `@prismshadow/amsp`，`#1005` / `#1006` 各自要本树没有的
+      文件 `terminal-path-first.test.ts` / `pairing-dialog.tsx`，`#956` 的五个内置 Benchmark 内容与链接都
+      指向上游自己的 benchmark 仓库、品牌面影响大 → 见「还差什么」等你拍板）。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -976,6 +991,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-10 | 5.9 | **评估与优化的会话就是普通会话，「评估任务」折叠夹只收 Agent 启动的被测会话**（上游 `8a774995` `#969` 移植，照改动落、不是合分支；21 文件 / +98 −87，比上游多 2 行是本仓写法的 changelog 一对）：Web App 不再给评估中心「使用」对话框预填的对话打 `source: "benchmark"` 标记 —— `AiChatRequest` 去掉 `source`、`DraftCache` 的类型与 `draftFromUnknown` 去掉它、草稿页的写回与创建请求体去掉它（**Web App 从此一个字段都不发 `source`**）；服务端与 CLI 行为不变（`POST …/sessions` 仍接受 CLI 发来的 `benchmark`），只有 `SessionCreateRequest.source` / `CreateSessionOptions.source` / `SessionMetaPayload.source` 的文档注释改成「被评估的 Test Session 由 `penguin run --source benchmark` 创建」；评估中心 / 对话 / 服务端 API 三份文档（中英）更新。**本树那处冲突的解法**：上游同一段里还留着它自己后加、本树没有的 `goal` 字段 —— 只删 `source`、不引入 `goal`（引入会 typecheck 失败）。changelog 按本仓惯例改名到本轮日期、去上游 PR 行、写明移植出处 | 六包 `typecheck` `EXIT=0`（`ifaces.json unchanged` 187 接口 / 549 类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· 逐包 `EXIT=0`：core **1368**/5 跳过（66 文件）· ui **1008**（127）· cli **507**（34，+1 即本笔新用例）· web **3032**/2 跳过（248 文件，用例数与扩写后的一致）· server **191 文件 / 2775 通过 / 4 跳过** —— **0 失败**；另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本轮改到它的内容）· **界面真跑**（重建 core/server/web 产物后，一次性数据根 `/root/adelie-fork-data/r31-eval`、`localhost:4111`、真浏览器）：评估中心 → Example Benchmark →「使用」→「在新对话中编辑」，预填草稿的 localStorage 里**没有 `source` 字段**（字段是 text / workspace / approvalMode / agentId / modelRef / skills / aiPrefill）；按发送后 Web App 真发的创建请求体是 `{"approvalMode":"allow-all","modelId":"deepseek-flash","provider":"deepseek"}` —— **不带 `source`**（改动前会带 `"source":"benchmark"`）；登录后走查会话列表 / 评估中心 / 预填草稿，**console 0 error、无一条 4xx**（唯一一条是登录前的 `/api/me` 401，是这个 App 的正常首访应答）；创建请求被服务端以 `model_credential_missing` 退回是**环境原因**（空数据根没配模型 key，即 3.6 那个卡点），因此本轮没有真会话可看折叠夹归类 —— 归类规则本身未改，由 `web/test/session-grouping.test.ts` 的改写场景覆盖。截图 6 张在 scratchpad · 端口只用 4111，3003 / 3004 / 4000 / 7364 / 7369 全程没碰 | 见本行提交 |
 | 2026-10-10 | 5.11 | **侧栏按最后活动分页、「加载更多」只在底部追加**（上游 `929abb33` `#960` 移植，照改动落、不是合分支；25 文件 / +1845 −238，比上游多 2 行是本仓写法的 changelog 一对）：服务端 `GET …/sessions` 新增 `order=activity`（`lastActiveAt` 降序、相同时按 `sessionId` 降序，均按码点比较、绝不用 `localeCompare`，好让浏览器与服务器只有一个全序）与 `before=<lastActiveAt>,<sessionId>` 游标（返回严格位于该键之后的行；须配合 `order=activity` 与 `limit`、与 `offset` 互斥、格式不对 400），不带 `order` 时仍是创建顺序 + offset 分页、`counts=1` 仍覆盖整表；`http/validate.ts` 解这个游标（`ActivityCursor` / `SessionListOrder` / `SessionListPaging` 从服务里导入）；会话列表用户频道的 `session_state` 事件补上 `projectId`。Web：每个侧栏列表带 `order=activity`，每条流（Agent × 机器 × Workspace 范围）从上次从中读到的最后一行的键接着取，由多条流合并的列表只画到**水位线**（仍有剩余的各流中最新的游标），水位线以下的行留在内存等下一页降线，因此「加载更多会话」「展开其余 N 个对话」只会在已显示的行之下追加；Agent / Workspace 分组与各折叠夹同样处理，折叠夹改按最后活动排序，打开着的对话始终显示、搜索仍覆盖全部已加载行。画廊的模拟列表接口也支持 `order` / `before`，server-api 文档（中英）跟上。**本地化与两处冲突的实情**：包 scope `@prismshadow/` → `@lmliheng/`；画廊 mock 那处冲突里上游的上下文行假定了本树**没有**的 `excludeOrg` / `isOrgRow` 处理（那是另一笔未落的上游改动），解法是只取它的 `order` 分支、保留本树自己的过滤（不引入 `isOrgRow`）；changelog 改名到 `2026-10-10`、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#960，提交 `929abb33`）」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写出 **187 接口 / 552 类型**，+3 正是本笔新增的三个服务契约类型）· `pnpm lint` **0 警告 0 错误**（2114 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1368**/5 跳过（65 文件）· ui **1008**（127）· cli **507**（34）· web **3052**/2 跳过（248 文件，+20）· server **191 文件 / 2780 通过 / 4 跳过**（+5）· docs **62**（8 文件，本轮改到它的内容）· ui-gallery **132**（19 文件，本轮的 mock 路由）· **服务端真跑**（一次性数据根 `/root/adelie-fork-data/r32-sidebar`、`localhost:4121`）：用 `sqlite3` 往索引里种 25 行（创建顺序与活动顺序**故意不一致**），`curl` 实测 `order=activity&limit=3` 按 `lastActiveAt` 降序、`before=<最后一行的键>` 接着取到严格更旧的三行、不带 `order` 仍是创建顺序，五种非法组合（带 `order=created` / 缺 `limit` / 同时给 `offset` / 时间戳不可解析 / `order=recent`）**逐条 400** · **界面真跑**（重建 server + web 产物后用真浏览器）：侧栏发出的请求确实带 `order=activity`（`limit=11&order=activity&category=active&counts=1&excludeOrg=1`，两个 Workspace 分组各自带上一页最后一行的 `before=` 游标续页）；两个分组的行都按活动次序排列（活动序号 00,01,03,04,06,09,12,14,15,17 / 02,05,07,08,10,11,13,16,19,21，各自的升序即「最近活动在前」）；点「展开其余 3 个对话」后该组 13 行、新出现的 3 行（活动序号 18、20、23，界面写「2 天前」）**全在底部**，前 10 行逐字不变（脚本断言 `APPEND_ONLY: True`）；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**，截图与脚本在 scratchpad · 端口只用 4121，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `0945d91a` |
 | 2026-10-10 | 5.12 | **会话的 `source` 恒被记录、侧栏把程序开的会话收进一个折叠夹**（上游 `e521a9de` `#999` 移植，照改动落、不是合分支；109 文件 / +1799 −953，含本仓写法的 changelog 两对）：core 新增 `omnimessage/source.ts` 的 `normalizeSessionSource`（纯函数，只看得见 Trace 里的值：缺失 → `user`、退休的 `benchmark` → `cli`、野值 → `user`），`SessionSource` 与必填的 `SessionMetaPayload.source`（`user`/`api`/`schedule`/`subagent`/`cli`/`company`）在类型里定义一次，`createSession` 未给来源时记 `user`、恢复的会话把来源带进它开启的每个上下文。server 的 `category` 改为 `active`/`background`/`archived`（列表、`counts`、工作区分组与 Agent Trace 列表同一套），**`company` 会话不属于任何分类**（任何分类形式都不含它，完整列表仍返回它，组织自己的会话接口不变），`excludeOrg` 保留；读取时 `readRecordedSource` 让「Trace 没记来源、索引行 client 为 org」读作 `company`（`unrunSource` 处理还没跑过的工位会话），`POST …/sessions` 只收 `source: "cli"`、`benchmark` 作别名、其余 400。Web 三个折叠夹并成一个「后台会话」折叠夹、每行带来源标记（`session-source-mark.ts`：API 插头 / 定时任务日历 / 子智能体两个机器人 / CLI `>_`），「最近一次对话」与删除后的跳转只选 `user` 行；评估中心「使用」对话框不再打标记。CLI 每个 `penguin run` 会话都是 `cli`、`--source` 隐去、`--source benchmark` 成空操作并打一行说明；agent-evaluation 技能不再传它（agent-tuning 插件版本 +1）。**本树四处差异**：包 scope 全部换回 `@lmliheng/`；`terminalPrompt` 图标上游别处带来、本树没有 → 补进 `packages/ui` 的图标表（一行的裸 `>_` 提示符）；`sidebar.tsx` 批量删除里本树特有的 `category === "schedule"` 改成 `sessionCategory(s) === "active"`（新分类里没有 `schedule`，改完才过 typecheck）；画廊 mock 的 org 工位夹具（`IDS.sessions.orgDesk` + `harness-transcript.ts`）本树没有 → 按「本树没有这个文件」排除，mock 只取其 `excludeOrg` / `isOrgRow` 与三分类，`mock-api.test.ts` 里依赖那个夹具的三条断言相应收窄并在注释里写明缘由 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写出 **189 接口 / 563 类型**，+2/+11 正是本笔的服务契约）· `pnpm lint` **0 警告 0 错误**（2129 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1388**/6 跳过（67 文件，+1 文件 `session-source.test.ts`）· ui **1009**（127）· cli **517**（35 文件）· web **3068**/2 跳过（250 文件，+2）· server **193 文件 / 2795 通过 / 4 跳过**（+2 文件）· docs **62**（8 文件，本轮改到它的内容）· ui-gallery **132**（19 文件）· **服务端真跑**（一次性数据根 `/root/adelie-fork-data/r33-source`、`localhost:4131`）：往 `default_agent` 的 traces 里写 8 个会话（8 个来源各一条 + 一条更早的 `user`），首启的收编扫描把它们按来源分类 —— `curl` 的 `counts=1` 报 `{active:4, background:4, archived:0}`，随后把 `api` 那条置 `archived_at` 后变成 `{active:4, background:3, archived:1}`（**归档优先于来源**）· **界面真跑**（重建 hmr/core/server/web 产物后用真浏览器，`zh-CN`）：侧栏只有一个**后台会话（3）**折叠夹（旧的三个折叠夹已不存在），三行各带来源标记 `>_`（跑一遍评测）/ 两个机器人（检查链接）/ 日历（每晚同步），另有**已归档（1）**含那条归档行（分类外的行不带来源标记）；展开折叠夹的请求是 `…sessions?limit=11&order=activity&category=background&workspaceGroup=%2Ftmp%2Fr33-ws&excludeOrg=1`；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**；截图 3 张与脚本在 scratchpad · 端口只用 4131，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `a5fb9b9d` |
+| 2026-10-10 | 5.13 | **权限菜单带等级的盾牌、思考等级菜单去掉脚注、轨迹面板与文件编辑器不再超出宽度**（上游 `2604c5d2` `#1007` 移植，照改动落、不是合分支；16 文件里落 11 个 / +182 −48，含本仓写法的 changelog 一对）：`lib/permission-level.ts` 新增 `menuRowLevel(row, sandbox)`（预设按它自己的三个值、开关关闭时按审批模式叠加会话保留的策略）、`permissionLevel` 的 `sandbox` 参数收成 `Pick<SessionSandbox, "mode" \| "network">`；`permission-select.tsx` 抽出 `LevelGlyph`，预设行与审批模式行都在名称前带上「选中后按钮会变成的等级」的盾牌（形状 + 色调），行不可用时图标一同变淡，管理员「更多…」带一个**节点**齿轮（不是注册表路径，Console 主题隐藏装饰图标时它仍要在、名称才会对齐），菜单最小宽度 `min-w-44` → `min-w-50`（最长内置行「仅工作区可写 + 仅管理员」在中文下不再截断），按钮自己的 `15` 改成 `ICON_SIZE.iconButton`；`chat-input.tsx` / `chat-page.tsx` 的思考等级菜单去掉 `note` 与 `chat.thinkingLevelChangeNote`（中英两份词典同步删，改由已有的确认框说明代价）；`trace-file-view.tsx` 的全局统计改成**卡片**是容器（`Card className="@container"`）而网格用 `@2xl:grid-cols-3`，窄于它的卡片把三组上下堆叠；`prose.css` 加 `.code-editor.code-wrap { grid-template-columns: minmax(0, 1fr) }`（开启换行时两层固定为滚动框宽度，之前 `auto` 列会被一段不可断的长串撑到它自己的长度）；`test/permission-level.test.ts` 新增一组场景（开关开/关 × 受限/不受限，逐行断言 `menuRowLevel` 等于「选中该项后按钮的等级」，用 `presetPick` / `approvalModePick` 现算）。**有意未取**：`Fold` 的 `min-h-0 min-w-0`（本树没有 `Fold` 组件）与它带到的三个本树没有的文件、两个断言 `data-fold` 类名的用例 —— 用 `--exclude` 排除，见本节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 563 类型）**，本笔不动服务契约）· `pnpm lint` **0 警告 0 错误**（2129 文件）· `pnpm format:check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1388**/6 跳过（67 文件）· ui **1009**（127）· cli **517**（35 文件）· web **3072**/2 跳过（250 文件，+4 正是本笔新增的四个场景）· server **193 文件 / 2795 通过 / 4 跳过** · **界面真跑**（重建 hmr → core → server → web 产物，一次性数据根 `/root/adelie-fork-data/r34-ui`、`localhost:4151`、真浏览器 `zh-CN`，手写一个 Trace 文件当会话）：① 权限菜单（开关关）五行各带盾牌 —— 总是询问/放行只读琥珀、全部放行红、全部拒绝灰、更多…齿轮，面板 198px、逐行 `scrollWidth - clientWidth` 全 0（无截断）；② 把沙盒开关打开（走设置页自己的那条 `PUT /api/admin/plugin-config`，返回 200）后菜单变成 完全访问红 / 每次询问琥珀 / 仅工作区可写琥珀 / 只读绿 / 更多…齿轮，同样无一行截断；③ 思考等级菜单的可见面板文本就是五行 `低(low)中(medium)高(high)极高(xhigh)最高(max)` —— **那条脚注不在了**；④ 轨迹面板的全局统计：停靠栏里卡片 552px 时计算出的 `grid-template-columns` 是**单列** 526px、卡内无一个元素越过右缘（1440 与 1024 两个视口都一样），把停靠栏拖宽到卡片 1128px 后变成**三列** 351px×3 且仍无越界；⑤ 文件编辑器：开启换行时 `.code-editor.code-wrap` 的列是 353px（滚动框 363px），`pre` / `textarea` 都是 353px、滚动框不横向溢出；**反证**：把修复前的规则（`grid-template-columns: auto`）当场注回去，同一处列宽变成 **1629.61px**、两层都 1630px、滚动框横向溢出（1630 vs 363）—— 这正是上游报告的那个 bug；**console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**；截图 14 张与 6 个 `probe*.cjs` 在 scratchpad · 端口只用 4151，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `51a79a02` |
 
 > **2026-10-06 与另一条线的交汇（第六轮）**：本轮开工时 `git status --short` 是干净的；做完检查那一
 > 步时工作区里多出**另一条线**的改动 —— 47 个 `package.json` 的 `version` 0.3.0 → 0.3.1、
@@ -995,6 +1011,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 > 那条红随之消失）与 `ec49bddd`（Windows 安装器带上 Adelie 的侧栏与页眉图）。它自己那次推送的 CI
 > run `37430793086` **在 `test-windows (rest)` 上红**（工作区里还留着一份未提交的 `installer-art`
 > 测试，看着就是它在修），与本轮无关。
+
 
 ## 服务迁移：PenguinHarness → Adelie（2026-10-05，用户定的方案 A）
 
@@ -5022,3 +5039,135 @@ prompt 里那串 `--filter @prismshadow/penguin-*` 也已过时，本仓包名�
 - run **`38033991093`**（`f5d77095`，含代码提交 `a5fb9b9d` 与这条台账的前一笔）：**22 个作业全绿、
   `NOT SUCCESS: []`**。这一笔跨 core / server / web / cli / ui / 画廊 / 插件与七份文档，矩阵没有动；
   上一次主线上的红（`7943cbb5` 的 `38026233266`）在 `c051bfbe` 已修，本笔是在它之上跑的。
+
+## 第三十四轮：权限菜单带等级的盾牌、思考等级菜单去掉脚注、轨迹面板与文件编辑器不再超出宽度（2026-10-10，条目 5.13）
+
+一次无人值守的自主推进。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；`legacy/main`、
+`/root/Adelie` 工作区、`/root/penguin-harness`（已不在）、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**（依赖没装、磁盘也不为它花）。
+
+开工自检：`git status --short` 干净、`main` = `origin/main` = `eefc52fb`，
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+（轮次 prompt 里写的仓库根 `FORK-PROGRESS.md` 不存在 —— 这份台账 2026-10-08 起就在 `docs/`；
+prompt 里那串 `--filter @prismshadow/penguin-*` 也已过时，本仓包名是 `@lmliheng/penguin-*`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，本轮又把它核了一遍：非桌面壳、非发布面已经没有可做的 ——
+全仓除 `packages/desktop` 之外的 `PENGUIN_*` 只剩**有意保留**的几类（`boundary-env.ts` 的兼容别名表与
+它的注释、钉兼容的测试夹具、`machines/commands.ts` 那条两个都写的远端命令、`PENGUIN_GO*` 上游服务键、
+注入页脚本里的局部变量、`model-catalog.ts` 的 `PENGUIN_GO_*` provider 环境键），其余全在纪律禁止或
+明说留到发布期的一侧（桌面壳、既有部署单元 `adelie-app.service`、画廊 mock 的演示路径与
+`packages/docs` 的环境表）。**3.5** 要用户拍板且本轮不许碰 desktop、**3.6** 要模型 key、
+**4.1–4.3** 明令不动、**5.6** 的 core 那一半要用户拍板、**5.10**（A2UI）停在新依赖 `mermaid` 上、
+**5.3** 剩下的要第二台机器。
+
+于是照前几轮的做法去上游 `main` 找：`/root/penguin-harness` 已不存在，按分支 URL 拉到本地
+`refs/adelie-tmp/upstream-main`（**尖端 `2604c5d2`，2026-10-10T07:05Z**，比第三十三轮那次只多一笔），
+逐条量了未落地的五笔：
+
+| 上游提交 | 规模 | 本仓可行性 |
+| --- | --- | --- |
+| `2604c5d2` `#1007` | 16 文件 / +182 −48 | **可落**：`--exclude` 掉三个本树没有的文件后 9 个文件全部干净（详见下） |
+| `473c9470` `#1000` Agent API + AMSP 客户端 | 126 文件 / +13867 −220 | **不做**：引入新外部运行依赖 `@prismshadow/amsp`（纪律禁止），量也远超一轮 |
+| `fd531af0` `#956` 五个内置 Benchmark | 32 文件 / +2049 −168 | **可落但等拍板**：`git apply -3 --check` 只有 5 处冲突（无缺文件），但它往每个新 Project 写入的五个 Benchmark 名字就叫 **PenguinHarness Benchmark Sec A–E**、任务与运行规则都指向上游自己的 `Prism-Shadow/penguin-harness-benchmark` 仓库 —— 品牌面影响大，按要求先停在这里问 |
+| `517a3d21` `#1006` Chrome 扩展从商店装 | 11 文件 / +91 −21 | **不做**：要改 `packages/web/src/features/builtin-browser/pairing-dialog.tsx`，本树没有（它由未落地的 `#955` 浏览器扩展引入） |
+| `af99c537` `#1005` macOS 的 pwsh 回车重发 | 3 文件 / +37 −4 | **不做**：要改 `packages/server/test/terminal-path-first.test.ts`，本树没有这个文件 |
+
+所以本轮落 `#1007`，并把上面四条的理由写进 5.13 与「还差什么」。
+
+### 改了什么（落 11 个文件 / +182 −48 里的代码面，含本仓写法的 changelog 一对）
+
+照上游 `2604c5d2` 的改动落，不是合分支：
+
+- **`lib/permission-level.ts`**：新增 `menuRowLevel(row, sandbox)` —— 一行被选中后按钮会变成的等级：
+  预设用它自己的三个值，开关关闭（只有审批模式）时按审批模式叠加**会话保留的**策略。`permissionLevel` 的
+  `sandbox` 参数从 `SessionSandbox` 收成 `Pick<SessionSandbox, "mode" | "network">`（菜单行只知道自己那两个
+  值，与会话的 `advanced` / `switchOn` 无关）。
+- **`permission-select.tsx`**：抽出 `LevelGlyph`（盾牌形状 + 等级色调，非装饰：形状与色调就是等级本身），
+  预设行与审批模式行都在名称前带上它；行不可用时图标随行一同变淡；管理员「更多…」带一个**节点**齿轮
+  （不是注册表路径 —— 路径会被当成装饰标记，Console 主题会隐藏它，名称就不对齐了）；菜单最小宽度
+  `min-w-44` → `min-w-50`（最长内置行「仅工作区可写」+「仅管理员」在中文下此前会被截断）；按钮自己的
+  裸 `15` 改成 `ICON_SIZE.iconButton`。
+- **`chat-input.tsx` / `chat-page.tsx`**：思考等级菜单去掉 `note` 与 `chat.thinkingLevelChangeNote`
+  （中英两份词典同步删）。代价改由**已有的**确认框说明（中途换等级本来就会弹它，并提供先压缩），
+  所以没有信息丢失，也就没有塞进「?」。
+- **`trace-file-view.tsx`**：全局统计改成**卡片**是容器（`Card className="@container"`）而网格用
+  `@2xl:grid-cols-3`。此前是 `sm:grid-cols-3`，按视口判断 —— 停靠栏里那点宽度在 1440 的屏幕上照样三栏并排，
+  九个数里六个被截成 `8…` 这种。
+- **`prose.css`**：`.code-editor.code-wrap { grid-template-columns: minmax(0, 1fr) }` —— 开启换行时两层
+  固定为滚动框的宽度。此前那一列是 `auto`，而 `overflow-wrap: break-word` 不会让一段不可断的长串（长
+  token / URL）变小，那一列会被撑到它自己的长度、两层一起变宽，按「编辑」后每一行都按那个宽度重新折行、
+  文字高度跟着变。**不开换行时仍是 `auto`**（那一列本来就该按最长行算），与 `pre` 的 `min-width: max-content` 一致。
+- **`test/permission-level.test.ts`**：新增一组场景（开关开 / 关 × 受限 / 不受限四种会话），逐行断言
+  `menuRowLevel` 等于「按该行选中后现算的等级」（用 `presetPick` / `approvalModePick` 叠到会话策略上），
+  把「每一行显示的就是它选中后会变成的等级」这半条规则钉住。
+- **changelog**：上游那一对改名到本仓日期与 slug（`2026-10-10-ui-polish-batch{,.zh}.md`）、去掉上游 PR 行、
+  写明「移植自上游 PenguinHarness（#1007，提交 `2604c5d2`）」，并点明未取的那一处。
+
+**有意未取的一处：`Fold` 的 `min-h-0 min-w-0`。** 上游那一笔里让轨迹轮次不再被裁掉的原因有两个，第二个是
+UI 包折叠内容区（`packages/ui/src/components/layout/fold/fold.tsx`）的一行格 `auto` 列没有 `min-w-0`；
+**本树没有 `Fold` 组件**（它由未落地的上游 `#966` 引入 —— `git log --diff-filter=A` 指得出来），
+`grep -rn "data-fold=" packages/ui/src` 为空。所以补丁里三个本树没有的文件
+（`layout/fold/fold.tsx`、`test/fold.test.ts`、`test/activity-group.test.ts`）与两个断言着 `data-fold`
+类名的用例（`disclosure-row.test.ts`、`group-header.test.ts`）用 `--exclude` 排除，按「本树没有这个结构」
+处理，changelog 里也写明了。**`git apply -3` 是原子的**（第十九轮记过）：一个文件进不去就整片回滚 ——
+本轮第一次没带 `--exclude` 时 `git status` 空、什么都没落，正是这个原因。
+
+**本地化**：本笔没有要改的包名（补丁里唯一的 `@prismshadow/` 出现在一条 context 行），9 个文件三路合并后
+全是干净的。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  563 类型）** —— 本笔不动服务契约）。
+- `pnpm lint` **0 警告 0 错误**（2129 文件）· `pnpm format:check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1388** / 6 跳过（67 文件）· ui **1009**（127）· cli **517**（35 文件）·
+  web **3072** / 2 跳过（250 文件，**+4 正是本笔新增的四个场景**）· server **193 文件 / 2795 通过 / 4 跳过**。
+- **界面真跑**（按 `hmr → core → server → web` 逐个重建产物；一次性数据根 `/root/adelie-fork-data/r34-ui`、
+  `localhost:4151`、真浏览器 `zh-CN`；照第三十三轮那手**不用模型 key** 的办法手写一个 Trace 文件当会话，
+  它带一轮工具调用）：
+  1. **权限菜单（沙盒开关关）**：五行各带盾牌 —— 总是询问 / 放行只读为琥珀、全部放行红、全部拒绝灰、
+     更多…为齿轮；面板宽 198px，逐行 `scrollWidth - clientWidth` **全为 0**（没有一行被截断）。
+  2. 把沙盒开关打开（走设置页自己那条 `PUT /api/admin/plugin-config`，返回 **200**）后菜单变成
+     **完全访问红 / 每次询问琥珀 / 仅工作区可写琥珀 / 只读绿 / 更多…齿轮**，同样无一行截断。
+  3. **思考等级菜单**：可见面板的文本就是五行等级名（`低 (low)中 (medium)高 (high)极高 (xhigh)最高 (max)`）
+     —— **那条脚注不在了**。
+  4. **轨迹面板的全局统计**：停靠栏里卡片 552px 时计算出的 `grid-template-columns` 是**单列** 526px，
+     卡内无一个元素越过右缘（1440 与 1024 两个视口各量一次，结果相同 —— 改动前 `sm:` 这个按视口的断点在
+     两者上都会三栏并排）；把停靠栏用自己的拖动把手拖宽到卡片 **1128px** 后变成**三列** 351px × 3，
+     仍无一个元素越界。截图 `06-trace.png` / `09-trace-wide.png`。
+  5. **文件编辑器**：开启换行后 `.code-editor.code-wrap` 计算出的列是 **353px**（滚动框 363px），
+     `pre` 与 `textarea` 都是 353px、滚动框不横向溢出（`scrollWidth` 353）。**反证**：把修复前的规则
+     （`grid-template-columns: auto`）当场注回页面，同一处列宽变成 **1629.61px**、两层都 1630px、
+     滚动框横向溢出（1630 vs 363）—— 正是上游报告的那个 bug；移除注入即恢复 353px。
+  6. **console 0 error、除登录前的 `/api/me` 401 外无一条 4xx**（服务端日志里也只有那一条 401）。
+     截图 14 张与 6 个 `probe*.cjs` 在会话 scratchpad（`r34/`）。
+- 端口只用 **4151**；3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
+
+### 没做 / 还差什么
+
+- **要你拍板的两件**（都在上游 `main` 上、都还没落）：① **`#1000`**（外部程序与 Agent 对话：Agent API、
+  AMSP 流与 `@prismshadow/amsp` 客户端，126 文件 / +13867）—— 它会**引入新的外部运行依赖**，按纪律本轮不动；
+  ② **`#956`**（五个内置 Benchmark，32 文件 / +2049）—— 落地面是干净的，写进去的内容却是上游的
+  「PenguinHarness Benchmark Sec A–E」与指向 `Prism-Shadow/penguin-harness-benchmark` 的链接，而本仓
+  2026-10-05 已把品牌字全量换成 Adelie（2.1c）；要不要搬、搬的话品牌与仓库链接怎么办，等你一句话。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮。
+- `refs/adelie-tmp/*`：本轮把 `upstream-main` 从 `473c9470` 前进到 `2604c5d2`（仍只是本地引用，没推、
+  没改 remote 配置）；仍是第二十三轮那七条 `fix/machine-*`。
+- 中间物：会话 scratchpad 的 `r34/`（`1007.patch`、`seed-traces.mjs`、6 个 `probe*.cjs`、14 张截图、
+  `server.log`、`tests.log`、`build.log`、一次性管理员口令文件）；取证数据根
+  `/root/adelie-fork-data/r34-ui`（一次性，留着当现场）。截图与脚本都没入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `51a79a02`**（11 个文件，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **汇报邮件没发出去（第 22–33 轮同一处卡点，与凭据无关）**：`python3 scripts/mail.py check`
+  （csu-mail 技能目录下，`timeout 60`）**退出 124、一行输出都没有**；裸 socket 探
+  `imap.csu.edu.cn:993` / `smtp.csu.edu.cn:465` / `mail.csu.edu.cn:443` 三个都 `TimeoutError`
+  （10.0–10.2s），而同一时刻 `github.com:443` 秒连。凭据本身正常（`CSU_MAIL_ADDR` 21 字符、
+  `CSU_MAIL_AUTHCODE` 16 字符都注入着，只打印长度）。按技能纪律**只试这一次、没有重试登录**。
+  本轮的正文写在会话 scratchpad 的 `r34/mail-round34.txt`；把第 34 轮的正文路径与主题**加进**既有的
+  周期重发任务 `csu-mail-retry`（现覆盖第 22–34 共十三封、每 6 小时一次、`end_at` 2026-10-12T12:00:00Z、
+  先查「已发送」再补发、发完就删掉自己），没有另开新任务。
