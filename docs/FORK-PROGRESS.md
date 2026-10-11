@@ -250,10 +250,12 @@
 判据是「对着我们的待办与生意」，不是「上游有什么」。上游 `main` 我们本地那份停在 **`c65d407a`**
 （2026-10-11 第三十六轮拉到时）；它比 `60f34c47` 多出三笔，**三笔如今都已落地**：`#1002`（第三十五轮
 落进 5.14）、`#1003`（`penguin chat` 用 OSC 133 标记提示符，第三十七轮落进 5.16）与 `#1001`
-（Task 跑着时的粘贴不再被丢掉，第三十六轮落进 5.15）。`c65d407a` 自己带来的 `#1027`（公司模式：在职
-员工不能删、被删员工不再开新对话、开发模式下员工分组）、`#853`（一个会话排队的 follow-up 上限 16）、
-`#852`（失败的一次性日历事件重试）、`#850`（org store 写入改原子）、`#851`（阻塞工单的 by 主键进图）
-**一笔都还没核**。更早的 `#1000`（Agent API 与 `@prismshadow/amsp` 客户端）与 `#956`
+（Task 跑着时的粘贴不再被丢掉，第三十六轮落进 5.15）。`c65d407a` 自己带来的那五笔里，`#853`（一个会话
+排队的 follow-up 上限 16）**第三十八轮落进 5.17**；`#1027`（公司模式：在职员工不能删、被删员工不再开
+新对话、开发模式下员工分组）、`#852`（失败的一次性日历事件重试）、`#850`（org store 写入改原子）、
+`#851`（阻塞工单的 by 主键进图）**还没落地**——四笔都核过 `git apply -3 --check`，都能干净应用，只是
+`#1027` 是 32 文件 / +1680（三处冲突、界面与品牌面大），`#850` / `#851` / `#852` 三笔同居 org 运行时的
+同一份用例文件、宜一条一条来。更早的 `#1000`（Agent API 与 `@prismshadow/amsp` 客户端）与 `#956`
 （五个内置 Benchmark）**尚未落地**，理由见 5.13 与下面各项。
 
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
@@ -461,6 +463,17 @@
       之间跳转、选中某一轮的输出；在自己的终端里承载对话的程序（上游的用法是 xterm.js 窗格）据此知道
       对话何时回到提示符。**为什么是这一条**：第三十六轮末尾写明它是「下一轮的第一顺位」——与 5.15 同批、
       改的是同一个文件的相邻位置、`git apply -3 --check` 干净、不引入新依赖、不碰 desktop / 包名 / 流水线。
+- [x] **5.17 一个会话排队的 follow-up 上限 16**（上游 `092a595c` `#853`，**2026-10-11 第三十八轮
+      落地**，提交见该节）：带 `queueIfBusy` 的 `POST /api/sessions/:sessionId/tasks` 过去把到的每一条
+      都入队、没有上限，于是「忙工位上的提及风暴 / 一次 @all 扇出」能让队列无限增长，工位一空闲就把每一条
+      重放成一次完整的模型调用；而预算暂停**按设计**不拦提及，这条队列此前没有任何刹车。现在服务端有一个
+      `FOLLOW_UP_QUEUE_LIMIT`（16），第 17 条以 **`429 queue_full`** 明确拒绝而不是静默丢掉；不带
+      `queueIfBusy` 时的 `409 task_in_progress` 不变，排出一条即空出一个位置。总是要求排队的路径——组织
+      频道的 @提及、日程向繁忙工位的派发——把拒绝记成 `org_dispatch_failed` 后继续（周期日程项在下一个槽位
+      照常触发），所以提及不再堆积。**为什么是这一条**：`c65d407a` 上那五笔里唯一一笔「两个源文件 + 一对
+      changelog、`git apply -3` 干净、不需要新依赖、不碰桌面壳 / 包名 / 流水线」的（`#1027` 是 32 文件 /
+      +1680 且三处冲突、品牌与界面面大；`#850` / `#851` / `#852` 都改 org 运行时与同一份
+      `organization-runtime.test.ts`，量过但本轮只做一条）。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -1029,6 +1042,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-11 | 5.15 | **`penguin chat` 在 Task 运行期间的粘贴不再被丢掉**（上游 `8a1868cf` `#1001` 移植，照改动落、不是合分支；6 文件 / +260 −7，含本仓写法的 changelog 一对）：`packages/cli/src/commands/chat.ts` 的粘贴分支不再对 `state !== "idle"` 一律 `return`（旧注释就写着 `// ignore paste while running`）—— `state === "running"` 时改走 `renderer.printLine`（先收掉没结束的流式行）并 `syncInputHold()`（等 Enter 期间压住输出），Enter 那一支改成先 `composer.pushTypedLine(line)` 再把整段（含多行粘贴）作为**一条**插话发出；`watchTask` 返回后若 composer 里还有待发的粘贴，就保留它、把续行提示符画回来（此前 `composer.reset()` 会把它清掉）；审批询问回答后重新 `syncInputHold()`。`inputHold` 的判据从「输入行非空」扩成「输入行非空**或** composer 有待发内容」。`packages/docs/content/cli.{en,zh}.md` 的 REPL 表格那一行补上「键入或粘贴」「多行粘贴作为一条消息」以及「Task 先结束时粘贴留下一次 Enter 发」。本仓本地化只有一处：新用例里的 `@prismshadow/penguin-core` → `@lmliheng/penguin-core` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `pnpm lint` **0 警告 0 错误**（2135 文件）· `pnpm format:check` 干净 · `git diff --check` 干净 · 逐包 `EXIT=0`、**0 失败**：core **1395**/6 跳过（67 文件）· ui **1009**（127）· cli **534**（36 文件，+1 文件 / +4 用例正是本笔新增的 `chat-paste.test.ts`）· web **3093**/2 跳过（251 文件）· server **195 文件 / 2814 通过 / 4 跳过** · docs **62**（8 文件，本轮改了它的 cli 两版）· **反证**：把 `chat.ts` 换回 `HEAD` 那一版、只跑新用例 → **3 失败 1 通过**（两条粘贴场景 + 审批询问期间压住输出那条），换回本笔后 **4 全过**，即这套用例真的钉住了旧缺陷 · **真终端真跑**（重建 cli 产物；一次性数据根 `/root/adelie-fork-data/r36-paste`、`localhost:4191` 服务端 + 仓库自带 `packages/web/e2e/mock-llm.mjs` 顶在 `127.0.0.1:4192`，经 `PUT …/models` 的 `custom` provider 接上，所以是一个真会话；`penguin chat` 跑在 `script` 给的真 pty 上）：发 `slow text test`（假模型分 40 次、每 200ms 吐一段，约 8s）→ 流到 `chunk-15` 时**在运行中粘贴两行并回车** → 终端上粘贴的两行回显、输出停住、提示符回到 `… `、随后一条 `» steering queued (delivered with the next turn): first pasted line / second pasted line`；过一会儿 `⇪ user: first pasted line` / `⇪ user: second pasted line` 出现（插话真的送达）；服务端日志里那一轮只有 **一次 `POST …/steer`（202）**，会话轨迹里只有**一条** `model_msg` 写着 `[user_steering]\nfirst pasted line\nsecond pasted line\n[/user_steering]` —— 即多行粘贴是**整段一条**，不是两条 · 端口只用 4191 / 4192（真终端取证）+ 4193 未用，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；两个临时进程用完已停 | `755ea330` |
 
 | 2026-10-11 | 5.16 | **`penguin chat` 用 OSC 133 标记提示符**（上游 `c95ef950` `#1003` 移植，照改动落、不是合分支；6 文件 / +200，含 changelog 一对）：终端里 `> ` 提示符前写 `A`、其后输入起点写 `B`，提交的 Prompt 开始一轮写 `C`、结束写 `D;0`（抛错路径写 `D;1`）；续行提示符 / 审批询问 / 退出确认不标记，`/thinking`、`/verbose` 这类本地应答的命令不包围；只有 stdin 与 stdout 都是终端且 `TERM` 不是 `dumb` 时才写。**为什么是这一条**：第三十六轮末尾写明它是「下一轮的第一顺位」 | 六包 `typecheck` **`EXIT=0`** · `oxlint` 0 警告 0 错误（2140 文件）· `prettier --check .` 干净 · 逐包 test 全绿：cli **539**（37 文件，+5 正是本笔新用例）· core **1395**/6 跳过（68）· server **195 文件 / 2814 通过 / 4 跳过** · web **3096**/2 跳过（252）· ui **1021**（128）· docs **62**（8，本轮改了它的 cli 两版）· hmr 无测试文件 · **反证**：把 `chat.ts` 换回 `HEAD` 那一版只跑新用例 → **2 失败 / 3 通过**（3 条「不标记」用例本就该通过），换回本笔 → **5 全过** · **真 pty 真跑**：`script` 给的真终端上 `penguin chat --server http://localhost:4291`（一次性数据根 `/root/adelie-fork-data/r37-marks`，模型顶仓库自带 `e2e/mock-llm.mjs` 于 4292），原始输出里的标记序列是 **`A B C D;0 A B`**：`A`→`B` 之间正是 `> ` 提示符、`C` 在第一个 chunk 之前、`D;0` 在 `[stats]` 之后、第二次 `A B` 是下一个提示符、`/exit` 不被包围 · **反证（真终端）**：同一条命令把 stdout 接 `| cat` → 标记 **0 个**，而整轮回复照样跑完（`chunk-40` 在） | `3713a9aa` |
+| 2026-10-11 | 5.17 | **一个会话排队的 follow-up 上限 16**（上游 `092a595c` `#853` 移植，照改动落、不是合分支；4 文件 / +81 −1，含 changelog 一对）：`SessionManager` 新增导出的 `FOLLOW_UP_QUEUE_LIMIT = 16`，`startTask` 的 `queueIfBusy` 分支入队前先判满 —— 满了就抛 `HttpError(429, "queue_full", …)`，不再无上限 `entry.followUps.push`；不带 `queueIfBusy` 的 `409 task_in_progress`、排出一条空出一个位置都不变。上游只带 manager 级用例（队列填满 16 每条都 `queued: true`、第 17 条 429 `queue_full` 且计数不变、排出一条后可再入一条），本仓额外**在真 HTTP 层核过一次**（一次性用例，未入库）。changelog 按本仓惯例改名到本轮日期、去上游 PR 行、写明移植出处，并写明与上游的一处差别：本仓未移植 `#852`，派发被拒的一次性日程项仍会消耗它的时间槽。**为什么是这一条**：`c65d407a` 上那五笔里唯一「两个源文件 + 一对 changelog、`git apply -3` 干净、不要新依赖、不碰桌面壳 / 包名 / 流水线」的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **全绿、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2815 通过 / 4 跳过**（+1 正是本笔新用例）· hmr 无测试文件 · **反证**：把 `session-manager.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`FOLLOW_UP_QUEUE_LIMIT` 不存在，循环一次不跑、计数 0），换回本笔 → **48 全过** · **真 HTTP 层核过**（一次性用例 `zz-tmp-queue-cap-wire.test.ts`，跑完即删、未入库）：借 `createTestApp` + `apiClient` 起真 App，会话停在一次审批上保持 running，`POST …/tasks` 连发 16 条都是 `202 queued:true`、第 17 条 **`429`** 且响应体是 `{"error":{"code":"queue_full","message":"Session … already has 16 queued follow-ups (cap 16); wait for the session to drain."}}`（计数仍是 16）· 本笔不碰界面，未起浏览器、未起服务；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `bdc1633d` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -5637,3 +5651,89 @@ worktree，遇到树不干净就等对方推完再开始，比抢着改安全（
   同名 Agent），另一条断言也因拿到 `{}` 而失败，即**测试隔离/顺序的偶发**，与本轮的改动无关；
   同一次 run 其余 21 个作业全绿。记在这里备查，不是我们这轮要处理的东西。
 
+
+## 第三十八轮：一个会话排队的 follow-up 上限 16（2026-10-11，条目 5.17）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369 全程没碰；
+按本轮纪律**没有碰 `packages/desktop` 与 electron**（依赖没装、磁盘也不为它花）。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `4d3e2df0`，即第三十七轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径仍是 `docs/FORK-PROGRESS.md`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，本轮再核一遍仍然没有可做的：非桌面壳、非发布面剩下的就是画廊
+mock 的演示路径与 `packages/docs` 的环境表，台账里写明了它们留到发布期（第十三轮的口径）；**3.5** 要用户
+拍板且本轮不许碰 desktop、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的②③④要第二台机器、
+**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 / 接不接受 `mermaid` 这个新依赖）。
+
+第三十七轮末尾写明这一轮要量的是上游 tip `c65d407a` 上那五笔。**五笔都量过**：`git apply -3 --check`
+里 `#853` / `#852` / `#850` / `#851` 四笔干净、`#1027` 三处冲突（`api/types.ts`、`http/routes/agents.ts`、
+`http/routes/sessions.ts`）。选 **`#853`（`092a595c`）**：它是五笔里最小的（2 个源文件 + 一对 changelog）、
+不需要新依赖、不碰桌面壳 / 包名 / 流水线，且是一条真的健壮性修复（下面说它修什么）。`#1027` 是 32 文件 /
++1680、品牌与界面面大（公司模式的员工分组重排），留到有整块时间的一轮；`#850` / `#851` / `#852` 三笔都改
+org 运行时并同居同一份 `organization-runtime.test.ts`，一条一条来更稳。
+
+### 改了什么（4 个文件 / +81 −1，含本仓写法的 changelog 一对）
+
+照上游 `092a595c` 的改动落，不是合分支：
+
+- **`packages/server/src/runtime/session-manager.ts`**：新增导出的 `FOLLOW_UP_QUEUE_LIMIT = 16`（注释
+  写明「为什么是上限而不是丢弃」：每条排队的 follow-up 都是一次等着发生的完整模型调用，而这条队列此前
+  没有任何别的刹车 —— org 触发总是要求排队，预算暂停按设计不拦提及），并在 `startTask` 的
+  `queueIfBusy` 分支里、`entry.followUps.push` 之前判满，满了就抛
+  `HttpError(429, "queue_full", …)`。
+- **`packages/server/test/session-manager.test.ts`**：上游那条新用例照落 —— 队列填满 16 条时每一条仍
+  `queued: true`，第 17 条 429 `queue_full` 且计数不变，不带 `queueIfBusy` 的 409 不变，排出一条后
+  恰好能再入一条。
+- **changelog 一对**：改名到本仓日期口径（`2026-10-11-follow-up-queue-cap{,.zh}.md`）、去掉上游 PR 行、
+  写明「移植自上游 PenguinHarness（#853，提交 `092a595c`）」，并**写明与上游那一条的一处差别**：本仓
+  尚未移植 `#852`，所以派发被拒的**一次性**日程项仍会消耗它的时间槽（周期日程项在下一个槽位照常触发，
+  这一点与上游一致）。
+- **本地化**：这一笔一处都不用改 —— 新用例只 import 相对路径，改动本身不碰包名。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2140 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128 文件）·
+  cli **539**（37 文件）· web **3096** / 2 跳过（252 文件）· server **195 文件 / 2815 通过 / 4 跳过**
+  （**+1 正是本笔新增的那条**）· hmr 无测试文件。四个包的数字与第三十七轮的参考值逐个相同。
+- **反证（新用例真的钉住行为）**：`git show HEAD:packages/server/src/runtime/session-manager.ts` 换回
+  改动前那一版、只跑新用例 → **1 失败**（`FOLLOW_UP_QUEUE_LIMIT` 不存在，循环一次都没跑、
+  `pendingFollowUpCount` 读回 0）；换回本笔 → `session-manager.test.ts` **48 全过**。
+- **真 HTTP 层核过**（这是上游那条用例没有的一层）：借仓库自己的 `test/helpers.ts`（`createTestApp` +
+  `apiClient` + `provisionUser`）写了一条**一次性**用例 `packages/server/test/zz-tmp-queue-cap-wire.test.ts`，
+  会话停在一次审批上保持 running，然后连发 17 条 `queueIfBusy: true`：前 16 条都是 `202` 且
+  `queued: true`，第 17 条是 **`429`**，响应体为
+  `{"error":{"code":"queue_full","message":"Session … already has 16 queued follow-ups (cap 16); wait for the session to drain."}}`，
+  服务端的计数仍是 16 —— 即这条上限确实以 429 走到线上，而不只是 manager 里抛出一个异常。**跑完即删、
+  未入库**（`git status --short` 复核过）。
+- 本笔**不碰界面**，因此没起服务、没开浏览器；端口一个没动（3003 / 3004 / 4000 / 7364 / 7369 全程没碰）。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出，是否现在发版等用户点头。
+- 上游 tip `c65d407a` 上还剩四笔**未落**（都量过、都能干净应用）：`#1027`（公司模式，32 文件 / +1680、
+  三处冲突）、`#852`（失败的一次性日历事件重试）、`#850`（org store 写入改原子）、`#851`（阻塞工单的
+  by 主键进图）。**下一轮的建议**：先落 `#852` —— 本笔的 changelog 里已经写明本仓缺它，落完这条差别就
+  没了；`#850` / `#851` / `#852` 三笔同居 `organization-runtime.test.ts`，宜按 `#850` → `#851` → `#852`
+  的顺序一条一条来。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板：
+  促销要不要搬进 Project 自己的配置、接不接受 `mermaid` 作为新渲染依赖）。
+- `refs/adelie-tmp/*`：本轮没有动它（仍是第二十三轮那七条 `fix/machine-*` 加上 `upstream-main` =
+  `c65d407a`；`upstream` remote 仍指着已经不存在的 `/root/penguin-harness`，按分支 URL 取的本地引用照旧能用）。
+- 中间物：会话 scratchpad 的 `r38/`（`853.patch`、`tmp-wire-test.log`、`test-*.log`、`mail-round38.txt`）。
+  日志与补丁都没入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `bdc1633d`**（4 个文件，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **汇报**见本节写完后补记的那一段。
