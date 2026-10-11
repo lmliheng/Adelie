@@ -261,8 +261,9 @@
 **上游 `main` 又往前走了（2026-10-12 第四十二轮拉到 `0e207146`）**：`c65d407a` 之后新推上来 **13 笔**，
 逐笔量过 —— 三笔插件市场是大件（`#1009` 115 文件 / +4009 −2146、`#1012` 44 / +3498、`#1024` 146 文件 /
 +8366 −1339，且互为一体）、`#989` 40 文件、`#993` 碰 desktop、`#809` 45 文件（员工名字与头像）；
-小件里 `#995`（往上翻页时读者被推走）**第四十二轮落进 5.21**，`#996` / `#824` / `#826` / `#834` / `#810` /
-`#793` 各 3–8 文件、`git apply -3 --check` 都干净，留给后面的轮次按同一判据挑。
+小件里 `#995`（往上翻页时读者被推走）**第四十二轮落进 5.21**，`#793`（路由组的 auth 语义）**第四十三轮
+落进 5.22**；`#996` / `#824` / `#826` / `#834` / `#810` 各 3–8 文件、`git apply -3 --check` 都干净，
+留给后面的轮次按同一判据挑（其中 `#824` / `#826` / `#834` / `#810` 碰 web / ui 界面，`#996` 在 core）。
 
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
@@ -522,6 +523,17 @@
       面大）得单独一轮，而这一笔是**上游 `main` 新推上来的 13 笔里唯一一条碰产品主界面、自带一条现成
       e2e、`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线**的（同批的 `#989` 40 文件、
       `#993` 碰 desktop，三笔插件市场是 115 / 44 / 146 文件且互为一体）。
+- [x] **5.22 路由组的 `auth` 标记不再随挂载位置而变、贡献的 `id`/`from` 不可被覆盖**（上游 `24abe4ef`
+      `#793`，**2026-10-12 第四十三轮落地**，提交见该节）：平台的 HTTP 面原先只在第一个受保护路由组之前、
+      于 `/api/*` 上挂**一次**登录门（另加机器代理那处 `/server/*`），于是 —— 以 `auth: "none"` 贡献、
+      位于 `/api` 下的路由组排在受保护组之后时会被一起拦掉（今天的内置公开组都在 `order ≤ 6`、看不出来，
+      但插件贡献的 webhook 组会 401）；没有任何路由组服务的 `/api` 路径对未登录请求答 **401** 而不是被
+      平台拒绝成 **404**。现在登录门挂在**每个受保护组自己的前缀**上、且**每请求只鉴权一次**（前缀嵌套，
+      请求带 user 时跳过，机器代理那处仍受保护）；`GET /api/contributions` 的每条改成 `{ ...data, id, from }`
+      —— 服务端的 `id`/`from` 不再能被贡献数据里的同名字段覆盖。**为什么是这一条**：第四十二轮末尾写明
+      从上游新推上来的六笔小件里挑，这一笔是其中**唯一一条服务端平台面**的（自带 147 行新用例、
+      `git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线），且是一条真的健壮性修复
+      （被丢掉过一次的上游修复，见该节）。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -1095,6 +1107,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-11 | 5.19 | **org store 的写入改原子、崩溃留在两列的工单不再丢**（上游 `ebd9d8d2` `#850` 移植，照改动落、不是合分支；5 文件 / +132 −10，含 changelog 一对）：`writeText()` 从裸 `fs.writeFile` 换成核心的 `atomicWriteFile`（唯一暂存名 + rename，注释写明为什么：截断的 TOML/YAML/MD 会被对账判为非法、把工单从看板移除）；`moveTicket` 删旧列不再用 `.catch(() => {})` 吞错，只放过 `ENOENT`；`reconcile.ts` 的 `listTickets` 不再把「重复 id」与「解析不了」同罪 —— 按 `mtimeMs` 保留最新的一份（新列先写、旧列后删，最新那份正是移动的目标）、过期那份列入非法文件并点名保留了哪一份。唯一本地化：新 import 用本仓的 core scope `@lmliheng/penguin-core` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2819 通过 / 4 跳过**（+3 正是本笔新增的三条）· hmr 无测试文件 · **反证**：把 `store.ts` / `reconcile.ts` 换回 `HEAD` 那一版、只跑新用例 → **2 失败 1 通过**（两列存活、删除失败要抛出这两条挂掉，「不留临时文件」那条本来就过），换回本笔 → 3 条全过 · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `479c3151` |
 | 2026-10-11 | 5.20 | **阻塞工单的 `by` 主体按组织架构校验**（上游 `4ea0d5f9` `#851` 移植，照改动落、不是合分支；4 文件 / +65，含 changelog 一对）：`blockTicket` 在形状校验之后多一步「按架构图核主体」—— `by` 是 `agent:<id>` / `user:<id>` 时交给已有的 `requireChannelPrincipal`（agent 必须是员工、user 必须是 Project 成员），不通过就以 `400 invalid_principal` 拒绝（与其它接受主体的写入路径同一把尺子、同一个码）；工单 id 那一支不变（本来就有存在性检查），省略 `by` 仍清除 `blockedBy`，已存储的 `blocked_by` 不会被改写。**为什么是这一条**：第四十轮末尾写明它是「下一轮的建议」，`c65d407a` 剩下两笔里较小的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2820 通过 / 4 跳过**（+1 正是本笔新用例；`organization-runtime.test.ts` 94 条全绿）· hmr 无测试文件 · **反证**：把 `service.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`agent:acme_ghost` 那条阻塞**成功**了 —— 旧代码只校验形状），换回本笔 → 该用例通过 · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `2a1d6c85` |
 | 2026-10-12 | 5.21 | **往上翻页加载更早的对话时，读者停在原来读的那条消息上**（上游 `5b096c2e` `#995` 移植，照改动落、不是合分支；5 文件 / +260 −8，含 changelog 一对与上游自带的那条新 e2e）：`chat-page.tsx` 的 `allItems` memo 除 `stream.version` 外**还以 `stream.prefixItems` 为键**（列表与修正要在同一次渲染里变化）；`message-stream.tsx` 新增 `anchorRef` + `recordAnchor()` —— 每次滚动与每次提交记下最靠上那条提问在视口里的位置，prepend 时按**它实际被挪动的距离**修 `scrollTop`（记不到那个节点时才退回高度差），顶部那行加载/重试/开头标记的容器从 `pb-2` 改成**恒定 `h-7`**，并只在 `older.hasMore || older.prependedCount > 0`（上方确实还有历史）时渲染。**为什么是这一条**：第四十一轮末尾写明「量一次 `#1027` 到底要几轮，或按 5.x 的口径另找一条可整块落地的」——`#1027` 32 文件 / +1680 得单独一轮；这一笔是上游 `main` 2026-10-12 新推上来的 13 笔里唯一一条碰产品主界面、自带现成 e2e、`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2141 文件，+1 即新 e2e）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **252 文件 / 3096 通过 / 2 跳过** · server **195 文件 / 2820 通过 / 4 跳过** · hmr 无测试文件 · **真跑新 e2e**（重建 core/server/web 产物；一次性数据根 `/tmp/r42-e2e-data`、`localhost:8942` 服务端 + 仓库自带 `packages/web/e2e/mock-llm.mjs` 顶在 `127.0.0.1:8941`）：`npx playwright test … history-prepend-anchor.spec.mjs` → **1 passed（26.5s）**，四次测量（起点 0/150 各两次）位移**全是 0px**、`opened=20 → loaded=40`、只多取一页（`before=1%3A135&limit=20`）· **反证**：把那两个源文件换回 `HEAD` 那一版、重建 web、同一条命令 → **1 failed**，四次位移都是 **24px**（正是顶部那行的高度）—— 即这条 e2e 真的钉住了旧缺陷 · **真浏览器再看一眼**（同一数据根、`localhost:8943`）：会话 45 轮、开页 20 条锚点、滚到顶部后 40 条，截图两张；console 唯一一条 error 是 `GET …/machines` **403**，**在改动前的产物上同样出现**（非 admin 测试账号取项目机器列表，与本笔无关）· 端口只用 8941 / 8942 / 8943，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `2428ebbd` |
+| 2026-10-12 | 5.22 | **路由组的 `auth` 标记不再随挂载位置而变、贡献的 `id`/`from` 不可被覆盖**（上游 `24abe4ef` `#793` 移植，照改动落、不是合分支；5 文件 / +208 −18，含 changelog 一对与上游自带的 147 行新用例）：`HttpModule.setup` 不再用 `let gated` 在第一个受保护组之前给 `/api/*` 挂一次门，而是在**循环里给每个 `auth: "user"` 组挂** `app.use(\`${prefix}/*\`, gate)`；`gate` 是一个先看 `c.var.user` 的薄包装（**已带 user 就 `next()`**，否则走 `authMiddleware`），因此前缀嵌套时每请求仍只鉴权一次、机器代理 `/server/` 那处仍受保护；`contributions.ts` 的每条从 `{ id, from, ...c.data }` 改成 `{ ...c.data, id, from }`。**为什么是这一条**：第四十二轮末尾写明从上游六笔小件里挑，这一笔是其中唯一一条服务端平台面、且自带一份完整新用例（六条，反证时红三条）。**本地化**：新用例里两处 `@prismshadow/penguin-core/kernel` → 本仓的 `@lmliheng/penguin-core/kernel`；changelog 按本仓惯例改名到本轮日期（`2026-10-12-route-group-auth-per-group{,.zh}.md`）、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#793，提交 `24abe4ef`）」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误（2142 文件，+1 即新用例）**· `npx prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（+1 文件、+6 用例，正是本笔的新用例）· hmr 无测试文件 · **反证**：把两个源文件换回 `HEAD` 那一版、只跑新用例 → **3 失败 3 通过**（公开组被拦、未知路径 401、`id` 被覆盖三条挂掉，另三条保护性用例本就该过），换回本笔 → **6 全过** · **真服务端核过**（重建 server 产物；一次性数据根 `/tmp/r43-data`、`localhost:8951`）：未登录请求没有任何路由组服务的 `/api/nothing-here` 与 `/api/definitely/not/a/route` 都是 **404**（此前会是 401）、受保护的 `/api/projects` 未登录仍 **401**；登录后同一端点 **200**、`/api/me` 回 user —— 即每请求一次鉴权、受保护组仍受保护 · **真浏览器再看一眼**：Playwright 打开 `localhost:8951`，落点是 `/chat/new`、标题 `对话 · Adelie`、**console 0 error**（截图在 scratchpad `r43/`）· 端口只用 8951，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -6210,3 +6223,103 @@ mock 的演示路径与 `packages/docs` 的环境表，台账里写明了它们�
   `csu-mail-retry`（现覆盖第 22–42 共二十一封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
 - 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
   （`message_id=om_x100b638a4d3cd4a0c32b97b4b538adc`），所以这一轮的结果不是只躺在队列里。
+
+## 第四十三轮：路由组的 `auth` 标记不再随挂载位置而变（2026-10-12，条目 5.22）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `38520915`，即第四十二轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径仍是 `docs/FORK-PROGRESS.md`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面剩下的活全在桌面壳一侧与部署上，按纪律本机没碰、
+本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，**3.6** 要模型 key（卡点），
+**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 / 接不接受 `mermaid` 这个新
+依赖），**5.3** 的②③④要第二台机器。第四十二轮末尾写明**下一轮的建议**：从上游 `0e207146` 新推上来那批
+里，六笔小件的 `git apply -3 --check` 都干净，按同一判据挑一笔。
+
+这一笔（`24abe4ef` `#793`）是那六笔里**唯一一条服务端平台面**的：2 个源文件 + 一份自带 147 行新用例 +
+changelog 一对，`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线，而且是一次**真健壮性修复**
+（上游自己写着：这两个修复早先写过一次，随一次分支重写被丢掉了，这条是把它们重新落回来）。
+
+### 改了什么（5 个文件 / +210 −18，含 changelog 一对与上游自带的新用例）
+
+照上游 `24abe4ef` 的改动落，不是合分支：
+
+- **`packages/server/src/http/app.ts`**：`HttpModule.setup` 里那个 `let gated` 的位置门去掉 —— 不再在
+  第一个 `auth: "user"` 组之前给 `/api/*` 挂一次门（也不再有「受保护组不在 `/api` 下面就给它自己的前缀
+  单独挂一次」那半边）；改成构造一个 `authenticate`（`authMiddleware(...)`）与一个薄包装 `gate`（**先看
+  `c.var.user`：已经带了就 `next()`，否则走 `authenticate`**），在循环里给**每个** `auth: "user"` 的组挂
+  `app.use(\`${r.prefix.replace(/\/$/, "")}/*\`, gate)`。前缀嵌套（`/api/projects`、
+  `/api/projects/:projectId/members`）时一个请求会经过多次挂载，包装里的那次检查保证**只鉴权一次**。
+  注释照落并写明为什么。
+- **`packages/server/src/http/routes/contributions.ts`**：`GET /api/contributions` 的每条从
+  `{ id: c.id, from: c.from, ...c.data }` 改成 `{ ...c.data, id: c.id, from: c.from }` —— 服务端的
+  `id` / `from` 是归属信息，贡献数据里的同名字段不再能覆盖它们。
+- **`packages/server/test/http-route-groups.test.ts`**（上游自带的新用例，147 行，照落）：六个用例 ——
+  三条钉住这一次的修复（① `auth: "none"` 且 `order: 500` 的公开组排在受保护组之后仍 200；② 没有任何组
+  服务的 `/api` 路径既不是 401 也不是落在某个组处理器上，而是被平台拒绝成 **404** 且带 decline 标记；
+  ③ 贡献数据里伪造的 `id` / `from` 被服务端的值盖回），三条守住**不能被改坏的保护**（④ 受保护组在自己的
+  前缀上设门、含前缀本身；⑤ 不在 `/api` 下的受保护组仍受保护 —— 用 `/server/` 那处；⑥ 一条路径经过两个
+  嵌套受保护前缀时**只鉴权一次** —— 直接数 `authenticateApiToken` 的调用次数）。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-12-route-group-auth-per-group{,.zh}.md`）、
+  去掉上游 PR 行、写明「移植自上游 PenguinHarness（#793，提交 `24abe4ef`）」。
+- **本地化**：本笔唯一需要改 scope 的是新用例里那两行 `@prismshadow/penguin-core/kernel` —— 逐字改成
+  本仓的 `@lmliheng/penguin-core/kernel`（本笔的代码面 `app.ts` / `contributions.ts` 一个 import 都不用改）；
+  `app.ts` 原有的 `MiddlewareHandler<AppEnv>` 与 `declined` 已在树里，无需补前置。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- 新用例先单跑：`pnpm --filter @lmliheng/penguin-server exec vitest run test/http-route-groups.test.ts`
+  → **6 passed（19ms）**。
+- **反证（新用例真的钉住旧缺陷）**：把两个源文件 `git checkout HEAD --` 还原成改动前那一版、同一条命令
+  → **3 failed / 3 passed**（公开组被 401 拦下、未知路径收到 401 而不是 404、`id` 被覆盖成 `forged` ——
+  正是上游说的那三条），恢复本笔 → **6 passed**。
+- `npx oxlint` **0 警告 0 错误（2142 文件，+1 即新用例）** · `npx prettier --check .` 干净 ·
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**
+  （37 文件）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**
+  （+1 文件、+6 用例，正是本笔新增）· hmr 无测试文件。
+- **真服务端核过（本轮主证据之一）**：重建 core / server 产物后，用一次性数据根 `/tmp/r43-data` 在
+  `localhost:8951` 起真服务（`ADELIE_HOME=/tmp/r43-data PORT=8951 ADELIE_SEED_ADMIN_PASSWORD=…`），
+  `curl` 实测 —— 未登录请求**没有任何路由组服务**的 `/api/nothing-here` 与 `/api/definitely/not/a/route`
+  都是 **404**（改动前会是 401，因为门挂在 `/api/*` 上）；受保护的 `/api/projects` 未登录仍 **401**；
+  用 `admin` 登录后同一端点 **200**、`/api/me` 回 user —— 即「每请求一次鉴权」与「受保护组仍受保护」
+  两半都在真 HTTP 面上成立。
+- **真浏览器再看一眼（本轮主证据之二）**：Playwright（会话 cookie 用登录拿到的 `penguin_session`）
+  打开 `localhost:8951`：落点 `/chat/new`、标题 `对话 · Adelie`、**console 0 error**，截图
+  `r43/home.png` 在会话 scratchpad —— 平台的 HTTP 面改完，Web App 照常装配、加载、拉取各接口。
+- 端口只用 8951（数据根 `/tmp/r43-data`），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；没有任何写入落在
+  `~/.penguin` 或 `~/.adelie`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- 上游 `0e207146` 上还留着 11 笔未落（三笔插件市场、`#809`、`#989`、`#993` 及其余五笔小件
+  `#996` / `#824` / `#826` / `#834` / `#810`），**下一轮的建议**是按同一判据从那五笔小件里挑：
+  `#824`（公司侧栏显示对的名称，4 文件 / +77）、`#826`（手机上频道消息的宽度，5 文件 / +91）、
+  `#834`（组织会话渲染用自己的 agent id，3 文件 / +53）、`#810`（频道里没发出的消息留着，8 文件 / +236）
+  都碰 web / ui 界面，`#996`（dots3-note 预览名用 ASCII 括号，4 文件 / +38）在 core；
+  `#1027` 与插件市场那三笔得单独一轮。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板：
+  促销要不要搬进 Project 自己的配置、接不接受 `mermaid` 作为新渲染依赖）。
+- `refs/adelie-tmp/*`：本轮**没有动**（`upstream-main` 仍是 `c65d407a`、`upstream-main-latest` 仍是
+  `0e207146`）；要清就 `git update-ref -d`。
+- 中间物：会话 scratchpad 的 `r43/`（上游补丁、两个源文件的副本、UI 截图、服务端日志）与
+  `/tmp/r43-smoke.mjs`（Playwright 只看一眼的脚本）、`/tmp/r43-data`（一次性数据根）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `b9c8d2e0`**（5 个文件：两个源文件 / 新用例 / 一对 changelog，见「已完成的轮次」那一行）；
+  台账这一笔另起一笔。
+- **推送**：`git push origin main`（`38520915` → `b9c8d2e0` → 台账那一笔）。**没有切版本号、没发 npm、
+  没发安装包、没发发布汇总。**
