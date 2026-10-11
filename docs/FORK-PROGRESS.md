@@ -1054,7 +1054,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 
 | 2026-10-11 | 5.16 | **`penguin chat` 用 OSC 133 标记提示符**（上游 `c95ef950` `#1003` 移植，照改动落、不是合分支；6 文件 / +200，含 changelog 一对）：终端里 `> ` 提示符前写 `A`、其后输入起点写 `B`，提交的 Prompt 开始一轮写 `C`、结束写 `D;0`（抛错路径写 `D;1`）；续行提示符 / 审批询问 / 退出确认不标记，`/thinking`、`/verbose` 这类本地应答的命令不包围；只有 stdin 与 stdout 都是终端且 `TERM` 不是 `dumb` 时才写。**为什么是这一条**：第三十六轮末尾写明它是「下一轮的第一顺位」 | 六包 `typecheck` **`EXIT=0`** · `oxlint` 0 警告 0 错误（2140 文件）· `prettier --check .` 干净 · 逐包 test 全绿：cli **539**（37 文件，+5 正是本笔新用例）· core **1395**/6 跳过（68）· server **195 文件 / 2814 通过 / 4 跳过** · web **3096**/2 跳过（252）· ui **1021**（128）· docs **62**（8，本轮改了它的 cli 两版）· hmr 无测试文件 · **反证**：把 `chat.ts` 换回 `HEAD` 那一版只跑新用例 → **2 失败 / 3 通过**（3 条「不标记」用例本就该通过），换回本笔 → **5 全过** · **真 pty 真跑**：`script` 给的真终端上 `penguin chat --server http://localhost:4291`（一次性数据根 `/root/adelie-fork-data/r37-marks`，模型顶仓库自带 `e2e/mock-llm.mjs` 于 4292），原始输出里的标记序列是 **`A B C D;0 A B`**：`A`→`B` 之间正是 `> ` 提示符、`C` 在第一个 chunk 之前、`D;0` 在 `[stats]` 之后、第二次 `A B` 是下一个提示符、`/exit` 不被包围 · **反证（真终端）**：同一条命令把 stdout 接 `| cat` → 标记 **0 个**，而整轮回复照样跑完（`chunk-40` 在） | `3713a9aa` |
 | 2026-10-11 | 5.17 | **一个会话排队的 follow-up 上限 16**（上游 `092a595c` `#853` 移植，照改动落、不是合分支；4 文件 / +81 −1，含 changelog 一对）：`SessionManager` 新增导出的 `FOLLOW_UP_QUEUE_LIMIT = 16`，`startTask` 的 `queueIfBusy` 分支入队前先判满 —— 满了就抛 `HttpError(429, "queue_full", …)`，不再无上限 `entry.followUps.push`；不带 `queueIfBusy` 的 `409 task_in_progress`、排出一条空出一个位置都不变。上游只带 manager 级用例（队列填满 16 每条都 `queued: true`、第 17 条 429 `queue_full` 且计数不变、排出一条后可再入一条），本仓额外**在真 HTTP 层核过一次**（一次性用例，未入库）。changelog 按本仓惯例改名到本轮日期、去上游 PR 行、写明移植出处，并写明与上游的一处差别：本仓未移植 `#852`，派发被拒的一次性日程项仍会消耗它的时间槽。**为什么是这一条**：`c65d407a` 上那五笔里唯一「两个源文件 + 一对 changelog、`git apply -3` 干净、不要新依赖、不碰桌面壳 / 包名 / 流水线」的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **全绿、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2815 通过 / 4 跳过**（+1 正是本笔新用例）· hmr 无测试文件 · **反证**：把 `session-manager.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`FOLLOW_UP_QUEUE_LIMIT` 不存在，循环一次不跑、计数 0），换回本笔 → **48 全过** · **真 HTTP 层核过**（一次性用例 `zz-tmp-queue-cap-wire.test.ts`，跑完即删、未入库）：借 `createTestApp` + `apiClient` 起真 App，会话停在一次审批上保持 running，`POST …/tasks` 连发 16 条都是 `202 queued:true`、第 17 条 **`429`** 且响应体是 `{"error":{"code":"queue_full","message":"Session … already has 16 queued follow-ups (cap 16); wait for the session to drain."}}`（计数仍是 16）· 本笔不碰界面，未起浏览器、未起服务；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `bdc1633d` |
-| 2026-10-11 | 5.18 | **派发失败的一次性日程项在下一轮重新触发**（上游 `adfa2a19` `#852` 移植，照改动落、不是合分支；5 文件 / +104 −2，含 changelog 一对与对第三十八轮那篇 changelog 结尾一句的更正）：`markCalendarSlot` 的 `slotMs` 放宽成 `number \| null`（那一列本来就允许空），`reconcileCalendar` 在派发返回 skipped 那一支、把通知放回队列并 `mark("error")` 之后，**若 `def.periodMs === undefined`（一次性日程项）就把 `state.lastSlotMs` 退回** —— 下一轮对账重新触发该事件并把重新入队的工位通知一并带走；周期日程项不退槽（下一槽照常触发），因员工被预算暂停而跳过的一次性日程项仍按原规则消耗、不补发。上游那条用例照落（真 SQLite 的 `OrgCacheRepo` + 真 `OrgStore` 文件 + 假 runner：一次性事件打进会抛的 runner → 通知仍在队列、结果是 `error`，下一轮成功触发并带上「For HR」通知，再下一轮不重复触发）。第三十八轮那篇 changelog 结尾原写着「本仓尚未移植 #852」，改为「截至那一笔尚未移植、现已落地」并指向本轮的 changelog。**为什么是这一条**：`c65d407a` 剩下那几笔里最小、`git apply -3` 三点全干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252）· server **195 文件 / 2816 通过 / 4 跳过**（+1 正是本笔新用例）· hmr 无测试文件 · **反证**：把 `reconcile.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`started` 是 0：槽没退回，下一轮什么都不会触发），换回本笔 → 该用例通过、`organization-runtime.test.ts` **90 条全绿** · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `dcb7faef` |
+| 2026-10-11 | 5.18 | **派发失败的一次性日程项在下一轮重新触发**（上游 `adfa2a19` `#852` 移植，照改动落、不是合分支；6 文件 / +80 −2，含 changelog 一对与对第三十八轮那篇 changelog 结尾一句的更正）：`markCalendarSlot` 的 `slotMs` 放宽成 `number \| null`（那一列本来就允许空），`reconcileCalendar` 在派发返回 skipped 那一支、把通知放回队列并 `mark("error")` 之后，**若 `def.periodMs === undefined`（一次性日程项）就把 `state.lastSlotMs` 退回** —— 下一轮对账重新触发该事件并把重新入队的工位通知一并带走；周期日程项不退槽（下一槽照常触发），因员工被预算暂停而跳过的一次性日程项仍按原规则消耗、不补发。上游那条用例照落（真 SQLite 的 `OrgCacheRepo` + 真 `OrgStore` 文件 + 假 runner：一次性事件打进会抛的 runner → 通知仍在队列、结果是 `error`，下一轮成功触发并带上「For HR」通知，再下一轮不重复触发）。第三十八轮那篇 changelog 结尾原写着「本仓尚未移植 #852」，改为「截至那一笔尚未移植、现已落地」并指向本轮的 changelog。**为什么是这一条**：`c65d407a` 剩下那几笔里最小、`git apply -3` 三点全干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252）· server **195 文件 / 2816 通过 / 4 跳过**（+1 正是本笔新用例）· hmr 无测试文件 · **反证**：把 `reconcile.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`started` 是 0：槽没退回，下一轮什么都不会触发），换回本笔 → 该用例通过、`organization-runtime.test.ts` **90 条全绿** · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `dcb7faef` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -5786,7 +5786,7 @@ mock 的演示路径与 `packages/docs` 的环境表，台账里写明了它们�
 （2 个源文件 + 1 份用例 + 一对 changelog）、`git apply -3 --check` **三点全干净**、不引入新依赖、不碰
 桌面壳 / 包名 / 流水线；`#1027` 是 32 文件 / +1680（三处冲突、界面与品牌面大），留给有整块时间的一轮。
 
-### 改了什么（5 个文件 / +104 −2，含 changelog 一对）
+### 改了什么（6 个文件 / +80 −2，含 changelog 一对）
 
 照上游 `adfa2a19` 的改动落，不是合分支：
 
@@ -5836,12 +5836,18 @@ mock 的演示路径与 `packages/docs` 的环境表，台账里写明了它们�
 
 ### 收尾：提交、推送与汇报
 
-- **代码提交 `dcb7faef`**（5 个文件，见「已完成的轮次」那一行）；台账这一笔另起一笔。
-- **推送**：`git push origin main`。
+- **代码提交 `dcb7faef`**（6 个文件，见「已完成的轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`（`878644cc` → `c461f86d`）。**没有切版本号、没发 npm、没发安装包、
+  没发发布汇总。**
+- **CI（推送后）**：run **`38120493179`** —— **22 个作业全绿、`NOT SUCCESS: []`**。本笔只动 server 的两个
+  源文件、一份用例与一对 changelog，矩阵没有动。
 - **汇报邮件没发出去（第 22–38 轮同一处卡点，与凭据无关）**：`python3 scripts/mail.py check`
   （csu-mail 技能目录下，`timeout 90`）**一行输出都没有就退出 124**；裸 socket 探 `smtp.csu.edu.cn:465` /
   `imap.csu.edu.cn:993` / `mail.csu.edu.cn:443` 三个都是立刻失败/超时。凭据本身正常（`CSU_MAIL_ADDR` 21 字符 /
   `CSU_MAIL_AUTHCODE` 16 字符，只打印长度）。按技能纪律**只试这一次、没有重试登录**。本轮的正文写在会话
   scratchpad 的 `r39/mail-round39.txt`；把第 39 轮的正文路径与主题**加进**既有的周期重发任务
-  `csu-mail-retry`（现覆盖第 22–39 共十八封），没有另开新任务。另外照第三十六轮末尾记下的替代通道，
-  **同时用飞书发了一条三五句话的简报到用户**，所以这一轮的结果不是只躺在队列里。
+  `csu-mail-retry`（现覆盖第 22–39 共十八封），没有另开新任务；**并把它的 `end_at` 从
+  `2026-10-12T12:00:00Z` 延到 `2026-10-19T12:00:00Z`** —— 这十八封不该在同一天一起到期消失，发完仍由
+  这个任务自己删掉自己。另外照第三十六轮末尾记下的替代通道，
+  **同时用飞书发了一条三五句话的简报到用户**（`message_id=om_x100b638727a7446cc19a1f8274e2c03`），
+  所以这一轮的结果不是只躺在队列里。
