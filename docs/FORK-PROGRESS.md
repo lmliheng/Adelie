@@ -252,10 +252,10 @@
 落进 5.14）、`#1003`（`penguin chat` 用 OSC 133 标记提示符，第三十七轮落进 5.16）与 `#1001`
 （Task 跑着时的粘贴不再被丢掉，第三十六轮落进 5.15）。`c65d407a` 自己带来的那五笔里，`#853`（一个会话
 排队的 follow-up 上限 16）**第三十八轮落进 5.17**、`#852`（失败的一次性日历事件重试）**第三十九轮落进
-5.18**、`#850`（org store 写入改原子）**第四十轮落进 5.19**；`#1027`（公司模式：在职员工不能删、被删员工不再
-开新对话、开发模式下员工分组）、`#851`（阻塞工单的 by 主键进图）**还没落地**——两笔都核过
-`git apply -3 --check`，都能干净应用，只是 `#1027` 是 32 文件 / +1680（三处冲突、界面与品牌面大），
-`#851` 与已落的 `#850` 同居 org 运行时的同一份用例文件、宜一条一条来。更早的 `#1000`（Agent API 与 `@prismshadow/amsp` 客户端）与 `#956`
+5.18**、`#850`（org store 写入改原子）**第四十轮落进 5.19**、`#851`（阻塞工单的 by 主键进图）**第四十一轮
+落进 5.20**；至此 `c65d407a` 自己带来的那一撮只剩 `#1027`（公司模式：在职员工不能删、被删员工不再开新对话、
+开发模式下员工分组）**还没落地** —— 它核过 `git apply -3 --check` 能干净应用，但 32 文件 / +1680
+（三处冲突、界面与品牌面大），得单独一轮。更早的 `#1000`（Agent API 与 `@prismshadow/amsp` 客户端）与 `#956`
 （五个内置 Benchmark）**尚未落地**，理由见 5.13 与下面各项。
 
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
@@ -495,6 +495,15 @@
       **为什么是这一条**：上一轮末尾写明它是「下一轮的建议」——`c65d407a` 剩下两笔里较小的一笔
       （2 个源文件 + 1 份用例 + 一对 changelog）、`git apply -3 --check` 干净、不引入新依赖、不碰桌面壳 /
       包名 / 流水线。
+- [x] **5.20 阻塞工单的 `by` 主体按组织架构校验**（上游 `4ea0d5f9` `#851`，**2026-10-11 第四十一轮落地**，
+      提交见该节）：`blockTicket` 过去只校验 `by` 的形状（`agent:<id>` / `user:<id>` / 工单 id），不看它指的是谁
+      —— 一个不在架构图上的 `agent:` id，或 Project 之外的 `user:` id，照样写进 `blocked_by`，并在摘要与看板上
+      渲染成「(by …)」，一条没人能认领的归属。组织接受主体的每一条其它写入路径都按同一把尺子来
+      （`requireChannelPrincipal`：`agent:` 必须是员工、`user:` 必须是 Project 成员），只有这一条漏了。现在形状
+      合法的主体也照这把尺子核，不通过就同样以 `400 invalid_principal` 拒绝；工单 id 那一支不变（它本来就有存在性
+      检查），省略 `by` 仍清除 `blockedBy`，已存储的值不会被改写。**为什么是这一条**：第四十轮末尾写明它是
+      「下一轮的建议」——`c65d407a` 剩下两笔里较小的一笔（2 个源文件 + 一对 changelog）、`git apply -3 --check`
+      干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线，且是一条真的健壮性修复（谁也没法认领的归属会登上摘要与看板）。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -1066,6 +1075,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-11 | 5.17 | **一个会话排队的 follow-up 上限 16**（上游 `092a595c` `#853` 移植，照改动落、不是合分支；4 文件 / +81 −1，含 changelog 一对）：`SessionManager` 新增导出的 `FOLLOW_UP_QUEUE_LIMIT = 16`，`startTask` 的 `queueIfBusy` 分支入队前先判满 —— 满了就抛 `HttpError(429, "queue_full", …)`，不再无上限 `entry.followUps.push`；不带 `queueIfBusy` 的 `409 task_in_progress`、排出一条空出一个位置都不变。上游只带 manager 级用例（队列填满 16 每条都 `queued: true`、第 17 条 429 `queue_full` 且计数不变、排出一条后可再入一条），本仓额外**在真 HTTP 层核过一次**（一次性用例，未入库）。changelog 按本仓惯例改名到本轮日期、去上游 PR 行、写明移植出处，并写明与上游的一处差别：本仓未移植 `#852`，派发被拒的一次性日程项仍会消耗它的时间槽。**为什么是这一条**：`c65d407a` 上那五笔里唯一「两个源文件 + 一对 changelog、`git apply -3` 干净、不要新依赖、不碰桌面壳 / 包名 / 流水线」的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **全绿、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2815 通过 / 4 跳过**（+1 正是本笔新用例）· hmr 无测试文件 · **反证**：把 `session-manager.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`FOLLOW_UP_QUEUE_LIMIT` 不存在，循环一次不跑、计数 0），换回本笔 → **48 全过** · **真 HTTP 层核过**（一次性用例 `zz-tmp-queue-cap-wire.test.ts`，跑完即删、未入库）：借 `createTestApp` + `apiClient` 起真 App，会话停在一次审批上保持 running，`POST …/tasks` 连发 16 条都是 `202 queued:true`、第 17 条 **`429`** 且响应体是 `{"error":{"code":"queue_full","message":"Session … already has 16 queued follow-ups (cap 16); wait for the session to drain."}}`（计数仍是 16）· 本笔不碰界面，未起浏览器、未起服务；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `bdc1633d` |
 | 2026-10-11 | 5.18 | **派发失败的一次性日程项在下一轮重新触发**（上游 `adfa2a19` `#852` 移植，照改动落、不是合分支；6 文件 / +80 −2，含 changelog 一对与对第三十八轮那篇 changelog 结尾一句的更正）：`markCalendarSlot` 的 `slotMs` 放宽成 `number \| null`（那一列本来就允许空），`reconcileCalendar` 在派发返回 skipped 那一支、把通知放回队列并 `mark("error")` 之后，**若 `def.periodMs === undefined`（一次性日程项）就把 `state.lastSlotMs` 退回** —— 下一轮对账重新触发该事件并把重新入队的工位通知一并带走；周期日程项不退槽（下一槽照常触发），因员工被预算暂停而跳过的一次性日程项仍按原规则消耗、不补发。上游那条用例照落（真 SQLite 的 `OrgCacheRepo` + 真 `OrgStore` 文件 + 假 runner：一次性事件打进会抛的 runner → 通知仍在队列、结果是 `error`，下一轮成功触发并带上「For HR」通知，再下一轮不重复触发）。第三十八轮那篇 changelog 结尾原写着「本仓尚未移植 #852」，改为「截至那一笔尚未移植、现已落地」并指向本轮的 changelog。**为什么是这一条**：`c65d407a` 剩下那几笔里最小、`git apply -3` 三点全干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252）· server **195 文件 / 2816 通过 / 4 跳过**（+1 正是本笔新用例）· hmr 无测试文件 · **反证**：把 `reconcile.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`started` 是 0：槽没退回，下一轮什么都不会触发），换回本笔 → 该用例通过、`organization-runtime.test.ts` **90 条全绿** · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `dcb7faef` |
 | 2026-10-11 | 5.19 | **org store 的写入改原子、崩溃留在两列的工单不再丢**（上游 `ebd9d8d2` `#850` 移植，照改动落、不是合分支；5 文件 / +132 −10，含 changelog 一对）：`writeText()` 从裸 `fs.writeFile` 换成核心的 `atomicWriteFile`（唯一暂存名 + rename，注释写明为什么：截断的 TOML/YAML/MD 会被对账判为非法、把工单从看板移除）；`moveTicket` 删旧列不再用 `.catch(() => {})` 吞错，只放过 `ENOENT`；`reconcile.ts` 的 `listTickets` 不再把「重复 id」与「解析不了」同罪 —— 按 `mtimeMs` 保留最新的一份（新列先写、旧列后删，最新那份正是移动的目标）、过期那份列入非法文件并点名保留了哪一份。唯一本地化：新 import 用本仓的 core scope `@lmliheng/penguin-core` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2819 通过 / 4 跳过**（+3 正是本笔新增的三条）· hmr 无测试文件 · **反证**：把 `store.ts` / `reconcile.ts` 换回 `HEAD` 那一版、只跑新用例 → **2 失败 1 通过**（两列存活、删除失败要抛出这两条挂掉，「不留临时文件」那条本来就过），换回本笔 → 3 条全过 · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `479c3151` |
+| 2026-10-11 | 5.20 | **阻塞工单的 `by` 主体按组织架构校验**（上游 `4ea0d5f9` `#851` 移植，照改动落、不是合分支；4 文件 / +65，含 changelog 一对）：`blockTicket` 在形状校验之后多一步「按架构图核主体」—— `by` 是 `agent:<id>` / `user:<id>` 时交给已有的 `requireChannelPrincipal`（agent 必须是员工、user 必须是 Project 成员），不通过就以 `400 invalid_principal` 拒绝（与其它接受主体的写入路径同一把尺子、同一个码）；工单 id 那一支不变（本来就有存在性检查），省略 `by` 仍清除 `blockedBy`，已存储的 `blocked_by` 不会被改写。**为什么是这一条**：第四十轮末尾写明它是「下一轮的建议」，`c65d407a` 剩下两笔里较小的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2820 通过 / 4 跳过**（+1 正是本笔新用例；`organization-runtime.test.ts` 94 条全绿）· hmr 无测试文件 · **反证**：把 `service.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`agent:acme_ghost` 那条阻塞**成功**了 —— 旧代码只校验形状），换回本笔 → 该用例通过 · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `2a1d6c85` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -5950,3 +5960,78 @@ mock 的演示路径与 `packages/docs` 的环境表，台账里写明了它们�
   `csu-mail-retry`（现覆盖第 22–40 共十九封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
   另外照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
   （`message_id=om_x100b6382a0343c6cc02b02b6d46dbd0`），所以这一轮的结果不是只躺在队列里。
+
+## 第四十一轮：阻塞工单的 `by` 主体按组织架构校验（2026-10-11，条目 5.20）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `8e17750e`，即第四十轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径仍是 `docs/FORK-PROGRESS.md`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**，本轮再核一遍仍然没有可做的：非桌面壳、非发布面剩下的就是画廊
+mock 的演示路径与 `packages/docs` 的环境表，台账里写明了它们留到发布期（第十三轮的口径）；**3.5** 要用户
+拍板取哪个桌面壳、且本轮不许碰 desktop，**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.3** 的②③④
+要第二台机器，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 / 接不接受 `mermaid` 这个新依赖）。
+
+第四十轮末尾写明的**建议是上游 `#851`**（`4ea0d5f9`，`c65d407a` 剩下两笔里较小的一笔）。量过：
+`git format-patch -1 4ea0d5f9` 后 `git apply -3 --check` 干净（两个源文件 + 一对 changelog，
+4 文件 / +63），不引入新依赖、不碰桌面壳 / 包名 / 流水线，且是一条真的健壮性修复。另一笔 `#1027`
+（公司模式）是 32 文件 / +1680（三处冲突、界面与品牌面大），留给有整块时间的一轮。
+
+### 改了什么（4 个文件 / +65，含 changelog 一对）
+
+照上游 `4ea0d5f9` 的改动落，不是合分支：
+
+- **`packages/server/src/runtime/organization/service.ts`**：`blockTicket` 在形状校验（工单 id / `agent:` /
+  `user:`）与工单存在性检查之后，多一步 —— `p?.kind === "agent" || p?.kind === "user"` 时调用这个文件里
+  已有的 `requireChannelPrincipal(org, by)`（`agent:<id>` 必须是架构图上的员工、`user:<id>` 必须是本
+  Project 的成员，否则 `400 invalid_principal`）。注释照落并说明为什么：这条归属会出现在摘要与看板上，
+  一个没人能认领的 id 会渲染成「(by …)」。工单 id 那一支不变；省略 `by` 仍清除 `blockedBy`；已存储的
+  `blocked_by` 不会被改写（这道闸只管新写入）。
+- **`packages/server/test/organization-runtime.test.ts`**：新增一条用例 —— 架构图上不存在的 `agent:acme_ghost`
+  与 Project 之外的 `user:stranger` 都以 `400 invalid_principal` 被拒；真员工（`agent:${CEO}`）、Project
+  成员（`user:alice`）与一个阻塞用的工单 id 照旧成功（行为不变的那一半）。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-11-block-by-principal-check{,.zh}.md`）、去掉上游
+  PR 行、写明「移植自上游 PenguinHarness（#851，提交 `4ea0d5f9`）」。
+- **本地化**：本笔没有需要改 scope 的 import（`requireChannelPrincipal` 就在同一个文件里），逐字照落。
+- **调用面核过**：`blockTicket` 全仓只有一处调用（`packages/server/src/http/routes/organizations.ts`
+  的 `block` 路由，CLI 的 `penguin org ticket block --by` 与员工工具都走它），没有别的调用点会因此被拒。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2140 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128 文件）·
+  cli **539**（37 文件）· web **3096** / 2 跳过（252 文件）· server **195 文件 / 2820 通过 / 4 跳过**
+  （**+1 正是本笔新增的那一条**；`organization-runtime.test.ts` 94 条全绿）· hmr 无测试文件。
+- **反证（新用例真的钉住行为）**：`git checkout HEAD -- packages/server/src/runtime/organization/service.ts`
+  换回改动前那一版、只跑新用例 → **1 失败**（`agent:acme_ghost` 那条阻塞在旧代码上**成功**了，
+  拒绝断言落空）；把本笔换回去 → **1 通过**。
+- 本笔**不碰界面**，因此没起服务、没开浏览器；端口一个没动。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- 上游 tip `c65d407a` 上只剩**一笔未落**：`#1027`（公司模式：在职员工不能删、被删员工不再开新对话、
+  开发模式下员工分组），32 文件 / +1680、三处冲突（`api/types.ts`、`http/routes/agents.ts` 与品牌面），
+  **下一轮的建议**是量一次它到底要几轮，或者按 5.x 的口径另找一条可整块落地的。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板：
+  促销要不要搬进 Project 自己的配置、接不接受 `mermaid` 作为新渲染依赖）。
+- `refs/adelie-tmp/*`：本轮没有动它（`upstream-main` 仍是 `c65d407a`）。
+- 中间物：会话 scratchpad 的 `r41/`（上游补丁与 `service.patched.ts`）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `2a1d6c85`**（4 个文件：源码 / 用例 / 一对 changelog，见「已完成的轮次」那一行）；
+  台账这一笔另起一笔。
+- **推送**：`git push origin main`。
+- **汇报邮件**见本节末尾的补记。
