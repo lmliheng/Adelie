@@ -276,6 +276,16 @@
 20 / +168 −139，会动主题 token）、`#959`（模型库加 Atlas Cloud 网关分组，21 / +249 −80，属要不要接这家厂商）、
 `#1047`（成本统计的拆分，17 / +487 −97）。这一撮仍按「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的判据挑。
 
+**上游 `main` 又往前走了（2026-10-12 第四十七轮拉到 `d79d8adb`）**：`aae7857f` 之后新推上来 **12 笔**，
+逐笔量过（文件数 / 增删与逐笔结论写在 5.26 下面那一条里）—— 大件是 `#1030` RSI 工具包（116 文件 /
++4715 −1071）、`#1032` 会话归档（98 / +5658 −1691）、`#1037` 服务端自己的 penguin（43 / +3261）；结构面的是
+`#1059` 会话记忆搬进 AgentState 组件（13 / +222 −27）与 `#1060` 在职状态交给后继者（16 / +642 −38）；
+开发链路的是 `#1056` + `#1065` 一对（dev 数据根、链接 CLI 的环境，9 + 20 文件）。界面小件四个里
+**`#1052`（输入框打字不再带动对话）第四十七轮落进 5.26**，`#1049`（插件市场「只看不兼容」搬进设置）、
+`#1050`（全屏下子智能体输入框对齐）、`#1051`（悬停提示的规则）量过留给后面的轮次。这一撮仍按
+「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用是 `refs/adelie-tmp/upstream-main-probe`
+（要清就 `git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -580,6 +590,28 @@
       飞书 / Telegram 为填写并保存）；判定收成一个纯函数 **`enablePrerequisite()`**（导出，四种渠道 ×
       各条理由的优先级 × 「已启用时永不被门挡住」都有用例），保存按钮的 id 由 `useId` 产出，所以同一个
       Session 上同时开着对话框与停靠面板也不会串。远程控制文档（中英）与 changelog 一对跟上。
+- [x] **5.26 在输入框打字不再带动对话**（上游 `fc205d99` `#1052`，**2026-10-12 第四十七轮落地**，提交见该节）：
+      输入框每次按键都用「把文本框收成 `height: auto`、再读 `scrollHeight`」来量高度，而这次读取会让页面按
+      **收起的输入框**排一次版：上方按输入框剩余空间定高的消息列表随之变高，停在底部的列表被浏览器夹到更高
+      视口的较小上限，而把高度写回去**不会**把滚动偏移还回来（列表的最终尺寸没变，所以也没有 ResizeObserver
+      触发）。一两行草稿时，在部分主题与字号组合下（主题的小数间距单位让收起的框比它被设成的高度矮一个零头）
+      列表滑动一个设备像素；草稿超过收起后的那两行则是整行地跳，`stream-follow` 把这次跳动读成用户在向上滚动，
+      于是流式回复不再自动滚进视野、「回到最新消息」按钮随之出现。新增纯逻辑
+      `packages/web/src/lib/textarea-fit.ts`：测量期间把文本框的**父元素**按住当前高度（写的是 `min-height`，
+      所以框变高时仍然推得动父元素，而变小不会夹掉任何偏移），输入框以外的布局一动不动；`chat-input.tsx`
+      （对话页、子智能体面板、草稿页）与 `company/channel-composer.tsx`（公司频道）都改用它。
+- **第四十七轮量过、没移植的（新拉到的 12 笔）**：`#1030`（`8646af72`，116 文件 / +4715 −1071，RSI 工具包与
+      那套框架的重新定位）与 `#1034`（`5c8bd0ae`，15 / +82 −23，Harbor cells）是产品定位面的大件；`#1032`
+      会话归档（`68de779f`，98 / +5658 −1691）、`#1059`（`d22938ce`，13 / +222 −27，会话记忆搬进 AgentState
+      组件）、`#1060`（`1ed7c1cc`，16 / +642 −38，把在职状态交给兼容的后继者）都是服务端结构面、各自一轮；
+      `#1037`（`b63463f8`，43 / +3261）是服务端自己的 penguin；`#1056`/`#1065`（`f1f3cb89` + `d79d8adb`，
+      9 + 20 文件，开发时用的数据根与链接 CLI 的环境）属开发链路、且与桌面壳耦合；`#1048`（`c73395a3`）
+      只改服务端一条测试（Windows 上的 teardown 预算）；`#988`（`8539fc00`，7 / +450，QA 场景任务）与
+      `#990`（`93a7f3e8`，9 / +421，部署时跳过目标已有的构建）要真安装 / 真部署；`#1044` 是给已删的
+      `packages/landing` 发组件画廊（属 2.5 的口径）。同批的界面小件里 `#1049`（`85c495e2`，10 / +317 −52，
+      插件市场「只看不兼容」搬进设置做成开关）、`#1050`（`0e56dc5a`，3 / +79 −53，全屏下子智能体输入框对齐）
+      与 `#1051`（`e5639b32`，67 / +365 −59，悬停提示的规则）都量过：本轮只取 `#1052`（三者里最小、自带一条
+      现成单测、且本机能用真浏览器把改前改后两态都量出来），其余留给后面的轮次按同一判据挑。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1165,6 +1197,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-12 | 5.23 | **目录里 Dots3-Note Preview 的名称改用半角括号**（上游 `0e207146` `#996` 移植，照改动落、不是合分支；4 文件 / +38 −6，含 changelog 一对）：`model-catalog.ts` 里 TokenDance 的 `dots-3-note-preview` 一行显示名由 **Dots3-Note Preview（Free）** 改成 **Dots3-Note Preview (Free)** —— 全角括号是从卖方的中文目录照抄来的，而目录名不随界面语言翻译，宽字形在英文界面上也原样显示；用词与 `Free` 标记仍按卖方写法，只换成目录里其他带括号名称用的 ASCII 形式（`Nemotron 3 Ultra (free)`、`Gemini 3.1 Pro (Preview)`），行内注释写明这个取舍。`model-catalog.test.ts` 里那条断言跟着改名（上游只改这一条，**没有**它 changelog 里写的「显示名不得含中日韩标点」那种新用例，本仓也没加）。预设模型的显示名从目录读、不写进 Project 配置，所以未改过该行的 Project 立即显示新名称、用户自己起过的名称不受影响 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：把 `model-catalog.ts` 换回 `HEAD` 那一版、只跑 `test/model-catalog.test.ts` → **1 失败 / 64 通过**（正是那条断言），换回本笔 → **65 全过** · **真浏览器看到改前与改后两态（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r44-models`、`localhost:8971` 起真服务，Playwright 用 `POST /api/auth/login` 拿会话 cookie 打开 `/models` —— 改后 `Dots3-Note Preview (Free)` 在页面上、`（Free）` 形态**不出现**，`console 0 error`、无一条 4xx；把服务端实际加载的那份 core 产物（`node_modules/.pnpm/@lmliheng+penguin-core@…/dist/chunk-7QAZOTUD.js` —— **这个包是 `file:` 的硬链接副本，改 `packages/core/dist` 不会改到它**，本轮踩到后改对了）换成改动前的字符串、重启服务再打开同一页 → `Dots3-Note Preview（Free）` 出现、半角形态不出现；改回来再跑一次恢复原状 · 端口只用 8971，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-12 | 5.24 | **公司侧栏显示的是当前页面所在的组织**（上游 `aedeac7e` `#824` 移植，照改动落、不是合分支；4 文件 / +77 −2，含 changelog 一对）：公司模式下打开组织的页面时，侧栏（工位、频道）可能停留在**上一次**打开的组织上 —— 页面写着一家公司、侧栏列的是另一家的员工，切换组织时看起来像新组织没有 Session。根因在 `CompanyProvider` 采用「上次打开的组织」（偏好 `lastOrgKey`）的那处 effect：判断用的是**发起它的那次渲染里的值**（`currentOrgKey !== null \|\| lastOrgKey === null`），而同一次提交里子节点 `OrgLayout` 的 effect 先跑、已经设好了当前组织，父节点看到的仍是「没有」，于是用存储的组织盖掉了路由指定的那个；`OrgLayout` 的 effect 因 `key` 未变不再重跑，侧栏就一直停在错的组织上到下一次导航。改动把判断收成 store 的方法 **`adoptLastOrg`**（`createCompanyStore` 里，读 `get()` 的当下值：`currentOrgKey` 已非空或 `lastOrgKey` 为空即返回，否则 `setCurrentOrg(lastOrgKey)`），`CompanyProvider` 的 effect 改调 `store.getState().adoptLastOrg()`，注释写明「按当下的 store 状态决定，不是这一次渲染的」。上游自带的那条用例照落（`company-store.test.ts` 一组三种情形：只有 `lastOrgKey` → 采用它；路由已设 `currentOrgKey` → **保持路由的**；两者都空 → 仍为空）。**为什么是这一条**：第四十四轮末尾写明从上游 `0e207146` 上剩下的四笔小件里挑；这一笔是全在 web 状态层、带一条现成单测、`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的最小一笔，而且本机能起真服务、用真浏览器把 Web App 装配起来核一遍（其余三笔要公司模式多组织夹具或手机宽度/频道夹具） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3097 通过 / 2 跳过**（+1 正是本笔新增的那条）· server **196 文件 / 2826 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：把 `company.tsx` 换回 `HEAD` 那一版、只跑 `test/company-store.test.ts` → **1 失败 18 通过**（新用例在旧代码上 `store.getState().adoptLastOrg is not a function`，即这个方法与这条路径确实是本笔引入的），换回本笔 → **19 全过** · **真界面看一眼**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r45-company`、`localhost:8972` 起真服务，Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login`（`admin`）拿会话 cookie 打开 `/chat/new`：标题 `对话 · Adelie`、侧栏与空态正常渲染，**console 0 error**、登录后没有一条 ≥400 的响应（截图 `r45/home.png` 在 scratchpad）；改前/改后两态的具体组织场景要公司模式的多组织夹具，本轮没造，逻辑那一半由上面那条单测与反证钉住 · 端口只用 8972，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-12 | 5.25 | **远程控制的「启用连接」开关置灰时，点击会说明先做什么**（上游 `7e97d50b` `#1029` 移植，照改动落、不是合分支；9 文件 / +282 −45，含 changelog 一对）：门分成两种 —— 原来一个 `toggleBlocked` 管两件事，现在 `toggleBusy`（保存或切换在飞时才**原生 `disabled`**）与 `enableGate`（前提没满足，开关只**看起来**置灰：`aria-disabled="true"` + `cursor-not-allowed opacity-60` + `aria-describedby` 指向那行提示，**不挂原生 `disabled`**，因此点得下去）。点击不向服务器发任何请求，而是把那句话弹成提示消息（该行还亮着时不重复弹）、把提示行转成告警色 `HINT_EMPHASIS_MS = 1500`，再按 `focus` 把焦点移到该补的地方：微信 / QQ 移到扫码区（`FOCUSABLE` 里第一个可聚焦元素）、飞书 / Telegram 移到第一个空的凭证字段（都填了就移到保存按钮）、表单有未保存修改时移到保存按钮、另一个渠道占着连接时**不动焦点**（那不在这个表单上）。判定收成导出的纯函数 **`enablePrerequisite()`**（已启用 → `null`，即**停用永不被门挡住**；否则按「别的渠道占着 > 没有已保存凭证 > 有未保存修改」取最强的一条），`credentialMissingHint` 因此按渠道措辞（微信「先扫码绑定微信，再启用连接」——原来那句写错了，微信只能扫码），保存按钮的 id 由 `useId` 生成（同一个 Session 上同时开着对话框与停靠面板不会串）。上游自带的新用例照落（四种渠道 × 各条理由与优先级、以及「`aria-disabled` 且没有原生 `disabled`」的渲染断言） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3098 通过 / 2 跳过**（+1 正是本笔新用例）· server **196 文件 / 2826 通过 / 4 跳过** · 另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本笔改了它的两份内容）· hmr 无测试文件 · **反证（单测）**：把 `messaging-binding-editor.tsx` 换回 `HEAD` 那一版、只跑 `test/messaging-binding-editor.test.ts` → **2 failed / 21 passed**（`enablePrerequisite` 不是函数、「置灰的开关仍可点」那条也挂），换回本笔 → **23 全过** · **真界面看两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r46-agent`、`localhost:8973` 起真服务（会话行由 sqlite 写入 `default_project`——这个根没有模型 key，`POST …/sessions` 会被 `model_credential_missing` 退回，即 3.6 那个卡点），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）拿 `POST /api/auth/login` 的 cookie 打开 `/chat/<会话>`、点「右侧栏」→「远程控制」、选中**飞书**渠道：改动后开关 `role="switch"`、**`disabled` 为 false**、`aria-disabled="true"`、`aria-describedby` 指向 `_r_14_-enable-hint`、类名带 `cursor-not-allowed opacity-60`，提示行「先填写 App ID 与 App Secret 并保存，再启用连接」；**点一下**——不产生任何非 GET 请求（`writes: []`）、没有一条 ≥400（`bad: []`）、那句提示在页面上从 1 处变 2 处（**提示消息弹出**）、焦点落到 `_r_14_-app-id`（**第一个空的凭证输入框**），截图 `r46/msg-final-after.png` 里能看到顶部提示消息、告警色的提示行与被聚焦的 App ID 字段；**反证（真界面）**：把本笔 7 个源码 / 文档文件全退回 `HEAD`、重建 web、同一条探针 → 开关**原生 `disabled: true`**、没有 `aria-disabled` / `aria-describedby`、提示行没有 id，`click()` 之后**什么都没发生**（无提示消息、焦点仍在按钮、无请求）· 端口只用 8973，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d478fa89` |
+| 2026-10-12 | 5.26 | **在输入框打字不再带动对话**（上游 `fc205d99` `#1052` 移植，照改动落、不是合分支；6 文件 / +113 −9，含 changelog 一对）：输入框每次按键都用「把文本框收成 `height: auto`、再读 `scrollHeight`」来量高度，而这次读取会让页面按**收起的输入框**排一次版 —— 上方按输入框剩余空间定高的消息列表随之变高，停在底部的列表被浏览器夹到更高视口的较小上限；把高度写回去不会把滚动偏移还回来（列表最终尺寸没变，所以也没有 ResizeObserver 触发）。一两行草稿时，在部分主题与字号组合下（主题的小数间距单位让收起的框比它被设成的高度矮一个零头）列表滑动一个设备像素；草稿超过收起后的那两行则整行地跳，`stream-follow` 把这次跳动读成用户在向上滚动，于是流式回复不再自动滚进视野、「回到最新消息」按钮随之出现。新增纯逻辑 `packages/web/src/lib/textarea-fit.ts`（`fitTextarea(box, measure)`：测量期间把文本框的**父元素**按住当前高度，写的是 `min-height` —— 框变高时仍然推得动父元素，变小不会夹掉任何偏移；父元素高度读的是计算样式而不是 client rect，后者会被入场动画的 transform 缩放、也会被取整），`chat-input.tsx`（对话页、子智能体面板、草稿页）与 `company/channel-composer.tsx`（公司频道，边框仍照原样加回）都改用它。上游自带的新用例照落（父元素在收起测量期间被按住、测量后拿回自己的 `min-height`；没有父元素时照常定高） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过**（+2 即本笔新文件的两条）· server **196 文件 / 2826 通过 / 4 跳过** · 新用例先单跑 `test/textarea-fit.test.ts` → **2 passed** · **真界面两态都量了（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r47-composer` 起真服务（`localhost:8974`，配 `custom` provider 指向本仓自带的 mock LLM `packages/web/e2e/mock-llm.mjs`，所以有**真会话、真回复、真工具调用**），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 发两轮、再把草稿填成四行、把消息列表停在底部，然后**只多打一个字符**：改动后 `scrollTop` 800 → 800（**位移 0**）、仍在底部、没有「回到最新消息」按钮、console 0 error、无一条 ≥400（连跑两次同样结果）；**反证（真界面）**：把 `chat-input.tsx` / `channel-composer.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → `scrollTop` **800 → 760（位移 40px）**、`atBottom` 变 false、「回到最新消息」按钮**出现**，截图 `r47-before.png` 里能看到内容被推走与那个圆形按钮，`r47-after.png` 里没有 · 端口只用 8974（mock LLM 用 8975），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `049563eb` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -6738,3 +6771,106 @@ git merge --ff-only origin/main` → `Already up to date.`（头是 `192f543b`�
   `csu-mail-retry`（现覆盖第 22–46 共二十五封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
 - 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
   （`message_id=om_x100b63f8085620a0deea22cd39a321e`），所以这一轮的结果不是只躺在队列里。
+
+## 第四十七轮：在输入框打字不再带动对话（2026-10-12，条目 5.26）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `eccef7e3`，即第四十六轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径是 `docs/FORK-PROGRESS.md`，prompt 里写的 `/root/adelie-fork/FORK-PROGRESS.md` 与
+`/root/adelie-fork/FORK.md` 都是旧位置。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面的活全在桌面壳一侧、本机部署单元与画廊 /
+文档两个演示面，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，
+**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project
+配置 / 接不接受 `mermaid` 这个新依赖），**5.3** 的②③④要第二台机器。于是照前几轮的做法，去上游
+`main` 上挑一笔「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的。
+
+本轮探到的 12 笔里，界面小件只有四笔，`#1052` 是其中最合适的一笔：**它是一条用户点得到、也看得见的
+真缺陷**（上游报告是「每打一个字，对话历史抖 0.2px」），自带一条完整的纯逻辑单测，改动只碰 web 的
+两个调用点与一个新模块，而且**本机能用真服务端 + 真浏览器把「改前会动、改后不动」两态都量出来**
+（同批的 `#1049` / `#1050` / `#1051` 分别要一份本仓没有的夹具或会动主题 token，量过记在 5.26 下面
+那一条里，留给后面的轮次）。
+
+### 改了什么（6 个文件 / +113 −9，含 changelog 一对）
+
+照上游 `fc205d99` 的改动落，不是合分支：
+
+- **`packages/web/src/lib/textarea-fit.ts`**（新，纯逻辑，33 行）：导出 `fitTextarea(box, measure)`。
+  测量期间把文本框的**父元素**按住当前高度（写 `min-height`，取的是**计算样式**：client rect 会被入场
+  动画的 transform 缩放、offsetHeight 又按整像素取整，两者都会让父元素自己挪一下），收起、测量、再放开。
+  `measure` 由调用方给（它知道自己要加不加边框、上限多少）。注释写的是「为什么」——为什么必须按住父元素、
+  为什么按的是计算样式、为什么用 `min-height`。
+- **`packages/web/src/features/chat/chat-input.tsx`**：`autoGrow` 从内联的「`height: auto` → 读
+  `scrollHeight` → 写回」换成 `fitTextarea(el, (box) => Math.min(box.scrollHeight, 176))`，注释点明
+  上方消息列表是按输入框剩余空间定高的。
+- **`packages/web/src/features/company/channel-composer.tsx`**：同一处改法，边框仍照原样加回
+  （`box.scrollHeight + box.offsetHeight - box.clientHeight`，原代码的 `offsetHeight - clientHeight`
+  是在收起前的框上算的，放进 `measure` 里就换成当时那个框）。
+- **`packages/web/test/textarea-fit.test.ts`**（新）：上游那两条用例照落 —— 收起测量那一次父元素确实
+  被按在它的高度上、测完拿回自己的 `min-height`；没有父元素时照常定高。
+- **changelog 一对**：`2026-10-12-composer-typing-keeps-transcript{,.zh}.md`，按本仓惯例去掉上游的
+  PR 行、写明「移植自上游 PenguinHarness（#1052，提交 `fc205d99`）」并补一条「接口、线上格式与已存数据
+  都没有变化」。
+- **本地化**：本笔没有需要改 scope 的 import，逐字照落；公司频道那条注释里本仓的「发送」字样保留、
+  只加上新的一句（上游那一笔顺手把 `发送` 改成了 `Send`，与本次修复无关，没有跟）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- 新用例先单跑：`pnpm --filter @lmliheng/penguin-web exec vitest run test/textarea-fit.test.ts` →
+  **2 passed**。
+- `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128 文件）· cli **539**
+  （37 文件）· web **253 文件 / 3100 通过 / 2 跳过**（比上一轮 +2，正是本笔新文件的两条）· server
+  **196 文件 / 2826 通过 / 4 跳过**。hmr 无测试文件。
+- **真界面两态都量了（本轮主证据，且第一次用上了仓库自带的 mock LLM 拿真会话）**：重建 core / server /
+  web 产物后，一次性数据根 `/root/adelie-fork-data/r47-composer`、`localhost:8974` 起真服务，配
+  `custom` provider 指向本仓自带的 `packages/web/e2e/mock-llm.mjs`（8975），因此探针拿到的是**真会话、
+  真回复、真工具调用**（不再是上一轮那种手写会话行）。Playwright（`playwright-core@1.61.1` + 本地
+  chromium-1243）用 `POST /api/auth/login` 的会话 cookie：新开一个会话、发两轮（每轮 thinking + 工具
+  调用 + 长回复）让消息列表在 460px 高的视口里溢出（`scrollHeight` 953 / `clientHeight` 193），把草稿
+  填成**四行**、把列表停在底部，然后**只多打一个字符**：
+  - **改动后**：`scrollTop` **800 → 800（位移 0）**、`atBottom` 仍为 true、没有「回到最新消息」按钮、
+    composer 与父元素高度前后都是 100 / 154（**不是**靠布局变化换来的 0）、`console 0 error`、无一条
+    ≥400 的响应；同一条探针**连跑两次**结果一致（`r47-after.png` / `r47-after2.png`）。
+  - **反证（真界面）**：把 `chat-input.tsx` / `channel-composer.tsx` 退回 `HEAD` 那一版、重建 web、
+    同一条探针 → `scrollTop` **800 → 760（位移 40px）**、`atBottom` 变 false、「回到最新消息」按钮
+    **出现**（`button[aria-label="回到最新消息"]`），截图 `r47-before.png` 里能看到内容被推走与那个
+    圆形按钮 —— 即这条行为确实是本笔带来的，且探针确实量得到它。
+  - 端口只用 8974（mock LLM 8975）；除 `/root/adelie-fork-data/r47-composer`、`/tmp` 与 scratchpad
+    外没有实际写入，没有写进 `~/.penguin` 或 `~/.adelie`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- 探针只量了「整行跳」那一态（一个字符 40px）。上游报告的另一态是**整像素级的抖动**（一两行草稿、
+  主题的间距单位是小数时，2 倍设备像素下每次按键滑半个设备像素）—— 那一态要 `deviceScaleFactor: 2`
+  配特定主题与字号才稳，本轮没复现（逻辑由 `textarea-fit.test.ts` 与上面那条真界面反证一起钉住）。
+- 上游 changelog 里写的另外两条「未测」照抄不改：Safari / Firefox 与 Electron 壳没测；公司频道的输入框
+  本轮也没在浏览器里量（只改了代码）。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- **上游 `main` 又往前走了（本轮探到 `d79d8adb`）**：`git fetch --no-tags
+  https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-probe`
+  → `d79d8adb`（`#1065`，2026-10-12）。新增的 12 笔已逐笔量过，记在「跟上游学」一节的上面那一段里。
+- 中间物：会话 scratchpad 的 `r47/`（探针脚本 `composer-probe.mjs`、三张截图、退回前留底的两个
+  `fixed/` 文件）与 `/root/adelie-fork-data/r47-composer`（一次性数据根，含三个真会话）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交**（6 个文件：新模块、它的用例、两个调用点与 changelog 一对）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+
+### CI（推送后）
+
+- 待推送后补记。
+
