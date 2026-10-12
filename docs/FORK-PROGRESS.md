@@ -286,6 +286,21 @@
 「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用是 `refs/adelie-tmp/upstream-main-probe`
 （要清就 `git update-ref -d`）。
 
+**上游 `main` 又往前走了（2026-10-13 第四十八轮拉到 `b2c3de9f`）**：`d79d8adb` 之后新推上来 **15 笔**，逐笔量过 ——
+大件是 `#1023`（`79650163`，109 文件，机器侧从源码检出构建自己的安装镜像）与 `#827`（`123e5035`，15 文件，
+服务端跟着活的 App 树走并把整棵 harness 交出去，三处冲突）；结构面的是 `#1014`（`c8f78063`，23 文件，插件改动
+只作用于被浏览的那台机器，要本树没有的 6 个文件）、`#1068`（`1d277251`，16 文件，浏览器面板的后端开关搬进
+设置）、`#1066`（`0a8c0247`，16 文件，方法下拉与起始页计数读插件库）、`#1069`（`24a2eb38`，13 文件，截断文本的
+悬停提示 —— 它是 `#1051` 的后继，要本树没有的 `archived-sessions-section.tsx`）、`#1064`（`542e4586`，19 文件，
+内置 Benchmark 增 GDPevo Train/Test）、`#1063`（`7fc8bd23`，29 文件，Penguin Go 换 MMSP）；小件里 **`#1050`
+第四十八轮落进 5.27**，另有 `#1074`（`0067f37c`，3 文件，Benchmark 题目列表每页 5 条）、`#1071`（`4d4f26f5`，
+2 文件，机器页空态文案随 Agent 列表）、`#1070`（`7527dd98`，3 文件，Frost/白领主题静止时也显示滚动条）、
+`#1067`（`6a6b83f9`，8 文件，起始页文案与排版）、`#1072`（`824ded16`，5 文件，起始页滑雪示例）、
+`#1073`（`b2c3de9f`，7 文件，插件导入的「交给智能体」入口，要本树没有的 `plugin-import-modal.tsx`）、
+`#835`（`cca7bcfb`，4 文件，服务端在被锁住的上一个树里仍发完整资产，要本树没有的 `terminal-path-first.test.ts`）。
+这一撮仍按「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用仍是
+`refs/adelie-tmp/upstream-main-probe`。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -600,6 +615,16 @@
       `packages/web/src/lib/textarea-fit.ts`：测量期间把文本框的**父元素**按住当前高度（写的是 `min-height`，
       所以框变高时仍然推得动父元素，而变小不会夹掉任何偏移），输入框以外的布局一动不动；`chat-input.tsx`
       （对话页、子智能体面板、草稿页）与 `company/channel-composer.tsx`（公司频道）都改用它。
+- [x] **5.27 智能体面板全屏时，输入区与子会话对话对齐**（上游 `0e56dc5a` `#1050`，**2026-10-13 第四十八轮
+      落地**，提交见该节）：智能体面板把所选子会话的对话排在主对话的阅读列里（居中、限宽 `max-w-3xl`），输入区
+      却铺满整个面板 —— 停靠时两者都落在停靠栏宽度内，看不出差别；停靠栏**全屏**后对话仍是居中的一列，输入区
+      却横贯被覆盖的整行。`SubagentComposer`（`packages/web/src/features/chat/subagents-view.tsx`）现在把
+      `ChatInput` 包在同一个 `mx-auto max-w-3xl` 列里（与主对话输入区同一写法），注释写明「全屏的停靠栏比这一列
+      宽，输入区必须与上方的消息对齐而不是铺满整个面」。停靠状态一字未改（两边都窄于上限，包不包都一样）。
+      **为什么是这一条**：第四十七轮末尾写明从上游新推上来的界面小件里挑；这一笔是候选里唯一
+      `git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线，且**本机能用仓库自带的 mock 模型造出真
+      子会话、在真浏览器里把改前改后两态都量出来**的（`#1049` 要本树没有的 `plugins-page-render.test.ts` 加 5 处
+      冲突、`#1051` 67 文件 / 7 处冲突、它的后继 `#1069` 还要本树没有的 `archived-sessions-section.tsx`）。
 - **第四十七轮量过、没移植的（新拉到的 12 笔）**：`#1030`（`8646af72`，116 文件 / +4715 −1071，RSI 工具包与
       那套框架的重新定位）与 `#1034`（`5c8bd0ae`，15 / +82 −23，Harbor cells）是产品定位面的大件；`#1032`
       会话归档（`68de779f`，98 / +5658 −1691）、`#1059`（`d22938ce`，13 / +222 −27，会话记忆搬进 AgentState
@@ -1198,6 +1223,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-12 | 5.24 | **公司侧栏显示的是当前页面所在的组织**（上游 `aedeac7e` `#824` 移植，照改动落、不是合分支；4 文件 / +77 −2，含 changelog 一对）：公司模式下打开组织的页面时，侧栏（工位、频道）可能停留在**上一次**打开的组织上 —— 页面写着一家公司、侧栏列的是另一家的员工，切换组织时看起来像新组织没有 Session。根因在 `CompanyProvider` 采用「上次打开的组织」（偏好 `lastOrgKey`）的那处 effect：判断用的是**发起它的那次渲染里的值**（`currentOrgKey !== null \|\| lastOrgKey === null`），而同一次提交里子节点 `OrgLayout` 的 effect 先跑、已经设好了当前组织，父节点看到的仍是「没有」，于是用存储的组织盖掉了路由指定的那个；`OrgLayout` 的 effect 因 `key` 未变不再重跑，侧栏就一直停在错的组织上到下一次导航。改动把判断收成 store 的方法 **`adoptLastOrg`**（`createCompanyStore` 里，读 `get()` 的当下值：`currentOrgKey` 已非空或 `lastOrgKey` 为空即返回，否则 `setCurrentOrg(lastOrgKey)`），`CompanyProvider` 的 effect 改调 `store.getState().adoptLastOrg()`，注释写明「按当下的 store 状态决定，不是这一次渲染的」。上游自带的那条用例照落（`company-store.test.ts` 一组三种情形：只有 `lastOrgKey` → 采用它；路由已设 `currentOrgKey` → **保持路由的**；两者都空 → 仍为空）。**为什么是这一条**：第四十四轮末尾写明从上游 `0e207146` 上剩下的四笔小件里挑；这一笔是全在 web 状态层、带一条现成单测、`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的最小一笔，而且本机能起真服务、用真浏览器把 Web App 装配起来核一遍（其余三笔要公司模式多组织夹具或手机宽度/频道夹具） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3097 通过 / 2 跳过**（+1 正是本笔新增的那条）· server **196 文件 / 2826 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：把 `company.tsx` 换回 `HEAD` 那一版、只跑 `test/company-store.test.ts` → **1 失败 18 通过**（新用例在旧代码上 `store.getState().adoptLastOrg is not a function`，即这个方法与这条路径确实是本笔引入的），换回本笔 → **19 全过** · **真界面看一眼**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r45-company`、`localhost:8972` 起真服务，Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login`（`admin`）拿会话 cookie 打开 `/chat/new`：标题 `对话 · Adelie`、侧栏与空态正常渲染，**console 0 error**、登录后没有一条 ≥400 的响应（截图 `r45/home.png` 在 scratchpad）；改前/改后两态的具体组织场景要公司模式的多组织夹具，本轮没造，逻辑那一半由上面那条单测与反证钉住 · 端口只用 8972，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-12 | 5.25 | **远程控制的「启用连接」开关置灰时，点击会说明先做什么**（上游 `7e97d50b` `#1029` 移植，照改动落、不是合分支；9 文件 / +282 −45，含 changelog 一对）：门分成两种 —— 原来一个 `toggleBlocked` 管两件事，现在 `toggleBusy`（保存或切换在飞时才**原生 `disabled`**）与 `enableGate`（前提没满足，开关只**看起来**置灰：`aria-disabled="true"` + `cursor-not-allowed opacity-60` + `aria-describedby` 指向那行提示，**不挂原生 `disabled`**，因此点得下去）。点击不向服务器发任何请求，而是把那句话弹成提示消息（该行还亮着时不重复弹）、把提示行转成告警色 `HINT_EMPHASIS_MS = 1500`，再按 `focus` 把焦点移到该补的地方：微信 / QQ 移到扫码区（`FOCUSABLE` 里第一个可聚焦元素）、飞书 / Telegram 移到第一个空的凭证字段（都填了就移到保存按钮）、表单有未保存修改时移到保存按钮、另一个渠道占着连接时**不动焦点**（那不在这个表单上）。判定收成导出的纯函数 **`enablePrerequisite()`**（已启用 → `null`，即**停用永不被门挡住**；否则按「别的渠道占着 > 没有已保存凭证 > 有未保存修改」取最强的一条），`credentialMissingHint` 因此按渠道措辞（微信「先扫码绑定微信，再启用连接」——原来那句写错了，微信只能扫码），保存按钮的 id 由 `useId` 生成（同一个 Session 上同时开着对话框与停靠面板不会串）。上游自带的新用例照落（四种渠道 × 各条理由与优先级、以及「`aria-disabled` 且没有原生 `disabled`」的渲染断言） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3098 通过 / 2 跳过**（+1 正是本笔新用例）· server **196 文件 / 2826 通过 / 4 跳过** · 另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本笔改了它的两份内容）· hmr 无测试文件 · **反证（单测）**：把 `messaging-binding-editor.tsx` 换回 `HEAD` 那一版、只跑 `test/messaging-binding-editor.test.ts` → **2 failed / 21 passed**（`enablePrerequisite` 不是函数、「置灰的开关仍可点」那条也挂），换回本笔 → **23 全过** · **真界面看两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r46-agent`、`localhost:8973` 起真服务（会话行由 sqlite 写入 `default_project`——这个根没有模型 key，`POST …/sessions` 会被 `model_credential_missing` 退回，即 3.6 那个卡点），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）拿 `POST /api/auth/login` 的 cookie 打开 `/chat/<会话>`、点「右侧栏」→「远程控制」、选中**飞书**渠道：改动后开关 `role="switch"`、**`disabled` 为 false**、`aria-disabled="true"`、`aria-describedby` 指向 `_r_14_-enable-hint`、类名带 `cursor-not-allowed opacity-60`，提示行「先填写 App ID 与 App Secret 并保存，再启用连接」；**点一下**——不产生任何非 GET 请求（`writes: []`）、没有一条 ≥400（`bad: []`）、那句提示在页面上从 1 处变 2 处（**提示消息弹出**）、焦点落到 `_r_14_-app-id`（**第一个空的凭证输入框**），截图 `r46/msg-final-after.png` 里能看到顶部提示消息、告警色的提示行与被聚焦的 App ID 字段；**反证（真界面）**：把本笔 7 个源码 / 文档文件全退回 `HEAD`、重建 web、同一条探针 → 开关**原生 `disabled: true`**、没有 `aria-disabled` / `aria-describedby`、提示行没有 id，`click()` 之后**什么都没发生**（无提示消息、焦点仍在按钮、无请求）· 端口只用 8973，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d478fa89` |
 | 2026-10-12 | 5.26 | **在输入框打字不再带动对话**（上游 `fc205d99` `#1052` 移植，照改动落、不是合分支；6 文件 / +113 −9，含 changelog 一对）：输入框每次按键都用「把文本框收成 `height: auto`、再读 `scrollHeight`」来量高度，而这次读取会让页面按**收起的输入框**排一次版 —— 上方按输入框剩余空间定高的消息列表随之变高，停在底部的列表被浏览器夹到更高视口的较小上限；把高度写回去不会把滚动偏移还回来（列表最终尺寸没变，所以也没有 ResizeObserver 触发）。一两行草稿时，在部分主题与字号组合下（主题的小数间距单位让收起的框比它被设成的高度矮一个零头）列表滑动一个设备像素；草稿超过收起后的那两行则整行地跳，`stream-follow` 把这次跳动读成用户在向上滚动，于是流式回复不再自动滚进视野、「回到最新消息」按钮随之出现。新增纯逻辑 `packages/web/src/lib/textarea-fit.ts`（`fitTextarea(box, measure)`：测量期间把文本框的**父元素**按住当前高度，写的是 `min-height` —— 框变高时仍然推得动父元素，变小不会夹掉任何偏移；父元素高度读的是计算样式而不是 client rect，后者会被入场动画的 transform 缩放、也会被取整），`chat-input.tsx`（对话页、子智能体面板、草稿页）与 `company/channel-composer.tsx`（公司频道，边框仍照原样加回）都改用它。上游自带的新用例照落（父元素在收起测量期间被按住、测量后拿回自己的 `min-height`；没有父元素时照常定高） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过**（+2 即本笔新文件的两条）· server **196 文件 / 2826 通过 / 4 跳过** · 新用例先单跑 `test/textarea-fit.test.ts` → **2 passed** · **真界面两态都量了（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r47-composer` 起真服务（`localhost:8974`，配 `custom` provider 指向本仓自带的 mock LLM `packages/web/e2e/mock-llm.mjs`，所以有**真会话、真回复、真工具调用**），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 发两轮、再把草稿填成四行、把消息列表停在底部，然后**只多打一个字符**：改动后 `scrollTop` 800 → 800（**位移 0**）、仍在底部、没有「回到最新消息」按钮、console 0 error、无一条 ≥400（连跑两次同样结果）；**反证（真界面）**：把 `chat-input.tsx` / `channel-composer.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → `scrollTop` **800 → 760（位移 40px）**、`atBottom` 变 false、「回到最新消息」按钮**出现**，截图 `r47-before.png` 里能看到内容被推走与那个圆形按钮，`r47-after.png` 里没有 · 端口只用 8974（mock LLM 用 8975），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `049563eb` |
+| 2026-10-13 | 5.27 | **智能体面板全屏时，输入区与子会话对话对齐**（上游 `0e56dc5a` `#1050` 移植，照改动落、不是合分支；3 文件 / +82 −53，含 changelog 一对）：智能体面板把所选子会话的对话排在主对话的阅读列里（居中、限宽 `max-w-3xl`），输入区却铺满整个面板 —— 停靠时两者都落在停靠栏宽度内（本机量得输入区 538px、对话列 528px），看不出差别；停靠栏**全屏**后对话仍是居中的一列（768px），输入区却横贯被覆盖的整行。`SubagentComposer`（`packages/web/src/features/chat/subagents-view.tsx`）现在把 `ChatInput` 包在同一个 `mx-auto max-w-3xl` 列里（与 `chat-page.tsx` 里主对话输入区的同一写法），注释写明「全屏的停靠栏与对话列一样宽或更宽，输入区必须与上方的消息对齐而不是铺满整个面；停靠的面板窄于这个上限，所以那里什么都不变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例，数与前一轮一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r48-agents-panel`、`localhost:8976` 起真服务，配 `custom` provider 指向本仓自带的 mock LLM（8977），所以拿到的是**真会话、真子会话**（父会话发「run a subagent」→ 真 `run_subagent` → 子会话自带一轮工具调用 + 报告）；Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 打开该会话、点开子会话 chip 让 `智能体面板` 停靠标签激活，再点 `dock-fullscreen`：**改动后 1440px 窗口**——输入框 `x=491 w=746`、对话列 `x=480 w=768`（输入区落在阅读列内、左侧对齐），**1920px** —— 输入框 `x=731 w=746`、对话列 `x=720 w=768`；**停靠态两边一致**（输入框 `x=883 w=538`、对话列 `x=888 w=528`，与改动前逐字相同）；`console 0 error`、无一条 ≥400；**反证（真界面）**：把 `subagents-view.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → 全屏下输入框 `x=307 w=1114`（1440px）/ `x=307 w=1594`（1920px）横贯被覆盖的整行（1152 / 1632px），对话列仍是 `x=480 w=768` / `x=720 w=768`，停靠态与改动后一致；改回来再跑一次恢复原状。截图 `r48/panel-{after,before}-{docked,fullscreen,fullscreen-1920}.png` 在 scratchpad · 端口只用 8976（mock LLM 8977），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d0dfc22c` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -6884,4 +6910,90 @@ git merge --ff-only origin/main` → `Already up to date.`（头是 `eccef7e3`�
   `csu-mail-retry`（现覆盖第 22–47 共二十六封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
 - 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
   （`message_id=om_x100b63fbddaa28a0c437d4381d722c2`），所以这一轮的结果不是只躺在队列里。
+
+## 第四十八轮：智能体面板全屏时，输入区与子会话对话对齐（2026-10-13，条目 5.27）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `0546dd79`，即第四十七轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径是 `docs/FORK-PROGRESS.md`，prompt 里写的 `/root/adelie-fork/FORK-PROGRESS.md` 与
+`/root/adelie-fork/FORK.md` 都是旧位置。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面的活全在桌面壳一侧、本机部署单元与画廊 /
+文档两个演示面，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，
+**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project
+配置 / 接不接受 `mermaid` 这个新依赖），**5.3** 的②③④要第二台机器。于是照前几轮的做法，去上游
+`main` 上挑一笔「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的 —— 本轮探到 `b2c3de9f`（又新 15 笔，
+逐笔结论记在「跟上游学」一节里）。
+
+候选里 **`#1050`**（`0e56dc5a`）一次就选中：它是第四十七轮末尾就点名「留给后面的轮次」的三笔界面小件
+之一，`git apply -3` 只报「falling back to direct application」（那一串是上游补丁的常规提示，不是冲突，
+`--check` 退出码 0），改的是一个已有的组件、不新增文件；而同批的 `#1049` 要本树没有的
+`plugins-page-render.test.ts` 且 5 处冲突，`#1051` 67 文件 / 7 处冲突，它的后继 `#1069` 还要本树没有的
+`archived-sessions-section.tsx`。更要紧的是**这一笔在本机能拿到真证据**：仓库自带的 mock 模型会为
+「run a subagent」回一个真的 `run_subagent` 工具调用，于是能造出真子会话，再用真浏览器量全屏前后的
+输入区宽度。
+
+### 改了什么（3 个文件 / +82 −53，含 changelog 一对）
+
+照上游 `0e56dc5a` 的改动落，不是合分支：
+
+- **`packages/web/src/features/chat/subagents-view.tsx`**：`SubagentComposer` 的 `ChatInput` 外面多一层
+  `<div className="mx-auto max-w-3xl">`（`chat-page.tsx` 里主对话输入区用的正是同一对类），并照基座风格
+  写清「为什么」：对话按阅读列排（`MessageStream` 自己把消息限在 `max-w-3xl`），停靠栏**全屏**时与这一列
+  一样宽或更宽，输入区必须与上方的消息对齐而不是铺满整个面；停靠的面板窄于这个上限，所以那里什么都不变。
+  其余是这一层带来的整体缩进，逻辑一字未动。
+- **changelog 一对**：`2026-10-13-agents-panel-fullscreen-composer{,.zh}.md`，按本仓惯例把上游的 PR 行
+  换掉、写明「移植自上游 PenguinHarness（#1050，提交 `0e56dc5a`）」并补一条「接口、线上格式与已存数据
+  都没有变化」。
+- **本地化**：本笔没有需要改 scope 的 import，逐字照落。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**
+  （37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**。本笔不加用例
+  （改的是布局，没有可单测的纯逻辑，上游也没带用例），数与前一轮逐项一致。hmr 无测试文件。
+- **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根
+  `/root/adelie-fork-data/r48-agents-panel`、`localhost:8976` 起真服务，配 `custom` provider 指向本仓
+  自带的 mock LLM（8977）——父会话发「run a subagent」即得到**真子会话**（自带一轮 `exec_command` 与
+  一份报告，面板里能看到调用关系图与子会话对话）。Playwright（`playwright-core@1.61.1` + 本地
+  chromium-1243）用 `POST /api/auth/login` 的会话 cookie 打开该会话、点开子会话 chip（`智能体面板`
+  停靠标签随之激活），再点 `dock-fullscreen` 并量输入框与对话列的外框：
+  - **改动后**：1440px 窗口 —— 输入框 `x=491 w=746`、对话列 `x=480 w=768`；1920px —— 输入框 `x=731
+    w=746`、对话列 `x=720 w=768`（输入区落在阅读列内、左缘对齐）。
+  - **停靠态两边逐字一致**：输入框 `x=883 w=538`、对话列 `x=888 w=528` —— 正如注释所说，停靠栏窄于上限，
+    这一层不改变任何东西。
+  - **反证（真界面）**：把 `subagents-view.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → 全屏下输入框
+    `x=307 w=1114`（1440px）/ `x=307 w=1594`（1920px）横贯被覆盖的整行（1152 / 1632px），对话列仍是
+    `x=480 w=768` / `x=720 w=768`；改回来再跑一次恢复原状。
+  - `console 0 error`、无一条 ≥400 的响应；截图 `r48/panel-{after,before}-{docked,fullscreen,fullscreen-1920}.png`
+    在 scratchpad。
+  - 端口只用 8976（mock LLM 8977）；写入只落在 `/root/adelie-fork-data/r48-agents-panel`、`/tmp` 与
+    scratchpad，没有写进 `~/.penguin` 或 `~/.adelie`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- 上游 changelog 里写的「停靠时不变」本机也量到了；上游没测的两处照旧没测：Safari / Firefox 与桌面壳
+  自己的窗口。
+- 上游那一笔同时说「报告的另一半（全屏下子会话对话本身显示不对）没能复现」—— 本机也没看到，没有可做的。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- 中间物：会话 scratchpad 的 `r48/`（探针 `panel-probe.mjs`、六张截图、两份 JSON、退回前留底的那份
+  源码）与 `/root/adelie-fork-data/r48-agents-panel`（一次性数据根）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交**（3 个文件：一个已有组件 + changelog 一对）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
 
