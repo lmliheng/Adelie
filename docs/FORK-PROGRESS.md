@@ -262,8 +262,8 @@
 逐笔量过 —— 三笔插件市场是大件（`#1009` 115 文件 / +4009 −2146、`#1012` 44 / +3498、`#1024` 146 文件 /
 +8366 −1339，且互为一体）、`#989` 40 文件、`#993` 碰 desktop、`#809` 45 文件（员工名字与头像）；
 小件里 `#995`（往上翻页时读者被推走）**第四十二轮落进 5.21**，`#793`（路由组的 auth 语义）**第四十三轮
-落进 5.22**；`#996` / `#824` / `#826` / `#834` / `#810` 各 3–8 文件、`git apply -3 --check` 都干净，
-留给后面的轮次按同一判据挑（其中 `#824` / `#826` / `#834` / `#810` 碰 web / ui 界面，`#996` 在 core）。
+落进 5.22**，`#996`（Dots3-Note Preview 的名称）**第四十四轮落进 5.23**；`#824` / `#826` / `#834` / `#810`
+各 3–8 文件、`git apply -3 --check` 都干净，留给后面的轮次按同一判据挑（四笔都碰 web / ui 界面）。
 
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
@@ -534,6 +534,17 @@
       从上游新推上来的六笔小件里挑，这一笔是其中**唯一一条服务端平台面**的（自带 147 行新用例、
       `git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线），且是一条真的健壮性修复
       （被丢掉过一次的上游修复，见该节）。
+- [x] **5.23 目录里 Dots3-Note Preview 的名称改用半角括号**（上游 `0e207146` `#996`，**2026-10-12 第四十四轮
+      落地**，提交见该节）：内置目录把 `dots-3-note-preview` 列为 **Dots3-Note Preview（Free）** —— 全角括号
+      沿用自卖方的中文目录，而目录里的模型名不随界面语言翻译，于是英文界面（以及中文界面）里都显示成一对贴着
+      字的宽字形，是一处看得见的排版错。现在改成 **Dots3-Note Preview (Free)**：用词与 `Free` 标记仍按卖方
+      的写法，只把标点换成目录里其他带括号的名称用的 ASCII 形式（`Nemotron 3 Ultra (free)`、
+      `Gemini 3.1 Pro (Preview)`）。预设模型的显示名从目录读取、从不写进 Project 配置，所以没改过这行的
+      Project 立即显示新名称，用户自己起过的名称不受影响。**为什么是这一条**：第四十三轮末尾写明下一轮从上游
+      新推上来那批的五笔小件里挑；这一笔是其中**唯一一条 core 面、改动最小**的（两个源文件 + 一对 changelog，
+      `git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线），而且它改的字符串就在模型库页面上，
+      本机能用真浏览器把改前改后都看一遍（见该节的反证）。上游那篇 changelog 里还写着「目录测试新增一条：
+      任何模型的显示名都不得含中日韩标点」—— 那一笔的改动里没有这条用例，本轮照落改动、因而也没有这么写。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -1108,6 +1119,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-11 | 5.20 | **阻塞工单的 `by` 主体按组织架构校验**（上游 `4ea0d5f9` `#851` 移植，照改动落、不是合分支；4 文件 / +65，含 changelog 一对）：`blockTicket` 在形状校验之后多一步「按架构图核主体」—— `by` 是 `agent:<id>` / `user:<id>` 时交给已有的 `requireChannelPrincipal`（agent 必须是员工、user 必须是 Project 成员），不通过就以 `400 invalid_principal` 拒绝（与其它接受主体的写入路径同一把尺子、同一个码）；工单 id 那一支不变（本来就有存在性检查），省略 `by` 仍清除 `blockedBy`，已存储的 `blocked_by` 不会被改写。**为什么是这一条**：第四十轮末尾写明它是「下一轮的建议」，`c65d407a` 剩下两笔里较小的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2140 文件）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **3096**/2 跳过（252 文件）· server **195 文件 / 2820 通过 / 4 跳过**（+1 正是本笔新用例；`organization-runtime.test.ts` 94 条全绿）· hmr 无测试文件 · **反证**：把 `service.ts` 换回 `HEAD` 那一版、只跑新用例 → **1 失败**（`agent:acme_ghost` 那条阻塞**成功**了 —— 旧代码只校验形状），换回本笔 → 该用例通过 · 本笔不碰界面，未起服务、未开浏览器；3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `2a1d6c85` |
 | 2026-10-12 | 5.21 | **往上翻页加载更早的对话时，读者停在原来读的那条消息上**（上游 `5b096c2e` `#995` 移植，照改动落、不是合分支；5 文件 / +260 −8，含 changelog 一对与上游自带的那条新 e2e）：`chat-page.tsx` 的 `allItems` memo 除 `stream.version` 外**还以 `stream.prefixItems` 为键**（列表与修正要在同一次渲染里变化）；`message-stream.tsx` 新增 `anchorRef` + `recordAnchor()` —— 每次滚动与每次提交记下最靠上那条提问在视口里的位置，prepend 时按**它实际被挪动的距离**修 `scrollTop`（记不到那个节点时才退回高度差），顶部那行加载/重试/开头标记的容器从 `pb-2` 改成**恒定 `h-7`**，并只在 `older.hasMore || older.prependedCount > 0`（上方确实还有历史）时渲染。**为什么是这一条**：第四十一轮末尾写明「量一次 `#1027` 到底要几轮，或按 5.x 的口径另找一条可整块落地的」——`#1027` 32 文件 / +1680 得单独一轮；这一笔是上游 `main` 2026-10-12 新推上来的 13 笔里唯一一条碰产品主界面、自带现成 e2e、`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `oxlint` **0 警告 0 错误**（2141 文件，+1 即新 e2e）· `prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **252 文件 / 3096 通过 / 2 跳过** · server **195 文件 / 2820 通过 / 4 跳过** · hmr 无测试文件 · **真跑新 e2e**（重建 core/server/web 产物；一次性数据根 `/tmp/r42-e2e-data`、`localhost:8942` 服务端 + 仓库自带 `packages/web/e2e/mock-llm.mjs` 顶在 `127.0.0.1:8941`）：`npx playwright test … history-prepend-anchor.spec.mjs` → **1 passed（26.5s）**，四次测量（起点 0/150 各两次）位移**全是 0px**、`opened=20 → loaded=40`、只多取一页（`before=1%3A135&limit=20`）· **反证**：把那两个源文件换回 `HEAD` 那一版、重建 web、同一条命令 → **1 failed**，四次位移都是 **24px**（正是顶部那行的高度）—— 即这条 e2e 真的钉住了旧缺陷 · **真浏览器再看一眼**（同一数据根、`localhost:8943`）：会话 45 轮、开页 20 条锚点、滚到顶部后 40 条，截图两张；console 唯一一条 error 是 `GET …/machines` **403**，**在改动前的产物上同样出现**（非 admin 测试账号取项目机器列表，与本笔无关）· 端口只用 8941 / 8942 / 8943，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `2428ebbd` |
 | 2026-10-12 | 5.22 | **路由组的 `auth` 标记不再随挂载位置而变、贡献的 `id`/`from` 不可被覆盖**（上游 `24abe4ef` `#793` 移植，照改动落、不是合分支；5 文件 / +208 −18，含 changelog 一对与上游自带的 147 行新用例）：`HttpModule.setup` 不再用 `let gated` 在第一个受保护组之前给 `/api/*` 挂一次门，而是在**循环里给每个 `auth: "user"` 组挂** `app.use(\`${prefix}/*\`, gate)`；`gate` 是一个先看 `c.var.user` 的薄包装（**已带 user 就 `next()`**，否则走 `authMiddleware`），因此前缀嵌套时每请求仍只鉴权一次、机器代理 `/server/` 那处仍受保护；`contributions.ts` 的每条从 `{ id, from, ...c.data }` 改成 `{ ...c.data, id, from }`。**为什么是这一条**：第四十二轮末尾写明从上游六笔小件里挑，这一笔是其中唯一一条服务端平台面、且自带一份完整新用例（六条，反证时红三条）。**本地化**：新用例里两处 `@prismshadow/penguin-core/kernel` → 本仓的 `@lmliheng/penguin-core/kernel`；changelog 按本仓惯例改名到本轮日期（`2026-10-12-route-group-auth-per-group{,.zh}.md`）、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#793，提交 `24abe4ef`）」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误（2142 文件，+1 即新用例）**· `npx prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（+1 文件、+6 用例，正是本笔的新用例）· hmr 无测试文件 · **反证**：把两个源文件换回 `HEAD` 那一版、只跑新用例 → **3 失败 3 通过**（公开组被拦、未知路径 401、`id` 被覆盖三条挂掉，另三条保护性用例本就该过），换回本笔 → **6 全过** · **真服务端核过**（重建 server 产物；一次性数据根 `/tmp/r43-data`、`localhost:8951`）：未登录请求没有任何路由组服务的 `/api/nothing-here` 与 `/api/definitely/not/a/route` 都是 **404**（此前会是 401）、受保护的 `/api/projects` 未登录仍 **401**；登录后同一端点 **200**、`/api/me` 回 user —— 即每请求一次鉴权、受保护组仍受保护 · **真浏览器再看一眼**：Playwright 打开 `localhost:8951`，落点是 `/chat/new`、标题 `对话 · Adelie`、**console 0 error**（截图在 scratchpad `r43/`）· 端口只用 8951，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
+| 2026-10-12 | 5.23 | **目录里 Dots3-Note Preview 的名称改用半角括号**（上游 `0e207146` `#996` 移植，照改动落、不是合分支；4 文件 / +38 −6，含 changelog 一对）：`model-catalog.ts` 里 TokenDance 的 `dots-3-note-preview` 一行显示名由 **Dots3-Note Preview（Free）** 改成 **Dots3-Note Preview (Free)** —— 全角括号是从卖方的中文目录照抄来的，而目录名不随界面语言翻译，宽字形在英文界面上也原样显示；用词与 `Free` 标记仍按卖方写法，只换成目录里其他带括号名称用的 ASCII 形式（`Nemotron 3 Ultra (free)`、`Gemini 3.1 Pro (Preview)`），行内注释写明这个取舍。`model-catalog.test.ts` 里那条断言跟着改名（上游只改这一条，**没有**它 changelog 里写的「显示名不得含中日韩标点」那种新用例，本仓也没加）。预设模型的显示名从目录读、不写进 Project 配置，所以未改过该行的 Project 立即显示新名称、用户自己起过的名称不受影响 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：把 `model-catalog.ts` 换回 `HEAD` 那一版、只跑 `test/model-catalog.test.ts` → **1 失败 / 64 通过**（正是那条断言），换回本笔 → **65 全过** · **真浏览器看到改前与改后两态（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r44-models`、`localhost:8971` 起真服务，Playwright 用 `POST /api/auth/login` 拿会话 cookie 打开 `/models` —— 改后 `Dots3-Note Preview (Free)` 在页面上、`（Free）` 形态**不出现**，`console 0 error`、无一条 4xx；把服务端实际加载的那份 core 产物（`node_modules/.pnpm/@lmliheng+penguin-core@…/dist/chunk-7QAZOTUD.js` —— **这个包是 `file:` 的硬链接副本，改 `packages/core/dist` 不会改到它**，本轮踩到后改对了）换成改动前的字符串、重启服务再打开同一页 → `Dots3-Note Preview（Free）` 出现、半角形态不出现；改回来再跑一次恢复原状 · 端口只用 8971，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -6340,3 +6352,90 @@ changelog 一对，`git apply -3` 干净、不引入新依赖、不碰桌面壳 
   `csu-mail-retry`（现覆盖第 22–43 共二十二封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
 - 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**，所以这一轮的结果不是只躺在
   队列里。
+
+## 第四十四轮：目录里 Dots3-Note Preview 的名称改用半角括号（2026-10-12，条目 5.23）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `09354039`，即 v0.3.7 的版本戳与发布正文）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径仍是 `docs/FORK-PROGRESS.md`。）
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面剩下的活全在桌面壳一侧、部署与画廊/文档的演示
+路径上，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，**3.6** 要
+模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 / 接不接受
+`mermaid` 这个新依赖），**5.3** 的②③④要第二台机器。
+
+第四十三轮末尾写明**下一轮的建议**：从上游 `0e207146` 新推上来那批剩下的五笔小件（`#824` / `#826` /
+`#834` / `#810` / `#996`）里挑一笔。预算与判据都摆在桌上：这五笔的 `git apply -3 --check` 当时都核过是
+干净的；四笔碰 web / ui 界面、需要公司模式或机器托管 Agent 才看得到效果，而 `#996` 是**唯一一条 core 面**
+的 —— 两个源文件 + 一对 changelog，改的字符串直接落在模型库页面上，本机能起真服务、用真浏览器把改前改后
+都看一遍。选它：最小改动、不需要造组织/机器夹具、又不放弃真取证。
+
+### 改了什么（4 个文件 / +38 −6，含 changelog 一对）
+
+照上游 `0e207146` 的改动落，不是合分支：
+
+- **`packages/core/src/state/model-catalog.ts`**：TokenDance 的 `dots-3-note-preview` 一行，显示名从
+  `Dots3-Note Preview（Free）` 改成 `Dots3-Note Preview (Free)`；行内注释照落 —— 用词与 `Free` 标记仍按
+  卖方的写法（`Seed-2.1-Pro` 那种不改），但全角括号是卖方中文目录的排版，不是名字的一部分，而目录名不随
+  界面语言翻译，所以取目录里其他带括号名称用的 ASCII 形式（另有 `Nemotron 3 Ultra (free)`、
+  `Gemini 3.1 Pro (Preview)`）。
+- **`packages/core/test/model-catalog.test.ts`**：那一条拼着旧名字的断言跟着改名，注释同步。上游这一笔
+  **没有**新用例 —— 它自己的 changelog 里写着「目录测试新增一条：任何模型的显示名都不得含中日韩标点」，
+  但那份改动里找不到这条用例（`grep CJK` 在上游那一版与本地都是空），本轮照改动落，因此本仓也没有添加。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-12-dots-3-note-ascii-parens{,.zh}.md`）、
+  去掉上游 PR 行、写明「移植自上游 PenguinHarness（#996，提交 `0e207146`）」，并按本仓写法补一条「预设
+  模型的显示名从目录读、不写进 Project 配置」的语义说明。
+- **本地化**：本笔没有需要改 scope 的 import，逐字照落。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误（2142 文件）** · `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128 文件）·
+  cli **539**（37 文件）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过** ·
+  hmr 无测试文件。
+- **反证（单测）**：把 `model-catalog.ts` 换回 `HEAD` 那一版、只跑
+  `pnpm --filter @lmliheng/penguin-core exec vitest run test/model-catalog.test.ts`（测试文件仍是本笔的
+  那一版）→ **1 failed / 64 passed**，红的就是 `expect(dots.displayName).toBe("Dots3-Note Preview (Free)")`
+  这一条；换回本笔 → **65 passed**。
+- **真浏览器看到改前与改后两态（本轮主证据，两个方向都看过）**：重建 core / server / web 产物后，一次性
+  数据根 `/root/adelie-fork-data/r44-models` 在 `localhost:8971` 起真服务（`ADELIE_HOME` /
+  `ADELIE_PROFILE=dev` / `PORT` / `ADELIE_SEED_ADMIN_PASSWORD`），Playwright（`playwright-core@1.61.1` +
+  本地 chromium-1243）用 `POST /api/auth/login`（`admin`）拿会话 cookie 打开 `/models`：
+  - 改后（本树的产物）：页面上是 `Dots3-Note Preview (Free)`，`（Free）` 形态**不出现**；`console 0 error`、
+    没有一条 ≥400 的响应；截图 `after-restored-models.png`。
+  - 改前（把服务端**实际加载的那一份** core 产物里的字符串换成改动前的、重启服务再打开同一页）：
+    `Dots3-Note Preview（Free）` 出现、半角形态不出现；这一态与上游报的现象一致；截图 `before-models.png`。
+  - 改回该字符串、重启、再跑一次 → 又回到半角形态（截图 `after-restored-models.png`）。
+- **本轮踩到并记下的一件事**：`packages/core` 这个 workspace 包在本仓的 `node_modules` 里是 **`file:` 的
+  **硬链接副本**（`node_modules/.pnpm/@lmliheng+penguin-core@file+packages+core_…/dist/chunk-…js`，链接数 3），
+  **改 `packages/core/dist` 不会改到服务端运行时加载的那一份** —— 第一次反证因此假绿（两态都是半角）。
+  改对（改那份 .pnpm 副本）之后改前/改后两态才分得开。`sed -i` 会断开硬链接，所以两次都从 `/tmp` 的副本
+  还原；还原后 `packages/core/dist` 与被服务端加载的那份都是本笔构建出来的内容。
+- 端口只用 8971，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；除 `/root/adelie-fork-data/r44-models` 与
+  `/tmp` 外没有实际写入，没有写进 `~/.penguin` 或 `~/.adelie`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- 上游 `0e207146` 上还留着 **4 笔**未落：`#810`（频道里没发出的消息留着，8 文件 / +236）、`#826`
+  （手机上频道消息的宽度，5 文件 / +91）、`#824`（公司侧栏显示对的名称，4 文件 / +77）、`#834`
+  （组织会话渲染用自己的 agent id，3 文件 / +53）—— 四笔都碰 web / ui 界面、`git apply -3 --check` 都干净；
+  **下一轮的建议**是按同一判据挑一笔（`#824` / `#834` 是 web 状态层的真缺陷、可单测钉住；`#826` 要真看
+  手机宽度、`#810` 要造公司模式频道，验证成本略高）。`#1027` 与三笔插件市场仍得单独一轮。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板：
+  促销要不要搬进 Project 自己的配置、接不接受 `mermaid` 作为新渲染依赖）。
+- `refs/adelie-tmp/*`：本轮**没有动**（`upstream-main` 仍是 `c65d407a`、`upstream-main-latest` 仍是
+  `0e207146`）；要清就 `git update-ref -d`。
+- 中间物：会话 scratchpad 的 `r44/`（上游补丁 `996.patch`、`probe.cjs`、三张截图、两份临时还原副本）与
+  一次性数据根 `/root/adelie-fork-data/r44-models`。都未入库。
