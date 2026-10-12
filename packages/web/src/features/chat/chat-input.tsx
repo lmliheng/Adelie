@@ -123,6 +123,7 @@ import {
 import type { MenuSelectOption, TagInputChip } from "@lmliheng/penguin-ui";
 import { S } from "../../lib/strings";
 import { formatBytes, humanizeTokens } from "../../lib/format";
+import { fitTextarea } from "../../lib/textarea-fit";
 import { useLocale } from "../../state/locale";
 import { useAuth } from "../../state/auth";
 import { agentDisplayName } from "../../state/project";
@@ -1510,12 +1511,15 @@ export function ChatInput({
     return () => window.removeEventListener("resize", measure);
   }, [slashOpen, agentSwitchOpen]);
 
-  /** Auto-grow the textarea (caps at roughly 6 lines, scrolls internally beyond that). */
+  /**
+   * Auto-grow the textarea (caps at roughly 6 lines, scrolls internally beyond that). The
+   * measurement holds the card's height (see textarea-fit.ts): the transcript above is sized by
+   * what the composer leaves, and a collapse it could see would slide it on every keystroke.
+   */
   const autoGrow = () => {
     const el = textareaRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 176)}px`;
+    fitTextarea(el, (box) => Math.min(box.scrollHeight, 176));
   };
 
   /**
