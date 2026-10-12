@@ -625,6 +625,24 @@
       `git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线，且**本机能用仓库自带的 mock 模型造出真
       子会话、在真浏览器里把改前改后两态都量出来**的（`#1049` 要本树没有的 `plugins-page-render.test.ts` 加 5 处
       冲突、`#1051` 67 文件 / 7 处冲突、它的后继 `#1069` 还要本树没有的 `archived-sessions-section.tsx`）。
+- [x] **5.28 白领（Frost）主题的滚动条常显**（上游 `7527dd98` `#1070`，**2026-10-13 第四十九轮落地**，
+      提交见该节）：白领主题是新安装、也是新装桌面应用的默认主题，而它的滚动条**只在指针悬停在滚动区域上时**
+      才出现 —— `--ui-scrollbar-visibility: hover`，外加一条 `:root[data-theme="modern"] :not(:hover)`
+      把每个未悬停元素上的滚动条滑块刷成透明。于是有嵌套滚动区的弹窗（上游的原始报告是插件详情与它里面的
+      文件预览）看不出哪一块还能滚动。现在把那条规则删掉、`--ui-scrollbar-visibility` 改成 `auto`（与朴素
+      主题一致），滑块颜色仍沿用白领自己的浅色 `rgb(0 0 0 / 0.2)` / 深色 `rgb(255 255 255 / 0.16)`；
+      改动只在主题文件里，因而全应用生效。**为什么是这一条**：第四十八轮末尾写明从上游新推上来的界面小件里
+      挑；这一笔是候选里唯一 `git apply -3` **逐字干净**（只改已有的主题文件、不加文件、不引入依赖、不碰
+      桌面壳 / 包名 / 流水线），且本机能用真服务端 + 真浏览器把改前改后两态都量出来的（同批小件里 `#1074`
+      要的 `CASES_PER_PAGE` 与本树 `benchmark-detail.tsx` 都没有、`#1067` 要的 `start-dashboard.tsx` /
+      `example-folder-row.tsx`、`#1072` 要的 `example-tasks.test.ts`、`#1069` 要的
+      `archived-sessions-section.tsx` 本树都没有，`#1071` 的两个 `strings` 文件与本树冲突）。
+- **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
+      这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
+      repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
+      `refs/adelie-tmp/upstream-main-probe` 仍指 `b2c3de9f`（第四十八轮拉到的头），本轮那一笔就是从这里挑的。
+      要再跟上游走，需要把 `upstream` 重新指到一个能 fetch 的源（`git remote set-url upstream …`），
+      这件事等用户定。
 - **第四十七轮量过、没移植的（新拉到的 12 笔）**：`#1030`（`8646af72`，116 文件 / +4715 −1071，RSI 工具包与
       那套框架的重新定位）与 `#1034`（`5c8bd0ae`，15 / +82 −23，Harbor cells）是产品定位面的大件；`#1032`
       会话归档（`68de779f`，98 / +5658 −1691）、`#1059`（`d22938ce`，13 / +222 −27，会话记忆搬进 AgentState
@@ -1224,6 +1242,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-12 | 5.25 | **远程控制的「启用连接」开关置灰时，点击会说明先做什么**（上游 `7e97d50b` `#1029` 移植，照改动落、不是合分支；9 文件 / +282 −45，含 changelog 一对）：门分成两种 —— 原来一个 `toggleBlocked` 管两件事，现在 `toggleBusy`（保存或切换在飞时才**原生 `disabled`**）与 `enableGate`（前提没满足，开关只**看起来**置灰：`aria-disabled="true"` + `cursor-not-allowed opacity-60` + `aria-describedby` 指向那行提示，**不挂原生 `disabled`**，因此点得下去）。点击不向服务器发任何请求，而是把那句话弹成提示消息（该行还亮着时不重复弹）、把提示行转成告警色 `HINT_EMPHASIS_MS = 1500`，再按 `focus` 把焦点移到该补的地方：微信 / QQ 移到扫码区（`FOCUSABLE` 里第一个可聚焦元素）、飞书 / Telegram 移到第一个空的凭证字段（都填了就移到保存按钮）、表单有未保存修改时移到保存按钮、另一个渠道占着连接时**不动焦点**（那不在这个表单上）。判定收成导出的纯函数 **`enablePrerequisite()`**（已启用 → `null`，即**停用永不被门挡住**；否则按「别的渠道占着 > 没有已保存凭证 > 有未保存修改」取最强的一条），`credentialMissingHint` 因此按渠道措辞（微信「先扫码绑定微信，再启用连接」——原来那句写错了，微信只能扫码），保存按钮的 id 由 `useId` 生成（同一个 Session 上同时开着对话框与停靠面板不会串）。上游自带的新用例照落（四种渠道 × 各条理由与优先级、以及「`aria-disabled` 且没有原生 `disabled`」的渲染断言） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3098 通过 / 2 跳过**（+1 正是本笔新用例）· server **196 文件 / 2826 通过 / 4 跳过** · 另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本笔改了它的两份内容）· hmr 无测试文件 · **反证（单测）**：把 `messaging-binding-editor.tsx` 换回 `HEAD` 那一版、只跑 `test/messaging-binding-editor.test.ts` → **2 failed / 21 passed**（`enablePrerequisite` 不是函数、「置灰的开关仍可点」那条也挂），换回本笔 → **23 全过** · **真界面看两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r46-agent`、`localhost:8973` 起真服务（会话行由 sqlite 写入 `default_project`——这个根没有模型 key，`POST …/sessions` 会被 `model_credential_missing` 退回，即 3.6 那个卡点），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）拿 `POST /api/auth/login` 的 cookie 打开 `/chat/<会话>`、点「右侧栏」→「远程控制」、选中**飞书**渠道：改动后开关 `role="switch"`、**`disabled` 为 false**、`aria-disabled="true"`、`aria-describedby` 指向 `_r_14_-enable-hint`、类名带 `cursor-not-allowed opacity-60`，提示行「先填写 App ID 与 App Secret 并保存，再启用连接」；**点一下**——不产生任何非 GET 请求（`writes: []`）、没有一条 ≥400（`bad: []`）、那句提示在页面上从 1 处变 2 处（**提示消息弹出**）、焦点落到 `_r_14_-app-id`（**第一个空的凭证输入框**），截图 `r46/msg-final-after.png` 里能看到顶部提示消息、告警色的提示行与被聚焦的 App ID 字段；**反证（真界面）**：把本笔 7 个源码 / 文档文件全退回 `HEAD`、重建 web、同一条探针 → 开关**原生 `disabled: true`**、没有 `aria-disabled` / `aria-describedby`、提示行没有 id，`click()` 之后**什么都没发生**（无提示消息、焦点仍在按钮、无请求）· 端口只用 8973，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d478fa89` |
 | 2026-10-12 | 5.26 | **在输入框打字不再带动对话**（上游 `fc205d99` `#1052` 移植，照改动落、不是合分支；6 文件 / +113 −9，含 changelog 一对）：输入框每次按键都用「把文本框收成 `height: auto`、再读 `scrollHeight`」来量高度，而这次读取会让页面按**收起的输入框**排一次版 —— 上方按输入框剩余空间定高的消息列表随之变高，停在底部的列表被浏览器夹到更高视口的较小上限；把高度写回去不会把滚动偏移还回来（列表最终尺寸没变，所以也没有 ResizeObserver 触发）。一两行草稿时，在部分主题与字号组合下（主题的小数间距单位让收起的框比它被设成的高度矮一个零头）列表滑动一个设备像素；草稿超过收起后的那两行则整行地跳，`stream-follow` 把这次跳动读成用户在向上滚动，于是流式回复不再自动滚进视野、「回到最新消息」按钮随之出现。新增纯逻辑 `packages/web/src/lib/textarea-fit.ts`（`fitTextarea(box, measure)`：测量期间把文本框的**父元素**按住当前高度，写的是 `min-height` —— 框变高时仍然推得动父元素，变小不会夹掉任何偏移；父元素高度读的是计算样式而不是 client rect，后者会被入场动画的 transform 缩放、也会被取整），`chat-input.tsx`（对话页、子智能体面板、草稿页）与 `company/channel-composer.tsx`（公司频道，边框仍照原样加回）都改用它。上游自带的新用例照落（父元素在收起测量期间被按住、测量后拿回自己的 `min-height`；没有父元素时照常定高） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过**（+2 即本笔新文件的两条）· server **196 文件 / 2826 通过 / 4 跳过** · 新用例先单跑 `test/textarea-fit.test.ts` → **2 passed** · **真界面两态都量了（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r47-composer` 起真服务（`localhost:8974`，配 `custom` provider 指向本仓自带的 mock LLM `packages/web/e2e/mock-llm.mjs`，所以有**真会话、真回复、真工具调用**），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 发两轮、再把草稿填成四行、把消息列表停在底部，然后**只多打一个字符**：改动后 `scrollTop` 800 → 800（**位移 0**）、仍在底部、没有「回到最新消息」按钮、console 0 error、无一条 ≥400（连跑两次同样结果）；**反证（真界面）**：把 `chat-input.tsx` / `channel-composer.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → `scrollTop` **800 → 760（位移 40px）**、`atBottom` 变 false、「回到最新消息」按钮**出现**，截图 `r47-before.png` 里能看到内容被推走与那个圆形按钮，`r47-after.png` 里没有 · 端口只用 8974（mock LLM 用 8975），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `049563eb` |
 | 2026-10-13 | 5.27 | **智能体面板全屏时，输入区与子会话对话对齐**（上游 `0e56dc5a` `#1050` 移植，照改动落、不是合分支；3 文件 / +82 −53，含 changelog 一对）：智能体面板把所选子会话的对话排在主对话的阅读列里（居中、限宽 `max-w-3xl`），输入区却铺满整个面板 —— 停靠时两者都落在停靠栏宽度内（本机量得输入区 538px、对话列 528px），看不出差别；停靠栏**全屏**后对话仍是居中的一列（768px），输入区却横贯被覆盖的整行。`SubagentComposer`（`packages/web/src/features/chat/subagents-view.tsx`）现在把 `ChatInput` 包在同一个 `mx-auto max-w-3xl` 列里（与 `chat-page.tsx` 里主对话输入区的同一写法），注释写明「全屏的停靠栏与对话列一样宽或更宽，输入区必须与上方的消息对齐而不是铺满整个面；停靠的面板窄于这个上限，所以那里什么都不变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例，数与前一轮一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r48-agents-panel`、`localhost:8976` 起真服务，配 `custom` provider 指向本仓自带的 mock LLM（8977），所以拿到的是**真会话、真子会话**（父会话发「run a subagent」→ 真 `run_subagent` → 子会话自带一轮工具调用 + 报告）；Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 打开该会话、点开子会话 chip 让 `智能体面板` 停靠标签激活，再点 `dock-fullscreen`：**改动后 1440px 窗口**——输入框 `x=491 w=746`、对话列 `x=480 w=768`（输入区落在阅读列内、左侧对齐），**1920px** —— 输入框 `x=731 w=746`、对话列 `x=720 w=768`；**停靠态两边一致**（输入框 `x=883 w=538`、对话列 `x=888 w=528`，与改动前逐字相同）；`console 0 error`、无一条 ≥400；**反证（真界面）**：把 `subagents-view.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → 全屏下输入框 `x=307 w=1114`（1440px）/ `x=307 w=1594`（1920px）横贯被覆盖的整行（1152 / 1632px），对话列仍是 `x=480 w=768` / `x=720 w=768`，停靠态与改动后一致；改回来再跑一次恢复原状。截图 `r48/panel-{after,before}-{docked,fullscreen,fullscreen-1920}.png` 在 scratchpad · 端口只用 8976（mock LLM 8977），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d0dfc22c` |
+| 2026-10-13 | 5.28 | **白领（Frost）主题的滚动条常显**（上游 `7527dd98` `#1070` 移植，照改动落、不是合分支；3 文件 / +26 −6，其中源码 1 个文件 +1 −6、另有 changelog 一对）：白领主题是新安装、也是新装桌面应用的默认主题，此前它的滚动条**只在指针悬停于滚动区域时才出现** —— `--ui-scrollbar-visibility: hover`，外加一条 `:root[data-theme="modern"] :not(:hover) { scrollbar-color: transparent … }` 把每个未悬停元素上的滚动条滑块刷成透明；于是有嵌套滚动区的弹窗（上游的原始报告是插件详情与它里面的文件预览）看不出哪一块还能滚动。现在删掉那条规则、把 `--ui-scrollbar-visibility` 改成 `auto`（与朴素主题一致），滑块颜色仍沿用白领自己的浅色 `rgb(0 0 0 / 0.2)` / 深色 `rgb(255 255 255 / 0.16)`；改动只在 `packages/ui/src/themes/modern.css` 里，因而全应用生效，朴素 / 极客两个主题一字未动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check` 干净（主题文件与两份 changelog）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例 —— 改的是 CSS，上游也没带用例；数与前一轮逐项一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r49-frost-scrollbars`、`localhost:8978` 起真服务（`PENGUIN_HOME` + `PENGUIN_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开页面、把主题置成白领（`html[data-theme="modern"]`，`dataset.theme` 实测就是 `modern`），**指针停在 (2,2)**（远离被测滚动区）读每个真溢出容器的 `scrollbar-color`：**改动后** —— 浅色 `rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0)`（`/models` 与 `/plugins` 两个 857px 高的滚动区，`--ui-scrollbar-visibility` 读出 `auto`）、深色 `rgba(255, 255, 255, 0.16) rgba(0, 0, 0, 0)`，悬停与不悬停**同值**；**反证（真界面）**：把 `modern.css` 退回 `HEAD`、重建 web、同一条探针 → 不悬停 `rgba(0, 0, 0, 0)`（滑块全透明，`--ui-scrollbar-visibility` 读出 `hover`）、悬停浅色 `rgba(0, 0, 0, 0.2)` / 深色 `rgba(255, 255, 255, 0.16)`；构建产物里改动后是 `--ui-scrollbar-visibility:auto` 与 `:not(:hover)` 规则 0 处，改动前是 `hover` 与 1 处；扫过 `/models`、`/plugins`、`/benchmark` 三页，`console 0 error`、无一条 ≥400；截图 `r49/frost-{after,before}-{models,plugins,benchmark}.png` 在 scratchpad · 端口只用 8978，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `542545cd` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -7012,4 +7031,97 @@ git merge --ff-only origin/main` → `Already up to date.`（头是 `0546dd79`�
   （现覆盖第 22–48 共二十七封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
 - 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
   （`message_id=om_x100b63e75499c8a0c320cb2c24ee0ca`），所以这一轮的结果不是只躺在队列里。
+
+## 第四十九轮：白领主题的滚动条常显（2026-10-13，条目 5.28）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369 全程没碰；
+按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `f7015377`，第四十八轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径是 `docs/FORK-PROGRESS.md`，prompt 里的 `/root/adelie-fork/FORK-PROGRESS.md` 是旧位置。）
+
+**上游这一轮取不到新提交**：`git fetch upstream` 报 `'/root/penguin-harness' does not appear to be a
+git repository` —— 那是 `upstream` 的地址，目录已经不在了。所以本轮只能在仓库里**已有的**上游对象里挑，
+探针 `refs/adelie-tmp/upstream-main-probe` 仍指 `b2c3de9f`（第四十八轮拉到的头，对象都在）。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面的活全在桌面壳一侧、本机部署单元与画廊 /
+文档两个演示面，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，
+**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project
+配置 / 接不接受 `mermaid` 这个新依赖），**5.3** 的②③④要第二台机器。于是照前几轮的做法，去上游挑一笔
+「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的。
+
+`b2c3de9f` 上那十五笔里的小件逐个量过（`git apply -3 --check` 或直接查本树文件）：`#1074`（把
+`CASES_PER_PAGE` 由 10 改 5）看着最小，但它要改的那个常量**本树没有**（`benchmark-detail.tsx` 里没有
+分页，那一笔的前置不在本树）；`#1067` 要本树没有的 `start-dashboard.tsx` / `example-folder-row.tsx`，
+`#1072` 要本树没有的 `example-tasks.test.ts`，`#1069` 要本树没有的 `archived-sessions-section.tsx`，
+`#1071` 的两个 `strings` 文件与本树冲突。**`#1070`**（`7527dd98`）是唯一逐字干净的一笔：只动
+`packages/ui/src/themes/modern.css` 一个已有文件、不新增文件、不动 import、不引入依赖，而且
+**本机能用真服务端 + 真浏览器把改前改后两态都量出来**。
+
+### 改了什么（3 个文件 / +26 −6）
+
+照上游 `7527dd98` 的改动落，不是合分支：
+
+- **`packages/ui/src/themes/modern.css`** 两处：`--ui-scrollbar-visibility` 由 `hover` 改成 `auto`；
+  删掉那条 `:root[data-theme="modern"] :not(:hover) { scrollbar-color: transparent var(--ui-scrollbar-track); }`
+  与它上面那行注释。两处与上游的补丁逐字相同（只有 hunk 头的行号不同 —— 本树在这个文件里另有改动，
+  这两段被顶到了 363 / 899 行）。
+- **changelog 一对**：`changelog/unreleased/2026-10-13-frost-scrollbars{,.zh}.md`，按本仓惯例把上游的
+  PR 行换掉、写明「移植自上游 PenguinHarness（#1070，提交 `7527dd98`）」、补一条「接口、线上格式与已存
+  数据都没有变化」。
+- **本地化**：本笔没有 import、没有界面文案，逐字照落。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check`（主题文件与两份 changelog）干净 ·
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**
+  （37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**。本笔不加用例
+  （改的是 CSS，没有可单测的纯逻辑，上游也没带用例），五个数与前一轮逐项一致；hmr 无测试文件。
+- **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根
+  `/root/adelie-fork-data/r49-frost-scrollbars`、`localhost:8978` 起真服务（`PENGUIN_HOME` +
+  `PENGUIN_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）。探针（`r49/frost-probe.mjs`）用
+  `POST /api/auth/login` 的 cookie 打开 `/models`、`/plugins`、`/benchmark`，把主题置成白领
+  （`html[data-theme="modern"]`，实测 `dataset.theme === "modern"`），**把指针停在 (2,2)**（远离被测
+  滚动区）后读每个真溢出容器的 `scrollbar-color`：
+  - **改动后**：浅色 `rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0)` —— `/models` 与 `/plugins` 的滚动区都是
+    1117×857、内容 1679 / 1520px，`--ui-scrollbar-visibility` 读出 `auto`；深色
+    `rgba(255, 255, 255, 0.16) rgba(0, 0, 0, 0)`。悬停与不悬停**同值**（常显）。
+  - **反证（真界面）**：把 `modern.css` 退回 `HEAD` 那一版、重建 web、同一条探针 →
+    不悬停 **`rgba(0, 0, 0, 0)`（滑块全透明）**、`--ui-scrollbar-visibility` 读出 `hover`；悬停才变
+    浅色 `rgba(0, 0, 0, 0.2)` / 深色 `rgba(255, 255, 255, 0.16)`。这正是上游报告的那个现象。
+  - 构建产物里也对了一遍：改动后 dist CSS 是 `--ui-scrollbar-visibility:auto`、`:not(:hover)` **0 处**；
+    改动前是 `hover` 与 **1 处**。
+  - 三页扫过 `console 0 error`、无一条 ≥400；截图 `r49/frost-{after,before}-{models,plugins,benchmark}.png`
+    在 scratchpad；另有 `hover-probe.mjs`（同一条滚动区，悬停 / 不悬停两读数）与退回前的
+    `modern.css.fixed` 留底。
+  - 端口只用 8978；写入只落在 `/root/adelie-fork-data/r49-frost-scrollbars` 与 scratchpad，没有写进
+    `~/.penguin` 或 `~/.adelie`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- 上游没测的两处照旧没测：macOS 桌面窗口自己的滚动条行为（系统设成「只在滚动时显示」时，Chromium 的
+  overlay 滚动条可能照样在静止时不显示），以及 Safari / Firefox。
+- 上游的原始触发场景（插件详情弹窗 + 它里面的文件预览）**本树没有** —— 那是插件市场三笔大件带来的界面，
+  本树还没落。本轮改用同一主题下的真滚动区（`/models`、`/plugins` 两个 857px 高的列表）取证：机制就是
+  同一条规则，改前改后的读数与上游记的一致。
+- **上游 remote 已失效**（见「开工自检」）：要再跟上游走，得由用户把 `upstream` 指到一个能 fetch 的源。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- 中间物：会话 scratchpad 的 `r49/`（两个探针、六张截图、两份 JSON、退回前留底的主题文件）与
+  `/root/adelie-fork-data/r49-frost-scrollbars`（一次性数据根）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交** `542545cd`（3 个文件：一个主题文件 + changelog 一对）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
 
