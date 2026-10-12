@@ -7123,5 +7123,24 @@ git repository` —— 那是 `upstream` 的地址，目录已经不在了。所
 ### 收尾：提交、推送与汇报
 
 - **代码提交** `542545cd`（3 个文件：一个主题文件 + changelog 一对）；台账这一笔另起一笔。
-- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **推送**：`git push origin main`（`f7015377..a2d02611`）。**没有切版本号、没发 npm、没发安装包、
+  没发发布汇总。**
+
+### CI（推送后）
+
+- run **`38321085906`**（`a2d02611`）—— **`completed success`**，22 个作业全绿（`typecheck`、`style
+  (prettier)`、`test (core)` / `test (server)` / `test (web-cli)` / `test (rest)`、`test-macos` 与
+  `test-windows` 的各分片、三个 `runtime`、`installer-e2e` / `installer-windows`、`npm packaging`、
+  `plugin versions`，加汇总的 `ci`）。本笔只动一个主题文件与一对 changelog，`ci.yml` 的矩阵没有动。
+
+### 汇报
+
+- **汇报邮件没发出去（第 22–48 轮同一处卡点，与凭据无关）**：`python3 scripts/mail.py check`
+  （csu-mail 技能目录下，`timeout 90`）**一行输出都没有就退出 124**。凭据本身正常（`CSU_MAIL_ADDR`
+  长度 21、`CSU_MAIL_AUTHCODE` 长度 16，都注入着）。按技能纪律**只试这一次，没有重试登录，也没有再
+  试发信**。本轮正文写在会话 scratchpad 的 `r49/mail-round49.txt`；把第 49 轮的正文路径与主题**加进**
+  既有的周期重发任务 `csu-mail-retry`（现覆盖第 22–49 共二十八封），没有另开新任务，`end_at` 保持
+  `2026-10-19T12:00:00Z`。
+- 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
+  （`message_id=om_x100b63e2e9380ca4ddad2bc0f3409c1`），所以这一轮的结果不是只躺在队列里。
 
