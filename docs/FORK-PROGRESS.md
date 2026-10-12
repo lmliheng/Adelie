@@ -266,6 +266,16 @@
 所在的组织）**第四十五轮落进 5.24**；`#826` / `#834` / `#810` 各 3–8 文件、`git apply -3 --check`
 都干净，留给后面的轮次按同一判据挑（三笔都碰 web / ui 界面）。
 
+**上游 `main` 又往前走了（2026-10-12 第四十六轮拉到 `aae7857f`）**：`0e207146` 之后新推上来 **14 笔**，
+逐笔量过 —— 大件是 `#1032` 会话归档（98 文件 / +5658 −1691）、`#1037` 服务端自己的 penguin（43 / +3261）、
+`#1028` 微信回复不丢（30 / +1829）、`#1031` 设置一处提交（32 / +1680，即上面记的 `#1027` 系列）、
+`#1018`（55 / +1279 −162）、`#984`（14 / +1247 −184）；碰 desktop 的是 `#998`（10 / +501）；
+`#1044` 是给文档站发组件画廊（38 / +403 −86，`packages/landing` 已删，属 2.5 的口径）；
+小件里 **`#1029`（远程控制的启用开关置灰时点击说明原因）第四十六轮落进 5.25**，
+另有 `#990`（9 / +421，部署脚本）、`#988`（7 / +450，QA 场景任务）、`#1038`（Frost 主题：侧栏不再有渐变，
+20 / +168 −139，会动主题 token）、`#959`（模型库加 Atlas Cloud 网关分组，21 / +249 −80，属要不要接这家厂商）、
+`#1047`（成本统计的拆分，17 / +487 −97）。这一撮仍按「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的判据挑。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -557,6 +567,27 @@
       `0e207146` 上剩下的四笔小件里挑；这一笔是全在 web 状态层、带一条现成单测、`git apply -3` 干净、
       不引入新依赖、不碰桌面壳 / 包名 / 流水线的最小一笔（4 文件 / +77），而且本机能用真服务端 + 真浏览器
       把 Web App 装配起来核一遍。
+- [x] **5.25 远程控制的「启用连接」开关置灰时，点击会说明先做什么**（上游 `7e97d50b` `#1029`，
+      **2026-10-12 第四十六轮落地**，提交见该节）：对话的远程控制编辑器里，前序步骤未完成时**启用连接**开关
+      过去是**原生 `disabled`** —— 点它什么都不发生，唯一的解释是按钮下面那行浅灰小字，而且微信那一条还写错了
+      （写着「先填写并保存凭证」，微信只能扫码）。现在两种门分开：**请求在飞**（保存或切换中）仍是原生
+      `disabled`；**前提没满足**只保留置灰的样子（`aria-disabled="true"`、`opacity-60 cursor-not-allowed`、
+      `aria-describedby` 指向那行提示）而**仍然可点** —— 点击不向服务器发任何请求，而是把那句话弹成提示消息
+      （该行还亮着时不重复弹）、把提示行转成告警色 1.5 秒，并把焦点移到该补的地方：微信 / QQ 移到扫码区、
+      飞书 / Telegram 移到第一个空的凭证字段（都填了就移到**保存**）、表单有未保存修改时移到**保存**、
+      另一个渠道占着连接时不动焦点（那不在这个表单上）。`credentialMissingHint` 因此**按渠道**措辞
+      （微信「先扫码绑定微信，再启用连接」、QQ「先扫码，或填写 App ID 与 App Secret 并保存，再启用连接」、
+      飞书 / Telegram 为填写并保存）；判定收成一个纯函数 **`enablePrerequisite()`**（导出，四种渠道 ×
+      各条理由的优先级 × 「已启用时永不被门挡住」都有用例），保存按钮的 id 由 `useId` 产出，所以同一个
+      Session 上同时开着对话框与停靠面板也不会串。远程控制文档（中英）与 changelog 一对跟上。
+- **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
+      换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
+      `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
+      「当前 Agent 为空」只在**本 Project 一个 Agent 都没有**时出现；而 `state/sessions.tsx` 的 reload 开头就
+      `if (!projectId || agentIds.length === 0) return`（上游同一处也一样），列表里没有 Agent 时**会话列表
+      永远不加载**，对话页连 `selected` 都拿不到 —— 实测（一次性数据根 + 手写的机器侧会话行 + 真浏览器）
+      改前改后**同样停在骨架**，而 Agent 列表非空时旧代码的 `!agentId` 本来就通过。留在这里备查，
+      不重复这一轮的分析。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -1133,6 +1164,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-12 | 5.22 | **路由组的 `auth` 标记不再随挂载位置而变、贡献的 `id`/`from` 不可被覆盖**（上游 `24abe4ef` `#793` 移植，照改动落、不是合分支；5 文件 / +208 −18，含 changelog 一对与上游自带的 147 行新用例）：`HttpModule.setup` 不再用 `let gated` 在第一个受保护组之前给 `/api/*` 挂一次门，而是在**循环里给每个 `auth: "user"` 组挂** `app.use(\`${prefix}/*\`, gate)`；`gate` 是一个先看 `c.var.user` 的薄包装（**已带 user 就 `next()`**，否则走 `authMiddleware`），因此前缀嵌套时每请求仍只鉴权一次、机器代理 `/server/` 那处仍受保护；`contributions.ts` 的每条从 `{ id, from, ...c.data }` 改成 `{ ...c.data, id, from }`。**为什么是这一条**：第四十二轮末尾写明从上游六笔小件里挑，这一笔是其中唯一一条服务端平台面、且自带一份完整新用例（六条，反证时红三条）。**本地化**：新用例里两处 `@prismshadow/penguin-core/kernel` → 本仓的 `@lmliheng/penguin-core/kernel`；changelog 按本仓惯例改名到本轮日期（`2026-10-12-route-group-auth-per-group{,.zh}.md`）、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#793，提交 `24abe4ef`）」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误（2142 文件，+1 即新用例）**· `npx prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395**/6 跳过（68 文件）· ui **1021**（128）· cli **539**（37 文件）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（+1 文件、+6 用例，正是本笔的新用例）· hmr 无测试文件 · **反证**：把两个源文件换回 `HEAD` 那一版、只跑新用例 → **3 失败 3 通过**（公开组被拦、未知路径 401、`id` 被覆盖三条挂掉，另三条保护性用例本就该过），换回本笔 → **6 全过** · **真服务端核过**（重建 server 产物；一次性数据根 `/tmp/r43-data`、`localhost:8951`）：未登录请求没有任何路由组服务的 `/api/nothing-here` 与 `/api/definitely/not/a/route` 都是 **404**（此前会是 401）、受保护的 `/api/projects` 未登录仍 **401**；登录后同一端点 **200**、`/api/me` 回 user —— 即每请求一次鉴权、受保护组仍受保护 · **真浏览器再看一眼**：Playwright 打开 `localhost:8951`，落点是 `/chat/new`、标题 `对话 · Adelie`、**console 0 error**（截图在 scratchpad `r43/`）· 端口只用 8951，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-12 | 5.23 | **目录里 Dots3-Note Preview 的名称改用半角括号**（上游 `0e207146` `#996` 移植，照改动落、不是合分支；4 文件 / +38 −6，含 changelog 一对）：`model-catalog.ts` 里 TokenDance 的 `dots-3-note-preview` 一行显示名由 **Dots3-Note Preview（Free）** 改成 **Dots3-Note Preview (Free)** —— 全角括号是从卖方的中文目录照抄来的，而目录名不随界面语言翻译，宽字形在英文界面上也原样显示；用词与 `Free` 标记仍按卖方写法，只换成目录里其他带括号名称用的 ASCII 形式（`Nemotron 3 Ultra (free)`、`Gemini 3.1 Pro (Preview)`），行内注释写明这个取舍。`model-catalog.test.ts` 里那条断言跟着改名（上游只改这一条，**没有**它 changelog 里写的「显示名不得含中日韩标点」那种新用例，本仓也没加）。预设模型的显示名从目录读、不写进 Project 配置，所以未改过该行的 Project 立即显示新名称、用户自己起过的名称不受影响 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3096 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：把 `model-catalog.ts` 换回 `HEAD` 那一版、只跑 `test/model-catalog.test.ts` → **1 失败 / 64 通过**（正是那条断言），换回本笔 → **65 全过** · **真浏览器看到改前与改后两态（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r44-models`、`localhost:8971` 起真服务，Playwright 用 `POST /api/auth/login` 拿会话 cookie 打开 `/models` —— 改后 `Dots3-Note Preview (Free)` 在页面上、`（Free）` 形态**不出现**，`console 0 error`、无一条 4xx；把服务端实际加载的那份 core 产物（`node_modules/.pnpm/@lmliheng+penguin-core@…/dist/chunk-7QAZOTUD.js` —— **这个包是 `file:` 的硬链接副本，改 `packages/core/dist` 不会改到它**，本轮踩到后改对了）换成改动前的字符串、重启服务再打开同一页 → `Dots3-Note Preview（Free）` 出现、半角形态不出现；改回来再跑一次恢复原状 · 端口只用 8971，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-12 | 5.24 | **公司侧栏显示的是当前页面所在的组织**（上游 `aedeac7e` `#824` 移植，照改动落、不是合分支；4 文件 / +77 −2，含 changelog 一对）：公司模式下打开组织的页面时，侧栏（工位、频道）可能停留在**上一次**打开的组织上 —— 页面写着一家公司、侧栏列的是另一家的员工，切换组织时看起来像新组织没有 Session。根因在 `CompanyProvider` 采用「上次打开的组织」（偏好 `lastOrgKey`）的那处 effect：判断用的是**发起它的那次渲染里的值**（`currentOrgKey !== null \|\| lastOrgKey === null`），而同一次提交里子节点 `OrgLayout` 的 effect 先跑、已经设好了当前组织，父节点看到的仍是「没有」，于是用存储的组织盖掉了路由指定的那个；`OrgLayout` 的 effect 因 `key` 未变不再重跑，侧栏就一直停在错的组织上到下一次导航。改动把判断收成 store 的方法 **`adoptLastOrg`**（`createCompanyStore` 里，读 `get()` 的当下值：`currentOrgKey` 已非空或 `lastOrgKey` 为空即返回，否则 `setCurrentOrg(lastOrgKey)`），`CompanyProvider` 的 effect 改调 `store.getState().adoptLastOrg()`，注释写明「按当下的 store 状态决定，不是这一次渲染的」。上游自带的那条用例照落（`company-store.test.ts` 一组三种情形：只有 `lastOrgKey` → 采用它；路由已设 `currentOrgKey` → **保持路由的**；两者都空 → 仍为空）。**为什么是这一条**：第四十四轮末尾写明从上游 `0e207146` 上剩下的四笔小件里挑；这一笔是全在 web 状态层、带一条现成单测、`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线的最小一笔，而且本机能起真服务、用真浏览器把 Web App 装配起来核一遍（其余三笔要公司模式多组织夹具或手机宽度/频道夹具） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3097 通过 / 2 跳过**（+1 正是本笔新增的那条）· server **196 文件 / 2826 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：把 `company.tsx` 换回 `HEAD` 那一版、只跑 `test/company-store.test.ts` → **1 失败 18 通过**（新用例在旧代码上 `store.getState().adoptLastOrg is not a function`，即这个方法与这条路径确实是本笔引入的），换回本笔 → **19 全过** · **真界面看一眼**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r45-company`、`localhost:8972` 起真服务，Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login`（`admin`）拿会话 cookie 打开 `/chat/new`：标题 `对话 · Adelie`、侧栏与空态正常渲染，**console 0 error**、登录后没有一条 ≥400 的响应（截图 `r45/home.png` 在 scratchpad）；改前/改后两态的具体组织场景要公司模式的多组织夹具，本轮没造，逻辑那一半由上面那条单测与反证钉住 · 端口只用 8972，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
+| 2026-10-12 | 5.25 | **远程控制的「启用连接」开关置灰时，点击会说明先做什么**（上游 `7e97d50b` `#1029` 移植，照改动落、不是合分支；9 文件 / +282 −45，含 changelog 一对）：门分成两种 —— 原来一个 `toggleBlocked` 管两件事，现在 `toggleBusy`（保存或切换在飞时才**原生 `disabled`**）与 `enableGate`（前提没满足，开关只**看起来**置灰：`aria-disabled="true"` + `cursor-not-allowed opacity-60` + `aria-describedby` 指向那行提示，**不挂原生 `disabled`**，因此点得下去）。点击不向服务器发任何请求，而是把那句话弹成提示消息（该行还亮着时不重复弹）、把提示行转成告警色 `HINT_EMPHASIS_MS = 1500`，再按 `focus` 把焦点移到该补的地方：微信 / QQ 移到扫码区（`FOCUSABLE` 里第一个可聚焦元素）、飞书 / Telegram 移到第一个空的凭证字段（都填了就移到保存按钮）、表单有未保存修改时移到保存按钮、另一个渠道占着连接时**不动焦点**（那不在这个表单上）。判定收成导出的纯函数 **`enablePrerequisite()`**（已启用 → `null`，即**停用永不被门挡住**；否则按「别的渠道占着 > 没有已保存凭证 > 有未保存修改」取最强的一条），`credentialMissingHint` 因此按渠道措辞（微信「先扫码绑定微信，再启用连接」——原来那句写错了，微信只能扫码），保存按钮的 id 由 `useId` 生成（同一个 Session 上同时开着对话框与停靠面板不会串）。上游自带的新用例照落（四种渠道 × 各条理由与优先级、以及「`aria-disabled` 且没有原生 `disabled`」的渲染断言） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **252 文件 / 3098 通过 / 2 跳过**（+1 正是本笔新用例）· server **196 文件 / 2826 通过 / 4 跳过** · 另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本笔改了它的两份内容）· hmr 无测试文件 · **反证（单测）**：把 `messaging-binding-editor.tsx` 换回 `HEAD` 那一版、只跑 `test/messaging-binding-editor.test.ts` → **2 failed / 21 passed**（`enablePrerequisite` 不是函数、「置灰的开关仍可点」那条也挂），换回本笔 → **23 全过** · **真界面看两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r46-agent`、`localhost:8973` 起真服务（会话行由 sqlite 写入 `default_project`——这个根没有模型 key，`POST …/sessions` 会被 `model_credential_missing` 退回，即 3.6 那个卡点），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）拿 `POST /api/auth/login` 的 cookie 打开 `/chat/<会话>`、点「右侧栏」→「远程控制」、选中**飞书**渠道：改动后开关 `role="switch"`、**`disabled` 为 false**、`aria-disabled="true"`、`aria-describedby` 指向 `_r_14_-enable-hint`、类名带 `cursor-not-allowed opacity-60`，提示行「先填写 App ID 与 App Secret 并保存，再启用连接」；**点一下**——不产生任何非 GET 请求（`writes: []`）、没有一条 ≥400（`bad: []`）、那句提示在页面上从 1 处变 2 处（**提示消息弹出**）、焦点落到 `_r_14_-app-id`（**第一个空的凭证输入框**），截图 `r46/msg-final-after.png` 里能看到顶部提示消息、告警色的提示行与被聚焦的 App ID 字段；**反证（真界面）**：把本笔 7 个源码 / 文档文件全退回 `HEAD`、重建 web、同一条探针 → 开关**原生 `disabled: true`**、没有 `aria-disabled` / `aria-describedby`、提示行没有 id，`click()` 之后**什么都没发生**（无提示消息、焦点仍在按钮、无请求）· 端口只用 8973，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d478fa89` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -6582,3 +6614,112 @@ git merge --ff-only origin/main` → `Already up to date.`（头是 `46162578`�
   `csu-mail-retry`（现覆盖第 22–45 共二十四封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
 - 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
   （`message_id=om_x100b63fcc2a5aca4c24ae598dc13d67`），所以这一轮的结果不是只躺在队列里。
+
+## 第四十六轮：远程控制的启用开关置灰时，点击会说明先做什么（2026-10-12，条目 5.25）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `192f543b`，即第四十五轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径仍是 `docs/FORK-PROGRESS.md`，prompt 里写的 `/root/adelie-fork/FORK-PROGRESS.md` 是旧位置。）
+
+### 为什么是这一条（先量了 `#834`，然后转向 `#1029`）
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面剩下的活全在桌面壳一侧、部署与画廊/文档的演示
+路径上，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，**3.6** 要
+模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 / 接不接受
+`mermaid` 这个新依赖），**5.3** 的②③④要第二台机器。于是照前几轮的做法，从上游 `main` 上挑一笔
+「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的。
+
+**第一顺位是第四十五轮末尾建议的 `#834`（`661a7bb2`）**，本轮真去量了它，结论是**它在我们的树里改变不了
+任何行为**，所以没有移植（分析写在 5.25 下面那条里，也附实测）：它要修的症状（对话页永远停在 Agent 占位
+骨架上）只可能出现在「本 Project 一个 Agent 都没有」这一种状态里 —— 因为 `agentOf()` 对未知 id 会回退到
+`default_agent`、再回退到列表第一个；而在那个状态里 `state/sessions.tsx` 的 reload 一开头就
+`if (!projectId || agentIds.length === 0) return`，会话列表**永远不加载**，对话页连 `selected` 都拿不到。
+实测（一次性数据根 `/root/adelie-fork-data/r46-agent` + 手写的机器侧会话行 + 真浏览器）改前改后**同样停在
+骨架**——那是另一堵墙，不是这一笔要拆的那堵。于是转向本轮真正落地的 **`#1029`**。
+
+选它的理由：它是上游新推上来的 14 笔里**唯一一笔「用户点得到的真缺陷 + 自带一条完整新用例 + 只碰 web 与
+两份文档 + 不引入新依赖 + 不碰桌面壳 / 包名 / 流水线」**的小件（10 文件 / +276 −45，我们这边 9 文件
+/ +282 −45，含 changelog 一对），而且本机能起真服务端、用真浏览器把「置灰的开关点下去会发生什么」两态
+都看一遍。
+
+### 改了什么（9 个文件 / +282 −45，含 changelog 一对）
+
+照上游 `7e97d50b` 的改动落，不是合分支：
+
+- **`packages/web/src/features/messaging/messaging-binding-editor.tsx`**（198 行）：门分成两种 —— 原来的
+  `toggleBlocked` / `toggleHint` 换成 `toggleBusy`（请求在飞时才原生 `disabled`）与 `enableGate`
+  （前提没满足时的理由 + 焦点该去哪）；新增导出的纯函数 **`enablePrerequisite()`**：已启用 → `null`
+  （**停用永不被门挡住**），否则按「另一个渠道占着连接 > 没有已保存的凭证 > 表单有未保存的修改」取最强的
+  那条，返回 `{ hint, focus }`；`MessagingBindingBody` 里开关只在 `gate !== null` 时挂
+  `aria-disabled` / `aria-describedby` / `cursor-not-allowed opacity-60`（**不挂原生 `disabled`**），
+  `onChange` 在 `gate !== null` 时改走 `explainGate()`：提示行还亮着就不重复弹提示、把该行转告警色
+  `HINT_EMPHASIS_MS = 1500`，再按 `focus` 把焦点移到扫码区（`FOCUSABLE` 里第一个可聚焦元素）、第一个空的
+  凭证字段（都填了就移到保存按钮）或保存按钮；`saveButtonId` 由 `useId` 生成，因此同一个 Session 上同时
+  开着对话框与停靠面板不会串。提示行 `<p>` 现在有 id（`aria-describedby` 指向它）并按强调状态换色。
+- **`packages/web/src/lib/strings.ts` / `strings-en.ts`**：`credentialMissingHint` 从一句话变成**按渠道**
+  的四条（微信只能扫码那一条原来写错了），中英各一份。
+- **`messaging-binding-modal.tsx` / `messaging-panel.tsx`**：两个宿主把 `saveButtonId` 交给编辑器的保存
+  按钮，并让按钮本身带上这个 id。
+- **`packages/web/test/messaging-binding-editor.test.ts`**：上游自带的新用例照落 —— `enablePrerequisite`
+  的四种渠道 × 各条理由与优先级表、`aria-disabled` 且**没有原生 `disabled`** 的渲染断言。
+- **`packages/docs/content/remote-control.{en,zh}.md`**：那一行「开关不可用时…」改成「置灰时…，点击也会
+  说明还差哪一步」。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-12-messaging-enable-hint{,.zh}.md`）、去掉上游
+  PR 行、写明「移植自上游 PenguinHarness（#1029，提交 `7e97d50b`）」并补一条「接口、线上格式与已存数据
+  都没有变化」。
+- **本地化**：本笔没有需要改 scope 的 import（`@lmliheng/…` 已在树里），逐字照落。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- 新用例先单跑：`pnpm --filter @lmliheng/penguin-web exec vitest run test/messaging-binding-editor.test.ts`
+  → **23 passed**。
+- **反证（单测）**：把 `messaging-binding-editor.tsx` 换回 `HEAD` 那一版、只跑同一条命令 → **2 failed /
+  21 passed**（`enablePrerequisite` 不是函数；「置灰的开关仍可点」那条也挂），换回本笔 → **23 全过**。
+- `npx oxlint` **0 警告 0 错误**（2142 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128 文件）· cli **539**
+  （37 文件）· web **252 文件 / 3098 通过 / 2 跳过**（+1 即本笔新用例）· server **196 文件 / 2826 通过 /
+  4 跳过** · 另跑 `@lmliheng/penguin-docs` **62 通过**（8 文件，本笔改了它的两份内容）。hmr 无测试文件。
+- **真界面两态都看过（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r46-agent`、
+  `localhost:8973` 起真服务（`ADELIE_HOME` / `ADELIE_PROFILE=dev` / `PORT` / `ADELIE_SEED_ADMIN_PASSWORD`），
+  会话行用 sqlite 写在 `default_project` 上（这个根没有模型 key，`POST …/sessions` 会被
+  `model_credential_missing` 退回，即 3.6 那个卡点）；Playwright（`playwright-core@1.61.1` + 本地
+  chromium-1243）用 `POST /api/auth/login` 的会话 cookie 打开 `/chat/<会话>`，点「右侧栏」再点「远程控制」，
+  选中**飞书**渠道：
+  - **改动后**：开关 `role="switch"`、**`disabled` 为 false**、`aria-disabled="true"`、
+    `aria-describedby` 指向那行提示（`_r_14_-enable-hint`）、类名带 `cursor-not-allowed opacity-60`；
+    提示行文本「先填写 App ID 与 App Secret 并保存，再启用连接」。**点一下**：不产生任何非 GET 请求
+    （`writes: []`）、没有一条 ≥400 的响应（`bad: []`）、那句提示在页面上从 1 处变 2 处（**提示消息弹出**）、
+    焦点落到 `_r_14_-app-id`（**第一个空的凭证输入框**）；截图 `r46/msg-final-after.png` 里能看到顶部的提示
+    消息、画成告警色的提示行与被聚焦的 App ID 字段。
+  - **反证（真界面）**：把本笔的 7 个源码 / 文档文件全部退回 `HEAD`、重建 web、同一条探针 → 开关
+    **原生 `disabled: true`**、没有 `aria-disabled` / `aria-describedby`、那行提示没有 id（探针取不到），
+    `click()` 之后**什么都没发生**（没有提示消息、焦点仍在按钮上、没有请求）—— 即这条行为确实是本笔带来的。
+  - 端口只用 8973，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；除 `/root/adelie-fork-data/r46-agent`
+    与 `/tmp`、scratchpad 外没有实际写入，没有写进 `~/.penguin` 或 `~/.adelie`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- **`#834` 没有移植**（理由与实测见上），`#826` / `#810` 仍在表上：三笔都碰公司模式（要造组织的员工、
+  频道、机器托管的 Agent 夹具），**2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮
+  （其中 5.6 与 5.10 等用户拍板：促销要不要搬进 Project 自己的配置、接不接受 `mermaid` 作为新渲染依赖）。
+- **上游 `main` 又往前走了（本轮探到 `aae7857f`）**：`git fetch --no-tags
+  https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-probe`
+  → `aae7857f`（`#1047`，2026-10-12）。新增的 14 笔已逐笔量过、记在「跟上游学」一节的上面那一段里。
+- 中间物：会话 scratchpad 的 `r46/`（两个探针脚本、几张截图、`editor.fixed.tsx` 留底）与
+  `/root/adelie-fork-data/r46-agent`（一次性数据根，里面有一条为取证手写的会话行）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交**（9 个文件：编辑器 / 两个宿主 / 两份词典 / 用例 / 两份文档 + changelog 一对，见「已完成的
+  轮次」那一行）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
