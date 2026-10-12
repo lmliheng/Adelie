@@ -6565,8 +6565,20 @@ git merge --ff-only origin/main` → `Already up to date.`（头是 `46162578`�
 
 - **代码提交**（4 个文件：`company.tsx` / 它的测试 / 一对 changelog，见「已完成的轮次」那一行）；
   台账这一笔另起一笔。
-- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **推送**：`git push origin main`（`46162578` → `ac9ca768` → `b927efc9`）。**没有切版本号、没发 npm、
+  没发安装包、没发发布汇总。**
+
+### CI（推送后）
+
+- run **`38216446976`**（`b927efc9`）—— **22 个作业全绿、`NOT SUCCESS: []`**。本笔动的是 web 的一个源文件、
+  它的一条用例与一对 changelog，`ci.yml` 的矩阵没有动。
 
 ### 汇报
 
-- 见会话末尾的汇报记录。
+- **汇报邮件没发出去（第 22–44 轮同一处卡点，与凭据无关）**：`python3 scripts/mail.py send …`
+  （csu-mail 技能目录下，`timeout 90`）**一行输出都没有就退出 124**。凭据本身正常（`CSU_MAIL_ADDR` 21 字符 /
+  `CSU_MAIL_AUTHCODE` 16 字符，只打印长度）。按技能纪律**只试这一次、没有重试登录**。本轮正文写在会话
+  scratchpad 的 `r45/mail-round45.txt`；把第 45 轮的正文路径与主题**加进**既有的周期重发任务
+  `csu-mail-retry`（现覆盖第 22–45 共二十四封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
+- 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
+  （`message_id=om_x100b63fcc2a5aca4c24ae598dc13d67`），所以这一轮的结果不是只躺在队列里。
