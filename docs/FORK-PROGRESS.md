@@ -651,6 +651,22 @@
       只能在仓库里已有的上游对象里挑 —— 这一笔是探针 `b2c3de9f` 可达范围内 7 个文件 / +211 −5、
       `git apply -3` **逐字干净**、不引入新依赖、不碰桌面壳 / 包名 / 流水线，且是一条用户看得见的真缺陷
       （回复被划掉），本机能用真服务端 + 真浏览器把改前改后两态都看一遍。
+- [x] **5.30 创建组织时在组织的锁内写入目录布局**（上游 `10b43edc` `#957`，**2026-10-13 第五十一轮落地**，
+      提交见该节）：创建组织先查 id 是否空闲，再写目录布局（骨架、`org_config.toml`、`org_chart.yaml`、手册）
+      并建 CEO 的 Agent —— **这一整片都在加锁之前**；而删除组织持锁把整个目录移进回收站，它的守卫只要求
+      `org_config.toml` 读得回来。于是落在「创建写出第一个文件」与「加锁」之间那几毫秒里的一次删除能通过
+      自己的守卫、把写了一半的目录移走，创建继续在一份已不存在的配置旁写图表与手册 —— 留下一个任何列表
+      都不显示的目录（配置没了）、一个占着该 id 的 CEO Agent，以及给调用者一个「未找到」——而他刚刚看着
+      创建成功。现在整片布局写在**删除所持的同一把锁**内，两者因此串行：创建途中到达的删除会等待，随后
+      看到的要么是尚不存在的目录，要么是完整的组织，与「创建完成后再删除」本就只有的这两种状态一致。
+      前置检查（id、使命、时区、id 是否空闲）仍在锁外 —— 它们与锁之间不写任何东西，那里的删除找不到配置、
+      照旧拒绝；唯一剩下的可见残迹是台账里本来就写着的那一种：删除落在「布局写完」与「初始化那一轮」之间
+      会把完整组织移走，调用者看到「未找到」，但不会留下半成品。**为什么是这一条**：表上最靠前的未勾选
+      条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10（各处仍不可做或明令不动），而第五十一轮开工时
+      **上游 remote 依旧失效**（第四十九轮记的那件事），只能在仓库里已有的上游对象里挑 —— 这一笔是
+      第四十九轮量过的六笔零冲突候选里剩下的、与第三十九 / 四十 / 四十一轮同一类「真的健壮性修复」的
+      最小一笔（4 文件 / +124 −44，含 changelog 一对），`git apply -3` 干净、不引入新依赖、不碰桌面壳 /
+      包名 / 流水线，本机能用服务端自带的用例把改前改后都跑出来（新用例把竞态开成确定性的，见该节的反证）。
 - **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
       这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
       repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
@@ -1258,6 +1274,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-13 | 5.27 | **智能体面板全屏时，输入区与子会话对话对齐**（上游 `0e56dc5a` `#1050` 移植，照改动落、不是合分支；3 文件 / +82 −53，含 changelog 一对）：智能体面板把所选子会话的对话排在主对话的阅读列里（居中、限宽 `max-w-3xl`），输入区却铺满整个面板 —— 停靠时两者都落在停靠栏宽度内（本机量得输入区 538px、对话列 528px），看不出差别；停靠栏**全屏**后对话仍是居中的一列（768px），输入区却横贯被覆盖的整行。`SubagentComposer`（`packages/web/src/features/chat/subagents-view.tsx`）现在把 `ChatInput` 包在同一个 `mx-auto max-w-3xl` 列里（与 `chat-page.tsx` 里主对话输入区的同一写法），注释写明「全屏的停靠栏与对话列一样宽或更宽，输入区必须与上方的消息对齐而不是铺满整个面；停靠的面板窄于这个上限，所以那里什么都不变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例，数与前一轮一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r48-agents-panel`、`localhost:8976` 起真服务，配 `custom` provider 指向本仓自带的 mock LLM（8977），所以拿到的是**真会话、真子会话**（父会话发「run a subagent」→ 真 `run_subagent` → 子会话自带一轮工具调用 + 报告）；Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 打开该会话、点开子会话 chip 让 `智能体面板` 停靠标签激活，再点 `dock-fullscreen`：**改动后 1440px 窗口**——输入框 `x=491 w=746`、对话列 `x=480 w=768`（输入区落在阅读列内、左侧对齐），**1920px** —— 输入框 `x=731 w=746`、对话列 `x=720 w=768`；**停靠态两边一致**（输入框 `x=883 w=538`、对话列 `x=888 w=528`，与改动前逐字相同）；`console 0 error`、无一条 ≥400；**反证（真界面）**：把 `subagents-view.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → 全屏下输入框 `x=307 w=1114`（1440px）/ `x=307 w=1594`（1920px）横贯被覆盖的整行（1152 / 1632px），对话列仍是 `x=480 w=768` / `x=720 w=768`，停靠态与改动后一致；改回来再跑一次恢复原状。截图 `r48/panel-{after,before}-{docked,fullscreen,fullscreen-1920}.png` 在 scratchpad · 端口只用 8976（mock LLM 8977），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d0dfc22c` |
 | 2026-10-13 | 5.28 | **白领（Frost）主题的滚动条常显**（上游 `7527dd98` `#1070` 移植，照改动落、不是合分支；3 文件 / +26 −6，其中源码 1 个文件 +1 −6、另有 changelog 一对）：白领主题是新安装、也是新装桌面应用的默认主题，此前它的滚动条**只在指针悬停于滚动区域时才出现** —— `--ui-scrollbar-visibility: hover`，外加一条 `:root[data-theme="modern"] :not(:hover) { scrollbar-color: transparent … }` 把每个未悬停元素上的滚动条滑块刷成透明；于是有嵌套滚动区的弹窗（上游的原始报告是插件详情与它里面的文件预览）看不出哪一块还能滚动。现在删掉那条规则、把 `--ui-scrollbar-visibility` 改成 `auto`（与朴素主题一致），滑块颜色仍沿用白领自己的浅色 `rgb(0 0 0 / 0.2)` / 深色 `rgb(255 255 255 / 0.16)`；改动只在 `packages/ui/src/themes/modern.css` 里，因而全应用生效，朴素 / 极客两个主题一字未动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check` 干净（主题文件与两份 changelog）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例 —— 改的是 CSS，上游也没带用例；数与前一轮逐项一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r49-frost-scrollbars`、`localhost:8978` 起真服务（`PENGUIN_HOME` + `PENGUIN_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开页面、把主题置成白领（`html[data-theme="modern"]`，`dataset.theme` 实测就是 `modern`），**指针停在 (2,2)**（远离被测滚动区）读每个真溢出容器的 `scrollbar-color`：**改动后** —— 浅色 `rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0)`（`/models` 与 `/plugins` 两个 857px 高的滚动区，`--ui-scrollbar-visibility` 读出 `auto`）、深色 `rgba(255, 255, 255, 0.16) rgba(0, 0, 0, 0)`，悬停与不悬停**同值**；**反证（真界面）**：把 `modern.css` 退回 `HEAD`、重建 web、同一条探针 → 不悬停 `rgba(0, 0, 0, 0)`（滑块全透明，`--ui-scrollbar-visibility` 读出 `hover`）、悬停浅色 `rgba(0, 0, 0, 0.2)` / 深色 `rgba(255, 255, 255, 0.16)`；构建产物里改动后是 `--ui-scrollbar-visibility:auto` 与 `:not(:hover)` 规则 0 处，改动前是 `hover` 与 1 处；扫过 `/models`、`/plugins`、`/benchmark` 三页，`console 0 error`、无一条 ≥400；截图 `r49/frost-{after,before}-{models,plugins,benchmark}.png` 在 scratchpad · 端口只用 8978，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `542545cd` |
 | 2026-10-13 | 5.29 | **回复中的波浪号按原样显示、不再渲染删除线**（上游 `362c9997` `#1017` 移植，照改动落、不是合分支；7 文件 / +211 −5，其中源码 2 个（含 1 个新文件）、用例 2 个、另有 changelog 一对）：GFM 把一或两个 `~` 夹住的文字读成删除线，而回复里的 `~` 多用来表示范围（`3~5 天`、`10~20%`）或「大约」（`~30 秒`），同一段里出现两个就把中间整段划掉。新增 `packages/ui/src/components/content/prose/remark-literal-tildes.ts`（`literalStrikethrough` 就地遍历 mdast，把每个 `delete` 节点换成「开头波浪号 + 原本解析出来的子节点 + 结尾波浪号」；波浪号按**源码里的偏移**读，`markerAt` 保证 `~` 是一个、`~~` 是两个），`markdown-plugins.ts` 的 `REMARK_PLUGINS` 在 `remarkGfm` 之后注册它（注释写明为什么）—— 对话 / Trace / 插件页 / 文件预览都走这条共享管线；服务端 `runtime/messaging/markdown.ts` 的 `parseMarkdown` 在同一位置跑同一遍（同文件内的一份实现），飞书 / Telegram / QQ / 微信四个渲染器因此看到的是纯文本。用例照落：ui 新增 `test/remark-literal-tildes.test.ts` 四条（范围 + 大约不再划掉、单双标记按原样、夹在中间的 `**加粗**` 与 `` `代码` `` 保留、表格与任务列表照常），server 的 `messaging-markdown.test.ts` 新增两条（`a ~~**gone**~~ b ~c~` 解析后**没有 `delete` 节点**、中间的 `strong` 还在；四个渠道都按原样显示）并把四条只断言「`~~s~~` 原样透传」的旧断言改成不带删除线的写法。GFM 其余部分（表格、任务列表、自动链接、脚注）不变；自撰页面的文档站与博客不在这条管线里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2146 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件，+1 文件 +4 用例）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2828 通过 / 4 跳过**（+2 即本笔新用例）；hmr 无测试文件 · **真浏览器看改前改后两态（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r50-tilde`、`localhost:8952` 起真服务，配 `custom` provider 指向 scratchpad 里的小 mock（`r50/mock-tilde.mjs`，8951，Anthropic SSE —— 免模型 key，拿到的是**真会话、真回复**）；Playwright（`playwright-core@1.63.0` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开 `/chat/<会话>` 发一条，读 `.md-body` 的渲染：**改动后**三段分别是 `<p>需要 3~5 天，每次约 ~30 秒。</p>`、`<p>误差约 10~20%，整段耗时 ~30 秒。</p>`、`<p>~~<strong>这一段</strong>曾经会被划掉~~</p>`，**`del` 元素 0 个**；**反证（真界面）**：把 `markdown-plugins.ts` 退回 `HEAD`（去掉注册）、重建 web、同一条探针 → 第三段变成 `<p><del><strong>这一段</strong>曾经会被划掉</del></p>`，**`del` 1 个**；两态的 console 都只有一条 error —— `GET /api/projects/…/machines` 的 **403**（非 admin 的测试账号，改动前后同样出现，与本笔无关）；截图 `r50/after-final.png` 与 `r50/before2.png` 在 scratchpad · 端口只用 8951（mock）/ 8952，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `c6e849bb` |
+| 2026-10-13 | 5.30 | **创建组织时在组织的锁内写入目录布局**（上游 `10b43edc` `#957` 移植，照改动落、不是合分支；4 文件 / +124 −44，其中源码 1 个文件 +61 −44、用例 1 个文件 +54、另有 changelog 一对）：`OrganizationService.create()` 把「写目录布局（骨架、`org_config.toml`、`org_chart.yaml`、手册）+ 建 CEO 的 Agent」整片从加锁前搬进 `scheduler.withLock(projectId, orgId, …)`；删除组织把目录移进回收站时持的正是同一把锁，于是两者串行 —— 落在「创建写出第一个文件」与「加锁」之间那几毫秒里的一次删除不再能把写了一半的目录移走、让创建继续在一份已不存在的配置旁写图表与手册（那会留下一个任何列表都不显示的目录、一个占着该 id 的 CEO Agent，并给调用者一个「未找到」）。前置检查（`orgId` 形状、使命、时区、`store.exists` 空闲）仍在锁外；失败分支 `catch { store.remove(dir); throw }` 原样留在锁内。新用例把竞态开成**确定性的**（包一层 `withLock` 记「是否已在锁内」、`writeConfig` 第一次写入时触发 `service.delete`、未加锁时把创建按在回收站 rename 落地之后） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2146 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **196 文件 / 2829 通过 / 4 跳过**（**+1 正是本笔新增的那一条**；`organization-runtime.test.ts` 95 条全绿）· core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件）· cli **539**（37 文件）· web **253 文件 / 3100 通过 / 2 跳过** · hmr 无测试文件 · **反证（新用例真的钉住行为）**：`git checkout HEAD -- packages/server/src/runtime/organization/service.ts` 换回改动前那一版、只跑 `test/organization-runtime.test.ts` → **1 failed / 94 passed**，红的正是 `expect(existsSync(orgDir())).toBe(false)`（旧代码留下那个半成品目录）；把本笔换回去 → **95 全过** · 本笔**不碰界面**，因此没起服务、没开浏览器，端口一个没动，写入只落在临时目录 | `8a96b8b0` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -7290,3 +7307,95 @@ remark 插件 + 服务端同一遍解析）、自带 4 条 ui 用例与 2 条 se
   台账里记过这个行为），随后那次推的 **`38341367522`**（`bbede081`，包含本轮的代码提交
   `c6e849bb` 与两笔台账）—— **`completed success`**，**22 个作业全绿、`NOT SUCCESS: []`**。
   本笔只动两个源文件、两个用例文件与一对 changelog，`ci.yml` 的矩阵没有动。
+
+## 第五十一轮：创建组织时在组织的锁内写入目录布局（2026-10-13，条目 5.30）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `b41e1c5a`，第五十轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径是 `docs/FORK-PROGRESS.md`，prompt 里的 `/root/adelie-fork/FORK-PROGRESS.md` 是旧位置。）
+
+**上游这一轮依旧取不到新提交**：`upstream` 仍指向已经不存在的 `/root/penguin-harness`
+（`git fetch upstream` → `fatal: '/root/penguin-harness' does not appear to be a git repository`，
+第四十九轮记的那件事，本轮没有去动 remote 配置 —— 按纪律那要用户定）。所以只能在仓库里**已有的**
+上游对象里挑，探针 `refs/adelie-tmp/upstream-main-probe` 仍指 `b2c3de9f`，本轮这一笔是它可达范围内的一笔
+（`git log --oneline main..refs/adelie-tmp/upstream-main-probe` 有 113 笔，这一笔在其中）。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面的活全在桌面壳一侧、本机部署单元与画廊 /
+文档两个演示面，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，
+**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 /
+接不接受 `mermaid` 这个新依赖），**5.3** 的②③④要第二台机器。于是照前几轮的做法去上游挑一笔
+「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的。
+
+第五十轮末尾把六笔零冲突候选记在表上，其中 `#1017` 已落，剩下的五笔里 `#1026`（`99dacb54`，15 文件 /
++586，静默死掉的实时流从最后一条事件续上、卡住的写撕连接）价值最高，但改动在 SSE 客户端与服务端写路径上、
+真跑那条 e2e 的成本比这一轮高；`#826`（手机频道宽度）与 `#810`（频道里没发出的消息留着）都要造公司模式
+夹具；`#1021`（沙盒「完全访问」标签）是纯文案。**取 `#957`（`10b43edc`）**：它与第三十九 / 四十 / 四十一轮
+同一类 —— 一条真的健壮性修复（不是文案、不是排版），4 个文件 / +124 −44 是本轮候选里最小的一档，
+`git apply -3` 干净（`git show 10b43edc | git apply -3 --check` → 三个文件 `Applied … cleanly`），
+不引入新依赖、不碰桌面壳 / 包名 / 流水线，且**本机能用服务端自带的用例把改前改后都真跑出来**
+（上游那条新用例把竞态开成确定性的，不需要计时）。
+
+### 改了什么（4 个文件 / +124 −44，含 changelog 一对）
+
+照上游 `10b43edc` 的改动落，不是合分支：
+
+- **`packages/server/src/runtime/organization/service.ts`**（+61 −44）：`create()` 里「写目录布局
+  （`store.createLayout` 的骨架、`writeConfig` 的 `org_config.toml`、`writeChart` 的 `org_chart.yaml`、
+  `writeHandbook` 的手册）+ 建 CEO 的 Agent（`agents.create` 与它的 `writeAgentsMd`）」整片从**加锁之前**
+  搬进 `this.scheduler.withLock(projectId, orgId, …)`；原来那个 `catch { await this.deps.store.remove(dir);
+  throw err; }` 原样留在锁内。前面加了一段英文注释说明**为什么**：删除组织持锁把整个目录移进回收站，
+  不加锁时一次落在「上面那条 `exists` 检查」与「下面的锁」之间的删除会把写了一半的目录移走，让这个方法
+  继续在一份已不存在的配置旁写图表与手册。前置检查（`orgId` 形状、使命、时区、`store.exists` 空闲）仍在
+  锁外 —— 它们与锁之间不写入任何东西，那里的删除找不到配置、照旧拒绝。
+- **`packages/server/test/organization-runtime.test.ts`**（+54）：新增一条用例 —— 包一层 `scheduler.withLock`
+  记下「现在是否已经在组织锁内」，把 `store.writeConfig` 换成「第一次写完就触发 `service.delete`，若当时
+  **不在**锁内就把创建按在回收站 rename 落地之后」。断言创建以 `404 org_not_found` 失败、`store.exists`
+  为假、**磁盘上那个目录不存在**（`existsSync(orgDir())` 为假），而 CEO 的 Agent 仍占着那个 id
+  （`existingAgents.has(CEO)` 为真）—— 也就是「调用者失去组织」这个既有结局不变，变的是**不再留下那个
+  任何列表都不显示的半成品目录**。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-13-org-create-under-lock{,.zh}.md`）、去掉上游
+  PR 行、写明「移植自上游 PenguinHarness（#957，提交 `10b43edc`）」、补一条「接口、线上格式与已存数据都
+  没有变化」。
+- **本地化**：本笔没有跨包 import（`scheduler.withLock` 与 `this.deps.store` 都是本文件已在用的），逐字照落。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2146 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：server **196 文件 / 2829 通过 / 4 跳过**（**+1 正是本笔新增的那一条**；
+  `organization-runtime.test.ts` 95 条全绿）· core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件）·
+  cli **539**（37 文件）· web **253 文件 / 3100 通过 / 2 跳过** · hmr 无测试文件。
+- **反证（新用例真的钉住行为）**：`git checkout HEAD -- packages/server/src/runtime/organization/service.ts`
+  换回改动前那一版、只跑 `test/organization-runtime.test.ts` → **1 failed / 94 passed**，红的正是
+  `expect(existsSync(orgDir())).toBe(false)`（`Received: true` —— 旧代码把那个半成品目录留了下来）；
+  把改动换回去、同一条用例再跑 → **95 全过**。
+- 本笔**不碰界面**，因此没起服务、没开浏览器；端口一个没动，写入只落在临时目录。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- **上游 remote 仍失效**（见「开工自检」）：要再跟上游走，得由用户把 `upstream` 指到一个能 fetch 的源。
+- 第四十九 / 五十轮量过、仍留在桌上的候选（下一轮从这里挑）：`#1026`（`99dacb54`，15 文件 / +586，静默
+  死掉的实时流从最后一条事件续上、卡住的写撕连接 —— 价值最高，但要在 SSE 客户端与服务端写路径上真跑
+  那条 e2e）、`#826`（`9eae0a2d`，5 文件，手机频道消息宽度）、`#810`（`7ecb60e1`，8 文件，频道里没发出的
+  消息留着，后两笔都要造公司模式夹具）、`#1021`（`b24f3099`，5 文件，沙盒「完全访问」标签，纯文案）。
+  更早几笔仍按原样记着：`#1074` / `#1067` / `#1072` 卡在「本树没有那个文件或常量」，`#1071` 的 `strings`
+  与本树冲突，`#1038` 要本树没有的 `models/tokendance-banner.tsx`，`#1047` 要等上游那套分层费率进本树。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- 中间物：会话 scratchpad 的 `r51/`（改动前的 `service.patched.ts` 留底）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `8a96b8b0`**（4 个文件：源码 / 用例 / 一对 changelog）；台账这一笔另起一笔。
+- **推送**：`git push origin main`（`b41e1c5a` → `8a96b8b0` → …）。**没有切版本号、没发 npm、
+  没发安装包、没发发布汇总。**
