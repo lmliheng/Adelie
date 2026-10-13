@@ -667,6 +667,26 @@
       第四十九轮量过的六笔零冲突候选里剩下的、与第三十九 / 四十 / 四十一轮同一类「真的健壮性修复」的
       最小一笔（4 文件 / +124 −44，含 changelog 一对），`git apply -3` 干净、不引入新依赖、不碰桌面壳 /
       包名 / 流水线，本机能用服务端自带的用例把改前改后都跑出来（新用例把竞态开成确定性的，见该节的反证）。
+- [x] **5.31 实时流无声断开时页面自行续接、卡住的写切断连接**（上游 `99dacb54` `#1026`，**2026-10-13 第五十二轮
+      落地**，提交见该节）：一条实时流（Session 流或用户事件流）的连接**在没有任何错误的情况下**断掉时（半开的
+      TCP、卡住的代理或 NAT、休眠或换网的笔记本），浏览器既不触发 `onerror`，页面就永远停在最后一帧 —— 而
+      Agent 在服务端仍在跑，刷新才知道进展；服务端那一侧，对端不再读取时 socket 写满、写入挂起，之后每一个事件
+      与心跳都堆在它后面（没有上限），而流的 `close()` 也排在同一个挂起写入之后，**只有 socket 能了结它**。
+      现在两侧一起改：服务端心跳从「页面看不到的 `: ping` 注释行」改成**有名事件** `ping`（`data: {}`、无
+      `id:` 行，初始事件之后立即发、之后每 20 秒一次，既不动客户端的 `Last-Event-ID` 也不动重放位置），
+      `createApp` 给每个 `text/event-stream` 响应的 socket 设 **40 秒空闲超时**（两次心跳）到点 `destroy()`——
+      活跃的流每 20 秒一写，绝不会静默这么久，只有对端停止读取才会；`/api/sessions/:id/stream` 与 `/api/events`
+      在没有 `Last-Event-ID` 请求头时接受 `?lastEventId=` 查询参数（页面自己开的 EventSource 设不了请求头，
+      两个都在时以请求头为准）；容器侧 `index.ts` 把 Node 的 bindings 传给 `app.fetch`（`c.env` 不跨 HMR 缝
+      进路由）。Web App（`api/sse.ts`）收到过 `ping` 之后，**50 秒没有任何事件即认定连接已死**：关掉它、带上
+      `?lastEventId=<最后见到的 id>` 新开一条（服务端据此重放，id 已移出缓冲区时回 `resync_required`，两条路
+      调用方本来就会处理）；标签页重新可见时立即检查一次（后台的定时器会晚跑）；一次订阅任何时刻只持有一条
+      EventSource；从不发送 `ping` 的流（旧版本服务端）与浏览器已放弃的流都保持原样。**为什么是这一条**：
+      第四十九 / 五十 / 五十一轮都把它记为「价值最高但 E2E 成本高、留给有整块时间的一轮」，本轮就是那一轮 ——
+      它是四笔遗留候选里唯一一条**用户看得见、且两侧都有真缺陷**的（其余三笔是手机频道宽度、频道草稿、
+      沙盒标签的纯文案），`git apply -3` **15 个文件全部 `Applied … cleanly`**（新文件四个），不引入新依赖、
+      不碰桌面壳 / 包名 / 流水线，本机能用仓库自带的 mock LLM 起真服务 + 真浏览器把那条新 e2e 真跑出来
+      （反证也做了两处，见该节）。
 - **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
       这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
       repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
@@ -1275,6 +1295,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-13 | 5.28 | **白领（Frost）主题的滚动条常显**（上游 `7527dd98` `#1070` 移植，照改动落、不是合分支；3 文件 / +26 −6，其中源码 1 个文件 +1 −6、另有 changelog 一对）：白领主题是新安装、也是新装桌面应用的默认主题，此前它的滚动条**只在指针悬停于滚动区域时才出现** —— `--ui-scrollbar-visibility: hover`，外加一条 `:root[data-theme="modern"] :not(:hover) { scrollbar-color: transparent … }` 把每个未悬停元素上的滚动条滑块刷成透明；于是有嵌套滚动区的弹窗（上游的原始报告是插件详情与它里面的文件预览）看不出哪一块还能滚动。现在删掉那条规则、把 `--ui-scrollbar-visibility` 改成 `auto`（与朴素主题一致），滑块颜色仍沿用白领自己的浅色 `rgb(0 0 0 / 0.2)` / 深色 `rgb(255 255 255 / 0.16)`；改动只在 `packages/ui/src/themes/modern.css` 里，因而全应用生效，朴素 / 极客两个主题一字未动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check` 干净（主题文件与两份 changelog）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例 —— 改的是 CSS，上游也没带用例；数与前一轮逐项一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r49-frost-scrollbars`、`localhost:8978` 起真服务（`PENGUIN_HOME` + `PENGUIN_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开页面、把主题置成白领（`html[data-theme="modern"]`，`dataset.theme` 实测就是 `modern`），**指针停在 (2,2)**（远离被测滚动区）读每个真溢出容器的 `scrollbar-color`：**改动后** —— 浅色 `rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0)`（`/models` 与 `/plugins` 两个 857px 高的滚动区，`--ui-scrollbar-visibility` 读出 `auto`）、深色 `rgba(255, 255, 255, 0.16) rgba(0, 0, 0, 0)`，悬停与不悬停**同值**；**反证（真界面）**：把 `modern.css` 退回 `HEAD`、重建 web、同一条探针 → 不悬停 `rgba(0, 0, 0, 0)`（滑块全透明，`--ui-scrollbar-visibility` 读出 `hover`）、悬停浅色 `rgba(0, 0, 0, 0.2)` / 深色 `rgba(255, 255, 255, 0.16)`；构建产物里改动后是 `--ui-scrollbar-visibility:auto` 与 `:not(:hover)` 规则 0 处，改动前是 `hover` 与 1 处；扫过 `/models`、`/plugins`、`/benchmark` 三页，`console 0 error`、无一条 ≥400；截图 `r49/frost-{after,before}-{models,plugins,benchmark}.png` 在 scratchpad · 端口只用 8978，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `542545cd` |
 | 2026-10-13 | 5.29 | **回复中的波浪号按原样显示、不再渲染删除线**（上游 `362c9997` `#1017` 移植，照改动落、不是合分支；7 文件 / +211 −5，其中源码 2 个（含 1 个新文件）、用例 2 个、另有 changelog 一对）：GFM 把一或两个 `~` 夹住的文字读成删除线，而回复里的 `~` 多用来表示范围（`3~5 天`、`10~20%`）或「大约」（`~30 秒`），同一段里出现两个就把中间整段划掉。新增 `packages/ui/src/components/content/prose/remark-literal-tildes.ts`（`literalStrikethrough` 就地遍历 mdast，把每个 `delete` 节点换成「开头波浪号 + 原本解析出来的子节点 + 结尾波浪号」；波浪号按**源码里的偏移**读，`markerAt` 保证 `~` 是一个、`~~` 是两个），`markdown-plugins.ts` 的 `REMARK_PLUGINS` 在 `remarkGfm` 之后注册它（注释写明为什么）—— 对话 / Trace / 插件页 / 文件预览都走这条共享管线；服务端 `runtime/messaging/markdown.ts` 的 `parseMarkdown` 在同一位置跑同一遍（同文件内的一份实现），飞书 / Telegram / QQ / 微信四个渲染器因此看到的是纯文本。用例照落：ui 新增 `test/remark-literal-tildes.test.ts` 四条（范围 + 大约不再划掉、单双标记按原样、夹在中间的 `**加粗**` 与 `` `代码` `` 保留、表格与任务列表照常），server 的 `messaging-markdown.test.ts` 新增两条（`a ~~**gone**~~ b ~c~` 解析后**没有 `delete` 节点**、中间的 `strong` 还在；四个渠道都按原样显示）并把四条只断言「`~~s~~` 原样透传」的旧断言改成不带删除线的写法。GFM 其余部分（表格、任务列表、自动链接、脚注）不变；自撰页面的文档站与博客不在这条管线里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2146 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件，+1 文件 +4 用例）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2828 通过 / 4 跳过**（+2 即本笔新用例）；hmr 无测试文件 · **真浏览器看改前改后两态（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r50-tilde`、`localhost:8952` 起真服务，配 `custom` provider 指向 scratchpad 里的小 mock（`r50/mock-tilde.mjs`，8951，Anthropic SSE —— 免模型 key，拿到的是**真会话、真回复**）；Playwright（`playwright-core@1.63.0` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开 `/chat/<会话>` 发一条，读 `.md-body` 的渲染：**改动后**三段分别是 `<p>需要 3~5 天，每次约 ~30 秒。</p>`、`<p>误差约 10~20%，整段耗时 ~30 秒。</p>`、`<p>~~<strong>这一段</strong>曾经会被划掉~~</p>`，**`del` 元素 0 个**；**反证（真界面）**：把 `markdown-plugins.ts` 退回 `HEAD`（去掉注册）、重建 web、同一条探针 → 第三段变成 `<p><del><strong>这一段</strong>曾经会被划掉</del></p>`，**`del` 1 个**；两态的 console 都只有一条 error —— `GET /api/projects/…/machines` 的 **403**（非 admin 的测试账号，改动前后同样出现，与本笔无关）；截图 `r50/after-final.png` 与 `r50/before2.png` 在 scratchpad · 端口只用 8951（mock）/ 8952，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `c6e849bb` |
 | 2026-10-13 | 5.30 | **创建组织时在组织的锁内写入目录布局**（上游 `10b43edc` `#957` 移植，照改动落、不是合分支；4 文件 / +124 −44，其中源码 1 个文件 +61 −44、用例 1 个文件 +54、另有 changelog 一对）：`OrganizationService.create()` 把「写目录布局（骨架、`org_config.toml`、`org_chart.yaml`、手册）+ 建 CEO 的 Agent」整片从加锁前搬进 `scheduler.withLock(projectId, orgId, …)`；删除组织把目录移进回收站时持的正是同一把锁，于是两者串行 —— 落在「创建写出第一个文件」与「加锁」之间那几毫秒里的一次删除不再能把写了一半的目录移走、让创建继续在一份已不存在的配置旁写图表与手册（那会留下一个任何列表都不显示的目录、一个占着该 id 的 CEO Agent，并给调用者一个「未找到」）。前置检查（`orgId` 形状、使命、时区、`store.exists` 空闲）仍在锁外；失败分支 `catch { store.remove(dir); throw }` 原样留在锁内。新用例把竞态开成**确定性的**（包一层 `withLock` 记「是否已在锁内」、`writeConfig` 第一次写入时触发 `service.delete`、未加锁时把创建按在回收站 rename 落地之后） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2146 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **196 文件 / 2829 通过 / 4 跳过**（**+1 正是本笔新增的那一条**；`organization-runtime.test.ts` 95 条全绿）· core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件）· cli **539**（37 文件）· web **253 文件 / 3100 通过 / 2 跳过** · hmr 无测试文件 · **反证（新用例真的钉住行为）**：`git checkout HEAD -- packages/server/src/runtime/organization/service.ts` 换回改动前那一版、只跑 `test/organization-runtime.test.ts` → **1 failed / 94 passed**，红的正是 `expect(existsSync(orgDir())).toBe(false)`（旧代码留下那个半成品目录）；把本笔换回去 → **95 全过** · 本笔**不碰界面**，因此没起服务、没开浏览器，端口一个没动，写入只落在临时目录 | `8a96b8b0` |
+| 2026-10-13 | 5.31 | **实时流无声断开时页面自行续接、卡住的写切断连接**（上游 `99dacb54` `#1026` 移植，照改动落、不是合分支；15 文件 / +586 −37，其中源码 4 个（`server/src/app.ts` +16、`server/src/http/sse.ts` +34 −12、`server/src/index.ts` +5 −2、`web/src/api/sse.ts` +83 −21）、文档 2、既有用例 2、新用例 2（服务端 `sse-wire.test.ts` 89 行、web 的 `sse.test.ts` 102 行）、新测试助手 1（`web/test/helpers/event-source.ts`）、新 e2e 1（`web/e2e/stream-stall.spec.mjs` 136 行），另有 changelog 一对）：两侧的根因各一条 —— ① 客户端过去就是一个裸 `EventSource`，服务端 20 秒一次的 `: ping` 是**注释行、浏览器不会交给页面**，半开的 TCP / 卡住的代理或 NAT / 休眠换网的笔记本**永远不触发 `onerror`**，页面就一直停在最后一帧（Agent 在服务端照跑，刷新才追得上）；② 服务端把写入串在一条 promise 链上，对端停止读取时 socket 写满、写入挂起，之后每个事件与心跳都堆在它后面（没有上限），而 hono 流的 `close()` 也排在同一个挂起写入之后 —— **只有 socket 能了结它**。现在：服务端心跳改成**有名事件** `ping`（`data: {}`、无 `id:` 行，初始事件之后立即发、之后每 20 秒一次，既不移动客户端的 `Last-Event-ID` 也不移动重放游标），`createApp` 给每个 `text/event-stream` 响应的 socket 设 **`STREAM_IDLE_MS = 40 秒`** 空闲超时到点 `destroy()`（活跃的流每 20 秒一写、绝不会静默这么久，只有对端不读了才会；Node 会让第一次到点在有挂起写入时先放过，所以卡住的写 40–80 秒内被切），`/api/sessions/:id/stream` 与 `/api/events` 在无 `Last-Event-ID` 头时接受 `?lastEventId=`（页面自己开的 EventSource 设不了头；两个都在时头为准），`index.ts` 把 Node bindings 传给 `app.fetch`（`c.env` 不跨 HMR 缝进路由，所以只有宿主拿得到 socket）；Web 侧（`api/sse.ts`）在收到过 `ping` 之后，**50 秒无任何事件即认定已死**：关掉、带 `?lastEventId=<最后见到的 id>` 新开一条（服务端据此重放，id 离开缓冲区则回 `resync_required`，调用方两条路本来都处理），标签页重新可见时立即检查一次，一次订阅只持一条 EventSource；从不发 `ping` 的服务器与浏览器已放弃的流都保持原样。**本地化**：新用例里 `@prismshadow/penguin-core` → 本仓 `@lmliheng/penguin-core`（唯一一处 scope），changelog 改名到本轮日期、去掉上游 PR 行、写明移植来源并补一节「兼容性」（旧服务器/新页面、新服务器/旧页面、磁盘无变化） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2150 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过**（**+1 文件 +3 用例**：新 `sse-wire.test.ts` 1 条、`sse-stream.test.ts` 的 ping 与 `?lastEventId=` 重放）· web **254 文件 / 3106 通过 / 2 跳过**（**+1 文件 +6 用例**，即新 `sse.test.ts`）· hmr 无测试文件 · **反证一（单测，改前源码）**：把四个源码文件退回 `HEAD`、只跑那两条服务端用例 → **2 文件失败 / 4 failed · 4 passed（8 条）**（`sse-wire` 红在 `expect(socket.destroyed).toBe(true)` 收到 `false`，`sse-stream` 红在开头的 ping 与 `?lastEventId=` 重放）；只跑 `web/test/sse.test.ts` → **2 failed · 4 passed（6 条）**（「静默重开」与「重新可见即刻重开」两条，与上游记录的失败面一致）；换回本笔 → 服务端 **8 条全过**、web **6 条全过** · **本轮主证据（e2e，真服务端 + 真浏览器 + 真 TCP 中继）**：按仓库自带 `web/e2e/run.sh` 的形状（重建 core / server / web 产物，`MOCK_PORT=8931` 起自带 mock LLM，`SRV_PORT=8930`、一次性数据根起真服务）跑新 e2e `stream-stall.spec.mjs` —— 中继在回复中途吞掉 Session 流的字节而不关闭连接，运行在服务端跑完、页面时钟跳过静默窗口，页面必须**从最后一个事件自行重连、把整段回复恰好显示一次**：`stream-stall` **✓ 9.6s**；与 `reload-midstream.spec.mjs` 一起跑 **3 passed（40.8s）**、`E2E_EXIT=0` · **反证二（e2e，改前客户端）**：把 `web/src/api/sse.ts` 退回 `HEAD`、重建 web、重跑同一条 → **1 failed**，误差正是上游报的那一条：`Expected substring: "chunk-40"`、`Received string: "chunk-1 chunk-2 chunk-3 chunk-4 chunk-5▌"`；换回本笔、重建 web，恢复 `ALL-IDENTICAL` · 本轮**不碰桌面壳 / 包名 / 流水线**，端口只用 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -7418,3 +7439,135 @@ git merge --ff-only origin/main` → `Already up to date.`（头是 `b41e1c5a`�
   `38360969676`（`8a96b8b0`）被同组后一笔 run 取消（`ci.yml` 的 `cancel-in-progress`，台账里记过这个
   行为），绿的那条看的是后一笔，也就是这棵树。本笔只动 server 的一个源文件、一条用例与一对 changelog，
   `ci.yml` 的矩阵没有动。
+
+## 第五十二轮：实时流无声断开时页面自行续接、卡住的写切断连接（2026-10-13，条目 5.31）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、3003 / 3004 / 4000 /
+7364 / 7369 全程没碰；按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `7235a955`，第五十一轮的 CI 补记那一笔）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径是 `docs/FORK-PROGRESS.md`，prompt 里的 `/root/adelie-fork/FORK-PROGRESS.md` 是旧位置。）
+
+**上游这一轮依旧取不到新提交**：`upstream` 仍指向已经不存在的 `/root/penguin-harness`
+（`git fetch upstream` → `fatal: '/root/penguin-harness' does not appear to be a git repository`，
+第四十九轮记的那件事，本轮没有去动 remote 配置 —— 按纪律那要用户定）。所以只能在仓库里**已有的**
+上游对象里挑，探针 `refs/adelie-tmp/upstream-main-probe` 仍指 `b2c3de9f`，本轮这一笔是它可达范围内的一笔。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面的活全在桌面壳一侧、本机部署单元与画廊 /
+文档两个演示面，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，
+**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板，**5.3** 的②③④要第二台机器。
+于是照前几轮的做法去上游挑一笔「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的。
+
+第四十九 / 五十 / 五十一轮把四笔遗留候选记在桌上：`#1026`（`99dacb54`，15 文件 / +586，实时流无声断开
+自行续接）、`#826`（`9eae0a2d`，5 文件，手机频道宽度）、`#810`（`7ecb60e1`，8 文件，频道草稿留着）、
+`#1021`（`b24f3099`，5 文件，沙盒标签纯文案）。**取 `#1026`**：它连着三轮被记为「价值最高，但改动在
+SSE 客户端与服务端写路径上、真跑那条 e2e 的成本比一轮高，留给有整块时间的一轮」，而本轮就是那一轮 ——
+① 它是四笔里唯一一条**用户看得见、且两侧各有真缺陷**的（另外三笔分别是手机排版、草稿保留与一处文案），
+② `git show 99dacb54 | git apply -3 --check` **逐字干净**（15 个文件全部 `Applied … cleanly`，其中四个是
+新文件），③ 不引入新依赖（只用到本仓已有的 `@hono/node-server` 类型与 hono 的 `writeSSE`）、不碰桌面壳 /
+包名 / 流水线，④ **本机能用仓库自带的 mock LLM 起真服务 + 真浏览器把那条新 e2e 真跑出来**，所以「最贵的
+那一处验证」这一轮真的做得到。
+
+### 改了什么（15 文件 / +586 −37，含 changelog 一对）
+
+照上游 `99dacb54` 的改动落，不是合分支：
+
+- **`packages/server/src/http/sse.ts`**（+34 −12）：导出 `STREAM_IDLE_MS = 2 * HEARTBEAT_MS`（40 秒）与
+  心跳帧常量 `PING = { event: "ping", data: "{}" }`；心跳从 `stream.write(": ping\n\n")` 改成
+  `stream.writeSSE(PING)`，并**在初始事件之后立即发一次**（页面第一秒就知道这条流会心跳，不必等第一个
+  周期）；`lastEventId` 现在取 `Last-Event-ID` 头 `?? c.req.query("lastEventId")` —— 注释写明为什么头优先
+  （浏览器自己的重连会带上更新的那个）。文件头的契约注释同步改写（为什么注释行不行、为什么这个事件不带
+  `id:`、谁来切卡住的写）。
+- **`packages/server/src/app.ts`**（+16）：新增一段 `app.use("*", …)` 中间件，`await next()` 之后若响应的
+  `content-type` 是 `text/event-stream`，就对 `(c.env as Partial<HttpBindings>)?.incoming?.socket` 调
+  `setTimeout(STREAM_IDLE_MS, () => socket.destroy())`；注释写明**为什么只能是宿主**（流的 `close()` 排在
+  同一个挂起写入之后，`c.env` 又不跨 HMR 缝进路由）、以及为什么活跃的流撞不到它。
+- **`packages/server/src/index.ts`**（+5 −2）：两处 `app.fetch(request)` 改成 `app.fetch(request, env)`
+  （主监听与 IPv6 回环各一处），把 Node 的 bindings 交给 Hono。
+- **`packages/web/src/api/sse.ts`**（+83 −21）：`subscribe()` 从「一个裸 EventSource」改成一个小状态机 ——
+  `connect()` 重建 EventSource（带 `?lastEventId=`）、`heard()` 在每条消息 / 服务器事件 / ping 上记时间与
+  最新 id、`onPing` 武装看门狗、`check()` 在 `SILENCE_MS = 50_000` 无事件时重开一条、`disarm()` 在浏览器
+  判死或调用方关闭时收手、`visibilitychange` 重新可见时立即 `check()`；`close()` 一并摘掉监听器。
+- **`packages/web/src/features/chat/use-session-stream.ts`**（+3 −1）：只改注释，写明「静默的连接由
+  `api/sse.ts` 从最后一个 id 重开」。
+- **`packages/docs/content/server-api.{en,zh}.md`**（各 +10 −8）：「传输格式」一节补 `ping` 事件、
+  `lastEventId` 参数、空闲超时与「推荐的客户端模式」的第 6 步。
+- **用例**：`packages/server/test/sse-wire.test.ts`（新，89 行 —— 用 `@hono/node-server` 真起服务、真
+  socket，让订阅者停止读取，断言 socket 被销毁、订阅被摘掉）、`packages/server/test/sse-stream.test.ts`
+  （+28 −7 —— 开头帧以不带 id 的 ping 收尾；`it.each` 把 `Last-Event-ID` 头与 `?lastEventId=` 两条路钉成
+  一条）、`packages/server/test/live-streams.test.ts`（+6 −4 —— 读数往后挪一帧、断言从 `: ping` 改
+  `event: ping`）、`packages/web/test/sse.test.ts`（新，102 行，六条）、`packages/web/test/helpers/event-source.ts`
+  （新，63 行 —— 一个可注入时钟与可见性的假 EventSource）。
+- **`packages/web/e2e/stream-stall.spec.mjs`**（新，136 行）：一个 TCP 中继在回复中途吞掉 Session 流的字节
+  而不关闭连接，服务端把运行跑完，页面时钟跳过静默窗口后，页面必须自行重连并把整段回复**恰好显示一次**。
+- **changelog 一对**：改名到本轮日期（`2026-10-13-sse-stall{,.zh}.md`）、去掉上游 PR 行、写明「移植自上游
+  PenguinHarness（#1026，提交 `99dacb54`）」、补一节「兼容性」（旧服务器 / 新页面、新服务器 / 旧页面、
+  磁盘无变化）。
+- **本地化**：新用例里 `@prismshadow/penguin-core` → 本仓 `@lmliheng/penguin-core`（唯一一处 scope）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2150 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）·
+  server **197 文件 / 2832 通过 / 4 跳过**（**+1 文件 +3 用例**）· web **254 文件 / 3106 通过 / 2 跳过**
+  （**+1 文件 +6 用例**）· hmr 无测试文件。
+- **反证一（单测，改前源码）**：`git checkout HEAD -- ` 那四个源码文件、只跑受影响的两条服务端用例 →
+  **2 文件失败 / 4 failed · 4 passed（8 条）**（`sse-wire` 红在 `expect(socket.destroyed).toBe(true)` 收到
+  `false`，`sse-stream` 红在开头 ping 与 `?lastEventId=` 重放）；只跑 `web/test/sse.test.ts` →
+  **2 failed · 4 passed（6 条）**（「静默重开」与「重新可见即刻重开」，与上游记的失败面逐条对上）；
+  把本笔换回去 → 服务端 **8 条全过**、web **6 条全过**。
+- **本轮主证据（e2e，真服务端 + 真浏览器 + 真 TCP 中继）**：按仓库自带 `packages/web/e2e/run.sh` 的形状
+  （`pnpm --filter …core/server/web build` → `MOCK_PORT=8931` 起自带 `mock-llm.mjs` → `SRV_PORT=8930`、一次性
+  数据根起真服务 → `npx playwright test -c e2e/playwright.config.mjs stream-stall.spec.mjs
+  reload-midstream.spec.mjs`）：**3 passed（40.8s）**、`E2E_EXIT=0`，其中新用例
+  `✓ … a Session stream that goes silent mid-run catches up on its own, without a reload (9.6s)`。
+- **反证二（e2e，改前客户端）**：把 `packages/web/src/api/sse.ts` 退回 `HEAD`、重建 web、只跑那条 →
+  **1 failed**，误差正是上游报的那一条：`Expected substring: "chunk-40"`、
+  `Received string: "chunk-1 chunk-2 chunk-3 chunk-4 chunk-5▌"`；换回本笔、重建 web，四个源码文件与留底
+  **逐字一致**（`diff` 全空）。
+- 端口只用 8930 / 8931（服务端与 mock），3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- **上游 remote 仍失效**（见「开工自检」）：要再跟上游走，得由用户把 `upstream` 指到一个能 fetch 的源。
+- 第四十九 / 五十轮量过、仍留在桌上的候选（下一轮从这里挑）：`#826`（`9eae0a2d`，5 文件，手机频道消息
+  宽度）与 `#810`（`7ecb60e1`，8 文件，频道里没发出的消息留着，两笔都要造公司模式夹具）、`#1021`
+  （`b24f3099`，5 文件，沙盒「完全访问」标签，纯文案）。更早几笔仍按原样记着：`#1074` / `#1067` /
+  `#1072` 卡在「本树没有那个文件或常量」，`#1071` 的 `strings` 与本树冲突，`#1038` 要本树没有的
+  `models/tokendance-banner.tsx`，`#1047` 要等上游那套分层费率进本树。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- 中间物：会话 scratchpad 的 `r52/`（`run-sse-e2e.sh` / `run-stall-only.sh` 两个运行脚本、`keep/` 里四个
+  源码留底）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `1d49df9b`**（15 个文件：4 个源码 / 2 份文档 / 2 条既有用例 / 4 个新文件 / 一对 changelog）；
+  台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+
+### 汇报
+
+- **汇报邮件没发出去（第 22–51 轮同一处卡点，与凭据无关）**：按 csu-mail 技能先自检 —— 技能目录下
+  `timeout 90 python3 scripts/mail.py check` **一行输出都没有就退出 124**（凭据本身正常：
+  `CSU_MAIL_ADDR` 长度 21、`CSU_MAIL_AUTHCODE` 长度 16，都注入着）。按技能纪律**只试这一次，没有重试
+  登录，也没有再试发信**。本轮正文写在会话 scratchpad 的 `r52/mail-round52.txt`；把第 52 轮的正文路径与
+  主题**加进**既有的周期重发任务 `csu-mail-retry`（现覆盖第 22–52 共三十一封），没有另开新任务，
+  `end_at` 保持 `2026-10-19T12:00:00Z`。
+- 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
+  （`message_id=om_x100b63d57dc3e4a4df961c709393cb1`），所以这一轮的结果不是只躺在队列里。
+
+### CI（推送后）
+
+- 代码提交自己那次推的 run **`38388933592`**（`1d49df9b`）—— **`completed success`**，
+  **22 个作业全绿、`NOT SUCCESS: []`**。本笔改了 server / web 的源码、用例与一份 e2e，`ci.yml` 的矩阵
+  没有动；台账这一笔在它之后推，会另起一次 run（同组会被 `cancel-in-progress` 行为影响，见前几轮记录）。
