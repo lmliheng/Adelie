@@ -7940,4 +7940,8 @@ key（正是 3.6 那个卡点）。`git show 9eae0a2d | git apply -3 --check` �
 
 ### CI（推送后）
 
-- 见下一笔补记。
+- 代码提交与台账两笔一起推（`4070fa3e..7abf1020` 与 `7abf1020..3366d8cf`）—— 代码那一笔的 run
+  **`38483097646`**（`7abf1020`）被同组后一笔 run 取消（`ci.yml` 的 `cancel-in-progress`，台账里记过这个
+  行为），绿的那条看的是后一笔：run **`38483227055`**（`3366d8cf`）—— **`completed success`**，
+  **22 个作业全绿、`NOT SUCCESS: []`**。
+- 本笔只改 `packages/ui` 的三处源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
