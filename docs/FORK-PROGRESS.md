@@ -712,6 +712,17 @@
       明令不动），上游 remote 也仍失效；第五十三轮末尾把两笔候选（`#826` 手机频道宽度、`#810` 频道草稿）记在
       桌上，这一笔是两者里**唯一一条不需要真消息、也不需要模型**就能把四个行为在真浏览器里走完的（只要一个
       组织与一个频道），`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线。
+- [x] **5.34 手机上的频道消息有了足够的宽度**（上游 `9eae0a2d` `#826`，**2026-10-14 第五十五轮落地**，
+      提交见该节）：手机上公司频道的消息气泡最多只占列宽的四分之三，而时间戳又占着正文旁边的一栏，两者一起
+      把中文挤到每行七八个字。现在窄屏（`sm` 以下）气泡最多占列宽的 **88%**、正文是 `text-base`（`sm` 及以上
+      仍是 75% 与 `text-sm`），时间戳从「正文旁边的一栏」改成**收在气泡右下角**：正文在最后一行上给它留出
+      一段行内空隙（最后一段 / 最后一个列表项 / 引用的最后一行以 `::after` 收尾，宽 `--channel-time-gap`），
+      因此一行放得下就跟在文字后面、放不下就把最后一个字换到下一行、角落留给时间；正文末行若是代码块或表格
+      这类无法以空隙收尾的块，就把它上面让到下一行。带 refs 的消息另有一个 `.channel-time-gap` 元素跟在 chip
+      行之后（CSS 的 `::after` 在那里够不到）。**为什么是这一条**：表上最靠前的未勾选条目仍是 2.2c / 3.5 /
+      3.6 / 4.x / 5.3 / 5.6 / 5.10（各处仍不可做或明令不动），上游 remote 也仍失效；第五十三 / 五十四轮把
+      两笔候选记在桌上，`#826` 是剩下的那一笔，且**不需要模型 key 就能验**（频道消息是一行 JSONL，本机手写
+      两条真消息即可），`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线。
 - **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
       这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
       repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
@@ -1323,6 +1334,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-13 | 5.31 | **实时流无声断开时页面自行续接、卡住的写切断连接**（上游 `99dacb54` `#1026` 移植，照改动落、不是合分支；15 文件 / +586 −37，其中源码 4 个（`server/src/app.ts` +16、`server/src/http/sse.ts` +34 −12、`server/src/index.ts` +5 −2、`web/src/api/sse.ts` +83 −21）、文档 2、既有用例 2、新用例 2（服务端 `sse-wire.test.ts` 89 行、web 的 `sse.test.ts` 102 行）、新测试助手 1（`web/test/helpers/event-source.ts`）、新 e2e 1（`web/e2e/stream-stall.spec.mjs` 136 行），另有 changelog 一对）：两侧的根因各一条 —— ① 客户端过去就是一个裸 `EventSource`，服务端 20 秒一次的 `: ping` 是**注释行、浏览器不会交给页面**，半开的 TCP / 卡住的代理或 NAT / 休眠换网的笔记本**永远不触发 `onerror`**，页面就一直停在最后一帧（Agent 在服务端照跑，刷新才追得上）；② 服务端把写入串在一条 promise 链上，对端停止读取时 socket 写满、写入挂起，之后每个事件与心跳都堆在它后面（没有上限），而 hono 流的 `close()` 也排在同一个挂起写入之后 —— **只有 socket 能了结它**。现在：服务端心跳改成**有名事件** `ping`（`data: {}`、无 `id:` 行，初始事件之后立即发、之后每 20 秒一次，既不移动客户端的 `Last-Event-ID` 也不移动重放游标），`createApp` 给每个 `text/event-stream` 响应的 socket 设 **`STREAM_IDLE_MS = 40 秒`** 空闲超时到点 `destroy()`（活跃的流每 20 秒一写、绝不会静默这么久，只有对端不读了才会；Node 会让第一次到点在有挂起写入时先放过，所以卡住的写 40–80 秒内被切），`/api/sessions/:id/stream` 与 `/api/events` 在无 `Last-Event-ID` 头时接受 `?lastEventId=`（页面自己开的 EventSource 设不了头；两个都在时头为准），`index.ts` 把 Node bindings 传给 `app.fetch`（`c.env` 不跨 HMR 缝进路由，所以只有宿主拿得到 socket）；Web 侧（`api/sse.ts`）在收到过 `ping` 之后，**50 秒无任何事件即认定已死**：关掉、带 `?lastEventId=<最后见到的 id>` 新开一条（服务端据此重放，id 离开缓冲区则回 `resync_required`，调用方两条路本来都处理），标签页重新可见时立即检查一次，一次订阅只持一条 EventSource；从不发 `ping` 的服务器与浏览器已放弃的流都保持原样。**本地化**：新用例里 `@prismshadow/penguin-core` → 本仓 `@lmliheng/penguin-core`（唯一一处 scope），changelog 改名到本轮日期、去掉上游 PR 行、写明移植来源并补一节「兼容性」（旧服务器/新页面、新服务器/旧页面、磁盘无变化） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2150 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过**（**+1 文件 +3 用例**：新 `sse-wire.test.ts` 1 条、`sse-stream.test.ts` 的 ping 与 `?lastEventId=` 重放）· web **254 文件 / 3106 通过 / 2 跳过**（**+1 文件 +6 用例**，即新 `sse.test.ts`）· hmr 无测试文件 · **反证一（单测，改前源码）**：把四个源码文件退回 `HEAD`、只跑那两条服务端用例 → **2 文件失败 / 4 failed · 4 passed（8 条）**（`sse-wire` 红在 `expect(socket.destroyed).toBe(true)` 收到 `false`，`sse-stream` 红在开头的 ping 与 `?lastEventId=` 重放）；只跑 `web/test/sse.test.ts` → **2 failed · 4 passed（6 条）**（「静默重开」与「重新可见即刻重开」两条，与上游记录的失败面一致）；换回本笔 → 服务端 **8 条全过**、web **6 条全过** · **本轮主证据（e2e，真服务端 + 真浏览器 + 真 TCP 中继）**：按仓库自带 `web/e2e/run.sh` 的形状（重建 core / server / web 产物，`MOCK_PORT=8931` 起自带 mock LLM，`SRV_PORT=8930`、一次性数据根起真服务）跑新 e2e `stream-stall.spec.mjs` —— 中继在回复中途吞掉 Session 流的字节而不关闭连接，运行在服务端跑完、页面时钟跳过静默窗口，页面必须**从最后一个事件自行重连、把整段回复恰好显示一次**：`stream-stall` **✓ 9.6s**；与 `reload-midstream.spec.mjs` 一起跑 **3 passed（40.8s）**、`E2E_EXIT=0` · **反证二（e2e，改前客户端）**：把 `web/src/api/sse.ts` 退回 `HEAD`、重建 web、重跑同一条 → **1 failed**，误差正是上游报的那一条：`Expected substring: "chunk-40"`、`Received string: "chunk-1 chunk-2 chunk-3 chunk-4 chunk-5▌"`；换回本笔、重建 web，恢复 `ALL-IDENTICAL` · 本轮**不碰桌面壳 / 包名 / 流水线**，端口只用 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-13 | 5.32 | **沙盒里不加限制的文件写入模式改称「完全访问」**（上游 `b24f3099` `#1021` 移植，照改动落、不是合分支；5 文件 / +27 −7，其中源码 2 个文件（`settings-store.ts` +4 −4、`settings-status.ts` +2 −2）、既有断言 1 个文件 +1 −1、另有 changelog 一对）：`danger-full-access` 这个「不加任何限制」的文件写入选项，显示名由 **「关闭（完全访问）」/ "Off (full access)"** 改成 **「完全访问」/ "Full access"** —— 旧名在预设表的「文件」格子里会折成两行（上游的理由就是「太长」），而且没有别处用这个名字；权限菜单与预设一直叫「完全访问」，本次是向它们看齐。「文件」列的 `description`/`descriptionZh` 与「没有可用沙盒后端」提示（「除「关闭」外…」→「除「完全访问」外…」）也改用同一个名字。**存的值一字未动**（`danger-full-access`），只有显示名变了；同一个 `network` 列本来就用 "Full access"。**本地化**：无（这一笔只有中英文案，本仓没有额外引用点 —— 全仓扫描确认 `packages/` 之外只有台账自己的历史记录还写着旧名） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写入 `src/ifaces.json`（189 接口 / 580 类型）—— 它是 gitignore 的生成物，本轮不因此改契约）· `npx oxlint` **0 警告 0 错误**（2150 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过**（数与上一轮逐项一致 —— 本笔只改一条既有断言）· web **254 文件 / 3106 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测，改前源码）**：把两个源码文件退回 `HEAD`、只跑 `test/sandbox-settings.test.ts` → **1 failed / 6 passed（7 条）**，红的正是那条 `notices` 断言（收到 `…every mode but Off…`）；换回本笔 → **7 全过** · **真界面看改前改后两态（本轮主证据）**：重建 server 产物后，一次性数据根 `/root/adelie-fork-data/r53-sandbox`、`localhost:8981` 起真服务（`PENGUIN_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开 `/chat` → 账号菜单 → 设置 → 「插件」页，`PUT /api/admin/plugin-config` 把沙盒开关打开后读沙盒卡片：**改动后**「文件」列六行分别是 完全访问 / 完全访问 / 仅工作区可写 / 只读 / 仅工作区可写 / 完全访问（`page.body.innerText` 里旧名 `关闭（完全访问）` **0 处**、提示行是「除「完全访问」外…」），console **0 error**、无一条 ≥400；**反证（真界面）**：把两个源码文件退回 `HEAD`、重建 server、重启同一数据根、同一条探针 → 「文件」列出现 **`关闭（完全访问）`**（3 处，格子里折成「关闭（完全访」/「问）」两行）、提示行是「除「关闭」外…」，截图 `before/04-plugins.png` 与 `after/04-plugins.png` 都在 scratchpad · 端口只用 8981，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-14 | 5.33 | **频道保留你还没发出的消息**（上游 `7ecb60e1` `#810` 移植，照改动落、不是合分支；7 文件 / +450 −3，其中新源码 1 个（`channel-draft.ts` 98 行）、既有源码 3 个（`channel-composer.tsx` +21 −3、`channel-view.tsx` +15 −2、`install-scope.ts` +6）、新用例 1 个（`test/channel-draft.test.ts` 59 行）、e2e 1 个（`company.spec.mjs` +20），另有 changelog 一对）：频道的输入框过去把没发出的文字只放在组件状态里，换频道 / 去工位 / 刷新都会丢；对话里的未发送输入自草稿缓存落地起就有缓存，频道输入框一直没跟上。新增 `features/company/channel-draft.ts`：键是「用户 × 项目 × 组织 × 频道」（`penguin.channelDraft.…`），存储助手复用对话草稿那一套（`loadDraft` / `saveDraft` / `clearDraft`），写策略照 `use-session-draft.ts` —— 300 毫秒防抖、切换频道或卸载时把待写的编辑补写一次、清空输入框就删键、发送成功先取消待写再清（否则会把刚发出去的文本写回来）。`ChannelComposer` 多收 `initialText` / `onTextChange`（初始 caret 落在末尾），`channel-view.tsx` 用 `useChannelDraft` 并按草稿键 `key` 重挂 composer —— 回到该频道文字在原处、别的频道不继承。`install-scope.ts` 的 `KEY_RULES` 加一条 `penguin.channelDraft.`（install 作用域，与对话草稿并列），否则既有的 `install-scope.test.ts` 会红。**本地化**：无（新文件只 import 相对路径，全仓无 `@prismshadow/` 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过**（**+1 文件 +4 用例**，即新 `channel-draft.test.ts`）· hmr 无测试文件 · **反证一（单测，改前源码）**：把 `install-scope.ts` 退回 `HEAD`、其余不动，跑 web 全套 → **1 failed / 3109 passed**，红的正是那条既有断言：`penguin.channelDraft. (packages/web/src/features/company/channel-draft.ts) is missing from KEY_RULES`；把本笔换回去 → `test/channel-draft.test.ts` + `test/install-scope.test.ts` **24 条全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：一次性数据根 `/root/adelie-fork-data/r54-channel-a`、`localhost:8991` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings {companyMode:true}` → `POST …/organizations {orgId:acme}` → `POST …/channels {channelId:site,name:Site launch}` 造出一个真组织与两个真频道，Playwright（仓库 pnpm store 里的 `playwright@1.61.1` + 本地 chromium-1243）按 `/org/default_project/acme/channels/<id>` 走查四个行为：**改动后** 初始空且无键 → 在 `site` 打「还没写完的一句」→ localStorage 出现 `penguin.channelDraft.admin.default_project.acme.site` → 切到「全员频道」输入框**空**且草稿键只有 site 那一条 → 回到 site 文字**还在** → **刷新后还在**（截图 `after2/04-reloaded.png`）→ 清空输入框后**键被删掉**；console **0 error**、无一条 ≥400。**反证二（真界面，改前源码）**：把 `channel-view.tsx` / `channel-composer.tsx` 退回 `HEAD`、`channel-draft.ts` 移出树外，重建 web 产物后同一条探针 → 打字后 **localStorage 里一个 `penguin.channelDraft.` 键都没有**，切频道回来为**空**、刷新后仍为**空**（截图 `before/…`）；把三份文件放回、重建 web、同一条探针 → 四个行为全部恢复（`after2/` 那一轮）。**仓库自带的 `company.spec.mjs` 没跑通**：它在第 93 行就红（对话框里 CEO 预算的默认值是 700，而这一笔的断言写的是 100），那是**本树与上游早就在的差异**、与本笔无关，因此新增的那段草稿 e2e 步骤（在更后面）没走到 —— 四个行为改由上面那条探针覆盖（上游作者同样把这段 e2e 标为「没跑」）· 端口只用 8991（另有 e2e 试用过的 8932/8933，用完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
+| 2026-10-14 | 5.34 | **手机上的频道消息有了足够的宽度**（上游 `9eae0a2d` `#826` 移植，照改动落、不是合分支；5 文件 / +91 −17，其中源码 2 个（`channel-bubble.css` +22、`channel-bubble.tsx` +33 −17）、既有用例 1 个 +16 −2、另有 changelog 一对）：手机上气泡过去最多占列宽的 **75%**、时间戳**另占一栏**（`flex items-end` 里 `shrink-0` 的那个 span），两者叠加把中文挤到每行七八个字。现在气泡的类名改成 `relative max-w-[88%] px-3 py-1.5 text-base leading-relaxed sm:max-w-[75%] sm:text-sm`（窄屏 88% 与 `text-base`，`sm` 及以上照旧 75% 与 `text-sm`），时间戳改成 `absolute bottom-1.5 right-3` 收在气泡右下角，正文在最后一行上给它留出一段行内空隙 —— `channel-bubble.css` 新增 `--channel-time-gap: 2.75rem`，末尾段落 / 列表最后一项 / 引用最后一行以 `::after` 的 `inline-block` 空隙收尾（`pre` / `table` 这类无法以空隙收尾的块改成 `margin-bottom: 1.125rem` 把那一行让到下面）；`footer != null` 时另渲染一个 `.channel-time-gap` 元素跟在 chip 行之后（那时 `::after` 够不到）。代码注释写明「时间收在角落、正文最后一行给它留位」的缘由。**本地化**：无（这一笔全在 `packages/ui` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 线上格式 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件，本笔改的是既有那条 class 断言、未增用例）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，iPhone 13 宽 390px）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r55-bubble`、`localhost:8981` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings {companyMode:true}` → `POST …/organizations {orgId:acme}` → `POST …/channels {channelId:site}` 造出真组织与真频道，再**手写** `channels/site/<日期>.jsonl` 里三行真消息（短句 / 63 字长句 / 一条带 `refs.ticket` 的）—— 不需要模型 key（即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，`isMobile` + 390×844 + DPR 2）打开 `/org/default_project/acme/channels/site`，逐气泡量「占列宽比 / 正文宽 / 字号 / 折行数 / 时间戳位置 / 与最后一行文字和 chip 的关系」——**改动后**：#0 短句 196px（列宽 362px 的 **54.1%**）、正文 16px、时间 `absolute` 停在 x=331 而最后一行文字到 318（**挨着字、不压字**）；#1 长句 319px = **88%**、正文 **295px**、**4 行**、时间贴在最后一行末尾；#2 带 refs 的一条 chip 右缘 315、时间 x=331（**让开了 chip**）、`channel-time-gap` **存在**。两态 console 各 **0 error**、无一条 ≥400。**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui` + 重建 web + 重启同一数据根 + **同一条探针** → #0 175px（48.4%）、正文 112px **14px**；#1 272px = **75%**、正文 208px、**5 行**；时间戳三条都是 `static` 且 x=331（**另占一栏**）、`channel-time-gap` **不存在**；随后把三份源码放回、重建、再跑一次 → 数字与上面「改动后」逐项一致。截图 `r55/after/channel-390.png` 与 `r55/before/channel-390.png`、原始测量 `r55/{after,before}-measure.json` 都在 scratchpad · 端口只用 8981，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `7abf1020` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -7816,3 +7828,116 @@ SSE 客户端与服务端写路径上、真跑那条 e2e 的成本比一轮高�
   **22 个作业全绿、`NOT SUCCESS: []`**（先在队列里等了约 14 分钟才开始跑）。
 - 台账这一笔在它之后推，另起一次 run。
 - 本笔改了 web 的源码、用例与一份 e2e，`ci.yml` 的矩阵没有动。
+
+## 第五十五轮：手机上的频道消息有了足够的宽度（2026-10-14，条目 5.34）
+
+### 开工自检
+
+- `git status --short` **干净**；`git fetch origin && git merge --ff-only origin/main` → `Already up to date.`
+  （头是 `4070fa3e`，第五十四轮的台账那一笔）。
+- **上游这一轮依旧取不到新提交**：`upstream` 仍指向已经不存在的 `/root/penguin-harness`（与第四十九 /
+  五十 / 五十一 / 五十二 / 五十三 / 五十四轮记的是同一件事，要修得 `git remote set-url upstream …`，
+  那要用户定）。所以只能在仓库里**已有的**上游对象里挑：探针 `refs/adelie-tmp/upstream-main-probe`
+  仍指 `b2c3de9f`，本轮这一笔（`9eae0a2d`）是它可达范围内的一笔。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里）、**3.5** 要用户
+拍板取哪个桌面壳且本轮不许碰 desktop、**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.3** 的②③④要
+第二台机器，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 / 接不接受 `mermaid`）。第五十三 / 五十四
+轮把两笔候选记在桌上，`#826` 是剩下的那一笔，取舍在**验证成本**：它要「频道里真有几条消息」才能看气泡
+宽度，而消息就是 `channels/<频道>/<日期>.jsonl` 里的一行 —— **本机手写两三条真消息即可**，不需要任何模型
+key（正是 3.6 那个卡点）。`git show 9eae0a2d | git apply -3 --check` 三处全 `Applied … cleanly`，不引入新
+依赖、不碰桌面壳 / 包名 / 流水线，且改的是界面上看得见的东西，本机能用真服务端 + 真浏览器把改前改后两态
+都量出来。
+
+### 改了什么（5 文件 / +91 −17，含 changelog 一对）
+
+照上游 `9eae0a2d` 的改动落，不是合分支：
+
+- **`packages/ui/src/components/chat/channel-bubble/channel-bubble.tsx`**（+33 −17）：气泡的类名由
+  `channel-bubble max-w-[75%] px-3 py-1.5 text-sm leading-relaxed …` 改成
+  `channel-bubble relative max-w-[88%] px-3 py-1.5 text-base leading-relaxed sm:max-w-[75%] sm:text-sm …`
+  —— 窄屏给到 88% 与 `text-base`，`sm` 及以上一字照旧。里层结构从「`flex items-end`：正文（`flex-1`）+
+  时间戳（`shrink-0`）」改成「`min-w-0` 包住正文与 footer，时间戳 `absolute bottom-1.5 right-3`」；
+  `footer != null` 时在它之后多渲染一个 `<span aria-hidden class="channel-time-gap" />`（那时 CSS 的
+  `::after` 够不到正文末行）。文件头的注释同步改写，写明**为什么**（时间收在角落、正文最后一行给它留位）。
+- **`packages/ui/src/components/chat/channel-bubble/channel-bubble.css`**（+22）：新增
+  `--channel-time-gap: 2.75rem`，以及三条给正文最后一个块留出这段行内空隙的 `::after`（段落 / 标题、
+  列表的最后一项、引用的最后一行）与「无法以空隙收尾的块（`pre` / `table`）改成 `margin-bottom: 1.125rem`、
+  把那一行让到下面」一条，加上 `.channel-time-gap { flex: 0 0 var(--channel-time-gap); }`。注释写明这段
+  空隙的来历（WhatsApp 的那个 spacer）。
+- **`packages/ui/test/channel-bubble.test.ts`**（+16 −2）：既有那条断言跟上 —— 时间戳的类名由
+  `shrink-0 text-xs tabular-nums …` 改成 `absolute bottom-1.5 right-3 text-xs tabular-nums …`，气泡类名
+  里多断言 `relative` / `max-w-[88%]` / `sm:max-w-[75%]` / `text-base` / `sm:text-sm`，并新增两条：
+  有 footer 时渲染 `channel-time-gap`、没有 footer 时**不渲染**。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-14-channel-bubble-phone{,.zh}.md`）、去掉上游
+  PR 行、写明「移植自上游 PenguinHarness（#826，提交 `9eae0a2d`）」、补一条「接口、线上格式与已存数据都
+  没有变化」。
+- **本地化**：无 —— 这一笔全在 `packages/ui` 内，没有跨包 import，也没有 `@prismshadow/` 之类的引用点。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件 —— 本笔改的是既有
+  那条 class 断言、没有增删用例）· cli **539**（37 文件）· server **197 文件 / 2832 通过 / 4 跳过** ·
+  web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态，iPhone 13 宽 390 px）**：重建 web 产物后，一次性数据根
+  `/root/adelie-fork-data/r55-bubble`、`localhost:8981` 起真服务（`ADELIE_PROFILE=dev` +
+  `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings
+  {companyMode:true}` → `POST …/organizations {orgId:acme, timezone:Asia/Shanghai}` →
+  `POST …/channels {channelId:site}` 造出真组织与真频道，再**手写** `channels/site/<组织所在日期>.jsonl`
+  三行真消息（一句短的、一句 63 字长的、一条带 `refs.ticket` 的）—— 不需要模型 key。Playwright
+  （仓库 pnpm store 里的 `playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，`isMobile` +
+  390×844 + DPR 2）打开 `/org/default_project/acme/channels/site`，逐气泡量「占列宽比 / 正文宽 / 字号 /
+  折行数 / 时间戳的定位方式与坐标 / 与最后一行文字和 chip 的关系」：
+  - **改动后**：#0 短句 196px（列宽 362px 的 **54.1%**）、正文 16px、时间 `absolute` 停在 x=331 而最后一行
+    文字到 318（**挨着字、不压字**）；#1 长句 319px = **88%**、正文 **295px**、**4 行**、时间贴在最后一行
+    末尾；#2 带 refs 的一条 chip 右缘 315、时间 x=331（**让开了 chip**）、`channel-time-gap` **存在**。
+    两态 console 各 **0 error**、无一条 ≥400。
+  - **反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui` + 重建 web + 重启同一数据根 + **同一条
+    探针** → #0 175px（48.4%）、正文 112px **14px**；#1 272px = **75%**、正文 208px、**5 行**；三条的时间戳
+    都是 `static`、x=331（**另占一栏**）、`channel-time-gap` **不存在**。随后把三份源码放回、重建、再跑一次
+    → 数字与上面「改动后」逐项一致。
+  - 截图 `r55/after/channel-390.png` 与 `r55/before/channel-390.png`、原始测量
+    `r55/{after,before}-measure.json` 都在 scratchpad；探针是 `r55/probe.cjs`、写数据是 `r55/setup.mjs`。
+- **反证的范围（有意留着的一处）**：探针里「时间戳」用 `.tabular-nums` 定位 —— 带 refs 的消息里 chip 也带
+  `data-tooltip`，第一次用 `[data-tooltip]` 选到的是 chip、量出来的是 chip 的坐标（那一版数据已丢弃，
+  两态都重跑过）。改的是工具，不是被测代码。
+- 端口只用 8981，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r55-bubble`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- **上游 remote 仍失效**（见「开工自检」）：要再跟上游走，得由用户把 `upstream` 指到一个能 fetch 的源。
+- 桌上剩下的上游候选**几乎都卡在「本树没有那个文件或常量」**上：`#1038` 要 `models/tokendance-banner.tsx`、
+  `#1074` 要 `CASES_PER_PAGE`、`#1067` 要 `start-dashboard.tsx` / `example-folder-row.tsx`、`#1069` 要
+  `archived-sessions-section.tsx`、`#1049` 要 `plugins-page-render.test.ts`、`#1071` 的 `strings` 与本树冲突、
+  `#1051` 是 67 文件 / 7 处冲突、`#1047` 要等上游那套分层费率进本树；更大的几件（`#1032` 会话归档 98 文件、
+  `#1030` RSI 工具包 116 文件、插件市场三件 115 / 44 / 146 文件且互为一体）各自是一轮以上。**下一轮要么按同一
+  判据重新量一遍这些候选里有没有落下的一笔，要么回头做 2.2c 剩下的桌面壳那一半 —— 后者要先由用户拍板 3.5。**
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- 中间物：会话 scratchpad 的 `r55/`（`probe.cjs` 探针、`setup.mjs` 造数据、`cookie` 从 `/tmp/r55/cookies.txt`
+  读、两态截图、两份测量 JSON、`keep/` 里三份源码留底）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `7abf1020`**（5 个文件：2 个源码 / 1 条既有用例 / 一对 changelog）；台账这一笔另起一笔。
+- **推送**：`git push origin main`（`4070fa3e..7abf1020`）。**没有切版本号、没发 npm、没发安装包、没发发布
+  汇总。**
+
+### 汇报
+
+- **汇报邮件没发出去（第 22–54 轮同一处卡点，与凭据无关）**：按 csu-mail 技能先自检 —— 技能目录下
+  `timeout 90 python3 scripts/mail.py check` **一行输出都没有就退出 124**（凭据本身正常：`CSU_MAIL_ADDR`
+  长度 21、`CSU_MAIL_AUTHCODE` 长度 16，都注入着）。按技能纪律**只试这一次，没有重试登录，也没有再试发信**。
+  本轮正文写在会话 scratchpad 的 `r55/mail-round55.txt`；把第 55 轮的正文路径与主题**加进**既有的周期重发
+  任务 `csu-mail-retry`（现覆盖第 22–55 共三十四封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
+- 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
+  （`message_id=om_x100b63dff5c45ca4de9f17bdf3cbc2c`），所以这一轮的结果不是只躺在队列里。
+
+### CI（推送后）
+
+- 见下一笔补记。
