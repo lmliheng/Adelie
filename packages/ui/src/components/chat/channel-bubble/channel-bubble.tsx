@@ -10,8 +10,8 @@
  * its own tint, with no avatar and no name; a screen reader hears `ownLabel` instead, since a side
  * and a colour are not something every reader can read.
  *
- * Each bubble carries its own time at its end, inside it, bottom-aligned: on a one-line message it
- * lands beside the words, on a longer one it settles into the bottom-right corner, and it never
+ * Each bubble carries its own time in its bottom-right corner, with a spacer on the body’s last
+ * line: it lands beside the words, or under their last line, and it never
  * overlaps the body. A time that only appeared on hover would be one a touch reader never sees, and
  * one time per run would leave every later message in a long run unstamped. The body is Markdown in
  * the compact reading box; what the caller renders into it is its own (a channel keeps its
@@ -158,21 +158,24 @@ export function ChannelBubble({
     <div
       id={id}
       data-side={own ? "own" : "other"}
-      className={`channel-bubble max-w-[75%] px-3 py-1.5 text-sm leading-relaxed ${corners(own, last)} ${own ? SURFACE.own : SURFACE.other}`}
+      className={`channel-bubble relative max-w-[88%] px-3 py-1.5 text-base leading-relaxed sm:max-w-[75%] sm:text-sm ${corners(own, last)} ${own ? SURFACE.own : SURFACE.other}`}
     >
-      <div className={`flex items-end ${ICON_GAP.menu}`}>
-        <div className="min-w-0 flex-1">
-          <div className="md-body md-compact">{children}</div>
-          {footer}
-        </div>
-        <span
-          data-tooltip={timeTooltip}
-          className="shrink-0 text-xs tabular-nums text-tone-neutral-fg"
-        >
-          <span className="sr-only">{timeLabel}</span>
-          <span aria-hidden>{time}</span>
-        </span>
+      <div className="min-w-0">
+        <div className="md-body md-compact">{children}</div>
+        {footer != null && (
+          <>
+            {footer}
+            <span aria-hidden className="channel-time-gap" />
+          </>
+        )}
       </div>
+      <span
+        data-tooltip={timeTooltip}
+        className="absolute bottom-1.5 right-3 text-xs tabular-nums text-tone-neutral-fg"
+      >
+        <span className="sr-only">{timeLabel}</span>
+        <span aria-hidden>{time}</span>
+      </span>
     </div>
   );
 }
