@@ -637,6 +637,20 @@
       要的 `CASES_PER_PAGE` 与本树 `benchmark-detail.tsx` 都没有、`#1067` 要的 `start-dashboard.tsx` /
       `example-folder-row.tsx`、`#1072` 要的 `example-tasks.test.ts`、`#1069` 要的
       `archived-sessions-section.tsx` 本树都没有，`#1071` 的两个 `strings` 文件与本树冲突）。
+- [x] **5.29 回复中的波浪号按原样显示、不再渲染删除线**（上游 `362c9997` `#1017`，**2026-10-13 第五十轮
+      落地**，提交见该节）：GFM 把一或两个 `~` 夹住的文字读成删除线，而回复里的 `~` 多用来表示范围
+      （`3~5 天`、`10~20%`）或「大约」（`~30 秒`），同一段里出现两个就把中间整段划掉 —— 读起来像模型
+      撤回了那些话。现在两道解析都在 GFM 之后加一遍 `literalStrikethrough`：Web App 的共享 Markdown
+      管线（`packages/ui` 的 `REMARK_PLUGINS`，对话 / Trace / 插件页 / 文件预览都走它，
+      `markdown-pipeline.test.ts` 钉着这一点）与服务端转发到飞书 / Telegram / QQ / 微信的那条
+      （`runtime/messaging/markdown.ts` 的 `parseMarkdown`）。每个 `delete` 节点还原成它自己的文本：
+      开头的波浪号（按源码里的偏移读，所以 `~` 是一个、`~~` 是两个）、原本解析出来的子节点（因此夹在
+      中间的 `**加粗**` 仍然加粗）、结尾的波浪号。GFM 其余部分（表格、任务列表、自动链接、脚注）不变。
+      **为什么是这一条**（细节见该节）：表上最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 /
+      5.10（各处仍不可做或明令不动），而第五十轮开工时**上游 remote 依旧失效**（第四十九轮记的那件事），
+      只能在仓库里已有的上游对象里挑 —— 这一笔是探针 `b2c3de9f` 可达范围内 7 个文件 / +211 −5、
+      `git apply -3` **逐字干净**、不引入新依赖、不碰桌面壳 / 包名 / 流水线，且是一条用户看得见的真缺陷
+      （回复被划掉），本机能用真服务端 + 真浏览器把改前改后两态都看一遍。
 - **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
       这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
       repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
@@ -1243,6 +1257,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-12 | 5.26 | **在输入框打字不再带动对话**（上游 `fc205d99` `#1052` 移植，照改动落、不是合分支；6 文件 / +113 −9，含 changelog 一对）：输入框每次按键都用「把文本框收成 `height: auto`、再读 `scrollHeight`」来量高度，而这次读取会让页面按**收起的输入框**排一次版 —— 上方按输入框剩余空间定高的消息列表随之变高，停在底部的列表被浏览器夹到更高视口的较小上限；把高度写回去不会把滚动偏移还回来（列表最终尺寸没变，所以也没有 ResizeObserver 触发）。一两行草稿时，在部分主题与字号组合下（主题的小数间距单位让收起的框比它被设成的高度矮一个零头）列表滑动一个设备像素；草稿超过收起后的那两行则整行地跳，`stream-follow` 把这次跳动读成用户在向上滚动，于是流式回复不再自动滚进视野、「回到最新消息」按钮随之出现。新增纯逻辑 `packages/web/src/lib/textarea-fit.ts`（`fitTextarea(box, measure)`：测量期间把文本框的**父元素**按住当前高度，写的是 `min-height` —— 框变高时仍然推得动父元素，变小不会夹掉任何偏移；父元素高度读的是计算样式而不是 client rect，后者会被入场动画的 transform 缩放、也会被取整），`chat-input.tsx`（对话页、子智能体面板、草稿页）与 `company/channel-composer.tsx`（公司频道，边框仍照原样加回）都改用它。上游自带的新用例照落（父元素在收起测量期间被按住、测量后拿回自己的 `min-height`；没有父元素时照常定高） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过**（+2 即本笔新文件的两条）· server **196 文件 / 2826 通过 / 4 跳过** · 新用例先单跑 `test/textarea-fit.test.ts` → **2 passed** · **真界面两态都量了（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r47-composer` 起真服务（`localhost:8974`，配 `custom` provider 指向本仓自带的 mock LLM `packages/web/e2e/mock-llm.mjs`，所以有**真会话、真回复、真工具调用**），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 发两轮、再把草稿填成四行、把消息列表停在底部，然后**只多打一个字符**：改动后 `scrollTop` 800 → 800（**位移 0**）、仍在底部、没有「回到最新消息」按钮、console 0 error、无一条 ≥400（连跑两次同样结果）；**反证（真界面）**：把 `chat-input.tsx` / `channel-composer.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → `scrollTop` **800 → 760（位移 40px）**、`atBottom` 变 false、「回到最新消息」按钮**出现**，截图 `r47-before.png` 里能看到内容被推走与那个圆形按钮，`r47-after.png` 里没有 · 端口只用 8974（mock LLM 用 8975），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `049563eb` |
 | 2026-10-13 | 5.27 | **智能体面板全屏时，输入区与子会话对话对齐**（上游 `0e56dc5a` `#1050` 移植，照改动落、不是合分支；3 文件 / +82 −53，含 changelog 一对）：智能体面板把所选子会话的对话排在主对话的阅读列里（居中、限宽 `max-w-3xl`），输入区却铺满整个面板 —— 停靠时两者都落在停靠栏宽度内（本机量得输入区 538px、对话列 528px），看不出差别；停靠栏**全屏**后对话仍是居中的一列（768px），输入区却横贯被覆盖的整行。`SubagentComposer`（`packages/web/src/features/chat/subagents-view.tsx`）现在把 `ChatInput` 包在同一个 `mx-auto max-w-3xl` 列里（与 `chat-page.tsx` 里主对话输入区的同一写法），注释写明「全屏的停靠栏与对话列一样宽或更宽，输入区必须与上方的消息对齐而不是铺满整个面；停靠的面板窄于这个上限，所以那里什么都不变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例，数与前一轮一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r48-agents-panel`、`localhost:8976` 起真服务，配 `custom` provider 指向本仓自带的 mock LLM（8977），所以拿到的是**真会话、真子会话**（父会话发「run a subagent」→ 真 `run_subagent` → 子会话自带一轮工具调用 + 报告）；Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的会话 cookie 打开该会话、点开子会话 chip 让 `智能体面板` 停靠标签激活，再点 `dock-fullscreen`：**改动后 1440px 窗口**——输入框 `x=491 w=746`、对话列 `x=480 w=768`（输入区落在阅读列内、左侧对齐），**1920px** —— 输入框 `x=731 w=746`、对话列 `x=720 w=768`；**停靠态两边一致**（输入框 `x=883 w=538`、对话列 `x=888 w=528`，与改动前逐字相同）；`console 0 error`、无一条 ≥400；**反证（真界面）**：把 `subagents-view.tsx` 退回 `HEAD` 那一版、重建 web、同一条探针 → 全屏下输入框 `x=307 w=1114`（1440px）/ `x=307 w=1594`（1920px）横贯被覆盖的整行（1152 / 1632px），对话列仍是 `x=480 w=768` / `x=720 w=768`，停靠态与改动后一致；改回来再跑一次恢复原状。截图 `r48/panel-{after,before}-{docked,fullscreen,fullscreen-1920}.png` 在 scratchpad · 端口只用 8976（mock LLM 8977），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d0dfc22c` |
 | 2026-10-13 | 5.28 | **白领（Frost）主题的滚动条常显**（上游 `7527dd98` `#1070` 移植，照改动落、不是合分支；3 文件 / +26 −6，其中源码 1 个文件 +1 −6、另有 changelog 一对）：白领主题是新安装、也是新装桌面应用的默认主题，此前它的滚动条**只在指针悬停于滚动区域时才出现** —— `--ui-scrollbar-visibility: hover`，外加一条 `:root[data-theme="modern"] :not(:hover) { scrollbar-color: transparent … }` 把每个未悬停元素上的滚动条滑块刷成透明；于是有嵌套滚动区的弹窗（上游的原始报告是插件详情与它里面的文件预览）看不出哪一块还能滚动。现在删掉那条规则、把 `--ui-scrollbar-visibility` 改成 `auto`（与朴素主题一致），滑块颜色仍沿用白领自己的浅色 `rgb(0 0 0 / 0.2)` / 深色 `rgb(255 255 255 / 0.16)`；改动只在 `packages/ui/src/themes/modern.css` 里，因而全应用生效，朴素 / 极客两个主题一字未动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2144 文件）· `npx prettier --check` 干净（主题文件与两份 changelog）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1021**（128）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2826 通过 / 4 跳过**（本笔不加用例 —— 改的是 CSS，上游也没带用例；数与前一轮逐项一致）；hmr 无测试文件 · **真浏览器量改前改后两态（本轮主证据）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r49-frost-scrollbars`、`localhost:8978` 起真服务（`PENGUIN_HOME` + `PENGUIN_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开页面、把主题置成白领（`html[data-theme="modern"]`，`dataset.theme` 实测就是 `modern`），**指针停在 (2,2)**（远离被测滚动区）读每个真溢出容器的 `scrollbar-color`：**改动后** —— 浅色 `rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0)`（`/models` 与 `/plugins` 两个 857px 高的滚动区，`--ui-scrollbar-visibility` 读出 `auto`）、深色 `rgba(255, 255, 255, 0.16) rgba(0, 0, 0, 0)`，悬停与不悬停**同值**；**反证（真界面）**：把 `modern.css` 退回 `HEAD`、重建 web、同一条探针 → 不悬停 `rgba(0, 0, 0, 0)`（滑块全透明，`--ui-scrollbar-visibility` 读出 `hover`）、悬停浅色 `rgba(0, 0, 0, 0.2)` / 深色 `rgba(255, 255, 255, 0.16)`；构建产物里改动后是 `--ui-scrollbar-visibility:auto` 与 `:not(:hover)` 规则 0 处，改动前是 `hover` 与 1 处；扫过 `/models`、`/plugins`、`/benchmark` 三页，`console 0 error`、无一条 ≥400；截图 `r49/frost-{after,before}-{models,plugins,benchmark}.png` 在 scratchpad · 端口只用 8978，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `542545cd` |
+| 2026-10-13 | 5.29 | **回复中的波浪号按原样显示、不再渲染删除线**（上游 `362c9997` `#1017` 移植，照改动落、不是合分支；7 文件 / +211 −5，其中源码 2 个（含 1 个新文件）、用例 2 个、另有 changelog 一对）：GFM 把一或两个 `~` 夹住的文字读成删除线，而回复里的 `~` 多用来表示范围（`3~5 天`、`10~20%`）或「大约」（`~30 秒`），同一段里出现两个就把中间整段划掉。新增 `packages/ui/src/components/content/prose/remark-literal-tildes.ts`（`literalStrikethrough` 就地遍历 mdast，把每个 `delete` 节点换成「开头波浪号 + 原本解析出来的子节点 + 结尾波浪号」；波浪号按**源码里的偏移**读，`markerAt` 保证 `~` 是一个、`~~` 是两个），`markdown-plugins.ts` 的 `REMARK_PLUGINS` 在 `remarkGfm` 之后注册它（注释写明为什么）—— 对话 / Trace / 插件页 / 文件预览都走这条共享管线；服务端 `runtime/messaging/markdown.ts` 的 `parseMarkdown` 在同一位置跑同一遍（同文件内的一份实现），飞书 / Telegram / QQ / 微信四个渲染器因此看到的是纯文本。用例照落：ui 新增 `test/remark-literal-tildes.test.ts` 四条（范围 + 大约不再划掉、单双标记按原样、夹在中间的 `**加粗**` 与 `` `代码` `` 保留、表格与任务列表照常），server 的 `messaging-markdown.test.ts` 新增两条（`a ~~**gone**~~ b ~c~` 解析后**没有 `delete` 节点**、中间的 `strong` 还在；四个渠道都按原样显示）并把四条只断言「`~~s~~` 原样透传」的旧断言改成不带删除线的写法。GFM 其余部分（表格、任务列表、自动链接、脚注）不变；自撰页面的文档站与博客不在这条管线里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2146 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件，+1 文件 +4 用例）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2828 通过 / 4 跳过**（+2 即本笔新用例）；hmr 无测试文件 · **真浏览器看改前改后两态（本轮主证据）**：重建 core / server / web 产物后，一次性数据根 `/root/adelie-fork-data/r50-tilde`、`localhost:8952` 起真服务，配 `custom` provider 指向 scratchpad 里的小 mock（`r50/mock-tilde.mjs`，8951，Anthropic SSE —— 免模型 key，拿到的是**真会话、真回复**）；Playwright（`playwright-core@1.63.0` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开 `/chat/<会话>` 发一条，读 `.md-body` 的渲染：**改动后**三段分别是 `<p>需要 3~5 天，每次约 ~30 秒。</p>`、`<p>误差约 10~20%，整段耗时 ~30 秒。</p>`、`<p>~~<strong>这一段</strong>曾经会被划掉~~</p>`，**`del` 元素 0 个**；**反证（真界面）**：把 `markdown-plugins.ts` 退回 `HEAD`（去掉注册）、重建 web、同一条探针 → 第三段变成 `<p><del><strong>这一段</strong>曾经会被划掉</del></p>`，**`del` 1 个**；两态的 console 都只有一条 error —— `GET /api/projects/…/machines` 的 **403**（非 admin 的测试账号，改动前后同样出现，与本笔无关）；截图 `r50/after-final.png` 与 `r50/before2.png` 在 scratchpad · 端口只用 8951（mock）/ 8952，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `c6e849bb` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -7144,3 +7159,116 @@ git repository` —— 那是 `upstream` 的地址，目录已经不在了。所
 - 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
   （`message_id=om_x100b63e2e9380ca4ddad2bc0f3409c1`），所以这一轮的结果不是只躺在队列里。
 
+
+## 第五十轮：回复里的波浪号按原样显示、不再渲染删除线（2026-10-13，条目 5.29）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/AgentCode`、3003 / 3004 / 4000 / 7364 / 7369 全程没碰；
+按本轮纪律**没有碰 `packages/desktop` 与 electron**。
+
+### 开工自检
+
+根工作区 `/root/adelie-fork`：`git status --short` **干净**，分支 `main`；`git fetch origin &&
+git merge --ff-only origin/main` → `Already up to date.`（头是 `425f52c6`，第四十九轮的台账收尾）。
+（轮次 prompt 里那串 `--filter @prismshadow/penguin-*` 仍已过时，本仓包名是 `@lmliheng/penguin-*`；
+台账路径是 `docs/FORK-PROGRESS.md`，prompt 里的 `/root/adelie-fork/FORK-PROGRESS.md` 是旧位置。）
+
+**上游这一轮依旧取不到新提交**：`upstream` 仍指向已经不存在的 `/root/penguin-harness`（第四十九轮记的
+那件事，本轮没有去动 remote 配置 —— 按纪律那要用户定）。所以只能在仓库里**已有的**上游对象里挑，
+探针 `refs/adelie-tmp/upstream-main-probe` 仍指 `b2c3de9f`，本轮这一笔是它可达范围内的一笔
+（`git merge-base --is-ancestor 362c9997 refs/adelie-tmp/upstream-main-probe` 为真）。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目照旧是 **2.2c**（非桌面壳、非发布面的活全在桌面壳一侧、本机部署单元与画廊 /
+文档两个演示面，按纪律本机没碰、本轮也做不了），**3.5** 要用户拍板取哪个桌面壳且本轮不许碰 desktop，
+**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.6** 与 **5.10** 等用户拍板（促销搬进 Project 配置 /
+接不接受 `mermaid` 这个新依赖），**5.3** 的②③④要第二台机器。于是照前几轮的做法去上游挑一笔
+「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的。
+
+先把第四十九轮量过、仍留在表上的几笔复核一遍：`#1074`（`CASES_PER_PAGE` 10 → 5）与 `#1067` / `#1072`
+一样，量下去都卡在**本树没有那个文件或那个常量**（`benchmark-detail.tsx` 里没有分页、`start-dashboard.tsx`
+与 `example-tasks.test.ts` 本树都没有）；`#1071`（机器页空态文案）的两个 `strings` 文件与本树冲突；
+`#1038`（白领主题侧栏不渐变）要本树**没有**的 `models/tokendance-banner.tsx`（那正是我们有意搬走的
+TokenDance banner）且带 8 处冲突；`#1047`（成本的桶拆分 + 统计旁的「?」）看着最有价值，但它的
+`trace-service.ts` 那半压在**上游的峰谷分层费率**（`TieredRates` / `ratesAt`）上 —— 本树的
+`usage-service.ts` 还没有那套，8 处冲突里有真前置缺失，不是一轮能整块落的。
+
+这一轮逐笔量过、`git apply -3 --check` **零冲突零缺文件**的有六笔（`362c9997` `#1017`、
+`99dacb54` `#1026`、`9eae0a2d` `#826`、`7ecb60e1` `#810`、`b24f3099` `#1021`、`10b43edc` `#957`），
+按「最小改动 + 用户看得见 + 本机能真看两态」取 **`362c9997`**：7 个文件 / +211 −5，纯逻辑（一个新的
+remark 插件 + 服务端同一遍解析）、自带 4 条 ui 用例与 2 条 server 用例，改的又是**回复本身怎么读**
+（一条用户看得见的真缺陷），本机能用真服务端 + 真浏览器把改前改后两态都看一遍。
+
+### 改了什么（7 个文件 / +211 −5）
+
+照上游 `362c9997` 的改动落，不是合分支：
+
+- **`packages/ui/src/components/content/prose/remark-literal-tildes.ts`**（新，65 行）：
+  `literalStrikethrough(node, source)` 就地遍历树，把每个 `delete` 节点换成三样东西 —— 开头的波浪号、
+  它**原本解析出来的子节点**（所以夹在中间的 `**加粗**` 仍然是加粗的）、结尾的波浪号；波浪号按
+  **源码里的偏移**读（`markerAt`：`~` 是一个、`~~` 是两个）。导出的 `remarkLiteralTildes()` 是 remark
+  插件，用 `file.value` 当源码。
+- **`markdown-plugins.ts`**：`REMARK_PLUGINS` 在 `remarkGfm` 之后注册它，带一行注释指向上面那个文件 ——
+  对话 / Trace / 插件页 / 文件预览都走这条共享管线，`markdown-pipeline.test.ts` 钉着这一点。
+- **`packages/server/src/runtime/messaging/markdown.ts`**：`parseMarkdown` 在 `processor.parse` 之后跑
+  同一遍（同文件内的一份实现），于是飞书 / Telegram / QQ / 微信四个渲染器看到的都是纯文本。
+- **用例照落**：ui 新增 `test/remark-literal-tildes.test.ts`（4 条：范围 + 「大约」不再划掉、单双标记
+  按原样显示、夹在中间的加粗与代码保留、表格与任务列表照常）；server 的 `messaging-markdown.test.ts`
+  新增 2 条（`a ~~**gone**~~ b ~c~` 解析后**没有 `delete` 节点**且中间的 `strong` 还在；四个渠道都按
+  原样显示），并把四条只断言「`~~s~~` 原样透传」的旧断言改成不带删除线的写法。
+- **changelog 一对**：`changelog/unreleased/2026-10-13-no-strikethrough{,.zh}.md`，按本仓惯例把上游的
+  PR 行换掉、写明「移植自上游 PenguinHarness（#1017，提交 `362c9997`）」、补一条「接口、线上格式与已存
+  数据都没有变化」。
+- **本地化**：本笔没有跨包 import（插件是相对导入，服务端实现也在本文件内），逐字照落。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2146 文件，+2 即两个新文件）· `npx prettier --check .` 干净 ·
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（**129 文件**，+1 文件
+  +4 用例）· cli **539**（37）· web **253 文件 / 3100 通过 / 2 跳过** · server **196 文件 / 2828 通过 /
+  4 跳过**（+2 即本笔新用例）；hmr 无测试文件。
+- **真浏览器看改前改后两态（本轮主证据）**：重建 core / server / web 产物后，一次性数据根
+  `/root/adelie-fork-data/r50-tilde`、`localhost:8952` 起真服务，配 `custom` provider 指向 scratchpad
+  里的小 mock（`r50/mock-tilde.mjs`，8951，Anthropic SSE，**免模型 key** —— 拿到的是真会话、真回复）。
+  Playwright（`playwright-core@1.63.0` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开
+  `/chat/<会话>` 发一条，读 `.md-body` 的渲染：
+  - **改动后**：`<p>需要 3~5 天，每次约 ~30 秒。</p>` / `<p>误差约 10~20%，整段耗时 ~30 秒。</p>` /
+    `<p>~~<strong>这一段</strong>曾经会被划掉~~</p>` —— **`del` 元素 0 个**，波浪号按原样，夹在中间的
+    加粗仍然是加粗的；截图 `r50/after-final.png`。
+  - **反证（真界面）**：把 `markdown-plugins.ts` 退回 `HEAD`（去掉注册）、重建 web、同一条探针 →
+    第三段变成 `<p><del><strong>这一段</strong>曾经会被划掉</del></p>`，**`del` 1 个**；截图
+    `r50/before2.png`。改回来再重建一次，恢复原状。
+  - **顺带核到的一条事实**（照实记，别当成上游说的那样）：本树这版 remark-gfm **不**把单波浪号当删除线
+    —— `3~5 天，每次约 ~30 秒。` 与 `误差约 10~20%，整段耗时 ~30 秒。` 在**改动前后都是原样文字**，
+    所以这一笔在本树看得见的变化是 `~~…~~` 那一支；单波浪号那一支由上游自带的用例钉住
+    （`messaging-markdown.test.ts` 那条断言「不再有 `delete` 节点、中间的 `strong` 还在」）。
+  - 两态的 console 都只有一条 error：`GET /api/projects/…/machines` 的 **403**（非 admin 的测试账号，
+    改动前后同样出现，与本笔无关）。
+  - 端口只用 8951（mock）/ 8952；写入只落在 `/root/adelie-fork-data/r50-tilde` 与 scratchpad，没有写进
+    `~/.penguin` 或 `~/.adelie`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- 飞书 / Telegram / QQ / 微信四个渠道的**真发信**没有验（要真凭据与真账号），验的是它们拿到的那份解析
+  结果（`messaging-markdown.test.ts` 的两条新用例把四个渲染器的输出逐字钉住）。
+- **上游 remote 仍失效**（见「开工自检」）：要再跟上游走，得由用户把 `upstream` 指到一个能 fetch 的源。
+- 本轮量过、留给后面轮次的：`#1026`（`99dacb54`，静默死掉的实时流从最后一条事件续上、卡住的写撕连接，
+  15 文件 / +586 —— 本轮六笔里价值最高的一笔，但改动在 SSE 客户端与服务端写路径上，真跑那条 e2e 成本
+  比这一笔高，留给有整块时间的一轮）、`#826`（手机频道宽度，5 文件）、`#810`（频道里没发出的消息留着，
+  8 文件，两笔都要造公司模式夹具）、`#1021`（沙盒「完全访问」标签，5 文件，纯文案）、`#957`（创建的
+  目录布局进 org 锁，4 文件，纯服务端并发修复）。`#1047` 要等上游那套分层费率进本树，`#1038` 要先决定
+  要不要把 TokenDance banner 接回来。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- 中间物：会话 scratchpad 的 `r50/`（mock、驱动与探针三个脚本、四张截图、退回前的 `markdown-plugins.ts`
+  留底、指向 browsercheck 的 `node_modules` 软链）与 `/root/adelie-fork-data/r50-tilde`（一次性数据根）。
+  都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交** `c6e849bb`（7 个文件：两个源码 + 两个用例文件 + changelog 一对）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
