@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adelie 的 ribbon：一个「Adelie」按钮，点一下开/收侧栏面板（契约 §1）。
+  回调都挂在 window.ribbon 上（panel.js 里赋值），写法与 Apache-2.0 的文策 AI（WenCe）
+  WPS 加载项 public/ribbon.xml + src/components/ribbon.js 一致。
+-->
+<customUI xmlns="http://schemas.microsoft.com/office/2006/01/customui" onLoad="ribbon.OnAddinLoad">
+  <ribbon startFromScratch="false">
+    <tabs>
+      <tab id="adelieTab" label="Adelie">
+        <group id="adelieGroup" label="Adelie">
+          <button
+            id="btnAdeliePanel"
+            label="Adelie"
+            size="large"
+            onAction="ribbon.OnAction"
+            getImage="ribbon.GetImage"
+            enabled="true"
+            visible="true"
+          />
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>

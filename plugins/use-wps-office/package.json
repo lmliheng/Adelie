@@ -1,0 +1,33 @@
+{
+  "name": "@lmliheng/use-wps-office",
+  "version": "0.3.8",
+  "description": "Adelie inside WPS Writer: a dependency-free bridge that hosts a WPS add-on panel, lets the Agent read and edit the open document through MCP tools, and registers the add-on with WPS's own local publish service — loopback only.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmliheng/Adelie.git",
+    "directory": "plugins/use-wps-office"
+  },
+  "keywords": [
+    "adelie-plugin",
+    "penguin-harness",
+    "wps",
+    "office",
+    "docx",
+    "mcp",
+    "addon"
+  ],
+  "files": [
+    "plugin.json",
+    "icon.svg",
+    "README.md",
+    "skills",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

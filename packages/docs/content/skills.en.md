@@ -217,6 +217,7 @@ The built-in plugins, by category (`PLUGIN_CATEGORIES` in `packages/core/src/plu
 | --- | --- | --- |
 | Office Productivity | `data-analysis` | Complete data-analysis tasks with bounded evidence inspection, explicit answer-changing decisions, native artifact handling and final output verification |
 | | `use-firecrawl` | Web search and page scraping into clean markdown via the Firecrawl API |
+| | `use-wps-office` | An Adelie side panel inside WPS Writer: read, search, replace, insert into and delete from the open document, with the same nine document operations exposed to the Agent as MCP tools (not preinstalled; needs WPS on Windows) |
 | | `browser-automation` | Drive the desktop app's [Built-in Browser](/builtin-browser) with `penguin browser`: read pages as simplified HTML or text, act with JavaScript and trusted clicks and typing, and extract data such as Amazon orders, signed in with accounts imported from the system browser |
 | | `use-bento-slides` | Author and edit Bento presentations: single-file `.bento.html` decks whose document is JSON, mapping material to charts, morph transitions and state slides |
 | | `humanizer` | Strip AI-writing tells from prose in any language and rewrite it into the register of books, newspapers and encyclopedias (not preinstalled: install from the library when needed) |

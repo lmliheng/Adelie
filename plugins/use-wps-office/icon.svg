@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Adelie">
+  <title>Adelie</title>
+  <!-- Adelie 的插件图标。纯文本 SVG、无脚本、无外链：Adelie 的插件加载器把技能目录里的文件当
+       文本读进内存再安装到 Agent，二进制会被破坏。蓝色取 web-design 规范的 brand-500 #4285f4。 -->
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="#4285f4" />
+  <!-- 白色 A：两腿一笔画完，再加一根横杠 -->
+  <path d="M14.5 51.5 32 12.5 49.5 51.5" fill="none" stroke="#ffffff" stroke-width="6.8"
+        stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M19.6 40.2 44.4 40.2" fill="none" stroke="#ffffff" stroke-width="7.4" />
+</svg>

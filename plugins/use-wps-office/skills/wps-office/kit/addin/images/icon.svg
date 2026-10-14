@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Adelie">
+  <title>Adelie</title>
+  <!-- 加载项功能区按钮与清单里的图标，与插件根目录那份同一张图。
+       纯文本 SVG：这个目录会被 Adelie 的插件加载器当文本读进内存，二进制会被破坏。 -->
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="#4285f4" />
+  <path d="M14.5 51.5 32 12.5 49.5 51.5" fill="none" stroke="#ffffff" stroke-width="6.8"
+        stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M19.6 40.2 44.4 40.2" fill="none" stroke="#ffffff" stroke-width="7.4" />
+</svg>

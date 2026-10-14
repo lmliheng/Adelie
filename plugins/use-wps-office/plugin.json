@@ -1,0 +1,9 @@
+{
+  "description": "Put an Adelie conversation inside WPS Writer. One dependency-free Node file is the whole runtime: it hosts the WPS add-on's panel, drives the open document through a local command channel that the panel executes, exposes nine document operations (read, search, replace, insert, delete, insert break, create, reveal) to the Agent as MCP tools, and registers the add-on with WPS through WPS's own local publish service. Everything stays on this machine — loopback only, no port opened to the network.",
+  "description_zh": "把 Adelie 的对话搬进 WPS 文字。运行时就是一个零依赖的 Node 文件：它托管 WPS 加载项的面板页，用一条本机命令通道让面板去改那份打开的文档，把这九个文档操作（读、搜、替换、插入、删除、插分隔符、新建、定位）当作 MCP 工具交给 Agent，并通过 WPS 自己的本机上架服务登记加载项。全程不出这台机器，只走回环地址，不对网络开端口。",
+  "short_description": "Adelie inside WPS Writer: a side panel that reads and edits the open document.",
+  "short_description_zh": "在 WPS 文字里开一个 Adelie 侧栏，能读能改当前这篇文档。",
+  "version": "2026.10.15.1",
+  "category": "office-productivity",
+  "preinstall": false
+}

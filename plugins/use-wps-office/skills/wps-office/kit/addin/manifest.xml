@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adelie 的 WPS 加载项清单（契约 §0、§6）。
+  形状照 Apache-2.0 的文策 AI（WenCe）WPS 加载项 frontend/wps_word_plugin/manifest.xml 的结构写：
+  <Applications><Application Name="wps"> + RibbonXml + TaskPanes。Url 按要求留空，
+  图标指向本目录里的 images/icon.svg（文本 SVG，不用二进制）。
+-->
+<JsPlugin>
+  <ApiVersion>1.0.0</ApiVersion>
+  <Name>Adelie</Name>
+  <Version>1.0.0</Version>
+  <Description>Adelie 文档助手：在 WPS 文字里读、搜、改这篇文档</Description>
+  <Author>Adelie</Author>
+  <Url></Url>
+  <HelpUrl></HelpUrl>
+  <IconUrl>images/icon.svg</IconUrl>
+
+  <!-- WPS 文字（wps）支持 -->
+  <Applications>
+    <Application Name="wps">
+      <RibbonXml>ribbon.xml</RibbonXml>
+      <TaskPanes>
+        <TaskPane Label="Adelie" Url="index.html" Width="420" Visible="false" />
+      </TaskPanes>
+    </Application>
+  </Applications>
+</JsPlugin>

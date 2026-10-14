@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Adelie · WPS 助手</title>
+    <link rel="stylesheet" href="panel.css" />
+  </head>
+  <body>
+    <div class="app" id="app">
+      <header class="topbar">
+        <span class="brand">
+          <img class="brand-mark" src="images/icon.svg" alt="" width="24" height="24" />
+          <span class="brand-name">Adelie</span>
+        </span>
+        <span class="spacer"></span>
+        <span class="conn" id="conn">
+          <span class="dot" id="conn-dot" aria-hidden="true"></span>
+          <span class="conn-text" id="conn-text">连接中…</span>
+        </span>
+        <button
+          class="icon-btn"
+          id="thinking-toggle"
+          type="button"
+          aria-pressed="true"
+          aria-label="显示或隐藏思考过程"
+        >
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+            <path
+              d="M8 1.5a4.5 4.5 0 0 1 2.6 8.2c-.5.4-.8 1-.8 1.6v.2H6.2v-.2c0-.6-.3-1.2-.8-1.6A4.5 4.5 0 0 1 8 1.5Z"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.3"
+              stroke-linejoin="round"
+            />
+            <path
+              d="M6.4 13.2h3.2"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.3"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+        <button class="icon-btn" id="theme" type="button" aria-label="切换到深色">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+            <path
+              d="M8 3.2a4.8 4.8 0 1 0 4.8 4.8A4.8 4.8 0 0 0 8 3.2Zm0 -2.2v1.6M8 13v1.6M1.4 8H3M13 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M12.6 3.4l-1.1 1.1M4.5 11.5l-1.1 1.1"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.3"
+              stroke-linecap="round"
+            />
+          </svg>
+        </button>
+      </header>
+
+      <p class="doc-line" id="doc-line">正在读取文档…</p>
+      <p class="session-line caption" id="session-line"></p>
+
+      <section class="contexts" id="contexts" role="group" aria-label="提问时带上的上下文">
+        <button class="chip" type="button" data-context="selection" aria-pressed="true">
+          选中内容
+        </button>
+        <button class="chip" type="button" data-context="document" aria-pressed="false">
+          整篇文档
+        </button>
+        <button class="chip" type="button" data-context="none" aria-pressed="false">
+          不带上下文
+        </button>
+      </section>
+
+      <main
+        class="messages"
+        id="messages"
+        role="log"
+        aria-live="polite"
+        aria-label="与 Adelie 的对话"
+        tabindex="-1"
+      >
+        <div class="empty" id="empty">
+          <p class="eyebrow">WPS 助手</p>
+          <h1 class="empty-title">让 Adelie 直接改这篇文档</h1>
+          <p class="empty-sub">说清要改哪里，它读完选中的段落再动手；改动会落在文档里。</p>
+          <div class="examples">
+            <button class="chip example" type="button" data-example="把第 2 段的标题改得更简洁一些">
+              把第 2 段的标题改得更简洁
+            </button>
+            <button
+              class="chip example"
+              type="button"
+              data-example="通读全文，指出前后不一致的地方"
+            >
+              通读全文，指出前后不一致的地方
+            </button>
+            <button class="chip example" type="button" data-example="在结尾加一段三点式总结">
+              在结尾加一段三点式总结
+            </button>
+          </div>
+        </div>
+      </main>
+
+      <form class="composer" id="composer">
+        <label class="sr-only" for="input">对 Adelie 说</label>
+        <textarea id="input" rows="1" placeholder="让 Adelie 改这篇文档…"></textarea>
+        <div class="composer-foot">
+          <span class="hint">Enter 发送 · Shift+Enter 换行</span>
+          <span class="spacer"></span>
+          <button class="btn secondary" id="abort" type="button" hidden>停止</button>
+          <button class="btn primary" id="send" type="submit">发送</button>
+        </div>
+      </form>
+
+      <p class="disclaimer">改动由 Adelie 在你自己的电脑上写入这篇文档；写入前请先看清内容。</p>
+    </div>
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+    <script type="module" src="panel.js"></script>
+  </body>
+</html>

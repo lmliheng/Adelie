@@ -105,6 +105,9 @@ importers:
       '@lmliheng/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@lmliheng/use-wps-office':
+        specifier: workspace:*
+        version: link:../../plugins/use-wps-office
       '@lmliheng/wechat-miniprogram':
         specifier: workspace:*
         version: link:../../plugins/wechat-miniprogram
@@ -196,6 +199,9 @@ importers:
       '@lmliheng/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@lmliheng/use-wps-office':
+        specifier: workspace:*
+        version: link:../../plugins/use-wps-office
       '@lmliheng/wechat-miniprogram':
         specifier: workspace:*
         version: link:../../plugins/wechat-miniprogram
@@ -293,6 +299,9 @@ importers:
       '@lmliheng/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@lmliheng/use-wps-office':
+        specifier: workspace:*
+        version: link:../../plugins/use-wps-office
       '@lmliheng/wechat-miniprogram':
         specifier: workspace:*
         version: link:../../plugins/wechat-miniprogram
@@ -770,6 +779,8 @@ importers:
   plugins/use-claude-code: {}
 
   plugins/use-firecrawl: {}
+
+  plugins/use-wps-office: {}
 
   plugins/wechat-miniprogram: {}
 
@@ -1530,6 +1541,9 @@ packages:
 
   '@lmliheng/use-firecrawl@file:plugins/use-firecrawl':
     resolution: {directory: plugins/use-firecrawl, type: directory}
+
+  '@lmliheng/use-wps-office@file:plugins/use-wps-office':
+    resolution: {directory: plugins/use-wps-office, type: directory}
 
   '@lmliheng/wechat-miniprogram@file:plugins/wechat-miniprogram':
     resolution: {directory: plugins/wechat-miniprogram, type: directory}
@@ -5599,6 +5613,7 @@ snapshots:
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
       '@lmliheng/use-claude-code': file:plugins/use-claude-code
       '@lmliheng/use-firecrawl': file:plugins/use-firecrawl
+      '@lmliheng/use-wps-office': file:plugins/use-wps-office
       '@lmliheng/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
@@ -5634,6 +5649,7 @@ snapshots:
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
       '@lmliheng/use-claude-code': file:plugins/use-claude-code
       '@lmliheng/use-firecrawl': file:plugins/use-firecrawl
+      '@lmliheng/use-wps-office': file:plugins/use-wps-office
       '@lmliheng/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
@@ -5667,6 +5683,7 @@ snapshots:
       '@lmliheng/use-bento-slides': file:plugins/use-bento-slides
       '@lmliheng/use-claude-code': file:plugins/use-claude-code
       '@lmliheng/use-firecrawl': file:plugins/use-firecrawl
+      '@lmliheng/use-wps-office': file:plugins/use-wps-office
       '@lmliheng/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
@@ -5757,6 +5774,8 @@ snapshots:
   '@lmliheng/use-claude-code@file:plugins/use-claude-code': {}
 
   '@lmliheng/use-firecrawl@file:plugins/use-firecrawl': {}
+
+  '@lmliheng/use-wps-office@file:plugins/use-wps-office': {}
 
   '@lmliheng/wechat-miniprogram@file:plugins/wechat-miniprogram': {}
 
