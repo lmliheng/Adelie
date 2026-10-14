@@ -8364,3 +8364,28 @@ TokenDance 促销那套进本树（`model-catalog.ts` 冲突 5 处）、`#1090` 
   那类上游用例就能原样落），本轮再问一次；2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10 照旧停在原地。
 - 中间物：会话 scratchpad 的 `r58/`（探针 `probe.mjs` 与它的探索版、`dock-state.fixed.ts` 留底、
   两条 `server-*.log`、`shot-{before,after2}-*.png` 与 `explore.png`）。都未入库；探针没往仓库里放。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `ead8d213`**（4 个文件：1 个源码 / 1 条既有用例（+4 用例）/ 一对 changelog）；
+  台账这一笔另起一笔 `c29ca50d`。
+- **推送**：`git push origin main`（`a82e4856..c29ca50d`）。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+
+### 汇报邮件（仍未发出，第 22–58 轮同一处网络卡点）
+
+- 照 `csu-mail` 技能先自检：`python3 scripts/mail.py check` **挂起后 90 秒超时**（`EXIT=124`，日志在
+  scratchpad 的 `r58/mail-check.log`，空空如也）—— 与第 22–57 轮同一处卡点：本机到中南大学网段
+  `202.197.0.0/16` 整片不通，与凭据无关（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都注入着）。
+  随后照这一个收件人真发一次也超时（`mail.py send` `EXIT=124`，`r58/mail-send.log` 同样空）。
+- 正文按本轮写好在 scratchpad 的 `r58/mail-round58.txt`（这一条、做了什么、验证结论、下一轮做哪条、卡点），
+  并已把它当成**第 37 封入重发队列**：`csu-mail-retry.toml` 加了第 37 条、计数改成三十七封、背景提交表补上
+  `ead8d213 / c29ca50d`（任务文件仍能解析：`enabled=true`、`period=6h`、`end_at=2026-10-19T12:00:00Z`，
+  37 条都还在）。
+- 照第 36 轮起记下的替代通道，**同时用飞书发了一条三五句话的简报**
+  （`message_id=om_x100b63c2165614a4dff1d583ca7698c`），所以这一轮的结果不是只躺在队列里。
+
+### CI（推送后）
+
+- 两笔一起推（`a82e4856..c29ca50d`）—— run **`38555290737`**（`c29ca50d`）**`completed success`**，
+  **22 个作业全绿、`NOT SUCCESS: []`**（含 `installer-windows`、三条 Windows 分片与 `runtime` 三平台）。
+- 本笔只改 `packages/web` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
