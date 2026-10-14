@@ -8552,3 +8552,11 @@ desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key�
   `enabled=true`、`period=6h`、`end_at=2026-10-19T12:00:00Z`，38 条都还在）。
 - 照第 36 轮起记下的替代通道，**同时用飞书发了一条三五句话的简报**
   （`message_id=om_x100b63cd9d3b14a0dde0f6d0d8f9157`），所以这一轮的结果不是只躺在队列里。
+
+### CI（推送后）
+
+- **推送第一次被 GitHub 回 `Internal Server Error`**（`! [remote rejected] main -> main`，
+  remote 侧给了 Request ID）—— 与本地无关，20 秒后**原样重推成功**：`b02cd860..b6dba82f main -> main`。
+- 两笔一起推（`b02cd860..b6dba82f`）—— run **`38588299023`**（`b6dba82f`）**`completed success`**，
+  **22 个作业全绿、`NOT SUCCESS: []`**（含 `installer-windows`、三条 Windows 分片与 `runtime` 三平台）。
+- 本笔只改 `packages/{server,web}` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
