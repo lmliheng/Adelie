@@ -723,6 +723,16 @@
       3.6 / 4.x / 5.3 / 5.6 / 5.10（各处仍不可做或明令不动），上游 remote 也仍失效；第五十三 / 五十四轮把
       两笔候选记在桌上，`#826` 是剩下的那一笔，且**不需要模型 key 就能验**（频道消息是一行 JSONL，本机手写
       两条真消息即可），`git apply -3` 干净、不引入新依赖、不碰桌面壳 / 包名 / 流水线。
+- [x] **5.35 窗口底部的控件的悬停提示改在上方弹出**（上游 `9f9c0df3` `#1098`，**2026-10-14 第五十六轮落地**，
+      提交见该节）：输入框里的上下文圆环贴着窗口底边（本机 1280×900 下圆环底边离窗口底边 21px），它那行提示挂
+      在下方时有一部分落到窗口外（改前实测：面板 `top: 887px`、下缘 913 > 900，**13px 被切**）。现在挂在控件
+      下方的提示（`belowTrigger`）接受面板**渲染出来的高度**：下方放不下、而上方空间更大时改由**下边缘定位**
+      （`bottom: 视口高 − 控件上边缘 + 8px`），面板向上生长、文字折成几行都不会被底边裁掉；放得下就仍在下方，
+      两侧都放不下则去空间更大的一侧。高度在 `TooltipPanel` 的 layout 阶段读（首帧之前就定好位，面板不会先闪现
+      在下方），`PanelPosition` 因此改成 `top` / `bottom` 二选一。**为什么是这一条**：表上最靠前的未勾选条目仍是
+      2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10（各处仍不可做或明令不动）；本轮按第二十三轮那条路**按 URL 直接
+      从 GitHub 拉上游 `main`**（尖端 `fcd5d5b0`，比本仓已有的 `b2c3de9f` 多 35 笔），在本树有那些文件的小件里挑
+      了这一笔 —— 它自带一条真界面就能看的两态，且不需要模型 key。
 - **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
       这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
       repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
@@ -1335,6 +1345,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-13 | 5.32 | **沙盒里不加限制的文件写入模式改称「完全访问」**（上游 `b24f3099` `#1021` 移植，照改动落、不是合分支；5 文件 / +27 −7，其中源码 2 个文件（`settings-store.ts` +4 −4、`settings-status.ts` +2 −2）、既有断言 1 个文件 +1 −1、另有 changelog 一对）：`danger-full-access` 这个「不加任何限制」的文件写入选项，显示名由 **「关闭（完全访问）」/ "Off (full access)"** 改成 **「完全访问」/ "Full access"** —— 旧名在预设表的「文件」格子里会折成两行（上游的理由就是「太长」），而且没有别处用这个名字；权限菜单与预设一直叫「完全访问」，本次是向它们看齐。「文件」列的 `description`/`descriptionZh` 与「没有可用沙盒后端」提示（「除「关闭」外…」→「除「完全访问」外…」）也改用同一个名字。**存的值一字未动**（`danger-full-access`），只有显示名变了；同一个 `network` 列本来就用 "Full access"。**本地化**：无（这一笔只有中英文案，本仓没有额外引用点 —— 全仓扫描确认 `packages/` 之外只有台账自己的历史记录还写着旧名） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 写入 `src/ifaces.json`（189 接口 / 580 类型）—— 它是 gitignore 的生成物，本轮不因此改契约）· `npx oxlint` **0 警告 0 错误**（2150 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过**（数与上一轮逐项一致 —— 本笔只改一条既有断言）· web **254 文件 / 3106 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测，改前源码）**：把两个源码文件退回 `HEAD`、只跑 `test/sandbox-settings.test.ts` → **1 failed / 6 passed（7 条）**，红的正是那条 `notices` 断言（收到 `…every mode but Off…`）；换回本笔 → **7 全过** · **真界面看改前改后两态（本轮主证据）**：重建 server 产物后，一次性数据根 `/root/adelie-fork-data/r53-sandbox`、`localhost:8981` 起真服务（`PENGUIN_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），Playwright（`playwright-core@1.61.1` + 本地 chromium-1243）用 `POST /api/auth/login` 的 cookie 打开 `/chat` → 账号菜单 → 设置 → 「插件」页，`PUT /api/admin/plugin-config` 把沙盒开关打开后读沙盒卡片：**改动后**「文件」列六行分别是 完全访问 / 完全访问 / 仅工作区可写 / 只读 / 仅工作区可写 / 完全访问（`page.body.innerText` 里旧名 `关闭（完全访问）` **0 处**、提示行是「除「完全访问」外…」），console **0 error**、无一条 ≥400；**反证（真界面）**：把两个源码文件退回 `HEAD`、重建 server、重启同一数据根、同一条探针 → 「文件」列出现 **`关闭（完全访问）`**（3 处，格子里折成「关闭（完全访」/「问）」两行）、提示行是「除「关闭」外…」，截图 `before/04-plugins.png` 与 `after/04-plugins.png` 都在 scratchpad · 端口只用 8981，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-14 | 5.33 | **频道保留你还没发出的消息**（上游 `7ecb60e1` `#810` 移植，照改动落、不是合分支；7 文件 / +450 −3，其中新源码 1 个（`channel-draft.ts` 98 行）、既有源码 3 个（`channel-composer.tsx` +21 −3、`channel-view.tsx` +15 −2、`install-scope.ts` +6）、新用例 1 个（`test/channel-draft.test.ts` 59 行）、e2e 1 个（`company.spec.mjs` +20），另有 changelog 一对）：频道的输入框过去把没发出的文字只放在组件状态里，换频道 / 去工位 / 刷新都会丢；对话里的未发送输入自草稿缓存落地起就有缓存，频道输入框一直没跟上。新增 `features/company/channel-draft.ts`：键是「用户 × 项目 × 组织 × 频道」（`penguin.channelDraft.…`），存储助手复用对话草稿那一套（`loadDraft` / `saveDraft` / `clearDraft`），写策略照 `use-session-draft.ts` —— 300 毫秒防抖、切换频道或卸载时把待写的编辑补写一次、清空输入框就删键、发送成功先取消待写再清（否则会把刚发出去的文本写回来）。`ChannelComposer` 多收 `initialText` / `onTextChange`（初始 caret 落在末尾），`channel-view.tsx` 用 `useChannelDraft` 并按草稿键 `key` 重挂 composer —— 回到该频道文字在原处、别的频道不继承。`install-scope.ts` 的 `KEY_RULES` 加一条 `penguin.channelDraft.`（install 作用域，与对话草稿并列），否则既有的 `install-scope.test.ts` 会红。**本地化**：无（新文件只 import 相对路径，全仓无 `@prismshadow/` 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过**（**+1 文件 +4 用例**，即新 `channel-draft.test.ts`）· hmr 无测试文件 · **反证一（单测，改前源码）**：把 `install-scope.ts` 退回 `HEAD`、其余不动，跑 web 全套 → **1 failed / 3109 passed**，红的正是那条既有断言：`penguin.channelDraft. (packages/web/src/features/company/channel-draft.ts) is missing from KEY_RULES`；把本笔换回去 → `test/channel-draft.test.ts` + `test/install-scope.test.ts` **24 条全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：一次性数据根 `/root/adelie-fork-data/r54-channel-a`、`localhost:8991` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings {companyMode:true}` → `POST …/organizations {orgId:acme}` → `POST …/channels {channelId:site,name:Site launch}` 造出一个真组织与两个真频道，Playwright（仓库 pnpm store 里的 `playwright@1.61.1` + 本地 chromium-1243）按 `/org/default_project/acme/channels/<id>` 走查四个行为：**改动后** 初始空且无键 → 在 `site` 打「还没写完的一句」→ localStorage 出现 `penguin.channelDraft.admin.default_project.acme.site` → 切到「全员频道」输入框**空**且草稿键只有 site 那一条 → 回到 site 文字**还在** → **刷新后还在**（截图 `after2/04-reloaded.png`）→ 清空输入框后**键被删掉**；console **0 error**、无一条 ≥400。**反证二（真界面，改前源码）**：把 `channel-view.tsx` / `channel-composer.tsx` 退回 `HEAD`、`channel-draft.ts` 移出树外，重建 web 产物后同一条探针 → 打字后 **localStorage 里一个 `penguin.channelDraft.` 键都没有**，切频道回来为**空**、刷新后仍为**空**（截图 `before/…`）；把三份文件放回、重建 web、同一条探针 → 四个行为全部恢复（`after2/` 那一轮）。**仓库自带的 `company.spec.mjs` 没跑通**：它在第 93 行就红（对话框里 CEO 预算的默认值是 700，而这一笔的断言写的是 100），那是**本树与上游早就在的差异**、与本笔无关，因此新增的那段草稿 e2e 步骤（在更后面）没走到 —— 四个行为改由上面那条探针覆盖（上游作者同样把这段 e2e 标为「没跑」）· 端口只用 8991（另有 e2e 试用过的 8932/8933，用完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-14 | 5.34 | **手机上的频道消息有了足够的宽度**（上游 `9eae0a2d` `#826` 移植，照改动落、不是合分支；5 文件 / +91 −17，其中源码 2 个（`channel-bubble.css` +22、`channel-bubble.tsx` +33 −17）、既有用例 1 个 +16 −2、另有 changelog 一对）：手机上气泡过去最多占列宽的 **75%**、时间戳**另占一栏**（`flex items-end` 里 `shrink-0` 的那个 span），两者叠加把中文挤到每行七八个字。现在气泡的类名改成 `relative max-w-[88%] px-3 py-1.5 text-base leading-relaxed sm:max-w-[75%] sm:text-sm`（窄屏 88% 与 `text-base`，`sm` 及以上照旧 75% 与 `text-sm`），时间戳改成 `absolute bottom-1.5 right-3` 收在气泡右下角，正文在最后一行上给它留出一段行内空隙 —— `channel-bubble.css` 新增 `--channel-time-gap: 2.75rem`，末尾段落 / 列表最后一项 / 引用最后一行以 `::after` 的 `inline-block` 空隙收尾（`pre` / `table` 这类无法以空隙收尾的块改成 `margin-bottom: 1.125rem` 把那一行让到下面）；`footer != null` 时另渲染一个 `.channel-time-gap` 元素跟在 chip 行之后（那时 `::after` 够不到）。代码注释写明「时间收在角落、正文最后一行给它留位」的缘由。**本地化**：无（这一笔全在 `packages/ui` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 线上格式 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件，本笔改的是既有那条 class 断言、未增用例）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，iPhone 13 宽 390px）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r55-bubble`、`localhost:8981` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings {companyMode:true}` → `POST …/organizations {orgId:acme}` → `POST …/channels {channelId:site}` 造出真组织与真频道，再**手写** `channels/site/<日期>.jsonl` 里三行真消息（短句 / 63 字长句 / 一条带 `refs.ticket` 的）—— 不需要模型 key（即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，`isMobile` + 390×844 + DPR 2）打开 `/org/default_project/acme/channels/site`，逐气泡量「占列宽比 / 正文宽 / 字号 / 折行数 / 时间戳位置 / 与最后一行文字和 chip 的关系」——**改动后**：#0 短句 196px（列宽 362px 的 **54.1%**）、正文 16px、时间 `absolute` 停在 x=331 而最后一行文字到 318（**挨着字、不压字**）；#1 长句 319px = **88%**、正文 **295px**、**4 行**、时间贴在最后一行末尾；#2 带 refs 的一条 chip 右缘 315、时间 x=331（**让开了 chip**）、`channel-time-gap` **存在**。两态 console 各 **0 error**、无一条 ≥400。**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui` + 重建 web + 重启同一数据根 + **同一条探针** → #0 175px（48.4%）、正文 112px **14px**；#1 272px = **75%**、正文 208px、**5 行**；时间戳三条都是 `static` 且 x=331（**另占一栏**）、`channel-time-gap` **不存在**；随后把三份源码放回、重建、再跑一次 → 数字与上面「改动后」逐项一致。截图 `r55/after/channel-390.png` 与 `r55/before/channel-390.png`、原始测量 `r55/{after,before}-measure.json` 都在 scratchpad · 端口只用 8981，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `7abf1020` |
+| 2026-10-14 | 5.35 | **窗口底部的控件的悬停提示改在上方弹出**（上游 `9f9c0df3` `#1098` 移植，照改动落、不是合分支；3 文件 / +90 −36，其中源码 1 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` +61 −36）、既有用例 1 个（`test/tooltip.test.ts` +29，三条新用例）、另有 changelog 一对）：共享的悬停提示（`data-tooltip` / `<Tooltip>`，两者共用一个 `TooltipPanel`）过去一律把面板挂在控件下方 —— `belowTrigger` 只算水平那一侧、从不看视口高度。输入框工具条里的上下文圆环贴着窗口底边（本机 1280×900 实测：圆环 847–879，离底边 **21px**），一行 26px 的提示挂下去就有一部分落到窗口外（**改前实测 `top: 887px`、下缘 913 > 900，13px 被切**）。现在 `belowTrigger(rect, viewport, height = 0)` 先算「下方剩多少 / 上方有多少」：面板高度（渲染出来的 `offsetHeight`）超过下方余量、且上方更宽裕时，改以 `bottom: viewport.height − rect.top + PANEL_GAP` **由下边缘定位**，面板向上生长 —— 不必估算文字折几行。`TooltipPanel` 因此收控件的**盒子**（`anchor`）而不是算好的位置，自己在 layout 阶段（首帧之前）量高度再定位，面板不会先闪现在下方；`PanelPosition` 的 `top` 变可选、多一个 `bottom`。放得下就仍在下方，两侧都放不下则去空间更大的一侧；`right` 那一侧（竖栏）一字未动。上游同一文件在此提交之后还有一批重构（`extra` / `data-tooltip-owned` / 末行提示），本笔**只落这一提交的语义**，两处冲突按本树的旧写法手写解决。**本地化**：无（全在 `packages/ui` 内、无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件，**+3 即本笔新用例**）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r56-tooltip`、`localhost:8982` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行（`s-r56-tooltip`）拿到一个带输入框的真会话页（不需要模型 key，即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×900）悬停**输入框工具条里的上下文圆环**并读 `[data-testid="tooltip"]`：**改动后** —— 面板的内联样式是 `bottom: 61px`（**由下边缘定位**）、落在 y **813–839**，**整块在窗口内**、离底边 61px（`cutOffBelow: false`、`clearOfBottomEdge: true`）、文字「上下文占用 0% · 0/256k」；**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui/.../tooltip.tsx` + 重建 web + **同一条探针** → 内联样式是 `top: 887px`、落在 y **887–913**，**13px 落到窗口外**（`cutOffBelow: true`）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · **回归对照（同一轮同一探针）**：窗口顶部的图标按钮（`下侧栏`）两态都仍是 `top: 73px`（**向下弹**，没有多余的上翻）；矮窗口（1280×520）里圆环同样上翻（`bottom: 61px`）、顶部按钮同样向下 · 两态 console 各 **0 error**、无一条 ≥400 · 截图 `r56/{after,before}/ring-hover{,-crop}.png` 与 `dock-hover.png`、原始测量 `r56/{after,before,after-measure2,after-short}-measure.json`、探针 `r56/probe.mjs` 都在 scratchpad · 端口只用 8982，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `65615e04` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -7945,3 +7956,105 @@ key（正是 3.6 那个卡点）。`git show 9eae0a2d | git apply -3 --check` �
   行为），绿的那条看的是后一笔：run **`38483227055`**（`3366d8cf`）—— **`completed success`**，
   **22 个作业全绿、`NOT SUCCESS: []`**。
 - 本笔只改 `packages/ui` 的三处源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
+
+## 第五十六轮：窗口底部的控件的悬停提示改在上方弹出（2026-10-14，条目 5.35）
+
+### 开工自检
+
+- `git status --short` **干净**（输出为空）；`git fetch origin && git merge --ff-only origin/main` →
+  `Already up to date.`（头是 `40fed52f`，第五十五轮之后的版本戳那一笔）。
+- **上游这一轮取到了新提交**（与第四十九至五十五轮记的「remote 失效」不同，但走的是同一条路）：`upstream`
+  仍指着已经不存在的 `/root/penguin-harness`，所以照第二十三轮记下的办法**按 URL 直接取**
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-latest2`
+  → 尖端 **`fcd5d5b0`**（`feat(desktop): the window's title bar is part of the app (#1099)`）。本仓此前最新的
+  上游探针 `refs/adelie-tmp/upstream-main-probe` 是 `b2c3de9f`，两者之间 **35 笔**新提交。**没有碰 remote 配置、
+  没有切分支、没有推上游。**
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里）、**3.5** 要用户
+拍板取哪个桌面壳且本轮不许碰 desktop、**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.3** 的②③④要
+第二台机器，**5.6** 与 **5.10** 等用户拍板。新拉到的 35 笔里逐笔量过「本树有没有那个文件」：`#1087` 要
+TokenDance 促销那套进本树（`model-catalog.ts` 冲突 5 处）、`#1090` 要 `session-grouping.ts` 的时分组（10 文件、
+6 处冲突）、`#1097` 24 文件、`#1107` 461 行、`#1117` / `#1091` / `#1089` / `#1082` 等都是大件或碰 desktop；
+`#1098`（`9f9c0df3`，4 文件 / +115 −37）是其中**最小、又能用真界面量出两态**的一笔 —— 它的验证只需要一个
+贴着窗口底边的控件（输入框里的上下文圆环），**不需要模型 key**（正是 3.6 那个卡点），也不碰桌面壳 / 包名 /
+流水线。`git show 9f9c0df3 | git apply -3 --check` 的结果是：用例文件干净、源码文件两处冲突（上游那份
+`tooltip.tsx` 在这一提交之前还叠了 `hintAllowedFor(el, extra)` 与「末行提示」两次重构，本树没有），所以按
+「照改动落、不是合分支」的纪律**手写落地这一提交的语义**，不把上游那两个重构一起拉进来。
+
+### 改了什么（4 文件 / +106 −44，含 changelog 一对）
+
+- **`packages/ui/src/components/overlays/tooltip/tooltip.tsx`**（+61 −36）：`belowTrigger` 多收一个 `height`
+  参数（默认 0），先算 `roomBelow = 视口高 − 边距 − (控件下边 + 8)` 与 `roomAbove = 控件上边 − 8 − 边距`；
+  `height > roomBelow && roomAbove > roomBelow` 时改以 `{ bottom: 视口高 − 控件上边 + 8 }` 定位（面板由**下
+  边缘**钉住、向上生长），否则照旧 `{ top: 控件下边 + 8 }`。`PanelPosition.top` 变成可选、多了 `bottom`。
+  `Tooltip` 不再自己算位置，只把量到的控件盒子 `anchor` 交给面板；`TooltipPanel` 在 **layout 阶段**（首帧之前、
+  `useLayoutEffect`）读自己的 `offsetHeight` 再定位，因此「该在上面」的面板不会先闪现到下方；`TooltipLayer`
+  同样只传 `anchor`。文件头与 `belowTrigger` / `TooltipPanel` 的注释都写明**为什么**（「底边的控件会把提示
+  挂到窗口外」「高度要在首帧之前量，否则先画在下方」）。`right` 那一侧（竖栏）与 `besideTrigger` 一字未动。
+- **`packages/ui/test/tooltip.test.ts`**（+29）：上游自带的三条用例照落，并把「垂直方向」那段说明加进文件头
+  —— ①贴着窗口底边、面板比下方余量高 → 由下边缘定位（`bottom: 61`）；②放得下 → 仍在下方（`top: 740`）；
+  ③两侧都放不下 → 去空间更大的一侧（`top: 240` / `bottom: 248`）。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-14-context-ring-tooltip{,.zh}.md`）、去掉上游 PR 行、
+  写明「移植自上游 PenguinHarness（#1098，提交 `9f9c0df3`）」并在中文版补一句「改的是共用的 tooltip，而不是
+  圆环自己」与「接口与已存数据都没有变化」。
+- **本地化**：无 —— 这一笔全在 `packages/ui` 内，没有跨包 import，也没有 `@prismshadow/` 之类的引用点。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件 —— 比上一轮 **+3**，
+  正是本笔新用例）· cli **539**（37 文件）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 /
+  3110 通过 / 2 跳过** · hmr 无测试文件。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根
+  `/root/adelie-fork-data/r56-tooltip`、`localhost:8982` 起真服务（`ADELIE_PROFILE=dev` +
+  `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；再往 `web.db` 的 `sessions` 表插一行
+  （`s-r56-tooltip`），`GET /api/sessions/<id>` 答得出来，于是 `/chat/s-r56-tooltip` 是一个带输入框的真会话页
+  —— **不需要模型 key**（即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，
+  `--no-sandbox`，1280×900）用 cookie 打开该页，`ring.hover()` 后读 `[data-testid="tooltip"]`：
+  - **改动后**：圆环 847–879（离窗口底边 **21px**），面板的内联样式是 `bottom: 61px`（= 900 − 847 + 8，
+    **由下边缘定位**）、落在 y **813–839**，**整块在窗口内**、离底边 61px（`cutOffBelow: false`、
+    `clearOfBottomEdge: true`），文字「上下文占用 0% · 0/256k」；两态 console 各 **0 error**、无一条 ≥400。
+  - **反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui/src/components/overlays/tooltip/tooltip.tsx`
+    + 重建 web + 重启同一数据根 + **同一条探针** → 内联样式是 `top: 887px`、落在 y **887–913**，**13px 落到
+    窗口外**（`cutOffBelow: true`）；随后把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。
+  - **回归对照（同一探针）**：窗口顶部的图标按钮（`下侧栏`）两态都仍是 `top: 73px`（**向下弹**，没有多余的上
+    翻）；把窗口压到 **1280×520** 再跑一遍 —— 圆环同样上翻（`bottom: 61px`）、顶部按钮同样向下，两态
+    console 各 0 error。
+  - 截图 `r56/after/ring-hover.png`（局部 `ring-hover-crop.png` 里能看到提示完整地悬在圆环上方）与
+    `r56/before/ring-hover{,-crop}.png`（提示被窗口底边截断）、`r56/*/dock-hover.png`，原始测量
+    `r56/{after,before,after-measure2,after-short}-measure.json`、探针 `r56/probe.mjs` 都在 scratchpad。
+- **反证的范围（有意留着的一处）**：探针一开始用 `page.mouse.move()` 移到圆环中心，面板不出现（改用
+  `locator.hover()` 才出现）—— 改的是工具，不是被测代码。另外「面板折成多行时向上长多少」这一条**没有**在
+  真界面里量（本机那个圆环的提示只有一行），它由新用例的第③条（面板比两侧都高 → 去空间更大的一侧）与
+  「由下边缘定位、内容多高都向上长」的写法本身保证。
+- 端口只用 8982，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r56-tooltip`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出；是否现在发版等用户点头。
+- **上游 remote 仍失效**：这一轮是**按 URL 现拉的**（见「开工自检」），拉到的对象落在本地
+  `refs/adelie-tmp/upstream-main-latest2`（临时引用，要清就 `git update-ref -d`）。要长期跟上游走，仍应由用户
+  把 `upstream` 指到一个能 fetch 的源。
+- **新拉到的 35 笔里量过、本轮没做的**：`#1087`（TokenDance 促销，`model-catalog.ts` 冲突 5 处）、`#1090`
+  （侧栏「显示更多」按时间段分组，10 文件 / 6 处冲突）、`#1097`（停止标记重发那一轮，24 文件）、`#1107`（子智能体
+  落到派发它的调用，4 文件 / +461）、`#1092`/`#1105`/`#1099`（碰 desktop）、`#1117`（Benchmark 导入简化）、
+  `#1091`（浏览器扩展）、`#1086`（Penguin Go 余额）、`#1100`（User-Agent 署名，26 文件）、`#1083`（插件页在远端
+  索引不可达时列出随包插件，11 文件 / 7 处冲突）、`#1058`（推上来的平台能在旧运行时启动，9 文件）、
+  `#1118`（成本中心已读状态，5 文件，纯逻辑）、`#1102`（起始页版本行与标志对齐，要本树没有的
+  `start-dashboard.tsx`）、`#1096`/`#1110`（智能体面板的字号与跨轮次保留，纯逻辑但要在真界面造子会话）。
+  **下一轮**：优先在 `#1118`、`#1110`、`#1096` 这三笔「本树有文件、能干净应用或小改落地」的里挑一笔
+  （`#1118` / `#1110` 自带用例，`#1096` 要真界面看字号），或者回头做 2.2c 剩下的桌面壳那一半 —— 后者要先由
+  用户拍板 3.5。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+- 中间物：会话 scratchpad 的 `r56/`（`probe.mjs` 探针、`shot.mjs` 局部截图、`debug*.mjs` / `list-*.mjs` 排障脚本、
+  两态截图与四份测量 JSON、`keep/` 里两份源码留底）。都未入库。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `65615e04`**（4 个文件：1 个源码 / 1 条既有用例（+3 用例）/ 一对 changelog）；台账这一笔另起一笔。
+- **推送**：`git push origin main`（`40fed52f..65615e04`）。**没有切版本号、没发 npm、没发安装包、没发发布
+  汇总。**
