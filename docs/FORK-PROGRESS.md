@@ -8958,3 +8958,11 @@ jsdom 无关，缺的只是取证手段；于是那条卡点不再挡路，而�
 - 按 csu-mail 技能先自检、再真发一次，结果与第 22–61 轮同一处卡点：本机到中南大学网段
   `202.197.0.0/16` 整片不通（与凭据无关）。正文写在 scratchpad 里并按第十轮起的老办法入重发队列
   （`csu-mail-retry.toml` 加第 40 条），同时照第 36 轮起的替代通道用飞书发一条三五句话的简报。
+
+### CI（推送后）
+
+- 两笔一起推（`966c9f97..1e45baa9`）—— run **`38653623225`**（`1e45baa9`）**`completed success`**，
+  **22 个作业全 success、`NOT SUCCESS: []`**（逐条查过 `actions/runs/38653623225/jobs`，含
+  `plugin versions`、`installer-windows`、三条 Windows 分片、两条 macOS 分片与 `runtime` 三平台）。
+- 本笔只改 `packages/web/src` 与一对 changelog，`ci.yml` 的矩阵没有动；没有新增依赖、没有动包名与流水线，
+  所以版本戳、发布、安装包这一轮一个都没碰（按轮次纪律）。
