@@ -315,6 +315,17 @@ manifest）与 `#1123`（`76bbebbe`，5 / +171 −28，桌面壳从 POSIX shell 
 不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用是 `refs/adelie-tmp/upstream-main-latest4`（要清就
 `git update-ref -d`）。
 
+**上游 `main` 又往前走了（2026-10-14 第五十九轮拉到 `ac61e9ad`）**：第五十八轮拿到的头是 `a129b42e`，
+它之后新推上来 **4 笔**，逐笔量过 —— `#1136`（`fe52244a`，9 文件 / +194 −65，CI 把 README 校验的范围收窄）
+要的 `scripts/ci-gate.mjs` / `scripts/ci-plan.mjs` 与两份用例本树都没有，`packages/core/test/plugins.test.ts`
+还有一处冲突；`#1137`（`acdfddc9`，13 文件 / +452 −254，刷新模型预设与「按缓存加权」的价格排序）要的
+`packages/web/src/features/models/model-sort.ts` 本树没有，改的又是模型目录的在架条目；`#1139`（`ac61e9ad`，
+20 文件 / +807 −186，本地 API token 换 Remote 浏览器会话）要的 `agent-api-settings.test.ts` 与
+`builtin-browser/backend-resolution.test.ts` 本树没有，另有三处冲突；小件里 **`#1138`（`d51c4577`，
+9 文件 / +173 −6，恢复分页会话里的记忆更新卡片）第五十九轮落进 5.38**。这一撮仍按「不引入新依赖、
+不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用是 `refs/adelie-tmp/upstream-main-r59`（要清就
+`git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -791,6 +802,17 @@ manifest）与 `#1123`（`76bbebbe`，5 / +171 −28，桌面壳从 POSIX shell 
       插件市场「只看不兼容」搬进设置做成开关）、`#1050`（`0e56dc5a`，3 / +79 −53，全屏下子智能体输入框对齐）
       与 `#1051`（`e5639b32`，67 / +365 −59，悬停提示的规则）都量过：本轮只取 `#1052`（三者里最小、自带一条
       现成单测、且本机能用真浏览器把改前改后两态都量出来），其余留给后面的轮次按同一判据挑。
+- [x] **5.38 分页读取的会话里，记忆更新卡片不再丢失**（上游 `d51c4577` `#1138`，**2026-10-14 第五十九轮
+      落地**，提交见该节）：会话打开时读的是**历史窗口**（Web App 首页取 20 个单元），窗口可能从
+      `session_meta` **之后**开始 —— 而 Agent State 目录（`<agent_state>`）只写在那条记录里，于是流模型手里
+      没有 `<agent_state>/memory/` 这个根，`classifyMemoryPath` 认不出任何一条文件写入，**整张记忆更新卡片
+      不渲染**（文件其实改成功了，模型也在回复里说了）。现在服务端把「窗口起始那个上下文记录里的
+      `agent_state`」放进历史分页信封（`MessagesPageInfo.agentState`，与同一处的 `contextModel` 同一写法：
+      没有 Trace 时不出现），Web App 的 `seedWindow` 在回放这一页之前把它种进模型。打开会话、往上加载更早
+      的消息、断开后重连三种情形都恢复；同一话题反复编辑仍只画一行、对记忆索引的编辑照旧不算。
+      **没有给 OmniMessage 增加字段**，也没有改写已存的 Trace 或记忆文件。**为什么是这一条**：第五十九轮
+      新拉到的四笔里唯一七份源码 / 用例**全部逐字干净**、不引入新依赖、不碰桌面壳 / 包名 / 流水线，且是一条
+      用户看得见的真缺陷（见该节）。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1388,6 +1410,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-14 | 5.35 | **窗口底部的控件的悬停提示改在上方弹出**（上游 `9f9c0df3` `#1098` 移植，照改动落、不是合分支；3 文件 / +90 −36，其中源码 1 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` +61 −36）、既有用例 1 个（`test/tooltip.test.ts` +29，三条新用例）、另有 changelog 一对）：共享的悬停提示（`data-tooltip` / `<Tooltip>`，两者共用一个 `TooltipPanel`）过去一律把面板挂在控件下方 —— `belowTrigger` 只算水平那一侧、从不看视口高度。输入框工具条里的上下文圆环贴着窗口底边（本机 1280×900 实测：圆环 847–879，离底边 **21px**），一行 26px 的提示挂下去就有一部分落到窗口外（**改前实测 `top: 887px`、下缘 913 > 900，13px 被切**）。现在 `belowTrigger(rect, viewport, height = 0)` 先算「下方剩多少 / 上方有多少」：面板高度（渲染出来的 `offsetHeight`）超过下方余量、且上方更宽裕时，改以 `bottom: viewport.height − rect.top + PANEL_GAP` **由下边缘定位**，面板向上生长 —— 不必估算文字折几行。`TooltipPanel` 因此收控件的**盒子**（`anchor`）而不是算好的位置，自己在 layout 阶段（首帧之前）量高度再定位，面板不会先闪现在下方；`PanelPosition` 的 `top` 变可选、多一个 `bottom`。放得下就仍在下方，两侧都放不下则去空间更大的一侧；`right` 那一侧（竖栏）一字未动。上游同一文件在此提交之后还有一批重构（`extra` / `data-tooltip-owned` / 末行提示），本笔**只落这一提交的语义**，两处冲突按本树的旧写法手写解决。**本地化**：无（全在 `packages/ui` 内、无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件，**+3 即本笔新用例**）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r56-tooltip`、`localhost:8982` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行（`s-r56-tooltip`）拿到一个带输入框的真会话页（不需要模型 key，即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×900）悬停**输入框工具条里的上下文圆环**并读 `[data-testid="tooltip"]`：**改动后** —— 面板的内联样式是 `bottom: 61px`（**由下边缘定位**）、落在 y **813–839**，**整块在窗口内**、离底边 61px（`cutOffBelow: false`、`clearOfBottomEdge: true`）、文字「上下文占用 0% · 0/256k」；**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui/.../tooltip.tsx` + 重建 web + **同一条探针** → 内联样式是 `top: 887px`、落在 y **887–913**，**13px 落到窗口外**（`cutOffBelow: true`）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · **回归对照（同一轮同一探针）**：窗口顶部的图标按钮（`下侧栏`）两态都仍是 `top: 73px`（**向下弹**，没有多余的上翻）；矮窗口（1280×520）里圆环同样上翻（`bottom: 61px`）、顶部按钮同样向下 · 两态 console 各 **0 error**、无一条 ≥400 · 截图 `r56/{after,before}/ring-hover{,-crop}.png` 与 `dock-hover.png`、原始测量 `r56/{after,before,after-measure2,after-short}-measure.json`、探针 `r56/probe.mjs` 都在 scratchpad · 端口只用 8982，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `65615e04` |
 | 2026-10-14 | 5.36 | **跨轮次保留运行中的子智能体**（上游 `355d6b10` `#1110` 移植，照改动落、不是合分支；2 文件 / +97 −4，其中源码 1 个（`packages/web/src/features/chat/agent-topology.ts` +18 −4）、既有用例 1 个（`packages/web/test/agent-topology.test.ts` +79，两条新用例），另有 changelog 一对）：后来的一条消息开启新一轮任务时，`extractTopology` 只用**最新那一轮**的切片重建图，上一轮派出去、仍在后台跑的子智能体因此整块从面板上消失（卡片、会话、耗时一起没了），而运行时仍报告它「运行中」。现在 `extractTopology` 把自己那批「运行时报告为运行中」的已加载子节点（按卡片的子会话 id 取，`tool_call` 取 `subagentSessionId`、`subagent` 取 `sessionId`，`liveStates.get(id) === true`）作为第三批 items 交给 `extractFromSlice`，后者在切完最新那一轮之后再 walk 一遍这批 —— 于是它在最新一轮的子节点旁边保留原有卡片与自己那条会话，任务一结束（`liveStates` 转 false）就不再进图；`extractTopologyForChild` 不传这一批，显式的历史 chip 选择仍只显示那一轮（同名子节点照旧按 session id 去重）。文件头与两处注释写明「后台子智能体的命可以长过派它的那一轮」的缘由。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3112 通过 / 2 跳过**（**+2 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `agent-topology.ts` 退回 `HEAD`、只跑 `test/agent-topology.test.ts` → **1 failed / 35 passed**（「keeps an earlier running child visible…」那条：`["root","references","paper"]` 少了 `"paper"`），换回本笔 → **36 全过** · **本轮主证据（真服务端 + 真浏览器 + 仓库自带的 mock 模型，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r57-after`、`localhost:8940`（`ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`PUT …/models` 把 `custom` provider 指到 mock（`packages/web/e2e/mock-llm.mjs` 的 scratchpad 变体：`run_in_background` 的子智能体改跑 `sleep 60`，父轮照旧收尾 —— **不需要模型 key**，即 3.6 那个卡点），真浏览器 1280×720 依次发「long running subagent probe」（父轮派一个 60 秒的后台子会话）与「run another subagent」（**第二轮任务**，再派一个会很快结束的子会话），再从工具栏打开智能体面板量默认调用图：**改动后** —— `graphNodes` **3**（`General Agent · 已完成`（根）、`General Agent · 已完成 1.1s`（第二轮的子会话，选中）、`General Agent · 运行中 8s`（**第一轮那个仍在跑的子会话，留着**）），截图 `r57/after5/panel.png`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/agent-topology.ts` + 重建 web + **同一条探针** → `graphNodes` **2**（只剩根与第二轮的子会话，**第一轮那个运行中的子节点整块不见**，`runningNodes: 0`），截图 `r57/before2/panel.png`；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：服务端确实建出了**两个**子会话（`children` 两条）、两端 console **0 error**、除本 App 正常的 `/api/me` 401 与 `/api/projects/:p/machines` 403 外**无一条 ≥400** · **顺带跑的 e2e 回归**：`background-subagent.spec.mjs` **2/2 通过**；`subagent.spec.mjs` 4 条里 **3 条在改前改后同样失败**（用改前产物在同一数据根上跑过一遍对照）——失败原因都是本树既有的选择器/交互前提（`getByPlaceholder(/输入消息/)` 同时命中面板里子会话的输入框；「待审批」的琥珀点找不到），与本笔无关 · 端口只用 8940（mock 8942），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r57-*` | `8d334447` |
 | 2026-10-14 | 5.37 | **切回 Session 时，面板仍停在原来的全屏状态**（上游 `8f747606` `#1128` 移植，照改动落、不是合分支；4 文件 / +154 −34，其中源码 1 个（`packages/web/src/features/dock/dock-state.ts`）、既有用例 1 个（`packages/web/test/dock-state.test.ts` +104，**四条新用例**）、另有 changelog 一对）：全屏过去是**一个全局变量**（`let fullscreen: DockPosition \| null`），`switchScope()` 里一句 `fullscreen = null` 把它按「属于当下这一刻、不属于这段对话」清掉 —— 于是切到别的 Session 再切回来，面板总是普通尺寸。现在它跟着**停靠布局**走：换成 `fullscreenByLayout = new WeakMap<ScopeLayout, DockPosition>()`（弱键让被淘汰的 scope 自己走，不需要第二份保留表），`fullscreenDock()` 按当前 `layout` 读、`setDockFullscreen()` 按当前 `layout` 写或删、`reconcileFullscreen(candidate = layout)` 与 `fullscreenEligible(position, candidate = layout)`（连同 `mergedViewHasTabs(candidate)`）都收一个布局参数；`switchScope()` 改成对**新切到的**布局跑一次 `reconcileFullscreen()`（不在前台的 Session 可能在别的会话在前台时被剪掉最后一个终端），`pruneTerminalTabs` 对每个非前台 scope 也调一次；跨窄屏断点仍整张重建（`fullscreenByLayout = new WeakMap()`），刷新仍从普通尺寸开始，**localStorage 格式一字未改**（那条「全屏从不写进存储」的用例改成「刷新后标签与 `bottomRatio` 都在、全屏不在」）。文件头与 `setDockFullscreen` 附近的注释一并改写成「全屏按布局记在内存里」。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3116 通过 / 2 跳过**（**+4 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `dock-state.ts` 退回 `HEAD`、只跑 `test/dock-state.test.ts` → **3 failed / 41 passed**，红的正是三条跨 Session 的行为（「restores each Session's fullscreen independently and remembers an explicit exit」「hands a draft's fullscreen to its new Session without clobbering an existing layout」「clears all Sessions on a breakpoint change and remembers fullscreen in the merged view」），换回本笔 → **44 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r58-after`、`localhost:8941`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插**两行**（`r58-probe-session` / `r58-probe-session-b`）拿到两个能互相切换的真会话页（不需要模型 key，即 3.6 那个卡点；草稿页 `/chat/new` 没有停靠栏工具条，所以用两个会话而不是「草稿 + 会话」）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×800）在 A 里把右侧「记忆」面板开成全屏、切到 B 再把底部「记忆」开成全屏，然后切回 A、切回 B，逐次读 `[data-testid="dock"]` 的 `data-fullscreen` 与它里面 `[data-testid="dock-header"]` 的宽度：**改动后** —— 回 A 时 `data-fullscreen="full"`、面板头 **992px**（覆盖整行），回 B 时底部同样 `"full"`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/dock-state.ts` + 重建 web + 重启同一数据根 + **同一条探针** → 回 A 时 `data-fullscreen` **消失**、面板头只剩 **512px**（普通列宽），回 B 时同样消失；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：console **0 error**、**无一条 ≥400**；截图 `r58/shot-{after2,before}-3-session-a-again.png`（改前那一张里右侧是一条 512px 的窄列、对话区还看得见；改后同一张里面板铺满整行）与 `shot-*-1/2/4-*.png`、原始记录 `r58/probe.mjs`、探针日志都在 scratchpad · 端口只用 8941，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ead8d213` |
+| 2026-10-14 | 5.38 | **分页读取的会话里，记忆更新卡片不再丢失**（上游 `d51c4577` `#1138` 移植，照改动落、不是合分支；9 文件 / +173 −6，其中源码 5 个（server 的 `api/types.ts` +5、`http/routes/sessions.ts` +1、`services/trace-service.ts` +3；web 的 `lib/omni/stream-controller.ts` +4 −3、`lib/omni/stream-model.ts` 两处注释）、既有用例 2 个（server `test/messages-live.test.ts` +43 −1、web `test/stream-controller.test.ts` +93，**四条新用例**）、另有 changelog 一对）：Web App 打开会话时读的是**历史窗口**（首页 20 个单元），窗口可能从 `session_meta` **之后**开始 —— 而 Agent State 目录只写在那条记录里，流模型因此没有 `<agent_state>/memory/` 这个根，`classifyMemoryPath` 一条文件写入都认不出，**整张记忆更新卡片不渲染**（文件其实改成功了）。现在服务端把「窗口起始那个上下文记录里的 `agent_state`」放进历史分页信封（`MessagesPageInfo.agentState`，与同一处的 `contextModel` 同一写法，没有 Trace 时不出现；`TraceService` 从 `startMeta.payload.agent_state` 取），Web App 的 `seedWindow` 在回放这一页之前把它种进模型。打开会话、往上加载更早的消息、断开后重连都恢复；同一话题反复编辑仍只画一行、对记忆索引的编辑照旧不算。**没有给 OmniMessage 增加字段**，也没有改写已存的 Trace 或记忆文件。**本地化**：无（全在本仓自己的包内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **wrote src/ifaces.json（189 接口 / 580 类型）** —— 本笔只给既有接口加一个可选字段，接口与类型计数不变）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过**（**+1 正是本笔新用例**）· web **255 文件 / 3120 通过 / 2 跳过**（**+4 正是本笔四条新用例**）· hmr 无测试文件 · **反证（单测）**：把五份源码文件退回 `HEAD`（用例留着）、只跑两个受影响的文件 → server `messages-live.test.ts` **1 failed / 4 passed**（`tail.page?.agentState` 是 `undefined`）、web `stream-controller.test.ts` **4 failed / 38 passed**（四条都是 `changes(...)` 得到 `[]`）；把本笔放回 → **5 全过 / 42 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 server / web 产物后，一次性数据根 `/root/adelie-fork-data/r59-after`、`localhost:8943`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行、并用 `@lmliheng/penguin-core/omnimessage` 的构造器**手写**一份 30 轮的 Trace（第 30 轮里有三次 `edit_file`：`<agent_state>/memory/user/local-dev-instance.md` 两次、`MEMORY.md` 一次）—— 不需要模型 key（即 3.6 那个卡点）；30 轮 > 首页窗口 20 个单元，所以分页信封确实从 `session_meta` 之后开始。Playwright（`playwright-core` + 本地 chromium-1243，`--no-sandbox`，1280×900）打开 `/chat/r59-probe-session` 并逐项读 DOM 与信封：**改动后** —— 信封里 `agentState` 是那份 Agent State 目录、`earlierTurns: 10`、46 条消息、**没有 `session_meta`**、3 条 `edit_file`；页面上一张「**1 条记忆更新**」的卡片、一行 `local-dev-instance.md`（三次编辑合成一行，与上游说明一致）；**反证（真界面，改前源码）**：`git checkout HEAD --` 五份源码 + 重建 server / web + 重启**同一数据根** + **同一条探针** → 信封里 `agentState` 是 `null`（其余逐项相同：46 条消息、无 `session_meta`、3 条编辑），页面上**一张卡片都没有**（`memoryCardTitles: []`、`memoryRowCount: 0`），服务端日志里连 `…/memory` 那次请求都没有（卡片不渲染就不取列表）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · 两态都 console **0 error**、无一条 ≥400 · 截图 `r59/{after,after2,before}-conversation.png`（改后那张能看到卡片与那一行，改前那张「probe answer 30」下方直接是输入框）、探针 `r59/probe.mjs`、造 Trace 的 `r59/write-trace.mjs`、`r59/fix-src/`（五份源码留底）都在 scratchpad · 端口只用 8943，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r59-after` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -8389,3 +8412,143 @@ TokenDance 促销那套进本树（`model-catalog.ts` 冲突 5 处）、`#1090` 
 - 两笔一起推（`a82e4856..c29ca50d`）—— run **`38555290737`**（`c29ca50d`）**`completed success`**，
   **22 个作业全绿、`NOT SUCCESS: []`**（含 `installer-windows`、三条 Windows 分片与 `runtime` 三平台）。
 - 本笔只改 `packages/web` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
+
+## 第五十九轮：分页读取的会话里，记忆更新卡片不再丢失（2026-10-14，条目 5.38）
+
+### 开工自检
+
+- `git status --short` **干净**（输出为空）；**`git fetch origin` 这一步本轮第一次失败**：
+  `git@github.com: Permission denied (publickey)`。查清了不是网络：`ssh -v -T git@github.com` 能建连、
+  能协商、服务器把 `/root/.ssh/id_ed25519`（`SHA256:I6ErG3QRx78kcrQ8w+I0QOlEBn1NqWbq0MxjcYIvaQs`，
+  `penguin-harness@RainYun-rWncVw3y`）**当作未授权**（`Authentications that can continue: publickey`），
+  也就是这把公钥已不在 GitHub 账号上（换过 key 或删过）。改用 vault 里的 `GITHUB_PAT` 走 HTTPS：
+  `git ls-remote https://x-access-token:$GITHUB_PAT@github.com/lmliheng/Adelie.git refs/heads/main` →
+  **`b02cd860`**，与本地 HEAD 相同，因此远端**没有新提交**（等价于 `Already up to date.`）。
+  **没有切分支、没有碰 `legacy/main`、没有推上游、没有改 remote 配置**（推送用的是显式 URL，见收尾）。
+- **上游这一轮照第二十三轮那条路按 URL 现拉**：`upstream` 仍指着已经不存在的 `/root/penguin-harness`，
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-r59` → 尖端 **`ac61e9ad`**
+  （`feat(server): exchange local API tokens for Remote browser sessions (#1139)`），它相对第五十八轮拉到的
+  `a129b42e` 多 **4 笔**（逐笔量与去向写在「待办」那一段里）。
+- **轮次提示里给的 typecheck 过滤串是旧的**：`@prismshadow/penguin-*` 在本树不存在（4.1 之前包名是
+  `@lmliheng/penguin-*`），照那个串跑只会得到 `No projects matched`。本轮用 `@lmliheng/…` 六个包跑，
+  结果见下。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里，本轮纪律不许碰
+desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的②③④
+要第二台机器、**5.6** 与 **5.10** 等用户拍板。新拉到的 4 笔逐笔量过：
+
+- **`#1136`**（`fe52244a`，9 文件 / +194 −65，CI 把 README 校验的范围收窄）：要的 `scripts/ci-gate.mjs` /
+  `scripts/ci-plan.mjs` 与两份用例本树都没有（`does not exist in index`），`packages/core/test/plugins.test.ts`
+  还有一处冲突。
+- **`#1137`**（`acdfddc9`，13 文件 / +452 −254，刷新模型预设与「按缓存加权」的价格排序）：要的
+  `packages/web/src/features/models/model-sort.ts` 本树没有，改的又是模型目录的在架条目（模型目录类历来
+  留给「要不要接这家厂商」那一档）。
+- **`#1139`**（`ac61e9ad`，20 文件 / +807 −186，本地 API token 换 Remote 浏览器会话）：要的
+  `test/agent-api-settings.test.ts` 与 `test/builtin-browser/backend-resolution.test.ts` 本树没有，
+  另有三处冲突（`auth/middleware.ts`、`http/app.ts`、`test/helpers.ts`）。
+- **`#1138`**（`d51c4577`，9 文件 / +173 −6）：四笔里唯一**七份源码 / 用例全部 `Applied … cleanly`**
+  （本树那几处与它的父提交一致）、不引入新依赖、不碰桌面壳 / 包名 / 流水线，而且是一条**用户看得见的真缺陷**
+  —— 长会话打开后记忆更新卡片整块不见，尽管文件其实改成功了。选它。
+
+### 改了什么（9 文件 / +173 −6，含 changelog 一对）
+
+- **`packages/server/src/api/types.ts`**：`MessagesPageInfo` 多一个可选的 `agentState?: string`，注释写明
+  「起始上下文的 `session_meta` 记下的 Agent State 目录，供记忆变更检测用；没有 Trace 时不出现」。
+- **`packages/server/src/services/trace-service.ts`**：`MessagesPageResult` 多 `agentState?: string`；
+  分页结果里与 `contextModel` 同一处从 `startMeta.payload.agent_state` 取（那条起始上下文的元数据本来就已经
+  解析出来了，所以不新增任何读盘）。
+- **`packages/server/src/http/routes/sessions.ts`**：`GET /messages` 的分页信封里按「有才放」的同一写法
+  带上 `agentState`。
+- **`packages/web/src/lib/omni/stream-controller.ts`**：`seedWindow()` 在回放窗口之前把
+  `page.agentState` 种进模型（与 `seedPriorStats` / `contextModel` 同一位置），注释改写成「模型与 Agent State
+  目录都由窗口种子给，它们的 `session_meta` 可能落在窗口之前」。
+- **`packages/web/src/lib/omni/stream-model.ts`**：两处**注释**（`StreamModel.agentState` 的字段说明与
+  `pushMessage` 里 `session_meta` 那一段）跟上「它也可以由历史分页种进来」。行为一字未改。
+- **`packages/server/test/messages-live.test.ts`**（+43 −1）：新增一条端到端向的用例 —— 手写一份带
+  `agent_state` 的 Trace，按 `tailLimit=1` / `before=…` 逐页读，断言**每一页**都带上那个目录、且**没有把
+  `session_meta` 插进消息里**，三页拼起来与整篇读取逐字相同；空 Trace 那条补上「`agentState` 不出现」。
+- **`packages/web/test/stream-controller.test.ts`**（+93，**四条新用例**）：①②`it.each(["idle","running"])`
+  —— 尾部一页不带 `session_meta` 时，同一话题的重复编辑合成**一行**；③更早的一页带来它自己的记忆更新、
+  且不混进尾部那一页；④重连（`resync_required`）后保留、不重复。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-14-memory-updates-pagination{,.zh}.md`）、
+  去掉上游 PR 行、写明「移植自上游 PenguinHarness（#1138，提交 `d51c4577`）」与
+  「接口与已存数据都没有变化」。
+- **本地化**：无 —— 全在本仓自己的包内，没有跨包 import，也没有 scope 引用点。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`wrote src/ifaces.json`（189 接口 /
+  580 类型）** —— 本笔只给既有接口加一个可选字段，接口与类型计数都没变）。
+- `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**
+  （37 文件）· server **197 文件 / 2833 通过 / 4 跳过**（比上一轮 **+1**，正是本笔新用例）· web
+  **255 文件 / 3120 通过 / 2 跳过**（比上一轮 **+4**，正是本笔四条新用例）· hmr 无测试文件。
+- **反证（单测）**：把五份源码文件退回 `HEAD`（用例留着）、只跑两个受影响的文件 ——
+  server `test/messages-live.test.ts` → **1 failed / 4 passed**（新用例在 `expect(tail.page?.agentState)`
+  得到 `undefined` 处红），web `test/stream-controller.test.ts` → **4 failed / 38 passed**（四条都是
+  `changes(...)` 得到 `[]`）；把本笔放回 → **5 / 42 全过**。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：
+  - **怎么造出「分页落在 `session_meta` 之后」的真会话**：重建 server / web 产物后，一次性数据根
+    `/root/adelie-fork-data/r59-after`、`localhost:8943`（`ADELIE_PROFILE=dev` +
+    `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，往 `web.db` 的 `sessions`
+    表插一行（`r59-probe-session`），再用 `@lmliheng/penguin-core/omnimessage` 的构造器**手写**一份
+    **30 轮**的 Trace（第 30 轮里三次 `edit_file`：`<agent_state>/memory/user/local-dev-instance.md` 两次、
+    `MEMORY.md` 一次），并把这个 Agent 的记忆目录按 core 的布局落在盘上 —— **不需要模型 key**
+    （即 3.6 那个卡点）。30 轮 > 首页窗口 20 个单元，所以分页信封**确实**从 `session_meta` 之后开始
+    （`GET …/messages?tailLimit=20` 回 46 条消息、`earlierTurns: 10`、无 `session_meta`）。
+  - **改动后**：信封里 `agentState` 是那份 Agent State 目录；页面上出现一张「**1 条记忆更新**」的卡片，
+    一行 `local-dev-instance.md`（三次编辑合成一行，与上游说明一致），行尾是「查看内容」。
+    截图 `r59/after-conversation.png`。
+  - **反证（真界面，改前源码）**：`git checkout HEAD --` 那五份源码 + 重建 server / web + 重启**同一数据根**
+    + **同一条探针** → 信封 `agentState: null`（其余逐项相同：46 条消息、无 `session_meta`、3 条编辑），
+    页面上**一张卡片都没有**（`memoryCardTitles: []`、`memoryRowCount: 0`），服务端日志里连
+    `…/agents/default_agent/memory` 这次请求都没有（卡片不渲染就不取列表）。截图
+    `r59/before-conversation.png`（「probe answer 30」下方直接是输入框）。把源码放回、重建、再跑一次 →
+    数字与「改动后」逐项一致（`r59/after2-conversation.png`）。
+  - 两态都：console **0 error**、**无一条 ≥400**。
+- 端口只用 8943，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r59-after`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出。
+- **推送通道变了（本轮新出现，需要用户留意）**：`origin` 仍是 `git@github.com:lmliheng/Adelie.git`，
+  但这把 SSH 公钥已被 GitHub 拒。本轮推送用显式 URL + vault 里的 `GITHUB_PAT`
+  （`git push https://x-access-token:$GITHUB_PAT@…`），**只推了 `main`、没改 remote 配置**。
+  要恢复日常 `git push origin main`，需要用户要么把 `/root/.ssh/id_ed25519.pub` 重新加回 GitHub，
+  要么把 `origin` 换成 HTTPS（本机已可用的那条路）。
+- **上游 remote 仍失效**：这一轮是**按 URL 现拉的**，拉到的对象落在本地
+  `refs/adelie-tmp/upstream-main-r59`（临时引用，要清就 `git update-ref -d`）。
+- **本轮量过、没移植的**：`#1136`（要本树没有的 `ci-gate.mjs` / `ci-plan.mjs`）、`#1137`（要本树没有的
+  `model-sort.ts`、且是模型目录的在架条目）、`#1139`（要本树没有的两份用例、另有三处冲突）。
+- **下一轮**：桌上剩的两笔仍是 `#1131`（`bba0e3c9`，3 文件 / +22 −2，只改 `geek.css` 两行：Console 主题
+  图表折线改直线 —— 没有用例，要造出带数据的图表才看得见）与 `#1114`（`77036d31`，6 文件 / +90 −2，
+  429 与传输中断分开归类 —— `test/llm.test.ts` 那处冲突要手写）；另可继续按 URL 拉更新。
+  **「要不要给 `packages/web` 装 jsdom」仍是一条要用户拍板的事**（第五十七轮起就问过）。
+  2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10 照旧停在原地。
+- 中间物：会话 scratchpad 的 `r59/`（探针 `probe.mjs`、造 Trace 的 `write-trace.mjs`、五份源码留底
+  `fix-src/`、三张截图 `{after,after2,before}-conversation.png`、`mail-check.log` / `mail-send.log`、
+  `mail-round59.txt`、`feishu-round59.txt`）。都未入库；探针没往仓库里放。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `da2ef18a`**（9 个文件：5 个源码 / 2 条既有用例（+1 与 +4 用例）/ 一对 changelog）；
+  台账这一笔另起一笔。
+- **推送**：`git push https://x-access-token:$GITHUB_PAT@github.com/lmliheng/Adelie.git main`
+  （详见上面「推送通道变了」那条）。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+
+### 汇报邮件（仍未发出，第 22–59 轮同一处网络卡点）
+
+- 照 `csu-mail` 技能先自检：`python3 scripts/mail.py check` **挂起后 90 秒超时**（`EXIT=124`，日志在
+  scratchpad 的 `r59/mail-check.log`，空空如也）—— 与第 22–58 轮同一处卡点：本机到中南大学网段
+  `202.197.0.0/16` 整片不通，与凭据无关（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都注入着）。
+  随后照这一个收件人真发一次也超时（`mail.py send` `EXIT=124`，`r59/mail-send.log` 同样空）。
+- 正文按本轮写好在 scratchpad 的 `r59/mail-round59.txt`（这一条、做了什么、验证结论、下一轮做哪条、卡点
+  —— 卡点里多了「到 GitHub 的 SSH 公钥被拒」这一条），并已把它当成**第 38 封入重发队列**：
+  `csu-mail-retry.toml` 加了第 38 条、计数改成三十八封、背景提交表补上 `da2ef18a`（任务文件仍能解析：
+  `enabled=true`、`period=6h`、`end_at=2026-10-19T12:00:00Z`，38 条都还在）。
+- 照第 36 轮起记下的替代通道，**同时用飞书发了一条三五句话的简报**
+  （`message_id=om_x100b63cd9d3b14a0dde0f6d0d8f9157`），所以这一轮的结果不是只躺在队列里。
