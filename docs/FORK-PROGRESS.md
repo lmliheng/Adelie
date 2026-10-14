@@ -8787,3 +8787,41 @@ desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key�
   也只会看到同一个设置页，看不到 WSL 的诊断（本机没有 `wsl.exe`）。
 - 端口一个没碰（没起服务）；数据一个字节没往 `~/.penguin`、`/root/adelie-fork-data` 或仓库里写（临时探针与
   输出都在 scratchpad）。
+
+### 收尾：提交、推送与汇报
+
+- `3a7532c2` **fix(plugins): keep Chinese WSL diagnostics readable in settings (#1125)**（5 文件 /
+  +155 −18：`src/host.ts`、`src/tasks.ts`、新用例 `test/host.test.ts`、changelog 一对）
+  —— 提交正文写明「Ported from upstream PenguinHarness (#1125, commit `842571de`)」。
+- `fd78fe20` **docs: 记第六十一轮（5.39 设置里的 WSL 中文诊断不再乱码，#1125 移植）**（只动台账）。
+  两笔一起 `git push origin main`（`2e15ef82..fd78fe20`），**这一轮 SSH 直接走通**（见开工自检）。
+
+### 汇报邮件（仍未发出，第 22–61 轮同一处网络卡点）
+
+- 照 `csu-mail` 技能先自检：`python3 scripts/mail.py check` **挂起后 100 秒超时**（`EXIT=124`，日志
+  scratchpad 的 `r61/mail-check.log`，0 字节）—— 与第 22–59 轮同一处卡点：本机到中南大学网段
+  `202.197.0.0/16` 整片不通，与凭据无关（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都注入着）。
+  随后照这一个收件人真发一次也超时（`mail.py send` `EXIT=124`，`r61/mail-send.log` 同样 0 字节）。
+- 正文按本轮写好在 scratchpad 的 `r61/mail-round61.txt`（这一条、做了什么、验证结论、下一轮做哪条、卡点
+  —— 卡点里更新了一条：**上一轮记的「到 GitHub 的 SSH 公钥被拒」这一轮自己好了**，`git fetch origin` 与
+  `git push origin main` 都直接用 SSH 走通），并已把它当成**第 39 封入重发队列**：`csu-mail-retry.toml`
+  加了第 39 条、计数改成三十九封、背景提交表补上第 61 轮（第 60 轮是用户点单、本轮纪律下不发汇报邮件）；
+  任务文件重新解析过：`enabled=true`、`period=6h`、`end_at=2026-10-19T12:00:00Z`，39 条都在。
+- 照第 36 轮起记下的替代通道，**同时用飞书发了一条三五句话的简报**
+  （`message_id=om_x100b63c91c7448a0c0c3f7121a9a4f3`），所以这一轮的结果不是只躺在队列里。
+
+### CI（推送后）
+
+- 两笔一起推（`2e15ef82..fd78fe20`）—— run **`38621355133`**（`fd78fe20`）**`completed success`**，
+  **22 个作业全绿、`NOT SUCCESS: []`**（含 `plugin versions`、`installer-windows`、三条 Windows 分片、
+  两条 macOS 分片与 `runtime` 三平台）。
+- 本笔只改 `plugins/sandbox-wsl` 与一对 changelog，`ci.yml` 的矩阵没有动；`plugin versions` 那个作业在
+  push 事件下本来就不比较基线（`github.event.pull_request.base.sha` 为空 → 直接放行），而 sandbox-wsl
+  这棵树里也没有 `plugin.json`（四个 sandbox 插件按发布口径由发版脚本盖章），所以没有版本戳要动。
+
+### 没做 / 还差什么
+
+- **WSL 那一侧的真实运行面本机没有**：改的是字节解码，两端都由真字节夹具覆盖（逐字节写入的 UTF-16LE、
+  真实的 `iconv` 输出），但「真 Windows + 真 WSL 的设置卡片显示」仍未看 —— 与上游同一笔的「未验」一致
+  （它自己写着「Windows UI 与提权安装未做」）。要收掉这条得有一台 Windows。
+- 上游这一轮新推上来的两笔（`#1133` / `#1140`）没有取，理由写在「待办」那段与上面「为什么是这一条」。
