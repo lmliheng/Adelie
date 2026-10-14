@@ -8560,3 +8560,112 @@ desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key�
 - 两笔一起推（`b02cd860..b6dba82f`）—— run **`38588299023`**（`b6dba82f`）**`completed success`**，
   **22 个作业全绿、`NOT SUCCESS: []`**（含 `installer-windows`、三条 Windows 分片与 `runtime` 三平台）。
 - 本笔只改 `packages/{server,web}` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
+
+## 第六十轮：把 Adelie 接进 WPS（新插件），并发出 v0.3.9（2026-10-15，条目 6.1）
+
+用户 2026-10-11 点单：把 Adelie 接进 WPS（Windows 最新版），做成 Adelie 插件，**做完发 Adelie 新版本 + 插件发 npm**。
+（本轮是用户点单，不是自选 —— 「不切版本号、不发 npm、不发安装包」那条纪律由用户本轮的指令解除。）
+
+### 开工自检
+
+- `git status` 干净；`origin` 的 SSH 公钥仍被 GitHub 拒（第五十九轮起的老问题），全程用显式 URL +
+  `$GITHUB_TOKEN` 推送，**没改 remote 配置**。`gh` 未装，GitHub 走 REST API。
+- 上游这一轮没拉（本轮是我方点单，不是移植轮）。
+
+### 做出来的东西
+
+- **新插件 `plugins/use-wps-office`**（插件名按仓库约定带 `use-` 前缀，技能名是 `wps-office`）：
+  WPS 功能区一个「Adelie」按钮 + 侧栏；九个 `doc.*` 操作既是面板执行的指令，也是给 Agent 的
+  `mcp__wps__*` MCP 工具。
+- 运行时 `kit/serve.mjs` 一个零依赖 Node 文件（桥），只绑 `127.0.0.1`（默认端口 3891），四件事：
+  托管加载项页（`/addin/`）、把 `doc.*` 指令串行下发给面板并回收结果（`/addin/commands` +
+  `/addin/result`）、替面板跟 Adelie 说话（`/panel/*`，把 Adelie 的流归一成 status/delta/thinking/
+  tool/approval/done/error）、通过 WPS 自己的本机上架服务（58890）登记加载项（`/publish`）。
+  另两个模块 `kit/adelie.mjs`（找 Adelie + 带令牌的客户端，桥与安装脚本共用）与 `kit/wps.mjs`（58890 客户端）。
+- `kit/install.mjs` / `kit/uninstall.mjs`：写设置、登记加载项、把桥登记成 Agent 的一个 MCP 服务器
+  并 `config/mcp-test` 自检、Windows 启动文件夹放开机自启 `.cmd`、把桥拉起来；每步幂等，**重跑即修复**。
+  设置/状态/`bridge.log` 在 `<数据根>/wps-bridge/`，不放插件目录。
+- 加载项本体在 `skills/wps-office/kit/addin/`：`manifest.xml`、`ribbon.xml`、面板页（`index.html` /
+  `panel.js` / `panel.css`）、文档操作层 `wps-api.js`、无 WPS 时的假实现 `stub-wps.js`、文本 SVG 图标。
+
+### 三条从参考实现里查实、并纠正了我自己设计的关键事实
+
+1. **给 WPS 的 `url` 是目录、不是页面**（`http://127.0.0.1:<port>/addin/`，尾斜杠），它自己取
+   `manifest.xml`/`ribbon.xml`/`index.html` —— 出处是文策 AI（Apache-2.0，`visresearch/WordAgent`）
+   `backend/gui/resources/publish.html` 里那条常量 `url: "http://127.0.0.1:3880/jsplugindir/"`。
+   我原先写的是 `.../addin/index.html`，已改（`serve.mjs` 与 `install.mjs` 都区分「目录」与「页面」）。
+2. **技能目录里不能放二进制**：Adelie 的插件加载器把技能目录当**文本**读进内存再安装到 Agent
+   （`readDirFiles(dir, ["SKILL.md","icon.svg"])`），PNG 会被 UTF-8 解码破坏 → 图标一律文本 SVG。
+   已实测：`librarySkill("wps-office")` 带出 14 个 kit 文件、无二进制。
+3. **`.xml` 原来没有 MIME**，清单与功能区会被当 `application/octet-stream` 发出去；已补
+   `application/xml; charset=utf-8`。
+
+### 本轮自己逮到的三个真 bug（都已修 + 有测试）
+
+- **`GET /addin/commands` 被静态路由吃掉**（`/addin/` 前缀匹配在先 → 404）→ 把静态块挪到
+  `/addin/*` 那几个接口之后；`test/addin.test.mjs` 会盯着。
+- **面板开面板时会撞「还没有打开文档」**：`sendHello` 与 `ensureSession` 并发，桥按文档认会话 →
+  改成先 `await sendHello()` 再建会话。
+- **401 会把 Adelie 自己的英文文案原样抛给用户**（"Not signed in or the sign-in has expired."）→
+  在客户端把 401 换成人话（令牌每次启动都会重发，重跑安装即可）。
+
+### 验证（都能复跑）
+
+- `node --test "plugins/use-wps-office/test/*.test.mjs"` —— **23 条通过 / 0 失败**：桥（指令串行
+  「前一条没回不下发下一条」、面板报错如实上报、面板不回话按 `commandTimeoutMs` 超时、Adelie 换令牌
+  重读重试一次且失败说人话、流事件归一化、历史只留对话正文、审批回传）、安装/卸载（幂等、别家 MCP
+  不动、`--purge`）、加载项托管（目录式 URL、清单/功能区/图标/页面类型、目录外取不到）。
+- `cd packages/web && npx playwright test -c ../../plugins/use-wps-office/test/playwright.config.mjs`
+  —— **14 条通过**（真面板跑在假 WPS 上）。
+- **真桥 + 真面板在 Chromium 里跑了一遍**（一次性脚本，未入库）：页面起来、`window.ribbon` 三件套
+  就位、`panel connected` 上报成功；那条 `/panel/session` 500 是因为临时数据根里没有 Adelie 令牌
+  （正是上面第 3 个 bug 的场景）。
+- 仓库门禁：`prettier --check .` 全过、`oxlint` 2166 文件 0 警告 0 错误、`pnpm typecheck` 全 Done、
+  `pnpm -r test` exit 0（新插件那套走 `package.json` 的 `test` script 进了 `-r`）。
+  三处「加插件必须同步」的地方也已补齐：`plugins/README.md`、两份根 README 的分类表、
+  `packages/core/test/plugins.test.ts` 的清单（18→19）、`packages/docs/content/skills.{zh,en}.md`、
+  以及 `packages/{core,desktop,cli}/package.json` 各加一行 `workspace:*`。
+  （每一处都是仓库里已有的守卫测试逼出来的，不是我猜的。）
+
+### 提交与 CI
+
+- `a89e9525` 插件本体（38 文件 / +6809 −4）；CI run `38605847436` 被后一笔推送取消。
+- `d6810f3b` 版本戳 0.3.8→0.3.9（30 文件，只有 version 行与 core 的 `VERSION` 常量；四个
+  `plugins/sandbox-*` 保持 0.2.3）；CI run `38606167267` success。
+- `0b8e1624` 发布正文 `docs/releases/RELEASE-v0.3.9.md`；CI run **`38608660138`：22 个作业全
+  success、`not success: []`**。
+
+### 发布 v0.3.9（用户点单）
+
+- **GitHub Release `v0.3.9`**：14 件资产全部 201 上传完成（与 v0.3.3/.4/.5/.6 同一口径，不含 macOS）。
+- **npm**：`/tmp/rel-0.3.9`（版本戳提交的独立工作树，`pnpm -r build` 已跑）里发出 **22 个包**
+  （3 宿主 + 19 插件），全在 `@lmliheng` 下，**新名字 `@lmliheng/use-wps-office` 首次发布成功**（走
+  `~/.npmrc` 的 granular token，不是 OIDC）。发完头几分钟有 10 个包在 registry 上是 404 —— 那是
+  npm 分段发布的已知延迟（[[npm-publish-is-manual-bootstrap]]），**没有升版本号**；过几分钟复探只剩
+  `penguin-server`/`penguin-cli`，最终以 `check-publishable.mjs --registry --strict` 为准。
+- **下载站 3003**：`/opt/adelie-design/downloads/index.json` 切到 v0.3.9（先把旧的两份备份成
+  `*.bak-20261015-v039`），页头角标改 v0.3.9；线上核验 `GET /` 200 + 角标 `v0.3.9` + 清单 tag
+  `v0.3.9`（6 条），**六条链接逐条 HEAD 与清单大小一致**。
+- **OSS 镜像仍不可用**：这次亲自复现 —— `adelie-releases.oss-cn-hangzhou.aliyuncs.com` 的读、写、
+  列桶统统 `403 UserDisable`（v0.3.5 起的同一个卡点）。所以下载页与 Release 只指向 GitHub。
+- **现网**：`/root/.adelie/bin/penguin update --yes` 原地升到 **0.3.9**（只换 `bin/lib/web/node`，
+  数据根不动）。**重启不能在本会话里做**（本会话跑在 `adelie-server.service` 的 cgroup 里，见
+  `cat /proc/self/cgroup`），照第五十五轮那条路挂了个独立瞬时单元
+  `adelie-live-restart-0.3.9`（`systemd-run --collect --property=Type=oneshot`，脚本里 `sleep 420`
+  再 `systemctl restart` 并核验），核验输出落在 `release-039/post-restart-verify.txt`。
+
+### 没做 / 还差什么
+
+- **WPS 那一侧本身没有验证**（本轮最大的不确定）：功能区的按钮图标、`CreateTaskPane` /
+  `PluginStorage` / `app.Enum` 的真实行为、`app.Selection` 的字符偏移、`Documents.Add` 四参数的
+  老版本兼容、IME 回车、`InsertBreak` 的分节符显示 —— 都只能在 Windows + WPS 上第一次跑。
+  **用户的 WPS 是个人版还是专业版、版本号多少，也还没说。**
+- 桌面安装冒烟与离线安装验证没做（本轮只发、没在干净 Windows/Linux 上装一遍）。
+- `pack-cli-039.sh` 会在 linux-x64 之后以 1 退出：工作区 `scripts/package-release-bundles.sh` 现在
+  要五个平台的载荷，本轮只发三件，另两件按 0.3.6 同一路径用 `finish-bundles-039.sh` 补完（布局逐字
+  一致、校验和自检 OK）。
+- `~/.cache/electron` 与 `~/.cache/electron-builder` 上一轮被磁盘清理清掉了，本轮是联网重下的
+  （本机能出网），缓存已重建。
+- 中间物：会话 scratchpad 的 `wps/`（契约 `ADDIN-PROTOCOL.md`、计划 `PLAN.md`、只读的 WordAgent
+  克隆、`real-bridge-panel.mjs`）与 `release-039/`（bump/pack/verify/publish/restart 脚本与全部证据
+  文本）。都未入库。
