@@ -8058,3 +8058,10 @@ TokenDance 促销那套进本树（`model-catalog.ts` 冲突 5 处）、`#1090` 
 - **代码提交 `65615e04`**（4 个文件：1 个源码 / 1 条既有用例（+3 用例）/ 一对 changelog）；台账这一笔另起一笔。
 - **推送**：`git push origin main`（`40fed52f..65615e04`）。**没有切版本号、没发 npm、没发安装包、没发发布
   汇总。**
+
+### CI（推送后）
+
+- 代码提交与台账两笔一起推（`40fed52f..65615e04` 与 `65615e04..ea195a17`）—— 代码那一笔可能被同组后一笔
+  run 取消（`ci.yml` 的 `cancel-in-progress`，台账里记过这个行为），列表里只剩后者：run **`38505691869`**
+  （`ea195a17`）—— **`completed success`**，**22 个作业全绿、`NOT SUCCESS: []`**。
+- 本笔只改 `packages/ui` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
