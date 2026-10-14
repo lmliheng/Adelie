@@ -8206,4 +8206,21 @@ TokenDance 促销那套进本树（`model-catalog.ts` 冲突 5 处）、`#1090` 
 ### 收尾：提交、推送与汇报
 
 - **代码提交 `8d334447`**（4 个文件：1 个源码 / 1 条既有用例（+2 用例）/ 一对 changelog）；台账这一笔另起一笔。
-- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **推送**：`git push origin main`（`5c296c68..f7d04d57`）。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+
+### 汇报邮件（仍未发出，第 22–57 轮同一处网络卡点）
+
+- 照 `csu-mail` 技能先自检：`python3 scripts/mail.py check` **挂起后 90 秒超时**（`EXIT=124`，日志在
+  scratchpad 的 `r57/mail-check.log`）—— 与第 22–56 轮同一处卡点：本机到中南大学网段 `202.197.0.0/16`
+  整片不通，与凭据无关（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都注入着）。
+- 正文按本轮写好在 scratchpad 的 `r57/mail-round57.txt`（这一条、做了什么、验证结论、下一轮做哪条、卡点），
+  并已把它当成**第 36 封入重发队列**：`csu-mail-retry.toml` 加了第 36 条、计数改成三十六封、背景提交表补上
+  `8d334447 / f7d04d57`（任务文件仍能解析：`enabled=true`、`period=6h`、`end_at=2026-10-19T12:00:00Z`）。
+- 照第 36 轮起记下的替代通道，**同时用飞书发了一条三五句话的简报**
+  （`message_id=om_x100b63c6bd3414b0c0a69a2edb7dc94`），所以这一轮的结果不是只躺在队列里。
+
+### CI（推送后）
+
+- 两笔一起推（`5c296c68..f7d04d57`）—— run **`38528181597`**（`f7d04d57`）**`completed success`**，
+  **22 个作业全绿、`NOT SUCCESS: []`**。
+- 本笔只改 `packages/web` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
