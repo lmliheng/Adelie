@@ -733,6 +733,17 @@
       2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10（各处仍不可做或明令不动）；本轮按第二十三轮那条路**按 URL 直接
       从 GitHub 拉上游 `main`**（尖端 `fcd5d5b0`，比本仓已有的 `b2c3de9f` 多 35 笔），在本树有那些文件的小件里挑
       了这一笔 —— 它自带一条真界面就能看的两态，且不需要模型 key。
+- [x] **5.36 跨轮次保留运行中的子智能体**（上游 `355d6b10` `#1110`，**2026-10-14 第五十七轮落地**，提交见该节）：
+      后来的一条消息开启新一轮任务时，面板会整张换掉调用图 —— 而上一轮派出去的后台子智能体可能还在跑，于是它
+      **从面板上消失**，尽管运行时仍报告它「运行中」（它的卡片、会话与耗时都跟着没了）。现在默认调用图会把
+      「运行时报告为运行中」的已加载子节点与最新一轮任务派生的子智能体**一并留下**：每个保留原有的卡片与它自己
+      那条会话，任务结束后它自己消失；点击历史 chip 的显式选择仍只显示那一轮的图（`extractTopologyForChild`
+      不传那一批 running 子节点）。**为什么是这一条**：表上最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x /
+      5.3 / 5.6 / 5.10（各处仍不可做或明令不动）；第五十六轮末尾记下的三笔候选里，`#1118`（成本中心「标记
+      已读」重启后失效）**要 jsdom 才跑得起它的回归用例**，而本树的依赖里**没有 jsdom**（装它就是引入新依赖，
+      轮次纪律明令禁止），`#1096`（子智能体描述的字号）要真界面造子会话、且不带用例；`#1110` 本树有全部文件、
+      `git apply -3` 逐字干净、自带两条 node 环境的用例（本树跑得起来），且是一条用户看得见的真缺陷。
+      细节与实测见「第五十七轮」一节。
 - **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
       这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
       repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
@@ -1346,6 +1357,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-14 | 5.33 | **频道保留你还没发出的消息**（上游 `7ecb60e1` `#810` 移植，照改动落、不是合分支；7 文件 / +450 −3，其中新源码 1 个（`channel-draft.ts` 98 行）、既有源码 3 个（`channel-composer.tsx` +21 −3、`channel-view.tsx` +15 −2、`install-scope.ts` +6）、新用例 1 个（`test/channel-draft.test.ts` 59 行）、e2e 1 个（`company.spec.mjs` +20），另有 changelog 一对）：频道的输入框过去把没发出的文字只放在组件状态里，换频道 / 去工位 / 刷新都会丢；对话里的未发送输入自草稿缓存落地起就有缓存，频道输入框一直没跟上。新增 `features/company/channel-draft.ts`：键是「用户 × 项目 × 组织 × 频道」（`penguin.channelDraft.…`），存储助手复用对话草稿那一套（`loadDraft` / `saveDraft` / `clearDraft`），写策略照 `use-session-draft.ts` —— 300 毫秒防抖、切换频道或卸载时把待写的编辑补写一次、清空输入框就删键、发送成功先取消待写再清（否则会把刚发出去的文本写回来）。`ChannelComposer` 多收 `initialText` / `onTextChange`（初始 caret 落在末尾），`channel-view.tsx` 用 `useChannelDraft` 并按草稿键 `key` 重挂 composer —— 回到该频道文字在原处、别的频道不继承。`install-scope.ts` 的 `KEY_RULES` 加一条 `penguin.channelDraft.`（install 作用域，与对话草稿并列），否则既有的 `install-scope.test.ts` 会红。**本地化**：无（新文件只 import 相对路径，全仓无 `@prismshadow/` 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过**（**+1 文件 +4 用例**，即新 `channel-draft.test.ts`）· hmr 无测试文件 · **反证一（单测，改前源码）**：把 `install-scope.ts` 退回 `HEAD`、其余不动，跑 web 全套 → **1 failed / 3109 passed**，红的正是那条既有断言：`penguin.channelDraft. (packages/web/src/features/company/channel-draft.ts) is missing from KEY_RULES`；把本笔换回去 → `test/channel-draft.test.ts` + `test/install-scope.test.ts` **24 条全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：一次性数据根 `/root/adelie-fork-data/r54-channel-a`、`localhost:8991` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings {companyMode:true}` → `POST …/organizations {orgId:acme}` → `POST …/channels {channelId:site,name:Site launch}` 造出一个真组织与两个真频道，Playwright（仓库 pnpm store 里的 `playwright@1.61.1` + 本地 chromium-1243）按 `/org/default_project/acme/channels/<id>` 走查四个行为：**改动后** 初始空且无键 → 在 `site` 打「还没写完的一句」→ localStorage 出现 `penguin.channelDraft.admin.default_project.acme.site` → 切到「全员频道」输入框**空**且草稿键只有 site 那一条 → 回到 site 文字**还在** → **刷新后还在**（截图 `after2/04-reloaded.png`）→ 清空输入框后**键被删掉**；console **0 error**、无一条 ≥400。**反证二（真界面，改前源码）**：把 `channel-view.tsx` / `channel-composer.tsx` 退回 `HEAD`、`channel-draft.ts` 移出树外，重建 web 产物后同一条探针 → 打字后 **localStorage 里一个 `penguin.channelDraft.` 键都没有**，切频道回来为**空**、刷新后仍为**空**（截图 `before/…`）；把三份文件放回、重建 web、同一条探针 → 四个行为全部恢复（`after2/` 那一轮）。**仓库自带的 `company.spec.mjs` 没跑通**：它在第 93 行就红（对话框里 CEO 预算的默认值是 700，而这一笔的断言写的是 100），那是**本树与上游早就在的差异**、与本笔无关，因此新增的那段草稿 e2e 步骤（在更后面）没走到 —— 四个行为改由上面那条探针覆盖（上游作者同样把这段 e2e 标为「没跑」）· 端口只用 8991（另有 e2e 试用过的 8932/8933，用完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-14 | 5.34 | **手机上的频道消息有了足够的宽度**（上游 `9eae0a2d` `#826` 移植，照改动落、不是合分支；5 文件 / +91 −17，其中源码 2 个（`channel-bubble.css` +22、`channel-bubble.tsx` +33 −17）、既有用例 1 个 +16 −2、另有 changelog 一对）：手机上气泡过去最多占列宽的 **75%**、时间戳**另占一栏**（`flex items-end` 里 `shrink-0` 的那个 span），两者叠加把中文挤到每行七八个字。现在气泡的类名改成 `relative max-w-[88%] px-3 py-1.5 text-base leading-relaxed sm:max-w-[75%] sm:text-sm`（窄屏 88% 与 `text-base`，`sm` 及以上照旧 75% 与 `text-sm`），时间戳改成 `absolute bottom-1.5 right-3` 收在气泡右下角，正文在最后一行上给它留出一段行内空隙 —— `channel-bubble.css` 新增 `--channel-time-gap: 2.75rem`，末尾段落 / 列表最后一项 / 引用最后一行以 `::after` 的 `inline-block` 空隙收尾（`pre` / `table` 这类无法以空隙收尾的块改成 `margin-bottom: 1.125rem` 把那一行让到下面）；`footer != null` 时另渲染一个 `.channel-time-gap` 元素跟在 chip 行之后（那时 `::after` 够不到）。代码注释写明「时间收在角落、正文最后一行给它留位」的缘由。**本地化**：无（这一笔全在 `packages/ui` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 线上格式 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件，本笔改的是既有那条 class 断言、未增用例）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，iPhone 13 宽 390px）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r55-bubble`、`localhost:8981` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings {companyMode:true}` → `POST …/organizations {orgId:acme}` → `POST …/channels {channelId:site}` 造出真组织与真频道，再**手写** `channels/site/<日期>.jsonl` 里三行真消息（短句 / 63 字长句 / 一条带 `refs.ticket` 的）—— 不需要模型 key（即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，`isMobile` + 390×844 + DPR 2）打开 `/org/default_project/acme/channels/site`，逐气泡量「占列宽比 / 正文宽 / 字号 / 折行数 / 时间戳位置 / 与最后一行文字和 chip 的关系」——**改动后**：#0 短句 196px（列宽 362px 的 **54.1%**）、正文 16px、时间 `absolute` 停在 x=331 而最后一行文字到 318（**挨着字、不压字**）；#1 长句 319px = **88%**、正文 **295px**、**4 行**、时间贴在最后一行末尾；#2 带 refs 的一条 chip 右缘 315、时间 x=331（**让开了 chip**）、`channel-time-gap` **存在**。两态 console 各 **0 error**、无一条 ≥400。**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui` + 重建 web + 重启同一数据根 + **同一条探针** → #0 175px（48.4%）、正文 112px **14px**；#1 272px = **75%**、正文 208px、**5 行**；时间戳三条都是 `static` 且 x=331（**另占一栏**）、`channel-time-gap` **不存在**；随后把三份源码放回、重建、再跑一次 → 数字与上面「改动后」逐项一致。截图 `r55/after/channel-390.png` 与 `r55/before/channel-390.png`、原始测量 `r55/{after,before}-measure.json` 都在 scratchpad · 端口只用 8981，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `7abf1020` |
 | 2026-10-14 | 5.35 | **窗口底部的控件的悬停提示改在上方弹出**（上游 `9f9c0df3` `#1098` 移植，照改动落、不是合分支；3 文件 / +90 −36，其中源码 1 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` +61 −36）、既有用例 1 个（`test/tooltip.test.ts` +29，三条新用例）、另有 changelog 一对）：共享的悬停提示（`data-tooltip` / `<Tooltip>`，两者共用一个 `TooltipPanel`）过去一律把面板挂在控件下方 —— `belowTrigger` 只算水平那一侧、从不看视口高度。输入框工具条里的上下文圆环贴着窗口底边（本机 1280×900 实测：圆环 847–879，离底边 **21px**），一行 26px 的提示挂下去就有一部分落到窗口外（**改前实测 `top: 887px`、下缘 913 > 900，13px 被切**）。现在 `belowTrigger(rect, viewport, height = 0)` 先算「下方剩多少 / 上方有多少」：面板高度（渲染出来的 `offsetHeight`）超过下方余量、且上方更宽裕时，改以 `bottom: viewport.height − rect.top + PANEL_GAP` **由下边缘定位**，面板向上生长 —— 不必估算文字折几行。`TooltipPanel` 因此收控件的**盒子**（`anchor`）而不是算好的位置，自己在 layout 阶段（首帧之前）量高度再定位，面板不会先闪现在下方；`PanelPosition` 的 `top` 变可选、多一个 `bottom`。放得下就仍在下方，两侧都放不下则去空间更大的一侧；`right` 那一侧（竖栏）一字未动。上游同一文件在此提交之后还有一批重构（`extra` / `data-tooltip-owned` / 末行提示），本笔**只落这一提交的语义**，两处冲突按本树的旧写法手写解决。**本地化**：无（全在 `packages/ui` 内、无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件，**+3 即本笔新用例**）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r56-tooltip`、`localhost:8982` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行（`s-r56-tooltip`）拿到一个带输入框的真会话页（不需要模型 key，即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×900）悬停**输入框工具条里的上下文圆环**并读 `[data-testid="tooltip"]`：**改动后** —— 面板的内联样式是 `bottom: 61px`（**由下边缘定位**）、落在 y **813–839**，**整块在窗口内**、离底边 61px（`cutOffBelow: false`、`clearOfBottomEdge: true`）、文字「上下文占用 0% · 0/256k」；**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui/.../tooltip.tsx` + 重建 web + **同一条探针** → 内联样式是 `top: 887px`、落在 y **887–913**，**13px 落到窗口外**（`cutOffBelow: true`）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · **回归对照（同一轮同一探针）**：窗口顶部的图标按钮（`下侧栏`）两态都仍是 `top: 73px`（**向下弹**，没有多余的上翻）；矮窗口（1280×520）里圆环同样上翻（`bottom: 61px`）、顶部按钮同样向下 · 两态 console 各 **0 error**、无一条 ≥400 · 截图 `r56/{after,before}/ring-hover{,-crop}.png` 与 `dock-hover.png`、原始测量 `r56/{after,before,after-measure2,after-short}-measure.json`、探针 `r56/probe.mjs` 都在 scratchpad · 端口只用 8982，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `65615e04` |
+| 2026-10-14 | 5.36 | **跨轮次保留运行中的子智能体**（上游 `355d6b10` `#1110` 移植，照改动落、不是合分支；2 文件 / +97 −4，其中源码 1 个（`packages/web/src/features/chat/agent-topology.ts` +18 −4）、既有用例 1 个（`packages/web/test/agent-topology.test.ts` +79，两条新用例），另有 changelog 一对）：后来的一条消息开启新一轮任务时，`extractTopology` 只用**最新那一轮**的切片重建图，上一轮派出去、仍在后台跑的子智能体因此整块从面板上消失（卡片、会话、耗时一起没了），而运行时仍报告它「运行中」。现在 `extractTopology` 把自己那批「运行时报告为运行中」的已加载子节点（按卡片的子会话 id 取，`tool_call` 取 `subagentSessionId`、`subagent` 取 `sessionId`，`liveStates.get(id) === true`）作为第三批 items 交给 `extractFromSlice`，后者在切完最新那一轮之后再 walk 一遍这批 —— 于是它在最新一轮的子节点旁边保留原有卡片与自己那条会话，任务一结束（`liveStates` 转 false）就不再进图；`extractTopologyForChild` 不传这一批，显式的历史 chip 选择仍只显示那一轮（同名子节点照旧按 session id 去重）。文件头与两处注释写明「后台子智能体的命可以长过派它的那一轮」的缘由。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3112 通过 / 2 跳过**（**+2 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `agent-topology.ts` 退回 `HEAD`、只跑 `test/agent-topology.test.ts` → **1 failed / 35 passed**（「keeps an earlier running child visible…」那条：`["root","references","paper"]` 少了 `"paper"`），换回本笔 → **36 全过** · **本轮主证据（真服务端 + 真浏览器 + 仓库自带的 mock 模型，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r57-after`、`localhost:8940`（`ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`PUT …/models` 把 `custom` provider 指到 mock（`packages/web/e2e/mock-llm.mjs` 的 scratchpad 变体：`run_in_background` 的子智能体改跑 `sleep 60`，父轮照旧收尾 —— **不需要模型 key**，即 3.6 那个卡点），真浏览器 1280×720 依次发「long running subagent probe」（父轮派一个 60 秒的后台子会话）与「run another subagent」（**第二轮任务**，再派一个会很快结束的子会话），再从工具栏打开智能体面板量默认调用图：**改动后** —— `graphNodes` **3**（`General Agent · 已完成`（根）、`General Agent · 已完成 1.1s`（第二轮的子会话，选中）、`General Agent · 运行中 8s`（**第一轮那个仍在跑的子会话，留着**）），截图 `r57/after5/panel.png`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/agent-topology.ts` + 重建 web + **同一条探针** → `graphNodes` **2**（只剩根与第二轮的子会话，**第一轮那个运行中的子节点整块不见**，`runningNodes: 0`），截图 `r57/before2/panel.png`；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：服务端确实建出了**两个**子会话（`children` 两条）、两端 console **0 error**、除本 App 正常的 `/api/me` 401 与 `/api/projects/:p/machines` 403 外**无一条 ≥400** · **顺带跑的 e2e 回归**：`background-subagent.spec.mjs` **2/2 通过**；`subagent.spec.mjs` 4 条里 **3 条在改前改后同样失败**（用改前产物在同一数据根上跑过一遍对照）——失败原因都是本树既有的选择器/交互前提（`getByPlaceholder(/输入消息/)` 同时命中面板里子会话的输入框；「待审批」的琥珀点找不到），与本笔无关 · 端口只用 8940（mock 8942），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r57-*` | `8d334447` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -8075,3 +8087,123 @@ TokenDance 促销那套进本树（`model-catalog.ts` 冲突 5 处）、`#1090` 
   run 取消（`ci.yml` 的 `cancel-in-progress`，台账里记过这个行为），列表里只剩后者：run **`38505691869`**
   （`ea195a17`）—— **`completed success`**，**22 个作业全绿、`NOT SUCCESS: []`**。
 - 本笔只改 `packages/ui` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
+
+## 第五十七轮：跨轮次保留运行中的子智能体（2026-10-14，条目 5.36）
+
+### 开工自检
+
+- `git status --short` **干净**（输出为空）；`git fetch origin && git merge --ff-only origin/main` →
+  `Already up to date.`（头是 `5c296c68`，第五十六轮的台账与汇报通道那两笔）。
+- **上游这一轮照第二十三轮那条路按 URL 现拉**：`upstream` 仍指着已经不存在的 `/root/penguin-harness`，
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-latest3` → 尖端 **`d1db5ba8`**
+  （`ci: check affected packages with smoke and full release gates (#1120)`），它相对第五十六轮拉到的
+  `fcd5d5b0` **只多一笔**（`d1db5ba8` 的父提交就是 `fcd5d5b0`）—— 那一笔是 CI 流水线（`#1120`，31 文件 /
+  +1298 −206，`scripts/release-npm.sh` / `test-installer.sh` / 两个新 `scripts/test/*.mjs`），碰的是 4.x 的
+  发布链路，明令不动，所以本轮的候选仍然是第五十六轮末尾记在桌上的三笔（`#1118` / `#1110` / `#1096`）。
+  **没有碰 remote 配置、没有切分支、没有推上游。**
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里）、**3.5** 要用户
+拍板取哪个桌面壳且本轮不许碰 desktop、**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.3** 的②③④要
+第二台机器，**5.6** 与 **5.10** 等用户拍板。三笔候选逐笔量过之后：
+
+- **`#1118`（成本中心「标记已读」重启后失效）本来是最靠前的一笔，本轮没有做** —— 它的三份回归用例
+  （`packages/web/test/todo-persistence.test.ts`，223 行）**要用 jsdom 驱动真页面**（`@vitest-environment
+  jsdom` + 上游的 `test/helpers/dom.ts`：`mount` / `click` / `waitFor`），而本树的 `packages/web` **没有装
+  jsdom**（`node_modules/.pnpm` 里没有，`packages/web/package.json` 的 devDependencies 里也没有；
+  本树到现在**一个 jsdom 用例都没有**，那套 helper 是上游后加的 `2400af9d` `#1010` 带来的），
+  **装它就是引入新依赖 —— 轮次纪律明令禁止**，所以这一笔要么连依赖一起搬、要么把用例改写成 node 环境
+  （那样「打开成本中心会刷新提示」这一半就测不到）。留在这里备查：等用户拍板「要不要给 web 包装 jsdom」
+  或等 4.x 的发布链路一起做。
+- **`#1096`（子智能体描述的字号）** 只改 `agent-topology-view.tsx` 与 `agent-topology.ts` 的展示层，
+  没有用例，且要真界面造出子会话才看得见 —— 规模与证据都不如 `#1110`。
+- **`#1110`（`355d6b10`，2 文件 / +127 −4）**：本树有它要改的全部文件（`agent-topology.ts` 与既有的
+  `test/agent-topology.test.ts`），`git show 355d6b10 | git apply -3 --check` **逐字干净**（源码与用例都
+  `Applied patch … cleanly`），自带两条用例且**跑在本树既有的 node 环境里**（不用 jsdom、不引入依赖），
+  而且它是一条用户看得见的真缺陷：**上一轮派出去的子智能体还在跑，新一轮任务一来它就从面板上消失了**。
+
+### 改了什么（2 文件 / +97 −4，含 changelog 一对）
+
+- **`packages/web/src/features/chat/agent-topology.ts`**（+18 −4）：`extractTopology` 在调用
+  `extractFromSlice` 时多传一批 items —— 从**整个 model** 里挑出「运行时报告为运行中」的已加载子节点
+  （`tool_call` 取 `item.subagentSessionId`、`subagent` 取 `item.sessionId`，
+  `liveStates?.get(sessionId) === true`）。`extractFromSlice` 新增可选参数 `runningChildren`，切完最新那一轮
+  之后再 `walk(runningChildren, rootSessionId, [])` 一遍；`extractTopologyForChild`（历史 chip 的那条路）
+  **不传**，因此显式选择历史轮次仍然只显示那一轮的图。节点照旧按 session id 去重，因此
+  「同一轮里既派过、又仍在跑」的子会话不会出现两次。文件头与 `extractFromSlice` 的注释写明缘由：
+  「后台子智能体的命可以长过派它的那一轮」。
+- **`packages/web/test/agent-topology.test.ts`**（+79）：上游自带的两条用例照落，并把三条场景写进文件头。
+  ①**跨轮次**：第一轮派 `paper`（仍在跑）、第二轮派 `references`，`liveStates` 两个都为 true →
+  `["root", "references", "paper"]`，`paper` 保留原描述与 `origin`、`running: true`、能取到它自己的会话，
+  `live.set("paper", false)` 后立刻只剩 `["root", "references"]`；②**同一轮两个子会话**都继续流式输出时，
+  两个节点与两条会话互不覆盖（各自的文本各自留在自己的 `origin` 里）；③**历史选择**：`extractTopologyForChild`
+  在有别的运行中子节点时仍只返回那一轮的切片。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-14-running-subagents-panel{,.zh}.md`）、去掉上游
+  PR 行、写明「移植自上游 PenguinHarness（#1110，提交 `355d6b10`）」与「接口与已存数据都没有变化」。
+- **本地化**：无 —— 这一笔全在 `packages/web` 内，没有跨包 import，也没有 `@prismshadow/` 之类的引用点。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**
+  （37 文件）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3112 通过 / 2 跳过**
+  （比上一轮 **+2**，正是本笔新用例）· hmr 无测试文件。
+- **反证（单测）**：把 `agent-topology.ts` 退回 `HEAD`、只跑 `test/agent-topology.test.ts` →
+  **1 failed / 35 passed**，红的正是新用例的第①条（`["root","references"]` 少了 `"paper"`）；把本笔换回去 →
+  **36 全过**。
+- **本轮主证据（真服务端 + 真浏览器 + 仓库自带的 mock 模型，改前改后两态）**：
+  - **怎么造出「上一轮的子智能体还在跑」**：`packages/web/e2e/mock-llm.mjs` 的**一份 scratchpad 变体**
+    （未入库）加两个分支 —— 父轮的提示语 `long running subagent probe` 派一个 `run_in_background: true` 的
+    子会话，而那个子会话自己的 `exec_command` 是 `sleep 60; echo counting`；子会话的提示语是它自己的
+    唯一一句（与既有分支的措辞都不撞）。先确认变体本身：直接 `curl` 打它，父轮那条答 `run_subagent`
+    （`{"prompt": "Hold the TODO count open", "run_in_background": true}`），子会话那条答
+    `exec_command`（`"sleep 60; echo counting"`）。
+  - **流程**（真服务 + 真浏览器 1280×720）：重建 web 产物后，一次性数据根
+    `/root/adelie-fork-data/r57-after`、`localhost:8940`（`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）起真服务，
+    `PUT /api/projects/:p/models` 把 `custom` provider 指到 mock（**不需要模型 key**，即 3.6 那个卡点）；
+    登录后建会话，发 `long running subagent probe`（父轮收尾、后台子会话开始 `sleep 60`），
+    再发 `run another subagent` —— **这是第二轮任务**，它会派第二个子会话（约 1 秒跑完）；
+    然后从工具栏（`dock-toggle-right` → `dock-pick-agents`）打开智能体面板，等到
+    `data-open="true"` 且宽度 > 100（关闭状态的 dock 仍留在树里、宽 0 且 `inert`，只看「标签是 active」会量到
+    一张屏外的图），再读 `role="group" aria-label="调用关系"` 里的节点。
+  - **改动后**：`graphNodes` **3** —— `General Agent · 已完成`（根）、`General Agent · 已完成 1.1s`
+    （第二轮的子会话，选中态）、**`General Agent · 运行中 8s`（第一轮那个仍在跑的子会话，留着）**，
+    截图 `r57/after5/panel.png` 里能看到三个节点与那个运行中节点的耗时。
+  - **反证（真界面，改前源码）**：`git checkout HEAD -- packages/web/src/features/chat/agent-topology.ts`
+    + 重建 web + **同一条探针** → `graphNodes` **2**（只剩根与第二轮的子会话，**第一轮那个运行中的子节点整块
+    不见**，`runningNodes: 0`），截图 `r57/before2/panel.png`；把源码放回、重建、再跑一次 → 数字与「改动后」
+    逐项一致。
+  - 两态都：服务端确实建出了**两个**子会话（探针记录的 `children` 两条）、console **0 error**、除本 App 正常的
+    `/api/me` 401（登录前）与 `/api/projects/:p/machines` 403（非管理员）外**无一条 ≥400**。
+- **顺带跑的 e2e 回归（也是本轮的意外发现）**：`background-subagent.spec.mjs` **2/2 通过**；
+  `subagent.spec.mjs` 4 条里 **3 条失败，但它们在改前改后、在同一个数据根上失败的**地方与方式完全一样
+  —— ①两条是 `getByPlaceholder(/输入消息/)` 同时命中「面板里子会话的输入框」与主输入框（strict mode
+  违规），②一条等的是工具栏图标的琥珀色「待审批」点、等不到。**这三条是本树既有的问题，与本笔无关**
+  （用改前产物跑过对照），留在这里备查、本轮没有顺手改它们（那需要另一轮的量与另一套判断）。
+- 端口只用 8940（探针 mock 8942），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r57-*`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出。
+- **上游 remote 仍失效**：这一轮是**按 URL 现拉的**，拉到的对象落在本地
+  `refs/adelie-tmp/upstream-main-latest3`（临时引用，要清就 `git update-ref -d`）。要长期跟上游走，仍应由用户
+  把 `upstream` 指到一个能 fetch 的源。
+- **本轮量过、没移植的**：`#1118` 卡在 jsdom（见「为什么是这一条」）、`#1096`（字号，无用例、要真界面造子
+  会话）、`#1120`（CI 发布门禁那一笔，属 4.x）。
+- **下一轮**：`#1096` 与 `#1110` 是同一片（`agent-topology*`）的姊妹笔，`#1110` 落地后 `#1096` 的冲突面更小，
+  可以做；**「要不要给 `packages/web` 装 jsdom」是一条要用户拍板的事**（装了 `#1118` 那类上游用例就能原样落），
+  邮件里会问；2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10 照旧停在原地。
+- 中间物：会话 scratchpad 的 `r57/`（探针 `zz-r57-probe.spec.mjs` 与它的留底、mock 变体
+  `mock-llm-r57.mjs`、两态截图 `before2/panel.png` 与 `after5/panel.png`、`after*`/`before*` 下的
+  `measure.json` 与 `diag.json`、`keep/agent-topology.fixed.ts`）。都未入库；探针 spec 与 mock 变体在跑完后
+  已从仓库里删除（探针副本留在 scratchpad）。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `8d334447`**（4 个文件：1 个源码 / 1 条既有用例（+2 用例）/ 一对 changelog）；台账这一笔另起一笔。
+- **推送**：`git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
