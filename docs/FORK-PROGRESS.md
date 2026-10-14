@@ -8818,6 +8818,8 @@ desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key�
 - 本笔只改 `plugins/sandbox-wsl` 与一对 changelog，`ci.yml` 的矩阵没有动；`plugin versions` 那个作业在
   push 事件下本来就不比较基线（`github.event.pull_request.base.sha` 为空 → 直接放行），而 sandbox-wsl
   这棵树里也没有 `plugin.json`（四个 sandbox 插件按发布口径由发版脚本盖章），所以没有版本戳要动。
+- 记台账那笔（`609ff931`，只动 `docs/FORK-PROGRESS.md`）触发的那一次 run `38622409048` 也
+  **`completed success`**；此后再记一次 CI 结论的文档提交仍会各自触发一次，形状与它相同，不再逐个追。
 
 ### 没做 / 还差什么
 
