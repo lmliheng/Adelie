@@ -326,6 +326,15 @@ manifest）与 `#1123`（`76bbebbe`，5 / +171 −28，桌面壳从 POSIX shell 
 不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用是 `refs/adelie-tmp/upstream-main-r59`（要清就
 `git update-ref -d`）。
 
+**上游 `main` 又往前走了（2026-10-15 第六十一轮拉到 `2b8116ce`）**：第五十九轮拿到的头是 `ac61e9ad`，它之后
+新推上来 **2 笔**，逐笔量过 —— `#1133`（`5d01f6a4`，191 文件 / +5991 −1459，Agent Workbench：把 Workflow 在
+模块、接口、目录、API 路由、事件、样式与界面里**整体改名**，默认项目装 `penguin-support` 插件，另加一整套
+服务端 Workbench 子系统与一次性迁移）与发版提交 `#1140`（`2b8116ce`，155 文件 / +388 −75，0.2.16 的版本戳、
+发布正文、模型目录多一条 Gemini 4 Argon、落地页与社区文章）。前者自己写着「Workflow is renamed across
+modules, interfaces, directories, API routes, events, styles and UI」，跨模块改名加一整套新子系统**不是一轮的
+量**；后者是本仓历来不取的发版提交（版本戳与上游自己的品牌面）。所以本轮改从**第四十九 / 五十八轮已经量过、
+留在桌上**的候选里取，落的是 5.39。探针引用是 `refs/adelie-tmp/upstream-main-r61`（要清就 `git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -813,6 +822,22 @@ manifest）与 `#1123`（`76bbebbe`，5 / +171 −28，桌面壳从 POSIX shell 
       **没有给 OmniMessage 增加字段**，也没有改写已存的 Trace 或记忆文件。**为什么是这一条**：第五十九轮
       新拉到的四笔里唯一七份源码 / 用例**全部逐字干净**、不引入新依赖、不碰桌面壳 / 包名 / 流水线，且是一条
       用户看得见的真缺陷（见该节）。
+- [x] **5.39 设置里的 WSL 中文诊断不再乱码**（上游 `842571de` `#1125`，**2026-10-15 第六十一轮落地**，提交见
+      该节）：「设置 → 插件」里凡 `wsl.exe` 用 UTF-16LE 作答的地方都显示成乱码（中文提示、安装日志）——
+      `runWsl` 虽然设了 `WSL_UTF8=1`，但 Windows 自带的那份 `wsl.exe` 仍可能回 UTF-16LE，而过去是
+      `setEncoding("utf8")` 直接按 UTF-8 读、事后把 NUL 删掉：那样读出来的字节已经丢了原来的字，删 NUL 也
+      拼不回来。现在宿主把 stdout / stderr **按字节留着**（两个 `Buffer[]`，收尾时 `Buffer.concat` 再解一次），
+      新增导出的 **`decodeOutput()`**：带不带 BOM 的 UTF-16LE 都认得出来（判据是「奇数位全是零字节」——UTF-16LE
+      的 ASCII 标签、空格与换行有这个特征，UTF-8 文本没有），UTF-8 原样返回、BOM 去掉；`cleanOutput()` 退成
+      「已解码文本的清理」；安装日志（`tasks.ts` 的 `readText`）改走同一个解码器；安装过程的**实时进度仍用
+      跨块的 `StringDecoder("utf8")`**（Linux 那侧写的是 UTF-8，分块边界可能落在一个汉字中间，凑齐再交出去）。
+      **为什么是这一条**：表上最靠前的未勾选条目仍是 2.2c（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作
+      里，本轮纪律不许碰 desktop）、3.5 要用户拍板取哪个桌面壳、3.6 要模型 key（卡点）、4.1–4.3 明令不动、
+      5.3 的②③④要第二台机器、5.6 与 5.10 等用户拍板；而这一轮新拉到的两笔（`#1133` 跨模块改名、`#1140`
+      发版提交）都不是一轮的量。于是从第四十九 / 五十八轮量过、留在桌上的三笔里挑 —— `#1131` 只改两行主题
+      CSS（量过的结论：看不出「真缺陷」）、`#1114` 的用例有冲突、这一笔**五份文件全部 `Applied … cleanly`**、
+      不引入新依赖、不碰桌面壳 / 包名 / 流水线，自带**七条能在这台 Linux 上真跑的回归用例**（上游自己写着
+      「Windows UI 与提权安装未做，这是在进程边界上用夹具验的」），且是一条用户看得见的真缺陷。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1411,6 +1436,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-14 | 5.36 | **跨轮次保留运行中的子智能体**（上游 `355d6b10` `#1110` 移植，照改动落、不是合分支；2 文件 / +97 −4，其中源码 1 个（`packages/web/src/features/chat/agent-topology.ts` +18 −4）、既有用例 1 个（`packages/web/test/agent-topology.test.ts` +79，两条新用例），另有 changelog 一对）：后来的一条消息开启新一轮任务时，`extractTopology` 只用**最新那一轮**的切片重建图，上一轮派出去、仍在后台跑的子智能体因此整块从面板上消失（卡片、会话、耗时一起没了），而运行时仍报告它「运行中」。现在 `extractTopology` 把自己那批「运行时报告为运行中」的已加载子节点（按卡片的子会话 id 取，`tool_call` 取 `subagentSessionId`、`subagent` 取 `sessionId`，`liveStates.get(id) === true`）作为第三批 items 交给 `extractFromSlice`，后者在切完最新那一轮之后再 walk 一遍这批 —— 于是它在最新一轮的子节点旁边保留原有卡片与自己那条会话，任务一结束（`liveStates` 转 false）就不再进图；`extractTopologyForChild` 不传这一批，显式的历史 chip 选择仍只显示那一轮（同名子节点照旧按 session id 去重）。文件头与两处注释写明「后台子智能体的命可以长过派它的那一轮」的缘由。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3112 通过 / 2 跳过**（**+2 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `agent-topology.ts` 退回 `HEAD`、只跑 `test/agent-topology.test.ts` → **1 failed / 35 passed**（「keeps an earlier running child visible…」那条：`["root","references","paper"]` 少了 `"paper"`），换回本笔 → **36 全过** · **本轮主证据（真服务端 + 真浏览器 + 仓库自带的 mock 模型，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r57-after`、`localhost:8940`（`ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`PUT …/models` 把 `custom` provider 指到 mock（`packages/web/e2e/mock-llm.mjs` 的 scratchpad 变体：`run_in_background` 的子智能体改跑 `sleep 60`，父轮照旧收尾 —— **不需要模型 key**，即 3.6 那个卡点），真浏览器 1280×720 依次发「long running subagent probe」（父轮派一个 60 秒的后台子会话）与「run another subagent」（**第二轮任务**，再派一个会很快结束的子会话），再从工具栏打开智能体面板量默认调用图：**改动后** —— `graphNodes` **3**（`General Agent · 已完成`（根）、`General Agent · 已完成 1.1s`（第二轮的子会话，选中）、`General Agent · 运行中 8s`（**第一轮那个仍在跑的子会话，留着**）），截图 `r57/after5/panel.png`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/agent-topology.ts` + 重建 web + **同一条探针** → `graphNodes` **2**（只剩根与第二轮的子会话，**第一轮那个运行中的子节点整块不见**，`runningNodes: 0`），截图 `r57/before2/panel.png`；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：服务端确实建出了**两个**子会话（`children` 两条）、两端 console **0 error**、除本 App 正常的 `/api/me` 401 与 `/api/projects/:p/machines` 403 外**无一条 ≥400** · **顺带跑的 e2e 回归**：`background-subagent.spec.mjs` **2/2 通过**；`subagent.spec.mjs` 4 条里 **3 条在改前改后同样失败**（用改前产物在同一数据根上跑过一遍对照）——失败原因都是本树既有的选择器/交互前提（`getByPlaceholder(/输入消息/)` 同时命中面板里子会话的输入框；「待审批」的琥珀点找不到），与本笔无关 · 端口只用 8940（mock 8942），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r57-*` | `8d334447` |
 | 2026-10-14 | 5.37 | **切回 Session 时，面板仍停在原来的全屏状态**（上游 `8f747606` `#1128` 移植，照改动落、不是合分支；4 文件 / +154 −34，其中源码 1 个（`packages/web/src/features/dock/dock-state.ts`）、既有用例 1 个（`packages/web/test/dock-state.test.ts` +104，**四条新用例**）、另有 changelog 一对）：全屏过去是**一个全局变量**（`let fullscreen: DockPosition \| null`），`switchScope()` 里一句 `fullscreen = null` 把它按「属于当下这一刻、不属于这段对话」清掉 —— 于是切到别的 Session 再切回来，面板总是普通尺寸。现在它跟着**停靠布局**走：换成 `fullscreenByLayout = new WeakMap<ScopeLayout, DockPosition>()`（弱键让被淘汰的 scope 自己走，不需要第二份保留表），`fullscreenDock()` 按当前 `layout` 读、`setDockFullscreen()` 按当前 `layout` 写或删、`reconcileFullscreen(candidate = layout)` 与 `fullscreenEligible(position, candidate = layout)`（连同 `mergedViewHasTabs(candidate)`）都收一个布局参数；`switchScope()` 改成对**新切到的**布局跑一次 `reconcileFullscreen()`（不在前台的 Session 可能在别的会话在前台时被剪掉最后一个终端），`pruneTerminalTabs` 对每个非前台 scope 也调一次；跨窄屏断点仍整张重建（`fullscreenByLayout = new WeakMap()`），刷新仍从普通尺寸开始，**localStorage 格式一字未改**（那条「全屏从不写进存储」的用例改成「刷新后标签与 `bottomRatio` 都在、全屏不在」）。文件头与 `setDockFullscreen` 附近的注释一并改写成「全屏按布局记在内存里」。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3116 通过 / 2 跳过**（**+4 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `dock-state.ts` 退回 `HEAD`、只跑 `test/dock-state.test.ts` → **3 failed / 41 passed**，红的正是三条跨 Session 的行为（「restores each Session's fullscreen independently and remembers an explicit exit」「hands a draft's fullscreen to its new Session without clobbering an existing layout」「clears all Sessions on a breakpoint change and remembers fullscreen in the merged view」），换回本笔 → **44 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r58-after`、`localhost:8941`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插**两行**（`r58-probe-session` / `r58-probe-session-b`）拿到两个能互相切换的真会话页（不需要模型 key，即 3.6 那个卡点；草稿页 `/chat/new` 没有停靠栏工具条，所以用两个会话而不是「草稿 + 会话」）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×800）在 A 里把右侧「记忆」面板开成全屏、切到 B 再把底部「记忆」开成全屏，然后切回 A、切回 B，逐次读 `[data-testid="dock"]` 的 `data-fullscreen` 与它里面 `[data-testid="dock-header"]` 的宽度：**改动后** —— 回 A 时 `data-fullscreen="full"`、面板头 **992px**（覆盖整行），回 B 时底部同样 `"full"`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/dock-state.ts` + 重建 web + 重启同一数据根 + **同一条探针** → 回 A 时 `data-fullscreen` **消失**、面板头只剩 **512px**（普通列宽），回 B 时同样消失；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：console **0 error**、**无一条 ≥400**；截图 `r58/shot-{after2,before}-3-session-a-again.png`（改前那一张里右侧是一条 512px 的窄列、对话区还看得见；改后同一张里面板铺满整行）与 `shot-*-1/2/4-*.png`、原始记录 `r58/probe.mjs`、探针日志都在 scratchpad · 端口只用 8941，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ead8d213` |
 | 2026-10-14 | 5.38 | **分页读取的会话里，记忆更新卡片不再丢失**（上游 `d51c4577` `#1138` 移植，照改动落、不是合分支；9 文件 / +173 −6，其中源码 5 个（server 的 `api/types.ts` +5、`http/routes/sessions.ts` +1、`services/trace-service.ts` +3；web 的 `lib/omni/stream-controller.ts` +4 −3、`lib/omni/stream-model.ts` 两处注释）、既有用例 2 个（server `test/messages-live.test.ts` +43 −1、web `test/stream-controller.test.ts` +93，**四条新用例**）、另有 changelog 一对）：Web App 打开会话时读的是**历史窗口**（首页 20 个单元），窗口可能从 `session_meta` **之后**开始 —— 而 Agent State 目录只写在那条记录里，流模型因此没有 `<agent_state>/memory/` 这个根，`classifyMemoryPath` 一条文件写入都认不出，**整张记忆更新卡片不渲染**（文件其实改成功了）。现在服务端把「窗口起始那个上下文记录里的 `agent_state`」放进历史分页信封（`MessagesPageInfo.agentState`，与同一处的 `contextModel` 同一写法，没有 Trace 时不出现；`TraceService` 从 `startMeta.payload.agent_state` 取），Web App 的 `seedWindow` 在回放这一页之前把它种进模型。打开会话、往上加载更早的消息、断开后重连都恢复；同一话题反复编辑仍只画一行、对记忆索引的编辑照旧不算。**没有给 OmniMessage 增加字段**，也没有改写已存的 Trace 或记忆文件。**本地化**：无（全在本仓自己的包内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **wrote src/ifaces.json（189 接口 / 580 类型）** —— 本笔只给既有接口加一个可选字段，接口与类型计数不变）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过**（**+1 正是本笔新用例**）· web **255 文件 / 3120 通过 / 2 跳过**（**+4 正是本笔四条新用例**）· hmr 无测试文件 · **反证（单测）**：把五份源码文件退回 `HEAD`（用例留着）、只跑两个受影响的文件 → server `messages-live.test.ts` **1 failed / 4 passed**（`tail.page?.agentState` 是 `undefined`）、web `stream-controller.test.ts` **4 failed / 38 passed**（四条都是 `changes(...)` 得到 `[]`）；把本笔放回 → **5 全过 / 42 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 server / web 产物后，一次性数据根 `/root/adelie-fork-data/r59-after`、`localhost:8943`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行、并用 `@lmliheng/penguin-core/omnimessage` 的构造器**手写**一份 30 轮的 Trace（第 30 轮里有三次 `edit_file`：`<agent_state>/memory/user/local-dev-instance.md` 两次、`MEMORY.md` 一次）—— 不需要模型 key（即 3.6 那个卡点）；30 轮 > 首页窗口 20 个单元，所以分页信封确实从 `session_meta` 之后开始。Playwright（`playwright-core` + 本地 chromium-1243，`--no-sandbox`，1280×900）打开 `/chat/r59-probe-session` 并逐项读 DOM 与信封：**改动后** —— 信封里 `agentState` 是那份 Agent State 目录、`earlierTurns: 10`、46 条消息、**没有 `session_meta`**、3 条 `edit_file`；页面上一张「**1 条记忆更新**」的卡片、一行 `local-dev-instance.md`（三次编辑合成一行，与上游说明一致）；**反证（真界面，改前源码）**：`git checkout HEAD --` 五份源码 + 重建 server / web + 重启**同一数据根** + **同一条探针** → 信封里 `agentState` 是 `null`（其余逐项相同：46 条消息、无 `session_meta`、3 条编辑），页面上**一张卡片都没有**（`memoryCardTitles: []`、`memoryRowCount: 0`），服务端日志里连 `…/memory` 那次请求都没有（卡片不渲染就不取列表）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · 两态都 console **0 error**、无一条 ≥400 · 截图 `r59/{after,after2,before}-conversation.png`（改后那张能看到卡片与那一行，改前那张「probe answer 30」下方直接是输入框）、探针 `r59/probe.mjs`、造 Trace 的 `r59/write-trace.mjs`、`r59/fix-src/`（五份源码留底）都在 scratchpad · 端口只用 8943，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r59-after` | 见本行提交 |
+| 2026-10-15 | 5.39 | **设置里的 WSL 中文诊断不再乱码**（上游 `842571de` `#1125` 移植，照改动落、不是合分支；5 文件 / +155 −18，其中源码 2 个（`plugins/sandbox-wsl/src/host.ts` +29 −14、`src/tasks.ts` +2 −4）、新用例 1 个（`test/host.test.ts` 89 行，**七条**）、另有 changelog 一对）：`runWsl` 过去 `setEncoding("utf8")` 直接按 UTF-8 读 `wsl.exe` 的输出、收尾时只把 NUL 删掉 —— 而 Windows 自带的那份 `wsl.exe` 仍可能回 UTF-16LE（`WSL_UTF8=1` 不保证），按 UTF-8 读出来已经丢了原来的字，删 NUL 拼不回来，于是「设置 → 插件」里的中文提示与安装日志全成乱码。现在 stdout / stderr 各自**按字节留着**（两个 `Buffer[]`），收尾时 `Buffer.concat` 再解**一次**：新增导出的 `decodeOutput()`（带 BOM 的 UTF-16LE 直接认；否则按「奇数位全是零字节」判定 —— UTF-16LE 的 ASCII 标签、空格与换行有这个特征，UTF-8 文本没有），`cleanOutput()` 从「删 NUL + 扔通知」退成「已解码文本的清理」，安装日志（`tasks.ts` 的 `readText`）改走同一个解码器；**实时进度仍走跨块的 `StringDecoder("utf8")`**（Linux 那侧写的是 UTF-8，分块边界可能落在一个汉字中间，凑齐整行再交出去）。**本地化**：无（全在本仓自己的插件内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」）。**没改界面**，所以没有真浏览器取证（见该节） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· 插件自己的 `typecheck` **`EXIT=0`** · `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（67 通过 + 1 跳过 = 68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过** · web **255 文件 / 3120 通过 / 2 跳过** · hmr 无测试文件 · 插件 `pnpm --filter @lmliheng/penguin-plugin-sandbox-wsl test` **32 通过**（`test/host.test.ts` 7 + `test/profile.test.ts` 25，上游记的也是 32）· **反证（单测）**：把 `src/host.ts` 退回 `HEAD`（用例留着）→ **3 failed / 29 passed**，红的正是 UTF-16LE 那两条（`it.each([false, true])`）与「两条流各自解码」那条，实际收到的乱码是 `���͑�e/T�R Windows0`；放回本笔 → **32 全过** · **额外的一条真字节证据**（不经 vitest，探针在 scratchpad）：用 `iconv -f UTF-8 -t UTF-16LE`（与 `-t UTF-8`）**真程序**产出的字节，按 1 / 2 / 3 / 末字节四种切法分成两块再 `Buffer.concat` 交给源码里的 `decodeOutput()` —— 三种编码 × 四种切法**12 例全部与原文逐字相同**，而同一批字节走改前的「按 UTF-8 读再删 NUL」在 UTF-16LE 那两组上分别得到 `*g�[ň…` / `��*g�[ň…` · 本笔不碰界面也没有新的界面面，因此**没有起服务 / 没有 Playwright**：设置卡片本身一字未改，它渲染的是插件交给它的文本，而这条路径的改前改后已由上面两组证据覆盖（插件只在 Windows + WSL 上有真实运行面，本机是 Linux）· 端口一个没碰（没有起服务），数据一个字节没往 `/root/.penguin` 或仓库里写 | `见本行提交` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -8669,3 +8695,95 @@ desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key�
 - 中间物：会话 scratchpad 的 `wps/`（契约 `ADDIN-PROTOCOL.md`、计划 `PLAN.md`、只读的 WordAgent
   克隆、`real-bridge-panel.mjs`）与 `release-039/`（bump/pack/verify/publish/restart 脚本与全部证据
   文本）。都未入库。
+
+## 第六十一轮：设置里的 WSL 中文诊断不再乱码（2026-10-15，条目 5.39）
+
+### 开工自检
+
+- `git status --short` **干净**（输出为空），在 `main` 上；`git fetch origin` **这一轮通了**（第五十九 /
+  六十轮那把 SSH 公钥被 GitHub 拒的老问题这次没有再挡路），把 `b02cd860..2e15ef82 main -> origin/main`
+  与 tag `v0.3.9` 一起拉了回来 —— 本地 HEAD 也正是 `2e15ef82`，所以 `git merge --ff-only origin/main` 是
+  `Already up to date.`。**没有切分支、没有碰 `legacy/main`、没有推上游、没有改 remote 配置。**
+- **上游这一轮照第二十三轮那条路按 URL 现拉**：`upstream` 仍指着已经不存在的 `/root/penguin-harness`
+  （本机确实没有这个目录），`git fetch https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-r61` → 尖端 **`2b8116ce`**（`release: 0.2.16 — Agent
+  Workbench and Gemini 4 Argon (#1140)`），它相对第五十九轮拉到的 `ac61e9ad` 只多 **2 笔** —— `#1133`
+  （跨模块改名的大件）与发版提交 `#1140`，逐笔量与去向写在「待办」那段「上游 `main` 又往前走了
+  （2026-10-15 第六十一轮…）」里。
+- **轮次提示里给的 typecheck 过滤串仍是旧的**：`@prismshadow/penguin-*` 在本树不存在（4.1 之前包名是
+  `@lmliheng/penguin-*`），照那个串跑只会得到 `No projects matched`。本轮用 `@lmliheng/…` 六个包跑，
+  结果见下。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里，本轮纪律不许碰
+desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的
+②③④要第二台机器、**5.6** 与 **5.10** 等用户拍板。这一轮新拉到的 2 笔都不是一轮的量：
+
+- **`#1133`**（`5d01f6a4`，191 文件 / +5991 −1459）：它自己写着「Workflow is renamed across modules,
+  interfaces, directories, API routes, events, styles and UI」，另加一整套服务端 Workbench 子系统、
+  默认项目装 `penguin-support` 插件、一次性迁移与 25 份插件清单的本地化 —— 跨模块改名 + 新子系统，
+  且碰插件市场与界面大片，不是「最小改动」的一轮。
+- **`#1140`**（`2b8116ce`，155 文件 / +388 −75）：发版提交（0.2.16 版本戳、发布正文、落地页与社区文章、
+  模型目录多一条 Gemini 4 Argon）—— 版本戳与上游自己的品牌面，本仓历来不取。
+
+于是从**第四十九 / 五十八轮已经量过、留在桌上**的三笔里挑（第五十六轮起上游是用 URL 现拉的，这三笔都在
+`a129b42e` 那批里）：
+
+- **`#1131`**（`bba0e3c9`，3 文件 / +22 −2，Console 主题的图表折线从阶梯改成直线）：`git apply -3` 逐字干净，
+  但只改 `geek.css` 两行，是一条**看不出「真缺陷」**的观感调整（第五十八轮量过、当时就为这个理由留着）。
+- **`#1114`**（`77036d31`，6 文件 / +90 −2，provider 的 429 与传输中断分成两个 `error_code`）：三个源码
+  文件干净、**用例有冲突**（`packages/core/test/llm.test.ts`），而且它的落点是「给诊断加一个名字」——
+  对外行为一字未改（上游自己写着 outcome 仍是 `retryable`），还动 core 的 `ErrorCode` 词汇表。
+- **`#1125`**（`842571de`，5 文件 / +140 −18）：**五份文件全部 `Applied … cleanly`**、不引入新依赖、不碰
+  桌面壳 / 包名 / 流水线，自带**七条能在这台 Linux 上真跑的回归用例**（上游自己写明「Windows UI 与提权安装
+  未做，这是在进程边界上用夹具验的」），而且是一条用户看得见的真缺陷（设置里的中文全成乱码）。选它。
+
+### 改了什么（5 文件 / +155 −18，含 changelog 一对）
+
+- **`plugins/sandbox-wsl/src/host.ts`**（+29 −14）：文件头的说明从「wsl.exe 默认说 UTF-16，我们处处设
+  `WSL_UTF8=1`」改成「**请求** UTF-8，但把字节留着 —— Windows 自带的那份仍可能回 UTF-16LE」。新增导出
+  **`decodeOutput(bytes: Buffer): string`**：带 BOM 的 UTF-16LE 直接认，否则按「**奇数位全是零字节**」判定
+  （UTF-16LE 的 ASCII 标签、空格与行尾有这个特征，UTF-8 文本没有），按 `utf16le` / `utf8` 解一次并去掉
+  开头 BOM；`cleanOutput(text)` 从「删 NUL + 扔 WSL 通知」退成**已解码文本的清理**（注释跟着改）。
+  `runWsl` 的 `setEncoding("utf8")` 去掉，stdout / stderr 改成两个 `Buffer[]`，`close` 时
+  `Buffer.concat` 之后再 `decodeOutput` → `cleanOutput`；**实时进度**（`opts.onLine`）改用一个跨块的
+  `StringDecoder("utf8")`（Linux 那侧写的是 UTF-8，分块边界可能断在一个汉字中间 —— 过去的
+  `setEncoding("utf8")` 帮忙兜住了这件事，直接换成裸 chunk 会让它退化成 U+FFFD，所以这一步不能省）。
+- **`plugins/sandbox-wsl/src/tasks.ts`**（+2 −4）：`readText()`（读安装日志那处）不再自己
+  `readFileSync(file, "utf8")` 后删 BOM、删 NUL，改成走 `decodeOutput(fs.readFileSync(file))` —— 两条读
+  法从此是同一个解码器。import 里加 `decodeOutput`（本仓的 `@lmliheng/penguin-core/plugin` 那行没动）。
+- **`plugins/sandbox-wsl/test/host.test.ts`**（新，89 行 / 七条）：上游自带的那份照落，`spawn` 被 mock、
+  字节是真的 —— 逐字节写入的 UTF-16LE（带 / 不带 BOM）、UTF-8（带 / 不带 BOM）、**两条流各自编码**
+  （stdout UTF-8、stderr UTF-16LE，且通知在解码之后才被认出来）、**UTF-8 进度行被切开一个汉字**时
+  `onLine` 仍拿到完整那行、以及**什么都没写**时两条流都是空。
+- **changelog 一对**（`changelog/unreleased/2026-10-15-wsl-settings-encoding{,.zh}.md`）：按本仓惯例改名到
+  本轮日期、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#1125，提交 `842571de`）」，正文写「改了什么」
+  而不写推理（与 `changelog/README.md` 的约定一致）。
+- **本地化**：无 —— 全在本仓自己的插件内，没有跨包 import，也没有 scope 引用点。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；server 的 `gen:ifaces` 报 **`src/ifaces.json unchanged`
+  （189 接口 / 580 类型）**，本笔不动服务契约）；插件自己的 `pnpm --filter
+  @lmliheng/penguin-plugin-sandbox-wsl typecheck` 也 **`EXIT=0`**。
+- `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 个文件，67 通过 + 1 跳过）· ui **1028**
+  （129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过** · web **255 文件 /
+  3120 通过 / 2 跳过** · hmr 无测试文件。插件那一套本轮的包没在「六包」里，单独跑：
+  `pnpm --filter @lmliheng/penguin-plugin-sandbox-wsl test` → **32 通过**（`host.test.ts` 7 条 +
+  `profile.test.ts` 25 条；上游那一笔的记录里也是 32）。
+- **反证（单测）**：把 `src/host.ts` 退回 `HEAD`（新用例留着）→ **3 failed / 29 passed**，红的正是两条
+  UTF-16LE 用例（`it.each([false, true])`）与「两条流各自解码」那条 —— 断言里实际收到的 stderr 是
+  `���͑�e/T�R Windows0`（就是用户看到的那种乱码）；把本笔放回 → **32 全过**。
+- **额外的一条真字节证据**（不经 vitest，探针 `r61/decode-real-bytes.mts` 在 scratchpad）：用
+  **`iconv` 真程序**产出 UTF-16LE（带 / 不带 BOM）与 UTF-8 的字节，按 1 / 2 / 3 / 末字节四种切法切成两块，
+  `Buffer.concat` 之后交给源码里的 `decodeOutput()` + `cleanOutput()` —— **12 例全部与原文逐字相同**；
+  同一批字节走改前的「按 UTF-8 读再删 NUL」，UTF-16LE 那两组分别得到 `*g�[ň…` / `��*g�[ň…`。这让
+  「带 BOM / 不带 BOM 都认得出来」不只靠 `Buffer.from(…, "utf16le")` 造出来的字节。
+- **本轮没有起服务、没有 Playwright，理由写在这里**：改的是插件内部的字节解码，**界面一行没动** —— 设置卡片
+  渲染的是插件交给它的文本，卡片本身与这条路径无关的布局都没变，而插件在这台 Linux 上也没有真实的运行面
+  （它只在 Windows + WSL 上有）。上面两组证据合起来覆盖了「交给卡片的那段文本」的改前改后；再起一个真服务
+  也只会看到同一个设置页，看不到 WSL 的诊断（本机没有 `wsl.exe`）。
+- 端口一个没碰（没起服务）；数据一个字节没往 `~/.penguin`、`/root/adelie-fork-data` 或仓库里写（临时探针与
+  输出都在 scratchpad）。
