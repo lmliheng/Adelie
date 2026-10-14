@@ -5240,6 +5240,16 @@ v0.3.5 版本戳），`git fetch origin && git merge --ff-only origin/main` 报 
   （只动 `machines-transport-session.test.ts`）；台账这一笔另起一笔。
 - **推送**：`git push origin main`。
 
+### 汇报
+
+- **汇报邮件没发出去（第 22–55 轮同一处卡点，与凭据无关）**：按 csu-mail 技能先自检 —— 技能目录下
+  `timeout 90 python3 scripts/mail.py check` **一行输出都没有就退出 124**（凭据本身正常：`CSU_MAIL_ADDR`
+  长度 21、`CSU_MAIL_AUTHCODE` 长度 16，都注入着）。按技能纪律**只试这一次，没有重试登录，也没有再试发信**。
+  本轮正文写在会话 scratchpad 的 `r56/mail-round56.txt`；把第 56 轮的正文路径与主题**加进**既有的周期重发
+  任务 `csu-mail-retry`（现覆盖第 22–56 共三十五封），没有另开新任务，`end_at` 保持 `2026-10-19T12:00:00Z`。
+- 照第三十六轮末尾记下的替代通道，**同时用飞书发了一条三五句话的简报到用户**
+  （`message_id=om_x100b63db169f60b0df4fdc93eda517d`），所以这一轮的结果不是只躺在队列里。
+
 ### CI（推送后）
 
 - 第一笔（代码 `0945d91a` + 台账 `b0b9001a`）的 run **`38019959586`**：首跑 `test (server)`（ubuntu）红在
