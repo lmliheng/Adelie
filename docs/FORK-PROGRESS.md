@@ -335,6 +335,12 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
 量**；后者是本仓历来不取的发版提交（版本戳与上游自己的品牌面）。所以本轮改从**第四十九 / 五十八轮已经量过、
 留在桌上**的候选里取，落的是 5.39。探针引用是 `refs/adelie-tmp/upstream-main-r61`（要清就 `git update-ref -d`）。
 
+**上游 `main` 这一轮没有往前走（2026-10-15 第六十二轮）**：照第二十三轮那条路按 URL 现拉
+（`git fetch https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r62`），
+尖端仍是 **`2b8116ce`**（与第六十一轮的 `r61` 同一个提交，fetch 输出只有 `* [new branch]`，没有新对象）——
+第六十一轮记的那两笔之后上游没有新东西。所以本轮不挑新提交，改从**桌上已量过**的候选里取，落的是 5.40。
+探针引用是 `refs/adelie-tmp/upstream-main-r62`（要清就 `git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -838,6 +844,19 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
       CSS（量过的结论：看不出「真缺陷」）、`#1114` 的用例有冲突、这一笔**五份文件全部 `Applied … cleanly`**、
       不引入新依赖、不碰桌面壳 / 包名 / 流水线，自带**七条能在这台 Linux 上真跑的回归用例**（上游自己写着
       「Windows UI 与提权安装未做，这是在进程边界上用夹具验的」），且是一条用户看得见的真缺陷。
+- [x] **5.40 成本中心的错误提醒：标记已读要覆盖这次打开读到的错误，重启后保持已读**（上游 `591f091d`
+      `#1118`，**2026-10-15 第六十二轮落地**，提交见该节）：成本中心读的是屏幕上那一档范围里的错误，而
+      「标记为已读」写下的却是**应用启动时**缓存的那个时间戳 —— 于是应用打开之后到达的错误也被这条标记
+      算作已读，而重启后它又把提醒重新抬起来（用户以为标记成功了）。现在成本中心加载时先刷新一次提醒
+      （`refreshProjectTodos`，表格与已读标记因此指的是同一条最新错误）；已读标记改成**写入成功后**才收起
+      提醒（写入失败显示接口报错、留着这条提醒供重试），连续标记按顺序写入，先发出的请求不会覆盖后写的
+      标记（`dismissTodo` 里一条写队列，每份 map 都从上一次**成功**的写入上叠）。**为什么是这一条**：
+      表上最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10（各处仍不可做或明令不动），
+      而这一轮上游没往前走（见上）；于是取第四十九 / 五十六 / 五十七 / 五十八轮**量过、留在桌上**的候选里
+      最确凿的一条真缺陷 —— 它被搁置的理由一直是「自带的三份回归要 jsdom，而本树没有」（第五十六轮记下
+      「要不要给 `packages/web` 装 jsdom」这条要用户拍板的事）。本轮**源码照落**（两份文件 `git apply -3`
+      逐字干净），回归证据改用**真服务端 + 真浏览器**把改前改后两态都量出来，于是那条卡点不再挡路；
+      「要不要装 jsdom」这件事本身仍然留给用户。细节与实测见「第六十二轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1437,6 +1456,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-14 | 5.37 | **切回 Session 时，面板仍停在原来的全屏状态**（上游 `8f747606` `#1128` 移植，照改动落、不是合分支；4 文件 / +154 −34，其中源码 1 个（`packages/web/src/features/dock/dock-state.ts`）、既有用例 1 个（`packages/web/test/dock-state.test.ts` +104，**四条新用例**）、另有 changelog 一对）：全屏过去是**一个全局变量**（`let fullscreen: DockPosition \| null`），`switchScope()` 里一句 `fullscreen = null` 把它按「属于当下这一刻、不属于这段对话」清掉 —— 于是切到别的 Session 再切回来，面板总是普通尺寸。现在它跟着**停靠布局**走：换成 `fullscreenByLayout = new WeakMap<ScopeLayout, DockPosition>()`（弱键让被淘汰的 scope 自己走，不需要第二份保留表），`fullscreenDock()` 按当前 `layout` 读、`setDockFullscreen()` 按当前 `layout` 写或删、`reconcileFullscreen(candidate = layout)` 与 `fullscreenEligible(position, candidate = layout)`（连同 `mergedViewHasTabs(candidate)`）都收一个布局参数；`switchScope()` 改成对**新切到的**布局跑一次 `reconcileFullscreen()`（不在前台的 Session 可能在别的会话在前台时被剪掉最后一个终端），`pruneTerminalTabs` 对每个非前台 scope 也调一次；跨窄屏断点仍整张重建（`fullscreenByLayout = new WeakMap()`），刷新仍从普通尺寸开始，**localStorage 格式一字未改**（那条「全屏从不写进存储」的用例改成「刷新后标签与 `bottomRatio` 都在、全屏不在」）。文件头与 `setDockFullscreen` 附近的注释一并改写成「全屏按布局记在内存里」。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3116 通过 / 2 跳过**（**+4 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `dock-state.ts` 退回 `HEAD`、只跑 `test/dock-state.test.ts` → **3 failed / 41 passed**，红的正是三条跨 Session 的行为（「restores each Session's fullscreen independently and remembers an explicit exit」「hands a draft's fullscreen to its new Session without clobbering an existing layout」「clears all Sessions on a breakpoint change and remembers fullscreen in the merged view」），换回本笔 → **44 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r58-after`、`localhost:8941`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插**两行**（`r58-probe-session` / `r58-probe-session-b`）拿到两个能互相切换的真会话页（不需要模型 key，即 3.6 那个卡点；草稿页 `/chat/new` 没有停靠栏工具条，所以用两个会话而不是「草稿 + 会话」）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×800）在 A 里把右侧「记忆」面板开成全屏、切到 B 再把底部「记忆」开成全屏，然后切回 A、切回 B，逐次读 `[data-testid="dock"]` 的 `data-fullscreen` 与它里面 `[data-testid="dock-header"]` 的宽度：**改动后** —— 回 A 时 `data-fullscreen="full"`、面板头 **992px**（覆盖整行），回 B 时底部同样 `"full"`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/dock-state.ts` + 重建 web + 重启同一数据根 + **同一条探针** → 回 A 时 `data-fullscreen` **消失**、面板头只剩 **512px**（普通列宽），回 B 时同样消失；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：console **0 error**、**无一条 ≥400**；截图 `r58/shot-{after2,before}-3-session-a-again.png`（改前那一张里右侧是一条 512px 的窄列、对话区还看得见；改后同一张里面板铺满整行）与 `shot-*-1/2/4-*.png`、原始记录 `r58/probe.mjs`、探针日志都在 scratchpad · 端口只用 8941，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ead8d213` |
 | 2026-10-14 | 5.38 | **分页读取的会话里，记忆更新卡片不再丢失**（上游 `d51c4577` `#1138` 移植，照改动落、不是合分支；9 文件 / +173 −6，其中源码 5 个（server 的 `api/types.ts` +5、`http/routes/sessions.ts` +1、`services/trace-service.ts` +3；web 的 `lib/omni/stream-controller.ts` +4 −3、`lib/omni/stream-model.ts` 两处注释）、既有用例 2 个（server `test/messages-live.test.ts` +43 −1、web `test/stream-controller.test.ts` +93，**四条新用例**）、另有 changelog 一对）：Web App 打开会话时读的是**历史窗口**（首页 20 个单元），窗口可能从 `session_meta` **之后**开始 —— 而 Agent State 目录只写在那条记录里，流模型因此没有 `<agent_state>/memory/` 这个根，`classifyMemoryPath` 一条文件写入都认不出，**整张记忆更新卡片不渲染**（文件其实改成功了）。现在服务端把「窗口起始那个上下文记录里的 `agent_state`」放进历史分页信封（`MessagesPageInfo.agentState`，与同一处的 `contextModel` 同一写法，没有 Trace 时不出现；`TraceService` 从 `startMeta.payload.agent_state` 取），Web App 的 `seedWindow` 在回放这一页之前把它种进模型。打开会话、往上加载更早的消息、断开后重连都恢复；同一话题反复编辑仍只画一行、对记忆索引的编辑照旧不算。**没有给 OmniMessage 增加字段**，也没有改写已存的 Trace 或记忆文件。**本地化**：无（全在本仓自己的包内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **wrote src/ifaces.json（189 接口 / 580 类型）** —— 本笔只给既有接口加一个可选字段，接口与类型计数不变）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过**（**+1 正是本笔新用例**）· web **255 文件 / 3120 通过 / 2 跳过**（**+4 正是本笔四条新用例**）· hmr 无测试文件 · **反证（单测）**：把五份源码文件退回 `HEAD`（用例留着）、只跑两个受影响的文件 → server `messages-live.test.ts` **1 failed / 4 passed**（`tail.page?.agentState` 是 `undefined`）、web `stream-controller.test.ts` **4 failed / 38 passed**（四条都是 `changes(...)` 得到 `[]`）；把本笔放回 → **5 全过 / 42 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 server / web 产物后，一次性数据根 `/root/adelie-fork-data/r59-after`、`localhost:8943`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行、并用 `@lmliheng/penguin-core/omnimessage` 的构造器**手写**一份 30 轮的 Trace（第 30 轮里有三次 `edit_file`：`<agent_state>/memory/user/local-dev-instance.md` 两次、`MEMORY.md` 一次）—— 不需要模型 key（即 3.6 那个卡点）；30 轮 > 首页窗口 20 个单元，所以分页信封确实从 `session_meta` 之后开始。Playwright（`playwright-core` + 本地 chromium-1243，`--no-sandbox`，1280×900）打开 `/chat/r59-probe-session` 并逐项读 DOM 与信封：**改动后** —— 信封里 `agentState` 是那份 Agent State 目录、`earlierTurns: 10`、46 条消息、**没有 `session_meta`**、3 条 `edit_file`；页面上一张「**1 条记忆更新**」的卡片、一行 `local-dev-instance.md`（三次编辑合成一行，与上游说明一致）；**反证（真界面，改前源码）**：`git checkout HEAD --` 五份源码 + 重建 server / web + 重启**同一数据根** + **同一条探针** → 信封里 `agentState` 是 `null`（其余逐项相同：46 条消息、无 `session_meta`、3 条编辑），页面上**一张卡片都没有**（`memoryCardTitles: []`、`memoryRowCount: 0`），服务端日志里连 `…/memory` 那次请求都没有（卡片不渲染就不取列表）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · 两态都 console **0 error**、无一条 ≥400 · 截图 `r59/{after,after2,before}-conversation.png`（改后那张能看到卡片与那一行，改前那张「probe answer 30」下方直接是输入框）、探针 `r59/probe.mjs`、造 Trace 的 `r59/write-trace.mjs`、`r59/fix-src/`（五份源码留底）都在 scratchpad · 端口只用 8943，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r59-after` | 见本行提交 |
 | 2026-10-15 | 5.39 | **设置里的 WSL 中文诊断不再乱码**（上游 `842571de` `#1125` 移植，照改动落、不是合分支；5 文件 / +155 −18，其中源码 2 个（`plugins/sandbox-wsl/src/host.ts` +29 −14、`src/tasks.ts` +2 −4）、新用例 1 个（`test/host.test.ts` 89 行，**七条**）、另有 changelog 一对）：`runWsl` 过去 `setEncoding("utf8")` 直接按 UTF-8 读 `wsl.exe` 的输出、收尾时只把 NUL 删掉 —— 而 Windows 自带的那份 `wsl.exe` 仍可能回 UTF-16LE（`WSL_UTF8=1` 不保证），按 UTF-8 读出来已经丢了原来的字，删 NUL 拼不回来，于是「设置 → 插件」里的中文提示与安装日志全成乱码。现在 stdout / stderr 各自**按字节留着**（两个 `Buffer[]`），收尾时 `Buffer.concat` 再解**一次**：新增导出的 `decodeOutput()`（带 BOM 的 UTF-16LE 直接认；否则按「奇数位全是零字节」判定 —— UTF-16LE 的 ASCII 标签、空格与换行有这个特征，UTF-8 文本没有），`cleanOutput()` 从「删 NUL + 扔通知」退成「已解码文本的清理」，安装日志（`tasks.ts` 的 `readText`）改走同一个解码器；**实时进度仍走跨块的 `StringDecoder("utf8")`**（Linux 那侧写的是 UTF-8，分块边界可能落在一个汉字中间，凑齐整行再交出去）。**本地化**：无（全在本仓自己的插件内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」）。**没改界面**，所以没有真浏览器取证（见该节） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· 插件自己的 `typecheck` **`EXIT=0`** · `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（67 通过 + 1 跳过 = 68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过** · web **255 文件 / 3120 通过 / 2 跳过** · hmr 无测试文件 · 插件 `pnpm --filter @lmliheng/penguin-plugin-sandbox-wsl test` **32 通过**（`test/host.test.ts` 7 + `test/profile.test.ts` 25，上游记的也是 32）· **反证（单测）**：把 `src/host.ts` 退回 `HEAD`（用例留着）→ **3 failed / 29 passed**，红的正是 UTF-16LE 那两条（`it.each([false, true])`）与「两条流各自解码」那条，实际收到的乱码是 `���͑�e/T�R Windows0`；放回本笔 → **32 全过** · **额外的一条真字节证据**（不经 vitest，探针在 scratchpad）：用 `iconv -f UTF-8 -t UTF-16LE`（与 `-t UTF-8`）**真程序**产出的字节，按 1 / 2 / 3 / 末字节四种切法分成两块再 `Buffer.concat` 交给源码里的 `decodeOutput()` —— 三种编码 × 四种切法**12 例全部与原文逐字相同**，而同一批字节走改前的「按 UTF-8 读再删 NUL」在 UTF-16LE 那两组上分别得到 `*g�[ň…` / `��*g�[ň…` · 本笔不碰界面也没有新的界面面，因此**没有起服务 / 没有 Playwright**：设置卡片本身一字未改，它渲染的是插件交给它的文本，而这条路径的改前改后已由上面两组证据覆盖（插件只在 Windows + WSL 上有真实运行面，本机是 Linux）· 端口一个没碰（没有起服务），数据一个字节没往 `/root/.penguin` 或仓库里写 | `见本行提交` |
+| 2026-10-15 | 5.40 | **成本中心的错误提醒：标记已读要覆盖这次打开读到的错误，重启后保持已读**（上游 `591f091d` `#1118` 移植，照改动落、不是合分支；4 文件 / +155 −13，其中源码 2 个（`usage-page.tsx` +3 −3、`todo-dismissals.ts` +13 −10）、另有 changelog 一对）：成本中心读的是屏幕上那一档范围里的错误，而「标记为已读」写下的却是**应用启动时**缓存的那个时间戳 —— 应用打开之后到达的错误也被这条标记算作已读，重启后它又把提醒重新抬起来。现在 `load()` 开头先 `refreshProjectTodos(projectId)`（表格与标记因此指同一条最新错误），`dismissTodo` 改成**写入成功之后**才收起提醒（失败 `toastError(apiErrorText(e))`、留着重试），并加一条模块级写队列 `saving`：连续标记按顺序写，每份 map 都从上一次成功的写入上叠，先发的请求不会覆盖后写的标记。**本地化**：只把上游的 `@prismshadow/penguin-ui` 换成本仓的`@lmliheng/penguin-ui` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· web **255 文件 / 3120 通过 / 2 跳过**（本笔没有加用例）· server **197 文件 / 2833 通过 / 4 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，应用内换页以保住「应用启动时」的探针缓存）**：数据根 `/root/adelie-fork-data/r62-{after2,before}`、`localhost:8952` / `8953`，两行「未预期错误」直接写进 `error_records`（不需要模型 key，即 3.6 那个卡点）。**改后**：提醒写「**2** 条未预期错误」、存下的是**新**时间戳、重载后提醒与侧栏红点**都没了**（`r62/shots/after-3-after-reload.png`）；**改前**（`git checkout HEAD --` 两份源码 + 重建 + 同一条探针）：提醒写「**1** 条未预期错误」、存下的却是**旧**时间戳（`22:38:27.083Z`，而新错误是 `23:08:30.239Z`）、重载后提醒**又回来了**（`before-3-after-reload.png`）· **写入被拒那一半也两态量过**（`REFUSE=1`，`page.route` 回 400）：**改后**提醒留着 + 顶部 `Could not save read status` + `ui_prefs` 没写（`after-refuse-2-refused.png`）；**改前**提醒当场消失、**没有任何提示**、也没写（`before-refuse-2-refused.png`）· **「连续标记按顺序写」单独造的并发场景**（`r62/probe2.mjs`：把第一个 prefs 写入扣在网络层，再点成本中心与模型库两条提醒的「忽略」，模型库那条靠 `PUT …/models` 只留一条做出差量）：**改后**放行前只有 1 个请求、放行后第二个请求**同时带 `errors` 与 `models`**、最终两条都在、重载后模型库提醒不在；**改前**放行前**已经发出两个请求**、被扣住的第一个最后落库、服务端**只剩 `errors`**、重载后模型库提醒回来（`忽略 · 检测到变更：175 个新增，1 个可升级`）· 两态 console **0 error**、除那次刻意造的 400 外无 ≥400 · 端口只用 8951 / 8952 / 8953（用完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `b6fb4080` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -8827,3 +8847,114 @@ desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key�
   真实的 `iconv` 输出），但「真 Windows + 真 WSL 的设置卡片显示」仍未看 —— 与上游同一笔的「未验」一致
   （它自己写着「Windows UI 与提权安装未做」）。要收掉这条得有一台 Windows。
 - 上游这一轮新推上来的两笔（`#1133` / `#1140`）没有取，理由写在「待办」那段与上面「为什么是这一条」。
+
+## 第六十二轮：成本中心的错误提醒，标记已读后重启不再回来（2026-10-15，条目 5.40）
+
+### 开工自检
+
+- `git status --short` **干净**（输出为空），在 `main` 上；`git fetch origin && git merge --ff-only origin/main`
+  → `Already up to date.`（本地 HEAD `966c9f97` 就是主线头，也是第六十一轮那两笔收尾提交）。
+  **没有切分支、没有碰 `legacy/main`、没有推上游、没有改 remote 配置。**
+- **上游这一轮没往前走**：`upstream` 仍指着已经不存在的 `/root/penguin-harness`，照第二十三轮那条路按 URL
+  现拉（`git fetch https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-r62`）→ 尖端仍是 **`2b8116ce`**，与第六十一轮拉到的
+  `r61` 同一个提交。所以这一轮不挑新提交，改从桌上已量过的候选里取。
+- **轮次提示里给的 typecheck 过滤串仍是旧的**（`@prismshadow/penguin-*` 在本树不存在），照那个串只会得到
+  `No projects matched`；本轮用 `@lmliheng/…` 六个包跑，结果见下。`git push origin main` 这一轮也直接走通
+  （第六十一轮起 SSH 那把钥匙自己好了）。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里，本轮纪律不许碰
+desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的
+②③④要第二台机器、**5.6** 与 **5.10** 等用户拍板；而这一轮上游没往前走（见开工自检）。于是从桌上已量过的
+候选里挑 —— 第四十九 / 五十六 / 五十七 / 五十八轮都把它记在桌上，而且第五十六轮开头写的就是「**`#1118`
+（成本中心「标记已读」重启后失效）本来是最靠前的一笔**」，搁置的理由只有一个：**它自带的三份回归用例是
+`// @vitest-environment jsdom` 的**，而本树 `packages/web` 的测试跑在 node 环境、依赖里没有 jsdom
+（装它就是引入新依赖，轮次纪律明令禁止）；第五十六 / 五十七轮把「要不要给 `packages/web` 装 jsdom」记为
+**要用户拍板**的事。
+
+本轮的口径：**源码照落，回归证据改用真服务端 + 真浏览器把改前改后两态都量出来** —— 这条真缺陷本身与
+jsdom 无关，缺的只是取证手段；于是那条卡点不再挡路，而「要不要装 jsdom」这件事一个字没动，仍留给用户。
+
+### 改了什么（4 文件 / +155 −13：两份源码 + changelog 一对）
+
+- **`packages/web/src/features/usage/usage-page.tsx`**（+3 −3）：`load()` 开头加一句
+  `refreshProjectTodos(projectId)`，注释写明「提醒要认的是这次访问取到的错误，不是应用启动时缓存的那个
+  时间戳，否则它们会在刷新之后重新变成未读」；错误面板 `onCleared` 里那句刷新删掉（清空之后本来就要
+  `load()`，注释改成「重新加载表格与它的提醒」）。
+- **`packages/web/src/lib/todo-dismissals.ts`**（+13 −10）：加一条模块级写队列 **`saving`**；
+  `dismissTodo` 从「先落本地状态、再 fire-and-forget 一个 PUT，失败吞掉」改成「排队 → 从当下状态取 map →
+  同样的签名就不写 → `await api.putPrefs` → **写成功之后**才 `setState`」，失败走
+  `toastError(apiErrorText(e))`。`map === null`（还没读到标记）仍然什么都不做。
+- **changelog 一对**（`changelog/unreleased/2026-10-15-error-read-status{,.zh}.md`）：按本仓惯例改名到本轮
+  日期、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#1118，提交 `591f091d`）」，正文写「改了什么」。
+- **本地化**：只有一处 —— 上游 import 的是 `@prismshadow/penguin-ui`，本仓是 `@lmliheng/penguin-ui`
+  （4.1 之前的包名口径）。`apiErrorText` 与本树已有的 `schedule-panel.tsx` 等调用点完全一致。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .`
+  干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**
+  （37 文件）· web **255 文件 / 3120 通过 / 2 跳过**（本笔没有加用例，所以与第六十一轮同一个数）·
+  server **197 文件 / 2833 通过 / 4 跳过** · hmr 无测试文件。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态）**。数据根 `/root/adelie-fork-data/r62-{after2,before}`，
+  `localhost:8952`（改后）/ `8953`（改前），`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie；
+  两行「未预期错误」直接写进 `error_records`（`ts` 一个比另一个早 30 分钟）—— 不需要模型 key（即 3.6 那个
+  卡点）。探针（`r62/probe.mjs`）刻意**用侧边栏链接在应用内换页**，因为提醒的探针是模块级缓存的，
+  只有不重载文档才留得住「应用启动时那个时间戳」：
+  1. 打开应用（探针缓存下第一条错误的 `ts`）→ 插第二条错误 → 点侧边栏进成本中心；
+  2. 点「标记为已读」（`aria-label` 以「标记为已读」开头的那个按钮）→ 重载文档（新客户端，探针重取）。
+
+  **改后**：成本中心的提醒写「**2** 条未预期错误」（加载时刷新了探针）、`PUT /api/me/prefs` 存下的是
+  **新的那个时间戳**、重载之后提醒**不在了**（截图 `r62/shots/after-3-after-reload.png`：页面上方没有提醒、
+  侧栏「成本中心」上也没有红点）。
+  **改前**（`git checkout HEAD --` 两份源码 + 重建 web + 同一条探针）：提醒写「**1** 条未预期错误」（探针停在
+  应用启动那一刻）、存下的却是**旧的那个时间戳**（实测 `uiPrefs.todoDismissed.default_project.errors` =
+  `22:38:27.083Z`，而新错误是 `23:08:30.239Z`）、重载之后提醒**又回来了**（截图
+  `r62/shots/before-3-after-reload.png`：「2 条未预期错误」+ 侧栏红点）—— 与上游那篇报告逐条对上。
+- **写入被拒那一半也两态量过**（同一份探针加 `REFUSE=1`，用 `page.route` 让 `PUT /api/me/prefs` 回 400）：
+  **改后** —— 提醒**留着**（`标记为已读 · 2 条未预期错误`）、顶部弹出 `Could not save read status`、
+  `ui_prefs` 一个字节没写（截图 `r62/shots/after-refuse-2-refused.png`）；放行后重试成功、重载后不再回来。
+  **改前** —— 提醒**当场消失**、**没有任何提示**、`ui_prefs` 里也什么都没写（截图
+  `r62/shots/before-refuse-2-refused.png` 里那张卡片已经不在了）—— 用户看到的是「标记成功了」，实际什么都没存。
+- **「连续标记按顺序写」这一条也单独造了并发场景**（`r62/probe2.mjs`）：在 `page.route` 里把**第一个** prefs
+  写入扣在网络层不放行，然后先去成本中心点「标记为已读」、再用侧边栏去模型库点那条提醒的「忽略」（模型库的
+  提醒靠 `PUT …/models` 只留一条把预置目录的差量做出来），最后放行第一个请求：
+  **改后** —— 放行前**只有**成本中心那一个请求发出（模型库那次还在队里），放行之后第二个请求才发，
+  **且它携带的 map 已经同时含 `errors` 与 `models` 两条标记**；最终 `ui_prefs` 两条都在，重载后模型库的提醒
+  **不在了**。**改前** —— 放行前**两个请求都已经发出**（没有队列），而被压住的第一个请求最后落库，
+  于是服务端的 map 里**只剩 `errors`**（模型库那条被覆盖掉），重载后模型库的提醒**回来了**
+  （`忽略 · 检测到变更：175 个新增，1 个可升级`）。两态各有原始记录与截图（`r62/shots/*-queue-*.png`）。
+- 两态全程：console **0 error**（只有上面那次刻意造的 `400 PUT /api/me/prefs`）、**没有别的 ≥400**；
+  端口只用 8951 / 8952 / 8953（用完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r62-*`，截图与探针都在 scratchpad，**没有进仓库**。
+
+### 没做 / 还差什么
+
+- **上游那三份回归用例仍未搬过来**：它们是 `// @vitest-environment jsdom` 的，本树 `packages/web` 没有
+  jsdom（装了就是引入新依赖）。本轮的替代是上面那两组真浏览器两态取证；**「要不要给 `packages/web` 装
+  jsdom」仍是要用户拍板的事**（第五十六 / 五十七轮就记着），本轮一个字没动。
+- **没有为它新增单测**：这条逻辑在 node 环境下够不到（`dismissStore` 的 map 只有 `useTodoDismissals` 的
+  eager 分支会去 hydrate，而渲染一个 React 组件正是本树的 node 测试做不到的事），所以没有硬凑一个测不到
+  东西的用例。
+- 上游这一轮没有新提交可挑，桌上还没取的候选依旧是：`#1131`（只改两行 Console 主题 CSS、看不出「真缺陷」）、
+  `#1114`（429 与传输中断分开归类，用例有冲突）、`#1096`（子智能体描述字号，姊妹笔 `#1110` 已落）、
+  `#1049` / `#1051` / `#1069` / `#1074` / `#1067` / `#1072` / `#1073` / `#835` / `#1071`（各自要本树没有的
+  文件或冲突）。**下一轮**建议按同一判据在 `#1096` 与 `#1114` 里挑（前者本机可用 mock 模型造出真子会话
+  把字号量出来，后者只有一处用例冲突）。
+
+### 收尾：提交、推送与汇报
+
+- `b6fb4080` **fix(web): keep the cost center's error notice read after a restart (#1118)**（4 文件 /
+  +155 −13：两份源码 + changelog 一对）—— 提交正文写明「Ported from upstream PenguinHarness (#1118,
+  commit `591f091d`)」以及「上游回归要 DOM 环境、本树没有，所以改用真服务端 + 真浏览器两态取证」。
+- 其后一笔只动台账（本文件）；两笔一起 `git push origin main`。
+
+### 汇报邮件（仍未发出，第 22–62 轮同一处网络卡点）
+
+- 按 csu-mail 技能先自检、再真发一次，结果与第 22–61 轮同一处卡点：本机到中南大学网段
+  `202.197.0.0/16` 整片不通（与凭据无关）。正文写在 scratchpad 里并按第十轮起的老办法入重发队列
+  （`csu-mail-retry.toml` 加第 40 条），同时照第 36 轮起的替代通道用飞书发一条三五句话的简报。
