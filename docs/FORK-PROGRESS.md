@@ -301,6 +301,20 @@
 这一撮仍按「不引入新依赖、不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用仍是
 `refs/adelie-tmp/upstream-main-probe`。
 
+**上游 `main` 又往前走了（2026-10-14 第五十八轮拉到 `a129b42e`）**：第五十七轮拿到的头是 `d1db5ba8`，
+它之后新推上来 **12 笔**，逐笔量过（文件数 / 增删）—— 大件与文档面的是 `#1126`（`6574ed6b`，61 文件 /
++1131 −301，自定义背景与毛玻璃导航）、`#1132`（`a129b42e`，21 / +175 −115，中文加粗与 README 署名）、
+`#1130`（`b5967752`，8 / +156 −9，响应式 SVG 预览与默认提示词）、`#1129`（`509ca320`，6 / +107 −77，
+只改 web 的四份源码扫描用例）；碰流水线与桌面壳的是 `#1124`（`1541f2af`，5 / +52，安装包里去掉 workspace
+manifest）与 `#1123`（`76bbebbe`，5 / +171 −28，桌面壳从 POSIX shell 起 Windows CLI）；模型目录类是
+`#1127`（`324d46aa`，12 / +117 −20，加 Gemini 4 Argon）与 `#1122`（`64c08cb9`，12 / +53 −29，改模型 id）；
+小件里 **`#1128`（`8f747606`，4 文件 / +142 −34，切回 Session 时恢复面板全屏）第五十八轮落进 5.37**，
+另有 `#1131`（`bba0e3c9`，3 / +22 −2，只改 `geek.css` 两行：Console 主题的图表折线改直线）、
+`#1114`（`77036d31`，6 / +90 −2，429 与传输中断分开归类 —— 用例有冲突）、
+`#1125`（`842571de`，5 / +140 −18，sandbox-wsl 的设置里保住中文诊断）。这一撮仍按「不引入新依赖、
+不碰桌面壳 / 包名 / 流水线」的判据挑。探针引用是 `refs/adelie-tmp/upstream-main-latest4`（要清就
+`git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -744,6 +758,21 @@
       轮次纪律明令禁止），`#1096`（子智能体描述的字号）要真界面造子会话、且不带用例；`#1110` 本树有全部文件、
       `git apply -3` 逐字干净、自带两条 node 环境的用例（本树跑得起来），且是一条用户看得见的真缺陷。
       细节与实测见「第五十七轮」一节。
+- [x] **5.37 切回 Session 时，面板仍停在原来的全屏状态**（上游 `8f747606` `#1128`，**2026-10-14 第五十八轮
+      落地**，提交见该节）：切到别的 Session 再切回来，停靠面板总是普通尺寸 —— 切换本身把全屏状态清掉了
+      （`switchScope` 里的 `fullscreen = null`，那里的注释还写着「全屏属于当下这一刻，不属于这段对话」）。
+      现在全屏跟着**停靠布局**走、记在内存里：`let fullscreen: DockPosition | null` 换成
+      `WeakMap<ScopeLayout, DockPosition>`（`fullscreenByLayout`），`fullscreenDock()` 按当前布局读、
+      `setDockFullscreen()` 按当前布局写或删；`reconcileFullscreen(candidate = layout)` 与
+      `fullscreenEligible(position, candidate = layout)` 都收一个布局参数，因此剪掉某个不在前台的 Session
+      的最后一个终端时也能把它的全屏一并收掉（`pruneTerminalTabs` 对每个非前台 scope 调一次）；跨窄屏断点
+      仍整张重建（`fullscreenByLayout = new WeakMap()`），刷新仍从普通尺寸开始，localStorage 格式一字未改。
+      **为什么是这一条**：表上最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10（各处仍不可做
+      或明令不动），上游这一轮按 URL 现拉到 `a129b42e`（比第五十七轮的 `d1db5ba8` 多 12 笔），逐笔量过之后
+      这一笔是其中**唯一 `git apply -3` 逐字干净、要改的两份文件与它父提交逐字节相同、自带四条 node 环境
+      用例（不用 jsdom、不引入依赖）、且是一条用户看得见的真缺陷**的（同批的 `#1131` 只改两行主题 CSS、
+      `#1114` 的用例有冲突、`#1124` / `#1123` 属流水线与桌面壳、`#1126` / `#1129` / `#1130` / `#1132`
+      是大件或文档面）。细节与实测见「第五十八轮」一节。
 - **第四十九轮的一件事：上游 remote 本机已不存在**。`/root/penguin-harness`（`upstream` 指的就是它）
       这一轮开工时已经没了（`git fetch upstream` → `'/root/penguin-harness' does not appear to be a git
       repository`），所以**本轮取不到新提交**，只能在仓库里已有的上游对象里挑 —— 探针
@@ -1358,6 +1387,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-14 | 5.34 | **手机上的频道消息有了足够的宽度**（上游 `9eae0a2d` `#826` 移植，照改动落、不是合分支；5 文件 / +91 −17，其中源码 2 个（`channel-bubble.css` +22、`channel-bubble.tsx` +33 −17）、既有用例 1 个 +16 −2、另有 changelog 一对）：手机上气泡过去最多占列宽的 **75%**、时间戳**另占一栏**（`flex items-end` 里 `shrink-0` 的那个 span），两者叠加把中文挤到每行七八个字。现在气泡的类名改成 `relative max-w-[88%] px-3 py-1.5 text-base leading-relaxed sm:max-w-[75%] sm:text-sm`（窄屏 88% 与 `text-base`，`sm` 及以上照旧 75% 与 `text-sm`），时间戳改成 `absolute bottom-1.5 right-3` 收在气泡右下角，正文在最后一行上给它留出一段行内空隙 —— `channel-bubble.css` 新增 `--channel-time-gap: 2.75rem`，末尾段落 / 列表最后一项 / 引用最后一行以 `::after` 的 `inline-block` 空隙收尾（`pre` / `table` 这类无法以空隙收尾的块改成 `margin-bottom: 1.125rem` 把那一行让到下面）；`footer != null` 时另渲染一个 `.channel-time-gap` 元素跟在 chip 行之后（那时 `::after` 够不到）。代码注释写明「时间收在角落、正文最后一行给它留位」的缘由。**本地化**：无（这一笔全在 `packages/ui` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 线上格式 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1025**（129 文件，本笔改的是既有那条 class 断言、未增用例）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，iPhone 13 宽 390px）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r55-bubble`、`localhost:8981` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie；`PUT /api/admin/settings {companyMode:true}` → `POST …/organizations {orgId:acme}` → `POST …/channels {channelId:site}` 造出真组织与真频道，再**手写** `channels/site/<日期>.jsonl` 里三行真消息（短句 / 63 字长句 / 一条带 `refs.ticket` 的）—— 不需要模型 key（即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，`isMobile` + 390×844 + DPR 2）打开 `/org/default_project/acme/channels/site`，逐气泡量「占列宽比 / 正文宽 / 字号 / 折行数 / 时间戳位置 / 与最后一行文字和 chip 的关系」——**改动后**：#0 短句 196px（列宽 362px 的 **54.1%**）、正文 16px、时间 `absolute` 停在 x=331 而最后一行文字到 318（**挨着字、不压字**）；#1 长句 319px = **88%**、正文 **295px**、**4 行**、时间贴在最后一行末尾；#2 带 refs 的一条 chip 右缘 315、时间 x=331（**让开了 chip**）、`channel-time-gap` **存在**。两态 console 各 **0 error**、无一条 ≥400。**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui` + 重建 web + 重启同一数据根 + **同一条探针** → #0 175px（48.4%）、正文 112px **14px**；#1 272px = **75%**、正文 208px、**5 行**；时间戳三条都是 `static` 且 x=331（**另占一栏**）、`channel-time-gap` **不存在**；随后把三份源码放回、重建、再跑一次 → 数字与上面「改动后」逐项一致。截图 `r55/after/channel-390.png` 与 `r55/before/channel-390.png`、原始测量 `r55/{after,before}-measure.json` 都在 scratchpad · 端口只用 8981，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `7abf1020` |
 | 2026-10-14 | 5.35 | **窗口底部的控件的悬停提示改在上方弹出**（上游 `9f9c0df3` `#1098` 移植，照改动落、不是合分支；3 文件 / +90 −36，其中源码 1 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` +61 −36）、既有用例 1 个（`test/tooltip.test.ts` +29，三条新用例）、另有 changelog 一对）：共享的悬停提示（`data-tooltip` / `<Tooltip>`，两者共用一个 `TooltipPanel`）过去一律把面板挂在控件下方 —— `belowTrigger` 只算水平那一侧、从不看视口高度。输入框工具条里的上下文圆环贴着窗口底边（本机 1280×900 实测：圆环 847–879，离底边 **21px**），一行 26px 的提示挂下去就有一部分落到窗口外（**改前实测 `top: 887px`、下缘 913 > 900，13px 被切**）。现在 `belowTrigger(rect, viewport, height = 0)` 先算「下方剩多少 / 上方有多少」：面板高度（渲染出来的 `offsetHeight`）超过下方余量、且上方更宽裕时，改以 `bottom: viewport.height − rect.top + PANEL_GAP` **由下边缘定位**，面板向上生长 —— 不必估算文字折几行。`TooltipPanel` 因此收控件的**盒子**（`anchor`）而不是算好的位置，自己在 layout 阶段（首帧之前）量高度再定位，面板不会先闪现在下方；`PanelPosition` 的 `top` 变可选、多一个 `bottom`。放得下就仍在下方，两侧都放不下则去空间更大的一侧；`right` 那一侧（竖栏）一字未动。上游同一文件在此提交之后还有一批重构（`extra` / `data-tooltip-owned` / 末行提示），本笔**只落这一提交的语义**，两处冲突按本树的旧写法手写解决。**本地化**：无（全在 `packages/ui` 内、无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件，**+3 即本笔新用例**）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3110 通过 / 2 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r56-tooltip`、`localhost:8982` 起真服务（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`），`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行（`s-r56-tooltip`）拿到一个带输入框的真会话页（不需要模型 key，即 3.6 那个卡点）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×900）悬停**输入框工具条里的上下文圆环**并读 `[data-testid="tooltip"]`：**改动后** —— 面板的内联样式是 `bottom: 61px`（**由下边缘定位**）、落在 y **813–839**，**整块在窗口内**、离底边 61px（`cutOffBelow: false`、`clearOfBottomEdge: true`）、文字「上下文占用 0% · 0/256k」；**反证（真界面，改前源码）**：`git checkout HEAD -- packages/ui/.../tooltip.tsx` + 重建 web + **同一条探针** → 内联样式是 `top: 887px`、落在 y **887–913**，**13px 落到窗口外**（`cutOffBelow: true`）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · **回归对照（同一轮同一探针）**：窗口顶部的图标按钮（`下侧栏`）两态都仍是 `top: 73px`（**向下弹**，没有多余的上翻）；矮窗口（1280×520）里圆环同样上翻（`bottom: 61px`）、顶部按钮同样向下 · 两态 console 各 **0 error**、无一条 ≥400 · 截图 `r56/{after,before}/ring-hover{,-crop}.png` 与 `dock-hover.png`、原始测量 `r56/{after,before,after-measure2,after-short}-measure.json`、探针 `r56/probe.mjs` 都在 scratchpad · 端口只用 8982，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `65615e04` |
 | 2026-10-14 | 5.36 | **跨轮次保留运行中的子智能体**（上游 `355d6b10` `#1110` 移植，照改动落、不是合分支；2 文件 / +97 −4，其中源码 1 个（`packages/web/src/features/chat/agent-topology.ts` +18 −4）、既有用例 1 个（`packages/web/test/agent-topology.test.ts` +79，两条新用例），另有 changelog 一对）：后来的一条消息开启新一轮任务时，`extractTopology` 只用**最新那一轮**的切片重建图，上一轮派出去、仍在后台跑的子智能体因此整块从面板上消失（卡片、会话、耗时一起没了），而运行时仍报告它「运行中」。现在 `extractTopology` 把自己那批「运行时报告为运行中」的已加载子节点（按卡片的子会话 id 取，`tool_call` 取 `subagentSessionId`、`subagent` 取 `sessionId`，`liveStates.get(id) === true`）作为第三批 items 交给 `extractFromSlice`，后者在切完最新那一轮之后再 walk 一遍这批 —— 于是它在最新一轮的子节点旁边保留原有卡片与自己那条会话，任务一结束（`liveStates` 转 false）就不再进图；`extractTopologyForChild` 不传这一批，显式的历史 chip 选择仍只显示那一轮（同名子节点照旧按 session id 去重）。文件头与两处注释写明「后台子智能体的命可以长过派它的那一轮」的缘由。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3112 通过 / 2 跳过**（**+2 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `agent-topology.ts` 退回 `HEAD`、只跑 `test/agent-topology.test.ts` → **1 failed / 35 passed**（「keeps an earlier running child visible…」那条：`["root","references","paper"]` 少了 `"paper"`），换回本笔 → **36 全过** · **本轮主证据（真服务端 + 真浏览器 + 仓库自带的 mock 模型，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r57-after`、`localhost:8940`（`ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`PUT …/models` 把 `custom` provider 指到 mock（`packages/web/e2e/mock-llm.mjs` 的 scratchpad 变体：`run_in_background` 的子智能体改跑 `sleep 60`，父轮照旧收尾 —— **不需要模型 key**，即 3.6 那个卡点），真浏览器 1280×720 依次发「long running subagent probe」（父轮派一个 60 秒的后台子会话）与「run another subagent」（**第二轮任务**，再派一个会很快结束的子会话），再从工具栏打开智能体面板量默认调用图：**改动后** —— `graphNodes` **3**（`General Agent · 已完成`（根）、`General Agent · 已完成 1.1s`（第二轮的子会话，选中）、`General Agent · 运行中 8s`（**第一轮那个仍在跑的子会话，留着**）），截图 `r57/after5/panel.png`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/agent-topology.ts` + 重建 web + **同一条探针** → `graphNodes` **2**（只剩根与第二轮的子会话，**第一轮那个运行中的子节点整块不见**，`runningNodes: 0`），截图 `r57/before2/panel.png`；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：服务端确实建出了**两个**子会话（`children` 两条）、两端 console **0 error**、除本 App 正常的 `/api/me` 401 与 `/api/projects/:p/machines` 403 外**无一条 ≥400** · **顺带跑的 e2e 回归**：`background-subagent.spec.mjs` **2/2 通过**；`subagent.spec.mjs` 4 条里 **3 条在改前改后同样失败**（用改前产物在同一数据根上跑过一遍对照）——失败原因都是本树既有的选择器/交互前提（`getByPlaceholder(/输入消息/)` 同时命中面板里子会话的输入框；「待审批」的琥珀点找不到），与本笔无关 · 端口只用 8940（mock 8942），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r57-*` | `8d334447` |
+| 2026-10-14 | 5.37 | **切回 Session 时，面板仍停在原来的全屏状态**（上游 `8f747606` `#1128` 移植，照改动落、不是合分支；4 文件 / +154 −34，其中源码 1 个（`packages/web/src/features/dock/dock-state.ts`）、既有用例 1 个（`packages/web/test/dock-state.test.ts` +104，**四条新用例**）、另有 changelog 一对）：全屏过去是**一个全局变量**（`let fullscreen: DockPosition \| null`），`switchScope()` 里一句 `fullscreen = null` 把它按「属于当下这一刻、不属于这段对话」清掉 —— 于是切到别的 Session 再切回来，面板总是普通尺寸。现在它跟着**停靠布局**走：换成 `fullscreenByLayout = new WeakMap<ScopeLayout, DockPosition>()`（弱键让被淘汰的 scope 自己走，不需要第二份保留表），`fullscreenDock()` 按当前 `layout` 读、`setDockFullscreen()` 按当前 `layout` 写或删、`reconcileFullscreen(candidate = layout)` 与 `fullscreenEligible(position, candidate = layout)`（连同 `mergedViewHasTabs(candidate)`）都收一个布局参数；`switchScope()` 改成对**新切到的**布局跑一次 `reconcileFullscreen()`（不在前台的 Session 可能在别的会话在前台时被剪掉最后一个终端），`pruneTerminalTabs` 对每个非前台 scope 也调一次；跨窄屏断点仍整张重建（`fullscreenByLayout = new WeakMap()`），刷新仍从普通尺寸开始，**localStorage 格式一字未改**（那条「全屏从不写进存储」的用例改成「刷新后标签与 `bottomRatio` 都在、全屏不在」）。文件头与 `setDockFullscreen` 附近的注释一并改写成「全屏按布局记在内存里」。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3116 通过 / 2 跳过**（**+4 正是本笔新用例**）· hmr 无测试文件 · **反证（单测）**：把 `dock-state.ts` 退回 `HEAD`、只跑 `test/dock-state.test.ts` → **3 failed / 41 passed**，红的正是三条跨 Session 的行为（「restores each Session's fullscreen independently and remembers an explicit exit」「hands a draft's fullscreen to its new Session without clobbering an existing layout」「clears all Sessions on a breakpoint change and remembers fullscreen in the merged view」），换回本笔 → **44 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r58-after`、`localhost:8941`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插**两行**（`r58-probe-session` / `r58-probe-session-b`）拿到两个能互相切换的真会话页（不需要模型 key，即 3.6 那个卡点；草稿页 `/chat/new` 没有停靠栏工具条，所以用两个会话而不是「草稿 + 会话」）。Playwright（`playwright@1.61.1` + 本地 chromium-1243，`--no-sandbox`，1280×800）在 A 里把右侧「记忆」面板开成全屏、切到 B 再把底部「记忆」开成全屏，然后切回 A、切回 B，逐次读 `[data-testid="dock"]` 的 `data-fullscreen` 与它里面 `[data-testid="dock-header"]` 的宽度：**改动后** —— 回 A 时 `data-fullscreen="full"`、面板头 **992px**（覆盖整行），回 B 时底部同样 `"full"`；**反证（真界面，改前源码）**：`git checkout HEAD -- …/dock-state.ts` + 重建 web + 重启同一数据根 + **同一条探针** → 回 A 时 `data-fullscreen` **消失**、面板头只剩 **512px**（普通列宽），回 B 时同样消失；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致。两态都：console **0 error**、**无一条 ≥400**；截图 `r58/shot-{after2,before}-3-session-a-again.png`（改前那一张里右侧是一条 512px 的窄列、对话区还看得见；改后同一张里面板铺满整行）与 `shot-*-1/2/4-*.png`、原始记录 `r58/probe.mjs`、探针日志都在 scratchpad · 端口只用 8941，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ead8d213` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -8224,3 +8254,113 @@ TokenDance 促销那套进本树（`model-catalog.ts` 冲突 5 处）、`#1090` 
 - 两笔一起推（`5c296c68..f7d04d57`）—— run **`38528181597`**（`f7d04d57`）**`completed success`**，
   **22 个作业全绿、`NOT SUCCESS: []`**。
 - 本笔只改 `packages/web` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动。
+
+## 第五十八轮：切回 Session 时，面板仍停在原来的全屏状态（2026-10-14，条目 5.37）
+
+### 开工自检
+
+- `git status --short` **干净**（输出为空）；`git fetch origin && git merge --ff-only origin/main` →
+  `Already up to date.`（头是 `a82e4856`，第五十七轮那三笔）。
+- **上游这一轮照第二十三轮那条路按 URL 现拉**：`upstream` 仍指着已经不存在的 `/root/penguin-harness`，
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-latest4` → 尖端 **`a129b42e`**
+  （`Fix Chinese bold formatting and update README team credits (#1132)`），它相对第五十七轮拉到的
+  `d1db5ba8` 多 **12 笔**（逐笔量与去向写在「待办」那一段里）。**没有碰 remote 配置、没有切分支、
+  没有推上游。**
+- 逐笔量过之后要挑的那一笔就是 `#1128`（`8f747606`）：它要改的两份文件（
+  `packages/web/src/features/dock/dock-state.ts` 与 `packages/web/test/dock-state.test.ts`）在本树里与
+  它**父提交逐字节相同**（`git diff` 空输出，两边都 845 / 552 行），所以 `git show 8f747606 | git apply -3`
+  是四个文件全部 `Applied … cleanly` —— 这一轮是移植里最干净的一种：本树就是那个父提交。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里）、**3.5** 要用户
+拍板取哪个桌面壳且本轮不许碰 desktop、**3.6** 要模型 key（卡点），**4.1–4.3** 明令不动，**5.3** 的②③④要
+第二台机器，**5.6** 与 **5.10** 等用户拍板。新拉到的 12 笔里，能整块落地的四笔按规模与证据排：
+
+- **`#1128`**（`8f747606`，4 文件 / +142 −34）自带**四条** node 环境用例（不用 jsdom、不引入依赖），
+  一条用户看得见的真缺陷（切走再切回来，全屏被忘掉），而且本树就是它的父提交（见上）。
+- **`#1131`**（`bba0e3c9`，3 文件 / +22 −2）只把 `packages/ui/src/themes/geek.css` 两行改掉（Console 主题
+  图表折线改直线）—— 没有用例，要造出带数据的图表才看得见，证据面不如上一笔。
+- **`#1114`**（`77036d31`，6 文件 / +90 −2）把 429 从传输中断里分出来，是一条真修复，但
+  `test/llm.test.ts` 那一处冲突要手写（本树的用例与它父提交有差），且不像上一笔那样用户直接看得见。
+- **`#1125`**（`842571de`，5 文件 / +140 −18）在 sandbox-wsl 的设置里保住中文诊断 —— 碰的是
+  `plugins/sandbox-wsl`，本笔只对 Windows 上的 WSL 沙盒有意义，本机验不出行为。
+
+大件与**明令不动**的一并记在「待办」那一段：`#1126`（61 文件）、`#1132`（21 文件，文档与 README）、
+`#1130`（8 文件）、`#1129`（6 文件，只改 web 的四份源码扫描用例）、`#1124`（安装包 / 流水线）、
+`#1123`（桌面壳）、`#1127` / `#1122`（模型目录，改的是在架条目）。
+
+### 改了什么（4 文件 / +154 −34，含 changelog 一对）
+
+- **`packages/web/src/features/dock/dock-state.ts`**（源码唯一改动处）：`let fullscreen: DockPosition | null`
+  换成 `let fullscreenByLayout = new WeakMap<ScopeLayout, DockPosition>()`，全屏从「当下这一刻」变成
+  「这段布局的」。逐处：`fullscreenDock()` 读 `fullscreenByLayout.get(layout) ?? null`；
+  `setDockFullscreen(position)` 按当前布局写或删（`null` → `delete`，否则 `set`），相等判断也改成
+  `position === fullscreenDock()`；`reconcileFullscreen(candidate: ScopeLayout = layout)` 与
+  `fullscreenEligible(position, candidate: ScopeLayout = layout)` 收一个布局参数（`mergedViewHasTabs`
+  同理，从读模块级的 `isDockVisible` / `hasTabs` 改成读传进来的那个布局的 `open` 与 `tabs`）；
+  `switchScope()` 里那句 `fullscreen = null` 换成对新切到的布局跑一次 `reconcileFullscreen()`
+  （理由写在注释里：不在前台的 Session 可能在别的会话在前台时被剪掉最后一个终端）；
+  `pruneTerminalTabs` 对每个非前台 scope 补一次 `reconcileFullscreen(s)`；跨窄屏断点仍整张重建
+  （`fullscreenByLayout = new WeakMap()`）。文件头上那段「这是唯一一处 transient 状态」的说明与
+  `fullscreenByLayout` 的注释一并改写。**localStorage 格式一字未改**：全屏照旧从不写进存储。
+- **`packages/web/test/dock-state.test.ts`**（+104，**四条新用例**）：①两个 Session 各持自己的全屏
+  （A 右侧、B 底部），切回来各自仍在，显式退出的那个回来仍是退出态；②草稿的全屏交给它第一条消息创建的
+  Session，且不覆盖已存在的布局（草稿自己回到普通尺寸）；③`it.each` 两条 —— 不在前台的 Session 被剪掉
+  最后一个终端后，即使另一个终端先回到那里，切回去也不再全屏；④刷新后标签与 `bottomRatio` 都在、全屏不在
+  （取代原来那条「全屏从不写进存储」，它顺手把存储形状断言换成了行为断言）。断点那条：跨窄屏清掉所有
+  Session 的全屏，而窄屏（合并视图）里选的全屏仍能跨 Session 保留。文件头补了五条场景说明。
+- **changelog 一对**：按本仓惯例改名到本轮日期（`2026-10-14-session-dock-fullscreen{,.zh}.md`）、
+  去掉上游 PR 行、写明「移植自上游 PenguinHarness（#1128，提交 `8f747606`）」与
+  「接口与已存数据都没有变化」。
+- **本地化**：无 —— 这一笔全在 `packages/web` 内，没有跨包 import，也没有 `@prismshadow/` 之类的引用点。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  580 类型）**，本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**
+  （37 文件）· server **197 文件 / 2832 通过 / 4 跳过** · web **255 文件 / 3116 通过 / 2 跳过**
+  （比上一轮 **+4**，正是本笔新用例）· hmr 无测试文件。
+- **反证（单测）**：把 `dock-state.ts` 退回 `HEAD`、只跑 `test/dock-state.test.ts` →
+  **3 failed / 41 passed**，红的正是三条跨 Session 的行为（A/B 各自的全屏、草稿的交接、断点清空后窄屏的
+  全屏）；把本笔换回去 → **44 全过**。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：
+  - **怎么造出「两个能互相切换的真会话」**：重建 web 产物后，一次性数据根
+    `/root/adelie-fork-data/r58-after`、`localhost:8941`（`ADELIE_PROFILE=dev` +
+    `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions`
+    表插两行（`r58-probe-session` / `r58-probe-session-b`）—— 不需要模型 key（即 3.6 那个卡点）。
+    **草稿页为什么不用**：`/chat/new` 上根本没有停靠栏工具条（`dock-toggle-*` 一个都没有），
+    所以「草稿 + 会话」这对在界面上量不出行为，改用两个会话。
+  - **流程**（真浏览器 1280×800，`playwright@1.61.1` + 本地 chromium-1243）：在 A 里打开右侧「记忆」面板
+    并点全屏（`[data-testid="dock-fullscreen"]`），切到 B（侧栏行），在 B 里把底部「记忆」开成全屏，然后
+    切回 A、再切回 B，每次读 `[data-testid="dock"]` 的 `data-fullscreen` 与它里面
+    `[data-testid="dock-header"]` 的宽度。
+  - **改动后**：回 A 时 `data-fullscreen="full"`、面板头 **992px**（铺满整行），回 B 时底部同样 `"full"`；
+    两个 Session 的布局互不干扰（A 里没有底部面板、B 里没有右侧面板）。
+    `{"aAgainRightFull":"full","bAgainBottomFull":"full"}`。
+  - **反证（真界面，改前源码）**：`git checkout HEAD -- …/dock-state.ts` + 重建 web + 重启同一数据根 +
+    **同一条探针** → 回 A 时 `data-fullscreen` **属性消失**、面板头只剩 **512px**（普通列宽，对话区
+    还看得见），回 B 时同样消失：`{"aAgainRightFull":null,"bAgainBottomFull":null}`。把源码放回、重建、
+    再跑一次 → 数字与「改动后」逐项一致。
+  - 两态都：console **0 error**、**无一条 ≥400**；截图 `r58/shot-{after2,before}-3-session-a-again.png`
+    最直观 —— 改前是「面板当窄列、对话在左」，改后是「面板铺满整行」。
+- 端口只用 8941，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r58-after`。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出。
+- **上游 remote 仍失效**：这一轮是**按 URL 现拉的**，拉到的对象落在本地
+  `refs/adelie-tmp/upstream-main-latest4`（临时引用，要清就 `git update-ref -d`）。要长期跟上游走，仍应由
+  用户把 `upstream` 指到一个能 fetch 的源。
+- **本轮量过、没移植的**：`#1131`（只改两行主题 CSS、无用例、要造带数据的图表）、`#1114`（用例冲突要手写）、
+  `#1125`（只对 Windows 上的 WSL 沙盒有意义）、`#1130` / `#1129`（一大一小、都不是用户看得见的缺陷）、
+  `#1126` / `#1132` / `#1124` / `#1123` / `#1127` / `#1122`（大件、文档面、流水线、桌面壳、模型目录）。
+- **下一轮**：`#1131` 与 `#1114` 是桌上剩的两笔可整块落地的（见上），另可继续按 URL 拉更新；
+  **「要不要给 `packages/web` 装 jsdom」仍是一条要用户拍板的事**（第五十七轮就记下了，装了 `#1118`
+  那类上游用例就能原样落），本轮再问一次；2.2c / 3.5 / 3.6 / 4.x / 5.3 / 5.6 / 5.10 照旧停在原地。
+- 中间物：会话 scratchpad 的 `r58/`（探针 `probe.mjs` 与它的探索版、`dock-state.fixed.ts` 留底、
+  两条 `server-*.log`、`shot-{before,after2}-*.png` 与 `explore.png`）。都未入库；探针没往仓库里放。
