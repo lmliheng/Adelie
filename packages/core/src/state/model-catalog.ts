@@ -23,7 +23,11 @@
  * from public model pages and endpoint listings — their windows, vision flags and prices are
  * NOT verified and say so on the rows themselves: 2026-09-18 and 2026-09-20; and the direct
  * Z.AI glm-4.7-flash row, the group's free tier, read from Z.AI's price list and
- * 智谱开放平台's free-model page: 2026-10-07).
+ * 智谱开放平台's free-model page: 2026-10-07; and the four Chinese first-party groups added
+ * together — Xiaomi MiMo, Baidu ERNIE, Tencent Hunyuan and iFlytek Spark — read from each
+ * vendor's own docs and console pages: 2026-10-15, with the iFlytek rows deliberately unpriced
+ * (its HTTP doc publishes no price list, and the product page's prices name model families it
+ * has published no API id for).
  * Docs: packages/docs/content/models.{zh,en}.md (site path /docs/models) documents the
  * provider groups and credential resolution described here.
  *
@@ -282,6 +286,14 @@ const TOKENDANCE_BASE_URL = "https://tokendance.space/gateway/v1";
 const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1";
+/** Xiaomi MiMo's pay-as-you-go endpoint (its batch and token-plan hosts are separate services with their own keys). */
+const XIAOMI_BASE_URL = "https://api.xiaomimimo.com/v1";
+/** Baidu Qianfan's OpenAI-compatible base: `/v2` — `/v1` is the retired interface. */
+const BAIDU_BASE_URL = "https://qianfan.baidubce.com/v2";
+/** Tencent Hunyuan's OpenAI-compatible endpoint. */
+const HUNYUAN_BASE_URL = "https://api.hunyuan.cloud.tencent.com/v1";
+/** iFlytek Spark's OpenAI-compatible endpoint (the WebSocket API is a different, signed protocol). */
+const IFLYTEK_BASE_URL = "https://spark-api-open.xf-yun.com/v1";
 export const PENGUIN_GO_BASE_URL = "https://token.penguin.ooo/api";
 /** OpenCode Go's OpenAI-protocol base: the clients append /chat/completions or /responses. */
 const OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1";
@@ -452,6 +464,66 @@ export const MODEL_PROVIDERS: ModelProviderInfo[] = [
     // against the same endpoint, so the group is not tied to either billing mode.
     apiKeyUrl: "https://platform.minimax.io/user-center/basic-information/interface-key",
     modelsUrl: "https://platform.minimax.io/docs/guides/models-intro",
+  },
+  {
+    // Xiaomi's own model platform (MiMo API Open Platform). OpenAI-compatible at the
+    // pay-as-you-go endpoint the preset rows inline (the same host's Anthropic-protocol path is
+    // not catalogued), keys from its console, so no oauth or bridgeAuth. AgentHub has no Xiaomi
+    // client, so every row pins `openai-chat` and names the endpoint; the group pins the same
+    // protocol, which is also what keeps it out of the OPENAI_* env fallback
+    // (providerEnvFallbackKey) — the pair below records what that generic client reads when a
+    // row is handed no endpoint, not a variable of Xiaomi's.
+    // https://mimo.mi.com/docs/quick-start/first-api-call, https://mimo.mi.com/docs/price/pay-as-you-go
+    id: "xiaomi",
+    label: "Xiaomi MiMo",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://platform.xiaomimimo.com/#/console/api-keys",
+    modelsUrl: "https://mimo.mi.com/docs/quick-start/summary/model",
+    clientType: "openai-chat",
+  },
+  {
+    // Baidu's Qianfan platform, serving the ERNIE line. Its OpenAI-compatible base is `/v2` —
+    // `/v1` is the retired interface, and nothing here derives the path from a `v1` habit.
+    // https://cloud.baidu.com/doc/qianfan-api/s/3m7of64lb (endpoint and auth),
+    // https://cloud.baidu.com/doc/qianfan/s/rmh4stp0j (model list), .../s/wmh4sv6ya (prices)
+    id: "baidu",
+    label: "Baidu ERNIE",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://console.bce.baidu.com/iam/#/iam/apikey/list",
+    modelsUrl: "https://cloud.baidu.com/doc/qianfan/s/rmh4stp0j",
+    clientType: "openai-chat",
+  },
+  {
+    // Tencent Hunyuan's own endpoint (the OpenAI-compatible one; Tencent also publishes an
+    // Anthropic-compatible path and the TC3-native API, neither catalogued). Tencent is moving
+    // this platform to TokenHub, so the console link below is the one its docs name today.
+    // https://cloud.tencent.com/document/product/1729/111007 (endpoint and auth),
+    // .../1729/104753 (model list), .../1729/97731 (prices)
+    id: "tencent",
+    label: "Tencent Hunyuan",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://console.cloud.tencent.com/hunyuan/start",
+    modelsUrl: "https://cloud.tencent.com/document/product/1729/104753",
+    clientType: "openai-chat",
+  },
+  {
+    // iFlytek Spark (讯飞星火). The OpenAI-compatible endpoint takes the console's APIPassword
+    // as a Bearer token; only the WebSocket API needs the appid/APIKey/APISecret signature, and
+    // nothing here uses it. The documented `model` values are still the 4.0 Ultra / Pro /
+    // Pro-128K / Lite names (the doc names no id for the newer X2.5 and X2 line-ups), and the
+    // doc's own model table dates from 2025 — see the rows in MODEL_CATALOG for what that means
+    // for their prices.
+    // https://www.xfyun.cn/doc/spark/HTTP%E8%B0%83%E7%94%A8%E6%96%87%E6%A1%A3.html
+    id: "iflytek",
+    label: "iFlytek Spark",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://console.xfyun.cn/services/cbm",
+    modelsUrl: "https://www.xfyun.cn/doc/spark/HTTP%E8%B0%83%E7%94%A8%E6%96%87%E6%A1%A3.html",
+    clientType: "openai-chat",
   },
   {
     id: "qwen-pay-as-you-go",
@@ -2881,6 +2953,173 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     pricing: usd(0, 0, 0),
     supportsVision: true,
     clientType: VLLM_CLIENT_TYPE,
+  },
+  // -- Xiaomi MiMo (first-party vendor: OpenAI-compatible, so every row pins the protocol and
+  // inlines the endpoint — AgentHub routes a bare `mimo-*` id nowhere). Ids, windows, vision
+  // flags and prices read off the MiMo open platform's model and price pages on 2026-10-15;
+  // its prices are CNY per million tokens (cache hit / input miss / output), which is the order
+  // `cny` takes. Left out: `mimo-v2.6-pro-ultraspeed` (the model page carries no capability
+  // column for it, so neither a window nor vision support could be read off it) and the v2.5
+  // pair the platform dates for retirement on 2026-10-21.
+  {
+    modelId: "mimo-v2.6-pro",
+    displayName: "MiMo V2.6 Pro",
+    provider: "xiaomi",
+    contextWindow: 1000000,
+    pricing: cny(0.025, 3, 6),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: XIAOMI_BASE_URL,
+  },
+  {
+    modelId: "mimo-v2.6-flash",
+    displayName: "MiMo V2.6 Flash",
+    provider: "xiaomi",
+    contextWindow: 1000000,
+    pricing: cny(0.02, 1, 2),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: XIAOMI_BASE_URL,
+  },
+  // -- Baidu Qianfan (ERNIE). Prices are the vendor's CNY per thousand tokens scaled to the
+  // million the catalog stores, read on 2026-10-15; the ≥32K-input tier of the ERNIE 5 rows
+  // (6 / 22 CNY) is not recorded, for the same single-rate reason the OpenAI rows record their
+  // base tier. `ernie-5.1` sits in the model list's text-generation section rather than the
+  // vision one, so its row is text-only. Qianfan also resells other vendors' models
+  // (DeepSeek, Qwen, GLM, Kimi); they are left out — each has its own group here.
+  {
+    modelId: "ernie-5.1",
+    displayName: "ERNIE 5.1",
+    provider: "baidu",
+    contextWindow: 131072,
+    pricing: cny(4, 4, 18),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: BAIDU_BASE_URL,
+  },
+  {
+    modelId: "ernie-5.0",
+    displayName: "ERNIE 5.0",
+    provider: "baidu",
+    contextWindow: 131072,
+    pricing: cny(6, 6, 24),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: BAIDU_BASE_URL,
+  },
+  {
+    modelId: "ernie-4.5-turbo-vl",
+    displayName: "ERNIE 4.5 Turbo VL",
+    provider: "baidu",
+    contextWindow: 131072,
+    pricing: cny(3, 3, 9),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: BAIDU_BASE_URL,
+  },
+  {
+    modelId: "ernie-4.5-turbo-128k",
+    displayName: "ERNIE 4.5 Turbo 128K",
+    provider: "baidu",
+    contextWindow: 131072,
+    // The one ERNIE row whose price list publishes a cache-hit rate (0.2 CNY); the others read
+    // their input price, as every row without a published cache price does.
+    pricing: cny(0.2, 0.8, 3.2),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: BAIDU_BASE_URL,
+  },
+  {
+    modelId: "ernie-x1.1",
+    displayName: "ERNIE X1.1",
+    provider: "baidu",
+    contextWindow: 65536,
+    pricing: cny(1, 1, 4),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: BAIDU_BASE_URL,
+  },
+  // -- Tencent Hunyuan. The windows are the model list's "maximum input" (Hunyuan publishes a
+  // separate maximum output beside it, which the catalog's single window cannot carry). Prices
+  // are the vendor's CNY per million tokens, read on 2026-10-15. Left out: the role-play and
+  // translation rows (single-purpose), the embedding row (not a chat model), and
+  // `hunyuan-turbos-latest` / `hunyuan-vision`, which the compatibility example names but the
+  // model list does not describe.
+  {
+    modelId: "hunyuan-a13b",
+    displayName: "Hunyuan A13B",
+    provider: "tencent",
+    contextWindow: 229376,
+    pricing: cny(0.5, 0.5, 2),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: HUNYUAN_BASE_URL,
+  },
+  {
+    modelId: "hunyuan-vision-1.5-instruct",
+    displayName: "Tencent HY Vision 1.5 Instruct",
+    provider: "tencent",
+    contextWindow: 24576,
+    pricing: cny(3, 3, 9),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: HUNYUAN_BASE_URL,
+  },
+  {
+    modelId: "hunyuan-t1-vision-20250916",
+    displayName: "Hunyuan T1 Vision",
+    provider: "tencent",
+    contextWindow: 28672,
+    pricing: cny(3, 3, 9),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: HUNYUAN_BASE_URL,
+  },
+  {
+    modelId: "hunyuan-turbos-vision-video",
+    displayName: "Hunyuan TurboS Vision Video",
+    provider: "tencent",
+    contextWindow: 24576,
+    pricing: cny(3, 3, 9),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: HUNYUAN_BASE_URL,
+  },
+  // -- iFlytek Spark. The `model` values and the windows are the HTTP doc's own table (Ultra
+  // 32K in / 32K out, Pro-128K 128K, Lite 8K; the Max pair the table also lists is left out —
+  // Spark states its Max plans went offline on 2026-03-10 and their traffic moved to Ultra).
+  // That doc publishes no price list, and the product page's prices name X2.5 / X2 model
+  // families for which iFlytek has published no API id, so those rows carry no price at all
+  // rather than a guessed or borrowed one; Lite is the one the doc calls free, and its zero is
+  // the vendor's. Both facts are why this group is the catalog's weakest: re-read it before
+  // trusting a row.
+  {
+    modelId: "4.0Ultra",
+    displayName: "Spark 4.0 Ultra",
+    provider: "iflytek",
+    contextWindow: 32768,
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: IFLYTEK_BASE_URL,
+  },
+  {
+    modelId: "pro-128k",
+    displayName: "Spark Pro-128K",
+    provider: "iflytek",
+    contextWindow: 131072,
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: IFLYTEK_BASE_URL,
+  },
+  {
+    modelId: "lite",
+    displayName: "Spark Lite",
+    provider: "iflytek",
+    contextWindow: 8192,
+    pricing: usd(0, 0, 0),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: IFLYTEK_BASE_URL,
   },
   // -- Custom (the group that otherwise holds only user-defined models). A preset may live
   // here only as a complete row — its own base URL and a pinned generic protocol — because the

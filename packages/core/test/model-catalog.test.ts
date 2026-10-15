@@ -68,6 +68,10 @@ describe("model-catalog", () => {
       "zhipu",
       "moonshot",
       "minimax",
+      "xiaomi",
+      "baidu",
+      "tencent",
+      "iflytek",
       "qwen-pay-as-you-go",
       "qwen-token-plan",
       "modelscope",
@@ -380,6 +384,11 @@ describe("model-catalog", () => {
       "deepseek-ai/DeepSeek-V4.1-Flash",
       "Qwen/Qwen3.8-27B",
       "Qwen/Qwen3.8-Flash-Next",
+      // iFlytek Spark's HTTP doc publishes no price list at all, and the prices on its product
+      // page name the X2.5 / X2 families, for which it has published no API id — so these rows
+      // are recorded as unpriced rather than priced from a neighbouring model.
+      "4.0Ultra",
+      "pro-128k",
     ]);
     for (const m of MODEL_CATALOG) {
       if (m.pricing === undefined) {
@@ -390,7 +399,8 @@ describe("model-catalog", () => {
         m.modelId === "openrouter/free" ||
         m.modelId === "Atria-Dawn-Preview" ||
         m.modelId === "dots-3-note-preview" ||
-        m.modelId === "glm-4.7-flash"
+        m.modelId === "glm-4.7-flash" ||
+        m.modelId === "lite"
       ) {
         // Self-hosted vLLM and the free-tier gateway rows share one treatment: a genuine $0
         // price (not "unknown"), so costs compute to 0 and the free badge shows. Nobody bills
@@ -486,12 +496,18 @@ describe("model-catalog", () => {
     // The group pin, read the one way every call site reads it.
     expect(providerClientType("vllm")).toBe("openai-chat-vllm-adapter");
     expect(providerInfo("vllm")!.gatewayBaseUrl).toBeUndefined();
-    // Two groups declare one, in MODEL_PROVIDERS order: OpenRouter, whose entries all speak
-    // the Responses API its preset endpoint serves, and vLLM. The remaining gateways derive
-    // openai-chat from their preset endpoint, and custom / user-defined groups leave the
-    // protocol to detection.
+    // Groups that declare one at group level, in MODEL_PROVIDERS order: OpenRouter, whose
+    // entries all speak the Responses API its preset endpoint serves; vLLM; and the four
+    // Chinese first-party groups added 2026-10-15 (Xiaomi MiMo, Baidu ERNIE, Tencent Hunyuan,
+    // iFlytek Spark), whose rows all speak Chat Completions to an endpoint AgentHub has no
+    // first-party client for. The remaining gateways derive openai-chat from their preset
+    // endpoint, and custom / user-defined groups leave the protocol to detection.
     expect(MODEL_PROVIDERS.filter((p) => p.clientType !== undefined).map((p) => p.id)).toEqual([
       "openrouter",
+      "xiaomi",
+      "baidu",
+      "tencent",
+      "iflytek",
       "vllm",
     ]);
     expect(providerClientType("openrouter")).toBe("openai-responses");
@@ -969,6 +985,10 @@ describe("model-catalog", () => {
       "modelscope",
       "vllm",
       "custom",
+      "xiaomi",
+      "baidu",
+      "tencent",
+      "iflytek",
     ]) {
       expect(providerInfo(id)!.envKey).toBe("OPENAI_API_KEY");
       expect(providerInfo(id)!.envBaseUrlKey).toBe("OPENAI_BASE_URL");
@@ -1037,7 +1057,8 @@ describe("model-catalog", () => {
 
     // In preset entries, every gateway model inlines base_url, and so do the two direct rows
     // whose own id does not route — MiniMax M3 and DeepSeek deepseek-flash (no credentials) —
-    // and the custom group's preset, whose group implies no endpoint at all.
+    // the custom group's preset, whose group implies no endpoint at all, and the four Chinese
+    // first-party groups added 2026-10-15, whose endpoint AgentHub has no client for.
     const pinnedDirect = MODEL_CATALOG.filter((m) => m.provider === "deepseek" && m.baseUrl);
     expect(pinnedDirect.map((m) => m.modelId)).toEqual(["deepseek-flash"]);
     const customPresets = MODEL_CATALOG.filter((m) => m.provider === "custom");
@@ -1050,6 +1071,9 @@ describe("model-catalog", () => {
         ...customPresets,
         ...MODEL_CATALOG.filter((m) => m.provider === "penguin-go"),
         ...MODEL_CATALOG.filter((m) => m.provider === "opencode-go"),
+        ...MODEL_CATALOG.filter((m) =>
+          ["xiaomi", "baidu", "tencent", "iflytek"].includes(m.provider),
+        ),
       ]
         // A retired gateway row keeps its pin in the catalog but is not a preset.
         .filter((m) => m.retired !== true)

@@ -20,6 +20,12 @@
  * colored ink on a light tint hashed from the id (the soft tinted-tile style
  * AgentAvatar uses, keeping the row's visual weight close to the flat preset
  * glyphs).
+ *
+ * The Chinese first-party groups added with their models (Xiaomi MiMo, Baidu
+ * ERNIE, Tencent Hunyuan, iFlytek Spark) have no glyph here either: no brand
+ * asset for them was verified, and a hand-drawn approximation of a trademark
+ * is worse than the tile. They therefore take the same letter tile as a
+ * user-defined group until someone adds a mark they can point at.
  */
 import type { ReactNode } from "react";
 import { avatarInitial, avatarTile } from "../avatars/avatar";
