@@ -764,6 +764,16 @@ async function main() {
     if (route === "GET /panel/events") {
       const stream = startEventStream(res);
       panelEventClients.add(stream);
+      // A panel that opens (or reopens) after the turn started hears no `task_state` until the
+      // next one — and a panel whose first frame never says "not running" waits forever with
+      // "正在处理…" for a turn that already finished. Say where the turn stands, right now.
+      try {
+        stream.write(
+          `data: ${JSON.stringify({ type: "status", running: translator.running, queued: 0 })}\n\n`,
+        );
+      } catch {
+        panelEventClients.delete(stream);
+      }
       const timer = setInterval(() => {
         try {
           stream.write("event: ping\ndata: {}\n\n");

@@ -431,12 +431,31 @@ test("Adelie 的流被归一化成面板要的几种事件", async () => {
   const events = await sseClient(`${bang.url}/panel/events`);
   await waitFor("桥订阅上 Adelie 的会话流", () => api.connectedStreams() > 0);
 
+  // The first frame tells a freshly connected panel what the turn is doing right now: without
+  // it a panel has nothing to correct its own "正在处理…" with, and keeps showing a turn that
+  // ended before it ever connected.
+  assert.deepEqual(await events.next((e) => e.type === "status"), {
+    type: "status",
+    running: false,
+    queued: 0,
+  });
+
   api.emit({ type: "task_state", state: "running", queued: 0 });
   assert.deepEqual(await events.next((e) => e.type === "status"), {
     type: "status",
     running: true,
     queued: 0,
   });
+
+  // …and a panel that connects in the middle of a turn is told about that one, because the next
+  // `task_state` is minutes away and until then the judge of "is it busy" is this frame alone.
+  const late = await sseClient(`${bang.url}/panel/events`);
+  assert.deepEqual(await late.next((e) => e.type === "status"), {
+    type: "status",
+    running: true,
+    queued: 0,
+  });
+  await late.close();
 
   api.emit({
     type: "model_msg",

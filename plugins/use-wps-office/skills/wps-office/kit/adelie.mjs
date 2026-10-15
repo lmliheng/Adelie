@@ -266,7 +266,11 @@ export class Adelie {
     );
   }
 
-  /** Write the agent's config. The server merges per key, so sending `tools` alone is safe. */
+  /**
+   * Write the agent's config. The server merges per key, so sending one key alone is safe —
+   * but only the keys it knows (`mcpServers`, `toolsBuiltin`, …); anything else is answered
+   * with a 200 and dropped, which is why the MCP entry is `mcpServers` and not `tools`.
+   */
   async updateAgentConfig(config) {
     const projectId = await this.projectId();
     return this.json(

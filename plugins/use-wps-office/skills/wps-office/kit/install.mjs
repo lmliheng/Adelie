@@ -158,16 +158,17 @@ async function registerMcp(adelie, url) {
     say(`   ✗ 读不到 Agent 配置：${err.message}`);
     return false;
   }
-  const servers = Array.isArray(view?.config?.tools?.mcpServers)
-    ? view.config.tools.mcpServers
-    : [];
+  // `mcpServers` is a top-level key of the config DTO and of the update body alike: the update
+  // endpoint merges only the keys it knows and answers 200 to everything else, so a `tools`
+  // wrapper lands nowhere and leaves an install that reported success without registering tools.
+  const servers = Array.isArray(view?.config?.mcpServers) ? view.config.mcpServers : [];
   const others = servers.filter((s) => s?.name !== MCP_SERVER_NAME);
   const existing = servers.find((s) => s?.name === MCP_SERVER_NAME);
   const same =
     existing !== undefined && JSON.stringify(existing.config) === JSON.stringify(entry.config);
   if (!same) {
     try {
-      await adelie.updateAgentConfig({ tools: { mcpServers: [...others, entry] } });
+      await adelie.updateAgentConfig({ mcpServers: [...others, entry] });
       say(
         `   ✓ 已写入 Agent「${adelie.config.agentId}」的配置（原有 ${others.length} 个 MCP 服务器不动）`,
       );

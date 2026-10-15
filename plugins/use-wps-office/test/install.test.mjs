@@ -52,11 +52,20 @@ function readJson(req) {
   });
 }
 
-/** A fake Adelie that keeps the agent config in memory and records every write. */
+/**
+ * A fake Adelie that keeps the agent config in memory and records every write.
+ *
+ * The shape is the real DTO's (`packages/server/src/api/types.ts` → `AgentConfigDto`): MCP
+ * servers sit at the *top level* of `config`, there is no `tools` wrapper around them, and the
+ * update endpoint merges only the keys it knows — a body carrying `tools` is answered with a
+ * 200 and dropped on the floor. A kinder fake would hide exactly the mistake this file exists
+ * to catch, so the fake has to be as unforgiving as the server.
+ */
 function fakeAdelie() {
   const state = {
     config: {
-      tools: { builtin: ["read_file"], mcpServers: [{ name: "other", config: { url: "x" } }] },
+      toolsBuiltin: [{ name: "read_file" }],
+      mcpServers: [{ name: "other", config: { url: "x" } }],
     },
     writes: [],
     probes: [],
@@ -75,11 +84,10 @@ function fakeAdelie() {
         if (req.method === "PUT") {
           const body = await readJson(req);
           state.writes.push(body);
-          state.config = {
-            ...state.config,
-            ...body.config,
-            tools: { ...state.config.tools, ...(body.config?.tools ?? {}) },
-          };
+          const next = body?.config ?? {};
+          if (Array.isArray(next.mcpServers)) {
+            state.config = { ...state.config, mcpServers: next.mcpServers };
+          }
           return json({ config: state.config });
         }
       }
@@ -162,7 +170,7 @@ test("安装：把桥登记成一个 MCP 服务器，别的不动，并真的连
   assert.match(out, /已写入 Agent/);
   assert.match(out, /Adelie 连上了/);
 
-  const servers = api.state.config.tools.mcpServers;
+  const servers = api.state.config.mcpServers;
   assert.deepEqual(
     servers.map((s) => s.name).sort(),
     ["other", "wps"],
@@ -201,14 +209,24 @@ test("再装一次：不重复写、不重复登记", async () => {
   assert.match(out, /已经是这一条/);
   assert.match(out, /已经在跑/);
   assert.equal(api.state.writes.length, before, "第二次安装不该再写配置");
-  assert.equal(api.state.config.tools.mcpServers.length, 2);
+  assert.equal(api.state.config.mcpServers.length, 2);
 });
 
 test("卸载：摘掉桥的工具，其余保留", async () => {
+  // The entry is seeded here rather than leaned on from the install tests above: this test is
+  // about the removal, and a fake that quietly ignores the wrong key must not be able to make
+  // it pass by having nothing to remove.
+  api.state.config = {
+    ...api.state.config,
+    mcpServers: [
+      ...api.state.config.mcpServers.filter((s) => s.name !== "wps"),
+      { name: "wps", config: { transport: "http", url: "http://127.0.0.1:1/mcp" } },
+    ],
+  };
   const { code, out } = await run(UNINSTALL, ["--root", root, "--adelie", adelieUrl, "--no-wps"]);
   assert.equal(code, 0, out);
   assert.deepEqual(
-    api.state.config.tools.mcpServers.map((s) => s.name),
+    api.state.config.mcpServers.map((s) => s.name),
     ["other"],
   );
   assert.ok(fs.existsSync(path.join(root, "wps-bridge", "config.json")), "默认要留着设置和日志");

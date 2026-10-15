@@ -6,7 +6,7 @@
  *
  *   - the WPS add-on record named `adelie_wps_panel` (disabled, not deleted — WPS keeps its
  *     own list, and disabling is the reversible half of what the installer did);
- *   - the `wps` entry in the agent's `tools.mcpServers`;
+ *   - the `wps` entry in the agent's config (`mcpServers`, a top-level key of the DTO);
  *   - `…\Startup\adelie-wps-bridge.cmd`.
  *
  * Files that hold your settings and history (`<数据根>/wps-bridge/`) are kept: pass `--purge`
@@ -69,14 +69,14 @@ async function main() {
   } else {
     try {
       const view = await adelie.agentConfig();
-      const servers = Array.isArray(view?.config?.tools?.mcpServers)
-        ? view.config.tools.mcpServers
-        : [];
+      // Same top-level key as the installer writes (see its comment): a `tools` wrapper is
+      // accepted with a 200 and ignored, which would leave the entry in place.
+      const servers = Array.isArray(view?.config?.mcpServers) ? view.config.mcpServers : [];
       const kept = servers.filter((s) => s?.name !== MCP_SERVER_NAME);
       if (kept.length === servers.length) {
         say(`   ✓ 配置里本来就没有「${MCP_SERVER_NAME}」。`);
       } else {
-        await adelie.updateAgentConfig({ tools: { mcpServers: kept } });
+        await adelie.updateAgentConfig({ mcpServers: kept });
         say(`   ✓ 已移除（其余 ${kept.length} 个 MCP 服务器不动）。`);
       }
     } catch (err) {
