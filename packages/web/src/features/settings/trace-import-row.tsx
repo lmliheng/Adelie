@@ -1,6 +1,7 @@
 /**
- * Trace import (Settings → General): a `.jsonl` Trace exported from another install
- * becomes a conversation of the chosen Agent.
+ * Trace import (Settings → General): a `.jsonl` Trace — or a whole-Session `.json` bundle, which
+ * carries every shard of a compacted Session — exported from another install becomes a
+ * conversation of the chosen Agent.
  *
  * Both halves of the destination are picked here, Project included. The endpoint is
  * per-Agent and a Trace file cannot name one: its `session_meta` carries an `agent_state`
@@ -35,6 +36,8 @@ import { useSessions } from "../../state/sessions";
 
 /** Client-side pre-check before reading the picked file (the same cap as the server's import route). */
 const MAX_TRACE_BYTES = 14 * 1024 * 1024;
+/** A whole-Session bundle is several shards in one file, so it gets the server's larger ceiling. */
+const MAX_TRACE_BUNDLE_BYTES = 48 * 1024 * 1024;
 
 /**
  * The Projects the row offers, and the one it is on. The import route answers anyone but the
@@ -129,8 +132,11 @@ export function TraceImportRow() {
     // Reset before reading so re-picking the same file fires change again.
     e.target.value = "";
     if (!file || agentId === "") return;
-    if (file.size > MAX_TRACE_BYTES) {
-      toastError(S.settings.importTraceTooLarge);
+    // Which ceiling applies is decided by the file, the same way the server decides it: a
+    // `.json` bundle may be several shards' worth, a `.jsonl` Trace file is one shard.
+    const bundle = file.name.toLowerCase().endsWith(".json");
+    if (file.size > (bundle ? MAX_TRACE_BUNDLE_BYTES : MAX_TRACE_BYTES)) {
+      toastError(bundle ? S.settings.importTraceBundleTooLarge : S.settings.importTraceTooLarge);
       return;
     }
     const reader = new FileReader();
@@ -196,7 +202,7 @@ export function TraceImportRow() {
               : "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800"
           }`}
         >
-          <HiddenFileInput accept=".jsonl" disabled={busy} onChange={onPickFile} />
+          <HiddenFileInput accept=".jsonl,.json" disabled={busy} onChange={onPickFile} />
           <UploadIcon size={14} />
           {importing ? S.settings.importTraceRunning : S.settings.importTracePick}
         </label>

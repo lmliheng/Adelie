@@ -190,7 +190,7 @@ describe("trace-index", () => {
       .join("\n");
     const headReads = h.traceIndex.counters.headReads;
     const res = await h.service.importTraceFile(P, A, lines);
-    expect(res).toEqual({ sessionId: IMP, index: 1, date: "2026-07-03" });
+    expect(res).toEqual({ sessionId: IMP, index: 1, date: "2026-07-03", shards: 1 });
     // Registered without any head-read (the records were already in memory).
     expect(h.traceIndex.counters.headReads).toBe(headReads);
     expect(h.traceIndex.repo.listFilesBySession(P, A, IMP)).toHaveLength(1);

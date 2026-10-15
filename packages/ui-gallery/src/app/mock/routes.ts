@@ -108,6 +108,7 @@ import type {
   SubagentMessageResponse,
   TaskCreateResponse,
   TraceAnalysisResponse,
+  TraceBundle,
   TraceEventsResponse,
   TraceImportResponse,
   UpdateCheckResponse,
@@ -1570,34 +1571,51 @@ const traceEvents = (ctx: Ctx, sessionId: string): TraceEventsResponse => {
   };
 };
 
+/**
+ * The demo transcript stands in for a Session that was compacted once, so the Trace panel's
+ * multi-shard shape is what the gallery shows: one pill per shard, and the whole-Session export
+ * offered beside the per-file one.
+ */
+const TRACE_SHARDS = [1, 2];
+
+/** A shard's JSON Lines content: the demo transcript, written the way the Trace Writer would. */
+const traceShardContent = (ctx: Ctx, sessionId: string): string =>
+  traceFile(ctx, sessionId)
+    .transcript.history.map((m) => JSON.stringify(m))
+    .join("\n");
+
 const traceJsonl = (ctx: Ctx, sessionId: string) =>
-  raw(
-    traceFile(ctx, sessionId)
-      .transcript.history.map((m) => JSON.stringify(m))
-      .join("\n"),
-    {
-      "content-type": "application/x-ndjson",
-      "content-disposition": `attachment; filename="${sessionId}-001.jsonl"`,
-    },
-  );
+  raw(traceShardContent(ctx, sessionId), {
+    "content-type": "application/x-ndjson",
+    "content-disposition": `attachment; filename="${sessionId}-001.jsonl"`,
+  });
+
+/** Whole-Session bundle: the same content that the per-file download serves, every shard of it. */
+const traceBundle = (ctx: Ctx, sessionId: string): TraceBundle => ({
+  format: "adelie-trace-bundle",
+  version: 1,
+  sessionId,
+  shards: TRACE_SHARDS.map((index) => ({ index, content: traceShardContent(ctx, sessionId) })),
+});
 
 router
   .get("/api/sessions/:sessionId/traces", (ctx): SessionTracesResponse => {
     const { transcript, row } = traceFile(ctx, ctx.params.sessionId!);
     return {
-      files: [
-        {
-          index: 1,
-          date: dayKey(Date.parse(row.createdAt)),
-          sizeBytes: JSON.stringify(transcript.history).length,
-          mtime: row.lastActiveAt,
-        },
-      ],
+      files: TRACE_SHARDS.map((index) => ({
+        index,
+        date: dayKey(Date.parse(row.createdAt)),
+        sizeBytes: JSON.stringify(transcript.history).length,
+        mtime: row.lastActiveAt,
+      })),
     };
   })
   .get("/api/sessions/:sessionId/traces/:index", (ctx) => traceEvents(ctx, ctx.params.sessionId!))
   .get("/api/sessions/:sessionId/traces/:index/analysis", (ctx): TraceAnalysisResponse =>
     analyze(traceFile(ctx, ctx.params.sessionId!).transcript.history),
+  )
+  .get("/api/projects/:projectId/agents/:agentId/traces/:sessionId/export", (ctx) =>
+    json(traceBundle(ctx, ctx.params.sessionId!), 200),
   )
   .get("/api/projects/:projectId/agents/:agentId/traces/:sessionId/:index", (ctx) =>
     traceEvents(ctx, ctx.params.sessionId!),
@@ -1612,7 +1630,12 @@ router
   )
   .post("/api/projects/:projectId/agents/:agentId/traces/import", (): unknown =>
     json(
-      { sessionId: "s-imported", index: 1, date: dayKey(Date.now()) } satisfies TraceImportResponse,
+      {
+        sessionId: "s-imported",
+        index: 1,
+        date: dayKey(Date.now()),
+        shards: 1,
+      } satisfies TraceImportResponse,
       201,
     ),
   );

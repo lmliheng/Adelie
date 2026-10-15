@@ -17,10 +17,13 @@
  *     (projectId, agentId, sessionId), without depending on the sessions table for
  *     tracking — any entry visible in the directory tree (subagent child Sessions,
  *     CLI-created Sessions) can be opened and read; access is enforced by requireProjectAccess.
- *   - POST /api/projects/:p/agents/:a/traces/import — uploads a Trace JSONL file (owner
- *     only, mirroring the Agent snapshot import); the file names itself via its
- *     session_meta and always becomes index 001 of a new Session — a session id the
- *     Agent already has is rejected with 409 trace_session_exists.
+ *   - GET /api/projects/:p/agents/:a/traces/:sessionId/export — the whole Session as one
+ *     migration bundle (every shard), for import on another install.
+ *   - POST /api/projects/:p/agents/:a/traces/import — uploads a Trace JSONL file or a
+ *     whole-Session bundle (owner only, mirroring the Agent snapshot import); the content
+ *     names itself via its session_meta and always becomes a new Session (indices 1..N for
+ *     a bundle) — a session id the Agent already has is rejected with 409
+ *     trace_session_exists.
  */
 import { Hono } from "hono";
 import type { AppEnv } from "../../auth/middleware.js";
@@ -47,6 +50,18 @@ export interface AgentTracesRouteDeps {
 
 /** Import file size cap: aligned with the snapshot import (stays within the 20MB body limit after base64). */
 const MAX_TRACE_BYTES = 14 * 1024 * 1024;
+
+/**
+ * Import cap for a whole-Session **bundle** — every shard of one Session in a single upload.
+ * Larger than the single-file cap by design: a Session that was compacted is several files, and
+ * the point of a bundle is to carry them together. It is still a ceiling, and a loud one: a
+ * Session past it is refused with a message naming the limit rather than truncated — migrating
+ * such a Session is simply not covered yet (a shard cannot be imported on its own either, by the
+ * rule that only ever creates a Session).
+ */
+const MAX_TRACE_BUNDLE_BYTES = 48 * 1024 * 1024;
+/** Base64 of a capped upload inflates by 4/3, plus the JSON envelope's quotes. */
+const base64Cap = (bytes: number): number => Math.ceil(bytes * (4 / 3)) + 1024;
 
 /** Accepted `category` query values of the paginated listing (SessionCategory, spelled out for validation — same as the sessions list route). */
 const SESSION_CATEGORIES: readonly SessionCategory[] = ["active", "background", "archived"];
@@ -77,6 +92,25 @@ export function agentTracesRoutes(deps: AgentTracesRouteDeps): Hono<AppEnv> {
         ...(rawCategory !== undefined ? { category: rawCategory as SessionCategory } : {}),
       }),
     );
+  });
+
+  // Whole-Session export (any member, like the per-file download): every shard of one Session
+  // in a single file, so a long Session can be moved to another install in one piece. Registered
+  // BEFORE the `/:sessionId/:index` routes — otherwise "export" would be read as an index.
+  app.get("/:sessionId/export", async (c) => {
+    const projectId = requireValidId(c, "projectId");
+    const agentId = requireValidId(c, "agentId");
+    const sessionId = requireValidId(c, "sessionId");
+    deps.access.requireProjectAccess(c.var.user.userId, projectId);
+    const bundle = await deps.traceService.exportSessionBundle(projectId, agentId, sessionId);
+    const fileName = `${sessionId}.trace-bundle.json`;
+    return new Response(JSON.stringify(bundle), {
+      headers: {
+        "Content-Type": "application/json",
+        "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   });
 
   app.get("/:sessionId/:index", async (c) => {
@@ -128,11 +162,22 @@ export function agentTracesRoutes(deps: AgentTracesRouteDeps): Hono<AppEnv> {
     deps.access.requireProjectOwner(c.var.user.userId, projectId);
     await deps.agentConfigService.requireExists(projectId, agentId);
     const body = await readJson(c);
-    const dataBase64 = requireString(body, "dataBase64", { minLen: 1, maxLen: 20 * 1024 * 1024 });
+    const dataBase64 = requireString(body, "dataBase64", {
+      minLen: 1,
+      maxLen: base64Cap(MAX_TRACE_BUNDLE_BYTES),
+    });
     const bytes = Buffer.from(dataBase64, "base64");
     if (bytes.byteLength === 0) throw badRequest("Import file is empty.");
-    if (bytes.byteLength > MAX_TRACE_BYTES) {
-      throw badRequest("Import file exceeds the 14MB limit.");
+    // One upload, two caps: a whole-Session bundle (the larger ceiling) is a single JSON object —
+    // a Trace file is JSON Lines, whose first character is also `{` but whose only possible
+    // one-line content is a bare record with no bundle marker. The shape decides the cap, and the
+    // service decides the shape; a single Trace file keeps the 14MB ceiling it always had.
+    const isBundle = bytes.subarray(0, 256).toString("utf8").trimStart().startsWith("{");
+    const cap = isBundle ? MAX_TRACE_BUNDLE_BYTES : MAX_TRACE_BYTES;
+    if (bytes.byteLength > cap) {
+      throw badRequest(
+        isBundle ? "Import bundle exceeds the 48MB limit." : "Import file exceeds the 14MB limit.",
+      );
     }
     const res: TraceImportResponse = await deps.traceService.importTraceFile(
       projectId,

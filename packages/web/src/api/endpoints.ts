@@ -1338,7 +1338,27 @@ export const agentTraceDownloadUrl = (
     machineForSession(sessionId),
   );
 
-/** Imports a Trace JSONL file (owner only); the response says where the file landed (sessionId / index / date). */
+/**
+ * Whole-Session export URL: every shard of the Session as one bundle file, for import on another
+ * install. A plain browser-followed URL like the per-file download, so it is usable directly in
+ * `<a download>`.
+ */
+export const agentTraceBundleExportUrl = (
+  projectId: string,
+  agentId: string,
+  sessionId: string,
+): string =>
+  apiUrl(
+    `/api/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}` +
+      `/traces/${encodeURIComponent(sessionId)}/export`,
+    machineForSession(sessionId),
+  );
+
+/**
+ * Imports a Trace file (owner only): a single `.jsonl` Trace, or a whole-Session `.json` bundle
+ * exported from another install. The response says where it landed (sessionId / index / date /
+ * shard count).
+ */
 export const importAgentTrace = (projectId: string, agentId: string, body: TraceImportRequest) =>
   apiFetch<TraceImportResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}/traces/import`,

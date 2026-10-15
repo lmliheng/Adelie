@@ -189,6 +189,24 @@ export function TracePanel({
             <DownloadIcon size={ICON_SIZE.rowLead} />
             {S.traces.exportFile}
           </a>
+          {/* Whole-Session export: one bundle file holding every compaction shard, so a long
+              Session can be moved to another install in one piece. Only offered when the Session
+              really has several shards — with one, the per-file download above IS the Session. */}
+          {files.length > 1 && (
+            <a
+              href={api.agentTraceBundleExportUrl(
+                session.projectId,
+                session.agentId,
+                session.sessionId,
+              )}
+              download
+              data-tooltip={S.traces.exportSessionHint}
+              className="inline-flex shrink-0 items-center gap-1 rounded-md border border-gray-200 px-2 py-0.5 text-xs text-gray-500 transition-colors duration-150 hover:bg-gray-100 dark:border-gray-800 dark:text-gray-400 dark:hover:bg-gray-800/60"
+            >
+              <DownloadIcon size={ICON_SIZE.rowLead} />
+              {S.traces.exportSession}
+            </a>
+          )}
         </div>
 
         {/* The listing tick doubles as the view's re-read signal: every edge that re-lists

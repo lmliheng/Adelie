@@ -38,6 +38,8 @@ import type {
   SessionCategoryCounts,
   SessionContextParts,
   HistoryMessage,
+  TraceBundle,
+  TraceBundleShard,
   TracePosition,
   ToolCallSpan,
   TraceAnalysisResponse,
@@ -92,6 +94,117 @@ const TRACE_FILE_RE = /^(.+)_(\d{3})\.jsonl$/;
  * checked right next to the path construction — never trust the caller to have validated it.
  */
 const IMPORT_SESSION_ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
+
+/**
+ * Shard-count sanity bound for a migration bundle. A shard is one model context — a Session
+ * rotates on every compaction — so a real Session stays far below this; the bound exists so a
+ * hand-made upload cannot ask for an unbounded number of files in one request.
+ */
+const MAX_TRACE_BUNDLE_SHARDS = 200;
+
+/** One uploaded shard, validated (see `parseTraceShard`). */
+interface ParsedTraceShard {
+  /** The shard's records, parsed strictly; the import path is the one place a malformed file is an error rather than a line to skip. */
+  records: OmniMessage[];
+  /** The session id its leading `session_meta` declares. */
+  sessionId: string;
+  /** Date directory the shard lands in: the local date of its first record (core Trace Writer's convention). */
+  date: string;
+}
+
+/**
+ * Validates one uploaded shard's content. `what` names it in the error — "The file" for a
+ * single-file import, "Shard 3 of 7" inside a bundle — so a rejected upload says which part of
+ * it was wrong.
+ *
+ * Strict parse on purpose: the read paths skip a malformed middle line (torn-tail recovery),
+ * but a file the user hands over must be reported, not silently shortened. The session id and
+ * the date are taken from the leading `session_meta` — the first record, always, because the
+ * Trace Writer opens every shard with the current context's meta.
+ */
+function parseTraceShard(content: string, what: string): ParsedTraceShard {
+  const invalid = (message: string) => new HttpError(400, "invalid_trace", message);
+  let records: OmniMessage[];
+  try {
+    records = parseTraceLines(content, { onMalformed: "throw" });
+  } catch {
+    throw invalid(`${what} is not valid Trace JSONL.`);
+  }
+  if (records.length === 0) throw invalid(`${what} contains no Trace records.`);
+  const first = records[0]!;
+  if (!isSessionMeta(first)) throw invalid(`The first record of ${what} must be session_meta.`);
+  // The payload type declares session_id: string, but the value came from user-supplied JSON —
+  // re-check the runtime shape before it becomes part of a filename.
+  const sessionId: unknown = (first.payload as { session_id?: unknown }).session_id;
+  if (typeof sessionId !== "string" || !IMPORT_SESSION_ID_RE.test(sessionId)) {
+    throw invalid(`${what} carries a missing or invalid session_id.`);
+  }
+  const ts = Date.parse(first.timestamp);
+  const date = formatLocalDate(Number.isNaN(ts) ? new Date() : new Date(ts));
+  return { records, sessionId, date };
+}
+
+/**
+ * Recognizes an uploaded migration bundle, or returns null for anything that is not one.
+ *
+ * A single Trace file is JSON Lines: its whole-content JSON parse either fails (more than one
+ * line) or yields a bare record with no `format` marker. Both fall through to the single-shard
+ * path, which reports what is actually wrong with the file — so the detection never has to
+ * explain itself.
+ */
+function parseTraceBundle(content: string): TraceBundle | null {
+  const trimmed = content.trim();
+  if (!trimmed.startsWith("{")) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== "object" || parsed === null) return null;
+  const envelope = parsed as {
+    format?: unknown;
+    version?: unknown;
+    sessionId?: unknown;
+    shards?: unknown;
+  };
+  if (envelope.format !== "adelie-trace-bundle") return null;
+  const invalid = (message: string) => new HttpError(400, "invalid_trace", message);
+  if (envelope.version !== 1) {
+    throw invalid(`Unsupported Trace bundle version ${String(envelope.version)}.`);
+  }
+  const sessionId: unknown = envelope.sessionId;
+  if (typeof sessionId !== "string" || !IMPORT_SESSION_ID_RE.test(sessionId)) {
+    throw invalid("The bundle carries a missing or invalid sessionId.");
+  }
+  const raw = envelope.shards;
+  if (!Array.isArray(raw) || raw.length === 0) throw invalid("The bundle carries no shards.");
+  if (raw.length > MAX_TRACE_BUNDLE_SHARDS) {
+    throw invalid(`The bundle carries more than ${MAX_TRACE_BUNDLE_SHARDS} shards.`);
+  }
+  const shards: TraceBundleShard[] = [];
+  for (const entry of raw as unknown[]) {
+    const shard = entry as { index?: unknown; content?: unknown };
+    if (
+      typeof shard !== "object" ||
+      shard === null ||
+      !Number.isInteger(shard.index) ||
+      (shard.index as number) < 1 ||
+      typeof shard.content !== "string"
+    ) {
+      throw invalid("The bundle carries a malformed shard entry.");
+    }
+    // Contiguity from 1 is what makes the landed filenames a copy of the original Session
+    // rather than a renumbering: a gap would silently reorder a transcript.
+    if (shard.index !== shards.length + 1) {
+      throw invalid(
+        `The bundle's shards must run 1..N in order; expected index ${shards.length + 1}, got ${String(shard.index)}.`,
+      );
+    }
+    shards.push({ index: shard.index as number, content: shard.content });
+  }
+  return { format: "adelie-trace-bundle", version: 1, sessionId, shards };
+}
 
 /**
  * A windowed history page stops adding units once its serialized size (UTF-8, images by
@@ -1783,85 +1896,198 @@ export class TraceService implements Traces {
   }
 
   /**
-   * Imports an uploaded Trace file (raw JSONL content). Validates the content itself —
-   * parseable JSONL whose first record is a `session_meta` carrying a filename-safe
-   * `session_id` (400 invalid_trace otherwise) — then writes it under the Agent's traces
-   * directory as a **new Session**: a session id the Agent already has is rejected with
-   * 409 `trace_session_exists` (splicing a further index into an existing Session would
-   * corrupt its concatenated transcript, silently become its resume point, and could
-   * collide with a live Writer's rotation), so the imported file is always index 1. The
-   * date dir comes from the first record's timestamp (falling back to now), formatted as
-   * a **local** date — the same convention as core's Trace Writer — so an export →
-   * import round-trip lands in the same date dir on non-UTC servers.
+   * Exports a whole Session as a migration bundle (see `TraceBundle`): every shard's content
+   * verbatim, in index order, for `importTraceFile` here or on another install to land as one
+   * Session. Reads the same files the per-shard download serves, so each shard in a bundle is
+   * byte-identical to what exporting that file on its own would give.
+   *
+   * This is the export side of the migration story: a Session that was compacted lives in
+   * several files, and no single file carries more than its own context, so a bundle is what
+   * lets the whole conversation travel.
+   */
+  async exportSessionBundle(
+    projectId: string,
+    agentId: string,
+    sessionId: string,
+  ): Promise<TraceBundle> {
+    const files = await this.locateAll(projectId, agentId, sessionId);
+    if (files.length === 0) {
+      throw new HttpError(404, "trace_not_found", `This Session has no Trace files.`);
+    }
+    const shards: TraceBundleShard[] = [];
+    for (const file of files) {
+      const raw = await fs.readFile(file.path);
+      shards.push({ index: file.index, content: raw.toString("utf8") });
+    }
+    return { format: "adelie-trace-bundle", version: 1, sessionId, shards };
+  }
+
+  /**
+   * Imports an uploaded Trace file (raw content). Two shapes are accepted, one gate:
+   *
+   *   - a **single Trace file** — JSON Lines whose first record is a `session_meta` carrying a
+   *     filename-safe `session_id` (400 invalid_trace otherwise) — lands as index 1 of a new
+   *     Session;
+   *   - a **migration bundle** (`exportSessionBundle`'s output) — all of one Session's shards —
+   *     lands as indices 1..N of ONE Session.
+   *
+   * A session id that exists ANYWHERE in the install is rejected with 409
+   * `trace_session_exists`: splicing a further index into an existing Session would corrupt its
+   * concatenated transcript, silently become its resume point, and could collide with a live
+   * Writer's rotation. That rule is exactly why a long Session needs the bundle — its later
+   * shards could never be imported one by one — and why a bundle is validated in full BEFORE
+   * anything is written: a rejected bundle leaves the install as it was, never a Session whose
+   * transcript stops in the middle of a context.
+   *
+   * Each shard's date dir comes from that shard's first-record timestamp (falling back to now),
+   * formatted as a **local** date — the same convention as core's Trace Writer — so an export →
+   * import round-trip lands in the same date dirs on non-UTC servers.
    */
   async importTraceFile(
     projectId: string,
     agentId: string,
     content: string,
   ): Promise<TraceImportResponse> {
-    const invalid = (message: string) => new HttpError(400, "invalid_trace", message);
-    let records: OmniMessage[];
-    try {
-      // Strict parse: import is the gate for user-supplied files, so a malformed middle
-      // line is reported as 400 rather than silently dropped (read paths skip it instead).
-      records = parseTraceLines(content, { onMalformed: "throw" });
-    } catch {
-      throw invalid("The file is not valid Trace JSONL.");
-    }
-    if (records.length === 0) throw invalid("The file contains no Trace records.");
-    const first = records[0]!;
-    if (!isSessionMeta(first))
-      throw invalid("The first record of a Trace file must be session_meta.");
-    // The payload type declares session_id: string, but the value came from user-supplied JSON —
-    // re-check the runtime shape before it becomes part of a filename.
-    const sessionId: unknown = (first.payload as { session_id?: unknown }).session_id;
-    if (typeof sessionId !== "string" || !IMPORT_SESSION_ID_RE.test(sessionId)) {
-      throw invalid("session_meta carries a missing or invalid session_id.");
-    }
-    const duplicate = () =>
-      new HttpError(
-        409,
-        "trace_session_exists",
-        `A Session with id ${sessionId} already exists here; a duplicate Trace cannot be imported.`,
-      );
+    const bundle = parseTraceBundle(content);
+    if (bundle !== null) return this.importTraceBundle(projectId, agentId, bundle);
+    const shard = parseTraceShard(content, "The file");
     // A Session id is the identity everywhere — the sessions table keys on it, the frontend
     // dedupes rows by it, and /chat/:sessionId routes by it — so the check spans the whole
     // install, not just the receiving Agent. Importing the same Trace under a second Agent
     // used to "succeed" into a Session nothing could own: no row could be inserted beside
     // the existing one, and the list folded the two into a single conversation, leaving a
     // group's count one above the rows it could ever show.
-    if ((await this.locateAll(projectId, agentId, sessionId)).length > 0) throw duplicate();
-    if (this.sessions?.findById?.(sessionId)) throw duplicate();
-    const ts = Date.parse(first.timestamp);
-    const date = formatLocalDate(Number.isNaN(ts) ? new Date() : new Date(ts));
-    const index = 1;
-    const dir = path.join(tracesDir(this.root, projectId, agentId), date);
+    await this.assertTraceImportable(projectId, agentId, shard.sessionId);
+    const dir = path.join(tracesDir(this.root, projectId, agentId), shard.date);
     await fs.mkdir(dir, { recursive: true });
-    const file = path.join(dir, `${sessionId}_${String(index).padStart(3, "0")}.jsonl`);
-    const body = content.replace(/\n+$/, "") + "\n";
-    try {
-      // Normalize to exactly one trailing newline (the JSONL convention the writer
-      // follows). `wx` closes the check-then-write race: two concurrent imports of the
-      // same new session id both pass the locateAll check, but only one can create the
-      // file — the loser's EEXIST maps to the same 409 as the pre-check.
-      await fs.writeFile(file, body, { encoding: "utf8", flag: "wx" });
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code === "EEXIST") throw duplicate();
-      throw err;
-    }
+    const written = await this.writeImportedShard(
+      dir,
+      shard.sessionId,
+      1,
+      content,
+      this.duplicateSession(shard.sessionId),
+    );
     // Write-time registration: this path knows the file's identity and already holds the
     // parsed records, so the index row + session facts land synchronously (no re-read).
     this.index.registerImportedFile({
       projectId,
       agentId,
-      sessionId,
-      fileIndex: index,
-      date,
-      sizeBytes: Buffer.byteLength(body, "utf8"),
-      records,
+      sessionId: shard.sessionId,
+      fileIndex: 1,
+      date: shard.date,
+      sizeBytes: written.sizeBytes,
+      records: shard.records,
     });
-    this.indexImportedSession(projectId, agentId, sessionId);
-    return { sessionId, index, date };
+    this.indexImportedSession(projectId, agentId, shard.sessionId);
+    return { sessionId: shard.sessionId, index: 1, date: shard.date, shards: 1 };
+  }
+
+  /** 409 for a session id this install already has (a Trace may only ever create a Session). */
+  private duplicateSession(sessionId: string): () => HttpError {
+    return () =>
+      new HttpError(
+        409,
+        "trace_session_exists",
+        `A Session with id ${sessionId} already exists here; a duplicate Trace cannot be imported.`,
+      );
+  }
+
+  /** Rejects an import whose session id this install already has, under any Agent. */
+  private async assertTraceImportable(
+    projectId: string,
+    agentId: string,
+    sessionId: string,
+  ): Promise<void> {
+    const duplicate = this.duplicateSession(sessionId);
+    if ((await this.locateAll(projectId, agentId, sessionId)).length > 0) throw duplicate();
+    if (this.sessions?.findById?.(sessionId)) throw duplicate();
+  }
+
+  /**
+   * Writes one imported shard as `<sessionId>_<index>.jsonl`, normalized to exactly one
+   * trailing newline (the JSONL convention the writer follows). `wx` closes the check-then-write
+   * race: two concurrent imports of the same new session id both pass the pre-check, but only
+   * one can create the file — the loser's EEXIST maps to `onExists`'s 409.
+   */
+  private async writeImportedShard(
+    dir: string,
+    sessionId: string,
+    index: number,
+    content: string,
+    onExists: () => HttpError,
+  ): Promise<{ file: string; sizeBytes: number }> {
+    const body = content.replace(/\n+$/, "") + "\n";
+    const file = path.join(dir, `${sessionId}_${String(index).padStart(3, "0")}.jsonl`);
+    try {
+      await fs.writeFile(file, body, { encoding: "utf8", flag: "wx" });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "EEXIST") throw onExists();
+      throw err;
+    }
+    return { file, sizeBytes: Buffer.byteLength(body, "utf8") };
+  }
+
+  /** The all-or-nothing half of `importTraceFile`: a bundle's shards land together or not at all. */
+  private async importTraceBundle(
+    projectId: string,
+    agentId: string,
+    bundle: TraceBundle,
+  ): Promise<TraceImportResponse> {
+    const total = bundle.shards.length;
+    // Validate every shard's content up front — including that each one belongs to the
+    // Session the bundle names — before a single byte is written.
+    const shards = bundle.shards.map((shard) => {
+      const what = `Shard ${shard.index} of ${total}`;
+      const parsed = parseTraceShard(shard.content, what);
+      if (parsed.sessionId !== bundle.sessionId) {
+        throw new HttpError(
+          400,
+          "invalid_trace",
+          `${what} belongs to Session ${parsed.sessionId}, not ${bundle.sessionId}.`,
+        );
+      }
+      return { index: shard.index, content: shard.content, ...parsed };
+    });
+    await this.assertTraceImportable(projectId, agentId, bundle.sessionId);
+    const duplicate = this.duplicateSession(bundle.sessionId);
+    const written: { file: string; sizeBytes: number; shard: (typeof shards)[number] }[] = [];
+    try {
+      for (const shard of shards) {
+        const dir = path.join(tracesDir(this.root, projectId, agentId), shard.date);
+        await fs.mkdir(dir, { recursive: true });
+        const file = await this.writeImportedShard(
+          dir,
+          bundle.sessionId,
+          shard.index,
+          shard.content,
+          duplicate,
+        );
+        written.push({ ...file, shard });
+      }
+    } catch (err) {
+      // Index rows are registered only once every file has landed, so removing the files is the
+      // whole rollback: no half-imported Session, and nothing for the next import to trip over.
+      for (const { file } of written) await fs.rm(file, { force: true });
+      throw err;
+    }
+    for (const { sizeBytes, shard } of written) {
+      this.index.registerImportedFile({
+        projectId,
+        agentId,
+        sessionId: bundle.sessionId,
+        fileIndex: shard.index,
+        date: shard.date,
+        sizeBytes,
+        records: shard.records,
+      });
+    }
+    this.indexImportedSession(projectId, agentId, bundle.sessionId);
+    return {
+      sessionId: bundle.sessionId,
+      index: 1,
+      date: shards[0]!.date,
+      shards: total,
+    };
   }
 
   /**

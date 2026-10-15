@@ -1,11 +1,14 @@
 /**
  * Trace file export/import integration tests:
- * export serves the raw JSONL verbatim as an attachment (any member); import validates the
+ * export serves the raw JSONL verbatim as an attachment (any member), and the whole-Session
+ * bundle export serves every shard of one Session in a single file; import validates the
  * uploaded content (parseable JSONL, leading session_meta, filename-safe session_id) and
  * always stores it as index 1 of a new Session — a session id that exists ANYWHERE in the
- * install is rejected with 409 trace_session_exists — the imported file becomes a listed
- * Session of the receiving Agent, and is browsable through the existing tree/detail
- * endpoints. Import is owner-only, mirroring the Agent snapshot import.
+ * install is rejected with 409 trace_session_exists — unless the upload is a bundle, which
+ * lands all of its shards as indices 1..N of ONE Session (validated in full first, so a
+ * rejected bundle writes nothing); the imported files become a listed Session of the receiving
+ * Agent, browsable through the existing tree/detail endpoints. Import is owner-only, mirroring
+ * the Agent snapshot import.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { OmniMessage, SessionMetaPayload } from "@lmliheng/penguin-core";
@@ -13,6 +16,7 @@ import type {
   AgentTracesResponse,
   ProjectCreateResponse,
   SessionsResponse,
+  TraceBundle,
   TraceEventsResponse,
   TraceImportResponse,
 } from "../src/api/types.js";
@@ -64,6 +68,30 @@ function localDateOf(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** A second shard of the same Session — what compaction rotates into: a new context, same id. */
+const SECOND_TS = "2026-07-07T02:00:00.000Z";
+
+function sampleTail(sessionId: string): OmniMessage[] {
+  return [
+    rec(SECOND_TS, "session_meta", metaPayload(sessionId)),
+    rec("2026-07-07T02:00:01.000Z", "model_msg", {
+      type: "text",
+      role: "user",
+      text: "second shard",
+    }),
+  ];
+}
+
+/** A migration bundle's upload content, shards numbered from 1 in the order given. */
+function bundleContent(sessionId: string, shards: OmniMessage[][]): string {
+  return JSON.stringify({
+    format: "adelie-trace-bundle",
+    version: 1,
+    sessionId,
+    shards: shards.map((messages, i) => ({ index: i + 1, content: toContent(messages) })),
+  });
 }
 
 const toContent = (messages: OmniMessage[]): string =>
@@ -140,7 +168,7 @@ describe("trace-import-export", () => {
     const res = await owner.post(`${base()}/import`, { dataBase64: b64(content) });
     expect(res.status).toBe(200);
     const body = (await res.json()) as TraceImportResponse;
-    expect(body).toEqual({ sessionId: SID, index: 1, date: localDateOf(FIRST_TS) });
+    expect(body).toEqual({ sessionId: SID, index: 1, date: localDateOf(FIRST_TS), shards: 1 });
     // Appears in the drill-down tree under the local date derived from the first record's timestamp.
     const tree = (await (await owner.get(base())).json()) as AgentTracesResponse;
     expect(tree.dates).toHaveLength(1);
@@ -273,6 +301,145 @@ describe("trace-import-export", () => {
       dataBase64: b64("a".repeat(14 * 1024 * 1024 + 1)),
     });
     expect(res.status).toBe(400);
+  });
+
+  it("export bundle: every shard of the Session, verbatim, as one attachment (any member)", async () => {
+    await writeTraceFile(
+      t.root,
+      projectId,
+      "default_agent",
+      "2026-07-06",
+      SID,
+      1,
+      sampleTrace(SID),
+    );
+    await writeTraceFile(t.root, projectId, "default_agent", "2026-07-07", SID, 2, sampleTail(SID));
+    // A plain member can export the whole Session too (same rule as the snapshot export).
+    const res = await member.get(`${base()}/${SID}/export`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/json");
+    expect(res.headers.get("content-disposition")).toBe(
+      `attachment; filename*=UTF-8''${SID}.trace-bundle.json`,
+    );
+    const bundle = (await res.json()) as TraceBundle;
+    expect(bundle.format).toBe("adelie-trace-bundle");
+    expect(bundle.version).toBe(1);
+    expect(bundle.sessionId).toBe(SID);
+    expect(bundle.shards.map((s) => s.index)).toEqual([1, 2]);
+    // Byte-for-byte the files on disk — the same content a per-file export serves.
+    expect(bundle.shards[0]!.content).toBe(toContent(sampleTrace(SID)));
+    expect(bundle.shards[1]!.content).toBe(toContent(sampleTail(SID)));
+  });
+
+  it("export bundle: a Session with no Trace → 404 trace_not_found", async () => {
+    const res = await owner.get(`${base()}/${SID}/export`);
+    expect(res.status).toBe(404);
+    expect(await errorCode(res)).toBe("trace_not_found");
+  });
+
+  it("bundle import: every shard lands as ONE Session, browsable end to end", async () => {
+    const res = await owner.post(`${base()}/import`, {
+      dataBase64: b64(bundleContent(SID, [sampleTrace(SID), sampleTail(SID)])),
+    });
+    expect(res.status).toBe(200);
+    const imported = (await res.json()) as TraceImportResponse;
+    expect(imported).toEqual({
+      sessionId: SID,
+      index: 1,
+      date: localDateOf(FIRST_TS),
+      shards: 2,
+    });
+    // Each shard landed in its own date dir (derived from its own first record), and the second
+    // is readable through the very endpoints a recorded shard uses.
+    const tree = (await (await owner.get(base())).json()) as AgentTracesResponse;
+    expect(tree.dates.map((d) => d.date).sort()).toEqual(
+      [localDateOf(FIRST_TS), localDateOf(SECOND_TS)].sort(),
+    );
+    const shard = (await (await owner.get(`${base()}/${SID}/2`)).json()) as TraceEventsResponse;
+    expect(shard.total).toBe(2);
+    expect((shard.events[1]!.payload as { text: string }).text).toBe("second shard");
+    // One conversation, not one per shard: the imported Session is listed once.
+    const listed = (await (
+      await owner.get(`/api/projects/${projectId}/agents/default_agent/sessions?counts=1`)
+    ).json()) as SessionsResponse;
+    expect(listed.sessions.map((x) => x.sessionId)).toEqual([SID]);
+  });
+
+  it("bundle import: a shard out of order → 400, nothing written", async () => {
+    // Contiguity from 1 is what keeps the landed filenames a copy of the original Session: a
+    // gap would silently reorder the transcript, so it is refused before anything is written.
+    const res = await owner.post(`${base()}/import`, {
+      dataBase64: b64(
+        JSON.stringify({
+          format: "adelie-trace-bundle",
+          version: 1,
+          sessionId: SID,
+          shards: [
+            { index: 1, content: toContent(sampleTrace(SID)) },
+            { index: 3, content: toContent(sampleTail(SID)) },
+          ],
+        }),
+      ),
+    });
+    expect(res.status).toBe(400);
+    expect(await errorCode(res)).toBe("invalid_trace");
+    const tree = (await (await owner.get(base())).json()) as AgentTracesResponse;
+    expect(tree.dates).toEqual([]);
+  });
+
+  it("bundle import: a shard belonging to another Session → 400, nothing written", async () => {
+    const other = "session-2026-07-07-09-00-00-feed0002";
+    const res = await owner.post(`${base()}/import`, {
+      dataBase64: b64(bundleContent(SID, [sampleTrace(SID), sampleTail(other)])),
+    });
+    expect(res.status).toBe(400);
+    expect(await errorCode(res)).toBe("invalid_trace");
+    const tree = (await (await owner.get(base())).json()) as AgentTracesResponse;
+    expect(tree.dates).toEqual([]);
+  });
+
+  it("bundle import: a malformed shard stops the whole import (all-or-nothing)", async () => {
+    const res = await owner.post(`${base()}/import`, {
+      dataBase64: b64(
+        JSON.stringify({
+          format: "adelie-trace-bundle",
+          version: 1,
+          sessionId: SID,
+          shards: [
+            { index: 1, content: toContent(sampleTrace(SID)) },
+            { index: 2, content: "{not json" },
+          ],
+        }),
+      ),
+    });
+    expect(res.status).toBe(400);
+    expect(await errorCode(res)).toBe("invalid_trace");
+    // Shard 1 was valid, yet nothing of it is on disk: a bundle lands whole or not at all.
+    const tree = (await (await owner.get(base())).json()) as AgentTracesResponse;
+    expect(tree.dates).toEqual([]);
+  });
+
+  it("bundle import: duplicate session id → 409, the existing Session untouched", async () => {
+    await writeTraceFile(
+      t.root,
+      projectId,
+      "default_agent",
+      "2026-07-06",
+      SID,
+      1,
+      sampleTrace(SID),
+    );
+    const res = await owner.post(`${base()}/import`, {
+      dataBase64: b64(bundleContent(SID, [sampleTrace(SID), sampleTail(SID)])),
+    });
+    expect(res.status).toBe(409);
+    expect(await errorCode(res)).toBe("trace_session_exists");
+    const tree = (await (await owner.get(base())).json()) as AgentTracesResponse;
+    expect(tree.dates).toHaveLength(1);
+    expect(tree.dates[0]!.sessions[0]!.files.map((f) => f.index)).toEqual([1]);
+    expect(await (await owner.get(`${base()}/${SID}/1/download`)).text()).toBe(
+      toContent(sampleTrace(SID)),
+    );
   });
 
   it("import: owner only — member 403, outsider 404, unknown agent 404", async () => {

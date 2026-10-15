@@ -3700,17 +3700,48 @@ export interface AgentTracesResponse {
 }
 
 export interface TraceImportRequest {
-  /** Base64 of the Trace file content (JSON Lines; the first record must be `session_meta`). */
+  /**
+   * Base64 of the uploaded content, in either of the two shapes the import accepts: a single
+   * Trace file (JSON Lines; the first record must be `session_meta`) or a whole-Session
+   * migration bundle (see `TraceBundle`).
+   */
   dataBase64: string;
 }
 
-export interface TraceImportResponse {
-  /** Session id taken from the imported file's `session_meta`. */
-  sessionId: string;
-  /** Allocated file index: always 1 — an import creates a new Session (a duplicate session id is rejected with 409 `trace_session_exists`). */
+/** One Trace shard inside a migration bundle, carrying that shard's file content verbatim. */
+export interface TraceBundleShard {
+  /** Trace file index, 1-based. A bundle's shards are contiguous from 1 — the indices the shards land under here. */
   index: number;
-  /** Date directory the file landed in (local yyyy-mm-dd from the first record's timestamp, matching the Trace Writer's convention). */
+  /** The shard's JSON Lines content, byte-for-byte what the exporting install has on disk. */
+  content: string;
+}
+
+/**
+ * A whole Session's Trace as one file — what makes a Session with several compaction shards
+ * migratable: a single file holds only one shard, so an export → import round-trip of a long
+ * Session used to carry nothing but its first context.
+ *
+ * `format` is what tells a bundle apart from a single Trace file when one is uploaded: a Trace
+ * file is JSON Lines, a bundle is one JSON object.
+ */
+export interface TraceBundle {
+  format: "adelie-trace-bundle";
+  version: 1;
+  /** The Session every shard belongs to; each shard's `session_meta` must agree with it. */
+  sessionId: string;
+  /** Every shard, in index order. */
+  shards: TraceBundleShard[];
+}
+
+export interface TraceImportResponse {
+  /** Session id taken from the imported file's (or bundle's) `session_meta`. */
+  sessionId: string;
+  /** Allocated first file index: always 1 — an import creates a new Session (a duplicate session id is rejected with 409 `trace_session_exists`). */
+  index: number;
+  /** Date directory the first shard landed in (local yyyy-mm-dd from that shard's first-record timestamp, matching the Trace Writer's convention). */
   date: string;
+  /** Shards written: 1 for a single-file import, N for a bundle (they land as indices 1..N of one Session). */
+  shards: number;
 }
 
 // ---------------------------------------------------------------------------

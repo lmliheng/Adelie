@@ -8,6 +8,7 @@ import type {
   HistoryMessage,
   SessionContextParts,
   TraceAnalysisResponse,
+  TraceBundle,
   TraceEventsResponse,
   TraceFileInfo,
   TraceImportResponse,
@@ -188,6 +189,11 @@ export abstract class Traces {
     sessionId: string,
     index: number,
   ): Promise<Buffer<ArrayBufferLike>>;
+  abstract exportSessionBundle(
+    projectId: string,
+    agentId: string,
+    sessionId: string,
+  ): Promise<TraceBundle>;
   abstract importTraceFile(
     projectId: string,
     agentId: string,

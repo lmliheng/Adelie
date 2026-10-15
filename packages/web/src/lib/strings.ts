@@ -460,13 +460,14 @@ export const zh = {
     /** Trace import: the two pickers' accessible names, the pick-a-file action, and its outcomes. */
     importTrace: "导入 Trace",
     importTraceInfo:
-      "上传从其他部署导出的 .jsonl 轨迹文件，它会成为所选 Agent 的一个会话。目的地的两个部分都在这里选择：导入接口按 Agent 划分——轨迹文件自带的 session_meta 无法指认本机的 Agent，其中的 agent_state 路径属于导出它的那台机器——而项目需要明确指定，因为本对话框不显示当前是哪一个，也因此可以导入到当前打开之外的项目。导出在对话的 Trace 面板中进行。",
+      "上传从其他部署导出的 .jsonl 轨迹文件，它会成为所选 Agent 的一个会话；也可以上传对话的 Trace 面板里「导出整个会话」得到的 .json 包，那会把一个长会话的全部分片一起带过来。目的地的两个部分都在这里选择：导入接口按 Agent 划分——轨迹文件自带的 session_meta 无法指认本机的 Agent，其中的 agent_state 路径属于导出它的那台机器——而项目需要明确指定，因为本对话框不显示当前是哪一个，也因此可以导入到当前打开之外的项目。导出在对话的 Trace 面板中进行。",
     importTraceProject: "导入到项目",
     importTraceAgent: "导入到 Agent",
     importTracePick: "选择文件",
     importTraceRunning: "导入中…",
     importTraceDone: (target: string) => `轨迹已导入到 ${target}`,
     importTraceTooLarge: "文件超过 14MB 上限。",
+    importTraceBundleTooLarge: "整会话包超过 48MB 上限。",
     /** Admin-only sub-page (server-global); its explanation is disclosed at the pane heading. */
     proxyTitle: "代理选项",
     proxyInfo:
@@ -4133,6 +4134,9 @@ export const zh = {
     systemPrompt: "系统提示词",
     toolDefs: (n: number) => `工具定义（${n}）`,
     exportFile: "导出",
+    /** Whole-Session export: every compaction shard in one file, for import on another install. */
+    exportSession: "导出整个会话",
+    exportSessionHint: "把这个会话的全部分片打包成一个文件，可在另一台 Adelie 导入",
   },
 
   benchmark: {

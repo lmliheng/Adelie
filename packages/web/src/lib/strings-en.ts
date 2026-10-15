@@ -391,13 +391,14 @@ export const en: Strings = {
     /** Trace import: the two pickers' accessible names, the pick-a-file action, and its outcomes. */
     importTrace: "Import Trace",
     importTraceInfo:
-      "Upload a .jsonl Trace exported from another install and it becomes a conversation of the chosen Agent. Both halves of the destination are picked here: the endpoint is per-Agent — a Trace file's own session_meta cannot name a local Agent, since its agent_state path belongs to the machine that exported it — and the Project is asked for because this dialog does not show which one is open, which also means a Trace can go to a Project other than the open one. Exporting happens in a conversation's Trace panel.",
+      "Upload a .jsonl Trace exported from another install and it becomes a conversation of the chosen Agent — or the .json bundle from a conversation's \"Export whole session\", which brings every shard of a long Session along. Both halves of the destination are picked here: the endpoint is per-Agent — a Trace file's own session_meta cannot name a local Agent, since its agent_state path belongs to the machine that exported it — and the Project is asked for because this dialog does not show which one is open, which also means a Trace can go to a Project other than the open one. Exporting happens in a conversation's Trace panel.",
     importTraceProject: "Import into project",
     importTraceAgent: "Import into agent",
     importTracePick: "Choose file",
     importTraceRunning: "Importing…",
     importTraceDone: (target: string) => `Trace imported into ${target}`,
     importTraceTooLarge: "The file exceeds the 14MB limit.",
+    importTraceBundleTooLarge: "The session bundle exceeds the 48MB limit.",
     /** Admin-only sub-page (server-global); its explanation is disclosed at the pane heading. */
     proxyTitle: "Proxy options",
     proxyInfo:
@@ -4100,6 +4101,10 @@ export const en: Strings = {
     systemPrompt: "System prompt",
     toolDefs: (n: number) => `Tool definitions (${n})`,
     exportFile: "Export",
+    /** Whole-Session export: every compaction shard in one file, for import on another install. */
+    exportSession: "Export whole session",
+    exportSessionHint:
+      "Pack every shard of this Session into one file, importable in another Adelie",
   },
 
   benchmark: {
