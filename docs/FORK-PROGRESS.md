@@ -347,6 +347,13 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
 **桌上已量过**的候选里取，落的是 5.41。探针引用是 `refs/adelie-tmp/upstream-main-r63`（要清就
 `git update-ref -d`）。
 
+**上游 `main` 这一轮仍然没有往前走（2026-10-15 第六十四轮）**：照第二十三轮那条路按 URL 现拉
+（`git fetch https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r64`），
+尖端仍是 **`2b8116ce`**（与 `r61` / `r62` / `r63` 同一个提交，`git log --oneline 2b8116ce..refs/adelie-tmp/upstream-main-r64`
+**一条都没有**）。所以本轮仍从**桌上已量过**的候选里取，落的是 5.42（`#1114`）—— 第四十九 / 五十八轮
+把它搁置的理由是「用例有冲突」，本轮把那一处冲突按本树写法解掉即可（见该节）。探针引用是
+`refs/adelie-tmp/upstream-main-r64`（要清就 `git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -874,6 +881,16 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
       `vector-effect: non-scaling-stroke` 让描边永远 1.5px，默认 16px 根下几何与改前逐像素相同。
       **本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法
       改名到本轮日期、去掉上游 PR 行、写明移植来源）。细节与实测见「第六十三轮」一节。
+- [x] **5.42 provider 的 429 与传输中断分开归类**（上游 `77036d31` `#1114`，**2026-10-15 第六十四轮落地**，
+      提交见该节）：429 与连接中断此前共用 `network` 一个 `error_code`，于是下游无从区分「线路抖了一下，
+      稍等再试」与「这个模型已经没有配额了，同一请求在每一级退避之后仍会 429」——两者的处置不同：
+      前者等一等就过去了，后者这段会话在别处还有地方可跑。`ErrorCode` 增加 **`rate_limited`**（provider
+      回答 429：速率限制，或一份暂时耗尽的配额），`isRateLimitError` 与 `isFatalProviderRejection`
+      并列导出、沿错误的 `cause` 链任一层读出它；**结果状态仍是 `retryable`** —— 重连阶梯、放弃时机、
+      重试内容都没变，只是把原因命名出来；`request_end` 照旧以 `error_code` 携带该码，Cost 中心的错误
+      面板按 `error_code` 分组，限流因此不再藏在 network 桶里。**本地化**：无（`packages/core` 内三份
+      源码 + 一份用例；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源）。
+      细节与实测见「第六十四轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1475,6 +1492,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-15 | 5.39 | **设置里的 WSL 中文诊断不再乱码**（上游 `842571de` `#1125` 移植，照改动落、不是合分支；5 文件 / +155 −18，其中源码 2 个（`plugins/sandbox-wsl/src/host.ts` +29 −14、`src/tasks.ts` +2 −4）、新用例 1 个（`test/host.test.ts` 89 行，**七条**）、另有 changelog 一对）：`runWsl` 过去 `setEncoding("utf8")` 直接按 UTF-8 读 `wsl.exe` 的输出、收尾时只把 NUL 删掉 —— 而 Windows 自带的那份 `wsl.exe` 仍可能回 UTF-16LE（`WSL_UTF8=1` 不保证），按 UTF-8 读出来已经丢了原来的字，删 NUL 拼不回来，于是「设置 → 插件」里的中文提示与安装日志全成乱码。现在 stdout / stderr 各自**按字节留着**（两个 `Buffer[]`），收尾时 `Buffer.concat` 再解**一次**：新增导出的 `decodeOutput()`（带 BOM 的 UTF-16LE 直接认；否则按「奇数位全是零字节」判定 —— UTF-16LE 的 ASCII 标签、空格与换行有这个特征，UTF-8 文本没有），`cleanOutput()` 从「删 NUL + 扔通知」退成「已解码文本的清理」，安装日志（`tasks.ts` 的 `readText`）改走同一个解码器；**实时进度仍走跨块的 `StringDecoder("utf8")`**（Linux 那侧写的是 UTF-8，分块边界可能落在一个汉字中间，凑齐整行再交出去）。**本地化**：无（全在本仓自己的插件内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」）。**没改界面**，所以没有真浏览器取证（见该节） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· 插件自己的 `typecheck` **`EXIT=0`** · `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（67 通过 + 1 跳过 = 68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过** · web **255 文件 / 3120 通过 / 2 跳过** · hmr 无测试文件 · 插件 `pnpm --filter @lmliheng/penguin-plugin-sandbox-wsl test` **32 通过**（`test/host.test.ts` 7 + `test/profile.test.ts` 25，上游记的也是 32）· **反证（单测）**：把 `src/host.ts` 退回 `HEAD`（用例留着）→ **3 failed / 29 passed**，红的正是 UTF-16LE 那两条（`it.each([false, true])`）与「两条流各自解码」那条，实际收到的乱码是 `���͑�e/T�R Windows0`；放回本笔 → **32 全过** · **额外的一条真字节证据**（不经 vitest，探针在 scratchpad）：用 `iconv -f UTF-8 -t UTF-16LE`（与 `-t UTF-8`）**真程序**产出的字节，按 1 / 2 / 3 / 末字节四种切法分成两块再 `Buffer.concat` 交给源码里的 `decodeOutput()` —— 三种编码 × 四种切法**12 例全部与原文逐字相同**，而同一批字节走改前的「按 UTF-8 读再删 NUL」在 UTF-16LE 那两组上分别得到 `*g�[ň…` / `��*g�[ň…` · 本笔不碰界面也没有新的界面面，因此**没有起服务 / 没有 Playwright**：设置卡片本身一字未改，它渲染的是插件交给它的文本，而这条路径的改前改后已由上面两组证据覆盖（插件只在 Windows + WSL 上有真实运行面，本机是 Linux）· 端口一个没碰（没有起服务），数据一个字节没往 `/root/.penguin` 或仓库里写 | `见本行提交` |
 | 2026-10-15 | 5.40 | **成本中心的错误提醒：标记已读要覆盖这次打开读到的错误，重启后保持已读**（上游 `591f091d` `#1118` 移植，照改动落、不是合分支；4 文件 / +155 −13，其中源码 2 个（`usage-page.tsx` +3 −3、`todo-dismissals.ts` +13 −10）、另有 changelog 一对）：成本中心读的是屏幕上那一档范围里的错误，而「标记为已读」写下的却是**应用启动时**缓存的那个时间戳 —— 应用打开之后到达的错误也被这条标记算作已读，重启后它又把提醒重新抬起来。现在 `load()` 开头先 `refreshProjectTodos(projectId)`（表格与标记因此指同一条最新错误），`dismissTodo` 改成**写入成功之后**才收起提醒（失败 `toastError(apiErrorText(e))`、留着重试），并加一条模块级写队列 `saving`：连续标记按顺序写，每份 map 都从上一次成功的写入上叠，先发的请求不会覆盖后写的标记。**本地化**：只把上游的 `@prismshadow/penguin-ui` 换成本仓的`@lmliheng/penguin-ui` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· web **255 文件 / 3120 通过 / 2 跳过**（本笔没有加用例）· server **197 文件 / 2833 通过 / 4 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，应用内换页以保住「应用启动时」的探针缓存）**：数据根 `/root/adelie-fork-data/r62-{after2,before}`、`localhost:8952` / `8953`，两行「未预期错误」直接写进 `error_records`（不需要模型 key，即 3.6 那个卡点）。**改后**：提醒写「**2** 条未预期错误」、存下的是**新**时间戳、重载后提醒与侧栏红点**都没了**（`r62/shots/after-3-after-reload.png`）；**改前**（`git checkout HEAD --` 两份源码 + 重建 + 同一条探针）：提醒写「**1** 条未预期错误」、存下的却是**旧**时间戳（`22:38:27.083Z`，而新错误是 `23:08:30.239Z`）、重载后提醒**又回来了**（`before-3-after-reload.png`）· **写入被拒那一半也两态量过**（`REFUSE=1`，`page.route` 回 400）：**改后**提醒留着 + 顶部 `Could not save read status` + `ui_prefs` 没写（`after-refuse-2-refused.png`）；**改前**提醒当场消失、**没有任何提示**、也没写（`before-refuse-2-refused.png`）· **「连续标记按顺序写」单独造的并发场景**（`r62/probe2.mjs`：把第一个 prefs 写入扣在网络层，再点成本中心与模型库两条提醒的「忽略」，模型库那条靠 `PUT …/models` 只留一条做出差量）：**改后**放行前只有 1 个请求、放行后第二个请求**同时带 `errors` 与 `models`**、最终两条都在、重载后模型库提醒不在；**改前**放行前**已经发出两个请求**、被扣住的第一个最后落库、服务端**只剩 `errors`**、重载后模型库提醒回来（`忽略 · 检测到变更：175 个新增，1 个可升级`）· 两态 console **0 error**、除那次刻意造的 400 外无 ≥400 · 端口只用 8951 / 8952 / 8953（用完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `b6fb4080` |
 | 2026-10-15 | 5.41 | **智能体面板：子智能体的描述比名称小一号、节点框跟着字号长大**（上游 `6e54f6bc` `#1096` 移植，照改动落、不是合分支；4 文件 / +62 −15，其中源码 2 个（`agent-topology-view.tsx` +29 −13、`agent-topology.ts` +2 −1）、另有 changelog 一对）：调用关系图里子节点第二行的 `description` 与上方的 Agent 名同一档字号（`text-xs`），中文描述的字身填满 em 框、看上去和名称一样大甚至更大，节点失去「先是谁、再做什么」的层次；节点框又是写死的 200×46 CSS px，而框里的一切随「字号」设置放大，白领主题「特大」档因此把描述下沿截掉。现在名称改 `text-sm`（正文档）、描述留 `text-xs`（小档、浅色墨），画布把布局的数字**按 rem 渲染**（`px / 16`，新加一个小的 `rem()`），节点框、间距、连线跟着用户选的字号一起长大；SVG 改用 `viewBox` 保持路径在布局单位里、加 `vector-effect: non-scaling-stroke` 让描边永远 1.5px，`agent-topology.ts` 的文件头写明「这里的长度都是默认 16px 根下的 CSS px」。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2169 文件）· 本笔两份源码与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1029**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2842 通过 / 4 跳过** · web **256 文件 / 3122 通过 / 2 跳过**（本笔没有加用例 —— 这条逻辑是 className 与几何，本树的 node 测试没有排版引擎，仓库规矩也不断言 className）· hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态 × 三主题 × 三档字号 = 9 格）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r63-after`、`localhost:8961` 起真服务（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），模型配成 `custom` provider 指向本仓自带 mock LLM 的**本轮副本**（8977；只加了一处：`run_subagent` 的入参多一个中文 `description`，否则子节点根本没有第二行可量）—— 于是拿到**真会话、真子会话、真描述**，不需要模型 key（即 3.6 那个卡点）。Playwright（`playwright-core` + 本地 chromium-1243，1440×900，`localStorage` 里存 `penguin.themeId` / `penguin.textSize`）打开会话、点开子会话 chip、让「智能体面板」标签激活，再读节点自身的 DOM：**改前** —— 9 格里名称与描述**字号逐格相同**（12/12、13.5/13.5、15/15、13/13、14.625/14.625、16.25/16.25、12/12、13.5/13.5、15/15），节点框 9 格全是 **200×46**，且**白领/特大那一格的行盒被压到 18.625px、而它自己要 20.3125px（`line-height` 亲口给出）—— 正是上游报告的截断**；**改后** —— 9 格名称都比描述大一号（14/12、15.75/13.5、17.5/15、15/13、16.875/14.625、**18.75/16.25**、13/12、14.625/13.5、16.25/15），节点框随根字号长大（16px→**200×46**、18px→**225×52**、20px→**250×58**），**没有一格的行盒低于它自己要求的行高**（白领/特大恢复成 20.3125px）。两态 console 各 **0 error**、无一条 ≥400；9 格截图 `r63/shots/{before,after}-<主题>-<档位>.png`（白领/特大那两张肉眼可见：改前描述贴着框的下沿、与名称一样大，改后名称更大、框更高、描述整行在位）、原始测量 `r63/graph-{before,after}.json`、探针 `r63/probe.mjs`、mock 副本 `r63/mock-llm-desc.mjs`、改前源码留底 `r63/fix-src/` 都在 scratchpad · 端口只用 8961 与 8977（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r63-after`，一个字节没往 `~/.penguin` 或仓库里写（`packages/web/dist` 是构建产物，未 `git add`） | `3a141052` |
+| 2026-10-15 | 5.42 | **provider 的 429 与传输中断分开归类**（上游 `77036d31` `#1114` 移植，照改动落、不是合分支；6 文件 / +90 −2，其中源码 3 个（`core/src/llm/generative-model.ts` +27 −1：新增导出的 `isRateLimitError`、`streamGenerate` 的 outcome 分类里在 AbortError 之后、`network` 兜底之前多一支；`core/src/llm/index.ts` +1 导出；`core/src/omnimessage/types.ts` +1 −1 的 `ErrorCode`），用例 1 个（`core/test/llm.test.ts` +17，新增一条），另有 changelog 一对）：429 与连接中断此前共用 `network` 一个 `error_code` —— 下游无从区分「线路抖了一下，稍等再试」与「这个模型已经没有配额了，同一请求在每一级退避之后仍会 429」，而两者的处置不同：前者等一等就过去了，后者这段会话在别处还有地方可跑（harness 已自带会话内的模型切换）。`ErrorCode` 增加 **`rate_limited`**；`isRateLimitError` 与 `isFatalProviderRejection` 并列导出，沿错误的 `cause` 链任一层判 `status` / `statusCode === 429`；**结果状态仍是 `retryable`** —— 重连阶梯、放弃时机、重试内容都没变，只是把原因命名出来；词汇表其余部分不变（传输中断与 5xx 仍是 `network`），`request_end` 照旧以 `error_code` 携带该码，Cost 中心的错误面板按 `error_code` 分组，限流因此不再藏在 network 桶里。**本树那处冲突的解法**：上游同一处已把用例里的 `delta()` 改成 `ev()`、并把「JSON parse」那条用例改了名，本树都还没有 —— 只把新用例与新的 `rateLimited()` 夹具插进去，本树原有的措辞与用例名一个字没动。**本地化**：无（全在 `packages/core` 内、无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植出处） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2169 文件）· 本笔 4 份源码 / 用例与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件，+1 即本笔新用例）· ui **1029**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2842 通过 / 4 跳过** · web **256 文件 / 3122 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `generative-model.ts` 里新那一支的条件临时改成 `false && isRateLimitError(error)`（其余一字不动）→ `test/llm.test.ts` **1 failed / 98 passed**，红的是本笔新用例、报 **`expected 'network' to be 'rate_limited'`** —— 即「429 被当成 network」正是本笔要修的缺陷；还原后再跑 **99 全过** · **下游面逐处核过**（不是推测）：`request_end` 由 `builders.ts` 原样带出 `error_code`、服务端错误表 `db/repos/errors.ts` 的 `code` 列是自由文本（无 CHECK / 枚举）、错误面板 `topCode` 按 `source · code · kind` 分组 —— 没有任何一处是闭集，`rate_limited` 落进去就是一个新桶；反方向的界面文案（`web/src/lib/strings.ts` 与 `cli/src/i18n.ts` 里按 `errorCode` 选措辞的那两处）**上游自己也没有 `rate_limited` 分支**（同一次核过 `refs/adelie-tmp/upstream-main-r64` 的同一处），所以照上游原样落，不额外改文案 · 本笔无界面改动，因此没有起服务截图；端口一个没碰（3003 / 3004 / 4000 / 7364 / 7369 全程未动） | `de709bd0` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -9108,3 +9126,94 @@ desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key�
   三条 Windows 分片、两条 macOS 分片与 `runtime` 三平台）。
 - 本笔只改 `packages/web/src/features/chat/agent-topology*` 与一对 changelog，`ci.yml` 的矩阵没有动；
   没有新增依赖、没有动包名与流水线，所以版本戳、发布、安装包这一轮一个都没碰（按轮次纪律）。
+
+## 第六十四轮：provider 的 429 与传输中断分开归类（2026-10-15，条目 5.42）
+
+一次无人值守的自主推进，只做**一条**：把上游 `#1114`（`77036d31`，「a provider 429 is classified
+apart from a transport drop」）照改动落进本树。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode` 全程没碰；按本轮纪律
+**没有碰 `packages/desktop` / electron**，也**没有用 3003 / 3004 / 4000 / 7364 / 7369** 任何一个端口。
+
+### 开工自检与选活
+
+- `git status --short` **干净**（一个字节都没有），`main` = `6b9b131c`；`git fetch origin && git merge
+  --ff-only origin/main` → `Already up to date.`。
+- 表上最靠前的未勾选条目**仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10**，各处不可做的理由与上一轮
+  记录的一致（2.2c 写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里，本轮纪律不许碰 desktop；
+  3.5 要用户拍板取哪个桌面壳；3.6 要模型 key —— 这是「卡点」；4.1–4.3 明令不动；5.6 与 5.10 等用户
+  拍板）。于是照前几轮的做法**先按 URL 现拉一次上游**。
+- **上游这一轮仍然没有往前走**：`git fetch https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-r64` 只回了 `* [new branch]`，尖端仍是 **`2b8116ce`**
+  —— 与 `r61` / `r62` / `r63` 同一个提交，`git log --oneline 2b8116ce..refs/adelie-tmp/upstream-main-r64`
+  **一条输出都没有**。
+- 所以从**桌上已量过**的候选里取。这次取的是 `#1114`：第四十九 / 五十八轮把它搁置的理由只有一条
+  ——「用例有冲突」（上游同一处已把用例里的 `delta()` 改名成 `ev()`、并把那条 JSON parse 用例改了名，
+  本树都还没有）；它本身是一条**真缺陷**（429 被当成传输中断），不引入新依赖、不碰桌面壳 / 包名 / 流水线，
+  且自带一条能在本机真跑的回归用例。另一张桌上的候选 `#1131` 只改两行主题 CSS、量过的结论是「看不出
+  真缺陷」，继续留着。
+
+### 改了什么
+
+| 文件 | 改动 |
+| --- | --- |
+| `packages/core/src/llm/generative-model.ts` | +27 −1：新增导出的 `isRateLimitError()`（沿错误的 `cause` 链任一层判 `status` / `statusCode === 429`，与 `isFatalProviderRejection` 同一读法、复用它旁边的 `anyInCauseChain`）；`streamGenerate` 的 outcome 分类在 `AbortError` 之后、`network` 兜底之前多一支 → `{ status: "retryable", errorCode: "rate_limited", errorMessage }`；兜底那一支的注释里删掉 429 |
+| `packages/core/src/llm/index.ts` | +1：与 `isFatalProviderRejection` 并列导出 `isRateLimitError` |
+| `packages/core/src/omnimessage/types.ts` | +1 −1：`ErrorCode` 增加 `\| "rate_limited"`，`network` 那一行的注释跟着改 |
+| `packages/core/test/llm.test.ts` | +17：`rateLimited()` 夹具 + 一条用例（真 429 走 `streamGenerate` → `retryable` + `rate_limited`；`isRateLimitError` 对带状态的错误为真、对传输中断为假） |
+| `changelog/unreleased/2026-10-15-rate-limited-error-code.md` / `.zh.md` | 新增一对（按本仓写法：日期改到本轮、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#1114，提交 `77036d31`）」） |
+
+**语义没变的那部分**（本轮刻意不动）：结果状态仍是 `retryable` —— 重连阶梯、放弃时机、重试内容一个
+都没改，只是把原因命名出来；传输中断与 5xx 仍是 `network`；`request_end` 照旧以 `error_code` 携带该码。
+上游在提交说明里写明这次**不**含 follow-up（宿主在 Task 边界读 `rate_limited` 再换模型重发），本轮
+同样不含。
+
+### 本树那处冲突是怎么解的
+
+`git apply -3` 的结果：三份源码 `Applied … cleanly`，只有 `packages/core/test/llm.test.ts` 两处冲突
+（`UU`）—— 上下游两处上下文都变了：夹具区上游用的是 `delta({…})` 而本树是 `ev({ content_items: […] })`；
+用例区上游把那条叫「classifies a JSON parse exception…」的用例改了名，本树叫「classifies an AgentHub
+JSON parse exception…」。**解法**：只把上游**新增**的两块（`rateLimited()` 夹具、那条新用例）插进去，
+本树原有的措辞与用例名一个字没动 —— 与上游提交说明里「本地化」那一栏的口径一致（那一栏是空的，
+说明上游这处不需要按仓库改名）。
+
+### 主证据：单测 + 反证
+
+- **新用例真跑**：`pnpm --filter @lmliheng/penguin-core exec vitest run test/llm.test.ts` → **99 passed**
+  （本树这份文件原本 98 条，加这一条）。
+- **反证（把固定分支关掉）**：把新那一支的条件临时改成 `false && isRateLimitError(error)`、其余一字不动
+  → 同一条命令 **1 failed / 98 passed**，红的正是本笔新用例：
+  `AssertionError: expected 'network' to be 'rate_limited'`。也就是说「429 被归成 `network`」这个
+  缺陷是真的、且正是本笔修掉的那一处；还原后再跑 → **99 passed**（工作区与索引逐字一致，
+  `git diff --exit-code -- packages/core` 无输出）。
+- **下游面逐处核过**（不是推测，几条 `grep` 就能复现）：`request_end` 由
+  `core/src/omnimessage/builders.ts` 原样带出 `error_code`；服务端错误表 `server/src/db/repos/errors.ts`
+  的 `code` 列是**自由文本**（建表语句里没有 CHECK、也没有枚举），错误面板 `topCode()` 按
+  `source · code · kind` 分组 —— 没有任何一处是闭集，`rate_limited` 落进去就是一个新桶。反方向也核过：
+  `web/src/lib/strings.ts` 与 `cli/src/i18n.ts` 里按 `errorCode` 选措辞的那两处，**上游自己也没有
+  `rate_limited` 分支**（同一次对着 `refs/adelie-tmp/upstream-main-r64` 的同一处核过），所以照上游原样落、
+  不额外改文案；代价是这条重试行在 429 时走通用兜底措辞（中文「请求失败」）—— 记在这里备查，不算缺陷，
+  要改属另一笔。
+
+### 门禁
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`）；`gen:ifaces` 报 **`src/ifaces.json unchanged`
+  （189 接口 / 583 类型）** —— 本笔不动服务契约。
+- `npx oxlint` → **0 警告 0 错误**（2169 文件）；本笔改的 4 份源码 / 用例与一对 changelog
+  `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件，+1 即本笔新用例）· ui **1029**
+  （129 文件）· cli **539**（37 文件）· web **256 文件 / 3122 通过 / 2 跳过** · server
+  **197 文件 / 2842 通过 / 4 跳过** · hmr 无测试文件。（跑 server 之前先
+  `pnpm --filter @lmliheng/penguin-core build`，因为 server 的测试从 core 的 dist 读东西。）
+
+### 没做 / 还差什么
+
+- **本笔没有界面改动**，所以没有起服务、没有 Playwright、没有截图 —— 这一条全在 `packages/core`
+  内，界面（含 Cost 中心的错误面板）读的是同一个 `error_code` 字符串，分桶行为由上面那几条 `grep`
+  核过。端口一个没碰。
+- 上游在提交说明里点名的 follow-up（宿主在 Task 边界读 `rate_limited`、把会话切到备用链的下一项并重发
+  这一轮）**不在本笔**，也不在「待办」里 —— 要不要做、按什么顺序，等这一批移植走完再看。
+- 桌上仍留着的候选照旧：`#1131`（两行 Console 主题 CSS）、`#1114` 已落、`#1049` / `#1051` / `#1069` /
+  `#1074` / `#1067` / `#1072` / `#1073` / `#835` / `#1071`（各自要本树没有的文件或冲突）。
+  **下一轮**建议照旧：先按 URL 拉一次上游，有新提交就按同一判据挑；没有的话从 `#1131` 与上面这撮里选
+  （`#1131` 量过的结论是「看不出真缺陷」，如果要落，得先把「Console 主题的折线为什么是台阶」这件事
+  量清楚）。
