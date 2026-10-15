@@ -15,6 +15,7 @@ export {
   isMalformedJsonParseError,
   isIncompleteStreamError,
   isFatalProviderRejection,
+  isRateLimitError,
   isAuthenticationError,
   isFastModeUnsupportedError,
   FAST_MODE_UNSUPPORTED_GUIDANCE,
