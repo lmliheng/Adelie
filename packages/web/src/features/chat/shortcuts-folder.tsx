@@ -167,6 +167,8 @@ export function ShortcutsFolder({
                   <button
                     type="button"
                     data-tooltip={`${shortcut.title}\n${S.chat.shortcutFillHint}`}
+                    // The hint says what the click does to the composer, which the label cannot.
+                    data-tooltip-extra
                     onClick={() => onFill(shortcut.prompt)}
                     className={`flex min-w-0 flex-1 items-center gap-2 ${folderRowClass}`}
                   >

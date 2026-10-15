@@ -433,6 +433,7 @@ export function MachinesPage() {
                   <Verb
                     label={showAll ? S.machines.fewer : S.machines.expand}
                     title={showAll ? S.machines.fewer : S.machines.allHosts(hiddenCount)}
+                    titleExtra={!showAll}
                     d={CHEVRON_PATH}
                     glyphClass={showAll ? "rotate-180" : ""}
                     ariaExpanded={showAll}
@@ -599,6 +600,7 @@ function Verb({
   onClick,
   variant = "secondary",
   title,
+  titleExtra = false,
   glyphClass = "",
   ariaExpanded,
   wordless = false,
@@ -609,6 +611,8 @@ function Verb({
   onClick: () => void;
   variant?: "secondary" | "danger";
   title?: string;
+  /** `title` says what the word does not (how many hosts the click shows): it shows over the word. */
+  titleExtra?: boolean;
   glyphClass?: string;
   ariaExpanded?: boolean;
   wordless?: boolean;
@@ -638,6 +642,7 @@ function Verb({
       variant={variant}
       disabled={disabled}
       title={title ?? label}
+      data-tooltip-extra={titleExtra}
       aria-expanded={ariaExpanded}
       className="whitespace-nowrap"
       onClick={click}

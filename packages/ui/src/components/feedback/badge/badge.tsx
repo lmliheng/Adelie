@@ -32,6 +32,8 @@ export interface BadgeStyle {
 
 export interface BadgeProps extends BadgeStyle {
   size?: BadgeSize;
+  /** The sentence behind the badge's word, on hover (a discount's terms, what "built in" means). */
+  tooltip?: string;
   children: ReactNode;
 }
 
@@ -73,9 +75,17 @@ const SIZE: Record<BadgeSize, string> = {
   sm: "px-1.5 py-px",
 };
 
-export function Badge({ tone = "neutral", variant = "soft", size = "md", children }: BadgeProps) {
+export function Badge({
+  tone = "neutral",
+  variant = "soft",
+  size = "md",
+  tooltip,
+  children,
+}: BadgeProps) {
   return (
     <span
+      // The sentence says what the word cannot, so it shows over the word in full.
+      {...(tooltip !== undefined ? { "data-tooltip": tooltip, "data-tooltip-extra": true } : {})}
       className={`inline-flex items-center rounded-[var(--ui-radius-pill)] text-xs font-semibold ${SIZE[size]} ${VARIANT[variant][tone]}`}
     >
       {children}

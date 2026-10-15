@@ -578,6 +578,8 @@ export function OverviewPage() {
                     data-tooltip={S.company.overview.openColumn(
                       S.company.tickets.columns[seg.status] ?? seg.status,
                     )}
+                    // The hint says what the click opens, which the count above it cannot.
+                    data-tooltip-extra
                     onClick={() => page("tickets", `?column=${seg.status}`)}
                     className={`inline-flex items-center ${ICON_GAP.tight} rounded px-1 text-xs transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-gray-800`}
                   >
@@ -753,7 +755,9 @@ export function OverviewPage() {
                     )}
                     <span
                       className="w-20 shrink-0 text-right text-xs tabular-nums text-gray-400 dark:text-gray-500"
-                      {...(row.time !== null ? { "data-tooltip": formatDateTime(row.time) } : {})}
+                      {...(row.time !== null
+                        ? { "data-tooltip": formatDateTime(row.time), "data-tooltip-extra": true }
+                        : {})}
                     >
                       {row.time === null ? "—" : formatRelativeShort(row.time, locale)}
                     </span>

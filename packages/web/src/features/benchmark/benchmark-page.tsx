@@ -132,6 +132,8 @@ function TestedAgents({
     <div
       className="hidden shrink-0 sm:flex"
       data-tooltip={`${S.benchmark.testedAgents}: ${agentIds.map(nameOf).join(", ")}`}
+      // The avatars name no one, and past the cap a "+N" stands for the rest.
+      data-tooltip-extra
     >
       <AvatarStack
         items={agentIds.map((agentId) => ({ id: agentId, name: nameOf(agentId) }))}

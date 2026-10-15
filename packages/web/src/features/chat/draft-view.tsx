@@ -1013,6 +1013,7 @@ function VersionBadge() {
       type="button"
       onClick={openUpdateModal}
       data-tooltip={note}
+      data-tooltip-extra
       aria-label={note}
       className={`${versionBadgeClass} hover:underline`}
     >

@@ -258,6 +258,7 @@ function ModelPickerBody({
           type="button"
           tabIndex={-1}
           data-tooltip={label === m.modelId ? label : `${label} · ${m.modelId}`}
+          data-tooltip-extra={label !== m.modelId}
           // Mouse movement, not mouseenter: rows scrolling under a resting pointer while the
           // keyboard drives the list must not steal the highlight.
           onMouseMove={isHighlighted ? undefined : onHover}
@@ -354,6 +355,7 @@ function ModelPickerBody({
                 tabIndex={-1}
                 aria-current={active ? "true" : undefined}
                 data-tooltip={i < 9 ? `${g.provider.label} · ${mod}${i + 1}` : g.provider.label}
+                data-tooltip-extra={i < 9}
                 onClick={() => activateGroup(i, "rail")}
                 className={`flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2.5 py-1 text-sm transition-colors duration-150 sm:w-full sm:rounded-md sm:border-transparent sm:py-1.5 sm:dark:border-transparent ${
                   active

@@ -2111,6 +2111,7 @@ function AddGroupDialog({
                   disabled={busy}
                   onClick={() => void detect()}
                   title={S.models.detectProtocolHint}
+                  data-tooltip-extra
                   className="shrink-0"
                 >
                   {detecting ? S.models.detecting : S.models.detectProtocol}
@@ -2288,6 +2289,7 @@ export function ModelCard({
         <span
           className="shrink-0 text-xs font-medium text-red-600 dark:text-red-400"
           data-tooltip={speed.message}
+          data-tooltip-extra
         >
           {S.models.speedFailed}
         </span>
@@ -3279,6 +3281,8 @@ function ModelDialog({
                 <Button
                   size="sm"
                   title={S.models.visionModelHint}
+                  // The hint says what setting this model as the vision one does, which its label cannot.
+                  data-tooltip-extra
                   onClick={() => setConfirming("setVisionModel")}
                 >
                   {S.models.setVisionModel}
@@ -3631,6 +3635,7 @@ function ModelDialog({
                       loading={visionDetecting}
                       onClick={() => void detectVisionFromButton()}
                       title={S.models.detectVisionHint}
+                      data-tooltip-extra
                       className="shrink-0"
                     >
                       {visionDetecting ? S.models.detectingVision : S.models.detectVision}
@@ -3657,6 +3662,7 @@ function ModelDialog({
                 <label
                   className={`inline-flex items-center gap-2 ${canEdit ? "cursor-pointer" : "cursor-not-allowed"}`}
                   data-tooltip={S.models.fastModeHint}
+                  data-tooltip-extra
                 >
                   <span className="text-xs font-semibold text-gray-600 dark:text-gray-400">
                     {S.models.fastMode}

@@ -106,6 +106,7 @@ function TestBadge({ result }: { result: RowTestResult | undefined }) {
   return (
     <span
       data-tooltip={result.error}
+      data-tooltip-extra
       className={`text-xs font-medium whitespace-nowrap ${toneInk.danger}`}
     >
       {S.agent.mcpTestBadgeFail}

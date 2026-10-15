@@ -1022,6 +1022,8 @@ export function WorkspaceFinder({
       <button
         type="button"
         data-tooltip={fullTitle}
+        // A row whose hint is the path says more than the name it shows, so it opens over it.
+        data-tooltip-extra={fullTitle !== label || undefined}
         disabled={disabled}
         aria-current={active ? "location" : undefined}
         data-finder-focus
@@ -1323,6 +1325,7 @@ export function WorkspaceFinder({
                         ? {
                             "aria-current": "page" as const,
                             "data-tooltip": `${f.editPath} (${editChord})`,
+                            "data-tooltip-extra": true,
                           }
                         : {})}
                       className={`rounded px-1 py-0.5 transition-colors duration-150 ${
@@ -1582,6 +1585,9 @@ export function WorkspaceFinder({
                   aria-selected={isSel}
                   aria-disabled={folder ? undefined : true}
                   data-tooltip={folder ? entry.path : f.fileNotSelectable}
+                  // A file row is not selectable: that is what its hint says, and the name it
+                  // shows cannot.
+                  data-tooltip-extra={!folder}
                   data-finder-path={entry.path}
                   data-finder-kind={folder ? "folder" : "file"}
                   onClick={() => {
@@ -1661,6 +1667,7 @@ export function WorkspaceFinder({
         <Button
           size="sm"
           title={clear.fullPath ?? clearTitle}
+          data-tooltip-extra
           className="mr-auto min-w-0 self-center"
           onClick={() => onClear?.(machine)}
         >
@@ -1677,6 +1684,7 @@ export function WorkspaceFinder({
         className="shrink-0 self-center whitespace-nowrap"
         disabled={chooseTarget === null || loading}
         title={chooseTarget ?? undefined}
+        data-tooltip-extra
         onClick={choose}
       >
         {f.choose}

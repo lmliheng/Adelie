@@ -2335,6 +2335,7 @@ export function WorkspaceBrowser({
           <span
             className={`shrink-0 text-xs ${toneInk.attention}`}
             data-tooltip={S.files.changedOnDiskHint}
+            data-tooltip-extra
           >
             {S.files.changedOnDisk}
           </span>
