@@ -341,6 +341,12 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
 第六十一轮记的那两笔之后上游没有新东西。所以本轮不挑新提交，改从**桌上已量过**的候选里取，落的是 5.40。
 探针引用是 `refs/adelie-tmp/upstream-main-r62`（要清就 `git update-ref -d`）。
 
+**上游 `main` 这一轮也没有往前走（2026-10-15 第六十三轮）**：照第二十三轮那条路按 URL 现拉
+（`git fetch https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r63`），
+尖端仍是 **`2b8116ce`**（与 `r61` / `r62` 同一个提交，fetch 输出只有 `* [new branch]`）。所以本轮仍从
+**桌上已量过**的候选里取，落的是 5.41。探针引用是 `refs/adelie-tmp/upstream-main-r63`（要清就
+`git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -857,6 +863,17 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
       「要不要给 `packages/web` 装 jsdom」这条要用户拍板的事）。本轮**源码照落**（两份文件 `git apply -3`
       逐字干净），回归证据改用**真服务端 + 真浏览器**把改前改后两态都量出来，于是那条卡点不再挡路；
       「要不要装 jsdom」这件事本身仍然留给用户。细节与实测见「第六十二轮」一节。
+- [x] **5.41 智能体面板：子智能体的描述比名称小一号、节点框跟着字号长大**（上游 `6e54f6bc`
+      `#1096`，**2026-10-15 第六十三轮落地**，提交见该节）：面板调用关系图里子节点的第二行
+      （派生它的 `run_subagent` 调用所带的 `description`）与上方的 Agent 名**同一档**字号 ——
+      中文描述的字身填满 em 框，看上去和名称一样大甚至更大，节点上「先是谁、再做什么」的层次就没了；
+      节点框还是写死的 200×46 CSS px，而框里的一切都随「字号」设置放大，于是**白领主题在「特大」
+      档把描述的下沿截掉**（本机实测一行被压到 18.625px，而它自己要 20.3125px）。现在名称改正文档
+      （`text-sm`）、描述仍是小档（`text-xs`，浅色墨），画布把布局的数字**按 rem 渲染**（`px / 16`）
+      —— 节点框、间距、连线因此跟着用户选的字号一起长大；SVG 用 `viewBox` 保持路径在布局单位里、
+      `vector-effect: non-scaling-stroke` 让描边永远 1.5px，默认 16px 根下几何与改前逐像素相同。
+      **本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法
+      改名到本轮日期、去掉上游 PR 行、写明移植来源）。细节与实测见「第六十三轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1457,6 +1474,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-14 | 5.38 | **分页读取的会话里，记忆更新卡片不再丢失**（上游 `d51c4577` `#1138` 移植，照改动落、不是合分支；9 文件 / +173 −6，其中源码 5 个（server 的 `api/types.ts` +5、`http/routes/sessions.ts` +1、`services/trace-service.ts` +3；web 的 `lib/omni/stream-controller.ts` +4 −3、`lib/omni/stream-model.ts` 两处注释）、既有用例 2 个（server `test/messages-live.test.ts` +43 −1、web `test/stream-controller.test.ts` +93，**四条新用例**）、另有 changelog 一对）：Web App 打开会话时读的是**历史窗口**（首页 20 个单元），窗口可能从 `session_meta` **之后**开始 —— 而 Agent State 目录只写在那条记录里，流模型因此没有 `<agent_state>/memory/` 这个根，`classifyMemoryPath` 一条文件写入都认不出，**整张记忆更新卡片不渲染**（文件其实改成功了）。现在服务端把「窗口起始那个上下文记录里的 `agent_state`」放进历史分页信封（`MessagesPageInfo.agentState`，与同一处的 `contextModel` 同一写法，没有 Trace 时不出现；`TraceService` 从 `startMeta.payload.agent_state` 取），Web App 的 `seedWindow` 在回放这一页之前把它种进模型。打开会话、往上加载更早的消息、断开后重连都恢复；同一话题反复编辑仍只画一行、对记忆索引的编辑照旧不算。**没有给 OmniMessage 增加字段**，也没有改写已存的 Trace 或记忆文件。**本地化**：无（全在本仓自己的包内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **wrote src/ifaces.json（189 接口 / 580 类型）** —— 本笔只给既有接口加一个可选字段，接口与类型计数不变）· `npx oxlint` **0 警告 0 错误**（2152 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过**（**+1 正是本笔新用例**）· web **255 文件 / 3120 通过 / 2 跳过**（**+4 正是本笔四条新用例**）· hmr 无测试文件 · **反证（单测）**：把五份源码文件退回 `HEAD`（用例留着）、只跑两个受影响的文件 → server `messages-live.test.ts` **1 failed / 4 passed**（`tail.page?.agentState` 是 `undefined`）、web `stream-controller.test.ts` **4 failed / 38 passed**（四条都是 `changes(...)` 得到 `[]`）；把本笔放回 → **5 全过 / 42 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 server / web 产物后，一次性数据根 `/root/adelie-fork-data/r59-after`、`localhost:8943`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD`）起真服务，`POST /api/auth/login` 拿 cookie，再往 `web.db` 的 `sessions` 表插一行、并用 `@lmliheng/penguin-core/omnimessage` 的构造器**手写**一份 30 轮的 Trace（第 30 轮里有三次 `edit_file`：`<agent_state>/memory/user/local-dev-instance.md` 两次、`MEMORY.md` 一次）—— 不需要模型 key（即 3.6 那个卡点）；30 轮 > 首页窗口 20 个单元，所以分页信封确实从 `session_meta` 之后开始。Playwright（`playwright-core` + 本地 chromium-1243，`--no-sandbox`，1280×900）打开 `/chat/r59-probe-session` 并逐项读 DOM 与信封：**改动后** —— 信封里 `agentState` 是那份 Agent State 目录、`earlierTurns: 10`、46 条消息、**没有 `session_meta`**、3 条 `edit_file`；页面上一张「**1 条记忆更新**」的卡片、一行 `local-dev-instance.md`（三次编辑合成一行，与上游说明一致）；**反证（真界面，改前源码）**：`git checkout HEAD --` 五份源码 + 重建 server / web + 重启**同一数据根** + **同一条探针** → 信封里 `agentState` 是 `null`（其余逐项相同：46 条消息、无 `session_meta`、3 条编辑），页面上**一张卡片都没有**（`memoryCardTitles: []`、`memoryRowCount: 0`），服务端日志里连 `…/memory` 那次请求都没有（卡片不渲染就不取列表）；把源码放回、重建、再跑一次 → 数字与「改动后」逐项一致 · 两态都 console **0 error**、无一条 ≥400 · 截图 `r59/{after,after2,before}-conversation.png`（改后那张能看到卡片与那一行，改前那张「probe answer 30」下方直接是输入框）、探针 `r59/probe.mjs`、造 Trace 的 `r59/write-trace.mjs`、`r59/fix-src/`（五份源码留底）都在 scratchpad · 端口只用 8943，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r59-after` | 见本行提交 |
 | 2026-10-15 | 5.39 | **设置里的 WSL 中文诊断不再乱码**（上游 `842571de` `#1125` 移植，照改动落、不是合分支；5 文件 / +155 −18，其中源码 2 个（`plugins/sandbox-wsl/src/host.ts` +29 −14、`src/tasks.ts` +2 −4）、新用例 1 个（`test/host.test.ts` 89 行，**七条**）、另有 changelog 一对）：`runWsl` 过去 `setEncoding("utf8")` 直接按 UTF-8 读 `wsl.exe` 的输出、收尾时只把 NUL 删掉 —— 而 Windows 自带的那份 `wsl.exe` 仍可能回 UTF-16LE（`WSL_UTF8=1` 不保证），按 UTF-8 读出来已经丢了原来的字，删 NUL 拼不回来，于是「设置 → 插件」里的中文提示与安装日志全成乱码。现在 stdout / stderr 各自**按字节留着**（两个 `Buffer[]`），收尾时 `Buffer.concat` 再解**一次**：新增导出的 `decodeOutput()`（带 BOM 的 UTF-16LE 直接认；否则按「奇数位全是零字节」判定 —— UTF-16LE 的 ASCII 标签、空格与换行有这个特征，UTF-8 文本没有），`cleanOutput()` 从「删 NUL + 扔通知」退成「已解码文本的清理」，安装日志（`tasks.ts` 的 `readText`）改走同一个解码器；**实时进度仍走跨块的 `StringDecoder("utf8")`**（Linux 那侧写的是 UTF-8，分块边界可能落在一个汉字中间，凑齐整行再交出去）。**本地化**：无（全在本仓自己的插件内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口与已存数据都没变」）。**没改界面**，所以没有真浏览器取证（见该节） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**，本笔不动服务契约）· 插件自己的 `typecheck` **`EXIT=0`** · `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（67 通过 + 1 跳过 = 68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2833 通过 / 4 跳过** · web **255 文件 / 3120 通过 / 2 跳过** · hmr 无测试文件 · 插件 `pnpm --filter @lmliheng/penguin-plugin-sandbox-wsl test` **32 通过**（`test/host.test.ts` 7 + `test/profile.test.ts` 25，上游记的也是 32）· **反证（单测）**：把 `src/host.ts` 退回 `HEAD`（用例留着）→ **3 failed / 29 passed**，红的正是 UTF-16LE 那两条（`it.each([false, true])`）与「两条流各自解码」那条，实际收到的乱码是 `���͑�e/T�R Windows0`；放回本笔 → **32 全过** · **额外的一条真字节证据**（不经 vitest，探针在 scratchpad）：用 `iconv -f UTF-8 -t UTF-16LE`（与 `-t UTF-8`）**真程序**产出的字节，按 1 / 2 / 3 / 末字节四种切法分成两块再 `Buffer.concat` 交给源码里的 `decodeOutput()` —— 三种编码 × 四种切法**12 例全部与原文逐字相同**，而同一批字节走改前的「按 UTF-8 读再删 NUL」在 UTF-16LE 那两组上分别得到 `*g�[ň…` / `��*g�[ň…` · 本笔不碰界面也没有新的界面面，因此**没有起服务 / 没有 Playwright**：设置卡片本身一字未改，它渲染的是插件交给它的文本，而这条路径的改前改后已由上面两组证据覆盖（插件只在 Windows + WSL 上有真实运行面，本机是 Linux）· 端口一个没碰（没有起服务），数据一个字节没往 `/root/.penguin` 或仓库里写 | `见本行提交` |
 | 2026-10-15 | 5.40 | **成本中心的错误提醒：标记已读要覆盖这次打开读到的错误，重启后保持已读**（上游 `591f091d` `#1118` 移植，照改动落、不是合分支；4 文件 / +155 −13，其中源码 2 个（`usage-page.tsx` +3 −3、`todo-dismissals.ts` +13 −10）、另有 changelog 一对）：成本中心读的是屏幕上那一档范围里的错误，而「标记为已读」写下的却是**应用启动时**缓存的那个时间戳 —— 应用打开之后到达的错误也被这条标记算作已读，重启后它又把提醒重新抬起来。现在 `load()` 开头先 `refreshProjectTodos(projectId)`（表格与标记因此指同一条最新错误），`dismissTodo` 改成**写入成功之后**才收起提醒（失败 `toastError(apiErrorText(e))`、留着重试），并加一条模块级写队列 `saving`：连续标记按顺序写，每份 map 都从上一次成功的写入上叠，先发的请求不会覆盖后写的标记。**本地化**：只把上游的 `@prismshadow/penguin-ui` 换成本仓的`@lmliheng/penguin-ui` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· web **255 文件 / 3120 通过 / 2 跳过**（本笔没有加用例）· server **197 文件 / 2833 通过 / 4 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，应用内换页以保住「应用启动时」的探针缓存）**：数据根 `/root/adelie-fork-data/r62-{after2,before}`、`localhost:8952` / `8953`，两行「未预期错误」直接写进 `error_records`（不需要模型 key，即 3.6 那个卡点）。**改后**：提醒写「**2** 条未预期错误」、存下的是**新**时间戳、重载后提醒与侧栏红点**都没了**（`r62/shots/after-3-after-reload.png`）；**改前**（`git checkout HEAD --` 两份源码 + 重建 + 同一条探针）：提醒写「**1** 条未预期错误」、存下的却是**旧**时间戳（`22:38:27.083Z`，而新错误是 `23:08:30.239Z`）、重载后提醒**又回来了**（`before-3-after-reload.png`）· **写入被拒那一半也两态量过**（`REFUSE=1`，`page.route` 回 400）：**改后**提醒留着 + 顶部 `Could not save read status` + `ui_prefs` 没写（`after-refuse-2-refused.png`）；**改前**提醒当场消失、**没有任何提示**、也没写（`before-refuse-2-refused.png`）· **「连续标记按顺序写」单独造的并发场景**（`r62/probe2.mjs`：把第一个 prefs 写入扣在网络层，再点成本中心与模型库两条提醒的「忽略」，模型库那条靠 `PUT …/models` 只留一条做出差量）：**改后**放行前只有 1 个请求、放行后第二个请求**同时带 `errors` 与 `models`**、最终两条都在、重载后模型库提醒不在；**改前**放行前**已经发出两个请求**、被扣住的第一个最后落库、服务端**只剩 `errors`**、重载后模型库提醒回来（`忽略 · 检测到变更：175 个新增，1 个可升级`）· 两态 console **0 error**、除那次刻意造的 400 外无 ≥400 · 端口只用 8951 / 8952 / 8953（用完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `b6fb4080` |
+| 2026-10-15 | 5.41 | **智能体面板：子智能体的描述比名称小一号、节点框跟着字号长大**（上游 `6e54f6bc` `#1096` 移植，照改动落、不是合分支；4 文件 / +62 −15，其中源码 2 个（`agent-topology-view.tsx` +29 −13、`agent-topology.ts` +2 −1）、另有 changelog 一对）：调用关系图里子节点第二行的 `description` 与上方的 Agent 名同一档字号（`text-xs`），中文描述的字身填满 em 框、看上去和名称一样大甚至更大，节点失去「先是谁、再做什么」的层次；节点框又是写死的 200×46 CSS px，而框里的一切随「字号」设置放大，白领主题「特大」档因此把描述下沿截掉。现在名称改 `text-sm`（正文档）、描述留 `text-xs`（小档、浅色墨），画布把布局的数字**按 rem 渲染**（`px / 16`，新加一个小的 `rem()`），节点框、间距、连线跟着用户选的字号一起长大；SVG 改用 `viewBox` 保持路径在布局单位里、加 `vector-effect: non-scaling-stroke` 让描边永远 1.5px，`agent-topology.ts` 的文件头写明「这里的长度都是默认 16px 根下的 CSS px」。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2169 文件）· 本笔两份源码与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1029**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2842 通过 / 4 跳过** · web **256 文件 / 3122 通过 / 2 跳过**（本笔没有加用例 —— 这条逻辑是 className 与几何，本树的 node 测试没有排版引擎，仓库规矩也不断言 className）· hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态 × 三主题 × 三档字号 = 9 格）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r63-after`、`localhost:8961` 起真服务（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），模型配成 `custom` provider 指向本仓自带 mock LLM 的**本轮副本**（8977；只加了一处：`run_subagent` 的入参多一个中文 `description`，否则子节点根本没有第二行可量）—— 于是拿到**真会话、真子会话、真描述**，不需要模型 key（即 3.6 那个卡点）。Playwright（`playwright-core` + 本地 chromium-1243，1440×900，`localStorage` 里存 `penguin.themeId` / `penguin.textSize`）打开会话、点开子会话 chip、让「智能体面板」标签激活，再读节点自身的 DOM：**改前** —— 9 格里名称与描述**字号逐格相同**（12/12、13.5/13.5、15/15、13/13、14.625/14.625、16.25/16.25、12/12、13.5/13.5、15/15），节点框 9 格全是 **200×46**，且**白领/特大那一格的行盒被压到 18.625px、而它自己要 20.3125px（`line-height` 亲口给出）—— 正是上游报告的截断**；**改后** —— 9 格名称都比描述大一号（14/12、15.75/13.5、17.5/15、15/13、16.875/14.625、**18.75/16.25**、13/12、14.625/13.5、16.25/15），节点框随根字号长大（16px→**200×46**、18px→**225×52**、20px→**250×58**），**没有一格的行盒低于它自己要求的行高**（白领/特大恢复成 20.3125px）。两态 console 各 **0 error**、无一条 ≥400；9 格截图 `r63/shots/{before,after}-<主题>-<档位>.png`（白领/特大那两张肉眼可见：改前描述贴着框的下沿、与名称一样大，改后名称更大、框更高、描述整行在位）、原始测量 `r63/graph-{before,after}.json`、探针 `r63/probe.mjs`、mock 副本 `r63/mock-llm-desc.mjs`、改前源码留底 `r63/fix-src/` 都在 scratchpad · 端口只用 8961 与 8977（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r63-after`，一个字节没往 `~/.penguin` 或仓库里写（`packages/web/dist` 是构建产物，未 `git add`） | `见本行提交` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -8966,3 +8984,112 @@ jsdom 无关，缺的只是取证手段；于是那条卡点不再挡路，而�
   `plugin versions`、`installer-windows`、三条 Windows 分片、两条 macOS 分片与 `runtime` 三平台）。
 - 本笔只改 `packages/web/src` 与一对 changelog，`ci.yml` 的矩阵没有动；没有新增依赖、没有动包名与流水线，
   所以版本戳、发布、安装包这一轮一个都没碰（按轮次纪律）。
+
+## 第六十三轮：智能体面板子节点的描述字号与节点几何（2026-10-15，条目 5.41）
+
+### 开工自检
+
+- `git status --short` **干净**（输出为空），在 `main` 上；`git fetch origin && git merge --ff-only origin/main`
+  → `Already up to date.`（头 `d503fd70`）。**没有切分支、没有碰 `legacy/main`、没有推上游、没有改 remote 配置。**
+- **上游这一轮也没往前走**：`upstream` 仍指着已经不存在的 `/root/penguin-harness`，照第二十三轮那条路按 URL
+  现拉（`git fetch https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-r63`）→ 尖端仍是 **`2b8116ce`**，与第六十一 / 六十二轮
+  拉到的 `r61` / `r62` 同一个提交（fetch 输出只有 `* [new branch]`）。所以本轮不挑新提交，改从桌上已量过的
+  候选里取。
+- **轮次提示里给的 typecheck 过滤串仍是旧的**（`@prismshadow/penguin-*` 在本树不存在，照那个串只会得到
+  `No projects matched`）；本轮用 `@lmliheng/…` 六个包跑，结果见下。`git push origin main` 照旧走通。
+
+### 为什么是这一条
+
+表上最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里，本轮纪律不许碰
+desktop）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.3** 的
+②③④要第二台机器、**5.6** 与 **5.10** 等用户拍板；而这一轮上游没往前走（见开工自检）。第六十二轮末尾把
+桌面上剩的候选记成「`#1131`（只改两行 Console 主题 CSS、看不出真缺陷）、`#1114`（429 与传输中断分开归类、
+用例有冲突）、`#1096`（子智能体描述字号，姊妹笔 `#1110` 已落）」，并建议下一轮在这三笔里挑。
+
+逐笔量过之后取 **`#1096`**（`6e54f6bc`，4 文件 / +62 −15）：
+
+- **`git show 6e54f6bc | git apply -3 --check` 逐字干净** —— 四份文件（两份源码 + changelog 一对）全部
+  `Applied patch … cleanly`，连冲突都不用手解；它要改的两个文件与它父提交逐字节相同（姊妹笔 `#1110`
+  第六十三轮之前就落了，正是那时记下的「`#1110` 落地后 `#1096` 的冲突面更小」）。
+- 是一条**用户看得见的真缺陷**：中文描述与名称同档、白领主题「特大」档把描述下沿截掉（改前本机实测：
+  行盒 18.625px，而它自己要求 20.3125px）。
+- 不引入新依赖、不碰桌面壳 / 包名 / 流水线，本机能用**真服务端 + 真浏览器**把九个组合的改前改后都量出来
+  （本仓自带的 mock LLM 能派真子智能体，只需给它多一个 `description` 入参）。
+- 另外两笔的搁置理由仍然成立：`#1131` 只改两行主题 CSS、量过的结论是「看不出真缺陷」；`#1114` 的落点是
+  「给诊断加一个名字」（上游自己写着 outcome 仍是 `retryable`），还动 core 的 `ErrorCode` 词汇表，用例有冲突。
+  留在这里备查，不重复分析。
+
+### 改了什么（4 文件 / +62 −15：两份源码 + changelog 一对）
+
+- **`packages/web/src/features/chat/agent-topology-view.tsx`**（+29 −13）：新增小函数
+  `rem(px)`（`px / 16 + "rem"`，注释写明输入是「默认 16px 根下的 CSS px」）；画布、每个节点按钮的
+  `left/top/width/height` 全部改成 `rem(…)`；SVG 从固定 `width`/`height` 改成 `viewBox` +
+  `h-full w-full`（路径留在布局单位里、随画布缩放），每条边加 `vector-effect: non-scaling-stroke`
+  让描边在各种字号下都保持 1.5px；名称从 `text-xs` 提到 `text-sm`，描述那一行的注释补写
+  「它比名称低一档，节点才读得出先是谁、再做什么 —— 中文在名称那一档看着比拉丁名更大」。
+- **`packages/web/src/features/chat/agent-topology.ts`**（+2 −1）：`NODE_W` / `NODE_H` 上面补两行注释，
+  写明「这里每个长度都是默认 16px 根下的 CSS px，视图按 rem 落，所以节点框在任何字号下都装得下它那两行」。
+  **布局代码与它的用例一字未改。**
+- **changelog 一对**（`changelog/unreleased/2026-10-15-subagent-description-size{,.zh}.md`）：按本仓惯例
+  改名到本轮日期、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#1096，提交 `6e54f6bc`）」，正文写
+  「改了什么」；主题名用本仓自己的叫法（白领 = Frost、极客 = Console、通用 = Primer）。
+- **本地化**：无 —— 全在 `packages/web` 内，没有跨包 import，也没有 scope 引用点。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 /
+  583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2169 文件）· 本笔四份文件
+  `prettier --check` 干净 · `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1029**（129 文件）· cli **539**
+  （37 文件）· web **256 文件 / 3122 通过 / 2 跳过** · server **197 文件 / 2842 通过 / 4 跳过** ·
+  hmr 无测试文件。**本笔没有加用例**：它改的是 className 与几何，本树的 node 测试没有排版引擎，
+  仓库规矩也不断言 className（上游同一笔的说明里写着同样的理由）。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态 × 三主题 × 三档字号 = 9 格）**。数据根
+  `/root/adelie-fork-data/r63-after`、`localhost:8961`（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login`
+  拿 cookie）；模型配成 `custom` provider 指向 **mock LLM 的本轮副本**（`r63/mock-llm-desc.mjs`，8977）——
+  与仓库自带那份只差一处：`run_subagent` 的入参多一个中文 `description`（否则子节点根本没有第二行可量）。
+  于是拿到的是**真会话、真子会话、真描述**，不需要模型 key（即 3.6 那个卡点）。探针（`r63/probe.mjs`）用
+  `localStorage` 里存 `penguin.themeId` / `penguin.textSize` 逐格换主题与字号，打开会话 → 点开子会话 chip →
+  等「智能体面板」标签激活 → 读节点自身的 DOM（名称 span 与描述 span 的 `font-size`、节点框、
+  行盒高度与它自己要求的 `line-height`）。**改前**（`git checkout HEAD --` 两份源码 + 重建 web + 同一条探针，
+  同一个会话）与**改后**的逐格结果：
+
+  | 主题 / 档位 | 根字号 | 改前 名称/描述 | 改前 节点框 | 改后 名称/描述 | 改后 节点框 |
+  | --- | --- | --- | --- | --- | --- |
+  | 通用 / 中 | 16px | 12 / 12px | 200×46 | 14 / 12px | 200×46 |
+  | 通用 / 大 | 18px | 13.5 / 13.5px | 200×46 | 15.75 / 13.5px | 225×52 |
+  | 通用 / 特大 | 20px | 15 / 15px | 200×46 | 17.5 / 15px | 250×58 |
+  | 白领 / 中 | 16px | 13 / 13px | 200×46 | 15 / 13px | 200×46 |
+  | 白领 / 大 | 18px | 14.625 / 14.625px | 200×46 | 16.875 / 14.625px | 225×52 |
+  | 白领 / 特大 | 20px | **16.25 / 16.25px（行盒 18.625px，要求 20.3125px —— 被截）** | 200×46 | 18.75 / 16.25px（行盒 20.3125px） | 250×58 |
+  | 极客 / 中 | 16px | 12 / 12px | 200×46 | 13 / 12px | 200×46 |
+  | 极客 / 大 | 18px | 13.5 / 13.5px | 200×46 | 14.625 / 13.5px | 225×52 |
+  | 极客 / 特大 | 20px | 15 / 15px | 200×46 | 16.25 / 15px | 250×58 |
+
+  两态其余各格的行盒都等于自己要求的行高；**改后 9 格没有一格被压**。
+- 两态 console 各 **0 error**、**无一条 ≥400**；9 格截图 `r63/shots/{before,after}-<主题>-<档位>.png`
+  （白领/特大那两张肉眼可见：改前描述与名称一样大、贴着框的下沿；改后名称更大、框更高、描述整行在位）、
+  原始测量 `r63/graph-{before,after}.json`、探针 `r63/probe.mjs`、mock 副本、改前源码留底 `r63/fix-src/`
+  都在 scratchpad，**没有进仓库**。
+- 端口只用 8961（服务）与 8977（mock），跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r63-after`，一个字节没往 `~/.penguin` 或仓库里写（`packages/web/dist` 是构建产物，
+  未 `git add`）。
+
+### 没做 / 还差什么
+
+- **本笔没有单测**（理由见上：node 环境够不到排版，本仓也不断言 className）；回归证据就是上面那九个组合的
+  真浏览器两态测量 —— 与上游同一笔的取证方式一致（它也是靠真界面截图与量出来的盒子）。
+- 桌面上还没取的候选：`#1131`（只改两行 Console 主题 CSS，量过的结论是看不出真缺陷）、`#1114`（429 与
+  传输中断分开归类，用例有冲突、且只给诊断加名字）、`#1049` / `#1051` / `#1069` / `#1074` / `#1067` /
+  `#1072` / `#1073` / `#835` / `#1071`（各自要本树没有的文件或冲突）。**下一轮**建议：先按 URL 拉一次
+  上游（这一轮尖端仍停在 `2b8116ce`），有新提交就按同一判据挑；没有的话在 `#1114` 与 `#1131` 里选，
+  `#1114` 要把 `packages/core/test/llm.test.ts` 那一处冲突手写解掉。
+- **2.2c / 3.5 / 3.6 / 5.6 / 5.10 / 5.3** 照旧停在原地，原因同前几轮（其中 5.6 与 5.10 等用户拍板）。
+
+### 收尾：提交、推送与汇报
+
+- 代码提交（4 文件：两份源码 + 一对 changelog），其后一笔只动台账（本文件）；两笔一起 `git push origin main`。
+  **没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- 汇报邮件按 csu-mail 技能发 0110230306@csu.edu.cn（收件人只这一个）；本机到中南大学网段仍不通时按老办法
+  入重发队列并用飞书发一条简报，卡点与选项写在邮件里。
