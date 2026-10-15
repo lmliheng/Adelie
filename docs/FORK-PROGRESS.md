@@ -9589,10 +9589,28 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
 
 ### 收尾：提交、推送与汇报
 
-- **提交**：代码提交（56 份源码 / 用例 + 一对 changelog）一笔，其后一笔只动台账（本文件）；
-  两笔一起 `git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
-- **汇报邮件**：见下面「汇报去向」一节。
-- **CI**：照旧由推送触发，结果记在下面。
+- **提交**：代码提交（57 份源码 / 用例 + 一对 changelog）`2ae710f3` 一笔，其后一笔只动台账（本文件）
+  `e2d647a9`；两笔一起 `git push origin main`（`13d7c8a2..e2d647a9`）。**没有切版本号、没发 npm、
+  没发安装包、没发发布汇总。**
+- **汇报邮件没发出去（第 22–66 轮同一处卡点，与凭据无关）**：开工自检时 `CSU_MAIL_ADDR`（21 字符）与
+  `CSU_MAIL_AUTHCODE`（16 字符）都注入着；开工末段裸 socket 探 `imap.csu.edu.cn:993`、
+  `smtp.csu.edu.cn:465`、`202.197.64.20:993`，**三个 8 秒探针全部超时**（连
+  `cat < /dev/null > /dev/tcp/…` 都握不住）—— 与凭据无关，是本机到中南大学网段 `202.197.0.0/16`
+  整片不通。正文留在 scratchpad（`…/session-2026-10-16-03-00-09-ce15c723/r66/mail-round66.txt`），
+  按第十轮起的老办法入重发队列（`csu-mail-retry.toml` 加第 45 条、计数改成四十四封、背景提交表补上
+  本笔两笔提交；改完仍能解析：`enabled=true`、`period=6h`、`end_at=2026-10-19T12:00:00Z`、45 条都在），
+  同时照第 36 轮起的替代通道用飞书发了一条简报
+  （`message_id=om_x100b622639a368a0de1a9ac86fce326`）。
+
+### CI（推送后）
+
+- 两笔一起推（`13d7c8a2..e2d647a9`）—— run **`38792952734`**（`e2d647a9`）**`completed success`，
+  22 个作业全 success、`NOT SUCCESS: []`**（逐条查过 `actions/runs/38792952734/jobs`，含
+  `plugin versions`、`installer-windows`、三条 Windows 分片、两条 macOS 分片与 `runtime` 三平台）。
+  两笔在**同一次推送**里上去，所以只有这一个 run，没有「同组前一笔被 `cancel-in-progress` 取消」的问题
+  （`ci.yml` 的 `cancel-in-progress` 会把同组的前一笔取消，看最后一笔即可）。
+- 本笔改 `packages/{ui,web}` 的源码、用例与一对 changelog，`ci.yml` 的矩阵没有动；没有新增依赖、
+  没有动包名与流水线，所以版本戳、发布、安装包这一轮一个都没碰（按轮次纪律）。
 
 ### 下一轮从这里接
 
