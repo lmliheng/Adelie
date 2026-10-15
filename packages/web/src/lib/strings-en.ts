@@ -1223,12 +1223,12 @@ export const en: Strings = {
    * dialog promises only where they go, which is the operator's queue, so a note left here is
    * read and acted on rather than merely archived.
    *
-   * `board`/`boardHint` are the other door, always offered: the product's public board.
+   * `board` is the other door, always offered: the product's public board. Its name says what it
+   * is, so the row carries no explanation of its own.
    */
   feedback: {
     title: "Feedback",
     board: "Feedback board",
-    boardHint: "Public: post there, and read what others reported",
     intro:
       "Say what you want changed, what went wrong, or anything else. It lands straight in this machine's feedback queue.",
     titleLabel: "One-line title",

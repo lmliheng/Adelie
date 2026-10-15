@@ -158,11 +158,11 @@ export function UserMenu({
             )}
             {/* The other feedback door, right under that one: the product's public board, which
                 every install has (see lib/feedback-board.ts) and which leaves the app for the
-                system browser. Its description is what keeps the two rows apart — one files into
-                this machine's queue, this one is out in the open. */}
+                system browser. A plain row like its neighbours: the two labels already say which
+                door files into this machine's queue and which one is out in the open, so nothing
+                is explained under them. */}
             <MenuItem
               label={S.feedback.board}
-              description={S.feedback.boardHint}
               onSelect={() => {
                 setOpen(false);
                 openFeedbackBoard();
