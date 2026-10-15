@@ -342,9 +342,14 @@ test("改文档的命令按顺序一条条下发，前一条没回下一条不�
     text: "改后的正文",
     expect: "第二段正文",
   });
+  const a = await panel.next((f) => f.op === "doc.replace");
+
+  // The second call goes out only once the first command is on its way: two tool calls are two
+  // independent HTTP requests, and the order the bridge's server reads them in is not the order
+  // the agent issued them — a delete that arrived first would be queued first, take the command
+  // timeout, and fail this test on a bridge that serializes perfectly well.
   const second = callTool("delete_paragraph", { index: 4, expect: "第三段正文" });
 
-  const a = await panel.next((f) => f.op === "doc.replace");
   await sleep(300);
   // The second command must not have been pushed while the first is unanswered.
   assert.equal(
