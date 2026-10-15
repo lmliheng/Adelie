@@ -25,6 +25,7 @@ import { useAuth } from "../../state/auth";
 import { UpdateRow } from "../account/update-row";
 import { UserVaultDialog } from "../account/user-vault-dialog";
 import { FeedbackDialog, useFeedbackChannel } from "../account/feedback-dialog";
+import { openFeedbackBoard } from "../../lib/feedback-board";
 import { openUpdateModal } from "../../lib/use-update-flow";
 import { SettingsDialog } from "../../features/settings/settings-dialog";
 import { onSettingsRequest } from "../../features/settings/settings-request";
@@ -155,6 +156,18 @@ export function UserMenu({
                 }}
               />
             )}
+            {/* The other feedback door, right under that one: the product's public board, which
+                every install has (see lib/feedback-board.ts) and which leaves the app for the
+                system browser. Its description is what keeps the two rows apart — one files into
+                this machine's queue, this one is out in the open. */}
+            <MenuItem
+              label={S.feedback.board}
+              description={S.feedback.boardHint}
+              onSelect={() => {
+                setOpen(false);
+                openFeedbackBoard();
+              }}
+            />
             {/* Update entry, under the two navigation rows rather than on a page inside the
                 settings dialog: one row for both backends (the server release here, the
                 shell's own updater in the desktop window), naming where the update flow

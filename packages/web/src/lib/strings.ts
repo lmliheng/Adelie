@@ -1269,9 +1269,15 @@ export const zh = {
    * The sidebar's feedback entry and the dialog behind it. The words are the user's own — the
    * dialog promises only where they go, which is the operator's queue, so a note left here is
    * read and acted on rather than merely archived.
+   *
+   * `board`/`boardHint` are the OTHER door, always offered: the product's public board
+   * (lib/feedback-board.ts). It says it is public and that it is a board, so nobody picks it
+   * expecting the private queue they were just told about.
    */
   feedback: {
     title: "用户反馈",
+    board: "反馈社区",
+    boardHint: "公开板块：发帖、看别人报的问题都在那儿",
     intro: "写下你想要的改动、遇到的问题，或者任何一句话。它会被直接收进这台机器的反馈队列。",
     titleLabel: "一句话标题",
     titlePlaceholder: "例如：侧栏的字太小",
