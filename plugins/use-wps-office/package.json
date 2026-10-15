@@ -1,6 +1,6 @@
 {
   "name": "@lmliheng/use-wps-office",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Adelie inside WPS Writer: a dependency-free bridge that hosts a WPS add-on panel, lets the Agent read and edit the open document through MCP tools, and registers the add-on with WPS's own local publish service — loopback only.",
   "license": "Apache-2.0",
   "scripts": {
