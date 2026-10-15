@@ -257,6 +257,47 @@ export class SessionsRepo implements SessionIndex {
     return rows.map(mapRow);
   }
 
+  /**
+   * The most recently active row across several Projects at once — the admin user backend asks
+   * it per account, whose Sessions are spread over every Project that account owns, so it must
+   * be one answer rather than one answer per Project.
+   *
+   * The ordering key is the activity order's (`lastActiveAt` descending, `sessionId` descending
+   * to break ties), computed here as code points like every other activity comparison — no
+   * `localeCompare`, whose collation the SQL-side order would not share. `last_active_at` is
+   * coalesced to `created_at` for the same reason `mapRow` does it: a row nothing has driven
+   * yet is active from its creation.
+   *
+   * Chunked like `markOrgClient`: how many Projects an account owns is unbounded while SQLite's
+   * parameter count is not, so the winners of each chunk are compared against each other.
+   */
+  latestByProjects(projectIds: readonly string[]): SessionRow | null {
+    let best: SessionRow | null = null;
+    for (let i = 0; i < projectIds.length; i += 400) {
+      const chunk = projectIds.slice(i, i + 400);
+      const placeholders = chunk.map(() => "?").join(", ");
+      const r = this.db
+        .prepare(
+          `SELECT * FROM sessions WHERE project_id IN (${placeholders})
+           ORDER BY COALESCE(last_active_at, created_at) DESC, session_id DESC LIMIT 1`,
+        )
+        .get(...chunk) as Record<string, unknown> | undefined;
+      if (!r) continue;
+      const candidate = mapRow(r);
+      if (best === null) {
+        best = candidate;
+        continue;
+      }
+      // The candidate wins when it is the more recent of the two under the activity order.
+      const moreRecent =
+        candidate.lastActiveAt !== best.lastActiveAt
+          ? candidate.lastActiveAt > best.lastActiveAt
+          : candidate.sessionId > best.sessionId;
+      if (moreRecent) best = candidate;
+    }
+    return best;
+  }
+
   updateApprovalMode(sessionId: string, mode: ApprovalMode): void {
     this.db
       .prepare("UPDATE sessions SET approval_mode = ? WHERE session_id = ?")

@@ -144,11 +144,12 @@ export function SettingsDialog({
   );
 
   /**
-   * The user backend's table carries six columns and two row actions, and the shared width
-   * leaves it scrolling sideways to reach its own buttons: that page asks for a wider panel.
-   * Every other page keeps the default.
+   * The user backend's table carries seven columns and two row actions, and the shared width
+   * leaves it scrolling sideways to reach its own buttons: that page asks for a wider panel
+   * (a Session title under its time is what pushed it past the previous 5xl, measured at 861px
+   * of table inside a 796px pane). Every other page keeps the default.
    */
-  const panelWidthClass = current === "users" ? "sm:max-w-5xl" : undefined;
+  const panelWidthClass = current === "users" ? "sm:max-w-6xl" : undefined;
 
   return (
     <PagedDialog

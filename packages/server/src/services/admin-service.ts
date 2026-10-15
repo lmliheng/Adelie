@@ -22,6 +22,7 @@ import { SEMANTIC_ID_RULE, USERNAME_PATTERN } from "./ids.js";
 import { Component, Use } from "@lmliheng/penguin-core/kernel";
 import type { Clock } from "../hmr/capabilities.js";
 import type { LiveStreams } from "../auth/live-streams.js";
+import type { SessionIndex } from "../mechanisms/sessions.js";
 import type { Admin, AuthSessions, Users } from "../mechanisms/identity.js";
 import type { UsageQueries } from "../mechanisms/observability.js";
 import type { ProjectLifecycle, Projects } from "../mechanisms/projects.js";
@@ -32,6 +33,7 @@ export class AdminService implements Admin {
   @Use() private readonly authSessions!: AuthSessions;
   @Use() private readonly liveStreams!: LiveStreams;
   @Use() private readonly projects!: Projects;
+  @Use() private readonly sessions!: SessionIndex;
   @Use() private readonly usage!: UsageQueries;
   @Use() private readonly projectService!: ProjectLifecycle;
   @Use() private readonly clock!: Clock;
@@ -53,25 +55,52 @@ export class AdminService implements Admin {
     const out: UserInfo[] = [];
     for (const row of this.users.list()) {
       const { avatar: _avatar, ...info } = toUserInfo(row);
-      out.push({ ...info, ...(await this.ownedProjectsCost(row.userId)) });
+      const owned = this.projects.listByOwner(row.userId).map((p) => p.projectId);
+      out.push({
+        ...info,
+        ...(await this.ownedProjectsCost(owned)),
+        ...this.lastSession(owned),
+      });
     }
     return out;
   }
 
   /** One account's owned Projects, priced and summed; `totalCostUsd` is omitted while nothing could be priced. */
   private async ownedProjectsCost(
-    userId: string,
+    projectIds: readonly string[],
   ): Promise<Pick<UserInfo, "totalCostUsd" | "costUnpriced">> {
     let cost: number | null = null;
     let unpriced = false;
-    for (const project of this.projects.listByOwner(userId)) {
-      const figure = await this.usage.lifetimeCost(project.projectId);
+    for (const projectId of projectIds) {
+      const figure = await this.usage.lifetimeCost(projectId);
       if (figure.cost !== null) cost = (cost ?? 0) + figure.cost;
       unpriced = unpriced || figure.unpriced;
     }
     return {
       ...(cost !== null ? { totalCostUsd: cost } : {}),
       ...(unpriced ? { costUnpriced: true } : {}),
+    };
+  }
+
+  /**
+   * The account's most recent Session across the Projects it owns, as a time plus (when the
+   * Session already has one) its title. Ordered by activity, the same figure the sidebar calls
+   * 「最近更新」: the question the column answers is "which conversation did this account touch
+   * last", so the newest stamp is the one to show, not the newest creation.
+   *
+   * Sessions are listed as they are stored — no filtering by archive state or by who opened
+   * one, and subagent Sessions are rows here like anywhere else. Every other list in the
+   * product draws the same set, and an account's own conversation is what an admin is looking
+   * at, not a curated subset of it.
+   */
+  private lastSession(
+    projectIds: readonly string[],
+  ): Pick<UserInfo, "lastSessionAt" | "lastSessionTitle"> {
+    const row = this.sessions.latestByProjects(projectIds);
+    if (!row) return {};
+    return {
+      lastSessionAt: row.lastActiveAt,
+      ...(row.title !== null && row.title !== "" ? { lastSessionTitle: row.title } : {}),
     };
   }
 

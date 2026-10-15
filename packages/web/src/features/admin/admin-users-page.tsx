@@ -5,10 +5,12 @@
  * communicated offline; deleting a user also deletes all their Projects (including data directories),
  * with a confirmation dialog.
  *
- * The table's two middle columns are read-only figures off the server's own list: when the
- * account last signed in (`lastLoginAt`, absent until it ever does) and what the Projects it
- * owns have cost in total (`totalCostUsd`, absent while nothing of it could be priced). Nothing
- * here computes either — the page draws what `GET /api/admin/users` answers.
+ * The table's three middle columns are read-only figures off the server's own list: when the
+ * account last signed in (`lastLoginAt`, absent until it ever does), which conversation it
+ * touched last (`lastSessionAt` / `lastSessionTitle`, absent while it has no Session at all)
+ * and what the Projects it owns have cost in total (`totalCostUsd`, absent while nothing of it
+ * could be priced). Nothing here computes any of them — the page draws what
+ * `GET /api/admin/users` answers.
  */
 import { useCallback, useEffect, useState } from "react";
 import type { UserInfo } from "@lmliheng/penguin-server/api";
@@ -67,9 +69,16 @@ export function AdminUsersSection() {
                 <th className="whitespace-nowrap px-3 py-2 font-medium">{S.common.username}</th>
                 <th className="whitespace-nowrap px-3 py-2 font-medium">{S.common.role}</th>
                 <th className="whitespace-nowrap px-3 py-2 font-medium">{S.common.created}</th>
-                {/* The two read-only columns: when the account last signed in (so an account
-                    nobody uses stands out) and what its Projects have cost so far. */}
+                {/* The three read-only columns: when the account last signed in (so an account
+                    nobody uses stands out), which conversation it touched last, and what its
+                    Projects have cost so far. */}
                 <th className="whitespace-nowrap px-3 py-2 font-medium">{S.admin.lastLogin}</th>
+                <th
+                  className="whitespace-nowrap px-3 py-2 font-medium"
+                  data-tooltip={S.admin.lastSessionHint}
+                >
+                  {S.admin.lastSession}
+                </th>
                 <th className="whitespace-nowrap px-3 py-2 text-right font-medium">
                   {S.admin.totalCost}
                 </th>
@@ -107,6 +116,29 @@ export function AdminUsersSection() {
                     {u.lastLoginAt !== undefined
                       ? formatDateTime(u.lastLoginAt)
                       : S.admin.lastLoginNever}
+                  </td>
+                  {/* Which conversation the account touched last: the time, like the sign-in
+                      column beside it, with the Session's own title under it the way the id
+                      carries the nickname — a title alone would not say how recent "last" is,
+                      and a time alone would not say what was going on. A Session nobody named
+                      yet has no title to draw, and an account with no Session at all gets a
+                      dash rather than a time the reader would take for a real one. */}
+                  <td className="whitespace-nowrap px-3 py-2 text-gray-500 dark:text-gray-400">
+                    {u.lastSessionAt === undefined ? (
+                      "—"
+                    ) : (
+                      <>
+                        {formatDateTime(u.lastSessionAt)}
+                        {u.lastSessionTitle !== undefined && (
+                          <p
+                            className="max-w-[10rem] truncate text-xs"
+                            data-tooltip={u.lastSessionTitle}
+                          >
+                            {u.lastSessionTitle}
+                          </p>
+                        )}
+                      </>
+                    )}
                   </td>
                   {/* Read-only, and a lower bound when some usage had no price (`costUnpriced`):
                       the "≥" says so without a second line of copy, and the tooltip spells it out. */}

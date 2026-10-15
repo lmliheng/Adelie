@@ -1,8 +1,8 @@
 /**
  * Admin users backend integration tests: permission boundary (non-admin 403), account
  * creation validation and rollback, password reset (session invalidation), user
- * deletion (cascading deletion of owned Project), and the list's two read-only
- * columns (last sign-in, owned-Project lifetime cost).
+ * deletion (cascading deletion of owned Project), and the list's three read-only
+ * columns (last sign-in, last session, owned-Project lifetime cost).
  */
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -231,5 +231,115 @@ describe("admin users backend", () => {
     const bounded = list.users.find((u) => u.userId === "kate")!;
     expect(bounded.totalCostUsd).toBeCloseTo(priced.totalCostUsd!, 12);
     expect(bounded.costUnpriced).toBe(true);
+  });
+
+  /**
+   * The third read-only column: which conversation the account touched last, taken across every
+   * Project it owns. "Last" is by ACTIVITY, not creation — a Session opened early and driven
+   * today outranks one created later and left alone.
+   */
+  it("user list: last session is the newest activity across the Projects the account owns", async () => {
+    const kate = await provisionUser(t.app, "kate");
+    const kateApi = apiClient(t.app, kate.cookie);
+    /**
+     * A Session row as the index holds it. Ownership travels through the Project, so the Project
+     * id is what decides whose row it lands in.
+     */
+    const insertSession = (
+      sessionId: string,
+      projectId: string,
+      createdAt: string,
+      lastActiveAt: string,
+      title: string | null = null,
+    ): void => {
+      t.deps.sessionsRepo.insert({
+        sessionId,
+        projectId,
+        agentId: "kate_agent",
+        provider: "custom",
+        modelId: "m-1",
+        workspace: "/tmp/workspace",
+        approvalMode: "allow-all",
+        title,
+        createdAt,
+        lastActiveAt,
+      });
+    };
+    type Listed = AdminUsersResponse["users"][number];
+    const listUsers = async (): Promise<Map<string, Listed>> => {
+      const list = (await (await admin.get("/api/admin/users")).json()) as AdminUsersResponse;
+      return new Map(list.users.map((u) => [u.userId, u]));
+    };
+
+    // Kate signed in but never opened a conversation: no time to show, rather than one the
+    // reader would take for a real Session.
+    expect((await listUsers()).get("kate")!.lastSessionAt).toBeUndefined();
+
+    // Kate's own Project, plus one the ADMIN owns: the admin's Session must not answer for her.
+    insertSession(
+      "s-kate-old",
+      "kate-default_project",
+      "2026-10-01T00:00:00.000Z",
+      "2026-10-02T00:00:00.000Z",
+      "周报整理",
+    );
+    insertSession(
+      "s-kate-new",
+      "kate-default_project",
+      "2026-10-03T00:00:00.000Z",
+      "2026-10-05T00:00:00.000Z",
+      "重构会话索引",
+    );
+    insertSession(
+      "s-admin",
+      "default_project",
+      "2026-10-09T00:00:00.000Z",
+      "2026-10-09T00:00:00.000Z",
+      "管理员自己的",
+    );
+
+    let users = await listUsers();
+    // The older creation with the newer activity wins: the column answers "touched last".
+    expect(users.get("kate")!.lastSessionAt).toBe("2026-10-05T00:00:00.000Z");
+    expect(users.get("kate")!.lastSessionTitle).toBe("重构会话索引");
+    expect(users.get("admin")!.lastSessionTitle).toBe("管理员自己的");
+
+    // A second owned Project counts the same way, and a Session that has no title yet carries
+    // the time alone instead of an empty title.
+    expect(
+      (await kateApi.post("/api/projects", { projectId: "kate-extra", name: "Extra" })).status,
+    ).toBe(201);
+    insertSession(
+      "s-kate-today",
+      "kate-extra",
+      "2026-10-04T00:00:00.000Z",
+      "2026-10-06T00:00:00.000Z",
+    );
+    users = await listUsers();
+    expect(users.get("kate")!.lastSessionAt).toBe("2026-10-06T00:00:00.000Z");
+    expect(users.get("kate")!.lastSessionTitle).toBeUndefined();
+  });
+
+  /**
+   * The query behind that column names an account's Projects in one statement, and an account may
+   * own more of them than SQLite takes parameters: a winner sitting past the first chunk still
+   * has to be found, and asking about no Projects at all is "no Session", never an error.
+   */
+  it("last activity is found across more Projects than one query can name", () => {
+    t.deps.sessionsRepo.insert({
+      sessionId: "s-late",
+      projectId: "p-400",
+      agentId: "kate_agent",
+      provider: "custom",
+      modelId: "m-1",
+      workspace: "/tmp/workspace",
+      approvalMode: "allow-all",
+      title: "后排的",
+      createdAt: "2026-10-01T00:00:00.000Z",
+      lastActiveAt: "2026-10-10T00:00:00.000Z",
+    });
+    const projectIds = Array.from({ length: 401 }, (_, i) => `p-${i}`);
+    expect(t.deps.sessionsRepo.latestByProjects(projectIds)?.sessionId).toBe("s-late");
+    expect(t.deps.sessionsRepo.latestByProjects([])).toBeNull();
   });
 });

@@ -1291,10 +1291,14 @@ export const zh = {
     roleAdmin: "管理员",
     roleUser: "用户",
     createUser: "新增用户",
-    /** The two read-only columns the user table gained: when the account last signed in, and what its Projects have cost. */
+    /** The three read-only columns the user table gained: when the account last signed in, which conversation it touched last, and what its Projects have cost. */
     lastLogin: "最近登录",
     /** Never signed in: the account exists (an admin created it) but has not been used. */
     lastLoginNever: "从未登录",
+    lastSession: "最近一次会话",
+    /** The session column's tooltip: whose Sessions are counted and which one wins. */
+    lastSessionHint:
+      "该用户名下全部项目里最近活跃的一次会话（含子会话与已归档的），标题还没生成时只显示时间。",
     totalCost: "累计开销",
     /** The cost column's tooltip: what the figure counts, and what an "≥" in front of it means. */
     costHint:

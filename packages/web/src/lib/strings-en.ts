@@ -1246,10 +1246,14 @@ export const en: Strings = {
     roleAdmin: "Admin",
     roleUser: "User",
     createUser: "Add user",
-    /** The two read-only columns the user table gained: when the account last signed in, and what its Projects have cost. */
+    /** The three read-only columns the user table gained: when the account last signed in, which conversation it touched last, and what its Projects have cost. */
     lastLogin: "Last sign-in",
     /** Never signed in: the account exists (an admin created it) but has not been used. */
     lastLoginNever: "Never",
+    lastSession: "Last session",
+    /** The session column's tooltip: whose Sessions are counted and which one wins. */
+    lastSessionHint:
+      "The most recently active Session across every Project this account owns (subagent and archived Sessions included); only the time shows until the Session has a title.",
     totalCost: "Total cost",
     /** The cost column's tooltip: what the figure counts, and what an "≥" in front of it means. */
     costHint:

@@ -91,6 +91,21 @@ export interface UserInfo {
    * deployment has no price for, so the figure is a lower bound. Omitted when it is exact.
    */
   costUnpriced?: boolean;
+  /**
+   * Admin user backend (`GET /api/admin/users`): when the most recent Session across the
+   * Projects this account owns was last active (ISO) — the same figure the sidebar orders by,
+   * so a Session created long ago and used today counts as today's. Omitted while the account
+   * has no Session anywhere, which is how an unused account reads as having none rather than
+   * as having one at the epoch. Archived Sessions and subagent Sessions are included: they are
+   * rows in the same index every other Session list draws from.
+   */
+  lastSessionAt?: string;
+  /**
+   * Admin user backend, alongside `lastSessionAt`: that Session's title, i.e. what the account
+   * was working on. Omitted while the Session has none yet (no title has been generated, and
+   * the account has not renamed it).
+   */
+  lastSessionTitle?: string;
   createdAt: string;
 }
 
