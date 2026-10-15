@@ -23,6 +23,16 @@ describe("ProviderLogo", () => {
     expect(html).toContain(`fill:${avatarTile("team-proxy").ink}`);
     expect(html).not.toContain("dark:");
   });
+
+  // The Chinese vendor groups went out as tiles and now carry their platforms' marks. Every id
+  // comes from the model catalog, where the same four are the ones with no glyph a day earlier.
+  it("draws the Chinese vendor groups' own marks, not letter tiles", () => {
+    for (const provider of ["xiaomi", "baidu", "tencent", "iflytek"]) {
+      const html = renderStatic(createElement(ProviderLogo, { provider }));
+      expect(html, provider).toContain('fill="currentColor"');
+      expect(html, provider).not.toContain("<text");
+    }
+  });
 });
 
 describe("AppLogo", () => {
