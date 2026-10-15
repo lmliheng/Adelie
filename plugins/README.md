@@ -8,7 +8,7 @@ Included plugins, by category (`PLUGIN_CATEGORIES` in `packages/core/src/plugins
 
 | Category | Plugins |
 | --- | --- |
-| Office Productivity | `data-analysis`, `use-firecrawl`, `browser-automation`, `use-bento-slides`, `use-wps-office`, `humanizer`, `goal`, `continual-learning`, `csu-mail`, `lesson-video`, `requirements-box` |
+| Office Productivity | `data-analysis`, `use-firecrawl`, `use-offerdao`, `browser-automation`, `use-bento-slides`, `use-wps-office`, `humanizer`, `goal`, `continual-learning`, `csu-mail`, `lesson-video`, `requirements-box` |
 | Software Development | `software-development`, `use-claude-code`, `wechat-miniprogram` |
 | AI App Development | `agent-development`, `model-development`, `skill-porting`, `agent-tuning` |
 | Agent Company | `agent-company` |

@@ -82,7 +82,7 @@ Adelie 运行在你的电脑或服务器上，自动串联 Agent 应用的创建
 
 | 分类        | 插件                                                                            |
 | ----------- | ------------------------------------------------------------------------------- |
-| 办公效率    | `data-analysis`、`use-firecrawl`、`browser-automation`、`use-bento-slides`、`use-wps-office`、`humanizer`、`goal`、`continual-learning`、`csu-mail`、`lesson-video`、`requirements-box` |
+| 办公效率    | `data-analysis`、`use-firecrawl`、`use-offerdao`、`browser-automation`、`use-bento-slides`、`use-wps-office`、`humanizer`、`goal`、`continual-learning`、`csu-mail`、`lesson-video`、`requirements-box` |
 | 软件开发    | `software-development`、`use-claude-code`、`wechat-miniprogram`            |
 | AI 应用开发 | `agent-development`、`model-development`、`skill-porting`、`agent-tuning`       |
 | Agent 公司  | `agent-company`                                                                 |

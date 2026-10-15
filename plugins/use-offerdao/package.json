@@ -1,0 +1,30 @@
+{
+  "name": "@lmliheng/use-offerdao",
+  "version": "0.3.9",
+  "description": "Offer岛 (offerdao.ai) from the shell: search and publish AI-industry job postings, browse the AI company directory, find interview guides and read the daily AI news feed.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmliheng/Adelie.git",
+    "directory": "plugins/use-offerdao"
+  },
+  "keywords": [
+    "adelie-plugin",
+    "penguin-harness",
+    "offerdao",
+    "jobs",
+    "recruiting",
+    "career",
+    "ai-news"
+  ],
+  "files": [
+    "plugin.json",
+    "icon.svg",
+    "README.md",
+    "skills",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

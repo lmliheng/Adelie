@@ -1,0 +1,9 @@
+{
+  "description": "Search and publish AI-industry job postings, browse the AI company directory, find interview guides and read the daily AI news feed — Offer岛's open API (https://offerdao.ai) called from the shell, with the personal API key kept in the agent's key vault.",
+  "description_zh": "AI 方向求职与行业情报的一站式数据源（Offer岛）：按公司 / 岗位 / 地点 / 类型搜岗位、把 JD 发布成岗位、查 AI 公司目录、找面经攻略、看每日 AI 资讯——用 shell 调它的开放 API，个人 key 存进 Agent 密钥库。",
+  "short_description": "Offer岛 job search and publishing, AI company directory, interview guides, daily AI news.",
+  "short_description_zh": "Offer岛的岗位搜索与发布、AI 公司目录、面经攻略与每日 AI 资讯。",
+  "version": "2026.10.15.1",
+  "category": "office-productivity",
+  "preinstall": false
+}

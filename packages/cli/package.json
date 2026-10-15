@@ -40,6 +40,7 @@
     "@lmliheng/software-development": "workspace:*",
     "@lmliheng/use-bento-slides": "workspace:*",
     "@lmliheng/use-firecrawl": "workspace:*",
+    "@lmliheng/use-offerdao": "workspace:*",
     "@lmliheng/use-wps-office": "workspace:*",
     "@lmliheng/use-claude-code": "workspace:*",
     "@lmliheng/wechat-miniprogram": "workspace:*",
