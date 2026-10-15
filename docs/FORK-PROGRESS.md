@@ -354,6 +354,15 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
 把它搁置的理由是「用例有冲突」，本轮把那一处冲突按本树写法解掉即可（见该节）。探针引用是
 `refs/adelie-tmp/upstream-main-r64`（要清就 `git update-ref -d`）。
 
+**上游 `main` 这一轮还是没有往前走（2026-10-15 第六十五轮）**：照第二十三轮那条路按 URL 现拉
+（`git fetch https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r65`），
+尖端仍是 **`2b8116ce`**（与 `r61` / `r62` / `r63` / `r64` 同一个提交，`git log --oneline 2b8116ce..refs/adelie-tmp/upstream-main-r65`
+**一条都没有**）。所以本轮仍从**桌上已量过**的候选里取，落的是 5.43（`#984`）—— 第四十六轮把它记成
+「大件」，这一轮量了它的应用面：14 文件里**本树一份不缺**、`git apply -3` 只有两处冲突（`ui-gallery` 的
+mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例（服务端 24 条、web 两条文件共 41 条），
+是一条用户看得见的真缺陷（见该节）。探针引用是 `refs/adelie-tmp/upstream-main-r65`（要清就
+`git update-ref -d`）。
+
 - [x] **5.1 工位 @ 合并成一个工作轮**（上游 `feat/org-trigger-coalesce` / `c41fa086`）——本轮做完，见下。
       这是四处里唯一一条直接压公司模式那笔钱的：会话数才是费用变量，而忙工位过去会攒下几十个各带一份
       频道上下文的工作轮。
@@ -891,6 +900,17 @@ modules, interfaces, directories, API routes, events, styles and UI」，跨模�
       面板按 `error_code` 分组，限流因此不再藏在 network 桶里。**本地化**：无（`packages/core` 内三份
       源码 + 一份用例；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源）。
       细节与实测见「第六十四轮」一节。
+- [x] **5.43 打开历史对话不再等待侧栏**（上游 `74efa5aa` `#984`，**2026-10-15 第六十五轮落地**，
+      提交见该节）：对话页此前要等侧栏的 Session 列表加载完成才去查证路由指向的 Session（`if (… ||
+      sessionsLoading) return;`），而那个列表按「每个 Agent 每页一次」向每台服务器各发一次请求 ——
+      浏览器把同源请求串行化，于是读者要看的对话**排在侧栏的整片扇出后面**（本机实测：三个 Agent、
+      把列表请求扣住 4 秒，改前 5105 ms 才看到第一条消息、屏幕上一直是一根骨架）。现在两半都改：
+      对话页**不再等**列表（`features/chat/route-probe.ts` 收下「查证」这件事本身 —— 同一 Session
+      同时只有一个在途、失败时读的是**落定那一刻**列表是否仍在加载、路由已离开的结果丢弃），
+      侧栏改发 **`POST /api/projects/:projectId/sessions/batch`**（一次最多 256 个条目、按请求顺序作答、
+      服务器上没有的 Agent 回 `reason: "absent"`、其余失败回 `reason: "error"`，两者都不读成「没有对话」）。
+      **本地化**：无（`server` / `web` / `ui-gallery` 三方都在本仓自己的包内、无跨包 scope 引用点；
+      changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源）。细节与实测见「第六十五轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1493,6 +1513,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-15 | 5.40 | **成本中心的错误提醒：标记已读要覆盖这次打开读到的错误，重启后保持已读**（上游 `591f091d` `#1118` 移植，照改动落、不是合分支；4 文件 / +155 −13，其中源码 2 个（`usage-page.tsx` +3 −3、`todo-dismissals.ts` +13 −10）、另有 changelog 一对）：成本中心读的是屏幕上那一档范围里的错误，而「标记为已读」写下的却是**应用启动时**缓存的那个时间戳 —— 应用打开之后到达的错误也被这条标记算作已读，重启后它又把提醒重新抬起来。现在 `load()` 开头先 `refreshProjectTodos(projectId)`（表格与标记因此指同一条最新错误），`dismissTodo` 改成**写入成功之后**才收起提醒（失败 `toastError(apiErrorText(e))`、留着重试），并加一条模块级写队列 `saving`：连续标记按顺序写，每份 map 都从上一次成功的写入上叠，先发的请求不会覆盖后写的标记。**本地化**：只把上游的 `@prismshadow/penguin-ui` 换成本仓的`@lmliheng/penguin-ui` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 580 类型）**）· `npx oxlint` **0 警告 0 错误**（2167 文件）· `npx prettier --check .` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1028**（129 文件）· cli **539**（37 文件）· web **255 文件 / 3120 通过 / 2 跳过**（本笔没有加用例）· server **197 文件 / 2833 通过 / 4 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态，应用内换页以保住「应用启动时」的探针缓存）**：数据根 `/root/adelie-fork-data/r62-{after2,before}`、`localhost:8952` / `8953`，两行「未预期错误」直接写进 `error_records`（不需要模型 key，即 3.6 那个卡点）。**改后**：提醒写「**2** 条未预期错误」、存下的是**新**时间戳、重载后提醒与侧栏红点**都没了**（`r62/shots/after-3-after-reload.png`）；**改前**（`git checkout HEAD --` 两份源码 + 重建 + 同一条探针）：提醒写「**1** 条未预期错误」、存下的却是**旧**时间戳（`22:38:27.083Z`，而新错误是 `23:08:30.239Z`）、重载后提醒**又回来了**（`before-3-after-reload.png`）· **写入被拒那一半也两态量过**（`REFUSE=1`，`page.route` 回 400）：**改后**提醒留着 + 顶部 `Could not save read status` + `ui_prefs` 没写（`after-refuse-2-refused.png`）；**改前**提醒当场消失、**没有任何提示**、也没写（`before-refuse-2-refused.png`）· **「连续标记按顺序写」单独造的并发场景**（`r62/probe2.mjs`：把第一个 prefs 写入扣在网络层，再点成本中心与模型库两条提醒的「忽略」，模型库那条靠 `PUT …/models` 只留一条做出差量）：**改后**放行前只有 1 个请求、放行后第二个请求**同时带 `errors` 与 `models`**、最终两条都在、重载后模型库提醒不在；**改前**放行前**已经发出两个请求**、被扣住的第一个最后落库、服务端**只剩 `errors`**、重载后模型库提醒回来（`忽略 · 检测到变更：175 个新增，1 个可升级`）· 两态 console **0 error**、除那次刻意造的 400 外无 ≥400 · 端口只用 8951 / 8952 / 8953（用完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `b6fb4080` |
 | 2026-10-15 | 5.41 | **智能体面板：子智能体的描述比名称小一号、节点框跟着字号长大**（上游 `6e54f6bc` `#1096` 移植，照改动落、不是合分支；4 文件 / +62 −15，其中源码 2 个（`agent-topology-view.tsx` +29 −13、`agent-topology.ts` +2 −1）、另有 changelog 一对）：调用关系图里子节点第二行的 `description` 与上方的 Agent 名同一档字号（`text-xs`），中文描述的字身填满 em 框、看上去和名称一样大甚至更大，节点失去「先是谁、再做什么」的层次；节点框又是写死的 200×46 CSS px，而框里的一切随「字号」设置放大，白领主题「特大」档因此把描述下沿截掉。现在名称改 `text-sm`（正文档）、描述留 `text-xs`（小档、浅色墨），画布把布局的数字**按 rem 渲染**（`px / 16`，新加一个小的 `rem()`），节点框、间距、连线跟着用户选的字号一起长大；SVG 改用 `viewBox` 保持路径在布局单位里、加 `vector-effect: non-scaling-stroke` 让描边永远 1.5px，`agent-topology.ts` 的文件头写明「这里的长度都是默认 16px 根下的 CSS px」。**本地化**：无（全在 `packages/web` 内，无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2169 文件）· 本笔两份源码与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1395** / 6 跳过（68 文件）· ui **1029**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2842 通过 / 4 跳过** · web **256 文件 / 3122 通过 / 2 跳过**（本笔没有加用例 —— 这条逻辑是 className 与几何，本树的 node 测试没有排版引擎，仓库规矩也不断言 className）· hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态 × 三主题 × 三档字号 = 9 格）**：重建 web 产物后，一次性数据根 `/root/adelie-fork-data/r63-after`、`localhost:8961` 起真服务（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），模型配成 `custom` provider 指向本仓自带 mock LLM 的**本轮副本**（8977；只加了一处：`run_subagent` 的入参多一个中文 `description`，否则子节点根本没有第二行可量）—— 于是拿到**真会话、真子会话、真描述**，不需要模型 key（即 3.6 那个卡点）。Playwright（`playwright-core` + 本地 chromium-1243，1440×900，`localStorage` 里存 `penguin.themeId` / `penguin.textSize`）打开会话、点开子会话 chip、让「智能体面板」标签激活，再读节点自身的 DOM：**改前** —— 9 格里名称与描述**字号逐格相同**（12/12、13.5/13.5、15/15、13/13、14.625/14.625、16.25/16.25、12/12、13.5/13.5、15/15），节点框 9 格全是 **200×46**，且**白领/特大那一格的行盒被压到 18.625px、而它自己要 20.3125px（`line-height` 亲口给出）—— 正是上游报告的截断**；**改后** —— 9 格名称都比描述大一号（14/12、15.75/13.5、17.5/15、15/13、16.875/14.625、**18.75/16.25**、13/12、14.625/13.5、16.25/15），节点框随根字号长大（16px→**200×46**、18px→**225×52**、20px→**250×58**），**没有一格的行盒低于它自己要求的行高**（白领/特大恢复成 20.3125px）。两态 console 各 **0 error**、无一条 ≥400；9 格截图 `r63/shots/{before,after}-<主题>-<档位>.png`（白领/特大那两张肉眼可见：改前描述贴着框的下沿、与名称一样大，改后名称更大、框更高、描述整行在位）、原始测量 `r63/graph-{before,after}.json`、探针 `r63/probe.mjs`、mock 副本 `r63/mock-llm-desc.mjs`、改前源码留底 `r63/fix-src/` 都在 scratchpad · 端口只用 8961 与 8977（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r63-after`，一个字节没往 `~/.penguin` 或仓库里写（`packages/web/dist` 是构建产物，未 `git add`） | `3a141052` |
 | 2026-10-15 | 5.42 | **provider 的 429 与传输中断分开归类**（上游 `77036d31` `#1114` 移植，照改动落、不是合分支；6 文件 / +90 −2，其中源码 3 个（`core/src/llm/generative-model.ts` +27 −1：新增导出的 `isRateLimitError`、`streamGenerate` 的 outcome 分类里在 AbortError 之后、`network` 兜底之前多一支；`core/src/llm/index.ts` +1 导出；`core/src/omnimessage/types.ts` +1 −1 的 `ErrorCode`），用例 1 个（`core/test/llm.test.ts` +17，新增一条），另有 changelog 一对）：429 与连接中断此前共用 `network` 一个 `error_code` —— 下游无从区分「线路抖了一下，稍等再试」与「这个模型已经没有配额了，同一请求在每一级退避之后仍会 429」，而两者的处置不同：前者等一等就过去了，后者这段会话在别处还有地方可跑（harness 已自带会话内的模型切换）。`ErrorCode` 增加 **`rate_limited`**；`isRateLimitError` 与 `isFatalProviderRejection` 并列导出，沿错误的 `cause` 链任一层判 `status` / `statusCode === 429`；**结果状态仍是 `retryable`** —— 重连阶梯、放弃时机、重试内容都没变，只是把原因命名出来；词汇表其余部分不变（传输中断与 5xx 仍是 `network`），`request_end` 照旧以 `error_code` 携带该码，Cost 中心的错误面板按 `error_code` 分组，限流因此不再藏在 network 桶里。**本树那处冲突的解法**：上游同一处已把用例里的 `delta()` 改成 `ev()`、并把「JSON parse」那条用例改了名，本树都还没有 —— 只把新用例与新的 `rateLimited()` 夹具插进去，本树原有的措辞与用例名一个字没动。**本地化**：无（全在 `packages/core` 内、无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植出处） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2169 文件）· 本笔 4 份源码 / 用例与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件，+1 即本笔新用例）· ui **1029**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2842 通过 / 4 跳过** · web **256 文件 / 3122 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `generative-model.ts` 里新那一支的条件临时改成 `false && isRateLimitError(error)`（其余一字不动）→ `test/llm.test.ts` **1 failed / 98 passed**，红的是本笔新用例、报 **`expected 'network' to be 'rate_limited'`** —— 即「429 被当成 network」正是本笔要修的缺陷；还原后再跑 **99 全过** · **下游面逐处核过**（不是推测）：`request_end` 由 `builders.ts` 原样带出 `error_code`、服务端错误表 `db/repos/errors.ts` 的 `code` 列是自由文本（无 CHECK / 枚举）、错误面板 `topCode` 按 `source · code · kind` 分组 —— 没有任何一处是闭集，`rate_limited` 落进去就是一个新桶；反方向的界面文案（`web/src/lib/strings.ts` 与 `cli/src/i18n.ts` 里按 `errorCode` 选措辞的那两处）**上游自己也没有 `rate_limited` 分支**（同一次核过 `refs/adelie-tmp/upstream-main-r64` 的同一处），所以照上游原样落，不额外改文案 · 本笔无界面改动，因此没有起服务截图；端口一个没碰（3003 / 3004 / 4000 / 7364 / 7369 全程未动） | `de709bd0` |
+| 2026-10-15 | 5.43 | **打开历史对话不再等待侧栏**（上游 `74efa5aa` `#984` 移植，照改动落、不是合分支；14 文件 / +1210 −190（与上游的 +1247 −184 差在本树没有 `probeMissingKey` 那一支，见该节），其中源码 6 个（server 的 `api/types.ts` +44（`SessionsBatchRequest` / `SessionBatchResult` 等新契约）、`http/routes/sessions.ts` +159 −1（GET 路由体收成 `listPage`，新增 `POST …/sessions/batch`）；web 的 `api/endpoints.ts` +25、`state/sessions.tsx` +247 −120（`reload()` / `loadMoreFor()` 改为每台服务器一次，本地分页、计数与活动序游标的处理随之重排）、`features/chat/chat-page.tsx` +56 −23（探针不再等列表）、新增 `features/chat/route-probe.ts`），用例 3 个（server `test/sessions-batch.test.ts` 281 行 / 24 条、web `test/route-probe.test.ts` 149 行 / 7 条、`test/sessions-store.test.ts` +157），另有两处既有夹具跟上（`ui-gallery` 的 mock 路由与 `test/mock-api.test.ts`、`web/e2e/reload-midstream.spec.mjs`），以及 changelog 一对）：对话页此前要等侧栏列表加载完成才查证路由指向的 Session，而列表按「每个 Agent 每页一次」扇出 —— 浏览器串行化同源请求，于是读者要看的对话排在整片扇出后面。现在**两半都改**：查证不再等列表（`RouteProbe`：同一 Session 同时只有一个在途、失败读的是落定那一刻列表是否仍在加载、路由已离开的结果丢弃、列表加载期间查到的行等列表落定后再并入），侧栏改发一条批量请求。**本树两处冲突的解法**：`ui-gallery` 的 mock 路由是导入序（本树多一组 `Storage*` 契约，两个都留）；`chat-page.tsx` 取上游的新结构，但 `gone` 里那句 404 → `setProbeMissingKey` 本树没有这个概念（`probeMissingKey` 是上游另一笔引入的状态，本树用 `routeSessionUnowned` / `routeSessionOffline` 自己处理不可达），因此只保留 `setProbeFailedKey`。**本地化**：无（三个包都在本仓自己的包内、无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）** —— 新增的是路由与请求/应答类型，接口计数不变）· `npx oxlint` **0 警告 0 错误**（2172 文件）· 本笔 14 份文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **1029**（129 文件）· cli **539**（37 文件）· server **198 文件 / 2866 通过 / 4 跳过**（+1 文件、+24 条即本笔新用例）· web **257 文件 / 3130 通过 / 2 跳过**（+1 文件、+8 条即本笔新用例）· ui-gallery **20 文件 / 134 通过**（+3 条；本笔改了它的 mock 路由）· hmr 无测试文件 · **反证（单测）**：① 把 `http/routes/sessions.ts` 退回 `HEAD` → `test/sessions-batch.test.ts` **整套失败**（`ModuleBootError: SessionApiRoutes: contribution 'session-api.sessions-batch' to 'HttpModule.routes' declared but not bound`，24 条全部 skipped）；② 把 `state/sessions.tsx` 退回 `HEAD`（用例留着）→ `test/sessions-store.test.ts` **8 failed / 26 passed**（`batchEntries()[0]` 是 `undefined`，即侧栏根本没发那条批量请求）；③ 把 `route-probe.ts` 的 `if (this.inFlight === key) return;` 临时改成 `false && …` → `test/route-probe.test.ts` **2 failed / 5 passed**（「同一 Session 只发一次」的两条挂了）。三处还原后逐字一致（与 scratchpad 的 `fix-src/` 逐文件 `diff -q` 无输出），三条用例再跑 **7 / 34 / 24 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 server / web 产物后，一次性数据根 `/root/adelie-fork-data/r65-after`、`localhost:8992`（改前产物）/ `8993`（本笔产物）起真服务（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），**三个 Agent**（`default_agent` + API 建的 `r65agentb` / `r65agentc`，所以侧栏的扇出是「每 Agent 一次」）、一条 `web.db` 里的会话行 + 一份手写 Trace（5 轮，不需要模型 key，即 3.6 那个卡点）；探针把**每一条 Session 列表请求扣住 4 秒**，再量「对话第一条消息何时出现」「屏幕上那条消息在列表还被扣着时是否已经在」——**改前**：列表请求 **3 条 GET**（`…/agents/<a>/sessions` 各一次）、列表被扣住期间**看不到任何消息**（截图是一根骨架）、第一条消息 **5105 ms** 才出现；**改后**：列表请求 **1 条 `POST /api/projects/default_project/sessions/batch`**、列表被扣住期间**对话已经完整在位**（`probe answer 1…5`，截图可见）、第一条消息 **1936–2082 ms**（三次跑都在扣住的窗口之内），列表落定后侧栏照旧列出 `probe-workspace` 与 `r65 probe` 那一行（截图 + 文本计数 2）。两态 console 各 **0 error**、无一条 ≥400（唯一弹窗是空数据根没配模型 key 那条提示，即 3.6 那个卡点）；截图 `r65/{before,after,after2,after3}-{held,settled}.png`、探针 `r65/probe.mjs`、造数 `r65/setup.mjs`、改前源码留底 `r65/fix-src/` 都在 scratchpad · 端口只用 8991 / 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r65-after`，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -9240,3 +9261,148 @@ JSON parse exception…」。**解法**：只把上游**新增**的两块（`rat
   三条 Windows 分片、两条 macOS 分片与 `runtime` 三平台）。
 - 本笔只改 `packages/core` 的三份源码、一份用例与一对 changelog，`ci.yml` 的矩阵没有动；没有新增依赖、
   没有动包名与流水线，所以版本戳、发布、安装包这一轮一个都没碰（按轮次纪律）。
+
+## 第六十五轮：打开历史对话不再等待侧栏（2026-10-15，条目 5.43）
+
+一次无人值守的自主推进，只做**一条**：把上游 `#984`（`74efa5aa`，「perf(server,web): open a historical
+conversation without waiting for the sidebar」）照改动落进本树。**没有切版本号、没发 npm、没发安装包、
+没发发布汇总**；`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode` 全程没碰；
+按本轮纪律**没有碰 `packages/desktop` / electron**，也**没有用 3003 / 3004 / 4000 / 7364 / 7369** 任何一个端口。
+
+### 开工自检与选活
+
+- `git status --short` **干净**（输出为空），在 `main` 上（头 `2c182369`，即 v0.4.1 那一笔）；`git fetch
+  origin && git merge --ff-only origin/main` → **`Already up to date.`**。没有切分支、没有推上游、没有改
+  remote 配置。
+- **上游这一轮也没往前走**：照第二十三轮那条路按 URL 现拉
+  （`git fetch https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r65`）
+  → 尖端仍是 **`2b8116ce`**，与 `r61` / `r62` / `r63` / `r64` 是同一个提交（fetch 输出只有
+  `* [new branch]`，`git log --oneline 2b8116ce..refs/adelie-tmp/upstream-main-r65` 一条都没有）。
+- **轮次提示里给的 typecheck 过滤串仍是旧的**（`@prismshadow/penguin-*` 在本树不存在，照那个串只会得到
+  `No projects matched`）；本轮用 `@lmliheng/…` 六个包跑，结果见下。提示里给的
+  `PENGUIN_HOME=… PENGUIN_PROFILE=dev` 也是旧拼写（2.2a / 2.2b 已改名），本轮用
+  `ADELIE_HOME` / `ADELIE_PROFILE`（读侧两个都认，所以两种写法都能起）。
+- 表上最靠前的未勾选条目仍是 **2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10**，各处不可做的理由与上一轮
+  记录的一致（2.2c 写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里，本轮纪律不许碰 desktop；
+  3.5 要用户拍板取哪个桌面壳；3.6 要模型 key —— 这是「卡点」；4.1–4.3 明令不动；5.6 与 5.10 等用户
+  拍板）。于是从**桌上已量过**的候选里取。
+
+### 为什么是这一条
+
+上游 `main` 没动，所以只能在「量过、留给后面的轮次」的那一撮里挑。这一撮如今是：`#1131`（两行
+Console 主题 CSS，量过的结论是「看不出真缺陷」）、`#1051`（悬停提示的规则，67 文件 / +365 −59，**7 份
+要改的文件本树没有**、13 处冲突）、`#1049`（插件市场「只看不兼容」搬进设置）、`#1074` / `#1067` /
+`#1072` / `#1071`（都是文案与分页小件）、`#835` / `#1073`（要本树没有的文件）、`#984`（第四十六轮量的
+「大件」）。
+
+本轮选了 `#984`，判据与前面几轮一致，而且这一条在**应用面**上比那几个都干净：
+
+- 它是**用户看得见的真缺陷**，不是观感调整：对话页要等侧栏的列表加载完成才查证路由指向的 Session，
+  而那个列表按「每个 Agent 每页一次」向每台服务器各发一次请求，浏览器把同源请求串行化 —— 于是
+  「打开一个历史对话」这件事排在侧栏的整片扇出后面。本机三个 Agent、把列表请求扣住 4 秒：改前
+  5105 ms 才看见第一条消息，改后 1.9 s 左右（扣住的窗口之内）。
+- **本树一份文件都不缺**（不像 `#1051` / `#835` / `#1073` 那样有「要改的文件本树没有」），
+  `git apply -3` 只有 **2 处冲突**。
+- 自带 **4 份用例**（服务端 24 条 + web 两条文件 41 条），三条反证都能在本机真跑出来。
+- 不引入新依赖、不碰桌面壳 / 包名 / 流水线、不动服务契约（`ifaces.json` 计数不变）。
+
+### 改了什么（14 文件 / +1210 −190，含 changelog 一对）
+
+| 文件 | 改动 |
+| --- | --- |
+| `packages/server/src/api/types.ts` | +44：`SessionsBatchRequest` / `SessionBatchEntry` / `SessionBatchResult` / `SessionsBatchResponse` 等批量路由的契约 |
+| `packages/server/src/http/routes/sessions.ts` | +159 −1：GET 路由的取数体收成 `listPage(store, agentId, ask)`（分页、活动序游标、计数与工作区分组都在里面），GET 路由改为把 query 解成 `ListAsk` 再调它；新增 **`POST /api/projects/:projectId/sessions/batch`**（最多 256 个条目、按请求顺序作答、`absent` / `error` 两个失败原因、任一条目不合法即 400） |
+| `packages/server/test/sessions-batch.test.ts` | 新增，281 行 / 24 条 |
+| `packages/web/src/api/endpoints.ts` | +25：批量列表的客户端方法 |
+| `packages/web/src/state/sessions.tsx` | +247 −120：`reload()` 与 `loadMoreFor()` 改为「每台服务器一次」，本地分页 / 计数 / 活动序游标的处理随之重排 |
+| `packages/web/src/features/chat/chat-page.tsx` | +56 −23：探针不再挂在 `sessionsLoading` 上，改由 `RouteProbe` 驱动，取回的行在列表落定后再并入侧栏 |
+| `packages/web/src/features/chat/route-probe.ts` | 新增，66 行：同一 Session 同时只有一个查证在途；失败要读**落定那一刻**列表是否仍在加载；路由已离开的结果丢弃 |
+| `packages/web/test/route-probe.test.ts` / `test/sessions-store.test.ts` | 149 行 / 7 条；既有文件 +157（批量扇出、`batchEntries()` 的断言） |
+| `packages/ui-gallery/src/app/mock/routes.ts` / `test/mock-api.test.ts` | 画廊的 mock 路由跟上批量路由（188 行改动，含导入序与 GET 路由体收成 `listPage`）；用例 +21 |
+| `packages/web/e2e/reload-midstream.spec.mjs` | 7 行改动：端到端夹具跟上 |
+| `changelog/unreleased/2026-10-15-faster-session-open.md` / `.zh.md` | 新增一对（按本仓写法：日期改到本轮、去掉上游 PR 行、写明「移植自上游 PenguinHarness（#984，提交 `74efa5aa`）」） |
+
+**没有改的**：历史读取 `GET /api/sessions/:id/messages`（上游这一笔也没动它 —— 它在服务端本来就是
+有界的）；`/api/projects/:p/agents/:a/sessions` 那条 GET 路由**留着**（CLI、深链与任何外部调用者照旧
+用它，只是侧栏不再走它）；`packages/hmr` 未动。
+
+### 本树那两处冲突是怎么解的
+
+- **`packages/ui-gallery/src/app/mock/routes.ts`（两处）**：一处是 import 区 —— 上游按字母序插进
+  `SessionBatchResult`，本树在这一段还多一组 `Storage*` 契约（那一笔上游没有），**两个都留**；
+  另一处是 GET 路由体的整段重写（上游把内联体收成 `listPage`），**取上游的新结构** —— 逐条核过
+  `listPage` 覆盖本树原有语义（`excludeOrg` → `ownOnly`、`order=activity` 与 `before` 游标、
+  `category` / `workspaceGroup` / `counts` 与 `workspaceCounts` / `workspaceLatest`），
+  本树那一版是同一段逻辑的旧写法。
+- **`packages/web/src/features/chat/chat-page.tsx`（一处）**：取上游的新结构（`routeProbe.run(key,
+  lookup, {found, gone})`），但上游 `gone` 里还有一句「404 才 `setProbeMissingKey`」——**本树没有
+  `probeMissingKey` 这个概念**：那是上游另一笔（更早的那次「查不到 vs 不可达」的区分）引入的状态，
+  本树用自己的一套 `routeSessionUnowned` / `routeSessionOffline` / `machinesUnreachable` 处理不可达
+  （见文件里那几段注释）。本树旧代码在失败时也只是 `setProbeFailedKey(probeKey)`，所以这里**只保留
+  `setProbeFailedKey`** —— 与上游这一笔的核心（不再等列表）无关，且不丢本树任何已有行为。它是
+  typecheck 报出的唯一一处，改掉即六个包全绿。
+- 其余 12 份文件 `git apply -3` **逐字干净**。
+
+### 主证据：两态真浏览器 + 三条反证
+
+- **真服务端 + 真浏览器，改前改后两态**：重建 `server` / `web` 产物后，一次性数据根
+  `/root/adelie-fork-data/r65-after`，**改前产物起在 8992、本笔产物起在 8993**（同一个数据根，
+  `ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie）。数据面**不需要模型 key**
+  （即 3.6 那个卡点）：两个 Agent 由 `POST /api/projects/default_project/agents` 建出（共三个），
+  会话行直接写进 `web.db` 的 `sessions` 表、历史用 `@lmliheng/penguin-core/omnimessage` 的构造器
+  手写一份 5 轮 Trace。
+- **探针**（`r65/probe.mjs`）把**每一条 Session 列表请求扣住 4 秒**，然后量三件事：列表请求的条数与
+  形状、列表还被扣着时对话在不在屏幕上、第一条消息出现用了多久。
+  - **改前**：列表请求 **3 条** `GET …/agents/<a>/sessions`（三个 Agent 各一条）；列表扣住期间**屏幕上
+    没有任何消息**（`before-held.png` 是一根骨架条）；第一条消息 **5105 ms** 才出现
+    （`conversationAppearedMs`）。
+  - **改后**：列表请求 **1 条** `POST /api/projects/default_project/sessions/batch`；列表扣住期间
+    **对话已经完整在位**（`after-held.png` 里 `probe answer 1…5` 都在，侧栏还是占位）；
+    第一条消息 **1936 / 1988 / 2082 ms**（三次跑都在 4 秒的窗口之内）。
+  - 列表落定后侧栏照旧列出 `probe-workspace` 与 `r65 probe` 那一行（`after2-settled.png`；探针里按
+    文本数出来的 2 处）—— 批量路由把侧栏喂得和之前一样。
+  - 两态 console 各 **0 error**、无一条 ≥400；页面上唯一的弹窗是空数据根没配模型 key 那条提示
+    （3.6 那个卡点，与本研究无关）。
+- **反证（单测，三条各自真跑）**：
+  1. 把 `server/src/http/routes/sessions.ts` 退回 `HEAD`（用例留着）→ **整套 24 条跑不起来**：
+     `ModuleBootError: SessionApiRoutes: contribution 'session-api.sessions-batch' to 'HttpModule.routes'
+     declared but not bound`（路由文件里的贡献声明没了，应用连 boot 都过不去）——这就是本笔新用例
+     指着的那个路由。
+  2. 把 `web/src/state/sessions.tsx` 退回 `HEAD` → `test/sessions-store.test.ts` **8 failed / 26 passed**，
+     报 `batchEntries()[0]` 是 `undefined` —— 旧仓库根本没发那条批量请求。
+  3. 把 `route-probe.ts` 的 `if (this.inFlight === key) return;` 临时改成 `false && …` →
+     `test/route-probe.test.ts` **2 failed / 5 passed** —— 「同一 Session 只发一次」与「答案落在路由
+     之后要丢弃」两条正是它管的。
+  三处都还原后，与 scratchpad 里 `r65/fix-src/` 的留底**逐文件 `diff -q` 无输出**，三条用例再跑
+  **7 / 34 / 24 全过**。
+
+### 门禁
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`）；`gen:ifaces` 报 **`src/ifaces.json unchanged`
+  （189 接口 / 583 类型）** —— 本笔新增的是路由与请求 / 应答类型，接口计数不变。
+- `npx oxlint` **0 警告 0 错误**（2172 文件）· 本笔 14 份文件与一对 changelog `prettier --check` 干净 ·
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **1029**（129 文件）·
+  cli **539**（37 文件）· server **198 文件 / 2866 通过 / 4 跳过**（+1 文件 / +24 条即本笔新用例）·
+  web **257 文件 / 3130 通过 / 2 跳过**（+1 文件 / +8 条）· ui-gallery **20 文件 / 134 通过**（+3 条）·
+  hmr 无测试文件。**没有碰 desktop / electron**（依赖没装）。
+
+### 中间物与端口
+
+- 中间物：会话 scratchpad 的 `r65/`（探针 `probe.mjs`、造数 `setup.mjs`、四张截图
+  `{before,after,after2,after3}-{held,settled}.png`、改前源码留底 `fix-src/`、补丁
+  `984.patch`）。都未入库。
+- 端口只用 **8991 / 8992 / 8993**（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `/root/adelie-fork-data/r65-after`，一个字节没往 `~/.penguin` 或仓库里写
+  （`packages/*/dist` 是构建产物，未 `git add`）。
+
+### 收尾：提交、推送与汇报
+
+- **提交**：代码提交（6 份源码 + 1 份新模块 + 3 份用例 + 2 份既有夹具 + 一对 changelog）一笔，其后
+  一笔只动台账（本文件）；两笔一起 `git push origin main`。**没有切版本号、没发 npm、没发安装包、
+  没发发布汇总。**
+- **汇报邮件**：照 `csu-mail` 技能发给 `0110230306@csu.edu.cn`（**只有一个收件人**），正文三句话。
+  发得出去就发；发不出去（本机到中南大学网段 `202.197.0.0/16` 的老卡点）则入重发队列并按第 36 轮起
+  的替代通道发一条飞书简报。
+- **CI**：照旧由推送触发，结果记在下面（`ci.yml` 的 `cancel-in-progress` 会把同组的前一笔取消，
+  看最后一笔即可）。
