@@ -50,6 +50,12 @@ const PENGUIN_BIN = pick("PENGUIN_BIN", "penguinBin", "penguin");
 const PATROL_PROJECT = pick("PATROL_PROJECT", "project", "");
 const PATROL_AGENT = pick("PATROL_AGENT", "agent", "");
 const PATROL_WORKSPACE = pick("PATROL_WORKSPACE", "workspace", process.cwd());
+// 提交同步那一块的三个出处（仓库在哪、现网服务在哪、现网的口令文件在哪）。都是本机才知道的
+// 事，所以照样走 box.config.json；没配就如实说「没配」，不猜一个路径 —— 猜出来的没人敢信。
+const REPO_DIR = pick("REPO_DIR", "repoDir", "");
+const SERVER_URL = pick("SERVER_URL", "serverUrl", "");
+const SERVER_TOKEN_FILE = pick("SERVER_TOKEN_FILE", "serverTokenFile", "");
+const INSTALL_DIR = pick("INSTALL_DIR", "installDir", "");
 
 /** 状态的封闭集合。`new` 是刚提上来还没被看过的；`doing` 是这一轮正在做的。 */
 const STATUSES = new Set(["new", "doing", "done", "blocked", "rejected", "withdrawn"]);
@@ -385,6 +391,265 @@ function spawnPatrol(ids, res) {
   child.unref();
 }
 
+// --- 提交同步 ---------------------------------------------------------------
+//
+// 用户 2026-10-15 的口径：「没发版 / 服务器没有同步的提交」写在页面上。三件事各有出处，合成
+// 一句话就没人看得懂，所以分开算：
+//   · 未发版    —— 仓库 main 上、最后一个发布标签之后的提交（提交了，还没发 Release）
+//   · 现网没跟上 —— 已经发出去、而正在跑的那个服务还没换上的提交（发版了，没更新现网）
+//   · 装了没重启 —— 磁盘上的版本比正在跑的进程新（更新装好了，进程还挂着旧代码）
+//
+// 现网的版本问它自己（`/api/version`），不拿磁盘上那份冒充正在跑的东西：用户那天遇到的恰恰是
+// 「装好了没重启」，两者混起来正好把这个区别盖掉。那个接口要本机口令，口令从 SERVER_TOKEN_FILE
+// 读，只在本进程里用，绝不下发给浏览器。
+//
+// 几条 git 命令几十毫秒，可页面每 10 秒刷一次，所以缓存 30 秒；页面那个 ⟳ 带 fresh=1 跳过缓存。
+const SYNC_TTL_MS = 30 * 1000;
+const SYNC_COMMIT_LIMIT = 30;
+const SYNC_CMD_TIMEOUT_MS = 8000;
+// git 输出里的字段分隔符：提交标题里什么字符都可能有，只有 US（0x1f）不会出现。
+const FIELD = "\u001f";
+// 「现网没跟上」只算真的会进构建的提交：发布正文、记账这些只动 markdown 的提交从不进产物，
+// 把它们算进去，每次发完版页面都会喊「现网落后 1 条」，喊多了就没人看了。
+const DOC_PATHSPEC = ["--", ".", ":(exclude)*.md", ":(exclude)docs/**"];
+
+let syncCache = { at: 0, value: null };
+
+/** 跑一条命令，收它整份 stdout。非零退出把 stderr 第一行当错误抛出去，由调用方解释。 */
+function runCapture(bin, args, timeout = SYNC_CMD_TIMEOUT_MS) {
+  return new Promise((resolvePromise, reject) => {
+    let child;
+    try {
+      child = spawn(bin, args, { stdio: ["ignore", "pipe", "pipe"] });
+    } catch (err) {
+      reject(err);
+      return;
+    }
+    let out = "";
+    let err = "";
+    let settled = false;
+    const finish = (fn, value) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn(value);
+    };
+    const timer = setTimeout(() => {
+      try {
+        child.kill();
+      } catch {
+        /* 已经退了 */
+      }
+      finish(reject, new Error("跑得太久"));
+    }, timeout);
+    child.stdout?.on("data", (d) => {
+      out += String(d);
+    });
+    child.stderr?.on("data", (d) => {
+      err += String(d);
+    });
+    child.on("error", (e) => finish(reject, e));
+    child.on("exit", (code) => {
+      if (code === 0) finish(resolvePromise, out);
+      else finish(reject, new Error((err.trim() || `exit ${code}`).split("\n")[0]));
+    });
+  });
+}
+
+async function git(args) {
+  return runCapture("git", ["-C", REPO_DIR, ...args]);
+}
+
+/** 一行一条提交：短哈希 / 标题 / 提交时间 / 作者。 */
+function parseCommits(text) {
+  return String(text)
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+    .map((line) => {
+      const [short, subject, at, author] = line.split(FIELD);
+      return { short, subject, at, author };
+    });
+}
+
+/** 一段提交范围：总条数 +（最多 SYNC_COMMIT_LIMIT 条）明细。范围再长也不把整页撑爆。 */
+async function rangeCommits(range, { shippedOnly = false } = {}) {
+  const paths = shippedOnly ? DOC_PATHSPEC : [];
+  const total = await countCommits(range);
+  const shown = shippedOnly ? await countCommits(range, paths) : total;
+  const listed = parseCommits(
+    await git([
+      "log",
+      `--max-count=${SYNC_COMMIT_LIMIT}`,
+      `--pretty=%h${FIELD}%s${FIELD}%cI${FIELD}%an`,
+      range,
+      ...paths,
+    ]),
+  );
+  return {
+    count: shown,
+    // 只是文档/记账的提交单独报个数：它们从来不进构建，混进「现网没跟上」就是狼来了
+    docsOnly: shippedOnly && total > shown ? total - shown : 0,
+    truncated: shown > listed.length,
+    commits: listed,
+  };
+}
+
+async function countCommits(range, paths = []) {
+  const args = ["rev-list", "--count", range, ...paths];
+  const value = Number((await git(args)).trim());
+  return Number.isFinite(value) ? value : 0;
+}
+
+/** 最后一个发布标签。按版本号排，不按时间 —— 补发一个旧版本不该把「最新」指回去。 */
+async function latestRelease() {
+  const tags = (await git(["tag", "--list", "v*", "--sort=-v:refname"]))
+    .split("\n")
+    .map((t) => t.trim())
+    .filter((t) => t !== "");
+  if (tags.length === 0) return null;
+  const tag = tags[0];
+  const hash = (await git(["rev-list", "-n", "1", tag])).trim();
+  return {
+    tag,
+    hash,
+    short: hash.slice(0, 8),
+    at: (await git(["log", "-1", "--pretty=%cI", tag])).trim(),
+  };
+}
+
+/** 现网正在跑的是哪个版本：问它自己的 /api/version，不认磁盘上那份。 */
+async function probeRunning() {
+  if (!SERVER_URL) return { configured: false };
+  const headers = {};
+  let token = "";
+  if (SERVER_TOKEN_FILE) {
+    try {
+      token = readFileSync(SERVER_TOKEN_FILE, "utf8").trim();
+    } catch {
+      token = "";
+    }
+  }
+  if (token) headers.authorization = `Bearer ${token}`;
+  const base = { configured: true, url: SERVER_URL };
+  try {
+    const res = await fetch(`${SERVER_URL}/api/version`, {
+      headers,
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) {
+      return {
+        ...base,
+        ok: false,
+        status: res.status,
+        note:
+          res.status === 401
+            ? "现网不认这个口令（SERVER_TOKEN_FILE 指向的那个文件）"
+            : `现网回 HTTP ${res.status}`,
+      };
+    }
+    const body = await res.json();
+    return {
+      ...base,
+      ok: true,
+      version: body.version ?? null,
+      commit: body.commit ?? null,
+      short: String(body.commit ?? "").slice(0, 8),
+      buildDate: body.buildDate ?? null,
+    };
+  } catch (err) {
+    return { ...base, ok: false, note: `没连上现网：${err.message}` };
+  }
+}
+
+/** 磁盘上装的是哪个版本 —— 和「正在跑的」不一样就说明装好了还没重启。 */
+function installedVersion() {
+  if (!INSTALL_DIR) return null;
+  try {
+    return (
+      JSON.parse(readFileSync(join(INSTALL_DIR, "lib", "package.json"), "utf8")).version ?? null
+    );
+  } catch {
+    return null;
+  }
+}
+
+async function computeSync() {
+  const out = {
+    at: new Date().toISOString(),
+    configured: true,
+    repoDir: REPO_DIR || null,
+    serverUrl: SERVER_URL || null,
+  };
+  if (!REPO_DIR) {
+    // 没配仓库 = 这台机器没打算要这一块，整块不显示；配了却读不动才是要报出来的错。
+    out.configured = false;
+    out.error =
+      "没配仓库：在 box.config.json 里写 repoDir（或设 REPO_DIR 环境变量），这块才算得出来";
+    return out;
+  }
+  try {
+    out.repo = {
+      branch: (await git(["rev-parse", "--abbrev-ref", "HEAD"])).trim() || "HEAD",
+      head:
+        parseCommits(await git(["log", "-1", `--pretty=%h${FIELD}%s${FIELD}%cI${FIELD}%an`]))[0] ??
+        null,
+      dirty: (await git(["status", "--porcelain"])).trim() !== "",
+    };
+  } catch (err) {
+    out.error = `读仓库失败：${err.message}`;
+    return out;
+  }
+
+  try {
+    out.release = await latestRelease();
+  } catch (err) {
+    out.error = `读发布标签失败：${err.message}`;
+    return out;
+  }
+  if (!out.release) out.error = "这个仓库里还没有发布标签，分不出「发过没发过」";
+
+  if (out.release) {
+    out.unreleased = await rangeCommits(`${out.release.tag}..HEAD`).catch(() => null);
+  }
+  try {
+    const upstream = (
+      await git(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"])
+    ).trim();
+    if (upstream) out.unpushed = { upstream, ...(await rangeCommits(`${upstream}..HEAD`)) };
+  } catch {
+    /* 没配远端就不写这一项，别编一个出来 */
+  }
+
+  out.server = { ...(await probeRunning()), installedVersion: installedVersion() };
+  // 磁盘比现网新 = 装好了没重启
+  out.server.restartPending = !!(
+    out.server.ok &&
+    out.server.installedVersion &&
+    out.server.version &&
+    out.server.installedVersion !== out.server.version
+  );
+  // 已经发出去、而现网还没跑上的提交
+  if (out.server.ok && out.server.commit && out.release) {
+    try {
+      out.behind = await rangeCommits(`${out.server.commit}..${out.release.tag}`, {
+        shippedOnly: true,
+      });
+    } catch (err) {
+      out.behindNote = `现网跑的那个提交（${out.server.short || "未知"}）对不上这个仓库的历史：${err.message}`;
+    }
+  }
+  return out;
+}
+
+async function syncSnapshot(fresh) {
+  const now = Date.now();
+  if (!fresh && syncCache.value && now - syncCache.at < SYNC_TTL_MS) return syncCache.value;
+  const value = await computeSync();
+  syncCache = { at: now, value };
+  return value;
+}
+
 const PAGE_CSP = [
   "default-src 'none'",
   "style-src 'unsafe-inline'",
@@ -590,6 +855,18 @@ export function handleRequirements(req, res, rawUrl) {
       return true;
     }
     json(res, 405, { ok: false, error: "只支持 GET / PATCH" });
+    return true;
+  }
+
+  // 提交同步：/api/requirements/sync（?fresh=1 跳过缓存）
+  if (tail === "sync") {
+    if (method !== "GET") {
+      json(res, 405, { ok: false, error: "只支持 GET" });
+      return true;
+    }
+    syncSnapshot(url.searchParams.get("fresh") === "1")
+      .then((sync) => json(res, 200, { ok: true, sync }))
+      .catch((err) => json(res, 500, { ok: false, error: `算不出来：${err.message}` }));
     return true;
   }
 

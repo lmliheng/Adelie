@@ -21,7 +21,7 @@ every <period> the agent wakes, reads the list, marks each item doing, and works
 | Piece | What it is |
 | --- | --- |
 | `kit/requirements.mjs` | The whole service: a JSON store with atomic writes, the keyed API (list/create/read/patch, the patrol cadence, and the do-it-now trigger), and it serves the page. Node standard library only — no build step, no dependency tree. |
-| `kit/requirements.html` | The page: file a request, edit or withdraw one, select several and act in bulk, schedule an item, pause the patrol or change its cadence, and a "do it now" button. |
+| `kit/requirements.html` | The page: file a request, edit or withdraw one, select several and act in bulk, schedule an item, pause the patrol or change its cadence, see which commits are not released or not on the live server yet, and a "do it now" button. |
 | `kit/serve.mjs` | A standalone server for the box alone, so it can run on its own port without touching anything else already on the machine. |
 | `kit/patrol.md` | The protocol the scheduled round follows: take work, mark it doing before touching it, triage, gate, ship, mail, archive — and the red lines. |
 | `kit/install.mjs` | Lays the files down, generates the key, writes `box.config.json`, writes the schedule, and prints the two commands left to run. |
@@ -34,6 +34,12 @@ every <period> the agent wakes, reads the list, marks each item doing, and works
   and the whole state is a file you can read.
 - **The schedule is a file, not a black box.** The round is a `.toml` the platform re-reads; the cadence, the
   on/off switch and the "do it now" button all write that one file.
+- **You can see what is not out yet.** The page carries a "commit sync" card: the commits after the last
+  release tag, what the live server is actually running (asked of its own `/api/version`, not read off disk),
+  whether an update is installed but not restarted yet, and the released commits the running server has not
+  picked up. All four come from `box.config.json` (`repoDir` / `serverUrl` / `serverTokenFile` / `installDir`),
+  which the installer works out for you; anything it cannot work out is reported as "not configured" rather
+  than guessed. The token file stays in this process and never reaches the browser.
 - **Doing it now is one click.** Waiting for the next tick is the common complaint, so the page can start a
   session immediately, and can do it for just the items the user selected.
 

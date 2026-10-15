@@ -57,9 +57,27 @@ install 会：把服务拷到 `--dir`、生成口令（`data/key.txt`，0600）�
 | GET / PATCH | `/api/requirements/<id>` | 读一条、改（`title`/`detail`/`priority`/`not_before`/`status`/`result`/`archive`） |
 | GET / PATCH | `/api/requirements/patrol` | 看/改巡台节奏（`period`、`daily_at`、`enabled`） |
 | GET / POST | `/api/requirements/run` | 看上次手动触发；POST 立刻开一个会话开工（60 秒冷却） |
+| GET | `/api/requirements/sync` | 提交同步：最后一个发布标签之后的提交、现网在跑什么、现网还差哪些提交（30 秒缓存，`?fresh=1` 跳过） |
 
 状态：`new` / `doing` / `done` / `blocked` / `rejected` / `withdrawn`；归档是 `archive: true`，
 归档之后接口不再让改。
+
+### 页面上「提交同步」那块
+
+它写三件**看不见就容易忘**的事（用户 2026-10-15 的口径）：**未发版**的提交、**现网没跟上**的提交
+（已经发出去、而正在跑的那个服务还没换上的）、以及**装了没重启**（磁盘上的版本比正在跑的进程新）。
+只看会进构建的提交 —— 发布正文、记账这类只动 markdown 的不算「没同步」，否则每次发完版都在喊狼来了。
+
+出处全在 `box.config.json`（`install.mjs` 会尽量推出来，推不出来就留空，页面上如实写「没配」）：
+
+| 键 | 是什么 | install 的默认 |
+| --- | --- | --- |
+| `repoDir` | 看哪个仓库的提交 | `--workspace` |
+| `serverUrl` | 现网服务地址（问它自己的 `/api/version`） | 数据根 `server.lock` 里的端口 |
+| `serverTokenFile` | 现网那个接口要的本机口令文件 | `<数据根>/api-token` |
+| `installDir` | 磁盘上装在哪，用来比出「装了没重启」 | 数据根的上一级 |
+
+口令只在本进程里读，**绝不下发给浏览器**。
 
 ## 三、巡台那一轮怎么跑
 

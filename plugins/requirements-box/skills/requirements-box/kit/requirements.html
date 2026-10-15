@@ -460,6 +460,56 @@
         white-space: nowrap;
         border: 0;
       }
+      .sync-line {
+        font-size: 13px;
+        color: var(--fg-muted);
+        margin: 0 0 4px;
+      }
+      .sync-line b {
+        color: var(--fg);
+        font-weight: 500;
+      }
+      .sync-line .warn {
+        color: #b45309;
+      }
+      .dark .sync-line .warn {
+        color: #fcd34d;
+      }
+      .sync-list {
+        list-style: none;
+        margin: 6px 0 0;
+        padding: 0;
+      }
+      .sync-list li {
+        display: flex;
+        gap: 8px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        color: var(--fg-muted);
+        padding: 2px 0;
+      }
+      .sync-list li .h {
+        flex: none;
+        color: var(--fg-faint);
+      }
+      .sync-list li .s {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .sync-list li.doc {
+        opacity: 0.65;
+      }
+      .chip.attention {
+        border-color: #fde68a;
+        background: #fffbeb;
+        color: #b45309;
+      }
+      .dark .chip.attention {
+        background: rgb(245 158 11 / 0.12);
+        border-color: rgb(245 158 11 / 0.3);
+        color: #fcd34d;
+      }
       @media (min-width: 640px) {
         .grid-2 {
           display: grid;
@@ -560,6 +610,20 @@
             <span class="muted" id="hint">Ctrl / ⌘ + Enter 也能提交</span>
           </div>
         </form>
+      </section>
+
+      <section id="sync" class="card" hidden>
+        <div class="row" style="margin-bottom: 8px">
+          <h2 style="font-size: 15px; font-weight: 600; margin: 0">提交同步</h2>
+          <span class="chip" id="sync-release" hidden></span>
+          <span class="chip" id="sync-unreleased" hidden></span>
+          <span class="chip" id="sync-behind" hidden></span>
+          <span class="grow"></span>
+          <span class="muted" id="sync-at"></span>
+        </div>
+        <p class="sync-line" id="sync-server">—</p>
+        <p class="sync-line" id="sync-repo">—</p>
+        <div id="sync-lists"></div>
       </section>
 
       <section id="patrol" class="card" hidden>
@@ -673,6 +737,14 @@
           statusLine: document.getElementById("status-line"),
           live: document.getElementById("live"),
           cadence: document.getElementById("cadence"),
+          sync: document.getElementById("sync"),
+          syncRelease: document.getElementById("sync-release"),
+          syncUnreleased: document.getElementById("sync-unreleased"),
+          syncBehind: document.getElementById("sync-behind"),
+          syncAt: document.getElementById("sync-at"),
+          syncServer: document.getElementById("sync-server"),
+          syncRepo: document.getElementById("sync-repo"),
+          syncLists: document.getElementById("sync-lists"),
           latestVersion: document.getElementById("latest-version"),
           patrol: document.getElementById("patrol"),
           patrolState: document.getElementById("patrol-state"),
@@ -1282,6 +1354,170 @@
           els.live.appendChild(document.createTextNode(text));
         }
 
+        /**
+         * 「没发版的提交」「服务器没同步的提交」写在这一块（用户 2026-10-15 的口径）。
+         * 数全在服务端算好（那边读得到仓库的 git、也问得到现网在跑什么），这里只管画成人扫一眼
+         * 就懂的样子：两个数字当徽章，明细折在下面，没东西可看时一行带过。
+         */
+        function paintSync(sync) {
+          if (!sync || sync.configured === false) {
+            els.sync.hidden = true;
+            return;
+          }
+          els.sync.hidden = false;
+
+          var release = sync.release || {};
+          els.syncRelease.hidden = !release.tag;
+          els.syncRelease.textContent = release.tag ? "已发布 " + release.tag : "";
+
+          var unreleased = (sync.unreleased && sync.unreleased.count) || 0;
+          els.syncUnreleased.hidden = unreleased === 0;
+          els.syncUnreleased.textContent = "未发版 " + unreleased + " 条";
+          els.syncUnreleased.className = unreleased > 0 ? "chip attention" : "chip";
+
+          var behind = (sync.behind && sync.behind.count) || 0;
+          els.syncBehind.hidden = behind === 0;
+          els.syncBehind.textContent = "现网没跟上 " + behind + " 条";
+          els.syncBehind.className = behind > 0 ? "chip attention" : "chip";
+
+          els.syncAt.textContent = sync.at ? fmt(sync.at) + " 查的" : "";
+
+          // 配了却读不动（仓库不是仓库、git 不在……）：把原因写在明面上，别让这块悄悄消失
+          if (sync.error) {
+            els.syncServer.textContent = "这块没算全：" + sync.error;
+            paintSyncRepo(sync.repo);
+            els.syncLists.textContent = "";
+            return;
+          }
+
+          paintSyncServer(sync.server);
+          paintSyncRepo(sync.repo);
+          paintSyncLists(sync);
+        }
+
+        function paintSyncServer(server) {
+          els.syncServer.textContent = "";
+          if (!server || !server.configured) {
+            els.syncServer.textContent =
+              "没配现网地址：在 box.config.json 里写 serverUrl，才看得出服务器同步没同步";
+            return;
+          }
+          if (!server.ok) {
+            els.syncServer.textContent = "现网读不到：" + (server.note || "原因不明");
+            return;
+          }
+          els.syncServer.appendChild(document.createTextNode("现网正跑 "));
+          var version = document.createElement("b");
+          version.textContent = server.version || "版本不明";
+          els.syncServer.appendChild(version);
+          if (server.short)
+            els.syncServer.appendChild(document.createTextNode("（" + server.short + "）"));
+          if (server.buildDate)
+            els.syncServer.appendChild(document.createTextNode(" · " + server.buildDate + " 构建"));
+          if (server.restartPending) {
+            var warn = document.createElement("span");
+            warn.className = "warn";
+            warn.textContent = " —— 磁盘上装的是 " + server.installedVersion + "，重启了才生效";
+            els.syncServer.appendChild(warn);
+          }
+        }
+
+        function paintSyncRepo(repo) {
+          els.syncRepo.textContent = "";
+          if (!repo) return;
+          var head = repo.head || {};
+          els.syncRepo.appendChild(
+            document.createTextNode("仓库 " + repo.branch + " 的最后一笔是 "),
+          );
+          var hash = document.createElement("b");
+          hash.textContent = head.short || "?";
+          els.syncRepo.appendChild(hash);
+          els.syncRepo.appendChild(
+            document.createTextNode(
+              " " + (head.subject || "") + (head.at ? "（" + fmt(head.at) + "）" : ""),
+            ),
+          );
+          if (repo.dirty)
+            els.syncRepo.appendChild(document.createTextNode("，工作区还有没提交的改动"));
+        }
+
+        function paintSyncLists(sync) {
+          els.syncLists.textContent = "";
+          var unreleased = sync.unreleased;
+          var behind = sync.behind;
+          var up = sync.unpushed;
+          if ((!unreleased || unreleased.count === 0) && (!behind || behind.count === 0)) {
+            var ok = document.createElement("p");
+            ok.className = "sync-line";
+            ok.textContent = "都同步了：没有未发版的提交，现网也在跑最新那个发布。";
+            els.syncLists.appendChild(ok);
+            return;
+          }
+          appendCommitBlock(
+            "未发版",
+            unreleased,
+            up && up.count > 0 ? "其中 " + up.count + " 条还没推到 " + up.upstream : "",
+          );
+          appendCommitBlock(
+            "现网没跟上",
+            behind,
+            behind && behind.docsOnly
+              ? "另外 " + behind.docsOnly + " 条只动了文档，不影响运行"
+              : "",
+          );
+        }
+
+        function appendCommitBlock(title, data, note) {
+          if (!data || data.count === 0) return;
+          var head = document.createElement("p");
+          head.className = "sync-line";
+          head.style.marginTop = "10px";
+          head.textContent = title + " " + data.count + " 条" + (note ? " —— " + note : "");
+          els.syncLists.appendChild(head);
+
+          var ul = document.createElement("ul");
+          ul.className = "sync-list";
+          data.commits.forEach(function (c) {
+            ul.appendChild(commitLi(c));
+          });
+          if (data.truncated) {
+            var more = document.createElement("li");
+            more.textContent = "…还有 " + (data.count - data.commits.length) + " 条没列出来";
+            ul.appendChild(more);
+          }
+          els.syncLists.appendChild(ul);
+        }
+
+        function commitLi(c) {
+          var li = document.createElement("li");
+          // 记账/发布正文这类提交标得淡一点：它们在列表里，但不代表有东西等着上服务器
+          if (/^docs[:(]/.test(c.subject || "")) li.className = "doc";
+          var hash = document.createElement("span");
+          hash.className = "h";
+          hash.textContent = c.short;
+          var subject = document.createElement("span");
+          subject.className = "s";
+          subject.textContent = c.subject + (c.at ? " · " + fmt(c.at) : "");
+          subject.title = c.subject;
+          li.appendChild(hash);
+          li.appendChild(subject);
+          return li;
+        }
+
+        function loadSync(fresh) {
+          if (!key) return Promise.resolve();
+          return api("/sync" + (fresh ? "?fresh=1" : ""))
+            .then(function (body) {
+              paintSync(body.sync);
+            })
+            .catch(function (err) {
+              // 这块算不出来要说出来 —— 它本来就是为了「看不见的东西」才加的
+              els.sync.hidden = false;
+              els.syncAt.textContent = "";
+              els.syncServer.textContent = "这块没算出来：" + err.message;
+            });
+        }
+
         function load(opts) {
           var quiet = opts && opts.quiet;
           if (!quiet) {
@@ -1292,6 +1528,7 @@
               els.list.appendChild(sk);
             }
           }
+          loadSync();
           var filter = els.filter.value;
           var query = filter === "archived" ? "?archived=1" : filter ? "?status=" + filter : "";
           return api(query)
@@ -1403,6 +1640,7 @@
               els.statusLine.textContent = "共 " + body.count + " 条 · 序号已发到 " + body.seq;
               render(body.items);
               loadPatrol();
+              loadSync(true);
             })
             .catch(function (err) {
               showError("口令不对或者服务没起来：" + err.message);
@@ -1458,6 +1696,7 @@
           });
           loadPatrol();
           loadVersion();
+          loadSync(true);
         });
 
         // 最新版本号：同源的发布清单（/downloads/index.json，发布那一轮写的）第一项就是最新的。

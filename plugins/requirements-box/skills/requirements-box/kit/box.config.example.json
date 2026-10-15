@@ -4,5 +4,9 @@
   "penguinBin": "/root/.adelie/data/bin/penguin",
   "project": "self_evolution",
   "agent": "default_agent",
-  "workspace": "/root/adelie-fork"
+  "workspace": "/root/adelie-fork",
+  "repoDir": "/root/adelie-fork",
+  "serverUrl": "http://127.0.0.1:7364",
+  "serverTokenFile": "/root/.adelie/data/api-token",
+  "installDir": "/root/.adelie"
 }

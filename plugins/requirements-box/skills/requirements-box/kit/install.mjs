@@ -12,6 +12,7 @@
  *                    --data-root ~/.adelie/data --project default_project --print-only
  *
  * 选项都有默认值：--dir 必给，其余不给就按上面那些推断（推断结果会原样打印出来核对）。
+ * --repo-dir / --server-url 只影响页面上「提交同步」那块（看哪些提交没发版、现网跟没跟上）。
  */
 import { execFileSync } from "node:child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -80,6 +81,24 @@ const DATA_DIR = resolve(String(flags["data-dir"] ?? join(DIR, "data")));
 const PENGUIN_BIN = String(flags["penguin-bin"] ?? process.env.PENGUIN_BIN ?? "penguin");
 const PRINT_ONLY = flags["print-only"] === true;
 
+/** 现网在跑的话，数据根那份 server.lock 里记着它的端口；服务没起来就返回空串。 */
+function liveServerUrl() {
+  try {
+    const lock = JSON.parse(readFileSync(join(DATA_ROOT, "server.lock"), "utf8"));
+    return lock && lock.port ? `http://127.0.0.1:${lock.port}` : "";
+  } catch {
+    return "";
+  }
+}
+
+// 页面上「提交同步」那块要的四个出处。能推的都推出来：仓库默认就是巡台改代码的那个工作区；
+// 现网地址从 server.lock 读，读不到就留空 —— 页面上如实说「没配」，比显示一个猜的地址强；
+// 现网口令与安装目录都长在数据根旁边。
+const REPO_DIR = resolve(String(flags["repo-dir"] ?? WORKSPACE));
+const INSTALL_DIR = resolve(String(flags["install-dir"] ?? dirname(DATA_ROOT)));
+const SERVER_TOKEN_FILE = join(DATA_ROOT, "api-token");
+const SERVER_URL = String(flags["server-url"] ?? process.env.ADELIE_SERVER_URL ?? liveServerUrl());
+
 if (!PERIOD.match(/^\d+[mhd]$/)) die(`--period 要是 30m / 2h / 7d 这样的写法，收到的是 ${PERIOD}`);
 // 巡台会话在这个目录里干活：它不存在的话，spawn 会在点「现在就做」的那一刻才报 ENOENT，
 // 那种错没人看得懂 —— 摆的时候就拦住。
@@ -112,6 +131,10 @@ const config = {
   project: PROJECT,
   agent: AGENT,
   workspace: WORKSPACE,
+  repoDir: REPO_DIR,
+  serverUrl: SERVER_URL,
+  serverTokenFile: SERVER_TOKEN_FILE,
+  installDir: INSTALL_DIR,
 };
 if (!PRINT_ONLY)
   writeFileSync(join(DIR, "box.config.json"), `${JSON.stringify(config, null, 2)}\n`);
@@ -154,6 +177,7 @@ console.log(`装到        ${DIR}${PRINT_ONLY ? "（--print-only：什么都没�
 配置        ${join(DIR, "box.config.json")}
 定时任务    ${SCHEDULE_TOML}（每 ${PERIOD}）
 工作目录    ${WORKSPACE}
+提交同步    ${REPO_DIR}${SERVER_URL ? ` · 现网 ${SERVER_URL}` : " · 现网地址没配上（页面上那块会说「没配」）"}
 核对        ${verified}
 
 接下来两步：
