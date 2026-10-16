@@ -932,6 +932,12 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `FormPickerTrigger.titleExtra`；`Badge` / `BetaBadge` 一律带标记）——带标记的提示在文字完整可见时也弹，
       只重复可见文字的提示**永不标记、也永不显示**。**本地化**：无跨包 scope 引用点；changelog 按本仓写法
       改名到本轮日期、去掉上游 PR 行、写明移植来源。细节与实测见「第六十六轮」一节。
+- [x] **5.45 极客（Console）主题的图表连线改为点间直线**（上游 `bba0e3c9` `#1131`，**2026-10-16 第六十八轮
+      落地**，提交见该节）：`--ui-chart-curve` 由 `step` 改为 `linear` —— 这个主题本来就给每个点画方块、
+      给每根柱子描边，「值在自己的格子里保持一段」由柱子来说，线再说一遍就是同一句话写两遍。只改主题里的
+      取值（`linear` 本来就是绘制代码认识的值），另加一条钉住三个主题各自连线的用例。**本地化**：无跨包
+      scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源。细节与实测见
+      「第六十八轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1536,6 +1542,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-15 | 5.42 | **provider 的 429 与传输中断分开归类**（上游 `77036d31` `#1114` 移植，照改动落、不是合分支；6 文件 / +90 −2，其中源码 3 个（`core/src/llm/generative-model.ts` +27 −1：新增导出的 `isRateLimitError`、`streamGenerate` 的 outcome 分类里在 AbortError 之后、`network` 兜底之前多一支；`core/src/llm/index.ts` +1 导出；`core/src/omnimessage/types.ts` +1 −1 的 `ErrorCode`），用例 1 个（`core/test/llm.test.ts` +17，新增一条），另有 changelog 一对）：429 与连接中断此前共用 `network` 一个 `error_code` —— 下游无从区分「线路抖了一下，稍等再试」与「这个模型已经没有配额了，同一请求在每一级退避之后仍会 429」，而两者的处置不同：前者等一等就过去了，后者这段会话在别处还有地方可跑（harness 已自带会话内的模型切换）。`ErrorCode` 增加 **`rate_limited`**；`isRateLimitError` 与 `isFatalProviderRejection` 并列导出，沿错误的 `cause` 链任一层判 `status` / `statusCode === 429`；**结果状态仍是 `retryable`** —— 重连阶梯、放弃时机、重试内容都没变，只是把原因命名出来；词汇表其余部分不变（传输中断与 5xx 仍是 `network`），`request_end` 照旧以 `error_code` 携带该码，Cost 中心的错误面板按 `error_code` 分组，限流因此不再藏在 network 桶里。**本树那处冲突的解法**：上游同一处已把用例里的 `delta()` 改成 `ev()`、并把「JSON parse」那条用例改了名，本树都还没有 —— 只把新用例与新的 `rateLimited()` 夹具插进去，本树原有的措辞与用例名一个字没动。**本地化**：无（全在 `packages/core` 内、无跨包 import、无 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植出处） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2169 文件）· 本笔 4 份源码 / 用例与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件，+1 即本笔新用例）· ui **1029**（129 文件）· cli **539**（37 文件）· server **197 文件 / 2842 通过 / 4 跳过** · web **256 文件 / 3122 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `generative-model.ts` 里新那一支的条件临时改成 `false && isRateLimitError(error)`（其余一字不动）→ `test/llm.test.ts` **1 failed / 98 passed**，红的是本笔新用例、报 **`expected 'network' to be 'rate_limited'`** —— 即「429 被当成 network」正是本笔要修的缺陷；还原后再跑 **99 全过** · **下游面逐处核过**（不是推测）：`request_end` 由 `builders.ts` 原样带出 `error_code`、服务端错误表 `db/repos/errors.ts` 的 `code` 列是自由文本（无 CHECK / 枚举）、错误面板 `topCode` 按 `source · code · kind` 分组 —— 没有任何一处是闭集，`rate_limited` 落进去就是一个新桶；反方向的界面文案（`web/src/lib/strings.ts` 与 `cli/src/i18n.ts` 里按 `errorCode` 选措辞的那两处）**上游自己也没有 `rate_limited` 分支**（同一次核过 `refs/adelie-tmp/upstream-main-r64` 的同一处），所以照上游原样落，不额外改文案 · 本笔无界面改动，因此没有起服务截图；端口一个没碰（3003 / 3004 / 4000 / 7364 / 7369 全程未动） | `de709bd0` |
 | 2026-10-15 | 5.43 | **打开历史对话不再等待侧栏**（上游 `74efa5aa` `#984` 移植，照改动落、不是合分支；14 文件 / +1210 −190（与上游的 +1247 −184 差在本树没有 `probeMissingKey` 那一支，见该节），其中源码 6 个（server 的 `api/types.ts` +44（`SessionsBatchRequest` / `SessionBatchResult` 等新契约）、`http/routes/sessions.ts` +159 −1（GET 路由体收成 `listPage`，新增 `POST …/sessions/batch`）；web 的 `api/endpoints.ts` +25、`state/sessions.tsx` +247 −120（`reload()` / `loadMoreFor()` 改为每台服务器一次，本地分页、计数与活动序游标的处理随之重排）、`features/chat/chat-page.tsx` +56 −23（探针不再等列表）、新增 `features/chat/route-probe.ts`），用例 3 个（server `test/sessions-batch.test.ts` 281 行 / 24 条、web `test/route-probe.test.ts` 149 行 / 7 条、`test/sessions-store.test.ts` +157），另有两处既有夹具跟上（`ui-gallery` 的 mock 路由与 `test/mock-api.test.ts`、`web/e2e/reload-midstream.spec.mjs`），以及 changelog 一对）：对话页此前要等侧栏列表加载完成才查证路由指向的 Session，而列表按「每个 Agent 每页一次」扇出 —— 浏览器串行化同源请求，于是读者要看的对话排在整片扇出后面。现在**两半都改**：查证不再等列表（`RouteProbe`：同一 Session 同时只有一个在途、失败读的是落定那一刻列表是否仍在加载、路由已离开的结果丢弃、列表加载期间查到的行等列表落定后再并入），侧栏改发一条批量请求。**本树两处冲突的解法**：`ui-gallery` 的 mock 路由是导入序（本树多一组 `Storage*` 契约，两个都留）；`chat-page.tsx` 取上游的新结构，但 `gone` 里那句 404 → `setProbeMissingKey` 本树没有这个概念（`probeMissingKey` 是上游另一笔引入的状态，本树用 `routeSessionUnowned` / `routeSessionOffline` 自己处理不可达），因此只保留 `setProbeFailedKey`。**本地化**：无（三个包都在本仓自己的包内、无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）** —— 新增的是路由与请求/应答类型，接口计数不变）· `npx oxlint` **0 警告 0 错误**（2172 文件）· 本笔 14 份文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **1029**（129 文件）· cli **539**（37 文件）· server **198 文件 / 2866 通过 / 4 跳过**（+1 文件、+24 条即本笔新用例）· web **257 文件 / 3130 通过 / 2 跳过**（+1 文件、+8 条即本笔新用例）· ui-gallery **20 文件 / 134 通过**（+3 条；本笔改了它的 mock 路由）· hmr 无测试文件 · **反证（单测）**：① 把 `http/routes/sessions.ts` 退回 `HEAD` → `test/sessions-batch.test.ts` **整套失败**（`ModuleBootError: SessionApiRoutes: contribution 'session-api.sessions-batch' to 'HttpModule.routes' declared but not bound`，24 条全部 skipped）；② 把 `state/sessions.tsx` 退回 `HEAD`（用例留着）→ `test/sessions-store.test.ts` **8 failed / 26 passed**（`batchEntries()[0]` 是 `undefined`，即侧栏根本没发那条批量请求）；③ 把 `route-probe.ts` 的 `if (this.inFlight === key) return;` 临时改成 `false && …` → `test/route-probe.test.ts` **2 failed / 5 passed**（「同一 Session 只发一次」的两条挂了）。三处还原后逐字一致（与 scratchpad 的 `fix-src/` 逐文件 `diff -q` 无输出），三条用例再跑 **7 / 34 / 24 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 server / web 产物后，一次性数据根 `/root/adelie-fork-data/r65-after`、`localhost:8992`（改前产物）/ `8993`（本笔产物）起真服务（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），**三个 Agent**（`default_agent` + API 建的 `r65agentb` / `r65agentc`，所以侧栏的扇出是「每 Agent 一次」）、一条 `web.db` 里的会话行 + 一份手写 Trace（5 轮，不需要模型 key，即 3.6 那个卡点）；探针把**每一条 Session 列表请求扣住 4 秒**，再量「对话第一条消息何时出现」「屏幕上那条消息在列表还被扣着时是否已经在」——**改前**：列表请求 **3 条 GET**（`…/agents/<a>/sessions` 各一次）、列表被扣住期间**看不到任何消息**（截图是一根骨架）、第一条消息 **5105 ms** 才出现；**改后**：列表请求 **1 条 `POST /api/projects/default_project/sessions/batch`**、列表被扣住期间**对话已经完整在位**（`probe answer 1…5`，截图可见）、第一条消息 **1936–2082 ms**（三次跑都在扣住的窗口之内），列表落定后侧栏照旧列出 `probe-workspace` 与 `r65 probe` 那一行（截图 + 文本计数 2）。两态 console 各 **0 error**、无一条 ≥400（唯一弹窗是空数据根没配模型 key 那条提示，即 3.6 那个卡点）；截图 `r65/{before,after,after2,after3}-{held,settled}.png`、探针 `r65/probe.mjs`、造数 `r65/setup.mjs`、改前源码留底 `r65/fix-src/` 都在 scratchpad · 端口只用 8991 / 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r65-after`，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-16 | 5.44 | **悬停提示：规则不再把「画出来的字」当标签，承载信息的提示经标记后重新显示**（上游 `e5639b32` `#1051` 移植，照改动落、不是合分支；57 个跟踪文件 / +298 −48（上游是 67 文件 / +365 −59，差在排除的 7 份本树没有的文件与几处「本树结构更旧、只补标记」），含 changelog 一对）：2026-09-29 起那条规则（`hintAllowedFor`）只在元素**自己没有可见文字**或文字被截断时才弹提示，于是**凡补充屏幕上看不到的信息的提示**（点击的后果、快捷键、完整值、状态的含义）在带可见文字的控件上**一律不再出现**，「画出来的字」（头像首字母、查找栏的 `Aa`、工具栏角标、标签的 ×、会话行的待审批数）又被算作可见文字、让为它们命名的提示也一并失效。现在**两半都改**：规则读的是「读出来的文字」——新增导出的 `readingText()` 按结构走树，`<svg>` / `aria-hidden="true"` / `.sr-only` / `checkVisibility() === false` 整棵跳过（`outOfReading()`），`hintAllowed(text, boxes, extra = false)` 与 `hintAllowedFor(el, extra = false)` 多一个 `extra`；同时新增**显式标记** `data-tooltip-extra`（导出 `TOOLTIP_EXTRA_ATTR`、`TooltipRequest.extra`、`<Tooltip extra>`、`NavRow.tooltipExtra`、`Chip.tooltipExtra`、`FormPickerTrigger.titleExtra`，`Badge` 的 `tooltip` 与 `BetaBadge` 的 `title` 一律带标记，`Breadcrumbs` / `DockTabs` / `Legend` / `FileTree` / `ToolCallCard` 在提示多于标签时标记），`"false"` 读作没标记；**只重复可见文字的提示永不标记、也永不显示**。待审批数、标签的 ×、工具栏角标改成 `aria-hidden`（待审批数另用 `sr-only` 命名）。**12 处冲突的解法**：全部保留本树结构、只把标记补到本树对应处——`tooltip.tsx` 是本树已有第五十六轮 `#1098` 的定位写法（上游父提交是旧写法）、`badge.tsx` 上游已被另一个提交整篇重写（本树只加 prop 与两行属性）、`tool-call-card.tsx`/`agents-page.tsx`/`workspace-finder.tsx`/`machines-page.tsx`/`overview-page.tsx`/`models-page.tsx`/`draft-view.tsx` 是本树结构更旧（上游的 `Disclosure`、`renderCard`、`NavRow`、`slots` 折叠、示例文件夹等重构本树都没有），`mcp-servers-section.tsx` 上游多一段本树没有的 `saveFirst` 徽标，`schedule-panel.tsx` 本树这一份一个 `data-tooltip` 都没有、与 `HEAD` 逐字节相同；`draft-view` 里那份「填充输入框」的提示在本树对应的是 `shortcuts-folder.tsx` 的 `shortcutFillHint`，按同一意图补了标记。**有意没改**：`.agents/skills/penguin-harness-frontend/SKILL.md`（按 2.5 / 2.1c 的口径）。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2172 文件）· 本笔所有跟踪文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **1031**（129 文件，+2 即本笔新用例）· cli **539**（37 文件）· server **198 文件 / 2866 通过 / 4 跳过** · web **257 文件 / 3130 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `packages/ui/src/components/overlays/tooltip/tooltip.tsx` 退回 `HEAD`（新用例留着）→ `vitest run test/tooltip.test.ts --root packages/ui` **3 failed / 17 passed**（`readingText` 不存在、`tooltipRequest` 不返回 `extra`、旧期望比对），放回本笔 → **20 全过**；与 scratchpad `r66/fix-src/` 逐文件 `diff -q` 无输出、`git diff HEAD` 与留底补丁逐字节相同 · **本轮主证据（真服务端 + 真浏览器，改前改后两态 × 四条）**：一次性数据根 `/root/adelie-fork-data/r66-{after,before}`，**改后产物起在 `localhost:8994`、改前产物起在 `localhost:8995`**（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），模型配成 `custom` provider 指向本仓自带 mock LLM（8976）——「发一条消息」因此真落在一个 **`exec_command` 的待审批**上，**不需要模型 key**（即 3.6 那个卡点）。探针 `r66/probe.mjs` 悬停 700 ms 后读 `[data-testid="tooltip"]` 在不在、写的什么，并读元素自己的 `data-tooltip` / `data-tooltip-extra` / `textContent` 与一份前端手算的 readingText：**改前** —— 会话行待审批数（数字 `aria-hidden`、名字 `sr-only`、未标记）readingText **`"1"`**、**面板没弹**；侧栏 New chat（绑了 `Ctrl+Alt+N`、标记了）`extra: null`、**没弹**；智能体页「最后修改」（可见「今天」、标记了）`extra: null`、**没弹**；会话计数（可见 `3`、未标记）没弹。**改后** —— 待审批数 readingText **`""`**、**弹了**（「1 个待审批」）；New chat `extra: "true"`、**弹了**（「新建对话 (Ctrl+Alt+N)」）；「最后修改」`extra: "true"`、**弹了**（「最后修改 2026-10-16 03:11」）；会话计数**仍然没弹**（有意留白的那一类）。两态 console 各 **0 error**、**无一条 ≥400**；截图 `r66/shots/{before,after}-<量点>.png` 与两态 `-agents.png`、探针、改前源码留底 `r66/fix-src/`、留底补丁 `r66.patch` 都在 scratchpad · 端口只用 8976 / 8994 / 8995（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r66-{after,before}`，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
+| 2026-10-16 | 5.45 | **极客（Console）主题的图表连线改为点间直线**（上游 `bba0e3c9` `#1131` 移植，照改动落、不是合分支；4 文件 / +68 −2，其中源码 1 个（`packages/ui/src/themes/geek.css` +2 −2：`--ui-chart-curve` 由 `step` 改为 `linear`，并把那段说明里的「stepped between points」改成「directly connecting points」）、用例 1 个（`test/token-contract.test.ts` +15，一条新用例钉住三个主题各自的连线方式）、另有 changelog 一对）：这个主题本来就给每个点画方块、给每根柱子描边，**值在自己的格子里保持一段**由柱子来说，线再说一遍就是同一句话写两遍 —— 阶梯线还让「先横走半格、再竖跳」这段几何看起来像数据；直线只保留「从一个读数到下一个读数」这一件事。只改主题里的取值，不动绘制代码：`readChartStyle()` 只把 `smooth` / `step` 挑出来，其余（含 `linear`）一律按直线画，`DEFAULT_CHART_STYLE` 用的也是它；1 px 细线、2 px 方块点与柱子几何一概未动。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 比上一轮多 3 / 4，是 09:52 那笔 Agent API 带来的，与本笔无关）· `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔四个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1035 通过**（+4 = 本笔新用例 + r67 半成品里已写好的 3 条）· core **1396 通过 / 6 跳过**（67 文件通过）· cli **38 文件 / 561 通过** · web **259 文件 / 3185 通过 / 2 跳过** · server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **反证（新用例真的钉住行为）**：把 `geek.css` 那一行换回 `step`、只跑 `test/token-contract.test.ts` → **1 failed / 54 passed**（`AssertionError: geek: expected 'step' to be 'linear'`），换回本笔 → **55 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：只重建 web 产物（ui 的 `exports` 直接指向 `src/`）得到 `r69/before-dist`（含 `step`）与 `r69/after-dist`（只有 `linear` / `smooth`），两个一次性数据根 `/root/adelie-fork-data/r69{a,b}` 分别起在 `localhost:8996`（改后）/ `8997`（改前）（`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），用 sqlite 往 `usage_records` 手写 6 天用量（**不需要模型 key**，即 3.6 那个卡点）；探针把 `penguin.themeId` 设成 `geek` 后打开 `/usage`，量同一批折线的路径 `d`：**改前** `--ui-chart-curve` = `step`、5 条折线全是阶梯（`M81.75,132.18 H117.5 V97.81 H153.25 H189 V151.27 …`，指令序列 `MHVHHVHHVHHVHHVH…`）；**改后** = `linear`、同一批折线全是点间直线（`M81.75,132.18 L153.25,97.81 L224.75,151.27 L296.25,10 L367.75,63.45 L439.25,32.9`，指令序列 `MLLLLL`）；两态 `theme=geek`、console 各 **0 error**、**无一条 ≥400**；截图 `r69/shots/{before,after}-usage.png` 与特写 `{before,after}-chart.png`（「成本变化」那张：改前台阶、改后斜线）、探针与两态 JSON 都在 scratchpad · 端口只用 8996 / 8997（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r69{a,b}` | `b1354049` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -9623,3 +9630,129 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
 - 要用户拍板或要新凭证的仍在原地：**2.2c**（写侧剩下的全在桌面壳一侧、既有部署单元与发布动作里）、
   **3.5**（取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
   （促销搬进 Project 配置 / 新依赖 `mermaid`）。
+
+## 第六十八轮：极客（Console）主题的图表连线改为点间直线（2026-10-16，条目 5.45）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、
+3003 / 3004 / 4000 / 7364 / 7369 全程没碰；按纪律**没有碰 `packages/desktop`**。
+
+> **轮号口径**：上一笔真正落地的轮次是第六十六轮（5.44，`e2d647a9`）。07:00、11:00、15:00 那三轮
+> **都没落地**（07:00 被 App 重启打断；11:00 与 15:00 只报告工作区被占），按补发邮件队列里的口径，
+> 台账里真正落地的这一轮算**第六十八轮**。
+
+### 开工自检：工作区不干净，占着它的是**本线自己**上一轮的半成品
+
+`git status --short` 不干净：11 个跟踪文件 + 一对未跟踪的 changelog —— 正是 **07:00 那一轮（r67）**
+移植上游 `#1157`（`ef12d442`，「列表行的操作始终可见」）留下的半成品。那一轮 07:19:03 被中止
+（Trace 末尾 `{"type":"abort","error_code":"user_abort"}`），新一版 App 服务端 07:19:06 起来，
+像是 App 重启把它打断的。开工时的只读判据：`.git/FETCH_HEAD` 停在 15:07、`.git/index` 停在 10:18，
+**之后没有任何一条线往这棵树里写过**；`HEAD` = `origin/main` = `06568c9b`（不落后，`git fetch` 后
+仍是它）；半成品已由 15:00 那一轮整片留底成 `r68/r67-halfwork.patch`（sha256 前 24 位
+`7da34777ca60430bcbb37c8d`，本轮复核一致）。
+
+**本轮据此决定开工**（与前两轮的处置不同，理由写在这里，供用户推翻）：第 6 / 9 轮在台账里已经立过
+先例 —— 同一棵树上别的改动在，就**只 `git add` 自己的文件**、一个字节不碰它；而 r67 是**本线自己**
+被打断的轮次，不是另一条线在写。因此本轮**没有** `git stash`、**没有**替它收尾提交、也没有在它的
+文件上叠自己的改动：提交用 `git commit -- <本笔四个文件>`，只落自己的文件，r67 的暂存状态原样留着
+（提交前后 `git status --short` 逐条一致）。**仍在等用户拍板的还是那一句**：那份半成品由谁收尾
+（原会话继续 / 授权下一轮接管 / 丢掉 / 存成补丁移出工作区）。
+
+### 做了什么（条目 5.45）
+
+上游 `#1131`（`bba0e3c9`，3 文件 / +22 −2），照改动落、不是合分支：
+
+- `packages/ui/src/themes/geek.css`：`--ui-chart-curve` 由 `step` 改为 `linear`；上面那段说明里的
+  「1px lines stepped between points」改成「1px lines directly connecting points」。
+- `packages/ui/test/token-contract.test.ts`：新增一条用例（`the chart style tokens (round 7)` 里的
+  `runs Console's chart lines straight from reading to reading`），按本文件已有的写法（流式那组用例
+  就是这么钉每个主题的取值）批出三个主题各自的连线方式：通用 / 极客 `linear`、白领 `smooth`。
+  上游这一笔没带用例，这条护栏是本 fork 加的。
+- changelog 一对：`changelog/unreleased/2026-10-16-console-chart-lines{,.zh}.md`（上游原名
+  `geek-chart-lines`，按本仓口径改名到本轮日期、去掉上游 PR 行、写明移植来源）。
+
+**为什么只改取值就成立**（不是推测，读过绘制代码）：`readChartStyle()` 读 `--ui-chart-curve` 时
+**只把 `smooth` / `step` 挑出来**，其余（含 `linear`）一律落到 `curvePath()` 的直线分支，
+`DEFAULT_CHART_STYLE` 用的也正是 `linear`；`token-contract.test.ts` 里那条通用的取值断言本来就允许
+`linear / smooth / step`。所以本笔不动任何绘制代码，1 px 细线、2 px 方块点与柱子几何一概未动。
+
+### 为什么是这一条（以及上一轮「不宜取」的复核）
+
+上一轮把 `#1131` 记进「量过之后**不宜取**」那一列，理由是「两行 CSS，看不出真缺陷」。本轮取了它，
+理由是可复现的：
+
+- 上游 `main` 已经往前走（本轮现拉到 `0eafa6dc`，`refs/adelie-tmp/upstream-main-r69`），但那一批
+  **七笔在本树都接不了** —— 逐笔量过缺的文件数：`#1154` 缺 21（整块 `content/find` 与
+  `markdown-reader` 本树没有）、`#1162` 缺 17（连 `ui/.../pill/pill.tsx` 都没有）、`#1156` 缺 6
+  （含 `features/machines/machine-detail-*`，而那正是它要改的落点）、`#1161` 碰的是已按 2.5 删掉的
+  `packages/landing`；`#1163` / `#1158` 是上游自己的 CI（按「不碰流水线」的判据不取）、
+  `#1151` 缺 14 个文件。
+- 台账「下一轮从这里接」列的其他候选也都不落地：`#1049` 要现造一份真实的插件市场列表、
+  `#1074` / `#1067` / `#1072` / `#1071` / `#1038` / `#1047` 全卡在「本树没有那个文件或常量」。
+- 这一笔虽然小，但它是**用户看得见**的形状改动（成本图上那条线的形状），而且改前改后能用
+  **真服务端 + 真浏览器**逐点量出来 —— 「看不出真缺陷」这一句本轮复核后不成立：阶梯线让
+  「先横走半格、再竖跳」这段几何看起来像数据，而这个主题的柱子已经在说同一件事。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`
+  （192 接口 / 587 类型）** —— 比上一轮多 3 / 4，是 09:52 那笔 Agent API 带来的，与本笔无关）。
+- `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔四个文件 `prettier --check` 干净 ·
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1035 通过**（比上一轮参考的 1031 多 4 条：本笔
+  新加的那一条 + r67 半成品里已经写好的 3 条）· core **1396 通过 / 6 跳过**（67 文件通过）·
+  cli **38 文件 / 561 通过** · web **259 文件 / 3185 通过 / 2 跳过** ·
+  server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件。
+- **反证（新用例真的钉住行为）**：把 `packages/ui/src/themes/geek.css` 那一行换回 `step`、
+  只跑 `vitest run test/token-contract.test.ts --root packages/ui` → **1 failed / 54 passed**，红的正是
+  新加的那条（`AssertionError: geek: expected 'step' to be 'linear'`）；换回本笔 → **55 全过**。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：本笔只改 `packages/ui` 的主题源码，而 web 与
+  ui 是同一棵 workspace 里的源码引用（`packages/ui/package.json` 的 `exports` 直接指向 `src/`），
+  所以**只重建 web 产物**即可：`r69/after-dist`（CSS 里 `--ui-chart-curve` 只剩 `linear` / `smooth`）
+  与 `r69/before-dist`（多一个 `step`，两份产物逐项查过）。两个一次性数据根
+  `/root/adelie-fork-data/r69a`（改后，`localhost:8996`）与 `r69b`（改前，`localhost:8997`），
+  用 `ADELIE_WEB_DIST` 分别指向两份产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login`
+  拿 cookie；用 sqlite 往 `usage_records` 手写 6 天用量（**不需要模型 key**，即 3.6 那个卡点）。
+  探针（Playwright `playwright-core@1.61.1` + 本机 chromium-1243）把 `penguin.themeId` 设成 `geek`、
+  打开 `/usage`（成本中心「成本与统计」），量同一批图表路径的 `d`：
+  **改前** —— `--ui-chart-curve` = `step`，5 条折线全是阶梯
+  （`M81.75,132.18 H117.5 V97.81 H153.25 H189 V151.27 …`，指令序列 `MHVHHVHHVHHVHHVH…`）；
+  **改后** —— = `linear`，同一批折线全是点间直线
+  （`M81.75,132.18 L153.25,97.81 L224.75,151.27 L296.25,10 L367.75,63.45 L439.25,32.9`，指令序列 `MLLLLL`）。
+  两态 `theme=geek`、console 各 **0 error**、**无一条 ≥400**；截图
+  `r69/shots/{before,after}-usage.png` 与图表特写 `{before,after}-chart.png`（「成本变化」那张：
+  改前是台阶、改后是斜线）、探针 `r69/probe.mjs` 与两态 JSON `r69/shots/{before,after}.json` 都在
+  scratchpad · 端口只用 **8996 / 8997**（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `/root/adelie-fork-data/r69{a,b}`，一个字节没往 `~/.penguin` 或仓库里写
+  （`packages/web/dist` 是构建产物，未 `git add`）。
+
+### 没做 / 还差什么
+
+- **没有切版本号、没发 npm、没发安装包** —— 这一笔随下一版发出。
+- **有意没落的**：上游那两份 changelog 的文件名（本仓一律改名到本轮日期）与体裁（去掉 PR 行）；
+  上游没带用例，本笔补了一条。
+- **工作区里那份 r67 半成品仍在原处**（11 个跟踪文件 + 一对未跟踪 changelog），等用户一句话。
+
+### 收尾：提交、推送与汇报
+
+- **代码提交 `b1354049`**（4 个文件：`packages/ui/src/themes/geek.css`、
+  `packages/ui/test/token-contract.test.ts`、changelog 中英各一份）；台账这一笔随后另起一笔，
+  两笔一起 `git push origin main`。**没有切版本号、没发 npm、没发安装包、没发发布汇总。**
+- **汇报邮件没发出去（第 22 轮起同一处卡点，与凭据无关）**：开工时裸 socket 探
+  `imap.csu.edu.cn:993` / `mail.csu.edu.cn:993` / `smtp.csu.edu.cn:465`，**三个 10 秒探针全部超时**；
+  `python3 scripts/mail.py list INBOX 8` 也是 `TimeoutError: [Errno 110] Connection timed out`。
+  凭据本身正常（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都注入着）。按技能纪律**只试这一次**，
+  没有重试登录、没有再试发信。正文留在 scratchpad（`…/r69/mail-body.txt`），按老办法并进既有的周期
+  重发任务 `csu-mail-retry`（不另开任务），同时照第 36 轮起的替代通道用飞书发一条简报。
+
+### 下一轮从这里接
+
+- 上游 `main` 现在是 `0eafa6dc`（`refs/adelie-tmp/upstream-main-r69`，要清就 `git update-ref -d`），
+  但那一批七笔在本树接不了（缺文件清单见「为什么是这一条」一节）—— 下一轮别再从这一批里挑，
+  除非先把它缺的那些模块补进来。
+- 桌上仍可选（按价值排）：**`#1069`**（`24a2eb38`，13 文件 / 只缺 3 个外围文件，「悬停提示：截断的
+  文本显示完整值」—— 它是 5.44 的**后继**，本树刚落地 5.44，接着做最顺）、`#1049`（插件市场
+  「只看不兼容」搬进设置，要现造一份插件市场列表才能把两态看全）、`#1074`（Benchmark 题目列表
+  每页 5 条，1 行源码）。
+- **`#1131` 从「不宜取」那一列划掉**（本轮已落地，见 5.45）。
+- 卡点原地：**2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10**，另加**工作区里 r67 的半成品**（等用户拍板）。
