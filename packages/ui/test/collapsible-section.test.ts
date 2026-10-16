@@ -40,7 +40,7 @@ describe("CollapsibleSection", () => {
     const folded = render({ defaultOpen: false });
     expect(folded).toContain('aria-expanded="false"');
     expect(folded).toMatch(/class="grid grid-rows-\[0fr\]"/);
-    expect(folded).toMatch(/<div id="[^"]+" class="min-h-0 overflow-hidden" inert="">/);
+    expect(folded).toMatch(/<div id="[^"]+" class="min-h-0 min-w-0 overflow-hidden" inert="">/);
     for (const html of [open, folded]) {
       expect(classTokens(html).filter((t) => /^transition-\[/.test(t))).toEqual([]);
     }
