@@ -721,6 +721,21 @@ describe("the chart style tokens (round 7)", () => {
     const all = THEME_IDS.map(geometry).filter((value) => value !== null);
     expect(new Set(all).size).toBe(all.length);
   });
+
+  it("runs Console's chart lines straight from reading to reading (2026-10-16)", () => {
+    // Console stands its bars over their own cell, so a line that stepped to the next reading
+    // said the same thing twice; straight segments leave the readings as all the line says.
+    // Primer has always run straight and Frost curves — this is the theme that changed.
+    const expected: Readonly<Record<ThemeId, string>> = {
+      github: "linear",
+      modern: "smooth",
+      geek: "linear",
+    };
+    for (const theme of THEMES) {
+      if (theme.status !== "filled") continue;
+      expect(theme.analysis.modes.light.get("--ui-chart-curve"), theme.id).toBe(expected[theme.id]);
+    }
+  });
 });
 
 describe("the streaming tokens (2026-09-30)", () => {
