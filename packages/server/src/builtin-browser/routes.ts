@@ -33,6 +33,7 @@ import type {
   BuiltinBrowserStatus,
   BuiltinBrowserTab,
 } from "../api/types.js";
+import { requireHuman } from "../auth/middleware.js";
 import type { AppEnv } from "../auth/middleware.js";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";

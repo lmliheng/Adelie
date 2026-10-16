@@ -95,12 +95,12 @@ jobs:
       # release.yml does, so the dry run lists the real tarball.
       - name: Stage what the release stages
         run: |
-          for p in core server cli; do cp LICENSE "packages/$p/LICENSE"; done
+          for p in amsp core server cli; do cp LICENSE "packages/$p/LICENSE"; done
           rm -rf packages/server/web-dist
           cp -r packages/web/dist packages/server/web-dist
       - name: Pack the publishable packages
         run: |
-          for p in core server cli; do
+          for p in amsp core server cli; do
             echo "--- packages/$p"
             (cd "packages/$p" && npm pack --dry-run)
           done
@@ -160,7 +160,7 @@ jobs:
               pnpm --filter @lmliheng/penguin-web --filter @lmliheng/penguin-ui
               --filter @lmliheng/penguin-cli test
           - shard: rest
-            build: "@lmliheng/penguin-desktop...,@lmliheng/penguin-cli..."
+            build: "@lmliheng/penguin-desktop...,@lmliheng/penguin-cli...,@lmliheng/amsp..."
             tests: >-
               pnpm -r --filter '!@lmliheng/penguin-core' --filter '!@lmliheng/penguin-server'
               --filter '!@lmliheng/penguin-web' --filter '!@lmliheng/penguin-ui'
@@ -229,7 +229,7 @@ jobs:
             tests: pnpm --filter @lmliheng/penguin-server test
             smoke: false
           - shard: rest
-            build: "@lmliheng/penguin-desktop...,@lmliheng/penguin-cli..."
+            build: "@lmliheng/penguin-desktop...,@lmliheng/penguin-cli...,@lmliheng/amsp..."
             tests: >-
               pnpm -r --filter '!@lmliheng/penguin-core' --filter '!@lmliheng/penguin-server' test
             smoke: true
@@ -290,7 +290,7 @@ jobs:
             build: "@lmliheng/penguin-server..."
             tests: pnpm --filter @lmliheng/penguin-server exec vitest run --shard=3/3
           - shard: rest
-            build: "@lmliheng/penguin-desktop...,@lmliheng/penguin-cli..."
+            build: "@lmliheng/penguin-desktop...,@lmliheng/penguin-cli...,@lmliheng/amsp..."
             tests: >-
               pnpm -r --filter '!@lmliheng/penguin-core' --filter '!@lmliheng/penguin-server' test
             # ADELIE_MUST_RUN, as on ubuntu and macOS: the DSH live suite must run here

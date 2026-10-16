@@ -35,6 +35,7 @@ export type SettingsSectionKey =
   | "proxy"
   | "uploads"
   | "company"
+  | "agentApi"
   | "plugins"
   | "storage"
   | "users";
@@ -76,6 +77,8 @@ const SECTION_RULES: ReadonlyArray<SettingsSection & { visible(viewer: SettingsV
     { key: "uploads", group: "server", visible: (v) => v.isAdmin },
     // The company-mode master switch: server-global like the proxy and upload limits.
     { key: "company", group: "server", visible: (v) => v.isAdmin },
+    // Whether any Agent's public API answers at all: server-global, like company mode.
+    { key: "agentApi", group: "server", visible: (v) => v.isAdmin },
     // The sandbox, and the options loaded plugins declare (server-global, like the plugins themselves).
     { key: "plugins", group: "server", visible: (v) => v.isAdmin },
     // The data root's storage ledger: a server-global report an admin reads. Read-only, so unlike

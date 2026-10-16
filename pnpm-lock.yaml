@@ -46,6 +46,18 @@ importers:
         specifier: ^3.2.6
         version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(supports-color@10.2.2)(tsx@4.22.4)(yaml@2.9.0)
 
+  packages/amsp:
+    devDependencies:
+      tsup:
+        specifier: ^8.3.0
+        version: 8.5.1(jiti@2.7.0)(postcss@8.5.23)(supports-color@10.2.2)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.6
+        version: 3.2.7(@types/debug@4.1.13)(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(supports-color@10.2.2)(tsx@4.22.4)(yaml@2.9.0)
+
   packages/cli:
     dependencies:
       '@lmliheng/agent-company':
@@ -416,6 +428,9 @@ importers:
       '@larksuiteoapi/node-sdk':
         specifier: ^1.73.0
         version: 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
+      '@lmliheng/amsp':
+        specifier: workspace:*
+        version: link:../amsp
       '@lmliheng/penguin-core':
         specifier: workspace:*
         version: file:packages/core(supports-color@10.2.2)(ws@8.21.0)
@@ -614,6 +629,9 @@ importers:
 
   packages/web:
     dependencies:
+      '@lmliheng/amsp':
+        specifier: workspace:*
+        version: link:../amsp
       '@lmliheng/penguin-core':
         specifier: workspace:*
         version: file:packages/core(supports-color@10.2.2)(ws@8.21.0)
@@ -1494,6 +1512,10 @@ packages:
 
   '@lmliheng/agent-tuning@file:plugins/agent-tuning':
     resolution: {directory: plugins/agent-tuning, type: directory}
+
+  '@lmliheng/amsp@file:packages/amsp':
+    resolution: {directory: packages/amsp, type: directory}
+    engines: {node: '>=24'}
 
   '@lmliheng/browser-automation@file:plugins/browser-automation':
     resolution: {directory: plugins/browser-automation, type: directory}
@@ -5590,6 +5612,8 @@ snapshots:
 
   '@lmliheng/agent-tuning@file:plugins/agent-tuning': {}
 
+  '@lmliheng/amsp@file:packages/amsp': {}
+
   '@lmliheng/browser-automation@file:plugins/browser-automation': {}
 
   '@lmliheng/continual-learning@file:plugins/continual-learning': {}
@@ -5730,6 +5754,7 @@ snapshots:
     dependencies:
       '@hono/node-server': 2.0.12(hono@4.12.34)
       '@larksuiteoapi/node-sdk': 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
+      '@lmliheng/amsp': file:packages/amsp
       '@lmliheng/penguin-core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
       '@xterm/headless': 5.5.0
       dotenv: 17.4.2
@@ -5757,6 +5782,7 @@ snapshots:
     dependencies:
       '@hono/node-server': 2.0.12(hono@4.12.34)
       '@larksuiteoapi/node-sdk': 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
+      '@lmliheng/amsp': file:packages/amsp
       '@lmliheng/penguin-core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
       '@xterm/headless': 5.5.0
       dotenv: 17.4.2

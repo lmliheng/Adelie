@@ -56,6 +56,7 @@ describe("visibleSettingsSections", () => {
       "proxy",
       "uploads",
       "company",
+      "agentApi",
       "plugins",
       "storage",
       "users",
@@ -93,6 +94,7 @@ describe("visibleSettingsSections", () => {
       "proxy",
       "uploads",
       "company",
+      "agentApi",
       "plugins",
       "storage",
     ]);
@@ -111,6 +113,7 @@ describe("visibleSettingsSections", () => {
       "proxy",
       "uploads",
       "company",
+      "agentApi",
       "plugins",
       "storage",
     ]);

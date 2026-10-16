@@ -13,6 +13,7 @@
     "test:e2e": "bash e2e/run.sh"
   },
   "dependencies": {
+    "@lmliheng/amsp": "workspace:*",
     "@lmliheng/penguin-core": "workspace:*",
     "@lmliheng/penguin-ui": "workspace:*",
     "@xterm/addon-clipboard": "^0.1.0",

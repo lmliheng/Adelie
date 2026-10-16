@@ -27,6 +27,7 @@ import { AccountSection } from "./account-section";
 import { ProxySection } from "./proxy-section";
 import { UploadsSection } from "./uploads-section";
 import { CompanySection } from "./company-section";
+import { AgentApiSection } from "./agent-api-section";
 import { PluginsSection } from "./plugins-section";
 import { StorageSection } from "./storage-section";
 import { AdminUsersSection } from "../admin/admin-users-page";
@@ -55,6 +56,8 @@ const SECTION_ICONS: Record<SettingsSectionKey, string> = {
   uploads: "M12 15V4m0 0L7 9m5-5l5 5M4 20h16",
   /** The building the mode switch wears: company mode. */
   company: ICONS.building,
+  /** Angle brackets: programs calling the Agents. */
+  agentApi: ICONS.angleBrackets,
   /** A drive: the data root's storage ledger. */
   storage: ICONS.hardDrive,
   /** Puzzle piece: plugins. */
@@ -109,6 +112,7 @@ export function SettingsDialog({
     proxy: S.settings.proxyTitle,
     uploads: S.settings.uploadLimitsTitle,
     company: S.settings.companyModeTitle,
+    agentApi: S.settings.agentApiTitle,
     plugins: S.settings.pluginsTitle,
     storage: S.settings.storageTitle,
     users: S.admin.users,
@@ -124,6 +128,7 @@ export function SettingsDialog({
     proxy: S.settings.proxyInfo,
     uploads: S.settings.uploadLimitsInfo(uploadLimits.attachmentMaxCount, uploadLimits.imageMaxMb),
     company: S.settings.companyModeServerInfo,
+    agentApi: S.settings.agentApiHint,
     plugins: S.settings.pluginsInfo,
     storage: S.settings.storageInfo,
   };
@@ -170,6 +175,7 @@ export function SettingsDialog({
       {current === "proxy" && <ProxySection />}
       {current === "uploads" && <UploadsSection />}
       {current === "company" && <CompanySection />}
+      {current === "agentApi" && <AgentApiSection />}
       {current === "plugins" && (
         <PluginsSection {...(pluginFocus !== undefined ? { focus: pluginFocus } : {})} />
       )}

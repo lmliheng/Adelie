@@ -21,6 +21,8 @@ export abstract class Settings {
   abstract getAttachmentLimitsMb(): { attachmentMaxMb: number; attachmentTotalMb: number };
   abstract getCompanyMode(): boolean;
   abstract setCompanyMode(value: boolean): void;
+  abstract getAgentApiEnabled(): boolean;
+  abstract setAgentApiEnabled(value: boolean): void;
 }
 
 /** UiPrefsStore: the mechanism UiPrefsRepo implements. */

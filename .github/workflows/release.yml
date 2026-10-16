@@ -16,8 +16,9 @@
 #   one version per tag, multiple versions coexist. Releases up to v0.1.5 shipped raw program
 #   archives under the same names plus *-offline wrappers; the installers keep accepting that
 #   legacy layout for pinned versions.
-# - publish-npm: publish the whole chain (the @lmliheng/* plugin packages -> @lmliheng/penguin-core
-#   -> @lmliheng/penguin-server -> @lmliheng/penguin-cli) to npm at the tag version.
+# - publish-npm: publish the whole chain (the @lmliheng/* plugin packages -> @lmliheng/amsp
+#   -> @lmliheng/penguin-core -> @lmliheng/penguin-server -> @lmliheng/penguin-cli) to npm at the
+#   tag version.
 #   core serves the penguin-sdk Skill's `npm install`; server ships the built web assets inside
 #   the package (web-dist/, its default web dir falls back to it), so `npm install -g
 #   @lmliheng/penguin-cli` alone yields a working `penguin` incl. the Web UI (needs Node >= 24).
@@ -608,6 +609,7 @@ jobs:
           for dir in plugins/*/; do
             (cd "$dir" && npm version --no-git-tag-version --allow-same-version "$V")
           done
+          (cd packages/amsp && npm version --no-git-tag-version --allow-same-version "$V")
           (cd packages/core && npm version --no-git-tag-version --allow-same-version "$V")
           (cd packages/server && npm version --no-git-tag-version --allow-same-version "$V")
           (cd packages/cli && npm version --no-git-tag-version --allow-same-version "$V")
@@ -621,6 +623,7 @@ jobs:
       - name: Build and test
         run: |
           pnpm -r build
+          pnpm --filter @lmliheng/amsp test
           pnpm --filter @lmliheng/penguin-core test
           pnpm --filter @lmliheng/penguin-server test
           pnpm --filter @lmliheng/penguin-cli test
@@ -644,6 +647,7 @@ jobs:
         run: |
           TAG="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
           V="${TAG#v}"
+          cp LICENSE packages/amsp/LICENSE
           cp LICENSE packages/core/LICENSE
           cp LICENSE packages/server/LICENSE
           cp LICENSE packages/cli/LICENSE
@@ -671,8 +675,9 @@ jobs:
             fi
             pnpm --filter "$name" publish --access public --no-git-checks
           done
-          for pkg in core server cli; do
-            name="@lmliheng/penguin-$pkg"
+          # Full names, in dependency order: @lmliheng/amsp is not a penguin-* name, and the
+          # server depends on it, so it goes first.
+          for name in @lmliheng/amsp @lmliheng/penguin-core @lmliheng/penguin-server @lmliheng/penguin-cli; do
             if [ -n "$(npm view "$name@$V" version 2>/dev/null || true)" ]; then
               echo "$name@$V already on the registry, skipping."
               continue
