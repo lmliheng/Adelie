@@ -938,6 +938,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       取值（`linear` 本来就是绘制代码认识的值），另加一条钉住三个主题各自连线的用例。**本地化**：无跨包
       scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源。细节与实测见
       「第六十八轮」一节。
+- [x] **5.46 被截断的文字悬停即可看到全文**（上游 `24a2eb38` `#1069`，**2026-10-16 第六十九轮落地**，
+      提交见该节）：共享的悬停提示层多一层**兜底** —— 指针 / 焦点下的「被省略号或行数截断的一行」自己
+      没有 `data-tooltip` 时，显示它的全文（节点或最近的祖先算一行；**控件**按文档顺序问它内部的每一行，
+      取提示要弹出那一刻**确实被截断**的第一行；等宽走代码面板、其余走文字面板；空白行不弹；只是装着
+      这些行的面板不算一行），并用 `data-tooltip-owned` 给「自己决定提示」的子树留了开关（`<Tooltip>` 的
+      测量 span、`Truncated` 滚动展示自己尾部时）。同时，承载信息的提示**被标记后才在完整可见的文字上
+      显示**：工作区分组表头把完整路径标成 `data-tooltip-extra` + 文字面板（名称没被截断时也弹）；
+      文件类工具的卡片新增 `subtitleFull`（应用侧 `headerSubtitlePath(...)`），`…/上级/文件` 的缩短
+      副标题悬停即得全文。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉
+      上游 PR 行、写明移植来源；上游那两处本树落不了的（`.agents/skills/…` 与「已归档对话」页）写明未落。
+      细节与实测见「第六十九轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1543,6 +1554,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-15 | 5.43 | **打开历史对话不再等待侧栏**（上游 `74efa5aa` `#984` 移植，照改动落、不是合分支；14 文件 / +1210 −190（与上游的 +1247 −184 差在本树没有 `probeMissingKey` 那一支，见该节），其中源码 6 个（server 的 `api/types.ts` +44（`SessionsBatchRequest` / `SessionBatchResult` 等新契约）、`http/routes/sessions.ts` +159 −1（GET 路由体收成 `listPage`，新增 `POST …/sessions/batch`）；web 的 `api/endpoints.ts` +25、`state/sessions.tsx` +247 −120（`reload()` / `loadMoreFor()` 改为每台服务器一次，本地分页、计数与活动序游标的处理随之重排）、`features/chat/chat-page.tsx` +56 −23（探针不再等列表）、新增 `features/chat/route-probe.ts`），用例 3 个（server `test/sessions-batch.test.ts` 281 行 / 24 条、web `test/route-probe.test.ts` 149 行 / 7 条、`test/sessions-store.test.ts` +157），另有两处既有夹具跟上（`ui-gallery` 的 mock 路由与 `test/mock-api.test.ts`、`web/e2e/reload-midstream.spec.mjs`），以及 changelog 一对）：对话页此前要等侧栏列表加载完成才查证路由指向的 Session，而列表按「每个 Agent 每页一次」扇出 —— 浏览器串行化同源请求，于是读者要看的对话排在整片扇出后面。现在**两半都改**：查证不再等列表（`RouteProbe`：同一 Session 同时只有一个在途、失败读的是落定那一刻列表是否仍在加载、路由已离开的结果丢弃、列表加载期间查到的行等列表落定后再并入），侧栏改发一条批量请求。**本树两处冲突的解法**：`ui-gallery` 的 mock 路由是导入序（本树多一组 `Storage*` 契约，两个都留）；`chat-page.tsx` 取上游的新结构，但 `gone` 里那句 404 → `setProbeMissingKey` 本树没有这个概念（`probeMissingKey` 是上游另一笔引入的状态，本树用 `routeSessionUnowned` / `routeSessionOffline` 自己处理不可达），因此只保留 `setProbeFailedKey`。**本地化**：无（三个包都在本仓自己的包内、无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）** —— 新增的是路由与请求/应答类型，接口计数不变）· `npx oxlint` **0 警告 0 错误**（2172 文件）· 本笔 14 份文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **1029**（129 文件）· cli **539**（37 文件）· server **198 文件 / 2866 通过 / 4 跳过**（+1 文件、+24 条即本笔新用例）· web **257 文件 / 3130 通过 / 2 跳过**（+1 文件、+8 条即本笔新用例）· ui-gallery **20 文件 / 134 通过**（+3 条；本笔改了它的 mock 路由）· hmr 无测试文件 · **反证（单测）**：① 把 `http/routes/sessions.ts` 退回 `HEAD` → `test/sessions-batch.test.ts` **整套失败**（`ModuleBootError: SessionApiRoutes: contribution 'session-api.sessions-batch' to 'HttpModule.routes' declared but not bound`，24 条全部 skipped）；② 把 `state/sessions.tsx` 退回 `HEAD`（用例留着）→ `test/sessions-store.test.ts` **8 failed / 26 passed**（`batchEntries()[0]` 是 `undefined`，即侧栏根本没发那条批量请求）；③ 把 `route-probe.ts` 的 `if (this.inFlight === key) return;` 临时改成 `false && …` → `test/route-probe.test.ts` **2 failed / 5 passed**（「同一 Session 只发一次」的两条挂了）。三处还原后逐字一致（与 scratchpad 的 `fix-src/` 逐文件 `diff -q` 无输出），三条用例再跑 **7 / 34 / 24 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：重建 server / web 产物后，一次性数据根 `/root/adelie-fork-data/r65-after`、`localhost:8992`（改前产物）/ `8993`（本笔产物）起真服务（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），**三个 Agent**（`default_agent` + API 建的 `r65agentb` / `r65agentc`，所以侧栏的扇出是「每 Agent 一次」）、一条 `web.db` 里的会话行 + 一份手写 Trace（5 轮，不需要模型 key，即 3.6 那个卡点）；探针把**每一条 Session 列表请求扣住 4 秒**，再量「对话第一条消息何时出现」「屏幕上那条消息在列表还被扣着时是否已经在」——**改前**：列表请求 **3 条 GET**（`…/agents/<a>/sessions` 各一次）、列表被扣住期间**看不到任何消息**（截图是一根骨架）、第一条消息 **5105 ms** 才出现；**改后**：列表请求 **1 条 `POST /api/projects/default_project/sessions/batch`**、列表被扣住期间**对话已经完整在位**（`probe answer 1…5`，截图可见）、第一条消息 **1936–2082 ms**（三次跑都在扣住的窗口之内），列表落定后侧栏照旧列出 `probe-workspace` 与 `r65 probe` 那一行（截图 + 文本计数 2）。两态 console 各 **0 error**、无一条 ≥400（唯一弹窗是空数据根没配模型 key 那条提示，即 3.6 那个卡点）；截图 `r65/{before,after,after2,after3}-{held,settled}.png`、探针 `r65/probe.mjs`、造数 `r65/setup.mjs`、改前源码留底 `r65/fix-src/` 都在 scratchpad · 端口只用 8991 / 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r65-after`，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-16 | 5.44 | **悬停提示：规则不再把「画出来的字」当标签，承载信息的提示经标记后重新显示**（上游 `e5639b32` `#1051` 移植，照改动落、不是合分支；57 个跟踪文件 / +298 −48（上游是 67 文件 / +365 −59，差在排除的 7 份本树没有的文件与几处「本树结构更旧、只补标记」），含 changelog 一对）：2026-09-29 起那条规则（`hintAllowedFor`）只在元素**自己没有可见文字**或文字被截断时才弹提示，于是**凡补充屏幕上看不到的信息的提示**（点击的后果、快捷键、完整值、状态的含义）在带可见文字的控件上**一律不再出现**，「画出来的字」（头像首字母、查找栏的 `Aa`、工具栏角标、标签的 ×、会话行的待审批数）又被算作可见文字、让为它们命名的提示也一并失效。现在**两半都改**：规则读的是「读出来的文字」——新增导出的 `readingText()` 按结构走树，`<svg>` / `aria-hidden="true"` / `.sr-only` / `checkVisibility() === false` 整棵跳过（`outOfReading()`），`hintAllowed(text, boxes, extra = false)` 与 `hintAllowedFor(el, extra = false)` 多一个 `extra`；同时新增**显式标记** `data-tooltip-extra`（导出 `TOOLTIP_EXTRA_ATTR`、`TooltipRequest.extra`、`<Tooltip extra>`、`NavRow.tooltipExtra`、`Chip.tooltipExtra`、`FormPickerTrigger.titleExtra`，`Badge` 的 `tooltip` 与 `BetaBadge` 的 `title` 一律带标记，`Breadcrumbs` / `DockTabs` / `Legend` / `FileTree` / `ToolCallCard` 在提示多于标签时标记），`"false"` 读作没标记；**只重复可见文字的提示永不标记、也永不显示**。待审批数、标签的 ×、工具栏角标改成 `aria-hidden`（待审批数另用 `sr-only` 命名）。**12 处冲突的解法**：全部保留本树结构、只把标记补到本树对应处——`tooltip.tsx` 是本树已有第五十六轮 `#1098` 的定位写法（上游父提交是旧写法）、`badge.tsx` 上游已被另一个提交整篇重写（本树只加 prop 与两行属性）、`tool-call-card.tsx`/`agents-page.tsx`/`workspace-finder.tsx`/`machines-page.tsx`/`overview-page.tsx`/`models-page.tsx`/`draft-view.tsx` 是本树结构更旧（上游的 `Disclosure`、`renderCard`、`NavRow`、`slots` 折叠、示例文件夹等重构本树都没有），`mcp-servers-section.tsx` 上游多一段本树没有的 `saveFirst` 徽标，`schedule-panel.tsx` 本树这一份一个 `data-tooltip` 都没有、与 `HEAD` 逐字节相同；`draft-view` 里那份「填充输入框」的提示在本树对应的是 `shortcuts-folder.tsx` 的 `shortcutFillHint`，按同一意图补了标记。**有意没改**：`.agents/skills/penguin-harness-frontend/SKILL.md`（按 2.5 / 2.1c 的口径）。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（189 接口 / 583 类型）**，本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2172 文件）· 本笔所有跟踪文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **1031**（129 文件，+2 即本笔新用例）· cli **539**（37 文件）· server **198 文件 / 2866 通过 / 4 跳过** · web **257 文件 / 3130 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `packages/ui/src/components/overlays/tooltip/tooltip.tsx` 退回 `HEAD`（新用例留着）→ `vitest run test/tooltip.test.ts --root packages/ui` **3 failed / 17 passed**（`readingText` 不存在、`tooltipRequest` 不返回 `extra`、旧期望比对），放回本笔 → **20 全过**；与 scratchpad `r66/fix-src/` 逐文件 `diff -q` 无输出、`git diff HEAD` 与留底补丁逐字节相同 · **本轮主证据（真服务端 + 真浏览器，改前改后两态 × 四条）**：一次性数据根 `/root/adelie-fork-data/r66-{after,before}`，**改后产物起在 `localhost:8994`、改前产物起在 `localhost:8995`**（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），模型配成 `custom` provider 指向本仓自带 mock LLM（8976）——「发一条消息」因此真落在一个 **`exec_command` 的待审批**上，**不需要模型 key**（即 3.6 那个卡点）。探针 `r66/probe.mjs` 悬停 700 ms 后读 `[data-testid="tooltip"]` 在不在、写的什么，并读元素自己的 `data-tooltip` / `data-tooltip-extra` / `textContent` 与一份前端手算的 readingText：**改前** —— 会话行待审批数（数字 `aria-hidden`、名字 `sr-only`、未标记）readingText **`"1"`**、**面板没弹**；侧栏 New chat（绑了 `Ctrl+Alt+N`、标记了）`extra: null`、**没弹**；智能体页「最后修改」（可见「今天」、标记了）`extra: null`、**没弹**；会话计数（可见 `3`、未标记）没弹。**改后** —— 待审批数 readingText **`""`**、**弹了**（「1 个待审批」）；New chat `extra: "true"`、**弹了**（「新建对话 (Ctrl+Alt+N)」）；「最后修改」`extra: "true"`、**弹了**（「最后修改 2026-10-16 03:11」）；会话计数**仍然没弹**（有意留白的那一类）。两态 console 各 **0 error**、**无一条 ≥400**；截图 `r66/shots/{before,after}-<量点>.png` 与两态 `-agents.png`、探针、改前源码留底 `r66/fix-src/`、留底补丁 `r66.patch` 都在 scratchpad · 端口只用 8976 / 8994 / 8995（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r66-{after,before}`，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-16 | 5.45 | **极客（Console）主题的图表连线改为点间直线**（上游 `bba0e3c9` `#1131` 移植，照改动落、不是合分支；4 文件 / +68 −2，其中源码 1 个（`packages/ui/src/themes/geek.css` +2 −2：`--ui-chart-curve` 由 `step` 改为 `linear`，并把那段说明里的「stepped between points」改成「directly connecting points」）、用例 1 个（`test/token-contract.test.ts` +15，一条新用例钉住三个主题各自的连线方式）、另有 changelog 一对）：这个主题本来就给每个点画方块、给每根柱子描边，**值在自己的格子里保持一段**由柱子来说，线再说一遍就是同一句话写两遍 —— 阶梯线还让「先横走半格、再竖跳」这段几何看起来像数据；直线只保留「从一个读数到下一个读数」这一件事。只改主题里的取值，不动绘制代码：`readChartStyle()` 只把 `smooth` / `step` 挑出来，其余（含 `linear`）一律按直线画，`DEFAULT_CHART_STYLE` 用的也是它；1 px 细线、2 px 方块点与柱子几何一概未动。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 比上一轮多 3 / 4，是 09:52 那笔 Agent API 带来的，与本笔无关）· `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔四个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1035 通过**（+4 = 本笔新用例 + r67 半成品里已写好的 3 条）· core **1396 通过 / 6 跳过**（67 文件通过）· cli **38 文件 / 561 通过** · web **259 文件 / 3185 通过 / 2 跳过** · server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **反证（新用例真的钉住行为）**：把 `geek.css` 那一行换回 `step`、只跑 `test/token-contract.test.ts` → **1 failed / 54 passed**（`AssertionError: geek: expected 'step' to be 'linear'`），换回本笔 → **55 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：只重建 web 产物（ui 的 `exports` 直接指向 `src/`）得到 `r69/before-dist`（含 `step`）与 `r69/after-dist`（只有 `linear` / `smooth`），两个一次性数据根 `/root/adelie-fork-data/r69{a,b}` 分别起在 `localhost:8996`（改后）/ `8997`（改前）（`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），用 sqlite 往 `usage_records` 手写 6 天用量（**不需要模型 key**，即 3.6 那个卡点）；探针把 `penguin.themeId` 设成 `geek` 后打开 `/usage`，量同一批折线的路径 `d`：**改前** `--ui-chart-curve` = `step`、5 条折线全是阶梯（`M81.75,132.18 H117.5 V97.81 H153.25 H189 V151.27 …`，指令序列 `MHVHHVHHVHHVHHVH…`）；**改后** = `linear`、同一批折线全是点间直线（`M81.75,132.18 L153.25,97.81 L224.75,151.27 L296.25,10 L367.75,63.45 L439.25,32.9`，指令序列 `MLLLLL`）；两态 `theme=geek`、console 各 **0 error**、**无一条 ≥400**；截图 `r69/shots/{before,after}-usage.png` 与特写 `{before,after}-chart.png`（「成本变化」那张：改前台阶、改后斜线）、探针与两态 JSON 都在 scratchpad · 端口只用 8996 / 8997（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r69{a,b}` | `b1354049` |
+| 2026-10-16 | 5.46 | **被截断的文字悬停即可看到全文**（上游 `24a2eb38` `#1069` 移植，照改动落、不是合分支；上游 13 文件 / +415 −20，本树落下 11 个跟踪文件 / +434 −19 —— 差在 `.agents/skills/penguin-harness-frontend/SKILL.md`（按 2.1c / 2.5 的口径不动）与本树没有的 `packages/web/src/features/settings/archived-sessions-section.tsx`，两份 changelog 另按本仓写法改名到本轮日期）：**两半都改** —— ① `TooltipLayer` 多一层**兜底**：新导出的 `shortenedLines()` 把指针 / 焦点下的节点按「自己或最近祖先设了 `ellipsis` / `-webkit-line-clamp`」算作被截断的一行（最多 5 层祖先），**控件**则按文档顺序收它内部每一行（最多 40 个后代），提示要弹出那一刻由 `requestFor()` 取**第一处真的被截断**的（`isCutOff()`），等宽走代码面板、其余走文字面板，空白行不弹、只是装着这些行的面板不算一行；`data-tooltip-owned`（新导出 `TOOLTIP_OWNED_ATTR`）是给「自己决定提示」的子树留的开关 —— `<Tooltip>` 的测量 span 与 `Truncated` 滚动展示尾部时都会设（后者使第五十轮的「悬停把标题尾巴滑进来」不被一个复述它的面板跟着）。② 承载信息的提示**被标记后才在完整可见的文字上显示**：`GroupHeader.title` 改成 `data-tooltip-extra` + `data-tooltip-content="text"`（工作区分组的完整路径因此「名称没被截断时」也弹）；`ToolCallCard` 新增 `subtitleFull`（应用侧 `headerSubtitlePath()`：只有副标题确实是 `shortenPath()` 的缩短形式才给全文），`…/上级/文件` 的副标题悬停即得完整路径。**一处冲突的解法**：`tooltip.tsx` 是本树第五十六 / 六十六轮改过的版本（面板自己量高度、`belowTrigger(anchor, viewport, height)`、常量仍叫 `OPEN_DELAY_MS` 而非上游已改名的 `HOVER_OPEN_DELAY_MS`），所以只取上游那一半的语义（用 `requestFor()` 取代「只问自己那个请求」），`anchor` 照旧交给面板、常量名与注释口径沿用本树。**有意没落**：上游那份 `.agents/skills/…` 的技能说明（2.1c / 2.5 口径）与「已归档对话」页的分组标题（本树没有那个文件，归档行由侧栏自己的折叠夹呈现）。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔 9 个源码 / 用例文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1043 通过**（+8 即本笔新用例）· core **1396 通过 / 6 跳过**（67 文件通过）· cli **38 文件 / 561 通过** · web **259 文件 / 3187 通过 / 2 跳过**（+2 即本笔新用例）· server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：在 `shortenedLines()` 开头临时插一句 `return null;`（兜底失效），只跑 `test/tooltip.test.ts` → **3 failed / 23 passed**（三条兜底用例全挂：自己那一行 / 行控件按顺序取 / owned 子树），还原后 **26 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态，同一套探针）**：只重建 web 产物（ui 的 `exports` 直接指向 `src/`）得到 `r70/after-dist`（含 #1069）与 `r70/before-dist`（五个源码文件退回 `HEAD`），两个一次性数据根 `/root/adelie-fork-data/r70-{after,before}` 分别起在 `localhost:8998` / `8999`（`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），造数全走真接口 / 手写 Trace（**不需要模型 key**，即 3.6 那个卡点）：一个显示名超长的 Agent（`r70_long_agent`）、一条会话的工作区是深路径但末段很短（`…/one/two/three/probe-ws`）、一条会话的 Trace 里有一个 `read_file` 调用（路径 `…/web/src/features/chat/tool-call-card.tsx`）。探针在**同一批元素**上量「元素自己有没有被截断 / 它身上的提示属性 / 提示面板在不在与其文字」——**改前**：超长 Agent 名 `cutOff=true` 且身上无提示 → **面板不出现**；工作区分组表头 `cutOff=false`、有 `data-tooltip`（完整路径）但没有 `extra` → **面板不出现**；工具卡副标题 `…/chat/tool-call-card.tsx` 无任何提示 → **面板不出现**。**改后**：三者都弹出面板，文字分别是完整 Agent 名、完整工作区路径、完整文件路径，且工作区那条带 `data-tooltip-content="text"` + `data-tooltip-extra="true"`、工具卡那条带 `data-tooltip-content="code"` + `extra` 且面板 `font-family` 含 monospace（**代码面板**）。两态 console 各 **0 error**、**无一条 ≥400**；截图 `r70/shots/{before,after}-{agent,workspace,tool}.png`、探针 `r70/probe.mjs`、造数 `r70/setup.mjs`、两态 JSON 与改前源码留底都在 scratchpad · 端口只用 8998 / 8999（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r70-{after,before}`，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`） | `23522eab` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -9776,3 +9788,127 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
   每页 5 条，1 行源码）。
 - **`#1131` 从「不宜取」那一列划掉**（本轮已落地，见 5.45）。
 - 卡点原地：**2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10**，另加**工作区里 r67 的半成品**（等用户拍板）。
+
+## 第六十九轮：被截断的文字悬停即可看到全文（2026-10-16，条目 5.46）
+
+一次无人值守的自主推进，只做这一条。**没有切版本号、没发 npm、没发安装包、没发发布汇总**；
+`legacy/main`、`/root/Adelie` 工作区、`/root/penguin-harness`、`/root/AgentCode`、
+3003 / 3004 / 4000 / 7364 / 7369 全程没碰；按纪律**没有碰 `packages/desktop`**。
+
+### 开工自检：工作区仍不干净，占着它的还是**本线自己** 07:00 那一轮的半成品
+
+`git status --short` 不干净：11 个跟踪文件 + 一对未跟踪 changelog —— 正是 **07:00 那一轮（r67）**
+移植上游 `#1157`（`ef12d442`，「列表行的操作始终可见」）留下的半成品（07:19:03 被 App 重启打断；
+`r68/r67-halfwork.patch` 已留底，sha256 前 24 位 `7da34777ca60430bcbb37c8d`，本轮复核一致）。
+开工时的只读判据：脏文件的 mtime 全在 07:01–07:06、`.git/index` 停在 19:34（第六十八轮那笔提交）、
+`.git/FETCH_HEAD` 停在 22:30；`git fetch origin` 后 `HEAD` = `origin/main` = `5880470d`（不落后）。
+21:00 那条线（`session-2026-10-16-21-00-15-b9f88940`）只拉了一次上游、**没往这棵树里写过**
+（工作区逐条与开工时一致）。
+
+本轮照第六十八轮立下的做法开工：**只提交自己的文件**（`git commit -- <paths>`，提交后
+`git show --stat HEAD` 复核正好 11 个文件、`git status --short` 里 r67 那一份逐条不变），
+不替它收尾、不 `git stash`、不在它的文件上叠改动。**仍在等用户拍板的是那一句**：那份半成品由谁
+收尾（原会话继续 / 授权下一轮接管 / 丢掉 / 存成补丁移出工作区）。
+
+### 做了什么（条目 5.46）
+
+上游 `#1069`（`24a2eb38`，13 文件 / +415 −20），照改动落、不是合分支，本树落下 11 个跟踪文件
+（+434 −19）。**两半都改**：
+
+1. **提示层加兜底**（`packages/ui/src/components/overlays/tooltip/tooltip.tsx`，本笔最大的一块）：
+   过去它只对带 `data-tooltip` 的元素起反应，页面自己用省略号 / `-webkit-line-clamp` 截断的一行
+   因此没有任何入口。现在 `TooltipLayer` 在找不到提示时改问 `shortenedLines()`：指针（或焦点）下的
+   节点，自己或最近 5 层祖先设了截断就**算作一行**；目标是**控件**（button / a / `role=button |
+   menuitem | option | tab` / summary）时改问它内部最多 40 个后代、按文档顺序收每一行。提示要弹出
+   那一刻由 `requestFor()` 取**第一处确实被截断**的一行（`isCutOff()`，不是「设置了截断样式」），
+   等宽走代码面板、其余走文字面板；空白行不弹；只是**装着**这些行的面板不算一行（`LINE_SEARCH_DEPTH`
+   / `LINE_SEARCH_WITHIN`）。**退出开关**是新的 `data-tooltip-owned`（导出 `TOOLTIP_OWNED_ATTR`）：
+   `<Tooltip>` 的测量 span 与 `Truncated`（滚动展示标题尾部时，见第五十轮）都会设它，所以那几个
+   自己决定提示的地方不会被兜底覆盖。
+2. **承载信息的提示被标记后才在完整可见的文字上显示**：`GroupHeader.title` 改成
+   `data-tooltip-extra` + `data-tooltip-content="text"`（工作区分组表头那条完整路径因此「名称没被
+   截断时」也弹，用文字面板，长路径在分隔符处折行）；`ToolCallCard` 新增 `subtitleFull` 属性，
+   应用侧 `packages/web/src/features/chat/tool-call-card.tsx` 新增导出的
+   `headerSubtitlePath()` 并把它接到对话里 —— 只有副标题**确实是** `shortenPath()` 的缩短形式时
+   才给出完整路径，`…/上级/文件` 悬停即得全文（代码面板）。
+3. 用例：`test/tooltip.test.ts` 新增一组「没有自己提示的缩短行」场景（自己一行 / 行控件按顺序 /
+   面板不算一行 / owned 子树 / 代码面板与文字面板 / 空白行，6 条）、`test/group-header.test.ts`
+   与 `test/tool-call-card.test.ts` 各新增一条渲染断言、web 的 `test/tool-call-preview.test.ts`
+   新增 `headerSubtitlePath` 的两组场景。**上游这一笔带的用例都照落**，没有另造。
+4. changelog 一对：`changelog/unreleased/2026-10-16-truncated-text-hover{,.zh}.md`（上游原名
+   `2026-10-12-truncated-text-hover`，按本仓口径改名到本轮日期、去掉上游 PR 行、写明移植来源，
+   并在末尾写明本 fork 有意没落的两处）。
+
+**唯一一处冲突的解法**（`tooltip.tsx`）：本树那一份是第五十六轮（`#1098`，面板自己量高度、
+`belowTrigger(anchor, viewport, height)`）与第六十六轮（`#1051`，`readingText()` / `hintAllowedFor`）
+改过的版本，而上游这一笔的父提交是旧写法，所以冲突区里「ours」是「只问自己那个请求」、
+「theirs」是「`requestFor()` + 在打开时算好位置」。取**上游这一半的语义**（`requestFor()`，
+`anchor` 照旧交给面板，常量名沿用本树未改名的 `OPEN_DELAY_MS`），把上游新加的 `position` /
+`HOVER_OPEN_DELAY_MS` 留在门外 —— 这正是本树第五十六轮的理由（面板要拿自己的高度才能决定落在
+下方还是翻到上方）。**有意没落**：上游那份 `.agents/skills/penguin-harness-frontend/SKILL.md` 的
+前端技能说明（2.1c / 2.5 口径，第五十九 / 六十六轮同样跳过）与「已归档对话」页的分组标题
+（本树没有 `web/src/features/settings/archived-sessions-section.tsx` 这个文件，归档行由侧栏自己的
+折叠夹呈现）。
+
+### 为什么是这一条
+
+- 第八 / 五十九 / 六十八轮末尾都把 **`#1069` 记成「下一轮首选」**：它是上一轮刚落地的 5.44
+  （悬停提示的规则）的**后继**，接在同一片代码上最顺，而且是一条**用户看得见的真缺陷**
+  （上游的产品请求原文就是「缩略的路径或文字没有任何办法看到全文」）。
+- 上游 `main` 这一轮**没有往前走**：按 URL 现拉到 `refs/adelie-tmp/upstream-main-r70`，尖端仍是
+  **`0eafa6dc`**（第六十八轮已拉到，`r70` 与 `r69` 是同一个提交）。那一批 14 笔（`2b8116ce..0eafa6dc`）
+  本轮**逐笔重量了一遍缺件**，除了 `#1149`（上游自己的 `penguin-support` 插件文档，本树没有那个
+  插件）与 `#1157`（r67 正在做的那一笔）之外，**每一笔都要改本树没有的文件**：`#1154` 缺 21、
+  `#1162` 缺 17、`#1156` 缺 6、`#1153` 缺 5、`#1155` 缺 10、`#1151` 缺 14、`#1150` 只缺 1 个它的
+  落点文件、`#1161` / `#1142` 碰已按 2.5 删掉的 `packages/landing`、`#1163` / `#1158` / `#1147`
+  是上游自己的 CI 或要本树没有的界面文件。
+- 台账「下一轮从这里接」列的其余候选仍不落地：`#1049` 要现造一份真实的插件市场列表、
+  `#1074` / `#1067` / `#1072` / `#1071` / `#1038` / `#1047` 全卡在「本树没有那个文件或常量」。
+  **于是这一笔是桌上唯一能整块落地的。**
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`
+  （192 接口 / 587 类型）** —— 本笔不动服务契约）。
+- `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔 9 个源码 / 用例文件 `prettier --check` 干净 ·
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1043 通过**（+8 即本笔新用例）· core
+  **1396 通过 / 6 跳过**（67 文件通过）· cli **38 文件 / 561 通过** · web **259 文件 / 3187 通过 /
+  2 跳过**（+2 即本笔新用例）· server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件。
+- **反证（单测）**：把 `shortenedLines()` 的开头临时插一句 `return null;`（让兜底失效）、只跑
+  `test/tooltip.test.ts` → **3 failed / 23 passed**（三条兜底用例全挂），逐字还原后 **26 全过** ——
+  新用例确实钉住行为，不是跟着实现空转。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态、同一套探针）**：只重建 web 产物（ui 的
+  `exports` 直接指向 `src/`）得到 `r70/after-dist`（含 #1069）与 `r70/before-dist`（五个源码文件
+  退回 `HEAD`）；两个一次性数据根 `/root/adelie-fork-data/r70-{after,before}` 分别起在
+  `localhost:8998`（改后）/ `8999`（改前）（`ADELIE_WEB_DIST` 指向各自的产物、
+  `ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie）。造数全走真接口 / 手写 Trace
+  （**不需要模型 key**，即 3.6 那个卡点）：一个显示名超长的 Agent（`r70_long_agent`）、一条会话的
+  工作区是深路径但末段很短（`…/one/two/three/probe-ws`）、一条会话的 Trace 里有一个 `read_file`
+  调用（`…/web/src/features/chat/tool-call-card.tsx`，卡片把它缩短成 `…/chat/tool-call-card.tsx`）。
+  探针在**同一批元素**上量「元素自己有没有被截断 / 它身上的提示属性 / 提示面板在不在与其文字」：
+  - **改前**：超长 Agent 名 `cutOff=true`、身上无提示 → **面板不出现**；工作区分组表头
+    `cutOff=false`、有 `data-tooltip`（完整路径）但没有 `extra` → **面板不出现**；工具卡副标题
+    无任何提示 → **面板不出现**。
+  - **改后**：三者都弹出面板，文字分别是**完整 Agent 名**、**完整工作区路径**、**完整文件路径**；
+    工作区那条带 `data-tooltip-content="text"` + `data-tooltip-extra="true"`，工具卡那条带
+    `data-tooltip-content="code"` + `extra` 且面板的 `font-family` 含 monospace（**代码面板**）。
+  - 两态 console 各 **0 error**、**无一条 ≥400**（唯一一条是登录前的 `/api/me` 401，是这个 App
+    的正常首访应答）。截图 `r70/shots/{before,after}-{agent,workspace,tool}.png`、探针
+    `r70/probe.mjs`、造数 `r70/setup.mjs`、两态 JSON 与改前源码留底都在 scratchpad。
+  - 端口只用 8998 / 8999（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+    `/root/adelie-fork-data/r70-{after,before}`，一个字节没往 `~/.penguin` 或仓库里写
+    （`packages/*/dist` 是构建产物，未 `git add`）。
+
+### 下一轮从这里接
+
+- 上游 `main` 仍是 **`0eafa6dc`**（`refs/adelie-tmp/upstream-main-r70`，要清就 `git update-ref -d`）。
+  那一批 14 笔本轮已逐笔重量过缺件（见「为什么是这一条」），**只有 `#1149` 与 `#1157` 不缺本树
+  的文件**：`#1149` 是上游自己插件的文档（本树没有 `penguin-support`，不该照抄），`#1157` 是
+  **工作区里 r67 那一份半成品**的同一笔 —— 除非用户拍板由哪一方收尾，否则下一轮也别碰它。
+- 桌上仍可选（按价值排）：**`#1049`**（插件市场「只看不兼容」搬进设置做成开关，自带 2 份用例；
+  代价是要现造一份真实的插件市场列表才能把两态看全）、**`#1074`**（Benchmark 题目列表每页 5 条，
+  1 行源码，但要现确认它要的常量在本树叫什么）、`#1067` / `#1072` / `#1071`（起始页与机器页文案）。
+- 卡点原地：**2.2c**（写侧剩下的全在桌面壳一侧与既有部署单元里）、**3.5**（取哪个桌面壳）、
+  **3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（促销搬进 Project 配置 /
+  新依赖 `mermaid`），另加**工作区里 r67 的半成品**（等用户拍板）。
