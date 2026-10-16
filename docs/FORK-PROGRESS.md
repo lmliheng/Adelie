@@ -9745,6 +9745,26 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
   没有重试登录、没有再试发信。正文留在 scratchpad（`…/r69/mail-body.txt`），按老办法并进既有的周期
   重发任务 `csu-mail-retry`（不另开任务），同时照第 36 轮起的替代通道用飞书发一条简报。
 
+### CI（推送后）
+
+两笔一起推（`06568c9b..f68d1d4f`），只起了一个 run **`38893134016`**（头是台账那一笔 `f68d1d4f`），
+没有「同组前一笔被 `cancel-in-progress` 取消」的问题（`ci.yml` 的 `cancel-in-progress` 会把同组的前一笔取消，
+看最后一笔即可）。
+
+- **首跑：22 个作业里 21 个 success，红两个 —— `test-macos (server)` 与汇总作业 `ci`**（红的是汇总门禁，
+  跟着分片走）。拉日志（`actions/jobs/116947198569/logs`）看，红的就是**那条已知的 macOS 抖动**：
+  `test/workflows.test.ts > a loaded workflow > notices an Agent's FIRST workflow, made with nothing but
+  its file tools` 在 `test/workflows.test.ts:390` 拿到 `{}`（它给工作流目录的构建留 10 秒，macOS runner 慢），
+  同一 job 内的重试又在 `:368` 撞上 `agent_exists`（`Agent id is already taken: builder.`，用例自己没有清理），
+  于是同一条用例报两次、`Exit status 1`。**台账里早有记录**（第 22 轮那张表那行、以及 `e9e585a2` 的
+  `37455104295` 那一笔，见本文件前面「macOS 跑机的抖动 · 记录，暂不动」）—— 不是本笔引入的。
+  同一提交在 Linux 的 `test (server)` 是 success，本机整跑 server 也是 201 文件 / 2937 通过。
+- **重跑失败作业（`POST /actions/runs/38893134016/rerun-failed-jobs`，HTTP 201）**：`test-macos (server)`
+  attempt 2 **`completed success`**（11:28:07 → 11:31:16），汇总 `ci` 随之 success，**整次 run
+  `completed success`（attempt 2）、22 个作业 `NOT SUCCESS: []`** —— 抖动判定的正面证据。
+- 本笔只改 `packages/ui` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动；没有新增依赖、
+  没有动包名与流水线，所以**版本戳、发布、安装包这一轮一个都没碰**（按轮次纪律）。
+
 ### 下一轮从这里接
 
 - 上游 `main` 现在是 `0eafa6dc`（`refs/adelie-tmp/upstream-main-r69`，要清就 `git update-ref -d`），
