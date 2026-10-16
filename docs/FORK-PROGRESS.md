@@ -10014,6 +10014,15 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
 - 提交后 `git status --short` **干净** —— 树里那份躺了四轮的半成品到此结束。
 - **没有切版本号、没发 npm、没发安装包、没发发布汇总。**
 
+### CI（推送后）
+
+- 两笔一起推（`1cc67da1..bc0ccebb`）—— run **`38954319877`**（`bc0ccebb`）**`completed success`，
+  22 个作业全 success、`NOT SUCCESS: []`**（逐条查过 `actions/runs/38954319877/jobs`，含两条 macOS 分片、
+  三条 Windows 分片、`installer-e2e`、`installer-windows`、`plugin versions` 与三平台 `runtime`），
+  没有触发重跑（attempt 1）。
+- 本笔只改 `packages/{ui,ui-gallery}` 的源码 / 用例与一对 changelog，`ci.yml` 的矩阵没有动；没有新增依赖、
+  没有动包名与流水线，所以**版本戳、发布、安装包这一轮一个都没碰**（按轮次纪律）。
+
 ### 下一轮从这里接
 
 - 上游 `main` 仍是 **`0eafa6dc`**（本轮按 URL 现拉到 `refs/adelie-tmp/upstream-main-r71`，与 `r69` / `r70` 同一个提交）。
