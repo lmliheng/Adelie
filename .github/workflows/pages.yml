@@ -1,0 +1,44 @@
+# 把仓库里的官网快照（site/）发布到 GitHub Pages：https://lmliheng.github.io/Adelie/
+#
+# site/ 里是上游 PenguinHarness 官网的构建产物（来源与刷新方式见 site/README.md）。它已经按
+# BASE_PATH=/Adelie/ 构建好，所以这里**不需要再构建**：检出、把 site/ 当作 Pages 产物传上去就行。
+# 页面里的资源与路由都固化了这个基路径，别在这里改路径规则——要换基路径就得回上游重新构建。
+#
+# 首次设置：仓库 Settings → Pages → Source = "GitHub Actions"。
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "site/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只跑一个部署；跑着的那个不要被取消。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
