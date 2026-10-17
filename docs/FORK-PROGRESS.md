@@ -974,6 +974,37 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
 
+### 7. 我们自己的验证设施
+
+> 编号另起一节（第六十轮那条用户点单的 WPS 插件只在轮次标题里写作「条目 6.1」，并没有进过这份
+> 清单），免得两处撞号。
+
+- [x] **7.1 浏览器 e2e 套件重新可信：`subagent.spec` 那一组全绿、会话标题分支复活**（**2026-10-17
+      第七十一轮**落地，提交见该节；两个文件 / +102 −57，都是测试夹具与用例、无用户可见行为）：
+      `packages/web/e2e/subagent.spec.mjs` 4 条里 3 条本来就红（第五十七 / 六十五轮记过），三处根因
+      都修了 —— ①停靠栏打开后 `getByPlaceholder(/输入消息/)` 与发送按钮各自命中**两个**元素（面板里
+      的子会话用的是同一个 `ChatInput`），改用 `textarea:not([data-testid="dock"] textarea)` 与
+      `button[aria-label="发送"]:not([data-testid="dock"] *)`；②工具栏那枚琥珀色点早就不叫
+      `span.bg-amber-500`（`Dot` 按 token 上色成 `bg-tone-attention-emphasis`，
+      `panels-toolbar.test.ts` 断言的正是这个类名）；③一条**陈旧断言**：它假设「plain Task 之后
+      拓扑回落到空图」，而 `extractTopology` 的默认口径是「最近一次真的派生子智能体的 Task」
+      （上游 `d4c27099` #433 引入，本树与上游 `agent-topology.ts` 逐字节相同），那条空态文案在现代码
+      里永不出现 —— 已重写成有意义的版本（第二条任务改用 mock 自带的 `run another subagent` 派第二次，
+      用身份条的 `shortSessionId` 断言「钉住 = 第一轮的孩子、关掉标签页重开 = 最新一次派生的孩子」，
+      并断言空态文案 `toHaveCount(0)`）。**另一处是夹具本身**：`packages/web/e2e/mock-llm.mjs` 的
+      标题分支还在找提示词里的 `concise title`，而它早已改成 `You are a title generator.`
+      （`core/src/internal/session-title.ts` 的 `buildTitlePrompt`），标题分支因此**从来没触发**、
+      所有会话标题都停在宿主兜底；改掉之后断言模型标题的那条（`files-switch.spec.mjs`）跟着翻绿。
+      细节与实测见「第七十一轮」一节。
+- [ ] 7.2 **浏览器 e2e 还剩 24 条红**（第七十一轮实测的基线：整 76 条里 **52 通过 / 24 失败**，
+      数据根 `/root/adelie-fork-data/r72-run3`）：分布在 `chat` / `chat-tweaks` / `compact-abort` /
+      `compaction` / `company` / `dock` / `draft` / `draft-user-scope` / `layout` / `llm-errors` /
+      `malformed` / `outline` / `processes` / `project-switch` / `reload-midstream` /
+      `reloaded-followup` / `session-fork` / `skills` 这些文件里，与 7.1 修掉的两处无关，需要单独一轮
+      逐条分诊（先按「夹具陈旧 / 选择器失效 / 真回归」分类）。另有一处已知的同类陈旧键：
+      `packages/web/scripts/theme-shots.mjs` 里同一句 `concise title`（不在测试套件里，本机没有便宜
+      的验证手段）—— 一并留在这里。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1569,6 +1600,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-16 | 5.45 | **极客（Console）主题的图表连线改为点间直线**（上游 `bba0e3c9` `#1131` 移植，照改动落、不是合分支；4 文件 / +68 −2，其中源码 1 个（`packages/ui/src/themes/geek.css` +2 −2：`--ui-chart-curve` 由 `step` 改为 `linear`，并把那段说明里的「stepped between points」改成「directly connecting points」）、用例 1 个（`test/token-contract.test.ts` +15，一条新用例钉住三个主题各自的连线方式）、另有 changelog 一对）：这个主题本来就给每个点画方块、给每根柱子描边，**值在自己的格子里保持一段**由柱子来说，线再说一遍就是同一句话写两遍 —— 阶梯线还让「先横走半格、再竖跳」这段几何看起来像数据；直线只保留「从一个读数到下一个读数」这一件事。只改主题里的取值，不动绘制代码：`readChartStyle()` 只把 `smooth` / `step` 挑出来，其余（含 `linear`）一律按直线画，`DEFAULT_CHART_STYLE` 用的也是它；1 px 细线、2 px 方块点与柱子几何一概未动。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 比上一轮多 3 / 4，是 09:52 那笔 Agent API 带来的，与本笔无关）· `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔四个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1035 通过**（+4 = 本笔新用例 + r67 半成品里已写好的 3 条）· core **1396 通过 / 6 跳过**（67 文件通过）· cli **38 文件 / 561 通过** · web **259 文件 / 3185 通过 / 2 跳过** · server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **反证（新用例真的钉住行为）**：把 `geek.css` 那一行换回 `step`、只跑 `test/token-contract.test.ts` → **1 failed / 54 passed**（`AssertionError: geek: expected 'step' to be 'linear'`），换回本笔 → **55 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：只重建 web 产物（ui 的 `exports` 直接指向 `src/`）得到 `r69/before-dist`（含 `step`）与 `r69/after-dist`（只有 `linear` / `smooth`），两个一次性数据根 `/root/adelie-fork-data/r69{a,b}` 分别起在 `localhost:8996`（改后）/ `8997`（改前）（`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），用 sqlite 往 `usage_records` 手写 6 天用量（**不需要模型 key**，即 3.6 那个卡点）；探针把 `penguin.themeId` 设成 `geek` 后打开 `/usage`，量同一批折线的路径 `d`：**改前** `--ui-chart-curve` = `step`、5 条折线全是阶梯（`M81.75,132.18 H117.5 V97.81 H153.25 H189 V151.27 …`，指令序列 `MHVHHVHHVHHVHHVH…`）；**改后** = `linear`、同一批折线全是点间直线（`M81.75,132.18 L153.25,97.81 L224.75,151.27 L296.25,10 L367.75,63.45 L439.25,32.9`，指令序列 `MLLLLL`）；两态 `theme=geek`、console 各 **0 error**、**无一条 ≥400**；截图 `r69/shots/{before,after}-usage.png` 与特写 `{before,after}-chart.png`（「成本变化」那张：改前台阶、改后斜线）、探针与两态 JSON 都在 scratchpad · 端口只用 8996 / 8997（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r69{a,b}` | `b1354049` |
 | 2026-10-16 | 5.46 | **被截断的文字悬停即可看到全文**（上游 `24a2eb38` `#1069` 移植，照改动落、不是合分支；上游 13 文件 / +415 −20，本树落下 11 个跟踪文件 / +434 −19 —— 差在 `.agents/skills/penguin-harness-frontend/SKILL.md`（按 2.1c / 2.5 的口径不动）与本树没有的 `packages/web/src/features/settings/archived-sessions-section.tsx`，两份 changelog 另按本仓写法改名到本轮日期）：**两半都改** —— ① `TooltipLayer` 多一层**兜底**：新导出的 `shortenedLines()` 把指针 / 焦点下的节点按「自己或最近祖先设了 `ellipsis` / `-webkit-line-clamp`」算作被截断的一行（最多 5 层祖先），**控件**则按文档顺序收它内部每一行（最多 40 个后代），提示要弹出那一刻由 `requestFor()` 取**第一处真的被截断**的（`isCutOff()`），等宽走代码面板、其余走文字面板，空白行不弹、只是装着这些行的面板不算一行；`data-tooltip-owned`（新导出 `TOOLTIP_OWNED_ATTR`）是给「自己决定提示」的子树留的开关 —— `<Tooltip>` 的测量 span 与 `Truncated` 滚动展示尾部时都会设（后者使第五十轮的「悬停把标题尾巴滑进来」不被一个复述它的面板跟着）。② 承载信息的提示**被标记后才在完整可见的文字上显示**：`GroupHeader.title` 改成 `data-tooltip-extra` + `data-tooltip-content="text"`（工作区分组的完整路径因此「名称没被截断时」也弹）；`ToolCallCard` 新增 `subtitleFull`（应用侧 `headerSubtitlePath()`：只有副标题确实是 `shortenPath()` 的缩短形式才给全文），`…/上级/文件` 的副标题悬停即得完整路径。**一处冲突的解法**：`tooltip.tsx` 是本树第五十六 / 六十六轮改过的版本（面板自己量高度、`belowTrigger(anchor, viewport, height)`、常量仍叫 `OPEN_DELAY_MS` 而非上游已改名的 `HOVER_OPEN_DELAY_MS`），所以只取上游那一半的语义（用 `requestFor()` 取代「只问自己那个请求」），`anchor` 照旧交给面板、常量名与注释口径沿用本树。**有意没落**：上游那份 `.agents/skills/…` 的技能说明（2.1c / 2.5 口径）与「已归档对话」页的分组标题（本树没有那个文件，归档行由侧栏自己的折叠夹呈现）。**本地化**：无跨包 scope 引用点；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔 9 个源码 / 用例文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1043 通过**（+8 即本笔新用例）· core **1396 通过 / 6 跳过**（67 文件通过）· cli **38 文件 / 561 通过** · web **259 文件 / 3187 通过 / 2 跳过**（+2 即本笔新用例）· server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **反证（单测）**：在 `shortenedLines()` 开头临时插一句 `return null;`（兜底失效），只跑 `test/tooltip.test.ts` → **3 failed / 23 passed**（三条兜底用例全挂：自己那一行 / 行控件按顺序取 / owned 子树），还原后 **26 全过** · **本轮主证据（真服务端 + 真浏览器，改前改后两态，同一套探针）**：只重建 web 产物（ui 的 `exports` 直接指向 `src/`）得到 `r70/after-dist`（含 #1069）与 `r70/before-dist`（五个源码文件退回 `HEAD`），两个一次性数据根 `/root/adelie-fork-data/r70-{after,before}` 分别起在 `localhost:8998` / `8999`（`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），造数全走真接口 / 手写 Trace（**不需要模型 key**，即 3.6 那个卡点）：一个显示名超长的 Agent（`r70_long_agent`）、一条会话的工作区是深路径但末段很短（`…/one/two/three/probe-ws`）、一条会话的 Trace 里有一个 `read_file` 调用（路径 `…/web/src/features/chat/tool-call-card.tsx`）。探针在**同一批元素**上量「元素自己有没有被截断 / 它身上的提示属性 / 提示面板在不在与其文字」——**改前**：超长 Agent 名 `cutOff=true` 且身上无提示 → **面板不出现**；工作区分组表头 `cutOff=false`、有 `data-tooltip`（完整路径）但没有 `extra` → **面板不出现**；工具卡副标题 `…/chat/tool-call-card.tsx` 无任何提示 → **面板不出现**。**改后**：三者都弹出面板，文字分别是完整 Agent 名、完整工作区路径、完整文件路径，且工作区那条带 `data-tooltip-content="text"` + `data-tooltip-extra="true"`、工具卡那条带 `data-tooltip-content="code"` + `extra` 且面板 `font-family` 含 monospace（**代码面板**）。两态 console 各 **0 error**、**无一条 ≥400**；截图 `r70/shots/{before,after}-{agent,workspace,tool}.png`、探针 `r70/probe.mjs`、造数 `r70/setup.mjs`、两态 JSON 与改前源码留底都在 scratchpad · 端口只用 8998 / 8999（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r70-{after,before}`，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`） | `23522eab` |
 | 2026-10-17 | 5.47 | **列表行的操作始终可见，无论文字多长**（上游 `ef12d442` `#1157` 移植，照改动落、不是合分支；**接手的是 07:00 那一轮（r67）被 App 重启打断的半成品**，并补上它缺的那一段）：`CollapsibleSection` 的主体格子设 `min-w-0`（折叠网格的 `auto` 列不再按截断行 `nowrap` 的完整长度撑宽）；`ListRow` 把标题与说明放进单列 `minmax(0, 1fr)` 网格（一行最窄只需容下标志、日期与操作），字符串形式的文字最多 1,000 个字符上页面、完整文字进悬停提示（不切代理对）；日期与操作收进一个可换行、右对齐的组（行上 `flex-wrap`、文字上 `basis-40`）—— 这段布局来自上游 `#1133`（`5d01f6a4`），缺它时 #1157 自带的 gallery 检查在「最大字号 + 220 px 卡片」下三个删除按钮全被裁掉；gallery 的数据看板新增超长文字记忆行与 Playwright 检查，`list-row.test.ts` 两条既有断言跟着新标记走；**本树没有上游那个「卡片被撑宽」的现象**（折叠主体本来就 `overflow-hidden`，那一格的自动最小尺寸已是 0），真界面量到的是行的 min-content 由 5417 / 5576 / 513 px 降到 120 px | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）**）· `npx oxlint` **0 警告 0 错误**（2207 文件）· 本笔 13 个跟踪文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过 · ui **129 文件 / 1043 通过** · cli **561** · web **259 文件 / 3187 通过 / 2 跳过** · server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **gallery 的 `test:e2e` 9/9 通过**（3 主题 × 2 语言 × 看板原宽 / 360 / 280 / 220 px、最大字号 + 深色、min-content、悬停看全文）· **反证（同一套 e2e，两个 ui 源文件退回 `HEAD`）**：**2 failed**（最大字号下 220 px 时三个删除按钮被卡片裁掉；min-content **2146** vs 期望 ≤154），还原后 **9 passed** · **反证（补 `#1133` 那段换行布局前后）**：不补时同一条 e2e 也 **2 failed**（同上两条），补上 9/9 · **真服务端 + 真浏览器两态**：一次性数据根 `/root/adelie-fork-data/r71-{after,before}`（各写三条真记忆，其中两条说明各几百字），`ADELIE_WEB_DIST` 分别指向本轮重建的改后 / 改前 web 产物，起在 `localhost:8990` / `8991`（`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），打开 `/agents/default_agent?tab=memory`，在 1280 / 1024 / 768 / 390 / 320 px 与「390 px + 最大字号」下量「每行与每个操作是否在卡片内 / 行的 min-content / 页面有没有横向滚动」——**改前** min-content **5417 / 5576 / 513 px**（390 px + 最大字号下 **6759 / 6958 / 629**），**改后** **120 px**（同上 **138**），两态的行与操作都在卡片内、console 各 **0 error**、**无一条 ≥400**；截图 `r71/shots/{before,after}-memory*.png`、探针 `r71/probe.mjs`、造数 `r71/seed-memory.mjs` 都在 scratchpad · 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `c5b9ab37` |
+| 2026-10-17 | 7.1 | **浏览器 e2e 套件重新可信**（不是移植，是修本仓自己的测试设施；两个文件 / +102 −57，只有测试夹具与用例、无用户可见行为）：`packages/web/e2e/subagent.spec.mjs` 4 条里 3 条本来就在红 —— 停靠栏打开后占位符与发送按钮各命中**两个**元素（面板里的子会话用的是同一个 `ChatInput`）、工具栏那枚琥珀色点早已改叫 `bg-tone-attention-emphasis`（`Dot` 按 token 上色）、以及一条假设「plain Task 之后拓扑回落到空图」的**陈旧断言**（`extractTopology` 的默认口径是「最近一次真的派生子智能体的 Task」，那条空态文案永不出现），三处都修了，并把最后一条重写成有意义的版本（第二条任务改用 mock 自带的 `run another subagent` 派第二次，用身份条的 `shortSessionId` 断言「钉住 = 第一轮的孩子、关掉标签页重开 = 最新一次派生的孩子」）；`packages/web/e2e/mock-llm.mjs` 的标题分支还在找 `concise title`，而提示词早已改说 `You are a title generator.`，分支因此**从未触发**、会话标题一直停在宿主兜底 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，192 接口 / 587 类型）· `pnpm lint` **0 警告 0 错误**（2397 文件）· 两个改动文件 `prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **129 文件 / 1043 通过** · cli **561**（38 文件）· web **259 文件 / 3187 通过 / 2 跳过** · server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：改前 `subagent.spec.mjs` **3 failed / 3 passed**，改后该文件 **4/4**、`background-subagent.spec.mjs` **2/2** 全绿；整套 76 条的基线由 **26 failed** 变成 **52 passed / 24 failed**（翻绿的除 subagent 那两条，还有 `files-switch.spec.mjs` 那条断言模型标题的）· **反证一（夹具陈旧）**：修 mock 前 `subagent.spec.mjs:117` 正是死在标题断言（收到 `Count the TODO items in the`）· **反证二（新断言非空转）**：把 `chat-page.tsx` 那段复位 effect 删掉、重建 web 产物再跑 → **1 failed**（身份条 `Expected substring "3e1dba72" / Received "General Agent8b8f9e05"`，即重开后仍停在钉住的那一轮），还原后全绿 · 端口只用 8930 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r72-*` | `12f7c7c1` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10032,3 +10064,99 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
   本线能自己推进的候选就已用完 —— 该回头问用户**桌面壳那半条 2.2c（先拍板 3.5）**或**要不要动发布链路（4.x）**。
 - 卡点原地：**2.2c**（写侧剩下的全在桌面壳一侧与既有部署单元里）、**3.5**（取哪个桌面壳）、**3.6**（模型 key）、
   **4.1–4.3**（明令不动）、**5.6** / **5.10**（促销搬进 Project 配置 / 新依赖 `mermaid`）。
+
+## 第七十一轮：浏览器 e2e 套件重新可信（2026-10-17，条目 7.1）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `f8424737`，`git fetch origin && git merge --ff-only origin/main`
+  = Already up to date（不切分支、不碰 `legacy/main`、没推 upstream）。
+- 待办里所有未勾选条目都不可做：**2.2c**（写侧剩下的全在桌面壳 / 既有部署单元里）、**3.5**（桌面壳取哪个要拍板）、
+  **3.6**（要模型 key）、**4.1–4.3**（明令不动；其中 4.1 的改名在本轮进行中由**另一条线**做掉并推送了，见下）、
+  **5.6**（促销搬进 Project 配置要拍板）、**5.10**（要新依赖 `mermaid`）。
+- 上游候选这一轮也不成立：上游 `main` 仍是 **`0eafa6dc`**（按 URL 现拉到 `refs/adelie-tmp/upstream-main-r71`，
+  与 `r69` / `r70` 同一个提交、无新提交），桌上那 14 笔第七十轮已逐笔量过「缺本树没有的文件」。
+- 于是选台账里被点名过的**自有验证设施**问题：`packages/web/e2e/subagent.spec.mjs` 4 条里 3 条本来就红
+  （第五十七 / 六十五轮记过）。这条不需要任何凭证、不碰界面源码、不新增依赖，正好是「不用等拍板」的一件。
+
+### 改了什么（两个文件 / +102 −57）
+
+- **`packages/web/e2e/subagent.spec.mjs`**
+  - 新增 `composerOf(page)` / `sendButtonOf(page)` 两个助手（`textarea:not([data-testid="dock"] textarea)`、
+    `button[aria-label="发送"]:not([data-testid="dock"] *)`），4 处占位符定位与 7 处发送按钮定位换成它们。
+    **根因**：面板里的子会话用的是同一个 `ChatInput`，打开停靠栏后 `getByPlaceholder(/输入消息/)` 与
+    `button[aria-label="发送"]` 各命中两个元素，strict mode 直接报违规。`:not(a b)` 这种复合选择器先单独量过
+    Chromium 支持（一次性探针，跑完即删）。
+  - 琥珀色点断言 `span.bg-amber-500` → `span.bg-tone-attention-emphasis`（`Dot` 按 token 上色；
+    `panels-toolbar.test.ts` 断言的就是这个类名）。
+  - **重写一条陈旧断言**：原来的「关掉标签页后工具栏重开 → 回到 latest（空任务）→ 显示『本次任务尚未派生子智能体』」
+    在现代码里永不成立 —— `extractTopology` 的默认口径是「最近一次真的派生子智能体的 Task」（上游 `d4c27099`
+    #433 引入，本树与上游 `agent-topology.ts` 逐字节相同），而 `chat-page.tsx` 那段复位 effect
+    （`if (!agentsTabExists) { setSubagentFocus(null); setSubagentTaskScope(null); }`）是产品意图。
+    现在第二条任务改用 mock 自带的 `run another subagent`（第二次派生子会话），新增 `childrenOf()` 助手与
+    `firstTurnChild` / `secondTurnChild` 识别，用身份条的 `shortSessionId` 断言「钉住 = 第一轮的孩子、
+    关掉标签页重开 = 最新一次派生的孩子」，并断言那条空态文案 `toHaveCount(0)`；文件头注释、侧栏断言
+    （折叠的 `后台会话（2）` 可见、展开后两条 `Subagent TODO summary`）与标题 / Trace 断言（改成遍历两个孩子）
+    一并跟上。
+- **`packages/web/e2e/mock-llm.mjs`**：标题分支的键短语陈旧 —— 提示词（`core/src/internal/session-title.ts`
+  的 `buildTitlePrompt`）早已是 `You are a title generator.` 开头，而 mock 仍在 `includes("concise title")`，
+  于是**标题分支从来没触发过**、所有会话标题都停在宿主兜底（用户首句截断）。改成该句并补了注释说明缘由
+  （文件头注释同步）。
+- **没做**：`packages/web/scripts/theme-shots.mjs` 里同一处陈旧键（不在测试套件里，本机没有便宜的验证手段）
+  —— 记进 7.2 一并留待下一轮。
+
+### 验证（都不是推测）
+
+- **改前复现**（单文件）：`subagent.spec.mjs` **3 failed / 3 passed**（两条 strict mode 违规 + 一条
+  `span.bg-amber-500` 找不到）。
+- 改完：`subagent.spec.mjs` **4/4**、`background-subagent.spec.mjs` **2/2** 全绿。
+- **整套浏览器 e2e 基线**（一次性数据根 `/root/adelie-fork-data/r72-run3`，真服务端 + 真 mock LLM + 真 Chromium）：
+  76 条里 **52 passed / 24 failed**；修 mock 之前那次（`r72-run2`）是 **26 failed**，翻绿的两条正是
+  `subagent.spec.mjs:117` 与 `files-switch.spec.mjs:19`（后者断言模型写出的标题 `Configure Tailwind theme`）。
+  剩下 24 条红的分布写进 7.2（与本轮改的两个文件无关）。日志在 scratchpad `r72/suite-run3.log`、
+  失败清单 `r72/after2.txt`。
+- **反证一（mock 那条键确实是红的原因）**：`r72-run2` 里 `subagent.spec.mjs:117` 就死在标题断言
+  （`Received "Count the TODO items in the"` —— 宿主兜底截断的首句）。
+- **反证二（重写后的断言不是空转）**：临时把 `chat-page.tsx` 里那段复位 effect 删掉、重建 web 产物、
+  再跑 `subagent.spec.mjs` → **1 failed**（身份条 `Expected substring "3e1dba72" / Received "General Agent8b8f9e05"`，
+  即重开后仍停在被钉住的那一轮）；`git checkout --` 还原并重建后全绿。原文留底 `r72/chat-page.orig.tsx`。
+- **六包 `typecheck`**：`EXIT=0`，六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（192 接口 / 587 类型）。
+- **`pnpm lint`**：**0 警告 0 错误**（2397 文件）；两个改动文件 `prettier --check` 干净。
+- **逐包 test**：全部 `EXIT=0`、**0 失败** —— core **1396** / 6 跳过（68 文件，33s）· ui **129 文件 / 1043 通过**（32s）·
+  cli **561**（38 文件，15s）· web **259 文件 / 3187 通过 / 2 跳过**（51s）· server **201 文件 / 2937 通过 / 4 跳过**（96s）；
+  hmr 无测试文件。数字与第七十轮逐字一致（本轮只动测试夹具，两个文件都不进任何包的 vitest 收集面）。
+- 端口只用 8930（服务端）/ 8931（mock LLM），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r72-*`；一次性探针 `packages/web/e2e/tmp-probe.spec.mjs` 已删。
+- **如实记一笔**：本轮的门禁是在**另一条线把包名改成 `@adelie/*` 之后**跑的（见下），所以按目录定位
+  （`pnpm -C packages/<目录> test`）而不是按包名过滤；e2e 那两次基线跑在改名之前，改的是同一批文件。
+
+### 与另一条线的交汇
+
+- 本轮进行中，本工作区的 `HEAD` 自己往前走了：`f8424737` → `70feaeea`（`c86851e4` Pages 官网快照、
+  `257f5f7d` chore(release) 0.4.2、`70feaeea` docs(release) v0.4.2 发布正文）→ `2ef16273`（官网快照不进格式检查）
+  → **`a113ea8e`**（`refactor(npm): 所有包改挂 @adelie 名下，不再用 penguin- 那套名字`，即待办 4.1 的改名，
+  **已推送**）。
+- 改名中途（07:43 起）工作区一度有 **990+ 个文件未提交**，其中也包括本文件；等它落地后工作区只剩本轮那两个
+  文件，于是**这一次没有用到**「把对方版本存到 scratchpad → 造 HEAD + 自己编辑的版本」那套外科做法 ——
+  本轮直接在改名后的树上编辑台账。我的两个文件里没有任何 scope 字符串（核过：`@lmliheng` / `@adelie`
+  一个都没有），改名与它们不相交。
+- 另一条线在同一棵树上跑过两轮 `pnpm typecheck && pnpm lint && (npx prettier --check .) && pnpm -r test`，
+  与本轮的门禁撞在一起；本轮等它提交完（08:08）才开始自己那一轮，避免并发把结果搅浑。
+
+### 收尾
+
+- 两笔推送：一笔代码（两个文件，`12f7c7c1`）、其后一笔只动台账（本文件）。每笔都带 pathspec。
+- **没有切版本号、没发 npm、没发安装包、没发发布汇总**；本轮只有测试夹具与用例、无用户可见行为，
+  所以**不带 changelog**。
+
+### 下一轮从这里接
+
+- 上游 `main` 仍是 **`0eafa6dc`**；桌上候选（`#1067` / `#1072` / `#1071` / `#1038` / `#1047` / `#835` / `#1073`）
+  都还是「本树没有那个文件或常量」，除非上游有新提交，这条线没有可整块移植的了。
+- 本线自己还能量的一件：**7.2**（浏览器 e2e 剩的 24 条红 —— 先分诊「夹具陈旧 / 选择器失效 / 真回归」，
+  陈旧夹具那一类可以照本轮这两处同一套办法批量修）。
+- 卡点原地：**2.2c**（写侧剩下的全在桌面壳一侧与既有部署单元里）、**3.5**（取哪个桌面壳）、**3.6**（模型 key）、
+  **4.2** / **4.3**（4.1 的改名已由另一条线落地并推送，这两条仍在「明令不动」里）、**5.6** / **5.10**
+  （促销搬进 Project 配置 / 新依赖 `mermaid`）。
+- **给下一轮提个醒**：仓库自己的包名现在不是 `@lmliheng/penguin-*` 而是 **`@adelie/*`**（`a113ea8e`），
+  `pnpm --filter` 的过滤串要跟着换；`pnpm -C packages/<目录> test` 这类写法不受影响。
