@@ -52,7 +52,16 @@ export function useCompletionNotifications(): void {
     if (!enabled) return;
     if (completed.length === 0) return;
     if (!document.hidden && document.hasFocus()) return;
-    if (notificationPermission() !== "granted") return;
+    if (notificationPermission() !== "granted") {
+      // Warned, not swallowed: nothing else on screen reports this state after the settings
+      // switch was turned on, and a notification dropped here looks exactly like a completion
+      // the tracker never saw — which is what made the Windows report impossible to narrow
+      // down (task 42). The devtools console is where the desktop shell's log drawer can see it.
+      console.warn(
+        `[notifications] ${completed.length} task(s) finished while away, but the platform grants no notifications (${notificationPermission()})`,
+      );
+      return;
+    }
     for (const sessionId of completed) {
       const session = sessions.find((s) => s.sessionId === sessionId);
       const title = session?.title ?? S.chat.defaultSessionTitle;
@@ -71,9 +80,10 @@ export function useCompletionNotifications(): void {
           if (agentId !== null) setCurrentAgentIdRef.current(agentId);
           navigateRef.current(`/chat/${sessionId}`);
         };
-      } catch {
-        // Notification construction is best-effort; a platform refusing it must not
-        // break the app.
+      } catch (err) {
+        // Notification construction is best-effort; a platform refusing it must not break the
+        // app — but it has to say so, or a shell that never shows one gives no clue why.
+        console.warn(`[notifications] the notification for ${sessionId} was refused:`, err);
       }
     }
   }, [enabled, sessions]);

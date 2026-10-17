@@ -65,6 +65,7 @@ import { mintApiToken } from "@adelie/server/auth-token";
 import { liveServerLock } from "@adelie/server/lock";
 import type { ServerLock } from "@adelie/server/lock";
 import { appIdentity, desktopDataRoot, resolveProfile } from "./app-identity.js";
+import { grantsPermission } from "./app-permissions.js";
 import {
   createSignInGuard,
   isLoginPageUrl,
@@ -172,6 +173,25 @@ function fatal(context: string, err: unknown): void {
   const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
   dialog.showErrorBox(app.name, `${context}\n\n${detail}`);
   app.exit(1);
+}
+
+/**
+ * Installs the App window's permission handlers on the default session (see app-permissions.ts
+ * for why notifications need one at all).
+ *
+ * Called once, before the window exists, and before boot() resolves an origin: both handlers
+ * read `appOrigin` at every check, so they answer for whatever origin this launch ended up on.
+ * `requestingUrl` is the page that asked; the check handler's `requestingOrigin` is already an
+ * origin, which is the same comparison isAppUrl makes.
+ */
+function allowAppNotifications(): void {
+  session.defaultSession.setPermissionCheckHandler((_contents, permission, requestingOrigin) =>
+    grantsPermission(permission, requestingOrigin, appOrigin),
+  );
+  session.defaultSession.setPermissionRequestHandler((contents, permission, callback, details) => {
+    const asked = details.requestingUrl ?? contents?.getURL() ?? "";
+    callback(grantsPermission(permission, asked, appOrigin));
+  });
 }
 
 function createWindow(url: string): void {
@@ -749,6 +769,9 @@ if (!app.requestSingleInstanceLock()) {
         shell: process.env.SHELL,
         log: (line) => logLine(`[shell] ${line}`),
       });
+      // The App page may ask for notifications and nothing new; installed before the window
+      // exists, so the very first request already finds a handler.
+      allowAppNotifications();
       // Standard menu plus native desktop-only actions; the window gets no IPC channel.
       // The install item is the release profile's, like the per-launch repair below: the
       // `penguin` command has one owner, and a `--dev` instance of the same install would
