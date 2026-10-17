@@ -5,7 +5,7 @@
  * node-only unit tests (test/schedule-panel-state.test.ts), and shared by both listers — the
  * chat dock's panel and the scheduled-tasks page — so the two filter one list the same way.
  */
-import type { ScheduleItem, ScheduleStatus } from "@lmliheng/penguin-server/api";
+import type { ScheduleItem, ScheduleStatus } from "@adelie/server/api";
 import { S } from "../../lib/strings";
 
 export type ScheduleFilter = "all" | "active" | "paused" | "completed";

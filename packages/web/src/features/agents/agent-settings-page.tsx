@@ -20,8 +20,8 @@ import type {
   AgentCompactionConfigDto,
   AgentKernelUpdateResponse,
   AgentModelConfigDto,
-} from "@lmliheng/penguin-server/api";
-import type { ToolDefinitionConfig, ToolPermission } from "@lmliheng/penguin-core/interfaces";
+} from "@adelie/server/api";
+import type { ToolDefinitionConfig, ToolPermission } from "@adelie/core/interfaces";
 import {
   Button,
   Card,
@@ -49,8 +49,8 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
-import type { OptionMenuChoice } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { OptionMenuChoice } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

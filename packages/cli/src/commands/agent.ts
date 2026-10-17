@@ -43,7 +43,7 @@ import type {
   AgentCreateResponse,
   AgentSummary,
   ServerSettingsResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import { resolveApprovalMode } from "../approval.js";
 import { ApiError, resolveConnection, resolveProjectId, ServerClient } from "../client.js";
 import { listAgents } from "../server-session.js";

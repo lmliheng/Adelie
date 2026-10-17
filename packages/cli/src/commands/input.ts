@@ -28,7 +28,7 @@
  * Docs: /docs/cli § "penguin input".
  */
 import type { Command } from "commander";
-import { isModelMessage, type OmniMessage } from "@lmliheng/penguin-core";
+import { isModelMessage, type OmniMessage } from "@adelie/core";
 import { StreamRenderer, dim } from "../render.js";
 import { parseDurationMs } from "../duration.js";
 import { promptApproval } from "../approval.js";

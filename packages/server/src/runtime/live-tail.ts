@@ -22,12 +22,8 @@
  * also closes the fragment (covers stop-less closures, e.g. interruption cleanup); the
  * whole session entry is dropped when the run ends (SessionManager.drive's finally).
  */
-import { isPartialPayload } from "@lmliheng/penguin-core";
-import type {
-  CompleteModelPayload,
-  OmniMessage,
-  PartialModelPayload,
-} from "@lmliheng/penguin-core";
+import { isPartialPayload } from "@adelie/core";
+import type { CompleteModelPayload, OmniMessage, PartialModelPayload } from "@adelie/core";
 
 type PartialKind = PartialModelPayload["type"];
 

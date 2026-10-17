@@ -9,8 +9,8 @@
  * the component library's topics (src/library/topics.ts), in both dictionaries; a test checks
  * each covers every id.
  */
-import type { HookName, StreamReveal, TextVariant, ThemeId, ToneName } from "@lmliheng/penguin-ui";
-import type { TextSize } from "@lmliheng/penguin-ui/boot";
+import type { HookName, StreamReveal, TextVariant, ThemeId, ToneName } from "@adelie/ui";
+import type { TextSize } from "@adelie/ui/boot";
 import type { SurfaceGroupId, SurfaceId } from "./app/surfaces";
 import type { ChartToken } from "./library/chart-tokens";
 import type { TopicGroupId, TopicId } from "./library/topics";
@@ -683,7 +683,7 @@ export const zh = {
       besideTip: "在触发元素右侧弹出",
       belowTip: "在触发元素下方弹出",
       command:
-        "pnpm --filter @lmliheng/penguin-web exec vitest run test/session-activity.test.ts --reporter verbose",
+        "pnpm --filter @adelie/web exec vitest run test/session-activity.test.ts --reporter verbose",
     },
     tabs: {
       basic: "标签切换",

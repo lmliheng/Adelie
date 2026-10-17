@@ -12,7 +12,7 @@
  * never a silent unconfined run, and never a silently dropped dimension.
  */
 import fs from "node:fs";
-import type { SpawnConfiner } from "@lmliheng/penguin-core";
+import type { SpawnConfiner } from "@adelie/core";
 import type {
   SandboxDimension,
   SandboxLimit,
@@ -20,10 +20,10 @@ import type {
   SandboxProvider,
   SandboxProviderSource,
   SandboxSettings,
-} from "@lmliheng/penguin-core/plugin";
+} from "@adelie/core/plugin";
 import { providerDimensions, requestedDimensions } from "./dimensions.js";
-import { Interface, Module, Provide } from "@lmliheng/penguin-core/kernel";
-import type { Slot, ClassCtx, Json } from "@lmliheng/penguin-core/kernel";
+import { Interface, Module, Provide } from "@adelie/core/kernel";
+import type { Slot, ClassCtx, Json } from "@adelie/core/kernel";
 
 interface MountedProvider {
   name: string;

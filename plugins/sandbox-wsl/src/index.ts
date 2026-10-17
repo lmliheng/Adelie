@@ -1,11 +1,11 @@
 /**
- * @lmliheng/penguin-plugin-sandbox-wsl — a Windows sandbox backend that confines in a Linux
+ * @adelie/sandbox-wsl — a Windows sandbox backend that confines in a Linux
  * distro: each agent command runs in a dedicated WSL2 distro, as an unprivileged account, under
  * bubblewrap.
  *
  * A PLUGIN PACKAGE, not part of the platform: a Project asks for it on the Plugins page and the
  * harness resolves it from the installation. It compiles against the
- * `@lmliheng/penguin-core/plugin` surface and has no runtime dependency on the harness.
+ * `@adelie/core/plugin` surface and has no runtime dependency on the harness.
  *
  *   fs-write    → bwrap binds the Workspace (read-write or read-only) at its /mnt path; the
  *                 distro is read-only and every other Windows drive is hidden
@@ -29,14 +29,14 @@
  * the card while it runs.
  */
 import { fileURLToPath } from "node:url";
-import { Bind, Component, Interface, Use } from "@lmliheng/penguin-core/plugin";
+import { Bind, Component, Interface, Use } from "@adelie/core/plugin";
 import type {
   ConfinedArgv,
   Plugin,
   SandboxPolicy,
   SandboxProvider,
   SandboxProviderSource,
-} from "@lmliheng/penguin-core/plugin";
+} from "@adelie/core/plugin";
 import { readHost, readState } from "./host.js";
 import {
   BASE_TITLES,

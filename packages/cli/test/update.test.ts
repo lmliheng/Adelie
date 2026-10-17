@@ -50,14 +50,15 @@ describe.skipIf(process.platform === "win32")(
     });
 
     it("npm global: npm's own prefix layout", () => {
-      expect(
-        detectInstall("/usr/local/lib/node_modules/@lmliheng/penguin-cli/dist/index.js"),
-      ).toEqual({ kind: "npm", globalRoot: "/usr/local/lib/node_modules" });
+      expect(detectInstall("/usr/local/lib/node_modules/@adelie/cli/dist/index.js")).toEqual({
+        kind: "npm",
+        globalRoot: "/usr/local/lib/node_modules",
+      });
     });
 
     it("npm global: pnpm's global store, through the .pnpm virtual dir", () => {
       const p =
-        "/home/me/.local/share/pnpm/global/5/node_modules/.pnpm/@lmliheng+penguin-cli@0.1.1/node_modules/@lmliheng/penguin-cli/dist/index.js";
+        "/home/me/.local/share/pnpm/global/5/node_modules/.pnpm/@adelie+cli@0.1.1/node_modules/@adelie/cli/dist/index.js";
       const info = detectInstall(p);
       expect(info.kind).toBe("npm");
       expect(info.globalRoot).toContain(".pnpm");
@@ -113,19 +114,19 @@ describe("globalInstallCommand", () => {
   it("uses each manager's own global-install spelling", () => {
     expect(globalInstallCommand("pnpm", "0.1.2")).toEqual({
       command: "pnpm",
-      args: ["add", "-g", "@lmliheng/penguin-cli@0.1.2"],
+      args: ["add", "-g", "@adelie/cli@0.1.2"],
     });
     expect(globalInstallCommand("npm", "0.1.2")).toEqual({
       command: "npm",
-      args: ["install", "-g", "@lmliheng/penguin-cli@0.1.2"],
+      args: ["install", "-g", "@adelie/cli@0.1.2"],
     });
     expect(globalInstallCommand("yarn", "0.1.2")).toEqual({
       command: "yarn",
-      args: ["global", "add", "@lmliheng/penguin-cli@0.1.2"],
+      args: ["global", "add", "@adelie/cli@0.1.2"],
     });
     expect(globalInstallCommand("bun", "0.1.2")).toEqual({
       command: "bun",
-      args: ["add", "-g", "@lmliheng/penguin-cli@0.1.2"],
+      args: ["add", "-g", "@adelie/cli@0.1.2"],
     });
   });
 });
@@ -476,7 +477,7 @@ describe("planUpdate (what the command decides before it touches anything)", () 
       action: "npm",
       manager: "npm",
       command: "npm",
-      args: ["install", "-g", "@lmliheng/penguin-cli@0.1.2"],
+      args: ["install", "-g", "@adelie/cli@0.1.2"],
     });
   });
 
@@ -517,7 +518,7 @@ describe("planUpdate (what the command decides before it touches anything)", () 
     expect(planUpdate({ ...base, platform: "win32", install: npmGlobal })).toEqual({
       action: "refuse",
       reason: "windows-global",
-      command: "npm install -g @lmliheng/penguin-cli@0.1.2",
+      command: "npm install -g @adelie/cli@0.1.2",
     });
   });
 

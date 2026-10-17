@@ -4,11 +4,8 @@
  * any warnings the import came back with. The browser imported from is only read.
  */
 import { useEffect, useState } from "react";
-import type {
-  BuiltinBrowserImportResult,
-  BuiltinBrowserImportSource,
-} from "@lmliheng/penguin-server/api";
-import { Button, Checkbox, FieldLabel, Input, Modal, Radio } from "@lmliheng/penguin-ui";
+import type { BuiltinBrowserImportResult, BuiltinBrowserImportSource } from "@adelie/server/api";
+import { Button, Checkbox, FieldLabel, Input, Modal, Radio } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";

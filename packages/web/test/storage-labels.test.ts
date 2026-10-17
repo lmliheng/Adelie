@@ -41,7 +41,7 @@ import type {
   StorageClass,
   StoragePlanView,
   StorageTrashEntry,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 
 /** Every class the ledger accounts for (core's STORAGE_CLASSES, the API's StorageClass). */
 const CLASSES: StorageClass[] = [

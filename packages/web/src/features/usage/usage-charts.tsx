@@ -37,7 +37,7 @@
  * answers the pointer wherever it runs.
  */
 import { useState } from "react";
-import type { UsageGranularity, UsageSeriesPoint } from "@lmliheng/penguin-server/api";
+import type { UsageGranularity, UsageSeriesPoint } from "@adelie/server/api";
 import {
   ChartBar,
   ChartBarHit,
@@ -56,8 +56,8 @@ import {
   seriesPoints,
   stackSegments,
   useChartWidth,
-} from "@lmliheng/penguin-ui";
-import type { ChartPaint, LegendItem, TokenBucketKey } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { ChartPaint, LegendItem, TokenBucketKey } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { formatPercent, humanizeTokens } from "../../lib/format";
 import { NEUTRAL_SERIES } from "../../lib/category-colors";

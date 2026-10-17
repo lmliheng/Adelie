@@ -13,12 +13,7 @@
  * Run:  pnpm --dir examples/build-agent-with-agent start
  *   or: npx tsx examples/build-agent-with-agent/build-agent.ts
  */
-import {
-  createAgent,
-  userText,
-  isCompleteModelMessage,
-  type OmniMessage,
-} from "@lmliheng/penguin-core";
+import { createAgent, userText, isCompleteModelMessage, type OmniMessage } from "@adelie/core";
 
 /** Stream a Session run to stdout and collect the assistant's final text. */
 async function runToStdout(run: AsyncGenerator<OmniMessage>): Promise<string> {

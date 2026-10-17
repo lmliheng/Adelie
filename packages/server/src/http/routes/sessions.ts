@@ -18,8 +18,8 @@ import {
   sessionScratchpadDir,
   stripLeadingMarkerBlocks,
   userText,
-} from "@lmliheng/penguin-core";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { OmniMessage } from "@adelie/core";
 import type {
   ApprovalMode,
   FilesStatResponse,
@@ -122,8 +122,8 @@ import {
   toAttachmentLimits,
 } from "../../services/attachment-limits.js";
 import type { AttachmentLimits } from "../../services/attachment-limits.js";
-import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
-import type { ClassCtx } from "@lmliheng/penguin-core/kernel";
+import { Bind, Component, Use } from "@adelie/core/kernel";
+import type { ClassCtx } from "@adelie/core/kernel";
 import { Channels, Config, Desktop } from "../../hmr/capabilities.js";
 import { Sessions as ManagerIface, SessionServiceIface } from "../../runtime/session-manager.js";
 import { Messaging } from "../../runtime/messaging/bridge.js";

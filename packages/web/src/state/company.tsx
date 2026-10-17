@@ -56,10 +56,10 @@ import type {
   OrganizationSummary,
   ServerEvent,
   UiPrefs,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import { useStore } from "zustand/react";
 import { createStore } from "zustand/vanilla";
-import { toastAttention } from "@lmliheng/penguin-ui";
+import { toastAttention } from "@adelie/ui";
 import * as api from "../api/endpoints";
 import { apiErrorText } from "../lib/api-error";
 import { S } from "../lib/strings";

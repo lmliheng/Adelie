@@ -17,7 +17,7 @@
  * The first two checks are also the API tab's try route's (try-route.ts), which stands the
  * owner's sign-in where the key would be.
  */
-import { isValidId } from "@lmliheng/penguin-core";
+import { isValidId } from "@adelie/core";
 import type { MiddlewareHandler } from "hono";
 import type { AppEnv } from "../auth/middleware.js";
 import { bearerToken } from "../auth/middleware.js";

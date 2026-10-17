@@ -54,9 +54,9 @@ import {
   toolCallOutput,
   userText,
   withOrigin,
-} from "@lmliheng/penguin-core";
-import type { OmniMessage, TokenCounts } from "@lmliheng/penguin-core";
-import type { AmspEvent } from "@lmliheng/amsp";
+} from "@adelie/core";
+import type { OmniMessage, TokenCounts } from "@adelie/core";
+import type { AmspEvent } from "@adelie/amsp";
 import type { ServerEvent } from "../src/api/types.js";
 import { AmspTranslator } from "../src/amsp/translate.js";
 

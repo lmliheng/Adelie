@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router";
-import type { OrgChartResponse, OrgEmployeeItem } from "@lmliheng/penguin-server/api";
+import type { OrgChartResponse, OrgEmployeeItem } from "@adelie/server/api";
 import {
   Button,
   ConfirmModal,
@@ -42,7 +42,7 @@ import {
   toastError,
   toastSuccess,
   usePointerDrag,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

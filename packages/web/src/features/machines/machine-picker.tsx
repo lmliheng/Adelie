@@ -8,7 +8,7 @@
  * in-place panel.
  */
 import { useState } from "react";
-import { Button, ChevronDown, Dropdown, MenuItem } from "@lmliheng/penguin-ui";
+import { Button, ChevronDown, Dropdown, MenuItem } from "@adelie/ui";
 
 export interface MachineChoice {
   value: string;

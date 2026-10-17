@@ -1,9 +1,9 @@
 /**
- * @lmliheng/penguin-plugin-sandbox-seatbelt — a macOS Seatbelt sandbox backend.
+ * @adelie/sandbox-seatbelt — a macOS Seatbelt sandbox backend.
  *
  * A PLUGIN PACKAGE, not part of the platform: a Project asks for it on the Plugins page
  * and the harness resolves it from the installation. It compiles against the
- * `@lmliheng/penguin-core/plugin` surface (types, plus the decorators its bundle
+ * `@adelie/core/plugin` surface (types, plus the decorators its bundle
  * carries) and has no runtime dependency on the
  * harness or on any other backend.
  *
@@ -34,14 +34,14 @@ import { execFile, spawnSync } from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Bind, Component, Interface, Use } from "@lmliheng/penguin-core/plugin";
+import { Bind, Component, Interface, Use } from "@adelie/core/plugin";
 import type {
   ConfinedArgv,
   Plugin,
   SandboxPolicy,
   SandboxProvider,
   SandboxProviderSource,
-} from "@lmliheng/penguin-core/plugin";
+} from "@adelie/core/plugin";
 
 /** Default probe budget; a probe that hangs must not hang the first spawn forever. */
 const PROBE_TIMEOUT_MS = 5_000;

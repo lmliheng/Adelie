@@ -14,8 +14,8 @@
  * refresh — while a hidden tab fetches nothing. trace-refresh.ts states the rule exactly.
  */
 import { useEffect, useRef, useState } from "react";
-import type { SessionInfo } from "@lmliheng/penguin-server/api";
-import { DownloadIcon, EmptyState, ICON_SIZE, NoticeStrip, Skeleton } from "@lmliheng/penguin-ui";
+import type { SessionInfo } from "@adelie/server/api";
+import { DownloadIcon, EmptyState, ICON_SIZE, NoticeStrip, Skeleton } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

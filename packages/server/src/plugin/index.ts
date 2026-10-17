@@ -1,7 +1,7 @@
 /**
- * The harness's plugin surface — the `@lmliheng/penguin-server/plugin` subpath.
+ * The harness's plugin surface — the `@adelie/server/plugin` subpath.
  *
- * The contract is `@lmliheng/penguin-core/plugin` (a plugin is a set of
+ * The contract is `@adelie/core/plugin` (a plugin is a set of
  * modules) and this module does not re-export it: a plugin imports the contract from
  * core and this subpath only for what its name promises, so a package's import sites say
  * which of the two it needs — a sandbox backend, written against the sandbox vocabulary

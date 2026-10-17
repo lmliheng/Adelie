@@ -22,7 +22,7 @@ import {
   isAddableGroup,
   isVendorGroup,
   unroutableVendorModel,
-} from "@lmliheng/penguin-core/model-catalog";
+} from "@adelie/core/model-catalog";
 import { groupHeaderActions } from "../src/features/models/group-header";
 import { ModelCard, unroutableFix } from "../src/features/models/models-page";
 import type { RowState } from "../src/features/models/models-page";

@@ -1,5 +1,5 @@
 /**
- * Plugin library page: the built-in plugin library (loaded by core from the @lmliheng/* packages), shown sectioned by category.
+ * Plugin library page: the built-in plugin library (loaded by core from the @adelie/* packages), shown sectioned by category.
  * A plugin ships skills and/or a hook package (scripts the harness runs at the loop's hook
  * points, e.g. after every Task), and is installed on an Agent as a whole. Each list is a
  * collapsible section whose head strip folds it (the theme's layout motion moves the fold). Cards
@@ -55,7 +55,7 @@ import type {
   PluginIndexEntry,
   PluginItem,
   SkillMetadataItem,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   AgentAvatar,
   Badge,
@@ -80,7 +80,7 @@ import {
   UpdateDot,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
@@ -1186,7 +1186,7 @@ export function availablePluginRows(
  * The market entry that describes a library plugin, when the registry has one. The two lists
  * name the same package differently: the library by the directory its package was read from
  * (`csu-mail`), the market by the specifier a Project's list would take
- * (`@lmliheng/csu-mail`) — and a plugin package's version is its own `plugin.json`'s in both,
+ * (`@adelie/csu-mail`) — and a plugin package's version is its own `plugin.json`'s in both,
  * so a scoped entry of that name carrying the card's version is this plugin's package. A user
  * plugin has none: it is no package of the build's, and nothing on the shelf describes it.
  */

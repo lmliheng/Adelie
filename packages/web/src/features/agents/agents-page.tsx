@@ -21,11 +21,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { useLocation, useNavigate } from "react-router";
-import type {
-  AgentCreateRequest,
-  PluginItem,
-  SkillMetadataItem,
-} from "@lmliheng/penguin-server/api";
+import type { AgentCreateRequest, PluginItem, SkillMetadataItem } from "@adelie/server/api";
 import {
   AgentAvatar,
   Badge,
@@ -54,7 +50,7 @@ import {
   UpdatePill,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

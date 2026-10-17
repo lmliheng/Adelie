@@ -26,7 +26,7 @@
  */
 import { useId, useState } from "react";
 import type { KeyboardEvent } from "react";
-import type { SemanticIdKind } from "@lmliheng/penguin-server/api";
+import type { SemanticIdKind } from "@adelie/server/api";
 import {
   Button,
   FieldError,
@@ -36,7 +36,7 @@ import {
   ICON_SIZE,
   Input,
   toastError,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

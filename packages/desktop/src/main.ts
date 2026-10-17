@@ -60,10 +60,10 @@ import os from "node:os";
 import path from "node:path";
 import { app, BrowserWindow, dialog, session, shell } from "electron";
 import type { WindowOpenHandlerResponse } from "electron";
-import { resolveRoot } from "@lmliheng/penguin-core";
-import { mintApiToken } from "@lmliheng/penguin-server/auth-token";
-import { liveServerLock } from "@lmliheng/penguin-server/lock";
-import type { ServerLock } from "@lmliheng/penguin-server/lock";
+import { resolveRoot } from "@adelie/core";
+import { mintApiToken } from "@adelie/server/auth-token";
+import { liveServerLock } from "@adelie/server/lock";
+import type { ServerLock } from "@adelie/server/lock";
 import { appIdentity, desktopDataRoot, resolveProfile } from "./app-identity.js";
 import {
   createSignInGuard,

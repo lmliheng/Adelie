@@ -6,7 +6,7 @@
 
 [English](2026-10-15-offerdao-plugin.md)
 
-新插件：**Offer岛**（`@lmliheng/use-offerdao`），移植自 Offer岛官方的 skill 仓库
+新插件：**Offer岛**（`@adelie/use-offerdao`），移植自 Offer岛官方的 skill 仓库
 （[`offerdaoai/skills`](https://github.com/offerdaoai/skills)，MIT，提交 `45c2a5d8`）。
 
 在插件库页面上把它装到想用的那个 Agent（它不是预装插件）。它接的是 `https://offerdao.ai` 的开放接口：

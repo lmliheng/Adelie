@@ -8,7 +8,7 @@
 
 Ported from upstream PenguinHarness (#1000, commit `473c9470`).
 
-A Project owner could open one agent to programs outside Adelie. A program sent its input to `POST /api/amsp/v1/agents/:projectId/:agentId/runs`, read the run as it happened as an AMSP event stream, and continued the conversation by its Session id. The runs used the Project's models and credentials, were recorded like any conversation, and appeared in the sidebar's **Background** folder. A new package, `@lmliheng/amsp`, carried the protocol's types and a TypeScript client for Node and browsers.
+A Project owner could open one agent to programs outside Adelie. A program sent its input to `POST /api/amsp/v1/agents/:projectId/:agentId/runs`, read the run as it happened as an AMSP event stream, and continued the conversation by its Session id. The runs used the Project's models and credentials, were recorded like any conversation, and appeared in the sidebar's **Background** folder. A new package, `@adelie/amsp`, carried the protocol's types and a TypeScript client for Node and browsers.
 
 ## The Agent API
 
@@ -32,7 +32,7 @@ A Project owner could open one agent to programs outside Adelie. A program sent 
 
 ## The amsp client
 
-- `@lmliheng/amsp` was a new public package with no runtime dependencies, for Node 24 and browsers. It exported the AMSP wire types, which the server imported, and `AgentClient`.
+- `@adelie/amsp` was a new public package with no runtime dependencies, for Node 24 and browsers. It exported the AMSP wire types, which the server imported, and `AgentClient`.
 - `client.run()` returned a run to iterate for its events, with `session`, `result()` and `abort()`; `client.ask()` returned the result alone. `onApproval` answered approval requests, and without it they were denied. The client also offered `agent()`, `session()`, `abort()` and `approve()`, the `AmspHttpError` and `AmspStreamError` errors, `parseArguments` for a tool call's JSON arguments, `readSse`, the SSE reader, and `RunCollector`, which folded the events a program read itself into the same result.
 
 ## The Web App

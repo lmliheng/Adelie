@@ -3,7 +3,7 @@
  * server's settings; an admin may. The composer's `aboveCeiling` mark is the same comparison.
  */
 import { describe, expect, it } from "vitest";
-import type { SandboxSettings } from "@lmliheng/penguin-core/plugin";
+import type { SandboxSettings } from "@adelie/core/plugin";
 import { aboveSandboxCeiling } from "../src/services/sandbox-ceiling.js";
 import { applySandboxPick, sessionSandboxOf } from "../src/services/session-service.js";
 

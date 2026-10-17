@@ -9,7 +9,7 @@
  * mentions until its desk is idle, so dropping either loses only what it has not delivered —
  * the changes live in the ticket files, the messages in the channel files.
  */
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { OrgCache } from "../../mechanisms/organization.js";
 import type { OrgCalendarOutcome, OrgTicketChange } from "../../api/types.js";

@@ -16,8 +16,8 @@
  *   that never pinged (an older server), or that the browser gave up on, is left as it is.
  * Docs: /docs/server-api § "Streaming (SSE)".
  */
-import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
-import type { ServerEvent } from "@lmliheng/penguin-server/api";
+import type { OmniMessage } from "@adelie/core/omnimessage";
+import type { ServerEvent } from "@adelie/server/api";
 import { apiUrl } from "../lib/server-context";
 import { machineForSession } from "../lib/session-machines";
 

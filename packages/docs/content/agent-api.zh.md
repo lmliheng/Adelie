@@ -1,6 +1,6 @@
 ---
 title: Agent API
-description: 让外部程序经 HTTP 与某个 Agent 对话：开启 Agent 的 API、签发密钥，再用 curl 或 @lmliheng/amsp 客户端运行它。
+description: 让外部程序经 HTTP 与某个 Agent 对话：开启 Agent 的 API、签发密钥，再用 curl 或 @adelie/amsp 客户端运行它。
 ---
 
 Agent API 让 PenguinHarness 之外的程序（脚本、服务、浏览器里的页面）经 HTTP 与某一个 Agent 对话。程序发送输入，以 [AMSP](/amsp) 事件流实时读取这次运行，再凭 Session id 延续对话。运行使用 Project 的模型与凭据，像其他对话一样被记录，并出现在侧边栏的**后台会话**折叠夹中。
@@ -162,14 +162,14 @@ type InputItem =
 
 ## amsp 客户端
 
-`@lmliheng/amsp` 是 Agent API 的 TypeScript 客户端。它没有任何依赖，可在 Node 24 和当前的浏览器中运行，并导出 AMSP 的事件类型。
+`@adelie/amsp` 是 Agent API 的 TypeScript 客户端。它没有任何依赖，可在 Node 24 和当前的浏览器中运行，并导出 AMSP 的事件类型。
 
 ```bash
-npm install @lmliheng/amsp
+npm install @adelie/amsp
 ```
 
 ```ts
-import { AgentClient } from "@lmliheng/amsp";
+import { AgentClient } from "@adelie/amsp";
 
 const client = new AgentClient({
   baseUrl: "http://localhost:7364/api/amsp/v1",
@@ -202,7 +202,7 @@ console.log(second.text, second.usage.total);
 当审批模式让某次调用等待时，运行会给出 `approval.requested`，客户端替你回答：用 `onApproval` 的决定；没有回调或回调抛出异常时回答 `deny`。无论你是在迭代还是只等待结果，客户端都会回答。
 
 ```ts
-import { AgentClient, parseArguments } from "@lmliheng/amsp";
+import { AgentClient, parseArguments } from "@adelie/amsp";
 
 const result = await client.ask({
   input: "Clean up the build output",
@@ -235,7 +235,7 @@ const result = await client.ask({
 同一个包经打包工具即可在浏览器中使用。与服务器不同源的页面必须使用密钥：服务器对任何来源都应答 CORS 预检，但只在带 `Authorization` 的请求上返回 `Access-Control-Allow-Origin: *`。跨源请求只能携带 `Authorization` 和 `Content-Type`，所以额外的 `headers` 只适用于同源页面和 Node。
 
 ```ts
-import { AgentClient } from "@lmliheng/amsp";
+import { AgentClient } from "@adelie/amsp";
 
 const keyField = document.querySelector<HTMLInputElement>("#key")!;
 const client = new AgentClient({

@@ -6,11 +6,7 @@
  * The probing itself is server-side (packages/server/src/services/protocol-detect.ts); these
  * only decide what the dialog shows and what is worth sending there.
  */
-import {
-  modelEnvPreviewKey,
-  providerClientType,
-  providerInfo,
-} from "@lmliheng/penguin-core/model-catalog";
+import { modelEnvPreviewKey, providerClientType, providerInfo } from "@adelie/core/model-catalog";
 
 /**
  * AgentHub's generic protocol client types, in detection order (custom / user-defined

@@ -14,7 +14,7 @@ import {
   tokenUsage,
   toolCall,
   emptyTokenCounts,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import { isProbeContent, probeTps, probeVerdict } from "../src/services/project-config-service.js";
 
 describe("isProbeContent", () => {

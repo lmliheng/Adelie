@@ -17,7 +17,7 @@
  */
 import { Hono } from "hono";
 import type { AppEnv } from "../../auth/middleware.js";
-import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Bind, Component, Use } from "@adelie/core/kernel";
 import type { FeedbackConfigResponse, FeedbackResponse } from "../../api/types.js";
 import type { ServerConfig } from "../../config.js";
 import type { Config } from "../../hmr/capabilities.js";

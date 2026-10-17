@@ -12,7 +12,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { atomicWriteFile } from "@lmliheng/penguin-core";
+import { atomicWriteFile } from "@adelie/core";
 import type { BuiltinBrowserHistoryEntry, BuiltinBrowserTab } from "../api/types.js";
 
 /** The most entries the file keeps. */

@@ -15,7 +15,7 @@
  */
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router";
-import type { OrgChannelItem } from "@lmliheng/penguin-server/api";
+import type { OrgChannelItem } from "@adelie/server/api";
 import {
   Button,
   FolderSection,
@@ -29,7 +29,7 @@ import {
   railItemClass,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

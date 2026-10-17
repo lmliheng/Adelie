@@ -56,9 +56,9 @@ import {
   modelVisiblePath,
   scratchpadDir,
   toolCall,
-} from "@lmliheng/penguin-core";
-import type { ApproveFn, OmniMessage } from "@lmliheng/penguin-core";
-import { wire } from "@lmliheng/penguin-core/kernel";
+} from "@adelie/core";
+import type { ApproveFn, OmniMessage } from "@adelie/core";
+import { wire } from "@adelie/core/kernel";
 import type {
   FeishuBindingResponse,
   MessagingBindingsResponse,

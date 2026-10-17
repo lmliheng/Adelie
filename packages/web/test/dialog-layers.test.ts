@@ -10,13 +10,7 @@
  * - Layers may be removed out of order, and a double pop is a no-op, never a throw.
  */
 import { describe, expect, it } from "vitest";
-import {
-  hasEscLayers,
-  isTopEscLayer,
-  nextFocusIndex,
-  popEscLayer,
-  pushEscLayer,
-} from "@lmliheng/penguin-ui";
+import { hasEscLayers, isTopEscLayer, nextFocusIndex, popEscLayer, pushEscLayer } from "@adelie/ui";
 
 describe("nextFocusIndex", () => {
   it("steps forward and wraps past the last element", () => {

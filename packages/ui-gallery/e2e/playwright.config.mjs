@@ -1,12 +1,12 @@
 /**
  * Browser checks against the component library: layout that only a real engine can measure.
  *
- *   pnpm --filter @lmliheng/penguin-ui-gallery test:e2e
+ *   pnpm --filter @adelie/ui-gallery test:e2e
  *
  * Starts the gallery's dev server, or reuses one already answering on the port outside CI.
  * `GALLERY_PORT` moves it off the gallery's fixed 7372, for a machine where another checkout's
  * gallery may already hold that port (a reused server would be testing the other checkout).
- * Needs Playwright's Chromium: `pnpm --filter @lmliheng/penguin-ui-gallery exec playwright
+ * Needs Playwright's Chromium: `pnpm --filter @adelie/ui-gallery exec playwright
  * install chromium`.
  */
 import { defineConfig } from "@playwright/test";

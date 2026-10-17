@@ -11,7 +11,7 @@
  * stay inert.
  */
 import { describe, expect, it } from "vitest";
-import { MODEL_PROVIDERS } from "@lmliheng/penguin-core/model-catalog";
+import { MODEL_PROVIDERS } from "@adelie/core/model-catalog";
 import {
   defaultExpandedProviders,
   expandedGroupsKey,

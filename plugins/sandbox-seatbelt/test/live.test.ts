@@ -12,8 +12,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import { CommandSessionManager } from "@lmliheng/penguin-core";
-import type { SandboxPolicy } from "@lmliheng/penguin-core/plugin";
+import { CommandSessionManager } from "@adelie/core";
+import type { SandboxPolicy } from "@adelie/core/plugin";
 import { canonicalPath, createSeatbeltProvider } from "../src/index.js";
 import { mustRun } from "../../../scripts/must-run.mjs";
 

@@ -24,7 +24,7 @@ import type {
   BuiltinBrowserSettings,
   BuiltinBrowserStatus,
   BuiltinBrowserTab,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import { BLANK_URL, tabAddress } from "./address";
 
 /** One webview this window hosts. */

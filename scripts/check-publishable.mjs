@@ -9,7 +9,7 @@
  * `devDependencies` — bundling is a build-time input, and `devDependencies` are not rewritten
  * into the published manifest.
  *
- * This is the shape that broke the 0.2.12 release: `packages/server` took `@lmliheng/penguin-hmr`
+ * This is the shape that broke the 0.2.12 release: `packages/server` took `@adelie/hmr`
  * — private, and bundled — as a runtime dependency.
  *
  * With `--registry`, it additionally asks npm which of the packages a release publishes do not
@@ -74,9 +74,9 @@ console.log(
 if (!process.argv.includes("--registry")) process.exit(0);
 
 // Everything the release publishes: the non-private packages above, plus every plugin — the
-// release loops `plugins/*/` and publishes each as `@lmliheng/<dir>`.
+// release loops `plugins/*/` and publishes each as `@adelie/<dir>`.
 // Read each plugin's own name and private flag rather than deriving a name from its directory:
-// `plugins/sandbox-*` are `@lmliheng/penguin-plugin-sandbox-*` and private, so a name built
+// `plugins/sandbox-*` are `@adelie/sandbox-*` and private, so a name built
 // from the directory names a package that does not exist and never will.
 const pluginNames = [];
 for (const entry of readdirSync(path.join(root, "plugins"), { withFileTypes: true })) {

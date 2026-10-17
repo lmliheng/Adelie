@@ -21,5 +21,5 @@ PenguinHarness 移植（#977，提交 `45885985`），此前本 fork 没有这�
   后端的 README 写明了这项要求。
 - 新增一条用例，断言拒绝文案同时点名两个开关。
 
-这一节用的是 Adelie 自己的名字（`@lmliheng/penguin-plugin-sandbox-bwrap`、`~/.adelie` 数据根与它
+这一节用的是 Adelie 自己的名字（`@adelie/sandbox-bwrap`、`~/.adelie` 数据根与它
 的 `ADELIE_HOME`，旧名 `PENGUIN_HOME` 仍会读），不是上游的。

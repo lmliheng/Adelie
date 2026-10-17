@@ -15,7 +15,7 @@ import type {
   QQBindingInfo,
   TelegramBindingInfo,
   WeChatBindingInfo,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   FEISHU_DEFAULT_DOMAIN,
   bindingsToForm,

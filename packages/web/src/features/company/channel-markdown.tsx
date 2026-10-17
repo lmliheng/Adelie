@@ -22,7 +22,7 @@
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
 import type { Components, Options } from "react-markdown";
-import { Md } from "@lmliheng/penguin-ui";
+import { Md } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { toneSurface } from "../../lib/tone";
 import { mentionIsMe, mentionLabel, mentionRuns } from "./channel-mentions";

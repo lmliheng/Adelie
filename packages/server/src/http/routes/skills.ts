@@ -23,7 +23,7 @@ import {
   skillsDir,
   parseSkillFrontmatter,
   PLUGIN_NAME_PATTERN,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type { AgentSkillsResponse } from "../../api/types.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import type { ServerConfig } from "../../config.js";
@@ -44,8 +44,8 @@ import {
   skillTooLarge,
   unzipBounded,
 } from "../../services/skill-import-limits.js";
-import { Bind, Component } from "@lmliheng/penguin-core/kernel";
-import type { ClassCtx } from "@lmliheng/penguin-core/kernel";
+import { Bind, Component } from "@adelie/core/kernel";
+import type { ClassCtx } from "@adelie/core/kernel";
 import type { AgentConfig } from "../../mechanisms/agents.js";
 import type { Access } from "../../mechanisms/projects.js";
 

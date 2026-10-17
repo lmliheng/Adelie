@@ -51,15 +51,8 @@ import type {
   SessionSandbox,
   SkillMetadataItem,
   TaskInputPart,
-} from "@lmliheng/penguin-server/api";
-import {
-  AgentAvatar,
-  Chevron,
-  Dropdown,
-  MenuItem,
-  AppLogo,
-  toastError,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/server/api";
+import { AgentAvatar, Chevron, Dropdown, MenuItem, AppLogo, toastError } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { UNCONFINED, draftSandboxAfter } from "../../lib/permission-level";

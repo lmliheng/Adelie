@@ -30,12 +30,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import {
-  MEMORY_INDEX_FILENAME,
-  USER_SCOPE_KEY,
-  memoryDir,
-  memoryScopeDir,
-} from "@lmliheng/penguin-core";
+import { MEMORY_INDEX_FILENAME, USER_SCOPE_KEY, memoryDir, memoryScopeDir } from "@adelie/core";
 import type {
   AgentConfigResponse,
   MemoryFileResponse,

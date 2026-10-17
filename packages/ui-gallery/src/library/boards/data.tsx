@@ -24,7 +24,7 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

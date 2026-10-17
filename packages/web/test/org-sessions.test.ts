@@ -17,11 +17,7 @@
  *   already leave them out; see sessions-store.test.ts).
  */
 import { describe, expect, it } from "vitest";
-import type {
-  OrgChartResponse,
-  OrgSessionsResponse,
-  SessionStatus,
-} from "@lmliheng/penguin-server/api";
+import type { OrgChartResponse, OrgSessionsResponse, SessionStatus } from "@adelie/server/api";
 import {
   deskRows,
   liveEmployeeStates,

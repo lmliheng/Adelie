@@ -8,9 +8,9 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { parseManifest } from "@lmliheng/penguin-core/kernel";
-import type { ModuleDef } from "@lmliheng/penguin-core/kernel";
-import type { SandboxPolicy } from "@lmliheng/penguin-core/plugin";
+import { parseManifest } from "@adelie/core/kernel";
+import type { ModuleDef } from "@adelie/core/kernel";
+import type { SandboxPolicy } from "@adelie/core/plugin";
 import type { PluginConfigResponse } from "../src/api/types.js";
 import type { PluginConfig } from "../src/plugin/config.js";
 import { PluginHost } from "../src/plugin/host.js";
@@ -30,7 +30,7 @@ function backend(seen: Seen[]): ModuleDef {
     manifest: parseManifest({
       name: "TestBackend",
       requires: {
-        config: { iface: "@lmliheng/penguin-server#PluginConfig", from: "PluginConfigModule" },
+        config: { iface: "@adelie/server#PluginConfig", from: "PluginConfigModule" },
       },
       provides: {},
       contributes: {
@@ -294,7 +294,7 @@ describe("sandbox settings group", () => {
             name: "ProbedBackend",
             requires: {
               config: {
-                iface: "@lmliheng/penguin-server#PluginConfig",
+                iface: "@adelie/server#PluginConfig",
                 from: "PluginConfigModule",
               },
             },

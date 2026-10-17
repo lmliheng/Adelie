@@ -1,8 +1,8 @@
 {
-  "name": "@lmliheng/penguin-server",
+  "name": "@adelie/server",
   "version": "0.4.2",
   "type": "module",
-  "description": "Adelie web server: multi-user authentication and authorization, Session execution with SSE streaming, and usage accounting, built on @lmliheng/penguin-core.",
+  "description": "Adelie web server: multi-user authentication and authorization, Session execution with SSE streaming, and usage accounting, built on @adelie/core.",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -71,8 +71,8 @@
   "dependencies": {
     "@hono/node-server": "^2.0.5",
     "@larksuiteoapi/node-sdk": "^1.73.0",
-    "@lmliheng/amsp": "workspace:*",
-    "@lmliheng/penguin-core": "workspace:*",
+    "@adelie/amsp": "workspace:*",
+    "@adelie/core": "workspace:*",
     "@xterm/headless": "^5.5.0",
     "dotenv": "^17.0.0",
     "fflate": "^0.8.3",
@@ -89,7 +89,7 @@
     "yaml": "^2.5.0"
   },
   "devDependencies": {
-    "@lmliheng/penguin-hmr": "workspace:*",
+    "@adelie/hmr": "workspace:*",
     "@types/mdast": "^4.0.4",
     "@types/node": "^24.0.0",
     "@types/ws": "^8.18.1",

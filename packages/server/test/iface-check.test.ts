@@ -5,14 +5,14 @@
  */
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
-import { parseManifest } from "@lmliheng/penguin-core/kernel";
-import type { IfaceTable } from "@lmliheng/penguin-core/kernel";
+import { parseManifest } from "@adelie/core/kernel";
+import type { IfaceTable } from "@adelie/core/kernel";
 import platformTable from "../src/ifaces.json" with { type: "json" };
 import { checkIfaces, ifaceQuestions, renderDts } from "../src/plugin/iface-check.js";
 
 const platform = platformTable as unknown as IfaceTable;
-const LOG = "@lmliheng/penguin-server#Log";
-const MAIN = "@lmliheng/penguin-server#WorkflowMain";
+const LOG = "@adelie/server#Log";
+const MAIN = "@adelie/server#WorkflowMain";
 
 const manifest = parseManifest({
   name: "Demo",
@@ -77,7 +77,7 @@ describe("interface check", () => {
     // Each side is rendered into its own file, so a brand keyed by `unique symbol` would be
     // two different symbols and the platform would stop fitting ITSELF. 43 of the table's
     // interfaces carry a non-library opaque, so this is the common case, not a corner.
-    const opaque = "@lmliheng/penguin-server#TerminalSession";
+    const opaque = "@adelie/server#TerminalSession";
     const withOpaque = compiledAgainst((t) => {
       t.ifaces[LOG]!.methods["line"]!.params = [{ opaque }];
     });
@@ -87,7 +87,7 @@ describe("interface check", () => {
     });
     // …and a DIFFERENT opaque is still a mismatch: the name is the identity.
     const renamed = compiledAgainst((t) => {
-      t.ifaces[LOG]!.methods["line"]!.params = [{ opaque: "@lmliheng/penguin-server#Other" }];
+      t.ifaces[LOG]!.methods["line"]!.params = [{ opaque: "@adelie/server#Other" }];
     });
     const { problems } = checkIfaces(ts, withOpaque, renamed, ifaceQuestions([manifest]));
     expect(problems).toHaveLength(1);

@@ -5,11 +5,11 @@
  * documents (src/app/app.css, src/library/library.css), which carry the app's stylesheet.
  */
 @import "tailwindcss";
-@import "@lmliheng/penguin-ui/theme.css";
-@import "@lmliheng/penguin-ui/themes/github.css";
-@import "@lmliheng/penguin-ui/themes/modern.css";
-@import "@lmliheng/penguin-ui/themes/geek.css";
-@import "@lmliheng/penguin-ui/fonts.css";
+@import "@adelie/ui/theme.css";
+@import "@adelie/ui/themes/github.css";
+@import "@adelie/ui/themes/modern.css";
+@import "@adelie/ui/themes/geek.css";
+@import "@adelie/ui/fonts.css";
 @import "./chrome.css";
 
 @source "../../ui/src";

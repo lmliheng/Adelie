@@ -33,10 +33,7 @@
 import { app, dialog, shell } from "electron";
 import type { BrowserWindow } from "electron";
 import electronUpdater from "electron-updater";
-import type {
-  DesktopUpdateStatus,
-  DesktopUpdaterCommandMessage,
-} from "@lmliheng/penguin-server/api";
+import type { DesktopUpdateStatus, DesktopUpdaterCommandMessage } from "@adelie/server/api";
 import { resolveProfile } from "./app-identity.js";
 import { logLine } from "./desktop-log.js";
 import {

@@ -11,9 +11,9 @@
  * information about an account, not an error the user made on this page.
  */
 import { useEffect } from "react";
-import type { ModelProviderInfo } from "@lmliheng/penguin-core/model-catalog";
-import { providerInfo } from "@lmliheng/penguin-core/model-catalog";
-import { GlyphIcon, ICONS, ICON_SIZE, IconButton, ProviderLogo } from "@lmliheng/penguin-ui";
+import type { ModelProviderInfo } from "@adelie/core/model-catalog";
+import { providerInfo } from "@adelie/core/model-catalog";
+import { GlyphIcon, ICONS, ICON_SIZE, IconButton, ProviderLogo } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { formatDateTime } from "../../lib/format";
 import { useProject } from "../../state/project";

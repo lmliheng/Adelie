@@ -35,7 +35,7 @@
  * (A fork is `user` whatever it was cut from: session-fork.test.ts.)
  */
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { assistantText, sessionMeta, userText, withOrigin } from "@lmliheng/penguin-core";
+import { assistantText, sessionMeta, userText, withOrigin } from "@adelie/core";
 import type {
   ProjectCreateResponse,
   SessionCreateResponse,

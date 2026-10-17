@@ -36,13 +36,13 @@
  * prefix records (trace_files.page_stats) persist the carry so old shards are read at
  * most once ever; bump CACHE_VERSION whenever any rule in this file changes.
  */
-import { parseUserSteeringText } from "@lmliheng/penguin-core";
+import { parseUserSteeringText } from "@adelie/core";
 import {
   parseBackgroundTaskDoneMessage,
   parseHandoffMessage,
   parseModelSwitchMessage,
-} from "@lmliheng/penguin-core/markers";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+} from "@adelie/core/markers";
+import type { OmniMessage } from "@adelie/core";
 
 /** Bump when any counting/boundary rule changes: cached page_stats records with an older version are recomputed. */
 export const CACHE_VERSION = 4;

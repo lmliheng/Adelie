@@ -12,7 +12,7 @@
  */
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Chevron, FormPickerTrigger, GlyphIcon, ICONS, ICON_SIZE } from "@lmliheng/penguin-ui";
+import { Chevron, FormPickerTrigger, GlyphIcon, ICONS, ICON_SIZE } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { WorkspaceFinder } from "./workspace-finder";
 import { baseName } from "./workspace-finder-model";

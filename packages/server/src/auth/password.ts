@@ -1,4 +1,4 @@
-import { Component, Interface } from "@lmliheng/penguin-core/kernel";
+import { Component, Interface } from "@adelie/core/kernel";
 /**
  * Password hashing (slow-hash storage).
  *

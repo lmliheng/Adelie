@@ -6,7 +6,7 @@
  * name or a mark keep their import, with the drawn form of the glyph beside them.
  */
 import type { ReactNode } from "react";
-import { GlyphIcon, ICON_SIZE } from "@lmliheng/penguin-ui";
+import { GlyphIcon, ICON_SIZE } from "@adelie/ui";
 import { panelGlyphPath, panelLabel } from "./panel-registry";
 import type { PanelId } from "./panel-registry";
 

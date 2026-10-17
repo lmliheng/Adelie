@@ -1,12 +1,12 @@
 {
-  "name": "@lmliheng/example-build-agent-with-agent",
+  "name": "@adelie/example-build-agent-with-agent",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "tsx build-agent.ts"
   },
   "dependencies": {
-    "@lmliheng/penguin-core": "workspace:*"
+    "@adelie/core": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.20.0"

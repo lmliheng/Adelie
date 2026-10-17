@@ -3,7 +3,7 @@
  * global `terminal.toggle` command. Split from dock-state.ts so the store stays pure (unit-testable
  * without fetch); this module owns every server round-trip a terminal tab needs.
  */
-import { toastError } from "@lmliheng/penguin-ui";
+import { toastError } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { onCommand } from "../../lib/shortcuts/dispatcher";
 import {

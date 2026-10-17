@@ -44,7 +44,7 @@ import {
   localDateMinusDays,
 } from "../internal/dates.js";
 import { badRequest } from "../http/validate.js";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Clock } from "../hmr/capabilities.js";
 import type { ErrorLog, UsageQueries, UsageStore } from "../mechanisms/observability.js";
 import type { ProjectConfigStore } from "../mechanisms/projects.js";

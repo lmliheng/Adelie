@@ -16,7 +16,7 @@ import type {
   DirEntryInfo,
   DirListResponse,
   DirLocation,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   TEMP_WORKSPACE_GROUP_KEY,
   isTempWorkspace,

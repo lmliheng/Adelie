@@ -4,11 +4,7 @@
  * holds — and a model reference is always the complete (provider, model_id) pair, never
  * half of one.
  */
-import type {
-  ModelRefDto,
-  ScheduleItem,
-  ScheduleUpsertRequest,
-} from "@lmliheng/penguin-server/api";
+import type { ModelRefDto, ScheduleItem, ScheduleUpsertRequest } from "@adelie/server/api";
 
 /**
  * Stored schedule fields → a model reference. The DTO types the two fields independently, so

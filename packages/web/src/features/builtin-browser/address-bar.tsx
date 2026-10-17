@@ -12,8 +12,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, Ref } from "react";
 import { createPortal } from "react-dom";
-import type { BuiltinBrowserHistoryEntry } from "@lmliheng/penguin-server/api";
-import { noAutofill, sizeTextClass } from "@lmliheng/penguin-ui";
+import type { BuiltinBrowserHistoryEntry } from "@adelie/server/api";
+import { noAutofill, sizeTextClass } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { displayAddress, normalizeAddress } from "./address";

@@ -42,7 +42,7 @@
  * all only when the output stream supports color (see `supportsColor`): piped output, e.g. a
  * nested `penguin run` driven through `exec_command`, must stay plain (#102).
  */
-import { isEventMessage, isModelMessage, parseUserSteeringText } from "@lmliheng/penguin-core";
+import { isEventMessage, isModelMessage, parseUserSteeringText } from "@adelie/core";
 import type {
   AbortPayload,
   ApprovalDecision,
@@ -64,7 +64,7 @@ import type {
   ToolCallPayload,
   ToolDefinition,
   ToolListReadyPayload,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import { renderFileToolApprovalPayload, renderPartialToolCall } from "./tool-render.js";
 import { ToolOutputCollapser, collapseLines } from "./output-collapse.js";
 import { defaultMessages } from "./i18n.js";

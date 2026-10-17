@@ -7,26 +7,15 @@
  * Every key and every value list comes from the shared UI package, which also owns the boot
  * script: the first frame and the running app then cannot disagree about a stored value.
  */
-import {
-  ACCENT_PRESET_IDS,
-  DEFAULT_THEME_ID,
-  THEME_IDS,
-  resolveAccent,
-} from "@lmliheng/penguin-ui";
-import type { ThemeId } from "@lmliheng/penguin-ui";
+import { ACCENT_PRESET_IDS, DEFAULT_THEME_ID, THEME_IDS, resolveAccent } from "@adelie/ui";
+import type { ThemeId } from "@adelie/ui";
 import {
   FONT_CJK_OPTIONS,
   FONT_LATIN_OPTIONS,
   THEME_STORAGE_KEYS,
   readTextSize,
-} from "@lmliheng/penguin-ui/boot";
-import type {
-  AccentChoice,
-  FontCjk,
-  FontLatin,
-  TextSize,
-  ThemeAttributes,
-} from "@lmliheng/penguin-ui/boot";
+} from "@adelie/ui/boot";
+import type { AccentChoice, FontCjk, FontLatin, TextSize, ThemeAttributes } from "@adelie/ui/boot";
 
 export type { FontCjk, FontLatin, TextSize };
 

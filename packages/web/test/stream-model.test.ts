@@ -63,12 +63,8 @@ import {
   toolCallOutput,
   userText,
   withOrigin,
-} from "@lmliheng/penguin-core/omnimessage";
-import type {
-  OmniMessage,
-  SessionMetaPayload,
-  TokenCounts,
-} from "@lmliheng/penguin-core/omnimessage";
+} from "@adelie/core/omnimessage";
+import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@adelie/core/omnimessage";
 import {
   approvalKey,
   buildDedupIndex,

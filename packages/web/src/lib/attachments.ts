@@ -24,7 +24,7 @@ import {
   ATTACHED_IMAGE_PREFIX,
   matchAttachedFileLine,
   matchAttachedImageLine,
-} from "@lmliheng/penguin-core/markers";
+} from "@adelie/core/markers";
 
 export interface ParsedAttachments {
   /** Body text with restored attachment lines removed (unrecognized lines are kept). */

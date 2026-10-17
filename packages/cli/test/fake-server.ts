@@ -21,7 +21,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { StorageReport } from "@lmliheng/penguin-server/api";
+import type { StorageReport } from "@adelie/server/api";
 
 type Json = Record<string, unknown>;
 

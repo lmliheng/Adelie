@@ -11,7 +11,7 @@
  *   Session keeps — whatever level the Session is at when the menu opens.
  */
 import { describe, expect, it } from "vitest";
-import type { ApprovalMode, SessionSandbox } from "@lmliheng/penguin-server/api";
+import type { ApprovalMode, SessionSandbox } from "@adelie/server/api";
 import {
   BUILTIN_PRESETS,
   PERMISSION_LEVEL_GLYPH,

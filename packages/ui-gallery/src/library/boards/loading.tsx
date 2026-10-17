@@ -2,14 +2,8 @@
  * 加载: the running-state spinner on its three rungs, the skeleton line, list and card, and the
  * progress bar on its three heights, toned and indeterminate.
  */
-import {
-  ProgressBar,
-  Skeleton,
-  SkeletonCard,
-  SkeletonList,
-  StatusIcon,
-} from "@lmliheng/penguin-ui";
-import type { ProgressBarSize, StatusIconSize } from "@lmliheng/penguin-ui";
+import { ProgressBar, Skeleton, SkeletonCard, SkeletonList, StatusIcon } from "@adelie/ui";
+import type { ProgressBarSize, StatusIconSize } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

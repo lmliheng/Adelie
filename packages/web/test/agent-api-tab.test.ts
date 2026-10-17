@@ -32,12 +32,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createElement, isValidElement } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type {
-  AgentApiKeyInfo,
-  AgentApiResponse,
-  AgentApiSettings,
-} from "@lmliheng/penguin-server/api";
-import { Button, CopyButton, Select, ToggleRow } from "@lmliheng/penguin-ui";
+import type { AgentApiKeyInfo, AgentApiResponse, AgentApiSettings } from "@adelie/server/api";
+import { Button, CopyButton, Select, ToggleRow } from "@adelie/ui";
 import {
   AgentApiOffConfirm,
   KeylessOnConfirm,
@@ -55,8 +51,8 @@ import { apiError, json, stubFetch } from "./helpers/fetch";
 
 const toasts = vi.hoisted(() => [] as string[]);
 
-vi.mock("@lmliheng/penguin-ui", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@lmliheng/penguin-ui")>();
+vi.mock("@adelie/ui", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@adelie/ui")>();
   return {
     ...actual,
     toastSuccess: (text: string) => toasts.push(`success: ${text}`),

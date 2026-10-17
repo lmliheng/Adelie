@@ -18,15 +18,15 @@ import type {
   OmniMessage,
   SessionSource,
   ToolCallPayload,
-} from "@lmliheng/penguin-core/omnimessage";
+} from "@adelie/core/omnimessage";
 import type {
   MCPServerConfig,
   ThinkingLevelName,
   ToolDefinitionConfig,
-} from "@lmliheng/penguin-core/interfaces";
+} from "@adelie/core/interfaces";
 // Build/harness identity is not an interface contract — it ships from the barrel (core's version-info.ts).
-import type { HarnessInfo, VersionReport, HarnessHistory } from "@lmliheng/penguin-core";
-import type { IfacesDiff } from "@lmliheng/penguin-hmr";
+import type { HarnessInfo, VersionReport, HarnessHistory } from "@adelie/core";
+import type { IfacesDiff } from "@adelie/hmr";
 import type { WorkflowInfo } from "../mechanisms/workflows.js";
 
 // ---------------------------------------------------------------------------
@@ -312,7 +312,7 @@ export interface ServerSettingsResponse {
  *
  * **This is a report and nothing else.** Producing it moves no file and deletes none, and
  * nothing in the API can execute a cleanup on the strength of a stale report: the class,
- * rule and reference vocabulary is shared with `@lmliheng/penguin-core`'s storage ledger
+ * rule and reference vocabulary is shared with `@adelie/core`'s storage ledger
  * (its `storage.ts` is where the rules are defined), and the DTO is spelled out here
  * rather than imported because this file is the Web contract and takes types from core's
  * pure subpaths only.
@@ -1626,7 +1626,7 @@ export interface AgentConfigUpdateRequest {
 
 // ---------------------------------------------------------------------------
 // Agent API (/api/projects/:projectId/agents/:agentId/api; the stream itself is AMSP,
-// /api/amsp/v1, whose snake_case wire types live in @lmliheng/amsp)
+// /api/amsp/v1, whose snake_case wire types live in @adelie/amsp)
 // ---------------------------------------------------------------------------
 
 /** One API key of an Agent, as listed: the secret itself is shown once, at creation, and never again. */
@@ -4387,7 +4387,7 @@ export interface HookItem {
 
 /**
  * Where a library plugin comes from: `builtin` = shipped with the build (the
- * `@lmliheng/*` packages under the repo's `plugins/`), `user` = installed by an operator
+ * `@adelie/*` packages under the repo's `plugins/`), `user` = installed by an operator
  * into the user plugin directory (a remote download or a local upload), which is the only kind
  * the library can also delete again.
  */
@@ -4611,7 +4611,7 @@ export interface PluginReadmeResponse {
  */
 export type VersionResponse = VersionReport;
 
-export type { HarnessHistoryEntry, IfacesSummary } from "@lmliheng/penguin-core";
+export type { HarnessHistoryEntry, IfacesSummary } from "@adelie/core";
 export type {
   WorkflowInfo,
   WorkflowVersion,
@@ -4630,7 +4630,7 @@ export interface VersionRollbackResponse {
 
 /** GET /api/version/history/diff?from=&to=: what changed between two stored interface tables. */
 export type VersionHistoryDiffResponse = IfacesDiff;
-export type { IfaceChange, IfacesDiff, MemberChange, ModuleChange } from "@lmliheng/penguin-hmr";
+export type { IfaceChange, IfacesDiff, MemberChange, ModuleChange } from "@adelie/hmr";
 
 /**
  * GET /api/version/update-check: newest published release vs the running version.

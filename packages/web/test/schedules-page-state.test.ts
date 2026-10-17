@@ -4,10 +4,7 @@
  * first, and how the cross-Project answer becomes the "all projects" overview's groups.
  */
 import { describe, expect, it } from "vitest";
-import type {
-  AllProjectSchedulesResponse,
-  ProjectScheduleItem,
-} from "@lmliheng/penguin-server/api";
+import type { AllProjectSchedulesResponse, ProjectScheduleItem } from "@adelie/server/api";
 import {
   crossProjectGroups,
   groupSchedulesByAgent,

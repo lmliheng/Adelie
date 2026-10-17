@@ -10,8 +10,8 @@
  * - In English, no mark falls back to a Chinese name.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import type { SessionInfo, SessionSource } from "@lmliheng/penguin-server/api";
-import { ICONS } from "@lmliheng/penguin-ui";
+import type { SessionInfo, SessionSource } from "@adelie/server/api";
+import { ICONS } from "@adelie/ui";
 import { backgroundSourceMark } from "../src/lib/session-source-mark";
 import { setActiveStrings, zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";

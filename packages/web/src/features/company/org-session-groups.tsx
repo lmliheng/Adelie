@@ -46,7 +46,7 @@ import {
   toastError,
   toastSuccess,
   useRowContextMenu,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { sessionActivityLabel } from "../../lib/session-activity";

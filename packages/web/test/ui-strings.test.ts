@@ -7,7 +7,7 @@
  *   renders.
  */
 import { describe, expect, it } from "vitest";
-import { DEFAULT_UI_STRINGS } from "@lmliheng/penguin-ui";
+import { DEFAULT_UI_STRINGS } from "@adelie/ui";
 import { uiStringsFor } from "../src/lib/ui-strings";
 
 const KEYS = Object.keys(DEFAULT_UI_STRINGS).sort();

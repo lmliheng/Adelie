@@ -4,7 +4,7 @@
  *
  * The library has two sources, loaded the same way and distinguished only by
  * `LibraryPlugin.source`: the built-ins (a plugin is its own npm package,
- * `@lmliheng/<name>`, `plugins/<name>/` in the repo; resolved through Node from the host
+ * `@adelie/<name>`, `plugins/<name>/` in the repo; resolved through Node from the host
  * package's dependency list — see pluginRoots) and the user plugin directory
  * (`<data root>/plugins`, see userPluginDirs), where a remote download or a local upload lands.
  * A user plugin of the same name as a built-in is not loaded — the built-in wins — and a user
@@ -275,7 +275,7 @@ function packageRoot(): string {
 }
 const PKG_ROOT = packageRoot();
 /** npm-name prefix of the per-plugin packages (the host package's dependencies name them). */
-const PLUGIN_PKG_PREFIX = "@lmliheng/";
+const PLUGIN_PKG_PREFIX = "@adelie/";
 
 /**
  * The pnpm workspace root above `from`, or null outside a workspace checkout: the directory
@@ -325,7 +325,7 @@ export function workspacePluginRoot(
 
 /**
  * Where the plugin directories live, name → absolute root. Each plugin is its own npm package
- * (`@lmliheng/<name>`, `plugins/<name>/` in the repo): the host package's `dependencies`
+ * (`@adelie/<name>`, `plugins/<name>/` in the repo): the host package's `dependencies`
  * name them (core, the CLI, and the desktop app — whose packaged manifest keeps that field
  * and nothing else, so `devDependencies` would not survive into an installer), and each is
  * resolved through Node from this module's own location, so the lookup walks the same
@@ -360,7 +360,7 @@ function builtinRoots(): Map<string, string> {
 
 /**
  * One built-in plugin package's directory, by the bare name the library files it under
- * (`csu-mail`, not `@lmliheng/csu-mail`), or undefined when this build carries no such plugin.
+ * (`csu-mail`, not `@adelie/csu-mail`), or undefined when this build carries no such plugin.
  *
  * For a reader of the PACKAGE rather than of its parsed plugin: the market builds an entry for
  * each package it ships out of the package's own manifests, and resolving them the way the

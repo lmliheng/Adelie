@@ -1,5 +1,5 @@
 /**
- * @lmliheng/penguin-ui — the shared UI package: token contract, themes, fonts and the
+ * @adelie/ui — the shared UI package: token contract, themes, fonts and the
  * component set. Source-only: a consumer's `workspace:*` dependency is linked to this directory,
  * so Vite, vitest and tsc read `src/` through the `exports` map in package.json, never a build.
  *

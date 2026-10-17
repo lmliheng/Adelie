@@ -5,8 +5,8 @@
  */
 import { describe, expect, it } from "vitest";
 import { Hono } from "hono";
-import { wire } from "@lmliheng/penguin-core/kernel";
-import type { ClassCtx, Contributed } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
+import type { ClassCtx, Contributed } from "@adelie/core/kernel";
 import type { AppEnv } from "../src/auth/middleware.js";
 import type { UserRow } from "../src/db/repos/users.js";
 import { HttpModule } from "../src/http/app.js";

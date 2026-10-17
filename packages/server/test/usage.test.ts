@@ -38,8 +38,8 @@ import {
   sessionMeta,
   tokenUsage,
   withOrigin,
-} from "@lmliheng/penguin-core";
-import type { SessionMetaPayload, TokenCounts } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { SessionMetaPayload, TokenCounts } from "@adelie/core";
 import { ORIGIN_MODELS_MAX, UsageRecorder } from "../src/runtime/usage-recorder.js";
 import { ErrorsRepo } from "../src/db/repos/errors.js";
 import { UsageRepo } from "../src/db/repos/usage.js";
@@ -48,7 +48,7 @@ import type { PricingLookup, PricingRates } from "../src/services/usage-service.
 import { openDatabase } from "../src/db/database.js";
 import { enumerateBuckets, enumerateTsBuckets, formatLocalDate } from "../src/internal/dates.js";
 import type { DatabaseSync } from "node:sqlite";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
 
 const CTX = {
   projectId: "project-x",

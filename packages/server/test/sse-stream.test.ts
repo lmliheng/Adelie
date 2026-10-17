@@ -11,8 +11,8 @@
  *   old session cannot reopen one.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { approvalDecision, assistantText, toolCall, userText } from "@lmliheng/penguin-core";
-import type { ApproveFn, OmniMessage } from "@lmliheng/penguin-core";
+import { approvalDecision, assistantText, toolCall, userText } from "@adelie/core";
+import type { ApproveFn, OmniMessage } from "@adelie/core";
 import type { SessionRow } from "../src/db/repos/sessions.js";
 import type { RuntimeSession } from "../src/runtime/session-manager.js";
 import { fakeSession, sessionRow, uniqueSessionId } from "./fixtures/session.js";

@@ -49,7 +49,7 @@ penguin update --yes       # 原地替换 bin/lib/web/node
 | `latest.yml` / `latest-linux.yml` | 桌面端自动更新读的元数据 |
 
 安装包都在 GitHub Release 上：<https://github.com/lmliheng/Adelie/releases/tag/v0.3.1>。
-npm 上整条链（3 个宿主包 + 16 个插件包）同样是 **0.3.1**：`npm install -g @lmliheng/penguin-cli`。
+npm 上整条链（3 个宿主包 + 16 个插件包）同样是 **0.3.1**：`npm install -g @adelie/cli`。
 
 ## 质量门禁（本机跑过）
 

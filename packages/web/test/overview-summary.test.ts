@@ -23,7 +23,7 @@ import type {
   OrgEmployeeState,
   OrgInbox,
   OrgTicketItem,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   INBOX_ROWS,
   boardSummary,

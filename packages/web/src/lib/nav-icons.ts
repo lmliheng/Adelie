@@ -4,7 +4,7 @@
  * drawings live in the shared registry, named for what they draw; which drawing stands for which
  * page is the app's knowledge, so the map lives here.
  */
-import { ICONS } from "@lmliheng/penguin-ui";
+import { ICONS } from "@adelie/ui";
 
 export const NAV_ICONS = {
   /** Agents: the robot head, the one glyph in the app that means "agent". */

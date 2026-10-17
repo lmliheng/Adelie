@@ -38,12 +38,8 @@ import {
   saveAgentVault,
   systemConfigPath,
   THINKING_LEVEL_NAMES,
-} from "@lmliheng/penguin-core";
-import type {
-  MCPServerConfig,
-  ThinkingLevelName,
-  ToolDefinitionConfig,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { MCPServerConfig, ThinkingLevelName, ToolDefinitionConfig } from "@adelie/core";
 import type {
   AgentConfigDto,
   AgentConfigUpdateRequest,
@@ -68,7 +64,7 @@ import {
   optionalString,
 } from "../http/validate.js";
 import { maskApiKey } from "./project-config-service.js";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type { AgentConfig } from "../mechanisms/agents.js";
 

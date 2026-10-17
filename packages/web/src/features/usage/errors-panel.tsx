@@ -14,8 +14,8 @@
  * The outer frame is provided by the caller's ChartCard (full width, below the four business charts).
  */
 import { useEffect, useState } from "react";
-import type { UsageErrorItem, UsageErrors } from "@lmliheng/penguin-server/api";
-import { Badge, ConfirmModal, Pager, toastError, toastSuccess } from "@lmliheng/penguin-ui";
+import type { UsageErrorItem, UsageErrors } from "@adelie/server/api";
+import { Badge, ConfirmModal, Pager, toastError, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

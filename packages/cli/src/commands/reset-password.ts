@@ -13,8 +13,8 @@
  * Docs: /docs/cli § "penguin server / penguin web".
  */
 import path from "node:path";
-import { boundaryEnv, resolveRoot } from "@lmliheng/penguin-core";
-import { resetAdminPassword } from "@lmliheng/penguin-server/reset-admin-password";
+import { boundaryEnv, resolveRoot } from "@adelie/core";
+import { resetAdminPassword } from "@adelie/server/reset-admin-password";
 import type { Command } from "commander";
 import type { Messages } from "../i18n.js";
 

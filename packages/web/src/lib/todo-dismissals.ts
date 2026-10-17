@@ -24,7 +24,7 @@
 import { useEffect } from "react";
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand/react";
-import { toastError } from "@lmliheng/penguin-ui";
+import { toastError } from "@adelie/ui";
 import * as api from "../api/endpoints";
 import { apiErrorText } from "./api-error";
 import type { TodoKey } from "./todo-badges";

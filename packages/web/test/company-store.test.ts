@@ -16,7 +16,7 @@ import type {
   OrgChannelMessage,
   OrgSessionsResponse,
   OrganizationSummary,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   createCompanyStore,
   isCompanyEvent,

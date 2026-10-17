@@ -34,9 +34,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { approvalDecision, assistantText, toolCall } from "@lmliheng/penguin-core";
-import type { ApproveFn, OmniMessage, TextPayload } from "@lmliheng/penguin-core";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { approvalDecision, assistantText, toolCall } from "@adelie/core";
+import type { ApproveFn, OmniMessage, TextPayload } from "@adelie/core";
+import { wire } from "@adelie/core/kernel";
 import type {
   MessagingBindingsResponse,
   QQBindingResponse,

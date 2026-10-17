@@ -8,7 +8,7 @@ import type {
   OrgTicketDetail,
   OrgTicketHistoryAction,
   OrgTicketHistoryEntry,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 
 export interface TicketHistoryRow {
   /** Stable across refetches: the entries themselves carry no id. */

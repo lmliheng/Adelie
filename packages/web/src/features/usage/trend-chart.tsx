@@ -18,7 +18,7 @@
  * skipped an interval.
  */
 import { useState } from "react";
-import type { UsageGranularity, UsageSeriesPoint } from "@lmliheng/penguin-server/api";
+import type { UsageGranularity, UsageSeriesPoint } from "@adelie/server/api";
 import {
   ChartArea,
   ChartFrame,
@@ -27,8 +27,8 @@ import {
   makeGeom,
   seriesPoints,
   useChartWidth,
-} from "@lmliheng/penguin-ui";
-import type { ChartPaint } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { ChartPaint } from "@adelie/ui";
 import { formatMoney } from "../../lib/format";
 import type { Currency } from "../../state/theme";
 import { bucketAxisLabel, bucketFullLabel } from "./usage-controls";

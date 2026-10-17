@@ -29,8 +29,8 @@ import type {
   MessagingBindingInfo,
   WeChatBindingInfo,
   WeChatScanPollResponse,
-} from "@lmliheng/penguin-server/api";
-import { Button, Input, toastError, toastInfo, toastSuccess } from "@lmliheng/penguin-ui";
+} from "@adelie/server/api";
+import { Button, Input, toastError, toastInfo, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";

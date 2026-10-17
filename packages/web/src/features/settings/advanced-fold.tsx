@@ -7,7 +7,7 @@
  */
 import { useId, useState } from "react";
 import type { ReactNode } from "react";
-import { Chevron, ICON_GAP, ICON_SIZE } from "@lmliheng/penguin-ui";
+import { Chevron, ICON_GAP, ICON_SIZE } from "@adelie/ui";
 import { S } from "../../lib/strings";
 
 export function AdvancedFold({

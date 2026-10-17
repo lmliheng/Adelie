@@ -41,7 +41,7 @@ Suggest the approval mode that fits the program, and say why in one line:
 | Shows every tool call to its own user | `always-ask` | Every call waits for the program's answer |
 | Must never run a tool | `deny-all` | Every call is denied; the agent answers without tools |
 
-A call that waits reaches the program as an `approval.requested` event, and the run waits, with no time limit, for an answer, an abort or a disconnect. The `@lmliheng/amsp` client answers it with `onApproval`, or with `deny` when there is none. The mode is read when an API conversation is created; a change on the tab applies to conversations created after it.
+A call that waits reaches the program as an `approval.requested` event, and the run waits, with no time limit, for an answer, an abort or a disconnect. The `@adelie/amsp` client answers it with `onApproval`, or with `deny` when there is none. The mode is read when an API conversation is created; a change on the tab applies to conversations created after it.
 
 Leave **Allow keyless access** off unless the user asks for it. With it on, anything that can reach the server can run the Agent on the Project's models.
 
@@ -58,16 +58,16 @@ To run the program yourself, you need the key in your environment. Ask the user 
 - A local server's Base URL is `http://localhost:7364/api/amsp/v1`; `status` prints the server's real port. Use `localhost`, never `127.0.0.1`: a local server serves previews on `127.0.0.1` and answers every API request there with `401`.
 - Do not give the program's settings the names the harness sets inside a session: `ADELIE_API_URL`, `ADELIE_API_TOKEN`, `ADELIE_PROJECT_ID`, `ADELIE_AGENT_ID`, `ADELIE_SESSION_ID`. They name the session's own server and Agent, and they override a vault entry of the same name.
 
-## 3. TypeScript: `@lmliheng/amsp`
+## 3. TypeScript: `@adelie/amsp`
 
 ```bash
-npm install @lmliheng/amsp
+npm install @adelie/amsp
 ```
 
 The client has no dependencies and runs in Node 24 and in current browsers. If your registry does not have the package, call the API over HTTP as in section 4.
 
 ```ts
-import { AgentClient, parseArguments } from "@lmliheng/amsp";
+import { AgentClient, parseArguments } from "@adelie/amsp";
 
 const apiKey = process.env.ADELIE_AGENT_KEY;
 if (!apiKey) throw new Error("Set ADELIE_AGENT_KEY to the key from the agent's API tab.");

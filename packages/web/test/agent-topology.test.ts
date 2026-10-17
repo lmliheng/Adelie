@@ -25,8 +25,8 @@ import {
   toolCallOutput,
   userText,
   withOrigin,
-} from "@lmliheng/penguin-core/omnimessage";
-import type { OmniMessage, SessionMetaPayload } from "@lmliheng/penguin-core/omnimessage";
+} from "@adelie/core/omnimessage";
+import type { OmniMessage, SessionMetaPayload } from "@adelie/core/omnimessage";
 import {
   agentIdFromStatePath,
   approvalKey,

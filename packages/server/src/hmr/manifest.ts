@@ -4,6 +4,6 @@
  * with no server in the process, and that entry point is a contract with installed CLIs.
  *
  * The reader itself is the hot-update MECHANISM and lives with the rest of it
- * (@lmliheng/penguin-hmr) — see that package's README for what may go in there.
+ * (@adelie/hmr) — see that package's README for what may go in there.
  */
-export * from "@lmliheng/penguin-hmr/manifest";
+export * from "@adelie/hmr/manifest";

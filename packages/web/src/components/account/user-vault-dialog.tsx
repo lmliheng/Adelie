@@ -14,7 +14,7 @@
  * the account menu's own row closes the menu as it opens this.
  */
 import { useCallback, useEffect, useState } from "react";
-import type { VaultEntryInfo, VaultUpdateRequest } from "@lmliheng/penguin-server/api";
+import type { VaultEntryInfo, VaultUpdateRequest } from "@adelie/server/api";
 import {
   Button,
   ConfirmModal,
@@ -27,7 +27,7 @@ import {
   Textarea,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

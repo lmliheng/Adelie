@@ -8,7 +8,7 @@
  * Importing the module registers the seven — chat-page.tsx does, so they are in the registry
  * before any dock renders.
  */
-import { EmptyState, ICONS } from "@lmliheng/penguin-ui";
+import { EmptyState, ICONS } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import { dockPanelDefinition, panelLabel, registerDockPanel } from "../dock/panel-registry";

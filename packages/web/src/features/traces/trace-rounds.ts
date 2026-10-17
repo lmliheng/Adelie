@@ -9,8 +9,8 @@
  * the panel. Round cards are drawn a page at a time from the newest end, so the list itself
  * stays a bounded number of heads however long the file is.
  */
-import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
-import type { TraceEventsResponse } from "@lmliheng/penguin-server/api";
+import type { OmniMessage } from "@adelie/core/omnimessage";
+import type { TraceEventsResponse } from "@adelie/server/api";
 
 /** Round cards drawn per step: the panel opens on the newest this many, and each "earlier" click adds this many more. */
 export const TRACE_ROUNDS_PAGE = 50;

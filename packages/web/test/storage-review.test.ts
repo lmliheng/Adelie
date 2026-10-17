@@ -29,7 +29,7 @@ import {
   storageTogglePath,
   storageUnselectClass,
 } from "../src/features/settings/storage-review";
-import type { StoragePlanEntryView, StoragePlanView } from "@lmliheng/penguin-server/api";
+import type { StoragePlanEntryView, StoragePlanView } from "@adelie/server/api";
 
 const tmp1 = "proj/agents/docs/workspaces/tmp-11111111";
 const tmp2 = "proj/agents/docs/workspaces/tmp-22222222";

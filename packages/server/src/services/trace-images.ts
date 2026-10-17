@@ -17,7 +17,7 @@
  * `text/html` data URL served there would be a document, not a picture. Any other data URL
  * stays inline, where it is as harmless as it always was.
  */
-import type { ImageUrlPayload, OmniMessage, ToolCallOutputPayload } from "@lmliheng/penguin-core";
+import type { ImageUrlPayload, OmniMessage, ToolCallOutputPayload } from "@adelie/core";
 import type { HistoryMessage, TracePosition } from "../api/types.js";
 
 /** Image types the trace-image route serves (core's own supported set). */

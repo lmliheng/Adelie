@@ -6,8 +6,8 @@
  * handed and reports each edit; the page owns the drafts, the errors and what a change sets in
  * motion.
  */
-import type { PluginConfigEntry, PluginConfigField } from "@lmliheng/penguin-server/api";
-import { Checkbox, Input, PasswordInput, Select, Textarea, ToggleRow } from "@lmliheng/penguin-ui";
+import type { PluginConfigEntry, PluginConfigField } from "@adelie/server/api";
+import { Checkbox, Input, PasswordInput, Select, Textarea, ToggleRow } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import type { Locale } from "../../state/locale";
 import { localizedText } from "../chat/skill-use";

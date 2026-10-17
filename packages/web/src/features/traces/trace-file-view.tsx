@@ -31,14 +31,14 @@
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
+import type { OmniMessage } from "@adelie/core/omnimessage";
 import type {
   TraceAnalysisResponse,
   TraceModelSegment,
   TraceOtherSpan,
   TraceTaskStats,
   TraceToolSpan,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Badge,
   Card,
@@ -48,7 +48,7 @@ import {
   Skeleton,
   StatChip,
   TokenDonut,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

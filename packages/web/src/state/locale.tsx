@@ -11,7 +11,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { UiStringsProvider } from "@lmliheng/penguin-ui";
+import { UiStringsProvider } from "@adelie/ui";
 import { setActiveStrings, zh } from "../lib/strings";
 import { en } from "../lib/strings-en";
 import { uiStringsFor } from "../lib/ui-strings";

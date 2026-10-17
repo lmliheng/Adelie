@@ -135,7 +135,7 @@ import type {
   WorkflowInfo,
   WorkspaceFilesResponse,
   WorkspaceSearchResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 // The catalog decides which groups publish a balance, as it does on the server.
 import { providerInfo } from "../../../../core/dist/state/model-catalog.js";
 import { READ_ONLY } from "./errors";

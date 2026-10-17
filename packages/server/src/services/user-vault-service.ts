@@ -24,10 +24,10 @@ import {
   isValidVaultKey,
   loadUserVault,
   saveUserVault,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type { VaultResponse, VaultUpdateRequest } from "../api/types.js";
 import { badRequest } from "../http/validate.js";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Paths } from "../hmr/capabilities.js";
 import type { AgentConfig } from "../mechanisms/agents.js";
 import type { UserVault } from "../mechanisms/vault.js";

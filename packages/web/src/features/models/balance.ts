@@ -20,7 +20,7 @@ import type {
   ModelBalanceReading,
   ModelBalanceResponse,
   PinnedBalance,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { formatMoney } from "../../lib/format";

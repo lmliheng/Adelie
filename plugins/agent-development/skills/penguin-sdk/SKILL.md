@@ -1,6 +1,6 @@
 ---
 name: penguin-sdk
-description: Use whenever the user wants to build an agent application — their own program with an agent in it, such as an AI app, an agentic app, a RAG app or a bot — or to connect a program to an Adelie agent. A program reaches an agent in one of two ways, and the skill asks the user which before building — embedded with the Penguin Harness SDK (`@lmliheng/penguin-core`, no server), or over the Adelie server's Agent API (AMSP, with the `@lmliheng/amsp` client or curl). This is writing application code, not configuring an Agent State inside Adelie. Covers self-contained projects, the createSession/run streaming loop with thinking and image messages, wiring the user's existing tools in as CLI commands, a complete RAG recipe that ingests documents into a knowledge base and answers with citations behind a web UI, and the Agent API client. Also use it for workflows — the tabs and pages beside the chat that an Agent keeps in its own `workflows/` folder inside Adelie: building one, changing it, restoring an earlier version, and removing a tab or a whole workflow when the user wants the custom UI gone.
+description: Use whenever the user wants to build an agent application — their own program with an agent in it, such as an AI app, an agentic app, a RAG app or a bot — or to connect a program to an Adelie agent. A program reaches an agent in one of two ways, and the skill asks the user which before building — embedded with the Penguin Harness SDK (`@adelie/core`, no server), or over the Adelie server's Agent API (AMSP, with the `@adelie/amsp` client or curl). This is writing application code, not configuring an Agent State inside Adelie. Covers self-contained projects, the createSession/run streaming loop with thinking and image messages, wiring the user's existing tools in as CLI commands, a complete RAG recipe that ingests documents into a knowledge base and answers with citations behind a web UI, and the Agent API client. Also use it for workflows — the tabs and pages beside the chat that an Agent keeps in its own `workflows/` folder inside Adelie: building one, changing it, restoring an earlier version, and removing a tab or a whole workflow when the user wants the custom UI gone.
 ---
 
 # Penguin Harness SDK and Agent API
@@ -11,7 +11,7 @@ To have an agent perform a task for you, use the `run_subagent` tool: both ways 
 
 ## Two ways to reach an agent
 
-**The SDK: `@lmliheng/penguin-core`, embedded in the program.**
+**The SDK: `@adelie/core`, embedded in the program.**
 
 - *What it is.* The agent loop as a TypeScript library. The program creates its own Agent from a data directory inside the project and runs its Sessions in-process. No Adelie server is involved, at build time or at run time.
 - *What you get.* The basic agent loop: the Agent State files (`AGENTS.md`, Skills, tools), the streamed OmniMessages and an `approve` callback for every tool call, in a self-contained folder that runs wherever Node 24 does, on the program's own model key.
@@ -20,7 +20,7 @@ To have an agent perform a task for you, use the `run_subagent` tool: both ways 
 
 **The API: Adelie's Agent API, over AMSP.**
 
-- *What it is.* The program calls an Agent that lives in Adelie, over HTTP. The Adelie server runs each turn and streams it back as AMSP events, and the program continues a conversation by its Session id. TypeScript uses the `@lmliheng/amsp` client (`AgentClient`); any other language, or curl, speaks HTTP and SSE directly.
+- *What it is.* The program calls an Agent that lives in Adelie, over HTTP. The Adelie server runs each turn and streams it back as AMSP events, and the program continues a conversation by its Session id. TypeScript uses the `@adelie/amsp` client (`AgentClient`); any other language, or curl, speaks HTTP and SSE directly.
 - *What you get.* The Agent as Adelie runs it: its `AGENTS.md`, Skills and memory, on the Project's models and credentials, so the program holds no model key. The server keeps the conversations in the Agent's Background folder, where a person can read them and answer approvals, and their usage lands in the cost center.
 - *What it requires.* A running Adelie server that the program can reach over the network; API access turned on for that Agent by the Project's owner, on the Agent's **API** tab; and a key created there, shown once. You never turn these on yourself (see *The API path*).
 - *Choose it when* the Agent already exists in Adelie or should be managed there, people need to see its conversations or costs, or the program is not written in TypeScript.
@@ -31,7 +31,7 @@ Whenever the user asks to connect a program to an agent, or to build a program w
 
 Do not ask when the way is already chosen:
 
-- in the user's message: "use the SDK", "standalone", "without the Adelie server" or "embed the agent" chooses the SDK; "call it over the API", "through the Agent API", "with AMSP", "with `@lmliheng/amsp`" or "with curl" chooses the API;
+- in the user's message: "use the SDK", "standalone", "without the Adelie server" or "embed the agent" chooses the SDK; "call it over the API", "through the Agent API", "with AMSP", "with `@adelie/amsp`" or "with curl" chooses the API;
 - earlier in this conversation, for the same program.
 
 Naming this skill does not choose a way. Workflows (below) take neither way and need no question; neither does connecting a Feishu, Telegram, QQ or WeChat bot to a conversation, which is the Web App's Remote control.
@@ -69,13 +69,13 @@ The Web App shows the block as two buttons; the CLI and the messaging channels s
 If the user's message only invokes this skill (e.g. "use penguin-sdk skill") without a concrete app to build, ask the user what they want to build. Once the request is concrete, settle the way first (see *Ask which way first*); a workflow needs none. Then do **not** ask follow-up questions: build it end to end with that way's defaults and list the assumptions you made in your final reply.
 
 - SDK path: a self-contained workspace project, the project default model, BM25 retrieval, a web UI styled per the web-design skill.
-- API path: a self-contained workspace project in TypeScript on `@lmliheng/amsp` (plain HTTP when the user's program is in another language), calling the Agent the user named ("you" means this Agent) or, with none named, a new Agent created for the purpose with the agent-initialization skill.
+- API path: a self-contained workspace project in TypeScript on `@adelie/amsp` (plain HTTP when the user's program is in another language), calling the Agent the user named ("you" means this Agent) or, with none named, a new Agent created for the purpose with the agent-initialization skill.
 
 Each path also needs one thing only the user can provide: a model credential on the SDK path (see *Keys and the data root*), and on the API path the Agent's API access and key (see *The API path*).
 
 ## The SDK path
 
-`@lmliheng/penguin-core` is the TypeScript SDK this agent itself runs on. Use it to build your own AI apps:
+`@adelie/core` is the TypeScript SDK this agent itself runs on. Use it to build your own AI apps:
 
 - An **Agent** loads its state (prompts, tools, skills) from `<root>/<project_id>/agents/<agent_id>/`. Creating an Agent whose directory is empty initializes it with defaults.
 - A **Session** is one conversation of an Agent inside a **Workspace** directory.
@@ -108,10 +108,10 @@ If neither counted source yields a key, **stop immediately and ask the user to c
 ### Setup
 
 ```bash
-npm install @lmliheng/penguin-core tsx
+npm install @adelie/core tsx
 ```
 
-If the package is not on your npm registry (it is developed in the Adelie monorepo and may not be published), develop inside a checkout of the Adelie repo instead: add your app as a workspace package under `packages/`, depend on `"@lmliheng/penguin-core": "workspace:*"`, then `pnpm install && pnpm build` at the repo root. Tell the user which route you took.
+If the package is not on your npm registry (it is developed in the Adelie monorepo and may not be published), develop inside a checkout of the Adelie repo instead: add your app as a workspace package under `packages/`, depend on `"@adelie/core": "workspace:*"`, then `pnpm install && pnpm build` at the repo root. Tell the user which route you took.
 
 Configure a model for the app's data root, in this order — stop at the first that works:
 
@@ -131,7 +131,7 @@ The raw `run()` stream mixes model, event and session-meta payloads — always n
 ```ts
 import path from "node:path";
 import readline from "node:readline/promises";
-import { createAgent, isModelMessage, userText } from "@lmliheng/penguin-core";
+import { createAgent, isModelMessage, userText } from "@adelie/core";
 
 const agent = await createAgent({ root: path.join(import.meta.dirname, "penguin_data") });
 const session = await agent.createSession({ workspaceDir: process.cwd() });
@@ -172,7 +172,7 @@ Modern models think before answering and accept images; the stream and the input
 **Images in.** Build image input with `imageUrlMessage` (a web URL or a base64 data URL) beside `userText` in the same `run` input:
 
 ```ts
-import { imageUrlMessage, userText } from "@lmliheng/penguin-core";
+import { imageUrlMessage, userText } from "@adelie/core";
 session.run([userText(question), ...images.map(imageUrlMessage)], { ... });
 ```
 
@@ -215,7 +215,7 @@ find corpus -type f ! -regex '.*\.\(md\|mdx\|txt\|html?\)$' -delete && rm -rf co
 ```ts
 import fs from "node:fs";
 import path from "node:path";
-import { createAgent } from "@lmliheng/penguin-core";
+import { createAgent } from "@adelie/core";
 
 const ROOT = import.meta.dirname;
 const walk = (d: string): string[] =>
@@ -312,7 +312,7 @@ export function search(index: Index, query: string, k = 6): Chunk[] {
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
-import { createAgent, isModelMessage, userText } from "@lmliheng/penguin-core";
+import { createAgent, isModelMessage, userText } from "@adelie/core";
 import { loadIndex, search } from "./rag.ts";
 
 const ROOT = import.meta.dirname;
@@ -466,8 +466,8 @@ The root manifest is named `Workflow`; it requires the host, provides the handle
     "modules": [
       {
         "name": "Workflow",
-        "requires": { "host": { "iface": "@lmliheng/penguin-server#WorkflowHost", "from": "Host" } },
-        "provides": { "main": "@lmliheng/penguin-server#WorkflowMain" },
+        "requires": { "host": { "iface": "@adelie/server#WorkflowHost", "from": "Host" } },
+        "provides": { "main": "@adelie/server#WorkflowMain" },
         "contributes": {
           "WebModule.sessionTabs": [
             { "id": "demo.main", "key": "main", "title": "Demo", "titleZh": "演示", "renderer": { "iframe": { "src": "ui/index.html" } } }
@@ -480,7 +480,7 @@ The root manifest is named `Workflow`; it requires the host, provides the handle
 ```
 
 ```ts
-import type { WorkflowPackage } from "@lmliheng/penguin-server/plugin";
+import type { WorkflowPackage } from "@adelie/server/plugin";
 
 export default {
   modules: {
@@ -512,7 +512,7 @@ export default {
 
 **TypeScript, checked by the server.** There is no build step to run, no `tsconfig.json` to write and nothing to `npm install`: the server builds one program from `index.ts` (and the `.ts` files it imports, with `.js` in the import specifier as NodeNext asks) under options it fixes itself — `strict` among them — refuses the load on any diagnostic, reporting file, line and reason, and otherwise emits into `.build/<revision>/` and imports that. `satisfies WorkflowPackage` is what types `use.host` and `req`; without it `strict` refuses the untyped parameters. A folder holding `index.js` or `index.mjs` instead is refused outright.
 
-**Types come from the harness that runs you.** One machine can run several harnesses — a release, a checkout, a platform someone pushed with interfaces of its own — and none of them is a version on npm, so `@lmliheng/penguin-server/plugin` is not a package here: the first time the server loads the folder it writes `.harness/plugin.d.ts`, rendered from ITS OWN interface table, and that is what the import resolves to. Create `package.json` and a minimal `index.ts`, let the server load it once, then read `.harness/plugin.d.ts` for the exact `WorkflowHost` this harness offers. The server then leaves `.harness/` alone: it is the record of what the workflow was written against, and a later generation of the platform is COMPARED with it, by the TypeScript compiler, both for what the workflow requires and what it provides — a host method you rely on that has since gone is a load error naming it, not a failure on the first call. To move a workflow onto the harness that runs it now, delete `.harness/` and fix what the compiler then reports.
+**Types come from the harness that runs you.** One machine can run several harnesses — a release, a checkout, a platform someone pushed with interfaces of its own — and none of them is a version on npm, so `@adelie/server/plugin` is not a package here: the first time the server loads the folder it writes `.harness/plugin.d.ts`, rendered from ITS OWN interface table, and that is what the import resolves to. Create `package.json` and a minimal `index.ts`, let the server load it once, then read `.harness/plugin.d.ts` for the exact `WorkflowHost` this harness offers. The server then leaves `.harness/` alone: it is the record of what the workflow was written against, and a later generation of the platform is COMPARED with it, by the TypeScript compiler, both for what the workflow requires and what it provides — a host method you rely on that has since gone is a load error naming it, not a failure on the first call. To move a workflow onto the harness that runs it now, delete `.harness/` and fix what the compiler then reports.
 
 **Tabs are contributions.** Each entry under `WebModule.sessionTabs` is one tab beside the chat: `key` (unique in the workflow, part of the full-page URL), `title` / `titleZh`, and a `renderer` whose `iframe.src` is a file under `ui/`. Several entries make several tabs; none makes a server-only workflow. It is the same slot, written the same way, a plugin contributes to — the host opens it to workflows and scopes the tab to this Agent. A slot the host has not opened (`WebModule.pages`, say) is refused by name.
 

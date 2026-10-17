@@ -8,7 +8,7 @@
  * codes (plus a line number for the multiline fields); the component maps them to
  * localized messages.
  */
-import type { MCPServerConfig, ToolPermission } from "@lmliheng/penguin-core/interfaces";
+import type { MCPServerConfig, ToolPermission } from "@adelie/core/interfaces";
 
 export type McpTransportKind = "stdio" | "http" | "sse";
 

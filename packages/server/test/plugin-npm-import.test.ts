@@ -214,8 +214,8 @@ describe("parsePluginArchive, on a tarball", () => {
 
 describe("parseNpmPluginSpec", () => {
   it("reads the explicit spelling, with and without a version", () => {
-    expect(parseNpmPluginSpec("npm:@lmliheng/use-firecrawl")).toEqual({
-      name: "@lmliheng/use-firecrawl",
+    expect(parseNpmPluginSpec("npm:@adelie/use-firecrawl")).toEqual({
+      name: "@adelie/use-firecrawl",
     });
     expect(parseNpmPluginSpec("npm:use-firecrawl@0.2.13")).toEqual({
       name: "use-firecrawl",
@@ -228,23 +228,23 @@ describe("parseNpmPluginSpec", () => {
   });
 
   it("reads a bare package name, and the npmjs.com page a search ends on", () => {
-    expect(parseNpmPluginSpec("@lmliheng/data-analysis")).toEqual({
-      name: "@lmliheng/data-analysis",
+    expect(parseNpmPluginSpec("@adelie/data-analysis")).toEqual({
+      name: "@adelie/data-analysis",
     });
     expect(parseNpmPluginSpec("data-analysis")).toEqual({ name: "data-analysis" });
     expect(parseNpmPluginSpec("data-analysis@2026.9.14.1")).toEqual({
       name: "data-analysis",
       version: "2026.9.14.1",
     });
-    expect(parseNpmPluginSpec("https://www.npmjs.com/package/@lmliheng/goal")).toEqual({
-      name: "@lmliheng/goal",
+    expect(parseNpmPluginSpec("https://www.npmjs.com/package/@adelie/goal")).toEqual({
+      name: "@adelie/goal",
     });
     expect(parseNpmPluginSpec("https://www.npmjs.com/package/goal/v/0.2.13")).toEqual({
       name: "goal",
       version: "0.2.13",
     });
-    expect(parseNpmPluginSpec("https://registry.npmjs.org/@lmliheng%2Fgoal")).toEqual({
-      name: "@lmliheng/goal",
+    expect(parseNpmPluginSpec("https://registry.npmjs.org/@adelie%2Fgoal")).toEqual({
+      name: "@adelie/goal",
     });
   });
 
@@ -360,7 +360,7 @@ describe("the download route, importing from npm", () => {
           versions: {
             "0.2.13": {
               dist: {
-                tarball: "https://registry.npmjs.org/@lmliheng/from-npm/-/from-npm-0.2.13.tgz",
+                tarball: "https://registry.npmjs.org/@adelie/from-npm/-/from-npm-0.2.13.tgz",
                 integrity: options.integrity ?? integrityOf(tarball),
               },
             },
@@ -380,14 +380,14 @@ describe("the download route, importing from npm", () => {
   it("installs the package's tarball under its unscoped name, files and all", async () => {
     const calls: string[] = [];
     stubRegistry({ calls });
-    const res = await admin.post("/api/plugins/download", { url: "@lmliheng/from-npm" });
+    const res = await admin.post("/api/plugins/download", { url: "@adelie/from-npm" });
     expect(res.status).toBe(201);
     const body = (await res.json()) as PluginImportResponse;
     expect(body.plugin).toMatchObject({ name: "from-npm", source: "user" });
     expect(body.path).toBe(path.join(t.root, "plugins", "from-npm"));
     expect(calls).toEqual([
-      "https://registry.npmjs.org/@lmliheng%2Ffrom-npm",
-      "https://registry.npmjs.org/@lmliheng/from-npm/-/from-npm-0.2.13.tgz",
+      "https://registry.npmjs.org/@adelie%2Ffrom-npm",
+      "https://registry.npmjs.org/@adelie/from-npm/-/from-npm-0.2.13.tgz",
     ]);
     expect(await libraryNames()).toContain("from-npm");
     const files = (await (await admin.get("/api/plugins/from-npm/files")).json()) as {
@@ -407,19 +407,19 @@ describe("the download route, importing from npm", () => {
 
   it("answers npm's own refusals with their own codes, and writes nothing on the way", async () => {
     vi.stubGlobal("fetch", async () => new Response("{}", { status: 404 }));
-    const absent = await admin.post("/api/plugins/download", { url: "npm:@lmliheng/absent" });
+    const absent = await admin.post("/api/plugins/download", { url: "npm:@adelie/absent" });
     expect(absent.status).toBe(404);
     expect(await readErrorCode(absent)).toBe("npm_package_not_found");
 
     vi.stubGlobal("fetch", async () => new Response("this is not json", { status: 200 }));
-    const unreadable = await admin.post("/api/plugins/download", { url: "npm:@lmliheng/odd" });
+    const unreadable = await admin.post("/api/plugins/download", { url: "npm:@adelie/odd" });
     expect(unreadable.status).toBe(400);
     expect(await readErrorCode(unreadable)).toBe("npm_registry_failed");
 
     vi.stubGlobal("fetch", async () => {
       throw new Error("getaddrinfo ENOTFOUND registry.npmjs.org");
     });
-    const offline = await admin.post("/api/plugins/download", { url: "npm:@lmliheng/offline" });
+    const offline = await admin.post("/api/plugins/download", { url: "npm:@adelie/offline" });
     expect(offline.status).toBe(400);
     expect(await readErrorCode(offline)).toBe("npm_registry_failed");
 

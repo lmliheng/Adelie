@@ -20,9 +20,9 @@
  * and an approval asked of a caller that went away would never be answered. A server failure
  * that ends the stream aborts it for the same reason.
  */
-import { imageUrlMessage, isValidId, userText } from "@lmliheng/penguin-core";
-import type { OmniMessage } from "@lmliheng/penguin-core";
-import type { AmspEvent, RunStarted } from "@lmliheng/amsp";
+import { imageUrlMessage, isValidId, userText } from "@adelie/core";
+import type { OmniMessage } from "@adelie/core";
+import type { AmspEvent, RunStarted } from "@adelie/amsp";
 import type { Context } from "hono";
 import { streamSSE } from "hono/streaming";
 import type { ApprovalMode } from "../api/types.js";

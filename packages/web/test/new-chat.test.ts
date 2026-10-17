@@ -9,7 +9,7 @@
  *   released, a slot holding nothing it keeps is emptied, and an empty slot is left alone.
  */
 import { describe, expect, it } from "vitest";
-import type { AgentSummary } from "@lmliheng/penguin-server/api";
+import type { AgentSummary } from "@adelie/server/api";
 import { draftKey, loadDraft, saveDraft } from "../src/features/chat/draft-cache";
 import { getDraftSession } from "../src/features/chat/draft-sessions";
 import { newChatAgentId, prepareNewChatDraft } from "../src/features/chat/new-chat";

@@ -27,7 +27,7 @@ import type {
   AgentSchedulesConfigDto,
   AgentSkillsConfigDto,
   AgentVaultConfigDto,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Button,
   Card,
@@ -37,7 +37,7 @@ import {
   ToggleRow,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

@@ -14,7 +14,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { ICON_SIZE } from "@lmliheng/penguin-ui";
+import { ICON_SIZE } from "@adelie/ui";
 import { DEFAULT_THEME_ID, THEME_IDS, THEME_MODES } from "../../ui/src/tokens";
 import { analyzeThemeFile, resolveThemeValue } from "../../ui/src/testing/theme-tokens";
 import { expectEveryRootScanned, expectSingleHome, scanSources } from "./helpers/roots";

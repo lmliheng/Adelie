@@ -26,7 +26,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Navigate, Outlet, useNavigate, useParams } from "react-router";
-import type { OrganizationSummary } from "@lmliheng/penguin-server/api";
+import type { OrganizationSummary } from "@adelie/server/api";
 import {
   Button,
   EmptyState,
@@ -37,7 +37,7 @@ import {
   PageFrame,
   PageHeader,
   Skeleton,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { useCompany } from "../../state/company";
 import { useProject } from "../../state/project";

@@ -19,13 +19,8 @@ import {
   WorkspaceFileEditor,
   WorkspaceFileMenuRows,
   menuPanelClass,
-} from "@lmliheng/penguin-ui";
-import type {
-  FileBrowserPreview,
-  FileTreeRow,
-  PreviewView,
-  TreeToggle,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { FileBrowserPreview, FileTreeRow, PreviewView, TreeToggle } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 import { DEMO_OPEN_DIRS, DEMO_TREE, demoSize, flattenTree } from "../demo-tree";

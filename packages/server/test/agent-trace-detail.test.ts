@@ -7,8 +7,8 @@
  * (projectId, agentId, sessionId), with access controlled via requireProjectAccess.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { requestBegin, requestEnd, sessionMeta, userText } from "@lmliheng/penguin-core";
-import type { SessionMetaPayload } from "@lmliheng/penguin-core";
+import { requestBegin, requestEnd, sessionMeta, userText } from "@adelie/core";
+import type { SessionMetaPayload } from "@adelie/core";
 import type {
   AgentTracesResponse,
   ProjectCreateResponse,

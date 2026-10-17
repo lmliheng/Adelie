@@ -5,8 +5,8 @@
  * and which backend packages this OS defaults to. A code contribution, so it must not require
  * plugin configuration itself.
  */
-import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
-import type { SandboxDimension } from "@lmliheng/penguin-core/plugin";
+import { Bind, Component, Use } from "@adelie/core/kernel";
+import type { SandboxDimension } from "@adelie/core/plugin";
 import type { PluginConfigNotice } from "../api/types.js";
 import type { PluginConfigUnavailable, SettingsGroupStatus } from "../plugin/config-page.js";
 import { Sandbox, SandboxModule } from "./service.js";
@@ -28,9 +28,9 @@ import {
  * implementing more).
  */
 const DEFAULT_BACKENDS: Partial<Record<NodeJS.Platform, readonly string[]>> = {
-  linux: ["@lmliheng/penguin-plugin-sandbox-bwrap", "@lmliheng/penguin-plugin-sandbox-dsh"],
-  darwin: ["@lmliheng/penguin-plugin-sandbox-seatbelt"],
-  win32: ["@lmliheng/penguin-plugin-sandbox-wsl"],
+  linux: ["@adelie/sandbox-bwrap", "@adelie/sandbox-dsh"],
+  darwin: ["@adelie/sandbox-seatbelt"],
+  win32: ["@adelie/sandbox-wsl"],
 };
 
 /** Each dimension as the card names it, in English and Chinese. */

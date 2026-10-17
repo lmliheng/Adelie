@@ -71,7 +71,7 @@ import type {
   OrgTicketsResponse,
   OrganizationDetail,
   OrganizationsResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   resolveAgentId,
   resolveConnection,

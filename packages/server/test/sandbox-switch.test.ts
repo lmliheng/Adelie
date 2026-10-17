@@ -8,8 +8,8 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { parseManifest } from "@lmliheng/penguin-core/kernel";
-import type { ModuleDef } from "@lmliheng/penguin-core/kernel";
+import { parseManifest } from "@adelie/core/kernel";
+import type { ModuleDef } from "@adelie/core/kernel";
 import type { PluginConfigEntry, PluginConfigResponse, SessionSandbox } from "../src/api/types.js";
 import { PluginHost } from "../src/plugin/host.js";
 import type { SandboxService } from "../src/sandbox/service.js";
@@ -19,9 +19,9 @@ import type { TestApp } from "./helpers.js";
 /** What the server defaults to on this OS; Linux offers sandbox-dsh (Landlock) beside bubblewrap. */
 const recommended = (
   {
-    linux: ["@lmliheng/penguin-plugin-sandbox-bwrap", "@lmliheng/penguin-plugin-sandbox-dsh"],
-    darwin: ["@lmliheng/penguin-plugin-sandbox-seatbelt"],
-    win32: ["@lmliheng/penguin-plugin-sandbox-wsl"],
+    linux: ["@adelie/sandbox-bwrap", "@adelie/sandbox-dsh"],
+    darwin: ["@adelie/sandbox-seatbelt"],
+    win32: ["@adelie/sandbox-wsl"],
   } as Partial<Record<NodeJS.Platform, string[]>>
 )[process.platform];
 

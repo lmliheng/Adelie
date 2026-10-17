@@ -13,7 +13,7 @@ import type {
   OrgFinanceResponse,
   OrgFinanceTicket,
   UsageSeriesPoint,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import type { Tone } from "../../lib/tone";
 import { employeeStateTone } from "./chart-view";
 

@@ -13,7 +13,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ICONS } from "@lmliheng/penguin-ui";
+import { ICONS } from "@adelie/ui";
 import { TaskStatsLine } from "../src/features/chat/task-stats-line";
 import { S, setActiveStrings, zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";

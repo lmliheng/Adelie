@@ -94,7 +94,7 @@ import type {
   SessionStatus,
   SkillMetadataItem,
   TaskInputPart,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   AgentAvatar,
   Button,
@@ -119,8 +119,8 @@ import {
   noAutofill,
   toastError,
   toastInfo,
-} from "@lmliheng/penguin-ui";
-import type { MenuSelectOption, TagInputChip } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { MenuSelectOption, TagInputChip } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { formatBytes, humanizeTokens } from "../../lib/format";
 import { fitTextarea } from "../../lib/textarea-fit";

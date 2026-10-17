@@ -42,7 +42,7 @@ import type {
   ModelTestRequest,
   ModelUpdateEntry,
   ModelVisionDetectRequest,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Button,
   Checkbox,
@@ -72,7 +72,7 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
@@ -97,12 +97,12 @@ import {
   providerEnvFallbackKey,
   providerInfo,
   unroutableVendorModel,
-} from "@lmliheng/penguin-core/model-catalog";
+} from "@adelie/core/model-catalog";
 import type {
   FastModeProtocol,
   ModelProviderBridgeAuth,
   ModelProviderInfo,
-} from "@lmliheng/penguin-core/model-catalog";
+} from "@adelie/core/model-catalog";
 import {
   allGroupKeys,
   discountedPrice,

@@ -7,7 +7,7 @@
  * runtime are the trend the loop exists to show, so they stay on one line, and each point
  * carries its version in the chart's hover label and in the evaluation table's own column.
  */
-import type { LinePoint } from "@lmliheng/penguin-ui";
+import type { LinePoint } from "@adelie/ui";
 
 /** Minimal Evaluation shape needed to read Score (BenchmarkEvaluation is a superset). */
 export interface MetricSourceLike {

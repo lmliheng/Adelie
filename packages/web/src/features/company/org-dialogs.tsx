@@ -37,7 +37,7 @@ import type {
   OrganizationDetail,
   OrganizationPatchRequest,
   OrganizationSettings,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Button,
   ConfirmModal,
@@ -52,7 +52,7 @@ import {
   Textarea,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

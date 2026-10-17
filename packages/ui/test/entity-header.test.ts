@@ -13,7 +13,7 @@ describe("EntityHeader", () => {
       EntityHeader,
       {
         media: createElement("img", { alt: "", src: "/logo.svg" }),
-        name: "@lmliheng/goal",
+        name: "@adelie/goal",
         meta: "v0.2.9",
         description: "Keeps the agent on its goal.",
         actions: createElement("button", { type: "button" }, "Install"),
@@ -23,7 +23,7 @@ describe("EntityHeader", () => {
   );
 
   it("names the thing with a level-1 heading on its rung, not in mono", () => {
-    expect(html).toMatch(/<h1 class="[^"]*--ui-h1-size[^"]*">@lmliheng\/goal<\/h1>/);
+    expect(html).toMatch(/<h1 class="[^"]*--ui-h1-size[^"]*">@adelie\/goal<\/h1>/);
     expect(html).not.toContain("ui-display");
     expect(/<h1 class="([^"]*)"/.exec(html)![1]).not.toContain("font-mono");
   });

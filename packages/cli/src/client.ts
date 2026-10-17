@@ -31,8 +31,8 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { resolveRoot } from "@lmliheng/penguin-core";
-import { liveServerLock } from "@lmliheng/penguin-server/lock";
+import { resolveRoot } from "@adelie/core";
+import { liveServerLock } from "@adelie/server/lock";
 import { readSession } from "./auth-session.js";
 import type { Messages } from "./i18n.js";
 

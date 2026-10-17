@@ -7,14 +7,10 @@
  */
 import fs from "node:fs/promises";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  defaultProjectConfig,
-  projectConfigPath,
-  renderProjectConfigToml,
-} from "@lmliheng/penguin-core";
+import { defaultProjectConfig, projectConfigPath, renderProjectConfigToml } from "@adelie/core";
 import { ProjectConfigService } from "../src/services/project-config-service.js";
 import { makeTempRoot } from "./helpers.js";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
 
 const P = "project-cfg";
 const PRICED = {

@@ -6,7 +6,7 @@
 
 [English](2026-10-16-agent-api-amsp.md)
 
-Project 所有者可以把某一个 Agent 开放给 Adelie 之外的程序。程序把输入发到 `POST /api/amsp/v1/agents/:projectId/:agentId/runs`，以 AMSP 事件流实时读取这次运行，再凭 Session id 延续对话。这些运行使用 Project 的模型与凭据，像其他对话一样被记录，并出现在侧边栏的**后台会话**折叠夹中。新增的 `@lmliheng/amsp` 包含该协议的类型和一个可在 Node 与浏览器中使用的 TypeScript 客户端。
+Project 所有者可以把某一个 Agent 开放给 Adelie 之外的程序。程序把输入发到 `POST /api/amsp/v1/agents/:projectId/:agentId/runs`，以 AMSP 事件流实时读取这次运行，再凭 Session id 延续对话。这些运行使用 Project 的模型与凭据，像其他对话一样被记录，并出现在侧边栏的**后台会话**折叠夹中。新增的 `@adelie/amsp` 包含该协议的类型和一个可在 Node 与浏览器中使用的 TypeScript 客户端。
 
 ## Agent API
 
@@ -30,7 +30,7 @@ Project 所有者可以把某一个 Agent 开放给 Adelie 之外的程序。程
 
 ## amsp 客户端
 
-- `@lmliheng/amsp` 是新的公开包，没有运行时依赖，适用于 Node 24 和浏览器。它导出 AMSP 的传输类型（服务器也引用这些类型）和 `AgentClient`。
+- `@adelie/amsp` 是新的公开包，没有运行时依赖，适用于 Node 24 和浏览器。它导出 AMSP 的传输类型（服务器也引用这些类型）和 `AgentClient`。
 - `client.run()` 返回一个可迭代取得事件的运行，带有 `session`、`result()` 和 `abort()`；`client.ask()` 只返回结果。`onApproval` 回答审批请求，没有它时一律拒绝。客户端还提供 `agent()`、`session()`、`abort()` 和 `approve()`，`AmspHttpError` 与 `AmspStreamError` 两种错误，解析工具调用 JSON 参数的 `parseArguments`、SSE 读取器 `readSse`，以及把程序自行读取的事件归并为同样结果的 `RunCollector`。
 
 ## Web App

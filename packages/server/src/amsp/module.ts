@@ -11,7 +11,7 @@
  * runs the public group's handler with the same dependencies. Its order, one below the tab's
  * group, only fixes the mount order: that group has no catch-all to shadow it.
  */
-import { Bind, Component, Module, Use } from "@lmliheng/penguin-core/kernel";
+import { Bind, Component, Module, Use } from "@adelie/core/kernel";
 import type { Hono } from "hono";
 import type { AppEnv } from "../auth/middleware.js";
 import { AgentApiRepo } from "../db/repos/agent-api.js";

@@ -4,7 +4,7 @@
  * after something changed the machine (an install from the Sandbox card's prompt), without
  * touching their values, so drafts being edited are kept.
  */
-import type { PluginConfigEntry } from "@lmliheng/penguin-server/api";
+import type { PluginConfigEntry } from "@adelie/server/api";
 
 export function withLiveParts(
   entries: readonly PluginConfigEntry[],

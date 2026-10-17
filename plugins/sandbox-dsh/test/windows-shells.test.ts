@@ -5,7 +5,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import type { ConfinedArgv } from "@lmliheng/penguin-core/plugin";
+import type { ConfinedArgv } from "@adelie/core/plugin";
 import {
   assertAclRunnerCanStart as check,
   assertSessionShellConfinable,

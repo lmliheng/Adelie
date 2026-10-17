@@ -13,7 +13,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { StoragePlanView, StorageReport } from "@lmliheng/penguin-server/api";
+import type { StoragePlanView, StorageReport } from "@adelie/server/api";
 import { cli } from "../src/index.js";
 import { FakeServer } from "./fake-server.js";
 

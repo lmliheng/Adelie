@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Readable, Writable } from "node:stream";
-import { toolCall } from "@lmliheng/penguin-core";
-import type { OmniMessage, ToolCallPayload } from "@lmliheng/penguin-core";
+import { toolCall } from "@adelie/core";
+import type { OmniMessage, ToolCallPayload } from "@adelie/core";
 import { makeApprove, promptApproval, resolveApprovalMode } from "../src/approval.js";
 import { getMessages } from "../src/i18n.js";
 

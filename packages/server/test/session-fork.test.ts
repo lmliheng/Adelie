@@ -32,8 +32,8 @@ import {
   tokenUsage,
   tracesDir,
   userText,
-} from "@lmliheng/penguin-core";
-import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@adelie/core";
 import type {
   MessagesResponse,
   ProjectCreateResponse,

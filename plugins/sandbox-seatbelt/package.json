@@ -1,5 +1,5 @@
 {
-  "name": "@lmliheng/penguin-plugin-sandbox-seatbelt",
+  "name": "@adelie/sandbox-seatbelt",
   "version": "0.2.3",
   "private": true,
   "type": "module",
@@ -24,7 +24,7 @@
     "build": "node ../../scripts/gen-ifaces.mjs --project tsconfig.json --out ifaces.json && tsup"
   },
   "devDependencies": {
-    "@lmliheng/penguin-core": "workspace:*",
+    "@adelie/core": "workspace:*",
     "tsup": "^8.3.0",
     "vitest": "^3.2.6"
   }

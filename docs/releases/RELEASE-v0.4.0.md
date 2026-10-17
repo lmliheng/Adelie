@@ -18,7 +18,7 @@
    Max 一对、混元的角色扮演 / 翻译 / 向量化、小米的 ultraspeed 档也都没收录，理由写在目录的注释里。
    四家在 AgentHub 里都没有一方客户端，所以每行都钉住 Chat Completions 协议并内联端点；分组图标
    先走首字母方块（没有可核对的品牌图形，不手画商标）。
-2. **新插件 Offer岛：搜岗位、发布 JD、看 AI 资讯。** `@lmliheng/use-offerdao`，插件库「办公效率」
+2. **新插件 Offer岛：搜岗位、发布 JD、看 AI 资讯。** `@adelie/use-offerdao`，插件库「办公效率」
    分类，**不预装**。按公司 / 岗位 / 地点 / 工作类型 / 时间搜已审核的岗位、查 AI 公司目录、找面经
    攻略、读每日 AI 资讯；把一段 JD 或一个链接交给它，还能解析成结构化岗位替你提交审核。公司目录、
    面经、资讯不需要 key；搜索与发布要一把 Offer岛的 key，存进 Agent 密钥库的 `OFFERDAO_API_KEY`
@@ -78,7 +78,7 @@ penguin update --yes       # 原地替换 bin/lib/web/node
 
 安装包都在 GitHub Release 上：<https://github.com/lmliheng/Adelie/releases/tag/v0.4.0>，
 下载页同样直指这里。npm 上整条链同样是 **0.4.0**（3 个宿主包 + 20 个插件包，其中新加入的是
-**Offer岛**）：`npm install -g @lmliheng/penguin-cli`。
+**Offer岛**）：`npm install -g @adelie/cli`。
 
 **存储清理仍是出厂关闭的。** 想用就在设置页「存储」页打开开关，或 `penguin storage mode on`；
 不想用就什么都不用做，行为与上一版一致。

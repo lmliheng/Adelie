@@ -11,7 +11,7 @@ import type {
   MemberInfo,
   ModelRefDto,
   ModelsResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Badge,
   Button,
@@ -29,7 +29,7 @@ import {
   Switch,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

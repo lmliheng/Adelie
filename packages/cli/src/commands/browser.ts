@@ -38,7 +38,7 @@ import type {
   BuiltinBrowserStatus,
   BuiltinBrowserTab,
   BuiltinBrowserTabsResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   renderCdpResult,
   renderExec,

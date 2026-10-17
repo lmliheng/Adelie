@@ -10,14 +10,14 @@
  */
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Badge, FileBrowser, GlyphIcon, ICONS, Modal } from "@lmliheng/penguin-ui";
-import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@lmliheng/penguin-ui";
+import { Badge, FileBrowser, GlyphIcon, ICONS, Modal } from "@adelie/ui";
+import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { baseName } from "../../lib/workspace-tree";
 import { useLocale } from "../../state/locale";
 import { getPluginFiles } from "../../api/endpoints";
-import type { PluginItem } from "@lmliheng/penguin-server/api";
+import type { PluginItem } from "@adelie/server/api";
 import { SkillTile } from "../skills/skill-icon-view";
 import { localizedText } from "../chat/skill-use";
 

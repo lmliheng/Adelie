@@ -10,12 +10,8 @@
  *   tool call approved without asking.
  * - `partial`: some write permission, with something still holding it back.
  */
-import type {
-  ApprovalMode,
-  SessionSandbox,
-  SessionSandboxPreset,
-} from "@lmliheng/penguin-server/api";
-import { ICONS } from "@lmliheng/penguin-ui";
+import type { ApprovalMode, SessionSandbox, SessionSandboxPreset } from "@adelie/server/api";
+import { ICONS } from "@adelie/ui";
 import type { Tone } from "./tone";
 
 export type PermissionLevel = "all" | "partial" | "read-only" | "off";

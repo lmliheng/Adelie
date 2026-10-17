@@ -13,8 +13,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
-import { CommandSessionManager } from "@lmliheng/penguin-core";
-import type { SandboxProvider } from "@lmliheng/penguin-core/plugin";
+import { CommandSessionManager } from "@adelie/core";
+import type { SandboxProvider } from "@adelie/core/plugin";
 import { loadDshAdaptor } from "../src/index.js";
 import { mustRun } from "../../../scripts/must-run.mjs";
 

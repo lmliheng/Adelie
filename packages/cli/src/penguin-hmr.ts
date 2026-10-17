@@ -7,8 +7,8 @@
 import "./warnings.js";
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
-import { resolveRoot } from "@lmliheng/penguin-core";
-import { readPushedCli } from "@lmliheng/penguin-server/hmr/manifest";
+import { resolveRoot } from "@adelie/core";
+import { readPushedCli } from "@adelie/server/hmr/manifest";
 
 export async function loadPushedCli(root: string): Promise<(argv: string[]) => Promise<number>> {
   const pushed = await readPushedCli(root);

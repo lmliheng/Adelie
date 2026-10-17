@@ -1,4 +1,4 @@
-# @lmliheng/penguin-hmr — the HMR layer's mechanism, and nothing else
+# @adelie/hmr — the HMR layer's mechanism, and nothing else
 
 This package is the hot-update **mechanism**: the version store, the atomic `harness.json`
 commit, the resource registry live objects ride across a swap in, and the park → boot → swap

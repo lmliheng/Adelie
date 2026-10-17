@@ -1,5 +1,5 @@
 {
-  "name": "@lmliheng/model-development",
+  "name": "@adelie/model-development",
   "version": "0.4.2",
   "description": "Model development on your own hardware: fine-tune with LlamaFactory, run local models with Ollama, and serve them with vLLM.",
   "license": "Apache-2.0",

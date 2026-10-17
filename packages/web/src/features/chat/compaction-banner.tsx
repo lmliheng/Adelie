@@ -51,7 +51,7 @@ import {
   Md,
   StatusIcon,
   StepBanner,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { humanizeDuration } from "../../lib/format";
 import type { CompactionItem } from "../../lib/omni/stream-model";

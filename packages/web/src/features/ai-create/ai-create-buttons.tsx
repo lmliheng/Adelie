@@ -3,8 +3,8 @@
  * "Create with AI" / "Create manually" unless the object has a verb of its own ("Import with
  * AI" / "Import manually").
  */
-import { CreateButtons } from "@lmliheng/penguin-ui";
-import type { CreateButtonsProps } from "@lmliheng/penguin-ui";
+import { CreateButtons } from "@adelie/ui";
+import type { CreateButtonsProps } from "@adelie/ui";
 import { S } from "../../lib/strings";
 
 export type AiCreateButtonsProps = Omit<CreateButtonsProps, "aiLabel" | "manualLabel"> & {

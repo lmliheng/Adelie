@@ -3,13 +3,13 @@ import type {
   PlatformAuthFlowErrorCode,
   PlatformAuthFlowStatusResponse,
   PlatformAuthStartResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import type { KeyAuthEndpoints } from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { apiErrorText } from "../../lib/api-error";
 import { isElectronRenderer } from "../../lib/desktop-renderer";
 import { S } from "../../lib/strings";
-import { Button, Modal, Spinner } from "@lmliheng/penguin-ui";
+import { Button, Modal, Spinner } from "@adelie/ui";
 
 const POLL_MS = 3_000;
 

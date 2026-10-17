@@ -5,11 +5,7 @@
  * two facts a card reads off a ticket's own fields — whether its due date has passed and the
  * day its id was minted.
  */
-import type {
-  OrgTicketItem,
-  OrgTicketStatus,
-  OrgTicketsResponse,
-} from "@lmliheng/penguin-server/api";
+import type { OrgTicketItem, OrgTicketStatus, OrgTicketsResponse } from "@adelie/server/api";
 
 /** The five kanban columns, in lifecycle order. */
 export const TICKET_COLUMNS: readonly OrgTicketStatus[] = [

@@ -6,8 +6,8 @@
  * record shape is interpreted. Round boundaries are core's: an `isHookInput` that an
  * `isHookContinue` event announced.
  */
-import { isEventMessage } from "@lmliheng/penguin-core";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+import { isEventMessage } from "@adelie/core";
+import type { OmniMessage } from "@adelie/core";
 
 /** The name the goal plugin's hook package answers under. */
 const GOAL_HOOK_NAME = "goal";

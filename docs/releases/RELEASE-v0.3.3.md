@@ -61,7 +61,7 @@ penguin update --yes       # 原地替换 bin/lib/web/node
 
 安装包都在 GitHub Release 上：<https://github.com/lmliheng/Adelie/releases/tag/v0.3.3>；
 同一份资产也在 OSS 镜像上（`.../releases/v0.3.3/` 与版本无关的 `.../latest/`）。
-npm 上整条链同样是 **0.3.3**：`npm install -g @lmliheng/penguin-cli`。
+npm 上整条链同样是 **0.3.3**：`npm install -g @adelie/cli`。
 
 ## 质量门禁（本机跑过）
 

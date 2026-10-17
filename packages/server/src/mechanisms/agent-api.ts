@@ -6,7 +6,7 @@
  * to expose itself or loosen the approvals its API conversations run with) and never in the
  * Project file (synchronized across machines in company mode, while exposure is one server's).
  */
-import { Interface } from "@lmliheng/penguin-core/kernel";
+import { Interface } from "@adelie/core/kernel";
 import type { ApprovalMode } from "../api/types.js";
 
 /** One Agent's API settings row. */

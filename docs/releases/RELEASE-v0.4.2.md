@@ -19,7 +19,7 @@
    拒绝，各 Agent 的设置与密钥原样留着。密钥只能运行它所属的那一个 Agent，改不了任何配置：
    **把 Agent 对外开放这件事需要人的登录**，Agent 自己的 shell 里做不了。
    事件走的是新的 AMSP 协议（Agent Message Stream Protocol，SSE 的 `data:` 行，以 `data: [DONE]`
-   收尾），文档里新增了 **Agent API** 与 **AMSP** 两个参考页；`@lmliheng/amsp` 是一个新的公开包，
+   收尾），文档里新增了 **Agent API** 与 **AMSP** 两个参考页；`@adelie/amsp` 是一个新的公开包，
    没有运行时依赖，Node 与浏览器都能用，`client.run()` / `client.ask()` 两个方法够用。
    命令行一侧多了 `penguin agent api`：`status` / `enable` / `disable` / `set`、`keys ls` /
    `create` / `rm`，以及 `server on|off`。API 标签页末尾那个**试一试**不用密钥：它按你自己的登录

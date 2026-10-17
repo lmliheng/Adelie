@@ -3,14 +3,7 @@
  * error and in-field affixes; the search box in its three shapes; checkboxes and radio groups.
  */
 import { useState } from "react";
-import {
-  Checkbox,
-  Input,
-  PasswordInput,
-  RadioGroup,
-  SearchInput,
-  Textarea,
-} from "@lmliheng/penguin-ui";
+import { Checkbox, Input, PasswordInput, RadioGroup, SearchInput, Textarea } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

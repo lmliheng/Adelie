@@ -59,8 +59,8 @@ This is ported from upstream PenguinHarness (#975, commit `9b170c61`).
 - **The temp directory and masked paths moved into an Advanced fold**, collapsed by default,
   under the switch and the presets table.
 - **Turning the switch on offers to install a sandbox backend** when the machine has none for
-  its OS: `@lmliheng/penguin-plugin-sandbox-bwrap` on Linux, `@lmliheng/penguin-plugin-sandbox-seatbelt` on
-  macOS, `@lmliheng/penguin-plugin-sandbox-wsl` on Windows. The dialog wears a download mark. The
+  its OS: `@adelie/sandbox-bwrap` on Linux, `@adelie/sandbox-seatbelt` on
+  macOS, `@adelie/sandbox-wsl` on Windows. The dialog wears a download mark. The
   choices are Install and Not now, with
   "Don't ask again", which this browser remembers per machine. Installing goes through the
   Plugins page's install, into the current Project for that machine; the switch stays on

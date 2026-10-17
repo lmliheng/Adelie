@@ -1,11 +1,11 @@
-# @lmliheng/amsp
+# @adelie/amsp
 
 The client of a Adelie agent's API, and the types of AMSP (Agent Message Stream Protocol), the event stream that API serves. No runtime dependencies; runs in Node 24 and in current browsers on `fetch`, `ReadableStream`, `TextDecoder` and `AbortController`.
 
 A Project owner turns an agent's API on in the Adelie Web App (the agent's **API** tab) and mints a key there. A program then runs the agent, reads the run as it happens, and continues the conversation by its Session id:
 
 ```ts
-import { AgentClient } from "@lmliheng/amsp";
+import { AgentClient } from "@adelie/amsp";
 
 const client = new AgentClient({
   baseUrl: "http://localhost:7364/api/amsp/v1",
@@ -38,8 +38,8 @@ console.log(second.text, second.usage.total);
 A program that sends the request itself — its own `fetch`, its own credentials or URL — reads the body with `readSse` and folds the events with `RunCollector`, which `AgentClient` uses for `result()`:
 
 ```ts
-import { readSse, RunCollector } from "@lmliheng/amsp";
-import type { AmspEvent } from "@lmliheng/amsp";
+import { readSse, RunCollector } from "@adelie/amsp";
+import type { AmspEvent } from "@adelie/amsp";
 
 const collector = new RunCollector();
 for await (const data of readSse(response.body!)) {
@@ -57,9 +57,9 @@ const result = collector.result(); // throws AmspStreamError when the stream end
 ## Development
 
 ```bash
-pnpm --filter @lmliheng/amsp build       # tsup → dist/ (exports point at dist)
-pnpm --filter @lmliheng/amsp typecheck
-pnpm --filter @lmliheng/amsp test
+pnpm --filter @adelie/amsp build       # tsup → dist/ (exports point at dist)
+pnpm --filter @adelie/amsp typecheck
+pnpm --filter @adelie/amsp test
 ```
 
 Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0

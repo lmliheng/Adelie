@@ -15,7 +15,7 @@
  * The deployment's registry list is fixed to the builtin one for now; additional
  * sources plug in as more `PluginRegistry` values.
  */
-import { builtinPluginDir, loadLibraryPlugins } from "@lmliheng/penguin-core";
+import { builtinPluginDir, loadLibraryPlugins } from "@adelie/core";
 import type { PluginIndexEntry } from "../api/types.js";
 import builtinIndex from "./builtin-index.json" with { type: "json" };
 import fs from "node:fs/promises";
@@ -97,7 +97,7 @@ const PUBLISHER = "Prism Shadow";
  * stripped (see core's plugin roots) — so scoping the name back is how the rest of the system
  * (a Project's plugin list, an install, the market's shelf) names the same package.
  */
-const PLUGIN_SCOPE = "@lmliheng/";
+const PLUGIN_SCOPE = "@adelie/";
 
 /**
  * The built-in library's plugin packages, by specifier: what this build carries because the
@@ -134,7 +134,7 @@ export async function shippedPluginNames(
 /**
  * Where one plugin package's own files are: its directory, or null when this machine does not
  * have it. Two kinds of package are on the shelf and they are found differently — a LIBRARY
- * package (the ones core carries, `@lmliheng/<directory>`) through core, which resolves them
+ * package (the ones core carries, `@adelie/<directory>`) through core, which resolves them
  * from its own `node_modules` chain and knows a checkout's `plugins/<name>/` is the copy to
  * read; a staged MODULE plugin (a sandbox backend, seeded by a push) from the bases, the same
  * lookup a Project's install goes through. Nothing is assumed about either: whatever the

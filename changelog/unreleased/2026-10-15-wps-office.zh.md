@@ -6,7 +6,7 @@
 
 [English](2026-10-15-wps-office.md)
 
-新插件：**WPS**（`@lmliheng/use-wps-office`）。它把 Adelie 的对话搬进 WPS 文字——功能区点一下开侧栏，
+新插件：**WPS**（`@adelie/use-wps-office`）。它把 Adelie 的对话搬进 WPS 文字——功能区点一下开侧栏，
 再把你屏幕上那份打开的文档交到 Agent 手里：九个操作（读概况、读正文、搜索、替换、插入、删除、插分隔符、
 新建、定位）以 `mcp__wps__*` 工具的形式交给会话。
 

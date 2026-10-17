@@ -20,10 +20,7 @@
  * rounding or clamping mistake in a gesture that rewrites an Agent's configuration is not
  * something a render test would catch.
  */
-import {
-  DEFAULT_MAX_CONTEXT_LENGTH,
-  effectiveMaxContextLength,
-} from "@lmliheng/penguin-core/context-limits";
+import { DEFAULT_MAX_CONTEXT_LENGTH, effectiveMaxContextLength } from "@adelie/core/context-limits";
 
 /** Default upper bound when a model has no configured context window. */
 export const DEFAULT_CONTEXT_WINDOW = 128000;

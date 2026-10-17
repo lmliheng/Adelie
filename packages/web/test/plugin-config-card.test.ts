@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ReactElement } from "react";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { PluginConfigEntry, PluginConfigField } from "@lmliheng/penguin-server/api";
+import type { PluginConfigEntry, PluginConfigField } from "@adelie/server/api";
 import { setActiveStrings, zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";
 import { drawnFields } from "../src/features/settings/plugin-config-draft";

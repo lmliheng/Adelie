@@ -26,11 +26,7 @@
  *   every plugin it is behind on, and counts distinct plugins as the notice does.
  */
 import { describe, expect, it } from "vitest";
-import type {
-  InstalledPluginsResponse,
-  PluginIndexEntry,
-  PluginItem,
-} from "@lmliheng/penguin-server/api";
+import type { InstalledPluginsResponse, PluginIndexEntry, PluginItem } from "@adelie/server/api";
 import {
   availablePluginRows,
   installedPluginRows,
@@ -125,13 +121,13 @@ const entry = (name: string, version = "0.2.2"): PluginIndexEntry => ({
 describe("availablePluginRows", () => {
   const shipped: InstalledPluginsResponse = {
     ...deployment,
-    shipped: ["@lmliheng/sandbox-bwrap"],
+    shipped: ["@adelie/sandbox-bwrap"],
   };
 
   it("offers what the deployment ships, with the registry's entry for it", () => {
-    const rows = availablePluginRows(shipped, [entry("@lmliheng/sandbox-bwrap")]);
+    const rows = availablePluginRows(shipped, [entry("@adelie/sandbox-bwrap")]);
     expect(rows.map((r) => [r.specifier, r.entry?.name, r.shipped])).toEqual([
-      ["@lmliheng/sandbox-bwrap", "@lmliheng/sandbox-bwrap", true],
+      ["@adelie/sandbox-bwrap", "@adelie/sandbox-bwrap", true],
     ]);
   });
 
@@ -140,16 +136,16 @@ describe("availablePluginRows", () => {
     // one of them — but a Project cannot ask for it: it installs to an Agent, and the install
     // endpoint answers `plugin_not_shipped` for anything outside the build's own list.
     const rows = availablePluginRows(shipped, [
-      entry("@lmliheng/csu-mail", "2026.10.05.1"),
-      entry("@lmliheng/sandbox-bwrap"),
+      entry("@adelie/csu-mail", "2026.10.05.1"),
+      entry("@adelie/sandbox-bwrap"),
     ]);
-    expect(rows.map((r) => r.specifier)).toEqual(["@lmliheng/sandbox-bwrap"]);
+    expect(rows.map((r) => r.specifier)).toEqual(["@adelie/sandbox-bwrap"]);
   });
 
   it("offers a shipped package the registry has no entry for, with nothing to describe it", () => {
     const rows = availablePluginRows(shipped, []);
     expect(rows.map((r) => [r.specifier, r.entry, r.shipped])).toEqual([
-      ["@lmliheng/sandbox-bwrap", undefined, true],
+      ["@adelie/sandbox-bwrap", undefined, true],
     ]);
   });
 });
@@ -158,8 +154,8 @@ describe("marketEntryFor", () => {
   const card = { name: "csu-mail", version: "2026.10.05.1" };
 
   it("finds the entry by the package specifier, when it carries the card's version", () => {
-    const index = [entry("@lmliheng/csu-mail", "2026.10.05.1"), entry("@lmliheng/other")];
-    expect(marketEntryFor(card, index)?.name).toBe("@lmliheng/csu-mail");
+    const index = [entry("@adelie/csu-mail", "2026.10.05.1"), entry("@adelie/other")];
+    expect(marketEntryFor(card, index)?.name).toBe("@adelie/csu-mail");
   });
 
   it("takes an entry named by the bare name as it is", () => {
@@ -167,7 +163,7 @@ describe("marketEntryFor", () => {
   });
 
   it("is undefined for a name and version no entry carries — a user plugin has no package of the build's", () => {
-    expect(marketEntryFor(card, [entry("@lmliheng/csu-mail", "2026.09.01.1")])).toBeUndefined();
+    expect(marketEntryFor(card, [entry("@adelie/csu-mail", "2026.09.01.1")])).toBeUndefined();
     expect(marketEntryFor(card, [entry("@acme/other")])).toBeUndefined();
     expect(marketEntryFor(card, [])).toBeUndefined();
   });

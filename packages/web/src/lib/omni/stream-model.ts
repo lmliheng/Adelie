@@ -56,7 +56,7 @@ import {
   normalizeSessionSource,
   parseBackgroundTaskDoneMessage,
   parseUserSteeringText,
-} from "@lmliheng/penguin-core/omnimessage";
+} from "@adelie/core/omnimessage";
 import type {
   ApprovalDecision,
   CompactionMode,
@@ -69,8 +69,8 @@ import type {
   SessionSource,
   StopReason,
   TokenUsagePayload,
-} from "@lmliheng/penguin-core/omnimessage";
-import type { TracePosition } from "@lmliheng/penguin-server/api";
+} from "@adelie/core/omnimessage";
+import type { TracePosition } from "@adelie/server/api";
 import {
   addLlmDuration,
   addToolExecution,

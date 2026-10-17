@@ -14,7 +14,7 @@
  */
 import type { SessionCategory, SessionSource } from "../api/types.js";
 import type { SessionRow } from "../db/repos/sessions.js";
-import { Component } from "@lmliheng/penguin-core/kernel";
+import { Component } from "@adelie/core/kernel";
 import type { SessionOrigins } from "../mechanisms/sessions.js";
 
 /**

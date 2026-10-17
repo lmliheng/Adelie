@@ -16,7 +16,7 @@
  * the dialog is open, and its own sentence says so rather than blaming the network.
  */
 import { useEffect, useState } from "react";
-import { Button, Input, Modal, Textarea, toastSuccess } from "@lmliheng/penguin-ui";
+import { Button, Input, Modal, Textarea, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

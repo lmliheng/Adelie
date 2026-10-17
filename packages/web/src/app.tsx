@@ -17,7 +17,7 @@ import {
   CodeHighlighterProvider,
   Toaster,
   TooltipLayer,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { LocaleProvider, LocaleScope } from "./state/locale";
 import { ThemeProvider } from "./state/theme";
 import { AuthProvider } from "./state/auth";

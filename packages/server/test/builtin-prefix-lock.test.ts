@@ -47,12 +47,12 @@ describe("integrityMismatches", () => {
   const npmLock = (linuxIntegrity: string | undefined) => ({
     packages: {
       "": { name: "penguin-builtin-plugins" },
-      "node_modules/@lmliheng/penguin-plugin-sandbox-dsh": { version: "0.2.3" },
+      "node_modules/@adelie/sandbox-dsh": { version: "0.2.3" },
       "node_modules/koffi": { version: "3.1.6", integrity: "sha512-koffi" },
       "node_modules/@koromix/koffi-linux-x64": { version: "3.1.6", integrity: linuxIntegrity },
     },
   });
-  const builtins = new Set(["@lmliheng/penguin-plugin-sandbox-dsh"]);
+  const builtins = new Set(["@adelie/sandbox-dsh"]);
 
   it.each([
     ["sha512-linux", []],

@@ -19,8 +19,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import type { OmniMessage } from "@lmliheng/penguin-core/omnimessage";
-import type { TraceAnalysisResponse, TraceTaskStats } from "@lmliheng/penguin-server/api";
+import type { OmniMessage } from "@adelie/core/omnimessage";
+import type { TraceAnalysisResponse, TraceTaskStats } from "@adelie/server/api";
 import {
   EMPTY_FILE,
   TraceFileBody,

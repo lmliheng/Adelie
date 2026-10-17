@@ -17,7 +17,7 @@
  * remote server is able to do.
  */
 import { useState } from "react";
-import type { MCPServerConfig } from "@lmliheng/penguin-core/interfaces";
+import type { MCPServerConfig } from "@adelie/core/interfaces";
 import {
   Button,
   ConfirmModal,
@@ -36,10 +36,10 @@ import {
   Textarea,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
-import type { OptionMenuChoice } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { OptionMenuChoice } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import type { McpServerTestResponse } from "@lmliheng/penguin-server/api";
+import type { McpServerTestResponse } from "@adelie/server/api";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { useProject } from "../../state/project";

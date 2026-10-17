@@ -12,8 +12,8 @@
  * The card's live status (what this machine enforces, which backends are not in use and why)
  * is `SandboxSettingsStatus`, in settings-status.ts.
  */
-import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
-import type { SandboxMode, SandboxSettings as Policy } from "@lmliheng/penguin-core/plugin";
+import { Bind, Component, Use } from "@adelie/core/kernel";
+import type { SandboxMode, SandboxSettings as Policy } from "@adelie/core/plugin";
 import type { PluginConfigNotice } from "../api/types.js";
 import { PluginConfig } from "../plugin/config.js";
 import { Sandbox, SandboxModule } from "./service.js";

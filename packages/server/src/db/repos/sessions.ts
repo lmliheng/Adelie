@@ -2,10 +2,10 @@
  * sessions table repo:
  * Session index, approval mode, and auto-generated title; Session-level routes use this to look up project ownership.
  */
-import type { ThinkingLevelName } from "@lmliheng/penguin-core/interfaces";
+import type { ThinkingLevelName } from "@adelie/core/interfaces";
 import type { ApprovalMode } from "../../api/types.js";
-import type { SandboxSettings } from "@lmliheng/penguin-core/plugin";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import type { SandboxSettings } from "@adelie/core/plugin";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
 import type { SessionIndex } from "../../mechanisms/sessions.js";
 

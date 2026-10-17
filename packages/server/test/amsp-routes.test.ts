@@ -66,16 +66,10 @@
  * - Given a caller that disconnects from the try stream, the run is aborted.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import {
-  abortEvent,
-  assistantText,
-  partialText,
-  requestBegin,
-  requestEnd,
-} from "@lmliheng/penguin-core";
-import type { OmniMessage, ToolCallPayload } from "@lmliheng/penguin-core";
-import { readSse } from "@lmliheng/amsp";
-import type { AmspEvent } from "@lmliheng/amsp";
+import { abortEvent, assistantText, partialText, requestBegin, requestEnd } from "@adelie/core";
+import type { OmniMessage, ToolCallPayload } from "@adelie/core";
+import { readSse } from "@adelie/amsp";
+import type { AmspEvent } from "@adelie/amsp";
 import type {
   AgentApiKeyCreateResponse,
   AgentApiResponse,

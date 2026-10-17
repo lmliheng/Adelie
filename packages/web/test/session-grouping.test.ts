@@ -38,11 +38,7 @@
  *   least a page more, or the rest.
  */
 import { describe, expect, it } from "vitest";
-import type {
-  SessionCategoryCounts,
-  SessionInfo,
-  SessionSource,
-} from "@lmliheng/penguin-server/api";
+import type { SessionCategoryCounts, SessionInfo, SessionSource } from "@adelie/server/api";
 import type { ActivityKey, StreamPosition } from "../src/lib/session-grouping";
 import {
   SIDEBAR_PAGE_SIZE,

@@ -26,10 +26,10 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ACCENT_PRESETS, THEME_OWN_ACCENTS } from "@lmliheng/penguin-ui";
-import type { ThemeId } from "@lmliheng/penguin-ui";
-import { applyThemeAttributes, THEME_STORAGE_KEYS } from "@lmliheng/penguin-ui/boot";
-import type { AccentChoice } from "@lmliheng/penguin-ui/boot";
+import { ACCENT_PRESETS, THEME_OWN_ACCENTS } from "@adelie/ui";
+import type { ThemeId } from "@adelie/ui";
+import { applyThemeAttributes, THEME_STORAGE_KEYS } from "@adelie/ui/boot";
+import type { AccentChoice } from "@adelie/ui/boot";
 import { readThemePrefs } from "./theme-prefs";
 import type { FontCjk, FontLatin, TextSize } from "./theme-prefs";
 

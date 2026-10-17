@@ -7,8 +7,8 @@
  * the ratio and capped at a full circle when spend is over the budget; without a budget the track
  * stands alone. `SpendMeter` is the spend tree's bar, which carries its own percent.
  */
-import { Ring } from "@lmliheng/penguin-ui";
-import type { ToneName } from "@lmliheng/penguin-ui";
+import { Ring } from "@adelie/ui";
+import type { ToneName } from "@adelie/ui";
 import { formatPercent } from "../../lib/format";
 import { toneDot, toneInk } from "../../lib/tone";
 import type { Tone } from "../../lib/tone";

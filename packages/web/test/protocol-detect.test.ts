@@ -7,11 +7,7 @@
  * composes.
  */
 import { describe, expect, it } from "vitest";
-import {
-  MODEL_CATALOG,
-  modelEnvPreviewKey,
-  resolveModelEnv,
-} from "@lmliheng/penguin-core/model-catalog";
+import { MODEL_CATALOG, modelEnvPreviewKey, resolveModelEnv } from "@adelie/core/model-catalog";
 import { zh as ZH } from "../src/lib/strings";
 import { en as EN } from "../src/lib/strings-en";
 import { clientTypeAfterProviderChange, rowToEntry } from "../src/features/models/models-page";

@@ -9,7 +9,7 @@
  * result instead of explaining it on screen, since the explanation lives in the Traces.
  */
 import { useState } from "react";
-import type { BenchmarkCaseScore, BenchmarkEvaluation } from "@lmliheng/penguin-server/api";
+import type { BenchmarkCaseScore, BenchmarkEvaluation } from "@adelie/server/api";
 import {
   AgentAvatar,
   Button,
@@ -19,7 +19,7 @@ import {
   ICON_GAP,
   ICON_SIZE,
   Modal,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { formatDateTime, formatMoney, formatScore, humanizeDuration } from "../../lib/format";
 import type { Currency } from "../../state/theme";

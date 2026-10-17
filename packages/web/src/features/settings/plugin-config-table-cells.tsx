@@ -3,7 +3,7 @@
  * drag handle.
  */
 import { useLayoutEffect, useRef } from "react";
-import { GlyphIcon, ICONS, ICON_SIZE, Textarea } from "@lmliheng/penguin-ui";
+import { GlyphIcon, ICONS, ICON_SIZE, Textarea } from "@adelie/ui";
 import { S } from "../../lib/strings";
 
 /** The one box every icon control in a table row takes, so a row's icons line up. */

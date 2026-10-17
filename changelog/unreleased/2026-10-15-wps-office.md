@@ -6,7 +6,7 @@
 
 [中文版](2026-10-15-wps-office.zh.md)
 
-New plugin: **WPS** (`@lmliheng/use-wps-office`). It puts an Adelie conversation inside WPS Writer —
+New plugin: **WPS** (`@adelie/use-wps-office`). It puts an Adelie conversation inside WPS Writer —
 a side panel opened from a button in the ribbon — and puts the document that is open on your screen
 under the agent's hands: nine operations (summary, read, search, replace, insert, delete, insert a
 break, create, reveal) are exposed to a Session as `mcp__wps__*` tools.

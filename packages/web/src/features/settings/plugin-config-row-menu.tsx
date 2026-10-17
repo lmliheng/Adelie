@@ -7,7 +7,7 @@
  * the arrow keys move, Enter picks, Esc closes this menu only.
  */
 import { useState } from "react";
-import { Dropdown, GlyphIcon, ICONS, ICON_SIZE, Menu, MenuItem } from "@lmliheng/penguin-ui";
+import { Dropdown, GlyphIcon, ICONS, ICON_SIZE, Menu, MenuItem } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { ICON_BUTTON } from "./plugin-config-table-cells";
 

@@ -14,11 +14,11 @@
  */
 import { existsSync } from "node:fs";
 import fs from "node:fs/promises";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
 import path from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
-import { parseOrgTriggerMessage, saveProjectConfig } from "@lmliheng/penguin-core";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+import { parseOrgTriggerMessage, saveProjectConfig } from "@adelie/core";
+import type { OmniMessage } from "@adelie/core";
 import { openDatabase } from "../src/db/database.js";
 import { MembersRepo } from "../src/db/repos/members.js";
 import { OrgCacheRepo } from "../src/db/repos/organizations.js";

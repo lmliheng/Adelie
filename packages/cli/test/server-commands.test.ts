@@ -6,13 +6,7 @@
  */
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  assistantText,
-  hookEvent,
-  partialText,
-  userText,
-  type OmniMessage,
-} from "@lmliheng/penguin-core";
+import { assistantText, hookEvent, partialText, userText, type OmniMessage } from "@adelie/core";
 import { cli } from "../src/index.js";
 import { getMessages } from "../src/i18n.js";
 import { FakeServer } from "./fake-server.js";

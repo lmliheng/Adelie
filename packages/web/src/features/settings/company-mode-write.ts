@@ -7,10 +7,7 @@
  * The answer is adopted rather than assumed: a server that stored something other than what was
  * asked for is what the switch must show.
  */
-import type {
-  ServerSettingsResponse,
-  ServerSettingsUpdateRequest,
-} from "@lmliheng/penguin-server/api";
+import type { ServerSettingsResponse, ServerSettingsUpdateRequest } from "@adelie/server/api";
 
 /** What a flip settled on: the stored value now, or the value to revert to and why. */
 export type CompanyModeWriteResult =

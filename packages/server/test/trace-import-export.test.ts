@@ -11,7 +11,7 @@
  * the Agent snapshot import.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import type { OmniMessage, SessionMetaPayload } from "@lmliheng/penguin-core";
+import type { OmniMessage, SessionMetaPayload } from "@adelie/core";
 import type {
   AgentTracesResponse,
   ProjectCreateResponse,

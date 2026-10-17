@@ -5,7 +5,7 @@
  * answers without touching the disk.
  */
 import { describe, expect, it, vi } from "vitest";
-import type { DesktopFolderAccessResultMessage } from "@lmliheng/penguin-server/api";
+import type { DesktopFolderAccessResultMessage } from "@adelie/server/api";
 import {
   folderAccessReply,
   handleFolderAccessFrame,

@@ -12,7 +12,7 @@ import { rejectInDesktopMode } from "./desktop.js";
 import type { DesktopService } from "../../services/desktop-service.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import { pathParam, readJson, requireString } from "../validate.js";
-import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Bind, Component, Use } from "@adelie/core/kernel";
 import type { Desktop, Proxy } from "../../hmr/capabilities.js";
 import { adminSettingsRoutes } from "./admin-settings.js";
 import { adminStorageRoutes } from "./admin-storage.js";

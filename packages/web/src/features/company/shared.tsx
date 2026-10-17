@@ -9,7 +9,7 @@
  */
 import { useId } from "react";
 import type { ReactNode } from "react";
-import type { OrgStatus, OrgTicketPriority, OrgTicketStatus } from "@lmliheng/penguin-server/api";
+import type { OrgStatus, OrgTicketPriority, OrgTicketStatus } from "@adelie/server/api";
 import {
   AgentAvatar,
   Badge,
@@ -22,8 +22,8 @@ import {
   Notice,
   ProgressBar,
   Ring,
-} from "@lmliheng/penguin-ui";
-import type { BadgeStyle, ToneName } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { BadgeStyle, ToneName } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { formatMoney, formatPercent } from "../../lib/format";
 import { toneDot, toneInk } from "../../lib/tone";

@@ -29,8 +29,8 @@
  *   the buffer replays on top — so the in-progress message survives a refresh
  *   with its streamed prefix intact and keeps streaming.
  */
-import { isEventMessage, isPartialPayload } from "@lmliheng/penguin-core/omnimessage";
-import type { OmniMessage, ToolCallPayload } from "@lmliheng/penguin-core/omnimessage";
+import { isEventMessage, isPartialPayload } from "@adelie/core/omnimessage";
+import type { OmniMessage, ToolCallPayload } from "@adelie/core/omnimessage";
 import type {
   GoalServerEvent,
   MessagesLiveTail,
@@ -40,7 +40,7 @@ import type {
   PendingSteeringInfo,
   ServerEvent,
   SessionStatus,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   approvalKey,
   buildDedupIndex,

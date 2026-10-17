@@ -4,7 +4,7 @@
  * hashes — the caller alone holds a key. Neither table is rebuildable from files: dropping them
  * turns every exposed Agent off and invalidates every key.
  */
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { ApprovalMode } from "../../api/types.js";
 import type { Db } from "../../hmr/capabilities.js";
 import type {

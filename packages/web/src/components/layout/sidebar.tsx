@@ -47,11 +47,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent as ReactDragEvent, ReactNode } from "react";
 import { useLocation, useMatch, useNavigate } from "react-router";
-import type {
-  SessionCategory,
-  SessionCategoryCounts,
-  SessionInfo,
-} from "@lmliheng/penguin-server/api";
+import type { SessionCategory, SessionCategoryCounts, SessionInfo } from "@adelie/server/api";
 import {
   AgentAvatar,
   Badge,
@@ -90,8 +86,8 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
-import type { SidebarDropTarget } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { SidebarDropTarget } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { formatRelativeShort } from "../../lib/format";

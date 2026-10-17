@@ -5,7 +5,7 @@
  * (`SessionSandboxPreset.aboveCeiling`) — both by this one comparison, so the menu never offers
  * a non-admin what the server will refuse.
  */
-import type { SandboxSettings } from "@lmliheng/penguin-core/plugin";
+import type { SandboxSettings } from "@adelie/core/plugin";
 import type { SessionSandbox } from "../api/types.js";
 
 const SANDBOX_MODE_RANK: Record<SandboxSettings["mode"], number> = {

@@ -15,8 +15,8 @@ import {
   PagedDialog,
   Sheet,
   ZoomableImage,
-} from "@lmliheng/penguin-ui";
-import type { PagedDialogGroup, PaletteAction, SheetSnap } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { PagedDialogGroup, PaletteAction, SheetSnap } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { BASE } from "../../lib/location";
 import { useGallery } from "../../state";

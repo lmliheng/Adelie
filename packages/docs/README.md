@@ -1,4 +1,4 @@
-# @lmliheng/penguin-docs
+# @adelie/docs
 
 The PenguinHarness documentation site (React + Vite + Tailwind CSS 4). Its own package, sharing the landing page's visual language: bilingual pages (zh/en), light/dark themes, a sidebar + per-page table of contents, and a "Copy Markdown" button on every page.
 
@@ -21,9 +21,9 @@ Navigation (sections, order, prev/next) is defined once in `src/lib/nav.ts`; a v
 
 ```bash
 pnpm dev:docs                                      # http://127.0.0.1:7367 (repo root script)
-pnpm --filter @lmliheng/penguin-docs build      # dist/ + per-route shells for deep links
-pnpm --filter @lmliheng/penguin-docs typecheck
-pnpm --filter @lmliheng/penguin-docs test
+pnpm --filter @adelie/docs build      # dist/ + per-route shells for deep links
+pnpm --filter @adelie/docs typecheck
+pnpm --filter @adelie/docs test
 ```
 
 ## Deployment
@@ -32,7 +32,7 @@ Deployed to GitHub Pages together with the landing page as one artifact: `script
 
 ```bash
 BASE_PATH=/ pnpm build:site                        # assemble locally
-pnpm --filter @lmliheng/penguin-landing preview # serve the assembled site
+pnpm --filter @adelie/landing preview # serve the assembled site
 ```
 
 Deep links work without a 404 fallback: the post-build step copies the SPA shell to `dist/<slug>/index.html` for every content slug.

@@ -7,7 +7,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Context } from "hono";
-import { isValidId } from "@lmliheng/penguin-core";
+import { isValidId } from "@adelie/core";
 import type {
   ActivityCursor,
   SessionListOrder,

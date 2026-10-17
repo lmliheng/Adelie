@@ -8,7 +8,7 @@
  */
 import { createContext, useContext } from "react";
 import type { ReactNode } from "react";
-import type { ModelsResponse, SessionInfo } from "@lmliheng/penguin-server/api";
+import type { ModelsResponse, SessionInfo } from "@adelie/server/api";
 import type { PermissionPick } from "../../lib/permission-level";
 import type { StreamModel } from "../../lib/omni/stream-model";
 import type { MemoryChangeRow, MemoryLocateTarget } from "../../lib/omni/memory-changes";

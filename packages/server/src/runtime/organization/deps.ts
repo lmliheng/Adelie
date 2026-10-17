@@ -4,8 +4,8 @@
  * usage pricing, the file store and the caches. app.ts binds the real services; tests bind
  * doubles — the same shape the schedule scheduler uses.
  */
-import type { OmniMessage } from "@lmliheng/penguin-core";
-import { Interface } from "@lmliheng/penguin-core/kernel";
+import type { OmniMessage } from "@adelie/core";
+import { Interface } from "@adelie/core/kernel";
 import type {
   ApprovalMode,
   MessagingChannel,

@@ -46,7 +46,7 @@ import type {
   VaultResponse,
   VersionResponse,
   WorkspaceFileEntry,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 // The built-in catalog, as the app reads it (the same built module the app imports): the model
 // table is every preset it seeds a Project with, so the app's "sync presets" badge stays quiet.
 import {
@@ -818,7 +818,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
   const installedPlugins: InstalledPluginsResponse = {
     plugins: [
       {
-        specifier: "@lmliheng/sandbox-bwrap",
+        specifier: "@adelie/sandbox-bwrap",
         active: true,
         builtin: true,
         modules: ["sandbox.bwrap"],
@@ -828,7 +828,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         here: true,
       },
       {
-        specifier: "@lmliheng/messaging-feishu",
+        specifier: "@adelie/messaging-feishu",
         active: false,
         builtin: false,
         modules: ["messaging.feishu"],
@@ -838,11 +838,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         here: false,
       },
     ],
-    shipped: [
-      "@lmliheng/sandbox-bwrap",
-      "@lmliheng/sandbox-seatbelt",
-      "@lmliheng/messaging-feishu",
-    ],
+    shipped: ["@adelie/sandbox-bwrap", "@adelie/sandbox-seatbelt", "@adelie/messaging-feishu"],
     file: ".project_config.toml",
     machineId: "demo-machine-0001",
     restartPending: false,
@@ -850,7 +846,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
   const pluginIndex: PluginIndexResponse = {
     plugins: [
       {
-        name: "@lmliheng/sandbox-bwrap",
+        name: "@adelie/sandbox-bwrap",
         version: "0.2.13",
         description: "Confines agent commands with bubblewrap on Linux.",
         authors: ["Adelie"],
@@ -861,7 +857,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         updatedAt: Math.floor(ago(19) / 1000),
       },
       {
-        name: "@lmliheng/sandbox-seatbelt",
+        name: "@adelie/sandbox-seatbelt",
         version: "0.2.13",
         description: "Confines agent commands with Seatbelt on macOS.",
         authors: ["Adelie"],
@@ -872,7 +868,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         updatedAt: Math.floor(ago(19) / 1000),
       },
       {
-        name: "@lmliheng/messaging-feishu",
+        name: "@adelie/messaging-feishu",
         version: "0.2.12",
         description: "Relays a Session to a Feishu bot.",
         authors: ["Adelie"],
@@ -886,7 +882,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       // authors, keywords) and the package's README. `penguin-sdk` and `web-design` are library
       // cards above, carrying exactly these versions.
       {
-        name: "@lmliheng/penguin-sdk",
+        name: "@adelie/sdk",
         version: "2026.09.11.1",
         description: "Build with the Adelie SDK: the Session, Agent State and OmniMessage APIs.",
         authors: ["Prism Shadow"],
@@ -895,7 +891,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         categories: ["ai-app-development"],
       },
       {
-        name: "@lmliheng/web-design",
+        name: "@adelie/web-design",
         version: "2026.09.11.1",
         description: "Design and build web pages that do not read as templated defaults.",
         authors: ["Prism Shadow"],
@@ -906,13 +902,13 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     ],
   };
   const readmes: Record<string, string> = {
-    "@lmliheng/sandbox-bwrap":
-      '# sandbox-bwrap\n\nRuns every agent command inside a bubblewrap namespace: the Workspace is writable, the rest of the filesystem read-only, and the network follows the Session\'s sandbox level.\n\n```toml\n[plugins]\nsandbox-bwrap = "@lmliheng/sandbox-bwrap"\n```\n',
-    "@lmliheng/sandbox-seatbelt":
+    "@adelie/sandbox-bwrap":
+      '# sandbox-bwrap\n\nRuns every agent command inside a bubblewrap namespace: the Workspace is writable, the rest of the filesystem read-only, and the network follows the Session\'s sandbox level.\n\n```toml\n[plugins]\nsandbox-bwrap = "@adelie/sandbox-bwrap"\n```\n',
+    "@adelie/sandbox-seatbelt":
       "# sandbox-seatbelt\n\nThe macOS counterpart of sandbox-bwrap, on Seatbelt profiles.\n",
-    "@lmliheng/messaging-feishu":
+    "@adelie/messaging-feishu":
       "# messaging-feishu\n\nBinds a Session to a Feishu bot so replies reach a chat.\n",
-    "@lmliheng/penguin-sdk":
+    "@adelie/sdk":
       '# penguin-sdk\n\nBuild an agent application on the SDK: create a Session, run a Prompt, read the stream back as thinking, text and tool events.\n\n```ts\nconst session = await client.createSession({ workspace });\nawait session.run("summarize the changelog");\n```\n',
   };
 

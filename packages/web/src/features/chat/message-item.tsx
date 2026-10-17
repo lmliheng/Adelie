@@ -10,13 +10,7 @@
  * line's countdown and controls.
  */
 import { useEffect, useState } from "react";
-import {
-  AssistantText,
-  MessageBubble,
-  MessageImage,
-  MessageMeta,
-  MessageRow,
-} from "@lmliheng/penguin-ui";
+import { AssistantText, MessageBubble, MessageImage, MessageMeta, MessageRow } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { useLocale } from "../../state/locale";
 import { formatMessageTime } from "../../lib/format";

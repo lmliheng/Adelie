@@ -1,6 +1,6 @@
 ---
 title: Agent API
-description: Let a program talk to one agent over HTTP — turn on the agent's API, mint keys, and run it with curl or the @lmliheng/amsp client.
+description: Let a program talk to one agent over HTTP — turn on the agent's API, mint keys, and run it with curl or the @adelie/amsp client.
 ---
 
 The Agent API lets a program outside PenguinHarness — a script, a service, a page in a browser — talk to one agent over HTTP. The program sends its input, reads the run as it happens as an [AMSP](/amsp) event stream, and continues the conversation by its Session id. A run uses the Project's models and credentials, is recorded like any other conversation, and appears in the sidebar's **Background** folder.
@@ -162,14 +162,14 @@ Once the stream has started, an error is never a separate frame: the run ends wi
 
 ## The amsp client
 
-`@lmliheng/amsp` is the TypeScript client of the Agent API. It has no dependencies, runs in Node 24 and in current browsers, and exports the AMSP event types.
+`@adelie/amsp` is the TypeScript client of the Agent API. It has no dependencies, runs in Node 24 and in current browsers, and exports the AMSP event types.
 
 ```bash
-npm install @lmliheng/amsp
+npm install @adelie/amsp
 ```
 
 ```ts
-import { AgentClient } from "@lmliheng/amsp";
+import { AgentClient } from "@adelie/amsp";
 
 const client = new AgentClient({
   baseUrl: "http://localhost:7364/api/amsp/v1",
@@ -202,7 +202,7 @@ console.log(second.text, second.usage.total);
 When the approval mode makes a call wait, the run delivers `approval.requested` and the client answers it for you: with `onApproval`'s decision, or `deny` when there is no callback or it throws. It answers whether you iterate or only await the result.
 
 ```ts
-import { AgentClient, parseArguments } from "@lmliheng/amsp";
+import { AgentClient, parseArguments } from "@adelie/amsp";
 
 const result = await client.ask({
   input: "Clean up the build output",
@@ -235,7 +235,7 @@ const result = await client.ask({
 The same package works in a browser through a bundler. A page on another origin than the server needs a key: the server answers the CORS preflight for any origin, but sends `Access-Control-Allow-Origin: *` only on a request carrying `Authorization`. A cross-origin request may carry only `Authorization` and `Content-Type`, so extra `headers` are for same-origin pages and Node.
 
 ```ts
-import { AgentClient } from "@lmliheng/amsp";
+import { AgentClient } from "@adelie/amsp";
 
 const keyField = document.querySelector<HTMLInputElement>("#key")!;
 const client = new AgentClient({

@@ -25,7 +25,7 @@ import {
   MenuRadioItem,
   MenuSeparator,
   SkeletonList,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { toneSurface } from "../../lib/tone";
 import { useCompany } from "../../state/company";

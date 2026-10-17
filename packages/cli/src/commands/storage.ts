@@ -46,7 +46,7 @@ import type {
   StorageRestoreResponse,
   StorageSettingsResponse,
   StorageTrashResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import { humanizeBytes } from "../render.js";
 import { resolveConnection, ServerClient } from "../client.js";
 import { renderTable } from "../table.js";

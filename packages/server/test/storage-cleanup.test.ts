@@ -18,7 +18,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT_ID, planEntryFingerprint } from "@lmliheng/penguin-core";
+import { DEFAULT_PROJECT_ID, planEntryFingerprint } from "@adelie/core";
 import type {
   StorageApplyResponse,
   StoragePlanView,

@@ -22,10 +22,10 @@ import {
   agentVaultPath,
   snapshotsDir,
   systemConfigPath,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import { HttpError } from "../http/errors.js";
 import { badRequest } from "../http/validate.js";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type { Snapshots } from "../mechanisms/agents.js";
 

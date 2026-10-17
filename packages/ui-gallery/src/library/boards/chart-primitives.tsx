@@ -20,8 +20,8 @@ import {
   TimelineBar,
   curvePath,
   useChartStyle,
-} from "@lmliheng/penguin-ui";
-import type { ChartCurve } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { ChartCurve } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

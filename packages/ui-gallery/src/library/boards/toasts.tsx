@@ -2,7 +2,7 @@
  * 提示弹窗: the package's toast after an action completes, in its four kinds, fired from buttons
  * (the Toaster is mounted by the frame).
  */
-import { Button, toastAttention, toastError, toastInfo, toastSuccess } from "@lmliheng/penguin-ui";
+import { Button, toastAttention, toastError, toastInfo, toastSuccess } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

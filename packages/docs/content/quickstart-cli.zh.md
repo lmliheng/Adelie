@@ -24,7 +24,7 @@ irm https://penguin.ooo/install.ps1 | iex
 ```
 
 ```bash tab="npm（任意平台）"
-npm install -g @lmliheng/penguin-cli
+npm install -g @adelie/cli
 ```
 
 验证安装：
@@ -198,7 +198,7 @@ Windows 上还有以下不同：
 
 ### Ubuntu 上的沙盒
 
-在 Linux 上打开沙盒会装上两个后端。`@lmliheng/penguin-plugin-sandbox-bwrap` 用 bubblewrap 约束命令，覆盖文件写入、网络与屏蔽路径；`@lmliheng/penguin-plugin-sandbox-dsh` 只约束文件写入，在 bubblewrap 无法运行的地方通过 Landlock 实施。两者都能用时，每条命令都由 bubblewrap 约束。
+在 Linux 上打开沙盒会装上两个后端。`@adelie/sandbox-bwrap` 用 bubblewrap 约束命令，覆盖文件写入、网络与屏蔽路径；`@adelie/sandbox-dsh` 只约束文件写入，在 bubblewrap 无法运行的地方通过 Landlock 实施。两者都能用时，每条命令都由 bubblewrap 约束。
 
 Ubuntu 23.10 及以后的版本（包括默认的 Ubuntu 24.04）只把非特权 user namespace 交给带有相应 AppArmor profile 的程序（`kernel.apparmor_restrict_unprivileged_userns` 为 `1`），而 bubblewrap 需要它。桌面 `.deb` 会为应用装上这样一份 profile。安装脚本、npm 安装和 Release 压缩包都不以 root 运行，装不了 profile，所以在这些安装上 bubblewrap 被拒绝，沙盒改由 Landlock 实施，你无需做任何操作。[沙盒](/settings#沙盒)卡片会写明这一点：`本机实施：文件写入，由 Landlock (dsh-local) 实施。本机不实施：网络隔离、仅本机网络、屏蔽路径。`内置预设都不限制网络，因此全部可以实施。卡片会把设为「无网络」的预设显示为灰色；屏蔽路径会被拒绝，而不是以更弱的约束运行。这一行下方的**更多信息**会给出 bubblewrap 未启用的原因（`setting up uid map: Permission denied`）以及它尝试的 bwrap 路径。
 
@@ -209,7 +209,7 @@ sudo tee /etc/apparmor.d/adelie-sandbox-bwrap >/dev/null <<'EOF'
 abi <abi/4.0>,
 include <tunables/global>
 
-profile adelie-sandbox-bwrap @{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap flags=(unconfined) {
+profile adelie-sandbox-bwrap @{HOME}/.adelie/**/plugins/node_modules/@adelie/sandbox-bwrap/vendor/linux-*/bin/bwrap flags=(unconfined) {
   userns,
 }
 EOF
@@ -224,10 +224,10 @@ sudo apparmor_parser -r /etc/apparmor.d/adelie-sandbox-bwrap
 
 | 包 | 说明 |
 | --- | --- |
-| `@lmliheng/penguin-cli` | 命令行工具，提供 `penguin` 命令 |
-| `@lmliheng/penguin-core` | SDK，用代码创建 Agent 与 Session |
-| `@lmliheng/penguin-server` | Web 服务，含 Web App 的静态资源 |
-| `@lmliheng/*` | 内置插件，每个插件一个包（Skill 与会话钩子），由 core 加载 |
+| `@adelie/cli` | 命令行工具，提供 `penguin` 命令 |
+| `@adelie/core` | SDK，用代码创建 Agent 与 Session |
+| `@adelie/server` | Web 服务，含 Web App 的静态资源 |
+| `@adelie/*` | 内置插件，每个插件一个包（Skill 与会话钩子），由 core 加载 |
 
 所有包均以 Apache-2.0 许可证发布。
 

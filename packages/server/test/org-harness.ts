@@ -4,9 +4,9 @@
  * pricing replaced by recording fakes and the clock under test control. Shared by the runtime
  * and scenario suites so both exercise the same seams the app binds in production.
  */
-import { saveProjectConfig } from "@lmliheng/penguin-core";
-import { wire } from "@lmliheng/penguin-core/kernel";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+import { saveProjectConfig } from "@adelie/core";
+import { wire } from "@adelie/core/kernel";
+import type { OmniMessage } from "@adelie/core";
 import type { ServerEvent } from "../src/api/types.js";
 import { openDatabase } from "../src/db/database.js";
 import { MembersRepo } from "../src/db/repos/members.js";

@@ -25,7 +25,7 @@ import type {
   StorageClass,
   StoragePlanEntryView,
   StoragePlanView,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 
 /** The paths ticked on a bill; a fresh constant, so the page's default never mutates. */
 export const NO_SELECTION: ReadonlySet<string> = new Set<string>();

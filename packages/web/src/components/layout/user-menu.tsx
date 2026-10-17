@@ -18,8 +18,8 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { ConfirmModal, Dropdown, ICON_GAP, Menu, MenuItem, UserAvatar } from "@lmliheng/penguin-ui";
-import type { DropdownPortal } from "@lmliheng/penguin-ui";
+import { ConfirmModal, Dropdown, ICON_GAP, Menu, MenuItem, UserAvatar } from "@adelie/ui";
+import type { DropdownPortal } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { useAuth } from "../../state/auth";
 import { UpdateRow } from "../account/update-row";

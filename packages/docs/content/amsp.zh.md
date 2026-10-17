@@ -5,7 +5,7 @@ description: Agent Message Stream Protocol：经 Agent API 返回 Agent 一次�
 
 AMSP（Agent Message Stream Protocol）是 [Agent API](/agent-api) 的传输格式。[MMSP](https://www.npmjs.com/package/@prismshadow/mmsp) 流式传输一次模型调用，AMSP 流式传输 Agent 的一次运行：一个 Task，包括它发出的模型 Request、Agent 执行的工具及其结果、审批、上下文压缩、错误和最终的 Token 计数；运行发生在一个 Session 上，调用方凭 id 延续它。一次运行就是一个 HTTP 响应。
 
-AMSP 是 Session 实时流的投影：服务器把一次运行产生的 [OmniMessage](/omni-message) 记录和服务器事件翻译过来，分片和完整内容项都按引擎产出的原样转发。OmniMessage 没有为它增加任何字段。类型定义在 `@lmliheng/amsp`（`packages/amsp/src/types.ts`）中，服务器的翻译器和客户端共用这份定义。
+AMSP 是 Session 实时流的投影：服务器把一次运行产生的 [OmniMessage](/omni-message) 记录和服务器事件翻译过来，分片和完整内容项都按引擎产出的原样转发。OmniMessage 没有为它增加任何字段。类型定义在 `@adelie/amsp`（`packages/amsp/src/types.ts`）中，服务器的翻译器和客户端共用这份定义。
 
 ## 传输
 
@@ -230,4 +230,4 @@ data: [DONE]
 
 ## 自行读取流
 
-任何能发送 `Authorization` 和 POST 请求体的 SSE 读取方式都可以：请用 `fetch`，不要用 `EventSource`。按 `EventSource` 的规则读取：行以 LF、CRLF 或单独的 CR 结束；空行结束一个事件；以 `:` 开头的行是注释；同一事件的多行 `data:` 以换行符连接；读到 `data: [DONE]` 时停止。`@lmliheng/amsp` 中的 `readSse` 正是这样读取 `fetch` 的响应体，并逐个产出每个事件的数据。
+任何能发送 `Authorization` 和 POST 请求体的 SSE 读取方式都可以：请用 `fetch`，不要用 `EventSource`。按 `EventSource` 的规则读取：行以 LF、CRLF 或单独的 CR 结束；空行结束一个事件；以 `:` 开头的行是注释；同一事件的多行 `data:` 以换行符连接；读到 `data: [DONE]` 时停止。`@adelie/amsp` 中的 `readSse` 正是这样读取 `fetch` 的响应体，并逐个产出每个事件的数据。

@@ -13,15 +13,8 @@
  * read the setting per request — so there is nothing to restart and nothing to warn about.
  */
 import { useEffect, useState } from "react";
-import type { ServerSettings } from "@lmliheng/penguin-server/api";
-import {
-  Button,
-  Input,
-  SettingsSection,
-  toastError,
-  toastInfo,
-  toastSuccess,
-} from "@lmliheng/penguin-ui";
+import type { ServerSettings } from "@adelie/server/api";
+import { Button, Input, SettingsSection, toastError, toastInfo, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";

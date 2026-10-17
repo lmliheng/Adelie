@@ -12,8 +12,8 @@ import {
   MODEL_PROVIDERS,
   PENGUIN_GO_PROVIDER_ID,
   isAddableGroup,
-} from "@lmliheng/penguin-core/model-catalog";
-import type { ModelProviderInfo } from "@lmliheng/penguin-core/model-catalog";
+} from "@adelie/core/model-catalog";
+import type { ModelProviderInfo } from "@adelie/core/model-catalog";
 
 /**
  * One box for everything on the header's right side, so its items share one height, one inset

@@ -10,12 +10,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  agentsDir,
-  projectConfigPath,
-  saveProjectConfig,
-  scheduleDir,
-} from "@lmliheng/penguin-core";
+import { agentsDir, projectConfigPath, saveProjectConfig, scheduleDir } from "@adelie/core";
 import { openDatabase } from "../src/db/database.js";
 import { ProjectsRepo } from "../src/db/repos/projects.js";
 import { SchedulesRepo } from "../src/db/repos/schedules.js";
@@ -23,12 +18,12 @@ import { SessionsRepo } from "../src/db/repos/sessions.js";
 import { UsersRepo } from "../src/db/repos/users.js";
 import type { ErrorRecordArgs } from "../src/runtime/error-recorder.js";
 import type { ScheduleSessionCreator, ScheduleTaskRunner } from "../src/runtime/scheduler.js";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+import type { OmniMessage } from "@adelie/core";
 import { Scheduler } from "../src/runtime/scheduler.js";
 import { ProjectConfigService } from "../src/services/project-config-service.js";
 import type { ScheduleServerEvent } from "../src/api/types.js";
 import { makeTempRoot } from "./helpers.js";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
 
 const P = "p1";
 const A = "agent_x";

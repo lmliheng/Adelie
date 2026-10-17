@@ -1,5 +1,5 @@
 {
-  "name": "@lmliheng/penguin-ui-gallery",
+  "name": "@adelie/ui-gallery",
   "version": "0.4.2",
   "private": true,
   "type": "module",
@@ -14,14 +14,14 @@
     "shots": "node scripts/shots.mjs"
   },
   "dependencies": {
-    "@lmliheng/penguin-ui": "workspace:*",
+    "@adelie/ui": "workspace:*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",
-    "@lmliheng/penguin-core": "workspace:*",
-    "@lmliheng/penguin-web": "workspace:*",
+    "@adelie/core": "workspace:*",
+    "@adelie/web": "workspace:*",
     "@tailwindcss/vite": "^4.1.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.1.0",

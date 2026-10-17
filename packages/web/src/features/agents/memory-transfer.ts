@@ -11,11 +11,7 @@
  * Read `S` inside the functions, never at module top level: the dictionary binding is swapped
  * on language switch.
  */
-import type {
-  MemoryImportMode,
-  MemoryScopeExport,
-  MemoryTransferFile,
-} from "@lmliheng/penguin-server/api";
+import type { MemoryImportMode, MemoryScopeExport, MemoryTransferFile } from "@adelie/server/api";
 import { S } from "../../lib/strings";
 
 /** Format marker of a scope document, typed against the DTO so this literal cannot drift from the server's. */

@@ -1,6 +1,6 @@
 /**
- * Preset content for builtin Agents; the plugin library lives in @lmliheng/penguin-plugins
- * (the library files are read live when building the preset).
+ * Preset content for builtin Agents; the plugin library lives in the repository's `plugins/`
+ * packages (the library files are read live when building the preset).
  *
  * - Every Project comes with a single builtin Agent: `default_agent` (the General Agent, the
  *   default conversational Agent), which has the library's preinstalled plugin set installed at

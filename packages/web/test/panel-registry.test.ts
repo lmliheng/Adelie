@@ -11,7 +11,7 @@
  *   puzzle glyph.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ICONS } from "@lmliheng/penguin-ui";
+import { ICONS } from "@adelie/ui";
 import {
   dockPanelDefinition,
   dockPanels,

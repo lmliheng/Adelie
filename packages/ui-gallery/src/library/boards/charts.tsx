@@ -17,9 +17,9 @@ import type {
   TraceOtherSpan,
   TraceToolSpan,
   UsageSeriesPoint,
-} from "@lmliheng/penguin-server/api";
-import { ContextRing, Legend, Ring, Sparkline, TokenDonut } from "@lmliheng/penguin-ui";
-import type { LegendItem, RingSegment, ToneName } from "@lmliheng/penguin-ui";
+} from "@adelie/server/api";
+import { ContextRing, Legend, Ring, Sparkline, TokenDonut } from "@adelie/ui";
+import type { LegendItem, RingSegment, ToneName } from "@adelie/ui";
 import { humanizeTokens } from "../../../../web/src/lib/format";
 import { TimelineChart } from "../../../../web/src/features/traces/timeline-chart";
 import type { TraceHighlight } from "../../../../web/src/features/traces/timeline-chart";

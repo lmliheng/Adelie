@@ -11,7 +11,7 @@
  * Session started from it (Full Access, Always Ask) is unconfined. A document stored before the
  * card had a default preset starts Sessions by its own mode and network until one is picked.
  */
-import type { SandboxMode, SandboxSettings as Policy } from "@lmliheng/penguin-core/plugin";
+import type { SandboxMode, SandboxSettings as Policy } from "@adelie/core/plugin";
 import type {
   ApprovalMode,
   PluginConfigNotice,

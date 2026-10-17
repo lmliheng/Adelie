@@ -4,8 +4,8 @@
  * instead of pulling a whole multi-MB file into memory.
  */
 import { open } from "node:fs/promises";
-import { parseTraceLines, readTraceTolerant } from "@lmliheng/penguin-core";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+import { parseTraceLines, readTraceTolerant } from "@adelie/core";
+import type { OmniMessage } from "@adelie/core";
 
 /** Head window for Trace head reads: generous for a long system prompt, far below a whole multi-MB shard. */
 export const TRACE_HEAD_BYTES = 256 * 1024;

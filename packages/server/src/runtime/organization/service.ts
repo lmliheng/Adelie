@@ -49,8 +49,8 @@ import type {
   OrgHandbookFilesResponse,
 } from "../../api/types.js";
 import { TICKET_SLUG_PATTERN } from "../../api/types.js";
-import { Interface, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
-import type { ClassCtx } from "@lmliheng/penguin-core/kernel";
+import { Interface, Module, Provide, Use } from "@adelie/core/kernel";
+import type { ClassCtx } from "@adelie/core/kernel";
 import { HttpError } from "../../http/errors.js";
 import { userChannelKey } from "../../http/routes/events.js";
 import type { Channels, Clock, Config, Log } from "../../hmr/capabilities.js";

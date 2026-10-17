@@ -21,7 +21,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
 import type { DatabaseSync } from "node:sqlite";
 import {
   assistantText,
@@ -36,8 +36,8 @@ import {
   sessionScratchpadDir,
   tokenUsage,
   userText,
-} from "@lmliheng/penguin-core";
-import type { OmniMessage, TokenCounts } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { OmniMessage, TokenCounts } from "@adelie/core";
 import { openDatabase } from "../src/db/database.js";
 import { SessionsRepo } from "../src/db/repos/sessions.js";
 import type { SessionRow } from "../src/db/repos/sessions.js";

@@ -15,7 +15,7 @@
 import { PassThrough } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Command } from "commander";
-import { partialText, toolCall } from "@lmliheng/penguin-core";
+import { partialText, toolCall } from "@adelie/core";
 import { registerChatCommand } from "../src/commands/chat.js";
 import { getMessages } from "../src/i18n.js";
 import { FakeServer, type FakeSessionState } from "./fake-server.js";

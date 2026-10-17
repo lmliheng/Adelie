@@ -31,7 +31,7 @@
  */
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
-import type { ModelInfo, ModelRefDto } from "@lmliheng/penguin-server/api";
+import type { ModelInfo, ModelRefDto } from "@adelie/server/api";
 import {
   ChoiceCheck,
   CloseButton,
@@ -41,7 +41,7 @@ import {
   Modal,
   ProviderLogo,
   SearchInput,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { hasConfiguredKey, sameModelRef } from "../models/model-grouping";
 import { loadModelGroupOrder } from "../models/model-group-order";

@@ -29,7 +29,7 @@ import type {
   SessionStatus,
   SkillMetadataItem,
   TaskInputPart,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   ActivityIcon,
   Button,
@@ -49,7 +49,7 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { switchDeskModel } from "../company/desk-model";
 import { useCompany } from "../../state/company";
@@ -134,7 +134,7 @@ import { modelLabel } from "./model-select";
 import { sessionModelPickerDisabled, sessionRowStale, switchContextShape } from "./model-switch";
 import type { SwitchContextShape } from "./model-switch";
 import { hasConfiguredKey, promotedPricing, sameModelRef } from "../models/model-grouping";
-import { providerInfo } from "@lmliheng/penguin-core/model-catalog";
+import { providerInfo } from "@adelie/core/model-catalog";
 import { useMemoryListing } from "./use-memory-listing";
 import { deletedChangeKeys } from "./memory-nav";
 import { noteScheduleEvent } from "../schedules/schedule-store";

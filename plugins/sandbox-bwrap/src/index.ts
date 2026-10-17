@@ -1,9 +1,9 @@
 /**
- * @lmliheng/penguin-plugin-sandbox-bwrap — a bubblewrap sandbox backend.
+ * @adelie/sandbox-bwrap — a bubblewrap sandbox backend.
  *
  * A PLUGIN PACKAGE, not part of the platform: a Project asks for it on the Plugins page
  * and the harness resolves it from the installation (see the server's plugin/loader.ts).
- * It compiles against the `@lmliheng/penguin-core/plugin` surface (types, plus the
+ * It compiles against the `@adelie/core/plugin` surface (types, plus the
  * decorators its bundle carries) and has no runtime dependency on the harness — and
  * none on the DSH ecosystem either:
  * it talks to `bwrap` directly and implements every dimension of the sandbox interface,
@@ -36,14 +36,14 @@ import { accessSync, constants, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
-import { Bind, Component, Interface, Use } from "@lmliheng/penguin-core/plugin";
+import { Bind, Component, Interface, Use } from "@adelie/core/plugin";
 import type {
   ConfinedArgv,
   Plugin,
   SandboxPolicy,
   SandboxProvider,
   SandboxProviderSource,
-} from "@lmliheng/penguin-core/plugin";
+} from "@adelie/core/plugin";
 
 /** Default probe budget; a probe that hangs must not hang the first spawn forever. */
 const PROBE_TIMEOUT_MS = 5_000;
@@ -235,7 +235,7 @@ export async function loadPenguinBwrapProvider(
     // Ubuntu 23.10 and later lets only AppArmor-profiled programs create them (24.04's default).
     // Neither is needed for the sandbox to work: sandbox-dsh confines files through Landlock.
     throw new Error(
-      `'${runner}' is missing or refuses the base profile (${refusal}). Are unprivileged user namespaces allowed on this host? Debian: \`sysctl kernel.unprivileged_userns_clone\`; Ubuntu 23.10 and later: \`sysctl kernel.apparmor_restrict_unprivileged_userns\`. @lmliheng/penguin-plugin-sandbox-dsh confines file writes without them, through Landlock. Optional: a one-time root step lets bubblewrap run here, adding network isolation and masked paths — see "Sandbox on Ubuntu" in the CLI quickstart`,
+      `'${runner}' is missing or refuses the base profile (${refusal}). Are unprivileged user namespaces allowed on this host? Debian: \`sysctl kernel.unprivileged_userns_clone\`; Ubuntu 23.10 and later: \`sysctl kernel.apparmor_restrict_unprivileged_userns\`. @adelie/sandbox-dsh confines file writes without them, through Landlock. Optional: a one-time root step lets bubblewrap run here, adding network isolation and masked paths — see "Sandbox on Ubuntu" in the CLI quickstart`,
     );
   }
   return createPenguinBwrapProvider(internals);

@@ -3,10 +3,7 @@
  * line in its tooltip, and which warnings just appeared (each gets one toast). What counts as too
  * much is the server's call (its builtin-browser/load.ts); nothing here judges, it only words.
  */
-import type {
-  BuiltinBrowserLoadWarning,
-  BuiltinBrowserMetrics,
-} from "@lmliheng/penguin-server/api";
+import type { BuiltinBrowserLoadWarning, BuiltinBrowserMetrics } from "@adelie/server/api";
 import { S } from "../../lib/strings";
 import type { Strings } from "../../lib/strings";
 

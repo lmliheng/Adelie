@@ -18,7 +18,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DEFAULT_PROJECT_ID, STORAGE_CLASSES } from "@lmliheng/penguin-core";
+import { DEFAULT_PROJECT_ID, STORAGE_CLASSES } from "@adelie/core";
 import type { StorageReport, StorageReportResponse } from "../src/api/types.js";
 import { apiClient, createTestApp, loginAdmin, provisionUser } from "./helpers.js";
 import type { TestApp } from "./helpers.js";

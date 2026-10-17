@@ -14,14 +14,9 @@
  * with it on a dropped connection; `resync_required` (buffer evicted) prints a dim
  * notice — the messages endpoint still holds the full history for `penguin logs`.
  */
-import {
-  isEventMessage,
-  isHookContinue,
-  isHookInput,
-  isModelMessage,
-} from "@lmliheng/penguin-core";
-import type { ApprovalDecision, OmniMessage, ToolCallPayload } from "@lmliheng/penguin-core";
-import type { GoalServerEvent } from "@lmliheng/penguin-server/api";
+import { isEventMessage, isHookContinue, isHookInput, isModelMessage } from "@adelie/core";
+import type { ApprovalDecision, OmniMessage, ToolCallPayload } from "@adelie/core";
+import type { GoalServerEvent } from "@adelie/server/api";
 import { ServerClient } from "./client.js";
 import type { SseFrame } from "./client.js";
 import { dim, humanizeTokens } from "./render.js";

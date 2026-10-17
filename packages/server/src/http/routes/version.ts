@@ -19,7 +19,7 @@
  * route says so (`no_supervisor`) instead of stopping a service nobody would bring back,
  * and the page shows the manual restart hint.
  */
-import { boundaryEnv } from "@lmliheng/penguin-core";
+import { boundaryEnv } from "@adelie/core";
 import { versionReport } from "../../version-report.js";
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -32,7 +32,7 @@ import type {
   VersionResponse,
   VersionRollbackResponse,
 } from "../../api/types.js";
-import { diffIfaces } from "@lmliheng/penguin-hmr";
+import { diffIfaces } from "@adelie/hmr";
 import type { HarnessHistoryIface } from "../../services/harness-history.js";
 import { HttpError } from "../errors.js";
 import type { AppEnv } from "../../auth/middleware.js";

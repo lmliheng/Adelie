@@ -22,8 +22,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { strToU8, unzipSync, zipSync } from "fflate";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { hooksDir } from "@lmliheng/penguin-core";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+import { hooksDir } from "@adelie/core";
+import type { OmniMessage } from "@adelie/core";
 import type {
   AgentHooksResponse,
   MessagesResponse,

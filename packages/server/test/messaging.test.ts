@@ -72,9 +72,9 @@ import {
   modelVisiblePath,
   scratchpadDir,
   toolCall,
-} from "@lmliheng/penguin-core";
-import type { ApproveFn, OmniMessage } from "@lmliheng/penguin-core";
-import { wire } from "@lmliheng/penguin-core/kernel";
+} from "@adelie/core";
+import type { ApproveFn, OmniMessage } from "@adelie/core";
+import { wire } from "@adelie/core/kernel";
 import type { FeishuBindingResponse, FeishuTestResponse } from "../src/api/types.js";
 import { ProjectsRepo } from "../src/db/repos/projects.js";
 import type { RuntimeSession } from "../src/runtime/session-manager.js";

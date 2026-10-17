@@ -26,7 +26,7 @@
  * Pure, and the only place either path is spelled: every command in this directory takes a
  * layout rather than naming `~/.penguin` itself.
  */
-import { DEFAULT_DEV_SERVER_PORT, DEFAULT_SERVER_PORT, boundaryEnv } from "@lmliheng/penguin-core";
+import { DEFAULT_DEV_SERVER_PORT, DEFAULT_SERVER_PORT, boundaryEnv } from "@adelie/core";
 
 export type Profile = "release" | "dev";
 

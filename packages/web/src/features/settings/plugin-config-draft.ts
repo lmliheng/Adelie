@@ -4,7 +4,7 @@
  * sent — an untouched field would store its default as a value, pinning it against a later
  * change of the default.
  */
-import type { PluginConfigEntry, PluginConfigField } from "@lmliheng/penguin-server/api";
+import type { PluginConfigEntry, PluginConfigField } from "@adelie/server/api";
 
 type Cells = Record<string, string | boolean>;
 

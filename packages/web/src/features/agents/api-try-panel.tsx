@@ -32,7 +32,7 @@ import {
   StreamingCaret,
   Text,
   toastError,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { apiErrorText } from "../../lib/api-error";
 import { formatBytes } from "../../lib/format";
 import { S } from "../../lib/strings";

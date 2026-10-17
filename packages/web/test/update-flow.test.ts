@@ -8,11 +8,7 @@
  * process cannot be restarted from the page, the modal says so instead of pretending.
  */
 import { describe, expect, it } from "vitest";
-import type {
-  DesktopUpdateStatus,
-  UpdateCheckResponse,
-  UpdateJobStatus,
-} from "@lmliheng/penguin-server/api";
+import type { DesktopUpdateStatus, UpdateCheckResponse, UpdateJobStatus } from "@adelie/server/api";
 import {
   NO_LOCAL,
   clientFlow,

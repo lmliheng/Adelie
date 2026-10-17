@@ -28,11 +28,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useSearchParams } from "react-router";
-import type {
-  OrgBudgetAlert,
-  OrgEmployeeState,
-  OrgFinanceResponse,
-} from "@lmliheng/penguin-server/api";
+import type { OrgBudgetAlert, OrgEmployeeState, OrgFinanceResponse } from "@adelie/server/api";
 import {
   AgentAvatar,
   Badge,
@@ -58,7 +54,7 @@ import {
   noAutofill,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

@@ -22,8 +22,8 @@ import {
   toolCall,
   toolCallOutput,
   userText,
-} from "@lmliheng/penguin-core";
-import type { OmniMessage } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { OmniMessage } from "@adelie/core";
 import type { HistoryMessage, MessagesResponse } from "../src/api/types.js";
 import { sessionRow, uniqueSessionId } from "./fixtures/session.js";
 import { apiClient, createTestApp, provisionUser, writeTraceFile } from "./helpers.js";

@@ -10,7 +10,7 @@
  * organization paused or the switch off is consumed and skipped, like a schedule.
  */
 import { createHash } from "node:crypto";
-import { comparePluginVersions } from "@lmliheng/penguin-core";
+import { comparePluginVersions } from "@adelie/core";
 import type { OrgCalendarOutcome, OrgChannelMessage, OrgTicketChange } from "../../api/types.js";
 import type { OrgDeskMentionRow } from "../../db/repos/organizations.js";
 import type { SessionRow } from "../../db/repos/sessions.js";

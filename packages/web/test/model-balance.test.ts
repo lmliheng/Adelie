@@ -4,7 +4,7 @@
  * reading (group-balance.tsx), and how the per-account pin is read back out of the free-form prefs.
  */
 import { describe, expect, it } from "vitest";
-import type { ModelBalanceResponse } from "@lmliheng/penguin-server/api";
+import type { ModelBalanceResponse } from "@adelie/server/api";
 import {
   displayBalance,
   formatAmount,

@@ -37,12 +37,9 @@ import {
   toolCall,
   toolCallOutput,
   userText,
-} from "@lmliheng/penguin-core";
-import {
-  buildBackgroundTaskDoneMessage,
-  buildHandoffMessage,
-} from "@lmliheng/penguin-core/markers";
-import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import { buildBackgroundTaskDoneMessage, buildHandoffMessage } from "@adelie/core/markers";
+import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@adelie/core";
 import { decodeCursor, encodeCursor } from "../src/services/message-window.js";
 import { MESSAGES_PAGE_MAX_BYTES } from "../src/services/trace-service.js";
 import type { TraceService } from "../src/services/trace-service.js";

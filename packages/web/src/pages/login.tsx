@@ -10,15 +10,7 @@
  */
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import {
-  Button,
-  Input,
-  Modal,
-  Notice,
-  PasswordInput,
-  AppLogo,
-  Segmented,
-} from "@lmliheng/penguin-ui";
+import { Button, Input, Modal, Notice, PasswordInput, AppLogo, Segmented } from "@adelie/ui";
 import { S } from "../lib/strings";
 import { apiErrorText } from "../lib/api-error";
 import { useDocumentTitle } from "../lib/use-document-title";

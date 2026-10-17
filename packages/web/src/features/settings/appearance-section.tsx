@@ -12,15 +12,8 @@
  * browser.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
-import {
-  PrefRow,
-  Segmented,
-  Select,
-  SwatchPicker,
-  THEME_IDS,
-  ToggleRow,
-} from "@lmliheng/penguin-ui";
-import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZES } from "@lmliheng/penguin-ui/boot";
+import { PrefRow, Segmented, Select, SwatchPicker, THEME_IDS, ToggleRow } from "@adelie/ui";
+import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZES } from "@adelie/ui/boot";
 import { S } from "../../lib/strings";
 import * as api from "../../api/endpoints";
 import { isDesktopShellWindow } from "../../lib/account-menu";

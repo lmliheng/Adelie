@@ -25,8 +25,8 @@ import type {
   PluginConfigEntry,
   PluginConfigField,
   PluginConfigTableColumn,
-} from "@lmliheng/penguin-server/api";
-import { Button, InfoPopover } from "@lmliheng/penguin-ui";
+} from "@adelie/server/api";
+import { Button, InfoPopover } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import type { Locale } from "../../state/locale";

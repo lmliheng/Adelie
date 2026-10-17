@@ -7,8 +7,8 @@
  * of a scheduled task still to fire into a conversation (the row's `scheduledLabel`), and one
  * row must never show two alarms that mean different things.
  */
-import type { SessionInfo, SessionSource } from "@lmliheng/penguin-server/api";
-import { ICONS } from "@lmliheng/penguin-ui";
+import type { SessionInfo, SessionSource } from "@adelie/server/api";
+import { ICONS } from "@adelie/ui";
 import { sessionCategory } from "./session-grouping";
 import { S } from "./strings";
 

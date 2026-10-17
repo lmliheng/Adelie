@@ -24,7 +24,7 @@ import type {
   OrgEmployeeState,
   OrgSessionsResponse,
   SessionStatus,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import type { SessionActivity } from "../../lib/session-activity";
 
 /**

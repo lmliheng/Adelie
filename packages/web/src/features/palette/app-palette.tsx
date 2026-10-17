@@ -6,8 +6,8 @@
  * rather than navigating — closing it leaves the user exactly where they were.
  */
 import { useEffect, useMemo, useState } from "react";
-import { CommandPalette } from "@lmliheng/penguin-ui";
-import type { PaletteAction } from "@lmliheng/penguin-ui";
+import { CommandPalette } from "@adelie/ui";
+import type { PaletteAction } from "@adelie/ui";
 import { onCommand } from "../../lib/shortcuts/dispatcher";
 import { useShortcutLabel } from "../../lib/shortcuts/use-keymap";
 import { S } from "../../lib/strings";

@@ -4,7 +4,7 @@
 界面修补。**没有破坏性改动**：数据根（`~/.adelie/data`）、配置格式、既有 HTTP 接口都没动，
 已装好的机器不需要改任何配置。
 
-主角是新插件 **WPS**（`@lmliheng/use-wps-office`）：它把 Adelie 的对话搬进 WPS 文字——功能区点一下
+主角是新插件 **WPS**（`@adelie/use-wps-office`）：它把 Adelie 的对话搬进 WPS 文字——功能区点一下
 开侧栏，再把你屏幕上那份打开的文档交到 Agent 手里。读随便读，**每一处改动都要你在侧栏里点一下同意**。
 其余四条都是日常会碰到的界面问题：窗口底部的悬停提示不再被底边截掉一半、上一轮还在跑的智能体不会从
 面板上消失、切走再切回一个会话时它的面板仍停在原来的全屏状态、很长的会话往上翻时记忆更新卡片不再丢。
@@ -70,7 +70,7 @@ penguin update --yes       # 原地替换 bin/lib/web/node
 
 安装包都在 GitHub Release 上：<https://github.com/lmliheng/Adelie/releases/tag/v0.3.9>，
 下载页同样直指这里。npm 上整条链同样是 **0.3.9**（3 个宿主包 + 19 个插件包，其中新加入的是
-**WPS**）：`npm install -g @lmliheng/penguin-cli`。
+**WPS**）：`npm install -g @adelie/cli`。
 
 **存储清理仍是出厂关闭的。** 想用就在设置页「存储」页打开开关，或 `penguin storage mode on`；
 不想用就什么都不用做，行为与上一版一致。

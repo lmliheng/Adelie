@@ -356,20 +356,20 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
     );
     const injected = path.join(
       root,
-      "node_modules/.pnpm/@lmliheng+sample@file+plugins+sample/node_modules/@lmliheng/sample",
+      "node_modules/.pnpm/@adelie+sample@file+plugins+sample/node_modules/@adelie/sample",
     );
     await fs.mkdir(injected, { recursive: true });
     // Where core itself sits in that checkout: its own injected copy, deep under .pnpm.
     const core = path.join(
       root,
-      "node_modules/.pnpm/@lmliheng+penguin-core@file+packages+core/node_modules/@lmliheng/penguin-core",
+      "node_modules/.pnpm/@adelie+core@file+packages+core/node_modules/@adelie/core",
     );
     await fs.mkdir(core, { recursive: true });
     return { root, source, injected, core };
   }
 
   it("prefers the repo's plugins/<name>/ over pnpm's injected copy inside a workspace checkout", async () => {
-    const c = await checkout({ workspaceFile: true, packageName: "@lmliheng/sample" });
+    const c = await checkout({ workspaceFile: true, packageName: "@adelie/sample" });
     try {
       expect(workspacePluginRoot("sample", c.injected, c.core)).toBe(c.source);
     } finally {
@@ -378,7 +378,7 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
   });
 
   it("keeps the resolved copy outside a workspace: an npm install and the packed app have no workspace file", async () => {
-    const c = await checkout({ workspaceFile: false, packageName: "@lmliheng/sample" });
+    const c = await checkout({ workspaceFile: false, packageName: "@adelie/sample" });
     try {
       expect(workspacePluginRoot("sample", c.injected, c.core)).toBe(c.injected);
     } finally {
@@ -387,7 +387,7 @@ describe("workspacePluginRoot (a checkout reads plugins from the repo's plugins/
   });
 
   it("keeps the resolved copy when the workspace directory is not that package", async () => {
-    const c = await checkout({ workspaceFile: true, packageName: "@lmliheng/other" });
+    const c = await checkout({ workspaceFile: true, packageName: "@adelie/other" });
     try {
       expect(workspacePluginRoot("sample", c.injected, c.core)).toBe(c.injected);
     } finally {

@@ -11,8 +11,8 @@
  * organization's approval mode of that moment; a later change of the mode reaches them
  * through `syncApprovalMode` (reconcile.ts).
  */
-import { buildOrgTriggerMessage, userText } from "@lmliheng/penguin-core";
-import type { OrgTriggerOrigin } from "@lmliheng/penguin-core";
+import { buildOrgTriggerMessage, userText } from "@adelie/core";
+import type { OrgTriggerOrigin } from "@adelie/core";
 import type { TicketDoc } from "../../organization/files.js";
 import { orgLanguage, serializeTicket } from "../../organization/files.js";
 import { agentPrincipal } from "../../organization/principal.js";

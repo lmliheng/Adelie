@@ -8,7 +8,7 @@
  * cost, which the body says: the App is re-assembled, stopping runs in progress.
  */
 import { useState } from "react";
-import { Checkbox, ConfirmModal, ICONS } from "@lmliheng/penguin-ui";
+import { Checkbox, ConfirmModal, ICONS } from "@adelie/ui";
 import { S } from "../../lib/strings";
 
 export function SandboxBackendPrompt({

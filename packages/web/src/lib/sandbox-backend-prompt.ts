@@ -9,7 +9,7 @@
  * a server. Storage that is unavailable or throws (a private window, blocked site data) reads
  * as "never dismissed" and drops the write: the prompt then asks again, which is the safe side.
  */
-import type { PluginConfigEntry } from "@lmliheng/penguin-server/api";
+import type { PluginConfigEntry } from "@adelie/server/api";
 
 /** localStorage key: a JSON array of the machine keys whose prompt was dismissed for good. */
 export const BACKEND_PROMPT_DISMISSED_KEY = "penguin.sandboxBackendPromptDismissed";

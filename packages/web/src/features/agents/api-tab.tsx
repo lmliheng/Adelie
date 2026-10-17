@@ -26,7 +26,7 @@ import type {
   AgentApiSettings,
   AgentApiUpdateRequest,
   ApprovalMode,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Button,
   CodeBlock,
@@ -41,7 +41,7 @@ import {
   SkeletonList,
   ToggleRow,
   toastError,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { formatDateTime } from "../../lib/format";
@@ -70,7 +70,7 @@ export function agentApiExamples(baseUrl: string, agentRef: string): { curl: str
     `  -d '{"input":"Hello"}'`,
   ].join("\n");
   const sdk = [
-    `import { AgentClient } from "@lmliheng/amsp";`,
+    `import { AgentClient } from "@adelie/amsp";`,
     ``,
     `const client = new AgentClient({`,
     `  baseUrl: "${baseUrl}",`,

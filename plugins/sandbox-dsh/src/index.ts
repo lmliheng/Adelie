@@ -1,5 +1,5 @@
 /**
- * @lmliheng/penguin-plugin-sandbox-dsh — the DeepSeek Harness sandbox ecosystem
+ * @adelie/sandbox-dsh — the DeepSeek Harness sandbox ecosystem
  * behind this harness's own sandbox interface.
  *
  * A PLUGIN PACKAGE, not part of the platform: a Project asks for it on the Plugins page
@@ -23,14 +23,14 @@
  */
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { Bind, Component } from "@lmliheng/penguin-core/plugin";
+import { Bind, Component } from "@adelie/core/plugin";
 import type {
   ConfinedArgv,
   Plugin,
   SandboxLimit,
   SandboxProvider,
   SandboxProviderSource,
-} from "@lmliheng/penguin-core/plugin";
+} from "@adelie/core/plugin";
 
 /**
  * Programs the Windows ACL restricted-token runner cannot start — and they include the harness's
@@ -119,12 +119,12 @@ export function assertAclRunnerCanStart(
 
 /**
  * The host's plugin contract, named by a variable so this package's bundle leaves the import to
- * run time: tsup inlines `@lmliheng/penguin-core/plugin` for the decorators (a literal
+ * run time: tsup inlines `@adelie/core/plugin` for the decorators (a literal
  * specifier), and a second, bundled copy of the session shell would be this package's
  * resolution, not the harness's. Resolved where the plugin runs, from the installation; where
  * the host's core cannot be reached the import fails and `hostSessionShell` returns `null`.
  */
-const HOST_CORE: string = "@lmliheng/penguin-core/plugin";
+const HOST_CORE: string = "@adelie/core/plugin";
 
 /**
  * The harness's session shell, from the host's core; `null` when that core does not export

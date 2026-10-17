@@ -7,7 +7,7 @@
  * hold between them (seriesPoints, stroked by chart-geom's segmentPath).
  */
 import { describe, expect, it } from "vitest";
-import { makeRangeGeom, segmentPath } from "@lmliheng/penguin-ui";
+import { makeRangeGeom, segmentPath } from "@adelie/ui";
 import {
   defaultTargetScore,
   evaluationLabel,

@@ -16,8 +16,8 @@ import type {
   PluginConfigField,
   PluginConfigTableColumn,
   PluginConfigTableRow,
-} from "@lmliheng/penguin-server/api";
-import { InfoPopover, Switch } from "@lmliheng/penguin-ui";
+} from "@adelie/server/api";
+import { InfoPopover, Switch } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { EnumCell } from "./plugin-config-enum-cell";
 import { PinToggle, WrappingNameBox } from "./plugin-config-table-cells";

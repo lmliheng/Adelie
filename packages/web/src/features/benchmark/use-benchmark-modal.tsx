@@ -26,7 +26,7 @@ import type {
   BenchmarkSummary,
   ModelRefDto,
   ModelsResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Button,
   FieldHint,
@@ -39,7 +39,7 @@ import {
   Segmented,
   Select,
   Textarea,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { formatScore } from "../../lib/format";

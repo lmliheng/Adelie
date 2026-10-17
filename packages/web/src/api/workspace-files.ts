@@ -17,7 +17,7 @@ import type {
   FilesMoveRequest,
   WorkspaceFilesResponse,
   WorkspaceSearchResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import * as api from "./endpoints";
 import type { WorkspaceDir } from "./endpoints";
 

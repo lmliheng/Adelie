@@ -38,8 +38,8 @@ import {
   isContextMenuKey,
   toastSuccess,
   useRowContextMenu,
-} from "@lmliheng/penguin-ui";
-import type { AnchorRect, ContextMenuEventLike } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { AnchorRect, ContextMenuEventLike } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { STAT_ICONS } from "../../lib/stat-icons";
 import { isDesktopShellWindow } from "../../lib/account-menu";

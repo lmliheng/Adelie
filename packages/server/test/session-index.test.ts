@@ -32,8 +32,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { sessionMeta, userText } from "@lmliheng/penguin-core";
-import type { OmniMessage, SessionMetaPayload } from "@lmliheng/penguin-core";
+import { sessionMeta, userText } from "@adelie/core";
+import type { OmniMessage, SessionMetaPayload } from "@adelie/core";
 import type {
   ProjectCreateResponse,
   SessionCreateResponse,

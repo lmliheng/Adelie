@@ -9,10 +9,7 @@
  * thing that says where a task's workspace, model and Session picker point. The filter and the
  * search box narrow the rows inside the groups; they never dissolve the groups.
  */
-import type {
-  AllProjectSchedulesResponse,
-  ProjectScheduleItem,
-} from "@lmliheng/penguin-server/api";
+import type { AllProjectSchedulesResponse, ProjectScheduleItem } from "@adelie/server/api";
 import { filterSchedules } from "./schedule-panel-state";
 import type { ScheduleFilter } from "./schedule-panel-state";
 

@@ -4,16 +4,8 @@
  * gutter, and the diff viewer unified, side by side and read from a patch — all from the package.
  * Code is highlighted by the highlighter the frame provides, as in the app.
  */
-import {
-  CodeBlock,
-  CodeSurface,
-  DiffViewer,
-  Heading,
-  InlineCode,
-  Prose,
-  Text,
-} from "@lmliheng/penguin-ui";
-import type { HeadingLevel, TextVariant } from "@lmliheng/penguin-ui";
+import { CodeBlock, CodeSurface, DiffViewer, Heading, InlineCode, Prose, Text } from "@adelie/ui";
+import type { HeadingLevel, TextVariant } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

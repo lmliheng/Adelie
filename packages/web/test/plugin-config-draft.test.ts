@@ -1,7 +1,7 @@
 // A settings table's draft reads its stored value the way the server's `resolveTable` does:
 // locked or refused cells read as declared; malformed added rows are dropped.
 import { describe, expect, it } from "vitest";
-import type { PluginConfigField } from "@lmliheng/penguin-server/api";
+import type { PluginConfigField } from "@adelie/server/api";
 import { tableDraftOf } from "../src/features/settings/plugin-config-draft";
 
 const FIELD: PluginConfigField = {

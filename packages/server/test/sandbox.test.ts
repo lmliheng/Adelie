@@ -7,9 +7,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterAll, describe, expect, it, vi } from "vitest";
-import { boot, initialDoc, parseManifest } from "@lmliheng/penguin-core/kernel";
-import type { Json } from "@lmliheng/penguin-core/kernel";
-import { HotResources } from "@lmliheng/penguin-hmr";
+import { boot, initialDoc, parseManifest } from "@adelie/core/kernel";
+import type { Json } from "@adelie/core/kernel";
+import { HotResources } from "@adelie/hmr";
 import { PENGUIN_FAMILY, HMR_INTERFACES_RESOURCE_ID } from "../src/hmr/capabilities.js";
 import { packagedPlatform } from "../src/hmr/platform.js";
 import { PluginHost, PLUGINS_RESOURCE_ID } from "../src/plugin/host.js";
@@ -19,7 +19,7 @@ import type {
   SandboxPolicy,
   SandboxProvider,
   SandboxProviderSource,
-} from "@lmliheng/penguin-core/plugin";
+} from "@adelie/core/plugin";
 
 const ARGV = ["bash", "-lc", "echo hi"] as const;
 const OPTS = { cwd: "/work/project/sub", workspaceDir: "/work/project" };
@@ -388,7 +388,7 @@ describe("sandbox settings ride the parked context across a swap", () => {
           manifest: parseManifest({
             name: "observer",
             requires: {
-              sandbox: { iface: "@lmliheng/penguin-server#Sandbox", from: "SandboxModule" },
+              sandbox: { iface: "@adelie/server#Sandbox", from: "SandboxModule" },
             },
             provides: {},
             contributes: {},

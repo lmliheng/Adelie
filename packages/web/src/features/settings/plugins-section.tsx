@@ -24,7 +24,7 @@
  * nothing here says "restart".
  */
 import { useEffect, useRef, useState } from "react";
-import type { PluginConfigEntry, PluginConfigField } from "@lmliheng/penguin-server/api";
+import type { PluginConfigEntry, PluginConfigField } from "@adelie/server/api";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
@@ -63,7 +63,7 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 
 /**
  * Brings one card into view once the list has loaded — an opening that names a card (the

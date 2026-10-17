@@ -67,7 +67,7 @@ import type {
   SessionCategoryCounts,
   SessionInfo,
   SessionsResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   applyUserEvent,
   createSessionsStore,

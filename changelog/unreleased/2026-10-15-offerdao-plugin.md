@@ -6,7 +6,7 @@
 
 [中文版](2026-10-15-offerdao-plugin.zh.md)
 
-New plugin: **Offer岛** (`@lmliheng/use-offerdao`), ported from Offer岛's official skill repository
+New plugin: **Offer岛** (`@adelie/use-offerdao`), ported from Offer岛's official skill repository
 ([`offerdaoai/skills`](https://github.com/offerdaoai/skills), MIT, commit `45c2a5d8`).
 
 Install it from the plugin library on whichever Agent should have it (it is not preinstalled). What

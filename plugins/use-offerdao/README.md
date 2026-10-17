@@ -1,4 +1,4 @@
-# Offer岛（`@lmliheng/use-offerdao`）
+# Offer岛（`@adelie/use-offerdao`）
 
 把 **Offer岛**（[offerdao.ai](https://offerdao.ai)，聚合 AI 行业招聘信息的平台）接进 Adelie：一个 skill
 教会 Agent 用它的开放 API 找岗位、看公司、翻面经、读每日 AI 资讯，也能把你给的 JD 原文或帖子链接

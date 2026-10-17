@@ -40,7 +40,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react";
-import type { DesktopPrivacyPane, DirListResponse } from "@lmliheng/penguin-server/api";
+import type { DesktopPrivacyPane, DirListResponse } from "@adelie/server/api";
 import {
   Button,
   ChevronDown,
@@ -61,7 +61,7 @@ import {
   toastError,
   toastSuccess,
   useRowContextMenu,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { writeClipboard } from "../../lib/clipboard";

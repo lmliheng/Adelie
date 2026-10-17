@@ -8,8 +8,8 @@
  * anything not on it falls back to the first page they can actually open.
  */
 import { useEffect, useState } from "react";
-import { ICONS, PagedDialog } from "@lmliheng/penguin-ui";
-import type { PagedDialogGroup } from "@lmliheng/penguin-ui";
+import { ICONS, PagedDialog } from "@adelie/ui";
+import type { PagedDialogGroup } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import {
   resolveSettingsSection,

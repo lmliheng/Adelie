@@ -14,18 +14,8 @@
  * added to session-manager's active table (state idle).
  */
 import fs from "node:fs/promises";
-import {
-  agentsDir,
-  createAgent,
-  isSessionMeta,
-  normalizeSessionSource,
-} from "@lmliheng/penguin-core";
-import type {
-  AgentAssembly,
-  ControlEnvContext,
-  ProxyEnvPolicy,
-  SpawnConfiner,
-} from "@lmliheng/penguin-core";
+import { agentsDir, createAgent, isSessionMeta, normalizeSessionSource } from "@adelie/core";
+import type { AgentAssembly, ControlEnvContext, ProxyEnvPolicy, SpawnConfiner } from "@adelie/core";
 import type {
   ApprovalMode,
   MessagingChannel,
@@ -48,7 +38,7 @@ import { matchesWorkspaceGroup } from "./workspace-group.js";
 import type { TraceIndex, TraceIndexStore } from "../mechanisms/traces.js";
 import type { SessionIndex, SessionOrigins } from "../mechanisms/sessions.js";
 import type { ProjectConfigStore } from "../mechanisms/projects.js";
-import type { SandboxDimension, SandboxSettings } from "@lmliheng/penguin-core/plugin";
+import type { SandboxDimension, SandboxSettings } from "@adelie/core/plugin";
 import { aboveSandboxCeiling } from "./sandbox-ceiling.js";
 
 /** A stored policy's network level as the composer names it. */

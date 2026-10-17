@@ -9,8 +9,8 @@
  * on the stored value and says why under it.
  */
 import { useEffect, useState } from "react";
-import type { ServerSettingsResponse } from "@lmliheng/penguin-server/api";
-import { ConfirmModal, SettingsSection, ToggleRow, toastError } from "@lmliheng/penguin-ui";
+import type { ServerSettingsResponse } from "@adelie/server/api";
+import { ConfirmModal, SettingsSection, ToggleRow, toastError } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";

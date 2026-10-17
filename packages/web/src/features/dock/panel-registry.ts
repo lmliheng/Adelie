@@ -24,7 +24,7 @@
  */
 import { useMemo, useSyncExternalStore } from "react";
 import type { ComponentType } from "react";
-import { ICONS } from "@lmliheng/penguin-ui";
+import { ICONS } from "@adelie/ui";
 
 /** A panel kind's id, also its tab's stored key. Built-ins keep their existing ids. */
 export type PanelId = string;

@@ -28,8 +28,8 @@ import {
   resumeTrace,
   scratchpadDir,
   tracesDir,
-} from "@lmliheng/penguin-core";
-import type { CompactionMode, OmniMessage } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { CompactionMode, OmniMessage } from "@adelie/core";
 import type {
   AgentTraceSessionEntry,
   AgentTracesResponse,
@@ -81,7 +81,7 @@ import { listCategory, readRecordedSource } from "../runtime/session-sources.js"
 import { TraceIndexService, traceFilePath } from "./trace-index.js";
 import { TraceLineIndex } from "./trace-line-index.js";
 import { traceRecordImage, withImagesByReference } from "./trace-images.js";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Paths } from "../hmr/capabilities.js";
 import type { TraceIndex, TraceIndexStore, Traces } from "../mechanisms/traces.js";
 import type { SessionIndex, SessionOrigins } from "../mechanisms/sessions.js";

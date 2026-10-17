@@ -20,7 +20,7 @@
  *   so the copy cap shows up for exactly as long as there is something to copy, and costs
  *   the other caps no width the rest of the time.
  */
-import { GlyphIcon, ICON_SIZE, ICONS } from "@lmliheng/penguin-ui";
+import { GlyphIcon, ICON_SIZE, ICONS } from "@adelie/ui";
 import { useTerminalChrome } from "./terminal-appearance";
 import { S } from "../../lib/strings";
 import {

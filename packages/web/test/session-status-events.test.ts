@@ -25,7 +25,7 @@
  *   the list, and anything else is ignored.
  */
 import { describe, expect, it } from "vitest";
-import type { ServerEvent, SessionInfo, SessionStatus } from "@lmliheng/penguin-server/api";
+import type { ServerEvent, SessionInfo, SessionStatus } from "@adelie/server/api";
 import { applyUserEvent, createSessionsStore } from "../src/state/sessions";
 import { isSessionUnread, markSessionSeen } from "../src/lib/session-seen";
 import type { SessionSeenState } from "../src/lib/session-seen";

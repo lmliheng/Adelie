@@ -20,12 +20,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { encode } from "uqr";
-import type {
-  MessagingBindingInfo,
-  QQBindingInfo,
-  QQScanPollResponse,
-} from "@lmliheng/penguin-server/api";
-import { Button, toastError, toastSuccess } from "@lmliheng/penguin-ui";
+import type { MessagingBindingInfo, QQBindingInfo, QQScanPollResponse } from "@adelie/server/api";
+import { Button, toastError, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";

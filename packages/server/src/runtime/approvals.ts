@@ -18,12 +18,7 @@
  * Docs: /docs/tools § "Approval".
  */
 import type { ApprovalMode } from "../api/types.js";
-import type {
-  ApprovalDecision,
-  ApproveFn,
-  OmniMessage,
-  ToolCallPayload,
-} from "@lmliheng/penguin-core";
+import type { ApprovalDecision, ApproveFn, OmniMessage, ToolCallPayload } from "@adelie/core";
 
 export interface PendingApproval {
   toolCall: OmniMessage<ToolCallPayload>;

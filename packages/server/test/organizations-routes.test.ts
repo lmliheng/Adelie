@@ -20,8 +20,8 @@
  */
 import path from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { sessionMeta, userText } from "@lmliheng/penguin-core";
-import type { SessionSource } from "@lmliheng/penguin-core";
+import { sessionMeta, userText } from "@adelie/core";
+import type { SessionSource } from "@adelie/core";
 import type {
   MeResponse,
   OrgSessionsResponse,

@@ -4,8 +4,8 @@
  * not reach a Session that already exists.
  */
 import { describe, expect, it } from "vitest";
-import { wire } from "@lmliheng/penguin-core/kernel";
-import type { SandboxProvider, SandboxSettings } from "@lmliheng/penguin-core/plugin";
+import { wire } from "@adelie/core/kernel";
+import type { SandboxProvider, SandboxSettings } from "@adelie/core/plugin";
 import { openDatabase } from "../src/db/database.js";
 import { migrate } from "../src/db/migrations.js";
 import { SCHEMA_SQL } from "../src/db/schema.js";

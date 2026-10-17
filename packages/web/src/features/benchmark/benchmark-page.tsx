@@ -12,7 +12,7 @@
  */
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
-import type { AgentSummary, BenchmarkSummary, ModelsResponse } from "@lmliheng/penguin-server/api";
+import type { AgentSummary, BenchmarkSummary, ModelsResponse } from "@adelie/server/api";
 import {
   AgentAvatar,
   AvatarStack,
@@ -33,7 +33,7 @@ import {
   Sparkline,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

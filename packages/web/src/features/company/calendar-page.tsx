@@ -21,11 +21,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
-import type {
-  OrgCalendarItem,
-  OrgCalendarOutcome,
-  OrgChartResponse,
-} from "@lmliheng/penguin-server/api";
+import type { OrgCalendarItem, OrgCalendarOutcome, OrgChartResponse } from "@adelie/server/api";
 import {
   Button,
   Card,
@@ -46,7 +42,7 @@ import {
   toastError,
   toastSuccess,
   usePortalPanel,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

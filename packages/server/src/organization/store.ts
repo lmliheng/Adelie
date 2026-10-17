@@ -6,7 +6,7 @@
  */
 import fs from "node:fs/promises";
 import path from "node:path";
-import { atomicWriteFile } from "@lmliheng/penguin-core";
+import { atomicWriteFile } from "@adelie/core";
 import type { OrgChannelMessage, OrgTicketStatus } from "../api/types.js";
 import type {
   CalendarEvent,

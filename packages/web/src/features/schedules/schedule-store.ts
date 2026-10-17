@@ -33,7 +33,7 @@
  * kilobytes back for exactly the blank-then-refetch this cache exists to remove.
  */
 import { useEffect, useSyncExternalStore } from "react";
-import type { ProjectScheduleItem, ProjectSchedulesResponse } from "@lmliheng/penguin-server/api";
+import type { ProjectScheduleItem, ProjectSchedulesResponse } from "@adelie/server/api";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 

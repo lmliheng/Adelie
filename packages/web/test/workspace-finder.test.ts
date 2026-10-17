@@ -31,7 +31,7 @@
  *   layout.
  */
 import { describe, expect, it } from "vitest";
-import type { DirEntryInfo, DirListResponse, DirLocation } from "@lmliheng/penguin-server/api";
+import type { DirEntryInfo, DirListResponse, DirLocation } from "@adelie/server/api";
 import {
   EMPTY_HISTORY,
   NO_EDITS,

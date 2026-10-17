@@ -19,8 +19,8 @@ import {
   partialToolCall,
   partialToolCallOutput,
   withOrigin,
-} from "@lmliheng/penguin-core";
-import type { MessageOrigin } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { MessageOrigin } from "@adelie/core";
 import {
   StreamRenderer,
   formatAbort,
@@ -964,7 +964,7 @@ describe("StreamRenderer — nested (origin-tagged) subagent messages", () => {
 describe("renderHistory (resume)", () => {
   it("renders complete messages statically with interruption markers", async () => {
     const { renderHistory } = await import("../src/render.js");
-    const { userText } = await import("@lmliheng/penguin-core");
+    const { userText } = await import("@adelie/core");
     const { stream, text } = collector();
     renderHistory(
       [

@@ -1,9 +1,9 @@
-# @lmliheng/penguin-cli
+# @adelie/cli
 
 The Adelie command line. Installs the `penguin` command: an interactive REPL, a one-shot task runner, model / vault configuration, and the launcher for the Web service.
 
 ```bash
-npm install -g @lmliheng/penguin-cli   # requires Node >= 24
+npm install -g @adelie/cli   # requires Node >= 24
 ```
 
 ```bash
@@ -31,9 +31,9 @@ Prefer a one-line install with a bundled Node runtime? See [Quickstart → CLI a
 
 ```bash
 pnpm penguin <args>                              # run from source (repo root, via tsx)
-pnpm --filter @lmliheng/penguin-cli build     # tsup → dist/index.js (the penguin bin)
-pnpm --filter @lmliheng/penguin-cli typecheck
-pnpm --filter @lmliheng/penguin-cli test
+pnpm --filter @adelie/cli build     # tsup → dist/index.js (the penguin bin)
+pnpm --filter @adelie/cli typecheck
+pnpm --filter @adelie/cli test
 ```
 
 Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0

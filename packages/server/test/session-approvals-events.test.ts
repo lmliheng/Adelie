@@ -18,7 +18,7 @@ import {
   userText,
   type ApproveFn,
   type OmniMessage,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type { ServerEvent } from "../src/api/types.js";
 import { userChannelKey } from "../src/http/routes/events.js";
 import type { RuntimeSession } from "../src/runtime/session-manager.js";

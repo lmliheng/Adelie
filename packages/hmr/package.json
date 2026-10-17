@@ -1,5 +1,5 @@
 {
-  "name": "@lmliheng/penguin-hmr",
+  "name": "@adelie/hmr",
   "version": "0.4.2",
   "private": true,
   "type": "module",
@@ -32,7 +32,7 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@lmliheng/penguin-core": "workspace:*"
+    "@adelie/core": "workspace:*"
   },
   "devDependencies": {
     "tsup": "^8.3.0",

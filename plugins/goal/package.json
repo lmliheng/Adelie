@@ -1,5 +1,5 @@
 {
-  "name": "@lmliheng/goal",
+  "name": "@adelie/goal",
   "version": "0.4.2",
   "description": "Goal mode: a stop hook that keeps the session working toward an objective — re-injecting it every round and checking the goal file — until the goal is complete, blocked, or out of token budget.",
   "license": "Apache-2.0",

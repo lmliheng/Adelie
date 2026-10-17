@@ -10,11 +10,7 @@
  * those is single-use, so per-path groups would be one-session noise — they are all
  * merged into ONE trailing "temporary workspaces" group instead.
  */
-import type {
-  SessionCategory,
-  SessionCategoryCounts,
-  SessionInfo,
-} from "@lmliheng/penguin-server/api";
+import type { SessionCategory, SessionCategoryCounts, SessionInfo } from "@adelie/server/api";
 
 /** Group key of the merged temporary-workspace group ("\0" can never appear in a filesystem path, so it never collides with a real Workspace). */
 export const TEMP_WORKSPACE_GROUP_KEY = "\0temp-workspaces";

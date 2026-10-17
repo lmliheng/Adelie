@@ -5,7 +5,7 @@ description: The Agent Message Stream Protocol — the event stream one run of a
 
 AMSP (Agent Message Stream Protocol) is the wire format of the [Agent API](/agent-api). Where [MMSP](https://www.npmjs.com/package/@prismshadow/mmsp) streams one model call, AMSP streams one run of an agent: one Task, with the model Requests it makes, the tools the agent runs and their results, approvals, compaction, errors and the final count of tokens, on a Session the caller continues by id. One run is one HTTP response.
 
-AMSP is a projection of the Session's live stream: the server translates the [OmniMessage](/omni-message) records and server events a run produces, and forwards both the fragments and the complete items as the engine produced them. OmniMessage gains no field for it. The types are in `@lmliheng/amsp` (`packages/amsp/src/types.ts`), which the server's translator and the client share.
+AMSP is a projection of the Session's live stream: the server translates the [OmniMessage](/omni-message) records and server events a run produces, and forwards both the fragments and the complete items as the engine produced them. OmniMessage gains no field for it. The types are in `@adelie/amsp` (`packages/amsp/src/types.ts`), which the server's translator and the client share.
 
 ## Transport
 
@@ -230,4 +230,4 @@ Fields that serve only the Trace, such as provider `fidelity` and `session_meta.
 
 ## Reading the stream yourself
 
-Any SSE reader works, as long as it can send `Authorization` and a POST body: use `fetch`, not `EventSource`. Read it the way an `EventSource` would: lines end in LF, CRLF or a lone CR; a blank line ends an event; lines starting with `:` are comments; the `data:` lines of one event join with a newline; stop at `data: [DONE]`. `readSse` from `@lmliheng/amsp` does exactly this for a `fetch` body and yields each event's data.
+Any SSE reader works, as long as it can send `Authorization` and a POST body: use `fetch`, not `EventSource`. Read it the way an `EventSource` would: lines end in LF, CRLF or a lone CR; a blank line ends an event; lines starting with `:` are comments; the `data:` lines of one event join with a newline; stop at `data: [DONE]`. `readSse` from `@adelie/amsp` does exactly this for a `fetch` body and yields each event's data.

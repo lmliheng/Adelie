@@ -8,7 +8,7 @@
 
 移植自上游 PenguinHarness（提交 `473c9470`）。
 
-程序接入 Agent 有两种方式：一是用 SDK `@lmliheng/penguin-core` 内嵌，完全脱离服务器，只提供最基础的 Agent 循环；二是经服务器的 Agent API，按 AMSP 协议，用 `@lmliheng/amsp` 客户端或 curl 调用。负责构建 Agent 应用与创建 Agent 的 Skill 写明了这两种方式，并在动手之前先问用户选哪一种。`agent-development` 与 `agent-tuning` 插件升到 `2026.10.16.1`。
+程序接入 Agent 有两种方式：一是用 SDK `@adelie/core` 内嵌，完全脱离服务器，只提供最基础的 Agent 循环；二是经服务器的 Agent API，按 AMSP 协议，用 `@adelie/amsp` 客户端或 curl 调用。负责构建 Agent 应用与创建 Agent 的 Skill 写明了这两种方式，并在动手之前先问用户选哪一种。`agent-development` 与 `agent-tuning` 插件升到 `2026.10.16.1`。
 
 ## 细节
 

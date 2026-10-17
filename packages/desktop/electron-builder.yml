@@ -2,7 +2,7 @@
 #
 # The app directory is this package itself: `pnpm build` emits self-contained bundles of
 # the shell, the server and the CLI into dist/ (see tsup.config.ts). The one dependency tree
-# electron-builder collects is the @lmliheng/* plugin packages this package.json
+# electron-builder collects is the @adelie/* plugin packages this package.json
 # declares — data-only directories the bundled server's plugin loader resolves by name from
 # the app's node_modules (never imported, so bundling has nothing to absorb). Everything
 # else inside an installer is described by `files` below.
@@ -60,7 +60,7 @@ files:
   - from: ../web/dist
     to: web-dist
 # The app's own metadata, which the workspace package.json cannot carry: deb and AppImage
-# derive package and executable names from `name`, where "@lmliheng/…" is invalid, and
+# derive package and executable names from `name`, where "@adelie/…" is invalid, and
 # fpm refuses to build without a homepage. It does NOT decide the app data directory: the
 # shell calls app.setName() before anything reads userData, so that keeps the name
 # src/app-identity.ts chooses per form.

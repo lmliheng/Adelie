@@ -282,9 +282,7 @@ describe("the builtin catalogue and the packages it lists", () => {
         expect(entry.categories, entry.name).toEqual([category]);
       }
       // The sandbox backends have no plugin.json; the curated index is what names their shelf.
-      const backend = index.find(
-        (entry) => entry.name === "@lmliheng/penguin-plugin-sandbox-bwrap",
-      );
+      const backend = index.find((entry) => entry.name === "@adelie/sandbox-bwrap");
       expect(backend?.categories).toEqual(["sandbox"]);
     } finally {
       await rm(dir, { recursive: true, force: true });
@@ -306,9 +304,9 @@ describe("the builtin catalogue and the packages it lists", () => {
    * carry the package too.
    */
   it("derives a library package's entry with no bases to resolve from, from the copy core reads", async () => {
-    const registry = builtinPluginRegistry({ shipped: async () => ["@lmliheng/requirements-box"] });
-    const entry = (await registry.index()).find((e) => e.name === "@lmliheng/requirements-box");
-    const dir = path.join(PLUGINS_DIR, packages.get("@lmliheng/requirements-box")!.dir);
+    const registry = builtinPluginRegistry({ shipped: async () => ["@adelie/requirements-box"] });
+    const entry = (await registry.index()).find((e) => e.name === "@adelie/requirements-box");
+    const dir = path.join(PLUGINS_DIR, packages.get("@adelie/requirements-box")!.dir);
     const own = JSON.parse(readFileSync(path.join(dir, "package.json"), "utf8")) as {
       description: string;
       license: string;
@@ -319,7 +317,7 @@ describe("the builtin catalogue and the packages it lists", () => {
       category: string;
     };
     expect(entry).toMatchObject({
-      name: "@lmliheng/requirements-box",
+      name: "@adelie/requirements-box",
       version: declared.version,
       description: own.description,
       license: own.license,
@@ -328,7 +326,7 @@ describe("the builtin catalogue and the packages it lists", () => {
       authors: ["Prism Shadow"],
     });
     // The readme too: a package that ships one serves it, resolved the same way.
-    expect(await registry.readme("@lmliheng/requirements-box")).toBe(
+    expect(await registry.readme("@adelie/requirements-box")).toBe(
       readFileSync(path.join(dir, "README.md"), "utf8"),
     );
   });
@@ -343,12 +341,12 @@ describe("what this build ships", () => {
    * also holds the skills/hooks packages a Project never lists.
    */
   it("is the built-in library plus the staged prefix, not the prefix alone", async () => {
-    const staged = await shippedPrefix(["@lmliheng/penguin-plugin-sandbox-bwrap"]);
+    const staged = await shippedPrefix(["@adelie/sandbox-bwrap"]);
     try {
       const names = await shippedPluginNames(staged.dir, staged.bases);
-      expect(names).toContain("@lmliheng/penguin-plugin-sandbox-bwrap");
-      expect(names).toContain("@lmliheng/csu-mail");
-      expect(names).toContain("@lmliheng/requirements-box");
+      expect(names).toContain("@adelie/sandbox-bwrap");
+      expect(names).toContain("@adelie/csu-mail");
+      expect(names).toContain("@adelie/requirements-box");
     } finally {
       await rm(staged.dir, { recursive: true, force: true });
     }
@@ -380,7 +378,7 @@ describe("the registry routes", () => {
   });
 
   it("requires auth, then serves a listed entry's readme from the package on this machine", async () => {
-    const name = "@lmliheng/penguin-plugin-sandbox-bwrap";
+    const name = "@adelie/sandbox-bwrap";
     const url = `/api/plugins/registry/readme?name=${encodeURIComponent(name)}`;
     expect((await t.app.request(url)).status).toBe(401);
 

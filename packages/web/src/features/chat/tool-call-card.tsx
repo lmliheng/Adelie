@@ -12,9 +12,9 @@
  * block below the row is always on screen and names the tool and its arguments.
  */
 import { useMemo } from "react";
-import { DETACHED_TOOL_NOTE_PREFIX } from "@lmliheng/penguin-core/interfaces";
-import { ToolCallCard, useElapsedPast } from "@lmliheng/penguin-ui";
-import type { RunState, ToolCallDuration } from "@lmliheng/penguin-ui";
+import { DETACHED_TOOL_NOTE_PREFIX } from "@adelie/core/interfaces";
+import { ToolCallCard, useElapsedPast } from "@adelie/ui";
+import type { RunState, ToolCallDuration } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { toolDisplayName } from "../../lib/tool-alias";
 import { stripAnsi } from "../../lib/strip-ansi";

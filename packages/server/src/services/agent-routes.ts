@@ -1,4 +1,4 @@
-import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Bind, Component, Use } from "@adelie/core/kernel";
 import type { AppEnv } from "../auth/middleware.js";
 import type { Hono } from "hono";
 import type { Clock, Config } from "../hmr/capabilities.js";

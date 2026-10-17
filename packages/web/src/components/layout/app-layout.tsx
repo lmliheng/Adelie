@@ -23,7 +23,7 @@ import {
   Tooltip,
   UpdateDot,
   UserAvatar,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { nagsAboutInitialPassword } from "../../lib/account-menu";
 import { S } from "../../lib/strings";

@@ -24,6 +24,6 @@ PenguinHarness (#977, commit `45885985`), which the fork did not carry.
   switch next to Debian's and points at that section; the backend's README states the requirement.
 - A new test asserts that the rejection names both switches.
 
-The section is written with Adelie's own names (`@lmliheng/penguin-plugin-sandbox-bwrap`, the
+The section is written with Adelie's own names (`@adelie/sandbox-bwrap`, the
 `~/.adelie` data root and its `ADELIE_HOME`, whose pre-rename name `PENGUIN_HOME` is still read),
 not upstream's.

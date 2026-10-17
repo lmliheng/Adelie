@@ -9,12 +9,7 @@
  * on is fixed by the same verb — use the machine — so the page never has to explain which
  * of install, update, start, connect a row needs.
  */
-import type {
-  MachineInfo,
-  MachineJob,
-  MachinePhase,
-  MachinesResponse,
-} from "@lmliheng/penguin-server/api";
+import type { MachineInfo, MachineJob, MachinePhase, MachinesResponse } from "@adelie/server/api";
 import type { Tone } from "../../lib/tone";
 
 export type MachineReading =

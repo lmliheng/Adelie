@@ -4,8 +4,8 @@
  * Pure rendering over the table — the same data the CI page draws.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Badge, NoticeStrip, Skeleton } from "@lmliheng/penguin-ui";
-import type { BadgeStyle } from "@lmliheng/penguin-ui";
+import { Badge, NoticeStrip, Skeleton } from "@adelie/ui";
+import type { BadgeStyle } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 

@@ -1,8 +1,8 @@
 /**
  * The observability mechanisms: what a node may require, declared apart from what implements it.
  */
-import { Interface } from "@lmliheng/penguin-core/kernel";
-import type { Opaque } from "@lmliheng/penguin-core/kernel";
+import { Interface } from "@adelie/core/kernel";
+import type { Opaque } from "@adelie/core/kernel";
 import type {
   ErrorCodeCount,
   ErrorFilter,
@@ -54,7 +54,7 @@ import type {
   ToolCallOutputPayload,
   ToolCallPayload,
   ToolListReadyPayload,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type {
   UsageQuery,
   UsageErrorsClearQuery,

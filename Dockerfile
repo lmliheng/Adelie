@@ -132,7 +132,7 @@ RUN set -eux; \
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 
 # `<pkg>...` selects a package together with its workspace dependencies, so the CLI filter
-# pulls core, server and the @lmliheng/* plugin packages in topological order; web is
+# pulls core, server and the @adelie/* plugin packages in topological order; web is
 # named separately because nothing depends on it — its dist is what web/ ships. The rest of
 # the workspace (desktop, docs, landing) is installed but never built.
 #
@@ -142,8 +142,8 @@ ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 RUN set -eux; \
     pnpm install --frozen-lockfile; \
     pnpm --config.verify-deps-before-run=false \
-      --filter "@lmliheng/penguin-cli..." \
-      --filter "@lmliheng/penguin-web" \
+      --filter "@adelie/cli..." \
+      --filter "@adelie/web" \
       build
 
 # The payload layout every release artifact uses, and the one scripts/launchers/penguin
@@ -152,7 +152,7 @@ RUN set -eux; \
 # The hoisted node-linker is part of that recipe — it keeps paths short enough for Windows,
 # and it is the layout `npm rebuild` walks in the next stage.
 RUN set -eux; \
-    pnpm --config.node-linker=hoisted --filter @lmliheng/penguin-cli --prod deploy "$PWD/out/penguin/lib"; \
+    pnpm --config.node-linker=hoisted --filter @adelie/cli --prod deploy "$PWD/out/penguin/lib"; \
     cp -r packages/web/dist out/penguin/web; \
     mkdir -p /opt/penguin; \
     mv out/penguin/lib /opt/penguin/lib; \

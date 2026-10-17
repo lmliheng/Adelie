@@ -2,13 +2,7 @@
  * 头像: the user avatar at its two rungs, with and without a nickname, the agent avatar at three
  * sizes, and the avatar stack — agents and an account overlapping, then the count of the rest.
  */
-import {
-  AgentAvatar,
-  AvatarStack,
-  ICON_SIZE,
-  USER_AVATAR_SIZE,
-  UserAvatar,
-} from "@lmliheng/penguin-ui";
+import { AgentAvatar, AvatarStack, ICON_SIZE, USER_AVATAR_SIZE, UserAvatar } from "@adelie/ui";
 import { BoardGroup } from "../../foundations/shared";
 import { useGallery } from "../../state";
 

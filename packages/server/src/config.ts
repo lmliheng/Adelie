@@ -20,7 +20,7 @@ import {
   LEGACY_ROOT_ENV,
   resolveRoot,
   ROOT_ENV,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import { checkoutCliEntry } from "./services/cli-shim.js";
 
 export interface ServerConfig {

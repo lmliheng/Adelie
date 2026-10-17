@@ -6,16 +6,9 @@
  * ordering contract and the runtime-capability version handshake (hmr/capabilities.ts).
  */
 import { describe, expect, it, vi } from "vitest";
-import {
-  boot,
-  defineIface,
-  initialDoc,
-  schema,
-  type,
-  upgrade,
-} from "@lmliheng/penguin-core/kernel";
-import type { Json } from "@lmliheng/penguin-core/kernel";
-import { HotResources } from "@lmliheng/penguin-hmr";
+import { boot, defineIface, initialDoc, schema, type, upgrade } from "@adelie/core/kernel";
+import type { Json } from "@adelie/core/kernel";
+import { HotResources } from "@adelie/hmr";
 import { TerminalManager } from "../src/terminal/manager.js";
 import type { TerminalSession } from "../src/terminal/session.js";
 import { DECLARED_RESOURCES as PARKED, packagedPlatform } from "../src/hmr/platform.js";

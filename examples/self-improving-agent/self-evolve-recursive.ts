@@ -22,12 +22,7 @@
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import {
-  createAgent,
-  userText,
-  isCompleteModelMessage,
-  type OmniMessage,
-} from "@lmliheng/penguin-core";
+import { createAgent, userText, isCompleteModelMessage, type OmniMessage } from "@adelie/core";
 
 const AGENT_ID = "self-improve-demo";
 const PROJECT_ID = "default_project";

@@ -25,13 +25,8 @@
  */
 import fs from "node:fs";
 import os from "node:os";
-import {
-  DEFAULT_PROJECT_ID,
-  VERSION,
-  effectivePluginTable,
-  loadProjectConfig,
-} from "@lmliheng/penguin-core";
-import type { ProjectConfig } from "@lmliheng/penguin-core";
+import { DEFAULT_PROJECT_ID, VERSION, effectivePluginTable, loadProjectConfig } from "@adelie/core";
+import type { ProjectConfig } from "@adelie/core";
 import type {
   MachineInfo,
   MachineJob,
@@ -74,9 +69,9 @@ import type { LocalModels } from "./models-sync.js";
 import { machineApi } from "./machine-api.js";
 import { startRemoteServer, stopRemoteServer } from "./server-control.js";
 import type { MachineRow } from "../db/repos/machines.js";
-import { Interface, Bind, Module, Provide, Use } from "@lmliheng/penguin-core/kernel";
+import { Interface, Bind, Module, Provide, Use } from "@adelie/core/kernel";
 import type { AppEnv } from "../auth/middleware.js";
-import type { ClassCtx } from "@lmliheng/penguin-core/kernel";
+import type { ClassCtx } from "@adelie/core/kernel";
 import { machinesRoutes } from "../http/routes/machines.js";
 import { machinesProxy } from "./proxy.js";
 import { HttpError } from "../http/errors.js";

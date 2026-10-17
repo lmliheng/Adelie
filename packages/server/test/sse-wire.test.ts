@@ -11,7 +11,7 @@ import http from "node:http";
 import net from "node:net";
 import { serve } from "@hono/node-server";
 import { afterAll, beforeAll, expect, it, vi } from "vitest";
-import { userText } from "@lmliheng/penguin-core";
+import { userText } from "@adelie/core";
 import { sessionRow, uniqueSessionId } from "./fixtures/session.js";
 import { createTestApp, provisionUser, waitFor } from "./helpers.js";
 import type { TestApp } from "./helpers.js";

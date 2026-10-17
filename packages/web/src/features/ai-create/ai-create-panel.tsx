@@ -7,8 +7,8 @@
  */
 import { useLayoutEffect, useRef } from "react";
 import type { ReactNode } from "react";
-import type { AgentSummary } from "@lmliheng/penguin-server/api";
-import { CopyButton, HelpFold, Select, Textarea } from "@lmliheng/penguin-ui";
+import type { AgentSummary } from "@adelie/server/api";
+import { CopyButton, HelpFold, Select, Textarea } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import { agentDisplayName } from "../../state/project";

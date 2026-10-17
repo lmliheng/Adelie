@@ -19,7 +19,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "../../auth/middleware.js";
 import { parseVaultUpdate } from "./vault.js";
 import { badRequest, readJson } from "../validate.js";
-import { Bind, Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Bind, Component, Use } from "@adelie/core/kernel";
 import type { UserVault } from "../../mechanisms/vault.js";
 
 /** What this route group reaches — bound by its module (src/modules). */

@@ -20,7 +20,7 @@
  * vault.prompt section, mirroring the Memory tab — owner-only, like the table edits.
  */
 import { useCallback, useEffect, useState } from "react";
-import type { VaultEntryInfo, VaultUpdateRequest } from "@lmliheng/penguin-server/api";
+import type { VaultEntryInfo, VaultUpdateRequest } from "@adelie/server/api";
 import {
   Button,
   Checkbox,
@@ -34,7 +34,7 @@ import {
   SkeletonList,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

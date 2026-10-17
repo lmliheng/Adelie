@@ -13,7 +13,7 @@ and closing the temporary directory (a policy that does not grant temp leaves `/
   asked. Ubuntu 23.10 and later (24.04 by default) grant them only to AppArmor-profiled programs
   (`kernel.apparmor_restrict_unprivileged_userns=1`): the desktop `.deb` installs such a profile;
   the CLI package, the one-line installer, npm and Docker cannot, because the profile needs root.
-  There `@lmliheng/penguin-plugin-sandbox-dsh`, which the Sandbox card installs beside this backend,
+  There `@adelie/sandbox-dsh`, which the Sandbox card installs beside this backend,
   confines file writes through Landlock with no host step. The optional one-time root step that
   lets this backend run, adding network isolation and masked paths, is in the CLI quickstart's
   "Sandbox on Ubuntu" section.
@@ -60,7 +60,7 @@ run it: the App re-assembles itself, no restart. Written by hand, it is a row of
 
 ```toml
 [plugins]
-"@lmliheng/penguin-plugin-sandbox-bwrap" = "*"
+"@adelie/sandbox-bwrap" = "*"
 ```
 
 Installing is an operator-side action: the harness resolves the package from the installation,

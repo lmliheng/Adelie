@@ -28,11 +28,7 @@
  * chat input docked at the bottom of the screen opens upward.
  */
 import { useState } from "react";
-import type {
-  ApprovalMode,
-  SessionSandbox,
-  SessionSandboxPreset,
-} from "@lmliheng/penguin-server/api";
+import type { ApprovalMode, SessionSandbox, SessionSandboxPreset } from "@adelie/server/api";
 import {
   Dropdown,
   GlyphIcon,
@@ -42,7 +38,7 @@ import {
   MenuItem,
   MenuRadioItem,
   MenuSeparator,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import {

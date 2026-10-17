@@ -29,7 +29,7 @@
  */
 import { Option } from "commander";
 import type { Command } from "commander";
-import { VERSION } from "@lmliheng/penguin-core";
+import { VERSION } from "@adelie/core";
 import { StreamRenderer, dim } from "../render.js";
 import { parseDurationMs } from "../duration.js";
 import { parseTokenBudget, UNLIMITED_BUDGET } from "../goal-command.js";

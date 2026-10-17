@@ -17,9 +17,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "no
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { CommandSessionManager } from "@lmliheng/penguin-core";
-import type { SpawnConfiner } from "@lmliheng/penguin-core";
-import type { SandboxPolicy, SandboxProviderSource } from "@lmliheng/penguin-core/plugin";
+import { CommandSessionManager } from "@adelie/core";
+import type { SpawnConfiner } from "@adelie/core";
+import type { SandboxPolicy, SandboxProviderSource } from "@adelie/core/plugin";
 import { createPenguinBwrapProvider, loadPenguinBwrapProvider } from "../src/index.js";
 import { mustRun } from "../../../scripts/must-run.mjs";
 

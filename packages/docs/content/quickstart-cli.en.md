@@ -24,7 +24,7 @@ irm https://penguin.ooo/install.ps1 | iex
 ```
 
 ```bash tab="npm (any platform)"
-npm install -g @lmliheng/penguin-cli
+npm install -g @adelie/cli
 ```
 
 Check the install:
@@ -198,7 +198,7 @@ The data root is `~/.penguin/data` by default (`%USERPROFILE%\.penguin\data` on 
 
 ### Sandbox on Ubuntu
 
-On Linux, turning the sandbox on installs two backends. `@lmliheng/penguin-plugin-sandbox-bwrap` confines commands with bubblewrap: file writes, the network and masked paths. `@lmliheng/penguin-plugin-sandbox-dsh` confines file writes only, through Landlock where bubblewrap cannot run. Where both work, bubblewrap serves every command.
+On Linux, turning the sandbox on installs two backends. `@adelie/sandbox-bwrap` confines commands with bubblewrap: file writes, the network and masked paths. `@adelie/sandbox-dsh` confines file writes only, through Landlock where bubblewrap cannot run. Where both work, bubblewrap serves every command.
 
 Ubuntu 23.10 and later, including a default Ubuntu 24.04, grant unprivileged user namespaces only to programs that have an AppArmor profile allowing it (`kernel.apparmor_restrict_unprivileged_userns` is `1`), and bubblewrap needs them. The desktop `.deb` installs such a profile for the app. The install script, the npm install and the release archive run without root and cannot, so on those installs bubblewrap is refused and the sandbox works through Landlock with no step from you. The [Sandbox](/settings#sandbox) card says so: `Enforced here: file writes, by Landlock (dsh-local). Not enforced here: network isolation, localhost-only network and masked paths.` Every built-in preset leaves the network open, so all of them are enforced. A preset with No network is greyed out on the card, and masked paths are refused rather than run with less confinement. **More info** under that line shows why bubblewrap is not in use (`setting up uid map: Permission denied`) and the bwrap path it tried.
 
@@ -209,7 +209,7 @@ sudo tee /etc/apparmor.d/adelie-sandbox-bwrap >/dev/null <<'EOF'
 abi <abi/4.0>,
 include <tunables/global>
 
-profile adelie-sandbox-bwrap @{HOME}/.adelie/**/plugins/node_modules/@lmliheng/penguin-plugin-sandbox-bwrap/vendor/linux-*/bin/bwrap flags=(unconfined) {
+profile adelie-sandbox-bwrap @{HOME}/.adelie/**/plugins/node_modules/@adelie/sandbox-bwrap/vendor/linux-*/bin/bwrap flags=(unconfined) {
   userns,
 }
 EOF
@@ -224,10 +224,10 @@ The profile applies to whatever program is at that path, and you can write to th
 
 | Package | Description |
 | --- | --- |
-| `@lmliheng/penguin-cli` | Command-line tool that provides the `penguin` command |
-| `@lmliheng/penguin-core` | SDK for creating agents and Sessions from code |
-| `@lmliheng/penguin-server` | Web service, including the Web App assets |
-| `@lmliheng/*` | The built-in plugins, one package each (Skills and session hooks); core loads them |
+| `@adelie/cli` | Command-line tool that provides the `penguin` command |
+| `@adelie/core` | SDK for creating agents and Sessions from code |
+| `@adelie/server` | Web service, including the Web App assets |
+| `@adelie/*` | The built-in plugins, one package each (Skills and session hooks); core loads them |
 
 All packages are published under the Apache-2.0 license.
 

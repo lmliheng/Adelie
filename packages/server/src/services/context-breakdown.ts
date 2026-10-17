@@ -27,14 +27,14 @@ import {
   approximateMessagesTokens,
   approximateTokens,
   effectiveMaxContextLength,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type {
   OmniMessage,
   SessionMetaPayload,
   ToolCallOutputPayload,
   ToolCallPayload,
   ToolListReadyPayload,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type { ContextFileShare, SessionContextParts } from "../api/types.js";
 
 /** How many entries each ranking — tools, files — names before the tail is dropped. */

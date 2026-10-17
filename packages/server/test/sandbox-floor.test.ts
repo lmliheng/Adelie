@@ -3,13 +3,9 @@
  * files through Landlock, the service routes only what it implements, and the card says so.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import { parseManifest } from "@lmliheng/penguin-core/kernel";
-import type { ModuleDef } from "@lmliheng/penguin-core/kernel";
-import type {
-  SandboxDimension,
-  SandboxProvider,
-  SandboxProviderSource,
-} from "@lmliheng/penguin-core/plugin";
+import { parseManifest } from "@adelie/core/kernel";
+import type { ModuleDef } from "@adelie/core/kernel";
+import type { SandboxDimension, SandboxProvider, SandboxProviderSource } from "@adelie/core/plugin";
 import type { PluginConfigEntry, PluginConfigResponse } from "../src/api/types.js";
 import { PluginHost } from "../src/plugin/host.js";
 import { SandboxService } from "../src/sandbox/index.js";

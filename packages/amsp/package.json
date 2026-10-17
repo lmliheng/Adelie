@@ -1,5 +1,5 @@
 {
-  "name": "@lmliheng/amsp",
+  "name": "@adelie/amsp",
   "version": "0.4.2",
   "type": "module",
   "description": "AMSP (Agent Message Stream Protocol): the wire types of an Adelie agent's API and a zero-dependency client for Node 24 and browsers.",

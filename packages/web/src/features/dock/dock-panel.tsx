@@ -70,8 +70,8 @@ import {
   MenuSeparator,
   ResizeHandle,
   usePointerDrag,
-} from "@lmliheng/penguin-ui";
-import type { DockPickerChoice, DockTabItem } from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
+import type { DockPickerChoice, DockTabItem } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import { chordKeys } from "../../components/ui/chord-kbd";

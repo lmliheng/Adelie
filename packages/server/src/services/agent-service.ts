@@ -32,14 +32,14 @@ import {
   libraryPlugin,
   loadLibraryPlugins,
   parseSkillFrontmatter,
-} from "@lmliheng/penguin-core";
-import type { LibraryPlugin } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { LibraryPlugin } from "@adelie/core";
 import { SEMANTIC_ID_PATTERN, SEMANTIC_ID_RULE } from "./ids.js";
 import { isTopicFileName } from "./memory-service.js";
 import type { PluginUpdateRef } from "../api/types.js";
 import { resolveLibraryPlugins } from "./plugin-library.js";
 import { resolveDirectorySkills } from "./directory-skills.js";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type { AgentConfig, AgentLifecycle, Snapshots } from "../mechanisms/agents.js";
 import type { AgentIndex } from "../mechanisms/projects.js";

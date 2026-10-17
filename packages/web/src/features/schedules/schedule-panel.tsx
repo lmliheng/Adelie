@@ -16,7 +16,7 @@
  * while the AI path stays open to everyone — asking the agent is a message, not a write.
  */
 import { useEffect, useState } from "react";
-import type { ProjectScheduleItem, SessionInfo } from "@lmliheng/penguin-server/api";
+import type { ProjectScheduleItem, SessionInfo } from "@adelie/server/api";
 import {
   ConfirmModal,
   SearchInput,
@@ -25,7 +25,7 @@ import {
   SkeletonList,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

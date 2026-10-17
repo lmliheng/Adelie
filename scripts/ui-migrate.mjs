@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * ui-migrate: rewrite the imports of modules that moved out of the Web App into the shared UI
- * package (`@lmliheng/penguin-ui`), or into a web module that took part of one over, across
+ * package (`@adelie/ui`), or into a web module that took part of one over, across
  * the Web App and the gallery.
  *
  *   node scripts/ui-migrate.mjs             rewrite in place
@@ -40,7 +40,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const MAP_FILE = path.join(ROOT, "scripts", "ui-migrate.json");
-const PACKAGE = "@lmliheng/penguin-ui";
+const PACKAGE = "@adelie/ui";
 const SCAN_ROOTS = [
   "packages/web/src",
   "packages/web/test",

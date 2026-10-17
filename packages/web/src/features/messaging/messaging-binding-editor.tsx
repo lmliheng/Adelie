@@ -47,7 +47,7 @@ import type {
   MessagingChannel,
   MessagingRuntimeStatus,
   TelegramTestResponse,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import {
   Button,
   Checkbox,
@@ -61,7 +61,7 @@ import {
   toastError,
   toastInfo,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

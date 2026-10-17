@@ -25,11 +25,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
-import type {
-  OrgChartResponse,
-  OrgTicketStatus,
-  OrganizationDetail,
-} from "@lmliheng/penguin-server/api";
+import type { OrgChartResponse, OrgTicketStatus, OrganizationDetail } from "@adelie/server/api";
 import {
   Badge,
   Button,
@@ -43,7 +39,7 @@ import {
   Segmented,
   Text,
   toastError,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

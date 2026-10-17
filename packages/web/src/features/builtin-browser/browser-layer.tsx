@@ -40,8 +40,8 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { CSSProperties } from "react";
-import type { BuiltinBrowserLoadWarning } from "@lmliheng/penguin-server/api";
-import { DOCK_FULLSCREEN_Z, toastAttention } from "@lmliheng/penguin-ui";
+import type { BuiltinBrowserLoadWarning } from "@adelie/server/api";
+import { DOCK_FULLSCREEN_Z, toastAttention } from "@adelie/ui";
 import { toneInk } from "../../lib/tone";
 import { currentDockScope, isTabShown, openPanel } from "../dock/dock-state";
 import { isBlankUrl } from "./address";

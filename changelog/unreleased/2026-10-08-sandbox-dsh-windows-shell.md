@@ -16,7 +16,7 @@ commit `c03e58c4`), which the fork did not carry.
   the fix: `ADELIE_SHELL=pwsh`, or `ADELIE_SHELL=powershell` on a host without PowerShell 7, then
   restart the harness. The backend is reported unavailable with that reason, so the confining tier
   shows as unavailable instead of offering a tier that refuses every command. `sessionShell` is now
-  exported from `@lmliheng/penguin-core/plugin` for this check; on a runtime whose core lacks it, the
+  exported from `@adelie/core/plugin` for this check; on a runtime whose core lacks it, the
   backend loads as before.
 - A confined command whose program is bash or sh is still refused on Windows before the runner is
   involved. When the program is the session shell, the error names the same fix; when it is not (a

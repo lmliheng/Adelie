@@ -1,18 +1,14 @@
 /**
  * Runtime helpers over the sandbox vocabulary.
  *
- * The vocabulary itself is `@lmliheng/penguin-core/plugin` — a backend compiles
+ * The vocabulary itself is `@adelie/core/plugin` — a backend compiles
  * against those names, so they belong with the rest of the plugin contract rather than
  * inside the harness that routes them. What stays here is the code that READS those
  * shapes: which dimensions a provider covers and which a settings object requires, the two
  * questions service.ts routes on. That is the embedder's business, and keeping it out of
  * the contract is what stops it becoming a runtime dependency of every plugin package.
  */
-import type {
-  SandboxDimension,
-  SandboxProvider,
-  SandboxSettings,
-} from "@lmliheng/penguin-core/plugin";
+import type { SandboxDimension, SandboxProvider, SandboxSettings } from "@adelie/core/plugin";
 
 /** Every dimension, in the order error messages list them. */
 export const SANDBOX_DIMENSIONS: readonly SandboxDimension[] = [

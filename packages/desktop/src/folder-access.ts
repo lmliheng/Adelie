@@ -23,7 +23,7 @@ import type {
   DesktopFolderAccessResultMessage,
   DesktopOpenPrivacySettingsMessage,
   DesktopPrivacyPane,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 
 export interface FolderAccessDeps {
   platform: NodeJS.Platform;

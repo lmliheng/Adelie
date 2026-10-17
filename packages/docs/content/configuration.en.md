@@ -165,7 +165,7 @@ The `[plugins]` table lists the [server plugins](/skills#server-plugins) the Pro
 
 ```toml
 [plugins]
-"@lmliheng/penguin-plugin-sandbox-bwrap" = "*"
+"@adelie/sandbox-bwrap" = "*"
 "@scope/name" = "1.2.3"
 "@scope/other" = { version = "1.2" }
 ```

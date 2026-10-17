@@ -23,7 +23,7 @@ import type {
   PendingSteeringInfo,
   SessionStatus,
   SubagentRuntimeInfo,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import { getGoal, getMessages } from "../../api/endpoints";
 import { probeSession } from "../../api/session-probe";
 import { openSessionStream } from "../../api/sse";

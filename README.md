@@ -169,7 +169,7 @@ The Windows installer is **not code-signed yet**, so SmartScreen shows its warni
 curl -fsSL https://github.com/lmliheng/Adelie/releases/latest/download/install.sh | sh
 
 # or via npm (any platform, needs Node >= 24 on the machine)
-npm install -g @lmliheng/penguin-cli
+npm install -g @adelie/cli
 ```
 
 Then:
@@ -199,7 +199,7 @@ a new instance needs one API key before it can run a Task.
 > its own installers, its own npm scope and its own update feed; use the ones above.
 
 The command name is still `penguin` and the packages still carry the `penguin-` stem (Adelie's own
-scope, `@lmliheng/*`); the rename is being done in stages and what is left of it is tracked in
+scope, `@adelie/*`); the rename is being done in stages and what is left of it is tracked in
 [`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md).
 
 ## Contributing

@@ -14,7 +14,7 @@ fail-closed 失败，但报的是 runner 自己的错误 —— 提到的是 WSL
 - Windows 上会话 shell 是 bash 或 sh 时，DSH 后端现在加载即失败，原因写明解决办法：设
   `ADELIE_SHELL=pwsh`；主机没有 PowerShell 7 时设 `ADELIE_SHELL=powershell`；然后重启。该后端带着
   这条原因被报为不可用，封禁档位显示为「不可用」，而不是可选、选中后每条命令被拒。为此
-  `sessionShell` 现经 `@lmliheng/penguin-core/plugin` 导出；宿主的 core 没有这个导出时（较旧的
+  `sessionShell` 现经 `@adelie/core/plugin` 导出；宿主的 core 没有这个导出时（较旧的
   运行时），后端照常加载。
 - 程序名是 bash 或 sh 的受约束命令，在 Windows 上仍在交给 runner 之前被拒：它就是会话 shell 时，错误
   写的是同一条改法；不是会话 shell 时（以 bash 启动的 stdio MCP Server），错误只写明 runner 起不了

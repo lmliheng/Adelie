@@ -7,8 +7,8 @@
  * dialog refuses a bad path before the request; the body a new document starts with; and how a
  * relative link inside one document resolves to another document of the handbook.
  */
-import type { OrgHandbookFile } from "@lmliheng/penguin-server/api";
-import type { FileTreeRow } from "@lmliheng/penguin-ui";
+import type { OrgHandbookFile } from "@adelie/server/api";
+import type { FileTreeRow } from "@adelie/ui";
 
 /** The index, `handbook/README.md`: pinned first in the list, and the one file that cannot be deleted. */
 export const HANDBOOK_INDEX = "README.md";

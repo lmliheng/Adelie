@@ -42,7 +42,7 @@ import {
   catalogEntryFor,
   presetPromotions,
   userText,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type {
   ErrorBody,
   ModelsResponse,
@@ -58,7 +58,7 @@ import { jsonResponse, stubFetch } from "./fixtures/fetch.js";
 import { fakeSession, sessionRow } from "./fixtures/session.js";
 import { apiClient, createTestApp, loginAdmin, provisionUser, waitFor } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
 
 /** Preset paired refs (config primary key = (provider, model_id)): retired catalog rows are not presets. */
 const catalogPairs = MODEL_CATALOG.filter((m) => m.retired !== true).map(

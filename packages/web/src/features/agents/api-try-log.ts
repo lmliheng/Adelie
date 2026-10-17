@@ -20,8 +20,8 @@
  * run continues the conversation, the way a program passes `session_id`; New conversation
  * forgets it.
  */
-import { readSse, RunCollector } from "@lmliheng/amsp";
-import type { AmspError, AmspEvent, RunRequest, RunResult, TokenCounts } from "@lmliheng/amsp";
+import { readSse, RunCollector } from "@adelie/amsp";
+import type { AmspError, AmspEvent, RunRequest, RunResult, TokenCounts } from "@adelie/amsp";
 import { ApiError } from "../../api/client";
 import * as api from "../../api/endpoints";
 

@@ -15,7 +15,7 @@
  * Self-contained on purpose — only type imports — so the client package can read it without
  * depending on the server or core.
  */
-import type { AmspEvent } from "@lmliheng/amsp";
+import type { AmspEvent } from "@adelie/amsp";
 
 /** The `at` of every server-stamped event in `events`. */
 export const AMSP_FIXTURE_NOW = "2026-10-07T10:00:00.000Z";

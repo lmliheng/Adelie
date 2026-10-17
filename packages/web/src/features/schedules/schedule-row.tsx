@@ -10,17 +10,8 @@
  * has to name the Agent holding the file, so each one passes its own callbacks.
  */
 import { useState } from "react";
-import type { ScheduleItem } from "@lmliheng/penguin-server/api";
-import {
-  Badge,
-  Dropdown,
-  GlyphIcon,
-  ICONS,
-  ICON_SIZE,
-  Menu,
-  MenuItem,
-  Switch,
-} from "@lmliheng/penguin-ui";
+import type { ScheduleItem } from "@adelie/server/api";
+import { Badge, Dropdown, GlyphIcon, ICONS, ICON_SIZE, Menu, MenuItem, Switch } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import { useLocale } from "../../state/locale";

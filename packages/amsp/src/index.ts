@@ -1,5 +1,5 @@
 /**
- * @lmliheng/amsp — public entry point: the AMSP wire types, which the Adelie server
+ * @adelie/amsp — public entry point: the AMSP wire types, which the Adelie server
  * imports as types too, and a zero-dependency client of one Agent's API.
  */
 export * from "./types.js";

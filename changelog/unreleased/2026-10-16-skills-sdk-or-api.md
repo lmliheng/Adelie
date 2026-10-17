@@ -8,7 +8,7 @@
 
 Ported from upstream PenguinHarness (commit `473c9470`).
 
-A program reaches an agent in one of two ways: embedded with the SDK, `@lmliheng/penguin-core`, which runs the basic agent loop without the server, or through the server's Agent API over AMSP, with the `@lmliheng/amsp` client or curl. The skills that build agent applications and create agents described both ways and asked the user which one before building. The `agent-development` and `agent-tuning` plugins moved to `2026.10.16.1`.
+A program reaches an agent in one of two ways: embedded with the SDK, `@adelie/core`, which runs the basic agent loop without the server, or through the server's Agent API over AMSP, with the `@adelie/amsp` client or curl. The skills that build agent applications and create agents described both ways and asked the user which one before building. The `agent-development` and `agent-tuning` plugins moved to `2026.10.16.1`.
 
 ## Details
 

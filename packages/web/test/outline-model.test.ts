@@ -6,10 +6,7 @@
 import { describe, expect, it } from "vitest";
 import type { ChatItem } from "../src/lib/omni/stream-model";
 import { handoffMessage } from "../src/features/chat/agent-handoff";
-import {
-  buildBackgroundTaskDoneMessage,
-  buildScheduledMessage,
-} from "@lmliheng/penguin-core/markers";
+import { buildBackgroundTaskDoneMessage, buildScheduledMessage } from "@adelie/core/markers";
 import {
   OUTLINE_MIN_TURNS,
   OUTLINE_WINDOW_AFTER,

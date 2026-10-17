@@ -3,7 +3,7 @@
  * while it is off, presets while it is on or unreported. An approval-mode pick carries no policy.
  */
 import { describe, expect, it } from "vitest";
-import type { ApprovalMode, SessionSandbox } from "@lmliheng/penguin-server/api";
+import type { ApprovalMode, SessionSandbox } from "@adelie/server/api";
 import {
   BUILTIN_PRESETS,
   approvalModePick,

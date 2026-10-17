@@ -10,9 +10,9 @@
  * substituted, so `--ui-accent-line: var(--ui-accent)` comes back as the colour it points at; an
  * undefined token comes back as the empty string.
  */
-import { THEME_IDS, THEME_MODES, TOKEN_NAMES } from "@lmliheng/penguin-ui";
-import type { ThemeId, ThemeModeName } from "@lmliheng/penguin-ui";
-import { applyThemeAttributes } from "@lmliheng/penguin-ui/boot";
+import { THEME_IDS, THEME_MODES, TOKEN_NAMES } from "@adelie/ui";
+import type { ThemeId, ThemeModeName } from "@adelie/ui";
+import { applyThemeAttributes } from "@adelie/ui/boot";
 import { accentPresetsOf, THEME_ACCENT } from "./accents";
 import type { Rgba } from "./color";
 

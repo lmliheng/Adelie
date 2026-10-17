@@ -5,13 +5,13 @@
  * need is refused by name, and the App does not boot.
  */
 import { describe, expect, it, afterEach } from "vitest";
-import { parseManifest } from "@lmliheng/penguin-core/kernel";
-import type { ModuleDef } from "@lmliheng/penguin-core/kernel";
+import { parseManifest } from "@adelie/core/kernel";
+import type { ModuleDef } from "@adelie/core/kernel";
 import { PluginHost } from "../src/plugin/host.js";
 import type { Settings, UiPrefsStore } from "../src/mechanisms/settings.js";
 import { createTestApp, loginAdmin, type TestApp } from "./helpers.js";
 
-const PKG = "@lmliheng/penguin-server";
+const PKG = "@adelie/server";
 
 function replacing(
   name: string,

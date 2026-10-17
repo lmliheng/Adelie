@@ -57,15 +57,15 @@ import {
   storagePlansDir,
   storageTrashDir,
   storageTrashId,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type {
   StorageClass,
   StorageEntry as LedgerEntry,
   StorageLiveSet,
   StoragePlan,
   StoragePlanEntry,
-} from "@lmliheng/penguin-core";
-import { Component, Interface, Use } from "@lmliheng/penguin-core/kernel";
+} from "@adelie/core";
+import { Component, Interface, Use } from "@adelie/core/kernel";
 import { HttpError } from "../http/errors.js";
 import type {
   StorageApplyResponse,

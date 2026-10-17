@@ -1,4 +1,4 @@
-# WPS（`@lmliheng/use-wps-office`）
+# WPS（`@adelie/use-wps-office`）
 
 把 Adelie 的对话搬进 **WPS 文字**：功能区多一个「Adelie」按钮，点开是侧栏——问它、让它读、让它改
 当前这篇文档；同一套文档操作也作为 MCP 工具交给 Agent（`mcp__wps__*`）。

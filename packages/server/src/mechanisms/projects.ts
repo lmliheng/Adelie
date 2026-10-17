@@ -1,7 +1,7 @@
 /**
  * The projects mechanisms: what a node may require, declared apart from what implements it.
  */
-import { Interface } from "@lmliheng/penguin-core/kernel";
+import { Interface } from "@adelie/core/kernel";
 import type { AccessibleProjectRow, ProjectRow } from "../db/repos/projects.js";
 import type { MemberRow } from "../db/repos/members.js";
 import type { AgentRow } from "../db/repos/agents.js";
@@ -32,7 +32,7 @@ import type {
   ModelRef,
   PluginTables,
   ProjectConfig,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type { PricingRates } from "../services/usage-service.js";
 import type {
   PlatformModelApplyResult,

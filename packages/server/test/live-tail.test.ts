@@ -16,12 +16,12 @@ import {
   toolCallOutput,
   userText,
   withOrigin,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type {
   PartialTextPayload,
   PartialToolCallOutputPayload,
   PartialToolCallPayload,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import { LiveTailTracker } from "../src/runtime/live-tail.js";
 
 const SID = "s1";

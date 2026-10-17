@@ -21,7 +21,7 @@
  *   - `failed`      anything else (auth, network, timeout, an unrelated 400): the probe
  *     learned nothing, so the capability stays exactly as the user left it.
  */
-import type { LLMOutcome } from "@lmliheng/penguin-core";
+import type { LLMOutcome } from "@adelie/core";
 
 /** What one vision probe concluded. */
 export type VisionProbeOutcome = "supported" | "unsupported" | "failed";

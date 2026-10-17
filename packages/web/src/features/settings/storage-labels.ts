@@ -3,7 +3,7 @@
  * draws it).
  *
  * The ledger's classes and rules arrive as ids — `session_drafts`, `orphan` — because the API,
- * the rules engine in `@lmliheng/penguin-core` (its `state/storage.ts` defines them) and the
+ * the rules engine in `@adelie/core` (its `state/storage.ts` defines them) and the
  * cleanup plan a scan writes all have to agree on them. A person reading the report has to
  * recognise what `shared_env` or `budget` means, so every id is translated here, in one place,
  * and both dictionaries carry the words (`S.settings`), so the labels follow the UI language like
@@ -25,7 +25,7 @@ import type {
   StorageEnvGroup,
   StoragePlanView,
   StorageTrashEntry,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import { S } from "../../lib/strings";
 
 /** The class of `entry` in the reader's words (`protected` → 用户资产 / "User assets"). */

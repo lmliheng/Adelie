@@ -38,10 +38,7 @@
  * has none of them: it reads and jumps, and changes nothing anywhere.
  */
 import { useEffect, useState } from "react";
-import type {
-  AllProjectSchedulesResponse,
-  ProjectScheduleItem,
-} from "@lmliheng/penguin-server/api";
+import type { AllProjectSchedulesResponse, ProjectScheduleItem } from "@adelie/server/api";
 import {
   AgentAvatar,
   Button,
@@ -57,7 +54,7 @@ import {
   SkeletonList,
   toastError,
   toastSuccess,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

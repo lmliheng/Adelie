@@ -57,8 +57,8 @@ import type {
   ToolCallOutputPayload,
   ToolCallPayload,
   ToolListReadyPayload,
-} from "@lmliheng/penguin-core";
-import type { AmspError, AmspEvent, RunDone, StopReason, TokenCounts } from "@lmliheng/amsp";
+} from "@adelie/core";
+import type { AmspError, AmspEvent, RunDone, StopReason, TokenCounts } from "@adelie/amsp";
 import type { ServerEvent } from "../api/types.js";
 import type { ChannelEvent } from "../runtime/channel.js";
 

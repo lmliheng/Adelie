@@ -42,7 +42,7 @@ import { MessagingBindingsRepo } from "../src/db/repos/messaging-bindings.js";
 import { SessionsRepo } from "../src/db/repos/sessions.js";
 import { UsersRepo } from "../src/db/repos/users.js";
 import type { SessionRow } from "../src/db/repos/sessions.js";
-import { wire } from "@lmliheng/penguin-core/kernel";
+import { wire } from "@adelie/core/kernel";
 
 const sqlite = process.getBuiltinModule("node:sqlite");
 

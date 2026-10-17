@@ -12,13 +12,9 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type {
-  BenchmarkCaseSummary,
-  CaseMaterial,
-  WorkspaceFileEntry,
-} from "@lmliheng/penguin-server/api";
-import { Badge, FileBrowser } from "@lmliheng/penguin-ui";
-import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@lmliheng/penguin-ui";
+import type { BenchmarkCaseSummary, CaseMaterial, WorkspaceFileEntry } from "@adelie/server/api";
+import { Badge, FileBrowser } from "@adelie/ui";
+import type { FileBrowserPreview, FileTreeRow, TreeToggle } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { joinWorkspacePath } from "../../lib/file-path";

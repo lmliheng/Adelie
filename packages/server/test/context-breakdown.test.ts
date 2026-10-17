@@ -22,8 +22,8 @@ import {
   toolCallOutput,
   toolListReady,
   userText,
-} from "@lmliheng/penguin-core";
-import type { OmniMessage, SessionMetaPayload, ToolDefinition } from "@lmliheng/penguin-core";
+} from "@adelie/core";
+import type { OmniMessage, SessionMetaPayload, ToolDefinition } from "@adelie/core";
 import {
   buildContextBreakdown,
   compactionThresholdFor,

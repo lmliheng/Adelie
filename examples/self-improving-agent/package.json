@@ -1,12 +1,12 @@
 {
-  "name": "@lmliheng/example-self-improving-agent",
+  "name": "@adelie/example-self-improving-agent",
   "private": true,
   "type": "module",
   "scripts": {
     "start": "tsx self-evolve-recursive.ts"
   },
   "dependencies": {
-    "@lmliheng/penguin-core": "workspace:*"
+    "@adelie/core": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.20.0"

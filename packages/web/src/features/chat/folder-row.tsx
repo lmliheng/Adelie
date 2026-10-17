@@ -3,7 +3,7 @@
  * was a tab once — open it and it stayed open — and the row's own chevron then promised a
  * collapse it did not have, so the click now flips the state it shows.
  */
-import { Chevron, ICON_SIZE } from "@lmliheng/penguin-ui";
+import { Chevron, ICON_SIZE } from "@adelie/ui";
 
 export function FolderRow({
   open,

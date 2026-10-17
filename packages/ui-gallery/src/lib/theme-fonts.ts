@@ -4,9 +4,9 @@
  * the same names the pairing options carry; a role the theme leaves to the platform is
  * `SYSTEM_FONT`, which the page prints in its own words.
  */
-import { THEME_IDS } from "@lmliheng/penguin-ui";
-import type { ThemeId } from "@lmliheng/penguin-ui";
-import { SYSTEM_FONT, THEME_FONTS } from "@lmliheng/penguin-ui/boot";
+import { THEME_IDS } from "@adelie/ui";
+import type { ThemeId } from "@adelie/ui";
+import { SYSTEM_FONT, THEME_FONTS } from "@adelie/ui/boot";
 
 export interface ThemeFontRow {
   theme: ThemeId;

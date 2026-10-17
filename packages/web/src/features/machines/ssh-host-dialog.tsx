@@ -11,12 +11,8 @@
  */
 import { useState } from "react";
 import type { ChangeEvent, KeyboardEvent } from "react";
-import type {
-  MachinesResponse,
-  SshHostRequest,
-  SshHostResponse,
-} from "@lmliheng/penguin-server/api";
-import { Button, Input, Modal, NoticeStrip, toastSuccess } from "@lmliheng/penguin-ui";
+import type { MachinesResponse, SshHostRequest, SshHostResponse } from "@adelie/server/api";
+import { Button, Input, Modal, NoticeStrip, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";

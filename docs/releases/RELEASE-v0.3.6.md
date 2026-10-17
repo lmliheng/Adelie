@@ -59,7 +59,7 @@ penguin update --yes       # 原地替换 bin/lib/web/node
 | `latest.yml` / `latest-linux.yml` | 桌面端自动更新读的元数据 |
 
 安装包都在 GitHub Release 上：<https://github.com/lmliheng/Adelie/releases/tag/v0.3.6>，
-下载页同样直指这里。npm 上整条链同样是 **0.3.6**：`npm install -g @lmliheng/penguin-cli`。
+下载页同样直指这里。npm 上整条链同样是 **0.3.6**：`npm install -g @adelie/cli`。
 
 **清理是这一版新增的能力，出厂是关着的。** 想用就在设置页「存储」页打开开关，或
 `penguin storage mode on`；不想用就什么都不用做，行为与上一版一致（只有只读的分类账多出来）。

@@ -52,13 +52,13 @@ import {
   modelEnvPreviewKey,
   resolveModelCredential,
   userText,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import {
   VENDOR_ENDPOINTS,
   providerInfo,
   unaddableModel,
   unroutableVendorModel,
-} from "@lmliheng/penguin-core/model-catalog";
+} from "@adelie/core/model-catalog";
 import type {
   PluginTables,
   CommandPolicyRule,
@@ -68,7 +68,7 @@ import type {
   ModelRef,
   OmniMessage,
   ProjectConfig,
-} from "@lmliheng/penguin-core";
+} from "@adelie/core";
 import type {
   ChatDefaultsDto,
   CommandPolicyDto,
@@ -105,7 +105,7 @@ import {
   classifyVisionProbeError,
 } from "./vision-detect.js";
 import type { PricingRates } from "./usage-service.js";
-import { Component, Use } from "@lmliheng/penguin-core/kernel";
+import { Component, Use } from "@adelie/core/kernel";
 import type { Config, Paths } from "../hmr/capabilities.js";
 import type {
   ModelPromotion,

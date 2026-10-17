@@ -148,7 +148,7 @@ Windows 安装包**还没有代码签名**，SmartScreen 会提示一次（「�
 curl -fsSL https://github.com/lmliheng/Adelie/releases/latest/download/install.sh | sh
 
 # 或者走 npm（任意平台，机器上要有 Node >= 24）
-npm install -g @lmliheng/penguin-cli
+npm install -g @adelie/cli
 ```
 
 装好之后：
@@ -175,7 +175,7 @@ penguin update --yes
 > <https://penguin.ooo/download> 上的桌面安装包 —— 装出来的是 **PenguinHarness**，不是 Adelie。
 > Adelie 有自己的安装包、自己的 npm scope 和自己的更新链路，用上面这些。
 
-命令名还是 `penguin`，包的词干也还留着 `penguin-`（scope 是 Adelie 自己的 `@lmliheng/*`）；改名是
+命令名还是 `penguin`，包的词干也还留着 `penguin-`（scope 是 Adelie 自己的 `@adelie/*`）；改名是
 分期做的，还没做完的部分记在 [`FORK-PROGRESS.md`](docs/FORK-PROGRESS.md)。
 
 ## 参与开发

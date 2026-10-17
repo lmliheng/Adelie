@@ -5,10 +5,7 @@
  * rather than dropping the note that tells the user the box holds a placeholder.
  */
 import { describe, expect, it } from "vitest";
-import type {
-  SemanticIdSuggestReason,
-  SemanticIdSuggestResponse,
-} from "@lmliheng/penguin-server/api";
+import type { SemanticIdSuggestReason, SemanticIdSuggestResponse } from "@adelie/server/api";
 import { idSuggestNotice } from "../src/features/semantic-id/id-suggest-notice";
 import { zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";

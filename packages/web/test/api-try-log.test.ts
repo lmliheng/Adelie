@@ -45,8 +45,8 @@ import { describe, expect, it, vi } from "vitest";
 import { createElement, isValidElement } from "react";
 import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { AmspEvent, TokenCounts } from "@lmliheng/amsp";
-import { ApprovalButtons, Button, CopyButton } from "@lmliheng/penguin-ui";
+import type { AmspEvent, TokenCounts } from "@adelie/amsp";
+import { ApprovalButtons, Button, CopyButton } from "@adelie/ui";
 import {
   addPayload,
   answerApproval,

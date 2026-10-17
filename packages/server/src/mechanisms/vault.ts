@@ -5,7 +5,7 @@
  * because it is one field of that Agent's state. The user-level vault is its own mechanism here:
  * it belongs to an ACCOUNT rather than to any Agent, and the two write different files.
  */
-import { Interface } from "@lmliheng/penguin-core/kernel";
+import { Interface } from "@adelie/core/kernel";
 import type { VaultResponse, VaultUpdateRequest } from "../api/types.js";
 
 /** UserVault: the mechanism UserVaultService implements — the signed-in user's own secrets (`<root>/users/<userId>/.vault.toml`). */

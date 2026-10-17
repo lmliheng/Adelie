@@ -12,7 +12,7 @@ import {
   DISCLOSURE_OUTPUT_PRE_CLASS,
   DisclosureRow,
   StatusIcon,
-} from "@lmliheng/penguin-ui";
+} from "@adelie/ui";
 import { S } from "../../lib/strings";
 import type { BackgroundTaskDone } from "./agent-handoff";
 

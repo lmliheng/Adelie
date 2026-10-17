@@ -13,7 +13,7 @@ import type {
   OrgInbox,
   OrgTicketItem,
   OrgTicketStatus,
-} from "@lmliheng/penguin-server/api";
+} from "@adelie/server/api";
 import type { Tone } from "../../lib/tone";
 import { DEFAULT_CHANNEL_ID } from "./channel-list";
 import { TICKET_COLUMNS } from "./ticket-board";

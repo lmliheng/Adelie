@@ -9,13 +9,8 @@
  * 白领 / 极客 in Chinese, Primer / Frost / Console in English. Ids (`github` / `modern` / `geek`)
  * stay in URLs and file names.
  */
-import {
-  FONT_CJK_OPTIONS,
-  FONT_LATIN_OPTIONS,
-  TEXT_SIZE_PX,
-  TEXT_SIZES,
-} from "@lmliheng/penguin-ui/boot";
-import type { FontCjk, FontLatin, TextSize } from "@lmliheng/penguin-ui/boot";
+import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZE_PX, TEXT_SIZES } from "@adelie/ui/boot";
+import type { FontCjk, FontLatin, TextSize } from "@adelie/ui/boot";
 
 export { TEXT_SIZES };
 export type { FontCjk, FontLatin, TextSize };
