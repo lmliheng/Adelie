@@ -111,6 +111,10 @@ test("compaction mid-turn: the reply's stats line is still reachable by hovering
   // collapsed and its body is not rendered at all. The mock answers the compaction request
   // with the same prose it used for the reply, so the summary's presence is counted rather
   // than matched by text alone (1 = the reply only, 2 = the reply + the expanded summary).
+  //
+  // Two disclosures deep: the banner opens the compaction's own sections, and the summary sits
+  // in the 「压缩结果」 row behind a second disclosure (the thinking section beside it is what
+  // a thinking model writes; the mock writes none, so there is only the one section here).
   const card = banner.locator("xpath=..");
   const summaryLine = /the result looks as expected/;
   await expect(banner).toHaveAttribute("aria-expanded", "false");
@@ -119,6 +123,14 @@ test("compaction mid-turn: the reply's stats line is still reachable by hovering
 
   await banner.click();
   await expect(banner).toHaveAttribute("aria-expanded", "true");
+  const resultRow = card.locator("button[aria-expanded]").filter({ hasText: "压缩结果" }).first();
+  await expect(resultRow).toBeVisible();
+  // The section row starts closed too: the banner is the "is there anything here" question,
+  // the section is "read this part".
+  await expect(resultRow).toHaveAttribute("aria-expanded", "false");
+  await expect(card.getByText(summaryLine)).toHaveCount(0);
+  await resultRow.click();
+  await expect(resultRow).toHaveAttribute("aria-expanded", "true");
   await expect(card.getByText(summaryLine).first()).toBeVisible();
   await expect(page.getByText(summaryLine)).toHaveCount(2);
 

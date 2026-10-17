@@ -137,9 +137,19 @@ test("compacting twice in a row: says the context was just compacted, not that n
     void d.dismiss();
   });
 
+  // Run the slash command the way a pointer user does — press in the menu's own row. Enter with
+  // the menu open runs the highlighted row, but the highlight is state the list settles a frame
+  // after the text lands; `fill()` writes the whole "/compact" at once, so pressing Enter can
+  // arrive before that state exists and be swallowed (the text stays in the box, nothing runs).
+  const runCompact = async () => {
+    await ta.fill("/compact");
+    const row = page.getByRole("button", { name: /^\/compact/ });
+    await expect(row, "the slash menu offers /compact").toBeVisible();
+    await row.first().click();
+  };
+
   // First /compact: compacts normally, shows the row, no toast expected.
-  await ta.fill("/compact");
-  await ta.press("Enter");
+  await runCompact();
   await expect(compactionRows(page)).toHaveCount(1);
   // No compact-unavailable toast (match the 409 reasons' own wording, not bare "compact" —
   // usernames like "dblcompact" would collide).
@@ -148,13 +158,10 @@ test("compacting twice in a row: says the context was just compacted, not that n
   ).toHaveCount(0);
 
   // Second /compact: there's no conversation yet in the new context -> tell the user clearly, and the wording must match reality.
-  await ta.fill("/compact");
-  await ta.press("Enter");
+  await runCompact();
   await expect(page.getByRole("button", { name: /刚刚压缩过/ })).toBeVisible();
   // Having just finished a full round, saying "no completed conversation round yet" would be absurd.
-  await expect(
-    page.getByRole("button", { name: /尚未完成一轮对话/ }),
-  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /尚未完成一轮对话/ })).toHaveCount(0);
   expect(nativeDialogs, "feedback must be an in-app toast, not a native alert").toHaveLength(0);
   await expect(compactionRows(page)).toHaveCount(1); // no second compaction row
 });

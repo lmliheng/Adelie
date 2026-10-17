@@ -227,9 +227,13 @@ test("minimap ticks + hover preview + jump, five-turn gate, sticky group header,
     const row = [...document.querySelectorAll("button[aria-expanded]")].find((b) =>
       b.textContent.includes("执行命令"),
     );
+    // The STICKY element, not the button inside it: the tool card is one padded box that pins
+    // (py-1.5 around the button), so measuring the button measured its padding too and read a
+    // 6 px gap where the boxes are flush.
+    const rowBox = row.closest("[class*='sticky']");
     return {
       delta: Math.abs(head.getBoundingClientRect().top - ct),
-      rowDelta: row.getBoundingClientRect().top - ct,
+      rowDelta: rowBox.getBoundingClientRect().top - ct,
       headerHeight: head.getBoundingClientRect().height,
       cardAboveFold: card.getBoundingClientRect().top < ct,
     };

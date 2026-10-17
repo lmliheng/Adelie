@@ -6,6 +6,28 @@ const MOCK = process.env.MOCK_URL;
 const U = "e2euser";
 const P = "password123";
 
+/**
+ * Run one action from a Session row's "更多" menu. The trigger is a hover-revealed icon sitting
+ * over the row's own clickable surface: when the click lands a frame before the row has re-laid
+ * itself out, it hits the row (which navigates) and the menu never opens — observed as a
+ * load-dependent flake, not a product bug (a pointer user sees the icon and clicks it). So the
+ * open is retried and verified: press the trigger, and only go on once the menu's panel is on
+ * screen, dismissing anything left over from the previous attempt first.
+ */
+async function pickRowAction(page, row, name) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await row.hover();
+    await row.getByRole("button", { name: "更多" }).click();
+    const item = page.getByRole("button", { name, exact: true });
+    if (await item.count()) {
+      await item.first().click();
+      return;
+    }
+    await page.keyboard.press("Escape");
+  }
+  throw new Error(`the row menu never offered "${name}"`);
+}
+
 test("chat + tool approval + stats/cost/copy + traces + files", async ({ page }) => {
   // --- seed via API (cookies land in the browser context) ---
   await provisionAndLogin(page.request, U, P);
@@ -335,41 +357,53 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
 
   // --- group collapse / expand (the header button shows the group name, so its state
   //     lives on aria-label rather than a duplicate title tooltip) ---
-  await expect(sidebar.getByText("Configure Tailwind theme")).toBeVisible();
-  await sidebar.locator('button[aria-label="折叠"]').first().click();
-  // Folded rows stay mounted (the fold animates their height to zero and makes them inert),
-  // so the check is "not visible", not "gone from the DOM".
-  await expect(sidebar.getByText("Configure Tailwind theme")).not.toBeVisible();
+  // Addressed by the group's own label, not by the row: the session-row groups UNMOUNT their
+  // body while collapsed (unlike the page-nav group, whose folded rows stay mounted), and the
+  // page-nav group's toggle carries the very same "折叠 / 展开" label but comes first in the DOM
+  // — a bare `first()` collapsed the nav instead of the conversation group. This session has no
+  // Workspace of its own, so its group is the temporary-workspace one (S.chat.tempWorkspaces).
+  const titledRow = sidebar.getByText("Configure Tailwind theme").first();
+  const groupToggle = (label) =>
+    sidebar.getByRole("button", { name: label }).filter({ hasText: "临时工作区" }).first();
+  await expect(titledRow).toBeVisible();
+  await groupToggle("折叠").click();
+  await expect(titledRow).toHaveCount(0);
   // The collapse state persists across a reload (localStorage, keyed per Project): the group
-  // comes back rendered collapsed (an "展开" header), with its rows still hidden.
+  // comes back rendered collapsed (an "展开" header) and its rows are not rendered.
   await page.reload();
-  await expect(sidebar.locator('button[aria-label="展开"]').first()).toBeVisible();
-  await expect(sidebar.getByText("Configure Tailwind theme")).not.toBeVisible();
-  await sidebar.locator('button[aria-label="展开"]').first().click();
-  await expect(sidebar.getByText("Configure Tailwind theme")).toBeVisible();
+  await expect(groupToggle("展开")).toBeVisible();
+  await expect(titledRow).toHaveCount(0);
+  await groupToggle("展开").click();
+  await expect(titledRow).toBeVisible();
 
   // --- settings: adjustable accent color + font size (default gray/white) ---
   // The username button shares its name with the Project switcher (the initial Project's
   // display name defaults to the username), so take the last match — the bottom user menu.
+  // The preferences are no longer rows inside that menu: it opens the Settings dialog
+  // (components/layout/user-menu.tsx), whose 外观 (appearance) page holds the accent swatches
+  // and the text-size segments.
   await page.getByRole("button", { name: "e2euser" }).last().click();
-  await page.getByRole("button", { name: "蓝", exact: true }).click();
+  await page.getByRole("menuitem", { name: "设置", exact: true }).click();
+  const settings = page.getByRole("dialog", { name: "设置" });
+  await expect(settings).toBeVisible();
+  await settings.getByRole("button", { name: "外观", exact: true }).click();
+  await settings.getByRole("button", { name: "蓝", exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => document.documentElement.dataset.accent))
     .toBe("blue");
   // 大 is the old default (18px); the new default, 中, is 16px.
-  await page.getByRole("button", { name: "大", exact: true }).click();
+  await settings.getByRole("button", { name: "大", exact: true }).click();
   await expect
     .poll(() => page.evaluate(() => document.documentElement.style.fontSize))
     .toBe("18px");
   await page.keyboard.press("Escape");
+  await expect(settings).toHaveCount(0);
 
   // --- session rename (manual title wins over the auto-generated one) ---
   // Row actions live in the per-row ellipsis menu ("更多"); its panel is body-portaled,
   // so the items are page-level, not inside the row locator.
   const renameTarget = sidebar.locator("li", { hasText: "Configure Tailwind theme" }).first();
-  await renameTarget.hover();
-  await renameTarget.getByRole("button", { name: "更多" }).click();
-  await page.getByRole("button", { name: "重命名对话" }).click();
+  await pickRowAction(page, renameTarget, "重命名对话");
   await page.getByLabel("标题").fill("My renamed title");
   await page.getByRole("button", { name: "保存" }).click();
   await expect(sidebar.getByText("My renamed title")).toBeVisible();
@@ -384,9 +418,7 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   const throwaway = sidebar.locator("li", { hasText: "新对话" }).first();
   await expect(throwaway).toBeVisible();
   // Archive via the row menu: moves it under the collapsed "已归档" group.
-  await throwaway.hover();
-  await throwaway.getByRole("button", { name: "更多" }).click();
-  await page.getByRole("button", { name: "归档", exact: true }).click();
+  await pickRowAction(page, throwaway, "归档");
   await expect(sidebar.getByText(/已归档（\d+）/).first()).toBeVisible();
   await sidebar
     .getByText(/已归档（\d+）/)
@@ -395,9 +427,7 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   const archived = sidebar.locator("li", { hasText: "新对话" }).first();
   await expect(archived).toBeVisible();
   // Delete from the archived group (delete + archive share the same row menu).
-  await archived.hover();
-  await archived.getByRole("button", { name: "更多" }).click();
-  await page.getByRole("button", { name: "删除对话" }).click();
+  await pickRowAction(page, archived, "删除对话");
   await page.getByRole("button", { name: "删除", exact: true }).click();
   await expect(sidebar.getByText("新对话")).toHaveCount(0);
 

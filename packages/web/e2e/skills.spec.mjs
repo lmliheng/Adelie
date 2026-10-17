@@ -247,7 +247,11 @@ test("skills: library list and cards -> manage-install Modal -> quick-invoke pre
   // prefilled body "使用 data-analysis 技能" still renders normally; the selection clears once
   // sending succeeds (the dropdown button's badge disappears).
   await expect(page.getByText(/使用技能.*data-analysis/)).toBeVisible();
-  await expect(page.getByText("使用 data-analysis 技能", { exact: true })).toBeVisible();
+  // Scoped to the message body: the same words now also title the session (row + page heading)
+  // after the first round, which is the point of a title and not a second copy of the message.
+  await expect(
+    page.getByRole("main").getByText("使用 data-analysis 技能", { exact: true }).last(),
+  ).toBeVisible();
   await expect(skillsBtn).not.toContainText("1");
 
   // The mock LLM's fallback reply completes a full round (allow-all auto-approves exec_command).

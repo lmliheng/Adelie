@@ -115,7 +115,10 @@ const scriptFor = (flat) => (flat.includes(SCRIPTS.zh.marker) ? SCRIPTS.zh : SCR
 function openaiReply(res, body) {
   const flat = JSON.stringify(body.messages ?? []);
   const script = scriptFor(flat);
-  const isTitle = flat.includes("concise title");
+  // Title requests are core's `buildTitlePrompt` (packages/core/src/internal/session-title.ts),
+  // which opens with this line; it used to say "concise title", so the branch had gone dead and
+  // every session title in the shots fell back to the host's own first-words truncation.
+  const isTitle = flat.includes("You are a title generator.");
   const toolDone = flat.includes('"role":"tool"');
   res.writeHead(200, { "content-type": "text/event-stream", "cache-control": "no-cache" });
   const chunk = (delta, finishReason = null, usage) => {

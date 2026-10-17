@@ -85,14 +85,35 @@ test("clicking the current Project in the dropdown: Agent and Session lists must
 
   // —— Regression (#74 comment): switching Project on the plugin library page must not leave
   // installation state from the previous Project —— both Projects' default_agent share the same
-  // name (agentId is the page state table's key): first uninstall agent-initialization from the current
+  // name (agentId is the page state table's key): first uninstall agent-tuning from the current
   // (target) Project via the API, then switch over from the initial Project's plugin library page
   // — before the fix, the old Project's snapshot would overwrite the freshly fetched data, so
   // "Manage installation" would always show "Installed."
-  const del = await page.request.delete(
-    `${BASE}/api/projects/${projectId}/agents/default_agent/skills/agent-initialization`,
-  );
-  expect(del.ok(), "uninstall agent-initialization on target project").toBeTruthy();
+  //
+  // Every skill of the plugin, not just one: an install is marked by *any* part of the plugin
+  // being present (`pluginInstalled` — a partial copy is what an update completes), so removing
+  // a single skill leaves the row legitimately reading "Installed". The list is the plugin's own
+  // (`plugins/agent-tuning/skills/`), spelled out here like the rest of this spec's fixtures.
+  const AGENT_TUNING_SKILLS = [
+    "agent-evaluation",
+    "agent-initialization",
+    "agent-optimization",
+    "benchmark-design",
+  ];
+  for (const skill of AGENT_TUNING_SKILLS) {
+    const del = await page.request.delete(
+      `${BASE}/api/projects/${projectId}/agents/default_agent/skills/${skill}`,
+    );
+    expect(del.ok(), `uninstall ${skill} on target project`).toBeTruthy();
+  }
+  // And the hook packages, when the plugin ships one (it does not today): same rule, so the
+  // fixture does not rot again if one is added.
+  for (const hook of ["agent-tuning"]) {
+    const res = await page.request.delete(
+      `${BASE}/api/projects/${projectId}/agents/default_agent/hooks/${hook}`,
+    );
+    expect([204, 404], `uninstall hook ${hook} on target project`).toContain(res.status());
+  }
 
   // Switch back to the initial Project, populating the plugin library page's snapshot (default_agent has everything preinstalled -> Installed).
   await byName.first().click();

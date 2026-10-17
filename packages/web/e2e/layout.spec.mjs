@@ -52,12 +52,38 @@ const docWidths = (page) =>
     clientWidth: document.documentElement.clientWidth,
   }));
 
-/** Count of pairwise rectangle intersections among visible leaf text elements (2px tolerance; ancestor-descendant pairs excluded). */
+/**
+ * Count of pairwise rectangle intersections among visible leaf text elements (2px tolerance;
+ * ancestor-descendant pairs excluded).
+ *
+ * "Visible" has to mean *painted where the rect says*: a fold collapses through
+ * `grid-rows-[0fr]` + an `overflow-hidden` wrapper, so the rows of a collapsed group keep their
+ * laid-out rects while that wrapper is 0px tall and `inert` — laid out but clipped away, and
+ * counting them as text on screen reported twelve phantom overlaps on the models page (each
+ * collapsed group's model rows over the next group's header). So a leaf is skipped when a
+ * clipping ancestor (overflow other than visible) leaves it less than 2px of visible area.
+ */
 const textOverlapCount = (page) =>
   page.evaluate(() => {
     const isVisible = (el) => {
       const s = getComputedStyle(el);
       return s.visibility !== "hidden" && s.display !== "none" && Number(s.opacity) > 0.05;
+    };
+    /** The part of `r` a clipping ancestor actually lets through (the viewport is the outermost clip). */
+    const unclipped = (el, r) => {
+      let box = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+      for (let p = el.parentElement; p; p = p.parentElement) {
+        const s = getComputedStyle(p);
+        if (s.overflow === "visible") continue;
+        const pr = p.getBoundingClientRect();
+        box = {
+          left: Math.max(box.left, pr.left + p.clientLeft),
+          top: Math.max(box.top, pr.top + p.clientTop),
+          right: Math.min(box.right, pr.left + p.clientLeft + p.clientWidth),
+          bottom: Math.min(box.bottom, pr.top + p.clientTop + p.clientHeight),
+        };
+      }
+      return box;
     };
     const leaves = [];
     for (const el of document.querySelectorAll("body *")) {
@@ -66,9 +92,9 @@ const textOverlapCount = (page) =>
         (n) => n.nodeType === 3 && n.textContent && n.textContent.trim(),
       );
       if (!hasText) continue;
-      const r = el.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) continue;
-      leaves.push({ el, r });
+      const visible = unclipped(el, el.getBoundingClientRect());
+      if (visible.right - visible.left < 2 || visible.bottom - visible.top < 2) continue;
+      leaves.push({ el, r: visible });
     }
     const TOL = 2;
     let count = 0;
@@ -231,6 +257,12 @@ test("layout: en draft + context gauge + mobile models", async ({ page }) => {
   // "username" box on its own — it used to fill the account credentials into the API key and
   // the field above it. A password box additionally has to say "new-password": Chrome and
   // Safari ignore autocomplete="off" there. ---
+  // The provider groups start folded (model-group-expansion.ts), and a folded body stays laid
+  // out inside a zero-height clip: its copy of the model name is what a bare text locator finds
+  // first, and the click would land on the clipping ancestor. Open the group the model is in.
+  const customGroup = page.getByRole("button", { name: "Custom" }).first();
+  await customGroup.click();
+  await expect(customGroup, "custom group opened").toHaveAttribute("aria-expanded", "true");
   await page.getByText("claude-4-8").first().click();
   const dialogFields = await page.evaluate(() =>
     [...document.querySelectorAll("input")]
@@ -257,8 +289,12 @@ test("layout: en draft + context gauge + mobile models", async ({ page }) => {
   await page.keyboard.press("Escape");
 
   // --- Sidebar "New chat" button: no background fill (its resting state outside the draft page should have a transparent background) ---
+  // A pinned row of the column, not a page row of the nav group (it sits between the Project
+  // switcher and the scrolling list), so it is addressed on the sidebar itself.
   await page.setViewportSize({ width: 1280, height: 720 });
-  const newChat = page.locator("nav").getByRole("button", { name: "New chat" });
+  const newChat = page
+    .getByRole("complementary")
+    .getByRole("button", { name: "New chat", exact: true });
   await expect(newChat).toBeVisible();
   expect(
     await newChat.evaluate((el) => getComputedStyle(el).backgroundColor),
@@ -625,8 +661,25 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
     await expect(picker).toHaveCount(0);
     await open("Choose agent", `agent @${vp.width}`);
     await close();
-    await open("Workspace", `workspace @${vp.width}`);
-    await close();
+    // The Workspace picker is not a hanging menu but the Finder modal
+    // (features/chat/workspace-finder.tsx): choosing a directory is a browsing job, so the same
+    // Modal opens from every trigger — at phone width too. What must hold is the same thing the
+    // menus are checked for: the panel stays inside the viewport and the page does not move.
+    await page.locator('button[aria-label^="Workspace"]').click();
+    const finder = page.getByRole("dialog", { name: "Workspace" });
+    await expect(finder, `workspace @${vp.width}: finder open`).toBeVisible();
+    await page.waitForTimeout(200); // let the pop-in scale animation settle before measuring
+    const fb = await finder.boundingBox();
+    expect(fb.x, `workspace @${vp.width}: finder left edge`).toBeGreaterThanOrEqual(-0.5);
+    expect(fb.x + fb.width, `workspace @${vp.width}: finder right edge`).toBeLessThanOrEqual(
+      vp.width + 0.5,
+    );
+    const wd = await docWidths(page);
+    expect(wd.scrollWidth, `workspace @${vp.width}: no horizontal overflow`).toBeLessThanOrEqual(
+      wd.clientWidth,
+    );
+    await page.keyboard.press("Escape");
+    await expect(finder, `workspace @${vp.width}: finder closed`).toHaveCount(0);
   }
 
   // Session state (bottom-docked composer, menus open upward). The composer toolbar scrolls
