@@ -860,9 +860,10 @@ function providerSignals(level: object): string[] {
  * API key (Models page) — after which the Session can continue — not retrying. Signals:
  * HTTP 401 (any), a known auth code/type (on the error, its `cause` chain, or the parsed
  * provider body), or the SDK error class name `AuthenticationError` (OpenAI / Anthropic
- * SDKs). Deliberately narrow and explicit — this detector is the ONLY thing that stops a
- * request from retrying, so nothing heuristic belongs in it: a bare 403 carries no
- * credential signal, classifies like any other failure, and rides the retry ladder.
+ * SDKs). Deliberately narrow and explicit — this detector names the credential class
+ * precisely, so nothing heuristic belongs in it: a bare 403 carries no credential signal
+ * and is left to `isFatalProviderRejection` (any other 4xx is fatal there, so it fails
+ * fast instead of riding the retry ladder).
  */
 export function isAuthenticationError(error: unknown): boolean {
   return anyInCauseChain(error, (level) => {

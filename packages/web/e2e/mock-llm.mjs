@@ -43,8 +43,8 @@ const PORT = Number(process.env.MOCK_PORT || 8931);
 /** Count of non-replay requests seen in the "bad stream" conversation: the 1st is cut off (malformed), later ones are retries that get a full tool call. */
 let malformedTurns = 0;
 
-/** Count of requests seen in the "quota retry" conversation: the first 5 are rejected 403 (insufficient_user_quota), the 6th streams normally. */
-let quotaTurns = 0;
+/** Count of requests seen in the "transient retry" conversation: the 1st is rejected 503, the 2nd streams normally. */
+let transientTurns = 0;
 
 function sse(res, event, data) {
   res.write(`event: ${event}\n`);
@@ -177,34 +177,44 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    // "Quota give-up" test case: EVERY request is rejected 403 with the quota code — the
-    // spec clicks the reconnect countdown's give-up button mid-wait, so the conversation
-    // must never recover on its own (the abort ends it instead).
-    if (flat.includes("quota giveup test") && !isTitle) {
-      res.writeHead(403, { "content-type": "application/json" });
+    // "Transient give-up" test case: EVERY request is rejected 503 (a retryable failure) —
+    // the spec clicks the reconnect countdown's give-up button mid-wait, so the
+    // conversation must never recover on its own (the abort ends it instead). 503 rather
+    // than 403 on purpose: a 4xx is a definitive rejection and ends the turn on attempt 1
+    // (`isFatalProviderRejection`), which leaves no ladder to give up on.
+    if (flat.includes("transient giveup test") && !isTitle) {
+      res.writeHead(503, { "content-type": "application/json" });
       res.end(
-        JSON.stringify({
-          error: { code: "insufficient_user_quota", message: "no active subscription" },
-        }),
+        JSON.stringify({ error: { code: "service_unavailable", message: "upstream unavailable" } }),
       );
       return;
     }
 
-    // "Quota retry" test case: the first 5 requests of the conversation are rejected 403
-    // with the provider's quota-exhaustion code (as OpenAI-compatible gateways do).
-    // GenerativeModel classifies them retryable (timeout) and the engine reconnects with
-    // exponential backoff (250/500/1000/2000/4000ms) — the 4s wait before retry #5 is the
-    // window the spec uses to observe the live countdown and click "retry now"; the 6th
-    // attempt streams a normal final answer.
-    if (flat.includes("quota retry test") && !isTitle) {
-      quotaTurns += 1;
-      if (quotaTurns <= 5) {
-        res.writeHead(403, { "content-type": "application/json" });
-        res.end(
-          JSON.stringify({
-            error: { code: "insufficient_user_quota", message: "no active subscription" },
-          }),
-        );
+    // "Transient retry" test case: the first attempt opens a block, streams nothing, and ends
+    // cleanly without message_delta / message_stop — AgentHub reports "Streaming response
+    // yielded no events", GenerativeModel classifies it `malformed` (retryable), and the
+    // engine reconnects after its backoff base (2s, see context-engine's
+    // `reconnectBackoffMs`). The wait is exactly the countdown floor, which is the window the
+    // spec uses to observe the live ticker and click "retry now"; the 2nd attempt streams a
+    // normal final answer. A broken stream rather than an HTTP 5xx on purpose: the protocol
+    // SDK retries 5xx internally (~0.4s, measured), which hides the failure from the engine
+    // and from the Trace.
+    if (flat.includes("transient retry test") && !isTitle) {
+      transientTurns += 1;
+      if (transientTurns <= 1) {
+        res.writeHead(200, {
+          "content-type": "text/event-stream",
+          "cache-control": "no-cache",
+          connection: "keep-alive",
+        });
+        messageStart(res, msgCount);
+        sse(res, "content_block_start", {
+          type: "content_block_start",
+          index: 0,
+          content_block: { type: "text", text: "" },
+        });
+        sse(res, "content_block_stop", { type: "content_block_stop", index: 0 });
+        res.end(); // ends normally but is missing message_delta/message_stop -> "stream incomplete"
         return;
       }
       res.writeHead(200, {
@@ -214,9 +224,23 @@ const server = http.createServer((req, res) => {
       });
       messageStart(res, msgCount);
       block(res, 0, { type: "text", text: "" }, [
-        { type: "text_delta", text: "Quota recovered; the answer is 42." },
+        { type: "text_delta", text: "Service recovered; the answer is 42." },
       ]);
       messageStop(res, "end_turn", 10);
+      return;
+    }
+
+    // "Quota fatal" test case: every request is rejected 403 with the provider's
+    // quota-exhaustion code. 4xx is the fatal allowlist (408/429 excluded), so the turn
+    // ends on the first attempt with the provider's text on screen and no ladder — the
+    // behaviour `isFatalProviderRejection` pins in core/test/llm.test.ts.
+    if (flat.includes("quota fatal test") && !isTitle) {
+      res.writeHead(403, { "content-type": "application/json" });
+      res.end(
+        JSON.stringify({
+          error: { code: "insufficient_user_quota", message: "no active subscription" },
+        }),
+      );
       return;
     }
 

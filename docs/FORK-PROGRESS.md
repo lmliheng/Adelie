@@ -1007,7 +1007,7 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       （`core/src/internal/session-title.ts` 的 `buildTitlePrompt`），标题分支因此**从来没触发**、
       所有会话标题都停在宿主兜底；改掉之后断言模型标题的那条（`files-switch.spec.mjs`）跟着翻绿。
       细节与实测见「第七十一轮」一节。
-- [ ] 7.2 **浏览器 e2e 还剩 24 条红**（第七十一轮实测的基线：整 76 条里 **52 通过 / 24 失败**，
+- [x] 7.2 **浏览器 e2e 还剩 24 条红**（第七十一轮实测的基线：整 76 条里 **52 通过 / 24 失败**，
       数据根 `/root/adelie-fork-data/r72-run3`）：分布在 `chat` / `chat-tweaks` / `compact-abort` /
       `compaction` / `company` / `dock` / `draft` / `draft-user-scope` / `layout` / `llm-errors` /
       `malformed` / `outline` / `processes` / `project-switch` / `reload-midstream` /
@@ -1029,10 +1029,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `py-1.5`）；`compaction` 的摘要在**第二层**开合里（「压缩结果」）；`chat` / `skills` /
       `compact-abort` 是选择器与提交时机；`dock` 的拖拽是**真缺陷**（拖拽带伸到框架外的半条被
       `overflow-hidden` 裁掉，边界线本身按不动），已修。`theme-shots.mjs` 那句陈旧键也一并改了。
-      **还差的 3 条**：`llm-errors` ×3 要用户拍板（是让 403 配额错误回到重试阶梯，还是把三条改写成
-      「致命错误 + 模型页 CTA」）。顺带记一笔：`isAuthenticationError()` 的注释仍写着「bare 403 …
-      rides the retry ladder」，而 `isFatalProviderRejection()` 把 403 判成 fatal —— 两句现在互相
-      矛盾，拍板时一起收。
+      **2026-10-18 第七十八轮：整 77 条全绿**（见该节）。第七十六轮记的「`llm-errors` ×3 要用户拍板
+      A / B」**其实不是一道新决定**：B 那一侧（4xx 致命）是上游 #458（`573259f0`）在 2026-08-25 定下、
+      本仓 `core/test/llm.test.ts` 一直钉着的口径（`isFatalProviderRejection` 的用例明写「including
+      quota-coded and bare 403s」），那三条用例只是没跟上 #458 —— 连「模型 API 认证失败」提示与
+      「打开模型配置」按钮在上游与本树都已不存在（#458 一并撤掉）。于是本轮只改夹具 / 用例 / 注释、
+      **不改任何产品行为**：重连阶梯与「放弃」两条改用可重试的**截断流**（`malformed`），配额 403
+      与认证 401 各按今天的 `fatal` 语义重写（后者还验了「改 key 后同一会话继续」），
+      `isAuthenticationError()` 那句矛盾的注释一并改正。**A 那一侧（让 403 配额错误回到重试阶梯）
+      仍是一个可选的新决定**：今天不做，用户若要，另立一条。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1633,6 +1638,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-17 | 7.2（未完成） | **浏览器 e2e 的 24 条红压到 10 条**（不是移植；**接手的是 11:00 那一轮被 `user_abort` 打断的半成品**，17 个 `packages/web/e2e/*.spec.mjs` / 落在 r73 的 +82 −59 之上再加本轮 +17 −9，只有夹具、无源码、无用户可见行为）：r73 那半天把英文旧文案与旧属性改到本树今天的中文与 data 属性上，其中四处对齐的是真实契约（会话级 `thinkingLevel` 由 `PATCH /api/sessions` 落、`stop_reason` 收敛为 `retryable`、成本按 `[¥$]`、行菜单「更多」）；本轮又补六处：分组单选「按智能体分组」、权限按钮 `aria-label^="Permissions"` 与共享 Dropdown 的 `ui-glass` 两层、工单「打开会话」的 `data-tooltip`、skills 末两条断言的 data-analysis、时间轴 `.overflow-y-hidden` 与侧栏折叠「行不卸载」、上下文环 unknown 读 aria-label | 只重建 web 产物后跑受影响 18 个文件（40 条，mock 8942 / 服务端 8940 / 数据根 `/root/adelie-fork-data/r73-*`）：r73 改动后 **27 过 / 13 红**（24 → 13），本轮再修后 company / draft / skills 实测转绿，**24 → 10**（14 条转绿，每条都有源码依据）；六包 `typecheck` **EXIT=0**（六个 `Done`）；逐包 test **0 失败** —— core 1396 / 6 跳过 · ui 1043 · server 2937 / 4 跳过 · cli 561 · web 3187 / 2 跳过；还红的 10 条已逐条分诊（3 条 llm-errors 是 403 被判 fatal 的真实行为变化、project-switch 疑似真 bug、其余为夹具未穷尽）；端口只用 8940 / 8942 | 见本行提交 |
 | 2026-10-17 | 7.2（仍未完成） | **浏览器 e2e 的 10 条红压到 3 条**（8 条是夹具/探针结论翻转，**只有 dock 拖拽带是真缺陷**：下侧栏边界拖拽带伸到框架外的一半被框架自己的 `overflow-hidden` 裁掉，改 `ResizeHandle` 贴内侧 `top-0`，连同 `dock-panel.tsx` 注释与 ui 单测、一对 changelog；另修 `theme-shots.mjs` 的陈旧键 `concise title`）。逐条：project-switch 夹具只卸了一个技能、layout 的重叠/底色/工作区选择器、outline 量到按钮、compaction 第二层开合、chat 分组折叠与设置对话框与行菜单时序、compact-abort 的斜杠菜单竞态、skills 的标题同文 | 开工复核 26 条里 10 红与台账逐条对上；修完整套 **76 条 73 通过 / 3 失败**，只剩 `llm-errors` 三条；六包 `typecheck` **EXIT=0**（`ifaces.json unchanged`，192 接口 / 587 类型）；`npx oxlint` **0 警告 0 错误**（2209 文件）；逐包 test 全绿 —— core **1396** / 6 跳过 · ui **1043** · cli **561** · web **3187** / 2 跳过 · server **2937** / 4 跳过（hmr 无测试）；真浏览器两态验证 dock 拖拽：改前带子中心命中框架、拖 120 px 高度变化 0，改后命中带子、**276 → 394**；端口只用 8950 / 8952，数据根 `/root/adelie-fork-data/r76-*` | 见本行提交 |
 | 2026-10-18 | 5.48 | **结束的定时任务移入 `schedule/expired/`**（上游 `4b10a219` `#1159` 移植，照改动落、不是合分支；27 文件 / +644 −92，含 changelog 一对）：`done` / `missed` / `expired` 三种状态统称 settled，文件**原样**移进 `agent_state/schedule/expired/` 并清掉运行状态，三处调用（对账、`listAgent`、`send` 的 `markFired` 之后与 `schedule_fired` 之前）；同名不覆盖（UTC 戳后缀，再冲突 `-2`…），移动失败记 `schedule_archive_failed` 留着下轮再试；状态推导从路由搬进 `runtime/scheduler.ts`（`scheduleStatus()` / `isSettledStatus()`）；**破坏性**：`POST` / `PUT` 对过去时刻的一次性任务与过去 `end_at` 返回 400（过去 API 写入的这类任务会立刻执行一次）；Web 定时任务面板去掉「已完成」筛选、两份词典删 `filterCompleted`；CLI 帮助、AI 创建提示词、`penguin-orchestration` 技能与五份引擎文档（中英）跟上。**本树两处手写解决**：路由里那份 `statusOf()` 改导入共享函数；标签仍走 `scheduleFilterLabels()` 只删 `completed` 键 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2209 文件）· 改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **201 文件 / 2946 通过 / 4 跳过**（+9 即本笔新用例）· core **1396** / 6 跳过 · ui **1043** · cli **561** · web **259 文件 / 3187 通过 / 2 跳过** · docs **62** · **真服务（8977，一次性数据根 `r77`）**：过去 `startAt` 的一次性任务 **400**、过去 `endAt` 的周期任务 **400**、合法周期任务 **201**；手写的过期一次性任务在下一次读取时已移入 `expired/`、**字节与原文相同**，`schedule/` 只剩周期任务，`scheduleCount` 与列表都只剩它 · **真界面**：`/schedules` 页与停靠栏面板都只剩 全部 / 生效中 / 已暂停（无「已完成」），两态 console **0 error**、无一条 ≥400，截图 `r77/{schedules-page,dock-schedules}.png` · 端口只用 8977（跑完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
+| 2026-10-18 | 7.2 | **浏览器 e2e 整 77 条全绿**（不是移植，是三条陈旧夹具跟上上游 #458 的四级停止原因；3 个跟踪文件 + 一对 changelog，**无产品行为改动**）：`mock-llm.mjs` 的三个配额分支换成两条可重试失败（截断流 → `malformed`；持续 503 供放弃那条）+ 一条配额致命 403；`llm-errors.spec.mjs` 四条按今天的语义重写 —— ①截断流 → 倒计时（2 秒退避基数）→ 秒数真的在减 →「立即重试」→ 成功，Trace `retryable/malformed/retry_in_ms=2000`；②放弃 → `[已中断]` +「第 N 次尝试后放弃」+ abort `backoff_interrupted`；③新增配额 403 致命用例（一次尝试、`fatal/rejected`、提供方原文、无重试行、输入框可用）；④认证 401 改为 `fatal/auth` + 错误横幅带 `invalid_api_key` 原文、改 key 后同一会话继续。`isAuthenticationError()` 那段与致命判定矛盾的注释一并改正。**关键发现**：第七十六轮记的「要用户拍板 A/B」不成立 —— 403 致命是 #458 定下、`core/test/llm.test.ts` 一直钉着的口径，旧用例里的「模型 API 认证失败」提示在上游与本树都不存在 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **259 文件 / 3187 通过 / 2 跳过** · **真服务端 + 真浏览器整套**（数据根 `/root/adelie-fork-data/r78-full`、`localhost:8930` + mock `8931`）：**77 passed (5.7m)、0 failed**；四条 `llm-errors` 单独跑 4/4（9.2s）· **反证**：改前同一套实测 **3 failed**（配额两条没有 `[重试]`、认证一条没有 `已中断`）；用 HTTP 503 代替截断流时页面无重试行、Trace 无 `request_end`（5xx 被 SDK 内部吞掉，约 0.4s）· 端口只用 8930 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10460,3 +10466,80 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   量，`ace1bca2` 只修上游自己引入的双重编码 —— 都不适合下一轮直接取。
 - 卡点原地：**2.2c**（写侧全在桌面壳一侧与既有部署单元）、**3.5**（取哪个桌面壳）、**3.6**（模型 key）、
   **4.2** / **4.3**（明令不动）、**5.6** / **5.10**（促销搬进 Project 配置 / 新依赖 `mermaid`）。
+
+## 第七十八轮：浏览器 e2e 整 77 条全绿（2026-10-18，条目 7.2 收尾）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `1007baf9`，`git fetch origin && git merge --ff-only
+  origin/main` = Already up to date（没切分支、没碰 `legacy/main`、没推 upstream）。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰 desktop），
+  其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
+  （要拍板 / 要新依赖）同样不可动；**7.2** 第七十六轮记成「只剩 `llm-errors` ×3，要用户拍板 A / B」。
+- 上游 `main` 仍是 **`ace1bca2`**（按 URL 复核 `git ls-remote https://github.com/Prism-Shadow/penguin-harness.git`，
+  没有新提交）；桌上候选里 `#1050` 已在树里、`#1165`（23 文件 / +1383）与 `#1191`（31 文件 / +1094）各是
+  两轮的量且冲突成片，`#1187` / `#1148` 要本树没有的「自定义背景」那一整套 —— 都不是一轮的量。
+- **为什么做 7.2**：开工先把那 3 条红的**前提**查了一遍，发现「要用户拍板」这个判断站不住 ——
+  ① `core/test/llm.test.ts` 的 `isFatalProviderRejection` 用例明写「including quota-coded and bare 403s」，
+  即「403 配额错误是致命」早就是本仓钉着的口径；② 这条口径来自上游 #458（`573259f0`，2026-08-25
+  四级停止原因收敛），而 `llm-errors.spec.mjs` 的三条前提停在它之前（配额走重连阶梯、401 之后有
+  「模型 API 认证失败」提示与「打开模型配置」按钮）；③ 那套认证失效提示在**上游与本树都不存在**
+  （`git grep 模型认证失败 refs/adelie-tmp/upstream-main-771` 只命中用例本身），#458 已把它撤掉。
+  所以这不是一道新的产品决定，而是**三条夹具没跟上 #458**；本轮只改夹具 / 用例 / 注释，
+  **不改任何产品行为**（若用户想把 403 配额错误改回可重试，那是另一条新决定，见 7.2 的收尾注）。
+
+### 改了什么（3 个跟踪文件 + 一对 changelog，+约 250 −约 150）
+
+- `packages/web/e2e/mock-llm.mjs`：三个配额分支换成两条**可重试失败**分支加一条**配额致命**分支。
+  - `transient retry test`：第一次尝试开一个 text 块、什么都不发就结束（缺 `message_delta` /
+    `message_stop`），AgentHub 报 `Streaming response yielded no events` → `malformed` → 可重试；
+    第二次正常回答。**为什么不用 HTTP 5xx**：协议 SDK 自己会内部重试 5xx（本轮实测约 0.4 秒、
+    Trace 里连一条 `request_end` 都没有、页面上也没有重试行），引擎与夹具都看不到这次失败。
+  - `transient giveup test`：每次都是 503，供「点放弃」那条使用（SDK 内部重试耗尽后仍以可重试
+    错误交给引擎，实测能开出倒计时）。
+  - `quota fatal test`：每次都是 403 `insufficient_user_quota`，钉住今天的 `fatal` 口径。
+- `packages/web/e2e/llm-errors.spec.mjs`：四条用例按今天的语义重写（文件头注释一并说明四级停止原因）。
+  1. 截断流 → 倒计时（2 秒，即退避基数）→ 秒数真的在减 → 「立即重试」→ 第二次成功；Trace 断言
+     `request_end(status=retryable, error_code=malformed, retry_in_ms=2000)`、无 abort。
+  2. 放弃 → `[已中断]` + 「第 N 次尝试后放弃」+ 输入框可用；Trace 断言 abort 的 `error_code` 是
+     `backoff_interrupted`。
+  3. 配额 403 → 一条 `[错误]：模型请求错误` 带提供方原文、**没有**重试行、没有中止行、输入框可用；
+     Trace 断言唯一一条 `error_code=rejected`、`status=fatal`、没有 `retry_in_ms`。
+  4. 认证 401 → 同样是 `fatal` / `error_code=auth`，横幅带 `invalid_api_key` / `invalid x-api-key` 原文、
+     不重试；改掉模型 key（走真 `PUT /models`）后**同一个会话**继续对话，刷新后仍在。
+- `packages/core/src/llm/generative-model.ts`：只改注释 —— `isAuthenticationError()` 那段「裸 403 …
+  rides the retry ladder」与 `isFatalProviderRejection()` 矛盾，改成今天的口径（裸 403 交给致命判定）。
+- 一对 changelog：`changelog/unreleased/2026-10-18-llm-errors-four-stop-reasons{,.zh}.md`。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，192 接口 /
+  587 类型 —— 本笔不动服务契约）。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— core **1396** / 6 跳过（68 文件）· ui **1043**（129 文件）·
+  cli **561**（38 文件）· server **201 文件 / 2946 通过 / 4 跳过** · web **259 文件 / 3187 通过 /
+  2 跳过**（hmr 无测试文件）。
+- **本轮主证据（真服务端 + 真浏览器，整套 77 条）**：重建 core / server / web 产物后，一次性数据根
+  `/root/adelie-fork-data/r78-full`、`localhost:8930` 起真服务（`ADELIE_SEED_ADMIN_PASSWORD`），
+  自带 `mock-llm.mjs` 起在 `8931`，`npx playwright test -c e2e/playwright.config.mjs` →
+  **`77 passed (5.7m)`、0 failed**（本笔把 `llm-errors` 从 3 条扩到 4 条，所以整 77 条；第七十六轮的
+  76 条里 73 过 / 3 红）。四条 `llm-errors` 单独跑也全绿（9.2 秒）。
+- **反证（夹具真的钉住行为，不是空转）**：
+  - 用 HTTP 503 代替截断流时，页面**没有**重试行、Trace 里**没有** `request_end` —— 恰好说明 5xx 被
+    SDK 内部吞掉、这条用例必须用 `malformed`（这也是本轮 `mock-llm.mjs` 注释里那句「实测」的来源）。
+  - 改前（`HEAD` 的 `llm-errors.spec.mjs` + 旧 mock）实测 **3 failed**：配额两条死在「没有 `[重试]`」、
+    认证一条死在「没有 `已中断`」且页面上只有 `[错误]：模型请求错误：401 …`（见开工复核）。
+  - 阶梯断言收紧到具体数字后仍绿：`retry_in_ms=2000`（引擎的退避基数）而不是旧夹具那串
+    250/500/1000/2000/4000 —— 后者是更早的退避参数，写在旧用例里但今天不成立。
+- 端口只用 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r78{,-full}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里已没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）原地不动；7.2 本轮勾掉。下一轮的建议顺序：
+  ① 2.2c 只剩桌面壳一侧（等 3.5 决定后一起收）；② 若上游往前走了，按 URL 拉 `ace1bca2` 之后的新提交
+  再量；③ 桌上剩的大件 `#1165`（切 Project 隔离，23 文件 / +1383、冲突成片）是唯一还值得单独立一轮的。
+- **可选的新决定（用户若要才做）**：让 403 配额错误回到重连阶梯（把 `insufficient_user_quota` 这类码
+  排除在 `isFatalProviderRejection` 之外），今天不做。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
