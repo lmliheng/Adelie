@@ -11,6 +11,8 @@ packages/server/web-dist/
 # local release packaging (the same out/ the release workflow assembles on CI: bin + lib + web,
 # then payloads/ and bundles/ beside it). Reproducible, never committed.
 out/
+# the Pages artifact, assembled from pages/ and the built packages/docs before upload
+pages-dist/
 
 # secrets / local config
 .env

@@ -1,17 +1,22 @@
-# 把仓库里的官网快照（site/）发布到 GitHub Pages：https://lmliheng.github.io/Adelie/
+# 把文档站发布到 GitHub Pages：https://lmliheng.github.io/Adelie/docs/
 #
-# site/ 里是上游 PenguinHarness 官网的构建产物（来源与刷新方式见 site/README.md）。它已经按
-# BASE_PATH=/Adelie/ 构建好，所以这里**不需要再构建**：检出、把 site/ 当作 Pages 产物传上去就行。
-# 页面里的资源与路由都固化了这个基路径，别在这里改路径规则——要换基路径就得回上游重新构建。
+# 这个站点是**仓库自己的** `packages/docs`（React + Vite 的文档站），不是外部站点的快照：
+# 2026-10-17 之前这里挂的是上游 PenguinHarness 官网的构建产物（首页、下载页、博客、文档、
+# 画廊），那份东西的下载页给的是 `penguin.ooo/install.sh`，跟着装出来的是上游产品。现在只发
+# 文档站，工件根上是一个跳转到 `./docs/` 的页面。
+#
+# 基路径必须是 `/Adelie/docs/`：文档站的路由与资源都按它生成，`SITE_URL` 由它去掉结尾的
+# `docs/` 得到（`packages/docs/src/lib/links.ts`），也就是站点根上的那个跳转页。
 #
 # 首次设置：仓库 Settings → Pages → Source = "GitHub Actions"。
-name: Deploy site
+name: Deploy docs site
 
 on:
   push:
     branches: [main]
     paths:
-      - "site/**"
+      - "packages/docs/**"
+      - "pages/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -34,11 +39,34 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: ./.github/actions/setup
+
+      # BASE_PATH is the docs package's own base-path switch (same variable upstream's site
+      # build reads). Without it the shell and every asset URL would be built for "/" and the
+      # page would 404 its own bundle one level down.
+      - name: Build the docs site
+        env:
+          BASE_PATH: /Adelie/docs/
+        run: pnpm --config.verify-deps-before-run=false --filter @adelie/docs build
+
+      # The artifact is the site root: `pages/` verbatim (the redirect and the 404 page) with
+      # the built docs beside it as `docs/`. Nothing else is copied, so a file that is not in
+      # `pages/` or produced by the docs build cannot reach the published site.
+      - name: Assemble the Pages artifact
+        run: |
+          rm -rf pages-dist
+          mkdir -p pages-dist
+          cp -r pages/. pages-dist/
+          cp -r packages/docs/dist pages-dist/docs
+          test -f pages-dist/index.html
+          test -f pages-dist/docs/index.html
+          ls -la pages-dist | head -20
+
       - uses: actions/configure-pages@v5
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: pages-dist
 
       - id: deployment
         uses: actions/deploy-pages@v4

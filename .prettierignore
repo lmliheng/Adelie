@@ -22,10 +22,9 @@ specs/
 # vitest --coverage reports
 coverage/
 
-# the built landing-site snapshot the Pages workflow serves (site/README.md): it is a
-# build output, and formatting its minified assets only makes them stop matching their
-# source
-site/
+# the Pages artifact the docs-site workflow assembles before uploading it (pages/ plus the
+# built packages/docs); the build output in there is not formatted source
+pages-dist/
 
 # Playwright e2e artifacts
 test-results/
