@@ -1,13 +1,13 @@
 ---
 title: Docker
-description: 运行官方 PenguinHarness 镜像，一个容器加一个数据卷，就在 7364 端口提供完整的 Web App。
+description: 运行官方 Adelie 镜像，一个容器加一个数据卷，就在 7364 端口提供完整的 Web App。
 ---
 
-官方镜像运行的就是 `penguin server` 启动的那个服务端，Web App 也在其中。整套部署只有一个容器和一个数据卷，所以要把 PenguinHarness 装到自己电脑以外的机器上，Docker 是最短的一条路。
+官方镜像运行的就是 `penguin server` 启动的那个服务端，Web App 也在其中。整套部署只有一个容器和一个数据卷，所以要把 Adelie 装到自己电脑以外的机器上，Docker 是最短的一条路。
 
 ## 开始之前
 
-- 在要运行 PenguinHarness 的机器上装好 Docker。下面的示例同时给出 Docker Compose 和 `docker run` 两种写法。
+- 在要运行 Adelie 的机器上装好 Docker。下面的示例同时给出 Docker Compose 和 `docker run` 两种写法。
 - 一个模型供应商的 API Key。
 
 ## 启动容器
@@ -78,14 +78,14 @@ docker compose logs penguin        # or: docker logs penguin
 
 ```yaml
 environment:
-  PENGUIN_SEED_ADMIN_PASSWORD: "choose-something-long"
+  ADELIE_SEED_ADMIN_PASSWORD: "choose-something-long"
 ```
 
 服务端会用这个密码（至少 8 个字符）创建内置的 `admin` 账号，并且不再打印登录提示。这个变量只在还没有任何用户时生效，也就是空数据目录第一次启动的时候。给已经认领过的数据目录加上它不会有任何效果，事后修改同样无效。
 
 ## 配置模型
 
-PenguinHarness 不内置任何模型凭据。可以在 Web App 的**模型库**页面添加模型，也可以在容器里用 CLI 添加：
+Adelie 不内置任何模型凭据。可以在 Web App 的**模型库**页面添加模型，也可以在容器里用 CLI 添加：
 
 ```bash
 docker compose exec -u penguin penguin \
@@ -152,21 +152,21 @@ USER penguin
 
 | 变量 | 在本镜像中 |
 | --- | --- |
-| `PENGUIN_HOME` | `/data`。除非同时移动数据卷，否则不要修改 |
+| `ADELIE_HOME` | `/data`。除非同时移动数据卷，否则不要修改 |
 | `HOST` | `0.0.0.0`，作用于容器自己的网络命名空间。宿主机一侧由 `-p` 决定，示例都保持在回环接口上 |
 | `PORT` | `7364`。修改后，健康检查会随之改用新端口 |
-| `PENGUIN_SEED_ADMIN_PASSWORD` | 固定初始管理员密码，仅在首次启动时生效，见[提前设置密码](#提前设置密码) |
-| `PENGUIN_TRUST_PROXY` | 放在终结 TLS 的反向代理之后时设为 `1`，会话 Cookie 才会带上 `Secure` 标记 |
-| `PENGUIN_PREVIEW_ORIGIN` | 路由到同一容器的第二个主机名，用于 Workspace 中的 HTML 预览 |
-| `PENGUIN_UPDATE_CHECK` | 设为 `off` 关闭自动的版本检查。模型请求、远程控制连接、Key 授权和代理测试照常出站 |
+| `ADELIE_SEED_ADMIN_PASSWORD` | 固定初始管理员密码，仅在首次启动时生效，见[提前设置密码](#提前设置密码) |
+| `ADELIE_TRUST_PROXY` | 放在终结 TLS 的反向代理之后时设为 `1`，会话 Cookie 才会带上 `Secure` 标记 |
+| `ADELIE_PREVIEW_ORIGIN` | 路由到同一容器的第二个主机名，用于 Workspace 中的 HTML 预览 |
+| `ADELIE_UPDATE_CHECK` | 设为 `off` 关闭自动的版本检查。模型请求、远程控制连接、Key 授权和代理测试照常出站 |
 
 ### 在反向代理后运行
 
-把容器发布在回环接口上，在它前面终结 TLS，并设置 `PENGUIN_TRUST_PROXY=1`。反向代理必须自己设置或清除 `x-forwarded-proto`：这个请求头由调用方提供，服务端正因如此，在你明确开启之前一直不采信它。HTTPS 部署如果不设置 `PENGUIN_TRUST_PROXY`，签发的会话 Cookie 就不带 `Secure` 标记。
+把容器发布在回环接口上，在它前面终结 TLS，并设置 `ADELIE_TRUST_PROXY=1`。反向代理必须自己设置或清除 `x-forwarded-proto`：这个请求头由调用方提供，服务端正因如此，在你明确开启之前一直不采信它。HTTPS 部署如果不设置 `ADELIE_TRUST_PROXY`，签发的会话 Cookie 就不带 `Secure` 标记。
 
 ### 提供 Workspace 预览
 
-Task 生成的 HTML 在有独立来源时，会从独立的来源提供预览。绑定在非回环地址上时，推导不出对应的回环地址，预览会退回同源沙箱，这时 Cookie、`localStorage` 和第三方嵌入内容都不能用。要恢复隔离的预览，把 `PENGUIN_PREVIEW_ORIGIN` 指向路由到同一容器的第二个主机名。它必须在主机名上有所不同，只换端口不行。
+Task 生成的 HTML 在有独立来源时，会从独立的来源提供预览。绑定在非回环地址上时，推导不出对应的回环地址，预览会退回同源沙箱，这时 Cookie、`localStorage` 和第三方嵌入内容都不能用。要恢复隔离的预览，把 `ADELIE_PREVIEW_ORIGIN` 指向路由到同一容器的第二个主机名。它必须在主机名上有所不同，只换端口不行。
 
 ## 升级容器
 
@@ -195,7 +195,7 @@ docker compose start penguin
 
 ## 下一步
 
-- [Web App](/web-app)：在浏览器里使用 PenguinHarness。
-- [更新 PenguinHarness](/updates)：查看版本并升级。
+- [Web App](/web-app)：在浏览器里使用 Adelie。
+- [更新 Adelie](/updates)：查看版本并升级。
 - [安全模型](/security)：谁能做什么，凭的是什么。
 - [配置参考](/configuration)：全部环境变量与配置字段。

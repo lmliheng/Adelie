@@ -1,15 +1,15 @@
 ---
 title: 产品介绍
-description: PenguinHarness 是什么，它由哪些部分组成，以及从哪里开始。
+description: Adelie 是什么，它由哪些部分组成，以及从哪里开始。
 ---
 
-欢迎阅读 PenguinHarness 文档。PenguinHarness 是一个开源的 Agent Harness，用来构建、运行、评估和持续改进 AI Agent，整体是一套 TypeScript 技术栈。它完全本地部署，存储的一切都留在你的机器上；最低一颗 CPU 即可运行，通过统一的模型网关可以接入 1000+ 在线与本地模型。
+欢迎阅读 Adelie 文档。Adelie 是一个开源的 Agent Harness，用来构建、运行、评估和持续改进 AI Agent，整体是一套 TypeScript 技术栈。它完全本地部署，存储的一切都留在你的机器上；最低一颗 CPU 即可运行，通过统一的模型网关可以接入 1000+ 在线与本地模型。
 
 ## 开始使用
 
 建议按顺序阅读下面这些页面：
 
-1. [快速开始](/quickstart)：用桌面应用、CLI、Docker 或 SDK 安装 PenguinHarness，跑通第一个 Task。
+1. [快速开始](/quickstart)：用桌面应用、CLI、Docker 或 SDK 安装 Adelie，跑通第一个 Task。
 2. [核心概念](/concepts)：了解文档里用到的术语，例如 Project、Session、Task 和 Workspace。
 3. [对话](/chat)：在对话中与 Agent 协作，随时看到它在做什么。
 4. [Agent](/agents)：创建 Agent，配置它的提示词、Skill、记忆和工具。
@@ -17,7 +17,7 @@ description: PenguinHarness 是什么，它由哪些部分组成，以及从哪�
 
 ## 产品组成
 
-PenguinHarness 由下面这些组件构成。它们共用同一个数据目录和同一套消息协议，因此可以自由混用。
+Adelie 由下面这些组件构成。它们共用同一个数据目录和同一套消息协议，因此可以自由混用。
 
 | 组件 | 包名 | 说明 |
 | --- | --- | --- |
@@ -29,13 +29,13 @@ PenguinHarness 由下面这些组件构成。它们共用同一个数据目录�
 
 ## 三大支柱
 
-PenguinHarness 可以用一句话概括：**Efficient Self-Improving Harness for Everyone**。它围绕三个概念展开，即消息协议、SDK 和技能库，每个概念支撑一个支柱：
+Adelie 可以用一句话概括：**Efficient Self-Improving Harness for Everyone**。它围绕三个概念展开，即消息协议、SDK 和技能库，每个概念支撑一个支柱：
 
 | 支柱 | 含义 |
 | --- | --- |
 | **Simplest Is the Best** | 在干净的底层接口之上刻意保持极简的工具集：更少的工具调用、更少的 Token，高效完成复杂任务。 |
-| **Harness for Building Agents** | 借助 PenguinHarness SDK，由 Agent 从零开始为你自主构建完整的 Agent 应用。 |
-| **Harness for Recursive Self-Improvement** | 借助 PenguinHarness Skills，Agent 评估并优化自己，随着时间递归进化。 |
+| **Harness for Building Agents** | 借助 Adelie SDK，由 Agent 从零开始为你自主构建完整的 Agent 应用。 |
+| **Harness for Recursive Self-Improvement** | 借助 Adelie Skills，Agent 评估并优化自己，随着时间递归进化。 |
 
 ## 设计信条
 
@@ -50,7 +50,7 @@ PenguinHarness 可以用一句话概括：**Efficient Self-Improving Harness for
 
 ## 命名说明
 
-统一消息协议在技术文档中称为 **OmniMessage**，产品宣传中也叫 Penguin Message。本文档一律使用 OmniMessage。
+统一消息协议在技术文档中称为 **OmniMessage**，产品宣传中也叫 Adelie Message。本文档一律使用 OmniMessage。
 
 ## 了解工作原理
 

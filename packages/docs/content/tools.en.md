@@ -3,7 +3,7 @@ title: Tools & Approval
 description: How the built-in tools run under one execution contract, how each call is approved and audited in the Trace, and how MCP servers join them.
 ---
 
-PenguinHarness ships a deliberately minimal built-in toolset. Dedicated file tools (`read_file` / `edit_file` / `write_file`) cover precise reading and editing, because line-numbered output and exact-string replacement beat quoting `sed` one-liners. The shell (`exec_command`) remains the general-purpose fallback for everything else: running programs, searching, installing dependencies. Every tool that remains earns the schema Tokens it costs.
+Adelie ships a deliberately minimal built-in toolset. Dedicated file tools (`read_file` / `edit_file` / `write_file`) cover precise reading and editing, because line-numbered output and exact-string replacement beat quoting `sed` one-liners. The shell (`exec_command`) remains the general-purpose fallback for everything else: running programs, searching, installing dependencies. Every tool that remains earns the schema Tokens it costs.
 
 The Environment runs every tool call through one shared contract and handles the close-out centrally. This page covers that contract first, then the per-tool configuration, the 7 built-in tools and their background behavior, the per-call approval recorded in the Trace, and how to customize the toolset and add MCP servers.
 
@@ -179,7 +179,7 @@ The tools' arguments (explicit keys):
 }
 ```
 
-**Shell.** Commands run through `bash -lc` wherever a bash exists, and the system prompt tells the model which shell is active. `PENGUIN_SHELL` (an executable name or path) overrides the choice on every platform. Otherwise the shell is picked in this order:
+**Shell.** Commands run through `bash -lc` wherever a bash exists, and the system prompt tells the model which shell is active. `ADELIE_SHELL` (an executable name or path) overrides the choice on every platform. Otherwise the shell is picked in this order:
 
 - On POSIX: `bash` on PATH, then the usual absolute bash locations, then the `$SHELL` login shell, then `sh`.
 - On Windows: a `bash` on PATH that is not the WSL launcher (for example Git for Windows), then the bundled MinGit bash, then `pwsh`, then `powershell`.

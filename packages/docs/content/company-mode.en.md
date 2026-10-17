@@ -250,7 +250,7 @@ Know the limits before you rely on a mirror organization:
 
 ## Commands
 
-Inside a desk or ticket session, the `penguin org` commands already know the organization, Project, agent and Session from the environment (`PENGUIN_ORG_ID` joins the other control variables). From a shell, pass `--org-id`. The essentials are below; see [the CLI reference](/cli#penguin-org) for every subcommand.
+Inside a desk or ticket session, the `penguin org` commands already know the organization, Project, agent and Session from the environment (`ADELIE_ORG_ID` joins the other control variables). From a shell, pass `--org-id`. The essentials are below; see [the CLI reference](/cli#penguin-org) for every subcommand.
 
 ```text
 penguin org show                                  # employees, board counts, spend vs budget

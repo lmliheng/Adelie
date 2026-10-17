@@ -176,7 +176,8 @@
    chrome is scoped to inline code because the `.md-body pre code` reset below strips background,
    color and padding inside fenced blocks but would not strip a border. Prose often holds long
    unbroken paths and identifiers, so inline code gets the same `anywhere` treatment as links.
-   Kept identical to the landing site: penguin.ooo and penguin.ooo/docs share one design language. */
+   Kept identical to the landing site: the site root `/Adelie/` and `/Adelie/docs/` share one
+   design language. */
 .md-body :not(pre) > code {
   @apply rounded-md border border-brand-200/60 bg-brand-50/40 px-[0.3em] py-[0.1em] text-[0.875em] text-gray-900 dark:border-brand-900/70 dark:bg-brand-950/50 dark:text-gray-100;
   overflow-wrap: anywhere;

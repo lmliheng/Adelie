@@ -6,7 +6,7 @@
  * reads inside components. Doc page bodies are Markdown files under content/, not here.
  */
 export const zh = {
-  siteName: "PenguinHarness",
+  siteName: "Adelie",
 
   nav: {
     // Landing-parity labels: the top bar mirrors the landing page's nav exactly

@@ -46,7 +46,7 @@ description: 管理个人资料、偏好设置和密码；管理员还可以管�
 
 设置项标题旁的「?」可以查看这一项的说明，页面标题旁的「?」则说明整个页面。
 
-检查更新不在这个对话框里，见[更新 PenguinHarness](/updates)。
+检查更新不在这个对话框里，见[更新 Adelie](/updates)。
 
 ## 个人资料
 
@@ -264,7 +264,7 @@ Trace 会成为该 Agent 的一段新对话。如果该 Agent 下已有相同 id
 
 ## Agent API
 
-**Agent API** 页（**设置 › 服务器 › Agent API**）仅管理员可见，作用于整台服务器。页面上只有**允许 Agent API** 这一个开关，默认开启，统管所有 Agent 的 API，也就是 PenguinHarness 之外的程序与 Agent 对话所用的 HTTP API（见 [Agent API](/agent-api)）。
+**Agent API** 页（**设置 › 服务器 › Agent API**）仅管理员可见，作用于整台服务器。页面上只有**允许 Agent API** 这一个开关，默认开启，统管所有 Agent 的 API，也就是 Adelie 之外的程序与 Agent 对话所用的 HTTP API（见 [Agent API](/agent-api)）。
 
 开关一拨即生效，没有保存按钮。
 

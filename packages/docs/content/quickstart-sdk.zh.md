@@ -20,7 +20,7 @@ npm install @adelie/core
 
 ## 配置模型
 
-SDK 与桌面应用、CLI 读取同一个数据目录 `~/.penguin/data`。在[桌面应用](/quickstart-desktop)或 [CLI](/quickstart-cli) 里配置好的模型，SDK 可以直接使用，不需要重复配置。
+SDK 与桌面应用、CLI 读取同一个数据目录 `~/.adelie/data`。在[桌面应用](/quickstart-desktop)或 [CLI](/quickstart-cli) 里配置好的模型，SDK 可以直接使用，不需要重复配置。
 
 如果这台机器上还没有配置过模型，最省事的办法是装上 CLI，在 CLI 里配置一次：
 

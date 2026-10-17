@@ -226,7 +226,7 @@ Fields that serve only the Trace, such as provider `fidelity` and `session_meta.
 - The version is in the path, `/api/amsp/v1`; events carry none.
 - Within `/v1`, changes only add: new event types and new optional fields. A client that ignores what it does not know keeps working.
 - A change to what an existing field means is a new version, `/v2`, served beside `/v1`.
-- Event names are `<subject>.<phase>`; items are `K.delta` and `K.done`, as in MMSP. A "run" on the wire is one Task in PenguinHarness's terms.
+- Event names are `<subject>.<phase>`; items are `K.delta` and `K.done`, as in MMSP. A "run" on the wire is one Task in Adelie's terms.
 
 ## Reading the stream yourself
 

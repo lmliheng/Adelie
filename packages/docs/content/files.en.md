@@ -80,7 +80,7 @@ A Markdown file larger than 64KB opens in the source view. You can still switch 
 An HTML file can also be opened in a new browser tab: in the preview, select **Open in new tab**.
 
 > [!NOTE]
-> When the app is reached through an address with no separate preview origin, the tab opens sandboxed, without localStorage, cookies or third-party embeds. To avoid the sandbox, reach the app over 127.0.0.1 or localhost, or set `PENGUIN_PREVIEW_ORIGIN`. On the new-chat page HTML always opens sandboxed: the separate preview origin serves a conversation's files only.
+> When the app is reached through an address with no separate preview origin, the tab opens sandboxed, without localStorage, cookies or third-party embeds. To avoid the sandbox, reach the app over 127.0.0.1 or localhost, or set `ADELIE_PREVIEW_ORIGIN`. On the new-chat page HTML always opens sandboxed: the separate preview origin serves a conversation's files only.
 
 A text preview reads up to 1MB. A larger file is shown truncated, with the message "File too large; preview truncated, download for the full file", and cannot be edited here. **Download** is in the preview header.
 

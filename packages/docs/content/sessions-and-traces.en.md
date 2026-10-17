@@ -3,7 +3,7 @@ title: Sessions & Traces
 description: The six-level run model, the data layout on disk, how the append-only Trace is written, and how a Session is recovered from it.
 ---
 
-All PenguinHarness runtime data lives on the local file system. Configuration is editable files, and history is an append-only **Trace**. This page defines each level of the run model and the layout on disk, then explains how the Trace serves as history, recovery source and statistics source at once.
+All Adelie runtime data lives on the local file system. Configuration is editable files, and history is an append-only **Trace**. This page defines each level of the run model and the layout on disk, then explains how the Trace serves as history, recovery source and statistics source at once.
 
 ## Run model
 
@@ -22,7 +22,7 @@ For how the levels work together, see [Architecture](/architecture). For how Req
 
 ## Data layout
 
-The data root is the `PENGUIN_HOME` environment variable, `~/.penguin/data` by default. The layout is defined in one place, `packages/core/src/state/paths.ts`:
+The data root is the `ADELIE_HOME` environment variable, `~/.adelie/data` by default. The layout is defined in one place, `packages/core/src/state/paths.ts`:
 
 ```text
 <root>/<project>/
@@ -74,7 +74,7 @@ An illustrative Trace head follows, one OmniMessage envelope per line. Note the 
 - On the first run, the toolset follows the input as a `tool_list_ready` event, after an `mcp_connect_begin` / `mcp_connect_end` pair when MCP servers are configured. `session_meta` does not carry the tool definitions.
 
 ```jsonl
-{"timestamp":"2026-07-18T03:10:22.531Z","type":"session_meta","payload":{"session_id":"session-2026-07-18-11-10-22-3f8a1c2d","provider":"deepseek","model_id":"deepseek-v4-pro","model_context_window":1000000,"system_prompt":"…","agent_state":"/home/u/.penguin/data/default_project/agents/default_agent/agent_state","workspace":"/home/u/work"}}
+{"timestamp":"2026-07-18T03:10:22.531Z","type":"session_meta","payload":{"session_id":"session-2026-07-18-11-10-22-3f8a1c2d","provider":"deepseek","model_id":"deepseek-v4-pro","model_context_window":1000000,"system_prompt":"…","agent_state":"/home/u/.adelie/data/default_project/agents/default_agent/agent_state","workspace":"/home/u/work"}}
 {"timestamp":"…","type":"model_msg","payload":{"type":"text","role":"user","text":"Create hello.txt"}}
 {"timestamp":"…","type":"event_msg","payload":{"type":"tool_list_ready","tools":[…]}}
 {"timestamp":"…","type":"event_msg","payload":{"type":"request_begin"}}

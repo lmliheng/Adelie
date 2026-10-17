@@ -3,7 +3,7 @@ title: Self-Improvement
 description: How Skills build a Benchmark, score an agent on it, and keep only the changes that raise its score, with every version snapshotted and every score traceable.
 ---
 
-Self-improvement in PenguinHarness is a loop: build a Benchmark for an agent, score the agent on it, change the agent, and keep a change only when the score strictly improves. The loop adds no runtime of its own. Skills orchestrate the ordinary agent machinery: evaluations are ordinary Sessions, optimization is ordinary file editing, and every result is a file in the Project.
+Self-improvement in Adelie is a loop: build a Benchmark for an agent, score the agent on it, change the agent, and keep a change only when the score strictly improves. The loop adds no runtime of its own. Skills orchestrate the ordinary agent machinery: evaluations are ordinary Sessions, optimization is ordinary file editing, and every result is a file in the Project.
 
 Building a Benchmark and optimizing an agent run in two independent top-level Sessions, and each single evaluation is delegated through the built-in `run_subagent` tool. The top-level prompt supplies the settings for the task: the agent, the Benchmark, the capability, the scores and the rounds. The Skills own everything else: call relationships, calibration, Freeze, the result protocol, repair, rollback and reporting.
 

@@ -52,7 +52,7 @@ Other ways to install:
 
 ## Update installed plugins
 
-New versions of the built-in plugins arrive with PenguinHarness updates. An agent keeps its installed copy until you update it. When an install is behind the library, you see:
+New versions of the built-in plugins arrive with Adelie updates. An agent keeps its installed copy until you update it. When an install is behind the library, you see:
 
 - a red dot on **Plugins** in the sidebar;
 - a notice at the top of the **Plugins** page, "Changes detected: N to upgrade", with **Update now** and **Dismiss**;
@@ -73,7 +73,7 @@ To update:
 
 ## Import, export and delete library plugins
 
-Beside the plugins PenguinHarness ships, the library lists the plugins in the **user plugin directory**, `<data root>/plugins`. An admin fills it by importing — from a zip file on this machine, or from a URL the server downloads — and an agent can then install those plugins exactly like a built-in one. A plugin from there carries a **User** badge.
+Beside the plugins Adelie ships, the library lists the plugins in the **user plugin directory**, `<data root>/plugins`. An admin fills it by importing — from a zip file on this machine, or from a URL the server downloads — and an agent can then install those plugins exactly like a built-in one. A plugin from there carries a **User** badge.
 
 To import a plugin, select **Upload plugin** or **Download from URL** in the page header and fill in the dialog:
 
@@ -167,7 +167,7 @@ To upload a zip file:
 
 A server plugin extends the server itself rather than an agent: it is an npm package of server modules, such as a sandbox backend. A Project asks for the server plugins it needs, and the server runs every plugin that any of its Projects asks for, so what a plugin contributes is available to every Project.
 
-On the **Plugins** page, a server plugin's row shows its package name, description, version and status, with tags for its categories, **built in** when it ships with PenguinHarness, and its keywords. Select a row to open the plugin's page, with its license, authors, links and documentation. The shelf is complete: the four sandbox backends are hand-written entries, and every plugin package this build carries has one of its own (the library's skills/hooks packages included), with version, description, license, category and keywords read from the package itself. Only a plugin imported on this machine has no entry, and therefore no page.
+On the **Plugins** page, a server plugin's row shows its package name, description, version and status, with tags for its categories, **built in** when it ships with Adelie, and its keywords. Select a row to open the plugin's page, with its license, authors, links and documentation. The shelf is complete: the four sandbox backends are hand-written entries, and every plugin package this build carries has one of its own (the library's skills/hooks packages included), with version, description, license, category and keywords read from the package itself. Only a plugin imported on this machine has no entry, and therefore no page.
 
 To add a server plugin to the current Project:
 
@@ -176,7 +176,7 @@ To add a server plugin to the current Project:
 
 To remove one, select **Remove** on its row under **Installed plugins**, and confirm. The plugin leaves the Project's list; nothing is deleted from disk.
 
-Only admins see **Install** and **Remove**. Only plugins that ship with PenguinHarness can be added, so nothing is downloaded. A change applies without restarting the server: the server rebuilds its business surface around the new list, which is why runs in progress stop. Afterwards the row's status reads **running**, **restart to load** when the server could not apply the change without a restart, or **failed to load** with the reason.
+Only admins see **Install** and **Remove**. Only plugins that ship with Adelie can be added, so nothing is downloaded. A change applies without restarting the server: the server rebuilds its business surface around the new list, which is why runs in progress stop. Afterwards the row's status reads **running**, **restart to load** when the server could not apply the change without a restart, or **failed to load** with the reason.
 
 The list is the `[plugins]` table of the Project's config; see [Configuration Reference](/configuration#plugins). For the routes, see [Server API](/server-api#plugin-registry-and-project-plugins), and for how the server loads plugins, see [Server Boot and Subsystems](/server-boot#re-assembly).
 

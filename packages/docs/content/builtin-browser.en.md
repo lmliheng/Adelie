@@ -85,7 +85,7 @@ Import copies the cookies (which hold your sign-ins) and the history of one prof
 
 What to expect on each platform:
 
-- **macOS**: Chromium-based browsers encrypt cookies with a key kept in your Keychain, so macOS asks whether PenguinHarness may use the Keychain item named after the browser, such as "Chrome Safe Storage". Allow it; if you deny it, the encrypted cookies are skipped and the result says so.
+- **macOS**: Chromium-based browsers encrypt cookies with a key kept in your Keychain, so macOS asks whether Adelie may use the Keychain item named after the browser, such as "Chrome Safe Storage". Allow it; if you deny it, the encrypted cookies are skipped and the result says so.
 - **Windows**: Chrome 127 and later protect most cookies with app-bound encryption, which only Chrome itself can read. Those cookies are skipped with a warning; sign in in the panel instead. A browser that is running may also hold its cookie file open; close it and import again.
 - **Linux**: newer cookies are encrypted with a password kept in the desktop keyring, read through `secret-tool` (from the `libsecret-tools` package on Debian and Ubuntu). Without it those cookies are skipped with a warning.
 - **Firefox** stores cookies unencrypted. Cookies kept for a container or partitioned to another site are left out.
@@ -128,9 +128,9 @@ Every tab is a whole web page with memory of its own: a busy shopping or news si
 
 | System | Log file |
 | --- | --- |
-| macOS | `~/Library/Application Support/PenguinHarness/logs/desktop.log` |
-| Windows | `%APPDATA%\PenguinHarness\logs\desktop.log` |
-| Linux | `~/.config/PenguinHarness/logs/desktop.log` |
+| macOS | `~/Library/Application Support/Adelie/logs/desktop.log` |
+| Windows | `%APPDATA%\Adelie\logs\desktop.log` |
+| Linux | `~/.config/Adelie/logs/desktop.log` |
 
 ## How it works
 

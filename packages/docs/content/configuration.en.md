@@ -1,9 +1,9 @@
 ---
 title: Configuration Reference
-description: Every PenguinHarness setting with its default and constraints, from environment variables to the Project, agent, memory, Vault and schedule files.
+description: Every Adelie setting with its default and constraints, from environment variables to the Project, agent, memory, Vault and schedule files.
 ---
 
-PenguinHarness configuration has three layers: environment variables shape the deployment, the Project config manages models and credentials, and the agent config defines one agent's behavior. Each agent also keeps state files for its [Memory](#memory), [Vault](#vault) and [Schedules](#schedules).
+Adelie configuration has three layers: environment variables shape the deployment, the Project config manages models and credentials, and the agent config defines one agent's behavior. Each agent also keeps state files for its [Memory](#memory), [Vault](#vault) and [Schedules](#schedules).
 
 ## Environment variables
 
@@ -11,45 +11,46 @@ The CLI and the server load a `.env` file from the working directory on startup.
 
 | Variable | Description | Default |
 | --- | --- | --- |
-| `PENGUIN_HOME` | Data root directory | `~/.penguin/data` |
+| `ADELIE_HOME` | Data root directory | `~/.adelie/data` |
 | `PORT` | Web service listen port | `7364` |
 | `HOST` | Web service listen address | `127.0.0.1` |
-| `PENGUIN_WEB_DB` | Server SQLite database path | `<root>/web.db` |
-| `PENGUIN_WEB_DIST` | Front-end static assets directory | The server package's bundled `web-dist` (in a source checkout, `packages/web/dist`) |
-| `PENGUIN_PREVIEW_ORIGIN` | Origin that serves Workspace HTML previews, e.g. `https://preview.example.com` | Unset: the loopback counterpart is derived per request |
+| `ADELIE_WEB_DB` | Server SQLite database path | `<root>/web.db` |
+| `ADELIE_WEB_DIST` | Front-end static assets directory | The server package's bundled `web-dist` (in a source checkout, `packages/web/dist`) |
+| `ADELIE_PREVIEW_ORIGIN` | Origin that serves Workspace HTML previews, e.g. `https://preview.example.com` | Unset: the loopback counterpart is derived per request |
 | `PENGUIN_GO_ORIGIN` | Trusted origin the server-side Penguin Go key authorization calls | `https://token.penguin.ooo` |
 | `MODELSCOPE_BRIDGE_URL` | Address of the authorization bridge the server-side ModelScope key authorization calls | `https://go.penguin.ooo/modelscope` |
-| `PENGUIN_TRUST_PROXY` | `1` trusts the `x-forwarded-proto` header | Unset: the header is ignored |
-| `PENGUIN_SEED_ADMIN_PASSWORD` | Fixed initial password for the seeded built-in admin (automated tests / e2e) | Unset: a random password is generated |
-| `PENGUIN_LANG` | CLI language (`en` / `zh`), set with `penguin config lang` | `en` |
-| `PENGUIN_UPDATE_CHECK` | `off` disables the Web App's new-release check | Enabled |
+| `ADELIE_TRUST_PROXY` | `1` trusts the `x-forwarded-proto` header | Unset: the header is ignored |
+| `ADELIE_SEED_ADMIN_PASSWORD` | Fixed initial password for the seeded built-in admin (automated tests / e2e) | Unset: a random password is generated |
+| `ADELIE_LANG` | CLI language (`en` / `zh`), set with `penguin config lang` | `en` |
+| `ADELIE_UPDATE_CHECK` | `off` disables the Web App's new-release check | Enabled |
 | `PENGUIN_NO_LOGIN_SHELL_ENV` | Any non-empty value stops the desktop app from importing the login shell's environment on macOS/Linux GUI launches | Unset: the import runs |
-| `PENGUIN_SHELL` | The shell that runs agent commands (an executable name or path) | Unset: picked automatically, see [Tools & Approval](/tools#command-sessions) |
-| `PENGUIN_CLI_ENTRY` | The CLI entry script this installation offers the agents it runs (see [PATH launcher](#path-launcher)) | Set by `penguin server` / `penguin web` and by the desktop app |
+| `ADELIE_SHELL` | The shell that runs agent commands (an executable name or path) | Unset: picked automatically, see [Tools & Approval](/tools#command-sessions) |
+| `ADELIE_CLI_ENTRY` | The CLI entry script this installation offers the agents it runs (see [PATH launcher](#path-launcher)) | Set by `penguin server` / `penguin web` and by the desktop app |
 
 Notes:
 
-- `PENGUIN_TRUST_PROXY`: set it behind a reverse proxy that terminates TLS and sets or strips the header itself. Session cookies are then marked `Secure`, and the hot-update network gate sees HTTPS.
-- `PENGUIN_SEED_ADMIN_PASSWORD`: without it, the seed generates a random password that is hashed and discarded unseen, and you claim the account through the first-login link.
+- **Pre-rename spellings:** the data root and the deployment wiring (`ADELIE_HOME`, `ADELIE_PROFILE`, `ADELIE_WEB_DIST`, `ADELIE_WEB_DB`, `ADELIE_CLI_ENTRY`, `ADELIE_PORT_FILE`, `ADELIE_DESKTOP_TOKEN`, `ADELIE_BUNDLED_SHELL`) are also read in their pre-rename `PENGUIN_*` spelling, the new name winning when both are set (`packages/core/src/state/boundary-env.ts`). The other variables above are Adelie's own and carry no alias: their pre-rename spelling is no longer read.
+- `ADELIE_TRUST_PROXY`: set it behind a reverse proxy that terminates TLS and sets or strips the header itself. Session cookies are then marked `Secure`, and the hot-update network gate sees HTTPS.
+- `ADELIE_SEED_ADMIN_PASSWORD`: without it, the seed generates a random password that is hashed and discarded unseen, and you claim the account through the first-login link.
 - `PENGUIN_GO_ORIGIN`: server configuration, not an endpoint the browser can name. It must be a bare HTTPS origin; plain HTTP is accepted only for `localhost`, `127.0.0.1` and `[::1]`, for integration environments. A path, credentials, a query string or a fragment is rejected at startup. See [Connect an account](/models#connect-an-account).
 - `MODELSCOPE_BRIDGE_URL`: server configuration like `PENGUIN_GO_ORIGIN`, not an endpoint the browser can name. It must be an HTTPS address with no credentials, query string or fragment. Unlike `PENGUIN_GO_ORIGIN`, a path prefix **is** allowed, because the production bridge lives under `https://go.penguin.ooo/modelscope`. See [Connect an account](/models#connect-an-account).
-- `PENGUIN_UPDATE_CHECK`: `off` turns off the automatic release check, nothing else. Model requests, an enabled remote-control connection, provider key authorization and the proxy test still reach the network.
+- `ADELIE_UPDATE_CHECK`: `off` turns off the automatic release check, nothing else. Model requests, an enabled remote-control connection, provider key authorization and the proxy test still reach the network.
 - `PENGUIN_NO_LOGIN_SHELL_ENV`: without it, the import fills only variables the launch left unset. See [Desktop quickstart](/quickstart-desktop).
-- `PENGUIN_CLI_ENTRY`: when the server was started from a source checkout, it falls back to that checkout's `packages/cli/dist/penguin.js`.
+- `ADELIE_CLI_ENTRY`: when the server was started from a source checkout, it falls back to that checkout's `packages/cli/dist/penguin.js`.
 
 ### Environment of agent-run commands
 
 Commands an agent runs with `exec_command` inherit the host environment, with these changes:
 
-- **Removed:** `PORT`, `HOST`, `FORCE_COLOR`, `CLICOLOR_FORCE` and every `PENGUIN_*` variable. They configure PenguinHarness itself, not the command. Without this, a dev server started by `exec_command` would read `PORT` and try to bind the port meant for PenguinHarness instead of choosing its own.
+- **Removed:** `PORT`, `HOST`, `FORCE_COLOR`, `CLICOLOR_FORCE` and every `PENGUIN_*` or `ADELIE_*` variable. They configure Adelie itself, not the command. Without this, a dev server started by `exec_command` would read `PORT` and try to bind the port meant for Adelie instead of choosing its own.
 - **Proxy:** in Sessions the server runs, the **Agent environment uses the proxy** switch in [Settings](/settings#proxy-options) decides the proxy variables. Off removes `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY`; on injects the configured proxy address, or passes the host's variables through when no address is set.
-- **Vault:** the agent's [Vault](#vault) is applied on top, so setting `PORT` or a `PENGUIN_*` variable there does reach commands.
-- **Control variables:** a server-driven Session then injects `PENGUIN_API_URL`, `PENGUIN_API_TOKEN`, `PENGUIN_PROJECT_ID`, `PENGUIN_AGENT_ID` and `PENGUIN_SESSION_ID` (plus `PENGUIN_ORG_ID` in company mode), so the agent's own `penguin` calls reach the server that runs it. These override Vault entries of the same name. See [CLI Reference](/cli).
+- **Vault:** the agent's [Vault](#vault) is applied on top, so setting `PORT` or an `ADELIE_*` variable there does reach commands.
+- **Control variables:** a server-driven Session then injects `ADELIE_API_URL`, `ADELIE_API_TOKEN`, `ADELIE_PROJECT_ID`, `ADELIE_AGENT_ID` and `ADELIE_SESSION_ID` (plus `ADELIE_ORG_ID` in company mode), so the agent's own `penguin` calls reach the server that runs it. These override Vault entries of the same name. See [CLI Reference](/cli).
 - **Forced:** `GIT_EDITOR`, `GIT_TERMINAL_PROMPT`, `TERM`, `NO_COLOR`, `PAGER` and `GIT_PAGER` always get fixed values, so a command cannot hang waiting on an editor, a credential prompt or a pager. Nothing overrides them, the Vault included.
 
 ### PATH launcher
 
-This installation's own `penguin` is first on the PATH of every command an agent runs. At startup the server writes a launcher script at `<root>/bin/penguin`, which runs the CLI entry from `PENGUIN_CLI_ENTRY` on the server's own Node, and puts that directory at the front of PATH for each command. So `penguin` inside a command is the harness the agent is running in, whatever version is installed globally on the machine.
+This installation's own `penguin` is first on the PATH of every command an agent runs. At startup the server writes a launcher script at `<root>/bin/penguin`, which runs the CLI entry from `ADELIE_CLI_ENTRY` on the server's own Node, and puts that directory at the front of PATH for each command. So `penguin` inside a command is the harness the agent is running in, whatever version is installed globally on the machine.
 
 The directory is prepended inside the shell as well as in the environment, because commands run through a login shell whose profile often rewrites PATH afterwards. This also puts it ahead of a `PATH` set in the [Vault](#vault), which otherwise replaces the inherited value outright.
 
@@ -57,7 +58,7 @@ The launcher is rewritten at every start, so the next start picks up a moved ins
 
 ### Workspace preview origin
 
-`PENGUIN_PREVIEW_ORIGIN` must differ from the app's origin by **hostname**, not just by port: cookies ignore ports, so a second port would still share the session cookie.
+`ADELIE_PREVIEW_ORIGIN` must differ from the app's origin by **hostname**, not just by port: cookies ignore ports, so a second port would still share the session cookie.
 
 - **Local use:** leave it unset. The app is canonicalized onto `localhost` and previews are served from `127.0.0.1`, which needs no configuration and no DNS.
 - **LAN address or real domain:** set it. Otherwise previews fall back to a same-origin sandbox where `localStorage`, cookies and third-party embeds do not work. On a real domain, keep the session cookie host-only (no `Domain=`), or a sibling subdomain shares it.
@@ -66,7 +67,7 @@ An unparseable value stops the server at startup instead of falling back silentl
 
 ### Provider credential variables
 
-When a model entry has no inline `api_key`, it falls back to the provider's environment variable **only when its requests go to that provider's official endpoint**: the entry has no `base_url`, or its `base_url` is the vendor's own endpoint. A `*_BASE_URL` value is used only when the entry does not inline `base_url`; an entry with its own `base_url` is never covered by the environment, even when `OPENAI_BASE_URL` names the same server. Every other entry — the gateway groups' preset endpoints, custom, vLLM and user-created groups with their own endpoints — needs its own `api_key`, and PenguinHarness refuses to build a client for it otherwise; see [Set API keys](/models#set-api-keys).
+When a model entry has no inline `api_key`, it falls back to the provider's environment variable **only when its requests go to that provider's official endpoint**: the entry has no `base_url`, or its `base_url` is the vendor's own endpoint. A `*_BASE_URL` value is used only when the entry does not inline `base_url`; an entry with its own `base_url` is never covered by the environment, even when `OPENAI_BASE_URL` names the same server. Every other entry — the gateway groups' preset endpoints, custom, vLLM and user-created groups with their own endpoints — needs its own `api_key`, and Adelie refuses to build a client for it otherwise; see [Set API keys](/models#set-api-keys).
 
 | Provider | API key | Base URL |
 | --- | --- | --- |
@@ -382,7 +383,7 @@ For developers:
 | `{{PLATFORM}}` | Runtime platform |
 | `{{OS_VERSION}}` | Operating system version |
 | `{{DATE}}` | Current date |
-| `{{PROJECT_DIR}}` | App Data Dir: the PenguinHarness app data root (the Project directory) |
+| `{{PROJECT_DIR}}` | App Data Dir: the Adelie app data root (the Project directory) |
 | `{{AGENT_ID}}` | Agent id |
 | `{{CWD}}` | Workspace path |
 | `{{PROVIDER}}` | Model provider group |
@@ -391,7 +392,7 @@ For developers:
 
 **Section placeholders.** The Vault, Skills, Memory and Schedules sections share one pattern: a placeholder, a switch and an editable prompt. The template holds only the `{{VAULT}}` / `{{SKILLS}}` / `{{MEMORY}}` / `{{SCHEDULES}}` placeholder, the section text lives in the matching `*.prompt` key (edited on its settings tab), and turning `*.enabled` off empties the whole block. A template without one of these placeholders injects no such section; the matching settings tab offers to insert the placeholder explicitly, or to migrate a legacy template. The four section placeholders are expanded last, in a single pass at assembly time. Expanded text is never rescanned, so placeholder-looking text inside a memory index or a section prompt stays literal.
 
-**App Data Dir.** `{{PROJECT_DIR}}` is shown to the model as the **App Data Dir**: PenguinHarness's application data root, which holds every agent's data files (`agents/<agent_id>/…`) and the Project-level data. It is deliberately not described as a project or task directory, so the model does not mistake it for the task's working directory (`CWD`).
+**App Data Dir.** `{{PROJECT_DIR}}` is shown to the model as the **App Data Dir**: Adelie's application data root, which holds every agent's data files (`agents/<agent_id>/…`) and the Project-level data. It is deliberately not described as a project or task directory, so the model does not mistake it for the task's working directory (`CWD`).
 
 **Windows paths.** On Windows, `{{PROJECT_DIR}}` and `{{CWD}}` are injected with forward slashes, like every other path core composes for the model (attachment lines, the goal-file line, truncated-output recovery paths). The model copies these spellings into JSON tool arguments and shell commands. Node's fs APIs and the package's (Git) Bash tool shell accept forward slashes, and they avoid JSON backslash-escaping mistakes.
 
@@ -432,7 +433,7 @@ A workspace memory key is `<safe-basename>-<8 hex of the real path's sha256>`.
 
 - `user` is a reserved directory name. It is safe because every generated key has the form `<base>-<8 hex>` and so always contains a hyphen.
 - Identity is the directory itself and has nothing to do with Git. Two symlinks to one directory resolve to one key, while moving or renaming a directory makes it a new Workspace; the old Memory stays on disk under the old key.
-- A temporary Workspace, one PenguinHarness allocated under `agents/<agent_id>/workspaces/`, gets no Workspace scope at all, including when a subagent inherits it. A temporary Workspace is allocated per Session, so no later Session would ever run there to read it back. Such a Session still gets the user scope, which is where anything it learns belongs anyway.
+- A temporary Workspace, one Adelie allocated under `agents/<agent_id>/workspaces/`, gets no Workspace scope at all, including when a subagent inherits it. A temporary Workspace is allocated per Session, so no later Session would ever run there to read it back. Such a Session still gets the user scope, which is where anything it learns belongs anyway.
 
 ### Topic files
 

@@ -3,7 +3,7 @@ title: Architecture
 description: How the SDK, Server, CLI and Web App divide responsibilities, and how the three-interface boundary and OmniMessage organize the system.
 ---
 
-PenguinHarness is a pnpm monorepo. Its center is the execution engine in `@adelie/core`. The Server ships with the product as the Human implementation of that engine: it runs every Task. SDK embedders can also drive the engine directly.
+Adelie is a pnpm monorepo. Its center is the execution engine in `@adelie/core`. The Server ships with the product as the Human implementation of that engine: it runs every Task. SDK embedders can also drive the engine directly.
 
 The Web App and the CLI are clients of the Server over HTTP and SSE, and the desktop app wraps the Server and the Web App in one window. This page covers the layers, the engine's three-interface boundary, the [data flow of one Task](#data-flow-of-one-task), where each responsibility lives, and the source layout.
 
@@ -71,7 +71,7 @@ To place a design in a layer, ask where its **source of truth** lives. One rule 
 | --- | --- | --- |
 | SDK (`core`) | Protocol and execution: everything that makes messages flow | persisted user state, multi-user, any rendering |
 | Server | The resident process and the multi-user runtime | engine logic, fully delegated to the SDK |
-| File layer (`~/.penguin/data`) | Everything editable and everything recorded | any computation |
+| File layer (`~/.adelie/data`) | Everything editable and everything recorded | any computation |
 | CLI / Web | Rendering and interaction | business state |
 
 Item by item, each design maps to an owner and to the file or module that carries it:
@@ -104,7 +104,7 @@ Item by item, each design maps to an owner and to the file or module that carrie
 
 ## The state layer
 
-Below the engine sits a purely file-based state layer. Its root is `~/.penguin/data` (override it with `PENGUIN_HOME`), organized as `<project>/agents/<agent>/`:
+Below the engine sits a purely file-based state layer. Its root is `~/.adelie/data` (override it with `ADELIE_HOME`), organized as `<project>/agents/<agent>/`:
 
 | Component | Location | Contents |
 | --- | --- | --- |

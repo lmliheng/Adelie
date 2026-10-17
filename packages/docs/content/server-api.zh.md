@@ -1,14 +1,14 @@
 ---
 title: Server API
-description: PenguinHarness 服务器的 HTTP API 参考：认证、全部路由分组、SSE 流式协议和 DTO 类型导入。
+description: Adelie 服务器的 HTTP API 参考：认证、全部路由分组、SSE 流式协议和 DTO 类型导入。
 ---
 
-PenguinHarness 服务器提供一组同源 HTTP API，内置 Web App 和其他任何 HTTP 客户端用的都是它。本页先讲认证，再按功能分组介绍路由（每组先给路由表，再补充细节），最后讲 SSE 流式协议。启动服务器的方法见[快速开始](/quickstart)。PenguinHarness 之外的程序凭 Agent 的密钥调用的 API 另有专页，见 [Agent API](/agent-api)。
+Adelie 服务器提供一组同源 HTTP API，内置 Web App 和其他任何 HTTP 客户端用的都是它。本页先讲认证，再按功能分组介绍路由（每组先给路由表，再补充细节），最后讲 SSE 流式协议。启动服务器的方法见[快速开始](/quickstart)。Adelie 之外的程序凭 Agent 的密钥调用的 API 另有专页，见 [Agent API](/agent-api)。
 
 ## 概览
 
 - 技术栈：Hono 和 `@hono/node-server`，要求 Node >= 24。
-- 存储：SQLite（内置的 `node:sqlite`，WAL 模式）只保存索引和聚合数据：用户、认证会话、Project 授权、Agent 与 Session 索引、用量、UI 偏好、错误记录和定时任务状态。所有 Agent、Trace 和 Workspace 数据都以文件形式存放在 `~/.penguin/data` 下，与 CLI 和 SDK 共享；参见[配置参考](/configuration)。
+- 存储：SQLite（内置的 `node:sqlite`，WAL 模式）只保存索引和聚合数据：用户、认证会话、Project 授权、Agent 与 Session 索引、用量、UI 偏好、错误记录和定时任务状态。所有 Agent、Trace 和 Workspace 数据都以文件形式存放在 `~/.adelie/data` 下，与 CLI 和 SDK 共享；参见[配置参考](/configuration)。
 - 绑定地址：默认 `127.0.0.1:7364`，可通过 `PORT` / `HOST` 环境变量调整。
 - 请求体：写操作只接受 JSON，检查 Content-Type 是防 CSRF 的手段之一。请求体大小上限并非固定值，而是由附件额度推导出来的。附件以 base64 `data:` URL 的形式随请求传输，体积会膨胀 4/3，所以上限按 `base64(attachmentTotalMb)` 计算，再为一张内嵌图片和 JSON 封装留出余量。按默认 120MB 的总量计，约为 190MB；管理员调低总量，上限也会随之下降。服务器边读请求体边统计字节数，因此不声明长度（chunked）的请求同样受此限制。
 - 所有错误共用同一种结构：
@@ -41,7 +41,7 @@ API 接受两种凭证：Cookie 会话和本地 API token。
 
 - Cookie 会话：`penguin_session`（HttpOnly，SameSite=Lax），有效期 30 天，滑动续期。
 - 密码以 scrypt 哈希存储。会话是 `auth_sessions` 表中的一行，以随机 Cookie token 的 sha256 为键；原始 token 从不存储。会话重启后依然有效，并在原地续期；登出则删除这一行。
-- 不开放注册。启动时，服务器会用一个随机密码初始化内置管理员 `admin`：密码哈希后保存，明文随即丢弃，没有任何人见过它。在设置密码之前，每次启动都会打印一条首次登录链接，用来认领账号。自动化场景可以改用 `PENGUIN_SEED_ADMIN_PASSWORD` 固定一个已知密码。其余所有账号都由管理员创建。
+- 不开放注册。启动时，服务器会用一个随机密码初始化内置管理员 `admin`：密码哈希后保存，明文随即丢弃，没有任何人见过它。在设置密码之前，每次启动都会打印一条首次登录链接，用来认领账号。自动化场景可以改用 `ADELIE_SEED_ADMIN_PASSWORD` 固定一个已知密码。其余所有账号都由管理员创建。
 - 仅限同源：未启用任何 CORS 中间件。例外是 Agent API 的 `/api/amsp/v1`：它应答任何来源的预检，并在带 `Authorization` 的请求上返回 `Access-Control-Allow-Origin: *`。这组路由不接受上面两种凭证：请求出示的是该 Agent 的 API 密钥；Agent 允许无密钥访问时，也可以不出示。见 [Agent API](/agent-api)。
 - 标为「仅管理员」的路由，对其他用户一律返回 `403` `admin_required`。
 
@@ -58,13 +58,13 @@ curl -c cookies.txt -H "Content-Type: application/json" \
 
 - 服务器每次启动都生成一个新 token，写入 `<root>/api-token`，文件权限仅限所有者（`0600`）。新 token 一经生成，上一次启动的 token 立即失效。
 - 有效的 Bearer token 以内置 `admin` 的身份通过认证。这是有意设计的授权模型：在本机文件系统上能访问数据根目录，本身就等于管理员权限，因为能读 `api-token` 的人也能读它旁边的 `web.db`。`penguin server reset-admin-password` 依赖的正是这条规则。
-- 服务器驱动的会话会把当前 token 注入每个工具子进程的环境变量 `PENGUIN_API_TOKEN`，同时注入 `PENGUIN_API_URL`、`PENGUIN_PROJECT_ID`、`PENGUIN_AGENT_ID` 和 `PENGUIN_SESSION_ID`。Agent 自己的 `penguin` 命令和 API 调用正是靠这些变量获得授权，才能连上运行自己的服务器。
+- 服务器驱动的会话会把当前 token 注入每个工具子进程的环境变量 `ADELIE_API_TOKEN`，同时注入 `ADELIE_API_URL`、`ADELIE_PROJECT_ID`、`ADELIE_AGENT_ID` 和 `ADELIE_SESSION_ID`。Agent 自己的 `penguin` 命令和 API 调用正是靠这些变量获得授权，才能连上运行自己的服务器。
 - 这个 token 不能改变 Agent 的对外暴露。`PUT …/agents/:agentId/api`、`POST …/api/keys`、`DELETE …/api/keys/:keyId`、`POST …/api/try`，以及请求体带 `agentApiEnabled` 的 `PUT /api/admin/settings`，对它一律答 `403` `human_required`，不写入任何内容；这些路由只接受 Cookie 会话。内置浏览器在选择后端与生成配对码时对它也是同一种拒绝。读取路由对它照常开放。每个工具子进程都持有这个 token，否则 Agent 就能在自己的 shell 里把自己开放到网络上。这收窄了交给 Agent 的凭据，但不是边界：在沙盒之外、以数据根目录所属操作系统账号运行的进程可以用 `penguin auth token` 自行铸造会话。边界是沙盒。
 - SSE 端点和其他路由一样接受这个请求头。消费它们要用 `fetch`，不要用 `EventSource`——后者无法发送请求头。
 - 写请求只接受 JSON 的 Content-Type 检查，对 Bearer 请求同样生效。
 
 ```bash
-curl -H "Authorization: Bearer $(cat ~/.penguin/data/api-token)" \
+curl -H "Authorization: Bearer $(cat ~/.adelie/data/api-token)" \
   http://127.0.0.1:7364/api/me
 ```
 
@@ -307,7 +307,7 @@ URL 使用机器自身的 id，而不是连接所用的 ssh 别名。别名只�
 
 - 查询失败仍返回 200，只是 `error` 会带值（`network`、`rate_limited` 或 `bad_response`），且 `latestVersion` 为 null。
 - 结果缓存在内存中：成功后缓存 1 小时，失败后缓存 10 分钟。
-- `PENGUIN_UPDATE_CHECK=off` 可彻底关闭查询：响应带 `disabled: true`，且不发起任何网络请求。
+- `ADELIE_UPDATE_CHECK=off` 可彻底关闭查询：响应带 `disabled: true`，且不发起任何网络请求。
 
 这个开关只关掉这一项检查。无论它取什么值，模型请求、已启用的远程控制连接、由所有者发起的供应商 Key 授权和代理测试都照常出站。
 
@@ -612,7 +612,7 @@ Benchmark 属于 Project，不属于某个 Agent：一个 Benchmark 可以评估
 
 ### 调用者身份
 
-写操作的请求体可以携带 `agentId` 和 `sessionId`，分别对应发起调用的员工和会话；CLI 会从 `PENGUIN_AGENT_ID` 和 `PENGUIN_SESSION_ID` 自动填入这两个值。文件里因此记录的是员工，而不是 token 对应的用户：`agentId` 指向员工时以 `agentId` 为准，否则由会话决定。频道读取和成员 DELETE 没有请求体，所以改用查询参数 `?agentId=` / `?sessionId=` 传入同一对值。只有携带本地 API token 的请求，服务器才会认可这两个字段；员工就是这样以自己的身份、而不是以登录者的身份得到响应的。
+写操作的请求体可以携带 `agentId` 和 `sessionId`，分别对应发起调用的员工和会话；CLI 会从 `ADELIE_AGENT_ID` 和 `ADELIE_SESSION_ID` 自动填入这两个值。文件里因此记录的是员工，而不是 token 对应的用户：`agentId` 指向员工时以 `agentId` 为准，否则由会话决定。频道读取和成员 DELETE 没有请求体，所以改用查询参数 `?agentId=` / `?sessionId=` 传入同一对值。只有携带本地 API token 的请求，服务器才会认可这两个字段；员工就是这样以自己的身份、而不是以登录者的身份得到响应的。
 
 ### 组织
 
@@ -934,9 +934,9 @@ GET  /api/sessions/:sessionId/files/preview-redirect?path=index.html
 GET  /preview/<token>/<relative path>          (unauthenticated; the token is the credential)
 ```
 
-- 为什么需要独立的源：页面要有真实的源，存储、cookie 和第三方嵌入才能工作；但这个源不能是应用的源，否则 Agent 写的 HTML 会带着会话 cookie 运行。本地运行时，应用地址规范化为 `localhost`，预览由 `127.0.0.1` 提供。cookie 按主机名隔离、忽略端口，所以这两个主机拥有各自独立的 cookie jar；换成第二个端口就做不到这一点。其他情况则使用 `PENGUIN_PREVIEW_ORIGIN`。两者都没有时（通配或非回环绑定，或变量未设置），重定向回退到前文所述的同源沙盒，同时 `GET /api/me` 上的 `previewIsolated` 报告 `false`，UI 得以提前告知用户。
+- 为什么需要独立的源：页面要有真实的源，存储、cookie 和第三方嵌入才能工作；但这个源不能是应用的源，否则 Agent 写的 HTML 会带着会话 cookie 运行。本地运行时，应用地址规范化为 `localhost`，预览由 `127.0.0.1` 提供。cookie 按主机名隔离、忽略端口，所以这两个主机拥有各自独立的 cookie jar；换成第二个端口就做不到这一点。其他情况则使用 `ADELIE_PREVIEW_ORIGIN`。两者都没有时（通配或非回环绑定，或变量未设置），重定向回退到前文所述的同源沙盒，同时 `GET /api/me` 上的 `previewIsolated` 报告 `false`，UI 得以提前告知用户。
 - 应用内渲染用同一个 URL：**文件浏览**面板把重定向 URL 嵌入 iframe，沙盒标志为 `allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads`。这里的 `allow-same-origin` 授予的是预览源的身份，不是应用的，所以这套配置仍然严格比新标签页收紧——新标签页没有沙盒。没有独立预览源时，面板回退到内联 `srcdoc` 渲染（只给 `allow-scripts`，外加一个内存版 storage 垫片），相对子资源无法加载。部分浏览器会对跨站 iframe 内的存储做分区或阻止，所以同一个页面在面板里的行为可能与顶层标签页略有差异。
-- 预览主机只服务 `/preview/*`。它与应用是同一个进程，所以对 `/api` 返回 `401`，把其余所有路由以 `302` 重定向到规范的应用主机。因此，预览主机从不设置、也不接受会话 cookie，那里的 Agent HTML 无法从同一源访问 API。部署了 `PENGUIN_PREVIEW_ORIGIN` 时，反向代理必须执行同样的约束：只把 `/preview/*` 路由到这个源上的应用。
+- 预览主机只服务 `/preview/*`。它与应用是同一个进程，所以对 `/api` 返回 `401`，把其余所有路由以 `302` 重定向到规范的应用主机。因此，预览主机从不设置、也不接受会话 cookie，那里的 Agent HTML 无法从同一源访问 API。部署了 `ADELIE_PREVIEW_ORIGIN` 时，反向代理必须执行同样的约束：只把 `/preview/*` 路由到这个源上的应用。
 - token 放在路径里，而不是查询参数里，这样页面的相对子资源（`app.js`、`style.css`、图片）相对文档解析，并在同一个 token 下加载。
 - token 绑定 Session、预览主机和过期时间。主机绑定很关键：同一个进程也在应用源上应答，所以 `/preview/...` 拒绝在那个源上服务，否则会构成同源 XSS。访问是只读的，限于这个 Session 的 Workspace；服务器会重新解析路径，对 `..` 和符号链接逃逸的拒绝方式与任何读取相同。
 - 响应带 `Referrer-Policy: no-referrer`。否则 URL 连同其中的 token 会通过 `Referer` 泄露给页面嵌入的每一个第三方——正因为嵌入如今可以工作，这个风险才随之而来。
@@ -1140,7 +1140,7 @@ Telegram 连接时会先清空积压，跳过无连接期间发送的消息。�
 - `POST /api/desktop/shutdown` 不使用 cookie 会话。它用桌面 shell 专有的 Bearer token 认证（否则返回 `401` `unauthorized`），先应答，再立即开始优雅关闭。
 - update、tray 和 privacy-settings 路由只响应桌面 shell 自己的窗口：其他任何会话都会得到 `403` `desktop_shell_only`。shell 未监听时，返回 `503` `shell_unreachable`。`showTrayIcon` 不是布尔值时，`PUT /api/desktop/tray` 返回 `400` `invalid_show_tray_icon`；`locale` 不是 `zh` 或 `en` 时返回 `400` `invalid_locale`；两个字段都未提供时返回 `400` `empty_tray_patch`。PUT 只确认收到更改；请用 GET 读回实际结果。
 - `pane` 不是 `files`（文件与文件夹）或 `fullDisk`（完全磁盘访问权限）时，`POST /api/desktop/privacy-settings` 返回 `400` `invalid_privacy_pane`。shell 只在 macOS 上打开面板。
-- `/api/hmr` 路由仅限管理员（`403` `forbidden`）。绑定在非环回地址上时还要求 HTTPS，否则返回 `403` `hmr_disabled`。只有 `PENGUIN_TRUST_PROXY=1` 时 `X-Forwarded-Proto` 才生效。升级完成后，每个已连接的客户端都会收到 `web_updated` 并重新加载。
+- `/api/hmr` 路由仅限管理员（`403` `forbidden`）。绑定在非环回地址上时还要求 HTTPS，否则返回 `403` `hmr_disabled`。只有 `ADELIE_TRUST_PROXY=1` 时 `X-Forwarded-Proto` 才生效。升级完成后，每个已连接的客户端都会收到 `web_updated` 并重新加载。
 
 ## 流式传输（SSE）
 

@@ -3,7 +3,7 @@ title: 架构总览
 description: SDK、Server、CLI 和 Web App 如何分工，以及三接口边界与 OmniMessage 如何组织整个系统。
 ---
 
-PenguinHarness 是一个 pnpm monorepo，核心是 `@adelie/core` 里的执行引擎。Server 是随产品交付的 Human 实现，所有 Task 都由它运行；SDK 嵌入方也可以直接驱动引擎。
+Adelie 是一个 pnpm monorepo，核心是 `@adelie/core` 里的执行引擎。Server 是随产品交付的 Human 实现，所有 Task 都由它运行；SDK 嵌入方也可以直接驱动引擎。
 
 Web App 和 CLI 经 HTTP 与 SSE 访问 Server，桌面应用则把 Server 和 Web App 装进同一个窗口。本页依次介绍分层结构、引擎的三接口边界、[一个 Task 的数据流](#一个-task-的数据流)、各项职责的归属和源码结构。
 
@@ -71,7 +71,7 @@ CLI 和 Web App 经 HTTP 与 SSE 同 Server 通信。随产品交付的各个应
 | --- | --- | --- |
 | SDK（`core`） | 协议与执行：让消息流动的一切 | 持久化用户状态、多用户、任何渲染 |
 | Server | 常驻进程与多用户运行时 | 引擎逻辑，完全委托给 SDK |
-| 文件层（`~/.penguin/data`） | 一切可编辑的定义与一切被记录的历史 | 任何计算 |
+| 文件层（`~/.adelie/data`） | 一切可编辑的定义与一切被记录的历史 | 任何计算 |
 | CLI / Web | 渲染与交互 | 业务状态 |
 
 逐项对应（设计 → 归属 → 承载文件或模块）：
@@ -104,7 +104,7 @@ CLI 和 Web App 经 HTTP 与 SSE 同 Server 通信。随产品交付的各个应
 
 ## 状态层
 
-引擎之下是纯文件的状态层。数据根目录为 `~/.penguin/data`（可用 `PENGUIN_HOME` 修改），按 `<project>/agents/<agent>/` 组织：
+引擎之下是纯文件的状态层。数据根目录为 `~/.adelie/data`（可用 `ADELIE_HOME` 修改），按 `<project>/agents/<agent>/` 组织：
 
 | 组件 | 位置 | 内容 |
 | --- | --- | --- |

@@ -3,7 +3,7 @@ title: The OmniMessage Protocol
 description: OmniMessage is the unified message protocol that the SDK yields, the Trace stores, and the Server streams verbatim over SSE.
 ---
 
-OmniMessage is PenguinHarness's unified message protocol. The SDK yields OmniMessage objects, the Trace stores them line by line, and the Server pushes them verbatim over SSE. What streams, what is stored, and what the model sees are one structure: there is no second format between front end, back end, and storage.
+OmniMessage is Adelie's unified message protocol. The SDK yields OmniMessage objects, the Trace stores them line by line, and the Server pushes them verbatim over SSE. What streams, what is stored, and what the model sees are one structure: there is no second format between front end, back end, and storage.
 
 This page starts with the envelope and its three message types, then lists every payload field by field, and ends with the rules that span the whole protocol: the streaming discipline, `stop_reason`, `origin` and provider fidelity. The type definitions live in `packages/core/src/omnimessage/types.ts`.
 
@@ -438,7 +438,7 @@ Provider-specific wire data travels in a single optional field, `fidelity`. It i
 { type: "thinking", thinking: "…", fidelity: { reasoning_field: "reasoning_content" } }
 ```
 
-The payload is opaque to PenguinHarness: it passes through and persists verbatim end to end. Some models require it byte for byte when history is replayed, so any rewriting or loss breaks compatibility. This is one of the preconditions for lossless Session recovery from the Trace.
+The payload is opaque to Adelie: it passes through and persists verbatim end to end. Some models require it byte for byte when history is replayed, so any rewriting or loss breaks compatibility. This is one of the preconditions for lossless Session recovery from the Trace.
 
 ## Surfaces and their message subsets
 
@@ -448,7 +448,7 @@ The payload is opaque to PenguinHarness: it passes through and persists verbatim
 | Trace on disk | `session_meta` + complete `model_msg` + all `event_msg` (no partials, no `origin`-tagged messages) |
 | Server SSE stream | same as the SDK boundary, verbatim single-line JSON — see [Server API](/server-api) |
 
-The [Agent API](/agent-api) does not stream OmniMessage: its stream is [AMSP](/amsp), a projection the server makes of the same live stream for programs outside PenguinHarness. Nothing in OmniMessage changes for it: no field, type or value is added.
+The [Agent API](/agent-api) does not stream OmniMessage: its stream is [AMSP](/amsp), a projection the server makes of the same live stream for programs outside Adelie. Nothing in OmniMessage changes for it: no field, type or value is added.
 
 How messages travel along these surfaces, and every ordering guarantee, is covered on [Message Flow & Ordering](/message-flow).
 

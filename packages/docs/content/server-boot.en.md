@@ -22,15 +22,15 @@ Four mechanisms start the server. All of them converge: the same env vars drive 
 | Entry | Mechanism |
 | --- | --- |
 | Direct | `node dist/index.js` (`start` in `server/package.json`) |
-| CLI (`penguin server` / `penguin web`) | Sets `PORT`/`HOST` and exports `PENGUIN_CLI_ENTRY`, then runs the server as a **supervised child process** that imports `@adelie/server` |
+| CLI (`penguin server` / `penguin web`) | Sets `PORT`/`HOST` and exports `ADELIE_CLI_ENTRY`, then runs the server as a **supervised child process** that imports `@adelie/server` |
 | CLI auto-start | A CLI command that finds no running server spawns a detached `server` subcommand with `PORT=0` and attaches once the root's lock is live |
 | Desktop | `utilityProcess.fork` launches a separate server process with the server's env injected |
 
-The supervised child runs as `node <entry> server …`, marked `PENGUIN_SERVE_CHILD=1` and told `PENGUIN_SUPERVISED=1`. The parent forwards the terminal's signals, exits with the child's code, and relaunches the child when it exits with the restart code that **Restart to update** asks for. A dev run through tsx cannot be re-spawned by node, so the CLI imports the server in-process instead. `penguin web` additionally polls for readiness and opens the browser.
+The supervised child runs as `node <entry> server …`, marked `ADELIE_SERVE_CHILD=1` and told `ADELIE_SUPERVISED=1`. The parent forwards the terminal's signals, exits with the child's code, and relaunches the child when it exits with the restart code that **Restart to update** asks for. A dev run through tsx cannot be re-spawned by node, so the CLI imports the server in-process instead. `penguin web` additionally polls for readiness and opens the browser.
 
 Auto-start output goes to `<root>/logs/server-auto-<date>.log`.
 
-The desktop process injects `PENGUIN_HOME`, `HOST`, `PORT`, `PENGUIN_DESKTOP_TOKEN` and `PENGUIN_PORT_FILE` via env, plus `PENGUIN_WEB_DIST` and `PENGUIN_CLI_ENTRY` when the app pins them.
+The desktop process injects `ADELIE_HOME`, `HOST`, `PORT`, `ADELIE_DESKTOP_TOKEN` and `ADELIE_PORT_FILE` via env, plus `ADELIE_WEB_DIST` and `ADELIE_CLI_ENTRY` when the app pins them. Every one of these deployment names is also read in its pre-rename `PENGUIN_*` spelling (see [Configuration Reference](/configuration#environment-variables)).
 
 > [!NOTE]
 > The server's own configuration comes from environment variables only (`server/src/config.ts`). `system_config.yaml` is agent-level state, read when a Session runs; it plays no part in server boot.
@@ -43,7 +43,7 @@ The desktop process injects `PENGUIN_HOME`, `HOST`, `PORT`, `PENGUIN_DESKTOP_TOK
 main()  —— one PenguinServer method per line
 │
 ├─ ① loadEnv · installProxy        dotenv first (.env may define HTTP_PROXY itself), then the proxy takes over fetch
-├─ ② readConfig                    env only: PENGUIN_HOME, PORT, HOST, PENGUIN_WEB_DB …
+├─ ② readConfig                    env only: ADELIE_HOME, PORT, HOST, ADELIE_WEB_DB …
 ├─ ③ ensureSoleInstance            data root held by another live instance → exit code 3 (before the DB opens)
 ├─ ④ listen                        bind the port now; answer 503 "starting" until ⑧. The callback writes back
 │                                  the real port, takes the lock, and opens the ::1 companion on a loopback bind
@@ -59,7 +59,7 @@ main()  —— one PenguinServer method per line
 │  ├─ ⑨ seedAdmin                  built-in admin seed; decides whether a first-login link is due
 │  ├─ ⑩ installProcessHandlers     signals, the desktop quit path, restart-to-update, the process-level error fallback
 │  └─ ⑪ printFirstLoginNotice      the one-time sign-in link, when one is due
-└─ ⑫ announce                      write the port to PENGUIN_PORT_FILE: the App is up
+└─ ⑫ announce                      write the port to ADELIE_PORT_FILE: the App is up
 ```
 
 The order is not arbitrary, and its constraints are hard:

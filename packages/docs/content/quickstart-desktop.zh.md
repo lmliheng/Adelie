@@ -1,6 +1,6 @@
 ---
 title: 桌面应用
-description: 安装 PenguinHarness 桌面应用，配置模型，跑通第一个 Task，全程不需要终端。
+description: 安装 Adelie 桌面应用，配置模型，跑通第一个 Task，全程不需要终端。
 ---
 
 桌面应用把完整的 Web App 做成了一个独立应用。它内置服务端，打开即已登录：没有登录页，不用抄初始密码，也不必从命令行安装任何东西。它还会替你装好 `penguin` 命令，需要终端时随时可用。
@@ -12,7 +12,7 @@ description: 安装 PenguinHarness 桌面应用，配置模型，跑通第一个
 
 ## 下载并安装
 
-从[下载页](https://github.com/lmliheng/Adelie/releases/latest)下载对应平台的安装包；安装器在 OSS 加速镜像可用时会优先走镜像。每个 [GitHub Release](https://github.com/lmliheng/Adelie/releases) 里都有同样的文件。
+从[最新 Release](https://github.com/lmliheng/Adelie/releases/latest)下载对应平台的安装包；每个 [GitHub Release](https://github.com/lmliheng/Adelie/releases) 里都有同样的文件。
 
 | 平台 | 安装包 |
 | --- | --- |
@@ -36,7 +36,7 @@ macOS 安装包已经过 Developer ID 签名和公证，Windows 安装程序已�
 
 ## 配置模型
 
-PenguinHarness 不内置任何模型凭据。为要使用的模型配置 API Key：
+Adelie 不内置任何模型凭据。为要使用的模型配置 API Key：
 
 1. 在侧边栏选择**模型库**。模型按供应商分组列出，默认模型带有**默认**标记。
 2. 在你所用供应商的分组里点击**填写密钥**，输入 API Key，然后点击**确认**。这个 Key 会写入分组里的每个模型。TokenDance、Penguin Go 和 ModelScope 还可以替你取得 key：在它们的分组上点击**连接**。
@@ -62,7 +62,7 @@ PenguinHarness 不内置任何模型凭据。为要使用的模型配置 API Key
 
 > [!INFO]- macOS 上目录浏览器读不到桌面、文稿或下载
 >
-> 这些文件夹受 macOS 保护。在目录浏览器里点击**允许访问**：应用会以自己的名义向 macOS 申请，你允许之后，Agent 也能读取这个文件夹。macOS 没有放行时，**打开系统设置**会进入「隐私与安全性」；若「文件与文件夹」里没有 PenguinHarness，请在「完全磁盘访问权限」里添加它。从终端启动的开发构建在 macOS 看来归该终端所有，这时要放行的是那个终端。
+> 这些文件夹受 macOS 保护。在目录浏览器里点击**允许访问**：应用会以自己的名义向 macOS 申请，你允许之后，Agent 也能读取这个文件夹。macOS 没有放行时，**打开系统设置**会进入「隐私与安全性」；若「文件与文件夹」里没有 Adelie，请在「完全磁盘访问权限」里添加它。从终端启动的开发构建在 macOS 看来归该终端所有，这时要放行的是那个终端。
 
 ## `penguin` 命令
 
@@ -98,6 +98,6 @@ penguin server reset-admin-password
 ## 下一步
 
 - [Web App](/web-app)：熟悉界面。
-- [更新 PenguinHarness](/updates)：桌面应用如何更新自身。
+- [更新 Adelie](/updates)：桌面应用如何更新自身。
 - [命令行与 Web App](/quickstart-cli)：独立安装，适用于服务器或远程机器。同一台机器上不需要再装：应用已经提供了 `penguin`，再装 CLI 只会在 `PATH` 上多出一份。
 - [架构总览](/architecture)：各个部分如何协作。

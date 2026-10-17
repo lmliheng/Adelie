@@ -1,9 +1,9 @@
 ---
 title: Key concepts
-description: The terms PenguinHarness uses, grouped by topic, each with a link to the page that covers it in depth.
+description: The terms Adelie uses, grouped by topic, each with a link to the page that covers it in depth.
 ---
 
-PenguinHarness uses a small set of terms with specific meanings. This page defines them, grouped by topic, and each entry links to the page that covers the term in depth.
+Adelie uses a small set of terms with specific meanings. This page defines them, grouped by topic, and each entry links to the page that covers the term in depth.
 
 - [How work is organized](#how-work-is-organized): Project, agent, Agent State, Workspace, data root
 - [How work runs](#how-work-runs): Session, Task, Trace, OmniMessage, approval mode, subagent
@@ -34,13 +34,13 @@ See [Configuration Reference](/configuration).
 
 ### Workspace
 
-A Workspace is the directory an agent works in during a Session: the files it reads, creates and changes. You choose the Workspace when you start a Session. If you don't, PenguinHarness creates a temporary Workspace inside the agent's directory.
+A Workspace is the directory an agent works in during a Session: the files it reads, creates and changes. You choose the Workspace when you start a Session. If you don't, Adelie creates a temporary Workspace inside the agent's directory.
 
 See [Sessions & Traces](/sessions-and-traces#run-model).
 
 ### Data root
 
-The data root is the directory where PenguinHarness keeps Projects, agents, model settings and Traces. It is `~/.penguin/data` by default (`%USERPROFILE%\.penguin\data` on Windows), and the desktop app, the CLI and the SDK on one machine all use it. Set `PENGUIN_HOME` to use another directory.
+The data root is the directory where Adelie keeps Projects, agents, model settings and Traces. It is `~/.adelie/data` by default (`%USERPROFILE%\.adelie\data` on Windows), and the desktop app, the CLI and the SDK on one machine all use it. Set `ADELIE_HOME` to use another directory.
 
 See [Quickstart](/quickstart).
 
@@ -60,13 +60,13 @@ See [The Agent Loop](/agent-loop).
 
 ### Trace
 
-A Trace is the record of a Session: every message, tool call, approval decision and Token usage, appended in order to JSON Lines files. PenguinHarness restores a Session from its Trace, and the usage and cost figures come from the same records.
+A Trace is the record of a Session: every message, tool call, approval decision and Token usage, appended in order to JSON Lines files. Adelie restores a Session from its Trace, and the usage and cost figures come from the same records.
 
 See [Sessions & Traces](/sessions-and-traces).
 
 ### OmniMessage
 
-OmniMessage is the single message format PenguinHarness uses everywhere: the SDK streams it, the Trace stores it, and the engine works with it internally. Marketing materials also call it Penguin Message; the documentation uses OmniMessage.
+OmniMessage is the single message format Adelie uses everywhere: the SDK streams it, the Trace stores it, and the engine works with it internally. Marketing materials also call it Adelie Message; the documentation uses OmniMessage.
 
 See [The OmniMessage Protocol](/omni-message).
 
@@ -104,7 +104,7 @@ See [Skills & Plugins](/skills).
 
 ### Hook package
 
-A hook package is a set of scripts that PenguinHarness runs at fixed points of the agent loop: when a prompt is submitted, before each tool call is approved, and when a Task ends. A hook can, for example, deny a tool call or start another Task to keep the agent working.
+A hook package is a set of scripts that Adelie runs at fixed points of the agent loop: when a prompt is submitted, before each tool call is approved, and when a Task ends. A hook can, for example, deny a tool call or start another Task to keep the agent working.
 
 See [Skills & Plugins](/skills#hook-packages).
 
@@ -174,13 +174,13 @@ See [Self-Improvement](/self-improvement#snapshots-and-versions).
 
 ### Provider
 
-A provider is a named group of models in the Project's model table, such as `deepseek`, `anthropic` or the `tokendance` gateway. PenguinHarness includes built-in groups, and you can add your own.
+A provider is a named group of models in the Project's model table, such as `deepseek`, `anthropic` or the `tokendance` gateway. Adelie includes built-in groups, and you can add your own.
 
 See [Models & Providers](/models).
 
 ### Model
 
-A model is always identified by the pair `(provider, model_id)`: its provider group and its id at that provider. PenguinHarness never guesses the provider from the id. Each Project has a default model, and you pick the model when you start a Session.
+A model is always identified by the pair `(provider, model_id)`: its provider group and its id at that provider. Adelie never guesses the provider from the id. Each Project has a default model, and you pick the model when you start a Session.
 
 See [Models & Providers](/models).
 

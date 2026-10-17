@@ -75,7 +75,7 @@ The group appears in the list once its first model is saved.
 2. In **API key**, enter the endpoint's key. The server's `OPENAI_*` / `ANTHROPIC_*` variables are not used for an endpoint that is not the vendor's own (see [Set API keys](#set-api-keys)), so a listing without a key is refused.
 3. In **Custom base URL**, enter the endpoint's base URL.
 4. Select **Detect** at the top-right of the field, or pick the protocol from the menu at the right edge of the field. See [Detect a custom model's protocol](#detect-a-custom-models-protocol).
-5. Select **Import all models**. PenguinHarness asks the endpoint for its model list and saves every model into the new group, in the endpoint's order.
+5. Select **Import all models**. Adelie asks the endpoint for its model list and saves every model into the new group, in the endpoint's order.
 
 Each imported model gets the base URL, the protocol, and the key you entered. Only the model id comes from the endpoint: prices, context window, and display name stay empty, and vision stays off until you detect it or turn it on. That is the same starting point as a model you add by hand.
 
@@ -117,7 +117,7 @@ Which protocol a new model uses depends on its group:
 
 ### Built-in models only
 
-Every built-in group except **Custom** and **vLLM** carries the models in PenguinHarness's built-in catalog and nothing else. Their keys are managed per group, and which models they hold is the catalog's to decide.
+Every built-in group except **Custom** and **vLLM** carries the models in Adelie's built-in catalog and nothing else. Their keys are managed per group, and which models they hold is the catalog's to decide.
 
 - These groups have no **Add model**, and **Model settings** does not offer them as a group to move a model into.
 - The server refuses a new model in one of these groups unless it is one of the group's built-in models: saving it fails with "This group carries its built-in models only". `penguin config model add` refuses it the same way. A built-in model you deleted can be added back, which is what **Sync presets** does.
@@ -191,7 +191,7 @@ Detection never blocks a save. If you select **Confirm** while the protocol is s
 
 ## Detect vision support
 
-**Vision support** can stay off until you ask the model. Select **Detect** next to the switch: PenguinHarness sends the model one 1x1 PNG with a one-word prompt.
+**Vision support** can stay off until you ask the model. Select **Detect** next to the switch: Adelie sends the model one 1x1 PNG with a one-word prompt.
 
 - If the model answers, the switch turns on: "This model accepts images; vision turned on".
 - If the model says it does not take images, the switch turns off. That is a real answer, not an error.
@@ -220,7 +220,7 @@ Three built-in groups can get their key for you: TokenDance, Penguin Go and Mode
 2. Select **Open authorization page**. The provider's authorization page opens in a new tab.
 3. Authorize there. The dialog, which shows "Waiting for the authorization to finish in the other tab…", reports the result on its own.
 
-TokenDance creates a **new** key on your account; it does not read a key you already have. The provider sends the browser back to PenguinHarness, which exchanges the one-time code and saves the key. If the page cannot redirect back, for example because the browser cannot reach the server at the address it was given, select **Page can't redirect back? Enter the code by hand**. The authorization page then shows a one-time code instead of redirecting.
+TokenDance creates a **new** key on your account; it does not read a key you already have. The provider sends the browser back to Adelie, which exchanges the one-time code and saves the key. If the page cannot redirect back, for example because the browser cannot reach the server at the address it was given, select **Page can't redirect back? Enter the code by hand**. The authorization page then shows a one-time code instead of redirecting.
 
 1. Paste the code into **Authorization code**.
 2. Select **Submit code**.
@@ -234,18 +234,18 @@ Penguin Go differs in four ways:
 
 ModelScope differs in three ways:
 
-- Authorization does not go through ModelScope's own pages but through an **authorization bridge**. The bridge holds ModelScope's client secret, runs the OAuth exchange on PenguinHarness's behalf, and hands back an access token that calls api-inference directly. The bridge's address comes from the server-side `MODELSCOPE_BRIDGE_URL` environment variable; see [Environment variables](/configuration#environment-variables).
+- Authorization does not go through ModelScope's own pages but through an **authorization bridge**. The bridge holds ModelScope's client secret, runs the OAuth exchange on Adelie's behalf, and hands back an access token that calls api-inference directly. The bridge's address comes from the server-side `MODELSCOPE_BRIDGE_URL` environment variable; see [Environment variables](/configuration#environment-variables).
 - The authorization page's address is the bridge's, opened as given, rather than assembled here the way Penguin Go's is. This group likewise has no manual-code mode.
-- The access token **expires**; PenguinHarness stores the refresh credential on the server and silently renews before model requests. Select **Reconnect** only when the refresh credential is missing or no longer valid.
+- The access token **expires**; Adelie stores the refresh credential on the server and silently renews before model requests. Select **Reconnect** only when the refresh credential is missing or no longer valid.
 
 Keep in mind:
 
 - Only the Project owner can connect. With TokenDance, only their own signed-in session can finish it, which in practice is the tab the dialog is open in. The redirect itself is received without a session, because the browser the provider sends back is not always the one you started in, but it only hands the code over: nothing is exchanged and no key is saved until the dialog asks for the result.
-- The whole exchange runs on the server. Neither TokenDance's PKCE verifier, Penguin Go's device secret, nor ModelScope's code and device secret ever reaches the browser, and the new key goes straight into the model table without passing through it. ModelScope's client secret is never in PenguinHarness at all; only the bridge holds it.
+- The whole exchange runs on the server. Neither TokenDance's PKCE verifier, Penguin Go's device secret, nor ModelScope's code and device secret ever reaches the browser, and the new key goes straight into the model table without passing through it. ModelScope's client secret is never in Adelie at all; only the bridge holds it.
 - An authorization flow waits for at most ten minutes. ModelScope delivers an access token / refresh token pair: the access token is written to the model table, while the refresh token stays only in the server DB and is never returned to the frontend or written to the Project config.
 - A delivered key is handed over only once. Penguin Go and ModelScope both keep that one delivery briefly if saving it locally fails, so the write can be retried without authorizing again. ModelScope leaves nothing to clean up in ModelScope's console — what it returns is a token for your own account, not a newly minted key.
 - TokenDance hands over the new key only once. If saving it fails, authorize again and delete the unused key in the provider's console.
-- A TokenDance key carries PenguinHarness's app URL from the [App attribution](#app-attribution) table, so calls made with it stay attributed even from another tool.
+- A TokenDance key carries Adelie's app URL from the [App attribution](#app-attribution) table, so calls made with it stay attributed even from another tool.
 
 ### Account balances
 
@@ -286,7 +286,7 @@ To compare the models in a group:
 1. On the group's header, select the speed test icon (**Speed test**).
 2. Select **Start**.
 
-PenguinHarness sends one real request to each model in turn, which uses a small amount of your API quota, and shows on each card:
+Adelie sends one real request to each model in turn, which uses a small amount of your API quota, and shows on each card:
 
 - the time to first token, in milliseconds: green under 1000, yellow up to 3000, red above;
 - the output rate, in Tokens per second: green at 40 or more, yellow at 15 or more, red below.
@@ -295,7 +295,7 @@ While the test runs, the same icon stops it (**Stop speed test**): the model bei
 
 ## Sync preset models
 
-PenguinHarness updates can change the built-in catalog of preset models. When they do, the Project owner sees:
+Adelie updates can change the built-in catalog of preset models. When they do, the Project owner sees:
 
 - a red dot on **Models** in the sidebar;
 - a notice on the page, "Changes detected: {added} new, {updated} to upgrade", with **Update now** and **Dismiss**;
@@ -487,7 +487,7 @@ The platform quotes peak rates in USD per million Tokens. The group's DeepSeek r
 
 `modelscope` is an aggregate gateway group: one ModelScope api-inference endpoint behind the preset base URL `https://api-inference.modelscope.cn/v1`. Model ids are upstream repo names, so they keep their vendor prefix (`deepseek-ai/DeepSeek-V4.1-Flash`, `Qwen/Qwen3.8-27B`). All three preset rows pin AgentHub's generic Responses client (`client_type = "openai-responses"`) and send inference requests to `{base_url}/responses`. A new Project gets these presets right away; an existing Project updates its stored protocol with **Sync presets** or the next ModelScope authorization.
 
-The group's key comes from its header; see [Connect an account](#connect-an-account). Connecting goes through an authorization bridge, which holds the ModelScope client secret and returns an api-inference access token / refresh token pair, rather than through ModelScope's own pages. Nothing else about the group is special: inference requests go straight to `https://api-inference.modelscope.cn/v1` and never through the bridge. The access token is written into `.project_config.toml` like any other group key, while the refresh token stays only in the server DB. The access token expires, and PenguinHarness silently renews it before model requests; reconnect from the header only when the refresh token is missing or no longer valid.
+The group's key comes from its header; see [Connect an account](#connect-an-account). Connecting goes through an authorization bridge, which holds the ModelScope client secret and returns an api-inference access token / refresh token pair, rather than through ModelScope's own pages. Nothing else about the group is special: inference requests go straight to `https://api-inference.modelscope.cn/v1` and never through the bridge. The access token is written into `.project_config.toml` like any other group key, while the refresh token stays only in the server DB. The access token expires, and Adelie silently renews it before model requests; reconnect from the header only when the refresh token is missing or no longer valid.
 
 The preset rows carry no price. ModelScope bills for api-inference and its model pages publish no read-able rate, so the rows are left unpriced: the models page shows no price badge on them and the cost center reports their usage as uncosted. That is the catalog's way of recording "nobody has looked this up" — see [Prices and promotions](#prices-and-promotions).
 
@@ -585,7 +585,7 @@ The catalog decides these headers by **endpoint host**, not by the entry's provi
 | Endpoint | Header | Value |
 | --- | --- | --- |
 | `openrouter.ai` | `HTTP-Referer` | `https://penguin.ooo/` |
-| `openrouter.ai` | `X-OpenRouter-Title` | `PenguinHarness` |
+| `openrouter.ai` | `X-OpenRouter-Title` | `Adelie` |
 | `openrouter.ai` | `X-OpenRouter-Categories` | `cli-agent,personal-agent` |
 | `tokendance.space` | `X-App-URL` | `https://penguin.ooo/` |
 | `opencode.ai` | `x-opencode-session` | The Session id; a request outside any Session (a connectivity test, a vision probe) sends a fresh id of its own |

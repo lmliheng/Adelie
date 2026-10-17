@@ -3,7 +3,7 @@ title: Agent API
 description: Let a program talk to one agent over HTTP — turn on the agent's API, mint keys, and run it with curl or the @adelie/amsp client.
 ---
 
-The Agent API lets a program outside PenguinHarness — a script, a service, a page in a browser — talk to one agent over HTTP. The program sends its input, reads the run as it happens as an [AMSP](/amsp) event stream, and continues the conversation by its Session id. A run uses the Project's models and credentials, is recorded like any other conversation, and appears in the sidebar's **Background** folder.
+The Agent API lets a program outside Adelie — a script, a service, a page in a browser — talk to one agent over HTTP. The program sends its input, reads the run as it happens as an [AMSP](/amsp) event stream, and continues the conversation by its Session id. A run uses the Project's models and credentials, is recorded like any other conversation, and appears in the sidebar's **Background** folder.
 
 Where to go:
 
@@ -27,7 +27,7 @@ Where to go:
 2. Turn on **Enable API access**.
 3. Choose the **Approval mode for API conversations**. See [Approval mode](#approval-mode).
 4. Under **Keys**, select **New key**, name it and copy the key. It is shown once.
-5. Copy the **Base URL** and the **Agent ID** under **Connection**. **Examples** holds a curl command and a TypeScript snippet with both filled in and `$PENGUIN_AGENT_KEY` in place of the key.
+5. Copy the **Base URL** and the **Agent ID** under **Connection**. **Examples** holds a curl command and a TypeScript snippet with both filled in and `$ADELIE_AGENT_KEY` in place of the key.
 
 On the **Agents** page, an agent whose API is on carries an API icon after its name, with the tooltip **API access on**.
 
@@ -79,7 +79,7 @@ The **API** tab ends, for the Project's owner, with **Try it**: an input holding
 
 ```bash
 curl -N http://localhost:7364/api/amsp/v1/agents/demo/coder/runs \
-  -H "Authorization: Bearer $PENGUIN_AGENT_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADELIE_AGENT_KEY" -H "Content-Type: application/json" \
   -d '{"input":"Summarize README.md"}'
 ```
 
@@ -98,7 +98,7 @@ To continue the conversation, send the Session id with the next input:
 
 ```bash
 curl -N http://localhost:7364/api/amsp/v1/agents/demo/coder/runs \
-  -H "Authorization: Bearer $PENGUIN_AGENT_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADELIE_AGENT_KEY" -H "Content-Type: application/json" \
   -d '{"session_id":"session-2026-10-07-10-00-00-3f9a1c2e","input":"Now list its headings"}'
 ```
 
@@ -174,7 +174,7 @@ import { AgentClient } from "@adelie/amsp";
 const client = new AgentClient({
   baseUrl: "http://localhost:7364/api/amsp/v1",
   agent: "demo/coder",
-  apiKey: process.env.PENGUIN_AGENT_KEY,
+  apiKey: process.env.ADELIE_AGENT_KEY,
 });
 
 const run = client.run({ input: "Summarize README.md" });

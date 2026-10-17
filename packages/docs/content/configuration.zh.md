@@ -1,9 +1,9 @@
 ---
 title: 配置参考
-description: PenguinHarness 的每一项设置及其默认值与限制，从环境变量到 Project、Agent、记忆、密钥保险柜和定时任务文件。
+description: Adelie 的每一项设置及其默认值与限制，从环境变量到 Project、Agent、记忆、密钥保险柜和定时任务文件。
 ---
 
-PenguinHarness 的配置分三层：环境变量决定部署形态，Project 配置管理模型和凭证，Agent 配置定义单个 Agent 的行为。每个 Agent 还有自己的[记忆](#记忆)、[Vault](#vault) 和[定时任务](#定时任务)状态文件。
+Adelie 的配置分三层：环境变量决定部署形态，Project 配置管理模型和凭证，Agent 配置定义单个 Agent 的行为。每个 Agent 还有自己的[记忆](#记忆)、[Vault](#vault) 和[定时任务](#定时任务)状态文件。
 
 ## 环境变量
 
@@ -11,45 +11,46 @@ CLI 和服务器启动时会从工作目录加载 `.env` 文件。
 
 | 变量 | 说明 | 默认值 |
 | --- | --- | --- |
-| `PENGUIN_HOME` | 数据根目录 | `~/.penguin/data` |
+| `ADELIE_HOME` | 数据根目录 | `~/.adelie/data` |
 | `PORT` | Web 服务监听端口 | `7364` |
 | `HOST` | Web 服务监听地址 | `127.0.0.1` |
-| `PENGUIN_WEB_DB` | 服务器 SQLite 数据库路径 | `<root>/web.db` |
-| `PENGUIN_WEB_DIST` | 前端静态资源目录 | 服务器包自带的 `web-dist`（源码检出中为 `packages/web/dist`） |
-| `PENGUIN_PREVIEW_ORIGIN` | 提供 Workspace HTML 预览的源，例如 `https://preview.example.com` | 未设置：每次请求推导对应的回环地址 |
+| `ADELIE_WEB_DB` | 服务器 SQLite 数据库路径 | `<root>/web.db` |
+| `ADELIE_WEB_DIST` | 前端静态资源目录 | 服务器包自带的 `web-dist`（源码检出中为 `packages/web/dist`） |
+| `ADELIE_PREVIEW_ORIGIN` | 提供 Workspace HTML 预览的源，例如 `https://preview.example.com` | 未设置：每次请求推导对应的回环地址 |
 | `PENGUIN_GO_ORIGIN` | 服务端发起 Penguin Go Key 授权时调用的可信源 | `https://token.penguin.ooo` |
 | `MODELSCOPE_BRIDGE_URL` | 服务端发起 ModelScope Key 授权时调用的授权中转层地址 | `https://go.penguin.ooo/modelscope` |
-| `PENGUIN_TRUST_PROXY` | 设为 `1` 时信任 `x-forwarded-proto` 请求头 | 未设置：忽略请求头 |
-| `PENGUIN_SEED_ADMIN_PASSWORD` | 预置内置管理员的固定初始密码（自动化测试 / e2e） | 未设置：生成随机密码 |
-| `PENGUIN_LANG` | CLI 语言（`en` / `zh`），用 `penguin config lang` 设置 | `en` |
-| `PENGUIN_UPDATE_CHECK` | 设为 `off` 时关闭 Web App 的新版本检查 | 启用 |
+| `ADELIE_TRUST_PROXY` | 设为 `1` 时信任 `x-forwarded-proto` 请求头 | 未设置：忽略请求头 |
+| `ADELIE_SEED_ADMIN_PASSWORD` | 预置内置管理员的固定初始密码（自动化测试 / e2e） | 未设置：生成随机密码 |
+| `ADELIE_LANG` | CLI 语言（`en` / `zh`），用 `penguin config lang` 设置 | `en` |
+| `ADELIE_UPDATE_CHECK` | 设为 `off` 时关闭 Web App 的新版本检查 | 启用 |
 | `PENGUIN_NO_LOGIN_SHELL_ENV` | 设为任意非空值后，桌面应用在 macOS/Linux 上从图形界面启动时不再导入登录 shell 的环境变量 | 未设置：照常导入 |
-| `PENGUIN_SHELL` | 运行 Agent 命令的 shell（可执行文件名或路径） | 未设置：自动选择，见[工具与审批](/tools#命令会话) |
-| `PENGUIN_CLI_ENTRY` | 本安装提供给所运行 Agent 的 CLI 入口脚本（见 [PATH 启动脚本](#path-启动脚本)） | 由 `penguin server` / `penguin web` 和桌面应用设置 |
+| `ADELIE_SHELL` | 运行 Agent 命令的 shell（可执行文件名或路径） | 未设置：自动选择，见[工具与审批](/tools#命令会话) |
+| `ADELIE_CLI_ENTRY` | 本安装提供给所运行 Agent 的 CLI 入口脚本（见 [PATH 启动脚本](#path-启动脚本)） | 由 `penguin server` / `penguin web` 和桌面应用设置 |
 
 说明：
 
-- `PENGUIN_TRUST_PROXY`：只在反向代理终结 TLS、并由代理自己设置或清除这个请求头时启用。启用后，会话 Cookie 会带上 `Secure` 标记，热更新的网络检查也能识别出 HTTPS。
-- `PENGUIN_SEED_ADMIN_PASSWORD`：不设置时，预置管理员时会生成一个随机密码，哈希后立即丢弃，没有人见过；账号通过首次登录链接认领。
+- **旧拼写：** 数据根与部署接线（`ADELIE_HOME`、`ADELIE_PROFILE`、`ADELIE_WEB_DIST`、`ADELIE_WEB_DB`、`ADELIE_CLI_ENTRY`、`ADELIE_PORT_FILE`、`ADELIE_DESKTOP_TOKEN`、`ADELIE_BUNDLED_SHELL`）同时仍按改名前 `PENGUIN_*` 的拼写读取，两个都设置时新名优先（`packages/core/src/state/boundary-env.ts`）。上表其余变量是 Adelie 自己的，没有兼容别名：旧拼写不再被读取。
+- `ADELIE_TRUST_PROXY`：只在反向代理终结 TLS、并由代理自己设置或清除这个请求头时启用。启用后，会话 Cookie 会带上 `Secure` 标记，热更新的网络检查也能识别出 HTTPS。
+- `ADELIE_SEED_ADMIN_PASSWORD`：不设置时，预置管理员时会生成一个随机密码，哈希后立即丢弃，没有人见过；账号通过首次登录链接认领。
 - `PENGUIN_GO_ORIGIN`：它是服务端配置，不接受浏览器指定的端点。取值必须是不带路径的 HTTPS 源；只有 `localhost`、`127.0.0.1` 和 `[::1]` 这类集成环境可以用明文 HTTP。带路径、凭据、查询参数或 fragment 的取值会在启动时被拒绝。见[连接账户](/models#连接账户)。
 - `MODELSCOPE_BRIDGE_URL`：与 `PENGUIN_GO_ORIGIN` 一样是服务端配置，不接受浏览器指定的端点。它必须是不带凭据、查询参数或 fragment 的 HTTPS 地址。不同之处是**它允许带路径前缀**，因为生产环境的中转层就挂在 `https://go.penguin.ooo/modelscope` 下。见[连接账户](/models#连接账户)。
-- `PENGUIN_UPDATE_CHECK`：设为 `off` 只关闭自动的版本检查，不影响其他对外请求：模型请求、已启用的远程控制连接、Key 授权和代理测试照常联网。
+- `ADELIE_UPDATE_CHECK`：设为 `off` 只关闭自动的版本检查，不影响其他对外请求：模型请求、已启用的远程控制连接、Key 授权和代理测试照常联网。
 - `PENGUIN_NO_LOGIN_SHELL_ENV`：不设置时，导入只填补启动过程没有设置的变量。见[桌面应用快速开始](/quickstart-desktop)。
-- `PENGUIN_CLI_ENTRY`：服务器从源码检出启动时，会回退到检出目录中的 `packages/cli/dist/penguin.js`。
+- `ADELIE_CLI_ENTRY`：服务器从源码检出启动时，会回退到检出目录中的 `packages/cli/dist/penguin.js`。
 
 ### Agent 所执行命令的环境
 
 Agent 用 `exec_command` 运行的命令继承宿主环境，但有以下改动：
 
-- **移除：** `PORT`、`HOST`、`FORCE_COLOR`、`CLICOLOR_FORCE` 以及所有 `PENGUIN_*` 变量。这些变量配置的是 PenguinHarness 本身，不是命令。如果不移除，`exec_command` 启动的开发服务器会读到 `PORT`，试图绑定本应留给 PenguinHarness 的端口，而不是自己另选。
+- **移除：** `PORT`、`HOST`、`FORCE_COLOR`、`CLICOLOR_FORCE` 以及所有 `PENGUIN_*` 与 `ADELIE_*` 变量。这些变量配置的是 Adelie 本身，不是命令。如果不移除，`exec_command` 启动的开发服务器会读到 `PORT`，试图绑定本应留给 Adelie 的端口，而不是自己另选。
 - **代理：** 在服务器运行的 Session 中，由[设置](/settings#代理选项)里的 **Agent 环境使用代理** 开关决定代理变量。关闭时移除 `HTTP_PROXY`、`HTTPS_PROXY` 和 `ALL_PROXY`；开启时注入已配置的代理地址，没有配置地址时透传宿主的变量。
-- **密钥保险柜：** 之后再叠加 Agent 的[密钥保险柜](#vault)，所以在保险柜里设置的 `PORT` 或 `PENGUIN_*` 变量确实能传给命令。
-- **控制变量：** 由服务器驱动的 Session 随后注入 `PENGUIN_API_URL`、`PENGUIN_API_TOKEN`、`PENGUIN_PROJECT_ID`、`PENGUIN_AGENT_ID` 和 `PENGUIN_SESSION_ID`（公司模式下还有 `PENGUIN_ORG_ID`），Agent 自己发起的 `penguin` 调用因此能到达运行它的服务器。这些变量会覆盖密钥保险柜里的同名条目。见 [CLI 参考](/cli)。
+- **密钥保险柜：** 之后再叠加 Agent 的[密钥保险柜](#vault)，所以在保险柜里设置的 `PORT` 或 `ADELIE_*` 变量确实能传给命令。
+- **控制变量：** 由服务器驱动的 Session 随后注入 `ADELIE_API_URL`、`ADELIE_API_TOKEN`、`ADELIE_PROJECT_ID`、`ADELIE_AGENT_ID` 和 `ADELIE_SESSION_ID`（公司模式下还有 `ADELIE_ORG_ID`），Agent 自己发起的 `penguin` 调用因此能到达运行它的服务器。这些变量会覆盖密钥保险柜里的同名条目。见 [CLI 参考](/cli)。
 - **强制：** `GIT_EDITOR`、`GIT_TERMINAL_PROMPT`、`TERM`、`NO_COLOR`、`PAGER` 和 `GIT_PAGER` 始终取固定值，命令不会因为等待编辑器、凭证提示或分页器而卡住。任何来源都无法覆盖它们，密钥保险柜也不例外。
 
 ### PATH 启动脚本
 
-Agent 运行的每条命令，PATH 的第一位都是本安装自带的 `penguin`。服务器启动时会在 `<root>/bin/penguin` 写入一个启动脚本：脚本用服务器自己的 Node 运行 `PENGUIN_CLI_ENTRY` 指向的 CLI 入口，并把这个目录放到每条命令 PATH 的最前面。这样，命令里调用的 `penguin` 就是 Agent 正在运行的这套 harness，无论机器上全局装的是什么版本。
+Agent 运行的每条命令，PATH 的第一位都是本安装自带的 `penguin`。服务器启动时会在 `<root>/bin/penguin` 写入一个启动脚本：脚本用服务器自己的 Node 运行 `ADELIE_CLI_ENTRY` 指向的 CLI 入口，并把这个目录放到每条命令 PATH 的最前面。这样，命令里调用的 `penguin` 就是 Agent 正在运行的这套 harness，无论机器上全局装的是什么版本。
 
 这个目录既前置到环境变量里，也前置到 shell 内部，因为命令通过登录 shell 运行，而登录 shell 的 profile 常常随后重写 PATH。这也让它排在[密钥保险柜](#vault)里设置的 `PATH` 之前，而保险柜里的 `PATH` 原本会整体替换继承来的值。
 
@@ -57,7 +58,7 @@ Agent 运行的每条命令，PATH 的第一位都是本安装自带的 `penguin
 
 ### Workspace 预览源
 
-`PENGUIN_PREVIEW_ORIGIN` 与应用本身的源必须在**主机名**上不同，不能只是端口不同：Cookie 不区分端口，换个端口仍然共享同一个会话 Cookie。
+`ADELIE_PREVIEW_ORIGIN` 与应用本身的源必须在**主机名**上不同，不能只是端口不同：Cookie 不区分端口，换个端口仍然共享同一个会话 Cookie。
 
 - **本地使用：** 保持不设置。应用会规范化到 `localhost`，预览由 `127.0.0.1` 提供，不需要配置，也不需要 DNS。
 - **局域网地址或正式域名：** 必须设置。否则预览会回退到同源沙箱，`localStorage`、Cookie 和第三方嵌入都无法工作。使用正式域名时，会话 Cookie 要保持 host-only（不设 `Domain=`），否则同级子域名会共享这个 Cookie。
@@ -66,7 +67,7 @@ Agent 运行的每条命令，PATH 的第一位都是本安装自带的 `penguin
 
 ### 供应商凭证变量
 
-模型条目没有内联 `api_key` 时，**只在请求确实发往该供应商的官方端点时**回退到供应商的环境变量：条目没有 `base_url`，或 `base_url` 是厂商自己的端点。`*_BASE_URL` 的值只在条目没有内联 `base_url` 时才会使用；自带 `base_url` 的条目一律不由环境变量覆盖，即使 `OPENAI_BASE_URL` 指向同一台服务器也不例外。其余条目——网关分组预置的端点、带自己端点的 custom、vLLM 与自建分组——必须有自己的 `api_key`，否则 PenguinHarness 拒绝为它构建客户端；见[设置 API key](/models#设置-api-key)。
+模型条目没有内联 `api_key` 时，**只在请求确实发往该供应商的官方端点时**回退到供应商的环境变量：条目没有 `base_url`，或 `base_url` 是厂商自己的端点。`*_BASE_URL` 的值只在条目没有内联 `base_url` 时才会使用；自带 `base_url` 的条目一律不由环境变量覆盖，即使 `OPENAI_BASE_URL` 指向同一台服务器也不例外。其余条目——网关分组预置的端点、带自己端点的 custom、vLLM 与自建分组——必须有自己的 `api_key`，否则 Adelie 拒绝为它构建客户端；见[设置 API key](/models#设置-api-key)。
 
 | 供应商 | API key | Base URL |
 | --- | --- | --- |
@@ -382,7 +383,7 @@ compaction:
 | `{{PLATFORM}}` | 运行平台 |
 | `{{OS_VERSION}}` | 操作系统版本 |
 | `{{DATE}}` | 当前日期 |
-| `{{PROJECT_DIR}}` | App Data Dir：PenguinHarness 的应用数据根目录（即 Project 目录） |
+| `{{PROJECT_DIR}}` | App Data Dir：Adelie 的应用数据根目录（即 Project 目录） |
 | `{{AGENT_ID}}` | Agent id |
 | `{{CWD}}` | Workspace 路径 |
 | `{{PROVIDER}}` | 模型供应商分组 |
@@ -391,7 +392,7 @@ compaction:
 
 **小节占位符。** 密钥保险柜、技能、记忆、定时任务四个小节共用一套模式：一个占位符、一个开关、一段可编辑的提示词。模板里只保留 `{{VAULT}}` / `{{SKILLS}}` / `{{MEMORY}}` / `{{SCHEDULES}}` 占位符，小节文本放在对应的 `*.prompt` 键里（在设置标签页编辑），关闭 `*.enabled` 则整块为空。模板缺少其中某个占位符时，对应小节不会注入；相应的设置标签页会提供显式插入占位符或迁移旧版模板的操作。四个小节占位符在组装时最后展开，一趟完成。展开后的文本不会再次扫描，因此记忆索引或小节提示词里看起来像占位符的文本会按字面保留。
 
-**App Data Dir。** `{{PROJECT_DIR}}` 会以 **App Data Dir** 的名义展示给模型：这是 PenguinHarness 的应用数据根目录，存放所有 Agent 的数据文件（`agents/<agent_id>/…`）和 Project 级数据。刻意不把它描述成 Project 或 Task 目录，避免模型误以为它是任务的工作目录（`CWD`）。
+**App Data Dir。** `{{PROJECT_DIR}}` 会以 **App Data Dir** 的名义展示给模型：这是 Adelie 的应用数据根目录，存放所有 Agent 的数据文件（`agents/<agent_id>/…`）和 Project 级数据。刻意不把它描述成 Project 或 Task 目录，避免模型误以为它是任务的工作目录（`CWD`）。
 
 **Windows 路径。** 在 Windows 上，`{{PROJECT_DIR}}` 和 `{{CWD}}` 一律以正斜杠注入；core 为模型拼出的其他路径也是如此（附件行、目标模式的 goal 文件行、截断输出的恢复路径）。模型会把这种写法照搬进 JSON 工具参数和 shell 命令。Node 的 fs API 和包内工具所用的 Git Bash 都接受正斜杠，还能避开 JSON 反斜杠转义错误。
 
@@ -432,7 +433,7 @@ Workspace 记忆键的格式是 `<safe-basename>-<8 hex of the real path's sha25
 
 - `user` 是保留的目录名，这样做是安全的：生成的键都形如 `<base>-<8 hex>`，一定包含连字符。
 - 标识就是目录本身，与 Git 无关。指向同一目录的两个符号链接解析出同一个键；移动或重命名目录会让它变成一个新 Workspace，旧记忆仍以旧键留在磁盘上。
-- 临时 Workspace 由 PenguinHarness 分配在 `agents/<agent_id>/workspaces/` 下，完全没有 Workspace 作用域，子 Agent 继承时也不例外。临时 Workspace 按 Session 分配，之后不会再有 Session 在那里运行并读回内容。这种 Session 仍然会拿到用户作用域，它学到的东西本来也该存在那里。
+- 临时 Workspace 由 Adelie 分配在 `agents/<agent_id>/workspaces/` 下，完全没有 Workspace 作用域，子 Agent 继承时也不例外。临时 Workspace 按 Session 分配，之后不会再有 Session 在那里运行并读回内容。这种 Session 仍然会拿到用户作用域，它学到的东西本来也该存在那里。
 
 ### 主题文件
 

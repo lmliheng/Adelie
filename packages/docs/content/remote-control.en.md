@@ -3,7 +3,7 @@ title: Remote control
 description: Connect a conversation to a Feishu, Telegram, QQ or WeChat bot, and talk to its agent from that app.
 ---
 
-Remote control connects one conversation to a bot on Feishu, Telegram, QQ or WeChat. Messages you send to the bot go into the conversation exactly as if you had typed them in the Web App, and the agent's replies are sent back to the chat. PenguinHarness opens the connection to the messaging platform itself, so you need no public address or callback URL.
+Remote control connects one conversation to a bot on Feishu, Telegram, QQ or WeChat. Messages you send to the bot go into the conversation exactly as if you had typed them in the Web App, and the agent's replies are sent back to the chat. Adelie opens the connection to the messaging platform itself, so you need no public address or callback URL.
 
 - To connect a bot, follow the section for your app: [Connect Feishu](#connect-feishu), [Connect Telegram](#connect-telegram), [Connect QQ](#connect-qq) or [Connect WeChat](#connect-wechat).
 - To learn what arrives where once a bot is connected, see [After you connect](#after-you-connect).
@@ -13,7 +13,7 @@ Remote control connects one conversation to a bot on Feishu, Telegram, QQ or WeC
 
 - **The conversation has started.** Remote control belongs to a conversation, and a conversation exists only after its first message. In a new, unsent chat, the panel shows "Available once the conversation starts".
 - **You are the Project owner.** Only the owner can save credentials, scan a QR code, and turn a connection on or off. Other members can open the settings, see the status, and run the tests.
-- **PenguinHarness is running.** The connection lives in the PenguinHarness server or desktop app. While it is stopped, the bot does not answer.
+- **Adelie is running.** The connection lives in the Adelie server or desktop app. While it is stopped, the bot does not answer.
 
 ## Open remote control
 
@@ -66,7 +66,7 @@ A saved secret is never shown again. Leave its field empty to keep it. To delete
 1. In the [Feishu developer console](https://open.feishu.cn/app), create a self-built app.
 2. Enable the bot capability for the app.
 3. Subscribe to the message-receive event, and set the subscription mode to long connection.
-4. In PenguinHarness, open **Remote control** for the conversation and select the **Feishu** tab.
+4. In Adelie, open **Remote control** for the conversation and select the **Feishu** tab.
 5. From the app's credentials page, copy the App ID and App Secret into **App ID** and **App Secret**.
 6. If you use Lark, change **API domain** to `https://open.larksuite.com`. The default, `https://open.feishu.cn`, is for Feishu.
 7. Select **Save**.
@@ -86,7 +86,7 @@ To receive images and files, the Feishu app needs the permission to read message
 
 1. In Telegram, open [@BotFather](https://t.me/BotFather) and send `/newbot` to create a bot.
 2. Name the bot as prompted, and copy the Bot Token that @BotFather returns.
-3. In PenguinHarness, open **Remote control** for the conversation and select the **Telegram** tab.
+3. In Adelie, open **Remote control** for the conversation and select the **Telegram** tab.
 4. Paste the token into **Bot Token**. A Bot Token looks like `<digits>:<secret>`.
 5. Select **Save**.
 6. Turn on **Enable connection**, and wait for **Connected**.
@@ -96,7 +96,7 @@ To receive images and files, the Feishu app needs the permission to read message
 
 In a forum group, replies stay in the topic the message came from. Telegram channel posts are not supported; the bot handles groups and direct chats.
 
-A Bot Token can serve only one program at a time. Do not use the same token in another PenguinHarness server or bot script while the connection is on.
+A Bot Token can serve only one program at a time. Do not use the same token in another Adelie server or bot script while the connection is on.
 
 ## Connect QQ
 
@@ -106,21 +106,21 @@ A Bot Token can serve only one program at a time. Do not use the same token in a
 - In the bot's development settings, the event subscription mode is set to WebSocket, with the callback URL left empty.
 - Your own QQ account, or a test group, is on the bot's sandbox allowlist.
 
-You can give PenguinHarness the bot's credentials by scanning a QR code or by entering them by hand.
+You can give Adelie the bot's credentials by scanning a QR code or by entering them by hand.
 
 ### Connect with a QR code
 
-1. In PenguinHarness, open **Remote control** for the conversation and select the **QQ** tab.
+1. In Adelie, open **Remote control** for the conversation and select the **QQ** tab.
 2. Select **Connect by QR**.
 3. Scan the code with QQ on your phone.
-4. On the page that opens, pick the bot to authorize, and confirm. PenguinHarness saves the credentials and shows "Saved the credentials for bot {appId} — the connection can be enabled now".
+4. On the page that opens, pick the bot to authorize, and confirm. Adelie saves the credentials and shows "Saved the credentials for bot {appId} — the connection can be enabled now".
 5. Turn on **Enable connection**, and wait for **Connected**.
 6. In QQ, find the bot and send it a message.
 
 ### Enter the credentials by hand
 
 1. On the QQ open platform, copy the App ID and App Secret from the bot's development settings page.
-2. In PenguinHarness, open **Remote control**, select the **QQ** tab, and under **Or enter them by hand**, fill in **App ID** and **App Secret**.
+2. In Adelie, open **Remote control**, select the **QQ** tab, and under **Or enter them by hand**, fill in **App ID** and **App Secret**.
 3. Select **Save**.
 4. Turn on **Enable connection**, and wait for **Connected**.
 5. In QQ, find the bot and send it a message.
@@ -140,11 +140,11 @@ This rule shapes how QQ behaves:
 
 WeChat connects through its official bot channel. There is no console and nothing to register: you scan a QR code, and the credential is saved for you.
 
-1. In PenguinHarness, open **Remote control** for the conversation and select the **WeChat** tab.
+1. In Adelie, open **Remote control** for the conversation and select the **WeChat** tab.
 2. Select **Connect by scanning** to generate a QR code.
 3. Scan the code with WeChat on your phone.
 4. If your phone shows a number, type it into **Pairing code** and select **Confirm**.
-5. Confirm the authorization on your phone. PenguinHarness saves the credential and shows "Saved the credential for bot {botId} — the connection can be enabled now".
+5. Confirm the authorization on your phone. Adelie saves the credential and shows "Saved the credential for bot {botId} — the connection can be enabled now".
 6. Turn on **Enable connection**, and wait for **Connected**.
 7. Wait about 15 seconds.
 8. Find the bot in WeChat and send it a message. If you get no reply, send the message again.
@@ -182,7 +182,7 @@ A connected conversation shows a paper-plane icon on its row in the sidebar. Poi
 
 ### Approvals
 
-Tool approvals cannot be answered from the chat. When a tool call needs approval, the bot sends "A tool call is waiting for your approval in the PenguinHarness web UI." Approve or deny it in the Web App.
+Tool approvals cannot be answered from the chat. When a tool call needs approval, the bot sends "A tool call is waiting for your approval in the Adelie web UI." Approve or deny it in the Web App.
 
 Whether a tool call needs approval depends on the conversation's [approval mode](/tools#approval). New conversations start in **Approve everything**, which asks for nothing, so read [Security](#security) before you bind a bot to one.
 
@@ -236,7 +236,7 @@ Credentials are stored on the server and never sent back to the browser in full.
 
 **Telegram: the bot ignores messages in a group.** Telegram's Group Privacy is on by default. Under it, a bot that is not a group administrator receives only commands addressed to it and replies to its own messages. Either make the bot an administrator of the group, or turn Group Privacy off with `/setprivacy` in @BotFather and then remove the bot from the group and add it back. A group the bot is already in does not pick up the privacy change until you do.
 
-**Telegram: another program is polling.** A Bot Token serves one program at a time. Close the other PenguinHarness server or script that uses the token, or give this conversation its own bot. A `getUpdates` call you run by hand counts as another program too, so turn off the connection before running one.
+**Telegram: another program is polling.** A Bot Token serves one program at a time. Close the other Adelie server or script that uses the token, or give this conversation its own bot. A `getUpdates` call you run by hand counts as another program too, so turn off the connection before running one.
 
 **Telegram: the panel says no message has arrived.** That line covers only the current connection. Turning the connection off and on, or saving the credentials, starts a new one. Send a fresh message. If nothing arrives, check that the bot is still in the group and that nothing else is polling the token.
 

@@ -7,33 +7,33 @@ description: 所有 penguin 命令和子命令的选项、默认值、输出结�
 
 CLI 以 npm 包 `@adelie/cli` 发布，命令名为 `penguin`。直接运行 `penguin` 会打印帮助。`-v, --version` 打印当前构建的一行标识信息，`penguin version --json` 则打印完整信息。启动时，CLI 会从工作目录加载 `.env` 文件。
 
-CLI 是服务器的瘦客户端。所有面向会话的命令（`run`、`chat`、`ls`、`input`、`logs`、`agent`、`project`、`cost`、`schedule`、`org`、`browser`）都向 PenguinHarness 服务器发送 HTTP 请求，并渲染返回结果。Task 在服务器上运行，Session 存放在服务器的索引里；CLI 创建的一切 Web App 都能看到，反过来也一样。只有 `config` 仍直接编辑 Project 的文件，`server` / `web` 则负责启动服务本身。
+CLI 是服务器的瘦客户端。所有面向会话的命令（`run`、`chat`、`ls`、`input`、`logs`、`agent`、`project`、`cost`、`schedule`、`org`、`browser`）都向 Adelie 服务器发送 HTTP 请求，并渲染返回结果。Task 在服务器上运行，Session 存放在服务器的索引里；CLI 创建的一切 Web App 都能看到，反过来也一样。只有 `config` 仍直接编辑 Project 的文件，`server` / `web` 则负责启动服务本身。
 
 ## 服务器连接
 
 与本机服务器通信的 CLI 无需登录，只有改变 Agent 的对外暴露时例外（见 [penguin agent api](#penguin-agent-api)）。CLI 按以下顺序确定要连接的服务器，命中第一项即停止：
 
 1. `--server <url>`：显式指定的目标。
-2. `PENGUIN_API_URL`：同样指定目标，但取自环境变量。服务器驱动的会话会把它注入每个工具子进程，同时注入的还有 `PENGUIN_API_TOKEN`、`PENGUIN_PROJECT_ID`、`PENGUIN_AGENT_ID` 和 `PENGUIN_SESSION_ID`，这样 Agent 自己调用 `penguin` 时，请求就能到达运行它的那台服务器。
-3. 数据根目录下存在活跃的 `server.lock`（数据根目录取 `PENGUIN_HOME`，否则为 `~/.penguin/data`）：CLI 接入正在运行的本地服务器。
+2. `ADELIE_API_URL`：同样指定目标，但取自环境变量。服务器驱动的会话会把它注入每个工具子进程，同时注入的还有 `ADELIE_API_TOKEN`、`ADELIE_PROJECT_ID`、`ADELIE_AGENT_ID` 和 `ADELIE_SESSION_ID`，这样 Agent 自己调用 `penguin` 时，请求就能到达运行它的那台服务器。
+3. 数据根目录下存在活跃的 `server.lock`（数据根目录取 `ADELIE_HOME`，否则为 `~/.adelie/data`）：CLI 接入正在运行的本地服务器。
 4. 自动启动：CLI 在临时端口上拉起一个独立运行的本地服务器，等它就绪后接入。服务器输出写入 `<root>/logs/server-auto-<date>.log`。如果两个 CLI 同时抢着启动，落败一方的启动进程会退出，双方都接入先成功的那台。
 
-CLI 使用本地 API token 认证。服务器每次启动都会把一个新 token 写入 `<root>/api-token`（仅所有者可读），CLI 以 `Authorization: Bearer` 的形式发送它。`PENGUIN_API_TOKEN` 优先于这个文件。CLI 只对回环地址目标读取这个文件，因此远程 `--server` 需要显式设置 `PENGUIN_API_TOKEN`。按设计，持有这个文件就等于持有管理员权限——能直接访问数据根目录的本地文件系统，本来就拥有同样的权限。`penguin server reset-admin-password` 依据的也是同一条规则。
+CLI 使用本地 API token 认证。服务器每次启动都会把一个新 token 写入 `<root>/api-token`（仅所有者可读），CLI 以 `Authorization: Bearer` 的形式发送它。`ADELIE_API_TOKEN` 优先于这个文件。CLI 只对回环地址目标读取这个文件，因此远程 `--server` 需要显式设置 `ADELIE_API_TOKEN`。按设计，持有这个文件就等于持有管理员权限——能直接访问数据根目录的本地文件系统，本来就拥有同样的权限。`penguin server reset-admin-password` 依据的也是同一条规则。
 
 少数修改只接受人的登录，例如改变 Agent 对外暴露的修改（见 [penguin agent api](#penguin-agent-api)）。服务器以 `403` `human_required` 拒绝携带 token 的这类请求，CLI 随即改用你通过 [`penguin auth login`](#penguin-auth-login) 或 [`penguin auth token`](#penguin-auth-token) 保存的登录把同一请求再发一次：登录存放在 `<root>/cli-session.json`，以会话 Cookie 发送。CLI 只对本机上的服务器这样做，只在登录的对象本身就是本机服务器时使用，且从不在 Session 内使用——那里的命令属于 Agent。其余请求一律只带 token。
 
 ## 全局约定
 
 - 模型引用：模型的标识始终是 `(provider, model_id)` 这一对。`--model-id` 接收上游模型 id，`--provider` 接收模型所属的分组。CLI 从不推断、猜测或默认指定供应商。在 `run` 和 `chat` 上，这一对参数整体可选：两个都传即可选择模型，两个都不传则使用 Project 的默认模型；只传一个是错误。
-- Project 与 Agent 默认值：`--project-id` 依次回退到 `PENGUIN_PROJECT_ID`，再回退到 `default_project`；`--agent-id` 依次回退到 `PENGUIN_AGENT_ID`，再回退到 `default_agent`。在服务器驱动的会话里，这些环境变量指向会话所属的 Project 和 Agent。
+- Project 与 Agent 默认值：`--project-id` 依次回退到 `ADELIE_PROJECT_ID`，再回退到 `default_project`；`--agent-id` 依次回退到 `ADELIE_AGENT_ID`，再回退到 `default_agent`。在服务器驱动的会话里，这些环境变量指向会话所属的 Project 和 Agent。
 - Session 引用：凡是接受 session id 的命令（`input`、`logs`、`run --session`、`chat --resume`），完整 id 或任何唯一的片段都有效。`penguin ls` 打印的 8 位十六进制尾部就是为此准备的简写。片段有歧义时报错，并列出所有候选。
 - 默认使用最近的 Session：session id 可选的命令（`input [session_id]`、`logs [session_id]`、`chat --resume`）在省略 id 时，指向 Agent 最近的一个 Session，由 `--agent-id` 指定是哪个 Agent。`input` 和 `logs` 会在 stderr 上用一行暗色的 `[latest]` 标注选中的 Session，目标始终明确，stdout 上的 `--json` 输出也保持可解析。如果这个 Agent 一个 Session 都没有，命令会打印一行提示指向 `penguin run` / `penguin chat`，然后以非零码退出。
 - JSON 输出：`--json` 打印原始 JSON，取代渲染后的或表格形式的输出。
 - 目标服务器：`--server <url>` 指定要连接的服务器。参见[服务器连接](#服务器连接)。
-- 调用方上下文默认值：在 harness Agent 内部（`PENGUIN_SESSION_ID` 已设置）时，`run` 或 `chat` 创建的 Session 会从调用方 Session 的实时取值继承每一个未指定的字段：Workspace、模型对、审批模式和思考等级。`run_subagent` 对它派生的子 Agent 采用同样的继承，两个入口遵循同一条约定。对每个字段，显式传入的选项优先于调用方的值，调用方的值又优先于普通回退值。查找失败时打印一条暗色警告，并改用普通回退值。在 Agent 之外，行为不变：`--project-id` / `--agent-id` 仍按环境变量取默认值。
+- 调用方上下文默认值：在 harness Agent 内部（`ADELIE_SESSION_ID` 已设置）时，`run` 或 `chat` 创建的 Session 会从调用方 Session 的实时取值继承每一个未指定的字段：Workspace、模型对、审批模式和思考等级。`run_subagent` 对它派生的子 Agent 采用同样的继承，两个入口遵循同一条约定。对每个字段，显式传入的选项优先于调用方的值，调用方的值又优先于普通回退值。查找失败时打印一条暗色警告，并改用普通回退值。在 Agent 之外，行为不变：`--project-id` / `--agent-id` 仍按环境变量取默认值。
 - 超时：`run`、`input` 和 `logs -f` 上的 `--timeout <duration>` 限制等待时长，语义为软让出——相当于把 `exec_command` 的让出窗口模型搬到 CLI 上。到时后命令干净地脱离并退出，退出码为 0。Task 在服务器上继续运行，之后可以用 `penguin input` 或 `penguin logs` 接上。可接受的值有 `30s`、`5m`、`2h`，或一个表示秒数的纯整数；其他值一律拒绝。`--timeout 0` 在消息送达后立即返回（`--json` 下为 `{sessionId, status: "running"}`），所以这个选项也覆盖「不等」的场景。不带此选项时，命令无限等待。对新建 Task 而言，惯常做法仍是 `run --background`：提交后不再等待，打印裸 session id 供脚本使用，Task 一创建就脱离。
 - 参数错误：缺少参数、缺少必填选项、选项未知或命令拼错时，CLI 用界面语言打印一行错误、命令自身的用法，并提示查看 `--help`，然后以非零码退出。
-- 数据根目录：`--root <dir>` 为直接读取数据根目录的命令指定根目录，涉及 `config`、`auth`、`version`、`server status` 和 `server stop`。相对路径相对工作目录解析。优先级：`--root`，然后是 `PENGUIN_HOME` 环境变量，最后是 `~/.penguin/data`。
+- 数据根目录：`--root <dir>` 为直接读取数据根目录的命令指定根目录，涉及 `config`、`auth`、`version`、`server status` 和 `server stop`。相对路径相对工作目录解析。优先级：`--root`，然后是 `ADELIE_HOME` 环境变量，最后是 `~/.adelie/data`。
 
 ## penguin run
 
@@ -46,8 +46,8 @@ penguin run -m <message> [options]
 | 选项 | 说明 | 默认值 |
 | --- | --- | --- |
 | `-m, --message <message>` | 要发送的消息。必填。 | — |
-| `--project-id <id>` | 要使用的 Project。 | `PENGUIN_PROJECT_ID`，否则 `default_project` |
-| `--agent-id <id>` | 要使用的 Agent。 | `PENGUIN_AGENT_ID`，否则 `default_agent` |
+| `--project-id <id>` | 要使用的 Project。 | `ADELIE_PROJECT_ID`，否则 `default_project` |
+| `--agent-id <id>` | 要使用的 Agent。 | `ADELIE_AGENT_ID`，否则 `default_agent` |
 | `--workspace <path>` | Workspace 目录。相对路径相对 CLI 的工作目录解析。目录必须存在于服务器所在的机器上；默认的本地部署中，服务器就在本机。 | 工作目录 |
 | `--model-id <id>` | 要使用的模型的上游 id。需要配合 `--provider`。 | Project 的默认模型 |
 | `--provider <group>` | 模型所属的供应商分组。与 `--model-id` 搭配时必填。 | — |
@@ -162,8 +162,8 @@ penguin input [session_id] [options]
 | --- | --- | --- |
 | `-m, --message <text>` | 消息文本。省略它则改为轮询最后一次 助手回复。 | — |
 | `--timeout <duration>` | 软让出的等待预算。带 `-m` 时，到时后命令像 `run` 一样脱离，`--timeout 0` 在送达后立即返回。不带 `-m` 时，命令在到时点拍快照（`0` 表示立即拍），并注明 Session 仍在运行。 | 无限等待 |
-| `--project-id <id>` | 片段搜索的范围。完整 session id 无需此选项。 | `PENGUIN_PROJECT_ID`，否则 `default_project` |
-| `--agent-id <id>` | 省略 session id 时，取这个 Agent 最近的 Session。 | `PENGUIN_AGENT_ID`，否则 `default_agent` |
+| `--project-id <id>` | 片段搜索的范围。完整 session id 无需此选项。 | `ADELIE_PROJECT_ID`，否则 `default_project` |
+| `--agent-id <id>` | 省略 session id 时，取这个 Agent 最近的 Session。 | `ADELIE_AGENT_ID`，否则 `default_agent` |
 | `--json` / `--server <url>` | 见[全局约定](#全局约定)和下文的 JSON 结构。 | — |
 
 带 `-m` 时，运行中的 Session 收到的文本会作为插话处理，在两轮之间送达；空闲的 Session 则启动一个新 Task。默认情况下，命令会等待并渲染，直到这一轮完成。
@@ -196,8 +196,8 @@ penguin logs [session_id] [options]
 | `--tail <n>` | 只显示最后 n 条记录。 | 全部记录 |
 | `-f, --follow` | 历史播完后继续跟踪实时流。只读：Ctrl-C 脱离，不改动 Session。 | — |
 | `--timeout <duration>` | 跟踪这么长时间后停止（软让出，退出 0）。只在配合 `-f` 时有意义。 | — |
-| `--project-id <id>` | 片段搜索的范围。 | `PENGUIN_PROJECT_ID`，否则 `default_project` |
-| `--agent-id <id>` | 省略 session id 时，取这个 Agent 最近的 Session。 | `PENGUIN_AGENT_ID`，否则 `default_agent` |
+| `--project-id <id>` | 片段搜索的范围。 | `ADELIE_PROJECT_ID`，否则 `default_project` |
+| `--agent-id <id>` | 省略 session id 时，取这个 Agent 最近的 Session。 | `ADELIE_AGENT_ID`，否则 `default_agent` |
 | `--json` / `--server <url>` | `--json` 打印原始消息数组；配合 `-f` 时，消息一到就以每行一条 JSON 打印。 | — |
 
 ```bash
@@ -261,7 +261,7 @@ penguin agent api server on|off [--json] [--server <url>]
 
 | 选项 | 说明 | 默认值 |
 | --- | --- | --- |
-| `--agent-id <id>` | 目标 Agent。必填：与其他命令不同，它不会回退到 `PENGUIN_AGENT_ID` 或 `default_agent`，任何 Agent 都不会因默认值而被对外开放。 | — |
+| `--agent-id <id>` | 目标 Agent。必填：与其他命令不同，它不会回退到 `ADELIE_AGENT_ID` 或 `default_agent`，任何 Agent 都不会因默认值而被对外开放。 | — |
 | `--open` / `--no-open` | 允许无密钥访问 / 要求密钥（`enable`、`set`）。 | 不变 |
 | `--approve <mode>` | 新建 API 会话起始的审批模式，见[审批模式（--approve）](#审批模式--approve)。需要确认时，确认请求发给调用方程序（`enable`、`set`）。模式未知时，在发出任何请求之前失败。 | 不变 |
 | `--name <name>` | 密钥名称，1–64 个字符（`keys create`，必填）。 | — |
@@ -453,7 +453,7 @@ penguin org finance [--period <YYYY-MM>] [--json]
 
 每个子命令都接受 `--org-id <id>`、`--project-id`、`--json` 和 `--server`。
 
-`--org-id` 默认取 `PENGUIN_ORG_ID`——公司模式加入[服务器连接](#服务器连接)所述环境的唯一一个变量。服务器把它注入工位会话和工单会话的每个工具子进程，员工自己调用 `penguin org` 时无需指名，请求就能到达自己所在的组织；人在 shell 里则显式传入这个选项。没有默认组织：选项和变量都不提供时，命令在联系任何服务器之前就会失败。`create` 是例外，因为它的 `--org-id` 就是要创建的 id，从不取自环境。
+`--org-id` 默认取 `ADELIE_ORG_ID`——公司模式加入[服务器连接](#服务器连接)所述环境的唯一一个变量。服务器把它注入工位会话和工单会话的每个工具子进程，员工自己调用 `penguin org` 时无需指名，请求就能到达自己所在的组织；人在 shell 里则显式传入这个选项。没有默认组织：选项和变量都不提供时，命令在联系任何服务器之前就会失败。`create` 是例外，因为它的 `--org-id` 就是要创建的 id，从不取自环境。
 
 `--json` 把响应打印为一行 JSON。不加时，写命令打印一行确认信息。
 
@@ -461,9 +461,9 @@ penguin org finance [--period <YYYY-MM>] [--json]
 
 在会话内部，同一套环境变量标识调用方：
 
-- `calendar` 系列命令的 `--agent-id` 和 `desk` 的 `<agent_id>` 参数默认取 `PENGUIN_AGENT_ID`，员工借此安排自己的日程、换新自己的工位会话。不带选项的 `calendar ls` 列出所有员工的事件。
-- `ticket start` 启动工单会话：给了 `--agent-id` 就以它运行；否则在设置了 `PENGUIN_AGENT_ID` 时以它运行；再否则以工单负责人的身份运行，由服务器确定。命令还会发送 `PENGUIN_SESSION_ID`，服务器借此执行自己的规则：只有工单负责人或人才能启动工单会话。员工请求别人的工单，或请求没有员工负责人的工单时，会得到 `403 not_ticket_owner`，原样打印。错误信息会提示改为指派工单（`penguin org ticket assign <id> --owner agent:<employee>`），让那位员工的工位在下一轮巡检时接手。负责人也可以用 `--agent-id` 把同事拉到自己负责的工单上。
-- 工单写操作（`create`、`assign`、`move`、`block`、`unblock`、`progress`）和频道写操作（`create`、`invite`、`join`、`archive`、`unarchive`、`send`）在请求体里带上 `PENGUIN_SESSION_ID`，文件里记录的因此是会话对应的员工，而不是 token 的用户。`ticket attach` 在省略 `--session` 时挂接的就是这个会话；`--session` 与其他地方一样，接受完整 id 或唯一片段。
+- `calendar` 系列命令的 `--agent-id` 和 `desk` 的 `<agent_id>` 参数默认取 `ADELIE_AGENT_ID`，员工借此安排自己的日程、换新自己的工位会话。不带选项的 `calendar ls` 列出所有员工的事件。
+- `ticket start` 启动工单会话：给了 `--agent-id` 就以它运行；否则在设置了 `ADELIE_AGENT_ID` 时以它运行；再否则以工单负责人的身份运行，由服务器确定。命令还会发送 `ADELIE_SESSION_ID`，服务器借此执行自己的规则：只有工单负责人或人才能启动工单会话。员工请求别人的工单，或请求没有员工负责人的工单时，会得到 `403 not_ticket_owner`，原样打印。错误信息会提示改为指派工单（`penguin org ticket assign <id> --owner agent:<employee>`），让那位员工的工位在下一轮巡检时接手。负责人也可以用 `--agent-id` 把同事拉到自己负责的工单上。
+- 工单写操作（`create`、`assign`、`move`、`block`、`unblock`、`progress`）和频道写操作（`create`、`invite`、`join`、`archive`、`unarchive`、`send`）在请求体里带上 `ADELIE_SESSION_ID`，文件里记录的因此是会话对应的员工，而不是 token 的用户。`ticket attach` 在省略 `--session` 时挂接的就是这个会话；`--session` 与其他地方一样，接受完整 id 或唯一片段。
 - 频道读操作（`ls`、`show`、`tail`）以及 `leave` 和 `remove` 背后的成员 DELETE 没有请求体，改为通过 `?sessionId=` 发送同一个会话。不传的话，服务器会把员工当作登录的那个人来应答，`channel ls` 列出的会是所有频道而不是员工自己的频道。
 
 ### ls、show 和 chart
@@ -560,9 +560,9 @@ penguin browser history [<query>] [-n <count>]
 
 - `--tab <id>` 指定 `open`、`scan`、`exec`、`click`、`type`、`screenshot` 和 `cdp` 作用的标签页：取 `tabs` 列出的标签页 id，或 `active`（默认值）。
 - `--json` 把响应打印为一行 JSON；`--server` 与其他命令相同。
-- 在会话内部，`open`、`exec`、`click` 和 `type` 会发送 `PENGUIN_SESSION_ID`，应用据此在正在驱动浏览器的那个对话里打开浏览器面板。
+- 在会话内部，`open`、`exec`、`click` 和 `type` 会发送 `ADELIE_SESSION_ID`，应用据此在正在驱动浏览器的那个对话里打开浏览器面板。
 - 这些命令从不自动启动服务器，因为这样启动的服务器没有桌面应用来承载浏览器。没有服务器在运行时，命令以 `browser_unavailable` 失败。
-- 输出的标签与提示跟随 CLI 的语言。本节示例是英文输出；`PENGUIN_LANG=zh` 时改用中文，例如 `状态：success   标签页：12`。
+- 输出的标签与提示跟随 CLI 的语言。本节示例是英文输出；`ADELIE_LANG=zh` 时改用中文，例如 `状态：success   标签页：12`。
 
 `status` 打印 `status: available` 和标签页列表；不可用时打印 `status: unavailable (<reason>)` 和一行说明，并以退出码 1 结束。原因有三种：`not_desktop`（服务器不属于桌面应用）、`shell_unsupported`（桌面应用版本过旧，无法承载浏览器）和 `no_window`（应用没有打开的窗口）。
 
@@ -634,7 +634,7 @@ note: No visible change on the page.
 
 ### 错误
 
-出错时在 stderr 打印一行 `error: <code>: <message>`，命令以退出码 1 结束。服务器的错误码有 `browser_unavailable`、`no_tab`（没有打开的标签页）、`no_such_tab`、`tab_crashed`（该标签页的页面已崩溃：关闭它，在新标签页中重新打开页面）、`too_many_tabs`（浏览器已有 20 个标签页）、`script_error`、`timeout`、`invalid_url`、`source_not_found` 和 `import_failed`；CLI 自己还有三种：命令写错时的 `invalid_argument`、文件读写失败时的 `io_error`，以及连不上服务器时的 `request_failed`。对于 `browser_unavailable`，错误信息会说明内置浏览器需要 PenguinHarness 桌面应用，并且应用必须处于打开状态。
+出错时在 stderr 打印一行 `error: <code>: <message>`，命令以退出码 1 结束。服务器的错误码有 `browser_unavailable`、`no_tab`（没有打开的标签页）、`no_such_tab`、`tab_crashed`（该标签页的页面已崩溃：关闭它，在新标签页中重新打开页面）、`too_many_tabs`（浏览器已有 20 个标签页）、`script_error`、`timeout`、`invalid_url`、`source_not_found` 和 `import_failed`；CLI 自己还有三种：命令写错时的 `invalid_argument`、文件读写失败时的 `io_error`，以及连不上服务器时的 `request_failed`。对于 `browser_unavailable`，错误信息会说明内置浏览器需要 Adelie 桌面应用，并且应用必须处于打开状态。
 
 ## 审批模式（--approve）
 
@@ -717,7 +717,7 @@ penguin config vault remove --key GITHUB_TOKEN
 penguin config lang en
 ```
 
-设置 CLI 的界面语言（`en` 或 `zh`），方式是把 `PENGUIN_LANG` 写入你的 shell 启动文件。在交互式终端里，命令随后会提议打开一个新 shell 让设置生效；否则会打印让设置生效的方法。Windows 上命令会拒绝执行，因为没有 POSIX shell 启动文件可写。
+设置 CLI 的界面语言（`en` 或 `zh`），方式是把 `ADELIE_LANG` 写入你的 shell 启动文件。在交互式终端里，命令随后会提议打开一个新 shell 让设置生效；否则会打印让设置生效的方法。Windows 上命令会拒绝执行，因为没有 POSIX shell 启动文件可写。
 
 ## penguin server / penguin web
 
@@ -753,7 +753,7 @@ penguin server status [--root <dir>]
 # {"running":true,"port":7364,"pid":41233,"machineId":"LNrJdHAZJ91G58i0"}
 ```
 
-只有当记录的 pid 还活着、端口也能建立连接时，`running` 才是 true，所以复用的 pid 不会冒充存活的服务器。没有服务器在运行时，`port` 和 `pid` 为 `null`。`machineId` 在本机至少启动过一次服务器之前为 `null`：id 在首次启动时生成，此后永不改变。数据根目录照常取自 `--root` 或 `PENGUIN_HOME`。
+只有当记录的 pid 还活着、端口也能建立连接时，`running` 才是 true，所以复用的 pid 不会冒充存活的服务器。没有服务器在运行时，`port` 和 `pid` 为 `null`。`machineId` 在本机至少启动过一次服务器之前为 `null`：id 在首次启动时生成，此后永不改变。数据根目录照常取自 `--root` 或 `ADELIE_HOME`。
 
 **机器管理**页面通过 ssh 运行这条命令，询问一台机器正在做什么，这也是输出采用 JSON 而不是文字说明的原因。
 
@@ -765,7 +765,7 @@ penguin server status [--root <dir>]
 penguin server reset-admin-password
 ```
 
-内置的 `admin` 账号回到未认领状态：密码换成一个没人见过的随机值，它的所有会话全部吊销。重新启动服务器，打开它打印的首次登录链接设置新密码即可，中间不需要记下任何东西。其他账号由管理员在**用户管理**页面重置，这条命令只处理 `admin`。数据根目录照常取自 `PENGUIN_HOME`。
+内置的 `admin` 账号回到未认领状态：密码换成一个没人见过的随机值，它的所有会话全部吊销。重新启动服务器，打开它打印的首次登录链接设置新密码即可，中间不需要记下任何东西。其他账号由管理员在**用户管理**页面重置，这条命令只处理 `admin`。数据根目录照常取自 `ADELIE_HOME`。
 
 ### penguin server stop
 
@@ -795,7 +795,7 @@ penguin version --json   # the full build info
 | 选项 | 说明 | 默认值 |
 | --- | --- | --- |
 | `--json` | 打印完整的版本报告，而不是一行：`{version, describe, channel, buildDate, commit, branch, dirty, runtime, harness}`。 | — |
-| `--root <dir>` | 指定把哪个数据根目录的 HMR 存储报告为 `harness`。仅在指定 `--json` 时使用。 | `PENGUIN_HOME`，否则 `~/.penguin/data` |
+| `--root <dir>` | 指定把哪个数据根目录的 HMR 存储报告为 `harness`。仅在指定 `--json` 时使用。 | `ADELIE_HOME`，否则 `~/.adelie/data` |
 
 不带选项时打印一行。对源码构建版来说，这一行就是 `git describe --tags --dirty` 的输出：`v0.2.3-14-g9e8f7d6-dirty` 表示在 `v0.2.3` 之后第十四个提交（`9e8f7d6`），且带有未提交的改动。`-v, --version` 打印同样的一行。
 
@@ -813,7 +813,7 @@ penguin version --json   # the full build info
 
 ```json
 "harness": {
-  "source": { "repo": "…/penguin-harness", "revision": "v0.2.3-7-gabc1234-dirty" },
+  "source": { "repo": "…/Adelie", "revision": "v0.2.3-7-gabc1234-dirty" },
   "pushedAt": "2026-08-20T10:15:00.000Z",
   "bundles": { "platform": "store/platform/…", "cli": "store/cli/…", "web": "store/web/…" }
 }
@@ -827,7 +827,7 @@ penguin version --json   # the full build info
 
 ## penguin auth
 
-从终端登录一台正在运行的 PenguinHarness 服务器。登录方式有两种，选哪种取决于你所处的位置。
+从终端登录一台正在运行的 Adelie 服务器。登录方式有两种，选哪种取决于你所处的位置。
 
 ```bash
 penguin auth login                      # password, against the server on this data root
@@ -843,17 +843,17 @@ penguin auth token                      # no password: minted from this data roo
 
 `login` 使用密码向正在运行的服务器请求会话，和浏览器的登录页完全一样。目标默认是这个数据根目录上运行的服务器，从它的锁文件读出，所以登录你自己的服务器不需要 URL。
 
-交互式运行时，`login` 先问账号、再问密码，密码提示中会显示账号名，因此不会把一个账号的密码误输入给另一个账号。如果以非交互方式提供密码（`--password` 或 `PENGUIN_PASSWORD`），这两个问题都不会出现，因为脚本无法回答。
+交互式运行时，`login` 先问账号、再问密码，密码提示中会显示账号名，因此不会把一个账号的密码误输入给另一个账号。如果以非交互方式提供密码（`--password` 或 `ADELIE_PASSWORD`），这两个问题都不会出现，因为脚本无法回答。
 
 | 选项 | 说明 | 默认值 |
 | --- | --- | --- |
 | `--server <url>` | 要登录的服务器。 | 这个数据根目录上运行的服务器 |
 | `--user-id <id>` | 账号。省略时会询问；直接回车表示 `admin`。 | `admin` |
-| `--password <pw>` | 密码。也可以从 `PENGUIN_PASSWORD` 读取；否则会提示输入且不回显。 | — |
+| `--password <pw>` | 密码。也可以从 `ADELIE_PASSWORD` 读取；否则会提示输入且不回显。 | — |
 | `--print` | 同时把 session token 打印到 stdout，供管道使用。 | — |
 
 > [!WARNING]
-> 优先用 `PENGUIN_PASSWORD` 或交互提示，而不是 `--password`：机器上的任何人都能通过 `ps` 读到命令行。
+> 优先用 `ADELIE_PASSWORD` 或交互提示，而不是 `--password`：机器上的任何人都能通过 `ps` 读到命令行。
 
 ### penguin auth token
 
@@ -892,7 +892,7 @@ penguin update             # upgrade to the latest release, after confirming
 
 | 安装类型 | 升级方式 |
 | --- | --- |
-| 压缩包（`install.sh`，默认 `~/.penguin`） | 重新运行官方安装器，保留原安装目录以及安装包是否自带 Node 运行时 |
+| 压缩包（`install.sh`，默认 `~/.adelie`） | 重新运行官方安装器，保留原安装目录以及安装包是否自带 Node 运行时 |
 | npm、pnpm、yarn 或 bun 全局安装 | 用对应的包管理器全局安装 `@adelie/cli@<target>`。无法识别包管理器时，打印命令而不是猜测 |
 | 源码检出 | 拒绝：请用 `git pull` 加重新构建来更新 |
 | 桌面应用内置的 CLI | 拒绝：应用更新时会随之替换，请从应用菜单检查更新 |
@@ -900,11 +900,10 @@ penguin update             # upgrade to the latest release, after confirming
 
 不带 `-y` 时，命令会打印它将要做的事（升级机制、目标版本和安装目录），并要求确认。stdin 不是终端时，命令要求提供 `--yes`，而不是等一个没人能回答的提示。**数据根目录完全不受影响**：升级只替换 `bin`、`lib`、`web` 和 `node`。Windows 上两种升级路径都无法原地执行。安装器是 POSIX shell 脚本；全局安装也无法从这里驱动，因为 Node 离开 shell 就无法执行 `npm` 或 `pnpm` 的 `.cmd` shim，所以命令会把完整命令打印出来，由你自己运行。
 
-发布版本的发现和下载遵循 `PENGUIN_DOWNLOAD_SOURCE=auto|oss|github`，与稳定版安装入口使用相同的策略：
+发布版本的发现和下载遵循 `PENGUIN_DOWNLOAD_SOURCE=auto|github`，与稳定版安装入口使用相同的策略。Adelie 只发布到一个来源 —— 这个仓库的 GitHub Release —— 所以这两个取值是一回事，而上游的 `oss` 镜像会被明确拒绝，而不是被忽略：
 
-- `auto` 是默认值：读取 OSS 的 `latest.json`，优先使用那个不可变的发布版本，失败时退回匹配的 GitHub 标签。安装包本身则来自安装器测速后选定的源。
-- `oss` 和 `github` 是严格模式：命令只使用指定的源。
-- `--release <tag>` 跳过最新版本探测，但仍遵循所选的源策略。
+- `auto`（默认）与 `github` 都通过这个仓库的 GitHub Release 解析最新版本。
+- `--release <tag>` 跳过最新版本探测，但来源不变。
 - 显式设置的 HTTPS `PENGUIN_DOWNLOAD_BASE_URL` 拥有最高优先级，安装器和安装包下载都遵循它；`PENGUIN_DOWNLOAD_FALLBACK_BASE_URL` 可选，为安装包提供回退地址。
 
 另请参阅：[配置参考](/configuration)、[模型与供应商](/models)。

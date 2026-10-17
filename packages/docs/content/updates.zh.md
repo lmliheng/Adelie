@@ -1,9 +1,9 @@
 ---
-title: 更新 PenguinHarness
+title: 更新 Adelie
 description: 查看正在运行的版本，并更新桌面应用、CLI 安装或 Docker 部署。
 ---
 
-查看正在运行的 PenguinHarness 版本，并按你的安装方式完成更新。
+查看正在运行的 Adelie 版本，并按你的安装方式完成更新。
 
 - **想确认当前版本？** 见[查看当前版本](#查看当前版本)。
 - **在浏览器里更新？** 见[通过 Web App 更新](#通过-web-app-更新)。
@@ -109,4 +109,4 @@ docker compose pull && docker compose up -d
 
 ## 关闭更新检查
 
-设置 `PENGUIN_UPDATE_CHECK=off` 可以关闭自动的版本检查。它只关掉这一项：模型请求、已启用的远程控制连接、Key 授权和代理测试照常联网。关闭后，更新弹窗会显示**更新检查已关闭（PENGUIN_UPDATE_CHECK=off）**。见[配置参考](/configuration#环境变量)。
+设置 `ADELIE_UPDATE_CHECK=off` 可以关闭自动的版本检查。它只关掉这一项：模型请求、已启用的远程控制连接、Key 授权和代理测试照常联网。关闭后，更新弹窗会显示**更新检查已关闭（ADELIE_UPDATE_CHECK=off）**。见[配置参考](/configuration#环境变量)。

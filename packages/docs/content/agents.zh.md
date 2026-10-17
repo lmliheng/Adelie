@@ -56,7 +56,7 @@ Agent 是 Project 里配置好的助手。每个 Agent 都有自己的指令、�
 3. 在 **Agent id** 中输入 id，也可以点击输入框旁边的**用 AI 生成**，由 Project 的默认模型根据名称生成一个；名称为空时则根据描述生成。id 长度为 2–64 个字符，以小写字母开头，只能用小写字母、数字和下划线。生成的 id 会覆盖框里原有的内容，之后仍可以手动修改。创建后 id 不能再改。
 4. 可选：填写**描述**。
 5. 可选：在**插件**中从插件库选择要装到新 Agent 上的插件。Agent 创建时会一并装上这些插件的 Skill 和钩子包。
-6. 可选：在**从项目目录导入技能**中选择一个目录。PenguinHarness 会读取这个目录下 `.agents/skills` 和 `.claude/skills` 文件夹里的 Skill，从中勾选要安装的。目录里的 Skill 与所选插件里的 Skill 同名时，装的是目录里的那个。
+6. 可选：在**从项目目录导入技能**中选择一个目录。Adelie 会读取这个目录下 `.agents/skills` 和 `.claude/skills` 文件夹里的 Skill，从中勾选要安装的。目录里的 Skill 与所选插件里的 Skill 同名时，装的是目录里的那个。
 7. 选择**创建**，打开新 Agent 的设置。
 
 任何 Project 成员都能创建 Agent。
@@ -143,7 +143,7 @@ Agent 是 Project 里配置好的助手。每个 Agent 都有自己的指令、�
 
 ### 更新内核
 
-Agent 的内核版本记录它的配置基于哪一代内置默认设置。已有的 Agent 永远不会自动采用更新的默认值。PenguinHarness 发布新默认值后，**内核**区块会显示当前内核版本和最新内核版本，概览标签页上出现红点。
+Agent 的内核版本记录它的配置基于哪一代内置默认设置。已有的 Agent 永远不会自动采用更新的默认值。Adelie 发布新默认值后，**内核**区块会显示当前内核版本和最新内核版本，概览标签页上出现红点。
 
 1. 在**内核**区块选择**更新内核**。
 2. 确认。
@@ -181,7 +181,7 @@ Agent 的内核版本记录它的配置基于哪一代内置默认设置。已�
 | `{{OS_VERSION}}` | 操作系统版本 |
 | `{{SHELL}}` | 执行命令所用的 shell |
 | `{{DATE}}` | 当前日期 |
-| `{{PROJECT_DIR}}` | PenguinHarness 应用数据根目录，存放所有 Agent 数据和 Project 数据；不是 Task 的工作目录 |
+| `{{PROJECT_DIR}}` | Adelie 应用数据根目录，存放所有 Agent 数据和 Project 数据；不是 Task 的工作目录 |
 | `{{AGENT_ID}}` | Agent 的 id |
 | `{{CWD}}` | Workspace 的绝对路径 |
 | `{{PROVIDER}}` | 模型的供应商分组 |
@@ -227,7 +227,7 @@ MCP Server 给 Agent 增加外部工具，工具名形如 `mcp__<name>__<tool>`�
 1. 在**工具**标签页选择**添加 MCP Server**。
 2. 选择传输方式：
    - `http`（默认）：Streamable HTTP，当前的远程传输方式。
-   - `stdio`：本地进程，由 PenguinHarness 启动，通过 stdin 和 stdout 通信。
+   - `stdio`：本地进程，由 Adelie 启动，通过 stdin 和 stdout 通信。
    - `sse`：旧的 HTTP+SSE 传输方式，供尚未迁移的 Server 使用。
 3. 在 **name** 中输入工具名前缀，可以用字母、数字、`_` 和 `-`，以字母或数字开头。
 4. 填写连接字段：
@@ -251,7 +251,7 @@ MCP Server 给 Agent 增加外部工具，工具名形如 `mcp__<name>__<tool>`�
 1. 在 **MCP Server** 区块选择**测试连接**。
 2. 选择**开始测试**。
 
-PenguinHarness 依次连接每个 Server 并发现它的工具，不会保存任何内容。每行显示工具数量和耗时；失败则显示**连接失败**和原因。
+Adelie 依次连接每个 Server 并发现它的工具，不会保存任何内容。每行显示工具数量和耗时；失败则显示**连接失败**和原因。
 
 ## 技能标签页
 
@@ -314,7 +314,7 @@ PenguinHarness 依次连接每个 Server 并发现它的工具，不会保存任
 
 ## 密钥保险柜标签页
 
-密钥保险柜存放 Agent 用的环境变量，比如 API key。PenguinHarness 把它们传给 Agent 的 shell 命令。模型只能看到变量名，永远看不到值。子 Agent 用各自的密钥保险柜，不继承这里的变量。修改从下一个 Task 起生效；正在运行的 Task 不受影响。
+密钥保险柜存放 Agent 用的环境变量，比如 API key。Adelie 把它们传给 Agent 的 shell 命令。模型只能看到变量名，永远看不到值。子 Agent 用各自的密钥保险柜，不继承这里的变量。修改从下一个 Task 起生效；正在运行的 Task 不受影响。
 
 只有 Project owner 能修改密钥保险柜。成员能看到变量名，值以掩码显示。
 
@@ -344,7 +344,7 @@ PenguinHarness 依次连接每个 Server 并发现它的工具，不会保存任
 定时任务按计划给 Agent 发送提示词：发一次，或按周期反复发。这个标签页上的修改立即生效。
 
 > [!NOTE]
-> 定时任务只在 PenguinHarness 服务运行时触发。
+> 定时任务只在 Adelie 服务运行时触发。
 
 也可以在对话里创建和管理定时任务，见[定时任务](/schedules)。
 
@@ -377,7 +377,7 @@ owner 可以在每一行选择**停用**或**启用**、**编辑**、**删除**�
 
 ## API 标签页
 
-**API** 标签页让 PenguinHarness 之外的程序经 HTTP 与这个 Agent 对话：**开启 API 访问**、**API 会话的审批模式**、**连接**下的 **Base URL** 和 **Agent ID**、**密钥**、**允许无密钥访问**、调用**示例**，以及只对 Project 所有者显示的**试一试**：经 API 运行一次这个 Agent，按程序会收到的样子显示事件流。这个标签页没有**保存**按钮：开关和审批模式改动即生效，关闭 API 访问和删除密钥前会先确认。如何设置、如何调用，见 [Agent API](/agent-api)。
+**API** 标签页让 Adelie 之外的程序经 HTTP 与这个 Agent 对话：**开启 API 访问**、**API 会话的审批模式**、**连接**下的 **Base URL** 和 **Agent ID**、**密钥**、**允许无密钥访问**、调用**示例**，以及只对 Project 所有者显示的**试一试**：经 API 运行一次这个 Agent，按程序会收到的样子显示事件流。这个标签页没有**保存**按钮：开关和审批模式改动即生效，关闭 API 访问和删除密钥前会先确认。如何设置、如何调用，见 [Agent API](/agent-api)。
 
 ## 工作原理
 

@@ -1,9 +1,9 @@
 ---
 title: Security Model
-description: How access to PenguinHarness works, from claiming a fresh server to revoking sessions, plus the mechanics underneath.
+description: How access to Adelie works, from claiming a fresh server to revoking sessions, plus the mechanics underneath.
 ---
 
-PenguinHarness runs agents with real credentials on real machines, so it is worth knowing exactly who can do what, and on what proof. This page follows the scenarios in the order you meet them, and collects the mechanics (session tokens, what is on disk, the network surface) at the end.
+Adelie runs agents with real credentials on real machines, so it is worth knowing exactly who can do what, and on what proof. This page follows the scenarios in the order you meet them, and collects the mechanics (session tokens, what is on disk, the network surface) at the end.
 
 - **First start of a new server?** See [Claim a fresh server](#claim-a-fresh-server).
 - **Need to set, change, or recover a password?** See [Manage passwords](#manage-passwords).
@@ -13,7 +13,7 @@ PenguinHarness runs agents with real credentials on real machines, so it is wort
 
 One principle runs through every scenario:
 
-> **Reading the data root is ownership.** The data root (`~/.penguin/data` by default) holds every model credential and every conversation. A secret stored beside them could not protect them from someone who can already read them, so the model never pretends otherwise. Instead, it makes that ownership safe to use: short-lived, revocable, and never requiring a password to be stored or sent.
+> **Reading the data root is ownership.** The data root (`~/.adelie/data` by default) holds every model credential and every conversation. A secret stored beside them could not protect them from someone who can already read them, so the model never pretends otherwise. Instead, it makes that ownership safe to use: short-lived, revocable, and never requiring a password to be stored or sent.
 
 ## What you get
 
@@ -66,7 +66,7 @@ The link is not one-shot, because a mail client may fetch it before you do and a
 > [!NOTE]
 > In a container, the notice goes to the container's log (`docker logs`). The `localhost` in the link is the server's own view of itself. With the documented loopback port mapping, that is your view too, so open the link as printed on the machine running Docker. If the container is published to a network, replace `localhost` with the host you reach it on. Keep the token as it is either way.
 
-`PENGUIN_SEED_ADMIN_PASSWORD` pins the password instead, but only on the first start with an empty data root.
+`ADELIE_SEED_ADMIN_PASSWORD` pins the password instead, but only on the first start with an empty data root.
 
 The session the link grants carries `via: setup`. It has exactly one special allowance, setting a password without entering an old one (none exists), and nothing else; in particular, it gets none of the desktop-only routes.
 
@@ -165,7 +165,7 @@ Each cookie carries a 32-byte random token. The session is the `auth_sessions` r
 
 A browser session lasts 30 days. Using it a day or more after it was issued or last renewed renews it **in place** for another 30 days: the row's expiry moves, and the cookie value stays the same. The 30 days therefore act as an idle timeout: a session in regular use never expires, and there is never a second copy to chase. Only a session whose own lifetime reaches the renewal window slides, so a one-hour minted token expires after its hour.
 
-Cookies are HttpOnly and SameSite=Lax. They are also Secure when the request really is https, or when a **trusted** proxy says so (`PENGUIN_TRUST_PROXY=1`); by default the `x-forwarded-proto` header is ignored.
+Cookies are HttpOnly and SameSite=Lax. They are also Secure when the request really is https, or when a **trusted** proxy says so (`ADELIE_TRUST_PROXY=1`); by default the `x-forwarded-proto` header is ignored.
 
 ### What is on disk
 

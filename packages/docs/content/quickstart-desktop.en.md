@@ -1,6 +1,6 @@
 ---
 title: Desktop app
-description: Install the PenguinHarness desktop app, configure a model, and run your first Task, with no terminal required.
+description: Install the Adelie desktop app, configure a model, and run your first Task, with no terminal required.
 ---
 
 The desktop app is the full Web App as a standalone application. It embeds the server and opens already signed in, so there is no login page, no initial password to copy, and nothing to install from a command line. It also installs the `penguin` command, so the terminal is there when you want it.
@@ -12,7 +12,7 @@ The desktop app is the full Web App as a standalone application. It embeds the s
 
 ## Download and install
 
-Download the installer for your platform from the [download page](https://github.com/lmliheng/Adelie/releases/latest); the installer prefers the OSS-accelerated mirror when it is reachable. Every [GitHub Release](https://github.com/lmliheng/Adelie/releases) carries the same files.
+Download the installer for your platform from the [latest Release](https://github.com/lmliheng/Adelie/releases/latest); every [GitHub Release](https://github.com/lmliheng/Adelie/releases) carries the same files.
 
 | Platform | Installers |
 | --- | --- |
@@ -36,7 +36,7 @@ The app opens signed in. The window signs itself in, so there is no password to 
 
 ## Configure a model
 
-PenguinHarness ships with no model credentials. Give it an API key for the model you want to use:
+Adelie ships with no model credentials. Give it an API key for the model you want to use:
 
 1. In the sidebar, select **Models**. Models are listed in one group per provider, and the default model is marked **Default**.
 2. In your provider's group, click **Enter key**, enter the API key, and click **Confirm**. The key is written to every model in that group. TokenDance, Penguin Go and ModelScope can also get a key for you: click **Connect** on their group.
@@ -62,7 +62,7 @@ Tool calls appear inline as cards; open one to inspect its arguments and output.
 
 > [!INFO]- On macOS, the directory browser can't read Desktop, Documents or Downloads
 >
-> macOS protects these folders. Click **Allow access** in the directory browser: the app asks macOS for the folder in its own name, and once you allow it, your agents can read the folder too. If macOS doesn't allow it, **Open System Settings** takes you to Privacy & Security; if PenguinHarness is not listed under **Files and Folders**, add it under **Full Disk Access**. A development build started from a terminal counts as that terminal to macOS, so allow the terminal there instead.
+> macOS protects these folders. Click **Allow access** in the directory browser: the app asks macOS for the folder in its own name, and once you allow it, your agents can read the folder too. If macOS doesn't allow it, **Open System Settings** takes you to Privacy & Security; if Adelie is not listed under **Files and Folders**, add it under **Full Disk Access**. A development build started from a terminal counts as that terminal to macOS, so allow the terminal there instead.
 
 ## The `penguin` command
 
@@ -98,6 +98,6 @@ That command is also the way out if a window ever does show the login page: the 
 ## Next steps
 
 - [Web App](/web-app): find your way around the interface.
-- [Update PenguinHarness](/updates): how the desktop app updates itself.
+- [Update Adelie](/updates): how the desktop app updates itself.
 - [CLI and Web App](/quickstart-cli): a standalone install, for a server or a remote machine. On the same machine you don't need it: the app already provides `penguin`, and installing the CLI puts a second copy on your `PATH`.
 - [Architecture](/architecture): how the pieces fit together.

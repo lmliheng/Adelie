@@ -95,7 +95,7 @@ function normalizeSearchTextWithSourceMap(text: string): NormalizedSourceMap {
 /**
  * Remove only paired Markdown emphasis/strikethrough delimiters. Unmatched marker
  * characters can be part of documented identifiers or paths and must remain
- * searchable (for example partial_*, model.*, and ~/.penguin).
+ * searchable (for example partial_*, model.*, and ~/.adelie/data).
  */
 function stripMarkdownFormatting(text: string): string {
   return text

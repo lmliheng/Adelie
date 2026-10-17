@@ -75,7 +75,7 @@ TokenDance 分组还没有 key 时，所有分组上方会有一条横幅，推�
 2. 在 **API key** 里输入该端点的密钥。端点不是厂商自己的地址时，服务端的 `OPENAI_*` / `ANTHROPIC_*` 变量不会被使用（见[设置 API key](#设置-api-key)），不填 key 的导入会被拒绝。
 3. 在**自定义 base URL** 里输入端点的 base URL。
 4. 点击字段右上角的**检测协议**，或者在字段最右侧的菜单里选择协议。见[检测自定义模型的协议](#检测自定义模型的协议)。
-5. 点击**批量导入模型**。PenguinHarness 会向端点请求模型列表，然后按端点返回的顺序把所有模型保存到新分组。
+5. 点击**批量导入模型**。Adelie 会向端点请求模型列表，然后按端点返回的顺序把所有模型保存到新分组。
 
 每个导入的模型都会带上你填写的 base URL、协议和密钥。端点只提供模型 id：价格、上下文窗口和显示名都留空，视觉保持关闭，直到你检测或手动开启。这和手动添加的模型起点相同。
 
@@ -117,7 +117,7 @@ TokenDance 分组还没有 key 时，所有分组上方会有一条横幅，推�
 
 ### 只承载内置模型
 
-除 **Custom** 和 **vLLM** 以外，每个内置分组只承载 PenguinHarness 内置模型目录里的模型。这些分组的 key 按分组统一管理，组里有哪些模型由目录决定。
+除 **Custom** 和 **vLLM** 以外，每个内置分组只承载 Adelie 内置模型目录里的模型。这些分组的 key 按分组统一管理，组里有哪些模型由目录决定。
 
 - 这些分组没有**添加模型**，**模型配置**的分组下拉里也不提供把模型移进这些分组。
 - 服务端会拒绝往这些分组新增不属于该分组内置模型的条目：保存时提示「该分组只承载内置模型」。`penguin config model add` 同样拒绝。删掉的内置模型可以重新加回来，**同步预置**做的就是这件事。
@@ -191,7 +191,7 @@ TokenDance 分组还没有 key 时，所有分组上方会有一条横幅，推�
 
 ## 检测视觉支持
 
-**支持视觉**开关可以一直关着，等你需要时再去问模型。点击开关旁的**检测**：PenguinHarness 会向模型发送一张 1x1 的 PNG，配一句只有一个词的提示。
+**支持视觉**开关可以一直关着，等你需要时再去问模型。点击开关旁的**检测**：Adelie 会向模型发送一张 1x1 的 PNG，配一句只有一个词的提示。
 
 - 模型能回答，开关就打开：提示「该模型接受图片输入，已开启视觉」。
 - 模型表示自己不接受图片，开关就关闭。这是真实的回答，不是错误。
@@ -220,7 +220,7 @@ TokenDance 分组还没有 key 时，所有分组上方会有一条横幅，推�
 2. 点击**打开授权页**。供应商的授权页会在新标签页中打开。
 3. 在授权页完成授权。弹窗显示「等待在新标签页中完成授权…」，并自动报告结果。
 
-TokenDance 会为你的账号创建一把**新** key，不会读取你已有的 key。供应商会把浏览器带回 PenguinHarness，由 PenguinHarness 用一次性授权码换取并保存 key。如果授权页跳不回来，比如浏览器无法访问重定向给出的服务器地址，点击**授权页跳不回来？改为手动填写授权码**。授权页随后不再重定向，改为直接显示一次性授权码。
+TokenDance 会为你的账号创建一把**新** key，不会读取你已有的 key。供应商会把浏览器带回 Adelie，由 Adelie 用一次性授权码换取并保存 key。如果授权页跳不回来，比如浏览器无法访问重定向给出的服务器地址，点击**授权页跳不回来？改为手动填写授权码**。授权页随后不再重定向，改为直接显示一次性授权码。
 
 1. 把授权码粘贴进**授权码**输入框。
 2. 点击**提交授权码**。
@@ -234,17 +234,17 @@ Penguin Go 有四处不同：
 
 ModelScope 有三处不同：
 
-- 授权不经过魔搭自己的页面，而是经过一台**授权中转层**。中转层持有魔搭的 client secret，代 PenguinHarness 走完 OAuth，再把一把可直接调用 api-inference 的 access token 交回来。中转层的地址来自服务端环境变量 `MODELSCOPE_BRIDGE_URL`，见[环境变量](/configuration#环境变量)。
-- 授权页的地址由中转层给出，PenguinHarness 原样打开，不像 Penguin Go 那样自己拼。同样没有手动填写授权码的方式。
-- 拿到的 access token 是**会过期**的；PenguinHarness 会在服务端保存刷新凭据，并在模型请求前静默续期。刷新凭据失效或缺失时，才需要点一次**重新连接**。
+- 授权不经过魔搭自己的页面，而是经过一台**授权中转层**。中转层持有魔搭的 client secret，代 Adelie 走完 OAuth，再把一把可直接调用 api-inference 的 access token 交回来。中转层的地址来自服务端环境变量 `MODELSCOPE_BRIDGE_URL`，见[环境变量](/configuration#环境变量)。
+- 授权页的地址由中转层给出，Adelie 原样打开，不像 Penguin Go 那样自己拼。同样没有手动填写授权码的方式。
+- 拿到的 access token 是**会过期**的；Adelie 会在服务端保存刷新凭据，并在模型请求前静默续期。刷新凭据失效或缺失时，才需要点一次**重新连接**。
 
 注意事项：
 
 - 只有 Project owner 能发起连接。TokenDance 还要求由他本人已登录的会话完成授权，实际上就是打开着弹窗的那个标签页。重定向本身不要求会话就能接收，因为供应商带回的浏览器未必是你发起授权时用的那个；但它只交回授权码：在弹窗来取结果之前，不会发生任何换取，也不会保存任何 key。
-- 整个换取过程都在服务端完成。TokenDance 的 PKCE verifier、Penguin Go 的设备密钥、以及 ModelScope 的授权码和设备密钥都不会进入浏览器；新 key 直接写入模型表，同样不经过浏览器。ModelScope 的 client secret 从头到尾都不在 PenguinHarness 里，只有中转层持有。
+- 整个换取过程都在服务端完成。TokenDance 的 PKCE verifier、Penguin Go 的设备密钥、以及 ModelScope 的授权码和设备密钥都不会进入浏览器；新 key 直接写入模型表，同样不经过浏览器。ModelScope 的 client secret 从头到尾都不在 Adelie 里，只有中转层持有。
 - 一次授权流程最多等待十分钟。ModelScope 交付的是一组 access token / refresh token：access token 写入模型表，refresh token 只保存在服务端 DB，不返回给前端，也不写入 Project 配置。
 - 交付回来的 key 只交一次。Penguin Go 和 ModelScope 都会在本地保存失败时短暂保留这一次交付，因此可以直接重试写入，不必再次授权。ModelScope 下无需去魔搭控制台清理——它交回的是你自己账号的 token，不是新造的 key。
-- TokenDance 的 key 携带[应用归因](#应用归因)表中 PenguinHarness 的应用 URL，所以即使用其他工具发起调用，用量也仍会归到 PenguinHarness 名下。
+- TokenDance 的 key 携带[应用归因](#应用归因)表中 Adelie 的应用 URL，所以即使用其他工具发起调用，用量也仍会归到 Adelie 名下。
 
 ### 账户余额
 
@@ -285,7 +285,7 @@ TokenDance 和 DeepSeek 可以查询 key 所属账户的余额。这两个分组
 1. 在分组标题栏上点击测速图标（**测速**）。
 2. 点击**开始测速**。
 
-PenguinHarness 依次向每个模型发送一个真实请求，这会消耗少量 API 配额，然后在每张卡片上显示：
+Adelie 依次向每个模型发送一个真实请求，这会消耗少量 API 配额，然后在每张卡片上显示：
 
 - 首个 Token 的延迟，单位毫秒：低于 1000 显示绿色，1000 到 3000 显示黄色，3000 以上显示红色；
 - 输出速率，单位 Token/秒：40 及以上显示绿色，15 及以上显示黄色，15 以下显示红色。
@@ -294,7 +294,7 @@ PenguinHarness 依次向每个模型发送一个真实请求，这会消耗少�
 
 ## 同步预置模型
 
-PenguinHarness 升级可能改变内置的预置模型目录。一旦发生，Project owner 会看到：
+Adelie 升级可能改变内置的预置模型目录。一旦发生，Project owner 会看到：
 
 - 侧边栏**模型库**上出现红点；
 - 页面上出现通知「检测到变更：{added} 个新增，{updated} 个可升级」，附带**现在升级**和**忽略**按钮；
@@ -486,7 +486,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 
 `modelscope` 是聚合网关分组：三条预置共用魔搭 api-inference 端点，预置 base URL 为 `https://api-inference.modelscope.cn/v1`。模型 id 就是上游仓库名，因此保留供应商前缀（`deepseek-ai/DeepSeek-V4.1-Flash`、`Qwen/Qwen3.8-27B`）。三条预置都固定使用 AgentHub 通用 Responses 客户端（`client_type = "openai-responses"`），推理请求发往 `{base_url}/responses`。新建的 Project 立即带上这些预置；既有 Project 可通过**同步预置**或下一次 ModelScope 授权更新已存的协议。
 
-分组的 key 从标题栏取得，见[连接账户](#连接账户)。连接走一台授权中转层，由中转层持有魔搭的 client secret 并交回一组 api-inference access token / refresh token，而不是经过魔搭自己的页面。除此之外这个分组没有特别之处：推理请求直接发给 `https://api-inference.modelscope.cn/v1`，从不经过中转层；access token 和其他分组的 key 一样写进 `.project_config.toml`，refresh token 只保存在服务端 DB。access token 会过期，PenguinHarness 会在模型请求前静默续期；refresh token 缺失或失效时，才需要从标题栏重新连接一次。
+分组的 key 从标题栏取得，见[连接账户](#连接账户)。连接走一台授权中转层，由中转层持有魔搭的 client secret 并交回一组 api-inference access token / refresh token，而不是经过魔搭自己的页面。除此之外这个分组没有特别之处：推理请求直接发给 `https://api-inference.modelscope.cn/v1`，从不经过中转层；access token 和其他分组的 key 一样写进 `.project_config.toml`，refresh token 只保存在服务端 DB。access token 会过期，Adelie 会在模型请求前静默续期；refresh token 缺失或失效时，才需要从标题栏重新连接一次。
 
 预置条目不带价格。魔搭的 api-inference 是计费的，但它的模型页面读不到费率，所以这些条目按未定价处理：模型页在它们上面不显示价格徽标，成本中心把它们的用量报为未计价。这是目录记录「没人查过这个价格」的方式，见[价格与促销](#价格与促销)。
 
@@ -584,7 +584,7 @@ api_key = "sk-..."
 | 端点 | 请求头 | 值 |
 | --- | --- | --- |
 | `openrouter.ai` | `HTTP-Referer` | `https://penguin.ooo/` |
-| `openrouter.ai` | `X-OpenRouter-Title` | `PenguinHarness` |
+| `openrouter.ai` | `X-OpenRouter-Title` | `Adelie` |
 | `openrouter.ai` | `X-OpenRouter-Categories` | `cli-agent,personal-agent` |
 | `tokendance.space` | `X-App-URL` | `https://penguin.ooo/` |
 | `opencode.ai` | `x-opencode-session` | Session id；不属于任何 Session 的请求（连通性测试、视觉探测）各自使用一个新生成的 id |

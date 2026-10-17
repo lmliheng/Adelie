@@ -1,13 +1,13 @@
 ---
 title: Docker
-description: Run the official PenguinHarness image, with one container and one volume serving the full Web App on port 7364.
+description: Run the official Adelie image, with one container and one volume serving the full Web App on port 7364.
 ---
 
 The official image runs the same server that `penguin server` starts, with the Web App inside it. One container and one volume are the whole deployment, which makes Docker the shortest route onto a machine that is not your laptop.
 
 ## Before you begin
 
-- Docker on the machine that will run PenguinHarness. The examples below cover both Docker Compose and `docker run`.
+- Docker on the machine that will run Adelie. The examples below cover both Docker Compose and `docker run`.
 - An API key for one model provider.
 
 ## Start the container
@@ -78,14 +78,14 @@ If reading a link from a log does not suit your setup, pin the password instead.
 
 ```yaml
 environment:
-  PENGUIN_SEED_ADMIN_PASSWORD: "choose-something-long"
+  ADELIE_SEED_ADMIN_PASSWORD: "choose-something-long"
 ```
 
 The server then creates the built-in `admin` with that password (at least 8 characters) and prints no notice. The variable applies only while no user exists, which means the first boot of an empty data root. Adding it to a data root that has already been claimed changes nothing, and neither does changing it later.
 
 ## Configure a model
 
-PenguinHarness ships with no model credentials. Add a model on the **Models** page of the Web App, or with the CLI inside the container:
+Adelie ships with no model credentials. Add a model on the **Models** page of the Web App, or with the CLI inside the container:
 
 ```bash
 docker compose exec -u penguin penguin \
@@ -152,21 +152,21 @@ These are the variables a container deployment touches. The full list is in the 
 
 | Variable | In this image |
 | --- | --- |
-| `PENGUIN_HOME` | `/data`. Change it only if you also move the volume |
+| `ADELIE_HOME` | `/data`. Change it only if you also move the volume |
 | `HOST` | `0.0.0.0`, inside the container's own network namespace. `-p` decides the host side, and the examples keep it on loopback |
 | `PORT` | `7364`. Changing it moves the healthcheck with it |
-| `PENGUIN_SEED_ADMIN_PASSWORD` | Pins the initial admin password, on the first boot only. See [Set the password in advance](#set-the-password-in-advance) |
-| `PENGUIN_TRUST_PROXY` | Set to `1` behind a reverse proxy that terminates TLS, so session cookies are marked `Secure` |
-| `PENGUIN_PREVIEW_ORIGIN` | A second hostname routed to the same container, for Workspace HTML previews |
-| `PENGUIN_UPDATE_CHECK` | `off` turns off the automatic release check. Model requests, remote-control connections, key authorization and the proxy test still go out |
+| `ADELIE_SEED_ADMIN_PASSWORD` | Pins the initial admin password, on the first boot only. See [Set the password in advance](#set-the-password-in-advance) |
+| `ADELIE_TRUST_PROXY` | Set to `1` behind a reverse proxy that terminates TLS, so session cookies are marked `Secure` |
+| `ADELIE_PREVIEW_ORIGIN` | A second hostname routed to the same container, for Workspace HTML previews |
+| `ADELIE_UPDATE_CHECK` | `off` turns off the automatic release check. Model requests, remote-control connections, key authorization and the proxy test still go out |
 
 ### Run behind a reverse proxy
 
-Publish the container on loopback, terminate TLS in front of it, and set `PENGUIN_TRUST_PROXY=1`. The proxy must set or strip `x-forwarded-proto` itself. That header comes from the caller, which is exactly why the server ignores it until you tell it otherwise. If you leave `PENGUIN_TRUST_PROXY` unset on an HTTPS deployment, session cookies are issued without the `Secure` flag.
+Publish the container on loopback, terminate TLS in front of it, and set `ADELIE_TRUST_PROXY=1`. The proxy must set or strip `x-forwarded-proto` itself. That header comes from the caller, which is exactly why the server ignores it until you tell it otherwise. If you leave `ADELIE_TRUST_PROXY` unset on an HTTPS deployment, session cookies are issued without the `Secure` flag.
 
 ### Serve Workspace previews
 
-Previews of the HTML a Task produces are served from a separate origin when there is one. On a non-loopback bind there is no loopback counterpart to derive, so previews fall back to a same-origin sandbox, where cookies, `localStorage` and third-party embeds do not work. To get the isolated previews back, point `PENGUIN_PREVIEW_ORIGIN` at a second hostname routed to the same container. It must differ by hostname, not just by port.
+Previews of the HTML a Task produces are served from a separate origin when there is one. On a non-loopback bind there is no loopback counterpart to derive, so previews fall back to a same-origin sandbox, where cookies, `localStorage` and third-party embeds do not work. To get the isolated previews back, point `ADELIE_PREVIEW_ORIGIN` at a second hostname routed to the same container. It must differ by hostname, not just by port.
 
 ## Upgrade the container
 
@@ -195,7 +195,7 @@ The reset needs no other authorization: the data root is the authorization, and 
 
 ## Next steps
 
-- [Web App](/web-app): use PenguinHarness from the browser.
-- [Update PenguinHarness](/updates): check your version and upgrade.
+- [Web App](/web-app): use Adelie from the browser.
+- [Update Adelie](/updates): check your version and upgrade.
 - [Security Model](/security): who can do what, and on the strength of which proof.
 - [Configuration Reference](/configuration): every environment variable and config field.

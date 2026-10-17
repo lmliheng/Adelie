@@ -3,7 +3,7 @@ title: 工具与审批
 description: 内置工具如何运行在同一套执行契约之下，每次调用如何经过审批、在 Trace 中留下审计记录，以及 MCP Server 如何接入。
 ---
 
-PenguinHarness 刻意只提供一套极简的内置工具集。专用文件工具（`read_file` / `edit_file` / `write_file`）负责精确的读取和编辑，因为带行号的输出和精确字符串替换，比手写 `sed` 单行命令更可靠。Shell（`exec_command`）则是其他一切的通用兜底：运行程序、搜索、安装依赖。留下来的每个工具，都配得上它在 schema 上占用的 Token。
+Adelie 刻意只提供一套极简的内置工具集。专用文件工具（`read_file` / `edit_file` / `write_file`）负责精确的读取和编辑，因为带行号的输出和精确字符串替换，比手写 `sed` 单行命令更可靠。Shell（`exec_command`）则是其他一切的通用兜底：运行程序、搜索、安装依赖。留下来的每个工具，都配得上它在 schema 上占用的 Token。
 
 Environment 让每一次工具调用都走同一套共享契约，并集中处理收尾。本页先讲这套契约，之后依次介绍：各工具的配置字段、7 个内置工具和它们的后台行为、记录在 Trace 中的逐次调用审批，以及如何自定义工具集、添加 MCP Server。
 
@@ -179,7 +179,7 @@ exec_command(cmd)
 }
 ```
 
-**Shell：** 只要有 bash，命令就通过 `bash -lc` 执行，系统提示词会告诉模型当前使用的是哪个 shell。`PENGUIN_SHELL`（可执行文件名或路径）在所有平台上都能覆盖这个选择。否则按以下顺序挑选 shell：
+**Shell：** 只要有 bash，命令就通过 `bash -lc` 执行，系统提示词会告诉模型当前使用的是哪个 shell。`ADELIE_SHELL`（可执行文件名或路径）在所有平台上都能覆盖这个选择。否则按以下顺序挑选 shell：
 
 - POSIX 上：先找 PATH 中的 `bash`，再找常见的 bash 绝对路径，然后是 `$SHELL` 登录 shell，最后是 `sh`。
 - Windows 上：先找 PATH 中非 WSL 启动器的 `bash`（例如 Git for Windows），然后是内置的 MinGit bash，然后是 `pwsh`，最后是 `powershell`。

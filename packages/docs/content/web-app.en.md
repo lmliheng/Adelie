@@ -3,7 +3,7 @@ title: Web App
 description: Sign in to the Web App, find your way around, manage Projects and members, and run the app in production.
 ---
 
-PenguinHarness ships with a Web App: multi-user sign-in, streaming chat, agent configuration, and model and usage management all happen in the browser. The desktop app shows the same interface in its own window. This page is the overview; each part of the app has its own guide. For installation and first launch, see the [Quickstart](/quickstart).
+Adelie ships with a Web App: multi-user sign-in, streaming chat, agent configuration, and model and usage management all happen in the browser. The desktop app shows the same interface in its own window. This page is the overview; each part of the app has its own guide. For installation and first launch, see the [Quickstart](/quickstart).
 
 - To sign in for the first time, see [Open the Web App and sign in](#open-the-web-app-and-sign-in).
 - To find your way around, see [The app layout](#the-app-layout).
@@ -37,7 +37,7 @@ The initial account is `admin`, and it starts with no password of its own. Until
 > [!NOTE]
 > The link can be opened again. It lasts 30 days, or until a password is set. A restart prints a new link and the old one stops working. A link that no longer works lands on the login page with an explanation.
 
-The desktop app does not print the notice. The server also skips it while a password pinned with `PENGUIN_SEED_ADMIN_PASSWORD` still works. For how these mechanisms are secured, see [Security](/security).
+The desktop app does not print the notice. The server also skips it while a password pinned with `ADELIE_SEED_ADMIN_PASSWORD` still works. For how these mechanisms are secured, see [Security](/security).
 
 ### Accounts
 
@@ -94,7 +94,7 @@ From top to bottom, the sidebar holds:
 | **Agents** | Create agents and edit their prompt, memory, runtime, tools, Skills, hooks, Vault and scheduled tasks | [Agents](/agents) |
 | **Models** | Configure the Project's models, providers and credentials | [Models](/models) |
 | **Plugins** | Browse plugins, install their Skills and hook packages onto agents, and add server plugins to the Project | [Skills](/skills) |
-| **Machines** | Install this PenguinHarness build on other hosts over ssh and manage the connections to them (admins only) | [Security Model](/security#manage-remote-machines-over-ssh) |
+| **Machines** | Install this Adelie build on other hosts over ssh and manage the connections to them (admins only) | [Security Model](/security#manage-remote-machines-over-ssh) |
 | **Cost Center** | Token usage, cost and server errors by agent, model and time range | [Cost Center](/usage) |
 | **Evaluation Center** | Benchmarks: evaluate agents and optimize them against a Benchmark | [Evaluation Center](/evaluation-center) |
 
@@ -219,6 +219,6 @@ The Scheduled tasks panel is the exception. Its way out is **Edit in this conver
 
 The server hosts the built SPA itself, on the same origin and with SPA fallback. A single `penguin web` or `penguin server` process is all production needs.
 
-The npm package bundles the frontend build. To serve a custom static directory instead, override it with `PENGUIN_WEB_DIST`. See the [Configuration Reference](/configuration).
+The npm package bundles the frontend build. To serve a custom static directory instead, override it with `ADELIE_WEB_DIST`. See the [Configuration Reference](/configuration).
 
 The server listens on `127.0.0.1` by default, so it answers only on its own machine. Exposing it on a network, with `HOST`, belongs behind a reverse proxy that terminates TLS. See [Security](/security).

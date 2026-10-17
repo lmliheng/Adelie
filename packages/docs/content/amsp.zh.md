@@ -226,7 +226,7 @@ data: [DONE]
 - 版本写在路径里：`/api/amsp/v1`；事件本身不带版本。
 - 在 `/v1` 之内只做增加：新的事件类型和新的可选字段。忽略未知内容的客户端可以继续工作。
 - 改变已有字段含义的变更属于新版本 `/v2`，与 `/v1` 并存。
-- 事件名形如 `<subject>.<phase>`；内容项为 `K.delta` 与 `K.done`，与 MMSP 一致。传输中的一次 run 即 PenguinHarness 术语中的一个 Task。
+- 事件名形如 `<subject>.<phase>`；内容项为 `K.delta` 与 `K.done`，与 MMSP 一致。传输中的一次 run 即 Adelie 术语中的一个 Task。
 
 ## 自行读取流
 

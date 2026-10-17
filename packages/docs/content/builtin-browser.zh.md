@@ -85,7 +85,7 @@ Agent 从不输入你的密码。Agent 需要的页面要求登录时，`browser
 
 各平台的注意事项：
 
-- **macOS**：基于 Chromium 的浏览器用保存在钥匙串里的密钥加密 Cookie，因此 macOS 会询问是否允许 PenguinHarness 使用以浏览器命名的钥匙串项目，例如「Chrome Safe Storage」。请选择允许；拒绝的话，加密的 Cookie 会被跳过，导入结果中会说明。
+- **macOS**：基于 Chromium 的浏览器用保存在钥匙串里的密钥加密 Cookie，因此 macOS 会询问是否允许 Adelie 使用以浏览器命名的钥匙串项目，例如「Chrome Safe Storage」。请选择允许；拒绝的话，加密的 Cookie 会被跳过，导入结果中会说明。
 - **Windows**：Chrome 127 及以后的版本用应用绑定加密保护大部分 Cookie，只有 Chrome 自己能读取。这些 Cookie 会被跳过并给出警告，请改为在面板里登录。正在运行的浏览器也可能占用它的 Cookie 文件，关闭浏览器后再导入即可。
 - **Linux**：较新的 Cookie 用保存在桌面密钥环里的密码加密，通过 `secret-tool` 读取（Debian 和 Ubuntu 上由 `libsecret-tools` 软件包提供）。没有它时，这些 Cookie 会被跳过并给出警告。
 - **Firefox** 的 Cookie 不加密。容器专用的 Cookie 和按其他网站分区的 Cookie 不会导入。
@@ -128,9 +128,9 @@ EOF
 
 | 系统 | 日志文件 |
 | --- | --- |
-| macOS | `~/Library/Application Support/PenguinHarness/logs/desktop.log` |
-| Windows | `%APPDATA%\PenguinHarness\logs\desktop.log` |
-| Linux | `~/.config/PenguinHarness/logs/desktop.log` |
+| macOS | `~/Library/Application Support/Adelie/logs/desktop.log` |
+| Windows | `%APPDATA%\Adelie\logs\desktop.log` |
+| Linux | `~/.config/Adelie/logs/desktop.log` |
 
 ## 工作原理
 

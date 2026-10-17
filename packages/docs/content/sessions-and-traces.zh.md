@@ -3,7 +3,7 @@ title: Session 与 Trace
 description: 六层运行模型、磁盘上的数据布局、只追加的 Trace 如何写入，以及 Session 如何从中恢复。
 ---
 
-PenguinHarness 的全部运行时数据都存放在本地文件系统上。配置是可编辑的文件，历史是只追加的 **Trace**。本页逐层定义运行模型和磁盘上的数据布局，然后说明 Trace 如何同时充当历史记录、恢复来源和统计来源。
+Adelie 的全部运行时数据都存放在本地文件系统上。配置是可编辑的文件，历史是只追加的 **Trace**。本页逐层定义运行模型和磁盘上的数据布局，然后说明 Trace 如何同时充当历史记录、恢复来源和统计来源。
 
 ## 运行模型
 
@@ -22,7 +22,7 @@ PenguinHarness 的全部运行时数据都存放在本地文件系统上。配�
 
 ## 数据目录
 
-数据根目录由环境变量 `PENGUIN_HOME` 指定，默认为 `~/.penguin/data`。目录布局统一定义在 `packages/core/src/state/paths.ts` 中：
+数据根目录由环境变量 `ADELIE_HOME` 指定，默认为 `~/.adelie/data`。目录布局统一定义在 `packages/core/src/state/paths.ts` 中：
 
 ```text
 <root>/<project>/
@@ -74,7 +74,7 @@ Trace 是只追加的 JSON Lines 文件，每行是一个 OmniMessage 信封，�
 - 首次运行时，工具集以 `tool_list_ready` 事件跟在输入之后；如果配置了 MCP Server，在这之前还有一对 `mcp_connect_begin` / `mcp_connect_end`。`session_meta` 不携带工具定义。
 
 ```jsonl
-{"timestamp":"2026-07-18T03:10:22.531Z","type":"session_meta","payload":{"session_id":"session-2026-07-18-11-10-22-3f8a1c2d","provider":"deepseek","model_id":"deepseek-v4-pro","model_context_window":1000000,"system_prompt":"…","agent_state":"/home/u/.penguin/data/default_project/agents/default_agent/agent_state","workspace":"/home/u/work"}}
+{"timestamp":"2026-07-18T03:10:22.531Z","type":"session_meta","payload":{"session_id":"session-2026-07-18-11-10-22-3f8a1c2d","provider":"deepseek","model_id":"deepseek-v4-pro","model_context_window":1000000,"system_prompt":"…","agent_state":"/home/u/.adelie/data/default_project/agents/default_agent/agent_state","workspace":"/home/u/work"}}
 {"timestamp":"…","type":"model_msg","payload":{"type":"text","role":"user","text":"Create hello.txt"}}
 {"timestamp":"…","type":"event_msg","payload":{"type":"tool_list_ready","tools":[…]}}
 {"timestamp":"…","type":"event_msg","payload":{"type":"request_begin"}}

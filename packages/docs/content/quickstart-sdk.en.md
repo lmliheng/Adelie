@@ -20,7 +20,7 @@ npm install @adelie/core
 
 ## Configure a model
 
-The SDK reads the same data root as the desktop app and the CLI, `~/.penguin/data`. A model configured in the [desktop app](/quickstart-desktop) or the [CLI](/quickstart-cli) is immediately usable, so there is nothing to configure twice.
+The SDK reads the same data root as the desktop app and the CLI, `~/.adelie/data`. A model configured in the [desktop app](/quickstart-desktop) or the [CLI](/quickstart-cli) is immediately usable, so there is nothing to configure twice.
 
 If this machine has no model configured yet, the shortest path is to install the CLI and configure one there:
 

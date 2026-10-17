@@ -250,7 +250,7 @@ id 使用小写 snake_case，长 2 到 64 个字符，以字母开头。按惯�
 
 ## 命令
 
-在工位会话或工单会话里，`penguin org` 命令已经从环境中知道组织、Project、Agent 和当前 Session（`PENGUIN_ORG_ID` 与其他控制变量一起注入）；在 shell 里则要传 `--org-id`。下面是常用的几条，全部子命令见 [CLI 参考](/cli#penguin-org)。
+在工位会话或工单会话里，`penguin org` 命令已经从环境中知道组织、Project、Agent 和当前 Session（`ADELIE_ORG_ID` 与其他控制变量一起注入）；在 shell 里则要传 `--org-id`。下面是常用的几条，全部子命令见 [CLI 参考](/cli#penguin-org)。
 
 ```text
 penguin org show                                  # employees, board counts, spend vs budget

@@ -3,7 +3,7 @@ title: 自我进化
 description: Skill 如何构建 Benchmark、给 Agent 打分，并只保留让分数提高的改动；每个版本都有快照，每个分数都能追溯。
 ---
 
-PenguinHarness 的自我进化是一个循环：为 Agent 构建 Benchmark，在上面给 Agent 打分，修改 Agent，只有分数严格提升才保留改动。这个循环不额外引入任何运行机制，而是由 Skill 编排普通的 Agent 机制：评估是普通的 Session，优化是普通的文件编辑，每个结果都是 Project 里的文件。
+Adelie 的自我进化是一个循环：为 Agent 构建 Benchmark，在上面给 Agent 打分，修改 Agent，只有分数严格提升才保留改动。这个循环不额外引入任何运行机制，而是由 Skill 编排普通的 Agent 机制：评估是普通的 Session，优化是普通的文件编辑，每个结果都是 Project 里的文件。
 
 构建 Benchmark 和优化 Agent 分别在两个独立的顶层 Session 中运行，每一次单独的评估则通过内置的 `run_subagent` 工具委派出去。顶层 Prompt 提供这次任务的设定：Agent、Benchmark、要考察的能力、分数和轮数。其余一切都由 Skill 负责：调用关系、校准、Freeze、结果协议、修复、回滚和汇报。
 

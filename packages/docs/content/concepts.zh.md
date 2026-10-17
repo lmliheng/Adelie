@@ -1,9 +1,9 @@
 ---
 title: 核心概念
-description: PenguinHarness 使用的术语，按主题分组，每条都附有深入讲解它的页面链接。
+description: Adelie 使用的术语，按主题分组，每条都附有深入讲解它的页面链接。
 ---
 
-PenguinHarness 用到一组含义明确的术语。本页按主题分组给出定义，每条定义都链接到详细讲解它的页面。
+Adelie 用到一组含义明确的术语。本页按主题分组给出定义，每条定义都链接到详细讲解它的页面。
 
 - [工作如何组织](#工作如何组织)：Project、Agent、Agent State、Workspace、数据目录
 - [工作如何运行](#工作如何运行)：Session、Task、Trace、OmniMessage、审批模式、子 Agent
@@ -34,13 +34,13 @@ Agent State 是 Agent 的持久化目录 `agent_state/`，存放 Agent 的配置
 
 ### Workspace
 
-Workspace 是 Agent 在一个 Session 中工作的目录，它读取、创建和修改的文件都在这里。启动 Session 时由你选择 Workspace；如果不选，PenguinHarness 会在 Agent 的目录下创建一个临时 Workspace。
+Workspace 是 Agent 在一个 Session 中工作的目录，它读取、创建和修改的文件都在这里。启动 Session 时由你选择 Workspace；如果不选，Adelie 会在 Agent 的目录下创建一个临时 Workspace。
 
 见 [Session 与 Trace](/sessions-and-traces#运行模型)。
 
 ### 数据目录
 
-数据目录是 PenguinHarness 存放 Project、Agent、模型设置和 Trace 的地方，默认为 `~/.penguin/data`（Windows 为 `%USERPROFILE%\.penguin\data`）。同一台机器上的桌面应用、CLI 和 SDK 都使用它。要改用其他目录，设置 `PENGUIN_HOME` 即可。
+数据目录是 Adelie 存放 Project、Agent、模型设置和 Trace 的地方，默认为 `~/.adelie/data`（Windows 为 `%USERPROFILE%\.adelie\data`）。同一台机器上的桌面应用、CLI 和 SDK 都使用它。要改用其他目录，设置 `ADELIE_HOME` 即可。
 
 见[快速开始](/quickstart)。
 
@@ -60,13 +60,13 @@ Task 是一条 Prompt 发起的工作。Agent 会调用模型一次或多次（�
 
 ### Trace
 
-Trace 是一个 Session 的记录：每条消息、每次工具调用、每个审批决定和 Token 用量，都按顺序追加写入 JSON Lines 文件。PenguinHarness 依据 Trace 恢复 Session，用量与成本的数据也来自这些记录。
+Trace 是一个 Session 的记录：每条消息、每次工具调用、每个审批决定和 Token 用量，都按顺序追加写入 JSON Lines 文件。Adelie 依据 Trace 恢复 Session，用量与成本的数据也来自这些记录。
 
 见 [Session 与 Trace](/sessions-and-traces)。
 
 ### OmniMessage
 
-OmniMessage 是 PenguinHarness 各处通用的统一消息格式：SDK 用它流式输出，Trace 用它存储，引擎内部也用它运转。产品宣传中也叫 Penguin Message，文档一律使用 OmniMessage。
+OmniMessage 是 Adelie 各处通用的统一消息格式：SDK 用它流式输出，Trace 用它存储，引擎内部也用它运转。产品宣传中也叫 Adelie Message，文档一律使用 OmniMessage。
 
 见 [OmniMessage 协议](/omni-message)。
 
@@ -104,7 +104,7 @@ Skill 是一套可复用的指令：一个包含 `SKILL.md` 及其引用文件�
 
 ### 钩子包
 
-钩子包是一组脚本，PenguinHarness 会在 Agent 运行循环的几个固定节点运行它们：提交 Prompt 时、每次工具调用审批之前，以及 Task 结束时。钩子可以拒绝一次工具调用，也可以再发起一个 Task，让 Agent 继续工作。
+钩子包是一组脚本，Adelie 会在 Agent 运行循环的几个固定节点运行它们：提交 Prompt 时、每次工具调用审批之前，以及 Task 结束时。钩子可以拒绝一次工具调用，也可以再发起一个 Task，让 Agent 继续工作。
 
 见[技能与插件](/skills#钩子包)。
 
@@ -174,13 +174,13 @@ Agent 的版本是 `system_config.yaml` 里的一个数字，每保留一次优�
 
 ### 供应商
 
-供应商是 Project 模型表里的一个具名分组，例如 `deepseek`、`anthropic` 或 `tokendance` 网关。PenguinHarness 内置了一批分组，你也可以添加自己的分组。
+供应商是 Project 模型表里的一个具名分组，例如 `deepseek`、`anthropic` 或 `tokendance` 网关。Adelie 内置了一批分组，你也可以添加自己的分组。
 
 见[模型与 Provider](/models)。
 
 ### 模型
 
-模型始终以 `(provider, model_id)` 二元组标识：它所属的供应商分组，加上它在该供应商处的 id。PenguinHarness 绝不根据 id 猜测供应商。每个 Project 都有一个默认模型，启动 Session 时由你选择模型。
+模型始终以 `(provider, model_id)` 二元组标识：它所属的供应商分组，加上它在该供应商处的 id。Adelie 绝不根据 id 猜测供应商。每个 Project 都有一个默认模型，启动 Session 时由你选择模型。
 
 见[模型与 Provider](/models)。
 

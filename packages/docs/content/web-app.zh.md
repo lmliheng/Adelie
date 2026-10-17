@@ -3,7 +3,7 @@ title: Web App
 description: 登录 Web App，熟悉界面布局，管理 Project 与成员，并在生产环境中运行。
 ---
 
-PenguinHarness 自带一个 Web App：多用户登录、流式对话、Agent 配置、模型与用量管理，都在浏览器里完成。桌面应用在自己的窗口中显示的也是同一套界面。本页是总览，各个部分另有专门的指南。安装与首次启动见[快速开始](/quickstart)。
+Adelie 自带一个 Web App：多用户登录、流式对话、Agent 配置、模型与用量管理，都在浏览器里完成。桌面应用在自己的窗口中显示的也是同一套界面。本页是总览，各个部分另有专门的指南。安装与首次启动见[快速开始](/quickstart)。
 
 - 第一次登录，见[打开 Web App 并登录](#打开-web-app-并登录)。
 - 熟悉界面，见[应用布局](#应用布局)。
@@ -37,7 +37,7 @@ penguin web
 > [!NOTE]
 > 链接可以重复打开，有效期 30 天，设置密码后即失效。重启服务会打印新链接，旧链接随之作废。打开已失效的链接会跳到登录页，并显示说明。
 
-桌面应用不会打印这条提示；用 `PENGUIN_SEED_ADMIN_PASSWORD` 固定的密码仍然有效时，服务也不打印。这些机制如何保证安全，见[安全模型](/security)。
+桌面应用不会打印这条提示；用 `ADELIE_SEED_ADMIN_PASSWORD` 固定的密码仍然有效时，服务也不打印。这些机制如何保证安全，见[安全模型](/security)。
 
 ### 账号
 
@@ -94,14 +94,14 @@ penguin web
 | **智能体** | 创建 Agent，编辑它们的提示词、记忆、运行参数、工具、Skill、钩子、密钥保险柜和定时任务 | [Agent](/agents) |
 | **模型库** | 配置 Project 的模型、供应商和凭证 | [模型](/models) |
 | **插件市场** | 浏览插件，把插件中的 Skill 和钩子包安装到 Agent 上，为 Project 添加服务端插件 | [Skill](/skills) |
-| **机器管理** | 通过 ssh 把当前版本的 PenguinHarness 安装到其他主机上，并管理与它们的连接（仅管理员） | [安全模型](/security#通过-ssh-管理远程机器) |
+| **机器管理** | 通过 ssh 把当前版本的 Adelie 安装到其他主机上，并管理与它们的连接（仅管理员） | [安全模型](/security#通过-ssh-管理远程机器) |
 | **成本中心** | 按 Agent、模型和时间范围查看 Token 用量、成本和服务器异常 | [成本中心](/usage) |
 | **评估中心** | Benchmark：评估 Agent，并以 Benchmark 为标准优化 Agent | [评估中心](/evaluation-center) |
 
 - 对话列表，可以搜索，可以按 Workspace、Agent 或时间分组。见[对话](/chat)。
 - 底部是你的用户行，点击打开账户菜单：
   - **设置**，见[设置](/settings)。
-  - 更新行，显示更新进行到哪一步，点击打开更新对话框，见[更新 PenguinHarness](/updates)。
+  - 更新行，显示更新进行到哪一步，点击打开更新对话框，见[更新 Adelie](/updates)。
   - **登出**。
 
 ### 常驻与可收起的入口
@@ -219,6 +219,6 @@ Web App 中很多通过表单创建的东西，也可以改为向 Agent 描述�
 
 服务端自己托管构建好的 SPA（同源、支持 SPA fallback），生产环境只需运行一个 `penguin web` 或 `penguin server` 进程。
 
-npm 安装包已经内置前端构建产物。如果要使用自定义的静态目录，用 `PENGUIN_WEB_DIST` 覆盖即可，见[配置参考](/configuration)。
+npm 安装包已经内置前端构建产物。如果要使用自定义的静态目录，用 `ADELIE_WEB_DIST` 覆盖即可，见[配置参考](/configuration)。
 
 服务默认监听 `127.0.0.1`，只能从本机访问。如果要通过 `HOST` 让它在网络上可访问，应当放在负责 TLS 终结的反向代理之后，见[安全模型](/security)。

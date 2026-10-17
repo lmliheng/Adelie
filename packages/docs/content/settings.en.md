@@ -264,7 +264,7 @@ Turning it off stops the organization scheduler and every organization route, an
 
 ## Agent API
 
-The **Agent API** page (**Settings › Server › Agent API**) is admin-only and server-global. It holds the **Allow the Agent API** switch, on by default, over every agent's API: the HTTP API through which programs outside PenguinHarness talk to an agent (see [Agent API](/agent-api)).
+The **Agent API** page (**Settings › Server › Agent API**) is admin-only and server-global. It holds the **Allow the Agent API** switch, on by default, over every agent's API: the HTTP API through which programs outside Adelie talk to an agent (see [Agent API](/agent-api)).
 
 The switch applies the moment it is flipped. There is no Save button.
 

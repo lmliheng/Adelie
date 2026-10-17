@@ -1,6 +1,6 @@
 # @adelie/docs
 
-The PenguinHarness documentation site (React + Vite + Tailwind CSS 4). Its own package, sharing the landing page's visual language: bilingual pages (zh/en), light/dark themes, a sidebar + per-page table of contents, and a "Copy Markdown" button on every page.
+The Adelie documentation site (React + Vite + Tailwind CSS 4). Its own package, keeping the visual language the landing page introduced: bilingual pages (zh/en), light/dark themes, a sidebar + per-page table of contents, and a "Copy Markdown" button on every page.
 
 Live at <https://lmliheng.github.io/Adelie/docs/>.
 

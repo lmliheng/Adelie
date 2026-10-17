@@ -1,15 +1,15 @@
 ---
 title: Introduction
-description: What PenguinHarness is, what ships in the box, and where to start.
+description: What Adelie is, what ships in the box, and where to start.
 ---
 
-Welcome to the PenguinHarness documentation. PenguinHarness is an open-source agent harness for building, running, evaluating and improving AI agents, built as one TypeScript stack. It deploys fully locally, so everything it stores stays on your machine; it runs on as little as a single CPU, and one unified model gateway reaches 1000+ online and local models.
+Welcome to the Adelie documentation. Adelie is an open-source agent harness for building, running, evaluating and improving AI agents, built as one TypeScript stack. It deploys fully locally, so everything it stores stays on your machine; it runs on as little as a single CPU, and one unified model gateway reaches 1000+ online and local models.
 
 ## Get started
 
 Work through these pages in order:
 
-1. [Quickstart](/quickstart): install PenguinHarness with the desktop app, the CLI, Docker or the SDK, and run your first Task.
+1. [Quickstart](/quickstart): install Adelie with the desktop app, the CLI, Docker or the SDK, and run your first Task.
 2. [Key concepts](/concepts): learn the terms these docs use, such as Project, Session, Task and Workspace.
 3. [Conversations](/chat): work with an agent in a conversation and follow what it does.
 4. [Agents](/agents): create agents and configure their prompts, Skills, memory and tools.
@@ -17,7 +17,7 @@ Work through these pages in order:
 
 ## What ships in the box
 
-PenguinHarness is made of these components. They share one data root and one message protocol, so you can mix them freely.
+Adelie is made of these components. They share one data root and one message protocol, so you can mix them freely.
 
 | Component | Package | Description |
 | --- | --- | --- |
@@ -29,13 +29,13 @@ PenguinHarness is made of these components. They share one data root and one mes
 
 ## The three pillars
 
-PenguinHarness is summed up in one line, **Efficient Self-Improving Harness for Everyone**, and organized around three concepts: the message protocol, the SDK and the skill library. Each concept carries one pillar:
+Adelie is summed up in one line, **Efficient Self-Improving Harness for Everyone**, and organized around three concepts: the message protocol, the SDK and the skill library. Each concept carries one pillar:
 
 | Pillar | Meaning |
 | --- | --- |
 | **Simplest Is the Best** | A deliberately minimal toolset over clean low-level interfaces: fewer tool calls, fewer Tokens, and complex tasks done efficiently. |
-| **Harness for Building Agents** | With the PenguinHarness SDK, an agent builds complete agent applications for you, autonomously and from scratch. |
-| **Harness for Recursive Self-Improvement** | With PenguinHarness Skills, an agent evaluates and optimizes itself, improving recursively over time. |
+| **Harness for Building Agents** | With the Adelie SDK, an agent builds complete agent applications for you, autonomously and from scratch. |
+| **Harness for Recursive Self-Improvement** | With Adelie Skills, an agent evaluates and optimizes itself, improving recursively over time. |
 
 ## Design tenets
 
@@ -50,7 +50,7 @@ These principles run through every component, and the design pages keep coming b
 
 ## A note on naming
 
-The unified message protocol is called **OmniMessage** in technical writing, and marketing materials also call it Penguin Message. This documentation uses OmniMessage throughout.
+The unified message protocol is called **OmniMessage** in technical writing, and marketing materials also call it Adelie Message. This documentation uses OmniMessage throughout.
 
 ## Learn how it works
 

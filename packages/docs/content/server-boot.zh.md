@@ -22,15 +22,15 @@ description: 从进程入口到 App 开始服务的组装顺序、各子系统�
 | 入口 | 机制 |
 | --- | --- |
 | 直接运行 | `node dist/index.js`（`server/package.json` 里的 `start`） |
-| CLI（`penguin server` / `penguin web`） | 设好 `PORT`/`HOST` 并导出 `PENGUIN_CLI_ENTRY`，然后以**受监管的子进程**运行 Server，由子进程导入 `@adelie/server` |
+| CLI（`penguin server` / `penguin web`） | 设好 `PORT`/`HOST` 并导出 `ADELIE_CLI_ENTRY`，然后以**受监管的子进程**运行 Server，由子进程导入 `@adelie/server` |
 | CLI 自动启动 | CLI 命令发现没有运行中的 Server 时，以 `PORT=0` 派生一个分离的 `server` 子命令，等数据根的锁生效后再接入 |
 | 桌面应用 | `utilityProcess.fork` 拉起一个**独立**的 Server 进程，并注入它需要的环境变量 |
 
-受监管的子进程以 `node <entry> server …` 运行，带有 `PENGUIN_SERVE_CHILD=1` 标记，并通过 `PENGUIN_SUPERVISED=1` 得知有监管者。父进程转发终端的信号，以子进程的退出码退出；子进程以 **重启以更新** 所要求的重启码退出时，父进程重新拉起它。用 tsx 运行的开发实例无法由 node 重新派生，CLI 就改为在本进程内导入 Server。`penguin web` 还会轮询到就绪后打开浏览器。
+受监管的子进程以 `node <entry> server …` 运行，带有 `ADELIE_SERVE_CHILD=1` 标记，并通过 `ADELIE_SUPERVISED=1` 得知有监管者。父进程转发终端的信号，以子进程的退出码退出；子进程以 **重启以更新** 所要求的重启码退出时，父进程重新拉起它。用 tsx 运行的开发实例无法由 node 重新派生，CLI 就改为在本进程内导入 Server。`penguin web` 还会轮询到就绪后打开浏览器。
 
 自动启动的输出写入 `<root>/logs/server-auto-<date>.log`。
 
-桌面应用经环境变量注入 `PENGUIN_HOME`、`HOST`、`PORT`、`PENGUIN_DESKTOP_TOKEN` 和 `PENGUIN_PORT_FILE`；应用指定了 `PENGUIN_WEB_DIST` 和 `PENGUIN_CLI_ENTRY` 时，也一并注入。
+桌面应用经环境变量注入 `ADELIE_HOME`、`HOST`、`PORT`、`ADELIE_DESKTOP_TOKEN` 和 `ADELIE_PORT_FILE`；应用指定了 `ADELIE_WEB_DIST` 和 `ADELIE_CLI_ENTRY` 时，也一并注入。这些部署变量同时仍按改名前 `PENGUIN_*` 的拼写读取（见[配置参考](/configuration#环境变量)）。
 
 > [!NOTE]
 > Server 自身的配置只来自环境变量（`server/src/config.ts`）。`system_config.yaml` 是 Agent 级状态，在 Session 运行时读取，与 Server 启动无关。
@@ -43,7 +43,7 @@ description: 从进程入口到 App 开始服务的组装顺序、各子系统�
 main()  —— one PenguinServer method per line
 │
 ├─ ① loadEnv · installProxy        dotenv first (.env may define HTTP_PROXY itself), then the proxy takes over fetch
-├─ ② readConfig                    env only: PENGUIN_HOME, PORT, HOST, PENGUIN_WEB_DB …
+├─ ② readConfig                    env only: ADELIE_HOME, PORT, HOST, ADELIE_WEB_DB …
 ├─ ③ ensureSoleInstance            data root held by another live instance → exit code 3 (before the DB opens)
 ├─ ④ listen                        bind the port now; answer 503 "starting" until ⑧. The callback writes back
 │                                  the real port, takes the lock, and opens the ::1 companion on a loopback bind
@@ -59,7 +59,7 @@ main()  —— one PenguinServer method per line
 │  ├─ ⑨ seedAdmin                  built-in admin seed; decides whether a first-login link is due
 │  ├─ ⑩ installProcessHandlers     signals, the desktop quit path, restart-to-update, the process-level error fallback
 │  └─ ⑪ printFirstLoginNotice      the one-time sign-in link, when one is due
-└─ ⑫ announce                      write the port to PENGUIN_PORT_FILE: the App is up
+└─ ⑫ announce                      write the port to ADELIE_PORT_FILE: the App is up
 ```
 
 这个顺序不是随意排的，其中的约束都是硬性的：

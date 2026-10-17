@@ -7,33 +7,33 @@ This page documents every `penguin` command. It opens with how the CLI reaches a
 
 The CLI ships as the npm package `@adelie/cli`, and the command is `penguin`. Bare `penguin` prints help. `-v, --version` prints the running build's one-line identity, and `penguin version --json` prints all of it. On startup the CLI loads a `.env` file from the working directory.
 
-The CLI is a thin client of the server. Every session-facing command (`run`, `chat`, `ls`, `input`, `logs`, `agent`, `project`, `cost`, `schedule`, `org`, `browser`) sends HTTP requests to a PenguinHarness server and renders the replies. Tasks run on the server, Sessions live in its index, and the Web App sees everything the CLI creates, and the other way round. Only `config` still edits the Project's files directly, and `server` / `web` start the service itself.
+The CLI is a thin client of the server. Every session-facing command (`run`, `chat`, `ls`, `input`, `logs`, `agent`, `project`, `cost`, `schedule`, `org`, `browser`) sends HTTP requests to an Adelie server and renders the replies. Tasks run on the server, Sessions live in its index, and the Web App sees everything the CLI creates, and the other way round. Only `config` still edits the Project's files directly, and `server` / `web` start the service itself.
 
 ## Server connection
 
 A CLI that talks to the server on the local machine needs no login, except to change an agent's exposure (see [penguin agent api](#penguin-agent-api)). The CLI picks its server in this order, and the first match wins:
 
 1. `--server <url>`: an explicit target.
-2. `PENGUIN_API_URL`: the same, from the environment. Server-driven sessions inject it into every tool subprocess, together with `PENGUIN_API_TOKEN`, `PENGUIN_PROJECT_ID`, `PENGUIN_AGENT_ID` and `PENGUIN_SESSION_ID`, so an agent's own `penguin` calls reach the server that runs them.
-3. A live `server.lock` at the data root (`PENGUIN_HOME`, else `~/.penguin/data`): the CLI attaches to the running local server.
+2. `ADELIE_API_URL`: the same, from the environment. Server-driven sessions inject it into every tool subprocess, together with `ADELIE_API_TOKEN`, `ADELIE_PROJECT_ID`, `ADELIE_AGENT_ID` and `ADELIE_SESSION_ID`, so an agent's own `penguin` calls reach the server that runs them.
+3. A live `server.lock` at the data root (`ADELIE_HOME`, else `~/.adelie/data`): the CLI attaches to the running local server.
 4. Auto-start: the CLI spawns a detached local server on an ephemeral port, waits for it and attaches. The server's output goes to `<root>/logs/server-auto-<date>.log`. If two CLIs race, the losing spawn exits and both attach to the winner.
 
-The CLI authenticates with the local API token. The server writes a fresh token to `<root>/api-token` on every boot (owner-only), and the CLI sends it as `Authorization: Bearer`. `PENGUIN_API_TOKEN` overrides the file. The CLI reads the file only for loopback targets, so a remote `--server` needs `PENGUIN_API_TOKEN` set explicitly. Holding the file grants admin authority by design, because local filesystem access to the data root already does. `penguin server reset-admin-password` relies on the same rule.
+The CLI authenticates with the local API token. The server writes a fresh token to `<root>/api-token` on every boot (owner-only), and the CLI sends it as `Authorization: Bearer`. `ADELIE_API_TOKEN` overrides the file. The CLI reads the file only for loopback targets, so a remote `--server` needs `ADELIE_API_TOKEN` set explicitly. Holding the file grants admin authority by design, because local filesystem access to the data root already does. `penguin server reset-admin-password` relies on the same rule.
 
 A few writes take a person's sign-in instead, such as those that change an agent's exposure (see [penguin agent api](#penguin-agent-api)). The server refuses the token on them with `403` `human_required`, and the CLI then sends that request once more with your sign-in from [`penguin auth login`](#penguin-auth-login) or [`penguin auth token`](#penguin-auth-token), stored in `<root>/cli-session.json` and sent as the session cookie. It does so only for a server on this machine, only when the sign-in itself is to a server on this machine, and never from inside a Session, where the command is an agent's. Every other request carries the token alone.
 
 ## Global conventions
 
 - Model references: a model's identity is always the `(provider, model_id)` pair. `--model-id` takes the upstream model id and `--provider` the group it belongs to. The CLI never infers, guesses or defaults the provider. On `run` and `chat` the pair as a whole is optional: pass both to pick a model, or neither to use the Project's default model. Passing only one is an error.
-- Project and agent defaults: `--project-id` falls back to `PENGUIN_PROJECT_ID`, then `default_project`. `--agent-id` falls back to `PENGUIN_AGENT_ID`, then `default_agent`. Inside a server-driven session, those variables name the session's own Project and agent.
+- Project and agent defaults: `--project-id` falls back to `ADELIE_PROJECT_ID`, then `default_project`. `--agent-id` falls back to `ADELIE_AGENT_ID`, then `default_agent`. Inside a server-driven session, those variables name the session's own Project and agent.
 - Session references: wherever a command takes a session id (`input`, `logs`, `run --session`, `chat --resume`), the full id or any unique fragment works. The 8-hex tail that `penguin ls` prints is the intended shorthand. An ambiguous fragment is an error that lists the candidates.
 - Latest-session default: where the session id is optional (`input [session_id]`, `logs [session_id]`, `chat --resume`), omitting it means the agent's most recent Session, and `--agent-id` picks the agent. `input` and `logs` name the Session they picked in a dim `[latest]` line on stderr, so the target is always clear and `--json` output on stdout stays parseable. When the agent has no Session at all, they print one line pointing at `penguin run` / `penguin chat` and exit non-zero.
 - JSON output: `--json` prints raw JSON instead of rendered or tabular output.
 - Target server: `--server <url>` targets a specific server. See [Server connection](#server-connection).
-- Caller-context defaults: inside a harness agent (`PENGUIN_SESSION_ID` is set), a Session created by `run` or `chat` takes each unspecified field from the calling Session's live values: the Workspace, the model pair, the approval mode and the thinking level. `run_subagent` applies the same inheritance to the children it spawns, so both surfaces follow one convention. For each field, an explicit flag wins over the caller's value, which wins over the plain fallback. A failed lookup prints a dim warning and uses the plain fallback. Outside an agent nothing changes, and `--project-id` / `--agent-id` keep their environment-variable defaults.
+- Caller-context defaults: inside a harness agent (`ADELIE_SESSION_ID` is set), a Session created by `run` or `chat` takes each unspecified field from the calling Session's live values: the Workspace, the model pair, the approval mode and the thinking level. `run_subagent` applies the same inheritance to the children it spawns, so both surfaces follow one convention. For each field, an explicit flag wins over the caller's value, which wins over the plain fallback. A failed lookup prints a dim warning and uses the plain fallback. Outside an agent nothing changes, and `--project-id` / `--agent-id` keep their environment-variable defaults.
 - Timeouts: `--timeout <duration>` on `run`, `input` and `logs -f` bounds the wait with soft-yield semantics, the `exec_command` yield-window model applied to the CLI. At expiry the command detaches cleanly and exits 0. The Task keeps running on the server, and a later `penguin input` or `penguin logs` can pick it up. Accepted values are `30s`, `5m`, `2h`, or a bare integer meaning seconds; anything else is rejected. `--timeout 0` returns immediately after delivery (`{sessionId, status: "running"}` under `--json`), so the same option also covers "don't wait". Without the option, the command waits indefinitely. For new Tasks, `run --background` remains the usual fire-and-forget: it prints the bare session id for scripts and detaches as soon as the Task is created.
 - Argument errors: a missing argument, a missing required option, an unknown option or a mistyped command prints one line in the interface language, the command's own usage and a pointer to its `--help`, then exits non-zero.
-- Data root: `--root <dir>` sets the data root for the commands that read it directly: `config`, `auth`, `version`, `server status` and `server stop`. A relative path resolves against the working directory. Priority: `--root`, then the `PENGUIN_HOME` environment variable, then `~/.penguin/data`.
+- Data root: `--root <dir>` sets the data root for the commands that read it directly: `config`, `auth`, `version`, `server status` and `server stop`. A relative path resolves against the working directory. Priority: `--root`, then the `ADELIE_HOME` environment variable, then `~/.adelie/data`.
 
 ## penguin run
 
@@ -46,8 +46,8 @@ penguin run -m <message> [options]
 | Option | Description | Default |
 | --- | --- | --- |
 | `-m, --message <message>` | The message to send. Required. | — |
-| `--project-id <id>` | Project to use. | `PENGUIN_PROJECT_ID`, else `default_project` |
-| `--agent-id <id>` | Agent to use. | `PENGUIN_AGENT_ID`, else `default_agent` |
+| `--project-id <id>` | Project to use. | `ADELIE_PROJECT_ID`, else `default_project` |
+| `--agent-id <id>` | Agent to use. | `ADELIE_AGENT_ID`, else `default_agent` |
 | `--workspace <path>` | Workspace directory. A relative path resolves against the CLI's working directory. The directory must exist on the server's machine, which in the default local setup is this machine. | The working directory |
 | `--model-id <id>` | Upstream id of the model to use. Requires `--provider`. | The Project's default model |
 | `--provider <group>` | Provider group of the model. Required with `--model-id`. | — |
@@ -162,8 +162,8 @@ penguin input [session_id] [options]
 | --- | --- | --- |
 | `-m, --message <text>` | The message text. Omit it to poll the last assistant reply instead. | — |
 | `--timeout <duration>` | Soft-yield wait budget. With `-m`, the command detaches at expiry as `run` does, and `--timeout 0` returns right after delivery. Without `-m`, the command takes the snapshot at expiry (`0` means immediately) and notes that the Session is still running. | Wait indefinitely |
-| `--project-id <id>` | Scope of the fragment search. A full session id needs none. | `PENGUIN_PROJECT_ID`, else `default_project` |
-| `--agent-id <id>` | The agent whose most recent Session an omitted session id means. | `PENGUIN_AGENT_ID`, else `default_agent` |
+| `--project-id <id>` | Scope of the fragment search. A full session id needs none. | `ADELIE_PROJECT_ID`, else `default_project` |
+| `--agent-id <id>` | The agent whose most recent Session an omitted session id means. | `ADELIE_AGENT_ID`, else `default_agent` |
 | `--json` / `--server <url>` | See [Global conventions](#global-conventions) and the JSON shapes below. | — |
 
 With `-m`, a running Session receives the text as steering, delivered between turns, and an idle Session starts a new Task. By default the command waits and renders until the turn completes.
@@ -196,8 +196,8 @@ penguin logs [session_id] [options]
 | `--tail <n>` | Shows only the last n entries. | All entries |
 | `-f, --follow` | Keeps following the live stream after the history. Read-only: Ctrl-C detaches without touching the Session. | — |
 | `--timeout <duration>` | Stops following after this long (soft yield, exit 0). Only meaningful with `-f`. | — |
-| `--project-id <id>` | Scope of the fragment search. | `PENGUIN_PROJECT_ID`, else `default_project` |
-| `--agent-id <id>` | The agent whose most recent Session an omitted session id means. | `PENGUIN_AGENT_ID`, else `default_agent` |
+| `--project-id <id>` | Scope of the fragment search. | `ADELIE_PROJECT_ID`, else `default_project` |
+| `--agent-id <id>` | The agent whose most recent Session an omitted session id means. | `ADELIE_AGENT_ID`, else `default_agent` |
 | `--json` / `--server <url>` | `--json` prints the raw message array, and with `-f` one JSON message per line as messages arrive. | — |
 
 ```bash
@@ -261,7 +261,7 @@ Options:
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `--agent-id <id>` | The agent. Required: unlike other commands, it never falls back to `PENGUIN_AGENT_ID` or `default_agent`, so no agent is exposed by default. | — |
+| `--agent-id <id>` | The agent. Required: unlike other commands, it never falls back to `ADELIE_AGENT_ID` or `default_agent`, so no agent is exposed by default. | — |
 | `--open` / `--no-open` | Allows keyless access / requires a key (`enable`, `set`). | Unchanged |
 | `--approve <mode>` | The approval mode new API conversations start with; see [Approval modes (--approve)](#approval-modes---approve). A mode that asks sends the question to the calling program (`enable`, `set`). An unknown mode fails before any request. | Unchanged |
 | `--name <name>` | The key's name, 1–64 characters (`keys create`, required). | — |
@@ -453,7 +453,7 @@ penguin org finance [--period <YYYY-MM>] [--json]
 
 Every subcommand takes `--org-id <id>`, `--project-id`, `--json` and `--server`.
 
-`--org-id` defaults to `PENGUIN_ORG_ID`, the one variable company mode adds to the environment described under [Server connection](#server-connection). The server injects it into every tool subprocess of a desk or ticket session, so an employee's own `penguin org` calls reach its organization without naming it, while a person in a shell passes the flag. There is no default organization: with neither the flag nor the variable, the command fails before contacting any server. `create` is the exception, because its `--org-id` is the id to create and never comes from the environment.
+`--org-id` defaults to `ADELIE_ORG_ID`, the one variable company mode adds to the environment described under [Server connection](#server-connection). The server injects it into every tool subprocess of a desk or ticket session, so an employee's own `penguin org` calls reach its organization without naming it, while a person in a shell passes the flag. There is no default organization: with neither the flag nor the variable, the command fails before contacting any server. `create` is the exception, because its `--org-id` is the id to create and never comes from the environment.
 
 `--json` prints the response as one line of JSON. Without it, the write commands print a one-line confirmation.
 
@@ -461,9 +461,9 @@ Every subcommand takes `--org-id <id>`, `--project-id`, `--json` and `--server`.
 
 Inside a session, the same environment identifies the caller:
 
-- `--agent-id` on the `calendar` commands and the `<agent_id>` argument of `desk` default to `PENGUIN_AGENT_ID`, so an employee schedules its own events and renews its own desk. `calendar ls` without the flag lists every employee's events.
-- `ticket start` runs the ticket session as `--agent-id` when given, else as `PENGUIN_AGENT_ID` when it is set, else as the ticket's owner, whom the server picks. The command also sends `PENGUIN_SESSION_ID`, which lets the server enforce its rule: only the ticket's owner, or a person, starts the ticket's sessions. An employee that asks for someone else's ticket, or for a ticket with no employee owner, gets `403 not_ticket_owner`, printed verbatim. The error tells it to assign the ticket instead (`penguin org ticket assign <id> --owner agent:<employee>`) and let that employee's desk pick it up in its next sweep. The owner uses `--agent-id` to bring a colleague onto its own ticket.
-- The ticket writes (`create`, `assign`, `move`, `block`, `unblock`, `progress`) and the channel writes (`create`, `invite`, `join`, `archive`, `unarchive`, `send`) send `PENGUIN_SESSION_ID` in their request body, so the file records the session's employee rather than the token's user. `ticket attach` attaches that session when `--session` is omitted; `--session` takes a full id or a unique fragment, as everywhere.
+- `--agent-id` on the `calendar` commands and the `<agent_id>` argument of `desk` default to `ADELIE_AGENT_ID`, so an employee schedules its own events and renews its own desk. `calendar ls` without the flag lists every employee's events.
+- `ticket start` runs the ticket session as `--agent-id` when given, else as `ADELIE_AGENT_ID` when it is set, else as the ticket's owner, whom the server picks. The command also sends `ADELIE_SESSION_ID`, which lets the server enforce its rule: only the ticket's owner, or a person, starts the ticket's sessions. An employee that asks for someone else's ticket, or for a ticket with no employee owner, gets `403 not_ticket_owner`, printed verbatim. The error tells it to assign the ticket instead (`penguin org ticket assign <id> --owner agent:<employee>`) and let that employee's desk pick it up in its next sweep. The owner uses `--agent-id` to bring a colleague onto its own ticket.
+- The ticket writes (`create`, `assign`, `move`, `block`, `unblock`, `progress`) and the channel writes (`create`, `invite`, `join`, `archive`, `unarchive`, `send`) send `ADELIE_SESSION_ID` in their request body, so the file records the session's employee rather than the token's user. `ticket attach` attaches that session when `--session` is omitted; `--session` takes a full id or a unique fragment, as everywhere.
 - The channel reads (`ls`, `show`, `tail`) and the member DELETE behind `leave` and `remove` have no request body, so they send the same session as `?sessionId=`. Without it, the server would answer an employee as the signed-in person, and `channel ls` would list every channel instead of the employee's own.
 
 ### ls, show and chart
@@ -560,9 +560,9 @@ penguin browser history [<query>] [-n <count>]
 
 - `--tab <id>` names the tab that `open`, `scan`, `exec`, `click`, `type`, `screenshot` and `cdp` act on: a tab id from `tabs`, or `active`, the default.
 - `--json` prints the response as one line of JSON, and `--server` works as everywhere.
-- Inside a session, `open`, `exec`, `click` and `type` send `PENGUIN_SESSION_ID`, so the app opens the Browser panel in the conversation that is driving it.
+- Inside a session, `open`, `exec`, `click` and `type` send `ADELIE_SESSION_ID`, so the app opens the Browser panel in the conversation that is driving it.
 - These commands never auto-start a server, because a server started that way would have no desktop app to host the browser. With no server running they fail with `browser_unavailable`.
-- The labels and messages follow the CLI's language. The examples here are the English output; with `PENGUIN_LANG=zh` they are in Chinese.
+- The labels and messages follow the CLI's language. The examples here are the English output; with `ADELIE_LANG=zh` they are in Chinese.
 
 `status` prints `status: available` and the tab list, or `status: unavailable (<reason>)` followed by a note, and then exits 1. The reason is `not_desktop` (the server is not the desktop app's), `shell_unsupported` (the desktop app is too old for the browser) or `no_window` (the app has no window open).
 
@@ -634,7 +634,7 @@ The result names the source, then prints `cookies: <n> imported, <n> skipped, <n
 
 ### Errors
 
-An error is one line on stderr, `error: <code>: <message>`, and the command exits 1. The server's codes are `browser_unavailable`, `no_tab` (no tab is open), `no_such_tab`, `tab_crashed` (the tab's page crashed: close it and open the page in a new tab), `too_many_tabs` (the browser holds 20 tabs), `script_error`, `timeout`, `invalid_url`, `source_not_found` and `import_failed`; the CLI adds `invalid_argument` for a command typed wrong, `io_error` for a file it cannot read or write, and `request_failed` when the server cannot be reached. For `browser_unavailable` the message explains that the built-in browser needs the PenguinHarness desktop app, and that the app must be open.
+An error is one line on stderr, `error: <code>: <message>`, and the command exits 1. The server's codes are `browser_unavailable`, `no_tab` (no tab is open), `no_such_tab`, `tab_crashed` (the tab's page crashed: close it and open the page in a new tab), `too_many_tabs` (the browser holds 20 tabs), `script_error`, `timeout`, `invalid_url`, `source_not_found` and `import_failed`; the CLI adds `invalid_argument` for a command typed wrong, `io_error` for a file it cannot read or write, and `request_failed` when the server cannot be reached. For `browser_unavailable` the message explains that the built-in browser needs the Adelie desktop app, and that the app must be open.
 
 ## Approval modes (--approve)
 
@@ -717,7 +717,7 @@ penguin config vault remove --key GITHUB_TOKEN
 penguin config lang en
 ```
 
-Sets the CLI's interface language (`en` or `zh`) by writing `PENGUIN_LANG` into your shell's startup file. In an interactive terminal the command then offers to open a new shell so the setting takes effect; otherwise it prints how to apply it. On Windows the command is refused, because there is no POSIX shell startup file to write.
+Sets the CLI's interface language (`en` or `zh`) by writing `ADELIE_LANG` into your shell's startup file. In an interactive terminal the command then offers to open a new shell so the setting takes effect; otherwise it prints how to apply it. On Windows the command is refused, because there is no POSIX shell startup file to write.
 
 ## penguin server / penguin web
 
@@ -753,7 +753,7 @@ penguin server status [--root <dir>]
 # {"running":true,"port":7364,"pid":41233,"machineId":"LNrJdHAZJ91G58i0"}
 ```
 
-`running` is true only when the recorded pid is alive and its port accepts a connection, so a recycled pid does not look like a live server. `port` and `pid` are `null` when no server is running. `machineId` is `null` until a server has started on this machine at least once: the id is minted on first boot and never changes afterwards. The data root comes from `--root` or `PENGUIN_HOME` as usual.
+`running` is true only when the recorded pid is alive and its port accepts a connection, so a recycled pid does not look like a live server. `port` and `pid` are `null` when no server is running. `machineId` is `null` until a server has started on this machine at least once: the id is minted on first boot and never changes afterwards. The data root comes from `--root` or `ADELIE_HOME` as usual.
 
 The **Machines** page runs this command over ssh to ask a machine what it is doing, which is why the output is JSON rather than prose.
 
@@ -765,7 +765,7 @@ An offline rescue for a forgotten Web admin password. Run it with the server sto
 penguin server reset-admin-password
 ```
 
-The built-in `admin` returns to the unclaimed state: its password becomes a random one nobody has seen, and all of its sessions are revoked. Start the server again and open the first-login link it prints to set a new password; nothing needs to be written down in between. The admin resets other accounts on the **Users** page, and this command only touches `admin`. The data root comes from `PENGUIN_HOME` as usual.
+The built-in `admin` returns to the unclaimed state: its password becomes a random one nobody has seen, and all of its sessions are revoked. Start the server again and open the first-login link it prints to set a new password; nothing needs to be written down in between. The admin resets other accounts on the **Users** page, and this command only touches `admin`. The data root comes from `ADELIE_HOME` as usual.
 
 ### penguin server stop
 
@@ -795,7 +795,7 @@ penguin version --json   # the full build info
 | Option | Description | Default |
 | --- | --- | --- |
 | `--json` | Prints the full version report instead of one line: `{version, describe, channel, buildDate, commit, branch, dirty, runtime, harness}`. | — |
-| `--root <dir>` | The data root whose HMR store is reported as `harness`. Only used with `--json`. | `PENGUIN_HOME`, else `~/.penguin/data` |
+| `--root <dir>` | The data root whose HMR store is reported as `harness`. Only used with `--json`. | `ADELIE_HOME`, else `~/.adelie/data` |
 
 The bare form prints one line. For a source build, that line is the output of `git describe --tags --dirty`: `v0.2.3-14-g9e8f7d6-dirty` means fourteen commits after `v0.2.3`, at commit `9e8f7d6`, with uncommitted changes. `-v, --version` prints the same line.
 
@@ -813,7 +813,7 @@ The JSON is the same record that `GET /api/version` returns, so a bug report can
 
 ```json
 "harness": {
-  "source": { "repo": "…/penguin-harness", "revision": "v0.2.3-7-gabc1234-dirty" },
+  "source": { "repo": "…/Adelie", "revision": "v0.2.3-7-gabc1234-dirty" },
   "pushedAt": "2026-08-20T10:15:00.000Z",
   "bundles": { "platform": "store/platform/…", "cli": "store/cli/…", "web": "store/web/…" }
 }
@@ -827,7 +827,7 @@ An installed `penguin` never runs git: it reads constants stamped into the build
 
 ## penguin auth
 
-Signs in to a running PenguinHarness server from the terminal. There are two ways in, and the right one depends on where you are.
+Signs in to a running Adelie server from the terminal. There are two ways in, and the right one depends on where you are.
 
 ```bash
 penguin auth login                      # password, against the server on this data root
@@ -843,17 +843,17 @@ Every `auth` subcommand takes `--root <dir>` to pick the data root; see [Global 
 
 `login` takes a password and asks a running server for a session, exactly as the browser's login page does. The target defaults to the server running on this data root, read from its lock file, so signing in to your own server needs no URL.
 
-When run interactively, `login` asks for the account first and then the password, and the password prompt names the account, so you never type one account's password for another. If you supply the password non-interactively (`--password` or `PENGUIN_PASSWORD`), neither question is asked, because a script cannot answer them.
+When run interactively, `login` asks for the account first and then the password, and the password prompt names the account, so you never type one account's password for another. If you supply the password non-interactively (`--password` or `ADELIE_PASSWORD`), neither question is asked, because a script cannot answer them.
 
 | Option | Description | Default |
 | --- | --- | --- |
 | `--server <url>` | The server to sign in to. | The server running on this data root |
 | `--user-id <id>` | The account. Asked for when omitted; a bare Enter means `admin`. | `admin` |
-| `--password <pw>` | The password. Also read from `PENGUIN_PASSWORD`; otherwise prompted for without echo. | — |
+| `--password <pw>` | The password. Also read from `ADELIE_PASSWORD`; otherwise prompted for without echo. | — |
 | `--print` | Also prints the session token to stdout, for piping. | — |
 
 > [!WARNING]
-> Prefer `PENGUIN_PASSWORD` or the prompt over `--password`: anyone on the machine can read a command line through `ps`.
+> Prefer `ADELIE_PASSWORD` or the prompt over `--password`: anyone on the machine can read a command line through `ps`.
 
 ### penguin auth token
 
@@ -892,7 +892,7 @@ The flag is `--release`, not `--version`, because `-v, --version` is the CLI's o
 
 | Install kind | How it upgrades |
 | --- | --- |
-| Tarball (`install.sh`, default `~/.penguin`) | Re-runs the official installer, keeping the install directory and whether the package bundles a Node runtime |
+| Tarball (`install.sh`, default `~/.adelie`) | Re-runs the official installer, keeping the install directory and whether the package bundles a Node runtime |
 | Global npm, pnpm, yarn or bun install | Runs that package manager's global install of `@adelie/cli@<target>`. If the manager cannot be identified, prints the command instead of guessing |
 | Source checkout | Refused: update it with `git pull` and a rebuild |
 | The desktop app's bundled CLI | Refused: it is replaced when the app updates, so check for updates from the app menu |
@@ -900,11 +900,10 @@ The flag is `--release`, not `--version`, because `-v, --version` is the CLI's o
 
 Without `-y`, the command prints exactly what it will do (the mechanism, the target version and the install directory) and asks for confirmation. When stdin is not a terminal, it requires `--yes` instead of waiting on a prompt nobody can answer. **The data root is never touched**: an upgrade replaces only `bin`, `lib`, `web` and `node`. On Windows neither upgrade path runs in place. The installer is a POSIX shell script, and a global install cannot be driven from here because Node does not execute an `npm` or `pnpm` `.cmd` shim without a shell, so the command prints the exact command for you to run yourself.
 
-Release discovery and downloads follow `PENGUIN_DOWNLOAD_SOURCE=auto|oss|github`, the same policy as the stable installer entry point:
+Release discovery and downloads follow `PENGUIN_DOWNLOAD_SOURCE=auto|github`, the same policy as the stable installer entry point. Adelie publishes to one source — this repository's GitHub Releases — so the two values mean the same thing, and upstream's `oss` mirror is refused rather than ignored:
 
-- `auto`, the default, reads the OSS `latest.json`, prefers that immutable release, and falls back to the matching GitHub tag. The package itself then comes from whichever source the installer's speed probe picks.
-- `oss` and `github` are strict: the command uses only that source.
-- `--release <tag>` skips latest-version discovery but still follows the selected source policy.
+- `auto`, the default, and `github` both resolve the newest Release through this repository's GitHub Releases.
+- `--release <tag>` skips newest-version discovery but keeps the same source.
 - An explicit HTTPS `PENGUIN_DOWNLOAD_BASE_URL` takes precedence over everything for the installer and package downloads, and `PENGUIN_DOWNLOAD_FALLBACK_BASE_URL` optionally adds a fallback for the package.
 
 See also: [Configuration Reference](/configuration), [Models & Providers](/models).

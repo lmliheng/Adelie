@@ -100,7 +100,7 @@ Nothing on the overview creates, edits or deletes a task: creating one picks an 
 ## Limits
 
 - A repeating task runs at most once every 5 minutes: the shortest period is 5 minutes. A shorter period makes the task invalid.
-- Tasks run only while the PenguinHarness service is running.
+- Tasks run only while the Adelie service is running.
 - Missed runs are not made up. When a fire time passes while the service is stopped, a repeating task skips it and a one-off task is marked missed.
 
 ## How it works

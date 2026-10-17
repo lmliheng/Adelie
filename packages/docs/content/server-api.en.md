@@ -1,14 +1,14 @@
 ---
 title: Server API
-description: Reference for the PenguinHarness server's HTTP API, covering authentication, every route group, the SSE streaming protocol and DTO type imports.
+description: Reference for the Adelie server's HTTP API, covering authentication, every route group, the SSE streaming protocol and DTO type imports.
 ---
 
-The PenguinHarness server exposes a same-origin HTTP API that the bundled Web App and any other HTTP client use. This page covers authentication first, then the routes grouped by area, each with a route table followed by details, and ends with the SSE streaming protocol. To start the server, see the [Quickstart](/quickstart). The API that programs outside PenguinHarness call with an agent's key is on its own page, [Agent API](/agent-api).
+The Adelie server exposes a same-origin HTTP API that the bundled Web App and any other HTTP client use. This page covers authentication first, then the routes grouped by area, each with a route table followed by details, and ends with the SSE streaming protocol. To start the server, see the [Quickstart](/quickstart). The API that programs outside Adelie call with an agent's key is on its own page, [Agent API](/agent-api).
 
 ## Overview
 
 - Stack: Hono and `@hono/node-server`; requires Node >= 24.
-- Storage: SQLite (the built-in `node:sqlite`, in WAL mode) holds only indexes and aggregates: users, auth sessions, Project authorization, agent and Session indexes, usage, UI preferences, error records and schedule state. All agent, Trace and Workspace data stays as files under `~/.penguin/data`, shared with the CLI and SDK; see the [Configuration Reference](/configuration).
+- Storage: SQLite (the built-in `node:sqlite`, in WAL mode) holds only indexes and aggregates: users, auth sessions, Project authorization, agent and Session indexes, usage, UI preferences, error records and schedule state. All agent, Trace and Workspace data stays as files under `~/.adelie/data`, shared with the CLI and SDK; see the [Configuration Reference](/configuration).
 - Binding: `127.0.0.1:7364` by default, adjustable with the `PORT` / `HOST` environment variables.
 - Request bodies: writes accept JSON only; the Content-Type check is one of the CSRF defenses. The body size cap is derived from the attachment budget rather than fixed. Attachments travel in the request as base64 `data:` URLs, which inflate them by 4/3, so the cap is `base64(attachmentTotalMb)` plus headroom for one inline image and the JSON framing. That is about 190MB at the default 120MB total, and the cap drops again if an admin lowers the total. The server counts bytes as it reads the body, so a request that declares no length (chunked) is capped the same way.
 - Errors share one shape:
@@ -41,7 +41,7 @@ The API accepts two credentials: a cookie session and the local API token.
 
 - Cookie session: `penguin_session` (HttpOnly, SameSite=Lax), valid for 30 days with sliding renewal.
 - Passwords are stored as scrypt hashes. A session is a row in `auth_sessions`, keyed by the sha256 of a random cookie token; the raw token is never stored. A session survives a restart and renews in place, and logout deletes the row.
-- There is no open registration. At startup the server seeds the built-in admin `admin` with a random password, which it hashes and discards without anyone seeing it. Until a password is set, every start prints a first-login link that claims the account. For automation, `PENGUIN_SEED_ADMIN_PASSWORD` pins a known password instead. An admin creates all other accounts.
+- There is no open registration. At startup the server seeds the built-in admin `admin` with a random password, which it hashes and discards without anyone seeing it. Until a password is set, every start prints a first-login link that claims the account. For automation, `ADELIE_SEED_ADMIN_PASSWORD` pins a known password instead. An admin creates all other accounts.
 - Same-origin only: no CORS middleware is enabled, except on the Agent API's `/api/amsp/v1`, which answers a preflight from any origin and sends `Access-Control-Allow-Origin: *` on a request that carries `Authorization`. That group takes neither credential above: a request presents the agent's API key, or none when the agent allows keyless access. See [Agent API](/agent-api).
 - Routes marked admin only answer other users with `403` `admin_required`.
 
@@ -58,13 +58,13 @@ Every protected route also accepts `Authorization: Bearer <token>` with the **lo
 
 - The server mints a fresh token at every boot and writes it to `<root>/api-token` with owner-only permissions (`0600`). The previous boot's token stops working as soon as the new one is minted.
 - A valid Bearer token authenticates as the built-in `admin`. This is the authorization model by design: local filesystem access to the data root already is admin authority, since whoever can read `api-token` can also read `web.db` next to it. `penguin server reset-admin-password` relies on the same rule.
-- Server-driven sessions inject the current token into every tool subprocess as `PENGUIN_API_TOKEN`, together with `PENGUIN_API_URL`, `PENGUIN_PROJECT_ID`, `PENGUIN_AGENT_ID` and `PENGUIN_SESSION_ID`. That is what authorizes an agent's own `penguin` and API calls to reach the server that runs them.
+- Server-driven sessions inject the current token into every tool subprocess as `ADELIE_API_TOKEN`, together with `ADELIE_API_URL`, `ADELIE_PROJECT_ID`, `ADELIE_AGENT_ID` and `ADELIE_SESSION_ID`. That is what authorizes an agent's own `penguin` and API calls to reach the server that runs them.
 - The token cannot change an agent's exposure. `PUT …/agents/:agentId/api`, `POST …/api/keys`, `DELETE …/api/keys/:keyId`, `POST …/api/try`, and a `PUT /api/admin/settings` whose body carries `agentApiEnabled` answer it `403` `human_required` and write nothing; they take a cookie session. It is the same refusal the built-in browser gives the token for choosing a backend and minting a pairing code. The reads stay open to it. Since every tool subprocess holds the token, an agent could otherwise open itself to the network from its own shell. This narrows the credential an agent is handed; it is not a boundary. A process that runs as the data root's OS account outside the sandbox can mint a session itself with `penguin auth token`. The sandbox is the boundary.
 - SSE endpoints accept the header like any other route. Consume them with `fetch`, not `EventSource`, which cannot send headers.
 - The JSON-only Content-Type check on writes applies to Bearer requests too.
 
 ```bash
-curl -H "Authorization: Bearer $(cat ~/.penguin/data/api-token)" \
+curl -H "Authorization: Bearer $(cat ~/.adelie/data/api-token)" \
   http://127.0.0.1:7364/api/me
 ```
 
@@ -307,7 +307,7 @@ The lookup fails softly:
 
 - A failed lookup still returns 200, with `error` set (`network`, `rate_limited` or `bad_response`) and `latestVersion: null`.
 - Results are cached in memory: for 1 h after a success and 10 min after a failure.
-- `PENGUIN_UPDATE_CHECK=off` disables the lookup entirely: the response carries `disabled: true`, and no network call is made.
+- `ADELIE_UPDATE_CHECK=off` disables the lookup entirely: the response carries `disabled: true`, and no network call is made.
 
 That switch turns off this check and nothing else. Model requests, an enabled remote-control connection, owner-initiated provider key authorization and the proxy test go out whatever it is set to.
 
@@ -612,7 +612,7 @@ All paths below are under `/api/projects/:projectId/organizations`. While the se
 
 ### Caller identity
 
-Write bodies may carry `agentId` and `sessionId`, the calling employee and the calling session, which the CLI fills in from `PENGUIN_AGENT_ID` and `PENGUIN_SESSION_ID`. The file then records the employee rather than the token's user: `agentId` wins when it names an employee, and the session decides otherwise. The channel reads and the member DELETE have no body, so they take the same pair as `?agentId=` / `?sessionId=`. The server honours both only on requests that carry the local API token; that is how an employee is answered as itself instead of as the signed-in person.
+Write bodies may carry `agentId` and `sessionId`, the calling employee and the calling session, which the CLI fills in from `ADELIE_AGENT_ID` and `ADELIE_SESSION_ID`. The file then records the employee rather than the token's user: `agentId` wins when it names an employee, and the session decides otherwise. The channel reads and the member DELETE have no body, so they take the same pair as `?agentId=` / `?sessionId=`. The server honours both only on requests that carry the local API token; that is how an employee is answered as itself instead of as the signed-in person.
 
 ### Organizations
 
@@ -934,9 +934,9 @@ GET  /api/sessions/:sessionId/files/preview-redirect?path=index.html
 GET  /preview/<token>/<relative path>          (unauthenticated; the token is the credential)
 ```
 
-- Why a separate origin: the page needs a real origin for storage, cookies and third-party embeds to work, but it must not be the app's origin, or HTML an agent wrote would run with the session cookie. Locally, the app is canonicalized onto `localhost` and previews are served from `127.0.0.1`. Cookies are keyed by host and ignore the port, so those two hosts get separate cookie jars, which a second port would not. Otherwise `PENGUIN_PREVIEW_ORIGIN` applies. With neither (a wildcard or non-loopback bind, or the variable unset), the redirect falls back to the same-origin sandbox described above, and `previewIsolated` on `GET /api/me` reports `false` so the UI can tell the user first.
+- Why a separate origin: the page needs a real origin for storage, cookies and third-party embeds to work, but it must not be the app's origin, or HTML an agent wrote would run with the session cookie. Locally, the app is canonicalized onto `localhost` and previews are served from `127.0.0.1`. Cookies are keyed by host and ignore the port, so those two hosts get separate cookie jars, which a second port would not. Otherwise `ADELIE_PREVIEW_ORIGIN` applies. With neither (a wildcard or non-loopback bind, or the variable unset), the redirect falls back to the same-origin sandbox described above, and `previewIsolated` on `GET /api/me` reports `false` so the UI can tell the user first.
 - In-app rendering uses the same URL: the **Files** panel embeds the redirect URL in an iframe sandboxed with `allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads`. Here `allow-same-origin` grants the preview origin's identity, not the app's, so this stays strictly tighter than the new tab, which has no sandbox. Without a separate preview origin, the panel falls back to inline `srcdoc` rendering (`allow-scripts` only, plus an in-memory storage shim), where relative subresources cannot load. Some browsers partition or block storage inside a cross-site iframe, so a page may behave slightly differently in the panel than in a top-level tab.
-- The preview host serves only `/preview/*`. It is the same process as the app, so it answers `/api` with `401` and redirects every other route with `302` to the canonical app host. A session cookie is therefore never set or accepted on the preview host, and agent HTML there cannot reach the API from the same origin. For a deployed `PENGUIN_PREVIEW_ORIGIN`, the reverse proxy must enforce the same thing: route only `/preview/*` to the app on that origin.
+- The preview host serves only `/preview/*`. It is the same process as the app, so it answers `/api` with `401` and redirects every other route with `302` to the canonical app host. A session cookie is therefore never set or accepted on the preview host, and agent HTML there cannot reach the API from the same origin. For a deployed `ADELIE_PREVIEW_ORIGIN`, the reverse proxy must enforce the same thing: route only `/preview/*` to the app on that origin.
 - The token sits in the path, not in a query parameter, so a page's relative subresources (`app.js`, `style.css`, images) resolve against the document and load under the same token.
 - The token binds the Session, the preview host and an expiry time. The host binding matters: the same process also answers on the app origin, so `/preview/...` refuses to serve there, which would otherwise be a same-origin XSS. Access is read-only and limited to that Session's Workspace, and the server resolves the path again, so `..` and symlink escapes are rejected as for any read.
 - Responses carry `Referrer-Policy: no-referrer`. Otherwise the URL, with its token, would leak through `Referer` to every third party the page embeds, a risk that exists precisely because embeds now work.
@@ -1140,7 +1140,7 @@ Routes that serve the desktop shell, hot updates and the Web App's own module sy
 - `POST /api/desktop/shutdown` does not use the cookie session. It authenticates with the desktop shell's own Bearer token (`401` `unauthorized` otherwise), answers first, and starts the graceful shutdown right after.
 - The update, tray and privacy-settings routes answer only the desktop shell's own window: any other session gets `403` `desktop_shell_only`. When the shell is not listening, they return `503` `shell_unreachable`. `PUT /api/desktop/tray` returns `400` `invalid_show_tray_icon` for a non-boolean `showTrayIcon`, `400` `invalid_locale` for a `locale` other than `zh` or `en`, and `400` `empty_tray_patch` when neither field is given. The PUT only acknowledges the change; read the result back with GET.
 - `POST /api/desktop/privacy-settings` returns `400` `invalid_privacy_pane` for a `pane` other than `files` (Files and Folders) or `fullDisk` (Full Disk Access). The shell opens the pane on macOS only.
-- The `/api/hmr` routes are admin only (`403` `forbidden`). On a non-loopback bind they also require HTTPS and otherwise return `403` `hmr_disabled`. `X-Forwarded-Proto` counts only when `PENGUIN_TRUST_PROXY=1`. A completed upgrade sends `web_updated` to every connected client, so they reload.
+- The `/api/hmr` routes are admin only (`403` `forbidden`). On a non-loopback bind they also require HTTPS and otherwise return `403` `hmr_disabled`. `X-Forwarded-Proto` counts only when `ADELIE_TRUST_PROXY=1`. A completed upgrade sends `web_updated` to every connected client, so they reload.
 
 ## Streaming (SSE)
 

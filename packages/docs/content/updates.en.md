@@ -1,9 +1,9 @@
 ---
-title: Update PenguinHarness
+title: Update Adelie
 description: Check which version you are running, and update the desktop app, a CLI install, or a Docker deployment.
 ---
 
-Check which version of PenguinHarness you are running, and update it in the way that matches your install.
+Check which version of Adelie you are running, and update it in the way that matches your install.
 
 - **Which version is running?** See [Check the running version](#check-the-running-version).
 - **Updating from the browser?** See [Update from the Web App](#update-from-the-web-app).
@@ -109,4 +109,4 @@ Updating from inside the container is not supported. See [Upgrade the container]
 
 ## Turn off the update check
 
-Set `PENGUIN_UPDATE_CHECK=off` to turn off the automatic release check. That is all it turns off: model requests, an enabled remote-control connection, provider key authorization and the proxy test still reach the network. With the check off, the update dialog says **Update checks are disabled (PENGUIN_UPDATE_CHECK=off)**. See the [Configuration Reference](/configuration#environment-variables).
+Set `ADELIE_UPDATE_CHECK=off` to turn off the automatic release check. That is all it turns off: model requests, an enabled remote-control connection, provider key authorization and the proxy test still reach the network. With the check off, the update dialog says **Update checks are disabled (ADELIE_UPDATE_CHECK=off)**. See the [Configuration Reference](/configuration#environment-variables).

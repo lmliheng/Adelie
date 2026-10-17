@@ -3,7 +3,7 @@ title: Agent API
 description: 让外部程序经 HTTP 与某个 Agent 对话：开启 Agent 的 API、签发密钥，再用 curl 或 @adelie/amsp 客户端运行它。
 ---
 
-Agent API 让 PenguinHarness 之外的程序（脚本、服务、浏览器里的页面）经 HTTP 与某一个 Agent 对话。程序发送输入，以 [AMSP](/amsp) 事件流实时读取这次运行，再凭 Session id 延续对话。运行使用 Project 的模型与凭据，像其他对话一样被记录，并出现在侧边栏的**后台会话**折叠夹中。
+Agent API 让 Adelie 之外的程序（脚本、服务、浏览器里的页面）经 HTTP 与某一个 Agent 对话。程序发送输入，以 [AMSP](/amsp) 事件流实时读取这次运行，再凭 Session id 延续对话。运行使用 Project 的模型与凭据，像其他对话一样被记录，并出现在侧边栏的**后台会话**折叠夹中。
 
 从哪里开始：
 
@@ -27,7 +27,7 @@ Agent API 让 PenguinHarness 之外的程序（脚本、服务、浏览器里的
 2. 打开**开启 API 访问**。
 3. 选择 **API 会话的审批模式**，见[审批模式](#审批模式)。
 4. 在**密钥**下选择**新建密钥**，起个名字，然后复制密钥。密钥只显示这一次。
-5. 在**连接**下复制 **Base URL** 和 **Agent ID**。**示例**里有一条 curl 命令和一段 TypeScript 代码，两者都已填好，密钥处写作 `$PENGUIN_AGENT_KEY`。
+5. 在**连接**下复制 **Base URL** 和 **Agent ID**。**示例**里有一条 curl 命令和一段 TypeScript 代码，两者都已填好，密钥处写作 `$ADELIE_AGENT_KEY`。
 
 在**智能体**页面上，已开启 API 的 Agent 名称后带有 API 图标，悬停提示为**已开启 API 访问**。
 
@@ -79,7 +79,7 @@ API 会话的沙箱取自服务器的新对话默认值，与其他新对话相�
 
 ```bash
 curl -N http://localhost:7364/api/amsp/v1/agents/demo/coder/runs \
-  -H "Authorization: Bearer $PENGUIN_AGENT_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADELIE_AGENT_KEY" -H "Content-Type: application/json" \
   -d '{"input":"Summarize README.md"}'
 ```
 
@@ -98,7 +98,7 @@ data: [DONE]
 
 ```bash
 curl -N http://localhost:7364/api/amsp/v1/agents/demo/coder/runs \
-  -H "Authorization: Bearer $PENGUIN_AGENT_KEY" -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $ADELIE_AGENT_KEY" -H "Content-Type: application/json" \
   -d '{"session_id":"session-2026-10-07-10-00-00-3f9a1c2e","input":"Now list its headings"}'
 ```
 
@@ -174,7 +174,7 @@ import { AgentClient } from "@adelie/amsp";
 const client = new AgentClient({
   baseUrl: "http://localhost:7364/api/amsp/v1",
   agent: "demo/coder",
-  apiKey: process.env.PENGUIN_AGENT_KEY,
+  apiKey: process.env.ADELIE_AGENT_KEY,
 });
 
 const run = client.run({ input: "Summarize README.md" });

@@ -1,15 +1,17 @@
 /**
- * Preferences shared by the landing page and the docs site.
+ * Preferences the docs site stores.
  *
- * The two are separate SPAs but ship to one origin (penguin.ooo and penguin.ooo/docs/),
- * so a single localStorage key is all it takes for a language or theme choice to survive
- * the hop between them. They previously wrote `penguin-landing.*` and `penguin-docs.*`,
- * which is why picking dark mode on the landing page and clicking through to the docs
- * dropped you back into light.
+ * The keys are the ones the docs shared with the site they were deployed beside — upstream's
+ * landing page at the origin root — so a language or theme choice survived the hop between the
+ * two SPAs. The retired per-site names below are still read once for the same reason: a visitor
+ * who picked dark mode on the landing page and clicked through used to land back in light, and
+ * that read is what keeps an existing choice from being dropped.
+ * In this repository the docs are the whole site: the root `/Adelie/` is a one-page redirect to
+ * `/Adelie/docs/`. The KEYS stay exactly as they are, because a stored choice is keyed on them.
  *
- * This module is duplicated verbatim in packages/landing (as theme.tsx and locale.tsx
- * already are — the two sites share no package). The KEYS below must stay identical on
- * both sides; if they drift, the sync silently stops working with nothing failing.
+ * The `packages/landing` copy this module was duplicated in is gone from this repository; if it
+ * ever comes back, the KEYS have to match on both sides, since a drift makes the sync stop
+ * silently rather than fail.
  */
 
 export const THEME_KEY = "penguin-site.theme";

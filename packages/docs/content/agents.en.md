@@ -56,7 +56,7 @@ The **Report-writing agent** example creates an agent with the id `report-writer
 3. In **Agent id**, enter an id, or select **Generate with AI** beside the field to have the Project's default model derive one from the name, or from the description while the name is empty. An id is 2–64 characters long, starts with a lowercase letter, and uses only lowercase letters, digits and underscores. A proposal replaces what is in the box and stays editable. You cannot change the id later.
 4. Optional: fill in **Description**.
 5. Optional: in **Plugins**, select plugins from the plugin library to install on the new agent. Their Skills and hook packages are installed when the agent is created.
-6. Optional: in **Import Skills from a project directory**, select a directory. PenguinHarness reads the Skills under its `.agents/skills` and `.claude/skills` folders; select the ones to install. If a Skill from the directory has the same name as a Skill from a selected plugin, the directory's Skill is installed.
+6. Optional: in **Import Skills from a project directory**, select a directory. Adelie reads the Skills under its `.agents/skills` and `.claude/skills` folders; select the ones to install. If a Skill from the directory has the same name as a Skill from a selected plugin, the directory's Skill is installed.
 7. Select **Create**. The new agent's settings open.
 
 Any Project member can create an agent.
@@ -143,7 +143,7 @@ For how versions and snapshots work, see [Self-Improvement](/self-improvement#sn
 
 ### Update the kernel
 
-An agent's kernel version records which generation of the built-in default settings its configuration is based on. An existing agent never picks up newer defaults on its own. When PenguinHarness ships newer defaults, the **Kernel** section shows the current and the latest kernel version, and the Overview tab shows a red dot.
+An agent's kernel version records which generation of the built-in default settings its configuration is based on. An existing agent never picks up newer defaults on its own. When Adelie ships newer defaults, the **Kernel** section shows the current and the latest kernel version, and the Overview tab shows a red dot.
 
 1. In the **Kernel** section, select **Update kernel**.
 2. Confirm.
@@ -181,7 +181,7 @@ Under **Available placeholders (click to insert)**, select a placeholder to inse
 | `{{OS_VERSION}}` | The operating system version |
 | `{{SHELL}}` | The shell used to run commands |
 | `{{DATE}}` | The current date |
-| `{{PROJECT_DIR}}` | The PenguinHarness app data root, which holds all agents' data and Project data; not the task's working directory |
+| `{{PROJECT_DIR}}` | The Adelie app data root, which holds all agents' data and Project data; not the task's working directory |
 | `{{AGENT_ID}}` | The agent's id |
 | `{{CWD}}` | The absolute Workspace path |
 | `{{PROVIDER}}` | The model's provider group |
@@ -227,7 +227,7 @@ MCP servers add external tools to the agent. Their tools are named `mcp__<name>_
 1. On the **Tools** tab, select **Add MCP Server**.
 2. Choose the transport:
    - `http`, the default: Streamable HTTP, the current remote transport.
-   - `stdio`: a local process that PenguinHarness starts and talks to over stdin and stdout.
+   - `stdio`: a local process that Adelie starts and talks to over stdin and stdout.
    - `sse`: the legacy HTTP+SSE transport, for servers that have not migrated.
 3. In **name**, enter the tool-name prefix. Use letters, digits, `_` and `-`, starting with a letter or digit.
 4. Fill in the connection fields:
@@ -251,7 +251,7 @@ To change a server, select **Edit** on its row. To remove it, select **Remove** 
 1. In the **MCP Servers** section, select **Test connection**.
 2. Select **Start test**.
 
-PenguinHarness connects to each server in turn and discovers its tools. Nothing is saved. Each row shows the number of tools and the time taken, or **Connection failed** with the reason.
+Adelie connects to each server in turn and discovers its tools. Nothing is saved. Each row shows the number of tools and the time taken, or **Connection failed** with the reason.
 
 ## Skills tab
 
@@ -314,7 +314,7 @@ The memory count on the agent's card opens this tab.
 
 ## Vault tab
 
-The vault holds environment variables for the agent, such as API keys. PenguinHarness passes them to the agent's shell commands. The model sees the variable names, never their values. Subagents use their own vaults and do not inherit this one. Changes take effect from the next Task; a Task that is already running is not affected.
+The vault holds environment variables for the agent, such as API keys. Adelie passes them to the agent's shell commands. The model sees the variable names, never their values. Subagents use their own vaults and do not inherit this one. Changes take effect from the next Task; a Task that is already running is not affected.
 
 Only the Project owner can change the vault. Members see the variable names with masked values.
 
@@ -344,7 +344,7 @@ To delete a variable, select **Remove** on its row and confirm. The value cannot
 A scheduled task sends a prompt to the agent on a schedule: once, or every period. Changes made on this tab take effect immediately.
 
 > [!NOTE]
-> Scheduled tasks fire only while the PenguinHarness service is running.
+> Scheduled tasks fire only while the Adelie service is running.
 
 You can also create and manage scheduled tasks from a conversation; see [Scheduled tasks](/schedules).
 
@@ -377,7 +377,7 @@ On each row, the owner can select **Disable** or **Enable**, **Edit**, or **Dele
 
 ## API tab
 
-The **API** tab lets programs outside PenguinHarness talk to the agent over HTTP: **Enable API access**, the **Approval mode for API conversations**, the **Base URL** and **Agent ID** under **Connection**, the **Keys**, **Allow keyless access**, **Examples** of a call, and, for the Project's owner, **Try it**, which runs the agent once through the API and shows the stream a program would receive. There is no **Save** button: the switches and the approval mode apply when you change them, and turning the API off or deleting a key asks first. To set it up and call the agent, see [Agent API](/agent-api).
+The **API** tab lets programs outside Adelie talk to the agent over HTTP: **Enable API access**, the **Approval mode for API conversations**, the **Base URL** and **Agent ID** under **Connection**, the **Keys**, **Allow keyless access**, **Examples** of a call, and, for the Project's owner, **Try it**, which runs the agent once through the API and shows the stream a program would receive. There is no **Save** button: the switches and the approval mode apply when you change them, and turning the API off or deleting a key asks first. To set it up and call the agent, see [Agent API](/agent-api).
 
 ## How it works
 
