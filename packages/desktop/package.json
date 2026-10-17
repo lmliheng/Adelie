@@ -1,6 +1,6 @@
 {
   "name": "@adelie/desktop",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "description": "Adelie desktop app: Electron shell running @adelie/server as a utilityProcess, window on http://localhost (same-origin HTTP/SSE, no private IPC).",
