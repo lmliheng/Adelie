@@ -7,10 +7,11 @@
  * the server expands the child Trace and the frontend reattaches it), the agents and
  * Workspace tabs COEXISTING in one dock (activating one covers, never closes, the other),
  * the historical topology (the old turn's row pins its Task back; closing the tab and
- * reopening from the toolbar returns to the latest), the child-session title generated from
- * the child's own conversation, the sidebar "Subagents" folder, the identity strip's
- * jump-to-session button, and — in a second always-ask session — that an approval INSIDE
- * the child stays discoverable (row badge) and actionable from the panel.
+ * reopening from the toolbar returns to the DEFAULT scope — the newest Task that spawned a
+ * child), the child-session title generated from the child's own conversation, the sidebar
+ * "Subagents" folder, the identity strip's jump-to-session button, and — in a second
+ * always-ask session — that an approval INSIDE the child stays discoverable (row badge) and
+ * actionable from the panel.
  * A dedicated reload-free test drives the auto-open lifecycle (auto-open on the current
  * task's first live spawn, re-armed per task, a mid-task manual close respected, an open
  * tab surviving a plain follow-up task), and a draft-flow test covers /chat/new: the panel
@@ -64,6 +65,16 @@ async function provisionSession(page, username, sessionOverrides = {}) {
 /** The subagent shortcut row in the message stream (accessible name leads with 子会话 + the resolved agent name — unchanged by the bar restyle). */
 const chipOf = (page) => page.getByRole("button", { name: /子会话/ }).first();
 
+/**
+ * The MAIN conversation's composer. The panel's child conversation carries a composer of its
+ * own — the same `ChatInput` in its subagent variant, so the placeholder AND the 发送 button
+ * resolve to two elements once the agents tab is up. The dock is the only place that holds the
+ * second one, so the main composer is "every one of its parts outside the dock".
+ */
+const composerOf = (page) => page.locator('textarea:not([data-testid="dock"] textarea)');
+const sendButtonOf = (page) =>
+  page.locator('button[aria-label="发送"]:not([data-testid="dock"] *)');
+
 /** The child session's own user prompt (run_subagent's `prompt`): must show in the panel's child conversation, live and after reloads. */
 const CHILD_PROMPT = "Count the TODO items in the repository";
 
@@ -111,10 +122,10 @@ test("subagent renders as a chip; the panel shows the call graph and child conve
   const { projectId, agentId, sessionId } = await provisionSession(page, "subuser");
 
   await page.goto(`${BASE}/chat/${sessionId}`);
-  const ta = page.getByPlaceholder(/输入消息/);
+  const ta = composerOf(page);
   await ta.waitFor();
   await ta.fill("run a subagent");
-  await page.getByRole("button", { name: "发送" }).click();
+  await sendButtonOf(page).click();
 
   // The child session leaves only a shortcut row in the stream (the nested conversation no
   // longer renders inline); it appears as soon as the child's first message binds.
@@ -130,6 +141,25 @@ test("subagent renders as a chip; the panel shows the call graph and child conve
 
   // Parent's final answer: the whole turn has ended; assertions below are deterministic.
   await expect(page.getByText("Command finished; the result looks as expected.")).toBeVisible();
+
+  /** The child Sessions this parent has spawned so far (the list's other row is the parent). */
+  const childrenOf = async () => {
+    const list = await (
+      await page.request.get(`${BASE}/api/projects/${projectId}/agents/${agentId}/sessions`)
+    ).json();
+    return list.sessions.filter((s) => s.sessionId !== sessionId);
+  };
+  // The child of THIS turn — at this point the only one. The task-scope block below spawns a
+  // second child, and the two must stay apart: the panel's default scope is a Task, not a child.
+  const firstTurnChild = (await childrenOf())[0];
+  expect(firstTurnChild, "the first turn's child session").toBeTruthy();
+
+  // The identity strip under the graph names the child the panel is showing (its short id), so
+  // "which Task is the panel on" is readable from the page rather than inferred from node counts
+  // — both Tasks' graphs are root + one child.
+  const shownChild = page.getByTestId("subagent-open-session").locator("..");
+  const shortId = (sessionIdOfChild) => sessionIdOfChild.slice(-8);
+  await expect(shownChild).toContainText(shortId(firstTurnChild.sessionId));
 
   // --- Call graph: root + child (both run on default_agent, display name "General Agent"). ---
   const graph = page.getByRole("group", { name: "调用关系" });
@@ -184,18 +214,25 @@ test("subagent renders as a chip; the panel shows the call graph and child conve
   await expect(rightDock.locator('[data-tab-id="workspace"]')).toHaveCount(0);
   await expect(agentsTabActive(page)).toBeVisible();
 
-  // --- Historical topology: a plain follow-up Task makes the first turn's graph historical
-  // (the boundary itself — the panel closing on a new Task — is covered by the reload-free
-  // lifecycle test below; a send on a reloaded page can trip a pre-existing stream flake, so
-  // this block only asserts the topology behaviors). The old turn's subagent row pins that
-  // Task's graph back (a chip click is a manual open); a toolbar reopen returns to the DEFAULT
-  // latest scope (task 2 spawned nothing). ---
+  // --- Task scope: a SECOND spawning Task makes the first turn's graph historical, and a chip
+  // click PINS the panel to that chip's Task. Closing the tab drops the pin, and the toolbar
+  // reopen lands on the DEFAULT scope — the newest Task that spawned a child, since
+  // extractTopology walks back past a Task that spawned none rather than wiping the graph. That
+  // default is the second turn here, which is what tells the two apart: root + one child either
+  // way, but a different child on screen. (The boundary itself — the panel closing on a new Task
+  // — is covered by the reload-free lifecycle test below; a send on a reloaded page can trip a
+  // pre-existing stream flake, so this block only asserts the topology behaviors.) ---
   // Pin the page to the parent session first: if a session-list hiccup ever detours the route
   // (auto-select), this fails with an explicit URL mismatch instead of a swallowed send.
   await expect(page).toHaveURL(new RegExp(sessionId));
-  await ta.fill("hello again");
-  await page.getByRole("button", { name: "发送" }).click();
+  await ta.fill("run another subagent");
+  await sendButtonOf(page).click();
   await expect(page.getByText("Command finished; the result looks as expected.")).toHaveCount(2);
+  const secondTurnChild = (await childrenOf()).find(
+    (s) => s.sessionId !== firstTurnChild.sessionId,
+  );
+  expect(secondTurnChild, "the second turn's child session").toBeTruthy();
+
   await openPanelViaChip(page); // the first turn's row (revealed from its collapsed group)
   await expect(graph.getByRole("button", { name: /General Agent/ })).toHaveCount(2);
   // Node highlight follows the chip's child in the historical graph.
@@ -204,54 +241,54 @@ test("subagent renders as a chip; the panel shows the call graph and child conve
     "true",
   );
   await expect(page.getByText("Subagent report: 3 TODOs")).toBeVisible();
-  // Close the tab (its × — the last tab, so the dock goes away with it, dropping the
-  // pinned scope), then reopen through the toolbar toggle and the picker -> back to the
-  // DEFAULT latest-Task scope.
+  // The pin is on the FIRST turn: the panel's strip names that turn's child and not the newer one.
+  await expect(shownChild).toContainText(shortId(firstTurnChild.sessionId));
+  await expect(shownChild).not.toContainText(shortId(secondTurnChild.sessionId));
+
+  // Close the tab (its × — the last tab, so the dock goes away with it, dropping the pinned
+  // scope), then reopen through the toolbar toggle and the picker -> the DEFAULT scope.
   await rightDock.locator('[data-tab-id="agents"]').getByTestId("dock-tab-close").click();
   await expect(rightDock).toHaveCount(0);
   await page.getByTestId("dock-toggle-right").click();
   await page.getByTestId("dock-pick-agents").click();
   await expect(agentsTabActive(page)).toBeVisible();
-  // Two renders of the note (the graph section and the selection empty state) are fine —
-  // both say the same thing about the latest Task.
-  await expect(page.getByText("本次任务尚未派生子智能体").first()).toBeVisible();
+  // Back on the newest spawning Task — the second turn's child, not the pinned first one — which
+  // is also why the "this Task spawned nothing" note stays away.
+  await expect(shownChild).toContainText(shortId(secondTurnChild.sessionId));
+  await expect(shownChild).not.toContainText(shortId(firstTurnChild.sessionId));
+  await expect(page.getByText("本次任务尚未派生子智能体")).toHaveCount(0);
 
   // --- Child session title: generated by the model from the run_subagent prompt that spawned it (async, poll until persisted). ---
-  const childOf = async () => {
-    const list = await (
-      await page.request.get(`${BASE}/api/projects/${projectId}/agents/${agentId}/sessions`)
-    ).json();
-    return list.sessions.find((s) => s.sessionId !== sessionId) ?? null;
-  };
   await expect
-    .poll(async () => (await childOf())?.title ?? null, { timeout: 10000 })
-    .toBe("Subagent TODO summary");
-  const child = await childOf();
+    .poll(async () => (await childrenOf()).map((c) => c.title ?? "?").sort(), { timeout: 10000 })
+    .toEqual(["Subagent TODO summary", "Subagent TODO summary"]);
 
-  // --- The child's OWN Trace session_meta records source=subagent: written by core's spawn
+  // --- Each child's OWN Trace session_meta records source=subagent: written by core's spawn
   // site, the single source of truth (the server's registration fallback cannot mask this —
   // it never writes the child Trace), and what the derived list source ultimately rests on. ---
-  const childMessages = await (
-    await page.request.get(`${BASE}/api/sessions/${child.sessionId}/messages`)
-  ).json();
-  const childMeta = childMessages.messages.find(
-    (m) => m.type === "session_meta" && !m.origin?.length,
-  );
-  expect(childMeta, "child trace session_meta").toBeTruthy();
-  expect(childMeta.payload.source).toBe("subagent");
+  for (const child of await childrenOf()) {
+    const childMessages = await (
+      await page.request.get(`${BASE}/api/sessions/${child.sessionId}/messages`)
+    ).json();
+    const childMeta = childMessages.messages.find(
+      (m) => m.type === "session_meta" && !m.origin?.length,
+    );
+    expect(childMeta, `child trace session_meta (${child.sessionId})`).toBeTruthy();
+    expect(childMeta.payload.source).toBe("subagent");
+  }
 
-  // --- Sidebar: the child session (source=subagent) nests inside the collapsed "Background"
+  // --- Sidebar: the child sessions (source=subagent) nest inside the collapsed "Background"
   // folder (parallel to "Archived" within the same temp-workspace group). Reload first so the
   // sidebar list carries the persisted title/source, and the folder is back to its default
-  // collapsed state. ---
+  // collapsed state. One row per child: both turns spawned one. ---
   await page.reload();
   const sidebar = page.getByRole("complementary");
-  const subagentFolder = sidebar.getByRole("button", { name: "后台会话（1）" });
+  const subagentFolder = sidebar.getByRole("button", { name: "后台会话（2）" });
   await expect(subagentFolder, "collapsed Background folder").toBeVisible();
-  // Collapsed by default: the child row is not rendered until the folder is expanded.
+  // Collapsed by default: the child rows are not rendered until the folder is expanded.
   await expect(sidebar.getByText("Subagent TODO summary")).toHaveCount(0);
   await subagentFolder.click();
-  await expect(sidebar.getByText("Subagent TODO summary")).toBeVisible();
+  await expect(sidebar.getByText("Subagent TODO summary")).toHaveCount(2);
 });
 
 test("auto-open lifecycle: spawn opens the tab, a plain task keeps it, manual close is respected per task", async ({
@@ -262,14 +299,14 @@ test("auto-open lifecycle: spawn opens the tab, a plain task keeps it, manual cl
   // pre-existing stream flake unrelated to the panel — documented on PR #78).
   const { sessionId } = await provisionSession(page, "subuser4");
   await page.goto(`${BASE}/chat/${sessionId}`);
-  const ta = page.getByPlaceholder(/输入消息/);
+  const ta = composerOf(page);
   await ta.waitFor();
   const closeAgentsTab = () =>
     page.locator('[data-tab-id="agents"]').getByTestId("dock-tab-close").click();
 
   // Task 1 spawns: the tab comes up ITSELF once the spawn goes live (no clicks).
   await ta.fill("run a subagent");
-  await page.getByRole("button", { name: "发送" }).click();
+  await sendButtonOf(page).click();
   await expect(agentsTabActive(page)).toBeVisible();
   await expect(page.getByText("Command finished; the result looks as expected.")).toBeVisible();
   await expect(agentsTabActive(page)).toBeVisible(); // stays up after the task
@@ -277,7 +314,7 @@ test("auto-open lifecycle: spawn opens the tab, a plain task keeps it, manual cl
   // Task 2 (plain): an open tab SURVIVES the boundary — the arrangement is the user's, and
   // a task that spawns nothing neither opens nor closes anything.
   await ta.fill("hello again");
-  await page.getByRole("button", { name: "发送" }).click();
+  await sendButtonOf(page).click();
   await expect(page.getByText("Command finished; the result looks as expected.")).toHaveCount(2);
   await expect(agentsTabActive(page)).toBeVisible();
 
@@ -287,7 +324,7 @@ test("auto-open lifecycle: spawn opens the tab, a plain task keeps it, manual cl
   await closeAgentsTab(); // manual close between tasks (the tab's ×)
   await expect(agentsTabActive(page)).toHaveCount(0);
   await ta.fill("run another subagent");
-  await page.getByRole("button", { name: "发送" }).click();
+  await sendButtonOf(page).click();
   await expect(agentsTabActive(page)).toBeVisible(); // spawn -> auto-open again
   await closeAgentsTab(); // manual close mid-task: the task's one attempt is consumed
   await expect(agentsTabActive(page)).toHaveCount(0);
@@ -303,20 +340,23 @@ test("an approval inside the subagent stays discoverable via the chip badge and 
   const { sessionId } = await provisionSession(page, "subuser2", { approvalMode: "always-ask" });
 
   await page.goto(`${BASE}/chat/${sessionId}`);
-  const ta = page.getByPlaceholder(/输入消息/);
+  const ta = composerOf(page);
   await ta.waitFor();
   await ta.fill("run a subagent");
-  await page.getByRole("button", { name: "发送" }).click();
+  await sendButtonOf(page).click();
 
   // Approve the parent's run_subagent in the main stream.
   await page.getByRole("button", { name: "允许" }).click();
 
   // The child's exec_command approval surfaces on the chip (待审批 joins its accessible name)
-  // and as an amber dot on the right-dock toggle — discoverable with the panel closed.
+  // and as an amber dot on the right-dock toggle — discoverable with the panel closed. The dot
+  // is the UI package's `Dot` in the attention tone, which paints by token (the theme decides
+  // what amber is), so the assertion names the token class rather than a palette colour.
   const pendingChip = page.getByRole("button", { name: /子会话.*待审批/ });
   await expect(pendingChip).toBeVisible();
   const rightToggle = page.getByTestId("dock-toggle-right");
-  await expect(rightToggle.locator("span.bg-amber-500")).toBeVisible();
+  const pendingDot = rightToggle.locator("span.bg-tone-attention-emphasis");
+  await expect(pendingDot).toBeVisible();
 
   // Open the panel from the chip and approve the child's tool call from inside it.
   await pendingChip.click();
@@ -329,7 +369,7 @@ test("an approval inside the subagent stays discoverable via the chip badge and 
   await expect(page.getByText("Command finished; the result looks as expected.")).toBeVisible();
   // The pending badge is gone once the approval is decided (asserted on the always-visible
   // toolbar toggle — the chip itself collapses with its group when the turn ends).
-  await expect(rightToggle.locator("span.bg-amber-500")).toHaveCount(0);
+  await expect(pendingDot).toHaveCount(0);
 });
 
 test("draft flow: the panel auto-opens on the first live spawn and the child conversation shows its user prompt", async ({
@@ -358,10 +398,10 @@ test("draft flow: the panel auto-opens on the first live spawn and the child con
   expect(put.ok(), "put models").toBeTruthy();
 
   await page.goto(`${BASE}/chat/new`);
-  const ta = page.getByPlaceholder(/输入消息/);
+  const ta = composerOf(page);
   await ta.waitFor();
   await ta.fill("run a subagent");
-  await page.getByRole("button", { name: "发送" }).click();
+  await sendButtonOf(page).click();
   await page.waitForURL(/\/chat\/session-/);
 
   // The panel auto-opens as soon as the spawn goes live — no clicks (the child's exec_command

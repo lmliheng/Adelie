@@ -1,7 +1,7 @@
 /**
  * Mock Anthropic Messages API (streaming SSE) for E2E.
  * Branches on request body:
- *  - title request (prompt contains "concise title") -> short text
+ *  - title request (the prompt opens with "You are a title generator.") -> short text
  *  - files-card probe ("files card test") -> text with two backtick paths (one real, one missing)
  *  - "files rewrite test <cmd>" -> tool_use(exec_command) running <cmd>, then a short final text
  *    (files-folders.spec: the Agent rewrites a file the Files panel has open)
@@ -109,7 +109,12 @@ const server = http.createServer((req, res) => {
     } catch {}
     const messages = json.messages || [];
     const flat = JSON.stringify(messages);
-    const isTitle = flat.includes("concise title");
+    // Title requests are core's `buildTitlePrompt` (packages/core/src/internal/session-title.ts):
+    // one instruction *about* a piece of text, no system prompt, opening with this line — no other
+    // request of a conversation starts that way, so the phrase identifies the branch. (It used to
+    // key on "concise title", which that prompt no longer says: the branch had gone dead, and every
+    // title a spec asserted on stayed the host's own first-words fallback.)
+    const isTitle = flat.includes("You are a title generator.");
     // After compaction the new context has only the summary left, so the message count drops
     // sharply -> reported usage drops along with it, letting compaction converge.
     const msgCount = messages.length;
