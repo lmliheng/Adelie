@@ -10130,6 +10130,10 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
 - **如实记一笔**：本轮的门禁是在**另一条线把包名改成 `@adelie/*` 之后**跑的（见下），所以按目录定位
   （`pnpm -C packages/<目录> test`）而不是按包名过滤；e2e 那两次基线跑在改名之前，改的是同一批文件。
 
+- **在最终树上的复核**（另一条线的改名 `a113ea8e` 落地、core / server / web 产物重建之后）：把
+  `subagent.spec.mjs` 与 `background-subagent.spec.mjs` 一起重跑 —— **6 passed（25.4s）**
+  （server 8930 + mock LLM 8931 + 一次性数据根 `/root/adelie-fork-data/r72-final`，跑完即停）。
+
 ### 与另一条线的交汇
 
 - 本轮进行中，本工作区的 `HEAD` 自己往前走了：`f8424737` → `70feaeea`（`c86851e4` Pages 官网快照、
