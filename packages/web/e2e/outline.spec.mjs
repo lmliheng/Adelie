@@ -225,7 +225,7 @@ test("minimap ticks + hover preview + jump, five-turn gate, sticky group header,
     container.scrollTop = card.offsetTop + 400;
     const ct = container.getBoundingClientRect().top;
     const row = [...document.querySelectorAll("button[aria-expanded]")].find((b) =>
-      b.textContent.includes("exec_command"),
+      b.textContent.includes("执行命令"),
     );
     return {
       delta: Math.abs(head.getBoundingClientRect().top - ct),

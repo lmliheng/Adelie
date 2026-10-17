@@ -96,7 +96,7 @@ test("draft: pick model/approval -> reload restores them -> send creates the ses
   await page.getByRole("button", { name: /^权限/ }).click();
   await page.getByRole("menuitemradio", { name: /放行只读/ }).click();
   await expect(page.getByRole("button", { name: /^权限/ })).toHaveAttribute(
-    "title",
+    "data-tooltip",
     /审批: 放行只读/,
   );
 
@@ -147,11 +147,12 @@ test("draft: pick model/approval -> reload restores them -> send creates the ses
     .toBe(true);
   await expect(page.getByRole("button", { name: "选择模型" })).toContainText("claude-4-8-mini");
   await expect(page.getByRole("button", { name: /^权限/ })).toHaveAttribute(
-    "title",
+    "data-tooltip",
     /审批: 放行只读/,
   );
   // The thinking level is NOT draft state: it restores from the Agent config (written through above), not the cache.
-  await expect(page.getByRole("button", { name: "思考等级" })).toContainText("高 (high)");
+  await expect(page.getByRole("button", { name: "思考等级" })).toContainText("高");
+  await expect(page.getByRole("button", { name: "思考等级" })).not.toContainText("high");
   // Send: the Session is only created now, and the selections land faithfully in its meta.
   await page.getByRole("button", { name: "发送" }).click();
   await page.waitForURL(/\/chat\/session-/);
@@ -172,7 +173,7 @@ test("draft: pick model/approval -> reload restores them -> send creates the ses
   ).json();
   const meta = replay.messages.find((m) => m.type === "session_meta");
   expect(meta?.payload?.thinking_level).toBeUndefined();
-  await expect(page.locator('[data-tooltip="思考等级：高 (high)"]')).toBeVisible();
+  await expect(page.locator('[data-tooltip="思考等级：高"]')).toBeVisible();
 
   // On a successful send the cache clears — except the model selection, which carries over as
   // the next conversation's default (switch-becomes-default, like the thinking level above).
@@ -293,7 +294,7 @@ test("draft: pick model/approval -> reload restores them -> send creates the ses
   // —— Switch the sidebar to agent mode via the header's list-settings menu (persists in
   // localStorage; the grouping radios moved from the inline toggle into this menu) ——
   await page.getByRole("button", { name: "列表选项" }).click();
-  await page.getByRole("menuitemradio", { name: "按 Agent 分组" }).click();
+  await page.getByRole("menuitemradio", { name: "按智能体分组" }).click();
   await expect
     .poll(() => page.evaluate(() => localStorage.getItem("penguin.sidebarGroupMode")))
     .toBe("agent");

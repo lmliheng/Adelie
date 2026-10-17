@@ -69,7 +69,9 @@ test("switching accounts: B does not restore A's draft; both drafts coexist", as
   // B logs in on the same browser, landing on the draft page for the shared Project.
   await page.getByLabel("用户名").fill(UB);
   // exact: without it, a substring match would also hit the "show password" toggle button (aria-label) next to the password field.
-  await page.getByLabel("密码", { exact: true }).fill(P);
+  // Prefix match: the required mark appends "*" to the label text, and the reveal
+  // toggle's own name ("显示密码") does not start with "密码".
+  await page.getByLabel(/^密码/).fill(P);
   await page.locator('button[type="submit"]').click();
   await page.waitForURL(/\/chat/);
   await expect(page.getByRole("heading", { name: "Adelie" })).toBeVisible();

@@ -201,13 +201,13 @@ test("clear exited removes every exited process and leaves the running one", asy
   const longCommand =
     "sleep 0.5 && echo the-exited-process-whose-command-line-runs-far-past-the-width-of-its-row-in-the-details-card";
   await exited.getByText(longCommand).hover();
-  await expect(page.getByTestId("tooltip")).toHaveText(longCommand);
+  await expect(page.getByTestId("tooltip").first()).toHaveText(longCommand);
 
   // One click on the list heading's text action removes the exited entry; the running row
   // stays, and with nothing exited left the action itself goes away. Its hint names what
   // leaves with the rows.
   const clearExited = page.getByRole("button", { name: "清除已退出", exact: true });
-  await expect(clearExited).toHaveAttribute("title", /已捕获的输出也会一并丢弃/);
+  await expect(clearExited).toHaveAttribute("data-tooltip", /已捕获的输出也会一并丢弃/);
   await clearExited.click();
   await expect(page.locator("li", { hasText: "sleep 0.5" })).toHaveCount(0, { timeout: 10_000 });
   await expect(running).toBeVisible();

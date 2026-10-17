@@ -177,7 +177,7 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   const statsLine = copyBtn.locator("xpath=..");
   // Cost chip (pricing set). visible-filtered: the chip renders a desktop value plus a
   // display:none compact twin for phones, and both match the money pattern.
-  await expect(statsLine.locator("text=/\\$0\\.\\d+/").filter({ visible: true })).toBeVisible();
+  await expect(statsLine.locator("text=/[¥$]0\\.\\d+/").filter({ visible: true })).toBeVisible();
 
   // Hidden by default but SPACE-RESERVED (opacity-0, not hidden). Park the cursor first: after
   // clicking 允许 ("Allow") the pointer sits where that button was and the re-render can drop a
@@ -249,7 +249,9 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   await expect(main.getByText("缩放", { exact: true })).toBeVisible();
   await expect(main.getByRole("scrollbar").first()).toBeVisible();
   await expect(main.getByText("1.00×")).toBeVisible();
-  const timeline = main.locator(".no-scrollbar.overflow-x-auto").first();
+  // `.overflow-y-hidden` pins the node: the stats line below is also `no-scrollbar overflow-x-auto`,
+  // and a bare two-class match could land on it instead of the timeline's own scroller.
+  const timeline = main.locator(".no-scrollbar.overflow-x-auto.overflow-y-hidden").first();
   // Wheel-to-zoom is deliberately NOT supported (#58): scrolling the page over the timeline must
   // not change the zoom by accident — the ratio stays at 1.00×. Settle first, otherwise the
   // assertion could pass on its first poll before a (regressed) wheel handler re-rendered.
@@ -335,12 +337,14 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   //     lives on aria-label rather than a duplicate title tooltip) ---
   await expect(sidebar.getByText("Configure Tailwind theme")).toBeVisible();
   await sidebar.locator('button[aria-label="折叠"]').first().click();
-  await expect(sidebar.getByText("Configure Tailwind theme")).toHaveCount(0);
+  // Folded rows stay mounted (the fold animates their height to zero and makes them inert),
+  // so the check is "not visible", not "gone from the DOM".
+  await expect(sidebar.getByText("Configure Tailwind theme")).not.toBeVisible();
   // The collapse state persists across a reload (localStorage, keyed per Project): the group
   // comes back rendered collapsed (an "展开" header), with its rows still hidden.
   await page.reload();
   await expect(sidebar.locator('button[aria-label="展开"]').first()).toBeVisible();
-  await expect(sidebar.getByText("Configure Tailwind theme")).toHaveCount(0);
+  await expect(sidebar.getByText("Configure Tailwind theme")).not.toBeVisible();
   await sidebar.locator('button[aria-label="展开"]').first().click();
   await expect(sidebar.getByText("Configure Tailwind theme")).toBeVisible();
 
@@ -360,11 +364,11 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   await page.keyboard.press("Escape");
 
   // --- session rename (manual title wins over the auto-generated one) ---
-  // Row actions live in the per-row ellipsis menu ("对话选项"); its panel is body-portaled,
+  // Row actions live in the per-row ellipsis menu ("更多"); its panel is body-portaled,
   // so the items are page-level, not inside the row locator.
   const renameTarget = sidebar.locator("li", { hasText: "Configure Tailwind theme" }).first();
   await renameTarget.hover();
-  await renameTarget.getByRole("button", { name: "对话选项" }).click();
+  await renameTarget.getByRole("button", { name: "更多" }).click();
   await page.getByRole("button", { name: "重命名对话" }).click();
   await page.getByLabel("标题").fill("My renamed title");
   await page.getByRole("button", { name: "保存" }).click();
@@ -381,7 +385,7 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   await expect(throwaway).toBeVisible();
   // Archive via the row menu: moves it under the collapsed "已归档" group.
   await throwaway.hover();
-  await throwaway.getByRole("button", { name: "对话选项" }).click();
+  await throwaway.getByRole("button", { name: "更多" }).click();
   await page.getByRole("button", { name: "归档", exact: true }).click();
   await expect(sidebar.getByText(/已归档（\d+）/).first()).toBeVisible();
   await sidebar
@@ -392,7 +396,7 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   await expect(archived).toBeVisible();
   // Delete from the archived group (delete + archive share the same row menu).
   await archived.hover();
-  await archived.getByRole("button", { name: "对话选项" }).click();
+  await archived.getByRole("button", { name: "更多" }).click();
   await page.getByRole("button", { name: "删除对话" }).click();
   await page.getByRole("button", { name: "删除", exact: true }).click();
   await expect(sidebar.getByText("新对话")).toHaveCount(0);

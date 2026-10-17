@@ -534,7 +534,9 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
   });
   expect(put.ok(), "put models").toBeTruthy();
 
-  const panel = page.locator("div.anim-pop.z-40");
+  // Every composer menu is the shared Dropdown's glass panel: in-flow ones keep the z-40 tier,
+  // portaled ones (the permission picker among them) sit at z-[60].
+  const panel = page.locator("div.ui-glass:is(.z-40,.z-\\[60\\])");
   /** Assert the one open menu panel and the page itself stay inside the viewport. */
   const checkPanel = async (name) => {
     await expect(panel, `${name}: menu open`).toHaveCount(1);
@@ -573,8 +575,10 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
     });
     expect(hit, `${name}: panel not clipped by an ancestor`).toBe(true);
   };
+  // Prefix match: the permission button's name carries its level ("Permissions: Full access"),
+  // while the others are named by their label alone.
   const open = async (label, name) => {
-    await page.locator(`button[aria-label="${label}"]`).click();
+    await page.locator(`button[aria-label^="${label}"]`).click();
     await checkPanel(name);
   };
   const close = async () => {
@@ -595,7 +599,7 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
     // Model / thinking-level buttons stay disabled until models and the agent config load.
     await expect(page.locator('button[aria-label="Choose model"]')).toBeEnabled();
     await expect(page.locator('button[aria-label="Thinking level"]')).toBeEnabled();
-    await open("Approval mode", `approval @${vp.width}`);
+    await open("Permissions", `approval @${vp.width}`);
     await close();
     await open("Skills", `skills @${vp.width}`);
     await close();
@@ -634,7 +638,7 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
       data: { provider: "custom", modelId: "claude-4-8", approvalMode: "always-ask" },
     })
   ).json();
-  const sessionPickers = ["Approval mode", "Skills", "More input options", "Thinking level"];
+  const sessionPickers = ["Permissions", "Skills", "More input options", "Thinking level"];
   for (const vp of [
     { width: 320, height: 640 },
     { width: 375, height: 667 },
@@ -656,7 +660,7 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
   await page.getByRole("button", { name: /^Allow$/ }).waitFor();
   // Skills are deliberately locked mid-run; the rest must still open.
   await expect(page.locator('button[aria-label="Skills"]')).toBeDisabled();
-  for (const label of ["Approval mode", "More input options", "Thinking level"]) {
+  for (const label of ["Permissions", "More input options", "Thinking level"]) {
     await open(label, `${label} @running 375`);
     await close();
   }

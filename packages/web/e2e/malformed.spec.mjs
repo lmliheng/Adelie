@@ -52,12 +52,12 @@ test("a malformed tool_call settles unpaired; the retry line shows and the retry
   // Retry hint line: set to "retry attempt 1 started" once request_begin arrives.
   await expect(page.getByText(/已发起第 1 次重试/)).toBeVisible();
 
-  // Trace: the broken tool_call is persisted (stop_reason=malformed) but **no paired output is
+  // Trace: the broken tool_call is persisted (settled as retryable) but **no paired output is
   // added** — it never entered AgentHub's history, so there's nothing to pair; the retry is
-  // represented by a request_end(malformed) event.
+  // represented by a request_end whose status is retryable and whose error_code says why.
   const msgs = await (await page.request.get(`${BASE}/api/sessions/${sessionId}/messages`)).json();
   const broken = msgs.messages.find(
-    (m) => m.payload.type === "tool_call" && m.payload.stop_reason === "malformed",
+    (m) => m.payload.type === "tool_call" && m.payload.stop_reason === "retryable",
   );
   expect(broken, "malformed tool_call recorded").toBeTruthy();
   const paired = msgs.messages.find(
@@ -67,9 +67,9 @@ test("a malformed tool_call settles unpaired; the retry line shows and the retry
   );
   expect(paired, "no paired output for a never-dispatched call").toBeFalsy();
   const retryEnd = msgs.messages.find(
-    (m) => m.payload.type === "request_end" && m.payload.status === "malformed",
+    (m) => m.payload.type === "request_end" && m.payload.error_code === "malformed",
   );
-  expect(retryEnd, "request_end(malformed) recorded").toBeTruthy();
+  expect(retryEnd, "request_end(error_code=malformed) recorded").toBeTruthy();
 
   // UI: after expanding the group, the broken tool card shows malformed and is **settled**
   // (no more running timer).
@@ -78,13 +78,12 @@ test("a malformed tool_call settles unpaired; the retry line shows and the retry
     .first()
     .click();
   const group = page.locator(".anim-msg.my-2").first();
-  // Visibility is asserted explicitly: `toContainText` walks every descendant except
-  // SCRIPT/NOSCRIPT/STYLE, so the StatusIcon's own SVG <title>malformed</title> satisfies it
-  // even when nothing is drawn. This call never ran, so it has no output block to expand
-  // into — the row's `[malformed]` marker is the only explanation a touch user can reach.
+  // This call never ran, so it has no output block to expand into: the row's status icon
+  // carries the state. Since the stop-reason convergence the card's label is the settled
+  // reason itself ("retryable"); the wire-level cause (malformed) lives on request_end.
   await expect(
-    group.getByText("[malformed]").filter({ visible: true }),
-    "the broken tool card shows a visible malformed marker",
+    group.locator('[aria-label="retryable"]'),
+    "the broken tool card's status icon names the settled stop reason",
   ).toHaveCount(1);
   // A running spinner has role=status; none should remain after the turn ends.
   await expect(page.locator('[role="status"]')).toHaveCount(0);

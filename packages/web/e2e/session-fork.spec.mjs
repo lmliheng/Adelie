@@ -136,7 +136,7 @@ test("fork from reply: button order + confirm gate + clean fork deletion", async
   const sidebar = page.getByRole("complementary");
   const forkRow = sidebar.locator("li", { hasText: "(1)" }).first();
   await forkRow.hover();
-  await forkRow.getByRole("button", { name: "对话选项" }).click();
+  await forkRow.getByRole("button", { name: "更多" }).click();
   await page.getByRole("button", { name: "删除对话" }).click();
   const tDelete = Date.now();
   await page.getByRole("button", { name: "删除", exact: true }).click();

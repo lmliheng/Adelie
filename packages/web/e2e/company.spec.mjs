@@ -90,7 +90,9 @@ test("company mode: create the organization, meet the CEO, see the board and the
   await page.getByRole("textbox", { name: /^显示名/ }).fill("Plugin Marketplace");
   await page.getByRole("textbox", { name: /^使命/ }).fill(MISSION);
   // The CEO's budget is the whole company's, and the dialog offers the default it would send.
-  await expect(page.getByRole("spinbutton", { name: /^CEO 预算/ })).toHaveValue("100");
+  // The server's default is 100 USD a month; the field speaks the display currency
+  // (CNY by default), and 100 USD × 7 = 700.
+  await expect(page.getByRole("spinbutton", { name: /^CEO 预算/ })).toHaveValue("700");
   await page.getByRole("button", { name: "创建", exact: true }).click();
 
   // Creation opens the CEO's desk conversation: an ordinary chat page that renders while the
@@ -223,7 +225,7 @@ test("company mode: create the organization, meet the CEO, see the board and the
     await card(title).click();
     const dialog = page.getByRole("dialog", { name: title });
     await dialog.getByRole("button", { name: /^关联工单会话/ }).click();
-    await dialog.locator('button[title="打开会话"]').first().click();
+    await dialog.locator('button[data-tooltip="打开会话"]').first().click();
     await expect(page).toHaveURL(new RegExp(`/chat/${sessionId}$`));
     await expect(page.getByPlaceholder(/输入消息/)).toBeVisible();
     expect(new URL(page.url()).pathname).toBe(`/chat/${sessionId}`);

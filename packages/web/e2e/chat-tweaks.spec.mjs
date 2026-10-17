@@ -59,7 +59,8 @@ test("schedule form pickers and details Session-id copy", async ({ page }) => {
 
   // --- Schedule form pickers ---
   await page.goto(`${BASE}/agents/default_agent?tab=schedules`);
-  await page.getByRole("button", { name: "新建定时任务" }).click();
+  // The tab head is the AI-or-manual pair: this spec drives the form.
+  await page.getByRole("button", { name: "手动创建", exact: true }).click();
   await dlg().getByText("每次新建会话").first().waitFor();
   // New-session mode: model + workspace are the form-style dropdowns (not native selects),
   // matching the Project defaults dialog.

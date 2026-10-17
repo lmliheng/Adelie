@@ -101,10 +101,18 @@ test("a stale steer response after reload queues the follow-up instead of strand
   await expect(thinkingBtn).toContainText("中");
 
   // Now switch for real: a compaction cannot start while the task runs, so "压缩后切换" is
-  // disabled here and "仍要切换" is the applying choice.
+  // disabled here and "仍要切换" is the applying choice. The pick PINS the loaded Session
+  // (PATCH /sessions { thinkingLevel }) — the level is no longer a per-task field, so the
+  // follow-up below must not carry it and the pin is what makes it stick.
   await thinkingBtn.click();
   await page.getByRole("button", { name: "高 (high)", exact: true }).click();
+  const pinned = page.waitForResponse(
+    (r) =>
+      r.request().method() === "PATCH" &&
+      new URL(r.url()).pathname === `/api/sessions/${sessionId}`,
+  );
   await page.getByRole("button", { name: "仍要切换", exact: true }).click();
+  expect((await pinned).request().postDataJSON()).toMatchObject({ thinkingLevel: "high" });
   await expect(thinkingBtn).toContainText("高");
 
   await composer.fill("hello after reload");
@@ -114,10 +122,11 @@ test("a stale steer response after reload queues the follow-up instead of strand
   await page.getByRole("button", { name: "发送给运行中的 Agent" }).click();
   const response = await followUpPost;
   expect(response.status()).toBe(202);
-  expect(response.request().postDataJSON()).toMatchObject({
-    queueIfBusy: true,
-    thinkingLevel: "high",
-  });
+  const queuedBody = response.request().postDataJSON();
+  expect(queuedBody).toMatchObject({ queueIfBusy: true });
+  // The pin above already put the level on the Session; a task-level copy would now be a
+  // second, competing source of truth (upstream removed TaskCreateRequest.thinkingLevel).
+  expect(queuedBody).not.toHaveProperty("thinkingLevel");
   expect(await response.json()).toMatchObject({ queued: true });
   // The queued hint is now one line per entry carrying that entry's own content (the bare
   // "N queued" count is only the fallback for a server that predates pendingFollowUps), and

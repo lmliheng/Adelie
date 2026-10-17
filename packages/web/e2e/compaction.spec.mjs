@@ -102,8 +102,9 @@ test("compaction mid-turn: the reply's stats line is still reachable by hovering
   // Compaction succeeded and no ordinary request has reported usage since, so the context ring must
   // read UNKNOWN (`—`), not 0. Zero would claim the context is empty — but the summary itself costs
   // tokens; we simply have not measured the new size yet.
-  await expect(page.getByText(`—/${CONTEXT_WINDOW}`)).toBeVisible();
-  await expect(page.getByText(`0/${CONTEXT_WINDOW}`)).toHaveCount(0);
+  // The gauge prints no figures while unknown: its accessible name says so instead.
+  await expect(page.getByLabel(/压缩后待下次请求回报/).first()).toBeVisible();
+  await expect(page.getByText(new RegExp(`0\\s*/\\s*${CONTEXT_WINDOW}`))).toHaveCount(0);
 
   // —— The summary is collapsed by default, exactly like a thinking block ——
   // The generated summary must not be on screen until the reader asks for it: the row starts
@@ -237,7 +238,8 @@ test("manual /compact between turns: reloading must not fold the compaction into
     (await page.getByRole("button", { name: "复制回复" }).first().locator("xpath=..").innerText())
       .replace(/\n/g, " ")
       .trim();
-  const costOf = (t) => t.match(/\$[\d.]+/)?.[0] ?? null;
+  // The chip speaks the display currency (CNY by default, USD when the reader picks it).
+  const costOf = (t) => t.match(/[¥$][\d.]+/)?.[0] ?? null;
   const elapsedMsOf = (t) => {
     const hit = [...t.matchAll(/(\d+(?:\.\d+)?)(ms|s)(?![\w/])/g)].at(-1);
     return hit ? Number(hit[1]) * (hit[2] === "s" ? 1000 : 1) : null;

@@ -66,12 +66,12 @@ test("a quota-403 retries with a live countdown; 'retry now' skips the wait and 
   // waiting/retried text), so asserting any single early ordinal is a race against the stream
   // model's commit throttle. What is stable is that there is exactly ONE retry line, and that it
   // has reached at least attempt 2 by the time the countdown below appears.
-  const ladder = page.locator("p.text-amber-600", { hasText: "[重试]" });
+  const ladder = page.getByText(/\[重试\]/);
   await expect(ladder).toHaveCount(1, { timeout: 20000 });
   await expect(ladder).toHaveText(/第 [2-9] 次重试/, { timeout: 20000 });
 
   // The 4s wait before retry #5: a live countdown (whole seconds, ticking down).
-  const countdown = page.locator("p.text-amber-600", { hasText: /第 5 次重试，\d+ 秒后发起/ });
+  const countdown = page.getByText(/第 5 次重试，\d+ 秒后发起/);
   await expect(countdown).toBeVisible({ timeout: 20000 });
   const readSecs = async () => {
     const txt = await countdown.textContent({ timeout: 500 }).catch(() => null);
@@ -93,7 +93,7 @@ test("a quota-403 retries with a live countdown; 'retry now' skips the wait and 
   // scheduled 4s would have elapsed (the 1.5s expectation window is the proof: without
   // the skip, the natural timer still had >2s to go).
   await page.getByRole("button", { name: "立即重试" }).click();
-  await expect(page.locator("p.text-amber-600", { hasText: "已发起第 5 次重试" })).toBeVisible({
+  await expect(page.getByText(/已发起第 5 次重试/)).toBeVisible({
     timeout: 1500,
   });
 
@@ -137,7 +137,7 @@ test("'give up' on the countdown aborts the backoff: the turn ends and the compo
   // turn (abort line + the waiting notice flips to "stopped"), and the composer is
   // immediately usable again.
   await expect(page.getByText(/已中断/)).toBeVisible({ timeout: 10000 });
-  await expect(page.locator("p.text-amber-600", { hasText: "已停止重试" })).toBeVisible();
+  await expect(page.getByText(/已停止重试/)).toBeVisible();
   await expect(page.getByPlaceholder(/输入消息/)).toBeEnabled();
 });
 

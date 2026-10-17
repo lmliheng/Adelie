@@ -22,6 +22,10 @@ import { provisionAndLogin } from "./auth.mjs";
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
 const U = "abortcompact";
+
+/** The conversation's compaction steps: one disclosure row per compaction, titled by its mode. */
+const compactionRows = (page) =>
+  page.locator("button[aria-expanded]").filter({ hasText: /压缩(中|完毕)|清空中|清空完毕/ });
 const P = "password123";
 
 test("aborting before any turn completes: /compact says so instead of doing nothing", async ({
@@ -86,10 +90,10 @@ test("aborting before any turn completes: /compact says so instead of doing noth
   await ta.press("Enter");
 
   // There must be feedback — silently doing nothing is exactly the bug being tested for.
-  await expect(page.getByRole("button", { name: /nothing to compact/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /没有可压缩的内容/ })).toBeVisible();
   expect(nativeDialogs, "feedback must be an in-app toast, not a native alert").toHaveLength(0);
-  // And indeed no compaction was started (no banner).
-  await expect(page.getByText(/\[压缩\]/)).toHaveCount(0);
+  // And indeed no compaction was started (no compaction row).
+  await expect(compactionRows(page)).toHaveCount(0);
 });
 
 test("compacting twice in a row: says the context was just compacted, not that nothing ever ran", async ({
@@ -133,24 +137,24 @@ test("compacting twice in a row: says the context was just compacted, not that n
     void d.dismiss();
   });
 
-  // First /compact: compacts normally, shows the banner, no toast expected.
+  // First /compact: compacts normally, shows the row, no toast expected.
   await ta.fill("/compact");
   await ta.press("Enter");
-  await expect(page.getByText(/\[压缩\]/)).toBeVisible();
-  // No compact-unavailable toast (match the 409 reasons, not bare "compact" — usernames like
-  // "dblcompact" would collide).
+  await expect(compactionRows(page)).toHaveCount(1);
+  // No compact-unavailable toast (match the 409 reasons' own wording, not bare "compact" —
+  // usernames like "dblcompact" would collide).
   await expect(
-    page.getByRole("button", { name: /compaction configured|nothing to compact|just compacted/ }),
+    page.getByRole("button", { name: /没有配置上下文压缩|没有可压缩的内容|刚刚压缩过/ }),
   ).toHaveCount(0);
 
   // Second /compact: there's no conversation yet in the new context -> tell the user clearly, and the wording must match reality.
   await ta.fill("/compact");
   await ta.press("Enter");
-  await expect(page.getByRole("button", { name: /just compacted/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /刚刚压缩过/ })).toBeVisible();
   // Having just finished a full round, saying "no completed conversation round yet" would be absurd.
   await expect(
-    page.getByRole("button", { name: /no completed conversation turns yet/ }),
+    page.getByRole("button", { name: /尚未完成一轮对话/ }),
   ).toHaveCount(0);
   expect(nativeDialogs, "feedback must be an in-app toast, not a native alert").toHaveLength(0);
-  await expect(page.getByText(/\[压缩\]/)).toHaveCount(1); // no second compaction banner
+  await expect(compactionRows(page)).toHaveCount(1); // no second compaction row
 });
