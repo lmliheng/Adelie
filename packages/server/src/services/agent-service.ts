@@ -81,7 +81,7 @@ export interface AgentListItem {
   kernelOutdated: boolean;
   /** Number of vault keys. */
   vaultKeyCount: number;
-  /** Number of scheduled tasks (count of .toml files under schedule/, including invalid ones). */
+  /** Number of scheduled tasks (count of .toml files directly under schedule/, including invalid ones; archived files under schedule/expired/ are not counted). */
   scheduleCount: number;
   /** Number of installed Skills (count of skills/<name>/ directories that contain a SKILL.md). */
   skillCount: number;
@@ -191,7 +191,7 @@ export class AgentService implements AgentLifecycle {
     }
   }
 
-  /** Number of scheduled tasks: count of .toml files under schedule/ (0 if the directory doesn't exist). */
+  /** Number of scheduled tasks: count of .toml files directly under schedule/ (0 if the directory doesn't exist). The expired/ subdirectory of archived files is not a .toml name, so it is never counted. */
   private async scheduleCount(projectId: string, agentId: string): Promise<number> {
     try {
       const names = await fs.readdir(scheduleDir(this.root, projectId, agentId));

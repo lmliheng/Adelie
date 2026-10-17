@@ -170,7 +170,7 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
           onChange={setQuery}
         />
         <Segmented
-          cols={4}
+          cols={3}
           options={SCHEDULE_FILTERS.map((value) => ({ value, label: filterLabels[value] }))}
           value={filter}
           onChange={setFilter}

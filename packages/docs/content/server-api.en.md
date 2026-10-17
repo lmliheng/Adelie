@@ -557,6 +557,8 @@ Schedule writes are owner only. A task in new-Session mode carries `modelId` and
 
 `GET /api/schedules` (with no Project prefix) is the cross-Project read-only overview: one answer holding every Project the caller may reach, each with its own `schedules` and `invalidFiles`, with every row's status derived against one instant. That path has no write verb; a write still names exactly one Project's prefix.
 
+A `POST` or `PUT` is refused with 400 when `startAt` has passed on a one-shot task, or `endAt` has passed on any task. The listings never include a task that is done, missed or expired: the scheduler archives its file into `agent_state/schedule/expired/` (see [Finished tasks are archived](/schedules#finished-tasks-are-archived)), so such a task only shows while a queued fire is still to be sent, or if the move failed.
+
 ## Benchmarks
 
 Benchmarks belong to the Project, not to an agent: one Benchmark can evaluate any number of agents, and each evaluation names the agent it tested (`agentId`, or `null` for a record that names none). A summary's `agentIds` lists those agents in the order they first appear. The paths below again omit the `/api/projects/:projectId` prefix.

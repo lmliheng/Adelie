@@ -557,6 +557,8 @@ interface AgentApiKeyInfo {
 
 `GET /api/schedules`（不带 Project 前缀）是跨项目只读总览：返回调用者能访问的每个 Project，各自带上它自己的 `schedules` 与 `invalidFiles`，一次请求读完，所有行的状态按同一时刻计算。这条路径只有 GET，写操作仍然只有一个 Project 的前缀。
 
+一次性任务的 `startAt` 已过，或任何任务的 `endAt` 已过时，`POST` 和 `PUT` 返回 400。列表从不包含已完成、已错过或已过期的任务：调度器会把其文件归档到 `agent_state/schedule/expired/`（见[结束的任务会归档](/schedules#结束的任务会归档)），所以这类任务只在仍有排队待发的触发、或移动失败时才会出现。
+
 ## Benchmark
 
 Benchmark 属于 Project，不属于某个 Agent：一个 Benchmark 可以评估任意多个 Agent，每次评估都会记录它测试的 Agent（`agentId`；没有对应 Agent 的记录为 `null`）。汇总中的 `agentIds` 按这些 Agent 首次出现的顺序排列。下面的路径同样省略了 `/api/projects/:projectId` 前缀。

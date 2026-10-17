@@ -962,6 +962,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       真界面两态量出的是**行向容器要多少宽度** —— min-content 从 5417 / 5576 / 513 px 降到 120 px。
       本地化：包 scope 无跨包引用点；changelog 按本仓写法改名到本轮日期并写明移植来源与两处 fork 差异。
       细节与实测见「第七十轮」一节。
+- [x] **5.48 结束的定时任务移入 `schedule/expired/`**（上游 `4b10a219` `#1159`，**2026-10-18 第七十七轮落地**，
+      提交见该节）：已触发的一次性任务（`done`）、停机期间错过的一次性任务（`missed`）与已过 `end_at` 的任务
+      （`expired`）都不会再触发，现在由对账、列表与「触发之后、`schedule_fired` 之前」三处把文件**原样**移进
+      `agent_state/schedule/expired/` 并清掉它的 SQLite 运行状态；`expired/` 里同名时加 UTC 时间戳后缀
+      （再冲突为 `-2`、`-3`…），绝不覆盖；移动失败记 `schedule_archive_failed`、下轮再试，任务留着直到移走。
+      无效（绑定的 Session 已删）与停用的任务不归档。列表 / 计数 / `{{SCHEDULE_LIST}}` 因此不再出现它们。
+      **写侧同步收紧**：`POST` / `PUT` 对 `startAt` 已过的一次性任务、`endAt` 已过的任何任务返回 400
+      （**破坏性**：`--start-at now` 的一次性任务过去会立刻执行一次）；Web 的定时任务面板去掉「已完成」筛选。
+      本地化：只因本树把 status 推导放在路由里、标签走 `scheduleFilterLabels()`，两处按本树写法手写解决
+      （`scheduleStatus()` 移到 `runtime/scheduler.ts` 由路由导入；标签仍从字典读）。changelog 按本仓写法改名
+      到本轮日期、去掉上游 PR 行、写明移植来源。细节与实测见「第七十七轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1621,6 +1632,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-17 | 7.1 | **浏览器 e2e 套件重新可信**（不是移植，是修本仓自己的测试设施；两个文件 / +102 −57，只有测试夹具与用例、无用户可见行为）：`packages/web/e2e/subagent.spec.mjs` 4 条里 3 条本来就在红 —— 停靠栏打开后占位符与发送按钮各命中**两个**元素（面板里的子会话用的是同一个 `ChatInput`）、工具栏那枚琥珀色点早已改叫 `bg-tone-attention-emphasis`（`Dot` 按 token 上色）、以及一条假设「plain Task 之后拓扑回落到空图」的**陈旧断言**（`extractTopology` 的默认口径是「最近一次真的派生子智能体的 Task」，那条空态文案永不出现），三处都修了，并把最后一条重写成有意义的版本（第二条任务改用 mock 自带的 `run another subagent` 派第二次，用身份条的 `shortSessionId` 断言「钉住 = 第一轮的孩子、关掉标签页重开 = 最新一次派生的孩子」）；`packages/web/e2e/mock-llm.mjs` 的标题分支还在找 `concise title`，而提示词早已改说 `You are a title generator.`，分支因此**从未触发**、会话标题一直停在宿主兜底 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，192 接口 / 587 类型）· `pnpm lint` **0 警告 0 错误**（2397 文件）· 两个改动文件 `prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过（68 文件）· ui **129 文件 / 1043 通过** · cli **561**（38 文件）· web **259 文件 / 3187 通过 / 2 跳过** · server **201 文件 / 2937 通过 / 4 跳过** · hmr 无测试文件 · **本轮主证据（真服务端 + 真浏览器，改前改后两态）**：改前 `subagent.spec.mjs` **3 failed / 3 passed**，改后该文件 **4/4**、`background-subagent.spec.mjs` **2/2** 全绿；整套 76 条的基线由 **26 failed** 变成 **52 passed / 24 failed**（翻绿的除 subagent 那两条，还有 `files-switch.spec.mjs` 那条断言模型标题的）· **反证一（夹具陈旧）**：修 mock 前 `subagent.spec.mjs:117` 正是死在标题断言（收到 `Count the TODO items in the`）· **反证二（新断言非空转）**：把 `chat-page.tsx` 那段复位 effect 删掉、重建 web 产物再跑 → **1 failed**（身份条 `Expected substring "3e1dba72" / Received "General Agent8b8f9e05"`，即重开后仍停在钉住的那一轮），还原后全绿 · 端口只用 8930 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r72-*` · CI run **`38985516965`**（`a3b35ec4`）**22 个作业全绿** | `12f7c7c1` |
 | 2026-10-17 | 7.2（未完成） | **浏览器 e2e 的 24 条红压到 10 条**（不是移植；**接手的是 11:00 那一轮被 `user_abort` 打断的半成品**，17 个 `packages/web/e2e/*.spec.mjs` / 落在 r73 的 +82 −59 之上再加本轮 +17 −9，只有夹具、无源码、无用户可见行为）：r73 那半天把英文旧文案与旧属性改到本树今天的中文与 data 属性上，其中四处对齐的是真实契约（会话级 `thinkingLevel` 由 `PATCH /api/sessions` 落、`stop_reason` 收敛为 `retryable`、成本按 `[¥$]`、行菜单「更多」）；本轮又补六处：分组单选「按智能体分组」、权限按钮 `aria-label^="Permissions"` 与共享 Dropdown 的 `ui-glass` 两层、工单「打开会话」的 `data-tooltip`、skills 末两条断言的 data-analysis、时间轴 `.overflow-y-hidden` 与侧栏折叠「行不卸载」、上下文环 unknown 读 aria-label | 只重建 web 产物后跑受影响 18 个文件（40 条，mock 8942 / 服务端 8940 / 数据根 `/root/adelie-fork-data/r73-*`）：r73 改动后 **27 过 / 13 红**（24 → 13），本轮再修后 company / draft / skills 实测转绿，**24 → 10**（14 条转绿，每条都有源码依据）；六包 `typecheck` **EXIT=0**（六个 `Done`）；逐包 test **0 失败** —— core 1396 / 6 跳过 · ui 1043 · server 2937 / 4 跳过 · cli 561 · web 3187 / 2 跳过；还红的 10 条已逐条分诊（3 条 llm-errors 是 403 被判 fatal 的真实行为变化、project-switch 疑似真 bug、其余为夹具未穷尽）；端口只用 8940 / 8942 | 见本行提交 |
 | 2026-10-17 | 7.2（仍未完成） | **浏览器 e2e 的 10 条红压到 3 条**（8 条是夹具/探针结论翻转，**只有 dock 拖拽带是真缺陷**：下侧栏边界拖拽带伸到框架外的一半被框架自己的 `overflow-hidden` 裁掉，改 `ResizeHandle` 贴内侧 `top-0`，连同 `dock-panel.tsx` 注释与 ui 单测、一对 changelog；另修 `theme-shots.mjs` 的陈旧键 `concise title`）。逐条：project-switch 夹具只卸了一个技能、layout 的重叠/底色/工作区选择器、outline 量到按钮、compaction 第二层开合、chat 分组折叠与设置对话框与行菜单时序、compact-abort 的斜杠菜单竞态、skills 的标题同文 | 开工复核 26 条里 10 红与台账逐条对上；修完整套 **76 条 73 通过 / 3 失败**，只剩 `llm-errors` 三条；六包 `typecheck` **EXIT=0**（`ifaces.json unchanged`，192 接口 / 587 类型）；`npx oxlint` **0 警告 0 错误**（2209 文件）；逐包 test 全绿 —— core **1396** / 6 跳过 · ui **1043** · cli **561** · web **3187** / 2 跳过 · server **2937** / 4 跳过（hmr 无测试）；真浏览器两态验证 dock 拖拽：改前带子中心命中框架、拖 120 px 高度变化 0，改后命中带子、**276 → 394**；端口只用 8950 / 8952，数据根 `/root/adelie-fork-data/r76-*` | 见本行提交 |
+| 2026-10-18 | 5.48 | **结束的定时任务移入 `schedule/expired/`**（上游 `4b10a219` `#1159` 移植，照改动落、不是合分支；27 文件 / +644 −92，含 changelog 一对）：`done` / `missed` / `expired` 三种状态统称 settled，文件**原样**移进 `agent_state/schedule/expired/` 并清掉运行状态，三处调用（对账、`listAgent`、`send` 的 `markFired` 之后与 `schedule_fired` 之前）；同名不覆盖（UTC 戳后缀，再冲突 `-2`…），移动失败记 `schedule_archive_failed` 留着下轮再试；状态推导从路由搬进 `runtime/scheduler.ts`（`scheduleStatus()` / `isSettledStatus()`）；**破坏性**：`POST` / `PUT` 对过去时刻的一次性任务与过去 `end_at` 返回 400（过去 API 写入的这类任务会立刻执行一次）；Web 定时任务面板去掉「已完成」筛选、两份词典删 `filterCompleted`；CLI 帮助、AI 创建提示词、`penguin-orchestration` 技能与五份引擎文档（中英）跟上。**本树两处手写解决**：路由里那份 `statusOf()` 改导入共享函数；标签仍走 `scheduleFilterLabels()` 只删 `completed` 键 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2209 文件）· 改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **201 文件 / 2946 通过 / 4 跳过**（+9 即本笔新用例）· core **1396** / 6 跳过 · ui **1043** · cli **561** · web **259 文件 / 3187 通过 / 2 跳过** · docs **62** · **真服务（8977，一次性数据根 `r77`）**：过去 `startAt` 的一次性任务 **400**、过去 `endAt` 的周期任务 **400**、合法周期任务 **201**；手写的过期一次性任务在下一次读取时已移入 `expired/`、**字节与原文相同**，`schedule/` 只剩周期任务，`scheduleCount` 与列表都只剩它 · **真界面**：`/schedules` 页与停靠栏面板都只剩 全部 / 生效中 / 已暂停（无「已完成」），两态 console **0 error**、无一条 ≥400，截图 `r77/{schedules-page,dock-schedules}.png` · 端口只用 8977（跑完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10375,5 +10387,76 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   在 fatal 之外，`isAuthenticationError()` 的注释也就重新成立了）；**(B)** 承认现在的口径，把三条改写成
   「致命错误 + 模型页 CTA」。两条都是几行的改动 + 三条用例，拍板后一轮能完。
 - 上游 `main` 仍是 **`0eafa6dc`**；桌上候选仍是「本树没有那个文件或常量」。
+- 卡点原地：**2.2c**（写侧全在桌面壳一侧与既有部署单元）、**3.5**（取哪个桌面壳）、**3.6**（模型 key）、
+  **4.2** / **4.3**（明令不动）、**5.6** / **5.10**（促销搬进 Project 配置 / 新依赖 `mermaid`）。
+
+## 第七十七轮：结束的定时任务移入 `schedule/expired/`（2026-10-18，条目 5.48）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `495550f3`，`git fetch origin && git merge --ff-only
+  origin/main` = Already up to date（没切分支、没碰 `legacy/main`、没推 upstream）。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰 desktop），
+  其后 **3.5**（取哪个桌面壳要拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
+  （要拍板 / 要新依赖）同样不可动；**7.2** 只剩 `llm-errors` 三条且等用户在同一节里给的 A / B 之间选。
+- 上游 `main` 这次**往前走了**（上一轮记的 `0eafa6dc` 之后又有 6 笔，尖端 `ace1bca2`），逐笔量过：
+  `b733cbdd`（流式文字淡入）要本树没有的 `stream-text.tsx`、`b79238f2`（粘性行的自定义背景）要本树没有的
+  `wallpaper.css` / `wallpaper.tsx`、`bf710150`（附件瓦片，+1094）与 `61cd00bb`（切换 Project 的隔离，
+  +1383 且重写我们改过的 `project-switch.spec.mjs`）都不是一轮的量、`ace1bca2` 修的是 `#1162` 那笔
+  **我们没取**的双重编码（本树没有那些行，补丁无从落）；剩下 `4b10a219` 逐字干净、只碰 server / web / cli /
+  docs / 一个插件技能，于是选它 —— 而且它正是我们每天在用的那套定时任务。
+
+### 落的是什么
+
+- **归档**：`done`（触发过的一次性任务）、`missed`（停机期间错过的一次性任务）、`expired`（已过 `end_at`）
+  三种状态合称 settled，文件被**原样**移进 `agent_state/schedule/expired/`，其 `schedule_state` 行按「文件被
+  删除」处理。三处调用：对账（`evaluateEntry` 之后）、`listAgent`（`registerEntry` 之后，因此列表里永不出现）、
+  `send`（`markFired` 之后、`schedule_fired` 之前，因此那个事件触发的重新拉取看不到它）。仍有排队待发的触发时
+  先发再移。无效与停用的任务不归档。
+- **不覆盖**：`expired/` 里同名时改成 `<name>.<UTC 戳>.toml`，再冲突 `-2`、`-3`…；移动失败记
+  `schedule_archive_failed`，任务留着，下一轮再试。
+- **状态推导搬家**：`statusOf()` 从路由搬进 `runtime/scheduler.ts`，改名 `scheduleStatus()` 并导出，
+  另加 `isSettledStatus()`；路由改为导入它（这是本树与上游唯一的结构差异 —— 上游同一处也这么做，只是我们
+  的路由文件此前把函数放在自己里面）。
+- **写侧收紧（破坏性）**：`POST` / `PUT` 对 `startAt` 已过的一次性任务、`endAt` 已过的任何任务返回 400。
+  过去 API 写入的一次性「过去时刻」任务会**立刻执行一次**（上游在同一提交里把这条前提写清楚了）；本轮照它的
+  决定改成拒绝，「立刻跑一次」不再提供。
+- **Web**：定时任务面板去掉「已完成」筛选（`ScheduleFilter` 三档、`filterBucket` 对 settled 返回 `null`，
+  只留在「全部」里）；两份词典删掉 `filterCompleted`。本树的标签走 `scheduleFilterLabels()`（刻意在渲染时
+  读字典，好让切语言时跟着变），所以那一行按本树写法删 `completed` 键，不套上游的内联对象。
+- **文案与文档**：CLI 的 `--start-at` 帮助（中英）、Web「用 AI 创建」的提示词（中英）、`penguin-orchestration`
+  技能（插件版本提到 `2026.10.18.1`）、引擎文档的 schedules / agents / cli / configuration / server-api（中英）。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**，`gen:ifaces` 报 `src/ifaces.json unchanged`（192 接口 / 587 类型）——
+  本笔不动服务契约（`scheduleStatus` 是运行时函数，不上线格式）。
+- `npx oxlint`：**0 警告 0 错误**（2209 文件）；改动文件的 `prettier --check` 干净，`git diff --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— server **201 文件 / 2946 通过 / 4 跳过**（比上一轮 +9，正是本笔
+  新增的归档用例）· core **1396** / 6 跳过（68 文件）· ui **1043**（129）· cli **561**（38）· web
+  **259 文件 / 3187 通过 / 2 跳过** · docs **62**（8 文件）。
+- **真服务 + 真接口**（一次性数据根 `/root/adelie-fork-data/r77`、`localhost:8977`、`ADELIE_SEED_ADMIN_PASSWORD`）：
+  - `POST …/schedules` 一次性任务 `startAt=2020-01-01` → **400**「start_at is already past: a one-time task needs
+    a future start time.」；
+  - `POST …/schedules` 周期任务 `startAt=2020-01-01, period=1d, endAt=2021-01-01` → **400**「end_at is already
+    past: the task would never fire again.」；
+  - 合法周期任务（`startAt=2099, period=1d`）→ **201**，文件落在 `schedule/hourly-report.toml`；
+  - **手写**一条过期一次性任务 `schedule/old-once.toml`（`start_at = "2020-01-01T00:00:00Z"`）→ 下一次读取时
+    已移进 `schedule/expired/old-once.toml`，**字节与原文逐字相同**，`schedule/` 下只剩周期任务，Agent 卡片
+    `scheduleCount` 从 1（含旧的）变成 **1**（只剩 `hourly-report`），`GET …/schedules` 只返回 `hourly-report`。
+- **真界面（真服务 + 真浏览器，Playwright）**：`/schedules` 页面与对话页右侧停靠栏的「定时任务」面板都只剩
+  **全部 / 生效中 / 已暂停** 三个筛选项（没有「已完成」）；页面列出 `hourly-report 每天 08:00 · 下次 2099 年1月1日
+  08:00`，归档的那条不在任何一处。两态 console 各 **0 error**、**无一条 ≥400**。截图
+  `r77/schedules-page.png`、`r77/dock-schedules.png`、探针 `r77/probe.mjs` / `r77/probe-dock.mjs` 都在 scratchpad。
+- 端口只用 8977（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r77`。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- 7.2 仍只剩 `llm-errors` ×3，仍要用户拍板（A：403 配额错误回到可重试；B：三条改写成「致命错误 + 模型页
+  CTA」）。同时 `isAuthenticationError()` 的注释与 `isFatalProviderRejection()` 的口径仍互相矛盾，拍板时一起收。
+- 上游新尖端 **`ace1bca2`**（本轮拉到）：`b733cbdd` / `b79238f2` 要的前置本树没有（`stream-text.tsx`、
+  `wallpaper.css` / `wallpaper.tsx`，即上游「自定义背景」那一整套），`bf710150` / `61cd00bb` 各是两轮的
+  量，`ace1bca2` 只修上游自己引入的双重编码 —— 都不适合下一轮直接取。
 - 卡点原地：**2.2c**（写侧全在桌面壳一侧与既有部署单元）、**3.5**（取哪个桌面壳）、**3.6**（模型 key）、
   **4.2** / **4.3**（明令不动）、**5.6** / **5.10**（促销搬进 Project 配置 / 新依赖 `mermaid`）。

@@ -8,9 +8,9 @@
 import type { ScheduleItem, ScheduleStatus } from "@adelie/server/api";
 import { S } from "../../lib/strings";
 
-export type ScheduleFilter = "all" | "active" | "paused" | "completed";
+export type ScheduleFilter = "all" | "active" | "paused";
 
-export const SCHEDULE_FILTERS: readonly ScheduleFilter[] = ["all", "active", "paused", "completed"];
+export const SCHEDULE_FILTERS: readonly ScheduleFilter[] = ["all", "active", "paused"];
 
 /** The chips' wording, from the active dictionary (read at render time, so a locale switch relabels them). */
 export function scheduleFilterLabels(): Record<ScheduleFilter, string> {
@@ -18,14 +18,14 @@ export function scheduleFilterLabels(): Record<ScheduleFilter, string> {
     all: S.schedule.filterAll,
     active: S.schedule.filterActive,
     paused: S.schedule.filterPaused,
-    completed: S.schedule.filterCompleted,
   };
 }
 
 /**
- * The chip a status sits under. `disabled` is "paused" — the switch on the row resumes it —
- * and every settled state is "completed". An invalid file fits no chip: it shows under "all"
- * only, with its reason on the row.
+ * The chip a status sits under. `disabled` is "paused" — the switch on the row resumes it. The
+ * scheduler archives settled tasks (done / expired / missed) out of the list, so they have no
+ * chip: one still listed (a queued fire not yet sent, or an archive move that failed) shows
+ * under "all" only, like an invalid file, which also carries its reason on the row.
  */
 export function filterBucket(status: ScheduleStatus): Exclude<ScheduleFilter, "all"> | null {
   switch (status) {
@@ -36,7 +36,6 @@ export function filterBucket(status: ScheduleStatus): Exclude<ScheduleFilter, "a
     case "done":
     case "expired":
     case "missed":
-      return "completed";
     case "invalid":
       return null;
   }
