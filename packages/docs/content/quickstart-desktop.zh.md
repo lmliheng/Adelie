@@ -12,7 +12,7 @@ description: 安装 PenguinHarness 桌面应用，配置模型，跑通第一个
 
 ## 下载并安装
 
-从[下载页](https://penguin.ooo/download)下载对应平台的安装包；OSS 加速镜像可用时，下载页会走镜像。同样的文件也附在每个 [GitHub Release](https://github.com/Prism-Shadow/penguin-harness/releases) 里。
+从[下载页](https://github.com/lmliheng/Adelie/releases/latest)下载对应平台的安装包；安装器在 OSS 加速镜像可用时会优先走镜像。每个 [GitHub Release](https://github.com/lmliheng/Adelie/releases) 里都有同样的文件。
 
 | 平台 | 安装包 |
 | --- | --- |

@@ -23,9 +23,9 @@ Included plugins, by category (`PLUGIN_CATEGORIES` in `packages/core/src/plugins
 
 ## Documentation
 
-- [Skills & Plugins](https://penguin.ooo/docs/skills)
-- [Goal Mode](https://penguin.ooo/docs/goal-mode)
-- [Self-Improvement](https://penguin.ooo/docs/self-improvement)
+- [Skills & Plugins](https://lmliheng.github.io/Adelie/docs/skills)
+- [Goal Mode](https://lmliheng.github.io/Adelie/docs/goal-mode)
+- [Self-Improvement](https://lmliheng.github.io/Adelie/docs/self-improvement)
 
 ## Development
 

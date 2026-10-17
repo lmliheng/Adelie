@@ -1,6 +1,6 @@
 # @adelie/web
 
-The Adelie Web App — a React 19 + Vite + Tailwind CSS 4 SPA that renders the OmniMessage stream (same protocol and statistics as the CLI) and manages Agents, Skills, Models, usage and Traces. Feature tour: [Web App Guide](https://penguin.ooo/docs/web-app).
+The Adelie Web App — a React 19 + Vite + Tailwind CSS 4 SPA that renders the OmniMessage stream (same protocol and statistics as the CLI) and manages Agents, Skills, Models, usage and Traces. Feature tour: [Web App Guide](https://lmliheng.github.io/Adelie/docs/web-app).
 
 ## Layout
 
@@ -40,4 +40,4 @@ pnpm --filter @adelie/web build       # vite build → dist/
 
 No separate static server needed: `@adelie/server` auto-hosts `packages/web/dist` (or `ADELIE_WEB_DIST`) with an SPA fallback — build the web app, start the server, done. The published npm packages bundle the built front end.
 
-Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0
+Part of [Adelie](https://github.com/lmliheng/Adelie) · Apache-2.0

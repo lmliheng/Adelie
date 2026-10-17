@@ -1,7 +1,7 @@
 # Minimal Adelie deployment. `docker compose up -d`, then read the first-login
 # link out of `docker compose logs penguin`.
 #
-# See https://penguin.ooo/docs/quickstart-docker for the first sign-in, upgrades, running
+# See https://lmliheng.github.io/Adelie/docs/quickstart-docker for the first sign-in, upgrades, running
 # behind a reverse proxy, and the rescue path for a forgotten admin password.
 services:
   penguin:

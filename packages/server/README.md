@@ -11,7 +11,7 @@ The Adelie Web backend — the Web implementation of the SDK's Human boundary. H
 - **Usage**: `token_usage` events are persisted row by row; costs are computed at query time from current per-model pricing.
 - **Terminals**: `src/terminal/` runs pty sessions server-side (node-pty) and feeds every byte into a headless xterm, so the daemon — not the browser — owns the screen. Control is JSON over HTTP (`/api/terminals`: list / create / capture / keys / kill; create accepts `cwd`, `name`, `cols`/`rows` and a `shell` override); the byte stream is a binary WebSocket at `/api/terminals/:id/stream` (`[opcode, slot, payload]`, output coalesced into ~5ms windows with an immediate leading flush). On attach the server renders the current grid back into an ANSI restore stream, so a reload or a second device rebuilds the exact screen — scrollback, colours, cursor and DEC input modes — while the shell keeps running the whole time. The web app surfaces this twice: an in-app dock (Ctrl+` , Codex-style) and the standalone `/terminal` page (`?id=` attaches an existing terminal — the dock's detach handoff — `?cwd=`/`?name=` parameterize a new one). Sessions run in-process (no forked terminal worker); this module is the only thing touching node-pty, which is where that split would go if load ever demands it.
 
-The full route tables and the SSE protocol are documented in the [Server API reference](https://penguin.ooo/docs/server-api). DTO types are exported for type-only import via `@adelie/server/api`.
+The full route tables and the SSE protocol are documented in the [Server API reference](https://lmliheng.github.io/Adelie/docs/server-api). DTO types are exported for type-only import via `@adelie/server/api`.
 
 ## Environment
 
@@ -51,4 +51,4 @@ pnpm --filter @adelie/server start   # node dist/index.js
 - **Terminals are a shell as the OS account running the server**, i.e. the most privileged thing the API hands out — they are not Project-scoped. A terminal is only visible to the account that created it (someone else's id answers 404, not 403), and the stream WebSocket checks `Origin` on top of the session cookie because a WebSocket handshake is not subject to CORS. Do not expose a deployment with terminals enabled to accounts you would not give SSH.
 - Behind a reverse proxy, disable response buffering for SSE paths (the server already sends `X-Accel-Buffering: no`), and set `ADELIE_TRUST_PROXY=1` with `x-forwarded-proto` forwarded so session cookies are marked `Secure` — the header alone is not trusted, so without the opt-in an HTTPS deployment issues its cookies without the flag.
 
-Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0
+Part of [Adelie](https://github.com/lmliheng/Adelie) · Apache-2.0

@@ -2,7 +2,7 @@
 
 The PenguinHarness documentation site (React + Vite + Tailwind CSS 4). Its own package, sharing the landing page's visual language: bilingual pages (zh/en), light/dark themes, a sidebar + per-page table of contents, and a "Copy Markdown" button on every page.
 
-Live at <https://penguin.ooo/docs/>.
+Live at <https://lmliheng.github.io/Adelie/docs/>.
 
 ## Content model
 
@@ -37,4 +37,4 @@ pnpm --filter @adelie/landing preview # serve the assembled site
 
 Deep links work without a 404 fallback: the post-build step copies the SPA shell to `dist/<slug>/index.html` for every content slug.
 
-Part of [PenguinHarness](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0
+Part of [Adelie](https://github.com/lmliheng/Adelie) · Apache-2.0

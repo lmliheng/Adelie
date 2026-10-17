@@ -19,13 +19,13 @@ penguin chat --resume                                          # resume the late
 
 Tool calls go through an approval gate — `--approve allow-all` (default) `| deny-all | read-only | always-ask`. Data lives under `~/.adelie/data` (`ADELIE_HOME`, the pre-rename `PENGUIN_HOME`, or `--root`); model credentials come from the Project config or provider env vars (e.g. `DEEPSEEK_API_KEY`).
 
-Prefer a one-line install with a bundled Node runtime? See [Quickstart → CLI and Web App](https://penguin.ooo/docs/quickstart-cli).
+Prefer a one-line install with a bundled Node runtime? See [Quickstart → CLI and Web App](https://lmliheng.github.io/Adelie/docs/quickstart-cli).
 
 ## Documentation
 
-- [Quickstart](https://penguin.ooo/docs/quickstart)
-- [CLI Reference](https://penguin.ooo/docs/cli)
-- [Configuration Reference](https://penguin.ooo/docs/configuration)
+- [Quickstart](https://lmliheng.github.io/Adelie/docs/quickstart)
+- [CLI Reference](https://lmliheng.github.io/Adelie/docs/cli)
+- [Configuration Reference](https://lmliheng.github.io/Adelie/docs/configuration)
 
 ## Development
 
@@ -36,4 +36,4 @@ pnpm --filter @adelie/cli typecheck
 pnpm --filter @adelie/cli test
 ```
 
-Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0
+Part of [Adelie](https://github.com/lmliheng/Adelie) · Apache-2.0

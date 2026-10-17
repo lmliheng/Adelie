@@ -978,7 +978,7 @@ export const en: GalleryStrings = {
       inline: { before: "Run ", code: "pnpm install", after: " to install the dependencies." },
       prose: "Markdown prose",
       proseSample:
-        "## Release checks\n\nConfirm **three things** before you release, then run `pnpm -r build`. See the [release notes](https://penguin.ooo).\n\n- Type checks pass\n- Every test passes\n- The changelog is written\n\n> When a data root is taken, use another one — never end someone else's process.\n\n| Check | Command |\n| --- | --- |\n| Types | `pnpm typecheck` |\n| Tests | `pnpm test` |\n\n```bash\npnpm -r build && pnpm test\n```\n\nThe cache hit rate is \\(r = h / (h + m)\\).",
+        "## Release checks\n\nConfirm **three things** before you release, then run `pnpm -r build`. See the [release notes](https://lmliheng.github.io/Adelie/).\n\n- Type checks pass\n- Every test passes\n- The changelog is written\n\n> When a data root is taken, use another one — never end someone else's process.\n\n| Check | Command |\n| --- | --- |\n| Types | `pnpm typecheck` |\n| Tests | `pnpm test` |\n\n```bash\npnpm -r build && pnpm test\n```\n\nThe cache hit rate is \\(r = h / (h + m)\\).",
       compact: "Compact: a channel message",
       compactSample: "Merged **#897** — `feat/ui-w2` can go.",
       code: "Code",

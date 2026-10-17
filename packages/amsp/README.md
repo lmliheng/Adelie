@@ -51,8 +51,8 @@ const result = collector.result(); // throws AmspStreamError when the stream end
 
 ## Documentation
 
-- [Agent API](https://penguin.ooo/docs/agent-api): turning an agent's API on, keys, approval modes, routes, errors, the client in Node and browsers
-- [AMSP](https://penguin.ooo/docs/amsp): the protocol, event by event
+- [Agent API](https://lmliheng.github.io/Adelie/docs/agent-api): turning an agent's API on, keys, approval modes, routes, errors, the client in Node and browsers
+- [AMSP](https://lmliheng.github.io/Adelie/docs/amsp): the protocol, event by event
 
 ## Development
 
@@ -62,4 +62,4 @@ pnpm --filter @adelie/amsp typecheck
 pnpm --filter @adelie/amsp test
 ```
 
-Part of [Adelie](https://github.com/Prism-Shadow/penguin-harness) · Apache-2.0
+Part of [Adelie](https://github.com/lmliheng/Adelie) · Apache-2.0

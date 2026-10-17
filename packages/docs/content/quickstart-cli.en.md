@@ -16,11 +16,11 @@ Install the `penguin` command with one line, configure a model, and run your fir
 Run the installer for your platform. The Linux / macOS and Windows installers bundle their own Node.js runtime; the npm route needs Node.js >= 24 already installed.
 
 ```bash tab="Linux / macOS"
-curl -fsSL https://penguin.ooo/install.sh | sh
+curl -fsSL https://github.com/lmliheng/Adelie/releases/latest/download/install.sh | sh
 ```
 
 ```powershell tab="Windows"
-irm https://penguin.ooo/install.ps1 | iex
+irm https://github.com/lmliheng/Adelie/releases/latest/download/install.ps1 | iex
 ```
 
 ```bash tab="npm (any platform)"
@@ -119,10 +119,10 @@ Which source then serves the package is measured, not assumed:
 
 Set `PENGUIN_DOWNLOAD_SPEED_PROBE=0` to skip the measurement, or set `PENGUIN_DOWNLOAD_SOURCE` to `oss` or `github` to force a source. The normal installer output names the source without printing the mirror's full URL.
 
-The `penguin.ooo` stable entry resolves the current stable version each time it runs. A standalone script downloaded from a versioned GitHub or OSS Release is stamped with that Release's tag and installs the same version by default, which keeps the installer and the package format matched. To override the version, set `PENGUIN_VERSION`, or pass `--version` on POSIX systems. On Windows, set the variable before you run the installer:
+The [`releases/latest/download` entry](https://github.com/lmliheng/Adelie/releases/latest/download/install.sh) resolves the current stable version each time it runs. A standalone script downloaded from a versioned GitHub or OSS Release is stamped with that Release's tag and installs the same version by default, which keeps the installer and the package format matched. To override the version, set `PENGUIN_VERSION`, or pass `--version` on POSIX systems. On Windows, set the variable before you run the installer:
 
 ```powershell
-$env:PENGUIN_VERSION = "vX.Y.Z"; irm https://penguin.ooo/install.ps1 | iex
+$env:PENGUIN_VERSION = "vX.Y.Z"; irm https://github.com/lmliheng/Adelie/releases/latest/download/install.ps1 | iex
 ```
 
 ### Offline install
@@ -150,8 +150,8 @@ You can also point the installer at a file explicitly: `install.sh --archive <fi
 Building from source requires Node.js >= 24 and pnpm:
 
 ```bash
-git clone https://github.com/Prism-Shadow/penguin-harness.git
-cd penguin-harness
+git clone https://github.com/lmliheng/Adelie.git
+cd Adelie
 pnpm install && pnpm build
 ```
 
@@ -171,7 +171,7 @@ The dev entry points (`pnpm penguin`, `pnpm dev`, `pnpm desktop`) default to a s
 | Integrity check | Always on. Online downloads are verified against the published `.sha256`, and bundle payloads against the checksum sealed inside the bundle |
 | Upgrade | Run the install script again; files are swapped atomically |
 
-Script flags go after `sh -s --`, for example `curl -fsSL https://penguin.ooo/install.sh | sh -s -- --universal`.
+Script flags go after `sh -s --`, for example `curl -fsSL https://github.com/lmliheng/Adelie/releases/latest/download/install.sh | sh -s -- --universal`.
 
 ### Windows specifics
 
@@ -186,7 +186,7 @@ Script flags go after `sh -s --`, for example `curl -fsSL https://penguin.ooo/in
 
 Other differences on Windows:
 
-- **Agent shell**: the agent's `exec_command` runs in a POSIX shell, so Skills written for one keep working. The shell is picked in this order: `bash` on PATH, which is preferred because your own [Git for Windows](https://gitforwindows.org/) carries the full MSYS userland; then the **bundled bash**, since the Windows zip ships MinGit under `git\` and gives a machine without Git for Windows a POSIX shell, about sixty core utilities and `git.exe`; then PowerShell (`pwsh`, then `powershell`). Only npm installs, which bundle nothing, reach the PowerShell fallback. The `PENGUIN_SHELL` environment variable overrides the pick, and the Session's system prompt tells the model which shell is active. The bundled shell's licensing is recorded in [THIRD-PARTY-NOTICES.md](https://github.com/Prism-Shadow/penguin-harness/blob/main/THIRD-PARTY-NOTICES.md).
+- **Agent shell**: the agent's `exec_command` runs in a POSIX shell, so Skills written for one keep working. The shell is picked in this order: `bash` on PATH, which is preferred because your own [Git for Windows](https://gitforwindows.org/) carries the full MSYS userland; then the **bundled bash**, since the Windows zip ships MinGit under `git\` and gives a machine without Git for Windows a POSIX shell, about sixty core utilities and `git.exe`; then PowerShell (`pwsh`, then `powershell`). Only npm installs, which bundle nothing, reach the PowerShell fallback. The `PENGUIN_SHELL` environment variable overrides the pick, and the Session's system prompt tells the model which shell is active. The bundled shell's licensing is recorded in [THIRD-PARTY-NOTICES.md](https://github.com/lmliheng/Adelie/blob/main/THIRD-PARTY-NOTICES.md).
 - **Ctrl-C**: sending Ctrl-C to a running command session (`input_command` with `"\u0003"`) terminates the whole command session tree instead of interrupting the foreground command. Windows cannot deliver a console Ctrl-C to a piped child process, so the interrupt becomes a hard kill of the tree.
 - **In-place update**: `penguin update` is not yet supported on Windows. To upgrade, run the installer again.
 - **Config file permissions**: on POSIX systems, config and credential files are written with `0600` (owner-only) permissions. Windows has no such mode bits, so these files fall under your profile's default NTFS ACLs.

@@ -97,7 +97,7 @@ userData 目录随其名称一并搬家，Chromium 配置文件也跟着走，�
 职责按事实来源划分：**SDK** 拥有协议与执行（消息解析、Agent 循环、工具），**Server** 拥有多用户运行时
 （认证、SSE 流式传输、定时任务），而 `~/.penguin/data` 下的**文件层**拥有一切可编辑与被记录的东西
 （Prompt、Skill、密钥、Trace）。完整对照见
-[架构 → 职责划分](https://penguin.ooo/docs/architecture)。
+[架构 → 职责划分](https://lmliheng.github.io/Adelie/docs/architecture)。
 
 ## 质量门禁
 

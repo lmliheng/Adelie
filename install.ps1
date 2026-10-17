@@ -29,7 +29,7 @@
 # reinstall/upgrade (which only replace bin/lib/web/node/git). Upgrading = re-running this installer.
 # The launcher exports the root it lives under, so an install made before the rename keeps its data.
 #
-# Docs: https://penguin.ooo/docs/quickstart-cli
+# Docs: https://lmliheng.github.io/Adelie/docs/quickstart-cli
 param(
   [string]$Version = "",
   [string]$InstallDir = "",

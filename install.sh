@@ -26,7 +26,7 @@
 #
 # The data dir (~/.adelie/data by default) sits under the install home but is never touched by reinstall/upgrade (which only replace bin/lib/web/node). The launcher exports the root it lives under, so an install made before the rename (at ~/.penguin) keeps reading its own data there.
 #
-# Docs: https://penguin.ooo/docs/quickstart-cli
+# Docs: https://lmliheng.github.io/Adelie/docs/quickstart-cli
 set -eu
 
 REPO="https://github.com/lmliheng/Adelie"

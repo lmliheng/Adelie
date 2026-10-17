@@ -53,7 +53,7 @@ Adelie 在你自己的机器上运行 Agent，而这个 Agent 会执行 shell �
 - Agent 在你已批准的工具调用允许范围内所做的事，包括 `allow-all` 模式下的破坏性命令。
 - `[command_policy]` 沙箱没能拦住它从未声称覆盖的命令。文档中它被定义为审批边界上的一份 deny 列表，
   并明确说明它不是文件系统权限，也不是隔离层——见
-  [配置 → 命令策略](https://penguin.ooo/docs/configuration)。真正的隔离（bubblewrap、dsh）是另一层。
+  [配置 → 命令策略](https://lmliheng.github.io/Adelie/docs/configuration)。真正的隔离（bubblewrap、dsh）是另一层。
 - 有意暴露到不该暴露的网络上的 server。Adelie 默认绑定 `127.0.0.1`，把它放到公网地址上是一项
   部署决定。
 - 已经拿到你的用户账号或数据根目录的人能够读到磁盘上的密钥。

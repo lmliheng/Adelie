@@ -16,11 +16,11 @@ description: 安装 penguin 命令，配置模型，打开 Web App，在终端�
 按平台运行对应的安装命令。Linux / macOS 与 Windows 的安装器自带 Node.js 运行时；npm 方式要求机器上已经装有 Node.js >= 24。
 
 ```bash tab="Linux / macOS"
-curl -fsSL https://penguin.ooo/install.sh | sh
+curl -fsSL https://github.com/lmliheng/Adelie/releases/latest/download/install.sh | sh
 ```
 
 ```powershell tab="Windows"
-irm https://penguin.ooo/install.ps1 | iex
+irm https://github.com/lmliheng/Adelie/releases/latest/download/install.ps1 | iex
 ```
 
 ```bash tab="npm（任意平台）"
@@ -119,10 +119,10 @@ penguin chat
 
 设置 `PENGUIN_DOWNLOAD_SPEED_PROBE=0` 可以跳过测速，把 `PENGUIN_DOWNLOAD_SOURCE` 设为 `oss` 或 `github` 可以强制指定来源。安装器的常规输出只写明来源，不打印镜像的完整 URL。
 
-`penguin.ooo` 稳定入口每次运行时都会解析当前的稳定版本。从 GitHub 或 OSS 某个版本的 Release 里单独下载的安装脚本，会写入所属 Release 的 tag，默认安装同一版本，从而保证安装器与安装包格式相互匹配。要改用其他版本，设置 `PENGUIN_VERSION`；在 POSIX 系统上也可以传入 `--version`。在 Windows 上，先设置环境变量，再运行安装器：
+[`releases/latest/download` 这个稳定入口](https://github.com/lmliheng/Adelie/releases/latest/download/install.sh)每次运行时都会解析当前的稳定版本。从 GitHub 或 OSS 某个版本的 Release 里单独下载的安装脚本，会写入所属 Release 的 tag，默认安装同一版本，从而保证安装器与安装包格式相互匹配。要改用其他版本，设置 `PENGUIN_VERSION`；在 POSIX 系统上也可以传入 `--version`。在 Windows 上，先设置环境变量，再运行安装器：
 
 ```powershell
-$env:PENGUIN_VERSION = "vX.Y.Z"; irm https://penguin.ooo/install.ps1 | iex
+$env:PENGUIN_VERSION = "vX.Y.Z"; irm https://github.com/lmliheng/Adelie/releases/latest/download/install.ps1 | iex
 ```
 
 ### 离线安装
@@ -150,8 +150,8 @@ $env:PENGUIN_VERSION = "vX.Y.Z"; irm https://penguin.ooo/install.ps1 | iex
 从源码构建需要 Node.js >= 24 与 pnpm：
 
 ```bash
-git clone https://github.com/Prism-Shadow/penguin-harness.git
-cd penguin-harness
+git clone https://github.com/lmliheng/Adelie.git
+cd Adelie
 pnpm install && pnpm build
 ```
 
@@ -171,7 +171,7 @@ pnpm install && pnpm build
 | 完整性校验 | 始终开启。在线下载对照发布的 `.sha256` 校验，安装包里的负载对照包内封入的校验值校验 |
 | 升级 | 重新运行安装脚本，文件以原子方式替换 |
 
-脚本参数写在 `sh -s --` 之后，例如 `curl -fsSL https://penguin.ooo/install.sh | sh -s -- --universal`。
+脚本参数写在 `sh -s --` 之后，例如 `curl -fsSL https://github.com/lmliheng/Adelie/releases/latest/download/install.sh | sh -s -- --universal`。
 
 ### Windows 细节
 
@@ -186,7 +186,7 @@ pnpm install && pnpm build
 
 Windows 上还有以下不同：
 
-- **Agent shell**：Agent 的 `exec_command` 在 POSIX shell 中运行，这样面向 POSIX 编写的 Skill 可以照常工作。shell 的选择顺序是：首先是 PATH 上的 `bash`，优先使用它，因为你自己安装的 [Git for Windows](https://gitforwindows.org/) 带有完整的 MSYS 工具集；其次是**内置 bash**，Windows zip 在 `git\` 下自带 MinGit，没有安装 Git for Windows 的机器也能得到 POSIX shell、约六十个核心工具和 `git.exe`；最后是 PowerShell（先 `pwsh`，后 `powershell`）。只有 npm 安装不带任何内置组件，才会用到 PowerShell 这一兜底。环境变量 `PENGUIN_SHELL` 可以强制指定 shell，Session 的系统提示词会告诉模型当前使用的是哪个 shell。内置 shell 的许可信息见 [THIRD-PARTY-NOTICES.md](https://github.com/Prism-Shadow/penguin-harness/blob/main/THIRD-PARTY-NOTICES.md)。
+- **Agent shell**：Agent 的 `exec_command` 在 POSIX shell 中运行，这样面向 POSIX 编写的 Skill 可以照常工作。shell 的选择顺序是：首先是 PATH 上的 `bash`，优先使用它，因为你自己安装的 [Git for Windows](https://gitforwindows.org/) 带有完整的 MSYS 工具集；其次是**内置 bash**，Windows zip 在 `git\` 下自带 MinGit，没有安装 Git for Windows 的机器也能得到 POSIX shell、约六十个核心工具和 `git.exe`；最后是 PowerShell（先 `pwsh`，后 `powershell`）。只有 npm 安装不带任何内置组件，才会用到 PowerShell 这一兜底。环境变量 `PENGUIN_SHELL` 可以强制指定 shell，Session 的系统提示词会告诉模型当前使用的是哪个 shell。内置 shell 的许可信息见 [THIRD-PARTY-NOTICES.md](https://github.com/lmliheng/Adelie/blob/main/THIRD-PARTY-NOTICES.md)。
 - **Ctrl-C**：向运行中的命令会话发送 Ctrl-C（`input_command` 传入 `"\u0003"`），会终止整棵命令会话进程树，而不是中断前台命令。Windows 无法把控制台 Ctrl-C 投递给通过管道连接的子进程，中断因此退化为强制结束整棵进程树。
 - **就地更新**：Windows 暂不支持 `penguin update`，升级请重新运行安装器。
 - **配置文件权限**：在 POSIX 系统上，配置文件与凭据文件以 `0600`（仅属主可读写）权限写入。Windows 没有这类权限位，这些文件遵循你用户目录的默认 NTFS ACL。

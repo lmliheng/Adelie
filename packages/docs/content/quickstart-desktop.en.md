@@ -12,7 +12,7 @@ The desktop app is the full Web App as a standalone application. It embeds the s
 
 ## Download and install
 
-Download the installer for your platform from the [download page](https://penguin.ooo/download), which serves the OSS-accelerated mirror when it is reachable. The same files are attached to every [GitHub Release](https://github.com/Prism-Shadow/penguin-harness/releases).
+Download the installer for your platform from the [download page](https://github.com/lmliheng/Adelie/releases/latest); the installer prefers the OSS-accelerated mirror when it is reachable. Every [GitHub Release](https://github.com/lmliheng/Adelie/releases) carries the same files.
 
 | Platform | Installers |
 | --- | --- |

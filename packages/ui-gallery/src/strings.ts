@@ -932,7 +932,7 @@ export const zh = {
       inline: { before: "先运行 ", code: "pnpm install", after: " 安装依赖。" },
       prose: "Markdown 正文",
       proseSample:
-        "## 部署检查\n\n发布前确认 **三件事**，再运行 `pnpm -r build`。详见[发布说明](https://penguin.ooo)。\n\n- 类型检查通过\n- 测试全部通过\n- 更新日志已写好\n\n> 数据根被占用时，换一个数据根，不要结束别人的进程。\n\n| 检查 | 命令 |\n| --- | --- |\n| 类型 | `pnpm typecheck` |\n| 测试 | `pnpm test` |\n\n```bash\npnpm -r build && pnpm test\n```\n\n缓存命中率为 \\(r = h / (h + m)\\)。",
+        "## 部署检查\n\n发布前确认 **三件事**，再运行 `pnpm -r build`。详见[发布说明](https://lmliheng.github.io/Adelie/)。\n\n- 类型检查通过\n- 测试全部通过\n- 更新日志已写好\n\n> 数据根被占用时，换一个数据根，不要结束别人的进程。\n\n| 检查 | 命令 |\n| --- | --- |\n| 类型 | `pnpm typecheck` |\n| 测试 | `pnpm test` |\n\n```bash\npnpm -r build && pnpm test\n```\n\n缓存命中率为 \\(r = h / (h + m)\\)。",
       compact: "紧凑：频道消息",
       compactSample: "已合并 **#897**，`feat/ui-w2` 可以删了。",
       code: "代码",

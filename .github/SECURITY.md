@@ -67,7 +67,7 @@ These are not, because they are the documented design rather than a defect:
 - The `[command_policy]` sandbox failing to stop a command it never claimed to cover. It is
   documented as a deny-list at the approval boundary and explicitly not a filesystem
   permission or a confinement layer — see
-  [Configuration → Command policy](https://penguin.ooo/docs/configuration). Real confinement
+  [Configuration → Command policy](https://lmliheng.github.io/Adelie/docs/configuration). Real confinement
   (bubblewrap, dsh) is a separate layer.
 - A server deliberately exposed to a network it should not be on. Adelie binds to
   `127.0.0.1` by default; putting it on a public address is a deployment decision.

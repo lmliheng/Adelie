@@ -1,6 +1,6 @@
 # The API path: a program that calls an Adelie Agent
 
-Read this before you write a program that calls an Adelie Agent over the Agent API. The rules in SKILL.md, *The API path*, hold throughout. The user documentation has every detail: the [Agent API guide](https://penguin.ooo/docs/agent-api) and the [AMSP protocol](https://penguin.ooo/docs/amsp).
+Read this before you write a program that calls an Adelie Agent over the Agent API. The rules in SKILL.md, *The API path*, hold throughout. The user documentation has every detail: the [Agent API guide](https://lmliheng.github.io/Adelie/docs/agent-api) and the [AMSP protocol](https://lmliheng.github.io/Adelie/docs/amsp).
 
 ## 1. Hand the opening to the user
 
