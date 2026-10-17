@@ -10158,6 +10158,12 @@ provider 指向本仓自带 mock LLM（8976）—— 于是「发一条消息」
 - 两笔一起推（`a113ea8e..a3b35ec4`）—— run **`38985516965`**（`a3b35ec4`）**`completed success`：22 个作业
   全 success、非 success 为空**（逐条查过 `/actions/runs/38985516965/jobs`），没有触发重跑（attempt 1）。
   本笔只改 `packages/web/e2e` 的两个夹具文件与台账，`ci.yml` 的矩阵没有动。
+- 其后两笔只动台账的补记各自又触发一次：`7935b2c4` 那次被 `cancel-in-progress` 取消（正常，同组后一笔
+  顶掉前一笔），`0d156618` 那次 run **`38986253321`** 首发**在 `test-macos (server)` 上红** —— 正是
+  第六十八轮记过的老抖动（`test/workflows.test.ts > a loaded workflow > notices an Agent's FIRST
+  workflow` 在 macOS runner 上超时，重试又撞 `agent_exists`；同一提交的 Linux `test (server)` 是绿的），
+  按那套办法 `POST …/rerun-failed-jobs`（HTTP 201）重跑，**attempt 2 的 22 个作业全 success、
+  非 success 为空**。
 
 ### 下一轮从这里接
 
