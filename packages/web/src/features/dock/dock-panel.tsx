@@ -807,8 +807,9 @@ export function DockPanel({
     </ConfirmModal>
   );
 
-  // The boundary handle: on the bottom dock an overlay straddling the top edge (it costs no
-  // height), on the right dock a layout sibling (it must cost real width); the frame seats it,
+  // The boundary handle: on the bottom dock an overlay along the top edge (it costs no height —
+  // and it sits just inside, since the frame's own overflow-hidden would clip a straddling half),
+  // on the right dock a layout sibling (it must cost real width); the frame seats it,
   // and moves the same element onto the cover's leading edge while the surface is fullscreen, so
   // a drag that snaps the surface in or out keeps its pointer and ends on the release as usual.
   // The store clamps the size a drag asks for.

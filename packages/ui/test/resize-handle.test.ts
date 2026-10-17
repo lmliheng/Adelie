@@ -51,19 +51,30 @@ describe("ResizeHandle", () => {
     expect(html).toContain('tabindex="0"');
   });
 
-  it("draws in the info tone, as a row sibling or straddling an edge", () => {
+  it("draws in the info tone, as a row sibling or an overlay on an edge", () => {
     const inline = classTokens(
       renderStatic(createElement(ResizeHandle, { axis: "x", label: "Resize", onResize: noop })),
     );
     expect(inline).toEqual(expect.arrayContaining(["w-1.5", "shrink-0", "cursor-col-resize"]));
     expect(inline).toContain("hover:bg-tone-info-emphasis/40");
     expect(inline).not.toContain("absolute");
+    // Along x the overlay straddles the edge it resizes.
+    const side = classTokens(
+      renderStatic(
+        createElement(ResizeHandle, { axis: "x", label: "Resize", onResize: noop, edge: "start" }),
+      ),
+    );
+    expect(side).toEqual(expect.arrayContaining(["absolute", "-left-[3px]", "w-1.5"]));
+    // Along y the leading overlay sits just INSIDE its parent: the bottom panel's frame clips its
+    // animated size with `overflow-hidden`, so a straddling half was clipped away and only the
+    // inner 3 px of the 6 px band could be grabbed at all (the boundary line itself was dead).
     const edge = classTokens(
       renderStatic(
         createElement(ResizeHandle, { axis: "y", label: "Resize", onResize: noop, edge: "start" }),
       ),
     );
-    expect(edge).toEqual(expect.arrayContaining(["absolute", "-top-[3px]", "h-1.5"]));
+    expect(edge).toEqual(expect.arrayContaining(["absolute", "top-0", "h-1.5"]));
+    expect(edge).not.toContain("-top-[3px]");
   });
 });
 

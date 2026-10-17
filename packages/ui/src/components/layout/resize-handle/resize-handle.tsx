@@ -30,14 +30,21 @@ export const RESIZE_HANDLE_PX = 6;
 /** One arrow-key step, in px: coarse enough to get somewhere, fine enough to land. */
 export const RESIZE_STEP_PX = 16;
 
-/** The overlay placements: which edge of the positioned parent the bar straddles, by axis. */
+/**
+ * The overlay placements: which edge of the positioned parent the bar rides, by axis. Along x
+ * the bar straddles the edge (the column beside it has no clipping ancestor in between); along
+ * y the START edge sits *inside* instead — a bottom panel's frame is `overflow-hidden` (it clips
+ * its animated size), so a half sticking out above the edge was clipped away and only the inner
+ * 3 px of the 6 px band could be grabbed, with the boundary line itself dead. `end` (a bottom
+ * edge, used by nothing today) keeps the straddle.
+ */
 const EDGE_CLASS = {
   x: {
     start: "absolute inset-y-0 -left-[3px] z-20 w-1.5",
     end: "absolute inset-y-0 -right-[3px] z-20 w-1.5",
   },
   y: {
-    start: "absolute inset-x-0 -top-[3px] z-20 h-1.5",
+    start: "absolute inset-x-0 top-0 z-20 h-1.5",
     end: "absolute inset-x-0 -bottom-[3px] z-20 h-1.5",
   },
 } as const;
