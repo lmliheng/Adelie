@@ -125,8 +125,8 @@ Adelie 运行在你的电脑或服务器上，自动串联 Agent 应用的创建
 ## 安装
 
 Adelie 有自己的产物：桌面安装包、命令行包与 npm 包，每次发布都在
-[GitHub Releases](https://github.com/lmliheng/Adelie/releases) 上，同一份资产也镜像到阿里云 OSS
-（`https://adelie-releases.oss-cn-hangzhou.aliyuncs.com`，给国内的读者）。一次发布是一个整体版本：
+[GitHub Releases](https://github.com/lmliheng/Adelie/releases) 上。**只有这一处**：这个仓库以前
+挂的阿里云 OSS 镜像已经停用，所以只有一条地址要看，而且它始终是最新的。一次发布是一个整体版本：
 桌面端、命令行、服务端与 Web 前端同号。
 
 ### 桌面应用
@@ -138,8 +138,7 @@ Adelie 有自己的产物：桌面安装包、命令行包与 npm 包，每次�
 | macOS          | 还没打 —— dmg / zip 目标在等一张 Apple 开发者证书                       |
 
 Windows 安装包**还没有代码签名**，SmartScreen 会提示一次（「更多信息 → 仍要运行」）。应用自己会
-检查更新：先读 OSS 镜像上的 `latest.yml`，镜像不通时回退到 GitHub Releases —— 升级走应用里的
-「检查更新」就行。
+检查更新，读的就是这个仓库的 GitHub Releases —— 升级走应用里的「检查更新」就行。
 
 ### 命令行与 Web App
 

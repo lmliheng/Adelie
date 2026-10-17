@@ -59,6 +59,10 @@ git merge upstream/develop        # 在 main 上
   只剩 GitHub，`PENGUIN_DOWNLOAD_SOURCE=oss`（CLI 与两个安装脚本）会被明确拒绝而不是默默回落到
   auto。桌面端的「速度探测 + 镜像 feed」子系统与安装脚本里的 `SPEED_PROBE_*` 整套也一并删掉了；
   自建镜像改用自己的 base URL / feed（`PENGUIN_DOWNLOAD_BASE_URL`、`PENGUIN_UPDATE_FEED_URL`）。
+  2026-10-06 一度重新上线过一版 Adelie 自己的阿里云镜像（发布链 `mirror-oss` 作业 +
+  `scripts/publish-release-to-oss.sh` + 桌面端默认 feed），**2026-10-17 用户决定不再使用 OSS**，
+  那条路连同 `oss-staging` 工作流与三个 ossutil 脚本一起删掉：发布资产只挂 GitHub Release，
+  桌面端更新源默认就是 GitHub Releases（`MIRROR_FEED_URL` 与「探不通再回退」的那套判断一并移除）。
 - **模型库里没有「官方推荐」了**。上游把 TokenDance 分组标为 `recommended` 并在模型库页面挂
   「官方推荐 / Recommended」标签；Adelie 删掉了这个标记（推荐哪家网关是上游的商业选择，不是我们
   的）。分组的默认顺序没有变。

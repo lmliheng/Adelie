@@ -17,13 +17,10 @@
  * check or download is manual too, but its outcomes render in the modal that asked, not
  * in dialogs: the native restart prompt follows only a download the native dialog started.
  *
- * Adelie fork note (2026-10-06): the assets are published to this fork's own GitHub Releases
- * (`lmliheng/Adelie`) and mirrored to Alibaba Cloud OSS, and the mirror is the feed a check
- * starts from — github.com is slow to unusable for the users this fork is built for. GitHub
- * Releases stays the source of truth: a check the mirror does not answer is retried there, so a
- * mirror that is stale, broken or simply gone costs one round-trip rather than the update.
- * `PENGUIN_UPDATE_FEED_URL` still outranks both — an end-to-end update test points it at the
- * local server it just stood up — and is answered as-is, never followed by a fallback.
+ * Adelie fork note: the assets are published to this fork's own GitHub Releases
+ * (`lmliheng/Adelie`), and that is the feed a check starts from. `PENGUIN_UPDATE_FEED_URL`
+ * outranks it — an end-to-end update test points it at the local server it just stood up, and a
+ * deployment running a mirror of its own can point it there — and is answered as-is.
  *
  * Release builds use Developer ID signing on macOS and Authenticode signing on Windows;
  * unsigned dry-run artifacts can still find updates, but platform trust and release
@@ -38,9 +35,7 @@ import { resolveProfile } from "./app-identity.js";
 import { logLine } from "./desktop-log.js";
 import {
   GITHUB_FEED,
-  MIRROR_FEED_URL,
   RELEASES_URL,
-  fallsBackToGithub,
   feedUrlOverride,
   initialFeedKind,
   updateSupport,
@@ -70,24 +65,18 @@ let downloadInFlight = false;
 let nativeDownload = false;
 
 /**
- * The feeds this build can update from, and the one a check is pointed at right now: the OSS
- * mirror by default, an explicit PENGUIN_UPDATE_FEED_URL instead when one is set, and GitHub
- * Releases while a check the mirror did not answer is being retried (`handleCheckError`).
+ * The feeds this build can update from: Adelie's GitHub Releases by default, an explicit
+ * PENGUIN_UPDATE_FEED_URL instead when one is set.
  */
 let overrideFeedUrl: string | null = null;
-let activeFeed: UpdateFeedKind = "mirror";
 
-/** Points electron-updater at one of the three feeds; the kind is remembered for the fallback. */
+/** Points electron-updater at the GitHub feed or at an explicit override. */
 function setFeed(kind: UpdateFeedKind): void {
-  activeFeed = kind;
   if (kind === "github") {
     autoUpdater.setFeedURL(GITHUB_FEED);
     return;
   }
-  autoUpdater.setFeedURL({
-    provider: "generic",
-    url: kind === "override" ? (overrideFeedUrl as string) : MIRROR_FEED_URL,
-  });
+  autoUpdater.setFeedURL({ provider: "generic", url: overrideFeedUrl as string });
 }
 
 function scheduleChecks(): void {
@@ -143,18 +132,12 @@ function reportUpdaterError(err: Error, step: "check" | "download"): void {
 }
 
 /**
- * A check that failed. The default feed is the OSS mirror, a convenience copy of the Release
- * assets — so a check it does not answer is retried against GitHub Releases, which is where those
- * assets are published and which every release leaves current. Only a failure of that second feed
- * is the user's failure. An explicit PENGUIN_UPDATE_FEED_URL never falls back: it names the feed
- * to use, and a check against some other one would answer a different question.
+ * A check that failed. There is no second feed behind GitHub Releases — it holds the published
+ * assets and every release leaves it current — so the failure is the user's to see. An explicit
+ * PENGUIN_UPDATE_FEED_URL is likewise answered as-is: it names the feed to use, and a check
+ * against some other one would answer a different question.
  */
 function handleCheckError(err: Error): void {
-  if (fallsBackToGithub(activeFeed)) {
-    log(`mirror check failed (${err.message}); retrying against GitHub Releases`);
-    void check("github");
-    return;
-  }
   reportUpdaterError(err, "check");
 }
 
@@ -303,13 +286,13 @@ export function initUpdater(getWindow: () => BrowserWindow | null): void {
   log(
     overrideFeedUrl !== null
       ? `feed override: ${overrideFeedUrl}`
-      : `feed: mirror ${MIRROR_FEED_URL} (GitHub Releases as fallback)`,
+      : `feed: GitHub Releases (${GITHUB_FEED.owner}/${GITHUB_FEED.repo})`,
   );
   scheduleChecks();
 }
 
-/** `startFeed` is what the GitHub fallback passes; an ordinary check starts from the default. */
-async function check(startFeed?: UpdateFeedKind): Promise<void> {
+/** Runs one check against the configured feed. */
+async function check(): Promise<void> {
   // A waiting build ends the checking: a re-check that finds a newer release would
   // start fetching it and invalidate the downloaded package on disk while the UI still
   // points its install action at it. The user installs what they were offered; the next
@@ -322,9 +305,9 @@ async function check(startFeed?: UpdateFeedKind): Promise<void> {
   ) {
     return;
   }
-  // Every ordinary check starts from the configured default, so a mirror that failed last time
-  // gets another chance instead of the session being pinned to the fallback.
-  setFeed(startFeed ?? initialFeedKind(process.env));
+  // Every check reads the feed configured for this run — an override when one is set, GitHub
+  // Releases otherwise.
+  setFeed(initialFeedKind(process.env));
   try {
     await autoUpdater.checkForUpdates();
   } catch (err) {

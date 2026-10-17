@@ -144,10 +144,10 @@ and local models with a custom endpoint.
 ## Install
 
 Adelie ships its own artifacts — desktop installers, CLI bundles and npm packages, every release on
-[GitHub Releases](https://github.com/lmliheng/Adelie/releases) with the same assets mirrored to an
-Alibaba Cloud OSS bucket (`https://adelie-releases.oss-cn-hangzhou.aliyuncs.com`) for readers in
-China. A release is always a whole version: the desktop app, the CLI, the server and the Web frontend
-are the same number.
+[GitHub Releases](https://github.com/lmliheng/Adelie/releases). That is the only place they are
+published: the Alibaba Cloud OSS mirror this fork used to keep was retired, so there is one address
+to check and it is always current. A release is always a whole version: the desktop app, the CLI,
+the server and the Web frontend are the same number.
 
 ### Desktop app
 
@@ -158,9 +158,8 @@ are the same number.
 | macOS | not built yet — the dmg/zip targets wait for an Apple Developer ID |
 
 The Windows installer is **not code-signed yet**, so SmartScreen shows its warning once
-("More info → Run anyway"). The app checks for updates itself: it reads the OSS mirror's
-`latest.yml` first and falls back to GitHub Releases when the mirror is unreachable, so
-"Check for updates" inside the app is the normal way to upgrade.
+("More info → Run anyway"). The app checks for updates itself against this repo's GitHub Releases,
+so "Check for updates" inside the app is the normal way to upgrade.
 
 ### Command line and Web App
 
