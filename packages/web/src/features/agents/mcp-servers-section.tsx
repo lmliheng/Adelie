@@ -15,6 +15,11 @@
  * The permission control mirrors the builtin tool table's, with a third `auto` state: it
  * decides which of the server's tool calls stop for approval, and nothing about what the
  * remote server is able to do.
+ *
+ * Each row carries an on/off switch (`config.enabled`): off keeps the entry and every field
+ * of it, but the server is not connected in any turn, so its `mcp__*` tools leave the tool
+ * list. That is the way to park a plugin's bridge (the WPS add-on, say) without deleting it
+ * and having to re-add it later; the row dims while it is off.
  */
 import { useState } from "react";
 import type { MCPServerConfig } from "@adelie/core/interfaces";
@@ -27,6 +32,7 @@ import {
   OptionMenu,
   Segmented,
   SettingsEmpty,
+  Switch,
   Table,
   TableBody,
   TableCell,
@@ -45,6 +51,7 @@ import { apiErrorText } from "../../lib/api-error";
 import { useProject } from "../../state/project";
 import {
   emptyMcpForm,
+  enabledOf,
   formToServer,
   permissionOf,
   serverToForm,
@@ -289,6 +296,25 @@ export function McpServersSection({
     closeModal();
   };
 
+  /** Flips one row's switch and persists it; the whole list is PUT back, like every edit here. */
+  const toggleEnabled = async (index: number) => {
+    const entry = servers[index];
+    if (!entry) return;
+    const next = servers.map((s, i) => {
+      if (i !== index) return s;
+      if (!enabledOf(s)) {
+        // Back on: drop the key rather than store `true`, so the entry keeps following the
+        // default (core reads an absent `enabled` as on — same normalization as the form).
+        const config = { ...s.config };
+        delete config["enabled"];
+        return { name: s.name, config };
+      }
+      return { name: s.name, config: { ...s.config, enabled: false } };
+    });
+    const err = await persist(next);
+    if (err !== null) toastError(err);
+  };
+
   const confirmDelete = async () => {
     if (deleting === null) return;
     const err = await persist(servers.filter((_, i) => i !== deleting));
@@ -317,6 +343,7 @@ export function McpServersSection({
       ) : (
         <Table tableClassName="min-w-[520px]">
           <TableHead>
+            <TableHeaderCell>{S.agent.mcpEnabled}</TableHeaderCell>
             <TableHeaderCell>{S.agent.mcpName}</TableHeaderCell>
             <TableHeaderCell>{S.agent.mcpTransport}</TableHeaderCell>
             <TableHeaderCell>{S.agent.mcpPermission}</TableHeaderCell>
@@ -339,14 +366,33 @@ export function McpServersSection({
           <TableBody>
             {servers.map((entry, index) => (
               <TableRow key={entry.name}>
-                <TableCell className="font-mono text-xs">{entry.name}</TableCell>
+                <TableCell>
+                  <Switch
+                    checked={enabledOf(entry)}
+                    disabled={busy}
+                    onChange={() => void toggleEnabled(index)}
+                    title={enabledOf(entry) ? S.agent.mcpDisableHint : S.agent.mcpEnableHint}
+                    aria-label={`${entry.name} ${S.agent.mcpEnabled}`}
+                  />
+                </TableCell>
+                <TableCell
+                  className={`font-mono text-xs ${enabledOf(entry) ? "" : "text-gray-400 dark:text-gray-500"}`}
+                >
+                  {entry.name}
+                </TableCell>
                 <TableCell className="font-mono text-xs text-gray-500 dark:text-gray-400">
                   {transportOf(entry)}
                 </TableCell>
                 <TableCell className="font-mono text-xs text-gray-500 dark:text-gray-400">
                   {permissionOf(entry)}
                 </TableCell>
-                <TableCell className="max-w-[360px] truncate font-mono text-xs text-gray-500 dark:text-gray-400">
+                <TableCell
+                  className={`max-w-[360px] truncate font-mono text-xs ${
+                    enabledOf(entry)
+                      ? "text-gray-500 dark:text-gray-400"
+                      : "text-gray-400 dark:text-gray-500"
+                  }`}
+                >
                   {targetOf(entry)}
                 </TableCell>
                 {showBadges && (

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   emptyMcpForm,
+  enabledOf,
   formToServer,
   parseKeyValueLines,
   permissionOf,
@@ -37,6 +38,14 @@ describe("serverToForm", () => {
     expect(bad.permission).toBe("auto");
     // permission is a known key, so even a bad value stays out of extras.
     expect(bad.extras).toEqual({});
+  });
+
+  it("loads the on/off switch: only an explicit false reads as off, and it is not an extra", () => {
+    expect(serverToForm({ name: "a", config: { command: "x" } }).enabled).toBe(true);
+    expect(serverToForm({ name: "a", config: { command: "x", enabled: true } }).enabled).toBe(true);
+    const off = serverToForm({ name: "a", config: { command: "x", enabled: false } });
+    expect(off.enabled).toBe(false);
+    expect(off.extras).toEqual({});
   });
 
   it("loads an http entry and keeps unknown config keys as extras", () => {
@@ -95,6 +104,19 @@ describe("formToServer", () => {
       server: { name: "a", config: { transport: "http", url: "https://x/mcp", permission: "r" } },
     });
     expect(formToServer({ ...base, permission: "auto" as const })).toEqual({
+      ok: true,
+      server: { name: "a", config: { transport: "http", url: "https://x/mcp" } },
+    });
+  });
+
+  it("writes the off state and normalizes on away", () => {
+    const base = { ...emptyMcpForm(), name: "a", url: "https://x/mcp" };
+    expect(formToServer({ ...base, enabled: false })).toEqual({
+      ok: true,
+      server: { name: "a", config: { transport: "http", url: "https://x/mcp", enabled: false } },
+    });
+    // On is the default: not written, so the entry keeps following it.
+    expect(formToServer({ ...base, enabled: true })).toEqual({
       ok: true,
       server: { name: "a", config: { transport: "http", url: "https://x/mcp" } },
     });
@@ -166,6 +188,14 @@ describe("parseKeyValueLines", () => {
   it("rejects lines without a separator or key", () => {
     expect(parseKeyValueLines("A=1\nnope", "=")).toEqual({ ok: false, line: 2 });
     expect(parseKeyValueLines("=v", "=")).toEqual({ ok: false, line: 1 });
+  });
+});
+
+describe("enabledOf", () => {
+  it("treats an absent or unrecognized value as on, an explicit false as off", () => {
+    expect(enabledOf({ name: "a", config: { command: "x" } })).toBe(true);
+    expect(enabledOf({ name: "a", config: { command: "x", enabled: "false" } })).toBe(true);
+    expect(enabledOf({ name: "a", config: { command: "x", enabled: false } })).toBe(false);
   });
 });
 

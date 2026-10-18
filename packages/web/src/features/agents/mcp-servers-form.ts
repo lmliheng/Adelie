@@ -24,6 +24,8 @@ export const MCP_PERMISSION_DEFAULT: McpPermissionMode = "auto";
 /** Editable string state backing the Add/Edit modal (multiline fields stay raw text). */
 export interface McpServerFormState {
   name: string;
+  /** The row's on/off switch: off keeps the entry (and its fields) but removes it from the runtime. */
+  enabled: boolean;
   transport: McpTransportKind;
   command: string;
   /** One argument per line (blank lines ignored). */
@@ -90,6 +92,7 @@ export const MCP_BUDGET_DEFAULTS = {
 } as const;
 
 const KNOWN_CONFIG_KEYS = new Set([
+  "enabled",
   "transport",
   "command",
   "args",
@@ -106,6 +109,8 @@ const KNOWN_CONFIG_KEYS = new Set([
 export function emptyMcpForm(): McpServerFormState {
   return {
     name: "",
+    // A server added from this page is meant to be used: it starts on.
+    enabled: true,
     // The Add modal opens on http: remote servers are the common case, and a URL field is
     // the gentler first impression than command/args.
     transport: "http",
@@ -140,6 +145,11 @@ export function transportOf(entry: MCPServerConfig): McpTransportKind {
       : "stdio";
 }
 
+/** Effective switch state of a stored entry: only an explicit `false` reads as off. */
+export function enabledOf(entry: MCPServerConfig): boolean {
+  return entry.config["enabled"] !== false;
+}
+
 /** Effective permission mode of a stored entry (an unrecognized value reads as the default). */
 export function permissionOf(entry: MCPServerConfig): McpPermissionMode {
   const p = entry.config["permission"];
@@ -156,6 +166,7 @@ export function serverToForm(entry: MCPServerConfig): McpServerFormState {
   }
   return {
     name: entry.name,
+    enabled: enabledOf(entry),
     transport,
     command: typeof c["command"] === "string" ? c["command"] : "",
     argsText: Array.isArray(c["args"]) ? c["args"].map((a) => String(a)).join("\n") : "",
@@ -266,6 +277,8 @@ export function formToServer(form: McpServerFormState): McpFormResult {
   // Same normalization as the budgets: the default is not written, so the entry keeps
   // following the default rather than pinning today's value.
   if (form.permission !== MCP_PERMISSION_DEFAULT) config["permission"] = form.permission;
+  // Only the off state is stored (core reads an absent `enabled` as on).
+  if (!form.enabled) config["enabled"] = false;
 
   if (Object.keys(errors).length > 0) return { ok: false, errors };
   return { ok: true, server: { name, config } };

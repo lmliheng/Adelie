@@ -148,3 +148,32 @@ describe("resolveMCPServers — list semantics", () => {
     expect(resolveMCPServers([])).toEqual({ servers: [], warnings: [] });
   });
 });
+
+describe("resolveMCPServers — the on/off switch", () => {
+  it("drops a switched-off entry without a warning, keeping the rest in order", () => {
+    const { servers, warnings } = resolveMCPServers([
+      { name: "off", config: { command: "node", args: ["bridge.mjs"], enabled: false } },
+      { name: "on", config: { command: "srv" } },
+      { name: "plain-off", config: { url: "https://x/mcp", enabled: true } },
+    ]);
+    expect(servers.map((s) => s.name)).toEqual(["on", "plain-off"]);
+    expect(warnings).toEqual([]);
+  });
+
+  it("does not try to resolve the transport of a switched-off entry", () => {
+    // The entry's target may be gone (an uninstalled plugin's bridge) — being off means
+    // nothing looks at it, so no warning lands on every Session.
+    const { servers, warnings } = resolveMCPServers([
+      { name: "stale", config: { enabled: false } },
+      { name: "typo", config: { command: "a", permission: "readonly", enabled: false } },
+    ]);
+    expect(servers).toEqual([]);
+    expect(warnings).toEqual([]);
+  });
+
+  it("rejects a non-boolean switch instead of reading it as on", () => {
+    expect(() =>
+      resolveMCPServer({ name: "a", config: { command: "x", enabled: "false" } }),
+    ).toThrow(/"enabled" must be true or false/);
+  });
+});

@@ -1576,6 +1576,10 @@ export const en: Strings = {
     mcpDesc:
       "Connect external MCP Servers: their tools join this agent's toolset as mcp__<name>__<tool>. Changes in this block save immediately.",
     mcpEmpty: "No MCP Servers configured yet",
+    mcpEnabled: "enabled",
+    mcpEnableHint: "Turn on: this Server connects again from the next turn on",
+    mcpDisableHint:
+      "Turn off: the configuration stays, but the Server is no longer connected and its tools leave the tool list",
     mcpAdd: "Add MCP Server",
     mcpEditTitle: "Edit MCP Server",
     mcpRemove: "Remove",

@@ -410,6 +410,9 @@ tools:
 | `timeoutMs` | 这个 Server 每个工具的执行超时；未设置时使用 Environment 默认值 |
 | `maxOutputLength` | 这个 Server 每个工具的输出上限；未设置时使用 Environment 默认值 |
 | `permission` | `auto` / `r` / `rw`，默认 `auto`；见[权限映射](#权限映射) |
+| `enabled` | `true`（默认）/ `false`；`false` 保留条目，但把这个 Server 移出运行时 |
+
+`enabled: false` 是把一个 Server 停用而不是删掉：条目（传输方式和其他每个字段）都留在配置里，但任何一轮都不会连接它，它的工具也不再出现在工具列表里。插件装上的桥（比如 WPS 加载项的桥）想关又不想丢掉重新登记的那份配置，用它最合适。设置页每行的开关写的就是这个字段。取值不是 `true` 或 `false` 时算无效，所以带引号的 `"false"` 不会被当成「开着」。
 
 这里的 `connectTimeoutMs`、`timeoutMs` 和 `maxOutputLength` 必须是正数，取值小于等于 0 的条目无效。`headers` 会附加到发往这个 Server 的每一个 HTTP 请求上，SSE 流也不例外，因此可以携带 `Authorization` 这类认证头。
 

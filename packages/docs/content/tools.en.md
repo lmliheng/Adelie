@@ -410,6 +410,9 @@ All three transports share these optional fields:
 | `timeoutMs` | Execution timeout for every tool of that Server; the Environment default when unset |
 | `maxOutputLength` | Output cap for every tool of that Server; the Environment default when unset |
 | `permission` | `auto` / `r` / `rw`, default `auto`; see [Permission mapping](#permission-mapping) |
+| `enabled` | `true` (default) / `false`; `false` keeps the entry but takes the Server out of the runtime |
+
+`enabled: false` parks a Server without deleting it: the entry — transport and every other field — stays in the config, but no turn connects it and its tools stay out of the tool list. It is the way to switch off a bridge installed by a plugin (the WPS add-on's bridge, say) without losing the entry you would have to re-add later. The settings page's per-row switch writes this field. Anything other than `true` or `false` is invalid, so a quoted `"false"` cannot silently read as on.
 
 `connectTimeoutMs`, `timeoutMs` and `maxOutputLength` must be positive numbers here; an entry with a value of 0 or less is invalid. `headers` are attached to every HTTP request to that Server, SSE stream included, so they can carry auth headers such as `Authorization`.
 

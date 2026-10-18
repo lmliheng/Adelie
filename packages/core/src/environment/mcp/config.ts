@@ -18,6 +18,10 @@
  * `permission` sets the approval level Adelie applies to every tool of the server —
  * `"auto"` (the default) trusts each tool's own `readOnlyHint`, `"r"` or `"rw"` overrides it.
  *
+ * `enabled: false` switches a server off without deleting it: the entry stays in the config
+ * (transport and all) but never reaches the runtime, so it costs no connection per turn and
+ * its tools stay out of the schema. The settings page's per-row switch writes this field.
+ *
  * Invalid entries never break Session creation: each problem is reported as a warning and
  * the entry is skipped (the same stance Environment takes on unrecognized builtin tool
  * names), so one typo in a hand-edited YAML cannot take the whole Agent down.
@@ -114,6 +118,16 @@ function readPermission(value: unknown): ToolPermission | undefined | null {
 }
 
 /**
+ * Reads the optional switch; `false` = configured but out of the runtime, `true` or absent =
+ * active, `null` = invalid (a quoted `"false"` must not silently read as on).
+ */
+function readEnabled(value: unknown): boolean | undefined | null {
+  if (value === undefined) return undefined;
+  if (typeof value !== "boolean") return null;
+  return value;
+}
+
+/**
  * Resolves one entry; throws with a human-readable reason on an invalid one (the caller
  * turns it into a warning and skips the entry).
  */
@@ -205,6 +219,11 @@ export function resolveMCPServer(entry: MCPServerConfig): ResolvedMCPServer {
   if (permission === null) {
     throw new Error(`"permission" must be "auto", "r" or "rw"`);
   }
+  // `true` is the default and stays out of the resolved shape: only the off switch matters
+  // to the caller, which drops such an entry before it ever reaches the provider.
+  if (readEnabled(config["enabled"]) === null) {
+    throw new Error(`"enabled" must be true or false`);
+  }
 
   return {
     name,
@@ -217,14 +236,19 @@ export function resolveMCPServer(entry: MCPServerConfig): ResolvedMCPServer {
 }
 
 /**
- * Resolves a whole `mcpServers` list: invalid entries and duplicate names become warnings
- * and are skipped; the rest come back typed and ready to connect.
+ * Resolves a whole `mcpServers` list: entries switched off (`enabled: false`) are dropped
+ * silently — being out of the runtime is the point of the switch, not a problem to warn
+ * about — invalid entries and duplicate names become warnings and are skipped; the rest
+ * come back typed and ready to connect.
  */
 export function resolveMCPServers(entries: MCPServerConfig[]): ResolveMCPServersResult {
   const servers: ResolvedMCPServer[] = [];
   const warnings: string[] = [];
   const seen = new Set<string>();
   for (const entry of entries) {
+    // Before resolution on purpose: a switched-off entry may hold a transport that no longer
+    // works (an uninstalled plugin's bridge), and that must not warn on every Session.
+    if (isRecord(entry?.config) && entry.config["enabled"] === false) continue;
     let resolved: ResolvedMCPServer;
     try {
       resolved = resolveMCPServer(entry);

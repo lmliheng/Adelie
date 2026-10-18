@@ -1599,6 +1599,9 @@ export const zh = {
     mcpDesc:
       "连接外部 MCP Server：其工具以 mcp__<name>__<tool> 并入本 Agent 的工具列表。此区块的改动即时保存。",
     mcpEmpty: "尚未配置 MCP Server",
+    mcpEnabled: "enabled",
+    mcpEnableHint: "启用：下次对话起重新连接这个 Server",
+    mcpDisableHint: "停用：配置保留，但不再连接，它的工具从工具列表里消失",
     mcpAdd: "添加 MCP Server",
     mcpEditTitle: "编辑 MCP Server",
     mcpRemove: "删除",
