@@ -1064,6 +1064,14 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       ② 停在 `/agents/<上一个 Project 的 Agent>` 上切 Project —— 页面离开到 `/agents`，并且**没有一个
       新 Project 的、URL 里带那个 Agent id 的请求**（改前会去问 `…/agents/alpha_only/config`）。
       夹具幂等（用户 / Agent / 第二个 Project 都容忍 409），单跑一条也成立。细节与两态实测见该节。
+- [x] **7.4 结束的定时任务从列表里消失有了真浏览器用例**（**2026-10-18 第八十一轮**落地，提交见该节；
+      1 个新文件 `packages/web/e2e/schedule-settled.spec.mjs`，**无源码改动**）：5.48 落地时服务端用例
+      （`scheduler` / `schedule-store`）钉住了「settled 的文件移进 `schedule/expired/`」，用户看得见的那
+      一半却只有一次性探针。这条用例把它钉进套件：建一条 `startAt = now + 8s`、绑在一个真会话上的一次性
+      任务 → 打开 `/schedules` 断言那一行在、三个筛选（全部 / 生效中 / 已暂停）都在而「已完成」**不是一个
+      按钮** → **不点不动**等调度器自己触发（30 s 一拍，超时 75 s）→ 那一行自己消失（先归档、再发
+      `schedule_fired`，于是这条事件触发的重读不再列出它）→ 逐个点过三个筛选，都不会把已结算的任务带回
+      来。反证（三处归档全关的旧行为）与实测见该节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1666,6 +1674,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-18 | 5.48 | **结束的定时任务移入 `schedule/expired/`**（上游 `4b10a219` `#1159` 移植，照改动落、不是合分支；27 文件 / +644 −92，含 changelog 一对）：`done` / `missed` / `expired` 三种状态统称 settled，文件**原样**移进 `agent_state/schedule/expired/` 并清掉运行状态，三处调用（对账、`listAgent`、`send` 的 `markFired` 之后与 `schedule_fired` 之前）；同名不覆盖（UTC 戳后缀，再冲突 `-2`…），移动失败记 `schedule_archive_failed` 留着下轮再试；状态推导从路由搬进 `runtime/scheduler.ts`（`scheduleStatus()` / `isSettledStatus()`）；**破坏性**：`POST` / `PUT` 对过去时刻的一次性任务与过去 `end_at` 返回 400（过去 API 写入的这类任务会立刻执行一次）；Web 定时任务面板去掉「已完成」筛选、两份词典删 `filterCompleted`；CLI 帮助、AI 创建提示词、`penguin-orchestration` 技能与五份引擎文档（中英）跟上。**本树两处手写解决**：路由里那份 `statusOf()` 改导入共享函数；标签仍走 `scheduleFilterLabels()` 只删 `completed` 键 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2209 文件）· 改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **201 文件 / 2946 通过 / 4 跳过**（+9 即本笔新用例）· core **1396** / 6 跳过 · ui **1043** · cli **561** · web **259 文件 / 3187 通过 / 2 跳过** · docs **62** · **真服务（8977，一次性数据根 `r77`）**：过去 `startAt` 的一次性任务 **400**、过去 `endAt` 的周期任务 **400**、合法周期任务 **201**；手写的过期一次性任务在下一次读取时已移入 `expired/`、**字节与原文相同**，`schedule/` 只剩周期任务，`scheduleCount` 与列表都只剩它 · **真界面**：`/schedules` 页与停靠栏面板都只剩 全部 / 生效中 / 已暂停（无「已完成」），两态 console **0 error**、无一条 ≥400，截图 `r77/{schedules-page,dock-schedules}.png` · 端口只用 8977（跑完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-18 | 7.2 | **浏览器 e2e 整 77 条全绿**（不是移植，是三条陈旧夹具跟上上游 #458 的四级停止原因；3 个跟踪文件 + 一对 changelog，**无产品行为改动**）：`mock-llm.mjs` 的三个配额分支换成两条可重试失败（截断流 → `malformed`；持续 503 供放弃那条）+ 一条配额致命 403；`llm-errors.spec.mjs` 四条按今天的语义重写 —— ①截断流 → 倒计时（2 秒退避基数）→ 秒数真的在减 →「立即重试」→ 成功，Trace `retryable/malformed/retry_in_ms=2000`；②放弃 → `[已中断]` +「第 N 次尝试后放弃」+ abort `backoff_interrupted`；③新增配额 403 致命用例（一次尝试、`fatal/rejected`、提供方原文、无重试行、输入框可用）；④认证 401 改为 `fatal/auth` + 错误横幅带 `invalid_api_key` 原文、改 key 后同一会话继续。`isAuthenticationError()` 那段与致命判定矛盾的注释一并改正。**关键发现**：第七十六轮记的「要用户拍板 A/B」不成立 —— 403 致命是 #458 定下、`core/test/llm.test.ts` 一直钉着的口径，旧用例里的「模型 API 认证失败」提示在上游与本树都不存在 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **259 文件 / 3187 通过 / 2 跳过** · **真服务端 + 真浏览器整套**（数据根 `/root/adelie-fork-data/r78-full`、`localhost:8930` + mock `8931`）：**77 passed (5.7m)、0 failed**；四条 `llm-errors` 单独跑 4/4（9.2s）· **反证**：改前同一套实测 **3 failed**（配额两条没有 `[重试]`、认证一条没有 `已中断`）；用 HTTP 503 代替截断流时页面无重试行、Trace 无 `request_end`（5xx 被 SDK 内部吞掉，约 0.4s）· 端口只用 8930 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ca164b0f` |
 | 2026-10-18 | 7.3 | **切 Project 的隔离有了真浏览器的回归用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/project-switch-isolation.spec.mjs`，120 行，**无源码改动**）：第七十九轮（5.49）修好了「切 Project 后看到、也被问到上一个 Project 的 Agent」，但证据只是一次性探针，上游那份 e2e 没取（要本树没有的三个 helper 与两个 Project 的夹具）。两条用例钉住用户看得见的两件事 —— ① 用 `page.route` 把第一个 Project 的 Agent 列表**压住 3 秒**、页面停在 `/agents` 时切到第二个 Project：后到的列表不得把这个 Agent 画到新 Project 下（不压住的话旧 bug 只有慢网络才会浮现，直接跑会「改前也绿」）；② 停在 `/agents/<上一个 Project 的 Agent>` 上切 Project：页面离开到 `/agents`，且**没有一个新 Project 的、URL 里带那个 Agent id 的请求**（改前会去问 `…/agents/alpha_only/config`）。夹具幂等（用户 / Agent / 第二个 Project 都容忍 409），单跑一条也成立；注释写明「为什么要压住 3 秒」 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2213 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r80-e2e`、`localhost:8935` + mock `8934`）：**79 passed（6.0m）、0 failed**（原 77 条 + 本笔 2 条）· **反证（同一组用例，改前产物）**：把 `packages/web/src` 退回 `21ed7923`（即 5.49 之前）重建、重启同一数据根 → **2 failed** —— ①「Alpha Only」在 `IsolationBeta` 下**出现 1 张卡**（截图 `r80/prefix-leak.png`，`lastProjectId` 已是 beta）、② Agent 设置页**不离开**（URL 停在 `/agents/alpha_only`）；恢复 `HEAD` 重建后 **2 passed**，同一探针 `alphaOnlyCards: 0`（`r80/fixed-no-leak.png`）· 端口只用 8934 / 8935 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r80{,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
+| 2026-10-18 | 7.4 | **结束的定时任务从列表里消失有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/schedule-settled.spec.mjs`，94 行，**无源码改动**）：5.48 把已结算（`done` / `missed` / `expired`）的定时任务文件移进 `schedule/expired/`，服务端用例钉住了文件移动，用户看得见的那一半（列表上那一行自己消失、筛选条里不再有「已完成」）此前只有一次性探针。这条用例建一条 `startAt = now + 8s`、绑在一个真会话上的一次性任务，打开 `/schedules` 断言行在、三个筛选都在而「已完成」不是按钮，然后**不点不动**等调度器在 30 s 的那一拍里触发它 —— 归档发生在 `schedule_fired` 之前，这条事件触发的重读因此不再列出它，行自己消失；再逐个点过三个筛选都不会把它带回来。夹具幂等（先 DELETE 同名的残留、创建 / 绑定会话都容忍既有），单跑一条也成立 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2214 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · web **3202** / 2 跳过 · server **201 文件 / 2946 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r81-e2e`、`localhost:8936`，自带 `mock-llm.mjs` 起在 `8937`、`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：`npx playwright test -c e2e/playwright.config.mjs` → **80 passed（6.4m）、0 failed**（原 79 条 + 本笔 1 条；本笔单跑 28.1s）· **反证（旧行为）**：把三处归档调用（`send` 里 `markFired` 之后、`listAgent`、对账）全部注释掉、重建服务端、同一数据根重启 —— 同一条用例 **1 failed**，`expect(locator).toHaveCount(0)` 75 s 内拿到 **1**（那一行作为 `done` 一直留在列表里）；还原源码、重建、重启后 **1 passed**。**过程中量到的一件事**：只关 `send` 与 `listAgent` 两处时用例**仍然是绿的** —— 下一拍的对账会归档，三个归档点互为兜底，所以反证要三处一起关 · 归档实测：`schedule/` 里没有任务文件了，`schedule/expired/` 里 5 份 `settle_probe*.toml` 各 130 字节、内容与写入时逐字相同（第一份无后缀，之后按 UTC 戳加后缀，正是同名不覆盖的规则）· 端口只用 8936 / 8937（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r81{,-sched,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10734,4 +10743,73 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   用 vault 里的 `HF_TOKEN` 实测 402，不是凭据格式问题，是额度问题。
 - 上游仍停在 `7e08d23f`（`#1152` 要多轮）；下一轮先按 URL 拉一次，若仍无新小件，就从「本仓自己的验证
   设施」里挑下一件（例如把 5.48 的 `schedule/expired/` 做成一条真浏览器用例，今天它只有服务端用例）。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第八十一轮：结束的定时任务从列表里消失有了真浏览器用例（2026-10-18，条目 7.4）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `b4135f02`，`git fetch origin && git merge --ff-only
+  origin/main` = Already up to date（没切分支、没碰 `legacy/main`、没推 upstream）。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰 desktop），
+  其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
+  （要拍板 / 要新依赖）同样不可动；7.1–7.3 已勾掉。
+- 上游按 URL 复核往前走了一笔：`7e08d23f` → **`e32ca1ea`（`#1160`，12 文件 / +459 −65，「一台机器上的会话，
+  定时任务记在那台机器上」）**。`git apply -3 --check` 过了一遍：它**建立在 `#1152` 之上**（复用那笔的
+  `AgentLocationContext`、带 machine id 的日程端点与 `useAgentsOn`），而 `#1152` 要本树没有的六个文件
+  （第七十九 / 八十轮记过，56 文件 / +2580）；落地时 `schedule-panel.tsx` / `schedule-store.ts` 冲突、
+  `test/helpers/agent-app.ts` 本树不存在，**不是一轮的量**。因此按上一轮末尾写好的下一手，从「我们自己的
+  验证设施」里挑那条点名的：把 5.48 的 `schedule/expired/` 做成真浏览器用例。
+
+### 改了什么（1 个新文件，无源码改动）
+
+- `packages/web/e2e/schedule-settled.spec.mjs`（94 行，一条用例）：
+  1. 夹具：用户 `schedsettle` 的第一个 Project 配上 `custom` → mock LLM 的模型（没有凭证会弹
+     `fixed inset-0` 的引导层，把页面盖住）；建一个真会话，任务绑在它上面触发（省掉触发时再建会话这一环）；
+     先 `DELETE` 同名的残留（一条 e2e 共用一个数据根，单跑一条时可能捡到上一次中断留下的文件），
+     再 `POST` 一条 `startAt = now + 8s`、`enabled: true` 的一次性任务。
+  2. 断言：打开 `/schedules`，那一行（任务名）在；三个筛选（全部 / 生效中 / 已暂停）都在，而**「已完成」
+     不是一个按钮**（5.48 删掉了那个筛选）。
+  3. **不点不动**等调度器自己触发（`TICK_INTERVAL_MS = 30_000`，`toHaveCount(0)` 给 75 s）：行必须自己
+     消失 —— 一次性任务在 `markFired` 之后、`schedule_fired` 之前就被归档，这条事件触发的重读因此不再
+     列出它。
+  4. 再逐个点过三个筛选，都不会把这条已结算的任务带回来（`done` 不属于任何筛选桶，`all` 里也已没有它）。
+- 注释写明「为什么等 30 s」「为什么不点刷新」：这一条要证明的正是**页面自己被事件推动**，而不是用例替用户
+  刷新。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）。
+- `npx oxlint`：**0 警告 0 错误**（2214 文件）；新文件 `prettier --check` 干净（首跑一条，`--write` 后复检）；
+  `git diff --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— core **1399 通过 / 6 跳过** · ui **1043** · cli **561** ·
+  web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）。
+- **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r81-e2e`、`localhost:8936`，
+  自带 `mock-llm.mjs` 起在 `8937`，`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：
+  `npx playwright test -c e2e/playwright.config.mjs` → **80 passed（6.4m）、0 failed**（原 79 条 + 本笔
+  1 条）；本笔单跑 **28.1s**（8 s 等 `startAt` + 一拍 30 s 内的触发）。
+- **反证（同一个用例，改前行为）**：把三处归档调用全部注释掉 —— `send` 里 `markFired` 之后那处、
+  `listAgent` 里那处、对账里那处 —— 重建服务端、同一数据根重启、同一条命令 → **1 failed**：
+  `expect(locator).toHaveCount(0)` 在 75 s 内一直解析到 **1** 个元素（那一行作为 `done` 留在列表里），
+  栈指向用例第 87 行。还原源码、重建、重启后再跑 → **1 passed**。
+  **过程中量到的一件事**：只关 `send` 与 `listAgent` 两处时用例**仍然是绿的** —— 下一拍的对账会归档，
+  三个归档点互为兜底；所以反证必须三处一起关（这条记下来，免得下一次误以为用例没钉住东西）。
+- **归档实测**（同一数据根）：`schedule/` 里没有任务文件了；`schedule/expired/` 里 5 份
+  `settle_probe*.toml` 各 130 字节、内容与写入时逐字相同（`prompt` / `enabled` / `start_at` /
+  `session_id` 四项），第一份无后缀，之后按 UTC 戳加后缀（`settle_probe.20261018T110353Z.toml` …）——
+  正是 5.48 那条「同名不覆盖」的规则。
+- 端口只用 8936 / 8937（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r81{,-sched,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写
+  （`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里仍没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；7.4 本轮勾掉。
+- 上游新尖端 **`e32ca1ea`（`#1160`）** 压在两笔多轮的量上（`#1152` 的六个文件 + 这件的 12 个文件），
+  下一轮仍先按 URL 拉一次；若没有新的小件，继续从「本仓自己的验证设施」里挑 —— 下一件建议是
+  5.44 / 5.46 那两条提示规则的真浏览器回归（今天只有 `ui` 的单测：截断文字的兜底提示、面板在窗口
+  底边向上生长），能复用的探针在第七十 / 六十九轮的 scratchpad 里，但套件里还没有它们。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
