@@ -1072,6 +1072,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       按钮** → **不点不动**等调度器自己触发（30 s 一拍，超时 75 s）→ 那一行自己消失（先归档、再发
       `schedule_fired`，于是这条事件触发的重读不再列出它）→ 逐个点过三个筛选，都不会把已结算的任务带回
       来。反证（三处归档全关的旧行为）与实测见该节。
+- [x] **7.5 悬停提示的两条规则有了真浏览器用例**（**2026-10-18 第八十二轮**落地，提交见该节；
+      1 个新文件 `packages/web/e2e/tooltip.spec.mjs`，**无源码改动、无新依赖**）：5.35 / 5.44 / 5.46
+      那三条（面板在窗口底边向上生长、标记过的提示在完整可见的文字上也弹、被省略号截断的一行悬停即得
+      全文）此前**只有 `packages/ui` 的单测**—— 规则本身钉住了，但「应用根部那一个 `TooltipLayer` 真听见
+      指针、面板落在规则说的位置、DOM 上带着规则要读的标记」这一层没人钉。三条用例分治：① `/agents` 上
+      一张卡片的名字被省略号截断（先断言前提 `scrollWidth > clientWidth`），悬停后弹出面板、文字是完整
+      名字；② 真会话的输入框工具条上那枚上下文圆环贴着窗口底边（先量下方余量小于面板高度），悬停后面板
+      以 `bottom` 定位、底边在圆环之上；③ 同一页上 `最后修改` 的「今天」背后有 `data-tooltip-extra`，
+      悬停弹面板并带出完整时间，而只重复可见数字的「N 个 Session」等过 400 ms 的开门延迟也不弹。
+      反证（三处规则一起改坏）与实测见该节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1675,6 +1685,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-18 | 7.2 | **浏览器 e2e 整 77 条全绿**（不是移植，是三条陈旧夹具跟上上游 #458 的四级停止原因；3 个跟踪文件 + 一对 changelog，**无产品行为改动**）：`mock-llm.mjs` 的三个配额分支换成两条可重试失败（截断流 → `malformed`；持续 503 供放弃那条）+ 一条配额致命 403；`llm-errors.spec.mjs` 四条按今天的语义重写 —— ①截断流 → 倒计时（2 秒退避基数）→ 秒数真的在减 →「立即重试」→ 成功，Trace `retryable/malformed/retry_in_ms=2000`；②放弃 → `[已中断]` +「第 N 次尝试后放弃」+ abort `backoff_interrupted`；③新增配额 403 致命用例（一次尝试、`fatal/rejected`、提供方原文、无重试行、输入框可用）；④认证 401 改为 `fatal/auth` + 错误横幅带 `invalid_api_key` 原文、改 key 后同一会话继续。`isAuthenticationError()` 那段与致命判定矛盾的注释一并改正。**关键发现**：第七十六轮记的「要用户拍板 A/B」不成立 —— 403 致命是 #458 定下、`core/test/llm.test.ts` 一直钉着的口径，旧用例里的「模型 API 认证失败」提示在上游与本树都不存在 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **259 文件 / 3187 通过 / 2 跳过** · **真服务端 + 真浏览器整套**（数据根 `/root/adelie-fork-data/r78-full`、`localhost:8930` + mock `8931`）：**77 passed (5.7m)、0 failed**；四条 `llm-errors` 单独跑 4/4（9.2s）· **反证**：改前同一套实测 **3 failed**（配额两条没有 `[重试]`、认证一条没有 `已中断`）；用 HTTP 503 代替截断流时页面无重试行、Trace 无 `request_end`（5xx 被 SDK 内部吞掉，约 0.4s）· 端口只用 8930 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ca164b0f` |
 | 2026-10-18 | 7.3 | **切 Project 的隔离有了真浏览器的回归用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/project-switch-isolation.spec.mjs`，120 行，**无源码改动**）：第七十九轮（5.49）修好了「切 Project 后看到、也被问到上一个 Project 的 Agent」，但证据只是一次性探针，上游那份 e2e 没取（要本树没有的三个 helper 与两个 Project 的夹具）。两条用例钉住用户看得见的两件事 —— ① 用 `page.route` 把第一个 Project 的 Agent 列表**压住 3 秒**、页面停在 `/agents` 时切到第二个 Project：后到的列表不得把这个 Agent 画到新 Project 下（不压住的话旧 bug 只有慢网络才会浮现，直接跑会「改前也绿」）；② 停在 `/agents/<上一个 Project 的 Agent>` 上切 Project：页面离开到 `/agents`，且**没有一个新 Project 的、URL 里带那个 Agent id 的请求**（改前会去问 `…/agents/alpha_only/config`）。夹具幂等（用户 / Agent / 第二个 Project 都容忍 409），单跑一条也成立；注释写明「为什么要压住 3 秒」 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2213 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r80-e2e`、`localhost:8935` + mock `8934`）：**79 passed（6.0m）、0 failed**（原 77 条 + 本笔 2 条）· **反证（同一组用例，改前产物）**：把 `packages/web/src` 退回 `21ed7923`（即 5.49 之前）重建、重启同一数据根 → **2 failed** —— ①「Alpha Only」在 `IsolationBeta` 下**出现 1 张卡**（截图 `r80/prefix-leak.png`，`lastProjectId` 已是 beta）、② Agent 设置页**不离开**（URL 停在 `/agents/alpha_only`）；恢复 `HEAD` 重建后 **2 passed**，同一探针 `alphaOnlyCards: 0`（`r80/fixed-no-leak.png`）· 端口只用 8934 / 8935 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r80{,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-18 | 7.4 | **结束的定时任务从列表里消失有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/schedule-settled.spec.mjs`，94 行，**无源码改动**）：5.48 把已结算（`done` / `missed` / `expired`）的定时任务文件移进 `schedule/expired/`，服务端用例钉住了文件移动，用户看得见的那一半（列表上那一行自己消失、筛选条里不再有「已完成」）此前只有一次性探针。这条用例建一条 `startAt = now + 8s`、绑在一个真会话上的一次性任务，打开 `/schedules` 断言行在、三个筛选都在而「已完成」不是按钮，然后**不点不动**等调度器在 30 s 的那一拍里触发它 —— 归档发生在 `schedule_fired` 之前，这条事件触发的重读因此不再列出它，行自己消失；再逐个点过三个筛选都不会把它带回来。夹具幂等（先 DELETE 同名的残留、创建 / 绑定会话都容忍既有），单跑一条也成立 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2214 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · web **3202** / 2 跳过 · server **201 文件 / 2946 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r81-e2e`、`localhost:8936`，自带 `mock-llm.mjs` 起在 `8937`、`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：`npx playwright test -c e2e/playwright.config.mjs` → **80 passed（6.4m）、0 failed**（原 79 条 + 本笔 1 条；本笔单跑 28.1s）· **反证（旧行为）**：把三处归档调用（`send` 里 `markFired` 之后、`listAgent`、对账）全部注释掉、重建服务端、同一数据根重启 —— 同一条用例 **1 failed**，`expect(locator).toHaveCount(0)` 75 s 内拿到 **1**（那一行作为 `done` 一直留在列表里）；还原源码、重建、重启后 **1 passed**。**过程中量到的一件事**：只关 `send` 与 `listAgent` 两处时用例**仍然是绿的** —— 下一拍的对账会归档，三个归档点互为兜底，所以反证要三处一起关 · 归档实测：`schedule/` 里没有任务文件了，`schedule/expired/` 里 5 份 `settle_probe*.toml` 各 130 字节、内容与写入时逐字相同（第一份无后缀，之后按 UTC 戳加后缀，正是同名不覆盖的规则）· 端口只用 8936 / 8937（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r81{,-sched,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
+| 2026-10-18 | 7.5 | **悬停提示的两条规则有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/tooltip.spec.mjs`，152 行 / 三条用例，**无源码改动、无新依赖**）：5.35（底部工具条上的提示改向上弹出，`belowTrigger(rect, viewport, height)`）、5.44（`data-tooltip-extra` 让补充信息的提示在完整可见的文字上也弹，只复述可见文字的不弹）、5.46（被省略号 / 行钳截断的一行悬停即得全文，`shortenedLines()` 兜底）三笔落地时证据都在 `packages/ui` 的单测与一次性探针里，套件里没有一条用例听过应用根部那一个 `TooltipLayer` 的真实指针事件。三条用例分治，且每条先量前提再断言结果：① `/agents` 上一张卡片的名字被省略号截断（`scrollWidth 1024 > clientWidth 369`），悬停后提示面板弹出、文字是完整的名字；② 真会话的输入框工具条上那枚上下文圆环贴着窗口底边（720 高的视口里圆环底边在 699、下方余量 5 px 小于面板实测高度 26 px），悬停后面板内联样式是 `bottom: 61px` 而 `top` 为空、面板矩形 633–659 整块落在圆环（684）之上；③ 同一页「最后修改」的可见文字是「今天」，悬停后面板带出「最后修改」加完整时间；移开指针面板消失，再悬停只重复可见数字的「N 个 Session」，等 800 ms（开门延迟 400 ms）仍是 0 个面板 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2215 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r82-tooltip`、`localhost:8936`，自带 `mock-llm.mjs` 起在 `8937`、`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：`npx playwright test -c e2e/playwright.config.mjs` → **83 passed（6.7m）、0 failed**（原 80 条 + 本笔 3 条；本笔单跑 7.3s）· **反证（三处规则一起改坏，重建 web）**：`shortenedLines()` 开头 `return null`、`belowTrigger` 的竖向判定改成恒为「下方」、`hintAllowedFor` 传 `extra && false` → **3 failed**，三条各自死在自己的断言（面板不出现 / `inlineBottom` 是空串 / 面板不出现）；还原源码、重建、再跑 → **3 passed** · **真看一眼**（管理员登录，console **0 error**、**无一条 ≥400**）：截图 `r82/{agents-truncated-hover,agents-extra-hover,composer-ring-hover}.png` 在 scratchpad · 端口只用 8936 / 8937（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r82-tooltip`，一个字节没往 `~/.penguin` / `~/.adelie` 里写 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10812,4 +10823,79 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   下一轮仍先按 URL 拉一次；若没有新的小件，继续从「本仓自己的验证设施」里挑 —— 下一件建议是
   5.44 / 5.46 那两条提示规则的真浏览器回归（今天只有 `ui` 的单测：截断文字的兜底提示、面板在窗口
   底边向上生长），能复用的探针在第七十 / 六十九轮的 scratchpad 里，但套件里还没有它们。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第八十二轮：悬停提示的两条规则有了真浏览器用例（2026-10-18，条目 7.5）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `0a74cb0f`，`git fetch origin` 后与 `origin/main`
+  一致（没切分支、没碰 `legacy/main`、没推 upstream）。
+- **上游这条路今天断了**：`upstream` 这个 remote 指向 `/root/penguin-harness`，而该目录**已经不在了**
+  （`git ls-remote /root/penguin-harness` → `does not appear to be a git repository`）。按纪律没去别处找、
+  也没改 remote；这一轮因此没有新上游件可挑，选活只按台账走。下一轮同样先看一眼这个目录在不在。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰 desktop），
+  其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
+  （要拍板 / 要新依赖）同样不可动；7.1–7.4 已勾掉。
+- 于是照第八十一轮末尾写下的建议做 7.5：5.44 / 5.46 那两条提示规则今天**只有 `ui` 的单测**，套件里没有一条
+  用例听过应用根部那一个 `TooltipLayer`。它不碰源码、不引入依赖、不需要模型 key（mock 够用），正落在
+  「我们自己的验证设施」这一节。
+
+### 改了什么（1 个新文件，无源码改动）
+
+- `packages/web/e2e/tooltip.spec.mjs`（152 行，三条用例）：
+  1. **截断的一行悬停即得全文**（§5.46 的兜底）。夹具：用户 `tooltips` 的第一个 Project，模型配成
+     `custom` 指向 mock（没有凭证会弹 `fixed inset-0` 的引导层），再建一个名字长到放不下的 Agent
+     （`tooltip_long_name`，68 个汉字）。`goto("/agents")` 后**先断言前提** ——
+     `scrollWidth (1024) > clientWidth (369)`，说明这行真的被省略号截掉；然后悬停、断言提示面板出现、
+     文字等于完整名字。**为什么要先量前提**：兜底只对「真的被截断」的行生效，布局一宽这条用例就会
+     静默地什么都没测。
+  2. **窗口底边的提示向上生长**（§5.35 / §5.46）。用真接口建一个会话（`custom` / mock），打开
+     `/chat/<id>`，定位输入框工具条上那枚上下文圆环（`button[aria-label^="上下文占用"]`）。720 高的视口里
+     圆环底边在 699，下方余量 `720 - 8 - (699 + 8) = 5` px —— 先断言它小于面板**实测**高度（26 px），
+     再悬停，断言面板的内联样式是 `bottom: 61px` 而 `top` 为空、面板矩形（633–659）整块落在圆环之上、
+     上缘不离屏。
+  3. **标记过的提示在完整可见的文字上也弹，只复述的不弹**（§5.44）。同一页上「最后修改」的可见文字只有
+     「今天」（`data-tooltip-extra`），悬停后面板出现并带出完整时间；移开指针面板消失；再悬停只重复可见
+     数字的「N 个 Session」，**等 800 ms**（开门延迟 `OPEN_DELAY_MS` 是 400 ms）仍是 0 个面板。
+- 三段夹具都幂等（用户 / Agent 容忍 409，会话每次新建），单跑一条也成立；注释写明每条「为什么」以及
+  面板为什么等 400 ms 才开。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）。
+- `npx oxlint`：**0 警告 0 错误**（2215 文件）；新文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— core **1399 通过 / 6 跳过** · ui **1043** · cli **561** ·
+  server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）。
+- **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r82-tooltip`、`localhost:8936`，
+  自带 `mock-llm.mjs` 起在 `8937`，`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：
+  `npx playwright test -c e2e/playwright.config.mjs` → **83 passed（6.7m）、0 failed**（原 80 条 + 本笔
+  3 条）；本笔单跑 **7.3s**。
+- **反证（三处规则一起改坏，重建 web 产物）**：`packages/ui/src/components/overlays/tooltip/tooltip.tsx`
+  里 `shortenedLines()` 开头插 `return null`、`belowTrigger` 的竖向判定改成 `false && …`（恒在下方）、
+  `hintAllowedFor` 改成传 `extra && false` → 同一条命令 **3 failed**：① 面板不出现；②
+  `expect(placed.inlineBottom).not.toBe("")` 收到空串；③ 面板不出现。源码留底在
+  `scratchpad/r82/tooltip.tsx.orig`，`git checkout --` 还原后 `diff -q` 无输出、重建、再跑 → **3 passed**。
+- **真看一眼**（管理员登录的一次性探针，`scratchpad/r82/probe.mjs`）：截断名字那条弹出完整 68 字名字、
+  上下文圆环那条面板在圆环上方（`inlineBottom: "61px"`、`top: 633 / bottom: 659`，圆环底边 699）；
+  **console 0 error、无一条 ≥400**。截图 `r82/agents-truncated-hover.png` / `agents-extra-hover.png` /
+  `composer-ring-hover.png`。
+  **顺带记一件事**：同一个探针用普通用户跑时，页面会 `403` 两次 `GET …/machines`（那个端点按设计只给
+  管理员），console 因此有两行 error —— 不是本笔引起，也不是普通用户能「修掉」的；所以这里用管理员
+  登录取证。
+- 端口只用 8936 / 8937（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r82-tooltip`，一个字节没往 `~/.penguin` / `~/.adelie` 里写
+  （`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里仍没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；7.5 本轮勾掉。
+- **上游先看 `/root/penguin-harness` 在不在**：今天它不在了，`git fetch upstream` 直接失败（路径不是仓库）。
+  要么用户把那份只读副本放回来，要么这条「跟上游学」的线暂时只能靠修历史引用取件。
+- 若还要从「本仓自己的验证设施」里挑：下一件建议是 **5.46 的另一半** —— 工具卡副标题的完整路径与工作区
+  分组表头的完整路径（今天只有单测 + 第七十轮的一次性探针），造一条手写 Trace 就能进套件（第五十九 /
+  七十轮有现成写法）。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
