@@ -136,6 +136,7 @@ import type { SwitchContextShape } from "./model-switch";
 import { hasConfiguredKey, promotedPricing, sameModelRef } from "../models/model-grouping";
 import { providerInfo } from "@adelie/core/model-catalog";
 import { useMemoryListing } from "./use-memory-listing";
+import { scoped, scopedValue, type Scoped } from "../../lib/project-scope";
 import { deletedChangeKeys } from "./memory-nav";
 import { noteScheduleEvent } from "../schedules/schedule-store";
 import { DockPanel } from "../dock/dock-panel";
@@ -335,7 +336,11 @@ export function ChatPage() {
   const [credentialGuide, setCredentialGuide] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
   const [modeSaving, setModeSaving] = useState(false);
-  const [models, setModels] = useState<ModelsResponse | null>(null);
+  /** This server's model configuration for the Project, tagged with the Project it was read for. */
+  const [modelsRead, setModels] = useState<Scoped<ModelsResponse> | null>(null);
+  // Only the current Project's: the read is reset in an effect, and the draft (remounted per
+  // Project in the same commit) would otherwise resolve its model against the last Project's.
+  const models = scopedValue(modelsRead, projectId);
   // Background processes the conversation started (the details popover list), refreshed by
   // the polling effect below; procBusy marks the rows whose Stop / Remove requests are in
   // flight (every exited row at once while "clear exited" runs).
@@ -476,7 +481,12 @@ export function ChatPage() {
    * the open conversation. See resolveRoutedSession.
    */
   const [fetchedSession, setFetchedSession] = useState<SessionInfo | null>(null);
-  const listed = draft ? null : resolveRoutedSession(routeSessionId, sessions, fetchedSession);
+  // A Session this page deleted, or heard was deleted, is not shown from a stale lookup either:
+  // its route probes, fails at once on the tombstone, and moves on.
+  const listed =
+    draft || (routeSessionId !== null && isSessionDeleted(routeSessionId))
+      ? null
+      : resolveRoutedSession(routeSessionId, sessions, fetchedSession, projectId);
   /**
    * The routed Session, held across a refetch that momentarily does not list it.
    *
@@ -499,6 +509,7 @@ export function ChatPage() {
     listed,
     routeSessionId ?? null,
     probeKey !== null && probeFailedKey === probeKey,
+    projectId,
   );
   const selected = draft ? null : heldSession.current;
   // The tabs beside a conversation are its OWN Agent's, asked of the server that Agent's
@@ -1223,7 +1234,7 @@ export function ChatPage() {
       try {
         const res = await api.getModels(projectId);
         if (cancelled) return;
-        setModels(res);
+        setModels(scoped(projectId, res));
         const { prefs } = await api.getPrefs();
         if (cancelled || prefs.credentialGuideSeen) return;
         const def = res.models.find((m) => sameModelRef(m, res.defaultModel));
@@ -1257,7 +1268,7 @@ export function ChatPage() {
       api
         .getModels(projectId)
         .then((res) => {
-          if (!cancelled) setModels(res);
+          if (!cancelled) setModels(scoped(projectId, res));
         })
         .catch(() => undefined);
     };

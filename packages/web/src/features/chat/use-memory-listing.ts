@@ -13,6 +13,7 @@ import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import type { MemoryChangeRow } from "../../lib/omni/memory-changes";
 import type { ScopeFiles } from "./memory-nav";
+import { scopeKey } from "../../lib/project-scope";
 
 export function useMemoryListing(
   projectId: string | null,
@@ -20,6 +21,12 @@ export function useMemoryListing(
   wanted: boolean,
   changes: readonly MemoryChangeRow[],
 ): { scopes: ScopeFiles[] | null; error: string | null } {
+  /**
+   * The Agent a listing is about: its id in its Project. The Project is part of it — every
+   * Project has a `default_agent`, and one Project's memory shown under another's is that
+   * other Agent's memory, delete marks and all.
+   */
+  const agentKey = scopeKey(projectId, agentId);
   const [state, setState] = useState<{
     forAgent: string | null;
     scopes: ScopeFiles[] | null;
@@ -38,18 +45,18 @@ export function useMemoryListing(
             files: (await api.getMemoryFiles(projectId, agentId, info.scopeKey)).files,
           })),
         );
-        if (!cancelled) setState({ forAgent: agentId, scopes, error: null });
+        if (!cancelled) setState({ forAgent: agentKey, scopes, error: null });
       } catch (err) {
-        if (!cancelled) setState({ forAgent: agentId, scopes: null, error: apiErrorText(err) });
+        if (!cancelled) setState({ forAgent: agentKey, scopes: null, error: apiErrorText(err) });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [wanted, projectId, agentId, changes]);
+  }, [wanted, projectId, agentId, agentKey, changes]);
 
   // A listing loaded for another Agent is not this Agent's memory — report it as not loaded
   // rather than briefly showing (and delete-marking against) the wrong tree.
-  if (state.forAgent !== agentId) return { scopes: null, error: null };
+  if (state.forAgent !== agentKey) return { scopes: null, error: null };
   return { scopes: state.scopes, error: state.error };
 }

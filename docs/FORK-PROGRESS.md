@@ -973,6 +973,22 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       本地化：只因本树把 status 推导放在路由里、标签走 `scheduleFilterLabels()`，两处按本树写法手写解决
       （`scheduleStatus()` 移到 `runtime/scheduler.ts` 由路由导入；标签仍从字典读）。changelog 按本仓写法改名
       到本轮日期、去掉上游 PR 行、写明移植来源。细节与实测见「第七十七轮」一节。
+- [x] **5.49 切 Project 不再显示、也不再询问上一个 Project 的 Agent**（上游 `61cd00bb` `#1165`，
+      **2026-10-18 第七十九轮落地**，提交见该节）：一条规则（`lib/project-scope.ts` 的
+      `scoped` / `scopedValue` / `scopeKey` / `isCurrentProject` / `ofProject`）覆盖所有 Project 范围的
+      读取 —— Agent 列表只应用最新一次询问且 Project 仍是当前的那份，Project 从刷新后的列表消失时按切换
+      处理；会话列表的 reload / 翻页 / 外部交来的行都核对 Project，Provider 只发布当前 Project 的列表；
+      路由对话只在其所属 Project 下显示（`resolveRoutedSession` / `heldRouteSession` 多一个 `projectId`）；
+      Agent 设置页与 Benchmark 详情页在切换时离开（`lib/use-opened-in-project.ts`）；成本中心的 Agent
+      筛选带着选定它的 Project、只应用最新一次读取；草稿的 Agent 读取等列表确认该 id 后才发；记忆列表按
+      Project + Agent 打标；公司会话、智能体页的机器 Agent、会话 Provider 的机器 Agent 与对话页的模型
+      配置同样打标；侧栏改在看见切换的渲染里换上该 Project 的分组 / 固定项 / Workspace（本树的侧栏结构
+      比上游那版新，冲突按本树保留并把声明提前）。**有意未取**：上游新写的页面级单测
+      `test/project-switch.test.ts`（要本树没有的 `helpers/dom.ts`、`helpers/admin-settings.ts`、
+      `helpers/agent-app.ts` 三件套）、重写后的 `e2e/project-switch.spec.mjs`（同上，依赖两 Project 的
+      新夹具）与 CI 里那条浏览器作业（流水线属 4.x）—— 改为本树自己的 `test/project-scope.test.ts`
+      纯逻辑用例 + `session-project` / `route-session-hold` 的 Project 参数用例，以及真浏览器两态探针。
+      细节与验证见「第七十九轮」一节。
 - **量过、本轮没移植的一条**：`#834`（`661a7bb2`，web 3 文件 / +53，把对话页的渲染 Agent 从「当前 Agent」
       换成「路由 Session 自己的 Agent」）。它在**本树可达的状态里都改变不了行为**，理由是可复现的：
       `agentOf()` 对未知 id 会回退到 `default_agent`、再回退到列表第一个（`#450` 起就是这样），所以
@@ -1639,6 +1655,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-17 | 7.2（仍未完成） | **浏览器 e2e 的 10 条红压到 3 条**（8 条是夹具/探针结论翻转，**只有 dock 拖拽带是真缺陷**：下侧栏边界拖拽带伸到框架外的一半被框架自己的 `overflow-hidden` 裁掉，改 `ResizeHandle` 贴内侧 `top-0`，连同 `dock-panel.tsx` 注释与 ui 单测、一对 changelog；另修 `theme-shots.mjs` 的陈旧键 `concise title`）。逐条：project-switch 夹具只卸了一个技能、layout 的重叠/底色/工作区选择器、outline 量到按钮、compaction 第二层开合、chat 分组折叠与设置对话框与行菜单时序、compact-abort 的斜杠菜单竞态、skills 的标题同文 | 开工复核 26 条里 10 红与台账逐条对上；修完整套 **76 条 73 通过 / 3 失败**，只剩 `llm-errors` 三条；六包 `typecheck` **EXIT=0**（`ifaces.json unchanged`，192 接口 / 587 类型）；`npx oxlint` **0 警告 0 错误**（2209 文件）；逐包 test 全绿 —— core **1396** / 6 跳过 · ui **1043** · cli **561** · web **3187** / 2 跳过 · server **2937** / 4 跳过（hmr 无测试）；真浏览器两态验证 dock 拖拽：改前带子中心命中框架、拖 120 px 高度变化 0，改后命中带子、**276 → 394**；端口只用 8950 / 8952，数据根 `/root/adelie-fork-data/r76-*` | 见本行提交 |
 | 2026-10-18 | 5.48 | **结束的定时任务移入 `schedule/expired/`**（上游 `4b10a219` `#1159` 移植，照改动落、不是合分支；27 文件 / +644 −92，含 changelog 一对）：`done` / `missed` / `expired` 三种状态统称 settled，文件**原样**移进 `agent_state/schedule/expired/` 并清掉运行状态，三处调用（对账、`listAgent`、`send` 的 `markFired` 之后与 `schedule_fired` 之前）；同名不覆盖（UTC 戳后缀，再冲突 `-2`…），移动失败记 `schedule_archive_failed` 留着下轮再试；状态推导从路由搬进 `runtime/scheduler.ts`（`scheduleStatus()` / `isSettledStatus()`）；**破坏性**：`POST` / `PUT` 对过去时刻的一次性任务与过去 `end_at` 返回 400（过去 API 写入的这类任务会立刻执行一次）；Web 定时任务面板去掉「已完成」筛选、两份词典删 `filterCompleted`；CLI 帮助、AI 创建提示词、`penguin-orchestration` 技能与五份引擎文档（中英）跟上。**本树两处手写解决**：路由里那份 `statusOf()` 改导入共享函数；标签仍走 `scheduleFilterLabels()` 只删 `completed` 键 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2209 文件）· 改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **201 文件 / 2946 通过 / 4 跳过**（+9 即本笔新用例）· core **1396** / 6 跳过 · ui **1043** · cli **561** · web **259 文件 / 3187 通过 / 2 跳过** · docs **62** · **真服务（8977，一次性数据根 `r77`）**：过去 `startAt` 的一次性任务 **400**、过去 `endAt` 的周期任务 **400**、合法周期任务 **201**；手写的过期一次性任务在下一次读取时已移入 `expired/`、**字节与原文相同**，`schedule/` 只剩周期任务，`scheduleCount` 与列表都只剩它 · **真界面**：`/schedules` 页与停靠栏面板都只剩 全部 / 生效中 / 已暂停（无「已完成」），两态 console **0 error**、无一条 ≥400，截图 `r77/{schedules-page,dock-schedules}.png` · 端口只用 8977（跑完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-18 | 7.2 | **浏览器 e2e 整 77 条全绿**（不是移植，是三条陈旧夹具跟上上游 #458 的四级停止原因；3 个跟踪文件 + 一对 changelog，**无产品行为改动**）：`mock-llm.mjs` 的三个配额分支换成两条可重试失败（截断流 → `malformed`；持续 503 供放弃那条）+ 一条配额致命 403；`llm-errors.spec.mjs` 四条按今天的语义重写 —— ①截断流 → 倒计时（2 秒退避基数）→ 秒数真的在减 →「立即重试」→ 成功，Trace `retryable/malformed/retry_in_ms=2000`；②放弃 → `[已中断]` +「第 N 次尝试后放弃」+ abort `backoff_interrupted`；③新增配额 403 致命用例（一次尝试、`fatal/rejected`、提供方原文、无重试行、输入框可用）；④认证 401 改为 `fatal/auth` + 错误横幅带 `invalid_api_key` 原文、改 key 后同一会话继续。`isAuthenticationError()` 那段与致命判定矛盾的注释一并改正。**关键发现**：第七十六轮记的「要用户拍板 A/B」不成立 —— 403 致命是 #458 定下、`core/test/llm.test.ts` 一直钉着的口径，旧用例里的「模型 API 认证失败」提示在上游与本树都不存在 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **259 文件 / 3187 通过 / 2 跳过** · **真服务端 + 真浏览器整套**（数据根 `/root/adelie-fork-data/r78-full`、`localhost:8930` + mock `8931`）：**77 passed (5.7m)、0 failed**；四条 `llm-errors` 单独跑 4/4（9.2s）· **反证**：改前同一套实测 **3 failed**（配额两条没有 `[重试]`、认证一条没有 `已中断`）；用 HTTP 503 代替截断流时页面无重试行、Trace 无 `request_end`（5xx 被 SDK 内部吞掉，约 0.4s）· 端口只用 8930 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ca164b0f` |
+| 2026-10-18 | 5.49 | **切 Project 不再显示、也不再询问上一个 Project 的 Agent**（上游 `61cd00bb` `#1165` 移植，照改动落、不是合分支；17 文件 / +约 560 −约 120，含 changelog 一对，另加本树自己的 `test/project-scope.test.ts`）：新增 `lib/project-scope.ts`（`scoped` / `scopedValue` / `scopeKey` / `isCurrentProject` / `ofProject`）与 `lib/use-opened-in-project.ts`（页面在切换时离开）；`state/project.tsx` 的 Agent 列表改为打标 + 只应用最新一次询问、Project 消失按切换处理；`state/sessions.tsx` 的 reload / 翻页 / 外部行核对 Project，Provider 只发布当前 Project 的列表、机器 Agent 也打标；`resolveRoutedSession` / `heldRouteSession` 多一个 `projectId`；Agent 设置页与 Benchmark 详情页切换即离开；成本中心的 Agent 筛选带 Project 且只应用最新读取；草稿等列表确认 Agent 后才读其配置 / 技能；记忆列表按 Project + Agent 打标；公司会话、智能体页机器 Agent、对话页模型配置同样打标；侧栏改在渲染期换分组。**本树手写解决三处**：`workbench-tabs` / `machine-models` / `agent-employment` / `create-agent-dialog` 等本树没有的导入按缺件剔除；`useMemoryListing` 与 `getAgentConfig` / `getAgentSkills` 本树没有 machineId 参数，只保留 Project 打标；`save` 保持 `Promise<void>`（本树各页签的 `SaveFn` 如此）。**有意未取**：上游页面级单测、重写后的 `project-switch.spec.mjs` 与 CI 作业（要本树没有的测试辅助三件套 / 属 4.x） | 六包 `typecheck` **`EXIT=0`**（web / core / server / ui / cli / hmr；`src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2212 文件）· 改动文件 `prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：web **260 文件 / 3202 通过 / 2 跳过**（+1 文件 / +15 用例）· core **1399** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（一次性数据根 `r79-full2`、`localhost:8983` + mock `8981`）：**77 passed（5.9m）、0 failed** · **反证（同一探针两态）**：用户 A 有 `default_agent` + `Alpha A`、B 只有 `default_agent`，A 的 Agent 列表用 3 s 路由延迟压住、页面停在 `/agents` 时切到 B —— 把守卫临时去掉重建后，B 的智能体页**出现 `Alpha A`**（`alphaUnderB: 1`）；恢复守卫重建后同一操作 **0**，console 两态各 0 error，只有非管理员预期的 `machines` 403 · 端口只用 8980 / 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r79-*` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10542,4 +10559,94 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   再量；③ 桌上剩的大件 `#1165`（切 Project 隔离，23 文件 / +1383、冲突成片）是唯一还值得单独立一轮的。
 - **可选的新决定（用户若要才做）**：让 403 配额错误回到重连阶梯（把 `insufficient_user_quota` 这类码
   排除在 `isFatalProviderRejection` 之外），今天不做。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第七十九轮：切 Project 不再显示、也不再询问上一个 Project 的 Agent（2026-10-18，条目 5.49）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `21ed7923`，`git fetch origin && git merge --ff-only
+  origin/main` = Already up to date（没切分支、没碰 `legacy/main`、没推 upstream）。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰 desktop），
+  其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
+  （要拍板 / 要新依赖）同样不可动；上一轮把 7.2 勾掉了，桌上只剩 `#1165`。
+- 上游按 URL 复核：`0eafa6dc` → `ace1bca2` 之后只多了一笔 **`7e08d23f`（`#1152`，56 文件 / +2580
+  −734，「一台机器的 Agent 属于那台机器」）**，`git apply -3 --check` 要改的 `api-session-settings.tsx`、
+  `create-agent-dialog.tsx`、`mcp-server-dialog.tsx`、`workbenches-tab.tsx`、`plugin-card.tsx`、
+  `plugin-mcp.tsx` 六个文件本树都没有（属 #1153 / #1133 那一整套前置），**不是一轮的量**。
+- 所以做 **`#1165`（`61cd00bb`）**：上一轮末尾点名「唯一还值得单独立一轮」的那条，是一条用户看得见的真
+  缺陷（切 Project 后看到上一个 Project 的 Agent、并向新 Project 询问它 → `agent_not_found`
+  「该 Agent 已不存在。」），只碰 `packages/web`，不引入新依赖、不碰桌面壳 / 包名 / 流水线。
+
+### 改了什么（17 个跟踪文件 + 一对 changelog，约 +560 −120）
+
+- **新增两条规则文件**：`packages/web/src/lib/project-scope.ts`（`Scoped<T>` / `scoped` / `scopedValue`
+  / `scopeKey` / `isCurrentProject` / `ofProject`）与 `packages/web/src/lib/use-opened-in-project.ts`
+  （页面记住自己被打开时的 Project，切换后离开，并在跳转落地前一个提交里什么都不渲染、什么都不问）。
+- `state/project.tsx`：Agent 列表改为 `Scoped<AgentSummary[]>`，每次 `reloadAgents` 记一个询问序号，只应用
+  **最新一次且 Project 仍当前**的应答；`reloadProjects` 发现当前 Project 消失时按切换重置（同一个 set）；
+  上下文只发布当前 Project 的列表（`projectView`），空列表用一个稳定常量。
+- `state/sessions.tsx`：`reload` / `loadMoreFor` 除 `gen` 外再核对 Project；`insert` 拒绝不属于当前
+  Project 的行；Provider 通过 `sessionsListFor` 只发布当前 Project 的列表（切换的那一个提交里为空且
+  loading）；机器 Agent 的 JSON 也打上 Project 标。
+- `features/chat/session-project.ts`：`resolveRoutedSession` 与 `heldRouteSession` 多一个 `projectId`，
+  列表行、查询到的行与被保留的行都只在其所属 Project 下使用；`chat-page.tsx` 同步传入。
+- `features/agents/agent-settings-page.tsx`：配置与错误都按 `scopeKey(projectId, agentId)` 打标，
+  `useLeaveOnProjectSwitch(projectId, "/agents")` 在切换时离开；`save` 写回打标后的配置。
+- `features/usage/usage-page.tsx`：`?agentId=` 深链接与手选筛选都带上 Project，切换后按新 Project 不加
+  筛选读取；每次读取记序号，只应用最新的那份。
+- `features/benchmark/benchmark-detail-page.tsx`：切换时离开到 `/benchmark`，切换后不再读该 id。
+- `features/chat/draft-view.tsx`：只有候选列表确认了该 `agentId` 才读它的配置 / 技能（缓存里可能是别的
+  Project 的 id），依赖改为 `resolvedAgentId`。
+- `features/chat/use-memory-listing.ts`：列表按 `scopeKey(projectId, agentId)` 打标，别的 Project 的
+  同名 `default_agent` 不再顶替。
+- `state/company.tsx`：`reloadOrgSessions` 记住最新一次读的 Project，迟到的旧 Project 应答不再替换整张图。
+- `features/agents/agents-page.tsx`：机器 Agent 列表按 Project 打标；`components/layout/sidebar.tsx`：
+  按 Project 的折叠 / 固定 / 排序 / Workspace 改为在**看见切换的那次渲染**里换（effect 晚一个提交）。
+- **本树手写解决的三处**：①上游那一版导入的 `workbench-tabs`、`machine-models`、`agent-employment`、
+  `create-agent-dialog` 本树都没有 —— 只取 Project 打标需要的部分，缺件导入剔除；②本树的
+  `useMemoryListing` 与 `getAgentConfig` / `getAgentSkills` 还没有 `machineId` 参数（那是上游
+  `#1153` / `#1155` 的产物）—— 只保留 Project 打标；③`agent-settings-page` 的 `save` 保持
+  `Promise<void>`（本树各页签的 `SaveFn` 如此），只把写回改成打标后的配置。
+- **有意未取**：上游新写的页面级单测 `packages/web/test/project-switch.test.ts`（要本树没有的
+  `helpers/dom.ts`、`helpers/admin-settings.ts`、`helpers/agent-app.ts`、`helpers/event-source.ts` 的
+  `stubEventSource`）、重写后的 `e2e/project-switch.spec.mjs`（同上，且依赖两 Project 的新夹具）与
+  CI 里那条浏览器作业（流水线属 4.x）。改为本树自己的用例：新增
+  `packages/web/test/project-scope.test.ts`（11 条纯逻辑用例），`session-project.test.ts` 补「切到另一个
+  Project 后，查询到的行与列表里的行都不是路由对话」，`route-session-hold.test.ts` 补「Project 变了就释放
+  保留的行」。
+- 一对 changelog：`changelog/unreleased/2026-10-18-project-switch-isolation{,.zh}.md`（日期改到本轮、
+  去掉上游 PR 行、写明移植来源；CI 那一条不写，因为本树没取）。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**（web / core / server / ui / cli / hmr；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不动服务契约）。
+- `npx oxlint`：**0 警告 0 错误**（2212 文件）；改动文件 `prettier --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— web **260 文件 / 3202 通过 / 2 跳过**（比上一轮 +1 文件 / +15
+  用例）· core **1399** / 6 跳过 · ui **1043**（129 文件）· cli **561**（38 文件）· server
+  **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）。
+- **真服务 + 真浏览器整套 e2e**：重建 core / server / web 产物后，一次性数据根
+  `/root/adelie-fork-data/r79-full2`、`localhost:8983` 起真服务（`ADELIE_SEED_ADMIN_PASSWORD`），自带
+  `mock-llm.mjs` 起在 `8981`，`npx playwright test -c e2e/playwright.config.mjs` →
+  **`77 passed (5.9m)`、0 failed**（上一轮同一套 77 条）。中途在复用的数据根上跑过一次，唯一红的是
+  `project-switch.spec.mjs` 的建 Project 步骤返回 409（夹具不幂等，不是产品问题）；再重跑时
+  `llm-errors` / `malformed` 两条红，是 `mock-llm.mjs` 的全局计数器（`transientTurns` /
+  `malformedTurns`）已被前一次跑耗尽 —— 重启 mock 后整套全绿。
+- **反证（同一个探针，改前 / 改后两态）**：临时把 `state/project.tsx` 的守卫改成恒真、`projectView` 忽略
+  范围标签，重建 web 产物；用户 A 有 `default_agent` + `Alpha A`、Project B 只有 `default_agent`，A 的
+  Agent 列表用 Playwright 路由压住 3 秒，页面停在 `/agents` 时切到 B —— **改前**：B 的智能体页出现
+  **`Alpha A`**（`alphaUnderB: 1`，页面文本里两张卡）；**改后**（恢复守卫重建）：同一操作 **0**，页面只有
+  General Agent。两态 console 各 **0 error**，唯一 4xx 是非管理员预期的 `GET …/machines` 403。截图
+  `r79/agents-under-b.png`（改后）与探针 `r79/probe.mjs` 都在 scratchpad。
+- 端口只用 8980 / 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r79-{e2e-a,full,full2}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里已没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）原地不动；本轮把 `#1165` 收了。
+- 上游新尖端 **`7e08d23f`（`#1152`）** 要本树没有的六个文件（#1153 的 Machines 页 / #1133 的 Workbench
+  那一整套）—— 要落它得先把那两套搬进来，属多轮的量；先按 URL 拉一次，看有没有新的小件。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。

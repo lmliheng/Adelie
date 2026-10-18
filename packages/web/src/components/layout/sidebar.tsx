@@ -598,8 +598,23 @@ export function Sidebar({
   /** Group header being dragged (its key) and the current group drop hint (target group + which edge). */
   const [dragGroup, setDragGroup] = useState<string | null>(null);
   const [groupDropHint, setGroupDropHint] = useState<{ key: string; after: boolean } | null>(null);
-  // Project resolved on first load / switched: swap in that Project's persisted collapse/pin sets.
-  useEffect(() => {
+  /** Expanded folders (background / archived; collapsed by default), keyed by folderKey — each folder has its own open state. */
+  const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(new Set());
+  /** "More" rows with a fetch in flight, keyed `${category}\0${groupKey}` — the row disables and reads "loading" so a page that lands entirely in other groups still visibly did something. */
+  const [pendingLoads, setPendingLoads] = useState<ReadonlySet<string>>(new Set());
+  /** Per-group display cap for active rows (keyed by group key; absent = SIDEBAR_PAGE_SIZE). "More" raises it a page at a time. */
+  const [groupCaps, setGroupCaps] = useState<ReadonlyMap<string, number>>(new Map());
+  /** The same display cap per folder (keyed by folderKey; absent = SIDEBAR_PAGE_SIZE), so an expanded folder reveals a page at a time instead of everything a fetch returned. */
+  const [folderCaps, setFolderCaps] = useState<ReadonlyMap<string, number>>(new Map());
+  /** Which PAGE of groups renders (#139: dozens of Agents/Workspaces made the list too tall to scan), 0-based; reset per Project and on a mode switch, and clamped at render to the pages that still exist. */
+  const [groupPage, setGroupPage] = useState(0);
+  // Project resolved on first load / switched: swap in that Project's persisted collapse/pin
+  // sets, row and group orders and registered Workspaces — in the render that sees the switch
+  // (React re-renders before committing), not in an effect: an effect runs a commit late, and
+  // that commit would draw the new Project's list with the previous Project's groups.
+  const [setsFor, setSetsFor] = useState(currentProjectId);
+  if (setsFor !== currentProjectId) {
+    setSetsFor(currentProjectId);
     setCollapsedGroups(loadGroupSet(collapseStoreKey));
     setPinnedGroups(loadGroupSet(pinStoreKey));
     setExpandedFolderOnlyGroups(loadGroupSet(folderOnlyStoreKey));
@@ -611,18 +626,7 @@ export function Sidebar({
     // The other Project's groups are gone, and so is any meaning their reveal state had.
     setGroupCaps(new Map());
     setFolderCaps(new Map());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collapseStoreKey, pinStoreKey, folderOnlyStoreKey, currentProjectId]);
-  /** Expanded folders (background / archived; collapsed by default), keyed by folderKey — each folder has its own open state. */
-  const [openFolders, setOpenFolders] = useState<ReadonlySet<string>>(new Set());
-  /** "More" rows with a fetch in flight, keyed `${category}\0${groupKey}` — the row disables and reads "loading" so a page that lands entirely in other groups still visibly did something. */
-  const [pendingLoads, setPendingLoads] = useState<ReadonlySet<string>>(new Set());
-  /** Per-group display cap for active rows (keyed by group key; absent = SIDEBAR_PAGE_SIZE). "More" raises it a page at a time. */
-  const [groupCaps, setGroupCaps] = useState<ReadonlyMap<string, number>>(new Map());
-  /** The same display cap per folder (keyed by folderKey; absent = SIDEBAR_PAGE_SIZE), so an expanded folder reveals a page at a time instead of everything a fetch returned. */
-  const [folderCaps, setFolderCaps] = useState<ReadonlyMap<string, number>>(new Map());
-  /** Which PAGE of groups renders (#139: dozens of Agents/Workspaces made the list too tall to scan), 0-based; reset per Project and on a mode switch, and clamped at render to the pages that still exist. */
-  const [groupPage, setGroupPage] = useState(0);
+  }
   /** Session pending delete confirmation (null = none). */
   const [deletingSession, setDeletingSession] = useState<SessionInfo | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);

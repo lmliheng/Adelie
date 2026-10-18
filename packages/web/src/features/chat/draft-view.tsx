@@ -465,12 +465,20 @@ export function DraftView({
   // never written from here. Refetched whenever the draft's Agent changes; while loading
   // (or after a failed fetch) the picker stays disabled (null).
   const [agentThinkingLevel, setAgentThinkingLevel] = useState<string | null>(null);
+  /**
+   * The draft's Agent once the list on offer carries it. Nothing is asked about an id the cache
+   * or the route named until then: a cached id may be one this Project does not have (deleted
+   * since, or written while another Project's Agents were on screen), and the request would only
+   * come back "This agent no longer exists."
+   */
+  const selectedAgent = agents.find((a) => a.agentId === agentId) ?? null;
+  const resolvedAgentId = selectedAgent?.agentId ?? null;
   useEffect(() => {
     setAgentThinkingLevel(null);
-    if (!agentId) return;
+    if (!resolvedAgentId) return;
     let cancelled = false;
     api
-      .getAgentConfig(projectId, agentId)
+      .getAgentConfig(projectId, resolvedAgentId)
       .then((res) => {
         if (!cancelled) setAgentThinkingLevel(res.config.model?.thinkingLevel ?? "");
       })
@@ -478,7 +486,7 @@ export function DraftView({
     return () => {
       cancelled = true;
     };
-  }, [projectId, agentId]);
+  }, [projectId, resolvedAgentId]);
   const thinkingLevel =
     agentThinkingLevel === null || chatDefaults === null
       ? null
@@ -514,10 +522,10 @@ export function DraftView({
   const [agentSkills, setAgentSkills] = useState<SkillMetadataItem[]>([]);
   useEffect(() => {
     setAgentSkills((prev) => (prev.length > 0 ? [] : prev));
-    if (!agentId) return;
+    if (!resolvedAgentId) return;
     let cancelled = false;
     api
-      .getAgentSkills(projectId, agentId)
+      .getAgentSkills(projectId, resolvedAgentId)
       .then((res) => {
         if (!cancelled) setAgentSkills(res.skills);
       })
@@ -525,7 +533,7 @@ export function DraftView({
     return () => {
       cancelled = true;
     };
-  }, [projectId, agentId]);
+  }, [projectId, resolvedAgentId]);
 
   // —— Auto-cache ——
   // Options (Agent / Workspace / approval mode / Model) are discrete clicks: written
@@ -826,8 +834,6 @@ export function DraftView({
    * switch to.
    */
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-
-  const selectedAgent = agents.find((a) => a.agentId === agentId) ?? null;
 
   // Capability info for the currently selected model (vision/context window) switches instantly with the selection (matched by paired reference).
   const modelInfo = models?.models.find((m) => sameModelRef(m, modelRef));

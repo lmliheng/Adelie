@@ -56,6 +56,8 @@ import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { useDocumentTitle } from "../../lib/use-document-title";
+import { scopeKey, scoped, scopedValue, type Scoped } from "../../lib/project-scope";
+import { useLeaveOnProjectSwitch } from "../../lib/use-opened-in-project";
 import { useProject } from "../../state/project";
 import { useSaveConfirm } from "./save-confirm";
 import { SkillsTab } from "./skills-tab";
@@ -147,10 +149,18 @@ export function AgentSettingsPage() {
   useDocumentTitle(S.agent.settings);
   const { currentProject, reloadAgents } = useProject();
   const projectId = currentProject?.projectId ?? null;
+  // The route's Agent is one of the Project the page was opened in: a Project switch leaves for
+  // the new Project's Agents, where every tab would otherwise answer "This agent no longer exists."
+  const switchedAway = useLeaveOnProjectSwitch(projectId, "/agents");
 
-  const [data, setData] = useState<AgentConfigResponse | null>(null);
-  // ?tab= deep link (from the Agents page's stat icons): a valid key lands the page on that
-  // tab; missing/unknown values fall back to "overview", exactly the previous behavior.
+  /** The config and its load failure, each tagged with the Agent it was read for. */
+  const pageScope = scopeKey(projectId, agentId);
+  const [dataRead, setDataRead] = useState<Scoped<AgentConfigResponse> | null>(null);
+  const data = scopedValue(dataRead, pageScope);
+  // The open tab is the `?tab=` value alone (the Agents page's stat icons deep-link with it;
+  // missing or unknown values fall back to "overview"). A switch only writes the address, so
+  // it is a navigation: while the open tab holds unsaved edits the app's leave guard asks
+  // before it happens, and the tab on screen never runs ahead of the address it would leave.
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<TabKey>(() =>
     resolveTabKey(searchParams.get("tab"), TABS, "overview"),
@@ -171,27 +181,31 @@ export function AgentSettingsPage() {
     [setSearchParams],
   );
   // Only the initial config load failure renders inline (the page can't show without it); saves/imports report via toast.
-  const [error, setError] = useState<string | null>(null);
+  const [errorRead, setErrorRead] = useState<Scoped<string> | null>(null);
+  const error = scopedValue(errorRead, pageScope);
 
   const load = useCallback(
     (opts?: { keepStale?: boolean }) => {
-      if (!projectId || !agentId) return;
+      const scope = scopeKey(projectId, agentId);
+      if (!projectId || !agentId || scope === null) return;
       // keepStale refreshes in place: dropping data would skeleton the page, unmount the tab
       // tree and lose unsaved editor state. Identity changes and whole-state replacements
-      // (import / config reset) still clear, so no stale agent's config ever shows.
-      if (!opts?.keepStale) setData(null);
-      setError(null);
+      // (import / config reset) still clear, so no stale agent's config ever shows — and an
+      // answer is tagged with the Agent it was asked about, so a late one for the Agent just
+      // left is never read as this one's.
+      if (!opts?.keepStale) setDataRead(null);
+      setErrorRead(null);
       api
         .getAgentConfig(projectId, agentId)
-        .then(setData)
-        .catch((e: unknown) => setError(apiErrorText(e)));
+        .then((res) => setDataRead(scoped(scope, res)))
+        .catch((e: unknown) => setErrorRead(scoped(scope, apiErrorText(e))));
     },
     [projectId, agentId],
   );
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (!switchedAway) load();
+  }, [load, switchedAway]);
 
   /** Memory-tab config writes (switch, placeholder insert, prompt save): refresh the page's config copy without unmounting the tabs. */
   const refreshConfig = useCallback(() => load({ keepStale: true }), [load]);
@@ -226,10 +240,11 @@ export function AgentSettingsPage() {
 
   const save = useCallback(
     async (update: AgentConfigUpdateRequest) => {
-      if (!projectId || !agentId) return;
+      const scope = scopeKey(projectId, agentId);
+      if (!projectId || !agentId || scope === null) return;
       try {
         const res = await api.putAgentConfig(projectId, agentId, update);
-        setData(res);
+        setDataRead(scoped(scope, res));
         // Compaction is the one section core re-reads at every compaction checkpoint, so a save
         // that changed nothing else lands on a running conversation right away; everything else
         // still waits for that conversation's next context. The test is "only compaction", not
@@ -256,7 +271,9 @@ export function AgentSettingsPage() {
     [projectId, agentId, reloadAgents],
   );
 
-  if (!projectId) return null;
+  // Switched away: nothing of the Agent renders, so no tab asks the new Project about it while
+  // the navigation above takes the page to the Agents list.
+  if (!projectId || switchedAway) return null;
   if (error && !data) {
     return <p className="p-6 text-sm text-red-600 dark:text-red-400">{error}</p>;
   }
