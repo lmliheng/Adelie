@@ -1054,6 +1054,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       与认证 401 各按今天的 `fatal` 语义重写（后者还验了「改 key 后同一会话继续」），
       `isAuthenticationError()` 那句矛盾的注释一并改正。**A 那一侧（让 403 配额错误回到重试阶梯）
       仍是一个可选的新决定**：今天不做，用户若要，另立一条。
+- [x] **7.3 切 Project 的隔离有了真浏览器的回归用例**（**2026-10-18 第八十轮**落地，提交见该节；
+      1 个新文件 `packages/web/e2e/project-switch-isolation.spec.mjs`，**无源码改动**）：第七十九轮把
+      「切 Project 后看到、也被问到上一个 Project 的 Agent」修好了，但当时的证据只是一次性探针
+      （`r79/probe.mjs`）；上游那份 `e2e/project-switch.spec.mjs` 的重写没有取（要本树没有的三个
+      helper 与两个 Project 的新夹具）。现在两条用例把用户看得见的两件事钉进套件：① 把第一个 Project
+      的 Agent 列表用 `page.route` **压住 3 秒**，页面停在 `/agents` 时切到第二个 Project —— 后到的
+      列表不得把这个 Agent 画到新 Project 下（这正是那个竞态，不压住它的话旧 bug 要靠慢网络才会浮现）；
+      ② 停在 `/agents/<上一个 Project 的 Agent>` 上切 Project —— 页面离开到 `/agents`，并且**没有一个
+      新 Project 的、URL 里带那个 Agent id 的请求**（改前会去问 `…/agents/alpha_only/config`）。
+      夹具幂等（用户 / Agent / 第二个 Project 都容忍 409），单跑一条也成立。细节与两态实测见该节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1655,7 +1665,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-17 | 7.2（仍未完成） | **浏览器 e2e 的 10 条红压到 3 条**（8 条是夹具/探针结论翻转，**只有 dock 拖拽带是真缺陷**：下侧栏边界拖拽带伸到框架外的一半被框架自己的 `overflow-hidden` 裁掉，改 `ResizeHandle` 贴内侧 `top-0`，连同 `dock-panel.tsx` 注释与 ui 单测、一对 changelog；另修 `theme-shots.mjs` 的陈旧键 `concise title`）。逐条：project-switch 夹具只卸了一个技能、layout 的重叠/底色/工作区选择器、outline 量到按钮、compaction 第二层开合、chat 分组折叠与设置对话框与行菜单时序、compact-abort 的斜杠菜单竞态、skills 的标题同文 | 开工复核 26 条里 10 红与台账逐条对上；修完整套 **76 条 73 通过 / 3 失败**，只剩 `llm-errors` 三条；六包 `typecheck` **EXIT=0**（`ifaces.json unchanged`，192 接口 / 587 类型）；`npx oxlint` **0 警告 0 错误**（2209 文件）；逐包 test 全绿 —— core **1396** / 6 跳过 · ui **1043** · cli **561** · web **3187** / 2 跳过 · server **2937** / 4 跳过（hmr 无测试）；真浏览器两态验证 dock 拖拽：改前带子中心命中框架、拖 120 px 高度变化 0，改后命中带子、**276 → 394**；端口只用 8950 / 8952，数据根 `/root/adelie-fork-data/r76-*` | 见本行提交 |
 | 2026-10-18 | 5.48 | **结束的定时任务移入 `schedule/expired/`**（上游 `4b10a219` `#1159` 移植，照改动落、不是合分支；27 文件 / +644 −92，含 changelog 一对）：`done` / `missed` / `expired` 三种状态统称 settled，文件**原样**移进 `agent_state/schedule/expired/` 并清掉运行状态，三处调用（对账、`listAgent`、`send` 的 `markFired` 之后与 `schedule_fired` 之前）；同名不覆盖（UTC 戳后缀，再冲突 `-2`…），移动失败记 `schedule_archive_failed` 留着下轮再试；状态推导从路由搬进 `runtime/scheduler.ts`（`scheduleStatus()` / `isSettledStatus()`）；**破坏性**：`POST` / `PUT` 对过去时刻的一次性任务与过去 `end_at` 返回 400（过去 API 写入的这类任务会立刻执行一次）；Web 定时任务面板去掉「已完成」筛选、两份词典删 `filterCompleted`；CLI 帮助、AI 创建提示词、`penguin-orchestration` 技能与五份引擎文档（中英）跟上。**本树两处手写解决**：路由里那份 `statusOf()` 改导入共享函数；标签仍走 `scheduleFilterLabels()` 只删 `completed` 键 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2209 文件）· 改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **201 文件 / 2946 通过 / 4 跳过**（+9 即本笔新用例）· core **1396** / 6 跳过 · ui **1043** · cli **561** · web **259 文件 / 3187 通过 / 2 跳过** · docs **62** · **真服务（8977，一次性数据根 `r77`）**：过去 `startAt` 的一次性任务 **400**、过去 `endAt` 的周期任务 **400**、合法周期任务 **201**；手写的过期一次性任务在下一次读取时已移入 `expired/`、**字节与原文相同**，`schedule/` 只剩周期任务，`scheduleCount` 与列表都只剩它 · **真界面**：`/schedules` 页与停靠栏面板都只剩 全部 / 生效中 / 已暂停（无「已完成」），两态 console **0 error**、无一条 ≥400，截图 `r77/{schedules-page,dock-schedules}.png` · 端口只用 8977（跑完即停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-10-18 | 7.2 | **浏览器 e2e 整 77 条全绿**（不是移植，是三条陈旧夹具跟上上游 #458 的四级停止原因；3 个跟踪文件 + 一对 changelog，**无产品行为改动**）：`mock-llm.mjs` 的三个配额分支换成两条可重试失败（截断流 → `malformed`；持续 503 供放弃那条）+ 一条配额致命 403；`llm-errors.spec.mjs` 四条按今天的语义重写 —— ①截断流 → 倒计时（2 秒退避基数）→ 秒数真的在减 →「立即重试」→ 成功，Trace `retryable/malformed/retry_in_ms=2000`；②放弃 → `[已中断]` +「第 N 次尝试后放弃」+ abort `backoff_interrupted`；③新增配额 403 致命用例（一次尝试、`fatal/rejected`、提供方原文、无重试行、输入框可用）；④认证 401 改为 `fatal/auth` + 错误横幅带 `invalid_api_key` 原文、改 key 后同一会话继续。`isAuthenticationError()` 那段与致命判定矛盾的注释一并改正。**关键发现**：第七十六轮记的「要用户拍板 A/B」不成立 —— 403 致命是 #458 定下、`core/test/llm.test.ts` 一直钉着的口径，旧用例里的「模型 API 认证失败」提示在上游与本树都不存在 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，192 接口 / 587 类型）· 逐包 test **`EXIT=0`、0 失败**：core **1396** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **259 文件 / 3187 通过 / 2 跳过** · **真服务端 + 真浏览器整套**（数据根 `/root/adelie-fork-data/r78-full`、`localhost:8930` + mock `8931`）：**77 passed (5.7m)、0 failed**；四条 `llm-errors` 单独跑 4/4（9.2s）· **反证**：改前同一套实测 **3 failed**（配额两条没有 `[重试]`、认证一条没有 `已中断`）；用 HTTP 503 代替截断流时页面无重试行、Trace 无 `request_end`（5xx 被 SDK 内部吞掉，约 0.4s）· 端口只用 8930 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `ca164b0f` |
-| 2026-10-18 | 5.49 | **切 Project 不再显示、也不再询问上一个 Project 的 Agent**（上游 `61cd00bb` `#1165` 移植，照改动落、不是合分支；17 文件 / +约 560 −约 120，含 changelog 一对，另加本树自己的 `test/project-scope.test.ts`）：新增 `lib/project-scope.ts`（`scoped` / `scopedValue` / `scopeKey` / `isCurrentProject` / `ofProject`）与 `lib/use-opened-in-project.ts`（页面在切换时离开）；`state/project.tsx` 的 Agent 列表改为打标 + 只应用最新一次询问、Project 消失按切换处理；`state/sessions.tsx` 的 reload / 翻页 / 外部行核对 Project，Provider 只发布当前 Project 的列表、机器 Agent 也打标；`resolveRoutedSession` / `heldRouteSession` 多一个 `projectId`；Agent 设置页与 Benchmark 详情页切换即离开；成本中心的 Agent 筛选带 Project 且只应用最新读取；草稿等列表确认 Agent 后才读其配置 / 技能；记忆列表按 Project + Agent 打标；公司会话、智能体页机器 Agent、对话页模型配置同样打标；侧栏改在渲染期换分组。**本树手写解决三处**：`workbench-tabs` / `machine-models` / `agent-employment` / `create-agent-dialog` 等本树没有的导入按缺件剔除；`useMemoryListing` 与 `getAgentConfig` / `getAgentSkills` 本树没有 machineId 参数，只保留 Project 打标；`save` 保持 `Promise<void>`（本树各页签的 `SaveFn` 如此）。**有意未取**：上游页面级单测、重写后的 `project-switch.spec.mjs` 与 CI 作业（要本树没有的测试辅助三件套 / 属 4.x） | 六包 `typecheck` **`EXIT=0`**（web / core / server / ui / cli / hmr；`src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2212 文件）· 改动文件 `prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：web **260 文件 / 3202 通过 / 2 跳过**（+1 文件 / +15 用例）· core **1399** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（一次性数据根 `r79-full2`、`localhost:8983` + mock `8981`）：**77 passed（5.9m）、0 failed** · **反证（同一探针两态）**：用户 A 有 `default_agent` + `Alpha A`、B 只有 `default_agent`，A 的 Agent 列表用 3 s 路由延迟压住、页面停在 `/agents` 时切到 B —— 把守卫临时去掉重建后，B 的智能体页**出现 `Alpha A`**（`alphaUnderB: 1`）；恢复守卫重建后同一操作 **0**，console 两态各 0 error，只有非管理员预期的 `machines` 403 · 端口只用 8980 / 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r79-*` | 见本行提交 |
+| 2026-10-18 | 7.3 | **切 Project 的隔离有了真浏览器的回归用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/project-switch-isolation.spec.mjs`，120 行，**无源码改动**）：第七十九轮（5.49）修好了「切 Project 后看到、也被问到上一个 Project 的 Agent」，但证据只是一次性探针，上游那份 e2e 没取（要本树没有的三个 helper 与两个 Project 的夹具）。两条用例钉住用户看得见的两件事 —— ① 用 `page.route` 把第一个 Project 的 Agent 列表**压住 3 秒**、页面停在 `/agents` 时切到第二个 Project：后到的列表不得把这个 Agent 画到新 Project 下（不压住的话旧 bug 只有慢网络才会浮现，直接跑会「改前也绿」）；② 停在 `/agents/<上一个 Project 的 Agent>` 上切 Project：页面离开到 `/agents`，且**没有一个新 Project 的、URL 里带那个 Agent id 的请求**（改前会去问 `…/agents/alpha_only/config`）。夹具幂等（用户 / Agent / 第二个 Project 都容忍 409），单跑一条也成立；注释写明「为什么要压住 3 秒」 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2213 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r80-e2e`、`localhost:8935` + mock `8934`）：**79 passed（6.0m）、0 failed**（原 77 条 + 本笔 2 条）· **反证（同一组用例，改前产物）**：把 `packages/web/src` 退回 `21ed7923`（即 5.49 之前）重建、重启同一数据根 → **2 failed** —— ①「Alpha Only」在 `IsolationBeta` 下**出现 1 张卡**（截图 `r80/prefix-leak.png`，`lastProjectId` 已是 beta）、② Agent 设置页**不离开**（URL 停在 `/agents/alpha_only`）；恢复 `HEAD` 重建后 **2 passed**，同一探针 `alphaOnlyCards: 0`（`r80/fixed-no-leak.png`）· 端口只用 8934 / 8935 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r80{,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10649,4 +10659,79 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）原地不动；本轮把 `#1165` 收了。
 - 上游新尖端 **`7e08d23f`（`#1152`）** 要本树没有的六个文件（#1153 的 Machines 页 / #1133 的 Workbench
   那一整套）—— 要落它得先把那两套搬进来，属多轮的量；先按 URL 拉一次，看有没有新的小件。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第八十轮：切 Project 的隔离有了真浏览器的回归用例（2026-10-18，条目 7.3）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `ad30575f`，`git fetch origin && git merge --ff-only
+  origin/main` = Already up to date（没切分支、没碰 `legacy/main`、没推 upstream）。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰 desktop），
+  其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
+  （要拍板 / 要新依赖）同样不可动。
+- 上游 `main` 按 URL 复核仍是 **`7e08d23f`**（`git fetch … refs/heads/main:refs/adelie-tmp/upstream-main-r80`，
+  `git log 7e08d23f..` **一条都没有**）；桌上最后一笔 `#1152` 要本树没有的六个文件（#1153 的 Machines 页 /
+  #1133 的 Workbench 那一整套），不是一轮的量。桌上其余候选（`#1049` / `#1074` / `#1067` / `#1072` /
+  `#1071` / `#1038` / `#1047` / `#835` / `#1073`）第七十五 / 七十六 / 七十八轮都量过，全是「本树没有那个
+  文件或常量」。
+- **3.6 这一轮试过一条新路，走不通**：vault 里的 `HF_TOKEN` 对 Hugging Face 的 OpenAI 兼容路由有效
+  （`GET https://router.huggingface.co/v1/models` → 200，137 个模型），但一次真实的
+  `POST /v1/chat/completions` 回 **402「You have no remaining credits」** —— 这个 token 能列模型、不能推理，
+  所以「用现成凭证跑一次真模型」不成立，仍需用户给一个模型 key（或 HF 预付费/PRO 额度）。记在这里，
+  下一轮不必再试。
+- **为什么是 7.3**：第七十九轮（5.49）把「切 Project 后看到、也被问到上一个 Project 的 Agent」修好了，
+  但证据只是一次性探针 `r79/probe.mjs`；上游那份重写过的 `e2e/project-switch.spec.mjs` 与页面级单测
+  当时**有意没取**（要本树没有的 `helpers/dom.ts` / `helpers/admin-settings.ts` / `helpers/agent-app.ts`
+  与两个 Project 的新夹具），台账 5.49 与表上 7.2 的收尾都记着这件事。补一条本仓写法的浏览器回归用例，
+  正好落在「我们自己的验证设施」这一节（7.1 / 7.2 同一类），不碰源码、不引入依赖、不需要模型 key。
+
+### 改了什么（1 个新文件，无源码改动）
+
+- `packages/web/e2e/project-switch-isolation.spec.mjs`（120 行，两条用例）：
+  1. **后到的 Agent 列表不得落到新 Project 下**。夹具：用户 `projisolation` 的第一个 Project（显示名 =
+     用户 id）、只属于它的 Agent `alpha_only`（「Alpha Only」）、第二个 Project `IsolationBeta`；两个
+     Project 都配上 `custom` 指向 mock 的模型（没有凭证会弹 `fixed inset-0` 的引导层，把下拉挡住）。
+     然后用 `page.route` 把第一个 Project 的 `/agents` **压住 3 秒**，`goto("/agents")`、在下拉里切到
+     `IsolationBeta`，等新的列表落定、再等被压住的那份答案到达 —— 断言 `Alpha Only` 在页面上**一张都没有**。
+     **为什么要压住**：不压住时旧答案本来就输给了新列表，直接跑这条用例「改前也是绿的」—— 那个竞态要慢
+     网络 / 慢机器才浮现（这也是第七十九轮只能用探针造两态的原因）。
+  2. **切 Project 不问新 Project 上一个 Project 的 Agent**。停在 `/agents/alpha_only`（Agent 设置页）上切到
+     `IsolationBeta`：断言页面离开到 `/agents`、`Alpha Only` 不在，并且从按下切换那一刻起**没有任何一个**
+     URL 里带 `alpha_only` 的请求（改前会去问 `…/projects/<新>/agents/alpha_only/config`，正是用户看到的
+     `agent_not_found`「该 Agent 已不存在。」的来源）。
+- 两条用例的夹具都**幂等**（创建用户 / Agent / 第二个 Project 都容忍 409），所以单独重跑一条也成立；
+  `switchProject()` 对下拉被重渲染关掉的情况重试四次（加载中的页面就是这样），注释写明缘由。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）。
+- `npx oxlint`：**0 警告 0 错误**（2213 文件）；新文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— core **1399 通过 / 6 跳过** · ui **1043** · cli **561** ·
+  server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）。
+- **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r80-e2e`、`localhost:8935`，
+  自带 `mock-llm.mjs` 起在 `8934`，`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：
+  `npx playwright test -c e2e/playwright.config.mjs` → **79 passed（6.0m）、0 failed**（原 77 条 + 本笔 2 条）。
+- **反证（同一组用例，改前产物）**：把 `packages/web/src` 退回 `21ed7923`（5.49 之前）→ 重建 web →
+  重启同一数据根、同一套跑法 → **2 failed**：
+  - ① 第一条死在 `expected 0, received 1`：`IsolationBeta` 的智能体页上出现了 **Alpha Only**（截图
+    `r80/prefix-leak.png`，同一探针读到 `lastProjectId: projisolation-beta`、`alphaOnlyCards: 1`）；
+  - ② 第二条死在 `toHaveURL(/\/agents$/)`：Agent 设置页**没有离开**，URL 停在 `/agents/alpha_only`。
+  恢复 `HEAD` 重建、重启后再跑 → **2 passed**，同一探针 `alphaOnlyCards: 0`（`r80/fixed-no-leak.png`）。
+- 顺带（开工时的页面巡检，不属本条）：真服务 + 真浏览器打开 `/chat`、`/agents`、`/plugins`、`/models`、
+  `/usage`、`/benchmark`、`/schedules`、`/machines`、`/terminal` 九个页面，**console 0 error、无一条 ≥400**。
+- 端口只用 8934 / 8935 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r80{,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写；截图与探针都在
+  scratchpad（`r80/`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里仍没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；7.3 本轮勾掉。
+- **3.6 只有这一条路能开**：用户给一个可推理的模型 key（或把 HF 账号开通预付费 / PRO 额度）—— 今天
+  用 vault 里的 `HF_TOKEN` 实测 402，不是凭据格式问题，是额度问题。
+- 上游仍停在 `7e08d23f`（`#1152` 要多轮）；下一轮先按 URL 拉一次，若仍无新小件，就从「本仓自己的验证
+  设施」里挑下一件（例如把 5.48 的 `schedule/expired/` 做成一条真浏览器用例，今天它只有服务端用例）。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
