@@ -25,6 +25,8 @@
  *    every 200ms for ~8s (reload-midstream.spec reloads while its output streams)
  *  - "slow text test" -> a long text streamed one delta every 200ms for ~8s
  *    (reload-midstream.spec reloads while the TEXT streams)
+ *  - "read deep path test <path>" -> tool_use(read_file) on <path>, then a short final text
+ *    (path-hints.spec: the card's shortened subtitle keeps the whole path one hover away)
  *  - last message has tool_result -> final text (turn 2)
  *  - otherwise (first user turn) -> thinking + text + tool_use(exec_command)
  */
@@ -295,6 +297,26 @@ const server = http.createServer((req, res) => {
         [{ type: "input_json_delta", partial_json: JSON.stringify({ cmd: rewrite[1].trim() }) }],
       );
       messageStop(res, "tool_use", 12);
+      return;
+    }
+    // Deep-path read (path-hints.spec): a file's card keeps the whole path one hover away
+    // (§5.46), so the call has to read a file whose path is longer than the card shows. The
+    // path travels in the prompt because the mock is another process and the spec creates the
+    // directory; the tool_result ends the turn. Gated on !isTitle: a title request carries the
+    // same user text, and answering it with a tool call would leave the Session untitled.
+    // The stop set is the path's own characters only: the prompt sits inside JSON, so `\S+`
+    // would swallow the closing quote and braces into the argument.
+    const deepRead = /read deep path test ([^"\s\\]+)/.exec(lastMessage);
+    if (deepRead && !isTitle) {
+      block(res, 0, { type: "tool_use", id: "toolu_deep_read", name: "read_file", input: {} }, [
+        { type: "input_json_delta", partial_json: JSON.stringify({ file_path: deepRead[1] }) },
+      ]);
+      messageStop(res, "tool_use", 12);
+      return;
+    }
+    if (flat.includes("read deep path test") && lastMessage.includes("tool_result") && !isTitle) {
+      block(res, 0, { type: "text", text: "" }, [{ type: "text_delta", text: "Read the file." }]);
+      messageStop(res, "end_turn", 6);
       return;
     }
     if (flat.includes("files rewrite test") && lastMessage.includes("tool_result")) {

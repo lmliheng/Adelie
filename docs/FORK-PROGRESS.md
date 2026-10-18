@@ -1082,6 +1082,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       以 `bottom` 定位、底边在圆环之上；③ 同一页上 `最后修改` 的「今天」背后有 `data-tooltip-extra`，
       悬停弹面板并带出完整时间，而只重复可见数字的「N 个 Session」等过 400 ms 的开门延迟也不弹。
       反证（三处规则一起改坏）与实测见该节。
+- [x] **7.6 5.46 的另一半有了真浏览器用例：工具卡副标题与工作区分组表头的全路径**（**2026-10-19
+      第八十三轮**落地，提交见该节；1 个新文件 `packages/web/e2e/path-hints.spec.mjs` + `mock-llm.mjs`
+      一条新分支，**无源码改动、无新依赖**）：5.46 给两处「被缩短的路径」挂了完整路径的提示 ——
+      `ToolCallCard` 的 `subtitleFull`（文件工具的 `…/父目录/文件`）与 `GroupHeader.title`（工作区的
+      完整路径，标记 `data-tooltip-extra` 所以基名放得下时也弹）。这两处此前只有 `ui` / `web` 的单测与
+      第七十轮的一次性探针，套件里没有一条用例让应用根部那一个 `TooltipLayer` 真收到指针。两条用例：
+      ① mock 的 `read_file` 深路径调用（新分支，路径随提示词传进去）→ **重载**后把折叠的活动分组点开、
+      悬停副标题 → 面板是完整路径、等宽（`content="code"`）；② 深路径 + 短基名的工作区 → 侧栏表头
+      标签 `brief` 放得下（先断言前提），悬停 → 面板是完整路径、非等宽（`content="text"`）。
+      **为什么不悬停实时那一行**：活动分组在流式视图里持续重渲染，`hover()` 的稳定性检查永远等不到，
+      重载后从 Trace 读回来的卡片才是读者真会遇到的形态。反证（两处标记删掉 / 提示规则不认 `extra`）
+      与实测见该节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1686,6 +1698,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-18 | 7.3 | **切 Project 的隔离有了真浏览器的回归用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/project-switch-isolation.spec.mjs`，120 行，**无源码改动**）：第七十九轮（5.49）修好了「切 Project 后看到、也被问到上一个 Project 的 Agent」，但证据只是一次性探针，上游那份 e2e 没取（要本树没有的三个 helper 与两个 Project 的夹具）。两条用例钉住用户看得见的两件事 —— ① 用 `page.route` 把第一个 Project 的 Agent 列表**压住 3 秒**、页面停在 `/agents` 时切到第二个 Project：后到的列表不得把这个 Agent 画到新 Project 下（不压住的话旧 bug 只有慢网络才会浮现，直接跑会「改前也绿」）；② 停在 `/agents/<上一个 Project 的 Agent>` 上切 Project：页面离开到 `/agents`，且**没有一个新 Project 的、URL 里带那个 Agent id 的请求**（改前会去问 `…/agents/alpha_only/config`）。夹具幂等（用户 / Agent / 第二个 Project 都容忍 409），单跑一条也成立；注释写明「为什么要压住 3 秒」 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2213 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r80-e2e`、`localhost:8935` + mock `8934`）：**79 passed（6.0m）、0 failed**（原 77 条 + 本笔 2 条）· **反证（同一组用例，改前产物）**：把 `packages/web/src` 退回 `21ed7923`（即 5.49 之前）重建、重启同一数据根 → **2 failed** —— ①「Alpha Only」在 `IsolationBeta` 下**出现 1 张卡**（截图 `r80/prefix-leak.png`，`lastProjectId` 已是 beta）、② Agent 设置页**不离开**（URL 停在 `/agents/alpha_only`）；恢复 `HEAD` 重建后 **2 passed**，同一探针 `alphaOnlyCards: 0`（`r80/fixed-no-leak.png`）· 端口只用 8934 / 8935 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r80{,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-18 | 7.4 | **结束的定时任务从列表里消失有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/schedule-settled.spec.mjs`，94 行，**无源码改动**）：5.48 把已结算（`done` / `missed` / `expired`）的定时任务文件移进 `schedule/expired/`，服务端用例钉住了文件移动，用户看得见的那一半（列表上那一行自己消失、筛选条里不再有「已完成」）此前只有一次性探针。这条用例建一条 `startAt = now + 8s`、绑在一个真会话上的一次性任务，打开 `/schedules` 断言行在、三个筛选都在而「已完成」不是按钮，然后**不点不动**等调度器在 30 s 的那一拍里触发它 —— 归档发生在 `schedule_fired` 之前，这条事件触发的重读因此不再列出它，行自己消失；再逐个点过三个筛选都不会把它带回来。夹具幂等（先 DELETE 同名的残留、创建 / 绑定会话都容忍既有），单跑一条也成立 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2214 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · web **3202** / 2 跳过 · server **201 文件 / 2946 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r81-e2e`、`localhost:8936`，自带 `mock-llm.mjs` 起在 `8937`、`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：`npx playwright test -c e2e/playwright.config.mjs` → **80 passed（6.4m）、0 failed**（原 79 条 + 本笔 1 条；本笔单跑 28.1s）· **反证（旧行为）**：把三处归档调用（`send` 里 `markFired` 之后、`listAgent`、对账）全部注释掉、重建服务端、同一数据根重启 —— 同一条用例 **1 failed**，`expect(locator).toHaveCount(0)` 75 s 内拿到 **1**（那一行作为 `done` 一直留在列表里）；还原源码、重建、重启后 **1 passed**。**过程中量到的一件事**：只关 `send` 与 `listAgent` 两处时用例**仍然是绿的** —— 下一拍的对账会归档，三个归档点互为兜底，所以反证要三处一起关 · 归档实测：`schedule/` 里没有任务文件了，`schedule/expired/` 里 5 份 `settle_probe*.toml` 各 130 字节、内容与写入时逐字相同（第一份无后缀，之后按 UTC 戳加后缀，正是同名不覆盖的规则）· 端口只用 8936 / 8937（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r81{,-sched,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-18 | 7.5 | **悬停提示的两条规则有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/tooltip.spec.mjs`，163 行 / 三条用例，**无源码改动、无新依赖**）：5.35（底部工具条上的提示改向上弹出，`belowTrigger(rect, viewport, height)`）、5.44（`data-tooltip-extra` 让补充信息的提示在完整可见的文字上也弹，只复述可见文字的不弹）、5.46（被省略号 / 行钳截断的一行悬停即得全文，`shortenedLines()` 兜底）三笔落地时证据都在 `packages/ui` 的单测与一次性探针里，套件里没有一条用例听过应用根部那一个 `TooltipLayer` 的真实指针事件。三条用例分治，且每条先量前提再断言结果：① `/agents` 上一张卡片的名字被省略号截断（`scrollWidth 1024 > clientWidth 369`），悬停后提示面板弹出、文字是完整的名字；② 真会话的输入框工具条上那枚上下文圆环贴着窗口底边（720 高的视口里圆环底边在 699、下方余量 5 px 小于面板实测高度 26 px），悬停后面板内联样式是 `bottom: 61px` 而 `top` 为空、面板矩形 633–659 整块落在圆环（684）之上；③ 同一页「最后修改」的可见文字是「今天」，悬停后面板带出「最后修改」加完整时间；移开指针面板消失，再悬停只重复可见数字的「N 个 Session」，等 800 ms（开门延迟 400 ms）仍是 0 个面板 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2215 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过 · ui **1043** · cli **561** · web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r82-tooltip`、`localhost:8936`，自带 `mock-llm.mjs` 起在 `8937`、`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：`npx playwright test -c e2e/playwright.config.mjs` → **83 passed（6.7m）、0 failed**（原 80 条 + 本笔 3 条；本笔单跑 7.3s）· **反证（三处规则一起改坏，重建 web）**：`shortenedLines()` 开头 `return null`、`belowTrigger` 的竖向判定改成恒为「下方」、`hintAllowedFor` 传 `extra && false` → **3 failed**，三条各自死在自己的断言（面板不出现 / `inlineBottom` 是空串 / 面板不出现）；还原源码、重建、再跑 → **3 passed** · **真看一眼**（管理员登录，console **0 error**、**无一条 ≥400**）：截图 `r82/{agents-truncated-hover,agents-extra-hover,composer-ring-hover}.png` 在 scratchpad · 端口只用 8936 / 8937（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r82-tooltip`，一个字节没往 `~/.penguin` / `~/.adelie` 里写 | 见本行提交 |
+| 2026-10-19 | 7.6 | **5.46 的另一半有了真浏览器用例：工具卡副标题与工作区分组表头的完整路径**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/path-hints.spec.mjs`，138 行 / 两条用例，外加 `mock-llm.mjs` 一条 `read deep path test <path>` 分支，**无源码改动、无新依赖**）：5.46 给 `ToolCallCard` 的 `subtitleFull`（`…/父目录/文件`）与 `GroupHeader.title`（工作区完整路径，标记 `data-tooltip-extra`）挂了提示，落在 `ui`/`web` 的单测与第七十轮一次性探针里，套件里没有一条用例让应用根部那一个 `TooltipLayer` 真收到指针。用例①：mock 回一个 `read_file`（路径抄自提示词，`read deep path test <abs>`；标题请求靠 `!isTitle` 挡住）→ 等收尾行、**重载**、点开折叠的活动分组、悬停副标题（`…/three/deep-notes.txt`）→ 属性 `data-tooltip` 是完整路径、`content=code`、`extra=true`，面板文字是完整路径且等宽；用例②：深路径 + 短基名工作区 `…/projects/alpha/beta/brief` → 侧栏表头标签`brief` 放得下（先断言 `scrollWidth <= clientWidth`），悬停 → 面板是完整路径、非等宽（`content=text`）。**为什么不悬停流式那一行**：活动分组在实时视图里持续重渲染，`hover()` 的稳定性检查等不到（实测 90 s 超时，元素不断被替换），重载后从 Trace 读回的卡片才是读者真会遇到的形态。正则的停字符集是`[^"\s\\]`：提示词在 JSON 里，`\S+` 会把收尾引号与括号一起吞进参数（首跑就是这么坏的，副标题显示成`…/deep-notes.txt"}]}`） | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2216 文件）· 两个改动的文件 `prettier --check` 干净（`mock-llm.mjs` 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r83-e2e`、`localhost:8942`，自带 `mock-llm.mjs` 起在 `8943`、`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：`npx playwright test -c e2e/playwright.config.mjs` → **85 passed（6.4m）、0 failed**（原 83 条 + 本笔 2 条；本笔单跑 5.8s）· **反证一（两处标记删掉，重建 web）**：`subtitleFull={null}`、`GroupHeader` 去掉 `data-tooltip-extra` → **2 failed**（各自的属性断言）· **反证二（提示规则不认 `extra`）**：`hintAllowedFor` 传 `false && extra` → **2 failed，都死在面板不出现**（属性都还在，钉住的正是「应用根部那一个层真听见指针」）· **真看一眼**（`pathhints` 普通用户、1280×900，探针 `r83/look.cjs`）：工具卡副标题显示 `…/three/deep-notes.txt`，面板 `/tmp/penguin-pathhint-lPBEbL/one/two/three/deep-notes.txt`、字体 `JetBrains Mono Variable`；工作区表头标签 `brief`（`fits: true`），面板完整路径、字体 Mona Sans；截图 `r83/{tool-subtitle-hover,workspace-header-hover}.png`；console 只有两条已知的、普通用户按设计拿不到的 `/api/projects/…/machines` 403（第七十九 / 八十二轮记过），**无其它 error、无其它 ≥400** · 端口只用 8940 / 8941（迭代）与 8942 / 8943（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r83{,-hints,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -10898,4 +10911,82 @@ Escape 再来一次，四次的预算。连跑三次稳定。
 - 若还要从「本仓自己的验证设施」里挑：下一件建议是 **5.46 的另一半** —— 工具卡副标题的完整路径与工作区
   分组表头的完整路径（今天只有单测 + 第七十轮的一次性探针），造一条手写 Trace 就能进套件（第五十九 /
   七十轮有现成写法）。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第八十三轮：5.46 的另一半有了真浏览器用例（2026-10-19，条目 7.6）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `0c5df6b7`，`git fetch origin && git merge --ff-only
+  origin/main` = Already up to date（没切分支、没碰 `legacy/main`、没推 upstream）。
+- 上游：`/root/penguin-harness` 仍不在（`upstream` remote 指向它，按第八十二轮记的纪律没改 remote），于是按
+  仓库记忆里那条 URL 路子拉了一次 —— `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git
+  refs/heads/main:refs/adelie-tmp/upstream-main-r83` 成功，尖端仍是 **`e32ca1ea`（`#1160`）**，也就是第八十一轮
+  量过的那笔：压在 `#1152`（要本树没有的六个文件）上，不是一轮的量。这一轮没有新的上游小件。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰 desktop），
+  其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**
+  （要拍板 / 要新依赖）同样不可动；7.1–7.5 已勾掉。
+- 于是照第八十二轮末尾写下的建议做 7.6：5.46 的另一半（工具卡副标题的完整路径、工作区分组表头的完整路径）
+  今天只有单测 + 第七十轮的一次性探针，套件里没有一条用例让应用根部那一个 `TooltipLayer` 真收到指针。
+
+### 改了什么（1 个新文件 + mock 一条分支，无源码改动）
+
+- `packages/web/e2e/mock-llm.mjs`：新增 `read deep path test <path>` 分支 —— 第一个请求回一个
+  `read_file`（`file_path` 抄自提示词，因为 mock 是另一个进程、目录由 spec 造），带 `tool_result` 的请求回一句
+  「Read the file.」结束本轮。**两处要写清楚**：① `!isTitle` 是必须的 —— 标题请求带着同一段用户文字，拿一个
+  tool_use 去回答它会让会话一直没标题；② 正则的停字符集是 `[^"\s\\]` 而不是 `\S+` —— 提示词躺在 JSON 里，
+  `\S+` 会把收尾的引号与括号一起吞进参数（首跑就是这么坏的：副标题显示成 `…/deep-notes.txt"}]}`）。
+- `packages/web/e2e/path-hints.spec.mjs`（两条用例）：
+  1. **文件工具副标题**：造一个 `/tmp/penguin-pathhint-*/one/two/three/deep-notes.txt`，建会话（`custom` →
+     mock、`allow-all`）、发提示词，等收尾行出现后**重载页面、点开折叠的活动分组**，再对副标题
+     `…/three/deep-notes.txt` 断言 `data-tooltip` = 完整路径、`data-tooltip-content="code"`、
+     `data-tooltip-extra="true"`，悬停后面板文字是完整路径、字体等宽。
+  2. **工作区分组表头**：造一个深路径、短基名的工作区 `…/projects/alpha/beta/brief`，建一条该工作区的会话，
+     打开 `/chat`，按 `button[data-tooltip="<完整路径>"]` 找到表头，先断言标签 `brief` **放得下**
+     （`scrollWidth <= clientWidth`，所以这条提示不是「文字被截断」触发的），再断言 `content="text"` 与
+     `extra="true"`，悬停后面板是完整路径、**非**等宽。
+- **为什么不悬停流式里的那一行**：实时视图的活动分组持续重渲染，Playwright 的 `hover()` 在等「元素稳定」时
+  永远等不到 —— 实测 90 s 超时，日志里是「element was detached from the DOM, retrying」。重载后从 Trace 读回
+  来的卡片才是读者回来看对话时的形态，而且顺带证明提示不只在实时那一份 DOM 上成立；点开分组是读者真要做
+  的一步（分组默认折叠）。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，192 接口 / 587 类型 —— 本笔不碰源码）。
+- `npx oxlint`：**0 警告 0 错误**（2216 文件）；两个改动的文件 `prettier --check` 干净（`mock-llm.mjs` 首跑一条，
+  `--write` 后复检）；`git diff --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— core **1399 通过 / 6 跳过**（68 文件）· ui **1043**（129）·
+  cli **561**（38）· server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**
+  （hmr 无测试文件）。
+- **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r83-e2e`、`localhost:8942`，
+  自带 `mock-llm.mjs` 起在 `8943`，`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：
+  `npx playwright test -c e2e/playwright.config.mjs` → **85 passed（6.4m）、0 failed**（原 83 条 + 本笔 2 条）；
+  本笔单跑 **5.8s**（迭代时在 `r83-hints` / 8940 + 8941 上跑过同一份，见下）。
+- **反证一（两处标记删掉，重建 web）**：`tool-call-card.tsx` 的 `subtitleFull={null}`、
+  `GroupHeader` 去掉 `data-tooltip-extra` → 同一条命令 **2 failed**，各自死在属性断言。
+- **反证二（提示规则不认 `extra`，重建 web）**：把 `hintAllowedFor()` 改成传 `false && extra` → **2 failed，
+  两条都死在「面板不出现」**（属性都还在）—— 这正是这一轮要钉的那一层：应用根部那一个 `TooltipLayer`
+  真的听见指针、并按规则决定弹不弹。源码留底在 `scratchpad/r83/fix-src/`，`cp` 还原后 `cmp` 无差异、
+  重建、再跑 → **2 passed**。
+- **真看一眼**（`pathhints` 普通用户、1280×900，探针 `scratchpad/r83/look.cjs`）：工具卡那一行是
+  「读取 `…/three/deep-notes.txt`」，悬停面板 `/tmp/penguin-pathhint-lPBEbL/one/two/three/deep-notes.txt`、
+  字体 `JetBrains Mono Variable`；侧栏工作区表头标签 `brief`（`fits: true`），悬停面板是完整路径、
+  字体 Mona Sans（**文字面板**）。`console errors` 只有两条普通用户按设计拿不到的
+  `GET /api/projects/…/machines` **403**（第七十九 / 八十二轮记过，端点只给管理员），**无其它 error、
+  无其它 ≥400**；截图 `r83/tool-subtitle-hover.png` / `r83/workspace-header-hover.png`。
+- 端口只用 8940 / 8941（迭代）与 8942 / 8943（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `/root/adelie-fork-data/r83{,-hints,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写
+  （`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里仍没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；7.6 本轮勾掉。
+- **上游**：先看 `/root/penguin-harness` 在不在；不在就按记忆里那条 URL 路子拉一次，尖端仍是 `e32ca1ea`
+  的话没有新小件可挑。
+- 若还要从「本仓自己的验证设施」里挑，下一件建议是 **成本中心「标记已读后重启不再回来」（5.40）的真浏览器
+  用例** —— 今天只有真浏览器两态探针（第六十二轮），套件里没有；或者 **5.35 的另一半**（提示在竖栏里向右
+  展开，`belowTrigger` 的 `right` 分支）—— 今天只有单测。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
