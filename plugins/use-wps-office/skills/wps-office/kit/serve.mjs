@@ -540,10 +540,18 @@ async function main() {
 
   let streamAbort = null;
   let streamSessionId = null;
+  /**
+   * Session ids Adelie says do not exist (404/410). Reconnecting cannot bring one back, and
+   * the panel asks for its remembered session on every reopen, so the answer is remembered
+   * here instead of re-asked: a bridge left running for a document whose session is gone used
+   * to write a warning to the log every 10 seconds, forever.
+   */
+  const goneStreamIds = new Set();
 
   /** One long-lived subscription per session, reconnecting; events fan out to the panel. */
   function subscribe(sessionId) {
     if (streamSessionId === sessionId && streamAbort !== null) return;
+    if (goneStreamIds.has(sessionId)) return;
     streamAbort?.abort();
     streamSessionId = sessionId;
     const controller = new AbortController();
@@ -556,6 +564,18 @@ async function main() {
             headers: { accept: "text/event-stream" },
             signal: controller.signal,
           });
+          if (res.status === 404 || res.status === 410) {
+            // The session is gone — deleted, archived, or an id this install no longer has.
+            // Asking again only produces the same 404, so stop the loop and say it once (at
+            // info: a document whose session expired is not a bridge failure). A new session
+            // id subscribes normally; a repeated ask for this one is short-circuited above.
+            goneStreamIds.add(sessionId);
+            logTo(root, "info", "adelie stream closed: no such session", {
+              session: sessionId,
+              status: res.status,
+            });
+            return;
+          }
           if (!res.ok || res.body === null) throw new Error(`HTTP ${res.status}`);
           backoff = 1000;
           const reader = res.body.getReader();

@@ -75,7 +75,14 @@ function fakeAdelie() {
     aborts: [],
     rejected: [],
     token: undefined,
+    /** Stream requests per session id — the bridge's reconnect behavior is counted here. */
+    streamAttempts: {},
+    /** Session ids that answer 404/410, as a deleted or long-gone session does. */
+    goneStreams: new Set(),
+    /** Makes the next created session an id the stream route rejects (see `goneStreams`). */
+    rejectNextStream: false,
   };
+  let created = 0;
   const server = http.createServer((req, res) => {
     void (async () => {
       const url = new URL(req.url, "http://127.0.0.1");
@@ -95,9 +102,21 @@ function fakeAdelie() {
       if (req.method === "POST" && /\/sessions$/.test(url.pathname)) {
         const body = await readJson(req);
         seen.sessions.push({ path: url.pathname, body });
-        return json({ session: { sessionId: "s1" } });
+        created += 1;
+        if (seen.rejectNextStream) {
+          seen.rejectNextStream = false;
+          seen.goneStreams.add("session-gone");
+          return json({ session: { sessionId: "session-gone" } });
+        }
+        return json({ session: { sessionId: created === 1 ? "s1" : `s${created}` } });
       }
-      if (url.pathname === "/api/sessions/s1/stream") {
+      const streamRoute = url.pathname.match(/^\/api\/sessions\/([^/]+)\/stream$/);
+      if (streamRoute !== null) {
+        const id = decodeURIComponent(streamRoute[1]);
+        seen.streamAttempts[id] = (seen.streamAttempts[id] ?? 0) + 1;
+        if (seen.goneStreams.has(id)) {
+          return json({ error: { message: "session_not_found" } }, 404);
+        }
         res.writeHead(200, {
           "content-type": "text/event-stream",
           "cache-control": "no-cache",
@@ -540,4 +559,28 @@ test("审批决定能回传给 Adelie", async () => {
   });
   assert.equal((await res.json()).ok, true);
   assert.deepEqual(api.seen.approvals.at(-1), { id: "t1", decision: "allow" });
+});
+
+test("会话已经不在了：桥只问一次，不再每 10 秒往日志里写一条", async () => {
+  // 面板重开时拿回的是它记住的旧会话 id，而 Adelie 那边会话已被删掉（应答 404）。
+  // 旧版把每一次失败都当临时故障，于是每 10 秒重连一次、每 10 秒写一条警告，永不停止。
+  await fetch(`${bang.url}/addin/hello`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ doc: { name: "旧稿.docx", path: "/tmp/旧稿.docx" }, version: "test" }),
+  });
+  api.seen.rejectNextStream = true;
+  const res = await fetch(`${bang.url}/panel/session`, { method: "POST" });
+  const body = await res.json();
+  assert.equal(body.ok, true);
+  assert.equal(body.sessionId, "session-gone");
+
+  // 第一次失败后的退避是 1 秒起：等过一个重连窗口，看它有没有再去问一次。
+  await sleep(1600);
+  assert.equal(api.seen.streamAttempts["session-gone"], 1, "404 之后不应再重连");
+
+  const log = fs.readFileSync(path.join(root, "wps-bridge", "bridge.log"), "utf8");
+  const said = log.split("\n").filter((line) => line.includes("no such session"));
+  assert.equal(said.length, 1, `应当只记一条，实际：${JSON.stringify(said)}`);
+  assert.ok(said[0].includes("session-gone"));
 });
