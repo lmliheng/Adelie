@@ -1386,6 +1386,45 @@ describe("HTTP onError persistence (integration)", () => {
     expect(half.status).toBe(400);
   });
 
+  it("a clear stops at the boundary its confirmation counted", async () => {
+    const day = "2026-07-06";
+    seedRow({ date: day, code: "counted_a", ts: `${day}T10:00:00.000Z` });
+    seedRow({ date: day, code: "counted_b", ts: `${day}T10:05:00.000Z` });
+
+    // What the panel reads when the confirmation opens: the count, and the newest record's
+    // instant, which is the boundary the delete carries.
+    const counted = (await (
+      await api.get(
+        `/api/projects/${projectId}/usage/errors?offset=0&limit=1&from=${day}&to=${day}`,
+      )
+    ).json()) as UsageErrorsPage;
+    expect(counted.total).toBe(2);
+    const newest = counted.items[0];
+    if (newest === undefined) throw new Error("expected the newest record on the first page");
+    expect(newest.code).toBe("counted_b");
+
+    // A record that lands while the dialog is open: the sentence counted two, so two go and
+    // this one stays — without the boundary it would have gone unannounced.
+    seedRow({ date: day, code: "arrived_later", ts: `${day}T10:06:00.000Z` });
+    const cleared = await api.delete(
+      `/api/projects/${projectId}/usage/errors?from=${day}&to=${day}&until=${newest.ts}`,
+    );
+    expect(await cleared.json()).toEqual({ deleted: 2 });
+    expect(errorRows().map((r) => r.code)).toEqual(["arrived_later"]);
+
+    // A boundary that is not an instant is refused rather than dropped: a clear that ignored
+    // it would take the record above, which the confirmation said would stay.
+    const refused = await api.delete(
+      `/api/projects/${projectId}/usage/errors?from=${day}&to=${day}&until=yesterday`,
+    );
+    expect(refused.status).toBe(400);
+    expect(
+      errorRows()
+        .map((r) => r.code)
+        .filter((code) => code !== "bad_request"),
+    ).toEqual(["arrived_later"]);
+  });
+
   it("a member cannot clear the log, so it is no route to the unattributed rows", async () => {
     seedRow({ date: "2026-07-06", code: "project_row" });
     seedRow({ date: "2026-07-06", code: "unattributed_row", projectId: null, source: "process" });

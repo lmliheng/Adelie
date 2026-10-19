@@ -143,7 +143,9 @@ function Th({ children, className = "" }: { children: React.ReactNode; className
  * The footer under the table carries the pager and, for a Project owner, the clear action.
  * Clearing deletes the records the current filter selects — the set the reader is looking at,
  * not the Project's whole history — and the confirmation says which set that is and how many
- * records it holds, because a deleted error record has no other copy anywhere.
+ * records it holds, because a deleted error record has no other copy anywhere. That count is
+ * read when the action is clicked and the delete stops at the newest record it saw, so the
+ * sentence stays true even across the records the page itself creates while it loads.
  */
 export function ErrorsPanel({
   errors,
@@ -230,11 +232,51 @@ export function ErrorsPanel({
   const pageCount = Math.max(1, Math.ceil(pagedRows / pageSize));
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [clearing, setClearing] = useState(false);
+  // What the confirmation is about: the count and the newest record's instant, read when the
+  // action is clicked rather than carried over from the dashboard's snapshot. The snapshot is
+  // taken before the page's own requests are answered — and loading the cost center records
+  // one of them (a member's shell asks for the machine list and gets a 403) — so a sentence
+  // built from it names one record fewer than the delete then takes. That is exactly what a
+  // confirmation exists to prevent (see `errorsClearScopeText`), so the count is re-read here
+  // and the delete stops at the newest record this read could see (`until`).
+  const [confirmTarget, setConfirmTarget] = useState<{
+    total: number;
+    until: string;
+  } | null>(null);
+  const [counting, setCounting] = useState(false);
+
+  /**
+   * Reads the count the dialog will name, then opens it. `limit: 1` is all it needs: `total`
+   * counts the range's records and the first row (newest first) carries the latest `ts`.
+   */
+  const openClear = async () => {
+    setCounting(true);
+    try {
+      const res = await api.getUsageErrors(projectId, { offset: 0, limit: 1, ...filters });
+      const newest = res.items[0]?.ts;
+      if (res.total === 0 || newest === undefined) {
+        // Emptied between the dashboard's read and this click: nothing to confirm, so the
+        // panel catches up instead of offering a delete of nothing.
+        onCleared();
+        return;
+      }
+      setConfirmTarget({ total: res.total, until: newest });
+      setConfirmingClear(true);
+    } catch (e) {
+      toastError(apiErrorText(e));
+    } finally {
+      setCounting(false);
+    }
+  };
 
   const runClear = async () => {
+    if (confirmTarget === null) return;
     setClearing(true);
     try {
-      const res = await api.clearUsageErrors(projectId, filters);
+      const res = await api.clearUsageErrors(projectId, {
+        ...filters,
+        until: confirmTarget.until,
+      });
       setConfirmingClear(false);
       toastSuccess(S.usage.errorsClearDone(res.deleted));
       // The stats above the table are the dashboard's own numbers, so the whole response is
@@ -373,8 +415,8 @@ export function ErrorsPanel({
           {canClear && total > 0 && clearableFilter(filters) && (
             <button
               type="button"
-              disabled={clearing}
-              onClick={() => setConfirmingClear(true)}
+              disabled={clearing || counting}
+              onClick={() => void openClear()}
               className="rounded-md border border-gray-200 px-2 py-0.5 transition-colors duration-150 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-gray-200 disabled:hover:bg-transparent disabled:hover:text-gray-500 dark:border-gray-800 dark:hover:border-red-900 dark:hover:bg-red-950/50 dark:hover:text-red-400 dark:disabled:hover:border-gray-800 dark:disabled:hover:bg-transparent dark:disabled:hover:text-gray-400"
             >
               {S.usage.errorsClear}
@@ -399,8 +441,10 @@ export function ErrorsPanel({
         </div>
       )}
 
-      {/* The confirm names the filtered set the delete will actually take, and says plainly
-          that nothing brings it back — the rows are the only record these errors ever had. */}
+      {/* The confirm names the filtered set the delete will actually take — the count and the
+          boundary come from the read `openClear` just made, so the number in the sentence is
+          the number of records this delete removes — and says plainly that nothing brings it
+          back: the rows are the only record these errors ever had. */}
       <ConfirmModal
         open={confirmingClear}
         tone="danger"
@@ -412,7 +456,11 @@ export function ErrorsPanel({
         onConfirm={() => void runClear()}
       >
         <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
-          <p className="break-words">{errorsClearScopeText(filters, preset, total)}</p>
+          {confirmTarget !== null && (
+            <p className="break-words">
+              {errorsClearScopeText(filters, preset, confirmTarget.total)}
+            </p>
+          )}
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {S.usage.errorsClearIrreversible}
           </p>

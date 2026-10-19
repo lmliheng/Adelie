@@ -1120,6 +1120,21 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       悬停「刷新」—— 先断言控件中心落在窗口右半边，面板由 `right` 定位（= 视口宽 − 控件右边缘）、
       `left` 为空、右边缘与控件右边缘重合、挂在控件下方 8 px、整块在屏内且 `maxWidth` 的 `room`
       跟着那条右边缘算。反证（两处横向规则一起改坏 → 2 failed）与实测见该节。
+- [x] **7.9 成本中心「清空错误」的确认与写入顺序**（**2026-10-19 第八十六轮**落地，提交见该节；
+      1 个新文件 `packages/web/e2e/cost-center-clear.spec.mjs` + 面板与服务端各一处**真修复**）：
+      第七十七轮之后从这条队列里挑出来的下一件，也是第六十二轮「写入顺序」那条线索的第三种形态。
+      量出来的实情比预期的严重一点：**确认框写的条数比真正删掉的少** —— 面板的数字取自仪表盘加载时的
+      快照，而加载成本中心本身会记下一条错误（成员的界面读机器列表，端点回 403 `admin_required`，
+      算「预期内」），所以 Probe 实测「将删除……1 条」而 `{deleted: 2}`。现在点「清空」先按屏幕上的
+      过滤条件重读一页（`limit: 1`），句子里写这次读到的 `total`，并把这一页最新记录的 `ts` 作为
+      **`until`** 传给 `DELETE /usage/errors`（服务端新参数：只删 `ts <= until` 的行），于是两次请求
+      之间到达的记录被留下而不是不留名地删掉。两条用例：① 打开页面后造一条新错误（面板仍是旧快照、
+      仪表盘一次都没重读）→ 点「清空」必须看到一次计数读取、句子写的是这个新数字、取消不发请求 →
+      再点、确认：DELETE 的 `until` 正是那次读到的 `ts`、`deleted` 与句子里的数字相等、表格/统计/顶部
+      提醒一起归零；② 用 `page.route` 把 DELETE 拒成 500 —— 对话框与句子留着、显示服务端那句话、
+      一条都没删；放行后重试才关闭并清零。**反证**：把面板换回旧逻辑（快照计数、不发 `until`）→
+      用例①**红**在「打开确认框时没有读计数」（15 s 超时），恢复后 2 passed；把服务端的 `until`
+      条件拿掉 → 新增的服务端用例红在 `deleted: 3`（应为 2），恢复后该文件 64 passed。细节与实测见该节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1727,6 +1742,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-19 | 7.6 | **5.46 的另一半有了真浏览器用例：工具卡副标题与工作区分组表头的完整路径**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/path-hints.spec.mjs`，138 行 / 两条用例，外加 `mock-llm.mjs` 一条 `read deep path test <path>` 分支，**无源码改动、无新依赖**）：5.46 给 `ToolCallCard` 的 `subtitleFull`（`…/父目录/文件`）与 `GroupHeader.title`（工作区完整路径，标记 `data-tooltip-extra`）挂了提示，落在 `ui`/`web` 的单测与第七十轮一次性探针里，套件里没有一条用例让应用根部那一个 `TooltipLayer` 真收到指针。用例①：mock 回一个 `read_file`（路径抄自提示词，`read deep path test <abs>`；标题请求靠 `!isTitle` 挡住）→ 等收尾行、**重载**、点开折叠的活动分组、悬停副标题（`…/three/deep-notes.txt`）→ 属性 `data-tooltip` 是完整路径、`content=code`、`extra=true`，面板文字是完整路径且等宽；用例②：深路径 + 短基名工作区 `…/projects/alpha/beta/brief` → 侧栏表头标签`brief` 放得下（先断言 `scrollWidth <= clientWidth`），悬停 → 面板是完整路径、非等宽（`content=text`）。**为什么不悬停流式那一行**：活动分组在实时视图里持续重渲染，`hover()` 的稳定性检查等不到（实测 90 s 超时，元素不断被替换），重载后从 Trace 读回的卡片才是读者真会遇到的形态。正则的停字符集是`[^"\s\\]`：提示词在 JSON 里，`\S+` 会把收尾引号与括号一起吞进参数（首跑就是这么坏的，副标题显示成`…/deep-notes.txt"}]}`） | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，192 接口 / 587 类型）· `npx oxlint` **0 警告 0 错误**（2216 文件）· 两个改动的文件 `prettier --check` 干净（`mock-llm.mjs` 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· server **201 文件 / 2946 通过 / 4 跳过** · web **260 文件 / 3202 通过 / 2 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（一次性数据根 `/root/adelie-fork-data/r83-e2e`、`localhost:8942`，自带 `mock-llm.mjs` 起在 `8943`、`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）：`npx playwright test -c e2e/playwright.config.mjs` → **85 passed（6.4m）、0 failed**（原 83 条 + 本笔 2 条；本笔单跑 5.8s）· **反证一（两处标记删掉，重建 web）**：`subtitleFull={null}`、`GroupHeader` 去掉 `data-tooltip-extra` → **2 failed**（各自的属性断言）· **反证二（提示规则不认 `extra`）**：`hintAllowedFor` 传 `false && extra` → **2 failed，都死在面板不出现**（属性都还在，钉住的正是「应用根部那一个层真听见指针」）· **真看一眼**（`pathhints` 普通用户、1280×900，探针 `r83/look.cjs`）：工具卡副标题显示 `…/three/deep-notes.txt`，面板 `/tmp/penguin-pathhint-lPBEbL/one/two/three/deep-notes.txt`、字体 `JetBrains Mono Variable`；工作区表头标签 `brief`（`fits: true`），面板完整路径、字体 Mona Sans；截图 `r83/{tool-subtitle-hover,workspace-header-hover}.png`；console 只有两条已知的、普通用户按设计拿不到的 `/api/projects/…/machines` 403（第七十九 / 八十二轮记过），**无其它 error、无其它 ≥400** · 端口只用 8940 / 8941（迭代）与 8942 / 8943（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r83{,-hints,-e2e}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-19 | 7.7 | **成本中心「标记已读」的两半有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/cost-center-read.spec.mjs`，174 行 / 两条用例，**无源码改动、无新依赖**）：5.40（第六十二轮）修的两件事——成本中心加载时重读未预期错误探针、`dismissTodo` 在写入成功之后才收起——此前只有第六十二轮的一次性探针，而两半都只在「页面早就打开、新的错误在打开之后才到」这种情形下才暴露。用例①：先用 mock 的 401 分支造一条未预期错误（`error_records` 里是 `llm_fatal` / `unexpected`），打开 `/chat/<会话>` 并**抓住应用自己那次探针请求**（记下启动时的 `total`），**等过记录器 2 秒去重窗口**再用第二个会话走 403 配额分支造第二条，然后点侧栏的「成本中心」在应用内换页 —— `page.on("response")` 收到的新探针 `total` 必须变大、页面提醒写的就是这个数字、换页前写到 `window` 上的标记还在（证明没有整页重载）；点「标记为已读」后 `ui_prefs.todoDismissed[项目].errors` 必须是**最新那条错误的 `ts`**，重载后提醒不回来。用例②：`page.route` 把 `PUT /api/me/prefs` 拒成 400 —— 提醒留着、弹出服务端那句话、存下的标记与点之前逐字相同；`unroute` 后重试才收起。**为什么用真错误、不直接写库**：spec 拿不到 `run.sh` 的 `mktemp` 数据根，两条失败又都是产品自己的路径（401 认证 / 403 配额），真跑一遍反而更接近读者遇到的形态；断言里的数字全部取自页面自己收到的响应，所以在同一个数据根上重跑也成立 | 六包 `typecheck` **`EXIT=0`**（`pnpm typecheck` 十四个 `Done`，含 core / server / web / ui / cli / hmr；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2217 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，自带 `mktemp` 数据根、mock 在 8931、服务端在 8930）：**87 passed（6.5m）、0 failed**（原 85 条 + 本笔 2 条；本笔单跑 6.1s）· **反证一（拿掉加载时那次刷新，重建 web）**：`usage-page.tsx` 的 `refreshProjectTodos(projectId)` 注释掉 → 用例①**红**在「探针 `total` 没有变大」（`Expected: > 9, Received: 9`，15 s 内一直停在启动时那个数）· **反证二（`dismissTodo` 换回乐观写）**：本地状态先落、PUT fire-and-forget、失败吞掉 → 用例②**红**在「没有那句提示」（提醒当场消失、用户以为存住了）· 还原两份源码、重建、再跑 → **2 passed** · **真看一眼**（`costread` 普通用户、1280×900，探针 `r84/look.mjs`）：提醒是「15 条未预期错误」（数据根上累积的），按钮 `aria-label` 为「标记已读 · 15 条未预期错误」；点掉并重载后提醒计数 **0**；console 只有两条**按设计**的 `GET …/machines` **403**（第七十九 / 八十二 / 八十三轮记过，端点只给管理员），无其它 error、无其它 ≥400；截图 `r84/shots/{usage-notice,usage-notice-hover,usage-after-read}.png` 在 scratchpad · 端口只用 8944 / 8945（探针与迭代）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r84{,-run,-probe}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-19 | 7.8 | **5.35 的另一半有了真浏览器用例：竖栏向右展开、右半窗口按右边缘对齐**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/tooltip-beside.spec.mjs`，221 行 / 两条用例，**无源码改动、无新依赖**）：5.35 那一笔的两个**横向**分支——竖栏里的提示向右展开（`besideTrigger`：`left = 条目右边缘 + 8`、竖直居中、`room = 视口宽 − left − 8`）、`belowTrigger` 在控件位于窗口右半边时按右边缘对齐并向左生长——此前只有 `packages/ui/test/tooltip.test.ts` 在验这两个函数返回的数字，套件里没有一条用例让应用根部那一个 `TooltipLayer` 真听见指针、量真盒子、按真视口落位（7.5 钉住的是竖向那一半与两条「什么时候该弹」的规则）。用例①：点「收起侧栏」折成 48 px 竖栏（**先 `expect.poll` 等宽度动画落定** —— 首次实测中途量的 `closest("aside")` 还是 101.78，正是折到一半），悬停「插件市场」断言 `left` 定位、等于条目右边缘 + 8、`right` 为空、竖直中点相差 ≤1.5 px、面板整块在屏内、`maxWidth` 里的 `room` 正是「视口宽 − left − 8」、且不在竖栏的图标之上；再悬停竖栏顶部的「展开侧栏」（**按钮而非链接**、提示带 `useShortcutTitle` 的快捷键后缀，所以用 `toContainText`）复核同一侧、最靠近窗口顶边时也不出屏。用例②：真会话绑一个临时工作区、`dock-toggle-right` + `dock-pick-workspace` 打开右侧文件面板，悬停「刷新」——先断言控件中心在窗口右半边（没有右对齐分支时它会长出窗外），面板由 `right` 定位（= 视口宽 − 控件右边缘）、`left` 为空、右边缘与控件右边缘重合、挂在控件下方 8 px、整块在屏内、`room` 跟着那条右边缘算 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2218 文件）· 新文件 `prettier --check` 干净（首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（`pnpm -C packages/web test:e2e`，自带 `mktemp` 数据根、mock 在 8931、服务端在 8930）：**89 passed（7.1m）、0 failed**（原 87 条 + 本笔 2 条；本笔单跑 6.0s；另在复用数据根上 `--repeat-each=3` 连跑 6 次全绿，幂等也一并验了）· **反证（两处横向规则一起改坏，重建 web）**：`besideTrigger` 改成 `return belowTrigger(rect, viewport)`（面板挂到条目下方、按左边缘对齐）、`belowTrigger` 删掉右半边那个分支（一律左对齐）→ **2 failed**：① 死在 `inlineLeft`（实测 **8**，期望 **48**，差的 40 就是「条目左边」与「条目右边 + 8」之差）；② 死在 `expect(placed.inlineRight).not.toBe("")`（右对齐分支没了，面板改由 `left` 定位）；还原源码、重建、再跑 → **2 passed** · **整套第一跑时 ① 红过一次**：`expect(placed.rect.left).toBeGreaterThanOrEqual(railRight)` 拿到 **48 vs 48.92**（竖栏那条边是亚像素量出来的，比条目盒子给出的整数多一点点），改成「允许 1 px」并在注释里写明原因后全绿 —— 记在这里，免得下一轮把它当成真回归 · **真看一眼**（`sideview` 普通用户、1280×900，探针 `r85/look.mjs`）：竖栏面板 `left: 48px`、文字「插件市场」、矩形 48–114 × 197–223（在条目 194–226 的竖直中点）；文件面板「刷新」的面板 `right: 365px`、文字「刷新」、矩形 873–915 × 187–213（右边缘与按钮重合、挂在按钮下方）；console 只有**两条按设计**的 `GET /api/projects/…/machines` **403**（第七十九 / 八十二 / 八十三 / 八十四轮记过，端点只给管理员），**无其它 error、无其它 ≥400**；截图 `r85/shots/{rail-beside,dock-refresh}.png` 在 scratchpad · 端口只用 8950 / 8951（探针与迭代）、8952 / 8953（看界面）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r85{,-look}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`） | 见本行提交 |
+| 2026-10-19 | 7.9 | **成本中心「清空错误」的确认与写入顺序**（不是移植：一处真修复 + 本仓自己的测试设施；源码 4 个 -- 服务端仓储/服务/路由各一处加 `until`、web 的 `endpoints.ts` 与 `errors-panel.tsx`，另有 `server-api` 中英文档、changelog 一对、1 个新 e2e 文件与 1 条服务端用例）：量出来的缺陷是**确认框写的条数比删掉的少** —— 句子的数字取自仪表盘快照，而加载成本中心自己会记一条错误（成员界面读机器列表得到 403 `admin_required`，算预期内），所以「将删除……1 条」后面跟着 `{deleted: 2}`。现在点「清空」先按屏幕上的过滤条件重读一页（`limit: 1`），用它的 `total` 写句子、用这一页最新记录的 `ts` 作 `until` 发给 `DELETE /usage/errors`（新可选参数，只删 `ts <= until` 的行），两次请求之间到达的记录因此被留下。「清空」按钮在读取期间置灰；范围为空的竞态下不弹框、直接刷新；删除失败时框与句子都留着 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）**，本笔不动契约字段）· `npx oxlint` **0 警告 0 错误**（2219 文件）· 改动文件 `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2947 通过 / 4 跳过**（+1 正是本笔新用例）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，自带 `mktemp` 数据根、mock 在 8931、服务端在 8930）：**91 passed（7.1m）、0 failed**（原 89 条 + 本笔 2 条；本笔单跑 7.2s，另在一个被前几次试跑弄脏的数据根上反复跑通）· **反证一（面板换回 `HEAD` 那一版：快照计数、不发 `until`，重建 web）**：用例①**红** —— 打开确认框后 15 s 内没有任何计数读取（`page.waitForResponse` 超时），恢复后 **2 passed** · **反证二（`ErrorsRepo.conds` 里拿掉 `until` 条件）**：新服务端用例红在 `deleted` 为 3（应为 2，晚到的那条一起被删），恢复后 `errors.test.ts` **64 passed** · **改前的一次性探针带出的实情**：`dashboard errors.total at load 1`、随后 API 读到 `expected/admin_required×1 + unexpected/llm_fatal×1`、句子「近 7 天内的 1 条错误记录」、`{deleted: 2}` · 端口只用 8960 / 8961（探针与迭代）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r86{,-look}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -11191,4 +11207,114 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   （第六十二轮那条队列的第三种形态，7.7 钉住的是「标记已读」那两半）；再往后可以看
   **`data-tooltip-placement="right"` 的公司频道栏**（第八十五轮这条只覆盖了折叠竖栏与右侧停靠面板，
   公司模式那条竖栏今天仍只有单测）。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第八十六轮：成本中心「清空错误」的确认与写入顺序（2026-10-19，条目 7.9）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `90a6220c`（第八十五轮那笔），
+  `git fetch origin && git merge --ff-only origin/main` = Already up to date（没切分支、没碰 `legacy/main`、
+  没推 upstream、没改 remote 配置）。
+- 上游：`/root/penguin-harness` 仍不在（`git fetch upstream` 会报 `does not appear to be a git repository`），
+  按第七十九至八十五轮记的纪律没改 remote；现存探针引用最新是
+  `refs/adelie-tmp/upstream-main-r83` = **`e32ca1ea`**，这一轮没有新的上游小件可挑。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰
+  desktop），其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、
+  **5.6** / **5.10**（要拍板 / 要新依赖）同样不可动；7.1–7.8 已勾掉。于是照第八十五轮末尾写下的建议
+  做 **7.9**：成本中心「清空错误」的确认与写入顺序。
+
+### 先量清楚（真服务 + 真浏览器，不是推测）
+
+一次性数据根 `/root/adelie-fork-data/r86`，服务端起在 `localhost:8960`、自带 `mock-llm.mjs` 在 `8961`，
+`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`；普通用户 `r86probe` / `r86probe2`、视口 1280×900。
+用 mock 的 401 分支让一轮对话失败，一行「未预期错误」进了 `error_records`：
+
+- 打开 `/usage`：仪表盘那次 `GET …/usage` 里 `errors.total` 是 **1**，面板写「1 条未预期错误」、
+  表里一行。
+- **页面自己立刻又记了一条**：成员界面的 `GET …/usage/errors` 探针之后，外壳去读
+  `GET …/machines` 得到 **403 `admin_required`**（第七十九 / 八十二 / 八十三 / 八十四轮记过的、按设计的
+  403），记录器把它算作 `expected` 写进表里 —— 于是同一时刻 API 读到 `total = 2`、两行
+  （`expected/admin_required×1` + `unexpected/llm_fatal×1`）。
+- 点「清空」：确认框写的是 **「将删除本项目 近 7 天内的 1 条错误记录，其余时间段的记录保留。」**，
+  而 `DELETE …/usage/errors?from=2026-10-13&to=2026-10-19` 回来 **`{deleted: 2}`** ——
+  确认框写的比真正删掉的少一条，而这正是代码注释里写的「确认存在就是为了防止的那件事」。
+
+### 改了什么（一处真修复：5 个源码文件 + 2 份文档 + changelog 一对）
+
+- `packages/server/src/db/repos/errors.ts`：`ErrorFilter` 新增 `until`（含 `ts <= :until`），与既有的
+  `fromTs` / `toTs` 同一段 `conds()`，读与删因此共用一条规则。
+- `packages/server/src/services/usage-service.ts`：`UsageErrorsClearQuery.until` 透传给 `deleteFiltered`。
+- `packages/server/src/http/routes/usage.ts`：`DELETE …/usage/errors` 解析可选的 `until`
+  （`optionalTsParam`，规范成 UTC ISO；格式不对 **400**，而不是被悄悄忽略 —— 忽略就等于删掉句子说会
+  保留的那条）。不传时行为与以前完全一致。
+- `packages/web/src/api/endpoints.ts`：`clearUsageErrors` 带上 `until`。
+- `packages/web/src/features/usage/errors-panel.tsx`：点「清空」不再直接开框，而是先按屏幕上的过滤条件
+  读一页（`offset 0 / limit 1`）——它的 `total` 写进句子，第一行（最新一条）的 `ts` 作为 `until`。
+  读取期间按钮置灰（`counting`）；若这次读回 `total = 0`（范围已被别人清空）就不开框、直接刷新；
+  删除失败仍然留着框与句子。
+- `packages/docs/content/server-api.{zh,en}.md`：`DELETE /usage/errors` 的说明补上 `until`。
+- `changelog/unreleased/2026-10-19-cost-center-clear-boundary.{md,zh.md}`：中英一对。
+- `packages/server/test/errors.test.ts`：新增一条 —— 先读「确认框会读到的那一页」（`total 2`、最新
+  `ts`），再插一条更晚的记录，然后带 `until` 清空：`{deleted: 2}`、晚到的那条留着；`until=yesterday`
+  返回 400 且什么都没删。
+
+### 写进套件的两条用例（`packages/web/e2e/cost-center-clear.spec.mjs`）
+
+1. **「确认框写下的条数就是删掉的条数，删除停在那条边界上」** —— 一轮 401 失败之后打开 `/usage`
+   （记下仪表盘那次响应的 `total` 与首屏行数、并数着仪表盘请求次数），**过 2 秒去重窗口**再造一条
+   403 配额失败：面板仍是加载时那一屏（仪表盘一次都没重读、行数不变），而 API 的 `total` 已经变大
+   —— 旧快照与当前实情的差就摆在这里。点「清空」必须发出一次计数读取，句子写的是这一次读到的数字
+   （`近 7 天内的 N 条错误记录`）；点「取消」一个 DELETE 都不发、记录数不变；再点、确认 —— DELETE 的
+   `until` **正是那次读到的 `ts`**、`deleted` 与句子里那个数字相等、提示「已删除 N 条错误记录」，
+   随后表格、统计与顶部「N 条未预期错误」提醒一起归零。
+2. **「被拒的删除留着框和行，重试才清掉」** —— `page.route` 把 DELETE 拒成 500（`errors_store_closed`，
+   一个没有本地化映射的码，所以提示里就是服务端那句话）：框还开着、句子一字未变、没有成功提示、
+   记录数与删之前逐字相同；`unroute` 后重试才关闭并清零。
+   **`page.route` 的坑**：模式要写成 `**/api/projects/*/usage/errors*` —— 请求 URL 带查询串，不带结尾
+   `*` 时一条都匹配不上（第一版就是这么「删成功」的）。
+
+断言里的数字全部取自**页面自己收到的响应**（仪表盘那次、确认框那次读、DELETE 的 `deleted`）与
+`until` 参数本身，所以在被前面几次试跑弄脏的数据根上重跑也成立；读取用的过滤条件是**从仪表盘那次
+请求的 URL 换路径得到的**，不另写一份「最近 7 天」的日期，免得两种算法在边界上对不上。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**，core / server / web / ui / cli / hmr 六个 `Done`；
+  `gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— `UsageErrorsClearQuery`
+  只是被 `$ref` 到，字段变了不进清单。
+- `npx oxlint`：**0 警告 0 错误**（2219 文件）；改动文件 `prettier --check` 干净（新 spec 首跑一条，
+  `--write` 后复检）；`git diff --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— core **1399 通过 / 6 跳过**（68 文件）· ui **1043**（129）·
+  cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2947 通过 / 4 跳过**
+  （+1 正是本笔新用例）。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`：脚本自己的 `mktemp`
+  数据根、mock 在 8931、服务端在 8930）：**91 passed（7.1m）、0 failed**（原 89 条 + 本笔 2 条）。
+  本笔单跑 **7.2s**，另在一个已被前几次试跑弄脏的数据根上反复跑通（幂等）。
+- **反证一（面板换回 `HEAD` 那一版：快照计数、不发 `until`，重建 web）**：用例①**红** ——
+  `page.waitForResponse(isCountRead, { timeout: 15_000 })` 超时，也就是「打开确认框时根本没有读计数」，
+  框里就会是快照那个更小的数字；恢复后 **2 passed**。
+- **反证二（`ErrorsRepo.conds()` 里拿掉 `until` 条件）**：新服务端用例红在 `deleted` 为 **3**
+  （应为 2 —— 晚到的那条也一起被删了），恢复后 `errors.test.ts` **64 passed**。
+- **真看一眼**（`r86look` 普通用户、1280×900，探针 `r86/look.mjs` / `r86/dialog.mjs`）：确认框写着
+  「将删除本项目 近 7 天内的 **2** 条错误记录，其余时间段的记录保留。／此操作不可恢复。」，点确认后
+  `DELETE …/usage/errors?from=2026-10-13&to=2026-10-19&until=2026-10-19T07%3A28%3A32.246Z` →
+  `{deleted: 2}`、提示「已删除 2 条错误记录」，面板「总数 0 / 暂无异常」、侧栏红点消失。
+  console 只有一条**按设计**的 `403 GET …/machines`（端点只给管理员，第七十九轮起记过），
+  **无其它 error、无其它 ≥400**。截图 `r86/shots/{panel,confirm-viewport,after}.png` 在 scratchpad。
+- 端口只用 8960 / 8961（探针、迭代与看界面）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 /
+  7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r86{,-look,-look2}`，一个字节没往
+  `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里仍没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；7.9 本轮勾掉。
+- **上游**：先看 `/root/penguin-harness` 在不在；不在就按 URL 路子拉一次，尖端仍是 `e32ca1ea` 的话没有新小件。
+- 若还从「本仓自己的验证设施」里挑，下一件建议是 **`data-tooltip-placement="right"` 的公司频道栏**
+  （第八十五轮那条只覆盖了折叠竖栏与右侧停靠面板，公司模式那条竖栏今天仍只有单测）；
+  再往后可以看 **模型库「同步预置模型」的写入顺序**（同一条「先写成功再收起」的线索，今天只有单测）。
+- 另记一条**已知但不属于本轮**的观感：确认框打开时，面板背后的「总数」仍是加载时那个更小的数
+  （本轮只保证句子里的数字与真正删掉的一致）；要不要在开框时也刷新仪表盘，是一处可选的后续。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。

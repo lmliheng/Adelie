@@ -1490,10 +1490,20 @@ export const getUsageErrors = (
  * trailing window and Agent the reads take, so what goes is what was on screen (for an admin,
  * the unattributed rows an admin's panel shows included). Owner only. Answers how many rows
  * were deleted.
+ *
+ * `until` is the newest record the confirmation's own read could see: the delete stops there,
+ * so the number the dialog named is the number that goes even when a record lands in between.
  */
 export const clearUsageErrors = (
   projectId: string,
-  params: { from?: string; to?: string; fromTs?: string; toTs?: string; agentId?: string },
+  params: {
+    from?: string;
+    to?: string;
+    fromTs?: string;
+    toTs?: string;
+    until?: string;
+    agentId?: string;
+  },
 ) =>
   apiFetch<UsageErrorsClearResponse>(
     `/api/projects/${encodeURIComponent(projectId)}/usage/errors`,
@@ -1504,6 +1514,7 @@ export const clearUsageErrors = (
         to: params.to,
         fromTs: params.fromTs,
         toTs: params.toTs,
+        until: params.until,
         agentId: params.agentId,
       },
     },

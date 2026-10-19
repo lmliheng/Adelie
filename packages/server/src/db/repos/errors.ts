@@ -60,6 +60,13 @@ export interface ErrorFilter {
    */
   fromTs?: string;
   toTs?: string;
+  /**
+   * Inclusive upper instant bound (`ts <= until`): the newest record a clear's confirmation
+   * counted. A clear carries it so it removes exactly the set the sentence named, even though
+   * a record can land between the read that produced the count and the delete — the cost
+   * center records one of its own requests on every load.
+   */
+  until?: string;
   agentId?: string;
   /** One error category (`unexpected` / `expected`); absent counts both, which is what the panel shows. */
   kind?: string;
@@ -188,6 +195,10 @@ export class ErrorsRepo implements ErrorLog {
     if (f.toTs !== undefined) {
       conds.push("ts <= :toTs");
       params.toTs = f.toTs;
+    }
+    if (f.until !== undefined) {
+      conds.push("ts <= :until");
+      params.until = f.until;
     }
     if (f.agentId !== undefined) {
       // Filtering by Agent naturally leaves only that Agent's errors (HTTP / process-level errors have no agent_id).

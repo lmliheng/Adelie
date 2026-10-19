@@ -9,9 +9,10 @@
  * of the error detail table, for paging back past the first page the dashboard already
  * returns (both reads also take `utcOffsetMinutes`, the viewer's offset from UTC, whose
  * calendar day the table folds a day's repeats by);
- * DELETE /api/projects/:p/usage/errors?from&to&fromTs&toTs&agentId — empties that table for
- * the filter the panel is showing (owner only; `from`/`to` are required, unlike on the reads;
- * an admin's clear also takes the unattributed rows an admin's read shows);
+ * DELETE /api/projects/:p/usage/errors?from&to&fromTs&toTs&until&agentId — empties that table
+ * for the filter the panel is showing (owner only; `from`/`to` are required, unlike on the
+ * reads; an admin's clear also takes the unattributed rows an admin's read shows; `until`
+ * stops at the newest record the confirmation counted);
  * GET /api/projects/:p/usage/model-totals — lifetime Token total per Model, unfiltered.
  */
 import { Hono } from "hono";
@@ -207,6 +208,11 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
       throw badRequest("from and to are both required.");
     }
     const window = tsWindowQuery(c);
+    // The boundary the confirmation counted, optional: without it the clear takes everything
+    // the filter matches, which is what a caller that never showed a count is asking for. A
+    // malformed instant is refused rather than dropped — a clear that quietly ignores its
+    // boundary would remove rows the sentence said were kept.
+    const until = optionalTsParam(c.req.query("until"), "until");
     const agentId = c.req.query("agentId");
     // The same admin visibility the reads above carry, so a clear takes exactly the rows the
     // caller's panel showed. An admin's panel shows the unattributed rows (login failures,
@@ -217,6 +223,7 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
       from,
       to,
       ...window,
+      ...(until !== undefined ? { until } : {}),
       ...(agentId !== undefined && agentId !== "" ? { agentId } : {}),
     });
     return c.json({ deleted } satisfies UsageErrorsClearResponse);

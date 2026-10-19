@@ -128,12 +128,17 @@ export interface UsageErrorsQuery {
  * and the trailing window when one is on — and Agent, read with the same admin visibility the
  * panel has. No `kind`: the panel offers no such control, so a clear has no narrowing the
  * reader could have seen.
+ *
+ * `until` is the boundary the confirmation counted: the newest record the dialog's own read
+ * could see. The delete stops there, so the sentence's number is the number that goes even
+ * when a record arrives between the two requests (loading the cost center records one itself).
  */
 export interface UsageErrorsClearQuery {
   from?: string;
   to?: string;
   fromTs?: string;
   toTs?: string;
+  until?: string;
   agentId?: string;
   /** Admin only, the value the caller's reads carry: an admin's clear takes the unattributed rows an admin's panel shows. */
   includeGlobalErrors?: boolean;
@@ -405,6 +410,7 @@ export class UsageService implements UsageQueries {
       ...(q.to !== undefined ? { to: q.to } : {}),
       ...(q.fromTs !== undefined ? { fromTs: q.fromTs } : {}),
       ...(q.toTs !== undefined ? { toTs: q.toTs } : {}),
+      ...(q.until !== undefined ? { until: q.until } : {}),
       ...(q.includeGlobalErrors === true ? { includeGlobal: true } : {}),
     });
   }
