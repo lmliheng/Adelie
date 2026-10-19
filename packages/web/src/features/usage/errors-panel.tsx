@@ -153,7 +153,7 @@ export function ErrorsPanel({
   filters,
   preset,
   canClear,
-  onCleared,
+  onReload,
 }: {
   errors: UsageErrors;
   projectId: string;
@@ -170,8 +170,13 @@ export function ErrorsPanel({
    * from offering an action that can only end in a 403.
    */
   canClear: boolean;
-  /** Reload the dashboard after a clear — the stats above the table are the caller's data. */
-  onCleared: () => void;
+  /**
+   * Reload the dashboard — the stats above the table are the caller's data, not this panel's.
+   * Called after a clear, and when the confirmation opens: the sentence names a count read at
+   * the click, and the stats behind it would otherwise keep the snapshot from before the page's
+   * own requests were answered, disagreeing with the dialog in front of the reader.
+   */
+  onReload: () => void;
 }) {
   const { total, unexpected, topCode, recent, rows } = errors;
   // Page size is read off the first page rather than duplicating the server's ERROR_RECENT_N:
@@ -257,11 +262,17 @@ export function ErrorsPanel({
       if (res.total === 0 || newest === undefined) {
         // Emptied between the dashboard's read and this click: nothing to confirm, so the
         // panel catches up instead of offering a delete of nothing.
-        onCleared();
+        onReload();
         return;
       }
       setConfirmTarget({ total: res.total, until: newest });
       setConfirmingClear(true);
+      // The stats above the table still show the dashboard's snapshot, which is older than this
+      // read by exactly the requests that made this dialog necessary (loading the cost center
+      // records an expected 403 of its own). Refresh in the background, not awaited: the
+      // confirmation must open on the count it just read even if that second request is slow or
+      // fails.
+      onReload();
     } catch (e) {
       toastError(apiErrorText(e));
     } finally {
@@ -281,7 +292,7 @@ export function ErrorsPanel({
       toastSuccess(S.usage.errorsClearDone(res.deleted));
       // The stats above the table are the dashboard's own numbers, so the whole response is
       // refetched rather than patched here; that also restores page 0 from the new snapshot.
-      onCleared();
+      onReload();
     } catch (e) {
       toastError(apiErrorText(e));
     } finally {

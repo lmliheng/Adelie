@@ -491,8 +491,9 @@ export function UsagePage() {
             // Clearing the log is a Project-level management operation, gated on the owner
             // by the route; a member reads the panel without the action.
             canClear={currentProject?.role === "owner"}
-            // Reload both the table and its notice after clearing the log.
-            onCleared={() => {
+            // Reload the table, its stats and its notice: after clearing the log, and when
+            // the clear confirmation opens (so the panel behind it agrees with its sentence).
+            onReload={() => {
               void load();
             }}
           />

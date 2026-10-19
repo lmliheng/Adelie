@@ -60,7 +60,7 @@ function render(
       projectId: "p1",
       filters: opts.filters ?? FILTERS,
       canClear: opts.canClear ?? true,
-      onCleared: () => {},
+      onReload: () => {},
     }),
   );
 }
@@ -124,7 +124,7 @@ describe("ErrorsPanel rows", () => {
         projectId: "p1",
         filters: FILTERS,
         canClear: true,
-        onCleared: () => {},
+        onReload: () => {},
       }),
     );
     expect(html).toContain(S.usage.errorsPageOf(1, 3, 25));
