@@ -1136,6 +1136,20 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       用例①**红**在「打开确认框时没有读计数」（15 s 超时），恢复后 2 passed；把服务端的 `until`
       条件拿掉 → 新增的服务端用例红在 `deleted: 3`（应为 2），恢复后该文件 64 passed。细节与实测见该节。
 
+- [x] **7.10 公司竖栏的频道提示有了真浏览器用例（5.35 的第三块）**（**2026-10-19 第八十七轮**落地，
+      提交见该节；1 个新文件 `packages/web/e2e/company-rail-hints.spec.mjs`，两条用例，
+      **无源码改动、无新依赖**）：第八十五轮钉住的是开发模式那根竖栏与右侧停靠面板，而**公司模式的竖栏
+      （`ChannelRailRows`）一直只有 `packages/ui` 的单测**——它不是同一根条：频道行的提示里还折着未读数
+      （或「@我」数，`badgeNote`）、行排在页面入口之下、当前频道那一行带 `aria-current`。两条用例：
+      ① 创造组织、切公司模式、打开全员频道、把侧栏折成 48 px 竖栏（**等宽度动画落定再量**——折到一半的
+      `aside` 报的还是展开时的边），悬停「全员频道」：面板由 `left` 定位、等于行的右边缘 + 8、整块在竖栏
+      之外、竖直中点与行相差 ≤1.5 px、整块在窗口内、`maxWidth` 的 `room` 正是「视口宽 − left − 8」，
+      指针移开面板即消失；② 另一位成员在本读者离开频道之后写一条，重载后那一行变成
+      「全员频道 · N 条未读」——悬停得到同一整句、按同一条规则落位；数字取自服务端那份频道列表
+      （`unread` / `mentionsMe`），不写死，且钉住行的计数徽标是 `aria-hidden`（名字与提示必须说同一句，
+      面板不能重复）。反证（拿掉 `data-tooltip-placement="right"` → 两条都红；让提示不带未读注记 →
+      第二条红、第一条照旧绿）与实测见该节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1743,6 +1757,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-19 | 7.7 | **成本中心「标记已读」的两半有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/cost-center-read.spec.mjs`，174 行 / 两条用例，**无源码改动、无新依赖**）：5.40（第六十二轮）修的两件事——成本中心加载时重读未预期错误探针、`dismissTodo` 在写入成功之后才收起——此前只有第六十二轮的一次性探针，而两半都只在「页面早就打开、新的错误在打开之后才到」这种情形下才暴露。用例①：先用 mock 的 401 分支造一条未预期错误（`error_records` 里是 `llm_fatal` / `unexpected`），打开 `/chat/<会话>` 并**抓住应用自己那次探针请求**（记下启动时的 `total`），**等过记录器 2 秒去重窗口**再用第二个会话走 403 配额分支造第二条，然后点侧栏的「成本中心」在应用内换页 —— `page.on("response")` 收到的新探针 `total` 必须变大、页面提醒写的就是这个数字、换页前写到 `window` 上的标记还在（证明没有整页重载）；点「标记为已读」后 `ui_prefs.todoDismissed[项目].errors` 必须是**最新那条错误的 `ts`**，重载后提醒不回来。用例②：`page.route` 把 `PUT /api/me/prefs` 拒成 400 —— 提醒留着、弹出服务端那句话、存下的标记与点之前逐字相同；`unroute` 后重试才收起。**为什么用真错误、不直接写库**：spec 拿不到 `run.sh` 的 `mktemp` 数据根，两条失败又都是产品自己的路径（401 认证 / 403 配额），真跑一遍反而更接近读者遇到的形态；断言里的数字全部取自页面自己收到的响应，所以在同一个数据根上重跑也成立 | 六包 `typecheck` **`EXIT=0`**（`pnpm typecheck` 十四个 `Done`，含 core / server / web / ui / cli / hmr；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2217 文件）· 新文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，自带 `mktemp` 数据根、mock 在 8931、服务端在 8930）：**87 passed（6.5m）、0 failed**（原 85 条 + 本笔 2 条；本笔单跑 6.1s）· **反证一（拿掉加载时那次刷新，重建 web）**：`usage-page.tsx` 的 `refreshProjectTodos(projectId)` 注释掉 → 用例①**红**在「探针 `total` 没有变大」（`Expected: > 9, Received: 9`，15 s 内一直停在启动时那个数）· **反证二（`dismissTodo` 换回乐观写）**：本地状态先落、PUT fire-and-forget、失败吞掉 → 用例②**红**在「没有那句提示」（提醒当场消失、用户以为存住了）· 还原两份源码、重建、再跑 → **2 passed** · **真看一眼**（`costread` 普通用户、1280×900，探针 `r84/look.mjs`）：提醒是「15 条未预期错误」（数据根上累积的），按钮 `aria-label` 为「标记已读 · 15 条未预期错误」；点掉并重载后提醒计数 **0**；console 只有两条**按设计**的 `GET …/machines` **403**（第七十九 / 八十二 / 八十三轮记过，端点只给管理员），无其它 error、无其它 ≥400；截图 `r84/shots/{usage-notice,usage-notice-hover,usage-after-read}.png` 在 scratchpad · 端口只用 8944 / 8945（探针与迭代）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r84{,-run,-probe}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-19 | 7.8 | **5.35 的另一半有了真浏览器用例：竖栏向右展开、右半窗口按右边缘对齐**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/tooltip-beside.spec.mjs`，221 行 / 两条用例，**无源码改动、无新依赖**）：5.35 那一笔的两个**横向**分支——竖栏里的提示向右展开（`besideTrigger`：`left = 条目右边缘 + 8`、竖直居中、`room = 视口宽 − left − 8`）、`belowTrigger` 在控件位于窗口右半边时按右边缘对齐并向左生长——此前只有 `packages/ui/test/tooltip.test.ts` 在验这两个函数返回的数字，套件里没有一条用例让应用根部那一个 `TooltipLayer` 真听见指针、量真盒子、按真视口落位（7.5 钉住的是竖向那一半与两条「什么时候该弹」的规则）。用例①：点「收起侧栏」折成 48 px 竖栏（**先 `expect.poll` 等宽度动画落定** —— 首次实测中途量的 `closest("aside")` 还是 101.78，正是折到一半），悬停「插件市场」断言 `left` 定位、等于条目右边缘 + 8、`right` 为空、竖直中点相差 ≤1.5 px、面板整块在屏内、`maxWidth` 里的 `room` 正是「视口宽 − left − 8」、且不在竖栏的图标之上；再悬停竖栏顶部的「展开侧栏」（**按钮而非链接**、提示带 `useShortcutTitle` 的快捷键后缀，所以用 `toContainText`）复核同一侧、最靠近窗口顶边时也不出屏。用例②：真会话绑一个临时工作区、`dock-toggle-right` + `dock-pick-workspace` 打开右侧文件面板，悬停「刷新」——先断言控件中心在窗口右半边（没有右对齐分支时它会长出窗外），面板由 `right` 定位（= 视口宽 − 控件右边缘）、`left` 为空、右边缘与控件右边缘重合、挂在控件下方 8 px、整块在屏内、`room` 跟着那条右边缘算 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不碰源码）· `npx oxlint` **0 警告 0 错误**（2218 文件）· 新文件 `prettier --check` 干净（首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2946 通过 / 4 跳过**（hmr 无测试文件）· **真服务 + 真浏览器整套 e2e**（`pnpm -C packages/web test:e2e`，自带 `mktemp` 数据根、mock 在 8931、服务端在 8930）：**89 passed（7.1m）、0 failed**（原 87 条 + 本笔 2 条；本笔单跑 6.0s；另在复用数据根上 `--repeat-each=3` 连跑 6 次全绿，幂等也一并验了）· **反证（两处横向规则一起改坏，重建 web）**：`besideTrigger` 改成 `return belowTrigger(rect, viewport)`（面板挂到条目下方、按左边缘对齐）、`belowTrigger` 删掉右半边那个分支（一律左对齐）→ **2 failed**：① 死在 `inlineLeft`（实测 **8**，期望 **48**，差的 40 就是「条目左边」与「条目右边 + 8」之差）；② 死在 `expect(placed.inlineRight).not.toBe("")`（右对齐分支没了，面板改由 `left` 定位）；还原源码、重建、再跑 → **2 passed** · **整套第一跑时 ① 红过一次**：`expect(placed.rect.left).toBeGreaterThanOrEqual(railRight)` 拿到 **48 vs 48.92**（竖栏那条边是亚像素量出来的，比条目盒子给出的整数多一点点），改成「允许 1 px」并在注释里写明原因后全绿 —— 记在这里，免得下一轮把它当成真回归 · **真看一眼**（`sideview` 普通用户、1280×900，探针 `r85/look.mjs`）：竖栏面板 `left: 48px`、文字「插件市场」、矩形 48–114 × 197–223（在条目 194–226 的竖直中点）；文件面板「刷新」的面板 `right: 365px`、文字「刷新」、矩形 873–915 × 187–213（右边缘与按钮重合、挂在按钮下方）；console 只有**两条按设计**的 `GET /api/projects/…/machines` **403**（第七十九 / 八十二 / 八十三 / 八十四轮记过，端点只给管理员），**无其它 error、无其它 ≥400**；截图 `r85/shots/{rail-beside,dock-refresh}.png` 在 scratchpad · 端口只用 8950 / 8951（探针与迭代）、8952 / 8953（看界面）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r85{,-look}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-19 | 7.9 | **成本中心「清空错误」的确认与写入顺序**（不是移植：一处真修复 + 本仓自己的测试设施；源码 4 个 -- 服务端仓储/服务/路由各一处加 `until`、web 的 `endpoints.ts` 与 `errors-panel.tsx`，另有 `server-api` 中英文档、changelog 一对、1 个新 e2e 文件与 1 条服务端用例）：量出来的缺陷是**确认框写的条数比删掉的少** —— 句子的数字取自仪表盘快照，而加载成本中心自己会记一条错误（成员界面读机器列表得到 403 `admin_required`，算预期内），所以「将删除……1 条」后面跟着 `{deleted: 2}`。现在点「清空」先按屏幕上的过滤条件重读一页（`limit: 1`），用它的 `total` 写句子、用这一页最新记录的 `ts` 作 `until` 发给 `DELETE /usage/errors`（新可选参数，只删 `ts <= until` 的行），两次请求之间到达的记录因此被留下。「清空」按钮在读取期间置灰；范围为空的竞态下不弹框、直接刷新；删除失败时框与句子都留着 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）**，本笔不动契约字段）· `npx oxlint` **0 警告 0 错误**（2219 文件）· 改动文件 `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2947 通过 / 4 跳过**（+1 正是本笔新用例）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，自带 `mktemp` 数据根、mock 在 8931、服务端在 8930）：**91 passed（7.1m）、0 failed**（原 89 条 + 本笔 2 条；本笔单跑 7.2s，另在一个被前几次试跑弄脏的数据根上反复跑通）· **反证一（面板换回 `HEAD` 那一版：快照计数、不发 `until`，重建 web）**：用例①**红** —— 打开确认框后 15 s 内没有任何计数读取（`page.waitForResponse` 超时），恢复后 **2 passed** · **反证二（`ErrorsRepo.conds` 里拿掉 `until` 条件）**：新服务端用例红在 `deleted` 为 3（应为 2，晚到的那条一起被删），恢复后 `errors.test.ts` **64 passed** · **改前的一次性探针带出的实情**：`dashboard errors.total at load 1`、随后 API 读到 `expected/admin_required×1 + unexpected/llm_fatal×1`、句子「近 7 天内的 1 条错误记录」、`{deleted: 2}` · 端口只用 8960 / 8961（探针与迭代）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r86{,-look}`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `6f1b9c11` |
+| 2026-10-19 | 7.10 | **公司竖栏（公司模式侧栏折起来的 48 px 竖栏）的频道提示有了真浏览器用例**（不是移植，是补本仓自己的测试设施；1 个新文件 `packages/web/e2e/company-rail-hints.spec.mjs`、两条用例，changelog 一对，**无源码改动、无新依赖**）：第八十五轮钉的是开发模式竖栏与右侧停靠面板，公司模式那根条一直只有 `packages/ui` 的单测 —— 它的行把未读数（或「@我」数）折进同一句提示、排在页面入口之下、当前频道那行带 `aria-current`。用例①：创造组织 → 切公司模式 → 打开全员频道 → 折成竖栏（等宽度动画落定）→ 悬停「全员频道」，面板由 `left` 定位在行的右边缘 + 8、整块在竖栏之外、竖直居中（±1.5 px）、整块在窗口内、`maxWidth` 的 `room` = 视口宽 − left − 8，指针移开即消失；用例②：另一位成员在本读者离开频道后写一条，重载后行名与提示都是「全员频道 · N 条未读」（N 取自服务端频道列表，不写死），徽标 `aria-hidden` 所以提示与可访问名必须说同一整句、面板不重复 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）**）· `npx oxlint` 对新文件 **0 警告 0 错误** · 新文件 `prettier --check` 干净（首跑一条，`--write` 后复检）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2947 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，自带 `mktemp` 数据根、mock 在 8931、服务端在 8930）：**93 passed（7.2m）、0 failed**（原 91 条 + 本笔 2 条；本笔单跑 7.5 s，另在 8960 上自起服务反复跑通）· **反证一（拿掉行上的 `data-tooltip-placement="right"`，重建 web）**：两条都**红**在「面板从行的右侧间隙开始」（面板改由下方展开，`left` 落在 8），恢复后 **2 passed** · **反证二（`badgeNote` 返回 `null`，重建 web）**：第二条红在「按那句完整名字找不到这一行」，第一条照旧绿，恢复后 **2 passed** · 端口只用 8960 / 8961（探针与迭代）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r87`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本节提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -11323,4 +11338,84 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   再往后可以看 **模型库「同步预置模型」的写入顺序**（同一条「先写成功再收起」的线索，今天只有单测）。
 - 另记一条**已知但不属于本轮**的观感：确认框打开时，面板背后的「总数」仍是加载时那个更小的数
   （本轮只保证句子里的数字与真正删掉的一致）；要不要在开框时也刷新仪表盘，是一处可选的后续。
+- 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第八十七轮：公司竖栏的频道提示有了真浏览器用例（2026-10-19，条目 7.10）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `2af7b70a`（第八十六轮的台账笔），
+  `git fetch origin && git merge --ff-only origin/main` = Already up to date（没切分支、没碰
+  `legacy/main`、没推 upstream、没改 remote 配置）。
+- 上游：`/root/penguin-harness` 仍不在；照第二十三轮那条路按 URL 现拉
+  （`git fetch https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r87`），
+  尖端仍是 **`e32ca1ea`**（`git log --oneline e32ca1ea..refs/adelie-tmp/upstream-main-r87` 一条都没有），
+  这一轮没有新的上游小件可挑。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（剩下的活全在桌面壳一侧与既有部署单元里，本轮纪律不许碰
+  desktop），其后 **3.5**（要拍板取哪个桌面壳）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、
+  **5.6** / **5.10**（要拍板 / 要新依赖）同样不可动；7.1–7.9 已勾掉。于是照第八十六轮末尾写下的建议
+  做 **7.10**：`data-tooltip-placement="right"` 的公司频道栏。
+
+### 先量清楚（真服务 + 真浏览器，不是推测）
+
+一次性数据根 `/root/adelie-fork-data/r87`，服务端起在 `localhost:8960`、自带 `mock-llm.mjs` 在 `8961`，
+`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`；视口 1280×900。探针（`r87/probe*.mjs`）量出四件事：
+
+- **竖栏是 48 px，行是 48 里的 32 px 图标**：`aside` 宽 48、行盒 `x=8,w=32`。面板 `left` = 行的右边缘
+  （40）+ 8 = **48**，正好贴在竖栏外沿；竖直中点与行中点逐像素相同；`maxWidth` =
+  `min(16rem, 1224px)` = 视口宽 1280 − left 48 − 边距 8。
+- **量宽度必须等动画落定**：折起来是宽度过渡，折到一半时 `aside.right` 报 **283.89 → 67.03 → 48**
+  —— 探针第一版在 67 那一刻去看，会以为面板压住了竖栏 4 px。用例因此轮询到 `right ≤ 48.5` 才量。
+- **开发竖栏与公司竖栏同一条规则**：开发模式同一台服务上「插件市场」`aside.right` 也在动画后归 48、
+  面板 `left` 同样是 48（第八十五轮那条的前提因此复现）。
+- **未读是怎么来的**：全员频道在新组织里是空的；读者**离开频道之后**由另一位成员写一条，`GET …/channels`
+  报 `unread: 1`，行名与提示都变成「全员频道 · 1 条未读」。反过来，读者**还在频道页上**时到达的那条会被
+  当场标记已读（`unread: 0`）——这一条决定了用例的顺序。
+
+### 改了什么（1 个新文件 + changelog 一对，无源码改动）
+
+- `packages/web/e2e/company-rail-hints.spec.mjs`：两条用例，都是真浏览器 + 应用根部那一个
+  `TooltipLayer`：
+  1. **「a channel's hint opens beside the company rail, not over it」** —— 经 API 创造组织（本 spec
+     只关心竖栏，不走新建对话框）、切公司模式、打开全员频道、折成竖栏，悬停「全员频道」：面板由 `left`
+     定位、等于行右边缘 + 8、整块在竖栏之外、竖直居中（±1.5 px）、整块在窗口内、`maxWidth` 的 `room`
+     正是「视口宽 − left − 8」；指针移开后面板消失（它是指针的，不属于页面）。
+  2. **「a row's hint carries the unread count the badge cannot read」** —— 读者先看一眼频道（空的）、
+     离开；另一位成员（先加进 Project）写一条；重载后行名是「全员频道 · N 条未读」，悬停得到同一整句、
+     按同一条规则落位，并钉住那枚计数徽标是 `aria-hidden`（所以名字与提示必须说同一整句，面板不能把
+     计数再说一遍）。N 取自服务端那份频道列表（`unread` / `mentionsMe`），不写死。
+- 断言的写法与第八十五轮一致：**对着行的真盒子与真视口算**，不写死像素；`room` 的比较直接取
+  「视口宽 − (行右边缘 + 8) − 8」这个表达式，布局变了而规则没变就用例仍然绿。
+- `changelog/unreleased/2026-10-19-company-rail-hints.{md,zh.md}`：中英一对。
+- **产品代码一个字节没改**（第七十一轮起这条队列都是「把已有规则钉进套件」，不是修产品）。
+
+### 验证
+
+- 六包 `typecheck`：**`EXIT=0`**，core / server / web / ui / cli / hmr 六个 `Done`；
+  `gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）**。
+- `npx oxlint` 对新文件 **0 警告 0 错误**；`prettier --check` 首跑报一处格式（`--write` 后复检干净）；
+  `git diff --check` 干净。
+- 逐包 test：全部 `EXIT=0`、**0 失败** —— core **1399 通过 / 6 跳过**（68 文件）· ui **1043**（129）·
+  cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2947 通过 / 4 跳过**。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`：脚本自己的 `mktemp`
+  数据根、mock 在 8931、服务端在 8930）：**93 passed（7.2m）、0 failed**（原 91 条 + 本笔 2 条）。
+  本笔单跑 **7.5 s**，在 8960 那个自起服务上也反复跑通（幂等：用户与组织都按本次运行新起）。
+- **反证一（拿掉 `ChannelRailRows` 行上的 `data-tooltip-placement="right"`，重建 web）**：两条都**红**在
+  「the panel starts at the gap after the row」——面板改由下方展开、`left` 落在 8（`|8 − 48| = 40`）；
+  恢复后 **2 passed**。
+- **反证二（让 `badgeNote` 返回 `null`，重建 web）**：第二条**红**在「按 `全员频道 · 1 条未读` 找不到
+  这一行」，第一条照旧绿（全员行本来没有注记）；恢复后 **2 passed**。
+- 端口只用 8960 / 8961（探针、迭代与单跑）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 /
+  7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r87`，一个字节没往 `~/.penguin` /
+  `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- **待办里仍没有可做的一轮内条目**：2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+  4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；7.10 本轮勾掉。
+- **上游**：先看 `/root/penguin-harness` 在不在；不在就按 URL 路子拉一次，尖端仍是 `e32ca1ea` 的话没有新小件。
+- 若还从「本仓自己的验证设施」里挑，下一件建议是 **模型库「同步预置模型」的写入顺序**
+  （第八十六轮末尾记的那条「先写成功再收起」的线索，今天只有单测）；再往后是**成本中心确认框打开时
+  顺手刷新仪表盘**（第八十六轮记的可选后续，属产品行为的小改）。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
