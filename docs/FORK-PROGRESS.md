@@ -11523,6 +11523,9 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   （`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）。
 - 没有切版本号、没发 npm、没发安装包、没发发布汇总。
 - 提交：**`24570540`**（4 个文件 / +269 −8），已推 `main`。
+- **汇报邮件没发出去**：本机到 202.197.0.0/16 仍不通（`mail.py check` 一次性 `timeout 30` 即 124，
+  未重试登录）。正文写好在 scratchpad 的 `r88/mail-body.txt`，并登记进 `csu-mail-retry` 补发队列第 66 条；
+  已用飞书补发一条同样的简报（`om_x100b62571283c8a4ddddd2ed80ab2fe`）。
 
 ### 下一轮从这里接
 
