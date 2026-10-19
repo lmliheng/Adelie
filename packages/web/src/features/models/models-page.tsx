@@ -1680,20 +1680,35 @@ export function ModelsPage() {
           open
           title={S.models.deleteGroupTitle}
           tone="danger"
+          busy={busy}
           onClose={() => setDeleteGroupFor(null)}
           onConfirm={() => {
             const target = deleteGroupFor;
-            setDeleteGroupFor(null);
+            const before = rows;
             const removed = rows.filter((r) => r.provider === target);
-            if (removed.length === 0) return;
+            if (removed.length === 0) {
+              setDeleteGroupFor(null);
+              return;
+            }
             // Same pointer rule as single-model delete: a default/vision reference into the
             // deleted group is dropped, otherwise the server rejects the dangling pair.
+            // Only a written delete dismisses the dialog. A refused one has to put the group
+            // back on the page as well: `persist` keeps the attempted rows for a field edit the
+            // user is still holding, but a refused group delete would otherwise leave the page
+            // without that group while the server still holds it — and the group's own header,
+            // the only way back to this action, goes with it, so the retry needs a reload
+            // (measured on a refused write: dialog gone, no `probegroup` anywhere on the page,
+            // 2 rows still on the server). Keeping the confirmation means the retry is the same
+            // click, against the sentence whose count the restored rows still match.
             void persist(
-              rows.filter((r) => r.provider !== target),
+              before.filter((r) => r.provider !== target),
               defaultModel?.provider === target ? undefined : defaultModel,
               visionModel?.provider === target ? undefined : visionModel,
               S.models.groupDeleted(removed.length),
-            );
+            ).then((saved) => {
+              if (saved) setDeleteGroupFor(null);
+              else setRows(before);
+            });
           }}
           confirmLabel={S.common.confirm}
           cancelLabel={S.common.cancel}
