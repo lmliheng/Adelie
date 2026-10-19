@@ -955,9 +955,12 @@ export function ModelsPage() {
    * on the facts it tracks about a model, while base URLs, keys and output caps stay as this
    * install has them, and local additions are untouched — see catalog-sync.ts). No-op with a
    * toast when everything is already up to date.
+   *
+   * Returns whether the table in hand now matches what the catalog holds — `true` for the no-op
+   * too. The notice's confirmation keeps itself open until then.
    */
-  const syncPresets = async () => {
-    if (!rows) return;
+  const syncPresets = async (): Promise<boolean> => {
+    if (!rows) return false;
     const merged = syncRowsWithCatalog(rows);
     if (merged.added === 0 && merged.updated === 0) {
       toastInfo(S.models.syncUpToDate);
@@ -966,18 +969,27 @@ export function ModelsPage() {
       // of. Without it the notice keeps offering a button that can only answer "already
       // up to date" — a loop the user gets out of only by dismissing or reloading.
       refreshProjectTodos(projectId);
-      return;
+      return true;
     }
-    await persist(
+    // A refused write takes the merge back off the screen. `persist` keeps the attempted rows
+    // for a field edit the user is still holding, but a preset sync is a batch the catalog
+    // describes, and those rows are exactly what the server declined: left on screen they make
+    // the retry compute an empty delta, so it answers "already up to date" without sending
+    // anything while the notice still names every missing entry (measured on a refused write:
+    // the retry produced no PUT at all and the server kept its old table).
+    const before = rows;
+    const saved = await persist(
       merged.rows,
       defaultModel,
       visionModel,
       S.models.syncDone(merged.added, merged.updated),
     );
+    if (!saved) setRows(before);
     // The Models nav badge is gated on the SAVED table, which this page holds only as row
     // state: re-probe it so the dot goes down on the server's answer rather than on the
     // assumption that the write covered everything the catalog offered.
     refreshProjectTodos(projectId);
+    return saved;
   };
 
   const syncPlatformModels = async () => {
@@ -1712,10 +1724,15 @@ export function ModelsPage() {
           onClose={() => setSyncConfirmOpen(false)}
           onConfirm={() => {
             setSyncing(true);
-            void syncPresets().finally(() => {
-              setSyncing(false);
-              setSyncConfirmOpen(false);
-            });
+            // Only a written merge dismisses the dialog. A refused one keeps the sentence and
+            // the list of refs it names, so the retry is this same confirmation — the table
+            // behind it has been put back, and finding the notice again to start over is work
+            // the failure does not justify.
+            void syncPresets()
+              .then((saved) => {
+                if (saved) setSyncConfirmOpen(false);
+              })
+              .finally(() => setSyncing(false));
           }}
         >
           <div className="space-y-3">
