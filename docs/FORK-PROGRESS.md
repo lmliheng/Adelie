@@ -11306,7 +11306,12 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r86{,-look,-look2}`，一个字节没往
   `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，未 `git add`）。
 - 没有切版本号、没发 npm、没发安装包、没发发布汇总。
-- 提交：**`6f1b9c11`**（12 个文件 / +589 −13）。
+- 提交：**`6f1b9c11`**（12 个文件 / +589 −13），台账提交 `3ec76095`，已推 `main`
+  （`90a6220c..3ec76095`）。
+- **汇报邮件没发出去**：本机到 202.197.0.0/16 仍不通（`imap.csu.edu.cn:993`、`smtp.csu.edu.cn:465`、
+  `mail.csu.edu.cn:443` 三个握手都超时，`mail.py check` / `send` 各超时一次即停，未重试登录）。正文写好在
+  scratchpad 的 `r86/mail-body.txt`，并登记进 `csu-mail-retry` 补发队列第 64 条；已用飞书补发一条同样的
+  简报（`om_x100b6268c7592900dff1c6ed1b358be`）。
 
 ### 下一轮从这里接
 
