@@ -30,6 +30,14 @@
  * stop). Settings › Appearance turns the icon off and on, reaching the shell over the same
  * utilityProcess relay the client updater uses.
  *
+ * Desktop pet: a small frameless, transparent, always-on-top window showing the Web App's own
+ * `/pet` route — the Adelie penguin, which announces schedule firings, tool calls waiting for
+ * approval and budget warnings, and reports the model balance and the client-update state when
+ * clicked (see pet-window.ts and pet-prefs.ts; the preference lives in userData/pet.json and
+ * defaults to off). Settings › Appearance turns it on and off over that same relay. Being a page
+ * of this same origin, it is a plain browser with no IPC bridge of its own — the whole reason it
+ * can be delivered by the platform rather than the shell.
+ *
  * Built-in browser: the main window (and no other) may host <webview> guests in the
  * `persist:penguin-browser` partition, and builtin-browser.ts relays raw CDP and cookie writes
  * for them over that same port. That relay is the only part of the browser the shell carries,
@@ -58,7 +66,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { app, BrowserWindow, dialog, session, shell } from "electron";
+import { app, BrowserWindow, dialog, screen, session, shell } from "electron";
 import type { WindowOpenHandlerResponse } from "electron";
 import { resolveRoot } from "@adelie/core";
 import { mintApiToken } from "@adelie/server/auth-token";
@@ -95,6 +103,8 @@ import {
   trayStatusMessage,
   updateTrayPrefs,
 } from "./tray-prefs.js";
+import { parsePetCommand, petStatusMessage, readPetPrefs, updatePetPrefs } from "./pet-prefs.js";
+import { PET_WINDOW_OPTIONS, petShotPath, petWindowPosition, petWindowUrl } from "./pet-window.js";
 import { getUpdaterStatus, handleUpdaterCommand, initUpdater, onUpdaterStatus } from "./updater.js";
 import { parseUpdaterCommand, updaterStatusMessage } from "./updater-status.js";
 import {
@@ -131,6 +141,12 @@ let win: BrowserWindow | null = null;
 let tray: TrayHandle | null = null;
 /** The Appearance switch's value; the tray exists exactly while this is true and one could be created. */
 let showTrayIcon = true;
+/**
+ * The pet window, and the Appearance switch's value for it. The window exists exactly while the
+ * preference is on and the app origin is known (see openPet).
+ */
+let petWin: BrowserWindow | null = null;
+let showPet = false;
 /**
  * The language the tray menu is drawn in. Seeded from the stored report, or from the device
  * when there is none, so the first menu of a fresh launch is already right — the Web App's
@@ -231,7 +247,16 @@ function createWindow(url: string): void {
   });
   win.on("closed", () => {
     win = null;
+    // The pet is chrome of this app, and chrome does not keep it alive: `window-all-closed` is
+    // what quits on Windows and Linux, and a floating penguin that held that back would leave a
+    // running server behind a window nobody can get back to. Only where closing the last window
+    // really does end the app — macOS keeps it in the Dock, and keeps the pet with it.
+    if (process.platform !== "darwin") closePet();
   });
+  // The pet window waits for this: its page signs in with the same cookie this load is what
+  // establishes (see openPet). Idempotent, and it re-checks the preference, so a later load of
+  // the main window is where a pet that was switched on before boot finally appears.
+  win.webContents.on("did-finish-load", () => openPet());
   // New windows, from this window and from every window it opens, go through one rule
   // (classifyWindowOpen): only the Workspace preview hand-off, a preview page and a detached
   // terminal get a window of this app; other sites go to the system browser; anything else
@@ -557,13 +582,93 @@ function setTrayLocale(next: TrayLocale): void {
   pushTrayStatus();
 }
 
+// --- the desktop pet -------------------------------------------------------
+
+/**
+ * Creates the pet window if the preference asks for one, the app origin is known and there is
+ * none. Idempotent, and called from three places: app boot has finished, the main window has
+ * finished a load (its cookie is what the pet page signs in with — see below), and the
+ * Appearance switch has just been turned on.
+ *
+ * The window is a second plain browser on this app's own origin, showing `/pet`, so it needs
+ * nothing the main window does not already have: no preload, no IPC bridge, no separately served
+ * page. That is also why it waits for the main window's first load — the session cookie arrives
+ * with it, and a pet page that asked too early would render its "not signed in" nothing and never
+ * ask again.
+ */
+function openPet(): void {
+  if (quitting || !showPet || petWin !== null || appOrigin === null) return;
+  const origin = appOrigin;
+  // On the display the app window is on, beside its bottom-right corner: the pet is a companion
+  // to the window the user is working in, not to whichever monitor the cursor happens to be on.
+  const display =
+    win !== null && !win.isDestroyed()
+      ? screen.getDisplayMatching(win.getBounds())
+      : screen.getPrimaryDisplay();
+  const pet = new BrowserWindow({
+    ...PET_WINDOW_OPTIONS,
+    ...petWindowPosition(display.workArea),
+  });
+  petWin = pet;
+  // Chrome, not a browsing surface: it opens no window, and a navigation that leaves the app
+  // goes to the system browser like any other (the pet page itself has no links).
+  pet.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
+  pet.webContents.on("will-navigate", (event, target) => {
+    if (!isAppUrl(target, appOrigin)) {
+      event.preventDefault();
+      openInSystem(target);
+    }
+  });
+  // Shown only once it has painted: a transparent window that has drawn nothing is a flash of
+  // the desktop showing through. showInactive, because the pet appearing must not take the focus
+  // away from whatever the user is typing into.
+  pet.once("ready-to-show", () => {
+    if (!pet.isDestroyed()) pet.showInactive();
+  });
+  pet.on("closed", () => {
+    petWin = null;
+  });
+  void pet.loadURL(petWindowUrl(origin));
+}
+
+/**
+ * Closes the pet window, now. `destroy` rather than `close`: switching the pet off is a decision
+ * about chrome, nothing in it can be unsaved, and a renderer that is wedged must not be able to
+ * keep a window on screen after the user asked for it to go.
+ */
+function closePet(): void {
+  petWin?.destroy();
+  petWin = null;
+}
+
+/**
+ * Applies Settings › Appearance's pet switch (or the pet's own "hide me" row, which writes the
+ * same field through the same route): the window appears or goes at once, no restart.
+ */
+function setShowPet(next: boolean): void {
+  showPet = next;
+  try {
+    updatePetPrefs(app.getPath("userData"), { showPet: next });
+  } catch (err) {
+    logLine(`[shell] the pet preference could not be saved: ${String(err)}`);
+  }
+  if (next) openPet();
+  else closePet();
+  pushPetStatus();
+}
+
+/** Tells the page what the pet window is actually doing, which is what its switch renders. */
+function pushPetStatus(): void {
+  relayChild?.postMessage(petStatusMessage(showPet));
+}
+
 /**
  * Shell relay over the utilityProcess port: forward the account-menu row's check/install
- * frames to the updater, the Appearance switch's frames to the tray, the built-in browser's
- * commands to its guests and the Workspace picker's folder-access requests to folder-access.ts,
- * push every updater status fold back, and push both current states now — the fresh child,
- * restarts included, must not start blind. The subscription dies with the child; the next
- * start wires the next one.
+ * frames to the updater, the Appearance switch's frames to the tray and to the pet window, the
+ * built-in browser's commands to its guests and the Workspace picker's folder-access requests to
+ * folder-access.ts, push every updater status fold back, and push all three current states now —
+ * the fresh child, restarts included, must not start blind. The subscription dies with the child;
+ * the next start wires the next one.
  */
 function wireShellRelay(child: EmbeddedServer["child"]): void {
   relayChild = child;
@@ -579,7 +684,10 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
     if (command !== null) {
       if (command.locale !== undefined) setTrayLocale(command.locale);
       if (command.showTrayIcon !== undefined) setShowTrayIcon(command.showTrayIcon);
+      return;
     }
+    const pet = parsePetCommand(message);
+    if (pet !== null && pet.showPet !== undefined) setShowPet(pet.showPet);
   });
   const unsubscribe = onUpdaterStatus((status) => child.postMessage(updaterStatusMessage(status)));
   child.on("exit", () => {
@@ -588,6 +696,7 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
   });
   child.postMessage(updaterStatusMessage(getUpdaterStatus()));
   pushTrayStatus();
+  pushPetStatus();
 }
 
 /** Starts (or restarts) the embedded server and points the window at the claim link. */
@@ -790,6 +899,9 @@ if (!app.requestSingleInstanceLock()) {
       // same rule the Web App applies to its own "follow the system" default.
       trayLocale = trayPrefs.locale ?? resolveTrayLocale(app.getLocale());
       openTray();
+      // The pet's preference, read before boot for the same reason: the window it decides about
+      // is opened by the main window's first load, which boot is what starts.
+      showPet = readPetPrefs(app.getPath("userData")).showPet;
       initUpdater(() => win);
       await boot();
       // Install or repair the bundled 'penguin' command. Runs every launch: that is what
@@ -815,17 +927,31 @@ function armSmokeProbe(target: BrowserWindow): void {
     setTimeout(() => {
       void (async () => {
         try {
+          const pet = petWin;
           const result = {
             title: target.webContents.getTitle(),
             url: target.webContents.getURL(),
             origin: appOrigin,
             embedded: server !== null,
+            // Whether the pet window is up, and what it is showing. Null is the honest answer for
+            // a run whose preference is off, so the probe reports it rather than only the cases
+            // where the window exists.
+            pet:
+              pet === null || pet.isDestroyed()
+                ? null
+                : { url: pet.webContents.getURL(), title: pet.webContents.getTitle() },
           };
           const shot = process.env.PENGUIN_DESKTOP_SMOKE_SHOT;
           if (shot) {
-            const image = await target.webContents.capturePage();
             const { writeFileSync } = await import("node:fs");
+            const image = await target.webContents.capturePage();
             writeFileSync(shot, image.toPNG());
+            // The pet is a window of its own, and its pixels are the only way to check that what
+            // it draws is the penguin and not a blank transparent rectangle: its shot lands beside
+            // the main window's when a run has one.
+            if (pet !== null && !pet.isDestroyed()) {
+              writeFileSync(petShotPath(shot), (await pet.webContents.capturePage()).toPNG());
+            }
           }
           process.stdout.write(`DESKTOP-SMOKE-RESULT ${JSON.stringify(result)}\n`);
         } catch (err) {

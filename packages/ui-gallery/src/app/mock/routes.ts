@@ -39,6 +39,7 @@ import type {
   ChatDefaultsDto,
   CommandPolicyDto,
   DefaultModelResponse,
+  DesktopPetStatusResponse,
   DesktopTrayStatusResponse,
   DesktopUpdateStatusResponse,
   DirectorySkillsResponse,
@@ -2617,6 +2618,10 @@ router
   .post("/api/desktop/update/install", () => notFound("Desktop updater"))
   .get("/api/desktop/tray", (): DesktopTrayStatusResponse => ({ status: null }))
   .put("/api/desktop/tray", () => empty())
+  // The pet window, like the tray: a shell-owned preference with no shell here, so the read is
+  // "unknown" (null, which the page and the Appearance switch read as off) and the write lands.
+  .get("/api/desktop/pet", (): DesktopPetStatusResponse => ({ status: null }))
+  .put("/api/desktop/pet", () => empty())
   .post("/api/desktop/privacy-settings", () => notFound("Desktop mode"));
 
 // ---------------------------------------------------------------------------------------------

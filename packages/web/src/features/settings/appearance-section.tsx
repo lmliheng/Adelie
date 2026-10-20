@@ -6,10 +6,10 @@
  * the app unless pinned (see TerminalThemeMode). The workbench launcher's row is here rather
  * than with the chat's own settings because it is the same kind of choice: whether a piece of
  * chrome is drawn. The tool short-name row is here for the same reason — it changes how a
- * tool call is spelled on screen, never what runs. So is the tray-icon row, the one piece of
- * chrome here that is not drawn by this page at all: it is the desktop shell's, and only the
- * shell's own window may reach it (see isDesktopShellWindow), so the row is absent in a
- * browser.
+ * tool call is spelled on screen, never what runs. So are the last two rows, the only chrome here
+ * that is not drawn by this page at all: the desktop shell's tray icon and its pet window. Both
+ * belong to the shell, only the shell's own window may reach them (see isDesktopShellWindow), so
+ * both rows are absent in a browser.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { PrefRow, Segmented, Select, SwatchPicker, THEME_IDS, ToggleRow } from "@adelie/ui";
@@ -119,13 +119,13 @@ export function AppearanceSection() {
   useSyncExternalStore(subscribeLauncherHidden, launcherHiddenVersion);
   const launcherShown = !readLauncherHidden();
   const { desktopMode, sessionVia } = useAuth();
-  const offersTrayIcon = isDesktopShellWindow({ desktopMode, sessionVia });
+  const offersShellChrome = isDesktopShellWindow({ desktopMode, sessionVia });
   // The shell owns this one, so it is fetched rather than read from a store. Anything the
   // shell has not told us — no push yet, a request that failed — reads as on, the shell's
   // own default, so the row never claims the icon is off while it is sitting in the tray.
   const [trayIcon, setTrayIcon] = useState(true);
   useEffect(() => {
-    if (!offersTrayIcon) return;
+    if (!offersShellChrome) return;
     let live = true;
     void api.getDesktopTray().then(
       (res) => {
@@ -136,12 +136,34 @@ export function AppearanceSection() {
     return () => {
       live = false;
     };
-  }, [offersTrayIcon]);
+  }, [offersShellChrome]);
   // Optimistic: the switch answers the click, and a refused write snaps it back rather
   // than leaving the row disagreeing with the icon the user is looking at.
   const changeTrayIcon = (next: boolean): void => {
     setTrayIcon(next);
     void api.setDesktopTray({ showTrayIcon: next }).catch(() => setTrayIcon(!next));
+  };
+
+  // The pet window, read the same way and from the shell's own default the other way round: the
+  // pet is off unless something says otherwise, so an answer that has not arrived yet reads as
+  // off — the row must not claim a penguin is on the desktop when there is none.
+  const [showPet, setShowPet] = useState(false);
+  useEffect(() => {
+    if (!offersShellChrome) return;
+    let live = true;
+    void api.getDesktopPet().then(
+      (res) => {
+        if (live) setShowPet(res.status?.showPet ?? false);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [offersShellChrome]);
+  const changeShowPet = (next: boolean): void => {
+    setShowPet(next);
+    void api.setDesktopPet({ showPet: next }).catch(() => setShowPet(!next));
   };
 
   const themeOptions: ReadonlyArray<{ value: ThemeMode; label: string }> = [
@@ -220,12 +242,20 @@ export function AppearanceSection() {
         checked={toolAliases}
         onChange={setToolAliases}
       />
-      {offersTrayIcon && (
+      {offersShellChrome && (
         <ToggleRow
           label={S.settings.trayIcon}
           info={S.settings.trayIconInfo}
           checked={trayIcon}
           onChange={changeTrayIcon}
+        />
+      )}
+      {offersShellChrome && (
+        <ToggleRow
+          label={S.settings.showPet}
+          info={S.settings.showPetInfo}
+          checked={showPet}
+          onChange={changeShowPet}
         />
       )}
     </div>

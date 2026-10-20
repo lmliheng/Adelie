@@ -33,12 +33,15 @@ describe("main.ts window-open handling", () => {
   });
 
   it("answers every window's requests through openWindowFor — the main window's too", () => {
-    // One handler for the main window, one for each window it opens (guardOpenedWindow).
-    // Both delegate; neither decides anything of its own first.
-    expect(count(/setWindowOpenHandler\(/)).toBe(2);
+    // One delegating handler for the main window, one for each window it opens
+    // (guardOpenedWindow), and the pet window's, which denies everything: that window is chrome
+    // with no links in it, so it has nothing to classify — and a denial is not the exception this
+    // guards against (the count of `action: "allow"` above is what catches a second one).
+    expect(count(/setWindowOpenHandler\(/)).toBe(3);
     expect(
       count(/setWindowOpenHandler\(\(\{ url: target \}\) => openWindowFor\(target, iconPath\)\)/),
     ).toBe(2);
+    expect(count(/setWindowOpenHandler\(\(\) => \(\{ action: "deny" \}\)\)/)).toBe(1);
   });
 
   it("pins the page-controllable window options in the one allow", () => {

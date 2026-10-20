@@ -19,6 +19,9 @@ import type {
   DesktopFolderAccessResult,
   DesktopFolderAccessResultMessage,
   DesktopOpenPrivacySettingsMessage,
+  DesktopPetCommandMessage,
+  DesktopPetStatus,
+  DesktopPetStatusMessage,
   DesktopTrayCommandMessage,
   DesktopTrayStatus,
   DesktopTrayStatusMessage,
@@ -86,6 +89,17 @@ export function parseTrayStatusMessage(data: unknown): DesktopTrayStatus | null 
   return { showTrayIcon: status.showTrayIcon, locale };
 }
 
+/** Validates one shell pet push. Same rule as the tray's: strict on the discriminator and on the field it carries. */
+export function parsePetStatusMessage(data: unknown): DesktopPetStatus | null {
+  if (typeof data !== "object" || data === null) return null;
+  const msg = data as Partial<DesktopPetStatusMessage>;
+  if (msg.type !== "desktop-pet-status") return null;
+  const status = msg.status as Partial<DesktopPetStatus> | undefined;
+  if (typeof status !== "object" || status === null) return null;
+  if (typeof status.showPet !== "boolean") return null;
+  return { showPet: status.showPet };
+}
+
 /** Validates one shell reply to a folder-access request; null when the frame is not one. */
 export function parseFolderAccessResultMessage(
   data: unknown,
@@ -124,6 +138,11 @@ export function wireShellUpdatePort(desktop: DesktopService, port: ShellPort): v
         desktop.setTrayStatus(tray);
         return;
       }
+      const pet = parsePetStatusMessage(e.data);
+      if (pet !== null) {
+        desktop.setPetStatus(pet);
+        return;
+      }
       // A reply nobody waits for any more (its request timed out) is dropped.
       const access = parseFolderAccessResultMessage(e.data);
       if (access !== null) awaiting.get(access.id)?.(access);
@@ -142,6 +161,12 @@ export function wireShellUpdatePort(desktop: DesktopService, port: ShellPort): v
       type: "desktop-tray-command",
       ...patch,
     } satisfies DesktopTrayCommandMessage);
+  });
+  desktop.onPetCommand((patch) => {
+    port.postMessage({
+      type: "desktop-pet-command",
+      ...patch,
+    } satisfies DesktopPetCommandMessage);
   });
   desktop.onFolderAccessRequest(
     (path) =>

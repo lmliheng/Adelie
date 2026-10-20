@@ -14,12 +14,12 @@
  *
  * Comparisons hash both sides first so timingSafeEqual gets equal-length buffers.
  *
- * The service is also the shell↔web relay for two shell-owned surfaces: client updates
- * and the tray icon. In both directions it is the same utilityProcess message channel
+ * The service is also the shell↔web relay for the surfaces the shell owns: client updates, the
+ * tray icon and the pet window. In both directions it is the same utilityProcess message channel
  * (index.ts wires the port) — the shell pushes its current state, the web reads it at
- * GET /api/desktop/update or /api/desktop/tray and writes back a command that is
- * forwarded to the shell. The window itself stays a plain browser — every capability
- * flows through this HTTP surface, never a renderer IPC bridge.
+ * GET /api/desktop/update, /api/desktop/tray or /api/desktop/pet and writes back a command that
+ * is forwarded to the shell. The window itself stays a plain browser — every capability flows
+ * through this HTTP surface, never a renderer IPC bridge.
  *
  * The same channel carries the Workspace picker's macOS folder access: a request the shell
  * answers (its main process reads a folder in the app's own name), and a command that opens
@@ -28,6 +28,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type {
   DesktopFolderAccessResult,
+  DesktopPetPatch,
+  DesktopPetStatus,
   DesktopPrivacyPane,
   DesktopTrayPatch,
   DesktopTrayStatus,
@@ -126,6 +128,33 @@ export class DesktopService {
   requestTrayCommand(patch: DesktopTrayPatch): boolean {
     if (!this.trayCommandSender) return false;
     this.trayCommandSender(patch);
+    return true;
+  }
+
+  // --- pet-window relay ------------------------------------------------------
+
+  private petStatus: DesktopPetStatus | null = null;
+  private petCommandSender: ((patch: DesktopPetPatch) => void) | null = null;
+
+  /** Latest shell push; null until the shell's first one lands (the page then reads it as off). */
+  getPetStatus(): DesktopPetStatus | null {
+    return this.petStatus;
+  }
+
+  /** index.ts stores each shell push here (already validated at the message port). */
+  setPetStatus(status: DesktopPetStatus): void {
+    this.petStatus = status;
+  }
+
+  /** index.ts registers the message-port sender; absent outside a shell-forked process. */
+  onPetCommand(sender: (patch: DesktopPetPatch) => void): void {
+    this.petCommandSender = sender;
+  }
+
+  /** Invoked by the pet route; false when no shell port is wired (tests, plain runs). */
+  requestPetCommand(patch: DesktopPetPatch): boolean {
+    if (!this.petCommandSender) return false;
+    this.petCommandSender(patch);
     return true;
   }
 

@@ -780,6 +780,10 @@ export const en: Strings = {
     trayIcon: "Tray icon",
     trayIconInfo:
       "The desktop app keeps an icon in the system tray — the Windows notification area, the macOS menu bar, the Linux tray — for as long as it runs: click it to come back to the window, right-click it to start a session or quit. On by default; turning it off removes the icon at once, no restart, and closing the window then no longer hides it, so the app stays in the Dock on macOS and quits on Windows and Linux.",
+    /** Desktop shell only: the companion window at /pet. */
+    showPet: "Desktop pet",
+    showPetInfo:
+      "A small penguin sits in the bottom-right corner of the desktop: it speaks up when a schedule fires, when tool calls are waiting for your approval, or when a company budget is nearly spent, and clicking it shows the model balance and the client-update state — and hides it again from there. Off by default; either way it takes effect at once and never touches the window you are working in.",
     currencyInfo: "Display currency for prices; storage is always USD.",
     changePasswordInfo: "Change this account's sign-in password.",
     /** Personal company-mode switch (general page) and the admin master switch (its own server page). */
@@ -1047,6 +1051,52 @@ export const en: Strings = {
     taskCompleteTitle: "Task completed",
     /** `session` is the Session title (defaultSessionTitle when unnamed). */
     taskCompleteBody: (session: string): string => `"${session}" has finished — click to view`,
+  },
+
+  /**
+   * The desktop pet (its own window at /pet; the desktop app only). Its bubble and the panel
+   * behind the penguin are the whole surface, and they answer the three questions a person asks
+   * while they are looking at the desktop rather than at the app: did anything need me, how much
+   * model credit is left, and is there a new build.
+   */
+  pet: {
+    /** The penguin's tooltip and accessible name: what a click opens. */
+    open: "Click for the balance, new versions and notices",
+    /** The panel's footer action, which writes the same preference the Appearance switch does. */
+    hide: "Hide the pet",
+    refresh: "Refresh",
+    balance: "Model balance",
+    /** No balance is pinned to the account (see features/models/balance.ts). */
+    balanceMissing: "Nothing pinned yet: pin a group's balance from the Models page.",
+    /** The balance route is the shell's server's; a plain browser tab cannot read it. */
+    balanceUnavailable: "The balance is available in the desktop app only.",
+    update: "Client update",
+    updateChecking: "Checking for a new version…",
+    updateIdle: "No check has run yet.",
+    /** `version` is the installed shell version. */
+    updateUpToDate: (version: string): string => `Up to date (${version})`,
+    /** `version` is the newer release. */
+    updateAvailable: (version: string): string => `Version ${version} is available`,
+    updateDownloading: (percent: number): string => `Downloading the new version — ${percent}%`,
+    updateDownloaded: (version: string): string =>
+      `Version ${version} is ready — restart to install it`,
+    updateUnsupported: "This installation is updated by the system or by the dev workflow.",
+    updateError: (message: string): string => `The update check failed: ${message}`,
+    updateUnavailable: "Client updates are visible in the desktop app only.",
+    download: "Download",
+    install: "Restart and install",
+    check: "Check for updates",
+    notices: "Notices",
+    noNotices: "Nothing new right now.",
+    /** `name` is the schedule's name. */
+    scheduleFired: (name: string): string => `Schedule "${name}" fired`,
+    /** `count` is how many tool calls are waiting for a person (see session_approvals). */
+    approvalsWaiting: (count: number): string =>
+      count === 1
+        ? "A tool call is waiting for your approval"
+        : `${count} tool calls are waiting for your approval`,
+    budgetWarned: "An employee is close to their budget",
+    budgetPaused: "An employee was paused on budget",
   },
 
   common: {

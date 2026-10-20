@@ -125,6 +125,7 @@ import { MeRoutes } from "./http/routes/me.js";
 import { UserVaultRoutes } from "./http/routes/user-vault.js";
 import { AuthRoutes } from "./http/routes/auth.js";
 import {
+  DesktopPetRoutes,
   DesktopPrivacySettingsRoutes,
   DesktopRoutes,
   DesktopTrayRoutes,
@@ -464,6 +465,7 @@ export class CompanyModule {}
     DesktopRoutes,
     DesktopUpdateRoutes,
     DesktopTrayRoutes,
+    DesktopPetRoutes,
     DesktopPrivacySettingsRoutes,
     PluginRoutes,
     PluginRegistryRoutes,

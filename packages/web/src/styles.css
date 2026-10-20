@@ -457,3 +457,43 @@
 /* The company channel's bubble (`.channel-bubble`: the deeper inline-code chip and table rules
    inside it) lives in the shared UI package too, beside its component:
    packages/ui/src/components/chat/channel-bubble/channel-bubble.css. */
+
+/* ---------- The desktop pet window ---------- */
+
+/* The pet is a frameless, transparent Electron window showing the app's /pet route
+   (features/pet/pet-page.tsx; the shell's main.ts creates it). Three things are the app's own
+   here, in plain CSS rather than utilities: the drag regions, because `-webkit-app-region` has no
+   place in csstype's React style types, and the window's transparency, which has to override the
+   shared theme's canvas background on <body>. All of it is inert in a browser tab. */
+
+/* The whole window drags the pet around; the penguin and the panel opt out so they stay
+   clickable. Everything else — the margins around the penguin, the bubble — is the grab handle. */
+.pet-drag {
+  -webkit-app-region: drag;
+}
+.pet-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* The desktop shows through wherever the page paints nothing. The page marks the body for as
+   long as it is mounted, so no other route is affected. */
+body.pet-body,
+body.pet-body #root {
+  background: transparent;
+}
+
+/* The pet's idle bob: a slow breathe in place, so it reads as alive rather than as an icon.
+   `prefers-reduced-motion` switches it off with everything else (the global block above), which
+   leaves the penguin standing still. */
+@keyframes pet-bob {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-3px) scale(1.02);
+  }
+}
+.pet-bob {
+  animation: pet-bob 3.6s ease-in-out infinite;
+}

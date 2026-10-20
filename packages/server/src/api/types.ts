@@ -4789,6 +4789,54 @@ export interface DesktopTrayCommandMessage {
   locale?: DesktopTrayLocale;
 }
 
+// Desktop pet (desktop mode only)
+//
+// A small always-on-top companion window the shell draws beside the app — the Adelie penguin,
+// which speaks up when something happens (a schedule fired, tool calls waiting for approval, a
+// budget warning) and, when clicked, reports the model balance and the client-update state.
+//
+// The switch rides the same utilityProcess message channel as the tray icon above: the shell
+// pushes what it currently shows, the page reads it at GET /api/desktop/pet and writes through
+// PUT, which is relayed back. The pet window itself is a second plain-browser window on this
+// same origin, so it is signed in by the same cookie and reads everything the page reads —
+// there is no renderer IPC bridge, and no separately-served page.
+
+/** What the shell is currently doing about its pet window. */
+export interface DesktopPetStatus {
+  /** The pet window is on screen (or about to be) while the shell runs. */
+  showPet: boolean;
+}
+
+/**
+ * What one PUT asks the shell to change. One field today, and optional all the same: the request
+ * shape follows the tray patch beside it, and the pet window's own "hide me" writes the same
+ * field the Settings switch does.
+ */
+export interface DesktopPetPatch {
+  showPet?: boolean;
+}
+
+/**
+ * GET / PUT /api/desktop/pet (desktop-shell sessions only): the pet preference.
+ * `status` is null until the shell's first push lands (a beat after server start); a client
+ * that finds null reads it as off, which is the shell's own default.
+ */
+export interface DesktopPetStatusResponse {
+  status: DesktopPetStatus | null;
+}
+
+/** Shell → server push over the utilityProcess message channel. */
+export interface DesktopPetStatusMessage {
+  type: "desktop-pet-status";
+  status: DesktopPetStatus;
+}
+
+/** Server → shell command over the utilityProcess message channel (relayed from PUT /api/desktop/pet). */
+export interface DesktopPetCommandMessage {
+  type: "desktop-pet-command";
+  showPet?: boolean;
+}
+
 // Desktop folder access (desktop mode, macOS)
 //
 // macOS privacy protection (TCC) guards Desktop, Documents, Downloads and removable and network

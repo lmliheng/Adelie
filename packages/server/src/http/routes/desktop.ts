@@ -1,21 +1,24 @@
 /**
  * Desktop-mode routes: POST /api/desktop/shutdown, the client-update relay under
- * /api/desktop/update, the tray-icon preference at /api/desktop/tray, the Privacy & Security
- * pane at /api/desktop/privacy-settings, plus the shared desktop-mode guard that turns off
+ * /api/desktop/update, the tray-icon preference at /api/desktop/tray, the pet-window
+ * preference at /api/desktop/pet, the Privacy & Security pane at
+ * /api/desktop/privacy-settings, plus the shared desktop-mode guard that turns off
  * multi-user surfaces (see rejectInDesktopMode).
  *
  * Platform code, all of it: what the shell's window may ask of the shell is policy. The
  * shutdown route is authenticated by the shell's Bearer token, not the cookie session (the
  * shell holds no cookie), so its group is unauthenticated and checks the token itself; it
  * answers 202 first, then triggers the graceful shutdown a beat later so the response is not
- * cut off by the closing listener. The update, tray and privacy-settings routes are called by
- * the page, so their groups sit behind the cookie gate and are further restricted to the
- * shell's own window.
+ * cut off by the closing listener. The update, tray, pet and privacy-settings routes are
+ * called by the page, so their groups sit behind the cookie gate and are further restricted
+ * to the shell's own windows.
  */
 import { Hono } from "hono";
 import type { Context, MiddlewareHandler } from "hono";
 import { Bind, Component, Use } from "@adelie/core/kernel";
 import type {
+  DesktopPetPatch,
+  DesktopPetStatusResponse,
   DesktopTrayPatch,
   DesktopTrayStatusResponse,
   DesktopUpdateStatusResponse,
@@ -172,6 +175,47 @@ export function desktopTrayRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
 }
 
 /**
+ * The pet-window preference. GET reads what the shell last pushed — null until that first push,
+ * which the page reads as off, the shell's own default. PUT relays a patch: the Settings switch,
+ * or the pet window hiding itself, both of which mean the same thing to the shell. It applies it,
+ * persists it and pushes the new state straight back, so the answer here is an acknowledgement and
+ * the GET is what tells the truth. Like the relays above, the members are optional on a layer
+ * older than the pet.
+ */
+export function desktopPetRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+  const refusal = "The desktop pet is managed from the desktop app's own window.";
+
+  app.get("/", (c) => {
+    const desktop = shellSessionOf(deps, c, refusal);
+    const status = desktop.getPetStatus?.() ?? null;
+    return c.json({ status } satisfies DesktopPetStatusResponse);
+  });
+
+  app.put("/", async (c) => {
+    const desktop = shellSessionOf(deps, c, refusal);
+    const body = (await c.req.json().catch(() => null)) as { showPet?: unknown } | null;
+    const patch: DesktopPetPatch = {};
+    if (body?.showPet !== undefined) {
+      if (typeof body.showPet !== "boolean") {
+        throw new HttpError(400, "invalid_show_pet", "showPet must be a boolean.");
+      }
+      patch.showPet = body.showPet;
+    }
+    // An empty patch is a caller bug, not a no-op worth relaying to the shell.
+    if (patch.showPet === undefined) {
+      throw new HttpError(400, "empty_pet_patch", "Pass showPet.");
+    }
+    if (!desktop.requestPetCommand?.(patch)) {
+      throw new HttpError(503, "shell_unreachable", "The desktop shell is not listening.");
+    }
+    return c.body(null, 202);
+  });
+
+  return app;
+}
+
+/**
  * Opens System Settings at a Privacy & Security pane — Files and Folders, or Full Disk Access —
  * for the Workspace picker's box about a folder macOS refused. The shell opens it (on macOS
  * only) and sends nothing back, so the answer is an acknowledgement. Like the relays above, the
@@ -242,6 +286,21 @@ export class DesktopTrayRoutes {
   @Bind("DesktopTrayRoutes.routes") routes!: Hono<AppEnv>;
   setup() {
     this.routes = desktopTrayRoutes({ desktop: this.desktop.current() });
+  }
+}
+
+@Component({
+  contributes: {
+    "HttpModule.routes": [
+      { id: "DesktopPetRoutes.routes", prefix: "/api/desktop/pet", auth: "user", order: 10 },
+    ],
+  },
+})
+export class DesktopPetRoutes {
+  @Use() private readonly desktop!: Desktop;
+  @Bind("DesktopPetRoutes.routes") routes!: Hono<AppEnv>;
+  setup() {
+    this.routes = desktopPetRoutes({ desktop: this.desktop.current() });
   }
 }
 

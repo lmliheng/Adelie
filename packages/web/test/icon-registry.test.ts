@@ -42,6 +42,10 @@ const ALLOWLIST: Readonly<Record<string, readonly [number, string]>> = {
   "features/company/handbook-explorer.tsx": [1, "W4"],
   "features/company/shared.tsx": [2, "W4"],
   "features/models/models-page.tsx": [4, "W4"],
+  // The desktop pet itself (features/pet/penguin.tsx): an illustration, not a glyph — one Adelie
+  // penguin drawn for one window, with no registry entry to share a look with, and nothing else in
+  // the app draws it. Listed like the rest so a path that moves or multiplies still shows up here.
+  "features/pet/penguin.tsx": [5, "W10"],
   "features/plugins/plugins-page.tsx": [2, "W4"],
   "features/schedules/schedule-row.tsx": [3, "W4"],
   "features/schedules/schedule-suggestions.tsx": [3, "W4"],

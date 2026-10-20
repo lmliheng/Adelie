@@ -36,6 +36,7 @@ import { ChannelView } from "./features/company/channel-view";
 import { HandbookPage } from "./features/company/handbook-page";
 import { MachinesPage } from "./features/machines/machines-page";
 import { WorkflowAppPage } from "./features/workflows/workflow-app-page";
+import { PetPage } from "./features/pet/pet-page";
 import { PAGES } from "./lib/pages";
 import type { PageEntry } from "./lib/pages";
 
@@ -95,6 +96,20 @@ function RequireAuthBare({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * The desktop pet window's route (see features/pet/pet-page.tsx; the shell's main.ts loads it).
+ *
+ * Outside the app shell like the terminal, and without its redirect: this window is 260×240 of
+ * transparent chrome, and a sign-in form inside it would be absurd. Not signed in — which only
+ * happens in a browser tab that opens /pet — renders nothing at all. The pet window itself never
+ * lands here: the shell opens it after the main window's first load, by which time the session
+ * cookie exists.
+ */
+function PetRoute() {
+  const { user } = useAuth();
+  return user ? <PetPage /> : null;
+}
+
 /** When already logged in, visiting /login redirects straight to the chat page. */
 function LoginRoute() {
   const { user } = useAuth();
@@ -114,6 +129,8 @@ export function AppRouter({ initialPath }: { initialPath?: string } = {}) {
           </RequireAuthBare>
         }
       />
+      {/* The desktop pet window's page (see PetRoute). */}
+      <Route path="/pet" element={<PetRoute />} />
       {/* One workflow's page as the whole app: outside the shell, like the terminal; the
           command palette it mounts is the way back. */}
       {["/app/:projectId/:agentId/:workflowId", "/app/:projectId/:agentId/:workflowId/:tabKey"].map(

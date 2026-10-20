@@ -220,6 +220,8 @@ import type {
   UpdateJobStatus,
   UpdateProfileRequest,
   UpdateProfileResponse,
+  DesktopPetPatch,
+  DesktopPetStatusResponse,
   DesktopTrayPatch,
   DesktopTrayStatusResponse,
   HookArchiveInstallRequest,
@@ -2509,6 +2511,19 @@ export const openPrivacySettings = (pane: DesktopPrivacyPane) =>
     body: { pane },
     server: null,
   });
+
+// Desktop pet (desktop-shell sessions only) --------------------------------------------
+
+/** What the shell last pushed; `status` is null until that first push, which reads as off. */
+export const getDesktopPet = () => apiFetch<DesktopPetStatusResponse>("/api/desktop/pet");
+
+/**
+ * Relays the pet switch to the shell, which opens or closes the window at once and pushes the
+ * new state back. Settings › Appearance writes it, and so does the pet window's own "hide me"
+ * row — the same field through the same route, so the two can never disagree.
+ */
+export const setDesktopPet = (patch: DesktopPetPatch) =>
+  apiFetch<void>("/api/desktop/pet", { method: "PUT", body: patch });
 
 // ---- Workflows (an Agent's own extension packages, served as tabs beside the chat) ----
 const workflowsBase = (projectId: string, agentId: string) =>

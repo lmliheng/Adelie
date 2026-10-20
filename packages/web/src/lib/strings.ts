@@ -837,6 +837,10 @@ export const zh = {
     trayIcon: "托盘图标",
     trayIconInfo:
       "桌面应用运行期间在系统托盘（Windows 通知区、macOS 菜单栏、Linux 托盘）常驻一个图标，点击即可回到窗口，右键可开新会话或退出。默认开启；关掉后图标立即消失，无需重启，此时关闭窗口不再收进托盘：macOS 应用留在 Dock，Windows 与 Linux 关窗即退出。",
+    /** Desktop shell only: the companion window at /pet. */
+    showPet: "桌面宠物",
+    showPetInfo:
+      "桌面右下角常驻一只小企鹅：定时任务触发、有工具调用等你批准、公司预算告警时它会冒个气泡，点它可以看模型余额和客户端更新，也能在那里隐藏它。默认关闭；打开或关掉都立即生效，不会碰你正在用的窗口。",
     currencyInfo: "价格显示币种；存储始终为美元。",
     changePasswordInfo: "更改当前账号的登录密码。",
     /** Personal company-mode switch (general page) and the admin master switch (its own server page). */
@@ -1100,6 +1104,48 @@ export const zh = {
     taskCompleteTitle: "任务完成",
     /** `session` is the Session title (defaultSessionTitle when unnamed). */
     taskCompleteBody: (session: string): string => `「${session}」已完成，点击查看`,
+  },
+
+  /**
+   * The desktop pet (its own window at /pet; the desktop app only). Its bubble and the panel
+   * behind the penguin are the whole surface, and they answer the three questions a person asks
+   * while they are looking at the desktop rather than at the app: did anything need me, how much
+   * model credit is left, and is there a new build.
+   */
+  pet: {
+    /** The penguin's tooltip and accessible name: what a click opens. */
+    open: "点我：余额、新版本和通知",
+    /** The panel's footer action, which writes the same preference the Appearance switch does. */
+    hide: "隐藏桌宠",
+    refresh: "刷新",
+    balance: "模型余额",
+    /** No balance is pinned to the account (see features/models/balance.ts). */
+    balanceMissing: "还没固定余额：在「模型」页点分组余额旁的图钉固定一个。",
+    /** The balance route is the shell's server's; a plain browser tab cannot read it. */
+    balanceUnavailable: "余额只在桌面应用里能读。",
+    update: "客户端更新",
+    updateChecking: "正在检查新版本…",
+    updateIdle: "还没检查过新版本。",
+    /** `version` is the installed shell version. */
+    updateUpToDate: (version: string): string => `已是最新（${version}）`,
+    /** `version` is the newer release. */
+    updateAvailable: (version: string): string => `有新版本 ${version}`,
+    updateDownloading: (percent: number): string => `正在下载新版本 ${percent}%`,
+    updateDownloaded: (version: string): string => `新版本 ${version} 已就绪，重启即可安装`,
+    updateUnsupported: "这个安装形式由系统或开发流程管更新。",
+    updateError: (message: string): string => `检查新版本失败：${message}`,
+    updateUnavailable: "客户端更新只在桌面应用里能读。",
+    download: "下载新版本",
+    install: "重启安装",
+    check: "检查新版本",
+    notices: "通知",
+    noNotices: "暂时没有新通知。",
+    /** `name` is the schedule's name. */
+    scheduleFired: (name: string): string => `定时任务「${name}」已触发`,
+    /** `count` is how many tool calls are waiting for a person (see session_approvals). */
+    approvalsWaiting: (count: number): string => `有 ${count} 个工具调用在等你批准`,
+    budgetWarned: "有员工的花费接近预算上限了",
+    budgetPaused: "有员工因预算被暂停了",
   },
 
   common: {
