@@ -11982,6 +11982,10 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未
   `git add`）。
 - 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+- **汇报邮件没发出去**：本机到中南网段仍不通（`smtp.csu.edu.cn:465` 与 `imap.csu.edu.cn:993` 的裸 socket
+  探针都连不上，只有 `mail.csu.edu.cn:443` 回 200；`mail.py send` 超时一次即停，未重试登录）。正文写好在
+  scratchpad 的 `r92/mail-body.txt`，登记进 `csu-mail-retry` 补发队列第 69 条；已用飞书补发一条同样的简报
+  （`om_x100b6259b33474a8c017595192ef379`）。
 
 ### 下一轮从这里接
 
