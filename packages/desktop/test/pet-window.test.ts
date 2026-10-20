@@ -6,6 +6,7 @@
  * must not have — a frame around a floating penguin, a window that can be resized into a corner
  * pixel, one that steals the taskbar slot of the app, or one that hands the page Node.
  */
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   PET_PAGE_PATH,
@@ -26,14 +27,20 @@ describe("petWindowUrl", () => {
 
 describe("petShotPath", () => {
   it("puts the pet's screenshot beside the main window's, never over it", () => {
-    expect(petShotPath("/tmp/smoke.png")).toBe("/tmp/smoke-pet.png");
+    // Paths are compared through `path` rather than as POSIX literals: petShotPath builds them with
+    // `path.join`, so on Windows the separator is a backslash and a literal would only be right on
+    // Linux and macOS (the Windows CI shard caught exactly that).
+    const beside = (dir: string, name: string) => path.join(dir, `${name}-pet.png`);
+    expect(petShotPath(path.join("/tmp", "smoke.png"))).toBe(beside("/tmp", "smoke"));
     expect(petShotPath("smoke.jpeg")).toBe("smoke-pet.png");
     // No extension, a dot that is only part of a directory name, and a dotfile: the suffix still
     // lands on the file's own name, and the main window's shot is never the one that gets
     // clobbered.
-    expect(petShotPath("/tmp/a.b/smoke")).toBe("/tmp/a.b/smoke-pet.png");
-    expect(petShotPath("/tmp/rel-0.5.1.png")).toBe("/tmp/rel-0.5.1-pet.png");
-    expect(petShotPath("/tmp/.hidden")).toBe("/tmp/.hidden-pet.png");
+    expect(petShotPath(path.join("/tmp", "a.b", "smoke"))).toBe(
+      beside(path.join("/tmp", "a.b"), "smoke"),
+    );
+    expect(petShotPath(path.join("/tmp", "rel-0.5.1.png"))).toBe(beside("/tmp", "rel-0.5.1"));
+    expect(petShotPath(path.join("/tmp", ".hidden"))).toBe(beside("/tmp", ".hidden"));
   });
 });
 
