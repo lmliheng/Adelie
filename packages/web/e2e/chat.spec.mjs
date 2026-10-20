@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { provisionAndLogin } from "./auth.mjs";
+import { settledTransitions } from "./settle.mjs";
 
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
@@ -100,7 +101,11 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
   // stay expanded and the shrinkable stats row then painted its Token chip over that label.
   // Keep the status dot and the live stats, but their rendered boxes must remain disjoint.
   await page.setViewportSize({ width: 877, height: 438 });
-  await page.waitForTimeout(200);
+  // The sidebar is `w-64 lg:w-72` with a 200 ms width transition, and 877 crosses the `lg` rung:
+  // the toolbar's left content slides 32 px for the whole of that transition while its
+  // right-aligned chips jump at once. A flat `waitForTimeout(200)` was exactly the transition's
+  // own duration, so the boxes below could be read mid-slide. Wait for the transition instead.
+  await settledTransitions(page);
   const runningStatus = page
     .locator('span[data-tooltip="运行中"]')
     .filter({ hasText: "运行中" })
@@ -117,7 +122,9 @@ test("chat + tool approval + stats/cost/copy + traces + files", async ({ page })
     Math.max(runningBox.x, tokenBox.x);
   expect(overlap, "running status and Token total do not overlap @877").toBeLessThanOrEqual(0);
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.waitForTimeout(200);
+  // Same slide in reverse (256 → 288) — settle it before the clicks below re-find the work group
+  // in the desktop layout.
+  await settledTransitions(page);
   // The user takes control of the running work group (toggle = userToggled), keeps it open, and
   // opens the exec_command card to watch the arguments. Both must survive the end of the turn.
   //
