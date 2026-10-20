@@ -903,7 +903,8 @@ export function ModelsPage() {
   /**
    * Changes save immediately (dialog confirm / set default / set vision model / delete):
    * avoids the trap of "still have to click save after confirming". On failure, the error
-   * is echoed back and local changes are kept so the user can fix and retry.
+   * is echoed back with the table the caller names (see `refusedRows`), so a retry starts
+   * from something the server still holds rather than from a change it declined.
    */
   const persist = async (
     nextRows: RowState[],
@@ -913,10 +914,11 @@ export function ModelsPage() {
     successText?: string,
     /**
      * The table to leave on the page when the write is refused. Default: the attempted rows,
-     * which is right for a field edit the user is still holding. A delete passes the table as
-     * it stood instead — its attempted rows are a table without the model, and showing it for
-     * the instant before the caller restores them unmounts the config dialog, which is gated on
-     * its row still being in the table.
+     * which is right for a write made on the page itself (the bulk key for a group). Every
+     * write made from the config dialog passes the table as it stood instead: its attempted
+     * rows are what the server declined, and showing them — for the instant before the caller
+     * restores the real table, or for good — unmounts that dialog, which is gated on its row
+     * still being in the table, and claims a change that did not happen.
      */
     refusedRows?: RowState[],
   ): Promise<boolean> => {
@@ -1886,7 +1888,6 @@ export function ModelsPage() {
                 return saved;
               });
             }
-            closeModelDialog();
             const nextRows = isNew
               ? [...rows, next]
               : rows.map((r) => (sameModelRef(rowRef(r), editing) ? next : r));
@@ -1897,7 +1898,29 @@ export function ModelsPage() {
               defaultModel,
               visionModel,
             });
-            void persist(nextRows, ptr.defaultModel, ptr.visionModel);
+            // Save / set-default / set-vision-proxy report back too, and the dialog stays up
+            // until they do. A refused one leaves the page on the table and the pointers the
+            // server still holds: the draft lives in the dialog, so there is nothing to keep
+            // on screen for a retry — and a refused "set as default" used to leave the card
+            // wearing the 默认 tag while the server still pointed elsewhere (measured: page
+            // said 默认 on the edited model, `defaultModel` on the server unchanged, both
+            // dialogs gone). `before` goes in as `refusedRows` for the same reason the delete
+            // passes it: a rename or a move to another group would otherwise take the dialog
+            // (gated on its row still being in the table) down for one render.
+            const before = rows;
+            const beforeDefault = defaultModel;
+            const beforeVision = visionModel;
+            return persist(nextRows, ptr.defaultModel, ptr.visionModel, undefined, before).then(
+              (saved) => {
+                if (saved) {
+                  closeModelDialog();
+                  return true;
+                }
+                setDefaultModel(beforeDefault);
+                setVisionModel(beforeVision);
+                return false;
+              },
+            );
           }}
         />
       )}
@@ -2490,9 +2513,12 @@ function ModelDialog({
   /** Closes the dialog and runs the header's "sync presets" merge; absent for a member, who cannot write the config. */
   onSyncPresets?: () => void;
   /**
-   * Commit one action. The remove action reports whether its write landed (and keeps this
-   * dialog up until then); every other action closes on the way out as before, so they
-   * return nothing.
+   * Commit one action and report whether its write landed. Every action answers now: this
+   * dialog and its confirmation stay up until the answer arrives, so a refused save, a
+   * refused "set as default / as vision proxy" and a refused delete all keep their sentence
+   * and their retry where the user left them. Only a written change closes them (the page
+   * does that for the actions it owns). `void` stays in the type for a caller with nothing
+   * to wait for.
    */
   onSubmit: (row: RowState, action: DialogAction) => Promise<boolean> | void;
 }) {
@@ -2563,8 +2589,12 @@ function ModelDialog({
    * (Adding a new custom model isn't confirmed: opening the dialog is itself a clear intent.)
    */
   const [confirming, setConfirming] = useState<DialogAction | null>(null);
-  /** The confirmed remove is on the wire: its confirmation waits for the answer instead of closing on the click. */
-  const [removing, setRemoving] = useState(false);
+  /**
+   * The confirmed write is on the wire: its confirmation waits for the answer instead of
+   * closing on the click, and its buttons are locked so a second click cannot fire a rival
+   * write against the same sentence.
+   */
+  const [writing, setWriting] = useState(false);
   /** Fast mode is being switched ON and awaits the premium-billing warning's confirmation. */
   const [confirmingFastMode, setConfirmingFastMode] = useState(false);
   /** Protocol detection in progress (custom / user-defined groups only). */
@@ -2995,33 +3025,31 @@ function ModelDialog({
   const submit = async (action: DialogAction) => {
     const next = validated();
     if (!next) return;
+    let payload = next;
     if (needsProtocolDetectOnSave(action, next.provider, next.clientType)) {
       // Joins a run already started from the Detect button rather than probing twice.
       const detected = await runDetect("save");
-      onSubmit(
-        {
-          ...next,
-          clientType: detected?.clientType ?? DEFAULT_CUSTOM_CLIENT_TYPE,
-          // The draft was snapshotted before the probe, so a base URL the probe corrected
-          // has to be carried over by hand — otherwise the entry saves a URL the detected
-          // protocol is not served at.
-          ...(detected?.baseUrl !== undefined ? { baseUrl: detected.baseUrl } : {}),
-        },
-        action,
-      );
-      return;
+      payload = {
+        ...next,
+        clientType: detected?.clientType ?? DEFAULT_CUSTOM_CLIENT_TYPE,
+        // The draft was snapshotted before the probe, so a base URL the probe corrected
+        // has to be carried over by hand — otherwise the entry saves a URL the detected
+        // protocol is not served at.
+        ...(detected?.baseUrl !== undefined ? { baseUrl: detected.baseUrl } : {}),
+      };
     }
-    const written = onSubmit(next, action);
+    const written = onSubmit(payload, action);
     if (written === undefined) return;
-    // Only the remove action reports back. A refused delete has to keep this dialog and its
-    // confirmation exactly as they are — the sentence names the model and what goes with it,
-    // and the retry is the same click — so the confirmation is dismissed here, once the write
-    // landed (on success the page closes this dialog too, which unmounts both).
-    setRemoving(true);
+    // Every action reports back now, not just the remove: a refused save or a refused
+    // "set as default" used to take this dialog and its confirmation down with the request,
+    // so the sentence that named the change was gone and the only way to retry was to find
+    // the card again (and the page behind it showed the change the server had refused).
+    // Keeping both until the answer arrives makes the retry the same click.
+    setWriting(true);
     try {
       if (await written) setConfirming(null);
     } finally {
-      setRemoving(false);
+      setWriting(false);
     }
   };
 
@@ -3220,8 +3248,10 @@ function ModelDialog({
               variant="primary"
               // Saving may have to probe the endpoint first (protocol still unset), which
               // is a network round-trip: the label says so and the button locks, matching
-              // the "test connection" convention used inside this dialog.
-              disabled={detecting}
+              // the "test connection" convention used inside this dialog. It also locks
+              // while the write itself is on the wire (a new model has no confirmation, so
+              // this is the only button that could send a second one).
+              disabled={detecting || writing}
               onClick={() => {
                 // Validate first: if validation fails, the inline field errors show right away without popping the confirm dialog.
                 if (!validated()) return;
@@ -3806,13 +3836,12 @@ function ModelDialog({
           open
           title={CONFIRM_TITLE[confirming]()}
           tone={confirming === "remove" ? "danger" : "primary"}
-          busy={confirming === "remove" && removing}
+          busy={writing}
           onClose={() => setConfirming(null)}
           onConfirm={() => {
             const action = confirming;
-            // The remove confirmation lives until its write lands (see `submit`): dismissed on
-            // the click it could only ever say nothing about a refusal.
-            if (action !== "remove") setConfirming(null);
+            // The confirmation lives until its write lands (see `submit`): dismissed on the
+            // click it could only ever say nothing about a refusal.
             void submit(action);
           }}
           confirmLabel={S.common.confirm}
