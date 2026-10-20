@@ -12567,7 +12567,11 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - 提交 **`449c27fb`**（`fix(models): a refused write keeps its reason in the confirmation (7.19)`），
   只 add 本轮的 12 个文件 + 本台账，`git push origin main` 见下。
-- 汇报邮件见本节末（用 `csu-mail` 技能发给 0110230306@csu.edu.cn，收件人只这一个）。
+- 汇报邮件**仍发不出去**：`mail.py check` 120 s 超时（退出码 124）；`imap.csu.edu.cn` / `smtp.csu.edu.cn`
+  解析到 `202.197.64.20` / `.21`，993、465 用 `/dev/tcp` 各 8 s 都建不起连接，同一时刻
+  `https://github.com` 是 200 —— 与第九十五、九十六轮和 2026-10-08 那次同一类，不是凭据问题
+  （`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。第九十五、九十六、九十七三轮的汇报都压在
+  队列里，下一轮开工先 `mail.py check`，通了就把三封一起补发。
 
 ### 下一轮从这里接
 
