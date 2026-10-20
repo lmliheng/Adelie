@@ -793,6 +793,16 @@ export function ModelsPage() {
   const [editingMovedToCustom, setEditingMovedToCustom] = useState(false);
   /** Target group (provider id) for adding a model: taken from the group header entry point, falling back to custom when empty. */
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  /**
+   * Close the config dialog. One helper because the remove action closes it from the write's
+   * outcome (see `onSubmit`) while cancel closes it on the way out — both must clear the
+   * three fields that say which entry point opened it.
+   */
+  const closeModelDialog = () => {
+    setEditing(null);
+    setEditingMovedToCustom(false);
+    setAddingTo(null);
+  };
   const [query, setQuery] = useState("");
   /**
    * Expanded vendor groups — hydrated from this Project's persisted set (DeepSeek-only
@@ -901,6 +911,14 @@ export function ModelsPage() {
     nextVision: ModelRefDto | undefined,
     /** Success toast text (defaults to "saved"); on failure this function shows an error toast instead. */
     successText?: string,
+    /**
+     * The table to leave on the page when the write is refused. Default: the attempted rows,
+     * which is right for a field edit the user is still holding. A delete passes the table as
+     * it stood instead — its attempted rows are a table without the model, and showing it for
+     * the instant before the caller restores them unmounts the config dialog, which is gated on
+     * its row still being in the table.
+     */
+    refusedRows?: RowState[],
   ): Promise<boolean> => {
     if (!projectId) return false;
     setBusy(true);
@@ -925,7 +943,7 @@ export function ModelsPage() {
       toastSuccess(successText ?? S.common.saved);
       return true;
     } catch (e) {
-      setRows(nextRows);
+      setRows(refusedRows ?? nextRows);
       if (nextDefault !== undefined) setDefaultModel(nextDefault);
       if (effectiveVision !== undefined) setVisionModel(effectiveVision);
       toastError(apiErrorText(e));
@@ -1830,41 +1848,45 @@ export function ModelsPage() {
           canEdit={isOwner}
           isDefault={editingRow !== undefined && sameModelRef(rowRef(editingRow), defaultModel)}
           isVisionModel={editingRow !== undefined && sameModelRef(rowRef(editingRow), visionModel)}
-          onClose={() => {
-            setEditing(null);
-            setEditingMovedToCustom(false);
-            setAddingTo(null);
-          }}
+          onClose={closeModelDialog}
           // The sync rewrites the very row this dialog was seeded from, so the dialog goes
           // first and the merge runs against the table, not around an open form.
           onSyncPresets={
             isOwner
               ? () => {
-                  setEditing(null);
-                  setEditingMovedToCustom(false);
-                  setAddingTo(null);
+                  closeModelDialog();
                   void syncPresets();
                 }
               : undefined
           }
           onSubmit={(next, action) => {
             const isNew = addingTo !== null;
-            setEditing(null);
-            setEditingMovedToCustom(false);
-            setAddingTo(null);
             if (action === "remove") {
               // Filter by the **identity as loaded**: rows / pointers are both keyed by the
               // paired reference as loaded. If the user edited identity fields before
               // deleting, next's current reference wouldn't match any row -> nothing gets
               // deleted while it still reports "saved".
               const removed = next.original;
-              void persist(
-                rows.filter((r) => !sameModelRef(rowRef(r), removed)),
+              const before = rows;
+              // The dialog and its confirmation stay open until the delete is written: a
+              // refused one used to take the model off the page (persist keeps the attempted
+              // rows) while the server still held it, and the card that opens this dialog went
+              // with it, so the only way back to the retry was a reload (measured on a refused
+              // write: no dialog, zero matches for the model's name, the row still on the
+              // server). Keeping both means the retry is the same click against the same
+              // sentence, and the restored table matches what the server kept.
+              return persist(
+                before.filter((r) => !sameModelRef(rowRef(r), removed)),
                 sameModelRef(removed, defaultModel) ? undefined : defaultModel,
                 sameModelRef(removed, visionModel) ? undefined : visionModel,
-              );
-              return;
+                undefined,
+                before,
+              ).then((saved) => {
+                if (saved) closeModelDialog();
+                return saved;
+              });
             }
+            closeModelDialog();
             const nextRows = isNew
               ? [...rows, next]
               : rows.map((r) => (sameModelRef(rowRef(r), editing) ? next : r));
@@ -2467,7 +2489,12 @@ function ModelDialog({
   onClose: () => void;
   /** Closes the dialog and runs the header's "sync presets" merge; absent for a member, who cannot write the config. */
   onSyncPresets?: () => void;
-  onSubmit: (row: RowState, action: DialogAction) => void;
+  /**
+   * Commit one action. The remove action reports whether its write landed (and keeps this
+   * dialog up until then); every other action closes on the way out as before, so they
+   * return nothing.
+   */
+  onSubmit: (row: RowState, action: DialogAction) => Promise<boolean> | void;
 }) {
   // Pricing input is displayed/entered in the current currency; converted back to USD storage on submit (RowState always stores USD).
   const [form, setForm] = useState<RowState>(() => {
@@ -2536,6 +2563,8 @@ function ModelDialog({
    * (Adding a new custom model isn't confirmed: opening the dialog is itself a clear intent.)
    */
   const [confirming, setConfirming] = useState<DialogAction | null>(null);
+  /** The confirmed remove is on the wire: its confirmation waits for the answer instead of closing on the click. */
+  const [removing, setRemoving] = useState(false);
   /** Fast mode is being switched ON and awaits the premium-billing warning's confirmation. */
   const [confirmingFastMode, setConfirmingFastMode] = useState(false);
   /** Protocol detection in progress (custom / user-defined groups only). */
@@ -2982,7 +3011,18 @@ function ModelDialog({
       );
       return;
     }
-    onSubmit(next, action);
+    const written = onSubmit(next, action);
+    if (written === undefined) return;
+    // Only the remove action reports back. A refused delete has to keep this dialog and its
+    // confirmation exactly as they are — the sentence names the model and what goes with it,
+    // and the retry is the same click — so the confirmation is dismissed here, once the write
+    // landed (on success the page closes this dialog too, which unmounts both).
+    setRemoving(true);
+    try {
+      if (await written) setConfirming(null);
+    } finally {
+      setRemoving(false);
+    }
   };
 
   // Provider info for the current group (updates live as the group dropdown
@@ -3766,10 +3806,13 @@ function ModelDialog({
           open
           title={CONFIRM_TITLE[confirming]()}
           tone={confirming === "remove" ? "danger" : "primary"}
+          busy={confirming === "remove" && removing}
           onClose={() => setConfirming(null)}
           onConfirm={() => {
             const action = confirming;
-            setConfirming(null);
+            // The remove confirmation lives until its write lands (see `submit`): dismissed on
+            // the click it could only ever say nothing about a refusal.
+            if (action !== "remove") setConfirming(null);
             void submit(action);
           }}
           confirmLabel={S.common.confirm}
