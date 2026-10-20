@@ -27,6 +27,7 @@
  */
 import { test, expect, request } from "@playwright/test";
 import { ADMIN_ID, ADMIN_PASSWORD, login, provisionAndLogin } from "./auth.mjs";
+import { collapseRail } from "./rail.mjs";
 
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
@@ -108,20 +109,11 @@ async function switchToCompany(page) {
 }
 
 /**
- * Fold the sidebar to its 48 px rail and wait for the fold to finish: the width animates, and a
- * box measured mid-fold still reports the expanded sidebar's edge (the panel is placed from the
- * row's own box, so only the rail-edge assertion would be wrong — but quietly).
+ * What the panel was placed with, read off the element the layer portaled to the body. The fold
+ * itself lives in `rail.mjs`, beside the numbers that say why the settled column — not merely
+ * "narrower than the expanded sidebar" — is what a rail-edge assertion has to measure; this spec
+ * reached that conclusion first, and `tooltip-beside` later caught a mid-fold edge once.
  */
-async function collapseRail(page) {
-  await page.getByRole("button", { name: "收起侧栏" }).click();
-  await expect
-    .poll(() =>
-      page.evaluate(() => document.querySelector("aside")?.getBoundingClientRect().right ?? 999),
-    )
-    .toBeLessThanOrEqual(48.5);
-}
-
-/** What the panel was placed with, read off the element the layer portaled to the body. */
 async function readPanel(panel) {
   return panel.evaluate((el) => {
     const rect = el.getBoundingClientRect();

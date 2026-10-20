@@ -28,6 +28,7 @@ import { mkdtemp, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { provisionAndLogin } from "./auth.mjs";
+import { collapseRail } from "./rail.mjs";
 
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
@@ -89,14 +90,10 @@ test("a rail entry's hint opens beside the rail, not over it", async ({ page }) 
   await signIn(page);
   await page.goto("/agents");
   // The pinned sidebar folds to the rail; its own control is the only way there from the UI.
-  // The fold animates its width, so the rail has to be measured once it has settled — an entry
-  // measured mid-fold still reports the sidebar's width as its rail's.
-  await page.getByRole("button", { name: "收起侧栏" }).click();
-  await expect
-    .poll(() =>
-      page.evaluate(() => document.querySelector("aside")?.getBoundingClientRect().right ?? 0),
-    )
-    .toBeLessThan(80);
+  // The fold animates its width, and `collapseRail` waits for the column it comes to rest at —
+  // a wait for anything narrower than the expanded sidebar returns mid-fold and hands back an
+  // edge the page has already left behind (see `rail.mjs` for the sampled numbers).
+  await collapseRail(page);
 
   const entry = page.getByRole("link", { name: "插件市场" }).first();
   await expect(entry).toBeVisible();
