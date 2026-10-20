@@ -1197,6 +1197,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       才挂载的，先给它看尝试中的表会在半途中把对话框卸掉、连确认框里的句子一起丢），句子与错误提示
       原样留着，重试就是同一张确认框；请求在飞时确认框标 `busy`。细节、两态实测与反证见该节。
 
+- [x] **7.15 保存模型配置 / 设为默认 / 设为视觉代理的确认框只在写成功之后收起**（**2026-10-20
+      第九十三轮**落地，提交见该节；`models-page.tsx` 一处真修复（+66 −37）+ 1 个新文件
+      `packages/web/e2e/models-save-refusal.spec.mjs`（3 条用例）+ changelog 一对，**无新依赖、不碰
+      接口**）：第九十二轮末尾写下的那件，也是「先写成功再收起」这条线索在**写入侧**的最后一段 ——
+      前四种形态（7.11 同步预置 / 7.12 删除分组 / 7.13 清空错误 / 7.14 删除模型）都是「删掉或合并」，
+      这一种是「改名与指针」。**量出来的缺陷**两个形态：被拒的保存让页面显示服务器没接受的名字
+      （`dialogs 0`、卡片 `Probe Save Renamed`、服务器仍是 `Probe Save`）；被拒的「设为默认模型」让
+      卡片挂上「默认」而服务器仍指着 `deepseek-flash` —— 两个都是请求发出就关框，而 `persist` 又保留
+      尝试中的表与尝试中的指针，于是既没有地方重试、又留下了一件服务器拒绝了的改动。**现在**这三个动作
+      都由写入结果收起：成功才关两张框；被拒时句子与草稿原样留着，页面退回服务器持有的表与两个指针，
+      重试就是同一张确认框。细节、两态实测与反证见该节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1809,6 +1821,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-20 | 7.12 | **模型库「删除分组」的确认框只在写成功之后收起**（不是移植：`packages/web/src/features/models/models-page.tsx` 一处真修复（+19 −4）+ 1 个新文件 `packages/web/e2e/models-delete-group.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口、不改文档**）：用户自定义分组的「删除分组」确认框此前在请求发出时就关闭，而 `persist` 保留尝试中的表（那是给字段编辑的），于是**被拒的删除让分组从页面上消失、服务器却仍留着它** —— 更难受的是这个入口就长在分组表头上，它与分组一起没了（实测：`dialog 0`、`probegroup` 在页面上 0 次、服务器仍 2 行、「删除分组 probegroup」按钮不见），只有刷新才能脱身。**现在**：删除写成功之后才关框；被拒时 `setRows(before)` 把表退回删除前，句子与条数原样留着、分组与它的按钮都回来，重试就是同一张确认框；请求在飞时确认框标 `busy`（按钮禁用）。**为什么是它**：待办里能一轮做完的条目至此仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖），而这一条是一处用户会撞上的真缺陷 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2222 文件）· 改动四个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399** / 6 跳过（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2947 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**97 passed（7.1m）、0 failed**（原 95 条 + 本笔 2 条）· **反证**：`models-page.tsx` 退回 `HEAD` 那一版并重建 web → 两条用例都红，都死在「被拒之后确认框还在」（element(s) not found，16.6 s / 16.5 s）；恢复后 2 passed，连同 7.11 那两条一起跑 4 passed · **两态实测**（一次性数据根 `/root/adelie-fork-data/r89`、`localhost:8985`、用户 `r89refuse` / `r89retry`，一个 `probegroup` 自定义分组两条手加行）：**改前**被拒后 `dialog 0`、页面上分组名 0 次、服务器 2 行、重试按钮不可见；**改后**被拒后确认框仍在且句子逐字不变、分组与「删除分组」按钮都在、搜索 `probe-a` 找得到那一行、服务器仍 2 行；放行重试 → 框关、PUT 1→2、toast「已删除分组（2 个模型）」、页面与服务器都 0 行；两态 console 只有按设计的 `GET …/machines` 403 与刻意造的 500，无其它 error / ≥400；截图 `r89/shots/{refused,deleted}.png`、探针与两态 JSON 在 scratchpad · 端口只用 8985 / 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r89`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `7b469efb` |
 | 2026-10-20 | 7.13 | **成本中心打开「清空错误记录」的确认框时，面板背后的统计跟着刷新**（不是移植：`packages/web/src/features/usage/errors-panel.tsx` 一处行为修复（回调 `onCleared` → `onReload`，开框时在后台重读仪表盘）+ `usage-page.tsx` 一处跟进 + 1 个新文件 `packages/web/e2e/cost-center-refresh.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口、不改文档**）：第八十六轮末尾记下的可选后续，也是「写入顺序」那条线索的邻支 —— 确认框的句子写的是点下去那一刻现读的条数（`limit: 1` + `until`），而面板背后的「总数 / 未预期 / 已预期」仍是页面加载时那份快照；加载成本中心本身就会记下一条按设计的 403（成员的界面读机器列表），所以同一次操作在屏幕上有两个互相矛盾的数字（实测：句子写「3 条」、背后仍是「总数 2」、开框前后仪表盘都只被读过 1 次）。**现在**：开框时顺带在后台重读一次仪表盘（不 await、失败也不挡删除），面板与句子说同一件事；句子里的数字与 `until` 边界仍是那次点击读到的计数；取消不多发请求、面板保持已经追上的数字 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（192 接口 / 587 类型）** —— 本笔不动服务契约）· `npx oxlint` **0 警告 0 错误**（2223 文件）· 改动四个文件 `prettier --check` 干净（spec 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（68 文件）· ui **1043**（129）· cli **561**（38）· web **260 文件 / 3202 通过 / 2 跳过** · server **201 文件 / 2947 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**99 passed（7.1m）、0 failed**（原 97 条 + 本笔 2 条）· **反证**：两处源码退回 `HEAD` 那一版并重建 web → 两条用例都**红**（第一条死在等「开框时的第二次仪表盘读」（15 s 超时），第二条死在等那次 500 的刷新响应），恢复后 **2 passed**；同一数据根上连跑两次都 2 passed（幂等）；既有 `cost-center-clear.spec.mjs` 2 passed · **两态实测**（一次性数据根 `/root/adelie-fork-data/r90`、`localhost:8995` + mock 8996、用户 `r90probe` / `r90probe2` / `r90look`、1280×900）：**改前**加载后仪表盘读过 1 次、`errors.total` 2、面板「总数 2」；造第二条错误后开框，计数读回 **4**、开框后仪表盘仍是 **1** 次、面板仍是「总数 2」、对话框却在说 4；**改后**同样的步骤：计数读回 3、开框后仪表盘 **2** 次、面板「总数 3」与句子一致 · **真看一眼**：`r90look` 截图里确认框写「将删除本项目 近 7 天内的 3 条错误记录……」，背后异常面板「总数 3 未预期 2 预期内 1」，console / 网络只有按设计的那一条 `GET …/machines` **403**，无其它 error / ≥400；截图 `r90/shots/after-dialog.png`、探针 `r90/{probe,look}.mjs` 在 scratchpad · 端口只用 8995 / 8996（探针与真看）与 8930 / 8931（整套，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r90`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `60960406` |
 | 2026-10-20 | 7.14 | **单条模型的「删除模型」的确认框只在写成功之后收起**（不是移植：`packages/web/src/features/models/models-page.tsx` 一处真修复（+62 −19：remove 先不关框、写成功才关；`persist` 新增可选第 5 参 `refusedRows`；三处重复的关框收成 `closeModelDialog()`）+ 1 个新文件 `packages/web/e2e/models-delete-model.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：第九十轮末尾写下的那件，也是「先写成功再收起」这条线索的第五种形态。**量出来的缺陷**：配置对话框里的「删除模型」确认框（连同背后的配置对话框）在请求发出时就关闭，而 `persist` 的 catch 把**尝试中的表**（= 没有这个模型的表）放回页面 —— 于是被拒的那次删除让模型从页面上消失、服务器却仍留着它，而**打开这张对话框的卡片也跟着没了**（实测：`dialog 0`、页面上模型名 0 次、服务器仍 191 行、紧接着的「重试」一次 PUT 都没发出），只有刷新才能脱身。**现在**：写成功之后才关两张框；被拒时页面留在删除前的表上（先给尝试中的表会在半途把配置对话框卸掉、连句子一起丢，第一版实测 `dialogs 1`），句子与错误提示原样留着，重试就是同一张确认框；请求在飞时确认框标 `busy`（按钮禁用） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不动服务契约）· `npx oxlint` 全仓 **0 警告 0 错误**（2234 文件）· `npx prettier --check .` 「All matched files use Prettier code style!」（新 spec 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（67 文件）· ui **1043**（129）· cli **561**（38）· web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**102 passed（7.6m）、0 failed**（第九十一轮之后 100 条 + 本笔 2 条）· **反证**：`models-page.tsx` 用 `git stash` 退回 `HEAD` 那一版并重建 web → 新 spec 两条都**红**（都死在等「被拒之后确认框还在」：`getByRole('dialog')` 找不到「确定删除」），`stash pop` 恢复后 **2 passed**；同族既有 `models-delete-group` 2 条 + `models-sync-order` 2 条同服务 **4 passed** · **两态实测**（一次性数据根 `mktemp -d /tmp/r92data.*`、`localhost:8944` + mock 8945、用户 `r92probe`、1280×900、自定义分组 `probegrp` 里的手加模型 `Probe Solo`，`PUT …/models` 拒成 500 `models_store_closed`）：**改前** `puts 1` / `dialogs 0` / 页面上模型名 0 次 / 服务器 191 行 / 重试一次 PUT 都没发出；**改后** `puts 1` / `dialogs 2` / 模型名 2 次（卡片 + 对话框标题）/ 服务器 191 行；放行后从同一张确认框重试 → `puts 2` / `dialogs 0` / 页面上 0 次 / 服务器 190 行 · **真看一眼**：`r92/shots/{1-config-dialog,2-confirm,3-after-refused,4-after-retry}.png`，console / 网络只有按设计的 `GET …/machines` **403** 与刻意造的 500，无其它 error / ≥400 · 端口只用 8944 / 8945 与 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r92data.*` 与 e2e 自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `49d4c919` |
+| 2026-10-20 | 7.15 | **保存模型配置 / 设为默认 / 设为视觉代理的确认框只在写成功之后收起**（不是移植：`packages/web/src/features/models/models-page.tsx` 一处真修复（+66 −37：非删除分支也回报写入结果、`submit` 收成一条路、`removing` 改名 `writing` 并覆盖全部动作、确认框与对话框确认按钮在写入中锁住；被拒时把 `defaultModel` / `visionModel` 退回写入前，`before` 作为 `refusedRows` 传给 `persist`）+ 1 个新文件 `packages/web/e2e/models-save-refusal.spec.mjs`（3 条用例）+ changelog 一对，**无新依赖、不碰接口**）：**量出来的缺陷**两种形态 —— ①被拒的保存：`puts 1`、`dialogs 0`、卡片写着 `Probe Save Renamed`、服务器 `displayName` 仍 `Probe Save`；②被拒的设为默认：`puts 1`、`dialogs 0`、卡片挂上「默认」、服务器 `defaultModel` 仍 `deepseek-flash`。**现在**：写入有结果才收两张框，被拒时句子与草稿留着、页面退回服务器持有的表与两个指针，重试就是同一张确认框 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 / 589 类型））· `npx oxlint` **0 警告 0 错误**（2235 文件）· `npx prettier --check .` 干净 · 逐包 `EXIT=0`、**0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1043** · cli **38 / 561** · web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`）：首跑 **104 passed / 1 failed**（红的是 `tooltip-beside` 竖栏那条量法，与本次改动无关；单独连跑 **5 次 × 2 条全绿**），**整套复跑 105 passed（7.6m）/ 0 failed** · **反证**：`models-page.tsx` 暂存回 `HEAD` 并重建 web → 新 spec **3 条全红**（16.9 / 16.5 / 16.8s 各自死在「被拒后两张框还在」），恢复后 **3 passed**；同族既有用例（delete-model 2 + delete-group 2 + sync-order 2）**6 passed** · **成功路径未破**：真浏览器里走完「新增分组→手加模型」「改名保存」「设为默认」三条，每次都一张框关掉、服务器与卡片同步 · **真看一眼**：`r93/{after-save,after-default,after-success}.png`，console 只有按设计的 `GET …/machines` **403** 与刻意造的 500 · 端口只用 8944 / 8945 / 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 · 没有切版本号、没发 npm、没发安装包 | `a58d505c` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -11997,4 +12010,107 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   与 `setDefault` / `setVisionModel`）：它们今天仍是「先关框、失败只弹错误」，页面上留下的是尝试中的表
   而没有框 —— 用户要改回去得重新点开卡片。要不要一并改成「写成功才关」是一个新的小决定（会改到
   保存路径的手感），下一轮若仍自选可以从这里开始。
+- 若用户点单桌宠的后续三问（第九十一轮记的三条）或别的功能，按点单优先。
+
+## 第九十三轮：保存 / 设为默认 / 设为视觉代理也只在写成功之后收起（2026-10-20，条目 7.15）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `ca7ed06d`（第九十二轮的台账补记），
+  `git fetch origin && git merge --ff-only origin/main` = Already up to date（没切分支、没碰
+  `legacy/main`、没推 upstream）。
+- 选活：待办里最靠前的未勾选条目仍是 **2.2c**，它剩下的三件事全在「要别人拍板或要发布动作」那一侧
+  （桌面壳写侧、`adelie-app.service` 单元、桌面壳自己的开关），今天仍然只能停着；3.5 / 3.6 / 4.1–4.3
+  要拍板或要 key，5.6 / 5.10 也要拍板或有前置。于是接过第九十二轮末尾写下的那件自选：**7.15 新增 /
+  编辑模型的「确认」要不要也改成「写成功才关框」** —— 它是「先写成功再收起」这条线索里**写入侧**
+  那一半，也是用户会撞上的真缺陷。
+- 上游这一轮按台账拉了（`git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness main:
+  refs/adelie-tmp/upstream-main-r93`）：尖端从 `f025f416` 前进到 **`8aa76123`**，9 个新提交
+  （`172c9e4c` 模型目录从 core 挪到 server、`37a2504a` Markdown 表格基础样式、`a4a766da` / `d184c6ca` /
+  `999753bc` / `3eeb96f2` 消息机器人与不可达机器的会话、`5a5566fc` 每个标签页一条 API websocket、
+  `8aa76123` web.db 迁移账本）。**一个都没取**：前三个是跨包重构（模型目录从 core 挪走会碰到本仓
+  自有化的 dist 与测试基线），其余都要服务端 + web 成组落地，没有一件是「一轮做完」的小件；
+  下一轮若仍自选，先按 URL 重拉确认尖端，再从小件里挑。
+
+### 先量清楚缺陷（真服务 + 真浏览器，不是推测）
+
+一次性数据根（`mktemp -d /tmp/r93data.XXXX`）、服务端 `localhost:8954`、1280×900、真浏览器 `zh-CN`；
+种一个自定义分组 `probesave` 里的手加模型 `Probe Save`（`probe-save`），把
+`PUT /api/projects/*/models` 一律拒成 500（`models_store_closed`）：
+
+- **形态①（被拒的保存）**：配置对话框里把名字改成 `Probe Save Renamed` → 「确认」→ 确认框里再「确认」
+  → `puts 1`、**`dialogs 0`**、页面上新名字 **1 次**（卡片自己换了名字）、服务器 `displayName` 仍是
+  `Probe Save`；要再试一次得重新找到那张卡片。
+- **形态②（被拒的设为默认）**：对话框里点「设为默认模型」→ 确认 → `puts 1`、**`dialogs 0`**、卡片的
+  文字里带 **「默认」**、服务器 `defaultModel` 仍是 `{"provider":"deepseek","modelId":
+  "deepseek-flash"}`。
+- 根因同一处：这两个动作在点击时就 `closeModelDialog()` / `setConfirming(null)`，而 `persist` 的 catch
+  按设计保留**尝试中的表与尝试中的指针**（那是为「页面上直接改、还要改回去」留的），于是既没有地方
+  重试，页面上又留下了一件服务器拒绝了的改动。
+
+### 改了什么（1 个源码文件 + 1 个新 spec + changelog 一对，无新依赖、不碰接口）
+
+- `packages/web/src/features/models/models-page.tsx`（+66 −37）：
+  - 页面 `onSubmit` 的**非删除**分支也回报写入结果：`persist(..., undefined, before)` 的 promise 回真
+    才 `closeModelDialog()`；被拒时把 `defaultModel` / `visionModel` 退回写入前的那两个（`persist` 的
+    catch 会先把指针挪到尝试中的值，这一步是唯一补上的地方）。`before`（写入前的表）作为第 5 参传给
+    `persist` 的理由与删除那一笔相同：改名或换组会让「对话框按它那一行仍在表里才挂载」在中间那一帧
+    卸掉它，连草稿一起丢。
+  - `ModelDialog.submit` 收成一条路：探测协议那一支不再提前 `return`（拿到 payload 后照常走下面的
+    等待），`onSubmit` 回 promise 就 `setWriting(true)` 并**只在回真时** `setConfirming(null)`。
+  - `removing` 改名 `writing`，语义扩到全部动作；确认框 `busy={writing}`（三个按钮一起禁用）、对话框
+    自己的「确认」按钮 `disabled={detecting || writing}`（新模型没有确认框，它是唯一可能连点两次的地方）。
+  - 确认框的 `onConfirm` 不再对「不是删除」的动作先行 `setConfirming(null)`。
+  - 注释跟进：`persist` 的 `refusedRows` 参数说明改成「页面上直接写的（整组 key）留尝试中的表；从配置
+    对话框发出的写入一律传写入前的表」，`onSubmit` 的 prop 说明改成「每个动作都回报是否写成」。
+- `packages/web/e2e/models-save-refusal.spec.mjs`（新文件，3 条用例，照 7.12 / 7.14 那两份的写法）：
+  ① 被拒的保存 —— 两张框都在、句子逐字不变、草稿还在字段里、卡片回到服务器仍持有的名字、取消决定不了
+  什么；② 被拒的保存**从同一张确认框**重试（不重开卡片）→ 框关、`puts 1 → 2`、卡片与服务器都换成新名字；
+  ③ 被拒的「设为默认模型」—— 两张框都在、卡片**不**带「默认」、服务器指针没动，放行后从同一张确认框
+  重试 → 框关、卡片带上「默认」、服务器指针换成这一行。
+- changelog 一对：`changelog/unreleased/2026-10-20-models-save-refusal.{md,zh.md}`。
+- **没有新依赖**；服务端、接口、传输格式一个字没动。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）**
+  —— 本笔不动服务契约）。
+- `npx oxlint` 全仓 **0 警告 0 错误**（2235 文件）；`npx prettier --check .`「All matched files use
+  Prettier code style!」（源码文件首跑一条，`--write` 后复检）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1043** ·
+  cli **38 / 561** · web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过**。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp`
+  数据根、mock 8945 / 服务端 8944 之外的一对 8931 / 8930）：**首跑 104 passed / 1 failed** —— 红的是
+  `tooltip-beside.spec.mjs` 的「竖栏提示向右展开」（`placed.rect.left` 48 < `railRight - 1` 50.97），
+  与本次改动无关（那一页与本次改的模型库没有一条共用路径）；单独复跑 **5 次 × 2 条全绿**，
+  **整套复跑 105 passed（7.6m）/ 0 failed**。这条按「已知偶发」记在这里，下一轮若再撞到先看是不是
+  竖栏宽度动画没落定就量了 `railRight`。
+- **反证**：只把 `models-page.tsx` 用 `git stash push` 退回 `HEAD` 那一版并重建 web → 新 spec **3 条
+  全红**（16.9s / 16.5s / 16.8s，各自死在「被拒之后对话框还在」那句 `toBeVisible`）；`git stash pop`
+  恢复后 **3 passed**；同族既有用例（`models-delete-model` 2 条 + `models-delete-group` 2 条 +
+  `models-sync-order` 2 条）在同一服务上 **6 passed**。
+- **成功路径没被挡住**（探针在同一个真浏览器里走完三段）：① 「手动创建」→「新增分组」（仅新增分组）→
+  手加模型 `probe-added` → 确认：框关、服务器那一行在（`provider: probeadd`）；② 改名保存 → 确认 → 框关、
+  `displayName` = `Probe Renamed`；③ 设为默认 → 确认 → 框关、`defaultModel` = 这一行、卡片文字
+  `Probe Renamed | 默认 | 1M · 未配置 key`。
+- **真看一眼**：`r93/{after-save,after-default,after-success}.png`；被拒那一刻两张框都在（截图里是
+  「保存模型配置」的那句话 + 草稿 `Probe Save Renamed` + 顶部服务端那句 `models store is closed`），
+  被拒的默认那次卡片上没有「默认」；console 里只有按设计的 `GET …/machines` **403**（成员的界面读机器
+  列表，第七十七轮起的既有行为）与刻意造的 500，**无其它 error / ≥400**。
+- 端口：探针只用 8954 / 8945，单独复跑用 8944 / 8945，整套 e2e 用 8930 / 8931（跑完都已停）；
+  3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r93*` 与 e2e 自己的 `mktemp` 根里，
+  一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未
+  `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- 待办清单的卡点原地：**2.2c**（剩下的全在桌面壳 / 部署单元那一侧）、**3.5**、**3.6**、**4.1–4.3**、
+  **5.6** / **5.10**；7.1–7.15 已勾掉。
+- 上游尖端 **`8aa76123`**（本轮拉过，9 个新提交，见上），下一轮先按 URL 重拉确认；若仍是这一批，
+  没有一件是一轮做完的小件，继续从自有缺陷 / 验证设施里挑。
+- 「先写成功再收起」这条线索到这里**两边都收完了**：删除侧四种形态（7.11 / 7.12 / 7.13 / 7.14）、
+  写入侧这一段（7.15）。剩下同类可以查的是**别的页面里「点击即关、失败只弹 toast」的确认框**
+  （下一处候选：插件市场 / 智能体设置 / 定时任务面板里那些带确认的写入）—— 还没逐处摸过，
+  下一轮若仍自选，先按「真服务 + 真浏览器拒一次写入」的办法量清楚再决定做哪处。
 - 若用户点单桌宠的后续三问（第九十一轮记的三条）或别的功能，按点单优先。
