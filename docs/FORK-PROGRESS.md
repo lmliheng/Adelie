@@ -11763,3 +11763,133 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   `action === "remove"`：对话框自己先关、再 `void persist(...)`，失败时同样留着尝试中的表）——
   要不要也改成「写成功才关」，要看它关框之后是否还有入口能重试。
 - 卡点原地：**2.2c**、**3.5**、**3.6**、**4.2** / **4.3**、**5.6** / **5.10**。
+
+## 第九十一轮：桌面版有了桌宠（2026-10-20，条目 6.2）
+
+用户 2026-10-17 点单：给 adelie 桌面版加一个桌宠的功能，设置里设置是否显示，功能有比如通知功能、
+新版本更新功能、模型余额查询功能等等。本轮是用户点单，不是自选 —— 「不切版本号、不发 npm、
+不发安装包」照旧。**与 2.2c 不冲突**：那一条说的是「桌面壳的变量改名按纪律暂缓」这件独立的事，
+本轮碰 `desktop` 是因为用户点了这个新功能。
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `7cc37e98`（第九十轮的台账笔），
+  `git fetch origin && git merge --ff-only origin/main` = Already up to date（没切分支、没碰
+  `legacy/main`、没推 upstream）。
+- 上游这一轮没拉（本轮是我方点单的功能轮，不是移植轮）；下一轮的起点仍是第九十轮记下的尖端
+  `f025f416` 那 8 个提交。
+- 选活理由：用户点单。按第六十轮 WPS 插件（条目 6.1）的写法，只写作「条目 6.2」，
+  不进第 7 节那份清单，免得两处撞号。
+
+### 做出来的东西
+
+一句话：桌面壳多了一扇自己的小窗，Web 应用多了一页桌宠内容，服务端多了一个与托盘开关同形的
+偏好中继。
+
+- **服务端（`packages/server`）**：`api/types.ts` 多四条线格式类型（`DesktopPetStatus{showPet}` /
+  `DesktopPetPatch` / `DesktopPetStatusResponse` 与两条 utilityProcess 帧 `desktop-pet-status`、
+  `desktop-pet-command`）；`services/desktop-service.ts` 照托盘那组加 pet 中继（`getPetStatus` /
+  `setPetStatus` / `onPetCommand` / `requestPetCommand`）；`services/desktop-update-port.ts` 收 pet
+  push 并转发命令（`parsePetStatusMessage` 严格判别符 + `showPet` 必须是布尔）；
+  `hmr/capabilities.ts` 的 `DesktopApi` Pick 里加这四个人；`http/routes/desktop.ts` 新增
+  `desktopPetRoutes`（`GET` 读壳推来的状态、`PUT` 转发，挂 `/api/desktop/pet`，auth: user、
+  order 10）；`platform.ts` 把它挂进 ApiModule 的 imports 与 children。
+- **桌面壳（`packages/desktop`）**：`src/pet-prefs.ts`（`userData/pet.json` 的 `showPet`，
+  **默认 false**，坏文件读成默认、写入走 tmp+rename）、`src/pet-window.ts`（纯几何与窗口选项：
+  `/pet` 的 URL、**260×248**、贴在主窗口所在显示器工作区右下角 **24px**、无边框 / 透明
+  `#00000000` / 不可缩放 / 不进任务栏 / 始终置顶 / 先隐藏再由 `ready-to-show` `showInactive()`）、
+  `src/main.ts`（`petWin` / `showPet` 状态、幂等 `openPet()`、`closePet()` 用 `destroy()` 免得关不掉、
+  `setShowPet()` 落盘 + 开关 + 回推状态；托盘那支 relay 分支之后加 pet 分支；主窗口
+  `did-finish-load` 之后才开（等 cookie）；主窗口 `closed` 时非 darwin 一并收掉宠物窗，免得它把 app
+  吊住；冒烟探针多报 `pet: {url,title} | null`，被要求截图时多存一张 `*-pet.png`）。
+- **Web（`packages/web`）**：新路由 `/pet` 与 `src/features/pet/`（`pet-notice.ts` 纯逻辑：通知归一
+  + 更新状态到「那唯一一个动作」、`penguin.tsx` 内联 SVG 企鹅（5 条字面 `d=` 路径）、
+  `pet-page.tsx` 页面本体）；`api/endpoints.ts` 加 `getDesktopPet` / `setDesktopPet`；中英两份
+  `pet` 文案段；设置 › 外观在托盘开关旁多一个「显示桌宠」开关（`appearance-section.tsx` 里
+  `offersTrayIcon` 改名 `offersShellChrome` —— 它现在同时管托盘与桌宠两件壳自有面）；
+  `styles.css` 加 `.pet-drag` / `.pet-no-drag`、`body.pet-body` 透明与 `pet-bob` 动画
+  （reduced-motion 下不动）。
+- **测试**：`server/test/desktop-pet.test.ts`（8 条）、`desktop/test/pet-prefs.test.ts`（9 条）、
+  `desktop/test/pet-window.test.ts`（6 条）、`web/test/pet-notice.test.ts`（10 条）、
+  `web/e2e/pet.spec.mjs`（1 条，真服务 + mock-LLM）；`desktop/test/main-window-open.test.ts` 的
+  `setWindowOpenHandler` 计数 2→3（宠物窗口是纯 chrome，不开窗口）；`web/test/icon-registry.test.ts`
+  白名单多一条。
+- changelog 一对：`changelog/unreleased/2026-10-20-desktop-pet.{md,zh.md}`。
+- **没有新依赖**；服务端只多了一个路由与四条线格式类型。
+
+### 设计上定下的三件事（决定了实现长什么样）
+
+1. **桌宠窗口就是同一个应用来源的第二扇窗，加载 Web 应用自己的路由 `/pet`** —— 于是不需要 preload、
+   不需要 IPC 桥、不需要单独托管的页面：它跟主窗口吃同一个 cookie，显示的一切都走其他页面读的同一套
+   HTTP 面（用户级事件流、壳的更新快照、固定住的分组余额）。
+2. **默认关闭**：托盘图标是用户已经打开的那个窗口里的装饰，桌宠是自己的一扇窗、会盖住别的应用，所以
+   它只在该出现的时候出现。开关走托盘开关那条老路（Web 设置 → 服务端路由 → utilityProcess 帧 →
+   壳落盘并开关窗口）；桌宠面板里的「隐藏桌宠」写的是**同一份偏好**，两条路不会互相矛盾。
+3. **通知只取用户级事件流里能变成人话的三类**：定时任务触发（带任务名）、有工具调用在等批准、
+   员工预算告警 / 被暂停。更新快照每分钟重读一次，只在播报过的状态真的变了才开口 —— 壳往服务端推是
+   单向的，所以这次轮询才是让它开口的那一步。
+
+### 验证
+
+- 四道门禁（`pnpm typecheck` → `pnpm -r test` → `npx oxlint` → `npx prettier --check .`）：
+  **四项 `EXIT=0`**。`gen:ifaces` 报 **`unchanged`（193 接口 / 589 类型）**（比第九十轮的 192 / 587
+  各多一，正是本轮新增的桌宠线格式）；`oxlint` **0 警告 0 错误**（2233 文件）；`prettier`
+  「All matched files use Prettier code style!」。
+- 逐包测试 **0 失败**：web **261 文件 / 3212 通过 / 2 跳过** · server **202 / 2955 / 4 跳过** ·
+  desktop **26 / 304** · ui **129 / 1043** · ui-gallery **20 / 137** · docs **8 / 62** ·
+  amsp **2 / 68** · cli **38 / 561** · core **67 通过 + 1 跳过 / 1399 通过 / 6 跳过** ·
+  四个沙盒插件 29 / 21+1 跳过 / 32 / 17+5 跳过。
+- 构建：`pnpm --filter @adelie/{core,server,web,desktop,ui-gallery} build` 全 **0**。
+- **真壳 xvfb 冒烟**（一次性 profile `--user-data-dir`、`PENGUIN_HOME` 临时数据根）：
+  - 没有 `pet.json`：`DESKTOP-SMOKE-RESULT {... "pet":null}` —— 偏好关着就不开窗。
+  - 写入 `{"showPet": true}`：探针报 `"pet":{"url":"http://localhost:43931/pet","title":"Adelie"}`，
+    多出的截图 `/tmp/pet-smoke-on-pet.png` 是 **260×248、color type 6（带 alpha）**，
+    肉眼可见透明背景上画出的企鹅。
+- **Web e2e**：`pet.spec.mjs` **1 passed**（跑通两次）：真服务 + mock-LLM，断言企鹅按钮、面板三行、
+  浏览器下的两条「只在桌面应用里能读」、没有「隐藏桌宠」，以及真触发一个 `always-ask` 会话的工具调用
+  后气泡出现「有 1 个工具调用在等你批准」并留在面板里。
+- **真壳 CDP 联调**（本轮收尾的证据，真壳 + 真服务端）：后台起真壳
+  （`--remote-debugging-port=9222`、一次性 profile 与数据根），用 `connectOverCDP` 在**壳自己的页面里**
+  发设置页会发的那两个请求：
+  - `PUT /api/desktop/pet {"showPet":true}` → **202**；宠物窗口出现，地址
+    `http://localhost:44715/pet`；`pet.json` 变成 `{"showPet":true}`；`GET` 读回
+    `{"status":{"showPet":true}}`。
+  - `PUT {"showPet":false}` → **202**；窗口消失；`pet.json` 变成 `{"showPet":false}`。
+  - 顺带在真壳里点开面板截图，三行读的都是真服务端的真状态：「模型余额／刷新／还没固定余额：在「模型」页
+    点分组余额旁的图钉固定一个。」「客户端更新／检查新版本／这个安装形式由系统或开发流程管更新。」
+    「通知／暂时没有新通知。」「隐藏桌宠」—— dev 直跑时更新器关着，第三句正是设计的说法。
+    截图 `/tmp/pet-live-page.png`（只有企鹅）与 `/tmp/pet-live-page-panel.png`（面板）。
+- **按真窗口尺寸看图**（浅色 / 暗色 / 气泡三张，`/tmp/pet-page-*.png`）：面板文字完整不截断、
+  气泡在企鹅上方、暗色下可读。
+- 端口：冒烟与联调只用 43931 / 9222 / 44715，e2e 用 8930 / 8931（跑完都已停）；
+  3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/tmp` 下的一次性 profile 与数据根，
+  一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 与 `test-results/` 都是产物，
+  未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包。
+
+### 踩到的坑（写下来免得重犯）
+
+1. **新增路由组件必须同时改 `packages/server/src/platform.ts` 的 imports 与 ApiModule children**，
+   只加 `@Component` 不会注册 → 404；改完跑 `pnpm gen:ifaces`（产物 `ifaces.json` 被 gitignore，
+   不进 diff）。
+2. `@adelie/server/api` 的类型来自**构建产物** `packages/server/dist`：改完服务端类型要
+   `pnpm --filter @adelie/server build`，desktop 才 typecheck 得动。
+3. Playwright 点不动一直在动的元素（`pet-bob` 无限动画 → `element is not stable`）；
+   `test.use({ reducedMotion: "reduce" })` 无效，要 `await page.emulateMedia({ reducedMotion: "reduce" })`。
+4. 仓库有三条「去 slop」约定测试必须过：不许 `text-[11px]`（用 `text-xs`）、不许 `drop-shadow`、
+   不许原生 `title=`（用 `data-tooltip`）；字面 `d=` 路径要进图标注册表那份白名单
+   （`web/test/icon-registry.test.ts`）。
+5. ui-gallery 的 mock 路由要与新增端点同步，否则它的「mocked API 覆盖所有 wrapper」测试红。
+
+### 下一轮从这里接
+
+- 待办清单的卡点原地：**2.2c**、**3.5**、**3.6**、**4.1–4.3**、**5.6** / **5.10**；7.1–7.13 已勾掉。
+- 上游尖端仍是 `f025f416`（第九十轮记的 8 个提交：`77be09ec` 目标模式缺插件、`ebac1f34` 机器重连放弃
+  与重试、`d49b6a27` 终端归属、`2333fa2e` 平台重载串行化等），本轮没拉；下一轮先按 URL 拉
+  `refs/adelie-tmp/upstream-main-r91` 确认尖端有没有再动。
+- 若用户继续点单桌宠，这几件是接着要问的：①面板的「客户端更新」在 dev 直跑时永远是「由系统或开发
+  流程管更新」（更新器在 dev 下关着），只有打包版才有真状态；②宠物窗口不穿点击，空白的透明角落也会
+  吃掉一次点击，要不要改成按区域转发点击需要单独设计；③通知目前只认那三类事件，会话结束 / 任务失败
+  之类要不要也进它，听用户说。
+- 若回到自选，仍是第九十轮写下的那件：**单条模型的「删除模型」**（`ModelDialog` 的
+  `action === "remove"`）要不要也改成「写成功才关框」。
