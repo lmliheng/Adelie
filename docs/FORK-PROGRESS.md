@@ -1221,6 +1221,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `collapseRail` 等的是停稳的 48 px 列（48.5 留给那道分隔线的 hairline），`company-rail-hints`
       第八十七轮自己攒的同款等待（它当时就写对了阈值）收进来共用。细节与反证见该节。
 
+- [x] **7.17 停靠栏的取样等它落定：`dock.spec` 用 24 px 的松口子把还在滑的停靠栏读成「已到位」，
+      三处固定 `waitForTimeout(200)` 写在 170 ms 的弹入动画旁边**（**2026-10-20 第九十五轮**落地，
+      提交见该节；1 个新文件 `packages/web/e2e/settle.mjs` + `dock.spec.mjs` 三处 +
+      `layout.spec.mjs` 三处，**无新依赖、不碰产品代码**）：第九十四轮末尾点的「同类地方还没逐处核过」
+      的那一遍。逐帧量完之后（右停靠栏 1 → 512 约 293 ms、底栏 1 → 348 约 289 ms、刷新后的恢复
+      29.61 → 348、全屏的 `data-fullscreen` 要到 ~278 ms 才转 `full`、抽屉 240 ms、菜单弹入 170 ms）
+      三处结论：**① 松口子** —— 恢复那条 `|h − after| < 24` 在 333.84 就放行（实测把过渡放慢 7× 后，
+      老等待停在 324.88，离停稳的 346.22 差 21.34 px），一个真的「恢复短了 20 px」也会过；
+      **② 猜时长** —— 三处 `waitForTimeout(200)` 的真值来自 `.anim-pop` 的 170 ms，动画一改这三处
+      就静悄悄失效；**③ 全屏已经是对的**（属性只在过渡结束后才写 `full`，量到它的地方不必再等），
+      **抽屉没有任何用例量它**（没有要改的等待）。现在统一走 `settledBox()`：逐帧读盒子、连续两帧
+      在 0.5 px 内一致才算到位。细节、逐帧数字与反证见该节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1835,6 +1848,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-20 | 7.14 | **单条模型的「删除模型」的确认框只在写成功之后收起**（不是移植：`packages/web/src/features/models/models-page.tsx` 一处真修复（+62 −19：remove 先不关框、写成功才关；`persist` 新增可选第 5 参 `refusedRows`；三处重复的关框收成 `closeModelDialog()`）+ 1 个新文件 `packages/web/e2e/models-delete-model.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：第九十轮末尾写下的那件，也是「先写成功再收起」这条线索的第五种形态。**量出来的缺陷**：配置对话框里的「删除模型」确认框（连同背后的配置对话框）在请求发出时就关闭，而 `persist` 的 catch 把**尝试中的表**（= 没有这个模型的表）放回页面 —— 于是被拒的那次删除让模型从页面上消失、服务器却仍留着它，而**打开这张对话框的卡片也跟着没了**（实测：`dialog 0`、页面上模型名 0 次、服务器仍 191 行、紧接着的「重试」一次 PUT 都没发出），只有刷新才能脱身。**现在**：写成功之后才关两张框；被拒时页面留在删除前的表上（先给尝试中的表会在半途把配置对话框卸掉、连句子一起丢，第一版实测 `dialogs 1`），句子与错误提示原样留着，重试就是同一张确认框；请求在飞时确认框标 `busy`（按钮禁用） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不动服务契约）· `npx oxlint` 全仓 **0 警告 0 错误**（2234 文件）· `npx prettier --check .` 「All matched files use Prettier code style!」（新 spec 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 / 6 跳过**（67 文件）· ui **1043**（129）· cli **561**（38）· web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**102 passed（7.6m）、0 failed**（第九十一轮之后 100 条 + 本笔 2 条）· **反证**：`models-page.tsx` 用 `git stash` 退回 `HEAD` 那一版并重建 web → 新 spec 两条都**红**（都死在等「被拒之后确认框还在」：`getByRole('dialog')` 找不到「确定删除」），`stash pop` 恢复后 **2 passed**；同族既有 `models-delete-group` 2 条 + `models-sync-order` 2 条同服务 **4 passed** · **两态实测**（一次性数据根 `mktemp -d /tmp/r92data.*`、`localhost:8944` + mock 8945、用户 `r92probe`、1280×900、自定义分组 `probegrp` 里的手加模型 `Probe Solo`，`PUT …/models` 拒成 500 `models_store_closed`）：**改前** `puts 1` / `dialogs 0` / 页面上模型名 0 次 / 服务器 191 行 / 重试一次 PUT 都没发出；**改后** `puts 1` / `dialogs 2` / 模型名 2 次（卡片 + 对话框标题）/ 服务器 191 行；放行后从同一张确认框重试 → `puts 2` / `dialogs 0` / 页面上 0 次 / 服务器 190 行 · **真看一眼**：`r92/shots/{1-config-dialog,2-confirm,3-after-refused,4-after-retry}.png`，console / 网络只有按设计的 `GET …/machines` **403** 与刻意造的 500，无其它 error / ≥400 · 端口只用 8944 / 8945 与 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r92data.*` 与 e2e 自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `49d4c919` |
 | 2026-10-20 | 7.15 | **保存模型配置 / 设为默认 / 设为视觉代理的确认框只在写成功之后收起**（不是移植：`packages/web/src/features/models/models-page.tsx` 一处真修复（+66 −37：非删除分支也回报写入结果、`submit` 收成一条路、`removing` 改名 `writing` 并覆盖全部动作、确认框与对话框确认按钮在写入中锁住；被拒时把 `defaultModel` / `visionModel` 退回写入前，`before` 作为 `refusedRows` 传给 `persist`）+ 1 个新文件 `packages/web/e2e/models-save-refusal.spec.mjs`（3 条用例）+ changelog 一对，**无新依赖、不碰接口**）：**量出来的缺陷**两种形态 —— ①被拒的保存：`puts 1`、`dialogs 0`、卡片写着 `Probe Save Renamed`、服务器 `displayName` 仍 `Probe Save`；②被拒的设为默认：`puts 1`、`dialogs 0`、卡片挂上「默认」、服务器 `defaultModel` 仍 `deepseek-flash`。**现在**：写入有结果才收两张框，被拒时句子与草稿留着、页面退回服务器持有的表与两个指针，重试就是同一张确认框 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 / 589 类型））· `npx oxlint` **0 警告 0 错误**（2235 文件）· `npx prettier --check .` 干净 · 逐包 `EXIT=0`、**0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1043** · cli **38 / 561** · web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`）：首跑 **104 passed / 1 failed**（红的是 `tooltip-beside` 竖栏那条量法，与本次改动无关；单独连跑 **5 次 × 2 条全绿**），**整套复跑 105 passed（7.6m）/ 0 failed** · **反证**：`models-page.tsx` 暂存回 `HEAD` 并重建 web → 新 spec **3 条全红**（16.9 / 16.5 / 16.8s 各自死在「被拒后两张框还在」），恢复后 **3 passed**；同族既有用例（delete-model 2 + delete-group 2 + sync-order 2）**6 passed** · **成功路径未破**：真浏览器里走完「新增分组→手加模型」「改名保存」「设为默认」三条，每次都一张框关掉、服务器与卡片同步 · **真看一眼**：`r93/{after-save,after-default,after-success}.png`，console 只有按设计的 `GET …/machines` **403** 与刻意造的 500 · 端口只用 8944 / 8945 / 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 · 没有切版本号、没发 npm、没发安装包 | `a58d505c` |
 | 2026-10-20 | 7.16 | **竖栏折叠后的取样等它落定：`tooltip-beside` 曾把折到一半的竖栏边缘当成停稳的那道边**（不是移植：1 个新文件 `packages/web/e2e/rail.mjs`（`collapseRail`，等 `aside.right <= 48.5` 并显式给 15 s）+ 两份 spec 改用它（`tooltip-beside` −11 +1、`company-rail-hints` −12 +1，后者第八十七轮那份本地同款收进共用），**无新依赖、不碰产品代码、不写 changelog**）：第九十三轮整套 e2e 首跑的那条红（`placed.rect.left 48 < railRight - 1 50.97`）的真因在**等待**本身 —— 第八十五轮写的是 `expect.poll(...).toBeLessThan(80)`，也就是「比展开的侧栏窄就放行」，而折叠动画要 ~150 ms 才落到 48。**逐帧量到的**（真服务 + 真浏览器，`mktemp` 数据根、`localhost:8964`、1280×900）：`aside.right` 231.25 → 178.28 → 132.84 → 101.83 → **81** → 66.98 → 57.72 → **51.97** → 48.91 → 48，所以等待可能停在 81.00 / 66.98 / 51.97（那一跑量到的正是 51.97），而提示面板按已停稳的 48 摆放 —— 断言只错在竖栏那一条，静悄悄地错一两个像素。**现在**：`e2e/rail.mjs` 的 `collapseRail` 等停稳的 48 px 列，两份 spec 共用它；`tooltip-beside` 的竖栏前提与全部落位断言原样保留。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖），而第九十三轮点名的那一族「点击即关、失败只弹 toast」的确认框本轮逐处摸过（插件市场 / 智能体设置 / 定时任务 / 公司日历、组织、频道 / MCP / 用户仓库），**没有一处留下假状态**，故不再顺着它找 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰源码）· `npx oxlint` 全仓 **0 警告 0 错误**（2236 文件）· `npx prettier --check .`「All matched files use Prettier code style!」（`rail.mjs` 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1043** · cli **38 / 561** · web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · 改动涉及的两份用例同服务连跑 **4 passed（12.8s）**（`tooltip-beside` 2 + `company-rail-hints` 2；改前同一服务单跑 `tooltip-beside` 2 passed 作基线）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**105 passed（7.6m）、0 failed**，第九十三轮那条偶发红这次没有出现 · **反证**（同一浏览器、同一页，把折叠放慢成 1.2 s 让「中途」这段窗口宽到能看清差别）：**旧等待** 706 ms 后以 `railRight=78.28` 放行、面板 `left=48.00`，`48.00 >= 77.28` → **FAIL**；**新等待** 1127 ms 后以 `railRight=48.39` 放行、面板 `left=48.00` → **PASS**；探针 `r94/probe-fold.mjs`（逐帧轨迹）与 `r94/probe-old-vs-new.mjs`（两套等待）在 scratchpad · **真看一眼**：`r94/{old-wait-midfold,new-wait-settled}.png`，竖栏 48 px、提示「插件市场」贴着竖栏右边缘弹出；console 只有按设计的 `GET …/machines` **403**，无其它 error / ≥400 · 端口只用 8964 / 8965 与 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r94data.*` 与 e2e 自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ab04ae9c` |
+| 2026-10-20 | 7.17 | **停靠栏的取样等它落定：`dock.spec` 的 24 px 松口子与三处猜时长的 `waitForTimeout(200)`**（不是移植：1 个新文件 `packages/web/e2e/settle.mjs`（`settledBox()` —— 逐帧读 `getBoundingClientRect()`，连续两帧在 0.5 px 内一致才返回；元素离场、或 10 s 还没停稳，直接报错而不是返回一个还在动的数）+ `dock.spec.mjs` 三处（恢复那条 `|h − after| < 24` → 等停稳后 `≤ 2`；拖拽前的 `before` 由一次性读改成停稳后读；全屏那段手写的「两帧宽度相等」轮询 → `settledBox(composer)`）+ `layout.spec.mjs` 三处（`waitForTimeout(200)` 的弹入等待 → `settledBox(panel|picker|finder)`），无新依赖、不碰产品代码）：逐帧量到的实情 —— 右停靠栏宽度 1 → 8.88 → 43.78 → … → 510 → 512（~293 ms，旁边的会话列跟着缩：composer 746 → 428）、底栏高度 1 → 6.03 → 29.75 → 82.33 → 159.27 → … → 333.92 → 346.66 → 348（~289 ms）、刷新后的恢复 29.61 → 82.3 → … → 348、全屏的 `data-fullscreen` 要到 ~278 ms 才从 `entering` 转 `full`（而 header 一上来就是 992 宽、只抖 ±1 px，所以量到它的那几条本来就对，不必再改）、抽屉 `.anim-drawer-left` 240 ms 但**没有任何用例打开它**、菜单弹入 `.anim-pop` 170 ms（三处 200 ms 的余量只剩 30 ms）。老等待的松口子在放慢 7× 的过渡下停在 324.88（停稳 346.22，差 21.34 px） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）**，本笔不碰源码）· 逐包 test **`EXIT=0`、0 失败**：core **1399 通过 / 6 跳过**（68 文件）· ui **1043**（129 文件）· cli **561**（38 文件）· server **202 文件 / 2955 通过 / 4 跳过** · web **261 文件 / 3212 通过 / 2 跳过** · 改到的两份 spec 加 `mobile-dock` 同服务连跑 **17 passed（1.1m）** · **整套 e2e**（`pnpm -C packages/web test:e2e`：重建 core/server/web、脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）**105 passed（7.6m）、0 failed** · **反证（真浏览器、同一份恢复动画，老等待与新等待并排量）**：老等待真速下停在 346.66（离 348 差 1.34 px），放慢到 1.4 s 后停在 324.88（差 21.34 px，即 `|h − after| < 24` 会放行一个离停稳位置还差五分之一的盒子）；`settledBox` 真速读到 348.00、放慢 1.4 s 读到 346.22（离目标 1.78 px，这就是断言留 2 px 而非严格相等的原因）· 真看一眼：`r95/shots/docks-1280.png`（右侧记忆 + 底部轨迹两个停靠栏）与 `r95/shots/drawer-390.png`（390 宽手机抽屉），console 只有按设计的 `GET …/machines` 403，无其它 error / ≥400 · 端口只用 8940（一次性探针服务，已停）与 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r95data.*` 与 e2e 自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写 | `40620042` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -12228,3 +12242,98 @@ Escape 再来一次，四次的预算。连跑三次稳定。
   还没逐处核过，下一轮若仍自选，先按本轮的逐帧量法看一遍哪些是「阈值放得太宽」而不是「没等」。
 - 若用户点单桌宠的后续三问（第九十一轮记的三条）或别的功能，按点单优先。
 
+
+## 第九十五轮：停靠栏的取样等它落定（2026-10-20，条目 7.17）
+
+### 开工自检与选活理由
+
+- 同步：开工时 `git status --short` 干净，`main` 停在 `4e02f8a4`（第九十四轮的台账补记），
+  `git fetch origin && git merge --ff-only origin/main` = Already up to date（没切分支、没碰
+  `legacy/main`、没推 upstream）。
+- 上游：按台账的办法按 URL 现拉
+  （`git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness main:refs/adelie-tmp/upstream-main-r95`），
+  尖端仍是 **`8aa76123`** —— `git rev-list --count 8aa76123..refs/adelie-tmp/upstream-main-r95` = **0**。
+- 选活：待办里最靠前的未勾选条目仍是 **2.2c**（剩下的三件事全在桌面壳写侧、`adelie-app.service`
+  单元、桌面壳自己的开关那一侧）；3.5 / 3.6 / 4.1–4.3 要拍板或要 key；5.6 / 5.10 也要拍板或有前置。
+  于是接过第九十四轮末尾点名的那件：**同类「等动画落定再量」的地方（停靠栏开合、抽屉、面板全屏）
+  还没逐处核过** —— 按那一轮记下的逐帧量法先看一遍「阈值放得太宽」与「没等」。
+
+### 先量清楚（真服务 + 真浏览器，不是推测）
+
+一次性数据根（`mktemp -d /tmp/r95data.*`）、服务端 `localhost:8940`、mock LLM `127.0.0.1:8931`、
+用户 `r95probe`、1280×900；探针在页面里用一个 rAF 采样器逐帧读 `getBoundingClientRect()`：
+
+- **右停靠栏打开**：宽度 `1 → 8.88 → 43.78 → 121.13 → 233.66 → … → 491.09 → 503.44 → 510 → 512`
+  （~293 ms 停稳），同一段时间里旁边的会话列跟着缩（composer `746 → 428`）。
+- **底栏打开（新会话）**：它自己的盒子 `1 → 6.03 → 29.75 → 82.33 → 159.27 → 224.78 → 270.11 →
+  300.14 → 320.48 → 333.92 → 342.22 → 346.66 → 348`，最后一段在 ~289 ms 到达。
+- **刷新后的恢复**：同一个滑动 `29.61 → 82.3 → 159.23 → … → 347.98 → 348`，尾巴 ~70 ms 是平的。
+- **面板全屏**：`data-fullscreen` 先写 `entering`、~278 ms 才写 `full`；而 header 一上来就是 row 的宽度
+  （992），只从 `289` 抖到 `287.98` 再回 `288` —— 所以 `dock.spec` 那两条「header 与 row 的 x/width 相等」
+  本来就在量停稳的东西（`toHaveAttribute("data-fullscreen", "full")` 就是它的等待），**不必改**。
+- **抽屉**（390 宽手机）：`.anim-drawer-left` 是 240 ms 的滑入；**但 grep 全仓 e2e，没有任何用例打开它**
+  （`mobile-dock` 只用停靠栏），所以这一处没有「等没等」的问题。
+- **菜单 / 对话框弹入**：`.anim-pop` 是 170 ms，而 `layout.spec` 三处在它后面写的是
+  `waitForTimeout(200)` —— 只剩 30 ms 余量。
+
+### 量出来的两处（这就是本轮改的东西）
+
+1. **松口子**：`dock.spec` 的恢复断言是 `expect.poll(|h − after| < 24)`。按上面的轨迹，它在 333.84 就放行，
+   而盒子还要走 14 px 才停。把一个真的「恢复短了 20 px」放进这个口子也会过 —— 它测的是「大致到了」，
+   不是「到了」。把过渡放慢到 1.4 s 之后，老等待停在 **324.88**，停稳值是 **346.22**（差 **21.34 px**）。
+2. **猜时长**：`layout.spec` 三处 `waitForTimeout(200)` 的真值来自动画自己的 170 ms，动画一改这三处
+   就静悄悄失效（它们量的正是弹出的那个盒子：菜单面板、模型对话框、工作区 Finder）。
+
+### 改了什么（1 个新文件 + 6 处调用，无新依赖、不碰产品代码）
+
+- `packages/web/e2e/settle.mjs`（新）：`settledBox(locator, { tolerance = 0.5, timeout = 10_000 })` ——
+  在页面里逐帧读 `getBoundingClientRect()`，**连续两帧在 0.5 px 内一致**才把盒子（`{x, y, width, height}`，
+  与 `boundingBox()` 同形）交回去。元素中途离场、或 10 s 还没停稳，直接报错而不是交回一个还在动的数；
+  文件头把上面那一串逐帧数字、`boundingBox()` 只等挂载不等停稳、以及「缓动的尾巴可能差 1–2 px」
+  都写清 —— 下一个用它的人不必再自己猜。
+- `dock.spec.mjs` 三处：恢复那条 → `settledBox` 之后 `|h − after| ≤ 2`（2 px 是缓动尾巴的量，
+  见「验证」里的两个读数）；拖拽前的 `before` 由一次性 `boundingBox()` 改成停稳后读（它在 tab 刚可见时读，
+  那一刻盒子可能只有真高度的四分之一，而这段差值正是「拖拽有没有生效」那条断言的分子）；
+  全屏那段手写的「两帧宽度相等」轮询换成 `settledBox(composer)`。
+- `layout.spec.mjs` 三处：`waitForTimeout(200)` → `settledBox(panel)` / `settledBox(picker)` /
+  `settledBox(finder)`，并把「170 ms 是 `.anim-pop` 的事、不是这份 spec 的事」写进注释。
+- 没有用户可见行为 → **不写 changelog**（按 7.1 的先例：测试夹具与用例的修正不进发版说明）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 /
+  589 类型）** —— 本笔不碰源码）。
+- 改了的三份文件 `prettier --check` 干净（`.md` 不在 prettier 范围）；`node --check settle.mjs` 干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1043** ·
+  cli **38 / 561** · server **202 文件 / 2955 通过 / 4 跳过** · web **261 文件 / 3212 通过 / 2 跳过**。
+- 改到的两份 spec 同服务连跑：`dock.spec` + `layout.spec` + `mobile-dock` = **17 passed（1.1m）**。
+- **整套 e2e**（`pnpm -C packages/web test:e2e`，含重建 core/server/web、脚本自己的 `mktemp` 数据根、
+  mock 8931 / 服务端 8930）：**105 passed（7.6m）、0 failed**。
+- **反证（真浏览器、同一份恢复动画，老等待与新等待并排量）**：真速下老等待停在 **346.66**
+  （离 348 差 1.34 px）、`settledBox` 读到 **348.00**；放慢到 1.4 s 后老等待停在 **324.88**
+  （差 21.34 px）、`settledBox` 读到 **346.22**（离目标 1.78 px —— 这就是断言留 2 px 而不是要求严格相等的原因，
+  也是 `settle.mjs` 文件头写明「不承诺最后一个像素」的由来）。探针 `r95/probe-frames.mjs`（逐帧）、
+  `r95/probe-bottom-open.mjs`（底栏自己的盒子）、`r95/probe-dom.mjs`（全屏时大到 row 的到底是哪个元素）、
+  `r95/probe-settle.mjs`（老 / 新两种等待）都在 scratchpad。
+- **真看一眼**：`r95/shots/docks-1280.png`（右侧「记忆」+ 底部「轨迹观测」两个停靠栏）与
+  `r95/shots/drawer-390.png`（390 宽手机上打开抽屉）；console 只有按设计的 `GET …/machines` 403，
+  无其它 error / ≥400。
+- 端口：探针只用 8940 与 mock 8931，整套 e2e 用 8930 / 8931（跑完都已停）；3003 / 3004 / 4000 /
+  7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r95data.*` 与 e2e 自己的 `mktemp` 根，
+  一个字节没往 `~/.penguin` / `~/.adelie` 里写。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 下一轮从这里接
+
+- 待办清单的卡点原地：**2.2c**（剩下的全在桌面壳 / 部署单元那一侧）、**3.5**、**3.6**、**4.1–4.3**、
+  **5.6** / **5.10**；7.1–7.17 已勾掉。
+- 上游尖端 **`8aa76123`**（本轮重拉过，0 个新提交）。
+- 「等动画落定再量」这一族本轮核完三处（停靠栏、全屏、抽屉），**剩下的固定等待不在测量路径上**：
+  成本中心那三处 `waitForTimeout(2_500)` 是记录器自己的 2 秒去重窗口（第七十七轮起的行为，用例有意等它），
+  `layout.spec` 的 700 / 900 / 1200 ms 是 `goto` 之后让整页渲染完，不是等某个动画。唯一没核过的是
+  `chat.spec` 那两处「改视口宽高之后 200 ms，再量工具栏里两个 span 是否重叠」—— 下一轮若仍自选，
+  先量一下缩放视口会不会带动工具栏的过渡。
+- 「点击即关、失败只弹 toast」那一族第九十四轮逐处摸过，**没有一处留下假状态**；要动就是统一「失败原因随框留着」，
+  那是一次横跨十几个页面、且要先定文案的改动，仍得单独一轮。
+- 若用户点单桌宠的后续三问（第九十一轮记的三条）或别的功能，按点单优先。
