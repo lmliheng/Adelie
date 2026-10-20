@@ -136,6 +136,15 @@ function cardFor(page, name) {
   return page.getByText(name, { exact: true }).first().locator("xpath=ancestor::button[1]");
 }
 
+/**
+ * The card's own text with the refusal slot dropped: a refused write adds one line under the
+ * sentence ("操作被拒绝：…"), and that line is the only thing the refusal is allowed to change —
+ * the sentence, the list it names and the buttons must read exactly as they did before the write.
+ */
+async function cardText(card) {
+  return (await card.innerText()).replace(/\n操作被拒绝：[^\n]*/, "");
+}
+
 test("a refused save keeps both dialogs and the name the server still holds", async ({ page }) => {
   const { read } = await projectWithModel(page, "r93save");
 
@@ -155,12 +164,15 @@ test("a refused save keeps both dialogs and the name the server still holds", as
   await refuseWrites(page, puts);
   await confirm.getByRole("button", { name: "确认" }).click();
 
-  // The write was refused: the server's words show, and both dialogs are still exactly as they
-  // were — the same sentence, the draft still in the field.
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  // The write was refused: the server's words show inside the confirmation — not in a toast,
+  // which used to be their only home and dismissed itself out of the card still on screen —
+  // and both dialogs are still exactly as they were: the same sentence, the draft still in the
+  // field.
+  await expect(confirm.getByText("models store is closed")).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" }).getByRole("button")).toHaveCount(0);
   expect(puts).toHaveLength(1);
   await expect(confirm).toBeVisible();
-  expect(await confirm.innerText()).toBe(sentence);
+  expect(await cardText(confirm)).toBe(sentence);
   await expect(nameInput).toHaveValue(RENAMED);
   await expect(page.getByRole("button", { name: "删除模型" })).toBeVisible();
 
@@ -208,7 +220,7 @@ test("the retry of a refused save is the same confirmation, and only a written o
   await dialog.getByRole("button", { name: "确认" }).click();
   const confirm = confirmation(page, "确定保存对");
   await confirm.getByRole("button", { name: "确认" }).click();
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  await expect(confirm.getByText("models store is closed")).toBeVisible();
   await expect(confirm).toBeVisible();
   expect(puts).toHaveLength(1);
 
@@ -244,7 +256,7 @@ test("a refused set-as-default keeps both dialogs and the pointer the server sti
   await refuseWrites(page, puts);
   await confirm.getByRole("button", { name: "确认" }).click();
 
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  await expect(confirm.getByText("models store is closed")).toBeVisible();
   expect(puts).toHaveLength(1);
   // Both dialogs stay up: the confirmation over the config dialog it was started from.
   await expect(page.getByRole("dialog")).toHaveCount(2);

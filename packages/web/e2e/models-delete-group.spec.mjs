@@ -113,6 +113,15 @@ async function openDeleteDialog(page) {
   return dialog;
 }
 
+/**
+ * The card's own text with the refusal slot dropped: a refused write adds one line under the
+ * sentence ("操作被拒绝：…"), and that line is the only thing the refusal is allowed to change —
+ * the sentence, the list it names and the buttons must read exactly as they did before the write.
+ */
+async function cardText(card) {
+  return (await card.innerText()).replace(/\n操作被拒绝：[^\n]*/, "");
+}
+
 test("a refused group delete keeps its dialog, its sentence and the group the server has", async ({
   page,
 }) => {
@@ -129,11 +138,15 @@ test("a refused group delete keeps its dialog, its sentence and the group the se
   await refuseWrites(page, puts);
   await dialog.getByRole("button", { name: "确认" }).click();
 
-  // The write was refused and the dialog stays exactly as it was — same group, same count.
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  // The write was refused and the dialog stays exactly as it was — same group, same count —
+  // with the server's own words added under its sentence. That is the only thing this refusal
+  // puts on screen: the reason used to be a toast, which dismissed itself after six seconds and
+  // sat over the card rather than in it, so the one thing the retry needs left first.
+  await expect(dialog.getByText("models store is closed")).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" }).getByRole("button")).toHaveCount(0);
   expect(puts).toHaveLength(1);
   await expect(dialog).toBeVisible();
-  expect(await dialog.innerText()).toBe(sentence);
+  expect(await cardText(dialog)).toBe(sentence);
 
   // The group is back on the page, and its header still offers the way to this action: before
   // the fix the refused delete took both away while the server kept the rows.
@@ -178,7 +191,7 @@ test("the retry after a refused group delete writes it, and only a written one c
 
   const dialog = await openDeleteDialog(page);
   await dialog.getByRole("button", { name: "确认" }).click();
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  await expect(dialog.getByText("models store is closed")).toBeVisible();
   await expect(dialog).toBeVisible();
   expect(puts).toHaveLength(1);
 

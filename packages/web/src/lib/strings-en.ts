@@ -1122,6 +1122,11 @@ export const en: Strings = {
     none: "(none)",
     retry: "Retry",
     unknownError: "Request failed, please try again later",
+    /**
+     * Lead-in for a write the server refused, in the card that asked for it: the reason is the
+     * server's own sentence, so the card has to say what that sentence is about.
+     */
+    refused: (reason: string) => `Refused: ${reason}`,
     requiredField: "This field is required",
     /** A menu row that copies what it acts on (the conversation's selection menu); the confirmation is `copied`. */
     copy: "Copy",

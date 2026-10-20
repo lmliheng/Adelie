@@ -1170,6 +1170,12 @@ export const zh = {
     none: "（无）",
     retry: "重试",
     unknownError: "请求失败，请稍后重试",
+    /**
+     * Lead-in for a write the server refused, in the card that asked for it: the reason is the
+     * server's own sentence, so the card needs to say what that sentence is about. «被拒绝» is the
+     * library's own word for a refused write (the dialogs keep themselves open on one).
+     */
+    refused: (reason: string) => `操作被拒绝：${reason}`,
     requiredField: "此项必填",
     /** A menu row that copies what it acts on (the conversation's selection menu); the confirmation is `copied`. */
     copy: "复制",

@@ -15,9 +15,15 @@
  * switch anyway / cancel). It stays the same card: a neutral button in the same row, never a
  * second primary. `confirmDisabled` covers the case where that recommended action is temporarily
  * unavailable — the body then says why, and the other choices stay live.
+ *
+ * A confirmation whose action is a write can also report the refusal of that write (`refusal`):
+ * the server's words render inside the card, under its sentence, so the reason sits next to the
+ * button that retries it. A toast says the same thing, but it dismisses itself out of the card
+ * the user is still looking at.
  */
 import type { ReactNode } from "react";
 import { Button } from "../../actions/button/button";
+import { NoticeStrip } from "../../feedback/notice/notice-strip";
 import { ICONS } from "../../icons/icons";
 import { Modal } from "../modal/modal";
 
@@ -75,6 +81,11 @@ export interface ConfirmModalProps {
    */
   glyph?: string;
   busy?: boolean;
+  /**
+   * The words for a write this confirmation asked for and the server refused, rendered under the
+   * card's sentence. Absent (not empty) when nothing was refused, so the slot is simply not drawn.
+   */
+  refusal?: string;
   children: ReactNode;
 }
 
@@ -91,13 +102,27 @@ export function ConfirmModal({
   tone = "danger",
   glyph,
   busy = false,
+  refusal,
   children,
 }: ConfirmModalProps) {
   return (
     <Modal open={open} title={title} onClose={onClose} headerless widthClass="sm:max-w-sm">
       <div className="flex items-start gap-3">
         <ToneMark tone={tone} {...(glyph !== undefined ? { glyph } : {})} />
-        <div className="min-w-0 flex-1 pt-1.5">{children}</div>
+        <div className="min-w-0 flex-1 pt-1.5">
+          {children}
+          {refusal !== undefined && (
+            // The card's own words, in the card's own width: a small strip under the sentence so
+            // the reason reads as part of the question that was refused, not as page-level news.
+            <NoticeStrip
+              tone="danger"
+              role="alert"
+              className="mt-3 rounded-md border px-2.5 py-2 text-xs"
+            >
+              <span data-slot="body">{refusal}</span>
+            </NoticeStrip>
+          )}
+        </div>
       </div>
       {/* Wraps rather than overflows: three choices with long labels don't fit one row inside
           the bottom-sheet width on a phone (a two-button card never reaches the wrap point). */}

@@ -164,6 +164,8 @@ import {
 import type { GroupHeaderAction } from "./group-header";
 import { GroupBalance } from "./group-balance";
 import { isPinned, usePinnedBalance } from "./balance";
+import { refusalOf } from "./write-outcome";
+import type { WriteOutcome } from "./write-outcome";
 
 /**
  * The authorization flows a group's Connect dialog can run, keyed by the flow named in that
@@ -849,6 +851,13 @@ export function ModelsPage() {
   const keyLanded = useRef(false);
   /** User-defined group (provider id) whose delete confirmation is open (built-in groups never offer this). */
   const [deleteGroupFor, setDeleteGroupFor] = useState<string | null>(null);
+  /**
+   * The words of the last refused group delete / preset sync, drawn inside that confirmation
+   * (`refusal` on the card) so the reason is still there when the user presses retry. Cleared
+   * when the confirmation opens again: a fresh attempt has not been refused yet.
+   */
+  const [deleteGroupRefusal, setDeleteGroupRefusal] = useState<string | null>(null);
+  const [syncRefusal, setSyncRefusal] = useState<string | null>(null);
   /** "Add group" popup (user-defined group): create-only hands off to that group's add-model dialog, import mode fills the group from its endpoint (see AddGroupDialog). */
   const [addGroupOpen, setAddGroupOpen] = useState(false);
   /** "Add models with AI" dialog: the prompt goes to the Project's default agent. */
@@ -905,12 +914,17 @@ export function ModelsPage() {
    * avoids the trap of "still have to click save after confirming". On failure, the error
    * is echoed back with the table the caller names (see `refusedRows`), so a retry starts
    * from something the server still holds rather than from a change it declined.
+   *
+   * The answer is a {@link WriteOutcome}, not a boolean: a refusal carries the server's words so
+   * the caller can put them in the card that asked for the write (see `refusalOf`). They are not
+   * raised as a toast here — the two call sites with no card still on screen add the toast
+   * themselves, and every other one shows the reason where the retry button is.
    */
   const persist = async (
     nextRows: RowState[],
     nextDefault: ModelRefDto | undefined,
     nextVision: ModelRefDto | undefined,
-    /** Success toast text (defaults to "saved"); on failure this function shows an error toast instead. */
+    /** Success toast text (defaults to "saved"). */
     successText?: string,
     /**
      * The table to leave on the page when the write is refused. Default: the attempted rows,
@@ -921,8 +935,10 @@ export function ModelsPage() {
      * still being in the table, and claims a change that did not happen.
      */
     refusedRows?: RowState[],
-  ): Promise<boolean> => {
-    if (!projectId) return false;
+  ): Promise<WriteOutcome> => {
+    // Unreachable through the page (it renders nothing without a Project, and every caller is
+    // behind that gate). The generic sentence is what a write that never left would report.
+    if (!projectId) return { ok: false, reason: S.common.unknownError };
     setBusy(true);
     // The vision model pointer must point to a row that still exists and isn't marked "doesn't support images" (invalidated on delete/re-annotation).
     const effectiveVision =
@@ -943,13 +959,12 @@ export function ModelsPage() {
         clearDraftModelRef(userId, projectId);
       }
       toastSuccess(successText ?? S.common.saved);
-      return true;
+      return { ok: true };
     } catch (e) {
       setRows(refusedRows ?? nextRows);
       if (nextDefault !== undefined) setDefaultModel(nextDefault);
       if (effectiveVision !== undefined) setVisionModel(effectiveVision);
-      toastError(apiErrorText(e));
-      return false;
+      return { ok: false, reason: apiErrorText(e) };
     } finally {
       setBusy(false);
     }
@@ -976,11 +991,13 @@ export function ModelsPage() {
    * install has them, and local additions are untouched — see catalog-sync.ts). No-op with a
    * toast when everything is already up to date.
    *
-   * Returns whether the table in hand now matches what the catalog holds — `true` for the no-op
-   * too. The notice's confirmation keeps itself open until then.
+   * Returns what the write answered — `ok` for the no-op too, since the table in hand then
+   * matches the catalog. The notice's confirmation keeps itself open until then and draws the
+   * refusal inside itself; the toolbar button that runs the same merge has no card to draw it
+   * in, so that caller raises the toast (`refusalOf`).
    */
-  const syncPresets = async (): Promise<boolean> => {
-    if (!rows) return false;
+  const syncPresets = async (): Promise<WriteOutcome> => {
+    if (!rows) return { ok: false, reason: S.common.unknownError };
     const merged = syncRowsWithCatalog(rows);
     if (merged.added === 0 && merged.updated === 0) {
       toastInfo(S.models.syncUpToDate);
@@ -989,7 +1006,7 @@ export function ModelsPage() {
       // of. Without it the notice keeps offering a button that can only answer "already
       // up to date" — a loop the user gets out of only by dismissing or reloading.
       refreshProjectTodos(projectId);
-      return true;
+      return { ok: true };
     }
     // A refused write takes the merge back off the screen. `persist` keeps the attempted rows
     // for a field edit the user is still holding, but a preset sync is a batch the catalog
@@ -998,18 +1015,18 @@ export function ModelsPage() {
     // anything while the notice still names every missing entry (measured on a refused write:
     // the retry produced no PUT at all and the server kept its old table).
     const before = rows;
-    const saved = await persist(
+    const outcome = await persist(
       merged.rows,
       defaultModel,
       visionModel,
       S.models.syncDone(merged.added, merged.updated),
     );
-    if (!saved) setRows(before);
+    if (!outcome.ok) setRows(before);
     // The Models nav badge is gated on the SAVED table, which this page holds only as row
     // state: re-probe it so the dot goes down on the server's answer rather than on the
     // assumption that the write covered everything the catalog offered.
     refreshProjectTodos(projectId);
-    return saved;
+    return outcome;
   };
 
   const syncPlatformModels = async () => {
@@ -1087,6 +1104,9 @@ export function ModelsPage() {
    * attempted rows on screen (right for a field edit the user is still holding), which
    * here would show the whole group as if it existed and make the dialog's own name check
    * report the name as taken on the retry.
+   *
+   * The refusal is raised as a toast: the add-group dialog closes the moment the import lands
+   * and keeps its own fields, so there is no card here to carry the server's words.
    */
   const importGroup = async (
     nextRows: RowState[],
@@ -1096,13 +1116,14 @@ export function ModelsPage() {
   ): Promise<boolean> => {
     if (!projectId) return false;
     const before = rows;
-    const ok = await persist(
+    const outcome = await persist(
       nextRows,
       defaultModel,
       visionModel,
       S.models.groupImported(added, skipped),
     );
-    if (!ok) {
+    if (!outcome.ok) {
+      toastError(outcome.reason);
       setRows(before);
       return false;
     }
@@ -1357,7 +1378,11 @@ export function ModelsPage() {
             disabled={busy}
             aria-label={`${S.models.deleteGroup} ${provider.label}`}
             title={S.models.deleteGroup}
-            onClick={() => setDeleteGroupFor(group.provider.id)}
+            onClick={() => {
+              setDeleteGroupFor(group.provider.id);
+              // A new attempt, not the one that was refused: the card opens with no reason in it.
+              setDeleteGroupRefusal(null);
+            }}
           >
             <GlyphIcon d={ICONS.trash} size={ICON_SIZE.groupHeaderAction} />
             <span className={HEADER_LABEL}>{S.models.deleteGroup}</span>
@@ -1435,7 +1460,11 @@ export function ModelsPage() {
             }
             actionLabel={S.todo.updateNow}
             busy={syncing}
-            onAction={() => setSyncConfirmOpen(true)}
+            onAction={() => {
+              setSyncConfirmOpen(true);
+              // A new attempt, not the one that was refused: the card opens with no reason in it.
+              setSyncRefusal(null);
+            }}
             dismissLabel={S.todo.dismiss}
             onDismiss={() => dismissTodo(projectId, "models", todo.signature)}
           />
@@ -1631,15 +1660,18 @@ export function ModelsPage() {
             const nextRows = rows.map((r) =>
               r.provider === target ? { ...r, apiKeyInput: key, clearApiKey: false } : r,
             );
-            // Success toast is shown inside persist (with "configured N" text); on failure
-            // only an error toast is shown, no false success report (persist swallows the
-            // error and doesn't reject, so a .then can't unconditionally report success).
+            // Success toast is shown inside persist (with "configured N" text); a refusal is
+            // raised here because this dialog closes on submit and has nothing left to draw it
+            // in (no false success report either — persist swallows the error, so a .then can't
+            // unconditionally report success).
             void persist(
               nextRows,
               defaultModel,
               visionModel,
               S.models.groupKeyApplied(affected.length),
-            );
+            ).then((outcome) => {
+              if (!outcome.ok) toastError(outcome.reason);
+            });
           }}
         />
       )}
@@ -1719,19 +1751,26 @@ export function ModelsPage() {
             // the only way back to this action, goes with it, so the retry needs a reload
             // (measured on a refused write: dialog gone, no `probegroup` anywhere on the page,
             // 2 rows still on the server). Keeping the confirmation means the retry is the same
-            // click, against the sentence whose count the restored rows still match.
+            // click, against the sentence whose count the restored rows still match — and the
+            // server's own words for the refusal sit inside it (`refusal`), not in a toast that
+            // would have dismissed itself long before the retry.
             void persist(
               before.filter((r) => r.provider !== target),
               defaultModel?.provider === target ? undefined : defaultModel,
               visionModel?.provider === target ? undefined : visionModel,
               S.models.groupDeleted(removed.length),
-            ).then((saved) => {
-              if (saved) setDeleteGroupFor(null);
-              else setRows(before);
+            ).then((outcome) => {
+              if (outcome.ok) {
+                setDeleteGroupFor(null);
+                return;
+              }
+              setDeleteGroupRefusal(refusalOf(outcome));
+              setRows(before);
             });
           }}
           confirmLabel={S.common.confirm}
           cancelLabel={S.common.cancel}
+          refusal={deleteGroupRefusal === null ? undefined : S.common.refused(deleteGroupRefusal)}
         >
           <p className="text-sm text-gray-700 dark:text-gray-300">
             {/* Offered on user-defined groups only, whose display info is always synthesized. */}
@@ -1762,13 +1801,15 @@ export function ModelsPage() {
             // Only a written merge dismisses the dialog. A refused one keeps the sentence and
             // the list of refs it names, so the retry is this same confirmation — the table
             // behind it has been put back, and finding the notice again to start over is work
-            // the failure does not justify.
+            // the failure does not justify. The refusal's words stay in the card (`refusal`).
             void syncPresets()
-              .then((saved) => {
-                if (saved) setSyncConfirmOpen(false);
+              .then((outcome) => {
+                if (outcome.ok) setSyncConfirmOpen(false);
+                else setSyncRefusal(refusalOf(outcome));
               })
               .finally(() => setSyncing(false));
           }}
+          refusal={syncRefusal === null ? undefined : S.common.refused(syncRefusal)}
         >
           <div className="space-y-3">
             <p className="text-sm text-gray-600 dark:text-gray-300">{S.models.syncCatalogHint}</p>
@@ -1883,9 +1924,9 @@ export function ModelsPage() {
                 sameModelRef(removed, visionModel) ? undefined : visionModel,
                 undefined,
                 before,
-              ).then((saved) => {
-                if (saved) closeModelDialog();
-                return saved;
+              ).then((outcome) => {
+                if (outcome.ok) closeModelDialog();
+                return outcome;
               });
             }
             const nextRows = isNew
@@ -1911,14 +1952,14 @@ export function ModelsPage() {
             const beforeDefault = defaultModel;
             const beforeVision = visionModel;
             return persist(nextRows, ptr.defaultModel, ptr.visionModel, undefined, before).then(
-              (saved) => {
-                if (saved) {
+              (outcome) => {
+                if (outcome.ok) {
                   closeModelDialog();
-                  return true;
+                  return outcome;
                 }
                 setDefaultModel(beforeDefault);
                 setVisionModel(beforeVision);
-                return false;
+                return outcome;
               },
             );
           }}
@@ -2513,14 +2554,15 @@ function ModelDialog({
   /** Closes the dialog and runs the header's "sync presets" merge; absent for a member, who cannot write the config. */
   onSyncPresets?: () => void;
   /**
-   * Commit one action and report whether its write landed. Every action answers now: this
+   * Commit one action and report what its write answered. Every action answers now: this
    * dialog and its confirmation stay up until the answer arrives, so a refused save, a
    * refused "set as default / as vision proxy" and a refused delete all keep their sentence
    * and their retry where the user left them. Only a written change closes them (the page
-   * does that for the actions it owns). `void` stays in the type for a caller with nothing
-   * to wait for.
+   * does that for the actions it owns); a refusal also carries the server's words, which the
+   * confirmation draws in its `refusal` slot. `void` stays in the type for a caller with
+   * nothing to wait for.
    */
-  onSubmit: (row: RowState, action: DialogAction) => Promise<boolean> | void;
+  onSubmit: (row: RowState, action: DialogAction) => Promise<WriteOutcome> | void;
 }) {
   // Pricing input is displayed/entered in the current currency; converted back to USD storage on submit (RowState always stores USD).
   const [form, setForm] = useState<RowState>(() => {
@@ -2589,6 +2631,21 @@ function ModelDialog({
    * (Adding a new custom model isn't confirmed: opening the dialog is itself a clear intent.)
    */
   const [confirming, setConfirming] = useState<DialogAction | null>(null);
+  /**
+   * The server's words for the last refused write, drawn in the confirmation's `refusal` slot.
+   * It lives with the confirmation rather than with the page because that card is what the user
+   * is looking at while they retry: the reason has to survive the toast that would otherwise be
+   * the only trace of it (a toast dismisses itself after six seconds, over the card, not in it).
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
+  /**
+   * Open the confirmation for one action, without the previous refusal: that sentence belonged
+   * to the write that was refused, and a confirmation opened now has not been tried yet.
+   */
+  const confirm = (action: DialogAction) => {
+    setRefusal(null);
+    setConfirming(action);
+  };
   /**
    * The confirmed write is on the wire: its confirmation waits for the answer instead of
    * closing on the click, and its buttons are locked so a second click cannot fire a rival
@@ -3044,10 +3101,14 @@ function ModelDialog({
     // "set as default" used to take this dialog and its confirmation down with the request,
     // so the sentence that named the change was gone and the only way to retry was to find
     // the card again (and the page behind it showed the change the server had refused).
-    // Keeping both until the answer arrives makes the retry the same click.
+    // Keeping both until the answer arrives makes the retry the same click, and the answer
+    // brings the server's words with it, which the confirmation then shows beside that click.
+    setRefusal(null);
     setWriting(true);
     try {
-      if (await written) setConfirming(null);
+      const outcome = await written;
+      if (outcome.ok) setConfirming(null);
+      else setRefusal(refusalOf(outcome));
     } finally {
       setWriting(false);
     }
@@ -3272,7 +3333,7 @@ function ModelDialog({
                   toastInfo(S.common.noChangesToSave);
                   return;
                 }
-                setConfirming("save");
+                confirm("save");
               }}
             >
               {detecting ? S.models.detecting : S.common.confirm}
@@ -3375,7 +3436,7 @@ function ModelDialog({
                 {testing ? S.models.testing : S.models.testConnection}
               </Button>
               {!isNew && !isDefault && (
-                <Button size="sm" onClick={() => setConfirming("setDefault")}>
+                <Button size="sm" onClick={() => confirm("setDefault")}>
                   {S.models.setDefault}
                 </Button>
               )}
@@ -3385,7 +3446,7 @@ function ModelDialog({
                   title={S.models.visionModelHint}
                   // The hint says what setting this model as the vision one does, which its label cannot.
                   data-tooltip-extra
-                  onClick={() => setConfirming("setVisionModel")}
+                  onClick={() => confirm("setVisionModel")}
                 >
                   {S.models.setVisionModel}
                 </Button>
@@ -3393,7 +3454,7 @@ function ModelDialog({
               {!isNew && (
                 <>
                   <span className="min-w-0 flex-1" />
-                  <Button size="sm" variant="danger" onClick={() => setConfirming("remove")}>
+                  <Button size="sm" variant="danger" onClick={() => confirm("remove")}>
                     {S.models.remove}
                   </Button>
                 </>
@@ -3846,6 +3907,9 @@ function ModelDialog({
           }}
           confirmLabel={S.common.confirm}
           cancelLabel={S.common.cancel}
+          // A refused write's words, inside the card that asked for it: the toast they used to
+          // ride on dismissed itself, and the retry is the button right below this line.
+          refusal={refusal === null ? undefined : S.common.refused(refusal)}
         >
           <p className="text-sm text-gray-700 dark:text-gray-300">
             {CONFIRM_BODY[confirming](modelLabel)}

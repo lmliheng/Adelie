@@ -115,6 +115,15 @@ function confirmation(page) {
   return page.getByRole("dialog").filter({ hasText: "确定删除" });
 }
 
+/**
+ * The card's own text with the refusal slot dropped: a refused write adds one line under the
+ * sentence ("操作被拒绝：…"), and that line is the only thing the refusal is allowed to change —
+ * the sentence, the list it names and the buttons must read exactly as they did before the write.
+ */
+async function cardText(card) {
+  return (await card.innerText()).replace(/\n操作被拒绝：[^\n]*/, "");
+}
+
 test("a refused model delete keeps its dialog, its sentence and the card the server still backs", async ({
   page,
 }) => {
@@ -133,11 +142,13 @@ test("a refused model delete keeps its dialog, its sentence and the card the ser
   await confirm.getByRole("button", { name: "确认" }).click();
 
   // The write was refused: the server's words show, and both dialogs are still exactly as they
-  // were — the same model, the same sentence.
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  // were — the same model, the same sentence, with the refusal drawn under it (a toast used to
+  // be the only place they showed, and it dismissed itself out of the card still on screen).
+  await expect(confirm.getByText("models store is closed")).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" }).getByRole("button")).toHaveCount(0);
   expect(puts).toHaveLength(1);
   await expect(confirm).toBeVisible();
-  expect(await confirm.innerText()).toBe(sentence);
+  expect(await cardText(confirm)).toBe(sentence);
   await expect(page.getByRole("button", { name: "删除模型" })).toBeVisible();
 
   // The card is back on the page behind the dialog (the dialog's own title also carries the
@@ -180,7 +191,7 @@ test("the retry after a refused model delete writes it, and only a written one c
   await page.getByRole("button", { name: "删除模型" }).click();
   const confirm = confirmation(page);
   await confirm.getByRole("button", { name: "确认" }).click();
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  await expect(confirm.getByText("models store is closed")).toBeVisible();
   await expect(confirm).toBeVisible();
   expect(puts).toHaveLength(1);
 

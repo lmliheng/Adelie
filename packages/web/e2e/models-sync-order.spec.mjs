@@ -89,6 +89,15 @@ async function refuseWrites(page, seen) {
   });
 }
 
+/**
+ * The card's own text with the refusal slot dropped: a refused write adds one line under the
+ * sentence ("操作被拒绝：…"), and that line is the only thing the refusal is allowed to change —
+ * the sentence, the list it names and the buttons must read exactly as they did before the write.
+ */
+async function cardText(card) {
+  return (await card.innerText()).replace(/\n操作被拒绝：[^\n]*/, "");
+}
+
 test("a refused preset sync keeps its dialog, its sentence and the table the server has", async ({
   page,
 }) => {
@@ -108,11 +117,14 @@ test("a refused preset sync keeps its dialog, its sentence and the table the ser
   await refuseWrites(page, puts);
   await dialog.getByRole("button", { name: "同步预置" }).click();
 
-  // The write was refused, and the dialog stays exactly as it was — same sentence, same list.
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  // The write was refused, and the dialog stays exactly as it was — same sentence, same list —
+  // with the server's words added under it. They are in the card rather than in a toast that
+  // dismissed itself six seconds later over the card the user is still looking at.
+  await expect(dialog.getByText("models store is closed")).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" }).getByRole("button")).toHaveCount(0);
   expect(puts).toHaveLength(1);
   await expect(dialog).toBeVisible();
-  expect(await dialog.innerText()).toBe(sentence);
+  expect(await cardText(dialog)).toBe(sentence);
 
   // The server still holds the old table, and the page's own table agrees with it: the entry
   // the merge would have added is not there to be found, although the notice still names it.
@@ -159,7 +171,7 @@ test("the retry after a refused sync writes the merge, and only a written one cl
   await page.getByRole("button", { name: "现在升级" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "同步预置" }).click();
-  await expect(page.getByText("models store is closed")).toBeVisible();
+  await expect(dialog.getByText("models store is closed")).toBeVisible();
   await expect(dialog).toBeVisible();
   expect(puts).toHaveLength(1);
 

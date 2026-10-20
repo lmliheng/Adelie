@@ -1248,6 +1248,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       等 `document.getAnimations()` 里正在跑的 `CSSTransition` 各自 `finished`（只认 CSS 过渡，不碰
       无限循环的脉冲/转圈），两处缩放各换成它。细节、两态读数与反证见该节。
 
+- [x] **7.19 写入被拒的原因留在那张确认框里**（**2026-10-21 第九十七轮**落地，提交见该节；
+      `packages/ui` 的 `ConfirmModal` 多一个 `refusal` 槽 + `packages/web` 的模型库六处写入接上，
+      changelog 一对）：第九十四轮逐处摸过「点击即关、失败只弹 toast」那一族之后留下的那件 —— 框
+      留住了（7.9、7.11–7.15），可**原因**还只在一条六秒后自己消失、且浮在框上方的 toast 里。
+      **现在**：确认框被拒时把服务端的原话画在句子下面、重试按钮正上方；`persist` 不再自己弹 toast，
+      而是把原话交回发起写入的那张卡片（`features/models/write-outcome.ts` 的 `WriteOutcome` /
+      `refusalOf`）。**还差什么**：这一族还有十几个页面没收 —— 模型库这六处先做（它们本来就有
+      「写成功才收起」的用例可延长），余下的页面同一条规则、只差逐页接 `refusal` 与各自的用例。
+      细节、反证与截图见该节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1864,6 +1874,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-20 | 7.16 | **竖栏折叠后的取样等它落定：`tooltip-beside` 曾把折到一半的竖栏边缘当成停稳的那道边**（不是移植：1 个新文件 `packages/web/e2e/rail.mjs`（`collapseRail`，等 `aside.right <= 48.5` 并显式给 15 s）+ 两份 spec 改用它（`tooltip-beside` −11 +1、`company-rail-hints` −12 +1，后者第八十七轮那份本地同款收进共用），**无新依赖、不碰产品代码、不写 changelog**）：第九十三轮整套 e2e 首跑的那条红（`placed.rect.left 48 < railRight - 1 50.97`）的真因在**等待**本身 —— 第八十五轮写的是 `expect.poll(...).toBeLessThan(80)`，也就是「比展开的侧栏窄就放行」，而折叠动画要 ~150 ms 才落到 48。**逐帧量到的**（真服务 + 真浏览器，`mktemp` 数据根、`localhost:8964`、1280×900）：`aside.right` 231.25 → 178.28 → 132.84 → 101.83 → **81** → 66.98 → 57.72 → **51.97** → 48.91 → 48，所以等待可能停在 81.00 / 66.98 / 51.97（那一跑量到的正是 51.97），而提示面板按已停稳的 48 摆放 —— 断言只错在竖栏那一条，静悄悄地错一两个像素。**现在**：`e2e/rail.mjs` 的 `collapseRail` 等停稳的 48 px 列，两份 spec 共用它；`tooltip-beside` 的竖栏前提与全部落位断言原样保留。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖），而第九十三轮点名的那一族「点击即关、失败只弹 toast」的确认框本轮逐处摸过（插件市场 / 智能体设置 / 定时任务 / 公司日历、组织、频道 / MCP / 用户仓库），**没有一处留下假状态**，故不再顺着它找 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰源码）· `npx oxlint` 全仓 **0 警告 0 错误**（2236 文件）· `npx prettier --check .`「All matched files use Prettier code style!」（`rail.mjs` 首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1043** · cli **38 / 561** · web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · 改动涉及的两份用例同服务连跑 **4 passed（12.8s）**（`tooltip-beside` 2 + `company-rail-hints` 2；改前同一服务单跑 `tooltip-beside` 2 passed 作基线）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**105 passed（7.6m）、0 failed**，第九十三轮那条偶发红这次没有出现 · **反证**（同一浏览器、同一页，把折叠放慢成 1.2 s 让「中途」这段窗口宽到能看清差别）：**旧等待** 706 ms 后以 `railRight=78.28` 放行、面板 `left=48.00`，`48.00 >= 77.28` → **FAIL**；**新等待** 1127 ms 后以 `railRight=48.39` 放行、面板 `left=48.00` → **PASS**；探针 `r94/probe-fold.mjs`（逐帧轨迹）与 `r94/probe-old-vs-new.mjs`（两套等待）在 scratchpad · **真看一眼**：`r94/{old-wait-midfold,new-wait-settled}.png`，竖栏 48 px、提示「插件市场」贴着竖栏右边缘弹出；console 只有按设计的 `GET …/machines` **403**，无其它 error / ≥400 · 端口只用 8964 / 8965 与 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r94data.*` 与 e2e 自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ab04ae9c` |
 | 2026-10-20 | 7.17 | **停靠栏的取样等它落定：`dock.spec` 的 24 px 松口子与三处猜时长的 `waitForTimeout(200)`**（不是移植：1 个新文件 `packages/web/e2e/settle.mjs`（`settledBox()` —— 逐帧读 `getBoundingClientRect()`，连续两帧在 0.5 px 内一致才返回；元素离场、或 10 s 还没停稳，直接报错而不是返回一个还在动的数）+ `dock.spec.mjs` 三处（恢复那条 `|h − after| < 24` → 等停稳后 `≤ 2`；拖拽前的 `before` 由一次性读改成停稳后读；全屏那段手写的「两帧宽度相等」轮询 → `settledBox(composer)`）+ `layout.spec.mjs` 三处（`waitForTimeout(200)` 的弹入等待 → `settledBox(panel|picker|finder)`），无新依赖、不碰产品代码）：逐帧量到的实情 —— 右停靠栏宽度 1 → 8.88 → 43.78 → … → 510 → 512（~293 ms，旁边的会话列跟着缩：composer 746 → 428）、底栏高度 1 → 6.03 → 29.75 → 82.33 → 159.27 → … → 333.92 → 346.66 → 348（~289 ms）、刷新后的恢复 29.61 → 82.3 → … → 348、全屏的 `data-fullscreen` 要到 ~278 ms 才从 `entering` 转 `full`（而 header 一上来就是 992 宽、只抖 ±1 px，所以量到它的那几条本来就对，不必再改）、抽屉 `.anim-drawer-left` 240 ms 但**没有任何用例打开它**、菜单弹入 `.anim-pop` 170 ms（三处 200 ms 的余量只剩 30 ms）。老等待的松口子在放慢 7× 的过渡下停在 324.88（停稳 346.22，差 21.34 px） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）**，本笔不碰源码）· 逐包 test **`EXIT=0`、0 失败**：core **1399 通过 / 6 跳过**（68 文件）· ui **1043**（129 文件）· cli **561**（38 文件）· server **202 文件 / 2955 通过 / 4 跳过** · web **261 文件 / 3212 通过 / 2 跳过** · 改到的两份 spec 加 `mobile-dock` 同服务连跑 **17 passed（1.1m）** · **整套 e2e**（`pnpm -C packages/web test:e2e`：重建 core/server/web、脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）**105 passed（7.6m）、0 failed** · **反证（真浏览器、同一份恢复动画，老等待与新等待并排量）**：老等待真速下停在 346.66（离 348 差 1.34 px），放慢到 1.4 s 后停在 324.88（差 21.34 px，即 `|h − after| < 24` 会放行一个离停稳位置还差五分之一的盒子）；`settledBox` 真速读到 348.00、放慢 1.4 s 读到 346.22（离目标 1.78 px，这就是断言留 2 px 而非严格相等的原因）· 真看一眼：`r95/shots/docks-1280.png`（右侧记忆 + 底部轨迹两个停靠栏）与 `r95/shots/drawer-390.png`（390 宽手机抽屉），console 只有按设计的 `GET …/machines` 403，无其它 error / ≥400 · 端口只用 8940（一次性探针服务，已停）与 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r95data.*` 与 e2e 自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写 | `40620042` |
 | 2026-10-21 | 7.18 | **缩放视口后的取样等过渡落定：`chat.spec` 那两处 `waitForTimeout(200)` 恰好等于侧栏宽度过渡的 200 ms**（不是移植：`packages/web/e2e/settle.mjs` 加一个 `settledTransitions()`（先让一帧落地，再等 `document.getAnimations()` 里每个正在跑的 `CSSTransition` 各自 `finished`，循环到列表为空；超时带着「还剩哪几个过渡、落在谁身上」报错）+ `chat.spec.mjs` 两处 `waitForTimeout(200)` 改成它，**无新依赖、不碰产品代码、不写 changelog**）：第九十五轮末尾点的「唯一没核过的一处」—— 那两条用例先 `setViewportSize`（1280×900 → 877×438）再量工具栏里两个 span 是否重叠。**逐帧量到的实情**：`aside` 是 `hidden md:block w-64 lg:w-72` 且带 `transition … width 0.2s`，877 正好跨过 `lg` 档，于是侧栏 288 → 256 滑了**整整 200 ms**（280.39 → 273.34 → … → 256.11 → 256），把工具栏左半边一起拖着走（标题 x 304 → 272、「运行中」chip 487.73 → 455.73），而右对齐的 Token chip 同一帧就跳到 785.39 —— 旧等待与过渡时长一字不差，实测停稳要 **210 / 219 ms**（两次缩放），余量为零。**为什么不用 `settledBox`**：过渡开头 50 ms 只挪 7.6 px，「连续两帧一致」会把缩放前的 288 认成停稳。至此「等动画落定再量」这一族收口（停靠栏 / 全屏 / 抽屉 / 竖栏 / 弹入 / 缩放） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰源码）· 两份改动文件 `prettier --check` 干净、`npx oxlint` **0 警告 0 错误**、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1043** · cli **38 / 561** · web **261 文件 / 3212 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · **整套 e2e**（一次性 `mktemp` 数据根、mock 8931 / 服务端 8930）：**105 passed（7.6m）、0 failed**；改到的 `chat.spec` 先单跑 **1 passed（11.4s）** · **反证（同页同一条缩放，老等待与新等待并排量，侧栏过渡放慢到 1.4 s 让差别看得见）**：去 877 时老等待读到侧栏 **284.77** / chip x **484.5**（停稳 256 / 455.73，差 28.77 px），新等待 1413 ms 后读到 256 / 455.73；回 1280 时老等待读到 **257.88** / **457.61**（停稳 288 / 487.73），新等待读到 288 / 487.73；真速下两套读数一致（`settledTransitions` 花 210 / 219 ms）· **这条用例的断言（两 chip 不重叠）今天两态都过** —— 修的是「量的是停稳的布局」这个前提，台账不写成抓到了假绿 · **两处 `layout.spec` 的 390 缩放**本轮量过、不是同一类：390 下 `aside` 是 `display: none`（宽度过渡不参与），200 ms 后只剩一枚 `rotate@svg`，页宽 200 ms 与停稳后逐字相同（390 / 390），故未改 · **真看一眼**：`r96/shots/{look-877,look-toolbar-877,look-1280}.png`，877 下顶栏「运行中」与 Token `0` / 耗时 `0s` 并列不重叠，console 只有按设计的 `GET …/machines` **403**，无其它 error / ≥400；1280 下 `scrollWidth = clientWidth = 1280` · 探针 `r96/probe-{viewport,who-moves,settle-transitions,old-vs-new,resize-390}.mjs` 在 scratchpad · 端口只用 8940 / 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r96data.*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 · **汇报邮件仍发不出去**（993 / 465 的 TCP 都建不起来，同时 github 200，与第九十五轮同一类） | `d3bde807` |
+| 2026-10-21 | 7.19 | **写入被拒的原因留在那张确认框里**（不是移植：`packages/ui` 的 `ConfirmModal` 多一个 `refusal` 槽（有内容时在句子下画一条 `NoticeStrip tone="danger" role="alert"`，没有时槽不画），`packages/web` 新增 `features/models/write-outcome.ts`（`WriteOutcome` / `refusalOf`）把 `persist` 的返回从 `boolean` 换成「写成了 / 被拒了 + 服务端原话」，模型库六处写入选各自把这句话画在哪：配置框四个动作画进它的确认框、删除分组与同步预置画进各自的框、分组密钥与工具栏同步预置与导入分组没有框可留故保留 toast；`common.refused()` 两句文案 + 四份 spec 收紧断言（`cardText()` 助手、`通知` 区必须没有 toast）、changelog 一对）：第九十四轮逐处摸过「点击即关、失败只弹 toast」那一族之后留下的那件 —— 框留住了（7.9、7.11–7.15），**原因**却只在一条 6 秒后自己消失、还浮在框上方的 toast 里（`ui` 的时长表 error = 6000 ms）| 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` = `src/ifaces.json unchanged`，193 接口 / 589 类型）· 11 份改动文件 `prettier --check` 干净、`npx oxlint` **0 警告 0 错误**、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1044** · cli **38 / 561** · web **262 文件 / 3215 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过**（中间红过一次：`todo-notice.test.ts` 的守卫读 `onAction` 里第一个 setter，改成先开框再清原因后转绿，没动守卫）· **整套 e2e 105 passed（7.4m）、0 failed**，改到的四份 spec 先单跑 **9 passed（18.4s）** · **反证**：把 `models-page.tsx` 暂存回去重建产物后同一批 spec **5 failed**（红的就是新的两类断言），`stash pop` 重建后 9 passed · **真看一眼**：`r97/look-refusal-card.png` 里句子下面就是 danger 色的「操作被拒绝：models store is closed」，`look-refusal-after-6s.png` 证明 6.5 秒后仍在框里，`通知` 区按钮数 **0**，1280 下 `scrollWidth = clientWidth`，console 只有按设计的 `/machines` 403 与注入的 500 · 端口只用 8941 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰，数据只落 `/tmp/r97data.*` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -12461,3 +12472,100 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - 「点击即关、失败只弹 toast」那一族第九十四轮逐处摸过，**没有一处留下假状态**；要动就是统一
   「失败原因随框留着」，那是一次横跨十几个页面、且要先定文案的改动，仍得单独一轮。
 - 若用户点单桌宠的后续三问（第九十一轮记的三条）或别的功能，按点单优先。
+
+## 第九十七轮：写入被拒的原因留在那张确认框里（2026-10-21，条目 7.19）
+
+### 开工自检与选活理由
+
+- 同步：`git status --short` 干净，`main` 停在 `cf0d4234`（第九十六轮的台账补记）；
+  `git fetch origin && git merge --ff-only origin/main` = Already up to date（没切分支、没碰
+  `legacy/main`、没推 upstream）。
+- 上游：按台账的办法按 URL 现拉
+  （`git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness main:refs/adelie-tmp/upstream-main-r97`），
+  尖端仍是 **`8aa76123`** —— `git rev-list --count 8aa76123..refs/adelie-tmp/upstream-main-r97` = **0**，
+  没有可移植的新提交。
+- 选活：待办里最靠前的未勾选条目仍是 **2.2c**（剩下的全在桌面壳写侧、`adelie-app.service` 单元、
+  桌面壳自己的开关那一侧）；3.5 / 3.6 / 4.1–4.3 要拍板或要 key；5.6 / 5.10 也要拍板或有前置。
+  于是接过第九十六轮末尾（也是第九十四轮）唯一点名的那件：**统一「失败原因随框留着」**。
+  这一族横跨十几个页面，本轮先做**模型库那六处**——它们已经有一整套「写成功才收起」的用例
+  （`models-save-refusal` / `models-delete-model` / `models-delete-group` / `models-sync-order`），
+  正好把「原因在不在框里」一起钉住；余下的页面在条目里写成「还差什么」。
+
+### 先量清楚（不是推测）
+
+- 读代码就够确定的一半：`persist` 的 catch 里唯一一句话是 `toastError(apiErrorText(e))`，而
+  `packages/ui` 的 toast 时长表写着 error = **6000 ms**、并按 `LEAVE_MS = 160` 退场；toast 是一个
+  浮在 `z-[100]`、portal 到 `document.body` 的按钮（`Toaster` 的「通知」区），所以它**不在框里**，
+  也不随框留着。
+- 两态实测（真服务 + 真浏览器，一次性数据根 `/tmp/r97data.Q0KwE0`、服务端 `localhost:8941`、
+  mock `127.0.0.1:8931`、1280×900、PUT 被 `page.route` 拒成 500 `models store is closed`）：
+  - **改前**：框里没有那句话（断言 `dialog.getByText("models store is closed")` 找不到元素），
+    原话只在 toast 里。反证见下。
+  - **改后**：框里那条 danger 色提示条读到 `操作被拒绝：models store is closed`（`role="alert"`，
+    盒子 302×34，落在句子下面、按钮上方）；`通知` 区的按钮数 **0**；**6.5 秒之后**那句话仍在框里
+    （toast 的 6 秒早已过去）；页宽 `scrollWidth = clientWidth = 1280`，无横向溢出。
+
+### 改了什么（12 个文件 + 台账：ui 两处、web 源码三处（含一个新文件）、四份 spec、zh/en 两份文案、changelog 一对）
+
+- `packages/ui/src/components/overlays/confirm-modal/confirm-modal.tsx`：`ConfirmModalProps` 多一个
+  `refusal?: string`，有内容时在句子下画一条 `NoticeStrip tone="danger" role="alert"`（`data-slot="body"`
+  里放原话），没有时槽根本不画。**为什么放在这张卡片里**：全应用的确认框都是这一张，别的页面接上
+  只需传一句话；把提示条画在这里也就等于「原因长在提问那一段上」，而不是第二条浮动的卡片。
+- `packages/web/src/features/models/write-outcome.ts`（新）+ `test/models-write-outcome.test.ts`：
+  `WriteOutcome = { ok: true } | { ok: false; reason }` 与 `refusalOf()`。`persist` 的返回类型从
+  `boolean` 改成它 —— 被拒时把服务端的原话交回调用方，**不再自己弹 toast**。
+- `packages/web/src/features/models/models-page.tsx`：`persist` 换成返回 `WriteOutcome`；
+  六处写入各自决定这话放哪 ——
+  - 配置框里三个动作（保存 / 设为默认 / 设为视觉代理）与「删除模型」：由 `ModelDialog` 自己的
+    `refusal` 状态接住，画在它的确认框里；`confirm(action)` 与 `submit()` 开头各自把上一次的原因撤掉
+    （一次尝试一条原因）。
+  - 删除分组、同步预置：页面级 `deleteGroupRefusal` / `syncRefusal`，画在各自的确认框里；打开框时清空。
+  - 分组密钥、工具栏的「同步预置」、导入分组：**没有框可留**（前两个的对话框一提交就关、后者根本没有
+    确认框），保留 toast —— `refusalOf` 的注释把这层分工写明。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`common.refused(reason)` =
+  「操作被拒绝：{原因}」/「Refused: {reason}」。提示条要有自己的落款：服务端那句话可能只是一个短语。
+- 四份 spec（`models-save-refusal` / `models-delete-model` / `models-delete-group` / `models-sync-order`，
+  没有新增文件）：断言从「页面上能看到那句话」收紧成**「框里能看到」**（`dialog.getByText(...)`）
+  并多两条 —— `通知` 区**没有** toast、整卡文字（去掉拒绝那一行后）与写入前**逐字相同**（新的
+  `cardText()` 助手）。这一族从此钉住的是「原因留在框里」，不是「某处弹过一句」。
+- changelog 一对（`changelog/unreleased/2026-10-21-models-refusal-in-card{.zh,}.md`）：这是用户可见的行为变化。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 /
+  589 类型）** —— 本笔不碰契约）。
+- 改动的 12 份文件与台账 `prettier --check` 干净；`npx oxlint` **0 警告 0 错误**；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1044** ·
+  cli **38 / 561** · web **262 文件 / 3215 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过**
+  （web 比上轮 +3，就是新那份 `models-write-outcome.test.ts`；ui +1 是 `ConfirmModal` 的新用例）。
+  **中间红过一次**：`test/todo-notice.test.ts` 的守卫读 `onAction` 里**第一个** setter，而我把
+  `setSyncRefusal(null)` 写在了 `setSyncConfirmOpen(true)` 前面 —— 守卫于是要求 `syncRefusal` 去守
+  `ConfirmModal`。改法是**让「打开」先落**（两处都改成先开框、再清原因），没动守卫。
+- **整套浏览器 e2e**（一次性数据根、服务端 8941 / mock 8931）：**105 passed（7.4m）、0 failed**；
+  四份改到的 spec 先单跑 **9 passed（18.4s）**。
+- **反证（真的把页面改回去再跑）**：`git stash push -- packages/web/src/features/models/models-page.tsx`
+  + 重建 web 产物，同一批 spec **5 failed**，红的正是新加的两类断言
+  （`dialog.getByText("models store is closed")` → element(s) not found；`通知` 区那条在同样的位置）；
+  `git stash pop` + 重建后 9 passed。也就是说这几条断言**真的**能区分「原因在框里」与「原因只在 toast 里」。
+- **真看一眼**：`r97/look-refusal-1280.png`（整页）、`look-refusal-card.png`（确认框特写：铅笔标记 +
+  「确定保存对「Probe Look Renamed」的配置修改？」+ danger 色「操作被拒绝：models store is closed」+
+  取消 / 确认）、`look-refusal-after-6s.png`（6.5 秒后同一张卡片，那句话还在）；console 只有按设计的
+  `GET …/machines` **403**（顶栏读机器列表，成员不是管理员）与我们自己注入的 500，无其它 error。
+  探针 `r97/look-refusal.mjs` 在 scratchpad。
+- 端口：探针只用 8941 与 mock 8931，e2e 也是这两个（跑完都已停）；3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落在一次性 `/tmp/r97data.*`，一个字节没往 `~/.penguin` / `~/.adelie` 里写。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- **这一族剩下的十几个页面**（`schedules` / `machines` / `company`（组织、频道、员工、工单）/
+  `plugins` / `settings` / `benchmarks` 等）：同一条规则，只差逐页接 `refusal` 与各自的用例；
+  `ConfirmModal` 的槽与 `S.common.refused` 已经就位，一页大概是一行 prop 加一条断言。
+- 「点击即关」那半边第九十四轮已判**没有一处留下假状态**，本轮没回头再核。
+
+### 下一轮从这里接
+
+- 待办清单的卡点原地：**2.2c**（剩下的全在桌面壳 / 部署单元那一侧）、**3.5**、**3.6**、**4.1–4.3**、
+  **5.6** / **5.10**；7.1–7.19 已勾掉。
+- 上游尖端 **`8aa76123`**（本轮重拉过，0 个新提交）。
+- 7.19 的**下一半**：把「原因随框留着」铺到余下十几个页面（按页面一个个来，每页一条用例）。
