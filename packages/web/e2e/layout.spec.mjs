@@ -40,6 +40,7 @@
  */
 import { test, expect } from "@playwright/test";
 import { provisionAndLogin } from "./auth.mjs";
+import { settledBox } from "./settle.mjs";
 
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
@@ -576,7 +577,9 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
   /** Assert the one open menu panel and the page itself stay inside the viewport. */
   const checkPanel = async (name) => {
     await expect(panel, `${name}: menu open`).toHaveCount(1);
-    await page.waitForTimeout(200); // let the pop-in scale animation settle before measuring
+    // The panel arrives with a 170 ms scale-in; measuring before it lands reads a smaller box in
+    // a shifted place — and `.anim-pop`'s duration is the panel's to change, not this spec's.
+    await settledBox(panel);
     const m = await panel.evaluate((el) => {
       const r = el.getBoundingClientRect();
       // A horizontally scrolled ancestor is the old failure mode: the menu's autofocused
@@ -648,8 +651,7 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
     const picker = page.getByRole("dialog", { name: "Choose model" });
     await expect(picker, `model @${vp.width}: dialog open`).toBeVisible();
     await page.getByRole("button", { name: /without a key/ }).click();
-    await page.waitForTimeout(200); // let the pop-in animation settle before measuring
-    const box = await picker.boundingBox();
+    const box = await settledBox(picker); // the dialog's own scale-in (see checkPanel)
     expect(box.x, `model @${vp.width}: dialog left edge`).toBeLessThanOrEqual(0.5);
     expect(box.width, `model @${vp.width}: dialog full width`).toBeGreaterThanOrEqual(vp.width - 1);
     expect(box.y, `model @${vp.width}: dialog top edge`).toBeLessThanOrEqual(0.5);
@@ -668,8 +670,7 @@ test("layout: mobile chat dropdowns stay inside the viewport", async ({ page }) 
     await page.locator('button[aria-label^="Workspace"]').click();
     const finder = page.getByRole("dialog", { name: "Workspace" });
     await expect(finder, `workspace @${vp.width}: finder open`).toBeVisible();
-    await page.waitForTimeout(200); // let the pop-in scale animation settle before measuring
-    const fb = await finder.boundingBox();
+    const fb = await settledBox(finder); // the modal's own scale-in (see checkPanel)
     expect(fb.x, `workspace @${vp.width}: finder left edge`).toBeGreaterThanOrEqual(-0.5);
     expect(fb.x + fb.width, `workspace @${vp.width}: finder right edge`).toBeLessThanOrEqual(
       vp.width + 0.5,

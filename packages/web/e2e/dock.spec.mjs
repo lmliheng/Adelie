@@ -22,6 +22,7 @@
  */
 import { test, expect } from "@playwright/test";
 import { provisionAndLogin } from "./auth.mjs";
+import { settledBox } from "./settle.mjs";
 
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
@@ -232,17 +233,10 @@ test("full screen is a dock at its largest below the toolbar — by its button o
   await openViaPicker(page, "right", "trace");
   const right = dockAt(page, "right");
   await expect(right.locator('[data-tab-id="trace"][data-active="true"]')).toBeVisible();
-  // The composer measures the conversation column; wait out the dock's expand transition.
+  // The composer measures the conversation column; wait out the dock's expand transition (the
+  // column shrinks 746 → 428 as the 512 px panel arrives).
   const composer = page.getByPlaceholder(/输入消息/);
-  let settled = null;
-  await expect
-    .poll(async () => {
-      const box = await composer.boundingBox();
-      const same = settled !== null && box !== null && box.width === settled.width;
-      settled = box;
-      return same;
-    })
-    .toBe(true);
+  const settled = await settledBox(composer);
   const rowBox = () => page.locator("[data-dock-row]").boundingBox();
   const headerBox = (dock) => dock.getByTestId("dock-header").boundingBox();
 
@@ -403,8 +397,12 @@ test("sizes and the arrangement survive a reload; hidden stays hidden", async ({
   const bottom = dockAt(page, "bottom");
   await expect(bottom.locator('[data-tab-id="trace"][data-active="true"]')).toBeVisible();
 
-  // Drag the bottom boundary up ~120px: the height ratio grows and persists.
-  const before = (await bottom.boundingBox()).height;
+  // Drag the bottom boundary up ~120px: the height ratio grows and persists. Measured settled
+  // first: the dock is still sliding open when the tab turns visible (its own box, sampled every
+  // frame: 1 → 6.03 → 29.75 → 82.33 → 159.27 → … → 333.92 → 342.22 → 346.66 → 348 at ~289 ms), so
+  // a `before` read a round trip earlier could be a quarter of the real height — and the delta
+  // this assertion reads would then be the slide's own growth rather than the drag's.
+  const before = (await settledBox(bottom)).height;
   const resizer = bottom.getByTestId("dock-resizer");
   const rb = await resizer.boundingBox();
   await page.mouse.move(rb.x + rb.width / 2, rb.y + rb.height / 2);
@@ -437,11 +435,13 @@ test("sizes and the arrangement survive a reload; hidden stays hidden", async ({
     dockAt(page, "bottom").locator('[data-tab-id="trace"][data-active="true"]'),
   ).toBeVisible();
   await expect(dockAt(page, "right")).toHaveCount(0);
-  // Polled: the initial restore slides the dock in, so a one-shot measure can catch the
-  // entrance transition mid-flight.
-  await expect
-    .poll(async () => Math.abs((await dockAt(page, "bottom").boundingBox()).height - after))
-    .toBeLessThan(24);
+  // The initial restore slides the dock in (29.61 → 82.3 → 159.23 → … → 346.66 → 348, its last
+  // ~70 ms flat), so wait for it to arrive and then compare: the 24 px slack this used to carry
+  // let a restore still 21 px away — or one that settled that far short — read as "at its size".
+  // The 2 px is the settle helper's own tail: 0 in a normal run, 1.78 with the motion slowed 7×
+  // (measured in round 95), against 21.34 px of slack the old bound allowed.
+  const restored = await settledBox(dockAt(page, "bottom"));
+  expect(Math.abs(restored.height - after)).toBeLessThanOrEqual(2);
   await page.getByTestId("dock-toggle-right").click();
   await expect(
     dockAt(page, "right").locator('[data-tab-id="workspace"][data-active="true"]'),
