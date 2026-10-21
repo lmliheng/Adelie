@@ -1307,6 +1307,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       toast 报拒绝 —— 它是部分成功（`Promise.all` 之后可能有的删掉了、有的没有），要说清「哪几个没成」
       得单独一轮；7.20 列的其它页面（`company` / `settings` / `chat` / `agents` / `machines`）照旧。
 
+- [x] **7.24 插件设置里的操作被拒时，确认框留着，原因也留在框里**（**2026-10-22 第一百零五轮**落地，
+      提交见该节；1 处源码 `packages/web/src/features/settings/plugins-section.tsx` + 1 个新文件
+      `packages/web/e2e/plugin-action-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：
+      7.23 末尾点名的那个「一个请求、成败二选一」的形态 —— 设置页插件卡片上的操作（部署要在这台机器上做一次
+      的事）确认框在 `onConfirm` 里**按下即关**：被拒的请求什么都没做，原因却在一条六秒后自己消失、还浮在
+      框上方的 toast 里；分组自己回答 `ok: false`（「此卡片上还有任务在运行」）的那一半同理。**现在**：框在
+      **拿到答复**时才关 —— 请求被拒（`catch`）或分组答 `ok: false` 都把原话交给新加的 `actionRefusal` 状态，
+      经 `ConfirmModal` 的 `refusal` 槽画在句子下面，重试就是同一个按钮；只有 `ok` 那一次才关框。框现在活得
+      比那次点击长，所以跑的时候给它挂 `busy`（两个按钮都置灰）。从操作按钮打开卡片时先开框再清上一次的原因。
+      细节、两态读数与反证见「第一百零五轮」一节。**还差什么**：插件市场同一页的「批量更新」（`pendingBulk`
+      的部分成功）与单 Agent 的卸载 / 更新、「删除插件」那两张「发出即关」的卡片照旧；7.20 列的其它页面
+      （`company` / `settings` 的其它小节 / `chat` / `agents` / `machines`）照旧。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1928,6 +1941,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-21 | 7.21 | **删除 Benchmark 被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/benchmark/benchmark-page.tsx` 一处真修复 —— `confirmDelete` 的 `finally` 里关框改成只有写成功才 `setDeleting(null)`，`catch` 不再 `toastError`、把服务端原话交给新加的 `deleteRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；打开卡片时先 `setDeleting(b.id)` 再清原因，一次尝试一条原因；新增 `packages/web/e2e/benchmark-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.20 末尾点名的余下页面里最便宜的一页 —— 被拒的删除什么都没删，原因却跟着 `finally` 一起没了，只剩一条六秒后自己消失、且浮在框上方的 toast | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` **0 警告 0 错误**（2242 文件）· 改动的三份文件（源码 / 新 spec / 两份 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · cli **38 / 561** · web **262 / 3215 通过 / 2 跳过** · server **202 / 2955 通过 / 4 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **112 passed（7.6m）、0 failed**（原 110 + 本笔 2）；新 spec 单跑 **2 passed（4.1s）** · **反证**：`git stash push --` 那一个源码文件 + 重建 web 产物 + 同一数据根 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("benchmark store is closed")`：框在写入前就关了，element(s) not found），`git stash pop` + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r100-look`、`localhost:8960` + mock 8961、1280×900，`DELETE …/benchmarks/look_probe` 被 `page.route` 拒成 500）：改后 `dialogs 1`、框里 **1** 处 `benchmark store is closed`、`通知` 区 **0** 个按钮、卡片仍在、**6.5 秒后那句话仍在**（`reasonAfter6s 1`）；截图 `r100/after-2-card.png`（框特写：danger 色「操作被拒绝：benchmark store is closed」在句子下面、按钮上方）与 `r100/after-3-after-6s.png`（整页：框与 `Probe look_probe` 那张卡片都还在）；两态 console 只有按设计的 `GET …/machines` **403**与刻意注入的 500 · 端口只用 8950 / 8951（spec）与 8960 / 8961（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r100-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `35a51e54` |
 | 2026-10-21 | 7.22 | **安装 / 移除模块插件被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/plugins/plugins-page.tsx` 一处真修复 —— `runDeploymentInstall` 的 `finally` 只留 `setPendingSpecifier(null)`，`setPendingApply(null)` 搬进成功那一条，`catch` 不再 `toastError`、把服务端原话交给新加的 `applyRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；两个打开卡片的入口（安装 / 移除）合成 `askApply`，落「先开框、再清上一次的原因」；新增 `packages/web/e2e/plugins-install-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.20 末尾点名的「`plugins` 那五张框最值得先做」的那一张 —— 被拒的安装什么都没装（那一行仍在「未安装」、`deployment` 一字未改），原因却跟着 `finally` 一起没了，只剩一条六秒后自己消失、且浮在框上方的 toast | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的两份文件 **0 警告 0 错误** · 改动的三份文件（源码 / 新 spec / 两份 changelog）`prettier --check` 干净（源码第一版格式不过，已 `--write`）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **262 / 3215 通过 / 2 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **114 passed（7.7m）、0 failed**（原 112 + 本笔 2）；新 spec 单跑 **2 passed（3.8s）**（对着一次性服务端与最终产物各跑一次，两次都绿）· **反证**：`git checkout ba0ac383~1 --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("plugin store is closed")`，element(s) not found）；同一态的探针读数 **`dialogs 0` / `reasonInDialog 0` / `通知` 区 1 个按钮（文字正是 `plugin store is closed`）/ 6.5 秒后 0 个**，恢复后 **`dialogs 1` / `reasonInDialog 1` / `通知` 0 个 / 6.5 秒后仍在** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r101-look-{1,2,3}`、`localhost:8970`、1280×900，`POST …/plugins/installed` 被 `page.route` 拒成 500）：截图 `r101/look-3-refused.png`（框特写：danger 色「操作被拒绝：plugin store is closed」在句子下面、取消 / 安装上方）、`r101/look-4-after-6s.png`（6.5 秒后框与那句话都还在）、`r101/before-3-refused.png`（改前：框已关、顶上一条 toast）；两态 console 只有刻意注入的 500；`scrollWidth = clientWidth` · 端口只用 8970（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r101-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ba0ac383` |
 | 2026-10-21 | 7.23 | **删除对话被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/components/layout/sidebar.tsx` 一处真修复 —— `confirmDeleteSession` 的 `catch` 不再 `toastError`、把服务端原话交给新加的 `deleteRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；打开卡片先 `setDeletingSession(x)` 再清原因，重试开始那一刻也清；框「只在 DELETE 落地后才关」这条本来就有，本轮补的是原因；新增 `packages/web/e2e/session-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.19–7.22 那条线的下一页，取的是侧栏里最常见的一次破坏性操作 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的两份文件 **0 警告 0 错误** · 源码 / 新 spec / 两份 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · cli **38 / 561** · web **263 / 3223 通过 / 2 跳过** · server **202 / 2955 通过 / 4 跳过**（首跑一条红、同一条命令重跑即绿，两次都是这个总数；本笔不动服务端）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **116 passed（8.3m）、0 failed**（原 114 + 本笔 2）；新 spec 单跑 **2 passed（5.5s）** · **反证**：`git checkout HEAD --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("session store is read-only")`，element(s) not found —— 旧代码只弹 toast），恢复并重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r103-look`、`localhost:8950`、1280×900，`DELETE /api/sessions/*` 被 `page.route` 拒成 500）：`dialogVisible true`、`reasonInDialog true`、`通知` 区 **0** 个按钮、那一行仍在、`scrollWidth = clientWidth`、**6.5 秒后框与那句话都还在**；截图 `r103/shots/look-3-refused.png`（框特写：danger 色「操作被拒绝：session store is read-only」在句子下面、取消 / 删除上方）与 `look-4-after-6s.png`；console 只有刻意注入的 500 · 端口只用 8940 / 8941（spec）与 8950（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r103-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ee2e3f14` |
+| 2026-10-22 | 7.24 | **插件设置里的操作被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/settings/plugins-section.tsx` 一处真修复 —— 确认框的 `onConfirm` 不再按下即 `setPendingAction(null)`，`runAction` 只在结果 `ok` 那一条关框；`catch` 与分组答 `ok: false` 都把原话交给新加的 `actionRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）与 `busy={busy !== null}`（框现在活得比点击长，跑的时候两个按钮置灰）；`askAction` 打开时先开框再清上一次的原因；新增 `packages/web/e2e/plugin-action-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.23 末尾点名的「一个请求、成败二选一」的形态 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的源码 **0 警告 0 错误** · 源码 / 新 spec / 两份 changelog `prettier --check` 干净（新 spec 首版格式不过，已 `--write`）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1044** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 / 3223 通过 / 2 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **118 passed（8.3m）、0 failed**（原 116 + 本笔 2）；新 spec 单跑两态各一次（改后 **2 passed 4.6s** / 恢复后 **2 passed 4.4s**）· **反证**：`git stash push --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（一条死在框里找不到服务端原话、一条死在找不到分组那句「Another task is still running on this card.」—— 旧代码按下即关、只弹 toast），`git stash pop` + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r105-look`、`localhost:8950`、1280×900；**只桩 GET**（Linux 上没有任何分组报 action），POST 打到真服务端 —— 真 404 `plugin_config_unknown`，原话 `"sandbox" offers no action "probe-round".`）：`dialogVisible true`、框里一行「操作被拒绝："sandbox" offers no action "probe-round".」、`通知` 区 **0** 个按钮、`scrollWidth = clientWidth`、**6.5 秒后框与那句话都还在**；截图 `r105/look-2-refused.png`（框特写）与 `look-3-after-6s.png`；console 只有那一次刻意造的 404，无其它 error · 端口只用 8940 / 8941 / 8942（spec）· 8960（取材）· 8950（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r105-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e4ec28b8` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -13312,3 +13326,87 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - 本轮记账就是这一笔；功能与版本那条链已经推上 `main`（`78577dd5` · `48ed0882`）并打了 tag。
 - 汇报：先按约定 `mail.py check` 试一次（中南网段整片不通就改飞书），正文留在 scratchpad 的
   `release-053/feishu-body.md`。
+
+## 第一百零五轮：插件设置里的操作被拒时，确认框留着，原因也留在框里（2026-10-22，条目 7.24）
+
+### 开工自检与选活
+
+- 同步：开工时（03:00）`git status --short` **干净**，`main` 停在 `8884e226`（第一百零四轮发版之后那笔台账）；
+  `git fetch origin && git merge --ff-only origin/main` = **Already up to date**（没切分支、没碰 `legacy/main`、
+  没推 upstream）。整轮没有别的线往这棵树里提交。
+- 选活：待办里最靠前的未勾选条目仍是 **2.2c**（剩下的全在桌面壳写侧、`adelie-app.service` 单元与发布动作
+  那一侧），3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 分别要拍板、要 key、要新依赖或明令不动；第 7 节清单在 7.23 之后
+  已全勾。于是接 7.19–7.23 那条「原因随框留着」的线 —— 取的是第一百零三轮末尾明确点名的那个
+  「一个请求、成败二选一」的形态：设置页插件卡片上的**操作**。一个文件、一张框，正好一轮做完。
+
+### 先量清楚（不是推测）
+
+- 读代码就够确定的那一半：`features/settings/plugins-section.tsx` 的确认框 `onConfirm` 是
+  「`void runAction(...)` + **立刻** `setPendingAction(null)`」，而 `runAction` 的 `catch` 与 `ok: false`
+  分支都只有 `toastError`；`ui` 的 toast 时长表 error = **6000 ms**，且 toast 是 portal 到 `body` 的一层，
+  不在框里。所以被拒的那次操作什么都没做，原因却六秒后自己消失、还浮在框上方。
+- 分组那一半也是「没做」：`plugins/sandbox-wsl` 的 `run` 在任务已占用或没有该 action 时回 `ok: false`
+  与它自己的原话，机器同样一点没变。
+- 真服务端上量到的两件事（`GET /api/admin/plugin-config`，一次性数据根 `/root/adelie-fork-data/r105-a`）：
+  Linux 上只有 `sandbox` 一张卡片、**`actions` 一个都没有**（`sandbox-wsl` 的按钮只在 Windows 上给），且
+  新建数据根里 `sandbox` 的 `enabled` 是 **false** —— 关着的卡片连字段带操作都不画。这两点是 e2e 与探针
+  都得桩一份读结果的原因（写仍然真打）。
+
+### 改了什么（1 处源码 + 1 个新 spec + changelog 一对）
+
+- `packages/web/src/features/settings/plugins-section.tsx`（+29 −9）：
+  - 新状态 `actionRefusal`，注释写明它为什么属于这张卡片而不是一条 toast。
+  - `askAction` 打开卡片时顺手清掉上一次的原因（一次尝试一条原因，与 7.19–7.23 同一写法）。
+  - `runAction` **只在结果 `ok`** 那一条 `setPendingAction(null)`；`ok: false` 把分组原话、`catch` 把服务端
+    原话交给 `actionRefusal`，框留着。函数注释里把「框关在答复上、不是关在请求上」写成缘由。
+  - 确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）与 **`busy={busy !== null}`** ——
+    框现在活得比那次点击长，跑的时候取消 / 执行都得置灰，否则能连发。
+- `packages/web/e2e/plugin-action-refusal.spec.mjs`（新，2 条用例）：被拒（500）—— 框、句子、服务端原话
+  都在，`通知` 区**没有** toast，POST 只发了一次，取消后重开不带旧原因；分组答 `ok: false` —— 框留着、
+  原话就在框里，再把答复换成 `ok` 重试 —— 框关、两次 POST。
+- changelog 一对 `changelog/unreleased/2026-10-22-plugin-action-refusal{.zh,}.md`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 /
+  589 类型 —— 本笔不碰契约）。注：包名早已是 `@adelie/*`，prompt 里那串 `@prismshadow/penguin-*` 过滤不到
+  任何项目，按 `@adelie/*` 跑的。
+- 源码 / 新 spec / 两份 changelog `prettier --check` 干净（新 spec 首版格式不过，已 `--write`）；
+  `npx oxlint` 改动的源码 **0 警告 0 错误**；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1044** ·
+  server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 / 3223 通过 / 2 跳过**（与上一轮同数：
+  本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）。
+- **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e`（脚本自己的 `mktemp` 数据根、mock 8931 /
+  服务端 8930）→ **118 passed（8.3m）、0 failed**（原 116 + 本笔 2）。新 spec 单独跑（一次性数据根
+  `/root/adelie-fork-data/r105-e2e-*`、服务端 8940 / 8941 / 8942）**2 passed（4.6s / 4.4s）**。
+- **反证（真的把源码改回去再跑）**：`git stash push -- packages/web/src/features/settings/plugins-section.tsx`
+  + 重建 web 产物 + 同一份 spec → **2 failed**（一条死在框里找不到服务端原话，一条死在找不到分组那句
+  `Another task is still running on this card.` —— 旧代码按下即关、只弹 toast）；`git stash pop` + 重建 →
+  **2 passed**，且恢复后的源码与留底 `r105/plugins-section.after.tsx` 逐字节相同。
+- **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r105-look`、`localhost:8950`、
+  1280×900）：**只桩读**（`GET /api/admin/plugin-config` 在真响应的 `sandbox` 上补一个 action、并把
+  `enabled` 打开 —— 两者都是真服务端在这台机器上的实情：没有分组报 action、新建数据根开关是关的），
+  **写打到真服务端**：它按 `plugin_config_unknown` 回了真 404，原话
+  `"sandbox" offers no action "probe-round".`。读数：`dialogVisible true`、框里就是
+  「操作被拒绝："sandbox" offers no action "probe-round".」、`通知` 区 **0** 个按钮、
+  `horizontalOverflow 0`、**6.5 秒后框与那句话都还在**；截图 `r105/look-1-asked.png`、
+  `r105/look-2-refused.png`（框特写）、`r105/look-3-after-6s.png`；console 只有那一次刻意造的 404，
+  `badResponses` 也只有它。探针 `r105/probe-look.mjs`、跑单个 spec 的 `r105/run-one.sh`、逐包测试脚本
+  `r105/tests.sh` 都在 scratchpad。
+- 端口：spec 用 8940 / 8941 / 8942、取材 8960、探针 8950（都已停），e2e 是它自己的 8930 / 8931；
+  3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r105-*` 与 e2e 的
+  `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，
+  未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- 插件市场同一页的**批量更新**（`pendingBulk`）仍是部分成功、仍用 toast 报拒绝 —— 与第一百零三轮留在桌上的
+  批量删除同一类问题，要说清「哪几个没成」得先决定那张框怎么画。
+- 单 Agent 的卸载 / 更新与「删除插件」那两张卡片是「发出即关」的另一族（乐观更新 + 回滚 toast），照旧。
+- 7.20 列的其它页面（`company` / `settings` 的其它小节 / `chat` / `agents` / `machines`）照旧。
+
+### 收尾：提交、推送与汇报
+
+- 功能提交 **`e4ec28b8`**（`fix(web): 插件设置里的操作被拒时，确认框留着，原因也留在框里（7.24）`），
+  `git add` 只加本轮的 4 个文件（源码 / 新 spec / 两份 changelog）；台账这一笔单独一笔。
