@@ -12876,4 +12876,14 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - 提交 **`35a51e54`**（`fix(benchmarks): a refused delete keeps its confirmation and the reason (7.21)`），
   只 add 本轮 4 个文件 + 本台账；`git push origin main` = `838e59a9..35a51e54`。
-- 汇报邮件按 csu-mail 技能发往日中；网络仍不通时按第九十九轮的办法改走飞书。
+- 汇报邮件：`mail.py check` 仍 **120 s 超时**（退出码 124），与第九十五–九十九轮同一类网络卡点，不是凭据问题
+  （`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试一次」的约定，失败即改走**飞书**：
+  `shared_env/xianyu-ops/feishu_send.py --check` 通过后发正文 `r100/mail-body.txt`，已送达
+  （`message_id=om_x100b62b2cbae28a8ded72328a031577`）。本轮正文同时留在 scratchpad，下一轮开工先
+  `mail.py check`，通了就把积压的一起补发。
+
+### CI（推送后）
+
+- run **`39561312717`**（head `c3376296`）**22 个作业全绿**（`installer-windows` 也在内 —— 本机按纪律没跑的
+  desktop 一族由它代跑）。同一次推送里 `35a51e54` 的那次 run（`39561301002`）被 `cancel-in-progress`
+  按设计取消，只认最后一笔。
