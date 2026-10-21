@@ -1,6 +1,6 @@
 {
   "name": "@adelie/server",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "type": "module",
   "description": "Adelie web server: multi-user authentication and authorization, Session execution with SSE streaming, and usage accounting, built on @adelie/core.",
   "license": "Apache-2.0",
