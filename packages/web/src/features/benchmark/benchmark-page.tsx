@@ -31,7 +31,6 @@ import {
   Skeleton,
   SkeletonCard,
   Sparkline,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -349,6 +348,10 @@ export function BenchmarkPage() {
   const [using, setUsing] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  // The server's words for a delete it refused, drawn inside that same confirmation: the card is
+  // still there (nothing was deleted), and retrying is the next thing the user does, so the reason
+  // has to outlive the six-second toast that used to be its only home.
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
 
   // Benchmarks belong to the Project, so the page reads one list, merged over this server and
   // the machines it holds — and a Project change starts it over rather than showing the previous
@@ -435,7 +438,9 @@ export function BenchmarkPage() {
       }
       setDeleting(null);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The card stays up: a refused delete left the Benchmark exactly where it was, and the
+      // reason belongs on the same card that asks the question (7.19 / 7.20's rule app-wide).
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setDeleteBusy(false);
     }
@@ -480,7 +485,12 @@ export function BenchmarkPage() {
             canDelete={isOwner && b.machineIds.includes(null)}
             onOpen={() => open(b.id)}
             onUse={() => setUsing(b.id)}
-            onDelete={() => setDeleting(b.id)}
+            onDelete={() => {
+              // The card opens first, then the last attempt's reason is dropped: one try, one
+              // reason — the same order the other confirmations in this family use.
+              setDeleting(b.id);
+              setDeleteRefusal(null);
+            }}
           />
         ))}
       </div>
@@ -599,6 +609,7 @@ export function BenchmarkPage() {
         confirmLabel={S.common.delete}
         cancelLabel={S.common.cancel}
         busy={deleteBusy}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-700 dark:text-gray-200">
           {S.benchmark.deleteConfirm(deletingBenchmark?.title ?? deleting ?? "")}
