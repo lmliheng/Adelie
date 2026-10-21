@@ -1280,6 +1280,20 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `refusal` 槽，画在句子下面、重试按钮正上方，重试就是同一个按钮；打开这张卡片时先清掉上一次的
       原因（一次尝试一条原因）。细节、两态读数与反证见该节。
 
+- [x] **7.22 安装 / 移除模块插件被拒时，确认框留着，原因也留在框里**（**2026-10-21 第一百零一轮**落地，
+      提交见该节；1 处源码 `packages/web/src/features/plugins/plugins-page.tsx` + 1 个新文件
+      `packages/web/e2e/plugins-install-refusal.spec.mjs`（2 条用例）+ changelog 一对，
+      **无新依赖、不碰接口**）：7.20 末尾点名「`plugins` 那五张框最值得先做」的那个 —— 插件市场里给项目
+      安装（或移除）一个模块插件的 `pendingApply` 确认框在 `finally` 里关：**被拒的安装什么都没装**
+      （那一行仍在「未安装」、`deployment` 一字未改），原因却跟着框一起没了，那句话只出现在一条六秒后
+      自己消失、且浮在框上方的 toast 里。**现在**：只有写入真的落地才 `setPendingApply(null)`；被拒时
+      服务端原话交给新的 `applyRefusal` 状态、经 `ConfirmModal` 的 `refusal` 槽画在句子下面，重试就是
+      同一个按钮；两个打开卡片的入口（安装 / 移除）合成 `askApply`，落「先开框、再清上一次的原因」。
+      细节、两态读数与反证见该节。**还差什么**：同一页的「批量更新」仍由 `runBulkUpdate` 在 `finally`
+      里关框（它是部分成功：一批 Agent 里有的写进去了，框留不留要说清「哪几个没成」，得单独一轮），
+      单 Agent 的卸载 / 更新与「删除插件」两张卡片是「发出即关」的另一族（乐观更新 + 回滚 toast）；
+      7.20 列的其它页面（`company` / `settings` / `chat` / `agents` / `machines`）照旧。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1899,6 +1913,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-21 | 7.19 | **写入被拒的原因留在那张确认框里**（不是移植：`packages/ui` 的 `ConfirmModal` 多一个 `refusal` 槽（有内容时在句子下画一条 `NoticeStrip tone="danger" role="alert"`，没有时槽不画），`packages/web` 新增 `features/models/write-outcome.ts`（`WriteOutcome` / `refusalOf`）把 `persist` 的返回从 `boolean` 换成「写成了 / 被拒了 + 服务端原话」，模型库六处写入选各自把这句话画在哪：配置框四个动作画进它的确认框、删除分组与同步预置画进各自的框、分组密钥与工具栏同步预置与导入分组没有框可留故保留 toast；`common.refused()` 两句文案 + 四份 spec 收紧断言（`cardText()` 助手、`通知` 区必须没有 toast）、changelog 一对）：第九十四轮逐处摸过「点击即关、失败只弹 toast」那一族之后留下的那件 —— 框留住了（7.9、7.11–7.15），**原因**却只在一条 6 秒后自己消失、还浮在框上方的 toast 里（`ui` 的时长表 error = 6000 ms）| 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` = `src/ifaces.json unchanged`，193 接口 / 589 类型）· 11 份改动文件 `prettier --check` 干净、`npx oxlint` **0 警告 0 错误**、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1044** · cli **38 / 561** · web **262 文件 / 3215 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过**（中间红过一次：`todo-notice.test.ts` 的守卫读 `onAction` 里第一个 setter，改成先开框再清原因后转绿，没动守卫）· **整套 e2e 105 passed（7.4m）、0 failed**，改到的四份 spec 先单跑 **9 passed（18.4s）** · **反证**：把 `models-page.tsx` 暂存回去重建产物后同一批 spec **5 failed**（红的就是新的两类断言），`stash pop` 重建后 9 passed · **真看一眼**：`r97/look-refusal-card.png` 里句子下面就是 danger 色的「操作被拒绝：models store is closed」，`look-refusal-after-6s.png` 证明 6.5 秒后仍在框里，`通知` 区按钮数 **0**，1280 下 `scrollWidth = clientWidth`，console 只有按设计的 `/machines` 403 与注入的 500 · 端口只用 8941 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰，数据只落 `/tmp/r97data.*` · 没有切版本号、没发 npm、没发安装包 | `449c27fb` |
 | 2026-10-21 | 7.20 | **删除定时任务被拒时，确认框留着，原因也留在框里**（不是移植：三个界面各一处真修复（`packages/web/src/features/schedules/schedules-page.tsx`、`features/schedules/schedule-panel.tsx`、`features/agents/schedules-tab.tsx` —— `confirmRemove` 只有写成功后 `setDeleting(null)`，被拒时 `setDeleteRefusal(apiErrorText(e))` 交给 `ConfirmModal` 的 `refusal` 槽，打开框时先清掉上一次的原因）+ 1 个新文件 `packages/web/e2e/schedule-delete-refusal.spec.mjs`（4 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.19 末尾点的「这一族还有十几个页面」的第一个 —— 定时任务的三个界面列的是同一批行（`ScheduleRow`）、共用同一张确认框，三处的删除都在 `finally` 里关框，于是**被拒的删除什么都没删**（那一行仍在、服务器仍持有它）却把原因带走了，那句话只在一条六秒后自己消失、且浮在框上方的 toast 里。**量出来的缺陷**（改前，真服务 + 真浏览器，`DELETE …/schedules/look_probe` 拒成 500 `schedule store is closed`）：`dialogs 0`、`reasonInDialog 0`、`通知` 区 1 个按钮（文字正是服务端那句话）、`rows 1`、6.5 秒后 `reasonAfter6s 0`；**现在**：`dialogs 1`、`reasonInDialog 1`、`toasts 0`、`rows 1`、6.5 秒后那句话仍在框里。启停开关不动（没有框可留，被拒仍用 toast） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不动服务契约）· `npx oxlint` 全仓 **0 警告 0 错误**（2241 文件）· 改动的六个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · web **262 文件 / 3215 通过 / 2 跳过** · core **67 文件 / 1399 通过 / 6 跳过** · cli **38 / 561** · server **202 文件 / 2955 通过 / 4 跳过**（web 与上轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**110 passed（7.7m）、0 failed**（原 105 + 本笔 4 + 同一工作树另一条线的 `version-line` 1）· 新 spec 单跑 **4 passed（8.2s）**（项目页一条、重试一条、停靠面板一条、Agent 设置页一条）· **反证**：三处源码 `git stash` 回 `HEAD` 并重建 web → 同一份 spec **4 failed**（每条都死在 `dialog.getByText("schedule store is closed")` 找不到元素），`stash pop` 重建后 **4 passed** · 两态探针（一次性数据根 `/tmp/r98data.*`、`localhost:8990` + mock 8991、1280×900）读数见左栏；两态 console 都只有按设计的 `GET …/machines` **403** 与刻意造的 500，无其它 error / ≥400 · **真看一眼**：`r98/{before,after}-2-after-confirm.png`（改前那张框已经没了、顶上一条 toast；改后那张句子下面就是 danger 色的「操作被拒绝：schedule store is closed」）与 `r98/after-3-after-6s.png`，探针 `r98/probe.mjs` 在 scratchpad · 端口只用 8990 / 8991 与 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r98data.*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 · **同一工作树里另有一轮（第九十八轮，条目 6.3）在跑**，两笔改动不相交 | `59b8425c` |
 | 2026-10-21 | 7.21 | **删除 Benchmark 被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/benchmark/benchmark-page.tsx` 一处真修复 —— `confirmDelete` 的 `finally` 里关框改成只有写成功才 `setDeleting(null)`，`catch` 不再 `toastError`、把服务端原话交给新加的 `deleteRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；打开卡片时先 `setDeleting(b.id)` 再清原因，一次尝试一条原因；新增 `packages/web/e2e/benchmark-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.20 末尾点名的余下页面里最便宜的一页 —— 被拒的删除什么都没删，原因却跟着 `finally` 一起没了，只剩一条六秒后自己消失、且浮在框上方的 toast | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` **0 警告 0 错误**（2242 文件）· 改动的三份文件（源码 / 新 spec / 两份 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · cli **38 / 561** · web **262 / 3215 通过 / 2 跳过** · server **202 / 2955 通过 / 4 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **112 passed（7.6m）、0 failed**（原 110 + 本笔 2）；新 spec 单跑 **2 passed（4.1s）** · **反证**：`git stash push --` 那一个源码文件 + 重建 web 产物 + 同一数据根 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("benchmark store is closed")`：框在写入前就关了，element(s) not found），`git stash pop` + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r100-look`、`localhost:8960` + mock 8961、1280×900，`DELETE …/benchmarks/look_probe` 被 `page.route` 拒成 500）：改后 `dialogs 1`、框里 **1** 处 `benchmark store is closed`、`通知` 区 **0** 个按钮、卡片仍在、**6.5 秒后那句话仍在**（`reasonAfter6s 1`）；截图 `r100/after-2-card.png`（框特写：danger 色「操作被拒绝：benchmark store is closed」在句子下面、按钮上方）与 `r100/after-3-after-6s.png`（整页：框与 `Probe look_probe` 那张卡片都还在）；两态 console 只有按设计的 `GET …/machines` **403**与刻意注入的 500 · 端口只用 8950 / 8951（spec）与 8960 / 8961（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r100-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `35a51e54` |
+| 2026-10-21 | 7.22 | **安装 / 移除模块插件被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/plugins/plugins-page.tsx` 一处真修复 —— `runDeploymentInstall` 的 `finally` 只留 `setPendingSpecifier(null)`，`setPendingApply(null)` 搬进成功那一条，`catch` 不再 `toastError`、把服务端原话交给新加的 `applyRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；两个打开卡片的入口（安装 / 移除）合成 `askApply`，落「先开框、再清上一次的原因」；新增 `packages/web/e2e/plugins-install-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.20 末尾点名的「`plugins` 那五张框最值得先做」的那一张 —— 被拒的安装什么都没装（那一行仍在「未安装」、`deployment` 一字未改），原因却跟着 `finally` 一起没了，只剩一条六秒后自己消失、且浮在框上方的 toast | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的两份文件 **0 警告 0 错误** · 改动的三份文件（源码 / 新 spec / 两份 changelog）`prettier --check` 干净（源码第一版格式不过，已 `--write`）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **262 / 3215 通过 / 2 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **114 passed（7.7m）、0 failed**（原 112 + 本笔 2）；新 spec 单跑 **2 passed（3.8s）**（对着一次性服务端与最终产物各跑一次，两次都绿）· **反证**：`git checkout ba0ac383~1 --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("plugin store is closed")`，element(s) not found）；同一态的探针读数 **`dialogs 0` / `reasonInDialog 0` / `通知` 区 1 个按钮（文字正是 `plugin store is closed`）/ 6.5 秒后 0 个**，恢复后 **`dialogs 1` / `reasonInDialog 1` / `通知` 0 个 / 6.5 秒后仍在** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r101-look-{1,2,3}`、`localhost:8970`、1280×900，`POST …/plugins/installed` 被 `page.route` 拒成 500）：截图 `r101/look-3-refused.png`（框特写：danger 色「操作被拒绝：plugin store is closed」在句子下面、取消 / 安装上方）、`r101/look-4-after-6s.png`（6.5 秒后框与那句话都还在）、`r101/before-3-refused.png`（改前：框已关、顶上一条 toast）；两态 console 只有刻意注入的 500；`scrollWidth = clientWidth` · 端口只用 8970（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r101-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ba0ac383` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -12887,3 +12902,94 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - run **`39561312717`**（head `c3376296`）**22 个作业全绿**（`installer-windows` 也在内 —— 本机按纪律没跑的
   desktop 一族由它代跑）。同一次推送里 `35a51e54` 的那次 run（`39561301002`）被 `cancel-in-progress`
   按设计取消，只认最后一笔。
+
+## 第一百零一轮：安装模块插件被拒时，确认框留着，原因也留在框里（2026-10-21，条目 7.22）
+
+### 开工自检与选活
+
+- 同步：开工时（19:00）`git status --short` **干净**，`main` 停在 `37112039`；`git fetch origin &&
+  git merge --ff-only origin/main` = Already up to date（没切分支、没碰 `legacy/main`、没推 upstream）。
+  整轮没有别的线往这棵树里提交。
+- 选活：待办里最靠前的未勾选条目仍是 **2.2c**（剩下的全在桌面壳写侧、`adelie-app.service` 单元与发布动作
+  那一侧），3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 分别要拍板、要 key、要不引入新依赖或明令不动，5.3 的余量是
+  一整块跨机子系统。于是接过 7.20 末尾点名的那件事（「`plugins` 那五张框最值得先做 —— 装插件失败是最常见
+  的那种拒绝」），取**模块插件的安装 / 移除**那一张：一页、一张确认框、一处 `finally`，正好一轮做完。
+
+### 先量清楚（不是推测）
+
+- 读代码就够确定的一半：`plugins-page.tsx` 的 `runDeploymentInstall` 在 `finally` 里
+  `setPendingApply(null)` —— 成功、被拒一样关；`catch` 唯一一句话是 `toastError(apiErrorText(e))`，
+  而 `ui` 的 toast 时长表 error = **6000 ms**，且 toast 是 portal 到 `body` 的一层，不在框里。
+- 同一个文件里还有四张框，各自形态不同：`pendingBulk`（批量更新，部分成功语义）、`pendingUpdate` /
+  `pendingUninstall`（单 Agent 的卸载 / 更新，乐观更新 + 回滚）、`deleteOpen`（删除插件，发出即关）。
+  本轮只取 `pendingApply` —— 它是「一个请求、成败二选一」，与 7.19 / 7.20 / 7.21 同一形态；另四张留在
+  「还差什么」。
+- 开发数据根里**没有模块插件行**：`GET …/plugins/installed` 的 `shipped` 是空的（`shipped` 来自
+  `<installation>/plugins` 那份 npm prefix 的 manifest，`node scripts/build-plugins.mjs` 才产出它），
+  而 `availablePluginRows()` 要求条目名在 `shipped` 里 —— 实测页面上 `安装 …` 按钮 **0 个**。于是用例
+  与探针都**只 stub 这页与服务器的那两半**（列表读 + 写入），断言的是「框什么时候关、原因画在哪」这件
+  页面自己的契约；注册表条目走真接口（`@adelie/sandbox-bwrap` 的元数据是真的）。
+- **改前的读数**（真服务 + 真浏览器，源码退回 `ba0ac383~1` 重建，`POST …/plugins/installed` 拒成 500
+  `plugin store is closed`）：`dialogs 0`、`reasonInDialog 0`、`通知` 区 **1** 个按钮（文字正是
+  `plugin store is closed`）、那一行仍写着「未安装」、6.5 秒后那个按钮 **0** 个。
+
+### 改了什么（4 个文件 + 台账：1 处源码、1 个新 spec、changelog 一对）
+
+- `packages/web/src/features/plugins/plugins-page.tsx`：
+  - 新状态 `applyRefusal`，注释写明为什么它必须活得比 toast 久（插件还在原处 = 什么都没装，重试是下一件事）。
+  - `runDeploymentInstall` 的 `finally` 只留 `setPendingSpecifier(null)`；`setPendingApply(null)` 搬进
+    **成功**那一条；`catch` 改成 `setApplyRefusal(apiErrorText(e))`。
+  - 两个打开卡片的入口（`onInstall` / `onRemove`）合成 `askApply(specifier, install)`：**先**
+    `setPendingApply`、**再** `setApplyRefusal(null)`（「让打开先落」，与 7.19 / 7.20 / 7.21 同一条写法：
+    一次尝试一条原因，上一句话说的是上一次）。
+  - 确认框传 `refusal={applyRefusal === null ? undefined : S.common.refused(applyRefusal)}` —— 7.19 给
+    `ui` 加的那个槽。
+- `packages/web/e2e/plugins-install-refusal.spec.mjs`（新，2 条用例）：被拒（框、服务端原话、那一行都在，
+  `通知` 区**没有** toast，POST 只发了一次且体是 `{ specifier }`，取消后重开不带旧原因）、重试（放行后同一张
+  框里写进去、框关、那一行变成「移除」）。列表与写入都走 `page.route` 的夹具，理由见上。
+- changelog 一对 `changelog/unreleased/2026-10-21-plugin-install-refusal{.zh,}.md`（用户可见的行为变化，
+  并注明同页另外几张框仍是旧行为）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 /
+  589 类型 —— 本笔不碰契约）。注：包名早已是 `@adelie/*`，prompt 里那串 `@prismshadow/penguin-*` 过滤不到
+  任何项目，按 `@adelie/*` 跑的。
+- 改动的源码 / 新 spec / 两份 changelog `prettier --check` 干净（源码第一版格式不过，已 `--write` 再核对
+  行为未变）；`npx oxlint` 这两份文件 **0 警告 0 错误**；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** ·
+  server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **262 / 3215 通过 / 2 跳过**。
+  与上一轮同数：本笔没有新增纯逻辑（规则是界面状态），由 e2e 钉住。
+- **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e`（脚本自己的 `mktemp` 数据根、
+  mock 8931 / 服务端 8930）→ **114 passed（7.7m）、0 failed**（原 112 + 本笔 2）。新 spec 单跑
+  **2 passed（3.8s）**，并在 `--write` 之后对最终产物再跑一次，仍 **2 passed**。
+- **反证（真的把源码改回去再跑）**：`git checkout ba0ac383~1 -- packages/web/src/features/plugins/plugins-page.tsx`
+  + 重建 web 产物 + 同一份 spec、同一套 stub → **2 failed**，两条都死在
+  `dialog.getByText("plugin store is closed")`（element(s) not found，15 s 超时）；同一态探针读数
+  `dialogs 0` / `reasonInDialog 0` / `通知` 区 1 个按钮 / 6.5 秒后 0 个。`git checkout HEAD --` 那一份
+  + 重建 → **2 passed**、`dialogs 1` / `reasonInDialog 1` / `通知` 0 个 / 6.5 秒后仍是 1。
+- **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r101-look-{1,2,3}`、
+  `localhost:8970`、1280×900，`POST …/plugins/installed` 被 `page.route` 拒成 500）：`look-3-refused.png`
+  框里句子下面就是 danger 色的「操作被拒绝：plugin store is closed」，`look-4-after-6s.png` 证明 6.5 秒后
+  框与那句话都还在，`before-3-refused.png` 是改前那一态（框已关、顶上一条 toast `plugin store is closed`）。
+  两态 console 只有刻意注入的 500；1280 下 `scrollWidth = clientWidth`。探针
+  `r101/probe-look2.mjs`、`r101/probe-before.mjs` 在 scratchpad。
+- 端口：spec 与探针都用 8970（跑完已停），e2e 是它自己的 8930 / 8931；3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落在 `/root/adelie-fork-data/r101-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` /
+  `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- 同一页的**批量更新**（`runBulkUpdate` → `pendingBulk`）仍在 `finally` 里关框。它不是「成败二选一」：
+  `Promise.allSettled` 之后有的 Agent 写进去了、有的没有，框留不留要先说清「哪几个没成」该怎么画，值得
+  单独一轮（也许该用 `refusal` 加上那份 `failed` 名单，而不是只留一句话）。
+- 单 Agent 的**卸载 / 更新**两张框是「发出即关」的另一族（`toggleInstall` 乐观更新、失败回滚 + toast），
+  与「删除插件」（`removePlugin` 乐观删卡、失败回滚）一样：要改就得先决定「失败时那把乐观改动怎么退回去
+  才算不骗人」，与 7.19 那一族的心态不同。
+- 7.20 列的其它页面（`company` / `settings` / `chat` / `agents` / `machines`）照旧，下一轮按页面一个个来。
+
+### 收尾：提交、推送与汇报
+
+- 提交 **`ba0ac383`**（`fix(plugins): a refused module plugin install keeps its confirmation and the reason (7.22)`），
+  只 add 那 4 个文件；台账（条目 7.22、本轮一行与本节）随后单独一笔。
