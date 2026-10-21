@@ -12992,4 +12992,15 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 ### 收尾：提交、推送与汇报
 
 - 提交 **`ba0ac383`**（`fix(plugins): a refused module plugin install keeps its confirmation and the reason (7.22)`），
-  只 add 那 4 个文件；台账（条目 7.22、本轮一行与本节）随后单独一笔。
+  只 add 那 4 个文件；台账（条目 7.22、本轮一行与本节）单独一笔 **`c1d6319c`**；
+  `git push origin main` = `37112039..c1d6319c`。
+- 汇报邮件：`mail.py check` 仍 **120 秒超时**（退出码 124），与第九十五–一百轮同一类网络卡点，不是凭据问题
+  （`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里；第一次跑时管道的退出码来自 `tail`，看着像 0，实际也是
+  被 `timeout` 杀的）。按「一轮只试一次」的约定改走**飞书**：`shared_env/xianyu-ops/feishu_send.py --check`
+  通过后发正文 `r101/mail-body.txt`，已送达（`message_id=om_x100b62be564830a8c0820258ab2ea7c`）。本轮正文同时
+  留在 scratchpad，下一轮开工先 `mail.py check`，通了就把积压的一起补发。
+
+### CI（推送后）
+
+- run **`39591456197`**（head `c1d6319c`）**22 个作业全绿**（`installer-windows` 也在内 —— 本机按纪律没跑的
+  desktop 一族由它代跑），与上一轮同一份作业表。
