@@ -13234,3 +13234,13 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - 功能提交 **`ee2e3f14`**（`fix(web): 删除对话被拒时，确认框留着，原因也留在框里（7.23）`），`git add` 只加
   本轮的 4 个文件（源码 / 新 spec / 两份 changelog）；台账这一笔单独一笔。
+- 汇报邮件：开工先跑 `mail.py check` → **120 秒超时（退出码 124）**，与第九十五–一百零二轮同一类网络卡点，
+  不是凭据问题（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试一次」的约定改走**飞书**：
+  `feishu_send.py --check` 通过后发正文 `r103/feishu-body.md`，已送达
+  （`message_id=om_x100b62b9d2bd90a0c1ca98460be2bbd`）。正文同时留在 scratchpad，下一轮开工先
+  `mail.py check`，通了就把积压的一起补发。
+
+### CI（推送后）
+
+- run **`39625428711`**（head `668730b6`）**22 个作业全绿、一次过**（`installer-windows` 也在内 —— 本机按
+  纪律没跑的 desktop 一族由它代跑），没有第一百零二轮那种 macOS 跑机抖动。
