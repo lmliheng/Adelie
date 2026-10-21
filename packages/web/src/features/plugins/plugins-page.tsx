@@ -362,9 +362,31 @@ export function PluginsPage() {
   );
 
   /**
+   * The server's words for the last module plugin change it refused, drawn inside the
+   * confirmation that asked for it. It has to outlive a toast: when the write is refused the
+   * plugin is still exactly as it was, so retrying is the next thing the user does — and the
+   * button that retries it is in this card.
+   */
+  const [applyRefusal, setApplyRefusal] = useState<string | null>(null);
+
+  /**
+   * Open the confirmation for one module plugin change, without the previous refusal: that
+   * sentence belonged to the attempt before (one attempt, one reason).
+   */
+  const askApply = (specifier: string, install: boolean) => {
+    setPendingApply({ specifier, install });
+    setApplyRefusal(null);
+  };
+
+  /**
    * Asks this Project for a module plugin (or drops it); the server lists it and re-assembles
    * the App, so the row's state afterwards is what the running process has — including a
    * load that failed, which is reported as such rather than toasted as installed.
+   *
+   * The confirmation closes on the answer, not on the request: a refusal leaves the plugin
+   * where it was, so the card stays open with the server's words in it and the same button
+   * retries. Closing it in a `finally` used to take the reason away with it — the toast that
+   * carried it dismisses itself after six seconds and sits above the card, not in it.
    */
   const runDeploymentInstall = async (specifier: string, install: boolean) => {
     if (pendingSpecifier !== null || projectId === null) return;
@@ -374,6 +396,7 @@ export function PluginsPage() {
         ? await api.installPlugin(projectId, specifier, viewMachine)
         : await api.uninstallPlugin(projectId, specifier, viewMachine);
       setDeployment(next);
+      setPendingApply(null);
       const row = next.plugins.find((p) => p.specifier === specifier);
       if (install && row?.error !== undefined) {
         toastError(S.plugins.deploymentFailedToast(specifier, row.error));
@@ -381,10 +404,9 @@ export function PluginsPage() {
         toastSuccess(install ? S.plugins.deploymentInstalledToast(specifier) : S.common.saved);
       }
     } catch (e) {
-      toastError(apiErrorText(e));
+      setApplyRefusal(apiErrorText(e));
     } finally {
       setPendingSpecifier(null);
-      setPendingApply(null);
     }
   };
 
@@ -866,11 +888,7 @@ export function PluginsPage() {
                     busy={pendingSpecifier === row.specifier}
                     blocked={pendingSpecifier !== null && pendingSpecifier !== row.specifier}
                     onInstall={null}
-                    onRemove={
-                      isAdmin
-                        ? () => setPendingApply({ specifier: row.specifier, install: false })
-                        : null
-                    }
+                    onRemove={isAdmin ? () => askApply(row.specifier, false) : null}
                   />
                 ),
               )}
@@ -893,11 +911,7 @@ export function PluginsPage() {
                       shipped={row.shipped}
                       busy={pendingSpecifier === row.specifier}
                       blocked={pendingSpecifier !== null && pendingSpecifier !== row.specifier}
-                      onInstall={
-                        isAdmin
-                          ? () => setPendingApply({ specifier: row.specifier, install: true })
-                          : null
-                      }
+                      onInstall={isAdmin ? () => askApply(row.specifier, true) : null}
                       onRemove={null}
                     />
                   ),
@@ -943,6 +957,7 @@ export function PluginsPage() {
           busy={pendingSpecifier !== null}
           onClose={() => setPendingApply(null)}
           onConfirm={() => void runDeploymentInstall(pendingApply.specifier, pendingApply.install)}
+          refusal={applyRefusal === null ? undefined : S.common.refused(applyRefusal)}
         >
           <p>{S.plugins.applyConfirmBody}</p>
         </ConfirmModal>
