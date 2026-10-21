@@ -13244,3 +13244,71 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - run **`39625428711`**（head `668730b6`）**22 个作业全绿、一次过**（`installer-windows` 也在内 —— 本机按
   纪律没跑的 desktop 一族由它代跑），没有第一百零二轮那种 macOS 跑机抖动。
+
+## 第一百零四轮：发布 v0.5.3（2026-10-22，用户点单「你发新版吧」）
+
+### 开工自检与选活
+
+- 同步：开工时 `git status --short` 干净，`main` = `origin/main` = `1bb2c3e0`（第一百零三轮之后那笔台账）。
+  本轮是用户点单的发版轮 —— 把 v0.5.2 之后落在 `main` 上的 37 笔提交发成 **v0.5.3**。
+- 版本号定为 **0.5.3**（上一版 v0.5.2 之后全是补丁级：桌宠的拖动与动效、七处确认框的被拒原因、
+  新对话页的版本行、三个 e2e 稳定性），没有接口、数据根、配置格式与包名变化。
+- 范围里有第一百零三轮（`1bb2c3e0`，删除对话被拒的原因留在框里）—— 它在 `origin/main` 上，按发版口径
+  一起带上，`target_commitish` 与 tag 都指向它之后的**发布正文提交**。
+
+### 改了什么（只在独立发布树里动，`/root/adelie-fork` 一个字节没碰）
+
+- 独立干净树 `git worktree add -b release-0.5.3 /tmp/rel-0.5.3 1bb2c3e0`，在里面 `pnpm install`。
+- **版本戳 `78577dd5`** `chore(release): 0.5.3` —— 32 个文件：root + 10 个工作区包 + 20 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`（四个 private 的 sandbox 插件仍停在 0.2.3）。
+- **发布正文 `48ed0882`** `docs(release): v0.5.3 的发布正文` —— 新文件 `docs/releases/RELEASE-v0.5.3.md`
+  （本仓 v0.3.x–v0.5.x 的发布正文都在这里、也都用它当 Release 正文；`changelog/unreleased/` 照旧不重命名）。
+- **tag `v0.5.3`**（注释 tag，标题同发布正文抬头）指向 `48ed0882`，`git push origin HEAD:main` + `git push
+  origin v0.5.3`；40 位 SHA 逐字核对过（`s/0\.5\.2/0\.5\.3/` 式的替换不碰 SHA）。
+- 14 件资产：CLI 三件（linux-x64 / universal / win32-x64，各带 `.sha256`）、桌面 Linux
+  （AppImage + deb + `latest-linux.yml`）、桌面 Windows（exe + blockmap + `latest.yml`，从
+  `desktop-build.yml` 手工派发 `ref=main`、`tag=v0.5.3` 的 `desktop-Windows` 工件里解，跑在 `48ed0882`）、
+  两个安装脚本（`__PENGUIN_RELEASE_VERSION__` 已换）。
+- Release `v0.5.3`（id `419804398`）14 件资产；`penguin-win32-x64.zip` 首次上传 408 半截（state `starter`），
+  删除后重传 201 —— 这是第一次撞上，值得记下：**API 传大件要 `--max-time` 并核对 `state`**。
+- npm：24 个包都到了 0.5.3（20 个对外插件 + amsp + core + server + cli；四个 private 的 sandbox 插件跳过），
+  `latest` 也都指到 0.5.3。发布走本地脚本 + `NPM_TOKEN_ADELIE`（CI 的 OIDC 那条路要逐包配 Trusted
+  Publisher，还没配）。
+- 3003 下载站 `/downloads/index.json` 刷到 v0.5.3（页头角标读的就是它），旧清单留了一份
+  `index.json.bak-20261022-v052`。
+- 现网：`/root/.adelie/bin/penguin update --yes` 把 `/root/.adelie` 升到 0.5.3（只换 bin/lib/web/node，
+  数据根没动）；重启交给 `systemd-run --no-block --unit=adelie-live-restart-0.5.3` 的瞬时单元（自己的
+  cgroup，延后 15 分钟），核验结果写在 `release-053/post-restart-verify.txt`，由下一轮读。
+
+### 验证（都真跑过）
+
+- 四道门禁在发布树里全 `EXIT=0`：`pnpm typecheck`（六包 Done，`gen:ifaces` 报 `src/ifaces.json unchanged`，
+  193 接口 / 589 类型）· `pnpm lint`（oxlint 0 警告 0 错误）· `pnpm format:check` 干净 · `pnpm -r test`
+  **0 失败**（amsp 68 · docs 62 · ui 1044 · core 1399+6 跳 · server 2955+4 跳 · cli 561 · web 3223+2 跳 ·
+  desktop 304 · ui-gallery 137 · 四个 sandbox 插件 99+6 跳）；`git diff --check` 干净。
+- 浏览器 e2e 没在本机重跑：CI 的 `installer-e2e` 作业跑的就是 `pnpm test:e2e`，同一个提交全绿。
+- `verify-assets` 三层校验全过：三件 CLI 的 `.sha256` 自洽、`latest*.yml` 的 sha512/size 与真实文件一致、
+  deb `Version: 0.5.3`、两个安装脚本的版本戳都是 `v0.5.3`、占位符已清零。
+- 磁盘面（重启前就能核的）：`bin/penguin --version` = v0.5.3、`lib/package.json` = 0.5.3；web 产物里
+  「最新版本」「pet-hop」「操作被拒绝」各命中 ≥1，上一版的「隐藏桌宠」仍在；旧镜像地址 0 命中、
+  旧包名 `@lmliheng/*` 0 命中；数据根 `/root/.adelie/data` 与软链 `/root/.penguin/data` 没动、
+  顶层 22 个条目、无 `.old`/`.staging` 残留。
+- npm 的可见性要**等几分钟**：第一次逐包查 tarball 时 17 个 404、packument 还停在 10-20，等几分钟后
+  23/24 变 200；剩下的 `@adelie/software-development` 用 `--force` 重发拿到权威回答
+  **`403 ... You cannot publish over the previously published versions: 0.5.3`** —— 即它本来就已经发上去了，
+  404 是 CDN 还没翻页。三个包的 `dist-tags` 都已经是 `latest: 0.5.3`。**别为这个升版本号。**
+
+### 没做 / 还差什么
+
+- 重启后的现网核验（`/api/admin/storage` 200、`/api/version`、3003 页头角标、`GET /` 200）由
+  `post-restart-verify.txt` 落盘，下一轮开工先读它。
+- 桌面端 macOS 未签名，照旧不随 Release 发布；docker 那条路在本仓是删掉的（`docker.yml` 的 push-to-main
+  与 tag 触发都不在），不派发。
+- `changelog/unreleased/` 没有按 `changelog/README.md` 的说法改名成版本目录 —— 本仓 v0.3.x 起一直如此，
+  没改是为了不跟已发布的历史口径分叉。
+
+### 收尾：提交、推送与汇报
+
+- 本轮记账就是这一笔；功能与版本那条链已经推上 `main`（`78577dd5` · `48ed0882`）并打了 tag。
+- 汇报：先按约定 `mail.py check` 试一次（中南网段整片不通就改飞书），正文留在 scratchpad 的
+  `release-053/feishu-body.md`。
