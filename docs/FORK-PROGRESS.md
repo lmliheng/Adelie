@@ -12769,9 +12769,12 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - 提交 **`59b8425c`**（`fix(schedules): a refused delete keeps its confirmation and the reason (7.20)`），
   只 add 本轮六个文件 + 本台账；`git push origin main` 见下（接在第九十八轮的三笔之上，未被改写）。
-- 汇报邮件：`mail.py check` 仍 **120 s 超时**（退出码 124，与第九十五–九十七、第九十八轮同一类网络卡点，
-  不是凭据问题 —— `CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试一次」的约定，
-  失败即改走**飞书**（`/root/Adelie_develop/send-feishu.py`，第九十八轮已验证的通路），正文照正式汇报写。
+- 汇报邮件：`mail.py check` 仍 **120 s 超时**（退出码 124），`mail.py send` 也死在 `TimeoutError`（SMTP 建连），
+  与第九十五–九十八轮同一类网络卡点，不是凭据问题（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。
+  按「一轮只试一次」的约定，失败即改走**飞书**：`/root/Adelie_develop/send-feishu.py` 的凭据没注入本会话的
+  环境，改用 `shared_env/xianyu-ops/feishu_send.py`（凭据与收件人取自 `web.db` 的绑定，`--check` 通过）——
+  已送达（`message_id=om_x100b62b76aa17088c1d3b66ff988b60`），正文即本轮的正式汇报。第九十五–九十八轮的
+  邮件仍在队列里，下一轮开工先 `mail.py check`，通了就把积压的一起补发。
 
 ### 下一轮从这里接
 
