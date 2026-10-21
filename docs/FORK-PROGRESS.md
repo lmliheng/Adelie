@@ -13119,6 +13119,21 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - 功能提交 **`e3f22fbf`**（`fix(web): 拖住企鹅就能挪动桌宠，点一下它会跳、眼睛还跟着指针`），
   `git add` 只加本轮的 6 个源文件与 changelog 一对（共享工作树里另有会话在改别的文件，逐字看过
-  `git diff --cached`）；台账（本轮这一节与它的提交）单独一笔。
-- 汇报邮件：开工先 `mail.py check`（中南整片不通，**一轮只试一次**），不通就改走飞书
-  （`send-feishu.py --body-file … --title …`），正文同时留在 scratchpad。
+  `git diff --cached`）；台账单独一笔 **`cbd3c99c`**；`git push origin main` = `017af983..cbd3c99c`
+  （推之前 `git fetch origin && git merge --ff-only origin/main` = Already up to date）。
+- 汇报邮件：开工先跑 `mail.py check` → **130 秒超时（退出码 124）**，与第九十五–一百零一轮同一类网络
+  卡点，不是凭据问题（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试一次」的约定
+  改走**飞书**：正文 `r102/feishu-body.md`，已送达
+  （`message_id=om_x100b62b84760f0a0c0b862ff50342a2`）。正文同时留在 scratchpad，下一轮开工先
+  `mail.py check`，通了就把积压的一起补发。
+
+### CI（推送后）
+
+- run **`39608167688`**（head `cbd3c99c`）第一次 **21/22**：唯一红的是 **`test-macos (server)`** ——
+  `test/workflows.test.ts > a loaded workflow > notices an Agent's FIRST workflow` 撞
+  `{"error":{"code":"agent_exists",…"Agent id is already taken: builder."}}`（`expected 409 to be 201`）。
+  这是台账里记过好几次的**老抖动**（1598 / 6530 / 10127 / 10476 行：macOS 跑机上这条超时、用例自己没有
+  清理又撞 `agent_exists`；同一提交的 Linux `test (server)` 与 Windows 三个 server 作业都是绿的），
+  本机单跑 `npx vitest run test/workflows.test.ts` = **14 条全过**。`POST …/jobs/119249725921/rerun`
+  → **attempt 2 22 个作业全绿**（`installer-windows` 也在内，本机按纪律没跑的 desktop 一族由它代跑）。
+
