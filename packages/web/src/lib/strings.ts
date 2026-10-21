@@ -3655,6 +3655,12 @@ export const zh = {
     batchDeleteTitle: "删除选中的对话",
     batchDeleteConfirm: (n: number) =>
       `确定删除选中的 ${n} 个对话？其消息与 Trace 将被移除，且不可恢复。`,
+    /**
+     * A batch delete the server refused (wholly or in part): how many of the ticked conversations
+     * did not go, then the server's words. The rest of the batch did land and has already left the
+     * list, so the card counts only what a retry would still act on.
+     */
+    batchDeleteRefused: (n: number, reason: string) => `还有 ${n} 个对话没有删除：${reason}`,
     /** Per-row ellipsis overflow menu (pin / rename / archive / delete live inside it) and the row-level pin. */
     pinSession: "置顶",
     unpinSession: "取消置顶",

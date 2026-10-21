@@ -3607,6 +3607,13 @@ export const en: Strings = {
     batchDeleteTitle: "Delete selected chats",
     batchDeleteConfirm: (n: number) =>
       `Delete the ${n} selected chats? Their messages and Trace will be removed permanently.`,
+    /**
+     * A batch delete the server refused (wholly or in part): how many of the ticked chats did not
+     * go, then the server's words. The rest of the batch did land and has already left the list, so
+     * the card counts only what a retry would still act on.
+     */
+    batchDeleteRefused: (n: number, reason: string) =>
+      `${n} of the selected chats were not deleted: ${reason}`,
     /** Per-row ellipsis overflow menu (pin / rename / archive / delete live inside it) and the row-level pin. */
     pinSession: "Pin",
     unpinSession: "Unpin",

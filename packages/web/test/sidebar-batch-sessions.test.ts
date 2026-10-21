@@ -60,6 +60,15 @@ describe("the batch bar's words", () => {
     expect(en.chat.batchDeleteConfirm(3)).toContain("permanently");
   });
 
+  it("says how many of a refused batch did not go, before the server's words", () => {
+    expect(zh.chat.batchDeleteRefused(2, "session store is read-only")).toBe(
+      "还有 2 个对话没有删除：session store is read-only",
+    );
+    expect(en.chat.batchDeleteRefused(1, "session store is read-only")).toBe(
+      "1 of the selected chats were not deleted: session store is read-only",
+    );
+  });
+
   it("names each row's box after the conversation it stands for", () => {
     expect(zh.chat.batchSelectRow("修构建")).toBe("选中「修构建」");
     expect(en.chat.batchSelectRow("Fix the build")).toBe('Select "Fix the build"');
@@ -107,21 +116,33 @@ describe("the batch wiring", () => {
     expect(SIDEBAR).toContain("targets.map((s) => api.deleteSession(s.sessionId))");
     // Both the single delete and the batch leave through the one cleanup.
     expect(SIDEBAR).toContain("forgetDeletedSessions([target]);");
-    expect(SIDEBAR).toContain("forgetDeletedSessions(targets);");
+    // A batch is N writes, so its outcomes are read per row — `all` would drop the rows that did
+    // land, and only the landed ones may be forgotten.
+    expect(SIDEBAR).toContain("await Promise.allSettled(");
+    expect(SIDEBAR).toContain("forgetDeletedSessions(landed);");
   });
 
   it("keeps the delete's confirmation, asked once for the whole selection", () => {
     expect(SIDEBAR).toContain("title={S.chat.batchDeleteTitle}");
     expect(SIDEBAR).toContain("onConfirm={() => void confirmBatchDelete()}");
     expect(SIDEBAR).toContain("S.chat.batchDeleteConfirm(batchSelected.size)");
+    // A partially refused batch keeps the card, and the reason goes in it (not in a toast).
+    expect(SIDEBAR).toContain(
+      "refusal={batchDeleteRefusal === null ? undefined : batchDeleteRefusal}",
+    );
+    expect(SIDEBAR).toContain(
+      "S.chat.batchDeleteRefused(refused.length, apiErrorText(firstReason))",
+    );
   });
 
   it("drops the ticks when the mode is left, and clears them after an action lands", () => {
     expect(TOGGLE).toContain("setBatchMode(false)");
     expect(TOGGLE).toContain("setBatchSelected(new Set())");
     expect(SIDEBAR).toContain("const clearBatchSelection = () => setBatchSelected(new Set());");
-    // Archived and deleted rows are no longer the ones the reader picked.
-    expect(SIDEBAR.match(/setBatchSelected\(new Set\(\)\)/g)?.length).toBeGreaterThanOrEqual(4);
+    // Archived rows are no longer the ones the reader picked, and a delete clears a fully landed
+    // batch — but a refused one keeps exactly the rows that did not go ticked for the retry.
+    expect(SIDEBAR.match(/setBatchSelected\(new Set\(\)\)/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(SIDEBAR).toContain("setBatchSelected(new Set(refused.map((s) => s.sessionId)));");
   });
 
   it("stops reordering rows while they are being picked", () => {

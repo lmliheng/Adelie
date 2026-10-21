@@ -648,6 +648,13 @@ export function Sidebar({
   const [batchSelected, setBatchSelected] = useState<ReadonlySet<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
   const [batchConfirmDelete, setBatchConfirmDelete] = useState(false);
+  /**
+   * Why the last confirmed batch delete did not finish — the server's own words with the number of
+   * rows it refused. Same rule as the single delete above (the reason belongs beside the button
+   * that retries it), and a batch needs it even more: its refusal is partial, and what is left
+   * ticked is exactly what did not go.
+   */
+  const [batchDeleteRefusal, setBatchDeleteRefusal] = useState<string | null>(null);
   /** Parked draft conversation pending delete confirmation (null = none). */
   const [deletingDraft, setDeletingDraft] = useState<DraftSessionEntry | null>(null);
   /** Parked draft conversations of this user × Project, newest first (reactive module store). */
@@ -1437,26 +1444,52 @@ export function Sidebar({
    * 批量删除: the row delete's own confirmation, asked once for the whole selection, then the same
    * DELETE per row. Deleting the conversation on screen leaves for the next one of its Agent, as the
    * single delete does — the others are gone from the list, not from what the reader is looking at.
+   *
+   * A batch is N writes, not one, so the outcomes are collected per row (`allSettled`): some can
+   * land while another is refused. The landed rows leave the list and the ticks; the refused ones
+   * stay ticked — that is what makes the card's own count name the rows a retry would act on — and
+   * the card stays open with the server's words in it (a toast would dismiss itself above the
+   * card the person is still looking at, and it could not say that the rest went through).
    */
   const confirmBatchDelete = async () => {
     const targets = batchTargets();
     if (targets.length === 0) return;
     setBatchBusy(true);
+    setBatchDeleteRefusal(null);
     try {
-      await Promise.all(targets.map((s) => api.deleteSession(s.sessionId)));
-      forgetDeletedSessions(targets);
-      setBatchConfirmDelete(false);
-      setBatchSelected(new Set());
-      const openOne = targets.find((s) => s.sessionId === activeSessionId);
+      const results = await Promise.allSettled(targets.map((s) => api.deleteSession(s.sessionId)));
+      const landed: SessionInfo[] = [];
+      const refused: SessionInfo[] = [];
+      // The card shows ONE reason under its sentence, so the first refusal's words are the ones
+      // kept — the rows themselves say which of them is still there to retry.
+      let firstReason: unknown;
+      results.forEach((result, i) => {
+        const target = targets[i];
+        if (target === undefined) return;
+        if (result.status === "fulfilled") {
+          landed.push(target);
+          return;
+        }
+        if (refused.length === 0) firstReason = result.reason;
+        refused.push(target);
+      });
+      forgetDeletedSessions(landed);
+      setBatchSelected(new Set(refused.map((s) => s.sessionId)));
+      if (refused.length === 0) {
+        setBatchConfirmDelete(false);
+      } else {
+        setBatchDeleteRefusal(S.chat.batchDeleteRefused(refused.length, apiErrorText(firstReason)));
+      }
+      // Only a conversation that actually went away is left for: when the open one was one of the
+      // refused rows it is still on screen, so there is nowhere to go.
+      const openOne = landed.find((s) => s.sessionId === activeSessionId);
       if (openOne !== undefined) {
-        const deleted = new Set(targets.map((s) => s.sessionId));
+        const deleted = new Set(landed.map((s) => s.sessionId));
         const rest = (byAgent.get(openOne.agentId) ?? []).filter(
           (s) => !deleted.has(s.sessionId) && sessionCategory(s) === "active",
         );
         navigate(rest[0] ? `/chat/${rest[0].sessionId}` : "/chat");
       }
-    } catch (e) {
-      toastError(apiErrorText(e));
     } finally {
       setBatchBusy(false);
     }
@@ -2310,7 +2343,8 @@ export function Sidebar({
       </ConfirmModal>
 
       {/* Batch delete confirmation: the same shared ConfirmModal as the row's own, asked once for
-          the whole selection instead of once per row. */}
+          the whole selection instead of once per row. A partially refused batch keeps the card:
+          its count and the ticks are then exactly the rows still left to delete. */}
       <ConfirmModal
         open={batchConfirmDelete}
         title={S.chat.batchDeleteTitle}
@@ -2319,6 +2353,7 @@ export function Sidebar({
         busy={batchBusy}
         onClose={() => (batchBusy ? undefined : setBatchConfirmDelete(false))}
         onConfirm={() => void confirmBatchDelete()}
+        refusal={batchDeleteRefusal === null ? undefined : batchDeleteRefusal}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {S.chat.batchDeleteConfirm(batchSelected.size)}
@@ -2742,7 +2777,11 @@ export function Sidebar({
                 size="xs"
                 variant="danger"
                 disabled={batchBusy}
-                onClick={() => setBatchConfirmDelete(true)}
+                onClick={() => {
+                  // One attempt, one reason: opening the card again never carries the last one over.
+                  setBatchDeleteRefusal(null);
+                  setBatchConfirmDelete(true);
+                }}
               >
                 {S.chat.batchDelete}
               </Button>
