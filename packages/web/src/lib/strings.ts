@@ -978,6 +978,13 @@ export const zh = {
   update: {
     /** Version-line date label (owner-specified wording); `date` is formatMonthDay output. */
     lastUpdated: (date: string) => `最近更新日期 ${date}`,
+    /**
+     * The version line's trailing half when the check knows a newer release: its number, so the
+     * line itself answers "我落后了没有". The superscript badge beside it says an update exists
+     * but carries the version only in its tooltip, which left a reader two releases behind
+     * unable to see how far behind they were.
+     */
+    latestRelease: (v: string) => `最新版本 v${v}`,
     /** The version line's superscript (owner-specified wording), a button into the modal; the other two follow the flow. */
     newVersionBadge: "有新版本可用",
     badgeDownloading: "正在下载更新",

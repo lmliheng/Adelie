@@ -918,6 +918,12 @@ export const en: Strings = {
   update: {
     /** Version-line date label; `date` is formatMonthDay output, e.g. "Last updated Jul 26". */
     lastUpdated: (date: string) => `Last updated ${date}`,
+    /**
+     * The version line's trailing half when the check knows a newer release: its number, so the
+     * line itself says how far behind this build is. The superscript badge beside it only
+     * carries the version in its tooltip.
+     */
+    latestRelease: (v: string) => `Latest v${v}`,
     /** The version line's superscript, a button into the modal; the other two follow the flow. */
     newVersionBadge: "New version available",
     badgeDownloading: "Downloading update",

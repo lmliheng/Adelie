@@ -956,8 +956,9 @@ const versionBadgeClass =
   "ml-1.5 inline-block align-super text-xs leading-4 text-gray-400 dark:text-gray-500";
 
 /**
- * Quiet version line under the brand subtitle: `vX.Y.Z · Last updated Jul 26`
- * (localized per dictionary). The product name is not repeated here — the brand wordmark
+ * Quiet version line under the brand subtitle: `vX.Y.Z · Last updated Jul 26`, plus
+ * `· Latest vA.B.C` when the update check knows a newer release (localized per
+ * dictionary). The product name is not repeated here — the brand wordmark
  * sits directly above, and the sidebar's version footer is bare `vX.Y.Z` too. The date is
  * the running version's release
  * date, stamped into core's BUILD_DATE at build time — displayed as-is, no network;
@@ -971,14 +972,22 @@ const versionBadgeClass =
  */
 function VersionLine() {
   const { locale } = useLocale();
-  const { version } = useVersionInfo(true);
+  const { version, update } = useVersionInfo(true);
   if (version === null) return null;
   const date = version.buildDate;
+  // The newest published release, when the check knows one newer than this build: the
+  // version line is where a reader looks to answer "我落后了没有", and the superscript
+  // badge alone only says that an update exists — its version lives in a tooltip. Shown
+  // only when it is newer, so an up-to-date build has nothing to add: the version above
+  // already is the latest one. Naming none (the lookup failed, checks are off, or the
+  // backend has no release) leaves the line as it was.
+  const latest = update !== null && update.updateAvailable ? update.latestVersion : null;
   return (
     <p className="mt-1.5 text-xs text-gray-400 dark:text-gray-500">
       {`v${version.version}${
         date !== null ? ` · ${S.update.lastUpdated(formatMonthDay(date, locale))}` : ""
       }`}
+      {latest !== null && ` · ${S.update.latestRelease(latest)}`}
       <VersionBadge />
     </p>
   );

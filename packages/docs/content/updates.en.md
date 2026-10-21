@@ -16,7 +16,7 @@ Check which version of Adelie you are running, and update it in the way that mat
 
 In the Web App:
 
-- The new-chat page shows the running version on a version line such as `vX.Y.Z · Last updated Jul 26`. The release workflow stamps the date into the build, so it is shown without any network access. Dev builds and releases from before the stamping, v0.1.2 and earlier, show no date.
+- The new-chat page shows the running version on a version line such as `vX.Y.Z · Last updated Jul 26`. The release workflow stamps the date into the build, so it is shown without any network access. Dev builds and releases from before the stamping, v0.1.2 and earlier, show no date. When the update check finds a newer release, the line continues with **Latest vX.Y.Z**; a build that is already the latest one adds nothing.
 - In the sidebar user menu, the update row directly under **Settings** shows the running version, muted, on its right.
 
 In a terminal:
