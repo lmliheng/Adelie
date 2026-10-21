@@ -89,6 +89,9 @@ export function SchedulesTab({
   const [ai, setAi] = useState<{ initial: string } | null>(null);
   // Name of the task pending deletion confirmation (non-null shows the confirm modal).
   const [deleting, setDeleting] = useState<string | null>(null);
+  // The server's words for a delete it refused, drawn inside that same confirmation: the toast
+  // that used to carry them dismissed itself while the retry was still the next thing to do.
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!projectId || !agentId) return;
@@ -132,7 +135,7 @@ export function SchedulesTab({
     }
   };
 
-  /** Confirm modal's "Confirm": closes the modal after deletion; if the deleted task is currently being edited, close the form too. */
+  /** Confirm modal's "Confirm": closes the modal once the deletion landed; a refused one stays with the server's words. */
   const confirmRemove = async () => {
     if (!projectId || deleting === null) return;
     setBusy(true);
@@ -140,11 +143,11 @@ export function SchedulesTab({
       await api.deleteSchedule(projectId, agentId, deleting);
       if (form?.editing?.name === deleting) setForm(null);
       changed();
+      setDeleting(null);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
-      setDeleting(null);
     }
   };
 
@@ -267,7 +270,10 @@ export function SchedulesTab({
                       size="sm"
                       variant="ghost"
                       disabled={busy}
-                      onClick={() => setDeleting(item.name)}
+                      onClick={() => {
+                        setDeleting(item.name);
+                        setDeleteRefusal(null);
+                      }}
                     >
                       {S.common.delete}
                     </Button>
@@ -325,6 +331,7 @@ export function SchedulesTab({
         onConfirm={() => void confirmRemove()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {deleting !== null ? S.schedule.deleteConfirm(deleting) : ""}

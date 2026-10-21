@@ -113,6 +113,9 @@ export function SchedulesPage() {
   // The task pending deletion confirmation, named by its file: the Agent whose directory holds it
   // and the file name, which is what the delete call takes.
   const [deleting, setDeleting] = useState<{ agentId: string; name: string } | null>(null);
+  // The server's words for a delete it refused, drawn inside that same confirmation: the reason
+  // has to survive the six-second toast, because retrying is the next thing the user does.
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   // The "new task" button's Agent picker.
   const [agentsOpen, setAgentsOpen] = useState(false);
 
@@ -183,11 +186,14 @@ export function SchedulesPage() {
       const editing = form?.editing;
       if (editing?.agentId === deleting.agentId && editing?.name === deleting.name) setForm(null);
       changed();
+      // Only a written delete closes the question: a refused one keeps the card (and the
+      // server's words inside it) so the retry is the same button, not a search through a list
+      // whose row is still there.
+      setDeleting(null);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
-      setDeleting(null);
     }
   };
 
@@ -430,7 +436,12 @@ export function SchedulesPage() {
                       busy={busy}
                       onToggle={() => void toggle(item)}
                       onEdit={() => setForm({ agentId: item.agentId, editing: item })}
-                      onDelete={() => setDeleting({ agentId: item.agentId, name: item.name })}
+                      onDelete={() => {
+                        // Open first, then drop the previous refusal: that sentence belonged to
+                        // the task the last attempt named.
+                        setDeleting({ agentId: item.agentId, name: item.name });
+                        setDeleteRefusal(null);
+                      }}
                     />
                   </li>
                 ))}
@@ -473,6 +484,7 @@ export function SchedulesPage() {
         onConfirm={() => void confirmRemove()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {deleting !== null ? S.schedule.deleteConfirm(deleting.name) : ""}

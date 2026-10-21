@@ -72,6 +72,9 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
   // The task pending deletion confirmation, named by its file: the agent whose directory holds it
   // and the file name, which is what the delete call takes.
   const [deleting, setDeleting] = useState<{ agentId: string; name: string } | null>(null);
+  // The server's words for a delete it refused, drawn inside that same confirmation — the
+  // panel's copy of the page's rule, since both list the same rows (`ScheduleRow`).
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   // AI dialog: non-null means open, seeded with a suggestion's prompt or nothing.
   const [ai, setAi] = useState<{ initial: string } | null>(null);
 
@@ -122,11 +125,13 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
       const editing = form?.editing;
       if (editing?.agentId === deleting.agentId && editing?.name === deleting.name) setForm(null);
       changed();
+      // Only a written delete closes the question; a refused one keeps the card so the retry is
+      // the same button (the row is still in the list either way).
+      setDeleting(null);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
-      setDeleting(null);
     }
   };
 
@@ -196,7 +201,10 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
                   busy={busy}
                   onToggle={() => void toggle(item)}
                   onEdit={() => setForm({ editing: item })}
-                  onDelete={() => setDeleting({ agentId: item.agentId, name: item.name })}
+                  onDelete={() => {
+                    setDeleting({ agentId: item.agentId, name: item.name });
+                    setDeleteRefusal(null);
+                  }}
                 />
               </li>
             ))}
@@ -234,6 +242,7 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
         onConfirm={() => void confirmRemove()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {deleting !== null ? S.schedule.deleteConfirm(deleting.name) : ""}
