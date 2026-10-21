@@ -13410,3 +13410,14 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - 功能提交 **`e4ec28b8`**（`fix(web): 插件设置里的操作被拒时，确认框留着，原因也留在框里（7.24）`），
   `git add` 只加本轮的 4 个文件（源码 / 新 spec / 两份 changelog）；台账这一笔单独一笔。
+- 汇报：按 `csu-mail` 技能的约定先跑 `mail.py check` → 两次都在 120 秒超时（退出码 124）；同时
+  `smtp.csu.edu.cn:465` 与 `mail.csu.edu.cn:443` 的 TCP 都建不起来（各 12 秒超时），而 `github.com` 200 ——
+  与前几轮同一类网络问题，不是凭据问题（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试
+  一次」的上限改走**飞书**：`feishu_send.py --check` 通过后发正文 `r105/feishu-body.md`，已送达
+  （`message_id=om_x100b62a56e0b8ca0dd334fa2e1d35a6`）。正文同时留在 scratchpad，下一轮开工先 `mail.py check`，
+  通了就把积压的一起补发。
+
+### CI（推送后）
+
+- run **`39661054768`**（head `ce9db2d4`）**22 个作业全绿、一次过**（`installer-windows` 也在内 —— 本机按
+  纪律没跑的 desktop 一族由它代跑）。
