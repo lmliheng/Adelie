@@ -105,6 +105,13 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
     id: string;
     title: string;
   } | null>(null);
+  /**
+   * The words for an action the machine refused, drawn inside the confirmation that asked for
+   * it. Kept here rather than in a toast: nothing ran, so retrying is the next thing the person
+   * does — and the button that retries it is in this card, while a toast dismisses itself after
+   * six seconds and sits above it.
+   */
+  const [actionRefusal, setActionRefusal] = useState<string | null>(null);
   const { machineIds, machineLabels } = useSessions();
   /** The machine whose settings the page shows and saves: null for this server. */
   const [machine, setMachine] = useState<string | null>(null);
@@ -284,12 +291,9 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   };
 
   /**
-   * Runs a group's action: what the deployment must DO once on the machine (the Windows
-   * sandbox's local accounts). The result's own words are what the person sees — the module
-   * knows what happened, this page does not — and the groups it answers with replace ours,
-   * because a setup that worked changes what the card says about itself.
+   * A group action's button: asks first, with the action's own title (see pendingAction) and
+   * without the previous refusal — that sentence belonged to the attempt before.
    */
-  /** A group action's button: asks first, with the action's own title (see pendingAction). */
   const askAction = (entry: PluginConfigEntry, id: string) => {
     const action = entry.actions?.find((a) => a.id === id);
     setPendingAction({
@@ -297,18 +301,32 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
       id,
       title: (action && localized(action.title, action.titleZh)) ?? action?.title ?? id,
     });
+    setActionRefusal(null);
   };
 
+  /**
+   * Runs a group's action: what the deployment must DO once on the machine (the Windows
+   * sandbox's local accounts). The result's own words are what the person sees — the module
+   * knows what happened, this page does not — and the groups it answers with replace ours,
+   * because a setup that worked changes what the card says about itself.
+   *
+   * The confirmation closes on the answer, not on the request: an action that did not run —
+   * a refused request, or a group answering `ok: false` ("another task is running") — leaves
+   * the machine as it was, so the card stays open with those words in it and the same button
+   * retries. Closing it as the request left used to take the reason away with it.
+   */
   const runAction = async (entry: PluginConfigEntry, action: string) => {
     setBusy(`${entry.name}\0${action}`);
     try {
       const res = await api.adminRunPluginConfigAction({ name: entry.name, action }, machine);
       adopt(res.plugins);
       const message = localized(res.message, res.messageZh) ?? res.message;
-      if (res.ok) toastSuccess(message);
-      else toastError(message);
+      if (res.ok) {
+        setPendingAction(null);
+        toastSuccess(message);
+      } else setActionRefusal(message);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setActionRefusal(apiErrorText(e));
     } finally {
       setBusy(null);
     }
@@ -519,10 +537,12 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
         onClose={() => setPendingAction(null)}
         onConfirm={() => {
           if (pendingAction !== null) void runAction(pendingAction.entry, pendingAction.id);
-          setPendingAction(null);
         }}
+        // The card stays open while the action runs, so its own buttons must not send it twice.
+        busy={busy !== null}
         confirmLabel={S.settings.pluginActionRun}
         cancelLabel={S.common.cancel}
+        refusal={actionRefusal === null ? undefined : S.common.refused(actionRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {pendingAction !== null
