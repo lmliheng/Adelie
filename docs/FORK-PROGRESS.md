@@ -13136,4 +13136,8 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
   清理又撞 `agent_exists`；同一提交的 Linux `test (server)` 与 Windows 三个 server 作业都是绿的），
   本机单跑 `npx vitest run test/workflows.test.ts` = **14 条全过**。`POST …/jobs/119249725921/rerun`
   → **attempt 2 22 个作业全绿**（`installer-windows` 也在内，本机按纪律没跑的 desktop 一族由它代跑）。
+- 最后一笔推送（`8a1ba48b`，只改台账）自己的 run **`39609957967`** 第一次又是 mac 跑机的抖动：
+  `test-macos (core)` 从 13:39:55 跑到 13:54:58（**15 分钟**）后被 `cancelled`（工作流里没有
+  `timeout-minutes`，不是配置超时），汇总作业 `ci` 因此红；`POST …/runs/39609957967/rerun-failed-jobs`
+  → **attempt 2 22 个作业全绿**。
 
