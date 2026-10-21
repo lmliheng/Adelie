@@ -631,6 +631,13 @@ export function Sidebar({
   const [deletingSession, setDeletingSession] = useState<SessionInfo | null>(null);
   const [deletingBusy, setDeletingBusy] = useState(false);
   /**
+   * Why the last confirmed deletion was refused, in the server's own words. It belongs to the
+   * dialog, not to a toast: nothing was deleted, so the conversation is still there and the only
+   * next step is the same button again — the rename dialog above answers a refused write the very
+   * same way.
+   */
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  /**
    * Batch processing (the header control beside 搜索会话): while it is on every row is a picker and
    * the bar above the list acts on the ticked ones. Both are transient — leaving the mode drops the
    * ticks — because a selection left behind in localStorage would act on rows the reader picked in
@@ -1335,6 +1342,7 @@ export function Sidebar({
   const confirmDeleteSession = async () => {
     if (!deletingSession) return;
     setDeletingBusy(true);
+    setDeleteRefusal(null);
     const target = deletingSession;
     try {
       await api.deleteSession(target.sessionId);
@@ -1352,7 +1360,9 @@ export function Sidebar({
         navigate(rest[0] ? `/chat/${rest[0].sessionId}` : "/chat");
       }
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The dialog stays open (it only closes on a landed DELETE) and says why: a toast would
+      // dismiss itself above a card the person is still looking at.
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setDeletingBusy(false);
     }
@@ -1740,7 +1750,11 @@ export function Sidebar({
               setRenamingSession(x);
             }}
             onMessaging={(x) => setMessagingSession(x)}
-            onDelete={(x) => setDeletingSession(x)}
+            onDelete={(x) => {
+              // The dialog first, then the last attempt's reason: one attempt carries one reason.
+              setDeletingSession(x);
+              setDeleteRefusal(null);
+            }}
             onToggleArchive={(x) => void toggleArchive(x)}
             {...(batchMode
               ? {
@@ -2286,6 +2300,7 @@ export function Sidebar({
         busy={deletingBusy}
         onClose={() => (deletingBusy ? undefined : setDeletingSession(null))}
         onConfirm={() => void confirmDeleteSession()}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {deletingSession
