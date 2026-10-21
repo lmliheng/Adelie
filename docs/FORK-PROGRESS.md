@@ -1294,6 +1294,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       单 Agent 的卸载 / 更新与「删除插件」两张卡片是「发出即关」的另一族（乐观更新 + 回滚 toast）；
       7.20 列的其它页面（`company` / `settings` / `chat` / `agents` / `machines`）照旧。
 
+- [x] **7.23 删除对话被拒时，确认框留着，原因也留在框里**（**2026-10-21 第一百零三轮**落地，
+      提交见该节；1 处源码 `packages/web/src/components/layout/sidebar.tsx` + 1 个新文件
+      `packages/web/e2e/session-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，
+      **无新依赖、不碰接口**）：接着 7.19–7.22 那条「原因随框留着」的线，取的是侧栏里**最常见的一次
+      破坏性操作** —— 删除对话。那张卡片的框本来就只在 DELETE 落地后才关（`setDeletingSession(null)`
+      在成功那一条里），没留住的是原因：`catch` 只有 `toastError`，那句话六秒后自己消失、还浮在框上方。
+      **现在**：`catch` 把服务端原话交给新加的 `deleteRefusal` 状态，经 `ConfirmModal` 的 `refusal` 槽
+      画在句子下面、重试按钮正上方；从行菜单打开卡片时先开框再清上一次的原因，重试开始的那一刻也清掉。
+      同一列的重命名对话框（`renameError` 挂在输入框上）一直是这么回答被拒的写入，删除这张现在与它
+      一致。细节、两态读数与反证见「第一百零三轮」一节。**还差什么**：批量删除（多行共用的那张框）仍用
+      toast 报拒绝 —— 它是部分成功（`Promise.all` 之后可能有的删掉了、有的没有），要说清「哪几个没成」
+      得单独一轮；7.20 列的其它页面（`company` / `settings` / `chat` / `agents` / `machines`）照旧。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -1914,6 +1927,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-21 | 7.20 | **删除定时任务被拒时，确认框留着，原因也留在框里**（不是移植：三个界面各一处真修复（`packages/web/src/features/schedules/schedules-page.tsx`、`features/schedules/schedule-panel.tsx`、`features/agents/schedules-tab.tsx` —— `confirmRemove` 只有写成功后 `setDeleting(null)`，被拒时 `setDeleteRefusal(apiErrorText(e))` 交给 `ConfirmModal` 的 `refusal` 槽，打开框时先清掉上一次的原因）+ 1 个新文件 `packages/web/e2e/schedule-delete-refusal.spec.mjs`（4 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.19 末尾点的「这一族还有十几个页面」的第一个 —— 定时任务的三个界面列的是同一批行（`ScheduleRow`）、共用同一张确认框，三处的删除都在 `finally` 里关框，于是**被拒的删除什么都没删**（那一行仍在、服务器仍持有它）却把原因带走了，那句话只在一条六秒后自己消失、且浮在框上方的 toast 里。**量出来的缺陷**（改前，真服务 + 真浏览器，`DELETE …/schedules/look_probe` 拒成 500 `schedule store is closed`）：`dialogs 0`、`reasonInDialog 0`、`通知` 区 1 个按钮（文字正是服务端那句话）、`rows 1`、6.5 秒后 `reasonAfter6s 0`；**现在**：`dialogs 1`、`reasonInDialog 1`、`toasts 0`、`rows 1`、6.5 秒后那句话仍在框里。启停开关不动（没有框可留，被拒仍用 toast） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不动服务契约）· `npx oxlint` 全仓 **0 警告 0 错误**（2241 文件）· 改动的六个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · web **262 文件 / 3215 通过 / 2 跳过** · core **67 文件 / 1399 通过 / 6 跳过** · cli **38 / 561** · server **202 文件 / 2955 通过 / 4 跳过**（web 与上轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**110 passed（7.7m）、0 failed**（原 105 + 本笔 4 + 同一工作树另一条线的 `version-line` 1）· 新 spec 单跑 **4 passed（8.2s）**（项目页一条、重试一条、停靠面板一条、Agent 设置页一条）· **反证**：三处源码 `git stash` 回 `HEAD` 并重建 web → 同一份 spec **4 failed**（每条都死在 `dialog.getByText("schedule store is closed")` 找不到元素），`stash pop` 重建后 **4 passed** · 两态探针（一次性数据根 `/tmp/r98data.*`、`localhost:8990` + mock 8991、1280×900）读数见左栏；两态 console 都只有按设计的 `GET …/machines` **403** 与刻意造的 500，无其它 error / ≥400 · **真看一眼**：`r98/{before,after}-2-after-confirm.png`（改前那张框已经没了、顶上一条 toast；改后那张句子下面就是 danger 色的「操作被拒绝：schedule store is closed」）与 `r98/after-3-after-6s.png`，探针 `r98/probe.mjs` 在 scratchpad · 端口只用 8990 / 8991 与 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `/tmp/r98data.*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 · **同一工作树里另有一轮（第九十八轮，条目 6.3）在跑**，两笔改动不相交 | `59b8425c` |
 | 2026-10-21 | 7.21 | **删除 Benchmark 被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/benchmark/benchmark-page.tsx` 一处真修复 —— `confirmDelete` 的 `finally` 里关框改成只有写成功才 `setDeleting(null)`，`catch` 不再 `toastError`、把服务端原话交给新加的 `deleteRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；打开卡片时先 `setDeleting(b.id)` 再清原因，一次尝试一条原因；新增 `packages/web/e2e/benchmark-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.20 末尾点名的余下页面里最便宜的一页 —— 被拒的删除什么都没删，原因却跟着 `finally` 一起没了，只剩一条六秒后自己消失、且浮在框上方的 toast | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` **0 警告 0 错误**（2242 文件）· 改动的三份文件（源码 / 新 spec / 两份 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · cli **38 / 561** · web **262 / 3215 通过 / 2 跳过** · server **202 / 2955 通过 / 4 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **112 passed（7.6m）、0 failed**（原 110 + 本笔 2）；新 spec 单跑 **2 passed（4.1s）** · **反证**：`git stash push --` 那一个源码文件 + 重建 web 产物 + 同一数据根 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("benchmark store is closed")`：框在写入前就关了，element(s) not found），`git stash pop` + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r100-look`、`localhost:8960` + mock 8961、1280×900，`DELETE …/benchmarks/look_probe` 被 `page.route` 拒成 500）：改后 `dialogs 1`、框里 **1** 处 `benchmark store is closed`、`通知` 区 **0** 个按钮、卡片仍在、**6.5 秒后那句话仍在**（`reasonAfter6s 1`）；截图 `r100/after-2-card.png`（框特写：danger 色「操作被拒绝：benchmark store is closed」在句子下面、按钮上方）与 `r100/after-3-after-6s.png`（整页：框与 `Probe look_probe` 那张卡片都还在）；两态 console 只有按设计的 `GET …/machines` **403**与刻意注入的 500 · 端口只用 8950 / 8951（spec）与 8960 / 8961（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r100-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `35a51e54` |
 | 2026-10-21 | 7.22 | **安装 / 移除模块插件被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/plugins/plugins-page.tsx` 一处真修复 —— `runDeploymentInstall` 的 `finally` 只留 `setPendingSpecifier(null)`，`setPendingApply(null)` 搬进成功那一条，`catch` 不再 `toastError`、把服务端原话交给新加的 `applyRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；两个打开卡片的入口（安装 / 移除）合成 `askApply`，落「先开框、再清上一次的原因」；新增 `packages/web/e2e/plugins-install-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.20 末尾点名的「`plugins` 那五张框最值得先做」的那一张 —— 被拒的安装什么都没装（那一行仍在「未安装」、`deployment` 一字未改），原因却跟着 `finally` 一起没了，只剩一条六秒后自己消失、且浮在框上方的 toast | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的两份文件 **0 警告 0 错误** · 改动的三份文件（源码 / 新 spec / 两份 changelog）`prettier --check` 干净（源码第一版格式不过，已 `--write`）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **262 / 3215 通过 / 2 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **114 passed（7.7m）、0 failed**（原 112 + 本笔 2）；新 spec 单跑 **2 passed（3.8s）**（对着一次性服务端与最终产物各跑一次，两次都绿）· **反证**：`git checkout ba0ac383~1 --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("plugin store is closed")`，element(s) not found）；同一态的探针读数 **`dialogs 0` / `reasonInDialog 0` / `通知` 区 1 个按钮（文字正是 `plugin store is closed`）/ 6.5 秒后 0 个**，恢复后 **`dialogs 1` / `reasonInDialog 1` / `通知` 0 个 / 6.5 秒后仍在** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r101-look-{1,2,3}`、`localhost:8970`、1280×900，`POST …/plugins/installed` 被 `page.route` 拒成 500）：截图 `r101/look-3-refused.png`（框特写：danger 色「操作被拒绝：plugin store is closed」在句子下面、取消 / 安装上方）、`r101/look-4-after-6s.png`（6.5 秒后框与那句话都还在）、`r101/before-3-refused.png`（改前：框已关、顶上一条 toast）；两态 console 只有刻意注入的 500；`scrollWidth = clientWidth` · 端口只用 8970（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r101-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ba0ac383` |
+| 2026-10-21 | 7.23 | **删除对话被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/components/layout/sidebar.tsx` 一处真修复 —— `confirmDeleteSession` 的 `catch` 不再 `toastError`、把服务端原话交给新加的 `deleteRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；打开卡片先 `setDeletingSession(x)` 再清原因，重试开始那一刻也清；框「只在 DELETE 落地后才关」这条本来就有，本轮补的是原因；新增 `packages/web/e2e/session-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.19–7.22 那条线的下一页，取的是侧栏里最常见的一次破坏性操作 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的两份文件 **0 警告 0 错误** · 源码 / 新 spec / 两份 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · cli **38 / 561** · web **263 / 3223 通过 / 2 跳过** · server **202 / 2955 通过 / 4 跳过**（首跑一条红、同一条命令重跑即绿，两次都是这个总数；本笔不动服务端）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **116 passed（8.3m）、0 failed**（原 114 + 本笔 2）；新 spec 单跑 **2 passed（5.5s）** · **反证**：`git checkout HEAD --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("session store is read-only")`，element(s) not found —— 旧代码只弹 toast），恢复并重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r103-look`、`localhost:8950`、1280×900，`DELETE /api/sessions/*` 被 `page.route` 拒成 500）：`dialogVisible true`、`reasonInDialog true`、`通知` 区 **0** 个按钮、那一行仍在、`scrollWidth = clientWidth`、**6.5 秒后框与那句话都还在**；截图 `r103/shots/look-3-refused.png`（框特写：danger 色「操作被拒绝：session store is read-only」在句子下面、取消 / 删除上方）与 `look-4-after-6s.png`；console 只有刻意注入的 500 · 端口只用 8940 / 8941（spec）与 8950（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r103-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ee2e3f14` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -13141,3 +13155,82 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
   `timeout-minutes`，不是配置超时），汇总作业 `ci` 因此红；`POST …/runs/39609957967/rerun-failed-jobs`
   → **attempt 2 22 个作业全绿**。
 
+## 第一百零三轮：删除对话被拒时，确认框留着，原因也留在框里（2026-10-21，条目 7.23）
+
+### 开工自检与选活
+
+- 同步：开工时（23:00）`git status --short` **干净**，`main` 停在 `cf61f1ff`（第一百零二轮之后的台账笔）；
+  `git fetch origin && git merge --ff-only origin/main` = **Already up to date**（没切分支、没碰 `legacy/main`、
+  没推 upstream）。整轮没有别的线往这棵树里提交。
+- 选活：待办里最靠前的未勾选条目仍是 **2.2c**（剩下的全在桌面壳写侧、`adelie-app.service` 单元与发布动作
+  那一侧），3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 分别要拍板、要 key、要新依赖或明令不动，5.3 的余量是一整块
+  跨机子系统；第 7 节清单（7.1–7.22）已全部勾掉。于是接 7.19–7.22 那条「原因随框留着」的线 ——
+  取的是侧栏里**最常见的一次破坏性操作**：删除对话。一张框、一处 `catch`，正好一轮做完。
+
+### 先量清楚（不是推测）
+
+- 读代码就够确定的那一半：`components/layout/sidebar.tsx` 的 `confirmDeleteSession` 里，
+  `setDeletingSession(null)` 本来就在**成功那一条**（框只在 DELETE 落地后才关），而 `catch` 唯一一句是
+  `toastError(apiErrorText(e))`，`ui` 的 toast 时长表 error = **6000 ms**，且 toast 是 portal 到 `body`
+  的一层，不在框里。
+- 同一列里已有先例：重命名对话框把 `renameError` 挂在输入框上（`confirmRename` 的 `catch` 是
+  `setRenameError(apiErrorText(e))`），框不关、原因就在框里 —— 删除这张缺的正是这一半。
+- 同页的批量删除（`confirmBatchDelete`）是 `Promise.all` + 一个 `catch`：它不是「成败二选一」，
+  本轮**不碰**（见「没做 / 还差什么」）。
+
+### 改了什么（3 个文件 + 台账：1 处源码、1 个新 spec、changelog 一对）
+
+- `packages/web/src/components/layout/sidebar.tsx`（+17 −2）：
+  - 新状态 `deleteRefusal`，注释写明它为什么属于这张卡片而不是一条 toast。
+  - `confirmDeleteSession` 开头 `setDeleteRefusal(null)`，`catch` 改成 `setDeleteRefusal(apiErrorText(e))`。
+  - 行菜单的 `onDelete` 改成「**先**开框、**再**清上一次的原因」（一次尝试一条原因，与 7.19–7.22 同一写法）。
+  - 确认框传 `refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}` ——
+    7.19 给 `ui` 加的那个槽（`NoticeStrip tone="danger" role="alert"`）。
+- `packages/web/e2e/session-delete-refusal.spec.mjs`（新，2 条用例）：被拒（框、服务端原话、那一行都在，
+  `通知` 区**没有** toast，DELETE 只发了一次，取消后重开不带旧原因）、重试（放行后同一张框里删掉、框关、
+  那一行消失，且服务端真的 404）。
+- changelog 一对 `changelog/unreleased/2026-10-21-session-delete-refusal{.zh,}.md`（用户可见的行为变化，
+  并注明批量删除仍是旧行为）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 /
+  589 类型 —— 本笔不碰契约）。注：包名早已是 `@adelie/*`，prompt 里那串 `@prismshadow/penguin-*` 过滤不到
+  任何项目，按 `@adelie/*` 跑的。
+- 源码 / 新 spec / 两份 changelog `prettier --check` 干净；`npx oxlint` 这两份文件 **0 警告 0 错误**；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** ·
+  server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 / 3223 通过 / 2 跳过**（+1 文件 /
+  +8 条是本笔之前的桌宠单测，本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）。
+  **一处要如实记下**：server 那次**首跑** `EXIT=1`（尾部只留了汇总、没留下失败用例名），随后同一条命令
+  重跑 **202 / 2955 通过 / 4 跳过、`EXIT=0`**，总数与上一轮完全一致；本笔一个服务端文件都没碰。
+- **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e`（脚本自己的 `mktemp` 数据根、
+  mock 8931 / 服务端 8930）→ **116 passed（8.3m）、0 failed**（原 114 + 本笔 2）。新 spec 单独跑
+  （一次性数据根 `/root/adelie-fork-data/r103-e2e-*`、mock 8941 / 服务端 8940）**2 passed（5.5s）**。
+- **反证（真的把源码改回去再跑）**：`git checkout HEAD -- packages/web/src/components/layout/sidebar.tsx`
+  + 重建 web 产物 + 同一份 spec → **2 failed**，两条都死在
+  `dialog.getByText("session store is read-only")`（element(s) not found —— 旧代码只弹 toast）；
+  恢复那份源码 + 重建 → **2 passed**。
+- **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r103-look`、`localhost:8950`、
+  1280×900，`DELETE /api/sessions/*` 被 `page.route` 拒成 500）：`look-3-refused.png` 里句子下面就是
+  danger 色的「操作被拒绝：session store is read-only」；读数 `dialogVisible true` / `reasonInDialog true` /
+  `toastButtons 0` / `rowStillListed true` / `horizontalOverflow 0`，**6.5 秒后框与那句话都还在**；
+  console 只有刻意注入的 500。探针 `r103/probe-look.mjs`、跑单个 spec 的 `r103/run-one.sh` 在 scratchpad。
+- 端口：spec 用 8940 / 8941、探针用 8950（都已停），e2e 是它自己的 8930 / 8931；3003 / 3004 / 4000 /
+  7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r103-*` 与 e2e 的 `mktemp` 根，一个字节没往
+  `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- 同一列里的**批量删除**（`confirmBatchDelete`）仍用 toast 报拒绝。它不是「成败二选一」：`Promise.all`
+  之后可能有的删掉了、有的没有，要说清「哪几个没成」得先决定那张框怎么画（与 7.22 留在桌上的
+  「批量更新」同一类问题），值得单独一轮。
+- 7.20 列的其它页面（`company` / `settings` / `chat` / `agents` / `machines`）照旧，下一轮按页面一个个来；
+  其中 `settings` 的插件卡片动作（`features/settings/plugins-section.tsx` 的 `pendingAction`）是「一个请求、
+  成败二选一」的形态、与本条最接近。
+
+### 收尾：提交、推送与汇报
+
+- 功能提交 **`ee2e3f14`**（`fix(web): 删除对话被拒时，确认框留着，原因也留在框里（7.23）`），`git add` 只加
+  本轮的 4 个文件（源码 / 新 spec / 两份 changelog）；台账这一笔单独一笔。
