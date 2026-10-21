@@ -13525,3 +13525,9 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 - 功能提交 **`0b844d22`**（`fix(web): 批量删除被拒时，确认框留着，原因与没删掉的那几条也留着（7.25）`），
   `git add` 只加本轮的 7 个文件（源码 / 两种文案 / 既有单测 / 新 spec / 两份 changelog）；台账这一笔单独一笔。
+- 汇报：按 `csu-mail` 技能的约定先跑 `mail.py check` → 100 秒超时（退出码 124）；`smtp.csu.edu.cn:465`、
+  `imap.csu.edu.cn:993`、`mail.csu.edu.cn:443` 的 TCP 都建不起来（各 8 秒超时），而 `github.com` 200 ——
+  与第一百零五轮同一类网络问题，不是凭据（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试
+  一次」的上限改走**飞书**：`feishu_send.py --check` 通过后发正文 `r106/feishu-body.md`，已送达
+  （`message_id=om_x100b62a0d1e530a8df8a8840a3347bb`）。正文留在 scratchpad，`csu-mail-retry` 那条定时任务
+  会继续试，通了就把积压的一起补发。
