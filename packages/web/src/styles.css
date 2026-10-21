@@ -461,13 +461,22 @@
 /* ---------- The desktop pet window ---------- */
 
 /* The pet is a frameless, transparent Electron window showing the app's /pet route
-   (features/pet/pet-page.tsx; the shell's main.ts creates it). Three things are the app's own
-   here, in plain CSS rather than utilities: the drag regions, because `-webkit-app-region` has no
-   place in csstype's React style types, and the window's transparency, which has to override the
-   shared theme's canvas background on <body>. All of it is inert in a browser tab. */
+   (features/pet/pet-page.tsx; the shell's main.ts creates it). What the app owns here, in plain
+   CSS rather than utilities: the window's drag region, because `-webkit-app-region` has no place in
+   csstype's React style types; the window's transparency, which has to override the shared theme's
+   canvas background on <body>; and the pet's own three motions — the idle bob, the hop, and the
+   eyes — which are keyframes rather than utilities because Tailwind has no keyframes for a
+   penguin, and because everything here has to be switched off together by the reduced-motion block
+   above. All of it is inert in a browser tab. */
 
 /* The whole window drags the pet around; the penguin and the panel opt out so they stay
-   clickable. Everything else — the margins around the penguin, the bubble — is the grab handle. */
+   clickable. This is the OS drag region, and it covers what is left of the window — the margins
+   around the penguin, the bubble. The penguin is NOT one of these handles: it drags the window
+   itself, from the page (`window.moveBy`, pet-page.tsx), because a visible thing marked `no-drag`
+   is a thing a hand cannot move, and the penguin is the one part of a transparent window a person
+   reliably reaches. So the two mechanisms divide the same work on purpose: the page takes the part
+   a hand aims at, and this region keeps the rest movable where the window system delivers input to
+   a transparent area at all. */
 .pet-drag {
   -webkit-app-region: drag;
 }
@@ -496,4 +505,58 @@ body.pet-body #root {
 }
 .pet-bob {
   animation: pet-bob 3.6s ease-in-out infinite;
+}
+
+/* The hop: the pet's answer to a click and to a notice arriving, so a press says something even
+   before the panel appears. The page swaps this in for `.pet-bob` for as long as it lasts
+   (HOP_MS, pet-page.tsx) — one element, one animation, so the landing never fights the idle bob.
+   A hop is a jump with the weight in it: off the ground with a stretch, down with a squash, and a
+   small second bounce. */
+@keyframes pet-hop {
+  0% {
+    transform: translateY(0) scale(1, 1);
+  }
+  25% {
+    transform: translateY(-13px) scale(0.95, 1.06);
+  }
+  55% {
+    transform: translateY(0) scale(1.07, 0.93);
+  }
+  80% {
+    transform: translateY(-3px) scale(0.99, 1.01);
+  }
+  100% {
+    transform: translateY(0) scale(1, 1);
+  }
+}
+.pet-hop {
+  animation: pet-hop 520ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* The eyes, the one part of the drawing that is not still: the pair blinks on its own slow cycle,
+   and the pupils slide toward the pointer. `transform-box: fill-box` is what makes `center` the
+   eyes' own centre instead of the SVG's origin (which is what an SVG element measures from by
+   default), so the blink closes in place rather than collapsing toward the top of the head.
+   The pupils' offset is written on the penguin as `--pet-look-*` (pet-page.tsx), in the SVG's own
+   units; the fallback is what the eyes look with before a pointer has ever moved. Reduced motion
+   stops the blink with every other animation; the pupils still follow, which is a position rather
+   than a tween. */
+@keyframes pet-blink {
+  0%,
+  90%,
+  100% {
+    transform: scaleY(1);
+  }
+  92%,
+  94% {
+    transform: scaleY(0.1);
+  }
+}
+.pet-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pet-blink 6.4s ease-in-out infinite;
+}
+.pet-pupils {
+  transform: translate(var(--pet-look-x, 0px), var(--pet-look-y, 0px));
 }

@@ -7,7 +7,9 @@
  * point of the design: everything the pet shows it reads over HTTP, so a browser tab can be held
  * to the same behavior. The two readings that belong to the shell — the model balance's route and
  * the update snapshot — therefore assert their desktop-only wording here; the desktop half is
- * verified by the shell's own smoke run.
+ * verified by the shell's own smoke run. The one gesture that belongs to the shell is moving the
+ * window: what a press does to this page is pinned here, and the shell's own probe drives the same
+ * gesture to watch the window move.
  *
  * The notice is the real thing, not a stub: a Session under `always-ask` is sent a Prompt that
  * makes the mock model call a tool, the runtime escalates that call, and the user-channel event
@@ -55,6 +57,50 @@ test("the pet shows its readings, and speaks up when a call needs the user", asy
   // Nothing else of the app is drawn: this window is 260×240 of chrome, and the app shell
   // (sidebar, chat) must not be in it.
   await expect(page.getByPlaceholder(/输入消息/)).toHaveCount(0);
+
+  // --- the penguin is the handle: it drags, and a press that stays put is a click ---
+  //
+  // A browser cannot move its own window — `moveBy` is ignored outside a window a script opened —
+  // so the move itself is the shell's to prove (its smoke run drives the same gesture over CDP).
+  // What is pinned here is the page's half of the gesture, which is where the two mistakes live: a
+  // press that travels must not open the panel, and a press that stays put must do something a
+  // person can see.
+  const box = await penguin.boundingBox();
+  const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  // A nudge that starts and ends inside the penguin: the browser fires its own click for that press
+  // (both ends are on the same element), and that click is exactly what must not open the panel.
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x + 14, centre.y + 10, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByText("模型余额", { exact: true })).toHaveCount(0);
+  await expect(penguin).not.toHaveClass(/pet-hop/);
+
+  // And a drag that leaves the penguin entirely, which is what moving the pet looks like.
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  await page.mouse.move(centre.x + 60, centre.y + 30, { steps: 8 });
+  await page.mouse.up();
+  await expect(page.getByText("模型余额", { exact: true })).toHaveCount(0);
+  await expect(penguin).not.toHaveClass(/pet-hop/);
+
+  // The eyes follow the pointer, and the offset is a fraction of the penguin's own box rather than
+  // a pixel count: from the top-left corner of the window the pupils sit up and to the left.
+  await page.mouse.move(2, 2);
+  const pupils = await page.locator(".pet-pupils").evaluate((el) => {
+    const matrix = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+    return [matrix.e, matrix.f];
+  });
+  expect(pupils[0], "pupils look left").toBeLessThan(0);
+  expect(pupils[1], "pupils look up").toBeLessThan(0);
+
+  // A click: the panel opens, and the pet hops on the way (the class is the hop — the animation
+  // itself is off under reduced motion, which is what this spec runs in).
+  await penguin.click();
+  await expect(page.getByText("模型余额", { exact: true })).toBeVisible();
+  await expect(penguin).toHaveClass(/pet-hop/);
+  await penguin.click();
+  await expect(page.getByText("模型余额", { exact: true })).toHaveCount(0);
 
   // --- the panel behind a click ---
   await penguin.click();

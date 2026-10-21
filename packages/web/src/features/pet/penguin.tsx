@@ -8,6 +8,12 @@
  *
  * The bob is a CSS animation (styles.css, `.pet-bob`), so the global reduced-motion rule turns it
  * off with every other animation in the app and leaves a still penguin standing.
+ *
+ * The eyes are the only part of the drawing that is not fixed: two groups carry a class each and
+ * nothing else, so the stylesheet owns how they move — the pair blinks on its own slow cycle
+ * (`.pet-eyes`), and the pupils slide toward the pointer (`.pet-pupils`, whose offset the page
+ * writes onto the button as two custom properties). Neither adds a path: the shapes are the same
+ * five, and the icon-registry guard counts them by file.
  */
 export function Penguin({ className }: { className?: string }) {
   return (
@@ -29,10 +35,14 @@ export function Penguin({ className }: { className?: string }) {
         fill="#f8fafc"
       />
       {/* The white eye-ring is the Adelie's own marking: the one detail that says which penguin. */}
-      <circle cx="40" cy="24" r="5.5" fill="#f8fafc" />
-      <circle cx="60" cy="24" r="5.5" fill="#f8fafc" />
-      <circle cx="40" cy="24" r="2.6" fill="#0f172a" />
-      <circle cx="60" cy="24" r="2.6" fill="#0f172a" />
+      <g className="pet-eyes">
+        <circle cx="40" cy="24" r="5.5" fill="#f8fafc" />
+        <circle cx="60" cy="24" r="5.5" fill="#f8fafc" />
+        <g className="pet-pupils">
+          <circle cx="40" cy="24" r="2.6" fill="#0f172a" />
+          <circle cx="60" cy="24" r="2.6" fill="#0f172a" />
+        </g>
+      </g>
       {/* Beak and feet. */}
       <path d="M50 30l7 5-7 5-7-5 7-5Z" fill="#f59e0b" />
       <path d="M33 99h16l-3 7H34l-1-7Z" fill="#f59e0b" />
