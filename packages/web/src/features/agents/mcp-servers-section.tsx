@@ -140,6 +140,9 @@ export function McpServersSection({
   // Server-side rejection (transport validation 400) rendered at the modal's foot.
   const [modalError, setModalError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
+  // The words for a delete the server refused, drawn inside the confirmation that asked for it
+  // (see confirmDelete): retrying is the next thing the person does, and the button is in there.
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   // Connectivity probe: runs the current form state through POST /config/mcp-test
   // (server-side connect + discovery, nothing saved); the result pops as a toast.
   const [testing, setTesting] = useState(false);
@@ -315,11 +318,31 @@ export function McpServersSection({
     if (err !== null) toastError(err);
   };
 
+  /**
+   * The delete row's button: opens the confirmation without the previous attempt's reason —
+   * that sentence belonged to the attempt before, not to the row this one is about.
+   */
+  const askDelete = (index: number) => {
+    setDeleting(index);
+    setDeleteRefusal(null);
+  };
+
+  /**
+   * Deletes one row through the same whole-list PUT as every other edit here. The confirmation
+   * closes on the answer, not on the request: a refused write leaves the list exactly as it was
+   * (nothing was removed, on either side), so the card stays open with the server's words in it
+   * and the same button retries. Closing it as the request left used to take the reason away —
+   * it landed in a toast that dismisses itself after six seconds and sits above the card.
+   */
   const confirmDelete = async () => {
     if (deleting === null) return;
     const err = await persist(servers.filter((_, i) => i !== deleting));
-    if (err !== null) toastError(err);
+    if (err !== null) {
+      setDeleteRefusal(err);
+      return;
+    }
     setDeleting(null);
+    setDeleteRefusal(null);
   };
 
   if (!projectId) return null;
@@ -408,7 +431,7 @@ export function McpServersSection({
                     size="sm"
                     variant="ghost"
                     disabled={busy}
-                    onClick={() => setDeleting(index)}
+                    onClick={() => askDelete(index)}
                   >
                     {S.agent.mcpRemove}
                   </Button>
@@ -633,6 +656,7 @@ export function McpServersSection({
         onConfirm={() => void confirmDelete()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {deleting !== null ? S.agent.mcpDeleteConfirm(servers[deleting]?.name ?? "") : ""}
