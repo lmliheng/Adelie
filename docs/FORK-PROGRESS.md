@@ -13531,3 +13531,85 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
   一次」的上限改走**飞书**：`feishu_send.py --check` 通过后发正文 `r106/feishu-body.md`，已送达
   （`message_id=om_x100b62a0d1e530a8df8a8840a3347bb`）。正文留在 scratchpad，`csu-mail-retry` 那条定时任务
   会继续试，通了就把积压的一起补发。
+
+## 第一百零七轮：组件库多了一族 GPU 背景，显卡不行就画同色的静态替身（2026-10-22，用户点单「基于shaders这个项目增加adelie的ui类」）
+
+### 开工自检与这一轮在做的那句话
+
+- 同步：开工时 `main` 停在 `9670871a`（第一百零六轮的台账与汇报补记），工作树里只有本轮尚未提交的文件；
+  `git fetch` 后没有别的线往这棵树里提交。
+- 用户那句话先落一件事：**「shaders」经追问确认是 npm 上的 `shader-effects-inc/shaders`**（MIT，最新 4.0.5）；
+  「ui 类」没答，按最收敛的解释推进 —— **在 `@adelie/ui` 里加一族用它做的组件，再在画廊（UI 的目录）里加一个
+  「着色器」话题**：也就是 UI 的「类」多了一族，能在浏览器里直接看。
+
+### 先查清楚（读源码与实跑，不靠记忆）
+
+- 库：`shaders@4.0.5`，依赖 `typegpu@0.12.3`，peer `react ^18||^19`（本仓 web 是 19.1）；入口 `shaders/react`
+  导出 213 个（`Shader` + 200 多个图层）；自带异步探针 `getWebGPUSupport()`（整页缓存）与
+  `<Shader onUnavailable>`；SSR 安全 —— Node 里 `renderToStaticMarkup` 出来就是普通 `div` + `canvas`。
+- 仓库规矩：`@adelie/ui` 是 source-only 包，导出只走 `src/index.ts`；测试在 Node、无 DOM（静态 markup +
+  纯函数 + 源码扫描）；`deslop.test.ts` **规矩 20「颜色必须来自令牌」拒收源码里的十六进制颜色字面量**，
+  `hexHomes` 只放头像调色板、令牌契约与品牌标记（注解说它们是「身份数据」）；动效走 `usePrefersReducedMotion()`。
+- 画廊契约：加一个话题要同时动 `topics.ts`、`boards.tsx`、`boards/<id>.tsx`、两份文案与 `library.test.ts`。
+
+### 改了什么（`packages/ui` 一族 4 个文件 + 画廊一个话题）
+
+- `packages/ui/src/components/shaders/shader-support.ts`（新）：决策表写成纯函数 `shaderRenderMode()` —— 只有
+  「探针说支持 + 系统没要求减少动效 + 设备没拒过」才画 GPU；hook `useShaderSurfaceMode()` 挂载后才问探针
+  （所以首帧与 SSR 永远是替身，不会水合打脸；要求减少动效时连适配器都不去申请），并把 `onUnavailable`
+  记成「永久替身」。
+- `.../shader-surface/shader-surface.tsx`（新）：`ShaderSurface` —— 同一个盒子，GPU 那条路才渲染 `<Shader>`，
+  否则渲染调用方给的替身；盒子 `aria-hidden`（效果是装饰，两种模式下都不该被读屏念出来）。
+- `.../aurora-backdrop/aurora-backdrop.tsx`、`.../dot-grid-backdrop/dot-grid-backdrop.tsx`（新）：两个背景
+  （MeshGradient + SimplexNoise + 可选 CursorTrail；DotGrid 静止 / 微闪两态）。
+- **颜色是必填 props，不是自带默认值**：GPU 画布读不到 CSS 变量，而包里又不能出现颜色字面量（规矩 20），
+  所以这一族自己没有颜色，谁用谁把当前主题的色值传进来 —— 画廊就是这么做的（正好也守住了那条规矩）。
+- `packages/ui/src/index.ts`：末尾一节导出这一族（注释写明「新来的，不是某一波迁移」）。
+- 画廊：`src/library/shader-colors.ts`（读 `--ui-canvas` / `--ui-accent` / `--ui-line`，纯函数 + 主题属性变化时重读）、
+  `src/library/boards/shaders.tsx`（三块：色彩场、点阵两态、「这一块现在画的是什么」）、话题与两份文案、
+  `test/library.test.ts` 三条新用例。
+- 依赖：`shaders@^4.0.5` 进 `packages/ui`；`pnpm-workspace.yaml` 的 `minimumReleaseAgeExclude` 加 `shaders@4.0.5`
+  （pnpm 11 的供应链年龄门会把它挡回上一版）。
+- `packages/ui/test/shaders.test.ts`（新，8 条）：决策表遍历 12 种组合只放行一种、替身路径的静态 markup、
+  按源码钉两个背景的图层与「没有自带颜色」。
+
+### 验证
+
+- 门禁：`pnpm typecheck` **EXIT=0**；`npx oxlint` **0 警告 0 错误**（2255 文件）；prettier `--check` 干净；
+  `pnpm --filter @adelie/ui test` **130 文件 / 1052 通过**；CI 的两个分片都跑了一遍 —— `web-cli`
+  （web **263 / 3224 通过 + 2 跳过**、ui 同上）与 `rest`（ui-gallery **20 / 140**、desktop 26 / 304、
+  amsp / docs / 四个插件全过），**0 失败**。
+- **真浏览器三条路**（画廊 dev 7372 + Playwright Chromium，探针 `shaders-probe.mjs`，截图 `shots/shaders-*.png`）：
+  - 没有 WebGPU 适配器：第一帧起就是静态替身，画布从不出现；
+  - 系统要求减少动效（适配器可用）：同样只有替身；
+  - 适配器可用（`--use-webgpu-adapter=swiftshader`）：t≈150ms 出现 `canvas[data-renderer="shaders"]` 574×177，
+    页面那句写「GPU 画布…」；t≈290ms 画布被设备拒绝，`onUnavailable` 把替身放回来，那句话跟着改回「静态替身」
+    （四个主题/明暗各跑一遍，整轮 **0 个页面错误**）。
+  - 替身用的颜色就是当前主题的令牌值：modern light `#fafafa`/`#006838`、modern dark `#1b1c1e`/`#4aa45c`、
+    geek dark `#131010`/`#f4f2f2`、github light `#ffffff`/`#171717`。
+- **浏览器逮到一个真 bug**：`useDrawnBy` 原来吃 ref，而棋盘要等主题色到手才渲染那个盒子 —— 效果在挂载时拿到
+  的是空 ref、且不会重跑，「这一块现在画的是什么」永远空白。改成把盒子作 state 传（`ref={setBox}`），并把
+  「画布出现过又被收回」也读成一态（否则画布消失后那句话还写着「GPU 画布」）；画廊单测补了钉这条契约的断言。
+- **没有把库带进发行包**：`pnpm --filter @adelie/web build` 成功，产物里 grep `data-renderer|typegpu|MeshGradient|
+  SimplexNoise` **0 命中**（web 还没用这一族，树摇掉了）。画廊自己的 library 包从今往后含着色器库（未压缩
+  2.7 MB），它是本地开发工具，不进发行包。
+- **本机 node_modules 的坑（与本笔无关，但记下来）**：这轮用 `pnpm --filter @adelie/ui add shaders` 之后，本机
+  node_modules 变成「注入式」布局（`.pnpm/@adelie+ui@file+packages+ui_…`），vitest 从那里解析 `@adelie/ui`
+  时按 JSX 经典模式编译，web / ui-gallery 里 6 个 suite 报 `React is not defined`。把改动全部 `git stash` 仍复现
+  → 与代码无关；在干净检出里 `pnpm install --frozen-lockfile` 得到的是普通符号链接（CI 就是这个形态，所以 CI
+  一直是绿的）。修法：把 `packages/{web,ui-gallery}/node_modules/@adelie/ui` 指回 `../../../ui`，之后 6 个 suite 全绿。
+- 端口：只用画廊自己的 7372（已停）；7364 / 3003 / 3004 / 4000 / 7369 一个没碰；数据一个字节没往
+  `~/.penguin` / `~/.adelie` 里写（截图、探针与读到的读数都留在 scratchpad）。
+
+### 没做 / 还差什么
+
+- 这一族**还没有任何页面在用**（新聊天页、登录页、空项目页都是它的用武之地），所以本轮没写 changelog、没发版 ——
+  等它在某个页面真的落地，再进发布正文。
+- 只做了两个背景：库里还有 200 多个图层（波形、水波纹、文字…），需要什么再按同一套盒子加。
+- 桌面端没验（这一族要有 WebGPU；桌面壳那份 Chromium 给不给 WebGPU 得单独量）。
+
+### 收尾：提交、推送与汇报
+
+- 功能提交 **`7de152a1`**（`feat(ui,gallery): 组件库多了一族 GPU 背景，显卡不行就画同色的静态替身`），
+  `git add` 只加本轮的 13 个文件 + `pnpm-lock.yaml` + `pnpm-workspace.yaml`；台账这一笔单独一笔。
+- 汇报：中南邮箱按约定先探测（一轮只试一次），不通就走飞书 `send-feishu.py`。
