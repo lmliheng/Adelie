@@ -14055,3 +14055,10 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - 插件市场的「批量更新」（`pendingBulk`）照旧：它是部分成功，而且那张框在页面层、不在卡片里；要讲清「哪些
   智能体没更新」得另定一句话与一条 `bulkOutcome` 式的收尾，属它自己一轮。
 - 7.20 列的其它页面（`company` / `settings` 的其它小节 / `chat` / `agents` 的其余区块 / `machines`）照旧。
+
+### 汇报
+
+- 本该按 `csu-mail` 技能发到 `0110230306@csu.edu.cn`，但本轮 `imap.csu.edu.cn:993` 与 `smtp.csu.edu.cn:465`
+  两个端口都不通（`/dev/tcp` 探两次都是超时，整个 202.197.0.0/16 那个老问题），于是照第一百零九轮的做法改由
+  飞书送达（`message_id=om_x100b62975713d4a0c1d2fd117222d65`），正文同时留在 scratchpad 的
+  `r112/report.md`。下一轮开工先试一次 `mail.py check`，通了再把积压的补发。
