@@ -7,6 +7,13 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // `@adelie/ui` is a workspace package the repository asks pnpm to inject
+  // (`injectWorkspacePackages`), and an injected copy is a real directory under `node_modules`:
+  // Vite's esbuild step finds no tsconfig above it there, falls back to the classic JSX runtime and
+  // every suite that reaches `@adelie/ui` dies with "React is not defined". The automatic runtime is
+  // what the package's own tsconfig declares (`jsx: react-jsx`), so it is named here as well; the
+  // difference only shows when the copy is injected rather than linked.
+  esbuild: { jsx: "automatic" },
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
