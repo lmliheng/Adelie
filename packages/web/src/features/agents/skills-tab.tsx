@@ -92,6 +92,9 @@ export function SkillsTab({
   const [busy, setBusy] = useState(false);
   // Skill name pending uninstall confirmation (non-null shows the confirm modal).
   const [removing, setRemoving] = useState<string | null>(null);
+  // The words for an uninstall the server refused, drawn inside the confirmation that asked for
+  // it (see confirmRemove): retrying is the next thing the person does, and the button is in there.
+  const [removeRefusal, setRemoveRefusal] = useState<string | null>(null);
   // Import modal: the source for the chat-install prompt + upload state travel with the modal.
   const [importOpen, setImportOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -135,22 +138,38 @@ export function SkillsTab({
     }
   };
 
-  /** Confirm modal's "Confirm": uninstall, then always re-fetch the list from disk. */
+  /**
+   * A row's uninstall button: opens the confirmation without the previous attempt's reason —
+   * that sentence belonged to the attempt before, not to the skill this one is about.
+   */
+  const askRemove = (name: string) => {
+    setRemoving(name);
+    setRemoveRefusal(null);
+  };
+
+  /**
+   * Confirm modal's "Confirm": uninstall, then always re-fetch the list from disk — but close the
+   * card only once the uninstall landed. A refused one changes nothing on either side (the skill
+   * is still installed), so the card stays open with the server's words in it and the same button
+   * retries; closing it as the request left used to carry that reason into a toast that dismisses
+   * itself after six seconds and sits above the card.
+   */
   const confirmRemove = async () => {
     if (!projectId || removing === null) return;
     setBusy(true);
     try {
       await api.removeAgentSkill(projectId, agentId, removing);
-      toastSuccess(`${S.skills.uninstalledToast(removing, agentName)}${S.agent.takesEffectSuffix}`);
-      await load();
-      // The agent card's skill count changed; refresh the list provider too.
-      void reloadAgents();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setRemoveRefusal(apiErrorText(e));
+      return;
     } finally {
       setBusy(false);
-      setRemoving(null);
     }
+    toastSuccess(`${S.skills.uninstalledToast(removing, agentName)}${S.agent.takesEffectSuffix}`);
+    setRemoving(null);
+    await load();
+    // The agent card's skill count changed; refresh the list provider too.
+    void reloadAgents();
   };
 
   /** Open the import modal (reset the form and upload state). */
@@ -308,7 +327,7 @@ export function SkillsTab({
                 label={`${S.skills.uninstall} ${skill.name}`}
                 title={S.skills.uninstall}
                 disabled={busy}
-                onClick={() => setRemoving(skill.name)}
+                onClick={() => askRemove(skill.name)}
               >
                 <GlyphIcon d={ICONS.trash} size={14} />
               </IconButton>
@@ -416,6 +435,7 @@ export function SkillsTab({
         onConfirm={() => void confirmRemove()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        refusal={removeRefusal === null ? undefined : S.common.refused(removeRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {removing !== null ? S.skills.uninstallConfirmBody(removing, agentName) : ""}
