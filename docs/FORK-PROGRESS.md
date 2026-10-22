@@ -14249,3 +14249,10 @@ setDeleting(null);          // 被拒也关
   `chat/workspace-browser.tsx` 的保存 / 重命名 / 新建 / 删除、`components/layout/project-dialogs.tsx` 的删除
   项目、`agents/api-tab.tsx` 与 `settings/agent-api-section.tsx` 的密钥保存。
 - 待办里能一轮做完的条目仍然没有（口径同上，见「为什么是这一条」）。
+
+### 汇报
+
+- 先按 `csu-mail` 技能试了 `mail.py check`：90 秒超时（`EXIT=124`），另探 `smtp.csu.edu.cn:465` 与
+  `imap.csu.edu.cn:993` 两个端口也都是超时（202.197.0.0/16 那个老问题），于是照第一百零九轮以来的做法改由飞书
+  送达（`message_id=om_x100b629da80218a0c0cd9c045e9cdcf`，收件人即已绑定的那个私聊），正文同时留在 scratchpad 的
+  `r114/report.md`。下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
