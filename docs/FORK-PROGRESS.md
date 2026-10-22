@@ -13798,6 +13798,12 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - 汇报：先按约定试一次邮箱 —— `smtp.csu.edu.cn:465` 与 `imap.csu.edu.cn:993` 都超时（中南网段整片不通，
   不是凭据问题：`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试一次」的约定改走**飞书**：
   `feishu_send.py --check` 通过后发正文，已送达（`om_x100b62afe3a78cb8c091af7cb3361e8`）。
+- **CI（推送后）**：`ci.yml` 的 `cancel-in-progress` 把头两笔各自的 run（`39740262437` / `39740609371`）
+  取消了 —— 那是同组后一笔推上来的正常行为，不是红。承载本轮全部改动的那次 run **`39741023934`**（头是
+  另一条线的 `3a138379`）attempt 1 只红了 `test-macos (server)`：台账里记过好几次的老抖动
+  （`test/workflows.test.ts > a loaded workflow > notices an Agent's FIRST workflow`，重试撞
+  `agent_exists: Agent id is already taken: builder.`），汇总 `ci` 跟着红；`POST …/rerun-failed-jobs`
+  → **attempt 2：22 个作业全部 `success`**，整次 run `completed success`。
 
 ## 第一百一十轮：发布 v0.5.4 并把现网升上去（2026-10-22，用户点单「直接发布版本吧，还要同步服务器 adelie 到最新版」）
 
