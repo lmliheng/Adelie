@@ -89,3 +89,49 @@ export function firstFailure(results: readonly PromiseSettledResult<unknown>[]):
   const rejected = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
   return rejected?.reason;
 }
+
+/**
+ * The sentence a batch's OWN confirmation draws when the batch did not all land, or `null` when
+ * it did.
+ *
+ * A partial failure used to be reported in a toast alone — the right words in the wrong place: a
+ * box that dismisses itself after six seconds and sits over the confirmation rather than in it,
+ * so the one thing the user needs while retrying is also the first thing to leave. The
+ * confirmation now keeps itself open on anything short of every target landing (see
+ * `ConfirmModal`'s `refusal` slot), and this is the sentence it draws there: the partial-failure
+ * line, which already names the targets that did not land, plus the first rejection's own words.
+ *
+ * The sentence stands on its own rather than behind `S.common.refused`'s "the operation was
+ * refused:" lead-in: a batch that wrote three of five was not refused, and the line already says
+ * what happened.
+ */
+export function bulkFailureText(
+  outcome: BulkOutcome,
+  reason: string,
+  sentence: (ok: number, failed: string) => string,
+  separator: string,
+): string | null {
+  if (outcome.allOk) return null;
+  return `${sentence(outcome.ok, failedList(outcome.failed, separator))} — ${reason}`;
+}
+
+/**
+ * The part of a batch that is still behind: every target whose request was rejected, with the
+ * names left to rewrite recomputed from what remains.
+ *
+ * Handed back to the confirmation that asked for the batch, so its retry asks about exactly the
+ * targets the sentence named as not having landed. Re-running the whole plan instead would
+ * rewrite the ones that did take it — each one is an overwriting reinstall — and the count in
+ * the success line afterwards would be about attempts rather than about what was behind.
+ */
+export function remainingTargets<T extends { names: readonly string[] }>(
+  targets: readonly T[],
+  results: readonly PromiseSettledResult<unknown>[],
+): { targets: T[]; names: string[] } {
+  // `allSettled` preserves input order, which is what makes the pairing sound — the same rule
+  // `bulkOutcome` reads its labels by.
+  const left = targets.filter((_, i) => results[i]?.status === "rejected");
+  const names = new Set<string>();
+  for (const target of left) for (const name of target.names) names.add(name);
+  return { targets: left, names: [...names].sort() };
+}

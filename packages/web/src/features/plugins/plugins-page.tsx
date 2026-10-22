@@ -91,7 +91,13 @@ import { apiErrorText } from "../../lib/api-error";
 import { useDocumentTitle } from "../../lib/use-document-title";
 import { useUpdateBadges } from "../../lib/use-update-badges";
 import { dismissTodo } from "../../lib/todo-dismissals";
-import { bulkOutcome, failedList, firstFailure, noticeCounts } from "../../lib/bulk-update";
+import {
+  bulkFailureText,
+  bulkOutcome,
+  firstFailure,
+  noticeCounts,
+  remainingTargets,
+} from "../../lib/bulk-update";
 import { useAuth } from "../../state/auth";
 import { useLocale } from "../../state/locale";
 import { agentDisplayName, useProject } from "../../state/project";
@@ -260,6 +266,8 @@ export function PluginsPage() {
   /** The bulk update's confirmation is open (null = closed); it holds the plan it will run. */
   const [pendingBulk, setPendingBulk] = useState<PluginUpdatePlan | null>(null);
   const [bulkRunning, setBulkRunning] = useState(false);
+  /** The batch's answer when it did not all land: drawn inside the confirmation that asked for it. */
+  const [bulkRefusal, setBulkRefusal] = useState<string | null>(null);
 
   const [groups, setGroups] = useState<PluginGroupItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -624,6 +632,11 @@ export function PluginsPage() {
    * it led the user to. What is new is that a partial failure NAMES the Agents that did not take
    * it — on a control whose whole point is "all of them at once", a first-error toast leaves the
    * user unable to tell which half they are looking at.
+   *
+   * Only a batch that landed everywhere dismisses the confirmation. Anything less keeps it open,
+   * with that same sentence drawn inside it (`bulkFailureText`) instead of in a toast that would
+   * leave after six seconds, and with `pendingBulk` scoped down to the Agents that are still
+   * behind (`remainingTargets`) so the retry button asks about exactly what the sentence named.
    */
   const runBulkUpdate = async (plan: PluginUpdatePlan) => {
     if (!projectId || plan.perAgent.length === 0) return;
@@ -641,9 +654,16 @@ export function PluginsPage() {
     const outcome = bulkOutcome(labels, results);
     if (outcome.allOk) toastSuccess(S.todo.bulkDone(outcome.ok));
     else {
-      toastError(
-        `${S.todo.bulkPartial(outcome.ok, failedList(outcome.failed, S.todo.listSeparator))} — ${apiErrorText(firstFailure(results))}`,
+      const rest = remainingTargets(plan.perAgent, results);
+      setBulkRefusal(
+        bulkFailureText(
+          outcome,
+          apiErrorText(firstFailure(results)),
+          S.todo.bulkPartial,
+          S.todo.listSeparator,
+        ),
       );
+      setPendingBulk({ perAgent: rest.targets, plugins: rest.names });
     }
     // Runs after a partial failure too — some Agent moved, and the gate has to see it. Guarded,
     // because `reloadAgents` rejects on a failed list read and the busy flag disables every
@@ -655,7 +675,10 @@ export function PluginsPage() {
       toastError(apiErrorText(e));
     } finally {
       setBulkRunning(false);
-      setPendingBulk(null);
+      // Nothing but a clean batch closes the question: a refusal leaves it (and its retry
+      // button) where the user still is. The reload failing afterwards closes it too — every
+      // write landed, and the page says so in a toast; the stale dot is the reload's problem.
+      if (outcome.allOk) setPendingBulk(null);
     }
   };
 
@@ -840,7 +863,11 @@ export function PluginsPage() {
             text={S.todo.changesUpgradable(noticeCounts(todo).updated)}
             actionLabel={S.todo.updateNow}
             busy={bulkRunning}
-            onAction={() => setPendingBulk(pluginUpdatePlan(agents))}
+            onAction={() => {
+              setPendingBulk(pluginUpdatePlan(agents));
+              // Opening the batch afresh: a reason from the last attempt belongs to that attempt.
+              setBulkRefusal(null);
+            }}
             dismissLabel={S.todo.dismiss}
             onDismiss={() => dismissTodo(projectId, "plugins", todo.signature)}
           />
@@ -995,7 +1022,9 @@ export function PluginsPage() {
       {/* Bulk update confirmation. Same warning as the per-plugin confirm — an update is an
           overwriting reinstall — and the same primary (overwrite) tone, with the list naming
           every plugin the batch would rewrite. Confirm-first is the point of the button: it
-          overwrites many installs in one press, and a single one already asks. */}
+          overwrites many installs in one press, and a single one already asks. A batch that did
+          not land everywhere keeps this card and reports inside it: the retry is the same button,
+          and the list has already been scoped to the Agents still behind. */}
       {pendingBulk !== null && (
         <ConfirmModal
           open
@@ -1004,8 +1033,12 @@ export function PluginsPage() {
           confirmLabel={S.skills.updateAction}
           cancelLabel={S.common.cancel}
           busy={bulkRunning}
-          onClose={() => setPendingBulk(null)}
+          onClose={() => {
+            setPendingBulk(null);
+            setBulkRefusal(null);
+          }}
           onConfirm={() => void runBulkUpdate(pendingBulk)}
+          refusal={bulkRefusal === null ? undefined : bulkRefusal}
         >
           <div className="space-y-3">
             <p className="text-sm text-gray-600 dark:text-gray-300">{S.todo.pluginsConfirmBody}</p>

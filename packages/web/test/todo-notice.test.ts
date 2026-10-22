@@ -15,10 +15,20 @@
  * - A batch outcome is clean when every target took the write (an empty batch included), and
  *   otherwise names the failed targets by position, never as a blank; a long list reports its
  *   overflow as a count; the first rejection is surfaced for the error text.
+ * - The sentence a batch's own confirmation draws is that partial line plus the first rejection,
+ *   and it is absent when the batch landed everywhere; what the retry is scoped to is exactly the
+ *   targets whose request was rejected, with the names left to rewrite recomputed from them.
  */
 import { describe, expect, it } from "vitest";
 import ts from "typescript";
-import { bulkOutcome, failedList, firstFailure, noticeCounts } from "../src/lib/bulk-update";
+import {
+  bulkFailureText,
+  bulkOutcome,
+  failedList,
+  firstFailure,
+  noticeCounts,
+  remainingTargets,
+} from "../src/lib/bulk-update";
 import type { Todo } from "../src/lib/todo-badges";
 import { expectEveryRootScanned, expectSingleHome, scanSources } from "./helpers/roots";
 
@@ -200,5 +210,70 @@ describe("firstFailure", () => {
 
   it("is undefined when nothing failed", () => {
     expect(firstFailure([{ status: "fulfilled", value: 1 }])).toBeUndefined();
+  });
+});
+
+describe("bulkFailureText", () => {
+  const ok = { status: "fulfilled", value: undefined } as const;
+  const bad = (reason: string) => ({ status: "rejected", reason }) as const;
+  // The app's own partial-failure line and its separator, spelled out here so the assertion
+  // reads the sentence rather than a second copy of the dictionary.
+  const sentence = (n: number, failed: string) => `已更新 ${n} 个 Agent；以下未成功：${failed}`;
+
+  it("is absent when every target took the write, so a clean batch closes its confirmation", () => {
+    const outcome = bulkOutcome(["alpha", "beta"], [ok, ok]);
+    expect(bulkFailureText(outcome, "boom", sentence, "、")).toBeNull();
+  });
+
+  it("names the targets that did not land, then the server's own words", () => {
+    const outcome = bulkOutcome(["alpha", "beta", "gamma"], [ok, bad("nope"), bad("boom")]);
+    expect(bulkFailureText(outcome, "first refusal", sentence, "、")).toBe(
+      "已更新 1 个 Agent；以下未成功：beta、gamma — first refusal",
+    );
+  });
+
+  it("carries the capped list for a batch too long to read in one line", () => {
+    const names = Array.from({ length: 11 }, (_, i) => `a${i}`);
+    const outcome = bulkOutcome(
+      names,
+      names.map((_, i) => (i === 0 ? ok : bad("boom"))),
+    );
+    expect(bulkFailureText(outcome, "first refusal", sentence, ", ")).toBe(
+      "已更新 1 个 Agent；以下未成功：a1, a2, a3, a4, a5, a6, a7, a8, +2 — first refusal",
+    );
+  });
+});
+
+describe("remainingTargets", () => {
+  const ok = { status: "fulfilled", value: undefined } as const;
+  const bad = (reason: string) => ({ status: "rejected", reason }) as const;
+  const plan = [
+    { agentId: "a1", names: ["beta", "alpha"] },
+    { agentId: "a2", names: ["gamma"] },
+    { agentId: "a3", names: ["alpha"] },
+  ];
+
+  it("keeps exactly the targets whose request was rejected, so the retry rewrites nothing twice", () => {
+    expect(remainingTargets(plan, [ok, bad("boom"), bad("nope")])).toEqual({
+      targets: [
+        { agentId: "a2", names: ["gamma"] },
+        { agentId: "a3", names: ["alpha"] },
+      ],
+      names: ["alpha", "gamma"],
+    });
+  });
+
+  it("keeps the whole plan when nothing landed", () => {
+    expect(remainingTargets(plan, [bad("x"), bad("y"), bad("z")]).targets).toEqual(plan);
+  });
+
+  it("is empty when every target landed — there is nothing left to ask about", () => {
+    expect(remainingTargets(plan, [ok, ok, ok])).toEqual({ targets: [], names: [] });
+  });
+
+  it("pairs targets to results by position, the rule the labels are read by", () => {
+    expect(remainingTargets(plan, [bad("x"), ok, ok]).targets).toEqual([
+      { agentId: "a1", names: ["beta", "alpha"] },
+    ]);
   });
 });

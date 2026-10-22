@@ -59,7 +59,7 @@ import { formatDateTime, formatRelativeDays } from "../../lib/format";
 import { useDocumentTitle } from "../../lib/use-document-title";
 import { useUpdateBadges } from "../../lib/use-update-badges";
 import { dismissTodo } from "../../lib/todo-dismissals";
-import { bulkOutcome, failedList, firstFailure, noticeCounts } from "../../lib/bulk-update";
+import { bulkFailureText, bulkOutcome, firstFailure, noticeCounts } from "../../lib/bulk-update";
 import { useAuth } from "../../state/auth";
 import { useLocale } from "../../state/locale";
 import { agentDisplayName, useProject } from "../../state/project";
@@ -165,6 +165,8 @@ export function AgentsPage() {
   /** The bulk kernel update's confirmation is open. */
   const [kernelConfirmOpen, setKernelConfirmOpen] = useState(false);
   const [kernelRunning, setKernelRunning] = useState(false);
+  /** The batch's answer when it did not all land: drawn inside the confirmation that asked for it. */
+  const [kernelRefusal, setKernelRefusal] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   /** The "Create with AI" dialog, a separate surface from the form above: neither path is a step of the other. */
   const [aiOpen, setAiOpen] = useState(false);
@@ -469,6 +471,11 @@ export function AgentsPage() {
    * `Promise.allSettled` with a named partial failure, the shape the Skills page's bulk update
    * uses: a smart merge that lands on three Agents and fails on two must say WHICH two, or the
    * user is left re-checking every card by hand.
+   *
+   * Only a batch that landed everywhere dismisses the confirmation. Anything less keeps it open
+   * with that same sentence drawn inside it (`bulkFailureText`) rather than in a toast that would
+   * leave after six seconds; the dialog lists `kernelTodo.items`, which the reload above re-reads
+   * from the server, so its retry already names the Agents still behind.
    */
   const runKernelUpdates = async (targets: readonly string[]) => {
     if (!projectId || targets.length === 0) return;
@@ -483,8 +490,13 @@ export function AgentsPage() {
     const outcome = bulkOutcome(labels, results);
     if (outcome.allOk) toastSuccess(S.todo.bulkDone(outcome.ok));
     else {
-      toastError(
-        `${S.todo.bulkPartial(outcome.ok, failedList(outcome.failed, S.todo.listSeparator))} — ${apiErrorText(firstFailure(results))}`,
+      setKernelRefusal(
+        bulkFailureText(
+          outcome,
+          apiErrorText(firstFailure(results)),
+          S.todo.bulkPartial,
+          S.todo.listSeparator,
+        ),
       );
     }
     // The gate reads `AgentSummary.kernelOutdated` off the Project's Agent list, so the dot only
@@ -498,7 +510,10 @@ export function AgentsPage() {
       toastError(apiErrorText(e));
     } finally {
       setKernelRunning(false);
-      setKernelConfirmOpen(false);
+      // Nothing but a clean batch closes the question. The reload failing afterwards closes it
+      // too: every write landed and the toast says so, and what is left is a stale dot, not a
+      // decision this card still has to take.
+      if (outcome.allOk) setKernelConfirmOpen(false);
     }
   };
 
@@ -536,7 +551,11 @@ export function AgentsPage() {
             text={S.todo.changesUpgradable(noticeCounts(kernelTodo).updated)}
             actionLabel={S.todo.updateNow}
             busy={kernelRunning}
-            onAction={() => setKernelConfirmOpen(true)}
+            onAction={() => {
+              setKernelConfirmOpen(true);
+              // Opening the batch afresh: a reason from the last attempt belongs to that attempt.
+              setKernelRefusal(null);
+            }}
             dismissLabel={S.todo.dismiss}
             onDismiss={() => dismissTodo(projectId ?? null, "agents", kernelTodo.signature)}
           />
@@ -1030,7 +1049,9 @@ export function AgentsPage() {
       {/* Bulk kernel update confirmation. The body is the per-Agent confirm's own wording,
           verbatim — a kernel update is a smart merge that advances the settings tabs the user
           has not touched and leaves the customized ones whole — with the list naming every
-          Agent the batch would write to. Primary (overwrite) tone, like its per-Agent twin. */}
+          Agent the batch would write to. Primary (overwrite) tone, like its per-Agent twin. A
+          batch that did not land everywhere keeps this card and reports inside it, so the retry
+          is the same button. */}
       {kernelTodo && kernelConfirmOpen && (
         <ConfirmModal
           open
@@ -1039,8 +1060,12 @@ export function AgentsPage() {
           confirmLabel={S.agent.kernelUpdateAction}
           cancelLabel={S.common.cancel}
           busy={kernelRunning}
-          onClose={() => setKernelConfirmOpen(false)}
+          onClose={() => {
+            setKernelConfirmOpen(false);
+            setKernelRefusal(null);
+          }}
           onConfirm={() => void runKernelUpdates(kernelTodo.items)}
+          refusal={kernelRefusal === null ? undefined : kernelRefusal}
         >
           <div className="space-y-3">
             <p className="text-sm text-gray-600 dark:text-gray-300">
