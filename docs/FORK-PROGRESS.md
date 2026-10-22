@@ -1389,6 +1389,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       「批量更新」（`pendingBulk`，部分成功，要讲清哪些没更新）照旧；7.20 列的其它页面（`company` /
       `settings` 的其它小节 / `chat` / `agents` 的其余区块 / `machines`）照旧。
 
+- [x] **7.30 两条「现在升级」的批量确认框：插件批次与内核批次没全落地时，框留着，原因也留在框里**
+      （**2026-10-23 第一百一十三轮**落地，提交见该节；`packages/web/src/lib/bulk-update.ts` 两个纯函数
+      （`bulkFailureText` / `remainingTargets`）+2 处源码（`plugins-page.tsx`、`agents-page.tsx`）+1 个新文件
+      `packages/web/e2e/bulk-update-refusal.spec.mjs`（2 条用例）+ 既有单测加 7 条 + changelog 一对，
+      **无新依赖、不碰接口**）：7.29 末尾点名的那条「批量更新」——它不止插件市场一处，智能体列表的「内核
+      更新」是同一个形状（两者都是一次 `Promise.allSettled`，都只把部分失败交给 toast，都在 `finally` 里关框）。
+      **现在**：只有每个目标都落地才关框；没全落地时框留着，把「已更新 N 个 Agent；以下未成功：…— 服务端原话」
+      画在框里（不套「操作被拒绝：」前缀：写了三个的批次不是被拒绝），重试就是同一个按钮；插件批次还按
+      `remainingTargets` 收窄成「还没成功的那些」，免得重试把已成功的再覆盖一遍。细节、两态读数、反证与探针
+      见「第一百一十三轮」一节。**还差什么**：7.20 列的其它页面（`company` / `settings` 的其它小节 / `chat` /
+      `agents` 的其余区块 / `machines`）照旧 —— 「点击即关、失败只弹 toast」这条自长的线走到这里，页面上能
+      一轮做完的同类写入要先重新扫一遍才敢说没有。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -2016,6 +2029,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-22 | 7.27 | **卸载技能被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/agents/skills-tab.tsx` 一处真修复（新增 `askRemove` + `removeRefusal`，`confirmRemove` 只在 `removeAgentSkill` 回了真时关框、失败时把原话交给确认框的 `refusal` 槽）+ 1 个新文件 `packages/web/e2e/skill-uninstall-refusal.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：智能体设置「技能」页的「移除」那张确认框过去在 `finally` 里关 —— 被拒的时候技能在页面上与磁盘上都还装着，原因却跟着框一起没了，只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：卸载成功之后才关框（并弹成功提示、重读本页、刷新智能体列表）；被拒时服务端原话画在句子下面，重试就是同一个按钮；从行上的「移除」打开卡片时先开框再清上一次的原因。**为什么是它**：7.19–7.26 那条线的下一步、`agents` 页技能表里最常见的一处；待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动四个文件 `prettier --check` 干净（新 spec 首版格式不过，已 `--write`）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 通过 / 6 跳过** · ui **1052** · server **2955 通过 / 4 跳过** · cli **561** · web **263 文件 / 3224 通过 / 2 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**124 passed（8.4m）、0 failed**（原 122 条 + 本笔 2 条）· **反证**：把 `skills-tab.tsx` 退回旧写法（`finally` 里 `setRemoving(null)` + `toastError`）并重建 web → 同一份 spec **2 failed**（两条都死在「框里找不到那句 `agent state is read-only`」，16.5 s / 16.4 s）；还原 + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r109-e2e`、`localhost:8950` + mock 8951、1280×900，种子取 `default_agent` 自带的 `agent-evaluation`、`DELETE` 只拒掉那一条）：框里句子下面就是 danger 色的「操作被拒绝：agent state is read-only」、技能行仍在、`通知` 区 **0** 个按钮、页面无 JS 错误（唯一两条 4xx/5xx 是登录后本就有的 `/machines` 403 与本轮刻意造的 500）；截图 `r109-ask.png` / `r109-refused.png`、探针 `probe.mjs` 在 scratchpad · 端口只用 8950 / 8951（跑完都已停），e2e 是它自己的 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r109-e2e` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `be9d9698` |
 | 2026-10-22 | 7.28 | **卸载钩子包被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/agents/hooks-tab.tsx` 一处真修复（新增 `askRemove` + `removeRefusal`，`confirmRemove` 只在 `uninstallAgentHook` 回了真时关框、失败时把原话交给确认框的 `refusal` 槽）+ 1 个新文件 `packages/web/e2e/hook-uninstall-refusal.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：智能体设置「钩子」页那张卸载确认框过去在 `finally` 里关 —— 被拒的时候包在页面上与磁盘上都还装着（什么都没变），原因却跟着框一起没了，只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：卸载成功之后才关框（并弹成功提示、重读本页、刷新智能体列表）；被拒时服务端原话画在句子下面，重试就是同一个按钮；从行上的卸载按钮打开卡片时先开框再清上一次的原因。**为什么是它**：7.27 末尾点名留给下一轮的「`hooks-tab` 那条同形的卸载」；待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 通过 / 6 跳过**（67 文件 + 1 跳过）· ui **130 文件 / 1052 通过** · server **202 文件 / 2955 通过 / 4 跳过** · cli **38 文件 / 561 通过** · web **263 文件 / 3224 通过 / 2 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**126 passed（9.0m）、0 failed**（原 124 条 + 本笔 2 条）· **反证**：把 `hooks-tab.tsx` 退回旧写法（`finally` 里 `setRemoving(null)` + `toastError`）并重建 web → 同一份 spec **2 failed**（两条都死在「框里找不到那句 `agent state is read-only`」，15 s 超时）；还原 + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r111`、`localhost:8960` + mock 8961、1280×900，种子取新建智能体自带的 `goal` 钩子包、`DELETE` 只拒掉那一条）：**改前** `dialogs 0`、`reasonInDialog 0`、`通知` 区 **1** 个按钮（正是服务端那句话），6.5 秒后 `reasonAfter6s 0`，截图里框已经没了、原因只剩顶上一枚浮着的 toast；**改后** `dialogs 1`、`reasonInDialog 1`、`toasts 0`、行仍在、6.5 秒后原因仍在，框里的文字比改前只多那一行；重开卡片**不带**旧原因（`reasonOnReopen 0`）；放行后再确认 —— 框关、行消失、服务端已装列表里也没有它；两态 console 各只有登录后就有的 `/machines` **403** 与本轮刻意造的 500，**无 pageerror**；截图 `r111/shots/{tab,ask,refused,refused-after-6s,reopened,written}.png` 与改前 `r111/shots-before/…`、探针 `r111/probe.mjs` 在 scratchpad · 端口只用 8960 / 8961（跑完都已停），e2e 是它自己的 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r111` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `f6f82fe7` |
 | 2026-10-22 | 7.29 | **插件卡上那三张确认框（删除插件 / 单 Agent 卸载 / 更新）被拒时，框留着，原因也留在框里**（不是移植：`packages/web/src/features/plugins/plugins-page.tsx` 一处真修复（+137 −49：三个写入 `toggleInstall` / `updateOutdated` / `removePlugin` 改回 `WriteOutcome`（模型库 7.19 那一对），卡片上新增 `updateRefusal` / `uninstallRefusal` / `deleteRefusal` 三个原因状态与 `askUpdate` / `askUninstall` / `askDelete` 三个开框帮手、三个确认框各接一个 `busy`，只有写成功才关框）+ 1 个新文件 `packages/web/e2e/plugin-card-refusal.spec.mjs`（三条用例，+284）+ 一份既有 spec 的等待（`packages/web/e2e/skills.spec.mjs` +6 −1）+ changelog 一对（+92），**无新依赖、不碰接口**）：7.26 / 7.27 / 7.28 末尾连着三轮点名的就是这三张卡片，三处各错一种关框时机 —— 删除与单 Agent 卸载在**请求发出之前**就关（`setDeleteOpen(false)` / `setPendingUninstall(null)` 先走、`void onDelete(...)` 后发），更新在 `await onUpdateOutdated(...)` 之后**无条件**关；被拒的时候装上/装着的文件与插件目录一点没变，原因却只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：只有写成功才关框，被拒时服务端原话经 `ConfirmModal` 的 `refusal` 槽画在句子下面（`S.common.refused(...)`）、重试就是同一个按钮；卡片上没有确认的那条路（一键安装到某个智能体、管理安装里的一行「安装」）自己弹 toast，因为那里没有框可留。**两处顺带不再「先斩后奏」**（两态实测撞出来的，不是猜的）：删除不再先把卡片从列表里抹掉 —— 卡片就是发问的那张，请求在飞时把它摘掉等于把问题与原因一起摘掉，现在目录真的删掉之后卡片才走、等待期间确认按钮标 `busy`；卸载不再在请求发出时先动已装快照 —— 抹掉当前智能体的副本会让卡片翻成「未安装」并挪到另一个分区，卡片随之重挂，重挂那一瞬框与原因都没了，现在快照在答复之后才动。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动的三个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 文件 / 3224 通过 / 2 跳过**（与上轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**129 passed（8.3m）、0 failed**（原 126 条 + 本笔 3 条）· **反证**：把 `plugins-page.tsx` 退回 `HEAD`（`git stash push --` 只带这一个路径）并重建 web → 同一份 spec **3 failed**（三条都死在框里找不到那句话：`删除 probe-plugin` / `卸载 probe-plugin` / `更新 probe-plugin` 的 `getByText` 15 s 超时，element(s) not found；现场留在 scratchpad 的 `r112/before-test-results`），`git stash pop` + 重建后 **3 passed（5.5s）** · **两态实测**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r112-a`、`localhost:8972`、`admin`、1280×900，插件库 / 已装列表用夹具、三条写由 `page.route` 拒成 500）：删除 —— 框里句子下面就是 danger 色的「操作被拒绝：plugin store is read-only」、`通知` 区 **0** 个按钮、**6.5 秒后原因仍在**；卸载 —— 同一行「操作被拒绝：agent state is read-only」、管理安装那张 Modal 在背后没有关；更新 —— 同一行「agent state is read-only」；三者放行重试时框才关（删除那次卡片也一起消失，`afterDelete {dialog 0, card 0}`、`afterUpdate {dialog 0}`），全套 console **只有那三次刻意造的 500**（`bad` 里也只有它们）、无 pageerror；截图 `r112/shots/{1-card,2-delete-asked,3-delete-refused,4-delete-refused-after-6s,5-delete-written,6-manage-installs,7-uninstall-asked,8-uninstall-refused,9-uninstall-refused-after-6s,10-update-asked,11-update-refused,12-update-written}.png`、探针 `r112/probe.mjs`、单 spec 脚本 `r112/run-one.sh` 在 scratchpad · **那份既有 spec 为什么多等一步**（第一次整套跑唯一的一条红）：`skills.spec` 在「确认卸载」之后立刻按 Escape，过去框在请求前就关了，所以那一下必然落在外层「管理安装」Modal 上；现在框在**答复之后**才关，而「行翻回安装」与「框离开」是**两次提交**（`toggleInstall` 里那次 `setAgentInstalls` 先被 React 冲刷，调用方的 `setPendingUninstall(null)` 落在下一段微任务），于是 Escape 有时会把还开着的那张确认框关掉、外层留着 —— 改成先 `expect(uninstallConfirm).toHaveCount(0)` 再按 Escape（**只加等待，不改产品代码、不放松断言**），随后整套 **129 passed** · 端口只用 8972 与 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r112-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d1ac2d27` |
+| 2026-10-23 | 7.30 | **两条「现在升级」的批量确认框（插件批次 / 内核批次）没全落地时，框留着，原因也留在框里**（不是移植：`packages/web/src/lib/bulk-update.ts` 两个纯函数（`bulkFailureText` 组合「部分失败句 + 第一个失败的原话」，`remainingTargets` 收窄计划）+2 处源码（`plugins-page.tsx` 的 `runBulkUpdate` 加 `bulkRefusal` 状态、被拒时按 `remainingTargets` 收窄 `pendingBulk`；`agents-page.tsx` 的 `runKernelUpdates` 同形）+1 个新文件 `packages/web/e2e/bulk-update-refusal.spec.mjs`（2 条用例）+ 既有单测加 7 条（`test/todo-notice.test.ts`）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：两处都是 `Promise.allSettled` 之后把部分失败交给一条 toast、并在 `finally` 里关框 —— 用户重试时最需要的「哪些 Agent 没成功、为什么」恰好最先消失。**现在**：每个目标都落地才关框；没全落地时框留着，把「已更新 N 个 Agent；以下未成功：…— 服务端原话」画在 `ConfirmModal` 的 `refusal` 槽里（不套「操作被拒绝：」前缀：五个写了三个的批次不是被拒绝），重试就是同一个按钮；插件批次重试前只留没成功的那些。**为什么是它**：7.29 末尾点名的那条「批量更新」，而它其实有两处同形 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）**）· `npx oxlint` 改动面 **0 警告 0 错误**（5 文件）· 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 文件 / 3231 通过 / 2 跳过**（上轮 3224，本笔 +7）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**131 passed（8.8m）、0 failed**（原 129 条 + 本笔 2 条）· **反证**：`git stash push --` 只带两个页面文件并重建 web → 同一份 spec **2 failed**（两条都死在框里找不到那句原因，16.5 s / 16.3 s），`git stash pop` + 重建后 **2 passed** · **两态实测**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r113-a`、`localhost:8990`、`admin`、1280×900；两条写由 `page.route` 拒成 500）：插件批次 —— 框里句子下面是 danger 色的「已更新 0 个 Agent；以下未成功：General Agent — agent state is read-only」、`通知` 区 **0** 个按钮、**6.5 秒后仍在**、重开不带旧原因；内核批次同形（原因 `kernel merge refused`）—— 探针读数两态都是 `dialog true / reasonInDialog true / toasts 0`，console 只有那两次刻意造的 500、无 pageerror；截图 `r113/shots/{1…11}.png`、探针 `r113/probe.mjs` 在 scratchpad · 端口只用 8990 / 8991（跑完都已停），e2e 是它自己的 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r113-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `4f99fcce` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -14062,3 +14076,86 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
   两个端口都不通（`/dev/tcp` 探两次都是超时，整个 202.197.0.0/16 那个老问题），于是照第一百零九轮的做法改由
   飞书送达（`message_id=om_x100b62975713d4a0c1d2fd117222d65`），正文同时留在 scratchpad 的
   `r112/report.md`。下一轮开工先试一次 `mail.py check`，通了再把积压的补发。
+
+## 第一百一十三轮：两条「现在升级」的批量确认框没全落地时，框留着，原因也留在框里（2026-10-23，条目 7.30）
+
+### 为什么是这一条
+
+7.29 末尾点名留给下一轮的正是插件市场那张「批量更新」（`pendingBulk`）：它是部分成功，那张框在页面层而不是在
+卡片里，讲清「哪些 Agent 没更新」得另定一句话。逐处摸过之后发现它有**两处**同一个形状 —— 智能体列表的「内核
+更新」（`runKernelUpdates`）也一样：一次 `Promise.allSettled`，部分失败只交给 `toastError`，框在 `finally` 里
+无条件关。待办里能一轮做完的条目仍然没有（2.2c 的写侧全在桌面壳一侧且本机按纪律不碰、3.5 要用户拍板、3.6 要
+模型 key（卡点）、4.1–4.3 明令不动、5.6 / 5.10 要拍板或新依赖），所以接着「原因随框留着」这条自己长的线，把
+两处一次做完（同一处关框时机、同一句收尾方式，拆成两轮反而更贵）。
+
+两处的错法一样：**框在写入之后无条件关**，被拒或半成功的时候原因只剩一条六秒后自己消失、还浮在框上方的 toast。
+
+### 改了什么（2 个纯函数 + 2 处源码 + 1 个新 spec + 7 条单测 + changelog 一对，+471 −15）
+
+- `packages/web/src/lib/bulk-update.ts` 多出两个页面要的判断，都是纯函数、都有单测：
+  - `bulkFailureText(outcome, reason, sentence, separator)` —— 框里要画的那句话，整批都落地时返回 `null`。
+    它**不套** `S.common.refused` 的「操作被拒绝：」前缀：五个写了三个的批次并不是「被拒绝」，而那句话自己
+    已经说清了发生了什么（点名没成功的那些，再接第一个失败的原话）。
+  - `remainingTargets(targets, results)` —— 计划里请求被拒的那部分，以及重新算出的「还要重写哪些名字」
+    （按位置配对，与 `bulkOutcome` 读标签同一条规则）。
+- `packages/web/src/features/plugins/plugins-page.tsx`：新增 `bulkRefusal` 状态；`runBulkUpdate` 被拒时把句子
+  交给框、并用 `remainingTargets` 把 `pendingBulk` 收窄成「还没成功的那些」，`finally` 里只有整批落地才关框。
+  收窄这一步的理由写在注释里：重试若照旧跑整张计划，会把已成功的智能体再覆盖一遍（每次更新都是覆盖式重装），
+  事后的成功句也会变成在数「尝试了几次」。从提示条打开批次时先清掉上一次的原因，关框时两个都清。
+- `packages/web/src/features/agents/agents-page.tsx`：同形处理，只是**不需要收窄** —— 框里列的是
+  `kernelTodo.items`，而批次之后的 `reloadAgents()` 会从服务端重读它，所以重试本来就已经是「还没成功的那些」。
+- 两处的 `onAction` 都先开框再清原因：`todo-notice.test.ts` 那条「批次按钮背后的状态就是它渲染的门」的守卫
+  读的是处理器里第一个 `set*`，这一条顺手也保住了。
+- 新文件 `packages/web/e2e/bulk-update-refusal.spec.mjs`（两条用例：插件批次 / 内核批次）：被拒时框、句子、
+  计划与服务端原话都在，`通知` 区没有可点的按钮，重开框不带旧原因；只有放行重试的那次才关框。两条线索读的
+  都是 `AgentSummary`（`pluginUpdates` / `kernelOutdated`），所以只在服务端自己那份智能体列表里改一个字段，
+  两条写由 `page.route` 接管。
+- `packages/web/test/todo-notice.test.ts`：`bulkFailureText` 三条（干净时 `null` / 点名 + 原话 / 超八个时
+  带 `+N` 截断）与 `remainingTargets` 四条（只留被拒的 / 全失败留全量 / 全成功为空 / 按位置配对）。
+- changelog 一对 `changelog/unreleased/2026-10-23-bulk-update-refusal{,.zh}.md`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 / 589
+  类型）—— 本笔不碰服务契约）。
+- `npx oxlint` 改动面 **0 警告 0 错误**（5 文件）；改动的五个文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 文件 / 1052 通过** ·
+  server **202 文件 / 2955 通过 / 4 跳过** · cli **38 文件 / 561 通过** · web **263 文件 / 3231 通过 / 2 跳过**
+  （上一轮 3224，本笔 +7，正是新加的那七条）。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、
+  mock 8931 / 服务端 8930）：**131 passed（8.8m）、0 failed**（原 129 条 + 本笔 2 条）。
+- **反证**：`git stash push --` 只带两个页面文件并重建 web → 同一份 spec **2 failed**（两条都死在框里找不到那句
+  原因：16.5 s / 16.3 s，`element(s) not found`）；`git stash pop` + 重建后 **2 passed（4.1s）**。现场留在
+  scratchpad 的 `r113/before-test-results`。
+- **两态实测真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r113-a`、`localhost:8990`、
+  `admin`、1280×900；两条写由 `page.route` 拒成 500，智能体列表改一个字段）：
+  - **插件批次**：点「现在升级」→ 框里句子下面是 danger 色的「已更新 0 个 Agent；以下未成功：General Agent —
+    agent state is read-only」，`通知` 区 **0** 个按钮，**6.5 秒后原因仍在**（`3-plugins-refused.png` /
+    `4-plugins-refused-after-6s.png`）；放行重试 → 框关（`after {dialog 0}`）。
+  - **内核批次**：同形（原因 `kernel merge refused`），取消后重开框**不带**旧原因（`kernelReopened {reason 0,
+    dialog 1}`），放行重试 → 框关。
+  - 探针读数：两态都是 `dialog true / reasonInDialog true / toasts 0`，框里的文字在 6.5 秒后与刚被拒时**逐字
+    相同**、且比按下前只多那一行；整套 console **只有那两次刻意造的 500**，**无 pageerror**。探针
+    `r113/probe.mjs`、截图 `r113/shots/{1-plugins-notice,2-plugins-asked,3-plugins-refused,
+    4-plugins-refused-after-6s,5-plugins-written,6-agents-notice,7-agents-asked,8-agents-refused,
+    9-agents-refused-after-6s,10-agents-reopened,11-agents-written}.png` 在 scratchpad。
+- 端口：探针 8990 / 8991（跑完都已停），整套 e2e 是它自己的 8930 / 8931；3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落在 `/root/adelie-fork-data/r113-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` /
+  `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- 7.20 列的其它页面（`company` / `settings` 的其它小节 / `chat` / `agents` 的其余区块 / `machines`）照旧。「点击
+  即关、失败只弹 toast」这条自长的线走到这里，页面上还能一轮做完的同类写入要先重新扫一遍才敢说没有。
+- 预置模型那条「同步」的批量框（7.19 前后已按同一规则改过）本轮只读了一遍，没有改动。
+- 待办里能一轮做完的条目仍然没有：2.2c 的写侧全在桌面壳一侧（本机按纪律不碰）+ 既有部署单元（发布动作）+
+  插件里三处文本（与桌面壳那一半同一件事）、3.5 要用户拍板、3.6 要模型 key、4.1–4.3 明令不动、5.6 / 5.10
+  要拍板或新依赖。
+
+### 汇报
+
+- 先按 `csu-mail` 技能试了 `mail.py check`：`imap.csu.edu.cn:993` 仍然是 `TimeoutError`（`[Errno 110] Connection
+  timed out`，202.197.0.0/16 那个老问题，本轮没有再重试第二个端口），于是照第一百零九轮以来的做法改由飞书送达
+  （`message_id=om_x100b6292047ad0a0dfc898231bbf908`，收件人即已绑定的那个私聊），正文同时留在 scratchpad 的
+  `r113/report.md`。下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
