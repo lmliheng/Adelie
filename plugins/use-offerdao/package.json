@@ -1,6 +1,6 @@
 {
   "name": "@adelie/use-offerdao",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "description": "Offer岛 (offerdao.ai) from the shell: search and publish AI-industry job postings, browse the AI company directory, find interview guides and read the daily AI news feed.",
   "license": "Apache-2.0",
   "repository": {
