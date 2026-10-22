@@ -39,8 +39,11 @@
  *   not-installed shows "Install", installed shows "Installed" (hover switches to
  *   "Uninstall", click to uninstall); any member can operate it; optimistic update, a
  *   top-level toast on success for install/uninstall, rollback plus a toast on failure.
- *   Installed means the whole plugin is: every one of its skills is in the Agent's installed
- *   skills and, when it ships a hook package, that package is in the Agent's installed hooks —
+ *   A refusal is not always a toast: the two writes the card asks about first (uninstall,
+ *   update) keep their confirmation open with the server's words inside it — see the
+ *   PluginCard's three confirmations. Installed means the whole plugin is: every one of its
+ *   skills is in the Agent's installed skills and, when it ships a hook package, that package is
+ *   in the Agent's installed hooks —
  *   which is why the page fetches both lists per Agent. Uninstall takes the plugin apart the
  *   same way: one DELETE per skill and one for the hook package.
  */
@@ -100,6 +103,7 @@ import { draftKey, loadDraft, saveDraft } from "../chat/draft-cache";
 import { prepareNewChatDraft } from "../chat/new-chat";
 import { localizedShortText, localizedText } from "../chat/skill-use";
 import { downloadArchive } from "../agents/archive-download";
+import type { WriteOutcome } from "../models/write-outcome";
 import { PluginDetailModal } from "./plugin-detail";
 import { PluginImportActions } from "./plugin-import-dialog";
 import { pluginImportErrorText } from "./plugin-import";
@@ -517,16 +521,33 @@ export function PluginsPage() {
 
   /**
    * Install / uninstall on one Agent (any member can do this): optimistic update, a
-   * confirmation toast on success, rollback plus a toast on failure. Install is one request for
+   * confirmation toast on success, rollback on failure. Install is one request for
    * the whole plugin; uninstall takes it apart — one DELETE per skill and one for the hook
    * package — since the server offers no plugin-level delete, and a plugin's parts are what an
    * Agent actually holds. The Agent list is re-read afterwards either way: the card's counts
    * and its `pluginUpdates` moved, and both are read off that list.
+   *
+   * The answer is a {@link WriteOutcome} rather than a toast: uninstall is asked about first, so
+   * a refusal belongs in the card that asked (its retry button is there). The install paths have
+   * no card to keep — the card's one-click button and a manage-installs row's toggle — and they
+   * add the toast themselves; nothing is toasted here.
+   *
+   * Only an install moves the snapshot before the answer. An uninstall waits for it: removing the
+   * current Agent's copy on the way out flips the card to "not installed" and carries it into the
+   * other section, which unmounts the very confirmation that asked — and with it a refusal's
+   * reason. The row reads "Installed" until the answer arrives, which is also what a refused one
+   * leaves it at.
    */
-  const toggleInstall = async (agentId: string, plugin: PluginItem, on: boolean) => {
-    if (!projectId) return;
+  const toggleInstall = async (
+    agentId: string,
+    plugin: PluginItem,
+    on: boolean,
+  ): Promise<WriteOutcome> => {
+    // Unreachable through the page (it renders nothing without a Project, and every caller is
+    // behind that gate). The generic sentence is what a write that never left would report.
+    if (!projectId) return { ok: false, reason: S.common.unknownError };
     const prev = installed.get(agentId) ?? NO_INSTALLS;
-    setAgentInstalls(agentId, withPlugin(prev, plugin, on));
+    if (on) setAgentInstalls(agentId, withPlugin(prev, plugin, on));
     const target = agents.find((a) => a.agentId === agentId);
     const agentName = target ? agentDisplayName(target) : agentId;
     try {
@@ -552,39 +573,44 @@ export function PluginsPage() {
             ? [api.uninstallAgentHook(projectId, agentId, plugin.name).catch(gone)]
             : []),
         ]);
+        setAgentInstalls(agentId, withPlugin(prev, plugin, false));
         toastSuccess(
           `${S.plugins.uninstalledToast(plugin.name, agentName)}${S.agent.takesEffectSuffix}`,
         );
       }
     } catch (e) {
       setAgentInstalls(agentId, prev);
-      toastError(apiErrorText(e));
-      return;
+      return { ok: false, reason: apiErrorText(e) };
     }
     void reloadAgents();
+    return { ok: true };
   };
 
   /**
    * Update reminder action: reinstall the current library copy on every outdated Agent
    * (install-again-is-update semantics). One success toast for the whole batch; on partial
-   * failure the succeeded Agents keep their calibrated state and the first error is toasted.
+   * failure the Agents that took it keep their calibrated state, and the first error comes back
+   * to the card that asked for the update — the ones that stayed behind are still marked behind
+   * on the cards and in the notice, and retrying sends the same set again.
    */
-  const updateOutdated = async (name: string, agentIds: string[]) => {
-    if (!projectId || agentIds.length === 0) return;
+  const updateOutdated = async (name: string, agentIds: string[]): Promise<WriteOutcome> => {
+    // Unreachable through the page (the card only draws an update with an Agent behind it).
+    if (!projectId || agentIds.length === 0) return { ok: true };
     const results = await Promise.allSettled(
       agentIds.map(async (agentId) => {
         const res = await api.installAgentPlugins(projectId, agentId, [name]);
         setAgentInstalls(agentId, installsOf(res.skills, res.hooks));
       }),
     );
-    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
-    if (!failed) toastSuccess(S.plugins.updatedToast(name, agentIds.length));
-    else toastError(apiErrorText(failed.reason));
     // The outdated marks and the nav badge are both read off `AgentSummary.pluginUpdates`,
     // which this page's install map does not feed: without reloading the Agent list the dot
     // would survive the very update it led the user to. Runs after a partial failure too —
     // some Agent moved.
     void reloadAgents();
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failed) return { ok: false, reason: apiErrorText(failed.reason) };
+    toastSuccess(S.plugins.updatedToast(name, agentIds.length));
+    return { ok: true };
   };
 
   /**
@@ -679,13 +705,23 @@ export function PluginsPage() {
   };
 
   /**
-   * Delete one user plugin (admin-only server-side): optimistic on the local listing — the card
-   * goes at once, the way install/uninstall move the install snapshot — and rolled back with a
-   * toast when the server refuses (a built-in name, or a right the account no longer has). The
-   * directory line is re-read afterwards, since the on-disk directory is what it reports.
+   * Delete one user plugin (admin-only server-side). The directory line is re-read afterwards,
+   * since the on-disk directory is what it reports.
+   *
+   * The card leaves the listing only once the directory is gone — no longer optimistically on the
+   * way out: it is the card that asked for the delete, and taking it off the page as the request
+   * left unmounts that confirmation, so a refusal had nothing left to put its reason in. The
+   * confirm button reads busy meanwhile, which is what the wait looks like.
+   *
+   * The refusal comes back as a {@link WriteOutcome} instead of a toast for the same reason: the
+   * card that asked still has the button that retries it.
    */
-  const removePlugin = async (plugin: PluginItem) => {
-    const prev = groups;
+  const removePlugin = async (plugin: PluginItem): Promise<WriteOutcome> => {
+    try {
+      await api.deletePlugin(plugin.name);
+    } catch (e) {
+      return { ok: false, reason: pluginImportErrorText(e) };
+    }
     setGroups(
       (current) =>
         current
@@ -697,15 +733,9 @@ export function PluginsPage() {
           // the server's, and an empty section would stand under the title until the next load.
           .filter((group) => group.plugins.length > 0) ?? current,
     );
-    try {
-      await api.deletePlugin(plugin.name);
-      toastSuccess(S.plugins.deletedToast(plugin.name));
-    } catch (e) {
-      setGroups(prev);
-      toastError(pluginImportErrorText(e));
-      return;
-    }
+    toastSuccess(S.plugins.deletedToast(plugin.name));
     await reloadDirectory();
+    return { ok: true };
   };
 
   // The library's rows, divided by what the Agent the page is working with holds (the value
@@ -1520,10 +1550,10 @@ function PluginCard({
   /** Whether this account may delete, which is the account's admin right and not a Project role (see the page header). */
   canDelete: boolean;
   onQuickInvoke: (skillName: string) => void;
-  onToggleInstall: (agentId: string, plugin: PluginItem, on: boolean) => Promise<void>;
-  onUpdateOutdated: (name: string, agentIds: string[]) => Promise<void>;
+  onToggleInstall: (agentId: string, plugin: PluginItem, on: boolean) => Promise<WriteOutcome>;
+  onUpdateOutdated: (name: string, agentIds: string[]) => Promise<WriteOutcome>;
   onExport: (name: string) => Promise<void>;
-  onDelete: (plugin: PluginItem) => Promise<void>;
+  onDelete: (plugin: PluginItem) => Promise<WriteOutcome>;
 }) {
   const { locale } = useLocale();
   const { agents, currentAgent } = useProject();
@@ -1533,17 +1563,77 @@ function PluginCard({
   const [updating, setUpdating] = useState(false);
   // Agent pending an uninstall confirmation (null = none): uninstalling deletes the installed files, local edits included.
   const [pendingUninstall, setPendingUninstall] = useState<string | null>(null);
+  const [uninstalling, setUninstalling] = useState(false);
   // Whether this card's delete confirmation is open: deleting a user plugin removes its directory from disk, so it confirms first, like the uninstall above.
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  /**
+   * The server's words for the last write each of this card's three confirmations asked for and
+   * did not get. They are drawn inside the confirmation that asked (its `refusal` slot): the
+   * plugin, the update or the delete changed nothing, so retrying is the next thing the person
+   * does, and the button that retries it is in that card. A toast says the same thing, but it
+   * dismisses itself after six seconds and sits over the card rather than in it.
+   */
+  const [updateRefusal, setUpdateRefusal] = useState<string | null>(null);
+  const [uninstallRefusal, setUninstallRefusal] = useState<string | null>(null);
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   /** A user plugin, i.e. one from the server's plugin directory: the only kind the library can delete, and the only kind that carries a "user" mark. */
   const isUser = plugin.source === "user";
 
+  /** Open a confirmation, without the previous refusal: that sentence belonged to the attempt before (one attempt, one reason). */
+  const askUpdate = (agentIds: string[]) => {
+    setPendingUpdate(agentIds);
+    setUpdateRefusal(null);
+  };
+  const askUninstall = (agentId: string) => {
+    setPendingUninstall(agentId);
+    setUninstallRefusal(null);
+  };
+  const askDelete = () => {
+    setDeleteOpen(true);
+    setDeleteRefusal(null);
+  };
+
+  /**
+   * The card's install paths — no confirmation, so no card to keep a refusal in: the reason
+   * takes the toast here (the same sentence a refused confirm would draw inside its dialog).
+   */
+  const installNow = async (agentId: string) => {
+    const outcome = await onToggleInstall(agentId, plugin, true);
+    if (!outcome.ok) toastError(outcome.reason);
+  };
+
+  /**
+   * The three confirmations close on the answer, not on the request: a refused write changes
+   * nothing on either side (the same files are still installed, the same plugin is still on
+   * disk), so the card stays open with the server's words in it and the same button retries.
+   * Closing it as the request left used to carry that reason into a toast that dismisses itself
+   * after six seconds and sits above the card.
+   */
   const confirmUpdate = async () => {
     if (!pendingUpdate) return;
     setUpdating(true);
-    await onUpdateOutdated(plugin.name, pendingUpdate);
+    const outcome = await onUpdateOutdated(plugin.name, pendingUpdate);
     setUpdating(false);
-    setPendingUpdate(null);
+    if (outcome.ok) setPendingUpdate(null);
+    else setUpdateRefusal(outcome.reason);
+  };
+
+  const confirmUninstall = async () => {
+    if (pendingUninstall === null) return;
+    setUninstalling(true);
+    const outcome = await onToggleInstall(pendingUninstall, plugin, false);
+    setUninstalling(false);
+    if (outcome.ok) setPendingUninstall(null);
+    else setUninstallRefusal(outcome.reason);
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    const outcome = await onDelete(plugin);
+    setDeleting(false);
+    if (outcome.ok) setDeleteOpen(false);
+    else setDeleteRefusal(outcome.reason);
   };
 
   /** Display name of the Agent pending uninstall (falls back to the raw id below). */
@@ -1689,7 +1779,7 @@ function PluginCard({
             className="h-8 shrink-0"
             aria-label={`${S.plugins.marketInstall(marketAgentName ?? "")} ${plugin.name}`}
             title={S.plugins.marketInstall(marketAgentName ?? "")}
-            onClick={() => void onToggleInstall(marketAgent.agentId, plugin, true)}
+            onClick={() => void installNow(marketAgent.agentId)}
           >
             {S.plugins.install}
           </Button>
@@ -1701,7 +1791,7 @@ function PluginCard({
             className="h-8 shrink-0"
             aria-label={`${S.plugins.marketUpdate(marketAgentName ?? "")} ${plugin.name}`}
             title={S.plugins.marketUpdate(marketAgentName ?? "")}
-            onClick={() => setPendingUpdate([marketAgent.agentId])}
+            onClick={() => askUpdate([marketAgent.agentId])}
           >
             {S.skills.updateAction}
           </Button>
@@ -1718,7 +1808,7 @@ function PluginCard({
             className="relative h-8 w-8 shrink-0 justify-center p-0"
             aria-label={`${S.plugins.updateOutdated(outdated.length)} ${plugin.name}`}
             title={S.plugins.updateOutdated(outdated.length)}
-            onClick={() => setPendingUpdate(outdated)}
+            onClick={() => askUpdate(outdated)}
           >
             <GlyphIcon d={ICONS.rotateCw} size={ICON_SIZE.iconButton} />
             <UpdateDot
@@ -1774,7 +1864,7 @@ function PluginCard({
             className="h-8 w-8 shrink-0 justify-center p-0"
             aria-label={`${S.plugins.deletePluginAction} ${plugin.name}`}
             title={S.plugins.deletePluginAction}
-            onClick={() => setDeleteOpen(true)}
+            onClick={askDelete}
           >
             <GlyphIcon d={ICONS.trash} size={ICON_SIZE.iconButton} />
           </Button>
@@ -1799,10 +1889,10 @@ function PluginCard({
                 outdated={outdated.includes(a.agentId)}
                 onToggle={(on) => {
                   // Install runs directly; uninstall deletes the installed files, so it confirms first.
-                  if (on) void onToggleInstall(a.agentId, plugin, true);
-                  else setPendingUninstall(a.agentId);
+                  if (on) void installNow(a.agentId);
+                  else askUninstall(a.agentId);
                 }}
-                onUpdate={() => setPendingUpdate([a.agentId])}
+                onUpdate={() => askUpdate([a.agentId])}
               />
             ))}
           </div>
@@ -1818,6 +1908,7 @@ function PluginCard({
           busy={updating}
           onClose={() => setPendingUpdate(null)}
           onConfirm={() => void confirmUpdate()}
+          refusal={updateRefusal === null ? undefined : S.common.refused(updateRefusal)}
         >
           <div className="space-y-3">
             <p className="text-sm text-gray-600 dark:text-gray-300">
@@ -1852,12 +1943,10 @@ function PluginCard({
           title={S.plugins.uninstallConfirmTitle(plugin.name)}
           confirmLabel={S.skills.uninstall}
           cancelLabel={S.common.cancel}
+          busy={uninstalling}
           onClose={() => setPendingUninstall(null)}
-          onConfirm={() => {
-            const agentId = pendingUninstall;
-            setPendingUninstall(null);
-            void onToggleInstall(agentId, plugin, false);
-          }}
+          onConfirm={() => void confirmUninstall()}
+          refusal={uninstallRefusal === null ? undefined : S.common.refused(uninstallRefusal)}
         >
           <p className="text-sm text-gray-600 dark:text-gray-300">
             {S.plugins.uninstallConfirmBody(plugin.name, uninstallAgentName ?? pendingUninstall)}
@@ -1872,11 +1961,10 @@ function PluginCard({
           title={S.plugins.deleteConfirmTitle(plugin.name)}
           confirmLabel={S.plugins.deletePluginAction}
           cancelLabel={S.common.cancel}
+          busy={deleting}
           onClose={() => setDeleteOpen(false)}
-          onConfirm={() => {
-            setDeleteOpen(false);
-            void onDelete(plugin);
-          }}
+          onConfirm={() => void confirmDelete()}
+          refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
         >
           <p className="text-sm text-gray-600 dark:text-gray-300">
             {S.plugins.deleteConfirmBody(plugin.name)}

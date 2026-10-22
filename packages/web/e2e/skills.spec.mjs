@@ -185,8 +185,13 @@ test("skills: library list and cards -> manage-install Modal -> quick-invoke pre
   // Clicking "已安装" ("Installed") uninstalls: it deletes installed files, so the row
   // button only opens the confirmation; confirming flips back to "安装" ("Install").
   await uninstallHelper.click();
-  await page.getByRole("dialog").getByRole("button", { name: "卸载", exact: true }).click();
+  const uninstallConfirm = page.getByRole("dialog", { name: "卸载 data-analysis" });
+  await uninstallConfirm.getByRole("button", { name: "卸载", exact: true }).click();
   await expect(page.getByRole("button", { name: "安装 agent_helper" })).toBeVisible();
+  // The confirmation closes on the ANSWER, not on the request (see plugin-card-refusal.spec.mjs),
+  // so the row flipping and the card leaving are two commits: wait the card out before Escape,
+  // otherwise that press closes the confirmation and leaves this Modal standing.
+  await expect(uninstallConfirm).toHaveCount(0);
   // Escape closes the Modal (built into the Modal).
   await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
