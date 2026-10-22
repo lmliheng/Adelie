@@ -13575,10 +13575,16 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 
 ### 验证
 
-- 门禁：`pnpm typecheck` **EXIT=0**；`npx oxlint` **0 警告 0 错误**（2255 文件）；prettier `--check` 干净；
-  `pnpm --filter @adelie/ui test` **130 文件 / 1052 通过**；CI 的两个分片都跑了一遍 —— `web-cli`
-  （web **263 / 3224 通过 + 2 跳过**、ui 同上）与 `rest`（ui-gallery **20 / 140**、desktop 26 / 304、
-  amsp / docs / 四个插件全过），**0 失败**。
+- 本机门禁：`pnpm typecheck` **EXIT=0**；`npx oxlint` **0 警告 0 错误**（2255 文件）；prettier `--check` 干净；
+  `pnpm --filter @adelie/ui test` **130 文件 / 1052 通过**；`pnpm --filter @adelie/web test`
+  **263 / 3224 通过 + 2 跳过**；`rest` 那一片（ui-gallery **20 / 140**、desktop 26 / 304、amsp / docs /
+  四个插件）**0 失败**。
+- **CI 第一次是红的**（提交 `e455dd5d`）：`test (web-cli)` 里 web **65 个套件**失败，`rest`、`test-macos (rest)`、
+  `test-windows (rest)` 里 ui-gallery **6 个套件**失败，栈都指向 `node_modules/.pnpm/@adelie+ui@file+packages+ui_…`
+  那份副本。根因见下面那条，修完（提交 `55e6d7e3`）本机按副本装法复验：web 263 个套件、ui-gallery 20 个套件全绿。
+- **再推的 CI 全绿**：提交 `55e6d7e3` 的 `CI` 跑完 **22 个作业全部成功**（`test (web-cli)`、`test (rest)`、
+  `test (core)`、`test (server)`、`test-macos (rest)`、`test-windows (rest)`、`typecheck`、`style (prettier)`、
+  `installer-e2e`、三个 `runtime` 等），没有失败或取消。
 - **真浏览器三条路**（画廊 dev 7372 + Playwright Chromium，探针 `shaders-probe.mjs`，截图 `shots/shaders-*.png`）：
   - 没有 WebGPU 适配器：第一帧起就是静态替身，画布从不出现；
   - 系统要求减少动效（适配器可用）：同样只有替身；
@@ -13593,11 +13599,17 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - **没有把库带进发行包**：`pnpm --filter @adelie/web build` 成功，产物里 grep `data-renderer|typegpu|MeshGradient|
   SimplexNoise` **0 命中**（web 还没用这一族，树摇掉了）。画廊自己的 library 包从今往后含着色器库（未压缩
   2.7 MB），它是本地开发工具，不进发行包。
-- **本机 node_modules 的坑（与本笔无关，但记下来）**：这轮用 `pnpm --filter @adelie/ui add shaders` 之后，本机
-  node_modules 变成「注入式」布局（`.pnpm/@adelie+ui@file+packages+ui_…`），vitest 从那里解析 `@adelie/ui`
-  时按 JSX 经典模式编译，web / ui-gallery 里 6 个 suite 报 `React is not defined`。把改动全部 `git stash` 仍复现
-  → 与代码无关；在干净检出里 `pnpm install --frozen-lockfile` 得到的是普通符号链接（CI 就是这个形态，所以 CI
-  一直是绿的）。修法：把 `packages/{web,ui-gallery}/node_modules/@adelie/ui` 指回 `../../../ui`，之后 6 个 suite 全绿。
+- **这一轮最值得记的一件事：给 `packages/ui` 加一个依赖，会把 `@adelie/ui` 从「符号链接」变成「注入副本」，
+  web 与画廊的单测随即整片红。** 仓库开着 `injectWorkspacePackages`（锁文件 `settings` 里就写着 `true`），
+  只要某条工作区依赖边被重新解析（`pnpm add` 就会），pnpm 把它记成 `file:packages/ui(…)`，装出来是
+  `node_modules/.pnpm/@adelie+ui@file+packages+ui_…/node_modules/@adelie/ui` 这么一份真目录；打包的那一步
+  在 `node_modules` 里找不到这个包的 tsconfig，退回**经典 JSX 运行时**，于是每个间接 import `@adelie/ui` 的
+  套件都报 `React is not defined`。旧锁文件里这两条边是 `link:../ui`，所以这个问题一直是埋着的。
+  - 我起先误判成本机环境问题（`git stash` 后仍复现、干净检出里装出来是符号链接），提交推送后 CI 上真红了，
+    才定位到根因是**锁文件形态变了**，不是环境。
+  - 修法（本笔本体）：两份 vitest 配置里显式写 `esbuild: { jsx: "automatic" }` —— 与包自己 tsconfig 的
+    `jsx: react-jsx` 一致；注入副本与符号链接两种装法都验过全绿。改锁文件回 `link:` 也能让 CI 转绿，
+    但那只是把地雷埋回去：下次谁再给工作区包加依赖就再炸一次。
 - 端口：只用画廊自己的 7372（已停）；7364 / 3003 / 3004 / 4000 / 7369 一个没碰；数据一个字节没往
   `~/.penguin` / `~/.adelie` 里写（截图、探针与读到的读数都留在 scratchpad）。
 
@@ -13611,5 +13623,7 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 ### 收尾：提交、推送与汇报
 
 - 功能提交 **`7de152a1`**（`feat(ui,gallery): 组件库多了一族 GPU 背景，显卡不行就画同色的静态替身`），
-  `git add` 只加本轮的 13 个文件 + `pnpm-lock.yaml` + `pnpm-workspace.yaml`；台账这一笔单独一笔。
-- 汇报：中南邮箱按约定先探测（一轮只试一次），不通就走飞书 `send-feishu.py`。
+  `git add` 只加本轮的 13 个文件 + `pnpm-lock.yaml` + `pnpm-workspace.yaml`；台账这一笔单独一笔（`e455dd5d`）。
+- 追修 **`55e6d7e3`**（`fix(web,gallery): 依赖装成副本时，测试不再整片报 React is not defined`）：两份 vitest
+  配置加 `esbuild: { jsx: "automatic" }`，正是上面那条根因的修法；CI 在这笔上 22 个作业全绿。
+- 汇报：中南邮箱按约定先探测（一轮只试一次）—— `imap.csu.edu.cn:993` 仍超时，改走飞书。
