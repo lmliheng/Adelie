@@ -90,6 +90,9 @@ export function HooksTab({
   const [busy, setBusy] = useState(false);
   // Package name pending uninstall confirmation (non-null shows the confirm modal).
   const [removing, setRemoving] = useState<string | null>(null);
+  // The words for an uninstall the server refused, drawn inside the confirmation that asked for
+  // it (see confirmRemove): retrying is the next thing the person does, and the button is in there.
+  const [removeRefusal, setRemoveRefusal] = useState<string | null>(null);
   // Import modal: the source for the chat-import prompt + upload state travel with the modal.
   const [importOpen, setImportOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -133,22 +136,38 @@ export function HooksTab({
     }
   };
 
-  /** Confirm modal's "Confirm": uninstall, then always re-fetch the list from disk. */
+  /**
+   * A row's uninstall button: opens the confirmation without the previous attempt's reason —
+   * that sentence belonged to the attempt before, not to the package this one is about.
+   */
+  const askRemove = (name: string) => {
+    setRemoving(name);
+    setRemoveRefusal(null);
+  };
+
+  /**
+   * Confirm modal's "Confirm": uninstall, then always re-fetch the list from disk — but close the
+   * card only once the uninstall landed. A refused one changes nothing on either side (the
+   * package is still installed), so the card stays open with the server's words in it and the
+   * same button retries; closing it as the request left used to carry that reason into a toast
+   * that dismisses itself after six seconds and sits above the card.
+   */
   const confirmRemove = async () => {
     if (!projectId || removing === null) return;
     setBusy(true);
     try {
       await api.uninstallAgentHook(projectId, agentId, removing);
-      toastSuccess(S.hooks.uninstalledToast(removing, agentName));
-      await load();
-      // The agent card's hook count (and its plugin-update marks) changed; refresh the list provider too.
-      void reloadAgents();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setRemoveRefusal(apiErrorText(e));
+      return;
     } finally {
       setBusy(false);
-      setRemoving(null);
     }
+    toastSuccess(S.hooks.uninstalledToast(removing, agentName));
+    setRemoving(null);
+    await load();
+    // The agent card's hook count (and its plugin-update marks) changed; refresh the list provider too.
+    void reloadAgents();
   };
 
   /** Open the import modal (reset the form and upload state). */
@@ -319,7 +338,7 @@ export function HooksTab({
                   title={S.skills.uninstall}
                   aria-label={`${S.skills.uninstall} ${hook.name}`}
                   disabled={busy}
-                  onClick={() => setRemoving(hook.name)}
+                  onClick={() => askRemove(hook.name)}
                 >
                   <GlyphIcon d={ICONS.trash} size={14} />
                 </Button>
@@ -420,7 +439,8 @@ export function HooksTab({
         </p>
       </ConfirmModal>
 
-      {/* Uninstall confirmation (shared ConfirmModal, the Skills tab's pattern). */}
+      {/* Uninstall confirmation (shared ConfirmModal, the Skills tab's pattern): a refusal keeps
+          this card and shows the server's words in it. */}
       <ConfirmModal
         open={removing !== null}
         title={removing !== null ? S.hooks.uninstallConfirmTitle(removing) : ""}
@@ -429,6 +449,7 @@ export function HooksTab({
         onConfirm={() => void confirmRemove()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        refusal={removeRefusal === null ? undefined : S.common.refused(removeRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {removing !== null ? S.hooks.uninstallConfirmBody(removing, agentName) : ""}
