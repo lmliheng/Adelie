@@ -1333,6 +1333,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       按钮；整批都删掉了才关框。当前打开的那个对话只有当它**真的删掉**时才跳走。细节、两态读数与反证见
       「第一百零六轮」一节。**还差什么**：批量归档 / 批量取消归档仍走 `Promise.all` + toast（同一类「一半
       落地」，但它们没有确认框，被拒时该说什么要另定）；插件市场的「批量更新」（`pendingBulk`）照旧。
+- [x] **7.26 删除 MCP Server 被拒时，确认框留着，原因也留在框里**（**2026-10-22 第一百零八轮**落地，
+      提交见该节；1 处源码 `packages/web/src/features/agents/mcp-servers-section.tsx` + 1 个新文件
+      `packages/web/e2e/mcp-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：
+      接着 7.19–7.25 那条「原因随框留着」的线，取的是 7.20 点名过的 `agents` 页里最直的一处 ——「工具」页
+      MCP Server 表的行删除。那个区块每一次编辑都是「整张表 PUT 回去」，而 `confirmDelete` 在请求返回后
+      **无条件**关框：被拒的时候页面上与服务器上都一点没变（那一行还在），原因却跟着框一起没了，只落在一条
+      六秒后自己消失、还浮在框上方的 toast 里。**现在**：只有 `persist` 回真才 `setDeleting(null)`；被拒时
+      把服务端的原话交给新加的 `deleteRefusal` 状态，经 `ConfirmModal` 的 `refusal` 槽画在句子下面，重试就是
+      同一个按钮；从行上的「删除」打开卡片时（`askDelete`）先开框再清上一次的原因。细节、两态读数与反证见
+      「第一百零八轮」一节。**还差什么**：插件市场的「批量更新」与单 Agent 的卸载 / 更新、「删除插件」三张
+      「发出即关」的卡片照旧（7.25 末尾记的）；7.20 列的其它页面（`company` / `settings` 的其它小节 /
+      `chat` / `agents` 的其余区块 / `machines`）照旧。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1957,6 +1969,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-21 | 7.23 | **删除对话被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/components/layout/sidebar.tsx` 一处真修复 —— `confirmDeleteSession` 的 `catch` 不再 `toastError`、把服务端原话交给新加的 `deleteRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）；打开卡片先 `setDeletingSession(x)` 再清原因，重试开始那一刻也清；框「只在 DELETE 落地后才关」这条本来就有，本轮补的是原因；新增 `packages/web/e2e/session-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.19–7.22 那条线的下一页，取的是侧栏里最常见的一次破坏性操作 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的两份文件 **0 警告 0 错误** · 源码 / 新 spec / 两份 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **129 文件 / 1044** · core **67 / 1399 通过 / 6 跳过** · cli **38 / 561** · web **263 / 3223 通过 / 2 跳过** · server **202 / 2955 通过 / 4 跳过**（首跑一条红、同一条命令重跑即绿，两次都是这个总数；本笔不动服务端）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **116 passed（8.3m）、0 failed**（原 114 + 本笔 2）；新 spec 单跑 **2 passed（5.5s）** · **反证**：`git checkout HEAD --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（每条都死在 `dialog.getByText("session store is read-only")`，element(s) not found —— 旧代码只弹 toast），恢复并重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r103-look`、`localhost:8950`、1280×900，`DELETE /api/sessions/*` 被 `page.route` 拒成 500）：`dialogVisible true`、`reasonInDialog true`、`通知` 区 **0** 个按钮、那一行仍在、`scrollWidth = clientWidth`、**6.5 秒后框与那句话都还在**；截图 `r103/shots/look-3-refused.png`（框特写：danger 色「操作被拒绝：session store is read-only」在句子下面、取消 / 删除上方）与 `look-4-after-6s.png`；console 只有刻意注入的 500 · 端口只用 8940 / 8941（spec）与 8950（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r103-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ee2e3f14` |
 | 2026-10-22 | 7.24 | **插件设置里的操作被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/settings/plugins-section.tsx` 一处真修复 —— 确认框的 `onConfirm` 不再按下即 `setPendingAction(null)`，`runAction` 只在结果 `ok` 那一条关框；`catch` 与分组答 `ok: false` 都把原话交给新加的 `actionRefusal` 状态，确认框传 `refusal={…S.common.refused(…)}`（7.19 给 `ui` 加的那个槽）与 `busy={busy !== null}`（框现在活得比点击长，跑的时候两个按钮置灰）；`askAction` 打开时先开框再清上一次的原因；新增 `packages/web/e2e/plugin-action-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.23 末尾点名的「一个请求、成败二选一」的形态 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· `npx oxlint` 改动的源码 **0 警告 0 错误** · 源码 / 新 spec / 两份 changelog `prettier --check` 干净（新 spec 首版格式不过，已 `--write`）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1044** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 / 3223 通过 / 2 跳过**（与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **118 passed（8.3m）、0 failed**（原 116 + 本笔 2）；新 spec 单跑两态各一次（改后 **2 passed 4.6s** / 恢复后 **2 passed 4.4s**）· **反证**：`git stash push --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（一条死在框里找不到服务端原话、一条死在找不到分组那句「Another task is still running on this card.」—— 旧代码按下即关、只弹 toast），`git stash pop` + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r105-look`、`localhost:8950`、1280×900；**只桩 GET**（Linux 上没有任何分组报 action），POST 打到真服务端 —— 真 404 `plugin_config_unknown`，原话 `"sandbox" offers no action "probe-round".`）：`dialogVisible true`、框里一行「操作被拒绝："sandbox" offers no action "probe-round".」、`通知` 区 **0** 个按钮、`scrollWidth = clientWidth`、**6.5 秒后框与那句话都还在**；截图 `r105/look-2-refused.png`（框特写）与 `look-3-after-6s.png`；console 只有那一次刻意造的 404，无其它 error · 端口只用 8940 / 8941 / 8942（spec）· 8960（取材）· 8950（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r105-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e4ec28b8` |
 | 2026-10-22 | 7.25 | **批量删除被拒时，确认框留着，原因与没删掉的那几条也留着**（不是移植：`packages/web/src/components/layout/sidebar.tsx` 一处真修复 —— `confirmBatchDelete` 从 `Promise.all` 改成 `Promise.allSettled` 逐条收结果，落地的行交给 `forgetDeletedSessions` 并退出勾选、被拒的行留着勾（卡片里 `batchSelected.size` 因此正好是「重试会动到的那几条」），只有「一条都没被拒」才关框，否则把第一条拒绝的原话交给新加的 `batchDeleteRefusal` 状态、经 `ConfirmModal` 的 `refusal` 槽画在句子下面（7.19 给 `ui` 加的那个槽），文案 `chat.batchDeleteRefused(n, reason)`；当前打开的那个对话只有真的删掉才跳走；批量栏打开卡片时先清上一次的原因；既有单测 `packages/web/test/sidebar-batch-sessions.test.ts` 从钉旧写法改成钉新契约（+1 条文案用例）；新增 `packages/web/e2e/session-batch-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口**）：7.23 末尾点名的「批量删除（多行共用的那张框）」—— 批量是部分成功，`Promise.all` 让第一条被拒就把别的行到底删没删掉全丢了，框虽留着，原因只是 6 秒后自己消失、还浮在框上方的 toast，而所有行都还勾着，列表与服务端已经对不上 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，193 接口 / 589 类型）· 源码 / 新 spec / 既有单测 / 两份 changelog `prettier --check` 干净；`npx oxlint` 改动的文件 **0 警告 0 错误**；`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **129 / 1044** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 / 3224 通过 / 2 跳过**（上一轮 3223，本轮 +1 条文案用例；中间红过一次 —— 那份单测钉着 `forgetDeletedSessions(targets);` 与「清空勾选 ≥4 处」两处旧写法，改完断言转绿）· **整套浏览器 e2e**：`SKIP_BUILD=1 pnpm -C packages/web test:e2e` → **120 passed（7.7m）、0 failed**（原 118 + 本笔 2）；新 spec 单跑 **2 passed（6.9s）** · **反证**：`git stash push --` 那一个源码文件 + 重建 web 产物 → 同一份 spec **2 failed**（都死在框里找不到 `session store is read-only`，旧代码只弹 toast），`git stash pop` + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r106-look-*`、`localhost:8950` + mock 8951、1280×900，`DELETE` 只拒掉两条里的那条）：`dialogVisible true`、卡片 384px、框里「确定删除选中的 1 个对话？…」下面就是「还有 1 个对话没有删除：session store is read-only」、`通知` 区 **0** 个按钮、`horizontalOverflow 0`、侧栏只剩被拒那条且仍勾着、**6.5 秒后框与那句话都还在**、服务端 `gone 404` / `kept 200`；截图 `r106/look-{1-asked,2-refused,3-card,4-after-6s}.png`；console 只有那一次刻意造的 500 · 端口只用 8940 / 8941（spec）与 8950 / 8951（探针），e2e 是它自己的 8930 / 8931，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r106-*` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `0b844d22` |
+| 2026-10-22 | 7.26 | **删除 MCP Server 被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/agents/mcp-servers-section.tsx` 一处真修复（新增 `askDelete` + `deleteRefusal`，`confirmDelete` 只在 `persist` 回真时关框）+ 1 个新文件 `packages/web/e2e/mcp-delete-refusal.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：智能体设置「工具」页的 MCP Server 表里，「删除」那张确认框过去在请求返回后**无条件**关 —— 被拒的时候页面上与服务器上都一点没变（那一行还在），原因却跟着框一起没了，只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：写成功之后才关框；被拒时把服务端的原话交给 `deleteRefusal`，经 `ConfirmModal` 的 `refusal` 槽画在句子下面，重试就是同一个按钮；从行上的「删除」打开卡片时先开框再清上一次的原因。**为什么是它**：7.19–7.25 那条线的下一步，7.20 点名过的 `agents` 页里最直的一处；待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误**（514 文件）· 改动四个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · cli **38 / 561** · web **263 文件 / 3224 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**122 passed（8.3m）、0 failed**（原 120 条 + 本笔 2 条）· **反证**：把 `mcp-servers-section.tsx` 退回 `HEAD` 并重建 web → 同一份 spec **2 failed**（两条都死在「框里找不到那句 `agent config is read-only`」，16.6 s / 16.5 s）；`git stash pop` + 重建 → **2 passed** · **两态实测**（一次性数据根 `/root/adelie-fork-data/r108-look`、`localhost:8945`、`admin`，种子经真接口 PUT 一条 `probe-mcp` http 条目）：**改后**点「确认」被拒 → 卡片宽 384px、句子「确认删除 MCP Server「probe-mcp」？…」下面就是 danger 色的「操作被拒绝：agent config is read-only」、`通知` 区 **0** 个按钮、行仍在、服务器仍 1 条；放行重试 → 框关、行消失、服务器 0 条；两次 PUT 的请求体都是 `{"config":{"mcpServers":[]}}`（整张表去掉那一行）。console 只有那一次刻意造的 500，`bad` 也只有它；截图 `r108/look-{1-row,2-asked,3-refused,4-card,5-deleted}.png`、探针 `r108/probe-look.mjs`、单 spec 脚本 `r108/run-one.sh` 在 scratchpad · 端口只用 8940 / 8941 / 8945（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r108-look` 与 `/tmp/r108data.*`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `93971963` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -13627,3 +13640,69 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - 追修 **`55e6d7e3`**（`fix(web,gallery): 依赖装成副本时，测试不再整片报 React is not defined`）：两份 vitest
   配置加 `esbuild: { jsx: "automatic" }`，正是上面那条根因的修法；CI 在这笔上 22 个作业全绿。
 - 汇报：中南邮箱按约定先探测（一轮只试一次）—— `imap.csu.edu.cn:993` 仍超时，改走飞书。
+
+## 第一百零八轮：删除 MCP Server 被拒时，确认框留着，原因也留在框里（2026-10-22，条目 7.26）
+
+### 开工自检与选活
+
+- 同步：开工时 `main` 停在 `945dfec5`，`git status --short` 干净；`git fetch origin && git merge --ff-only
+  origin/main` 报 `Already up to date.`，没有别的线往这棵树里提交。
+- 选活：待办表上最靠前的未勾选条目仍是 2.2c（写侧只剩桌面壳、部署单元）、3.5（拍板取哪个桌面壳）、
+  3.6（要模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）—— 逐一仍不可做。于是接着 7.19–7.25
+  那条「原因随框留着」的线，取 7.20 点名过的 `agents` 页里最直的一处：智能体设置「工具」页的 MCP Server 表。
+
+### 先量清楚
+
+- 那个区块的每一次编辑都是「整张表 PUT 回 `…/agents/<id>/config`」；`confirmDelete` 的写法是
+  `if (err !== null) toastError(err); setDeleting(null);` —— **无条件**关框，被拒的原因只剩 toast。
+- 被拒时两侧都没变：`persist` 只在成功时 `setServers(res.config.mcpServers)`，所以页面上的行还在，服务器那份
+  列表也还在。也就是说「关框」纯属把原因带走，没有任何状态理由。
+
+### 改了什么（1 处源码 + 1 个新 spec + changelog 一对）
+
+- `packages/web/src/features/agents/mcp-servers-section.tsx`：`confirmDelete` 只在 `persist` 回真时
+  `setDeleting(null)`；被拒时把原话交给新加的 `deleteRefusal`，经 `ConfirmModal` 的 `refusal` 槽
+  （`S.common.refused(...)`）画在句子下面；行上的「删除」改走 `askDelete(index)` —— 先开框、再清上一次的
+  原因。写入在飞时确认框本来就有 `busy`，两个按钮不会连点。
+- `packages/web/e2e/mcp-delete-refusal.spec.mjs`（新，两条）：① 被拒的删除留着卡片、句子与那一行，`通知` 区
+  一个按钮都没有（不是 toast），服务器那份列表一字未变，重新打开不带旧原因；② 被拒之后再确认、这次放行 ——
+  卡片关掉、行消失、服务器列表里也没有它，且发出的请求体正是「整张表去掉那一行」。
+- `changelog/unreleased/2026-10-22-mcp-delete-refusal{,.zh}.md`：中英一对。
+- 没有接口、传输格式、已存数据或依赖变化。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 /
+  589 类型）—— 本笔不碰服务契约）。
+- `npx oxlint` 改动面 **0 警告 0 错误**（514 文件）；四个改动文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · cli **38 / 561** ·
+  web **263 文件 / 3224 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过**。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、
+  mock 8931 / 服务端 8930）：**122 passed（8.3m）、0 failed**（原 120 条 + 本笔 2 条）。
+- **反证**：把 `mcp-servers-section.tsx` 退回 `HEAD`（`git stash`）并重建 web → 同一份 spec **2 failed**
+  （两条都死在「框里找不到那句 `agent config is read-only`」，16.6 s / 16.5 s）；`git stash pop` + 重建 →
+  **2 passed**。
+- **真看一眼**（一次性数据根 `/root/adelie-fork-data/r108-look`、`localhost:8945`、`admin`，种子经真接口
+  PUT 一条 `probe-mcp` http 条目、并把 Project 的模型指到本地 mock 好让引导层不挡页面）：点「确认」被拒 →
+  卡片宽 384 px、句子上方是三角标、下面就是 danger 色的「操作被拒绝：agent config is read-only」，
+  `通知` 区 **0** 个按钮，行仍在、服务器仍 1 条；放行重试 → 框关、行消失、服务器 0 条；两次 PUT 的请求体都是
+  `{"config":{"mcpServers":[]}}`。console 只有那一次刻意造的 500，`bad` 也只有它。截图
+  `r108/look-{1-row,2-asked,3-refused,4-card,5-deleted}.png`、探针 `r108/probe-look.mjs`、单 spec 脚本
+  `r108/run-one.sh` 都在 scratchpad。
+- 端口：单 spec 8940 / 8941、探针 8945（都已停），整套 e2e 是它自己的 8930 / 8931；3003 / 3004 / 4000 /
+  7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r108-look` 与 `/tmp/r108data.*`，一个字节没往
+  `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- 插件市场的「批量更新」（`pendingBulk` 的部分成功）与单 Agent 的卸载 / 更新、「删除插件」那两张「发出即关」
+  的卡片照旧（7.25 末尾点过）；7.20 列的其它页面（`company` / `settings` 的其它小节 / `chat` / `agents` 的
+  其余区块 / `machines`）照旧。
+- 同一个 MCP 区块里新增 / 编辑的对话框本来就自己留着服务端的 400（`modalError`），行上的启停开关没有框可留
+  （被拒仍用 toast）—— 两者按 7.20 的口径没动。
+
+### 收尾：提交、推送与汇报
+
+- 功能提交 **`93971963`**（`fix(web): 删除 MCP Server 被拒时，确认框留着，原因也留在框里（7.26）`），
+  `git add` 只加本轮的 4 个文件（源码 / 新 spec / 两份 changelog）；台账这一笔单独一笔。
