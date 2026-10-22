@@ -13798,3 +13798,72 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - 汇报：先按约定试一次邮箱 —— `smtp.csu.edu.cn:465` 与 `imap.csu.edu.cn:993` 都超时（中南网段整片不通，
   不是凭据问题：`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试一次」的约定改走**飞书**：
   `feishu_send.py --check` 通过后发正文，已送达（`om_x100b62afe3a78cb8c091af7cb3361e8`）。
+
+## 第一百一十轮：发布 v0.5.4 并把现网升上去（2026-10-22，用户点单「直接发布版本吧，还要同步服务器 adelie 到最新版」）
+
+### 开工自检与选活
+
+- 用户这一轮点两件事：**发版**、**把现网 `/root/.adelie` 同步到最新版**；另外定了一条提交口径（见末尾）。
+  发版范围是 v0.5.3（tag `48ed0882`）之后落在 `main` 上的 16 笔里、除本轮那两笔之外的 14 笔，其中
+  4 个用户看得见的改动：插件设置 / 批量删除 / 删除 MCP Server 三处「被拒的原因留在框里」，以及组件库
+  新一族 GPU 背景（在 `@adelie/ui`，还没有页面用它）。
+- 版本号 **0.5.4**（补丁级：没有接口、数据根、配置格式、包名变化）。
+
+### 改了什么（只在独立发布树里动，`/root/adelie-fork` 一个字节没碰）
+
+- 独立干净树 `git worktree add -b release-0.5.4 /tmp/rel-0.5.4 c7d9f53a` + `pnpm install`。
+- **版本戳 `ec8243e0`** `chore(release): 0.5.4` —— 32 个文件：root + 10 个工作区包 + 20 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`（四个 private 的 sandbox 插件仍停在 0.2.3）；同一笔带上
+  changelog 一对 `changelog/unreleased/2026-10-22-shader-backdrops{,.zh}.md`。
+- **发布正文 `010f1d0b`** `docs(release): v0.5.4 的发布正文` —— 新文件 `docs/releases/RELEASE-v0.5.4.md`。
+- **注释 tag `v0.5.4`**（标题同发布正文抬头）指向 `010f1d0b`，40 位 SHA 逐字核对过；
+  `git push origin HEAD:main` + `git push origin v0.5.4`，推送后的 CI **`39726571591` 二十二个作业全绿**。
+- 14 件资产：CLI 三件（linux-x64 / universal / win32-x64，各带 `.sha256`）、桌面 Linux（AppImage + deb +
+  `latest-linux.yml`，本机 `electron-builder --linux`）、桌面 Windows（exe + blockmap + `latest.yml`）、
+  两个安装脚本。Windows 那三件从 `desktop-build.yml` 手工派发的运行 **`39727291517`** 里取 —— 这次用
+  **`ref=v0.5.4` + `tag=v0.5.4`**（把构建钉在发布提交上，比 `ref=main` 稳：main 随时会被别的会话推走），
+  三个平台全绿，工作流自己的 Windows 验签步骤也是通过的。
+- Release **`v0.5.4`**（id `420342828`，<https://github.com/lmliheng/Adelie/releases/tag/v0.5.4>）：14 件
+  资产 state 全 `uploaded` —— 上一轮那次 408 半截没有再出现（脚本里已给 `--max-time 1800` 并核对 state）。
+- npm：24 个包（20 个对外插件 + amsp + core + server + cli）都到 0.5.4、`latest` 都指过去（四个 private 的
+  sandbox 插件跳过）；走本地脚本 + `NPM_TOKEN_ADELIE`（CI 的 OIDC 要逐包配 Trusted Publisher，还没配）。
+- 3003 下载站 `/downloads/index.json` 刷到 v0.5.4，页头那处写死的角标也改成 v0.5.4（`index.html:348`）；
+  两份原文件各留了备份 `index.json.bak-20261022-v054` / `index.html.bak-20261022-v054`。
+- 现网：`/root/.adelie/bin/penguin update --yes` 把 `/root/.adelie` 升到 0.5.4（只换 `bin/lib/web/node`，
+  数据根不动）；重启交给 `systemd-run --no-block --unit=adelie-live-restart-0.5.4` 的瞬时单元（自己的
+  cgroup，延后 15 分钟），核验落在 `release-054/post-restart-verify.txt`。
+
+### 验证（都真跑过）
+
+- 发布树上构建与四道门禁全 `rc=0`：`pnpm -r build` · `pnpm typecheck` · `pnpm lint`（oxlint 0 警告
+  0 错误）· `pnpm format:check`（2256 个文件干净）· `pnpm -r test` **0 失败**（amsp 68 · docs 62 ·
+  ui 1052 · core 1399+6 跳 · server 2955+4 跳 · cli 561 · web 3224+2 跳 · desktop 304 · ui-gallery 140 ·
+  四个 sandbox 插件 99+6 跳）；`git diff --check` 干净。
+- `verify-assets-054.py` 三层校验全过：三件 CLI 的 `.sha256` 自洽、`latest*.yml` 里的 sha512 与 size 对得上
+  真实文件、deb `Version: 0.5.4`、两个安装脚本的戳都是 `v0.5.4`、占位符已清零；另写出
+  `release-download-manifest.tsv`（14 条）。
+- 下载口抽查：Release 页 200，四个资产的下载口 200；注册表上 24 个包 `0.5.4` 与 `latest` 都已就位
+  （刚发完有约十个包读到的还是旧版，几分钟后自己收敛，别为此升版本号）。
+- **重启后的现网**（`post-restart-verify.txt`）：`adelie-server` active、7364 在听、`GET /` 200、
+  `/api/me` 401、`/api/admin/storage` 200、`/api/install` 200、`penguin --version` v0.5.4、
+  `/api/version` 报 `{"version":"0.5.4","buildDate":"2026-10-22","commit":"010f1d0b…"}`；web 产物里本轮的
+  「个对话没有删除」与「操作被拒绝」各命中 1，上一版的「隐藏桌宠」仍在；旧镜像地址 0 命中、旧包名
+  `@lmliheng/*` 0 命中；数据根 `/root/.adelie/data` 与软链 `/root/.penguin/data` 没动、顶层 22 个条目、
+  无 `.old` / `.staging` 残留；3003 的清单与页头角标都已是 v0.5.4。
+
+### 没做 / 还差什么
+
+- 桌面端 macOS 未签名，照旧不随 Release 发布；docker 那条路在本仓是删掉的（`docker.yml` 的 push-to-main
+  与 tag 触发都不在），不派发。
+- `changelog/unreleased/` 没有按 `changelog/README.md` 的说法改名成版本目录 —— 本仓 v0.3.x 起一直如此。
+- 每个新包在 npmjs 网页上的 Trusted Publisher 仍未配（本仓走本地令牌发布，用不上）。
+
+### 收尾：提交、推送与汇报
+
+- 本轮记账就是这一笔。**从这一轮起，记账、CI 结论、汇报渠道这些说明合进这一轮自己那笔提交**，不再另开
+  「补记 / 更正」的提交（用户 2026-10-22：「下次提交 不用加补记这些」；口径已写进 `agent_state/AGENTS.md`
+  的「提交信息写人话」一节与长期记忆）。所以这一笔**不追记它自己那次 CI** —— 它是纯文档改动，按同一口径
+  不再为它单开一笔。
+- 汇报：按约定邮箱一轮只试一次（本轮 `imap.csu.edu.cn:993` 仍 TCP 超时，是不通网段而非凭据问题），改走
+  **飞书**，正文 `release-054/feishu-body.md`，已送达
+  （`om_x100b62aff74400bcc06d4f173ca53d9`）。
