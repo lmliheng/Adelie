@@ -32,7 +32,6 @@ import {
   PasswordInput,
   SettingsEmpty,
   SkeletonList,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -67,7 +66,8 @@ export function VaultTab({
   });
 
   const [entries, setEntries] = useState<VaultEntryInfo[] | null>(null);
-  // Tab-level error is only the initial load failure; saves/deletes report via toast.
+  // Tab-level error is only the initial load failure; a save reports on the form that produced
+  // it, and a refused delete inside the card that asked for it.
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Add modal: form state and per-field errors travel with the modal (a tab-level error would be hidden behind it).
@@ -80,6 +80,9 @@ export function VaultTab({
   const clearAddErrors = () => setAddErrors((p) => (p.key || p.value ? {} : p));
   // Key pending deletion confirmation (non-null shows the confirm modal).
   const [deleting, setDeleting] = useState<string | null>(null);
+  // The server's words for a delete it refused, drawn inside that same confirmation: the reason
+  // has to outlive the six-second toast, because retrying is the next thing the user does.
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   // Existing key pending overwrite confirmation (adding a key that's already configured replaces its value).
   const [overwriting, setOverwriting] = useState<string | null>(null);
   /**
@@ -172,11 +175,18 @@ export function VaultTab({
     setAdding(false);
   };
 
-  /** Confirm modal's "Confirm": closes the modal after deletion; a failure pops a toast. */
+  /**
+   * Confirm modal's "Confirm": only a written delete closes the card. A refused one keeps the
+   * card — and the server's words inside it — so the retry is the same button rather than a row
+   * that is still on the page plus a toast that has already left.
+   */
   const confirmRemove = async () => {
     if (deleting === null) return;
     const err = await persist({ entries: keepEntries(deleting) });
-    if (err !== null) toastError(err);
+    if (err !== null) {
+      setDeleteRefusal(err);
+      return;
+    }
     setDeleting(null);
   };
 
@@ -268,7 +278,12 @@ export function VaultTab({
                         size="sm"
                         variant="ghost"
                         disabled={busy}
-                        onClick={() => setDeleting(entry.key)}
+                        onClick={() => {
+                          // Open first, then drop the previous refusal: that sentence belonged to
+                          // the key the last attempt named.
+                          setDeleting(entry.key);
+                          setDeleteRefusal(null);
+                        }}
                       >
                         {S.vault.remove}
                       </Button>
@@ -477,6 +492,7 @@ export function VaultTab({
         onConfirm={() => void confirmRemove()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {deleting !== null ? S.vault.deleteConfirm(deleting) : ""}
