@@ -1371,6 +1371,23 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       一节。**还差什么**：7.26 / 7.27 末尾记的插件市场「批量更新」与单 Agent 的卸载 / 更新、「删除插件」
       三张「发出即关」的卡片，以及 7.20 列的其它页面（`company` / `settings` 的其它小节 / `chat` /
       `agents` 的其余区块 / `machines`）照旧。
+- [x] **7.29 插件卡上那三张确认框：删除 / 单 Agent 卸载 / 更新被拒时，框留着，原因也留在框里**
+      （**2026-10-22 第一百一十二轮**落地，提交见该节；1 处源码
+      `packages/web/src/features/plugins/plugins-page.tsx` + 1 个新文件
+      `packages/web/e2e/plugin-card-refusal.spec.mjs`（3 条用例）+ 一份既有 spec 的等待
+      （`packages/web/e2e/skills.spec.mjs`）+ changelog 一对，**无新依赖、不碰接口**）：7.26 / 7.27 / 7.28
+      末尾连着三轮点名的就是这三张卡片。三处的关框时机各错一种：删除与单 Agent 卸载在**请求发出之前**就关
+      （`setDeleteOpen(false)` / `setPendingUninstall(null)` 先走，`void onDelete(...)` 后发），更新则在
+      `await onUpdateOutdated(...)` 之后无条件关 —— 被拒的时候装上/装着的文件与插件目录一点没变，原因却只落在
+      一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：三个写入（`toggleInstall` / `updateOutdated` /
+      `removePlugin`）改回 `WriteOutcome`（模型库 7.19 那一对），只有写成功才关框，被拒时服务端原话经
+      `ConfirmModal` 的 `refusal` 槽画在句子下面、重试就是同一个按钮；卡片上没有确认的那条路（一键安装到某个
+      智能体、管理安装里的一行「安装」）自己弹 toast。**两处顺带不再「先斩后奏」**，都是因为优化更新会把发起它
+      的那张框掀掉：删除不再先把卡片从列表里抹掉（请求在飞时确认按钮标 `busy`），卸载不再在请求发出时先动已装
+      快照（抹掉当前智能体的副本会让卡片翻成「未安装」并挪到另一分区，卡片重挂 = 框与原因一起没）。细节、
+      两态读数、反证与那份既有 spec 为什么要多等一步见「第一百一十二轮」一节。**还差什么**：插件市场的
+      「批量更新」（`pendingBulk`，部分成功，要讲清哪些没更新）照旧；7.20 列的其它页面（`company` /
+      `settings` 的其它小节 / `chat` / `agents` 的其余区块 / `machines`）照旧。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -1998,6 +2015,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-22 | 7.26 | **删除 MCP Server 被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/agents/mcp-servers-section.tsx` 一处真修复（新增 `askDelete` + `deleteRefusal`，`confirmDelete` 只在 `persist` 回真时关框）+ 1 个新文件 `packages/web/e2e/mcp-delete-refusal.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：智能体设置「工具」页的 MCP Server 表里，「删除」那张确认框过去在请求返回后**无条件**关 —— 被拒的时候页面上与服务器上都一点没变（那一行还在），原因却跟着框一起没了，只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：写成功之后才关框；被拒时把服务端的原话交给 `deleteRefusal`，经 `ConfirmModal` 的 `refusal` 槽画在句子下面，重试就是同一个按钮；从行上的「删除」打开卡片时先开框再清上一次的原因。**为什么是它**：7.19–7.25 那条线的下一步，7.20 点名过的 `agents` 页里最直的一处；待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误**（514 文件）· 改动四个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · cli **38 / 561** · web **263 文件 / 3224 通过 / 2 跳过** · server **202 文件 / 2955 通过 / 4 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**122 passed（8.3m）、0 failed**（原 120 条 + 本笔 2 条）· **反证**：把 `mcp-servers-section.tsx` 退回 `HEAD` 并重建 web → 同一份 spec **2 failed**（两条都死在「框里找不到那句 `agent config is read-only`」，16.6 s / 16.5 s）；`git stash pop` + 重建 → **2 passed** · **两态实测**（一次性数据根 `/root/adelie-fork-data/r108-look`、`localhost:8945`、`admin`，种子经真接口 PUT 一条 `probe-mcp` http 条目）：**改后**点「确认」被拒 → 卡片宽 384px、句子「确认删除 MCP Server「probe-mcp」？…」下面就是 danger 色的「操作被拒绝：agent config is read-only」、`通知` 区 **0** 个按钮、行仍在、服务器仍 1 条；放行重试 → 框关、行消失、服务器 0 条；两次 PUT 的请求体都是 `{"config":{"mcpServers":[]}}`（整张表去掉那一行）。console 只有那一次刻意造的 500，`bad` 也只有它；截图 `r108/look-{1-row,2-asked,3-refused,4-card,5-deleted}.png`、探针 `r108/probe-look.mjs`、单 spec 脚本 `r108/run-one.sh` 在 scratchpad · 端口只用 8940 / 8941 / 8945（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r108-look` 与 `/tmp/r108data.*`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `93971963` |
 | 2026-10-22 | 7.27 | **卸载技能被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/agents/skills-tab.tsx` 一处真修复（新增 `askRemove` + `removeRefusal`，`confirmRemove` 只在 `removeAgentSkill` 回了真时关框、失败时把原话交给确认框的 `refusal` 槽）+ 1 个新文件 `packages/web/e2e/skill-uninstall-refusal.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：智能体设置「技能」页的「移除」那张确认框过去在 `finally` 里关 —— 被拒的时候技能在页面上与磁盘上都还装着，原因却跟着框一起没了，只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：卸载成功之后才关框（并弹成功提示、重读本页、刷新智能体列表）；被拒时服务端原话画在句子下面，重试就是同一个按钮；从行上的「移除」打开卡片时先开框再清上一次的原因。**为什么是它**：7.19–7.26 那条线的下一步、`agents` 页技能表里最常见的一处；待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动四个文件 `prettier --check` 干净（新 spec 首版格式不过，已 `--write`）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 通过 / 6 跳过** · ui **1052** · server **2955 通过 / 4 跳过** · cli **561** · web **263 文件 / 3224 通过 / 2 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**124 passed（8.4m）、0 failed**（原 122 条 + 本笔 2 条）· **反证**：把 `skills-tab.tsx` 退回旧写法（`finally` 里 `setRemoving(null)` + `toastError`）并重建 web → 同一份 spec **2 failed**（两条都死在「框里找不到那句 `agent state is read-only`」，16.5 s / 16.4 s）；还原 + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r109-e2e`、`localhost:8950` + mock 8951、1280×900，种子取 `default_agent` 自带的 `agent-evaluation`、`DELETE` 只拒掉那一条）：框里句子下面就是 danger 色的「操作被拒绝：agent state is read-only」、技能行仍在、`通知` 区 **0** 个按钮、页面无 JS 错误（唯一两条 4xx/5xx 是登录后本就有的 `/machines` 403 与本轮刻意造的 500）；截图 `r109-ask.png` / `r109-refused.png`、探针 `probe.mjs` 在 scratchpad · 端口只用 8950 / 8951（跑完都已停），e2e 是它自己的 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r109-e2e` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `be9d9698` |
 | 2026-10-22 | 7.28 | **卸载钩子包被拒时，确认框留着，原因也留在框里**（不是移植：`packages/web/src/features/agents/hooks-tab.tsx` 一处真修复（新增 `askRemove` + `removeRefusal`，`confirmRemove` 只在 `uninstallAgentHook` 回了真时关框、失败时把原话交给确认框的 `refusal` 槽）+ 1 个新文件 `packages/web/e2e/hook-uninstall-refusal.spec.mjs`（两条用例）+ changelog 一对，**无新依赖、不碰接口**）：智能体设置「钩子」页那张卸载确认框过去在 `finally` 里关 —— 被拒的时候包在页面上与磁盘上都还装着（什么都没变），原因却跟着框一起没了，只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：卸载成功之后才关框（并弹成功提示、重读本页、刷新智能体列表）；被拒时服务端原话画在句子下面，重试就是同一个按钮；从行上的卸载按钮打开卡片时先开框再清上一次的原因。**为什么是它**：7.27 末尾点名留给下一轮的「`hooks-tab` 那条同形的卸载」；待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1399 通过 / 6 跳过**（67 文件 + 1 跳过）· ui **130 文件 / 1052 通过** · server **202 文件 / 2955 通过 / 4 跳过** · cli **38 文件 / 561 通过** · web **263 文件 / 3224 通过 / 2 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**126 passed（9.0m）、0 failed**（原 124 条 + 本笔 2 条）· **反证**：把 `hooks-tab.tsx` 退回旧写法（`finally` 里 `setRemoving(null)` + `toastError`）并重建 web → 同一份 spec **2 failed**（两条都死在「框里找不到那句 `agent state is read-only`」，15 s 超时）；还原 + 重建后 **2 passed** · **真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r111`、`localhost:8960` + mock 8961、1280×900，种子取新建智能体自带的 `goal` 钩子包、`DELETE` 只拒掉那一条）：**改前** `dialogs 0`、`reasonInDialog 0`、`通知` 区 **1** 个按钮（正是服务端那句话），6.5 秒后 `reasonAfter6s 0`，截图里框已经没了、原因只剩顶上一枚浮着的 toast；**改后** `dialogs 1`、`reasonInDialog 1`、`toasts 0`、行仍在、6.5 秒后原因仍在，框里的文字比改前只多那一行；重开卡片**不带**旧原因（`reasonOnReopen 0`）；放行后再确认 —— 框关、行消失、服务端已装列表里也没有它；两态 console 各只有登录后就有的 `/machines` **403** 与本轮刻意造的 500，**无 pageerror**；截图 `r111/shots/{tab,ask,refused,refused-after-6s,reopened,written}.png` 与改前 `r111/shots-before/…`、探针 `r111/probe.mjs` 在 scratchpad · 端口只用 8960 / 8961（跑完都已停），e2e 是它自己的 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r111` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `f6f82fe7` |
+| 2026-10-22 | 7.29 | **插件卡上那三张确认框（删除插件 / 单 Agent 卸载 / 更新）被拒时，框留着，原因也留在框里**（不是移植：`packages/web/src/features/plugins/plugins-page.tsx` 一处真修复（+137 −49：三个写入 `toggleInstall` / `updateOutdated` / `removePlugin` 改回 `WriteOutcome`（模型库 7.19 那一对），卡片上新增 `updateRefusal` / `uninstallRefusal` / `deleteRefusal` 三个原因状态与 `askUpdate` / `askUninstall` / `askDelete` 三个开框帮手、三个确认框各接一个 `busy`，只有写成功才关框）+ 1 个新文件 `packages/web/e2e/plugin-card-refusal.spec.mjs`（三条用例，+284）+ 一份既有 spec 的等待（`packages/web/e2e/skills.spec.mjs` +6 −1）+ changelog 一对（+92），**无新依赖、不碰接口**）：7.26 / 7.27 / 7.28 末尾连着三轮点名的就是这三张卡片，三处各错一种关框时机 —— 删除与单 Agent 卸载在**请求发出之前**就关（`setDeleteOpen(false)` / `setPendingUninstall(null)` 先走、`void onDelete(...)` 后发），更新在 `await onUpdateOutdated(...)` 之后**无条件**关；被拒的时候装上/装着的文件与插件目录一点没变，原因却只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：只有写成功才关框，被拒时服务端原话经 `ConfirmModal` 的 `refusal` 槽画在句子下面（`S.common.refused(...)`）、重试就是同一个按钮；卡片上没有确认的那条路（一键安装到某个智能体、管理安装里的一行「安装」）自己弹 toast，因为那里没有框可留。**两处顺带不再「先斩后奏」**（两态实测撞出来的，不是猜的）：删除不再先把卡片从列表里抹掉 —— 卡片就是发问的那张，请求在飞时把它摘掉等于把问题与原因一起摘掉，现在目录真的删掉之后卡片才走、等待期间确认按钮标 `busy`；卸载不再在请求发出时先动已装快照 —— 抹掉当前智能体的副本会让卡片翻成「未安装」并挪到另一个分区，卡片随之重挂，重挂那一瞬框与原因都没了，现在快照在答复之后才动。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动的三个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 文件 / 3224 通过 / 2 跳过**（与上轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**129 passed（8.3m）、0 failed**（原 126 条 + 本笔 3 条）· **反证**：把 `plugins-page.tsx` 退回 `HEAD`（`git stash push --` 只带这一个路径）并重建 web → 同一份 spec **3 failed**（三条都死在框里找不到那句话：`删除 probe-plugin` / `卸载 probe-plugin` / `更新 probe-plugin` 的 `getByText` 15 s 超时，element(s) not found；现场留在 scratchpad 的 `r112/before-test-results`），`git stash pop` + 重建后 **3 passed（5.5s）** · **两态实测**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r112-a`、`localhost:8972`、`admin`、1280×900，插件库 / 已装列表用夹具、三条写由 `page.route` 拒成 500）：删除 —— 框里句子下面就是 danger 色的「操作被拒绝：plugin store is read-only」、`通知` 区 **0** 个按钮、**6.5 秒后原因仍在**；卸载 —— 同一行「操作被拒绝：agent state is read-only」、管理安装那张 Modal 在背后没有关；更新 —— 同一行「agent state is read-only」；三者放行重试时框才关（删除那次卡片也一起消失，`afterDelete {dialog 0, card 0}`、`afterUpdate {dialog 0}`），全套 console **只有那三次刻意造的 500**（`bad` 里也只有它们）、无 pageerror；截图 `r112/shots/{1-card,2-delete-asked,3-delete-refused,4-delete-refused-after-6s,5-delete-written,6-manage-installs,7-uninstall-asked,8-uninstall-refused,9-uninstall-refused-after-6s,10-update-asked,11-update-refused,12-update-written}.png`、探针 `r112/probe.mjs`、单 spec 脚本 `r112/run-one.sh` 在 scratchpad · **那份既有 spec 为什么多等一步**（第一次整套跑唯一的一条红）：`skills.spec` 在「确认卸载」之后立刻按 Escape，过去框在请求前就关了，所以那一下必然落在外层「管理安装」Modal 上；现在框在**答复之后**才关，而「行翻回安装」与「框离开」是**两次提交**（`toggleInstall` 里那次 `setAgentInstalls` 先被 React 冲刷，调用方的 `setPendingUninstall(null)` 落在下一段微任务），于是 Escape 有时会把还开着的那张确认框关掉、外层留着 —— 改成先 `expect(uninstallConfirm).toHaveCount(0)` 再按 Escape（**只加等待，不改产品代码、不放松断言**），随后整套 **129 passed** · 端口只用 8972 与 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r112-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d1ac2d27` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -13957,3 +13975,83 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 - 本轮试过用 `POST …/hooks/archive` 上传一个自造 zip 当夹具（写了一个只用 `node:zlib` 的 `zip.mjs`，`unzip -t`
   验过合法），后来发现新建 Agent 自带 `goal` 钩子包，就把它撤掉了 —— 少一个文件、少一处夹具维护；下次要造
   自定义钩子包时这段仍然可用（生成方式记在探针的注释里）。
+
+## 第一百一十二轮：插件卡上那三张确认框被拒时，框留着，原因也留在框里（2026-10-22，条目 7.29）
+
+### 为什么是这一条
+
+7.26 / 7.27 / 7.28 的末尾连着三轮记着同一句「还差什么」：**插件市场的「批量更新」与单 Agent 的卸载 / 更新、
+「删除插件」三张「发出即关」的卡片照旧**。待办里能一轮做完的条目仍然没有 —— 2.2c 的写侧全在桌面壳一侧且本机
+按纪律不碰、3.5 要用户拍板、3.6 要模型 key（卡点）、4.1–4.3 明令不动、5.6 / 5.10 要拍板或新依赖 —— 于是接着
+「原因随框留着」这条自己长的线，把这三张一次做完（它们都在同一张卡片、同一处关框时机，拆成三轮反而更贵）。
+
+三处的错法各不相同，两处更狠：**删除**与**单 Agent 卸载**在请求发出**之前**就把框关了（`setDeleteOpen(false)`
+/ `setPendingUninstall(null)` 先走、`void onDelete(...)` 后发），**更新**则 `await` 完无条件关。被拒的时候
+装上/装着的文件与插件目录一点没变，原因却只剩一条六秒后自己消失、还浮在框上方的 toast。
+
+### 改了什么（1 处源码 + 1 个新 spec + 一份既有 spec 的等待 + changelog 一对，+519 −50）
+
+- `packages/web/src/features/plugins/plugins-page.tsx`（+137 −49）：
+  - 三个写入改回 `WriteOutcome`（模型库 7.19 那一对类型）：`toggleInstall` 被拒时不再自己 `toastError`，把
+    原话交回去；`updateOutdated` 部分成功时把第一个失败的原话交回去（落地的那几个保留新的已装状态）；新写的
+    `removePlugin` 先写、成功才从列表里摘卡片，被拒时只回话、不再动列表。
+  - `PluginCard` 新增 `updateRefusal` / `uninstallRefusal` / `deleteRefusal` 三个原因状态，`askUpdate` /
+    `askUninstall` / `askDelete` 三个「先开框、再清上一次的原因」的帮手，三张确认框各接一个 `busy`；三处
+    `onConfirm` 改成只在答案回真时关框，被拒时把原话交给 `ConfirmModal` 的 `refusal` 槽
+    （`S.common.refused(...)`）。
+  - 卡片上没有确认的那条路（一键安装到当前智能体、管理安装里的一行「安装」）走 `installNow`，被拒时自己弹
+    toast —— 那里没有框可留，这是 `WriteOutcome` 的文档注释里点名的那一类调用点。
+- **两处顺带不再「先斩后奏」**，都是两态实测撞出来的：
+  - 删除不再先把卡片从列表里抹掉。卡片就是发问的那张，请求在飞时把它摘掉 = 摘掉问题与原因（第一版就是这么
+    写的，探针里 `dialogs 0`、原因只剩 toast）。
+  - 卸载不再在请求发出时先动已装快照。抹掉**当前智能体**的副本会让卡片翻成「未安装」并挪到另一个分区，卡片
+    随之重挂 —— 重挂那一瞬框与原因都没了。现在快照在答复之后才动，行在等待期间保持「已安装」（被拒时也正是
+    它该在的状态）。
+- 新文件 `packages/web/e2e/plugin-card-refusal.spec.mjs`（三条用例：删除 / 卸载 / 更新）：被拒时框、句子与
+  卡片或行都在，`通知` 区 0 个按钮，重开不带旧原因；放行重试时框才关（删除那次卡片也一起消失）。插件库与
+  已装列表用夹具（开发数据根没有用户插件），三条写由 `page.route` 接管；更新那条的 `pluginUpdates` 是服务端
+  自己的比较，夹具里就着真响应改一个字段（其余字段仍是服务端给的）。
+- `packages/web/e2e/skills.spec.mjs`（+6 −1）：**只加一步等待**。它在「确认卸载」之后立刻按 Escape —— 过去
+  框在请求前就关了，那一下必然落在外层「管理安装」Modal 上；现在框在答复之后才关，而「行翻回安装」与「框
+  离开」是**两次提交**（`toggleInstall` 里那次 `setAgentInstalls` 先被 React 冲刷，调用方的
+  `setPendingUninstall(null)` 落在下一段微任务），于是 Escape 有时关掉的是还开着的那张确认框、外层留着。
+  改成先 `expect(uninstallConfirm).toHaveCount(0)` 再按 Escape：不改产品代码、不放松断言。
+- changelog 一对 `changelog/unreleased/2026-10-22-plugin-card-refusal{,.zh}.md`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 / 589
+  类型）—— 本笔不碰服务契约）。
+- `npx oxlint` 改动面 **0 警告 0 错误**（3 文件）；改动的三个文件 `prettier --check` 干净（新 spec 首版一处不齐，
+  已 `--write`）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 文件 / 1052 通过** ·
+  server **202 文件 / 2955 通过 / 4 跳过** · cli **38 文件 / 561 通过** · web **263 文件 / 3224 通过 / 2 跳过**
+  （与上一轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、
+  mock 8931 / 服务端 8930）：**129 passed（8.3m）、0 failed**（原 126 条 + 本笔 3 条）。第一次整套跑是
+  **128 passed / 1 failed**，红的就是上面那条 `skills.spec`，改法见上；新 spec 单跑 **3 passed（5.5s）**。
+- **反证**：`git stash push -- packages/web/src/features/plugins/plugins-page.tsx`（只带这一个路径）并重建 web
+  → 同一份 spec **3 failed**（三条都死在框里找不到那句话：`删除 probe-plugin` / `卸载 probe-plugin` /
+  `更新 probe-plugin` 的 `getByText` 15 s 超时，element(s) not found）；`git stash pop` + 重建后 **3 passed**。
+  现场留在 scratchpad 的 `r112/before-test-results`。
+- **两态实测真看一眼**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r112-a`、`localhost:8972`、
+  `admin`、1280×900；插件库与已装列表用夹具，三条写由 `page.route` 拒成 500）：
+  - **删除**：点「删除插件」→ 框里句子下面就是 danger 色的「操作被拒绝：plugin store is read-only」，
+    `通知` 区 **0** 个按钮，**6.5 秒后原因仍在**（`3-delete-refused.png` / `4-delete-refused-after-6s.png`）；
+    放行重试 → 框关、卡片消失（`afterDelete {dialog 0, card 0}`）。
+  - **单 Agent 卸载**：管理安装那张 Modal 在背后没关，它的上面是「操作被拒绝：agent state is read-only」，
+    6.5 秒后仍在（`8-uninstall-refused.png` / `9-uninstall-refused-after-6s.png`）。
+  - **更新**：同一行「agent state is read-only」，放行重试后框关（`afterUpdate {dialog 0}`）。
+  - 探针读数：三态都是 `dialog true / reasonInDialog true / toasts 0`；整套 console **只有那三次刻意造的 500**
+    （`bad` 里也只有它们），**无 pageerror**。探针 `r112/probe.mjs`、单 spec 脚本 `r112/run-one.sh`、
+    截图 `r112/shots/1-…12-….png` 都在 scratchpad。
+- 端口：探针 8972（已停），整套 e2e 是它自己的 8930 / 8931；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据
+  只落在 `/root/adelie-fork-data/r112-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写
+  （`packages/*/dist`、`test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- 插件市场的「批量更新」（`pendingBulk`）照旧：它是部分成功，而且那张框在页面层、不在卡片里；要讲清「哪些
+  智能体没更新」得另定一句话与一条 `bulkOutcome` 式的收尾，属它自己一轮。
+- 7.20 列的其它页面（`company` / `settings` 的其它小节 / `chat` / `agents` 的其余区块 / `machines`）照旧。
