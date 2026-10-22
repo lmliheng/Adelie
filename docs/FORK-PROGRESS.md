@@ -13793,4 +13793,8 @@ Token 两枚 chip）；探针在页面里用一个 rAF 采样器逐帧读盒子�
 ### 收尾：提交、推送与汇报
 
 - 功能提交 **`be9d9698`**（`fix(web): 卸载技能被拒时，确认框留着，原因也留在框里（7.27）`），`git add`
-  只加本轮的 4 个文件（源码 / 新 spec / 两份 changelog）；台账这一笔单独一笔。
+  只加本轮的 4 个文件（源码 / 新 spec / 两份 changelog）；台账这一笔单独一笔（`3ce22683`），两笔都已推
+  `origin/main`。
+- 汇报：先按约定试一次邮箱 —— `smtp.csu.edu.cn:465` 与 `imap.csu.edu.cn:993` 都超时（中南网段整片不通，
+  不是凭据问题：`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里）。按「一轮只试一次」的约定改走**飞书**：
+  `feishu_send.py --check` 通过后发正文，已送达（`om_x100b62afe3a78cb8c091af7cb3361e8`）。
