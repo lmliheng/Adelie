@@ -75,6 +75,9 @@ importers:
       '@adelie/continual-learning':
         specifier: workspace:*
         version: link:../../plugins/continual-learning
+      '@adelie/core':
+        specifier: workspace:*
+        version: link:../core
       '@adelie/csu-mail':
         specifier: workspace:*
         version: link:../../plugins/csu-mail
@@ -93,15 +96,12 @@ importers:
       '@adelie/model-development':
         specifier: workspace:*
         version: link:../../plugins/model-development
-      '@adelie/core':
-        specifier: workspace:*
-        version: link:../core
-      '@adelie/server':
-        specifier: workspace:*
-        version: file:packages/server(supports-color@10.2.2)(zod@4.4.3)
       '@adelie/requirements-box':
         specifier: workspace:*
         version: link:../../plugins/requirements-box
+      '@adelie/server':
+        specifier: workspace:*
+        version: file:packages/server(supports-color@10.2.2)(zod@4.4.3)
       '@adelie/skill-porting':
         specifier: workspace:*
         version: link:../../plugins/skill-porting
@@ -422,18 +422,18 @@ importers:
 
   packages/server:
     dependencies:
-      '@hono/node-server':
-        specifier: '>=2.0.5'
-        version: 2.0.12(hono@4.12.34)
-      '@larksuiteoapi/node-sdk':
-        specifier: ^1.73.0
-        version: 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
       '@adelie/amsp':
         specifier: workspace:*
         version: link:../amsp
       '@adelie/core':
         specifier: workspace:*
         version: file:packages/core(supports-color@10.2.2)(ws@8.21.0)
+      '@hono/node-server':
+        specifier: '>=2.0.5'
+        version: 2.0.12(hono@4.12.34)
+      '@larksuiteoapi/node-sdk':
+        specifier: ^1.73.0
+        version: 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
       '@xterm/headless':
         specifier: ^5.5.0
         version: 5.5.0
@@ -543,6 +543,9 @@ importers:
       remark-parse:
         specifier: ^11.0.0
         version: 11.0.0(supports-color@10.2.2)
+      shaders:
+        specifier: ^4.0.5
+        version: 4.0.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       shiki:
         specifier: ^4.3.1
         version: 4.3.1
@@ -582,7 +585,7 @@ importers:
     dependencies:
       '@adelie/ui':
         specifier: workspace:*
-        version: link:../ui
+        version: file:packages/ui(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@10.2.2)
       react:
         specifier: ^19.1.0
         version: 19.2.7
@@ -637,7 +640,7 @@ importers:
         version: file:packages/core(supports-color@10.2.2)(ws@8.21.0)
       '@adelie/ui':
         specifier: workspace:*
-        version: link:../ui
+        version: file:packages/ui(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@10.2.2)
       '@xterm/addon-clipboard':
         specifier: ^0.1.0
         version: 0.1.0(@xterm/xterm@5.5.0)
@@ -760,12 +763,12 @@ importers:
         specifier: ^3.1.0
         version: 3.1.6
     devDependencies:
-      '@deepseek-ai/dsh-sandbox':
-        specifier: 0.1.0-rc.7
-        version: 0.1.0-rc.7(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-llm@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-attachment@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-timeout@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))))(@deepseek-ai/dsh-session@0.1.0-rc.8(fbdb1d988541b64ff002d18c4ded7293))
       '@adelie/core':
         specifier: workspace:*
         version: file:packages/core(supports-color@10.2.2)(ws@8.21.0)
+      '@deepseek-ai/dsh-sandbox':
+        specifier: 0.1.0-rc.7
+        version: 0.1.0-rc.7(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-llm@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-attachment@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-brand@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)))(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))(@deepseek-ai/dsh-timeout@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1)(@deepseek-ai/dsh-invariants@0.1.0-rc.8(@deepseek-ai/cordis@4.0.1))))(@deepseek-ai/dsh-session@0.1.0-rc.8(fbdb1d988541b64ff002d18c4ded7293))
       tsup:
         specifier: ^8.3.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.23)(supports-color@10.2.2)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0)
@@ -814,6 +817,92 @@ importers:
   plugins/wechat-miniprogram: {}
 
 packages:
+
+  '@adelie/agent-company@file:plugins/agent-company':
+    resolution: {directory: plugins/agent-company, type: directory}
+
+  '@adelie/agent-development@file:plugins/agent-development':
+    resolution: {directory: plugins/agent-development, type: directory}
+
+  '@adelie/agent-tuning@file:plugins/agent-tuning':
+    resolution: {directory: plugins/agent-tuning, type: directory}
+
+  '@adelie/amsp@file:packages/amsp':
+    resolution: {directory: packages/amsp, type: directory}
+    engines: {node: '>=24'}
+
+  '@adelie/browser-automation@file:plugins/browser-automation':
+    resolution: {directory: plugins/browser-automation, type: directory}
+
+  '@adelie/cli@file:packages/cli':
+    resolution: {directory: packages/cli, type: directory}
+    engines: {node: '>=24'}
+    hasBin: true
+
+  '@adelie/continual-learning@file:plugins/continual-learning':
+    resolution: {directory: plugins/continual-learning, type: directory}
+
+  '@adelie/core@file:packages/core':
+    resolution: {directory: packages/core, type: directory}
+    engines: {node: '>=24'}
+
+  '@adelie/csu-mail@file:plugins/csu-mail':
+    resolution: {directory: plugins/csu-mail, type: directory}
+
+  '@adelie/data-analysis@file:plugins/data-analysis':
+    resolution: {directory: plugins/data-analysis, type: directory}
+
+  '@adelie/goal@file:plugins/goal':
+    resolution: {directory: plugins/goal, type: directory}
+
+  '@adelie/hmr@file:packages/hmr':
+    resolution: {directory: packages/hmr, type: directory}
+
+  '@adelie/humanizer@file:plugins/humanizer':
+    resolution: {directory: plugins/humanizer, type: directory}
+
+  '@adelie/lesson-video@file:plugins/lesson-video':
+    resolution: {directory: plugins/lesson-video, type: directory}
+
+  '@adelie/model-development@file:plugins/model-development':
+    resolution: {directory: plugins/model-development, type: directory}
+
+  '@adelie/requirements-box@file:plugins/requirements-box':
+    resolution: {directory: plugins/requirements-box, type: directory}
+
+  '@adelie/server@file:packages/server':
+    resolution: {directory: packages/server, type: directory}
+    engines: {node: '>=24'}
+
+  '@adelie/skill-porting@file:plugins/skill-porting':
+    resolution: {directory: plugins/skill-porting, type: directory}
+
+  '@adelie/software-development@file:plugins/software-development':
+    resolution: {directory: plugins/software-development, type: directory}
+
+  '@adelie/ui@file:packages/ui':
+    resolution: {directory: packages/ui, type: directory}
+    peerDependencies:
+      react: ^19.1.0
+      react-dom: ^19.1.0
+
+  '@adelie/use-bento-slides@file:plugins/use-bento-slides':
+    resolution: {directory: plugins/use-bento-slides, type: directory}
+
+  '@adelie/use-claude-code@file:plugins/use-claude-code':
+    resolution: {directory: plugins/use-claude-code, type: directory}
+
+  '@adelie/use-firecrawl@file:plugins/use-firecrawl':
+    resolution: {directory: plugins/use-firecrawl, type: directory}
+
+  '@adelie/use-offerdao@file:plugins/use-offerdao':
+    resolution: {directory: plugins/use-offerdao, type: directory}
+
+  '@adelie/use-wps-office@file:plugins/use-wps-office':
+    resolution: {directory: plugins/use-wps-office, type: directory}
+
+  '@adelie/wechat-miniprogram@file:plugins/wechat-miniprogram':
+    resolution: {directory: plugins/wechat-miniprogram, type: directory}
 
   '@ampproject/remapping@2.3.0':
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
@@ -1503,86 +1592,6 @@ packages:
 
   '@larksuiteoapi/node-sdk@1.73.0':
     resolution: {integrity: sha512-gs4EiupJ6RdYAEJGtuYrCVsB7wSMBwtUDK+ilpmOHD6RTvbtciW6AWciQO9coOQVuBZfh7hvAi25dPfCsny/nA==}
-
-  '@adelie/agent-company@file:plugins/agent-company':
-    resolution: {directory: plugins/agent-company, type: directory}
-
-  '@adelie/agent-development@file:plugins/agent-development':
-    resolution: {directory: plugins/agent-development, type: directory}
-
-  '@adelie/agent-tuning@file:plugins/agent-tuning':
-    resolution: {directory: plugins/agent-tuning, type: directory}
-
-  '@adelie/amsp@file:packages/amsp':
-    resolution: {directory: packages/amsp, type: directory}
-    engines: {node: '>=24'}
-
-  '@adelie/browser-automation@file:plugins/browser-automation':
-    resolution: {directory: plugins/browser-automation, type: directory}
-
-  '@adelie/continual-learning@file:plugins/continual-learning':
-    resolution: {directory: plugins/continual-learning, type: directory}
-
-  '@adelie/csu-mail@file:plugins/csu-mail':
-    resolution: {directory: plugins/csu-mail, type: directory}
-
-  '@adelie/data-analysis@file:plugins/data-analysis':
-    resolution: {directory: plugins/data-analysis, type: directory}
-
-  '@adelie/goal@file:plugins/goal':
-    resolution: {directory: plugins/goal, type: directory}
-
-  '@adelie/humanizer@file:plugins/humanizer':
-    resolution: {directory: plugins/humanizer, type: directory}
-
-  '@adelie/lesson-video@file:plugins/lesson-video':
-    resolution: {directory: plugins/lesson-video, type: directory}
-
-  '@adelie/model-development@file:plugins/model-development':
-    resolution: {directory: plugins/model-development, type: directory}
-
-  '@adelie/cli@file:packages/cli':
-    resolution: {directory: packages/cli, type: directory}
-    engines: {node: '>=24'}
-    hasBin: true
-
-  '@adelie/core@file:packages/core':
-    resolution: {directory: packages/core, type: directory}
-    engines: {node: '>=24'}
-
-  '@adelie/hmr@file:packages/hmr':
-    resolution: {directory: packages/hmr, type: directory}
-
-  '@adelie/server@file:packages/server':
-    resolution: {directory: packages/server, type: directory}
-    engines: {node: '>=24'}
-
-  '@adelie/requirements-box@file:plugins/requirements-box':
-    resolution: {directory: plugins/requirements-box, type: directory}
-
-  '@adelie/skill-porting@file:plugins/skill-porting':
-    resolution: {directory: plugins/skill-porting, type: directory}
-
-  '@adelie/software-development@file:plugins/software-development':
-    resolution: {directory: plugins/software-development, type: directory}
-
-  '@adelie/use-bento-slides@file:plugins/use-bento-slides':
-    resolution: {directory: plugins/use-bento-slides, type: directory}
-
-  '@adelie/use-claude-code@file:plugins/use-claude-code':
-    resolution: {directory: plugins/use-claude-code, type: directory}
-
-  '@adelie/use-firecrawl@file:plugins/use-firecrawl':
-    resolution: {directory: plugins/use-firecrawl, type: directory}
-
-  '@adelie/use-offerdao@file:plugins/use-offerdao':
-    resolution: {directory: plugins/use-offerdao, type: directory}
-
-  '@adelie/use-wps-office@file:plugins/use-wps-office':
-    resolution: {directory: plugins/use-wps-office, type: directory}
-
-  '@adelie/wechat-miniprogram@file:plugins/wechat-miniprogram':
-    resolution: {directory: plugins/wechat-miniprogram, type: directory}
 
   '@malept/cross-spawn-promise@2.0.0':
     resolution: {integrity: sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg==}
@@ -4220,6 +4229,48 @@ packages:
   setprototypeof@1.2.0:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
 
+  shaders@4.0.4:
+    resolution: {integrity: sha512-NB+/RiK0oydteeeKdPqsLpR3iSoDTvt8bsdgw2wPb697QVCY/yadZV8gitCyCQx5t/kb4nJicIR+cbG9Q6JFfQ==}
+    hasBin: true
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+      solid-js: ^1.8.0
+      svelte: ^5
+      vue: ^3.5.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      solid-js:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+
+  shaders@4.0.5:
+    resolution: {integrity: sha512-1muVyMI5NGkv/+/QpHD9wY2HfmxeWq3MBDT3ERFBTStCSzikSBravuTaGv3B1nz0rXccvv3C0xp3lmvfptu3Zg==}
+    hasBin: true
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+      solid-js: ^1.8.0
+      svelte: ^5
+      vue: ^3.5.0
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      solid-js:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+
   shebang-command@2.0.0:
     resolution: {integrity: sha512-kHxr2zZpYtdmrN1qDjrrX/Z1rR1kG8Dx+gkpK1G4eXmvXswmcE1hTWBWYUzlraYw1/yZp6YuDY77YtvbN0dmDA==}
     engines: {node: '>=8'}
@@ -4398,6 +4449,10 @@ packages:
   tinybench@2.9.0:
     resolution: {integrity: sha512-0+DUvqWMValLmha6lr4kD8iAMK1HzV0/aKnCtWb9v9641TnP/MFb7Pc2bxoxQjTXAErryXVgUOfv2YqNllqGeg==}
 
+  tinyest@0.3.4:
+    resolution: {integrity: sha512-81EcMHTCQ2IPweOGk9SpMgjbenR9ZJRsAE84btEv0DhvVKwhe7qBy28hWgatoXa9ppWzmtpHiJ+e86SiaAtY6w==}
+    engines: {node: '>=12.20.0'}
+
   tinyexec@0.3.2:
     resolution: {integrity: sha512-KQQR9yN7R5+OSwaK0XQoj22pwHoTlgYqmUscPYoknOoWCWfj/5/ABTMRi69FrKU5ffPVh5QcFikpWJI/P1ocHA==}
 
@@ -4453,6 +4508,9 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  tsover-runtime@0.0.7:
+    resolution: {integrity: sha512-FHHwMJzZbnP23+fU1PxXljy7j0RRRosL2r1/CRUNTqfW+l7m35JsUkM615x/cAzw4GqRdXPIl3axKMj9qzpZtQ==}
+
   tsup@8.5.1:
     resolution: {integrity: sha512-xtgkqwdhpKWr3tKPmCkvYmS9xnQK3m3XgxZHwSUjvfTjp7YfXe5tT3GgWi0F2N+ZSMsOeWeZFh7ZZFg5iPhing==}
     engines: {node: '>=18'}
@@ -4484,6 +4542,14 @@ packages:
   type-is@1.6.18:
     resolution: {integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==}
     engines: {node: '>= 0.6'}
+
+  typed-binary@4.3.4:
+    resolution: {integrity: sha512-ivy9nisfsBhugH6OrygtdYI28c28mo7AFeB85COUzGG6MmuViFQPz4ylmDHNjAI3P12EAxWhqtjLsdYWfCj6xQ==}
+
+  typegpu@0.12.3:
+    resolution: {integrity: sha512-zYwQEhnPPwhq5vQKmollXRK1LCVjStOnL+2B0PiebqvAzYPr25rPNR4r3olLoow5sKKjyj3kzHKEcpD5SyDzGQ==}
+    engines: {node: '>=12.20.0'}
+    hasBin: true
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
@@ -4777,6 +4843,254 @@ packages:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
 snapshots:
+
+  '@adelie/agent-company@file:plugins/agent-company': {}
+
+  '@adelie/agent-development@file:plugins/agent-development': {}
+
+  '@adelie/agent-tuning@file:plugins/agent-tuning': {}
+
+  '@adelie/amsp@file:packages/amsp': {}
+
+  '@adelie/browser-automation@file:plugins/browser-automation': {}
+
+  '@adelie/cli@file:packages/cli(supports-color@10.2.2)':
+    dependencies:
+      '@adelie/agent-company': file:plugins/agent-company
+      '@adelie/agent-development': file:plugins/agent-development
+      '@adelie/agent-tuning': file:plugins/agent-tuning
+      '@adelie/browser-automation': file:plugins/browser-automation
+      '@adelie/continual-learning': file:plugins/continual-learning
+      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
+      '@adelie/csu-mail': file:plugins/csu-mail
+      '@adelie/data-analysis': file:plugins/data-analysis
+      '@adelie/goal': file:plugins/goal
+      '@adelie/humanizer': file:plugins/humanizer
+      '@adelie/lesson-video': file:plugins/lesson-video
+      '@adelie/model-development': file:plugins/model-development
+      '@adelie/requirements-box': file:plugins/requirements-box
+      '@adelie/server': file:packages/server(supports-color@10.2.2)
+      '@adelie/skill-porting': file:plugins/skill-porting
+      '@adelie/software-development': file:plugins/software-development
+      '@adelie/use-bento-slides': file:plugins/use-bento-slides
+      '@adelie/use-claude-code': file:plugins/use-claude-code
+      '@adelie/use-firecrawl': file:plugins/use-firecrawl
+      '@adelie/use-offerdao': file:plugins/use-offerdao
+      '@adelie/use-wps-office': file:plugins/use-wps-office
+      '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
+      '@modelcontextprotocol/client': 2.0.0
+      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
+      commander: 13.1.0
+      dotenv: 17.4.2
+      smol-toml: 1.6.1
+      yaml: 2.9.0
+    transitivePeerDependencies:
+      - '@modelcontextprotocol/sdk'
+      - bufferutil
+      - debug
+      - supports-color
+      - utf-8-validate
+      - ws
+      - zod
+
+  '@adelie/continual-learning@file:plugins/continual-learning': {}
+
+  '@adelie/core@file:packages/core(supports-color@10.2.2)(ws@8.21.0)':
+    dependencies:
+      '@adelie/agent-company': file:plugins/agent-company
+      '@adelie/agent-development': file:plugins/agent-development
+      '@adelie/agent-tuning': file:plugins/agent-tuning
+      '@adelie/browser-automation': file:plugins/browser-automation
+      '@adelie/continual-learning': file:plugins/continual-learning
+      '@adelie/csu-mail': file:plugins/csu-mail
+      '@adelie/data-analysis': file:plugins/data-analysis
+      '@adelie/goal': file:plugins/goal
+      '@adelie/humanizer': file:plugins/humanizer
+      '@adelie/lesson-video': file:plugins/lesson-video
+      '@adelie/model-development': file:plugins/model-development
+      '@adelie/requirements-box': file:plugins/requirements-box
+      '@adelie/skill-porting': file:plugins/skill-porting
+      '@adelie/software-development': file:plugins/software-development
+      '@adelie/use-bento-slides': file:plugins/use-bento-slides
+      '@adelie/use-claude-code': file:plugins/use-claude-code
+      '@adelie/use-firecrawl': file:plugins/use-firecrawl
+      '@adelie/use-offerdao': file:plugins/use-offerdao
+      '@adelie/use-wps-office': file:plugins/use-wps-office
+      '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
+      '@modelcontextprotocol/client': 2.0.0
+      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
+      arktype: 2.2.3
+      smol-toml: 1.6.1
+      yaml: 2.9.0
+    transitivePeerDependencies:
+      - '@modelcontextprotocol/sdk'
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+      - ws
+      - zod
+
+  '@adelie/core@file:packages/core(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)':
+    dependencies:
+      '@adelie/agent-company': file:plugins/agent-company
+      '@adelie/agent-development': file:plugins/agent-development
+      '@adelie/agent-tuning': file:plugins/agent-tuning
+      '@adelie/browser-automation': file:plugins/browser-automation
+      '@adelie/continual-learning': file:plugins/continual-learning
+      '@adelie/csu-mail': file:plugins/csu-mail
+      '@adelie/data-analysis': file:plugins/data-analysis
+      '@adelie/goal': file:plugins/goal
+      '@adelie/humanizer': file:plugins/humanizer
+      '@adelie/lesson-video': file:plugins/lesson-video
+      '@adelie/model-development': file:plugins/model-development
+      '@adelie/requirements-box': file:plugins/requirements-box
+      '@adelie/skill-porting': file:plugins/skill-porting
+      '@adelie/software-development': file:plugins/software-development
+      '@adelie/use-bento-slides': file:plugins/use-bento-slides
+      '@adelie/use-claude-code': file:plugins/use-claude-code
+      '@adelie/use-firecrawl': file:plugins/use-firecrawl
+      '@adelie/use-offerdao': file:plugins/use-offerdao
+      '@adelie/use-wps-office': file:plugins/use-wps-office
+      '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
+      '@modelcontextprotocol/client': 2.0.0
+      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
+      arktype: 2.2.3
+      smol-toml: 1.6.1
+      yaml: 2.9.0
+    transitivePeerDependencies:
+      - '@modelcontextprotocol/sdk'
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+      - ws
+      - zod
+
+  '@adelie/csu-mail@file:plugins/csu-mail': {}
+
+  '@adelie/data-analysis@file:plugins/data-analysis': {}
+
+  '@adelie/goal@file:plugins/goal': {}
+
+  '@adelie/hmr@file:packages/hmr(supports-color@10.2.2)(ws@8.21.0)':
+    dependencies:
+      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
+    transitivePeerDependencies:
+      - '@modelcontextprotocol/sdk'
+      - bufferutil
+      - supports-color
+      - utf-8-validate
+      - ws
+      - zod
+
+  '@adelie/humanizer@file:plugins/humanizer': {}
+
+  '@adelie/lesson-video@file:plugins/lesson-video': {}
+
+  '@adelie/model-development@file:plugins/model-development': {}
+
+  '@adelie/requirements-box@file:plugins/requirements-box': {}
+
+  '@adelie/server@file:packages/server(supports-color@10.2.2)':
+    dependencies:
+      '@adelie/amsp': file:packages/amsp
+      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
+      '@hono/node-server': 2.0.12(hono@4.12.34)
+      '@larksuiteoapi/node-sdk': 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
+      '@xterm/headless': 5.5.0
+      dotenv: 17.4.2
+      fflate: 0.8.3
+      hono: 4.12.34
+      node-pty: 1.1.0
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-parse: 11.0.0(supports-color@10.2.2)
+      smol-toml: 1.6.1
+      tar: 7.5.22
+      typescript: 5.9.3
+      undici: 7.29.0
+      unified: 11.0.5
+      ws: 8.21.0
+      yaml: 2.9.0
+    transitivePeerDependencies:
+      - '@modelcontextprotocol/sdk'
+      - bufferutil
+      - debug
+      - supports-color
+      - utf-8-validate
+      - zod
+
+  '@adelie/server@file:packages/server(supports-color@10.2.2)(zod@4.4.3)':
+    dependencies:
+      '@adelie/amsp': file:packages/amsp
+      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
+      '@hono/node-server': 2.0.12(hono@4.12.34)
+      '@larksuiteoapi/node-sdk': 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
+      '@xterm/headless': 5.5.0
+      dotenv: 17.4.2
+      fflate: 0.8.3
+      hono: 4.12.34
+      node-pty: 1.1.0
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-parse: 11.0.0(supports-color@10.2.2)
+      smol-toml: 1.6.1
+      tar: 7.5.22
+      typescript: 5.9.3
+      undici: 7.29.0
+      unified: 11.0.5
+      ws: 8.21.0
+      yaml: 2.9.0
+    transitivePeerDependencies:
+      - '@modelcontextprotocol/sdk'
+      - bufferutil
+      - debug
+      - supports-color
+      - utf-8-validate
+      - zod
+
+  '@adelie/skill-porting@file:plugins/skill-porting': {}
+
+  '@adelie/software-development@file:plugins/software-development': {}
+
+  '@adelie/ui@file:packages/ui(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@10.2.2)':
+    dependencies:
+      '@fontsource-variable/ibm-plex-sans': 5.3.0
+      '@fontsource-variable/jetbrains-mono': 5.3.0
+      '@fontsource-variable/mona-sans': 5.3.0
+      '@fontsource-variable/noto-sans-sc': 5.3.0
+      '@fontsource/ibm-plex-sans-condensed': 5.3.0
+      '@shikijs/langs': 4.3.1
+      '@shikijs/themes': 4.3.1
+      katex: 0.16.47
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+      react-markdown: 10.1.0(@types/react@19.2.17)(react@19.2.7)(supports-color@10.2.2)
+      rehype-katex: 7.0.1
+      remark-gfm: 4.0.1(supports-color@10.2.2)
+      remark-math: 6.0.0(supports-color@10.2.2)
+      remark-parse: 11.0.0(supports-color@10.2.2)
+      shaders: 4.0.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      shiki: 4.3.1
+      unified: 11.0.5
+      zustand: 5.0.15(@types/react@19.2.17)(react@19.2.7)
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+      - solid-js
+      - supports-color
+      - svelte
+      - use-sync-external-store
+      - vue
+
+  '@adelie/use-bento-slides@file:plugins/use-bento-slides': {}
+
+  '@adelie/use-claude-code@file:plugins/use-claude-code': {}
+
+  '@adelie/use-firecrawl@file:plugins/use-firecrawl': {}
+
+  '@adelie/use-offerdao@file:plugins/use-offerdao': {}
+
+  '@adelie/use-wps-office@file:plugins/use-wps-office': {}
+
+  '@adelie/wechat-miniprogram@file:plugins/wechat-miniprogram': {}
 
   '@ampproject/remapping@2.3.0':
     dependencies:
@@ -5605,224 +5919,6 @@ snapshots:
       - debug
       - supports-color
       - utf-8-validate
-
-  '@adelie/agent-company@file:plugins/agent-company': {}
-
-  '@adelie/agent-development@file:plugins/agent-development': {}
-
-  '@adelie/agent-tuning@file:plugins/agent-tuning': {}
-
-  '@adelie/amsp@file:packages/amsp': {}
-
-  '@adelie/browser-automation@file:plugins/browser-automation': {}
-
-  '@adelie/continual-learning@file:plugins/continual-learning': {}
-
-  '@adelie/csu-mail@file:plugins/csu-mail': {}
-
-  '@adelie/data-analysis@file:plugins/data-analysis': {}
-
-  '@adelie/goal@file:plugins/goal': {}
-
-  '@adelie/humanizer@file:plugins/humanizer': {}
-
-  '@adelie/lesson-video@file:plugins/lesson-video': {}
-
-  '@adelie/model-development@file:plugins/model-development': {}
-
-  '@adelie/cli@file:packages/cli(supports-color@10.2.2)':
-    dependencies:
-      '@adelie/agent-company': file:plugins/agent-company
-      '@adelie/agent-development': file:plugins/agent-development
-      '@adelie/agent-tuning': file:plugins/agent-tuning
-      '@adelie/browser-automation': file:plugins/browser-automation
-      '@adelie/continual-learning': file:plugins/continual-learning
-      '@adelie/csu-mail': file:plugins/csu-mail
-      '@adelie/data-analysis': file:plugins/data-analysis
-      '@adelie/goal': file:plugins/goal
-      '@adelie/humanizer': file:plugins/humanizer
-      '@adelie/lesson-video': file:plugins/lesson-video
-      '@adelie/model-development': file:plugins/model-development
-      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
-      '@adelie/server': file:packages/server(supports-color@10.2.2)
-      '@adelie/requirements-box': file:plugins/requirements-box
-      '@adelie/skill-porting': file:plugins/skill-porting
-      '@adelie/software-development': file:plugins/software-development
-      '@adelie/use-bento-slides': file:plugins/use-bento-slides
-      '@adelie/use-claude-code': file:plugins/use-claude-code
-      '@adelie/use-firecrawl': file:plugins/use-firecrawl
-      '@adelie/use-offerdao': file:plugins/use-offerdao
-      '@adelie/use-wps-office': file:plugins/use-wps-office
-      '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
-      '@modelcontextprotocol/client': 2.0.0
-      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
-      commander: 13.1.0
-      dotenv: 17.4.2
-      smol-toml: 1.6.1
-      yaml: 2.9.0
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - debug
-      - supports-color
-      - utf-8-validate
-      - ws
-      - zod
-
-  '@adelie/core@file:packages/core(supports-color@10.2.2)(ws@8.21.0)':
-    dependencies:
-      '@adelie/agent-company': file:plugins/agent-company
-      '@adelie/agent-development': file:plugins/agent-development
-      '@adelie/agent-tuning': file:plugins/agent-tuning
-      '@adelie/browser-automation': file:plugins/browser-automation
-      '@adelie/continual-learning': file:plugins/continual-learning
-      '@adelie/csu-mail': file:plugins/csu-mail
-      '@adelie/data-analysis': file:plugins/data-analysis
-      '@adelie/goal': file:plugins/goal
-      '@adelie/humanizer': file:plugins/humanizer
-      '@adelie/lesson-video': file:plugins/lesson-video
-      '@adelie/model-development': file:plugins/model-development
-      '@adelie/requirements-box': file:plugins/requirements-box
-      '@adelie/skill-porting': file:plugins/skill-porting
-      '@adelie/software-development': file:plugins/software-development
-      '@adelie/use-bento-slides': file:plugins/use-bento-slides
-      '@adelie/use-claude-code': file:plugins/use-claude-code
-      '@adelie/use-firecrawl': file:plugins/use-firecrawl
-      '@adelie/use-offerdao': file:plugins/use-offerdao
-      '@adelie/use-wps-office': file:plugins/use-wps-office
-      '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
-      '@modelcontextprotocol/client': 2.0.0
-      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
-      arktype: 2.2.3
-      smol-toml: 1.6.1
-      yaml: 2.9.0
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
-      - zod
-
-  '@adelie/core@file:packages/core(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)':
-    dependencies:
-      '@adelie/agent-company': file:plugins/agent-company
-      '@adelie/agent-development': file:plugins/agent-development
-      '@adelie/agent-tuning': file:plugins/agent-tuning
-      '@adelie/browser-automation': file:plugins/browser-automation
-      '@adelie/continual-learning': file:plugins/continual-learning
-      '@adelie/csu-mail': file:plugins/csu-mail
-      '@adelie/data-analysis': file:plugins/data-analysis
-      '@adelie/goal': file:plugins/goal
-      '@adelie/humanizer': file:plugins/humanizer
-      '@adelie/lesson-video': file:plugins/lesson-video
-      '@adelie/model-development': file:plugins/model-development
-      '@adelie/requirements-box': file:plugins/requirements-box
-      '@adelie/skill-porting': file:plugins/skill-porting
-      '@adelie/software-development': file:plugins/software-development
-      '@adelie/use-bento-slides': file:plugins/use-bento-slides
-      '@adelie/use-claude-code': file:plugins/use-claude-code
-      '@adelie/use-firecrawl': file:plugins/use-firecrawl
-      '@adelie/use-offerdao': file:plugins/use-offerdao
-      '@adelie/use-wps-office': file:plugins/use-wps-office
-      '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
-      '@modelcontextprotocol/client': 2.0.0
-      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
-      arktype: 2.2.3
-      smol-toml: 1.6.1
-      yaml: 2.9.0
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
-      - zod
-
-  '@adelie/hmr@file:packages/hmr(supports-color@10.2.2)(ws@8.21.0)':
-    dependencies:
-      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - supports-color
-      - utf-8-validate
-      - ws
-      - zod
-
-  '@adelie/server@file:packages/server(supports-color@10.2.2)':
-    dependencies:
-      '@hono/node-server': 2.0.12(hono@4.12.34)
-      '@larksuiteoapi/node-sdk': 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
-      '@adelie/amsp': file:packages/amsp
-      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)
-      '@xterm/headless': 5.5.0
-      dotenv: 17.4.2
-      fflate: 0.8.3
-      hono: 4.12.34
-      node-pty: 1.1.0
-      remark-gfm: 4.0.1(supports-color@10.2.2)
-      remark-parse: 11.0.0(supports-color@10.2.2)
-      smol-toml: 1.6.1
-      tar: 7.5.22
-      typescript: 5.9.3
-      undici: 7.29.0
-      unified: 11.0.5
-      ws: 8.21.0
-      yaml: 2.9.0
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - debug
-      - supports-color
-      - utf-8-validate
-      - zod
-
-  '@adelie/server@file:packages/server(supports-color@10.2.2)(zod@4.4.3)':
-    dependencies:
-      '@hono/node-server': 2.0.12(hono@4.12.34)
-      '@larksuiteoapi/node-sdk': 1.73.0(debug@4.4.3(supports-color@10.2.2))(supports-color@10.2.2)
-      '@adelie/amsp': file:packages/amsp
-      '@adelie/core': file:packages/core(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
-      '@xterm/headless': 5.5.0
-      dotenv: 17.4.2
-      fflate: 0.8.3
-      hono: 4.12.34
-      node-pty: 1.1.0
-      remark-gfm: 4.0.1(supports-color@10.2.2)
-      remark-parse: 11.0.0(supports-color@10.2.2)
-      smol-toml: 1.6.1
-      tar: 7.5.22
-      typescript: 5.9.3
-      undici: 7.29.0
-      unified: 11.0.5
-      ws: 8.21.0
-      yaml: 2.9.0
-    transitivePeerDependencies:
-      - '@modelcontextprotocol/sdk'
-      - bufferutil
-      - debug
-      - supports-color
-      - utf-8-validate
-      - zod
-
-  '@adelie/requirements-box@file:plugins/requirements-box': {}
-
-  '@adelie/skill-porting@file:plugins/skill-porting': {}
-
-  '@adelie/software-development@file:plugins/software-development': {}
-
-  '@adelie/use-bento-slides@file:plugins/use-bento-slides': {}
-
-  '@adelie/use-claude-code@file:plugins/use-claude-code': {}
-
-  '@adelie/use-firecrawl@file:plugins/use-firecrawl': {}
-
-  '@adelie/use-offerdao@file:plugins/use-offerdao': {}
-
-  '@adelie/use-wps-office@file:plugins/use-wps-office': {}
-
-  '@adelie/wechat-miniprogram@file:plugins/wechat-miniprogram': {}
 
   '@malept/cross-spawn-promise@2.0.0':
     dependencies:
@@ -8916,6 +9012,20 @@ snapshots:
 
   setprototypeof@1.2.0: {}
 
+  shaders@4.0.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      typegpu: 0.12.3
+    optionalDependencies:
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+
+  shaders@4.0.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+    dependencies:
+      typegpu: 0.12.3
+    optionalDependencies:
+      react: 19.2.7
+      react-dom: 19.2.7(react@19.2.7)
+
   shebang-command@2.0.0:
     dependencies:
       shebang-regex: 3.0.0
@@ -9116,6 +9226,8 @@ snapshots:
 
   tinybench@2.9.0: {}
 
+  tinyest@0.3.4: {}
+
   tinyexec@0.3.2: {}
 
   tinyglobby@0.2.17:
@@ -9154,6 +9266,8 @@ snapshots:
   tslib@1.14.1: {}
 
   tslib@2.8.1: {}
+
+  tsover-runtime@0.0.7: {}
 
   tsup@8.5.1(jiti@2.7.0)(postcss@8.5.23)(supports-color@10.2.2)(tsx@4.22.4)(typescript@5.9.3)(yaml@2.9.0):
     dependencies:
@@ -9196,6 +9310,14 @@ snapshots:
     dependencies:
       media-typer: 0.3.0
       mime-types: 2.1.35
+
+  typed-binary@4.3.4: {}
+
+  typegpu@0.12.3:
+    dependencies:
+      tinyest: 0.3.4
+      tsover-runtime: 0.0.7
+      typed-binary: 4.3.4
 
   typescript@5.9.3: {}
 

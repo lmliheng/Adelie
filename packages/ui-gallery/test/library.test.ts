@@ -14,6 +14,7 @@ import {
   CHART_PALETTE_TOKENS,
   readChartTokens,
 } from "../src/library/chart-tokens";
+import { SHADER_COLOR_TOKENS, readShaderColors } from "../src/library/shader-colors";
 import { DEMO_TREE, flattenTree } from "../src/library/demo-tree";
 import { LIBRARY_FRAME_PATH, libraryFrameSrc, parseLibraryParams } from "../src/library/frame";
 import {
@@ -67,6 +68,7 @@ describe("the library's topics", () => {
       "content",
       "layout",
       "data",
+      "shaders",
     ]);
     const foundations = TOPIC_GROUPS.find((group) => group.id === "foundations")!.topics;
     expect(foundations.map((topic) => topic.id)).toEqual([
@@ -360,6 +362,59 @@ describe("the layout and data boards", () => {
     const data = read("../src/library/boards/data.tsx");
     expect(data).toMatch(/<Table framed=\{false\} size="sm">/);
     expect(data).toMatch(/onClick=\{/);
+  });
+});
+
+describe("the shaders board", () => {
+  it("shows both backdrops from the package, with the theme's colours handed in as props", () => {
+    const board = read("../src/library/boards/shaders.tsx");
+    expect(board).toMatch(/from "@adelie\/ui";/);
+    expect(board).not.toMatch(/web\/src/);
+    // The gallery never reaches the shader library itself: it takes the package's backdrops.
+    expect(board).not.toMatch(/node_modules|shaders\/react/);
+    expect(board).toMatch(/<AuroraBackdrop/);
+    expect(board).toMatch(/<DotGridBackdrop/);
+    expect(board).toMatch(/colorA=\{colors\.ground\}/);
+    expect(board).toMatch(/colorB=\{colors\.accent\}/);
+    expect(board).toMatch(/color=\{colors\.line\}/);
+    // Which of the two a box draws is observed off the box (the canvas is there or it is not),
+    // never predicted: the support probe and the device are both async.
+    expect(board).toMatch(/querySelector\("canvas"\)/);
+    // And the box is handed over as state, not as a ref: the board renders it only after the
+    // theme's colours arrive, so an effect keyed on a ref would still find it empty and settle
+    // nothing (the line stayed blank until this was a state setter).
+    expect(board).toMatch(/const \[box, setBox\] = useState<HTMLDivElement \| null>\(null\);/);
+    expect(board).toMatch(/ref=\{setBox\}/);
+    expect(board).not.toMatch(/box\.current/);
+  });
+
+  it("reads the theme's own colours, one token per backdrop colour", () => {
+    const colors = readShaderColors((name) =>
+      name === SHADER_COLOR_TOKENS.accent ? " #006838 " : "",
+    );
+    expect(colors.accent).toBe("#006838");
+    expect(colors.ground).toBe("");
+    expect(Object.values(SHADER_COLOR_TOKENS)).toEqual(["--ui-canvas", "--ui-accent", "--ui-line"]);
+  });
+
+  it("names every part in both dictionaries", () => {
+    for (const S of [zh, en]) {
+      const t = S.library.shaders;
+      for (const text of [
+        t.aurora,
+        t.auroraHint,
+        t.grid,
+        t.gridHint,
+        t.gridStill,
+        t.gridTwinkle,
+        t.drawing,
+        t.drawingPending,
+        t.drawingGpu,
+        t.drawingStatic,
+        t.standInHint,
+      ])
+        expect(text.trim()).not.toBe("");
+    }
   });
 });
 

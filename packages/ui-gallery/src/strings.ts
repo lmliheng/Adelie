@@ -461,6 +461,11 @@ export const zh = {
         description: "页面框架与页头、卡片与卡片头、分节、可折叠分节、实体头部，以及导航列表。",
       },
       data: { title: "数据", description: "表格、列表行、键值对与日志。" },
+      shaders: {
+        title: "着色器",
+        description:
+          "GPU 画的背景：颜色由调用方传进去，没有 WebGPU 或系统要求减少动效时，画的是同色的静态替身。",
+      },
       colour: {
         title: "颜色",
         description: "表面、文字、线条、强调色、语义色调、图表序列与代码色。",
@@ -753,6 +758,22 @@ export const zh = {
       progressLabel: "下载进度",
       progressOver: "超出上限",
       progressIndeterminate: "不定进度",
+    },
+    shaders: {
+      aurora: "色彩场",
+      auroraHint:
+        "两色在 oklab 里流动，压一层很轻的噪点，免得大片渐变出现色带。颜色是 props —— 这里传的是当前主题的底色与强调色。",
+      grid: "点阵",
+      gridHint:
+        "一个颜色、一个间距，页面的「工程纸」；颜色同样由调用方给，这里传当前主题的分隔线色。",
+      gridStill: "静止",
+      gridTwinkle: "微闪",
+      drawing: "这一块现在画的是",
+      drawingPending: "正在问设备…",
+      drawingGpu: "GPU 画布：这台设备的 WebGPU 可用，动画在跑。",
+      drawingStatic: "静态替身：这台设备画不了，或系统要求减少动效。",
+      standInHint:
+        "替身由调用方给（这里是同色的一个渐变与一排 CSS 点），所以显卡不行的时候页面也不会空一块。",
     },
     streaming: {
       reply: "助手回答",

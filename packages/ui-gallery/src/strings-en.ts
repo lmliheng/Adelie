@@ -478,6 +478,11 @@ export const en: GalleryStrings = {
         title: "Data",
         description: "Tables, list rows, label/value pairs and the log view.",
       },
+      shaders: {
+        title: "Shaders",
+        description:
+          "GPU-drawn backdrops: the caller hands in the colours, and a device without WebGPU — or a reader who asked for less motion — draws the same colours as a static stand-in.",
+      },
       colour: {
         title: "Colour",
         description: "Surfaces, inks, lines, the accent, the tones, chart series and code colours.",
@@ -791,6 +796,23 @@ export const en: GalleryStrings = {
       progressLabel: "Download progress",
       progressOver: "Over the limit",
       progressIndeterminate: "Indeterminate",
+    },
+    shaders: {
+      aurora: "Colour field",
+      auroraHint:
+        "Two colours drifting through oklab under a whisper of noise, so the wide grades do not band. The colours are props — the theme's own ground and accent are handed in here.",
+      grid: "Dot grid",
+      gridHint:
+        "One colour, one pitch: the page's engineering paper. That colour is handed in too — the theme's separator ink here.",
+      gridStill: "Still",
+      gridTwinkle: "Twinkling",
+      drawing: "What this box draws",
+      drawingPending: "Asking the device…",
+      drawingGpu: "A GPU canvas: this device's WebGPU works and the motion is running.",
+      drawingStatic:
+        "The stand-in: this device cannot draw it, or the system asked for less motion.",
+      standInHint:
+        "The stand-in is the caller's (here a flat gradient and a pattern of CSS dots), so a machine without a working GPU never shows a hole in the page.",
     },
     streaming: {
       reply: "Assistant reply",

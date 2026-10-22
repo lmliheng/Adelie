@@ -47,6 +47,7 @@
     "remark-gfm": "^4.0.0",
     "remark-math": "^6.0.0",
     "remark-parse": "^11.0.0",
+    "shaders": "^4.0.5",
     "shiki": "^4.3.1",
     "unified": "^11.0.5",
     "zustand": "^5.0.15"

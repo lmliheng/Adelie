@@ -225,3 +225,11 @@ export * from "./components/shell/rail/rail";
 export * from "./components/shell/mobile-top-bar/mobile-top-bar";
 export * from "./components/shell/sidebar-frame/sidebar-frame";
 export * from "./components/shell/session-row/session-row";
+
+// Shaders (new here, not a migration wave) — the WebGPU backdrop family built on the `shaders`
+// package: the box a canvas fills and the decision of whether this device draws one at all, then
+// the two backdrops composed from it.
+export * from "./components/shaders/shader-support";
+export * from "./components/shaders/shader-surface/shader-surface";
+export * from "./components/shaders/aurora-backdrop/aurora-backdrop";
+export * from "./components/shaders/dot-grid-backdrop/dot-grid-backdrop";
