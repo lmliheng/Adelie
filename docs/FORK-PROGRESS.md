@@ -14740,3 +14740,80 @@ changelog、没有台账。
   `202.197.0.0/16` 那个老问题，不是凭据；约定一轮只试一次，于是改由飞书送达
   （`message_id=om_x100b62839be60ca0c0825fb11bdf13a`，收件人即已绑定的那个私聊），正文留在 scratchpad 的
   `r119/report.md`；下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 需求箱巡台：箱里没活，但攒够了阈值 —— 发 v0.5.5 并把现网升上去（2026-10-24）
+
+### 结论与取活
+
+- `GET /api/requirements?status=new` → `count: 0`（直接核对 `items.json`：43 条里 33 条 `done`、8 条
+  `withdrawn`，余下两条字段仍是 `new` 但 `archived_at` 有值，接口按归档滤掉）；`doing` / `blocked` 都是 0。
+  箱里没有可做的条目，也没有等答复的条目。
+- 但 §1.4.2 的发版条件成立：自 `v0.5.4`（`010f1d0b`，2026-10-22）起 `main` 上落了 29 笔提交，其中
+  **12 个功能性提交**（`feat`/`fix`），四道门禁全绿。所以这一轮不是空巡 —— 发 **v0.5.5**（patch：
+  没有接口、数据根、配置格式、包名变化），把攒着没到用户手上的改动一起带出去。
+- 防重入：`penguin ls --json` 里 `status=running` 的只有本会话
+  （`session-2026-10-24-00-00-00-0fa3b963`）；开工时主工作树干净、与 `origin/main` 齐。
+
+### 带出去的内容（12 个功能性提交）
+
+- 「原因随框留着」最后八处（`be9d9698` 卸载技能 · `f6f82fe7` 卸载钩子包 · `d1ac2d27` 删除插件与单 Agent
+  卸载/更新 · `4f99fcce` 两条批量更新 · `6bc3eb67` 两张凭据表 · `dbd2d583` 记忆页签 · `eb9dd76a` 文件面板 ·
+  `0267e0fe` 删除项目）：只有写成功才关框，被拒就把服务端原话画在句子下面。
+- `cc06123b` 主题文件放进数据根即可导入，设置 › 外观里可选。
+- `9864a187` 模型库多一个 Abliteration 分组。
+- `217c5908` + `20dde0d6` 会话里的图超过模型上限时只带最新的四张，不再整条失败。
+
+### 做了什么
+
+- 独立发布树 `git worktree add -b release-0.5.5 /tmp/rel-0.5.5 31d5dcb5` + `pnpm install --frozen-lockfile`。
+- **版本戳 `255d4177`** `chore(release): 0.5.5` —— 32 个文件：root + 10 个工作区包 + 20 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`（四个 private 的 sandbox 插件仍停在 0.2.3）。
+- **发布正文 `e775e4d5`** `docs(release): v0.5.5 的发布正文` —— 新文件 `docs/releases/RELEASE-v0.5.5.md`。
+- **注释 tag `v0.5.5`**（标题同发布正文抬头）指向 `e775e4d5`；`git push origin HEAD:main` 第一次被 GitHub
+  回了 500（`Internal Server Error`），sleep 5 秒重推即成功，tag 一并推上（tag 那一次就过了）。
+- CI（`main` = `e775e4d5`，run `39985966831`）**22 个作业全绿**；`Deploy docs site` 也 success。
+- 14 件资产：CLI 三件（linux-x64 / universal / win32-x64，各带 `.sha256`，本机照 `release.yml` 的 build 作业
+  复现，脚本 `/tmp/pack-cli-055.sh`）、桌面 Linux（AppImage + deb + `latest-linux.yml`，本机
+  `electron-builder --linux`）、桌面 Windows（exe + blockmap + `latest.yml`，来自 `desktop-build.yml`
+  手工派发的 run `39986006742`，`ref=v0.5.5` + `tag=v0.5.5`，三平台全绿）、两个安装脚本。
+- Release **`v0.5.5`**（id `422074669`，<https://github.com/lmliheng/Adelie/releases/tag/v0.5.5>）：14 件资产
+  state 全 `uploaded`，逐个 `uploaded` 后才算完。
+- npm：24 个包全到 0.5.5，`latest` 都指过去（20 个对外插件 + amsp + core + server + cli；四个 private 的
+  sandbox 插件跳过）。**这一轮踩到一个新坑**：pnpm 11 的 `publish` 对其中几个包第一次报
+  `✅ Published` 但 registry 上查不到，重试时回 `409 Cannot publish over previously staged version`，
+  再等半分钟重试才变成 `You cannot publish over the previously published versions`（即已经上了）——
+  registry 的可见性与暂存状态有滞后，**别把第一次的 ✅ 当数**，要逐包用 `?write=true` 的 packument 复核。
+  这次三个包（core / server / requirements-box）各重试两三次后都到了 0.5.5。
+- 3003 下载站：`/downloads/index.json` 换成 v0.5.5（6 件，size 与 sha256 逐条来自本轮产物），页头
+  `chip blue` 角标 `v0.5.4` → `v0.5.5`；改前备份 `index.json.bak-20261024-v055` /
+  `index.html.bak-20261024-v055`。
+- 现网：`penguin update --check` 报「Installed 0.5.4 · latest 0.5.5」→ `penguin update --yes` 从 GitHub 下
+  `penguin-linux-x64.tar.gz`，`Bundle checksum OK` / `Payload checksum OK` / `Adelie v0.5.5 installed`，
+  `penguin version` = `v0.5.5`。**只换 `bin/lib/web/node`**，数据根 `/root/.adelie/data` 没动。
+- **OSS 镜像这一轮没有可做的事**：本仓 2026-10-17 就把 OSS 镜像下线了（`scripts/publish-release-to-oss.sh`
+  与 `install-ossutil.sh` 已从仓库删掉，`release.yml` 抬头也写明「Release 资产是唯一分发渠道」），
+  所以 REQUIREMENTS §1.4.4 的同步步骤在本仓不适用，不另起脚本。
+
+### 验证（都真跑过）
+
+- 主工作树四道门禁 `rc=0`：typecheck 93s · lint 2s（0 警告 0 错误，2271 文件）· format 52s（全干净）·
+  `pnpm -r test` 317s **9907 过 / 18 跳过 / 0 失败**（amsp 68 · docs 62 · ui 1053 · core 1420+6 跳 ·
+  server 2961+4 跳 · cli 561 · web 3239+2 跳 · desktop 304 · ui-gallery 140 · 四个 sandbox 插件 99+6 跳）。
+- 发布树同一套再跑一遍：`pnpm build` 123s · typecheck 98s · lint 4s · format 55s · test 325s，数字与主工作树
+  逐项相同，0 失败。
+- CLI 三件包 `sha256sum -c` 全 OK；**隔离 HOME 离线安装**（`--archive payload.tar.gz`）→
+  `Adelie v0.5.5 installed`，装出来的 `penguin version` = `v0.5.5`。
+- 桌面两平台元数据与实际文件逐字节相符：`latest-linux.yml` 的 AppImage（153,651,152）与 deb
+  （120,972,088）的 `sha512`/`size` 都对；`latest.yml` 的 exe（161,268,827）`sha512`/`size` 也对，
+  两处 `version: 0.5.5`。
+- 下载口抽查：Release 页 200；`install.sh` / `install.ps1` / `latest-linux.yml` / `latest.yml` /
+  `penguin-linux-x64.tar.gz.sha256` 全 200；3003 的 `index.json` 首项 tag = `v0.5.5`、页头角标 = `v0.5.5`。
+
+### 没做 / 还差什么
+
+- **重启被推迟了**：我的命令是 7364 那个服务端的子进程（`ps` 里 ppid 就是它），当场
+  `systemctl restart adelie-server` 会把自己打断。按 v0.5.4 那次的写法，重启交给
+  `systemd-run --no-block --on-active=… --unit=adelie-live-restart-0.5.5` 的瞬时单元，核验
+  （active / 7364 在听 / `GET /` 200 / `/api/version` 报 0.5.5）留给下一轮巡台开工时做。
+- 桌面端 macOS 未签名，照旧不随 Release 发布。
+- `changelog/unreleased/` 没有按 `changelog/README.md` 改名成版本目录 —— 本仓 v0.3.x 起一直如此。
