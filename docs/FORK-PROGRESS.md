@@ -14914,3 +14914,10 @@ changelog、没有台账。
 - 7.34 末尾列的 `features/company/` 日历 / 员工 / 组织 / 手册 / 频道各处照旧。
 - 待办里能一轮做完的条目仍然没有（2.2c 只剩桌面壳一侧、3.5 / 5.6 / 5.10 拍板、3.6 模型 key、
   4.1—4.3 明令不动）。
+
+### 汇报
+
+- 按第 6 步先试 `csu-mail` 的 `mail.py check`：130 秒超时（`TimeoutError [Errno 110] Connection timed out`）
+  —— 还是 `202.197.0.0/16` 那个老问题，不是凭据；约定一轮只试一次，于是改由飞书送达
+  （`text ok message_id=om_x100b628f189624a0dd966d3b9e9dc87`，收件人即已绑定的那个私聊），正文留在 scratchpad 的
+  `r120/report.md`；下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
