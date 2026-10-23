@@ -2041,6 +2041,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-22 | 7.29 | **插件卡上那三张确认框（删除插件 / 单 Agent 卸载 / 更新）被拒时，框留着，原因也留在框里**（不是移植：`packages/web/src/features/plugins/plugins-page.tsx` 一处真修复（+137 −49：三个写入 `toggleInstall` / `updateOutdated` / `removePlugin` 改回 `WriteOutcome`（模型库 7.19 那一对），卡片上新增 `updateRefusal` / `uninstallRefusal` / `deleteRefusal` 三个原因状态与 `askUpdate` / `askUninstall` / `askDelete` 三个开框帮手、三个确认框各接一个 `busy`，只有写成功才关框）+ 1 个新文件 `packages/web/e2e/plugin-card-refusal.spec.mjs`（三条用例，+284）+ 一份既有 spec 的等待（`packages/web/e2e/skills.spec.mjs` +6 −1）+ changelog 一对（+92），**无新依赖、不碰接口**）：7.26 / 7.27 / 7.28 末尾连着三轮点名的就是这三张卡片，三处各错一种关框时机 —— 删除与单 Agent 卸载在**请求发出之前**就关（`setDeleteOpen(false)` / `setPendingUninstall(null)` 先走、`void onDelete(...)` 后发），更新在 `await onUpdateOutdated(...)` 之后**无条件**关；被拒的时候装上/装着的文件与插件目录一点没变，原因却只落在一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：只有写成功才关框，被拒时服务端原话经 `ConfirmModal` 的 `refusal` 槽画在句子下面（`S.common.refused(...)`）、重试就是同一个按钮；卡片上没有确认的那条路（一键安装到某个智能体、管理安装里的一行「安装」）自己弹 toast，因为那里没有框可留。**两处顺带不再「先斩后奏」**（两态实测撞出来的，不是猜的）：删除不再先把卡片从列表里抹掉 —— 卡片就是发问的那张，请求在飞时把它摘掉等于把问题与原因一起摘掉，现在目录真的删掉之后卡片才走、等待期间确认按钮标 `busy`；卸载不再在请求发出时先动已装快照 —— 抹掉当前智能体的副本会让卡片翻成「未安装」并挪到另一个分区，卡片随之重挂，重挂那一瞬框与原因都没了，现在快照在答复之后才动。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动的三个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 文件 / 3224 通过 / 2 跳过**（与上轮同数：本笔没有新增纯逻辑，规则是界面状态，由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**129 passed（8.3m）、0 failed**（原 126 条 + 本笔 3 条）· **反证**：把 `plugins-page.tsx` 退回 `HEAD`（`git stash push --` 只带这一个路径）并重建 web → 同一份 spec **3 failed**（三条都死在框里找不到那句话：`删除 probe-plugin` / `卸载 probe-plugin` / `更新 probe-plugin` 的 `getByText` 15 s 超时，element(s) not found；现场留在 scratchpad 的 `r112/before-test-results`），`git stash pop` + 重建后 **3 passed（5.5s）** · **两态实测**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r112-a`、`localhost:8972`、`admin`、1280×900，插件库 / 已装列表用夹具、三条写由 `page.route` 拒成 500）：删除 —— 框里句子下面就是 danger 色的「操作被拒绝：plugin store is read-only」、`通知` 区 **0** 个按钮、**6.5 秒后原因仍在**；卸载 —— 同一行「操作被拒绝：agent state is read-only」、管理安装那张 Modal 在背后没有关；更新 —— 同一行「agent state is read-only」；三者放行重试时框才关（删除那次卡片也一起消失，`afterDelete {dialog 0, card 0}`、`afterUpdate {dialog 0}`），全套 console **只有那三次刻意造的 500**（`bad` 里也只有它们）、无 pageerror；截图 `r112/shots/{1-card,2-delete-asked,3-delete-refused,4-delete-refused-after-6s,5-delete-written,6-manage-installs,7-uninstall-asked,8-uninstall-refused,9-uninstall-refused-after-6s,10-update-asked,11-update-refused,12-update-written}.png`、探针 `r112/probe.mjs`、单 spec 脚本 `r112/run-one.sh` 在 scratchpad · **那份既有 spec 为什么多等一步**（第一次整套跑唯一的一条红）：`skills.spec` 在「确认卸载」之后立刻按 Escape，过去框在请求前就关了，所以那一下必然落在外层「管理安装」Modal 上；现在框在**答复之后**才关，而「行翻回安装」与「框离开」是**两次提交**（`toggleInstall` 里那次 `setAgentInstalls` 先被 React 冲刷，调用方的 `setPendingUninstall(null)` 落在下一段微任务），于是 Escape 有时会把还开着的那张确认框关掉、外层留着 —— 改成先 `expect(uninstallConfirm).toHaveCount(0)` 再按 Escape（**只加等待，不改产品代码、不放松断言**），随后整套 **129 passed** · 端口只用 8972 与 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r112-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d1ac2d27` |
 | 2026-10-23 | 7.30 | **两条「现在升级」的批量确认框（插件批次 / 内核批次）没全落地时，框留着，原因也留在框里**（不是移植：`packages/web/src/lib/bulk-update.ts` 两个纯函数（`bulkFailureText` 组合「部分失败句 + 第一个失败的原话」，`remainingTargets` 收窄计划）+2 处源码（`plugins-page.tsx` 的 `runBulkUpdate` 加 `bulkRefusal` 状态、被拒时按 `remainingTargets` 收窄 `pendingBulk`；`agents-page.tsx` 的 `runKernelUpdates` 同形）+1 个新文件 `packages/web/e2e/bulk-update-refusal.spec.mjs`（2 条用例）+ 既有单测加 7 条（`test/todo-notice.test.ts`）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：两处都是 `Promise.allSettled` 之后把部分失败交给一条 toast、并在 `finally` 里关框 —— 用户重试时最需要的「哪些 Agent 没成功、为什么」恰好最先消失。**现在**：每个目标都落地才关框；没全落地时框留着，把「已更新 N 个 Agent；以下未成功：…— 服务端原话」画在 `ConfirmModal` 的 `refusal` 槽里（不套「操作被拒绝：」前缀：五个写了三个的批次不是被拒绝），重试就是同一个按钮；插件批次重试前只留没成功的那些。**为什么是它**：7.29 末尾点名的那条「批量更新」，而它其实有两处同形 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）**）· `npx oxlint` 改动面 **0 警告 0 错误**（5 文件）· 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 文件 / 3231 通过 / 2 跳过**（上轮 3224，本笔 +7）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**131 passed（8.8m）、0 failed**（原 129 条 + 本笔 2 条）· **反证**：`git stash push --` 只带两个页面文件并重建 web → 同一份 spec **2 failed**（两条都死在框里找不到那句原因，16.5 s / 16.3 s），`git stash pop` + 重建后 **2 passed** · **两态实测**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r113-a`、`localhost:8990`、`admin`、1280×900；两条写由 `page.route` 拒成 500）：插件批次 —— 框里句子下面是 danger 色的「已更新 0 个 Agent；以下未成功：General Agent — agent state is read-only」、`通知` 区 **0** 个按钮、**6.5 秒后仍在**、重开不带旧原因；内核批次同形（原因 `kernel merge refused`）—— 探针读数两态都是 `dialog true / reasonInDialog true / toasts 0`，console 只有那两次刻意造的 500、无 pageerror；截图 `r113/shots/{1…11}.png`、探针 `r113/probe.mjs` 在 scratchpad · 端口只用 8990 / 8991（跑完都已停），e2e 是它自己的 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r113-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `4f99fcce` |
 | 2026-10-23 | 7.31 | **两张凭据表的删除确认框（智能体的密钥保险柜 / 账户菜单的「用户密钥」）被拒时，框留着，原因也留在框里**（不是移植：2 处源码（`features/agents/vault-tab.tsx`、`components/account/user-vault-dialog.tsx`）+1 个新文件 `packages/web/e2e/vault-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：两张表删除一行都是整表写回，`confirmRemove` 过去把错误弹成 toast 之后**无条件** `setDeleting(null)` —— 被拒时那一行在页面上、在服务端都还在，唯独原因落进六秒后自己消失、还浮在框上方的 toast 里。**现在**：被拒 → 把服务端原话交给`deleteRefusal` 并提前返回，框留着、原话画在 `ConfirmModal` 的 `refusal` 槽里（既有 `S.common.refused` 前缀）；只有写入落地才关框；删除按钮先开框再清上次的原因，重开不带旧原因；两个文件里因此不再用的 `toastError` 导入删掉。新 spec 两条：被拒时框、句子与行都在，通知区没有可点的按钮，6.5 秒后框内文字与刚被拒时逐字相同；取消后重开干净；放行重试 → 框关、行没了、服务端表里也没有，且它发的写入就是去掉那一行的表（`entries: []`，不是整表清空） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 / 589 类型））· `npx oxlint`（全仓）**0 警告 0 错误**（2261 文件）· 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 文件 / 1052 通过** · server **202 文件 / 2955 通过 / 4 跳过** · cli **38 文件 / 561 通过** · web **263 文件 / 3231 通过 / 2 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1`，脚本自己的 `mktemp` 根、mock 8931 / 服务端 8930）：**133 passed（8.4m）、0 failed**（原 131 + 本笔 2；第一次整套跑时账户那条红在「没先打开应用」，已改成先 `goto('/')` 等草稿页落定）· **反证**：`git stash push --` 只带两个源码文件并重建 web → 同一份 spec **2 failed**（两条都死在框里找不到 `vault is read-only`），`git stash pop` + 重建后 **2 passed（5.3s）**，现场留在 `r114/before-test-results/output.log` · **两态实测真看一眼**（一次性数据根、`localhost:8930`、`r114probe`、1280×900、两处 PUT 由 `page.route` 拒成 500）：智能体的表框里「确认删除环境变量「PROBE_AGENT_KEY」？值不可恢复。」下面一行 danger 色「操作被拒绝：vault is read-only」，通知区 0 个按钮，6.5 秒后仍在；账户的表同形（框名「删除全局密钥」）；放行重试后两处都是框 0、行 0；探针 `probe.json` 里「刚被拒」与「6.5 秒后」的框内文字逐字相同，console 只有那两次刻意造的 500，外加两条 `GET …/machines` 的 403（管理员路由被普通账号每次开页都问一次的老现象，`routes/machines.ts` 首行就写着 admin only），**无 pageerror**；截图 `r114/shots/{1-agent-vault,2-agent-refused,3-agent-refused-after-6s,4-agent-written,5-user-vault,6-user-refused,7-user-refused-after-6s,8-user-written}.png`、探针 `r114/probe.mjs` 在 scratchpad · 端口只用 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
+| 2026-10-23 | 7.32 | **记忆页签的删除与导入被拒时，框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/memory-tab.tsx` + 1 个新文件 `packages/web/e2e/memory-write-refusal.spec.mjs`（3 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：删除确认框过去在**发请求之前**就 `setRemoving(null)`，导入把失败弹成 toast —— 被拒时那条记忆（以及导入要覆盖的文件）在页面上、在磁盘上都还在，唯独原因落进六秒后自己消失、还浮在弹框上方的 toast 里。**现在**：被拒的删除把服务端原话交给 `deleteRefusal` 并提前返回，框留着、原话画在 `ConfirmModal` 的 `refusal` 槽里（既有 `S.common.refused` 前缀），删除真的写下才关框并刷新；行的垃圾桶 / 抽屉 / 手机面板统一走 `askRemove`（先开框再清上次的原因）；导入失败交给 `importRefusal`，走过计划确认的画在那张卡里、没走确认的画在「导入记忆」弹框里，`submitImport` / `pickImport` / 换模式三处各清一次。**为什么是它**：第一百一十四轮末尾排下来的同形写入第一条，两处是同一种病 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`）· `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）· 两个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **68 通过文件 + 1 跳过 / 1410 通过 / 6 跳过** · cli **38 / 561** · web **264 / 3239 通过 / 2 跳过** · server **203 / 2961 通过 / 4 跳过**（比 7.31 高的部分是第一百一十五轮的主题用例，本笔不加单测，界面行为由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8945 MOCK_PORT=8946`，脚本自己的 `mktemp` 根）：**136 passed（8.9m）、0 failed**（第一百一十五轮之后 133 + 本笔 3）· **反证**：`git stash push --` 只带这一个源码文件并重建 web → 同一份 spec **3 failed**（都死在框里找不到 `memory store is closed`），`git stash pop` + 重建后 **3 passed（6.7s）** · **两态实测真看一眼**（一次性数据根 `/root/adelie-fork-data/r116-probe-*`、`localhost:8957`、`r116probe`、mock 8958、1280×900，两处写由 `page.route` 拒成 500）：删除框句子下面一行 danger 色「操作被拒绝：memory store is closed」、通知区 **0** 个按钮；导入的计划确认框里「将覆盖 1 条记忆：probe-memory.md / 此操作不可恢复。」加同一行拒绝语，下面那层「导入记忆」仍开着；探针读数 `deleteDialogStillOpen 1 / deleteRefusalVisible 1 / planRefusalVisible 1 / notificationButtons 0 / heldAfterRefusals 1`，console 只有那两次刻意造的 500 与一条 `GET …/machines` 的 403（老现象），**无 pageerror**；截图 `r116/{1-memory-tab,2-delete-refused,3-import-modal,4-import-refused}.png`、探针在 scratchpad · 端口只用 e2e 的 8945 / 8946 与探针的 8957 / 8958（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r116-*`，没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `dbd2d583` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -14332,3 +14333,77 @@ setDeleting(null);          // 被拒也关
 
 - 先按 `csu-mail` 技能试 `mail.py check`（中南网段自 2026-10-08 起不通，约定一轮只试一次），失败改飞书；
   正文留在 scratchpad 的 `r115/report.md`。
+
+## 第一百一十六轮：记忆页签的删除与导入被拒时，框留着，原因也留在框里（2026-10-23，条目 7.32）
+
+### 为什么是这一条
+
+第一百一十四轮末尾把「同形的写入」按「一轮一处」排了下去，排在第一的就是记忆页签：删除一条记忆的确认框在
+**发请求之前**就自己关掉（`setRemoving(null)` 在 `await` 之前），导入则把失败交给一条 toast。两者都是同一种
+病 —— 被拒时那一行（以及导入要覆盖的文件）在页面上、在磁盘上都还在，唯独原因落进一条六秒后自己消失、还浮在
+弹框上方的 toast 里；而重试需要的那张卡片已经没了。
+
+开工时这棵树不干净：`self_evolution` 那一轮的「外置主题」（第一百一十五轮）正在里面跑（脏文件 mtime 10:36—10:53、
+主题探测服务 10:57 起在 8955 上）。按第 0 步纪律**没有硬上**，等它 11:23 落地（`cc06123b`）后工作区连续两次干净
+才开工；本轮一切提交都带 pathspec，没碰它的任何文件。
+
+### 改了什么（1 处源码 + 1 个新 spec + 一对 changelog）
+
+- `packages/web/src/features/agents/memory-tab.tsx`：
+  - `confirmRemove` 不再先 `setRemoving(null)`；被拒时把 `apiErrorText(e)` 交给 `deleteRefusal` 并提前返回，
+    删除真的写下才关框、`load()` 与 `reloadAgents()` 才跑。
+  - 行的垃圾桶、抽屉与手机面板底部的删除统一走 `askRemove`：先开框，再清上一次的原因（那句话属于上次点名的记忆）。
+  - `runImport` 失败不再 `toastError`，而是把原话交给 `importRefusal`；成功路径一字未动。画的位置按「哪一层在问」
+    分：计划确认（`ConfirmModal`）用它的 `refusal` 槽，没走确认的直接导入画在「导入记忆」弹框里，两边都用既有的
+    `S.common.refused` 前缀。`submitImport`、`pickImport`、换导入模式三处各清一次旧原因，取消计划确认回到弹框时
+    那句话仍在（原因要活过重开）。
+- `packages/web/e2e/memory-write-refusal.spec.mjs`（新，3 条）：① 删除被拒 → 框、句子与记忆都在，通知区 0 个按钮，
+  框内文字除「操作被拒绝：…」那行外与刚打开时逐字相同，取消不改变任何东西；② 放行重试 → 框关、行没了、服务端
+  也没有，且它发的正是那条 `DELETE`；③ 导入被拒 → 计划确认留着、原话在里面，那一组在磁盘与页面上都是导入前的
+  样子，取消回到导入弹框仍带着那句话，换模式即清掉。初始的记忆文件由**导入接口自己种下**（这个页签按设计没有
+  「新建文件」表单，内容由 agent 在对话里维护），两处拒绝都由 `page.route` 造。
+- changelog 一对 `changelog/unreleased/2026-10-23-memory-write-refusal{,.zh}.md`。**无新依赖、不碰接口、无新文案。**
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`）。
+- `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）；两个源码 / 用例文件 `prettier --check` 干净（新 spec 先被 prettier
+  `--write` 整理过一次，之后才是 check 干净）。
+- 逐包 test **`EXIT=0`、0 失败**：ui **130 文件 / 1053 通过** · core **68 通过文件 + 1 跳过 / 1410 通过 / 6 跳过** ·
+  cli **38 / 561** · web **264 / 3239 通过 / 2 跳过** · server **203 / 2961 通过 / 4 跳过**（web 与 server 的数比
+  第一百一十四轮高，是第一百一十五轮的主题用例带进来的，本笔不加单测 —— 这是界面行为，改由 e2e 钉住）。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8945 MOCK_PORT=8946 pnpm -C packages/web test:e2e`，
+  脚本自己的 `mktemp` 数据根）：**136 passed（8.9m）、0 failed**（第一百一十五轮之后 133 条 + 本笔 3 条）。
+- **反证**：`git stash push -- packages/web/src/features/agents/memory-tab.tsx` 退回改动前并重建 web → 同一份 spec
+  **3 failed**（三条都死在「框里找不到 `memory store is closed`」），`git stash pop` + 重建后 **3 passed（6.7s）**；
+  退回前的源码留底 `r116/memory-tab.after.tsx`（sha 对得上 `stash pop` 之后的文件）。
+- **两态实测真看一眼**（一次性数据根 `/root/adelie-fork-data/r116-probe-*`、`localhost:8957`、用户 `r116probe`、
+  mock 模型 8958、1280×900；两处写由 `page.route` 拒成 500）：删除框里「将删除「Probe memory」并移除 MEMORY.md 中
+  对应的索引行。此操作不可恢复。」下面一行 danger 色「操作被拒绝：memory store is closed」，通知区 **0** 个按钮；
+  导入的计划确认框里是「将覆盖 1 条记忆：probe-memory.md / 此操作不可恢复。」加同一行拒绝语，下面那层「导入记忆」
+  仍开着。探针读数：`deleteDialogStillOpen 1 / deleteRefusalVisible 1 / planRefusalVisible 1 / notificationButtons 0 /
+  heldAfterRefusals 1`，`console` 只有那两次刻意造的 500 与一条 `GET …/machines` 的 403（管理员路由被普通账号每次
+  开页都问一次的老现象，`routes/machines.ts` 首行写着 admin only），**无 pageerror**；截图
+  `r116/{1-memory-tab,2-delete-refused,3-import-modal,4-import-refused}.png`、探针 `r116/probe.mjs` 与
+  `r116/run-probe.sh` 在 scratchpad（`packages/web/.r116-probe.mjs` 是拷进去跑的临时副本，脚本退出时已删，未 `git add`）。
+- 端口只用 e2e 自己的 8945 / 8946 与探针的 8957 / 8958（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r116-*`，一个字节没往 `~/.penguin` / `~/.adelie` 里写
+  （`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- 同一条扫描线上还剩（按「一轮一处」往下排，下一轮先核这些里第一个还缺的）：
+  `features/chat/workspace-browser.tsx` 的保存 / 重命名 / 新建 / 删除（文件里三处 `refusal` 只是注释，不是这套
+  写法）、`components/layout/project-dialogs.tsx` 的删除项目、`features/agents/api-tab.tsx` 与
+  `features/settings/agent-api-section.tsx` 的密钥保存，以及 `features/company/` 的日历 / 员工 / 组织 / 手册 /
+  频道各处。
+- 记忆页签里**「编辑 / 添加」两条路**本来就不写文件（它们开一个新的对话，由 agent 改），所以没有第三种要收的框；
+  这一条到此完整。
+- 待办里能一轮做完的条目仍然没有（2.2c / 3.5 / 3.6 / 4.1—4.3 / 5.6 / 5.10 各自卡在用户拍板、桌面壳或新凭证上，
+  理由见各条正文）。
+
+### 汇报
+
+- 按 `csu-mail` 技能发到 `0110230306@csu.edu.cn`；若中南网段仍不通（2026-10-08 起的老问题，约定一轮试一次），
+  改飞书送达，正文留在 scratchpad 的 `r116/report.md`。
