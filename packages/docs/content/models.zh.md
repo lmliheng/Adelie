@@ -498,6 +498,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - **预置模型。** `abliterated-model-large-v2`（官方推荐的默认选择）、`abliterated-model-large`、`abliterated-model-large-flash` 与 `abliterated-model`。前两条是 1,000,000 Token 上下文、只收文本；`flash` 是 1,048,576 并接受图像；`abliterated-model` 是 262,144，也接受图像。
 - **协议。** 这些 id 没有一条能被 AgentHub 按名字认出来，所以每个条目都固定 Chat Completions 客户端（`client_type = "openai-chat"`）并把端点写在条目上；同一条端点上也有 `/responses`，要换协议在条目上改即可。和所有网关一样，没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。
 - **价格。** 取自服务自己的模型列表，单位是每百万 Token 多少美元：输入 1 或 3，输出 2、3 或 5，缓存命中的读价 0.1 或 0.3。它不额外收缓存写入费，所以 `cache_write` 记的就是输入价。
+- **一次请求最多 4 张图。** 这是服务自己的限制，超过它会直接回 `400 … media_count_exceeded`，而对话里的图会被每一次请求重新带上——所以会话会一直失败。Adelie 因此在每次请求前把**最旧的**那几张换成一行 `[image omitted: …]` 文字占位，只保留最新的四张（新发出的图优先算进这四张）。对话本身和 Trace 里的图一张不少，改的只是这一次请求带过去的量。
 
 ### 预置模型
 

@@ -243,6 +243,19 @@ export interface ModelCatalogEntry {
   offPeakDiscount?: OffPeakDiscount;
   /** Whether image input (vision modality) is supported. */
   supportsVision: boolean;
+  /**
+   * How many images ONE request may carry, when the seller publishes a cap. Unset = no known
+   * cap, and the request goes out with whatever the conversation holds.
+   *
+   * This is a request-shape fact, not a display one: a conversation accumulates images (a
+   * `read_file` of a picture becomes one, and every later request replays the history), and a
+   * provider that counts them refuses the request outright once the total passes its limit —
+   * `400 … media_count_exceeded` from Abliteration, whose cap is 4. The Session therefore
+   * trims the oldest replayed images down to this number before each request (see
+   * GenerativeModel's image budget), keeping the newest; the conversation's own history and
+   * Trace keep every image, so nothing is lost from the record.
+   */
+  maxImages?: number;
   /** AgentHub client protocol: required when an id cannot be auto-routed or a shared protocol must be pinned. */
   clientType?: string;
   /** Preset base URL: inlined into gateway and direct MiniMax entries so only an API key is required. */
@@ -3156,6 +3169,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     provider: "abliteration",
     contextWindow: 1000000,
     pricing: usd(0.3, 3, 5),
+    maxImages: 4,
     supportsVision: false,
     clientType: "openai-chat",
     baseUrl: ABLITERATION_BASE_URL,
@@ -3166,6 +3180,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     provider: "abliteration",
     contextWindow: 1000000,
     pricing: usd(0.3, 3, 5),
+    maxImages: 4,
     supportsVision: false,
     clientType: "openai-chat",
     baseUrl: ABLITERATION_BASE_URL,
@@ -3176,6 +3191,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     provider: "abliteration",
     contextWindow: 1048576,
     pricing: usd(0.1, 1, 2),
+    maxImages: 4,
     supportsVision: true,
     clientType: "openai-chat",
     baseUrl: ABLITERATION_BASE_URL,
@@ -3186,6 +3202,7 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     provider: "abliteration",
     contextWindow: 262144,
     pricing: usd(0.1, 1, 3),
+    maxImages: 4,
     supportsVision: true,
     clientType: "openai-chat",
     baseUrl: ABLITERATION_BASE_URL,
@@ -3237,6 +3254,22 @@ export function catalogEntryFor(
 /** Looks up provider info by provider id; returns undefined for an unknown id. */
 export function providerInfo(providerId: string): ModelProviderInfo | undefined {
   return MODEL_PROVIDERS.find((p) => p.id === providerId);
+}
+
+/**
+ * The per-request image cap the catalog records for a model (ModelCatalogEntry.maxImages), or
+ * undefined when the vendor publishes none — the case for every row but Abliteration's.
+ *
+ * Read from the catalog rather than stored on the Project entry: the cap is a property of the
+ * seller, not a preference, so a Project that renamed or repriced the row still sends at most
+ * what the seller accepts. A user-added row (no catalog entry) gets no cap.
+ */
+export function catalogImageLimit(
+  provider: string | undefined,
+  upstreamId: string,
+): number | undefined {
+  if (provider === undefined) return undefined;
+  return catalogEntryFor(provider, upstreamId)?.maxImages;
 }
 
 /**

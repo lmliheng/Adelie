@@ -11,6 +11,7 @@ import {
   canonicalClientType,
   modelHomepageUrl,
   catalogEntryFor,
+  catalogImageLimit,
   attributionHeaders,
   effectivePricing,
   offPeakAt,
@@ -1049,10 +1050,24 @@ describe("model-catalog", () => {
     for (const m of abl) {
       expect(m.clientType, m.modelId).toBe("openai-chat");
       expect(m.baseUrl, m.modelId).toBe("https://api.abliteration.ai/v1");
+      // Its per-request image cap, and the lookup the Session reads it through: four images
+      // per request is the seller's own limit (`media_count_exceeded` beyond it).
+      expect(m.maxImages, m.modelId).toBe(4);
+      expect(catalogImageLimit("abliteration", m.modelId), m.modelId).toBe(4);
       // A gateway row: no promotion, so nothing sits between the list price and the bill.
       expect(m.discount, m.modelId).toBeUndefined();
       expect(m.retired, m.modelId).toBeUndefined();
     }
+    // No other group publishes an image cap, so a request there carries every image the
+    // conversation holds (and a seller with an unpublished limit keeps the language it had).
+    for (const m of MODEL_CATALOG) {
+      if (m.provider === "abliteration") continue;
+      expect(m.maxImages, `${m.provider}/${m.modelId}`).toBeUndefined();
+      expect(catalogImageLimit(m.provider, m.modelId), m.modelId).toBeUndefined();
+    }
+    // An id the catalog does not know — a user-added row — gets no cap either.
+    expect(catalogImageLimit("abliteration", "someone/else")).toBeUndefined();
+    expect(catalogImageLimit(undefined, "abliterated-model")).toBeUndefined();
     const gateway = [...or, ...fw, ...sf, ...td, ...qtp, ...qpayg, ...ms, ...abl];
     // Pricing (USD, per the 2026-08-03 models-API re-read): MiMo v2.5 and Hy3 publish a real
     // cache-hit price and no per-token write premium, so cache_write carries the input price.

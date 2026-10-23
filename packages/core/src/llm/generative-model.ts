@@ -237,6 +237,101 @@ export function mergeOmniToUniMessage(messages: OmniMessage[]): UniMessage {
 }
 
 // ---------------------------------------------------------------------------
+// Image budget (a request may carry only so many images)
+// ---------------------------------------------------------------------------
+
+/**
+ * The stand-in left where an image was dropped from a request: one text item (or one appended
+ * line, for a tool result's images) in the place the picture occupied, so the model knows the
+ * conversation held a picture there and cannot mistake the gap for its own omission. Named in
+ * the seller's own terms — the limit is the request's image count, not the picture's size.
+ */
+export function imageOmittedNote(limit: number): string {
+  return `[image omitted: this model accepts at most ${limit} image${limit === 1 ? "" : "s"} per request]`;
+}
+
+/** Whether a content item is an image the request counts: a data URL or an inline image blob. */
+function isImageItem(item: ContentItem): boolean {
+  if (item.type === "image_url") return true;
+  return item.type === "inline_data" && item.mime_type.startsWith("image/");
+}
+
+/** How many images one UniMessage carries — image items plus a tool result's image attachments. */
+export function countMessageImages(msg: UniMessage): number {
+  let count = 0;
+  for (const item of msg.content_items) {
+    if (isImageItem(item)) count += 1;
+    else if (item.type === "tool_result") count += item.images?.length ?? 0;
+  }
+  return count;
+}
+
+/**
+ * Keeps at most `budget` of a message's images, **the newest ones**, and replaces each older
+ * one with {@link imageOmittedNote}. A message that fits is returned as-is (same object), so a
+ * history made entirely of fitting messages costs nothing.
+ */
+function capMessageImages(msg: UniMessage, budget: number, limit: number): UniMessage {
+  if (countMessageImages(msg) <= budget) return msg;
+  const note = imageOmittedNote(limit);
+  let left = budget;
+  const kept: ContentItem[] = [];
+  // Newest first: the images nearest the current request are the ones worth paying for.
+  for (let i = msg.content_items.length - 1; i >= 0; i -= 1) {
+    const item = msg.content_items[i]!;
+    if (isImageItem(item)) {
+      if (left > 0) {
+        left -= 1;
+        kept.push(item);
+      } else {
+        kept.push({ type: "text", text: note });
+      }
+      continue;
+    }
+    if (item.type === "tool_result" && (item.images?.length ?? 0) > 0) {
+      const images = item.images!;
+      if (images.length <= left) {
+        left -= images.length;
+        kept.push(item);
+      } else {
+        const surviving = left > 0 ? images.slice(-left) : [];
+        left = 0;
+        kept.push({
+          ...item,
+          ...(surviving.length > 0 ? { images: surviving } : { images: undefined }),
+          text: item.text ? `${item.text}\n\n${note}` : note,
+        });
+      }
+      continue;
+    }
+    kept.push(item);
+  }
+  return { ...msg, content_items: kept.reverse() };
+}
+
+/**
+ * Trims a replayed history to at most `limit` images in aggregate, newest kept (see
+ * {@link capMessageImages}). Returns a new array of the same length whose untouched messages
+ * are the very objects it was handed.
+ */
+export function capHistoryImages(history: UniMessage[], limit: number): UniMessage[] {
+  const counts = history.map(countMessageImages);
+  const capped = new Array<UniMessage>(history.length);
+  let left = limit;
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const msg = history[i]!;
+    const count = counts[i]!;
+    if (count === 0) {
+      capped[i] = msg;
+      continue;
+    }
+    capped[i] = capMessageImages(msg, left, limit);
+    left = Math.max(0, left - count);
+  }
+  return capped;
+}
+
+// ---------------------------------------------------------------------------
 // Token accounting (as defined by SKILL.md)
 // ---------------------------------------------------------------------------
 
@@ -971,6 +1066,8 @@ export class GenerativeModel implements LLMInterface {
   private readonly toolCallIds: ToolCallIdAllocator;
   /** Configured output cap (`GenerativeModelConfig.maxTokens`); the per-request clamp derives the effective cap from it (see effectiveMaxTokens). */
   private readonly configuredMaxTokens: number | undefined;
+  /** Per-request image cap (`GenerativeModelConfig.maxImages`); undefined = the seller publishes none (see fitReplayedImages). */
+  private readonly maxImages: number | undefined;
   /** Model context window; `undefined` when unconfigured (or implausibly small, see resolveContextWindow) — the per-request clamp then disables itself rather than clamp against an assumption. */
   private readonly contextWindow: number | undefined;
   /**
@@ -1023,6 +1120,10 @@ export class GenerativeModel implements LLMInterface {
     this.requestTimeoutMs = config.requestTimeoutMs ?? 300000;
     this.toolCallIds = config.toolCallIds ?? new ToolCallIdAllocator();
     this.configuredMaxTokens = config.maxTokens;
+    this.maxImages =
+      config.maxImages !== undefined && config.maxImages > 0
+        ? Math.floor(config.maxImages)
+        : undefined;
     this.contextWindow = resolveContextWindow(config.contextWindow);
     this.baseInputTokens =
       approximateTokens(config.systemPrompt ?? "") +
@@ -1208,6 +1309,10 @@ export class GenerativeModel implements LLMInterface {
     let outcome: LLMOutcome | null = null;
     try {
       await this.refreshApiKey();
+      // The seller counts images per request, not per message: a conversation that read five
+      // pictures would fail every later turn with 400 media_count_exceeded, so the oldest
+      // replayed ones are dropped from THIS request (the history and Trace keep them).
+      this.fitReplayedImages(uniMessage);
       const it = this.openStream(
         uniMessage,
         ac.signal,
@@ -1382,6 +1487,27 @@ export class GenerativeModel implements LLMInterface {
     // real total.
     this.lastRequestTotal = this.baseInputTokens + approximateMessagesTokens(history);
     this.client.setHistory(groupHistoryToUniMessages(history));
+  }
+
+  /**
+   * Trims the replayed history so this request carries at most `maxImages` images in all: the
+   * new input's images are counted first (they are what the user is asking about now), the
+   * history keeps the rest, newest first — see capHistoryImages for the per-message rule.
+   *
+   * Nothing happens without a configured cap, or when the history already fits. When it does
+   * not, the client's history is replaced through setHistory rather than mutated: the objects
+   * getHistory hands out are the client's own. A conversation's Trace and stored history are
+   * untouched — this decides what one request carries, not what the conversation is.
+   */
+  private fitReplayedImages(input: UniMessage): void {
+    const limit = this.maxImages;
+    if (limit === undefined) return;
+    const budget = Math.max(0, limit - countMessageImages(input));
+    const history = this.client.getHistory();
+    if (history.length === 0) return;
+    const total = history.reduce((sum, msg) => sum + countMessageImages(msg), 0);
+    if (total <= budget) return;
+    this.client.setHistory(capHistoryImages(history, budget));
   }
 
   /**

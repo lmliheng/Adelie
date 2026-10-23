@@ -14452,3 +14452,41 @@ setDeleting(null);          // 被拒也关
   安装副本再重启 `adelie-server.service`——这一步没做，等用户点头。
 - key 没有写进任何 Project 配置；用户说他自己来测试。
 - 没切版本号、没发 npm、没发安装包、没发发布汇总。
+
+## 用户点单：会话因图太多整条失败（Abliteration 4 张上限）（2026-10-23）
+
+### 现象与根因
+
+用户在另一个会话里反复看到 `模型请求错误：400 This request has more images than the limit of 4. Send fewer
+images and try again. (media_count_exceeded)`。那条会话（`session-2026-10-23-13-01-16-9535d94c`，模型
+`abliteration / abliterated-model-large-flash`，来自上一轮刚加的分组）在 trace 里连读五张图（`d1`…`d5` 的
+`tool_call_output` 各带一张），随后每一次请求都是同一条 400：AgentHub 的会话历史每轮全量重放，图数一旦超过卖家上限
+就再也发不出去，改问法、只发文字都没用。
+
+### 改了什么
+
+- `packages/core/src/state/model-catalog.ts`：`ModelCatalogEntry` 新增 `maxImages`（每请求图片上限，卖家公布时
+  才写），Abliteration 四条预置都写 4；新增 `catalogImageLimit(provider, modelId)` 按 `(provider, model_id)` 查。
+- `packages/core/src/interfaces/llm.ts`：`GenerativeModelConfig.maxImages`。
+- `packages/core/src/llm/generative-model.ts`：新增 `countMessageImages` / `capHistoryImages`（纯函数，导出可测）
+  与私有 `fitReplayedImages`；`streamGenerate` 在 `refreshApiKey` 之后、打开上游流之前调用它——本次新输入的图先
+  算进预算，剩下的从最新往前留给历史，超出部分换成一行 `[image omitted: …]`（工具结果按自己的 `images` 数组裁，
+  占位追加到文字后），重建历史交给 `setHistory`，不动 `getHistory` 交出来的对象。
+- `packages/core/src/agent.ts`：`buildLLM` 用目录查出上限并传给 `GenerativeModel`（压缩重建、换模型后的新上下文
+  同一条路）。
+- 测试：新增 `packages/core/test/image-budget.test.ts`（8 条：计数、按消息/工具结果裁剪、不改原对象、零预算、
+  无上限原样送出、新输入的图算进预算）；`packages/core/test/model-catalog.test.ts` 补四条条目带 4、其余全无、
+  目录外 id 与未给 provider 都查不到。
+- 文档：`packages/docs/content/models.zh.md` / `models.en.md` 的 Abliteration 一节写明 4 张上限与裁剪规则；
+  `changelog/unreleased/2026-10-23-image-budget.{md,zh.md}`。
+
+### 验证
+
+- `packages/core`：`npx vitest run test/image-budget.test.ts` → 8 passed；全量 `npx vitest run` → 69 个文件
+  通过 / 1418 passed、6 skipped；`npx tsc --noEmit -p tsconfig.json` 无输出；改动文件 `prettier --check` 全绿。
+- 接线读的是构建产物里的 `catalogImageLimit`，不是手写的分支：目录里只有这四条返回 4。
+
+### 没做 / 还差什么
+
+- 现网安装副本要重新构建再重启才带上（见下一节的部署记录）。
+- 没有替用户去复测那条会话：他说了自己来测，而且每次请求是真花钱的。

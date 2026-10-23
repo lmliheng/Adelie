@@ -99,6 +99,7 @@ import type {
 import { SUBAGENT_NAME } from "./environment/tools/run-subagent.js";
 import { INPUT_SUBAGENT_NAME } from "./environment/tools/input-subagent.js";
 import type { CompactionSettings, OpenContextOptions } from "./engine/context-engine.js";
+import { catalogImageLimit } from "./state/model-catalog.js";
 import type {
   ApproveFn,
   CommandPolicyConfig,
@@ -1349,6 +1350,9 @@ export class Agent {
     // model_id) pair as the primary key.
     const buildLLM = (context: AssembledContext, tools: ToolDefinition[]): GenerativeModel => {
       const entry = context.modelEntry;
+      // The seller's per-request image cap, from the catalog (Abliteration's is 4): a
+      // conversation that accumulates pictures would otherwise fail every later request.
+      const imageLimit = catalogImageLimit(entry.provider, entry.model_id);
       return new GenerativeModel({
         modelId: entry.model_id,
         toolCallIds,
@@ -1357,6 +1361,7 @@ export class Agent {
         tools,
         systemPrompt: context.systemPrompt,
         ...(entry.context_window !== undefined ? { contextWindow: entry.context_window } : {}),
+        ...(imageLimit !== undefined ? { maxImages: imageLimit } : {}),
         ...(context.maxTokens !== undefined ? { maxTokens: context.maxTokens } : {}),
         // Fast mode is a session-request annotation: it rides every context's LLM object,
         // while the bare/meta LLM below and the vision describer deliberately skip it — their

@@ -52,6 +52,18 @@ export interface GenerativeModelConfig {
    */
   maxTokens?: number;
   /**
+   * How many images ONE request may carry, when the model's seller publishes a cap (the
+   * catalog's `ModelCatalogEntry.maxImages`; Abliteration's is 4). Unset = no known cap.
+   *
+   * A conversation accumulates images — a `read_file` of a picture, an attached screenshot —
+   * and every later request replays them, so a provider that counts images refuses the
+   * conversation outright once the total passes its limit (`400 … media_count_exceeded`).
+   * The implementation therefore trims the OLDEST replayed images down to this number before
+   * each request, replacing each with a one-line text placeholder, and keeps the newest; the
+   * messages in the Session's own history and Trace are not touched.
+   */
+  maxImages?: number;
+  /**
    * Per-model fast mode (from the model entry's `fast_mode` annotation): when true, every
    * request opts into the provider's faster serving tier at premium pricing (AgentHub
    * UniConfig `fast_mode`). Off by default. Models without a fast tier reject the parameter
