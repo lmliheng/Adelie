@@ -179,7 +179,13 @@ export function MemoryTab({
   const [importMode, setImportMode] = useState<MemoryImportMode>("skip");
   const [importPlan, setImportPlan] = useState<MemoryImportPlan | null>(null);
   const [importBusy, setImportBusy] = useState(false);
+  // The server's words for a write it refused, drawn in the surface that asked for it: an
+  // import refused from the plan confirmation appears in that card, one that needed no
+  // confirmation (nothing would be lost) appears in the import modal still underneath it.
+  const [importRefusal, setImportRefusal] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Selected | null>(null);
+  // Same for a refused delete, in the confirmation that named the memory (see confirmRemove).
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   // ≥1024px the view opens as a right Drawer, below as a bottom Sheet — same live-updating
   // breakpoint as the chat page's panels; the two are mounted mutually exclusively.
   const [isDesktop, setIsDesktop] = useState(() => window.matchMedia(DESKTOP_QUERY).matches);
@@ -414,12 +420,20 @@ export function MemoryTab({
     try {
       const doc = parseMemoryScopeDocument(await file.text());
       setImportMode("skip");
+      // A newly picked document starts without the previous attempt's reason.
+      setImportRefusal(null);
       setImporting({ scope, fileName: file.name, doc });
     } catch (e) {
       toastError(e instanceof MemoryDocumentError ? e.message : S.memory.importInvalidFile);
     }
   };
 
+  /**
+   * Runs the import the person just asked for (with `confirm` once a plan was shown). Only a
+   * written import closes the surfaces: a refused one leaves whichever surface asked — the plan
+   * confirmation, or the import modal when nothing would have been lost — with the server's
+   * words in it, so the retry is the same button rather than a fresh file pick.
+   */
   const runImport = async (confirm: boolean) => {
     if (!projectId || !importing) return;
     setImportBusy(true);
@@ -441,7 +455,7 @@ export function MemoryTab({
       // The agent card's memory count changed; refresh the list provider too.
       void reloadAgents();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setImportRefusal(apiErrorText(e));
     } finally {
       setImportBusy(false);
     }
@@ -450,6 +464,8 @@ export function MemoryTab({
   /** Import's first click: straight through when nothing would be lost, otherwise into the confirmation. */
   const submitImport = () => {
     if (!importing) return;
+    // A fresh decision starts without the previous attempt's reason.
+    setImportRefusal(null);
     const group = groups?.find((g) => g.scope.scopeKey === importing.scope.scopeKey);
     const plan = planMemoryImport(
       importing.doc,
@@ -460,20 +476,37 @@ export function MemoryTab({
     else void runImport(false);
   };
 
+  /**
+   * A memory's delete entry — the row's trash button, the drawer's, or the sheet's: opens the
+   * confirmation without the previous attempt's reason, which belonged to the memory that
+   * attempt named rather than to this one.
+   */
+  const askRemove = (target: Selected) => {
+    setRemoving(target);
+    setDeleteRefusal(null);
+  };
+
+  /**
+   * Confirm modal's "Delete": only a written delete closes it. A refused one leaves the memory
+   * on the page and on disk exactly as it was, so the card stays open with the server's words in
+   * it and the same button retries — closing as the request left used to carry that reason into
+   * a toast that dismisses itself after six seconds and sits above the card.
+   */
   const confirmRemove = async () => {
     if (!projectId || !removing) return;
     const target = removing;
-    setRemoving(null);
     try {
       await api.deleteMemoryFile(projectId, agentId, target.scope.scopeKey, target.file.name);
-      toastSuccess(S.memory.deleteDone);
-      if (viewing && viewing.file.name === target.file.name) setViewOpen(false);
-      await load();
-      // The agent card's memory count changed; refresh the list provider too.
-      void reloadAgents();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
+      return;
     }
+    toastSuccess(S.memory.deleteDone);
+    if (viewing && viewing.file.name === target.file.name) setViewOpen(false);
+    setRemoving(null);
+    await load();
+    // The agent card's memory count changed; refresh the list provider too.
+    void reloadAgents();
   };
 
   if (error) return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
@@ -505,7 +538,7 @@ export function MemoryTab({
         variant="danger"
         label={`${S.memory.delete} ${file.title}`}
         title={S.memory.delete}
-        onClick={() => setRemoving({ scope, file })}
+        onClick={() => askRemove({ scope, file })}
       >
         <GlyphIcon d={ICONS.trash} size={14} />
       </IconButton>
@@ -548,7 +581,7 @@ export function MemoryTab({
       <Button size="sm" onClick={() => openEditor(viewing.scope, viewing.file)}>
         {S.memory.edit}
       </Button>
-      <Button size="sm" variant="danger" onClick={() => setRemoving(viewing)}>
+      <Button size="sm" variant="danger" onClick={() => askRemove(viewing)}>
         {S.memory.delete}
       </Button>
     </div>
@@ -885,7 +918,11 @@ export function MemoryTab({
               label={S.memory.importModeLabel}
               name="memory-import-mode"
               value={importMode}
-              onChange={setImportMode}
+              onChange={(mode) => {
+                setImportMode(mode);
+                // The reason named the mode that was refused; choosing another starts clean.
+                setImportRefusal(null);
+              }}
               options={[
                 {
                   value: "skip",
@@ -904,6 +941,13 @@ export function MemoryTab({
                 },
               ]}
             />
+            {/* This modal is where an import that needed no confirmation reports a refusal (the
+                one that went through the plan confirmation prints it inside that card instead). */}
+            {importRefusal !== null && importPlan === null && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                {S.common.refused(importRefusal)}
+              </p>
+            )}
             <div className="flex justify-end">
               <Button size="sm" variant="primary" disabled={importBusy} onClick={submitImport}>
                 {S.memory.importAction}
@@ -925,6 +969,7 @@ export function MemoryTab({
         busy={importBusy}
         onClose={() => setImportPlan(null)}
         onConfirm={() => void runImport(true)}
+        refusal={importRefusal === null ? undefined : S.common.refused(importRefusal)}
       >
         <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
           {importPlan && importPlan.overwritten.length > 0 && (
@@ -946,6 +991,7 @@ export function MemoryTab({
         cancelLabel={S.common.cancel}
         onClose={() => setRemoving(null)}
         onConfirm={() => void confirmRemove()}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-700 dark:text-gray-300">
           {removing ? S.memory.deleteConfirm(removing.file.title) : ""}
