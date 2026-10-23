@@ -29,12 +29,19 @@ conversation or its Trace.
   `getHistory` returns are never mutated in place). A tool result's images are trimmed inside its
   own `images` array with the placeholder appended to its text. When the new input alone fills
   the budget, every replayed image becomes a placeholder.
+- **The input is trimmed too when it overflows by itself.** Five pictures read in one turn are
+  merged into a *single* input message, and an interrupted turn is resent as new input when the
+  Session continues — trimming only the history would leave that request carrying five and
+  refused again. The input is now capped first (the newest four stay, older ones become the
+  placeholder), the history takes what is left of the budget, and `fitReplayedImages` hands back
+  the message to send instead of mutating the caller's.
 - **The Session model carries it** (`core/src/agent.ts`): `buildLLM` looks the limit up in the
   catalog and passes it as `GenerativeModelConfig.maxImages`. A context rebuilt after compaction,
   or for a switched model, goes through the same constructor.
 - Tests: `core/test/image-budget.test.ts` (counting, per-message trimming, tool-result trimming,
-  no mutation of the originals, a zero budget, the untouched path with no limit, and the wiring
-  that counts the new input) and `core/test/model-catalog.test.ts` (the four rows carry 4; no
+  no mutation of the originals, a zero budget, the untouched path with no limit, the wiring that
+  counts the new input, an input that overflows by itself keeping only the newest four, and the
+  placeholder naming the seller's cap rather than the leftover budget) and `core/test/model-catalog.test.ts` (the four rows carry 4; no
   other model and no id outside the catalog does).
 - Docs: the Abliteration section of `models.zh.md` / `models.en.md` states the limit and what
   the trimming does.

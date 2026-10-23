@@ -8,18 +8,27 @@
  * What is checked here: the pure trimming (newest images kept, older ones replaced by a text
  * note, tool results trimmed inside their own image list) and the wiring — a configured
  * `maxImages` reaches the client's history before the request opens, and the new input's own
- * images are counted against the same budget.
+ * images are counted against the same budget. One turn can overflow on its own, too: the input
+ * is a merge of everything the turn carries (a resumed turn replays its tool results), so the
+ * input itself is trimmed to the cap before the history gets what is left.
  */
 import { describe, expect, it, vi } from "vitest";
 import type { UniEvent, UniMessage } from "@prismshadow/agenthub";
 import type { OmniMessage } from "../src/omnimessage/index.js";
+// The class itself is imported below, after `vi.mock` has had its say; this is the type-only
+// half so annotations do not have to spell `InstanceType<typeof …>`.
+import type { GenerativeModel as GenerativeModelClass } from "../src/llm/generative-model.js";
 
-const state = vi.hoisted(() => ({ clients: [] as { history: UniMessage[] }[] }));
+const state = vi.hoisted(() => ({
+  clients: [] as { history: UniMessage[]; requests: UniMessage[] }[],
+}));
 
 vi.mock("@prismshadow/agenthub", async (importOriginal) => {
   const mod = await importOriginal<typeof import("@prismshadow/agenthub")>();
   class FakeAutoLLMClient {
     history: UniMessage[] = [];
+    /** Every message this client was asked to send, in order — the request side of the budget. */
+    requests: UniMessage[] = [];
     constructor(_options: Record<string, unknown>) {
       state.clients.push(this);
     }
@@ -29,8 +38,9 @@ vi.mock("@prismshadow/agenthub", async (importOriginal) => {
     setHistory(history: UniMessage[]): void {
       this.history = history;
     }
-    async *streamingResponseStateful(): AsyncIterable<UniEvent> {
+    async *streamingResponseStateful(options: { message: UniMessage }): AsyncIterable<UniEvent> {
       // Nothing upstream: the tests only care about what the request would carry.
+      this.requests.push(options.message);
     }
     appendHistory(message: UniMessage): void {
       this.history = [...this.history, message];
@@ -134,10 +144,20 @@ describe("capHistoryImages", () => {
     expect(tool.images).toBeUndefined();
     expect(tool.text).toContain(imageOmittedNote(0));
   });
+
+  it("names the seller's cap, not the leftover budget, when the input already used some", () => {
+    // One image left for the history of a model that accepts four: the placeholder must not
+    // tell the reader the model takes one.
+    const capped = capHistoryImages([imageMessage(2)], 1, 4);
+    expect(capped[0]!.content_items).toEqual([
+      { type: "text", text: imageOmittedNote(4) },
+      { type: "image_url", image_url: IMAGE },
+    ]);
+  });
 });
 
 describe("GenerativeModel image budget", () => {
-  const build = (over: { maxImages?: number } = {}): GenerativeModel =>
+  const build = (over: { maxImages?: number } = {}): GenerativeModelClass =>
     new GenerativeModel({
       modelId: "abliterated-model-large-flash",
       apiKey: "ak-test",
@@ -147,9 +167,10 @@ describe("GenerativeModel image budget", () => {
       ...over,
     });
 
-  const lastClient = (): { history: UniMessage[] } => state.clients.at(-1)!;
+  const lastClient = (): { history: UniMessage[]; requests: UniMessage[] } => state.clients.at(-1)!;
+  const lastRequest = (): UniMessage => lastClient().requests.at(-1)!;
 
-  const run = async (model: GenerativeModel, newMessages: OmniMessage[]): Promise<void> => {
+  const run = async (model: GenerativeModelClass, newMessages: OmniMessage[]): Promise<void> => {
     for await (const _ of model.streamGenerate({ newMessages })) {
       // Nothing is produced — the fake stream is empty.
     }
@@ -180,6 +201,24 @@ describe("GenerativeModel image budget", () => {
     // Two new pictures: the replay may keep only two of the four in history.
     await run(model, [imageUrlMessage(IMAGE), imageUrlMessage(IMAGE)]);
     expect(imageCount(lastClient().history)).toBe(2);
+  });
+
+  it("trims the input itself when one turn carries more images than the cap", async () => {
+    const model = build({ maxImages: 4 });
+    model.setHistory([
+      toolCallOutput({ toolCallId: "call_1", output: "image/png, 1 kB", images: [IMAGE] }),
+    ]);
+    // Five pictures in one turn: a resumed turn replays its five read_file results as one
+    // merged input message, which is the shape that failed every request before.
+    await run(
+      model,
+      Array.from({ length: 5 }, () => imageUrlMessage(IMAGE)),
+    );
+    const sent = lastRequest();
+    expect(imageCount([sent])).toBe(4);
+    expect(sent.content_items[0]).toEqual({ type: "text", text: imageOmittedNote(4) });
+    // The input used the whole cap: not one replayed image goes out with it.
+    expect(imageCount(lastClient().history)).toBe(0);
   });
 
   it("sends the history untouched when no cap is configured", async () => {

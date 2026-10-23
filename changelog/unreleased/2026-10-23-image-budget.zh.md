@@ -21,11 +21,14 @@ Abliteration 一次请求最多收四张图，超过就把整条请求拒掉（`
   `fitReplayedImages`：先把本次新输入的图算进预算，剩下的额度从最新往前给历史；放不下时用 `capHistoryImages`
   重建一份历史交给 AgentHub 的 `setHistory`（`getHistory` 交出来的对象不原地改动）。工具结果里的图按它自己的
   `images` 数组裁，占位那行追加到同一段文字后面。新输入自己就占满额度时，历史里的图全部换成占位。
+- **输入自己就超上限时也裁**：一轮里读五张图，这一轮的五张会被合并进**同一条**输入消息，而打断后重放的一轮又是
+  作为新输入重新送出的 —— 只裁历史的话，那条请求仍然带着五张、照样 400。现在输入先按上限裁（同样留最新四张、
+  旧的换成占位），历史再从剩下的额度里分；`fitReplayedImages` 因此把要送出的那条消息交回去，不改调用方的对象。
 - **会话模型带上它**（`core/src/agent.ts`）：`buildLLM` 从目录查出上限，作为 `GenerativeModelConfig.maxImages`
   传下去；压缩后重建、或切换模型后的新上下文都走同一个构造点。
 - 测试：`core/test/image-budget.test.ts`（计数、按消息裁剪、工具结果裁剪、不改原对象、零预算、没有上限时原样
-  送出，以及把新输入的图算进预算的接线）与 `core/test/model-catalog.test.ts`（四条条目带 4，其余模型与目录外
-  的 id 都没有）。
+  送出、把新输入的图算进预算的接线、输入自己超上限时只送最新的四张，以及占位写的是卖家的上限而不是剩余额度）
+  与 `core/test/model-catalog.test.ts`（四条条目带 4，其余模型与目录外的 id 都没有）。
 - 文档：`models.zh.md` / `models.en.md` 的 Abliteration 一节写清这条上限与裁剪行为。
 
 ## 兼容性

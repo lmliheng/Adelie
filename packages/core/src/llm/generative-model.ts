@@ -310,14 +310,21 @@ function capMessageImages(msg: UniMessage, budget: number, limit: number): UniMe
 }
 
 /**
- * Trims a replayed history to at most `limit` images in aggregate, newest kept (see
- * {@link capMessageImages}). Returns a new array of the same length whose untouched messages
- * are the very objects it was handed.
+ * Trims a replayed history so it carries at most `budget` images in aggregate, newest kept (see
+ * {@link capMessageImages}). `limit` is the seller's per-request cap and only names itself in
+ * the placeholder — a request whose own input already used part of the budget keeps fewer
+ * replayed images than the cap without misreporting the cap as smaller.
+ * Returns a new array of the same length whose untouched messages are the very objects it was
+ * handed.
  */
-export function capHistoryImages(history: UniMessage[], limit: number): UniMessage[] {
+export function capHistoryImages(
+  history: UniMessage[],
+  budget: number,
+  limit: number = budget,
+): UniMessage[] {
   const counts = history.map(countMessageImages);
   const capped = new Array<UniMessage>(history.length);
-  let left = limit;
+  let left = budget;
   for (let i = history.length - 1; i >= 0; i -= 1) {
     const msg = history[i]!;
     const count = counts[i]!;
@@ -1311,10 +1318,10 @@ export class GenerativeModel implements LLMInterface {
       await this.refreshApiKey();
       // The seller counts images per request, not per message: a conversation that read five
       // pictures would fail every later turn with 400 media_count_exceeded, so the oldest
-      // replayed ones are dropped from THIS request (the history and Trace keep them).
-      this.fitReplayedImages(uniMessage);
+      // replayed ones — and, when the input alone overflows, the input's own oldest ones — are
+      // dropped from THIS request (the history and Trace keep them).
       const it = this.openStream(
-        uniMessage,
+        this.fitReplayedImages(uniMessage),
         ac.signal,
         this.requestConfig(params.thinkingLevel, params.newMessages),
       )[Symbol.asyncIterator]();
@@ -1490,24 +1497,32 @@ export class GenerativeModel implements LLMInterface {
   }
 
   /**
-   * Trims the replayed history so this request carries at most `maxImages` images in all: the
-   * new input's images are counted first (they are what the user is asking about now), the
-   * history keeps the rest, newest first — see capHistoryImages for the per-message rule.
+   * Trims a request so it carries at most `maxImages` images in all, newest kept.
    *
-   * Nothing happens without a configured cap, or when the history already fits. When it does
-   * not, the client's history is replaced through setHistory rather than mutated: the objects
-   * getHistory hands out are the client's own. A conversation's Trace and stored history are
-   * untouched — this decides what one request carries, not what the conversation is.
+   * The **input** is trimmed first and counts first: an interrupted turn replayed from Trace is
+   * resent as carry-over input, and that input may itself hold more images than the seller
+   * accepts (the exact case that used to fail every turn of a Session forever). The rest of the
+   * budget goes to the replayed history, newest first — see capHistoryImages for the
+   * per-message rule.
+   *
+   * Nothing happens without a configured cap, or when everything already fits. The input comes
+   * back trimmed (the very object when it fits) and the caller sends that; the client's history
+   * is replaced through setHistory rather than mutated, since the objects getHistory hands out
+   * are the client's own. A conversation's Trace and stored history are untouched — this
+   * decides what one request carries, not what the conversation is.
    */
-  private fitReplayedImages(input: UniMessage): void {
+  private fitReplayedImages(input: UniMessage): UniMessage {
     const limit = this.maxImages;
-    if (limit === undefined) return;
-    const budget = Math.max(0, limit - countMessageImages(input));
+    if (limit === undefined) return input;
+    const carried =
+      countMessageImages(input) > limit ? capMessageImages(input, limit, limit) : input;
+    const budget = Math.max(0, limit - countMessageImages(carried));
     const history = this.client.getHistory();
-    if (history.length === 0) return;
+    if (history.length === 0) return carried;
     const total = history.reduce((sum, msg) => sum + countMessageImages(msg), 0);
-    if (total <= budget) return;
-    this.client.setHistory(capHistoryImages(history, budget));
+    if (total <= budget) return carried;
+    this.client.setHistory(capHistoryImages(history, budget, limit));
+    return carried;
   }
 
   /**
