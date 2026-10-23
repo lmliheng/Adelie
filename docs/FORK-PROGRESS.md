@@ -2054,6 +2054,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-23 | 7.31 | **两张凭据表的删除确认框（智能体的密钥保险柜 / 账户菜单的「用户密钥」）被拒时，框留着，原因也留在框里**（不是移植：2 处源码（`features/agents/vault-tab.tsx`、`components/account/user-vault-dialog.tsx`）+1 个新文件 `packages/web/e2e/vault-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：两张表删除一行都是整表写回，`confirmRemove` 过去把错误弹成 toast 之后**无条件** `setDeleting(null)` —— 被拒时那一行在页面上、在服务端都还在，唯独原因落进六秒后自己消失、还浮在框上方的 toast 里。**现在**：被拒 → 把服务端原话交给`deleteRefusal` 并提前返回，框留着、原话画在 `ConfirmModal` 的 `refusal` 槽里（既有 `S.common.refused` 前缀）；只有写入落地才关框；删除按钮先开框再清上次的原因，重开不带旧原因；两个文件里因此不再用的 `toastError` 导入删掉。新 spec 两条：被拒时框、句子与行都在，通知区没有可点的按钮，6.5 秒后框内文字与刚被拒时逐字相同；取消后重开干净；放行重试 → 框关、行没了、服务端表里也没有，且它发的写入就是去掉那一行的表（`entries: []`，不是整表清空） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 / 589 类型））· `npx oxlint`（全仓）**0 警告 0 错误**（2261 文件）· 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 文件 / 1052 通过** · server **202 文件 / 2955 通过 / 4 跳过** · cli **38 文件 / 561 通过** · web **263 文件 / 3231 通过 / 2 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1`，脚本自己的 `mktemp` 根、mock 8931 / 服务端 8930）：**133 passed（8.4m）、0 failed**（原 131 + 本笔 2；第一次整套跑时账户那条红在「没先打开应用」，已改成先 `goto('/')` 等草稿页落定）· **反证**：`git stash push --` 只带两个源码文件并重建 web → 同一份 spec **2 failed**（两条都死在框里找不到 `vault is read-only`），`git stash pop` + 重建后 **2 passed（5.3s）**，现场留在 `r114/before-test-results/output.log` · **两态实测真看一眼**（一次性数据根、`localhost:8930`、`r114probe`、1280×900、两处 PUT 由 `page.route` 拒成 500）：智能体的表框里「确认删除环境变量「PROBE_AGENT_KEY」？值不可恢复。」下面一行 danger 色「操作被拒绝：vault is read-only」，通知区 0 个按钮，6.5 秒后仍在；账户的表同形（框名「删除全局密钥」）；放行重试后两处都是框 0、行 0；探针 `probe.json` 里「刚被拒」与「6.5 秒后」的框内文字逐字相同，console 只有那两次刻意造的 500，外加两条 `GET …/machines` 的 403（管理员路由被普通账号每次开页都问一次的老现象，`routes/machines.ts` 首行就写着 admin only），**无 pageerror**；截图 `r114/shots/{1-agent-vault,2-agent-refused,3-agent-refused-after-6s,4-agent-written,5-user-vault,6-user-refused,7-user-refused-after-6s,8-user-written}.png`、探针 `r114/probe.mjs` 在 scratchpad · 端口只用 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-10-23 | 7.32 | **记忆页签的删除与导入被拒时，框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/memory-tab.tsx` + 1 个新文件 `packages/web/e2e/memory-write-refusal.spec.mjs`（3 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：删除确认框过去在**发请求之前**就 `setRemoving(null)`，导入把失败弹成 toast —— 被拒时那条记忆（以及导入要覆盖的文件）在页面上、在磁盘上都还在，唯独原因落进六秒后自己消失、还浮在弹框上方的 toast 里。**现在**：被拒的删除把服务端原话交给 `deleteRefusal` 并提前返回，框留着、原话画在 `ConfirmModal` 的 `refusal` 槽里（既有 `S.common.refused` 前缀），删除真的写下才关框并刷新；行的垃圾桶 / 抽屉 / 手机面板统一走 `askRemove`（先开框再清上次的原因）；导入失败交给 `importRefusal`，走过计划确认的画在那张卡里、没走确认的画在「导入记忆」弹框里，`submitImport` / `pickImport` / 换模式三处各清一次。**为什么是它**：第一百一十四轮末尾排下来的同形写入第一条，两处是同一种病 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`）· `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）· 两个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **68 通过文件 + 1 跳过 / 1410 通过 / 6 跳过** · cli **38 / 561** · web **264 / 3239 通过 / 2 跳过** · server **203 / 2961 通过 / 4 跳过**（比 7.31 高的部分是第一百一十五轮的主题用例，本笔不加单测，界面行为由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8945 MOCK_PORT=8946`，脚本自己的 `mktemp` 根）：**136 passed（8.9m）、0 failed**（第一百一十五轮之后 133 + 本笔 3）· **反证**：`git stash push --` 只带这一个源码文件并重建 web → 同一份 spec **3 failed**（都死在框里找不到 `memory store is closed`），`git stash pop` + 重建后 **3 passed（6.7s）** · **两态实测真看一眼**（一次性数据根 `/root/adelie-fork-data/r116-probe-*`、`localhost:8957`、`r116probe`、mock 8958、1280×900，两处写由 `page.route` 拒成 500）：删除框句子下面一行 danger 色「操作被拒绝：memory store is closed」、通知区 **0** 个按钮；导入的计划确认框里「将覆盖 1 条记忆：probe-memory.md / 此操作不可恢复。」加同一行拒绝语，下面那层「导入记忆」仍开着；探针读数 `deleteDialogStillOpen 1 / deleteRefusalVisible 1 / planRefusalVisible 1 / notificationButtons 0 / heldAfterRefusals 1`，console 只有那两次刻意造的 500 与一条 `GET …/machines` 的 403（老现象），**无 pageerror**；截图 `r116/{1-memory-tab,2-delete-refused,3-import-modal,4-import-refused}.png`、探针在 scratchpad · 端口只用 e2e 的 8945 / 8946 与探针的 8957 / 8958（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r116-*`，没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `dbd2d583` |
 | 2026-10-23 | 用户点单（图片上限·输入侧） | **这一轮输入自己就超上限时也裁**（接手 13:20 那笔留在工作区里的续做（+27 −13）：`packages/core/src/llm/generative-model.ts` 的 `fitReplayedImages` 先按上限裁**输入**、把要送出的那条消息交回 `streamGenerate`（不再原地改调用方对象），历史再从剩余额度里分；`capHistoryImages` 加第三参 `limit`，占位写的是卖家上限而不是剩余额度（默认等于 `budget`，纯函数行为不变）；`core/test/image-budget.test.ts` 的假客户端记下真正发出的消息，新增两条用例，并修掉 HEAD 上原有的两处 `TS2749`；changelog 一对加一节，`models.{zh,en}.md` 各补一句）**为什么是它**：一轮读五张图会被合并成同一条输入消息，而打断的一轮在会话继续时是作为新输入重送的 —— 只裁历史修不好用户碰上的那条 `400 media_count_exceeded`；待办里能一轮做完的条目仍然没有（2.2c / 3.5 / 3.6 / 4.1—4.3 / 5.6 / 5.10 各自卡在拍板、桌面壳或新凭证上） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（195 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）· 改动文件与 changelog / 两份文档 `prettier --check` 全绿 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过**（13:20 那笔 1418 + 本笔 2 条）· ui **130 / 1053** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 / 3239 通过 / 2 跳过** · **反证**：`git stash push -- packages/core/src/llm/generative-model.ts`（只带这一个路径）→ 两条新用例 **2 failed**（`expected 5 to be 4`、占位写成 1），`git stash pop` 后 **10 passed** · 这一笔没有界面面，没有起服务 / 截图（改的是请求装配，由「真正发出的那条消息」的断言钉住）；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据没往 `~/.penguin` / `~/.adelie` 写 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `20dde0d6` |
+| 2026-10-23 | 7.33 | **文件面板的新建 / 重命名 / 删除被拒时，框留着、原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/chat/workspace-browser.tsx` + 1 个新文件 `packages/web/e2e/files-action-refusal.spec.mjs`（3 条用例）+ 既有用例一处断言收窄 + 两句文案（`changedBeforeAction` 中英）+ changelog 一对，**无新依赖、不碰接口**）：三处入口动作过去只把失败弹成 toast —— 框确实还开着，但原因六秒后自己消失、还浮在框上方；重命名与删除更糟，被拒时框里的确认按钮带的还是那次已经作废的版本标记，同一颗按钮只能换回同一句拒绝。**现在**：原因画在 `ConfirmModal` 的 `refusal` 槽里（既有的 `S.common.refused` 前缀），`file_changed` 被拒时重新读一次版本（读的过程中确认按钮灰着），重试就落在文件此刻的样子上；新建撞名时名字留在输入框里，重开框不带旧原因。**为什么是它**：第一百一十六轮末尾排下来的同形写入第一条 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（195 接口 / 589 类型））· `npx oxlint` 改动面 **0 警告 0 错误** · 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 / 3239 通过 / 2 跳过**（与上一轮同，本笔是界面行为，改由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8993 MOCK_PORT=8994`，脚本自己的 `mktemp` 根）：**139 passed（8.4m）、0 failed**（上一轮 136 + 本笔 3）· **反证**：`git stash push --` 只带那一个源码文件并重建 web → 同一份 spec **3 failed**（三条都死在框里找不到「操作被拒绝」），`git stash pop` + 重建后 **3 passed** · **两态实测真看一眼**（一次性数据根、`localhost:8981`、`r118probe`、mock 8982、1280×900，两处写由 `page.route` 拒成 500 / 409）：新建框里是「操作被拒绝：README.md 已存在，未做改动。」且名字仍在输入框；重命名框里是「操作被拒绝：workspace is read-only」，磁盘上那条没动、`archive/` 没出现，6.5 秒后框内文字逐字相同；删除框里是「操作被拒绝：notes.md 在你决定期间被改写…已按它现在的版本重新读取，可以直接重试。」，通知区 **0** 个按钮、确认按钮在重读后恢复可点，文件仍在；console 只有刻意造的 409 / 500 与一条 `GET …/machines` 的 403（老现象），**无 pageerror**；截图 `r118/shots/{1-tree,2-create-refused,3-rename-refused,4-rename-refused-after-6s,5-delete-refused}.png`、探针 `r118/probe.spec.mjs` 与 `r118/one.sh` 在 scratchpad · 端口只用 e2e 的 8993 / 8994 与探针的 8981 / 8982（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根，没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `eb9dd76a` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -14573,3 +14574,76 @@ changelog、没有台账。
 - 于是改由飞书送达（`message_id=om_x100b6284d268b0a8df88c3b11434c54`，收件人即已绑定的那个私聊），正文留在
   scratchpad 的 `r117/report.md`；下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到
   `0110230306@csu.edu.cn`。
+
+## 第一百一十八轮：文件面板的新建 / 重命名 / 删除被拒时，框留着、原因也留在框里（2026-10-23，条目 7.33）
+
+### 为什么是这一条
+
+第一百一十六轮末尾把「同形的写入」按「一轮一处」排了下去，排在第一的就是文件面板：`workspace-browser.tsx` 的
+三处入口动作（新建文件 / 文件夹、重命名也就是移动、删除）都在 `ConfirmModal` 里问，但三个 `catch` 都只调
+`reportFileActionError`，也就是一条 toast。框确实还开着（什么都没写下去），可原因落在一条六秒后自己消失、还浮在
+框上方的通知里 —— 而它说的那一条在页面上、在磁盘上都还在。
+
+重命名与删除还有第二层问题：被拒时那句话写的是「刷新后可重试」，可框里的确认按钮带的是这次已经作废的版本标记
+（`ifVersion`），同一颗按钮再点一次只会换回同一句拒绝。也就是说：原因消失之后，用户面对的是一个必然失败的按钮。
+
+开工时这棵树是干净的（`git status --short` 空），`git fetch origin && git merge --ff-only origin/main`
+报 `Already up to date.`，主线尖端仍是第一百一十七轮那份 `15514a44`。
+
+### 改了什么（1 处源码 + 1 个新 spec + 1 处既有断言 + 两句文案 + 一对 changelog）
+
+- `packages/web/src/features/chat/workspace-browser.tsx`：
+  - `reportFileActionError`（只弹 toast）拆成两件：`fileActionReason` 把失败翻成一句话（`file_changed` /
+    `target_exists` 各有自己的句子，其余走 `apiErrorText`），`readActionVersion` 负责读版本 —— 它多一个
+    `again` 的走法：先把版本清空、`reading` 置真（确认按钮因此灰着，框里写着「正在读取该文件的当前版本…」），
+    再把新标记落回去。
+  - 三个新状态 `renameRefusal` / `removeRefusal` / `createRefusal`，画在对应 `ConfirmModal` 的 `refusal` 槽里
+    （前缀仍是既有的 `S.common.refused`）。`beginFileAction` 与 `beginCreate` 打开框时先清掉上一次的原因 ——
+    那句话属于上次点名的那一条。
+  - `applyRename` / `applyDelete` 的 `catch`：`file_changed` 时 `readActionVersion(..., true)`，再把原因交给框；
+    `applyCreate` 的 `target_exists` 也改走 `createRefusal`（成功路径一字未动）。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`S.files.changedBeforeAction` 的尾巴从「刷新后可重试」
+  改成「已按它现在的版本重新读取，可以直接重试」—— 行为变了，句子跟着变（英文同步）。
+- `packages/web/e2e/files-action-refusal.spec.mjs`（新，3 条）：① 新建撞上已存在的名字 → 框、名字与原因都在，
+  通知区 0 个按钮，文件一个字节没动；改个名字同一个按钮就建出来，重开框不带旧原因（`not.toContainText`）；
+  ② 重命名被拒（`page.route` 500）→ 框留着、原因在里面、框内文字除那一行外与刚打开时逐字相同，磁盘上那条没动、
+  `archive/` 没出现；放行后同一个按钮把它移过去；③ 删除因 `file_changed` 被拒（`page.route` 409）→ 框里是点名
+  那一条的句子，确认按钮在读回版本后恢复可点，文件仍在，重试即删掉（两次 DELETE、磁盘上没了）。
+- `packages/web/e2e/files-folders.spec.mjs`：那句「撞名被拒」的断言从「页面上有这句话」收窄到「对话框里有这一行」。
+- changelog 一对 `changelog/unreleased/2026-10-23-files-action-refusal{,.zh}.md`。**无新依赖、不碰接口。**
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`（195 接口 / 589 类型））。
+- `npx oxlint` 改动面 **0 警告 0 错误**；改动五个文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** ·
+  cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 / 3239 通过 / 2 跳过**（与上一轮同：本笔是
+  界面行为，改由 e2e 钉住）。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8993 MOCK_PORT=8994 pnpm run test:e2e`，脚本自己的
+  `mktemp` 数据根）：**139 passed（8.4m）、0 failed**（上一轮 136 + 本笔 3）。
+- **反证**：`git stash push -- packages/web/src/features/chat/workspace-browser.tsx`（只带这一个路径）并重建
+  web → 同一份 spec **3 failed**（三条都死在框里找不到「操作被拒绝」）；`git stash pop` + 重建后 **3 passed**。
+- **两态实测真看一眼**（一次性数据根、`localhost:8981`、用户 `r118probe`、mock 模型 8982、1280×900；移动与删除由
+  `page.route` 拒成 500 / 409）：新建框里「操作被拒绝：README.md 已存在，未做改动。」，名字仍在输入框；重命名框里
+  「操作被拒绝：workspace is read-only」，磁盘上那条没动、`archive/` 没出现，6.5 秒后框内文字逐字相同；删除框里
+  「操作被拒绝：notes.md 在你决定期间被改写（多半是 Agent 在本轮写入的），因此未做任何改动。已按它现在的版本重新
+  读取，可以直接重试。」，通知区 **0** 个按钮、确认按钮在重读后恢复可点、文件仍在。`console` 只有刻意造的 409
+  两次（撞名一次、删除一次）与 500 一次，外加一条 `GET …/machines` 的 403（管理员路由被普通账号每次开页都问一次
+  的老现象），**无 pageerror**；截图 `r118/shots/{1-tree,2-create-refused,3-rename-refused,4-rename-refused-after-6s,
+  5-delete-refused}.png`、探针 `r118/probe.spec.mjs` 与单 spec 跑法 `r118/one.sh` 在 scratchpad（探针拷进
+  `packages/web/e2e/` 跑完已删，未 `git add`）。
+- 端口只用 e2e 的 8993 / 8994 与探针的 8981 / 8982（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、
+  `packages/web/test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发汇总。
+
+### 没做 / 还差什么
+
+- 同一条扫描线上还剩：`components/layout/project-dialogs.tsx` 的删除项目、`features/agents/api-tab.tsx` 与
+  `features/settings/agent-api-section.tsx` 的密钥保存，以及 `features/company/` 的日历 / 员工 / 组织 / 手册 /
+  频道各处（按「一轮一处」往下排，下一轮先核这些里第一个还缺的）。
+- 文件面板自己的**保存**（`save()`，保存确认框在发请求之前就自己关掉）没有一起改：它与这三处形状不同（框只是
+  写之前的确认，不是事后才知道失败的那一层），要不要同一套口径留给后面的轮次定 —— 写进 7.33 的「还差什么」。
+- 待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 3.5 拍板 / 3.6 模型 key / 4.1—4.3 明令不动 / 5.6 / 5.10 拍板 /
+  新依赖），理由见各条正文。
