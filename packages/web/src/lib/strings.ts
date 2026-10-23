@@ -4171,7 +4171,7 @@ export const zh = {
     actionVersionFailed: "读不到该文件的当前版本，因此不执行此操作。",
     /** The version precondition refused it: the Agent wrote the file while the question was on screen. */
     changedBeforeAction: (name: string): string =>
-      `${name} 在你决定期间被改写（多半是 Agent 在本轮写入的），因此未做任何改动。刷新后可重试。`,
+      `${name} 在你决定期间被改写（多半是 Agent 在本轮写入的），因此未做任何改动。已按它现在的版本重新读取，可以直接重试。`,
     conflictTitle: "文件在磁盘上已变更",
     conflictBody: (name: string): string =>
       `${name} 在你打开之后被重写（多半是 Agent 本轮写的），本次没有保存任何内容。可以用你的版本覆盖它，也可以继续编辑、先把需要的内容取出来——两种选择都会保留你的文本。`,

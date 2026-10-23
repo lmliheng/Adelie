@@ -4134,7 +4134,7 @@ export const en: Strings = {
       "This file's current version could not be read, so the action is not offered.",
     /** The version precondition refused it: the Agent wrote the file while the question was on screen. */
     changedBeforeAction: (name: string): string =>
-      `${name} was rewritten while you were deciding, most likely by the Agent during its turn, so nothing was changed. Refresh and try again.`,
+      `${name} was rewritten while you were deciding, most likely by the Agent during its turn, so nothing was changed. Its version has been read again — retrying works right away.`,
     conflictTitle: "File changed on disk",
     conflictBody: (name: string): string =>
       `${name} was rewritten after you opened it, most likely by the Agent during its turn, so nothing was saved. Overwrite it with your version, or keep editing and copy what you need out first — either way your text is kept.`,

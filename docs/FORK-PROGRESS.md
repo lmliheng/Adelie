@@ -1411,6 +1411,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       反证与探针见「第一百一十四轮」一节。**还差什么**：同一次扫描里还有同形的写入没改（`agents` 的记忆文件
       删除与 `memory-tab` 的导入、`company` 的组织 / 员工 / 频道 / 手册各处、工程 / 工作区文件编辑器），
       按「一轮一处」留给后面的轮次。
+- [x] **7.33 文件面板的新建 / 重命名 / 删除被拒时，框留着、原因也留在框里**（**2026-10-23 第一百一十八轮**
+      落地，提交见该节；1 处源码 `features/chat/workspace-browser.tsx` + 1 个新文件
+      `packages/web/e2e/files-action-refusal.spec.mjs`（3 条用例）+ 既有用例一处断言收窄 + 两句文案
+      （`changedBeforeAction` 的中英）+ changelog 一对，**无新依赖、不碰接口**）：三处入口动作过去把失败弹成
+      toast（框确实还开着，但原因六秒后自己消失、还浮在框上方），重命名 / 删除被拒时框里的确认按钮带的还是那次
+      已经作废的版本标记 —— 同一颗按钮只会换回同一句拒绝。**现在**：原因画在 `ConfirmModal` 的 `refusal` 槽里
+      （既有的 `S.common.refused` 前缀），`file_changed` 被拒时重新读一次版本（读的过程中确认按钮灰着），重试
+      就落在文件此刻的样子上。细节、两态读数、反证与探针见「第一百一十八轮」一节。**还差什么**：同一条扫描线上
+      还剩 `components/layout/project-dialogs.tsx` 的删除项目、`features/agents/api-tab.tsx` 与
+      `features/settings/agent-api-section.tsx` 的密钥保存，以及 `features/company/` 的日历 / 员工 / 组织 /
+      手册 / 频道各处；文件面板自己的**保存**（`save()`）仍是「先关框再写」，要不要同一套口径留给后面的轮次定。
 
 ## 发布 v0.2.0（2026-10-05）
 

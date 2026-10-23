@@ -574,6 +574,14 @@ export function WorkspaceBrowser({
   const [renameTarget, setRenameTarget] = useState<FileActionTarget | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [removeTarget, setRemoveTarget] = useState<FileActionTarget | null>(null);
+  /**
+   * The server's own words for an entry action that was refused, rendered inside the dialog
+   * that asked. A refusal leaves the question standing — the entry is still there, or still
+   * where it was — so the reason belongs beside the button that retries it rather than in a
+   * toast that dismisses itself over the card the user is still looking at.
+   */
+  const [renameRefusal, setRenameRefusal] = useState<string | null>(null);
+  const [removeRefusal, setRemoveRefusal] = useState<string | null>(null);
   const [fileActionBusy, setFileActionBusy] = useState(false);
   /** The open "discard unsaved changes?" question, resolving with the answer. */
   const [discardPrompt, setDiscardPrompt] = useState<{ resolve: (ok: boolean) => void } | null>(
@@ -618,6 +626,8 @@ export function WorkspaceBrowser({
   const [createTarget, setCreateTarget] = useState<{ kind: "file" | "dir"; dir: string } | null>(
     null,
   );
+  /** The refusal of a New the server did not write, shown in the New dialog (see renameRefusal). */
+  const [createRefusal, setCreateRefusal] = useState<string | null>(null);
   const [createName, setCreateName] = useState("");
   const [creating, setCreating] = useState(false);
   const previewMenu = useRowContextMenu();
@@ -953,6 +963,29 @@ export function WorkspaceBrowser({
   );
 
   /**
+   * Reads the version marker an entry action is preconditioned on.
+   *
+   * A dialog that stays open on a `file_changed` refusal reads it again (`again`): the retry must
+   * act on the file as it is now, or it would earn the very same refusal, so the marker is
+   * dropped and re-read with the confirm disabled in between.
+   */
+  const readActionVersion = useCallback(
+    (path: string, action: "rename" | "delete", again = false): void => {
+      const settle = (version: string | null, reading: boolean) => {
+        const next = (t: FileActionTarget | null): FileActionTarget | null =>
+          t !== null && t.path === path ? { ...t, version, reading } : t;
+        if (action === "rename") setRenameTarget(next);
+        else setRemoveTarget(next);
+      };
+      if (again) settle(null, true);
+      void fetchFileVersion(filesRef.current.fileUrl(path))
+        .then((version) => settle(version, false))
+        .catch(() => settle(null, false));
+    },
+    [],
+  );
+
+  /**
    * Puts one of the two entry actions on screen and, for a file, starts reading its current
    * version.
    *
@@ -968,40 +1001,34 @@ export function WorkspaceBrowser({
         if (action === "rename") {
           setRenameDraft(path);
           setRenameTarget(opened);
+          setRenameRefusal(null);
         } else {
           setRemoveTarget(opened);
+          setRemoveRefusal(null);
         }
         if (kind === "dir") return;
-        const settle = (version: string | null) => {
-          const next = (t: FileActionTarget | null): FileActionTarget | null =>
-            t !== null && t.path === path ? { path, kind, version, reading: false } : t;
-          if (action === "rename") setRenameTarget(next);
-          else setRemoveTarget(next);
-        };
-        void fetchFileVersion(filesRef.current.fileUrl(path))
-          .then(settle)
-          .catch(() => settle(null));
+        readActionVersion(path, action);
       };
       const editing = editorRef.current;
       if (kind === "dir" && (editing === null || !isWithin(editing.path, path))) open();
       else void navigateGuarded(null, open);
     },
-    [navigateGuarded],
+    [navigateGuarded, readActionVersion],
   );
 
   /**
-   * Reports the failures the entry actions share. Nothing was changed, so this is a toast and
-   * not a dialog: there is no decision left to take, only the same action again on the entry as
-   * it now is.
+   * The server's sentence for an entry action that did not land, in the words its dialog shows
+   * (see renameRefusal). Nothing was changed, so there is no second decision to take — only the
+   * same action again, which is why this text belongs beside the button that retries it.
    */
-  const reportFileActionError = (err: unknown, path: string, to?: string): void => {
+  const fileActionReason = (err: unknown, path: string, to?: string): string => {
     if (err instanceof ApiError && err.code === "file_changed") {
-      toastError(S.files.changedBeforeAction(baseName(path)));
-    } else if (err instanceof ApiError && err.code === "target_exists" && to !== undefined) {
-      toastError(S.files.targetExists(to));
-    } else {
-      toastError(apiErrorText(err));
+      return S.files.changedBeforeAction(baseName(path));
     }
+    if (err instanceof ApiError && err.code === "target_exists" && to !== undefined) {
+      return S.files.targetExists(to);
+    }
+    return apiErrorText(err);
   };
 
   /**
@@ -1059,7 +1086,12 @@ export function WorkspaceBrowser({
       followMove(target.path, to);
       toastSuccess(S.files.renamed(baseName(to)));
     } catch (err) {
-      reportFileActionError(err, target.path, to);
+      // A marker that was already stale is not something to retry with: read the entry again,
+      // then leave the reason beside the button (the dialog itself stays open).
+      if (err instanceof ApiError && err.code === "file_changed") {
+        readActionVersion(target.path, "rename", true);
+      }
+      setRenameRefusal(fileActionReason(err, target.path, to));
     } finally {
       setFileActionBusy(false);
     }
@@ -1076,7 +1108,10 @@ export function WorkspaceBrowser({
       refreshAll();
       toastSuccess(S.files.deleted(baseName(target.path)));
     } catch (err) {
-      reportFileActionError(err, target.path);
+      if (err instanceof ApiError && err.code === "file_changed") {
+        readActionVersion(target.path, "delete", true);
+      }
+      setRemoveRefusal(fileActionReason(err, target.path));
     } finally {
       setFileActionBusy(false);
     }
@@ -1570,6 +1605,7 @@ export function WorkspaceBrowser({
    */
   const beginCreate = (kind: "file" | "dir", dir: string): void => {
     setCreateName(kind === "file" ? DEFAULT_TEXT_FILE_NAME : "");
+    setCreateRefusal(null);
     setCreateTarget({ kind, dir });
   };
 
@@ -1606,11 +1642,12 @@ export function WorkspaceBrowser({
       editOnOpen.current = path;
       openFile(path, { locate: true });
     } catch (err) {
-      if (err instanceof ApiError && err.code === "target_exists") {
-        toastError(S.files.targetExists(path));
-      } else {
-        toastError(apiErrorText(err));
-      }
+      if (scopeKeyRef.current !== key) return;
+      setCreateRefusal(
+        err instanceof ApiError && err.code === "target_exists"
+          ? S.files.targetExists(path)
+          : apiErrorText(err),
+      );
     } finally {
       if (scopeKeyRef.current === key) setCreating(false);
     }
@@ -2709,6 +2746,7 @@ export function WorkspaceBrowser({
         confirmDisabled={!actionReady(renameTarget) || renameDraft.trim() === ""}
         busy={fileActionBusy}
         tone="primary"
+        refusal={renameRefusal === null ? undefined : S.common.refused(renameRefusal)}
         onClose={() => setRenameTarget(null)}
         onConfirm={() => void applyRename()}
       >
@@ -2733,6 +2771,7 @@ export function WorkspaceBrowser({
         cancelLabel={S.common.cancel}
         confirmDisabled={newEntryName(createName) === ""}
         busy={creating}
+        refusal={createRefusal === null ? undefined : S.common.refused(createRefusal)}
         onClose={() => setCreateTarget(null)}
         onConfirm={() => void applyCreate()}
       >
@@ -2764,6 +2803,7 @@ export function WorkspaceBrowser({
         cancelLabel={S.common.cancel}
         confirmDisabled={removeTarget?.version == null}
         busy={fileActionBusy}
+        refusal={removeRefusal === null ? undefined : S.common.refused(removeRefusal)}
         onClose={() => setRemoveTarget(null)}
         onConfirm={() => void applyDelete()}
       >

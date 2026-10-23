@@ -108,7 +108,10 @@ test("new folders and text files are made where asked, and a taken name changes 
   await page.getByRole("menuitem", { name: "新建文本文件" }).click();
   await page.getByRole("dialog").getByRole("textbox").fill("README.md");
   await page.getByRole("dialog").getByRole("button", { name: "创建" }).click();
-  await expect(page.getByText("README.md 已存在，未做改动。").first()).toBeVisible();
+  // The refusal is the dialog's own: the name stays in the field and the reason sits under it.
+  await expect(
+    page.getByRole("dialog").getByText("操作被拒绝：README.md 已存在，未做改动。"),
+  ).toBeVisible();
   await expect(page.getByRole("dialog")).toBeVisible();
   expect(fs.readFileSync(path.join(dir, "README.md"), "utf8")).toBe("# hi\n");
 });
