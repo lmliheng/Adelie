@@ -1422,6 +1422,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       还剩 `components/layout/project-dialogs.tsx` 的删除项目、`features/agents/api-tab.tsx` 与
       `features/settings/agent-api-section.tsx` 的密钥保存，以及 `features/company/` 的日历 / 员工 / 组织 /
       手册 / 频道各处；文件面板自己的**保存**（`save()`）仍是「先关框再写」，要不要同一套口径留给后面的轮次定。
+- [x] **7.34 项目设置的「删除项目」确认框：被拒时框留着，原因也留在框里**（**2026-10-23 第一百一十九轮**
+      落地，提交见该节；1 处源码 `components/layout/project-dialogs.tsx` + 1 个新文件
+      `packages/web/e2e/project-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、
+      无新文案**）：`GeneralSection` 的 `doDelete` 过去把失败弹成 toast 就返回 —— 框还开着（什么都没删掉，项目在
+      服务端也还在），但原因落在那条六秒后自己消失、还浮在框外面的通知里，六秒之后屏幕上一句话都不剩。
+      **现在**：只有删除落地才关框（`setConfirmDelete(false)` 挪到写入之后，设置对话框照旧跟着关）；被拒时框留着，
+      服务端原话画在 `ConfirmModal` 的 `refusal` 槽里（`S.common.refused` 前缀，与 7.19—7.33 同一条规则），
+      重开框先清旧原因；另加 `deleteBusy`，删除在途时连点第二下不再发第二个 DELETE。细节、两态读数、反证与探针
+      见「第一百一十九轮」一节。**还差什么**：同一条扫描线上还剩 `features/agents/api-tab.tsx` 与
+      `features/settings/agent-api-section.tsx` 的密钥保存，以及 `features/company/` 的日历 / 员工 / 组织 /
+      手册 / 频道各处（按「一轮一处」往下排）。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2055,6 +2066,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-23 | 7.32 | **记忆页签的删除与导入被拒时，框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/memory-tab.tsx` + 1 个新文件 `packages/web/e2e/memory-write-refusal.spec.mjs`（3 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：删除确认框过去在**发请求之前**就 `setRemoving(null)`，导入把失败弹成 toast —— 被拒时那条记忆（以及导入要覆盖的文件）在页面上、在磁盘上都还在，唯独原因落进六秒后自己消失、还浮在弹框上方的 toast 里。**现在**：被拒的删除把服务端原话交给 `deleteRefusal` 并提前返回，框留着、原话画在 `ConfirmModal` 的 `refusal` 槽里（既有 `S.common.refused` 前缀），删除真的写下才关框并刷新；行的垃圾桶 / 抽屉 / 手机面板统一走 `askRemove`（先开框再清上次的原因）；导入失败交给 `importRefusal`，走过计划确认的画在那张卡里、没走确认的画在「导入记忆」弹框里，`submitImport` / `pickImport` / 换模式三处各清一次。**为什么是它**：第一百一十四轮末尾排下来的同形写入第一条，两处是同一种病 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`）· `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）· 两个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **68 通过文件 + 1 跳过 / 1410 通过 / 6 跳过** · cli **38 / 561** · web **264 / 3239 通过 / 2 跳过** · server **203 / 2961 通过 / 4 跳过**（比 7.31 高的部分是第一百一十五轮的主题用例，本笔不加单测，界面行为由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8945 MOCK_PORT=8946`，脚本自己的 `mktemp` 根）：**136 passed（8.9m）、0 failed**（第一百一十五轮之后 133 + 本笔 3）· **反证**：`git stash push --` 只带这一个源码文件并重建 web → 同一份 spec **3 failed**（都死在框里找不到 `memory store is closed`），`git stash pop` + 重建后 **3 passed（6.7s）** · **两态实测真看一眼**（一次性数据根 `/root/adelie-fork-data/r116-probe-*`、`localhost:8957`、`r116probe`、mock 8958、1280×900，两处写由 `page.route` 拒成 500）：删除框句子下面一行 danger 色「操作被拒绝：memory store is closed」、通知区 **0** 个按钮；导入的计划确认框里「将覆盖 1 条记忆：probe-memory.md / 此操作不可恢复。」加同一行拒绝语，下面那层「导入记忆」仍开着；探针读数 `deleteDialogStillOpen 1 / deleteRefusalVisible 1 / planRefusalVisible 1 / notificationButtons 0 / heldAfterRefusals 1`，console 只有那两次刻意造的 500 与一条 `GET …/machines` 的 403（老现象），**无 pageerror**；截图 `r116/{1-memory-tab,2-delete-refused,3-import-modal,4-import-refused}.png`、探针在 scratchpad · 端口只用 e2e 的 8945 / 8946 与探针的 8957 / 8958（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r116-*`，没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `dbd2d583` |
 | 2026-10-23 | 用户点单（图片上限·输入侧） | **这一轮输入自己就超上限时也裁**（接手 13:20 那笔留在工作区里的续做（+27 −13）：`packages/core/src/llm/generative-model.ts` 的 `fitReplayedImages` 先按上限裁**输入**、把要送出的那条消息交回 `streamGenerate`（不再原地改调用方对象），历史再从剩余额度里分；`capHistoryImages` 加第三参 `limit`，占位写的是卖家上限而不是剩余额度（默认等于 `budget`，纯函数行为不变）；`core/test/image-budget.test.ts` 的假客户端记下真正发出的消息，新增两条用例，并修掉 HEAD 上原有的两处 `TS2749`；changelog 一对加一节，`models.{zh,en}.md` 各补一句）**为什么是它**：一轮读五张图会被合并成同一条输入消息，而打断的一轮在会话继续时是作为新输入重送的 —— 只裁历史修不好用户碰上的那条 `400 media_count_exceeded`；待办里能一轮做完的条目仍然没有（2.2c / 3.5 / 3.6 / 4.1—4.3 / 5.6 / 5.10 各自卡在拍板、桌面壳或新凭证上） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（195 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）· 改动文件与 changelog / 两份文档 `prettier --check` 全绿 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过**（13:20 那笔 1418 + 本笔 2 条）· ui **130 / 1053** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 / 3239 通过 / 2 跳过** · **反证**：`git stash push -- packages/core/src/llm/generative-model.ts`（只带这一个路径）→ 两条新用例 **2 failed**（`expected 5 to be 4`、占位写成 1），`git stash pop` 后 **10 passed** · 这一笔没有界面面，没有起服务 / 截图（改的是请求装配，由「真正发出的那条消息」的断言钉住）；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据没往 `~/.penguin` / `~/.adelie` 写 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `20dde0d6` |
 | 2026-10-23 | 7.33 | **文件面板的新建 / 重命名 / 删除被拒时，框留着、原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/chat/workspace-browser.tsx` + 1 个新文件 `packages/web/e2e/files-action-refusal.spec.mjs`（3 条用例）+ 既有用例一处断言收窄 + 两句文案（`changedBeforeAction` 中英）+ changelog 一对，**无新依赖、不碰接口**）：三处入口动作过去只把失败弹成 toast —— 框确实还开着，但原因六秒后自己消失、还浮在框上方；重命名与删除更糟，被拒时框里的确认按钮带的还是那次已经作废的版本标记，同一颗按钮只能换回同一句拒绝。**现在**：原因画在 `ConfirmModal` 的 `refusal` 槽里（既有的 `S.common.refused` 前缀），`file_changed` 被拒时重新读一次版本（读的过程中确认按钮灰着），重试就落在文件此刻的样子上；新建撞名时名字留在输入框里，重开框不带旧原因。**为什么是它**：第一百一十六轮末尾排下来的同形写入第一条 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（195 接口 / 589 类型））· `npx oxlint` 改动面 **0 警告 0 错误** · 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 / 3239 通过 / 2 跳过**（与上一轮同，本笔是界面行为，改由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8993 MOCK_PORT=8994`，脚本自己的 `mktemp` 根）：**139 passed（8.4m）、0 failed**（上一轮 136 + 本笔 3）· **反证**：`git stash push --` 只带那一个源码文件并重建 web → 同一份 spec **3 failed**（三条都死在框里找不到「操作被拒绝」），`git stash pop` + 重建后 **3 passed** · **两态实测真看一眼**（一次性数据根、`localhost:8981`、`r118probe`、mock 8982、1280×900，两处写由 `page.route` 拒成 500 / 409）：新建框里是「操作被拒绝：README.md 已存在，未做改动。」且名字仍在输入框；重命名框里是「操作被拒绝：workspace is read-only」，磁盘上那条没动、`archive/` 没出现，6.5 秒后框内文字逐字相同；删除框里是「操作被拒绝：notes.md 在你决定期间被改写…已按它现在的版本重新读取，可以直接重试。」，通知区 **0** 个按钮、确认按钮在重读后恢复可点，文件仍在；console 只有刻意造的 409 / 500 与一条 `GET …/machines` 的 403（老现象），**无 pageerror**；截图 `r118/shots/{1-tree,2-create-refused,3-rename-refused,4-rename-refused-after-6s,5-delete-refused}.png`、探针 `r118/probe.spec.mjs` 与 `r118/one.sh` 在 scratchpad · 端口只用 e2e 的 8993 / 8994 与探针的 8981 / 8982（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根，没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `eb9dd76a` |
+| 2026-10-23 | 7.34 | **项目设置的「删除项目」被拒时，框留着、原因也留在框里**（不是移植：1 处源码 `components/layout/project-dialogs.tsx`（`GeneralSection` 的 `doDelete`）+ 1 个新文件 `packages/web/e2e/project-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：`doDelete` 过去把失败弹成 toast 就返回 —— 框还开着（什么都没删掉，项目在服务端也还在），但原因落在那条六秒后自己消失、还浮在框外面的通知里，六秒之后屏幕上一行字都不剩，只剩同一个问题和一颗没有解释的按钮。**现在**：只有删除落地才关框（`setConfirmDelete(false)` 挪到写入之后，设置对话框照旧跟着关），被拒时服务端原话画在 `ConfirmModal` 的 `refusal` 槽里（`S.common.refused` 前缀）、重开框先清旧原因；另加 `deleteBusy`，删除在途时连点第二下不再发第二个 DELETE（那一下只会换回 404，落在正在关的框上方）。**为什么是它**：第一百一十八轮末尾排下来的同形写入第一条 | 六包 `typecheck` **`EXIT=0`**（六个；`gen:ifaces` 报 `src/ifaces.json unchanged`（195 接口 / 589 类型））· `npx oxlint` 改动面 **0 警告 0 错误** · 改动四个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · cli **38 / 561** · web **264 / 3239 通过 / 2 跳过** · server **203 / 2961 通过 / 4 跳过**（与上一轮同：界面行为由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8997 MOCK_PORT=8998`，脚本自己的 `mktemp` 根）：**141 passed（8.9m）、0 failed**（上一轮 139 + 本笔 2）· **反证**：`git stash push --` 只带那一个源码文件并重建 web → 同一份 spec **2 failed**（都死在框里找不到 `project store is locked`），`git stash pop` + 重建后 **2 passed（7.1s）** · **两态实测真看一眼**（一次性数据根 `/root/adelie-fork-data/r119-a`、`localhost:8996`、mock 8995、1280×900，删除由 `page.route` 拒成 500）：**旧**代码 `reasonInCard 0`、框内文字与打开时逐字相同、通知区一条 `project store is locked`（1 个可点按钮），6.5 秒后通知区**空了**而框与项目都还在；**新**代码 `reasonInCard 1`，框里是「确认删除该项目？项目目录将被递归删除，不可恢复。／操作被拒绝：project store is locked」，通知区 **0** 个按钮，6.5 秒后逐字相同，重开 `reasonInCard 0`，放行重试后框 0 / 设置对话框 0 / 项目已不在服务端；console 只有刻意造的那一次 500 与三条 `GET …/machines` 的 403（老现象），**无 pageerror**；截图 `r119/{before,after}-{1-settings,2-card,3-refused,4-after-6s,5-written}.png`、读数 `r119/{before,after}.json`、探针 `r119/probe.spec.mjs` 在 scratchpad（临时 `pw-probe.config.mjs` 跑完即删，均未 `git add`）· 端口只用探针的 8995 / 8996 与 e2e 的 8997 / 8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r119-a`，没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `0267e0fe` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -14654,3 +14666,70 @@ changelog、没有台账。
   `202.197.0.0/16` 那个老问题，不是凭据；约定一轮只试一次，于是改由飞书送达
   （`message_id=om_x100b628005b7cca4df64b5e09822ec9`，收件人即已绑定的那个私聊），正文留在 scratchpad 的
   `r118/report.md`；下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 第一百一十九轮：项目设置的「删除项目」确认框被拒时，框留着、原因也留在框里（2026-10-23，条目 7.34）
+
+### 为什么是这一条
+
+第一百一十八轮末尾把「同形的写入」按「一轮一处」排了下去，排在第一位的就是 `components/layout/project-dialogs.tsx`
+的「删除项目」。它是同一种病，而且预后更差：`GeneralSection` 的 `doDelete` 在 `catch` 里只调
+`toastError(apiErrorText(e))`，框本身不关（`confirmDelete` 只在成功路径里被关掉）—— 也就是说，用户被拒绝之后
+留在屏幕上的，是**同一个问题**（「确认删除该项目？」）加上一颗必然失败（如果服务端还是那个状态）或至少没有解释的
+按钮；那句话只在通知里待六秒，六秒之后一行字都不剩。
+
+开工时这棵树是干净的（`git status --short` 空），`git fetch origin && git merge --ff-only origin/main` 报
+`Already up to date.`，主线尖端是第一百一十八轮那份 `f1ae5830`。
+
+### 改了什么（1 处源码 + 1 个新 spec + 一对 changelog）
+
+- `packages/web/src/components/layout/project-dialogs.tsx`（`GeneralSection`）：
+  - 新增 `deleteRefusal`（`string | null`）与 `deleteBusy` 两个状态。
+  - `doDelete`：`setConfirmDelete(false)` 从 `catch` 之前挪到 `deleteProject` 落地之后；`catch` 里不再弹 toast，
+    改成 `setDeleteRefusal(apiErrorText(e))`，由确认框画在 `refusal` 槽里（前缀是既有的 `S.common.refused`）；
+    `finally` 落 `deleteBusy`，函数开头用 `deleteBusy` 挡住重复进入 —— 以前连点两下会发两个 DELETE，第二个
+    换回 404，而那时第一个可能已经在关框，404 就落在一条正在消失的框上方的通知里。
+  - 删除那一行的按钮在打开框时 `setDeleteRefusal(null)`：旧原因属于上次那次尝试点名的那个项目。
+  - `ConfirmModal` 多传 `busy={deleteBusy}` 与 `refusal={…}`。
+- `packages/web/e2e/project-delete-refusal.spec.mjs`（新，2 条）：
+  ① 删除被拒（`page.route` 500，`project_store_locked`）→ 框、框里那句话与项目都还在，通知区 0 个可点的按钮，
+     框内文字除那一行外与刚打开时逐字相同；取消后重新打开不带旧原因（`toHaveCount(0)`，文字与第一次逐字相同）。
+  ② 放行重试（同一个按钮）→ 框关、设置对话框跟着关、项目在服务端与切换器里都没了（两次 DELETE）。
+  两条的探针项目都由接口创建：删除那一行对 `default_project` 与账号**最后一个**项目是藏起来的（服务端同样 409），
+  所以用例必须先有第二个项目；模型 credential 两个项目都配上，否则开页时的 onboarding 遮罩会压住侧栏。
+- changelog 一对 `changelog/unreleased/2026-10-23-project-delete-refusal{,.zh}.md`。**无新依赖、不碰接口、无新文案。**
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个；`gen:ifaces` 报
+  `src/ifaces.json unchanged`（195 接口 / 589 类型））。
+- `npx oxlint` 改动面（源码 + 新 spec）**0 警告 0 错误**；改动四个文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** ·
+  cli **38 / 561** · web **264 / 3239 通过 / 2 跳过** · server **203 / 2961 通过 / 4 跳过**（与上一轮同：本笔是
+  界面行为，改由 e2e 钉住）。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8997 MOCK_PORT=8998 pnpm -C packages/web test:e2e`，
+  脚本自己的 `mktemp` 数据根、mock 8998 / 服务端 8997）：**141 passed（8.9m）、0 failed**（上一轮 139 + 本笔 2）。
+- **反证**：`git stash push -- packages/web/src/components/layout/project-dialogs.tsx`（只带这一个路径）并重建
+  web → 同一份 spec **2 failed**（两条都死在框里找不到 `project store is locked`）；`git stash pop` + 重建后
+  **2 passed（7.1s）**。
+- **两态实测真看一眼**（一次性数据根 `/root/adelie-fork-data/r119-a`、`localhost:8996`、mock 8995、1280×900；
+  删除由 `page.route` 拒成 500，`project_store_locked` / `project store is locked`）：
+  - **旧代码**：`reasonInCard 0`、`cardText` 与打开时逐字相同、通知区一条 `project store is locked`（且通知区有
+    **1** 个可点按钮）；6.5 秒后通知区**空了**（`notificationButtons 0`），框还在、项目还在 —— 屏幕上再没有一句解释。
+  - **新代码**：`reasonInCard 1`，框里逐字是「确认删除该项目？项目目录将被递归删除，不可恢复。／操作被拒绝：
+    project store is locked」；通知区**空**（0 个按钮）；6.5 秒后框内文字逐字相同；取消后重开 `reasonInCard 0`；
+    放行重试 → 框 0、设置对话框 0、项目已不在服务端。
+  - `console` 只有刻意造的那一次 500 与三条 `GET …/machines` 的 403（管理员路由被普通账号每次开页都问一次的老
+    现象），**无 pageerror**；截图 `r119/{before,after}-{1-settings,2-card,3-refused,4-after-6s,5-written}.png`、
+    读数 `r119/{before,after}.json`、探针 `r119/probe.spec.mjs` 在 scratchpad（探针在 scratchpad 里靠一个软链的
+    `node_modules` 与一个临时 `pw-probe.config.mjs` 跑，配置跑完即删，均未 `git add`）。
+- 端口只用探针的 8995 / 8996 与 e2e 的 8997 / 8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r119-a`，一个字节没往 `~/.penguin` / `~/.adelie` 里写
+  （`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发汇总。
+
+### 没做 / 还差什么
+
+- 同一条扫描线上还剩：`features/agents/api-tab.tsx` 与 `features/settings/agent-api-section.tsx` 的密钥保存，
+  以及 `features/company/` 的日历 / 员工 / 组织 / 手册 / 频道各处（按「一轮一处」往下排）。
+- 文件面板自己的**保存**（`save()`，保存确认框在发请求之前就自己关掉）仍未定口径，留在 7.33 的「还差什么」里。
+- 待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 3.5 拍板 / 3.6 模型 key / 4.1—4.3 明令不动 / 5.6 / 5.10 拍板）。
