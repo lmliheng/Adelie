@@ -112,6 +112,7 @@ describe("groupModelRows", () => {
       "qwen-pay-as-you-go",
       "qwen-token-plan",
       "modelscope",
+      "abliteration",
       "vllm",
       "custom",
     ]);

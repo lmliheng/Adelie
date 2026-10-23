@@ -14408,3 +14408,47 @@ setDeleting(null);          // 被拒也关
 - 先按 `csu-mail` 技能试 `mail.py check`：100 秒超时（`EXIT=124`，202.197.0.0/16 那个老问题），约定一轮只试一次，
   于是改由飞书送达（`message_id=om_x100b6299d2db88a8c0a9e0ae81b2e2f`，收件人即已绑定的那个私聊），正文留在
   scratchpad 的 `r116/report.md`；下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 用户点单：模型库加一个 Abliteration 分组（2026-10-23）
+
+### 事实来源
+
+用户给了一把 `ak_…` 的 key，要「加到模型组，我自己来测试」。key 先在 TokenDance 上试过：`/gateway/v1/models`
+不带鉴权也回 200（公开列表），带这把 key 的对话与 `/portal/api/v1/user/balance` 都是 `API 密钥不存在`，
+所以不是那家。按前缀查到 Abliteration（abliteration.ai），实测：`GET https://api.abliteration.ai/v1/models`
+回 200 并列出四个 id（窗口、输入模态、每 Token 费率都在里面），`GET /v1/credits` 回 200
+`{"total_credits":0,"total_usage":0}`，而对话接口当时是 402 `insufficient_credits`（用户随后已充值）。
+端点与协议取自其文档 `docs.abliteration.ai/api/openai-compatibility`：OpenAI 兼容，base URL
+`https://api.abliteration.ai/v1`，`/chat/completions`、`/responses`、`/models` 都在上面。
+
+### 改了什么
+
+- `packages/core/src/state/model-catalog.ts`：新增 `ABLITERATION_BASE_URL` 与 `abliteration` 分组（排在
+  modelscope 之后、vllm 之前；`OPENAI_*` 凭据、`gatewayBaseUrl` 指向该端点、控制台与文档链接各一条），
+  四条目录条目 `abliterated-model-large-v2` / `-large` / `-large-flash` / `abliterated-model`：窗口
+  1,000,000 / 1,000,000 / 1,048,576 / 262,144，视觉 否 / 否 / 是 / 是，价格按每 Token 费率折成每百万
+  （3/3/5、3/3/5、1/1/2、1/1/3），四条都固定 `openai-chat` 并把端点写在条目上。文件头的数据核对日期与
+  「七个网关分组」那一句跟着改成八个、点名 Abliteration。
+- `packages/core/test/model-catalog.test.ts`：分组顺序、网关 env 清单、`GATEWAYS` 清单、`gatewayBaseUrl`
+  断言与 `withBaseUrl` 期望各补一处；网关那一段里新加一组断言（四个 id 的窗口、视觉、三项价格、协议、端点、
+  无促销、非退役）。
+- `packages/web/test/model-grouping.test.ts`：分组默认顺序补 `abliteration`。
+- `packages/docs/content/models.zh.md` 与 `models.en.md`：分组表各一行（`OPENAI_API_KEY`）、各加一节
+  「Abliteration 分组 / The Abliteration group」（预置、协议、价格），预置模型清单各加一行。
+- `changelog/unreleased/2026-10-23-abliteration.md` 与 `.zh.md`：中英双份。
+
+### 验证
+
+- `packages/core`：`npx vitest run test/model-catalog.test.ts` → 65 passed；全量 `npx vitest run` →
+  68 个文件通过 / 1410 passed、6 skipped（含两个 e2e 跳过）；`npx tsc --noEmit -p tsconfig.json` 无输出。
+- `packages/web`：`npx vitest run` → 264 个文件 / 3239 passed、2 skipped（改前先跑过 `model-grouping`，
+  失败原因就是 dist 还是旧的；`pnpm --filter @adelie/core build` 重建后转绿）。
+- `npx prettier --check` 覆盖上列源码、测试与两份文档：全部符合。
+
+### 没做 / 还差什么
+
+- **没动现网与任何进程。** 现网 7364 跑的是 `/root/.adelie/lib` 里那份安装副本（`/root/.local/bin/penguin`
+  → `/root/.adelie/bin/penguin`），不是这棵树里的 `packages/*/dist`，所以要让它出现在界面上，得重新构建
+  安装副本再重启 `adelie-server.service`——这一步没做，等用户点头。
+- key 没有写进任何 Project 配置；用户说他自己来测试。
+- 没切版本号、没发 npm、没发安装包、没发发布汇总。

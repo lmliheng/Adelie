@@ -27,7 +27,8 @@
  * together — Xiaomi MiMo, Baidu ERNIE, Tencent Hunyuan and iFlytek Spark — read from each
  * vendor's own docs and console pages: 2026-10-15, with the iFlytek rows deliberately unpriced
  * (its HTTP doc publishes no price list, and the product page's prices name model families it
- * has published no API id for).
+ * has published no API id for); and the Abliteration group, whose four rows were read from the
+ * service's own model list on 2026-10-23.
  * Docs: packages/docs/content/models.{zh,en}.md (site path /docs/models) documents the
  * provider groups and credential resolution described here.
  *
@@ -48,8 +49,9 @@
  * (delisted 2026-08-06; the Z.AI direct glm-5.1 remains), the OpenRouter
  * inclusionai/ling-3.0-flash:free listing (delisted from OpenRouter, removed 2026-08-18),
  * non-chat models (embedding / image generation / TTS), and Bedrock. Direct-vendor ids are
- * auto-routed by AgentHub and leave client_type unset; seven gateway groups (OpenRouter,
- * Fireworks AI, SiliconFlow, TokenDance, OpenCode Go, Qwen Pay-As-You-Go and Qwen Token Plan)
+ * auto-routed by AgentHub and leave client_type unset; eight gateway groups (OpenRouter,
+ * Fireworks AI, SiliconFlow, TokenDance, OpenCode Go, Qwen Pay-As-You-Go, Qwen Token Plan and
+ * Abliteration)
  * can't be auto-routed, so every gateway row **always pins an explicit client_type** and
  * inlines its preset base URL. ModelScope's rows pin one protocol too (see below).
  * Two groups pin at GROUP level as well (ModelProviderInfo.clientType, read
@@ -283,6 +285,8 @@ const QWEN_TOKEN_PLAN_BASE_URL =
 const QWEN_PAYG_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
 const FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
 const TOKENDANCE_BASE_URL = "https://tokendance.space/gateway/v1";
+/** Abliteration's OpenAI-compatible base (its docs' base URL for every SDK and agent they wire up). */
+const ABLITERATION_BASE_URL = "https://api.abliteration.ai/v1";
 const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1";
@@ -565,6 +569,22 @@ export const MODEL_PROVIDERS: ModelProviderInfo[] = [
     modelsUrl: "https://www.modelscope.cn/models",
     gatewayBaseUrl: MODELSCOPE_BASE_URL,
     bridgeAuth: { flow: "modelscope" },
+  },
+  {
+    // Abliteration (abliteration.ai): its own line of "abliterated" models — the uncensored
+    // fine-tunes the service is named after — served on one OpenAI-compatible base URL that
+    // answers /chat/completions, /responses and /models. Keys start with `ak_` and come from
+    // its console. Every id is its own spelling (`abliterated-model…`), which matches none of
+    // AgentHub's routing rules, so each row pins the generic Chat Completions client and
+    // inlines the endpoint; the group carries the endpoint too, as every gateway does.
+    // https://docs.abliteration.ai/api/openai-compatibility
+    id: "abliteration",
+    label: "Abliteration",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://abliteration.ai/console",
+    modelsUrl: "https://docs.abliteration.ai/",
+    gatewayBaseUrl: ABLITERATION_BASE_URL,
   },
   {
     // Self-hosted: the user runs the server, so there is no console to mint a key at
@@ -3120,6 +3140,55 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     supportsVision: false,
     clientType: "openai-chat",
     baseUrl: IFLYTEK_BASE_URL,
+  },
+  // -- Abliteration. Its own ids, read on 2026-10-23 from the service's own model list
+  // (GET https://api.abliteration.ai/v1/models), which publishes everything the rows below
+  // record: the window, the input modalities and the per-token rates. Prices are the list
+  // rates converted to the catalog's USD-per-million buckets (input per token 0.000001 = 1
+  // USD/Mtok, and so on); the service charges no cache-write premium, so cache_write repeats
+  // the input rate while cache_read stores the discounted hit rate it does publish. Vision
+  // follows input_modalities: only the two rows that accept an image say so. Every id pins
+  // openai-chat and inlines the endpoint — none of them matches an AgentHub routing rule.
+  // Largest first, newest revision of a size ahead of its predecessor.
+  {
+    modelId: "abliterated-model-large-v2",
+    displayName: "Abliterated Model Large V2",
+    provider: "abliteration",
+    contextWindow: 1000000,
+    pricing: usd(0.3, 3, 5),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: ABLITERATION_BASE_URL,
+  },
+  {
+    modelId: "abliterated-model-large",
+    displayName: "Abliterated Model Large",
+    provider: "abliteration",
+    contextWindow: 1000000,
+    pricing: usd(0.3, 3, 5),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: ABLITERATION_BASE_URL,
+  },
+  {
+    modelId: "abliterated-model-large-flash",
+    displayName: "Abliterated Model Large Flash",
+    provider: "abliteration",
+    contextWindow: 1048576,
+    pricing: usd(0.1, 1, 2),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: ABLITERATION_BASE_URL,
+  },
+  {
+    modelId: "abliterated-model",
+    displayName: "Abliterated Model",
+    provider: "abliteration",
+    contextWindow: 262144,
+    pricing: usd(0.1, 1, 3),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: ABLITERATION_BASE_URL,
   },
   // -- Custom (the group that otherwise holds only user-defined models). A preset may live
   // here only as a complete row — its own base URL and a pinned generic protocol — because the

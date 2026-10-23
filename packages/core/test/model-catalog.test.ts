@@ -75,6 +75,7 @@ describe("model-catalog", () => {
       "qwen-pay-as-you-go",
       "qwen-token-plan",
       "modelscope",
+      "abliteration",
       "vllm",
       "custom",
     ]);
@@ -983,6 +984,7 @@ describe("model-catalog", () => {
       "qwen-token-plan",
       "qwen-pay-as-you-go",
       "modelscope",
+      "abliteration",
       "vllm",
       "custom",
       "xiaomi",
@@ -1007,6 +1009,7 @@ describe("model-catalog", () => {
     expect(providerInfo("modelscope")!.gatewayBaseUrl).toBe(
       "https://api-inference.modelscope.cn/v1",
     );
+    expect(providerInfo("abliteration")!.gatewayBaseUrl).toBe("https://api.abliteration.ai/v1");
     const GATEWAYS = [
       "openrouter",
       "fireworks",
@@ -1016,13 +1019,41 @@ describe("model-catalog", () => {
       "qwen-token-plan",
       "qwen-pay-as-you-go",
       "modelscope",
+      "abliteration",
     ];
     for (const p of MODEL_PROVIDERS) {
       if (!GATEWAYS.includes(p.id)) {
         expect(p.gatewayBaseUrl, p.id).toBeUndefined();
       }
     }
-    const gateway = [...or, ...fw, ...sf, ...td, ...qtp, ...qpayg, ...ms];
+    const abl = MODEL_CATALOG.filter((m) => m.provider === "abliteration");
+    // Abliteration's own ids, read from GET /v1/models on 2026-10-23. There is no routing rule
+    // for any of them, so every row pins openai-chat and inlines the endpoint; prices are the
+    // service's per-token rates in the catalog's USD-per-million buckets, and vision follows
+    // the input modalities it publishes.
+    expect(
+      abl.map((m) => [
+        m.modelId,
+        m.contextWindow,
+        m.supportsVision,
+        m.pricing!.cache_read,
+        m.pricing!.cache_write,
+        m.pricing!.output,
+      ]),
+    ).toEqual([
+      ["abliterated-model-large-v2", 1000000, false, 0.3, 3, 5],
+      ["abliterated-model-large", 1000000, false, 0.3, 3, 5],
+      ["abliterated-model-large-flash", 1048576, true, 0.1, 1, 2],
+      ["abliterated-model", 262144, true, 0.1, 1, 3],
+    ]);
+    for (const m of abl) {
+      expect(m.clientType, m.modelId).toBe("openai-chat");
+      expect(m.baseUrl, m.modelId).toBe("https://api.abliteration.ai/v1");
+      // A gateway row: no promotion, so nothing sits between the list price and the bill.
+      expect(m.discount, m.modelId).toBeUndefined();
+      expect(m.retired, m.modelId).toBeUndefined();
+    }
+    const gateway = [...or, ...fw, ...sf, ...td, ...qtp, ...qpayg, ...ms, ...abl];
     // Pricing (USD, per the 2026-08-03 models-API re-read): MiMo v2.5 and Hy3 publish a real
     // cache-hit price and no per-token write premium, so cache_write carries the input price.
     const mimo = MODEL_CATALOG.find((m) => m.modelId === "xiaomi/mimo-v2.5")!.pricing!;

@@ -448,6 +448,7 @@ Adelie 升级可能改变内置的预置模型目录。一旦发生，Project ow
 | qwen-pay-as-you-go | `OPENAI_API_KEY` | Qwen 按量付费（DashScope 的 OpenAI 兼容端点），预置 base URL `https://dashscope.aliyuncs.com/compatible-mode/v1`；转售的第三方模型保留供应商前缀 id（如 `kimi/kimi-k3`） |
 | qwen-token-plan | `OPENAI_API_KEY` | Qwen Token Plan 订阅网关，预置 base URL `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`；价格取自各模型页面的官方牌价（预览模型只有配额倍率优惠，没有牌价） |
 | modelscope | `OPENAI_API_KEY` | 魔搭的 OpenAI 兼容 api-inference 网关，预置 base URL `https://api-inference.modelscope.cn/v1`；id 就是上游仓库名（如 `deepseek-ai/DeepSeek-V4.1-Flash`、`Qwen/Qwen3.8-27B`）；分组标题栏可以经授权中转层为你自动授权一把 token，也可以手动设置。见 [ModelScope 分组](#modelscope-分组) |
+| abliteration | `OPENAI_API_KEY` | abliteration.ai 自家那批「abliterated」（去审查微调）模型，OpenAI 兼容，预置 base URL `https://api.abliteration.ai/v1`；key 形如 `ak_…`；四条预置都固定 Chat Completions 客户端。见 [Abliteration 分组](#abliteration-分组) |
 | vllm | `OPENAI_API_KEY` | 自托管 vLLM 服务器：协议固定为 `openai-chat-vllm-adapter`，无预置 base URL，八个预置模型价格均为 0（见[连接本地或自托管端点](#连接本地或自托管端点)） |
 | custom | `OPENAI_API_KEY` | 任意 OpenAI 协议端点；自带一个预置模型 Atria Dawn Preview（Anthropic Messages API，地址 `api.atria-asi.ai`，需要自己的 key，上下文窗口 256K，供应商公布价格之前定价 $0） |
 
@@ -490,6 +491,14 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 
 预置条目不带价格。魔搭的 api-inference 是计费的，但它的模型页面读不到费率，所以这些条目按未定价处理：模型页在它们上面不显示价格徽标，成本中心把它们的用量报为未计价。这是目录记录「没人查过这个价格」的方式，见[价格与促销](#价格与促销)。
 
+### Abliteration 分组
+
+`abliteration` 收录 abliteration.ai 自家那批「abliterated」模型——在开源权重上做去审查微调得到的那条产品线，服务名就来自这个做法。端点是 OpenAI 兼容的：`/chat/completions`、`/responses` 与 `/models` 都挂在 `https://api.abliteration.ai/v1` 上，key 从控制台领取，形如 `ak_…`，在分组标题栏用**填写密钥**设置一次即可。
+
+- **预置模型。** `abliterated-model-large-v2`（官方推荐的默认选择）、`abliterated-model-large`、`abliterated-model-large-flash` 与 `abliterated-model`。前两条是 1,000,000 Token 上下文、只收文本；`flash` 是 1,048,576 并接受图像；`abliterated-model` 是 262,144，也接受图像。
+- **协议。** 这些 id 没有一条能被 AgentHub 按名字认出来，所以每个条目都固定 Chat Completions 客户端（`client_type = "openai-chat"`）并把端点写在条目上；同一条端点上也有 `/responses`，要换协议在条目上改即可。和所有网关一样，没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。
+- **价格。** 取自服务自己的模型列表，单位是每百万 Token 多少美元：输入 1 或 3，输出 2、3 或 5，缓存命中的读价 0.1 或 0.3。它不额外收缓存写入费，所以 `cache_write` 记的就是输入价。
+
 ### 预置模型
 
 预置模型目录包含以下模型：
@@ -505,6 +514,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - `seed-2.1-pro` / `seed-2.1-turbo` / `seed-evolving`
 - `dots-3-note-preview`（TokenDance 上免费，512K 上下文）
 - `deepseek-ai/DeepSeek-V4.1-Flash`、`Qwen/Qwen3.8-27B`、`Qwen/Qwen3.8-Flash-Next`（ModelScope 的 api-inference，没有价格的预置条目）
+- `abliterated-model-large-v2` / `abliterated-model-large-flash`（Abliteration 的去审查模型）
 
 列表并未穷尽所有模型。
 

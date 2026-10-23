@@ -449,6 +449,7 @@ The table below lists the built-in groups and the environment variables their mo
 | qwen-pay-as-you-go | `OPENAI_API_KEY` | Qwen pay-as-you-go (DashScope's OpenAI-compatible endpoint), preset base URL `https://dashscope.aliyuncs.com/compatible-mode/v1`; resold third-party models keep vendor-prefixed ids (e.g. `kimi/kimi-k3`) |
 | qwen-token-plan | `OPENAI_API_KEY` | Qwen Token Plan subscription gateway, preset base URL `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`; pricing from each model page's official list price (the preview model has only a quota-multiplier promo, no list price) |
 | modelscope | `OPENAI_API_KEY` | ModelScope's OpenAI-compatible api-inference gateway, preset base URL `https://api-inference.modelscope.cn/v1`; ids are the upstream repo names (`deepseek-ai/DeepSeek-V4.1-Flash`, `Qwen/Qwen3.8-27B`); the group's header authorizes a token for you through an authorization bridge, or takes one you set by hand. See [The ModelScope group](#the-modelscope-group) |
+| abliteration | `OPENAI_API_KEY` | Abliteration's own line of "abliterated" (refusal-ablated) models, OpenAI-compatible, preset base URL `https://api.abliteration.ai/v1`; keys look like `ak_…`; all four presets pin Chat Completions. See [The Abliteration group](#the-abliteration-group) |
 | vllm | `OPENAI_API_KEY` | Self-hosted vLLM servers: protocol fixed to `openai-chat-vllm-adapter`, no preset base URL, eight preset models priced at 0 (see [Connect a local or self-hosted endpoint](#connect-a-local-or-self-hosted-endpoint)) |
 | custom | `OPENAI_API_KEY` | Any OpenAI-protocol endpoint; ships one preset, Atria Dawn Preview (Anthropic Messages API at `api.atria-asi.ai`, needs its own key, 256K window, priced at $0 until the vendor publishes prices) |
 
@@ -491,6 +492,14 @@ The group's key comes from its header; see [Connect an account](#connect-an-acco
 
 The preset rows carry no price. ModelScope bills for api-inference and its model pages publish no read-able rate, so the rows are left unpriced: the models page shows no price badge on them and the cost center reports their usage as uncosted. That is the catalog's way of recording "nobody has looked this up" — see [Prices and promotions](#prices-and-promotions).
 
+### The Abliteration group
+
+`abliteration` carries abliteration.ai's own line of "abliterated" models — the refusal-ablated fine-tunes the service is named after. The endpoint is OpenAI-compatible: `/chat/completions`, `/responses` and `/models` all sit on `https://api.abliteration.ai/v1`, and a key from the console looks like `ak_…`. Set it once on the group header with **Enter key**.
+
+- **Presets.** `abliterated-model-large-v2` (the vendor's recommended default), `abliterated-model-large`, `abliterated-model-large-flash` and `abliterated-model`. The first two take text only at a 1,000,000-token window; `flash` takes text and images at 1,048,576; `abliterated-model` takes both at 262,144.
+- **Protocol.** None of these ids matches a rule AgentHub routes by, so every row pins the Chat Completions client (`client_type = "openai-chat"`) and carries the endpoint on itself. The same endpoint also serves `/responses`; change the row's protocol if you prefer it. As in every gateway, a keyless row is refused rather than sent your OpenAI key.
+- **Prices.** Read from the service's own model list, in USD per million Tokens: input 1 or 3, output 2, 3 or 5, and cache hits read at 0.1 or 0.3. It charges no separate cache-write fee, so `cache_write` records the input rate.
+
 ### Preset models
 
 The preset catalog includes, among others:
@@ -506,6 +515,7 @@ The preset catalog includes, among others:
 - `seed-2.1-pro` / `seed-2.1-turbo` / `seed-evolving`
 - `dots-3-note-preview` (free on TokenDance, 512K context)
 - `deepseek-ai/DeepSeek-V4.1-Flash`, `Qwen/Qwen3.8-27B`, `Qwen/Qwen3.8-Flash-Next` (ModelScope's api-inference; preset rows with no price)
+- `abliterated-model-large-v2` / `abliterated-model-large-flash` (Abliteration's refusal-ablated models)
 
 The list is not exhaustive.
 
