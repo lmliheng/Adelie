@@ -2042,6 +2042,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-23 | 7.30 | **两条「现在升级」的批量确认框（插件批次 / 内核批次）没全落地时，框留着，原因也留在框里**（不是移植：`packages/web/src/lib/bulk-update.ts` 两个纯函数（`bulkFailureText` 组合「部分失败句 + 第一个失败的原话」，`remainingTargets` 收窄计划）+2 处源码（`plugins-page.tsx` 的 `runBulkUpdate` 加 `bulkRefusal` 状态、被拒时按 `remainingTargets` 收窄 `pendingBulk`；`agents-page.tsx` 的 `runKernelUpdates` 同形）+1 个新文件 `packages/web/e2e/bulk-update-refusal.spec.mjs`（2 条用例）+ 既有单测加 7 条（`test/todo-notice.test.ts`）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：两处都是 `Promise.allSettled` 之后把部分失败交给一条 toast、并在 `finally` 里关框 —— 用户重试时最需要的「哪些 Agent 没成功、为什么」恰好最先消失。**现在**：每个目标都落地才关框；没全落地时框留着，把「已更新 N 个 Agent；以下未成功：…— 服务端原话」画在 `ConfirmModal` 的 `refusal` 槽里（不套「操作被拒绝：」前缀：五个写了三个的批次不是被拒绝），重试就是同一个按钮；插件批次重试前只留没成功的那些。**为什么是它**：7.29 末尾点名的那条「批量更新」，而它其实有两处同形 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（193 接口 / 589 类型）**）· `npx oxlint` 改动面 **0 警告 0 错误**（5 文件）· 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 / 1052** · server **202 / 2955 通过 / 4 跳过** · cli **38 / 561** · web **263 文件 / 3231 通过 / 2 跳过**（上轮 3224，本笔 +7）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 8931 / 服务端 8930）：**131 passed（8.8m）、0 failed**（原 129 条 + 本笔 2 条）· **反证**：`git stash push --` 只带两个页面文件并重建 web → 同一份 spec **2 failed**（两条都死在框里找不到那句原因，16.5 s / 16.3 s），`git stash pop` + 重建后 **2 passed** · **两态实测**（真服务 + 真浏览器，一次性数据根 `/root/adelie-fork-data/r113-a`、`localhost:8990`、`admin`、1280×900；两条写由 `page.route` 拒成 500）：插件批次 —— 框里句子下面是 danger 色的「已更新 0 个 Agent；以下未成功：General Agent — agent state is read-only」、`通知` 区 **0** 个按钮、**6.5 秒后仍在**、重开不带旧原因；内核批次同形（原因 `kernel merge refused`）—— 探针读数两态都是 `dialog true / reasonInDialog true / toasts 0`，console 只有那两次刻意造的 500、无 pageerror；截图 `r113/shots/{1…11}.png`、探针 `r113/probe.mjs` 在 scratchpad · 端口只用 8990 / 8991（跑完都已停），e2e 是它自己的 8930 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r113-a` 与 e2e 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `4f99fcce` |
 | 2026-10-23 | 7.31 | **两张凭据表的删除确认框（智能体的密钥保险柜 / 账户菜单的「用户密钥」）被拒时，框留着，原因也留在框里**（不是移植：2 处源码（`features/agents/vault-tab.tsx`、`components/account/user-vault-dialog.tsx`）+1 个新文件 `packages/web/e2e/vault-delete-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：两张表删除一行都是整表写回，`confirmRemove` 过去把错误弹成 toast 之后**无条件** `setDeleting(null)` —— 被拒时那一行在页面上、在服务端都还在，唯独原因落进六秒后自己消失、还浮在框上方的 toast 里。**现在**：被拒 → 把服务端原话交给`deleteRefusal` 并提前返回，框留着、原话画在 `ConfirmModal` 的 `refusal` 槽里（既有 `S.common.refused` 前缀）；只有写入落地才关框；删除按钮先开框再清上次的原因，重开不带旧原因；两个文件里因此不再用的 `toastError` 导入删掉。新 spec 两条：被拒时框、句子与行都在，通知区没有可点的按钮，6.5 秒后框内文字与刚被拒时逐字相同；取消后重开干净；放行重试 → 框关、行没了、服务端表里也没有，且它发的写入就是去掉那一行的表（`entries: []`，不是整表清空） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（193 接口 / 589 类型））· `npx oxlint`（全仓）**0 警告 0 错误**（2261 文件）· 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **67 文件 / 1399 通过 / 6 跳过** · ui **130 文件 / 1052 通过** · server **202 文件 / 2955 通过 / 4 跳过** · cli **38 文件 / 561 通过** · web **263 文件 / 3231 通过 / 2 跳过** · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1`，脚本自己的 `mktemp` 根、mock 8931 / 服务端 8930）：**133 passed（8.4m）、0 failed**（原 131 + 本笔 2；第一次整套跑时账户那条红在「没先打开应用」，已改成先 `goto('/')` 等草稿页落定）· **反证**：`git stash push --` 只带两个源码文件并重建 web → 同一份 spec **2 failed**（两条都死在框里找不到 `vault is read-only`），`git stash pop` + 重建后 **2 passed（5.3s）**，现场留在 `r114/before-test-results/output.log` · **两态实测真看一眼**（一次性数据根、`localhost:8930`、`r114probe`、1280×900、两处 PUT 由 `page.route` 拒成 500）：智能体的表框里「确认删除环境变量「PROBE_AGENT_KEY」？值不可恢复。」下面一行 danger 色「操作被拒绝：vault is read-only」，通知区 0 个按钮，6.5 秒后仍在；账户的表同形（框名「删除全局密钥」）；放行重试后两处都是框 0、行 0；探针 `probe.json` 里「刚被拒」与「6.5 秒后」的框内文字逐字相同，console 只有那两次刻意造的 500，外加两条 `GET …/machines` 的 403（管理员路由被普通账号每次开页都问一次的老现象，`routes/machines.ts` 首行就写着 admin only），**无 pageerror**；截图 `r114/shots/{1-agent-vault,2-agent-refused,3-agent-refused-after-6s,4-agent-written,5-user-vault,6-user-refused,7-user-refused-after-6s,8-user-written}.png`、探针 `r114/probe.mjs` 在 scratchpad · 端口只用 e2e 自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-10-23 | 7.32 | **记忆页签的删除与导入被拒时，框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/memory-tab.tsx` + 1 个新文件 `packages/web/e2e/memory-write-refusal.spec.mjs`（3 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：删除确认框过去在**发请求之前**就 `setRemoving(null)`，导入把失败弹成 toast —— 被拒时那条记忆（以及导入要覆盖的文件）在页面上、在磁盘上都还在，唯独原因落进六秒后自己消失、还浮在弹框上方的 toast 里。**现在**：被拒的删除把服务端原话交给 `deleteRefusal` 并提前返回，框留着、原话画在 `ConfirmModal` 的 `refusal` 槽里（既有 `S.common.refused` 前缀），删除真的写下才关框并刷新；行的垃圾桶 / 抽屉 / 手机面板统一走 `askRemove`（先开框再清上次的原因）；导入失败交给 `importRefusal`，走过计划确认的画在那张卡里、没走确认的画在「导入记忆」弹框里，`submitImport` / `pickImport` / 换模式三处各清一次。**为什么是它**：第一百一十四轮末尾排下来的同形写入第一条，两处是同一种病 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`）· `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）· 两个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：ui **130 / 1053** · core **68 通过文件 + 1 跳过 / 1410 通过 / 6 跳过** · cli **38 / 561** · web **264 / 3239 通过 / 2 跳过** · server **203 / 2961 通过 / 4 跳过**（比 7.31 高的部分是第一百一十五轮的主题用例，本笔不加单测，界面行为由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8945 MOCK_PORT=8946`，脚本自己的 `mktemp` 根）：**136 passed（8.9m）、0 failed**（第一百一十五轮之后 133 + 本笔 3）· **反证**：`git stash push --` 只带这一个源码文件并重建 web → 同一份 spec **3 failed**（都死在框里找不到 `memory store is closed`），`git stash pop` + 重建后 **3 passed（6.7s）** · **两态实测真看一眼**（一次性数据根 `/root/adelie-fork-data/r116-probe-*`、`localhost:8957`、`r116probe`、mock 8958、1280×900，两处写由 `page.route` 拒成 500）：删除框句子下面一行 danger 色「操作被拒绝：memory store is closed」、通知区 **0** 个按钮；导入的计划确认框里「将覆盖 1 条记忆：probe-memory.md / 此操作不可恢复。」加同一行拒绝语，下面那层「导入记忆」仍开着；探针读数 `deleteDialogStillOpen 1 / deleteRefusalVisible 1 / planRefusalVisible 1 / notificationButtons 0 / heldAfterRefusals 1`，console 只有那两次刻意造的 500 与一条 `GET …/machines` 的 403（老现象），**无 pageerror**；截图 `r116/{1-memory-tab,2-delete-refused,3-import-modal,4-import-refused}.png`、探针在 scratchpad · 端口只用 e2e 的 8945 / 8946 与探针的 8957 / 8958（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r116-*`，没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `dbd2d583` |
+| 2026-10-23 | 用户点单（图片上限·输入侧） | **这一轮输入自己就超上限时也裁**（接手 13:20 那笔留在工作区里的续做（+27 −13）：`packages/core/src/llm/generative-model.ts` 的 `fitReplayedImages` 先按上限裁**输入**、把要送出的那条消息交回 `streamGenerate`（不再原地改调用方对象），历史再从剩余额度里分；`capHistoryImages` 加第三参 `limit`，占位写的是卖家上限而不是剩余额度（默认等于 `budget`，纯函数行为不变）；`core/test/image-budget.test.ts` 的假客户端记下真正发出的消息，新增两条用例，并修掉 HEAD 上原有的两处 `TS2749`；changelog 一对加一节，`models.{zh,en}.md` 各补一句）**为什么是它**：一轮读五张图会被合并成同一条输入消息，而打断的一轮在会话继续时是作为新输入重送的 —— 只裁历史修不好用户碰上的那条 `400 media_count_exceeded`；待办里能一轮做完的条目仍然没有（2.2c / 3.5 / 3.6 / 4.1—4.3 / 5.6 / 5.10 各自卡在拍板、桌面壳或新凭证上） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（195 接口 / 589 类型）** —— 本笔不碰服务契约）· `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）· 改动文件与 changelog / 两份文档 `prettier --check` 全绿 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过**（13:20 那笔 1418 + 本笔 2 条）· ui **130 / 1053** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 / 3239 通过 / 2 跳过** · **反证**：`git stash push -- packages/core/src/llm/generative-model.ts`（只带这一个路径）→ 两条新用例 **2 failed**（`expected 5 to be 4`、占位写成 1），`git stash pop` 后 **10 passed** · 这一笔没有界面面，没有起服务 / 截图（改的是请求装配，由「真正发出的那条消息」的断言钉住）；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据没往 `~/.penguin` / `~/.adelie` 写 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `20dde0d6` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -14490,3 +14491,66 @@ images and try again. (media_count_exceeded)`。那条会话（`session-2026-10-
 
 - 现网安装副本要重新构建再重启才带上（见下一节的部署记录）。
 - 没有替用户去复测那条会话：他说了自己来测，而且每次请求是真花钱的。
+
+## 第一百一十七轮：这一轮输入自己就超上限时也裁（2026-10-23，条目 用户点单·图片上限）
+
+### 开工时的这棵树（不干净，但没有人在写它）
+
+`git status --short` 只有一个文件：`M packages/core/src/llm/generative-model.ts`（+27 −13，mtime
+13:30:34）。`HEAD` 比 `origin/main` 多两笔未推的提交（`9864a187` 目录里加 Abliteration 分组、`217c5908`
+图片上限），`.git/index` 停在 13:21:38、`.git/FETCH_HEAD` 停在 11:47 —— 那之后 git 没再写过这棵树。
+那份未提交的改动正好是把 13:20 那笔**补完**：只裁了重放的历史，没裁这一轮的输入；它没有测试、没有
+changelog、没有台账。
+
+判「谁留的、死没死」：13:30 那轮「需求箱巡台与发版」（`session-2026-10-23-13-30-28-5f187bc0`）只跑了只读命令，
+它 13:30:32 与 13:30:38 的两次 `git status` 之间文件被写过（mtime 13:30:34），第二次的输出里就是那一个脏文件
+—— 所以写它的不是巡台这一轮，而是 13:20 那笔的同一条线（用户会话那一侧）。之后 13:31、13:36、15:00 三轮巡台
+都只读不写（15:00 那轮还把它写进了 `runs/2026-10-23-1500/log.md`：「唯一未提交的
+`packages/core/src/llm/generative-model.ts`」），`ps` 里没有任何进程在写这棵树。结论：这不是「另一条线还在
+跑」，是一份没人认领的半成品，而且它做的正是把用户点单的那条修复补完整 —— 于是本轮把它接过来做完
+（可退回：改动只有这一个文件，`git stash push -- <它>` 就回到 13:20 那一笔）。
+
+### 为什么非做完不可
+
+打断的一轮在会话继续时是作为**新输入**重新送出的，而一轮里读五张图会被合并进**同一条**输入消息
+（`mergeOmniToUniMessage`）。只裁历史的话，那条请求仍然带着五张输入、照样 400 `media_count_exceeded`
+—— 正是用户碰上的那个「换什么问法都不行」。
+
+### 改了什么（1 处源码 + 1 份用例 + 一对 changelog + 两份文档）
+
+- `packages/core/src/llm/generative-model.ts`：
+  - `fitReplayedImages` 先把**输入**按上限裁（留最新四张，旧的换成 `[image omitted: …]`），历史再从剩下的
+    额度里分；它现在把要送出的那条消息**交回去**，`streamGenerate` 把它交给 `openStream`（不再原地改调用方
+    的对象，与「不动 `getHistory` 交出来的对象」同一口径）。上限未配置时原样返回，一个字节不碰。
+  - `capHistoryImages` 多了第三个参数 `limit`（默认等于 `budget`，纯函数行为不变）：占位里写的是**卖家的上限**，
+    不是这次剩下的额度 —— 输入已经用掉一部分时，历史只拿到 1 张额度，占位不该写「这个模型最多收 1 张」。
+- `packages/core/test/image-budget.test.ts`：假客户端记下真正发出的那条消息（`requests`）；新增两条用例
+  ——「一轮自己带五张 → 发出去的只有四张 + 一行占位、历史一张不带」「占位写 4 而不是 1」。顺手修掉这份文件
+  在 HEAD 上就有的两处 `TS2749`（把 `await import` 出来的类当类型用），`tsc --noEmit -p tsconfig.json` 现在
+  无输出 —— 上一笔记录的「`tsc` 无输出」不成立。
+- `changelog/unreleased/2026-10-23-image-budget.{md,zh.md}`：加一节「输入自己就超上限时也裁」与用例清单。
+- `packages/docs/content/models.{zh,en}.md`：Abliteration 那一节补「一轮自己就带了五张时，这一次输入里的旧图
+  也一样换成占位」。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`（195 接口 / 589 类型）—— 本笔不碰服务契约）。
+- `npx oxlint` 改动面 **0 警告 0 错误**（2 文件）；改动文件与两份 changelog、两份文档 `prettier --check` 全绿；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过**（13:20 那笔的 1418 + 本笔
+  2 条）· ui **130 / 1053** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 / 3239 通过 /
+  2 跳过**。
+- **反证**：`git stash push -- packages/core/src/llm/generative-model.ts`（只带这一个路径）→ 同一份用例
+  **2 failed**（`expected 5 to be 4`：请求里仍然带着五张；占位那条写的是 1），`git stash pop` 后 **10 passed**。
+- 这一笔没有界面面，没有起服务与截图（改动在 `core` 的请求装配上，由上面那两条按「真正发出的消息」断言的用例
+  钉住）；没有碰 3003 / 3004 / 4000 / 7364 / 7369，没有往 `~/.penguin` / `~/.adelie` 里写数据。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- **现网那份安装副本（`/root/.adelie/lib`，7364）还没重建重启**，所以这个修复要在现网生效还得等用户点头
+  ——与上一节记的是同一件事。
+- 没有替用户去复测那条卡住的会话：他说了自己来测，而且每次请求真花钱。
+- 待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 3.5 拍板 / 3.6 模型 key / 4.1—4.3 明令不动 / 5.6 / 5.10 拍板 /
+  新依赖），理由见各条正文。
