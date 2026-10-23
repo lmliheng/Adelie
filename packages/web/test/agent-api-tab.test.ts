@@ -22,7 +22,8 @@
  * - The Agents list carries the plug mark, named for screen readers, only on an Agent whose API
  *   is on.
  * - Turning the Agent API off server-wide asks first, in the danger tone; answered yes, it writes
- *   the switch off and hands on what the server stored.
+ *   the switch off and hands on what the server stored — without closing the card itself, and a
+ *   refusal it asked for is drawn inside that card while its buttons wait for the write.
  * - The owner's tab ends with Try it, its input holding the example question; a member's tab has
  *   no Try it.
  * - With the admin's server-wide switch off, Try it's input and Run are disabled, and Run carries
@@ -121,6 +122,8 @@ type Confirm = ReactElement<{
   confirmLabel: string;
   children: ReactNode;
   onConfirm: () => void;
+  /** True while the card's write is in flight: both buttons are then disabled. */
+  busy?: boolean;
   /** The server's words for a write the card asked for and it refused (confirm-modal's slot). */
   refusal?: string;
 }>;
@@ -414,18 +417,39 @@ describe("the server-wide switch", () => {
   it("asks first in the danger tone; answered yes, writes it off and hands on what was stored", async () => {
     const fetch = stubFetch(() => json({ settings: { agentApiEnabled: false } }));
     const onSettled = vi.fn();
+    const onClose = vi.fn();
     const question = AgentApiServerOffConfirm({
       open: true,
-      onClose: noop,
+      onClose,
       onWriting: noop,
       onSettled,
+      busy: false,
     }) as Confirm;
     expect(question.props.tone).toBeUndefined();
     expect(fetch.requests).toEqual([]);
     question.props.onConfirm();
     await vi.waitFor(() => expect(onSettled).toHaveBeenCalledExactlyOnceWith({ enabled: false }));
+    // Whether the card closes is the page's call, made once the outcome is known — not the
+    // card's own move on the way out of the request.
+    expect(onClose).not.toHaveBeenCalled();
     expect(fetch.requests.map((r) => [r.method, r.path, r.body])).toEqual([
       ["PUT", "/api/admin/settings", { agentApiEnabled: false }],
     ]);
+  });
+
+  it("draws a refusal inside the card, and greys its buttons while the write is in flight", () => {
+    const base = { open: true, onClose: noop, onWriting: noop, onSettled: noop };
+    const refused = AgentApiServerOffConfirm({
+      ...base,
+      busy: false,
+      refusal: S.common.refused("admin settings are read-only"),
+    }) as Confirm;
+    expect(refused.props.refusal).toBe(S.common.refused("admin settings are read-only"));
+    expect(refused.props.busy).toBe(false);
+
+    const inFlight = AgentApiServerOffConfirm({ ...base, busy: true }) as Confirm;
+    expect(inFlight.props.busy).toBe(true);
+    // Nothing refused yet: the slot is absent rather than empty, so it is simply not drawn.
+    expect(inFlight.props.refusal).toBeUndefined();
   });
 });
