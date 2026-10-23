@@ -15012,3 +15012,12 @@ changelog、没有台账。
 - 7.34 末尾列的 `features/company/` 日历 / 员工 / 组织 / 手册 / 频道各处照旧留着。
 - 待办里能一轮做完的条目仍然没有（2.2c 只剩桌面壳一侧、3.5 / 5.6 / 5.10 拍板、3.6 模型 key、
   4.1—4.3 明令不动）。
+
+### 汇报
+
+- 第 6 步的收件人 `0110230306@csu.edu.cn` 这一轮**仍然发不出去**：`python3 mail.py check` 先跑一次 130 秒
+  零输出（`timeout` 掐断），再跑一次 70 秒 `RC=124`；直连实测 `imap.csu.edu.cn:993` 与
+  `smtp.csu.edu.cn:465` 都 `TimeoutError timed out` —— 还是 `202.197.0.0/16` 那个网段的问题，不是凭据。
+  于是照第一百二十轮的做法改由飞书送达（`text ok message_id=om_x100b628ab292dca0de603224147fd39`，收件人即
+  已绑定的那个私聊），正文与收件人留底在 scratchpad 的 `r121/report.md`；下一轮开工先再试一次
+  `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
