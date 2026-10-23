@@ -281,6 +281,9 @@ function GeneralSection({
   const [nameBusy, setNameBusy] = useState(false);
   const [nameError, setNameError] = useState<string | undefined>(undefined);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  /** The reason the last delete was refused (drawn inside the card that asked, see doDelete). */
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
 
   const saveName = async () => {
     const next = name.trim();
@@ -297,15 +300,26 @@ function GeneralSection({
     }
   };
 
+  /**
+   * The delete card closes only once the delete landed. A refusal leaves it standing with the
+   * server's words under its sentence (`ConfirmModal`'s `refusal` slot): the toast that used to
+   * carry them dismissed itself after a few seconds, out of the card the user was still looking
+   * at — and the Project is, after all, still there. The retry is the same button.
+   */
   const doDelete = async () => {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
     try {
       await api.deleteProject(projectId);
+      setConfirmDelete(false);
       onClose();
       const next = projects.find((p) => p.projectId !== projectId);
       await reloadProjects();
       if (next) setCurrentProjectId(next.projectId);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
+    } finally {
+      setDeleteBusy(false);
     }
   };
 
@@ -359,7 +373,16 @@ function GeneralSection({
           <SettingRow title={S.project.deleteProject} description={S.project.deleteLastForbidden} />
         ) : (
           <SettingRow title={S.project.deleteProject} description={S.project.deleteProjectDesc}>
-            <Button size="sm" variant="danger" onClick={() => setConfirmDelete(true)}>
+            <Button
+              size="sm"
+              variant="danger"
+              // The reason from the last attempt belongs to that attempt: reopening the card
+              // starts a new question, one the user has not been refused yet.
+              onClick={() => {
+                setDeleteRefusal(null);
+                setConfirmDelete(true);
+              }}
+            >
               {S.common.delete}
             </Button>
           </SettingRow>
@@ -373,6 +396,8 @@ function GeneralSection({
         onConfirm={() => void doDelete()}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
+        busy={deleteBusy}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">{S.project.deleteConfirm}</p>
       </ConfirmModal>
