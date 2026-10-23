@@ -14405,5 +14405,6 @@ setDeleting(null);          // 被拒也关
 
 ### 汇报
 
-- 按 `csu-mail` 技能发到 `0110230306@csu.edu.cn`；若中南网段仍不通（2026-10-08 起的老问题，约定一轮试一次），
-  改飞书送达，正文留在 scratchpad 的 `r116/report.md`。
+- 先按 `csu-mail` 技能试 `mail.py check`：100 秒超时（`EXIT=124`，202.197.0.0/16 那个老问题），约定一轮只试一次，
+  于是改由飞书送达（`message_id=om_x100b6299d2db88a8c0a9e0ae81b2e2f`，收件人即已绑定的那个私聊），正文留在
+  scratchpad 的 `r116/report.md`；下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
