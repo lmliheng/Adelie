@@ -25,7 +25,7 @@ import type {
   ToolDefinitionConfig,
 } from "@adelie/core/interfaces";
 // Build/harness identity is not an interface contract — it ships from the barrel (core's version-info.ts).
-import type { HarnessInfo, VersionReport, HarnessHistory } from "@adelie/core";
+import type { HarnessInfo, VersionReport, HarnessHistory, ExternalTheme } from "@adelie/core";
 import type { IfacesDiff } from "@adelie/hmr";
 import type { WorkflowInfo } from "../mechanisms/workflows.js";
 
@@ -2202,6 +2202,22 @@ export interface DirectorySkillsResponse {
   path: string;
   /** Installable Skills found under the directory's Skill layouts; empty when it carries none. */
   skills: DirectorySkillItem[];
+}
+
+/** One theme file under the data root's `themes/`, read and validated (core reads it). */
+export interface ImportedTheme {
+  /** The file it came from, relative to the themes directory — what the page names it by. */
+  file: string;
+  /** The theme as data. The app turns it into swatches and warnings; the server serves its CSS. */
+  theme: ExternalTheme;
+}
+
+export interface ImportedThemesResponse {
+  /** The directory that was read, for the page that says where to put a file. */
+  dir: string;
+  themes: ImportedTheme[];
+  /** Files that are not a theme, with the reason — one bad file never hides the good ones. */
+  rejected: Array<{ file: string; errors: string[] }>;
 }
 
 export interface SessionCreateRequest {

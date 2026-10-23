@@ -740,6 +740,20 @@ export const en: Strings = {
     themeInfo:
       "The app's overall style: layout, lines, type and motion change with it; content and every other setting stay as they are.",
     themeNames: { github: "Primer", modern: "Frost", geek: "Console" },
+    /** The row under the theme picker: where a theme file goes, and what one got wrong. */
+    importedThemesDir: (dir: string) => `Themes directory ${dir}`,
+    importedThemesHint:
+      "Drop a theme's .json file in this directory and reload the page: it appears in the theme list above. The format is in the repository's examples/themes/warm-paper.json.",
+    importedThemesReadAgain: "Read again",
+    importedThemesFailed: "Could not read the imported themes list this time. Try again later.",
+    importedThemesNoFile: (id: string) =>
+      `No theme file provides the chosen "${id}"; the default theme paints for now.`,
+    importedThemesMore: (count: number) => `and ${count} more`,
+    importedThemeUnknown: (count: number, names: string) =>
+      `${count} name${count === 1 ? "" : "s"} this build does not know (${names}): those settings do nothing.`,
+    importedThemeMissing: (count: number, names: string) =>
+      `${count} token${count === 1 ? "" : "s"} this theme leaves out (${names}): they keep the default theme's values.`,
+    importedThemeRejected: (file: string, reason: string) => `${file}: ${reason}`,
     colorMode: "Mode",
     colorModeInfo: "Light or dark look of the app.",
     themeLight: "Light",

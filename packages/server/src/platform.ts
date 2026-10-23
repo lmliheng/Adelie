@@ -132,6 +132,7 @@ import {
   DesktopUpdateRoutes,
 } from "./http/routes/desktop.js";
 import { InstallRoutes } from "./http/routes/install.js";
+import { ThemesRoutes, ThemeStylesheetRoutes } from "./http/routes/themes.js";
 import { HmrRoutes } from "./hmr/routes.js";
 import { EventsRoutes } from "./http/routes/events.js";
 import { PluginRegistryRoutes, PluginRoutes } from "./http/routes/plugins.js";
@@ -471,6 +472,8 @@ export class CompanyModule {}
     PluginRegistryRoutes,
     InstalledPluginRoutes,
     SuggestIdRoutes,
+    ThemesRoutes,
+    ThemeStylesheetRoutes,
   ],
   exports: [Http, WebShell, UpdateCheck],
 })

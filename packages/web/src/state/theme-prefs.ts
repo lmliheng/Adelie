@@ -4,11 +4,16 @@
  *
  * Pure on purpose — no React, no `window` — so the one place that decides what a stored value
  * means is testable against an in-memory store, and the provider (theme.tsx) only holds state.
- * Every key and every value list comes from the shared UI package, which also owns the boot
- * script: the first frame and the running app then cannot disagree about a stored value.
+ * Every key comes from the shared UI package, which also owns the boot script: the first frame and
+ * the running app then cannot disagree about a stored value.
+ *
+ * The theme and the accent are validated by PATTERN, not by list, exactly as the script does: an
+ * installation imports themes of its own (state/external-themes.ts) and each brings presets, so the
+ * ids cannot be enumerated here. A well-formed id that names nothing paints nothing — the worst a
+ * stale value costs is one frame's hairline — and an imported theme's id survives a reload even
+ * before its file is read again.
  */
-import { ACCENT_PRESET_IDS, DEFAULT_THEME_ID, THEME_IDS, resolveAccent } from "@adelie/ui";
-import type { ThemeId } from "@adelie/ui";
+import { DEFAULT_THEME_ID, isThemeId } from "@adelie/ui";
 import {
   FONT_CJK_OPTIONS,
   FONT_LATIN_OPTIONS,
@@ -25,28 +30,31 @@ export type PrefStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 /** "Use the theme's own face" — stored like any other choice, applied as no attribute at all. */
 export const FONT_FOLLOWS_THEME = "theme";
 
-export function readThemeId(storage: PrefStorage): ThemeId {
+/** A stored theme id this app may name on <html>: a shipped one, an imported one, or neither yet. */
+export function readThemeId(storage: PrefStorage): string {
   const stored = storage.getItem(THEME_STORAGE_KEYS.themeId);
-  return THEME_IDS.find((id) => id === stored) ?? DEFAULT_THEME_ID;
+  return isThemeId(stored) ? stored : DEFAULT_THEME_ID;
 }
 
 /**
- * Any preset any theme lists is kept as stored: the theme files scope their presets to their own
+ * Any well-formed preset id is kept as stored: the theme files scope their presets to their own
  * root, so one the active theme does not list paints nothing (the theme's own accent shows) and
  * comes back when that theme is active again.
  */
 export function readAccent(storage: PrefStorage): AccentChoice {
   const stored = storage.getItem(THEME_STORAGE_KEYS.accent);
   if (stored === "neutral") return stored;
-  return ACCENT_PRESET_IDS.find((id) => id === stored) ?? "neutral";
+  return isThemeId(stored) ? stored : "neutral";
 }
 
 /**
- * The accent a picker should mark under a theme: the stored preset when the theme lists it,
- * otherwise "neutral" — which is what the CSS paints in that case too.
+ * The accent a picker should mark under a theme: the stored preset when the theme offers it,
+ * otherwise "neutral" — which is what the CSS paints in that case too. `offered` is the picker's
+ * own list of values (state/external-themes.ts), so the same judgement covers a shipped theme, an
+ * imported one and an id that names neither.
  */
-export function effectiveAccent(themeId: ThemeId, accent: AccentChoice): AccentChoice {
-  return accent === "neutral" ? accent : (resolveAccent(themeId, accent) ?? "neutral");
+export function effectiveAccent(accent: AccentChoice, offered: readonly string[]): AccentChoice {
+  return accent === "neutral" || offered.includes(accent) ? accent : "neutral";
 }
 
 export function readFontLatin(storage: PrefStorage): FontLatin {

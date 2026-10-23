@@ -14256,3 +14256,79 @@ setDeleting(null);          // 被拒也关
   `imap.csu.edu.cn:993` 两个端口也都是超时（202.197.0.0/16 那个老问题），于是照第一百零九轮以来的做法改由飞书
   送达（`message_id=om_x100b629da80218a0c0cd9c045e9cdcf`，收件人即已绑定的那个私聊），正文同时留在 scratchpad 的
   `r114/report.md`。下一轮开工先再试一次 `mail.py check`，通了再把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 第一百一十五轮：主题可以放进数据根自己导入，外观页列得出来、也能换（2026-10-23，用户点单）
+
+### 为什么是这一条
+
+用户在会话里问「能不能外置主题，我可以导入主题插件，进而改变页面 UI」。可行性的根据是既有的那条约束：
+主题只是一组令牌取值，组件只读 `--ui-*`、从不问当前是哪个主题（`packages/ui/test/no-theme-reads.test.ts`
+钉着这条），所以外置主题能重画整个应用而**不需要重新构建前端**。我给了方案并提了三个要拍板的问题，用户回了
+「3」—— 先做样例：运行时加载 + 校验 + 外观页能切换 + 一个样例主题。另外两条问没答，按我自己的推荐默认推进：
+只收令牌数据（不收整段 CSS），来源是数据根里的 `themes/*.json` 目录（日后可以包成插件）。
+
+落点分三处，理由是两端都不能互相 import：模型、安全校验与 CSS 生成放 `@adelie/core`（server 依赖 core，
+不依赖 ui；ui 也不依赖 core），契约判断（不认识的名字、没写的名字）放 web（web 同时依赖 core 与 ui）。
+
+### 改了什么（6 处源码 + 4 个测试 + 样例 + 文档）
+
+- `packages/core/src/internal/external-theme.ts`（新）：文件形状与安全校验（值禁 `; { } < \ @` 换行，
+  禁 `url(`/`image-set(`/`expression(`；最多 400 个名字、12 个预设；id 走 `^[a-z][a-z0-9-]{0,31}$`），
+  以及「一条主题 = 一段 CSS」。规则写在具名的 `@layer ui-theme` / `@layer ui-accent` 里、选择器是
+  `:root[data-theme="…"]` 且基础规则同时覆盖 `.dark`：不分层会压过用户自选的字体搭配（`ui-font`），
+  一次覆盖两种模式的选择器则不需要假定浏览器先读了哪张表。导出经 `core/src/index.ts`。
+- `packages/server/src/http/routes/themes.ts`（新）：`GET /api/themes`（auth user，order 66）读目录并
+  报出读不了的文件；`GET /api/themes.css`（auth none，order 5，`text/css`，`no-cache`）把同一批文件拼成
+  一张样式表。**每次请求都重读目录**（不用重启、没有缓存），单文件坏不影响其它，重名的后一个进 rejected。
+  `api/types.ts` 加 `ImportedTheme` / `ImportedThemesResponse`，`platform.ts` 把两个类挂进 `ApiModule`。
+- `packages/ui/src/tokens.ts` + `boot.ts`：id 空间改成开放的（`THEME_ID_PATTERN`、`isThemeId`、
+  `isBuiltinTheme`、`themeAccentPresets`、`themeOwnAccent`），预绘制脚本改成按格式校验，**并且只对字符串
+  校验** —— store 里没有值时 `getItem` 给 null，`RegExp.test(null)` 会把四个字母的 "null" 认成一个合法 id
+  （boot-script 的逐组合比对当场抓到了这一条）。`packages/web/index.html` 里那份内联副本逐字重贴，并在
+  `<title>` 后加了 `<link rel="stylesheet" href="/api/themes.css">`（早于首帧，没主题时返回一句注释，
+  不是失败请求）。
+- `packages/web/src/state/external-themes.ts`（新）：拉 `/api/themes` 并做 core 与 ui 各自做不了的那个判断
+  ——不认识的名字报出来（不生效），没写的名字只列出来（沿用默认主题的值）；同时给出每套主题的强调色色卡
+  （预设取文件里的 `--ui-accent`，预设没写就退回主题自己的）与「随主题」那个颜色。模块级缓存 + 一次请求
+  共享，另有「重新读取」。
+- `packages/web/src/state/theme-prefs.ts`、`theme.tsx`、`features/settings/appearance-section.tsx`、
+  `lib/strings{,-en}.ts`、`api/endpoints.ts`：主题 id 与强调色改按格式校验（与预绘制脚本一致，外置主题
+  的 id 在文件读回来之前也能扛过一次刷新），主题行列出内置三套加导入的（未提供文件的那个 id 也留在选项里，
+  否则分段控件没有选中项），主题行下面那块写出：目录路径、放文件的方法、「重新读取」、每个写错的文件的
+  原因、每套导入主题的不认识 / 没写提示。色卡与「随主题」的颜色都从文件数据来。
+- 测试：`core/test/external-theme.test.ts`（11 条，形状与安全）、`server/test/themes.test.ts`（6 条：两条
+  路由、坏文件、重名、改完下一次请求即生效）、`web/test/external-themes.test.ts`（8 条：契约判断、色卡、
+  读取）、`ui/test/boot-script.test.ts`（把 provider 模型改成按格式校验，并加一条专门盯「格式对但列表里
+  没有的 id」与 "null" 的用例）、`web/test/theme-prefs.test.ts`（跟着开放 id 空间更新）。
+- 样例：`examples/themes/warm-paper.json`（暖纸：暖白底 + 陶土强调色 + 三个预设）与一对 README。
+- 文档：changelog 一对 `changelog/unreleased/2026-10-23-imported-themes{,.zh}.md` + 本节。
+
+### 验证（都不是推测）
+
+- 逐包 test 全绿：ui **130 文件 / 1053 通过**（+1）、core **69 文件 / 1410 通过 / 6 跳过**、
+  web **264 文件 / 3239 通过 / 2 跳过**（+15）、server `themes.test.ts` **6 / 6**。
+- **真服务 + 真浏览器**（一次性数据根 `/tmp/theme-probe-data-*`，里面放了 `warm-paper.json` 与一个坏
+  `broken.json`；服务 8955、`packages/{server,web}/dist` 都是本轮新构建的产物）：`curl /api/themes.css`
+  直接返回 `:root[data-theme="warm-paper"]…`；Playwright 单条用例通过，断言的是**浏览器算出来的值**而不是
+  样式表里的字面量：默认主题 `--ui-canvas` = `#fff`（浏览器会归一化 `#ffffff`）→ 选「暖纸」→ `#f6f1e7`、
+  `body` 背景 `rgb(246, 241, 231)` → 切深色 → `#17140f` → 点 terracotta 色卡 → `data-accent="terracotta"`、
+  `--ui-accent` = `#d9834f` → 刷新后仍在（预绘制脚本）→ 切回「通用」→ 属性消失、`#fff`。
+- 外观页真看一眼（截图在 scratchpad `theme-probe/theme-light.png`、`theme-dark-accent.png`）：主题行里
+  通用 / 白领 / 极客 / 暖纸 四选一、暖纸选中；下面写着「主题目录 /tmp/theme-probe-data-auUj/themes」、
+  放文件的说明、「203 个令牌这个主题没写（…等 198 个），它们沿用「通用」主题的值」以及
+  「broken.json：不是合法的 JSON…」。探针脚本与截图都在 scratchpad（`theme-probe/theme-probe.spec.mjs`），
+  **不提交**（跑完已从 `packages/web/e2e/` 删掉，`packages/web/test-results/` 也删了）。
+- 端口 8955（探针自己的），跑完已停；3003 / 4000 / 7364 / 7372 一个没碰；数据只落在 `mktemp` 的一次性根。
+
+### 没做 / 还差什么
+
+- 主题形态仍是我推荐的默认：**只收令牌值**，不收整段 CSS，也不做设置页粘贴。用户日后想要任意 CSS，就得
+  另立一条（那要处理它与用户自选字体、与冲突规则的关系）。
+- 来源是目录。包成插件（`.adelie-plugin` 带一份 `themes/*.json` 当载荷）留到用户点单时再说。
+- 主题文件里没有预设的显示名（强调色色卡的名字就是 id）—— 格式要加字段才谈得上。
+- 没有把示例主题拷进现网数据根：改 `/root/.penguin/data` 属于用户的环境，等他说要。
+
+### 汇报
+
+- 先按 `csu-mail` 技能试 `mail.py check`（中南网段自 2026-10-08 起不通，约定一轮只试一次），失败改飞书；
+  正文留在 scratchpad 的 `r115/report.md`。

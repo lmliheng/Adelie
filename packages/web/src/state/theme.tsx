@@ -3,8 +3,9 @@
  * and accent.
  * - Mode: html.dark class + Tailwind dark: variant; system mode tracks prefers-color-scheme
  *   live.
- * - Theme: html[data-theme] selects one of the shared UI package's themes (absent = the
- *   default, Primer). Offered in Settings → Appearance.
+ * - Theme: html[data-theme] names a theme — one of the three the shared UI package ships, or one
+ *   this installation imported (state/external-themes.ts); absent = the default, Primer. Offered
+ *   in Settings → Appearance.
  * - Text size: five steps that set the root font-size, so every rem-based type and density
  *   token scales with it.
  * - Font pairing: html[data-font-latin] / [data-font-cjk] override the reading and interface
@@ -26,14 +27,12 @@
  */
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ACCENT_PRESETS, THEME_OWN_ACCENTS } from "@adelie/ui";
-import type { ThemeId } from "@adelie/ui";
 import { applyThemeAttributes, THEME_STORAGE_KEYS } from "@adelie/ui/boot";
 import type { AccentChoice } from "@adelie/ui/boot";
 import { readThemePrefs } from "./theme-prefs";
 import type { FontCjk, FontLatin, TextSize } from "./theme-prefs";
 
-export type { FontCjk, FontLatin, TextSize, ThemeId };
+export type { FontCjk, FontLatin, TextSize };
 export type ThemeMode = "light" | "dark" | "system";
 export type Accent = AccentChoice;
 /**
@@ -64,9 +63,9 @@ interface ThemeContextValue {
   /** Resolved effective theme (system mode already resolved against the system preference). */
   dark: boolean;
   setMode: (mode: ThemeMode) => void;
-  /** Which theme renders the app. */
-  themeId: ThemeId;
-  setThemeId: (themeId: ThemeId) => void;
+  /** Which theme renders the app: a shipped id or one this installation imported. */
+  themeId: string;
+  setThemeId: (themeId: string) => void;
   textSize: TextSize;
   setTextSize: (size: TextSize) => void;
   /** The Latin sans the theme's own is replaced with ("theme" = keep the theme's). */
@@ -123,7 +122,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [sysDark, setSysDark] = useState(systemDark);
   // One read for the lot, which also migrates the legacy text-size key.
   const [initial] = useState(() => readThemePrefs(localStorage));
-  const [themeId, setThemeIdState] = useState<ThemeId>(initial.themeId);
+  const [themeId, setThemeIdState] = useState<string>(initial.themeId);
   const [textSize, setTextSizeState] = useState<TextSize>(initial.textSize);
   const [fontLatin, setFontLatinState] = useState<FontLatin>(initial.fontLatin);
   const [fontCjk, setFontCjkState] = useState<FontCjk>(initial.fontCjk);
@@ -173,7 +172,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setModeState(next);
   }, []);
 
-  const setThemeId = useCallback((next: ThemeId) => {
+  const setThemeId = useCallback((next: string) => {
     localStorage.setItem(THEME_ID_KEY, next);
     setThemeIdState(next);
   }, []);
@@ -247,22 +246,4 @@ export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error("useTheme must be used within a ThemeProvider");
   return ctx;
-}
-
-/**
- * The accent swatches a theme offers: "neutral" first (the theme's own accent, painted as a
- * plain gray because it is the absence of a choice, not a hue), then the theme's own presets in
- * its own order, painted in their light values.
- */
-export function accentSwatches(
-  themeId: ThemeId,
-  dark = false,
-): ReadonlyArray<{ value: Accent; color: string }> {
-  // "Theme's own" paints the accent that choice resolves to — Console's and Primer's are black
-  // (white in dark), Frost's its green — rather than a stand-in grey.
-  const own = THEME_OWN_ACCENTS[themeId];
-  return [
-    { value: "neutral", color: dark ? own.dark : own.light },
-    ...ACCENT_PRESETS[themeId].map((preset) => ({ value: preset.id, color: preset.swatch })),
-  ];
 }

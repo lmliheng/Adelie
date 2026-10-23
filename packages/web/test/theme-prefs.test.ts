@@ -6,8 +6,10 @@
  * - An empty store reads as Primer, its own accent, 16px and its own faces.
  * - The legacy three-step font scale migrates by pixels once and its key is dropped; a stored
  *   text size is kept and anything unknown reads as the default.
- * - The theme and font faces are validated against the package's lists; another theme's accent
- *   is kept as stored while the theme's own accent is the one in effect.
+ * - The theme id and the accent are checked by pattern, the way the pre-paint script checks them —
+ *   the id space is open, so an imported theme's id is as good as a shipped one's — while the font
+ *   faces stay checked against the package's lists. An accent the active theme does not offer reads
+ *   as the theme's own.
  * - A chosen face is named on <html>, the theme's own face leaves no attribute, and the text
  *   size sets the root font size.
  * - Every theme, text size and accent preset of the UI package is named in both languages.
@@ -15,7 +17,7 @@
  *   dictionary.
  */
 import { afterEach, describe, expect, it } from "vitest";
-import { ACCENT_PRESET_IDS, THEME_IDS } from "@adelie/ui";
+import { ACCENT_PRESET_IDS, THEME_ACCENT_PRESETS, THEME_IDS } from "@adelie/ui";
 import {
   FONT_CJK_OPTIONS,
   FONT_LATIN_OPTIONS,
@@ -115,7 +117,7 @@ describe("reading the stored appearance", () => {
     );
   });
 
-  it("validates the theme and the font faces against the package's lists", () => {
+  it("keeps a well-formed theme id — an imported one included — and drops a malformed one", () => {
     const storage = memoryStorage({
       [THEME_STORAGE_KEYS.themeId]: "geek",
       [THEME_STORAGE_KEYS.fontLatin]: FONT_LATIN_OPTIONS.at(-1)!.id,
@@ -125,17 +127,27 @@ describe("reading the stored appearance", () => {
     expect(prefs.themeId).toBe("geek");
     expect(prefs.fontLatin).toBe(FONT_LATIN_OPTIONS.at(-1)!.id);
     expect(prefs.fontCjk).toBe("theme");
-    expect(readThemePrefs(memoryStorage({ [THEME_STORAGE_KEYS.themeId]: "neon" })).themeId).toBe(
-      "github",
-    );
+    // A theme this installation imported, or one whose file is gone: the id is the app's to carry,
+    // so reading it back is a pattern check, never a list (the pre-paint script does the same).
+    expect(
+      readThemePrefs(memoryStorage({ [THEME_STORAGE_KEYS.themeId]: "warm-paper" })).themeId,
+    ).toBe("warm-paper");
+    for (const malformed of ["Warm-Paper", "9lives", "no dots", "", "x".repeat(33)]) {
+      expect(
+        readThemePrefs(memoryStorage({ [THEME_STORAGE_KEYS.themeId]: malformed })).themeId,
+      ).toBe("github");
+    }
   });
 
-  it("keeps another theme's accent as stored, and marks the theme's own in effect", () => {
+  it("keeps a stored accent as written, and marks the theme's own in effect", () => {
     const prefs = readThemePrefs(memoryStorage({ [THEME_STORAGE_KEYS.accent]: "ocean" }));
     expect(prefs.accent).toBe("ocean");
-    expect(effectiveAccent("modern", prefs.accent)).toBe("ocean");
-    expect(effectiveAccent("github", prefs.accent)).toBe("neutral");
-    expect(effectiveAccent("github", "blue")).toBe("blue");
+    expect(effectiveAccent(prefs.accent, THEME_ACCENT_PRESETS.modern)).toBe("ocean");
+    expect(effectiveAccent(prefs.accent, THEME_ACCENT_PRESETS.github)).toBe("neutral");
+    expect(effectiveAccent("blue", THEME_ACCENT_PRESETS.github)).toBe("blue");
+    // An imported theme's presets are the picker's own list, so the same judgement covers them.
+    expect(effectiveAccent("terracotta", ["terracotta"])).toBe("terracotta");
+    expect(effectiveAccent("ocean", [])).toBe("neutral");
   });
 });
 

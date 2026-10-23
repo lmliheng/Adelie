@@ -71,6 +71,7 @@ import type {
   ModelsResponse,
   ModelTestResponse,
   ModelVisionDetectResponse,
+  ImportedThemesResponse,
   OrganizationsResponse,
   PluginConfigActionResponse,
   PluginConfigResponse,
@@ -2790,3 +2791,16 @@ router
 // ---------------------------------------------------------------------------------------------
 
 router.get("/api/terminals", () => ({ terminals: [] }));
+
+// ---------------------------------------------------------------------------------------------
+// Imported themes: the demo has none (a gallery is not an installation), so the appearance page
+// shows the directory to drop a file in and nothing else. The stylesheet the app links
+// (`/api/themes.css`) is not fetched by the app itself — the real server turns the same files
+// into CSS for the browser — so only the list is answered here.
+// ---------------------------------------------------------------------------------------------
+
+router.get("/api/themes", (): ImportedThemesResponse => ({
+  dir: "/data/themes",
+  themes: [],
+  rejected: [],
+}));

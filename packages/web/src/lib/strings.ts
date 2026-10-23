@@ -798,6 +798,20 @@ export const zh = {
     themeInfo: "应用的整体风格：布局、线条、字体与动效随之改变，内容与其他设置不受影响。",
     /** Display names of the three themes; the ids stay github / modern / geek. */
     themeNames: { github: "通用", modern: "白领", geek: "极客" },
+    /** The row under the theme picker: where a theme file goes, and what one got wrong. */
+    importedThemesDir: (dir: string) => `主题目录 ${dir}`,
+    importedThemesHint:
+      "把主题的 .json 文件放进这个目录、刷新页面，它就会出现在上面的主题列表里；格式见仓库里的 examples/themes/warm-paper.json。",
+    importedThemesReadAgain: "重新读取",
+    importedThemesFailed: "这次没读到导入的主题列表，稍后再试。",
+    importedThemesNoFile: (id: string) =>
+      `现在选的「${id}」没有对应的主题文件，页面先用默认主题画。`,
+    importedThemesMore: (count: number) => `等 ${count} 个`,
+    importedThemeUnknown: (count: number, names: string) =>
+      `${count} 个名字这边不认识（${names}），这些设置不会生效。`,
+    importedThemeMissing: (count: number, names: string) =>
+      `${count} 个令牌这个主题没写（${names}），它们沿用「通用」主题的值。`,
+    importedThemeRejected: (file: string, reason: string) => `${file}：${reason}`,
     colorMode: "明暗",
     colorModeInfo: "应用的明暗外观。",
     themeLight: "浅色",

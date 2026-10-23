@@ -10,6 +10,13 @@
  * that is not drawn by this page at all: the desktop shell's tray icon and its pet window. Both
  * belong to the shell, only the shell's own window may reach them (see isDesktopShellWindow), so
  * both rows are absent in a browser.
+ *
+ * THEMES AN INSTALLATION IMPORTED are rows of the theme picker like the three the UI package
+ * ships, and they arrive as data: this page lists them, paints their accents and says what a file
+ * got wrong — the file games no say in the layout, because a theme is only values (see
+ * state/external-themes.ts). The note under the theme row is where the reader learns which
+ * directory to drop a file in and why one did not read, since nothing here discovers files by
+ * itself: the browser cannot see the server's disk.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { PrefRow, Segmented, Select, SwatchPicker, THEME_IDS, ToggleRow } from "@adelie/ui";
@@ -24,15 +31,16 @@ import {
   writeLauncherHidden,
 } from "../dock/dock-launcher-state";
 import { useAuth } from "../../state/auth";
-import { accentSwatches, useTheme } from "../../state/theme";
-import type {
-  FontCjk,
-  FontLatin,
-  TerminalThemeMode,
-  TextSize,
-  ThemeId,
-  ThemeMode,
-} from "../../state/theme";
+import { useLocale } from "../../state/locale";
+import { useTheme } from "../../state/theme";
+import type { FontCjk, FontLatin, ThemeMode, TerminalThemeMode, TextSize } from "../../state/theme";
+import {
+  accentSwatches,
+  refreshImportedThemes,
+  useImportedThemes,
+} from "../../state/external-themes";
+import type { ImportedThemesState } from "../../state/external-themes";
+import { localizedText } from "../chat/skill-use";
 import { FONT_FOLLOWS_THEME, effectiveAccent } from "../../state/theme-prefs";
 
 /**
@@ -95,6 +103,101 @@ function FontSelect<T extends string>({
   );
 }
 
+/** Whether the picker already offers this id: one the package ships, or one a file brought. */
+function themeIdOptionsInclude(state: ImportedThemesState, themeId: string): boolean {
+  return (
+    (THEME_IDS as readonly string[]).includes(themeId) ||
+    state.themes.some((theme) => theme.id === themeId)
+  );
+}
+
+/** Token names in the reader's own separator, at most five of them spelled out. */
+function nameList(names: readonly string[], locale: "zh" | "en"): string {
+  const separator = locale === "zh" ? "、" : ", ";
+  const shown = names.slice(0, 5).join(separator);
+  return names.length <= 5 ? shown : `${shown} ${S.settings.importedThemesMore(names.length - 5)}`;
+}
+
+/**
+ * What this installation imported, under the theme row: the directory to drop a file in, and one
+ * line per thing that did not come out right. Nothing is said while the list has not arrived (or
+ * when the request itself failed, which is one line rather than a claim about the directory).
+ *
+ * An imported theme that is merely FILLED IN PARTLY says so here and still paints — a name it
+ * leaves out keeps the default theme's value — while a file that would not read is reported with
+ * the reason the server gave, because its author has to see it somewhere.
+ */
+function ImportedThemesNote({
+  state,
+  activeId,
+  locale,
+}: {
+  state: ImportedThemesState;
+  activeId: string;
+  locale: "zh" | "en";
+}) {
+  const [reading, setReading] = useState(false);
+  if (state.failed)
+    return (
+      <p className="py-3.5 text-xs text-gray-500 dark:text-gray-400">
+        {S.settings.importedThemesFailed}
+      </p>
+    );
+  if (state.dir === null) return null;
+  const problems = state.themes.filter(
+    (theme) => theme.unknown.length > 0 || theme.missing.length > 0,
+  );
+  const orphan = themeIdOptionsInclude(state, activeId) ? null : activeId;
+  return (
+    <div className="space-y-1 py-3.5 text-xs text-gray-500 dark:text-gray-400">
+      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <span className="font-mono break-all">{S.settings.importedThemesDir(state.dir)}</span>
+        <button
+          type="button"
+          disabled={reading}
+          onClick={() => {
+            setReading(true);
+            void refreshImportedThemes(true).finally(() => setReading(false));
+          }}
+          className="shrink-0 text-gray-600 underline transition-colors duration-150 hover:text-gray-900 disabled:opacity-50 dark:text-gray-300 dark:hover:text-gray-100"
+        >
+          {S.settings.importedThemesReadAgain}
+        </button>
+      </p>
+      <p>{S.settings.importedThemesHint}</p>
+      {orphan !== null && <p>{S.settings.importedThemesNoFile(orphan)}</p>}
+      {problems.map((theme) => (
+        <div key={theme.id}>
+          <p className="text-gray-600 dark:text-gray-300">
+            {localizedText(locale, theme.name, theme.nameZh)}
+          </p>
+          {theme.unknown.length > 0 && (
+            <p>
+              {S.settings.importedThemeUnknown(
+                theme.unknown.length,
+                nameList(theme.unknown, locale),
+              )}
+            </p>
+          )}
+          {theme.missing.length > 0 && (
+            <p>
+              {S.settings.importedThemeMissing(
+                theme.missing.length,
+                nameList(theme.missing, locale),
+              )}
+            </p>
+          )}
+        </div>
+      ))}
+      {state.rejected.map(({ file, errors }) => (
+        <p key={file} className="font-mono break-all">
+          {S.settings.importedThemeRejected(file, errors.join(locale === "zh" ? "；" : "; "))}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 export function AppearanceSection() {
   const {
     mode,
@@ -115,6 +218,10 @@ export function AppearanceSection() {
     setToolAliases,
     dark,
   } = useTheme();
+  const { locale } = useLocale();
+  // What this installation imported, read once per page load (the server reads the directory per
+  // request, so the note below can ask for it again).
+  const imported = useImportedThemes();
   // The fan's "hide launcher" entry writes the same preference, so this row follows it.
   useSyncExternalStore(subscribeLauncherHidden, launcherHiddenVersion);
   const launcherShown = !readLauncherHidden();
@@ -177,10 +284,18 @@ export function AppearanceSection() {
     { value: "light", label: S.settings.themeLight },
     { value: "dark", label: S.settings.themeDark },
   ];
-  const themeIdOptions: ReadonlyArray<{ value: ThemeId; label: string }> = THEME_IDS.map((id) => ({
-    value: id,
-    label: S.settings.themeNames[id],
-  }));
+  const themeIdOptions: ReadonlyArray<{ value: string; label: string }> = [
+    ...THEME_IDS.map((id) => ({ value: id, label: S.settings.themeNames[id] })),
+    ...imported.themes.map((theme) => ({
+      value: theme.id,
+      label: localizedText(locale, theme.name, theme.nameZh),
+    })),
+    // A stored id nothing provides keeps its place in the picker: the row then shows what the root
+    // actually carries (and the note below says why nothing paints for it) rather than quietly
+    // claiming the default theme is what was chosen.
+    ...(themeIdOptionsInclude(imported, themeId) ? [] : [{ value: themeId, label: themeId }]),
+  ];
+  const swatches = accentSwatches(themeId, dark, imported.themes);
   const textSizeOptions: ReadonlyArray<{ value: TextSize; label: string }> = TEXT_SIZES.map(
     (size) => ({ value: size, label: S.settings.textSizeNames[size] }),
   );
@@ -190,19 +305,23 @@ export function AppearanceSection() {
       <PrefRow label={S.settings.theme} info={S.settings.themeInfo}>
         <Segmented options={themeIdOptions} value={themeId} onChange={setThemeId} />
       </PrefRow>
+      <ImportedThemesNote state={imported} activeId={themeId} locale={locale} />
       <PrefRow label={S.settings.colorMode} info={S.settings.colorModeInfo}>
         <Segmented options={themeOptions} value={mode} onChange={setMode} />
       </PrefRow>
-      {/* The swatches are the active theme's own; a stored preset it does not list is shown
+      {/* The swatches are the active theme's own; a stored preset it does not offer is shown
           as the theme's own accent, which is what the page paints, and comes back with the
-          theme that lists it. */}
+          theme that offers it. */}
       <PrefRow label={S.settings.accent} info={S.settings.accentInfo}>
         <SwatchPicker
-          options={accentSwatches(themeId, dark).map((swatch) => ({
+          options={swatches.map((swatch) => ({
             ...swatch,
             label: S.settings.accentNames[swatch.value] ?? swatch.value,
           }))}
-          value={effectiveAccent(themeId, accent)}
+          value={effectiveAccent(
+            accent,
+            swatches.map((swatch) => swatch.value),
+          )}
           onChange={setAccent}
         />
       </PrefRow>

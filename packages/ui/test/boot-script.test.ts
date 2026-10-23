@@ -28,14 +28,13 @@ import {
   isFontLatin,
   readTextSize,
 } from "../src/boot";
-import type { AccentChoice } from "../src/boot";
 import {
   ACCENT_PRESET_IDS,
   DEFAULT_THEME_ID,
   THEME_ACCENT_PRESETS,
   THEME_IDS,
+  isThemeId,
 } from "../src/tokens";
-import type { ThemeId } from "../src/tokens";
 import { WEB_DIR } from "./helpers/paths";
 
 /** The attributes the script and the provider write, captured from a stand-in `<html>`. */
@@ -114,11 +113,15 @@ function runBoot(stored: Record<string, string | null>, systemDark: boolean, thr
 
 /**
  * What the provider resolves the same stored values to, written from the stored-preference rules
- * rather than from the script: an unknown mode means "system", an unknown theme id the default
- * theme, an unknown accent `neutral`, an unknown face the theme's own, and the text size is what
- * `readTextSize` says (the legacy scale mapped and migrated on the way). A preset any theme lists
- * is written to the root whichever theme is active — the theme files scope their presets to
- * their own root, so an unlisted one paints nothing and comes back with its theme.
+ * rather than from the script: an unknown mode means "system", an unknown face the theme's own,
+ * and the text size is what `readTextSize` says (the legacy scale mapped and migrated on the way).
+ *
+ * The theme and the accent are checked by PATTERN (`isThemeId`), the rule both frames share: the id
+ * space is open (an installation imports themes, and each brings presets), so a well-formed id is
+ * written to the root whichever theme is active — the shipped theme files scope their own rules to
+ * their root, so an id nothing ships paints nothing and takes effect again when its theme is back.
+ * A malformed one, and an absent value (null must not read as the four-letter id "null"), reads as
+ * the default theme and as `neutral`.
  */
 function viaProvider(stored: Record<string, string | null>, systemDark: boolean) {
   const mode = stored[THEME_STORAGE_KEYS.mode];
@@ -130,12 +133,8 @@ function viaProvider(stored: Record<string, string | null>, systemDark: boolean)
   const root = fakeRoot();
   applyThemeAttributes(root as unknown as HTMLElement, {
     dark: mode === "dark" || (mode !== "light" && systemDark),
-    themeId: (THEME_IDS as readonly (string | null | undefined)[]).includes(themeId)
-      ? (themeId as ThemeId)
-      : DEFAULT_THEME_ID,
-    accent: (ACCENT_PRESET_IDS as readonly (string | null | undefined)[]).includes(accent)
-      ? (accent as AccentChoice)
-      : "neutral",
+    themeId: isThemeId(themeId) ? themeId : DEFAULT_THEME_ID,
+    accent: isThemeId(accent) ? accent : "neutral",
     textSize: readTextSize(storage),
     fontLatin: isFontLatin(latin) ? latin : "theme",
     fontCjk: isFontCjk(cjk) ? cjk : "theme",
@@ -186,6 +185,30 @@ describe("BOOT_SCRIPT", () => {
                   }
     expect(cases).toBeGreaterThan(10_000);
     expect(mismatches.slice(0, 5)).toEqual([]);
+  });
+
+  it("keeps a well-formed id no list would have held, and drops a malformed one", () => {
+    // The ids the sweep cannot afford to multiply over: an imported theme's, one whose file is
+    // gone, and the shapes the pattern refuses. Boot and provider must agree on every one — the
+    // "null" entries are the letters an absent store would hand to a bare pattern test.
+    for (const [key, value] of [
+      [THEME_STORAGE_KEYS.themeId, "warm-paper"],
+      [THEME_STORAGE_KEYS.themeId, "retro"],
+      [THEME_STORAGE_KEYS.themeId, "null"],
+      [THEME_STORAGE_KEYS.themeId, "Retro"],
+      [THEME_STORAGE_KEYS.themeId, "9lives"],
+      [THEME_STORAGE_KEYS.themeId, ""],
+      [THEME_STORAGE_KEYS.themeId, `${"x".repeat(33)}`],
+      [THEME_STORAGE_KEYS.accent, "terracotta"],
+      [THEME_STORAGE_KEYS.accent, "null"],
+      [THEME_STORAGE_KEYS.accent, "Not-A-Preset"],
+      [THEME_STORAGE_KEYS.accent, ""],
+    ] as const) {
+      const stored = { [key]: value };
+      const boot = runBoot(stored, false);
+      const provider = viaProvider(stored, false);
+      expect(JSON.stringify(boot), `${key}=${value}`).toBe(JSON.stringify(provider));
+    }
   });
 
   it("migrates the retired three-step scale by pixels, once, and drops its key", () => {

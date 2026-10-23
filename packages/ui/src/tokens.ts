@@ -53,6 +53,24 @@
 export const THEME_IDS = ["github", "modern", "geek"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
+/**
+ * The id space of a theme, open: an installation can import themes of its own (external-theme.ts)
+ * besides the three this package ships. One pattern covers both — the shipped ids are just short
+ * ones — and it is the same pattern the pre-paint script applies, so the first frame and the
+ * running app agree about what a stored id may be.
+ */
+export const THEME_ID_PATTERN = /^[a-z][a-z0-9-]{0,31}$/;
+
+/** Whether a stored theme id is one this app may put on `<html data-theme>`. */
+export function isThemeId(value: unknown): value is string {
+  return typeof value === "string" && THEME_ID_PATTERN.test(value);
+}
+
+/** Whether an id is one of the three themes the package ships (and so has tables here). */
+export function isBuiltinTheme(id: string): id is ThemeId {
+  return (THEME_IDS as readonly string[]).includes(id);
+}
+
 /** The theme an absent or unknown `data-theme` resolves to. Its file needs no attribute selector. */
 export const DEFAULT_THEME_ID: ThemeId = "github";
 
@@ -148,14 +166,27 @@ type OwnAccents = Readonly<Record<ThemeId, Readonly<Record<ThemeModeName, string
 /**
  * What a stored choice paints under a theme: the preset when the theme lists it, otherwise
  * `null` — the theme's own accent, exactly as `neutral`. The CSS resolves the same way on its
- * own; this is for a picker that must show which swatch is in effect.
+ * own; this is for a picker that must show which swatch is in effect. A theme the package does
+ * not ship lists its presets in its own file, so it resolves to `null` here and the caller
+ * resolves it against what that file declares.
  */
 export function resolveAccent(
-  themeId: ThemeId,
+  themeId: string,
   choice: string | null | undefined,
 ): AccentPreset | null {
+  if (!isBuiltinTheme(themeId)) return null;
   const listed = THEME_ACCENT_PRESETS[themeId];
   return (listed as readonly string[]).includes(choice ?? "") ? (choice as AccentPreset) : null;
+}
+
+/** The presets a shipped theme lists, in its own order — empty for an imported theme. */
+export function themeAccentPresets(themeId: string): readonly AccentPresetSpec[] {
+  return isBuiltinTheme(themeId) ? ACCENT_PRESETS[themeId] : [];
+}
+
+/** The accent a shipped theme paints when no preset is chosen; `null` for an imported theme. */
+export function themeOwnAccent(themeId: string, mode: ThemeModeName): string | null {
+  return isBuiltinTheme(themeId) ? THEME_OWN_ACCENTS[themeId][mode] : null;
 }
 
 /** Semantic tones. `busy` is a JS alias of `success` (see the web app's `tone.ts`), not a token. */

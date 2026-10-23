@@ -63,6 +63,7 @@ import type {
   FilesStatResponse,
   FilesWriteRequest,
   GoalResponse,
+  ImportedThemesResponse,
   InstallResponse,
   MachinesResponse,
   McpServerTestResponse,
@@ -2715,3 +2716,16 @@ export const clearBuiltinBrowserData = (storages: BuiltinBrowserStorage[]) =>
     body: { storages },
     server: null,
   });
+
+// ---- Themes this installation imported (a data root's own `themes/` directory) ----
+/**
+ * What this installation put in its data root's `themes/`, plus the files that would not read and
+ * why. The server reads the directory on every request, so a file added, edited or deleted shows up
+ * on the next read; the stylesheet the browser links from `<head>` is `/api/themes.css`, which the
+ * app never fetches itself — the server turns the same files into CSS for it.
+ *
+ * This server's own directory, never a machine's: the sheet is linked by the page the server just
+ * served, so the two would otherwise describe different machines.
+ */
+export const getImportedThemes = () =>
+  apiFetch<ImportedThemesResponse>("/api/themes", { server: null });

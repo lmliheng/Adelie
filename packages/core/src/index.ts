@@ -80,6 +80,22 @@ export { modelVisiblePath } from "./internal/model-visible-path.js";
 // same way.
 export { atomicWriteFile } from "./internal/atomic-write.js";
 export type { AtomicWriteOptions } from "./internal/atomic-write.js";
+// Imported themes: the file format an installation drops in its data root's `themes/`, and the
+// CSS it becomes. The server reads the files and serves the sheet; the app reads them back as
+// data. Both ends need it and neither may import the other, so it is here.
+export {
+  EXTERNAL_THEME_SCHEMA_VERSION,
+  THEME_ID_PATTERN,
+  isThemeId,
+  readExternalTheme,
+  externalThemeCss,
+  externalThemesCss,
+} from "./internal/external-theme.js";
+export type {
+  ExternalTheme,
+  ExternalThemeAccent,
+  ExternalThemeRead,
+} from "./internal/external-theme.js";
 // `metaMaxTokens` is the output cap every out-of-band meta request shares — a small budget,
 // tightened by the entry's pinned per-model cap. Exported so a host running its own one-off
 // requests on a Project's model sizes them the way the SDK sizes its own.

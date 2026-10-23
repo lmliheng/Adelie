@@ -11,7 +11,7 @@
  * The inline copy in index.html must equal {@link BOOT_SCRIPT} byte for byte; a test asserts it.
  * Change the constants here, then paste the regenerated string there.
  */
-import { ACCENT_PRESET_IDS, DEFAULT_THEME_ID, THEME_IDS } from "./tokens";
+import { DEFAULT_THEME_ID, THEME_ID_PATTERN } from "./tokens";
 import type { AccentPreset, ThemeId } from "./tokens";
 
 /**
@@ -173,18 +173,20 @@ export const THEME_FONTS: Readonly<Record<ThemeId, ThemeFonts>> = {
 
 /**
  * `neutral` is the stored value for "no preset": the theme's own accent, no `data-accent`. Any
- * other known id is written to the root as it is, whichever theme is active: a theme's preset
- * rules match only their own theme, so an id the active theme does not list paints nothing (the
- * theme's own accent shows) and takes effect again when the user returns to a theme that lists
- * it. The resolution lives in the CSS, and `resolveAccent` (tokens.ts) only mirrors it for a
- * picker.
+ * other well-formed id is written to the root as it is, whichever theme is active: a theme's
+ * preset rules match only their own theme, so an id the active theme does not list paints nothing
+ * (the theme's own accent shows) and takes effect again when the user returns to a theme that
+ * lists it. The resolution lives in the CSS, and `resolveAccent` (tokens.ts) only mirrors it for a
+ * picker. The id space is open — an imported theme brings presets of its own — so this is a
+ * string with the shipped ids documented rather than a closed union.
  */
-export type AccentChoice = "neutral" | AccentPreset;
+export type AccentChoice = AccentPreset | "neutral" | (string & {});
 
 export interface ThemeAttributes {
   /** The resolved mode (a `system` preference already resolved against the media query). */
   dark: boolean;
-  themeId: ThemeId;
+  /** A shipped theme's id or an imported one's (tokens.ts, `THEME_ID_PATTERN`). */
+  themeId: string;
   accent: AccentChoice;
   textSize: TextSize;
   /** `theme` is the theme's own face and writes no attribute, like `neutral` for the accent. */
@@ -219,7 +221,6 @@ export function applyThemeAttributes(root: HTMLElement, attrs: Partial<ThemeAttr
 // The pre-paint script
 // ---------------------------------------------------------------------------
 
-const NON_DEFAULT_THEMES = THEME_IDS.filter((id) => id !== DEFAULT_THEME_ID);
 /** The ids that write an attribute: every option but `theme`, which is the attribute's absence. */
 const chosenFaces = (options: readonly FontOption[]) =>
   optionIds(options).filter((id) => id !== "theme");
@@ -233,13 +234,21 @@ const K = THEME_STORAGE_KEYS;
  * as the provider will, and it swallows everything — storage can throw (disabled cookies,
  * sandboxed frames) and the page must still render. The text-size migration writes storage last
  * and in its own try, so a store that reads but refuses writes still paints the migrated size.
+ *
+ * The theme and the accent are validated by PATTERN rather than by list: an installation can
+ * import themes (and themes bring presets), so the ids cannot be enumerated here. The pattern is
+ * tried against a STRING only — a store that holds no value gives null, and `RegExp.test` would
+ * read that as the four-letter id "null". A well-formed id that names nothing simply paints
+ * nothing — an id the active theme does not list is already how a preset outlives its theme (see
+ * AccentChoice) — so the worst a stale value costs is a hairline the running app corrects a frame
+ * later.
  */
 export const BOOT_SCRIPT =
   "(function(){try{" +
-  `var d=document.documentElement,s=localStorage,m=s.getItem(${j(K.mode)});` +
+  `var d=document.documentElement,s=localStorage,T=new RegExp(${j(THEME_ID_PATTERN.source)}),m=s.getItem(${j(K.mode)});` +
   'if(m==="dark"||(m!=="light"&&matchMedia("(prefers-color-scheme: dark)").matches))d.classList.add("dark");' +
-  `var t=s.getItem(${j(K.themeId)});if(${j(NON_DEFAULT_THEMES)}.indexOf(t)>=0)d.dataset.theme=t;` +
-  `var a=s.getItem(${j(K.accent)});if(${j(ACCENT_PRESET_IDS)}.indexOf(a)>=0)d.dataset.accent=a;` +
+  `var t=s.getItem(${j(K.themeId)});if(typeof t==="string"&&t!==${j(DEFAULT_THEME_ID)}&&T.test(t))d.dataset.theme=t;` +
+  `var a=s.getItem(${j(K.accent)});if(typeof a==="string"&&a!=="neutral"&&T.test(a))d.dataset.accent=a;` +
   `var l=s.getItem(${j(K.fontLatin)});if(${j(chosenFaces(FONT_LATIN_OPTIONS))}.indexOf(l)>=0)d.dataset.fontLatin=l;` +
   `var c=s.getItem(${j(K.fontCjk)});if(${j(chosenFaces(FONT_CJK_OPTIONS))}.indexOf(c)>=0)d.dataset.fontCjk=c;` +
   `var z=s.getItem(${j(K.textSize)}),g=null,o=-1;` +
