@@ -18,7 +18,7 @@
  * - Turning the API off asks first, in the danger tone. Answered yes, it writes the switch off
  *   and hands on what the server stored; a failed write is handed on as the failure.
  * - Deleting a key asks first, naming it. Answered yes, it deletes that key and hands on its id;
- *   a refused delete says why and hands on nothing.
+ *   a refused delete hands the server's words on, so the card that asked can keep them.
  * - The Agents list carries the plug mark, named for screen readers, only on an Agent whose API
  *   is on.
  * - Turning the Agent API off server-wide asks first, in the danger tone; answered yes, it writes
@@ -121,6 +121,8 @@ type Confirm = ReactElement<{
   confirmLabel: string;
   children: ReactNode;
   onConfirm: () => void;
+  /** The server's words for a write the card asked for and it refused (confirm-modal's slot). */
+  refusal?: string;
 }>;
 
 /** Every element of `type` in a tree of plain elements, its children followed. */
@@ -230,14 +232,15 @@ describe("the API tab", () => {
 });
 
 describe("turning an Agent's API off", () => {
-  const confirm = (onSettled: (o: unknown) => void, onWriting = noop) =>
+  const confirm = (onSettled: (o: unknown) => void, onWriting = noop, onClose = noop) =>
     AgentApiOffConfirm({
       open: true,
       projectId: "demo",
       agentId: "coder",
-      onClose: noop,
+      onClose,
       onWriting,
       onSettled,
+      busy: false,
     }) as Confirm;
 
   it("asks first in the danger tone; answered yes, writes it off and hands on what was stored", async () => {
@@ -264,17 +267,28 @@ describe("turning an Agent's API off", () => {
     await vi.waitFor(() => expect(onSettled).toHaveBeenCalledOnce());
     expect(onSettled.mock.calls[0]![0]).toHaveProperty("error");
   });
+
+  it("leaves the card open: answering yes writes without closing it first", async () => {
+    stubFetch(() => apiError(403, "forbidden"));
+    const onClose = vi.fn();
+    const onSettled = vi.fn();
+    confirm(onSettled, noop, onClose).props.onConfirm();
+    await vi.waitFor(() => expect(onSettled).toHaveBeenCalledOnce());
+    // The page closes this card on the landing of the write, and keeps it on a refusal.
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
 
 describe("allowing keyless access", () => {
-  const confirm = (onSettled: (o: unknown) => void, onWriting = noop) =>
+  const confirm = (onSettled: (o: unknown) => void, onWriting = noop, onClose = noop) =>
     KeylessOnConfirm({
       open: true,
       projectId: "demo",
       agentId: "coder",
-      onClose: noop,
+      onClose,
       onWriting,
       onSettled,
+      busy: false,
     }) as Confirm;
 
   it("warns first in the danger tone; answered yes, writes it on and hands on what was stored", async () => {
@@ -301,19 +315,37 @@ describe("allowing keyless access", () => {
     await vi.waitFor(() => expect(onSettled).toHaveBeenCalledOnce());
     expect(onSettled.mock.calls[0]![0]).toHaveProperty("error");
   });
+
+  it("leaves the card open: answering yes writes without closing it first", async () => {
+    stubFetch(() => apiError(403, "forbidden"));
+    const onClose = vi.fn();
+    const onSettled = vi.fn();
+    confirm(onSettled, noop, onClose).props.onConfirm();
+    await vi.waitFor(() => expect(onSettled).toHaveBeenCalledOnce());
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });
 
 describe("deleting a key", () => {
-  it("asks first, naming the key; answered yes, deletes it and hands on its id", async () => {
-    const fetch = stubFetch(() => new Response(null, { status: 204 }));
-    const onDeleted = vi.fn();
-    const question = DeleteKeyConfirm({
+  const confirm = (handlers: {
+    onDeleted: (id: string) => void;
+    onRefused: (why: string) => void;
+  }) =>
+    DeleteKeyConfirm({
       record: USED,
       projectId: "demo",
       agentId: "coder",
       onClose: noop,
-      onDeleted,
+      onWriting: noop,
+      onDeleted: handlers.onDeleted,
+      onRefused: handlers.onRefused,
+      busy: false,
     }) as Confirm;
+
+  it("asks first, naming the key; answered yes, deletes it and hands on its id", async () => {
+    const fetch = stubFetch(() => new Response(null, { status: 204 }));
+    const onDeleted = vi.fn();
+    const question = confirm({ onDeleted, onRefused: vi.fn() });
     expect(question.props.open).toBe(true);
     expect(question.props.tone).toBeUndefined();
     expect(renderToStaticMarkup(question.props.children as ReactElement)).toContain(
@@ -327,21 +359,45 @@ describe("deleting a key", () => {
     ]);
   });
 
-  it("says why a refused delete failed, and hands on nothing", async () => {
+  it("hands a refused delete's reason on, for the card to keep, and hands on no id", async () => {
     stubFetch(() => apiError(404, "key_not_found", "No such key."));
     const onDeleted = vi.fn();
+    const onRefused = vi.fn();
+    const onClose = vi.fn();
     (
       DeleteKeyConfirm({
         record: USED,
         projectId: "demo",
         agentId: "coder",
-        onClose: noop,
+        onClose,
+        onWriting: noop,
         onDeleted,
+        onRefused,
+        busy: false,
       }) as Confirm
     ).props.onConfirm();
-    await vi.waitFor(() => expect(toasts).toHaveLength(1));
-    expect(toasts[0]).toMatch(/^error: /);
+    await vi.waitFor(() => expect(onRefused).toHaveBeenCalledOnce());
+    // A refused delete leaves the card (and the key it named) where it was.
+    expect(onClose).not.toHaveBeenCalled();
+    // The server's own words, which the card wraps in S.common.refused — not a toast that leaves.
+    expect(onRefused.mock.calls[0]![0]).toContain("No such key.");
     expect(onDeleted).not.toHaveBeenCalled();
+    expect(toasts).toEqual([]);
+  });
+
+  it("draws a refusal the page hands back inside the card, beside the button that retries it", () => {
+    const question = DeleteKeyConfirm({
+      record: USED,
+      projectId: "demo",
+      agentId: "coder",
+      onClose: noop,
+      onWriting: noop,
+      onDeleted: noop,
+      onRefused: noop,
+      busy: false,
+      refusal: S.common.refused("No such key."),
+    }) as Confirm;
+    expect(question.props.refusal).toBe(S.common.refused("No such key."));
   });
 });
 

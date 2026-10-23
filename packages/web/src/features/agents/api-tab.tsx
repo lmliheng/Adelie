@@ -7,9 +7,11 @@
  * synced Project file — so the Agent can neither expose itself nor loosen its own approvals. Any
  * member reads it; only the Project owner changes it. Each control applies on the flip, with no
  * Save: turning the API on writes at once, while turning it off and deleting a key ask first,
- * because a program using them is refused from then on. A new key's secret exists only in the
- * create response: it is shown once, in a panel with its copy button, until Done, and afterwards
- * the list names the key by its prefix alone.
+ * because a program using them is refused from then on. Those three questions close only once
+ * their write landed; one the server refused keeps the card open with the reason drawn inside it,
+ * so the retry is the button that was just pressed rather than a toast that has already left. A
+ * new key's secret exists only in the create response: it is shown once, in a panel with its copy
+ * button, until Done, and afterwards the list names the key by its prefix alone.
  *
  * The admin's server-wide switch (Settings › Server › Agent API) overrides every Agent: when it is
  * off the switch here is disabled and says so, and nothing is lost. The tab's own read carries that
@@ -96,7 +98,7 @@ const switchOnKeyless = (projectId: string, agentId: string): Promise<AgentApiRe
  * The warning before keyless access goes on, in the danger tone: once it is on, anything that
  * can reach the server talks to the Agent on the Project's models and credentials. Answered yes,
  * it says the write began, writes the switch on and hands on the outcome. Turning it off needs
- * no question.
+ * no question. The card stays until the write lands — a refusal is drawn inside it.
  */
 export function KeylessOnConfirm({
   open,
@@ -105,6 +107,8 @@ export function KeylessOnConfirm({
   onClose,
   onWriting,
   onSettled,
+  busy,
+  refusal,
 }: {
   open: boolean;
   projectId: string;
@@ -112,14 +116,17 @@ export function KeylessOnConfirm({
   onClose: () => void;
   onWriting: () => void;
   onSettled: (outcome: AgentApiResponse | { error: unknown }) => void;
+  busy: boolean;
+  refusal?: string;
 }) {
   return (
     <ConfirmModal
       open={open}
       title={S.agent.apiOpenTitle}
       onClose={onClose}
+      busy={busy}
+      {...(refusal !== undefined ? { refusal } : {})}
       onConfirm={() => {
-        onClose();
         onWriting();
         switchOnKeyless(projectId, agentId).then(
           (res) => onSettled(res),
@@ -141,7 +148,7 @@ const deleteKey = (projectId: string, agentId: string, keyId: string): Promise<v
 /**
  * The question before the Agent's API goes off, in the danger tone. Answered yes, it says the
  * write began, writes the switch off and hands on the outcome: what the server stored, or the
- * failure.
+ * failure. The card stays until the write lands — a refusal is drawn inside it.
  */
 export function AgentApiOffConfirm({
   open,
@@ -150,6 +157,8 @@ export function AgentApiOffConfirm({
   onClose,
   onWriting,
   onSettled,
+  busy,
+  refusal,
 }: {
   open: boolean;
   projectId: string;
@@ -157,14 +166,17 @@ export function AgentApiOffConfirm({
   onClose: () => void;
   onWriting: () => void;
   onSettled: (outcome: AgentApiResponse | { error: unknown }) => void;
+  busy: boolean;
+  refusal?: string;
 }) {
   return (
     <ConfirmModal
       open={open}
       title={S.agent.apiOffTitle}
       onClose={onClose}
+      busy={busy}
+      {...(refusal !== undefined ? { refusal } : {})}
       onConfirm={() => {
-        onClose();
         onWriting();
         switchOffAgentApi(projectId, agentId).then(
           (res) => onSettled(res),
@@ -180,34 +192,46 @@ export function AgentApiOffConfirm({
 }
 
 /**
- * The question before a key is deleted, naming it, in the danger tone. Answered yes, it deletes
- * the key and hands on which one went; a refused delete says why and hands on nothing.
+ * The question before a key is deleted, naming it, in the danger tone. Answered yes, it says the
+ * write began, deletes the key and hands on which one went; a refused delete keeps the card —
+ * with the reason inside it — and hands on the server's words instead, because the key is still
+ * there and retrying is the same button.
  */
 export function DeleteKeyConfirm({
   record,
   projectId,
   agentId,
   onClose,
+  onWriting,
   onDeleted,
+  onRefused,
+  busy,
+  refusal,
 }: {
   /** The key in question; null keeps the dialog closed. */
   record: AgentApiKeyInfo | null;
   projectId: string;
   agentId: string;
   onClose: () => void;
+  onWriting: () => void;
   onDeleted: (keyId: string) => void;
+  onRefused: (reason: string) => void;
+  busy: boolean;
+  refusal?: string;
 }) {
   return (
     <ConfirmModal
       open={record !== null}
       title={S.agent.apiDeleteKey}
       onClose={onClose}
+      busy={busy}
+      {...(refusal !== undefined ? { refusal } : {})}
       onConfirm={() => {
         if (record === null) return;
-        onClose();
+        onWriting();
         deleteKey(projectId, agentId, record.keyId).then(
           () => onDeleted(record.keyId),
-          (error: unknown) => toastError(apiErrorText(error)),
+          (error: unknown) => onRefused(apiErrorText(error)),
         );
       }}
       confirmLabel={S.common.delete}
@@ -467,13 +491,20 @@ export function ApiTab({
 }) {
   const { reloadAgents } = useProject();
   const [settings, setSettings] = useState<AgentApiSettings | null>(null);
-  // Only the initial load failure renders inline; writes report via toast.
+  // Only the initial load failure renders inline; a write with no question of its own (turning the
+  // API on, the approval mode, keyless off) reports via toast; a write asked for in a card reports
+  // inside that card (the three refusals below).
   const [loadError, setLoadError] = useState<string | null>(null);
   const [serverEnabled, setServerEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirmOff, setConfirmOff] = useState(false);
   const [confirmKeyless, setConfirmKeyless] = useState(false);
   const [deleting, setDeleting] = useState<AgentApiKeyInfo | null>(null);
+  // The server's words for a write the card asked for and it refused, drawn inside that card: the
+  // reason has to outlive the six-second toast, because retrying is the next thing the user does.
+  const [offRefusal, setOffRefusal] = useState<string | null>(null);
+  const [keylessRefusal, setKeylessRefusal] = useState<string | null>(null);
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   const [draftName, setDraftName] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | undefined>(undefined);
   const [secret, setSecret] = useState<string | null>(null);
@@ -555,12 +586,19 @@ export function ApiTab({
         secret={secret}
         onToggleEnabled={(next) => {
           if (next) void write({ enabled: true });
-          else setConfirmOff(true);
+          else {
+            // Open first, then drop the previous refusal: that sentence belonged to the attempt
+            // before this one.
+            setConfirmOff(true);
+            setOffRefusal(null);
+          }
         }}
         onApprovalMode={(approvalMode) => void write({ approvalMode })}
         onToggleOpen={(open) => {
-          if (open) setConfirmKeyless(true);
-          else void write({ open: false });
+          if (open) {
+            setConfirmKeyless(true);
+            setKeylessRefusal(null);
+          } else void write({ open: false });
         }}
         onStartKey={() => {
           setDraftName("");
@@ -576,7 +614,10 @@ export function ApiTab({
           setDraftError(undefined);
         }}
         onSecretDone={() => setSecret(null)}
-        onDeleteKey={setDeleting}
+        onDeleteKey={(record) => {
+          setDeleting(record);
+          setDeleteRefusal(null);
+        }}
       />
       <AgentApiOffConfirm
         open={confirmOff}
@@ -584,12 +625,15 @@ export function ApiTab({
         agentId={agentId}
         onClose={() => setConfirmOff(false)}
         onWriting={() => setBusy(true)}
+        busy={busy}
+        {...(offRefusal !== null ? { refusal: S.common.refused(offRefusal) } : {})}
         onSettled={(outcome) => {
           if ("api" in outcome) {
             setSettings(outcome.api);
             setServerEnabled(outcome.serverEnabled);
             void reloadAgents();
-          } else toastError(apiErrorText(outcome.error));
+            setConfirmOff(false);
+          } else setOffRefusal(apiErrorText(outcome.error));
           setBusy(false);
         }}
       />
@@ -599,11 +643,14 @@ export function ApiTab({
         agentId={agentId}
         onClose={() => setConfirmKeyless(false)}
         onWriting={() => setBusy(true)}
+        busy={busy}
+        {...(keylessRefusal !== null ? { refusal: S.common.refused(keylessRefusal) } : {})}
         onSettled={(outcome) => {
           if ("api" in outcome) {
             setSettings(outcome.api);
             setServerEnabled(outcome.serverEnabled);
-          } else toastError(apiErrorText(outcome.error));
+            setConfirmKeyless(false);
+          } else setKeylessRefusal(apiErrorText(outcome.error));
           setBusy(false);
         }}
       />
@@ -612,11 +659,20 @@ export function ApiTab({
         projectId={projectId}
         agentId={agentId}
         onClose={() => setDeleting(null)}
-        onDeleted={(keyId) =>
+        onWriting={() => setBusy(true)}
+        busy={busy}
+        {...(deleteRefusal !== null ? { refusal: S.common.refused(deleteRefusal) } : {})}
+        onDeleted={(keyId) => {
           setSettings((prev) =>
             prev === null ? prev : { ...prev, keys: prev.keys.filter((k) => k.keyId !== keyId) },
-          )
-        }
+          );
+          setDeleting(null);
+          setBusy(false);
+        }}
+        onRefused={(reason) => {
+          setDeleteRefusal(reason);
+          setBusy(false);
+        }}
       />
     </>
   );
