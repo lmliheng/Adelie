@@ -1477,6 +1477,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       归档（框留着，原因只进 toast）、`employee-dialogs.tsx` 的招聘（`catch` 里先 `setConfirmOpen(false)` 再
       toast）、`org-dialogs.tsx`（`onClose()` 在写入之前）、`handbook-page.tsx` 的删除（框留着，原因只进
       toast），按「一轮一处」往下一轮排。
+- [x] **7.38 频道的「离开」与「归档」两张确认框：被拒时框留着，原因也留在框里**（**2026-10-24
+      第一百二十三轮**落地，提交见该节；1 处源码 `features/company/channel-header.tsx` + 1 个新文件
+      `packages/web/e2e/channel-refusal.spec.mjs`（2 条用例，一张框一条：被拒 → 取消重开 → 重试落地）+
+      changelog 一对，**无新依赖、不碰接口、无新文案**）：7.37 末尾点名的下一处，也是那条「点击即关 /
+      失败只弹 toast」扫描线在 `features/company/` 上的第二处。两张框自己都还开着，可原因落进一条六秒后自己
+      消失、还浮在框上方的通知里。**现在**：关框只发生在写入落地那条路径上；被拒时服务端原话经
+      `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；离开按钮与归档菜单行在开框前
+      先清掉上一次的原因，切换频道时两个原因一起清；一个写入在途时另一个不再发。取消归档没有框（只是菜单里的
+      一行），失败仍用通知。细节、两态读数与反证见「第一百二十三轮」一节。**还差什么**：`features/company/`
+      里还有三处同形 —— `employee-dialogs.tsx` 的招聘（`catch` 里先 `setConfirmOpen(false)` 再 toast，两处）、
+      `org-dialogs.tsx`（`onClose()` 在写入之前）、`handbook-page.tsx` 的删除（框留着，原因只进 toast），
+      按「一轮一处」往下一轮排。
 
 
 ## 发布 v0.2.0（2026-10-05）
@@ -2115,6 +2127,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-24 | 7.35 | **智能体 API 页那三张确认框（关闭 API 访问 / 允许无密钥访问 / 删除密钥）被拒时，框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/api-tab.tsx` + 1 个新文件 `packages/web/e2e/agent-api-refusal.spec.mjs`（3 条用例）+ 既有单测 `test/agent-api-tab.test.ts` 跟上（19 条，含三条新的）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：三张框的 `onConfirm` 过去都是先 `onClose()` 再发请求 —— 被拒时页面上与服务端上什么都没变（开关照旧开着、那一行密钥照旧在），原因却落进一条六秒后自己消失、还浮在框上方的 toast 里。**现在**：三张框都留到自己的写入落地才由这一页关掉；被拒时服务端原话交给各自的状态（`offRefusal` / `keylessRefusal` / `deleteRefusal`），经 `ConfirmModal` 的 `refusal` 槽画在句子下面，重试就是同一个按钮；写入在途时框上两个按钮置灰；三个入口先开框再清上一次的原因；删除密钥的失败从 `toastError` 改成 `onRefused`。没有自己那张框的控件（打开 API、审批模式、关掉无密钥）照旧弹 toast | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 改动五个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · web **264 文件 / 3242 通过 / 2 跳过**（上一轮 3239，**+3 正是本笔新用例**）· server **203 / 2961 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8999 MOCK_PORT=9000 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 9000 / 服务端 8999）：**144 passed（8.9m）、0 failed**（上一轮 141 + 本笔 3）· **反证**：`git stash push -- packages/web/src/features/agents/api-tab.tsx`（只带这一个路径）并重建 web → 同一份 spec **3 failed**（三条都死在框里找不到 `agent api is read-only`，16.6 s / 16.5 s / 16.6 s）；`git stash pop` + 重建 → **3 passed（7.3s）** · **两态实测**（一次性数据根 `/root/adelie-fork-data/r120-look`、`localhost:9001`、mock 9002、`admin`，两个写入都由 `page.route` 拒成 500）：**旧代码** 删密钥被拒后 `cardOpen false`、`reasonInCard false`、通知区 **1** 个可点按钮，**6.5 秒后**通知区 0 个按钮、`reasonOnScreen false`（屏幕上再没有一句解释）；关 API 被拒后 `cardOpen false`、通知区 1 个按钮、开关仍 `true`。**新代码** 删密钥被拒后 `cardOpen true`、`reasonInCard true`、通知区 **0** 个按钮、6.5 秒后原因仍在框里；关 API 被拒后 `cardOpen true`、`reasonInCard true`、通知区 0 个按钮、开关仍 `aria-checked=true`、服务端仍 `enabled: true`。两态 console 只有刻意造的两次 500，**无 pageerror**，截图 `r120/shots/{old,new,new2}-*.png` · 端口只用 9001 / 9002（探针）、8997 / 8998（单 spec）与 8999 / 9000（整套 e2e），跑完都已停，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `mktemp` 根与 `/root/adelie-fork-data/r120-look`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-10-24 | 7.36 | **设置 › 服务器 › Agent API 那个全服务器开关的关闭确认框：被拒时框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/settings/agent-api-section.tsx` + 1 个新文件 `packages/web/e2e/server-api-off-refusal.spec.mjs`（1 条用例：被拒 → 取消重开 → 重试落地）+ 既有单测 `test/agent-api-tab.test.ts` 跟上（20 条，含一条新的）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：`AgentApiServerOffConfirm` 的 `onConfirm` 过去**先** `onClose()` **再**发 `PUT /api/admin/settings` —— 被拒时服务端与开关都没变（所有 Agent 的 API 照旧开着），原因却落在框已经离开的那个开关下面，重试要重新打开框、重读一遍问话。**现在**：框留到自己的写入落地（关框搬回这一页，只在落地那条路径上关，`settleOff`），被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；写入在途时框上两个按钮置灰（`busy`）；开关自己那个入口先开框再清上一次的原因。**打开**开关没有自己的框，仍按原来的方式报（开关放回存储值、在它下面说明原因）。用例以 `admin` 登录、从智能体列表页的账号菜单进设置，并以「把开关重新打开」收尾（其他用例在它打开的前提下调用 Agent API） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 改动面 **0 警告 0 错误** · 三个文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 文件 / 3243 通过 / 2 跳过**（上一轮 3242，**+1 正是本笔新用例**）· hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=8999 MOCK_PORT=9000 pnpm -C packages/web test:e2e`，脚本自己的 `mktemp` 数据根、mock 9000 / 服务端 8999）：第一遍 **144 passed / 1 failed（10.0m）** —— 红的是 `chat.spec.mjs` 的 `pickRowAction()`（点击时元素被 detach，与本笔无关），单跑那一条 **1 passed（11.4s）**，第二遍 **145 passed（8.4m）、0 failed、`exit 0`**（145 = 上一轮 144 + 本笔 1）· **反证（同一份 spec，两种产物）**：`r121/after-dist`（本笔）起在 `localhost:8995`、`r121/before-dist`（源码退回 `HEAD` 再建）起在 `8996`，一次性数据根 `/root/adelie-fork-data/r121-{after,before}` —— **改后 1 passed（2.4s）**、**改前 1 failed（16.7s）**（死在框里找不到 `server settings are read-only`）· **两态实测**（探针 `r121/probe.mjs`，写入由 `page.route` 拒成 500）：**改前** `cardOpen false`、`reasonInCard false`、`reasonUnderSwitch true`、开关仍 `true`，6.5 秒后同样；**改后** `cardOpen true`、`reasonInCard true`、`reasonUnderSwitch false`、开关仍 `true`，6.5 秒后原因仍在框里；两态服务端都还是 `agentApiEnabled: true`，console 只有刻意造的 500、**无 pageerror**、**无一条 ≥400**，截图 `r121/shots/{before,after}-*.png` · 端口只用 8995 / 8996（两态）、8997 + mock 9003（单 spec 复跑）与 8999 / 9000（整套 e2e），跑完都已停，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r121-*` 与 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写；没有切版本号、没发 npm、没发安装包、没发发布汇总 | `0071572b` |
 | 2026-10-24 | 7.37 | **组织日历的「保存日程」与「删除日程」两张确认框：被拒时框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/company/calendar-page.tsx`（+33 −8）+ 1 个新文件 `packages/web/e2e/calendar-refusal.spec.mjs`（2 条用例，一张框一条：被拒 → 取消重开 → 重试落地）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.34—7.36 那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第一处。保存那张框过去在请求进 `catch` 的路上就把自己关掉（`setConfirmSave(false)` 在 `catch` 里），而日程还是原来那一条 —— 原因落进一条几秒后自己消失、还浮在框上方的通知里；删除那张框留着，原因同样只进了通知。**现在**：两张框都只在自己的写入落地之后才关（关框挪到成功那条路径上），被拒时服务端原话经 `S.common.refused` 画进框里（`ConfirmModal` 的 `refusal` 槽）、重试按钮正上方；取消回到表单、被拒的值还在；两个入口（表单的「保存 / 创建」与「删除日程」）在开框前先清掉上一次的原因；`busy` 时另一个写入不再发（`save` / `remove` 各自先看 `busy`）。`openDesk` 那条没有框的读仍用 toast，与 7.35「没有框可留就还用 toast」同一口径 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（195 接口 / 589 类型）** —— 本笔不动服务契约）· `npx oxlint` 两处改动文件 **0 警告 0 错误** · 四个改动文件（源码 / 新 spec / 一对 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · server **203 文件 / 2961 通过 / 4 跳过** · web **264 文件 / 3243 通过 / 2 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=9003 MOCK_PORT=9004 pnpm -C packages/web test:e2e`，脚本自带 `mktemp` 数据根）：**147 passed（8.9m）、0 failed、`exit 0`**（上一轮 145 + 本笔 2）· **反证（同一份 spec，两种产物）**：只重建 web 得到 `r122/after-dist`（本笔）与 `r122/before-dist`（这一处源码退回 `HEAD` 再建），两个一次性数据根 `/root/adelie-fork-data/r122-{after,before2}` 分别起在 `localhost:9002`（`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie、模型指向本仓自带 mock LLM）：**改后 2 passed（16.8s）**，**改前 2 failed（17.9s / 17.2s）**，两条都死在框里那句原因上（`getByRole('dialog', { name: '保存修改' }).getByText('calendar store is locked')` / `…'删除日程'…'the rota is mid-rewrite'` —— 框已经不在了、或者原因只在通知里） · **两态实测真看一眼**（探针 `r122/tmp-calendar-probe.spec.mjs`，跑完即删；两个写入都由 `page.route` 拒成 500）：改后卡片开着、原因在框里、通知区 0 个可点的按钮，**6.5 秒后**同样（`cardOpen: true` / `reasonInCard: true` / `toastButtons: 0`），服务端上的日程仍是原提示词（`prompt: "检查看板，推进自己的工单"`）；截图 `r122/shots/{refused-save,refused-save-6s,refused-delete,refused-save-card,refused-delete-card}.png` 里能看到编辑表单上方那张框、框里红色的「操作被拒绝：…」与取消 / 保存两颗按钮；console 里三条 error 分别是刻意造的两个 500 与一条**与本笔无关**的 `/api/projects/…/machines` 403（该路由本来就只给管理员，探针账号是普通成员），无 pageerror · 端口只用 9001 / 9002（两态与探针）与 9003 / 9004（整套 e2e），跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r122*` 与脚本自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | `3e142b9f` |
+| 2026-10-24 | 7.38 | **频道的「离开」与「归档」两张确认框：被拒时框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/company/channel-header.tsx`（+30 −10）+ 1 个新文件 `packages/web/e2e/channel-refusal.spec.mjs`（2 条用例，一张框一条：被拒 → 取消重开 → 重试落地）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.37 末尾点名的下一处，也是那条扫描线在 `features/company/` 上的第二处。两张框自己都还开着，但原因只进了六秒后自己消失、还浮在框上方的通知里。**现在**：关框只发生在写入落地那条路径上（`leave()` 的 `catch` 不再弹 toast、改为 `setLeaveRefusal`；`setArchived()` 多收一个「这次是不是在框里问的」，归档那张框的原因进 `archiveRefusal`，取消归档那一行仍用 toast）；被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；离开按钮与归档菜单行在开框前先清掉旧原因，切换频道时两个原因一起清；两个写入在另一个在途时都不再发 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（195 接口 / 589 类型）** —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 三个改动文件（源码 / 新 spec / 一对 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · server **203 文件 / 2961 通过 / 4 跳过** · web **264 文件 / 3243 通过 / 2 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=9003 MOCK_PORT=9004 pnpm -C packages/web test:e2e`，脚本自带 `mktemp` 数据根）：**149 passed（9.6m）、0 failed、`exit 0`**（上一轮 147 + 本笔 2）· **反证（同一份 spec，两种产物）**：只重建 web 得到改后产物（`packages/web/dist`）与改前产物副本（同一处源码退回 `HEAD` 再建，`r123/before-dist`），两份一次性数据根 `/root/adelie-fork-data/r123-{after,before}` 分别起在 `localhost:9005` / `9007`（`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login`）：**改后 2 passed（6.8s）**，**改前 2 failed**（两条都死在框里那句原因上 —— `getByRole('dialog', { name: '离开频道' })` / `…'归档频道'` 里找不到 `the channel roster is mid-rewrite` / `channel store is locked`）· **两态实测真看一眼**（探针 `r123/tmp-channel-probe.spec.mjs`，跑完即删；两个写入都由 `page.route` 拒成 500）：**改前** 框开着但 `reasonInCard: false`，通知区里是 「内测功能：可能有不稳定的现象…」+ `channel store is locked`，**6.5 秒后**通知区空、屏幕上再没有一句解释；**改后** `cardOpen: true` / `reasonInCard: true`、通知区**不含**那句原因、6.5 秒后原因仍在框里；两态服务端上的名册与归档状态都不变（离开后名册少一人、`isMember: false`；归档后 `archived: true`）；截图 `r123/shots/{after2,before}-{1-archive-card,2-archive-refused,3-archive-refused-6s,4-archive-written,5-leave-card,6-leave-refused,7-leave-refused-6s,8-leave-written}.png` 里能直接看出「原因在框里」与「原因只在顶部通知里」的差别 · 端口只用 9003–9007（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r123*` 与脚本自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e427e030` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -15123,3 +15136,92 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
   于是照第一百二十 / 一百二十一轮的做法改由飞书送达（`text ok message_id=om_x100b62f197493ca0de4b82e5d76d5ba`，
   收件人即已绑定的那个私聊），正文留底在 scratchpad 的 `r122/report.md`；下一轮开工先再探一次那两个端口，
   通了再把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 第一百二十三轮：频道的离开与归档确认框被拒时，框留着、原因也留在框里（2026-10-24，条目 7.38）
+
+### 为什么是这一条
+
+待办里能一轮做完的条目仍然没有（2.2c 只剩桌面壳一侧、3.5 / 5.6 / 5.10 要拍板、3.6 要模型 key、
+4.1—4.3 明令不动），所以接第一百二十二轮末尾点名的下一处 —— 7.34 / 7.35 / 7.36 / 7.37 那条
+「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第二处：频道页头（`channel-header.tsx`）
+的「离开」与「归档」两张确认框。开工时这棵树是干净的（`git status --short` 空），
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date.`，主线尖端是 `37026963`
+（第一百二十二轮的台账补记）。
+
+两处都**不是**「框先关」那种形态：两张框自己都还开着，但 `catch` 里只有 `toastError` —— 原因六秒后自己
+消失、还浮在框上方（`离开`）或者与被拒的那张框毫无关系（`归档`）。今天起两张都按同一条规则：框留到自己的
+写入落地，被拒的原因画在框里。
+
+顺带一处语义分叉：`setArchived()` 同时被「归档那张框」与「取消归档那一行菜单」调用，而后者没有框可留。
+所以它多收一个 `inCard`：在框里问的那次把原因留在框里，菜单那一行仍用通知 —— 与 7.35 / 7.37
+「没有框可留就还用 toast」同一口径。
+
+### 改了什么（1 处源码 + 1 个新 spec + 一对 changelog）
+
+- `packages/web/src/features/company/channel-header.tsx`：
+  - 新增 `leaveRefusal` / `archiveRefusal` 两个状态（两张框不会同时开着，但原因属于它自己那句问话）。
+  - `leave()`：成功那条路径照旧关框、清原因、通知并重读；`catch` 不再弹 toast，只把服务端原话记进
+    `leaveRefusal`。
+  - `setArchived(archived, inCard)`：成功时只有 `inCard` 才关框；`catch` 里 `inCard` 进 `archiveRefusal`，
+    否则仍 `toastError`。
+  - 两个写入各自先看 `busy`（框上两个按钮本来就被 `busy` 置灰，这是同一条保证的第二道）。
+  - 两张 `ConfirmModal` 都接上 `refusal={… === null ? undefined : S.common.refused(…)}`（应用既有的
+    「操作被拒绝：」前缀，无新文案）。
+  - 离开按钮与归档菜单行在打开各自的框之前先清掉上一次的原因；切换频道时两个原因一起清（与另外五个
+    「切频道不留下上一张框」的状态同一条 useEffect）。
+  - 文件头模块注释补一段这条规则；没有框的动作（邀请、开桌位、取消归档）仍用 toast。
+- `packages/web/e2e/channel-refusal.spec.mjs`（新，2 条，一张框一条）：公司模式由管理员的主开关打开
+  （幂等），用户 / 模型凭据 / 组织 / 一条频道 / 被邀请的 CEO 都由真接口造；用 `page.route` 把
+  `DELETE …/channels/site/members/<user>` 与 `PATCH …/channels/site` 拒成 500（`channel_members_locked` /
+  `channel_store_locked`，两个都是应用没有本地文案的码），断言：框、框里那句话、服务端上的名册 / 归档状态
+  都不变，**通知区不含那句原因**（那里可能有公司内测自己的提示，所以按文字判、不按「区域为空」判）；
+  取消后重开不带旧原因；放行重试 → 框关掉，读者已不在名册上 / 频道读作已归档且页面说它只读。
+- changelog 一对 `changelog/unreleased/2026-10-24-channel-refusal{,.zh}.md`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`（195 接口 / 589 类型）—— 本笔不动服务契约）。
+- `npx oxlint` 两个改动文件 **0 警告 0 错误**；三个改动文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 / 1053** ·
+  cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 文件 / 3243 通过 / 2 跳过** ·
+  hmr 无测试文件。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 SRV_PORT=9003 MOCK_PORT=9004 pnpm -C packages/web test:e2e`）：
+  **149 passed（9.6m）、0 failed、`exit 0`**（上一轮 147 + 本笔 2；脚本自带 `mktemp` 数据根、mock 起在 9004）。
+- **反证（同一份 spec，两种产物）**：改后产物是 `packages/web/dist`（本笔），改前产物是同一处源码退回
+  `HEAD` 再建出的副本（scratchpad 的 `r123/before-dist`），两份一次性数据根
+  `/root/adelie-fork-data/r123-{after,before}` 分别起在 `localhost:9005` / `9007`（`ADELIE_WEB_DIST` 指向各自
+  的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login`）：**改后 2 passed（6.8s）**，**改前
+  2 failed**，两条都死在框里那句原因上（`getByRole('dialog', { name: '离开频道' })` 里找不到
+  `the channel roster is mid-rewrite`、`{ name: '归档频道' }` 里找不到 `channel store is locked`）。改前的
+  日志留底在 `r123/before-run.log`。
+- **两态实测真看一眼**（探针 `r123/tmp-channel-probe.spec.mjs`，跑完即删；两个写入都由 `page.route` 拒成
+  500）：**改前** 框开着但 `reasonInCard: false`，通知区里是「内测功能：可能有不稳定的现象…」+
+  `channel store is locked`，**6.5 秒后**通知区空、屏幕上再没有一句解释；**改后** `cardOpen: true` /
+  `reasonInCard: true`、通知区不含那句原因、6.5 秒后原因仍在框里。服务端上两态都没变（离开后名册少一人、
+  `isMember: false`；归档后 `archived: true`）。console 里四条 error 分别是两次刻意造的 500 与两条
+  `/api/projects/…/machines` 403（那条路由本来就只给管理员，探针账号是普通成员），无 pageerror。
+  截图 `r123/shots/{after2,before}-*.png` 里能直接看出「原因在框里」与「原因只在顶部通知里」的差别。
+- 端口只用 9003 / 9004（整套 e2e）与 9005 / 9006 / 9007（两态与探针、mock），跑完都已停；
+  3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r123*` 与脚本自己的
+  `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、
+  `packages/web/test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- `features/company/` 里仍有这种写法的地方（本轮开工时逐个看过，都是一眼能认出来的形态）：
+  `employee-dialogs.tsx` 的招聘（两处，`catch` 里先 `setConfirmOpen(false)` 再 toast）、
+  `org-dialogs.tsx`（`onClose()` 在写入之前）、`handbook-page.tsx` 的删除（框留着，原因只进 toast）。
+  按「一轮一处」往下一轮排 —— 下一轮就是 `employee-dialogs.tsx` 的招聘。
+- 待办里能一轮做完的条目仍然没有（2.2c 只剩桌面壳一侧、3.5 / 5.6 / 5.10 拍板、3.6 模型 key、
+  4.1—4.3 明令不动）。
+
+### 汇报
+
+- 第 6 步的收件人 `0110230306@csu.edu.cn` 这一轮**仍然发不出去**：`smtp.csu.edu.cn:465` 与
+  `imap.csu.edu.cn:993` 的 TCP 探测都失败（`/dev/tcp` 12 秒超时，两个端口一样）—— 还是 `202.197.0.0/16`
+  那个网段的问题，不是凭据，所以没有去跑 `mail.py check`（它只会再等两分钟再超时）。
+  于是照第一百二十 / 一百二十一 / 一百二十二轮的做法改由飞书送达（`text ok
+  message_id=om_x100b62fd239fbca0c0e89b56906e597`，收件人即已绑定的那个私聊），正文留底在 scratchpad 的
+  `r123/report.md`；下一轮开工先再探一次那两个端口，通了再把积压的补发到 `0110230306@csu.edu.cn`。
