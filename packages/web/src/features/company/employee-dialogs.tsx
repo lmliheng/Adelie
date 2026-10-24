@@ -8,6 +8,11 @@
  * workspace and opens a fresh desk session in one confirm. Every single-field edit stops at
  * the shared ConfirmModal first (the confirmation names what the chart file will say), then
  * calls the API; the renewal is its own confirmation and needs no second one.
+ *
+ * Those confirmations are also where a refused write answers: each card closes only once its own
+ * write landed, and a refusal draws the server's words under the card's sentence — a toast would
+ * dismiss itself seconds later and float over a card that is still asking the question, leaving
+ * the retry without its reason.
  */
 import { useEffect, useState } from "react";
 import type { OrgEmployeeItem, OrgHireRequest } from "@adelie/server/api";
@@ -92,6 +97,9 @@ export function HireDialog({
   const [budget, setBudget] = useState("");
   const [errors, setErrors] = useState<{ agent?: string; title?: string; budget?: string }>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Why the last hire was refused, drawn inside the card that asked for it: the card is a
+  // question about the chart file, so its answer belongs there rather than in a toast above it.
+  const [hireRefusal, setHireRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   /** Agents of the Project not yet in the organization. */
@@ -161,6 +169,7 @@ export function HireDialog({
   };
 
   const hire = async () => {
+    if (busy) return;
     setBusy(true);
     try {
       // The box speaks the reader's currency; the chart file holds USD.
@@ -188,11 +197,13 @@ export function HireDialog({
       // cannot be opened or bound until some later event happens to refresh the cache.
       void company.reloadOrgSessions();
       toastSuccess(S.company.chart.hired(hireName));
+      // The card goes with its own write landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
       setConfirmOpen(false);
+      setHireRefusal(null);
       onHired();
     } catch (e) {
-      setConfirmOpen(false);
-      toastError(apiErrorText(e));
+      setHireRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -215,7 +226,10 @@ export function HireDialog({
               variant="primary"
               disabled={busy}
               onClick={() => {
-                if (validate()) setConfirmOpen(true);
+                if (!validate()) return;
+                // A new question, not the one just refused: the old reason goes.
+                setHireRefusal(null);
+                setConfirmOpen(true);
               }}
             >
               {S.company.chart.hire}
@@ -380,6 +394,7 @@ export function HireDialog({
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
         busy={busy}
+        refusal={hireRefusal === null ? undefined : S.common.refused(hireRefusal)}
         onClose={() => (busy ? undefined : setConfirmOpen(false))}
         onConfirm={() => void hire()}
       >
@@ -416,12 +431,17 @@ export function EmployeeEditDialog({
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Why the last edit was refused, drawn inside the card that asked for it (see HireDialog).
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const managers = managerCandidates(employees, employee.agentId);
 
   useEffect(() => {
     if (edit === null) return;
     setError(undefined);
+    // A freshly opened dialog carries no reason from the last one: the same reason under a new
+    // question would name a write nobody has made yet.
+    setSaveRefusal(null);
     setValue(
       edit === "budget"
         ? fromStoredUsd(employee.budget, currency)
@@ -458,7 +478,7 @@ export function EmployeeEditDialog({
   };
 
   const save = async () => {
-    if (edit === null) return;
+    if (edit === null || busy) return;
     setBusy(true);
     try {
       await api.patchOrgEmployee(
@@ -468,11 +488,13 @@ export function EmployeeEditDialog({
         edit === "budget" ? { budget: toStoredUsd(value, currency) } : { reportsTo: value },
       );
       toastSuccess(S.company.chart.saved);
+      // The card goes with its own write landing: closing it first would leave a refusal with
+      // nowhere to be read.
       setConfirmOpen(false);
+      setSaveRefusal(null);
       onSaved();
     } catch (e) {
-      setConfirmOpen(false);
-      toastError(apiErrorText(e));
+      setSaveRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -494,7 +516,10 @@ export function EmployeeEditDialog({
               variant="primary"
               disabled={busy}
               onClick={() => {
-                if (validate()) setConfirmOpen(true);
+                if (!validate()) return;
+                // A new question, not the one just refused: the old reason goes.
+                setSaveRefusal(null);
+                setConfirmOpen(true);
               }}
             >
               {S.common.save}
@@ -574,6 +599,7 @@ export function EmployeeEditDialog({
         confirmLabel={S.common.save}
         cancelLabel={S.common.cancel}
         busy={busy}
+        refusal={saveRefusal === null ? undefined : S.common.refused(saveRefusal)}
         onClose={() => (busy ? undefined : setConfirmOpen(false))}
         onConfirm={() => void save()}
       >
