@@ -221,6 +221,7 @@ Agent 可以在 Task 中重写自己的 `SKILL.md`。结合 Benchmark 评估和�
 | | `use-wps-office` | 在 WPS 文字里开一个 Adelie 侧栏：读、搜、替换、插入、删除当前这篇文档，九个文档操作也作为 MCP 工具交给 Agent（不预装，需要 Windows 上的 WPS） |
 | | `browser-automation` | 用 `penguin browser` 驱动桌面应用的[内置浏览器](/builtin-browser)：以简化 HTML 或纯文本读取页面，用 JavaScript 以及可信的点击和输入操作页面，提取亚马逊订单这样的数据，登录状态可从系统浏览器导入 |
 | | `use-bento-slides` | 创建和编辑 Bento 演示文稿：单文件 `.bento.html` 幻灯片，文件内容为 JSON，支持素材到图表的映射、morph 过渡和状态幻灯片 |
+| | `use-lieflat-charts` | 把数据做成精致、可交互的 HTML 图表（Lupi 编辑型、Basics 基础型、Glance 快读型、地图与交互大图六十几套模板），用户明确要求时才做可翻页的 HTML/PDF 演示或整页报告；同一份交付只锁一种色系（默认 Mono，另有青瓷蓝 / 椰林绿 / 编辑部红与自定义色板）。移植自上游 `lieflat-charts` skill（许可是 PolyForm 非商业 1.0.0，见插件内 `LICENSE` 与 `NOTICE.md`）；约 2.5 MB 模板，不预装：需要画图的 Agent 从插件库安装 |
 | | `humanizer` | 去除任何语言文字中的 AI 写作痕迹，改写成书籍、报纸和百科全书的语体（不预装：需要时从插件库安装） |
 | | `goal` | [目标模式](/goal-mode)背后的 stop 钩子：让 Session 持续朝着目标推进，直到完成、受阻或 Token 预算耗尽（预装） |
 | | `continual-learning` | Task 运行超过 30 轮才结束时，把 Task 的精简摘录交给后台子 Agent，由它把有长期价值的发现沉淀到 Agent 的 Skill 中（不预装） |

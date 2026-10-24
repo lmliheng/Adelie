@@ -1,0 +1,9 @@
+{
+  "description": "Turn data into polished, interactive HTML charts, and — only when asked — into a paged HTML/PDF deck or a full-page report. Template-driven: every chart starts from a real template implementation (Lupi editorial, Basics, Glance, Maps, interactive big graphs), keeps a single colour system per deliverable (Mono by default, three built-in colour presets, or a custom palette the user supplies), and inherits the same typography, hairlines, whitespace and entrance animation. Ported from the lieflat-charts skill.",
+  "description_zh": "把数据做成精致、可交互的 HTML 图表；用户明确要求时才做可翻页的 HTML/PDF 演示或整页报告。模板驱动：每张图都从 Lupi 编辑型、Basics 基础型、Glance 快读型、地图与交互大图的真实模板出发，同一份交付只锁一种色系（默认 Mono，另有青瓷蓝 / 椰林绿 / 编辑部红三套内置预设或用户给的自定义色板），沿用同一套字体、发丝线、留白与入场动效。移植自上游 lieflat-charts skill。",
+  "short_description": "Polished interactive HTML charts from data (decks and reports on request).",
+  "short_description_zh": "数据一键成精致可交互的 HTML 图表（要演示或报告时才做）。",
+  "version": "2026.10.24.1",
+  "category": "office-productivity",
+  "preinstall": false
+}

@@ -117,6 +117,9 @@ importers:
       '@adelie/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@adelie/use-lieflat-charts':
+        specifier: workspace:*
+        version: link:../../plugins/use-lieflat-charts
       '@adelie/use-offerdao':
         specifier: workspace:*
         version: link:../../plugins/use-offerdao
@@ -214,6 +217,9 @@ importers:
       '@adelie/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@adelie/use-lieflat-charts':
+        specifier: workspace:*
+        version: link:../../plugins/use-lieflat-charts
       '@adelie/use-offerdao':
         specifier: workspace:*
         version: link:../../plugins/use-offerdao
@@ -317,6 +323,9 @@ importers:
       '@adelie/use-firecrawl':
         specifier: workspace:*
         version: link:../../plugins/use-firecrawl
+      '@adelie/use-lieflat-charts':
+        specifier: workspace:*
+        version: link:../../plugins/use-lieflat-charts
       '@adelie/use-offerdao':
         specifier: workspace:*
         version: link:../../plugins/use-offerdao
@@ -585,7 +594,7 @@ importers:
     dependencies:
       '@adelie/ui':
         specifier: workspace:*
-        version: file:packages/ui(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@10.2.2)
+        version: link:../ui
       react:
         specifier: ^19.1.0
         version: 19.2.7
@@ -640,7 +649,7 @@ importers:
         version: file:packages/core(supports-color@10.2.2)(ws@8.21.0)
       '@adelie/ui':
         specifier: workspace:*
-        version: file:packages/ui(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@10.2.2)
+        version: link:../ui
       '@xterm/addon-clipboard':
         specifier: ^0.1.0
         version: 0.1.0(@xterm/xterm@5.5.0)
@@ -810,6 +819,8 @@ importers:
 
   plugins/use-firecrawl: {}
 
+  plugins/use-lieflat-charts: {}
+
   plugins/use-offerdao: {}
 
   plugins/use-wps-office: {}
@@ -880,12 +891,6 @@ packages:
   '@adelie/software-development@file:plugins/software-development':
     resolution: {directory: plugins/software-development, type: directory}
 
-  '@adelie/ui@file:packages/ui':
-    resolution: {directory: packages/ui, type: directory}
-    peerDependencies:
-      react: ^19.1.0
-      react-dom: ^19.1.0
-
   '@adelie/use-bento-slides@file:plugins/use-bento-slides':
     resolution: {directory: plugins/use-bento-slides, type: directory}
 
@@ -894,6 +899,9 @@ packages:
 
   '@adelie/use-firecrawl@file:plugins/use-firecrawl':
     resolution: {directory: plugins/use-firecrawl, type: directory}
+
+  '@adelie/use-lieflat-charts@file:plugins/use-lieflat-charts':
+    resolution: {directory: plugins/use-lieflat-charts, type: directory}
 
   '@adelie/use-offerdao@file:plugins/use-offerdao':
     resolution: {directory: plugins/use-offerdao, type: directory}
@@ -4229,27 +4237,6 @@ packages:
   setprototypeof@1.2.0:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
 
-  shaders@4.0.4:
-    resolution: {integrity: sha512-NB+/RiK0oydteeeKdPqsLpR3iSoDTvt8bsdgw2wPb697QVCY/yadZV8gitCyCQx5t/kb4nJicIR+cbG9Q6JFfQ==}
-    hasBin: true
-    peerDependencies:
-      react: ^18.0.0 || ^19.0.0
-      react-dom: ^18.0.0 || ^19.0.0
-      solid-js: ^1.8.0
-      svelte: ^5
-      vue: ^3.5.0
-    peerDependenciesMeta:
-      react:
-        optional: true
-      react-dom:
-        optional: true
-      solid-js:
-        optional: true
-      svelte:
-        optional: true
-      vue:
-        optional: true
-
   shaders@4.0.5:
     resolution: {integrity: sha512-1muVyMI5NGkv/+/QpHD9wY2HfmxeWq3MBDT3ERFBTStCSzikSBravuTaGv3B1nz0rXccvv3C0xp3lmvfptu3Zg==}
     hasBin: true
@@ -4875,6 +4862,7 @@ snapshots:
       '@adelie/use-bento-slides': file:plugins/use-bento-slides
       '@adelie/use-claude-code': file:plugins/use-claude-code
       '@adelie/use-firecrawl': file:plugins/use-firecrawl
+      '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
@@ -4914,6 +4902,7 @@ snapshots:
       '@adelie/use-bento-slides': file:plugins/use-bento-slides
       '@adelie/use-claude-code': file:plugins/use-claude-code
       '@adelie/use-firecrawl': file:plugins/use-firecrawl
+      '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
@@ -4949,6 +4938,7 @@ snapshots:
       '@adelie/use-bento-slides': file:plugins/use-bento-slides
       '@adelie/use-claude-code': file:plugins/use-claude-code
       '@adelie/use-firecrawl': file:plugins/use-firecrawl
+      '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
@@ -5050,41 +5040,13 @@ snapshots:
 
   '@adelie/software-development@file:plugins/software-development': {}
 
-  '@adelie/ui@file:packages/ui(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(supports-color@10.2.2)':
-    dependencies:
-      '@fontsource-variable/ibm-plex-sans': 5.3.0
-      '@fontsource-variable/jetbrains-mono': 5.3.0
-      '@fontsource-variable/mona-sans': 5.3.0
-      '@fontsource-variable/noto-sans-sc': 5.3.0
-      '@fontsource/ibm-plex-sans-condensed': 5.3.0
-      '@shikijs/langs': 4.3.1
-      '@shikijs/themes': 4.3.1
-      katex: 0.16.47
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
-      react-markdown: 10.1.0(@types/react@19.2.17)(react@19.2.7)(supports-color@10.2.2)
-      rehype-katex: 7.0.1
-      remark-gfm: 4.0.1(supports-color@10.2.2)
-      remark-math: 6.0.0(supports-color@10.2.2)
-      remark-parse: 11.0.0(supports-color@10.2.2)
-      shaders: 4.0.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      shiki: 4.3.1
-      unified: 11.0.5
-      zustand: 5.0.15(@types/react@19.2.17)(react@19.2.7)
-    transitivePeerDependencies:
-      - '@types/react'
-      - immer
-      - solid-js
-      - supports-color
-      - svelte
-      - use-sync-external-store
-      - vue
-
   '@adelie/use-bento-slides@file:plugins/use-bento-slides': {}
 
   '@adelie/use-claude-code@file:plugins/use-claude-code': {}
 
   '@adelie/use-firecrawl@file:plugins/use-firecrawl': {}
+
+  '@adelie/use-lieflat-charts@file:plugins/use-lieflat-charts': {}
 
   '@adelie/use-offerdao@file:plugins/use-offerdao': {}
 
@@ -9011,13 +8973,6 @@ snapshots:
       - supports-color
 
   setprototypeof@1.2.0: {}
-
-  shaders@4.0.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
-    dependencies:
-      typegpu: 0.12.3
-    optionalDependencies:
-      react: 19.2.7
-      react-dom: 19.2.7(react@19.2.7)
 
   shaders@4.0.5(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:

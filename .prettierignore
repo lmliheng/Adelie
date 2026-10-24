@@ -33,3 +33,8 @@ playwright-report/
 # vendored verbatim from upstream (see the dev skill's reference/ai-slop.md); kept byte-identical
 # so a refresh is a plain copy
 .agents/skills/penguin-harness-dev/reference/ai-slop/
+
+# the lieflat-charts skill, shipped as its author wrote it (license and provenance in
+# plugins/use-lieflat-charts/: LICENSE + NOTICE.md); its sixty-odd chart, deck and report
+# templates are upstream's own formatting, and a formatter pass would rewrite all of them
+plugins/use-lieflat-charts/skills/lieflat-charts/
