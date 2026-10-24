@@ -9,7 +9,9 @@
  * the grid plus an error strip when a refetch fails. A month cell shows a few chips and folds
  * the rest into a button that opens the whole day in a popover rather than the create dialog.
  * Past instances carry the outcome the scheduler recorded; every write confirms first, and
- * reports back whatever the server has to say about the rota.
+ * reports back whatever the server has to say about the rota. A confirmation that asked for a
+ * write is dismissed by that write landing: when the server refuses one, its words stay inside
+ * the card (`ConfirmModal`'s `refusal` slot) and the retry is the button that was pressed.
  *
  * An empty slot — a month cell, an hour row — is itself the control that creates there, and it
  * says so: a real button (CREATE_SLOT_CLASS) that tints with the theme's accent and spells out
@@ -203,6 +205,13 @@ export function CalendarPage() {
   >({});
   const [confirmSave, setConfirmSave] = useState(false);
   const [deleting, setDeleting] = useState<{ agentId: string; name: string } | null>(null);
+  /**
+   * The reason the last save / delete was refused, drawn inside the card that asked for it (see
+   * `save` / `remove`). Two states rather than one: the two cards can only be open one at a time,
+   * but a refusal belongs to the sentence that was refused.
+   */
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   // The empty-calendar note goes away for good once read; the page's "?" carries the same
@@ -306,8 +315,15 @@ export function CalendarPage() {
     return Object.keys(next).length === 0;
   };
 
+  /**
+   * The save card closes only once the write landed. A refusal leaves it standing with the
+   * server's words under its sentence (`ConfirmModal`'s `refusal` slot): the toast that used to
+   * carry them dismissed itself after a few seconds, out of the card the user was still looking
+   * at — and the event, after all, is still what the form says it was. The retry is the same
+   * button; cancelling lands back on the form with the values that were refused.
+   */
   const save = async () => {
-    if (form === null) return;
+    if (form === null || busy) return;
     setBusy(true);
     try {
       const body = {
@@ -343,15 +359,16 @@ export function CalendarPage() {
       setForm(null);
       void load();
     } catch (e) {
-      setConfirmSave(false);
-      toastError(apiErrorText(e));
+      // The card stays open: it asked the question, so it holds the answer.
+      setSaveRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
   };
 
+  /** Same rule as `save`: the delete card is dismissed by the delete landing, not by its request. */
   const remove = async () => {
-    if (deleting === null) return;
+    if (deleting === null || busy) return;
     setBusy(true);
     try {
       await api.deleteOrgCalendarEvent(projectId, orgId, deleting.agentId, deleting.name);
@@ -359,7 +376,7 @@ export function CalendarPage() {
       setForm(null);
       void load();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -862,7 +879,11 @@ export function CalendarPage() {
                 variant="danger"
                 className="mr-auto"
                 disabled={busy}
-                onClick={() => setDeleting(form.editing)}
+                onClick={() => {
+                  // A new question, not the one the user was just refused: the old reason goes.
+                  setDeleteRefusal(null);
+                  setDeleting(form.editing);
+                }}
               >
                 {S.company.calendar.delete}
               </Button>
@@ -875,7 +896,9 @@ export function CalendarPage() {
               variant="primary"
               disabled={busy}
               onClick={() => {
-                if (validate()) setConfirmSave(true);
+                if (!validate()) return;
+                setSaveRefusal(null);
+                setConfirmSave(true);
               }}
             >
               {form?.editing != null ? S.common.save : S.common.create}
@@ -1015,6 +1038,7 @@ export function CalendarPage() {
         confirmLabel={S.common.save}
         cancelLabel={S.common.cancel}
         busy={busy}
+        refusal={saveRefusal === null ? undefined : S.common.refused(saveRefusal)}
         onClose={() => (busy ? undefined : setConfirmSave(false))}
         onConfirm={() => void save()}
       >
@@ -1028,6 +1052,7 @@ export function CalendarPage() {
         confirmLabel={S.common.delete}
         cancelLabel={S.common.cancel}
         busy={busy}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
         onClose={() => (busy ? undefined : setDeleting(null))}
         onConfirm={() => void remove()}
       >
