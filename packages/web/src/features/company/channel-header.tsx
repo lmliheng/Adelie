@@ -12,6 +12,11 @@
  * itself enforces — it cannot be left, archived, or have its membership edited, so those
  * controls are simply absent, the missing archive row named by one muted line in the menu.
  * What that channel is stays in the header's "?", said once.
+ *
+ * Leaving and archiving are asked in a confirmation card, and the card is the answer's home: it
+ * closes only once its write landed, and a refusal draws the server's words under the card's own
+ * sentence (the retry is the button that was pressed). Un-archiving has no card — it is one menu
+ * row — so its refusal is a toast, like every other write here without a question of its own.
  */
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -281,6 +286,10 @@ export function ChannelHeader({
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  // The reason the last leave / archive was refused, drawn inside the card that asked for it:
+  // both writes are questions, so a toast would dismiss itself out of the card still on screen.
+  const [leaveRefusal, setLeaveRefusal] = useState<string | null>(null);
+  const [archiveRefusal, setArchiveRefusal] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [openingDesk, setOpeningDesk] = useState<string | null>(null);
@@ -294,6 +303,8 @@ export function ChannelHeader({
     setArchiveOpen(false);
     setMenuOpen(false);
     setQuery("");
+    setLeaveRefusal(null);
+    setArchiveRefusal(null);
   }, [channelId]);
 
   if (detail === null) {
@@ -345,28 +356,42 @@ export function ChannelHeader({
   };
 
   const leave = async (principal: string) => {
+    if (busy) return;
     setBusy(true);
     try {
       await api.removeOrgChannelMember(projectId, orgId, detail.channelId, principal);
+      // The card goes with its own write landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
       setLeaveOpen(false);
+      setLeaveRefusal(null);
       toastSuccess(S.company.channels.left);
       onChanged();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setLeaveRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
   };
 
-  const setArchived = async (archived: boolean) => {
+  /**
+   * Archives or un-archives the channel. Archiving is asked in a card, so its refusal belongs in
+   * that card (`inCard`); un-archiving is a single menu row with nothing to keep open.
+   */
+  const setArchived = async (archived: boolean, inCard: boolean) => {
+    if (busy) return;
     setBusy(true);
     try {
       await api.patchOrgChannel(projectId, orgId, detail.channelId, { archived });
-      setArchiveOpen(false);
+      if (inCard) {
+        setArchiveOpen(false);
+        setArchiveRefusal(null);
+      }
       toastSuccess(archived ? S.company.channels.archived : S.company.channels.unarchived);
       onChanged();
     } catch (e) {
-      toastError(apiErrorText(e));
+      const text = apiErrorText(e);
+      if (inCard) setArchiveRefusal(text);
+      else toastError(text);
     } finally {
       setBusy(false);
     }
@@ -440,7 +465,15 @@ export function ChannelHeader({
             />
           )}
           {!allHands && detail.isMember && !detail.archived && (
-            <Button size="sm" disabled={busy} onClick={() => setLeaveOpen(true)}>
+            <Button
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                // A new question, not the one just refused: the old reason goes.
+                setLeaveRefusal(null);
+                setLeaveOpen(true);
+              }}
+            >
               <span className={`flex items-center ${ICON_GAP.tight}`}>
                 <GlyphIcon d={LEAVE_ICON} size={ICON_SIZE.inlineGlyph} />
                 {S.company.channels.leave}
@@ -497,7 +530,7 @@ export function ChannelHeader({
                     label={S.company.channels.unarchive}
                     onSelect={() => {
                       setMenuOpen(false);
-                      void setArchived(false);
+                      void setArchived(false, false);
                     }}
                   />
                 ) : (
@@ -506,6 +539,8 @@ export function ChannelHeader({
                     label={S.company.channels.archive}
                     onSelect={() => {
                       setMenuOpen(false);
+                      // A new question, not the one just refused: the old reason goes.
+                      setArchiveRefusal(null);
                       setArchiveOpen(true);
                     }}
                   />
@@ -548,6 +583,7 @@ export function ChannelHeader({
         confirmLabel={S.company.channels.leave}
         cancelLabel={S.common.cancel}
         busy={busy}
+        refusal={leaveRefusal === null ? undefined : S.common.refused(leaveRefusal)}
         onClose={() => (busy ? undefined : setLeaveOpen(false))}
         onConfirm={() => void leave(me)}
       >
@@ -561,8 +597,9 @@ export function ChannelHeader({
         confirmLabel={S.company.channels.archive}
         cancelLabel={S.common.cancel}
         busy={busy}
+        refusal={archiveRefusal === null ? undefined : S.common.refused(archiveRefusal)}
         onClose={() => (busy ? undefined : setArchiveOpen(false))}
-        onConfirm={() => void setArchived(true)}
+        onConfirm={() => void setArchived(true, true)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {S.company.channels.archiveConfirm(label)}
