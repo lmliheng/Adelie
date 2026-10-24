@@ -6,11 +6,12 @@
  * then folders and documents nested as they are on disk, with one button that collapses them
  * all. Right, the selected document rendered as Markdown (anything else preformatted),
  * edited in place through a monospace textarea with save and cancel, and — for every document
- * but the index — deleted behind the shared confirmation. The new-document dialog refuses a
- * path the server would, starts from the selected document's own folder so a document lands
- * beside its siblings, then creates the file with a one-line title and selects it. A relative
- * link inside a document opens the document it names in the same pane, so the index works as
- * the handbook's own navigation.
+ * but the index — deleted behind the shared confirmation, which closes only once its own delete
+ * landed: a refusal keeps the card standing with the server's words inside it, where the button
+ * that retries them is. The new-document dialog refuses a path the server would, starts from
+ * the selected document's own folder so a document lands beside its siblings, then creates the
+ * file with a one-line title and selects it. A relative link inside a document opens the
+ * document it names in the same pane, so the index works as the handbook's own navigation.
  *
  * Loading discipline: the skeleton stands only until the first listing or its failure; a
  * failed refresh keeps the list on screen under one error line with its retry; a document
@@ -90,6 +91,8 @@ export function HandbookPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  /** The words of a delete the server refused, kept in the card that asked for it. */
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
 
   // Another organization's handbook must not linger while this one loads.
   useEffect(() => {
@@ -223,13 +226,16 @@ export function HandbookPage() {
     setDeleting(true);
     try {
       await api.deleteOrgHandbookFile(projectId, orgId, path);
+      // The card goes with its own delete landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
       setDeleteOpen(false);
+      setDeleteRefusal(null);
       setFiles((prev) => (prev === null ? prev : prev.filter((f) => f.path !== path)));
       setSelected(HANDBOOK_INDEX);
       toastSuccess(S.company.handbook.documentDeleted);
       void loadList();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setDeleting(false);
     }
@@ -392,7 +398,11 @@ export function HandbookPage() {
                       size="sm"
                       variant="danger"
                       disabled={doc === null}
-                      onClick={() => setDeleteOpen(true)}
+                      onClick={() => {
+                        // A new question, not the last one: the previous refusal is not its answer.
+                        setDeleteRefusal(null);
+                        setDeleteOpen(true);
+                      }}
                     >
                       {S.common.delete}
                     </Button>
@@ -455,6 +465,7 @@ export function HandbookPage() {
         busy={deleting}
         onClose={() => (deleting ? undefined : setDeleteOpen(false))}
         onConfirm={() => void remove()}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {S.company.handbook.deleteConfirm(selected)}
