@@ -20,7 +20,9 @@
  *
  * Failures stay inside the dialog: a rejected id lands under the id field, anything else in
  * a strip above the footer, and a settings load that fails offers its retry in place — the
- * fields never sit disabled behind a toast that has already gone.
+ * fields never sit disabled behind a toast that has already gone. A deletion is asked in a
+ * confirmation card that closes only once its own write landed: a refusal keeps the card
+ * standing with the server's words inside it, where the retry button is.
  *
  * `useOrganizationCreated` is the other half of creating one: what every host of the create
  * dialog does once it succeeds — adopt the organization as the shell's current one, then open
@@ -606,18 +608,26 @@ export function OrganizationSettingsDialog({
   /** The delete confirmation, and what has been typed into it (the id, to mean it). */
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [typedId, setTypedId] = useState("");
+  /** The words of a deletion the server refused, kept in the card that asked for it. */
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   const { models, error: modelsError } = useProjectModels(projectId, open);
 
   const doDelete = async () => {
+    // The card's two buttons are already disabled while the write is out; this is the same
+    // promise for a second press that slips through (a key handler, a double click).
+    if (busy) return;
     setBusy(true);
     try {
       await api.deleteOrganization(projectId, orgId);
+      // The card goes with its own write landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
       setConfirmDelete(false);
+      setDeleteRefusal(null);
       toastSuccess(S.company.deleted(orgId));
       onClose();
       onDeleted?.();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeleteRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -828,6 +838,7 @@ export function OrganizationSettingsDialog({
             disabled={!hydrated || busy}
             onClick={() => {
               setTypedId("");
+              setDeleteRefusal(null);
               setConfirmDelete(true);
             }}
           >
@@ -842,8 +853,9 @@ export function OrganizationSettingsDialog({
         confirmDisabled={typedId.trim() !== orgId}
         confirmLabel={S.common.confirm}
         cancelLabel={S.common.cancel}
-        onClose={() => setConfirmDelete(false)}
+        onClose={() => (busy ? undefined : setConfirmDelete(false))}
         onConfirm={() => void doDelete()}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">{S.company.deleteOrgConfirm}</p>
         <Input
