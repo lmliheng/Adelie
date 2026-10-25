@@ -15701,3 +15701,33 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
   （`RC=124`）、一个字符没返回 —— 还是 `202.197.0.0/16` 那个网段的问题，不是凭据。于是照前几轮的
   做法改由飞书送达，正文留底在 scratchpad 的 `r128/report.md`；下一轮开工再探一次，通了把积压的补发到
   `0110230306@csu.edu.cn`。
+
+## 发版 v0.5.6（2026-10-25 16:30 CST 巡台轮，箱里没活、攒够阈值）
+
+- 需求箱：`GET /api/requirements?status=new,doing,blocked` → `count: 0`（`seq: 43`）；43 条里 33 条 `done`、
+  8 条 `withdrawn`，余下 2 条字段仍是 `new` 但 `archived_at` 有值，接口按归档滤掉。箱里没活、也没等拍板的。
+- 发版条件成立：自 `v0.5.5`（`e775e4d5`，2026-10-24）起 `main` 上落了 21 笔提交，其中 **10 个功能性提交**，
+  四道门禁全绿 → 发 **v0.5.6**（patch：没有接口、数据根、配置格式、包名变化）。
+- 防重入：`penguin ls --json` 里 `status=running` 的只有本会话；开工时主工作树干净、与 `origin/main` 齐。
+- 版本戳 `4d785263` `chore(release): 0.5.6` —— 33 个文件（root + 10 个工作区包 + 21 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`；四个 private 的 sandbox 插件仍停在 0.2.3）。
+- 发布正文 `0cd8f339` `docs(release): v0.5.6 的发布正文`；注释 tag `v0.5.6` 指过去，一并推上。
+- CI（`main` = `0cd8f339`，run `40178250543`）**22 个作业全绿**；`Deploy docs site` success。
+- 14 件资产：CLI 三件（本机照 `release.yml` 复现，脚本 `/tmp/pack-cli-056.sh`）、桌面 Linux（本机
+  `electron-builder --linux`）、桌面 Windows（`desktop-build.yml` 手工派发 run `40178255894`，三平台全绿）、
+  两个安装脚本。Release id `423274768`，14 件全 `uploaded`，`releases/latest` 指向 v0.5.6。
+- npm：24 个包全到 0.5.6（`@adelie/use-lieflat-charts` 已于 10-24 由别处发过 0.5.5，本轮正常升级）。
+  同一处 registry 滞后还在：三个宿主包第一次报 `✅ Published` 而 registry 上查不到，重试回
+  `409 Cannot publish over previously staged version`，等半分钟再看即已上 —— 逐包用 registry packument 复核。
+- 3003 下载站：`/downloads/index.json` 换 v0.5.6（6 件，size/sha256 来自本轮产物），页头角标 `v0.5.5` → `v0.5.6`；
+  改前备份 `index.json.bak-20261025-v056` / `index.html.bak-20261025-v056`。
+- 现网：`penguin update --check` → 「Installed 0.5.5 · latest 0.5.6」→ `penguin update --yes` 两级 checksum 都过，
+  `Adelie v0.5.6 installed`，`penguin version` = `v0.5.6`；只换 `bin/lib/web/node`，数据根没动。
+  服务进程重启排到 17:25（`systemd-run --on-active=15min --unit=adelie-live-restart-0.5.6`）——
+  这条命令本身跑在 7364 服务端的子进程里，当场重启会打断本轮。
+- OSS 镜像不适用：本仓 2026-10-17 已下线镜像，Release 资产是唯一分发渠道。
+- 带出去的 10 个功能性提交：「原因随框留着」公司页九处（`f99b34dd` 智能体 API 三张框 · `0071572b` 设置里
+  Agent API 关闭 · `3e142b9f` 组织日历 · `e427e030` 频道离开与归档 · `4521cb3d` 组织图招募与单字段编辑 ·
+  `1f8167e2` 删除组织 · `3859ef58` 删除手册文档 · `21b9fe8e` 组织图「离任」· `40bf7203` 加入频道两个入口）
+  与 `c5f6d9e3` 插件库收录图表技能 `use-lieflat-charts`。
+- 汇报：校园邮箱这一轮又只试一次（`/dev/tcp/202.197.64.20/993` 超时），改走飞书。
