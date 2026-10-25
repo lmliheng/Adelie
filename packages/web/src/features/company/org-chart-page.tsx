@@ -4,7 +4,9 @@
  * one menu and no other action: it opens the desk session, and holds the personnel actions
  * below that — hire a subordinate, set budget, change the reporting line, renew the desk (a
  * fresh desk session, and the workspace it runs in), leave. Every one of the personnel actions
- * confirms before it writes the chart file. The card owns when that menu is open (three
+ * confirms before it writes the chart file, and a confirmation that is refused keeps its card
+ * standing with the server's words inside it (the leave card's own `refusal`), where the button
+ * that retries them is. The card owns when that menu is open (three
  * gestures reach it — see chart-card.tsx); this page only supplies the rows, against the
  * panel's own close, and bumps `viewEpoch` whenever the canvas moves the cards out from under
  * an open one.
@@ -129,6 +131,8 @@ export function OrgChartPage() {
   );
   const [renewFor, setRenewFor] = useState<OrgEmployeeItem | null>(null);
   const [leaveFor, setLeaveFor] = useState<OrgEmployeeItem | null>(null);
+  /** The server's own words for a refused leave, drawn in the card that asked, next to its retry. */
+  const [leaveRefusal, setLeaveRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** The view the reader moved to; null follows the fit, which is what the chart opens at. */
   const [view, setView] = useState<CanvasView | null>(null);
@@ -320,16 +324,19 @@ export function OrgChartPage() {
   };
 
   const runLeave = async () => {
-    if (leaveFor === null) return;
+    if (leaveFor === null || busy) return;
     setBusy(true);
     try {
       await api.leaveOrganization(projectId, orgId, leaveFor.agentId);
-      toastSuccess(S.company.chart.left(leaveFor.name));
+      // The card goes with its own leave landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
       setLeaveFor(null);
+      setLeaveRefusal(null);
+      toastSuccess(S.company.chart.left(leaveFor.name));
       void load();
       void company.reloadOrganizations();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setLeaveRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -397,7 +404,17 @@ export function OrgChartPage() {
           {S.company.chart.ceoCannotLeave}
         </span>
       ) : (
-        menuRow(close, MENU_ICONS.leave, S.company.chart.leave, () => setLeaveFor(employee), true)
+        menuRow(
+          close,
+          MENU_ICONS.leave,
+          S.company.chart.leave,
+          () => {
+            // A new question, not the last one: the previous refusal is not its answer.
+            setLeaveRefusal(null);
+            setLeaveFor(employee);
+          },
+          true,
+        )
       )}
     </Menu>
   );
@@ -596,6 +613,7 @@ export function OrgChartPage() {
         busy={busy}
         onClose={() => (busy ? undefined : setLeaveFor(null))}
         onConfirm={() => void runLeave()}
+        refusal={leaveRefusal === null ? undefined : S.common.refused(leaveRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {leaveFor === null ? "" : S.company.chart.leaveConfirm(leaveFor.name)}
