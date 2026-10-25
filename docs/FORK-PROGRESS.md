@@ -15977,3 +15977,11 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
 - `git blame` 一次性 `toastError` 的其余零星写入（组织图、工单箱里的其它写点）按同一判据留给后面的
   轮次；`packages/desktop` 按纪律没碰。
 - 现网（`/root/.adelie`）还是 0.5.6 那一版构架，本轮改动要等下一版才看得见。
+
+### 汇报
+
+- 校园邮箱这一轮只试一次：`mail.py check` 在 IMAP 连接上 `TimeoutError: [Errno 110] Connection
+  timed out`（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在，长度 21 / 16）—— 还是 `202.197.0.0/16`
+  那个网段的问题，不是凭据，也不重试。照上一轮的做法改由飞书送达（
+  `text ok message_id=om_x100b62d5bce6a4a4dfd978f95efef97`），正文留底在 scratchpad 的
+  `r131/report.txt`；下一轮开工再探一次，通了把积压的补发到 `0110230306@csu.edu.cn`。
