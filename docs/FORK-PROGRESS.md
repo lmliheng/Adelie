@@ -1561,7 +1561,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       扫描线在 `features/company/` 上的第九处，还是其中唯一一张**表单**框 —— 被拒时要留的不止一句原话，
       还有那两个字段里刚敲进去的内容。**现在**：只有写入落地才关表单并清空字段；被拒时服务端原话画在
       字段上方（`S.common.refused`），原因与「等谁」原样留着。细节、两态读数与反证见「第一百三十一轮」
-      一节。**还差什么**：`git blame` 一次性 `toastError` 的其余零星写入（组织图、工单箱）按同一判据
+- [x] **7.46 新建工单被拒时，表单留着，填过的每个字段也留着**（**2026-10-26 第一百三十二轮**落地，
+      提交见该节；1 处源码 `features/company/tickets-page.tsx` 的 `CreateTicketDialog` + 1 个新文件
+      `packages/web/e2e/ticket-create-refusal.spec.mjs`（1 条用例）+ changelog 一对，
+      **无新依赖、不碰接口、无新文案**）：7.45 末尾点名的下一处，也是那条「点击即关、失败只弹 toast」
+      扫描线在 `features/company/` 上的第十处 —— 而它是其中唯一一处**写入本来就不关框、只是原因会消失**
+      的写点（新建工单那张表单过去被拒时框留着、字段也留着，可几秒后连为什么被拒都找不到了）。
+      **现在**：被拒时服务端原话经 `S.common.refused` 画在字段上方（`NoticeStrip`、`role="alert"`、
+      正文在 `data-slot="body"`，与详情框里那四张确认框同一套写法），十个字段原样留着；每次打开表单
+      先清掉上一次的原因；写入在途时 `Modal` 的 `onClose` 不再响应（取消按钮本来就置灰，这是第二道）。
+      细节、两态读数与反证见「第一百三十二轮」一节。**还差什么**：`git blame` 其余一次性 `toastError`
+      的写点（组织图的 `openDesk`、日历 / 财务 / 频道 / 手册 / 概览等页面里的零星写入）按同一判据
       留给后面的轮次。
 
 
@@ -2209,6 +2219,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-25 | 7.43 | **加入频道的那张确认框（两个入口）：被拒时框留着，原因也留在框里**（不是移植：2 处源码 `packages/web/src/features/company/channel-view.tsx`（+13 −7：`join()` 不再在 `await` 之前 `setConfirmJoin(false)`，成功那条路径才关框并清 `joinRefusal`；提示条那枚「加入」开框前清旧原因；框的 `onClose` 在写入在途时不再响应；换频道时一并清掉）与 `channel-sidebar.tsx`（+16 −5：侧栏那行的 `join()` 把 `setPendingJoin(null)` 挪到成功之后、失败留在 `joinRefusal`；行的「加入」开框前清旧原因；`onClose` 同上；顺带删掉不再用的 `toastError` 导入），共用组件 `channel-dialogs.tsx`（+9 −1：`JoinChannelConfirm` 多一个可选 `refusal`，原样交给 `ConfirmModal` 的那个槽）+ 1 个新文件 `packages/web/e2e/channel-join-refusal.spec.mjs`（2 条用例，两个入口各一条：被拒 → 取消重开 → 重试落地）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.42 末尾点名的四五个写入点里最靠前的两个 —— 同一张共享的框、两个入口 —— 也是那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第七处。开工时核过：两处都是「写入之前关框 + `catch` 只 `toastError`」，被拒时页面一点没变、框已经不在、原因六秒后自己消失。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 只剩桌面壳一侧 / 既有部署单元 / 非契约项、3.5 / 5.6 / 5.10 拍板、3.6 模型 key、4.1—4.3 明令不动），于是接上一轮末尾排好的下一处。**台账补记**：7.42 当初只进了表与该节、漏了「待办」清单里的一行，本轮一并补上 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型）· `npx oxlint` 四个改动文件 **0 警告 0 错误** · 五个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · web **264 文件 / 3243 通过 / 2 跳过** · server **203 文件 / 2961 通过 / 4 跳过** · hmr 无测试文件（web 与上一轮同数：本笔没有新增纯逻辑 —— 规则是界面状态，由 e2e 钉住）· **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**156 passed（9.4m）、0 failed**（上一轮 154 + 本笔 2）· **反证（同一份 spec，两种产物）**：先重建 web 得到改后产物（`r128/after-dist`），再把这三处源码 `git stash push --` 三个路径（只带这三个）、重建、复制成 `r128/before-dist`、`git stash pop`、再重建；两份产物各由一个服务端以 `ADELIE_WEB_DIST` 指过去（各自一次性数据根）—— **改后 2 passed（6.6s）**、**改前 2 failed**（都死在 `getByRole('dialog', { name: '加入频道' }).getByText('the channel roster is mid-rewrite')` 上，`element(s) not found`：改前框已经关了）· **两态实测真看一眼**（探针 `r128/probe.mjs`，两态各跑一次、两个入口各测一遍，同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** 频道页 `{cardVisible:false, cardHasReason:false, alertInCard:0, noticeCarriesReason:true}` → 6.5 s 后 `noticeCarriesReason:false`（屏幕上一句解释都没有了），侧栏入口同样 `cardVisible:false / noticeCarriesReason:true` —— 截图 `r128/before/shots/2-view-refused.png` 里正是「框不在、一条红 toast 浮在频道上方」；**改后** 两个入口都是 `{cardVisible:true, cardHasReason:true, alertInCard:1, noticeCarriesReason:false}`，6.5 s 后原样还在 —— 截图 `r128/after/shots/2-view-refused.png` 与 `5-sidebar-refused.png` 里原因画在框的句子下面。两态服务端上的成员表都不变（`{isMember:false, members:["agent:r128probe_ceo"]}`），console 里的 error 只有三条：刻意造的 500 两条（两个入口各一次）与一条 `/api/projects/…/machines` 403（那条路由本来就只给管理员，探针账号是普通成员），无 pageerror · 端口只用 8940 / 8941（单 spec 两态）、8950 / 8951（两态探针）与 8930 / 8931（整套 e2e），跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在脚本自己的一次性 `mktemp` 根与 scratchpad 的 `r128/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `40bf7203` |
 | 2026-10-25 | 7.44 | **工单那三张确认框与被拖拽的移动框：被拒时框留着，原因也留在框里**（**补记：第一百三十轮落地时只进了「待办」清单与那一节、漏了这一行，第一百三十一轮一并补上**；不是移植：2 处源码 `packages/web/src/features/company/ticket-dialog.tsx`（`run()` 多一个可选 `refuse`、三张框共用一份 `refusal`、`commitSave` / `commitMove` / 新的 `commitUnblock` 把关框挪进写入内部、`MoveTicketConfirm` 多一个可选 `refusal`）与 `tickets-page.tsx`（看板的 `confirmMove` 把拒绝留在 `moveRefusal`）+ 1 个新文件 `packages/web/e2e/ticket-refusal.spec.mjs`（4 条：保存 / 详情框里的移动 / 解除阻塞 / 看板上的移动）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第八处 —— 四处写入都在落地之后才关框，被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽，重试按钮正上方；开框前清掉上一次的原因（含换工单、把卡片拖到新的一列），写入在途时 `onClose` 不再响应 | 六包 `typecheck` `EXIT=0`；`npx oxlint` 0 警告 0 错误（2287 文件）；`prettier --check` 与 `git diff --check` 干净 · 逐包 test `EXIT=0`：core **1420 通过 / 6 跳过**（69 文件 + 1 跳过）· ui **1053**（130）· server **2970 / 4 跳过**（203）· cli **561**（38）· web **3249 / 2 跳过**（265）· 真服务（8940）+ mock（8942）+ 当天新构建的 `packages/*/dist`：新 spec **4 / 4 通过（13.7s）**，回归 `company.spec.mjs` **1 / 1 通过（19.7s）**；探针 4 张截图肉眼过，console 只有既有的 `/machines` 403 与刻意造的两次 500，无 `pageerror` · 端口只用 8940 / 8942 | `37db5bca` |
 | 2026-10-25 | 7.45 | **「标记阻塞」那张表单：被拒时表单留着，填过的原因也留着**（不是移植：1 处源码 `packages/web/src/features/company/ticket-dialog.tsx`（+46 −21：底栏那段内联写入收成 `commitBlock()`、关表单与清空字段都挪进写入内部、与另外三张框共用那份 `refusal`、表单顶部画一条 `NoticeStrip`（`role="alert"`，正文在 `data-slot="body"`）、`Modal` 的 `onClose` 在写入在途时不再响应）+ 既有的 `packages/web/e2e/ticket-refusal.spec.mjs` 增加第 5 条（标记阻塞）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.44 末尾点名的下一处，也是那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第九处、其中唯一一张**表单**框 —— 被拒时要留的不止一句原话，还有那两个字段里刚敲进去的内容。**现在**：只有写入落地才关表单并清空字段；被拒时服务端原话画在字段上方（`S.common.refused`），原因与「等谁」原样留着，重试就是再按一次；开表单前清掉上一次的原因，换工单时也清 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件 `prettier --check` 干净（前两份首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · web **265 / 3249 通过 / 2 跳过** · server **203 / 2970 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器单 spec**（`/root/adelie-fork-data/r131-e2e`，服务 8940、mock 8941，`packages/{core,server,web}/dist` 都是本轮新构建）：`ticket-refusal.spec.mjs` **5 passed（15.9s）**，还原后复跑 **5 passed（17.3s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push -- packages/web/src/features/company/ticket-dialog.tsx`（只带这一个路径）、重建 web、同一条命令 → **1 failed / 4 passed**，新那条死在 `getByRole('dialog', { name: '标记阻塞' }).getByText(…mid-rewrite…)`（`element(s) not found`：改前表单已经关了）· **两态实测真看一眼**（探针 `r131/probe.mjs`，两态各跑一次，同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `{formVisible:false, inFormReason:0, noticeCarriesReason:true}` → 6.5 s 后 `noticeCarriesReason:false`（屏幕上一点解释都没有了），截图 `r131/before/shots/2-refused.png` 里正是「表单不在、一条红 toast 浮在工单上方」；**改后** `{formVisible:true, inFormReason:1, noticeCarriesReason:false, fieldValue:"等市场站点的备案下来"}`，6.5 s 后原样还在 —— 截图 `r131/after/shots/2-refused.png` 里原因画在字段上面、原因还在框里；两态服务端上的工单都没被标记阻塞（`blockedOnServer:false`），console 里的 error 只有三条：登录前的 `/api/me` 401（这个 App 的正常首访应答）、`/api/projects/…/machines` 403（那条路由本来就只给管理员，探针账号是普通成员）与刻意造的 500，**无 `pageerror`** · 端口只用 8940 / 8941，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r131-e2e` 与 scratchpad 的 `r131/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `9eeef95d` |
+| 2026-10-26 | 7.46 | **新建工单被拒时，表单留着、填过的每个字段也留着**（不是移植：1 处源码 `packages/web/src/features/company/tickets-page.tsx` —— `CreateTicketDialog` 加一份 `refusal` 状态、写入失败的原话改由 `NoticeStrip` 画在字段上方、每次开表单先清空它、`Modal` 的 `onClose` 在写入在途时不再响应（`toastError` 也从这份文件的 import 里去掉了）+ 1 个新文件 `packages/web/e2e/ticket-create-refusal.spec.mjs`（1 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第十处，也是其中唯一一处**写入不关框、只是原因会消失**的写点 —— 被拒之后几秒，通知没了，面板一点没变、按钮又亮着，没有任何东西说明为什么。现在原因留在表单里、字段原样留着，重试就是再按一次 | 六包 `typecheck` `EXIT=0`；`npx oxlint` 两个改动文件 0 警告 0 错误；`prettier --check` 与 `git diff --check` 干净 · 逐包 test `EXIT=0`：core **1420 通过 / 6 跳过**（69 文件）· ui **1053**（130）· cli **561**（38）· web **3249 通过 / 2 跳过**（265 文件）· server **2970 通过 / 4 跳过**（203 文件）· **真服务**（8950）+ mock（8951）+ 当天新构建的 `packages/{core,server,web}/dist`：新 spec **1 / 1 通过（3.3s）**，回归 `ticket-refusal.spec.mjs` **5 / 5 通过**；**反证**：把那一处源码 `git stash push --`（只带这一个路径）、重建 web → 同一条命令 **1 failed**（`element(s) not found`：改前表单里没有那句原话）· **两态探针**（`r132/probe.mjs`，各跑一次，同一个 `page.route` 500，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `reasonInForm:0`、`reasonInNotice:1 → 0`（通知几秒后自己消失，截图 `r132/before/shots/3-six-seconds-later.png` 里表单还在、一句原因都没有）；**改后** `reasonInForm:1`、`reasonInNotice:0`，6.5 s 后原样还在（截图 `r132/after/shots/2-refused.png` 里红色提示条在标题上方）；两态服务端上的工单数都是 0、两态 console 的 error 只有既有的 `/machines` 403 与刻意造的 500，无 `pageerror` · 端口只用 8950 / 8951（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `df07b72d` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -15985,3 +15996,78 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
   那个网段的问题，不是凭据，也不重试。照上一轮的做法改由飞书送达（
   `text ok message_id=om_x100b62d5bce6a4a4dfd978f95efef97`），正文留底在 scratchpad 的
   `r131/report.txt`；下一轮开工再探一次，通了把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 第一百三十二轮：新建工单被拒时，表单留着、填过的每个字段也留着（2026-10-26，条目 7.46）
+
+### 为什么是这一条
+
+待办里能一轮做完的条目仍然没有（2.2c 剩下的三处全压在桌面壳 / 既有部署单元 / 非契约项上，而本轮
+明令不碰 desktop；3.5 / 5.6 / 5.10 要拍板、3.6 要模型 key、4.1—4.3 明令不动），所以接第一百三十一轮
+末尾点名的下一处 —— 那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第十处：
+工单箱的「新建工单」（`CreateTicketDialog`）。前九处被拒时丢的是框或表单，这一处的形态略不同：框本来
+就不在写入前关、十个字段也留着，**丢的只有那句原因** —— 通知几秒后自己消失，面板一点没变、按钮又亮着，
+没有任何东西说明为什么，要重试只能凭记忆再猜一次。
+
+开工时这棵树是干净的，`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date.`，
+主线尖端是 `8ae714ad`（第一百三十一轮的汇报渠道补记）。
+
+### 改了什么（1 处源码 + 1 个新 spec + 一对 changelog）
+
+- `packages/web/src/features/company/tickets-page.tsx`：`CreateTicketDialog` 加一份 `refusal` 状态
+  （与详情框里那四张确认框同一套写法）；`submit` 的 `catch` 不再 `toastError`，改把
+  `apiErrorText(e)` 交给它 —— `toastError` 因此也从这份文件的 import 里去掉了。表单顶部（第一个字段
+  之上）画一条 `NoticeStrip`（`tone="danger"`、`role="alert"`、正文在 `data-slot="body"`），文字是
+  `S.common.refused(refusal)`；每次打开表单（`useEffect` 的 `[open]`）先清掉上一次的那句。`Modal` 的
+  `onClose` 在写入在途时不再响应（取消按钮本来就置灰，这是第二道）。
+- `packages/web/e2e/ticket-create-refusal.spec.mjs`（新文件，1 条用例）：组织与 Project 走接口造
+  （公司模式先由管理员打开、Project 配 mock 模型以免空态浮层压住看板）；打开看板 → 点「新建工单」→
+  填标题与目标 → 用 `page.route` 把 `POST …/tickets` 拒成 500 + 自有原话 → 原话出现在表单里、通知区里
+  没有、表单还在、两个字段还是刚填的、服务端上的工单数仍是 0 → 取消后重开是一张干净表单、不带旧原因 →
+  放行后在**同一张表单**上重试：表单关掉、看板上多了这张工单、它自己的详情框随之打开。
+- changelog 一对 `changelog/unreleased/2026-10-26-ticket-create-refusal{,.zh}.md`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` `EXIT=0`；`gen:ifaces` 报 `src/ifaces.json unchanged`（195 接口 / 589 类型 —— 本笔
+  不动服务契约）。
+- `npx oxlint` 两个改动文件 **0 警告 0 错误**；两个改动文件 `prettier --check` 干净；`git diff --check` 干净。
+- 逐包测试全绿：core **1420 通过 / 6 跳过**（69 文件 + 1 跳过）、ui **1053**（130）、cli **561**（38）、
+  web **3249 通过 / 2 跳过**（265 文件）、server **2970 通过 / 4 跳过**（203 文件）。
+- **真服务 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r132-e2e`，服务端 8950、mock 8951，
+  `packages/{core,server,web}/dist` 都是本轮新构建的）：新 spec **1 / 1 通过（3.3s）**；相邻回归
+  `ticket-refusal.spec.mjs` **5 / 5 通过**（两条一起跑 6 passed / 19.8s）。第一次跑时那条用例红在
+  「`目标` 这个 textbox 找不到」—— 本树 `Input`/`Textarea` 的无障碍名把 hint 也算了进去
+  （`目标 要达成什么，一段话即可`），选择器改成 `/^目标/` 前缀匹配后转绿。
+- **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push --`（只带这一个路径）、重建 web、
+  同一条命令 → **1 failed**，死在
+  `getByRole('dialog', { name: '新建工单' }).getByText('the ticket files are mid-rewrite')`
+  （`element(s) not found`：改前表单里没有那句原话）；`git stash pop` 后重建即回到 1 / 1。
+- **两态实测真看一眼**（探针 `r132/probe.mjs`，两态各跑一次，同一个 `page.route` 500，1440×900，
+  读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `{formVisible:true, reasonInForm:0, reasonInNotice:1}`
+  → 6.5 s 后 `reasonInNotice:0`，截图 `r132/before/shots/3-six-seconds-later.png` 里表单还在、字段
+  里还是那句话，可**一句原因都没有**；**改后** `{formVisible:true, reasonInForm:1, reasonInNotice:0,
+  title:"把插件市场搬上博客", goal:"博客那边也要能搜到插件，第一条链接指向市场首页。"}`，6.5 s 后原样
+  还在 —— 截图 `r132/after/shots/2-refused.png` 里「操作被拒绝：the ticket files are mid-rewrite」
+  画在标题上方。两态服务端上的工单数都是 **0**（`boardCount:0`，一次写入都没落地）；console 里的 error
+  只有两条：`/api/projects/…/machines` **403**（那条路由本来就只给管理员，探针账号是普通成员）与刻意
+  造的 **500**，**没有一条 `pageerror`**。
+- 端口只用 8950（服务端）与 8951（mock），跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `/root/adelie-fork-data/r132-e2e` 与 scratchpad 的 `r132/` 下（`packages/*/dist`、
+  `packages/web/test-results/` 都是产物，未 `git add`）。
+
+### 台账
+
+- 7.46 的清单条目与「已完成的轮次」表行都是本轮新写的。
+
+### 没做 / 还差什么
+
+- `git blame` 其余一次性 `toastError` 的写点（组织图的 `openDesk`，以及日历 / 财务 / 频道 / 手册 /
+  概览里那些零星写入）按同一判据留给后面的轮次；`packages/desktop` 按纪律没碰。
+- 现网（`/root/.adelie`）还是 0.5.6 那一版构架，本轮改动要等下一版才看得见。
+
+### 汇报
+
+- 校园邮箱这一轮只试一次（两次 `timeout 60 python3 mail.py check` 都是**超时**、`EXIT=124`，连 IMAP 问候
+  都没到）—— 还是 `202.197.0.0/16` 那个网段的问题，不是凭据（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在，
+  长度 21 / 16），不重试。照上一轮的做法改由飞书送达（`text ok message_id=om_x100b62d12fce7ca4dfc862477a6a537`），
+  正文留底在 scratchpad 的 `r132/report.txt`；下一轮开工再探一次，通了把积压的补发到 `0110230306@csu.edu.cn`。
