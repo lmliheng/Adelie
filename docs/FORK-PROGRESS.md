@@ -2167,6 +2167,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-24 | 7.39 | **组织图的「招募下属」与单字段编辑（预算 / 汇报线）两张确认框：被拒时框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/company/employee-dialogs.tsx`（+33 −7：`HireDialog.hire` 与 `EmployeeEditDialog.save` 两处 `catch` 不再 `setConfirmOpen(false)` + `toastError`，改为把服务端原话留在 `hireRefusal` / `saveRefusal` 里，关框只留在成功那条路径）+ 1 个新文件 `packages/web/e2e/employee-refusal.spec.mjs`（2 条用例，一张框一条：被拒 → 取消重开 → 重试落地）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.38 末尾点名的下一处，也是那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第三处；两处的形态一样 —— 被拒时组织图（屏幕上的与磁盘上的）一点没变，原因却落进一条六秒后自己消失、还浮在一张已经不在的框上的通知里。**现在**：被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；两个写入在途时都不再发（`busy` 置灰之外的第二道），开框前先清上一次的原因，`EmployeeEditDialog` 在对话框本身打开时也清一次 | 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`（195 接口 / 589 类型）** —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件（源码 / 新 spec / 一对 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · server **203 文件 / 2961 通过 / 4 跳过** · web **264 文件 / 3243 通过 / 2 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`bash e2e/run.sh`，脚本自带 mock / `mktemp` 数据根）：**151 passed（10.6m）、0 failed、`exit 0`**（上一轮 149 + 本笔 2）· **反证（同一份 spec，两种产物）**：只重建 web 得到改后产物（`r124/after-dist`）与改前产物（同一处源码退回 `HEAD` 再建，`r124/before-dist`），同一份一次性数据在上分别起服务：**改后 2 passed（10.9s）**，**改前 2 failed**（两条都死在框里那句原因上 —— `getByRole('dialog', { name: '招募下属' })` / `…'设置 Dana Dev 的预算'` 里找不到 `the org chart is mid-rewrite`，因为改前那张框已经自己关了）· **两态实测真看一眼**（探针 `r124/probe.mjs`，两个写入都由 `page.route` 拒成 500，两态各跑一次）：**改前** `cardVisible: false`、`noticeCarriesReason: true`（原因只在顶部通知里，框已经没了）；**改后** 两张框 `cardVisible: true` / `cardHasReason: true` / 框里一条 `role=alert`、`noticeCarriesReason: false`；两态服务端上的组织图都不变（员工数不变、`Dana Dev` 的预算仍是 30 USD）；截图 `r124/shots/{after,before}-{hire,budget}.png` 里能直接看出「原因在框里」与「框没了、原因只在顶部一条通知里」的差别 · 端口只用 8940–8943（整套 e2e 与两态探针，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 自己的 `r124/` 下，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `4521cb3d` |
 | 2026-10-25 | 7.40 | **组织设置的「删除组织」确认框：被拒时框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/company/org-dialogs.tsx`（+15 −3：`doDelete()` 的 `catch` 不再 `toastError`，改为把服务端原话留在新加的 `deleteRefusal` 里；关框与成功通知只在 `await` 之后那条路径上，并顺手清掉原因；`doDelete()` 先看 `busy`；删除行那枚按钮开框前清掉旧原因；`ConfirmModal` 接上 `refusal` 槽，写入在途时 `onClose` 不再响应）+ 1 个新文件 `packages/web/e2e/org-delete-refusal.spec.mjs`（1 条用例：被拒 → 取消重开 → 重试落地）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.39 末尾点名的下一处，也是那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第四处。**台账纠正**：前两轮把这里写成「`onClose()` 在写入之前」，而今天的代码里这张框被拒时本来就开着（`setConfirmDelete(false)` 只在成功路径上）—— 真正的毛病与 7.38 同形：原因只进了 toast。**现在**：被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；开框前清掉上一次的原因与 id；写入在途时只认一次点击 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **203 / 2961 通过 / 4 跳过** · web **264 文件 / 3243 通过 / 2 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**152 passed（9.4m）、0 failed、`exit 0`**（上一轮 151 + 本笔 1）· **反证（同一份 spec，两种产物）**：`r125/after-dist`（本笔）与 `r125/before-dist`（同一处源码退回 `HEAD` 再建，`git stash push -- <该文件>` 只带这一个路径），同一个服务端以 `ADELIE_WEB_DIST` 指过去 —— **改后 1 passed（3.2s）**、**改前 1 failed**（死在框里找不到 `the organization store is mid-rewrite`）· **两态实测真看一眼**（探针 `r125/probe.mjs`，写入由 `page.route` 拒成 500）：**改前** `cardVisible: true` / `cardHasReason: false` / `alertInCard: 0` / `noticeCarriesReason: true`（框里空着、一条 toast 浮在设置对话框上方）；**改后** `cardVisible: true` / `cardHasReason: true` / `alertInCard: 1` / `noticeCarriesReason: false`；两态服务端上的组织都还在（`stillListed: ["r125probe"]`），console 只有刻意造的 500 与一条 `/api/projects/…/machines` 403（该路由本来就只给管理员，探针账号是普通成员），无 pageerror；截图 `r125/{before,after}/shots/refused-delete.png` · 端口只用 8950 / 8951（单 spec 与两态）与 8930 / 8931（整套 e2e），跑完都已停，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的 `r125/data` 与 `run.sh` 的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `1f8167e2` |
 | 2026-10-25 | 7.41 | **手册里删除文档的确认框：被拒时框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/company/handbook-page.tsx`（+15 −5：`remove()` 的 `catch` 不再 `toastError`，改为把服务端原话留在新加的 `deleteRefusal` 里，并在落地那条路径上清掉；文档头部那枚「删除」开框前先清旧原因；`ConfirmModal` 接上 `refusal` 槽）+ 1 个新文件 `packages/web/e2e/handbook-delete-refusal.spec.mjs`（1 条用例：被拒 → 取消重开 → 重试落地）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.40 末尾点名的下一处，也是那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第五处。开工时核过：这张框过去被拒时本来就开着（`setDeleteOpen(false)` 只在成功路径上），毛病与 7.38 同形 —— 原因只进了 toast。**现在**：被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；开框前清掉上一次的原因；写入在途时 `onClose` 不响应（`busy` 置灰之外的第二道）。细节、两态读数与反证见「第一百二十六轮」一节。**还差什么**：`features/company/` 里还没接 `refusal` 槽的三处是 `channel-dialogs.tsx` 的「加入频道」、`org-chart-page.tsx` 的「离开组织图」（`runLeave` 的 `catch` 仍只 `toastError`）、`ticket-dialog.tsx` 那三张，按「一轮一处」往下一轮排 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件（源码 / 新 spec / 一对 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · server **203 文件 / 2961 通过 / 4 跳过** · web **264 文件 / 3243 通过 / 2 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**153 passed（9.4m）、0 failed、`exit 0`**（上一轮 152 + 本笔 1）· **反证（同一份 spec，两种产物）**：先重建 web 得到改后产物（`r126/after-dist`），再把这一处源码 `git stash push -- packages/web/src/features/company/handbook-page.tsx`（只带这一个路径）、重建、复制成 `r126/before-dist`、`git stash pop`、再重建；两份产物各由一个服务端以 `ADELIE_WEB_DIST` 指过去（各自一次性数据根）—— **改后 1 passed（3.6s）**、**改前 1 failed**（死在 `getByRole('dialog', { name: '删除文档' }).getByText('the organization store is mid-rewrite')` 上）· **两态实测真看一眼**（探针 `r126/probe.mjs`，两态各跑一次，同一个 `page.route` 500）：**改前** `cardVisible: true` / `cardHasReason: false` / `alertInCard: 0` / `noticeCarriesReason: true` —— 截图 `r126/before/shots/refused-delete.png` 里正好看得见「框里空着、一条 toast 浮在框上方」；**改后** `cardVisible: true` / `cardHasReason: true` / `alertInCard: 1` / `noticeCarriesReason: false` —— 截图 `r126/after/shots/refused-delete.png` 里原因画在框的句子下面。两态服务端上的文档都还在（`stillListed: ["README.md", "decisions/hire-plan.md"]`），console 里的 error 只有两条：刻意造的 500 与一条 `/api/projects/…/machines` 403（那条路由本来就只给管理员，探针账号是普通成员），无 pageerror · 端口只用 8940 / 8941（单 spec 的 server + mock）、8942 / 8943（两态产物）与 8930 / 8931（整套 e2e），跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的 `r126/` 下与 `run.sh` 自己的 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `3859ef58` |
+| 2026-10-25 | 7.42 | **组织图的「离任」确认框：被拒时框留着，原因也留在框里**（不是移植：1 处源码 `packages/web/src/features/company/org-chart-page.tsx`（+18 −6：`runLeave()` 的 `catch` 不再 `toastError`，改为把服务端原话留在新加的 `leaveRefusal` 里；关框（`setLeaveFor(null)`）与成功通知都只在 `await` 之后那条路径上，并顺手清掉原因；`runLeave()` 先看 `busy`；卡片菜单那行「离任」开框前清掉旧原因；`ConfirmModal` 接上 `refusal` 槽）+ 1 个新文件 `packages/web/e2e/org-chart-leave-refusal.spec.mjs`（1 条用例：被拒 → 取消重开 → 重试落地）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.41 末尾点名的下一处，也是那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第六处。开工时核过：这张框过去被拒时本来就开着（`setLeaveFor(null)` 只在成功路径上），毛病与 7.38 / 7.40 / 7.41 同形 —— 原因只进了 toast。**现在**：被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；开框前清掉上一次的原因；写入在途时只认一次点击。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 剩下的写侧三处全压在桌面壳 / 既有部署单元 / 非契约项上，而本轮明令不碰 desktop；3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖）；**台账纠正**：7.41 记的「`channel-dialogs.tsx` 的『加入频道』」不准 —— 那两个表单本来就把服务端原话画在框里（`setFormError`），真正同形的是 `channel-view.tsx` 的 `join()`（`setConfirmJoin(false)` 在写入之前、`catch` 只 `toastError`）、`channel-sidebar.tsx` 的 `join()`（`setPendingJoin(null)` 在写入之前），另有 `ticket-dialog.tsx` 的 `run()` 撑起的三张框（保存 / 解除阻塞 / 移动）。**还差什么**：上面这四五个写入点按「一轮一处」往下一轮排 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件（源码 / 新 spec / 一对 changelog）`prettier --check` 干净（前两份首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · web **264 文件 / 3243 通过 / 2 跳过** · server **203 文件 / 2961 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**154 passed（9.4m）、0 failed、`exit 0`**（上一轮 153 + 本笔 1）· **反证（同一份 spec，两种产物）**：先重建 web 得到改后产物（`r127/after-dist`），再把这一处源码 `git stash push -- packages/web/src/features/company/org-chart-page.tsx`（只带这一个路径）、重建、复制成 `r127/before-dist`、`git stash pop`、再重建；两份产物各由一个服务端以 `ADELIE_WEB_DIST` 指过去（各自一次性数据根）—— **改后 1 passed（5.9s）**、**改前 1 failed**（死在 `card.getByText('the org chart is mid-rewrite')` 上，`element(s) not found`）· **两态实测真看一眼**（探针 `r127/probe.mjs`，两态各跑一次，同一个 `page.route` 500，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `{cardVisible:true, cardHasReason:false, alertInCard:0, noticeCarriesReason:true}` → 6.5 s 后 `{cardHasReason:false, noticeCarriesReason:false}`（屏幕上一句解释都没有了）—— 截图 `r127/before/shots/2-refused.png` 里正是「框里空着、一条 toast 浮在画布上方」；**改后** `{cardVisible:true, cardHasReason:true, alertInCard:1, noticeCarriesReason:false}`，6.5 s 后原样还在 —— 截图 `r127/after/shots/2-refused.png` 里原因画在框的句子下面。两态服务端上的组织图都不变（`stillListed: ["r127probe_ceo","r127probe_dev"]`），console 里的 error 只有两条：刻意造的 500 与一条 `/api/projects/…/machines` 403（那条路由本来就只给管理员，探针账号是普通成员），无 pageerror · 端口只用 8940–8943（单 spec 两态）、8950–8953（两态探针）与 8930 / 8931（整套 e2e），跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在脚本自己的一次性 `mktemp` 根与 scratchpad 的 `r127/` 下，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `21b9fe8e` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -15510,3 +15511,91 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
   握手也超时 —— 还是 `202.197.0.0/16` 那个网段的问题，不是凭据。于是照前几轮的做法改由飞书送达，
   正文留底在 scratchpad 的 `r126/report.md`；下一轮开工先再探一次，通了再把积压的补发到
   `0110230306@csu.edu.cn`。
+
+## 第一百二十七轮：组织图的「离任」确认框被拒时，框留着、原因也留在框里（2026-10-25，条目 7.42）
+
+### 为什么是这一条
+
+待办里能一轮做完的条目仍然没有（2.2c 剩下的写侧三处全压在桌面壳 / 既有部署单元 / 非契约项上，
+而本轮明令不碰 desktop；3.5 / 5.6 / 5.10 要拍板、3.6 要模型 key、4.1—4.3 明令不动），所以接第一百
+二十六轮末尾点名的下一处 —— 那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第六处：
+组织图里员工卡菜单的「离任」确认框。开工时这棵树是干净的（`git status --short` 空），
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date.`，主线尖端是 `aa542f18`
+（第一百二十六轮的台账提交）。
+
+开工时核过代码：这张框被拒时本来就还开着（`setLeaveFor(null)` 只在 `await` 成功那条路径上），真正的
+毛病与 7.38 / 7.40 / 7.41 同形 —— `runLeave()` 的 `catch` 只 `toastError(apiErrorText(e))`，框里一个字
+都没有，六秒后通知自己消失、还浮在画布上方，读者只看到按钮又亮起来、员工却还在组织图里，重试还得重新
+打开菜单。于是按同一条改法做。
+
+### 改了什么（1 处源码 + 1 个新 spec + 一对 changelog）
+
+- `packages/web/src/features/company/org-chart-page.tsx`（+18 −6）：
+  - `OrgChartPage` 新增 `leaveRefusal`（`string | null`）；`runLeave()` 的 `catch` 不再 `toastError`，
+    改为把服务端原话记进它；关框（`setLeaveFor(null)`）与成功通知都留在落地那条路径上，并顺手清掉原因。
+  - 卡片菜单里那行「离任」在开框前先清掉上一次的原因 —— 那是一句属于上次那次尝试的话。
+  - `runLeave()` 入口先看 `busy`（`busy` 置灰之外的第二道，写入在途只认一次点击）；`onClose` 本来就
+    在写入在途时不响应，这条没动。
+  - `ConfirmModal` 接上 `refusal={… === null ? undefined : S.common.refused(…)}`（应用既有的
+    「操作被拒绝：」前缀，无新文案）；文件头模块注释补一句这条规则。
+- `packages/web/e2e/org-chart-leave-refusal.spec.mjs`（新，1 条）：公司模式由管理员的主开关打开
+  （幂等），用户 / 模型凭据 / 组织（CEO 由服务端在创建时一并建出）与那位下属（`POST …/employees`，
+  `newAgent`）都由真接口造。用 `page.route` 把 `DELETE …/organizations/<组织>/employees/<员工>` 拒成
+  500（`org_chart_locked`，应用没有本地文案的码），断言：框、框里那句话与组织图都不变，**通知区不含那句
+  原因**（那里可能有公司内测自己的提示，所以按文字判、不按「区域为空」判）；取消后重开不带旧原因；
+  放行重试 → 框关掉、员工的卡片从画布上消失、组织图里只剩 CEO。
+- changelog 一对 `changelog/unreleased/2026-10-25-org-chart-leave-refusal{,.zh}.md`。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（core / server / web / ui / cli / hmr 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`（195 接口 / 589 类型）—— 本笔不动服务契约）。
+- `npx oxlint` 两个改动文件 **0 警告 0 错误**；四个改动文件 `prettier --check` 干净（源码与 spec 首跑
+  各一条，`--write` 后复检）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 /
+  1053** · cli **38 文件 / 561** · web **264 文件 / 3243 通过 / 2 跳过** · server **203 文件 / 2961 通过 /
+  4 跳过** · hmr 无测试文件（web 与上一轮同数：本笔没有新增纯逻辑 —— 规则是界面状态，由 e2e 钉住）。
+- **真服务 + 真浏览器整套 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`：自带 mock LLM 与 `mktemp` 数据根、
+  真 `packages/web/dist`）：**154 passed（9.4m）、0 failed、`exit 0`**（上一轮 153 + 本笔 1）。
+- **反证（同一份 spec，两种产物）**：先重建 web 得到改后产物（`r127/after-dist`）；再把这一处源码
+  `git stash push -- packages/web/src/features/company/org-chart-page.tsx`（只带这一个路径）、重建 web、
+  复制成 `r127/before-dist`、`git stash pop`、再重建。两份产物各由一个服务端以 `ADELIE_WEB_DIST`
+  指过去（各自一次性数据根）：**改后 1 passed（5.9s）**，**改前 1 failed** —— 死在
+  `card.getByText('the org chart is mid-rewrite')` 上（`element(s) not found`，改前那张框里没有这句话）。
+- **两态实测真看一眼**（探针 `r127/probe.mjs`，两态各跑一次，同一个 `page.route` 500，1440×900，读数取
+  被拒后 1.5 s 与 6.5 s 两次）：**改前** `cardVisible: true` / `cardHasReason: false` / `alertInCard: 0` /
+  `noticeCarriesReason: true`，6.5 s 后 `cardHasReason: false` 且 `noticeCarriesReason: false`（屏幕上一句
+  解释都没有了）—— 截图 `r127/before/shots/2-refused.png` 里正好看得见「框里空着、一条 toast 浮在画布
+  上方」；**改后** `cardVisible: true` / `cardHasReason: true` / `alertInCard: 1` /
+  `noticeCarriesReason: false`，6.5 s 后原样还在 —— 截图 `r127/after/shots/2-refused.png` 里原因画在框的
+  句子下面。两态服务端上的组织图都不变（`stillListed: ["r127probe_ceo", "r127probe_dev"]`）。两态
+  console 里的 error 只有两条：刻意造的 500 与一条 `/api/projects/…/machines` 403（那条路由本来就只给
+  管理员，探针账号是普通成员），无 pageerror。
+- 端口只用 8940—8943（单 spec 与两态产物）、8950—8953（两态探针）与 8930 / 8931（整套 e2e），跑完都已
+  停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在脚本自己的 `mktemp` 根与 scratchpad 的
+  `r127/` 下，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、
+  `packages/web/test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 还差什么
+
+- **台账纠正**：第一百二十六轮把「`channel-dialogs.tsx` 的『加入频道』」记成还没接 `refusal` 槽的一处，
+  复核后不准 —— 那两个表单（新建频道 / 重命名那类）本来就把服务端原话画在框里（`setFormError`）。
+  真正同形的还在别处：`channel-view.tsx` 的 `join()`（`setConfirmJoin(false)` 在写入之前、`catch` 只
+  `toastError`）、`channel-sidebar.tsx` 的 `join()`（`setPendingJoin(null)` 在写入之前、同样只 toast），
+  另有 `ticket-dialog.tsx` 的 `run()` 撑起的三张框（保存确认 / 解除阻塞 / 移动）—— 按「一轮一处」往
+  下一轮排。
+- 组织设置里 Save / 暂停恢复、工单对话框里没有框的写入仍只弹 toast；它们不在扫描线的下一格里，留给后面
+  的轮次按同一判据决定要不要收。
+- 待办里能一轮做完的条目仍然没有（2.2c 只剩桌面壳一侧 / 既有部署单元 / 非契约项、3.5 / 5.6 / 5.10 拍板、
+  3.6 模型 key、4.1—4.3 明令不动）。
+- 本轮没有改动 `.agents/`、`packages/docs/`、`changelog/` 里的历史与 `packages/desktop`（按 2.1c / 2.5
+  与轮次纪律）。
+
+### 汇报
+
+- 第 6 步的收件人 `0110230306@csu.edu.cn` 这一轮**仍然发不出去**：`mail.py check` 先后 60 s / 90 s 两次
+  都在登录这一步超时（`RC=124`）、一个字符没返回；`mail.py send` 120 s 同样超时（`RC=124`）—— 还是
+  `202.197.0.0/16` 那个网段的问题，不是凭据。于是照前几轮的做法改由飞书送达（`text ok message_id=
+  om_x100b62e33ff3fca0c0ec07438304027`），正文留底在 scratchpad 的 `r127/report.md`；下一轮开工再探
+  一次，通了把积压的补发到 `0110230306@csu.edu.cn`。
