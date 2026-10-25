@@ -265,17 +265,24 @@ export function ChannelTextDialog({
  * "Join this channel?". Joining is not a destructive act but it is a standing one: from then
  * on this channel's @-mentions reach the reader, which is what the body says rather than
  * "are you sure".
+ *
+ * A refused join keeps the card standing with the server's words inside it (`refusal`), next to
+ * the button that retries it: the toast both entry points used to raise dismissed itself out of
+ * the card the reader was still looking at.
  */
 export function JoinChannelConfirm({
   open,
   busy,
   onClose,
   onConfirm,
+  refusal,
 }: {
   open: boolean;
   busy: boolean;
   onClose: () => void;
   onConfirm: () => void;
+  /** The server's words for a refused join; absent (not empty) when nothing was refused. */
+  refusal?: string;
 }) {
   return (
     <ConfirmModal
@@ -287,6 +294,7 @@ export function JoinChannelConfirm({
       busy={busy}
       onClose={onClose}
       onConfirm={onConfirm}
+      {...(refusal !== undefined ? { refusal } : {})}
     >
       <p className="text-sm text-gray-600 dark:text-gray-300">{S.company.channels.joinConfirm}</p>
     </ConfirmModal>

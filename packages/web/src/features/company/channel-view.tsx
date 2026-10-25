@@ -29,7 +29,8 @@
  *
  * A channel the reader has not joined offers Join instead of the composer — people may read
  * every channel but post only in the ones they are in; joining asks first, because it is what
- * puts this channel's @-mentions in front of the reader from then on. An archived channel says
+ * puts this channel's @-mentions in front of the reader from then on, and a refused join keeps
+ * that card standing with the server's words inside it. An archived channel says
  * it is read-only. Only the messages are essential: the chart and the Project's member list feed
  * names and the invite picker, so a hiccup there degrades names to ids rather than blocking
  * the page.
@@ -125,6 +126,8 @@ export function ChannelView() {
   const [loadingEarlier, setLoadingEarlier] = useState(false);
   const [joining, setJoining] = useState(false);
   const [confirmJoin, setConfirmJoin] = useState(false);
+  /** The server's own words for a refused join, drawn in the card that asked, next to its retry. */
+  const [joinRefusal, setJoinRefusal] = useState<string | null>(null);
   /** Messages that arrived while the view was scrolled up; shown on the pill. */
   const [pendingNew, setPendingNew] = useState(0);
   const [showJump, setShowJump] = useState(false);
@@ -160,6 +163,7 @@ export function ChannelView() {
     setDetailError(null);
     setPendingNew(0);
     setConfirmJoin(false);
+    setJoinRefusal(null);
     markedRef.current = null;
     firstDayRef.current = null;
     listedMemberRef.current = null;
@@ -375,14 +379,17 @@ export function ChannelView() {
   const join = async () => {
     if (joining) return;
     setJoining(true);
-    setConfirmJoin(false);
     try {
       await api.addOrgChannelMember(projectId, orgId, channelId, { principal: myPrincipal });
+      // The card goes with its own join landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
+      setConfirmJoin(false);
+      setJoinRefusal(null);
       toastSuccess(S.company.channels.joined);
       await loadDetail();
       void company.reloadChannels();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setJoinRefusal(apiErrorText(e));
     } finally {
       setJoining(false);
     }
@@ -706,7 +713,11 @@ export function ChannelView() {
                   size="sm"
                   variant="primary"
                   disabled={joining}
-                  onClick={() => setConfirmJoin(true)}
+                  onClick={() => {
+                    // A new question, not the last one: the previous refusal is not its answer.
+                    setJoinRefusal(null);
+                    setConfirmJoin(true);
+                  }}
                 >
                   {joining ? S.company.channels.joining : S.company.channels.join}
                 </Button>
@@ -717,8 +728,11 @@ export function ChannelView() {
         <JoinChannelConfirm
           open={confirmJoin}
           busy={joining}
-          onClose={() => setConfirmJoin(false)}
+          onClose={() => {
+            if (!joining) setConfirmJoin(false);
+          }}
           onConfirm={() => void join()}
+          {...(joinRefusal !== null ? { refusal: S.common.refused(joinRefusal) } : {})}
         />
       </div>
     </ChannelReaderProvider>

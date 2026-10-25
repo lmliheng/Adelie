@@ -2,7 +2,8 @@
  * Company mode's channel list — the sidebar block that stands where development mode lists
  * conversations, and the collapsed rail's icon-only twin. The all-hands channel is pinned at
  * the top under its localized label, then the channels the person is in, then the ones it is
- * not (each with a Join action, which asks first — people may join any channel), then the
+ * not (each with a Join action, which asks first — people may join any channel — and whose
+ * card keeps a refusal inside it, next to the button that retries), then the
  * archived ones folded away. A row carries its unread count and, when a message names the
  * reader, an "@me" chip.
  *
@@ -27,7 +28,6 @@ import {
   SkeletonList,
   Text,
   railItemClass,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -202,22 +202,27 @@ export function ChannelSidebar({
   const [joining, setJoining] = useState<string | null>(null);
   /** The channel whose Join was clicked, waiting on the prompt; null when nothing is asked. */
   const [pendingJoin, setPendingJoin] = useState<OrgChannelItem | null>(null);
+  /** The server's own words for a refused join, drawn in the card that asked, next to its retry. */
+  const [joinRefusal, setJoinRefusal] = useState<string | null>(null);
   const channels = company.channels;
 
   const join = async (channel: OrgChannelItem) => {
     if (joining !== null) return;
     setJoining(channel.channelId);
-    setPendingJoin(null);
     try {
       await api.addOrgChannelMember(projectId, orgId, channel.channelId, {
         principal: `user:${user?.userId ?? ""}`,
       });
+      // The card goes with its own join landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
+      setPendingJoin(null);
+      setJoinRefusal(null);
       toastSuccess(S.company.channels.joined);
       // The listing is what the open channel's view watches to re-read its own detail, so
       // this one reload replaces the Join prompt there too (channel-stream.joinedElsewhere).
       await company.reloadChannels();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setJoinRefusal(apiErrorText(e));
     } finally {
       setJoining(null);
     }
@@ -231,7 +236,15 @@ export function ChannelSidebar({
       orgId={orgId}
       channel={channel}
       {...(onNavigate ? { onNavigate } : {})}
-      {...(joinable ? { join: () => setPendingJoin(channel) } : {})}
+      {...(joinable
+        ? {
+            join: () => {
+              // A new question, not the last one: the previous refusal is not its answer.
+              setJoinRefusal(null);
+              setPendingJoin(channel);
+            },
+          }
+        : {})}
     />
   );
 
@@ -299,10 +312,13 @@ export function ChannelSidebar({
       <JoinChannelConfirm
         open={pendingJoin !== null}
         busy={joining !== null}
-        onClose={() => setPendingJoin(null)}
+        onClose={() => {
+          if (joining === null) setPendingJoin(null);
+        }}
         onConfirm={() => {
           if (pendingJoin !== null) void join(pendingJoin);
         }}
+        {...(joinRefusal !== null ? { refusal: S.common.refused(joinRefusal) } : {})}
       />
     </>
   );
