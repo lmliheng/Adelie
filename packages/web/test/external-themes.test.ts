@@ -152,4 +152,29 @@ describe("reading the list", () => {
     expect(importedThemes().failed).toBe(true);
     expect(importedThemes().dir).toBeNull();
   });
+
+  it("读过之后是「再来一次」时，把页面链接的那张样式表也重挂一遍", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => answer({ dir: "/data/themes", themes: [], rejected: [] })),
+    );
+    // A stylesheet is fetched once per document, so the sheet the page already applied is the one
+    // from load — an import that lands afterwards paints nothing until the link is re-pointed.
+    const hrefs: string[] = [];
+    const link = {
+      setAttribute: (name: string, value: string) => hrefs.push(`${name}=${value}`),
+    };
+    const querySelector = vi.fn(() => link);
+    vi.stubGlobal("document", { querySelector });
+
+    // A plain read is the page load's own: the sheet is the one it just fetched, nothing to redo.
+    await refreshImportedThemes();
+    expect(querySelector).not.toHaveBeenCalled();
+    expect(hrefs).toEqual([]);
+
+    await refreshImportedThemes(true);
+    expect(querySelector).toHaveBeenCalledWith('link[rel="stylesheet"][href^="/api/themes.css"]');
+    expect(hrefs).toHaveLength(1);
+    expect(hrefs[0]!).toMatch(/^href=\/api\/themes\.css\?again=\d+$/);
+  });
 });

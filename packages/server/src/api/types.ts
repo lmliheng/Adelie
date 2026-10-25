@@ -2220,6 +2220,40 @@ export interface ImportedThemesResponse {
   rejected: Array<{ file: string; errors: string[] }>;
 }
 
+/** What an import (upload or download) wrote: the file it landed in, and the theme it holds. */
+export interface ThemeImportResponse {
+  /** The file under the themes directory — the theme's own id plus `.json`. */
+  file: string;
+  theme: ExternalTheme;
+}
+
+/**
+ * POST /api/themes/upload: install a theme from a file the operator picked. The file is the theme
+ * JSON itself, base64 in the body (the same shape the plugin, skill and hook imports take, so the
+ * request stays JSON and needs no multipart handling). Admin-only.
+ *
+ * Errors, shared with the download route below: 403 `admin_required`, 413 `theme_too_large` (past
+ * the format's own cap of 256KB, checked on the decoded bytes), 400 `theme_invalid` (not UTF-8,
+ * not JSON, or the reader's reasons), 409 `theme_exists` (another file already provides this
+ * theme's id — `overwrite` replaces that file) and 400 `bad_request` for a malformed request.
+ */
+export interface ThemeUploadRequest {
+  dataBase64: string;
+  overwrite?: boolean;
+}
+
+/**
+ * POST /api/themes/download: the same import, fetched server-side from an http(s) address — the
+ * server is what can reach it. Answers the same errors as the upload route above, plus 400
+ * `unsupported_url` (not an absolute http(s) URL), 400 `blocked_url` (a loopback, private or
+ * link-local host), 400 `download_failed` (the request or its status). Admin-only.
+ */
+export interface ThemeDownloadRequest {
+  /** The address of a theme JSON file. */
+  url: string;
+  overwrite?: boolean;
+}
+
 export interface SessionCreateRequest {
   /** Upstream id of the session's model; always sent together with provider. Omit both for the Project's default Model. */
   modelId?: string;

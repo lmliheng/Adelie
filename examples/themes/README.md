@@ -14,6 +14,10 @@ page prints the exact directory it read, so there is nothing to guess. A default
 root is `~/.penguin/data`. There is no restart and no cache: the server reads the directory on every
 request, so a file edited, added or deleted is what the next page load shows.
 
+An admin can skip the walk: in **Settings › Appearance**, the line naming the directory carries
+"Import a theme…" — pick this file, or paste a URL that serves it, and either way what lands is
+exactly what the `cp` above puts there.
+
 ## What a theme may say
 
 A theme is **values for the UI's token names**, and nothing else — no components, no layout, no code

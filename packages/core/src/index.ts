@@ -85,6 +85,7 @@ export type { AtomicWriteOptions } from "./internal/atomic-write.js";
 // data. Both ends need it and neither may import the other, so it is here.
 export {
   EXTERNAL_THEME_SCHEMA_VERSION,
+  MAX_THEME_FILE_BYTES,
   THEME_ID_PATTERN,
   isThemeId,
   readExternalTheme,

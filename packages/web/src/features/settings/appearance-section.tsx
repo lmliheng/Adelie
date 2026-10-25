@@ -16,7 +16,10 @@
  * got wrong — the file games no say in the layout, because a theme is only values (see
  * state/external-themes.ts). The note under the theme row is where the reader learns which
  * directory to drop a file in and why one did not read, since nothing here discovers files by
- * itself: the browser cannot see the server's disk.
+ * itself: the browser cannot see the server's disk. An admin gets one more thing in that line — the
+ * import entry, for the same install without the walk to the folder — and it is the server's own
+ * rule that decides who may use it: the routes answer 403 to anyone else, so the entry is drawn for
+ * an admin only rather than offered and refused.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { PrefRow, Segmented, Select, SwatchPicker, THEME_IDS, ToggleRow } from "@adelie/ui";
@@ -42,6 +45,7 @@ import {
 import type { ImportedThemesState } from "../../state/external-themes";
 import { localizedText } from "../chat/skill-use";
 import { FONT_FOLLOWS_THEME, effectiveAccent } from "../../state/theme-prefs";
+import { ThemeImportActions } from "./theme-import-dialog";
 
 /**
  * A font select's choices: the theme's own face first — it is the default, and the named faces
@@ -131,10 +135,13 @@ function ImportedThemesNote({
   state,
   activeId,
   locale,
+  canImport,
 }: {
   state: ImportedThemesState;
   activeId: string;
   locale: "zh" | "en";
+  /** Whether the reader may import one: the entry is the server's own admin rule, drawn or not. */
+  canImport: boolean;
 }) {
   const [reading, setReading] = useState(false);
   if (state.failed)
@@ -163,6 +170,9 @@ function ImportedThemesNote({
         >
           {S.settings.importedThemesReadAgain}
         </button>
+        {/* Right beside the path it writes into, because it is the same install: the file that
+            would have been dropped there, put there. */}
+        {canImport && <ThemeImportActions onImported={() => refreshImportedThemes(true)} />}
       </p>
       <p>{S.settings.importedThemesHint}</p>
       {orphan !== null && <p>{S.settings.importedThemesNoFile(orphan)}</p>}
@@ -225,7 +235,7 @@ export function AppearanceSection() {
   // The fan's "hide launcher" entry writes the same preference, so this row follows it.
   useSyncExternalStore(subscribeLauncherHidden, launcherHiddenVersion);
   const launcherShown = !readLauncherHidden();
-  const { desktopMode, sessionVia } = useAuth();
+  const { user, desktopMode, sessionVia } = useAuth();
   const offersShellChrome = isDesktopShellWindow({ desktopMode, sessionVia });
   // The shell owns this one, so it is fetched rather than read from a store. Anything the
   // shell has not told us — no push yet, a request that failed — reads as on, the shell's
@@ -305,7 +315,12 @@ export function AppearanceSection() {
       <PrefRow label={S.settings.theme} info={S.settings.themeInfo}>
         <Segmented options={themeIdOptions} value={themeId} onChange={setThemeId} />
       </PrefRow>
-      <ImportedThemesNote state={imported} activeId={themeId} locale={locale} />
+      <ImportedThemesNote
+        state={imported}
+        activeId={themeId}
+        locale={locale}
+        canImport={user?.isAdmin === true}
+      />
       <PrefRow label={S.settings.colorMode} info={S.settings.colorModeInfo}>
         <Segmented options={themeOptions} value={mode} onChange={setMode} />
       </PrefRow>

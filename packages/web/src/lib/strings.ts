@@ -801,8 +801,36 @@ export const zh = {
     /** The row under the theme picker: where a theme file goes, and what one got wrong. */
     importedThemesDir: (dir: string) => `主题目录 ${dir}`,
     importedThemesHint:
-      "把主题的 .json 文件放进这个目录、刷新页面，它就会出现在上面的主题列表里；格式见仓库里的 examples/themes/warm-paper.json。",
+      "把主题的 .json 文件放进这个目录、刷新页面，它就会出现在上面的主题列表里；格式见仓库里的 examples/themes/warm-paper.json。管理员也可以直接导入。",
     importedThemesReadAgain: "重新读取",
+    /** The admin's entry beside the directory line: the same install, without walking to the folder. */
+    themeImport: "导入主题…",
+    themeImportTitle: "导入主题",
+    /** The dialog's source switch: the two ways a theme file reaches the server. */
+    themeImportSourceFile: "本地文件",
+    themeImportSourceUrl: "地址",
+    themeImportFileDesc:
+      "选一个主题的 .json 文件（格式见 examples/themes/warm-paper.json）。文件里的主题名就是它的身份：同名再来一次会先问一句覆盖。",
+    themeImportPickFile: "选择 .json 文件",
+    themeImportPicked: (file: string) => `已选择 ${file}`,
+    themeImportUrlDesc:
+      "填一个主题 .json 的地址，由服务端取回来——本机或内网地址会被拒绝，取回的内容按同一套读法校验。",
+    themeImportUrlLabel: "主题文件地址",
+    themeImportUrlPlaceholder: "https://example.com/theme.json",
+    themeImportUploadAction: "上传并导入",
+    themeImportDownloadAction: "下载并导入",
+    themeImportBusy: "正在导入…",
+    themeImportDone: (name: string) => `已导入主题 ${name}`,
+    /** The 409 both imports answer with, when a file already provides this theme's id. */
+    themeImportOverwriteTitle: "覆盖已导入的主题",
+    themeImportOverwriteBody:
+      "这个文件里的主题名已经有一套主题占了（同一个主题名）。覆盖会用这个文件替换它现在的文件，不可恢复。确认继续？",
+    themeImportOverwriteAction: "覆盖导入",
+    themeImportTooLarge: "这个文件超过了 256 KB 的上限。",
+    themeImportInvalid: (reason: string) => `这个文件读不出一个主题：${reason}`,
+    themeImportBlockedUrl: "这个地址指向本机或内网，服务端不会去取。",
+    themeImportDownloadFailed: "取不回来：地址、网络或对方的状态码有问题。",
+    themeImportBadUrl: "地址要是一个 http:// 或 https:// 开头的网址。",
     importedThemesFailed: "这次没读到导入的主题列表，稍后再试。",
     importedThemesNoFile: (id: string) =>
       `现在选的「${id}」没有对应的主题文件，页面先用默认主题画。`,

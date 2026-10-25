@@ -743,8 +743,38 @@ export const en: Strings = {
     /** The row under the theme picker: where a theme file goes, and what one got wrong. */
     importedThemesDir: (dir: string) => `Themes directory ${dir}`,
     importedThemesHint:
-      "Drop a theme's .json file in this directory and reload the page: it appears in the theme list above. The format is in the repository's examples/themes/warm-paper.json.",
+      "Drop a theme's .json file in this directory and reload the page: it appears in the theme list above. The format is in the repository's examples/themes/warm-paper.json. An admin can import one here as well.",
     importedThemesReadAgain: "Read again",
+    /** The admin's entry beside the directory line: the same install, without walking to the folder. */
+    themeImport: "Import a theme…",
+    themeImportTitle: "Import a theme",
+    /** The dialog's source switch: the two ways a theme file reaches the server. */
+    themeImportSourceFile: "A local file",
+    themeImportSourceUrl: "An address",
+    themeImportFileDesc:
+      "Pick a theme's .json file (the format is in examples/themes/warm-paper.json). The theme name inside the file is its identity: importing the same one again asks before it replaces anything.",
+    themeImportPickFile: "Choose a .json file",
+    themeImportPicked: (file: string) => `${file} chosen`,
+    themeImportUrlDesc:
+      "Paste the address of a theme .json file and the server fetches it — a local or private address is refused, and what comes back is read the same way a picked file is.",
+    themeImportUrlLabel: "Address of the theme file",
+    themeImportUrlPlaceholder: "https://example.com/theme.json",
+    themeImportUploadAction: "Upload and import",
+    themeImportDownloadAction: "Download and import",
+    themeImportBusy: "Importing…",
+    themeImportDone: (name: string) => `Imported theme ${name}`,
+    /** The 409 both imports answer with, when a file already provides this theme's id. */
+    themeImportOverwriteTitle: "Replace an imported theme",
+    themeImportOverwriteBody:
+      "A theme with the name this file carries is already imported. Replacing it writes this file over the one that provides it, and there is no undo. Continue?",
+    themeImportOverwriteAction: "Replace it",
+    themeImportTooLarge: "This file is past the 256KB limit.",
+    themeImportInvalid: (reason: string) => `This file holds no theme: ${reason}`,
+    themeImportBlockedUrl:
+      "That address points at this machine or a private network; the server will not fetch it.",
+    themeImportDownloadFailed:
+      "Could not fetch it: the address, the network or the answer's status.",
+    themeImportBadUrl: "The address has to be a URL starting with http:// or https://.",
     importedThemesFailed: "Could not read the imported themes list this time. Try again later.",
     importedThemesNoFile: (id: string) =>
       `No theme file provides the chosen "${id}"; the default theme paints for now.`,

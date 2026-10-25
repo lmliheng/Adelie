@@ -119,12 +119,37 @@ export function refreshImportedThemes(force = false): Promise<void> {
         rejected: response.rejected.map(({ file, errors }) => ({ file, errors: [...errors] })),
         failed: false,
       });
+      // A forced read means "the directory may have changed since this page loaded", which is
+      // exactly when the sheet the page already applied is stale.
+      if (force) rereadThemeSheet();
     })
     .catch(() => publish({ ...EMPTY, failed: true }))
     .finally(() => {
       pending = null;
     });
   return pending;
+}
+
+/**
+ * Re-reads the stylesheet the page links, by pointing that link at the same sheet through a fresh
+ * URL.
+ *
+ * WHY THIS IS HERE AND NOT THE BROWSER'S BUSINESS: a stylesheet is fetched once per document, and
+ * this one is fetched at load — before anyone could have imported anything. So a theme that arrives
+ * from the import dialog would be offered by the picker and paint NOTHING until the page was
+ * reloaded, which reads as a theme that does not work; the same goes for a file dropped into the
+ * directory while the page is open and then "read again". Re-pointing the link is what makes the
+ * browser fetch the sheet as it is now (the server reads the directory per request and sends
+ * `no-cache`); the extra parameter only says "again" and means nothing to the server.
+ *
+ * Guarded because this module is also read where there is no document (the unit suite runs it in
+ * node): there is no link to re-point there, and no paint to correct.
+ */
+function rereadThemeSheet(): void {
+  if (typeof document === "undefined") return;
+  const link = document.querySelector('link[rel="stylesheet"][href^="/api/themes.css"]');
+  if (link === null) return;
+  link.setAttribute("href", `/api/themes.css?again=${Date.now()}`);
 }
 
 /** Test seam: drop what was read, so the next read asks the server again. */

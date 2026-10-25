@@ -64,6 +64,9 @@ import type {
   FilesWriteRequest,
   GoalResponse,
   ImportedThemesResponse,
+  ThemeDownloadRequest,
+  ThemeImportResponse,
+  ThemeUploadRequest,
   InstallResponse,
   MachinesResponse,
   McpServerTestResponse,
@@ -2729,3 +2732,22 @@ export const clearBuiltinBrowserData = (storages: BuiltinBrowserStorage[]) =>
  */
 export const getImportedThemes = () =>
   apiFetch<ImportedThemesResponse>("/api/themes", { server: null });
+
+/**
+ * Import a theme from a file the operator picked: the theme JSON, base64 in the body — the same
+ * shape the plugin, skill and hook imports take. 201 returns the file it was written to (the
+ * theme's own id plus `.json`) and the theme as data. Admin-only, and 409 `theme_exists` when a
+ * file already provides that theme's id — the retry sends the same body with `overwrite: true`.
+ */
+export const importThemeArchive = (body: ThemeUploadRequest) =>
+  apiFetch<ThemeImportResponse>("/api/themes/upload", { method: "POST", body, server: null });
+
+/**
+ * The same import, fetched by the server from an http(s) address — the server is what can reach
+ * it. Read by the same reader the upload path uses, so a link to a theme JSON installs what
+ * picking that file installs. Answers the same 409 (and the same `overwrite` retry) plus 400
+ * `unsupported_url`, 400 `blocked_url` (a local or private host) and 400 `download_failed`.
+ * Admin-only.
+ */
+export const importThemeFromUrl = (body: ThemeDownloadRequest) =>
+  apiFetch<ThemeImportResponse>("/api/themes/download", { method: "POST", body, server: null });

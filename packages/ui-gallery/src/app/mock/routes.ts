@@ -2804,3 +2804,10 @@ router.get("/api/themes", (): ImportedThemesResponse => ({
   themes: [],
   rejected: [],
 }));
+
+// An import needs a server: the file would have to be validated and written, and a download
+// fetched. The gallery has none, the same answer the plugin imports give — and its demo identity
+// is not an admin, so the appearance page does not draw the entry at all.
+router
+  .post("/api/themes/upload", () => readOnly("import a theme from a file"))
+  .post("/api/themes/download", () => readOnly("import a theme from an address"));

@@ -65,6 +65,15 @@ const FETCHES = /url\s*\(|image-set\s*\(|expression\s*\(/i;
 const MAX_TOKENS = 400;
 const MAX_ACCENTS = 12;
 
+/**
+ * How big a theme file may be. It lives here, with the format's other caps, because three places
+ * have to agree on one number: the reader that refuses an oversized file it finds in the directory,
+ * and the two import routes (an upload's bytes, a download's response) that must not write a file
+ * the reader would then refuse. The format is values — a few hundred token names and their colours
+ * — so the room is generous for what it holds and still nowhere near a megabyte.
+ */
+export const MAX_THEME_FILE_BYTES = 256 * 1024;
+
 /** One accent preset an imported theme lists, shaped like the shipped themes' own. */
 export interface ExternalThemeAccent {
   readonly id: string;

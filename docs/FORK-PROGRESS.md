@@ -15731,3 +15731,87 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
   `1f8167e2` 删除组织 · `3859ef58` 删除手册文档 · `21b9fe8e` 组织图「离任」· `40bf7203` 加入频道两个入口）
   与 `c5f6d9e3` 插件库收录图表技能 `use-lieflat-charts`。
 - 汇报：校园邮箱这一轮又只试一次（`/dev/tcp/202.197.64.20/993` 超时），改走飞书。
+## 第一百二十九轮：主题也能在界面上导入（本地文件 + 地址），只限管理员（2026-10-25，用户点单）
+
+### 为什么是这一条
+
+上一轮把外置主题做成了「把 .json 放进数据根的 `themes/` 目录」。用户看到现网那块提示后问：
+「支持主题导入吗 和插件远程导入，本地导入一个道理」——即照着插件库那两条路（本地上传 zip、
+从地址或 npm 取回）给主题也加上。我摆了两个要拍板的选项，用户回「都加，只限制管理员」。
+
+落点几乎不用想：主题只是一份 JSON，插件的两条导入是现成先例（`plugins.ts` 的
+`POST /api/plugins/upload` 与 `/download`，都在路由里 `requireAdmin`，都写进安装级目录、不用重启）。
+所以服务端加两条同样形状的路由，读法仍然是 core 那一个（`readExternalTheme`）——两条来源、一套校验。
+
+### 改了什么（8 处源码 + 2 个新测试 + 文档）
+
+- `packages/core/src/internal/external-theme.ts`：把「一个主题文件最多多少字节」从服务端的局部常量提到
+  格式常量里（`MAX_THEME_FILE_BYTES`，256 KB），经 `core/src/index.ts` 导出。三处必须同一个数：读目录
+  的那道检查、上传解码后的字节、取回来的字节——收下一个读法会拒的文件，等于装一套永远不上色的主题。
+- `packages/server/src/services/theme-download.ts`（新）：`fetchThemeFile(url)` 一次有界取回。主机守卫
+  **直接 import 插件那条**（`plugin-download.ts` 的 `isBlockedHost`，没有第二份实现），自己只管时限
+  （30 s）、边读边卡上限、以及对真正回答的地址再查一次主机（重定向可能把请求带到别处）。错误码沿用插件
+  那套（`blocked_url` / `download_failed` / `unsupported_url`）加自己的 413 `theme_too_large`。
+- `packages/server/src/http/routes/themes.ts`：`POST /api/themes/upload`（文件 base64 放在请求体里）与
+  `POST /api/themes/download`（服务端去取），两条都 `requireAdmin`（403 `admin_required`）。共同落盘函数
+  `installTheme(root, text, overwrite)`：先 `readExternalTheme`（原因全带回来，400 `theme_invalid`），文件名
+  取主题自己的 id（`<id>.json`，所以再导一次是更新而不是多一份），id 已被别的文件占用时 409 `theme_exists`，
+  `overwrite` 就删掉那个文件再写（不这么做会留下两个抢同一个 id 的文件，读法只认前一个，导入看着成功却
+  不上色）。文件原样写下去，不重新序列化；UTF-8 用 `fatal` 解码（否则非法字节会被换成替换字符，JSON 还会
+  照收），顺手去掉 BOM。
+- `packages/server/src/api/types.ts`：`ThemeUploadRequest` / `ThemeDownloadRequest` / `ThemeImportResponse`。
+- `packages/web/src/features/settings/theme-import-dialog.tsx`（新）：**一个框、两种来源**（本地文件 / 地址
+  的两选一），因为主题本来就只有一份 JSON、名字由文件自己说；插件那两个框是因为它要解包、要取名。一次
+  409 打开覆盖确认，确认后用同一份请求重发（不会让用户再选一次文件），其余失败弹 toast。
+- `packages/web/src/features/settings/theme-import.ts`（新）：失败文案的映射（`theme_invalid` 把读法的原话
+  带上，其余码各有说法，不认识的走共用错误表），以及浏览器这边的 256 KB 上限判断。
+- `packages/web/src/features/settings/appearance-section.tsx`：目录那行里，管理员多一个「导入主题…」（服务端
+  本来就会拒，入口只画给能用的人）；`api/endpoints.ts` 两个封装；`lib/strings{,-en}.ts` 各一套文案（原来的
+  提示补一句「管理员也可以直接导入」）。
+- `packages/web/src/state/external-themes.ts`：**「再来一次」时把页面链接的那张样式表也重挂一遍**。这是真
+  浏览器探针抓出来的坑：一张样式表每个文档只取一次，而 `/api/themes.css` 是页面加载时取的——导入成功后
+  主题出现在选择器里、选上却什么都不画，要刷新才生效（看着像坏主题）。重挂 link（`?again=<时间戳>`，服务端
+  本来就按请求重读目录）就当场生效；只有 force 的那次才做这件事。
+- `packages/ui-gallery/src/app/mock/routes.ts`：两条导入 POST 走 `readOnly`（与插件一致，画廊没有服务端）。
+- 测试：`packages/server/test/themes.test.ts` 增补 9 条（落盘＋两处读取立刻可见、同名 409 → 覆盖后只剩一份、
+  别的文件占了 id 时替换的是那个文件、坏文件带原因且不落盘、超限 413、成员 403 且不发出请求、地址导入、
+  取回来不是主题／404／连不上／非 http 地址、内网地址与两种超限方式），`packages/web/test/theme-import.test.ts`
+  （新，5 条：错误文案、上限两端同一个数），`packages/web/test/external-themes.test.ts` 增 1 条（重挂样式表
+  只在「再来一次」时发生）。
+- 文档：changelog 一对 `changelog/unreleased/2026-10-25-import-themes{,.zh}.md`、`examples/themes` 两份 README
+  各补一句、本节。
+
+### 验证（都不是推测）
+
+- 逐包测试全绿：core **1420 通过 / 6 跳过**、ui **1053**、server **2970 通过 / 4 跳过**（其中
+  `themes.test.ts` **15 / 15** = 旧 6 + 新 9）、web **3249 通过 / 2 跳过**（新增 `theme-import.test.ts`
+  **5 / 5**，`external-themes.test.ts` 增到 **9 / 9**）、cli **561**、desktop **304**、ui-gallery **140**、
+  amsp **68**、docs **62**，`pnpm -r test` 退出码 0。
+- **真服务 + 真浏览器**（一次性数据根 `/tmp/tmp.4tBH7RBjG1`，服务 8956、假模型 8933，`packages/{server,web}/dist`
+  都是本轮新构建的）：两条 playwright 用例都过。管理员那条走完：目录那行点「导入主题…」→ 选示例文件 →
+  「上传并导入」→ toast「已导入主题 暖纸」、主题行里出现「暖纸」→ 选上后浏览器算出来的 `--ui-canvas` =
+  `#f6f1e7`（**不是**刷新后才生效：这正是重挂样式表那条改动）→ 再导同一份文件得到「覆盖已导入的主题」确认框，
+  确认后仍然是那一份文件 → 换成「地址」填公网 raw 地址（GitHub 上 `examples/themes/warm-paper.json`），
+  服务端取回来后同样是 409 → 覆盖 → `GET /api/themes` 只列 `warm-paper.json`、`rejected` 为空 →
+  填 `http://localhost:8956/api/themes` 时弹「这个地址指向本机或内网，服务端不会去取。」。普通成员那条：
+  目录那行照旧有、主题照旧可选，「导入主题…」按钮一个都没有。
+- 服务端手工核过磁盘：跑完后 `$DATA/themes/warm-paper.json` 是 2938 字节，与仓库里那份示例逐字节同源。
+- 截图在 scratchpad `r116/probe/{1-imported-file,2-overwrite,3-blocked-url,4-member}.png`；探针脚本
+  `r116/probe/theme-import-probe.spec.mjs`（跑完已从 `packages/web/e2e/` 删掉，不提交）。
+- 端口只用 8956（探针自己）与 8933（假模型）；3003 / 4000 / 7364 / 7372 一个没碰；数据只落在 `mktemp` 的
+  一次性根与 scratchpad 的 `r116/` 下。
+- 门禁：`npx oxlint` 0 警告 0 错误（2286 文件）、`npx prettier --check .` 全过、`pnpm typecheck`（含
+  `gen:ifaces`，各包 Done）、`pnpm -r test` 与 `pnpm -r build`（全部 Done，退出码 0）都全绿。
+
+### 没做 / 还差什么
+
+- 主题仍然创建不了文件系统之外的东西：没有删除/停用某个导入主题的按钮（要删还是去目录里删），也没有
+  「从插件里带一份主题」那条路——上一轮就留着，用户没点。
+- 一个文件的 id 撞上自带三套主题（`github` / `modern` / `geek`）时，服务端不会拒（它不带自带的 id 表，
+  这是上一轮定的），那种文件基本是哑的：它只在自己的 `data-theme` 下上色，而自带主题的规则不分层、优先。
+  页面把导入的排在内置之后，这时选择器里会出现两个同名项。留给下一轮要不要在界面这一侧拦下。
+- 现网（`/root/.adelie`）还是 0.5.6 那一版构架，本轮改动要等下一版才看得见。
+
+### 汇报
+
+- 校园邮箱照旧只试一次（超时），改走飞书，正文留底在 scratchpad 的 `r116/report.md`。
