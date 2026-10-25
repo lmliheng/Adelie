@@ -45,13 +45,13 @@ import {
   Input,
   Modal,
   Notice,
+  NoticeStrip,
   SearchInput,
   Segmented,
   Select,
   Skeleton,
   Switch,
   Textarea,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -600,6 +600,7 @@ function CreateTicketDialog({
   const [due, setDue] = useState("");
   const [titleError, setTitleError] = useState<string | undefined>(undefined);
   const [slugError, setSlugError] = useState<string | undefined>(undefined);
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -615,6 +616,8 @@ function CreateTicketDialog({
     setDue("");
     setTitleError(undefined);
     setSlugError(undefined);
+    // A new ticket, not the refused one: the previous refusal is not its answer.
+    setRefusal(null);
   }, [open]);
 
   const submit = async () => {
@@ -642,7 +645,9 @@ function CreateTicketDialog({
       toastSuccess(S.company.tickets.created);
       onCreated(detail.ticketId);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The dialog stays: it is the form that asked, so the reason belongs above its fields
+      // rather than in a toast that dismisses itself while the reader is still typing.
+      setRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -652,7 +657,9 @@ function CreateTicketDialog({
     <Modal
       open={open}
       title={S.company.tickets.createTitle}
-      onClose={onClose}
+      // A write in flight is the dialog's: closing it would take away the form the answer is
+      // about (the cancel button is already disabled; this is the second door).
+      onClose={() => (busy ? undefined : onClose())}
       widthClass="sm:max-w-lg"
       footer={
         <>
@@ -666,6 +673,13 @@ function CreateTicketDialog({
       }
     >
       <div className="space-y-3">
+        {refusal !== null && (
+          // The form's own words: a refusal is about what the reader just typed, so it reads
+          // above the fields that still hold it, not as page-level news.
+          <NoticeStrip tone="danger" role="alert" className="rounded-md border px-2.5 py-2 text-xs">
+            <span data-slot="body">{S.common.refused(refusal)}</span>
+          </NoticeStrip>
+        )}
         <Input
           size="sm"
           label={S.company.tickets.ticketTitle}
