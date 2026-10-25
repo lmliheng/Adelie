@@ -1540,6 +1540,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       写入在途时 `onClose` 不再响应（`busy` 置灰之外的第二道），换频道时一并清掉。细节、两态读数与
       反证见「第一百二十八轮」一节。**还差什么**：`ticket-dialog.tsx` 的 `run()` 撑起的三张框
       （保存确认 / 解除阻塞 / 移动）仍同形，按「一轮一处」往下一轮排。
+- [x] **7.44 工单那三张确认框与被拖拽的移动框：被拒时框留着，原因也留在框里**（**2026-10-25
+      第一百三十轮**落地，提交 `37db5bca`；2 处源码 `features/company/ticket-dialog.tsx`（`run()` 多一个可选
+      `refuse`、三张框共用一份 `refusal`、关框挪进写入内部、`MoveTicketConfirm` 多一个可选 `refusal`）、
+      `tickets-page.tsx`（看板的 `confirmMove` 把拒绝留在 `moveRefusal`）+ 1 个新文件
+      `packages/web/e2e/ticket-refusal.spec.mjs`（4 条：保存 / 详情框里的移动 / 解除阻塞 / 看板上的移动）
+      + changelog 一对，**无新依赖、不碰接口、无新文案**）：7.43 末尾点名的下一处，也是那条「点击即关、
+      失败只弹 toast」扫描线在 `features/company/` 上的第八处。**现在**：四处写入都在落地之后才关框；
+      被拒时服务端原话经 `S.common.refused` 画进 `ConfirmModal` 的 `refusal` 槽、重试按钮正上方；
+      开框前清掉上一次的原因（含换工单、把卡片拖到新的一列），写入在途时 `onClose` 不再响应。
+      细节、真浏览器读数与反证见「第一百三十轮」一节。**还差什么**：同文件里「标记阻塞」那张**表单**
+      框（`blockOpen`，不是 `ConfirmModal`）仍在写入前关掉、失败只弹 toast；`git blame` 一次性
+      `toastError` 的地方（组织图、工单箱里的其余零星写入）按同一判据留给后面的轮次。
 
 
 ## 发布 v0.2.0（2026-10-05）
@@ -15815,3 +15827,68 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
 ### 汇报
 
 - 校园邮箱照旧只试一次（超时），改走飞书，正文留底在 scratchpad 的 `r116/report.md`。
+
+## 第一百三十轮：工单的保存 / 解除阻塞 / 移动被拒时，框留着、原因也留在框里（2026-10-25，条目 7.44）
+
+### 为什么是这一条
+
+待办里能一轮做完的条目仍然没有（2.2c 剩下的三处全压在桌面壳 / 既有部署单元 / 非契约项上，
+而本轮明令不碰 desktop；3.5 / 5.6 / 5.10 要拍板、3.6 要模型 key、4.1—4.3 明令不动），所以接
+第一百二十八轮末尾点名的下一处 —— 那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的
+第八处，也是它一直拖着没做的四张框：详情框里「保存」与「解除阻塞」两张 `ConfirmModal`、底栏「移动」
+那张 `MoveTicketConfirm`，以及看板上把卡片拖到另一列时问的**同一张**移动框（一个组件、两个入口）。
+
+开工时这棵树是干净的（`git status --short` 空 —— 开工那一刻有一个未跟踪的
+`packages/web/search-tmp.mjs`，是一个 18:26 写的一次性谷歌搜索脚本，无进程在用、之后 30 分钟里
+`git` 再没被写过，按「无主遗留的临时脚本」处理：原样移到 scratchpad 的 `stray/` 保留，不动它的内容），
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date.`，主线尖端是 `80ccb1bd`
+（第一百二十九轮的主题导入）。
+
+开工时核过代码：四处都是**写入之前就关框**（`commitSave` 的 `setPendingSave(null)`、`commitMove` 的
+`setPendingMove(null)`、解除阻塞那段内联的 `setConfirmUnblock(false)`、看板 `confirmMove` 的
+`setMove(null)` 都在 `await` 之前），`catch` 只 `toastError(apiErrorText(e))` —— 被拒时面板一点没变、
+框已经不在，原因在一条几秒后自己消失、还浮在页面上的通知里。
+
+### 改了什么（2 处源码 + 1 个新 spec + 一对 changelog）
+
+- `packages/web/src/features/company/ticket-dialog.tsx`（+87 −21）：`run()` 多一个可选的 `refuse`
+  —— 背后有确认框的写入把服务端原话交回那张框，没有框的写入（追加进度）仍走通知。新增一份
+  `refusal` 状态给三张框共用（它们不会同时开着：都从空闲的底栏/字段区发出，写入在途时其余按钮置灰），
+  每张开框前清空（`requestSave`、解除阻塞按钮、底栏「移动」），换工单的 `useEffect` 里也清。
+  `commitSave` / `commitMove` 把关框挪进写入内部；解除阻塞从内联改成 `commitUnblock`，同样成功才关。
+  `MoveTicketConfirm` 多一个可选 `refusal`，原样交给 `ConfirmModal` 的槽。
+- `packages/web/src/features/company/tickets-page.tsx`（+13 −2）：看板的 `confirmMove` 把拒绝留在
+  新的 `moveRefusal` 里（不再弹通知），只有移动落地才 `setMove(null)`；卡片被拖到新的一列时清旧原因。
+- `packages/web/e2e/ticket-refusal.spec.mjs`（新，4 条）：公司模式由管理员主开关打开（幂等），
+  用户 / 模型凭据 / 组织 / 工单都由真接口造。四条分别走保存框、详情框里的移动、解除阻塞、看板拖拽；
+  每条都是同一套读数：用 `page.route` 把那次写入拒成 500 + 自有原话 → 框里出现那句原话、**通知区里
+  没有**、框还在且去掉那一行后与开框时一字不差、服务端的工单文件没变；取消后重开不带旧原因；
+  放行后在同一张框上重试 → 框关掉、文件真的改了（标题 / 状态 / 阻塞三种各读一次）。
+- changelog 一对 `changelog/unreleased/2026-10-25-ticket-refusal{,.zh}.md`。
+
+### 验证（都不是推测）
+
+- 逐包测试全绿：core **1420 通过 / 6 跳过**（69 文件 + 1 跳过）、ui **1053**（130）、server
+  **2970 通过 / 4 跳过**（203 文件）、cli **561**（38）、web **3249 通过 / 2 跳过**（265 文件）。
+- 门禁：`pnpm --filter @adelie/{core,server,web,ui,cli,hmr} run typecheck` 六个 `Done`；
+  `npx oxlint` 0 警告 0 错误（2287 文件）；`npx prettier --check` 改了的那两处目录与新 spec 全过。
+- **真服务 + 真浏览器**（数据根 `/root/adelie-fork-data/r130`，服务 8940、mock 8942，
+  `packages/{core,server,web}/dist` 都是本轮新构建的）：新 spec **4 / 4 通过（13.7s）**。
+- **回归**：既有的 `company.spec.mjs`（含拖拽移动的成功路径、卡片点开工单）**1 / 1 通过（19.7s）**。
+- 另跑了一次一次性探针（跑完移出仓库，留在 scratchpad 的 `r130/probe/`）：截图 4 张
+  （看板 / 保存问句 / 保存被拒 / 移动被拒），肉眼看过两张被拒的 —— 原话在框内、重试按钮正上方，
+  排版无溢出。console 里只有那条既有的 `/machines` 403（非管理员页面本来就会请求一次）与探针自己
+  造的两次 500，**没有一条 JS 错误**（`pageerror` 一条没有）。
+- 端口只用 8940（服务端）与 8942（mock）；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r130` 与 scratchpad 的 `r130/` 下。
+
+### 没做 / 还差什么
+
+- 同文件里「标记阻塞」那张**表单**框（`blockOpen`，`Modal` 不是 `ConfirmModal`）仍在写入前关掉、
+  失败只弹 toast —— 它有两个输入字段，被拒时要留的东西不止一句原话（字段内容也得留），
+  所以单独一轮做更稳。
+- 现网（`/root/.adelie`）还是 0.5.6 那一版构架，本轮改动要等下一版才看得见。
+
+### 汇报
+
+- 见本轮的邮件记录（收件人 `0110230306@csu.edu.cn`）。
