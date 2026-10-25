@@ -181,6 +181,13 @@ function TicketDialog({
   const [moveTarget, setMoveTarget] = useState("");
   const [pendingMove, setPendingMove] = useState<OrgTicketStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  /**
+   * The server's own words for a write one of this dialog's confirmations asked for and had
+   * refused, drawn inside that card next to the button that retries it. One slot serves the three
+   * cards: only one of them can be up at a time (each is raised from an idle footer, and a write in
+   * flight leaves the others inert), and each is cleared of it before it is raised again.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
   const names = new Map(employees.map((e) => [e.agentId, e.name]));
   const titles = new Map(tickets.map((t) => [t.ticketId, t.title]));
   /** Whether the board and roster on hand are this organization's, so the fields can read names. */
@@ -202,6 +209,8 @@ function TicketDialog({
     setError(null);
     setEditing(null);
     setMoveTarget("");
+    // The cards of the previous ticket go with it, and so does what the server said about them.
+    setRefusal(null);
   }, [ticketId]);
   useEffect(() => {
     void load();
@@ -234,7 +243,16 @@ function TicketDialog({
     };
   }, [projectId, orgId, ticketsVersion]);
 
-  const run = async (work: () => Promise<void>, done?: string) => {
+  /**
+   * A write this dialog asked for. `refuse` is how a confirmation reports a refused write back into
+   * its own card — the callers that have a card to keep standing pass it; a write with no card
+   * behind it (a progress note) falls back to the toast.
+   */
+  const run = async (
+    work: () => Promise<void>,
+    done?: string,
+    refuse?: (reason: string) => void,
+  ) => {
     setBusy(true);
     try {
       await work();
@@ -242,7 +260,9 @@ function TicketDialog({
       await load();
       onChanged();
     } catch (e) {
-      toastError(apiErrorText(e));
+      const reason = apiErrorText(e);
+      if (refuse !== undefined) refuse(reason);
+      else toastError(reason);
     } finally {
       setBusy(false);
     }
@@ -297,17 +317,25 @@ function TicketDialog({
       setEditing(null);
       return;
     }
+    // A new question, not the last one: the previous refusal is not its answer.
+    setRefusal(null);
     setPendingSave(body);
   };
 
   const commitSave = () => {
     if (detail === null || pendingSave === null) return;
     const body = pendingSave;
-    setPendingSave(null);
-    void run(async () => {
-      await api.updateOrgTicket(projectId, orgId, detail.ticketId, body);
-      setEditing(null);
-    }, S.company.tickets.saved);
+    void run(
+      async () => {
+        await api.updateOrgTicket(projectId, orgId, detail.ticketId, body);
+        setEditing(null);
+        // The card goes with its own save landing, never before: a refusal has to stay readable
+        // next to the button that retries it.
+        setPendingSave(null);
+      },
+      S.company.tickets.saved,
+      setRefusal,
+    );
   };
 
   const addProgress = () => {
@@ -324,14 +352,33 @@ function TicketDialog({
   const commitMove = (reason: string) => {
     if (detail === null || pendingMove === null) return;
     const to = pendingMove;
-    setPendingMove(null);
-    void run(async () => {
-      await api.moveOrgTicket(projectId, orgId, detail.ticketId, {
-        status: to,
-        ...(moveNeedsReason(to) ? { reason: reason.trim() } : {}),
-      });
-      setMoveTarget("");
-    }, S.company.tickets.moved);
+    void run(
+      async () => {
+        await api.moveOrgTicket(projectId, orgId, detail.ticketId, {
+          status: to,
+          ...(moveNeedsReason(to) ? { reason: reason.trim() } : {}),
+        });
+        setMoveTarget("");
+        // The card goes with its own move landing, never before: a refusal has to stay readable
+        // next to the button that retries it.
+        setPendingMove(null);
+      },
+      S.company.tickets.moved,
+      setRefusal,
+    );
+  };
+
+  /** Lifting the block, once its confirmation is answered. */
+  const commitUnblock = () => {
+    if (detail === null) return;
+    void run(
+      async () => {
+        await api.unblockOrgTicket(projectId, orgId, detail.ticketId);
+        setConfirmUnblock(false);
+      },
+      undefined,
+      setRefusal,
+    );
   };
 
   const children = (detail?.children ?? []).map(
@@ -893,7 +940,15 @@ function TicketDialog({
         {detail !== null && (
           <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-gray-200 px-4 py-3 dark:border-gray-800">
             {blocked ? (
-              <Button size="sm" disabled={busy} onClick={() => setConfirmUnblock(true)}>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  // A new question, not the last one: the previous refusal is not its answer.
+                  setRefusal(null);
+                  setConfirmUnblock(true);
+                }}
+              >
                 {S.company.tickets.unblock}
               </Button>
             ) : (
@@ -923,7 +978,11 @@ function TicketDialog({
                 disabled={busy || moveTarget === ""}
                 onClick={() => {
                   const to = TICKET_COLUMNS.find((s) => s === moveTarget);
-                  if (to !== undefined) setPendingMove(to);
+                  if (to !== undefined) {
+                    // A new question, not the last one: the previous refusal is not its answer.
+                    setRefusal(null);
+                    setPendingMove(to);
+                  }
                 }}
               >
                 {S.company.tickets.move}
@@ -940,6 +999,7 @@ function TicketDialog({
         busy={busy}
         onClose={() => (busy ? undefined : setPendingMove(null))}
         onConfirm={commitMove}
+        {...(refusal !== null ? { refusal: S.common.refused(refusal) } : {})}
       />
       <ConfirmModal
         open={pendingSave !== null}
@@ -950,6 +1010,7 @@ function TicketDialog({
         busy={busy}
         onClose={() => (busy ? undefined : setPendingSave(null))}
         onConfirm={commitSave}
+        {...(refusal !== null ? { refusal: S.common.refused(refusal) } : {})}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {S.company.tickets.saveConfirm(detail?.title ?? "")}
@@ -963,13 +1024,8 @@ function TicketDialog({
         cancelLabel={S.common.cancel}
         busy={busy}
         onClose={() => (busy ? undefined : setConfirmUnblock(false))}
-        onConfirm={() => {
-          if (detail === null) return;
-          setConfirmUnblock(false);
-          void run(async () => {
-            await api.unblockOrgTicket(projectId, orgId, detail.ticketId);
-          });
-        }}
+        onConfirm={commitUnblock}
+        {...(refusal !== null ? { refusal: S.common.refused(refusal) } : {})}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {S.company.tickets.unblockConfirm(detail?.title ?? "")}
@@ -1042,12 +1098,15 @@ export function MoveTicketConfirm({
   busy,
   onClose,
   onConfirm,
+  refusal,
 }: {
   /** The move waiting for an answer, or null when none is. */
   move: { title: string; to: OrgTicketStatus } | null;
   busy: boolean;
   onClose: () => void;
   onConfirm: (reason: string) => void;
+  /** The server's words for a refused move; absent (not empty) when nothing was refused. */
+  refusal?: string;
 }) {
   const [reason, setReason] = useState("");
   // Emptied on the move itself, never on the object carrying it: the callers build that inline,
@@ -1069,6 +1128,7 @@ export function MoveTicketConfirm({
       busy={busy}
       onClose={onClose}
       onConfirm={() => onConfirm(reason)}
+      {...(refusal !== undefined ? { refusal } : {})}
     >
       <div className="space-y-2">
         <p className="text-sm text-gray-600 dark:text-gray-300">

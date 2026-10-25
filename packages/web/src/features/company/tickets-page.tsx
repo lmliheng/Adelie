@@ -119,6 +119,8 @@ export function TicketsPage() {
   const [blockedOnly, setBlockedOnly] = useState(params.get("blocked") === "1");
   const [query, setQuery] = useState("");
   const [move, setMove] = useState<{ ticket: OrgTicketItem; to: OrgTicketStatus } | null>(null);
+  /** The server's own words for a move this board asked for and had refused, drawn in that card. */
+  const [moveRefusal, setMoveRefusal] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const highlightColumn = params.get("column");
@@ -167,7 +169,11 @@ export function TicketsPage() {
   const openTicket = (ticketId: string) => company.openTicket(projectId, orgId, ticketId);
   const drag = useTicketBoardDrag({
     onOpen: (ticket) => openTicket(ticket.ticketId),
-    onDrop: (ticket, to) => setMove({ ticket, to }),
+    onDrop: (ticket, to) => {
+      // A new question, not the last one: the previous refusal is not its answer.
+      setMoveRefusal(null);
+      setMove({ ticket, to });
+    },
   });
   const { lifted, dropOver } = drag;
 
@@ -221,12 +227,15 @@ export function TicketsPage() {
         ...(moveNeedsReason(move.to) ? { reason: reason.trim() } : {}),
       });
       toastSuccess(S.company.tickets.moved);
+      // The card goes with its own move landing, never before: a refusal has to stay readable
+      // next to the button that retries it.
       setMove(null);
+      setMoveRefusal(null);
       // One signal for a ticket written here: this board, the open dialog and the
       // organization summaries all refetch off it.
       company.ticketsChanged();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setMoveRefusal(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -513,6 +522,7 @@ export function TicketsPage() {
         busy={busy}
         onClose={() => (busy ? undefined : setMove(null))}
         onConfirm={(reason) => void confirmMove(reason)}
+        {...(moveRefusal !== null ? { refusal: S.common.refused(moveRefusal) } : {})}
       />
 
       <CreateTicketDialog
