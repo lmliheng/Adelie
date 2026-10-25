@@ -52,7 +52,6 @@ import {
   TableHeaderCell,
   TableRow,
   noAutofill,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -173,12 +172,17 @@ function FinanceCard({
  * saves, Escape cancels, and focus leaving the editor saves too — the two buttons keep focus
  * on mousedown so clicking cancel never saves first. What goes out is USD, which is what the
  * chart file holds, and a box in another currency says so under itself.
+ *
+ * The box holds its own answer: text it cannot read and a write the server refused both land
+ * on one line under it, where the retry is — a toast would be gone seconds later while the
+ * editor still stood there asking the same question.
  */
 function BudgetEditor({
   initial,
   name,
   currency,
   busy,
+  refusal,
   onSave,
   onCancel,
 }: {
@@ -187,19 +191,36 @@ function BudgetEditor({
   name: string;
   currency: Currency;
   busy: boolean;
+  /** The server's own words for the write it refused, if it refused the last one. */
+  refusal: string | null;
   /** The new budget in USD, or null for unbounded. */
   onSave: (value: number | null) => void;
   onCancel: () => void;
 }) {
   const [text, setText] = useState(() => fromStoredUsd(initial, currency));
+  /** What the box itself says about its text; the refusal is the server's, on the same line. */
+  const [hint, setHint] = useState<string | null>(null);
+  /**
+   * A write is already on the wire. Disabling the box while it is (below) takes the focus off
+   * it, and focus leaving is one of the ways this editor saves — without this flag one press of
+   * save would write twice.
+   */
+  const asking = useRef(false);
+  useEffect(() => {
+    if (!busy) asking.current = false;
+  }, [busy]);
   const wrapRef = useRef<HTMLSpanElement>(null);
   const commit = () => {
+    if (asking.current) return;
     if (!isBudgetText(text)) {
-      toastError(S.company.chart.budgetHint);
+      setHint(S.company.chart.budgetHint);
       return;
     }
+    setHint(null);
+    asking.current = true;
     onSave(toStoredUsd(text, currency));
   };
+  const message = hint ?? (refusal === null ? null : S.common.refused(refusal));
   return (
     <span
       ref={wrapRef}
@@ -255,6 +276,11 @@ function BudgetEditor({
           <CloseIcon />
         </button>
       </span>
+      {message !== null && (
+        <span role="alert" className="block max-w-56 text-right text-xs text-tone-danger-fg">
+          {message}
+        </span>
+      )}
       <span className="text-xs text-gray-400 dark:text-gray-500">
         {S.company.finance.budgetEmptyHint}
       </span>
@@ -304,6 +330,13 @@ export function FinancePage() {
   const [states, setStates] = useState<ReadonlyMap<string, OrgEmployeeState>>(new Map());
   /** The employee whose budget is being typed. */
   const [editingId, setEditingId] = useState<string | null>(null);
+  /**
+   * The budget write the server refused, in the row that asked: the editor stays open on a
+   * refusal (it is only dismissed by its own landing), so the reason has to stay with it.
+   */
+  const [budgetRefusal, setBudgetRefusal] = useState<{ agentId: string; text: string } | null>(
+    null,
+  );
   /**
    * The ticket ledger's opened parents. Deliberately not persisted and not a URL parameter: a
    * fold is how the reader is looking at the table right now, and a ledger that reopened
@@ -367,6 +400,7 @@ export function FinancePage() {
     const row = data?.employees.find((e) => e.agentId === agentId);
     if (row !== undefined && (row.budget ?? null) === value) {
       setEditingId(null);
+      setBudgetRefusal(null);
       return;
     }
     setBusy(true);
@@ -374,10 +408,13 @@ export function FinancePage() {
       await api.patchOrgEmployee(projectId, orgId, agentId, { budget: value });
       toastSuccess(S.company.finance.budgetSaved);
       setEditingId(null);
+      setBudgetRefusal(null);
       void load();
       void company.reloadOrganizations();
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The editor stays open on a refusal (it closes only on its own landing), so the reason
+      // belongs in it, under the box that was refused — not in a toast of its own.
+      setBudgetRefusal({ agentId, text: apiErrorText(e) });
     } finally {
       setBusy(false);
     }
@@ -595,8 +632,16 @@ export function FinancePage() {
                             name={employee.name}
                             currency={currency}
                             busy={busy}
+                            refusal={
+                              budgetRefusal?.agentId === employee.agentId
+                                ? budgetRefusal.text
+                                : null
+                            }
                             onSave={(value) => void saveBudget(employee.agentId, value)}
-                            onCancel={() => setEditingId(null)}
+                            onCancel={() => {
+                              setEditingId(null);
+                              setBudgetRefusal(null);
+                            }}
                           />
                         ) : (
                           <span className={`flex items-center ${ICON_GAP.menu}`}>
@@ -623,7 +668,10 @@ export function FinancePage() {
                                 type="button"
                                 data-tooltip={S.company.finance.editBudget}
                                 aria-label={S.company.finance.editBudgetOf(employee.name)}
-                                onClick={() => setEditingId(employee.agentId)}
+                                onClick={() => {
+                                  setBudgetRefusal(null);
+                                  setEditingId(employee.agentId);
+                                }}
                                 className={`group inline-flex items-center ${ICON_GAP.tight} rounded px-1 py-0.5 tabular-nums transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-gray-800`}
                               >
                                 <span
