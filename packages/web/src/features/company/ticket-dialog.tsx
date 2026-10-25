@@ -50,6 +50,7 @@ import {
   KeyValueRow,
   Modal,
   Notice,
+  NoticeStrip,
   RuledSection,
   Segmented,
   Select,
@@ -184,8 +185,9 @@ function TicketDialog({
   /**
    * The server's own words for a write one of this dialog's confirmations asked for and had
    * refused, drawn inside that card next to the button that retries it. One slot serves the three
-   * cards: only one of them can be up at a time (each is raised from an idle footer, and a write in
-   * flight leaves the others inert), and each is cleared of it before it is raised again.
+   * confirmations and the block form: only one of them can be up at a time (each is raised from an
+   * idle footer, and a write in flight leaves the others inert), and each is cleared of it before
+   * it is raised again.
    */
   const [refusal, setRefusal] = useState<string | null>(null);
   const names = new Map(employees.map((e) => [e.agentId, e.name]));
@@ -375,6 +377,28 @@ function TicketDialog({
       async () => {
         await api.unblockOrgTicket(projectId, orgId, detail.ticketId);
         setConfirmUnblock(false);
+      },
+      undefined,
+      setRefusal,
+    );
+  };
+
+  /**
+   * Marking the ticket blocked, once its reason form is answered. The form is the card that asked,
+   * so it goes with its own write landing: a refusal leaves it standing, fields and all, with the
+   * server's words above them rather than a toast that would outlive the question.
+   */
+  const commitBlock = () => {
+    if (detail === null || busy || !blockReason.trim()) return;
+    void run(
+      async () => {
+        await api.blockOrgTicket(projectId, orgId, detail.ticketId, {
+          reason: blockReason.trim(),
+          ...(blockBy.trim() ? { by: blockBy.trim() } : {}),
+        });
+        setBlockReason("");
+        setBlockBy("");
+        setBlockOpen(false);
       },
       undefined,
       setRefusal,
@@ -952,7 +976,15 @@ function TicketDialog({
                 {S.company.tickets.unblock}
               </Button>
             ) : (
-              <Button size="sm" disabled={busy} onClick={() => setBlockOpen(true)}>
+              <Button
+                size="sm"
+                disabled={busy}
+                onClick={() => {
+                  // A new question, not the last one: the previous refusal is not its answer.
+                  setRefusal(null);
+                  setBlockOpen(true);
+                }}
+              >
                 {S.company.tickets.block}
               </Button>
             )}
@@ -1034,7 +1066,7 @@ function TicketDialog({
       <Modal
         open={blockOpen}
         title={S.company.tickets.blockTitle}
-        onClose={() => setBlockOpen(false)}
+        onClose={() => (busy ? undefined : setBlockOpen(false))}
         footer={
           <>
             <Button size="sm" onClick={() => setBlockOpen(false)} disabled={busy}>
@@ -1044,18 +1076,7 @@ function TicketDialog({
               size="sm"
               variant="primary"
               disabled={busy || !blockReason.trim()}
-              onClick={() => {
-                if (detail === null) return;
-                setBlockOpen(false);
-                void run(async () => {
-                  await api.blockOrgTicket(projectId, orgId, detail.ticketId, {
-                    reason: blockReason.trim(),
-                    ...(blockBy.trim() ? { by: blockBy.trim() } : {}),
-                  });
-                  setBlockReason("");
-                  setBlockBy("");
-                });
-              }}
+              onClick={commitBlock}
             >
               {S.company.tickets.block}
             </Button>
@@ -1063,6 +1084,17 @@ function TicketDialog({
         }
       >
         <div className="space-y-3">
+          {refusal !== null && (
+            // The form's own words: a refusal is about what the reader just typed, so it reads
+            // above the fields that still hold it, not as page-level news.
+            <NoticeStrip
+              tone="danger"
+              role="alert"
+              className="rounded-md border px-2.5 py-2 text-xs"
+            >
+              <span data-slot="body">{S.common.refused(refusal)}</span>
+            </NoticeStrip>
+          )}
           <Input
             size="sm"
             label={S.company.tickets.blockedReason}

@@ -5,11 +5,13 @@
  * Three cards live in the ticket dialog (`features/company/ticket-dialog.tsx`): saving an edited
  * section, lifting a block, and moving the ticket from the footer. A fourth entry point raises
  * the same move card from the board (`features/company/tickets-page.tsx`, a card dropped on
- * another column) — one card, two doors. All four used to close before their write landed, so a
- * refusal put the reason in a toast that dismissed itself after a few seconds, over a panel that
- * had not changed and with the button live again and nothing saying why. Each card now goes only
- * once its write landed; a refusal leaves it standing with the reason drawn under its sentence
- * (`ConfirmModal`'s `refusal` slot), and reopening it does not carry the old reason.
+ * another column) — one card, two doors — and a fifth write has its form for a card: marking the
+ * ticket blocked, whose reason fields are the question itself. All of them used to close before
+ * their write landed, so a refusal put the reason in a toast that dismissed itself after a few
+ * seconds, over a panel that had not changed and with the button live again and nothing saying
+ * why. Each card now goes only once its write landed; a refusal leaves it standing with the
+ * reason drawn under its sentence (`ConfirmModal`'s `refusal` slot, or above the block form's
+ * fields), and reopening it does not carry the old reason.
  *
  * The organization and its ticket are made through the API rather than through the dialogs:
  * this spec is about the confirmations, not about creation. Company mode is off on a fresh
@@ -269,6 +271,54 @@ test("a refused unblock keeps the card, its sentence and the block", async ({ pa
   await again.getByRole("button", { name: "确认", exact: true }).click();
   await expect(again).toHaveCount(0);
   await expect.poll(async () => (await stored()).blocked).toBeFalsy();
+});
+
+test("a refused block keeps the form, what was typed and the ticket unblocked", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const { projectId, ticketUrl, stored } = await setUp(page, "r131block");
+  const REASON = "等市场站点的备案下来";
+
+  await openBoard(page, projectId);
+  const dialog = await openTicket(page);
+  await dialog.getByRole("button", { name: "标记阻塞", exact: true }).click();
+  const form = page.getByRole("dialog", { name: "标记阻塞" });
+  await expect(form).toBeVisible();
+  await form.getByRole("textbox", { name: /阻塞原因/ }).fill(REASON);
+  const sentence = await cardText(form);
+
+  const writes = [];
+  const pattern = await refuseWrite(page, ticketUrl, "POST", writes, "/block");
+  await form.getByRole("button", { name: "标记阻塞", exact: true }).click();
+
+  // The reason is in the form that asked, and it is not a toast: the notification region never
+  // carries the server's words, and the form reads exactly as before plus the one line.
+  await expect(form.getByText(REFUSAL.message)).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" })).not.toContainText(REFUSAL.message);
+  expect(writes).toHaveLength(1);
+  await expect(form).toBeVisible();
+  expect(await cardText(form)).toBe(sentence);
+
+  // Nothing was written: the ticket carries no block, and the fields keep what was typed.
+  expect((await stored()).blocked).toBeFalsy();
+  await expect(form.getByRole("textbox", { name: /阻塞原因/ })).toHaveValue(REASON);
+
+  // Closing the form decides nothing, and reopening it does not carry the old reason.
+  await form.getByRole("button", { name: "取消" }).click();
+  await expect(form).toHaveCount(0);
+  await dialog.getByRole("button", { name: "标记阻塞", exact: true }).click();
+  const again = page.getByRole("dialog", { name: "标记阻塞" });
+  await expect(again).toBeVisible();
+  await expect(again.getByText(REFUSAL.message)).toHaveCount(0);
+  expect(await again.innerText()).toBe(sentence);
+
+  // The retry lands: the form goes, the file records the block, and the footer offers to lift it.
+  await page.unroute(pattern);
+  await again.getByRole("button", { name: "标记阻塞", exact: true }).click();
+  await expect(again).toHaveCount(0);
+  await expect.poll(async () => (await stored()).blocked).toBeTruthy();
+  await expect(dialog.getByRole("button", { name: "解除阻塞", exact: true })).toBeVisible();
 });
 
 test("a refused move from the board keeps the card, its sentence and the column", async ({
