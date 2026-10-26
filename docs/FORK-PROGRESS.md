@@ -16572,6 +16572,13 @@ adelie 应用可以产出视频」。
   `/root/adelie-fork-data/r136-{after,before}`；探针 `r136/probe.mjs`、两态产物、截图都在 scratchpad 的
   `r136/` 下，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`）。
 
+### CI（推送后）
+
+- `ea7d38c0` 的 run **`40348258983`**：**22 个作业全 success、`NOT SUCCESS: []`**（逐条查过
+  `actions/runs/40348258983/jobs`，含 macOS / Windows 分片与 installer 那两条），未触发重跑。
+  它前一版 `eaf62138` 的 run `40348240009` 被 `cancel-in-progress` 取消（同一提交 rebase 前的哈希），
+  属正常。
+
 ### 没做 / 还差什么
 
 - **真去授权一次没有做**：这一轮没有真去 TokenDance 授权（不铸造任何 key），判定口径取自上游那一笔
