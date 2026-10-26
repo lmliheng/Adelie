@@ -16936,3 +16936,10 @@ adelie 应用可以产出视频」。
 - 本轮代码 + 台账 + changelog 一笔：**`ec337e6c`**（`ba2c4723..ec337e6c  main -> main`）。
 - 它的 run **`40418538644`**：**22 个作业全 success、`NOT SUCCESS: []`**（逐条查过
   `actions/runs/40418538644/jobs`，含 macOS / Windows 分片与 installer 那两条），未触发重跑。
+- **汇报邮件没发出去（网络卡点，不是凭据）**：`python3 mail.py check` 挂住（60 s 无输出即超时），抓到的
+  直接证据是 `socket.create_connection(('smtp.csu.edu.cn', 465))` **`TimeoutError: timed out`**，而
+  `getent hosts smtp.csu.edu.cn` 正常解析出 202.197.64.20 / .21 —— 即 DNS 通、到 `202.197.x` 的 TCP 不通
+  （`curl https://mail.csu.edu.cn/` 10 s 也超时），与 2026-10-08 那次「整个 202.197.0.0/16 不通」同类。
+  按第 117 / 135 轮的先例改走飞书投递（`shared_env/xianyu-ops/feishu_send.py`，`text ok`，
+  `message_id=om_x100b62ca416358a0df2ddad29d7c584`），正文留底在 scratchpad 的 `r138/report.md`。
+  下一轮开工再探一次，通了把积压的补发到 `0110230306@csu.edu.cn`。
