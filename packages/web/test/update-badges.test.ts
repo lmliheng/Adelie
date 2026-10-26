@@ -44,7 +44,7 @@ describe("softwareUpdate", () => {
     expect(softwareUpdate({ kind: "up-to-date", version: "0.2.9" })).toBeNull();
     expect(softwareUpdate({ kind: "disabled" })).toBeNull();
     expect(
-      softwareUpdate({ kind: "error", message: null, detail: null, retry: "check" }),
+      softwareUpdate({ kind: "error", message: null, detail: null, retry: "check", version: null }),
     ).toBeNull();
     expect(softwareUpdate({ kind: "unsupported", reason: { code: "dev" } })).toBeNull();
     expect(softwareUpdate({ kind: "restarting", version: "0.3.0" })).toBeNull();

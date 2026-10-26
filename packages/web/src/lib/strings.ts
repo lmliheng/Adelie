@@ -1083,6 +1083,39 @@ export const zh = {
     restartingBodyClient: "应用即将重启。",
     failed: "更新失败",
     retry: "重试",
+    /**
+     * The escape hatch on a download that could not reach GitHub (lib/update-troubleshoot.ts):
+     * some hosts cannot get to GitHub at all, and no retry from that host changes it. The button
+     * opens a new chat with the prompt below; the hint says what it costs before it is pressed,
+     * because the model call is the user's own.
+     */
+    troubleshootAction: "让 Adelie 排查并下载",
+    troubleshootHint:
+      "需要先在「模型」页配好一个模型：这次排查由它完成，并按用量产生调用开销。点开会新建一个对话并写好排查步骤，是否发送由你决定。",
+    /** The prompt's first line; `version` is the release the run was fetching (null when the backend named none). */
+    troubleshootPromptLead: (version: string | null) =>
+      "自动更新 Adelie 失败：下载 GitHub 上的安装包时没能连上。请排查这台主机的网络，并尽量把新版本装好。\n" +
+      `目标版本：${
+        version !== null
+          ? `v${version}`
+          : "不确定，请先查 https://github.com/lmliheng/Adelie/releases/latest 再看"
+      }`,
+    /** The failed run's own text, quoted into the prompt under this label. */
+    troubleshootPromptClip: (output: string) => `失败输出：\n${output}`,
+    /** The fixed instruction tail: what to diagnose, where the assets live, and what not to touch. */
+    troubleshootPromptTail: (version: string | null) =>
+      [
+        "请按顺序做完，并如实报告每一步的结果：",
+        "1. 先定位断在哪一步：用 curl 查本机到 GitHub 的连通性（https://api.github.com/repos/lmliheng/Adelie/releases/latest 和 https://github.com），看 DNS、代理、TLS 分别成不成，把命令与原始输出列出来。",
+        "2. 换一条能走通的通路把资产取回来：",
+        `   https://github.com/lmliheng/Adelie/releases/download/${
+          version !== null ? `v${version}` : "<版本 tag>"
+        }/`,
+        "   下有 install.sh、各平台安装包（形如 penguin-linux-x64.tar.gz）与各自的 .sha256，直连不通时可借道可用镜像（给 github.com 加镜像前缀），下载到临时目录。",
+        "3. 校验安装包的 sha256 与 .sha256 文件一致后，用下载下来的 install.sh 装到现有安装目录（默认 ~/.adelie，或 PENGUIN_INSTALL_DIR 指向的目录），装完用 penguin --version 确认。",
+        "4. 数据目录 ~/.adelie/data 不要动：安装器只替换 bin/lib/web/node。",
+        "5. 结论写清楚：哪里不通、走了哪条通路、装成了哪个版本；没成功就说明卡在哪一步、还差什么。",
+      ].join("\n"),
     /** Why this install cannot update itself. */
     unsupportedDev: "开发运行不支持自更新",
     unsupportedNonAppImage: "Linux 上只有 AppImage 版本支持自更新——包安装请通过包管理器更新",

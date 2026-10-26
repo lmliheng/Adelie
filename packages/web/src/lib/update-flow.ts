@@ -63,8 +63,18 @@ export type UpdateFlow =
   /** Downloaded (client) or installed (release): a restart runs it. `manual` = nothing can restart this process; the user does it by hand. */
   | { kind: "ready"; version: string | null; restart: "auto" | "manual" }
   | { kind: "restarting"; version: string | null }
-  /** `detail` is the backend's own text (the update command's output tail); `retry` names the step that failed. */
-  | { kind: "error"; message: string | null; detail: string | null; retry: "check" | "download" }
+  /**
+   * `detail` is the backend's own text (the update command's output tail); `retry` names the step
+   * that failed. `version` is the release the failed run was fetching — named by whatever the step
+   * failed on, null when nothing did (the hand-off prompt quotes it; see update-troubleshoot.ts).
+   */
+  | {
+      kind: "error";
+      message: string | null;
+      detail: string | null;
+      retry: "check" | "download";
+      version: string | null;
+    }
   | { kind: "unsupported"; reason: UpdateUnsupported };
 
 /** What the page itself has in flight, beside the backend snapshots. */
@@ -135,6 +145,9 @@ export function releaseFlow(i: ReleaseInputs, local: FlowLocal): UpdateFlow {
       message: null,
       detail: result.output === "" ? null : result.output,
       retry: "download",
+      // The run the job was carrying out; the offered release is the fallback for a job whose
+      // target was never named.
+      version: i.job?.targetVersion ?? offered,
     };
   }
   if (local.checking) return { kind: "checking" };
@@ -144,7 +157,7 @@ export function releaseFlow(i: ReleaseInputs, local: FlowLocal): UpdateFlow {
     case "disabled":
       return { kind: "disabled" };
     case "failed":
-      return { kind: "error", message: null, detail: null, retry: "check" };
+      return { kind: "error", message: null, detail: null, retry: "check", version: null };
     case "found":
       return {
         kind: "available",
@@ -199,7 +212,15 @@ export function clientFlow(status: DesktopUpdateStatus | null, local: FlowLocal)
     case "error":
       return local.checking
         ? { kind: "checking" }
-        : { kind: "error", message: status.message ?? null, detail: null, retry: "check" };
+        : {
+            kind: "error",
+            message: status.message ?? null,
+            detail: null,
+            retry: "check",
+            // The shell carries the version of the release it was working on, whether the failed
+            // step was the lookup or the download.
+            version: status.version ?? null,
+          };
     default:
       return local.checking ? { kind: "checking" } : { kind: "unknown" };
   }

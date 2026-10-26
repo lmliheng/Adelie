@@ -145,6 +145,8 @@ describe("releaseFlow (an ordinary server)", () => {
       message: null,
       detail: "Upgrade failed; the previous install was left in place.",
       retry: "download",
+      // The release the run was fetching — the hand-off prompt quotes it (update-troubleshoot.ts).
+      version: "0.3.0",
     });
   });
 
@@ -216,11 +218,14 @@ describe("clientFlow (the desktop shell's own window)", () => {
   });
 
   it("carries the shell's own failure text, and names why a form cannot update itself", () => {
-    expect(clientFlow(shell({ state: "error", message: "sha512 mismatch" }), NO_LOCAL)).toEqual({
+    expect(
+      clientFlow(shell({ state: "error", message: "sha512 mismatch", version: "0.3.0" }), NO_LOCAL),
+    ).toEqual({
       kind: "error",
       message: "sha512 mismatch",
       detail: null,
       retry: "check",
+      version: "0.3.0",
     });
     expect(
       clientFlow(shell({ state: "unsupported", reason: "linux-not-appimage" }), NO_LOCAL),
@@ -236,9 +241,9 @@ describe("opensWithCheck", () => {
   it("checks on opening when nothing is known, the answer is 'current', or the last check failed", () => {
     expect(opensWithCheck({ kind: "unknown" })).toBe(true);
     expect(opensWithCheck({ kind: "up-to-date", version: "0.2.9" })).toBe(true);
-    expect(opensWithCheck({ kind: "error", message: null, detail: null, retry: "check" })).toBe(
-      true,
-    );
+    expect(
+      opensWithCheck({ kind: "error", message: null, detail: null, retry: "check", version: null }),
+    ).toBe(true);
   });
 
   it("does not disturb an offer, a download, a ready build, or a failed download", () => {
@@ -249,9 +254,15 @@ describe("opensWithCheck", () => {
       opensWithCheck({ kind: "downloading", version: "0.3.0", percent: 10, phase: null }),
     ).toBe(false);
     expect(opensWithCheck({ kind: "ready", version: "0.3.0", restart: "auto" })).toBe(false);
-    expect(opensWithCheck({ kind: "error", message: null, detail: "x", retry: "download" })).toBe(
-      false,
-    );
+    expect(
+      opensWithCheck({
+        kind: "error",
+        message: null,
+        detail: "x",
+        retry: "download",
+        version: "0.3.0",
+      }),
+    ).toBe(false);
   });
 });
 

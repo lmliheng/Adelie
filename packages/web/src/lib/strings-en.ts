@@ -1027,6 +1027,39 @@ export const en: Strings = {
     restartingBodyClient: "The app is about to restart.",
     failed: "Update failed",
     retry: "Retry",
+    /**
+     * The escape hatch on a download that could not reach GitHub (lib/update-troubleshoot.ts):
+     * some hosts cannot get to GitHub at all, and no retry from that host changes it. The button
+     * opens a new chat with the prompt below; the hint says what it costs before it is pressed,
+     * because the model call is the user's own.
+     */
+    troubleshootAction: "Have Adelie diagnose and download",
+    troubleshootHint:
+      "This needs a model configured on the Models page: the Agent does the diagnosing with it, and those calls are billed like any other. Opening it starts a new conversation with the steps written out — sending it is your call.",
+    /** The prompt's first line; `version` is the release the run was fetching (null when the backend named none). */
+    troubleshootPromptLead: (version: string | null) =>
+      "The automatic Adelie update failed: it could not reach GitHub to download the installer. Please diagnose this host's network and get the new version installed if you can.\n" +
+      `Target release: ${
+        version !== null
+          ? `v${version}`
+          : "unknown — check https://github.com/lmliheng/Adelie/releases/latest first"
+      }`,
+    /** The failed run's own text, quoted into the prompt under this label. */
+    troubleshootPromptClip: (output: string) => `The failed run's output:\n${output}`,
+    /** The fixed instruction tail: what to diagnose, where the assets live, and what not to touch. */
+    troubleshootPromptTail: (version: string | null) =>
+      [
+        "Work through this in order and report honestly what each step did:",
+        "1. Find where the connection dies: use curl to probe this host's reach to GitHub (https://api.github.com/repos/lmliheng/Adelie/releases/latest and https://github.com), and say whether DNS, a proxy or TLS is what fails — with the commands and their raw output.",
+        "2. Fetch the assets over a route that works:",
+        `   https://github.com/lmliheng/Adelie/releases/download/${
+          version !== null ? `v${version}` : "<tag>"
+        }/`,
+        "   holds install.sh, the per-platform bundles (penguin-linux-x64.tar.gz and friends) and a .sha256 for each. If the direct route is blocked, go through a mirror you can reach (a prefix in front of github.com) and download into a temporary directory.",
+        "3. Verify the bundle's sha256 against its .sha256 file, then install with the downloaded install.sh into the existing install directory (~/.adelie by default, or whatever PENGUIN_INSTALL_DIR names) and confirm with penguin --version.",
+        "4. Do not touch the data directory ~/.adelie/data: the installer replaces only bin/lib/web/node.",
+        "5. Write the conclusion: what was unreachable, which route worked, which version got installed — and if it did not work, exactly where it stopped and what is missing.",
+      ].join("\n"),
     /** Why this install cannot update itself. */
     unsupportedDev: "A dev run does not update itself",
     unsupportedNonAppImage:

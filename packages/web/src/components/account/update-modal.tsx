@@ -9,15 +9,20 @@
  * (with "background" — closing never cancels; the row keeps reporting and the outcome
  * toasts), then "restart and update" once the release is ready. Failures show the
  * backend's own text — the update command's output tail, the shell's updater message —
- * and offer a retry; an install form that cannot update itself says why.
+ * and offer a retry; an install form that cannot update itself says why. A failure that is
+ * the host being unable to reach GitHub offers one thing more: the hand-off to an Agent
+ * that can diagnose the network and fetch the release itself (lib/update-troubleshoot.ts).
  *
  * The flow and the actions live in `use-update-flow.ts`; this file only renders.
  */
 import type { ReactNode } from "react";
 import { Button, Link, Modal, ProgressBar, Spinner } from "@adelie/ui";
+import { pickDefaultAgent, useAiBridge } from "../../features/ai-create";
 import { S } from "../../lib/strings";
 import { stripAnsi } from "../../lib/strip-ansi";
 import { toneInk } from "../../lib/tone";
+import { buildUpdateTroubleshootPrompt, unreachableDownload } from "../../lib/update-troubleshoot";
+import { useProject } from "../../state/project";
 import type { UpdateFlow, UpdateMode } from "../../lib/update-flow";
 import {
   checkForUpdates,
@@ -33,13 +38,14 @@ const RELEASES_URL = "https://github.com/lmliheng/Adelie/releases";
 export function UpdateModal() {
   useUpdateFlowOwner();
   const { mode, flow, modalOpen, currentVersion } = useUpdateFlow();
+  const openTroubleshoot = useTroubleshootOffer(flow);
   if (mode === "none") return null;
   return (
     <Modal
       open={modalOpen}
       title={S.update.title}
       onClose={closeUpdateModal}
-      footer={<Footer mode={mode} flow={flow} />}
+      footer={<Footer mode={mode} flow={flow} openTroubleshoot={openTroubleshoot} />}
     >
       <div className="space-y-3">
         {currentVersion !== null && (
@@ -47,13 +53,42 @@ export function UpdateModal() {
             {S.update.currentVersion(currentVersion)}
           </p>
         )}
-        <Body mode={mode} flow={flow} />
+        <Body mode={mode} flow={flow} openTroubleshoot={openTroubleshoot} />
       </div>
     </Modal>
   );
 }
 
-function Body({ mode, flow }: { mode: UpdateMode; flow: UpdateFlow }): ReactNode {
+/**
+ * The hand-off offer on a failed download, or null when there is nothing to hand over. Decided once
+ * in the modal because both halves render it: the body explains what it costs, the footer's button
+ * performs it. The Agent is the Project's default one (pickDefaultAgent's own reasoning — it carries
+ * the preinstalled library), and a Project with no agents offers nothing to send the prompt to.
+ *
+ * Clicking writes the prompt into a new chat's draft and closes this modal; nothing is sent until
+ * the user presses Send there (see features/ai-create/ai-bridge.ts).
+ */
+function useTroubleshootOffer(flow: UpdateFlow): (() => void) | null {
+  const { openAiChat } = useAiBridge();
+  const { agents } = useProject();
+  if (flow.kind !== "error" || !unreachableDownload(flow)) return null;
+  const agentId = pickDefaultAgent(agents)?.agentId ?? null;
+  if (agentId === null) return null;
+  return () => {
+    openAiChat({ agentId, text: buildUpdateTroubleshootPrompt(flow) });
+    closeUpdateModal();
+  };
+}
+
+function Body({
+  mode,
+  flow,
+  openTroubleshoot,
+}: {
+  mode: UpdateMode;
+  flow: UpdateFlow;
+  openTroubleshoot: (() => void) | null;
+}): ReactNode {
   switch (flow.kind) {
     case "unknown":
     case "checking":
@@ -133,6 +168,9 @@ function Body({ mode, flow }: { mode: UpdateMode; flow: UpdateFlow }): ReactNode
           </p>
           {flow.message !== null && <p className="text-sm">{flow.message}</p>}
           {flow.detail !== null && <OutputTail text={flow.detail} />}
+          {openTroubleshoot !== null && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">{S.update.troubleshootHint}</p>
+          )}
         </>
       );
     case "unsupported":
@@ -156,7 +194,15 @@ function Body({ mode, flow }: { mode: UpdateMode; flow: UpdateFlow }): ReactNode
   }
 }
 
-function Footer({ mode, flow }: { mode: UpdateMode; flow: UpdateFlow }): ReactNode {
+function Footer({
+  mode,
+  flow,
+  openTroubleshoot,
+}: {
+  mode: UpdateMode;
+  flow: UpdateFlow;
+  openTroubleshoot: (() => void) | null;
+}): ReactNode {
   const close = (
     <Button size="sm" onClick={closeUpdateModal}>
       {S.common.close}
@@ -211,6 +257,11 @@ function Footer({ mode, flow }: { mode: UpdateMode; flow: UpdateFlow }): ReactNo
       return (
         <>
           {close}
+          {openTroubleshoot !== null && (
+            <Button size="sm" onClick={openTroubleshoot}>
+              {S.update.troubleshootAction}
+            </Button>
+          )}
           <Button
             size="sm"
             variant="primary"
