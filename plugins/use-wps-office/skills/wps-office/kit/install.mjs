@@ -257,8 +257,11 @@ function startBridge(root) {
     // Never inherit the caller's working directory. Windows refuses to delete a directory that is
     // some process's cwd (`EBUSY: resource busy or locked`), so a bridge started from a shell that
     // was sitting in this Skill's directory would make every later update of this plugin fail
-    // until the bridge was killed. The data root is ours, always exists, and is nobody's Skill.
-    cwd: root,
+    // until the bridge was killed. The user's home directory is nobody's Skill and no Adelie flow
+    // removes it — the autostart launcher changes to it for the same reason. (The data root would
+    // do as a place to stand, but it is a directory people do delete, and a Windows delete fails
+    // while a bridge stands in it: that is what turned `fs.rmSync` of a temp root red on CI.)
+    cwd: os.homedir(),
   });
   child.unref();
 }
