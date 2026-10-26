@@ -374,8 +374,15 @@ function OverviewTab({
   const [conflict, setConflict] = useState<string | null>(null);
   const [resetOpen, setResetOpen] = useState(false);
   const [resetting, setResetting] = useState(false);
+  // A reset / kernel update the server refused keeps its card (it only ever closed on a landed
+  // write) and reports inside it, next to the button that retries it — the same slot the Agents
+  // list's batch update and this page's API tab already use. A toast said the same thing, but it
+  // dismissed itself while the card that asked was still on screen. Cleared on open and on close,
+  // so reopening never carries the previous attempt's reason.
+  const [resetRefusal, setResetRefusal] = useState<string | null>(null);
   const [kernelOpen, setKernelOpen] = useState(false);
   const [kernelUpdating, setKernelUpdating] = useState(false);
+  const [kernelRefusal, setKernelRefusal] = useState<string | null>(null);
   /** Last kernel update's merge report (kept fields listed under the section until the next full reload). */
   const [kernelResult, setKernelResult] = useState<AgentKernelUpdateResponse | null>(null);
   const { requestSave, element: saveConfirm } = useSaveConfirm();
@@ -388,7 +395,8 @@ function OverviewTab({
       setResetOpen(false);
       onConfigReset();
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The card asked, so the card says why; the retry is the same button (see resetRefusal).
+      setResetRefusal(apiErrorText(e));
     } finally {
       setResetting(false);
     }
@@ -404,7 +412,7 @@ function OverviewTab({
       toastSuccess(S.agent.kernelUpdateDone(res.kernelVersion, res.advanced.length));
       onKernelUpdated();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setKernelRefusal(apiErrorText(e));
     } finally {
       setKernelUpdating(false);
     }
@@ -568,7 +576,10 @@ function OverviewTab({
               size="sm"
               className="relative"
               disabled={kernelUpdating || !data.config.kernelOutdated}
-              onClick={() => setKernelOpen(true)}
+              onClick={() => {
+                setKernelRefusal(null);
+                setKernelOpen(true);
+              }}
             >
               {S.agent.kernelUpdateAction}
               {data.config.kernelOutdated && (
@@ -585,7 +596,10 @@ function OverviewTab({
               size="sm"
               variant="danger"
               disabled={resetting}
-              onClick={() => setResetOpen(true)}
+              onClick={() => {
+                setResetRefusal(null);
+                setResetOpen(true);
+              }}
             >
               {S.agent.resetConfigAction}
             </Button>
@@ -655,10 +669,14 @@ function OverviewTab({
         title={S.agent.kernelUpdateTitle}
         busy={kernelUpdating}
         tone="primary"
-        onClose={() => setKernelOpen(false)}
+        onClose={() => {
+          setKernelOpen(false);
+          setKernelRefusal(null);
+        }}
         onConfirm={() => void runKernelUpdate()}
         confirmLabel={S.agent.kernelUpdateAction}
         cancelLabel={S.common.cancel}
+        refusal={kernelRefusal === null ? undefined : S.common.refused(kernelRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {S.agent.kernelUpdateConfirmBody}
@@ -670,10 +688,14 @@ function OverviewTab({
         open={resetOpen}
         title={S.agent.resetConfigTitle}
         busy={resetting}
-        onClose={() => setResetOpen(false)}
+        onClose={() => {
+          setResetOpen(false);
+          setResetRefusal(null);
+        }}
         onConfirm={() => void runReset()}
         confirmLabel={S.agent.resetConfigAction}
         cancelLabel={S.common.cancel}
+        refusal={resetRefusal === null ? undefined : S.common.refused(resetRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">{S.agent.resetConfigConfirmBody}</p>
       </ConfirmModal>
