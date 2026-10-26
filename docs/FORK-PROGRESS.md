@@ -16416,3 +16416,54 @@ adelie 应用可以产出视频」。
   两态齐全或未逐处摸过 —— 下一轮若仍自选，先按「真服务 + 真浏览器拒一次写入」量清楚再决定做哪处。
 - 报到渠道：本轮 csu 邮箱仍不通（`mail.py check` 超时 `RC=124`，`smtp/imap.csu.edu.cn` 端口探测同样挂住，
   与第 117 轮同因），汇报改走飞书，正文留底在 scratchpad 的 `report.md`。
+
+## 发版 v0.5.7（2026-10-26 19:00 CST，用户「继续做，做完了发新版」）
+
+- 起点：用户 10-25 点单的火山方舟分组 + 对话视频输入输出 + 出片插件已在 `0c43f7c4` 落地；这一轮先补上
+  「没做」里最要紧的两件 —— 视频判定的真 bug 与那条真浏览器用例（`d162438b`），再修一处 CI 真红
+  （`2f8005eb`），然后把 0.5.7 发出去。
+- 发版条件成立：自 `v0.5.6`（`0cd8f339`）起 `main` 上落了 **15 笔提交，其中 7 个用户看得见的改动**，
+  CI 全绿 → 发 **v0.5.7**（patch：没有接口、数据根、配置格式、包名变化；新增一处 pnpm patch）。
+- **CI 结论补记（按用户 2026-10-22 的要求，合进本轮这一笔）**：`0c43f7c4` 那次 CI（run `40295451601`）
+  **22 个作业里 `test-macos (rest)` 红**，死在 `plugins/use-seedance` 的 `submits, polls past a running
+  status…`：macOS 的临时目录 `/var/folders/…` 被系统报成 `/private/var/folders/…`，测试拿自己记下的
+  路径去比脚本报回来的路径，必错。`2f8005eb` 改成两边都走 `fs.realpathSync`（Windows / Linux 行为不变）；
+  本地用符号链接的 `TMPDIR` 复现了两态：改前 **1 failed / 7 passed**、改后 **8 passed**。`63fa1064`
+  （版本戳 + 正文）的 CI run `40312594562` **22 个作业全绿**。
+- 版本戳 `d80630ec` `chore(release): 0.5.7` —— **34 个文件**（root + 10 个工作区包 + 22 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`；四个 private 的 sandbox 插件仍停 0.2.3）。
+- 发布正文 `63fa1064` `docs(release): v0.5.7 的发布正文`；注释 tag `v0.5.7` 指过去，一并推上。
+- 门禁（发布树 `/tmp/rel-0.5.7`，HEAD `63fa1064`）：build / typecheck / lint / format:check 全 `rc=0`；
+  `pnpm -r test` 首跑有一条**偶发红**（server `terminal-stream.test.ts > replays input modes a program
+  enabled to a reattaching client`，断言回放缓冲里有 `?25l`），单独复跑 **3 次全过**、整套复跑 **rc=0**：
+  core 1421 通过 / 6 跳过 · ui 1053 · server 2990 / 4 跳过 · web 3273 / 2 跳过 · cli 561 · docs 62 ·
+  amsp 68 · desktop 304 · ui-gallery 140 · `plugins/use-seedance` 8 · 四个 sandbox 插件各 17–32。
+- 14 件资产：CLI 三件（本机照 `release.yml` 的 build 作业复现）、桌面 Linux 本机
+  `electron-builder --linux`、桌面 Windows 用 `desktop-build.yml` 手工派发（run `40313951063`，`ref` 与
+  `tag` 都写 `v0.5.7`，三平台全绿）、两个安装脚本。Release id **424179235**，14 件全 `uploaded`，
+  `releases/latest` 指向 v0.5.7。
+- 两个坑（记下来省下一轮）：**①** 建 Release 时 `target_commitish` 写**注释 tag 的对象 SHA**
+  （`git rev-parse v0.5.7`）会让 GitHub 直接回 **500、响应体还是空的**；要写它指向的那个提交
+  （`git rev-parse v0.5.7^{commit}`）。**②** 本机复现 `release.yml` 时漏了
+  `sed __PENGUIN_RELEASE_VERSION__ → <tag>` 那一步（v0.5.6 也漏了 —— 至今发布出去的 `install.sh`
+  还带着占位符），本轮补盖并重封了三件 bundle（`restamp-bundles-057.sh`），`verify-assets-057.py`
+  的四层校验把这条钉住了。
+- npm：**26 个包全到 0.5.7**。`@adelie/use-seedance` 是**全新包名**，所以发布前
+  `node scripts/check-publishable.mjs --registry --strict` 必然 `rc=1`（OIDC 建不了新名字，只能人工首发），
+  用组织令牌发完第一次，同一命令再跑即 `rc=0`（`registry: all 26 published names already exist`）。
+  registry 滞后照旧：发布完立刻逐包查只有 24/26 可见，等三分钟 26/26 全到，没有改版本号。
+- 3003 下载站：`/downloads/index.json` 换 v0.5.7（6 件，size/sha256 取自本轮产物），页头角标 `v0.5.6` →
+  `v0.5.7`；改前备份 `index.json.bak-20261026-v057` / `index.html.bak-20261026-v057`。
+- 现网：`penguin update --check` → 「Installed 0.5.6 · latest 0.5.7」→ `penguin update --yes` 两级
+  checksum 都过，`Adelie v0.5.7 installed`，`penguin --version` = `v0.5.7`，只换 `bin/lib/web/node`，
+  数据根没动。（第一次 `--yes` 报「Could not download the installer from GitHub」—— 那时 `install.sh`
+  还没传完，等 14 件资产传完再跑就过了。）服务进程重启排进 19:47:48 起的那个瞬时单元
+  （`systemd-run --unit=adelie-live-restart-0.5.7`，脚本自己先睡 15 分钟再重启并核验）—— 这条命令本身
+  跑在 7364 服务端的子进程里，当场重启会打断本轮。
+- OSS 镜像不适用：本仓 2026-10-17 已下线镜像，Release 资产是唯一分发渠道。
+- 带出去的 7 个用户看得见的改动：火山方舟分组 + 对话视频输入输出 + 出片插件 `use-seedance` + 两枚品牌图标
+  （`0c43f7c4`）、视频判定两边读同一份（`d162438b`）、工单与财务四处「被拒时框与原因留着」（`37db5bca`
+  `9eeef95d` `df07b72d` `467c076d`）、外观页导入主题（`80ccb1bd`）。
+- 汇报：校园邮箱照惯例只试一次（`/root/penguin-plugins/csu-mail/skills/csu-mail/scripts/mail.py check`
+  **超时 `RC=124`**、无输出，仍是 `202.197.0.0/16` 那个网段的问题、不是凭据），改走飞书，正文留底在
+  scratchpad 的 `release-057/report.txt`。
