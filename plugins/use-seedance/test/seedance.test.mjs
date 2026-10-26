@@ -111,7 +111,12 @@ const execFileAsync = promisify(execFile);
  * would leave it unable to answer, which is a hang rather than a failing test.
  */
 async function run(args, { env = {}, workspace } = {}) {
-  const dir = workspace ?? fs.mkdtempSync(path.join(os.tmpdir(), "seedance-test-"));
+  // The child resolves a relative `--out` against its own cwd, and the OS reports that as the real
+  // path — on macOS a tmpdir of /var/… comes back as /private/var/… — so hand the real one back and
+  // let the callers compare against the same thing.
+  const dir = fs.realpathSync(
+    workspace ?? fs.mkdtempSync(path.join(os.tmpdir(), "seedance-test-")),
+  );
   try {
     const { stdout, stderr } = await execFileAsync(process.execPath, [SCRIPT, ...args], {
       cwd: dir,
