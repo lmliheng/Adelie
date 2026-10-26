@@ -1022,6 +1022,23 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       **为什么是这一条**：上一轮量过、写进「没做 / 还差什么」的第一顺位（它是用户看得见的真缺陷，且与
       紧随其后的 `ce9b3e69`（#1335）改同一批文件，先落这一条下一次才好接）。细节与实测见「第一百三十七轮」
       一节。
+- [x] **5.52 停靠面板只属于各自的 Session**（上游 `ce9b3e69` `#1335`，**2026-10-27 第一百三十八轮
+      落地**，提交见该节）：每块停靠面板现在只属于屏幕上的那个对话。此前有几条自动路径在切换之后的一次
+      渲染里还拿着上一个 Session 的数据，于是操作了刚切过去的对话 —— 最实的一条是**子智能体面板**：
+      从一个正在运行、已派生子智能体的会话切走，面板会在新会话里打开（真浏览器两态实测：改前新会话的
+      右侧栏出现「智能体面板」，改后什么也没有，而原会话的调用关系照旧）。修法：消息流写明自己的状态
+      属于哪个 Session（`SessionStreamState.sessionId`），跟踪器忽略「不是这个 Session」的观察，面板只在
+      屏幕上的停靠栏本身属于该会话时才打开。另外四处：浏览器「面板显示时保留一个标签页」改为问**效果
+      运行那一刻**的停靠栏（离开的面板还会多挂载一次渲染，插槽仍可见）；`adoptDockScope(from, sessionId,
+      stillOpen)` 只移交 `from` 自己的布局并回答「用户是否还在 `from` 上」，草稿首次发送与自愈据此才跳转
+      （用户已经切走就不再把人拽回新会话，新会话照常进侧栏）；交给面板的请求（文件链接 / 记忆条目 / 子会话
+      chip）在**渲染**到另一个对话的路由时就丢弃，而不是渲染后靠效果清除；需要确认的标签关闭只在当初
+      发起关闭的那个对话仍是屏幕上这个时才关。**为什么是这一条**：上一轮写明的第一顺位（用户看得见的真
+      缺陷、本树文件基本都在、不引入新依赖），且与刚落的 5.51 改同一批文件但行不重合。**有意未取**（本树
+      没有它们要用的东西，细节见该节）：与「对话自己的标签页」比对的那半（要上游 #1105 的按会话分片标签
+      页，本树一个窗口一份）、终端面板关闭前重核 `dockSessionId()`（`terminal-panel.tsx` 本树没有）、
+      自愈路径的 `adoptBrowserSession` / `reownTerminals`（本树没有这两个函数）、它那份 jsdom 用例
+      （本树不装 jsdom，改由真浏览器取证）。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2272,6 +2289,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-26 | 7.48 | **智能体设置里「还原为默认配置」「更新内核」被拒时，原因留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/agent-settings-page.tsx`（`OverviewTab` 新增 `resetRefusal` / `kernelRefusal`，两个 `ConfirmModal` 接上 `refusal` 槽并按 `S.common.refused` 加前缀，两个 `catch` 不再 `toastError`，开框 / 关框都清旧原因） + 1 个新文件 `packages/web/e2e/agent-config-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：台账点名的下一站是「插件市场 / 智能体设置 / 定时任务面板里带确认的写入」，实摸之后插件市场与定时任务面板早已接好 `refusal` 槽，只剩智能体设置概览页这两张；同一操作在智能体列表页（批量内核更新）与本页 API 标签页早就会把原因留在框里，这两张是最后一处没跟上的 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**（两条扫全仓的 5 s 用例在本机与另一条线的发布测试并行时超时、单独复跑通过，见该节）：core **69 通过文件 + 1 跳过 / 1421 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2990 通过 / 4 跳过** · web **267 文件 / 3272 通过 / 2 跳过** · **真服务 + 真浏览器单 spec**（`/root/adelie-fork-data/r135-e2e`，服务 8950、mock 8951，`packages/{core,server,web}/dist` 本轮新构建）：新 spec **2 passed（9.1s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push -- packages/web/src/features/agents/agent-settings-page.tsx`（只带这一个路径）、重建 web 成 `r135/before-dist`、另起一台服务端（8960，`/root/adelie-fork-data/r135-before`）→ **2 failed**（`element(s) not found`：改前框里没有那句原话）；`git stash pop` 后重建即回到 2 / 2 · **两态实测真看一眼**（探针 `r135/probe.mjs`，两态各跑一次、两张框各测一遍，同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** 两张框都是 `{cardVisible:true, alertInCard:0, noticeHasReason:true}` → 6.5 s 后 `noticeHasReason:false`（屏幕上一点解释都没有了）；**改后** 两张框都是 `{cardVisible:true, alertInCard:1, noticeHasReason:false}`，6.5 s 后原样还在——截图 `r135/{before,after}/shots/{reset,kernel}-2-six-seconds-later.png` 里正好是「改前框里空着」对「改后框里那行『操作被拒绝：agent state is read-only』」；两态 console 的 error 只有既有的 `/machines` 403（普通成员读机器列表）与刻意造的 500，无 `pageerror` · **整套浏览器 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**167 passed（11.9m）、0 failed、`EXIT=0`**（第一百三十三轮整套是 164，+ 本笔 2 + 另一条线视频那 1） · 端口只用 8950 / 8951 / 8960 与整套的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r135-{e2e,before}` 与 scratchpad 的 `r135/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总（0.5.7 的版本号与发布正文是另一条线推上来的 `d80630ec` / `63fa1064`，本线只 `merge --ff-only` 跟上） | 见本行提交 |
 | 2026-10-26 | 5.50 | **在局域网地址上打开 Web App 时，密钥授权改为粘贴授权码**（上游 `12a58d4f` `#1328` 移植，照改动落、不是合分支；上游 8 文件 / +289 −17 → 本树落下 5 个跟踪文件 / +133 −17 与 changelog 一对：上游那份前端用例要 jsdom（`packages/web` 不装），改由真浏览器取证，服务端用例的表头注释按本树现状手写合并）：服务端新增导出 `openedMode(asked, origin)` —— `manual` 永不升级；`callback` 只在 `https:` 或 `http:` 且主机为 `localhost` / `[::1]` / `127.x.x.x`（授权页 `callback_url` 的判据）时保留，解析不出的地址一并降级；`start` 用它同时决定回调地址与流程记录的模式（被降级的流程拒绝投递授权码，与手动流程完全一致）并返回 `mode`；`ModelOAuthStartResponse.mode` 为必填。Web 侧 `ModelOAuthDialog` 新增 `redirectRefused`，与 `manual` 合成 `byHand` 取代各处判断（授权码那一步、不轮询、不给跳转开关），只看应答里的 `mode === "manual"`，对没有该字段的旧服务端行为照旧。**本地化**：本树已改名的 `ADELIE_TRUST_PROXY` 等措辞沿用；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 重写 `src/ifaces.json` 后与版本库逐字节相同 —— 195 接口 / 590 类型，本笔不动组件契约）· `npx oxlint` 五个文件 **0 警告 0 错误** · 五个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（69 文件 + 1 跳过）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **269 文件 / 3283 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：在 `openedMode` 开头插一句 `return asked;` → `test/model-oauth.test.ts` **2 failed / 44 passed**（「非回环明文 HTTP 按手动开」与 LAN 路由那两条都挂在 `expected "manual", received "callback"`），还原后 **46 全过** · **本轮主证据（真服务端 ×2 + 真浏览器：改前 / 改后两态 + 回环对照）**：`packages/{core,server,web}` 各自单独重建；两份服务端产物（`r136/before-server-dist` 取自把四份源码 stash 掉的树）与两份 web 产物（`r136/{before,after}-dist`）分别挂在一次性数据根 `/root/adelie-fork-data/r136-{before,after}` 上，**改后起在 `localhost:8954`、改前起在 `localhost:8955`**（`ADELIE_SEED_ADMIN_PASSWORD` + 登录页表单拿 cookie；空数据根不需要模型 key——即 3.6 那个卡点）；浏览器用 `--host-resolver-rules=MAP app.lan 127.0.0.1` 以 **`http://app.lan:<port>`（明文 HTTP + 非回环主机名）** 访问，三腿读数：**改后 @ LAN** —— `POST …/model-oauth/start` 回 `mode: "manual"`、`authorizeUrl` 里**没有 `callback_url`**、`code_challenge_method=S256`，弹窗同时有「授权码」输入框 + 那句粘贴提示 + 「提交授权码」，**没有**「授权页跳不回来？改为手动填写授权码」这个开关（截图 `r136/shots/after-lan.png`）；**改前 @ LAN** —— 应答无 `mode` 字段、`callback_url` 就是 `http://app.lan:8955/…`（正是授权页会拒的那个），弹窗只有「打开授权页」+ 那个开关、**没有授权码框**（`r136/shots/before-lan.png`）；**改后 @ localhost（回环对照，行为不变）** —— 应答 `mode: "callback"`、`callback_url` 是 `http://localhost:8954/…`、开关照旧在（`r136/shots/after-localhost.png`）。三腿 console 各 **0 error**、**无一条 ≥400**（登录前的 `/api/me` 401 属这个 App 的正常首访）· 端口只用 8954 / 8955（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r136-{after,before}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r136/` 下（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 5.51 | **底部停靠栏拉到最大时不再盖住输入区**（上游 `bf3395ff` `#1325` 移植，照改动落、不是合分支；上游 11 文件 / +324 −34 → 本树落下 8 个跟踪文件（5 改 3 新）+ changelog 一对 + 1 处端到端视口）：停靠状态的高度上限原先只按对话列（含工具行）的 85% 算，没有谁给输入区留位置，输入区就被压到停靠栏下面、点不到。新增 `features/dock/bottom-dock-size.ts`（纯逻辑：上限 = 工具行以下那片区域 − 量出来的输入区高度 − 一条消息带，仍受 0.85 封顶；空间不够先让消息带、再让 140px 最小高度，输入区永远让），新增 `features/dock/composer-height.ts`（`ResizeObserver` 喂的小 store，停靠栏 / 拖动夹取 / 落点预览读同一个数，重挂载后仍留着），`dock-panel.tsx` 量列与区域、上限跌破时走既有 `snap` 路径同提交让出，`dock-drag.tsx` 预览同一函数，`chat-page.tsx` 给输入区那个框挂测量 ref（本树输入区是普通 `<div>`，上游的 `WallpaperSurface` 本树没有），`dock-state.ts` 的尺寸常量搬走、`DOCK_RATIO_MAX` 反向导入，`e2e/dock.spec.mjs` 的尺寸用例改在 1280×1100 下跑。**本地化**：changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源；新用例里那条读源码的断言改成认本树的 `<div ref={measureComposer}>` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 15 个文件 **0 警告 0 错误** · 八个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）+ 1 跳过 · ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3292 通过 / 2 跳过**（本笔 +1 文件 / +9 用例）· hmr 无测试文件 · **本轮主证据（真服务端 ×2 + 真浏览器，两态四场景）**：服务端产物同一份（本笔只动 web），两份 web 产物 `r51/{after,before}-dist`（`[data-dock-area]` 选择器计数 5 / 1 两端核过）分别挂在一次性数据根 `/root/adelie-fork-data/r51-{after,before}` 上，**改后 `localhost:8956`、改前 `localhost:8957`**（`ADELIE_SEED_ADMIN_PASSWORD` + 模型指向本仓自带 mock LLM（8977）；空数据根不需要模型 key —— 即 3.6 那个卡点）；两态都把已存排布预置成「底部停靠栏开着轨迹观测、比例 0.85」（最大所存比例），1280×800 下读 `composer.bottom − dock.top`：**改前** 空输入区 **122px**（停靠栏 655px，鼠标落在输入区正中命中的是停靠栏的 header）、输入区涨到 7 行 **238px**、窗口压到 1280×560 **274px**，且 `textarea.click()` 被停靠栏挡下（Playwright 报 intercepts pointer events）；**改后** 四态（空 / 涨到 7 行 / 1280×560 / 清空）**全是 0**，停靠栏随之让出 423 → 307 → 140 → 423，输入区正中命中 `textarea`，点击一次就进得去。截图 `r51/shots/{before,after}-{empty,grown,short,cleared}.png`（改前那张里输入区整块不见、只剩上方的上下文提示；改后那张里输入框完整地停在停靠栏上方）；两态 console 各 **0 error**、**无一条 ≥400** · **相邻回归（真浏览器单 spec）**：`dock.spec.mjs` 10 条 + `mobile-dock.spec.mjs` 1 条 **11 passed（25.4s）**，其中被改视口的那条也在内 · **反证（同一份 spec，去掉这轮的视口改动）**：默认 1280×720 下「尺寸与排布在刷新后仍在」**1 failed**（`expect(after - before).toBeGreaterThan(80)`：默认高度已经顶到新上限，往上拖 120px 长不了）—— 与上游 PR 的说法一致 · 端口只用 8956 / 8957 / 8977 与单 spec 那套 8958 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r51-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r51/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
+| 2026-10-27 | 5.52 | **停靠面板只属于各自的 Session**（上游 `ce9b3e69` `#1335` 移植，照改动落、不是合分支；上游 16 文件 / +377 −85 → 本树落下 **9 个跟踪文件（7 改 2 补测试）** + changelog 一对，另 9 行是 `dock-state.ts` 里把写 scope 映射那段收成 `writeScopes()`）：`useSessionStream` 的 `SessionStreamState` 多一个 `sessionId`（写明下面这些状态属于哪个 Session），`advancePanelTaskScope` 忽略「观察到的流不是这个 Session」的那次渲染（切换后的一次渲染仍带着上一个 Session 的模型与任务状态），chat page 只在 `currentDockScope()` 就是该 Session 时才自动打开子智能体面板；`adoptDockScope(from, sessionId, stillOpen)` 只移交 `from` 自己的布局、不碰屏幕上的那份，并返回「用户是否仍在 `from` 上」，草稿首次发送（发送开始时记下 `dockScope`、`openRef` 记页面是否还挂着）与自愈的 `syncHealedSessionId` 据此才 `navigate`；交给面板的四个请求（`fileOpenRequest` / `memoryRequest` / `subagentFocus` / `subagentTaskScope`）改为**渲染期**按路由丢弃（`commandsFor`）而不是渲染后靠效果清除；`dock-panel.tsx` 的 `closeWhenAllowed(key)` 记住发起关闭时的 scope，答复回来时只在仍是同一对话才关；`browser-layer.tsx` 的「面板显示时保留一个标签页」改为在效果里读**当下**的停靠栏（`isTabShown(BROWSER_TAB)`）。**有意未取**（本树没有它们要用的东西）：与 `state.scope` 比对的那半（要上游 #1105 的按会话分片标签页）、`terminal-panel.tsx` 的 `dockSessionId()` 重核、自愈里的 `adoptBrowserSession` / `reownTerminals`、它的 jsdom 用例（本树不装 jsdom） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 9 个文件 **0 警告 0 错误** · 九个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3295 通过 / 2 跳过**（本笔 +3 用例）· hmr 无测试文件 · **反证（单测）**：把 7 份源码退回 `HEAD`、只留新用例 → `dock-state.test.ts` + `panel-task-scope.test.ts` **5 failed / 48 passed**（三条新的 `adoptDockScope` 用例、既有的「移交时不覆盖」与其 fullscreen 版、以及「忽略上一个 Session 的流」那条），放回本笔 → **53 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：本笔只动 web，两态 web 产物 `r138/{after,before}-dist`（主包 md5 `480cebb2…` / `7a1de418…`，两端核过确实是两份不同的东西）挂在两个一次性数据根 `/root/adelie-fork-data/r138-{after,before}` 上、**改后 8961 / 改前 8962**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8971；空数据根不需要模型 key —— 即 3.6 那个卡点）。流程：会话 A 里发「run a subagent」（mock 的派生子智能体触发词）→ 等 A 自己的停靠栏出现子智能体标签 → 点侧栏里另一条空会话 B（**应用内路由切换**，整页刷新复现不了这个泄漏）→ 读 `penguin.dock.layout`。**改前**：`A=["agents"]`、切过去的 **`B=["agents"]`**（截图 `r138/shots/before-2-switched-to-b.png`：空会话右侧栏挂着「智能体面板」，上面写着「本次任务尚未派生子智能体」），回到 A 后 B 仍留着；**改后**：`A=["agents"]`、**`B=[]`**（`after-2-switched-to-b.png`：干净的新对话），回到 A 照旧是 `["agents"]` 且调用关系与子会话都在（`after-3-back-in-a.png`）。两态 console 各只有一条 403（`/api/projects/…/machines`，**两态一模一样**、属非管理员账号的既有行为，与本轮无关），无其它错误 · **相邻回归（真浏览器四个 spec）**：`dock` 10 + `mobile-dock` 1 + `draft` 1 + `subagent` 4（含「每块面板跟着自己的会话、不泄漏」与「auto-open 生命周期 / 草稿流」两条正对本轮）**18 passed（1.2m）** · 端口只用 8961 / 8962 / 8971 与相邻回归那套 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r138-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r138/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -16788,3 +16806,127 @@ adelie 应用可以产出视频」。
   前一笔），属正常。顺带核了上一笔 `50458de9`（v0.5.8 的台账提交）那次 run 的 `failure`：22 个作业里
   `test-macos (server)` 是 `cancelled`、聚合 job `ci` 因此记成 failure，其余 20 个全 success —— 同样是
   并发取消，不是真红。
+
+## 第一百三十八轮：停靠面板只属于各自的 Session（2026-10-27，条目 5.52）
+
+### 开工自检
+
+- `/root/adelie-fork` 在 `main` 上，`git status --short` **干净**；`git fetch origin && git merge --ff-only
+  origin/main` 报 `Already up to date`（头是第一百三十七轮的台账提交 `ba2c4723`）。没有切分支、没碰
+  `legacy/main`、没推 upstream。
+- 上一轮要的两笔都在对象库里（`bf3395ff` 已落成 5.51，`ce9b3e69` 就是本轮这一条），不必再拉上游。
+
+### 选活
+
+- 「待办」里最靠前的未勾选条目是 **2.2c**，它剩下的四件事**全都做不了**：写侧剩下的全在 `packages/desktop`
+  （本机按纪律不碰，等 3.5 决定取哪个桌面壳）、既有部署单元 `adelie-app.service`（属发布动作）、桌面壳
+  自己的开关（同上）、以及有意留到发布期的文档面。往后的 3.5 要用户拍板、3.6 要模型 key（卡点）、
+  4.1–4.3 明令不动、5.6 要用户拍板（促销搬进 Project 配置）、5.10 要新依赖 `mermaid`。第 7 节全勾。
+- 所以按上几轮的做法取「上一轮写明的第一顺位」：**`ce9b3e69`（#1335）**。它不是移植清单里的一条，而是
+  第一百三十七轮「没做 / 还差什么」里点名的下一件事 —— 与刚落的 5.51 改同一批文件（`dock-panel.tsx` /
+  `chat-page.tsx`）、但行不重合，那一条正是为了给这一条腾干净地方才先落的。
+- 逐项量过本树的可行性（`git show ce9b3e69 | git apply -3 --check`）：13 个存在的文件里 4 个干净、5 个
+  带冲突；**3 个文件本树根本没有**（`features/terminal/terminal-panel.tsx`、`test/builtin-browser-sessions.test.ts`、
+  `test/dock-terminal.test.ts`），另有一处（`wantsNewTabPage` 的 `state.scope`）依赖上游 #1105 的
+  **按会话分片标签页** —— 本树的浏览器状态是整个窗口一份标签表（`BrowserState` 里没有 `scope`）。
+  结论：**取能整块落的那六处，把要前置的那三处写清楚**，不硬撑成「全都落了」。
+
+### 做了什么
+
+- `packages/web/src/features/chat/use-session-stream.ts`：`SessionStreamState` 新增 `sessionId`
+  （`describes` 状态；重置分支设为 `null`、订阅分支设为入参），一页注释写明它的语义 —— 切换之后它会**晚
+  一次渲染**，那一次渲染里 `model` / `taskState` 还是上一个 Session 的，谁都不能拿它当新 Session 的。
+- `packages/web/src/features/chat/panel-task-scope.ts`：`advancePanelTaskScope` 的观察多一个
+  `streamSessionId`，`obs.streamSessionId !== obs.sessionId` 时直接返回 `null` —— 既不让跟踪器前进，也不
+  打开任何东西。
+- `packages/web/src/features/chat/chat-page.tsx`：①上面那个观察传进 `stream.sessionId`，自动打开时再加一道
+  `currentDockScope() === selectedSessionId`（屏幕上的停靠栏必须就是这个会话的），依赖数组补
+  `streamSessionId`；②四个面板请求（`fileOpenRequest` / `memoryRequest` / `subagentFocus` /
+  `subagentTaskScope`）的清除从「路由变了之后跑一个效果」改成「渲染到另一个路由时按 `commandsFor`
+  丢弃」（React 的「渲染期调 setState 重新渲染」写法），注释写明为什么不能等效果 —— 下一个对话的面板会
+  在效果之前先挂着渲染一次，带着上一个对话的请求执行；③`syncHealedSessionId` 改成
+  `if (adoptDockScope(currentId, respondedId)) navigate(...)`。
+- `packages/web/src/features/chat/draft-view.tsx`：`openRef`（这一页还挂着吗；`useEffect` 里置真、清理时
+  置假），发送开始时 `const dockScope = currentDockScope()` 记下**草稿自己的**停靠 scope，落地时
+  `if (adoptDockScope(dockScope, res.sessionId, openRef.current)) navigate(...)`。
+- `packages/web/src/features/dock/dock-state.ts`：`adoptDockScope(from, sessionId, stillOpen = true)`
+  返回 `boolean` —— 仍在 `from` 上（且 `stillOpen`）时照旧把屏幕上的布局移交给新 id 并返回 `true`；否则
+  只把 `from` **存在库里的**那份搬到新 id（不覆盖已有的、屏幕上那份一个字节都不动），返回 `false`。
+  另外把「写 scope 映射」那段从 `persist()` 里抽成 `writeScopes()`，`switchScope()` 的移交分支与
+  `adoptDockScope()` 共用 —— **本树没有上游的 `writeScopes()`**（上游那一版 `persist` 已经调它），抽取
+  是为了让「移动映射本身」这条路径不经过「把当前布局写回旧键」。
+- `packages/web/src/features/dock/dock-panel.tsx`：新增 `closeWhenAllowed(key)` —— 记住发起关闭那一刻的
+  `currentDockScope()`，`confirmClose`（文件面板未保存文本那个守卫）答复回来时只有仍在这个对话才
+  `removeTab`；标签页的 ×（`PanelBody` 的 `close`）与整条标签的 `closeTab` 都改走它（本树的终端标签还有
+  「× 先确认再结束 shell」的分支，原样留着）。
+- `packages/web/src/features/builtin-browser/browser-layer.tsx`：「面板显示时保留一个标签页」这条规则读的
+  `panelOnScreen` 从「这次渲染的插槽可见」改成「**效果运行时**插槽可见且停靠栏里这份面板正显示着」
+  （`isTabShown(BROWSER_TAB)`）。这是上游那一处泄漏的本树版：本树的标签页不分会话，所以「与
+  `state.scope` 比对」那半落不了，但**离开的面板还会多挂载一次渲染、插槽仍可见**这件事本树一样有。
+- `packages/web/test/dock-state.test.ts`：三条新用例（用户已切走时只移交草稿自己的布局并返回 `false`；
+  同 Project 的新草稿页正在用这份布局时返回 `false` 且不动它；既有的「移交时不覆盖」跟着新签名走），
+  文件头的说明同步。`packages/web/test/panel-task-scope.test.ts`：既有两条的观察都补上
+  `streamSessionId`，新增「忽略上一个 Session 的流」一条。
+- changelog 一对 `changelog/unreleased/2026-10-27-dock-panels-per-session{,.zh}.md`（本仓写法：去掉上游
+  PR 行、写明移植出处、写明有意未取的四件与「无接口 / 数据 / 依赖变化」）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`）；`gen:ifaces` 报 **`src/ifaces.json unchanged`**
+  （195 接口 / 590 类型）—— 本轮不动服务契约。
+- 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）·
+  cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3295 通过 / 2 跳过**
+  （比上一轮 +3，正是三条新的 `adoptDockScope` 用例；`panel-task-scope.test.ts` 是改既有两条、加一条，
+  与 web 的用例计数一致）· hmr 无测试文件。
+- `npx oxlint` 九个改动文件 **0 警告 0 错误**；九个源码 / 用例文件与一对 changelog `prettier --check`
+  干净；`git diff --check` 干净。
+- **反证（单测）**：把 7 份源码退回 `HEAD`（新用例留着）→ 只跑 `dock-state.test.ts` +
+  `panel-task-scope.test.ts` = **5 failed / 48 passed**：三条新的 `adoptDockScope` 用例、既有的
+  「`adoptDockScope` 移交时不覆盖」、它在 fullscreen 里的那条、以及「忽略上一个 Session 的流」。
+  放回本笔 → **53 全过**。
+- **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：本笔只动 web，两态 web 产物
+  `r138/{after,before}-dist`（主包 md5 `480cebb2d5c072dab7ea27aec6d67fe5` /
+  `7a1de4188befa69d8f7f45264cd2ff5f`，大小也差 316 字节），分别挂在一次性数据根
+  `/root/adelie-fork-data/r138-{after,before}` 上，**改后 `localhost:8961`、改前 `localhost:8962`**
+  （`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026` + 登录拿 cookie；模型指向本仓自带 mock LLM 的 8971，
+  空数据根不需要模型 key —— 即 3.6 那个卡点）。
+  流程（探针 `r138/probe.cjs`）：**会话 A** 里发「run a subagent」（mock 的派生子智能体触发词）→ 等 A
+  自己的停靠栏出现子智能体标签（两态都是 `true`，说明自动打开本来就好用）→ **点侧栏里另一条空会话 B
+  的行走应用内路由切换**（整页刷新复现不了这个泄漏）→ 读 `penguin.dock.layout` → 再点回 A。
+  **改前**：`A=["agents"]`、切过去之后 **`B=["agents"]`**（`r138/shots/before-2-switched-to-b.png`：空会话
+  右侧栏挂着「智能体面板」，里面写着「本次任务尚未派生子智能体」），点回 A 之后 B 那份还在；
+  **改后**：`A=["agents"]`、**`B=[]`**（`after-2-switched-to-b.png`：干净的新对话、没有右侧栏），点回 A
+  仍是 `["agents"]`，调用关系与子会话都照旧（`after-3-back-in-a.png`）。
+  两态 console 各只有一条 **403**（`/api/projects/…/machines`，**两态一模一样**，是本探针那个非管理员
+  账号的既有行为，与本轮无关），没有别的 error、没有 `pageerror`。
+- **相邻回归（真浏览器四个 spec，同一套自带 mock + 临时数据根）**：`dock.spec.mjs` 10 + `mobile-dock.spec.mjs`
+  1 + `draft.spec.mjs` 1 + `subagent.spec.mjs` 4 —— **18 passed（1.2m）**，其中
+  `dock.spec.mjs:455 › each conversation manages its own tabs: nothing leaks`、
+  `subagent.spec.mjs:294 › auto-open lifecycle`、`subagent.spec.mjs:375 › draft flow` 三条正压在本轮改的
+  行为上。
+- 端口只用 8961 / 8962 / 8971 与相邻回归那套 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落在 `/root/adelie-fork-data/r138-{after,before,e2e}`，探针、两态产物、截图都在
+  scratchpad 的 `r138/` 下（`packages/web/dist` 与 `packages/web/test-results/` 是产物，未 `git add`）。
+
+### 没做 / 还差什么
+
+- **浏览器的另一半（与「对话自己的标签页」比对）没做**：`wantsNewTabPage` 上游改成收
+  `{ conversation, browserShown }` 并与 `state.scope` 比对，前提是上游 #1105 的**按会话分片标签页**
+  （`BrowserState.scope` / `sessionTabs` / `openingByScope`）。本树的浏览器状态整个窗口一份标签表、没有
+  `scope` 字段，所以本轮只做了「把面板是否显示改问当下的停靠栏」这一半。要做完整形态得先落 #1105
+  —— 那是新的一轮（会动 `browser-state.ts` 的数据形状、服务端标签注册表与它们的用例）。
+- **终端面板的 `dockSessionId()` 重核没做**：`features/terminal/terminal-panel.tsx` 本树不存在（本树的终端
+  停靠面板由 `dock-panel.tsx` 的 body 与 `features/dock/dock-terminal.ts` 承担，「最后一个 shell 结束后
+  关自己的标签」那段效果在哪个文件里没有逐一核过）。要看这条得先把上游那份终端面板搬过来。
+- **自愈路径的两句 `await` 没取**：`adoptBrowserSession(currentId, respondedId)` 与
+  `reownTerminals(currentId, respondedId)` 在本树都不存在（前者是浏览器标签跟着自愈后的 id 走，属 #1105
+  那条线；后者是终端重挂属主，属上游终端面板那条线）。本轮只落了紧跟其后的
+  `adoptDockScope(currentId, respondedId)` 与条件跳转 —— 语义上是这一条里与人有关的那句。
+- **它的 jsdom 用例没落**：`test/builtin-browser-sessions.test.ts` 要 `jsdom`（`packages/web` 不装），按
+  第五十轮的先例改由上面那套真浏览器取证 —— 但那套探针直接看的是「切换后 B 的停靠栏里有没有 agents
+  标签」，**没有**单独覆盖「浏览器的 keep-a-tab 泄漏」（本机没有桌面壳，`builtinUsable` 永远为假，
+  `<webview>` 起不来），所以浏览器那一半本轮的证据只有单测层面的推理，没有 live 读数。这一栏要说清楚：
+  **不做假证据**。
+- 下一轮：`0c7725c2`（#1250，流式回复时往上滚不再被拽回去，自带 306 行 e2e）；再往后是 `12a58d4f`
+  之后那几笔要新前置的（`#1272` / `#1268` 的 API socket 面）。若要坐实浏览器那一半，得先把 #1105 那套
+  按会话分片的标签页立起来。

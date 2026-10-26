@@ -71,7 +71,7 @@ import { openUpdateModal, useUpdateFlow } from "../../lib/use-update-flow";
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
 import { APPROVAL_MODES } from "./approval-mode";
-import { adoptDockScope } from "../dock/dock-state";
+import { adoptDockScope, currentDockScope } from "../dock/dock-state";
 import { setDockCwd } from "../dock/dock-terminal";
 import { ShortcutsFolder } from "./shortcuts-folder";
 import { clearDraft, draftKey, loadDraft, saveDraft } from "./draft-cache";
@@ -738,6 +738,15 @@ export function DraftView({
   // a racing navigation. A ref rather than state — the composer disables its own send button
   // off its `busy` state, and nothing else on this page renders differently mid-send.
   const sendingRef = useRef(false);
+  // Whether this draft's page is still the one open: the first send's round trips can outlast
+  // it, and a new draft of the same Project would reuse its dock scope.
+  const openRef = useRef(true);
+  useEffect(() => {
+    openRef.current = true;
+    return () => {
+      openRef.current = false;
+    };
+  }, []);
 
   // First message sent: only now is the Session created (Agent / Workspace / Model / approval
   // mode are all locked in together), then the route jumps once sent; returns false on any
@@ -746,6 +755,9 @@ export function DraftView({
     async (input: TaskInputPart[], goal: { budget: number } | null = null): Promise<boolean> => {
       if (!agentId || sendingRef.current) return false;
       sendingRef.current = true;
+      // The draft's own docks, named now: the send takes round trips, and the user may be on
+      // another conversation by the time it has a Session to hand them to.
+      const dockScope = currentDockScope();
       let createdId: string | null = null;
       try {
         const body: SessionCreateRequest = { approvalMode };
@@ -779,9 +791,11 @@ export function DraftView({
         discardDraft();
         // The draft now has an id of its own, so its docks move with it: anything left
         // behind under the draft's scope would surface in the NEXT new conversation
-        // instead (dock-state.ts).
-        adoptDockScope(res.sessionId);
-        navigate(`/chat/${res.sessionId}`, { replace: true });
+        // instead (dock-state.ts). Only someone still on this draft is taken to the new
+        // Session; whoever moved to another conversation stays there, and the Session waits
+        // in the sidebar.
+        if (adoptDockScope(dockScope, res.sessionId, openRef.current))
+          navigate(`/chat/${res.sessionId}`, { replace: true });
         return true;
       } catch (e) {
         // The Session was created but the first message failed to send (postTask failed): delete

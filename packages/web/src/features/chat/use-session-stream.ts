@@ -43,6 +43,12 @@ export type { OlderHistoryState, PendingApproval } from "../../lib/omni/stream-c
 const BUMP_MIN_INTERVAL_MS = 120;
 
 export interface SessionStreamState {
+  /**
+   * The Session everything below describes (null: none, a draft). It trails the `sessionId`
+   * argument by one render after a switch: until the reset below has run, the state is still the
+   * previous Session's, and nothing may act on it as the new one's.
+   */
+  sessionId: string | null;
   /** View model (updated in place; version bump triggers re-render): the LIVE tail window. */
   model: StreamModel;
   /**
@@ -119,6 +125,7 @@ export function useSessionStream(
   const [error, setError] = useState<string | null>(null);
   const [pendingTick, setPendingTick] = useState(0);
   const [goal, setGoal] = useState<GoalBannerState | null>(null);
+  const [describes, setDescribes] = useState<string | null>(sessionId);
 
   /** Fold one goal_* event into the banner state (a mid-goal join without goal_started keeps prior fields where known). */
   const onGoalEvent = useCallback((ev: GoalServerEvent) => {
@@ -191,6 +198,7 @@ export function useSessionStream(
       // so "A is still running" would block sending in the new draft B after switching.
       controllerRef.current?.dispose();
       controllerRef.current = null;
+      setDescribes(null);
       setTaskState("idle");
       setQueuedFollowUps(0);
       setPendingSteering([]);
@@ -205,6 +213,7 @@ export function useSessionStream(
       return;
     }
     setVersion((v) => v + 1);
+    setDescribes(sessionId);
     setLoading(true);
     setError(null);
     // First-frame placeholder: the task_state snapshot from the stream (pushed on subscribe)
@@ -310,6 +319,7 @@ export function useSessionStream(
   void pendingTick;
 
   return {
+    sessionId: describes,
     model: controllerRef.current?.model ?? placeholderRef.current,
     prefixItems: controllerRef.current?.prefixItems ?? EMPTY_PREFIX,
     prefixSubagents: controllerRef.current?.prefixSubagents ?? EMPTY_SUBAGENTS,

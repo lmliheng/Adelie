@@ -154,6 +154,7 @@ import { setDockCwd } from "../dock/dock-terminal";
 import {
   adoptDockScope,
   closedDockView,
+  currentDockScope,
   dockViews,
   dockVersion,
   isTabShown,
@@ -415,12 +416,18 @@ export function ChatPage() {
   const [subagentTaskScope, setSubagentTaskScope] = useState<{
     anchorSessionId: string;
   } | null>(null);
-  useEffect(() => {
+  // The commands above belong to the conversation they were given in. Dropped while rendering
+  // the route that names another one, not in an effect after it: the panel bodies of the next
+  // conversation would otherwise mount with the last one's command for a render and act on it
+  // (land the Memory panel on its entry, focus the agents panel on its child).
+  const [commandsFor, setCommandsFor] = useState(routeSessionId);
+  if (commandsFor !== routeSessionId) {
+    setCommandsFor(routeSessionId);
     setFileOpenRequest(null);
     setMemoryRequest(null);
     setSubagentFocus(null);
     setSubagentTaskScope(null);
-  }, [routeSessionId]);
+  }
   // A command also resets when its panel's TAB closes: the tab body unmounts with the tab,
   // so a re-added tab is a fresh mount that would otherwise replay the stale command —
   // reopening the Workspace would re-locate a long-clicked file, and reopening the agents
@@ -700,16 +707,22 @@ export function ChatPage() {
   // always lives in the live tail window, so live-only loses nothing.
   const taskCount = taskStartCount(stream.model.items);
   const liveSpawn = stream.taskState !== "idle" && latestTaskHasSubagent(stream.model);
+  // The stream trails a switch by one render (still the previous Session's model and state), so
+  // the tracker is told whose data it is looking at; the panel opens only in this conversation's
+  // own docks, the ones on screen when the effect runs.
+  const streamSessionId = stream.sessionId;
   useEffect(() => {
     const action = advancePanelTaskScope(panelTaskScopeRef.current, {
       sessionId: selectedSessionId,
+      streamSessionId,
       taskCount,
       liveSpawn,
     });
-    if (action === "autoOpen" && !isTabShown("agents")) openPanel("agents");
-    // The tracker only acts on real transitions of these three observed values.
+    if (action === "autoOpen" && currentDockScope() === selectedSessionId && !isTabShown("agents"))
+      openPanel("agents");
+    // The tracker only acts on real transitions of these observed values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSessionId, taskCount, liveSpawn]);
+  }, [selectedSessionId, streamSessionId, taskCount, liveSpawn]);
 
   // Skills installed on the session's Agent (candidates for the input area's skill dropdown):
   // fetched keyed on the session's Agent; on switch, cleared first (which also clears the input
@@ -1288,9 +1301,11 @@ export function ChatPage() {
       if (respondedId === currentId) return;
       await reloadSessions();
       // Same conversation under a new id: its docks follow, or they are stranded under
-      // an id nothing routes to again.
-      adoptDockScope(respondedId);
-      navigate(`/chat/${respondedId}`, { replace: true });
+      // an id nothing routes to again. Only someone still on the old id is taken to the new
+      // one; whoever moved on meanwhile stays where they are and the Session waits in the
+      // sidebar.
+      if (adoptDockScope(currentId, respondedId))
+        navigate(`/chat/${respondedId}`, { replace: true });
     },
     [reloadSessions, navigate],
   );
