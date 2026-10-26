@@ -5464,6 +5464,8 @@ export const zh = {
       desktop_single_user: "桌面应用为单用户模式，用户管理不可用。",
       not_found: "资源不存在，或你没有访问权限。",
       internal: "服务器内部错误，请稍后重试。",
+      skill_dir_busy:
+        "技能目录正被别的程序占着（编辑器、杀毒扫描，或从该目录启动的进程如 WPS 桥），无法替换；关掉它再试一次。",
       agent_not_found: "该 Agent 已不存在。",
       unknown_agent: "该 Agent 不存在于本项目。",
       agent_exists: "该 Agent id 已被占用。",

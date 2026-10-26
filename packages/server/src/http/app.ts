@@ -7,7 +7,7 @@ import type { MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { authMiddleware, jsonOnlyWrites } from "../auth/middleware.js";
 import { AMSP_PREFIX, amspAllowOrigin } from "../amsp/cors.js";
-import { HttpError, handleError } from "./errors.js";
+import { HttpError, handleError, normalizeError } from "./errors.js";
 import { attributedProjectId } from "./attribution.js";
 import { bodyLimitBytes } from "../services/attachment-limits.js";
 import { declined } from "../hmr/hono-seam.js";
@@ -54,12 +54,14 @@ export class HttpModule {
     const app = new Hono<AppEnv>();
     app.onError((err, c) => {
       const projectId = attributedProjectId(c, { access });
+      // Normalize first: response and recording must agree on what this error is (see errors.ts).
+      const normalized = normalizeError(err);
       errors.record({
         source: "http",
-        err,
+        err: normalized,
         ...(projectId !== undefined ? { ctx: { projectId } } : {}),
       });
-      return handleError(err, c);
+      return handleError(normalized, c);
     });
     app.notFound(() => declined());
     app.use("*", async (c, next) => {

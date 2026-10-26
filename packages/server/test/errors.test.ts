@@ -34,6 +34,8 @@
  * - A business error is expected, an internal one unexpected with a 500, each attributed to
  *   the Project only when the requester has access to it (unauthenticated and non-member
  *   failures stay unattributed, and a throwing access check degrades to unattributed).
+ * - A Skill directory another program is holding open (Windows EBUSY) answers as a named 409
+ *   and is filed as expected, not as the internal failure the raw errno would look like.
  * - The usage endpoint shows a Project's own errors; unattributed ones only to the admin.
  * - The paged error route pages within the caller's tenant, narrows to one kind on request,
  *   and refuses a page it cannot serve; it and the dashboard fold by the viewer's day, and an
@@ -43,6 +45,8 @@
  * - Deleting a Project deletes its error records and nobody else's.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import fs from "node:fs/promises";
+import path from "node:path";
 import type { DatabaseSync } from "node:sqlite";
 import {
   abortEvent,
@@ -52,6 +56,7 @@ import {
   requestBegin,
   requestEnd,
   sessionMeta,
+  skillsDir,
   toolCall,
   toolCallOutput,
   withOrigin,
@@ -1084,6 +1089,41 @@ describe("HTTP onError persistence (integration)", () => {
     expect(rows[0]!.code).toBe("internal");
     expect(rows[0]!.status).toBe(500);
     expect(rows[0]!.message).toBe("query blew up");
+    expect(rows[0]!.project_id).toBe(projectId);
+  });
+
+  it("a Skill directory another program is holding open → 409 skill_dir_busy, recorded as expected", async () => {
+    const agentId = "agent-busy";
+    const dir = path.join(skillsDir(t.root, projectId, agentId), "busy-skill");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(path.join(dir, "SKILL.md"), "---\nname: busy-skill\n---\nBody\n");
+
+    // Windows reports EBUSY ("resource busy or locked") on every removal while another program
+    // still holds a handle inside the directory; Core retries and eventually gives up. The answer
+    // must name what is wrong (409), not converge to a bare 500, and the error center must file it
+    // where the user can act on it rather than as an internal bug.
+    const realRm = fs.rm.bind(fs);
+    const rm = vi.spyOn(fs, "rm").mockImplementation(async (target, options) => {
+      if (path.resolve(String(target)) === path.resolve(dir)) {
+        throw Object.assign(
+          new Error(`EBUSY: resource busy or locked, rmdir '${String(target)}'`),
+          { code: "EBUSY" },
+        );
+      }
+      return realRm(target, options);
+    });
+    const res = await api.delete(`/api/projects/${projectId}/agents/${agentId}/skills/busy-skill`);
+    rm.mockRestore();
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toMatchObject({ error: { code: "skill_dir_busy" } });
+
+    const rows = errorRows();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.source).toBe("http");
+    expect(rows[0]!.kind).toBe("expected");
+    expect(rows[0]!.code).toBe("skill_dir_busy");
+    expect(rows[0]!.status).toBe(409);
     expect(rows[0]!.project_id).toBe(projectId);
   });
 

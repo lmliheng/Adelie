@@ -71,7 +71,7 @@ import { AuthService } from "./auth/service.js";
 import { newAuthRuntimeState } from "./auth/runtime-state.js";
 import { AuthSessionsRepo } from "./db/repos/auth-sessions.js";
 import { ensureInstallId } from "./install-id.js";
-import { handleError, HttpError, errorBody } from "./http/errors.js";
+import { handleError, HttpError, errorBody, normalizeError } from "./http/errors.js";
 import { attributedProjectId } from "./http/attribution.js";
 import { STREAM_IDLE_MS } from "./http/sse.js";
 import { installRoutes } from "./http/routes/install.js";
@@ -383,12 +383,14 @@ export function createApp(boot: ServerBoot): Hono<AppEnv> {
   // to the DB is just a side-effect layered on top.
   app.onError((err, c) => {
     const projectId = attributedProjectId(c, { access: access() });
+    // Normalize first: response and recording must agree on what this error is (see http/errors.ts).
+    const normalized = normalizeError(err);
     errors().record({
       source: "http",
-      err,
+      err: normalized,
       ...(projectId !== undefined ? { ctx: { projectId } } : {}),
     });
-    return handleError(err, c);
+    return handleError(normalized, c);
   });
   app.notFound((c) => c.json(errorBody("not_found", "Endpoint does not exist."), 404));
 

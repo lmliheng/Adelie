@@ -5447,6 +5447,8 @@ export const en: Strings = {
       desktop_single_user: "The desktop app is single-user; user management is unavailable.",
       not_found: "This resource does not exist, or you do not have access.",
       internal: "The server hit an internal error. Please try again shortly.",
+      skill_dir_busy:
+        "Another program is holding this Skill's directory open (an editor, a virus scan, or a process started in it — the WPS bridge, for one), so it cannot be replaced. Close it and retry.",
       agent_not_found: "This agent no longer exists.",
       unknown_agent: "That agent does not exist in this Project.",
       agent_exists: "This agent id is already taken.",

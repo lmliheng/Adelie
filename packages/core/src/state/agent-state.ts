@@ -528,6 +528,67 @@ export async function installSkill(
 }
 
 /**
+ * The errnos a removal gets **before** the directory is really gone: Windows reports `EBUSY`
+ * ("resource busy or locked") while any other process still has a handle inside the directory —
+ * a virus scanner reading files that were written a moment ago, an editor, or a long-lived child
+ * process that was started from that directory. `EPERM` is the same story under a different
+ * spelling, `ENOTEMPTY` is the race with a writer that got in between.
+ */
+const BUSY_ERRNOS = new Set(["EBUSY", "EPERM", "ENOTEMPTY"]);
+
+/** How long to wait before each retry: 30 + 70 + 150 + 300 + 600 ms, then give up. */
+const REMOVAL_DELAYS_MS = [30, 70, 150, 300, 600];
+
+/** A Skill or hook directory that another program is holding open, after the retries ran out. */
+export class DirectoryBusyError extends Error {
+  constructor(
+    readonly directory: string,
+    options?: { cause?: unknown },
+  ) {
+    super(
+      `Directory is in use by another program: ${directory}. ` +
+        `Close whatever is using it (an editor, a scanner, a process started in that directory) and try again.`,
+      options,
+    );
+    this.name = "DirectoryBusyError";
+  }
+}
+
+/**
+ * Runs `run` until it succeeds, retrying only the "in use" errnos above: they clear on their own
+ * within a few hundred milliseconds, and without the retry one busy moment fails an entire
+ * operation the user then has to run again by hand — which is what a Windows install reported:
+ * `EBUSY: resource busy or locked, rmdir '…\agent_state\skills\wps-office'` aborting a plugin
+ * update. Every other failure is the operation's own and is rethrown untouched.
+ *
+ * `sleep` is injectable so a test can drive the policy without the wall-clock wait.
+ */
+export async function retryWhileBusy<T>(
+  run: () => Promise<T>,
+  options: { directory: string; sleep?: (ms: number) => Promise<void> },
+): Promise<T> {
+  const sleep = options.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await run();
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException | null)?.code ?? "";
+      if (!BUSY_ERRNOS.has(code)) throw err;
+      const delay = REMOVAL_DELAYS_MS[attempt];
+      if (delay === undefined) {
+        throw new DirectoryBusyError(options.directory, { cause: err });
+      }
+      await sleep(delay);
+    }
+  }
+}
+
+/** Deletes a directory tree, riding out the busy errnos above (absent directory = nothing to do). */
+async function removeDirectory(dir: string): Promise<void> {
+  await retryWhileBusy(() => fs.rm(dir, { recursive: true, force: true }), { directory: dir });
+}
+
+/**
  * Replaces one Skill directory with exactly `files` (relative path → content, subdirectories
  * created as needed). Everything is written into a staging directory and swapped in as the last
  * step, so an interrupted install cannot leave a half-written Skill standing under the real name
@@ -543,7 +604,7 @@ export async function replaceSkillDirectory(
   files: Iterable<[string, string | Uint8Array]>,
 ): Promise<void> {
   const staging = `${path.join(path.dirname(dir), `.${path.basename(dir)}`)}.incoming`;
-  await fs.rm(staging, { recursive: true, force: true });
+  await removeDirectory(staging);
   await fs.mkdir(staging, { recursive: true });
   try {
     await Promise.all(
@@ -556,7 +617,7 @@ export async function replaceSkillDirectory(
     // rename(2) refuses to replace a non-empty directory, so the old one goes first. The window
     // between the two is the one case this cannot make atomic; it is bounded by a single rm and
     // leaves the Skill absent rather than corrupt.
-    await fs.rm(dir, { recursive: true, force: true });
+    await removeDirectory(dir);
     await fs.rename(staging, dir);
   } catch (err) {
     await fs.rm(staging, { recursive: true, force: true }).catch(() => undefined);
@@ -574,10 +635,7 @@ export async function removeSkill(
   assertValidId("project_id", projectId);
   assertValidId("agent_id", agentId);
   assertValidId("skill_name", name);
-  await fs.rm(path.join(skillsDir(root, projectId, agentId), name), {
-    recursive: true,
-    force: true,
-  });
+  await removeDirectory(path.join(skillsDir(root, projectId, agentId), name));
 }
 
 /** An installed Skill entry: frontmatter metadata (including an optional short description) + the optional icon.svg content in the directory. */
@@ -766,10 +824,7 @@ export async function removeHook(
   assertValidId("project_id", projectId);
   assertValidId("agent_id", agentId);
   assertValidId("skill_name", name);
-  await fs.rm(path.join(hooksDir(root, projectId, agentId), name), {
-    recursive: true,
-    force: true,
-  });
+  await removeDirectory(path.join(hooksDir(root, projectId, agentId), name));
 }
 
 /** An installed hook package: its manifest plus the directory its commands resolve against. */

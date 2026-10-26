@@ -217,6 +217,10 @@ function installAutostart(root) {
   const body = [
     "@echo off",
     `rem Adelie 的 WPS 桥：由「Adelie WPS 面板」安装脚本生成，删掉这一行即可取消开机自启。`,
+    // Leave the Startup folder before launching, for the same reason startBridge does: a bridge
+    // whose cwd sits inside the Skill's directory blocks that directory's removal (Windows EBUSY),
+    // and the plugin could then never be updated or uninstalled while it runs.
+    `cd /d "%USERPROFILE%"`,
     `start "adelie-wps-bridge" /min "${process.execPath}" "${SERVE}" --root "${root}"`,
     "",
   ].join("\r\n");
@@ -250,6 +254,11 @@ function startBridge(root) {
     detached: true,
     stdio: "ignore",
     windowsHide: true,
+    // Never inherit the caller's working directory. Windows refuses to delete a directory that is
+    // some process's cwd (`EBUSY: resource busy or locked`), so a bridge started from a shell that
+    // was sitting in this Skill's directory would make every later update of this plugin fail
+    // until the bridge was killed. The data root is ours, always exists, and is nobody's Skill.
+    cwd: root,
   });
   child.unref();
 }

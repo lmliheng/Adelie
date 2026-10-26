@@ -6,18 +6,20 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { librarySkill } from "../src/index.js";
 import {
   AGENTS_MD_PLACEHOLDER,
   DEFAULT_AGENT_ID,
   DEFAULT_PROJECT_ID,
+  DirectoryBusyError,
   SKILL_METADATA_PLACEHOLDER,
   agentStateDir,
   assembleSystemPrompt,
   installSkill,
   listInstalledSkills,
   removeSkill,
+  retryWhileBusy,
   skillMetadataSection,
   skillsDir,
 } from "../src/state/index.js";
@@ -133,6 +135,93 @@ describe("installSkill / removeSkill", () => {
     // Idempotent when it no longer exists: does not throw.
     await removeSkill(tmpRoot, DEFAULT_PROJECT_ID, DEFAULT_AGENT_ID, "penguin-sdk");
     expect(await list()).toEqual([]);
+  });
+});
+
+describe("a Skill directory another program is holding open", () => {
+  /** The shape Windows reports while a handle is still open inside the directory. */
+  const busy = (code: string) =>
+    Object.assign(new Error(`${code}: resource busy or locked, rmdir 'x'`), { code });
+
+  it("retries the 'in use' errnos on the fixed schedule, then reports a busy directory", async () => {
+    const waits: number[] = [];
+    const codes = ["EBUSY", "EPERM", "ENOTEMPTY"];
+    let calls = 0;
+    const err = await retryWhileBusy(
+      async () => {
+        throw busy(codes[calls++ % codes.length]!);
+      },
+      { directory: "C:\\skills\\wps-office", sleep: async (ms) => void waits.push(ms) },
+    ).catch((thrown: unknown) => thrown);
+
+    // One attempt plus five retries — enough for a scanner's momentary handle, short enough that a
+    // directory held open for real still answers the user instead of hanging.
+    expect(calls).toBe(6);
+    expect(waits).toEqual([30, 70, 150, 300, 600]);
+    expect(err).toBeInstanceOf(DirectoryBusyError);
+    expect((err as DirectoryBusyError).directory).toBe("C:\\skills\\wps-office");
+    expect((err as DirectoryBusyError).cause).toBeInstanceOf(Error);
+  });
+
+  it("returns the value as soon as a retry succeeds", async () => {
+    const waits: number[] = [];
+    let calls = 0;
+    const result = await retryWhileBusy(
+      async () => {
+        if (calls++ < 2) throw busy("EBUSY");
+        return "done";
+      },
+      { directory: "/skills/x", sleep: async (ms) => void waits.push(ms) },
+    );
+
+    expect(result).toBe("done");
+    expect(calls).toBe(3);
+    expect(waits).toEqual([30, 70]);
+  });
+
+  it("rethrows any other failure immediately, without retrying", async () => {
+    const original = Object.assign(new Error("EACCES: permission denied"), { code: "EACCES" });
+    let calls = 0;
+    await expect(
+      retryWhileBusy(
+        async () => {
+          calls++;
+          throw original;
+        },
+        { directory: "/skills/x", sleep: async () => {} },
+      ),
+    ).rejects.toBe(original);
+    expect(calls).toBe(1);
+  });
+
+  it("finishes an install that lands while the old directory is briefly busy", async () => {
+    const before = "---\nname: wps-office\nversion: 1\n---\n\nOld body\n";
+    const after = "---\nname: wps-office\nversion: 2\n---\n\nNew body\n";
+    await install("wps-office", before);
+    const dir = path.join(skillsDir(tmpRoot, DEFAULT_PROJECT_ID, DEFAULT_AGENT_ID), "wps-office");
+
+    // The first two removals of that directory say "in use" and the third goes through.
+    const realRm = fs.rm.bind(fs);
+    let busyLeft = 2;
+    const rm = vi.spyOn(fs, "rm").mockImplementation(async (target, options) => {
+      if (path.resolve(String(target)) === path.resolve(dir) && busyLeft > 0) {
+        busyLeft--;
+        throw busy("EBUSY");
+      }
+      return realRm(target, options);
+    });
+    try {
+      await install("wps-office", after);
+    } finally {
+      rm.mockRestore();
+    }
+
+    expect(busyLeft).toBe(0); // the retries really ran
+    expect(await fs.readFile(skillMd("wps-office"), "utf8")).toBe(after);
+    // And the staging directory did not survive them.
+    expect(await fs.readdir(skillsDir(tmpRoot, DEFAULT_PROJECT_ID, DEFAULT_AGENT_ID))).toEqual([
+      "wps-office",
+    ]);
   });
 });
 

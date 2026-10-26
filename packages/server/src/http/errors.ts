@@ -7,6 +7,7 @@
  * (never leaking internal details to the client).
  */
 import type { Context } from "hono";
+import { DirectoryBusyError } from "@adelie/core";
 import type { ErrorBody } from "../api/types.js";
 
 export class HttpError extends Error {
@@ -43,6 +44,31 @@ export function modelCredentialMissing(modelId: string): HttpError {
     "model_credential_missing",
     `Model ${modelId} has no API key yet. Configure it on the Models page first.`,
   );
+}
+
+/**
+ * Converges an error caught by onError into the one `handleError` and the error recorder
+ * understand. Almost everything passes through untouched; a `DirectoryBusyError` — where Core
+ * already exhausted its removal retries because another program (an editor, a virus scanner, a
+ * process that was started inside that directory) is holding a Skill or hook directory open —
+ * becomes the 409 refusal below.
+ *
+ * Both are needed because the raw error is handed to two consumers: the response (otherwise a
+ * bare 500) and the error recorder, which classifies by `instanceof HttpError` alone — with the
+ * original error the error center would show "internal / unexpected", i.e. a bug for the user to
+ * report, when the fix is on their machine. Normalizing once, ahead of both, keeps the two in
+ * step. Both onError funnels call this (src/app.ts and src/http/app.ts).
+ */
+export function normalizeError(err: Error): Error {
+  if (err instanceof DirectoryBusyError) {
+    return new HttpError(
+      409,
+      "skill_dir_busy",
+      `Another program is holding this directory open: ${err.directory}. ` +
+        `Close it (an editor, a scanner, a process started in that directory) and try again.`,
+    );
+  }
+  return err;
 }
 
 /** app.onError handler: maps HttpError through as-is; everything else is logged and converged to 500. */
