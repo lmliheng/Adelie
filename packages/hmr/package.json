@@ -1,6 +1,6 @@
 {
   "name": "@adelie/hmr",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "private": true,
   "type": "module",
   "description": "The hot-update mechanism: the version store, the atomic commit, the resource registry and the park → boot → swap. Mechanism only.",

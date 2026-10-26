@@ -1,6 +1,6 @@
 {
   "name": "@adelie/core",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "type": "module",
   "engines": {
     "node": ">=24"
