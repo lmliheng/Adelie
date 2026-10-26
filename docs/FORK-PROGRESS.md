@@ -997,6 +997,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       永远不加载**，对话页连 `selected` 都拿不到 —— 实测（一次性数据根 + 手写的机器侧会话行 + 真浏览器）
       改前改后**同样停在骨架**，而 Agent 列表非空时旧代码的 `!agentId` 本来就通过。留在这里备查，
       不重复这一轮的分析。
+- [x] **5.50 在局域网地址上打开 Web App 时，密钥授权改为粘贴授权码**（上游 `12a58d4f` `#1328`，
+      **2026-10-26 第一百三十六轮落地**，提交见该节）：模型页连 TokenDance 时，只要 Web App 是以明文
+      HTTP 打开在**非回环**地址上（局域网 IP、主机名、`0.0.0.0`），服务端先前交给授权页的 `callback_url`
+      就是那个地址，而授权页只接受 HTTPS 或 `localhost` / `[::1]` / `127.x.x.x` 上的明文 HTTP —— 它把整个
+      请求判成「授权请求无效」，用户卡在那张错误页上（口径取自上游那一笔，它读过授权页前端
+      `APIKeyAuthorization` 包；本轮没有再去取那份 bundle，只把自己这一侧的两态都量了）。现在服务端先算自己该按哪种模式开：`openedMode(asked, origin)`，
+      手动永不升级、`callback` 只在能接收跳转的地址上保留，其余一律按 `manual` 开（不带 `callback_url`、
+      S256 照旧），**并把 `mode` 写进发起接口的应答**；弹窗照它走 —— 直接落在填授权码那一步，这次打开
+      期间不再给「改回自动跳转」。回环与 HTTPS 行为与切换方式一字未动。**为什么是这一条**：这一轮拉到的
+      上游新提交里有十来笔可用，这一笔是其中唯一「真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在 Linux
+      上真跑的用例」的；而且它正好压在这一产品的实际用法上（Adelie 本来就从局域网 / 远程地址用）。
+      细节与实测见「第一百三十六轮」一节。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2245,6 +2257,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-26 | 7.47 | **财务页改预算被拒时，框留着、填过的金额与原因都留着**（不是移植：1 处源码 `packages/web/src/features/company/finance-page.tsx`（+46 −5：`BudgetEditor` 多一份 `refusal` 与一句「读不懂」的自有提示（复用既有 `budgetHint` 文案）、画在框下方那一行（`role="alert"`）；`FinancePage` 把拒绝文案按员工存在 `budgetRefusal` 里，开框 / 取消 / 落地都清掉；`saveBudget` 的 `catch` 不再 `toastError`，`toastError` 也从这份文件的 import 里去掉了。**顺手修一处真 bug**：写入在途时输入框被置灰、焦点随之离开，而「焦点离开也保存」又把同一次写入发了一遍 —— 一次保存过去写两次；编辑器现在用一个在途标记（`asking`，`busy` 落下时重置）挡掉第二发）+ 1 个新文件 `packages/web/e2e/finance-budget-refusal.spec.mjs`（2 条用例：被拒 → 取消重开 → 重试落地；读不懂的金额一次都不写）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.46 末尾点名的下一处里最靠前的「财务」那一处，也是那条「原因只进 toast」扫描线在这一页上的第十一处 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · web **265 文件 / 3249 通过 / 2 跳过** · server **203 文件 / 2970 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器单 spec**（`/root/adelie-fork-data/r133-e2e`，服务 8950、mock 8951，`packages/{core,server,web}/dist` 都是本轮新构建）：新 spec **2 passed（4.7s）**；相邻回归 `company.spec.mjs` **1 passed（22.0s）** · **整套浏览器 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**164 passed（10.3m）、0 failed** · **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push -- packages/web/src/features/company/finance-page.tsx`（只带这一个路径）、重建 web → 同一条命令 **2 failed**（第一条死在框里没有那句原话，第二条死在 `每月上限` 那条提示从 `role=alert` 里找不到）；`git stash pop` 后重建即回到 2 / 2 · **两态实测真看一眼**（探针 `r133/probe.mjs`，改后产物起在 8950、改前产物（`r133/before-dist`）另起一台 8960，各一次、同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `{boxVisible:true, reasonInBox:0, reasonInNotice:2, value:"42"}` → 6.5 s 后 `reasonInNotice:0`（屏幕上一点解释都没有了），`writes:2`（**一次保存写了两次**）；**改后** `{boxVisible:true, reasonInBox:1, reasonInNotice:0, value:"42"}`，6.5 s 后原样还在，`writes:1`；两态服务端上的预算都是原来的 100，截图 `r133/{before,after}/shots/{3-refused,4-six-seconds-later}.png` 里正好是「改前框里 42、上方两条红 toast、框下一句都没有」对「改后框下那行『操作被拒绝：the org chart is mid-rewrite』」；console 里的 error 只有既有的 `/machines` 403 与刻意造的 500，无 `pageerror` · 端口只用 8950 / 8951 / 8960（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r133-{e2e,before}` 与 scratchpad 的 `r133/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `467c076d` |
 | 2026-10-26 | 用户点单（火山方舟分组 + 视频输入输出） | **模型库多一个 Volcengine Ark 分组（11 条模型行），对话里能发视频、能看视频，另加一个 Seedance 出视频的插件**（不是移植：`packages/core/src/state/model-catalog.ts` 加 `volcengine` 分组、`supportsVideo` 与 `catalogSupportsVideo`；`pnpm patch` 给 agenthub 加 `video_url` 内容项（`patches/@prismshadow__agenthub.patch` + `patchedDependencies`）；core / server / cli / web 四层把视频当一等输入（预算、按引用、轨迹播放器、窗口化历史）；`packages/server/src/services/trace-images.ts` 改名合并为 `trace-media.ts` 并新增 `GET /:sessionId/trace-video`；新插件 `plugins/use-seedance`（`@adelie/use-seedance`，走方舟异步出片接口）；新增 6 个测试文件与 3 对 changelog；两家品牌图标各一枚）：用户 2026-10-25 点单，2026-10-26 补明用 `pnpm patch` 打 agenthub、要「Adelie 应用能产出视频」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` **0 警告 0 错误**（2297 文件）· `npx prettier --check .` 干净 · `pnpm -r test` **`EXIT=0`、0 失败**：core **1421 通过 / 6 跳过**（69 文件 + 1 跳过）· ui **1053**（130）· cli **561**（38）· web **3273 通过 / 2 跳过**（268）· server **2988 通过 / 4 跳过**（204）· docs **62**（8）· amsp **68**（2）· desktop **304**（26）· ui-gallery **140**（20）· `plugins/use-seedance` **8**（桩服务端到端）· `pnpm -r build` `EXIT=0` · 方舟真端点：假 key 实测 401 `AuthenticationError`（视频部件与文本部件走同一句鉴权错）· **没做**：没在真浏览器里目视播放一次视频、Seedance 没拿真 key 出过一次片、Trace 详情页的 `events` 仍会整份返回那条记录的 base64 | 见本行提交 |
 | 2026-10-26 | 7.48 | **智能体设置里「还原为默认配置」「更新内核」被拒时，原因留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/agent-settings-page.tsx`（`OverviewTab` 新增 `resetRefusal` / `kernelRefusal`，两个 `ConfirmModal` 接上 `refusal` 槽并按 `S.common.refused` 加前缀，两个 `catch` 不再 `toastError`，开框 / 关框都清旧原因） + 1 个新文件 `packages/web/e2e/agent-config-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：台账点名的下一站是「插件市场 / 智能体设置 / 定时任务面板里带确认的写入」，实摸之后插件市场与定时任务面板早已接好 `refusal` 槽，只剩智能体设置概览页这两张；同一操作在智能体列表页（批量内核更新）与本页 API 标签页早就会把原因留在框里，这两张是最后一处没跟上的 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**（两条扫全仓的 5 s 用例在本机与另一条线的发布测试并行时超时、单独复跑通过，见该节）：core **69 通过文件 + 1 跳过 / 1421 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2990 通过 / 4 跳过** · web **267 文件 / 3272 通过 / 2 跳过** · **真服务 + 真浏览器单 spec**（`/root/adelie-fork-data/r135-e2e`，服务 8950、mock 8951，`packages/{core,server,web}/dist` 本轮新构建）：新 spec **2 passed（9.1s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push -- packages/web/src/features/agents/agent-settings-page.tsx`（只带这一个路径）、重建 web 成 `r135/before-dist`、另起一台服务端（8960，`/root/adelie-fork-data/r135-before`）→ **2 failed**（`element(s) not found`：改前框里没有那句原话）；`git stash pop` 后重建即回到 2 / 2 · **两态实测真看一眼**（探针 `r135/probe.mjs`，两态各跑一次、两张框各测一遍，同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** 两张框都是 `{cardVisible:true, alertInCard:0, noticeHasReason:true}` → 6.5 s 后 `noticeHasReason:false`（屏幕上一点解释都没有了）；**改后** 两张框都是 `{cardVisible:true, alertInCard:1, noticeHasReason:false}`，6.5 s 后原样还在——截图 `r135/{before,after}/shots/{reset,kernel}-2-six-seconds-later.png` 里正好是「改前框里空着」对「改后框里那行『操作被拒绝：agent state is read-only』」；两态 console 的 error 只有既有的 `/machines` 403（普通成员读机器列表）与刻意造的 500，无 `pageerror` · **整套浏览器 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**167 passed（11.9m）、0 failed、`EXIT=0`**（第一百三十三轮整套是 164，+ 本笔 2 + 另一条线视频那 1） · 端口只用 8950 / 8951 / 8960 与整套的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r135-{e2e,before}` 与 scratchpad 的 `r135/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总（0.5.7 的版本号与发布正文是另一条线推上来的 `d80630ec` / `63fa1064`，本线只 `merge --ff-only` 跟上） | 见本行提交 |
+| 2026-10-26 | 5.50 | **在局域网地址上打开 Web App 时，密钥授权改为粘贴授权码**（上游 `12a58d4f` `#1328` 移植，照改动落、不是合分支；上游 8 文件 / +289 −17 → 本树落下 5 个跟踪文件 / +133 −17 与 changelog 一对：上游那份前端用例要 jsdom（`packages/web` 不装），改由真浏览器取证，服务端用例的表头注释按本树现状手写合并）：服务端新增导出 `openedMode(asked, origin)` —— `manual` 永不升级；`callback` 只在 `https:` 或 `http:` 且主机为 `localhost` / `[::1]` / `127.x.x.x`（授权页 `callback_url` 的判据）时保留，解析不出的地址一并降级；`start` 用它同时决定回调地址与流程记录的模式（被降级的流程拒绝投递授权码，与手动流程完全一致）并返回 `mode`；`ModelOAuthStartResponse.mode` 为必填。Web 侧 `ModelOAuthDialog` 新增 `redirectRefused`，与 `manual` 合成 `byHand` 取代各处判断（授权码那一步、不轮询、不给跳转开关），只看应答里的 `mode === "manual"`，对没有该字段的旧服务端行为照旧。**本地化**：本树已改名的 `ADELIE_TRUST_PROXY` 等措辞沿用；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 重写 `src/ifaces.json` 后与版本库逐字节相同 —— 195 接口 / 590 类型，本笔不动组件契约）· `npx oxlint` 五个文件 **0 警告 0 错误** · 五个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（69 文件 + 1 跳过）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **269 文件 / 3283 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：在 `openedMode` 开头插一句 `return asked;` → `test/model-oauth.test.ts` **2 failed / 44 passed**（「非回环明文 HTTP 按手动开」与 LAN 路由那两条都挂在 `expected "manual", received "callback"`），还原后 **46 全过** · **本轮主证据（真服务端 ×2 + 真浏览器：改前 / 改后两态 + 回环对照）**：`packages/{core,server,web}` 各自单独重建；两份服务端产物（`r136/before-server-dist` 取自把四份源码 stash 掉的树）与两份 web 产物（`r136/{before,after}-dist`）分别挂在一次性数据根 `/root/adelie-fork-data/r136-{before,after}` 上，**改后起在 `localhost:8954`、改前起在 `localhost:8955`**（`ADELIE_SEED_ADMIN_PASSWORD` + 登录页表单拿 cookie；空数据根不需要模型 key——即 3.6 那个卡点）；浏览器用 `--host-resolver-rules=MAP app.lan 127.0.0.1` 以 **`http://app.lan:<port>`（明文 HTTP + 非回环主机名）** 访问，三腿读数：**改后 @ LAN** —— `POST …/model-oauth/start` 回 `mode: "manual"`、`authorizeUrl` 里**没有 `callback_url`**、`code_challenge_method=S256`，弹窗同时有「授权码」输入框 + 那句粘贴提示 + 「提交授权码」，**没有**「授权页跳不回来？改为手动填写授权码」这个开关（截图 `r136/shots/after-lan.png`）；**改前 @ LAN** —— 应答无 `mode` 字段、`callback_url` 就是 `http://app.lan:8955/…`（正是授权页会拒的那个），弹窗只有「打开授权页」+ 那个开关、**没有授权码框**（`r136/shots/before-lan.png`）；**改后 @ localhost（回环对照，行为不变）** —— 应答 `mode: "callback"`、`callback_url` 是 `http://localhost:8954/…`、开关照旧在（`r136/shots/after-localhost.png`）。三腿 console 各 **0 error**、**无一条 ≥400**（登录前的 `/api/me` 401 属这个 App 的正常首访）· 端口只用 8954 / 8955（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r136-{after,before}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r136/` 下（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -16467,3 +16480,103 @@ adelie 应用可以产出视频」。
 - 汇报：校园邮箱照惯例只试一次（`/root/penguin-plugins/csu-mail/skills/csu-mail/scripts/mail.py check`
   **超时 `RC=124`**、无输出，仍是 `202.197.0.0/16` 那个网段的问题、不是凭据），改走飞书，正文留底在
   scratchpad 的 `release-057/report.txt`。
+
+## 第一百三十六轮：在局域网地址上打开 Web App 时，密钥授权改为粘贴授权码（2026-10-26，条目 5.50）
+
+### 开工自检
+
+- `/root/adelie-fork` 在 `main` 上，`git status --short` **干净**；`git merge --ff-only origin/main`
+  跟上了另一条线的 v0.5.8（`680bdf76` 版本戳 + `5ab78bae` 发布正文，35 文件 / +92 −34）。
+  没有切分支、没碰 `legacy/main`、没推 upstream。
+- 上游按第二十三轮那条路现拉：
+  `git fetch https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r136`，
+  尖端 **`4694d853`**（`fallback --all-fetch` 式的一把，`2b8116ce..` 共 **126 笔**新提交，另有 tag `v0.2.17`）。
+  探针引用是 `refs/adelie-tmp/upstream-main-r136`（要清就 `git update-ref -d`）。
+
+### 选活
+
+表上最靠前的未勾选条目仍是 **2.2c**（剩下三件：写侧全在桌面壳一侧、既有部署单元与发布动作、
+桌面壳自己的开关 —— 都不是这一条能自己做完的）、**3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key（卡点）、
+**4.1–4.3** 明令不动、**5.3** 的②③④要第二台机器、**5.6** 与 **5.10** 等用户拍板；第 7 节全部勾完。
+于是按前几轮的惯例，从这一轮新拉到的上游提交里挑「真缺陷 + 本树文件全在 + 不引入新依赖」。
+
+126 笔逐笔量过的结论（省下一轮）：
+
+- **能用**：`12a58d4f`（`#1328`，本轮落地，见下）。
+- **量过、没取**：`bf3395ff`（`#1325`，停靠栏贴着输入框停住，324 行，自带纯逻辑用例
+  `bottom-dock-size.test.ts`）—— `git apply -3 --check` 在 `chat-page.tsx` / `dock-panel.tsx` /
+  `dock-state.ts` **三处冲突**，且与紧随其后的 `ce9b3e69`（`#1335`，停靠面板跟随自己的会话）改同一批文件，
+  两条要一起做才不互相返工 → 留给后面单独一轮。
+- **落不了**：`282eeab8` / `4694d853`（`#1332` / `#1333`，amsp 读历史时的重试与退避）—— 要改
+  `packages/amsp/src/reader.ts`，**本树没有那个文件**（它是上游 `#1301` "Agent API 流式记录" 的产物，
+  本树尚未落）。`e0e4f463`（`#964`）要 `packages/skills` 整个包，也没有。
+- **不学（本仓一贯口径）**：`0195c73b` 之类的发版提交、`packages/landing` / `docs/blog` / `rfcs` 那一大批
+  品牌面与站点面、依赖升级（vitest 4.1 / Electron / MCP SDK 等，属 4.x 的流水线面），以及
+  `c45a56cd`（把 OmniMessage 改名为 AMSP record）、`172c9e4c`（模型目录从 core 搬到 server）、
+  `0eafa6dc` 之后的 `#1154` / `#1161` 这类跨模块大重构 —— 都不是一轮的量、也不压在我们的收益上。
+
+### 做了什么
+
+- `packages/server/src/services/model-oauth-service.ts`：新增导出 **`openedMode(asked, callbackOrigin)`**
+  —— `manual` 永不升级；`callback` 只在 `https:` 或「`http:` + `localhost` / `[::1]` / `127.x.x.x`」时保留，
+  解析不出的地址一并降级（没有可跳之处）。`ModelOAuthService.start` 用它**同时**决定回调地址与流程记录的模式
+  （因此被降级的流程拒绝投递授权码，行为与手动流程完全一致），并在结果里返回 `mode`。
+- `packages/server/src/api/types.ts`：`ModelOAuthStartResponse.mode` 必填；`ModelOAuthMode` 与
+  `ModelOAuthStartRequest.mode` 的注释补上「为什么 `callback` 可能以 `manual` 开」。
+- `packages/server/src/http/routes/model-oauth.ts`：`requestOrigin()` 与 `/start` 的注释跟着改（口径：跳转只
+  在 HTTPS 或回环明文 HTTP 上成立）。
+- `packages/web/src/features/models/models-page.tsx`（`ModelOAuthDialog`）：新增 `redirectRefused`，
+  与原来的 `manual` 合成一个 `byHand` 取代各处判断（走授权码那一步、不轮询、不给「改回自动跳转」），
+  重试也保持；只看应答里的 `mode === "manual"`，对没有该字段的旧服务端行为照旧。没有新增文案。
+- `packages/server/test/model-oauth.test.ts`：打开模式的取值表（回环与 HTTPS 保留跳转；LAN 地址、主机名、
+  `0.0.0.0`、`*.localhost`、不可解析的地址按手动；手动永不升级）+ 一条路由用例（以
+  `http://192.168.1.10:7364` 发起 → `mode: "manual"`、无 `callback_url`、仍钉 S256，随后兑换粘贴的授权码）。
+- changelog 一对 `changelog/unreleased/2026-10-26-oauth-callback-origin{,.zh}.md`（按本仓写法：去掉上游 PR 行、
+  写明移植出处与「没有接口 / 数据 / 依赖变化」）。
+
+**有意没取**：上游那份 `packages/web/test/model-oauth-mode.test.ts`（`// @vitest-environment jsdom`）——
+`packages/web` 不装 jsdom（第六十二轮记过的同一条），装了就是引入新依赖；那半边改用真浏览器两态取证（见下）。
+服务端用例的文件头注释按本树合并：上游那一版还描述了一条本树没有的 disconnect 路径。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`）。server 的 `gen:ifaces` 报了那一串既有 warning 并「写」了
+  `src/ifaces.json`，但 `git diff` 为空 —— 内容与版本库逐字节相同（195 接口 / 590 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（69 文件 + 1 跳过）· ui **1053**（130 文件）·
+  cli **561**（38 文件）· server **204 文件 / 2995 通过 / 4 跳过** · web **269 文件 / 3283 通过 / 2 跳过** ·
+  hmr 无测试文件。`npx oxlint` 五个文件 **0 警告 0 错误**；五个源码 / 用例文件与一对 changelog
+  `prettier --check` 干净；`git diff --check` 干净。
+- **反证（单测）**：在 `openedMode` 开头插一句 `return asked;` 再跑 `test/model-oauth.test.ts` →
+  **2 failed / 44 passed**（取值表里那条与 LAN 路由那条都挂在 `expected "manual", received "callback"`），
+  还原后 **46 全过**。
+- **两态实测（真服务端 ×2 + 真浏览器，主证据）**：`core` / `server` / `web` 各自单独重建（不同时 build，
+  见第二十八轮 OOM 那条）。两份服务端产物：`r136/before-server-dist` 是「把四份源码 stash 掉」之后重建的，
+  `packages/server/dist` 在其间来回换过（`grep -c openedMode dist/index.js` 得 0 / 3 两端核过），
+  两份 web 产物 `r136/{before,after}-dist` 同理。两个一次性数据根
+  `/root/adelie-fork-data/r136-{after,before}`，改后起在 **8954**、改前起在 **8955**
+  （`ADELIE_SEED_ADMIN_PASSWORD`，登录走登录页表单 —— 空数据根不需要模型 key，即 3.6 那个卡点）。
+  浏览器用 `--host-resolver-rules=MAP app.lan 127.0.0.1` 以 `http://app.lan:<port>` 访问（**明文 HTTP +
+  非回环主机名**，正是这台机器上访问 Adelie 的方式），在 `/models` 点 TokenDance 那行的「连接」：
+  - **改后 @ LAN**：`POST …/model-oauth/start` 回 `mode: "manual"`，`authorizeUrl` 里**没有 `callback_url`**、
+    `code_challenge_method=S256`；弹窗同时出现「授权码」输入框、粘贴提示与「提交授权码」，
+    **没有**「授权页跳不回来？改为手动填写授权码」这个开关 —— 截图 `r136/shots/after-lan.png`。
+  - **改前 @ LAN**：应答无 `mode` 字段，`callback_url` 就是 `http://app.lan:8955/…`（授权页会拒的那个地址）；
+    弹窗只有「打开授权页」+ 那个开关、**没有授权码框** —— `r136/shots/before-lan.png`。
+  - **改后 @ localhost（回环对照）**：`mode: "callback"`、`callback_url` 是 `http://localhost:8954/…`、
+    开关照旧在 —— `r136/shots/after-localhost.png`（回环与 HTTPS 的行为与切换方式都没变）。
+  - 三腿 console 各 **0 error**、**无一条 ≥400**（登录前的 `/api/me` 401 是这个 App 的正常首访）。
+- 端口只用 8954 / 8955（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r136-{after,before}`；探针 `r136/probe.mjs`、两态产物、截图都在 scratchpad 的
+  `r136/` 下，一个字节没往 `~/.penguin` 或仓库里写（`packages/*/dist` 是构建产物，未 `git add`）。
+
+### 没做 / 还差什么
+
+- **真去授权一次没有做**：这一轮没有真去 TokenDance 授权（不铸造任何 key），判定口径取自上游那一笔
+  （它读过授权页前端的 `callback_url` 校验），本机核的是「我们这一侧现在会问什么、界面会怎么走」。
+  真要端到端验，需要一次真实的 TokenDance 授权（会产生一个真 key），等用户愿意的时候再说。
+- **`app_url` 仍是上游的 `https://penguin.ooo/`**（两态实测的 `authorizeUrl` 里都看得到）：这是 2.1c 之外
+  遗留的上游品牌面，属发布期那条线（4.x），本轮不动。
+- **下一轮**：`bf3395ff`（`#1325`，底部停靠栏压在输入框上）+ `ce9b3e69`（`#1335`，停靠面板跟随自己的会话）
+  是这一轮量过、最值得一起做的两条（同一批文件、都有现成用例）；再往后是 `0c7725c2`（`#1250`，流式回复时
+  往上滚不再被拽回去，自带 306 行 e2e）与 `12a58d4f` 之后那几笔要新前置的（`#1272` / `#1268` 的 API socket 面）。
+- 汇报邮件：照 `csu-mail` 技能试一次；不通就改走飞书（第 117 / 135 轮的先例）。
