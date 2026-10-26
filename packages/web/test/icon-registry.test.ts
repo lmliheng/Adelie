@@ -27,6 +27,10 @@ const WEB = SCAN.files.filter((file) => file.root === "web");
 const ALLOWLIST: Readonly<Record<string, readonly [number, string]>> = {
   "components/layout/sidebar.tsx": [2, "W7"],
   "features/chat/attached-files-banner.tsx": [1, "W6"],
+  // The composer's video entry (a lens body with the triangular flag): the icon set has no video
+  // glyph, and the traces row draws the same shape in its own type map (an object property, so it
+  // is not counted here).
+  "features/chat/chat-input.tsx": [1, "W10"],
   "features/chat/conversation-outline.tsx": [1, "W6"],
   "features/chat/goal-use.ts": [1, "W6"],
   "features/chat/memory-view.tsx": [3, "W6"],

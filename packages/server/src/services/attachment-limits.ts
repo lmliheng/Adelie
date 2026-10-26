@@ -87,6 +87,23 @@ export const MAX_ATTACHMENT_COUNT = 20;
  */
 export const INLINE_IMAGE_MAX_MB = 20;
 
+/**
+ * Per-video ceiling for videos that ride the conversation inline, where the model takes video
+ * input (see ModelCatalogEntry.supportsVideo).
+ *
+ * Larger than the image ceiling because a video is, and because the vendor's own limit is: Ark
+ * takes a video under 50 MB inside a request body under 64 MB, and base64 inflates by 4/3, so
+ * 32 MB of video is ~43 MB on the wire — inside that body with room for the text around it.
+ * Above this number the model would refuse the request anyway; keeping the ceiling here means
+ * the refusal is Adelie's, with a message that names the limit, rather than the provider's.
+ *
+ * The same Session-must-stay-readable reasoning as images applies, one order of magnitude up: a
+ * video written into the Trace is read back whole on every history page. That is also why a
+ * conversation carries at most one video per request (the video budget in
+ * llm/generative-model.ts).
+ */
+export const INLINE_VIDEO_MAX_MB = 32;
+
 /** Byte length of the base64 encoding of `bytes` bytes (4 characters per 3-byte group, padded). */
 export function base64Length(bytes: number): number {
   return Math.ceil(bytes / 3) * 4;
@@ -135,6 +152,9 @@ export function toAttachmentLimits(mb: AttachmentLimitsMb): AttachmentLimits {
 
 /** The inline-image ceiling in bytes (a constant, but expressed through the same MB unit). */
 export const INLINE_IMAGE_MAX_BYTES = INLINE_IMAGE_MAX_MB * MB;
+
+/** The inline-video ceiling in bytes (same unit, same reason). */
+export const INLINE_VIDEO_MAX_BYTES = INLINE_VIDEO_MAX_MB * MB;
 
 /**
  * The global request body cap implied by the attachment budget.

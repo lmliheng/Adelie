@@ -211,6 +211,24 @@ export interface ImageUrlPayload {
   stop_reason?: StopReason;
 }
 
+/**
+ * A video the model is asked to watch. Only a model whose catalog row records video input may
+ * be sent one (see ModelCatalogEntry.supportsVideo): AgentHub's Chat Completions client maps
+ * this to the `video_url` content part Ark reads, and every other client rejects an item it
+ * does not know rather than dropping the video silently.
+ *
+ * There is deliberately no inline-bytes variant: upstream takes a URL or a base64 `data:` URL
+ * on the same field, and a caller holding local bytes base64-encodes them itself (read_file's
+ * video branch does), so the two cases are one field.
+ */
+export interface VideoUrlPayload {
+  type: "video_url";
+  role: "user";
+  /** A public web URL or a base64 data URL (`data:video/mp4;base64,…`). */
+  video_url: string;
+  stop_reason?: StopReason;
+}
+
 export interface InlineDataPayload {
   type: "inline_data";
   role: Role;
@@ -581,6 +599,7 @@ export interface McpConnectEndPayload extends ErrorInfo {
 export type CompleteModelPayload =
   | TextPayload
   | ImageUrlPayload
+  | VideoUrlPayload
   | InlineDataPayload
   | ThinkingPayload
   | InlineThinkingPayload

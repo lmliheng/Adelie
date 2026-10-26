@@ -73,6 +73,7 @@ describe("model-catalog", () => {
       "baidu",
       "tencent",
       "iflytek",
+      "volcengine",
       "qwen-pay-as-you-go",
       "qwen-token-plan",
       "modelscope",
@@ -499,17 +500,18 @@ describe("model-catalog", () => {
     expect(providerClientType("vllm")).toBe("openai-chat-vllm-adapter");
     expect(providerInfo("vllm")!.gatewayBaseUrl).toBeUndefined();
     // Groups that declare one at group level, in MODEL_PROVIDERS order: OpenRouter, whose
-    // entries all speak the Responses API its preset endpoint serves; vLLM; and the four
-    // Chinese first-party groups added 2026-10-15 (Xiaomi MiMo, Baidu ERNIE, Tencent Hunyuan,
-    // iFlytek Spark), whose rows all speak Chat Completions to an endpoint AgentHub has no
-    // first-party client for. The remaining gateways derive openai-chat from their preset
-    // endpoint, and custom / user-defined groups leave the protocol to detection.
+    // entries all speak the Responses API its preset endpoint serves; vLLM; and the five
+    // Chinese first-party groups (Xiaomi MiMo, Baidu ERNIE, Tencent Hunyuan,
+    // iFlytek Spark, and Volcengine Ark), whose rows all speak Chat Completions to an endpoint
+    // AgentHub has no first-party client for. The remaining gateways derive openai-chat from
+    // their preset endpoint, and custom / user-defined groups leave the protocol to detection.
     expect(MODEL_PROVIDERS.filter((p) => p.clientType !== undefined).map((p) => p.id)).toEqual([
       "openrouter",
       "xiaomi",
       "baidu",
       "tencent",
       "iflytek",
+      "volcengine",
       "vllm",
     ]);
     expect(providerClientType("openrouter")).toBe("openai-responses");
@@ -992,6 +994,7 @@ describe("model-catalog", () => {
       "baidu",
       "tencent",
       "iflytek",
+      "volcengine",
     ]) {
       expect(providerInfo(id)!.envKey).toBe("OPENAI_API_KEY");
       expect(providerInfo(id)!.envBaseUrlKey).toBe("OPENAI_BASE_URL");
@@ -1103,8 +1106,9 @@ describe("model-catalog", () => {
 
     // In preset entries, every gateway model inlines base_url, and so do the two direct rows
     // whose own id does not route — MiniMax M3 and DeepSeek deepseek-flash (no credentials) —
-    // the custom group's preset, whose group implies no endpoint at all, and the four Chinese
-    // first-party groups added 2026-10-15, whose endpoint AgentHub has no client for.
+    // the custom group's preset, whose group implies no endpoint at all, and the five Chinese
+    // first-party groups (Xiaomi MiMo, Baidu ERNIE, Tencent Hunyuan, iFlytek Spark and
+    // Volcengine Ark), whose endpoint AgentHub has no client for.
     const pinnedDirect = MODEL_CATALOG.filter((m) => m.provider === "deepseek" && m.baseUrl);
     expect(pinnedDirect.map((m) => m.modelId)).toEqual(["deepseek-flash"]);
     const customPresets = MODEL_CATALOG.filter((m) => m.provider === "custom");
@@ -1118,7 +1122,7 @@ describe("model-catalog", () => {
         ...MODEL_CATALOG.filter((m) => m.provider === "penguin-go"),
         ...MODEL_CATALOG.filter((m) => m.provider === "opencode-go"),
         ...MODEL_CATALOG.filter((m) =>
-          ["xiaomi", "baidu", "tencent", "iflytek"].includes(m.provider),
+          ["xiaomi", "baidu", "tencent", "iflytek", "volcengine"].includes(m.provider),
         ),
       ]
         // A retired gateway row keeps its pin in the catalog but is not a preset.
@@ -2006,9 +2010,9 @@ describe("off-peak schedules", () => {
 
   it("the DeepSeek rows store the peak price and declare the schedule", () => {
     // Every direct row, plus the resold rows whose sellers pass DeepSeek's own windows through:
-    // two on Penguin Go, four on OpenCode Go, two on TokenDance and one on OpenRouter. The
-    // retired rows keep the schedule too. A gateway row on the schedule carries no flat
-    // `discount` — the two are mutually exclusive, pinned by the last case here.
+    // two on Penguin Go, four on OpenCode Go, two on TokenDance, one on OpenRouter and one on
+    // Volcengine Ark. The retired rows keep the schedule too. A gateway row on the schedule
+    // carries no flat `discount` — the two are mutually exclusive, pinned by the last case here.
     const rows = MODEL_CATALOG.filter((m) => m.offPeakDiscount === S);
     expect(rows.map((m) => `${m.provider}/${m.modelId}`)).toEqual([
       "deepseek/deepseek-flash",
@@ -2024,6 +2028,7 @@ describe("off-peak schedules", () => {
       "opencode-go/deepseek-v4-flash",
       "opencode-go/deepseek-v4-flash-vision-exp",
       "opencode-go/deepseek-v4-pro",
+      "volcengine/deepseek-v4-1-flash-261017",
     ]);
     for (const m of rows) {
       // Peak is exactly double the off-peak tier DeepSeek publishes. Compared at 1e-5: both

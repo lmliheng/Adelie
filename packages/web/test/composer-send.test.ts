@@ -23,6 +23,7 @@ const BASE: MidRunComposerState = {
   hasPendingModel: false,
   hasText: true,
   hasImages: false,
+  hasVideos: false,
   hasFiles: false,
   hasContent: true,
 };
@@ -30,13 +31,23 @@ const BASE: MidRunComposerState = {
 const act = (over: Partial<MidRunComposerState> = {}) => midRunAction({ ...BASE, ...over });
 
 /** The draft shapes that carry nothing at all. */
-const EMPTY = { hasText: false, hasImages: false, hasFiles: false, hasContent: false } as const;
+const EMPTY = {
+  hasText: false,
+  hasImages: false,
+  hasVideos: false,
+  hasFiles: false,
+  hasContent: false,
+} as const;
 
 describe("midRunAction — steering, the preferred channel", () => {
-  it("takes text, images, files, or any of them with no caption at all", () => {
+  it("takes text, images, videos, files, or any of them with no caption at all", () => {
     expect(act()).toBe("steer");
     expect(act({ hasText: false, hasImages: true })).toBe("steer");
     expect(act({ hasText: true, hasImages: true })).toBe("steer");
+    // A clip steers like an image does, inline or as a scratchpad file depending on the model
+    // (the composer hands the whole draft over; the branch that picks the field is the host's).
+    expect(act({ hasText: false, hasVideos: true })).toBe("steer");
+    expect(act({ hasText: true, hasVideos: true })).toBe("steer");
     // A file-only draft steers exactly like an image-only one (#140) — no silent fallback
     // to the queue, which used to answer it with the other channel's hint.
     expect(act({ hasText: false, hasFiles: true })).toBe("steer");

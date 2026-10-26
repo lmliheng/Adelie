@@ -5,8 +5,8 @@
  *
  * Extraction walks a single Task's slice of the main model — by default the most recent
  * Task that REFERENCES A SUBAGENT (task boundaries from the "starts a new Task" predicate
- * the reducer uses — user_text / user_image; user_steering never starts one — so a plain
- * user message never wipes the panel), or, for a chip clicked on an older turn, the
+ * the reducer uses — user_text / user_image / user_video; user_steering never starts one —
+ * so a plain user message never wipes the panel), or, for a chip clicked on an older turn, the
  * HISTORICAL Task slice containing that chip's child (extractTopologyForChild). The default
  * view also keeps children the runtime reports running, even when an earlier Task spawned
  * them. It collects children from bound run_subagent tool cards and standalone SubagentItems, then
@@ -61,7 +61,7 @@ export interface TopologyNode {
 
 /**
  * Whether an item opens a new PANEL scope. The reducer's "starts a new Task" predicate
- * (user_text/user_image), minus one exception: an idle-launched `[background_task_done]`
+ * (user_text/user_image/user_video), minus one exception: an idle-launched `[background_task_done]`
  * notice does start a chat Task (its auto-run answers it), but for the topology it belongs
  * to the Task that launched the background work — slicing there would split a background
  * subagent's spawn from its completion and reset the panel the moment the report lands. A
@@ -69,7 +69,7 @@ export interface TopologyNode {
  * `background_notice` kind, which starts nothing anywhere.
  */
 function isScopeStart(item: ChatItem): boolean {
-  if (item.kind === "user_image") return true;
+  if (item.kind === "user_image" || item.kind === "user_video") return true;
   if (item.kind !== "user_text") return false;
   // Cheap reject first: these predicates run over every item on every render, and the marker
   // parse is two full-text regex scans — only text that actually carries the tag pays for it.
@@ -86,7 +86,7 @@ export function latestTaskStart(items: readonly ChatItem[]): number {
 }
 
 /**
- * Task starts as the STREAM MODEL counts them — every user_text/user_image, idle-launched
+ * Task starts as the STREAM MODEL counts them — every user_text/user_image/user_video, idle-launched
  * notices included, so the number stays 1:1 with the reducer's own `startTask` calls (a
  * steered notice is a `background_notice` item, which the reducer never startTasks — so it
  * is rightly not counted here either). The header's cost tracker keys its Task-boundary fold
@@ -97,16 +97,19 @@ export function latestTaskStart(items: readonly ChatItem[]): number {
 export function modelTaskStartCount(items: readonly ChatItem[]): number {
   let n = 0;
   for (const item of items) {
-    if (item.kind === "user_text" || item.kind === "user_image") n += 1;
+    if (item.kind === "user_text" || item.kind === "user_image" || item.kind === "user_video") {
+      n += 1;
+    }
   }
   return n;
 }
 
 /**
- * Count of Task-starting user items (the reducer's startTask predicate: user_text/user_image —
- * steering chips and internal injections such as compaction summaries never become such items,
- * so they never count). The subagents panel's task-boundary signal: an INCREASE means the user
- * started a new Task in this session (see advancePanelTaskScope in panel-task-scope.ts).
+ * Count of Task-starting user items (the reducer's startTask predicate:
+ * user_text/user_image/user_video — steering chips and internal injections such as compaction
+ * summaries never become such items, so they never count). The subagents panel's task-boundary
+ * signal: an INCREASE means the user started a new Task in this session (see
+ * advancePanelTaskScope in panel-task-scope.ts).
  */
 export function taskStartCount(items: readonly ChatItem[]): number {
   let n = 0;
@@ -216,11 +219,11 @@ export function extractTopology(
 /**
  * Historical variant: extract the spawn tree of the Task slice CONTAINING the given direct
  * child — the slice around the main-stream item that references it (a bound run_subagent card
- * or a standalone SubagentItem), bounded by the nearest user_text/user_image on either side.
- * Null when no main-stream item references the child (e.g. a resync swapped in a fresh model) —
- * the caller then falls back to the latest Task. The root's running state stays live only while
- * the slice is still the open-ended latest Task; an older Task has ended by definition (the
- * next user message closed it).
+ * or a standalone SubagentItem), bounded by the nearest user_text/user_image/user_video on
+ * either side. Null when no main-stream item references the child (e.g. a resync swapped in a
+ * fresh model) — the caller then falls back to the latest Task. The root's running state stays
+ * live only while the slice is still the open-ended latest Task; an older Task has ended by
+ * definition (the next user message closed it).
  */
 export function extractTopologyForChild(
   model: StreamModel,

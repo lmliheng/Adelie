@@ -80,7 +80,7 @@ import { sessionIdCreatedAt } from "./session-service.js";
 import { listCategory, readRecordedSource } from "../runtime/session-sources.js";
 import { TraceIndexService, traceFilePath } from "./trace-index.js";
 import { TraceLineIndex } from "./trace-line-index.js";
-import { traceRecordImage, withImagesByReference } from "./trace-images.js";
+import { traceRecordMedia, withMediaByReference } from "./trace-media.js";
 import { Component, Use } from "@adelie/core/kernel";
 import type { Paths } from "../hmr/capabilities.js";
 import type { TraceIndex, TraceIndexStore, Traces } from "../mechanisms/traces.js";
@@ -779,7 +779,7 @@ export class TraceService implements Traces {
     }
 
     // Byte budget: newest first, a unit joins while the page stays within it; the first one
-    // always joins. Sized as the route serves it, images by reference (trace-images.ts).
+    // always joins. Sized as the route serves it, media by reference (trace-media.ts).
     let chosen = starts.length - 1;
     let pageBytes = 0;
     for (let k = starts.length - 1; k >= 0; k--) {
@@ -787,7 +787,7 @@ export class TraceService implements Traces {
       let unitBytes = 0;
       for (let i = starts[k]!.at; i < unitEnd; i++) {
         unitBytes += Buffer.byteLength(
-          JSON.stringify(withImagesByReference(sessionId, spanRaw[i]!)),
+          JSON.stringify(withMediaByReference(sessionId, spanRaw[i]!)),
           "utf8",
         );
       }
@@ -1069,28 +1069,29 @@ export class TraceService implements Traces {
   }
 
   /**
-   * One image of one Trace record, decoded: the `image_url` of the record at
-   * (`fileIndex`, `ordinal`), or its tool output's `images[slot]`. This is what a windowed
-   * history page's image URL names (trace-images.ts). 404 `trace_image_not_found` when the
-   * file, the record or the slot holds no image the route serves.
+   * One image or video of one Trace record, decoded: the `image_url` / `video_url` of the
+   * record at (`fileIndex`, `ordinal`), or its tool output's `images[slot]`. This is what a
+   * windowed history page's media URL names (trace-media.ts). 404, with a code per kind, when
+   * the file, the record or the slot holds no media the route serves.
    */
-  async readTraceImage(
+  async readTraceMedia(
     projectId: string,
     agentId: string,
     sessionId: string,
     fileIndex: number,
     ordinal: number,
     slot: number | undefined,
+    kind: "image" | "video",
   ): Promise<{ mime: string; bytes: Buffer }> {
     const notFound = () =>
-      new HttpError(404, "trace_image_not_found", "This Trace record holds no such image.");
+      new HttpError(404, `trace_${kind}_not_found`, `This Trace record holds no such ${kind}.`);
     const files = await this.locateAll(projectId, agentId, sessionId);
     const file = files.find((f) => f.index === fileIndex);
     if (file === undefined) throw notFound();
     const { events } = await this.lineIndex.readRange(file.path, ordinal, 1);
-    const image = events[0] !== undefined ? traceRecordImage(events[0], slot) : null;
-    if (image === null) throw notFound();
-    return image;
+    const media = events[0] !== undefined ? traceRecordMedia(events[0], slot, kind) : null;
+    if (media === null) throw notFound();
+    return media;
   }
 
   /**

@@ -43,6 +43,7 @@ import { validateDraftShortcuts } from "../../services/draft-shortcuts.js";
 import { validateKeybindings } from "../../services/keybindings.js";
 import {
   INLINE_IMAGE_MAX_MB,
+  INLINE_VIDEO_MAX_MB,
   MAX_ATTACHMENT_COUNT,
   MAX_ATTACHMENT_MB,
   MIN_ATTACHMENT_MB,
@@ -143,6 +144,7 @@ export function meRoutes(deps: MeRouteDeps): Hono<AppEnv> {
         ...deps.serverSettingsRepo.getAttachmentLimitsMb(),
         attachmentMaxCount: MAX_ATTACHMENT_COUNT,
         imageMaxMb: INLINE_IMAGE_MAX_MB,
+        videoMaxMb: INLINE_VIDEO_MAX_MB,
         attachmentLimitMinMb: MIN_ATTACHMENT_MB,
         attachmentLimitMaxMb: MAX_ATTACHMENT_MB,
       },

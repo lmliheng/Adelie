@@ -58,6 +58,34 @@ function SentMessageMeta({ atMs, copyText }: { atMs: number | undefined; copyTex
   );
 }
 
+/**
+ * A video the person sent, in the bubble its own message gets (`bubble`) or on the smaller rung a
+ * steer's media row uses (`chip`) — the two rungs MessageImage has, with the same width caps, so a
+ * clip can no more overflow a phone than a picture can. On the UI package's image variant rather
+ * than a bubble of its own: it is the same thing a message carries, in the same frame.
+ *
+ * `controls` and `preload="metadata"`: the clip shows its first frame and its length, and nothing
+ * heavy is fetched until the person presses play. `playsInline` keeps a phone from throwing it into
+ * fullscreen the moment it plays. Deliberately NOT muted, and deliberately not autoplaying: a
+ * transcript must not make noise on its own, but a clip somebody chooses to play is theirs to hear.
+ * A windowed history page's `videoUrl` is a reference the browser fetches itself — `routedUrl` at
+ * the call sites sends it to the machine the Session lives on.
+ */
+function MessageVideo({ src, size = "bubble" }: { src: string; size?: "bubble" | "chip" }) {
+  return (
+    <video
+      src={src}
+      controls
+      preload="metadata"
+      playsInline
+      aria-label={S.chat.videoLabel}
+      className={
+        size === "bubble" ? "max-h-48 max-w-full rounded-md" : "max-h-28 max-w-full rounded-md"
+      }
+    />
+  );
+}
+
 /** Countdown floor: waits shorter than this keep the plain waiting text (sub-second flashes of numbers are noise). */
 const COUNTDOWN_MIN_MS = 2000;
 
@@ -261,18 +289,23 @@ export function MessageItem({ item, ctx }: { item: ChatItem; ctx: StreamRenderCo
         files: steerFiles,
       } = splitAttachments(item.text);
       // A steer's own images can be a history page's Trace references: routed to the
-      // Session's machine like the user_image below.
+      // Session's machine like the user_image below. Its videos are the same two shapes
+      // (inline bytes, or a `trace-video` reference) and ride the same chip.
       const shown = [...steerImages, ...(item.images ?? []).map(routedUrl)];
+      const clips = (item.videos ?? []).map(routedUrl);
       return (
         <MessageRow spacing="steer">
           <MessageBubble
             variant="steering"
             label={S.chat.userSteering}
-            {...(shown.length > 0
+            {...(shown.length > 0 || clips.length > 0
               ? {
-                  media: shown.map((src, i) => (
-                    <MessageImage key={i} src={src} alt={S.chat.imageAlt} size="chip" />
-                  )),
+                  media: [
+                    ...shown.map((src, i) => (
+                      <MessageImage key={`i${i}`} src={src} alt={S.chat.imageAlt} size="chip" />
+                    )),
+                    ...clips.map((src, i) => <MessageVideo key={`v${i}`} src={src} size="chip" />),
+                  ],
                 }
               : {})}
             {...(steerFiles.length > 0
@@ -293,6 +326,18 @@ export function MessageItem({ item, ctx }: { item: ChatItem; ctx: StreamRenderCo
         <MessageRow>
           <MessageBubble variant="image">
             <MessageImage src={routedUrl(item.imageUrl)} alt={S.chat.imageAlt} />
+          </MessageBubble>
+          <SentMessageMeta atMs={item.atMs} />
+        </MessageRow>
+      );
+    case "user_video":
+      // The same two forms as the image above: inline bytes live, or the page's reference to the
+      // Trace record (`/api/sessions/<id>/trace-video?…`) — tens of megabytes a windowed history
+      // page hands over by URL rather than inlining, fetched from the Session's machine.
+      return (
+        <MessageRow>
+          <MessageBubble variant="image">
+            <MessageVideo src={routedUrl(item.videoUrl)} />
           </MessageBubble>
           <SentMessageMeta atMs={item.atMs} />
         </MessageRow>

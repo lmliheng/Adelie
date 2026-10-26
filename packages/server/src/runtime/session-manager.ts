@@ -465,12 +465,15 @@ export function isHumanInput(input: readonly OmniMessage[]): boolean {
 /**
  * A queued message's original content, held while it waits in a queue so a recall (DELETE
  * /steer/:id, DELETE /follow-ups/:id) can hand it back to the composer for editing (#287).
- * `text` and `images` are the same strings the queued input already references (no extra
- * copy); files stay on disk in the Session scratchpad and are read back only at recall.
+ * `text`, `images` and `videos` are the same strings the queued input already references (no
+ * extra copy); files stay on disk in the Session scratchpad and are read back only at recall.
+ * `videos` holds the inline ones only — a video the Session's model cannot take was turned
+ * into a file before it ever got here (see the task route).
  */
 export interface RecallStore {
   text: string;
   images: string[];
+  videos: string[];
   files: RecallableFile[];
 }
 
@@ -620,13 +623,14 @@ function followUpInfo(f: QueuedFollowUp): PendingFollowUpInfo {
     id: f.id,
     text: f.recall.text,
     images: f.recall.images.length,
+    videos: f.recall.videos.length,
     files: f.recall.files.length,
   };
 }
 
 /**
  * The recall store of a queued input whose caller supplied none: everything recallable is
- * already in the input itself — the user's text and the inline image URLs, the only two
+ * already in the input itself — the user's text and the inline image / video URLs, the only
  * shapes a task input is ever built from.
  *
  * `files` is empty because the path a written attachment landed on is known only to
@@ -641,17 +645,17 @@ export function recallStoreOf(input: OmniMessage[]): RecallStore {
     .map((m) => m.payload.text)
     .join("\n");
   const images: string[] = [];
+  const videos: string[] = [];
   for (const msg of input) {
-    const payload = msg.payload as { type?: string; image_url?: unknown };
-    if (
-      msg.type === "model_msg" &&
-      payload.type === "image_url" &&
-      typeof payload.image_url === "string"
-    ) {
+    const payload = msg.payload as { type?: string; image_url?: unknown; video_url?: unknown };
+    if (msg.type !== "model_msg") continue;
+    if (payload.type === "image_url" && typeof payload.image_url === "string") {
       images.push(payload.image_url);
+    } else if (payload.type === "video_url" && typeof payload.video_url === "string") {
+      videos.push(payload.video_url);
     }
   }
-  return { text, images, files: [] };
+  return { text, images, videos, files: [] };
 }
 
 /** If msg is a run_subagent tool call carrying a `prompt`, return its id and prompt (for use as the subagent's title); otherwise null. */
@@ -1565,6 +1569,7 @@ export class SessionManager {
         id: randomUUID(),
         text: recall.text,
         images: recall.images.length,
+        videos: recall.videos.length,
         files: recall.files.length,
       },
       input,

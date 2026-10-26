@@ -153,7 +153,10 @@ export function MessageItems({ items, ctx }: { items: ChatItem[]; ctx: StreamRen
   for (let i = 0; i < segs.length; i++) {
     const seg = segs[i]!;
     const isUserMsg =
-      seg.type === "single" && (seg.item.kind === "user_text" || seg.item.kind === "user_image");
+      seg.type === "single" &&
+      (seg.item.kind === "user_text" ||
+        seg.item.kind === "user_image" ||
+        seg.item.kind === "user_video");
     if (isUserMsg) {
       flushTurn();
       // Outline jump anchor, top level only (ctx.origin is empty just for the main

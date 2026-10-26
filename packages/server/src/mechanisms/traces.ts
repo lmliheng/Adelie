@@ -163,13 +163,18 @@ export abstract class Traces {
     offset: number,
     limit: number,
   ): Promise<TraceEventsResponse>;
-  abstract readTraceImage(
+  /**
+   * One image (`kind` "image") or video ("video") of one Trace record, decoded — the record's
+   * own `image_url` / `video_url` (`slot` undefined) or its tool output's `images[slot]`.
+   */
+  abstract readTraceMedia(
     projectId: string,
     agentId: string,
     sessionId: string,
     fileIndex: number,
     ordinal: number,
     slot: number | undefined,
+    kind: "image" | "video",
   ): Promise<{ mime: string; bytes: Buffer }>;
   abstract analyze(
     projectId: string,

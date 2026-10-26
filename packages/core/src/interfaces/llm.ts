@@ -64,6 +64,18 @@ export interface GenerativeModelConfig {
    */
   maxImages?: number;
   /**
+   * How many videos ONE request may carry. Set by the caller for a model the catalog marks as
+   * taking video input (`ModelCatalogEntry.supportsVideo`); unset = the model takes none, and
+   * a video is never sent to it.
+   *
+   * The budget exists for the request body rather than a published count: a video travels as
+   * megabytes of base64 (Ark accepts one under 50 MB inside a 64 MB body) and every later
+   * request replays the conversation, so a history holding two videos is refused for good.
+   * The implementation keeps the NEWEST video and replaces older ones with a one-line text
+   * placeholder; the Session's history and Trace keep every video.
+   */
+  maxVideos?: number;
+  /**
    * Per-model fast mode (from the model entry's `fast_mode` annotation): when true, every
    * request opts into the provider's faster serving tier at premium pricing (AgentHub
    * UniConfig `fast_mode`). Off by default. Models without a fast tier reject the parameter

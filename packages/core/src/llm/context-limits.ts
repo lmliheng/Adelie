@@ -111,6 +111,20 @@ export const COMPACTION_HEADROOM = OUTPUT_SAFETY_MARGIN * 2;
 const IMAGE_TOKEN_ESTIMATE = 1600;
 
 /**
+ * Flat allowance for one video input.
+ *
+ * Same reasoning as an image, one order of magnitude up: a clip is tens of frames and a
+ * provider bills it by the frame (Ark's video understanding takes a frame a second and prices
+ * a 720p frame at roughly a thousand tokens), so a few seconds of video is a few thousand
+ * tokens — while the data URL riding the message is tens of *megabytes*, and serializing it
+ * would count every base64 character (a 32MB clip would estimate ~11M "tokens" and floor the
+ * next request's output cap to nothing on any window). Slightly high on purpose: an
+ * overestimate costs a smaller output cap for a request that already carries a video, an
+ * underestimate costs a request refused for exceeding the window.
+ */
+const VIDEO_TOKEN_ESTIMATE = 8192;
+
+/**
  * Resolves a model entry's `context_window` to a usable number: a finite number at or
  * above {@link MIN_USABLE_CONTEXT_WINDOW} wins; anything else — unset, non-numeric,
  * non-positive, or implausibly small — is `undefined` ("unconfigured"). Callers decide
@@ -154,6 +168,9 @@ export function approximateTokens(text: string): number {
  * Serializing those data URLs would count every base64 character: a 1 MB image would
  * estimate ≈ 262k "tokens" (~163x over) and floor the next request's output cap even on a
  * 128k window (PR #235 review).
+ *
+ * A video (`video_url`) is the same case with more zeros behind it — megabytes rather than
+ * one — and gets its own flat allowance.
  */
 export function approximateMessagesTokens(messages: OmniMessage[]): number {
   let total = 0;
@@ -161,6 +178,8 @@ export function approximateMessagesTokens(messages: OmniMessage[]): number {
     const p = msg.payload as { type?: string; images?: unknown };
     if (p.type === "image_url" || p.type === "inline_data") {
       total += IMAGE_TOKEN_ESTIMATE;
+    } else if (p.type === "video_url") {
+      total += VIDEO_TOKEN_ESTIMATE;
     } else if (Array.isArray(p.images)) {
       const { images, ...rest } = p as { images: unknown[] };
       total += images.length * IMAGE_TOKEN_ESTIMATE + approximateTokens(JSON.stringify(rest));

@@ -835,10 +835,13 @@ export function DraftView({
    */
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
-  // Capability info for the currently selected model (vision/context window) switches instantly with the selection (matched by paired reference).
+  // Capability info for the currently selected model (vision/video/context window) switches instantly with the selection (matched by paired reference).
   const modelInfo = models?.models.find((m) => sameModelRef(m, modelRef));
   const contextWindow = modelInfo?.contextWindow;
   const vision = modelInfo?.vision !== false;
+  // Only a model that says it takes video gets a clip inline; every other one is given it as a
+  // scratchpad file (see lib/video-input). The default is therefore the opposite of vision's.
+  const video = modelInfo?.video === true;
 
   return (
     <div className="anim-fade flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-6 md:px-4">
@@ -882,6 +885,7 @@ export function DraftView({
           {...(contextWindow !== undefined ? { contextWindow } : {})}
           contextNow={0}
           vision={vision}
+          video={video}
           approvalMode={approvalMode}
           // A draft becomes an ordinary conversation, never an organization's: every mode.
           approvalModes={APPROVAL_MODES}

@@ -288,6 +288,11 @@ export function renderHistory(
       case "image_url":
         out.write(`\n> ${dim("[image]", c)}\n`);
         break;
+      case "video_url":
+        // Same placeholder treatment as an image: the terminal plays nothing, but the
+        // message must not read as an empty one.
+        out.write(`\n> ${dim("[video]", c)}\n`);
+        break;
       case "thinking":
         out.write(`${dim(p.thinking ?? "", c)}${marker}\n`);
         break;

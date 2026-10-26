@@ -37,6 +37,7 @@ import {
   toolCall,
   toolCallOutput,
   userText,
+  videoUrlMessage,
 } from "@adelie/core";
 import { buildBackgroundTaskDoneMessage, buildHandoffMessage } from "@adelie/core/markers";
 import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@adelie/core";
@@ -432,13 +433,14 @@ describe("messages windowed reads", () => {
     expect(tail.prior.turns).toBe(1);
   });
 
-  it("a text+images send is one unit and one outline turn; banner and goal-round prompts cut but never count", async () => {
+  it("a text+image+video send is one unit and one outline turn; banner and goal-round prompts cut but never count", async () => {
     await writeTraceFile(root, P, A, "2026-07-20", S, 1, [
       sessionMeta(metaPayload()),
-      // Send 1: text + two images (one entry, one unit).
+      // Send 1: text + two images + a video (one entry, one unit).
       at("2026-07-20T10:00:00.000Z", userText("look")),
       at("2026-07-20T10:00:00.100Z", imageUrlMessage("data:image/png;base64,AAAA")),
       at("2026-07-20T10:00:00.200Z", imageUrlMessage("data:image/png;base64,BBBB")),
+      at("2026-07-20T10:00:00.300Z", videoUrlMessage("data:video/mp4;base64,AAAA")),
       at("2026-07-20T10:00:01.000Z", requestBegin()),
       at("2026-07-20T10:00:02.000Z", assistantText("a1")),
       at("2026-07-20T10:00:03.000Z", requestEnd("completed")),
@@ -490,11 +492,20 @@ describe("messages windowed reads", () => {
     });
     expect(firstWin.prior.turns).toBe(0);
     expect(firstWin.before).toBeUndefined();
-    // The text and its two images stayed one unit.
+    // The text, its two images and its video stayed one unit — a video is part of the send
+    // it was typed with, exactly as an image is.
     expect(userTexts(firstWin.messages)).toEqual(["look"]);
     expect(
       firstWin.messages.filter((m) => (m.payload as { type?: string }).type === "image_url"),
     ).toHaveLength(2);
+    // And the video rides in that same window unit — a send is cut whole, video included.
+    // (The windowed *page* carries it by reference; that is the route's doing, and is pinned
+    // in trace-media.test.ts.)
+    const video = firstWin.messages.find(
+      (m) => (m.payload as { type?: string }).type === "video_url",
+    );
+    expect(video).toBeDefined();
+    expect(firstWin.messages.indexOf(video!)).toBe(4);
   });
 
   it("prior stats: finished-Task elapsed, session/context token readings", async () => {

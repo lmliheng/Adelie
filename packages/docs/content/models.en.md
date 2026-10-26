@@ -28,6 +28,7 @@ Each model card shows the model's display name, tags, context window, prices, ke
 | **Default** | The Project's default model |
 | **Vision** | The model accepts images |
 | **Proxy vision** | The model reads images for models without vision |
+| **Video** | The model accepts videos |
 | **Fast** | Fast mode is on |
 | **Free** | All three prices are 0 |
 | **N% off** | A promotion or an off-peak rate currently applies; see [Prices and promotions](#prices-and-promotions) |
@@ -450,6 +451,7 @@ The table below lists the built-in groups and the environment variables their mo
 | qwen-token-plan | `OPENAI_API_KEY` | Qwen Token Plan subscription gateway, preset base URL `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`; pricing from each model page's official list price (the preview model has only a quota-multiplier promo, no list price) |
 | modelscope | `OPENAI_API_KEY` | ModelScope's OpenAI-compatible api-inference gateway, preset base URL `https://api-inference.modelscope.cn/v1`; ids are the upstream repo names (`deepseek-ai/DeepSeek-V4.1-Flash`, `Qwen/Qwen3.8-27B`); the group's header authorizes a token for you through an authorization bridge, or takes one you set by hand. See [The ModelScope group](#the-modelscope-group) |
 | abliteration | `OPENAI_API_KEY` | Abliteration's own line of "abliterated" (refusal-ablated) models, OpenAI-compatible, preset base URL `https://api.abliteration.ai/v1`; keys look like `ak_…`; all four presets pin Chat Completions. See [The Abliteration group](#the-abliteration-group) |
+| volcengine | `OPENAI_API_KEY` | ByteDance's Volcengine Ark (火山方舟), OpenAI-compatible, preset base URL `https://ark.cn-beijing.volces.com/api/v3`; the Doubao Seed line plus the GLM / Kimi / DeepSeek models Ark resells — 11 presets, all pinning Chat Completions. See [The Volcengine Ark group](#the-volcengine-ark-group) |
 | vllm | `OPENAI_API_KEY` | Self-hosted vLLM servers: protocol fixed to `openai-chat-vllm-adapter`, no preset base URL, eight preset models priced at 0 (see [Connect a local or self-hosted endpoint](#connect-a-local-or-self-hosted-endpoint)) |
 | custom | `OPENAI_API_KEY` | Any OpenAI-protocol endpoint; ships one preset, Atria Dawn Preview (Anthropic Messages API at `api.atria-asi.ai`, needs its own key, 256K window, priced at $0 until the vendor publishes prices) |
 
@@ -500,6 +502,16 @@ The preset rows carry no price. ModelScope bills for api-inference and its model
 - **Protocol.** None of these ids matches a rule AgentHub routes by, so every row pins the Chat Completions client (`client_type = "openai-chat"`) and carries the endpoint on itself. The same endpoint also serves `/responses`; change the row's protocol if you prefer it. As in every gateway, a keyless row is refused rather than sent your OpenAI key.
 - **Prices.** Read from the service's own model list, in USD per million Tokens: input 1 or 3, output 2, 3 or 5, and cache hits read at 0.1 or 0.3. It charges no separate cache-write fee, so `cache_write` records the input rate.
 - **At most four images per request.** That is the service's own limit, and a request past it is refused outright (`400 … media_count_exceeded`); because a conversation replays its images on every request, such a conversation fails for good. Adelie therefore replaces the **oldest** images with a one-line `[image omitted: …]` placeholder before each request, keeping the newest four (images in the new input count against them first; when a single turn carries five on its own, its oldest ones become placeholders the same way). The conversation and its Trace keep every picture — only what one request carries is reduced.
+
+### The Volcengine Ark group
+
+`volcengine` is ByteDance's own model platform, Volcengine Ark (火山方舟) — the endpoint the Doubao / Seed line (`doubao-seed-*`) is served from. It is OpenAI-compatible at `https://ark.cn-beijing.volces.com/api/v3`; a key from the Ark console is set once on the group header with **Enter key**.
+
+- **Presets (11).** Seven from the Doubao Seed line — `doubao-seed-evolving`, `doubao-seed-2-1-pro-260915`, `doubao-seed-2-1-lite-260915`, `doubao-seed-2-1-turbo-260628`, `doubao-seed-2-0-lite-260428`, `doubao-seed-2-0-mini-260428`, `doubao-seed-character-260628` — and four Ark resells: `glm-5-3-flash-260828`, `kimi-k3-1-pro-261024`, `deepseek-v4-1-flash-261017`, `deepseek-v4-pro-ga-260813`. Ark's ids carry a version date (`-260915` and the like) and must be copied verbatim; Ark's model units, custom endpoints and Coding Plan subscription are not catalogued.
+- **Protocol and credentials.** AgentHub has no Ark client, so every row pins the Chat Completions client (`client_type = "openai-chat"`) and carries the endpoint on itself. As in every direct vendor group, a keyless row is refused rather than sent your OpenAI key. The GLM, Kimi and DeepSeek rows are sold by Ark: their ids and prices are Ark's own.
+- **Video input.** Seven of the eleven rows accept video — every Doubao Seed row but `doubao-seed-2-1-lite-260915`, plus the resold `glm-5-3-flash-260828` — and their cards carry the **Video** tag: attach a video with the paperclip or by dragging it into the composer, and that request carries the video itself, so the model can describe, summarize or answer questions about it. The remaining four (2.1 Lite, Kimi and the two DeepSeek rows) receive an `[attached file: …]` line instead: the video lands in the session scratchpad and the agent works with it through its own tools.
+- **Prices.** From Ark's model-pricing page, 在线推理（常规） table, in CNY per million Tokens (input non-audio / cache-hit non-audio / output), stored in USD at the fixed rate of 7. Ark prices by input length and only the base tier is recorded here; `deepseek-v4-1-flash-261017` follows DeepSeek's off-peak schedule, at half price outside Beijing weekday 09:00–12:00 and 14:00–18:00.
+- **What is not here.** Ark's image generation (Seedream), video generation (Seedance), 3D and embedding models are not chat models, so a Session cannot hold a conversation on one and they stay out of the catalog; to generate a video, see the `use-seedance` plugin in [the plugin library](/skills#built-in-library): one sentence, one mp4 in the workspace.
 
 ### Preset models
 
@@ -562,6 +574,7 @@ Each `ModelEntry` has these fields:
 | `client_type` | Protocol hint (`openai-chat` for Chat Completions, `openai-responses` for the Responses API, `ant-messages` for Anthropic Messages, …); inferred by AgentHub from the model id when omitted. Custom endpoints use one of those three generic protocol clients, and the Web dialog can detect which one a base URL serves. The pre-0.4.2 spelling `openai` is a deprecated alias and is normalized to `openai-chat` when the config is read |
 | `display_name` | Display name |
 | `vision` | Whether image input is supported, default true |
+| `video` | Whether video input is supported, default **false** (the opposite default of `vision`): set to `true` only for a model that really takes a video. A marked model gets the video as a content part on the request; an unmarked one gets a file path instead, see [The Volcengine Ark group](#the-volcengine-ark-group). Preset from the catalog's `supportsVideo`; the Web App offers no switch for it yet |
 | `fast_mode` | Optional fast mode (off by default): opts the model's Session requests into the provider's faster serving tier at premium pricing. Only `true` is ever persisted — omitting the field on a Web full-table save clears it. Models without a fast tier reject requests carrying it (see [Fast mode](#fast-mode)) |
 | `pricing` | Three price buckets (unit `usd_per_mtok`, USD per million tokens): `cache_read` / `cache_write` / `output` |
 | `api_key` / `base_url` | Inlined credentials, both optional; when blank, AgentHub falls back to environment variables |

@@ -44,11 +44,13 @@ export interface MidRunComposerState {
   hasText: boolean;
   /** At least one image is attached. */
   hasImages: boolean;
+  /** At least one video is staged (steers inline, or as a file on a model without video input). */
+  hasVideos: boolean;
   /** At least one file attachment is staged (steers as `[attached file: <path>]` lines, like a task's). */
   hasFiles: boolean;
   /**
-   * The draft carries anything at all — text, images, file attachments, a staged switch chip
-   * or selected skills. The queue takes a whole message, so this is its content rule.
+   * The draft carries anything at all — text, images, videos, file attachments, a staged switch
+   * chip or selected skills. The queue takes a whole message, so this is its content rule.
    */
   hasContent: boolean;
 }
@@ -72,7 +74,7 @@ export function midRunAction(s: MidRunComposerState): MidRunAction {
     s.canSteerChannel &&
     !s.hasHandoffTarget &&
     !s.hasPendingModel &&
-    (s.hasText || s.hasImages || s.hasFiles);
+    (s.hasText || s.hasImages || s.hasVideos || s.hasFiles);
   if (canSteer && !s.followUpMode) return "steer";
   const canQueue = open && s.canQueueChannel && s.stagedRoute !== "blocked" && s.hasContent;
   if (canQueue) return "queue";

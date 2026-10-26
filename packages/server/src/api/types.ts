@@ -207,6 +207,14 @@ export interface UploadLimits {
    */
   imageMaxMb: number;
   /**
+   * Per-video cap for videos that ride the conversation inline, on a model that takes video
+   * input. Fixed server-side and larger than the image cap (a video is megabytes, and the
+   * provider takes a video under 50MB inside a 64MB body — this is that ceiling with base64's
+   * 4/3 accounted for). The composer's pre-flight check reads it from here so the number a user
+   * is refused by is the number the server enforces, not a second copy that can drift.
+   */
+  videoMaxMb: number;
+  /**
    * The range the two admin-settable limits may be set to. Carried here so the admin form states
    * the real bounds without compiling its own copy of them — the server is the only place that
    * decides how large an upload it can survive.
@@ -797,6 +805,15 @@ export interface ModelInfo {
    * unset (= treated as supported).
    */
   vision?: boolean;
+  /**
+   * Whether video input is supported: the TOML `video` annotation (preset-written) or the
+   * built-in catalog's own annotation. Unlike `vision` the default is **unsupported** — a
+   * video is megabytes of base64, and a Session whose model does not take one is better served
+   * by the clip arriving as an ordinary file attachment than by a request the provider
+   * refuses. What the composer reads to decide between the two, and what the server's own
+   * routes decide it with (core's `catalogSupportsVideo`).
+   */
+  video?: boolean;
   /**
    * Per-model max output tokens (TOML `max_tokens` annotation; user-only, never preset by the
    * built-in catalog): when set it wins over the Agent's `system_config.model.max_tokens`;
@@ -2434,8 +2451,11 @@ export interface MessagesResponse {
    * `tracePosition`, an inline PNG / JPEG / GIF / WebP `data:` URL — a user `image_url`, or
    * an entry of a tool output's `images` — is replaced by
    * `/api/sessions/<sessionId>/trace-image?file=<fileIndex>&ordinal=<ordinal>[&i=<k>]`
-   * (`i` = the index into `images`), an immutable, access-checked image response. Expanded
-   * subagent messages, held inputs not yet in the Trace, other image types and the
+   * (`i` = the index into `images`), an immutable, access-checked image response. A user
+   * `video_url` is referenced the same way, through
+   * `/api/sessions/<sessionId>/trace-video?file=<fileIndex>&ordinal=<ordinal>` — a video is
+   * tens of megabytes of base64 and a page that carried one inline would never load.
+   * Expanded subagent messages, held inputs not yet in the Trace, other image types and the
    * parameterless full read keep their data URLs.
    */
   messages: HistoryMessage[];
@@ -2472,6 +2492,24 @@ export type TaskInputPart =
    * read back on every history page and every resume.
    */
   | { type: "image_url"; imageUrl: string }
+  /**
+   * A video that rides the conversation inline on a Session whose model takes video input
+   * (the Volcengine Ark Seed family — see ModelCatalogEntry.supportsVideo): a base64
+   * `data:video/…` URL or an http(s) URL, capped at 32MB (413 `video_too_large`) for the same
+   * reason an image is capped, one order of magnitude up: it enters the conversation and is
+   * written into the Trace, which is read back whole on every history page and every resume.
+   * The provider's own ceiling is what the number is derived from (Ark: video under 50MB,
+   * request body under 64MB). One request carries at most one video — the video budget in
+   * core's llm/generative-model.ts drops the older ones with a note — because a video is
+   * megabytes of base64 and the body is the limit.
+   *
+   * On a model that takes no video, the part is NOT refused: the clip is written into the
+   * Session scratchpad and handed over as an `[attached file: <path>]` line exactly like a
+   * `file` part, so one composer draft goes to either kind of model. `fileName` names it on
+   * disk (default derived from the data URL's type); an http(s) URL cannot be written to disk
+   * and is a 400 in that case.
+   */
+  | { type: "video_url"; videoUrl: string; fileName?: string }
   /**
    * File attachment (the composer's "+" menu): `dataUrl` is a base64 `data:` URL of the
    * file's bytes, capped per file and per message by the admin-settable upload limits
@@ -2566,14 +2604,23 @@ export interface SteerRequest {
    * `TaskInputPart.image_url`): delivered as user image messages right behind the
    * `[user_steering]` text. A model without vision receives them as scratchpad path lines
    * instead, exactly as it would a Prompt's images. At least one of `text` / `images` /
-   * `files` must be non-empty.
+   * `files` / `videos` must be non-empty.
    */
   images?: string[];
+  /**
+   * Videos sent with the steering message (`data:video/…` or http(s) URLs, same rule and cap
+   * as a task input's `video_url` part): delivered as user video messages right behind the
+   * images. Only for a Session whose model takes video input — on any other model a video
+   * belongs in `files`, where it reaches the model as an `[attached file: <path>]` line (the
+   * server refuses an inline one rather than sending a request the model would refuse).
+   */
+  videos?: string[];
   /**
    * File attachments riding the steering message — the same shape, caps and handling as a
    * task input's `{type:"file"}` parts: written into the Session scratchpad and delivered
    * as `[attached file: <path>]` lines on the `[user_steering]` text, so a file-only draft
    * steers exactly like an image-only one instead of falling back to the follow-up queue.
+   * A video on a model without video input is sent this way.
    */
   files?: { fileName: string; dataUrl: string }[];
 }
@@ -2592,6 +2639,8 @@ export interface PendingSteeringInfo {
   text: string;
   /** Number of images that rode along. */
   images: number;
+  /** Number of inline videos that rode along (a model without video input gets them as files instead). */
+  videos: number;
   /** Number of file attachments that rode along. */
   files: number;
 }
@@ -2609,6 +2658,8 @@ export interface PendingFollowUpInfo {
   text: string;
   /** Number of images in the queued input. */
   images: number;
+  /** Number of inline videos in the queued input (a model without video input gets them as files instead). */
+  videos: number;
   /** Number of file attachments in the queued input. */
   files: number;
 }
@@ -2653,6 +2704,8 @@ export interface RecalledMessageResponse {
   text: string;
   /** The images as submitted (`data:` / http(s) URLs). */
   images: string[];
+  /** The inline videos as submitted (`data:video/…` / http(s) URLs); a model without video input got them as files instead. */
+  videos: string[];
   /** The file attachments, re-encoded as base64 data URLs (the shape the composer submits them in). */
   files: { fileName: string; dataUrl: string }[];
 }

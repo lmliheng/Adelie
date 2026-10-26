@@ -1,0 +1,50 @@
+diff --git a/dist/openai_chat/client.js b/dist/openai_chat/client.js
+index e30bbde48d56cdfac092f66699b09cc48aa73fb0..8fd57e3bc9de05faeba76925a038eb1afa73ba5d 100644
+--- a/dist/openai_chat/client.js
++++ b/dist/openai_chat/client.js
+@@ -202,6 +202,14 @@ class OpenaiChatClient extends baseClient_1.LLMClient {
+                     const base64Image = await this._convertImageUrlToBase64(item.image_url, signal);
+                     contentParts.push(this._convertImageUrl(base64Image));
+                 }
++                else if (item.type === "video_url") {
++                    // A video rides as the `video_url` content part, whose `url` upstream reads as
++                    // either a public URL or a base64 `data:` URL. Unlike an image the bytes are
++                    // NOT re-encoded here: a video is three orders of magnitude larger, and the
++                    // caller already hands one of those two forms (a local file it base64-encoded
++                    // itself, or a URL the provider can fetch).
++                    contentParts.push({ type: "video_url", video_url: { url: item.video_url } });
++                }
+                 else if (item.type === "thinking") {
+                     thinking += item.thinking;
+                     thinkingFields.add(item.fidelity?.reasoning_field);
+diff --git a/dist/types.d.ts b/dist/types.d.ts
+index d44652521470e65da55e049f38d9032b99ff4236..9261c83dbf6defc53dcb0ed858f3fb2289981454 100644
+--- a/dist/types.d.ts
++++ b/dist/types.d.ts
+@@ -39,6 +39,17 @@ export interface ImageContentItem {
+     type: "image_url";
+     image_url: string;
+ }
++/**
++ * A video, as the upstream reads one: a URL or a base64 `data:` URL. Only the
++ * OpenAI-compatible Chat Completions client maps it (to the `video_url` content
++ * part Ark and a few others accept); a client that does not know the item rejects
++ * the message rather than dropping the video silently, so a caller sends one only
++ * where the upstream takes it.
++ */
++export interface VideoContentItem {
++    type: "video_url";
++    video_url: string;
++}
+ export interface InlineDataContentItem {
+     type: "inline_data";
+     data: Buffer;
+@@ -81,7 +92,7 @@ export interface EmbeddingContentItem {
+     type: "embedding";
+     embedding: number[];
+ }
+-export type ContentItem = TextContentItem | ImageContentItem | InlineDataContentItem | ThinkingContentItem | InlineThinkingContentItem | ToolCallContentItem | ToolResultContentItem | EmbeddingContentItem;
++export type ContentItem = TextContentItem | ImageContentItem | VideoContentItem | InlineDataContentItem | ThinkingContentItem | InlineThinkingContentItem | ToolCallContentItem | ToolResultContentItem | EmbeddingContentItem;
+ export type PartialContentItem = ContentItem | PartialToolCallContentItem;
+ /**
+  * Usage metadata for model response.

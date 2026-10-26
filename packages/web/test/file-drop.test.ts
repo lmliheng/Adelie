@@ -1,7 +1,8 @@
 /**
  * Drag-and-drop upload logic (lib/file-drop.ts): what counts as a file drag, what the chat
- * area's drop zone does with one drag event, how a dropped batch splits across the composer's
- * two intakes, and the app-shell guard that cancels the browser's navigate-to-file default.
+ * area's drop zone does with one drag event, how a batch splits across the composer's three
+ * intakes (images, videos, files), and the app-shell guard that cancels the browser's
+ * navigate-to-file default.
  *
  * The region decision is the part that earns the tests, because it is where the feature's
  * scope lives: the overlay and the attachment happen only while the drag is over the chat
@@ -16,7 +17,7 @@ import {
   guardWindowDragOver,
   guardWindowDrop,
   isFileDrag,
-  splitDroppedFiles,
+  splitMediaFiles,
 } from "../src/lib/file-drop";
 import type { DragGuardEvent, DragSignal } from "../src/lib/file-drop";
 
@@ -132,22 +133,33 @@ describe("dropRegionAction", () => {
   });
 });
 
-describe("splitDroppedFiles", () => {
-  it("routes by MIME type: image/* to the image intake, everything else to attachments", () => {
+describe("splitMediaFiles", () => {
+  it("routes by MIME type: image/* to the image intake, video/* to the video one, everything else to attachments", () => {
     const png = { type: "image/png", name: "a.png" };
     const pdf = { type: "application/pdf", name: "b.pdf" };
     const svg = { type: "image/svg+xml", name: "c.svg" };
+    const clip = { type: "video/mp4", name: "d.mp4" };
     const none = { type: "", name: "Makefile" }; // OS gives some files no MIME type at all
-    const { images, files } = splitDroppedFiles([png, pdf, svg, none]);
+    const { images, videos, files } = splitMediaFiles([png, pdf, svg, clip, none]);
     expect(images).toEqual([png, svg]);
+    expect(videos).toEqual([clip]);
     expect(files).toEqual([pdf, none]);
   });
 
   it("keeps drop order within each intake and handles an empty batch", () => {
     const a = { type: "text/plain" };
     const b = { type: "application/zip" };
-    expect(splitDroppedFiles([a, b]).files).toEqual([a, b]);
-    expect(splitDroppedFiles([])).toEqual({ images: [], files: [] });
+    expect(splitMediaFiles([a, b]).files).toEqual([a, b]);
+    expect(splitMediaFiles([])).toEqual({ images: [], videos: [], files: [] });
+  });
+
+  it("keeps the clips in the order they arrived, among the pictures of the same batch", () => {
+    const first = { type: "video/quicktime", name: "1.mov" };
+    const png = { type: "image/png", name: "2.png" };
+    const second = { type: "video/webm", name: "3.webm" };
+    const { videos, images } = splitMediaFiles([first, png, second]);
+    expect(videos).toEqual([first, second]);
+    expect(images).toEqual([png]);
   });
 });
 

@@ -59,3 +59,11 @@ minimumReleaseAgeExclude:
   - "@deepseek-ai/dsh-typert-protocol@0.1.0-rc.7"
   - "@prismshadow/agenthub@0.4.15"
   - shaders@4.0.5
+patchedDependencies:
+  # Video input. AgentHub's universal message format knows text and images only, and its
+  # Chat Completions client throws on any other content item — so a video could not reach
+  # Ark's `video_url` content part at all. The patch adds the item and its mapping (see
+  # patches/@prismshadow__agenthub.patch). Pinned to the exact version: the patch is against
+  # 0.4.15's dist, and a future release likely carries the item upstream, where this must be
+  # dropped rather than silently mis-applied.
+  "@prismshadow/agenthub@0.4.15": patches/@prismshadow__agenthub.patch

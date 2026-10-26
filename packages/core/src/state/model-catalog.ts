@@ -28,7 +28,8 @@
  * vendor's own docs and console pages: 2026-10-15, with the iFlytek rows deliberately unpriced
  * (its HTTP doc publishes no price list, and the product page's prices name model families it
  * has published no API id for); and the Abliteration group, whose four rows were read from the
- * service's own model list on 2026-10-23.
+ * service's own model list on 2026-10-23; and the Volcengine Ark (ByteDance) group, whose rows
+ * and prices were read from Ark's own model list and model-pricing pages on 2026-10-25.
  * Docs: packages/docs/content/models.{zh,en}.md (site path /docs/models) documents the
  * provider groups and credential resolution described here.
  *
@@ -256,6 +257,18 @@ export interface ModelCatalogEntry {
    * Trace keep every image, so nothing is lost from the record.
    */
   maxImages?: number;
+  /**
+   * Whether video input is supported. Absent = no, which is every row but the ones whose
+   * vendor documents it: the modality is young enough that a vendor's model list states it
+   * per model, and guessing it from `supportsVision` would send a video to a model that
+   * rejects the content item outright.
+   *
+   * Read through catalogSupportsVideo rather than off the row, the way maxImages is read
+   * through catalogImageLimit: it is a property of the model being called, so a Project that
+   * renamed or repriced the row still gets the same answer, and a user-added row (no catalog
+   * entry) gets no video input — it can still work with a video file by path.
+   */
+  supportsVideo?: boolean;
   /** AgentHub client protocol: required when an id cannot be auto-routed or a shared protocol must be pinned. */
   clientType?: string;
   /** Preset base URL: inlined into gateway and direct MiniMax entries so only an API key is required. */
@@ -311,6 +324,13 @@ const BAIDU_BASE_URL = "https://qianfan.baidubce.com/v2";
 const HUNYUAN_BASE_URL = "https://api.hunyuan.cloud.tencent.com/v1";
 /** iFlytek Spark's OpenAI-compatible endpoint (the WebSocket API is a different, signed protocol). */
 const IFLYTEK_BASE_URL = "https://spark-api-open.xf-yun.com/v1";
+/**
+ * Volcengine Ark's (火山方舟) OpenAI-compatible endpoint — ByteDance's own model platform, the
+ * one the Doubao / Seed line is served from. Its console issues an API key that the Ark SDKs
+ * pass as a Bearer token; the base URL is region-scoped, and this is the cn-beijing host its
+ * own quick-start and every per-model page use.
+ */
+const VOLCENGINE_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3";
 export const PENGUIN_GO_BASE_URL = "https://token.penguin.ooo/api";
 /** OpenCode Go's OpenAI-protocol base: the clients append /chat/completions or /responses. */
 const OPENCODE_GO_BASE_URL = "https://opencode.ai/zen/go/v1";
@@ -540,6 +560,26 @@ export const MODEL_PROVIDERS: ModelProviderInfo[] = [
     envBaseUrlKey: "OPENAI_BASE_URL",
     apiKeyUrl: "https://console.xfyun.cn/services/cbm",
     modelsUrl: "https://www.xfyun.cn/doc/spark/HTTP%E8%B0%83%E7%94%A8%E6%96%87%E6%A1%A3.html",
+    clientType: "openai-chat",
+  },
+  {
+    // ByteDance's own model platform (火山方舟 / Volcengine Ark), serving the Doubao line,
+    // whose Seed models are the ones that read video as well as images. OpenAI-compatible at
+    // the region-scoped endpoint the rows below inline, one Bearer key from the Ark console,
+    // so no oauth or bridgeAuth — the same shape as Xiaomi's group, and pinned the same way:
+    // AgentHub has no Ark client, so the group pins `openai-chat` and every row names the
+    // endpoint. Ark also resells GLM, Kimi and DeepSeek and serves image, video, 3D and
+    // embedding models; only its text-generation chat models are catalogued here (the
+    // modalities a Session can hold a conversation on), and the ids are the versioned ones
+    // Ark's model list publishes.
+    // https://www.volcengine.com/docs/82379/1330310 (model list),
+    // https://docs.volcengine.com/docs/ark/model-pricing (prices)
+    id: "volcengine",
+    label: "Volcengine Ark",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://console.volcengine.com/ark/region:ark+cn-beijing/apiKey",
+    modelsUrl: "https://www.volcengine.com/docs/82379/1330310",
     clientType: "openai-chat",
   },
   {
@@ -3154,6 +3194,142 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     clientType: "openai-chat",
     baseUrl: IFLYTEK_BASE_URL,
   },
+  // -- Volcengine Ark (ByteDance). Ids, windows and input modalities read 2026-10-25 from
+  // Ark's own model list (its rows name the ids and the per-model context window; the
+  // "多模态理解" capability marker is what makes a row vision), prices from its model-pricing
+  // page's 在线推理（常规） table in CNY per million tokens (input non-audio / cache hit
+  // non-audio / output) — the same three buckets `cny` takes. Two things the rows say that the
+  // pages state only indirectly: Ark's prices are tiered by input length and only the base
+  // tier is recorded (the catalog's standing convention, so long-context usage is
+  // underestimated); and `supportsVideo` follows models.dev's per-model input modalities for
+  // this provider, the only source that states video per model — which is why the 2.1 Lite row
+  // records no video while its siblings do. Ark's resold GLM / Kimi / DeepSeek rows are
+  // catalogued here (Ark is the seller) but its image, video, 3D and embedding models are not:
+  // they are not chat models, and a Session cannot hold a conversation on one.
+  {
+    modelId: "doubao-seed-evolving",
+    displayName: "Doubao Seed Evolving",
+    provider: "volcengine",
+    contextWindow: 1048576,
+    pricing: cny(1.2, 6, 30),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    modelId: "doubao-seed-2-1-pro-260915",
+    displayName: "Doubao Seed 2.1 Pro",
+    provider: "volcengine",
+    contextWindow: 1048576,
+    pricing: cny(1.2, 6, 30),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    modelId: "doubao-seed-2-1-lite-260915",
+    displayName: "Doubao Seed 2.1 Lite",
+    provider: "volcengine",
+    contextWindow: 1048576,
+    pricing: cny(0.16, 0.8, 2.7),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    modelId: "doubao-seed-2-1-turbo-260628",
+    displayName: "Doubao Seed 2.1 Turbo",
+    provider: "volcengine",
+    contextWindow: 262144,
+    pricing: cny(0.6, 3, 15),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    modelId: "doubao-seed-2-0-lite-260428",
+    displayName: "Doubao Seed 2.0 Lite",
+    provider: "volcengine",
+    contextWindow: 262144,
+    pricing: cny(0.12, 0.6, 3.6),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    modelId: "doubao-seed-2-0-mini-260428",
+    displayName: "Doubao Seed 2.0 Mini",
+    provider: "volcengine",
+    contextWindow: 262144,
+    pricing: cny(0.04, 0.2, 2),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    // The role-play model: no GUI capability and a smaller window than the Seed line it
+    // belongs to, but the same multimodal input (video included).
+    modelId: "doubao-seed-character-260628",
+    displayName: "Doubao Seed Character",
+    provider: "volcengine",
+    contextWindow: 131072,
+    pricing: cny(0.16, 0.8, 2),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    modelId: "glm-5-3-flash-260828",
+    displayName: "GLM-5.3-Flash",
+    provider: "volcengine",
+    contextWindow: 1048576,
+    pricing: cny(0.23, 0.8, 2.8),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    modelId: "kimi-k3-1-pro-261024",
+    displayName: "Kimi K3.1 Pro",
+    provider: "volcengine",
+    contextWindow: 1048576,
+    pricing: cny(1.3, 13, 68),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    // Half price outside Beijing weekday 09:00–12:00 and 14:00–18:00 — the same windows
+    // DeepSeek itself bills on, which is why the shared schedule is reused here; the price
+    // recorded is the peak one (see offPeakDiscount).
+    modelId: "deepseek-v4-1-flash-261017",
+    displayName: "DeepSeek V4.1 Flash",
+    provider: "volcengine",
+    contextWindow: 1048576,
+    pricing: cny(0.04, 2, 8),
+    offPeakDiscount: DEEPSEEK_OFF_PEAK,
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
+  {
+    // Text only, unlike the flash row above: Ark's model list carries no 多模态理解 marker for it.
+    modelId: "deepseek-v4-pro-ga-260813",
+    displayName: "DeepSeek V4 Pro",
+    provider: "volcengine",
+    contextWindow: 1048576,
+    pricing: cny(0.3, 9, 27),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: VOLCENGINE_BASE_URL,
+  },
   // -- Abliteration. Its own ids, read on 2026-10-23 from the service's own model list
   // (GET https://api.abliteration.ai/v1/models), which publishes everything the rows below
   // record: the window, the input modalities and the per-token rates. Prices are the list
@@ -3270,6 +3446,23 @@ export function catalogImageLimit(
 ): number | undefined {
   if (provider === undefined) return undefined;
   return catalogEntryFor(provider, upstreamId)?.maxImages;
+}
+
+/**
+ * Whether the catalog records video input for a model (ModelCatalogEntry.supportsVideo), read
+ * for the same reason catalogImageLimit is: it is a fact about the model being called, not a
+ * preference, so it survives a Project renaming or repricing the row. A user-added row (no
+ * catalog entry) answers false — the safe direction, since a video the upstream does not
+ * accept fails the whole request.
+ *
+ * The Project entry carries the same bit (`video`, seeded from this at preset time) for the
+ * call sites that only have the Session's model entry at hand; this one exists for the paths
+ * that resolve a (provider, model_id) pair before a Session exists — the server, deciding
+ * whether an uploaded video rides the conversation or lands in the scratchpad.
+ */
+export function catalogSupportsVideo(provider: string | undefined, upstreamId: string): boolean {
+  if (provider === undefined) return false;
+  return catalogEntryFor(provider, upstreamId)?.supportsVideo === true;
 }
 
 /**
@@ -3816,8 +4009,11 @@ function catalogModelEntry(m: ModelCatalogEntry): ModelEntry {
     ...(m.pricing ? { pricing: { ...m.pricing } } : {}),
     // ModelEntry.vision defaults to supported: only models that don't support images
     // explicitly persist false (drives read_file's hand-off of images to the vision model and input
-    // image hand-off, see project-config.ts).
+    // image hand-off, see project-config.ts). Video is the other way round: only a row whose
+    // vendor documents video input persists true, because a video sent to a model that does
+    // not take one fails the whole request.
     ...(m.supportsVision ? {} : { vision: false }),
+    ...(m.supportsVideo ? { video: true } : {}),
     ...(m.baseUrl !== undefined ? { base_url: m.baseUrl } : {}),
   };
 }

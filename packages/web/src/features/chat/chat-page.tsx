@@ -99,6 +99,8 @@ import type { ForkTarget } from "./task-stats-line";
 import { latestTaskHasSubagent, modelTaskStartCount, taskStartCount } from "./agent-topology";
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
+import { steerVideoFields } from "../../lib/video-input";
+import type { ComposerVideo } from "../../lib/video-input";
 import { onPluginConfigSaved } from "../../lib/plugin-config-event";
 import { approvalModeChoices } from "./approval-mode";
 import type { ComposerReference } from "../../lib/workspace-tree";
@@ -1483,8 +1485,21 @@ export function ChatPage() {
     [selected, turnThinkingLevel, discardSessionDraft, syncHealedSessionId],
   );
 
+  // Capability info for the conversation's current model, in one place: the composer is told both
+  // (vision decides how an image arrives, video how a clip does) and the steer branch below needs
+  // the video one before the request body is built. Read here — above every callback that uses it —
+  // rather than next to the JSX where it used to sit.
+  const modelInfo = models?.models.find((m) => sameModelRef(m, activeModelRef));
+  const contextWindow = modelInfo?.contextWindow;
+  // Assumed supported by default: only models explicitly marked vision=false show a blocking hint when adding images.
+  const vision = modelInfo?.vision !== false;
+  // Video is the opposite default, deliberately: a model takes a clip only when it says it does
+  // (`video === true`), because a video is megabytes of base64 and a model that would refuse one is
+  // better served by the scratchpad route.
+  const video = modelInfo?.video === true;
+
   // Mid-run steering: the message is queued on the server and delivered between turns as a
-  // standalone `[user_steering]` user message followed by its images (visible once they
+  // standalone `[user_steering]` user message followed by its images and videos (visible once they
   // arrive over SSE / from the Trace); file attachments land in the Session scratchpad and
   // ride the steering text as `[attached file: <path>]` lines, exactly as a task's do. On
   // "queued" the localStorage draft is discarded, like a successful send — without this a
@@ -1496,14 +1511,21 @@ export function ChatPage() {
     async (
       text: string,
       images: string[] = [],
+      videos: ComposerVideo[] = [],
       files: { fileName: string; dataUrl: string }[] = [],
     ): Promise<"queued" | "not_running" | "failed"> => {
       if (!selected) return "failed";
       try {
+        // A steered clip goes inline only on a model that takes video input; anywhere else it
+        // becomes an ordinary file attachment (scratchpad + `[attached file: <path>]` line), which
+        // is the only shape the server accepts there — it refuses an inline video rather than
+        // handing a provider a request it would reject. The choice itself is steerVideoFields'.
+        const clip = steerVideoFields(videos, video);
         await api.postSteer(selected.sessionId, {
           text,
           ...(images.length > 0 ? { images } : {}),
-          ...(files.length > 0 ? { files } : {}),
+          ...(clip.videos ? { videos: clip.videos } : {}),
+          ...((clip.files ?? files.length > 0) ? { files: [...(clip.files ?? []), ...files] } : {}),
         });
         discardSessionDraft();
         return "queued";
@@ -1513,7 +1535,7 @@ export function ChatPage() {
         return "failed";
       }
     },
-    [selected, discardSessionDraft],
+    [selected, video, discardSessionDraft],
   );
 
   /**
@@ -2085,10 +2107,6 @@ export function ChatPage() {
   const sessionAgent = agents.find((a) => a.agentId === selected?.agentId);
   const sessionAgentName =
     sessionAgent && sessionAgent.name !== undefined ? agentDisplayName(sessionAgent) : null;
-  const modelInfo = models?.models.find((m) => sameModelRef(m, activeModelRef));
-  const contextWindow = modelInfo?.contextWindow;
-  // Assumed supported by default: only models explicitly marked vision=false show a blocking hint when adding images.
-  const vision = modelInfo?.vision !== false;
   const emptyChat =
     selected !== null && !stream.loading && !stream.error && stream.model.items.length === 0;
 
@@ -2132,6 +2150,7 @@ export function ChatPage() {
       contextStale={stream.model.stats.contextStale}
       sessionId={selected.sessionId}
       vision={vision}
+      video={video}
       approvalMode={selected.approvalMode}
       // An organization's Session is not offered always-ask: nobody is there to be asked.
       approvalModes={approvalModeChoices(selected.client, selected.approvalMode)}

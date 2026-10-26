@@ -339,10 +339,14 @@ export interface ContextEngineDeps {
 const isImageMessage = (m: OmniMessage): boolean =>
   (m.payload as { type?: string }).type === "image_url";
 
-/** Whether a message carries steering of its own — an image, or text that isn't blank. */
+/** Whether a message carries steering of its own — an image, a video, or text that isn't blank. */
 const carriesSteering = (m: OmniMessage): boolean => {
   const p = m.payload as { type?: string; text?: string };
-  return p.type === "image_url" || (p.type === "text" && (p.text ?? "").trim().length > 0);
+  return (
+    p.type === "image_url" ||
+    p.type === "video_url" ||
+    (p.type === "text" && (p.text ?? "").trim().length > 0)
+  );
 };
 
 /** Whether compaction is possible; when not `ok`, `compact()` is a no-op and yields no messages (see ContextEngine.compactability). */

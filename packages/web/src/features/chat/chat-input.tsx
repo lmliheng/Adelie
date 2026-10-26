@@ -35,14 +35,17 @@
  * the model already in use clears the staging, and both are exclusive with goal mode); a chip is
  * removed via backspace at the start of the text or its x button, and both are cached with the
  * draft so they survive a session switch or reload along with the text they belong to;
- * The "+" menu carries the input add-ons: image upload, file attachment (any type, several at a
- * time — they ride the task request as base64 data URLs, and the server writes them into the
- * session scratchpad and appends an `[attached file: <path>]` line to the message, so the model
- * opens them by path), and goal mode; selected files show as removable chips above the text
- * body, next to the image thumbnails, and — like images — an attachments-only message is
- * sendable with no text at all. Dragging files onto the chat area feeds the same two intakes
- * (images → paste pipeline, other files → attachments; see FileDropZone/addDroppedFiles),
- * with an overlay bounded to that region while the drag is over it.
+ * The "+" menu carries the input add-ons: image upload, video upload, file attachment (any type,
+ * several at a time — they ride the task request as base64 data URLs, and the server writes them
+ * into the session scratchpad and appends an `[attached file: <path>]` line to the message, so the
+ * model opens them by path), and goal mode; selected files show as removable chips above the text
+ * body, next to the image thumbnails and the video ones, and — like images — an
+ * attachments-only message is sendable with no text at all. A video's own ceiling is neither the
+ * image's nor an attachment's (uploadLimits.videoMaxMb), and where it ends up is the model's call:
+ * a model that takes video input is sent the clip inline, any other gets it as a scratchpad file
+ * like an attachment (see lib/video-input). Dragging files onto the chat area feeds the same three
+ * intakes (images and videos → the media pipeline, other files → attachments; see
+ * FileDropZone/addDroppedFiles), with an overlay bounded to that region while the drag is over it.
  * The bottom toolbar provides a searchable multi-select skills dropdown (styled like the model
  * selector: a top search box filtering by name and localized description, plus a checklist;
  * clicking a row toggles its selection without closing the menu; the button = book icon + label +
@@ -151,13 +154,16 @@ import {
 } from "./input-history";
 import type { HistoryStep } from "./input-history";
 import { isStopAction, midRunAction } from "./composer-send";
+import { steeringSummary } from "./queued-summary";
 import { PAPERCLIP_ICON } from "./attached-files-banner";
 import { FileDropZone } from "./drop-zone";
 import { ContextGauge } from "./context-gauge";
 import { modelWindowBelowCompactionLimit } from "../../lib/context";
-import { splitDroppedFiles } from "../../lib/file-drop";
+import { splitMediaFiles } from "../../lib/file-drop";
 import { isLongPaste, longPasteFileName } from "../../lib/long-paste";
 import { splitBySize } from "../../lib/upload-limits";
+import { appendMediaParts, dataUrlBytes, videoFromUrl } from "../../lib/video-input";
+import type { ComposerVideo } from "../../lib/video-input";
 import type { ComposerReference } from "../../lib/workspace-tree";
 import { ReferenceChip } from "./reference-chip";
 
@@ -442,6 +448,15 @@ interface SlashCommand {
 }
 
 /**
+ * Video-camera glyph (24×24 line path, a lens body with the triangular flag on its right) for the
+ * "+" menu's video entry: the uploaded-image icon next to it is a picture frame, and a clip needs
+ * its own shape or the two entries read as one. Kept here rather than in the icon set because the
+ * composer is its only user.
+ */
+const VIDEO_ICON =
+  "M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM22 8l-6 4 6 4V8z";
+
+/**
  * One file attachment staged in the composer. `dataUrl` is the base64 `data:` URL sent as the
  * task input's `file` part; `name` / `size` only feed the chip (the server decides the name the
  * file actually gets on disk).
@@ -458,7 +473,7 @@ interface Attachment {
  * the toast can name the number actually in force. Enforcing it client-side at all is still
  * worth it — an oversize pick is refused before the file is read, instead of costing the user a
  * base64 encode, an upload 33% larger than the file, and a 413 to learn the same thing. The
- * partition itself lives in lib/upload-limits (splitBySize), shared with the image intake.
+ * partition itself lives in lib/upload-limits (splitBySize), shared by all three intakes.
  */
 
 /** Reads one file as a base64 data URL; resolves to null on a read error rather than rejecting, so one unreadable file cannot drop the rest of the batch. */
@@ -469,22 +484,6 @@ function readDataUrl(file: File): Promise<string | null> {
     reader.onerror = () => resolve(null);
     reader.readAsDataURL(file);
   });
-}
-
-/** Approximate decoded byte size of a base64 data URL (for the recalled attachment's chip; display only). */
-function dataUrlBytes(dataUrl: string): number {
-  const body = dataUrl.slice(dataUrl.indexOf(",") + 1).replace(/[=\s]+/g, "");
-  return Math.floor((body.length * 3) / 4);
-}
-
-/** One-line summary of a queued steering message: its text, then image/file counts for what the text cannot show. */
-function steeringSummary(p: { text: string; images: number; files: number }): string {
-  const parts: string[] = [];
-  const line = p.text.replace(/\s+/g, " ").trim();
-  if (line) parts.push(line);
-  if (p.images > 0) parts.push(S.chat.imagesInMessage(p.images));
-  if (p.files > 0) parts.push(S.chat.filesInMessage(p.files));
-  return parts.join(" \u00b7 ");
 }
 
 /**
@@ -526,22 +525,6 @@ function QueuedMessageLine({
       )}
     </div>
   );
-}
-
-/**
- * Appends the draft's attachments to a task input — images first (in pick order), then files.
- * One place, because every send path submits the same draft: the normal send, the follow-up
- * queue, the @ handoff and the `/model` switch.
- */
-function appendAttachmentParts(
-  input: TaskInputPart[],
-  images: string[],
-  attachments: Attachment[],
-): void {
-  for (const url of images) input.push({ type: "image_url", imageUrl: url });
-  for (const file of attachments) {
-    input.push({ type: "file", fileName: file.name, dataUrl: file.dataUrl });
-  }
 }
 
 /**
@@ -618,6 +601,7 @@ export function ChatInput({
   contextStale = false,
   sessionId,
   vision,
+  video,
   approvalMode,
   approvalModes,
   sandbox,
@@ -649,17 +633,23 @@ export function ChatInput({
   onSend: (input: TaskInputPart[], goal: { budget: number } | null) => Promise<boolean>;
   /**
    * Mid-run steering (session state only): while a Task is running, Enter/send queues the
-   * trimmed text **and any attached images and files** for the running agent — delivered
-   * between turns as a standalone `[user_steering]` user message followed by its images,
-   * with the files riding the text as `[attached file: <path>]` lines (#140: a file-only
-   * draft steers exactly like an image-only one). `"queued"` clears the text, images and
+   * trimmed text **and any attached images, videos and files** for the running agent — delivered
+   * between turns as a standalone `[user_steering]` user message followed by its images and
+   * videos, with the files riding the text as `[attached file: <path>]` lines (#140: a file-only
+   * draft steers exactly like an image-only one). `"queued"` clears the text, images, videos and
    * files and shows the queued hint; `"not_running"` (409 race with completion) makes the
    * input fall back to its full normal send path; `"failed"` keeps the draft. When absent
    * (draft state), the input stays send-disabled while running, as before.
+   *
+   * The videos travel as whole draft entries (their data URL and the picked name), not as bare
+   * URLs: a model that takes no video input gets them back as file attachments, which need the
+   * name the user's pick had. Which of the two shapes the request carries is the host's call —
+   * see steerVideoFields, whose whole job that is.
    */
   onSteer?: (
     text: string,
     images: string[],
+    videos: ComposerVideo[],
     files: { fileName: string; dataUrl: string }[],
   ) => Promise<"queued" | "not_running" | "failed">;
   /**
@@ -793,6 +783,13 @@ export function ChatInput({
   sessionId?: string;
   /** Whether the current model supports image input (models config's vision; assumed supported by default). */
   vision: boolean;
+  /**
+   * Whether the current model takes video input (models config's video). The default here is the
+   * opposite of `vision`'s, because the model's is: a video is megabytes of base64 and a Session
+   * whose model does not take one is better served by the scratchpad-path route, so only a model
+   * that says so gets the clip inline (and the composer says which it is — see videosAsPathHint).
+   */
+  video: boolean;
   approvalMode: ApprovalMode;
   /**
    * The approval modes the permission button may offer, in order (`approvalModeChoices`): all
@@ -885,6 +882,12 @@ export function ChatInput({
   const textRef = useRef(text);
   textRef.current = text;
   const [images, setImages] = useState<string[]>([]);
+  // Videos staged from the "+" menu, a drop or a paste: held exactly like images (a base64 data
+  // URL), but as whole entries rather than bare strings — the picked name is what the clip is
+  // called when the model that takes none gets it as a scratchpad file, and the chip shows it too.
+  // Nothing here copies the string a clip decodes to: it is read once, stored once, and passed on
+  // by reference by every send path (see lib/video-input).
+  const [videos, setVideos] = useState<ComposerVideo[]>([]);
   // File attachments picked from the "+" menu (any type): held as base64 data URLs, exactly
   // like images — a draft has no Session yet, so there is nothing to upload them to ahead of
   // time; they travel with the task request and the server files them into the scratchpad.
@@ -934,6 +937,7 @@ export function ChatInput({
   const draftHasContent =
     text.trim().length > 0 ||
     images.length > 0 ||
+    videos.length > 0 ||
     attachments.length > 0 ||
     references.length > 0 ||
     target !== null ||
@@ -941,9 +945,10 @@ export function ChatInput({
     selectedSkills.length > 0;
   // Goal mode (engaged via the "+" menu or /goal): the text body becomes the objective. It is
   // exclusive with a staged /agent or /model switch (engaging either clears the other). Attached
-  // images and selected skills ride the round-1 message exactly as in a normal send: the images
-  // as image input (path lines only on a model without vision), the skills as a [use_skills]
-  // block. Later rounds restate the objective text alone.
+  // images and videos and selected skills ride the round-1 message exactly as in a normal send: the
+  // images as image input (path lines only on a model without vision), the videos as video input or
+  // as a scratchpad file, whichever the model takes, and the skills as a [use_skills] block. Later
+  // rounds restate the objective text alone.
   const [goalOn, setGoalOn] = useState(false);
   const [goalBudgetText, setGoalBudgetText] = useState("");
   const [goalBudgetOpen, setGoalBudgetOpen] = useState(false);
@@ -976,8 +981,8 @@ export function ChatInput({
   // parseable budget — and an open editor showing an invalid draft disables Send outright:
   // combined with the editor refusing to close over an invalid draft (below), no click sequence
   // can fire a goal with a stale committed budget.
-  // Images may come along with a goal objective (they ride its round-1 message), but they don't
-  // substitute for the text; file attachments cannot — the server refuses them on a goal.
+  // Images and videos may come along with a goal objective (they ride its round-1 message), but
+  // they don't substitute for the text; file attachments cannot — the server refuses them on a goal.
   const canSend =
     !running &&
     !compacting &&
@@ -1032,8 +1037,8 @@ export function ChatInput({
   /**
    * Engage/exit goal mode; engaging clears any staged switch chip and every file attachment
    * (genuinely exclusive: a handoff or a model switch opens another session, and the server
-   * refuses file attachments on a goal). Attached images and selected skills stay — they ride
-   * the round-1 message, like a normal send.
+   * refuses file attachments on a goal). Attached images, videos and selected skills stay — they
+   * ride the round-1 message, like a normal send.
    */
   const toggleGoal = useCallback(
     (on: boolean) => {
@@ -1046,9 +1051,9 @@ export function ChatInput({
         onHandoffTargetChange?.(null);
         setPendingModel(null);
         onPendingModelChange?.(null);
-        // Images ride a goal's round-1 message, file attachments do not — the server refuses
-        // those, so clear them or canSend would stay silently false with the objective looking
-        // ready.
+        // Images and videos ride a goal's round-1 message, file attachments do not — the server
+        // refuses those, so clear them or canSend would stay silently false with the objective
+        // looking ready.
         setAttachments([]);
       }
     },
@@ -1093,6 +1098,7 @@ export function ChatInput({
     hasPendingModel: pendingModel !== null,
     hasText: text.trim().length > 0,
     hasImages: images.length > 0,
+    hasVideos: videos.length > 0,
     hasFiles: attachments.length > 0,
     hasContent: draftHasContent,
   });
@@ -1172,6 +1178,10 @@ export function ChatInput({
     onTextChange?.(merged);
     setCaret(merged.length);
     if (r.images.length > 0) setImages((prev) => [...r.images, ...prev]);
+    // A recalled video comes back as a URL and nothing else, so its chip's name and size are
+    // derived from it (see videoFromUrl) — the draft's own picks keep the name they were picked
+    // with, and the two read the same in the chip.
+    if (r.videos.length > 0) setVideos((prev) => [...r.videos.map(videoFromUrl), ...prev]);
     if (r.files.length > 0) {
       // A goal draft cannot carry the restored files — release the staged chip rather than
       // strand them behind a dead Send (why: see mergeRecalledDraft).
@@ -1644,15 +1654,19 @@ export function ChatInput({
       // from being added since), so there is nothing to carry here.
       setBusy(true);
       try {
-        // Attached images ride the round-1 message (see the goalOn declaration above).
+        // Attached images and videos ride the round-1 message (see the goalOn declaration above).
         const goalInput: TaskInputPart[] = [
           { type: "text", text: buildSkillsMessage(selectedSkills, t) },
         ];
         for (const url of images) goalInput.push({ type: "image_url", imageUrl: url });
+        for (const clip of videos) {
+          goalInput.push({ type: "video_url", videoUrl: clip.dataUrl, fileName: clip.name });
+        }
         const ok = await onSend(goalInput, { budget: goalBudget! });
         if (ok) {
           setText("");
           setImages([]);
+          setVideos([]);
           setSelectedSkills([]);
           toggleGoal(false);
         }
@@ -1691,7 +1705,7 @@ export function ChatInput({
     const body = buildSkillsMessage(selectedSkills, bodyText);
     const input: TaskInputPart[] = [];
     if (body) input.push({ type: "text", text: body });
-    appendAttachmentParts(input, images, attachments);
+    appendMediaParts(input, images, videos, attachments);
     setBusy(true);
     try {
       const ok = target
@@ -1706,6 +1720,7 @@ export function ChatInput({
       if (ok) {
         setText("");
         setImages([]);
+        setVideos([]);
         setAttachments([]);
         setReferences([]);
         setTarget(null);
@@ -1730,17 +1745,18 @@ export function ChatInput({
         await sendNormal(onQueueFollowUp!);
         return;
       }
-      // Steering branch: queue the trimmed text, the attached images and the attached files
+      // Steering branch: queue the trimmed text, the attached images, videos and files
       // for the running agent; all are sent and cleared together — selected skills stay for
       // a normal send (a staged switch chip blocks this branch outright, see midRunAction).
       if (!steerAction) return;
       const steerText = withReferences(references, text.trim());
       const steerImages = images;
+      const steerVideos = videos;
       const steerFiles = attachments.map((f) => ({ fileName: f.name, dataUrl: f.dataUrl }));
       setBusy(true);
       let res: "queued" | "not_running" | "failed" = "failed";
       try {
-        res = await onSteer!(steerText, steerImages, steerFiles);
+        res = await onSteer!(steerText, steerImages, steerVideos, steerFiles);
         if (res === "queued") {
           // Show the "queued" hint until the steering message shows up in the stream
           // (steeringDeliveredCount increases) — see the effect below.
@@ -1748,6 +1764,7 @@ export function ChatInput({
           setSteerPending(true);
           setText("");
           setImages([]);
+          setVideos([]);
           setAttachments([]);
           setReferences([]);
         }
@@ -1850,14 +1867,17 @@ export function ChatInput({
     }
   };
 
-  const addFiles = (files: Iterable<File>) => {
-    // Images had no size check at all: an oversize paste was read into a data URL, JSON'd and
-    // uploaded, freezing the tab on the way to a generic body-cap 413. They are capped well
-    // below file attachments on purpose — an inline image rides the conversation and the Trace,
-    // where its size is paid again on every history page and every resume.
-    const imageFiles: File[] = [];
-    for (const file of files) if (file.type.startsWith("image/")) imageFiles.push(file);
-    const { accepted, rejected } = splitBySize(imageFiles, uploadLimits.imageMaxMb);
+  /**
+   * Images staged from a batch that has already been partitioned (see lib/file-drop).
+   *
+   * They had no size check at all: an oversize paste was read into a data URL, JSON'd and uploaded,
+   * freezing the tab on the way to a generic body-cap 413. They are capped well below file
+   * attachments on purpose — an inline image rides the conversation and the Trace, where its size is
+   * paid again on every history page and every resume — and the ceiling is named in the toast, so
+   * what the composer refuses is what the server would.
+   */
+  const stageImages = (files: readonly File[]) => {
+    const { accepted, rejected } = splitBySize(files, uploadLimits.imageMaxMb);
     for (const file of rejected) {
       toastError(S.chat.attachmentTooLarge(file.name, uploadLimits.imageMaxMb));
     }
@@ -1870,6 +1890,39 @@ export function ChatInput({
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  /**
+   * Videos staged from a batch that has already been partitioned. Same pre-flight refusal as the
+   * images above, against the clip's own, much larger ceiling (uploadLimits.videoMaxMb): what the
+   * provider accepts as one video, with base64's 4/3 in it.
+   *
+   * The batch is read whole before any of it is staged, so the chips follow the order the files were
+   * picked in rather than the order the reads finished in — the same order the parts travel in. Each
+   * entry holds the data URL its own read produced: no re-encode and no second copy of a string that
+   * can be tens of megabytes (see lib/video-input).
+   */
+  const stageVideos = (files: readonly File[]) => {
+    const { accepted, rejected } = splitBySize(files, uploadLimits.videoMaxMb);
+    for (const file of rejected) {
+      toastError(S.chat.attachmentTooLarge(file.name, uploadLimits.videoMaxMb));
+    }
+    if (accepted.length === 0) return;
+    void Promise.all(accepted.map(async (file) => ({ file, url: await readDataUrl(file) }))).then(
+      (read) => {
+        const staged = read.flatMap(({ file, url }) =>
+          url ? [{ name: file.name, size: file.size, dataUrl: url }] : [],
+        );
+        if (staged.length > 0) setVideos((prev) => [...prev, ...staged]);
+      },
+    );
+  };
+
+  /** The media intake every entry point shares (the two "+" pickers, a paste, a drop): an image goes to the image list, a clip to the video list, each under its own ceiling. */
+  const addMediaFiles = (files: Iterable<File>) => {
+    const { images: imageFiles, videos: videoFiles } = splitMediaFiles(files);
+    stageImages(imageFiles);
+    stageVideos(videoFiles);
   };
 
   const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -1885,7 +1938,7 @@ export function ChatInput({
     }
     if (files.length > 0) {
       e.preventDefault();
-      addFiles(files);
+      addMediaFiles(files);
       return;
     }
     // A paste too long for the text box (a whole log) is attached as a text file instead:
@@ -1901,7 +1954,7 @@ export function ChatInput({
   };
 
   const onPickFiles = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) addFiles(e.target.files);
+    if (e.target.files) addMediaFiles(e.target.files);
     e.target.value = "";
   };
 
@@ -1939,18 +1992,19 @@ export function ChatInput({
   };
 
   /**
-   * Files dropped onto the chat area (see FileDropZone): one batch, routed into the SAME two
-   * intakes the "+" menu and paste use — images join the pasted-image pipeline, everything
-   * else joins the file-attachment pipeline (each with its own cap and the same rejection toast,
-   * see uploadLimits). Goal mode takes
-   * images but not files (nothing folds a file into the re-injected objective — the "+" menu
-   * grays its file entry out for the same reason); a drop has no disabled affordance to gray,
-   * so the refusal is said out loud instead of silently swallowing the files.
+   * Files dropped onto the chat area (see FileDropZone): one batch, partitioned into the SAME
+   * intakes the "+" menu and paste use — images and videos join the media pipeline, each with its
+   * own cap and the same rejection toast, everything else joins the file-attachment pipeline (see
+   * uploadLimits). Goal mode takes images and videos but not files (nothing folds a file into the
+   * re-injected objective — the "+" menu grays its file entry out for the same reason); a drop has
+   * no disabled affordance to gray, so the refusal is said out loud instead of silently swallowing
+   * the files.
    */
   const addDroppedFiles = (dropped: File[]) => {
     if (variant !== "session") return; // Text-only surface: drops have nowhere to go.
-    const batch = splitDroppedFiles(dropped);
-    if (batch.images.length > 0) addFiles(batch.images);
+    const batch = splitMediaFiles(dropped);
+    stageImages(batch.images);
+    stageVideos(batch.videos);
     if (batch.files.length > 0) {
       if (goalOn) toastInfo(S.chat.dropFilesGoalHint);
       else addAttachments(batch.files);
@@ -1960,9 +2014,10 @@ export function ChatInput({
    * The image picker moved into the "+" menu, so the file input can no longer be a `<label>`
    * wrapper: the menu unmounts its items on select. It lives outside the menu instead and the
    * entry clicks it — still inside the click's user-activation window, so the dialog opens.
-   * The file-attachment picker below works the same way.
+   * The video and file-attachment pickers below work the same way.
    */
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
 
   /**
@@ -2187,9 +2242,52 @@ export function ChatInput({
         </div>
       )}
 
-      {/* Attached files, right below the image thumbnails: one removable chip each (name +
-          size), since there is nothing to preview. The name is the picked file's — the server
-          sanitizes it when writing to the scratchpad, and the message's banner then shows the
+      {/* A staged video: its name and size plus a first-frame thumbnail, since a clip has no
+          poster to look at and a chip that says nothing but "video.mp4" cannot be told from the
+          next one. The thumbnail is `muted playsInline preload="metadata"` and has no controls: it
+          is a still picture made of the clip's first frame, and a staged draft must never make a
+          sound or start playing on its own. The `src` is the very string the read produced — the
+          chip neither re-encodes it nor keeps a second copy of a clip that can be tens of MB. */}
+      {videos.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {videos.map((clip, i) => (
+            <div key={i} className="anim-pop relative">
+              <div className="flex max-w-72 items-center gap-2 rounded-md border border-gray-200 p-1 pr-2.5 dark:border-gray-700">
+                <video
+                  src={clip.dataUrl}
+                  muted
+                  playsInline
+                  preload="metadata"
+                  aria-label={S.chat.videoLabel}
+                  className="h-10 w-16 shrink-0 rounded bg-gray-100 object-cover dark:bg-gray-800"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-xs text-gray-700 dark:text-gray-300">{clip.name}</p>
+                  {/* A recalled clip on a web address has no measurable size: say nothing
+                      rather than "0 B". */}
+                  {clip.size > 0 && (
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      {formatBytes(clip.size)}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label={`${S.chat.removeVideo} ${clip.name}`}
+                onClick={() => setVideos((prev) => prev.filter((_, j) => j !== i))}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-gray-700 text-xs text-white transition-colors duration-150 hover:bg-gray-900"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Attached files, right below the image thumbnails and the video chips: one removable chip
+          each (name + size), since there is nothing to preview. The name is the picked file's — the
+          server sanitizes it when writing to the scratchpad, and the message's banner then shows the
           on-disk name. */}
       {attachments.length > 0 && (
         <TagInput
@@ -2250,6 +2348,16 @@ export function ChatInput({
       {!vision && images.length > 0 && (
         <p className="anim-fade mb-1 text-xs text-gray-400 dark:text-gray-500">
           {S.chat.imagesAsPathHint}
+        </p>
+      )}
+
+      {/* The same note for a clip, on a model that takes no video input: it is still sent — the
+          server files it into the scratchpad and the message carries its path instead — and this
+          is what says so, since a video that quietly turned into a path line is otherwise a
+          surprise. A model that takes video never shows it. */}
+      {!video && videos.length > 0 && (
+        <p className="anim-fade mb-1 text-xs text-gray-400 dark:text-gray-500">
+          {S.chat.videosAsPathHint}
         </p>
       )}
 
@@ -2315,12 +2423,21 @@ export function ChatInput({
       )}
 
       {/* The hidden inputs behind the "+" menu's upload entries: kept mounted here (outside the
-          menu, which unmounts its items on select) and clicked by those entries. The file picker
-          has no `accept` — an attachment can be any type, the model reads it from disk. */}
+          menu, which unmounts its items on select) and clicked by those entries. The video picker
+          takes `video/*` and the file picker has no `accept` — an attachment can be any type, the
+          model reads it from disk. */}
       <input
         ref={imageInputRef}
         type="file"
         accept="image/*"
+        multiple
+        className="hidden"
+        onChange={onPickFiles}
+      />
+      <input
+        ref={videoInputRef}
+        type="file"
+        accept="video/*"
         multiple
         className="hidden"
         onChange={onPickFiles}
@@ -2426,8 +2543,8 @@ export function ChatInput({
           // The three icon buttons — +, permission, skills — sit as one tight cluster: the row's
           // wider gap would read them as unrelated controls.
           <>
-            {/* "+" extension menu, leading the row: input add-ons (image upload, file
-                attachment, goal mode) plus the input settings footer (mid-run send mode —
+            {/* "+" extension menu, leading the row: input add-ons (image upload, video upload,
+                file attachment, goal mode) plus the input settings footer (mid-run send mode —
                 usable while running, which is exactly when it matters, so the button itself
                 never disables). The uploads live in here rather than as their own toolbar
                 buttons: one 8x8 slot instead of three, which is the difference between the
@@ -2447,6 +2564,17 @@ export function ChatInput({
                     desc: vision ? S.chat.uploadImageDesc : S.chat.imagesAsPathHint,
                     active: images.length > 0,
                     onSelect: () => imageInputRef.current?.click(),
+                  },
+                  {
+                    key: "video",
+                    icon: VIDEO_ICON,
+                    label: S.chat.uploadVideo,
+                    // Same shape as the image entry one line up: whatever the model takes, the
+                    // clip is sendable, and the description says which route this model gives it
+                    // (inline, or a scratchpad file the model opens by path).
+                    desc: video ? S.chat.uploadVideoDesc : S.chat.videosAsPathHint,
+                    active: videos.length > 0,
+                    onSelect: () => videoInputRef.current?.click(),
                   },
                   {
                     key: "file",

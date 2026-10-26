@@ -1,16 +1,19 @@
 /**
- * Images by reference on windowed history pages, and the route that serves them,
- * `GET /api/sessions/:sessionId/trace-image?file=&ordinal=[&i=]`.
+ * Media by reference on windowed history pages, and the routes that serve it —
+ * `GET /api/sessions/:sessionId/trace-image?file=&ordinal=[&i=]` and
+ * `GET /api/sessions/:sessionId/trace-video?file=&ordinal=`.
  *
- * - Given a Trace holding a user image and a tool output with two screenshots, a windowed
- *   page carries route URLs in their place, and each URL answers exactly that image's bytes
- *   with its type, an immutable private cache and nosniff.
+ * - Given a Trace holding a user image, a tool output with two screenshots and a user video, a
+ *   windowed page carries route URLs in their place, and each URL answers exactly that item's
+ *   bytes with its type, an immutable private cache and nosniff.
  * - The parameterless full read still carries every data URL.
- * - An image type the route does not serve (SVG) stays inline on the windowed page.
+ * - A type the route does not serve (an SVG image, an Ogg video) stays inline on the windowed
+ *   page, and asking the route for it is a 404.
  * - A caller without access to the Session gets 404 session_not_found and an anonymous one
  *   401; neither gets the bytes.
  * - A record without an image, a slot past the end, an ordinal past the end and an unknown
- *   file answer 404 trace_image_not_found; missing or malformed parameters answer 400.
+ *   file answer 404 trace_image_not_found (trace_video_not_found on the video route); missing
+ *   or malformed parameters answer 400.
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
@@ -22,6 +25,7 @@ import {
   toolCall,
   toolCallOutput,
   userText,
+  videoUrlMessage,
 } from "@adelie/core";
 import type { OmniMessage } from "@adelie/core";
 import type { HistoryMessage, MessagesResponse } from "../src/api/types.js";
@@ -37,12 +41,21 @@ const PNG = Buffer.from(
 );
 const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 const SVG = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>');
+/** The first bytes of an MP4 (`ftyp`) — enough to be served back and compared byte for byte. */
+const MP4 = Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70, 0x6d, 0x70, 0x34, 0x32]);
+const OGG = Buffer.from([0x4f, 0x67, 0x67, 0x53, 0x00, 0x02]);
 const dataUrl = (mime: string, bytes: Buffer) => `data:${mime};base64,${bytes.toString("base64")}`;
 
-type Payload = { type?: string; text?: string; image_url?: string; images?: string[] };
+type Payload = {
+  type?: string;
+  text?: string;
+  image_url?: string;
+  video_url?: string;
+  images?: string[];
+};
 const payloadOf = (m: OmniMessage) => m.payload as Payload;
 
-describe("images by reference", () => {
+describe("media by reference", () => {
   let t: TestApp;
   let api: ReturnType<typeof apiClient>;
   let outsider: ReturnType<typeof apiClient>;
@@ -77,6 +90,11 @@ describe("images by reference", () => {
       }), // 6
       assistantText("done"), // 7
       requestEnd("completed"), // 8
+      // The next turn's user input, its request not begun yet: a video the provider takes,
+      // and one whose type the route does not serve (so it stays inline).
+      userText("and this clip"), // 9
+      videoUrlMessage(dataUrl("video/mp4", MP4)), // 10
+      videoUrlMessage(dataUrl("video/ogg", OGG)), // 11
     ]);
   });
   afterAll(async () => {
@@ -124,6 +142,61 @@ describe("images by reference", () => {
       dataUrl("image/jpeg", JPEG),
       dataUrl("image/png", PNG),
     ]);
+  });
+
+  it("a user video is served by reference too, and answers its own bytes", async () => {
+    const messages = await tailPage();
+    const video = payloadOf(messages[10]!);
+    expect(video.video_url).toBe(`/api/sessions/${SID}/trace-video?file=1&ordinal=10`);
+
+    const res = await api.get(video.video_url!);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("video/mp4");
+    expect(res.headers.get("cache-control")).toBe("private, max-age=31536000, immutable");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(Buffer.from(await res.arrayBuffer()).equals(MP4)).toBe(true);
+  });
+
+  it("the full read keeps a video inline, and an unserved video type stays inline on a page", async () => {
+    const full = await api.get(`/api/sessions/${SID}/messages`);
+    const { messages } = (await full.json()) as MessagesResponse;
+    expect(payloadOf(messages[10]!).video_url).toBe(dataUrl("video/mp4", MP4));
+
+    const page = await tailPage();
+    expect(payloadOf(page[11]!).video_url).toBe(dataUrl("video/ogg", OGG));
+    const res = await api.get(`/api/sessions/${SID}/trace-video?file=1&ordinal=11`);
+    expect(res.status).toBe(404);
+    expect(await errorCode(res)).toBe("trace_video_not_found");
+  });
+
+  it("a caller without access, or without a sign-in, gets no video bytes either", async () => {
+    const url = `/api/sessions/${SID}/trace-video?file=1&ordinal=10`;
+    const denied = await outsider.get(url);
+    expect(denied.status).toBe(404);
+    expect(await errorCode(denied)).toBe("session_not_found");
+    const anonymous = await t.app.request(url);
+    expect(anonymous.status).toBe(401);
+  });
+
+  it.each([
+    ["a record without a video", "file=1&ordinal=1"],
+    ["an image asked for as a video", "file=1&ordinal=2"],
+    ["an ordinal past the end", "file=1&ordinal=99"],
+    ["an unknown file", "file=2&ordinal=10"],
+  ])("%s answers 404 trace_video_not_found", async (_case, query) => {
+    const res = await api.get(`/api/sessions/${SID}/trace-video?${query}`);
+    expect(res.status).toBe(404);
+    expect(await errorCode(res)).toBe("trace_video_not_found");
+  });
+
+  it.each([
+    ["no file", "ordinal=10"],
+    ["no ordinal", "file=1"],
+    ["file 0", "file=0&ordinal=10"],
+    ["a non-numeric ordinal", "file=1&ordinal=x"],
+  ])("the video route: %s answers 400", async (_case, query) => {
+    const res = await api.get(`/api/sessions/${SID}/trace-video?${query}`);
+    expect(res.status).toBe(400);
   });
 
   it("an image type the route does not serve stays inline, and its slot is not served", async () => {

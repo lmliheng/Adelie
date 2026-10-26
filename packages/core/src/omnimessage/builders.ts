@@ -46,6 +46,7 @@ import type {
   ToolListReadyPayload,
   ToolCallPayload,
   ToolDefinition,
+  VideoUrlPayload,
 } from "./types.js";
 
 /** The current moment's ISO 8601 UTC timestamp. */
@@ -113,6 +114,20 @@ export function imageUrlMessage(imageUrl: string): OmniMessage<ImageUrlPayload> 
     type: "image_url",
     role: "user",
     image_url: imageUrl,
+    stop_reason: "completed",
+  });
+}
+
+/**
+ * A video message. The address is a public URL or a base64 `data:` URL — see VideoUrlPayload
+ * for why there is only one field — and only a model whose catalog row records video input
+ * may be sent one.
+ */
+export function videoUrlMessage(videoUrl: string): OmniMessage<VideoUrlPayload> {
+  return model({
+    type: "video_url",
+    role: "user",
+    video_url: videoUrl,
     stop_reason: "completed",
   });
 }

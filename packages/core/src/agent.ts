@@ -99,7 +99,7 @@ import type {
 import { SUBAGENT_NAME } from "./environment/tools/run-subagent.js";
 import { INPUT_SUBAGENT_NAME } from "./environment/tools/input-subagent.js";
 import type { CompactionSettings, OpenContextOptions } from "./engine/context-engine.js";
-import { catalogImageLimit } from "./state/model-catalog.js";
+import { catalogImageLimit, catalogSupportsVideo } from "./state/model-catalog.js";
 import type {
   ApproveFn,
   CommandPolicyConfig,
@@ -1353,6 +1353,15 @@ export class Agent {
       // The seller's per-request image cap, from the catalog (Abliteration's is 4): a
       // conversation that accumulates pictures would otherwise fail every later request.
       const imageLimit = catalogImageLimit(entry.provider, entry.model_id);
+      // Video input is opt-in per model (the opposite default of vision): either the Project's
+      // row carries the catalog's `video` annotation, or the catalog itself records it — the
+      // second answer covers a Project whose presets predate the row and has not synced since.
+      // One video per request: the budget exists to keep a replayed conversation's body inside
+      // the provider's limit, and the video that matters is the newest one.
+      const videoLimit =
+        entry.video === true || catalogSupportsVideo(entry.provider, entry.model_id)
+          ? 1
+          : undefined;
       return new GenerativeModel({
         modelId: entry.model_id,
         toolCallIds,
@@ -1362,6 +1371,7 @@ export class Agent {
         systemPrompt: context.systemPrompt,
         ...(entry.context_window !== undefined ? { contextWindow: entry.context_window } : {}),
         ...(imageLimit !== undefined ? { maxImages: imageLimit } : {}),
+        ...(videoLimit !== undefined ? { maxVideos: videoLimit } : {}),
         ...(context.maxTokens !== undefined ? { maxTokens: context.maxTokens } : {}),
         // Fast mode is a session-request annotation: it rides every context's LLM object,
         // while the bare/meta LLM below and the vision describer deliberately skip it — their

@@ -28,6 +28,7 @@ description: 为 Project 添加模型，设置 API key 和默认模型，选择�
 | **默认** | Project 的默认模型 |
 | **视觉** | 模型可以接收图片 |
 | **视觉代理** | 模型代替不支持视觉的模型读取图片 |
+| **视频** | 模型可以接收视频 |
 | **快速** | 已开启快速模式 |
 | **免费** | 三项价格都是 0 |
 | **省 N%** | 当前有促销价或空闲时段价生效；见[价格与促销](#价格与促销) |
@@ -449,6 +450,7 @@ Adelie 升级可能改变内置的预置模型目录。一旦发生，Project ow
 | qwen-token-plan | `OPENAI_API_KEY` | Qwen Token Plan 订阅网关，预置 base URL `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`；价格取自各模型页面的官方牌价（预览模型只有配额倍率优惠，没有牌价） |
 | modelscope | `OPENAI_API_KEY` | 魔搭的 OpenAI 兼容 api-inference 网关，预置 base URL `https://api-inference.modelscope.cn/v1`；id 就是上游仓库名（如 `deepseek-ai/DeepSeek-V4.1-Flash`、`Qwen/Qwen3.8-27B`）；分组标题栏可以经授权中转层为你自动授权一把 token，也可以手动设置。见 [ModelScope 分组](#modelscope-分组) |
 | abliteration | `OPENAI_API_KEY` | abliteration.ai 自家那批「abliterated」（去审查微调）模型，OpenAI 兼容，预置 base URL `https://api.abliteration.ai/v1`；key 形如 `ak_…`；四条预置都固定 Chat Completions 客户端。见 [Abliteration 分组](#abliteration-分组) |
+| volcengine | `OPENAI_API_KEY` | 字节跳动的火山方舟（Volcengine Ark），OpenAI 兼容，预置 base URL `https://ark.cn-beijing.volces.com/api/v3`；Doubao Seed 系列，加上方舟转售的 GLM / Kimi / DeepSeek，共 11 条预置，全部固定 Chat Completions 客户端。见 [Volcengine Ark 分组](#volcengine-ark-分组) |
 | vllm | `OPENAI_API_KEY` | 自托管 vLLM 服务器：协议固定为 `openai-chat-vllm-adapter`，无预置 base URL，八个预置模型价格均为 0（见[连接本地或自托管端点](#连接本地或自托管端点)） |
 | custom | `OPENAI_API_KEY` | 任意 OpenAI 协议端点；自带一个预置模型 Atria Dawn Preview（Anthropic Messages API，地址 `api.atria-asi.ai`，需要自己的 key，上下文窗口 256K，供应商公布价格之前定价 $0） |
 
@@ -498,6 +500,16 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - **预置模型。** `abliterated-model-large-v2`（官方推荐的默认选择）、`abliterated-model-large`、`abliterated-model-large-flash` 与 `abliterated-model`。前两条是 1,000,000 Token 上下文、只收文本；`flash` 是 1,048,576 并接受图像；`abliterated-model` 是 262,144，也接受图像。
 - **协议。** 这些 id 没有一条能被 AgentHub 按名字认出来，所以每个条目都固定 Chat Completions 客户端（`client_type = "openai-chat"`）并把端点写在条目上；同一条端点上也有 `/responses`，要换协议在条目上改即可。和所有网关一样，没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。
 - **价格。** 取自服务自己的模型列表，单位是每百万 Token 多少美元：输入 1 或 3，输出 2、3 或 5，缓存命中的读价 0.1 或 0.3。它不额外收缓存写入费，所以 `cache_write` 记的就是输入价。
+
+### Volcengine Ark 分组
+
+`volcengine` 是字节跳动自己的模型平台火山方舟（Volcengine Ark），豆包 / Seed（`doubao-seed-*`）就是从这台端点上服务的。端点是 OpenAI 兼容的 `https://ark.cn-beijing.volces.com/api/v3`，key 从方舟控制台领取，在分组标题栏用**填写密钥**设置一次即可。
+
+- **预置模型（11 条）。** Doubao Seed 七条：`doubao-seed-evolving`、`doubao-seed-2-1-pro-260915`、`doubao-seed-2-1-lite-260915`、`doubao-seed-2-1-turbo-260628`、`doubao-seed-2-0-lite-260428`、`doubao-seed-2-0-mini-260428`、`doubao-seed-character-260628`；方舟转售四条：`glm-5-3-flash-260828`、`kimi-k3-1-pro-261024`、`deepseek-v4-1-flash-261017`、`deepseek-v4-pro-ga-260813`。方舟的模型 id 带版本号（`-260915` 这串就是版本日期），必须照抄；方舟的模型单元、自定义接入点和 Coding Plan 订阅不在收录范围内。
+- **协议与凭证。** AgentHub 没有方舟客户端，所以每个条目都固定 Chat Completions 客户端（`client_type = "openai-chat"`）并把端点写在条目上。和其他直连厂商分组一样，没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。GLM、Kimi、DeepSeek 四条卖的是方舟，id 和价格都是方舟那一份。
+- **视频输入。** 11 条里有七条接受视频：豆包 Seed 除 `doubao-seed-2-1-lite-260915` 以外的六条，加上方舟转售的 `glm-5-3-flash-260828`，卡片上标**视频**：在对话里点回形针或把视频拖进输入框，这一轮请求就会带上视频本身，模型可以直接描述、总结或提问。其余四条（2.1 Lite、Kimi 与两条 DeepSeek）收到的是一行 `[attached file: …]`，视频落在会话暂存目录里，由 Agent 自己用工具处理。
+- **价格。** 取自方舟定价页的「在线推理（常规）」表，人民币每百万 Token（输入非音频 / 缓存命中非音频 / 输出），按固定汇率 7 换算成美元存储。方舟按输入长度分档计价，这里只记录基础档；`deepseek-v4-1-flash-261017` 跟随 DeepSeek 的空闲时段，北京时间工作日 9:00–12:00、14:00–18:00 之外按半价计算。
+- **不在这个分组里的。** 方舟的图片生成（Seedream）、视频生成（Seedance）、3D 与向量化模型都不是对话模型，会话无法承载它们，因此不进模型库；需要生成视频时，见[插件库](/skills#内置插件库)里的 `use-seedance`：一句话让 Agent 生成一个 mp4 落到工作区。
 - **一次请求最多 4 张图。** 这是服务自己的限制，超过它会直接回 `400 … media_count_exceeded`，而对话里的图会被每一次请求重新带上——所以会话会一直失败。Adelie 因此在每次请求前把**最旧的**那几张换成一行 `[image omitted: …]` 文字占位，只保留最新的四张（新发出的图优先算进这四张；一轮自己就带了五张时，这一次输入里的旧图也一样换成占位）。对话本身和 Trace 里的图一张不少，改的只是这一次请求带过去的量。
 
 ### 预置模型
@@ -561,6 +573,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 | `client_type` | 协议提示（`openai-chat` 对应 Chat Completions，`openai-responses` 对应 Responses API，`ant-messages` 对应 Anthropic Messages 等）；省略时由 AgentHub 根据模型 id 推断。自定义端点使用这三种通用协议客户端之一，Web 弹窗可以检测一个 base URL 对应哪一种。`openai` 是 0.4.2 之前的旧写法，已弃用，读取配置时会归一化为 `openai-chat` |
 | `display_name` | 展示名称 |
 | `vision` | 是否支持图像输入，默认 true |
+| `video` | 是否支持视频输入，默认 false（和 `vision` 相反）：只有模型确实收视频时才写 `true`。带 `true` 的模型，对话里加入的视频会作为视频内容部件随请求发出；未标记的模型改走文件路径，见 [Volcengine Ark 分组](#volcengine-ark-分组)。预置时由模型目录的 `supportsVideo` 写入，Web 端暂不提供手动开关 |
 | `fast_mode` | 可选的快速模式（默认关闭）：开启后，这个模型的 Session 请求会改走供应商更快的服务层级，价格更高。持久化保存的值只有 `true`；在 Web 端整表保存时省略这个字段会把它清空。没有快速层级的模型会拒绝携带这个设置的请求（参见[快速模式](#快速模式)） |
 | `pricing` | 三档价格（单位 `usd_per_mtok`，即每百万 Token 的美元价格）：`cache_read` / `cache_write` / `output` |
 | `api_key` / `base_url` | 内联的凭证，两项都可选；留空时 AgentHub 回退到环境变量 |

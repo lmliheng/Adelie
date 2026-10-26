@@ -39,6 +39,10 @@ const TYPE_ICON: Record<string, string> = {
   text: "M8 10h8M8 14h5M21 12a9 9 0 1 1-4-7.5",
   thinking: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3 11v2h6v-2a6 6 0 0 0-3-11z",
   image_url: "M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6",
+  // A video record: the camera glyph the composer's video entry uses (a lens body with the
+  // triangular flag), so the same thing looks the same on both surfaces.
+  video_url:
+    "M4 6h10a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2zM22 8l-6 4 6 4V8z",
   inline_data: "M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6",
   tool_call: ICONS.wrench,
   tool_call_output: "M4 6l4 4-4 4M12 18h8",
@@ -90,6 +94,10 @@ export function summarizeEvent(msg: OmniMessage): string {
       return String(p["thinking"] ?? "").slice(0, 120);
     case "image_url":
       return "[image]";
+    case "video_url":
+      // The bytes are never summarized: a video is tens of megabytes of base64 and the summary
+      // line only says what kind of record this is.
+      return "[video]";
     case "inline_data":
       return `[image] ${String(p["mime_type"] ?? "")}`;
     case "tool_call":
@@ -360,6 +368,21 @@ function EventBody({ msg }: { msg: OmniMessage }) {
           src={String(p.image_url ?? "")}
           alt="trace"
           className="max-h-48 max-w-full rounded-md"
+        />
+      );
+    case "video_url":
+      // A clip is played here rather than dumped: without this branch the record falls to the
+      // default JSON dump below and paints its whole base64 payload — tens of megabytes of it —
+      // into the row, which hangs the page rather than showing anything. `preload="metadata"`
+      // keeps a row nobody opened from downloading the clip, and `playsInline` keeps iOS from
+      // taking it fullscreen — the transcript's own player does the same.
+      return (
+        <video
+          controls
+          preload="metadata"
+          playsInline
+          className="max-h-48 max-w-full rounded-md"
+          src={String(p.video_url ?? "")}
         />
       );
     case "inline_data":

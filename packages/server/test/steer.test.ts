@@ -242,7 +242,7 @@ describe("steer route", () => {
     await waitFor(() => t.deps.manager.pendingApprovalCount(SID) === 1);
     await api.post(`/api/sessions/${SID}/steer`, { text: "hold on" });
     expect(t.deps.manager.pendingSteeringOf(SID)).toEqual([
-      { id: expect.any(String), text: "hold on", images: 0, files: 0 },
+      { id: expect.any(String), text: "hold on", images: 0, videos: 0, files: 0 },
     ]);
 
     // The first SSE frames are the initial task_state snapshot: it must carry the mirror.
@@ -277,7 +277,13 @@ describe("steer route", () => {
     expect(posted.status).toBe(202);
     expect(steered).toHaveLength(1);
     const [info] = t.deps.manager.pendingSteeringOf(SID);
-    expect(info).toEqual({ id: expect.any(String), text: "keep me", images: 1, files: 1 });
+    expect(info).toEqual({
+      id: expect.any(String),
+      text: "keep me",
+      images: 1,
+      videos: 0,
+      files: 1,
+    });
 
     // The recall hands the whole message back in the composer's own shape — the file read
     // back from the scratchpad as the very data URL it was submitted as.
@@ -286,6 +292,7 @@ describe("steer route", () => {
     expect(await res.json()).toEqual({
       text: "keep me",
       images: [png],
+      videos: [],
       files: [{ fileName: "notes.txt", dataUrl: data }],
     });
 
@@ -322,6 +329,7 @@ describe("steer route", () => {
       id: expect.any(String),
       text: "wait, do it differently",
       images: 0,
+      videos: 0,
       files: 1,
     });
 
@@ -340,6 +348,7 @@ describe("steer route", () => {
     expect(await res.json()).toEqual({
       text: "wait, do it differently",
       images: [],
+      videos: [],
       files: [{ fileName: "notes.txt", dataUrl: data }],
     });
     expect(t.deps.manager.returnedSteeringOf(SID)).toEqual([]);

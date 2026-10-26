@@ -11,6 +11,9 @@ overrides:
   '@hono/node-server': '>=2.0.5'
   nanoid: ^3.3.17
 
+patchedDependencies:
+  '@prismshadow/agenthub@0.4.15': ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f
+
 importers:
 
   .:
@@ -123,6 +126,9 @@ importers:
       '@adelie/use-offerdao':
         specifier: workspace:*
         version: link:../../plugins/use-offerdao
+      '@adelie/use-seedance':
+        specifier: workspace:*
+        version: link:../../plugins/use-seedance
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
@@ -134,7 +140,7 @@ importers:
         version: 2.0.0
       '@prismshadow/agenthub':
         specifier: ^0.4.15
-        version: 0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
+        version: 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
       commander:
         specifier: ^13.0.0
         version: 13.1.0
@@ -223,6 +229,9 @@ importers:
       '@adelie/use-offerdao':
         specifier: workspace:*
         version: link:../../plugins/use-offerdao
+      '@adelie/use-seedance':
+        specifier: workspace:*
+        version: link:../../plugins/use-seedance
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
@@ -234,7 +243,7 @@ importers:
         version: 2.0.0
       '@prismshadow/agenthub':
         specifier: ^0.4.15
-        version: 0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
+        version: 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
       arktype:
         specifier: ^2.2.3
         version: 2.2.3
@@ -329,6 +338,9 @@ importers:
       '@adelie/use-offerdao':
         specifier: workspace:*
         version: link:../../plugins/use-offerdao
+      '@adelie/use-seedance':
+        specifier: workspace:*
+        version: link:../../plugins/use-seedance
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
@@ -823,6 +835,8 @@ importers:
 
   plugins/use-offerdao: {}
 
+  plugins/use-seedance: {}
+
   plugins/use-wps-office: {}
 
   plugins/wechat-miniprogram: {}
@@ -905,6 +919,9 @@ packages:
 
   '@adelie/use-offerdao@file:plugins/use-offerdao':
     resolution: {directory: plugins/use-offerdao, type: directory}
+
+  '@adelie/use-seedance@file:plugins/use-seedance':
+    resolution: {directory: plugins/use-seedance, type: directory}
 
   '@adelie/use-wps-office@file:plugins/use-wps-office':
     resolution: {directory: plugins/use-wps-office, type: directory}
@@ -4864,10 +4881,11 @@ snapshots:
       '@adelie/use-firecrawl': file:plugins/use-firecrawl
       '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
+      '@adelie/use-seedance': file:plugins/use-seedance
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
-      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
+      '@prismshadow/agenthub': 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)
       commander: 13.1.0
       dotenv: 17.4.2
       smol-toml: 1.6.1
@@ -4904,10 +4922,11 @@ snapshots:
       '@adelie/use-firecrawl': file:plugins/use-firecrawl
       '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
+      '@adelie/use-seedance': file:plugins/use-seedance
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
-      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)
+      '@prismshadow/agenthub': 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)
       arktype: 2.2.3
       smol-toml: 1.6.1
       yaml: 2.9.0
@@ -4940,10 +4959,11 @@ snapshots:
       '@adelie/use-firecrawl': file:plugins/use-firecrawl
       '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
+      '@adelie/use-seedance': file:plugins/use-seedance
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
-      '@prismshadow/agenthub': 0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
+      '@prismshadow/agenthub': 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
       arktype: 2.2.3
       smol-toml: 1.6.1
       yaml: 2.9.0
@@ -5049,6 +5069,8 @@ snapshots:
   '@adelie/use-lieflat-charts@file:plugins/use-lieflat-charts': {}
 
   '@adelie/use-offerdao@file:plugins/use-offerdao': {}
+
+  '@adelie/use-seedance@file:plugins/use-seedance': {}
 
   '@adelie/use-wps-office@file:plugins/use-wps-office': {}
 
@@ -6013,7 +6035,7 @@ snapshots:
     dependencies:
       playwright: 1.61.1
 
-  '@prismshadow/agenthub@0.4.15(supports-color@10.2.2)(ws@8.21.0)':
+  '@prismshadow/agenthub@0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)':
     dependencies:
       '@anthropic-ai/bedrock-sdk': 0.26.4(zod@4.4.3)
       '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
@@ -6028,7 +6050,7 @@ snapshots:
       - ws
       - zod
 
-  '@prismshadow/agenthub@0.4.15(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)':
+  '@prismshadow/agenthub@0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)':
     dependencies:
       '@anthropic-ai/bedrock-sdk': 0.26.4(zod@4.4.3)
       '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)

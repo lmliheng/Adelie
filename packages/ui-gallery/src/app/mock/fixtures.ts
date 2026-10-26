@@ -1516,6 +1516,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         attachmentTotalMb: 120,
         attachmentMaxCount: 20,
         imageMaxMb: 20,
+        videoMaxMb: 32,
         attachmentLimitMinMb: 1,
         attachmentLimitMaxMb: 200,
       },

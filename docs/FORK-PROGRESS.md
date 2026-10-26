@@ -2233,6 +2233,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-25 | 7.45 | **「标记阻塞」那张表单：被拒时表单留着，填过的原因也留着**（不是移植：1 处源码 `packages/web/src/features/company/ticket-dialog.tsx`（+46 −21：底栏那段内联写入收成 `commitBlock()`、关表单与清空字段都挪进写入内部、与另外三张框共用那份 `refusal`、表单顶部画一条 `NoticeStrip`（`role="alert"`，正文在 `data-slot="body"`）、`Modal` 的 `onClose` 在写入在途时不再响应）+ 既有的 `packages/web/e2e/ticket-refusal.spec.mjs` 增加第 5 条（标记阻塞）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.44 末尾点名的下一处，也是那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第九处、其中唯一一张**表单**框 —— 被拒时要留的不止一句原话，还有那两个字段里刚敲进去的内容。**现在**：只有写入落地才关表单并清空字段；被拒时服务端原话画在字段上方（`S.common.refused`），原因与「等谁」原样留着，重试就是再按一次；开表单前清掉上一次的原因，换工单时也清 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件 `prettier --check` 干净（前两份首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · web **265 / 3249 通过 / 2 跳过** · server **203 / 2970 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器单 spec**（`/root/adelie-fork-data/r131-e2e`，服务 8940、mock 8941，`packages/{core,server,web}/dist` 都是本轮新构建）：`ticket-refusal.spec.mjs` **5 passed（15.9s）**，还原后复跑 **5 passed（17.3s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push -- packages/web/src/features/company/ticket-dialog.tsx`（只带这一个路径）、重建 web、同一条命令 → **1 failed / 4 passed**，新那条死在 `getByRole('dialog', { name: '标记阻塞' }).getByText(…mid-rewrite…)`（`element(s) not found`：改前表单已经关了）· **两态实测真看一眼**（探针 `r131/probe.mjs`，两态各跑一次，同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `{formVisible:false, inFormReason:0, noticeCarriesReason:true}` → 6.5 s 后 `noticeCarriesReason:false`（屏幕上一点解释都没有了），截图 `r131/before/shots/2-refused.png` 里正是「表单不在、一条红 toast 浮在工单上方」；**改后** `{formVisible:true, inFormReason:1, noticeCarriesReason:false, fieldValue:"等市场站点的备案下来"}`，6.5 s 后原样还在 —— 截图 `r131/after/shots/2-refused.png` 里原因画在字段上面、原因还在框里；两态服务端上的工单都没被标记阻塞（`blockedOnServer:false`），console 里的 error 只有三条：登录前的 `/api/me` 401（这个 App 的正常首访应答）、`/api/projects/…/machines` 403（那条路由本来就只给管理员，探针账号是普通成员）与刻意造的 500，**无 `pageerror`** · 端口只用 8940 / 8941，跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r131-e2e` 与 scratchpad 的 `r131/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `9eeef95d` |
 | 2026-10-26 | 7.46 | **新建工单被拒时，表单留着、填过的每个字段也留着**（不是移植：1 处源码 `packages/web/src/features/company/tickets-page.tsx` —— `CreateTicketDialog` 加一份 `refusal` 状态、写入失败的原话改由 `NoticeStrip` 画在字段上方、每次开表单先清空它、`Modal` 的 `onClose` 在写入在途时不再响应（`toastError` 也从这份文件的 import 里去掉了）+ 1 个新文件 `packages/web/e2e/ticket-create-refusal.spec.mjs`（1 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：那条「点击即关、失败只弹 toast」扫描线在 `features/company/` 上的第十处，也是其中唯一一处**写入不关框、只是原因会消失**的写点 —— 被拒之后几秒，通知没了，面板一点没变、按钮又亮着，没有任何东西说明为什么。现在原因留在表单里、字段原样留着，重试就是再按一次 | 六包 `typecheck` `EXIT=0`；`npx oxlint` 两个改动文件 0 警告 0 错误；`prettier --check` 与 `git diff --check` 干净 · 逐包 test `EXIT=0`：core **1420 通过 / 6 跳过**（69 文件）· ui **1053**（130）· cli **561**（38）· web **3249 通过 / 2 跳过**（265 文件）· server **2970 通过 / 4 跳过**（203 文件）· **真服务**（8950）+ mock（8951）+ 当天新构建的 `packages/{core,server,web}/dist`：新 spec **1 / 1 通过（3.3s）**，回归 `ticket-refusal.spec.mjs` **5 / 5 通过**；**反证**：把那一处源码 `git stash push --`（只带这一个路径）、重建 web → 同一条命令 **1 failed**（`element(s) not found`：改前表单里没有那句原话）· **两态探针**（`r132/probe.mjs`，各跑一次，同一个 `page.route` 500，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `reasonInForm:0`、`reasonInNotice:1 → 0`（通知几秒后自己消失，截图 `r132/before/shots/3-six-seconds-later.png` 里表单还在、一句原因都没有）；**改后** `reasonInForm:1`、`reasonInNotice:0`，6.5 s 后原样还在（截图 `r132/after/shots/2-refused.png` 里红色提示条在标题上方）；两态服务端上的工单数都是 0、两态 console 的 error 只有既有的 `/machines` 403 与刻意造的 500，无 `pageerror` · 端口只用 8950 / 8951（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `df07b72d` |
 | 2026-10-26 | 7.47 | **财务页改预算被拒时，框留着、填过的金额与原因都留着**（不是移植：1 处源码 `packages/web/src/features/company/finance-page.tsx`（+46 −5：`BudgetEditor` 多一份 `refusal` 与一句「读不懂」的自有提示（复用既有 `budgetHint` 文案）、画在框下方那一行（`role="alert"`）；`FinancePage` 把拒绝文案按员工存在 `budgetRefusal` 里，开框 / 取消 / 落地都清掉；`saveBudget` 的 `catch` 不再 `toastError`，`toastError` 也从这份文件的 import 里去掉了。**顺手修一处真 bug**：写入在途时输入框被置灰、焦点随之离开，而「焦点离开也保存」又把同一次写入发了一遍 —— 一次保存过去写两次；编辑器现在用一个在途标记（`asking`，`busy` 落下时重置）挡掉第二发）+ 1 个新文件 `packages/web/e2e/finance-budget-refusal.spec.mjs`（2 条用例：被拒 → 取消重开 → 重试落地；读不懂的金额一次都不写）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：7.46 末尾点名的下一处里最靠前的「财务」那一处，也是那条「原因只进 toast」扫描线在这一页上的第十一处 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 589 类型 —— 本笔不动服务契约）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 通过文件 + 1 跳过 / 1420 通过 / 6 跳过** · ui **130 文件 / 1053 通过** · cli **38 文件 / 561 通过** · web **265 文件 / 3249 通过 / 2 跳过** · server **203 文件 / 2970 通过 / 4 跳过** · hmr 无测试文件 · **真服务 + 真浏览器单 spec**（`/root/adelie-fork-data/r133-e2e`，服务 8950、mock 8951，`packages/{core,server,web}/dist` 都是本轮新构建）：新 spec **2 passed（4.7s）**；相邻回归 `company.spec.mjs` **1 passed（22.0s）** · **整套浏览器 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**164 passed（10.3m）、0 failed** · **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push -- packages/web/src/features/company/finance-page.tsx`（只带这一个路径）、重建 web → 同一条命令 **2 failed**（第一条死在框里没有那句原话，第二条死在 `每月上限` 那条提示从 `role=alert` 里找不到）；`git stash pop` 后重建即回到 2 / 2 · **两态实测真看一眼**（探针 `r133/probe.mjs`，改后产物起在 8950、改前产物（`r133/before-dist`）另起一台 8960，各一次、同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** `{boxVisible:true, reasonInBox:0, reasonInNotice:2, value:"42"}` → 6.5 s 后 `reasonInNotice:0`（屏幕上一点解释都没有了），`writes:2`（**一次保存写了两次**）；**改后** `{boxVisible:true, reasonInBox:1, reasonInNotice:0, value:"42"}`，6.5 s 后原样还在，`writes:1`；两态服务端上的预算都是原来的 100，截图 `r133/{before,after}/shots/{3-refused,4-six-seconds-later}.png` 里正好是「改前框里 42、上方两条红 toast、框下一句都没有」对「改后框下那行『操作被拒绝：the org chart is mid-rewrite』」；console 里的 error 只有既有的 `/machines` 403 与刻意造的 500，无 `pageerror` · 端口只用 8950 / 8951 / 8960（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r133-{e2e,before}` 与 scratchpad 的 `r133/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `467c076d` |
+| 2026-10-26 | 用户点单（火山方舟分组 + 视频输入输出） | **模型库多一个 Volcengine Ark 分组（11 条模型行），对话里能发视频、能看视频，另加一个 Seedance 出视频的插件**（不是移植：`packages/core/src/state/model-catalog.ts` 加 `volcengine` 分组、`supportsVideo` 与 `catalogSupportsVideo`；`pnpm patch` 给 agenthub 加 `video_url` 内容项（`patches/@prismshadow__agenthub.patch` + `patchedDependencies`）；core / server / cli / web 四层把视频当一等输入（预算、按引用、轨迹播放器、窗口化历史）；`packages/server/src/services/trace-images.ts` 改名合并为 `trace-media.ts` 并新增 `GET /:sessionId/trace-video`；新插件 `plugins/use-seedance`（`@adelie/use-seedance`，走方舟异步出片接口）；新增 6 个测试文件与 3 对 changelog；两家品牌图标各一枚）：用户 2026-10-25 点单，2026-10-26 补明用 `pnpm patch` 打 agenthub、要「Adelie 应用能产出视频」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` **0 警告 0 错误**（2297 文件）· `npx prettier --check .` 干净 · `pnpm -r test` **`EXIT=0`、0 失败**：core **1421 通过 / 6 跳过**（69 文件 + 1 跳过）· ui **1053**（130）· cli **561**（38）· web **3273 通过 / 2 跳过**（268）· server **2988 通过 / 4 跳过**（204）· docs **62**（8）· amsp **68**（2）· desktop **304**（26）· ui-gallery **140**（20）· `plugins/use-seedance` **8**（桩服务端到端）· `pnpm -r build` `EXIT=0` · 方舟真端点：假 key 实测 401 `AuthenticationError`（视频部件与文本部件走同一句鉴权错）· **没做**：没在真浏览器里目视播放一次视频、Seedance 没拿真 key 出过一次片、Trace 详情页的 `events` 仍会整份返回那条记录的 base64 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -16169,3 +16170,141 @@ toast」扫描线在 `features/company/` 上的第一处：组织日历（`featu
   —— 还是 `202.197.0.0/16` 那个网段的问题，不是凭据，不重试。照前几轮改由飞书送达
   （`text ok message_id=om_x100b62dd443d80a0de11dcb04fae648`），正文留底在 scratchpad 的
   `r133/report.txt`；下一轮开工再探一次，通了把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 第一百三十四轮：模型库多一个火山方舟分组，对话里能发视频、也能看视频（2026-10-26，用户点单）
+
+### 事实来源
+
+用户 2026-10-25 点单：「下一步，我需要你加入 abliterable 服务商，字节跳动服务商(火山引擎)，具体模型调用
+规则参考官网，记得加好图标，还有多模态视频能力（对话界面对视频输入输出的支持），因为 seed 模型能力重在
+视频。」（「abliterable」是笔误，他随后确认是 `abliteration.ai`。）同日续一句：「我写错了，是
+abliteration.ai。用 pnpm patch 给 agenthub 打补丁加 video_url。你觉得怎么好，就怎么来吧，我需要有
+adelie 应用可以产出视频」。
+
+- **Abliteration**：2026-10-23 那个分组已经在库里（`9864a187`），这轮它只缺一枚真品牌图标。
+- **火山方舟（Volcengine Ark）**：端点 `https://ark.cn-beijing.volces.com/api/v3`，OpenAI 兼容；
+  Chat Completions 的视频部件是 `{"type":"video_url","video_url":{"url":"<公网 URL 或
+  data:video/mp4;base64,…>"}}`（视频本身 < 50 MB、整请求 ≤ 64 MB）。抓下来的官网页面留在 scratchpad
+  的 `r117/ark/`：`ml.md`（模型列表）、`pricing.md`（定价）、`vu.md`（视频理解输入）、`vgapi.md`
+  （视频生成异步接口）。价格只取定价页的「在线推理（常规）」档，人民币每百万 token，`cny()` 按 7:1 折算；
+  官网模型列表里**没有** Seed 1.6 / 1.8。
+- **假 key 实测**：带视频部件的一次 `POST /chat/completions` 回 **401 `AuthenticationError`**（与纯文本请求
+  同一条错）—— 请求构造到得了鉴权那一步，不是本地先炸。
+- **出片**：走方舟的异步接口 `POST /contents/generations/tasks` + 轮询 `GET …/tasks/{id}`，默认模型
+  `doubao-seedance-2-5-260628`。
+
+### 改了什么
+
+**① 模型库多一个 `volcengine` 分组（11 条模型行）**
+
+- `packages/core/src/state/model-catalog.ts`：`VOLCENGINE_BASE_URL`；`ModelCatalogEntry` 多一个
+  `supportsVideo?`；`volcengine` 分组排在 `iflytek` 之后、`qwen-pay-as-you-go` 之前（`label:
+  "Volcengine Ark"`、`OPENAI_*` 凭据、`clientType: "openai-chat"`）；11 条模型行 ——
+  `doubao-seed-evolving`、`doubao-seed-2-1-pro-260915`、`-2-1-lite-260915`（不吃视频）、
+  `-2-1-turbo-260628`、`-2-0-lite-260428`、`-2-0-mini-260428`、`doubao-seed-character-260628`、
+  `glm-5-3-flash-260828`、`kimi-k3-1-pro-261024`、`deepseek-v4-1-flash-261017`（用
+  `DEEPSEEK_OFF_PEAK`）、`deepseek-v4-pro-ga-260813`（无视觉）；目录条目按能不能吃视频写 `video: true`，
+  另导出 `catalogSupportsVideo(provider, upstreamId)`。
+- `packages/core/src/state/project-config.ts`：`ModelEntry` 多一个 `video?`（只有 `true` 才落盘）。
+- `packages/web/test/model-grouping.test.ts`：默认分组顺序补 `volcengine`。
+
+**② 视频输入走进对话（agenthub 补丁 + core / server / cli / web 四层）**
+
+- `patches/@prismshadow__agenthub.patch` + `pnpm-workspace.yaml` 的 `patchedDependencies`（钉在
+  `@prismshadow/agenthub@0.4.15`）：agenthub 的通用消息格式只认文本与图片，Chat Completions 客户端遇到
+  别的内容项会抛错，视频根本到不了方舟的 `video_url` 部件。补丁在 `dist/types.d.ts` 的 `ContentItem` 联合里
+  加 `VideoContentItem{type:"video_url";video_url:string}`，并给 `dist/openai_chat/client.js` 的
+  `transformUniMessageToModelInput` 加一条分支（**不重新 base64**，原样透传 URL）。
+- core：`omnimessage/types.ts` 加 `VideoUrlPayload`、`builders.ts` 加 `videoUrlMessage()`；
+  `llm/generative-model.ts` 加视频预算（`videoOmittedNote` / `isVideoItem` / `countMessageVideos` /
+  `capMessageVideos` / `capHistoryVideos` / 私有的 `fitReplayedVideos`，`maxVideos`，请求处
+  `this.fitReplayedVideos(this.fitReplayedImages(uniMessage))`）；`interfaces/llm.ts` 加 `maxVideos?`；
+  `agent.ts` 按 `entry.video === true || catalogSupportsVideo(…)` 给 `videoLimit = 1`。三处「视频盲区」
+  一并补上：`llm/context-limits.ts` 加 `VIDEO_TOKEN_ESTIMATE = 8192` 与 `approximateMessagesTokens` 的
+  `video_url` 分支（不然 40 MB base64 会被当文本估成上千万 token）、`engine/context-engine.ts` 的
+  `carriesSteering` 认 `video_url`（只有视频的 steering 不再被静默丢掉）。
+- server：`api/types.ts` 的 `TaskInputPart` 加 `{type:"video_url";videoUrl;fileName?}`、`SteerRequest.videos?`、
+  `PendingSteeringInfo.videos`、`RecalledMessageResponse.videos`、`UploadLimits.videoMaxMb`、
+  `ModelInfo.video?`；`services/attachment-limits.ts` 加 `INLINE_VIDEO_MAX_MB = 32`；
+  `services/project-config-service.ts` 组装 `ModelInfo.video`；
+  `http/routes/sessions.ts` 认视频输入（`requireVideoUrl` 给 413 `video_too_large`、`decodeVideoDataUrl`、
+  `videoAttachment`）：模型吃视频就内联，不吃就落 scratchpad 当 `[attached file: …]` 交给模型按路径读，
+  http(s) 地址 + 不吃视频的模型给 400；steer 与 goal 两条路同样处理，错误文案跟着改。
+  `services/context-breakdown.ts`、`services/message-window.ts` 各自加视频分支。
+  **`trace-images.ts` 改名并合并成 `services/trace-media.ts`**（`referableDataUrl` / `traceImageUrl` /
+  `traceVideoUrl` / `withMediaByReference` / `traceRecordMedia`），新增
+  `GET /api/sessions/:id/trace-video`：窗口化翻页的历史页不再把几十兆的 base64 塞进页面，只给一条按引用的
+  地址（图片今天也是这么做的）；`mechanisms/traces.ts` 与 `services/trace-service.ts` 的
+  `readTraceImage` 合成 `readTraceMedia(..., kind)`。
+- cli：`render.ts` 加 `case "video_url"` 画 `> [video]`。
+- web：新增 `lib/video-input.ts`（`ComposerVideo`、`dataUrlBytes`、`videoNameForUrl`、`videoFromUrl`、
+  `appendMediaParts`、`steerVideoFields`）与 `features/chat/queued-summary.ts`；`chat-input.tsx` 的「+」菜单
+  多一项「上传视频」，静音的 `<video>` 首帧当缩略图，按 `videoMaxMb` 预检，普通 / 目标 / steer 三条发送路径
+  与 recall 恢复都带上视频；`chat-page.tsx` 按 `modelInfo?.video === true` 决定它进 `videos` 还是并进
+  `files`；`message-item.tsx` 加 `MessageVideo`（`controls` / `preload="metadata"` / `playsInline`，
+  不自动播放、不静音）；`stream-model.ts` 认 `user_video` 项与 steering 里的视频，去重键把
+  `trace-video` 引用与内联字节看作同一条；`traces/trace-event-row.tsx` 给 `video_url` 一条播放器分支
+  （不加这一条会把整份 base64 倒进那一行）；`file-drop.ts` 拖拽按图片 / 视频 / 文件分三堆；中英文案各补几条。
+- 测试：新增 `packages/server/test/video-input.test.ts`（7 条）、`packages/web/test/video-input.test.ts`、
+  `transcript-videos.test.ts`、`queued-summary.test.ts`；`test/trace-image.test.ts` 改名
+  `trace-media.test.ts` 并扩到视频（27 条）；`messages-page` / `session-manager` / `steer` / `followup` /
+  `messaging` 的断言各补 `videos`。
+
+**③ 两枚真品牌图标**
+
+`packages/ui/src/components/icons/logos/provider-logo.tsx`：`volcengine`（官网页头 logo，viewBox
+`0 0 84.27 75`）与 `abliteration`（`https://abliteration.ai/icon.svg`，viewBox `199 230 602.49 540.46`），
+都压成单色、丢掉字标与底板。
+
+**④ 一个能出片的插件**
+
+`plugins/use-seedance/`（`@adelie/use-seedance` 0.5.6，默认预装）：一个不依赖第三方包的 Node 脚本
+`skills/seedance/kit/seedance.mjs`，走方舟异步出片接口（提交 → 轮询 → 下载并命名文件），读密钥库里的
+`ARK_API_KEY`，`ARK_BASE_URL` 可覆盖；`plugin.json`、`README.md`、`LICENSE`、`icon.svg`、
+`skills/seedance/SKILL.md` 与 8 条自测。登记在 `packages/{core,cli,desktop}/package.json`、
+`plugins/README.md`、两份 `README` 的分类表与 `packages/docs/content/skills.{zh,en}.md`。
+
+另外：`packages/docs/content/models.{zh,en}.md` 补分组表行、卡片上的「视频」标签、一整节「Volcengine Ark
+分组」与 Project 模型表的 `video` 字段；三对 changelog（`2026-10-26-volcengine-ark`、
+`-video-input`、`-seedance-plugin`）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 /
+  590 类型）；`npx oxlint` **0 警告 0 错误**（2297 文件）；`npx prettier --check .` 干净。
+- `pnpm -r test` **`EXIT=0`、0 失败**：core **1421 通过 / 6 跳过**（69 文件 + 1 跳过）· ui **1053**（130）·
+  cli **561**（38）· web **3273 通过 / 2 跳过**（268）· server **2988 通过 / 4 跳过**（204）· docs **62**（8）·
+  amsp **68**（2）· desktop **304**（26）· ui-gallery **140**（20）· `plugins/use-seedance` **8**
+  （桩服务端到端，含「假 key 被拒」与「任务永不完成就放弃」）· 四个 sandbox 插件各 17–32 条。
+- `pnpm -r build` **`EXIT=0`**（六个包 + 画廊全 Done）。
+- **补丁真的接上了**：`pnpm install` 之后 cli / core 链接的是带 `_patch_hash=` 的那份副本
+  （`grep -c video_url node_modules/.pnpm/@prismshadow+agenthub@0.4.15…/dist/openai_chat/client.js` = 3），
+  两个不带补丁的旧副本还留在磁盘上但没有被任何包链接；用真装的 agenthub 组一个 `AutoLLMClient` 实测，
+  带 `video_url` 的消息发出去是方舟要的那个部件形状。
+- 方舟真端点：假 key → **401 `AuthenticationError`**。
+
+### 台账
+
+- 本轮是用户点单，没有清单条目；「已完成的轮次」表行与这一节跟代码同一笔提交，所以那一行的提交号写的是
+  「见本行提交」（照 `9864a187` 那一轮的写法：台账合进本轮自己那一笔）。
+
+### 没做 / 还差什么
+
+- **没在真浏览器里目视播放过一条视频**：这轮的任务面太宽，视频进对话的验证止于单测与服务端接线；
+  真正要走一遍「上传 → 模型看到 → 历史页按引用取回」还得起一次服务 + 真浏览器。
+- **Seedance 没有真的出过一次片**：桩服务端到端 8 条全过、假 key 的 401 与文档一致，但没有用真 `ARK_API_KEY`
+  跑一次真生成（要花钱，且出片慢）。
+- Trace 详情页的 `events` 接口仍会把视频那条记录的几十兆 base64 整份返回（图片今天也是这样，没改成按引用）；
+  真正被按引用取回的是窗口化历史页与轨迹行里的播放器。
+- Agent API（AMSP）还没有视频：协议里 `InputItem` 只有 `text` / `image_url`，`translate.ts` 对不认识的
+  payload 返回空数组，所以「试一下」面板既不会崩、也看不到视频。要支持得先动协议（`amsp/src/types.ts`
+  的联合与投影），这轮没做。
+- abliteration 那枚图标是给已有分组补的，两家图标都按仓库既有办法压成单色；volcengine 那枚双色相邻压成
+  单色后，192 px 下有极细的浅色接缝（小尺寸看不出来）。
+- 现网（`/root/.adelie`）还是 0.5.6 那份构架，本轮改动要等下一版才看得见。
+
+### 汇报
+
+- 校园邮箱这一轮只试一次（`cd …/csu-mail/scripts && timeout 60 python3 mail.py check` **超时**、
+  `RC=124`、无输出）—— 还是 `202.197.0.0/16` 那个网段的问题，不是凭据，不重试。照前几轮改由飞书送达，
+  正文留底在 scratchpad 的 `r117/report.txt`；下一轮开工再探一次。

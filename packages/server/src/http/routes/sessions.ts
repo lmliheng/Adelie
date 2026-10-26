@@ -12,12 +12,14 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import {
   THINKING_LEVEL_NAMES,
+  catalogSupportsVideo,
   imageUrlMessage,
   isValidId,
   scratchpadDir,
   sessionScratchpadDir,
   stripLeadingMarkerBlocks,
   userText,
+  videoUrlMessage,
 } from "@adelie/core";
 import type { OmniMessage } from "@adelie/core";
 import type {
@@ -47,7 +49,7 @@ import type {
 import { compactionThresholdFor } from "../../services/context-breakdown.js";
 import { decodeCursor } from "../../services/message-window.js";
 import type { MessagesPageRequest } from "../../services/trace-service.js";
-import { withImagesByReference } from "../../services/trace-images.js";
+import { withMediaByReference } from "../../services/trace-media.js";
 import { PREVIEW_TOKEN_TTL_MS, resolvePreviewTarget } from "../../services/preview-token.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import type { SessionRow } from "../../db/repos/sessions.js";
@@ -119,6 +121,8 @@ import type { TaskAttachment } from "../../services/task-attachments.js";
 import {
   INLINE_IMAGE_MAX_BYTES,
   INLINE_IMAGE_MAX_MB,
+  INLINE_VIDEO_MAX_BYTES,
+  INLINE_VIDEO_MAX_MB,
   toAttachmentLimits,
 } from "../../services/attachment-limits.js";
 import type { AttachmentLimits } from "../../services/attachment-limits.js";
@@ -343,6 +347,82 @@ function requireImageUrl(url: unknown, field: string): string {
 }
 
 /**
+ * The video-URL rule (`TaskInputPart.video_url`): a base64 `data:video/…` URL the Session
+ * carries inline, or an http(s) URL it references.
+ *
+ * The mime must be a video one, unlike an image's unconstrained `data:` URL: a part declared as
+ * a video is sent to the provider as one, so a data URL carrying, say, a PDF would be a request
+ * the model refuses — better a 400 here that names the field. The size cap is the video one
+ * (larger than an image's ceiling, smaller than the provider's own body limit once base64 has
+ * inflated it: see attachment-limits.ts).
+ */
+const VIDEO_DATA_URL = /^data:video\/[^;,]+;base64,[A-Za-z0-9+/=\s]+$/;
+
+function requireVideoUrl(url: unknown, field: string): string {
+  if (typeof url === "string") {
+    if (url.startsWith("http://") || url.startsWith("https://")) return url;
+    if (VIDEO_DATA_URL.test(url)) {
+      const bytes = dataUrlByteLength(url);
+      if (bytes > INLINE_VIDEO_MAX_BYTES) {
+        throw new HttpError(
+          413,
+          "video_too_large",
+          `${field} exceeds the ${INLINE_VIDEO_MAX_MB}MB inline video limit.`,
+        );
+      }
+      return url;
+    }
+  }
+  throw badRequest(
+    `${field} must be an http(s) URL or a base64 video data: URL (data:video/<type>;base64,<bytes>).`,
+  );
+}
+
+/** The bytes and mime of a validated video data URL (used when the Session's model takes none). */
+function decodeVideoDataUrl(url: string, field: string): { bytes: Buffer; mime: string } {
+  const match = /^data:([^;,]+);base64,([A-Za-z0-9+/=\s]+)$/.exec(url);
+  if (!match) {
+    throw badRequest(`${field} must be a base64 data: URL for the video to be written to disk.`);
+  }
+  return { bytes: Buffer.from(match[2]!, "base64"), mime: match[1]! };
+}
+
+/** The extensions the common video mimes map to, for naming a video that arrived without a name. */
+const VIDEO_MIME_EXTENSIONS: Record<string, string> = {
+  "video/mp4": ".mp4",
+  "video/quicktime": ".mov",
+  "video/webm": ".webm",
+  "video/x-matroska": ".mkv",
+  "video/x-msvideo": ".avi",
+};
+
+/**
+ * File name for a video handed over as a file (a model without video input): the submitted name
+ * when there is one, else a generic one carrying the data URL's own extension so the agent sees
+ * a file it can recognize.
+ */
+function videoFileName(given: unknown, mime: string): string {
+  if (typeof given === "string" && given.length > 0) return given;
+  const ext = VIDEO_MIME_EXTENSIONS[mime.toLowerCase()] ?? "";
+  return `video${ext || ".mp4"}`;
+}
+
+/**
+ * A video handed over as a file, for a Session whose model takes no video input: the same
+ * `TaskAttachment` a `{type:"file"}` part builds, from the video part's data URL — so the clip
+ * lands in the scratchpad and reaches the model as an `[attached file: <path>]` line like any
+ * other attachment, and a draft written for a video model still sends to a text one.
+ *
+ * An http(s) URL is refused here rather than half-honoured: the point of the file path is to
+ * put bytes on disk, and there is nothing to write. The 400 says which of the two the caller
+ * should send instead.
+ */
+function videoAttachment(url: string, given: unknown, field: string): TaskAttachment {
+  const { bytes, mime } = decodeVideoDataUrl(url, field);
+  return { fileName: videoFileName(given, mime), bytes, mime };
+}
+
+/**
  * Decoded byte length of a base64 data URL, computed from the payload's length rather than by
  * decoding it: the point is to reject an oversize image *before* materializing it as a Buffer.
  * Whitespace and padding are discounted, so the result is the file's real size.
@@ -389,10 +469,25 @@ interface ParsedTaskInput {
   texts: string[];
   /** The `image_url` parts in order, as submitted — the recall store's images. */
   images: string[];
+  /** The `video_url` parts in order, as submitted — the recall store's videos (inline ones only). */
+  videos: string[];
 }
 
-/** Validate Prompt input parts: text, image (data: / http(s) URL), or an uploaded file. */
-function parseTaskInput(body: Record<string, unknown>, limits: AttachmentLimits): ParsedTaskInput {
+/**
+ * Validate Prompt input parts: text, image (data: / http(s) URL), video (same, when the
+ * Session's model takes one) or an uploaded file.
+ *
+ * `videoInput` = whether the Session's model takes video input (core's
+ * `catalogSupportsVideo`, matching what the model entry is built with). A `video_url` part is
+ * accepted either way, but only rides inline when it is true: on any other model the clip is
+ * turned into an ordinary file attachment, so one composer draft is sendable to either kind of
+ * model and the user is not left to guess which one they are talking to.
+ */
+function parseTaskInput(
+  body: Record<string, unknown>,
+  limits: AttachmentLimits,
+  videoInput: boolean,
+): ParsedTaskInput {
   const input = body.input;
   if (!Array.isArray(input) || input.length === 0) {
     throw badRequest("input must be an array with at least one item.");
@@ -401,6 +496,7 @@ function parseTaskInput(body: Record<string, unknown>, limits: AttachmentLimits)
   const attachments: TaskAttachment[] = [];
   const texts: string[] = [];
   const images: string[] = [];
+  const videos: string[] = [];
   input.forEach((item, i) => {
     if (item === null || typeof item !== "object" || Array.isArray(item)) {
       throw badRequest(`input[${i}] must be an object.`);
@@ -420,6 +516,19 @@ function parseTaskInput(body: Record<string, unknown>, limits: AttachmentLimits)
       images.push(url);
       return;
     }
+    if (part.type === "video_url") {
+      const url = requireVideoUrl(part.videoUrl, `input[${i}].videoUrl`);
+      if (videoInput) {
+        messages.push(videoUrlMessage(url));
+        videos.push(url);
+      } else {
+        // Not an OmniMessage: the clip becomes an attachment, which attachFilesToInput writes
+        // to the scratchpad and turns into an `[attached file: <path>]` line on the text.
+        attachments.push(videoAttachment(url, part.fileName, `input[${i}].videoUrl`));
+        assertAttachmentBudget(attachments, limits);
+      }
+      return;
+    }
     if (part.type === "file") {
       // Not an OmniMessage of its own: the file becomes an `[attached file: …]` line on the
       // text message once written to the scratchpad, so it carries no payload into the run.
@@ -429,9 +538,9 @@ function parseTaskInput(body: Record<string, unknown>, limits: AttachmentLimits)
       assertAttachmentBudget(attachments, limits);
       return;
     }
-    throw badRequest(`input[${i}].type must be one of text / image_url / file.`);
+    throw badRequest(`input[${i}].type must be one of text / image_url / video_url / file.`);
   });
-  return { messages, attachments, texts, images };
+  return { messages, attachments, texts, images, videos };
 }
 
 /**
@@ -442,12 +551,14 @@ function parseTaskInput(body: Record<string, unknown>, limits: AttachmentLimits)
 function recallStore(
   text: string,
   images: string[],
+  videos: string[],
   attachments: TaskAttachment[],
   written: string[],
 ): RecallStore {
   return {
     text,
     images,
+    videos,
     files: written.map((p, i) => ({
       fileName: attachments[i]!.fileName,
       path: p,
@@ -459,12 +570,13 @@ function recallStore(
 /**
  * Serve one recall (#287): read the withdrawn message's file attachments back into data URLs,
  * delete their scratchpad copies (nothing references them anymore — leaving them would strand
- * a second copy when the user resends), and hand the composer-shaped content back.
+ * a second copy when the user resends), and hand the composer-shaped content back. Inline
+ * images and videos need no round trip: the store already holds them as submitted.
  */
 async function recalledResponse(recall: RecallStore): Promise<RecalledMessageResponse> {
   const files = await readRecalledFiles(recall.files);
   await removeAttachments(recall.files.map((f) => f.path));
-  return { text: recall.text, images: recall.images, files };
+  return { text: recall.text, images: recall.images, videos: recall.videos, files };
 }
 
 /**
@@ -476,6 +588,25 @@ function parseSteerImages(body: Record<string, unknown>): string[] {
   if (images === undefined) return [];
   if (!Array.isArray(images)) throw badRequest("images must be an array.");
   return images.map((url, i) => requireImageUrl(url, `images[${i}]`));
+}
+
+/**
+ * Validate the optional `videos` field of a steer request: the same rule and cap as a task
+ * input's `videoUrl` part, absent or empty = no video. Only meaningful on a Session whose
+ * model takes video input — on any other model the caller sends the clip through `files`,
+ * where it reaches the model as an `[attached file: <path>]` line. An inline one arriving
+ * anyway is a 400 that says so, rather than a request the provider would refuse.
+ */
+function parseSteerVideos(body: Record<string, unknown>, videoInput: boolean): string[] {
+  const videos = body.videos;
+  if (videos === undefined) return [];
+  if (!Array.isArray(videos)) throw badRequest("videos must be an array.");
+  if (!videoInput) {
+    throw badRequest(
+      "This Session's model takes no video input; send the video as a file attachment instead.",
+    );
+  }
+  return videos.map((url, i) => requireVideoUrl(url, `videos[${i}]`));
 }
 
 /**
@@ -1072,7 +1203,7 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
   });
 
   // One image of one Trace record, the URL a windowed history page puts in place of an
-  // inline data URL (services/trace-images.ts). The record never changes, so the answer is
+  // inline data URL (services/trace-media.ts). The record never changes, so the answer is
   // immutable; only inert raster types are ever served (the page references nothing else).
   app.get("/:sessionId/trace-image", async (c) => {
     const row = resolveSession(c);
@@ -1090,16 +1221,44 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     if (fileIndex === undefined || ordinal === undefined) {
       throw badRequest("file and ordinal are required.");
     }
-    const image = await deps.traceService.readTraceImage(
+    const image = await deps.traceService.readTraceMedia(
       row.projectId,
       row.agentId,
       row.sessionId,
       fileIndex,
       ordinal,
       intQuery("i", 0),
+      "image",
     );
     return c.body(new Uint8Array(image.bytes), 200, {
       "content-type": image.mime,
+      "x-content-type-options": "nosniff",
+      "cache-control": "private, max-age=31536000, immutable",
+    });
+  });
+
+  // One video of one Trace record, the same reference scheme as trace-image above and for the
+  // same page budget: a minute of video is tens of megabytes of base64, which a message page
+  // would otherwise have to read out of the Trace whole. Served with the video types the task
+  // route accepts, so the browser plays it from its own origin.
+  app.get("/:sessionId/trace-video", async (c) => {
+    const row = resolveSession(c);
+    const fileIndex = parseNonNegativeInt(c.req.query("file") ?? "");
+    const ordinal = parseNonNegativeInt(c.req.query("ordinal") ?? "");
+    if (fileIndex === null || fileIndex < 1 || ordinal === null) {
+      throw badRequest("file (at least 1) and ordinal are required.");
+    }
+    const video = await deps.traceService.readTraceMedia(
+      row.projectId,
+      row.agentId,
+      row.sessionId,
+      fileIndex,
+      ordinal,
+      undefined,
+      "video",
+    );
+    return c.body(new Uint8Array(video.bytes), 200, {
+      "content-type": video.mime,
       "x-content-type-options": "nosniff",
       "cache-control": "private, max-age=31536000, immutable",
     });
@@ -1171,7 +1330,7 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
       // Images by reference, after the held inputs were merged: the dedup compares raw
       // envelopes, and a held input carries its image inline exactly as its Trace copy does.
       const messages = appendPendingInputs(result.messages, pendingInputs).map((m) =>
-        withImagesByReference(row.sessionId, m),
+        withMediaByReference(row.sessionId, m),
       );
       return c.json({
         messages,
@@ -1236,13 +1395,17 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     // Resolved per request from the admin settings, so a limit change applies to the very next
     // upload rather than at the next restart.
     const limits = toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb());
+    // Whether the Session's model takes video input decides how a `video_url` part travels:
+    // inline on a video model, as an ordinary file attachment on any other (see
+    // parseTaskInput). Read from the same catalog the model entry is built from.
+    const videoInput = catalogSupportsVideo(row.provider, row.modelId);
     if (goal) {
       // Goal mode: the input needs non-empty text, since its marker-stripped text becomes the
       // objective that every round re-injects and an image on its own doesn't say what the
       // goal is. Images ride round 1 as ordinary input. File attachments cannot: nothing
       // folds them into the objective, so they are turned away here, before any upload is
       // written to disk.
-      const { messages, attachments } = parseTaskInput(body, limits);
+      const { messages, attachments } = parseTaskInput(body, limits, videoInput);
       const text = messages
         .filter((m) => (m.payload as { type?: string }).type === "text")
         .map((m) => (m.payload as { text: string }).text)
@@ -1252,7 +1415,7 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
         throw badRequest("goal mode requires a non-empty text objective.");
       }
       if (attachments.length > 0) {
-        throw badRequest("goal mode accepts text and images only (no file attachments).");
+        throw badRequest("goal mode accepts text, images and videos only (no file attachments).");
       }
       // The goal plugin owns the protocol — its user_prompt hook writes the goal file and
       // composes round 1, its stop hook drives every later round; the manager runs the
@@ -1265,7 +1428,7 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
       });
       return c.json({ sessionId } satisfies TaskCreateResponse, 202);
     }
-    const parsed = parseTaskInput(body, limits);
+    const parsed = parseTaskInput(body, limits, videoInput);
     // Follow-up queue: with queueIfBusy, a busy session enqueues the input instead of 409
     // (auto-starts as an ordinary next task once idle; the response says which happened).
     const queueIfBusy = body.queueIfBusy === true;
@@ -1292,7 +1455,13 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
         queueIfBusy,
         // Original content, kept while the input waits in the follow-up queue so a recall
         // (DELETE /follow-ups/:id) can hand it back; unused when the task starts directly.
-        recall: recallStore(parsed.texts.join("\n"), parsed.images, parsed.attachments, written),
+        recall: recallStore(
+          parsed.texts.join("\n"),
+          parsed.images,
+          parsed.videos,
+          parsed.attachments,
+          written,
+        ),
       });
       return c.json({ sessionId, queued } satisfies TaskCreateResponse, 202);
     } catch (err) {
@@ -1314,14 +1483,17 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     const body = await readJson(c);
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const images = parseSteerImages(body);
+    // Inline video only where the model takes it: a mid-run message has no model picker of
+    // its own, so the same catalog answer the Session was built with decides.
+    const videos = parseSteerVideos(body, catalogSupportsVideo(row.provider, row.modelId));
     const files = parseSteerFiles(
       body,
       toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb()),
     );
     // Any part can carry the message on its own: an image or a file with no caption is a
     // complete steering message, and so is plain text.
-    if (!text && images.length === 0 && files.length === 0) {
-      throw badRequest("text, images or files must carry the steering message.");
+    if (!text && images.length === 0 && videos.length === 0 && files.length === 0) {
+      throw badRequest("text, images, videos or files must carry the steering message.");
     }
     // The wire shape becomes core's: a user text message (omitted when the images are the
     // whole message, so the fold's path lines aren't preceded by a blank one) plus one image
@@ -1329,13 +1501,17 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     // Session scratchpad exactly as a task's do and ride as `[attached file: <path>]` lines
     // on the steering text (a files-only input becomes a line-only text message).
     const { input, written } = await attachFilesToInput(
-      [...(text ? [userText(text)] : []), ...images.map((url) => imageUrlMessage(url))],
+      [
+        ...(text ? [userText(text)] : []),
+        ...images.map((url) => imageUrlMessage(url)),
+        ...videos.map((url) => videoUrlMessage(url)),
+      ],
       files,
       scratchpadDir(deps.config.root, row.projectId, row.agentId),
       row.sessionId,
     );
     try {
-      deps.manager.steer(row.sessionId, input, recallStore(text, images, files, written));
+      deps.manager.steer(row.sessionId, input, recallStore(text, images, videos, files, written));
     } catch (err) {
       // 409 (not running) or any other refusal: the files must not stay behind — the
       // frontend falls back to a normal task POST, which writes its own copies.

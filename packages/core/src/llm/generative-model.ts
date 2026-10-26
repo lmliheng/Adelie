@@ -134,6 +134,8 @@ function payloadToContentItem(payload: CompleteModelPayload): ContentItem {
       };
     case "image_url":
       return { type: "image_url", image_url: payload.image_url };
+    case "video_url":
+      return { type: "video_url", video_url: payload.video_url };
     case "inline_data":
       return {
         type: "inline_data",
@@ -333,6 +335,87 @@ export function capHistoryImages(
       continue;
     }
     capped[i] = capMessageImages(msg, left, limit);
+    left = Math.max(0, left - count);
+  }
+  return capped;
+}
+
+// ---------------------------------------------------------------------------
+// Video budget (a request may carry only so many videos)
+// ---------------------------------------------------------------------------
+
+/**
+ * The stand-in left where a video was dropped from a request — one text item in the place the
+ * video occupied, so the model can tell a gap from its own omission. The reason is the body
+ * size rather than a published count: a video is megabytes of base64, and a provider takes at
+ * most one request body of it, so a conversation that replays two videos is refused outright.
+ */
+export function videoOmittedNote(limit: number): string {
+  return `[video omitted: this request carries at most ${limit} video${limit === 1 ? "" : "s"}]`;
+}
+
+/** Whether a content item is a video the request counts. */
+function isVideoItem(item: ContentItem): boolean {
+  return item.type === "video_url";
+}
+
+/** How many videos one UniMessage carries. */
+export function countMessageVideos(msg: UniMessage): number {
+  let count = 0;
+  for (const item of msg.content_items) {
+    if (isVideoItem(item)) count += 1;
+  }
+  return count;
+}
+
+/**
+ * Keeps at most `budget` of a message's videos, **the newest ones**, and replaces each older
+ * one with {@link videoOmittedNote}. A message that fits is returned as-is (same object).
+ */
+function capMessageVideos(msg: UniMessage, budget: number, limit: number): UniMessage {
+  if (countMessageVideos(msg) <= budget) return msg;
+  const note = videoOmittedNote(limit);
+  let left = budget;
+  const kept: ContentItem[] = [];
+  // Newest first, as the image budget does: the video nearest the current request is the one
+  // worth paying for.
+  for (let i = msg.content_items.length - 1; i >= 0; i -= 1) {
+    const item = msg.content_items[i]!;
+    if (isVideoItem(item)) {
+      if (left > 0) {
+        left -= 1;
+        kept.push(item);
+      } else {
+        kept.push({ type: "text", text: note });
+      }
+      continue;
+    }
+    kept.push(item);
+  }
+  return { ...msg, content_items: kept.reverse() };
+}
+
+/**
+ * Trims a replayed history so it carries at most `budget` videos in aggregate, newest kept
+ * (see {@link capMessageVideos}). Returns a new array of the same length whose untouched
+ * messages are the very objects it was handed.
+ */
+export function capHistoryVideos(
+  history: UniMessage[],
+  budget: number,
+  limit: number = budget,
+): UniMessage[] {
+  const counts = history.map(countMessageVideos);
+  const capped = new Array<UniMessage>(history.length);
+  let left = budget;
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const msg = history[i]!;
+    const count = counts[i]!;
+    if (count === 0) {
+      capped[i] = msg;
+      continue;
+    }
+    capped[i] = capMessageVideos(msg, left, limit);
     left = Math.max(0, left - count);
   }
   return capped;
@@ -1075,6 +1158,8 @@ export class GenerativeModel implements LLMInterface {
   private readonly configuredMaxTokens: number | undefined;
   /** Per-request image cap (`GenerativeModelConfig.maxImages`); undefined = the seller publishes none (see fitReplayedImages). */
   private readonly maxImages: number | undefined;
+  /** Per-request video cap (`GenerativeModelConfig.maxVideos`); undefined = the session's model takes no video (see fitReplayedVideos). */
+  private readonly maxVideos: number | undefined;
   /** Model context window; `undefined` when unconfigured (or implausibly small, see resolveContextWindow) — the per-request clamp then disables itself rather than clamp against an assumption. */
   private readonly contextWindow: number | undefined;
   /**
@@ -1130,6 +1215,10 @@ export class GenerativeModel implements LLMInterface {
     this.maxImages =
       config.maxImages !== undefined && config.maxImages > 0
         ? Math.floor(config.maxImages)
+        : undefined;
+    this.maxVideos =
+      config.maxVideos !== undefined && config.maxVideos > 0
+        ? Math.floor(config.maxVideos)
         : undefined;
     this.contextWindow = resolveContextWindow(config.contextWindow);
     this.baseInputTokens =
@@ -1321,7 +1410,7 @@ export class GenerativeModel implements LLMInterface {
       // replayed ones — and, when the input alone overflows, the input's own oldest ones — are
       // dropped from THIS request (the history and Trace keep them).
       const it = this.openStream(
-        this.fitReplayedImages(uniMessage),
+        this.fitReplayedVideos(this.fitReplayedImages(uniMessage)),
         ac.signal,
         this.requestConfig(params.thinkingLevel, params.newMessages),
       )[Symbol.asyncIterator]();
@@ -1522,6 +1611,28 @@ export class GenerativeModel implements LLMInterface {
     const total = history.reduce((sum, msg) => sum + countMessageImages(msg), 0);
     if (total <= budget) return carried;
     this.client.setHistory(capHistoryImages(history, budget, limit));
+    return carried;
+  }
+
+  /**
+   * Trims a request so it carries at most `maxVideos` videos in all, newest kept — the video
+   * counterpart of {@link fitReplayedImages}, and needed for a harder reason than the seller's
+   * count: a provider takes one request body (Ark caps it at 64 MB) and a video is megabytes of
+   * base64, so a conversation replaying two videos would be refused for good once its history
+   * grows past the cap. Input first, then the replayed history, exactly as the image budget
+   * does it. Nothing happens without a cap, or when everything already fits.
+   */
+  private fitReplayedVideos(input: UniMessage): UniMessage {
+    const limit = this.maxVideos;
+    if (limit === undefined) return input;
+    const carried =
+      countMessageVideos(input) > limit ? capMessageVideos(input, limit, limit) : input;
+    const budget = Math.max(0, limit - countMessageVideos(carried));
+    const history = this.client.getHistory();
+    if (history.length === 0) return carried;
+    const total = history.reduce((sum, msg) => sum + countMessageVideos(msg), 0);
+    if (total <= budget) return carried;
+    this.client.setHistory(capHistoryVideos(history, budget, limit));
     return carried;
   }
 

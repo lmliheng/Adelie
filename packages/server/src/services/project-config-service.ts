@@ -1167,6 +1167,11 @@ export class ProjectConfigService implements ProjectConfigStore {
         const fallback = modelEnvFallback({ provider, modelId, clientType, baseUrl: credBaseUrl });
         const envKey = fallback?.envKey;
         const vision = typeof m.vision === "boolean" ? m.vision : cat?.supportsVision;
+        // Video input: the annotation when one is stored, otherwise the catalog — read through
+        // the catalog exactly as core's `catalogSupportsVideo` does it, so the composer's
+        // decision (inline video, or a file the model opens by path) is the same one the
+        // server's own routes make for the same Session.
+        const video = m.video === true || cat?.supportsVideo === true ? true : undefined;
         // Output cap: TOML annotation only (user-owned; the built-in catalog never presets it).
         const maxTokens = optNum(m.max_tokens);
         // Fast mode: TOML annotation only (user-owned); only `true` is reported — absent = off.
@@ -1212,6 +1217,7 @@ export class ProjectConfigService implements ProjectConfigStore {
             : {}),
           ...(clientType ? { clientType } : {}),
           ...(vision !== undefined ? { vision } : {}),
+          ...(video !== undefined ? { video } : {}),
           ...(maxTokens !== undefined ? { maxTokens } : {}),
           ...(fastMode !== undefined ? { fastMode } : {}),
           ...(envKey ? { envKey } : {}),

@@ -117,6 +117,22 @@ describe("approximateMessagesTokens", () => {
     expect(approximateMessagesTokens([twoImages])).toBeLessThan(3400);
     expect(approximateMessagesTokens([twoImages])).toBeGreaterThan(3200 - 1);
   });
+  it("gives video payloads a flat allowance too, megabytes of base64 and all", () => {
+    // A video data URL is tens of MB: counting its characters would put one clip past the
+    // window of most models, so it gets the video allowance and the rest of the estimate
+    // stays where it was.
+    const video = {
+      type: "model_msg",
+      payload: {
+        type: "video_url",
+        role: "user",
+        video_url: `data:video/mp4;base64,${"A".repeat(32 * 1024 * 1024)}`,
+      },
+    } as unknown as OmniMessage;
+    const est = approximateMessagesTokens([video]);
+    expect(est).toBeLessThan(9000);
+    expect(est).toBeGreaterThan(8000);
+  });
 });
 
 describe("effectiveMaxOutputTokens (per-request output clamp)", () => {

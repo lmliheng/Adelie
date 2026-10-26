@@ -3441,8 +3441,12 @@ export const zh = {
     reconnectGiveUp: "放弃",
     imageAlt: "用户上传的图片",
     toolImageAlt: "工具输出的图片",
+    /** Accessible name of a video the person sent (a `<video>` has no `alt`; this is its label). */
+    videoLabel: "用户上传的视频",
     imagesAsPathHint:
       "当前模型不支持直接查看图片：发送时图片将保存到会话临时目录，以文件路径转交（模型经 read_file 查看）",
+    videosAsPathHint:
+      "当前模型不支持直接观看视频：发送时视频将保存到会话临时目录，以文件路径转交（模型经 read_file 查看）",
     infoPanel: "Session 信息",
     sessionStats: "统计",
     /** Info-dropdown Session id row: the id itself is a click-to-copy button. */
@@ -3485,11 +3489,13 @@ export const zh = {
     historyLoadFailed: "历史消息加载失败",
     statsLabel: "统计信息",
     removeImage: "移除图片",
+    removeVideo: "移除视频",
     openAgents: "智能体面板",
     workspacePanel: "文件浏览",
     /** File summary card at the end of a message (Codex-style): title, inline preview action, and collapsed row. */
     filesInMessage: (n: number) => `${n} 个文件`,
     imagesInMessage: (n: number) => `${n} 张图片`,
+    videosInMessage: (n: number) => `${n} 个视频`,
     openPreview: "点击预览",
     showMoreFiles: (n: number) => `显示其余 ${n} 个文件`,
     showLess: "收起",
@@ -3738,10 +3744,12 @@ export const zh = {
     skillsBanner: (names: string[]): string => `使用技能：${names.join("、")}`,
     /** Attached-file notice above a user message (file names only; the paths stay in the Trace). */
     attachedFilesBanner: (names: string[]): string => `附加文件：${names.join("、")}`,
-    /** Composer "+" extension menu (image upload, file attachment, goal mode) and the goal chip. */
+    /** Composer "+" extension menu (image upload, video upload, file attachment, goal mode) and the goal chip. */
     plusMenu: "更多输入方式",
     uploadImage: "上传图片",
     uploadImageDesc: "为本条消息附加图片",
+    uploadVideo: "上传视频",
+    uploadVideoDesc: "为本条消息附加视频",
     uploadFile: "上传文件",
     uploadFileDesc: "文件存入会话临时目录，模型按路径读取",
     removeFile: "移除文件",
@@ -3753,9 +3761,9 @@ export const zh = {
       `${name} 超过 ${limitMb}MB 上限，未添加。`,
     /** Overlay covering the chat area while files are dragged over it (drag-and-drop upload). */
     dropFilesTitle: "松开以添加附件",
-    dropFilesDesc: "图片与文件将添加到输入框",
-    /** Toast when non-image files are dropped in goal mode (the objective carries images only). */
-    dropFilesGoalHint: "目标模式仅支持附加图片，文件未添加。",
+    dropFilesDesc: "图片、视频与文件将添加到输入框",
+    /** Toast when non-image, non-video files are dropped in goal mode (the objective carries images and videos only). */
+    dropFilesGoalHint: "目标模式仅支持附加图片与视频，文件未添加。",
     /** A paste too long for the text box, attached as a text file instead. */
     longPasteAttached: (name: string): string => `粘贴的文本较长，已作为附件 ${name} 添加。`,
     goalMode: "目标模式",

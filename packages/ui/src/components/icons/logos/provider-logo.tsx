@@ -30,6 +30,13 @@
  * currentColor like the rest of this set, and iFlytek the emblem of its site
  * logo (iflytek.com) with the wordmark beside it dropped and the ink cropped to
  * the mark.
+ *
+ * Volcengine (火山引擎, ByteDance) and Abliteration likewise carry their own
+ * marks rather than a tile: Volcengine the five peaks of its site logo
+ * (volcengine.com) with the Chinese wordmark dropped, its cyan/blue brand
+ * colours flattened to currentColor; Abliteration the three strokes of its site
+ * icon (abliteration.ai/icon.svg) with the pale square behind them dropped. Both
+ * viewBoxes are cropped to the mark's ink.
  */
 import type { ReactNode } from "react";
 import { avatarInitial, avatarTile } from "../avatars/avatar";
@@ -202,6 +209,36 @@ const GLYPHS: Record<string, Glyph> = {
     viewBox: "0 0 38.79 33.06",
     path: (
       <path d="M22.8325 14.1634L17.2409 5.89542H16.0581H15.0544L16.0222 7.33333L21.6855 15.7091C21.5063 15.9608 21.3629 16.2124 21.1837 16.4641L21.0762 16.6438L16.0222 9.20261L13.9433 6.11111C14.6601 5.46405 15.377 4.81699 16.0581 4.27778C19.2482 1.5817 21.7931 0 21.7931 0C21.2554 0.287582 20.7178 0.611111 20.2159 0.93464C18.7105 1.79739 17.3484 2.66013 16.0222 3.52288C14.8394 4.31373 13.7282 5.10457 12.6887 5.93137H11.6134L11.9719 6.47059C11.721 6.68627 11.47 6.86601 11.2191 7.0817L10.4306 5.93137H8.27995L9.85707 8.26797C5.054 12.5098 2.32987 16.6078 1.03949 19.9869C-0.465946 23.9412 0.0358671 26.4935 0.25093 27.2843C0.573524 28.4706 1.14703 29.4052 1.8639 30.1961C5.34075 34.1144 11.3267 33.3235 16.0581 31.8137L16.2373 31.7418C20.3952 30.4118 23.6928 28.3987 23.6928 28.3987C21.112 29.6928 18.4954 30.7353 16.0581 31.3464C10.1797 32.8203 5.19738 31.9216 3.51272 26.9248L3.44103 26.7091C3.19012 25.5948 3.15428 24.3366 3.47687 22.5752C4.40881 17.6144 7.41969 13.085 10.6815 9.45425L16.0222 17.2549L18.5313 20.9575C17.8144 22 16.99 23.1144 16.0222 24.2288C13.6565 26.8889 10.3947 29.3693 6.16516 30.232C6.16516 30.232 11.0041 30.6634 16.0222 28.2549C18.3162 27.1765 20.6461 25.4869 22.5458 22.8987L27.5281 30.232H29.6787L23.6211 21.281C23.7286 21.1013 23.8003 20.9575 23.9079 20.7778C23.9795 20.6699 24.0512 20.5261 24.1588 20.3464L30.8616 30.1961H33.0122L25.1265 18.6569C25.3058 18.3333 25.5208 18.0098 25.7359 17.6863L34.3026 30.232H36.4532L26.8112 16.1046C29.4995 12.1863 33.5857 7.26144 37.8153 6.11111C38.1737 6.00327 37.9586 6.07516 38.783 5.85948C37.4568 5.57189 29.141 5.96732 22.8325 14.1634ZM19.6066 19.3039L16.0581 14.0915L11.936 8.08823C12.1511 7.8366 12.402 7.62091 12.617 7.36928L16.0222 12.366L20.1084 18.3693C19.965 18.6569 19.7858 18.9804 19.6066 19.3039Z" />
+    ),
+  },
+  volcengine: {
+    // The Volcengine emblem (火山引擎, ByteDance's cloud and AI platform): the five peaks of the
+    // vendor's own site logo (www.volcengine.com, logo-theme-light.svg on its lf3-static.bytednsdoc.com
+    // asset host), with the 火山引擎 wordmark beside them left out, the cyan/blue brand colours
+    // flattened to currentColor like vLLM's two colours above, and the viewBox cropped to the mark's
+    // ink. At 1.12:1 it letterboxes top and bottom in a square box, as the other wide marks do.
+    viewBox: "0 0 84.27 75",
+    path: (
+      <>
+        <path d="M34.82,28.93l-14.97,46.07h32.16l-14.97-46.07c-.35-1.08-1.88-1.08-2.23,0Z" />
+        <path d="M12.83,42.36c-.35-1.08-1.88-1.08-2.23,0L0,75h9.42l7.01-21.57-3.59-11.06Z" />
+        <path d="M29.52,20c-.35-1.08-1.88-1.08-2.23,0l-17.87,55h10.43l13.77-42.37-4.1-12.63Z" />
+        <path d="M71.73,36.43c-.35-1.08-1.88-1.08-2.23,0l-3.55,10.94,8.98,27.63h9.34l-12.53-38.57Z" />
+        <path d="M50.82.81c-.35-1.08-1.88-1.08-2.23,0l-10.34,31.82,13.77,42.37h22.9L50.82.81Z" />
+      </>
+    ),
+  },
+  abliteration: {
+    // Abliteration's mark (abliteration.ai): the three strokes of the site's own icon
+    // (abliteration.ai/icon.svg), its pale square backdrop dropped and the viewBox cropped to the
+    // ink, flattened to one currentColor shape like the rest of this set.
+    viewBox: "199 230 602.49 540.46",
+    path: (
+      <>
+        <path d="M282.521 230H199V770.458H282.521V230Z" />
+        <path d="M801.487 230H712.348L501.571 740.998L489.954 770.458H577.195L788.58 261.434L801.487 230Z" />
+        <path d="M506.281 230H422.533L346.528 758.613L344.706 770.458H428.151L502.029 257.942L506.281 230Z" />
+      </>
     ),
   },
   fireworks: {

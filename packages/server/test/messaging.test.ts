@@ -3557,6 +3557,7 @@ describe("a message carrying several files", () => {
     expect(await res.json()).toEqual({
       text: "look at this",
       images: [],
+      videos: [],
       // No media type rides an inbound file, so the recall re-encodes it as the generic one.
       files: [{ fileName: "notes.txt", dataUrl: "data:application/octet-stream;base64,aGk=" }],
     });

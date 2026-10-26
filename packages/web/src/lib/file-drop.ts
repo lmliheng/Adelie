@@ -9,8 +9,9 @@
  *     reason) and dragged page images must never light the overlay;
  *   - what the chat area's drop zone should do with one drag event (`dropRegionAction`) —
  *     show the overlay, claim the drag, take the files, or stand aside;
- *   - which staged intake a dropped file belongs to (`splitDroppedFiles`) — images join the
- *     pasted-image pipeline, everything else joins the file-attachment pipeline;
+ *   - which staged intake a dropped file belongs to (`splitMediaFiles`) — images join the
+ *     pasted-image pipeline, videos the video one, everything else joins the file-attachment
+ *     pipeline;
  *   - the app-shell fallback (`guardWindowDragOver` / `guardWindowDrop`) — anywhere no drop
  *     zone claimed the drag, the browser's default is to navigate to the dropped file,
  *     silently replacing the app; the guard cancels that default for file drags only, so
@@ -106,20 +107,26 @@ export function dropRegionAction(
 }
 
 /**
- * Splits one dropped batch into the composer's two intakes, preserving drop order within
- * each: images ride the message as `image_url` parts exactly like pasted images, everything
- * else becomes a file attachment (scratchpad + `[attached file: <path>]` line). Generic over
- * "has a MIME type" so tests don't need a DOM `File`.
+ * Splits one batch by MIME kind, preserving order within each side: images ride the message as
+ * `image_url` parts exactly like pasted images, videos as `video_url` parts (the third intake — a
+ * dropped or pasted clip is staged like an image, sized like neither), everything else becomes a
+ * file attachment (scratchpad + `[attached file: <path>]` line). The drop zone's partition is the
+ * composer's own for every entry point — paste and the two "+" pickers call it too — so a file of
+ * one kind cannot be routed two ways depending on how it arrived. Generic over "has a MIME type" so
+ * tests don't need a DOM `File`.
  */
-export function splitDroppedFiles<T extends { readonly type: string }>(
-  dropped: readonly T[],
-): { images: T[]; files: T[] } {
+export function splitMediaFiles<T extends { readonly type: string }>(
+  dropped: Iterable<T>,
+): { images: T[]; videos: T[]; files: T[] } {
   const images: T[] = [];
+  const videos: T[] = [];
   const files: T[] = [];
   for (const item of dropped) {
-    (item.type.startsWith("image/") ? images : files).push(item);
+    if (item.type.startsWith("image/")) images.push(item);
+    else if (item.type.startsWith("video/")) videos.push(item);
+    else files.push(item);
   }
-  return { images, files };
+  return { images, videos, files };
 }
 
 /**

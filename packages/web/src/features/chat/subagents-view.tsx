@@ -475,6 +475,9 @@ function SubagentComposer({
           {...(contextWindow !== undefined ? { contextWindow } : {})}
           contextNow={contextNow}
           vision={false}
+          // A child's composer takes text only (see the subagent variant): no media intake at all,
+          // so it never needs a video route either.
+          video={false}
           approvalMode={approvalMode}
           approvalModes={approvalModes}
           sandbox={sandbox}

@@ -4,8 +4,8 @@
  * assistant's reply — for the left quick-jump index. Also owns the outline's display
  * math: the minimum-turns gate both shapes share and the tick rail's sliding window.
  *
- * Entry boundaries: a turn opens at a user prompt (user_text / user_image) and collects
- * every assistant_text that follows until the next prompt. Consecutive user items merge
+ * Entry boundaries: a turn opens at a user prompt (user_text / user_image / user_video) and
+ * collects every assistant_text that follows until the next prompt. Consecutive user items merge
  * into one entry (a prompt's text and images arrive as separate adjacent items — they are
  * one question, not several). Machine-only texts never open an entry: handoff /
  * model-switch source blocks render as banners with no user prose, and goal rounds past 1
@@ -113,7 +113,7 @@ export function buildOutline(items: readonly ChatItem[]): OutlineEntry[] {
   let current: OutlineEntry | null = null;
   let lastWasUser = false;
   for (const item of items) {
-    if (item.kind === "user_text" || item.kind === "user_image") {
+    if (item.kind === "user_text" || item.kind === "user_image" || item.kind === "user_video") {
       let body = "";
       if (item.kind === "user_text") {
         const parsed = parseUserMessageBody(item.text);

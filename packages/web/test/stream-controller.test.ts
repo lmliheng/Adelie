@@ -247,11 +247,14 @@ describe("in-stream task_state is the authoritative running state (history-closi
     h.controller.handleServer({
       type: "task_state",
       state: "running",
-      pendingSteering: [{ id: "st-1", text: "hold on", images: 0, files: 1 }],
+      pendingSteering: [{ id: "st-1", text: "hold on", images: 0, videos: 1, files: 1 }],
     });
     // A later event without the field means "none left" — reported as empty, not skipped.
     h.controller.handleServer({ type: "task_state", state: "running" });
-    expect(h.pendingSteering).toEqual([[{ id: "st-1", text: "hold on", images: 0, files: 1 }], []]);
+    expect(h.pendingSteering).toEqual([
+      [{ id: "st-1", text: "hold on", images: 0, videos: 1, files: 1 }],
+      [],
+    ]);
   });
 
   it("reports steering the run handed back, so the composer can take it into its draft", async () => {
@@ -261,11 +264,14 @@ describe("in-stream task_state is the authoritative running state (history-closi
     h.controller.handleServer({
       type: "task_state",
       state: "idle",
-      returnedSteering: [{ id: "st-1", text: "wait", images: 0, files: 1 }],
+      returnedSteering: [{ id: "st-1", text: "wait", images: 0, videos: 0, files: 1 }],
     });
     // Once the composer has taken it, the next event omits the field — reported as empty.
     h.controller.handleServer({ type: "task_state", state: "idle" });
-    expect(h.returnedSteering).toEqual([[{ id: "st-1", text: "wait", images: 0, files: 1 }], []]);
+    expect(h.returnedSteering).toEqual([
+      [{ id: "st-1", text: "wait", images: 0, videos: 0, files: 1 }],
+      [],
+    ]);
   });
 
   it("reports the queued follow-up list from task_state, and its absence as empty", async () => {
@@ -275,11 +281,11 @@ describe("in-stream task_state is the authoritative running state (history-closi
       type: "task_state",
       state: "running",
       queued: 1,
-      pendingFollowUps: [{ id: "fu-1", text: "next up", images: 1, files: 0 }],
+      pendingFollowUps: [{ id: "fu-1", text: "next up", images: 1, videos: 0, files: 0 }],
     });
     h.controller.handleServer({ type: "task_state", state: "running" });
     expect(h.pendingFollowUps).toEqual([
-      [{ id: "fu-1", text: "next up", images: 1, files: 0 }],
+      [{ id: "fu-1", text: "next up", images: 1, videos: 0, files: 0 }],
       [],
     ]);
   });

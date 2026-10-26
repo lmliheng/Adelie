@@ -3400,8 +3400,12 @@ export const en: Strings = {
     reconnectGiveUp: "Give up",
     imageAlt: "Image uploaded by user",
     toolImageAlt: "Image from tool output",
+    /** Accessible name of a video the person sent (a `<video>` has no `alt`; this is its label). */
+    videoLabel: "Video uploaded by user",
     imagesAsPathHint:
       "This model cannot view images directly: on send, images are saved to the session scratchpad and passed as file paths (viewed via read_file)",
+    videosAsPathHint:
+      "This model cannot watch videos directly: on send, the clip is saved to the session scratchpad and passed as a file path (viewed via read_file)",
     infoPanel: "Session info",
     sessionStats: "Stats",
     /** Info-dropdown Session id row: the id itself is a click-to-copy button. */
@@ -3442,11 +3446,13 @@ export const en: Strings = {
     historyLoadFailed: "Failed to load history",
     statsLabel: "Stats",
     removeImage: "Remove image",
+    removeVideo: "Remove video",
     openAgents: "Agents panel",
     /** Panel switcher (chat toolbar top-right): the "create" dropdown and its pin toggles. */
     workspacePanel: "Files",
     filesInMessage: (n: number) => `${n} ${n === 1 ? "file" : "files"}`,
     imagesInMessage: (n: number) => `${n} ${n === 1 ? "image" : "images"}`,
+    videosInMessage: (n: number) => `${n} ${n === 1 ? "video" : "videos"}`,
     openPreview: "Click to preview",
     showMoreFiles: (n: number) => `Show ${n} more ${n === 1 ? "file" : "files"}`,
     showLess: "Show less",
@@ -3688,10 +3694,12 @@ export const en: Strings = {
       `Using skill${names.length === 1 ? "" : "s"}: ${names.join(", ")}`,
     attachedFilesBanner: (names: string[]): string =>
       `Attached file${names.length === 1 ? "" : "s"}: ${names.join(", ")}`,
-    /** Composer "+" extension menu (image upload, file attachment, goal mode) and the goal chip. */
+    /** Composer "+" extension menu (image upload, video upload, file attachment, goal mode) and the goal chip. */
     plusMenu: "More input options",
     uploadImage: "Upload image",
     uploadImageDesc: "Attach images to this message",
+    uploadVideo: "Upload video",
+    uploadVideoDesc: "Attach a video to this message",
     uploadFile: "Upload file",
     uploadFileDesc: "Saved to the session scratchpad; the model reads them by path",
     removeFile: "Remove file",
@@ -3699,9 +3707,9 @@ export const en: Strings = {
       `${name} exceeds the ${limitMb}MB limit and was not attached.`,
     /** Overlay covering the chat area while files are dragged over it (drag-and-drop upload). */
     dropFilesTitle: "Drop files to attach",
-    dropFilesDesc: "Images and files are added to the message draft",
-    /** Toast when non-image files are dropped in goal mode (the objective carries images only). */
-    dropFilesGoalHint: "Goal mode takes images only; the files were not attached.",
+    dropFilesDesc: "Images, videos and files are added to the message draft",
+    /** Toast when non-image, non-video files are dropped in goal mode (the objective carries images and videos only). */
+    dropFilesGoalHint: "Goal mode takes images and videos only; the files were not attached.",
     /** A paste too long for the text box, attached as a text file instead. */
     longPasteAttached: (name: string): string =>
       `The pasted text was long, so it was attached as ${name}.`,

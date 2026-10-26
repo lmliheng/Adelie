@@ -100,6 +100,19 @@ export interface ModelEntry {
    */
   vision?: boolean;
   /**
+   * Whether video input is supported; defaults to **unsupported** (the opposite default of
+   * `vision`, and only `true` is ever persisted). A video is three orders of magnitude larger
+   * than an image and only a handful of models accept the content item at all, so the safe
+   * default is the one that keeps it out of the request: a video attached to a Session whose
+   * model is not marked `true` is written to the session scratchpad and handed over as an
+   * `[attached file: …]` line instead, where the agent's tools can still work with it.
+   *
+   * Seeded from the catalog's `supportsVideo` (see catalogModelEntry). Not user-settable yet:
+   * the catalog is the only place that knows a vendor accepts video, so the annotation is
+   * preset-only for now, and a user-added row gets no video input.
+   */
+  video?: boolean;
+  /**
    * Per-model max output tokens (the request's output cap, i.e. GenerativeModelConfig.maxTokens):
    * when set it wins over the Agent's `system_config.model.max_tokens` — the fit is a model trait
    * (the seeded per-Agent default of 32000 cannot fit into e.g. a 32768-token context window

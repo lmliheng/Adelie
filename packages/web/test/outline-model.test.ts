@@ -32,6 +32,7 @@ const harness = (text: string): ChatItem => ({
   sender: "harness",
 });
 const image = (): ChatItem => ({ kind: "user_image", id: nextId++, imageUrl: "blob:x" });
+const video = (): ChatItem => ({ kind: "user_video", id: nextId++, videoUrl: "blob:v" });
 const steering = (text: string): ChatItem => ({ kind: "user_steering", id: nextId++, text });
 const assistant = (text: string, streaming = false): ChatItem => ({
   kind: "assistant_text",
@@ -63,11 +64,17 @@ describe("buildOutline", () => {
     expect(outline[0]!.anchorId).toBe((items[0] as { id: number }).id);
   });
 
-  it("merges adjacent user items into one entry and labels image-only prompts with an empty question", () => {
-    const items: ChatItem[] = [image(), user("text after images"), assistant("ok"), image()];
+  it("merges adjacent user items into one entry and labels media-only prompts with an empty question", () => {
+    const items: ChatItem[] = [
+      image(),
+      video(),
+      user("text after media"),
+      assistant("ok"),
+      video(),
+    ];
     const outline = buildOutline(items);
     expect(outline).toHaveLength(2);
-    expect(outline[0]).toMatchObject({ question: "text after images", answer: "ok" });
+    expect(outline[0]).toMatchObject({ question: "text after media", answer: "ok" });
     expect(outline[1]).toMatchObject({ question: "", answer: "" });
   });
 

@@ -311,10 +311,11 @@ export async function scanMessages(
     const ms = tsMs(msg.timestamp);
     const p = msg.payload as Record<string, unknown> & { type?: string; role?: string };
 
-    // Mirrors pushMessage's first step: anything that is not a complete user image
+    // Mirrors pushMessage's first step: anything that is not a complete user image or video
     // closes the steering-images window (session_meta and events included).
-    const isUserImage = msg.type === "model_msg" && p.type === "image_url";
-    if (!isUserImage) state.steeringOpen = false;
+    const isUserMedia =
+      msg.type === "model_msg" && (p.type === "image_url" || p.type === "video_url");
+    if (!isUserMedia) state.steeringOpen = false;
 
     if (msg.type === "model_msg") {
       // Compaction-internal model messages: never rendered, never counted (stream-model
@@ -364,8 +365,8 @@ export async function scanMessages(
         );
         continue;
       }
-      if (p.type === "image_url") {
-        // An image riding behind a steering chip folds into it: no item, no Task.
+      if (p.type === "image_url" || p.type === "video_url") {
+        // An image or video riding behind a steering chip folds into it: no item, no Task.
         if (state.steeringOpen) {
           touchTask(state, ms);
           continue;

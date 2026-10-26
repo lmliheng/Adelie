@@ -189,6 +189,7 @@ export function buildContextBreakdown(messages: OmniMessage[]): SessionContextPa
     switch (p.type) {
       case "text":
       case "image_url":
+      case "video_url":
       case "inline_data":
         if (p.role === "assistant") out.assistantMessages += size;
         else out.userMessages += size;

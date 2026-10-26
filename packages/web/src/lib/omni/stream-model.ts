@@ -38,7 +38,7 @@
  *     banner instead (issue #290);
  *     user text prefixed with `[context_summary]` is a compaction-summary
  *     injection, treated as internal input (not rendered, doesn't start a new Task).
- *   - Task segmentation: a complete text/image message on the main
+ *   - Task segmentation: a complete text/image/video message on the main
  *     session's user side starts a new Task; a Task ends when the live
  *     stream receives task_state:idle (notifyTaskIdle), or — during history
  *     rebuild — when the next Task starts / the stream ends
@@ -121,6 +121,12 @@ export interface UserSteeringItem {
    * which the chip restores at render time like any user message.)
    */
   images?: string[];
+  /**
+   * Videos sent with this steering message, delivered and folded in exactly like the images
+   * above (a model that takes no video input gets the clip as an `[attached file: …]` line
+   * inside `text` instead, so it needs no channel here).
+   */
+  videos?: string[];
   /** Message timestamp (milliseconds): shown on footer hover. */
   atMs?: number;
 }
@@ -147,6 +153,21 @@ export interface UserImageItem {
   kind: "user_image";
   id: number;
   imageUrl: string;
+  /** Message timestamp (milliseconds): shown on footer hover. */
+  atMs?: number;
+}
+
+/**
+ * A video the person sent (`video_url`), with the model that takes one: rendered as a bubble of
+ * its own, exactly like `user_image` and for the same reason — it is part of the message, and a
+ * message that is nothing but a clip still opens its own Task. `videoUrl` is inline bytes live, or
+ * a windowed history page's reference to the same Trace record
+ * (`/api/sessions/<id>/trace-video?…`), which the browser fetches from the Session's machine.
+ */
+export interface UserVideoItem {
+  kind: "user_video";
+  id: number;
+  videoUrl: string;
   /** Message timestamp (milliseconds): shown on footer hover. */
   atMs?: number;
 }
@@ -464,6 +485,7 @@ export type ChatItem =
   | UserSteeringItem
   | BackgroundNoticeItem
   | UserImageItem
+  | UserVideoItem
   | AssistantTextItem
   | ThinkingItem
   | ToolCallItem
@@ -540,10 +562,10 @@ export interface StreamModel {
   pendingText: AssistantTextItem | null;
   pendingThinking: ThinkingItem | null;
   /**
-   * The steering chip still collecting its images: core delivers a steering message's images
-   * as user image messages immediately behind its text, so an image arriving while this is
-   * set belongs to that chip. Any other message closes the window (see pushMessage) — an
-   * images-only Prompt sent after a steering message is a genuine new Task.
+   * The steering chip still collecting its media: core delivers a steering message's images (and
+   * videos) as user media messages immediately behind its text, so one arriving while this is set
+   * belongs to that chip. Any other message closes the window (see pushMessage) — an images-only
+   * Prompt sent after a steering message is a genuine new Task.
    */
   openSteering: UserSteeringItem | null;
   /** tool_call_id → tool card (shared by both fragment attribution and complete-message replacement). */
@@ -699,13 +721,16 @@ export function pushMessage(
     routeNested(model, msg, nowMs);
     return;
   }
-  // A steering message's images arrive as user image messages directly behind its text, with
-  // nothing interleaved (core delivers the batch in one go) — so anything else on this session
-  // closes the collection window opened by the chip (see openSteering). Subagent messages
+  // A steering message's images AND videos arrive as user media messages directly behind its text,
+  // with nothing interleaved (core delivers the batch in one go) — so anything else on this
+  // session closes the collection window opened by the chip (see openSteering). Subagent messages
   // returned above never reach here, so they leave the window alone.
   // The server answers the same "what is one Task" question over the Trace — see
-  // `steeringImages` in server/src/services/trace-service.ts; the two need to stay in step.
-  if (!isCompleteUserImage(msg)) model.openSteering = null;
+  // `steeringImages` in server/src/services/trace-service.ts — and reaches the same answer for a
+  // video by another route: a video is not one of that window's kinds, but it is not a turn starter
+  // there either, so it lands in the steering message's own turn just the same. Folding it into the
+  // chip keeps this side's grouping (and the clip's own rendering) identical to that.
+  if (!isCompleteUserMedia(msg)) model.openSteering = null;
   if (msg.type === "model_msg") {
     // Internal messages within a compaction range (between begin and end)
     // (the compaction prompt, thinking, summary output): never rendered as transcript items,
@@ -815,9 +840,16 @@ export function pushMessage(
   }
 }
 
-/** Whether the message is a complete user image — the only kind that can join an open steering chip. */
-function isCompleteUserImage(msg: OmniMessage): boolean {
-  return msg.type === "model_msg" && (msg.payload as { type?: string }).type === "image_url";
+/**
+ * Whether the message is a complete user media (image or video) — the only kinds that can join an
+ * open steering chip. A video joins it on the same terms as an image: both are delivered as user
+ * media messages right behind the steering text, and both are part of that message rather than a
+ * Task of their own.
+ */
+function isCompleteUserMedia(msg: OmniMessage): boolean {
+  if (msg.type !== "model_msg") return false;
+  const type = (msg.payload as { type?: string }).type;
+  return type === "image_url" || type === "video_url";
 }
 
 /**
@@ -1402,6 +1434,25 @@ function handleComplete(
         id: nextId(model),
         imageUrl: p.image_url,
         ...(imgMs !== undefined ? { atMs: imgMs } : {}),
+      });
+      return;
+    }
+    case "video_url": {
+      // A video, on a Session whose model takes one, is exactly the image case one line up: a clip
+      // belonging to the steering message just rendered joins that chip, and a Prompt's clip starts
+      // its Task and gets a bubble of its own.
+      if (model.openSteering) {
+        touchTask(model, timestamp);
+        model.openSteering.videos = [...(model.openSteering.videos ?? []), p.video_url];
+        return;
+      }
+      startTask(model, timestamp, nowMs);
+      const videoMs = tsOf(timestamp);
+      model.items.push({
+        kind: "user_video",
+        id: nextId(model),
+        videoUrl: p.video_url,
+        ...(videoMs !== undefined ? { atMs: videoMs } : {}),
       });
       return;
     }
@@ -2111,41 +2162,70 @@ function bindSubagent(model: StreamModel, sessionId: string, sub: StreamModel): 
 // Overlap dedup (connect-first + dedup)
 // ---------------------------------------------------------------------------
 
-/** Stands in for an image's content inside a dedup key (see dedupKey). */
+/** Stands in for an image's content inside a dedup key (see mediaInKey). */
 const IMAGE_IN_KEY = "<image>";
+/** The same for a video (see mediaInKey). */
+const VIDEO_IN_KEY = "<video>";
 
 /**
- * An image slot's value as the dedup key sees it: inline bytes (`data:`) and a history page's
- * reference to the same Trace record (`/api/sessions/<id>/trace-image?…`) are one image; any
- * other address (a web URL) is kept, since it is the same string in both copies anyway.
+ * The Trace routes a windowed history page serves one record's bytes on, per media kind: the
+ * record's image, or its video. A page names each of them by one of these instead of carrying the
+ * bytes.
  */
-function imageInKey(value: unknown): unknown {
+const TRACE_MEDIA = {
+  "trace-image": { route: /^\/api\/sessions\/[^/?#]+\/trace-image\?/, key: IMAGE_IN_KEY },
+  "trace-video": { route: /^\/api\/sessions\/[^/?#]+\/trace-video\?/, key: VIDEO_IN_KEY },
+} as const;
+
+/**
+ * A media slot's value as the dedup key sees it: inline bytes (`data:`) and a history page's
+ * reference to the same Trace record (a `trace-image` / `trace-video` URL) are one picture or clip;
+ * any other address (a web URL) is kept, since it is the same string in both copies anyway.
+ */
+function mediaInKey(value: unknown, kind: keyof typeof TRACE_MEDIA): unknown {
   if (typeof value !== "string") return value;
-  return value.startsWith("data:") || /^\/api\/sessions\/[^/?#]+\/trace-image\?/.test(value)
-    ? IMAGE_IN_KEY
-    : value;
+  const { route, key } = TRACE_MEDIA[kind];
+  return value.startsWith("data:") || route.test(value) ? key : value;
 }
 
 /**
  * The envelope a history copy and its SSE copy share. Disk-only transport metadata
- * (`tracePosition`) must not make an otherwise identical SSE envelope look new, and neither
- * may an image's form: a windowed history page carries a user `image_url` and a tool output's
- * `images` by reference while the stream carries the bytes, and an SSE copy that escaped the
- * overlap dedup would draw the person's image twice. Two images of one prompt may then share a
- * key (same timestamp); that is harmless, since a history read holds a prompt whole (the server
- * appends held inputs the Trace lacks), so each stream copy has its own history copy to match.
+ * (`tracePosition`) must not make an otherwise identical SSE envelope look new, and neither may an
+ * image's or a video's form: a windowed history page carries a user `image_url` / `video_url` and a
+ * tool output's `images` by reference while the stream carries the bytes, and an SSE copy that
+ * escaped the overlap dedup would draw the person's image — or download their clip a second time —
+ * twice. Two media of one prompt may then share a key (same timestamp); that is harmless, since a
+ * history read holds a prompt whole (the server appends held inputs the Trace lacks), so each
+ * stream copy has its own history copy to match.
  */
 function dedupKey(msg: OmniMessage): string {
   const { tracePosition: _tracePosition, ...envelope } = msg as OmniMessage & {
     tracePosition?: TracePosition;
   };
   if (msg.type === "model_msg") {
-    const p = msg.payload as { type?: string; image_url?: unknown; images?: unknown };
+    const p = msg.payload as {
+      type?: string;
+      image_url?: unknown;
+      video_url?: unknown;
+      images?: unknown;
+    };
     if (p.type === "image_url") {
-      return JSON.stringify({ ...envelope, payload: { ...p, image_url: imageInKey(p.image_url) } });
+      return JSON.stringify({
+        ...envelope,
+        payload: { ...p, image_url: mediaInKey(p.image_url, "trace-image") },
+      });
+    }
+    if (p.type === "video_url") {
+      return JSON.stringify({
+        ...envelope,
+        payload: { ...p, video_url: mediaInKey(p.video_url, "trace-video") },
+      });
     }
     if (p.type === "tool_call_output" && Array.isArray(p.images)) {
-      return JSON.stringify({ ...envelope, payload: { ...p, images: p.images.map(imageInKey) } });
+      return JSON.stringify({
+        ...envelope,
+        payload: { ...p, images: p.images.map((image) => mediaInKey(image, "trace-image")) },
+      });
     }
   }
   return JSON.stringify(envelope);

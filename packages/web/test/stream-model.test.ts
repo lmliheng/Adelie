@@ -62,6 +62,7 @@ import {
   toolCall,
   toolCallOutput,
   userText,
+  videoUrlMessage,
   withOrigin,
 } from "@adelie/core/omnimessage";
 import type { OmniMessage, SessionMetaPayload, TokenCounts } from "@adelie/core/omnimessage";
@@ -1483,6 +1484,21 @@ describe("Task segmentation and stats triggering", () => {
     expect(stats.stats!.tokensDelta).toBe(600);
   });
 
+  it("a full video_url message renders its own bubble and also starts a new Task", () => {
+    // A clip on a model that takes one is the image case in another medium: a message the person
+    // sent, so it draws itself and it opens the Task a clip-only Prompt would otherwise lack.
+    const m = createStreamModel();
+    pushMessage(m, tokenUsage(counts(100), counts(100))); // outside the Task boundary
+    pushMessage(m, videoUrlMessage("data:video/mp4;base64,xx"));
+    pushMessage(m, tokenUsage(counts(700), counts(600)));
+    notifyTaskIdle(m);
+    expect(items(m).map((i) => i.kind)).toEqual(["user_video", "task_stats"]);
+    const video = items(m)[0]!;
+    expect(video.kind === "user_video" && video.videoUrl).toBe("data:video/mp4;base64,xx");
+    const stats = items(m).find((i) => i.kind === "task_stats") as TaskStatsItem;
+    expect(stats.stats!.tokensDelta).toBe(600);
+  });
+
   it("manual compaction usage between Tasks is not misattributed to the next Task's delta", () => {
     const m = createStreamModel();
     pushMessage(m, at(userText("one"), "2026-07-05T00:00:00.000Z"));
@@ -2204,6 +2220,59 @@ describe("compaction-internal messages (#17: history rebuild aligned with the li
     expect(steering.text).toBe("");
     expect(steering.images).toEqual(["data:image/png;base64,AAAA"]);
     expect(items(m).filter((i) => i.kind === "user_image")).toHaveLength(0);
+  });
+
+  it("videos sent with a steering message join its chip too; a later standalone video starts a Task", () => {
+    // Core delivers a steering message's videos as user video messages right behind its text (and
+    // behind its images), which is exactly how its images arrive. They belong to that chip — no
+    // bubble of their own and, crucially, no new Task, which is also what the server's own Trace
+    // grouping concludes for a video (it is not a turn starter there). A clip arriving after
+    // something else is an ordinary Prompt again, exactly as for an image.
+    const m = createStreamModel();
+    pushMessages(m, [
+      at(userText("fix the bug"), "2026-07-05T00:00:00.000Z"),
+      at(assistantText("looking"), "2026-07-05T00:00:02.000Z"),
+      at(userText("[user_steering]\nwatch this\n[/user_steering]"), "2026-07-05T00:00:04.000Z"),
+      at(imageUrlMessage("data:image/png;base64,AAAA"), "2026-07-05T00:00:04.100Z"),
+      at(videoUrlMessage("data:video/mp4;base64,AAAA"), "2026-07-05T00:00:04.200Z"),
+      at(assistantText("watching"), "2026-07-05T00:00:06.000Z"),
+      at(tokenUsage(counts(200), counts(100)), "2026-07-05T00:00:07.000Z"),
+      // A new Prompt that is nothing but a clip: a Task of its own.
+      at(videoUrlMessage("data:video/mp4;base64,BBBB"), "2026-07-05T00:00:20.000Z"),
+      at(assistantText("on it"), "2026-07-05T00:00:22.000Z"),
+    ]);
+    finalizeHistory(m);
+    expect(items(m).map((i) => i.kind)).toEqual([
+      "user_text",
+      "assistant_text",
+      "user_steering",
+      "assistant_text",
+      "task_stats",
+      "user_video",
+      "assistant_text",
+      "task_stats",
+    ]);
+    const steering = items(m).find((i) => i.kind === "user_steering") as UserSteeringItem;
+    expect(steering.text).toBe("watch this");
+    expect(steering.images).toEqual(["data:image/png;base64,AAAA"]);
+    expect(steering.videos).toEqual(["data:video/mp4;base64,AAAA"]);
+  });
+
+  it("closes the steering window like it does for images: an interleaved message ends the collection", () => {
+    // The window is "media delivered in one go right behind the text". Anything else in between
+    // means the clip that follows is a Prompt's, not the chip's — the same rule the images obey,
+    // and the same one the server's turn grouping applies.
+    const m = createStreamModel();
+    pushMessages(m, [
+      at(userText("fix the bug"), "2026-07-05T00:00:00.000Z"),
+      at(userText("[user_steering]\nlook\n[/user_steering]"), "2026-07-05T00:00:02.000Z"),
+      at(assistantText("ok"), "2026-07-05T00:00:03.000Z"),
+      at(videoUrlMessage("data:video/mp4;base64,AAAA"), "2026-07-05T00:00:04.000Z"),
+    ]);
+    finalizeHistory(m);
+    const steering = items(m).find((i) => i.kind === "user_steering") as UserSteeringItem;
+    expect(steering.videos).toBeUndefined();
+    expect(items(m).filter((i) => i.kind === "user_video")).toHaveLength(1);
   });
 });
 

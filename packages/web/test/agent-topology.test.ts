@@ -24,6 +24,7 @@ import {
   toolCall,
   toolCallOutput,
   userText,
+  videoUrlMessage,
   withOrigin,
 } from "@adelie/core/omnimessage";
 import type { OmniMessage, SessionMetaPayload } from "@adelie/core/omnimessage";
@@ -438,15 +439,19 @@ describe("per-node elapsed time (wall clock of the spawn, never a sum of items)"
 });
 
 describe("identity helpers", () => {
-  it("latestTaskStart finds the last user_text/user_image and falls back to 0 (user items only — steering never starts a Task)", () => {
+  it("latestTaskStart finds the last user_text/user_image/user_video and falls back to 0 (user items only — steering never starts a Task)", () => {
     const m = createStreamModel();
     pushMessage(m, assistantText("orphan"));
     expect(latestTaskStart(m.items)).toBe(0);
     pushMessage(m, userText("t1"));
     expect(latestTaskStart(m.items)).toBe(1);
+    pushMessage(m, videoUrlMessage("data:video/mp4;base64,v"));
+    // The clip opens the latest Task (the previous Task's closing stats row sits between, which is
+    // why the index is not one past the text item).
+    expect(m.items[latestTaskStart(m.items)]!.kind).toBe("user_video");
   });
 
-  it("taskStartCount counts Task-starting user items (text and image); steering chips never count", () => {
+  it("taskStartCount counts Task-starting user items (text, image and video); steering chips never count", () => {
     const m = createStreamModel();
     expect(taskStartCount(m.items)).toBe(0);
     pushMessage(m, userText("t1"));
@@ -464,6 +469,14 @@ describe("identity helpers", () => {
     expect(taskStartCount(m.items)).toBe(2);
     pushMessage(m, userText("t3"));
     expect(taskStartCount(m.items)).toBe(3);
+    // A video follows the same rule as an image: behind a steering message it joins that chip
+    // (nothing starts), on its own it starts a Task.
+    pushMessage(m, userText("[user_steering]\nagain\n[/user_steering]"));
+    pushMessage(m, videoUrlMessage("data:video/mp4;base64,steered"));
+    expect(taskStartCount(m.items)).toBe(3);
+    pushMessage(m, assistantText("r3"));
+    pushMessage(m, videoUrlMessage("data:video/mp4;base64,vv"));
+    expect(taskStartCount(m.items)).toBe(4);
   });
 
   it("agentIdFromStatePath takes the parent directory name; degenerate paths give null", () => {

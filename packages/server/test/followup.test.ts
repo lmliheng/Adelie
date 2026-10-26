@@ -109,14 +109,14 @@ describe("follow-up queue route", () => {
     });
     const pending = t.deps.manager.pendingFollowUpsOf(SID);
     expect(pending).toEqual([
-      { id: expect.any(String), text: "follow-up 1", images: 1, files: 0 },
-      { id: expect.any(String), text: "follow-up 2", images: 0, files: 0 },
+      { id: expect.any(String), text: "follow-up 1", images: 1, videos: 0, files: 0 },
+      { id: expect.any(String), text: "follow-up 2", images: 0, videos: 0, files: 0 },
     ]);
 
     // The recall returns the original content.
     const res = await api.delete(`/api/sessions/${SID}/follow-ups/${pending[0]!.id}`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ text: "follow-up 1", images: [png], files: [] });
+    expect(await res.json()).toEqual({ text: "follow-up 1", images: [png], videos: [], files: [] });
     expect(t.deps.manager.pendingFollowUpCount(SID)).toBe(1);
 
     // Recalled means never started: only the remaining follow-up auto-starts.
@@ -278,12 +278,17 @@ describe("follow-up queue route", () => {
     expect(queued.queued).toBe(true);
     const pending = t.deps.manager.pendingFollowUpsOf(SID);
     expect(pending).toEqual([
-      { id: expect.any(String), text: "from the chat channel", images: 0, files: 0 },
+      { id: expect.any(String), text: "from the chat channel", images: 0, videos: 0, files: 0 },
     ]);
 
     const res = await api.delete(`/api/sessions/${SID}/follow-ups/${pending[0]!.id}`);
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ text: "from the chat channel", images: [], files: [] });
+    expect(await res.json()).toEqual({
+      text: "from the chat channel",
+      images: [],
+      videos: [],
+      files: [],
+    });
     expect(t.deps.manager.pendingFollowUpCount(SID)).toBe(0);
 
     // Recalled means never started: run 1 stays the only run.
