@@ -42,10 +42,21 @@ with its own tools. The frontend never asks you which kind of model this is; the
   `GET /api/sessions/:id/trace-video?file=&ordinal=`, in `services/trace-media.ts` — the old
   `trace-images.ts` was renamed into it), or one page would read tens of megabytes of base64 whole.
   Recalling an undelivered message (#287) hands an inline video back to the composer as submitted.
+- **Both sides read the same two sources.** Whether a clip rides inline or becomes a file is
+  decided twice — by the composer, from the model it is given, and by the task/steer routes. Those
+  answers have to agree: a model marked `video = true` by hand (a row the catalog does not know)
+  was offered video input by the composer while the routes, reading the catalog alone, filed the
+  clip away as a scratchpad attachment without a word. The routes now read the Project entry first
+  and fall back to the catalog, exactly as the model list does.
 - Docs: the notes in `models.zh.md` / `models.en.md` carry the **Video** label and both paths.
 - Tests: `server/test/video-input.test.ts` (inline / written to disk / a nameless clip named after
-  its type / a non-video data URL / the 413 / both steering paths) and
-  `server/test/trace-media.test.ts` (video by reference, its bytes and type, the 404s and 400s).
+  its type / a non-video data URL / the 413 / both steering paths / a Project entry marked
+  `video = true` on a model the catalog never heard of) and
+  `server/test/trace-media.test.ts` (video by reference, its bytes and type, the 404s and 400s);
+  `web/e2e/video-input.spec.mjs` runs the whole path in a real browser — the composer stages a real
+  1-second WebM, the model is handed the `video_url` part with the very bytes that were picked
+  (answered by the mock's new Chat Completions branch), the browser decodes the clip in the
+  transcript, and a reloaded page is served it by reference.
 
 ## Compatibility
 

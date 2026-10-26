@@ -34,9 +34,17 @@
   `GET /api/sessions/:id/trace-video?file=&ordinal=`，由 `services/trace-media.ts` 提供，旧的
   `trace-images.ts` 一并改名合并），否则一页历史要把几十兆 base64 整份读回来。撤回未发出的消息（#287）
   也会把内联视频原样还回输入框。
+- **两边读同一份答案**：一段片子是内联发出去还是落成文件，要判两次——一次在输入框（按它拿到的模型），一次在
+  任务与 steer 两条路由上。这两个答案必须一致：手工标了 `video = true` 的模型（目录里没有这一条），输入框会
+  给出视频入口，而路由只看目录，于是把片子悄悄落成暂存目录的附件。现在路由先读 Project 里那一条、再退回目录，
+  与模型列表的算法完全相同。
 - 文档：`models.zh.md` / `models.en.md` 的笔记里写明「视频」标签与两种走法。
 - 测试：`server/test/video-input.test.ts`（内联 / 落盘 / 无名视频按类型命名 / 非视频数据 URL / 超限 413 /
-  中途 steering 的两种走法）、`server/test/trace-media.test.ts`（视频按引用、字节与类型、404 与 400）。
+  中途 steering 的两种走法 / Project 里手工标了 `video = true` 的目录外模型）、
+  `server/test/trace-media.test.ts`（视频按引用、字节与类型、404 与 400）；`web/e2e/video-input.spec.mjs`
+  在真浏览器里跑完整条路——输入框放进去一段真的 1 秒 WebM，模型收到的是带**原来那些字节**的 `video_url` 部件
+  （由假模型新增的 Chat Completions 分支回话证实），浏览器在消息里真的解出了这段片子，刷新后同一段片子改按引用
+  取回。
 
 ## 兼容性
 

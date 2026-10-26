@@ -474,14 +474,38 @@ interface ParsedTaskInput {
 }
 
 /**
+ * Whether the Session's model takes video input — the answer the composer was handed for the
+ * same Session, read from the same two places in the same order (`ModelInfo.video`): the
+ * Project's own entry may carry the `video` annotation (a model the catalog does not know, added
+ * by hand), otherwise the built-in catalog records it for a preset (core's
+ * `catalogSupportsVideo`).
+ *
+ * The two must agree or a clip is silently misdelivered: the composer offers video input because
+ * `ModelInfo.video` is true, so a send hands over a `video_url` part — and this is the only
+ * thing that decides whether that part rides inline or becomes a file attachment.
+ */
+async function sessionTakesVideo(deps: SessionsRouteDeps, row: SessionRow): Promise<boolean> {
+  if (catalogSupportsVideo(row.provider, row.modelId)) return true;
+  try {
+    const project = await deps.projectConfigService.loadConfig(row.projectId);
+    const entry = (project.models ?? []).find(
+      (m) => m.provider === row.provider && m.model_id === row.modelId,
+    );
+    return entry?.video === true;
+  } catch {
+    // An unreadable config leaves the catalog's answer, which was already "no".
+    return false;
+  }
+}
+
+/**
  * Validate Prompt input parts: text, image (data: / http(s) URL), video (same, when the
  * Session's model takes one) or an uploaded file.
  *
- * `videoInput` = whether the Session's model takes video input (core's
- * `catalogSupportsVideo`, matching what the model entry is built with). A `video_url` part is
- * accepted either way, but only rides inline when it is true: on any other model the clip is
- * turned into an ordinary file attachment, so one composer draft is sendable to either kind of
- * model and the user is not left to guess which one they are talking to.
+ * `videoInput` = whether the Session's model takes video input (see sessionTakesVideo). A
+ * `video_url` part is accepted either way, but only rides inline when it is true: on any other
+ * model the clip is turned into an ordinary file attachment, so one composer draft is sendable
+ * to either kind of model and the user is not left to guess which one they are talking to.
  */
 function parseTaskInput(
   body: Record<string, unknown>,
@@ -1397,8 +1421,8 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     const limits = toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb());
     // Whether the Session's model takes video input decides how a `video_url` part travels:
     // inline on a video model, as an ordinary file attachment on any other (see
-    // parseTaskInput). Read from the same catalog the model entry is built from.
-    const videoInput = catalogSupportsVideo(row.provider, row.modelId);
+    // parseTaskInput). The same answer the composer's own send path was built from.
+    const videoInput = await sessionTakesVideo(deps, row);
     if (goal) {
       // Goal mode: the input needs non-empty text, since its marker-stripped text becomes the
       // objective that every round re-injects and an image on its own doesn't say what the
@@ -1484,8 +1508,8 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const images = parseSteerImages(body);
     // Inline video only where the model takes it: a mid-run message has no model picker of
-    // its own, so the same catalog answer the Session was built with decides.
-    const videos = parseSteerVideos(body, catalogSupportsVideo(row.provider, row.modelId));
+    // its own, so the same answer the Session (and its composer) was built with decides.
+    const videos = parseSteerVideos(body, await sessionTakesVideo(deps, row));
     const files = parseSteerFiles(
       body,
       toAttachmentLimits(deps.serverSettingsRepo.getAttachmentLimitsMb()),

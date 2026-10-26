@@ -1,6 +1,9 @@
 /**
- * Mock Anthropic Messages API (streaming SSE) for E2E.
- * Branches on request body:
+ * Mock LLM for E2E. Two protocols, chosen by the request's own path:
+ *  - `/chat/completions` -> the OpenAI Chat Completions branch (openAiChatCompletion), which is
+ *    where a model pinned to `client_type = "openai-chat"` reaches this process (every Volcengine
+ *    Ark row of the catalog does).
+ *  - anything else -> the Anthropic Messages API branch below, which "Branches on request body:"
  *  - title request (the prompt opens with "You are a title generator.") -> short text
  *  - files-card probe ("files card test") -> text with two backtick paths (one real, one missing)
  *  - "files rewrite test <cmd>" -> tool_use(exec_command) running <cmd>, then a short final text
@@ -97,6 +100,68 @@ function block(res, index, start, deltas, extra) {
   sse(res, "content_block_stop", { type: "content_block_stop", index });
 }
 
+/**
+ * One OpenAI Chat Completions request: `chat.completion.chunk` frames, closed by `data: [DONE]`.
+ *
+ * video-input.spec drives the video case: the composer inlines a clip on a model that takes one,
+ * and this answer says back what the model was handed — the media type and the payload's own byte
+ * length — so the spec can prove the `video_url` part reached the provider through AgentHub's
+ * patched transformer rather than being dropped, and that it was still the bytes the person
+ * picked. A request with no video part says so instead (which is how the spec catches a
+ * "silently filed away as an attachment" regression).
+ *
+ * Core's session-title request goes to the same model, so it is answered here too (a one-line
+ * title) rather than being mistaken for a conversation turn needing a video.
+ */
+function openAiChatCompletion(res, json) {
+  const messages = Array.isArray(json.messages) ? json.messages : [];
+  const parts = messages.flatMap((m) => (Array.isArray(m.content) ? m.content : []));
+  const text = parts
+    .filter((p) => p !== null && p.type === "text" && typeof p.text === "string")
+    .map((p) => p.text)
+    .join("\n");
+  const video = parts.find((p) => p !== null && p.type === "video_url");
+  const url = video !== undefined && video.video_url ? String(video.video_url.url ?? "") : "";
+  const comma = url.indexOf(",");
+  const mime = /^data:([^;,]*)/.exec(url)?.[1] ?? "";
+  const bytes =
+    comma < 0 ? 0 : Math.floor((url.slice(comma + 1).replace(/[=\s]/g, "").length * 3) / 4);
+  const answer = text.includes("You are a title generator.")
+    ? "Clip check"
+    : video !== undefined
+      ? `Saw a video: ${mime}, ${bytes} bytes.`
+      : "No video in this request.";
+
+  res.writeHead(200, {
+    "content-type": "text/event-stream",
+    "cache-control": "no-cache",
+    connection: "keep-alive",
+  });
+  const chunk = (delta, finish = null) =>
+    `data: ${JSON.stringify({
+      id: "chatcmpl-mock",
+      object: "chat.completion.chunk",
+      created: 0,
+      model: json.model ?? "mock",
+      choices: [{ index: 0, delta, finish_reason: finish }],
+    })}\n\n`;
+  res.write(chunk({ role: "assistant", content: "" }));
+  res.write(chunk({ content: answer }));
+  res.write(chunk({}, "stop"));
+  res.write(
+    `data: ${JSON.stringify({
+      id: "chatcmpl-mock",
+      object: "chat.completion.chunk",
+      created: 0,
+      model: json.model ?? "mock",
+      choices: [],
+      usage: { prompt_tokens: 20, completion_tokens: 8, total_tokens: 28 },
+    })}\n\n`,
+  );
+  res.write("data: [DONE]\n\n");
+  res.end();
+}
+
 const server = http.createServer((req, res) => {
   if (req.method !== "POST") {
     res.writeHead(404).end();
@@ -109,6 +174,12 @@ const server = http.createServer((req, res) => {
     try {
       json = JSON.parse(body);
     } catch {}
+    // A model pinned to Chat Completions reaches this process on `/chat/completions`; the
+    // Anthropic-shaped branches below never see such a request.
+    if ((req.url ?? "").includes("chat/completions")) {
+      openAiChatCompletion(res, json);
+      return;
+    }
     const messages = json.messages || [];
     const flat = JSON.stringify(messages);
     // Title requests are core's `buildTitlePrompt` (packages/core/src/internal/session-title.ts):

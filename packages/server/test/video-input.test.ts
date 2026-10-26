@@ -3,8 +3,9 @@
  * `videos` field.
  *
  * - On a Session whose model takes video input (the Volcengine Ark Seed family — core's
- *   `catalogSupportsVideo`), the clip rides inline as a user video message, which is the shape
- *   the provider's request is assembled from, and nothing is written to disk.
+ *   `catalogSupportsVideo`, or the Project's own `video` annotation for a model the catalog does
+ *   not know), the clip rides inline as a user video message, which is the shape the provider's
+ *   request is assembled from, and nothing is written to disk.
  * - On any other model it becomes an ordinary file attachment: the bytes land in the scratchpad
  *   and the Prompt gains an `[attached file: <path>]` line, so one composer draft is sendable
  *   to either kind of model instead of being refused for the model's choice.
@@ -22,6 +23,7 @@ import {
   approvalDecision,
   assistantText,
   modelVisiblePath,
+  saveProjectConfig,
   scratchpadDir,
   toolCall,
   userText,
@@ -128,6 +130,50 @@ describe("video input", () => {
     // not a file the model has to open.
     expect(promptText(runs[0]!)).toBe("what happens in this clip?");
     expect(await fs.readdir(dir).catch(() => [])).toEqual([]);
+  });
+
+  it("a Project entry marked video rides inline even when the catalog never heard of the model", async () => {
+    // The other half of the composer's own answer (`ModelInfo.video`): a row the user marked
+    // `video = true` by hand. The catalog knows nothing about it, so the Project config is the
+    // only place that says the model takes a clip — and if the two sides disagreed, the
+    // composer would inline a video into a part the route would quietly file away instead.
+    const own = { provider: "custom", modelId: "my-own-video-model" };
+    await saveProjectConfig(t.root, PROJECT, {
+      models: [
+        { provider: own.provider, model_id: own.modelId, client_type: "openai-chat", video: true },
+      ],
+    });
+    adoptSession(t.deps, recordingFakeSession(SID, runs), { projectId: PROJECT, ...own });
+    const res = await api.post(`/api/sessions/${SID}/tasks`, {
+      input: [
+        { type: "text", text: "what happens in this clip?" },
+        { type: "video_url", videoUrl: CLIP, fileName: "clip.mp4" },
+      ],
+    });
+    expect(res.status).toBe(202);
+    await waitFor(() => runs.length === 1);
+
+    expect(videoOf(runs[0]!)?.video_url).toBe(CLIP);
+    expect(await fs.readdir(dir).catch(() => [])).toEqual([]);
+  });
+
+  it("the same Project annotation lets a steered video ride inline", async () => {
+    const own = { provider: "custom", modelId: "my-own-video-model" };
+    await saveProjectConfig(t.root, PROJECT, {
+      models: [{ provider: own.provider, model_id: own.modelId, video: true }],
+    });
+    const steered: OmniMessage[][] = [];
+    adoptSession(t.deps, steeringFakeSession(SID, steered), {
+      projectId: PROJECT,
+      approvalMode: "always-ask",
+      ...own,
+    });
+    await t.deps.manager.startTask(SID, [userText("go")]);
+    await waitFor(() => t.deps.manager.pendingApprovalCount(SID) === 1);
+
+    const posted = await api.post(`/api/sessions/${SID}/steer`, { videos: [CLIP] });
+    expect(posted.status).toBe(202);
+    expect(videoOf(steered[0]!)?.video_url).toBe(CLIP);
   });
 
   it("a video on a model without video input lands in the scratchpad as a file attachment", async () => {
