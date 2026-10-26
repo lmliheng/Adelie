@@ -1,6 +1,6 @@
 {
   "name": "@adelie/use-seedance",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "description": "Generate a video from a prompt with Volcengine Ark's Doubao Seedance models and save it into the workspace — one dependency-free Node script over the asynchronous video-generation API, driven by a vault-stored API key.",
   "license": "Apache-2.0",
   "scripts": {

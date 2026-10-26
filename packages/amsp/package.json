@@ -1,6 +1,6 @@
 {
   "name": "@adelie/amsp",
-  "version": "0.5.6",
+  "version": "0.5.7",
   "type": "module",
   "description": "AMSP (Agent Message Stream Protocol): the wire types of an Adelie agent's API and a zero-dependency client for Node 24 and browsers.",
   "license": "Apache-2.0",
