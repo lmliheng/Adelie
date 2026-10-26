@@ -16483,6 +16483,9 @@ adelie 应用可以产出视频」。
 
 ## 第一百三十六轮：在局域网地址上打开 Web App 时，密钥授权改为粘贴授权码（2026-10-26，条目 5.50）
 
+本轮代码提交 `eaf62138`（台账、changelog 与代码是同一笔；表行里写「见本行提交」即指它 ——
+推送前另一条线推了 `8152581d`，本笔 rebase 到它之上，哈希因此与提交时不同）。
+
 ### 开工自检
 
 - `/root/adelie-fork` 在 `main` 上，`git status --short` **干净**；`git merge --ff-only origin/main`
