@@ -1009,6 +1009,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       上游新提交里有十来笔可用，这一笔是其中唯一「真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在 Linux
       上真跑的用例」的；而且它正好压在这一产品的实际用法上（Adelie 本来就从局域网 / 远程地址用）。
       细节与实测见「第一百三十六轮」一节。
+- [x] **5.51 底部停靠栏拉到最大时不再盖住输入区**（上游 `bf3395ff` `#1325`，**2026-10-27 第一百三十七轮
+      落地**，提交见该节）：停靠状态下底部停靠栏（以及窄屏合并成的底部停靠面）的高度上限一直是对话列的
+      85%（`DOCK_RATIO_MAX`），而 `hostHeight` 是整个对话列、含工具行，**没有谁给输入区留位置** ——
+      停靠栏一高，输入区就被压到它下面、点不到（设了壁纸时两者还互相透出来）。现在上限由
+      `features/dock/bottom-dock-size.ts`（新增，纯逻辑）算：工具行以下那片区域（`[data-dock-area]`）扣掉
+      **量出来的**输入区高度、再扣掉一条消息带（`CONVERSATION_MIN_HEIGHT_PX`，取悬浮球自己「最短的完整
+      身子」那个数），仍受所存比例的 0.85 封顶；空间不够时先让消息带、再让停靠栏自己的 140px 最小高度，
+      输入区永远不让。`features/dock/composer-height.ts`（新增）是一个 `ResizeObserver` 喂的小 store，
+      让停靠栏、它的拖动夹取与拖动浮层的落点预览读同一个输入区高度，且最后一次测量在重挂载后仍然留着
+      （切会话时不跳）。上限跌破停靠栏时在同一个提交里让出（走既有 `snap` 路径），不经过布局动画。
+      **为什么是这一条**：上一轮量过、写进「没做 / 还差什么」的第一顺位（它是用户看得见的真缺陷，且与
+      紧随其后的 `ce9b3e69`（#1335）改同一批文件，先落这一条下一次才好接）。细节与实测见「第一百三十七轮」
+      一节。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2258,6 +2271,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-26 | 用户点单（火山方舟分组 + 视频输入输出） | **模型库多一个 Volcengine Ark 分组（11 条模型行），对话里能发视频、能看视频，另加一个 Seedance 出视频的插件**（不是移植：`packages/core/src/state/model-catalog.ts` 加 `volcengine` 分组、`supportsVideo` 与 `catalogSupportsVideo`；`pnpm patch` 给 agenthub 加 `video_url` 内容项（`patches/@prismshadow__agenthub.patch` + `patchedDependencies`）；core / server / cli / web 四层把视频当一等输入（预算、按引用、轨迹播放器、窗口化历史）；`packages/server/src/services/trace-images.ts` 改名合并为 `trace-media.ts` 并新增 `GET /:sessionId/trace-video`；新插件 `plugins/use-seedance`（`@adelie/use-seedance`，走方舟异步出片接口）；新增 6 个测试文件与 3 对 changelog；两家品牌图标各一枚）：用户 2026-10-25 点单，2026-10-26 补明用 `pnpm patch` 打 agenthub、要「Adelie 应用能产出视频」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` **0 警告 0 错误**（2297 文件）· `npx prettier --check .` 干净 · `pnpm -r test` **`EXIT=0`、0 失败**：core **1421 通过 / 6 跳过**（69 文件 + 1 跳过）· ui **1053**（130）· cli **561**（38）· web **3273 通过 / 2 跳过**（268）· server **2988 通过 / 4 跳过**（204）· docs **62**（8）· amsp **68**（2）· desktop **304**（26）· ui-gallery **140**（20）· `plugins/use-seedance` **8**（桩服务端到端）· `pnpm -r build` `EXIT=0` · 方舟真端点：假 key 实测 401 `AuthenticationError`（视频部件与文本部件走同一句鉴权错）· **没做**：没在真浏览器里目视播放一次视频、Seedance 没拿真 key 出过一次片、Trace 详情页的 `events` 仍会整份返回那条记录的 base64 | 见本行提交 |
 | 2026-10-26 | 7.48 | **智能体设置里「还原为默认配置」「更新内核」被拒时，原因留在框里**（不是移植：1 处源码 `packages/web/src/features/agents/agent-settings-page.tsx`（`OverviewTab` 新增 `resetRefusal` / `kernelRefusal`，两个 `ConfirmModal` 接上 `refusal` 槽并按 `S.common.refused` 加前缀，两个 `catch` 不再 `toastError`，开框 / 关框都清旧原因） + 1 个新文件 `packages/web/e2e/agent-config-refusal.spec.mjs`（2 条用例）+ changelog 一对，**无新依赖、不碰接口、无新文案**）：台账点名的下一站是「插件市场 / 智能体设置 / 定时任务面板里带确认的写入」，实摸之后插件市场与定时任务面板早已接好 `refusal` 槽，只剩智能体设置概览页这两张；同一操作在智能体列表页（批量内核更新）与本页 API 标签页早就会把原因留在框里，这两张是最后一处没跟上的 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 两个改动文件 **0 警告 0 错误** · 四个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**（两条扫全仓的 5 s 用例在本机与另一条线的发布测试并行时超时、单独复跑通过，见该节）：core **69 通过文件 + 1 跳过 / 1421 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2990 通过 / 4 跳过** · web **267 文件 / 3272 通过 / 2 跳过** · **真服务 + 真浏览器单 spec**（`/root/adelie-fork-data/r135-e2e`，服务 8950、mock 8951，`packages/{core,server,web}/dist` 本轮新构建）：新 spec **2 passed（9.1s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git stash push -- packages/web/src/features/agents/agent-settings-page.tsx`（只带这一个路径）、重建 web 成 `r135/before-dist`、另起一台服务端（8960，`/root/adelie-fork-data/r135-before`）→ **2 failed**（`element(s) not found`：改前框里没有那句原话）；`git stash pop` 后重建即回到 2 / 2 · **两态实测真看一眼**（探针 `r135/probe.mjs`，两态各跑一次、两张框各测一遍，同一个 `page.route` 500，1440×900，读数取被拒后 1.5 s 与 6.5 s 两次）：**改前** 两张框都是 `{cardVisible:true, alertInCard:0, noticeHasReason:true}` → 6.5 s 后 `noticeHasReason:false`（屏幕上一点解释都没有了）；**改后** 两张框都是 `{cardVisible:true, alertInCard:1, noticeHasReason:false}`，6.5 s 后原样还在——截图 `r135/{before,after}/shots/{reset,kernel}-2-six-seconds-later.png` 里正好是「改前框里空着」对「改后框里那行『操作被拒绝：agent state is read-only』」；两态 console 的 error 只有既有的 `/machines` 403（普通成员读机器列表）与刻意造的 500，无 `pageerror` · **整套浏览器 e2e**（`SKIP_BUILD=1 bash e2e/run.sh`，自带 mock 与 `mktemp` 数据根）：**167 passed（11.9m）、0 failed、`EXIT=0`**（第一百三十三轮整套是 164，+ 本笔 2 + 另一条线视频那 1） · 端口只用 8950 / 8951 / 8960 与整套的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r135-{e2e,before}` 与 scratchpad 的 `r135/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总（0.5.7 的版本号与发布正文是另一条线推上来的 `d80630ec` / `63fa1064`，本线只 `merge --ff-only` 跟上） | 见本行提交 |
 | 2026-10-26 | 5.50 | **在局域网地址上打开 Web App 时，密钥授权改为粘贴授权码**（上游 `12a58d4f` `#1328` 移植，照改动落、不是合分支；上游 8 文件 / +289 −17 → 本树落下 5 个跟踪文件 / +133 −17 与 changelog 一对：上游那份前端用例要 jsdom（`packages/web` 不装），改由真浏览器取证，服务端用例的表头注释按本树现状手写合并）：服务端新增导出 `openedMode(asked, origin)` —— `manual` 永不升级；`callback` 只在 `https:` 或 `http:` 且主机为 `localhost` / `[::1]` / `127.x.x.x`（授权页 `callback_url` 的判据）时保留，解析不出的地址一并降级；`start` 用它同时决定回调地址与流程记录的模式（被降级的流程拒绝投递授权码，与手动流程完全一致）并返回 `mode`；`ModelOAuthStartResponse.mode` 为必填。Web 侧 `ModelOAuthDialog` 新增 `redirectRefused`，与 `manual` 合成 `byHand` 取代各处判断（授权码那一步、不轮询、不给跳转开关），只看应答里的 `mode === "manual"`，对没有该字段的旧服务端行为照旧。**本地化**：本树已改名的 `ADELIE_TRUST_PROXY` 等措辞沿用；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 重写 `src/ifaces.json` 后与版本库逐字节相同 —— 195 接口 / 590 类型，本笔不动组件契约）· `npx oxlint` 五个文件 **0 警告 0 错误** · 五个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（69 文件 + 1 跳过）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **269 文件 / 3283 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：在 `openedMode` 开头插一句 `return asked;` → `test/model-oauth.test.ts` **2 failed / 44 passed**（「非回环明文 HTTP 按手动开」与 LAN 路由那两条都挂在 `expected "manual", received "callback"`），还原后 **46 全过** · **本轮主证据（真服务端 ×2 + 真浏览器：改前 / 改后两态 + 回环对照）**：`packages/{core,server,web}` 各自单独重建；两份服务端产物（`r136/before-server-dist` 取自把四份源码 stash 掉的树）与两份 web 产物（`r136/{before,after}-dist`）分别挂在一次性数据根 `/root/adelie-fork-data/r136-{before,after}` 上，**改后起在 `localhost:8954`、改前起在 `localhost:8955`**（`ADELIE_SEED_ADMIN_PASSWORD` + 登录页表单拿 cookie；空数据根不需要模型 key——即 3.6 那个卡点）；浏览器用 `--host-resolver-rules=MAP app.lan 127.0.0.1` 以 **`http://app.lan:<port>`（明文 HTTP + 非回环主机名）** 访问，三腿读数：**改后 @ LAN** —— `POST …/model-oauth/start` 回 `mode: "manual"`、`authorizeUrl` 里**没有 `callback_url`**、`code_challenge_method=S256`，弹窗同时有「授权码」输入框 + 那句粘贴提示 + 「提交授权码」，**没有**「授权页跳不回来？改为手动填写授权码」这个开关（截图 `r136/shots/after-lan.png`）；**改前 @ LAN** —— 应答无 `mode` 字段、`callback_url` 就是 `http://app.lan:8955/…`（正是授权页会拒的那个），弹窗只有「打开授权页」+ 那个开关、**没有授权码框**（`r136/shots/before-lan.png`）；**改后 @ localhost（回环对照，行为不变）** —— 应答 `mode: "callback"`、`callback_url` 是 `http://localhost:8954/…`、开关照旧在（`r136/shots/after-localhost.png`）。三腿 console 各 **0 error**、**无一条 ≥400**（登录前的 `/api/me` 401 属这个 App 的正常首访）· 端口只用 8954 / 8955（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r136-{after,before}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r136/` 下（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
+| 2026-10-27 | 5.51 | **底部停靠栏拉到最大时不再盖住输入区**（上游 `bf3395ff` `#1325` 移植，照改动落、不是合分支；上游 11 文件 / +324 −34 → 本树落下 8 个跟踪文件（5 改 3 新）+ changelog 一对 + 1 处端到端视口）：停靠状态的高度上限原先只按对话列（含工具行）的 85% 算，没有谁给输入区留位置，输入区就被压到停靠栏下面、点不到。新增 `features/dock/bottom-dock-size.ts`（纯逻辑：上限 = 工具行以下那片区域 − 量出来的输入区高度 − 一条消息带，仍受 0.85 封顶；空间不够先让消息带、再让 140px 最小高度，输入区永远让），新增 `features/dock/composer-height.ts`（`ResizeObserver` 喂的小 store，停靠栏 / 拖动夹取 / 落点预览读同一个数，重挂载后仍留着），`dock-panel.tsx` 量列与区域、上限跌破时走既有 `snap` 路径同提交让出，`dock-drag.tsx` 预览同一函数，`chat-page.tsx` 给输入区那个框挂测量 ref（本树输入区是普通 `<div>`，上游的 `WallpaperSurface` 本树没有），`dock-state.ts` 的尺寸常量搬走、`DOCK_RATIO_MAX` 反向导入，`e2e/dock.spec.mjs` 的尺寸用例改在 1280×1100 下跑。**本地化**：changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源；新用例里那条读源码的断言改成认本树的 `<div ref={measureComposer}>` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 15 个文件 **0 警告 0 错误** · 八个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）+ 1 跳过 · ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3292 通过 / 2 跳过**（本笔 +1 文件 / +9 用例）· hmr 无测试文件 · **本轮主证据（真服务端 ×2 + 真浏览器，两态四场景）**：服务端产物同一份（本笔只动 web），两份 web 产物 `r51/{after,before}-dist`（`[data-dock-area]` 选择器计数 5 / 1 两端核过）分别挂在一次性数据根 `/root/adelie-fork-data/r51-{after,before}` 上，**改后 `localhost:8956`、改前 `localhost:8957`**（`ADELIE_SEED_ADMIN_PASSWORD` + 模型指向本仓自带 mock LLM（8977）；空数据根不需要模型 key —— 即 3.6 那个卡点）；两态都把已存排布预置成「底部停靠栏开着轨迹观测、比例 0.85」（最大所存比例），1280×800 下读 `composer.bottom − dock.top`：**改前** 空输入区 **122px**（停靠栏 655px，鼠标落在输入区正中命中的是停靠栏的 header）、输入区涨到 7 行 **238px**、窗口压到 1280×560 **274px**，且 `textarea.click()` 被停靠栏挡下（Playwright 报 intercepts pointer events）；**改后** 四态（空 / 涨到 7 行 / 1280×560 / 清空）**全是 0**，停靠栏随之让出 423 → 307 → 140 → 423，输入区正中命中 `textarea`，点击一次就进得去。截图 `r51/shots/{before,after}-{empty,grown,short,cleared}.png`（改前那张里输入区整块不见、只剩上方的上下文提示；改后那张里输入框完整地停在停靠栏上方）；两态 console 各 **0 error**、**无一条 ≥400** · **相邻回归（真浏览器单 spec）**：`dock.spec.mjs` 10 条 + `mobile-dock.spec.mjs` 1 条 **11 passed（25.4s）**，其中被改视口的那条也在内 · **反证（同一份 spec，去掉这轮的视口改动）**：默认 1280×720 下「尺寸与排布在刷新后仍在」**1 failed**（`expect(after - before).toBeGreaterThan(80)`：默认高度已经顶到新上限，往上拖 120px 长不了）—— 与上游 PR 的说法一致 · 端口只用 8956 / 8957 / 8977 与单 spec 那套 8958 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r51-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r51/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -16659,3 +16673,106 @@ adelie 应用可以产出视频」。
   框里（`6b324138`，上一轮的收尾）。
 - 汇报：校园邮箱照惯例只试一次（`202.197.0.0/16` 整片不通，不是凭据问题），改走飞书，正文留底在
   scratchpad 的 `release-058/report.txt`。
+
+## 第一百三十七轮：底部停靠栏不再盖住输入区（2026-10-27，条目 5.51）
+
+本轮代码提交见「已完成的轮次」那一行（台账、changelog 与代码是同一笔）。
+
+### 开工自检
+
+- `/root/adelie-fork` 在 `main` 上，`git status --short` **干净**；`git fetch origin && git merge --ff-only
+  origin/main` 报 `Already up to date`（头是 v0.5.8 那轮的 `50458de9`）。没有切分支、没碰 `legacy/main`、
+  没推 upstream。
+- 上一轮拉的上游探针引用 `refs/adelie-tmp/upstream-main-r136`（尖端 `4694d853`）还在，本轮要的两笔
+  （`bf3395ff` / `ce9b3e69`）都在对象库里，不必再拉。
+
+### 选活
+
+表上最靠前的未勾选条目仍是 **2.2c**（剩下的三件都不在「改代码」这一侧）、**3.5** 要用户拍板取哪个桌面壳、
+**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.6** 与 **5.10** 等用户拍板。于是照惯例做上一轮
+「没做 / 还差什么」里点名的第一顺位：**`bf3395ff`（#1325）**，即底部停靠栏压住输入区那条真缺陷。
+
+**为什么只做它、没连 `ce9b3e69`（#1335）一起**：上一轮记的是「两条要一起做才不互相返工」，实摸之后
+`#1335` 自己就比它大（16 文件 / +377 −85，且它新增的 `builtin-browser-sessions.test.ts` 是
+`// @vitest-environment jsdom` —— `packages/web` 不装 jsdom，装了就违反「不引入新依赖」，那一半得像
+第一百三十六轮那样改用真浏览器取证）。两条虽然改同一批文件，但 `#1325` 的改动集中在
+`bottom-dock-size.ts` / `composer-height.ts` 两个本笔新增的模块与 `dock-panel.tsx` 的尺寸计算，
+`#1335` 动的是「面板跟着自己的会话走」那条作用域链（`browser-state.ts` / `panel-task-scope.ts` /
+`draft-view.tsx` 等），文件重合但**行不重合**；先落尺寸这一条，下一次在它之上接 `#1335` 时不用返工
+尺寸那一半 —— 这也正是本轮把「尺寸常量搬进纯逻辑模块 + 输入区高度走 store」先立起来的原因。
+
+### 做了什么
+
+- `packages/web/src/features/dock/bottom-dock-size.ts`（新增，纯逻辑）：规则本身。
+  `bottomDockMaxHeight({host, area, composer})` = `area − composer − CONVERSATION_MIN_HEIGHT_PX`
+  与停靠栏 140px 最小高度取大（空间太短时先让消息带），再与 `DOCK_RATIO_MAX × host` 取小、向下取整；
+  `bottomDockHeight(ratio, space)` 把所存比例夹到它以内（先 `max(140, ratio × host)` 再与上限取小，
+  所以分数测量不会把停靠栏抹到输入区上去）。`DOCK_RATIO_MAX` / `DOCK_MIN_HEIGHT_PX` 搬到这里，
+  `dock-state.ts` 反过来从这里导入 `DOCK_RATIO_MAX`（它只剩比例本身的夹取）。
+- `packages/web/src/features/dock/composer-height.ts`（新增）：`useSyncExternalStore` 的小 store，
+  `measureComposer` 是挂在输入区那个框上的 `ResizeObserver` ref，0 高度（被工作台标签盖住）不算测量；
+  最后一次性测量在重挂载后仍留着，切会话时输入区重建不会让已经到顶的停靠栏先跳上去再落下来。
+- `packages/web/src/features/dock/dock-panel.tsx`：新增 `measureColumn()`（读 `[data-dock-host]` 与
+  `[data-dock-area]`），`hostHeight` 换成 `column`（host + area，两者都没变才不重渲染），渲染高度改用
+  `bottomDockHeight`，拖动夹取改用 `bottomDockMaxHeight`（存的还是「停靠栏实际显示的高度」，越过
+  `max + 40px` 照旧跳全屏）；新增一段「上限跌破停靠栏 → 同一个提交里 `setSnap(true)` 让出」——
+  走 `snap` 而不是主题的布局动画，否则动画结束前输入区仍压在停靠栏边下。
+- `packages/web/src/features/dock/dock-drag.tsx`：落点预览改调 `bottomDockHeight`（读同一个输入区高度，
+  读不到 `[data-dock-area]` 时退回 host 高度）。
+- `packages/web/src/features/dock/dock-launcher-state.ts`：新增 `LAUNCHER_BODY_MIN_HEIGHT`
+  （球 + 小字 + 上下边距，消息带的最小高度就取它）。
+- `packages/web/src/features/chat/chat-page.tsx`：输入区那个框挂上 `ref={measureComposer}`。
+  **本树的输入区是一个普通 `<div>`** —— 上游把 ref 交给它的壁纸面（`WallpaperSurface`），本树没有那个
+  组件（壁纸是另一条线的功能），所以冲突解法是「留本树的 `<div>`、把 ref 挂上去」。
+- `packages/web/e2e/dock.spec.mjs`：「尺寸与排布在刷新后仍在」在开头把视口设成 1280×1100 ——
+  默认 1280×720 下底部停靠栏的默认高度已经顶到新上限，那条往上拖 120px 的用例就没有生长空间。
+- `packages/web/test/bottom-dock-size.test.ts`（新增，9 条用例）：各种列高 / 输入区高 / 比例的组合下
+  输入区都完整、上限与消息带各自的值、谁先让出、比例上限与分数测量、上限就是跳全屏的参照、以及
+  「输入区那个框挂着测量 ref」（这条读源码，断言按本树的 `<div ref={measureComposer}>` 写）。
+- changelog 一对 `changelog/unreleased/2026-10-27-dock-composer-overlap{,.zh}.md`（本仓写法：去掉上游
+  PR 行、写明移植出处与「无接口 / 数据 / 依赖变化」）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`）；`gen:ifaces` 报 **`src/ifaces.json unchanged`
+  （195 接口 / 590 类型）**；`git diff` 里没有它。
+- 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件 + 1 跳过）· ui **1053**（130 文件）·
+  cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3292 通过 / 2 跳过**
+  （本笔 +1 文件 / +9 用例；第一跑那 1 条红正是新用例里读源码的断言，按本树结构改过后转绿）。
+- `npx oxlint` 15 个文件 **0 警告 0 错误**；八个源码 / 用例文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- **本轮主证据（真服务端 ×2 + 真浏览器，两态 × 四场景）**：本笔只动 web，所以两态共用同一份服务端产物，
+  web 产物两份（`r51/after-dist` 与 `r51/before-dist`，用 `[data-dock-area]` 选择器计数 5 / 1 两端核过
+  确实是两份不同的东西）。两个一次性数据根 `/root/adelie-fork-data/r51-{after,before}`，改后起在
+  **8956**、改前起在 **8957**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 的副本，8977；
+  空数据根不需要模型 key —— 即 3.6 那个卡点）。两态都把已存排布预置成「本会话底部停靠栏开着、标签
+  轨迹观测、`bottomRatio: 0.85`」（store 能存的最大比例），1280×800 打开会话后读
+  `composer.bottom − dock.top`（正数＝停靠栏盖住了输入区），并在输入区正中打一发
+  `elementFromPoint`：
+  - **改前**：空输入区 **122px**（停靠栏 655px，正中命中的是停靠栏 `header`，Playwright 点输入区直接报
+    `subtree intercepts pointer events`）；输入区涨到 7 行 **238px**；窗口压到 1280×560 **274px**；
+    清空后回到 **122px**。
+  - **改后**：四态 **全是 0**，停靠栏随之让出 **423 → 307 → 140 → 423**，输入区正中命中 `textarea`，
+    `textarea.click()` 一次就进得去。
+  - 截图 `r51/shots/{before,after}-{empty,grown,short,cleared}.png`：改前那张里输入区整块不见、只剩上方
+    那条上下文窗口提示；改后那张里输入框完整地停在停靠栏上方（两条都肉眼核过）。
+  - 两态 console 各 **0 error**、**无一条 ≥400**（登录前的 `/api/me` 401 属这个 App 的正常首访）。
+- **相邻回归（真浏览器单 spec）**：`dock.spec.mjs` 10 条 + `mobile-dock.spec.mjs` 1 条
+  **11 passed（25.4s）**，被改视口的那条也在内。
+- **反证（同一份 spec，去掉这轮的视口改动）**：把 `setViewportSize({1280×1100})` 那三行拿掉、单跑
+  「尺寸与排布在刷新后仍在」→ **1 failed**（`expect(after - before).toBeGreaterThan(80)`）—— 默认
+  1280×720 下底部停靠栏的默认高度已经到了新上限，往上拖 120px 一点都长不了，与上游 PR 的说法一致。
+  临时 spec 与 `test-results/` 已删干净（未进仓库）。
+- 端口只用 8956 / 8957 / 8977 与单 spec 那套 8958 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 /
+  7369 一个没碰；数据只落在 `/root/adelie-fork-data/r51-{after,before,e2e}`，探针 `r51/probe.mjs`、
+  两态产物、两态源码留底与截图都在 scratchpad 的 `r51/` 下（`packages/*/dist` 是构建产物，未 `git add`）。
+
+### 没做 / 还差什么
+
+- **`ce9b3e69`（#1335，停靠面板跟随自己的会话）没做**：见「选活」那段的理由（量比这一条大，且它的
+  jsdom 用例要新依赖，得改真浏览器取证）。它是下一轮的第一顺位。
+- **桌面壳的内置浏览器面板没有验**：上游的原始报告里有它，但本仓的 web 构建里没有那个面板（它只在
+  桌面壳里出现），而这条尺寸规则不依赖面板。
+- **真触摸没有测**：本轮的拖动 / 尺寸都在鼠标下量，触摸屏上的停靠栏拖动沿用同一套夹取，但没有实机验证。
+- 下一轮：`ce9b3e69`（#1335）；再往后是 `0c7725c2`（#1250，流式回复时往上滚不再被拽回去，自带 306 行
+  e2e）与 `12a58d4f` 之后那几笔要新前置的（`#1272` / `#1268` 的 API socket 面）。
