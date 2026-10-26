@@ -16590,3 +16590,72 @@ adelie 应用可以产出视频」。
   是这一轮量过、最值得一起做的两条（同一批文件、都有现成用例）；再往后是 `0c7725c2`（`#1250`，流式回复时
   往上滚不再被拽回去，自带 306 行 e2e）与 `12a58d4f` 之后那几笔要新前置的（`#1272` / `#1268` 的 API socket 面）。
 - 汇报邮件：照 `csu-mail` 技能试一次；不通就改走飞书（第 117 / 135 轮的先例）。
+
+## 发版 v0.5.8（2026-10-26 23:33 CST，用户点单：插件更新的「目录被占用」报错 + 下载不通 GitHub 时让 Adelie 接手）
+
+- 起点：用户 10-26 在 Windows 桌面端点「更新插件」失败，错误中心四条
+  `EBUSY: resource busy or locked, rmdir '…\agent_state\skills\wps-office'`，界面只写「已更新 0 个 Agent；
+  General Agent — 服务器内部错误」；同一条消息里追加了第二件：更新 Adelie 时有些主机连不上 GitHub，
+  要「让 Adelie 自己排查并自主下载」，界面得提示「要先配模型、会按用量产生开销」。还有一条
+  「错误中心的异常加复制按钮」当场说留下一轮做，只记进记忆、这一轮不碰。
+- 发版条件成立：自 `v0.5.7`（`0cd8f339`）起 `main` 上落了 **8 笔提交，其中 3 个用户看得见的改动**，
+  CI 全绿 → 发 **v0.5.8**（patch：数据根、配置格式、包名与既有请求接口都没变，只多一个错误码）。
+- 第一笔 `6f25e145` `fix: 更新插件时技能目录被别的程序占着，不再直接报「内部错误」`：`packages/core`
+  里加了 `DirectoryBusyError` 与 `retryWhileBusy`（认 `EBUSY`/`EPERM`/`ENOTEMPTY`，退避
+  `[30,70,150,300,600]` ms、约 1.1 秒），换技能的 `fs.rm`、删技能、删 hook 三处都走它；`packages/server`
+  加 `normalizeError` 把 `DirectoryBusyError` 归一成 `409 skill_dir_busy`。**关键点**：两个 onError 漏斗
+  （`app.ts` 与 `http/app.ts`）都必须先归一化再记错误中心 —— 错误中心按 `instanceof HttpError` 分类，
+  只改 `handleError` 的话，界面提示对了、错误中心还是记成「未预期」。
+- 第二笔 `b371edca` `feat(web): 更新拉不到 GitHub 时，可以让 Adelie 自己排查并把新版本下下来`：
+  `packages/web/src/lib/update-troubleshoot.ts` 认「连不上」的失败特征（CLI 与桌面壳两套报文，大小写
+  不敏感），命中才在失败弹窗里多一个「让 Adelie 排查并下载」按钮，点开新建对话并带上一段写好的排查
+  提示词（查 DNS/代理/TLS、走 Release 地址取 `install.sh` 与 `penguin-linux-x64.tar.gz` 并核对
+  `.sha256`、装到 `~/.adelie`、**别动 `~/.adelie/data`**、如实报告项目）；按钮旁写明要先配模型、会按用量
+  产生开销。为带上目标版本号，`UpdateFlow` 的 error 变体加了必填 `version`。
+- 第三笔 `8152581d` `fix(use-wps-office): 桥的落脚点改到用户主目录，别再站在数据目录里`：桥的 spawn 加
+  `cwd: os.homedir()`，开机自启的 `.cmd` 加 `cd /d "%USERPROFILE%"`，从源头减少插件自己占住技能目录。
+- 版本戳 `680bdf76` `chore(release): 0.5.8` —— 34 个文件（root + 10 个工作区包 + 22 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`；四个 private sandbox 插件仍停 0.2.3）；发布正文
+  `5ab78bae` `docs(release): v0.5.8 的发布正文`。
+- 门禁（发布树 `/tmp/rel-0.5.8`，branch `release-0.5.8`，HEAD `5ab78bae`）：build / typecheck / lint /
+  format:check / `pnpm -r test` 全 `rc=0`，没有偶发红。
+- **tag 被强制重指（记下来省下一轮）**：`v0.5.8` 先指向 `5ab78bae`，随即那次 CI（run `40342447499`）
+  **`test-windows (rest)` 红** —— 是我第一版 `cwd` 写成了数据目录（`root`），Windows 上任何进程的 cwd
+  都会让那个目录删不掉，`plugins/use-wps-office` 的 `test/install.test.mjs` `after` 里 `fs.rmSync(root)`
+  报 `EPERM`；`killBridgesFor()` 是 Linux-only，所以只在 Windows 上暴露。改成 `os.homedir()` 后
+  `test-windows (rest)` 转绿（tag 对象最终为 `2185cc3b`，指向提交 `8152581d`）。**本机 Linux 复现不出
+  这个红。**
+- **CI 被并行会话取消的实情**：CI 并发组是 `ci-push-refs/heads/main` + `cancel-in-progress: true`，
+  另一条线在我之后推提交，把我先前的 run（`40346200137`）取消了 —— 其中 `test-windows (rest)` 已经是
+  success，但聚合 job `ci` 因此记成 failure。最终 `ea7d38c0` 的 run `40348258983` **21 个作业全绿**。
+  （不要去 rerun 被取消的旧 run，会把正在跑的那个反过来取消掉。）
+- 14 件资产：CLI 三件（本机照 `release.yml` 的 build 作业复现）、桌面 Linux 本机
+  `electron-builder --linux`（AppImage 154733879 / deb 121447316）、桌面 Windows 用 `desktop-build.yml`
+  手工派发（run `40346212281`，三平台全绿，取回 exe 162267507 + blockmap + `latest.yml`）、两个安装
+  脚本与三个 `.sha256`。`verify-assets-058.py` **四层校验全过**（sha256、`latest*.yml` 的 sha512+size、
+  deb 的 `Version: 0.5.8`、两个安装脚本戳 `v0.5.8` 且无占位符）。Release id **424424422**，14 件全
+  `uploaded`，`releases/latest` 指向 v0.5.8。
+- npm：**26 个包全到 0.5.8**（22 插件 + `amsp`/`core`/`server`/`cli` 四个主机包；4 个 private sandbox
+  插件跳过）。发布后立刻查仍是老样子逐条滞后（`publish-npm-058.log` 的 registry check 显示一批
+  `MISSING`），等一小时后逐包复查 26/26 全到，没有改版本号。`check-publishable --strict` 发布前
+  `rc=0`（`registry: all 26 published names already exist`）。
+- 3003 下载站：`/downloads/index.json` 换 v0.5.8（6 件，size/sha256 取自本轮产物），页头角标 `v0.5.7` →
+  `v0.5.8`；改前备份 `downloads/index.json.bak-20261026-v058` / `index.html.bak-20261026-v058`。
+- 现网：`penguin update --check` → 「Installed 0.5.7 · latest 0.5.8」→ `penguin update --yes` 两级
+  checksum 都过（`Bundle checksum OK` / `Payload checksum OK`），`Adelie v0.5.8 installed to /root/.adelie`，
+  `penguin --version` = `v0.5.8`，只换 `bin/lib/web/node`，数据根与 `/root/.penguin/data` 软链没动。
+  服务进程重启排进 `systemd-run --unit=adelie-live-restart-0.5.8`（脚本先睡 15 分钟再重启并自核验，
+  结果写 `release-058/post-restart-verify.txt`）—— 这条命令本身跑在 7364 服务端的子进程里，当场重启会
+  打断本轮。升级后当场核过产物：`/root/.adelie/web` 里有「让 Adelie 排查并下载」与 `skill_dir_busy`、
+  core 里有 `DirectoryBusyError`、server dist 里有 `skill_dir_busy`、
+  `lib/node_modules/@adelie/use-wps-office/…/install.mjs` 里是 `cwd: os.homedir()`。
+- **两个坑（记下来省下一轮）**：**①** Windows 上任何进程的 cwd 会让该目录删不掉（`EPERM`）——临时
+  目录里起的进程会把 `fs.rmSync(root)` 顶掉，本机 Linux 复现不出这个红。**②** `publish-npm-058.sh`
+  会把 `packages/web/dist` 复制成 `packages/server/web-dist`；若之后再跑 `pack-cli`，deploy 会把这份
+  18M 副本塞进 CLI 三个安装包（包体 +11MB，且与 CI 产物形状不符）。这一版先删掉 `packages/server/web-dist`
+  再重打，尺寸回到 113760032 / 56486328 / 149701500。
+- 带出去的 3 个用户看得见的改动：更新拉不到 GitHub 时可以交给 Adelie 排查下载（`b371edca`）、插件更新
+  不再被「目录被占用」拖死（`6f25e145` + `8152581d`）、智能体设置的还原配置与更新内核被拒时原因留在
+  框里（`6b324138`，上一轮的收尾）。
+- 汇报：校园邮箱照惯例只试一次（`202.197.0.0/16` 整片不通，不是凭据问题），改走飞书，正文留底在
+  scratchpad 的 `release-058/report.txt`。
