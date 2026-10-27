@@ -17031,7 +17031,7 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
   任何位置都还没报告过时不置一词）。
 - `packages/web/e2e/scroll-follow-bounce.spec.mjs`（新，306 行）：三主题 × 6 手势，逐帧记录滚动位置、
   滚轮事件与程序发起的滚动；`packages/web/e2e/mock-llm.mjs` 加「scroll bounce test」分支（每 50ms
-  一段三行，共 80 段）；`packages/web/test/stream-follow.test.ts` 加三条用例。
+  一段三行，共 80 段）；`packages/web/test/stream-follow.test.ts` 加四条用例（「手势起在贴底与它的滚动事件之间」1 条 + `followToBottom` 3 条）。
 - **合并时三处冲突这样解**：`packages/ui/src/theme.css` 取本树（上游那段 `.ui-stream [data-arrive]`
   本树没有 → 见下）；`message-stream.tsx` 只取新的滚轮 effect，上游上下文里带着的「查找栏加载更早」
   effect（`FIND_LOAD_OLDER_EVENT`）本树没有那个功能、不引入；`mock-llm.mjs` 的头注释保留本树的
@@ -17053,7 +17053,7 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
   195 接口 / 590 类型 —— 本笔不动服务契约）。
 - 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）·
   cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3299 通过 / 2 跳过**
-  （比上一轮 +4，即三条新用例 + 既有一条的分组变化）· hmr 无测试文件。
+  （比上一轮 +4，正是 `stream-follow.test.ts` 新加的四条用例）· hmr 无测试文件。
 - `npx oxlint` 五个改动文件 **0 警告 0 错误**；五个源码 / 用例文件与一对 changelog `prettier --check`
   干净；`git diff --check` 干净。
 - **反证（三处定向变异，各自只压中自己那条用例）**：
@@ -17103,3 +17103,21 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
 - 上次发版 **`v0.5.8`**（2026-10-26 23:07 CST）。自那以后 `main` 上的提交里功能性的是 5.50 / 5.51 /
   5.52 与本轮 5.53，远不到 10。
 - 不动版本号、不发 npm、不发安装包。
+
+### 提交与 CI（推送后）
+
+- 本轮代码 + 台账 + changelog 一笔：**`f7b93ea3`**（`573588d3..f7b93ea3  main -> main`，
+  8 个跟踪文件 / +673 −34）。
+- 它的 run **`40443916142`**：**22 个作业全 success、`NOT SUCCESS: []`**（逐条查过
+  `actions/runs/40443916142/jobs`，含 macOS / Windows 分片与两条 installer），未触发重跑。
+- **与另一条线的交汇（本轮第一次遇到「开工干净、中途别的会话写进来」）**：11:18–11:20 有一份不属于本轮的
+  改动落在工作区 —— `packages/core/src/state/model-catalog.ts`、`packages/core/test/model-catalog.test.ts`、
+  `packages/docs/content/models.{zh,en}.md`，并有一个 `pnpm typecheck`（11:22 起）在跑。按共存口径处理：
+  提交一律带 pathspec、只带本轮这 8 个路径，那 4 个文件原样留在工作区给它；没 amend、没 stash 别人的东西。
+- **汇报邮件没发出去（网络卡点，不是凭据）**：`scripts/mail.py check` 70 s 超时（退出 124），直接证据是
+  `socket.connect(('smtp.csu.edu.cn', 465))` **`TimeoutError`**、`curl https://mail.csu.edu.cn/` 也超时，
+  而 `getent hosts smtp.csu.edu.cn` 正常解析出 202.197.64.20 / .21 —— DNS 通、到 `202.197.x` 的 TCP 不通，
+  与 2026-10-08、第一百三十八轮同一现象。按第 117 / 135 / 138 轮的先例改走飞书投递
+  （`shared_env/xianyu-ops/feishu_send.py`，`text ok`，`message_id=om_x100b6135ef192cb8ddbb1e6ec0937f8`），
+  正文留底在 scratchpad 的 `r140/report.md`。下一轮开工再探一次，通了把积压的补发到
+  `0110230306@csu.edu.cn`。
