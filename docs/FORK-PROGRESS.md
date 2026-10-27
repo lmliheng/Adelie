@@ -17271,3 +17271,11 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
 ### 提交
 
 - 两笔：异常表复制按钮 + changelog 一对 = **`c4fd530e`**；台账（本节的清单行 + 这一节）另起一笔。
+
+### 汇报
+
+- 收件人 `0110230306@csu.edu.cn` 的邮件**发不出去**：`imap.csu.edu.cn:993`、`smtp.csu.edu.cn:465`、
+  `mail.csu.edu.cn:443` 三个都超时（与第一百三十八轮同一种情况），`mail.py check` 直接卡在连不上。
+  凭据没动过（`CSU_MAIL_ADDR` / `CSU_MAIL_AUTHCODE` 都在环境里），所以这不是密码问题。
+- 按第一百三十八轮定下的替代路，本轮汇报改走飞书（`shared_env/xianyu-ops/feishu_send.py`，绑定取自
+  `web.db`）：`--check` 通过，正文发出、`message_id` 回执。邮件通道恢复后无需补发。
