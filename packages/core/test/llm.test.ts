@@ -7,7 +7,7 @@
  *   2. Translating/aggregating UniEvent[] into OmniMessage[] (partial_* ordering, complete
  *      messages, token_usage accumulation, tool_call_id passthrough).
  * As well as helper functions for token conversion, UniConfig construction, and retry
- * determination.
+ * determination, and how streamGenerate releases the upstream when it is left before the stop.
  */
 import { describe, expect, it } from "vitest";
 import {
@@ -1698,6 +1698,133 @@ describe("GenerativeModel.streamGenerate outcome classification (PRN-013)", () =
   }
 
   const abortError = (): Error => Object.assign(new Error("aborted"), { name: "AbortError" });
+
+  // UniEvent helpers for the lifecycle cases (upstream's suite has these beside its own fakes;
+  // this tree's vocabulary is `{ type: "text" }` items and an explicit `stop` event).
+  const NO_USAGE: UsageMetadata = {
+    cached_tokens: 0,
+    prompt_tokens: 0,
+    thoughts_tokens: 0,
+    response_tokens: 0,
+  };
+  const delta = (text: string): UniEvent => ev({ content_items: [{ type: "text", text }] });
+  const text = (chunks: readonly string[]): UniEvent[] => chunks.map(delta);
+  const stop = (reason: NonNullable<UniEvent["finish_reason"]>, usage: UsageMetadata): UniEvent =>
+    ev({
+      content_items: [],
+      event_type: "stop",
+      finish_reason: reason,
+      usage_metadata: usage,
+    });
+
+  it("aborts and closes the upstream request when the consumer leaves early", async () => {
+    let upstreamSignal: AbortSignal | undefined;
+    let released = false;
+    const model = new SeamModel(async function* (signal) {
+      upstreamSignal = signal;
+      try {
+        yield delta("first");
+        yield delta("unwanted");
+      } finally {
+        released = true;
+      }
+    });
+    for await (const _record of model.streamGenerate({ newMessages: [userText("go")] })) break;
+    expect(upstreamSignal?.aborted).toBe(true);
+    expect(released).toBe(true);
+  });
+
+  it("closes upstream after a user abort while suspended at output", async () => {
+    const controller = new AbortController();
+    let released = false;
+    const model = new SeamModel(async function* () {
+      try {
+        yield delta("first");
+      } finally {
+        released = true;
+      }
+    });
+    const gen = model.streamGenerate({ newMessages: [userText("go")], signal: controller.signal });
+    expect((await gen.next()).done).toBe(false);
+    controller.abort();
+    expect((await drain(gen)).outcome.status).toBe("aborted");
+    expect(released).toBe(true);
+  });
+
+  it("leaves the upstream open after a received stop, preserving billed usage", async () => {
+    let upstreamSignal: AbortSignal | undefined;
+    let returns = 0;
+    // A hand-written iterator: this tree's loop pulls until `done` (upstream's breaks at the
+    // stop event), so the producer's own `finally` runs either way — what must not happen is
+    // the consumer-side cleanup aborting the signal or asking the transport to close.
+    const model = new SeamModel((signal) => {
+      upstreamSignal = signal;
+      return {
+        [Symbol.asyncIterator]() {
+          let step = 0;
+          return {
+            next: async (): Promise<IteratorResult<UniEvent>> => {
+              step += 1;
+              if (step === 1) return { done: false as const, value: delta("done") };
+              if (step === 2)
+                return {
+                  done: false as const,
+                  value: stop("stop", { ...NO_USAGE, response_tokens: 7 }),
+                };
+              return { done: true as const, value: undefined };
+            },
+            return: () => {
+              returns += 1;
+              return Promise.resolve({ done: true as const, value: undefined });
+            },
+          };
+        },
+      };
+    });
+    const { messages, outcome } = await drain(
+      model.streamGenerate({ newMessages: [userText("go")] }),
+    );
+    expect(outcome.status).toBe("completed");
+    expect(messages.find((m) => typeOf(m) === "token_usage")?.payload).toMatchObject({
+      request: { output: 7 },
+    });
+    expect(upstreamSignal?.aborted).toBe(false);
+    // Nothing is cancelled or closed once the stop arrived: the turn is committed and billed.
+    expect(returns).toBe(0);
+  });
+
+  it.each(["throw", "reject", "hang"])(
+    "does not let %s during cleanup prevent leaving the stream",
+    async (mode) => {
+      let upstreamSignal: AbortSignal | undefined;
+      let returns = 0;
+      const model = new SeamModel((signal) => {
+        upstreamSignal = signal;
+        return {
+          [Symbol.asyncIterator]() {
+            return {
+              next: async () => ({
+                done: false as const,
+                value: delta("first"),
+              }),
+              return: () => {
+                returns += 1;
+                if (mode === "throw") throw new Error("cleanup failed");
+                if (mode === "reject") return Promise.reject(new Error("cleanup failed"));
+                return new Promise<IteratorResult<UniEvent>>(() => {});
+              },
+            };
+          },
+        };
+      });
+      const gen = model.streamGenerate({ newMessages: [userText("go")] });
+      expect((await gen.next()).done).toBe(false);
+      expect(await gen.return({ status: "aborted" })).toMatchObject({ done: true });
+      expect(upstreamSignal?.aborted).toBe(true);
+      expect(returns).toBe(1);
+    },
+    1000,
+  );
 
   /**
    * An upstream that IGNORES its AbortSignal: it never yields and never rejects, whatever

@@ -1403,13 +1403,16 @@ export class GenerativeModel implements LLMInterface {
     // Terminal-state classification: retryable (transport/parse failures) / fatal (definitive
     // rejections) / aborted (user). null means it ended normally.
     let outcome: LLMOutcome | null = null;
+    // The upstream iterator, kept outside the try so the finally below can close it: a consumer
+    // that leaves before the stop would otherwise leave generation running.
+    let it: AsyncIterator<UniEvent> | undefined;
     try {
       await this.refreshApiKey();
       // The seller counts images per request, not per message: a conversation that read five
       // pictures would fail every later turn with 400 media_count_exceeded, so the oldest
       // replayed ones — and, when the input alone overflows, the input's own oldest ones — are
       // dropped from THIS request (the history and Trace keep them).
-      const it = this.openStream(
+      it = this.openStream(
         this.fitReplayedVideos(this.fitReplayedImages(uniMessage)),
         ac.signal,
         this.requestConfig(params.thinkingLevel, params.newMessages),
@@ -1440,10 +1443,8 @@ export class GenerativeModel implements LLMInterface {
           clearTimer();
         }
         if (res === STOPPED) {
-          // Upstream never settled after the abort. Abandon it rather than await it: ask it to
-          // close (best effort — a stream that ignored the signal may ignore this too, so the
-          // rejection is swallowed and the promise is not awaited) and classify by trigger.
-          void Promise.resolve(it.return?.(undefined)).catch(() => undefined);
+          // Upstream never settled after the abort. Cleanup below is best effort and does
+          // not wait on a stream that may also ignore return(). Classify by trigger.
           outcome = userSignal?.aborted
             ? { status: "aborted" }
             : { status: "retryable", errorCode: "timeout" };
@@ -1518,6 +1519,20 @@ export class GenerativeModel implements LLMInterface {
     } finally {
       clearTimer();
       userSignal?.removeEventListener("abort", onUserAbort);
+      // Leaving before the stop (at a yield, on an error, or abandoning an upstream that never
+      // settled) must cancel generation, even without a caller-owned signal, and close the
+      // upstream iterator to release it. Once the stop arrived nothing is cancelled: the turn
+      // is committed and billed, and the transport may still be reading the stream's end
+      // (MMSP yields the stop before `[DONE]`); closing it here would drop the connection.
+      if (!translator.sawFinishReason()) {
+        ac.abort();
+        // Do not let a broken or unresponsive cleanup replace the outcome or hold it open.
+        try {
+          void Promise.resolve(it?.return?.()).catch(() => undefined);
+        } catch {
+          // A synchronous cleanup failure is no more authoritative than a rejected promise.
+        }
+      }
     }
 
     // Defensive: when the underlying stream responds to an abort with a **graceful end (done)**
