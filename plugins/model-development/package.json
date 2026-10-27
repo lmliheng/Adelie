@@ -1,6 +1,6 @@
 {
   "name": "@adelie/model-development",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "description": "Model development on your own hardware: fine-tune with LlamaFactory, run local models with Ollama, and serve them with vLLM.",
   "license": "Apache-2.0",
   "repository": {
