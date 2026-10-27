@@ -1063,6 +1063,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       调用方），已经报过 stop 的响应一个字不动。**为什么是这一条**：表上未勾选的仍是 2.2c（桌面壳 / 部署
       单元）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖），而这一笔是
       这一轮拉到的上游新提交里唯一「真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在本机真跑的用例」的。
+- [x] **5.55 目标模式的预算计入轮中压缩之前的用量**（上游 `eb3edfec` `#1355`，**2026-10-28 第一百四十七轮
+      落地**，提交见该节）：goal 的 stop hook 只从最新的那个 Trace 文件里加总一轮的用量 —— 一轮进行到一半时
+      上下文压缩把日志轮转成新的一片，这一轮已经花掉的部分就留在旧片里：对着 100 的预算用掉 110 个未命中缓存的
+      token，会被记成 20 并继续 `active`，收尾那一轮因此根本不开始。现在 `lib.mjs` 新增 `readRoundRecords()`：
+      从 Trace 文件名解析分片序号、按写入方的三位补零往回走，直到某一片里出现轮次输入或走到 `_001`；每一片前驱
+      必须在自己的 `session_meta` 里报着同一个 `session_id`，否则停下并保留已读到的用量（数不全好过把别的会话
+      算进来）。展平后仍交给未改动的 `lastRoundRecords()`，于是「从最后一条轮次输入之后开始」这条规则只写在一处，
+      已完成的轮次不会被重复计入；认不出的文件名退回单文件计数。插件版本 `2026.09.29.1` → `2026.10.28.1`
+      （上游改的是 `package.json` 的 `hooks.version`，本仓没有那个块、版本在 `plugin.json`）。**为什么是这一条**：
+      表上未勾选的仍是 2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10
+      （拍板 / 新依赖），而它正是第一百四十六轮末尾点名的「下一轮的候选」（当时量过、六个文件干净落地）。
 - **量过、本轮没移植的一条**：`#1356`（`04ed9c70`，server 7 文件 / +183 −8，异常结束时已计量的请求只统计
       一次）。补丁能落（两处小冲突），单元用例也能红转绿，但**本树走不到那个形态**：本树的 `token_usage`
       只在 `streamGenerate` 的「正常收尾」分支产出（`generative-model.ts` 的 `finish()` 之后 `return
@@ -2347,6 +2358,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-27 | 用户点单（错误中心的复制按钮） | **成本中心异常表的每一行能整条复制走**（无清单条目，是用户 2026-10-26 当场点的单、第一百四十一轮记下「下一轮做」；本轮接的是 13:04 那轮留下、未提交的半成品，见本节「开工自检」）：`errors-panel.tsx` 新增导出 `errorCopyText(item)` —— 首行「最近时间 · 来源 · 错误码 · 类型（合行时再 ×N + 首次时间）」、随后**完整消息（换行照原样）**，用 ui 既有的 `CopyButton`（`size="sm"`、`text` 传取值函数）画在每行右端；不做悬停才显形（手机没有悬停，Tailwind v4 把 `hover:` 收在 `@media (hover: hover)` 里），表头那格留空（图标用 `aria-label` 自报名字，每行再读一遍列名是重复），`Th` 的 `children` 改可选；表格 `min-w` 720 → **752**（= 旧下限 + 复制列自己的 32，新列不从消息列抢宽度）；文案键 `errorsCopy` 中英各一条、文档 `usage.zh.md` / `usage.en.md` 各一句、changelog 一对 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型 —— 本笔不动接口）· `npx oxlint` 两个改动源码 / 用例文件 **0 警告 0 错误** · 8 个改动文件（含 changelog 一对）`prettier --check` 干净（先 `--write` 过两个）· 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2996 通过 / 4 跳过** · web **270 文件 / 3309 通过 / 2 跳过**（本笔 +6 用例，`errors-panel.test.ts` 单跑 22 过）· hmr 无测试文件 · **真看一眼（真 Web App + 真浏览器，画廊 7381 的 mock 数据：3 行、其中一行 ×4）**：中英各 **3 个**复制按钮；点第一行剪贴板 = `2026-10-27 13:35 · [llm] rate_limited · 预期内 · ×4 · 首次出现于 2026-10-27 12:10` + 换行 + 完整消息，英文页同一行读作 `… · Expected · ×4 · First at …`（本地化跟着界面语言走）；点第三条（未预期）剪贴板 = `… · [runtime] internal · 未预期` + 换行 + 整句 TypeError；列宽实测 **128 / 288 / 80 / 390 / 32**、420 宽视口下表格 **752** 而**页面横向溢出 0**（仍在自己的横滚盒里）；两页 **console 0 error、无 pageerror**，被点的行变成对勾；截图在 scratchpad 的 `shots/` 下 · 端口只用 **7381**（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data`（未新写），临时脚本与截图都在 scratchpad | `c4fd530e` |
 | 2026-10-27 | 7.50 | **内置浏览器「清除浏览数据」被拒时，原因留在卡片里**（不是移植：1 处源码 `packages/web/src/features/builtin-browser/clear-data-dialog.tsx`（+17 −3：新增 `refusal` 状态接上 `ConfirmModal` 的 `refusal` 槽，`catch` 不再 `toastError`、改把 `S.builtinBrowser.clearFailed(apiErrorText(err))` 交给卡片，点「清除」与开框各清一次旧原因） + 1 个新文件 `packages/web/e2e/builtin-browser-clear-refusal.spec.mjs`（1 条用例：拒一次清除、再放行一次，并核对两次请求体里的种类相同） + changelog 一对 + 文档两句，**无新依赖、不碰接口、无新文案**）：这一族（7.19–7.49）的最后一处 —— 卡片本来就会在失败时留着，丢的是原因：它落进一条自己会消失的提示，而卡片停在那儿一个字都不说；卡片上的重试是回到同一份勾选的唯一路径。现在原因画在卡片里、紧挨着重试按钮，勾好的种类连同取消勾选的那一个都原样留着 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · `@adelie/docs` **8 文件 / 62 通过**（本轮改到它的内容）· **真服务 + 真浏览器单 spec**（一次性数据根 `/root/adelie-fork-data/r145-clear`、服务 **8977**、本机系统 chromium `/usr/lib/chromium/chromium-headless-shell`）：新 spec **1 passed（2.8 s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git checkout --` 退回、`--filter @adelie/web build` 重建、同一个服务端再跑 → **1 failed**（`getByRole('dialog')` 里 `getByRole('alert')` `element(s) not found`：改前原因只进 toast，框里一个字都没有）· **两态截图**（`r145/probe.mjs`，同一个 `page.route` 500，1360×900）：改前被拒后卡片留着、**框里没有原因**，原因在顶上一条会自己走的提示里（`before/shot-3-refused.png`）；改后卡片里是红色「清除失败：清空被服务端的探针挡下」、取消勾选的「历史记录」仍是空的（`shot-3-refused.png`）· 两态 console 的 error 只有刻意造的那一次 500，无 `pageerror` · 端口只用 8977（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r145-clear` 与 scratchpad 的 `r145/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包 | `8db188dd` |
 | 2026-10-28 | 5.54 | **离开模型流时取消上游请求**（上游 `aff7ee37` `#1354` 移植，照改动落、不是合分支；上游 4 文件 / +130 −6 → 本树落下 **3 个跟踪文件（2 改 1 补 changelog 一对）**，源码 1 个、用例 1 个）：`GenerativeModel.streamGenerate()` 的调用方在响应结束之前不再读的（引擎放弃一轮、消费者跳出循环、请求抛错或超时）过去既不 abort 那次请求的 `AbortController`、也从不关上游迭代器，厂商继续往没人读的流里生成并继续计费。现在上游迭代器提到 `try` 之外，`finally` 在清掉空闲计时器与 abort 监听之后、**只在还没见到结束原因时** `ac.abort()` + `void Promise.resolve(it?.return?.()).catch(() => undefined)`（尽力而为：抛错 / 被拒 / 永不落地都不改结果、不挂住调用方）；`res === STOPPED` 那一支不再自己关，统一交给 `finally`，于是每条出口只关一次。**本地化**：本树翻译器没有上游的 `stopped` 读取口，守卫改用等价的 `sawFinishReason()`；用例的 `UniEvent` 词汇换成本树的 `{ type: "text" }` + 显式 `stop`，且「已收到 stop 不许动」那条改成断言「没发 `return()`、信号没被 abort」（本树循环拉到 `done`，生产者的 `finally` 无论如何都会跑） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个文件 **0 警告 0 错误** · 两个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1431 通过 / 6 跳过**（本笔 +6，即三条生命周期 + 三条清理失败）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `generative-model.ts` 退回 `HEAD`、只留新用例 → `test/llm.test.ts` **5 failed / 100 passed**（提前离开、挂在 yield 时中断、以及 throw / reject / hang 三条清理），放回本笔 → **105 全过** · **本轮主证据（真 HTTP 流，两态同一份探针）**：`r146/probe-provider.mjs`（8987，OpenAI-chat 兼容 SSE，每 100 ms 一段文字、共 40 段）配 `probe-stream.mjs`（真的 `GenerativeModel` 读 3 条消息后 `break`，1.5 s 后读供应商的计数）。**改前**：供应商又写了 **13 段**（`writes` 16）、`closedAt` 一直 `null` —— 生成没被取消；**改后**：只写了 **2 段**、消费者离开后 **0/1 ms** 连接就被关（`closedWithinMs: 0`）、零段新内容。**对照（正常读完不许被误杀）**：`probe-stream-full.mjs` 把同一流读完 → 40 段全收、`finished: 1`、`token_usage` 60 tokens、`outcome.status` 为 `completed` · 另：本轮先量过 `#1356`（`04ed9c70`，异常结束时已计量的请求只统计一次）并写好补丁与用例，真服务端实测确认**本树走不到那个形态**（`token_usage` 只在正常收尾分支产出），已撤回，理由记在「待办」那条「量过、没移植」里 | 见本行提交 |
+| 2026-10-28 | 5.55 | **目标模式的预算计入轮中压缩之前的用量**（上游 `eb3edfec` `#1355` 移植，照改动落、不是合分支；上游 6 文件 / +119 −11 → 本树落下 **5 个跟踪文件（3 改 2 新）**，源码 2 个、用例 1 个、插件清单 1 个、changelog 一对）：goal 的 stop hook 只从最新的 Trace 文件加总一轮用量，轮中一次上下文压缩就把这一轮前半程的消耗留在旧分片里 —— 对着 100 的预算用掉 110 个未命中缓存的 token 会被记成 20 并继续 `active`，收尾那一轮根本不开始。现在 `lib.mjs` 新增 `readRoundRecords(file, sessionId, records)`：从 Trace 文件名解析分片序号、按写入方的三位补零往回走，直到某一片里出现轮次输入或走到 `_001`；每片前驱必须在自己的 `session_meta` 里报着同一个 `session_id`（缺失 / 读不出 / 别人的会话都当场停下，保留已读到的用量），展平后交给未改动的 `lastRoundRecords()`，所以「从最后一条轮次输入之后开始」仍只写在一处、已完成轮次不会重复计入；认不出的文件名退回单文件计数。**本地化**：上游改的是 `package.json` 的 `hooks.version`，本仓没有那个块、插件版本在 `plugin.json`（`2026.09.29.1` → `2026.10.28.1`）；用例的写法照落 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 三个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过**（本笔 +7：四文件名表驱动占 4、另加三条）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `lib.mjs` / `stop.mjs` 退回 `HEAD`、只留新用例 → `test/goal-hooks.test.ts` **2 failed / 18 passed**（跨分片预算那条停在 `tokens_used: 110`、后一轮那条停在 110），放回本笔 → **20 全过** · **本轮主证据（core 的真 `Writer` 产出真分片 + 真钩子子进程，两态同一份探针）**：`r147/probe-shards.mjs` 用 `packages/core/src/trace/writer.ts` 的 `Writer`（含 `rotate()`，即上下文压缩换段时的那一步）写出 `s1_001.jsonl`…，再把真 `stop.mjs` 跑起来读最新分片。四个场景：**A 轮中压缩**（`_001` 是 meta + 轮次输入 + 999 token，rotate 后 `_002` 是 meta + 20 token）：**改前 `tokens_used: 20`、`status: active`**（预算 150 却没进收尾）→ **改后 `1019`、`status: wrapping_up`**；**B 后一轮**（`_001` 里轮 1 已计 90，`_002` 是轮 2 输入 + 10）：两态都 `100`（**不重复计入**）；**C 前驱缺失**（只有 `_003`）：两态都 `20`；**D 前驱属于别的会话**（`_004` 写着 `session_id: other` + 500 token，当前 `_005` 是 20）：两态都 `20`（不把别人的 token 算进来）· 分片名实测 `s1_001.jsonl` 起、三位补零，与钩子回填的写法一致 | `14868839`（本轮台账见下一笔） |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -17747,3 +17759,99 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 代码 + 用例 + changelog：**`735538e1`**；本轮台账（本条与上表那一行）另起一笔（台账与代码分两笔，与历次一致）。
+
+## 第一百四十七轮：目标模式的预算计入轮中压缩之前的用量（2026-10-28，条目 5.55）
+
+### 开工自检：工作区干净，网络这一轮是「域名被掐」而不是密钥的锅
+
+- `git status --short` 输出为空、在 `main` 上，`HEAD` = **`ae1823d7`**（第一百四十六轮那一笔台账）。
+- 同步仍然走不通 SSH（`git@github.com: Permission denied (publickey)`，`~/.ssh` 里只有那把不在账号里的
+  `id_adelie_migrate`）。这一轮把**网络那一层**也量清楚了，值得记下来：
+  - `github.com` 解析到 **`20.205.243.166`**（亚太），这个 IP 的 443 直接连不上（`/dev/tcp` 与 `curl` 都超时）；
+    `api.github.com`（`20.205.243.168`）、`codeload.github.com`、`raw.githubusercontent.com` 都通。
+  - 逐个 IP 试 TLS（`curl --resolve github.com:443:<ip>`）：`140.82.113.3` / `140.82.114.3` / `140.82.116.3` /
+    `140.82.121.3` / `20.27.177.113` / `20.200.245.247` 全部 **200**，而 `140.82.112.3` 与那个亚太 IP 不通。
+  - 于是临时把 `140.82.113.3 github.com` 写进 `/etc/hosts`（先备份到 `/tmp/hosts.adelie.bak`），
+    `git fetch https://<PAT>@github.com/lmliheng/Adelie.git main` 一次就走通，`origin/main` 与本地同点
+    （`ae1823d7`），`git merge --ff-only` = **Already up to date**。**收工时 hosts 已还原**。
+    顺手记一个坑：`/etc/hosts` 末尾那行没有换行，第一次追加把新行粘在了 `RainYun-Usa0k0A5` 后面 —— 追加前
+    先补一个 `\n`。
+- 上游戏照第二十三轮那条路按 URL 现拉（`/root/penguin-harness` 本机已不存在）：
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r147`
+  → 尖端仍是 **`9f6c4538`**（`#1365`），与上一轮探到的同点，**上游这一轮没有新提交**。
+- 没有切分支、没有碰 `legacy/main`、没有推 upstream、没有 `pnpm add`。
+
+### 选活：表上全卡着，接第一百四十六轮自己点名的下一轮候选
+
+- 表上未勾选的仍是 **2.2c**（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（要用户拍板取哪个桌面壳）、
+  **3.6**（要模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。上游没有新提交，
+  也没有新候选可挑。
+- 于是做第一百四十六轮末尾「量过、没做」里留给这一轮的那一条 —— 上游 `eb3edfec`（`#1355`，
+  `fix(goal): include pre-compaction usage in round budgets`）。当时记的「补丁六个文件全部干净落地」这一轮
+  复测只有**一处**需要本地化：`plugins/goal/package.json` 的 `hooks.version`（本仓的插件版本在 `plugin.json`，
+  `package.json` 里根本没有 `hooks` 块），其余三个文件 `git apply -3` 逐字干净。
+
+### 做了什么（5 个跟踪文件：源码 2、用例 1、插件清单 1、changelog 一对）
+
+- `plugins/goal/hooks/lib.mjs`（+25 −3）：新增导出的 **`readRoundRecords(file, sessionId, records)`**。
+  从 Trace 文件名 `^(.*)_(\d+)\.jsonl$` 解析出会话名与分片序号（会话名对不上、或序号不是安全整数 → 直接
+  退回 `lastRoundRecords`）；然后从当前片往回走：只要手上这一片里还没有轮次输入、且序号 > 1，就减一取上一片，
+  名字按写入方的三位补零回填（`packages/core/src/trace/writer.ts` 的 `formatIndex`），前驱的 `session_meta`
+  必须报着同一个 `session_id`，否则 `break` —— 缺失、读不出、属于别的会话都不是「多算几轮」的理由。
+  收集到的分片 `unshift` 后 `flat()`，仍交给 `lastRoundRecords()`。顺带把 `lastRoundRecords` 的注释改成
+  「最后一条轮次输入之后的一切，没有就全给」——「压缩把输入转走」不再是它的语义。
+- `plugins/goal/hooks/stop.mjs`（+1 −1）：`lastRoundRecords(records)` → `readRoundRecords(tracePath, sessionId, records)`。
+- `plugins/goal/plugin.json`：`version` `2026.09.29.1` → **`2026.10.28.1`**，已装过该插件的 Agent 更新插件后
+  即拿到这次修复（上游改的是 `package.json` 的 `hooks.version`，本仓没有那个块）。
+- `packages/core/test/goal-hooks.test.ts`（+79 −11，13 → **20** 条）：`writeTrace` 多一个目标文件参数；
+  原来那条「压缩把轮次输入转走时数整个文件」变成**四个文件名的表驱动**（当前分片 `s1_001`、旧式名字
+  `legacy.jsonl`、别人的分片 `other_002.jsonl`、超出安全整数范围的 `s1_9007199254740992.jsonl`），断言同一条回退；
+  另加三条：预算摊在 `_998` / `_999` / `_1000` 三片上的那一轮先以 `tokens_used: 110` 进入 `wrapping_up`、
+  再以 `115` 结束为 `budget_limited`；输入落在前一片里的后一轮只数那条输入之后的用量（`90 + 10 + 20 = 120`）；
+  前驱分片缺失 / 属于别人时只保留当前片的 20 个 token。
+- changelog 一对 `changelog/unreleased/2026-10-28-goal-compaction-budget{,.zh.md}`：按本仓惯例改名到本轮日期、
+  去掉上游 PR 行、写明移植出处与本仓那处版本号的差异，并写明 Trace / `GOAL.json` 格式与收尾那一轮都没变。
+
+### 验证（都不是推测）
+
+- **类型检查**：六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；
+  `gen:ifaces` 一串既有 warning 之后报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）。本机 `pnpm`
+  仍不在 PATH 上（`which pnpm` / `npx` 都空），用的是 corepack 的 `pnpm.js` 加一个 scratchpad 里的垫片
+  —— 注意 server 的 `typecheck` 脚本内部又调了一次 `pnpm gen:ifaces`，不给 PATH 会 `spawn ENOENT`。
+- **lint / 格式**：`oxlint` 三个改动文件 **0 警告 0 错误**；六个改动文件（含 changelog 一对）`prettier --check`
+  干净；`git diff --check` 干净。
+- **测试**（逐包 `EXIT=0`、0 失败）：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过**（本笔 +7）
+  · ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过**
+  · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件。改前该文件是 13 条（实测），改后 20 条，
+  与 1431 → 1438 对得上。
+- **反证（单测）**：把 `lib.mjs` / `stop.mjs` 退回 `HEAD`、只留新用例 → `test/goal-hooks.test.ts`
+  **2 failed / 18 passed**（`counts usage across compaction shards and wraps up at the budget` 与
+  `stops at the latest round input in a previous shard without recounting earlier usage`）；放回本笔 → **20 全过**。
+- **本轮主证据（core 的真 `Writer` 产出真分片 + 真钩子子进程，两态同一份探针）**：`r147/probe-shards.mjs`
+  用 `packages/core/src/trace/writer.ts` 的 `Writer`（`rotate()` 就是上下文压缩换段时那一步）写出真
+  `s1_<NNN>.jsonl`，再 spawn 真 `stop.mjs` 读最新分片。四个场景（两态各跑一遍）：
+
+  | 场景 | 布局 | 改前 | 改后 |
+  | --- | --- | --- | --- |
+  | A 轮中压缩 | `_001` = meta + 轮次输入 + 999，rotate 后 `_002` = meta + 20 | `tokens_used: 20`、`active` | **`1019`、`wrapping_up`** |
+  | B 后一轮 | `_001` 里轮 1 已计 90，`_002` = 轮 2 输入 + 10 | `100` | `100`（不重复计入） |
+  | C 前驱缺失 | 只有 `_003` = meta + 20 | `20` | `20` |
+  | D 前驱属于别人 | `_004` 报 `session_id: other` + 500，`_005` = meta + 20 | `20` | `20` |
+
+  分片名实测从 `s1_001.jsonl` 起、三位补零，与钩子回填的写法一致 —— 这条正是单测假造文件名验不到的。
+- **端口**：本轮没起服务，也没有碰 3003 / 3004 / 4000 / 7364 / 7369；临时文件只落在 scratchpad 的 `r147/`
+  与 `/tmp`（`/root/adelie-fork-data` 未新写），没有往 `~/.penguin` / `~/.adelie` 写。
+
+### 没做 / 还差什么
+
+- 表上剩下的仍是那几条卡点：**2.2c**（桌面壳一侧与 `adelie-app.service` 单元，发布动作）、**3.5**（拍板）、
+  **3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+- **`/etc/hosts` 那条临时改动收工前必须还原**（本轮已还原并核对过 `/tmp/hosts.adelie.bak`）；下一轮开工若
+  `git fetch` 又超时，先按上面那套办法量一遍 IP，再决定要不要临时改 hosts —— 改完记得还原。
+- 下一轮的候选：上游 `main` 停在 `9f6c4538`，`#1365` / `#1370`（一个 socket 承载所有请求）要整份
+  `packages/web/src/api/socket.ts` 重写（本树没有那个文件），另立一轮；那一批里还能一轮做完的，开工时按
+  「真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在本机真跑的用例」再量一遍。
+
+### 提交
+
+- 代码 + 用例 + 插件清单 + changelog：**`14868839`**；本轮台账（本条、5.55 与上表那一行）另起一笔（台账与代码分两笔，与历次一致）。
