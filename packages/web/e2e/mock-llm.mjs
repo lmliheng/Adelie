@@ -30,6 +30,8 @@
  *    (reload-midstream.spec reloads while the TEXT streams)
  *  - "read deep path test <path>" -> tool_use(read_file) on <path>, then a short final text
  *    (path-hints.spec: the card's shortened subtitle keeps the whole path one hover away)
+ *  - "scroll bounce test" -> a three-line paragraph every 50ms for ~4s, for every request of
+ *    that conversation (scroll-follow-bounce.spec wheels up while each reply streams)
  *  - last message has tool_result -> final text (turn 2)
  *  - otherwise (first user turn) -> thinking + text + tool_use(exec_command)
  */
@@ -633,6 +635,39 @@ const server = http.createServer((req, res) => {
         } else {
           sse(res, "content_block_stop", { type: "content_block_stop", index: 0 });
           messageStop(res, "end_turn", 80);
+        }
+      };
+      tick();
+      return;
+    }
+
+    // Scroll-bounce test case (scroll-follow-bounce.spec): a reply that grows by a visible step
+    // on every commit — one three-line paragraph every 50ms for ~4s — so the reader can wheel up
+    // from the bottom while the transcript is still following new text. Every request of that
+    // conversation answers this way, so the spec can stream one reply per gesture.
+    if (flat.includes("scroll bounce test")) {
+      sse(res, "content_block_start", {
+        type: "content_block_start",
+        index: 0,
+        content_block: { type: "text", text: "" },
+      });
+      const filler =
+        "The transcript keeps following this reply while it grows, and a reader who scrolls " +
+        "up from the bottom must stay exactly where the gesture left them, however much text " +
+        "arrives below, until they scroll back down or press the button that returns them.";
+      let n = 0;
+      const tick = () => {
+        n += 1;
+        sse(res, "content_block_delta", {
+          type: "content_block_delta",
+          index: 0,
+          delta: { type: "text_delta", text: `Paragraph ${n}. ${filler}\n\n` },
+        });
+        if (n < 80) {
+          setTimeout(tick, 50);
+        } else {
+          sse(res, "content_block_stop", { type: "content_block_stop", index: 0 });
+          messageStop(res, "end_turn", 4000);
         }
       };
       tick();

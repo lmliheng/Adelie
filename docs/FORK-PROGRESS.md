@@ -1039,6 +1039,22 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       页，本树一个窗口一份）、终端面板关闭前重核 `dockSessionId()`（`terminal-panel.tsx` 本树没有）、
       自愈路径的 `adoptBrowserSession` / `reownTerminals`（本树没有这两个函数）、它那份 jsdom 用例
       （本树不装 jsdom，改由真浏览器取证）。
+- [x] **5.53 流式回复时向上滚，视图不再被拽回底部**（上游 `0c7725c2` `#1250`，**2026-10-27 第一百四十轮
+      落地**，提交见该节）：三条成因、三处修法 —— ①滚轮改由**原生非被动**监听器接管（`message-stream.tsx`
+      的一个 effect 挂 `wheel`、`{ passive: false }`、从不 `preventDefault`，并删掉 React 的 `onWheel`）：
+      浏览器先把手势第一格交给页面再滚动，于是「跟随」在视图移动之前就关了；②`stream-follow.ts` 的
+      `scrolled()` 只在**位置真的变了**时才恢复跟随（`dist < 80 && m.scrollTop !== prev`）—— 先前一次贴底
+      自己晚一帧的滚动事件位置未变，不再在读着向上滚之后把跟随打开；③新增 `observed()` 与 `followToBottom`
+      （提交 effect、ResizeObserver、选区菜单放行三处都改用它）：贴底之前先按「那条滚动事件将会读到的样子」
+      判一次实时位置，浏览器已经执行但还没报告的滚动（按键、滚动条、大纲跳转）不再被撤销；`observed()` 在
+      还没报告过任何位置时（刚进对话）不置一词，否则打开在底部的对话会被判成「停住了」而永远不贴底。
+      **有意未取**上游 F4（`packages/ui/src/theme.css` 的 `.ui-stream [data-arrive] { overflow-anchor: none }`）：
+      本树没有「逐段到达」的元素（`fade` 是按速率放出回复文本的前缀，见 `stream-reveal.ts`），而且两态实测
+      里 Frost 没有出现只由锚点造成的漂移（改前 6/6 手势的回弹全是 late-snap / composed）。另给转写区的
+      滚动容器加了 `data-stream-scroll`（新 spec 要逐帧看这个元素本身，本树没有上游的
+      `data-find-region="conversation"`）。**为什么是这一条**：表上最靠前的未勾选条目仍是 2.2c / 3.5 /
+      3.6 / 4.x / 5.6 / 5.10（桌面壳一侧与既有部署单元、拍板、模型 key、明令不动、新依赖），而这一笔正是
+      第一百三十八轮末尾点名的「下一轮」，用户看得见的真缺陷、改动全在 web、不引入新依赖。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2290,6 +2306,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-26 | 5.50 | **在局域网地址上打开 Web App 时，密钥授权改为粘贴授权码**（上游 `12a58d4f` `#1328` 移植，照改动落、不是合分支；上游 8 文件 / +289 −17 → 本树落下 5 个跟踪文件 / +133 −17 与 changelog 一对：上游那份前端用例要 jsdom（`packages/web` 不装），改由真浏览器取证，服务端用例的表头注释按本树现状手写合并）：服务端新增导出 `openedMode(asked, origin)` —— `manual` 永不升级；`callback` 只在 `https:` 或 `http:` 且主机为 `localhost` / `[::1]` / `127.x.x.x`（授权页 `callback_url` 的判据）时保留，解析不出的地址一并降级；`start` 用它同时决定回调地址与流程记录的模式（被降级的流程拒绝投递授权码，与手动流程完全一致）并返回 `mode`；`ModelOAuthStartResponse.mode` 为必填。Web 侧 `ModelOAuthDialog` 新增 `redirectRefused`，与 `manual` 合成 `byHand` 取代各处判断（授权码那一步、不轮询、不给跳转开关），只看应答里的 `mode === "manual"`，对没有该字段的旧服务端行为照旧。**本地化**：本树已改名的 `ADELIE_TRUST_PROXY` 等措辞沿用；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 重写 `src/ifaces.json` 后与版本库逐字节相同 —— 195 接口 / 590 类型，本笔不动组件契约）· `npx oxlint` 五个文件 **0 警告 0 错误** · 五个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（69 文件 + 1 跳过）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **269 文件 / 3283 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：在 `openedMode` 开头插一句 `return asked;` → `test/model-oauth.test.ts` **2 failed / 44 passed**（「非回环明文 HTTP 按手动开」与 LAN 路由那两条都挂在 `expected "manual", received "callback"`），还原后 **46 全过** · **本轮主证据（真服务端 ×2 + 真浏览器：改前 / 改后两态 + 回环对照）**：`packages/{core,server,web}` 各自单独重建；两份服务端产物（`r136/before-server-dist` 取自把四份源码 stash 掉的树）与两份 web 产物（`r136/{before,after}-dist`）分别挂在一次性数据根 `/root/adelie-fork-data/r136-{before,after}` 上，**改后起在 `localhost:8954`、改前起在 `localhost:8955`**（`ADELIE_SEED_ADMIN_PASSWORD` + 登录页表单拿 cookie；空数据根不需要模型 key——即 3.6 那个卡点）；浏览器用 `--host-resolver-rules=MAP app.lan 127.0.0.1` 以 **`http://app.lan:<port>`（明文 HTTP + 非回环主机名）** 访问，三腿读数：**改后 @ LAN** —— `POST …/model-oauth/start` 回 `mode: "manual"`、`authorizeUrl` 里**没有 `callback_url`**、`code_challenge_method=S256`，弹窗同时有「授权码」输入框 + 那句粘贴提示 + 「提交授权码」，**没有**「授权页跳不回来？改为手动填写授权码」这个开关（截图 `r136/shots/after-lan.png`）；**改前 @ LAN** —— 应答无 `mode` 字段、`callback_url` 就是 `http://app.lan:8955/…`（正是授权页会拒的那个），弹窗只有「打开授权页」+ 那个开关、**没有授权码框**（`r136/shots/before-lan.png`）；**改后 @ localhost（回环对照，行为不变）** —— 应答 `mode: "callback"`、`callback_url` 是 `http://localhost:8954/…`、开关照旧在（`r136/shots/after-localhost.png`）。三腿 console 各 **0 error**、**无一条 ≥400**（登录前的 `/api/me` 401 属这个 App 的正常首访）· 端口只用 8954 / 8955（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r136-{after,before}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r136/` 下（`packages/*/dist` 是构建产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 5.51 | **底部停靠栏拉到最大时不再盖住输入区**（上游 `bf3395ff` `#1325` 移植，照改动落、不是合分支；上游 11 文件 / +324 −34 → 本树落下 8 个跟踪文件（5 改 3 新）+ changelog 一对 + 1 处端到端视口）：停靠状态的高度上限原先只按对话列（含工具行）的 85% 算，没有谁给输入区留位置，输入区就被压到停靠栏下面、点不到。新增 `features/dock/bottom-dock-size.ts`（纯逻辑：上限 = 工具行以下那片区域 − 量出来的输入区高度 − 一条消息带，仍受 0.85 封顶；空间不够先让消息带、再让 140px 最小高度，输入区永远让），新增 `features/dock/composer-height.ts`（`ResizeObserver` 喂的小 store，停靠栏 / 拖动夹取 / 落点预览读同一个数，重挂载后仍留着），`dock-panel.tsx` 量列与区域、上限跌破时走既有 `snap` 路径同提交让出，`dock-drag.tsx` 预览同一函数，`chat-page.tsx` 给输入区那个框挂测量 ref（本树输入区是普通 `<div>`，上游的 `WallpaperSurface` 本树没有），`dock-state.ts` 的尺寸常量搬走、`DOCK_RATIO_MAX` 反向导入，`e2e/dock.spec.mjs` 的尺寸用例改在 1280×1100 下跑。**本地化**：changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源；新用例里那条读源码的断言改成认本树的 `<div ref={measureComposer}>` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 15 个文件 **0 警告 0 错误** · 八个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）+ 1 跳过 · ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3292 通过 / 2 跳过**（本笔 +1 文件 / +9 用例）· hmr 无测试文件 · **本轮主证据（真服务端 ×2 + 真浏览器，两态四场景）**：服务端产物同一份（本笔只动 web），两份 web 产物 `r51/{after,before}-dist`（`[data-dock-area]` 选择器计数 5 / 1 两端核过）分别挂在一次性数据根 `/root/adelie-fork-data/r51-{after,before}` 上，**改后 `localhost:8956`、改前 `localhost:8957`**（`ADELIE_SEED_ADMIN_PASSWORD` + 模型指向本仓自带 mock LLM（8977）；空数据根不需要模型 key —— 即 3.6 那个卡点）；两态都把已存排布预置成「底部停靠栏开着轨迹观测、比例 0.85」（最大所存比例），1280×800 下读 `composer.bottom − dock.top`：**改前** 空输入区 **122px**（停靠栏 655px，鼠标落在输入区正中命中的是停靠栏的 header）、输入区涨到 7 行 **238px**、窗口压到 1280×560 **274px**，且 `textarea.click()` 被停靠栏挡下（Playwright 报 intercepts pointer events）；**改后** 四态（空 / 涨到 7 行 / 1280×560 / 清空）**全是 0**，停靠栏随之让出 423 → 307 → 140 → 423，输入区正中命中 `textarea`，点击一次就进得去。截图 `r51/shots/{before,after}-{empty,grown,short,cleared}.png`（改前那张里输入区整块不见、只剩上方的上下文提示；改后那张里输入框完整地停在停靠栏上方）；两态 console 各 **0 error**、**无一条 ≥400** · **相邻回归（真浏览器单 spec）**：`dock.spec.mjs` 10 条 + `mobile-dock.spec.mjs` 1 条 **11 passed（25.4s）**，其中被改视口的那条也在内 · **反证（同一份 spec，去掉这轮的视口改动）**：默认 1280×720 下「尺寸与排布在刷新后仍在」**1 failed**（`expect(after - before).toBeGreaterThan(80)`：默认高度已经顶到新上限，往上拖 120px 长不了）—— 与上游 PR 的说法一致 · 端口只用 8956 / 8957 / 8977 与单 spec 那套 8958 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r51-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r51/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 5.52 | **停靠面板只属于各自的 Session**（上游 `ce9b3e69` `#1335` 移植，照改动落、不是合分支；上游 16 文件 / +377 −85 → 本树落下 **9 个跟踪文件（7 改 2 补测试）** + changelog 一对，另 9 行是 `dock-state.ts` 里把写 scope 映射那段收成 `writeScopes()`）：`useSessionStream` 的 `SessionStreamState` 多一个 `sessionId`（写明下面这些状态属于哪个 Session），`advancePanelTaskScope` 忽略「观察到的流不是这个 Session」的那次渲染（切换后的一次渲染仍带着上一个 Session 的模型与任务状态），chat page 只在 `currentDockScope()` 就是该 Session 时才自动打开子智能体面板；`adoptDockScope(from, sessionId, stillOpen)` 只移交 `from` 自己的布局、不碰屏幕上的那份，并返回「用户是否仍在 `from` 上」，草稿首次发送（发送开始时记下 `dockScope`、`openRef` 记页面是否还挂着）与自愈的 `syncHealedSessionId` 据此才 `navigate`；交给面板的四个请求（`fileOpenRequest` / `memoryRequest` / `subagentFocus` / `subagentTaskScope`）改为**渲染期**按路由丢弃（`commandsFor`）而不是渲染后靠效果清除；`dock-panel.tsx` 的 `closeWhenAllowed(key)` 记住发起关闭时的 scope，答复回来时只在仍是同一对话才关；`browser-layer.tsx` 的「面板显示时保留一个标签页」改为在效果里读**当下**的停靠栏（`isTabShown(BROWSER_TAB)`）。**有意未取**（本树没有它们要用的东西）：与 `state.scope` 比对的那半（要上游 #1105 的按会话分片标签页）、`terminal-panel.tsx` 的 `dockSessionId()` 重核、自愈里的 `adoptBrowserSession` / `reownTerminals`、它的 jsdom 用例（本树不装 jsdom） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 9 个文件 **0 警告 0 错误** · 九个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3295 通过 / 2 跳过**（本笔 +3 用例）· hmr 无测试文件 · **反证（单测）**：把 7 份源码退回 `HEAD`、只留新用例 → `dock-state.test.ts` + `panel-task-scope.test.ts` **5 failed / 48 passed**（三条新的 `adoptDockScope` 用例、既有的「移交时不覆盖」与其 fullscreen 版、以及「忽略上一个 Session 的流」那条），放回本笔 → **53 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：本笔只动 web，两态 web 产物 `r138/{after,before}-dist`（主包 md5 `480cebb2…` / `7a1de418…`，两端核过确实是两份不同的东西）挂在两个一次性数据根 `/root/adelie-fork-data/r138-{after,before}` 上、**改后 8961 / 改前 8962**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8971；空数据根不需要模型 key —— 即 3.6 那个卡点）。流程：会话 A 里发「run a subagent」（mock 的派生子智能体触发词）→ 等 A 自己的停靠栏出现子智能体标签 → 点侧栏里另一条空会话 B（**应用内路由切换**，整页刷新复现不了这个泄漏）→ 读 `penguin.dock.layout`。**改前**：`A=["agents"]`、切过去的 **`B=["agents"]`**（截图 `r138/shots/before-2-switched-to-b.png`：空会话右侧栏挂着「智能体面板」，上面写着「本次任务尚未派生子智能体」），回到 A 后 B 仍留着；**改后**：`A=["agents"]`、**`B=[]`**（`after-2-switched-to-b.png`：干净的新对话），回到 A 照旧是 `["agents"]` 且调用关系与子会话都在（`after-3-back-in-a.png`）。两态 console 各只有一条 403（`/api/projects/…/machines`，**两态一模一样**、属非管理员账号的既有行为，与本轮无关），无其它错误 · **相邻回归（真浏览器四个 spec）**：`dock` 10 + `mobile-dock` 1 + `draft` 1 + `subagent` 4（含「每块面板跟着自己的会话、不泄漏」与「auto-open 生命周期 / 草稿流」两条正对本轮）**18 passed（1.2m）** · 端口只用 8961 / 8962 / 8971 与相邻回归那套 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r138-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r138/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
+| 2026-10-27 | 5.53 | **流式回复时向上滚，视图不再被拽回底部**（上游 `0c7725c2` `#1250` 移植，照改动落、不是合分支；上游 8 文件 / +523 −34 → 本树落下 **7 个跟踪文件（3 改 3 新 1 补测试）** + changelog 一对）：三条成因、三处修法 —— ①`message-stream.tsx` 的滚轮改由**原生非被动**监听器接管（effect 里 `addEventListener("wheel", …, { passive: false })`、从不 `preventDefault`，React 的 `onWheel` 删掉），浏览器先把手势第一格交给页面再滚动，跟随因此在视图移动之前就关了；②`stream-follow.ts` 的 `scrolled()` 只在位置真的变了时才恢复跟随（`dist < 80 && m.scrollTop !== prev`），先前一次贴底自己晚一帧、位置未变的滚动事件不再在读着向上滚之后把跟随打开；③新增 `observed()` + `followToBottom()`（提交 effect、ResizeObserver、选区菜单放行三处都改用它）：贴底之前先按「那条滚动事件将会读到的样子」判一次实时位置，浏览器已执行但未报告的滚动（按键 / 滚动条 / 大纲跳转）不再被撤销，而 `observed()` 在任何位置都还没报告过时（刚进对话）不置一词，否则打开在底部的对话会被判成停住、永不贴底。**有意未取**：上游 F4（`.ui-stream [data-arrive] { overflow-anchor: none }`）—— 本树没有逐段到达的元素（`fade` 是按速率放出回复前缀，见 `stream-reveal.ts`），两态实测里 Frost 也没有只由锚点造成的漂移；另给转写区滚动容器加 `data-stream-scroll`（新 spec 要逐帧看这个元素，本树没有上游的 `data-find-region="conversation"`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3299 通过 / 2 跳过**（本笔 +4 用例）· hmr 无测试文件 · **反证（三处定向变异，各自只压中自己那条用例）**：只把 ② 退回 `if (dist < 80) stick = true;` → `stream-follow.test.ts` **1 failed / 19 passed**（「手势起在贴底与它的滚动事件之间」那条，`expected true to be false`）；去掉 `followToBottom` 里的 `observed()` → **1 failed**（「浏览器已经移上去、还没报告」那条）；让 `observed()` 第一次读数也参与判定 → **1 failed**（「刚进对话时第一次读数不置一词」那条）；还原后 **20 全过**；另把整份 `stream-follow.ts` 退回 `HEAD` → **4 failed**（含 `followToBottom is not a function`）· **本轮主证据（真服务端两态 × 真浏览器，同一份 spec 同一套 mock）**：本笔只动 web，两态 web 产物 `r140/{after,before}-dist`（主包 md5 `7d28025e…` / `26a306b1…`；两端核过确实是两份不同的东西 —— `observed` 出现 2 / 0 次、`passive:!1` 7 / 6 处、`onWheel` 2 / 3 处）挂在两个一次性数据根 `/root/adelie-fork-data/r140-{after,before}` 上、**改后 8982 / 改前 8983**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8981；空数据根不需要模型 key —— 即 3.6 那个卡点）。`scroll-follow-bounce.spec.mjs` 每个主题 6 个手势、渲染进程降速四倍：**改前 Primer 5/6 · Frost 6/6 · Console 5/6 = 16/18 个手势回弹**（`late-snap` 与 `composed` 两类，日志 `r140/before-run.log`），**改后 18/18 个手势 0 回弹、`stillDrift` 全 0**（三主题各 6 个手势，1.6 min 跑完，三个 `✓`），`textMovedDown` 141–500px 说明滚轮的确把文字往上带了、不是空测 · **console**：改后态另起探针打开同一条会话、发一条真消息、滚轮上滚 5 格（`r140/probe.mjs`），`scrollTop` 620 → 320（正好 −300）而回复从 1153 涨到 2855，页面只有一条 **403 `/api/projects/…/machines`**（非管理员账号的既有行为，改前态一模一样），**无其它 error、无 pageerror**；截图 `r140/shots/after-chat.png`（流式回复、布局、底部输入区都正常）· **相邻回归（真浏览器）**：`chat` 1 + `outline` 2 + `selection-menu` 2（含「打开的选区菜单扣住实时回复的自动跟随、关闭后追平」那条正压在 `followToBottom` 上）**5 passed（1.0m）** · 端口只用 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r140-{after,before}`，两态产物 / 日志 / 探针 / 截图都在 scratchpad 的 `r140/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -16989,3 +17006,100 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
 - 上次发版 **`v0.5.8`**（2026-10-26 23:07 CST）。自那以后 `main` 上 10 个提交，其中**功能性 3 个**
   （`eaf62138` 5.50、`9d661d8f` 5.51、`ec337e6c` 5.52），其余是台账与 changelog。
 - **3 < 10 → 不发版**，不动版本号。
+
+## 第一百四十轮：流式回复时向上滚，视图不再被拽回底部（2026-10-27，条目 5.53）
+
+### 开工自检
+
+- `/root/adelie-fork` 在 `main` 上，`git status --short` **干净**；`HEAD` = **`573588d3`**，与
+  `origin/main` 齐（`git fetch` 后 `Already up to date`）。没切分支、没碰 `legacy/main`、没推 upstream。
+- 全程 `git status --porcelain` 只有本笔自己的文件，没撞上别的会话。
+- **为什么不是表上第一条未勾选的 2.2c**：它还差的三件全在纪律之内做不了 —— 写侧剩下的六个别名全在
+  `packages/desktop`（本轮明令不碰桌面壳，依赖没装）、`adelie-app.service` 那台既有单元属发布动作、
+  第四件（画廊 mock 与 `packages/docs`）是第十三轮有意留到发布期的。所以按第一百三十八轮末尾写下的
+  「下一轮：`0c7725c2`」走，那正是本轮这一条。
+
+### 改了什么
+
+- 上游 `0c7725c2`（#1250，8 文件 / +523 −34）照改动落，不是合分支。落下 **7 个跟踪文件**（3 改 3 新
+  1 补测试）+ changelog 一对（按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源）。
+- `packages/web/src/features/chat/message-stream.tsx`：滚轮改由原生非被动监听器接管（一个 effect 里
+  `addEventListener("wheel", …, { passive: false })`，从不 `preventDefault`），React 的 `onWheel` 删掉；
+  三处贴底改走 `followToBottom`；转写区滚动容器加 `data-stream-scroll`。
+- `packages/web/src/features/chat/stream-follow.ts`：`scrolled()` 只在位置真的变了时恢复跟随；
+  新增 `observed()` 与 `followToBottom()`（贴底前先按「那条滚动事件将会读到的样子」判一次实时位置，
+  任何位置都还没报告过时不置一词）。
+- `packages/web/e2e/scroll-follow-bounce.spec.mjs`（新，306 行）：三主题 × 6 手势，逐帧记录滚动位置、
+  滚轮事件与程序发起的滚动；`packages/web/e2e/mock-llm.mjs` 加「scroll bounce test」分支（每 50ms
+  一段三行，共 80 段）；`packages/web/test/stream-follow.test.ts` 加三条用例。
+- **合并时三处冲突这样解**：`packages/ui/src/theme.css` 取本树（上游那段 `.ui-stream [data-arrive]`
+  本树没有 → 见下）；`message-stream.tsx` 只取新的滚轮 effect，上游上下文里带着的「查找栏加载更早」
+  effect（`FIND_LOAD_OLDER_EVENT`）本树没有那个功能、不引入；`mock-llm.mjs` 的头注释保留本树的
+  「read deep path test」、只加上「scroll bounce test」（上游同段的「sticky rows test」本树没有该
+  spec，不加）。
+
+### 有意未取
+
+- **上游 F4**（Frost 里 `[data-arrive]` 的 `overflow-anchor: none`）：本树没有「逐段到达」的元素 ——
+  它的 `fade` 是按速率放出回复文本的前缀（`packages/ui/src/components/chat/assistant-text/stream-reveal.ts`），
+  不存在那段被浏览器锚定的 span。两态实测也印证：改前 Frost 的 6/6 回弹全是 `late-snap` / `composed`，
+  没有只由锚点造成的漂移；改后在三主题、含 Frost 在内 18/18 手势 **stillDrift 全 0**。
+- 上游 spec 用的 `[data-find-region="conversation"]` 本树没有（本树没有查找栏），故给滚动容器加
+  `data-stream-scroll` —— 与 5.51 的 `[data-dock-area]` 同一做法（只为取证挂的惰性属性）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，
+  195 接口 / 590 类型 —— 本笔不动服务契约）。
+- 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）·
+  cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3299 通过 / 2 跳过**
+  （比上一轮 +4，即三条新用例 + 既有一条的分组变化）· hmr 无测试文件。
+- `npx oxlint` 五个改动文件 **0 警告 0 错误**；五个源码 / 用例文件与一对 changelog `prettier --check`
+  干净；`git diff --check` 干净。
+- **反证（三处定向变异，各自只压中自己那条用例）**：
+  ① 只把 `scrolled()` 退回 `if (dist < 80) stick = true;` → **1 failed / 19 passed**，挂在「手势起在
+  贴底与它的滚动事件之间」那条（`expected true to be false`）；
+  ② 去掉 `followToBottom` 里的 `observed()` → **1 failed**，挂在「浏览器已经移上去、还没报告」那条；
+  ③ 让 `observed()` 的第一次读数也参与判定 → **1 failed**，挂在「刚进对话时第一次读数不置一词」那条；
+  还原后该文件 **20 全过**。另把整份 `stream-follow.ts` 退回 `HEAD` → **4 failed**（含
+  `followToBottom is not a function`）—— 说明新用例确实压在本笔的行为上，不是空转。
+- **本轮主证据（真服务端两态 × 真浏览器，同一份 spec、同一套自带 mock）**：本笔只动 web，两份 web 产物
+  `r140/{after,before}-dist`（主包 md5 `7d28025ebdde6e56916e4dd66d7ebd98` /
+  `26a306b1bad3974165a77c7cfa964fd9`；两端核过确实是两份不同的东西：`observed` 出现 2 / 0 次、
+  `passive:!1` 7 / 6 处、`onWheel` 2 / 3 处；`before` 那份是在把两个源码文件退回 `HEAD` 后单独重建的，
+  只额外保留了 `data-stream-scroll` 这一个惰性属性，让同一份 spec 两态都能拿到滚动容器）分别挂在两个
+  一次性数据根 `/root/adelie-fork-data/r140-{after,before}` 上，**改后 `localhost:8982`、改前
+  `localhost:8983`**（`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026` + 登录拿 cookie；模型指向本仓自带
+  mock LLM 的 8981，空数据根不需要模型 key —— 即 3.6 那个卡点）。
+  `scroll-follow-bounce.spec.mjs` 每个主题 6 个手势、`Emulation.setCPUThrottlingRate 4`：
+  **改前 Primer 5/6 · Frost 6/6 · Console 5/6 = 16/18 个手势回弹**（种类是 `late-snap` 与 `composed`，
+  逐条在 `r140/before-run.log` 里，例如 Primer 手势 4：`t=20/98/165` 三次迟到贴底 + 一帧 `composed`）；
+  **改后三主题 6/6/6 全 0 回弹**、`stillDrift` 每次都是 0、`grewWhileStill` 1500–1800px（说明
+  手势之后回复确实还在长），三个测试各 `✓`，合计 **18/18 干净（1.6 min）**。
+- **console**：改后态另用探针（`r140/probe.mjs`）打开一条真会话、发一条消息、等它长到需要滚动且仍贴在
+  底部，再滚轮上滚 5 格：`scrollTop` 620 → 320（正好 −300 = 5×60），同一时间 `scrollHeight` 从 1153
+  涨到 2855 —— 文字一直往下长、视图停在读者留下的位置。页面**只有一条 403**
+  （`GET /api/projects/…/machines`，非管理员账号的既有行为，改前态一模一样），**无其它 error、
+  无 pageerror**；截图 `r140/shots/after-chat.png`（流式回复、布局、底部输入区都正常）。
+- **相邻回归（真浏览器）**：`chat` 1 + `outline` 2 + `selection-menu` 2 —— **5 passed（1.0m）**，
+  其中 `selection-menu` 那条「打开的选区菜单扣住实时回复的自动跟随、关闭后追平」正压在
+  `followToBottom` 上（选区菜单放行是三个调用点之一）。
+- 端口只用 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r140-{after,before}`，两态产物、日志、探针、截图都在 scratchpad 的 `r140/`
+  下（`packages/web/dist`、`packages/web/test-results/` 是产物，未 `git add`）。
+
+### 没做 / 还差什么
+
+- **上游 spec 里「合成器自己的帧」仍然看不见**（上游自己也是这么写的）：spec 只看页面能看到的东西
+  （主线程帧、滚轮事件、`scrollTop` 的写入）。已经提交但尚未激活的那一帧与滚轮首帧的竞争，从 JavaScript
+  里测不到；本轮的结论只覆盖「主线程能看到的那几种签名」从 16/18 变成 0/18。
+- **2.2c 仍不能勾**：剩下的三件（桌面壳一侧六个变量、`adelie-app.service`、画廊 mock 与 `docs` 的
+  文本）都在本轮纪律之外，理由见「开工自检」。
+- 下一轮：`12a58d4f` 之后那几笔要新前置的（`#1272` / `#1268` 的 API socket 面）；再往后若要坐实
+  5.52 里浏览器标签页那一半，得先把上游 #1105 的按会话分片标签页立起来。
+
+### 版本：未到阈值
+
+- 上次发版 **`v0.5.8`**（2026-10-26 23:07 CST）。自那以后 `main` 上的提交里功能性的是 5.50 / 5.51 /
+  5.52 与本轮 5.53，远不到 10。
+- 不动版本号、不发 npm、不发安装包。
