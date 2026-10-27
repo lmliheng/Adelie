@@ -17416,3 +17416,76 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
   （逐条查过 `actions/runs/40496598942/jobs`，含 macOS / Windows 分片与两条 installer）；同一提交的
   「Deploy docs site」也 success。推 `240f5ee2` 时的 CI 被 `cancel-in-progress` 取消（仓库既有行为），
   认 `6c28a782` 这次。
+
+## 第一百四十四轮：外观页的主题变成一排画着自己颜色的卡片（2026-10-27，用户「继续开发，够 15 笔就发版」）
+
+开工时工作树里已经有一份**没提交的改动**（`19:47` 那条会话写到 `20:27` 就断了，`git status` 七改一新增）：
+主题选择器换成卡片、导入主题的 `preview` 颜色、目录说明收进「?」、字体致谢的 `upstream`。本轮先把它做完
+取证、再分两笔提交。
+
+### 做了什么
+
+- `packages/web/src/features/settings/theme-picker.tsx`（新增，248 行）：`ThemePicker` 与卡片。内置三个主题的
+  四种颜色写死在 `BUILTIN_PREVIEW`（它们的规则按 `:root[data-theme="…"]` 一次只答一个主题，同屏画三个就得
+  每张卡重刷一遍页面），导入主题的颜色来自它自己的文件（`ImportedThemeView.preview`，文件没写的取默认
+  主题的值）。明暗跟着当前模式；选中的卡片左边框换成强调色并画一枚 ✓。
+- `appearance-section.tsx`：主题那一行换成占满整行宽度的 `ThemePicker`（网格要整行才折得开）；下面那块从
+  「一段说明 + 两个小字入口」改成「主题目录 + ?」加两个按钮；问题清单从每个主题一长串 `--ui-` 名字改成
+  一行一条的可折叠 `<details>`。
+- `credits-section.tsx` + `packages/ui/src/fonts/credits.ts`：`FontCredit` 多一个必填 `upstream`（这是谁的
+  字体），「来源」链它，`source`（文件从哪个 npm 包来）另起一行「打包来源」，两者相同时不画第二行。
+- 文案：`themeBuiltin` / `themeImportedGroup` / `importedThemeUnknownShort` / `importedThemeMissingShort` /
+  `importedThemeDetails` / `importedThemesHelp` / `creditsPackaged`；删掉不再用的 `importedThemesDir`。
+- 文档：`packages/docs/content/settings.{zh,en}.md` 的外观一节 —— 原来「主题 = 浅色 / 深色 / 跟随系统」那行
+  是错的（那是**明暗**），拆成两行，补一段导入主题的说明。
+- changelog 中英两对：`2026-10-27-theme-picker-cards{,zh}`、`2026-10-27-font-credit-upstream{,zh}`。
+
+### 验证（都不是推测）
+
+- **类型检查**：`pnpm typecheck` **`EXIT=0`**（八包全 `Done`，`gen:ifaces` 报 `src/ifaces.json unchanged`，
+  195 接口 / 590 类型）。本机照旧没有 `pnpm` 命令，用 scratchpad 里指向 corepack 那份的垫片（本轮解析到
+  12.15.0）前置进 `PATH`。
+- **lint / 格式**：`pnpm lint` **0 警告 0 错误**（2307 文件）；`pnpm format:check` 干净。
+- **测试**（逐包）：`amsp` 2 文件 / 68 通过 · `docs` 8 / 62 · `core` 69 + 1 跳过 / **1425** / 6 跳过 ·
+  `ui` 130 / **1053** · `server` 204 / **2985** / 15 跳过 · `cli` 38 / **561** · `web` 270 / **3309** / 2 跳过 ·
+  `sandbox-bwrap` 2 / 29 · `sandbox-dsh` 3 / 21 + 1 跳过 · `sandbox-seatbelt` 1 + 1 跳过 / 17 + 5 跳过 ·
+  `sandbox-wsl` 2 / 32。**0 失败**。
+  - **两处红都查清了**：**①** `packages/ui/test/hooks.test.ts`「are applied by their hosts only」**真红** ——
+    主题组的标签用了裸 `<p className="ui-eyebrow">`，而这个钩子只许 `GroupHeader` / `PagedDialog` / `Text`
+    这三个宿主画。改成 `<Text variant="eyebrow">` 后 1053/1053 全过（这是本轮唯一一处越界的纪律问题，
+    测试当场抓到的）。**②** `packages/web/test/dock-state.test.ts` 的 `beforeAll` **Hook timed out in 10000ms**
+    —— 那条是并发跑全量时机器太忙（同一次 `collect` 用了 393 s），单独跑 46/46 通过，整包单跑也 270 文件
+    3309 通过，**与本轮改动无关**。
+- **真看一眼（真服务端 + 真浏览器）**：`packages/web/dist` 重建后，一次性数据根
+  `/root/adelie-fork-data/r144-themes`、`HOST=127.0.0.1 PORT=8976` 起真服务
+  （`ADELIE_SEED_ADMIN_PASSWORD=penguin-2026`）。浏览器仍是系统自带的
+  `/usr/lib/chromium/chromium-headless-shell`（下载的 Playwright 浏览器不在本机），Playwright 从
+  `node_modules/.pnpm/playwright@1.61.1/...` 里 import，**没有改仓库的 `playwright.config.mjs`**。
+  - **一个坑记住**：绑 `127.0.0.1` 时 `127.0.0.1` 是**预览主机**，`/api` 一律 401
+    （`The API is not served on the preview host.`）—— 截图脚本要走 `http://localhost:8976`。
+  - 数据根 `themes/` 里放 `examples/themes/warm-paper.json`，再用脚本造五个改过 id / 名字 / 底色的变体：
+    外观页四张卡片（通用 / 白领 / 极客 / 暖纸），**每张卡片 chip 的计算底色都等于该主题自己的
+    `--ui-canvas`**（`rgb(246,241,231)` 暖纸、`rgb(251,250,250)` 极客、`rgb(250,250,250)` 白领、
+    `rgb(255,255,255)` 通用），深色模式同理（`rgb(23,20,15)` / `rgb(19,16,16)` / …）。
+  - **点一下真的换了**：点「暖纸」卡片后 `documentElement.dataset.theme = "warm-paper"`、
+    `--ui-canvas` 读回 `#f6f1e7`，唯一的 `aria-checked="true"` 是「暖纸」。
+  - **多主题不撑破页面**：六个主题时导入那组 6 张卡排两行、外层 240 px 高、`scrollHeight > clientHeight`
+    （在条内滚动）。
+  - **版权信息页**：「来源」是 `https://github.com/github/mona-sans`、下一行「打包来源
+    `@fontsource-variable/mona-sans`」；MiSans 那条只有一个链接（同一个地址，不重复画）。
+  - 全程 `console` 没有 error、没有 `pageerror`。截图在 scratchpad `r144/`：`appearance-light.png`、
+    `appearance-dark.png`、`appearance-many.png`、`appearance-picked.png`、`credits-light.png`。
+- **端口**：只用 **8976**（跑完已停），3003 / 7364 / 7777 一个没碰；数据只落在
+  `/root/adelie-fork-data/r144-themes` 与 scratchpad 的 `r144/` 下。
+
+### 提交
+
+- `334b9837` `feat(web): 外观页的主题换成一排画着自己颜色的卡片`（代码 + 文档 + changelog 一对）。
+- `2a679d86` `feat(web,ui): 字体致谢的「来源」指向字体项目本身，npm 包名另起一行`（代码 + changelog 一对）。
+- 台账这一节另起一笔。
+
+### 版本：够阈值，本会话发 v0.5.9
+
+- 自 `v0.5.8` 起 `main` 上已有 **22 笔提交**（含本轮两笔），其中功能性的是 5.50 / 5.51 / 5.52 / 5.53、
+  第一百四十一轮两笔、第一百四十二轮两笔、第一百四十三轮一笔与本轮两笔 —— 用户这一句给的门槛是
+  「够 15 个就更新版本」，**22 ≥ 15**，所以本轮继续发 **0.5.9**（patch：没有接口 / 数据根 / 配置格式变化）。
