@@ -98,6 +98,8 @@ From a shell, `penguin browser import --list` lists the profiles and `penguin br
 
 Select **Clear browsing data…** in the toolbar's menu and choose what to remove: cookies and sign-ins, cached files, site storage, or the browsing history. This affects only the built-in browser.
 
+If the server refuses, the card stays: your selection stays with it, and the refusal is written inside the card, next to the button that retries it.
+
 ## Drive it from the command line
 
 `penguin browser` drives the tabs from a shell, and it is how agents use the browser. The preinstalled `browser-automation` plugin teaches them the loop: open a page, read it, act with JavaScript, and check what changed.
