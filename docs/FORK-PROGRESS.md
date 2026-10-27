@@ -1663,6 +1663,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       刚写下的名称与 Prompt 一起回滚，只剩一条会自己消失的提示；删除也是点了就收框。现在两处都等写入落地，
       被拒时编辑框原样留着（字段、光标、重试按钮）、确认框把原话画在自己那一句话下面。为什么挑这一条、
       两态读数与反证见「第一百四十三轮」一节。
+- [x] **7.50 内置浏览器「清除浏览数据」被拒时，原因留在卡片里**（**2026-10-27 第一百四十五轮**落地，
+      提交见该节；1 处源码 `features/builtin-browser/clear-data-dialog.tsx`（+17 −3：新增 `refusal`
+      状态接上 `ConfirmModal` 的 `refusal` 槽，`catch` 不再 `toastError`、改把
+      `S.builtinBrowser.clearFailed(apiErrorText(err))` 交给卡片，每次点「清除」与每次开框各清一次旧原因）
+      + 1 个新文件 `packages/web/e2e/builtin-browser-clear-refusal.spec.mjs`（1 条用例：拒一次清除、
+      再放行一次）+ changelog 一对 + 文档两句，**无新依赖、不碰接口、无新文案**）：这一族「写入被拒时
+      原因留在框里」的最后一处 —— 卡片本来就在失败时留着（只有落地才收），丢的是**原因**：它落进一条
+      几秒后自己消失的提示，而卡片照旧站在原地，只说「选择要删除的数据」。现在原因画在卡片自己那句话
+      下面、紧挨着重试的那个按钮，勾好的种类原样留着。为什么挑这一条、两态读数与反证见
+      「第一百四十五轮」一节。
 
 
 ## 发布 v0.2.0（2026-10-05）
@@ -2319,6 +2329,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-27 | 5.52 | **停靠面板只属于各自的 Session**（上游 `ce9b3e69` `#1335` 移植，照改动落、不是合分支；上游 16 文件 / +377 −85 → 本树落下 **9 个跟踪文件（7 改 2 补测试）** + changelog 一对，另 9 行是 `dock-state.ts` 里把写 scope 映射那段收成 `writeScopes()`）：`useSessionStream` 的 `SessionStreamState` 多一个 `sessionId`（写明下面这些状态属于哪个 Session），`advancePanelTaskScope` 忽略「观察到的流不是这个 Session」的那次渲染（切换后的一次渲染仍带着上一个 Session 的模型与任务状态），chat page 只在 `currentDockScope()` 就是该 Session 时才自动打开子智能体面板；`adoptDockScope(from, sessionId, stillOpen)` 只移交 `from` 自己的布局、不碰屏幕上的那份，并返回「用户是否仍在 `from` 上」，草稿首次发送（发送开始时记下 `dockScope`、`openRef` 记页面是否还挂着）与自愈的 `syncHealedSessionId` 据此才 `navigate`；交给面板的四个请求（`fileOpenRequest` / `memoryRequest` / `subagentFocus` / `subagentTaskScope`）改为**渲染期**按路由丢弃（`commandsFor`）而不是渲染后靠效果清除；`dock-panel.tsx` 的 `closeWhenAllowed(key)` 记住发起关闭时的 scope，答复回来时只在仍是同一对话才关；`browser-layer.tsx` 的「面板显示时保留一个标签页」改为在效果里读**当下**的停靠栏（`isTabShown(BROWSER_TAB)`）。**有意未取**（本树没有它们要用的东西）：与 `state.scope` 比对的那半（要上游 #1105 的按会话分片标签页）、`terminal-panel.tsx` 的 `dockSessionId()` 重核、自愈里的 `adoptBrowserSession` / `reownTerminals`、它的 jsdom 用例（本树不装 jsdom） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 9 个文件 **0 警告 0 错误** · 九个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3295 通过 / 2 跳过**（本笔 +3 用例）· hmr 无测试文件 · **反证（单测）**：把 7 份源码退回 `HEAD`、只留新用例 → `dock-state.test.ts` + `panel-task-scope.test.ts` **5 failed / 48 passed**（三条新的 `adoptDockScope` 用例、既有的「移交时不覆盖」与其 fullscreen 版、以及「忽略上一个 Session 的流」那条），放回本笔 → **53 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：本笔只动 web，两态 web 产物 `r138/{after,before}-dist`（主包 md5 `480cebb2…` / `7a1de418…`，两端核过确实是两份不同的东西）挂在两个一次性数据根 `/root/adelie-fork-data/r138-{after,before}` 上、**改后 8961 / 改前 8962**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8971；空数据根不需要模型 key —— 即 3.6 那个卡点）。流程：会话 A 里发「run a subagent」（mock 的派生子智能体触发词）→ 等 A 自己的停靠栏出现子智能体标签 → 点侧栏里另一条空会话 B（**应用内路由切换**，整页刷新复现不了这个泄漏）→ 读 `penguin.dock.layout`。**改前**：`A=["agents"]`、切过去的 **`B=["agents"]`**（截图 `r138/shots/before-2-switched-to-b.png`：空会话右侧栏挂着「智能体面板」，上面写着「本次任务尚未派生子智能体」），回到 A 后 B 仍留着；**改后**：`A=["agents"]`、**`B=[]`**（`after-2-switched-to-b.png`：干净的新对话），回到 A 照旧是 `["agents"]` 且调用关系与子会话都在（`after-3-back-in-a.png`）。两态 console 各只有一条 403（`/api/projects/…/machines`，**两态一模一样**、属非管理员账号的既有行为，与本轮无关），无其它错误 · **相邻回归（真浏览器四个 spec）**：`dock` 10 + `mobile-dock` 1 + `draft` 1 + `subagent` 4（含「每块面板跟着自己的会话、不泄漏」与「auto-open 生命周期 / 草稿流」两条正对本轮）**18 passed（1.2m）** · 端口只用 8961 / 8962 / 8971 与相邻回归那套 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r138-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r138/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 5.53 | **流式回复时向上滚，视图不再被拽回底部**（上游 `0c7725c2` `#1250` 移植，照改动落、不是合分支；上游 8 文件 / +523 −34 → 本树落下 **7 个跟踪文件（3 改 3 新 1 补测试）** + changelog 一对）：三条成因、三处修法 —— ①`message-stream.tsx` 的滚轮改由**原生非被动**监听器接管（effect 里 `addEventListener("wheel", …, { passive: false })`、从不 `preventDefault`，React 的 `onWheel` 删掉），浏览器先把手势第一格交给页面再滚动，跟随因此在视图移动之前就关了；②`stream-follow.ts` 的 `scrolled()` 只在位置真的变了时才恢复跟随（`dist < 80 && m.scrollTop !== prev`），先前一次贴底自己晚一帧、位置未变的滚动事件不再在读着向上滚之后把跟随打开；③新增 `observed()` + `followToBottom()`（提交 effect、ResizeObserver、选区菜单放行三处都改用它）：贴底之前先按「那条滚动事件将会读到的样子」判一次实时位置，浏览器已执行但未报告的滚动（按键 / 滚动条 / 大纲跳转）不再被撤销，而 `observed()` 在任何位置都还没报告过时（刚进对话）不置一词，否则打开在底部的对话会被判成停住、永不贴底。**有意未取**：上游 F4（`.ui-stream [data-arrive] { overflow-anchor: none }`）—— 本树没有逐段到达的元素（`fade` 是按速率放出回复前缀，见 `stream-reveal.ts`），两态实测里 Frost 也没有只由锚点造成的漂移；另给转写区滚动容器加 `data-stream-scroll`（新 spec 要逐帧看这个元素，本树没有上游的 `data-find-region="conversation"`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3299 通过 / 2 跳过**（本笔 +4 用例）· hmr 无测试文件 · **反证（三处定向变异，各自只压中自己那条用例）**：只把 ② 退回 `if (dist < 80) stick = true;` → `stream-follow.test.ts` **1 failed / 19 passed**（「手势起在贴底与它的滚动事件之间」那条，`expected true to be false`）；去掉 `followToBottom` 里的 `observed()` → **1 failed**（「浏览器已经移上去、还没报告」那条）；让 `observed()` 第一次读数也参与判定 → **1 failed**（「刚进对话时第一次读数不置一词」那条）；还原后 **20 全过**；另把整份 `stream-follow.ts` 退回 `HEAD` → **4 failed**（含 `followToBottom is not a function`）· **本轮主证据（真服务端两态 × 真浏览器，同一份 spec 同一套 mock）**：本笔只动 web，两态 web 产物 `r140/{after,before}-dist`（主包 md5 `7d28025e…` / `26a306b1…`；两端核过确实是两份不同的东西 —— `observed` 出现 2 / 0 次、`passive:!1` 7 / 6 处、`onWheel` 2 / 3 处）挂在两个一次性数据根 `/root/adelie-fork-data/r140-{after,before}` 上、**改后 8982 / 改前 8983**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8981；空数据根不需要模型 key —— 即 3.6 那个卡点）。`scroll-follow-bounce.spec.mjs` 每个主题 6 个手势、渲染进程降速四倍：**改前 Primer 5/6 · Frost 6/6 · Console 5/6 = 16/18 个手势回弹**（`late-snap` 与 `composed` 两类，日志 `r140/before-run.log`），**改后 18/18 个手势 0 回弹、`stillDrift` 全 0**（三主题各 6 个手势，1.6 min 跑完，三个 `✓`），`textMovedDown` 141–500px 说明滚轮的确把文字往上带了、不是空测 · **console**：改后态另起探针打开同一条会话、发一条真消息、滚轮上滚 5 格（`r140/probe.mjs`），`scrollTop` 620 → 320（正好 −300）而回复从 1153 涨到 2855，页面只有一条 **403 `/api/projects/…/machines`**（非管理员账号的既有行为，改前态一模一样），**无其它 error、无 pageerror**；截图 `r140/shots/after-chat.png`（流式回复、布局、底部输入区都正常）· **相邻回归（真浏览器）**：`chat` 1 + `outline` 2 + `selection-menu` 2（含「打开的选区菜单扣住实时回复的自动跟随、关闭后追平」那条正压在 `followToBottom` 上）**5 passed（1.0m）** · 端口只用 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r140-{after,before}`，两态产物 / 日志 / 探针 / 截图都在 scratchpad 的 `r140/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 用户点单（错误中心的复制按钮） | **成本中心异常表的每一行能整条复制走**（无清单条目，是用户 2026-10-26 当场点的单、第一百四十一轮记下「下一轮做」；本轮接的是 13:04 那轮留下、未提交的半成品，见本节「开工自检」）：`errors-panel.tsx` 新增导出 `errorCopyText(item)` —— 首行「最近时间 · 来源 · 错误码 · 类型（合行时再 ×N + 首次时间）」、随后**完整消息（换行照原样）**，用 ui 既有的 `CopyButton`（`size="sm"`、`text` 传取值函数）画在每行右端；不做悬停才显形（手机没有悬停，Tailwind v4 把 `hover:` 收在 `@media (hover: hover)` 里），表头那格留空（图标用 `aria-label` 自报名字，每行再读一遍列名是重复），`Th` 的 `children` 改可选；表格 `min-w` 720 → **752**（= 旧下限 + 复制列自己的 32，新列不从消息列抢宽度）；文案键 `errorsCopy` 中英各一条、文档 `usage.zh.md` / `usage.en.md` 各一句、changelog 一对 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型 —— 本笔不动接口）· `npx oxlint` 两个改动源码 / 用例文件 **0 警告 0 错误** · 8 个改动文件（含 changelog 一对）`prettier --check` 干净（先 `--write` 过两个）· 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2996 通过 / 4 跳过** · web **270 文件 / 3309 通过 / 2 跳过**（本笔 +6 用例，`errors-panel.test.ts` 单跑 22 过）· hmr 无测试文件 · **真看一眼（真 Web App + 真浏览器，画廊 7381 的 mock 数据：3 行、其中一行 ×4）**：中英各 **3 个**复制按钮；点第一行剪贴板 = `2026-10-27 13:35 · [llm] rate_limited · 预期内 · ×4 · 首次出现于 2026-10-27 12:10` + 换行 + 完整消息，英文页同一行读作 `… · Expected · ×4 · First at …`（本地化跟着界面语言走）；点第三条（未预期）剪贴板 = `… · [runtime] internal · 未预期` + 换行 + 整句 TypeError；列宽实测 **128 / 288 / 80 / 390 / 32**、420 宽视口下表格 **752** 而**页面横向溢出 0**（仍在自己的横滚盒里）；两页 **console 0 error、无 pageerror**，被点的行变成对勾；截图在 scratchpad 的 `shots/` 下 · 端口只用 **7381**（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data`（未新写），临时脚本与截图都在 scratchpad | `c4fd530e` |
+| 2026-10-27 | 7.50 | **内置浏览器「清除浏览数据」被拒时，原因留在卡片里**（不是移植：1 处源码 `packages/web/src/features/builtin-browser/clear-data-dialog.tsx`（+17 −3：新增 `refusal` 状态接上 `ConfirmModal` 的 `refusal` 槽，`catch` 不再 `toastError`、改把 `S.builtinBrowser.clearFailed(apiErrorText(err))` 交给卡片，点「清除」与开框各清一次旧原因） + 1 个新文件 `packages/web/e2e/builtin-browser-clear-refusal.spec.mjs`（1 条用例：拒一次清除、再放行一次，并核对两次请求体里的种类相同） + changelog 一对 + 文档两句，**无新依赖、不碰接口、无新文案**）：这一族（7.19–7.49）的最后一处 —— 卡片本来就会在失败时留着，丢的是原因：它落进一条自己会消失的提示，而卡片停在那儿一个字都不说；卡片上的重试是回到同一份勾选的唯一路径。现在原因画在卡片里、紧挨着重试按钮，勾好的种类连同取消勾选的那一个都原样留着 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · `@adelie/docs` **8 文件 / 62 通过**（本轮改到它的内容）· **真服务 + 真浏览器单 spec**（一次性数据根 `/root/adelie-fork-data/r145-clear`、服务 **8977**、本机系统 chromium `/usr/lib/chromium/chromium-headless-shell`）：新 spec **1 passed（2.8 s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git checkout --` 退回、`--filter @adelie/web build` 重建、同一个服务端再跑 → **1 failed**（`getByRole('dialog')` 里 `getByRole('alert')` `element(s) not found`：改前原因只进 toast，框里一个字都没有）· **两态截图**（`r145/probe.mjs`，同一个 `page.route` 500，1360×900）：改前被拒后卡片留着、**框里没有原因**，原因在顶上一条会自己走的提示里（`before/shot-3-refused.png`）；改后卡片里是红色「清除失败：清空被服务端的探针挡下」、取消勾选的「历史记录」仍是空的（`shot-3-refused.png`）· 两态 console 的 error 只有刻意造的那一次 500，无 `pageerror` · 端口只用 8977（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r145-clear` 与 scratchpad 的 `r145/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包 | `8db188dd` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -17547,3 +17558,86 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
   服务本身跑在 `adelie-server.service`（7777）上，本会话就在里面，所以重启排进
   `systemd-run --unit=adelie-live-restart-059`（先睡 20 分钟再重启并自检，结果写
   `/root/rel-059/post-restart-verify.txt`）。
+
+## 第一百四十五轮：内置浏览器「清除浏览数据」被拒时，原因留在卡片里（2026-10-27，条目 7.50）
+
+### 开工自检：工作区干净，同步靠 HTTPS + PAT
+
+- `/root/adelie-fork` 在 `main` 上，`git status --short` **干净**，`HEAD` = **`4be9fdd8`**（v0.5.9 发版那一轮）。
+- `git fetch origin` 仍然**走不通**：`~/.ssh` 里只有 `id_adelie_migrate`（今天 13:10 另一条线放的），
+  它不在账号里 → `Permission denied (publickey)`；`~/.ssh` 没有 `config`，默认密钥名一个都不存在。
+  退到 HTTPS + vault 里的 `GITHUB_PAT`：第一次 `GnuTLS recv error (-110)`、第二次 120 s 超时没输出，
+  第三次给 300 s 才走通（`github.com/…/info/refs?service=git-upload-pack` 单次要 12.6 s，`api.github.com`
+  只要 0.5 s）。取回来 `origin/main` 与 `main` 同点，`git merge --ff-only FETCH_HEAD` = **Already up to date**。
+- 没有切分支、没有碰 `legacy/main`、没有推 upstream、没有 `pnpm add`。
+
+### 选活：最靠前的几条仍然都不可做，接着 7.49 那一族
+
+- **2.2c**：剩下的三件还是那三件 —— 桌面壳一侧六个变量（`packages/desktop`，本轮纪律不许碰）、既有部署单元
+  `adelie-app.service`（发布动作）、画廊 mock 与 `docs/**` 的文本（2.5 的口径）。
+- **3.5** 要用户拍板取哪个桌面壳、**3.6** 要模型 key（卡点）、**4.1–4.3** 明令不动、**5.6** 与 **5.10** 等用户拍板。
+  上游这一路同样没有能整块落下的一轮（第一百四十三轮逐笔 `git apply -3 --check` 过一遍，结论仍成立）。
+- 于是接第一百四十三轮自己在「没做 / 还差什么」里点名的那一处 —— `clear-data-dialog.tsx`：这一族
+  「写入被拒时原因留在框里」（7.19–7.49）里**最后一处**没跟上的卡片。它和 7.49 那两处不同：框本来就会在失败
+  时留着（只有清除落地才收），丢的是**原因** —— 一条几秒后自己消失的提示，而卡片停在那儿只说「选择要
+  删除的数据」。卡片上的「清除」是回到同一份勾选的唯一路径，旁边一个字都没有，用户只能闭框重来。
+
+### 做了什么
+
+- `packages/web/src/features/builtin-browser/clear-data-dialog.tsx`（+17 −3）
+  - 新增 `refusal` 状态，接上 `ConfirmModal` 的 `refusal` 槽（ui 包自带的那个槽，全 App 的确认框共用）。
+  - `catch` 不再 `toastError`，改把 `S.builtinBrowser.clearFailed(apiErrorText(err))` 交给卡片 ——
+    **沿用已有文案**（`清除失败：<原因>`），没有新字符串；成功路径一个字没动（同一句 `toastSuccess`、同样收框）。
+  - 每次点「清除」先清掉上一次的原因（在飞的原因属于正在跑的这一次），每次开框也清一次 ——
+    重开的卡片不带上一次的话。
+  - 文件头那段说明改写成本轮的规则（为什么原因要留在卡片里）。
+- `packages/web/e2e/builtin-browser-clear-refusal.spec.mjs`（新，1 条）：内置浏览器只在桌面壳里跑，所以把
+  App 唯一问桌面壳的那件事（自定义元素表里的 `webview`）与三条浏览器路由在页面里打桩，登录、Project 与
+  服务端都是真的；用 500（`clear_data_refused`，一个没有翻译的码，屏幕上那句话只可能来自探针）拒一次，
+  核对卡片留着、原因在卡片里、取消勾选的「历史记录」仍没勾、其余三个仍勾着，并且**发出去的请求体里没有
+  `history`**；放行后同一个按钮再点一次，卡片收起，重试发出的种类与被拒的那一次相同。
+- `packages/docs/content/builtin-browser.{zh,en}.md`：清除数据一节各加一句。
+- changelog 一对 `changelog/unreleased/2026-10-27-builtin-clear-refusal{,.zh}.md`（英文那份链中文、
+  中文那份链英文，无上游 PR 行，写明仍是同一条路由、服务端一行没动）。
+
+### 验证（都不是推测）
+
+- **类型检查**：六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；
+  `gen:ifaces` 一串既有 warning 之后报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）。
+  本机 `pnpm` 仍不在 PATH 上（`which pnpm` 空、`npx` 也没有），用 corepack 的 `pnpm.js` 在 scratchpad 里放了个垫片。
+- **lint / 格式**：`oxlint` 两个改动文件 **0 警告 0 错误**；六个改动文件 `prettier --check` 干净；
+  `git diff --check` 干净。
+- **测试**（逐包 `EXIT=0`、0 失败，数目与第一百四十三轮逐字一致）：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过**
+  · ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过**
+  · `@adelie/docs` **8 文件 / 62 通过**（本轮改了它的内容）· hmr 无测试文件。
+- **真看一眼（真服务端 + 真浏览器）**：`packages/web/dist` 重建后，一次性数据根
+  `/root/adelie-fork-data/r145-clear`、`HOST=127.0.0.1 PORT=8977`、`ADELIE_SEED_ADMIN_PASSWORD` 钉住管理员口令
+  起真服务；浏览器仍用系统自带的 `/usr/lib/chromium/chromium-headless-shell`（下载的 Playwright 浏览器不在本机），
+  做法是 scratchpad 里另写一份 Playwright 配置，只把 `launchOptions.executablePath` 指过去（**没有改仓库里的
+  `e2e/playwright.config.mjs`**）。两处只有站点与桌面壳不同才用打桩：自定义元素表的 `webview`（标准自定义元素名
+  必须带连字符，`define("webview")` 会被拒，于是覆写 `CustomElementRegistry.prototype.get`）与
+  `status` / `settings` / `clear-data` 三条路由。
+  - 新 spec **1 passed（2.8 s）**。
+  - **反证（同一份 spec，两种产物）**：把这一处源码 `git checkout --` 退回、重建 web、同一个服务端再跑 →
+    **1 failed**（`getByRole('dialog').getByRole('alert')` 等 15 s `element(s) not found`）；把改过的文件放回、
+    重建后回到 1 passed。
+  - **两态截图**（scratchpad `r145/probe.mjs`，同一个 500）：**改前**卡片留着、框里没有原因，原因在顶上一条
+    会自己消失的提示里（`before/shot-3-refused.png`）；**改后**卡片里是红色「清除失败：清空被服务端的探针挡下」，
+    取消勾选的「历史记录」仍是空的、其余三个仍勾着（`shot-3-refused.png`），放行后卡片收起（`shot-4-cleared.png`）。
+  - 两态 console 的 error 只有探针**刻意造的那一次 500**，没有 `pageerror`；管理员身份下没有 `/machines` 那条 403
+    （第一百四十三轮用普通成员时出现过，是既有的）。
+  - 顺手记一个坑：`127.0.0.1` 是预览主机、`/api` 一律 401，服务端要用 **`localhost`** 才认（第一次跑探针就撞上）。
+- **端口**：只用 **8977**（跑完已停）；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r145-clear` 与 scratchpad 的 `r145/` 下，没有往 `~/.penguin` / `~/.adelie` 写。
+
+### 没做 / 还差什么
+
+- 这一族到此**收干净**：7.19–7.50 之外，`workspace-finder.tsx` 的「删除文件夹」是**有意不动**的
+  （服务端 409 `dir_not_empty` 的下一步是「先腾空」，不是「重试同一个请求」，代码与 `dirs.ts` 两处注释都写着）。
+- 2.2c / 3.5 / 3.6 / 4.x / 5.6 / 5.10 仍是上面那些卡点，不是本轮能自己解的。
+- 本轮同步靠 HTTPS + PAT（SSH 那把 `id_adelie_migrate` 仍不在账号里）：下次开工照旧先 `git fetch origin`，
+  失败就换显式 URL + `GITHUB_PAT`，并给它 300 s。
+
+### 提交
+
+- 代码 + 用例 + 文档 + changelog：**`8db188dd`**；本轮台账（本条与上表那一行）另起一笔。
