@@ -14,15 +14,27 @@
  * THEMES AN INSTALLATION IMPORTED are rows of the theme picker like the three the UI package
  * ships, and they arrive as data: this page lists them, paints their accents and says what a file
  * got wrong — the file games no say in the layout, because a theme is only values (see
- * state/external-themes.ts). The note under the theme row is where the reader learns which
- * directory to drop a file in and why one did not read, since nothing here discovers files by
- * itself: the browser cannot see the server's disk. An admin gets one more thing in that line — the
- * import entry, for the same install without the walk to the folder — and it is the server's own
- * rule that decides who may use it: the routes answer 403 to anyone else, so the entry is drawn for
- * an admin only rather than offered and refused.
+ * state/external-themes.ts). The row under the picker is the two things one can do about that
+ * directory — read it again, or import a file into it — because nothing here discovers files by
+ * itself: the browser cannot see the server's disk. Where a file goes, and the shape of one, sit
+ * behind the "?" beside those two actions: they answer a question asked once, and printed in full
+ * they were a paragraph every later visit scrolled past. An admin gets the second action, for the
+ * same install without the walk to the folder, and it is the server's own rule that decides who
+ * may use it: the routes answer 403 to anyone else, so the entry is drawn for an admin only rather
+ * than offered and refused.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { PrefRow, Segmented, Select, SwatchPicker, THEME_IDS, ToggleRow } from "@adelie/ui";
+import {
+  Button,
+  InfoPopover,
+  PrefRow,
+  PrefRowLabel,
+  Segmented,
+  Select,
+  SwatchPicker,
+  THEME_IDS,
+  ToggleRow,
+} from "@adelie/ui";
 import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZES } from "@adelie/ui/boot";
 import { S } from "../../lib/strings";
 import * as api from "../../api/endpoints";
@@ -46,6 +58,7 @@ import type { ImportedThemesState } from "../../state/external-themes";
 import { localizedText } from "../chat/skill-use";
 import { FONT_FOLLOWS_THEME, effectiveAccent } from "../../state/theme-prefs";
 import { ThemeImportActions } from "./theme-import-dialog";
+import { ThemePicker } from "./theme-picker";
 
 /**
  * A font select's choices: the theme's own face first — it is the default, and the named faces
@@ -123,9 +136,15 @@ function nameList(names: readonly string[], locale: "zh" | "en"): string {
 }
 
 /**
- * What this installation imported, under the theme row: the directory to drop a file in, and one
- * line per thing that did not come out right. Nothing is said while the list has not arrived (or
- * when the request itself failed, which is one line rather than a claim about the directory).
+ * What this installation imported, under the theme picker: what one can do about the directory —
+ * read it again, and (as an admin) import a file into it — plus one line per thing that did not
+ * come out right.
+ *
+ * WHERE A FILE GOES IS BEHIND THE "?". The path, the shape of a file and the fact that importing
+ * is install-level are read once and then never again; spelled out under the picker they were a
+ * paragraph every later visit scrolled past, with the two actions they explained buried in it. The
+ * actions are the row now, and the prose is one click away. A failed read keeps the row — "read
+ * again" is the retry — and adds the one line that says the list is unknown rather than empty.
  *
  * An imported theme that is merely FILLED IN PARTLY says so here and still paints — a name it
  * leaves out keeps the default theme's value — while a file that would not read is reported with
@@ -144,60 +163,78 @@ function ImportedThemesNote({
   canImport: boolean;
 }) {
   const [reading, setReading] = useState(false);
-  if (state.failed)
-    return (
-      <p className="py-3.5 text-xs text-gray-500 dark:text-gray-400">
-        {S.settings.importedThemesFailed}
-      </p>
-    );
-  if (state.dir === null) return null;
   const problems = state.themes.filter(
     (theme) => theme.unknown.length > 0 || theme.missing.length > 0,
   );
   const orphan = themeIdOptionsInclude(state, activeId) ? null : activeId;
   return (
-    <div className="space-y-1 py-3.5 text-xs text-gray-500 dark:text-gray-400">
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="font-mono break-all">{S.settings.importedThemesDir(state.dir)}</span>
-        <button
-          type="button"
+    <div className="space-y-1.5 py-3 text-xs text-fg-subtle">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* The row's subject, then the "?" that answers where a file goes — a "?" needs a title
+            beside it to modify (see packages/ui's InfoPopover), and "read again" needs one to say
+            what it reads. */}
+        <p className="flex items-center gap-1.5 text-fg-muted">
+          {S.settings.importedThemesHelp}
+          <InfoPopover label={S.settings.importedThemesHelp}>
+            <div className="space-y-1.5">
+              {state.dir !== null && <p className="font-mono break-all">{state.dir}</p>}
+              <p>{S.settings.importedThemesHint}</p>
+            </div>
+          </InfoPopover>
+        </p>
+        <Button
+          size="sm"
+          variant="ghost"
           disabled={reading}
           onClick={() => {
             setReading(true);
             void refreshImportedThemes(true).finally(() => setReading(false));
           }}
-          className="shrink-0 text-gray-600 underline transition-colors duration-150 hover:text-gray-900 disabled:opacity-50 dark:text-gray-300 dark:hover:text-gray-100"
         >
           {S.settings.importedThemesReadAgain}
-        </button>
-        {/* Right beside the path it writes into, because it is the same install: the file that
-            would have been dropped there, put there. */}
+        </Button>
+        {/* The file that would have been dropped into that directory, put there instead. */}
         {canImport && <ThemeImportActions onImported={() => refreshImportedThemes(true)} />}
-      </p>
-      <p>{S.settings.importedThemesHint}</p>
+      </div>
+      {state.failed && <p>{S.settings.importedThemesFailed}</p>}
       {orphan !== null && <p>{S.settings.importedThemesNoFile(orphan)}</p>}
+      {/* One line per theme with something to say, and the token names one click away: a theme is
+          allowed to set only what it changes, so "a hundred names keep the default" is the normal
+          case and printing them all buried the row under a wall of --ui- names. */}
       {problems.map((theme) => (
-        <div key={theme.id}>
-          <p className="text-gray-600 dark:text-gray-300">
+        <details key={theme.id}>
+          <summary className="cursor-pointer text-fg-muted">
             {localizedText(locale, theme.name, theme.nameZh)}
-          </p>
-          {theme.unknown.length > 0 && (
-            <p>
-              {S.settings.importedThemeUnknown(
-                theme.unknown.length,
-                nameList(theme.unknown, locale),
-              )}
-            </p>
-          )}
-          {theme.missing.length > 0 && (
-            <p>
-              {S.settings.importedThemeMissing(
-                theme.missing.length,
-                nameList(theme.missing, locale),
-              )}
-            </p>
-          )}
-        </div>
+            {" · "}
+            {[
+              theme.unknown.length > 0 &&
+                S.settings.importedThemeUnknownShort(theme.unknown.length),
+              theme.missing.length > 0 &&
+                S.settings.importedThemeMissingShort(theme.missing.length),
+            ]
+              .filter(Boolean)
+              .join(locale === "zh" ? "、" : ", ")}
+            <span className="ml-1 text-fg-subtle">{S.settings.importedThemeDetails}</span>
+          </summary>
+          <div className="mt-1 space-y-1 pl-3">
+            {theme.unknown.length > 0 && (
+              <p>
+                {S.settings.importedThemeUnknown(
+                  theme.unknown.length,
+                  nameList(theme.unknown, locale),
+                )}
+              </p>
+            )}
+            {theme.missing.length > 0 && (
+              <p>
+                {S.settings.importedThemeMissing(
+                  theme.missing.length,
+                  nameList(theme.missing, locale),
+                )}
+              </p>
+            )}
+          </div>
+        </details>
       ))}
       {state.rejected.map(({ file, errors }) => (
         <p key={file} className="font-mono break-all">
@@ -294,17 +331,6 @@ export function AppearanceSection() {
     { value: "light", label: S.settings.themeLight },
     { value: "dark", label: S.settings.themeDark },
   ];
-  const themeIdOptions: ReadonlyArray<{ value: string; label: string }> = [
-    ...THEME_IDS.map((id) => ({ value: id, label: S.settings.themeNames[id] })),
-    ...imported.themes.map((theme) => ({
-      value: theme.id,
-      label: localizedText(locale, theme.name, theme.nameZh),
-    })),
-    // A stored id nothing provides keeps its place in the picker: the row then shows what the root
-    // actually carries (and the note below says why nothing paints for it) rather than quietly
-    // claiming the default theme is what was chosen.
-    ...(themeIdOptionsInclude(imported, themeId) ? [] : [{ value: themeId, label: themeId }]),
-  ];
   const swatches = accentSwatches(themeId, dark, imported.themes);
   const textSizeOptions: ReadonlyArray<{ value: TextSize; label: string }> = TEXT_SIZES.map(
     (size) => ({ value: size, label: S.settings.textSizeNames[size] }),
@@ -312,9 +338,18 @@ export function AppearanceSection() {
 
   return (
     <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
-      <PrefRow label={S.settings.theme} info={S.settings.themeInfo}>
-        <Segmented options={themeIdOptions} value={themeId} onChange={setThemeId} />
-      </PrefRow>
+      {/* The picker is a grid, not a control beside the label: it needs the row's whole width to
+          wrap into, which the row's own control slot does not give it. */}
+      <div className="py-3.5 first:pt-0">
+        <PrefRowLabel label={S.settings.theme} info={S.settings.themeInfo} />
+        <ThemePicker
+          imported={imported.themes}
+          value={themeId}
+          onChange={setThemeId}
+          dark={dark}
+          locale={locale}
+        />
+      </div>
       <ImportedThemesNote
         state={imported}
         activeId={themeId}

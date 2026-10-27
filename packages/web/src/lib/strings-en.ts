@@ -740,12 +740,22 @@ export const en: Strings = {
     themeInfo:
       "The app's overall style: layout, lines, type and motion change with it; content and every other setting stay as they are.",
     themeNames: { github: "Primer", modern: "Frost", geek: "Console" },
-    /** The row under the theme picker: where a theme file goes, and what one got wrong. */
-    importedThemesDir: (dir: string) => `Themes directory ${dir}`,
+    /**
+     * The row under the theme picker: the folder the server reads, with the "?" beside it saying
+     * which path and what a file looks like.
+     */
+    importedThemesHelp: "Themes folder",
     importedThemesHint:
-      "Drop a theme's .json file in this directory and reload the page: it appears in the theme list above. The format is in the repository's examples/themes/warm-paper.json. An admin can import one here as well.",
+      "Drop a theme's .json file in this folder and choose Read again: it appears in the theme list above. The format is in the repository's examples/themes/warm-paper.json. An admin can import one here as well, without walking to the folder.",
     importedThemesReadAgain: "Read again",
-    /** The admin's entry beside the directory line: the same install, without walking to the folder. */
+    importedThemeUnknownShort: (count: number) =>
+      `${count} token ${count === 1 ? "name" : "names"} not recognised`,
+    importedThemeMissingShort: (count: number) =>
+      `${count} token${count === 1 ? "" : "s"} keep the default`,
+    importedThemeDetails: "which ones",
+    themeBuiltin: "Built in",
+    themeImportedGroup: "Imported",
+    /** The admin's entry beside "read again": the same install, without walking to the folder. */
     themeImport: "Import a theme…",
     themeImportTitle: "Import a theme",
     /** The dialog's source switch: the two ways a theme file reaches the server. */

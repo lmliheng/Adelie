@@ -120,13 +120,16 @@ The **Appearance** page is personal.
 
 | Setting | Options | What it does |
 | --- | --- | --- |
-| **Theme** | Light / Dark / System | The interface theme. |
+| **Theme** | Primer, Frost, Console, plus whatever this machine imported | The interface's overall style: layout, lines, type and motion change with it. Each card paints that theme's own canvas, surface, ink and accent, so you can see a choice before picking it. |
+| **Color mode** | Light / Dark / System | The light or dark version of the theme. |
 | **Terminal theme** | App / Light / Dark | The terminal panel keeps its own light or dark and follows the app theme by default. Pin it to Light or Dark to decouple the two, for prompts and TUIs tuned to one screen. |
 | **Font size** | S / M / L | The interface font size. |
-| **Accent** | Neutral, Blue, Green, Violet, Rose or Amber | The interface accent color. |
+| **Accent** | Neutral, Blue, Green, Violet, Rose or Amber, plus the ones the current theme brings | The interface accent color. |
 | **Shortcuts launcher** | On / Off | The round button floating on the conversation's right edge that fans out shortcuts to the workbench's panels and the terminal. The fan's **Hide launcher** entry does the same. |
 | **Tool short names** | On / Off | Tool cards in a conversation name built-in tools by a short alias (`read_file` reads as "read"). Every other tool, MCP tools included, and the Trace viewer keep the tool's own name. Hovering a short name shows it. |
 | **Tray icon** | On / Off (on by default) | Desktop app only. See below. |
+
+About **imported themes**: a theme is only a set of values, which is why a machine can have its own. Drop a theme's `.json` file into the data root's `themes/` folder and choose **Read again** under the theme list: it appears as a card in the **Imported** group, painted with its own colors. The "?" beside those two actions says where the folder is and what a file looks like, and an admin can instead press **Import a theme…** and upload the file without walking to the folder. A file may set only part of the values: the names it leaves out keep the default theme's, and the lines under the list say how many token names went unrecognised and how many keep the default — click one to see the names themselves.
 
 About **Tray icon**: the desktop app keeps an icon in the system tray: the Windows notification area, the macOS menu bar, or the Linux tray. It stays there for as long as the app runs. Click the icon to come back to the window. Right-click it to start a new Session or quit.
 

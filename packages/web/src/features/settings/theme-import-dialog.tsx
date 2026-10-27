@@ -7,8 +7,9 @@
  * it is called, and the server writes it under that name (`<id>.json`), so the only question left
  * is where the bytes come from. That is a two-way switch, and everything after it is shared — one
  * body, one confirm button, one overwrite confirmation, one success path — which is what keeps the
- * dialog from being two nearly identical ones. The switch is also why this is not the note's own
- * pair of buttons: the directory line is a line of small text, and two buttons there would shout.
+ * dialog from being two nearly identical ones. It is also why the note under the picker offers ONE
+ * import entry rather than one per source: which way the bytes come is the dialog's question, not a
+ * third button on the page.
  *
  * Both flows are the same import twice, as in the plugin dialogs: one carries the file in the
  * request, the other a URL the server fetches, and a 409 `theme_exists` opens the overwrite
@@ -172,15 +173,12 @@ export function ThemeImportActions({
 
   return (
     <>
-      {/* The entry sits in the directory line, beside "read again": the two are the same read and
-          the same write, so they belong to the same sentence about the folder. */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="shrink-0 text-gray-600 underline transition-colors duration-150 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100"
-      >
+      {/* The entry sits beside "read again": the two are the same read and the same write, so they
+          belong to one row of actions on the folder. Bordered rather than a third line of small
+          text, because it is the only one of them that brings something in. */}
+      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
         {S.settings.themeImport}
-      </button>
+      </Button>
 
       <Modal
         open={open}

@@ -40,10 +40,26 @@ export interface ImportedThemeView {
   readonly presets: ReadonlyArray<{ readonly id: string; readonly swatch: string }>;
   /** The accent it paints when no preset is chosen, per mode (`neutral`'s swatch). */
   readonly own: { readonly light: string; readonly dark: string };
+  /**
+   * The four colours the picker's chip paints, per mode: its own canvas, surface, ink and accent,
+   * each falling back to the default theme's value for the names the file leaves out.
+   */
+  readonly preview: {
+    readonly light: ThemePreviewColors;
+    readonly dark: ThemePreviewColors;
+  };
   /** Token names the contract has never heard of — they paint nothing. */
   readonly unknown: readonly string[];
   /** Token names the file does not set — they keep the default theme's values. */
   readonly missing: readonly string[];
+}
+
+/** The colours one mode of a chip needs; see `features/settings/theme-picker.tsx`. */
+export interface ThemePreviewColors {
+  readonly canvas: string;
+  readonly surface: string;
+  readonly fg: string;
+  readonly accent: string;
 }
 
 export interface ImportedThemesState {
@@ -69,6 +85,37 @@ function publish(next: ImportedThemesState): void {
 
 /** The default theme's own accent — what a name a theme leaves out ends up painting. */
 const FALLBACK_ACCENT = THEME_OWN_ACCENTS[DEFAULT_THEME_ID];
+
+/**
+ * The default theme's canvas, surface and ink, for the chip of a theme that leaves those names
+ * out. Spelled here for the same reason the picker spells the shipped themes' colours: the page
+ * holds no theme's values, only the files' and this one fallback.
+ */
+const FALLBACK_PREVIEW: ThemePreviewColors = {
+  canvas: "#fafafa",
+  surface: "#ffffff",
+  fg: "#232527",
+  accent: FALLBACK_ACCENT.light,
+};
+const FALLBACK_PREVIEW_DARK: ThemePreviewColors = {
+  canvas: "#1b1c1e",
+  surface: "#232426",
+  fg: "#e6e6e6",
+  accent: FALLBACK_ACCENT.dark,
+};
+
+/** One mode's chip colours: the file's own values, filled in from the default theme. */
+function previewOf(
+  tokens: Readonly<Record<string, string>> | undefined,
+  fallback: ThemePreviewColors,
+): ThemePreviewColors {
+  return {
+    canvas: tokens?.["--ui-canvas"] ?? fallback.canvas,
+    surface: tokens?.["--ui-surface"] ?? fallback.surface,
+    fg: tokens?.["--ui-fg"] ?? fallback.fg,
+    accent: tokens?.["--ui-accent"] ?? fallback.accent,
+  };
+}
 
 /** The `--ui-accent` a token map sets, or null when it does not set one at all. */
 function accentOf(tokens: Readonly<Record<string, string>> | undefined): string | null {
@@ -102,6 +149,10 @@ export function viewOfTheme(file: string, theme: ExternalTheme): ImportedThemeVi
     // `neutral` is the accent the theme itself paints: its own `--ui-accent` where it sets one, and
     // the default theme's where it does not (a name it leaves out keeps the default's value).
     own: { light: ownLight, dark: accentOf(theme.dark) ?? FALLBACK_ACCENT.dark },
+    preview: {
+      light: previewOf(theme.light, FALLBACK_PREVIEW),
+      dark: previewOf(theme.dark, { ...FALLBACK_PREVIEW_DARK, accent: ownLight }),
+    },
     unknown: [...new Set(names.filter((name) => !contract.includes(name)))],
     missing: contract.filter((name) => !(name in light)),
   };

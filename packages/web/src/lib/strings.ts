@@ -798,12 +798,15 @@ export const zh = {
     themeInfo: "应用的整体风格：布局、线条、字体与动效随之改变，内容与其他设置不受影响。",
     /** Display names of the three themes; the ids stay github / modern / geek. */
     themeNames: { github: "通用", modern: "白领", geek: "极客" },
-    /** The row under the theme picker: where a theme file goes, and what one got wrong. */
-    importedThemesDir: (dir: string) => `主题目录 ${dir}`,
+    /**
+     * The row under the theme picker: the folder the server reads, with the "?" beside it saying
+     * which path and what a file looks like.
+     */
+    importedThemesHelp: "主题目录",
     importedThemesHint:
-      "把主题的 .json 文件放进这个目录、刷新页面，它就会出现在上面的主题列表里；格式见仓库里的 examples/themes/warm-paper.json。管理员也可以直接导入。",
+      "把主题的 .json 文件放进这个目录，点「重新读取」它就会出现在上面的主题列表里；格式见仓库里的 examples/themes/warm-paper.json。管理员也可以直接导入，不用走到目录里。",
     importedThemesReadAgain: "重新读取",
-    /** The admin's entry beside the directory line: the same install, without walking to the folder. */
+    /** The admin's entry beside "read again": the same install, without walking to the folder. */
     themeImport: "导入主题…",
     themeImportTitle: "导入主题",
     /** The dialog's source switch: the two ways a theme file reaches the server. */
@@ -839,6 +842,13 @@ export const zh = {
       `${count} 个名字这边不认识（${names}），这些设置不会生效。`,
     importedThemeMissing: (count: number, names: string) =>
       `${count} 个令牌这个主题没写（${names}），它们沿用「通用」主题的值。`,
+    /** The same two facts as one line each, so a half-filled theme is not a wall of names. */
+    importedThemeUnknownShort: (count: number) => `${count} 个令牌名不认识`,
+    importedThemeMissingShort: (count: number) => `${count} 个令牌沿用默认值`,
+    importedThemeDetails: "看是哪些",
+    /** The picker's two groups, and the tag on a card a file brought. */
+    themeBuiltin: "内置主题",
+    themeImportedGroup: "导入主题",
     importedThemeRejected: (file: string, reason: string) => `${file}：${reason}`,
     colorMode: "明暗",
     colorModeInfo: "应用的明暗外观。",
