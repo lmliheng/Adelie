@@ -1493,9 +1493,9 @@ export const getUsageErrors = (
 
 /**
  * Empties the cost center's error table for the filter the panel is showing — the same dates,
- * trailing window and Agent the reads take, so what goes is what was on screen (for an admin,
- * the unattributed rows an admin's panel shows included). Owner only. Answers how many rows
- * were deleted.
+ * trailing window, Agent and category the reads take, so what goes is what was on screen (for
+ * an admin, the unattributed rows an admin's panel shows included). Owner only. Answers how
+ * many rows were deleted.
  *
  * `until` is the newest record the confirmation's own read could see: the delete stops there,
  * so the number the dialog named is the number that goes even when a record lands in between.
@@ -1509,6 +1509,8 @@ export const clearUsageErrors = (
     toTs?: string;
     until?: string;
     agentId?: string;
+    /** Narrow to one category; the panel sends whatever its table is showing. */
+    kind?: UsageErrorKind;
   },
 ) =>
   apiFetch<UsageErrorsClearResponse>(
@@ -1522,6 +1524,7 @@ export const clearUsageErrors = (
         toTs: params.toTs,
         until: params.until,
         agentId: params.agentId,
+        kind: params.kind,
       },
     },
   );

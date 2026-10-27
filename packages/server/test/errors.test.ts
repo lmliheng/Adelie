@@ -1398,6 +1398,40 @@ describe("HTTP onError persistence (integration)", () => {
     ).toEqual(["before_range", "after_range"]);
   });
 
+  it("a category-narrowed clear leaves the other category alone", async () => {
+    const day = "2026-07-06";
+    seedRow({ date: day, code: "boom", kind: "unexpected" });
+    seedRow({ date: day, code: "missing", kind: "expected" });
+    const kept = () =>
+      errorRows()
+        .map((r) => r.code)
+        .filter((code) => code !== "bad_request");
+
+    // What the panel's narrowed table reads — the same `kind` its clear carries, which is the
+    // point: the button empties the table on screen, never the category filtered out of it.
+    const narrowed = (await (
+      await api.get(
+        `/api/projects/${projectId}/usage/errors?offset=0&limit=20&from=${day}&to=${day}&kind=unexpected`,
+      )
+    ).json()) as UsageErrorsPage;
+    expect(narrowed.items.map((e) => e.code)).toEqual(["boom"]);
+    expect(narrowed.total).toBe(1);
+
+    const cleared = await api.delete(
+      `/api/projects/${projectId}/usage/errors?from=${day}&to=${day}&kind=unexpected`,
+    );
+    expect(await cleared.json()).toEqual({ deleted: 1 });
+    expect(kept()).toEqual(["missing"]);
+
+    // A category outside the closed set is refused rather than matched against nothing: a clear
+    // that silently deleted none of them reads as "already empty" while they are all still there.
+    const refused = await api.delete(
+      `/api/projects/${projectId}/usage/errors?from=${day}&to=${day}&kind=oops`,
+    );
+    expect(refused.status).toBe(400);
+    expect(kept()).toEqual(["missing"]);
+  });
+
   it("a trailing-window clear deletes exactly the rows the window listed", async () => {
     const day = "2026-07-06";
     seedRow({ date: day, code: "before_window", ts: `${day}T09:59:59.999Z` });

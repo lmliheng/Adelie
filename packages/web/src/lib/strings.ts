@@ -4299,6 +4299,9 @@ export const zh = {
     errorsColKind: "类型",
     errorsColMessage: "消息",
     errorsEmpty: "暂无异常",
+    /** The table's category control: both categories, and the empty state once one is chosen. */
+    errorsFilterAll: "全部",
+    errorsEmptyKind: "该类型下暂无异常",
     /** Time cell tooltip on a row that folds several of a day's records: when the first one was. */
     errorsFirstAt: (time: string): string => `首次出现于 ${time}`,
     /** Detail-table pager: newer/older step back through pages of the same filtered set; it counts rows, not records. */
@@ -4323,6 +4326,16 @@ export const zh = {
       `将删除本项目 ${range}的 ${count} 条错误记录，其余时间段的记录保留。`,
     errorsClearScopeAgent: (count: number, range: string, agentId: string): string =>
       `将删除本项目中 Agent「${agentId}」${range}的 ${count} 条错误记录，其他 Agent 与其余时间段的记录保留。`,
+    /** The same sentence with the table's own category filter on: the other category is kept too. */
+    errorsClearScopeKind: (count: number, range: string, kind: string): string =>
+      `将删除本项目 ${range}的 ${count} 条「${kind}」错误记录，另一类与其余时间段的记录保留。`,
+    errorsClearScopeKindAgent: (
+      count: number,
+      range: string,
+      kind: string,
+      agentId: string,
+    ): string =>
+      `将删除本项目中 Agent「${agentId}」${range}的 ${count} 条「${kind}」错误记录，另一类、其他 Agent 与其余时间段的记录保留。`,
     errorsClearIrreversible: "此操作不可恢复。",
     errorsClearDone: (count: number): string => `已删除 ${count} 条错误记录`,
   },

@@ -13,9 +13,9 @@
  * exceptions) is a prominent rose; expected (HttpError, business 4xx) recedes into gray.
  * The outer frame is provided by the caller's ChartCard (full width, below the four business charts).
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { UsageErrorItem, UsageErrors } from "@adelie/server/api";
-import { Badge, ConfirmModal, Pager, toastError, toastSuccess } from "@adelie/ui";
+import { Badge, ConfirmModal, Pager, Segmented, toastError, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
@@ -26,6 +26,9 @@ import { toneInk } from "../../lib/tone";
 /** The two error categories. */
 type ErrorKindKey = "unexpected" | "expected";
 
+/** The table's own category control: one of the two, or both. */
+type ErrorKindFilter = ErrorKindKey | "all";
+
 /** The date/agent filter the panel reads through, and that a clear deletes through. */
 export interface ErrorsFilters {
   from?: string;
@@ -34,6 +37,13 @@ export interface ErrorsFilters {
   fromTs?: string;
   toTs?: string;
   agentId?: string;
+  /**
+   * The table's category filter, when one is chosen. The panel owns this control rather than
+   * the page's filter bar, so it is merged in here — and read by the clear as well, because a
+   * button that emptied the category the reader had filtered OUT would be taking rows off a
+   * table they never saw.
+   */
+  kind?: ErrorKindKey;
 }
 
 /** The quick range presets the clear confirmation names by name; a custom range is named by its dates. */
@@ -47,8 +57,11 @@ export type ErrorsRangePreset = "1h" | "1d" | "7d" | "30d" | "90d";
  * — which is the entire failure a confirmation exists to prevent. The range is named the way
  * the picker names it — "the last 7 days", not the two dates standing for it, which a reader
  * would have to work back from — and only a custom range, which has no other name, is spelled
- * as its dates. Pure and exported so that is asserted directly: this package's vitest runs in
- * `node`, so an opened dialog is not something a test can inspect.
+ * as its dates. The table's own category filter is part of that set too, so it is named here
+ * as well: the button empties what the table shows, and a sentence that left the category out
+ * would promise the reader keeps rows the delete is about to take. Pure and exported so that
+ * is asserted directly: this package's vitest runs in `node`, so an opened dialog is not
+ * something a test can inspect.
  */
 export function errorsClearScopeText(
   filters: ErrorsFilters,
@@ -59,9 +72,15 @@ export function errorsClearScopeText(
     preset !== undefined
       ? S.usage.errorsClearRangePreset(preset)
       : S.usage.errorsClearRangeCustom(filters.from ?? "", filters.to ?? "");
-  return filters.agentId !== undefined && filters.agentId !== ""
-    ? S.usage.errorsClearScopeAgent(count, range, filters.agentId)
-    : S.usage.errorsClearScope(count, range);
+  const kind = filters.kind !== undefined ? kindLabel(filters.kind) : undefined;
+  const agent =
+    filters.agentId !== undefined && filters.agentId !== "" ? filters.agentId : undefined;
+  if (kind !== undefined && agent !== undefined) {
+    return S.usage.errorsClearScopeKindAgent(count, range, kind, agent);
+  }
+  if (kind !== undefined) return S.usage.errorsClearScopeKind(count, range, kind);
+  if (agent !== undefined) return S.usage.errorsClearScopeAgent(count, range, agent);
+  return S.usage.errorsClearScope(count, range);
 }
 
 /**
@@ -140,6 +159,12 @@ function Th({ children, className = "" }: { children: React.ReactNode; className
  * a floor to stay legible, so on a viewport narrower than that floor the table scrolls
  * sideways inside its own box rather than dragging the page along with it.
  *
+ * The panel brings one filter of its own: a category control (both / unexpected / expected)
+ * right above the table. The stats keep counting both categories — they are the range's summary,
+ * and the control says which slice of it the table below is showing — but the table, its pager,
+ * its row count and the clear all follow it, and page 0 of a narrowed table is read rather than
+ * taken from the dashboard snapshot, which folds both categories.
+ *
  * The footer under the table carries the pager and, for a Project owner, the clear action.
  * Clearing deletes the records the current filter selects — the set the reader is looking at,
  * not the Project's whole history — and the confirmation says which set that is and how many
@@ -194,19 +219,32 @@ export function ErrorsPanel({
   const [pagedRows, setPagedRows] = useState(rows);
   const [pageError, setPageError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // The table's own category filter. The stats above keep counting both categories — they are
+  // the range's summary, and the box that narrows the table is where it says so — so this state
+  // lives here rather than in the page's filter bar.
+  const [kindFilter, setKindFilter] = useState<ErrorKindFilter>("all");
+  // What the reads, the count and the clear all go by: the page's filter, plus this table's own
+  // category when one is chosen (see ErrorsFilters.kind).
+  const activeFilters = useMemo<ErrorsFilters>(
+    () => (kindFilter === "all" ? filters : { ...filters, kind: kindFilter }),
+    [filters, kindFilter],
+  );
   // A new dashboard response invalidates the offsets being paged through, so paging goes back to
   // page 0 — whose rows the effect below restores from that same response. Today the panel is
   // remounted on every filter change, which resets this anyway; the reset does not rely on that.
-  useEffect(() => setPage(0), [recent]);
+  // The category goes back with it: the offsets on page 2 count the previous category's rows.
+  useEffect(() => setPage(0), [recent, kindFilter]);
 
   // Every value this effect reads is a dep, the page-0 branch's included: one left out would be
   // served from a stale closure, and the repo has no lint rule that would catch it.
   useEffect(() => {
-    // Page 0 is restored, never fetched — the dashboard response already carries it. Restoring
-    // is the whole point of the early return: leaving `items` untouched would keep the previous
-    // page's rows and its error on screen under a "page 1" label, with no way out short of
-    // changing a filter.
-    if (page === 0) {
+    // Page 0 is restored, never fetched — the dashboard response already carries it, and it is
+    // the first page of exactly this filter. Restoring is the whole point of the early return:
+    // leaving `items` untouched would keep the previous page's rows and its error on screen
+    // under a "page 1" label, with no way out short of changing a filter. With a category chosen
+    // it cannot be, though: the dashboard folds both categories into that snapshot, so page 0 of
+    // a narrowed table has to be read like any other page.
+    if (page === 0 && kindFilter === "all") {
       setItems(recent);
       setPagedRows(rows);
       setPageError(null);
@@ -216,7 +254,7 @@ export function ErrorsPanel({
     setLoading(true);
     setPageError(null);
     api
-      .getUsageErrors(projectId, { offset: page * pageSize, limit: pageSize, ...filters })
+      .getUsageErrors(projectId, { offset: page * pageSize, limit: pageSize, ...activeFilters })
       .then((res) => {
         if (cancelled) return;
         setItems(res.items);
@@ -232,7 +270,7 @@ export function ErrorsPanel({
     return () => {
       cancelled = true;
     };
-  }, [page, pageSize, projectId, filters, recent, rows]);
+  }, [page, pageSize, projectId, activeFilters, recent, rows, kindFilter]);
 
   const pageCount = Math.max(1, Math.ceil(pagedRows / pageSize));
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -257,7 +295,7 @@ export function ErrorsPanel({
   const openClear = async () => {
     setCounting(true);
     try {
-      const res = await api.getUsageErrors(projectId, { offset: 0, limit: 1, ...filters });
+      const res = await api.getUsageErrors(projectId, { offset: 0, limit: 1, ...activeFilters });
       const newest = res.items[0]?.ts;
       if (res.total === 0 || newest === undefined) {
         // Emptied between the dashboard's read and this click: nothing to confirm, so the
@@ -285,7 +323,7 @@ export function ErrorsPanel({
     setClearing(true);
     try {
       const res = await api.clearUsageErrors(projectId, {
-        ...filters,
+        ...activeFilters,
         until: confirmTarget.until,
       });
       setConfirmingClear(false);
@@ -330,9 +368,27 @@ export function ErrorsPanel({
         )}
       </div>
 
+      {/* The table's own filter: one category or both. Right-aligned directly above the table it
+          narrows, so it reads as that table's control rather than as part of the stats row. It is
+          drawn whenever the panel has a table to narrow — an empty page keeps it, since it is the
+          only way back to the category the reader came from. */}
+      <div className="mt-3 flex justify-end">
+        <div className="w-56">
+          <Segmented
+            options={[
+              { value: "all", label: S.usage.errorsFilterAll },
+              { value: "unexpected", label: S.usage.errorsUnexpected },
+              { value: "expected", label: S.usage.errorsExpected },
+            ]}
+            value={kindFilter}
+            onChange={setKindFilter}
+          />
+        </div>
+      </div>
+
       {/* Recent-errors table */}
       {items.length === 0 ? (
-        <Empty text={S.usage.errorsEmpty} />
+        <Empty text={kindFilter === "all" ? S.usage.errorsEmpty : S.usage.errorsEmptyKind} />
       ) : (
         <div className="mt-2.5 overflow-x-auto overflow-y-clip border-t border-gray-200 dark:border-gray-800">
           {/* The three leading columns are fixed-width and the message column takes the rest, so
@@ -423,7 +479,7 @@ export function ErrorsPanel({
         <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
           {/* Offered while there is something to take: the clear reaches exactly the rows the
               panel lists — for an admin, the unattributed rows an admin's read includes too. */}
-          {canClear && total > 0 && clearableFilter(filters) && (
+          {canClear && total > 0 && clearableFilter(activeFilters) && (
             <button
               type="button"
               disabled={clearing || counting}
@@ -469,7 +525,7 @@ export function ErrorsPanel({
         <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
           {confirmTarget !== null && (
             <p className="break-words">
-              {errorsClearScopeText(filters, preset, confirmTarget.total)}
+              {errorsClearScopeText(activeFilters, preset, confirmTarget.total)}
             </p>
           )}
           <p className="text-xs text-gray-500 dark:text-gray-400">

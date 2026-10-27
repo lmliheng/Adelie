@@ -17121,3 +17121,68 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
   （`shared_env/xianyu-ops/feishu_send.py`，`text ok`，`message_id=om_x100b6135ef192cb8ddbb1e6ec0937f8`），
   正文留底在 scratchpad 的 `r140/report.md`。下一轮开工再探一次，通了把积压的补发到
   `0110230306@csu.edu.cn`。
+
+## 第一百四十一轮：模型的 TokenDance 分组重核，成本中心的异常表能按类型过滤（2026-10-27，用户点单）
+
+### 开工自检
+
+- `/root/adelie-fork` 在 `main` 上，`HEAD` = **`f57bd90a`**，与 `origin/main` 齐；工作区里只有本会话自己
+  第四笔与第三笔的改动（13 个跟踪文件 + 2 个新 changelog），没有别的会话写进来。
+- 两笔都不动依赖、不动磁盘格式、不动包名；全程没 `pnpm add`（避免换掉 `packages/{web,ui-gallery}/node_modules/@adelie/ui`
+  那个指回 `../../ui` 的符号链接）、没切分支、没碰 `legacy/main`、没推上游。
+
+### 改了什么
+
+- **第三笔（模型库，`core` + `docs`）**：TokenDance 分组补四条（`deepseek-v4.1-flash-1017`、
+  `deepseek-v4-pro`、`kimi-k3.1-pro`、`glm-5.3-flashx`），并把整组 18 条的价格、窗口与促销按卖家当下的
+  目录重核（`kimi-k3` 的 6 折与两条 DeepSeek 的 9 折都已停止，`seed-evolving` 窗口 25.6 万 → 100 万）。
+  数据来源换成匿名可取的 `GET https://tokendance.space/portal/api/models/all`（含实收价、牌价与峰谷两档）。
+  `deepseek-v4-flash-0731` 与 `deepseek-v4-pro-0813` 的谷时只能近似（一条只放得下一个费率），已写明在代码
+  与文档里。详见这一笔自己的 changelog。
+- **第四笔（异常表过滤，`server` + `web` + `ui-gallery` + `docs`）**：成本中心**异常**面板表格右上方加一个
+  类型筛选（全部 / 未预期 / 预期内）。面板自己的 `kindFilter` 与页面的日期 / Agent 筛选合成
+  `activeFilters`，取数、行数、翻页、清空全部走它；选了类型后连第 0 页也改为向服务端读（仪表盘快照把两类
+  折在一起）。`DELETE /usage/errors` 新增 `kind`，与读接口共用一个闭集校验与一处 WHERE。汇总数字仍按两类
+  合计，它是整段范围的摘要。
+- 两笔各自的 changelog 一对（`changelog/unreleased/2026-10-27-tokendance-catalog-refresh.*`、
+  `2026-10-27-errors-panel-category-filter.*`）。
+
+### 验证（都不是推测）
+
+- **第三笔**：`core/test/model-catalog.test.ts` **65 passed**（TokenDance 那组的三处钉子跟到新事实，并新增
+  一条「既无促销也无时段的条目实收就是公布价」的断言）；`core` 全量 **1425 passed / 6 skipped**。
+  `pnpm --filter @adelie/core build` 后 `pnpm -r test` **退出码 0**。
+- **第四笔**：`web` 全量 **270 文件 / 3303 通过 / 2 跳过**；`server/test/errors.test.ts` **66 passed**（含新增
+  「a category-narrowed clear leaves the other category alone」）；`ui-gallery` **20 文件 / 140 通过**。
+- **门禁**：`pnpm format:check`（先对 `packages/ui-gallery/src/app/mock/routes.ts` 跑了一次 `prettier --write`）
+  **全部干净**；`pnpm lint` **0 警告 0 错误**（2305 文件）；`pnpm typecheck` 六包 **`Done`**，
+  `gen:ifaces` 报 **`src/ifaces.json unchanged`**（195 接口 / 590 类型 —— 两笔都没动服务契约的形状）。
+- **真浏览器（第四笔的主证据）**：`pnpm dev:gallery` 起在 **7372**，Playwright 打开
+  `app.html?route=/usage&theme=github`：
+  - 中英文各一张全页截图，控件三标签（全部 / 未预期 / 预期内）都在统计行下方、表格上方右侧；
+  - 中文页：**全部 = 3 行 → 未预期 = 1 行**；
+  - 收窄后点**清空**，确认框原文 = 「将删除本项目 近 7 天内的 1 条「未预期」错误记录，另一类与其余时间段
+    的记录保留。」，确认后 toast **「已删除 1 条错误记录」**、统计从 **总数 6 → 5** —— 另一类确实留着。
+  - 页面无 pageerror、无 console error；截图在 scratchpad 的 `shots/` 下。
+- 端口：本轮只用了 **7372**（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
+
+### 没做 / 还差什么
+
+- **模型库是源码**：新条目与更正后的价格要等下一版发出去才在现网可见；已存在的 Project 还要点一次
+  **同步预置**（自己改过价的条目保持用户自己的价）。
+- **卖家目录里有、本轮有意没收的候选**：`minimax-m3.1-flash`、`step-3.7-flash`、`ling-3.1-flash`、
+  `longcat-2.0`、`glm-5.2`、`qwen3.8-max-0902`（`qwen3.8-max` 的定版快照，主 id 已收录）；TokenDance 组也没给
+  任何一行加 `supportsVideo`（该组一向不写这个字段，尽管目录里几行支持视频）。等用户定要不要补。
+- **错误中心的「复制按钮」**（用户 2026-10-26 当场点的单，说下一轮做）本轮仍未做，记在记忆
+  `pending-error-center-copy-button` 里。
+- 发布树 `/tmp/rel-0.5.8` 与 `/tmp/adelie-release-0.5.8/` 仍在（本轮没用上），下一轮开工可清。
+
+### 版本：未到阈值
+
+- 上次发版 **`v0.5.8`**（2026-10-26 23:07 CST）。自那以后 `main` 上功能性的是 5.50 / 5.51 / 5.52 / 5.53 与本轮
+  两笔，远不到 10。
+- 不动版本号、不发 npm、不发安装包。
+
+### 提交
+
+- 两笔：模型库一笔、异常表过滤 + 本台账一笔（提交号见下一轮开工自检）。跑完那两笔的 CI 收工。

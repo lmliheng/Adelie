@@ -4266,6 +4266,9 @@ export const en: Strings = {
     errorsColKind: "Type",
     errorsColMessage: "Message",
     errorsEmpty: "No errors",
+    /** The table's category control: both categories, and the empty state once one is chosen. */
+    errorsFilterAll: "All",
+    errorsEmptyKind: "No errors of this type",
     /** Time cell tooltip on a row that folds several of a day's records: when the first one was. */
     errorsFirstAt: (time: string): string => `First at ${time}`,
     /** Detail-table pager: newer/older step back through pages of the same filtered set; it counts rows, not records. */
@@ -4289,6 +4292,16 @@ export const en: Strings = {
       `Deletes this Project's ${count} error record${count === 1 ? "" : "s"} ${range}. Records outside that range are kept.`,
     errorsClearScopeAgent: (count: number, range: string, agentId: string): string =>
       `Deletes this Project's ${count} error record${count === 1 ? "" : "s"} for agent ${agentId} ${range}. Other agents and records outside that range are kept.`,
+    /** The same sentence with the table's own category filter on: the other category is kept too. */
+    errorsClearScopeKind: (count: number, range: string, kind: string): string =>
+      `Deletes this Project's ${count} ${kind.toLowerCase()} error record${count === 1 ? "" : "s"} ${range}. The other category and records outside that range are kept.`,
+    errorsClearScopeKindAgent: (
+      count: number,
+      range: string,
+      kind: string,
+      agentId: string,
+    ): string =>
+      `Deletes this Project's ${count} ${kind.toLowerCase()} error record${count === 1 ? "" : "s"} for agent ${agentId} ${range}. The other category, other agents and records outside that range are kept.`,
     errorsClearIrreversible: "This cannot be undone.",
     errorsClearDone: (count: number): string =>
       `Deleted ${count} error record${count === 1 ? "" : "s"}`,

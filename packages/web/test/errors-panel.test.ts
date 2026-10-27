@@ -170,4 +170,47 @@ describe("errorsClearScopeText", () => {
       errorsClearScopeText(FILTERS, "7d", 4),
     );
   });
+
+  for (const [locale, dict] of Object.entries({ zh, en })) {
+    it(`${locale}: the table's category filter is named too, and the other category kept`, () => {
+      setActiveStrings(dict);
+      // The delete is scoped to what the table shows, so a sentence that left the category out
+      // would tell the reader they keep rows it is about to take. The sentence names the category
+      // as the control does; English drops the capital because it reads the word mid-sentence.
+      const name = (label: string) => label.toLowerCase();
+      const perKind = errorsClearScopeText({ ...FILTERS, kind: "unexpected" }, "7d", 5);
+      expect(name(perKind)).toContain(name(dict.usage.errorsUnexpected));
+      expect(perKind).toContain("5");
+
+      const both = errorsClearScopeText(
+        { ...FILTERS, kind: "expected", agentId: "agent-7" },
+        "7d",
+        2,
+      );
+      expect(name(both)).toContain(name(dict.usage.errorsExpected));
+      expect(both).toContain("agent-7");
+      expect(both).toContain(dict.usage.errorsClearRangePreset("7d"));
+    });
+  }
+});
+
+describe("ErrorsPanel category control", () => {
+  it("is drawn with both categories and 'all', and narrows nothing until one is chosen", () => {
+    const html = render({ items: [item("internal")] });
+    for (const label of [
+      S.usage.errorsFilterAll,
+      S.usage.errorsUnexpected,
+      S.usage.errorsExpected,
+    ]) {
+      expect(html).toContain(label);
+    }
+    // Nothing chosen: the table is the unfiltered first page and says so.
+    expect(html).not.toContain(S.usage.errorsEmptyKind);
+  });
+
+  it("stays on screen while the table is empty, so its own choice can be undone", () => {
+    const html = render({ items: [] });
+    expect(html).toContain(S.usage.errorsFilterAll);
+    expect(html).toContain(S.usage.errorsUnexpected);
+  });
 });

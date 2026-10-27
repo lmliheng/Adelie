@@ -9,7 +9,7 @@
  * of the error detail table, for paging back past the first page the dashboard already
  * returns (both reads also take `utcOffsetMinutes`, the viewer's offset from UTC, whose
  * calendar day the table folds a day's repeats by);
- * DELETE /api/projects/:p/usage/errors?from&to&fromTs&toTs&until&agentId — empties that table
+ * DELETE /api/projects/:p/usage/errors?from&to&fromTs&toTs&until&agentId&kind — empties that table
  * for the filter the panel is showing (owner only; `from`/`to` are required, unlike on the
  * reads; an admin's clear also takes the unattributed rows an admin's read shows; `until`
  * stops at the newest record the confirmation counted);
@@ -184,12 +184,12 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
     );
   });
 
-  // Empties the error table for the filter the panel is showing. Takes the same date, window
-  // and agent filter as the two reads above and no other: a clear removes exactly the rows the
-  // caller was looking at, never the Project's whole history behind a narrowed view — the date
-  // range is required for that reason, where the reads leave it optional. `kind` is not
-  // accepted — the panel has no control for it, so a clear can offer no narrowing its reader
-  // could have seen on screen.
+  // Empties the error table for the filter the panel is showing. Takes the same date, window,
+  // agent and category filter as the two reads above and no other: a clear removes exactly the
+  // rows the caller was looking at, never the Project's whole history behind a narrowed view —
+  // the date range is required for that reason, where the reads leave it optional. `kind` is
+  // accepted because the panel now has that control: its table and its button read the same
+  // filter, so a reader narrowed to one category keeps the other one.
   app.delete("/errors", (c) => {
     const projectId = requireValidId(c, "projectId");
     // Owner only, the rule Agent deletion applies to error rows already (it cascade-deletes
@@ -214,6 +214,17 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
     // boundary would remove rows the sentence said were kept.
     const until = optionalTsParam(c.req.query("until"), "until");
     const agentId = c.req.query("agentId");
+    const kindRaw = c.req.query("kind");
+    // Validated against the same closed set the read uses: an unrecognized category would
+    // otherwise match no rows, and a clear that silently matches nothing reads as "already
+    // empty" while the rows are still there.
+    if (
+      kindRaw !== undefined &&
+      kindRaw !== "" &&
+      !(ERROR_KINDS as readonly string[]).includes(kindRaw)
+    ) {
+      throw badRequest(`kind must be one of ${ERROR_KINDS.join(" / ")}.`);
+    }
     // The same admin visibility the reads above carry, so a clear takes exactly the rows the
     // caller's panel showed. An admin's panel shows the unattributed rows (login failures,
     // process crashes) and so an admin's clear takes them; a member's never shows them, so a
@@ -225,6 +236,7 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
       ...window,
       ...(until !== undefined ? { until } : {}),
       ...(agentId !== undefined && agentId !== "" ? { agentId } : {}),
+      ...(kindRaw !== undefined && kindRaw !== "" ? { kind: kindRaw } : {}),
     });
     return c.json({ deleted } satisfies UsageErrorsClearResponse);
   });

@@ -61,6 +61,7 @@ The **Errors** panel at the bottom of the page shows the errors the server recor
 
 - Summary figures: **Total**, **Unexpected**, **Expected** and the **Most common** error code.
 - A table of errors with their time, **Source · code**, **Type** and **Message**. Click a message to expand its full text. The table shows 10 rows a page and pages with **Newer** and **Older** instead of scrolling.
+- A **Type** filter above the table on the right: **All**, **Unexpected**, **Expected**. It narrows only the table below, its paging and **Clear**; the summary figures always count both categories.
 - The same error recorded more than once on one day shares a row. The time is the latest one, hover it for the first, and ×N after the message counts the records. The summary figures count every record.
 
 The model filter does not apply to this panel.
@@ -71,9 +72,9 @@ When unexpected errors were recorded in the last 7 days, a dot marks **Cost Cent
 
 **Before you begin:** only a Project owner can clear errors.
 
-1. Set the date range and the agent filter to the rows you want to delete.
+1. Use the date range, the agent filter and the panel's own **Type** filter to make the panel list the rows you want to delete.
 2. In the **Errors** panel, select **Clear**. It appears only when the panel lists errors and, for a custom range, both dates are set.
-3. Check the confirmation. It names a preset range the way the picker does, such as "in the last 7 days", and a custom range by its dates.
+3. Check the confirmation. It names a preset range the way the picker does, such as "in the last 7 days", a custom range by its dates, and the category when one is chosen — the other one is kept.
 4. Confirm. The deletion cannot be undone.
 
 When an admin clears errors, the deletion also removes the unattributed error rows that only admins can see.

@@ -1847,10 +1847,13 @@ router
       rows: items.length,
     };
   })
-  .delete("/api/projects/:projectId/usage/errors", ({ store }): UsageErrorsClearResponse => {
-    const deleted = store.f.usageErrors.length;
-    store.f.usageErrors = [];
-    return { deleted };
+  .delete("/api/projects/:projectId/usage/errors", ({ store, query }): UsageErrorsClearResponse => {
+    // Same narrowing as the read above: the panel's clear sends the category its table is
+    // showing, so the demo behaves the way the route does.
+    const kind = query.get("kind");
+    const going = kind ? store.f.usageErrors.filter((e) => e.kind === kind) : store.f.usageErrors;
+    store.f.usageErrors = kind ? store.f.usageErrors.filter((e) => e.kind !== kind) : [];
+    return { deleted: going.length };
   })
   .get("/api/projects/:projectId/usage/model-totals", ({ store }): UsageModelTotals => {
     const totals = new Map<string, UsageModelTotals["totals"][number]>();

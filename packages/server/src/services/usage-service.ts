@@ -125,9 +125,10 @@ export interface UsageErrorsQuery {
 
 /**
  * What a clear removes (see {@link UsageService.clearErrors}): the panel's own range — dates,
- * and the trailing window when one is on — and Agent, read with the same admin visibility the
- * panel has. No `kind`: the panel offers no such control, so a clear has no narrowing the
- * reader could have seen.
+ * and the trailing window when one is on — Agent, and the category the panel is narrowed to,
+ * read with the same admin visibility the panel has. `kind` is here because the panel has the
+ * control: a reader looking at one category must not lose the other to a button that said
+ * "clear", so what the row offers and what this removes stay the same set.
  *
  * `until` is the boundary the confirmation counted: the newest record the dialog's own read
  * could see. The delete stops there, so the sentence's number is the number that goes even
@@ -140,6 +141,8 @@ export interface UsageErrorsClearQuery {
   toTs?: string;
   until?: string;
   agentId?: string;
+  /** Narrow to one category, the value the caller's reads carry; absent counts both. */
+  kind?: string;
   /** Admin only, the value the caller's reads carry: an admin's clear takes the unattributed rows an admin's panel shows. */
   includeGlobalErrors?: boolean;
 }
@@ -396,12 +399,12 @@ export class UsageService implements UsageQueries {
   /**
    * Empties the error table for the filter the panel is showing, and answers how many rows went.
    *
-   * The filter is the same range (dates, and the trailing window when one is on) and Agent
-   * the dashboard and the paged route take, read with the same admin visibility, so a clear
-   * removes exactly the set the caller was looking at and never a row outside it: a reader
-   * who has narrowed to one Agent and one week does not lose the rest of the year to a button
-   * that said "clear", and an admin whose panel showed unattributed rows is not left holding
-   * them after clearing it (see ErrorsRepo.deleteFiltered).
+   * The filter is the same range (dates, and the trailing window when one is on), Agent and
+   * category the dashboard and the paged route take, read with the same admin visibility, so a
+   * clear removes exactly the set the caller was looking at and never a row outside it: a
+   * reader who has narrowed to one Agent, one week or one category does not lose the rest to a
+   * button that said "clear", and an admin whose panel showed unattributed rows is not left
+   * holding them after clearing it (see ErrorsRepo.deleteFiltered).
    */
   clearErrors(projectId: string, q: UsageErrorsClearQuery): number {
     return this.errors.deleteFiltered(projectId, {
@@ -411,6 +414,7 @@ export class UsageService implements UsageQueries {
       ...(q.fromTs !== undefined ? { fromTs: q.fromTs } : {}),
       ...(q.toTs !== undefined ? { toTs: q.toTs } : {}),
       ...(q.until !== undefined ? { until: q.until } : {}),
+      ...(q.kind !== undefined ? { kind: q.kind } : {}),
       ...(q.includeGlobalErrors === true ? { includeGlobal: true } : {}),
     });
   }
