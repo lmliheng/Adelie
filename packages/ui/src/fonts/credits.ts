@@ -30,6 +30,11 @@ export interface FontCredit {
   readonly themes: readonly ThemeId[];
   /** The npm package the face arrives through, or the vendor's download for a vendored face. */
   readonly source: string;
+  /**
+   * The type's own project — the licence holder's page, which is what a reader following "来源"
+   * wants. `source` says how the file got here; this says whose type it is.
+   */
+  readonly upstream: string;
   readonly licenseTitle: string;
   readonly licenseText: string;
 }
@@ -49,6 +54,7 @@ export const FONT_CREDITS: readonly FontCredit[] = [
     family: "Mona Sans",
     themes: namedBy("Mona Sans"),
     source: "@fontsource-variable/mona-sans",
+    upstream: "https://github.com/github/mona-sans",
     licenseTitle: OFL,
     licenseText: monaSans,
   },
@@ -57,6 +63,7 @@ export const FONT_CREDITS: readonly FontCredit[] = [
     family: "JetBrains Mono",
     themes: namedBy("JetBrains Mono"),
     source: "@fontsource-variable/jetbrains-mono",
+    upstream: "https://github.com/JetBrains/JetBrainsMono",
     licenseTitle: OFL,
     licenseText: jetbrainsMono,
   },
@@ -65,6 +72,7 @@ export const FONT_CREDITS: readonly FontCredit[] = [
     family: "MiSans",
     themes: namedBy("MiSans"),
     source: MISANS_SOURCE,
+    upstream: MISANS_SOURCE,
     licenseTitle: MISANS_LICENSE_TITLE,
     licenseText: misans,
   },
@@ -73,6 +81,7 @@ export const FONT_CREDITS: readonly FontCredit[] = [
     family: "IBM Plex Sans",
     themes: namedBy("IBM Plex Sans"),
     source: "@fontsource-variable/ibm-plex-sans",
+    upstream: "https://github.com/IBM/plex",
     licenseTitle: OFL,
     licenseText: ibmPlexSans,
   },
@@ -83,6 +92,7 @@ export const FONT_CREDITS: readonly FontCredit[] = [
     family: "IBM Plex Sans Condensed",
     themes: [],
     source: "@fontsource/ibm-plex-sans-condensed",
+    upstream: "https://github.com/IBM/plex",
     licenseTitle: OFL,
     licenseText: ibmPlexSansCondensed,
   },
@@ -91,6 +101,7 @@ export const FONT_CREDITS: readonly FontCredit[] = [
     family: "Noto Sans SC",
     themes: namedBy("Noto Sans SC"),
     source: "@fontsource-variable/noto-sans-sc",
+    upstream: "https://github.com/notofonts/noto-cjk",
     licenseTitle: OFL,
     licenseText: notoSansSc,
   },

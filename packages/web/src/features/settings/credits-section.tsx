@@ -67,17 +67,26 @@ function CreditRow({ font }: { font: FontCredit }) {
         </dd>
         <dt className="text-gray-500 dark:text-gray-400">{S.settings.creditsLicense}</dt>
         <dd>{font.licenseTitle}</dd>
+        {/* The link goes to the type's own project, not to the npm package it reaches us
+            through: "@fontsource-variable/mona-sans" is not a URL, and it is not who the licence
+            credits either. How the file got here is the line under it. */}
         <dt className="text-gray-500 dark:text-gray-400">{S.settings.creditsSource}</dt>
         <dd className="min-w-0 break-all">
           <a
-            href={font.source}
+            href={font.upstream}
             target="_blank"
             rel="noreferrer"
             className="text-link underline-offset-2 hover:underline"
           >
-            {font.source}
+            {font.upstream}
           </a>
         </dd>
+        {font.source !== font.upstream && (
+          <>
+            <dt className="text-gray-500 dark:text-gray-400">{S.settings.creditsPackaged}</dt>
+            <dd className="min-w-0 font-mono break-all">{font.source}</dd>
+          </>
+        )}
       </dl>
       <LicenseText text={font.licenseText} />
     </li>

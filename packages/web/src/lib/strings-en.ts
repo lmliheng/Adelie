@@ -375,6 +375,7 @@ export const en: Strings = {
     creditsNoTheme: "Not a theme's default",
     creditsLicense: "License",
     creditsSource: "Source",
+    creditsPackaged: "Packaged as",
     creditsLicenseText: "Full license text",
     agentApiTitle: "Agent API",
     agentApiToggle: "Allow the Agent API",

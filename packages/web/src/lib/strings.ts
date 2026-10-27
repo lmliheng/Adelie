@@ -444,6 +444,8 @@ export const zh = {
     creditsNoTheme: "没有主题默认使用",
     creditsLicense: "许可",
     creditsSource: "来源",
+    /** The npm package a face arrives through, under the type's own project link. */
+    creditsPackaged: "打包来源",
     creditsLicenseText: "许可全文",
     /** Settings › Server › Agent API: the admin's switch over every Agent's public API, and the question before it goes off. */
     agentApiTitle: "Agent API",
