@@ -17307,8 +17307,9 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
     `https://github.com/lmliheng/Adelie.git/info/refs?service=git-upload-pack` **三个都超时**
     （一次 `git fetch` 还直接报 `GnuTLS recv error (-110)`）；同一时刻 `curl https://api.github.com/`
     是 **200**。判为「到 github.com 的 TCP/TLS 这半天不通」，与凭据无关。
-  - 因此本轮**没有 fast-forward 可做**：本地视图里 `origin/main` 与 `main` 同点。推送时再探一次
-    （见「提交」一节）。
+  - 因此这一轮开头**没有 fast-forward 可做**：本地视图里 `origin/main` 与 `main` 同点。**到收工前
+    github.com 又通了**（见「提交」一节），推送之后 `refs/remotes/origin/main` 已刷新成 `240f5ee2`，
+    与 `main` 同点、两边互不落后。
 - 没有切分支、没有碰 `legacy/main`、没有推 upstream、没有 `pnpm add`。
 
 ### 选活：表上最靠前的几条仍然都不可做
@@ -17406,4 +17407,8 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
 ### 提交
 
 - 代码 + spec + 文档 + changelog 一对 = **`465cb695`**；台账（清单行 7.49 + 表行 + 这一节）另起一笔。
-- 推送见「汇报」一节（github.com 本轮不通，推不推得上去取决于那一刻的网络）。
+- **推送（本轮末尾网络恢复了）**：`git push origin main`（ssh）仍是 `Permission denied (publickey)`；
+  改走 HTTPS + vault 里的 `GITHUB_PAT` —— `git push https://x-access-token:…@github.com/lmliheng/Adelie.git
+  main:main` **成功**（`0ef61786..240f5ee2`），随后 `git fetch` 把 `refs/remotes/origin/main` 刷到
+  `240f5ee2`，与 `main` 同点（两边计数各 0）。也就是说开工时那一串超时是**一时的**，不是仓库或凭据的问题。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
