@@ -517,13 +517,13 @@ The preset rows carry no price. ModelScope bills for api-inference and its model
 
 The preset catalog includes, among others:
 
-- `deepseek-flash` / `deepseek-v4-pro`
+- `deepseek-flash` / `deepseek-v4-pro` / `deepseek-v4.1-flash-1017`
 - `MiniMax-M3`
 - `gemini-3.8-flash`
 - `claude-opus-5` / `claude-opus-4-8` / `claude-sonnet-5`
 - `gpt-6-astra` / `gpt-5.6` / `gpt-5.5`
-- `glm-5.3` / `glm-5.3-flash` / `glm-4.7-flash` (Z.AI's free tier)
-- `kimi-k3`
+- `glm-5.3` / `glm-5.3-flash` / `glm-5.3-flashx` / `glm-4.7-flash` (Z.AI's free tier)
+- `kimi-k3` / `kimi-k3.1-pro`
 - `qwen3.8-max` / `qwen3.8-flash`
 - `seed-2.1-pro` / `seed-2.1-turbo` / `seed-evolving`
 - `dots-3-note-preview` (free on TokenDance, 512K context)
@@ -545,13 +545,15 @@ The list is not exhaustive.
 - **Rows with no price.** The pricing block can be absent altogether, which records "nobody has looked this vendor's price up" rather than "free": such a row shows no price badge on the **Models** page, and the cost center reports its usage as uncosted. ModelScope's preset rows are the catalog's only ones — ModelScope bills for api-inference, but its model pages are client-rendered and carry no read-able rate. Three zeros would be worse than absent: they would read as the free tier and badge a billed gateway "Free".
 - **Base tier only.** Where a vendor's prices step up with input size, the catalog records the base tier. MiniMax M3 records MiniMax's standard pay-as-you-go tier at 512K input tokens or below; above that, every rate doubles, and the priority tier is 1.5x, so long-context and priority usage is underestimated. OpenAI (above 272K) and Gemini 3.1 Pro (above 200K) follow the same convention.
 - **DeepSeek off-peak.** The direct DeepSeek rows record the official peak prices and declare DeepSeek's off-peak schedule: outside Beijing time 9:00–12:00 and 14:00–18:00 on weekdays, every bucket is halved. The **Models** page shows a `50% off` tag during those hours, and the cost center bills at that rate.
-  - Eight resold rows follow the same schedule because their sellers pass DeepSeek's windows through: TokenDance's `deepseek-v4.1-flash`, OpenRouter's `deepseek/deepseek-v4.1-flash`, Penguin Go's `deepseek-flash` and `deepseek-v4-pro`, and OpenCode Go's `deepseek-v4.1-flash`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp` and `deepseek-v4-pro`.
+  - Eleven resold rows follow the same schedule because their sellers pass DeepSeek's windows through: TokenDance's `deepseek-v4-flash-0731`, `deepseek-v4-pro-0813`, `deepseek-v4.1-flash` and `deepseek-v4.1-flash-1017`; OpenRouter's `deepseek/deepseek-v4.1-flash`; Penguin Go's `deepseek-flash` and `deepseek-v4-pro`; and OpenCode Go's `deepseek-v4.1-flash`, `deepseek-v4-flash`, `deepseek-v4-flash-vision-exp` and `deepseek-v4-pro`.
+  - Two of those rows, TokenDance's `deepseek-v4-flash-0731` and `deepseek-v4-pro-0813`, can only be approximated: their peak rate is the promoted one (20% off the list) while the gateway bills half the **list** outside the windows (50% off, no promotion on top), and a row holds one rate — so their off-peak usage is estimated 20% below what the seller charges. `deepseek-v4.1-flash` and `deepseek-v4.1-flash-1017` run the same promotion on both tiers, so halving them lands exactly. Peak is exact on all of them.
   - Qwen bills the DeepSeek models it resells on a schedule of its own, half price from 22:00 to 8:00 Beijing time every day. `deepseek-v4.1-flash` in both Qwen groups, and the Token Plan's `deepseek-v4-pro-0813`, declare that one instead, and the tag's tooltip names the windows of whichever schedule the row follows.
-  - The stored price is always the peak price, so what is on disk does not depend on the hour a Project was created or synced.
-- **Flat promotions.** Nine TokenDance models are discounted today:
-  - `kimi-k3` at 40% off
-  - `deepseek-v4-flash-0731`, `deepseek-v4-pro-0813`, `glm-5.3`, `glm-5.3-flash` and `qwen3.8-max` at 10%
+  - The stored price is always the rate the peak window actually bills, so what is on disk does not depend on the hour a Project was created or synced.
+- **Flat promotions.** Seven TokenDance models are discounted today:
+  - `glm-5.3`, `glm-5.3-flash`, `qwen3.8-max` and `deepseek-v4-pro` at 10%
   - the three Doubao Seed rows (`seed-2.1-pro`, `seed-2.1-turbo`, `seed-evolving`) at 50%
+
+  Promotions do end: `kimi-k3`'s 40% and the 10% on `deepseek-v4-flash-0731` and `deepseek-v4-pro-0813` had all stopped by the 2026-10-27 check, so those rows dropped the field and go on recording the seller's list price.
 
   Gemini 3.8 Flash, 3.7 Flash and 3.6 Flash are also 50% off, both in the google group and on OpenRouter (`google/gemini-3.8-flash`, `google/gemini-3.7-flash`, `google/gemini-3.6-flash`), because Google halves them through 2026-12-31. A Project is preset with the **list** price: the server keeps the promotion beside it, in its own database rather than in `.project_config.toml`, and takes it off when usage is priced, so the cost center charges what the seller charges. The model card shows the rate being billed right now as a tag, and the model dialog says **These are list prices. A running promotion takes N% off them; changing a price cancels it**.
 - **Your own prices.** Editing a row's price cancels its promotion and takes the discount tag off the card: the figure is then yours, not the seller's.

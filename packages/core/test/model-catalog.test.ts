@@ -776,18 +776,22 @@ describe("model-catalog", () => {
     expect(td.map((m) => [m.modelId, m.contextWindow, m.supportsVision])).toEqual([
       ["deepseek-v4-flash-0731", 1048576, false],
       ["deepseek-v4-flash-vision-exp", 1000000, true],
+      ["deepseek-v4-pro", 1048576, false],
       ["deepseek-v4-pro-0813", 1000000, false],
       ["deepseek-v4.1-flash", 1000000, true],
+      ["deepseek-v4.1-flash-1017", 1000000, true],
       ["dots-3-note-preview", 512000, true],
       ["glm-5.3", 1000000, false],
       ["glm-5.3-flash", 1000000, true],
+      ["glm-5.3-flashx", 1000000, true],
       ["hy4-preview", 1024000, false],
       ["kimi-k3", 1048576, true],
+      ["kimi-k3.1-pro", 1000000, true],
       ["qwen3.8-flash", 1000000, true],
       ["qwen3.8-max", 1000000, true],
       ["seed-2.1-pro", 256000, true],
       ["seed-2.1-turbo", 256000, true],
-      ["seed-evolving", 256000, true],
+      ["seed-evolving", 1000000, true],
     ]);
     for (const m of td) {
       expect(m.clientType).toBe("openai-chat");
@@ -813,9 +817,7 @@ describe("model-catalog", () => {
     const discounted: Array<[string, number, [number, number, number]]> = [
       ["glm-5.3-flash", 0.1, [0.72, 2.52, 0.207]],
       ["glm-5.3", 0.1, [7.2, 25.2, 1.8]],
-      ["deepseek-v4-pro-0813", 0.1, [4.05, 12.15, 0.405]],
-      ["deepseek-v4-flash-0731", 0.1, [1.35, 4.05, 0.135]],
-      ["kimi-k3", 0.4, [12, 60, 0.96]],
+      ["deepseek-v4-pro", 0.1, [8.1, 24.3, 0.27]],
       ["qwen3.8-max", 0.1, [10.8, 32.4, 1.35]],
       ["seed-2.1-pro", 0.5, [3, 15, 0.6]],
       ["seed-2.1-turbo", 0.5, [1.5, 7.5, 0.3]],
@@ -829,10 +831,10 @@ describe("model-catalog", () => {
       expect(output, `${modelId} output`).toBeCloseTo(cnyBilled[1], 4);
       expect(cacheHit, `${modelId} cache hit`).toBeCloseTo(cnyBilled[2], 4);
     }
-    // Exactly those nine carry a flat discount; every other row bills its list price
-    // unchanged. One of those others declares DeepSeek's peak/off-peak schedule instead, so
+    // Exactly those seven carry a flat discount; every other row bills its list price
+    // unchanged. Four of those others declare DeepSeek's peak/off-peak schedule instead, so
     // the rows are compared at a PEAK instant — 2026-09-10 is a Thursday, and 10:00 Beijing is
-    // inside the morning window — because effectivePricing halves it off-peak by design.
+    // inside the morning window — because effectivePricing halves them off-peak by design.
     expect(
       td
         .filter((m) => m.discount !== undefined)
@@ -840,20 +842,56 @@ describe("model-catalog", () => {
         .sort(),
     ).toEqual(discounted.map(([id]) => id).sort());
     const peakInstant = new Date("2026-09-10T10:00:00+08:00");
-    for (const m of td.filter((x) => x.discount === undefined)) {
+    for (const m of td.filter((x) => x.discount === undefined && x.offPeakDiscount === undefined)) {
       expect(effectivePricing(m, peakInstant), m.modelId).toEqual(m.pricing);
     }
     // The rows that follow the vendor's schedule instead of a gateway promotion (one of them
-    // retired), at the same peak tier the direct deepseek-flash row stores: CNY 0.04 / 2 / 8.
+    // retired), storing the peak tier the gateway BILLS — the list price where no promotion
+    // runs, and there the list less the promotion where one does. deepseek-v4.1-flash and
+    // deepseek-v4.1-flash-1017 promote both tiers, so CNY 0.04 / 2 / 8 less 20% is exact at
+    // both; the two older DeepSeek ids hold their promoted peak and halve it, which the group
+    // note records as 20% under the gateway's own off-peak figure.
     const tdScheduled = td.filter((m) => m.offPeakDiscount !== undefined).map((m) => m.modelId);
-    expect(tdScheduled).toEqual(["deepseek-v4-flash-vision-exp", "deepseek-v4.1-flash"]);
+    expect(tdScheduled).toEqual([
+      "deepseek-v4-flash-0731",
+      "deepseek-v4-flash-vision-exp",
+      "deepseek-v4-pro-0813",
+      "deepseek-v4.1-flash",
+      "deepseek-v4.1-flash-1017",
+    ]);
+    const peakStored: Record<string, [number, number, number]> = {
+      "deepseek-v4-flash-0731": [0.08, 2.4, 7.2],
+      "deepseek-v4-flash-vision-exp": [0.04, 2, 8],
+      "deepseek-v4-pro-0813": [0.24, 7.2, 21.6],
+      "deepseek-v4.1-flash": [0.032, 1.6, 6.4],
+      "deepseek-v4.1-flash-1017": [0.032, 1.6, 6.4],
+    };
     for (const id of tdScheduled) {
       const row = td.find((m) => m.modelId === id)!;
       expect(row.offPeakDiscount, id).toBe(DEEPSEEK_OFF_PEAK);
       expect(row.discount, id).toBeUndefined();
-      expect([row.pricing!.cache_read, row.pricing!.cache_write, row.pricing!.output], id).toEqual([
-        0.005714, 0.285714, 1.142857,
-      ]);
+      expect(
+        [row.pricing!.cache_read, row.pricing!.cache_write, row.pricing!.output].map((v) =>
+          Number((v * CNY_PER_USD).toFixed(4)),
+        ),
+        id,
+      ).toEqual(peakStored[id]);
+    }
+    // The rows with neither a promotion nor a schedule bill exactly the rates the seller
+    // publishes (re-read 2026-10-27), which is also what a reader of the row sees.
+    const plain: Array<[string, [number, number, number]]> = [
+      ["dots-3-note-preview", [0, 0, 0]],
+      ["glm-5.3-flashx", [2, 7, 0.57]],
+      ["hy4-preview", [6, 18, 0.3]],
+      ["kimi-k3", [20, 100, 1.6]],
+      ["kimi-k3.1-pro", [13, 68, 1.3]],
+      ["qwen3.8-flash", [0.8, 2.7, 0.1]],
+    ];
+    for (const [modelId, cnyListed] of plain) {
+      const billed = billedCny(modelId);
+      for (const [i, cny] of cnyListed.entries()) {
+        expect(billed[i], `${modelId} bucket ${i}`).toBeCloseTo(cny, 4);
+      }
     }
     // The one free row of the group: CNY 0 on every bucket, no discount decoration, a 512K
     // window, and the seller's own words for the name, its "Free" tag included, as the
@@ -2010,7 +2048,7 @@ describe("off-peak schedules", () => {
 
   it("the DeepSeek rows store the peak price and declare the schedule", () => {
     // Every direct row, plus the resold rows whose sellers pass DeepSeek's own windows through:
-    // two on Penguin Go, four on OpenCode Go, two on TokenDance, one on OpenRouter and one on
+    // two on Penguin Go, four on OpenCode Go, four on TokenDance, one on OpenRouter and one on
     // Volcengine Ark. The retired rows keep the schedule too. A gateway row on the schedule
     // carries no flat `discount` — the two are mutually exclusive, pinned by the last case here.
     const rows = MODEL_CATALOG.filter((m) => m.offPeakDiscount === S);
@@ -2020,8 +2058,11 @@ describe("off-peak schedules", () => {
       "deepseek/deepseek-v4-flash-vision-exp",
       "deepseek/deepseek-v4-pro",
       "openrouter/deepseek/deepseek-v4.1-flash",
+      "tokendance/deepseek-v4-flash-0731",
       "tokendance/deepseek-v4-flash-vision-exp",
+      "tokendance/deepseek-v4-pro-0813",
       "tokendance/deepseek-v4.1-flash",
+      "tokendance/deepseek-v4.1-flash-1017",
       "penguin-go/deepseek-flash",
       "penguin-go/deepseek-v4-pro",
       "opencode-go/deepseek-v4.1-flash",
@@ -2031,8 +2072,11 @@ describe("off-peak schedules", () => {
       "volcengine/deepseek-v4-1-flash-261017",
     ]);
     for (const m of rows) {
-      // Peak is exactly double the off-peak tier DeepSeek publishes. Compared at 1e-5: both
-      // sides round to six decimals independently, so the last digit can differ by one.
+      // What a row stores is the peak tier it bills, and the schedule halves exactly that —
+      // compared at 1e-5, since both sides round to six decimals independently and the last
+      // digit can differ by one. On the two TokenDance rows that run a promotion under the
+      // windows the half is the gateway's promoted peak, not its own off-peak figure; the
+      // group note records that gap.
       expect(effectivePricing(m, beijing("2026-08-31T22:00"))!.output * 2).toBeCloseTo(
         m.pricing!.output,
         5,

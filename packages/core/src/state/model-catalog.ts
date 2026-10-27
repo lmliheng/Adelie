@@ -29,7 +29,11 @@
  * (its HTTP doc publishes no price list, and the product page's prices name model families it
  * has published no API id for); and the Abliteration group, whose four rows were read from the
  * service's own model list on 2026-10-23; and the Volcengine Ark (ByteDance) group, whose rows
- * and prices were read from Ark's own model list and model-pricing pages on 2026-10-25.
+ * and prices were read from Ark's own model list and model-pricing pages on 2026-10-25, and the
+ * TokenDance group re-read whole — its ids, windows, modalities, protocols and prices, four
+ * DeepSeek rows moved onto the vendor's schedule, the K3.1 Pro / V4 Pro / GLM-5.3 FlashX / V4.1
+ * Flash 1017 rows added and the K3 promotion dropped — from the seller's own catalog API on
+ * 2026-10-27.
  * Docs: packages/docs/content/models.{zh,en}.md (site path /docs/models) documents the
  * provider groups and credential resolution described here.
  *
@@ -1682,44 +1686,57 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     clientType: "openai-chat",
     baseUrl: SILICONFLOW_BASE_URL,
   },
-  // -- TokenDance (gateway: OpenAI-compatible protocol, preset base URL). Context windows,
-  // vision flags and supported protocols from the public catalog API (GET
-  // https://tokendance.space/gateway/v1/models, no credential required; re-read 2026-09-10);
-  // prices are the gateway's own CNY rates from each model's detail page, read 2026-08-25
-  // and last confirmed by the seller 2026-09-10, or 2026-09-16 for the deepseek-v4-flash-0731,
-  // deepseek-v4-pro-0813 and kimi-k3 rows (the detail pages need a signed-in session, so they
-  // cannot be re-read anonymously). TokenDance publishes an input price and a cache-hit price
-  // with no separate cache-write fee, so cache_write carries the input price.
+  // -- TokenDance (gateway: OpenAI-compatible protocol, preset base URL). Ids, context windows,
+  // vision flags, supported protocols AND prices re-read 2026-10-27 from the seller's own
+  // catalog API (GET https://tokendance.space/portal/api/models/all, no credential required;
+  // the /gateway/v1/models listing beside it carries the modalities but no rates). That payload
+  // states each model's current rate (`pricing.items`), the list price it is discounted FROM
+  // (`pricing.reference`), and, for a row on a weekly schedule, both tiers again under
+  // `pricing.time_pricing` — `options` holds the windows, `items` the peak rate, `base_items`
+  // the rate outside them, `base_reference` the list those come off. TokenDance publishes an
+  // input price and a cache-hit price with no separate cache-write fee, so cache_write carries
+  // the input price.
   //
-  // Discounts: every row here stores the official LIST price, the convention of the two Qwen
-  // groups below, and a promoted row declares its rate in `discount` rather than having its
-  // price rewritten — a promotion that lapses is then one field to delete, with the rate to
-  // return to still on the row. effectivePricing() applies it; a new Project stores the list
-  // price and the fraction as a promotion beside it, which the cost center applies, so it
-  // charges what the gateway charges.
-  // Nine rows are promoted: deepseek-v4-flash-0731 and deepseek-v4-pro-0813 at 10% off and
-  // kimi-k3 at 40% (seller's quote 2026-09-16); glm-5.3, glm-5.3-flash and qwen3.8-max at 10%
-  // and the three Doubao Seed rows (seed-2.1-pro, seed-2.1-turbo, seed-evolving) at 50% (rates
-  // re-confirmed 2026-09-10). One more row, deepseek-v4.1-flash, carries no flat discount at
-  // all and instead follows the vendor's own peak/off-peak schedule (DEEPSEEK_OFF_PEAK),
-  // storing the peak price the way the direct DeepSeek rows do; so does the retired
-  // deepseek-v4-flash-vision-exp row, which is no longer a preset. The rest carry neither, so
-  // for them list price and billed rate coincide.
+  // Discounts: a row stores the price billed INSIDE its peak window — the list price where
+  // nothing is running — and declares what reduces it, a flat gateway promotion in `discount`
+  // or the vendor's own windows in `offPeakDiscount`. effectivePricing() applies whichever one
+  // is declared; a new Project stores the price and, for a flat promotion, the fraction beside
+  // it, which the cost center applies, so it charges what the gateway charges. The two fields
+  // are mutually exclusive. Where a gateway promotion rides ON TOP of DeepSeek's windows the
+  // row keeps the schedule: the windows are the part that changes twice a day, and a flat
+  // fraction in their place would over-state every off-peak record instead.
   //
-  // A running promotion usually also shows up without a credential: the catalog API opens
-  // such a model's `description` with a bracketed 限时 ("limited-time") tag, so the same
-  // anonymous request the context windows come from is a cheap first check on whether one is
-  // still live. It is neither exhaustive nor authoritative on the rate — the rates above are
-  // the ones the seller confirmed. --
+  // Seven rows carry a flat promotion (re-read 2026-10-27): glm-5.3, glm-5.3-flash,
+  // qwen3.8-max and deepseek-v4-pro at 10% off, the three Doubao Seed rows (seed-2.1-pro,
+  // seed-2.1-turbo, seed-evolving) at 50%. Five follow DeepSeek's schedule instead — the four
+  // DeepSeek ids this gateway resells (deepseek-v4-flash-0731, deepseek-v4-pro-0813,
+  // deepseek-v4.1-flash, deepseek-v4.1-flash-1017) and the retired
+  // deepseek-v4-flash-vision-exp. The rest carry neither, so for them the stored price is both
+  // the list price and the billed rate.
+  //
+  // Two of the scheduled rows approximate the tier the schema cannot hold: the gateway bills
+  // deepseek-v4-flash-0731 and deepseek-v4-pro-0813 at half their LIST price off-peak while
+  // their peak rate is the promoted one, so a row that stores one rate and halves it lands 20%
+  // under the gateway's own off-peak figure; their peak figures are exact. deepseek-v4.1-flash
+  // and deepseek-v4.1-flash-1017 promote both tiers, so halving is exact for them. The seller's
+  // catalog notes on deepseek-v4.1-flash that its DeepSeek endpoint has been upgraded to the
+  // 1017 release; the dated id is a separate row, priced identically today.
+  //
+  // A running promotion also shows up without a credential: the catalog API opens such a
+  // model's `description` with a bracketed 限时 ("limited-time") tag, so the same anonymous
+  // request the windows come from is a cheap check on whether one is still live. --
   {
-    // 10% off a CNY 1.5 input / 4.5 output / 0.15 cache hit list, so the gateway bills
-    // 1.35 / 4.05 / 0.135 (seller's quote 2026-09-16).
+    // The dated V4 Flash the gateway resells. Re-read 2026-10-27: the list is CNY 3 input /
+    // 9 output / 0.1 cache hit, the gateway bills 2.4 / 7.2 / 0.08 of that inside DeepSeek's
+    // peak windows (20% off) and 1.5 / 4.5 / 0.05 outside them (half the list). One rate fits
+    // on a row, so this one stores the promoted peak figure and halves it; see the group note
+    // on the 20% the off-peak half then misses.
     modelId: "deepseek-v4-flash-0731",
     displayName: "DeepSeek V4 Flash 0731",
     provider: "tokendance",
     contextWindow: 1048576,
-    pricing: cny(0.15, 1.5, 4.5),
-    discount: 0.1,
+    pricing: cny(0.08, 2.4, 7.2),
+    offPeakDiscount: DEEPSEEK_OFF_PEAK,
     supportsVision: false,
     clientType: "openai-chat",
     baseUrl: TOKENDANCE_BASE_URL,
@@ -1740,32 +1757,71 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     retired: true,
   },
   {
-    // 10% off a CNY 4.5 input / 13.5 output / 0.45 cache hit list, so the gateway bills
-    // 4.05 / 12.15 / 0.405 (seller's quote 2026-09-16).
-    modelId: "deepseek-v4-pro-0813",
-    displayName: "DeepSeek V4 Pro 0813",
+    // The undated id of the same V4 Pro line, listed beside the dated one and read 2026-10-27:
+    // a 1,048,576-token window, text only, no peak/off-peak schedule, and a flat 10% off the
+    // CNY 9 input / 27 output / 0.3 cache hit list, so the gateway bills 8.1 / 24.3 / 0.27. Its
+    // only other protocol is anthropic:messages, so this group's openai-chat pin is a
+    // convention here rather than the only shape the id serves.
+    modelId: "deepseek-v4-pro",
+    displayName: "DeepSeek V4 Pro Preview",
     provider: "tokendance",
-    contextWindow: 1000000,
-    pricing: cny(0.45, 4.5, 13.5),
+    contextWindow: 1048576,
+    pricing: cny(0.3, 9, 27),
     discount: 0.1,
     supportsVision: false,
     clientType: "openai-chat",
     baseUrl: TOKENDANCE_BASE_URL,
   },
   {
-    // Listed 2026-09-10; the dotted id is the seller's spelling of the model DeepSeek serves
-    // directly as `deepseek-flash`. 1M context and native multimodality from the catalog
-    // API. It follows the vendor's own peak/off-peak schedule rather than a flat gateway
-    // discount (seller's quote 2026-09-10): the row stores the peak tier CNY 0.04 / 2 / 8,
-    // the direct row's figures, and declares DEEPSEEK_OFF_PEAK, which halves every bucket
-    // outside Beijing weekday 09:00-12:00 and 14:00-18:00. Unlike the direct row this one
+    // Re-read 2026-10-27: list CNY 9 input / 27 output / 0.3 cache hit, billed 7.2 / 21.6 /
+    // 0.24 inside DeepSeek's peak windows (20% off) and 4.5 / 13.5 / 0.15 outside (half the
+    // list) — the same shape as deepseek-v4-flash-0731 above, and the same 20% the stored
+    // off-peak half misses.
+    modelId: "deepseek-v4-pro-0813",
+    displayName: "DeepSeek V4 Pro 0813",
+    provider: "tokendance",
+    contextWindow: 1000000,
+    pricing: cny(0.24, 7.2, 21.6),
+    offPeakDiscount: DEEPSEEK_OFF_PEAK,
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: TOKENDANCE_BASE_URL,
+  },
+  {
+    // The dotted id is the seller's spelling of the model DeepSeek serves directly as
+    // `deepseek-flash`. 1M context and native multimodality from the catalog API. It follows
+    // the vendor's own peak/off-peak schedule rather than a flat gateway discount, so the row
+    // stores the peak tier and declares DEEPSEEK_OFF_PEAK, which halves every bucket outside
+    // Beijing weekday 09:00-12:00 and 14:00-18:00. Re-read 2026-10-27, that peak tier is the
+    // gateway's BILLED one — CNY 2 input / 8 output / 0.04 cache hit list less the 20% it is
+    // promoting, so 1.6 / 6.4 / 0.032 — and the off-peak half (0.8 / 3.2 / 0.016) is exactly
+    // what the gateway bills outside the windows, the promotion applying to both tiers. The
+    // seller's own note on this model says its DeepSeek endpoint has been upgraded to the 1017
+    // release, which is the dated id below at the same rates. Unlike the direct row this one
     // needs no DeepSeek-specific pin — it is reached through this group's generic openai-chat
     // client, which forwards image_url parts.
     modelId: "deepseek-v4.1-flash",
     displayName: "DeepSeek V4.1 Flash",
     provider: "tokendance",
     contextWindow: 1000000,
-    pricing: cny(0.04, 2, 8),
+    pricing: cny(0.032, 1.6, 6.4),
+    offPeakDiscount: DEEPSEEK_OFF_PEAK,
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: TOKENDANCE_BASE_URL,
+  },
+  {
+    // Listed 2026-10-27: DeepSeek-V4.1-Flash-1017, the release the undated row above now
+    // serves, sold under its own id at the same figures — CNY 2 input / 8 output / 0.04 cache
+    // hit list, 20% off inside DeepSeek's peak windows and half the list outside them (the
+    // row stores the promoted peak tier, as that one does), 1M context, image input. The
+    // seller's description says DeepSeek tuned it for its own harness and for two third-party
+    // agent platforms, shortening task runtime and output length.
+    modelId: "deepseek-v4.1-flash-1017",
+    displayName: "DeepSeek V4.1 Flash 1017",
+    provider: "tokendance",
+    contextWindow: 1000000,
+    pricing: cny(0.032, 1.6, 6.4),
     offPeakDiscount: DEEPSEEK_OFF_PEAK,
     supportsVision: true,
     clientType: "openai-chat",
@@ -1826,6 +1882,21 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     baseUrl: TOKENDANCE_BASE_URL,
   },
   {
+    // Listed 2026-10-27 beside the Flash above: GLM-5.3 FlashX, the same 1M window and the
+    // same native multimodality (text, image and video in) with no promotion running, at CNY 2
+    // input / 7 output / 0.57 cache hit. Its protocols are openai:chat-completions and
+    // anthropic:messages, so the openai-chat pin is this group's convention rather than the
+    // only shape it serves — unlike glm-5.3-flash above, where it is forced.
+    modelId: "glm-5.3-flashx",
+    displayName: "GLM-5.3 FlashX",
+    provider: "tokendance",
+    contextWindow: 1000000,
+    pricing: cny(0.57, 2, 7),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: TOKENDANCE_BASE_URL,
+  },
+  {
     // The same upstream model as the OpenRouter `tencent/hy4-preview` row above, reached
     // through a second seller: each row records what its own seller charges, so the two must
     // not be made to agree (the qwen3.8-flash pair below states the same rule). TokenDance
@@ -1846,14 +1917,29 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     baseUrl: TOKENDANCE_BASE_URL,
   },
   {
-    // 40% off a CNY 20 input / 100 output / 1.6 cache hit list, so the gateway bills
-    // 12 / 60 / 0.96 (seller's quote 2026-09-16).
+    // Re-read 2026-10-27: the 40% promotion this row carried through 2026-09-16 has lapsed and
+    // nothing replaced it, so the row stores the list price and declares no discount — CNY 20
+    // input / 100 output / 1.6 cache hit, over a 1,048,576-token window.
     modelId: "kimi-k3",
     displayName: "Kimi K3",
     provider: "tokendance",
     contextWindow: 1048576,
     pricing: cny(1.6, 20, 100),
-    discount: 0.4,
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: TOKENDANCE_BASE_URL,
+  },
+  {
+    // Listed 2026-10-27: Kimi K3.1 Pro, the first of Moonshot's K3.1 line and the largest
+    // model the seller carries — 1M context, text / image / video input, text out. Undiscounted
+    // at CNY 13 input / 68 output / 1.3 cache hit. Its protocols are openai:chat-completions,
+    // openai:responses and anthropic:messages, so the openai-chat pin is this group's
+    // convention, as on kimi-k3 above.
+    modelId: "kimi-k3.1-pro",
+    displayName: "Kimi K3.1 Pro",
+    provider: "tokendance",
+    contextWindow: 1000000,
+    pricing: cny(1.3, 13, 68),
     supportsVision: true,
     clientType: "openai-chat",
     baseUrl: TOKENDANCE_BASE_URL,
@@ -1929,12 +2015,13 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
   },
   {
     // A rolling id: the catalog API describes it as the newest Seed Coding/Agent model
-    // under one stable id — the same model as seed-2.1-pro at the time of reading — and
-    // the seller prices it the same.
+    // under one stable id — the same model as seed-2.1-pro at the time of reading. Its window
+    // was read as 256,000 on 2026-09-02 and is 1,000,000 on the 2026-10-27 re-read; the seller
+    // prices it as seed-2.1-pro does.
     modelId: "seed-evolving",
     displayName: "Seed-Evolving",
     provider: "tokendance",
-    contextWindow: 256000,
+    contextWindow: 1000000,
     pricing: cny(1.2, 6, 30),
     discount: 0.5,
     supportsVision: true,

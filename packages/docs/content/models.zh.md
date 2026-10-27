@@ -516,13 +516,13 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 
 预置模型目录包含以下模型：
 
-- `deepseek-flash` / `deepseek-v4-pro`
+- `deepseek-flash` / `deepseek-v4-pro` / `deepseek-v4.1-flash-1017`
 - `MiniMax-M3`
 - `gemini-3.8-flash`
 - `claude-opus-5` / `claude-opus-4-8` / `claude-sonnet-5`
 - `gpt-6-astra` / `gpt-5.6` / `gpt-5.5`
-- `glm-5.3` / `glm-5.3-flash` / `glm-4.7-flash`（智谱官方免费档）
-- `kimi-k3`
+- `glm-5.3` / `glm-5.3-flash` / `glm-5.3-flashx` / `glm-4.7-flash`（智谱官方免费档）
+- `kimi-k3` / `kimi-k3.1-pro`
 - `qwen3.8-max` / `qwen3.8-flash`
 - `seed-2.1-pro` / `seed-2.1-turbo` / `seed-evolving`
 - `dots-3-note-preview`（TokenDance 上免费，512K 上下文）
@@ -544,13 +544,15 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - **没有价格的条目。** 价格字段可以整体缺席，含义是「没人查过这家的价格」，而不是免费：这类条目在**模型库**页面不显示价格徽标，成本中心把它的用量报为未计价。目录里目前只有 ModelScope 的预置条目是这样——魔搭的 api-inference 是计费的，但它的模型页面是客户端渲染的，读不到费率。写成三个 0 反而更糟：那会被当作免费档，给一个计费网关打上「Free」徽标。
 - **仅记录基础档。** 供应商的价格随输入规模上调时，目录只记录基础档。MiniMax M3 记录的是 MiniMax 标准按量付费档在 512K 输入 Token 及以下的价格；超过后每项费率翻倍，priority 档为 1.5 倍，所以长上下文和 priority 用量的成本估算会偏低。OpenAI（272K 以上）和 Gemini 3.1 Pro（200K 以上）遵循同样的约定。
 - **DeepSeek 空闲时段。** 直连 DeepSeek 的条目记录官方高峰价格，并声明 DeepSeek 的空闲时段规则：工作日北京时间 9:00–12:00 和 14:00–18:00 以外的时段，三项价格全部减半。**模型库**页面在这些时段显示 `省 50%` 标签，成本中心也按这个费率计费。
-  - 八条转售条目遵循同样的时段，因为各自的卖家沿用了 DeepSeek 的时间窗口：TokenDance 的 `deepseek-v4.1-flash`、OpenRouter 的 `deepseek/deepseek-v4.1-flash`、Penguin Go 的 `deepseek-flash` 和 `deepseek-v4-pro`，以及 OpenCode Go 的 `deepseek-v4.1-flash`、`deepseek-v4-flash`、`deepseek-v4-flash-vision-exp` 和 `deepseek-v4-pro`。
+  - 十一条转售条目遵循同样的时段，因为各自的卖家沿用了 DeepSeek 的时间窗口：TokenDance 的 `deepseek-v4-flash-0731`、`deepseek-v4-pro-0813`、`deepseek-v4.1-flash` 和 `deepseek-v4.1-flash-1017`，OpenRouter 的 `deepseek/deepseek-v4.1-flash`，Penguin Go 的 `deepseek-flash` 和 `deepseek-v4-pro`，以及 OpenCode Go 的 `deepseek-v4.1-flash`、`deepseek-v4-flash`、`deepseek-v4-flash-vision-exp` 和 `deepseek-v4-pro`。
+  - 其中 TokenDance 的 `deepseek-v4-flash-0731` 和 `deepseek-v4-pro-0813` 有一处只能近似：这两条的高峰费率是促销之后的价（牌价省 20%），而空闲时段网关按**牌价**的一半收（省 50%，不再打促销），一条记录只放得下一个费率，所以它们空闲时段的成本估计比卖家实际收的低 20%。`deepseek-v4.1-flash` 与 `deepseek-v4.1-flash-1017` 两个档位都打同一个促销，减半正好吻合。高峰时段一律精确。
   - Qwen 转售的 DeepSeek 模型按它自己的时段计费：北京时间每天 22:00 至次日 8:00 半价。两个 Qwen 分组的 `deepseek-v4.1-flash` 和 Token Plan 的 `deepseek-v4-pro-0813` 声明的是这一套，折扣标签的悬停说明写的也是该条目所遵循时段的窗口。
-  - 存储的价格始终是高峰价格，所以磁盘上的数值与 Project 创建或同步的时间无关。
-- **固定折扣。** 目前有九个 TokenDance 模型在打折：
-  - `kimi-k3` 打 6 折
-  - `deepseek-v4-flash-0731`、`deepseek-v4-pro-0813`、`glm-5.3`、`glm-5.3-flash` 和 `qwen3.8-max` 打 9 折
+  - 存储的价格始终是高峰时段实际计费的价，所以磁盘上的数值与 Project 创建或同步的时间无关。
+- **固定折扣。** 目前有七个 TokenDance 模型在打折：
+  - `glm-5.3`、`glm-5.3-flash`、`qwen3.8-max` 和 `deepseek-v4-pro` 打 9 折
   - 三条 Doubao Seed 条目（`seed-2.1-pro`、`seed-2.1-turbo`、`seed-evolving`）打 5 折
+
+  折扣会结束：`kimi-k3` 的 6 折和 `deepseek-v4-flash-0731`、`deepseek-v4-pro-0813` 的 9 折在 2026-10-27 核查时都已停止，这三条的促销字段随之删掉，价格照旧记录卖家的牌价。
 
   Gemini 3.8 Flash、3.7 Flash 和 3.6 Flash 也打 5 折，google 分组和 OpenRouter 上（`google/gemini-3.8-flash`、`google/gemini-3.7-flash`、`google/gemini-3.6-flash`）都是如此，因为 Google 在 2026-12-31 之前对它们一律减半。Project 预置的是**牌价**：折扣率由服务端另行保存，存在它自己的数据库里，而不写入 `.project_config.toml`，计算成本时再从牌价中扣除，因此成本中心按卖家实际收取的价格计费。模型卡片用标签标出当前实际计费的费率，模型弹窗则写明**此处为牌价，当前促销在此基础上省 N%；修改价格会取消促销**。
 - **你自己的价格。** 修改条目的价格会取消它的促销，卡片上的折扣标签也随之消失：此后这个数字由你自己定，不再代表卖家。
