@@ -15,7 +15,15 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import type { UsageErrorItem, UsageErrors } from "@adelie/server/api";
-import { Badge, ConfirmModal, Pager, Segmented, toastError, toastSuccess } from "@adelie/ui";
+import {
+  Badge,
+  ConfirmModal,
+  CopyButton,
+  Pager,
+  Segmented,
+  toastError,
+  toastSuccess,
+} from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
@@ -117,6 +125,29 @@ function sourceCode(source: string, code: string): string {
   return `[${SOURCE_ABBREV[source] ?? source}] ${code}`;
 }
 
+/**
+ * What a row's copy button puts on the clipboard: one heading line — when it last happened,
+ * where it came from, which category it is in, and, for a row folding several records, how many
+ * and when the first was — followed by the message in full.
+ *
+ * What a copy here is for is getting the error OUT of the panel: pasting it into a chat, an
+ * issue, or to another agent. So the block has to stand on its own — the raw code, the full
+ * message with its newlines (the provider's 402 body is the part that explains it), and the
+ * conditions the panel's two filters would otherwise only imply. Nothing the reader can already
+ * see, nothing they cannot: the row's own tooltip carries the first timestamp too, and this is
+ * the same two facts in text rather than a mouse-only affordance.
+ *
+ * Pure and exported for the reason `errorsClearScopeText` is: this package's vitest runs in
+ * `node`, so a click and a clipboard are not something a test can observe — the text is.
+ */
+export function errorCopyText(e: UsageErrorItem): string {
+  const head = [formatDateTime(e.ts), sourceCode(e.source, e.code), kindLabel(kindOf(e.kind))];
+  if (e.count > 1) {
+    head.push(`×${e.count}`, S.usage.errorsFirstAt(formatDateTime(e.firstTs)));
+  }
+  return `${head.join(" · ")}\n${e.message}`;
+}
+
 /** A single small stat: name + value, one row side by side (not turned into a chart). */
 function Stat({
   label,
@@ -144,7 +175,7 @@ function Stat({
 }
 
 /** Header cell: left-aligned, recessive gray. */
-function Th({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+function Th({ children, className = "" }: { children?: React.ReactNode; className?: string }) {
   return <th className={`py-1.5 pr-2 font-medium ${className}`}>{children}</th>;
 }
 
@@ -391,13 +422,14 @@ export function ErrorsPanel({
         <Empty text={kindFilter === "all" ? S.usage.errorsEmpty : S.usage.errorsEmptyKind} />
       ) : (
         <div className="mt-2.5 overflow-x-auto overflow-y-clip border-t border-gray-200 dark:border-gray-800">
-          {/* The three leading columns are fixed-width and the message column takes the rest, so
+          {/* The columns beside the message are fixed-width and the message column takes the rest, so
               the table has a minimum below which `table-fixed` starves the message column down to
-              zero width and pushes the other three past the edge. `min-w` states that floor, and
+              zero width and pushes the others past the edge. `min-w` states that floor, and
               this box scrolls it sideways when the viewport is narrower — the page itself must
               never scroll sideways (styles.css). `overflow-y-clip` keeps browsers from reserving
-              a vertical scrollbar gutter beside the horizontal one. */}
-          <table className="w-full min-w-[720px] table-fixed text-xs">
+              a vertical scrollbar gutter beside the horizontal one. 752 = the old floor plus the
+              copy column's 32, so that column costs the message column nothing. */}
+          <table className="w-full min-w-[752px] table-fixed text-xs">
             <thead className="text-left text-gray-400 dark:text-gray-500">
               <tr>
                 <Th className="w-32">{S.common.time}</Th>
@@ -407,6 +439,9 @@ export function ErrorsPanel({
                 <Th className="w-72">{S.usage.errorsColCode}</Th>
                 <Th className="w-20">{S.usage.errorsColKind}</Th>
                 <Th>{S.usage.errorsColMessage}</Th>
+                {/* The copy column: the glyph names its action itself, so the header stays
+                    empty rather than repeating it for a screen reader twice per row. */}
+                <Th className="w-8" />
               </tr>
             </thead>
             <tbody>
@@ -460,6 +495,17 @@ export function ErrorsPanel({
                           </span>
                         )}
                       </button>
+                    </td>
+                    {/* The whole record on the clipboard (see errorCopyText). Drawn on every row
+                        rather than revealed on hover: a phone has no hover (Tailwind v4 scopes the
+                        hover: variants to `@media (hover: hover)`), so a hover-revealed action would
+                        simply not exist there — the reason the message cell is a plain button too. */}
+                    <td className="py-1.5 pl-2 align-top">
+                      <CopyButton
+                        text={() => errorCopyText(e)}
+                        label={S.usage.errorsCopy}
+                        size="sm"
+                      />
                     </td>
                   </tr>
                 );

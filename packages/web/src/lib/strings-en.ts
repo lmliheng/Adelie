@@ -4271,6 +4271,8 @@ export const en: Strings = {
     errorsEmptyKind: "No errors of this type",
     /** Time cell tooltip on a row that folds several of a day's records: when the first one was. */
     errorsFirstAt: (time: string): string => `First at ${time}`,
+    /** Each row's copy action: the whole record — when, source · code, type, count and the full message — as one paste-able block. */
+    errorsCopy: "Copy this error",
     /** Detail-table pager: newer/older step back through pages of the same filtered set; it counts rows, not records. */
     errorsNewer: "Newer",
     errorsOlder: "Older",

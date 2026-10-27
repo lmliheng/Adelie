@@ -15,7 +15,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { UsageErrorItem, UsageErrors } from "@adelie/server/api";
-import { ErrorsPanel, errorsClearScopeText } from "../src/features/usage/errors-panel";
+import {
+  ErrorsPanel,
+  errorCopyText,
+  errorsClearScopeText,
+} from "../src/features/usage/errors-panel";
 import type { ErrorsFilters } from "../src/features/usage/errors-panel";
 import { formatDateTime } from "../src/lib/format";
 import { S, setActiveStrings, zh } from "../src/lib/strings";
@@ -212,5 +216,69 @@ describe("ErrorsPanel category control", () => {
     const html = render({ items: [] });
     expect(html).toContain(S.usage.errorsFilterAll);
     expect(html).toContain(S.usage.errorsUnexpected);
+  });
+});
+
+describe("ErrorsPanel copy action", () => {
+  it("is drawn once per row, named for what it copies", () => {
+    const html = render({ items: [item("internal"), item("tool_failed:exec_command")] });
+    expect(html.split(`aria-label="${S.usage.errorsCopy}"`).length - 1).toBe(2);
+    // An empty table has nothing to copy, so the action goes with the rows.
+    expect(render({ items: [] })).not.toContain(S.usage.errorsCopy);
+  });
+
+  // Where a copy here is for pasting the error somewhere else, the text has to stand alone: the
+  // reader on the other end sees none of the panel's filters, its tooltips, or the row's fold
+  // count. Asserted per locale because the heading reads in the interface's language.
+  for (const [locale, dict] of Object.entries({ zh, en })) {
+    it(`${locale}: carries the time, the source · code, the type and the message in full`, () => {
+      setActiveStrings(dict);
+      const e: UsageErrorItem = {
+        ...item("tool_failed:exec_command"),
+        source: "environment",
+        kind: "unexpected",
+        message: "EBUSY: resource busy or locked, rmdir 'skills/wps-office'\n  at rm (node:fs)",
+      };
+      const text = errorCopyText(e);
+      expect(text).toContain(formatDateTime(e.ts));
+      // The bracketed source is abbreviated as the table abbreviates it, and the code is raw:
+      // `[environment]` is the server's spelling, `[env]` the panel's.
+      expect(text).toContain("[env] tool_failed:exec_command");
+      expect(text).toContain(dict.usage.errorsUnexpected);
+      // The message is copied whole, newlines included — the detail after the first line is the
+      // part that explains the error.
+      expect(text.endsWith(`\n${e.message}`)).toBe(true);
+      expect(text).toContain("  at rm (node:fs)");
+      // Heading and message are two parts, not one run-on line.
+      expect(text.split("\n")[0]).not.toContain("EBUSY");
+    });
+
+    it(`${locale}: a folded row also carries how many records and when the first was`, () => {
+      setActiveStrings(dict);
+      const folded: UsageErrorItem = {
+        ...item("messaging_connect_failed"),
+        count: 3,
+        firstTs: "2026-08-27T06:00:00.000Z",
+      };
+      const text = errorCopyText(folded);
+      expect(text.split("\n")[0]).toContain("×3");
+      expect(text.split("\n")[0]).toContain(
+        dict.usage.errorsFirstAt(formatDateTime(folded.firstTs)),
+      );
+      // A single record says neither: the count is already the absence of a fold.
+      const single = errorCopyText(item("internal"));
+      expect(single).not.toContain("×1");
+      expect(single).not.toContain(
+        dict.usage.errorsFirstAt(formatDateTime(item("internal").firstTs)),
+      );
+    });
+  }
+
+  it("reads an unknown category as expected, as the badge beside it does", () => {
+    // The route only writes the two kinds; a row from an older or newer server must still copy
+    // something true rather than the word "undefined".
+    const text = errorCopyText({ ...item("internal"), kind: "something_new" });
+    expect(text).toContain(S.usage.errorsExpected);
+    expect(text).not.toContain("undefined");
   });
 });

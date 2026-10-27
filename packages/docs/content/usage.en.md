@@ -63,6 +63,7 @@ The **Errors** panel at the bottom of the page shows the errors the server recor
 - A table of errors with their time, **Source · code**, **Type** and **Message**. Click a message to expand its full text. The table shows 10 rows a page and pages with **Newer** and **Older** instead of scrolling.
 - A **Type** filter above the table on the right: **All**, **Unexpected**, **Expected**. It narrows only the table below, its paging and **Clear**; the summary figures always count both categories.
 - The same error recorded more than once on one day shares a row. The time is the latest one, hover it for the first, and ×N after the message counts the records. The summary figures count every record.
+- Each row carries a **Copy** button at its end that takes the whole record: the latest time, the **Source · code**, the type, the count and first time for a folded row, and the message in full with its line breaks. To hand an error to someone else, copy it and paste.
 
 The model filter does not apply to this panel.
 

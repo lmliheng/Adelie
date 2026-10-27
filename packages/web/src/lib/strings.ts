@@ -4304,6 +4304,8 @@ export const zh = {
     errorsEmptyKind: "该类型下暂无异常",
     /** Time cell tooltip on a row that folds several of a day's records: when the first one was. */
     errorsFirstAt: (time: string): string => `首次出现于 ${time}`,
+    /** Each row's copy action: the whole record — when, source · code, type, count and the full message — as one paste-able block. */
+    errorsCopy: "复制这条异常",
     /** Detail-table pager: newer/older step back through pages of the same filtered set; it counts rows, not records. */
     errorsNewer: "较新",
     errorsOlder: "更早",
