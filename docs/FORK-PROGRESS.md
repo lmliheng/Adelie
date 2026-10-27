@@ -17489,3 +17489,61 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
 - 自 `v0.5.8` 起 `main` 上已有 **22 笔提交**（含本轮两笔），其中功能性的是 5.50 / 5.51 / 5.52 / 5.53、
   第一百四十一轮两笔、第一百四十二轮两笔、第一百四十三轮一笔与本轮两笔 —— 用户这一句给的门槛是
   「够 15 个就更新版本」，**22 ≥ 15**，所以本轮继续发 **0.5.9**（patch：没有接口 / 数据根 / 配置格式变化）。
+
+## 发版 v0.5.9（2026-10-27 22:20 CST，用户「够 15 笔就更新版本」）
+
+- 发版条件成立：自 `v0.5.8`（`50458de9`）起 `main` 上落了 **25 笔提交，其中 10 个用户看得见的改动**
+  （5.50 / 5.51 / 5.52 / 5.53、TokenDance 目录重核、异常表按类型过滤、异常表整条复制、快捷指令被拒留框、
+  第一百四十四轮的主题卡片与字体致谢）。patch 而非 minor：数据根、配置格式、包名、既有请求接口都没变。
+- 版本戳 `b651e6d5` `chore(release): 0.5.9` —— **34 个文件**（root + 10 个工作区包 + 22 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`；四个 private sandbox 插件仍停 0.2.3）。发布正文
+  `25716490` `docs(release): v0.5.9 的发布正文`。
+- 门禁（同一棵树，`v0.5.9` 标签指向的提交）：`typecheck` `EXIT=0`（八包 14 个 `Done`）、`lint` 0 警告
+  0 错误、`format:check` 干净、`pnpm build` `EXIT=0`；全量测试用的是代码相同的上一轮结果
+  （core 1425 / ui 1053 / server 2985 / cli 561 / web 3309 / amsp 68 / docs 62 / 四个 sandbox 99，0 失败）。
+- **这一版的产物是本机造的，不是 CI**（fork 的 `release.yml` 是 dispatch-only，且它要求 macOS / Windows
+  签名密钥）。而 **`github.com` 今天整条不通**（`api.github.com`、`uploads.github.com`、
+  `objects.githubusercontent.com`、`raw.githubusercontent.com`、`codeload` 都通，只有网站与 git 主机不通），
+  所以：
+  - **MinGit 与 electron 走 npmmirror**：`cdn.npmmirror.com/binaries/git-for-windows/…`（2.55.0.3 的
+    zip）与 `…/binaries/electron-builder-binaries/`（nsis 3.0.4.1 / fpm / winCodeSign / appimage）。
+    `ELECTRON_BUILDER_BINARIES_MIRROR` + `ELECTRON_MIRROR` 指过去即可，curl 到 nodejs.org 本来就是通的。
+  - 本机补装了四样东西（以前能打包是因为它们在某次清理里被删了）：`make`/`g++`（`node-pty` 没有
+    linux-x64 预编译，`pnpm deploy` 会在 install 里现场编译）、`unzip`/`zip`、`wine` + `wine32:i386`
+    （electron-builder 要在 Linux 上跑一次 NSIS 安装包去取卸载程序），`xvfb`（wine 要有显示服务，
+    `xvfb-run -a` 即可）。
+  - 载荷：linux-x64 用 nodejs.org 的 v24.18.0 linux-x64 tar.xz；universal 不带运行时；win32-x64 用同版本
+    win-x64 zip + MinGit（`out/penguin/git/usr/bin/sh.exe` 与 `etc/profile` 都在）。三个载荷分别是
+    114.6M / 57.0M / 149.6M，封成 `penguin-{linux-x64,universal}.tar.gz` 与 `penguin-win32-x64.zip`
+    （113.6M / 56.3M / 149.6M），外三层 sha256 自校验都过。
+  - **一条要记住的坑**：`scripts/package-release-bundles.sh` 要求五个 tar 载荷全在才肯打包
+    （linux-arm64 / darwin-x64 / darwin-arm64 也在内），可 Adelie 的 Release 只放三件。本轮改成
+    scratchpad 里一份只封这三件的脚本，成员、校验和文件名、tar/zip 参数与它逐行一致；**没有改仓库里那份**。
+  - **版本戳要对着标签才算数**：第一遍产物是在打标签之前构建的，`penguin --version` 读的是构建时
+    `git describe` 的戳（`v0.5.8-27-g8be2cfbb`）。所以先打 `v0.5.9` 标签，再整条链重 build →
+    deploy → 三个载荷 → 两个安装包，重建后 `penguin --version` = **`v0.5.9`**，桌面壳里内嵌的那份 CLI
+    也是 `v0.5.9`，`linux-unpacked/resources/app/web-dist` 里能 grep 到「主题目录」。
+  - 桌面两平台：Linux AppImage 154.7M / deb 122.0M（`dpkg-deb -f … Version` = `0.5.9`），Windows exe
+    161.8M + blockmap，`latest.yml` / `latest-linux.yml` 都写 0.5.9，里面记的 sha512 与 size 与真实文件
+    逐个比过。
+- **推送与标签都走 Git Data API**（github.com 不通）：两笔提交推上去后 SHA 变了
+  （`b651e6d5` / `25716490`），标签用 `POST /git/tags` + `POST /git/refs` 建在远端那个提交上
+  （标签对象 `81d7ebc4`）。**记住这条**：Git Data API 存提交时会把正文末尾那个换行吃掉，于是同一笔提交
+  在 API 那边的 SHA 与本机 `git commit` 的不同；本机对齐的办法是把本地提交对象正文末尾的换行去掉、把
+  parent 换成重写后的 SHA，`hash-object` 算出来的就是远端那个（这一轮 `be5baad6` / `a1c141b1` /
+  `b651e6d5` / `25716490` 都是这么对齐的，`git describe` 仍指向 `v0.5.9`）。
+- Release **id `425518474`**，14 件资产全 `uploaded`，`releases/latest` 指向 v0.5.9；逐件用 GitHub 记录的
+  `digest` 与本机文件的 sha256 对过（14/14 OK，尺寸 758 MB）。上传很慢（113M 用了 778 s、149M 用了 872 s，
+  其余每件 1–48 s）。
+- npm：**26 个包全到 0.5.9**（22 插件 + amsp / core / server / cli），发布后立即逐包查注册表已是
+  26/26，`check-publishable --strict` 发布前 `rc=0`。
+- 3003 下载站：`/downloads/index.json` 换 v0.5.9（6 件，size/sha256 取自本轮产物），页头角标
+  v0.5.8 → v0.5.9；改前备份 `downloads/index.json.bak-20261027-v059` / `index.html.bak-20261027-v059`。
+- 现网：`penguin update --check` → 「Installed 0.5.8 · latest 0.5.9」；`penguin update --yes` 因为
+  **本机连不上 github.com** 下不到安装包，改用本轮自己的安装包离线升级
+  （`install.sh --archive dist-artifacts/penguin-linux-x64.tar.gz`，`Bundle checksum OK` /
+  `Payload checksum OK`），`/root/.adelie` 里 bin/lib/web 换成 0.5.9、`penguin --version` = `v0.5.9`、
+  `web/assets` 里能 grep 到「主题目录」与「打包来源」，数据根与 `/root/.penguin/data` 软链没动。
+  服务本身跑在 `adelie-server.service`（7777）上，本会话就在里面，所以重启排进
+  `systemd-run --unit=adelie-live-restart-059`（先睡 20 分钟再重启并自检，结果写
+  `/root/rel-059/post-restart-verify.txt`）。
