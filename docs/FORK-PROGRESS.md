@@ -17412,3 +17412,7 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
   main:main` **成功**（`0ef61786..240f5ee2`），随后 `git fetch` 把 `refs/remotes/origin/main` 刷到
   `240f5ee2`，与 `main` 同点（两边计数各 0）。也就是说开工时那一串超时是**一时的**，不是仓库或凭据的问题。
 - 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+- **CI**：`6c28a782` 的 run **`40496598942`** —— **22 个作业全 success、`NOT SUCCESS: []`**
+  （逐条查过 `actions/runs/40496598942/jobs`，含 macOS / Windows 分片与两条 installer）；同一提交的
+  「Deploy docs site」也 success。推 `240f5ee2` 时的 CI 被 `cancel-in-progress` 取消（仓库既有行为），
+  认 `6c28a782` 这次。
