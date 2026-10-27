@@ -1055,6 +1055,22 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `data-find-region="conversation"`）。**为什么是这一条**：表上最靠前的未勾选条目仍是 2.2c / 3.5 /
       3.6 / 4.x / 5.6 / 5.10（桌面壳一侧与既有部署单元、拍板、模型 key、明令不动、新依赖），而这一笔正是
       第一百三十八轮末尾点名的「下一轮」，用户看得见的真缺陷、改动全在 web、不引入新依赖。
+- [x] **5.54 离开模型流时取消上游请求**（上游 `aff7ee37` `#1354`，**2026-10-28 第一百四十六轮落地**，
+      提交见该节）：`GenerativeModel.streamGenerate()` 的调用方在响应结束之前就不再读时（引擎放弃一轮、
+      消费者跳出循环、请求抛错或超时），过去既不 abort 那次请求的 `AbortController`、也从不关上游迭代器 ——
+      厂商继续往没人读的流里生成（并继续计费），连接挂到厂商自己写完。现在**在 stop 事件之前**离开的每条
+      出口都在 `finally` 里 abort + `it?.return?.()`（尽力而为：抛错 / 被拒 / 永不落地都不改变结果、也不挂住
+      调用方），已经报过 stop 的响应一个字不动。**为什么是这一条**：表上未勾选的仍是 2.2c（桌面壳 / 部署
+      单元）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖），而这一笔是
+      这一轮拉到的上游新提交里唯一「真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在本机真跑的用例」的。
+- **量过、本轮没移植的一条**：`#1356`（`04ed9c70`，server 7 文件 / +183 −8，异常结束时已计量的请求只统计
+      一次）。补丁能落（两处小冲突），单元用例也能红转绿，但**本树走不到那个形态**：本树的 `token_usage`
+      只在 `streamGenerate` 的「正常收尾」分支产出（`generative-model.ts` 的 `finish()` 之后 `return
+      { status: "completed" }`），异常 / 中断 / 超时那一支走 `finishInterrupted()`、**不产用量**；而
+      `omniStopReason()` 的 `fatal` 只落在消息的 stop 标签上，不改 `request_end` 的 status。真服务端实测
+      也一样：让探针模型报完用量再以 `max_tokens` 结束，Trace 里仍是 `token_usage` + `request_end(completed)`，
+      `usage_records` 只有一行。要复现得上游那套「未知结束原因 → `retryable` / `malformed` 且带用量」的
+      分类，属另一笔（上游 core 更晚的改动）。留在这里备查，不重复分析。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2330,6 +2346,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-27 | 5.53 | **流式回复时向上滚，视图不再被拽回底部**（上游 `0c7725c2` `#1250` 移植，照改动落、不是合分支；上游 8 文件 / +523 −34 → 本树落下 **7 个跟踪文件（3 改 3 新 1 补测试）** + changelog 一对）：三条成因、三处修法 —— ①`message-stream.tsx` 的滚轮改由**原生非被动**监听器接管（effect 里 `addEventListener("wheel", …, { passive: false })`、从不 `preventDefault`，React 的 `onWheel` 删掉），浏览器先把手势第一格交给页面再滚动，跟随因此在视图移动之前就关了；②`stream-follow.ts` 的 `scrolled()` 只在位置真的变了时才恢复跟随（`dist < 80 && m.scrollTop !== prev`），先前一次贴底自己晚一帧、位置未变的滚动事件不再在读着向上滚之后把跟随打开；③新增 `observed()` + `followToBottom()`（提交 effect、ResizeObserver、选区菜单放行三处都改用它）：贴底之前先按「那条滚动事件将会读到的样子」判一次实时位置，浏览器已执行但未报告的滚动（按键 / 滚动条 / 大纲跳转）不再被撤销，而 `observed()` 在任何位置都还没报告过时（刚进对话）不置一词，否则打开在底部的对话会被判成停住、永不贴底。**有意未取**：上游 F4（`.ui-stream [data-arrive] { overflow-anchor: none }`）—— 本树没有逐段到达的元素（`fade` 是按速率放出回复前缀，见 `stream-reveal.ts`），两态实测里 Frost 也没有只由锚点造成的漂移；另给转写区滚动容器加 `data-stream-scroll`（新 spec 要逐帧看这个元素，本树没有上游的 `data-find-region="conversation"`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3299 通过 / 2 跳过**（本笔 +4 用例）· hmr 无测试文件 · **反证（三处定向变异，各自只压中自己那条用例）**：只把 ② 退回 `if (dist < 80) stick = true;` → `stream-follow.test.ts` **1 failed / 19 passed**（「手势起在贴底与它的滚动事件之间」那条，`expected true to be false`）；去掉 `followToBottom` 里的 `observed()` → **1 failed**（「浏览器已经移上去、还没报告」那条）；让 `observed()` 第一次读数也参与判定 → **1 failed**（「刚进对话时第一次读数不置一词」那条）；还原后 **20 全过**；另把整份 `stream-follow.ts` 退回 `HEAD` → **4 failed**（含 `followToBottom is not a function`）· **本轮主证据（真服务端两态 × 真浏览器，同一份 spec 同一套 mock）**：本笔只动 web，两态 web 产物 `r140/{after,before}-dist`（主包 md5 `7d28025e…` / `26a306b1…`；两端核过确实是两份不同的东西 —— `observed` 出现 2 / 0 次、`passive:!1` 7 / 6 处、`onWheel` 2 / 3 处）挂在两个一次性数据根 `/root/adelie-fork-data/r140-{after,before}` 上、**改后 8982 / 改前 8983**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8981；空数据根不需要模型 key —— 即 3.6 那个卡点）。`scroll-follow-bounce.spec.mjs` 每个主题 6 个手势、渲染进程降速四倍：**改前 Primer 5/6 · Frost 6/6 · Console 5/6 = 16/18 个手势回弹**（`late-snap` 与 `composed` 两类，日志 `r140/before-run.log`），**改后 18/18 个手势 0 回弹、`stillDrift` 全 0**（三主题各 6 个手势，1.6 min 跑完，三个 `✓`），`textMovedDown` 141–500px 说明滚轮的确把文字往上带了、不是空测 · **console**：改后态另起探针打开同一条会话、发一条真消息、滚轮上滚 5 格（`r140/probe.mjs`），`scrollTop` 620 → 320（正好 −300）而回复从 1153 涨到 2855，页面只有一条 **403 `/api/projects/…/machines`**（非管理员账号的既有行为，改前态一模一样），**无其它 error、无 pageerror**；截图 `r140/shots/after-chat.png`（流式回复、布局、底部输入区都正常）· **相邻回归（真浏览器）**：`chat` 1 + `outline` 2 + `selection-menu` 2（含「打开的选区菜单扣住实时回复的自动跟随、关闭后追平」那条正压在 `followToBottom` 上）**5 passed（1.0m）** · 端口只用 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r140-{after,before}`，两态产物 / 日志 / 探针 / 截图都在 scratchpad 的 `r140/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 用户点单（错误中心的复制按钮） | **成本中心异常表的每一行能整条复制走**（无清单条目，是用户 2026-10-26 当场点的单、第一百四十一轮记下「下一轮做」；本轮接的是 13:04 那轮留下、未提交的半成品，见本节「开工自检」）：`errors-panel.tsx` 新增导出 `errorCopyText(item)` —— 首行「最近时间 · 来源 · 错误码 · 类型（合行时再 ×N + 首次时间）」、随后**完整消息（换行照原样）**，用 ui 既有的 `CopyButton`（`size="sm"`、`text` 传取值函数）画在每行右端；不做悬停才显形（手机没有悬停，Tailwind v4 把 `hover:` 收在 `@media (hover: hover)` 里），表头那格留空（图标用 `aria-label` 自报名字，每行再读一遍列名是重复），`Th` 的 `children` 改可选；表格 `min-w` 720 → **752**（= 旧下限 + 复制列自己的 32，新列不从消息列抢宽度）；文案键 `errorsCopy` 中英各一条、文档 `usage.zh.md` / `usage.en.md` 各一句、changelog 一对 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型 —— 本笔不动接口）· `npx oxlint` 两个改动源码 / 用例文件 **0 警告 0 错误** · 8 个改动文件（含 changelog 一对）`prettier --check` 干净（先 `--write` 过两个）· 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2996 通过 / 4 跳过** · web **270 文件 / 3309 通过 / 2 跳过**（本笔 +6 用例，`errors-panel.test.ts` 单跑 22 过）· hmr 无测试文件 · **真看一眼（真 Web App + 真浏览器，画廊 7381 的 mock 数据：3 行、其中一行 ×4）**：中英各 **3 个**复制按钮；点第一行剪贴板 = `2026-10-27 13:35 · [llm] rate_limited · 预期内 · ×4 · 首次出现于 2026-10-27 12:10` + 换行 + 完整消息，英文页同一行读作 `… · Expected · ×4 · First at …`（本地化跟着界面语言走）；点第三条（未预期）剪贴板 = `… · [runtime] internal · 未预期` + 换行 + 整句 TypeError；列宽实测 **128 / 288 / 80 / 390 / 32**、420 宽视口下表格 **752** 而**页面横向溢出 0**（仍在自己的横滚盒里）；两页 **console 0 error、无 pageerror**，被点的行变成对勾；截图在 scratchpad 的 `shots/` 下 · 端口只用 **7381**（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data`（未新写），临时脚本与截图都在 scratchpad | `c4fd530e` |
 | 2026-10-27 | 7.50 | **内置浏览器「清除浏览数据」被拒时，原因留在卡片里**（不是移植：1 处源码 `packages/web/src/features/builtin-browser/clear-data-dialog.tsx`（+17 −3：新增 `refusal` 状态接上 `ConfirmModal` 的 `refusal` 槽，`catch` 不再 `toastError`、改把 `S.builtinBrowser.clearFailed(apiErrorText(err))` 交给卡片，点「清除」与开框各清一次旧原因） + 1 个新文件 `packages/web/e2e/builtin-browser-clear-refusal.spec.mjs`（1 条用例：拒一次清除、再放行一次，并核对两次请求体里的种类相同） + changelog 一对 + 文档两句，**无新依赖、不碰接口、无新文案**）：这一族（7.19–7.49）的最后一处 —— 卡片本来就会在失败时留着，丢的是原因：它落进一条自己会消失的提示，而卡片停在那儿一个字都不说；卡片上的重试是回到同一份勾选的唯一路径。现在原因画在卡片里、紧挨着重试按钮，勾好的种类连同取消勾选的那一个都原样留着 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · `@adelie/docs` **8 文件 / 62 通过**（本轮改到它的内容）· **真服务 + 真浏览器单 spec**（一次性数据根 `/root/adelie-fork-data/r145-clear`、服务 **8977**、本机系统 chromium `/usr/lib/chromium/chromium-headless-shell`）：新 spec **1 passed（2.8 s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git checkout --` 退回、`--filter @adelie/web build` 重建、同一个服务端再跑 → **1 failed**（`getByRole('dialog')` 里 `getByRole('alert')` `element(s) not found`：改前原因只进 toast，框里一个字都没有）· **两态截图**（`r145/probe.mjs`，同一个 `page.route` 500，1360×900）：改前被拒后卡片留着、**框里没有原因**，原因在顶上一条会自己走的提示里（`before/shot-3-refused.png`）；改后卡片里是红色「清除失败：清空被服务端的探针挡下」、取消勾选的「历史记录」仍是空的（`shot-3-refused.png`）· 两态 console 的 error 只有刻意造的那一次 500，无 `pageerror` · 端口只用 8977（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r145-clear` 与 scratchpad 的 `r145/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包 | `8db188dd` |
+| 2026-10-28 | 5.54 | **离开模型流时取消上游请求**（上游 `aff7ee37` `#1354` 移植，照改动落、不是合分支；上游 4 文件 / +130 −6 → 本树落下 **3 个跟踪文件（2 改 1 补 changelog 一对）**，源码 1 个、用例 1 个）：`GenerativeModel.streamGenerate()` 的调用方在响应结束之前不再读的（引擎放弃一轮、消费者跳出循环、请求抛错或超时）过去既不 abort 那次请求的 `AbortController`、也从不关上游迭代器，厂商继续往没人读的流里生成并继续计费。现在上游迭代器提到 `try` 之外，`finally` 在清掉空闲计时器与 abort 监听之后、**只在还没见到结束原因时** `ac.abort()` + `void Promise.resolve(it?.return?.()).catch(() => undefined)`（尽力而为：抛错 / 被拒 / 永不落地都不改结果、不挂住调用方）；`res === STOPPED` 那一支不再自己关，统一交给 `finally`，于是每条出口只关一次。**本地化**：本树翻译器没有上游的 `stopped` 读取口，守卫改用等价的 `sawFinishReason()`；用例的 `UniEvent` 词汇换成本树的 `{ type: "text" }` + 显式 `stop`，且「已收到 stop 不许动」那条改成断言「没发 `return()`、信号没被 abort」（本树循环拉到 `done`，生产者的 `finally` 无论如何都会跑） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个文件 **0 警告 0 错误** · 两个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1431 通过 / 6 跳过**（本笔 +6，即三条生命周期 + 三条清理失败）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `generative-model.ts` 退回 `HEAD`、只留新用例 → `test/llm.test.ts` **5 failed / 100 passed**（提前离开、挂在 yield 时中断、以及 throw / reject / hang 三条清理），放回本笔 → **105 全过** · **本轮主证据（真 HTTP 流，两态同一份探针）**：`r146/probe-provider.mjs`（8987，OpenAI-chat 兼容 SSE，每 100 ms 一段文字、共 40 段）配 `probe-stream.mjs`（真的 `GenerativeModel` 读 3 条消息后 `break`，1.5 s 后读供应商的计数）。**改前**：供应商又写了 **13 段**（`writes` 16）、`closedAt` 一直 `null` —— 生成没被取消；**改后**：只写了 **2 段**、消费者离开后 **0/1 ms** 连接就被关（`closedWithinMs: 0`）、零段新内容。**对照（正常读完不许被误杀）**：`probe-stream-full.mjs` 把同一流读完 → 40 段全收、`finished: 1`、`token_usage` 60 tokens、`outcome.status` 为 `completed` · 另：本轮先量过 `#1356`（`04ed9c70`，异常结束时已计量的请求只统计一次）并写好补丁与用例，真服务端实测确认**本树走不到那个形态**（`token_usage` 只在正常收尾分支产出），已撤回，理由记在「待办」那条「量过、没移植」里 | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -17646,3 +17663,87 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
 
 run **`40530828968`**（`d0db5612`，含代码提交 `8db188dd` 与台账）**22 个作业全绿**；同一次推送的
 「Deploy docs site」`40530829205` 也是 success。排队等了约 14 分钟才开跑。
+
+## 第一百四十六轮：离开模型流时取消上游请求（2026-10-28，条目 5.54）
+
+### 开工自检：工作区干净，同步改走 HTTPS + PAT
+
+- `git status --short` 输出为空、在 `main` 上，HEAD 是 `7be2a0dd`（第一百四十五轮那一笔台账）。`git fetch origin`
+  仍被 GitHub 拒（`git@github.com: Permission denied (publickey)`，那把 `id_adelie_migrate` 还是不在账号里），
+  按前几轮的路子用 **HTTPS + `GITHUB_PAT`** 核远端：`git ls-remote` 的 `main` 正是 `7be2a0dd`，本地与远端齐平，
+  `git merge --ff-only origin/main` 因此无需动作。**没有切分支、没有碰 `legacy/main`、没有推上游。**
+- 上游戏照第二十三轮那条路按 URL 现拉（`/root/penguin-harness` 本机已不存在）：
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r146`
+  → 尖端 **`9f6c4538`**（`#1365`，一个 socket 承载所有请求）。相对上一次探到的 `4694d853` 多 **20 笔**，逐笔量过。
+
+### 选活：待办依旧全卡着，从上游新提交里挑一条能一轮做完的真缺陷
+
+表上未勾选的仍是 **2.2c**（写侧只剩桌面壳 / 既有部署单元）、**3.5**（要用户拍板取哪个桌面壳）、**3.6**（要模型
+key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。这一轮拉到的 20 笔里，大件是小程序面
+（`#1341` 打包 Benchmark、`#1343` 远程机器升级、`#1368` 发版提交、`#1333`/`#1335` 那批 Workbench 子系统），
+一轮做不完；小件里 `#1365` / `#1370` 是同一套 socket 重写（本树没有 `packages/web/src/api/socket.ts`）、
+`#1367` 只加一行测试，剩下能一轮做完的是 `#1356`（异常结束时已计量的请求只统计一次）、`#1355`（goal 预算算上
+压缩前的用量）、`#1354`（离开模型流时取消上游请求）。
+
+先落的是 **`#1356`**：补丁能应用（两处小冲突），三条请求数用例也确实红转绿。但接着用真服务端取证时发现
+**本树走不到那个形态** —— 本树的 `token_usage` 只在 `streamGenerate` 正常收尾时产出，异常 / 中断 / 超时走
+`finishInterrupted()`、不产用量；`omniStopReason()` 的 `fatal` 只落在消息的 stop 标签上，不改 `request_end`
+的 status。真服务端实测（探针模型报完用量再以 `max_tokens` 结束）：Trace 里是 `token_usage` +
+`request_end(completed)`，`usage_records` **一行**。于是把它**整笔撤回**（源码、用例、changelog 全部还到
+`HEAD`），结论写进「待办」的「量过、没移植」里，改选 **`#1354`**：那一笔的缺陷在本树是**真的会发生**的。
+
+### 做了什么（3 个跟踪文件：源码 1、用例 1、changelog 一对）
+
+- **`packages/core/src/llm/generative-model.ts`**（+19 −6）：上游迭代器提到 `try` 之外
+  （`let it: AsyncIterator<UniEvent> | undefined`），`finally` 里在 `clearTimer()` 与
+  `userSignal?.removeEventListener("abort", onUserAbort)` 之后加一段清理 —— **只在翻译器还没见到结束原因时**
+  执行 `ac.abort()` 与 `void Promise.resolve(it?.return?.()).catch(() => undefined)`，`try/catch` 包住同步抛错，
+  拒绝与永不落地都吞掉（清理不得改写结果、也不得挂住调用方）。`res === STOPPED` 那一支不再自己 `it.return()`，
+  统一交给 `finally`：每条出口只关一次。
+  **本地化**：上游用的是它自己的 `translator.stopped` 读取口（那是在更晚的一笔里加上的），本树没有，守卫改用既有的
+  等价物 `sawFinishReason()`（同一个「结束原因到了没有」的信号，`streamGenerate` 的防御分支本来就在用它）。
+- **`packages/core/test/llm.test.ts`**（+58 −6，六条新用例）：①消费者提前离开 → 上游信号被 abort、生产者被释放；
+  ②用户中断发生在生成器挂在 `yield` 时 → 结局是 `aborted`、上游被释放；③已经收到 stop 的请求**不许动**；
+  ④⑤⑥清理时 `throw` / `reject` / `hang` 三种坏上游都不能拦住调用方离开。**本地化**：本树的 `UniEvent` 词汇是
+  `{ type: "text" }` 条目 + 一个显式 `stop` 事件（上游那份用例用的是另一套 vocabulary），因此补了 `delta` /
+  `text` / `stop` / `NO_USAGE` 四个本文件内的小助手；「不许动」那条上游断言的是「生产者的 `finally` 从来不跑」，
+  但**本树的循环会一直拉到 `done`**（上游遇到 stop 就 break），生产者自己结束是正常的 —— 于是改成用手写迭代器
+  断言「没有发出 `return()`、信号没被 abort」，这才是这一笔真正要保的性质。
+- **`changelog/unreleased/2026-10-28-llm-stream-cleanup.{md,zh.md}`**：按本仓惯例改名到本轮日期、去掉上游 PR 行、
+  写明移植出处与本树的两处差异。
+
+### 验证（都不是推测）
+
+- **六包 `typecheck`**：`EXIT=0`，六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**（195 接口 / 590 类型）。
+- **lint / 格式**：`oxlint` 两个文件 **0 警告 0 错误**；两个文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- **测试**（逐包 `EXIT=0`、0 失败）：core **69 文件 + 1 跳过 / 1431 通过 / 6 跳过**（本笔 +6）· ui **130 / 1053**
+  · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** ·
+  hmr 无测试文件。
+- **反证（单测）**：把 `generative-model.ts` 退回 `HEAD`、只留新用例 → `test/llm.test.ts` **5 failed / 100 passed**
+  （提前离开、挂在 yield 时中断、以及 throw / reject / hang 三条清理）；放回本笔 → **105 全过**。
+- **本轮主证据（真 HTTP 流，两态同一份探针）**：`r146/probe-provider.mjs` 是 8987 上一个 OpenAI-chat 兼容的
+  SSE 供应商（每 100 ms 一段文字、共 40 段，记录自己实际写了多少段、连接何时被关）；
+  `r146/probe-stream.mjs` 用**真的 `GenerativeModel`**（`clientType: "openai-chat"`，`baseUrl` 指过去）读 3 条消息
+  后 `break`，1.5 s 后读供应商的计数。
+  - **改前**（`git checkout HEAD --` 源码后 `pnpm --filter @adelie/core build`）：`writes` **16**、消费者离开后又写了
+    **13 段**、`closedAt` **`null`** —— 生成一直在跑，连接没人关。
+  - **改后**：`writes` **2**、`deltasWrittenAfterLeave` **0**、`closedWithinMs` **0**（离开后 1 ms 内连接就关）。
+  - **对照（正常读完不许被误杀）**：`r146/probe-stream-full.mjs` 把同一流读完 → 40 段全收、`finished: 1`、
+    `token_usage` 60 tokens、`outcome.status` = `completed`。
+- **端口**：只用 8985 / 8986 / 8987（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r146-*`（含被撤回那笔的 `r146-b2/b3/b4`）与 scratchpad 的 `r146/` 下，没有往
+  `~/.penguin` / `~/.adelie` 写。
+
+### 没做 / 还差什么
+
+- 表上剩下的仍是那几条卡点：**2.2c**（桌面壳一侧与 `adelie-app.service` 单元，发布动作）、**3.5**（拍板）、
+  **3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+- `#1355`（goal 预算算上压缩前的用量）这一轮量过、没做：补丁六个文件全部干净落地，但它改的是一个随包插件的
+  钩子与 core 的用例，留作下一轮的候选。
+- `#1365` / `#1370`（一个 socket 承载所有请求）要整份 `packages/web/src/api/socket.ts` 重写（本树没有那个文件），
+  另立一轮。
+
+### 提交
+
+- 代码 + 用例 + changelog：**`735538e1`**；本轮台账（本条与上表那一行）另起一笔（台账与代码分两笔，与历次一致）。
