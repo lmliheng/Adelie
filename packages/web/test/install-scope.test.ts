@@ -358,6 +358,9 @@ describe("bootInstallScope", () => {
 
   const serverReports = (installId: string | null) => stubFetch(() => json({ installId }));
 
+  // Two dynamic imports of dock-state's whole module graph are what this test costs, and that
+  // graph alone takes 3+ seconds on an idle machine — 5s left too little headroom and the suite
+  // went red on a loaded box. The timeout only bounds the wait; the assertions are unchanged.
   it("a swept boot reloads instead of rendering, and the second pass cannot resurrect the dock", async () => {
     const storage = stubLocalStorage(
       memoryStorage({
@@ -389,7 +392,7 @@ describe("bootInstallScope", () => {
     expect(persisted).not.toContain("term-abc");
     expect(persisted).not.toContain("session-1");
     expect(storage.map.get("penguin.theme")).toBe("dark");
-  });
+  }, 20_000);
 
   it("mounts on every outcome that swept nothing, and on a sweep that could not be recorded", async () => {
     stubLocalStorage(memoryStorage({ [INSTALL_ID_KEY]: "root-a" }));

@@ -16943,3 +16943,49 @@ adelie 应用可以产出视频」。
   按第 117 / 135 轮的先例改走飞书投递（`shared_env/xianyu-ops/feishu_send.py`，`text ok`，
   `message_id=om_x100b62ca416358a0df2ddad29d7c584`），正文留底在 scratchpad 的 `r138/report.md`。
   下一轮开工再探一次，通了把积压的补发到 `0110230306@csu.edu.cn`。
+
+## 第一百三十九轮：测试里那条「扫过站点数据后重启」的用例不再随机超时（2026-10-27，自进化循环）
+
+这一轮的门禁先红了一次：`packages/web` 的
+`test/install-scope.test.ts > bootInstallScope > a swept boot reloads instead of rendering, and the
+second pass cannot resurrect the dock` 报 `Test timed out in 5000ms`（实测 5158ms）。单独跑同一个文件
+是 **3.27s 通过**，`main` 尖端 `a6945a2f` 的 CI（run `40419459805`）也是全绿 —— 换句话说它不是回归，
+是**余量不够**：这条用例要两次动态 import `dock-state` 的整张模块图，空机 3+ 秒，机器一忙就越过 5 秒。
+本笔只给这一条用例加显式超时 `20_000`（断言一条没动），并把原因写成注释留在旁边。
+
+### 开工自检
+
+- `/root/adelie-fork` 在 `main` 上，`git status --short` **干净**；`HEAD` = **`a6945a2f`**，与
+  `origin/main` 齐。没切分支、没碰 `legacy/main`、没推 upstream。
+- 并发：这一轮全程 `git status --porcelain` 都只有本笔自己那一个文件，没撞上别的会话。
+
+### 门禁（四道全跑）
+
+| 门禁 | 结果 | 用时 |
+| --- | --- | --- |
+| `pnpm typecheck` | ✅ exit 0（八包 `Done`，`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 590 类型） | 116s |
+| `pnpm lint`（oxlint） | ✅ exit 0（2304 文件、0 警告 0 错误） | 4s |
+| `pnpm format:check` | ✅ exit 0（`All matched files use Prettier code style`） | 51s |
+| `pnpm -r test` 第一次 | ❌ exit 1（web 那一条超时，其余全过：3294 过 / 2 跳过 / 1 失败） | 309s |
+| `pnpm -r test` 修后重跑 | ✅ exit 0（**10034 过 / 18 跳过 / 0 失败**） | 313s |
+
+逐包（修后那一趟）：amsp 68 · docs 62 · ui 1053 · core 1425（+6 跳过）· server 2995（+4 跳过）·
+cli 561 · web 3295（+2 跳过）· desktop 304 · ui-gallery 140 · hmr 无测试文件 ·
+use-seedance 8 · use-wps-office 24 · sandbox-seatbelt 17（+5 跳过）· sandbox-wsl 32 ·
+sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
+
+**口径提醒**：`pnpm -r test` 不含浏览器 e2e（`packages/web` 的 `test:e2e`，要 Playwright）。
+
+### 验证
+
+- 单文件复跑（修前、空机）：`test/install-scope.test.ts` **20 过 / 0 失败**，那条用例 3275ms；
+  修后同文件 20 过，那条用例 3.65s —— 余量从 1.4s 抬到 16s 以上。
+- 断言一条没改，只动了这一条 `it` 的超时与它上面的注释，所以「它守的行为」没有被放宽。
+- 改的文件 `prettier --check` 干净；`git diff --check` 干净。
+- 全量重跑 exit 0，四道门禁自此全绿。
+
+### 版本：未到阈值
+
+- 上次发版 **`v0.5.8`**（2026-10-26 23:07 CST）。自那以后 `main` 上 10 个提交，其中**功能性 3 个**
+  （`eaf62138` 5.50、`9d661d8f` 5.51、`ec337e6c` 5.52），其余是台账与 changelog。
+- **3 < 10 → 不发版**，不动版本号。
