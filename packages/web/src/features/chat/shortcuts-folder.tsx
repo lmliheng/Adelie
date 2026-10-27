@@ -5,8 +5,12 @@
  * sends it. Three things about it are its own rather than a built-in folder's:
  *
  * - **Its rows are server state**, per user (`ui_prefs.draftShortcuts`), fetched on mount and
- *   written back on every change. Optimistic: the list updates first and rolls back with a toast
- *   if the write fails, because the value being written is already on screen.
+ *   written back on every change. Optimistic: the list updates first and rolls back if the write
+ *   fails, because the value being written is already on screen. The two dialogs that can ask for
+ *   a write — the shortcut editor and the delete confirmation — close on the write landing, not on
+ *   the click: a refused save would otherwise throw away the title and prompt the user just typed,
+ *   and a refused delete would come back as a toast that dismisses itself while the row it failed
+ *   to remove stays on screen.
  * - **Its length is the user's**, bounded to SHORTCUT_MAX_COUNT. There is no scroll area and no
  *   pinned height: past the cap the New-shortcut row is what the editor refuses, so the folder
  *   cannot grow into a list that needs scrolling.
@@ -24,9 +28,9 @@ import {
   ICON_SIZE,
   Input,
   Modal,
+  NoticeStrip,
   PlusIcon,
   Textarea,
-  toastError,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
@@ -100,7 +104,13 @@ export function ShortcutsFolder({
   /** Until the stored list has arrived the body stays blank: the empty state must not flash first. */
   const [loaded, setLoaded] = useState(false);
   const [draft, setDraft] = useState<ShortcutDraft | null>(null);
+  const [saving, setSaving] = useState(false);
+  /** The server's words for the save it refused: shown in the editor, which stays open on them. */
+  const [draftRefusal, setDraftRefusal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<UserShortcut | null>(null);
+  const [removing, setRemoving] = useState(false);
+  /** The same, for the delete confirmation. */
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,26 +131,50 @@ export function ShortcutsFolder({
   /** Latest list for the rollback value: a stale closure would restore a list two edits old. */
   const shortcutsRef = useRef(shortcuts);
   shortcutsRef.current = shortcuts;
-  const persist = useCallback((next: UserShortcut[]) => {
+  /**
+   * Writes the list and answers with the refusal (null when it landed). The rows already show
+   * `next`, so a refused write puts the previous list back; the caller is the dialog that asked,
+   * and it keeps itself open on the returned reason rather than dismissing it with a toast.
+   */
+  const write = useCallback(async (next: UserShortcut[]): Promise<string | null> => {
     const rollback = shortcutsRef.current;
     setShortcuts(next);
-    api.putPrefs({ draftShortcuts: next }).catch((e: unknown) => {
+    try {
+      await api.putPrefs({ draftShortcuts: next });
+      return null;
+    } catch (e) {
       setShortcuts(rollback);
-      toastError(apiErrorText(e));
-    });
+      return apiErrorText(e);
+    }
   }, []);
 
   const startCreate = () => {
     // The high-value path: whatever is already in the composer becomes the body of the new
     // shortcut, with its first line suggested as the name. Both fields stay editable.
     const text = readComposerText().trim();
+    setDraftRefusal(null);
     setDraft({ id: null, title: defaultShortcutTitle(text), prompt: text });
   };
 
-  const saveDraft = () => {
-    if (draft === null || shortcutDraftError(draft) !== null) return;
-    persist(upsertShortcut(shortcuts, draft));
-    setDraft(null);
+  const saveDraft = async () => {
+    if (draft === null || saving || shortcutDraftError(draft) !== null) return;
+    setSaving(true);
+    const refused = await write(upsertShortcut(shortcuts, draft));
+    setSaving(false);
+    // A refusal leaves the editor exactly as it was: the fields keep what was typed, and the
+    // Save button retries the same write.
+    if (refused !== null) setDraftRefusal(refused);
+    else setDraft(null);
+  };
+
+  const removeDeleting = async () => {
+    const target = deleting;
+    if (target === null || removing) return;
+    setRemoving(true);
+    const refused = await write(removeShortcut(shortcuts, target.id));
+    setRemoving(false);
+    if (refused !== null) setDeleteRefusal(refused);
+    else setDeleting(null);
   };
 
   const draftError = draft === null ? null : shortcutDraftError(draft);
@@ -177,13 +211,19 @@ export function ShortcutsFolder({
                   <RowAction
                     label={S.common.edit}
                     glyph={ICONS.pencil}
-                    onClick={() => setDraft({ ...shortcut })}
+                    onClick={() => {
+                      setDraftRefusal(null);
+                      setDraft({ ...shortcut });
+                    }}
                   />
                   <RowAction
                     label={S.common.delete}
                     glyph={ICONS.trash}
                     danger
-                    onClick={() => setDeleting(shortcut)}
+                    onClick={() => {
+                      setDeleteRefusal(null);
+                      setDeleting(shortcut);
+                    }}
                   />
                 </li>
               ))}
@@ -213,14 +253,29 @@ export function ShortcutsFolder({
       <Modal
         open={draft !== null}
         title={editing ? S.chat.shortcuts.editTitle : S.chat.shortcuts.createTitle}
-        onClose={() => setDraft(null)}
+        onClose={() => {
+          setDraft(null);
+          setDraftRefusal(null);
+        }}
         widthClass="sm:max-w-lg"
         footer={
           <>
-            <Button size="sm" onClick={() => setDraft(null)}>
+            <Button
+              size="sm"
+              disabled={saving}
+              onClick={() => {
+                setDraft(null);
+                setDraftRefusal(null);
+              }}
+            >
               {S.common.cancel}
             </Button>
-            <Button size="sm" variant="primary" disabled={draftError !== null} onClick={saveDraft}>
+            <Button
+              size="sm"
+              variant="primary"
+              disabled={draftError !== null || saving}
+              onClick={() => void saveDraft()}
+            >
               {S.common.save}
             </Button>
           </>
@@ -228,6 +283,17 @@ export function ShortcutsFolder({
       >
         {draft !== null && (
           <div className="space-y-3">
+            {/* The save this editor asked for and the server refused: the same words the app's
+                confirmations carry, here in the dialog that keeps the typed shortcut. */}
+            {draftRefusal !== null && (
+              <NoticeStrip
+                tone="danger"
+                role="alert"
+                className="rounded-md border px-2.5 py-2 text-xs"
+              >
+                <span data-slot="body">{S.common.refused(draftRefusal)}</span>
+              </NoticeStrip>
+            )}
             <Input
               size="sm"
               label={S.chat.shortcuts.titleLabel}
@@ -244,7 +310,7 @@ export function ShortcutsFolder({
               onKeyDown={(e) => {
                 // isComposing guard (the repo's IME convention): accepting a Chinese candidate
                 // fires Enter, which would otherwise save the raw pinyin.
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) saveDraft();
+                if (e.key === "Enter" && !e.nativeEvent.isComposing) void saveDraft();
               }}
             />
             <Textarea
@@ -272,11 +338,13 @@ export function ShortcutsFolder({
         title={S.chat.shortcuts.deleteTitle}
         confirmLabel={S.common.delete}
         cancelLabel={S.common.cancel}
-        onClose={() => setDeleting(null)}
-        onConfirm={() => {
-          if (deleting !== null) persist(removeShortcut(shortcuts, deleting.id));
+        busy={removing}
+        onClose={() => {
           setDeleting(null);
+          setDeleteRefusal(null);
         }}
+        onConfirm={() => void removeDeleting()}
+        refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">
           {deleting !== null ? S.chat.shortcuts.deleteConfirm(deleting.title) : ""}

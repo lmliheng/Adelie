@@ -49,7 +49,7 @@ The last folder, **My shortcuts**, holds up to 3 prompts of your own.
 2. In **My shortcuts**, select **New shortcut**. The editor opens with the composer's text, and suggests its first line as the **Name**.
 3. Save.
 
-A shortcut is a name (at most 40 characters) and a prompt (at most 4000 characters). It pins no Skills. Shortcuts are stored per user on the server, so they follow you to another browser or machine. Each row has edit and delete actions, and deleting asks first. The folder header counts them, such as `2/3`, and the **New shortcut** row disappears once 3 are saved; the cap keeps this folder the same height as a built-in one.
+A shortcut is a name (at most 40 characters) and a prompt (at most 4000 characters). It pins no Skills. Shortcuts are stored per user on the server, so they follow you to another browser or machine. Each row has edit and delete actions, and deleting asks first. Both a save and a delete close only once the server has the write: if it refuses, the editor (with the name and prompt you typed still in it) or the confirmation card stays open with the reason inside it, and the same button retries. The folder header counts them, such as `2/3`, and the **New shortcut** row disappears once 3 are saved; the cap keeps this folder the same height as a built-in one.
 
 ## Send a message
 
