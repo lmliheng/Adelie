@@ -2307,6 +2307,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-27 | 5.51 | **底部停靠栏拉到最大时不再盖住输入区**（上游 `bf3395ff` `#1325` 移植，照改动落、不是合分支；上游 11 文件 / +324 −34 → 本树落下 8 个跟踪文件（5 改 3 新）+ changelog 一对 + 1 处端到端视口）：停靠状态的高度上限原先只按对话列（含工具行）的 85% 算，没有谁给输入区留位置，输入区就被压到停靠栏下面、点不到。新增 `features/dock/bottom-dock-size.ts`（纯逻辑：上限 = 工具行以下那片区域 − 量出来的输入区高度 − 一条消息带，仍受 0.85 封顶；空间不够先让消息带、再让 140px 最小高度，输入区永远让），新增 `features/dock/composer-height.ts`（`ResizeObserver` 喂的小 store，停靠栏 / 拖动夹取 / 落点预览读同一个数，重挂载后仍留着），`dock-panel.tsx` 量列与区域、上限跌破时走既有 `snap` 路径同提交让出，`dock-drag.tsx` 预览同一函数，`chat-page.tsx` 给输入区那个框挂测量 ref（本树输入区是普通 `<div>`，上游的 `WallpaperSurface` 本树没有），`dock-state.ts` 的尺寸常量搬走、`DOCK_RATIO_MAX` 反向导入，`e2e/dock.spec.mjs` 的尺寸用例改在 1280×1100 下跑。**本地化**：changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源；新用例里那条读源码的断言改成认本树的 `<div ref={measureComposer}>` | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 15 个文件 **0 警告 0 错误** · 八个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）+ 1 跳过 · ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3292 通过 / 2 跳过**（本笔 +1 文件 / +9 用例）· hmr 无测试文件 · **本轮主证据（真服务端 ×2 + 真浏览器，两态四场景）**：服务端产物同一份（本笔只动 web），两份 web 产物 `r51/{after,before}-dist`（`[data-dock-area]` 选择器计数 5 / 1 两端核过）分别挂在一次性数据根 `/root/adelie-fork-data/r51-{after,before}` 上，**改后 `localhost:8956`、改前 `localhost:8957`**（`ADELIE_SEED_ADMIN_PASSWORD` + 模型指向本仓自带 mock LLM（8977）；空数据根不需要模型 key —— 即 3.6 那个卡点）；两态都把已存排布预置成「底部停靠栏开着轨迹观测、比例 0.85」（最大所存比例），1280×800 下读 `composer.bottom − dock.top`：**改前** 空输入区 **122px**（停靠栏 655px，鼠标落在输入区正中命中的是停靠栏的 header）、输入区涨到 7 行 **238px**、窗口压到 1280×560 **274px**，且 `textarea.click()` 被停靠栏挡下（Playwright 报 intercepts pointer events）；**改后** 四态（空 / 涨到 7 行 / 1280×560 / 清空）**全是 0**，停靠栏随之让出 423 → 307 → 140 → 423，输入区正中命中 `textarea`，点击一次就进得去。截图 `r51/shots/{before,after}-{empty,grown,short,cleared}.png`（改前那张里输入区整块不见、只剩上方的上下文提示；改后那张里输入框完整地停在停靠栏上方）；两态 console 各 **0 error**、**无一条 ≥400** · **相邻回归（真浏览器单 spec）**：`dock.spec.mjs` 10 条 + `mobile-dock.spec.mjs` 1 条 **11 passed（25.4s）**，其中被改视口的那条也在内 · **反证（同一份 spec，去掉这轮的视口改动）**：默认 1280×720 下「尺寸与排布在刷新后仍在」**1 failed**（`expect(after - before).toBeGreaterThan(80)`：默认高度已经顶到新上限，往上拖 120px 长不了）—— 与上游 PR 的说法一致 · 端口只用 8956 / 8957 / 8977 与单 spec 那套 8958 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r51-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r51/` 下（`packages/*/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 5.52 | **停靠面板只属于各自的 Session**（上游 `ce9b3e69` `#1335` 移植，照改动落、不是合分支；上游 16 文件 / +377 −85 → 本树落下 **9 个跟踪文件（7 改 2 补测试）** + changelog 一对，另 9 行是 `dock-state.ts` 里把写 scope 映射那段收成 `writeScopes()`）：`useSessionStream` 的 `SessionStreamState` 多一个 `sessionId`（写明下面这些状态属于哪个 Session），`advancePanelTaskScope` 忽略「观察到的流不是这个 Session」的那次渲染（切换后的一次渲染仍带着上一个 Session 的模型与任务状态），chat page 只在 `currentDockScope()` 就是该 Session 时才自动打开子智能体面板；`adoptDockScope(from, sessionId, stillOpen)` 只移交 `from` 自己的布局、不碰屏幕上的那份，并返回「用户是否仍在 `from` 上」，草稿首次发送（发送开始时记下 `dockScope`、`openRef` 记页面是否还挂着）与自愈的 `syncHealedSessionId` 据此才 `navigate`；交给面板的四个请求（`fileOpenRequest` / `memoryRequest` / `subagentFocus` / `subagentTaskScope`）改为**渲染期**按路由丢弃（`commandsFor`）而不是渲染后靠效果清除；`dock-panel.tsx` 的 `closeWhenAllowed(key)` 记住发起关闭时的 scope，答复回来时只在仍是同一对话才关；`browser-layer.tsx` 的「面板显示时保留一个标签页」改为在效果里读**当下**的停靠栏（`isTabShown(BROWSER_TAB)`）。**有意未取**（本树没有它们要用的东西）：与 `state.scope` 比对的那半（要上游 #1105 的按会话分片标签页）、`terminal-panel.tsx` 的 `dockSessionId()` 重核、自愈里的 `adoptBrowserSession` / `reownTerminals`、它的 jsdom 用例（本树不装 jsdom） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 9 个文件 **0 警告 0 错误** · 九个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3295 通过 / 2 跳过**（本笔 +3 用例）· hmr 无测试文件 · **反证（单测）**：把 7 份源码退回 `HEAD`、只留新用例 → `dock-state.test.ts` + `panel-task-scope.test.ts` **5 failed / 48 passed**（三条新的 `adoptDockScope` 用例、既有的「移交时不覆盖」与其 fullscreen 版、以及「忽略上一个 Session 的流」那条），放回本笔 → **53 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：本笔只动 web，两态 web 产物 `r138/{after,before}-dist`（主包 md5 `480cebb2…` / `7a1de418…`，两端核过确实是两份不同的东西）挂在两个一次性数据根 `/root/adelie-fork-data/r138-{after,before}` 上、**改后 8961 / 改前 8962**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8971；空数据根不需要模型 key —— 即 3.6 那个卡点）。流程：会话 A 里发「run a subagent」（mock 的派生子智能体触发词）→ 等 A 自己的停靠栏出现子智能体标签 → 点侧栏里另一条空会话 B（**应用内路由切换**，整页刷新复现不了这个泄漏）→ 读 `penguin.dock.layout`。**改前**：`A=["agents"]`、切过去的 **`B=["agents"]`**（截图 `r138/shots/before-2-switched-to-b.png`：空会话右侧栏挂着「智能体面板」，上面写着「本次任务尚未派生子智能体」），回到 A 后 B 仍留着；**改后**：`A=["agents"]`、**`B=[]`**（`after-2-switched-to-b.png`：干净的新对话），回到 A 照旧是 `["agents"]` 且调用关系与子会话都在（`after-3-back-in-a.png`）。两态 console 各只有一条 403（`/api/projects/…/machines`，**两态一模一样**、属非管理员账号的既有行为，与本轮无关），无其它错误 · **相邻回归（真浏览器四个 spec）**：`dock` 10 + `mobile-dock` 1 + `draft` 1 + `subagent` 4（含「每块面板跟着自己的会话、不泄漏」与「auto-open 生命周期 / 草稿流」两条正对本轮）**18 passed（1.2m）** · 端口只用 8961 / 8962 / 8971 与相邻回归那套 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r138-{after,before,e2e}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r138/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-10-27 | 5.53 | **流式回复时向上滚，视图不再被拽回底部**（上游 `0c7725c2` `#1250` 移植，照改动落、不是合分支；上游 8 文件 / +523 −34 → 本树落下 **7 个跟踪文件（3 改 3 新 1 补测试）** + changelog 一对）：三条成因、三处修法 —— ①`message-stream.tsx` 的滚轮改由**原生非被动**监听器接管（effect 里 `addEventListener("wheel", …, { passive: false })`、从不 `preventDefault`，React 的 `onWheel` 删掉），浏览器先把手势第一格交给页面再滚动，跟随因此在视图移动之前就关了；②`stream-follow.ts` 的 `scrolled()` 只在位置真的变了时才恢复跟随（`dist < 80 && m.scrollTop !== prev`），先前一次贴底自己晚一帧、位置未变的滚动事件不再在读着向上滚之后把跟随打开；③新增 `observed()` + `followToBottom()`（提交 effect、ResizeObserver、选区菜单放行三处都改用它）：贴底之前先按「那条滚动事件将会读到的样子」判一次实时位置，浏览器已执行但未报告的滚动（按键 / 滚动条 / 大纲跳转）不再被撤销，而 `observed()` 在任何位置都还没报告过时（刚进对话）不置一词，否则打开在底部的对话会被判成停住、永不贴底。**有意未取**：上游 F4（`.ui-stream [data-arrive] { overflow-anchor: none }`）—— 本树没有逐段到达的元素（`fade` 是按速率放出回复前缀，见 `stream-reveal.ts`），两态实测里 Frost 也没有只由锚点造成的漂移；另给转写区滚动容器加 `data-stream-scroll`（新 spec 要逐帧看这个元素，本树没有上游的 `data-find-region="conversation"`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1425** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2995 通过 / 4 跳过** · web **270 文件 / 3299 通过 / 2 跳过**（本笔 +4 用例）· hmr 无测试文件 · **反证（三处定向变异，各自只压中自己那条用例）**：只把 ② 退回 `if (dist < 80) stick = true;` → `stream-follow.test.ts` **1 failed / 19 passed**（「手势起在贴底与它的滚动事件之间」那条，`expected true to be false`）；去掉 `followToBottom` 里的 `observed()` → **1 failed**（「浏览器已经移上去、还没报告」那条）；让 `observed()` 第一次读数也参与判定 → **1 failed**（「刚进对话时第一次读数不置一词」那条）；还原后 **20 全过**；另把整份 `stream-follow.ts` 退回 `HEAD` → **4 failed**（含 `followToBottom is not a function`）· **本轮主证据（真服务端两态 × 真浏览器，同一份 spec 同一套 mock）**：本笔只动 web，两态 web 产物 `r140/{after,before}-dist`（主包 md5 `7d28025e…` / `26a306b1…`；两端核过确实是两份不同的东西 —— `observed` 出现 2 / 0 次、`passive:!1` 7 / 6 处、`onWheel` 2 / 3 处）挂在两个一次性数据根 `/root/adelie-fork-data/r140-{after,before}` 上、**改后 8982 / 改前 8983**（`ADELIE_SEED_ADMIN_PASSWORD`，模型指向本仓自带 mock LLM 8981；空数据根不需要模型 key —— 即 3.6 那个卡点）。`scroll-follow-bounce.spec.mjs` 每个主题 6 个手势、渲染进程降速四倍：**改前 Primer 5/6 · Frost 6/6 · Console 5/6 = 16/18 个手势回弹**（`late-snap` 与 `composed` 两类，日志 `r140/before-run.log`），**改后 18/18 个手势 0 回弹、`stillDrift` 全 0**（三主题各 6 个手势，1.6 min 跑完，三个 `✓`），`textMovedDown` 141–500px 说明滚轮的确把文字往上带了、不是空测 · **console**：改后态另起探针打开同一条会话、发一条真消息、滚轮上滚 5 格（`r140/probe.mjs`），`scrollTop` 620 → 320（正好 −300）而回复从 1153 涨到 2855，页面只有一条 **403 `/api/projects/…/machines`**（非管理员账号的既有行为，改前态一模一样），**无其它 error、无 pageerror**；截图 `r140/shots/after-chat.png`（流式回复、布局、底部输入区都正常）· **相邻回归（真浏览器）**：`chat` 1 + `outline` 2 + `selection-menu` 2（含「打开的选区菜单扣住实时回复的自动跟随、关闭后追平」那条正压在 `followToBottom` 上）**5 passed（1.0m）** · 端口只用 8981 / 8982 / 8983（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r140-{after,before}`，两态产物 / 日志 / 探针 / 截图都在 scratchpad 的 `r140/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | 见本行提交 |
+| 2026-10-27 | 用户点单（错误中心的复制按钮） | **成本中心异常表的每一行能整条复制走**（无清单条目，是用户 2026-10-26 当场点的单、第一百四十一轮记下「下一轮做」；本轮接的是 13:04 那轮留下、未提交的半成品，见本节「开工自检」）：`errors-panel.tsx` 新增导出 `errorCopyText(item)` —— 首行「最近时间 · 来源 · 错误码 · 类型（合行时再 ×N + 首次时间）」、随后**完整消息（换行照原样）**，用 ui 既有的 `CopyButton`（`size="sm"`、`text` 传取值函数）画在每行右端；不做悬停才显形（手机没有悬停，Tailwind v4 把 `hover:` 收在 `@media (hover: hover)` 里），表头那格留空（图标用 `aria-label` 自报名字，每行再读一遍列名是重复），`Th` 的 `children` 改可选；表格 `min-w` 720 → **752**（= 旧下限 + 复制列自己的 32，新列不从消息列抢宽度）；文案键 `errorsCopy` 中英各一条、文档 `usage.zh.md` / `usage.en.md` 各一句、changelog 一对 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型 —— 本笔不动接口）· `npx oxlint` 两个改动源码 / 用例文件 **0 警告 0 错误** · 8 个改动文件（含 changelog 一对）`prettier --check` 干净（先 `--write` 过两个）· 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2996 通过 / 4 跳过** · web **270 文件 / 3309 通过 / 2 跳过**（本笔 +6 用例，`errors-panel.test.ts` 单跑 22 过）· hmr 无测试文件 · **真看一眼（真 Web App + 真浏览器，画廊 7381 的 mock 数据：3 行、其中一行 ×4）**：中英各 **3 个**复制按钮；点第一行剪贴板 = `2026-10-27 13:35 · [llm] rate_limited · 预期内 · ×4 · 首次出现于 2026-10-27 12:10` + 换行 + 完整消息，英文页同一行读作 `… · Expected · ×4 · First at …`（本地化跟着界面语言走）；点第三条（未预期）剪贴板 = `… · [runtime] internal · 未预期` + 换行 + 整句 TypeError；列宽实测 **128 / 288 / 80 / 390 / 32**、420 宽视口下表格 **752** 而**页面横向溢出 0**（仍在自己的横滚盒里）；两页 **console 0 error、无 pageerror**，被点的行变成对勾；截图在 scratchpad 的 `shots/` 下 · 端口只用 **7381**（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data`（未新写），临时脚本与截图都在 scratchpad | `c4fd530e` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -17186,3 +17187,87 @@ sandbox-dsh 21（+1 跳过）· sandbox-bwrap 29。
 ### 提交
 
 - 两笔：模型库一笔、异常表过滤 + 本台账一笔（提交号见下一轮开工自检）。跑完那两笔的 CI 收工。
+
+## 第一百四十二轮：异常表每一行能整条复制走（2026-10-27，用户点单：错误中心的复制按钮）
+
+### 开工自检：接手的是上一轮未收尾的半成品
+
+- 开工时 `git status --short` **不干净**：6 个改动文件（`errors-panel.tsx`、`strings.ts` /
+  `strings-en.ts`、`errors-panel.test.ts`、`usage.zh.md` / `usage.en.md`、+126 −5），且没有 changelog。
+  按台账纪律先判这棵树归谁：
+  - `.git` 最后一次写入是 **13:04:18 / 13:04:30**（`FETCH_HEAD`、`index`，即上一轮 `merge --ff-only origin/main`）；
+    脏文件的 mtime 是 **13:08:11–13:08:29**，在那之后 git 再没被写过。
+  - 造出这批脏文件的是会话 `session-2026-10-27-13-04-08-a812e323`（scratchpad 目录 `r141/`，trace 停在
+    **13:16** 等一个 `input_command` 的测试输出）—— **被中断，不是仍在跑**：`/proc/*/cwd` 里没有任何进程落
+    在这个工作区。
+  - 改动内容与已完成第一百四十一轮结尾写下的「**错误中心的复制按钮**（用户 2026-10-26 当场点的单，说下一轮
+    做）本轮仍未做」逐条对得上：`errorCopyText` + 每行一个 `CopyButton` + 用例 + 文档。
+  - 据此按「无主半成品可接手做完」的口径接手：先核这份改动本身（`CopyButton` 的签名、`Th` 的
+    `children` 可选、`strings` 的类型是否被 `zh` 一处新增覆盖、mock 数据够不够看出折叠行），再补它缺的部分
+    （changelog 一对、`min-w` 跟着新列加宽、格式），然后跑门禁与真浏览器取证。
+- 这轮没有动 `legacy/main`、没有切分支、没有推 upstream、没有 `pnpm add`（避免换掉
+  `packages/{web,ui-gallery}/node_modules/@adelie/ui` 那个指回 `../../ui` 的符号链接）。
+
+### 改了什么
+
+- `packages/web/src/features/usage/errors-panel.tsx`
+  - 新增导出 **`errorCopyText(item)`**：首行 `最近时间 · [来源] 错误码 · 类型`，行折叠了多条记录时再追加
+    `×N` 与 `首次出现于 …`；随后换行接**完整消息**（换行原样保留）。纯函数、导出 —— 与
+    `errorsClearScopeText` 同一个理由：这个包的 vitest 跑在 `node` 里，点击和剪贴板看不到，文字看得到。
+  - 每一行右端一个 `CopyButton`（ui 包既有动作，`size="sm"`，`text` 传取值函数，点时才拼字符串）。
+    **不做悬停才显形**：手机没有悬停（Tailwind v4 把 `hover:` 收在 `@media (hover: hover)` 里），
+    悬停才出现的操作在那里等于不存在 —— 消息格本身是个按钮，也是同一个理由。
+  - 表头那一格**留空**：图标自己用 `aria-label` 报了名，每行再读一遍列名是重复；`Th` 的 `children`
+    因此改成可选。
+  - 表格 `min-w` **720 → 752**（= 旧下限 + 复制列自己的 32）：新列不从消息列身上抢宽度，最窄视口下
+    那个盒子照旧横向滚动。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：一个文案键 `errorsCopy`（中文「复制这条异常」/
+  英文 "Copy this error"），带「为什么」注释。
+- `packages/web/test/errors-panel.test.ts`：+6 条用例 —— 每行一个、空表没有；中英两种语言下首行含时间 /
+  `[env] tool_failed:exec_command` / 类型、消息整段（含换行与第二行）附在后面；折叠行才带 `×N` 与首次时间，
+  单条记录两样都不写；未知类型按「预期内」读（与旁边徽章一致），不会把 `undefined` 复制出去。
+- `packages/docs/content/usage.zh.md` / `usage.en.md`：异常面板一节补上这个按钮说的是什么、复制出来是什么。
+- changelog 一对 `changelog/unreleased/2026-10-27-errors-panel-copy{,.zh}.md`（本仓写法：英文那份链中文、
+  中文那份链英文，无上游 PR 行，写明「服务端一行没动」）。
+
+### 验证（都不是推测）
+
+- **类型检查**：六个包 `typecheck` **`EXIT=0`**（`core` / `ui` / `hmr` / `server` / `cli` / `web` 六个
+  `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型 —— 本笔不动接口形状）。
+- **lint / 格式**：`npx oxlint` 两个改动源码 / 用例文件 **0 警告 0 错误**；8 个改动文件（含 changelog 一对）
+  `prettier --check` 干净（先对 `errors-panel.tsx` 与用例 `--write` 过一遍，是接手时就没格式化）。
+- **测试**（逐包 `EXIT=0`、0 失败）：`core` **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · `ui` **130 / 1053** ·
+  `cli` **38 / 561** · `server` **204 / 2996 通过 / 4 跳过** · `web` **270 文件 / 3309 通过 / 2 跳过**
+  （本笔 +6 用例；`test/errors-panel.test.ts` 单跑 **22 通过**）· `hmr` 无测试文件。
+  跑 `server` 之前先 `pnpm --filter @adelie/core build` —— 它的用例从 core 的 **dist** 读模型目录，
+  上一轮改过 core 源码（TokenDance 分组重核），不重建会读到旧数据。
+- **真看一眼（真 Web App + 真浏览器）**：画廊开发服务器起在 **7381**，`app.html?route=/usage&theme=github`，
+  它的 mock 数据正好三行、其中第一行折叠了 4 条：
+  - 中文页 **3 个**复制按钮（`aria-label="复制这条异常"`）；点第一行，剪贴板读回
+    `2026-10-27 13:35 · [llm] rate_limited · 预期内 · ×4 · 首次出现于 2026-10-27 12:10`
+    + 换行 + `429 Too Many Requests from api.deepseek.com; retried after 8s.`；
+  - 英文页 **3 个**（`Copy this error`），同一行读作 `… · Expected · ×4 · First at …` —— 本地化跟着界面语言；
+  - 点第三条（未预期）读回 `… · [runtime] internal · 未预期` + 换行 + 整句 `TypeError: cannot read
+    properties of undefined (reading 'source') …`；被点的行图标变成对勾；
+  - 列宽实测 **128 / 288 / 80 / 390 / 32**（时间 / 来源·错误码 / 类型 / 消息 / 复制）；
+    1280 宽下表 918、**420 宽下 752 而页面横向溢出 0**（仍在自己的横滚盒里）；
+  - 两页 **console 0 error、无 `pageerror`**。截图 `shots/` 下：`usage-zh.png`（点过按钮，带着提示气泡与
+    对勾）、`usage-zh-clean.png`（干净态单看表尾）、`usage-zh-hover.png`（悬停态）、`usage-zh-final.png`
+    （干净态全页）、`usage-narrow.png`（420 宽）。
+- **端口**：只用了 **7381**（跑完已停）；3003 / 3004 / 4000 / 7364 / 7369 一个没碰，没有往 `~/.penguin` 写。
+
+### 没做 / 还差什么
+
+- 复制出来的**首行用「·」分段、第二行起是消息本身**这一形状是这轮定的；若以后要机器可读（比如直接贴进
+  issue 模板），得另加一种格式而不是改这个。
+- 这一笔不走「悬停显示」，所以行多时复制图标会一直在（一列 20px 的灰度字形，与消息格的常显按钮同一种取舍）。
+- 「清空」与复制都在同一张表上：清空后页面上没有行，自然也没有复制按钮（用例钉了空表不含该文案）。
+
+### 版本：未到阈值
+
+- 上次发版 **`v0.5.8`**（2026-10-26 23:07 CST）。自那以后功能性的是 5.50 / 5.51 / 5.52 / 5.53、第一百四十一轮
+  两笔与本轮这一笔，远不到 10。不动版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 两笔：异常表复制按钮 + changelog 一对 = **`c4fd530e`**；台账（本节的清单行 + 这一节）另起一笔。
