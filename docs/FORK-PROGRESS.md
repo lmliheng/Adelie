@@ -1116,6 +1116,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       **有意未取（同一提交里与本缺陷无关的两处）**：`plugins/sandbox-dsh/test/windows-shells.test.ts` 的
       Windows live 用例超时放宽（属 CI 面、本机不跑），与 `packages/cli/test/benchmark-commands.test.ts`
       那 2 行（本树没有这个文件）。
+- [x] **5.59 回复里的图片从工作区取，不再指向 Web App 自己的源**（**2026-10-29 第一百五十五轮落地**，
+      提交见该节，不是移植）：模型写图片的方式和写 README 一样（`![预览](shot.png)`，相对工作区），而会话把
+      这个 src 照原样渲染 —— 浏览器把它解析成 App 自己的路由（`/chat/shot.png`，一个不存在的页面），于是
+      回复里每一张工作区图片都是坏图；上一轮装上的图像插件因此**在技能文档里直接告诉 Agent 别用图片语法**，
+      因为要看见生成的图只能去文件面板里打开。现在会话里的图片 src 与链接走同一套判断：指向工作区文件的从
+      这个会话自己的文件路由取（在机器上的会话就从那台机器取）、指向别的站点的原样保留、解析不到东西的
+      （爬出工作区的 `..`、`~` 路径、被渲染器清空的 src）也原样保留。**为什么是这一条**：表上未勾选的仍是
+      2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10（各自的卡点见上），而这一条是上一轮自己留下的、用户下一句
+      话就会撞上的一处真缺陷（图像插件装上了，图看不见）。
 - **量过、本轮没移植的一条**：`#1356`（`04ed9c70`，server 7 文件 / +183 −8，异常结束时已计量的请求只统计
       一次）。补丁能落（两处小冲突），单元用例也能红转绿，但**本树走不到那个形态**：本树的 `token_usage`
       只在 `streamGenerate` 的「正常收尾」分支产出（`generative-model.ts` 的 `finish()` 之后 `return
@@ -2416,6 +2425,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-28 | 5.56 | **取消的 AMSP 消息流当场停住，缓存的事件也不再交付**（上游 `ca7114a2` `#1326` 移植，照改动落、不是合分支；上游 4 文件 / +82 −1 → 本树落下 **4 个跟踪文件（2 改 2 补测试）** + changelog 一对，**源码各一处**：`packages/amsp/src/sse.ts` 在 `yield event` 之后检查信号、`packages/amsp/src/client.ts` 的 `AgentRun.#drive` 在读取循环无错结束时检查）：`sseData` 只在 `reader.read()` 之后看 abort，而调用方的循环体正好在生成器挂于 `yield` 时运行 —— 那段时间的取消要等下一个数据块才被发现，当前块里已解析出来的事件照样交付；跟在其后的 `[DONE]` 把读取平静结束掉，`AgentClient` 因此把已取消的 run 报成 `completed`。现在下一次读取先抛出调用方自己的原因，`#drive` 在无错出口再查一次（缓存的 `[DONE]` 走的正是这条出口）。上游第三条用例在 `HttpTransport` 上，本树没有那个文件，改成 client 层的等价用例 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · `@adelie/amsp` test **`EXIT=0`、72 通过**（2 文件，本笔 +4）· 逐包 test **`EXIT=0`、0 失败**：core **1438** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3312 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：两个源码文件退回 `HEAD`、只留新用例 → `sse.test.ts` **2 failed**（块内两事件之间、缓存 `[DONE]`）+ `client.test.ts` **1 failed**（缓存的 `[DONE]` 报完成），放回本笔 → **72 全过** · **本轮主证据（真 HTTP SSE 服务 + 真 `dist` 客户端，两态同一份探针）**：一个 chunk 里依次写 `run.started` / `request.started` / `text.delta` / `run.done` / `[DONE]`，客户端在循环体里收到 `run.done` 后 abort —— **改前** `result()` **resolved `completed`**（迭代拒绝了，结果却报成功），**改后** `result()` 与迭代都以原始原因 reject；同一流的正常读完对照两态都 `status: completed`（不被误杀）。改前 / 改后 `dist` 主包 md5 `8ac843ad…` / `695b98ff…` 各核过一次 · 端口只用 8991–8994，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `73942f9f` |
 | 2026-10-28 | 5.57 | **子智能体落在派发它的那个 `run_subagent` 调用上**（上游 `3fa746b2` `#1107` 移植，照改动落、不是合分支；上游 4 文件 / +461 −3 → 本树落下 **2 个跟踪文件（1 改 1 补测试）** + changelog 一对）：同时跑几个 `run_subagent` 时子会话会挂错卡片（借另一个调用的描述与思考等级回落、转写芯片指着另一条对话）。`StreamModel.unconfirmedSubagents` 记下「开头提示词还没到、只按位置绑过」的孩子，它的第一条模型消息（正是派发它的调用交给它的开头提示词，原样）由 `moveToSpawningCard` / `spawningCard` 移到正确的那张卡上：提示词必须一致，`agent_id` / `model_id` / `provider`（含继承父级取值）必须与孩子 `session_meta` 相符，与卡上未确认的孩子互换位置；元数据缺失导致无从分辨、或本就没有卡片可绑时按位置的绑定照旧，被拒的调用永远拿不到孩子。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮四笔新提交都不能单独落（`#1375` 落在已删的 `landing`；`#1376` / `#1377` 要 `#1344` 的重试行与机器详情组件；`#1378` 要 `#1343` / `#1344` 的 `stopReconnecting` / `settleForStream`，本树 `service.ts` 里都没有），于是往前扫未移植提交，取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2994 通过 / 15 跳过** · web **270 文件 / 3324 通过 / 2 跳过**（本笔 +4 用例）· **反证（单测）**：`stream-model.ts` 退回 `HEAD`、只留新用例 → `agent-topology.test.ts` **6 failed / 42 passed**，放回本笔 → **48 全过** · **本轮主证据（真服务端两态 × 真浏览器，同一份合成会话、同一套探针）**：把 mock 录下的真会话改写成「两个并发 `run_subagent`、两个孩子按 A→B 到达」的形状（卡片 A =「Compare the plans」、B =「Collect the pricing pages」），两态 web 产物 `r153/{after,before}-dist`（主包 md5 `3b0d209e…` / `50ebe39d…`，`unconfirmedSubagents` 出现 2 / 0 次）挂在两个数据根 `/root/adelie-fork-data/r153-look{,-before}` 上、**改后 8996 / 改前 8998**；打开该会话 →「快捷方式」→「智能体面板」，逐节点点开读它挂着的孩子与孩子的回答：**改前两张卡互换**（「Compare the plans」挂着 `cccc0003`、内容是「Collected three pricing pages.」；「Collect the pricing pages」挂着 `bbbb0002`、内容是「The plans agree on price and differ on the quota.」），**改后各归各位**（`bbbb0002` ↔ plans、`cccc0003` ↔ pricing）；两态 console 各只有一条 403 `/api/projects/…/machines`（非管理员账号的既有行为） · **相邻回归（真浏览器）**：`subagent.spec.mjs` 4 条 + `background-subagent.spec.mjs` 2 条 **6 passed（31.0s）**（本机没装 Playwright 自带的 chromium，用临时 config 指向 `/usr/bin/chromium`）· 端口只用 8995–8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r153-*`，探针 / 两态产物 / 截图 / 合成会话生成脚本都在 scratchpad 的 `r153/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | `f91cbfda` |
 | 2026-10-28 | 5.58 | **运行时发货之后才加的配置成员，不再挡住热推的平台**（上游 `64aebf0f` `#1058` 移植，照改动落、不是合分支；上游 9 文件 / +86 −21 → 本树落下 **5 个跟踪文件 + changelog 一对**：`hmr/capabilities.ts` 把 `penguinGoOrigin` 移出 `HMR_INTERFACES.config` 并写下规则；`config.ts` 里它与 `modelscopeBridgeUrl` 改为可选；两个 provider 在没有值时回落到 `normalize*(undefined)` 的生产默认值；一条回归用例。**有意未取**同一提交里 sandbox-dsh 的 Windows live 超时与 cli 那 2 行（本树没有那个文件））：热推换的是平台、从不换运行时，把「运行时之后才加的成员」列进声明列表等于拒绝每一个比它更早装上的运行时 —— `/api/hmr/upgrade` 400「missing penguinGoOrigin」，兼容的平台推不过去，被拒的推送还可能重启服务端；`modelscopeBridgeUrl` 的消费者此前也没有兜底，旧运行时上会读到 `undefined`。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮的新提交 `#1380` 与 `#1375` 落在已删的 `landing`，`#1376` / `#1377` / `#1378` 仍要 `#1344` / `#1343` 的重试行与机器详情组件，`3fa746b2` 之前的小件里 `#1096` 要真界面、`#1083` 要整套上游 HTTP 索引、`#1095` 要上游 `stat-hint.tsx` / `session-stats.tsx`（本树都没有），于是取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2995 通过 / 15 跳过**（+1 正是本笔用例）· web **270 / 3324 通过 / 2 跳过** · **反证（单测）**：`hmr-resources.test.ts` 里新用例的断言直接落在 `HMR_INTERFACES.config` 上 —— 把 `capabilities.ts` 退回 `HEAD` → **1 failed / 26 passed**（`expected [… 'port', …(11) ] to not include 'penguinGoOrigin'`），放回本笔 → **27 全过** · **真服务端取证**：重建 `@adelie/server` 产物（`dist/index.js` 里 `penguinGoOrigin ?? normalizePenguinGoOrigin(void 0)` 在位、声明列表里那一条已消失），一次性数据根 `/root/adelie-fork-data/r154-look`、**端口 8999** 起真服务 → `/` **200**、种子管理员登录 **200**（`isAdmin: true`）、`/api/version` 与 `/api/projects` 正常，服务端启动无异常、未出现握手相关报错；跑完已停、端口已释放 · 端口只用 8999，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r154-look`，临时文件只在 scratchpad 的 `r154/`；没用 `rm -rf` | 9ffd5f19 |
+| 2026-10-29 | 5.59 | **回复里的图片从工作区取，不再指向 Web App 自己的源**（不是移植：`packages/ui/src/components/content/prose/prose.tsx` 新增 `ProseImageResolver` / `ProseImagesProvider` 与 `img` 适配器（上面没有解析器时保留 Markdown 写的 src，空 src 不渲染 `src` 属性）、`prose.css` 新增 `.md-body img`（阅读栏为最大宽度、按比例、整块）；`packages/web/src/lib/reply-image.ts` 新增纯规则 `resolveReplyImage`（`external` / `file` / `none`，复用 `toWorkspaceRelative` 与 `reply-link.ts` 里新导出的 `isExternalRef`，不再写第二份 scheme 判断）；`features/chat/workspace-links.tsx` → `workspace-refs.tsx`（`WorkspaceRefsProvider` 同时给链接与图片），`MessageStream` 的渲染上下文新增 `workspaceFileUrl`、`chat-page.tsx` 按会话 id 构造（起草时缺席）；`plugins/use-seedream` 的 `SKILL.md` 从「别用图片语法」改成让 Agent 直接给图；用例：`packages/web/test/reply-image.test.ts`（新）、`packages/web/test/md.test.ts`（＋图片一组）、`packages/ui/test/prose.test.ts`（＋图片一组，`SETTLED_MD_COMPONENTS` 由 `[a,pre]` 变 `[a,img,pre]`）、`packages/web/e2e/reply-image.spec.mjs`（新）与 mock 的 `image reply test` 分支；changelog 中英一对。**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 11 个改动文件 **0 警告 0 错误** · 12 个源码 / 用例 / mock 文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1056**（+3 本笔新增）· cli **38 / 561** · server **205 / 2995 通过 / 15 跳过** · web **271 文件 / 3337 通过 / 2 跳过**（+13：新增 9 条 + md 的 4 条）· **真服务 + 真浏览器整套 e2e**（`run-one.sh`：mock 8934 / 服务端 8935、脚本自己的 `mktemp` 数据根、系统 chromium）：**171 passed（14.3m）、3 failed** —— `chat.spec`（文件面板 iframe 的 `#shim-ok` 没出现）与 `scroll-follow-bounce` 的 Primer / Console 两条（滚轮没滚动 >100px）。**同一套跑法在改动之前的树上一样红**（`git stash push -- packages/ui/src packages/ui/test packages/web/src packages/web/test packages/web/e2e` + 重建 web → 这 3 条仍红、Frost 那条仍绿，3 failed / 1 passed），所以是这套跑法 / 这台机器上的既有不稳（系统 chromium + `--no-sandbox` + 机器繁忙），不是本笔 · **反证**：把 `MessageStream` 的 `fileUrl` 改成 `undefined` 并重建 web → 本笔的 e2e **1 failed**（33 次重试都读到 `<img src="shot.png">`，`toHaveAttribute` 期望 `files/content`），改回并重建 → **1 passed（2.5s）** · **两态实测**（一次性数据根 + mock 模型、真浏览器、1280×900，探针 `probe-image.mjs` 每态生成一张 480×320 的棋盘 PNG 放进工作区）：**改前** `src="shot.png"` → 浏览器请求 `/chat/shot.png`（SPA 兜底 200 的 HTML）→ `naturalWidth 0`，截图里三张全是坏图占位（alt 文字）；**改后** `src="/api/sessions/<id>/files/content?path=shot.png"` → **200**、`naturalWidth 480`，截图里棋盘图正常显示，另两张（`../../outside.png`、`https://example.com/remote.png`）仍按原样坏着、src 未被改写；两态 console **无 error / 无 pageerror**；截图 `r155/{before-big,after-big}.png`、JSON 在 scratchpad · 端口只用 8934 / 8935 / 8936 / 8937 与一次探路的 8977（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `mktemp` 根与 `/root/adelie-fork-data/r155`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 9a88883a |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -18471,3 +18481,91 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 代码 + 用例 + changelog 中英一对：**`9ffd5f19`**；本轮台账（5.58 与上表那一行、本节）另起一笔，与历次一致。
+
+## 第一百五十五轮：回复里的图片从工作区取（2026-10-29，条目 5.59）
+
+### 选活：表上全卡着，接上一轮自己留下的那处真缺陷
+
+- 表上未勾选的仍是 **2.2c**（剩下的全在桌面壳一侧、`adelie-app.service` 这类既有部署单元，以及按 2.5 的
+  口径有意留到发布期的 `ui-gallery` mock / `packages/docs`）、**3.5**（拍板取哪个桌面壳）、**3.6**（要模型
+  key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。本轮按纪律逐条确认过这些都不能做。
+- 上游这一轮没有新的可落提交：尖端仍是 `17fe6c8e`（`#1380`，落在已删的 `packages/landing`）；把 200 笔
+  上游提交与台账逐条对过，从**台账从未提过**的 50 笔里又量了几笔——`#967`（模型库分组设置：校验 base URL、
+  保存时探测、关框后不再写）在本树的 `provider-settings-dialog.tsx` 这一层**根本不存在**（我们自己的模型库
+  对话框是另一份），`#1236`（机器不在线时的历史加载失败页）要 `#1204` 的 `RetryStatus` / `retryReading`，
+  `#1088`（装代理时保留运行时自己的 fetch）本树无消费者 (`@prismshadow/agenthub` 不构造 `Request`)、
+  `#1175` / `#1233` 都属一整轮以上的并发 / 会话重建。于是照最近几轮的做法：**在自家代码里找一处真缺陷**。
+- 取的是**上一轮自己留下的尾巴**：第一百五十二轮把图像插件装上了（`plugins/use-seedream`），但它的
+  `SKILL.md` 里写着一句「Markdown 图片语法在聊天里解析不了 —— 它指向 Web App 自己的源，不是工作区，让用户
+  去文件面板打开」。那句是**当时的事实**，也正是一处用户下一句话就会撞上的缺陷：Agent 生成一张图、写进
+  工作区、在回复里用图片语法展示，用户看到的是一个坏图占位。
+
+### 做了什么
+
+- `packages/ui/src/components/content/prose/prose.tsx`：新增 `ProseImageResolver` / `ProseImagesProvider`
+  与 `img` 适配器，形状与旁边的链接解析器一致。**没有解析器时行为一点不变**（保留 Markdown 写的 src），
+  所以渲染 README、手册、工单、文档的每一处界面都还是原来那样；空 src 干脆不渲染 `src` 属性（`src=""`
+  等于向浏览器要当前页面）。两张 `components` 表（streaming / settled）共用同一个 `MdImage` 引用，
+  理由与它们共用 `MdLink` 相同：react-markdown 拿组件当元素**类型**，每次渲染换一个新函数会让整棵树重挂。
+- `packages/ui/src/components/content/prose/prose.css`：`.md-body img` —— 阅读栏就是图片的最大宽度，按原
+  比例缩放、整块占位，2000px 的截图不会把对话撑宽。
+- `packages/web/src/lib/reply-image.ts`（新）：`resolveReplyImage(src, workspace)` 的纯规则 ——
+  `external`（带 scheme 或 `//host`）、`file`（解析成工作区相对路径）、`none`（爬出去的 `..`、`~`、空
+  src）。百分号解码、丢掉 query / hash、`./` 与空段、绝对路径只在工作区内才认，全部复用
+  `toWorkspaceRelative`；scheme 判断从 `reply-link.ts` 导出成 `isExternalRef`，链接与图片共一份，免得两处
+  对「什么算外部」各说各话。
+- `packages/web/src/features/chat/workspace-refs.tsx`（原 `workspace-links.tsx`，改名因为现在两件事都做）：
+  `WorkspaceRefsProvider` 同时提供链接与图片两个解析器，两者一起进、一起退（一个上下文变化会让整条对话里
+  的链接与图片重渲染，所以 `onOpenFile` / `fileUrl` 必须稳定）。
+- `packages/web/src/features/chat/message-stream.tsx`：渲染上下文新增 `workspaceFileUrl`；
+  `chat-page.tsx` 用会话 id 构造它（`api.workspaceFileUrl`，就是文件面板一直在用的那个 URL，在机器上的会话
+  也照样路由到那台机器），起草时缺席 —— 那时还没有会话的文件可读。
+- `plugins/use-seedream/skills/seedream/SKILL.md`：「把结果交给用户」一节改成让 Agent 直接把图放进回复；
+  图层拆分仍然只给底图预览、其余按路径列出来（一层一张图会把对话刷成一片图墙）。
+- changelog 中英一对：`changelog/unreleased/2026-10-29-reply-image-from-workspace{,.zh}.md`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 /
+  590 类型 —— 本笔不碰服务契约）。
+- `oxlint` 11 个改动文件 **0 警告 0 错误**；12 个源码 / 用例 / mock 文件与一对 changelog
+  `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过** · ui
+  **130 文件 / 1056 通过**（+3，本笔新增） · cli **38 / 561** · server **205 文件 / 2995 通过 /
+  15 跳过** · web **271 文件 / 3337 通过 / 2 跳过**（+13：新文件 9 条 + `md.test.ts` 里 4 条）。
+- **反证（e2e）**：把 `MessageStream` 的 `fileUrl` 改成 `undefined` 并重建 web → 本笔的用例
+  `reply-image.spec.mjs` **1 failed**（33 次重试都读到 `<img src="shot.png">`，而断言要的是
+  `files/content`）；改回并重建 → **1 passed（2.5s）**。
+- **两态实测**（真服务 + 真浏览器，一次性数据根 + mock 模型，1280×900；探针每态往工作区写一张 **480×320
+  的棋盘 PNG**，再让 mock 的回复用三种 src 展示它）：
+  - **改前**：`src="shot.png"` → 浏览器请求 `/chat/shot.png`（SPA 兜底回了 200 的 HTML）→ `naturalWidth 0`，
+    截图里三张全是坏图占位（alt 文字）。
+  - **改后**：`src="/api/sessions/<id>/files/content?path=shot.png"` → **200**、`naturalWidth 480`，棋盘图
+    正常显示；`../../outside.png` 与 `https://example.com/remote.png` 两张仍按原样坏着、src 一个字没改。
+  - 两态 console **无 error、无 pageerror**（唯一一条 404 是 `../../outside.png` 按 SPA 兜底回 200 前的那次
+    探测；`/outside.png` 就是那段 `..` 地址，与被修复的行为一致）。
+  - 截图 `r155/{before-big,after-big}.png`、两态 JSON 与探针在 scratchpad。
+- **整套 e2e**（`run-one.sh`：mock 8934 / 服务端 8935、脚本自己的 `mktemp` 数据根、系统 chromium）：
+  **171 passed（14.3m）、3 failed** —— `chat.spec` 的文件面板 iframe（`#shim-ok` 没出现）与
+  `scroll-follow-bounce` 的 Primer / Console 两条（滚轮没滚动）。**同一套跑法在改动之前的树上一样红**
+  （`git stash push -- packages/ui/src packages/ui/test packages/web/src packages/web/test packages/web/e2e`
+  + 重建 web → 这 3 条仍红、Frost 那条仍绿），所以是这套跑法 / 这台机器的既有不稳（本机没装 Playwright
+  自带的 headless shell，用的是 `/usr/bin/chromium` + `--no-sandbox`，且机器一直在忙），不是本笔引入的。
+- 端口只用 8934 / 8935 / 8936 / 8937 与一次探路的 8977（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落在一次性 `mktemp` 根与 `/root/adelie-fork-data/r155`，一个字节没往 `~/.penguin` /
+  `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）。
+
+### 没做 / 还差什么
+
+- 表上剩下的仍是那几条卡点：**2.2c**（桌面壳一侧与 `adelie-app.service` 单元，发布动作）、**3.5**（拍板）、
+  **3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+- 本轮只做了「图片能显示」这一层。考察报告里的**二期其余部分**还没做：真实像素角标的胶囊工具条、同批结果
+  的缩略图切换、以及「按能力探测出现按钮」——那几条要等 `ARK_API_KEY` 进密钥库才有东西可点（本机没有，
+  图像插件至今仍是「写了没真跑过」）。三期（框选 / 涂抹、图层查看器）按报告的分期再说。
+- 另一个没做的顺带项：聊天里的图片现在**不能点开看大图**（`Lightbox` 只被文件面板与附件用着）。要不要接上
+  是二期的同一件事，留到那条里一起做。
+
+### 提交
+
+- 代码 + 用例 + mock 分支 + 插件技能文档 + changelog 中英一对：一笔；本轮台账（5.59 与上表那一行、本节）
+  另起一笔，与历次一致。
