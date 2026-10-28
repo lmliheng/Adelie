@@ -10,9 +10,14 @@
  *   events that arrived.
  * - Given a caller that stops after the first event, the body is cancelled: the connection
  *   closes rather than being read on.
+ * - Given an abort between two events of one chunk, the next read rejects with the abort reason
+ *   and the events buffered behind it are not dispatched, a buffered `[DONE]` included.
+ * - Given an abort after the last event of the body was dispatched, the next read rejects rather
+ *   than completing.
  */
 import { describe, expect, it } from "vitest";
 import { readSse } from "../src/index.js";
+import { sseData } from "../src/sse.js";
 
 const encoder = new TextEncoder();
 
@@ -116,5 +121,47 @@ describe("readSse", () => {
       break;
     }
     expect(cancelled).toBe(true);
+  });
+
+  // The caller's loop body runs while the generator is suspended at `yield`, so an abort there
+  // arrives without a read to notice it: the rest of the chunk is already parsed and must not be
+  // dispatched.
+  it("rejects an abort between events without delivering the rest of the chunk", async () => {
+    const control = new AbortController();
+    const reason = new Error("Stopped by the caller");
+    const events = sseData(body("data: first\n\ndata: second\n\n"), control.signal);
+    try {
+      expect((await events.next()).value).toBe("first");
+      control.abort(reason);
+      await expect(events.next()).rejects.toBe(reason);
+    } finally {
+      await events.return(undefined);
+    }
+  });
+
+  it("rejects an abort on a buffered [DONE] rather than ending the read", async () => {
+    const control = new AbortController();
+    const reason = new Error("Stopped before DONE");
+    const events = sseData(body("data: keep\n\ndata: [DONE]\n\n"), control.signal);
+    try {
+      expect((await events.next()).value).toBe("keep");
+      control.abort(reason);
+      await expect(events.next()).rejects.toBe(reason);
+    } finally {
+      await events.return(undefined);
+    }
+  });
+
+  it("rejects an abort after the event at the end of the body instead of completing", async () => {
+    const control = new AbortController();
+    const reason = new Error("Stopped at EOF");
+    const events = sseData(body("data: final\n\n"), control.signal);
+    try {
+      expect((await events.next()).value).toBe("final");
+      control.abort(reason);
+      await expect(events.next()).rejects.toBe(reason);
+    } finally {
+      await events.return(undefined);
+    }
   });
 });

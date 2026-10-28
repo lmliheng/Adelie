@@ -10,7 +10,9 @@
  * character anywhere. An event is dispatched at the blank line that closes it; one the body ends
  * in the middle of is dropped, since its data may be cut short. Comment lines (`: keep-alive`)
  * and every field but `data` are skipped. The body is read to its end, or cancelled — the
- * connection closed — when the caller stops iterating early.
+ * connection closed — when the caller stops iterating early. Once the signal aborts, the read
+ * rejects with its reason before another event is dispatched, even one already buffered in the
+ * chunk being parsed.
  *
  * `[DONE]` is AMSP's end-of-stream marker; it is yielded like any other data, so a caller stops
  * there.
@@ -22,7 +24,8 @@ export function readSse(body: ReadableStream<Uint8Array>): AsyncGenerator<string
 /**
  * {@link readSse}, cancellable: once `signal` aborts, the body is cancelled and the read rejects
  * with the signal's reason, whether or not the `fetch` that produced the body honours the signal
- * itself.
+ * itself. An abort between two events of the same chunk is seen at the next read, so the events
+ * after it — a buffered `[DONE]` included — are not dispatched.
  */
 export async function* sseData(
   body: ReadableStream<Uint8Array>,
@@ -77,6 +80,12 @@ export async function* sseData(
             const event = data.join("\n");
             data = null;
             yield event;
+            // The signal is checked after `read()` above, which misses an abort that happens
+            // while this generator is suspended at `yield` — the caller's loop body runs in
+            // between. The rest of the chunk is already parsed, so without this check the
+            // events after the abort (a buffered `[DONE]` included) are still delivered, and a
+            // cancelled run reads as one that completed.
+            if (signal?.aborted) throw signal.reason;
           }
           continue;
         }

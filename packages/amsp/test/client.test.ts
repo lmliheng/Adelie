@@ -48,6 +48,9 @@
  * - Aborting the signal mid-stream closes the connection and rejects with the signal's AbortError,
  *   whether the fetch errors the body itself or leaves it to the reader.
  * - The iteration stops at once when the signal aborts, and events not yet read are dropped.
+ * - A signal that aborts between two events of one chunk rejects the run with the abort reason,
+ *   even when the next event buffered behind it is `[DONE]`: a cancelled run is never reported as
+ *   completed.
  * - A signal that aborts as the response arrives rejects without waiting for the stream; one
  *   aborted before the run sends nothing.
  * - run.abort() asks the server to abort and the stream ends with run.done aborted; on a run that
@@ -675,6 +678,29 @@ describe("aborting", () => {
 
     expect(error).toBe(controller.signal.reason);
     expect(seen).toEqual(["run.started", "request.started", "text.delta"]);
+  });
+
+  // One chunk carries both the last event and `[DONE]`, and the caller aborts in between: the
+  // buffered `[DONE]` used to end the read quietly, so the run resolved `completed`.
+  it("rejects a run aborted before a buffered [DONE] instead of reporting it completed", async () => {
+    const served = fake.stream("POST", RUNS, [frame(started) + frame(runDone()) + DONE, never()]);
+    const controller = new AbortController();
+    const run = client.run({ input: "hi", signal: controller.signal });
+
+    const seen: string[] = [];
+    const iteration = (async () => {
+      for await (const event of run) {
+        seen.push(event.type);
+        if (event.type === "run.done") controller.abort();
+      }
+    })();
+
+    const error = await iteration.catch((err: unknown) => err);
+
+    expect(error).toBe(controller.signal.reason);
+    expect(seen).toEqual(["run.started", "run.done"]);
+    await expect(run.result()).rejects.toBe(controller.signal.reason);
+    expect(served.closed).toBe(true);
   });
 
   it("drops the events not yet read when the signal aborts while the reader lags behind", async () => {

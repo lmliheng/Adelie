@@ -273,6 +273,10 @@ class AgentRun implements Run {
               });
         }
       }
+      // The loop can end without an error although the caller aborted: a `[DONE]` already parsed
+      // out of the chunk it was reading ends the loop normally. A cancelled run is not one that
+      // completed, so it rejects here rather than with the outcome it happened to reach.
+      if (control.signal.aborted) throw control.signal.reason;
       const result = collector.result();
       this.#end({ ok: true });
       return result;
