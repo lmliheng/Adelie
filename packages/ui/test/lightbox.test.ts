@@ -37,6 +37,22 @@ describe("ZoomableImage", () => {
       '<button type="button" class="block cursor-zoom-in"><img src="/a.png" alt="Chart" class="h-20"/></button>',
     );
   });
+
+  it("carries the caller's other picture attributes to the thumbnail, not to the lightbox", () => {
+    const html = renderStatic(
+      createElement(ZoomableImage, {
+        src: "/a.png",
+        alt: "Chart",
+        title: "预览",
+        width: 320,
+        lazy: true,
+      }),
+    );
+    const thumbnail = html.match(/<img\b[^>]*>/)?.[0] ?? "";
+    expect(thumbnail).toContain('title="预览"');
+    expect(thumbnail).toContain('width="320"');
+    expect(thumbnail).toContain('loading="lazy"');
+  });
 });
 
 describe("Lightbox", () => {

@@ -12,7 +12,8 @@
  *   renders; Shiki only loads in an effect, which static markup never runs);
  * - an image whose src names a Workspace file is fetched from that Session's file route, while an
  *   external or unresolvable src keeps the one the Markdown wrote. How a src is sorted is
- *   reply-image.test.ts.
+ *   reply-image.test.ts. Inside a conversation the picture is a button over the lightbox; anywhere
+ *   else it stays a still <img>.
  */
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
@@ -215,6 +216,15 @@ describe("Md images", () => {
         "/api/sessions/s1/files/raw?path=x.png",
       ]);
     }
+  });
+
+  it("is clickable in a conversation and still on any other surface", () => {
+    const inConversation = renderInConversation("![预览](shots/cat.png)");
+    expect(inConversation).toContain('<button type="button" class="block cursor-zoom-in">');
+    expect(inConversation).toContain('alt="预览"');
+    // Outside one — a handbook page, the Memory view, a file preview — the picture stays an <img>,
+    // so nothing a README or a document lays out turns into a button.
+    expect(render("![预览](shots/cat.png)")).not.toContain("<button");
   });
 });
 

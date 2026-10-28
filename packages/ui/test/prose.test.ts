@@ -1,7 +1,8 @@
 /**
  * Prose and Md: Markdown in its reading box, the three densities, the link default and the
- * resolver that overrides it, the image adapter and the resolver that points a src elsewhere,
- * fenced code routed into CodeBlock, and the stylesheet the box reads.
+ * resolver that overrides it, the image adapter and the resolver that points a src elsewhere (and
+ * the zoom a conversation asks for), fenced code routed into CodeBlock, and the stylesheet the box
+ * reads.
  * How the pipeline typesets math is prose-math.test.ts; where a bare URL ends is
  * remark-autolink-boundary.test.ts.
  */
@@ -129,6 +130,81 @@ describe("Md images", () => {
     const tags = renderStatic(createElement(Md, { text: "![a]()" })).match(/<img\b[^>]*>/g);
     expect(tags?.[0]).toContain('alt="a"');
     expect(tags?.[0]).not.toContain("src=");
+  });
+
+  it("stay a bare picture on a surface that does not ask for zoom", () => {
+    const html = renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve: null,
+        children: createElement(Md, { text: "![截图](a.png)" }),
+      }),
+    );
+    // A README's badge is decoration: a click on it must keep doing whatever the page around it does.
+    expect(html).toContain('<img src="a.png" alt="截图" loading="lazy"/>');
+    expect(html).not.toContain("<button");
+  });
+
+  it("become a button over the lightbox when the provider is zoomable", () => {
+    const html = renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve: null,
+        zoomable: true,
+        children: createElement(Md, { text: "![截图](a.png)" }),
+      }),
+    );
+    expect(html).toContain('<button type="button" class="block cursor-zoom-in">');
+    expect(html).toContain('<img src="a.png" alt="截图" loading="lazy"/>');
+    // Nothing is portalled over the page until the picture is clicked.
+    expect(html.match(/<img\b/g)).toHaveLength(1);
+  });
+
+  it("zoom the src the resolver chose, not the one the Markdown wrote", () => {
+    const html = renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve: () => ({ src: "/files/a.png" }),
+        zoomable: true,
+        children: createElement(Md, { text: "![截图](a.png)" }),
+      }),
+    );
+    expect(imageSrcs(html)).toEqual(["/files/a.png"]);
+  });
+
+  it("keep a picture with nothing to enlarge a bare picture even when zoomable", () => {
+    const html = renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve: null,
+        zoomable: true,
+        children: createElement(Md, { text: "![a]()" }),
+      }),
+    );
+    expect(html).not.toContain("<button");
+    expect(html).not.toContain("src=");
+  });
+
+  it("leave a picture the author wrapped in a link to that link", () => {
+    const html = renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve: null,
+        zoomable: true,
+        children: createElement(Md, { text: "[![截图](a.png)](https://x.dev/page)" }),
+      }),
+    );
+    // A button in an anchor fires both handlers (the picture would open a tab and an overlay at
+    // once), so the link keeps the click it was given.
+    expect(html).not.toContain("<button");
+    expect(anchors(html)[0]).toContain('href="https://x.dev/page"');
+    expect(html).toContain('<img src="a.png" alt="截图"');
+  });
+
+  it("zoom a picture that sits beside a link, not one inside it", () => {
+    const html = renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve: null,
+        zoomable: true,
+        children: createElement(Md, { text: "[doc](https://x.dev) ![截图](a.png)" }),
+      }),
+    );
+    expect(html).toContain('<button type="button" class="block cursor-zoom-in">');
   });
 });
 

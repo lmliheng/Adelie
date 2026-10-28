@@ -25,6 +25,11 @@
  * Links open in a new tab unless a `ProseLinksProvider` above decides otherwise — the Web App's
  * conversation sends a link to a Workspace file to its Files panel that way.
  *
+ * A picture is a plain `<img>` — unless a `ProseImagesProvider` above turns `zoomable` on, which is
+ * what a conversation does: there a click opens the picture in the lightbox, because a 2000px
+ * screenshot fitted to the reading column is too small to read and there was no way to see it whole
+ * short of the Files panel. Every other surface keeps the still picture a README expects.
+ *
  * Two optional props open the renderer to a surface with its own nodes — the channel message body,
  * which keeps `@mentions` as chips — without a second copy of the pipeline drifting from this one.
  * They only ever ADD to the shared stage and to the maps below; nothing a surface passes can take
@@ -35,6 +40,7 @@ import type { ComponentPropsWithoutRef, MouseEvent, ReactElement, ReactNode } fr
 import ReactMarkdown from "react-markdown";
 import type { Components, ExtraProps, Options } from "react-markdown";
 import { CodeBlock } from "../code-block/code-block";
+import { ZoomableImage } from "../../overlays/lightbox/lightbox";
 import { NO_REHYPE_PLUGINS, REHYPE_PLUGINS, REMARK_PLUGINS } from "./markdown-plugins";
 import "katex/dist/katex.min.css";
 import "./prose.css";
@@ -113,6 +119,15 @@ export type ProseImageResolver = (src: string, alt: string) => { src: string } |
 
 const ProseImagesContext = createContext<ProseImageResolver | null>(null);
 
+/** Whether a click on a picture below opens it in the lightbox; off unless a provider turns it on. */
+const ProseImageZoomContext = createContext(false);
+
+/**
+ * Whether the picture below sits inside a link. `MdLink` sets it for its own children, so it is
+ * always `false` unless a link put it there; a consumer only reads it.
+ */
+const ProseInLinkContext = createContext(false);
+
 /**
  * Hands the Markdown below an image resolver; `null` restores the default, the src as written.
  *
@@ -121,15 +136,26 @@ const ProseImagesContext = createContext<ProseImageResolver | null>(null);
  * do. It exists because a relative src in a reply names a file of the Session's Workspace, which
  * the browser resolves against the App's own origin — a broken image. The surface that knows how
  * to serve a Workspace file says so here; every other Markdown surface renders untouched.
+ *
+ * `zoomable` is independent of the resolver: it says the pictures below are read at their own size
+ * (a conversation, where a reply's screenshot is the subject), not decoration (a README's badge,
+ * where a click opening an overlay would only get in the way). Off by default, and it is a plain
+ * boolean, so a surface that leaves it out pays nothing.
  */
 export function ProseImagesProvider({
   resolve,
+  zoomable = false,
   children,
 }: {
   resolve: ProseImageResolver | null;
+  zoomable?: boolean;
   children?: ReactNode;
 }): ReactElement {
-  return <ProseImagesContext.Provider value={resolve}>{children}</ProseImagesContext.Provider>;
+  return (
+    <ProseImageZoomContext.Provider value={zoomable}>
+      <ProseImagesContext.Provider value={resolve}>{children}</ProseImagesContext.Provider>
+    </ProseImageZoomContext.Provider>
+  );
 }
 
 /**
@@ -140,6 +166,9 @@ export function ProseImagesProvider({
  * sits after the spread so it always wins. A link title (`[text](url "title")`) becomes the shared
  * tooltip's text rather than a native `title`, like every other hover hint. Long-URL wrapping is
  * CSS (`.md-body a` in prose.css).
+ *
+ * The children are wrapped in {@link ProseInLinkContext}: a picture the author made into a link
+ * (`[![shot](shot.png)](…)`) belongs to the link, and the image adapter below has to know that.
  */
 function MdLink({
   node: _node,
@@ -151,7 +180,7 @@ function MdLink({
   const behavior = resolve === null ? PROSE_NEW_TAB : resolve(anchorProps.href);
   return (
     <a {...anchorProps} data-tooltip={title} {...behavior}>
-      {children}
+      <ProseInLinkContext.Provider value>{children}</ProseInLinkContext.Provider>
     </a>
   );
 }
@@ -165,6 +194,15 @@ function MdLink({
  * page itself. Everything else react-markdown supplies (width, height, title, ...) is forwarded;
  * only its non-DOM `node` prop is stripped. Sizing is CSS (`.md-body img` in prose.css), so an
  * oversized picture fits the reading column instead of widening the transcript.
+ *
+ * With `zoomable` above, the picture becomes a {@link ZoomableImage} and a click opens it whole —
+ * which is the difference between seeing that a screenshot is a screenshot and reading what is in
+ * it. Two cases keep the still `<img>`: an empty src, where there is nothing to enlarge (the
+ * lightbox would open on the browser's broken-image placeholder), and a picture the author wrapped
+ * in a link (`[![shot](shot.png)](…)`) — there the click is the link's, and a button in an anchor
+ * would fire both (measured: the button's own handler, then the anchor's navigation), so the
+ * picture would open a tab and an overlay at once. An author who made the picture a link meant the
+ * link.
  */
 function MdImage({
   node: _node,
@@ -173,9 +211,14 @@ function MdImage({
   ...imageProps
 }: ComponentPropsWithoutRef<"img"> & ExtraProps) {
   const resolve = useContext(ProseImagesContext);
+  const zoomable = useContext(ProseImageZoomContext);
+  const inLink = useContext(ProseInLinkContext);
   const written = typeof src === "string" ? src : "";
   const resolved = written === "" ? null : (resolve?.(written, alt ?? "") ?? null);
   const href = resolved?.src ?? written;
+  if (zoomable && !inLink && href !== "") {
+    return <ZoomableImage src={href} alt={alt ?? ""} lazy {...imageProps} />;
+  }
   return (
     <img {...imageProps} {...(href === "" ? {} : { src: href })} alt={alt ?? ""} loading="lazy" />
   );

@@ -11,6 +11,10 @@
  * Both resolvers are memoized on their inputs and the two enter/leave together: a context change
  * re-renders every link and image in the transcript, memoized message bodies included, so
  * `onOpenFile` and `fileUrl` have to be stable callbacks.
+ *
+ * `zoomable` is unconditional: in a conversation a picture is something to look at, so a click
+ * opens it whole whatever its src resolved to — the resolver decides where the picture is fetched
+ * from, not whether the reader may enlarge it.
  */
 import { useMemo } from "react";
 import type { ReactNode } from "react";
@@ -52,7 +56,9 @@ export function WorkspaceRefsProvider({
   );
   return (
     <ProseLinksProvider resolve={resolveLink}>
-      <ProseImagesProvider resolve={resolveImage}>{children}</ProseImagesProvider>
+      <ProseImagesProvider resolve={resolveImage} zoomable>
+        {children}
+      </ProseImagesProvider>
     </ProseLinksProvider>
   );
 }

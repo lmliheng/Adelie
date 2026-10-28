@@ -10,6 +10,7 @@
  * inside a dialog closes alone and leaves the dialog up.
  */
 import { useState } from "react";
+import type { ComponentPropsWithoutRef } from "react";
 import { createPortal } from "react-dom";
 import { useUiStrings } from "../../../strings";
 import { CloseIcon } from "../../icons/marks/marks";
@@ -66,6 +67,7 @@ export function ZoomableImage({
   className,
   closeLabel,
   lazy = false,
+  ...imgProps
 }: {
   src: string;
   alt: string;
@@ -75,12 +77,21 @@ export function ZoomableImage({
   closeLabel?: string;
   /** Fetch the thumbnail only as it nears the viewport (a long list of fetched images, e.g. a transcript's). */
   lazy?: boolean;
-}) {
+} & Omit<ComponentPropsWithoutRef<"img">, "src" | "alt" | "className" | "loading">) {
   const [open, setOpen] = useState(false);
   return (
     <>
       <button type="button" className="block cursor-zoom-in" onClick={() => setOpen(true)}>
-        <img src={src} alt={alt} className={className} loading={lazy ? "lazy" : undefined} />
+        {/* Everything else the caller's img already had — a Markdown picture's title, width and
+            height — belongs to the thumbnail: those are how it fits the text it sits in. The
+            lightbox shows the file at its own size and takes only src and alt. */}
+        <img
+          {...imgProps}
+          src={src}
+          alt={alt}
+          className={className}
+          loading={lazy ? "lazy" : undefined}
+        />
       </button>
       <Lightbox
         open={open}
