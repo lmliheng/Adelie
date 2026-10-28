@@ -1596,6 +1596,17 @@ export const workspaceFileUrl = (sessionId: string, path: string, download = fal
   );
 
 /**
+ * A .docx's text as Markdown, extracted by the server (see the route's own comment): the Files
+ * panel renders it through its Markdown pipeline, so a Word document previews in any client —
+ * no office suite, no download.
+ */
+export const workspaceFileTextUrl = (sessionId: string, path: string): string =>
+  apiUrl(
+    `/api/sessions/${sessionId}/files/preview-text?path=${encodeURIComponent(path)}`,
+    machineForSession(sessionId),
+  );
+
+/**
  * "Open in a new tab" for a Workspace html file: an App-origin link that mints a signed
  * token and 302s to the separate preview origin, where the page gets a real origin with
  * working storage, cookies and third-party embeds.
@@ -1716,6 +1727,13 @@ export const workspaceDirFileUrl = (dir: WorkspaceDir, path: string, download = 
 export const workspaceDirPreviewUrl = (dir: WorkspaceDir, path: string): string =>
   apiUrl(
     `${workspaceDirBase(dir)}/content?workspace=${encodeURIComponent(dir.workspace)}&path=${encodeURIComponent(path)}&preview=1`,
+    dir.machineId,
+  );
+
+/** A .docx's text as Markdown for a directory's Workspace, as {@link workspaceFileTextUrl}. */
+export const workspaceDirFileTextUrl = (dir: WorkspaceDir, path: string): string =>
+  apiUrl(
+    `${workspaceDirBase(dir)}/preview-text?workspace=${encodeURIComponent(dir.workspace)}&path=${encodeURIComponent(path)}`,
     dir.machineId,
   );
 

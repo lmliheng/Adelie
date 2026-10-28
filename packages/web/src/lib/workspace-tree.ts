@@ -319,7 +319,7 @@ const HTML_EXTS = new Set(["html", "htm"]);
  * browser reads such a file's first bytes and treats it as text when they look like text
  * (a Makefile, a LICENSE, a dotfile with no extension).
  */
-export type PreviewKind = "text" | "md" | "image" | "html" | "pdf" | "unknown";
+export type PreviewKind = "text" | "md" | "image" | "html" | "pdf" | "doc" | "unknown";
 
 /** The lowercased extension, or the whole lowercased name when it has none ("Makefile" → "makefile", ".env" → "env"). */
 export function extOf(name: string): string {
@@ -331,6 +331,9 @@ export function previewKindFor(name: string): PreviewKind {
   const ext = extOf(name);
   if (IMAGE_EXTS.has(ext)) return "image";
   if (ext === "pdf") return "pdf";
+  // Word previews through the server's own text extraction (a .docx is a zip of XML, see
+  // services/docx-preview.ts), read-only: a preview of a document is not its source.
+  if (ext === "docx" || ext === "doc") return "doc";
   if (HTML_EXTS.has(ext)) return "html";
   if (ext === "md") return "md";
   if (TEXT_EXTS.has(ext)) return "text";
@@ -347,6 +350,9 @@ export function previewKindFor(name: string): PreviewKind {
 export function previewKindOf(name: string): FileBrowserPreviewKind {
   const kind = previewKindFor(name);
   if (kind === "html") return "text";
+  // A Word document needs the server's extraction fetch, which this read-only browser does not
+  // do; it names the type instead of drawing an empty pane.
+  if (kind === "doc") return "unsupported";
   return kind === "unknown" ? "unsupported" : kind;
 }
 

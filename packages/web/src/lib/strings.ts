@@ -4184,6 +4184,13 @@ export const zh = {
     root: ".",
     empty: "空目录",
     previewUnsupported: "该类型不支持预览，请下载查看",
+    /** A legacy .doc is a binary format nothing here can read; the way out is a resave. */
+    previewDocLegacy: "旧版 .doc 无法预览，用 Word 另存为 .docx 后即可预览",
+    /** The server could not read this .docx (damaged, or not really a Word file). */
+    previewDocxFailed: "这个 Word 文件无法解析，请下载查看",
+    /** The pane paints PDFs itself (features/chat/pdf-preview.tsx); these are its two states. */
+    pdfLoading: "正在打开 PDF…",
+    pdfFailed: "PDF 读取失败，可下载后用阅读器查看",
     uploadedCount: (n: number): string => `已上传 ${n} 个文件`,
     uploading: (done: number, total: number): string => `正在上传 ${done}/${total}…`,
     /** Oversize picks are named and skipped before anything is read. */

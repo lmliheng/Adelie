@@ -236,6 +236,10 @@ describe("file kinds", () => {
     expect(previewKindFor(".gitignore")).toBe("text");
     expect(previewKindFor("photo.PNG")).toBe("image");
     expect(previewKindFor("paper.pdf")).toBe("pdf");
+    // Word previews through the server's text extraction, in both the modern and the legacy
+    // extension: the panel tells them apart when it loads one (a .doc gets its own message).
+    expect(previewKindFor("设计稿.docx")).toBe("doc");
+    expect(previewKindFor("old.DOC")).toBe("doc");
     expect(previewKindFor("Makefile")).toBe("unknown");
     expect(previewKindFor("archive.tar.gz")).toBe("unknown");
   });
@@ -244,6 +248,8 @@ describe("file kinds", () => {
     expect(previewKindOf("index.html")).toBe("text");
     expect(previewKindOf("Makefile")).toBe("unsupported");
     expect(previewKindOf("README.md")).toBe("md");
+    // No extraction fetch in the read-only browser: a Word file reads as unsupported there.
+    expect(previewKindOf("设计稿.docx")).toBe("unsupported");
   });
 
   it("takes UTF-8 text for text, including a chunk cut inside a multi-byte character", () => {

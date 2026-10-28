@@ -25,6 +25,7 @@ import type { AppEnv } from "../../auth/middleware.js";
 import type { Access } from "../../mechanisms/projects.js";
 import type { FileReveal, WorkspaceFiles } from "../../mechanisms/workspace.js";
 import { MAX_UPLOAD_BYTES } from "../../services/workspace-files-service.js";
+import { DocxPreviewError, docxToMarkdown } from "../../services/docx-preview.js";
 import { assertWorkspaceAllowed } from "../../services/workspace-guard.js";
 import { HttpError } from "../errors.js";
 import {
@@ -113,6 +114,54 @@ export function registerWorkspaceFileRoutes(
             }
           : {}),
         ...(inertSvg ? { "Content-Security-Policy": "sandbox" } : {}),
+      },
+    });
+  });
+
+  /**
+   * A file's text, extracted server-side, for the types a browser cannot show by itself. Today
+   * that is Word: a .docx is a zip of XML, and returning its body as Markdown lets the Files
+   * panel render it with the same safe Markdown pipeline it already uses for .md — one preview
+   * that works in every client, instead of one that needs an office suite installed.
+   *
+   * Deliberately NOT `/content`: that route serves the file's own bytes with its own type, and
+   * this one serves a derived document. Only a .docx has an extraction; anything else is a 415,
+   * and legacy .doc gets its own code so the panel can say "save it as .docx" rather than
+   * "preview not supported".
+   */
+  app.get(at("/preview-text"), async (c) => {
+    const workspace = await resolve(c);
+    const rel = c.req.query("path") ?? "";
+    const { data, fileName, version } = await deps.workspaceFiles.read(workspace, rel);
+    const ext = path.extname(fileName).toLowerCase();
+    if (ext === ".doc") {
+      throw new HttpError(
+        415,
+        "doc_legacy",
+        "Legacy .doc files cannot be previewed; save the file as .docx or download it.",
+      );
+    }
+    if (ext !== ".docx") {
+      throw new HttpError(415, "preview_unavailable", "No text preview for this file type.");
+    }
+    let preview;
+    try {
+      preview = docxToMarkdown(data);
+    } catch (error) {
+      if (error instanceof DocxPreviewError)
+        throw new HttpError(415, "docx_unreadable", error.message);
+      throw error;
+    }
+    return new Response(preview.markdown, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/markdown; charset=utf-8",
+        "X-Content-Type-Options": "nosniff",
+        "Cache-Control": "no-store",
+        // Same version marker `/content` returns: the panel treats a re-read as a new painting
+        // of the same file, never as an editable one (a .docx is read-only here).
+        ETag: version,
+        ...(preview.truncated ? { "X-Content-Truncated": "1" } : {}),
       },
     });
   });

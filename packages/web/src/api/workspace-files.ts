@@ -40,6 +40,8 @@ export interface FilesApi {
   list(path: string): Promise<WorkspaceFilesResponse>;
   /** A URL an <img>, an <a> or a fetch can use: inline, or as a download. */
   fileUrl(path: string, download?: boolean): string;
+  /** The server's text extraction of a file (Word): Markdown for a .docx, nothing to fetch otherwise. */
+  textUrl(path: string): string;
   /** "Open in a new tab" for an HTML file. */
   previewUrl(path: string): string;
   /** Whether the separate preview origin can serve this scope at all (a Session only). */
@@ -60,6 +62,7 @@ export function filesApi(scope: FilesScope): FilesApi {
     return {
       list: (path) => api.listWorkspaceFiles(id, path),
       fileUrl: (path, download) => api.workspaceFileUrl(id, path, download),
+      textUrl: (path) => api.workspaceFileTextUrl(id, path),
       previewUrl: (path) => api.workspaceFilePreviewUrl(id, path),
       isolatablePreviews: true,
       write: (path, data, ifVersion) => api.uploadWorkspaceFile(id, path, data, ifVersion),
@@ -78,6 +81,7 @@ export function filesApi(scope: FilesScope): FilesApi {
   return {
     list: (path) => api.listWorkspaceDirFiles(dir, path),
     fileUrl: (path, download) => api.workspaceDirFileUrl(dir, path, download),
+    textUrl: (path) => api.workspaceDirFileTextUrl(dir, path),
     previewUrl: (path) => api.workspaceDirPreviewUrl(dir, path),
     isolatablePreviews: false,
     write: (path, data, ifVersion) => api.writeWorkspaceDirFile(dir, path, data, ifVersion),

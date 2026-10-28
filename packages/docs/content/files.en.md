@@ -70,7 +70,8 @@ Select a file in the tree to open it in the preview. How a file is shown depends
 | Markdown and HTML | Rendered, with a **Preview / Source** toggle |
 | Text | With syntax highlighting and line numbers |
 | Images | Inline. Select the image to zoom. |
-| PDF | Embedded |
+| PDF | Painted page by page in the panel; scroll to move through it |
+| Word (`.docx`) | The document's headings, paragraphs, lists and tables, laid out as read-only text |
 | Anything else | Offered as a download. See [Download a file](#download-a-file). |
 
 A file whose extension says nothing about its type, such as a `Makefile` or a `LICENSE`, is read as text when its bytes look like text.
@@ -83,6 +84,10 @@ An HTML file can also be opened in a new browser tab: in the preview, select **O
 > When the app is reached through an address with no separate preview origin, the tab opens sandboxed, without localStorage, cookies or third-party embeds. To avoid the sandbox, reach the app over 127.0.0.1 or localhost, or set `ADELIE_PREVIEW_ORIGIN`. On the new-chat page HTML always opens sandboxed: the separate preview origin serves a conversation's files only.
 
 A text preview reads up to 1MB. A larger file is shown truncated, with the message "File too large; preview truncated, download for the full file", and cannot be edited here. **Download** is in the preview header.
+
+PDFs are drawn by the app itself — each page painted onto a canvas as you scroll — so the preview does not depend on the client's own PDF viewer and looks the same everywhere. Long documents paint lazily as pages come into view.
+
+A Word preview shows the document's body: headings, paragraphs, bold and italic runs, lists and tables are kept, while images and comments are not. It is read-only: there is no editor and no source view, because what is on screen is not the file. The body is capped at 200,000 characters — download for more. A legacy `.doc` is a binary format and is answered with a note to save it as `.docx`; a `.docx` the server cannot read says so and offers the download.
 
 Three buttons float over the top right of the file view: **Copy code**, **Wrap** and **Edit**. **Wrap** soft-wraps long lines and is on by default. The source view and the editor share the one remembered choice.
 
@@ -120,7 +125,7 @@ A save that would land on a changed file is refused before anything is written. 
 Right-click a tree row, the blank space under the rows, or the file view to open the context menu. On a touch screen, long-press. On a keyboard, press Shift+F10 or the menu key.
 
 > [!NOTE]
-> The context menu does not open inside an HTML or PDF preview, or inside the editor, where the browser's own menu is how text is pasted.
+> The context menu does not open inside an HTML preview or inside the editor, where the browser's own menu is how text is pasted.
 
 | Menu item | What it does | Available for |
 | --- | --- | --- |

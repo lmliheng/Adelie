@@ -515,6 +515,10 @@ export function createApp(boot: ServerBoot): Hono<AppEnv> {
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
+  // The build emits one ES module worker besides the .js bundles (pdf.js's), and a browser
+  // refuses a module script served as anything but a JavaScript type — the fallback below
+  // would answer application/octet-stream and the worker would never start.
+  ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8",
   ".json": "application/json",
   ".svg": "image/svg+xml",

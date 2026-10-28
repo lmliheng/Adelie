@@ -4141,6 +4141,13 @@ export const en: Strings = {
     root: ".",
     empty: "Empty directory",
     previewUnsupported: "Preview not supported for this type; download instead",
+    /** A legacy .doc is a binary format nothing here can read; the way out is a resave. */
+    previewDocLegacy: "Legacy .doc files cannot be previewed; save the file as .docx to preview it",
+    /** The server could not read this .docx (damaged, or not really a Word file). */
+    previewDocxFailed: "This Word file could not be read; download it instead",
+    /** The pane paints PDFs itself (features/chat/pdf-preview.tsx); these are its two states. */
+    pdfLoading: "Opening the PDF…",
+    pdfFailed: "The PDF could not be read; download it to open in a reader",
     uploadedCount: (n: number): string => (n === 1 ? "1 file uploaded" : `${n} files uploaded`),
     uploading: (done: number, total: number): string => `Uploading ${done}/${total}…`,
     /** Oversize picks are named and skipped before anything is read. */

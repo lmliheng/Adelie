@@ -120,6 +120,7 @@ import {
   defaultTreeWidth,
   dropTargetDir,
   expandTo,
+  extOf,
   searchRows,
   flattenTree,
   isDirty,
@@ -154,6 +155,7 @@ import { toneInk } from "../../lib/tone";
 import { setCloseGuard } from "../dock/close-guard";
 import { tabKey } from "../dock/dock-state";
 import { PAPERCLIP_ICON } from "./attached-files-banner";
+import { PdfPreview } from "./pdf-preview";
 import { WorkspaceTreeView } from "./workspace-tree-view";
 
 /**
@@ -211,7 +213,7 @@ function withStorageShim(html: string): string {
 interface Preview {
   path: string;
   name: string;
-  kind: "text" | "md" | "image" | "html" | "pdf" | "unsupported";
+  kind: "text" | "md" | "image" | "html" | "pdf" | "doc" | "unsupported";
   /** Content for kind=text/md/html (may be truncated). */
   content?: string;
   truncated?: boolean;
@@ -220,6 +222,9 @@ interface Preview {
   /** Bumped on every previewPath call; keys the isolated HTML iframe so re-opening the
    *  same path remounts it and refetches fresh content (its src alone would not change). */
   nonce: number;
+  /** Why this file has no preview, when the generic sentence would be wrong (a legacy .doc
+   *  says to save it as .docx; a .docx the server could not read says so). */
+  message?: string;
 }
 
 /** Monotonic counter behind Preview.nonce. Doubles as the staleness guard: previewPath
@@ -260,6 +265,9 @@ async function fetchTextPreview(
   if (res.body === null) throw new Error("no response body");
   const version = res.headers.get("etag");
   if (version === null) throw new Error("no version header");
+  // A text extraction can be cut at the source (the .docx route caps what it converts), which
+  // is the same "you are looking at part of the file" answer as the byte cap below.
+  const cutAtSource = res.headers.get("x-content-truncated") === "1";
   const reader = res.body.getReader();
   const chunks: Uint8Array[] = [];
   let total = 0;
@@ -283,7 +291,7 @@ async function fetchTextPreview(
     bytes.set(chunk, offset);
     offset += chunk.length;
   }
-  const truncated = total > TEXT_PREVIEW_LIMIT;
+  const truncated = cutAtSource || total > TEXT_PREVIEW_LIMIT;
   const shown = truncated ? utf8Complete(bytes.subarray(0, TEXT_PREVIEW_LIMIT)) : bytes;
   return { content: new TextDecoder().decode(shown), truncated, version };
 }
@@ -826,9 +834,53 @@ export function WorkspaceBrowser({
         present({ path: filePath, name, kind: "image", nonce });
         return;
       }
-      // PDF: the server returns it inline as application/pdf, embedded directly in an iframe and rendered by the browser.
+      // PDF: the panel paints it itself (see features/chat/pdf-preview.tsx). Handing the file to
+      // the browser's own viewer instead only worked where that viewer exists — a client that
+      // downloads `application/pdf` on navigation left a blank pane that looked like a broken
+      // file. Nothing here navigates to the URL.
       if (kind === "pdf") {
         present({ path: filePath, name, kind: "pdf", nonce });
+        return;
+      }
+      // Word: a .docx is read through the server's text extraction and shown as Markdown — the
+      // preview of a document, never an editor for it. A legacy .doc is a binary Word file
+      // nothing here can read, and says so instead of failing like a corrupt .docx would.
+      if (kind === "doc") {
+        if (extOf(name) === "doc") {
+          if (!refresh) {
+            present({
+              path: filePath,
+              name,
+              kind: "unsupported",
+              message: S.files.previewDocLegacy,
+              nonce,
+            });
+          }
+          return;
+        }
+        try {
+          const result = await fetchTextPreview(files.textUrl(filePath), false);
+          if (result === null) throw new Error("no extraction");
+          present({
+            path: filePath,
+            name,
+            kind: "doc",
+            content: result.content,
+            truncated: result.truncated,
+            version: result.version,
+            nonce,
+          });
+        } catch {
+          if (!refresh) {
+            present({
+              path: filePath,
+              name,
+              kind: "unsupported",
+              message: S.files.previewDocxFailed,
+              nonce,
+            });
+          }
+        }
         return;
       }
       // Isolated HTML: the rendered view is an iframe onto the preview origin and needs no
@@ -2225,12 +2277,26 @@ export function WorkspaceBrowser({
       };
     }
     if (p.kind === "pdf") {
+      // Painted here rather than embedded: the pane must not depend on the client's own PDF
+      // viewer (see pdf-preview.tsx). The URL is fetched with the session's credentials.
       return {
-        kind: "pdf",
-        src: files.fileUrl(p.path),
-        title: p.name,
-        reloadKey: p.nonce,
+        kind: "embed",
+        node: (
+          <PdfPreview
+            src={files.fileUrl(p.path)}
+            title={p.name}
+            reloadKey={p.nonce}
+            loadingLabel={S.files.pdfLoading}
+            errorLabel={S.files.pdfFailed}
+          />
+        ),
       };
+    }
+    if (p.kind === "doc") {
+      if (p.content === undefined) return pendingSource();
+      // A Word document, read as the Markdown the server extracted from it. Rendered only: there
+      // is no source view and no editor, because what is on screen is not the file.
+      return { kind: "markdown", text: p.content, truncatedNote };
     }
     if (p.kind === "html" && richView === "rendered") {
       if (previewIsolated) {
@@ -2354,7 +2420,7 @@ export function WorkspaceBrowser({
         truncatedNote,
       };
     }
-    return { kind: "unsupported", message: S.files.previewUnsupported };
+    return { kind: "unsupported", message: p.message ?? S.files.previewUnsupported };
   };
 
   /**
