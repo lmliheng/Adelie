@@ -18652,6 +18652,13 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
   坏图占位、只是更大 —— 与「空 src 不开」是两回事（渲染时无从知道会不会 404，要拦就得逐图记 `onError`）。
   当前判定是有意这样：坏图本身就是那句话的真相，点不点都这么说。
 - `5.59` 的二期（真实像素角标的胶囊工具条、缩略图切换、按能力探测出按钮）仍等 `ARK_API_KEY` 进密钥库。
+- **顺带量到一处既有的红（不是本轮引入的）**：`packages/ui-gallery` 的
+  `test/mock-api.test.ts > routes every endpoint the app's wrappers name` 一直红着 ——
+  `workspaceFileTextUrl` / `workspaceDirFileTextUrl` 两个包装器没有 mock 路由
+  （`e5f9aec6`「文件面板能直接看 Word 和 PDF」那笔加的两个包装器，画廊 mock 没跟上）。本机复现：
+  `vitest run test/mock-api.test.ts` → **1 failed / 13 passed**；CI 上 `test (rest)` / `test-macos (rest)` /
+  `test-windows (rest)` 三个分片因此都是红的，而 `c400aa2c`（只改台账）与更早的 `fb2ab5ad` 同样红，所以不是
+  `5.59` / `5.60` 造成的。**下一轮的候选就是它**（两个 mock 路由，一处文件），留到下一轮单独做。
 
 ### 提交
 
