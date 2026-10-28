@@ -11,7 +11,7 @@
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiError, apiFetch } from "../src/api/client";
-import { apiErrorText } from "../src/lib/api-error";
+import { apiErrorText, refusalText } from "../src/lib/api-error";
 import { S, setActiveStrings, zh as ZH } from "../src/lib/strings";
 import { en as EN } from "../src/lib/strings-en";
 import { apiError, stubFetch } from "./helpers/fetch";
@@ -104,5 +104,43 @@ describe("apiErrorText", () => {
       code: "platform_rate_limited",
       retryAfterSeconds: 7,
     });
+  });
+});
+
+describe("refusalText (what a dialog puts in its refusal slot)", () => {
+  afterEach(() => {
+    setActiveStrings(ZH);
+  });
+
+  it("localizes a server refusal by code, exactly as apiErrorText does", () => {
+    for (const dict of [ZH, EN]) {
+      setActiveStrings(dict);
+      // Mapped code: the server's English sentence never reaches the user.
+      expect(refusalText(serverError("nothing_to_compact"))).toBe(
+        apiErrorText(serverError("nothing_to_compact")),
+      );
+      expect(refusalText(serverError("nothing_to_compact"))).not.toBe("RAW ENGLISH SERVER MESSAGE");
+      // Unmapped code still falls through to the server's own words.
+      expect(refusalText(serverError("some_code_from_the_future"))).toBe(
+        "RAW ENGLISH SERVER MESSAGE",
+      );
+    }
+  });
+
+  it("shows a sentence this codebase raised itself, instead of the generic failure", () => {
+    // The fork dialog stops before the request when the reply's Trace position cannot be
+    // resolved; that condition carries its own localized text, and it is the whole reason
+    // refusalText exists — apiErrorText would flatten it into `unknownError` and tell the
+    // user nothing about what to do next.
+    setActiveStrings(ZH);
+    expect(S.chat.forkSessionFailed).not.toBe(S.common.unknownError);
+    expect(refusalText(new Error(S.chat.forkSessionFailed))).toBe(S.chat.forkSessionFailed);
+  });
+
+  it("falls back to the generic failure when there is nothing to say", () => {
+    setActiveStrings(ZH);
+    expect(refusalText(new Error("   "))).toBe(S.common.unknownError);
+    expect(refusalText("not even an error")).toBe(S.common.unknownError);
+    expect(refusalText(undefined)).toBe(S.common.unknownError);
   });
 });

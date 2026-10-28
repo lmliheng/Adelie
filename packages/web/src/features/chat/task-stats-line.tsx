@@ -48,6 +48,7 @@ import {
   humanizeTokens,
 } from "../../lib/format";
 import { STAT_ICONS } from "../../lib/stat-icons";
+import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { useTheme } from "../../state/theme";
 import { useLocale } from "../../state/locale";
@@ -84,6 +85,11 @@ export function TaskStatsLine({
   // conversation is a heavier action than the neighboring copy button suggests, so a stray
   // click must not silently create a Session. Plain copy stays unconfirmed.
   const [confirmingFork, setConfirmingFork] = useState(false);
+  // Why the last fork attempt did not happen. A refused fork leaves the conversation exactly
+  // as it was, so the question stays up and the reason lands inside it: the same rule the
+  // other confirm dialogs follow (7.19 / 7.20), instead of a toast that dismisses itself over
+  // the dialog the user is still reading. Cleared whenever the dialog is (re)opened.
+  const [forkRefusal, setForkRefusal] = useState<string | null>(null);
 
   // This turn's usage (not a context snapshot): input = this Task's cached + uncached input.
   const b = stats?.tokensByBucket;
@@ -102,6 +108,30 @@ export function TaskStatsLine({
           parenOpen: S.chat.statParenOpen,
           parenClose: S.chat.statParenClose,
         });
+
+  /**
+   * Runs the fork the dialog asks about, and settles the dialog from the answer: a fork that
+   * happened closes it (the caller has already navigated to the new Session), one that did not
+   * keeps it open with the reason. `onFork` rejects rather than toasting precisely so this
+   * decision can be made here.
+   */
+  const forkNow = async (): Promise<void> => {
+    if (!onFork) return;
+    setForking(true);
+    setForkRefusal(null);
+    try {
+      await onFork({
+        assistantText: assistantText ?? "",
+        ...(atMs !== undefined ? { atMs } : {}),
+        ...(forkPosition !== undefined ? { position: forkPosition } : {}),
+      });
+      setConfirmingFork(false);
+    } catch (err) {
+      setForkRefusal(refusalText(err));
+    } finally {
+      setForking(false);
+    }
+  };
 
   // ≥sm: invisible but **space-reserved** by default (sm:opacity-0, not hidden) — the user
   // footer's hover-reveal convention; because the space is always reserved, appearing never
@@ -183,7 +213,10 @@ export function TaskStatsLine({
             disabled={forking}
             data-tooltip={S.chat.forkSession}
             aria-label={S.chat.forkSession}
-            onClick={() => setConfirmingFork(true)}
+            onClick={() => {
+              setForkRefusal(null);
+              setConfirmingFork(true);
+            }}
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors duration-150 hover:bg-gray-100 hover:text-gray-600 disabled:cursor-wait disabled:opacity-50 dark:hover:bg-gray-800 dark:hover:text-gray-300"
           >
             {forking ? (
@@ -214,16 +247,9 @@ export function TaskStatsLine({
             confirmLabel={S.chat.forkSessionConfirmAction}
             cancelLabel={S.common.cancel}
             busy={forking}
+            refusal={forkRefusal === null ? undefined : S.common.refused(forkRefusal)}
             onClose={() => setConfirmingFork(false)}
-            onConfirm={() => {
-              setConfirmingFork(false);
-              setForking(true);
-              void onFork({
-                assistantText,
-                ...(atMs !== undefined ? { atMs } : {}),
-                ...(forkPosition !== undefined ? { position: forkPosition } : {}),
-              }).finally(() => setForking(false));
-            }}
+            onConfirm={() => void forkNow()}
           >
             <p className="text-sm text-gray-600 dark:text-gray-300">
               {S.chat.forkSessionConfirmBody}

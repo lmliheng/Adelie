@@ -1914,40 +1914,41 @@ export function ChatPage() {
 
   // Auth-dead notice primary CTA: the Models page is where the credential is actually fixed.
 
+  /**
+   * Forks the open Session at `target`. **Rejects when the fork did not happen** — the dialog
+   * that asked owns the outcome, so the reason belongs in that dialog rather than in a toast
+   * that dismisses itself over it (7.19's rule, app-wide). Nothing is toasted here at all:
+   * a caller that ever wants a toast can wrap it.
+   */
   const onFork = useCallback(
     async (target: ForkTarget): Promise<void> => {
       if (!selected) return;
-      try {
-        let position = target.position;
-        // Live SSE messages do not carry disk coordinates. Once the Task is idle, one history
-        // read resolves the just-finished footer onto the immutable Trace position; the fork
-        // request itself always sends that position, never display text or a timestamp.
-        if (position === undefined) {
-          const history = await api.getMessages(selected.sessionId);
-          const model = createStreamModel();
-          for (const message of history.messages) pushMessage(model, message);
-          finalizeHistory(model);
-          const match = [...model.items]
-            .reverse()
-            .find(
-              (item) =>
-                item.kind === "task_stats" &&
-                item.assistantText === target.assistantText &&
-                item.atMs === target.atMs &&
-                item.forkPosition !== undefined,
-            );
-          position = match?.kind === "task_stats" ? match.forkPosition : undefined;
-        }
-        if (position === undefined) {
-          toastError(S.chat.forkSessionFailed);
-          return;
-        }
-        const created = await api.forkSession(selected.sessionId, { position });
-        addSession(created.session);
-        navigate(`/chat/${created.session.sessionId}`);
-      } catch (e) {
-        toastError(apiErrorText(e, { modelId: selected.modelId }));
+      let position = target.position;
+      // Live SSE messages do not carry disk coordinates. Once the Task is idle, one history
+      // read resolves the just-finished footer onto the immutable Trace position; the fork
+      // request itself always sends that position, never display text or a timestamp.
+      if (position === undefined) {
+        const history = await api.getMessages(selected.sessionId);
+        const model = createStreamModel();
+        for (const message of history.messages) pushMessage(model, message);
+        finalizeHistory(model);
+        const match = [...model.items]
+          .reverse()
+          .find(
+            (item) =>
+              item.kind === "task_stats" &&
+              item.assistantText === target.assistantText &&
+              item.atMs === target.atMs &&
+              item.forkPosition !== undefined,
+          );
+        position = match?.kind === "task_stats" ? match.forkPosition : undefined;
       }
+      // Not an ApiError: this one never reached the server. `refusalText` shows the sentence
+      // as written, which is why it is an `Error` carrying the localized text.
+      if (position === undefined) throw new Error(S.chat.forkSessionFailed);
+      const created = await api.forkSession(selected.sessionId, { position });
+      addSession(created.session);
+      navigate(`/chat/${created.session.sessionId}`);
     },
     [selected, addSession, navigate],
   );

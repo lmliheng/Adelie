@@ -171,3 +171,98 @@ test("fork from reply: button order + confirm gate + clean fork deletion", async
     0,
   );
 });
+
+/**
+ * A refused fork keeps the question up, with the reason inside it.
+ *
+ * The dialog used to close the instant Confirm was pressed and report a failure as a toast: the
+ * toast dismisses itself after six seconds, sits over the dialog that is no longer there, and the
+ * conversation stays exactly as it was — so the one place the user was looking said nothing about
+ * what went wrong (7.19 / 7.20's rule, app-wide: the card that asked the question keeps it and
+ * shows why the write did not happen).
+ *
+ * The refusal replayed here is the server's own stale-position answer — `invalid_fork_position`,
+ * "The selected reply no longer exists in this Session.", the 400 a Session whose Trace moved on
+ * really returns. This client resolves the position from history immediately before asking, so
+ * the condition cannot be staged from the outside; the second half (route removed, same button
+ * pressed again) proves the dialog is not a dead end after one.
+ */
+test("a refused fork keeps the dialog up and the reason inside it", async ({ page }) => {
+  const STALE = "The selected reply no longer exists in this Session.";
+  await login(page.request, ADMIN_ID, ADMIN_PASSWORD);
+
+  const projects = await (await page.request.get(`${BASE}/api/projects`)).json();
+  const projectId = projects.projects[0].projectId;
+  const put = await page.request.put(`${BASE}/api/projects/${projectId}/models`, {
+    data: {
+      defaultModel: { provider: "custom", modelId: "claude-4-8" },
+      models: [
+        {
+          provider: "custom",
+          modelId: "claude-4-8",
+          apiKey: "sk-mock",
+          baseUrl: MOCK,
+          contextWindow: 200000,
+          pricing: { cacheRead: 1, cacheWrite: 5, output: 10 },
+        },
+      ],
+    },
+  });
+  expect(put.ok(), "put models").toBeTruthy();
+
+  const sess = await (
+    await page.request.post(`${BASE}/api/projects/${projectId}/agents/default_agent/sessions`, {
+      data: { provider: "custom", modelId: "claude-4-8" },
+    })
+  ).json();
+  const sourceId = sess.session.sessionId;
+
+  let forkRequests = 0;
+  page.on("request", (r) => {
+    if (/\/api\/sessions\/[^/]+\/fork$/.test(r.url())) forkRequests += 1;
+  });
+
+  await page.goto(`${BASE}/chat/${sourceId}`);
+  const ta = page.getByPlaceholder(/输入消息/);
+  await ta.waitFor();
+  await ta.fill("Fork refusal e2e message");
+  await page.getByRole("button", { name: "发送" }).click();
+  await expect(page.getByText("Command finished; the result looks as expected.")).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // Ask, then answer the fork request with the server's refusal.
+  await page.getByText("Command finished; the result looks as expected.").first().hover();
+  await page.getByRole("button", { name: "从这里分叉对话" }).first().click();
+  const question = page.getByText("将把这段对话（截至这条回复）复制为一个新对话");
+  await expect(question).toBeVisible();
+
+  await page.route("**/api/sessions/*/fork", (route) =>
+    route.fulfill({
+      status: 400,
+      contentType: "application/json",
+      body: JSON.stringify({ error: { code: "invalid_fork_position", message: STALE } }),
+    }),
+  );
+  await page.getByRole("button", { name: "分叉", exact: true }).click();
+
+  // The question stays, and the server's sentence is inside it.
+  await expect(question).toBeVisible();
+  await expect(page.getByText(/操作被拒绝：/)).toBeVisible();
+  await expect(page.getByText(STALE, { exact: false })).toBeVisible();
+  // Nothing was created and the page did not move.
+  expect(forkRequests, "exactly one fork request").toBe(1);
+  expect(page.url()).toContain(sourceId);
+  // The dialog settled: the confirm button is clickable again, so the reason above is not a
+  // dead end sitting behind a spinner.
+  await expect(page.getByRole("button", { name: "分叉", exact: true })).toBeEnabled();
+
+  // Same button, no refusal this time: the fork goes through and the app follows it.
+  await page.unroute("**/api/sessions/*/fork");
+  await page.getByRole("button", { name: "分叉", exact: true }).click();
+  await page.waitForURL(
+    (u) => /\/chat\/session-/.test(u.pathname) && !u.pathname.includes(sourceId),
+    { timeout: 15_000 },
+  );
+  expect(page.url()).not.toContain(sourceId);
+});

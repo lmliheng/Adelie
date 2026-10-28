@@ -24,3 +24,20 @@ export function apiErrorText(err: unknown, ctx?: { modelId?: string }): string {
   const byCode = S.errors.byCode as Record<string, string | undefined>;
   return byCode[err.code] ?? err.message;
 }
+
+/**
+ * The sentence a dialog puts in its `refusal` slot when the write it asked about failed.
+ *
+ * `apiErrorText` is right for anything the server answered, but it reads every other value as
+ * `S.common.unknownError` — and a dialog can stop before the request is even sent (the fork's
+ * position could not be located, say), which is a condition that codebase raises itself with
+ * its own localized sentence. Those are `Error`s whose message is already meant for the user,
+ * so they are shown as they are; only a value with nothing to say falls back to the generic
+ * text. Which words appear is decided in one place because every refusal slot wants the same
+ * rule (7.19's rule, app-wide).
+ */
+export function refusalText(err: unknown): string {
+  if (err instanceof ApiError) return apiErrorText(err);
+  if (err instanceof Error && err.message.trim() !== "") return err.message;
+  return S.common.unknownError;
+}
