@@ -1086,6 +1086,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       未移植提交里唯一「真缺陷 + 本树文件全在（`packages/amsp`）+ 不引入新依赖 + 自带能在本机真跑的用例」的
       —— 同族的 `#1332` / `#1333` / `#1353` 都在上游的 `reader.ts` 上，本树没有那个文件（要连 reader /
       transport / 记录构建器整套搬，另立一轮）。
+- [x] **5.57 子智能体落在派发它的那个 `run_subagent` 调用上**（上游 `3fa746b2` `#1107`，**2026-10-28 第一百五十三轮
+      落地**，提交见该节）：同时跑几个 `run_subagent` 时，子会话可能挂到别人的卡片上 —— 卡片借的是另一个调用的
+      描述与思考等级回落，转写区的芯片也指着另一条对话。根因是按位置绑定：子会话过去只按「最近一张已放行、
+      还没有孩子、还没完成的卡片」定归属，这个口径在只有一个调用时才是对的。现在孩子的第一条模型消息（正是派发
+      它的调用交给它的开头提示词，原样、实时流与拼回来的 Trace 都相同）来定归属：`moveToSpawningCard` 把它移到
+      提示词正是那一条、且 `agent_id` / `model_id` / `provider`（含继承自父级的取值）与它 `session_meta` 记录相符
+      的卡片上，与正坐在那张卡上的未确认孩子互换位置；元数据缺失导致无从分辨、或本来就没卡片可绑时，按位置的
+      绑定照旧，被拒的调用永远拿不到孩子。**为什么是这一条**：表上未勾选的仍是 2.2c（桌面壳 / 部署单元）、
+      3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；上游这一轮四笔新提交里，
+      `#1375` 落在已删的 `landing`，`#1376` / `#1377` 要 `#1344` 的「重试行」与机器详情组件（本树没有），
+      `#1378` 要 `#1343` / `#1344` 的 `stopReconnecting` / `settleForStream`（本树 `service.ts` 里没有），
+      于是往前扫未移植提交，取这一笔：真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在本机真跑的用例。
 - **量过、本轮没移植的一条**：`#1356`（`04ed9c70`，server 7 文件 / +183 −8，异常结束时已计量的请求只统计
       一次）。补丁能落（两处小冲突），单元用例也能红转绿，但**本树走不到那个形态**：本树的 `token_usage`
       只在 `streamGenerate` 的「正常收尾」分支产出（`generative-model.ts` 的 `finish()` 之后 `return
@@ -2384,6 +2396,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-28 | 5.55 | **目标模式的预算计入轮中压缩之前的用量**（上游 `eb3edfec` `#1355` 移植，照改动落、不是合分支；上游 6 文件 / +119 −11 → 本树落下 **5 个跟踪文件（3 改 2 新）**，源码 2 个、用例 1 个、插件清单 1 个、changelog 一对）：goal 的 stop hook 只从最新的 Trace 文件加总一轮用量，轮中一次上下文压缩就把这一轮前半程的消耗留在旧分片里 —— 对着 100 的预算用掉 110 个未命中缓存的 token 会被记成 20 并继续 `active`，收尾那一轮根本不开始。现在 `lib.mjs` 新增 `readRoundRecords(file, sessionId, records)`：从 Trace 文件名解析分片序号、按写入方的三位补零往回走，直到某一片里出现轮次输入或走到 `_001`；每片前驱必须在自己的 `session_meta` 里报着同一个 `session_id`（缺失 / 读不出 / 别人的会话都当场停下，保留已读到的用量），展平后交给未改动的 `lastRoundRecords()`，所以「从最后一条轮次输入之后开始」仍只写在一处、已完成轮次不会重复计入；认不出的文件名退回单文件计数。**本地化**：上游改的是 `package.json` 的 `hooks.version`，本仓没有那个块、插件版本在 `plugin.json`（`2026.09.29.1` → `2026.10.28.1`）；用例的写法照落 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 三个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过**（本笔 +7：四文件名表驱动占 4、另加三条）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `lib.mjs` / `stop.mjs` 退回 `HEAD`、只留新用例 → `test/goal-hooks.test.ts` **2 failed / 18 passed**（跨分片预算那条停在 `tokens_used: 110`、后一轮那条停在 110），放回本笔 → **20 全过** · **本轮主证据（core 的真 `Writer` 产出真分片 + 真钩子子进程，两态同一份探针）**：`r147/probe-shards.mjs` 用 `packages/core/src/trace/writer.ts` 的 `Writer`（含 `rotate()`，即上下文压缩换段时的那一步）写出 `s1_001.jsonl`…，再把真 `stop.mjs` 跑起来读最新分片。四个场景：**A 轮中压缩**（`_001` 是 meta + 轮次输入 + 999 token，rotate 后 `_002` 是 meta + 20 token）：**改前 `tokens_used: 20`、`status: active`**（预算 150 却没进收尾）→ **改后 `1019`、`status: wrapping_up`**；**B 后一轮**（`_001` 里轮 1 已计 90，`_002` 是轮 2 输入 + 10）：两态都 `100`（**不重复计入**）；**C 前驱缺失**（只有 `_003`）：两态都 `20`；**D 前驱属于别的会话**（`_004` 写着 `session_id: other` + 500 token，当前 `_005` 是 20）：两态都 `20`（不把别人的 token 算进来）· 分片名实测 `s1_001.jsonl` 起、三位补零，与钩子回填的写法一致 | `14868839`（本轮台账见下一笔） |
 | 2026-10-28 | 7.51 | **分叉对话被拒时，框留着、原因也留在框里**（不是移植：源码 2 处 `features/chat/task-stats-line.tsx` + `features/chat/chat-page.tsx`，`lib/api-error.ts` 新增 `refusalText()`，单测 +3、`e2e/session-fork.spec.mjs` +1 条，changelog 一对）—— 确认框不再「先收起再发请求」，`onFork` 改为抛出、由问它的那个框决定去留与显示原因；两态真浏览器取证 + 单测反证 + 整包 e2e 里既有分叉用例仍绿，详见「第一百四十八轮」 | `21384e46` |
 | 2026-10-28 | 5.56 | **取消的 AMSP 消息流当场停住，缓存的事件也不再交付**（上游 `ca7114a2` `#1326` 移植，照改动落、不是合分支；上游 4 文件 / +82 −1 → 本树落下 **4 个跟踪文件（2 改 2 补测试）** + changelog 一对，**源码各一处**：`packages/amsp/src/sse.ts` 在 `yield event` 之后检查信号、`packages/amsp/src/client.ts` 的 `AgentRun.#drive` 在读取循环无错结束时检查）：`sseData` 只在 `reader.read()` 之后看 abort，而调用方的循环体正好在生成器挂于 `yield` 时运行 —— 那段时间的取消要等下一个数据块才被发现，当前块里已解析出来的事件照样交付；跟在其后的 `[DONE]` 把读取平静结束掉，`AgentClient` 因此把已取消的 run 报成 `completed`。现在下一次读取先抛出调用方自己的原因，`#drive` 在无错出口再查一次（缓存的 `[DONE]` 走的正是这条出口）。上游第三条用例在 `HttpTransport` 上，本树没有那个文件，改成 client 层的等价用例 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · `@adelie/amsp` test **`EXIT=0`、72 通过**（2 文件，本笔 +4）· 逐包 test **`EXIT=0`、0 失败**：core **1438** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3312 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：两个源码文件退回 `HEAD`、只留新用例 → `sse.test.ts` **2 failed**（块内两事件之间、缓存 `[DONE]`）+ `client.test.ts` **1 failed**（缓存的 `[DONE]` 报完成），放回本笔 → **72 全过** · **本轮主证据（真 HTTP SSE 服务 + 真 `dist` 客户端，两态同一份探针）**：一个 chunk 里依次写 `run.started` / `request.started` / `text.delta` / `run.done` / `[DONE]`，客户端在循环体里收到 `run.done` 后 abort —— **改前** `result()` **resolved `completed`**（迭代拒绝了，结果却报成功），**改后** `result()` 与迭代都以原始原因 reject；同一流的正常读完对照两态都 `status: completed`（不被误杀）。改前 / 改后 `dist` 主包 md5 `8ac843ad…` / `695b98ff…` 各核过一次 · 端口只用 8991–8994，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `73942f9f` |
+| 2026-10-28 | 5.57 | **子智能体落在派发它的那个 `run_subagent` 调用上**（上游 `3fa746b2` `#1107` 移植，照改动落、不是合分支；上游 4 文件 / +461 −3 → 本树落下 **2 个跟踪文件（1 改 1 补测试）** + changelog 一对）：同时跑几个 `run_subagent` 时子会话会挂错卡片（借另一个调用的描述与思考等级回落、转写芯片指着另一条对话）。`StreamModel.unconfirmedSubagents` 记下「开头提示词还没到、只按位置绑过」的孩子，它的第一条模型消息（正是派发它的调用交给它的开头提示词，原样）由 `moveToSpawningCard` / `spawningCard` 移到正确的那张卡上：提示词必须一致，`agent_id` / `model_id` / `provider`（含继承父级取值）必须与孩子 `session_meta` 相符，与卡上未确认的孩子互换位置；元数据缺失导致无从分辨、或本就没有卡片可绑时按位置的绑定照旧，被拒的调用永远拿不到孩子。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮四笔新提交都不能单独落（`#1375` 落在已删的 `landing`；`#1376` / `#1377` 要 `#1344` 的重试行与机器详情组件；`#1378` 要 `#1343` / `#1344` 的 `stopReconnecting` / `settleForStream`，本树 `service.ts` 里都没有），于是往前扫未移植提交，取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2994 通过 / 15 跳过** · web **270 文件 / 3324 通过 / 2 跳过**（本笔 +4 用例）· **反证（单测）**：`stream-model.ts` 退回 `HEAD`、只留新用例 → `agent-topology.test.ts` **6 failed / 42 passed**，放回本笔 → **48 全过** · **本轮主证据（真服务端两态 × 真浏览器，同一份合成会话、同一套探针）**：把 mock 录下的真会话改写成「两个并发 `run_subagent`、两个孩子按 A→B 到达」的形状（卡片 A =「Compare the plans」、B =「Collect the pricing pages」），两态 web 产物 `r153/{after,before}-dist`（主包 md5 `3b0d209e…` / `50ebe39d…`，`unconfirmedSubagents` 出现 2 / 0 次）挂在两个数据根 `/root/adelie-fork-data/r153-look{,-before}` 上、**改后 8996 / 改前 8998**；打开该会话 →「快捷方式」→「智能体面板」，逐节点点开读它挂着的孩子与孩子的回答：**改前两张卡互换**（「Compare the plans」挂着 `cccc0003`、内容是「Collected three pricing pages.」；「Collect the pricing pages」挂着 `bbbb0002`、内容是「The plans agree on price and differ on the quota.」），**改后各归各位**（`bbbb0002` ↔ plans、`cccc0003` ↔ pricing）；两态 console 各只有一条 403 `/api/projects/…/machines`（非管理员账号的既有行为） · **相邻回归（真浏览器）**：`subagent.spec.mjs` 4 条 + `background-subagent.spec.mjs` 2 条 **6 passed（31.0s）**（本机没装 Playwright 自带的 chromium，用临时 config 指向 `/usr/bin/chromium`）· 端口只用 8995–8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r153-*`，探针 / 两态产物 / 截图 / 合成会话生成脚本都在 scratchpad 的 `r153/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | `f91cbfda` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -18265,3 +18278,85 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 插件 + 注册 + 文档 + changelog 中英一对 + 本轮台账，一笔提交。
+
+## 第一百五十三轮：子智能体落在派发它的那个 `run_subagent` 调用上（2026-10-28，条目 5.57）
+
+### 开工自检：工作区干净，同步走 HTTPS + PAT
+
+- `git status --short` 输出为空、在 `main` 上，`HEAD` = **`fb2ab5ad`**（第一百五十二轮那笔插件提交）。
+- `git fetch origin` 走 SSH **不通**（`git@github.com: Permission denied (publickey)`，`~/.ssh` 里仍只有
+  `id_adelie_migrate`）；改 `git fetch https://<PAT>@github.com/lmliheng/Adelie.git main:refs/remotes/origin/main`
+  一次就到，`origin/main` 与本地同点（`Already up to date`）。
+- 上游照第二十三轮那条路按 URL 现拉（`/root/penguin-harness` 本机是空目录）：
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r150`
+  → 尖端 **`f53eb9e1`**（`#1375`），比上一轮多四笔。
+- 没有切分支、没有碰 `legacy/main`、没有推 upstream、没有 `pnpm add`；`pnpm` 仍不在 PATH，用 corepack 的
+  `pnpm.cjs` 加一个 scratchpad 垫片（`r153/bin/pnpm`），lint / prettier 直接走 `./node_modules/.bin`。
+
+### 选活：表上仍全卡着，四笔新提交也都不能单独落
+
+- 表上未勾选的仍是 **2.2c**（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（要用户拍板取哪个桌面壳）、
+  **3.6**（要模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+- 上游这一轮的四笔逐条量过：`#1375` 落在已删的 `packages/landing`；`#1376` / `#1377` 要 `#1344` 的「重试行」
+  与机器详情组件（`history-load-failed.tsx` / `machine-detail-view.ts` 本树都没有）；`#1378` 要 `#1343` /
+  `#1344` 的 `stopReconnecting` / `settleForStream`（`packages/server/src/machines/service.ts` 里两个都没有）。
+- 于是把未移植提交往前扫，按「真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在本机真跑的用例」挑：候选里只有
+  **`3fa746b2`（`#1107`）** 同时满足（`git apply --check -3` 两份文件 `cleanly`），其余要么动桌面壳 / CI，
+  要么是依赖升级或整份新文件。
+
+### 做了什么
+
+- `packages/web/src/lib/omni/stream-model.ts`：`StreamModel` 多一个 `unconfirmedSubagents`（按位置绑过、
+  开头提示词还没到的孩子）；`routeNested` 在该孩子的第一条模型消息到达时清掉这个标记并调
+  `moveToSpawningCard`；新增 `moveToSpawningCard` / `spawningCard` / `openingPrompt` 三个函数 ——
+  提示词必须是派发调用交下来的那一句（`payload.sender` 为 `parent_agent` 或没有），身份按
+  `agent_id` / `model_id` / `provider` 核对（含父级继承值），完全相同的几个调用取最早还在跑的、否则取最后
+  结束的那张卡；卡上若有同样未确认的孩子，两者互换。被拒的调用、已确认的兄弟都拿不到孩子。
+- `packages/web/test/agent-topology.test.ts`：上游四条用例照落（继承与显式混用的 agent / model / provider、
+  显式那个先到、缺父级元数据时无从分辨），与既有的并发派发 / 后台派发 / 被拒调用 / 历史回放并列。
+- changelog 中英一对：`changelog/unreleased/2026-10-28-subagent-card-binding{,.zh}.md`（本仓写法：改名到本轮
+  日期、去掉上游 PR 行、写明移植出处与「接口 / 线上格式 / 已存数据都没变」）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）。
+- `oxlint` 两个改动文件 **0 警告 0 错误**；两个源码 / 用例文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** ·
+  cli **38 / 561** · server **205 文件 / 2994 通过 / 15 跳过** · web **270 文件 / 3324 通过 / 2 跳过**
+  （改前基线 3312，本笔 +4 用例、另 +8 是第一百五十二轮补的网页用例）；hmr 无测试文件。
+- **反证（单测）**：`stream-model.ts` 退回 `HEAD`、只留新用例 → `agent-topology.test.ts`
+  **6 failed / 42 passed**（四条新的，加两条被改写的既有场景），放回本笔 → **48 全过**。
+- **本轮主证据（真服务端两态 × 真浏览器，同一份合成会话、同一套探针）**：
+  - 合成会话的做法：拿本轮 mock 真跑出来的那一对 Trace 当模板（字段一个不少，只改 id 与文案），改写成
+    「父会话里两个并发 `run_subagent`（A =「Compare the plans」、B =「Collect the pricing pages」）、两个孩子
+    按 A→B 的 `subagent` 事件到达」—— 按位置绑定会把 A 的孩子贴到最新的 B 卡上；再按 `sessions` 表登记三行
+    会话。脚本 `r153/make-case2.py`。
+  - 两态 web 产物 `r153/{after,before}-dist`（主包 md5 `3b0d209e…` / `50ebe39d…`，`unconfirmedSubagents`
+    出现 **2 / 0** 次）分别挂在 `/root/adelie-fork-data/r153-look`（**改后 8996**）与 `…-before`
+    （**改前 8998**），同一份服务端产物、`ADELIE_SEED_ADMIN_PASSWORD`。
+  - 探针 `r153/probe4.mjs`：打开该会话 →「快捷方式」→「智能体面板」→ 逐节点点开，读它挂着的孩子与孩子的
+    回答。**改前两张卡互换**：「Compare the plans」挂着 `cccc0003`（内容「Collected three pricing pages.」）、
+    「Collect the pricing pages」挂着 `bbbb0002`（内容「The plans agree on price and differ on the quota.」）；
+    **改后各归各位**：`bbbb0002` ↔ plans、`cccc0003` ↔ pricing。截图 `r153/panel-before.png` /
+    `r153/panel-after.png`。
+  - 两态 console 各只有一条 **403 `/api/projects/…/machines`**（非管理员账号的既有行为，与本笔无关），
+    无其它 error、无 pageerror。
+- **相邻回归（真浏览器）**：`subagent.spec.mjs` 4 条 + `background-subagent.spec.mjs` 2 条 **6 passed（31.0s）**。
+  本机没装 Playwright 自带的 chromium（`chromium_headless_shell-1228` 不存在），用一个 scratchpad 里的临时
+  config 把 `launchOptions.executablePath` 指到 `/usr/bin/chromium` 才跑起来 —— 仓库里的 config 没动。
+- 端口只用 8995–8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 全程没碰；数据只落在
+  `/root/adelie-fork-data/r153-*`，探针 / 两态产物 / 截图 / 合成脚本都在 scratchpad 的 `r153/`；没用 `rm -rf`。
+
+### 没做 / 还差什么
+
+- 表上剩下的仍是那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10），与上一轮一致。
+- 上游 **`#1376` / `#1377` / `#1378`** 都要先落 `#1344`（「重试行」：`history-load-failed.tsx`、机器详情组件、
+  服务端 `stopReconnecting` / `settleForStream`）与 `#1343`（机器升级握手，+1077 行）——那是独立的一轮以上，
+  下一轮若要跟机器那条线，得先立「`#1344` 的重试行」这一条。
+- 同族的 `#1332` / `#1333` / `#1353` 仍要先搬上游的 `packages/amsp/src/reader.ts` + `transport.ts` +
+  `records/`（约 +3000 行），`#1365` 仍要整份 `packages/web/src/api/socket.ts`。
+
+### 提交
+
+- 代码 + 用例 + changelog 中英一对：**`f91cbfda`**；本轮台账（5.57 与上表那一行、本节）另起一笔，与历次一致。
