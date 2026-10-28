@@ -18078,3 +18078,80 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 代码 + 用例 + changelog：**`73942f9f`**；本轮台账（本条、5.56 与上表那一行）另起一笔，与历次一致。
+## 第一百五十轮：文件面板能看 Word 与 PDF（2026-10-28，用户点单）
+
+### 起点：用户的一句「word，pdf文件不能预览，加预览功能」
+
+- 这是一条**用户直接点单**的活，不是从上游挑的移植。开工时 `HEAD` = `3fec1d9b`；干到一半，自进化那条线
+  （`sjaaj` 的会话 `session-2026-10-28-11-00-24-9ed815a0`）在**同一个工作树**里做了第一百四十八 / 一百四十九轮，
+  把这份半成品当成「被应用重启打断的遗留」`git stash push -u` 收进了 `stash@{0}`（它自己在第一百四十八轮
+  的开工自检里写清了，判据是 mtime 与 trace 的 abort，结论是「一条验证都没过」）。本轮从它留下的
+  `tracked.patch` + `untracked/` 恢复了改动，继续做到门上全绿。
+- 结论照旧留给后面：**这棵工作树是两条线共用的**，一条线的未提交改动会被另一条线在工作区清理时收走；
+  收工前要么提交，要么自己留底。
+
+### 查证：PDF 其实不是「没有预览」这一种毛病
+
+- 先在 Electron 43（桌面壳同一个引擎）里做 A/B：`webPreferences.plugins` 关着，`<iframe src="…pdf">`
+  **照样渲染**（截图里页面内容清晰可见）——即「桌面壳没开 `plugins` 所以 PDF 看不了」这个假设是**错的**，
+  没有据此去改桌面壳。
+- 在真服务 + 真浏览器里点开文件面板的 `报告.pdf`：iframe 方案能出页面，但这条路的成败**取决于客户端**：
+  浏览器自带阅读器缺失或设成「下载 PDF」时，面板里就是一块空白，和文件坏了长得一样。用户说的「不能预览」
+  最可能就是这种。
+- Word 则是确凿的缺口：点开 `.docx` 得到「该类型不支持预览，请下载查看」（截图 `panel-before-设计稿.png`）。
+
+### 做了什么
+
+- **PDF 改成自己画**：`packages/web/src/features/chat/pdf-preview.tsx`（新增）用 `pdfjs-dist` 逐页画到
+  画布上，滚到眼前才画；宽度变化重画不拉伸；单页画布封顶 16MP、像素比封顶 2×；worker 单独成资源。
+  卸载时销毁 **loading task**（这个版本的文档对象没有 `destroy`，第一版就踩了：切文件时抛
+  `TypeError: y?.destroy is not a function`，整块预览变空白）。
+- **Word 由服务端解析**：`packages/server/src/services/docx-preview.ts`（新增）用已有的 `fflate` 只解
+  `word/document.xml`，走标签写成 Markdown（标题按 `w:pStyle`/`w:outlineLvl`、列表按 `w:ilvl`、
+  粗斜体、GFM 表格、实体解码、转义 Markdown 语法字符、输出封顶 20 万字符）；新路由
+  `<base>/files/preview-text` 两种寻址都注册，`.doc` 回 415 `doc_legacy`、其他类型回 415
+  `preview_unavailable`。前端 `doc` 预览只读（无编辑器、无源码视图）。
+- **静态资源补 `.mjs`**：`packages/server/src/app.ts` 的 `CONTENT_TYPES` 没有 `.mjs`，pdf.js 的 worker 被
+  以 `application/octet-stream` 提供，浏览器拒绝执行模块脚本（控制台原话：
+  `Failed to load module script: … non-JavaScript MIME type of "application/octet-stream"`）。这一条是
+  真浏览器里跑出来才发现的。
+- 依赖：`packages/web/package.json` 新增 `pdfjs-dist@^6.4.299`（Apache-2.0；按
+  `THIRD-PARTY-NOTICES.md` 的口径，打进包里的 npm 依赖不必另立条目）。
+
+### 验证（都不是推测）
+
+- 真服务（临时数据根 `/root/adelie-fork-data/r148-preview`，端口 **8976**）+ 真 Electron 窗口（Chromium
+  150 / Electron 43，`--remote-debugging-port` 后用 Playwright 的 CDP 连接驱动）+ 真文件（手写的
+  `报告.pdf`、用户机器上的 `NEXUS-VISION_Pro_AI眼镜设计稿.docx`）：
+  - **改前**：`设计稿.docx` → 面板文字「该类型不支持预览，请下载查看」（`panel-before-设计稿.png`）；
+    `报告.pdf` 走 iframe。
+  - **改后**：`报告.pdf` 面板里画出页面文字（`panel-final4-报告.png`）；`设计稿.docx` 显示标题层级、
+    粗体、表格（`panel-final4-设计稿.png`）；两者来回切换无 `pageerror`。画布像素另核过一次：
+    254×359 的画布上 424 个非白像素（`probe-pages.mjs`）。
+  - 中途抓到的两个真缺陷都在这一轮修掉了：worker 的 MIME、`PDFDocumentProxy.destroy` 不存在。
+- 单测：`packages/server/test/docx-preview.test.ts`（新增，9 例：Markdown 版式、列表缩进与表格、实体与转义、
+  只解正文部件、截断、拒绝非 docx、路由的 Markdown/ETag/no-store、两种 415、目录寻址、外人 404）；
+  `packages/web/test/workspace-tree.test.ts` 补 `docx` / `DOC` → `doc` 与只读浏览器的 `unsupported`。
+- 门禁：`pnpm --filter @adelie/web typecheck` 与 `--filter @adelie/server typecheck` 均 **EXIT=0**；
+  `oxlint` 0 警告 0 错误；改动文件 `prettier --check` 干净；server 全量 test 见下方 CI/门禁记录。
+- 端口与数据根：只用 8976（服务）、9223–9225（Electron 调试口），3003 / 7364 / 7777 全程没碰；
+  临时文件落在 scratchpad 的 `electron-test/` 与 `/root/adelie-fork-data/r148-preview`。
+
+### 没做 / 还差什么
+
+- 会话**附件**（`[attached file: …]`，存在会话 scratchpad 里）仍然不能预览：那条路是附件横幅，
+  本来就只有静态文字，这一轮没有把它接到预览上；用户如果是在聊天里点附件，那是另一条改动。
+- UI 包只读 `FileBrowser`（评估中心的用例浏览）里的 PDF 仍是 iframe —— 它不做解析请求，这一轮只改
+  文件面板。
+- 桌面壳没有改：`plugins` 与 PDF 无关（上面 A/B 已证），不动它。
+- `stash@{0}` 里是同一份半成品的历史快照（另一条线留的），本轮内容已在主线提交后失去意义，
+  留待下一轮确认后丢弃。
+- **下一轮（用户本轮中途点单）**：学豆包应用的「多图像画板 + 悬浮快捷条」——用户发来截图，图片下浮着一条
+  胶囊工具栏（**编辑**〔带 Tab 键提示〕、**分图层**、**去背景**、**消除**、**扩图**、**变清晰**、
+  **引用生成**、最右**下载**），图上有真实像素尺寸角标，右侧还并排着多张结果的缩略图。落点应在图片预览
+  （文件面板图片、生成图片卡片）旁边；开工前先把「哪些动作我们能真做、哪些只能跳走」定清楚，别摆一排
+  做不了的按钮。
+
+### 提交
+
+- 代码 + 用例 + 文案 + 文档 + changelog 中英一对：**`e5f9aec6`**；本轮台账（本条）另起一笔，与历次一致。
