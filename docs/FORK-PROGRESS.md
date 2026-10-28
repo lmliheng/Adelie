@@ -1074,6 +1074,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       （上游改的是 `package.json` 的 `hooks.version`，本仓没有那个块、版本在 `plugin.json`）。**为什么是这一条**：
       表上未勾选的仍是 2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10
       （拍板 / 新依赖），而它正是第一百四十六轮末尾点名的「下一轮的候选」（当时量过、六个文件干净落地）。
+- [x] **5.56 取消的 AMSP 消息流当场停住，缓存的事件也不再交付**（上游 `ca7114a2` `#1326`，**2026-10-28
+      第一百四十九轮落地**，提交见该节）：`readSse`/`sseData` 只在 `reader.read()` 之后看 abort 信号，
+      而调用方的循环体正好在生成器挂在 `yield` 时运行 —— 那段时间里的取消要等到下一个数据块才被发现，
+      当前块里已解析出来的事件照样交付，跟在后面的 `[DONE]` 更会把读取平静地结束掉，于是
+      `AgentClient` 把已取消的 run 报成 `completed`（真探针两态：改前 `result()` **resolved completed**，
+      改后 reject 原始原因）。现在 `yield` 之后立刻检查信号、下一次读取先抛；`AgentRun.#drive` 在读取
+      循环**无错结束**时再检查一次（缓存的 `[DONE]` 走的正是这条不带异常的出口，既有的 `catch` 看不到）。
+      **为什么是这一条**：表上未勾选的仍是 2.2c（桌面壳 / 部署单元）、3.5（拍板）、3.6（模型 key）、
+      4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；上游尖端这一轮没有新提交，而 `ca7114a2` 是那批
+      未移植提交里唯一「真缺陷 + 本树文件全在（`packages/amsp`）+ 不引入新依赖 + 自带能在本机真跑的用例」的
+      —— 同族的 `#1332` / `#1333` / `#1353` 都在上游的 `reader.ts` 上，本树没有那个文件（要连 reader /
+      transport / 记录构建器整套搬，另立一轮）。
 - **量过、本轮没移植的一条**：`#1356`（`04ed9c70`，server 7 文件 / +183 −8，异常结束时已计量的请求只统计
       一次）。补丁能落（两处小冲突），单元用例也能红转绿，但**本树走不到那个形态**：本树的 `token_usage`
       只在 `streamGenerate` 的「正常收尾」分支产出（`generative-model.ts` 的 `finish()` 之后 `return
@@ -2371,6 +2383,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-28 | 5.54 | **离开模型流时取消上游请求**（上游 `aff7ee37` `#1354` 移植，照改动落、不是合分支；上游 4 文件 / +130 −6 → 本树落下 **3 个跟踪文件（2 改 1 补 changelog 一对）**，源码 1 个、用例 1 个）：`GenerativeModel.streamGenerate()` 的调用方在响应结束之前不再读的（引擎放弃一轮、消费者跳出循环、请求抛错或超时）过去既不 abort 那次请求的 `AbortController`、也从不关上游迭代器，厂商继续往没人读的流里生成并继续计费。现在上游迭代器提到 `try` 之外，`finally` 在清掉空闲计时器与 abort 监听之后、**只在还没见到结束原因时** `ac.abort()` + `void Promise.resolve(it?.return?.()).catch(() => undefined)`（尽力而为：抛错 / 被拒 / 永不落地都不改结果、不挂住调用方）；`res === STOPPED` 那一支不再自己关，统一交给 `finally`，于是每条出口只关一次。**本地化**：本树翻译器没有上游的 `stopped` 读取口，守卫改用等价的 `sawFinishReason()`；用例的 `UniEvent` 词汇换成本树的 `{ type: "text" }` + 显式 `stop`，且「已收到 stop 不许动」那条改成断言「没发 `return()`、信号没被 abort」（本树循环拉到 `done`，生产者的 `finally` 无论如何都会跑） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个文件 **0 警告 0 错误** · 两个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1431 通过 / 6 跳过**（本笔 +6，即三条生命周期 + 三条清理失败）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `generative-model.ts` 退回 `HEAD`、只留新用例 → `test/llm.test.ts` **5 failed / 100 passed**（提前离开、挂在 yield 时中断、以及 throw / reject / hang 三条清理），放回本笔 → **105 全过** · **本轮主证据（真 HTTP 流，两态同一份探针）**：`r146/probe-provider.mjs`（8987，OpenAI-chat 兼容 SSE，每 100 ms 一段文字、共 40 段）配 `probe-stream.mjs`（真的 `GenerativeModel` 读 3 条消息后 `break`，1.5 s 后读供应商的计数）。**改前**：供应商又写了 **13 段**（`writes` 16）、`closedAt` 一直 `null` —— 生成没被取消；**改后**：只写了 **2 段**、消费者离开后 **0/1 ms** 连接就被关（`closedWithinMs: 0`）、零段新内容。**对照（正常读完不许被误杀）**：`probe-stream-full.mjs` 把同一流读完 → 40 段全收、`finished: 1`、`token_usage` 60 tokens、`outcome.status` 为 `completed` · 另：本轮先量过 `#1356`（`04ed9c70`，异常结束时已计量的请求只统计一次）并写好补丁与用例，真服务端实测确认**本树走不到那个形态**（`token_usage` 只在正常收尾分支产出），已撤回，理由记在「待办」那条「量过、没移植」里 | 见本行提交 |
 | 2026-10-28 | 5.55 | **目标模式的预算计入轮中压缩之前的用量**（上游 `eb3edfec` `#1355` 移植，照改动落、不是合分支；上游 6 文件 / +119 −11 → 本树落下 **5 个跟踪文件（3 改 2 新）**，源码 2 个、用例 1 个、插件清单 1 个、changelog 一对）：goal 的 stop hook 只从最新的 Trace 文件加总一轮用量，轮中一次上下文压缩就把这一轮前半程的消耗留在旧分片里 —— 对着 100 的预算用掉 110 个未命中缓存的 token 会被记成 20 并继续 `active`，收尾那一轮根本不开始。现在 `lib.mjs` 新增 `readRoundRecords(file, sessionId, records)`：从 Trace 文件名解析分片序号、按写入方的三位补零往回走，直到某一片里出现轮次输入或走到 `_001`；每片前驱必须在自己的 `session_meta` 里报着同一个 `session_id`（缺失 / 读不出 / 别人的会话都当场停下，保留已读到的用量），展平后交给未改动的 `lastRoundRecords()`，所以「从最后一条轮次输入之后开始」仍只写在一处、已完成轮次不会重复计入；认不出的文件名退回单文件计数。**本地化**：上游改的是 `package.json` 的 `hooks.version`，本仓没有那个块、插件版本在 `plugin.json`（`2026.09.29.1` → `2026.10.28.1`）；用例的写法照落 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 三个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过**（本笔 +7：四文件名表驱动占 4、另加三条）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `lib.mjs` / `stop.mjs` 退回 `HEAD`、只留新用例 → `test/goal-hooks.test.ts` **2 failed / 18 passed**（跨分片预算那条停在 `tokens_used: 110`、后一轮那条停在 110），放回本笔 → **20 全过** · **本轮主证据（core 的真 `Writer` 产出真分片 + 真钩子子进程，两态同一份探针）**：`r147/probe-shards.mjs` 用 `packages/core/src/trace/writer.ts` 的 `Writer`（含 `rotate()`，即上下文压缩换段时的那一步）写出 `s1_001.jsonl`…，再把真 `stop.mjs` 跑起来读最新分片。四个场景：**A 轮中压缩**（`_001` 是 meta + 轮次输入 + 999 token，rotate 后 `_002` 是 meta + 20 token）：**改前 `tokens_used: 20`、`status: active`**（预算 150 却没进收尾）→ **改后 `1019`、`status: wrapping_up`**；**B 后一轮**（`_001` 里轮 1 已计 90，`_002` 是轮 2 输入 + 10）：两态都 `100`（**不重复计入**）；**C 前驱缺失**（只有 `_003`）：两态都 `20`；**D 前驱属于别的会话**（`_004` 写着 `session_id: other` + 500 token，当前 `_005` 是 20）：两态都 `20`（不把别人的 token 算进来）· 分片名实测 `s1_001.jsonl` 起、三位补零，与钩子回填的写法一致 | `14868839`（本轮台账见下一笔） |
 | 2026-10-28 | 7.51 | **分叉对话被拒时，框留着、原因也留在框里**（不是移植：源码 2 处 `features/chat/task-stats-line.tsx` + `features/chat/chat-page.tsx`，`lib/api-error.ts` 新增 `refusalText()`，单测 +3、`e2e/session-fork.spec.mjs` +1 条，changelog 一对）—— 确认框不再「先收起再发请求」，`onFork` 改为抛出、由问它的那个框决定去留与显示原因；两态真浏览器取证 + 单测反证 + 整包 e2e 里既有分叉用例仍绿，详见「第一百四十八轮」 | `21384e46` |
+| 2026-10-28 | 5.56 | **取消的 AMSP 消息流当场停住，缓存的事件也不再交付**（上游 `ca7114a2` `#1326` 移植，照改动落、不是合分支；上游 4 文件 / +82 −1 → 本树落下 **4 个跟踪文件（2 改 2 补测试）** + changelog 一对，**源码各一处**：`packages/amsp/src/sse.ts` 在 `yield event` 之后检查信号、`packages/amsp/src/client.ts` 的 `AgentRun.#drive` 在读取循环无错结束时检查）：`sseData` 只在 `reader.read()` 之后看 abort，而调用方的循环体正好在生成器挂于 `yield` 时运行 —— 那段时间的取消要等下一个数据块才被发现，当前块里已解析出来的事件照样交付；跟在其后的 `[DONE]` 把读取平静结束掉，`AgentClient` 因此把已取消的 run 报成 `completed`。现在下一次读取先抛出调用方自己的原因，`#drive` 在无错出口再查一次（缓存的 `[DONE]` 走的正是这条出口）。上游第三条用例在 `HttpTransport` 上，本树没有那个文件，改成 client 层的等价用例 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · `@adelie/amsp` test **`EXIT=0`、72 通过**（2 文件，本笔 +4）· 逐包 test **`EXIT=0`、0 失败**：core **1438** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3312 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：两个源码文件退回 `HEAD`、只留新用例 → `sse.test.ts` **2 failed**（块内两事件之间、缓存 `[DONE]`）+ `client.test.ts` **1 failed**（缓存的 `[DONE]` 报完成），放回本笔 → **72 全过** · **本轮主证据（真 HTTP SSE 服务 + 真 `dist` 客户端，两态同一份探针）**：一个 chunk 里依次写 `run.started` / `request.started` / `text.delta` / `run.done` / `[DONE]`，客户端在循环体里收到 `run.done` 后 abort —— **改前** `result()` **resolved `completed`**（迭代拒绝了，结果却报成功），**改后** `result()` 与迭代都以原始原因 reject；同一流的正常读完对照两态都 `status: completed`（不被误杀）。改前 / 改后 `dist` 主包 md5 `8ac843ad…` / `695b98ff…` 各核过一次 · 端口只用 8991–8994，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `73942f9f` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -17989,3 +18002,79 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 - 代码 + 单测 + e2e + changelog：**`21384e46`**；本轮台账（本条、7.51 与上表那一行）另起一笔。
 - 推送后 CI：run **`40626754534`**（`f1cb6cb4`）**22 个作业全绿**（`not success: []`、
   `pending: []`，含本机按纪律没跑的 desktop 一族）。
+
+## 第一百四十九轮：取消的 AMSP 消息流当场停住，缓存的事件也不再交付（2026-10-28，条目 5.56）
+
+### 开工自检：工作区干净，这一轮网络没再掐
+
+- `git status --short` 输出为空、在 `main` 上，`HEAD` = **`4324b946`**（第一百四十八轮补记 CI 那一笔台账）。
+- 同步照旧走不通 SSH（`git@github.com: Permission denied (publickey)`），改用 HTTPS + vault 里的 PAT：
+  `git fetch https://<PAT>@github.com/lmliheng/Adelie.git main` 一次就到 **`4324b946`**，与本地同点
+  （`origin/main` 同点，无需 `--ff-only` 合并）。**没有改 `/etc/hosts`** —— 第一百四十七轮那套临时改 hosts 的
+  办法这一轮用不上，`github.com` 这次直接通。
+- 上游戏照第二十三轮那条路按 URL 现拉（`/root/penguin-harness` 本机仍是空目录）：
+  `git fetch --no-tags https://github.com/Prism-Shadow/penguin-harness.git refs/heads/main:refs/adelie-tmp/upstream-main-r149`
+  → 尖端仍是 **`9f6c4538`**（`#1365`），**上游这一轮没有新提交**。
+- 没有切分支、没有碰 `legacy/main`、没有推 upstream、没有 `pnpm add`。`pnpm` 仍不在 PATH，用 corepack 的
+  `pnpm.cjs` 加一个 scratchpad 垫片（`r149/bin/pnpm`）；`npx` 也不在 PATH，lint / prettier 直接走
+  `./node_modules/.bin`。
+
+### 选活：表上全卡着，从那一批未移植的上游提交里挑能一轮做完的
+
+- 表上未勾选的仍是 **2.2c**（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（要用户拍板取哪个桌面壳）、
+  **3.6**（要模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+- 上游没有新提交，于是按第一百四十七轮末尾的口径把 `9f6c4538` 之前那批未移植提交逐条量了一遍
+  （`d0e67c51` / `ce3d7f6f` / `0a5c35df` / `4dca3c66` / `d7acf13c` / `9f0133f5` / `18fca094` / `49b2194d` /
+  `4694d853` / `282eeab8` / `ca7114a2`）：
+  - 机器升级、删除 Agent（`ce3d7f6f` / `4dca3c66`）与「重试行」（`d7acf13c`）要一轮以上的量，且带新的界面组件；
+  - 源站 / 桌面壳那两条（`9f0133f5` / `18fca094`）按纪律不碰 desktop；
+  - **同族的 `#1332` / `#1333` / `#1353`（`282eeab8` / `4694d853` / `49b2194d`）全在 `packages/amsp/src/reader.ts`
+    上，本树没有那个文件** —— 它要连 reader / transport / 记录构建器整套搬，另立一轮；
+  - **`ca7114a2`（`#1326`）落在本树已有的两个文件上**，是本轮唯一「真缺陷 + 本树文件全在 + 不引入新依赖 +
+    自带能在本机真跑的用例」的一条。
+
+### 做了什么
+
+- `packages/amsp/src/sse.ts`：`sseData` 只在 `reader.read()` 之后看 abort 信号，而调用方的循环体正好在生成器
+  挂在 `yield` 时运行 —— 那段时间里的取消要等到下一个数据块才被发现，当前块里已经解析出来的事件照样交付。
+  现在每交付一条事件之后立刻 `if (signal?.aborted) throw signal.reason`，下一次读取先抛。
+- `packages/amsp/src/client.ts`：`AgentRun.#drive` 的读取循环在 `[DONE]` 处 `break`，走的是**不带异常的出口**，
+  既有的 `catch` 里的 `if (control.signal.aborted)` 根本看不到它 —— 于是缓存的 `[DONE]` 把已取消的 run
+  报成 `completed`。循环之后、`collector.result()` 之前补一次同样的检查。
+- 用例：`test/sse.test.ts` +3（同一数据块两条事件之间取消、缓存 `[DONE]` 之前取消，以及一条契约守卫
+  「正文最后一条事件交付之后取消，下一次读取仍要抛」—— 第三条在改动前也通过，本树的 EOF 在那条路径上本来
+  就会再读一次，因此它守的是契约而不是本笔修的那条路）；`test/client.test.ts` +1（同块 `run.done` + `[DONE]`、
+  在循环体里取消）。
+- changelog 中英一对：`changelog/unreleased/2026-10-28-amsp-cancel-buffered-events{,.zh}.md`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型
+  —— 本笔不动服务契约）。
+- `oxlint` 4 个改动文件 **0 警告 0 错误**；4 个源码 / 用例文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- `@adelie/amsp` test **`EXIT=0`、72 通过**（2 文件；改前基线 68，本笔 +4）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1053** ·
+  cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3312 通过 / 2 跳过** ·
+  hmr 无测试文件。`packages/amsp` 的 `dist` 先重建过（server / web 的测试读的是它的产物）。
+- **反证（单测）**：两个源码文件退回 `HEAD`、只留新用例 → `sse.test.ts` **2 failed**（块内两事件之间、
+  缓存 `[DONE]`）+ `client.test.ts` **1 failed**（缓存的 `[DONE]` 报完成），放回本笔 → **72 全过**。
+- **本轮主证据（真 HTTP SSE 服务 + 真 `dist` 客户端，两态同一份探针 `r149/probe.mjs`）**：一个 chunk 里依次写
+  `run.started` / `request.started` / `text.delta` / `run.done` / `[DONE]`，客户端在循环体里收到 `run.done`
+  后 abort —— **改前**：迭代拒绝了，但 `result()` **resolved `status: "completed"`**（取消的 run 报成功）；
+  **改后**：`result()` 与迭代都以原始原因 reject。**对照（正常读完不许被误杀）**：同一份流的另一形态
+  （`text.delta` 一个 chunk、`run.done` + `[DONE]` 100 ms 后的同一 chunk）读完 → 两态都 `status: completed`。
+  两态的 `dist` 主包各核过一次：改前 `8ac843ad…`、改后 `695b98ff…`。
+- **端口与数据根**：只用 8991–8994（探针，跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 全程没碰；
+  没有起服务、没有写 `/root/adelie-fork-data`，临时文件只落在 scratchpad 的 `r149/`；没用 `rm -rf`。
+
+### 没做 / 还差什么
+
+- 表上剩下的仍是那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10），与第一百四十七轮一致。
+- 同族的 **`#1332` / `#1333` / `#1353`** 要先把上游的 `packages/amsp/src/reader.ts` + `transport.ts` +
+  `records/` 那一套搬过来（约 +3000 行、含 700 行记录类型），属一整轮的大活，下一轮起可单独立一条。
+- `#1365`（一个 socket 承载所有请求）仍要整份 `packages/web/src/api/socket.ts`（本树没有那个文件）。
+
+### 提交
+
+- 代码 + 用例 + changelog：**`73942f9f`**；本轮台账（本条、5.56 与上表那一行）另起一笔，与历次一致。
