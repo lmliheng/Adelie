@@ -1700,6 +1700,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       几秒后自己消失的提示，而卡片照旧站在原地，只说「选择要删除的数据」。现在原因画在卡片自己那句话
       下面、紧挨着重试的那个按钮，勾好的种类原样留着。为什么挑这一条、两态读数与反证见
       「第一百四十五轮」一节。
+- [x] **7.51 分叉对话被拒时，框留着、原因也留在框里**（**2026-10-28 第一百四十八轮**落地，
+      提交见该节；两处源码 `features/chat/task-stats-line.tsx`（+30 −9：确认框的确认按钮不再先收起
+      对话框，新增 `forkNow()` 等 `onFork` 落地、成功才收、失败走 `refusal` 槽，每次开框清掉旧原因）与
+      `features/chat/chat-page.tsx`（`onFork` 不再自己弹 toast、改为抛出，所以原因能留在问它的那个框里）
+      + `lib/api-error.ts` 新增 `refusalText()`（服务端答过的按码本地化、本仓自判的用抛出时的文案、
+      什么都说不出的才落到通用失败提示）+ 单测 3 条 + `e2e/session-fork.spec.mjs` 里 1 条新用例
+      （用服务端自己的 `invalid_fork_position` 拒绝一次、再放行一次）+ changelog 一对，**无新依赖、
+      不改接口、无新文案**）：这一条是「写入被拒时原因留在框里」那一族里最后几个面之一，缺陷是真的
+      —— 分叉过去**按确认就先收起对话框**再发请求，失败只有一枚六秒后自己消失的 toast，浮在已经不在的
+      框上方；而对话本来也没变，用户看到的等于「什么也没说」。为什么挑这一条、两态读数与反证见
+      「第一百四十八轮」一节。
 
 
 ## 发布 v0.2.0（2026-10-05）
@@ -2359,6 +2370,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-27 | 7.50 | **内置浏览器「清除浏览数据」被拒时，原因留在卡片里**（不是移植：1 处源码 `packages/web/src/features/builtin-browser/clear-data-dialog.tsx`（+17 −3：新增 `refusal` 状态接上 `ConfirmModal` 的 `refusal` 槽，`catch` 不再 `toastError`、改把 `S.builtinBrowser.clearFailed(apiErrorText(err))` 交给卡片，点「清除」与开框各清一次旧原因） + 1 个新文件 `packages/web/e2e/builtin-browser-clear-refusal.spec.mjs`（1 条用例：拒一次清除、再放行一次，并核对两次请求体里的种类相同） + changelog 一对 + 文档两句，**无新依赖、不碰接口、无新文案**）：这一族（7.19–7.49）的最后一处 —— 卡片本来就会在失败时留着，丢的是原因：它落进一条自己会消失的提示，而卡片停在那儿一个字都不说；卡片上的重试是回到同一份勾选的唯一路径。现在原因画在卡片里、紧挨着重试按钮，勾好的种类连同取消勾选的那一个都原样留着 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1425 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **204 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · `@adelie/docs` **8 文件 / 62 通过**（本轮改到它的内容）· **真服务 + 真浏览器单 spec**（一次性数据根 `/root/adelie-fork-data/r145-clear`、服务 **8977**、本机系统 chromium `/usr/lib/chromium/chromium-headless-shell`）：新 spec **1 passed（2.8 s）** · **反证（同一份 spec，两种产物）**：把这一处源码 `git checkout --` 退回、`--filter @adelie/web build` 重建、同一个服务端再跑 → **1 failed**（`getByRole('dialog')` 里 `getByRole('alert')` `element(s) not found`：改前原因只进 toast，框里一个字都没有）· **两态截图**（`r145/probe.mjs`，同一个 `page.route` 500，1360×900）：改前被拒后卡片留着、**框里没有原因**，原因在顶上一条会自己走的提示里（`before/shot-3-refused.png`）；改后卡片里是红色「清除失败：清空被服务端的探针挡下」、取消勾选的「历史记录」仍是空的（`shot-3-refused.png`）· 两态 console 的 error 只有刻意造的那一次 500，无 `pageerror` · 端口只用 8977（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r145-clear` 与 scratchpad 的 `r145/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包 | `8db188dd` |
 | 2026-10-28 | 5.54 | **离开模型流时取消上游请求**（上游 `aff7ee37` `#1354` 移植，照改动落、不是合分支；上游 4 文件 / +130 −6 → 本树落下 **3 个跟踪文件（2 改 1 补 changelog 一对）**，源码 1 个、用例 1 个）：`GenerativeModel.streamGenerate()` 的调用方在响应结束之前不再读的（引擎放弃一轮、消费者跳出循环、请求抛错或超时）过去既不 abort 那次请求的 `AbortController`、也从不关上游迭代器，厂商继续往没人读的流里生成并继续计费。现在上游迭代器提到 `try` 之外，`finally` 在清掉空闲计时器与 abort 监听之后、**只在还没见到结束原因时** `ac.abort()` + `void Promise.resolve(it?.return?.()).catch(() => undefined)`（尽力而为：抛错 / 被拒 / 永不落地都不改结果、不挂住调用方）；`res === STOPPED` 那一支不再自己关，统一交给 `finally`，于是每条出口只关一次。**本地化**：本树翻译器没有上游的 `stopped` 读取口，守卫改用等价的 `sawFinishReason()`；用例的 `UniEvent` 词汇换成本树的 `{ type: "text" }` + 显式 `stop`，且「已收到 stop 不许动」那条改成断言「没发 `return()`、信号没被 abort」（本树循环拉到 `done`，生产者的 `finally` 无论如何都会跑） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 两个文件 **0 警告 0 错误** · 两个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **69 文件 + 1 跳过 / 1431 通过 / 6 跳过**（本笔 +6，即三条生命周期 + 三条清理失败）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `generative-model.ts` 退回 `HEAD`、只留新用例 → `test/llm.test.ts` **5 failed / 100 passed**（提前离开、挂在 yield 时中断、以及 throw / reject / hang 三条清理），放回本笔 → **105 全过** · **本轮主证据（真 HTTP 流，两态同一份探针）**：`r146/probe-provider.mjs`（8987，OpenAI-chat 兼容 SSE，每 100 ms 一段文字、共 40 段）配 `probe-stream.mjs`（真的 `GenerativeModel` 读 3 条消息后 `break`，1.5 s 后读供应商的计数）。**改前**：供应商又写了 **13 段**（`writes` 16）、`closedAt` 一直 `null` —— 生成没被取消；**改后**：只写了 **2 段**、消费者离开后 **0/1 ms** 连接就被关（`closedWithinMs: 0`）、零段新内容。**对照（正常读完不许被误杀）**：`probe-stream-full.mjs` 把同一流读完 → 40 段全收、`finished: 1`、`token_usage` 60 tokens、`outcome.status` 为 `completed` · 另：本轮先量过 `#1356`（`04ed9c70`，异常结束时已计量的请求只统计一次）并写好补丁与用例，真服务端实测确认**本树走不到那个形态**（`token_usage` 只在正常收尾分支产出），已撤回，理由记在「待办」那条「量过、没移植」里 | 见本行提交 |
 | 2026-10-28 | 5.55 | **目标模式的预算计入轮中压缩之前的用量**（上游 `eb3edfec` `#1355` 移植，照改动落、不是合分支；上游 6 文件 / +119 −11 → 本树落下 **5 个跟踪文件（3 改 2 新）**，源码 2 个、用例 1 个、插件清单 1 个、changelog 一对）：goal 的 stop hook 只从最新的 Trace 文件加总一轮用量，轮中一次上下文压缩就把这一轮前半程的消耗留在旧分片里 —— 对着 100 的预算用掉 110 个未命中缓存的 token 会被记成 20 并继续 `active`，收尾那一轮根本不开始。现在 `lib.mjs` 新增 `readRoundRecords(file, sessionId, records)`：从 Trace 文件名解析分片序号、按写入方的三位补零往回走，直到某一片里出现轮次输入或走到 `_001`；每片前驱必须在自己的 `session_meta` 里报着同一个 `session_id`（缺失 / 读不出 / 别人的会话都当场停下，保留已读到的用量），展平后交给未改动的 `lastRoundRecords()`，所以「从最后一条轮次输入之后开始」仍只写在一处、已完成轮次不会重复计入；认不出的文件名退回单文件计数。**本地化**：上游改的是 `package.json` 的 `hooks.version`，本仓没有那个块、插件版本在 `plugin.json`（`2026.09.29.1` → `2026.10.28.1`）；用例的写法照落 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 三个改动文件 **0 警告 0 错误** · 六个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过**（本笔 +7：四文件名表驱动占 4、另加三条）· ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3309 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：把 `lib.mjs` / `stop.mjs` 退回 `HEAD`、只留新用例 → `test/goal-hooks.test.ts` **2 failed / 18 passed**（跨分片预算那条停在 `tokens_used: 110`、后一轮那条停在 110），放回本笔 → **20 全过** · **本轮主证据（core 的真 `Writer` 产出真分片 + 真钩子子进程，两态同一份探针）**：`r147/probe-shards.mjs` 用 `packages/core/src/trace/writer.ts` 的 `Writer`（含 `rotate()`，即上下文压缩换段时的那一步）写出 `s1_001.jsonl`…，再把真 `stop.mjs` 跑起来读最新分片。四个场景：**A 轮中压缩**（`_001` 是 meta + 轮次输入 + 999 token，rotate 后 `_002` 是 meta + 20 token）：**改前 `tokens_used: 20`、`status: active`**（预算 150 却没进收尾）→ **改后 `1019`、`status: wrapping_up`**；**B 后一轮**（`_001` 里轮 1 已计 90，`_002` 是轮 2 输入 + 10）：两态都 `100`（**不重复计入**）；**C 前驱缺失**（只有 `_003`）：两态都 `20`；**D 前驱属于别的会话**（`_004` 写着 `session_id: other` + 500 token，当前 `_005` 是 20）：两态都 `20`（不把别人的 token 算进来）· 分片名实测 `s1_001.jsonl` 起、三位补零，与钩子回填的写法一致 | `14868839`（本轮台账见下一笔） |
+| 2026-10-28 | 7.51 | **分叉对话被拒时，框留着、原因也留在框里**（不是移植：源码 2 处 `features/chat/task-stats-line.tsx` + `features/chat/chat-page.tsx`，`lib/api-error.ts` 新增 `refusalText()`，单测 +3、`e2e/session-fork.spec.mjs` +1 条，changelog 一对）—— 确认框不再「先收起再发请求」，`onFork` 改为抛出、由问它的那个框决定去留与显示原因；两态真浏览器取证 + 单测反证 + 整包 e2e 里既有分叉用例仍绿，详见「第一百四十八轮」 | `21384e46` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -17855,3 +17867,123 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 代码 + 用例 + 插件清单 + changelog：**`14868839`**；本轮台账（本条、5.55 与上表那一行）另起一笔（台账与代码分两笔，与历次一致）。
+
+## 第一百四十八轮：分叉对话被拒时，原因留在框里（2026-10-28，条目 7.51）
+
+### 开工自检：工作区里躺着另一条线被应用重启打断的半成品，先整片留底再移出
+
+- `git status --short` **不干净**：`packages/server/src/http/routes/workspace-files.ts`、`packages/web` 的
+  七个文件（`package.json` / `api/endpoints.ts` / `api/workspace-files.ts` / `features/chat/workspace-browser.tsx` /
+  两份词典 / `lib/workspace-tree.ts`）、`pnpm-lock.yaml`，外加两个未跟踪的新文件
+  `packages/server/src/services/docx-preview.ts` 与 `packages/web/src/features/chat/pdf-preview.tsx`
+  —— 是一份**工作区文件预览（docx / pdf）**的半成品，`packages/web/package.json` 还新加了 `pdfjs-dist`。
+- 谁的、死没死，按判据逐条量：脏文件 mtime **09:47–09:50**；`.git/index` 停在 **09:50:02**（早于最后
+  一次写文件），`HEAD` = `3fec1d9b`；写它的是自进化那条线的 `self_evolution` 会话
+  `session-2026-10-27-20-43-36-0f67df1c`（trace `_002` 末尾 **01:50:44Z 的 `abort` / `user_abort`**，
+  那一笔正是它自己跑 `pnpm --filter @adelie/web typecheck` 时被打断），而 App 服务端 **09:50:48**
+  重启（另一个 09:47 会话同时被 abort）——即**一次 App 重启**把它掐断的，不是人按的停止；
+  `/proc/*/cwd` 里没有任何进程落在这棵树上，之后 10:30 那轮巡台只读不写（它自己在 `runs/…/log.md`
+  里写了「工作树有未提交改动…没碰」）。
+- 成色：`pnpm -C packages/web typecheck` 在它上面**直接红**（`pdf-preview.tsx` 三处 `pdfjs-dist` v6
+  的类型对不上：`isEvalSupported` 不在 `DocumentInitParameters` 里、`PDFDocumentProxy.destroy` 不存在）
+  —— 是一份**一条验证都没过**的半成品。
+- 处置：不替它收尾（它要引入新依赖 `pdfjs-dist`，与本轮纪律「不引入新依赖」相抵；也未经它自己那一轮
+  的验收），但也不把它留在工作区挡门禁：`git diff` 整片 + 两个新文件按原路径整片留底到
+  `scratchpad/session-2026-10-28-11-00-24-9ed815a0/r148/`（`tracked.patch`，sha256 前 24 位
+  `81ff999bc01769b592afd37e`；`untracked/` 下是两个新文件），然后
+  `git stash push -u -m "r148-other-line: …"` → **`stash@{0}`**。一条命令即可回到原样：
+  `git stash pop`（或用那份 patch `git apply`）。**给它三个选项**（原会话继续 / 授权一轮接管并去掉
+  pdfjs 走浏览器原生预览 / 丢掉），写在汇报邮件里。
+- 同步：SSH 仍被 GitHub 拒（`git@github.com: Permission denied (publickey)`），按第一百四十六 / 一百四十七轮
+  的路子用 **HTTPS + `GITHUB_PAT`** 核远端：`git ls-remote` 的 `main` 正是 **`3fec1d9b`** = 本地 `HEAD`，
+  无需快进（`git status -sb` 里那句 `ahead 4` 是**陈旧的 remote-tracking 引用**，`origin/main` 早就前移过）。
+  没切分支、没碰 `legacy/main`、没推 upstream。
+- 上游照第二十三轮的路按 URL 现拉（`refs/adelie-tmp/upstream-main-r149`）：尖端仍是 **`9f6c4538`**
+  （`#1365`），**没有新提交**，与第一百四十六 / 一百四十七轮探到的同点。
+
+### 选活：清单上的条目全卡着，接 7.x 那一族还没摸过的面
+
+表上未勾选的仍是 **2.2c**（写侧只剩桌面壳 / `adelie-app.service` 这类既有部署单元，属发布动作）、
+**3.5**（拍板取哪个桌面壳）、**3.6**（要模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 /
+新依赖）；上游这一轮没动。于是沿「写入被拒时原因留在框里」（7.19–7.50）这条线机械地扫了一遍还剩哪些面：
+把用了 `ConfirmModal` 却一个 `refusal` 都没有的组件列出来
+（`for f in $(grep -rl ConfirmModal --include=*.tsx .); do grep -q refusal $f || echo $f; done`
+→ 9 个），逐个读到真缺陷的只有**分叉**这一处：
+
+- `task-stats-line.tsx` 的确认按钮是 **`setConfirmingFork(false)` 之后再 `onFork(…)`** —— 请求还没发，
+  问话的框已经没了；
+- `chat-page.tsx` 的 `onFork` 把失败一律 `toastError(apiErrorText(e, …))` —— 一枚几秒后自己消失的提示，
+  浮在已经不在的框上方，而对话本来也没变；
+- 「定位不到这条回复」那一支同样只是弹一句 toast 就 `return`，用户再点一次还是同样结果。
+
+其余八处读下来都不是这一类：`errors-panel` / `context-gauge` / `settings/shortcuts-section` /
+`sandbox-backend-prompt` 的框由上层状态决定去留（或根本没有会失败的写入），`dock-panel` 与
+`user-menu` 的确认不是写入，`agents/save-confirm` 是共用组件本身。
+
+### 做了什么（6 个跟踪文件：源码 3、单测 1、e2e 1、changelog 一对）
+
+- `packages/web/src/features/chat/task-stats-line.tsx`（+30 −9）：确认框掌握结果 —— 新增 `forkNow()`
+  等 `onFork` 落地，**成功才收起**对话框（此时界面已经在跳到新对话），失败把
+  `refusalText(err)` 交给 `ConfirmModal` 的 `refusal` 槽；新增 `forkRefusal` 状态，每次打开对话框
+  都清掉旧原因，不让上一次的失败迎接下一次尝试。
+- `packages/web/src/features/chat/chat-page.tsx`（+22 −21）：`onFork` **不再自己弹 toast**，改为抛出，
+  由调用方决定原因该出现在哪里；「定位不到这条回复」这一支抛 `new Error(S.chat.forkSessionFailed)`，
+  把已经写好的中英文案原样带到框里（它没到服务端，所以不是 `ApiError`）。
+- `packages/web/src/lib/api-error.ts`（+17）：新增 `refusalText(err)` —— `ApiError` 走 `apiErrorText`
+  （按码本地化，未映射的退回服务端原话）、本仓自判的 `Error` 用它的 message、什么都说不出的才落到
+  `S.common.unknownError`。放在一处，是因为每一处拒绝栏都要同一条规则。
+- `packages/web/test/api-error-text.test.ts`（+37）：`refusalText` 三条 —— 映射过的服务端码保持本地化、
+  未映射的仍退回服务端原话、自判 `Error` 显示自己的句子、空 message / 非 Error / `undefined` 落到
+  通用失败提示。
+- `packages/web/e2e/session-fork.spec.mjs`（+95）：分叉用例文件里加第二条 —— 把分叉请求回答成**服务端
+  自己的** `invalid_fork_position`（400，"The selected reply no longer exists in this Session."，
+  正是 Trace 前移后陈旧位置会拿到的那一句），断言：问题还开着、原因在框里、**只发了一次请求**、
+  页面没动、确认按钮已恢复可点；随后 `unroute` 再确认一次，分叉成立并跳到新对话（证明这份原因不是死路）。
+- changelog 一对 `changelog/unreleased/2026-10-28-fork-refusal-keeps-dialog{,.zh.md}`。
+
+### 验证（都不是推测）
+
+- **类型检查**：六个包逐个 `pnpm run typecheck` 全 **OK**（core / server / web / ui / cli / hmr；
+  server 那一步自己跑 `gen:ifaces`，报 `src/ifaces.json unchanged`）。
+- **lint / 格式**：`pnpm lint`（oxlint）**0 警告 0 错误**（2308 文件）；改动 5 个文件 `prettier --check`
+  干净（首跑 `test/api-error-text.test.ts` 一处，`--write` 后复检通过）；`git diff --check` 干净。
+- **测试**（逐包 `EXIT=0`、0 失败）：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过** ·
+  ui **130 / 1053** · cli **38 / 561** · server **204 文件 / 2985 通过 / 15 跳过** ·
+  web **270 文件 / 3312 通过 / 2 跳过**（比第一百四十二轮记的 3309 多 **+3**，正是本轮那三条单测；
+  `test/api-error-text.test.ts` 单跑 9 条全过）。
+- **e2e（受影响的 spec）**：没跑整套 —— 第一次 `npx: command not found`（本机 `npx` 不在 PATH，
+  在 `/usr/local/lib/nodejs/node-v24.21.0-linux-x64/bin`），第二次跑到中途收到 **SIGTERM** 被中止
+  （日志尾部只剩用例清单与 `2 did not run`，没有可用汇总），随后发现 **`/root/.cache/ms-playwright`
+  今天 09:50 被清空**（只剩 `.links`），`npx playwright install chromium-headless-shell` 六分钟没有
+  下载进度。于是按系统 chromium（`/usr/bin/chromium` 150）用一份 scratchpad 里的配置
+  （`launchOptions.executablePath`，其余与仓库配置一致）单跑：
+  `e2e/session-fork.spec.mjs` **2 passed**（既有那条 11.8s、本轮新条 2.9s）。
+- **反证**：把 `task-stats-line.tsx` / `chat-page.tsx` 两处退回 `HEAD`（`git stash push --` 两个路径）、
+  重建 web 产物后单跑新用例 —— **红在 `session-fork.spec.mjs:250` 的 `expect(question).toBeVisible()`**，
+  报 `element(s) not found`：旧行为下确认后对话框**立刻消失**，正是这条用例要钉的那件事。放回本笔、
+  重建后 2 条全绿。
+- **真浏览器两态取证**（真服务端 8951 + mock 模型 8952、数据根 `/root/adelie-fork-data/r148-ui`、
+  系统 chromium）：① 点分叉 → 确认框与那句话；② 让分叉请求被拒（同一条 `invalid_fork_position`）→
+  `stillOpen: true`、`reasonText: "操作被拒绝：The selected reply no longer exists in this Session."`、
+  确认按钮 `enabled: true`；③ 撤掉拒绝再确认 → `forked: true`（URL 换到新会话）。截图
+  `01-dialog.png` / `02-refused.png` / `03-forked.png` 与 `probe.json` 都在 scratchpad 的 `r148/`。
+  **console 与网络只有那次刻意重放的 400**（`Failed to load resource: … 400`），没有 `pageerror`。
+- **端口与数据根**：只用 8940 / 8942（spec）与 8951 / 8952（取证），3003 / 3004 / 4000 / 7364 / 7369
+  全程没碰；数据根只写 `/root/adelie-fork-data/{r148-browser,r148-ui}` 与 scratchpad，没往
+  `~/.penguin` / `~/.adelie` 写；没用 `rm -rf`。
+
+### 没做 / 还差什么
+
+- **工作区里那份 docx/pdf 预览半成品仍在 `stash@{0}`**，等用户一句话（原会话继续 / 授权一轮接管 /
+  丢掉）。留底在 `scratchpad/…/r148/tracked.patch`（sha256 前 24 位 `81ff999bc01769b592afd37e`）
+  与 `untracked/` 两个新文件 —— 就算 stash 被清也不会真丢。
+- **整套浏览器 e2e 没有本轮结论**（原因见上：`npx` 不在 PATH、第二次 SIGTERM、浏览器缓存被清空）。
+  下一轮开工若要跑整套，先把浏览器装回来：`cd packages/web && npx playwright install chromium`
+  （PATH 里要有 `/usr/local/lib/nodejs/node-v24.21.0-linux-x64/bin`），或者照本轮这样用系统 chromium。
+- 表上剩下的仍是那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）。「原因留在框里」这一族按本轮
+  那次扫描已无剩下的一行代码缺陷；下一轮的候选按第一百四十七轮的口径继续量上游（尖端仍是
+  `9f6c4538`，`#1365` / `#1370` 要整份 `socket.ts` 重写，另立一轮）。
+
+### 提交
+
+- 代码 + 单测 + e2e + changelog：**`21384e46`**；本轮台账（本条、7.51 与上表那一行）另起一笔。
