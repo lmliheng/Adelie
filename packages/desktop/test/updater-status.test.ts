@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import type { DesktopUpdateStatus } from "@adelie/server/api";
 import {
   initialUpdateStatus,
+  manualCheckAsksFeed,
   nextUpdateStatus,
   parseUpdaterCommand,
   updaterStatusMessage,
@@ -179,6 +180,36 @@ describe("nextUpdateStatus", () => {
     expect(
       nextUpdateStatus(downloaded, { kind: "unsupported", reason: "linux-not-appimage" }),
     ).toEqual({ appVersion: "1.0.0", state: "unsupported", reason: "linux-not-appimage" });
+  });
+});
+
+describe("manualCheckAsksFeed", () => {
+  it("asks the feed whenever an answer is what the user is after", () => {
+    expect(manualCheckAsksFeed(initialUpdateStatus("1.0.0"))).toBe(true);
+    expect(manualCheckAsksFeed({ appVersion: "1.0.0", state: "up-to-date" })).toBe(true);
+    expect(manualCheckAsksFeed({ appVersion: "1.0.0", state: "error", message: "offline" })).toBe(
+      true,
+    );
+    // The standing offer is only what the *last* check saw: a release published since is
+    // exactly what the button asks about.
+    expect(manualCheckAsksFeed({ appVersion: "1.0.0", state: "available", version: "1.1.0" })).toBe(
+      true,
+    );
+  });
+
+  it("leaves a running step alone", () => {
+    expect(
+      manualCheckAsksFeed({
+        appVersion: "1.0.0",
+        state: "downloading",
+        version: "1.1.0",
+        percent: 20,
+      }),
+    ).toBe(false);
+    expect(
+      manualCheckAsksFeed({ appVersion: "1.0.0", state: "downloaded", version: "1.1.0" }),
+    ).toBe(false);
+    expect(manualCheckAsksFeed({ appVersion: "1.0.0", state: "checking" })).toBe(false);
   });
 });
 

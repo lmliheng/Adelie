@@ -24,8 +24,9 @@
  *   re-announce) is suppressed: folding it would drop the download context and every
  *   later progress tick with it. A download's own failure still lands as `error`.
  * - While `available`, a check's `checking` and a same-version re-announce are suppressed
- *   too: the offer must not blink out under the fallback-feed re-check that a failed
- *   download runs. A different version, an up-to-date answer, or an error replace it.
+ *   too: a check re-reads the feed precisely to keep the offer current (see
+ *   `manualCheckAsksFeed`), and the offer must not blink out while it does. A different
+ *   version, an up-to-date answer, or an error replace it.
  */
 import type {
   DesktopUpdateStatus,
@@ -93,6 +94,25 @@ export function nextUpdateStatus(prev: DesktopUpdateStatus, ev: UpdaterEvent): D
     case "error":
       return { appVersion, state: "error", message: ev.message };
   }
+}
+
+/**
+ * Whether a user's "check for updates" should ask the feed again, instead of re-showing what
+ * the shell already found.
+ *
+ * A download in flight, a build waiting on disk, or a check already running says no: asking
+ * again there could invalidate what the user is being offered, and the row that pressed the
+ * button only needs an answer, not a second lookup.
+ *
+ * A standing offer does NOT say no. That offer is only what the *last* check saw, and a
+ * release published since then is precisely what the user pressed the button to find out —
+ * re-showing the old version under a "check for updates" action is how a shell reports a
+ * version that the cloud replaced hours ago.
+ */
+export function manualCheckAsksFeed(status: DesktopUpdateStatus): boolean {
+  return (
+    status.state !== "downloading" && status.state !== "downloaded" && status.state !== "checking"
+  );
 }
 
 /** Wraps a snapshot for the port push. */

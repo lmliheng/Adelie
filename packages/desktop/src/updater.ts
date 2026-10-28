@@ -41,7 +41,7 @@ import {
   updateSupport,
 } from "./update-support.js";
 import type { UpdateFeedKind } from "./update-support.js";
-import { initialUpdateStatus, nextUpdateStatus } from "./updater-status.js";
+import { initialUpdateStatus, manualCheckAsksFeed, nextUpdateStatus } from "./updater-status.js";
 import type { UpdaterEvent } from "./updater-status.js";
 
 const { autoUpdater } = electronUpdater;
@@ -176,15 +176,12 @@ export function handleUpdaterCommand(action: DesktopUpdaterCommandMessage["actio
       emitStatus({ kind: "unsupported", reason: support.reason });
       return;
     }
-    if (
-      downloadedVersion !== null ||
-      status.state === "downloading" ||
-      status.state === "available" ||
-      status.state === "checking"
-    ) {
+    if (!manualCheckAsksFeed(status)) {
       reannounceStatus();
       return;
     }
+    // A standing offer is only what the last check saw; the user asked this one, so it
+    // reads the feed again (see `manualCheckAsksFeed`).
     void check();
     return;
   }
@@ -291,18 +288,20 @@ export function initUpdater(getWindow: () => BrowserWindow | null): void {
   scheduleChecks();
 }
 
-/** Runs one check against the configured feed. */
+/**
+ * Runs one check against the configured feed.
+ *
+ * A standing offer is re-read, not kept: it is only what the *last* check saw, and a release
+ * published since then is exactly what a check is for — a shell that keeps showing the
+ * version the cloud replaced an hour ago reads as broken. Nothing is fetched either way
+ * (`autoDownload` is off), so replacing the offer costs the user nothing.
+ */
 async function check(): Promise<void> {
   // A waiting build ends the checking: a re-check that finds a newer release would
   // start fetching it and invalidate the downloaded package on disk while the UI still
   // points its install action at it. The user installs what they were offered; the next
-  // launch checks again. A running download likewise finishes undisturbed, and a standing
-  // offer stays what it is — the user takes it or leaves it; the next launch checks again.
-  if (
-    downloadedVersion !== null ||
-    status.state === "downloading" ||
-    status.state === "available"
-  ) {
+  // launch checks again. A running download likewise finishes undisturbed.
+  if (downloadedVersion !== null || status.state === "downloading") {
     return;
   }
   // Every check reads the feed configured for this run — an override when one is set, GitHub
@@ -378,20 +377,25 @@ export async function checkForUpdatesManually(): Promise<void> {
     await promptRestart(downloadedVersion, null);
     return;
   }
-  if (status.state === "downloading") {
-    // check() would decline anyway; a manual action still answers (the silence rule).
+  if (!manualCheckAsksFeed(status)) {
+    // A download already runs, or a check is out: answer the menu click, don't stack a
+    // second lookup on top.
+    const downloading = status.state === "downloading";
     await dialog.showMessageBox({
       type: "info",
-      message: "An update is downloading.",
-      detail: "You will be asked to restart when it is ready.",
+      message: downloading
+        ? "An update is downloading."
+        : "Adelie is already checking for updates.",
+      detail: downloading
+        ? "You will be asked to restart when it is ready."
+        : "The result will show in a moment.",
+      buttons: ["OK"],
     });
     return;
   }
-  if (status.state === "available" && status.version !== undefined) {
-    // The offer stands (check() leaves it alone); a manual check re-presents it.
-    await promptDownload(status.version, null);
-    return;
-  }
+  // Offered or not, the check reads the feed: a release published since the last check is
+  // what the user is asking about, and re-presenting the old offer would name a version the
+  // cloud has already replaced. The outcome lands in a dialog either way.
   manualCheckInFlight = true;
   await check();
 }

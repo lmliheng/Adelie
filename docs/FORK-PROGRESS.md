@@ -18155,3 +18155,46 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 代码 + 用例 + 文案 + 文档 + changelog 中英一对：**`e5f9aec6`**；本轮台账（本条）另起一笔，与历次一致。
+
+## 第一百五十一轮：桌面端「检查更新」不再拿上次的结果冒充最新版（2026-10-28，用户点单）
+
+### 起点：用户说「桌面端有时候检查到的版本不是最新版」
+
+- 用户原话：「桌面端有时候检查到的版本不是最新版，是因为之前检查的时候没更新，后续云端版本又更新了，导致
+  看检查更新的时候是上次检查的版本。」开工 `HEAD` = `0dae1863`。
+- 代码里对得上：`packages/desktop/src/updater.ts` 的 `check()` 在 `status.state === "available"` 时
+  **直接返回**（不查源），`handleUpdaterCommand("check")` 与 `checkForUpdatesManually()` 里还各自有一段
+  「手上已有可更新版本就重新展示一遍」的分支。于是首次查到 v X 之后，只要云端又发了 v Y，菜单里的「检查更新」
+  与弹窗里的检查都只会把 v X 再念一遍，每六小时一次的自动检查也一样跳过 —— 整段会话里显示的始终是旧版。
+- 这里没有第二个嫌疑点：`updateModeFor` 决定桌面壳窗口走 `client` 模式，`releaseFlow`（服务端那条自查）
+  在桌面壳里根本不会被选中。
+
+### 改法：能查就去查
+
+- `check()` 删掉 `available` 那条提前返回，只留「下载中」与「已下载待安装」——这两处重新查会让安装按钮
+  指向的包作废（原文的注释本来就是这个理由）。可更新版本被新版本替换什么也不会丢，`autoDownload` 是关的。
+- `packages/desktop/src/updater-status.ts` 新增 `manualCheckAsksFeed(status)`：`downloading` /
+  `downloaded` / `checking` 三种状态之外都算「这次检查真的能跑」，`handleUpdaterCommand("check")` 与
+  `checkForUpdatesManually()` 都用它判断；不能跑时前者回一个 `reannounceStatus()`（弹窗的 armed check
+  立刻拿到当前状态，不至于等 60 秒超时），后者弹一句说明（下载中/正在检查）。
+- 状态折叠规则**没动**：`available` 时检查期间的 `checking` 帧与同版本重播仍然被抑制，所以刷新过程中
+  行里那句「可更新」不会闪掉；新版本到了才替换。
+
+### 验证
+
+- 单测：`packages/desktop/test/updater-status.test.ts` 新增 `manualCheckAsksFeed` 两组断言（五种状态下
+  的取值，含本次要修的 `available`）；桌面端全量 **26 文件 / 306 通过**（`EXIT=0`）。
+- `pnpm --filter @adelie/desktop typecheck` **EXIT=0**；`oxlint .` 0 警告 0 错误；`prettier --check .` 全仓干净。
+- **没做**真机端到端：要跑通得先打一个 `isPackaged` 的桌面包（AppImage / NSIS）再配一个假 feed，代价远超
+  这次改动的三行判断；本次的判据是纯函数单测 + 类型检查，逻辑分支都在这两个函数里。
+
+### 没做 / 还差什么
+
+- 弹窗在 `available` 状态的底栏仍然只有「稍后 / 下载并安装」，没有「再查一次」按钮：想手动刷新要么用应用
+  菜单的检查，要么等定时检查（最长 6 小时，且启动后 20 秒必有一次）。要不要给弹窗加这个按钮，等用户发话。
+- 仍未部署到现网（7777 还是 v0.5.9 的安装）；这些改动要进现网得发版，需用户点头。
+- 豆包式「多图画板 + 悬浮快捷条」仍是下一轮的点单，未开工。
+
+### 提交
+
+- 代码 + 用例 + changelog 中英一对 + 本轮台账同在这一笔（按约定不再另开「补记」提交）。
