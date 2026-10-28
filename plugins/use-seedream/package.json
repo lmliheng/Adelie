@@ -1,0 +1,33 @@
+{
+  "name": "@adelie/use-seedream",
+  "version": "0.5.9",
+  "description": "Generate images from a prompt with Volcengine Ark's Doubao Seedream models and save them into the workspace — one dependency-free Node script over the synchronous image-generation API, driven by a vault-stored API key.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmliheng/Adelie.git",
+    "directory": "plugins/use-seedream"
+  },
+  "keywords": [
+    "adelie-plugin",
+    "penguin-harness",
+    "image",
+    "seedream",
+    "doubao",
+    "volcengine",
+    "ark"
+  ],
+  "files": [
+    "plugin.json",
+    "icon.svg",
+    "README.md",
+    "skills",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

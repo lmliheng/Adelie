@@ -76,6 +76,7 @@
     "@adelie/use-lieflat-charts": "workspace:*",
     "@adelie/use-offerdao": "workspace:*",
     "@adelie/use-seedance": "workspace:*",
+    "@adelie/use-seedream": "workspace:*",
     "@adelie/use-wps-office": "workspace:*",
     "@adelie/use-claude-code": "workspace:*",
     "@adelie/wechat-miniprogram": "workspace:*",

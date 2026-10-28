@@ -1,0 +1,8 @@
+{
+  "description": "Generate images from a prompt with Volcengine Ark's Doubao Seedream models and save them into the workspace. One dependency-free Node script drives the synchronous image-generation API — reference images inlined as base64, groups of images in one request, and layer decomposition into a base image plus transparent PNG layers — with every file written through a temporary path and renamed only when complete, then prints one line of JSON with the absolute paths, the z-ordered layers and the elapsed time. The API key comes from the vault as ARK_API_KEY and is never written to disk.",
+  "description_zh": "用火山方舟的豆包 Seedream 模型把提示词生成成图片，落到工作区。运行时是一个零依赖的 Node 脚本，走同步的图片生成接口：参考图内联成 base64、一次请求出组图、按图层拆分出一张底图加若干透明 PNG 图层；每个文件先落临时路径、写完才改名，最后打一行 JSON，给出绝对路径、按 z 排序的图层与耗时。密钥从密钥库以 ARK_API_KEY 注入，不落盘。",
+  "short_description": "Generate images from a prompt with Ark Doubao Seedream, saved into the workspace.",
+  "short_description_zh": "用火山方舟豆包 Seedream 按提示词生成图片并落到工作区。",
+  "version": "2026.10.28.1",
+  "category": "office-productivity"
+}

@@ -223,6 +223,7 @@ Agent 可以在 Task 中重写自己的 `SKILL.md`。结合 Benchmark 评估和�
 | | `use-bento-slides` | 创建和编辑 Bento 演示文稿：单文件 `.bento.html` 幻灯片，文件内容为 JSON，支持素材到图表的映射、morph 过渡和状态幻灯片 |
 | | `use-lieflat-charts` | 把数据做成精致、可交互的 HTML 图表（Lupi 编辑型、Basics 基础型、Glance 快读型、地图与交互大图六十几套模板），用户明确要求时才做可翻页的 HTML/PDF 演示或整页报告；同一份交付只锁一种色系（默认 Mono，另有青瓷蓝 / 椰林绿 / 编辑部红与自定义色板）。移植自上游 `lieflat-charts` skill（许可是 PolyForm 非商业 1.0.0，见插件内 `LICENSE` 与 `NOTICE.md`）；约 2.5 MB 模板，不预装：需要画图的 Agent 从插件库安装 |
 | | `use-seedance` | 用火山方舟的豆包 Seedance 模型按提示词生成视频、落到工作区：零依赖的 Node 脚本替 Agent 走完异步三步（提交任务、按退避间隔轮询、下载成片），密钥存在密钥库里（预装） |
+| | `use-seedream` | 用火山方舟的豆包 Seedream 模型按提示词生成图片、落到工作区：支持参考图（最多 14 张）、组图（一次最多 15 张）、图层拆分（1 张底图 + 最多 16 个可单独编辑的透明 PNG 图层）与透明底，密钥存在密钥库里（预装） |
 | | `humanizer` | 去除任何语言文字中的 AI 写作痕迹，改写成书籍、报纸和百科全书的语体（不预装：需要时从插件库安装） |
 | | `goal` | [目标模式](/goal-mode)背后的 stop 钩子：让 Session 持续朝着目标推进，直到完成、受阻或 Token 预算耗尽（预装） |
 | | `continual-learning` | Task 运行超过 30 轮才结束时，把 Task 的精简摘录交给后台子 Agent，由它把有长期价值的发现沉淀到 Agent 的 Skill 中（不预装） |

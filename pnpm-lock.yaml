@@ -129,6 +129,9 @@ importers:
       '@adelie/use-seedance':
         specifier: workspace:*
         version: link:../../plugins/use-seedance
+      '@adelie/use-seedream':
+        specifier: workspace:*
+        version: link:../../plugins/use-seedream
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
@@ -232,6 +235,9 @@ importers:
       '@adelie/use-seedance':
         specifier: workspace:*
         version: link:../../plugins/use-seedance
+      '@adelie/use-seedream':
+        specifier: workspace:*
+        version: link:../../plugins/use-seedream
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
@@ -341,6 +347,9 @@ importers:
       '@adelie/use-seedance':
         specifier: workspace:*
         version: link:../../plugins/use-seedance
+      '@adelie/use-seedream':
+        specifier: workspace:*
+        version: link:../../plugins/use-seedream
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
@@ -840,6 +849,8 @@ importers:
 
   plugins/use-seedance: {}
 
+  plugins/use-seedream: {}
+
   plugins/use-wps-office: {}
 
   plugins/wechat-miniprogram: {}
@@ -925,6 +936,9 @@ packages:
 
   '@adelie/use-seedance@file:plugins/use-seedance':
     resolution: {directory: plugins/use-seedance, type: directory}
+
+  '@adelie/use-seedream@file:plugins/use-seedream':
+    resolution: {directory: plugins/use-seedream, type: directory}
 
   '@adelie/use-wps-office@file:plugins/use-wps-office':
     resolution: {directory: plugins/use-wps-office, type: directory}
@@ -4964,6 +4978,7 @@ snapshots:
       '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
       '@adelie/use-seedance': file:plugins/use-seedance
+      '@adelie/use-seedream': file:plugins/use-seedream
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
@@ -5005,6 +5020,7 @@ snapshots:
       '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
       '@adelie/use-seedance': file:plugins/use-seedance
+      '@adelie/use-seedream': file:plugins/use-seedream
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
@@ -5042,6 +5058,7 @@ snapshots:
       '@adelie/use-lieflat-charts': file:plugins/use-lieflat-charts
       '@adelie/use-offerdao': file:plugins/use-offerdao
       '@adelie/use-seedance': file:plugins/use-seedance
+      '@adelie/use-seedream': file:plugins/use-seedream
       '@adelie/use-wps-office': file:plugins/use-wps-office
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
@@ -5153,6 +5170,8 @@ snapshots:
   '@adelie/use-offerdao@file:plugins/use-offerdao': {}
 
   '@adelie/use-seedance@file:plugins/use-seedance': {}
+
+  '@adelie/use-seedream@file:plugins/use-seedream': {}
 
   '@adelie/use-wps-office@file:plugins/use-wps-office': {}
 

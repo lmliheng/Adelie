@@ -18198,3 +18198,56 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 代码 + 用例 + changelog 中英一对 + 本轮台账同在这一笔（按约定不再另开「补记」提交）。
+
+## 第一百五十二轮：考察豆包的图片工具栏，并把图像生成插件装进 Adelie（2026-10-28，用户点单）
+
+### 起点：用户把方舟的密钥交了过来
+
+- 上一轮考察完豆包那排按钮、结论是「先有引擎才有按钮」，用户问「方舟是火山引擎吗」，随后直接把
+  `ARK_API_KEY` 给了（已写进本 Agent 的密钥库，值不落任何文件）。开工 `HEAD` = `46357436`。
+- 先跑最小真调用：`doubao-seedream-5-0-pro-260628` 回 **404 `ModelNotOpen`**（账号 2102830717 没开通该
+  模型）；`doubao-seedream-5-0-260128`、`4-0-250828`、`3-0-t2i`、`seededit-3-0-i2i` 全是
+  `InvalidEndpointOrModel.NotFound`。**密钥本身是好的**（鉴权通过、拿到账号 id 与 request id），缺的是在方舟
+  控制台「开通模型」这一步。
+- 所以真实接口一张图都没出过 —— 这一轮所有结论都是对本地桩服务验的，这点在 changelog 里也写明了。
+
+### 干了什么：新增 `plugins/use-seedream`
+
+- 运行时 `skills/seedream/kit/seedream.mjs`：一次性同步 `POST {base}/images/generations`，参数按需发
+  （`size` / `sequential_image_generation` + `max_images` / `layer_decomposition` / `background` /
+  `output_format` / `seed` / `watermark`），参考图最多 14 张、本机文件内联成 data URL，结果按 URL 下载或
+  `b64_json` 解码，一律先写 `.part-<pid>` 再改名。`WxH` 尺寸本地按 1280×720–4096×4096 校验（服务文档的
+  像素区间），写错算命令行错。退出码与 seedance 对齐：0 成功 / 2 命令行 / 3 缺密钥 / 4 被拒 / 7 下载失败。
+- 多图（组图或图层拆分）时 `--out` 当目录，文件名 `<NNN>-z<z_index>-<名称>.<ext>`，图层恒 PNG；stdout 仍是
+  一行 JSON（`paths`、`layers[]` 带 `z_index` / `name` / `bounding_box`、`request_id`、`usage`）。
+- 包结构照 seedance：`plugin.json`（`2026.10.28.1`，office-productivity）、中文 `README.md`、只有 name +
+  description 的 `SKILL.md`、`icon.svg`、`LICENSE`。
+- 注册四处：`packages/{core,cli,desktop}/package.json` 各加 `@adelie/use-seedream: workspace:*`，
+  `packages/core/test/plugins.test.ts` 的名单加一条（计数 22 → 23）；`pnpm install --lockfile-only` 把
+  `pnpm-lock.yaml` 补上（不动 node_modules，避免踩「注入式布局把 @adelie/ui 链接换掉」那个老坑）。
+- 另外三处是仓库自带守卫逼出来的：`plugins/README.md`、`README.md`、`README.zh.md` 的表格，以及
+  `packages/docs/content/skills.{zh,en}.md` 各一条 —— 不加，`plugins.test.ts` 与 `skills-sync.test.ts` 直接红。
+- 顺手改掉 SKILL 里一句不实的话：原先写「聊天能显示图片」，实际 `Prose` 只覆盖 `pre` 与 `a`，Markdown
+  图片语法在聊天里解析到的是 Web 自己的源，工作区文件打不开，改成「按路径交给用户」。
+
+### 验证
+
+- `node --test plugins/use-seedream/test/*.test.mjs`：**10/10 通过**（缺密钥、单图下载、组图请求体、图层
+  拆分命名与 `layers[]`、本机参考图内联、`b64_json`、坏参数、被拒带原话）。
+- `packages/core` 全量：**69 文件 / 1438 通过 / 6 跳过**（`EXIT=0`），含插件名单与计数。
+- `packages/docs/test/skills-sync.test.ts`：3/3 通过。
+- 全仓 `prettier --check .` 干净、`oxlint .` 0 警告 0 错误。
+- 没做的：真实接口冒烟（模型未开通，等用户点「开通」）；`--count 1` 会发 `max_images: 1`，真实服务是否接受
+  没验过。
+
+### 没做 / 还差什么
+
+- **豆包那排按钮还一个没画**：本轮只把引擎装上。界面（`Lightbox` 里的胶囊条、缩略图、像素角标）与框选 /
+  涂抹这些交互，按上一轮的报告分二、三期做。
+- 考察报告在 `/root/Adelie_develop/doubao-image-canvas-research.md`（不在这个仓库里），官方文档原文落在
+  `doubao-research/evidence/`。
+- 现网（7777）仍是 v0.5.9 的安装，要看见这个插件得发版，需用户点头。
+
+### 提交
+
+- 插件 + 注册 + 文档 + changelog 中英一对 + 本轮台账，一笔提交。
