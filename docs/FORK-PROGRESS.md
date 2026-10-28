@@ -1133,6 +1133,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       也一样：让探针模型报完用量再以 `max_tokens` 结束，Trace 里仍是 `token_usage` + `request_end(completed)`，
       `usage_records` 只有一行。要复现得上游那套「未知结束原因 → `retryable` / `malformed` 且带用量」的
       分类，属另一笔（上游 core 更晚的改动）。留在这里备查，不重复分析。
+- [x] **5.60 回复里的图片点一下看全图**（**2026-10-29 第一百五十六轮落地**，提交见该节，不是移植）：
+      上一轮让回复里的图片显示出来了，但它按阅读栏宽度缩着 —— 一张 2000px 的截图出来只有几百像素宽，
+      想看清只能去文件面板里找那个文件。现在会话里的图片点一下就在 lightbox 里按自己的尺寸打开（Esc 或点
+      背景关掉）；有键盘焦点时回车也打得开。**其余一处不变**：`ProseImagesProvider` 的 `zoomable` 默认关，
+      README / 手册 / 记忆视图 / 文件预览仍是静止的一张图；会话里被作者用链接包住的图片（`[![shot](shot.png)](…)`）
+      也仍是链接 —— 按钮嵌在 `<a>` 里两个处理器都会触发，点一下会同时开一个标签页和一层覆盖（本轮真浏览器量过），
+      而作者把它做成链接就是要链接。**为什么是这一条**：表上未勾选的仍是 2.2c（桌面壳与部署单元）、3.5（拍板
+      取哪个桌面壳）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖），而这一条正是上一轮
+      自己点名的「顺带项」——用户下一句话就会说「图太小了，点不开」。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2426,6 +2435,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-28 | 5.57 | **子智能体落在派发它的那个 `run_subagent` 调用上**（上游 `3fa746b2` `#1107` 移植，照改动落、不是合分支；上游 4 文件 / +461 −3 → 本树落下 **2 个跟踪文件（1 改 1 补测试）** + changelog 一对）：同时跑几个 `run_subagent` 时子会话会挂错卡片（借另一个调用的描述与思考等级回落、转写芯片指着另一条对话）。`StreamModel.unconfirmedSubagents` 记下「开头提示词还没到、只按位置绑过」的孩子，它的第一条模型消息（正是派发它的调用交给它的开头提示词，原样）由 `moveToSpawningCard` / `spawningCard` 移到正确的那张卡上：提示词必须一致，`agent_id` / `model_id` / `provider`（含继承父级取值）必须与孩子 `session_meta` 相符，与卡上未确认的孩子互换位置；元数据缺失导致无从分辨、或本就没有卡片可绑时按位置的绑定照旧，被拒的调用永远拿不到孩子。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮四笔新提交都不能单独落（`#1375` 落在已删的 `landing`；`#1376` / `#1377` 要 `#1344` 的重试行与机器详情组件；`#1378` 要 `#1343` / `#1344` 的 `stopReconnecting` / `settleForStream`，本树 `service.ts` 里都没有），于是往前扫未移植提交，取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2994 通过 / 15 跳过** · web **270 文件 / 3324 通过 / 2 跳过**（本笔 +4 用例）· **反证（单测）**：`stream-model.ts` 退回 `HEAD`、只留新用例 → `agent-topology.test.ts` **6 failed / 42 passed**，放回本笔 → **48 全过** · **本轮主证据（真服务端两态 × 真浏览器，同一份合成会话、同一套探针）**：把 mock 录下的真会话改写成「两个并发 `run_subagent`、两个孩子按 A→B 到达」的形状（卡片 A =「Compare the plans」、B =「Collect the pricing pages」），两态 web 产物 `r153/{after,before}-dist`（主包 md5 `3b0d209e…` / `50ebe39d…`，`unconfirmedSubagents` 出现 2 / 0 次）挂在两个数据根 `/root/adelie-fork-data/r153-look{,-before}` 上、**改后 8996 / 改前 8998**；打开该会话 →「快捷方式」→「智能体面板」，逐节点点开读它挂着的孩子与孩子的回答：**改前两张卡互换**（「Compare the plans」挂着 `cccc0003`、内容是「Collected three pricing pages.」；「Collect the pricing pages」挂着 `bbbb0002`、内容是「The plans agree on price and differ on the quota.」），**改后各归各位**（`bbbb0002` ↔ plans、`cccc0003` ↔ pricing）；两态 console 各只有一条 403 `/api/projects/…/machines`（非管理员账号的既有行为） · **相邻回归（真浏览器）**：`subagent.spec.mjs` 4 条 + `background-subagent.spec.mjs` 2 条 **6 passed（31.0s）**（本机没装 Playwright 自带的 chromium，用临时 config 指向 `/usr/bin/chromium`）· 端口只用 8995–8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r153-*`，探针 / 两态产物 / 截图 / 合成会话生成脚本都在 scratchpad 的 `r153/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | `f91cbfda` |
 | 2026-10-28 | 5.58 | **运行时发货之后才加的配置成员，不再挡住热推的平台**（上游 `64aebf0f` `#1058` 移植，照改动落、不是合分支；上游 9 文件 / +86 −21 → 本树落下 **5 个跟踪文件 + changelog 一对**：`hmr/capabilities.ts` 把 `penguinGoOrigin` 移出 `HMR_INTERFACES.config` 并写下规则；`config.ts` 里它与 `modelscopeBridgeUrl` 改为可选；两个 provider 在没有值时回落到 `normalize*(undefined)` 的生产默认值；一条回归用例。**有意未取**同一提交里 sandbox-dsh 的 Windows live 超时与 cli 那 2 行（本树没有那个文件））：热推换的是平台、从不换运行时，把「运行时之后才加的成员」列进声明列表等于拒绝每一个比它更早装上的运行时 —— `/api/hmr/upgrade` 400「missing penguinGoOrigin」，兼容的平台推不过去，被拒的推送还可能重启服务端；`modelscopeBridgeUrl` 的消费者此前也没有兜底，旧运行时上会读到 `undefined`。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮的新提交 `#1380` 与 `#1375` 落在已删的 `landing`，`#1376` / `#1377` / `#1378` 仍要 `#1344` / `#1343` 的重试行与机器详情组件，`3fa746b2` 之前的小件里 `#1096` 要真界面、`#1083` 要整套上游 HTTP 索引、`#1095` 要上游 `stat-hint.tsx` / `session-stats.tsx`（本树都没有），于是取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2995 通过 / 15 跳过**（+1 正是本笔用例）· web **270 / 3324 通过 / 2 跳过** · **反证（单测）**：`hmr-resources.test.ts` 里新用例的断言直接落在 `HMR_INTERFACES.config` 上 —— 把 `capabilities.ts` 退回 `HEAD` → **1 failed / 26 passed**（`expected [… 'port', …(11) ] to not include 'penguinGoOrigin'`），放回本笔 → **27 全过** · **真服务端取证**：重建 `@adelie/server` 产物（`dist/index.js` 里 `penguinGoOrigin ?? normalizePenguinGoOrigin(void 0)` 在位、声明列表里那一条已消失），一次性数据根 `/root/adelie-fork-data/r154-look`、**端口 8999** 起真服务 → `/` **200**、种子管理员登录 **200**（`isAdmin: true`）、`/api/version` 与 `/api/projects` 正常，服务端启动无异常、未出现握手相关报错；跑完已停、端口已释放 · 端口只用 8999，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r154-look`，临时文件只在 scratchpad 的 `r154/`；没用 `rm -rf` | 9ffd5f19 |
 | 2026-10-29 | 5.59 | **回复里的图片从工作区取，不再指向 Web App 自己的源**（不是移植：`packages/ui/src/components/content/prose/prose.tsx` 新增 `ProseImageResolver` / `ProseImagesProvider` 与 `img` 适配器（上面没有解析器时保留 Markdown 写的 src，空 src 不渲染 `src` 属性）、`prose.css` 新增 `.md-body img`（阅读栏为最大宽度、按比例、整块）；`packages/web/src/lib/reply-image.ts` 新增纯规则 `resolveReplyImage`（`external` / `file` / `none`，复用 `toWorkspaceRelative` 与 `reply-link.ts` 里新导出的 `isExternalRef`，不再写第二份 scheme 判断）；`features/chat/workspace-links.tsx` → `workspace-refs.tsx`（`WorkspaceRefsProvider` 同时给链接与图片），`MessageStream` 的渲染上下文新增 `workspaceFileUrl`、`chat-page.tsx` 按会话 id 构造（起草时缺席）；`plugins/use-seedream` 的 `SKILL.md` 从「别用图片语法」改成让 Agent 直接给图；用例：`packages/web/test/reply-image.test.ts`（新）、`packages/web/test/md.test.ts`（＋图片一组）、`packages/ui/test/prose.test.ts`（＋图片一组，`SETTLED_MD_COMPONENTS` 由 `[a,pre]` 变 `[a,img,pre]`）、`packages/web/e2e/reply-image.spec.mjs`（新）与 mock 的 `image reply test` 分支；changelog 中英一对。**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 11 个改动文件 **0 警告 0 错误** · 12 个源码 / 用例 / mock 文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1056**（+3 本笔新增）· cli **38 / 561** · server **205 / 2995 通过 / 15 跳过** · web **271 文件 / 3337 通过 / 2 跳过**（+13：新增 9 条 + md 的 4 条）· **真服务 + 真浏览器整套 e2e**（`run-one.sh`：mock 8934 / 服务端 8935、脚本自己的 `mktemp` 数据根、系统 chromium）：**171 passed（14.3m）、3 failed** —— `chat.spec`（文件面板 iframe 的 `#shim-ok` 没出现）与 `scroll-follow-bounce` 的 Primer / Console 两条（滚轮没滚动 >100px）。**同一套跑法在改动之前的树上一样红**（`git stash push -- packages/ui/src packages/ui/test packages/web/src packages/web/test packages/web/e2e` + 重建 web → 这 3 条仍红、Frost 那条仍绿，3 failed / 1 passed），所以是这套跑法 / 这台机器上的既有不稳（系统 chromium + `--no-sandbox` + 机器繁忙），不是本笔 · **反证**：把 `MessageStream` 的 `fileUrl` 改成 `undefined` 并重建 web → 本笔的 e2e **1 failed**（33 次重试都读到 `<img src="shot.png">`，`toHaveAttribute` 期望 `files/content`），改回并重建 → **1 passed（2.5s）** · **两态实测**（一次性数据根 + mock 模型、真浏览器、1280×900，探针 `probe-image.mjs` 每态生成一张 480×320 的棋盘 PNG 放进工作区）：**改前** `src="shot.png"` → 浏览器请求 `/chat/shot.png`（SPA 兜底 200 的 HTML）→ `naturalWidth 0`，截图里三张全是坏图占位（alt 文字）；**改后** `src="/api/sessions/<id>/files/content?path=shot.png"` → **200**、`naturalWidth 480`，截图里棋盘图正常显示，另两张（`../../outside.png`、`https://example.com/remote.png`）仍按原样坏着、src 未被改写；两态 console **无 error / 无 pageerror**；截图 `r155/{before-big,after-big}.png`、JSON 在 scratchpad · 端口只用 8934 / 8935 / 8936 / 8937 与一次探路的 8977（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `mktemp` 根与 `/root/adelie-fork-data/r155`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 9a88883a |
+| 2026-10-29 | 5.60 | **回复里的图片点一下看全图**（不是移植：`packages/ui/src/components/content/prose/prose.tsx` 的 `ProseImagesProvider` 新增 `zoomable`（默认关），`img` 适配器在它打开时渲染成 `ZoomableImage`，两种情形仍是普通 `<img>` —— 空 src、以及被链接包住的图片（`ProseInLinkContext` 由 `MdLink` 给子节点置位，不做 DOM 查询）；`packages/ui/src/components/overlays/lightbox/lightbox.tsx` 的 `ZoomableImage` 把其余 `<img>` 属性（`title` / `width` / `height`）转发给缩略图；`packages/web/src/features/chat/workspace-refs.tsx` 给整条对话打开 `zoomable`；用例：`packages/ui/test/prose.test.ts`（＋5：默认关、开、空 src、在链接里、链接旁边）、`packages/ui/test/lightbox.test.ts`（＋1：缩略图保留调用方属性）、`packages/web/test/md.test.ts`（＋1：会话里是按钮、别的界面不是）；changelog 中英一对。**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**）· `oxlint` 6 个改动文件 **0 警告 0 错误** · 6 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1063**（+7，本笔新增）· cli **38 / 561** · server **205 / 2995 通过 / 15 跳过** · web **271 / 3338 通过 / 2 跳过**（+1）· **两态实测**（一次性 `mktemp` 数据根 + mock 模型、真服务 8941 + mock 8940、系统 chromium、1280×900；探针 `probe-zoom.mjs` 每态往工作区写一张 480×320 棋盘 PNG，再让 mock 的 `image reply test` 分支回三张图）：**改前**（`git stash push -- packages/ui/src packages/ui/test packages/web/src packages/web/test` + 重建 web）`.md-body` 里 **0 个 button**、点第一张图 **无覆盖层**、回车也**无覆盖层**；**改后** **3 个 button**、点一下 `.ui-scrim` **1 层**、里面的图 `src=/api/sessions/<id>/files/content?path=shot.png`、`natural 480×320`、渲染 482×322（按自己尺寸）、关闭按钮 `aria-label="关闭"`、**Esc 关掉后覆盖层 0 层且对话还在**、**回车也能打开**；两态 console **无 error / 无 pageerror**；截图 `r156/{before-after 各自}-{transcript,lightbox}.png` 与 JSON 在 scratchpad · **反证**（按钮嵌在 `<a href>` 里到底怎么点，纯 HTML 探针 `probe-anchor.mjs`）：两条 click 监听**都触发**、`defaultPrevented=false`、新标签页确实开了 —— 这就是「被链接包住的图片不做放大目标」这条规则的理由 · 端口只用 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 408dbf8c |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -18569,3 +18579,80 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 
 - 代码 + 用例 + mock 分支 + 插件技能文档 + changelog 中英一对：一笔；本轮台账（5.59 与上表那一行、本节）
   另起一笔，与历次一致。
+
+## 第一百五十六轮：回复里的图片点一下看全图（2026-10-29，条目 5.60）
+
+### 开工自检
+
+- `/root/adelie-fork` 里 `git status --short` **干净**，`main`，头 `c400aa2c`（第一百五十五轮的台账）。
+  同步这次 **SSH 又被拒了**（`git@github.com: Permission denied (publickey)`），照规矩改走
+  `https://x-access-token:$GITHUB_PAT@github.com/lmliheng/Adelie.git`：`fetch` 之后
+  `merge --ff-only FETCH_HEAD` 报 **Already up to date**，说明远端就是它。没切分支、没碰 `legacy/main`、
+  没推 upstream。
+
+### 选活：表上全卡着，接上一轮自己点名的尾巴
+
+- 未勾选的仍是 **2.2c**（剩下的全在桌面壳一侧、`adelie-app.service` 这类既有部署单元，以及按 2.5 的
+  口径有意留到发布期的 `ui-gallery` mock / `packages/docs`）、**3.5**（拍板取哪个桌面壳）、**3.6**
+  （要模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖），本条开头也已经把它们
+  各写了一遍卡点。本轮按指令**不再去读上游**（`/root/penguin-harness` 不碰），于是从自家代码里取活 ——
+  接的正是上一轮收尾时自己写下的那条「顺带项」：**聊天里的图片不能点开看大图**（`Lightbox` 只被文件面板
+  与附件用着）。
+
+### 做了什么
+
+- `packages/ui/src/components/content/prose/prose.tsx`：
+  - `ProseImagesProvider` 多了 `zoomable`（默认 `false`，一个布尔上下文 `ProseImageZoomContext`）——
+    它说的是「下面的图值得按自己的尺寸看」（会话），与「图的 src 从哪取」是两件事，所以不与解析器绑在一起。
+  - `img` 适配器在 `zoomable` 且不是空 src 时渲染 `ZoomableImage`，其余一字不变。
+  - **两种情形仍是普通 `<img>`**：空 src（没有东西可放大，lightbox 只会打开在浏览器的坏图占位上）；
+    以及**被链接包住的图片**（`[![shot](shot.png)](…)`）。后者是量出来的结论：纯 HTML 探针
+    `probe-anchor.mjs` 里 `<a href><button>` 点一下，**按钮的监听与链接的监听都触发**、
+    `defaultPrevented=false`、新标签页确实开了 —— 也就是说点一下会同时开一个标签页和一层覆盖。规则因此写成
+    「作者把图做成链接，那一下点击归链接」。
+  - 这条规则靠 `MdLink` 给子节点套一层 `ProseInLinkContext`（值恒为 `true`）实现 —— 在 React 树上看得出
+    「我在链接里」，不必在点击时去查 DOM；不进链接的图片读到的仍是默认 `false`。
+- `packages/ui/src/components/overlays/lightbox/lightbox.tsx`：`ZoomableImage` 把调用方其余的 `<img>` 属性
+  转发给缩略图（Markdown 图片的 `title` / `width` / `height`），lightbox 本身照旧只收 src 与 alt。
+- `packages/web/src/features/chat/workspace-refs.tsx`：会话给整条对话打开 `zoomable`，与 src 解析成什么无关
+  —— 解析器决定图片从哪取，不决定读者能不能放大。
+- changelog 中英一对：`changelog/unreleased/2026-10-29-prose-image-lightbox{,.zh}.md`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，本笔不碰
+  服务契约）。
+- `oxlint` 6 个改动文件 **0 警告 0 错误**；6 个源码 / 用例文件与一对 changelog `prettier --check` 干净
+  （`prose.test.ts` 第一次没过，`--write` 之后复查干净）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **69 文件通过 + 1 跳过 / 1438 通过 / 6 跳过** · ui
+  **130 文件 / 1063 通过**（+7，本笔新增）· cli **38 / 561** · server **205 文件 / 2995 通过 / 15 跳过**
+  · web **271 文件 / 3338 通过 / 2 跳过**（+1）。
+- **两态实测**（真服务 + 真浏览器：一次性 `mktemp` 数据根、mock 模型 8940、服务端 8941、系统 chromium、
+  1280×900；探针每态往工作区写一张 **480×320 的棋盘 PNG**，再让 mock 的 `image reply test` 分支回
+  「工作区里的图 + 爬出工作区的 `../../outside.png` + 别的站点的 `https://example.com/remote.png`」）：
+  - **改前**（`git stash push -- packages/ui/src packages/ui/test packages/web/src packages/web/test`
+    + 重建 web）：`.md-body` 里 **0 个 button**，点第一张图 —— **无覆盖层**，回车 —— 也**无覆盖层**。
+  - **改后**：**3 个 button**；点一下 `.ui-scrim` **1 层**，里面的图 `src` 是
+    `/api/sessions/<id>/files/content?path=shot.png`、`naturalWidth 480 × naturalHeight 320`、渲染 482×322
+    （按自己的尺寸，不是阅读栏宽度）；关闭按钮 `aria-label="关闭"`；**Esc 之后覆盖层 0 层、对话还在**；
+    **先用 Tab 把焦点放到图上再回车，同样打得开**。
+  - 两态 console **无 error、无 pageerror**。截图与 JSON 在 scratchpad 的 `r156/`：
+    `{before,after}-transcript.png`、`{before,after}-lightbox.png`。
+- 端口只用 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性
+  `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是产物，未 `git add`）。
+
+### 没做 / 还差什么
+
+- 表上剩下的仍是那几条卡点：**2.2c**（桌面壳一侧与 `adelie-app.service` 单元，发布动作）、**3.5**（拍板）、
+  **3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+- 本笔**没有加 e2e 用例**：`reply-image.spec.mjs` 那条既有 spec 只看图的 src，放大这一层现在由
+  `prose.test.ts` / `lightbox.test.ts` / `md.test.ts` 的单测加本轮的两态探针覆盖；要进套件的话，在
+  `reply-image.spec.mjs` 里点一下同一条回复里的图、断言 `.ui-scrim` 出现即可，属下一轮的一小条。
+- 一张**加载失败**的图（`../../outside.png`、`https://example.com/remote.png`）现在也是按钮，点开是同一个
+  坏图占位、只是更大 —— 与「空 src 不开」是两回事（渲染时无从知道会不会 404，要拦就得逐图记 `onError`）。
+  当前判定是有意这样：坏图本身就是那句话的真相，点不点都这么说。
+- `5.59` 的二期（真实像素角标的胶囊工具条、缩略图切换、按能力探测出按钮）仍等 `ARK_API_KEY` 进密钥库。
+
+### 提交
+
+- 代码 + 用例 + changelog 中英一对：**`408dbf8c`**；本轮台账（5.60 与上表那一行、本节）另起一笔，与历次一致。
