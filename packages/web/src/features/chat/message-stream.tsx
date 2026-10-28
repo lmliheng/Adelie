@@ -16,7 +16,7 @@ import type { MemoryChangeRow } from "../../lib/omni/memory-changes";
 import type { TaskStats } from "../../lib/omni/task-stats";
 import type { PendingApproval } from "./use-session-stream";
 import { MessageItem } from "./message-item";
-import { WorkspaceLinksProvider } from "./workspace-links";
+import { WorkspaceRefsProvider } from "./workspace-refs";
 import { SessionWorkGroup, isWorkItem } from "./work-group";
 import { createStreamFollow, followToBottom, stickToBottom } from "./stream-follow";
 import type { StreamFollow } from "./stream-follow";
@@ -59,9 +59,17 @@ export interface StreamRenderContext {
    * Opens the Files panel and navigates to this file (a file-summary card's row, or a link in
    * the stream's Markdown naming a Workspace file; takes a Workspace-relative path). The card
    * doesn't render and links keep opening a new tab if this isn't wired up. Must be stable:
-   * every rendered link reads it through context (see WorkspaceLinksProvider).
+   * every rendered link reads it through context (see WorkspaceRefsProvider).
    */
   onOpenFile?: (path: string) => void;
+  /**
+   * A URL an `<img>` in a reply can fetch for a Workspace-relative path — the Session's own file
+   * route, so a picture the Agent made into the Workspace shows in the transcript instead of
+   * pointing at a page of the App (see lib/reply-image.ts). Images keep the src the Markdown wrote
+   * if this isn't wired up. Must be stable: every rendered image reads it through context (see
+   * WorkspaceRefsProvider).
+   */
+  workspaceFileUrl?: (path: string) => string;
   /** Opens the subagents panel focused on this child session (subagent chip click); `origin` is the ctx.origin at the chip's render level — the child's ancestor chain, excluding its own id. */
   onOpenSubagent?: (sessionId: string, origin: string[]) => void;
   /** Opens the Memory panel on its list (memory-changes card header); the button doesn't render if this isn't wired up. */
@@ -535,10 +543,16 @@ export function MessageStream({
             <EmptyState title={S.chat.emptyStream} />
           ) : (
             // Links in replies, reasoning and compaction summaries name files of this Session's
-            // Workspace: they open in its Files panel rather than a new tab (see workspace-links.tsx).
-            <WorkspaceLinksProvider workspace={ctx.workspace ?? null} onOpenFile={ctx.onOpenFile}>
+            // Workspace: they open in its Files panel rather than a new tab, and an image the
+            // Agent made into that Workspace is fetched from its file route rather than from the
+            // App's own origin (see workspace-refs.tsx).
+            <WorkspaceRefsProvider
+              workspace={ctx.workspace ?? null}
+              onOpenFile={ctx.onOpenFile}
+              fileUrl={ctx.workspaceFileUrl}
+            >
               <MessageItems items={items} ctx={ctx} />
-            </WorkspaceLinksProvider>
+            </WorkspaceRefsProvider>
           )}
         </div>
       </div>

@@ -36,6 +36,16 @@ export type ReplyLink =
 /** A URL scheme, as the URL parser reads one: a letter, then letters, digits, `+`, `.` or `-`, then `:`. */
 const SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
+/**
+ * Whether a reference names another site rather than a file of the Workspace: it carries a scheme
+ * (`https:`, `mailto:`, `data:`, …) or is protocol-relative (`//host`). Shared with the image
+ * resolver (reply-image.ts), which sorts an image src by exactly this rule — one copy, so a link
+ * and the picture beside it never disagree about what counts as external.
+ */
+export function isExternalRef(ref: string): boolean {
+  return ref.startsWith("//") || SCHEME_RE.test(ref);
+}
+
 const EXTERNAL: ReplyLink = { kind: "external" };
 const NONE: ReplyLink = { kind: "none" };
 
@@ -54,7 +64,7 @@ export function resolveReplyLink(href: string | undefined, workspace: string | n
     const id = decode(href.slice(1));
     return id === null || id === "" ? NONE : { kind: "anchor", id };
   }
-  if (href.startsWith("//") || SCHEME_RE.test(href)) return EXTERNAL;
+  if (isExternalRef(href)) return EXTERNAL;
   const decoded = decode(href.replace(/[?#].*$/, ""));
   if (decoded === null) return NONE;
   const path = toWorkspaceRelative(decoded, workspace);

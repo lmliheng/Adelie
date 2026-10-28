@@ -3,20 +3,23 @@
  * (node env, no DOM):
  * - outside a conversation every link — explicit [text](url), bare autolinked URL (remark-gfm),
  *   relative or #anchor — opens in a new tab: target="_blank" + rel="noreferrer";
- * - inside one (WorkspaceLinksProvider, features/chat/workspace-links.tsx, as MessageStream
+ * - inside one (WorkspaceRefsProvider, features/chat/workspace-refs.tsx, as MessageStream
  *   renders it) only an external link does:
  *   a link to a Workspace file, an #anchor and a relative href with nowhere to go render without
  *   a target, because a relative href resolves against the SPA's own route. What their clicks do
  *   is covered in reply-link.test.ts — static markup carries no handlers;
  * - fenced code still routes through the module-scope pre override into CodeBlock (its chrome
- *   renders; Shiki only loads in an effect, which static markup never runs).
+ *   renders; Shiki only loads in an effect, which static markup never runs);
+ * - an image whose src names a Workspace file is fetched from that Session's file route, while an
+ *   external or unresolvable src keeps the one the Markdown wrote. How a src is sorted is
+ *   reply-image.test.ts.
  */
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
 import type { MouseEvent } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Md } from "@adelie/ui";
-import { WorkspaceLinksProvider } from "../src/features/chat/workspace-links";
+import { WorkspaceRefsProvider } from "../src/features/chat/workspace-refs";
 import { replyLinkBehavior, resolveReplyLink } from "../src/lib/reply-link";
 
 const render = (text: string, streaming = false) =>
@@ -35,9 +38,12 @@ const renderWithOpener = (
   streaming = false,
 ) =>
   renderToStaticMarkup(
-    createElement(WorkspaceLinksProvider, {
+    createElement(WorkspaceRefsProvider, {
       workspace: WS,
       onOpenFile,
+      // A conversation serves a picture out of its own file route; reply-image.test.ts covers
+      // how a src is sorted, this file covers that the src reaching the DOM is that one.
+      fileUrl: (path) => `/api/sessions/s1/files/raw?path=${encodeURIComponent(path)}`,
       children: createElement(Md, { text, streaming }),
     }),
   );
@@ -47,6 +53,10 @@ const renderInConversation = (text: string, streaming = false) =>
 
 /** All rendered <a ...> opening tags. */
 const anchors = (html: string) => html.match(/<a\b[^>]*>/g) ?? [];
+
+/** The src attribute of every rendered <img>, as react-dom escaped it. */
+const images = (html: string) =>
+  (html.match(/<img\b[^>]*>/g) ?? []).map((tag) => /src="([^"]*)"/.exec(tag)?.[1] ?? "");
 
 /** The href attribute of a rendered opening tag, as react-dom escaped it. */
 const hrefOf = (tag: string | undefined) => /href="([^"]*)"/.exec(tag ?? "")?.[1];
@@ -174,6 +184,37 @@ describe("Md links inside a conversation", () => {
     const tags = anchors(renderWithOpener("[x](pelican-bike.html)", undefined));
     expect(tags).toHaveLength(1);
     expectNewTab(tags[0]);
+  });
+});
+
+describe("Md images", () => {
+  it("a picture of the Workspace is fetched from the Session's file route", () => {
+    const srcs = images(renderInConversation("![预览](./shots/cat.png)"));
+    expect(srcs).toHaveLength(1);
+    expect(srcs[0]).toBe("/api/sessions/s1/files/raw?path=shots%2Fcat.png");
+  });
+
+  it("a src the browser can fetch itself keeps what the Markdown wrote", () => {
+    const srcs = images(
+      renderInConversation("![a](https://example.com/a.png) ![b](//cdn.example.com/b.png)"),
+    );
+    expect(srcs).toEqual(["https://example.com/a.png", "//cdn.example.com/b.png"]);
+    // The pipeline empties `data:` — react-markdown trusts no scheme it does not know — so what a
+    // data URL arrives as is ""; the resolver is never asked (reply-image.test.ts sorts that).
+    expect(images(renderInConversation("![c](data:image/png;base64,AA)"))).toEqual([""]);
+  });
+
+  it("a src with nowhere to go keeps the written one, as a broken picture", () => {
+    const srcs = images(renderInConversation("![a](../../etc/passwd.png)"));
+    expect(srcs).toEqual(["../../etc/passwd.png"]);
+  });
+
+  it("renders in both streaming and settled maps", () => {
+    for (const streaming of [true, false]) {
+      expect(images(renderInConversation("![x](x.png)", streaming))).toEqual([
+        "/api/sessions/s1/files/raw?path=x.png",
+      ]);
+    }
   });
 });
 

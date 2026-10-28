@@ -1,6 +1,7 @@
 /**
  * Prose and Md: Markdown in its reading box, the three densities, the link default and the
- * resolver that overrides it, fenced code routed into CodeBlock, and the stylesheet the box reads.
+ * resolver that overrides it, the image adapter and the resolver that points a src elsewhere,
+ * fenced code routed into CodeBlock, and the stylesheet the box reads.
  * How the pipeline typesets math is prose-math.test.ts; where a bare URL ends is
  * remark-autolink-boundary.test.ts.
  */
@@ -12,10 +13,11 @@ import {
   Md,
   PROSE_NEW_TAB,
   Prose,
+  ProseImagesProvider,
   ProseLinksProvider,
   SETTLED_MD_COMPONENTS,
 } from "../src/components/content/prose/prose";
-import type { ProseLinkResolver } from "../src/components/content/prose/prose";
+import type { ProseImageResolver, ProseLinkResolver } from "../src/components/content/prose/prose";
 import { DEFAULT_UI_STRINGS, UiStringsProvider } from "../src/strings";
 import { classTokens, renderStatic } from "../src/testing";
 import { SRC_DIR } from "./helpers/paths";
@@ -25,6 +27,10 @@ const read = (name: string) => readFileSync(join(PROSE, name), "utf8");
 
 /** All rendered <a ...> opening tags. */
 const anchors = (html: string) => html.match(/<a\b[^>]*>/g) ?? [];
+
+/** The src of every rendered <img>, in order. */
+const imageSrcs = (html: string) =>
+  (html.match(/<img\b[^>]*>/g) ?? []).map((tag) => /src="([^"]*)"/.exec(tag)?.[1] ?? "");
 
 describe("Prose", () => {
   it("wraps the Markdown in the reading box, in the reading face, with the caller's ink", () => {
@@ -83,6 +89,49 @@ describe("Md links", () => {
   });
 });
 
+describe("Md images", () => {
+  it("keep the src the Markdown wrote when no resolver is provided", () => {
+    const srcs = imageSrcs(renderStatic(createElement(Md, { text: "![cat](shots/cat.png)" })));
+    expect(srcs).toEqual(["shots/cat.png"]);
+  });
+
+  it("take what a resolver decides, per src, and answer with null to keep the written one", () => {
+    const seen: [string, string][] = [];
+    const resolve: ProseImageResolver = (src, alt) => {
+      seen.push([src, alt]);
+      return src.endsWith(".png") ? { src: `/files/${src}` } : null;
+    };
+    const srcs = imageSrcs(
+      renderStatic(
+        createElement(ProseImagesProvider, {
+          resolve,
+          children: createElement(Md, { text: "![截图](a.png) ![remote](https://x.dev/b.jpg)" }),
+        }),
+      ),
+    );
+    expect(srcs).toEqual(["/files/a.png", "https://x.dev/b.jpg"]);
+    expect(seen).toEqual([
+      ["a.png", "截图"],
+      ["https://x.dev/b.jpg", "remote"],
+    ]);
+    // The rest of the element is untouched: alt text and lazy loading are the adapter's own.
+    const tags = renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve,
+        children: createElement(Md, { text: "![截图](a.png)" }),
+      }),
+    ).match(/<img\b[^>]*>/g);
+    expect(tags?.[0]).toContain('alt="截图"');
+    expect(tags?.[0]).toContain('loading="lazy"');
+  });
+
+  it('never render src="", which would ask the browser for the page itself', () => {
+    const tags = renderStatic(createElement(Md, { text: "![a]()" })).match(/<img\b[^>]*>/g);
+    expect(tags?.[0]).toContain('alt="a"');
+    expect(tags?.[0]).not.toContain("src=");
+  });
+});
+
 describe("Md code", () => {
   it("routes a fenced block into CodeBlock, named in the interface's words", () => {
     const zh = { ...DEFAULT_UI_STRINGS, copyCode: "复制代码" };
@@ -103,7 +152,9 @@ describe("Md code", () => {
   });
 
   it("lets a surface add adapters over the settled map without losing the code block", () => {
-    expect(Object.keys(SETTLED_MD_COMPONENTS).sort()).toEqual(["a", "pre"]);
+    // The map's own three: the link and image resolvers and the code-block pre override. A
+    // surface adds over them (the file browser's img is exactly that), never instead of them.
+    expect(Object.keys(SETTLED_MD_COMPONENTS).sort()).toEqual(["a", "img", "pre"]);
     const html = renderStatic(
       createElement(Md, {
         text: "![alt](pic.png)\n\n```\nx\n```",

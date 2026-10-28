@@ -32,6 +32,9 @@
  *    (path-hints.spec: the card's shortened subtitle keeps the whole path one hover away)
  *  - "scroll bounce test" -> a three-line paragraph every 50ms for ~4s, for every request of
  *    that conversation (scroll-follow-bounce.spec wheels up while each reply streams)
+ *  - "image reply test" -> one text answer carrying three image srcs: a Workspace file, a path
+ *    outside the Workspace, and another site's (reply-image.spec: only the first is fetched from
+ *    the Session's file route)
  *  - last message has tool_result -> final text (turn 2)
  *  - otherwise (first user turn) -> thinking + text + tool_use(exec_command)
  */
@@ -598,6 +601,21 @@ const server = http.createServer((req, res) => {
         { type: "input_json_delta", partial_json: ' "yield_time_ms": 300}' },
       ]);
       messageStop(res, "tool_use", 28);
+      return;
+    }
+
+    // Reply-image test case (reply-image.spec): a single-turn answer that shows a picture it made
+    // into the Workspace, beside one src that names nothing this Session can serve and one that is
+    // another site's — the three shapes a reply's image src comes in. No tool call: the point is
+    // what the transcript does with the Markdown, not what the Agent did.
+    if (flat.includes("image reply test") && !hasToolResult) {
+      block(res, 0, { type: "text", text: "" }, [
+        { type: "text_delta", text: "Here it is.\n\n" },
+        { type: "text_delta", text: "![the picture](shot.png)\n\n" },
+        { type: "text_delta", text: "![nowhere](../../outside.png)\n\n" },
+        { type: "text_delta", text: "![elsewhere](https://example.com/remote.png)\n" },
+      ]);
+      messageStop(res, "end_turn", 40);
       return;
     }
 

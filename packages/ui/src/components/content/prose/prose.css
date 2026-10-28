@@ -84,6 +84,17 @@
     color: var(--ui-fg-link-hover);
   }
 }
+/* A picture in a body: the reading column is the widest it may get, so a 2000px screenshot fits
+   instead of widening the transcript (mobile included), and its own aspect ratio is kept when the
+   width is capped. `display: block` because an inline image sits on a text baseline, leaving a
+   sliver of line box under it. */
+.md-body img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0.5rem 0;
+  border-radius: var(--ui-radius-lg);
+}
 /* The same chip the InlineCode component draws. */
 .md-body code {
   border-radius: var(--ui-radius-sm);

@@ -1963,6 +1963,20 @@ export function ChatPage() {
     return promotedPricing(m?.pricing, m?.discount);
   };
   const modelPricing = pricingOf(activeModelRef);
+  /**
+   * The Session's own file route, for an `<img>` in a reply: a picture the Agent wrote into the
+   * Workspace is served from there, while the same relative src resolves against the App's own
+   * origin and is a page that does not exist. Stable per Session for the reason
+   * `openWorkspaceFile` is — every image in the transcript reads it through context — and absent
+   * while drafting, where there is no Session whose files could be read.
+   */
+  const workspaceFileUrl = useMemo(
+    () =>
+      selectedSessionId === null
+        ? undefined
+        : (path: string) => api.workspaceFileUrl(selectedSessionId, path),
+    [selectedSessionId],
+  );
   const ctx: StreamRenderContext = {
     pendingApprovals: stream.pendingApprovals,
     onApprove,
@@ -1984,6 +1998,7 @@ export function ChatPage() {
       void onStop();
     },
     onOpenFile: openWorkspaceFile,
+    ...(workspaceFileUrl === undefined ? {} : { workspaceFileUrl }),
     onOpenSubagent: (sessionId, origin) => {
       // Chip click: the agents tab focused on that child (the focus chain ends with the
       // child's own id), with the graph pinned to this chip's Task.

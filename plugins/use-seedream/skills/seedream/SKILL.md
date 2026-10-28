@@ -122,15 +122,17 @@ may already have been billed. Read the `upstream` field before saying anything a
 
 ## Handing the result to the user
 
-Give the user the files, not a base64 blob — and give them as paths, not as Markdown images:
+Give the user the picture itself, not a base64 blob:
 
-- Save them into the workspace (the default output already does) and name each one in your reply
-  by its workspace-relative path in backticks, with the model that made it. Markdown image syntax
-  (`![](relative.png)`) does **not** resolve in the chat — it points at the web app's own origin,
-  not at the workspace — so the user opens the file from the Files panel instead.
+- Save it into the workspace (the default output already does) and show it with Markdown image
+  syntax — `![what it shows](shot.png)`, the workspace-relative path. A reply's image src is
+  resolved against the conversation's workspace, so the picture renders in the chat. Name the
+  model that made it in the sentence around it, and keep the path in backticks too when the user
+  may want to open it in the Files panel.
 - For a layer split, show the base image as the preview and mention that the transparent layers
   sit beside it — a PNG viewer that stacks by filename order will not reassemble them, so say the
-  layers are separate files.
+  layers are separate files (one image per layer is a wall of pictures in the chat; list the
+  layers by path instead).
 - Keep `request_id` in your reply when the user may ask about the request later; the same seed
   plus the same options is a reproducible take.
 

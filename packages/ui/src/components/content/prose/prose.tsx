@@ -106,6 +106,33 @@ export function ProseLinksProvider({
 }
 
 /**
+ * What an image in the Markdown points at, as the surface above decides it: the src an `<img>`
+ * gets. `null` keeps the one the Markdown wrote.
+ */
+export type ProseImageResolver = (src: string, alt: string) => { src: string } | null;
+
+const ProseImagesContext = createContext<ProseImageResolver | null>(null);
+
+/**
+ * Hands the Markdown below an image resolver; `null` restores the default, the src as written.
+ *
+ * Same shape and same cost as the link resolver above: a context change re-renders every image in
+ * the tree, memoized bodies included, so pass a resolver that keeps its identity while its inputs
+ * do. It exists because a relative src in a reply names a file of the Session's Workspace, which
+ * the browser resolves against the App's own origin — a broken image. The surface that knows how
+ * to serve a Workspace file says so here; every other Markdown surface renders untouched.
+ */
+export function ProseImagesProvider({
+  resolve,
+  children,
+}: {
+  resolve: ProseImageResolver | null;
+  children?: ReactNode;
+}): ReactElement {
+  return <ProseImagesContext.Provider value={resolve}>{children}</ProseImagesContext.Provider>;
+}
+
+/**
  * Link adapter. With no resolver above, every link opens in a new tab (`target="_blank"` +
  * `rel="noreferrer"`, which also implies `noopener`), unconditionally, so a click never navigates
  * the app away. A resolver decides per href. All other anchor props react-markdown supplies
@@ -130,6 +157,31 @@ function MdLink({
 }
 
 /**
+ * Image adapter. With no resolver above, an image keeps the src the Markdown wrote — every surface
+ * that renders a README, a handbook page or a document gets exactly what react-markdown gave it
+ * before this adapter existed. A resolver may point it somewhere else (the Web App's conversation
+ * sends a Workspace-relative src to that Session's file route, see lib/reply-image.ts). An empty
+ * src renders no `src` attribute at all rather than `src=""`, which would ask the browser for the
+ * page itself. Everything else react-markdown supplies (width, height, title, ...) is forwarded;
+ * only its non-DOM `node` prop is stripped. Sizing is CSS (`.md-body img` in prose.css), so an
+ * oversized picture fits the reading column instead of widening the transcript.
+ */
+function MdImage({
+  node: _node,
+  src,
+  alt,
+  ...imageProps
+}: ComponentPropsWithoutRef<"img"> & ExtraProps) {
+  const resolve = useContext(ProseImagesContext);
+  const written = typeof src === "string" ? src : "";
+  const resolved = written === "" ? null : (resolve?.(written, alt ?? "") ?? null);
+  const href = resolved?.src ?? written;
+  return (
+    <img {...imageProps} {...(href === "" ? {} : { src: href })} alt={alt ?? ""} loading="lazy" />
+  );
+}
+
+/**
  * The two `components` maps, built once at module scope instead of inline per render.
  * react-markdown uses `components.pre` as the element **type**, so a fresh arrow each render is
  * a new type on every commit: React unmounts and remounts every code block, dropping the user's
@@ -137,16 +189,18 @@ function MdLink({
  * streams, including for blocks that closed long ago. `streaming` is the only thing the adapter
  * closes over, so one frozen map per value is enough; the single flip between them happens on
  * the settle render, which re-parses the message anyway — the same render the rehype stage
- * flips on. The `a` adapter closes over nothing — its resolver comes from context, not from a
- * closure — so both maps share the one `MdLink` reference.
+ * flips on. The `a` and `img` adapters close over nothing — their resolvers come from context,
+ * not from a closure — so both maps share the one reference to each.
  */
 const STREAMING_COMPONENTS: Components = {
   pre: (props) => <MdPre streaming>{props.children}</MdPre>,
   a: MdLink,
+  img: MdImage,
 };
 const SETTLED_COMPONENTS: Components = {
   pre: (props) => <MdPre streaming={false}>{props.children}</MdPre>,
   a: MdLink,
+  img: MdImage,
 };
 
 /**
