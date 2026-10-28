@@ -1098,6 +1098,24 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `#1375` 落在已删的 `landing`，`#1376` / `#1377` 要 `#1344` 的「重试行」与机器详情组件（本树没有），
       `#1378` 要 `#1343` / `#1344` 的 `stopReconnecting` / `settleForStream`（本树 `service.ts` 里没有），
       于是往前扫未移植提交，取这一笔：真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在本机真跑的用例。
+- [x] **5.58 运行时发货之后才加的配置成员，不再挡住热推的平台**（上游 `64aebf0f` `#1058`，**2026-10-28
+      第一百五十四轮落地**，提交见该节）：热推换的是平台、从来不换运行时，而 `penguinGoOrigin` 被列在平台
+      声明的配置成员里 —— 于是每一个比这个成员更早装上的运行时（Go provider 之前的所有安装）在
+      `/api/hmr/upgrade` 上被 **400 拒绝**（「this runtime publishes no business capabilities this platform
+      can claim (config: missing penguinGoOrigin)」），本来兼容的平台推不过去，而被拒的推送仍可能把服务端
+      重启一遍。现在这个成员只在 `ServerConfig` 上可选、由消费者补生产默认值（与 `cliEntry` 同一形状），
+      不再进入 `HMR_INTERFACES.config`；同一条规则也覆盖 `modelscopeBridgeUrl`（握手从没要求它，但它的
+      消费者此前没有兜底，在旧运行时上会读到 `undefined`）。**为什么是这一条**：表上未勾选的仍是
+      2.2c（桌面壳 / 部署单元，发布动作）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、
+      5.6 / 5.10（拍板 / 新依赖）；上游这一轮的新提交 `#1380`（`17fe6c8e`）落在已删的 `packages/landing`，
+      `#1376` / `#1377` / `#1378` 仍要 `#1344` / `#1343` 的重试行与机器详情组件（本树没有），`#1375` 同样在
+      `landing`；3fa746b2 之前那批小件里 `#1096` 要真界面造子会话、`#1083` 要整套上游 HTTP 索引
+      （本树的 registry 只有内置那一个，`mergeIndexes` / `cachedRegistry` 都还没有）、`#1095` 要上游的
+      `stat-hint.tsx` 与 `session-stats.tsx`（本树没有；`ElapsedSplitRows` 那套组件也不在），于是取这一笔：
+      真缺陷 + 本树文件全在 + 不引入新依赖 + 自带能在本机真跑的用例。
+      **有意未取（同一提交里与本缺陷无关的两处）**：`plugins/sandbox-dsh/test/windows-shells.test.ts` 的
+      Windows live 用例超时放宽（属 CI 面、本机不跑），与 `packages/cli/test/benchmark-commands.test.ts`
+      那 2 行（本树没有这个文件）。
 - **量过、本轮没移植的一条**：`#1356`（`04ed9c70`，server 7 文件 / +183 −8，异常结束时已计量的请求只统计
       一次）。补丁能落（两处小冲突），单元用例也能红转绿，但**本树走不到那个形态**：本树的 `token_usage`
       只在 `streamGenerate` 的「正常收尾」分支产出（`generative-model.ts` 的 `finish()` 之后 `return
@@ -2397,6 +2415,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-28 | 7.51 | **分叉对话被拒时，框留着、原因也留在框里**（不是移植：源码 2 处 `features/chat/task-stats-line.tsx` + `features/chat/chat-page.tsx`，`lib/api-error.ts` 新增 `refusalText()`，单测 +3、`e2e/session-fork.spec.mjs` +1 条，changelog 一对）—— 确认框不再「先收起再发请求」，`onFork` 改为抛出、由问它的那个框决定去留与显示原因；两态真浏览器取证 + 单测反证 + 整包 e2e 里既有分叉用例仍绿，详见「第一百四十八轮」 | `21384e46` |
 | 2026-10-28 | 5.56 | **取消的 AMSP 消息流当场停住，缓存的事件也不再交付**（上游 `ca7114a2` `#1326` 移植，照改动落、不是合分支；上游 4 文件 / +82 −1 → 本树落下 **4 个跟踪文件（2 改 2 补测试）** + changelog 一对，**源码各一处**：`packages/amsp/src/sse.ts` 在 `yield event` 之后检查信号、`packages/amsp/src/client.ts` 的 `AgentRun.#drive` 在读取循环无错结束时检查）：`sseData` 只在 `reader.read()` 之后看 abort，而调用方的循环体正好在生成器挂于 `yield` 时运行 —— 那段时间的取消要等下一个数据块才被发现，当前块里已解析出来的事件照样交付；跟在其后的 `[DONE]` 把读取平静结束掉，`AgentClient` 因此把已取消的 run 报成 `completed`。现在下一次读取先抛出调用方自己的原因，`#drive` 在无错出口再查一次（缓存的 `[DONE]` 走的正是这条出口）。上游第三条用例在 `HttpTransport` 上，本树没有那个文件，改成 client 层的等价用例 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · `@adelie/amsp` test **`EXIT=0`、72 通过**（2 文件，本笔 +4）· 逐包 test **`EXIT=0`、0 失败**：core **1438** / 6 跳过（70 文件）· ui **1053**（130）· cli **561**（38）· server **204 文件 / 2985 通过 / 15 跳过** · web **270 文件 / 3312 通过 / 2 跳过** · hmr 无测试文件 · **反证（单测）**：两个源码文件退回 `HEAD`、只留新用例 → `sse.test.ts` **2 failed**（块内两事件之间、缓存 `[DONE]`）+ `client.test.ts` **1 failed**（缓存的 `[DONE]` 报完成），放回本笔 → **72 全过** · **本轮主证据（真 HTTP SSE 服务 + 真 `dist` 客户端，两态同一份探针）**：一个 chunk 里依次写 `run.started` / `request.started` / `text.delta` / `run.done` / `[DONE]`，客户端在循环体里收到 `run.done` 后 abort —— **改前** `result()` **resolved `completed`**（迭代拒绝了，结果却报成功），**改后** `result()` 与迭代都以原始原因 reject；同一流的正常读完对照两态都 `status: completed`（不被误杀）。改前 / 改后 `dist` 主包 md5 `8ac843ad…` / `695b98ff…` 各核过一次 · 端口只用 8991–8994，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `73942f9f` |
 | 2026-10-28 | 5.57 | **子智能体落在派发它的那个 `run_subagent` 调用上**（上游 `3fa746b2` `#1107` 移植，照改动落、不是合分支；上游 4 文件 / +461 −3 → 本树落下 **2 个跟踪文件（1 改 1 补测试）** + changelog 一对）：同时跑几个 `run_subagent` 时子会话会挂错卡片（借另一个调用的描述与思考等级回落、转写芯片指着另一条对话）。`StreamModel.unconfirmedSubagents` 记下「开头提示词还没到、只按位置绑过」的孩子，它的第一条模型消息（正是派发它的调用交给它的开头提示词，原样）由 `moveToSpawningCard` / `spawningCard` 移到正确的那张卡上：提示词必须一致，`agent_id` / `model_id` / `provider`（含继承父级取值）必须与孩子 `session_meta` 相符，与卡上未确认的孩子互换位置；元数据缺失导致无从分辨、或本就没有卡片可绑时按位置的绑定照旧，被拒的调用永远拿不到孩子。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮四笔新提交都不能单独落（`#1375` 落在已删的 `landing`；`#1376` / `#1377` 要 `#1344` 的重试行与机器详情组件；`#1378` 要 `#1343` / `#1344` 的 `stopReconnecting` / `settleForStream`，本树 `service.ts` 里都没有），于是往前扫未移植提交，取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2994 通过 / 15 跳过** · web **270 文件 / 3324 通过 / 2 跳过**（本笔 +4 用例）· **反证（单测）**：`stream-model.ts` 退回 `HEAD`、只留新用例 → `agent-topology.test.ts` **6 failed / 42 passed**，放回本笔 → **48 全过** · **本轮主证据（真服务端两态 × 真浏览器，同一份合成会话、同一套探针）**：把 mock 录下的真会话改写成「两个并发 `run_subagent`、两个孩子按 A→B 到达」的形状（卡片 A =「Compare the plans」、B =「Collect the pricing pages」），两态 web 产物 `r153/{after,before}-dist`（主包 md5 `3b0d209e…` / `50ebe39d…`，`unconfirmedSubagents` 出现 2 / 0 次）挂在两个数据根 `/root/adelie-fork-data/r153-look{,-before}` 上、**改后 8996 / 改前 8998**；打开该会话 →「快捷方式」→「智能体面板」，逐节点点开读它挂着的孩子与孩子的回答：**改前两张卡互换**（「Compare the plans」挂着 `cccc0003`、内容是「Collected three pricing pages.」；「Collect the pricing pages」挂着 `bbbb0002`、内容是「The plans agree on price and differ on the quota.」），**改后各归各位**（`bbbb0002` ↔ plans、`cccc0003` ↔ pricing）；两态 console 各只有一条 403 `/api/projects/…/machines`（非管理员账号的既有行为） · **相邻回归（真浏览器）**：`subagent.spec.mjs` 4 条 + `background-subagent.spec.mjs` 2 条 **6 passed（31.0s）**（本机没装 Playwright 自带的 chromium，用临时 config 指向 `/usr/bin/chromium`）· 端口只用 8995–8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r153-*`，探针 / 两态产物 / 截图 / 合成会话生成脚本都在 scratchpad 的 `r153/` 下（`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`） | `f91cbfda` |
+| 2026-10-28 | 5.58 | **运行时发货之后才加的配置成员，不再挡住热推的平台**（上游 `64aebf0f` `#1058` 移植，照改动落、不是合分支；上游 9 文件 / +86 −21 → 本树落下 **5 个跟踪文件 + changelog 一对**：`hmr/capabilities.ts` 把 `penguinGoOrigin` 移出 `HMR_INTERFACES.config` 并写下规则；`config.ts` 里它与 `modelscopeBridgeUrl` 改为可选；两个 provider 在没有值时回落到 `normalize*(undefined)` 的生产默认值；一条回归用例。**有意未取**同一提交里 sandbox-dsh 的 Windows live 超时与 cli 那 2 行（本树没有那个文件））：热推换的是平台、从不换运行时，把「运行时之后才加的成员」列进声明列表等于拒绝每一个比它更早装上的运行时 —— `/api/hmr/upgrade` 400「missing penguinGoOrigin」，兼容的平台推不过去，被拒的推送还可能重启服务端；`modelscopeBridgeUrl` 的消费者此前也没有兜底，旧运行时上会读到 `undefined`。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮的新提交 `#1380` 与 `#1375` 落在已删的 `landing`，`#1376` / `#1377` / `#1378` 仍要 `#1344` / `#1343` 的重试行与机器详情组件，`3fa746b2` 之前的小件里 `#1096` 要真界面、`#1083` 要整套上游 HTTP 索引、`#1095` 要上游 `stat-hint.tsx` / `session-stats.tsx`（本树都没有），于是取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2995 通过 / 15 跳过**（+1 正是本笔用例）· web **270 / 3324 通过 / 2 跳过** · **反证（单测）**：`hmr-resources.test.ts` 里新用例的断言直接落在 `HMR_INTERFACES.config` 上 —— 把 `capabilities.ts` 退回 `HEAD` → **1 failed / 26 passed**（`expected [… 'port', …(11) ] to not include 'penguinGoOrigin'`），放回本笔 → **27 全过** · **真服务端取证**：重建 `@adelie/server` 产物（`dist/index.js` 里 `penguinGoOrigin ?? normalizePenguinGoOrigin(void 0)` 在位、声明列表里那一条已消失），一次性数据根 `/root/adelie-fork-data/r154-look`、**端口 8999** 起真服务 → `/` **200**、种子管理员登录 **200**（`isAdmin: true`）、`/api/version` 与 `/api/projects` 正常，服务端启动无异常、未出现握手相关报错；跑完已停、端口已释放 · 端口只用 8999，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r154-look`，临时文件只在 scratchpad 的 `r154/`；没用 `rm -rf` | 9ffd5f19 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -18360,3 +18379,95 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 - 代码 + 用例 + changelog 中英一对：**`f91cbfda`**；本轮台账（5.57 与上表那一行、本节）另起一笔，与历次一致。
+
+## 第一百五十四轮：运行时发货之后才加的配置成员，不再挡住热推的平台（2026-10-28，条目 5.58）
+
+### 开工自检：工作区干净；同步与上游探测都改走能通的通道
+
+- `git status --short` 输出为空、在 `main` 上，`HEAD` = **`54be5a64`**（第一百五十三轮那笔台账）。
+- `git fetch origin` 走 SSH **不通**（`git@github.com: Permission denied (publickey)`）；HTTPS + `GITHUB_PAT`
+  这一轮也**卡住不通**（`git fetch https://…` 与 `curl https://github.com/` 都是超时，20 秒无响应），
+  而 **`api.github.com` 可达**（`/repos/lmliheng/Adelie` 200）。于是同步改成用 API 比对尖端：
+  `/repos/lmliheng/Adelie/commits/main` 的 `sha` = **`54be5a64`** = 本地 `HEAD`，无需快进 —— 与
+  `git merge --ff-only` 走的是同一个判据（远端没有比本地更新的提交），只是取数换了通道。
+- 上游同样用 API 探（`/repos/Prism-Shadow/penguin-harness/commits`，`git` 协议与
+  `codeload` 都不通、**`raw.githubusercontent.com` 与 API 通**）：尖端 **`17fe6c8e`**
+  （`#1380`，landing 的循环演示），比第一百五十三轮记的 `f53eb9e1` 多出 `#1380` 这一笔。
+- 没切分支、没碰 `legacy/main`、没推 upstream、没有 `pnpm add`；`pnpm` 仍不在 PATH，用 corepack 的
+  `pnpm.cjs`（`~/.cache/node/corepack/v1/pnpm/11.18.0`）加一个 scratchpad 垫片（`r154/bin/pnpm`），
+  lint / prettier / vitest 直接走 `./node_modules/.bin/`。
+
+### 选活：表上仍全卡着，上游与小件候选也都不能单独落
+
+- 表上未勾选的仍是 **2.2c**（写侧只剩桌面壳 / `adelie-app.service` 这类既有部署单元，属发布动作）、
+  **3.5**（拍板取哪个桌面壳）、**3.6**（要模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 /
+  新依赖）。
+- 上游这一轮与桌上的小件逐条量过（`/commits/{sha}` 的 `files` 逐份对着本树点名，再按「真缺陷 + 本树
+  文件全在 + 不引入新依赖 + 自带能在本机真跑的用例」筛）：
+  - `#1380`（`17fe6c8e`）与 `#1375`（`f53eb9e1`）落在**已删的** `packages/landing`；
+  - `#1376` / `#1377` / `#1378` 仍要 `#1344` 的「重试行」（`history-load-failed.tsx` / 机器详情组件）与
+    `#1343` / `#1344` 的 `stopReconnecting` / `settleForStream`（本树 `machines/service.ts` 里都没有）；
+  - `3fa746b2`（上一轮落的那笔）之前的小件：`#1096`（`6e54f6bc`）只改字号、不带用例、要真界面造子会话；
+    `#1083`（`2e427e57`，插件页冷索引）要整套上游 HTTP 索引 —— 本树的 `plugin/registry.ts` **只有内置那一个**，
+    `mergeIndexes` / `cachedRegistry` / `NIGHTLY_INDEX_URL` 都不在，落它等于顺手引入远端索引拉取（改产品
+    行为，不该在这一条里做）；`#1095`（`e1ffdefe`）要上游的 `components/ui/stat-hint.tsx` 与新建
+    `session-stats.tsx`，本树连 `ElapsedSplitRows` 那套组件都没有；`#1102` / `#1070` 是版面与滚动条的纯样式。
+  - **留下来的这一笔 `#1058`（`64aebf0f`，上游 9 文件 / +86 −21）**：9 个文件里 8 个在本树
+    （缺的 `packages/cli/test/benchmark-commands.test.ts` 本树没有，那 2 行跳过即可），改动彼此独立、自带一条
+    能本机真跑的回归用例，是一条用户能撞上的真缺陷（热推平台被旧运行时拒掉，还可能重启服务端）。
+
+### 做了什么
+
+- `packages/server/src/hmr/capabilities.ts`：`penguinGoOrigin` 移出 `HMR_INTERFACES.config`，并把规则写在
+  列表上方 —— 运行时发货之后才加的配置成员不得点名（点名就等于拒绝每一个比它更早装上的运行时，而热推
+  永远换不掉运行时，只有重装能），并举 `cliEntry` / `penguinGoOrigin` / `modelscopeBridgeUrl` 三个例子。
+- `packages/server/src/config.ts`：`penguinGoOrigin` 与 `modelscopeBridgeUrl` 在 `ServerConfig` 上改为
+  **可选**，注释写明缘由（与 `cliEntry` 同一形状）。
+- `packages/server/src/services/platform-auth-service.ts` / `modelscope-auth-service.ts`：两个 provider 在
+  没有值时回落到 `normalizePenguinGoOrigin(undefined)` / `normalizeModelScopeBridgeUrl(undefined)` ——
+  也就是 `https://token.penguin.ooo` 与 `https://go.penguin.ooo/modelscope` 这两个生产默认值 ——
+  而不是把 `undefined` 传下去。
+- `packages/server/test/hmr-resources.test.ts`：`runtime capability handshake` 下加一条回归用例 ——
+  「三个后加的成员一个都没被点名」，且一个「只发今天的列表、配置对象里没有 `penguinGoOrigin`」的旧运行时
+  仍然 `claimed`。
+- changelog 中英一对：`changelog/unreleased/2026-10-28-platform-config-candidates{,.zh}.md`
+  （本仓写法：日期到本轮、去掉上游 PR 行、写明移植出处与「接口 / 线上格式 / 已存数据都没变」）。
+- **有意未取**（同一提交里与本缺陷无关的两处）：`plugins/sandbox-dsh/test/windows-shells.test.ts` 的
+  Windows live 用例超时放宽（属 CI 面、本机不跑），与 `packages/cli/test/benchmark-commands.test.ts`
+  那 2 行（本树没有这个文件）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型
+  —— 可选化没有改契约的形状）。
+- `oxlint` 5 个改动文件 **0 警告 0 错误**；5 个源码 / 用例文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1053** ·
+  cli **38 / 561** · server **205 文件 / 2995 通过 / 15 跳过**（改前 2994，本笔 +1 即新用例）· web
+  **270 文件 / 3324 通过 / 2 跳过**；hmr 无测试文件。
+- **反证（单测）**：新用例的第一段断言直接落在 `HMR_INTERFACES.config` 上 —— 把 `capabilities.ts`
+  单独退回 `HEAD`、只跑 `test/hmr-resources.test.ts` → **1 failed / 26 passed**
+  （`expected [ 'root', 'host', 'port', …(11) ] to not include 'penguinGoOrigin'`）；放回本笔 → **27 全过**。
+- **真服务端取证**：`pnpm --filter @adelie/server build` 重建产物，`dist/index.js` 里
+  `penguinGoOrigin ?? normalizePenguinGoOrigin(void 0)` 在位、声明列表里那一条**已消失**（`grep -o
+  "penguinGoOrigin[^,;)]\{0,40\}"` 只剩类型定义 / 环境解析 / provider 回落三处）；一次性数据根
+  `/root/adelie-fork-data/r154-look`、**端口 8999** 起真服务 —— `/` **200**、种子管理员登录 **200**
+  （`isAdmin: true`）、`/api/version`（`0.5.9`，`dirty: true`）与 `/api/projects`（`default_project`）正常，
+  启动日志无异常、没有出现握手相关的报错。跑完已停、`ss` 确认 8999 已释放。
+- **端口与数据根**：只用 8999（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 全程没碰；数据只落在
+  `/root/adelie-fork-data/r154-look`，临时文件只在 scratchpad 的 `r154/`；没用 `rm -rf`。
+
+### 没做 / 还差什么
+
+- 表上剩下的仍是那几条卡点：**2.2c**（桌面壳一侧与 `adelie-app.service` 单元，发布动作）、**3.5**（拍板）、
+  **3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+- **同步与上游探测的通道变了**：这一轮 SSH 与 HTTPS（`github.com`）都不通，只有 `api.github.com` 与
+  `raw.githubusercontent.com` 可用。下一轮若 `git fetch` 仍超时，先按这条路用 API 比对尖端、按
+  `/commits/{sha}` 取 `files` 与 `patch`（本轮就是这么量的），推送时再试 SSH / HTTPS 两种。
+- 下一轮的候选：`#1344`（重试行）与 `#1343`（机器升级握手）要单独立一轮以上，落了它们才谈得上
+  `#1376` / `#1377` / `#1378`；`#1365` / `#1370` 仍要整份 `packages/web/src/api/socket.ts`；
+  `#1083` 若要落，得先决定本树要不要引入远端插件索引（产品行为，属于要拍板的那一类）。
+
+### 提交
+
+- 代码 + 用例 + changelog 中英一对：**`9ffd5f19`**；本轮台账（5.58 与上表那一行、本节）另起一笔，与历次一致。
