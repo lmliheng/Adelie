@@ -18660,6 +18660,17 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
   `test-windows (rest)` 三个分片因此都是红的，而 `c400aa2c`（只改台账）与更早的 `fb2ab5ad` 同样红，所以不是
   `5.59` / `5.60` 造成的。**下一轮的候选就是它**（两个 mock 路由，一处文件），留到下一轮单独做。
 
+### CI（推送后）
+
+- `116cbd9f`（含代码与台账）：**18 个作业绿、3 个红** —— 红的是 `test (rest)` / `test-macos (rest)` /
+  `test-windows (rest)`，三个都是同一条既有的 `packages/ui-gallery` 用例
+  （`mock-api.test.ts > routes every endpoint the app's wrappers name`，`workspaceFileTextUrl` /
+  `workspaceDirFileTextUrl` 没有 mock 路由），与 `c400aa2c`（只改台账）那一次的红**一模一样**，所以不是本轮引入的
+  （下一轮就做它）。`typecheck`、`style (prettier)`、`test (core)` / `test (server)` / `test (web-cli)`、
+  三个 `runtime`、两个安装器、`npm packaging`、`plugin versions` 全绿。
+- `049ef89e` 那一次的 run 被下一次推送按 `cancel-in-progress` 取消了（同组只保最后一笔），所以以 `116cbd9f` 为准。
+
 ### 提交
 
-- 代码 + 用例 + changelog 中英一对：**`408dbf8c`**；本轮台账（5.60 与上表那一行、本节）另起一笔，与历次一致。
+- 代码 + 用例 + changelog 中英一对：**`408dbf8c`**；本轮台账（5.60 与上表那一行、本节）另起一笔（`049ef89e`，
+  画廊那条既有红的补记是 `116cbd9f`），与历次一致。
