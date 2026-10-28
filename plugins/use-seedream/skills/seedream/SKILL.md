@@ -59,8 +59,10 @@ rebuilding the names yourself.
 
 When the answer carries several images — `--count`, `--layers`, or simply more images than one —
 `--out` is a **directory**, and the files are named `<NNN>-z<z_index>-<name>.<ext>`: a running
-number, the layer's stacking index when it has one, and the cleaned-up name the service gave
-(non-ASCII names clean to nothing, so `base` / `layer` stands in). Layers are always PNG.
+number, the layer's stacking index when it has one, and the name the service gave — kept as it is,
+with only what a path cannot hold (`/ \ : * ? " < > |`, whitespace, control characters) turned into
+a dash, so a Chinese layer name survives as `002-z1-背景.png`. `base` / `layer` stands in when the
+service named nothing. Layers are always PNG.
 
 Options:
 
@@ -74,7 +76,7 @@ Options:
 | `--count <n>` | a group of n images (1–15) in one request |
 | `--layers` | split the result into a base image plus up to **16** transparent PNG layers |
 | `--transparent` | transparent background instead of opaque |
-| `--format <png\|jpeg>` | output file format |
+| `--format <png\|jpeg>` | output file format; when it is not given, `--out`'s extension decides, and with neither the answer is PNG (a `cat.png` holding JPEG bytes reads as a broken file) |
 | `--seed <integer>` | fix the take, for a result you can reproduce |
 | `--watermark` | keep the service watermark (otherwise it is the service default) |
 
@@ -94,7 +96,9 @@ node <skill dir>/kit/seedream.mjs \
 ## Layers and groups
 
 - **Layers** (`--layers`) come back as one base image plus at most **16** layers, each with
-  `name`, `z_index`, `description` and a `bounding_box` (absolute and normalized). The base image
+  `name`, `z_index`, `description` and a `bounding_box` (absolute and normalized). Verified against the
+  live API on 2026-10-28: a prompt naming four subjects returned the base plus `背景 / 窗户 / 木桌 /
+  橘猫`, every layer a transparent PNG. The base image
   is saved first, then the layers in ascending `z_index`; the JSON's `layers[]` repeats each
   layer's `path`, `z_index`, `name`, `size` and `bounding_box` so a caller can reassemble them.
   Layers are always **transparent PNG**, whatever `--format` says. If the service fails to

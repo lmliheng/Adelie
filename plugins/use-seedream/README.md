@@ -30,12 +30,14 @@ stderr 是给人看的进度行，**stdout 只有一行 JSON**，路径、耗时
 `--model`（默认 `doubao-seedream-5-0-pro-260628`）、`--image`（参考图，可重复，最多 14 张，
 本机文件会内联成 `data:<mime>;base64,…`）、`--size`（`1K`/`2K`/`4K` 或 `2048x2048`，
 总像素须在 1280×720 与 4096×4096 之间）、`--count`（一次出组图，1–15 张）、`--layers`（图层拆分）、
-`--transparent`、`--format`（`png`/`jpeg`）、`--seed`、`--watermark`。**没传的参数不发给服务**，
-所以模型自己的默认值说了算；未知参数直接报错，不会悄悄忽略。
+`--transparent`、`--format`（`png`/`jpeg`；不传时按 `--out` 的扩展名定，两者都没有就是 `png` ——
+一个叫 `cat.png` 的文件里装着 JPEG 字节，在很多看图工具里就是「坏文件」）、`--seed`、`--watermark`。
+**没传的参数不发给服务**，所以模型自己的默认值说了算；未知参数直接报错，不会悄悄忽略。
 
 出多图（`--count` 或 `--layers`）时 `--out` 当目录用，文件名是三位序号加内容：
-`001-base.png`、`002-z0-cat-outline.png`……序号后面带 `-z<z_index>`（有的话）和清洗过的层名
-（中文层名清洗后为空，就用 `base` / `layer`）。图层一律是 PNG。
+`001-base.png`、`002-z1-背景.png`……序号后面带 `-z<z_index>`（有的话）和层名 —— 层名原样保留，
+只把路径里放不下的字符（`/ \ : * ? " < > |`、空白、控制字符）换成 `-`，中文不会被打掉；服务没给名字时
+用 `base` / `layer`。图层一律是 PNG。
 
 退出码把结果分了类：`0` 成功；`2` 命令行不对；`3` 缺 `ARK_API_KEY`；`4` 接口拒了请求（`upstream`
 里是服务原话）；`7` 图片没下下来（临时文件已删，最终路径上不会留半张图）。
@@ -57,17 +59,24 @@ node --test "plugins/use-seedream/test/*.test.mjs"   # 或在包目录里 pnpm t
 
 桩（`test/` 里那个 `http.createServer`）冒充方舟：生成接口按用例返回 URL 或 base64，
 图片地址由同一个桩提供，于是整条路——请求 → 下载 → 改名——都在本机跑完，并断言密钥只发往接口、
-不发给图片 URL（真实的返回是签名链接）。**它验的是脚本自己的行为，不是真实响应的形状**：
-真实方舟的成功响应长什么样只能靠文档，想真跑一次需要账号已开通 Seedream 并且愿意付费。
+不发给图片 URL（真实的返回是签名链接）。它验的是脚本自己的行为；真实响应形状另外对着方舟真接口核过一次
+（2026-10-28，`doubao-seedream-5-0-pro-260628`：出图、组图与图层拆分都跑通了）。
 
 关键接口改动时以官网为准：
 [图片生成](https://docs.volcengine.com/docs/ark/image-generation-api?lang=zh)、
 [模型列表](https://docs.volcengine.com/docs/ark/model-list?lang=zh)。
 
+## 真接口核过什么（2026-10-28）
+
+- 单图：`--size 1280x720` 出图，落盘 1280×720 PNG；`--out X.png` 现在会让服务直接给 PNG。
+- 图层拆分：`--image` 给一张本机图，回来 5 项（1 张底图 + 4 个图层），层名是中文
+  `背景 / 窗户 / 木桌 / 橘猫`，图层都是带 alpha 的 PNG，`bounding_box.absolute` / `.normalized` 都在。
+- 这一轮真跑时发现并修掉两个只有真接口才暴露的问题：中文层名被清成 `layer`（现在原样保留），以及
+  `--out X.png` 拿到 JPEG 字节（现在扩展名决定 `output_format`，都没说时默认 png）。
+- 当时的账号还回 `ModelNotOpen`：方舟的图像模型要在控制台「开通管理」里单独开通，不是默认可用。
+
 ## 还没验的
 
-- 真实方舟的一次完整成功（需要已开通的账号与付费额度）。
-- 图层拆分的真实响应：文档说 `data` 里是 1 张底图加最多 16 个图层、每项带
-  `name`/`z_index`/`description`/`bounding_box`，脚本按这个形状解析，但没对着真响应跑过。
+- 组图（`--count`）的真实张数与上限。
 - `sequential_image_generation` 与 `layer_decomposition` 在真实模型上的组合约束（脚本只按文档传参）。
 - Windows 上的路径与 base64 参考图（本机是 Linux，只验了 Linux）。

@@ -28,8 +28,12 @@ layer's `z_index`, name and bounding box reported back — and transparent backg
   `0` saved, `2` bad command line, `3` no `ARK_API_KEY`, `4` the API refused (its own text in `upstream`,
   `ModelNotOpen` included), `7` an image did not download.
 - A multi-image answer makes `--out` a directory and names files `<NNN>-z<z_index>-<name>.<ext>` — a
-  running number for order, the stacking index when the service gives one, the cleaned-up name it
-  reported (`base` / `layer` when it reported none). Layers are always PNG.
+  running number for order, the stacking index when the service gives one, and the name it reported,
+  kept as it is: only what a path cannot hold is turned into a dash, so `002-z1-背景.png` keeps its
+  name (`base` / `layer` stands in when the service named nothing). Layers are always PNG.
+- The output format follows the name: `--format` when given, otherwise `--out`'s extension, otherwise
+  PNG. A file called `cat.png` holding JPEG bytes is a broken file in half of the image viewers out
+  there, so `--out cat.png` now asks the service for PNG (`--out cat.jpg` for JPEG).
 - `plugins/use-seedream/skills/seedream/SKILL.md` (new): when to use it, the cost warning (a group or a
   layer split is several billed images), the credential check, and the note that Markdown image syntax
   does not resolve in the chat — results are handed over as workspace paths.
@@ -48,5 +52,10 @@ layer's `z_index`, name and bounding box reported back — and transparent backg
 
 - Nothing existing changed shape: a new plugin, one more name in the plugin lists.
 - The default model is `doubao-seedream-5-0-pro-260628`; another Seedream id goes in with `--model`.
-- The live API has not been called yet: the Ark account in this vault has that model **not activated**
-  (`ModelNotOpen`), so everything above is verified against the stub, not against the service.
+- Verified against the live API on 2026-10-28 with `doubao-seedream-5-0-pro-260628`: one 1280×720
+  image, and a layer split of it into a base plus `背景 / 窗户 / 木桌 / 橘猫` — every layer a
+  transparent PNG with its `z_index` and `bounding_box` reported. Two defects only the real service
+  exposed were fixed in the same change: layer names in Chinese were being cleaned away, and a
+  `--out x.png` was getting JPEG bytes.
+- Ark's image models are **not** on by default: an account that has never opened them answers
+  `ModelNotOpen` until Seedream is activated in the console's 开通管理.

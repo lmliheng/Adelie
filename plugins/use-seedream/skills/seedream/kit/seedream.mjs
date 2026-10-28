@@ -184,8 +184,32 @@ function formatArg(raw) {
   return value;
 }
 
+/** The extensions `--out` can imply; anything else leaves the service's own default in place. */
+const FORMAT_BY_EXT = { ".png": "png", ".jpg": "jpeg", ".jpeg": "jpeg" };
+
+/**
+ * The format to ask for. A file called `cat.png` that holds JPEG bytes is a trap every image viewer
+ * reports as a broken file, so `--out`'s extension decides when `--format` did not; with neither the
+ * answer is PNG — the layers are PNG whatever is asked, and a base image under the same name had
+ * better be one too. An extension the service cannot produce is a bad command line, not a JPEG
+ * wearing a `.webp` name.
+ */
+function formatFor(args) {
+  const explicit = formatArg(args.format);
+  if (explicit !== undefined) return explicit;
+  if (args.out === undefined) return "png";
+  const ext = path.extname(args.out).toLowerCase();
+  if (ext === "") return "png";
+  const mapped = FORMAT_BY_EXT[ext];
+  if (mapped === undefined)
+    throw new UsageError(
+      `"--out" ends in "${ext}"; the service writes png or jpeg — name the file .png / .jpg / .jpeg, or say the format with "--format"`,
+    );
+  return mapped;
+}
+
 /** The request body: only the options actually given, so the service's own defaults stand. */
-function buildBody(args, model) {
+function buildBody(args, model, format) {
   const images = (args.image ?? []).map((spec) => imageFor(spec, "image"));
   if (images.length > MAX_IMAGES)
     throw new UsageError(
@@ -209,7 +233,6 @@ function buildBody(args, model) {
   }
   if (args.layers) body.layer_decomposition = true;
   if (args.transparent) body.background = "transparent";
-  const format = formatArg(args.format);
   if (format !== undefined) body.output_format = format;
   const seed = integerArg(args, "seed");
   if (seed !== undefined) body.seed = seed;
@@ -249,13 +272,19 @@ async function apiJson(url, init, what) {
   }
 }
 
-/** `[A-Za-z0-9._-]` survives, everything else becomes a dash; empty names fall back. */
+/**
+ * A service-given layer name as a file name: characters a path cannot hold (and whitespace) become
+ * a dash, everything else survives — a Chinese layer name is the name the user will look for, so it
+ * is not ASCII-folded away. Leading dots go too: `/`-free is not the only thing a name must be.
+ */
 function cleanName(raw, fallback) {
-  const cleaned = String(raw ?? "")
-    .replace(/[^A-Za-z0-9._-]/g, "-")
-    .replace(/^-+|-+$/g, "")
+  const cleaned = Array.from(String(raw ?? ""))
+    .map((ch) => (/[\s\\/:*?"<>|\u0000-\u001f]/.test(ch) ? "-" : ch))
+    .join("")
+    .replace(/-{2,}/g, "-")
+    .replace(/^[-.]+|[-.]+$/g, "")
     .slice(0, 40)
-    .replace(/-+$/g, "");
+    .replace(/[-.]+$/, "");
   return cleaned || fallback;
 }
 
@@ -336,8 +365,8 @@ async function main() {
   // asked for: a typo should not look like a credential problem.
   const model = args.model ?? DEFAULT_MODEL;
   const count = integerArg(args, "count", { min: 1, max: MAX_COUNT });
-  const format = formatArg(args.format);
-  const body = buildBody(args, model);
+  const format = formatFor(args);
+  const body = buildBody(args, model, format);
   const baseUrl = (process.env.ARK_BASE_URL?.trim() || DEFAULT_BASE_URL).replace(/\/+$/, "");
   if (!/^https?:\/\//i.test(baseUrl))
     throw new UsageError(`ARK_BASE_URL must be an http(s) URL, got "${baseUrl}"`);

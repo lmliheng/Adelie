@@ -213,6 +213,7 @@ describe("the seedream kit", () => {
       model: MODEL,
       prompt: "一只猫晒太阳",
       size: "2K",
+      output_format: "png",
       watermark: true,
       response_format: "url",
     });
@@ -236,6 +237,53 @@ describe("the seedream kit", () => {
     const result = jsonLines(stdout).at(-1);
     assert.deepEqual(fs.readFileSync(path.join(dir, "inline.png")), bytes);
     assert.deepEqual(result.paths, [path.join(dir, "inline.png")]);
+  });
+
+  it("lets the extension of --out pick the format, and a plain --format still wins", async () => {
+    const s = await stub({ answer: (_seen, root) => urlItems(root, ["fmt"]) });
+    const env = { ARK_API_KEY: "stub-key", ARK_BASE_URL: s.origin };
+    await run(["--prompt", "a cat", "--out", "cat.jpg"], { env });
+    await run(["--prompt", "a cat", "--out", "cat.PNG"], { env });
+    await run(["--prompt", "a cat", "--out", "cat.jpg", "--format", "png"], { env });
+    // No extension (a directory for several images) and no `--out` at all both mean PNG.
+    await run(["--prompt", "a cat", "--out", "group"], { env });
+    await run(["--prompt", "a cat"], { env });
+    assert.deepEqual(
+      s.seen.bodies.map((body) => body.output_format),
+      ["jpeg", "png", "png", "png", "png"],
+    );
+    // A format the service cannot write is a bad command line, not a mislabelled file.
+    const webp = await run(["--prompt", "a cat", "--out", "cat.webp"], { env });
+    assert.equal(webp.status, 2);
+    assert.match(webp.stderr, /"--out" ends in ".webp"/);
+  });
+
+  it("keeps a name the service gave, minus what a path cannot hold", async () => {
+    const s = await stub({
+      answer: (_seen, root) => ({
+        model: MODEL,
+        data: [
+          { url: `${root}/img/base.png`, output_format: "png" },
+          {
+            url: `${root}/img/layer.png`,
+            z_index: 1,
+            name: " 猫/主体: 01 ? ",
+            output_format: "png",
+          },
+        ],
+      }),
+    });
+    const { status, stdout, dir, stderr } = await run(
+      ["--prompt", "a cat", "--layers", "--out", "layers"],
+      { env: { ARK_API_KEY: "stub-key", ARK_BASE_URL: s.origin } },
+    );
+    assert.equal(status, 0, stderr);
+    assert.deepEqual(
+      jsonLines(stdout)
+        .at(-1)
+        .paths.map((p) => path.relative(dir, p)),
+      ["layers/001-base.png", "layers/002-z1-猫-主体-01.png"],
+    );
   });
 
   it("asks for a group of three with sequential generation, and names them in a directory", async () => {
@@ -304,13 +352,13 @@ describe("the seedream kit", () => {
     // Base first, then z0, then z1 — the running number follows the stacking order…
     assert.deepEqual(
       result.paths.map((p) => path.relative(dir, p)),
-      ["layers/001-base.png", "layers/002-z0-cat-outline.png", "layers/003-z1-layer.png"],
+      ["layers/001-base.png", "layers/002-z0-cat-outline.png", "layers/003-z1-背景.png"],
     );
-    // …and the Chinese layer name cleans to nothing, so the fallback stands in for it.
+    // The Chinese layer name is kept as is — it is the name the user will look for.
     assert.deepEqual(fs.readdirSync(path.join(dir, "layers")).sort(), [
       "001-base.png",
       "002-z0-cat-outline.png",
-      "003-z1-layer.png",
+      "003-z1-背景.png",
     ]);
     assert.deepEqual(
       fs.readFileSync(path.join(dir, "layers", "002-z0-cat-outline.png")),
