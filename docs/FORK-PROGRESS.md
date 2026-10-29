@@ -1771,6 +1771,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       —— 分叉过去**按确认就先收起对话框**再发请求，失败只有一枚六秒后自己消失的 toast，浮在已经不在的
       框上方；而对话本来也没变，用户看到的等于「什么也没说」。为什么挑这一条、两态读数与反证见
       「第一百四十八轮」一节。
+- [x] **7.52 画廊的 mock 补上文件面板的 Word 预览路由，那条既有红转绿**（**2026-10-29 第一百五十九轮**
+      落地，提交见该节；`packages/ui-gallery/src/app/mock/routes.ts`（+26：`workspaceFiles.previewText`
+      照服务端 `routes/workspace-files.ts` 的三条出口作答 —— 文件不在就 404、`.doc` 给 415 `doc_legacy`、
+      其余类型给 415 `preview_unavailable`、`.docx` 回 Markdown 并带 `ETag`，挂到会话与目录两个 base 上）+
+      `src/app/mock/fixtures.ts`（+12：演示工作区多一个 `docs/`，里面一份 `.docx`（存的**就是**服务端会抽取
+      出来的 Markdown）与一份旧版 `.doc`）+ `test/mock-api.test.ts`（+41：两个包装器都拿到 200 与 `ETag`，
+      `.doc` / `.md` / 不存在三条各拿各的码），**无新依赖、不碰接口、无新文案**）：
+      `test/mock-api.test.ts > routes every endpoint the app's wrappers name` 自 2026-10-28 那份 Word/PDF
+      预览提交（`e5f9aec6`）起一直红着 —— `workspaceFileTextUrl` / `workspaceDirFileTextUrl` 两个包装器在
+      mock 里没有路由，CI 上 `test (rest)` / `test-macos (rest)` / `test-windows (rest)` 三个分片跟着红。
+      为什么挑这一条、两态读数见「第一百五十九轮」一节。
+- [x] **7.53 外观页主题库的三处生造字号换回字号阶梯**（**2026-10-29 第一百五十九轮**顺带，提交见该节；`packages/web/src/features/settings/theme-registry-section.tsx` 三行：`text-[10px]` 与两处 `text-[11px]` → `text-xs`（本仓最小的那一档），**无新依赖、不碰接口、无新文案**）：这不是待办里的条码，是本轮跑 web 门禁时撞上的红 —— 今天 12:46 那笔主题库提交带上来的三处生造字号，让 `test/deslop.test.ts` 的「文字大小只走字号阶梯」在整仓红着（`rule 13: 3 new`），规则自己写着「修掉新出现的那处，不要加白名单」，于是顺手修掉。见「第一百五十九轮」一节。
 
 
 ## 发布 v0.2.0（2026-10-05）
@@ -2436,6 +2448,8 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-28 | 5.58 | **运行时发货之后才加的配置成员，不再挡住热推的平台**（上游 `64aebf0f` `#1058` 移植，照改动落、不是合分支；上游 9 文件 / +86 −21 → 本树落下 **5 个跟踪文件 + changelog 一对**：`hmr/capabilities.ts` 把 `penguinGoOrigin` 移出 `HMR_INTERFACES.config` 并写下规则；`config.ts` 里它与 `modelscopeBridgeUrl` 改为可选；两个 provider 在没有值时回落到 `normalize*(undefined)` 的生产默认值；一条回归用例。**有意未取**同一提交里 sandbox-dsh 的 Windows live 超时与 cli 那 2 行（本树没有那个文件））：热推换的是平台、从不换运行时，把「运行时之后才加的成员」列进声明列表等于拒绝每一个比它更早装上的运行时 —— `/api/hmr/upgrade` 400「missing penguinGoOrigin」，兼容的平台推不过去，被拒的推送还可能重启服务端；`modelscopeBridgeUrl` 的消费者此前也没有兜底，旧运行时上会读到 `undefined`。**为什么是这一条**：表上未勾选的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10；上游这一轮的新提交 `#1380` 与 `#1375` 落在已删的 `landing`，`#1376` / `#1377` / `#1378` 仍要 `#1344` / `#1343` 的重试行与机器详情组件，`3fa746b2` 之前的小件里 `#1096` 要真界面、`#1083` 要整套上游 HTTP 索引、`#1095` 要上游 `stat-hint.tsx` / `session-stats.tsx`（本树都没有），于是取这一笔 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 5 个改动文件 **0 警告 0 错误** · 5 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1438 通过 / 6 跳过** · ui **130 / 1053** · cli **38 / 561** · server **205 文件 / 2995 通过 / 15 跳过**（+1 正是本笔用例）· web **270 / 3324 通过 / 2 跳过** · **反证（单测）**：`hmr-resources.test.ts` 里新用例的断言直接落在 `HMR_INTERFACES.config` 上 —— 把 `capabilities.ts` 退回 `HEAD` → **1 failed / 26 passed**（`expected [… 'port', …(11) ] to not include 'penguinGoOrigin'`），放回本笔 → **27 全过** · **真服务端取证**：重建 `@adelie/server` 产物（`dist/index.js` 里 `penguinGoOrigin ?? normalizePenguinGoOrigin(void 0)` 在位、声明列表里那一条已消失），一次性数据根 `/root/adelie-fork-data/r154-look`、**端口 8999** 起真服务 → `/` **200**、种子管理员登录 **200**（`isAdmin: true`）、`/api/version` 与 `/api/projects` 正常，服务端启动无异常、未出现握手相关报错；跑完已停、端口已释放 · 端口只用 8999，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r154-look`，临时文件只在 scratchpad 的 `r154/`；没用 `rm -rf` | 9ffd5f19 |
 | 2026-10-29 | 5.59 | **回复里的图片从工作区取，不再指向 Web App 自己的源**（不是移植：`packages/ui/src/components/content/prose/prose.tsx` 新增 `ProseImageResolver` / `ProseImagesProvider` 与 `img` 适配器（上面没有解析器时保留 Markdown 写的 src，空 src 不渲染 `src` 属性）、`prose.css` 新增 `.md-body img`（阅读栏为最大宽度、按比例、整块）；`packages/web/src/lib/reply-image.ts` 新增纯规则 `resolveReplyImage`（`external` / `file` / `none`，复用 `toWorkspaceRelative` 与 `reply-link.ts` 里新导出的 `isExternalRef`，不再写第二份 scheme 判断）；`features/chat/workspace-links.tsx` → `workspace-refs.tsx`（`WorkspaceRefsProvider` 同时给链接与图片），`MessageStream` 的渲染上下文新增 `workspaceFileUrl`、`chat-page.tsx` 按会话 id 构造（起草时缺席）；`plugins/use-seedream` 的 `SKILL.md` 从「别用图片语法」改成让 Agent 直接给图；用例：`packages/web/test/reply-image.test.ts`（新）、`packages/web/test/md.test.ts`（＋图片一组）、`packages/ui/test/prose.test.ts`（＋图片一组，`SETTLED_MD_COMPONENTS` 由 `[a,pre]` 变 `[a,img,pre]`）、`packages/web/e2e/reply-image.spec.mjs`（新）与 mock 的 `image reply test` 分支；changelog 中英一对。**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，195 接口 / 590 类型）· `oxlint` 11 个改动文件 **0 警告 0 错误** · 12 个源码 / 用例 / mock 文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 通过 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1056**（+3 本笔新增）· cli **38 / 561** · server **205 / 2995 通过 / 15 跳过** · web **271 文件 / 3337 通过 / 2 跳过**（+13：新增 9 条 + md 的 4 条）· **真服务 + 真浏览器整套 e2e**（`run-one.sh`：mock 8934 / 服务端 8935、脚本自己的 `mktemp` 数据根、系统 chromium）：**171 passed（14.3m）、3 failed** —— `chat.spec`（文件面板 iframe 的 `#shim-ok` 没出现）与 `scroll-follow-bounce` 的 Primer / Console 两条（滚轮没滚动 >100px）。**同一套跑法在改动之前的树上一样红**（`git stash push -- packages/ui/src packages/ui/test packages/web/src packages/web/test packages/web/e2e` + 重建 web → 这 3 条仍红、Frost 那条仍绿，3 failed / 1 passed），所以是这套跑法 / 这台机器上的既有不稳（系统 chromium + `--no-sandbox` + 机器繁忙），不是本笔 · **反证**：把 `MessageStream` 的 `fileUrl` 改成 `undefined` 并重建 web → 本笔的 e2e **1 failed**（33 次重试都读到 `<img src="shot.png">`，`toHaveAttribute` 期望 `files/content`），改回并重建 → **1 passed（2.5s）** · **两态实测**（一次性数据根 + mock 模型、真浏览器、1280×900，探针 `probe-image.mjs` 每态生成一张 480×320 的棋盘 PNG 放进工作区）：**改前** `src="shot.png"` → 浏览器请求 `/chat/shot.png`（SPA 兜底 200 的 HTML）→ `naturalWidth 0`，截图里三张全是坏图占位（alt 文字）；**改后** `src="/api/sessions/<id>/files/content?path=shot.png"` → **200**、`naturalWidth 480`，截图里棋盘图正常显示，另两张（`../../outside.png`、`https://example.com/remote.png`）仍按原样坏着、src 未被改写；两态 console **无 error / 无 pageerror**；截图 `r155/{before-big,after-big}.png`、JSON 在 scratchpad · 端口只用 8934 / 8935 / 8936 / 8937 与一次探路的 8977（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `mktemp` 根与 `/root/adelie-fork-data/r155`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist`、`test-results/` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 9a88883a |
 | 2026-10-29 | 5.60 | **回复里的图片点一下看全图**（不是移植：`packages/ui/src/components/content/prose/prose.tsx` 的 `ProseImagesProvider` 新增 `zoomable`（默认关），`img` 适配器在它打开时渲染成 `ZoomableImage`，两种情形仍是普通 `<img>` —— 空 src、以及被链接包住的图片（`ProseInLinkContext` 由 `MdLink` 给子节点置位，不做 DOM 查询）；`packages/ui/src/components/overlays/lightbox/lightbox.tsx` 的 `ZoomableImage` 把其余 `<img>` 属性（`title` / `width` / `height`）转发给缩略图；`packages/web/src/features/chat/workspace-refs.tsx` 给整条对话打开 `zoomable`；用例：`packages/ui/test/prose.test.ts`（＋5：默认关、开、空 src、在链接里、链接旁边）、`packages/ui/test/lightbox.test.ts`（＋1：缩略图保留调用方属性）、`packages/web/test/md.test.ts`（＋1：会话里是按钮、别的界面不是）；changelog 中英一对。**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**）· `oxlint` 6 个改动文件 **0 警告 0 错误** · 6 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1063**（+7，本笔新增）· cli **38 / 561** · server **205 / 2995 通过 / 15 跳过** · web **271 / 3338 通过 / 2 跳过**（+1）· **两态实测**（一次性 `mktemp` 数据根 + mock 模型、真服务 8941 + mock 8940、系统 chromium、1280×900；探针 `probe-zoom.mjs` 每态往工作区写一张 1600×1000 棋盘 PNG，再让 mock 的 `image reply test` 分支回三张图）：**改前**（`git checkout c400aa2c -- packages/{ui,web}/{src,test}` + 重建 web）`.md-body` 里 **0 个 button**、图渲染 768×480（阅读栏宽）、点第一张图 **无覆盖层**、回车也**无覆盖层**；**改后** **3 个 button**、点一下 `.ui-scrim` **1 层**、里面的图 `src=/api/sessions/<id>/files/content?path=shot.png`、`natural 1600×1000`、渲染 **1126×705**（按自己尺寸，改前是 768×480）、关闭按钮 `aria-label="关闭"`、**Esc 关掉后覆盖层 0 层且对话还在**、**回车也能打开**；两态 console **无 error / 无 pageerror**；截图 `r156/{before-after 各自}-{transcript,lightbox}.png` 与 JSON 在 scratchpad · **反证**（按钮嵌在 `<a href>` 里到底怎么点，纯 HTML 探针 `probe-anchor.mjs`）：两条 click 监听**都触发**、`defaultPrevented=false`、新标签页确实开了 —— 这就是「被链接包住的图片不做放大目标」这条规则的理由 · 端口只用 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 408dbf8c |
+| 2026-10-29 | 7.52 | **画廊的 mock 补上文件面板的 Word 预览路由，那条既有红转绿**（不是移植：`packages/ui-gallery/src/app/mock/routes.ts` 的 `workspaceFiles` 新增 `previewText`（照服务端 `http/routes/workspace-files.ts` 的三条出口：文件不在 404、`.doc` → 415 `doc_legacy`、其余类型 → 415 `preview_unavailable`、`.docx` → Markdown + `ETag`），挂到 `/api/sessions/:sessionId/files` 与 `/api/projects/:projectId/workspace-files` 两个 base；`src/app/mock/fixtures.ts` 的演示工作区多一个 `docs/`（`quarterly-report.docx` 里存的就是服务端会抽取出来的 Markdown、`contract.doc` 空着）；`test/mock-api.test.ts` +1 条用例。**无新依赖、不碰接口、无新文案**） | 画廊 `vitest run` 全绿 **20 文件 / 141 通过**（改前 `mock-api.test.ts` 1 failed / 13 passed，失败行正是本笔要修的那条）· 画廊 `tsc --noEmit` `EXIT=0` · 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 590 类型）· 逐包 test **`EXIT=0`、0 失败**：core **71 文件（70 + 1 跳过）/ 1449 通过 / 6 跳过** · ui **130 / 1063** · server **206 / 3011 通过 / 15 跳过** · cli **38 / 561** · web **271 / 3339 通过 / 2 跳过**（那条 de-slop 红在本轮顺手修掉，见 7.53）· 改动三个文件 `prettier --check` 干净 · `git diff --check` 干净 · **两态实测**（真浏览器 + 画廊 dev 7372，`app.html?route=/chat/s-hooks-index&lang=zh`，右侧栏 › 文件浏览 › `docs`）：**改前**两条地址直取都是 **404 `gallery_unmocked`**；**改后**两条都是 **200**、`etag` `"74-26"`、正文 `# 季度报告 …`，面板里 `.docx` 画成 Markdown 标题 + 列表（`r159/after-docx.png`）、`.doc` 显示「旧版 .doc 无法预览，用 Word 另存为 .docx 后即可预览」（`r159/after-doc.png`）；两态 console **无 error / 无 pageerror**、无一条 ≥400 · 端口只用 7372（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；临时文件只在 scratchpad · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `b162ea6a` |
+| 2026-10-29 | 7.53 | **外观页主题库的三处生造字号换回字号阶梯**（不是移植：`packages/web/src/features/settings/theme-registry-section.tsx` 三行，`text-[10px]` / `text-[11px]` ×2 → `text-xs`。今天 12:46 那笔主题库提交（`1a223bf7`）带上来的 de-slop 红，本轮的 web 门禁撞上，顺手修掉） | `test/deslop.test.ts` 24 条通过（rule 13 转绿）、`test/theme-import.test.ts` 6 条通过 · `prettier --check` 与 `oxlint` 对该文件干净 · web 整套 **271 文件 / 3339 通过 / 2 跳过** · **真浏览器**（画廊 7372，`app.html?…&open=settings.appearance`）：主题库卡片照旧 —— 标题、`作者 lmliheng · v1.0.0`（13px，字号档生效）、简介、`导入` 按钮都在，无裁切、console 无 error（`r159/appearance-cards.png`） | `74240065` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -18782,3 +18796,74 @@ CI 上 `test (rest)` / `test-macos (rest)` / `test-windows (rest)` 三个分片�
 
 豆包式画板的**二期界面**（`packages/ui/src/components/overlays/lightbox/lightbox.tsx` 的胶囊工具条 +
 同批缩略图 + 真实像素角标），以及顺手把 ui-gallery 那条既有红修掉（两个 mock 路由即可）。
+
+## 第一百五十九轮：画廊 mock 补上 Word 预览路由，那条既有红转绿（2026-10-29，条目 7.52）
+
+### 开工自检
+
+`/root/adelie-fork` 里 `git status --short` **干净**，`main`，头 `1a223bf7`（今天 12:46 那笔主题库，另一条会话
+落的），`origin/main` 与它同号。`git fetch origin` 仍报 `git@github.com: Permission denied (publickey)` —— 与
+第一百五十七轮同一条路：改走 `https://x-access-token:…(GITHUB_PAT)…@github.com/lmliheng/Adelie.git`，第一次
+`GnuTLS recv error (-110)`、第二次成。所以「同步」这一步的结论是**不落后**，`merge --ff-only` 无事可做。
+
+### 为什么是这一条
+
+待办里未勾的仍是那几条卡点：2.2c（写侧全在桌面壳一侧 + 既有部署单元，属发布动作）、3.5（要用户拍板取哪个
+桌面壳）、3.6（要模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）。所以照第一百五十七、一百五十八
+两轮末尾点名的顺序，做那张表上第一件**不卡**的事：`packages/ui-gallery/test/mock-api.test.ts > routes every
+endpoint the app's wrappers name` 这条既有红。
+
+### 它为什么红
+
+2026-10-28 的 `e5f9aec6`（文件面板能直接看 Word 和 PDF）在 `endpoints.ts` 加了两个 URL 包装器
+`workspaceFileTextUrl` / `workspaceDirFileTextUrl`，而画廊 mock 的 `workspaceFiles` 那一段只挂了
+`content` / `reveal` / `create` / `move` / `search`，没有 `preview-text` —— 覆盖守卫因此把两个包装器都算成
+「没有 mock 路由」（`gallery_unmocked`），CI 上 `test (rest)` / `test-macos (rest)` / `test-windows (rest)`
+三个分片一直红。
+
+### 改了什么
+
+- `packages/ui-gallery/src/app/mock/routes.ts`（+26）：`workspaceFiles.previewText` 照服务端
+  `http/routes/workspace-files.ts` 的三条出口作答 —— 文件不在 404、`.doc` 415 `doc_legacy`、其余类型 415
+  `preview_unavailable`、`.docx` 回 Markdown 并带 `ETag`（面板要求这个头，没有它就当读取失败）。挂到两个
+  base 上（会话与目录），与其它文件操作走同一个 `for` 循环。
+- `packages/ui-gallery/src/app/mock/fixtures.ts`（+12）：演示工作区多一个 `docs/`，里面一份
+  `quarterly-report.docx` 与一份旧版 `contract.doc`。mock 的工作区是文本，**这份 `.docx` 里存的就是服务端会抽取
+  出来的 Markdown**（注释写明这一点）；`.doc` 的内容空着 —— 面板按扩展名自己就给出「另存为 .docx」，根本不发请求。
+- `packages/ui-gallery/test/mock-api.test.ts`（+41）：两个包装器都拿到 200 与 `ETag`、正文含 `Quarterly report`；
+  `.doc` 拿 `doc_legacy`、`.md` 拿 `preview_unavailable`、不存在的 `.docx` 拿 404。
+
+### 顺带修的那条红（7.53）
+
+本轮跑 web 门禁时撞上另一条：`test/deslop.test.ts` 的「文字大小只走字号阶梯」在整仓红着，命中三处全在主题库
+（`features/settings/theme-registry-section.tsx`：`text-[10px]`、两处 `text-[11px]`）—— 是今天 12:46 那笔
+提交带上来的。规则自己写着「修掉新出现的那处，不要加白名单」，改动是这三行换成 `text-xs`（本仓最小的一档），
+卡片外观在真浏览器里复核过。**没有**顺手改它的其它地方。
+
+### 两态实测（真浏览器）
+
+画廊 dev 起在 7372（`/root/adelie-fork` 的依赖已在），`app.html?route=/chat/s-hooks-index&lang=zh` 打开后
+点右侧栏 › 文件浏览：
+
+- **改前**（`git checkout --` 三个文件后重载）：两条 `preview-text` 地址直取都是 **404 `gallery_unmocked`** ——
+  面板里打开 `.docx` 只会落到「读不出来」那条文案。
+- **改后**：两条都是 **200**、`etag` `"74-26"`、正文 `# 季度报告 …`；面板里 `.docx` 画成 Markdown（标题 + 摘要 +
+  两个圆点），`.doc` 显示「旧版 .doc 无法预览，用 Word 另存为 .docx 后即可预览」。
+- 两态 console **无 error / 无 pageerror**，没有一条 ≥400 的请求。截图 `r159/after-docx.png`、`r159/after-doc.png`，
+  探针 `r159/docx.mjs` / `r159/probe-urls.mjs`，改前的三个文件留底在 `r159/mine/`（回填后逐文件 `diff -q` 无输出）。
+- 顺带复审 7.53 的界面：`app.html?…&open=settings.appearance` 里主题库卡片照旧，`作者 lmliheng · v1.0.0`
+  13px、`导入` 按钮在位，无裁切（`r159/appearance-cards.png`）。
+
+### 门禁
+
+六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 590 类型）；逐包 test 全绿：
+core **71 文件（70 + 1 跳过）/ 1449 通过 / 6 跳过** · ui **130 / 1063** · server **206 / 3011 通过 / 15 跳过** ·
+cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · ui-gallery **20 / 141**。三个改动文件 `prettier --check` 干净，
+`oxlint` 对 7.53 那个文件 0 警告 0 错误。**第一次跑 web 时 `test/dock-state.test.ts` 收集失败**（整套并行下），单独
+跑 46 条通过、整套复跑也通过 —— 记为并行下的偶发，不是本笔引入的。
+
+### 下一轮
+
+豆包式画板的**二期界面**（`packages/ui/src/components/overlays/lightbox/lightbox.tsx` 的胶囊工具条 + 同批缩略图 +
+真实像素角标）—— 已经在第一百五十八轮末尾点名；待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧
+等人拍板或等 key，不动。
