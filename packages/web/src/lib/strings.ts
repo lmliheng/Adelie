@@ -836,6 +836,23 @@ export const zh = {
     themeImportBlockedUrl: "这个地址指向本机或内网，服务端不会去取。",
     themeImportDownloadFailed: "取不回来：地址、网络或对方的状态码有问题。",
     themeImportBadUrl: "地址要是一个 http:// 或 https:// 开头的网址。",
+    /** The theme library: a remote catalogue this installation can import from. */
+    themeRegistry: "主题库",
+    themeRegistryInfo:
+      "远端的一份主题目录，服务端读进来，适合的主题点一下就装到本机。默认是 npm 上 @lmliheng/adelie-themes 的主题包，也可以用 ADELIE_THEME_REGISTRY 换成自建镜像。",
+    themeRegistryReadAgain: "刷新",
+    themeRegistryLoading: "正在读取主题库…",
+    themeRegistryEmpty: "主题库里暂时没有主题。",
+    themeRegistryFailed: "这次没读到主题库，稍后再试。",
+    themeRegistryInvalid: (reason: string) => `主题库目录读不出来：${reason}`,
+    themeRegistryUnusable: "主题库地址不是 http(s) 地址，检查 ADELIE_THEME_REGISTRY。",
+    themeRegistryImport: "导入",
+    themeRegistryReimport: "重新导入",
+    themeRegistryInstalled: "已安装",
+    themeRegistryImported: (name: string) => `已从主题库导入 ${name}`,
+    themeRegistryGone: "主题库里已经没有这个主题了，刷新一下再看。",
+    themeRegistryMismatch: "主题库把这一条指错了文件：装下来的主题不是它写的那个名字。",
+    themeRegistryBy: (author: string) => `作者 ${author}`,
     importedThemesFailed: "这次没读到导入的主题列表，稍后再试。",
     importedThemesNoFile: (id: string) =>
       `现在选的「${id}」没有对应的主题文件，页面先用默认主题画。`,

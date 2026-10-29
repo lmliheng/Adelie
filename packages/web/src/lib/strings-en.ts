@@ -786,6 +786,24 @@ export const en: Strings = {
     themeImportDownloadFailed:
       "Could not fetch it: the address, the network or the answer's status.",
     themeImportBadUrl: "The address has to be a URL starting with http:// or https://.",
+    /** The theme library: a remote catalogue this installation can import from. */
+    themeRegistry: "Theme library",
+    themeRegistryInfo:
+      "A theme catalogue served somewhere remote and read by the server; a theme you like installs with one click. By default it is the @lmliheng/adelie-themes package on npm — set ADELIE_THEME_REGISTRY to point at your own mirror.",
+    themeRegistryReadAgain: "Refresh",
+    themeRegistryLoading: "Reading the theme library…",
+    themeRegistryEmpty: "The theme library has no themes right now.",
+    themeRegistryFailed: "Could not read the theme library this time. Try again later.",
+    themeRegistryInvalid: (reason: string) => `The theme library's index does not read: ${reason}`,
+    themeRegistryUnusable: "The theme library address is not http(s); check ADELIE_THEME_REGISTRY.",
+    themeRegistryImport: "Import",
+    themeRegistryReimport: "Re-import",
+    themeRegistryInstalled: "Installed",
+    themeRegistryImported: (name: string) => `Imported ${name} from the theme library`,
+    themeRegistryGone: "The theme library no longer lists this theme; refresh and look again.",
+    themeRegistryMismatch:
+      "The theme library points this entry at the wrong file: what it served is not the name it listed.",
+    themeRegistryBy: (author: string) => `by ${author}`,
     importedThemesFailed: "Could not read the imported themes list this time. Try again later.",
     importedThemesNoFile: (id: string) =>
       `No theme file provides the chosen "${id}"; the default theme paints for now.`,

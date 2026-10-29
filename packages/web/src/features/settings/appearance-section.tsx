@@ -22,6 +22,12 @@
  * same install without the walk to the folder, and it is the server's own rule that decides who
  * may use it: the routes answer 403 to anyone else, so the entry is drawn for an admin only rather
  * than offered and refused.
+ *
+ * AND A LIBRARY BESIDE THE FOLDER. A theme can also arrive from a remote catalogue (the registry
+ * routes) — the same installation, one fetch the server makes instead of the operator — so the page
+ * carries its cards under the same picker, again for an admin only, because importing is the one
+ * thing a card offers. Its own state is its own: a library nobody can reach leaves the picker and
+ * the folder row exactly as they were.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
@@ -59,6 +65,7 @@ import { localizedText } from "../chat/skill-use";
 import { FONT_FOLLOWS_THEME, effectiveAccent } from "../../state/theme-prefs";
 import { ThemeImportActions } from "./theme-import-dialog";
 import { ThemePicker } from "./theme-picker";
+import { ThemeRegistrySection } from "./theme-registry-section";
 
 /**
  * A font select's choices: the theme's own face first — it is the default, and the named faces
@@ -356,6 +363,11 @@ export function AppearanceSection() {
         locale={locale}
         canImport={user?.isAdmin === true}
       />
+      {/* The remote catalogue, for an admin only: a card's one action is an import, which is the
+          admin's to make — a member would be shown a list of themes they cannot have. */}
+      {user?.isAdmin === true && (
+        <ThemeRegistrySection onImported={() => refreshImportedThemes(true)} />
+      )}{" "}
       <PrefRow label={S.settings.colorMode} info={S.settings.colorModeInfo}>
         <Segmented options={themeOptions} value={mode} onChange={setMode} />
       </PrefRow>

@@ -18732,3 +18732,53 @@ CI 上 `test (rest)` / `test-macos (rest)` / `test-windows (rest)` 三个分片�
 - **SSH 推拉又不行了**：`git fetch origin` 报 `git@github.com: Permission denied (publickey)`；
   本轮用 `git -c http.extraheader="Authorization: Basic …(GITHUB_PAT)…" fetch https://github.com/lmliheng/Adelie.git main`
   拉到的，结论是 `origin/main` 与本机 `HEAD` **同为 `46d49e1f`**，没有落后。
+
+## 第一百五十八轮：主题库整条链落地，远端主题点一下就装（2026-10-29，用户「继续」）
+
+### 上一轮那条判断的结果
+
+第一百五十七轮把工作树里那 15 条当成「别人会话死掉的半成品」，给了三条路。用户说的是**继续**，而作者会话
+（`session-2026-10-27-20-43-36-0f67df1c`）本身就是本线 —— 于是走的是「①在原会话里继续」，只不过不是把半成品
+留在原地，而是这一轮把它做完并落地：core 格式、服务端服务与两条路由、web 卡片栏、内容仓库、npm 包、
+文档、changelog 全在树上，一起提交。
+
+### 本轮做完的
+
+- **core** `internal/theme-registry.ts`（索引格式与校验，全收或全拒）+ 11 条用例。上一轮点的
+  `test/theme-registry.test.ts(61,12): TS2532` 已修（`themes[0]!`），`pnpm --filter @adelie/core typecheck` 干净。
+- **server** `services/theme-registry.ts`：目录读取、缓存（成功 5 分钟 / 失败 30 秒 / 在途共用一次请求）、
+  两个默认地址（npmmirror 文件目录 → jsDelivr 的 GitHub 副本，只有**网络层面**失败才换，目录本身坏就报原因）。
+  `GET /api/themes/registry`（user）与 `POST /api/themes/registry/import`（admin）走地址导入同一套
+  `fetchThemeFile` + `installTheme`，多一道 `registry_mismatch`（文件自称的 id 与目录条目不一致，落盘前拒）。
+  `theme-download.ts` 的 `fetchThemeFile` 多了 `maxBytes`（目录 128 KB ≠ 主题 256 KB）。16 条新用例 + 原
+  15 条主题用例全绿。
+- **web** 外观页 `theme-registry-section.tsx`：只给管理员，卡片画浅/深两态四色 + 作者/版本/简介，
+  导入→刷新列表→重读目录让「已安装」跟服务端走；错误文案映射加了五个 `registry_*` 码。web typecheck
+  干净，`test/theme-import.test.ts` 6 条（含新码）全绿。
+- **内容仓库** `lmliheng/adelie-themes`（GitHub）+ `@lmliheng/adelie-themes@1.0.0`（npm）：
+  `index.json`、`themes/trae-cn.json`（仿 Trae 国内版：33 浅 / 31 深 / 4 个强调色预设）、README（两份字段表）、
+  Apache-2.0。core 的读取器认它，`externalThemesCss` 正常出层。
+- **文档 / changelog**：`packages/docs/content/settings.{zh,en}.md` 各加一段；changelog 中英一对；
+  `packages/ui-gallery/src/app/mock/routes.ts` 补两条 mock（否则画廊那条覆盖守卫会多出两个缺口）。
+
+### 真地址验过什么、还差什么
+
+- 真网络跑 `createThemeRegistry()`：npmmirror **404**（新包十几分钟还没同步）→ 退到 jsDelivr → 读到目录
+  1 条 → 取回 `themes/trae-cn.json` 3130 字节 → core 读成主题（33 个浅色令牌）。这是本轮唯一一次真跑，
+  走的是服务层，不是浏览器界面。
+- `registry.npmjs.org/@lmliheng%2fadelie-themes` 在发布后约十几分钟变 200（PUT 当时回的是 **202**）；
+  `registry.npmmirror.com/.../latest/files/index.json` 到本轮结束仍是 **404**。所以第二个地址不是备胎。
+- **没做**：真浏览器里点一遍「导入 Trae CN 然后 `--ui-canvas` 变了」—— 需要起 dev server 加一条 Playwright，
+  留给下一轮（记忆里那套假模型 + 临时数据根 + 单条 spec 的法子）。
+
+### 门禁
+
+`core` typecheck 干净 / 用例 11+11 绿；`server` typecheck 干净 / 主题相关 16+15 绿；`web` typecheck 干净 /
+主题导入 6 绿；`ui-gallery` typecheck 干净；prettier + oxlint 对改动文件干净。
+**仍然红的只有一条**：`packages/ui-gallery/test/mock-api.test.ts` 的 `workspaceFileTextUrl` /
+`workspaceDirFileTextUrl` 两个既有缺口 —— 与第一百五十七轮记的是同一处，本轮没接手（不属本轮范围）。
+
+### 下一轮
+
+豆包式画板的**二期界面**（`packages/ui/src/components/overlays/lightbox/lightbox.tsx` 的胶囊工具条 +
+同批缩略图 + 真实像素角标），以及顺手把 ui-gallery 那条既有红修掉（两个 mock 路由即可）。

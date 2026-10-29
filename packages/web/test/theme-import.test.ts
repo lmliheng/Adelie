@@ -50,6 +50,25 @@ describe("主题导入失败时说的话", () => {
     );
   });
 
+  it("主题库导入的四个码也在同一张表上", () => {
+    expect(themeImportErrorText(new ApiError(404, "registry_theme_not_found", "…"))).toBe(
+      S.settings.themeRegistryGone,
+    );
+    expect(themeImportErrorText(new ApiError(400, "registry_mismatch", "…"))).toBe(
+      S.settings.themeRegistryMismatch,
+    );
+    expect(themeImportErrorText(new ApiError(400, "registry_unusable", "…"))).toBe(
+      S.settings.themeRegistryUnusable,
+    );
+    expect(themeImportErrorText(new ApiError(400, "registry_unavailable", "…"))).toBe(
+      S.settings.themeRegistryFailed,
+    );
+    // The index reader's own reasons survive, as `theme_invalid`'s do.
+    expect(
+      themeImportErrorText(new ApiError(400, "registry_invalid", "themes[0].file: 「../x」不是")),
+    ).toBe(S.settings.themeRegistryInvalid("themes[0].file: 「../x」不是"));
+  });
+
   it("不认识的码走共用的那张表，不是自己编一句", () => {
     const empty = new ApiError(400, "bad_request", "The file is empty.");
     expect(themeImportErrorText(empty)).toBe(apiErrorText(empty));

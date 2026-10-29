@@ -66,6 +66,8 @@ import type {
   ImportedThemesResponse,
   ThemeDownloadRequest,
   ThemeImportResponse,
+  ThemeRegistryImportRequest,
+  ThemeRegistryResponse,
   ThemeUploadRequest,
   InstallResponse,
   MachinesResponse,
@@ -2772,3 +2774,25 @@ export const importThemeArchive = (body: ThemeUploadRequest) =>
  */
 export const importThemeFromUrl = (body: ThemeDownloadRequest) =>
   apiFetch<ThemeImportResponse>("/api/themes/download", { method: "POST", body, server: null });
+
+/**
+ * The catalogue a remote theme registry publishes (npmmirror's copy of the theme package, or
+ * whatever `ADELIE_THEME_REGISTRY` names), with each entry marked installed or not. Read by the
+ * server, because the server is what can reach it. A registry that could not be read answers 200
+ * with `error` and no themes — a note above the picker, not a failed page.
+ */
+export const getThemeRegistry = () =>
+  apiFetch<ThemeRegistryResponse>("/api/themes/registry", { server: null });
+
+/**
+ * Install one entry the catalogue names, by id: the server fetches that entry's file through the
+ * same guards as the address import and writes it through the same reader, so 409 `theme_exists`
+ * (and the same `overwrite` retry) is answered here too. Unknown id: 404
+ * `registry_theme_not_found`. Admin-only.
+ */
+export const importThemeFromRegistry = (body: ThemeRegistryImportRequest) =>
+  apiFetch<ThemeImportResponse>("/api/themes/registry/import", {
+    method: "POST",
+    body,
+    server: null,
+  });

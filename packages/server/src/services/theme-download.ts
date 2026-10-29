@@ -42,21 +42,26 @@ function assertHostAllowed(url: URL): void {
 }
 
 /** A file past the format's cap, uploaded or downloaded alike — one answer, one place the number is read. */
-export function themeTooLarge(): HttpError {
+export function themeTooLarge(maxBytes: number = MAX_THEME_FILE_BYTES): HttpError {
   return new HttpError(
     413,
     "theme_too_large",
-    `The theme file exceeds the ${Math.floor(MAX_THEME_FILE_BYTES / 1024)}KB limit.`,
+    `The theme file exceeds the ${Math.floor(maxBytes / 1024)}KB limit.`,
   );
 }
 
 /**
  * Fetches one theme file. `fetchImpl` is the seam the tests use (as the plugin download's own is),
  * so a suite can answer with the bytes of a theme without a network.
+ *
+ * `maxBytes` defaults to the theme format's cap and is only lowered by a caller that is fetching
+ * something of the same shape but a smaller kind — the registry index, whose own cap is a quarter
+ * of a theme file's (core's `MAX_REGISTRY_FILE_BYTES`). Raising it is not what this option is for:
+ * a file this server writes has to be one the reader will read afterwards.
  */
 export async function fetchThemeFile(
   rawUrl: string,
-  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number; maxBytes?: number } = {},
 ): Promise<Buffer> {
   let url: URL;
   try {
@@ -96,15 +101,16 @@ export async function fetchThemeFile(
     throw new HttpError(400, "download_failed", `Download failed with HTTP ${res.status}.`);
   }
   const declared = Number(res.headers.get("content-length") ?? "");
-  if (Number.isFinite(declared) && declared > MAX_THEME_FILE_BYTES) {
+  const cap = options.maxBytes ?? MAX_THEME_FILE_BYTES;
+  if (Number.isFinite(declared) && declared > cap) {
     await res.body?.cancel().catch(() => undefined);
-    throw themeTooLarge();
+    throw themeTooLarge(cap);
   }
-  return readBounded(res);
+  return readBounded(res, cap);
 }
 
 /** Reads the body, refusing the moment it passes the cap rather than after buffering it all. */
-async function readBounded(res: Response): Promise<Buffer> {
+async function readBounded(res: Response, cap: number): Promise<Buffer> {
   const reader = res.body?.getReader();
   if (!reader) return Buffer.from(await res.arrayBuffer());
   const chunks: Uint8Array[] = [];
@@ -113,9 +119,9 @@ async function readBounded(res: Response): Promise<Buffer> {
     const { done, value } = await reader.read();
     if (done) break;
     total += value.byteLength;
-    if (total > MAX_THEME_FILE_BYTES) {
+    if (total > cap) {
       await reader.cancel().catch(() => undefined);
-      throw themeTooLarge();
+      throw themeTooLarge(cap);
     }
     chunks.push(value);
   }

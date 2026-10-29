@@ -26,10 +26,14 @@ export function themeFileTooLarge(sizeBytes: number): boolean {
 }
 
 /**
- * The text of a failed theme import: the codes the two routes answer with get their own copy (the
+ * The text of a failed theme import: the codes the import routes answer with get their own copy (the
  * server's message is English-only, and the UI language may not be), everything else goes through
  * the shared error mapping. A 409 `theme_exists` never arrives here — the caller turns it into the
  * overwrite confirmation, which is a question rather than a failure.
+ *
+ * The registry import answers the same codes — it fetches and writes through the same two steps —
+ * plus the four that only it can answer, which are here for the same reason the others are: the
+ * server's own sentence is not translated.
  */
 export function themeImportErrorText(err: unknown): string {
   if (err instanceof ApiError) {
@@ -44,6 +48,16 @@ export function themeImportErrorText(err: unknown): string {
         return S.settings.themeImportBlockedUrl;
       case "download_failed":
         return S.settings.themeImportDownloadFailed;
+      case "registry_theme_not_found":
+        return S.settings.themeRegistryGone;
+      case "registry_mismatch":
+        return S.settings.themeRegistryMismatch;
+      case "registry_unusable":
+        return S.settings.themeRegistryUnusable;
+      case "registry_unavailable":
+        return S.settings.themeRegistryFailed;
+      case "registry_invalid":
+        return S.settings.themeRegistryInvalid(err.message);
       default:
         break;
     }

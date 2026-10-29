@@ -72,6 +72,7 @@ import type {
   ModelTestResponse,
   ModelVisionDetectResponse,
   ImportedThemesResponse,
+  ThemeRegistryResponse,
   OrganizationsResponse,
   PluginConfigActionResponse,
   PluginConfigResponse,
@@ -2814,3 +2815,42 @@ router.get("/api/themes", (): ImportedThemesResponse => ({
 router
   .post("/api/themes/upload", () => readOnly("import a theme from a file"))
   .post("/api/themes/download", () => readOnly("import a theme from an address"));
+
+// The remote catalogue the appearance page offers an admin: one entry, from the real library, so
+// the gallery shows what a card is. Nobody here can import one (the demo is not an admin), so the
+// import route is the same refusal the two above give.
+router.get("/api/themes/registry", (): ThemeRegistryResponse => ({
+  base: "https://cdn.jsdelivr.net/gh/lmliheng/adelie-themes@main/",
+  name: "Adelie Themes",
+  updatedAt: "2026-10-29",
+  fetchedAt: 1_761_700_800_000,
+  themes: [
+    {
+      id: "trae-cn",
+      name: "Trae CN",
+      nameZh: "Trae 国内版",
+      author: "lmliheng",
+      description: "Trae's near-black greys with its brand green.",
+      descriptionZh: "Trae 国内版的近黑灰底与品牌绿。",
+      file: "themes/trae-cn.json",
+      version: "1.0.0",
+      swatch: {
+        light: {
+          "--ui-canvas": "#f5f9fe",
+          "--ui-surface": "#ffffff",
+          "--ui-fg": "#1c2026",
+          "--ui-accent": "#00a56e",
+        },
+        dark: {
+          "--ui-canvas": "#0a0b0d",
+          "--ui-surface": "#0c0c0d",
+          "--ui-fg": "#edeff2",
+          "--ui-accent": "#32f08c",
+        },
+      },
+      installed: false,
+    },
+  ],
+}));
+
+router.post("/api/themes/registry/import", () => readOnly("import a theme from the theme library"));

@@ -5,6 +5,15 @@
  *   GET  /api/themes.css       the same files as one stylesheet (auth: none)
  *   POST /api/themes/upload    install one from a file the operator picked (auth: admin)
  *   POST /api/themes/download  install one fetched from an address (auth: admin)
+ *   GET  /api/themes/registry  what a remote theme registry offers (auth: user)
+ *   POST /api/themes/registry/import  install one it names, by id (auth: admin)
+ *
+ * A REGISTRY IS THE FOURTH COLUMN OF THE SAME TABLE. It changes where a file's address comes from
+ * and nothing else: the server reads the catalogue (services/theme-registry.ts), finds the entry the
+ * request names, fetches that entry's file through the download route's own guards, and then hands
+ * the bytes to the same reader and the same writer as the two imports above. So a theme installed
+ * from a catalogue is the file a hand-dropped copy would have been — same name, same validation,
+ * same `theme_exists` question on a second install.
  *
  * THE TWO IMPORTS ARE THE DIRECTORY, WITH THE WALK TAKEN OUT OF IT. Dropping a file in the folder
  * stays the whole install, and these two routes write that same file: the JSON is read by the same
@@ -44,11 +53,16 @@ import { externalThemesCss, MAX_THEME_FILE_BYTES, readExternalTheme } from "@ade
 import type { ExternalTheme } from "@adelie/core";
 import { Bind, Component, Use } from "@adelie/core/kernel";
 import type { AppEnv } from "../../auth/middleware.js";
-import type { ImportedThemesResponse, ThemeImportResponse } from "../../api/types.js";
+import type {
+  ImportedThemesResponse,
+  ThemeImportResponse,
+  ThemeRegistryResponse,
+} from "../../api/types.js";
 import { Config } from "../../hmr/capabilities.js";
 import { HttpError } from "../errors.js";
 import { badRequest, optionalBoolean, readJson, requireString } from "../validate.js";
 import { fetchThemeFile, themeTooLarge } from "../../services/theme-download.js";
+import { createThemeRegistry } from "../../services/theme-registry.js";
 
 /** Where an installation's themes live, under the data root. */
 export const THEMES_DIR = "themes";
@@ -213,6 +227,9 @@ export async function installTheme(
 
 export function themesRoutes(deps: { root: string }): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
+  // One client per route set, so its index cache is the app's: warm for every request, and gone
+  // with the process.
+  const registry = createThemeRegistry();
   routes.get("/", async (c) => {
     const { dir, themes, rejected } = await readImportedThemes(deps.root);
     return c.json({
@@ -254,6 +271,65 @@ export function themesRoutes(deps: { root: string }): Hono<AppEnv> {
     const { file, theme } = await installTheme(
       deps.root,
       readThemeText(bytes),
+      optionalBoolean(body, "overwrite") ?? false,
+    );
+    return c.json({ file, theme } satisfies ThemeImportResponse, 201);
+  });
+
+  // What the registry offers (user): the catalogue, with each entry marked as already imported or
+  // not. Every user may read it — reading a catalogue installs nothing, and the page's cards are
+  // the same page the imported list is on. A registry that cannot be read is an answer with its
+  // reason, not a failed request: the installation's own themes still exist.
+  routes.get("/registry", async (c) => {
+    const { themes } = await readImportedThemes(deps.root);
+    const installed = new Set(themes.map((entry) => entry.theme.id));
+    const load = await registry.read();
+    if (!load.ok) {
+      return c.json({
+        base: null,
+        themes: [],
+        error: { code: load.error.code, message: load.error.message },
+      } satisfies ThemeRegistryResponse);
+    }
+    const index = load.registry;
+    return c.json({
+      base: load.base,
+      ...(index.name === undefined ? {} : { name: index.name }),
+      ...(index.updatedAt === undefined ? {} : { updatedAt: index.updatedAt }),
+      fetchedAt: load.fetchedAt,
+      themes: index.themes.map((entry) => ({ ...entry, installed: installed.has(entry.id) })),
+    } satisfies ThemeRegistryResponse);
+  });
+
+  // Install one entry (admin), the same way the address import does: fetch, read, write. The id
+  // comes from the catalogue rather than from the caller, so the page never has to carry an address
+  // — and a file whose own id is not the one it was listed under is refused BEFORE it is written,
+  // because installing it would put a theme on this machine that the card the operator clicked does
+  // not name.
+  routes.post("/registry/import", async (c) => {
+    requireAdmin(c);
+    const body = await readJson(c);
+    const id = requireString(body, "id", { minLen: 1, maxLen: 32, label: "id" });
+    const load = await registry.read();
+    if (!load.ok) throw new HttpError(400, load.error.code, load.error.message);
+    const entry = load.registry.themes.find((candidate) => candidate.id === id);
+    if (entry === undefined) {
+      throw new HttpError(404, "registry_theme_not_found", `主题库里没有「${id}」这个主题。`);
+    }
+    const bytes = await registry.fetchEntryBytes(entry, load.base);
+    if (bytes.byteLength === 0) throw badRequest("The download is empty.");
+    const text = readThemeText(bytes);
+    const listed = readThemeTextAsTheme(text);
+    if (listed.id !== entry.id) {
+      throw new HttpError(
+        400,
+        "registry_mismatch",
+        `主题库把「${entry.id}」指向了一个自称「${listed.id}」的文件。`,
+      );
+    }
+    const { file, theme } = await installTheme(
+      deps.root,
+      text,
       optionalBoolean(body, "overwrite") ?? false,
     );
     return c.json({ file, theme } satisfies ThemeImportResponse, 201);

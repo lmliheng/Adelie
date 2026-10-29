@@ -25,7 +25,13 @@ import type {
   ToolDefinitionConfig,
 } from "@adelie/core/interfaces";
 // Build/harness identity is not an interface contract — it ships from the barrel (core's version-info.ts).
-import type { HarnessInfo, VersionReport, HarnessHistory, ExternalTheme } from "@adelie/core";
+import type {
+  HarnessInfo,
+  VersionReport,
+  HarnessHistory,
+  ExternalTheme,
+  RegistryThemeEntry,
+} from "@adelie/core";
 import type { IfacesDiff } from "@adelie/hmr";
 import type { WorkflowInfo } from "../mechanisms/workflows.js";
 
@@ -2275,6 +2281,57 @@ export interface ThemeUploadRequest {
 export interface ThemeDownloadRequest {
   /** The address of a theme JSON file. */
   url: string;
+  overwrite?: boolean;
+}
+
+/** One theme a registry offers, plus whether this installation already reads it. */
+export interface ThemeRegistryTheme extends RegistryThemeEntry {
+  /**
+   * True when a theme with this id is already imported here — the card then offers "重新导入"
+   * (with the overwrite the import route asks for) rather than "导入".
+   */
+  installed: boolean;
+}
+
+/**
+ * GET /api/themes/registry: the catalogue a remote registry publishes, read by the server (the
+ * machine that can reach it) and shaped for the appearance page's cards. Auth: user, like the list
+ * of imported themes — reading a catalogue is not installing anything.
+ *
+ * A registry that cannot be read is an ANSWER, not a failure: `error` carries the reason and
+ * `themes` is empty, because the page still has this installation's own themes to show and a
+ * catalogue nobody can reach is a note above the picker rather than a broken page.
+ */
+export interface ThemeRegistryResponse {
+  /**
+   * The address the catalogue actually came from. The server tries npmmirror first and jsDelivr's
+   * GitHub copy second (a fresh npm release lags on the first), so this names the one that answered;
+   * null when none did, or when `ADELIE_THEME_REGISTRY` is unusable.
+   */
+  base: string | null;
+  /** The registry's own name, when its index carries one. */
+  name?: string;
+  updatedAt?: string;
+  /** When the index behind this answer was fetched (ms since epoch; a cached read keeps its own). */
+  fetchedAt?: number;
+  themes: ThemeRegistryTheme[];
+  error?: { code: string; message: string };
+}
+
+/**
+ * POST /api/themes/registry/import: install one theme the registry names, by id — the server fetches
+ * that entry's file and writes it exactly as the other two imports do. Admin-only.
+ *
+ * Errors: 403 `admin_required`, 404 `registry_theme_not_found` (no such id in the index),
+ * 400 `registry_unavailable` / `registry_invalid` (the index could not be read),
+ * 400 `registry_mismatch` (the file's own id is not the id the index listed it under), plus every
+ * error the download import answers (`unsupported_url`, `blocked_url`, `download_failed`,
+ * `theme_too_large`, `theme_invalid`, 409 `theme_exists` without `overwrite`).
+ */
+export interface ThemeRegistryImportRequest {
+  /** The entry's id, as the index spells it. */
+  id: string;
+  /** Replace the theme this installation already has under that id. */
   overwrite?: boolean;
 }
 

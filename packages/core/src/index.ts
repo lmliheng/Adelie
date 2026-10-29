@@ -97,6 +97,22 @@ export type {
   ExternalThemeAccent,
   ExternalThemeRead,
 } from "./internal/external-theme.js";
+// A theme registry: the index a shared repository publishes, so an installation can browse what
+// exists instead of being handed a URL. The theme FILE it points at is still read by the module
+// above; this one only says which files there are and where.
+export {
+  MAX_REGISTRY_FILE_BYTES,
+  SWATCH_NAMES,
+  THEME_REGISTRY_SCHEMA_VERSION,
+  readThemeRegistry,
+  resolveRegistryFile,
+} from "./internal/theme-registry.js";
+export type {
+  RegistrySwatch,
+  RegistryThemeEntry,
+  ThemeRegistry,
+  ThemeRegistryRead,
+} from "./internal/theme-registry.js";
 // `metaMaxTokens` is the output cap every out-of-band meta request shares — a small budget,
 // tightened by the entry's pinned per-model cap. Exported so a host running its own one-off
 // requests on a Project's model sizes them the way the SDK sizes its own.
