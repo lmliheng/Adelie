@@ -1,6 +1,6 @@
 {
   "name": "@adelie/use-lieflat-charts",
-  "version": "0.5.9",
+  "version": "0.5.10",
   "description": "Turn data into polished, interactive HTML charts — and, on request, into a paged HTML/PDF deck or a full-page report. Template-driven, one colour system per deliverable. Ported from the lieflat-charts skill.",
   "license": "PolyForm-Noncommercial-1.0.0",
   "repository": {
