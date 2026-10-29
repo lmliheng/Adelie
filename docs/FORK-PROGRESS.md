@@ -18675,3 +18675,60 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 
 - 代码 + 用例 + changelog 中英一对：**`408dbf8c`**；本轮台账（5.60 与上表那一行、本节）另起一笔（`049ef89e`，
   画廊那条既有红的补记是 `116cbd9f`），与历次一致。
+
+## 第一百五十七轮：工作树是别人的在途改动，本轮只诊断不落地（2026-10-29）
+
+### 开工就撞上的东西
+
+`git status --short` **15 条**（10 个改动 + 5 个新文件），改的是**同一件事：一个主题仓库（theme registry）**
+—— `packages/core/src/internal/theme-registry.ts`（新，240 行）读索引、`packages/server/src/services/theme-registry.ts`
+（新，271 行）按 npmmirror / jsDelivr 取目录、`POST /api/themes/registry/import` 按 id 装一个主题、
+`packages/web/src/features/settings/theme-registry-section.tsx`（新，288 行）是外观页上的卡片墙，
+另有 core / server 两个 430 / 149 行的新用例与 `theme-download.ts` / `appearance-section.tsx` / 两份词典的改动。
+脏文件 mtime **08:49:47 – 09:03:01**，`.git/index` 停在 07:33:05，`HEAD` = `origin/main` = `46d49e1f`。
+
+### 是谁的、死没死
+
+- 作者是 `self_evolution` 项目那条长期会话 **`session-2026-10-27-20-43-36-0f67df1c`**（就是第一百四十八轮
+  撞见的那条）：它的 `_004` 分段一直写到 **09:05:18**，末尾是 `{"type":"abort","error_code":"user_abort"}`
+  与一条 `[interrupted: tool aborted by user]`，被掐前最后一步在拉 `@lmliheng/adelie-themes`。
+- 同一秒被掐的还有 `self_evolution` 的 evolve-loop 轮 `session-2026-10-29-09-00-10-27a0e2dd`（它正在跑门禁），
+  以及本数据根的两个 09:00 会话（`f87277d8` / `994390f6`）；App 服务端 **09:05:22 / 09:05:24** 起来
+  （`ps -eo pid,lstart,cmd | grep 'penguin.js server'`）—— 是**App 重启**把三条一起打断的，不是人按停。
+- 之后没有任何进程落在这棵树上（`/proc/*/cwd`、`ps` 都没有），近 15 分钟内只有本轮自己的 trace 在写，
+  工作树里也没有 `.tmp-<pid>-*`。所以它现在是**死掉的半成品**，但**作者会话本身可以被用户随时继续**
+  （App 侧栏里那条还在），这正是第一百四十八轮「不接手」的情形。
+
+### 它过不了门禁（本轮实测，只读）
+
+- `pnpm --filter @adelie/core run typecheck` → **`test/theme-registry.test.ts(61,12): error TS2532:
+  Object is possibly 'undefined'`**，`EXIT=2`（这与 evolve-loop 那轮 09:01 记在
+  `/root/evolution/runs/2026-10-29-0900/gate-typecheck.txt` 的是同一处）。
+- `pnpm exec prettier --check` 那几个新文件 → **3 个文件要格式化**（core / server 两份用例 +
+  `server/src/services/theme-registry.ts`），`EXIT=1`。
+- 它依赖的 npm 侧**已经在今天 09:04:07 发出去了**：`@lmliheng/adelie-themes@1.0.0`（描述
+  「Theme registry for Adelie: index.json plus the theme files it names」）在 npmjs 上 **200**，
+  而 `registry.npmmirror.com/@lmliheng/adelie-themes/latest/files/` 仍 **404**（镜像滞后 —— 作者的代码
+  就是为这个滞后准备了 jsDelivr 兜底）。
+
+### 本轮的处置
+
+按第 0 步纪律**一个字节没碰**：没提交、没回滚、没 `git stash`（它随时可能被原会话继续），也没替它改那个 TS 错。
+只把它整片留底到本轮 scratchpad 的 `r157/`（`tracked.patch` 486 行，sha256 前 24 位 `9326ffac92efbb38e32831d0`，
+另 5 个新文件按原路径放在 `r157/untracked/`），所以日后就算被清掉也不丢。
+**给用户的三条路**（下一轮照用户的选择做）：① 在原会话里继续（推荐 —— 它的上下文都在，只剩一个 TS 错 +
+一次 prettier + 一遍门禁）；② 授权本线接管（那就先把 `@lmliheng/adelie-themes` 的索引结构与已发版本对上，
+再补门禁与真界面取证）；③ 丢掉（`git checkout -- <10 个路径>` + 删 5 个新文件，或直接用 `r157/` 回填）。
+
+### 下一轮
+
+树一旦干净，先做台账末尾点名的那条**既有红**：`packages/ui-gallery/test/mock-api.test.ts > routes every
+endpoint the app's wrappers name` —— `workspaceFileTextUrl` / `workspaceDirFileTextUrl` 两个包装器缺 mock 路由，
+CI 上 `test (rest)` / `test-macos (rest)` / `test-windows (rest)` 三个分片因此一直红。之后才是台账里
+「剩下的仍是那几条卡点」（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）。
+
+### 顺带
+
+- **SSH 推拉又不行了**：`git fetch origin` 报 `git@github.com: Permission denied (publickey)`；
+  本轮用 `git -c http.extraheader="Authorization: Basic …(GITHUB_PAT)…" fetch https://github.com/lmliheng/Adelie.git main`
+  拉到的，结论是 `origin/main` 与本机 `HEAD` **同为 `46d49e1f`**，没有落后。
