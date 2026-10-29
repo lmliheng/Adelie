@@ -14,10 +14,11 @@
  * compaction; none — a context a compaction just closed, or an open one that has not answered
  * yet: simply replaced, with no event pair), switching twice before typing, the never-run
  * Session, the same-model and refused-target no-ops, the failure paths that keep the old
- * model, and — for every switch path — the file the switch opened and what `resumeTrace`
- * recovers from it. The real Agent's composition (Project config, credentials, spawn
- * inheritance) is in agent.test.ts; `agent.resumeSession` on a switched Session's Trace is in
- * resume.test.ts.
+ * model — plus the one that does not when asked to drop the context instead
+ * (`onCompactionFailure: "discard"`) — and, for every switch path, the file the switch opened
+ * and what `resumeTrace` recovers from it. The real Agent's composition (Project config,
+ * credentials, spawn inheritance) is in agent.test.ts; `agent.resumeSession` on a switched
+ * Session's Trace is in resume.test.ts.
  */
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -47,7 +48,7 @@ import type {
   LLMInterface,
   LLMOutcome,
 } from "../src/interfaces/index.js";
-import type { CompactionSettings } from "../src/engine/context-engine.js";
+import type { CompactionSettings, SwitchFailurePolicy } from "../src/engine/context-engine.js";
 import { ModelSwitchRefusedError, Session } from "../src/session.js";
 import type {
   ModelSwitchSupport,
@@ -300,11 +301,17 @@ function harness(
   return { opens, validated, reassembled, written, trace, session, files };
 }
 
-const switchTo = (session: Session, model: ModelRef, signal?: AbortSignal) =>
+const switchTo = (
+  session: Session,
+  model: ModelRef,
+  signal?: AbortSignal,
+  onCompactionFailure?: SwitchFailurePolicy,
+) =>
   session.switchModel({
     provider: model.provider,
     modelId: model.model_id,
     ...(signal ? { signal } : {}),
+    ...(onCompactionFailure ? { onCompactionFailure } : {}),
   });
 
 // ---------------------------------------------------------------------------
@@ -1030,6 +1037,83 @@ describe("in-session model switch", () => {
     await collect(h.session.run([userText("task two")], { approve: allowAll }));
     expect(llmA.calls).toHaveLength(3);
     expect(llmB.calls).toHaveLength(0);
+    expect(h.trace.currentPath()).toBe(oldPath);
+  });
+
+  it("a summarize that cannot complete still switches when told to drop the context: the discard pair follows the failed one, and the target opens empty", async () => {
+    const llmA = new ScriptedLLM(
+      [
+        { messages: [assistantText("answer one"), usage(50, 50)] },
+        { messages: [], outcome: { status: "fatal", errorCode: "auth", errorMessage: "nope" } },
+      ],
+      "A",
+    );
+    const llmB = new ScriptedLLM([{ messages: [assistantText("answer two"), usage(20, 70)] }], "B");
+    const h = harness(traces, { llmA, llms: { [MODEL_B.model_id]: [llmB] } });
+    sessions.push(h.session);
+    await collect(h.session.run([userText("task one")], { approve: allowAll }));
+
+    const { all, result } = await collectWithReturn(
+      switchTo(h.session, MODEL_B, undefined, "discard"),
+    );
+
+    // The model that cannot summarize itself is left behind. Two pairs on the stream: the
+    // summarize that failed, then the drop that took its place. Nothing was sent for the drop —
+    // the discard path needs no model at all, which is the whole point — so the old model saw
+    // its turn and its one failed compaction request, and nothing more.
+    expect(result).toBe("completed");
+    expect(
+      compactionEvents(all).map((e) => [e.type, e.mode, (e as CompactionEndPayload).status]),
+    ).toEqual([
+      ["compaction_begin", "summarize", undefined],
+      ["compaction_end", "summarize", "fatal"],
+      ["compaction_begin", "discard", undefined],
+      ["compaction_end", "discard", "completed"],
+    ]);
+    expect(llmA.calls).toHaveLength(2);
+    expectEndsWithMetaOn(all, MODEL_B);
+    expect(h.opens).toEqual([MODEL_B]);
+    expect(h.session.modelId).toBe(MODEL_B.model_id);
+    expect(h.session.compactability()).toBe("just_compacted");
+
+    // The switch opened the target's file at once, and nothing of the dropped context is in it:
+    // the summary was never written (the drop replaces it), so a resume reads an empty context.
+    expect(await h.files()).toEqual([`${SESSION_ID}_001.jsonl`, `${SESSION_ID}_002.jsonl`]);
+    const opened = await readTrace(h.trace.currentPath());
+    expect(payloadTypes(opened)).toEqual(["session_meta", "tool_list_ready"]);
+    expect(modelOf(opened[0]!)).toEqual(MODEL_B);
+    const resumed = resumeTrace(opened);
+    expect(resumed.contextClosed).toBe(false);
+    expect(resumed.carryOver).toEqual([]);
+
+    await collect(h.session.run([userText("task two")], { approve: allowAll }));
+    expect(llmB.calls[0]!.map(textOf)).toEqual(["task two"]);
+  });
+
+  it("an aborted summarize is the user stopping the switch, not a failure to degrade: the Session keeps its model", async () => {
+    const llmA = new ScriptedLLM(
+      [
+        { messages: [assistantText("answer one"), usage(50, 50)] },
+        { messages: [], outcome: { status: "aborted" } },
+      ],
+      "A",
+    );
+    const llmB = new ScriptedLLM([], "B");
+    const h = harness(traces, { llmA, llms: { [MODEL_B.model_id]: [llmB] } });
+    sessions.push(h.session);
+    const oldPath = h.trace.currentPath();
+    await collect(h.session.run([userText("task one")], { approve: allowAll }));
+
+    const { all, result } = await collectWithReturn(
+      switchTo(h.session, MODEL_B, undefined, "discard"),
+    );
+
+    expect(result).toBe("aborted");
+    expect(compactionEvents(all).map((e) => e.mode)).toEqual(["summarize", "summarize"]);
+    expect(hasMeta(all)).toBe(false);
+    expect(h.opens).toEqual([]);
+    expect(h.session.modelId).toBe(MODEL_A.model_id);
+    expect(await h.files()).toEqual([`${SESSION_ID}_001.jsonl`]);
     expect(h.trace.currentPath()).toBe(oldPath);
   });
 

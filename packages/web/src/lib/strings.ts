@@ -3086,13 +3086,21 @@ export const zh = {
     thinkingSwitchApplied: (to: string): string => `上下文已压缩，思考等级已切换为「${to}」。`,
     /** Compaction ended without completing — the switch still applies, so say both. */
     thinkingSwitchCompactFailed: "压缩未成功完成，思考等级已照常切换。",
-    /** In-conversation model switch (the session toolbar's model picker). Title is the confirm dialog's accessible name only. Unlike the thinking level there is no "switch anyway": a switch always compacts on the current model first, and a failed compaction keeps it. */
+    /** In-conversation model switch (the session toolbar's model picker). Title is the confirm dialog's accessible name only. Unlike the thinking level there is no separate "switch anyway" button: a switch always compacts on the current model first, and a failed compaction keeps it — the opt-in box below is the one exception, and only where a compaction really runs. */
     modelSwitchInSessionTitle: "切换模型",
     modelSwitchInSessionConfirm: "压缩并切换",
     /** Confirm label when the transcript is empty: nothing to compact, so it only switches. */
     modelSwitchInSessionDirectConfirm: "切换",
     modelSwitchInSessionBody: (from: string, to: string): string =>
       `将先用当前模型「${from}」压缩上下文，成功后以「${to}」继续本对话；压缩失败则保持「${from}」。`,
+    /**
+     * The escape hatch, offered only where a compaction really runs: the model to leave is the
+     * one that has to summarize, so a model whose every request fails (no quota left, a rejected
+     * credential) can never summarize itself and the switch would fail forever.
+     */
+    modelSwitchInSessionDiscardFails: "压缩失败就直接切换（放弃摘要）",
+    modelSwitchInSessionDiscardFailsHint:
+      "当前模型若压不动这段对话（额度用尽、凭据失效），仍然切到上面的模型。代价是摘要丢失：对话正文还在，但新模型接不到它的工作记忆。",
     /** Body when the transcript is empty: there is no context to compact, so the switch is immediate. */
     modelSwitchInSessionDirectBody: (to: string): string =>
       `当前上下文没有内容，将直接切换到「${to}」。`,

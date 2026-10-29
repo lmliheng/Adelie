@@ -18867,3 +18867,56 @@ cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · ui-gallery **20 / 14
 豆包式画板的**二期界面**（`packages/ui/src/components/overlays/lightbox/lightbox.tsx` 的胶囊工具条 + 同批缩略图 +
 真实像素角标）—— 已经在第一百五十八轮末尾点名；待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧
 等人拍板或等 key，不动。
+
+## 第一百六十轮：模型没额度也能在这次会话里换掉它（2026-10-29，用户拍板 A 方案）
+
+### 开工自检
+
+`/root/adelie-fork` 的 `main` 在 `569eb3ef`（第一百五十九轮），`origin/main` 与它同号。`git status --short`
+**不干净**：树里带着**别处留下的**未提交改动 —— 豆包式画板那一轮（`packages/ui/.../lightbox/lightbox.tsx`、
+新增 `image-board.ts`、`packages/ui/src/strings.ts`、两个 ui 测试、`packages/web/src/features/chat/chat-input.tsx`、
+`packages/web/src/lib/{strings,strings-en,ui-strings}.ts`、两份 `changelog/unreleased/2026-10-29-image-board-bar{,.zh}.md`），
+最后写入 23:08，此后五十多分钟没有动静。
+
+因此本轮**只提交自己的文件**；落在别人文件里的自己的改动，用 `git diff` 拆出各自 hunk 后
+`git apply --cached` 单独入暂存区。那批在途改动原样留在工作树里，一个字节都没动。
+
+### 这一轮做了什么
+
+用户拍板的 **A 方案**：会话内换模型时，如果那段压缩压不动，允许**放弃摘要直接切换**。
+
+动机是这条链条：切换模型的第一步是让**当前**模型把上下文压成摘要，而这次摘要请求也发到当前模型上。
+于是模型整个不可用（额度用尽、凭据失效）时，会话卡死在它上面 —— 换模型的第一步自己就发不出去，而会话内
+换模型是唯一能改变当前模型的手段。`packages/core/test/model-switch.test.ts` 里那条
+「a compaction that fails keeps the old model」正是这个死结的既有写照。
+
+### 它怎么落地
+
+- core：`SwitchFailurePolicy = "stay" | "discard"`；`switchContext(signal?, opts?)` 在 summarize 未能完成、
+  且调用方要求 `discard` 时，紧随其后地走 `discardContext("manual")` —— 那条路不发任何请求，所以它在死掉的
+  模型上也能走通 —— 然后照常轮换、返回 `completed`。只在 `fatal` / `retryable` 两种失败上降级；`aborted`
+  是用户自己停的，永远不降级。带到新上下文的仍只取文本，与既有切换规则一致。
+- server：`startSwitch` 第三个参数透传；路由用 `optionalEnum` 只认这两个值，其余 400；DTO 加可选字段。
+- web：确认框只在「会跑压缩」的那种形状上给一个**默认不勾**的复选框，勾上才把字段放进请求体。丢上下文是
+  用户的选择，不做成静默行为。
+
+### 验证
+
+- core：`model-switch.test.ts` 30 条、`prompt-cache-invariants.test.ts` 9 条全绿；**core 全量 70 文件 /
+  1452 通过 / 6 跳过**（比上一轮多 3 条，都是本轮新增）。
+- server：`session-switch-model.test.ts` 21 条全绿；**server 全量 206 文件 / 3013 通过 / 15 跳过**（多 2 条）。
+- web：**全量 271 文件 / 3339 通过 / 2 跳过**。
+- `pnpm --filter @adelie/core build` 成功（server/web 从 `dist` 解析类型）；`core` / `server` / `web` 三包
+  `typecheck` **EXIT=0**（`gen:ifaces` 报 `src/ifaces.json unchanged`）。
+- 改动文件 `prettier --check` 干净（`model-switch.test.ts` 用 `--write` 修过一次格式，改动只落在本轮新增的段落上）、
+  `oxlint` 0 警告 0 错误。
+
+### 没做 / 留着的
+
+- 真浏览器里点一遍这个复选框（切到别的模型、看失败压缩后是否出现 `discard` 事件对）还没做。
+- B 方案（给压缩配一个备案模型，把 Trace 回放成历史灌进另一个模型）没做：`setHistory` 这条路是通的，代价
+  与收益在那一轮的对话里列过，等用户另外拍板。
+
+### 下一轮
+
+豆包式画板二期那条在途改动（如果还没被它自己的提交收走）先让它落，再谈别的。

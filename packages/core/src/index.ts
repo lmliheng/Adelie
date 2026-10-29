@@ -46,6 +46,7 @@ export type {
   OpenContextOptions,
   OpenedContext,
   RunOptions,
+  SwitchFailurePolicy,
   TraceSink,
 } from "./engine/context-engine.js";
 export { ModelSwitchRefusedError, Session } from "./session.js";

@@ -21,7 +21,7 @@ import {
   userText,
   videoUrlMessage,
 } from "@adelie/core";
-import type { OmniMessage } from "@adelie/core";
+import type { OmniMessage, SwitchFailurePolicy } from "@adelie/core";
 import type {
   ApprovalMode,
   FilesStatResponse,
@@ -204,6 +204,14 @@ export const APPROVAL_MODES: readonly ApprovalMode[] = [
   "read-only",
   "always-ask",
 ];
+
+/**
+ * What a model switch may do when the summarize compaction that closes the context cannot
+ * complete — core's `SwitchFailurePolicy`, spelled out for the route's validation: `"stay"`
+ * leaves the Session on its model, `"discard"` drops the context without sending anything and
+ * completes the switch, which is the only way out of a model whose every request fails.
+ */
+export const SWITCH_FAILURE_POLICIES: readonly SwitchFailurePolicy[] = ["stay", "discard"];
 
 /** Unit-count bounds for windowed history reads (`tailLimit` / `limit`), and the `before` page's default. */
 const MESSAGES_PAGE_LIMIT_MAX = 1000;
@@ -1783,6 +1791,11 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
   // pair, nothing inferred — one half alone is a 400 like everywhere else a model is named.
   // 202 when the switch streams as a compaction; 200 with the fresh DTO when a Session that
   // never ran switched inside the call (the manager tells the two apart).
+  //
+  // `onCompactionFailure: "discard"` is the caller's answer to a model that cannot summarize
+  // itself (quota exhausted, credential rejected): the context is dropped instead of the switch
+  // failing, so the Session can leave a model every one of whose requests fails. Absent means
+  // core's default, "stay" (see the manager's startSwitch).
   app.post("/:sessionId/switch-model", async (c) => {
     const row = resolveSession(c);
     const body = await readJson(c);
@@ -1790,7 +1803,17 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
       provider: requireString(body, "provider", { minLen: 1 }),
       modelId: requireString(body, "modelId", { minLen: 1 }),
     };
-    const outcome = await deps.manager.startSwitch(row.sessionId, ref);
+    const onCompactionFailure = optionalEnum(
+      body,
+      "onCompactionFailure",
+      SWITCH_FAILURE_POLICIES,
+      "onCompactionFailure",
+    );
+    const outcome = await deps.manager.startSwitch(
+      row.sessionId,
+      ref,
+      onCompactionFailure === undefined ? undefined : { onCompactionFailure },
+    );
     if (!outcome.switched) {
       return c.json({ sessionId: outcome.sessionId } satisfies TaskCreateResponse, 202);
     }

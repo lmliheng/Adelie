@@ -141,6 +141,22 @@ export interface OpenContextOptions {
   emit: (msg: OmniMessage) => void;
 }
 
+/**
+ * What a model switch does when the summarize compaction that closes its old context cannot
+ * complete (see {@link ContextEngine.switchContext}).
+ *
+ * - `"stay"` (default) — the switch fails and the Session keeps the model it is on. A context is
+ *   dropped on purpose or not at all, never as a side effect of a failed request.
+ * - `"discard"` — the context is dropped **without sending anything** and the switch completes on
+ *   the target. This is the way out of a model that cannot answer at all: the summarize request is
+ *   one of that model's own requests, so a model that is out of quota or whose credential was
+ *   rejected cannot summarize itself, and the user would otherwise be unable to leave it inside
+ *   the Session (a model switch is the only way to change it in place). What it costs is the
+ *   summary: the conversation's working memory is gone (the Transcript, the Trace files and the
+ *   Session itself stay), and the next context opens with the carried text alone.
+ */
+export type SwitchFailurePolicy = "stay" | "discard";
+
 /** Result of one compaction run: a StopReason terminal state (completed / aborted / retryable — abandoned, made up at the next trigger / fatal — needs a config change first); carries the summary message when summarize succeeds. */
 interface CompactionResult {
   status: StopReason;
@@ -1125,7 +1141,7 @@ export class ContextEngine {
    *   the summary is what the next model continues from. It is an ordinary compaction request
    *   on the running LLM object — the same model, prompt, toolset and parameters, one appended
    *   user turn — so it extends the prefix the provider has cached. Short of `completed`, the
-   *   context stays as it was.
+   *   context stays as it was — unless `opts.onCompactionFailure` says otherwise (see below).
    * - A context with none has nothing to summarize and is simply replaced: no request and no
    *   event pair. Its pending text rides on in memory. Nothing is written until the next
    *   context is open, so an opener that throws leaves the Trace as it was.
@@ -1134,11 +1150,37 @@ export class ContextEngine {
    * its `session_meta` is the durable record of the switch — a resume reads the model from
    * the latest file — and the summary the context opens with follows it. That meta is yielded
    * last. Returns the terminal status.
+   *
+   * `opts.onCompactionFailure` decides what a summarize that cannot complete means: `"stay"`
+   * (the default, and what a caller that passes nothing gets) leaves the Session on its model,
+   * while `"discard"` drops the context and switches anyway — the paired `discard` events say so
+   * on the stream and in the Trace, right after the `fatal`/`retryable` end of the failed
+   * summarize. Only a **failure** degrades: `aborted` is the user stopping the switch, and a
+   * switch that could not start a compaction at all is not a compaction failure either.
    */
-  async *switchContext(signal?: AbortSignal): AsyncGenerator<OmniMessage, StopReason> {
+  async *switchContext(
+    signal?: AbortSignal,
+    opts?: { onCompactionFailure?: SwitchFailurePolicy },
+  ): AsyncGenerator<OmniMessage, StopReason> {
     if (this.sessionTurns > 0) {
       const status = yield* this.compact({ signal, mode: "summarize" });
-      if (status !== "completed") return status ?? "fatal";
+      const degraded =
+        status !== "completed" &&
+        opts?.onCompactionFailure === "discard" &&
+        (status === "fatal" || status === "retryable");
+      if (degraded) {
+        // The failed summarize already wrote its Prompt and its event pair to the old Trace, so
+        // what is being given up stays visible; the drop itself sends nothing (the discard path
+        // needs no model), which is exactly what makes an unusable model leavable. The carry
+        // rule is the switch's own: text alone, since tool outputs pair with tool calls only the
+        // context left behind holds and images stay behind with them.
+        this.pendingCarryOver = this.pendingCarryOver.filter(
+          (m) => (m.payload as { type?: string }).type === "text",
+        );
+        yield* this.discardContext("manual");
+      } else if (status !== "completed") {
+        return status ?? "fatal";
+      }
     } else {
       yield* this.startNewContext();
       // A switch carries text alone: tool outputs pair with tool calls only the context left

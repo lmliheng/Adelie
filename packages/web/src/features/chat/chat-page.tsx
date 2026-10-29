@@ -33,6 +33,7 @@ import type {
 import {
   ActivityIcon,
   Button,
+  Checkbox,
   ConfirmModal,
   CopyButton,
   Dot,
@@ -368,10 +369,13 @@ export function ChatPage() {
   // A pick in the session toolbar's model picker, waiting on its confirm dialog (null = no
   // dialog). `shape` is what the switch will do to the context — compact it first, switch an
   // empty conversation at once, or continue from a summary already held — so the dialog and
-  // the toast promise only that. See onPickSessionModel / confirmModelSwitch.
+  // the toast promise only that. `discardIfCompactionFails` is the opt-in escape hatch of the
+  // compacting shape: the model being left is the one that has to write the summary, so a model
+  // whose every request fails could never be left (see confirmModelSwitch).
   const [modelSwitchAsk, setModelSwitchAsk] = useState<{
     to: ModelRefDto;
     shape: SwitchContextShape;
+    discardIfCompactionFails: boolean;
   } | null>(null);
   // The dialog stays open (its buttons busy) until the switch request answers, so a double
   // click cannot post the switch twice.
@@ -1834,7 +1838,7 @@ export function ChatPage() {
       // Read at pick time: the model's items mutate in place. The live tail decides, behind
       // whatever window was backfilled above it.
       const shape = switchContextShape([...stream.prefixItems, ...stream.model.items]);
-      setModelSwitchAsk({ to: ref, shape });
+      setModelSwitchAsk({ to: ref, shape, discardIfCompactionFails: false });
     },
     [selected, stream.taskState, stream.prefixItems, stream.model],
   );
@@ -1856,6 +1860,11 @@ export function ChatPage() {
       const res = await api.switchSessionModel(selected.sessionId, {
         provider: ask.to.provider,
         modelId: ask.to.modelId,
+        // Only the compacting shape can fail at it: the other two run no compaction, so the box
+        // is not offered there and the field stays out of the request.
+        ...(ask.shape === "compact" && ask.discardIfCompactionFails
+          ? { onCompactionFailure: "discard" as const }
+          : {}),
       });
       if ("session" in res) {
         applySessionRow(res.session);
@@ -2795,10 +2804,12 @@ export function ChatPage() {
         )}
       </ConfirmModal>
 
-      {/* In-conversation model switch confirmation (the session toolbar's model picker), two
-          choices only: compact and switch, or cancel. There is no "switch anyway" — a switch
-          always compacts on the current model first, and a failed compaction keeps it. The two
-          shapes with nothing to compact read "switch" instead: an empty transcript (the switch
+      {/* In-conversation model switch confirmation (the session toolbar's model picker). The
+          compacting shape offers one extra choice, off by default: drop the context when that
+          compaction cannot complete, which is what lets the conversation leave a model whose
+          every request fails (see the Checkbox below). Without it a switch always compacts on the
+          current model first, and a failed compaction keeps it. The two shapes with nothing to
+          compact read "switch" instead: an empty transcript (the switch
           is immediate) and a transcript ending in a completed compaction or a model switch (no
           compaction runs; the conversation continues from what is already held). The session
           can start running while the dialog is up (a queued follow-up, a schedule): the confirm
@@ -2836,6 +2847,22 @@ export function ChatPage() {
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {S.chat.thinkingSwitchBusyHint}
           </p>
+        )}
+        {/* The escape hatch, only where a compaction really runs (the two other shapes run
+            none). Off by default: dropping the context is the user's call, never a surprise. */}
+        {modelSwitchAsk?.shape === "compact" && (
+          <div className="mt-3">
+            <Checkbox
+              checked={modelSwitchAsk.discardIfCompactionFails}
+              onChange={(next) =>
+                setModelSwitchAsk((prev) =>
+                  prev === null ? prev : { ...prev, discardIfCompactionFails: next },
+                )
+              }
+              label={S.chat.modelSwitchInSessionDiscardFails}
+              hint={S.chat.modelSwitchInSessionDiscardFailsHint}
+            />
+          </div>
         )}
       </ConfirmModal>
     </div>

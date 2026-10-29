@@ -63,6 +63,7 @@ import type {
   StopReason,
   SubagentMessageOptions,
   SubagentMessageOutcome,
+  SwitchFailurePolicy,
   TextPayload,
   ThinkingLevelName,
   ToolDetachResult,
@@ -1424,10 +1425,16 @@ export class SessionManager {
    * leaves them where they were. Usage: a drive bills to the model it started on, so the
    * switch's compaction request goes to the model that served it and the next run to the new
    * one.
+   *
+   * `opts.onCompactionFailure` is passed straight to core (`"discard"` drops the context and
+   * switches anyway): it is the route's answer to a model whose requests all fail, where the
+   * closing summarize could never succeed. Nothing here reads it — the events the drive streams
+   * say which of the two happened.
    */
   async startSwitch(
     sessionId: string,
     ref: ModelRefDto,
+    opts?: { onCompactionFailure?: SwitchFailurePolicy },
   ): Promise<{ sessionId: string; switched: boolean }> {
     return this.withLock(sessionId, async () => {
       this.assertOpen();
@@ -1450,7 +1457,13 @@ export class SessionManager {
         );
       }
       const ac = new AbortController();
-      const gen = entry.session.switchModel({ ...ref, signal: ac.signal });
+      const gen = entry.session.switchModel({
+        ...ref,
+        signal: ac.signal,
+        ...(opts?.onCompactionFailure !== undefined
+          ? { onCompactionFailure: opts.onCompactionFailure }
+          : {}),
+      });
       const head = gen.next();
       const settled = (): void => {
         entry.abort = null;

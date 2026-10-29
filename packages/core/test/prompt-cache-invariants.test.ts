@@ -379,4 +379,48 @@ describe("prompt-cache invariants of request assembly", () => {
     expect(last.role).toBe("user");
     expect(last.content.at(-1)!.text).toBe("task two");
   });
+
+  it("a switch whose compaction is out of retries drops the context when asked to, so the dead model's line ends there", async () => {
+    const target = "claude-opus-4-7";
+    const first = recordingModel(modelConfig(), [
+      { text: "First answer.", promptTokens: 20 },
+      // A provider that keeps dropping the compaction request — an exhausted quota reads the
+      // same way. The budget is zero, so the one attempt exhausts it and the compaction ends
+      // `retryable` instead of retrying.
+      { text: "[summary]half a summ", promptTokens: 30, outcome: "retryable-after-text" },
+    ]);
+    const second = recordingModel(modelConfig({ modelId: target }), [
+      { text: "Starting over on the new model." },
+    ]);
+    const engine = new ContextEngine({
+      llm: first.model,
+      environment: fakeEnvironment,
+      compaction: compactionSettings(),
+      compactionMaxReconnects: 0,
+      openNextContext: () => ({ llm: second.model }),
+    });
+
+    await collect(engine.run([userText("task one")], { approve: allowAll }));
+
+    const events: string[] = [];
+    for await (const msg of engine.switchContext(undefined, { onCompactionFailure: "discard" })) {
+      const payload = msg.payload as { type?: string; mode?: string; status?: string };
+      if (payload.type === "compaction_end") events.push(`${payload.mode}:${payload.status}`);
+    }
+    expect(events).toEqual(["summarize:retryable", "discard:completed"]);
+
+    await collect(engine.run([userText("task two")], { approve: allowAll }));
+
+    // The dead model saw its turn and the one compaction request that failed, and nothing more:
+    // the drop sends nothing, which is what makes a model with no quota leavable.
+    expect(first.requests).toHaveLength(2);
+    expect(second.requests).toHaveLength(1);
+    expect(second.requests[0]!.wireConfig.model).toBe(target);
+    // No summary was written (there is none), so the target's first request is the new line the
+    // switch opened, carrying the new turn alone.
+    const opening = wireMessage(second.requests[0]!, 0);
+    expect(opening.role).toBe("user");
+    expect(blockTypes(opening)).toEqual(["text"]);
+    expect(opening.content[0]!.text).toBe("task two");
+  });
 });

@@ -3067,6 +3067,9 @@ export const en: Strings = {
     modelSwitchInSessionDirectConfirm: "Switch",
     modelSwitchInSessionBody: (from: string, to: string): string =>
       `The context is compacted on the current model "${from}" first, and this conversation then continues on "${to}". If the compaction fails, it stays on "${from}".`,
+    modelSwitchInSessionDiscardFails: "Switch even if it cannot be compacted",
+    modelSwitchInSessionDiscardFailsHint:
+      "If the current model cannot compact this conversation (quota exhausted, credential rejected), switch to the model above anyway. The cost is the summary: the transcript stays, but the new model does not inherit the conversation's working memory.",
     modelSwitchInSessionDirectBody: (to: string): string =>
       `This conversation has no context yet, so it switches to "${to}" right away.`,
     modelSwitchInSessionCompactedBody: (to: string): string =>

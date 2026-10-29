@@ -2645,6 +2645,16 @@ export interface SessionSwitchModelRequest {
   provider: string;
   /** Upstream model_id of the target model. */
   modelId: string;
+  /**
+   * What to do when the summarize compaction that closes the running context cannot complete
+   * (`POST …/switch-model`, body). `"stay"` (the default when the field is absent) fails the
+   * switch and leaves the Session on the model it is on; `"discard"` drops the context without
+   * sending anything and completes the switch on the target — the way out of a model whose every
+   * request fails (an exhausted quota, a rejected credential), since the summarize request would
+   * be that same model's. The cost is the conversation's working memory: the summary is what the
+   * new context would have opened with.
+   */
+  onCompactionFailure?: "stay" | "discard";
 }
 
 export interface TaskCreateResponse {

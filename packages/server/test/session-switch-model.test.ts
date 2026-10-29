@@ -10,7 +10,9 @@
  * (so `GET /` and the compaction threshold follow it, and a client re-reading the Session on the
  * new context's `session_meta` already finds it), stay put when the compaction fails or is aborted,
  * and usage is attributed to the model that served each request — the switch's own compaction
- * request to the previous model, the next Task to the new one.
+ * request to the previous model, the next Task to the new one. The one body field beyond the pair,
+ * `onCompactionFailure`, is the caller's escape hatch for a model that cannot summarize itself; it
+ * is passed straight through to core, and anything outside its pair is a 400.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -75,6 +77,8 @@ interface SwitchFake extends RuntimeSession {
   modelId: string;
   /** The signals `switchModel` was handed, so a test can see the abort reach it. */
   signals: AbortSignal[];
+  /** What the route passed down, normalised (the signal left out): the body's own fields. */
+  switchOpts: { provider: string; modelId: string; onCompactionFailure?: string }[];
   /** Whether a `switchModel` call has run to its end. */
   ended: boolean;
 }
@@ -99,6 +103,7 @@ function switchFake(model: ModelRefDto, behaviour: SwitchBehaviour): SwitchFake 
     provider: model.provider,
     modelId: model.modelId,
     signals: [],
+    switchOpts: [],
     ended: false,
     toolPermission: () => "rw",
     generateTitle: async () => ({ title: null, usage: null }),
@@ -114,6 +119,13 @@ function switchFake(model: ModelRefDto, behaviour: SwitchBehaviour): SwitchFake 
     async *compact(): AsyncGenerator<OmniMessage> {},
     async *switchModel(opts): AsyncGenerator<OmniMessage, StopReason> {
       fake.signals.push(opts.signal);
+      fake.switchOpts.push({
+        provider: opts.provider,
+        modelId: opts.modelId,
+        ...(opts.onCompactionFailure !== undefined
+          ? { onCompactionFailure: opts.onCompactionFailure }
+          : {}),
+      });
       if (behaviour.kind === "throw") throw behaviour.error;
       if (behaviour.kind === "inline") {
         fake.provider = opts.provider;
@@ -277,6 +289,30 @@ describe("POST /switch-model", () => {
       expect(await errorCode(res)).toBe("bad_request");
     }
     expect(row().modelId).toBe(A.modelId);
+  });
+
+  it("onCompactionFailure: the field reaches core as asked, and a value outside the pair is a 400", async () => {
+    const fake = switchFake(A, { kind: "stream", status: "completed" });
+    adopt(fake);
+    const bad = await api.post(url, { ...B, onCompactionFailure: "drop" });
+    expect(bad.status).toBe(400);
+    expect(await errorCode(bad)).toBe("bad_request");
+    expect(fake.switchOpts).toEqual([]); // refused before core was asked
+
+    expect((await api.post(url, { ...B, onCompactionFailure: "discard" })).status).toBe(202);
+    await waitFor(() => t.deps.manager.statusOf(SID) === "idle");
+    expect(fake.switchOpts).toEqual([
+      { provider: B.provider, modelId: B.modelId, onCompactionFailure: "discard" },
+    ]);
+    expect(row()).toMatchObject(B);
+  });
+
+  it("onCompactionFailure is absent unless the caller sends it: the body's own fields are what core sees", async () => {
+    const fake = switchFake(A, { kind: "stream", status: "completed" });
+    adopt(fake);
+    expect((await api.post(url, B)).status).toBe(202);
+    await waitFor(() => t.deps.manager.statusOf(SID) === "idle");
+    expect(fake.switchOpts).toEqual([{ provider: B.provider, modelId: B.modelId }]);
   });
 
   it("409 same_model: the target is the model the Session already runs on", async () => {

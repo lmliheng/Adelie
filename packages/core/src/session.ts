@@ -67,6 +67,7 @@ import type {
   OpenContextOptions,
   OpenedContext,
   RunOptions,
+  SwitchFailurePolicy,
   TraceSink,
 } from "./engine/context-engine.js";
 
@@ -233,11 +234,20 @@ export interface ModelSwitchSupport {
   reassembleInitialContext(ref: ModelRef): Promise<Omit<SessionOpenedContext, "llm">>;
 }
 
-/** `Session.switchModel` options: the target's paired reference, and the abort signal for the compaction request. */
+/** `Session.switchModel` options: the target's paired reference, the abort signal for the compaction request, and what a summarize that cannot complete means. */
 export interface ModelSwitchOptions {
   provider: string;
   modelId: string;
   signal?: AbortSignal;
+  /**
+   * What to do when the summarize compaction that closes the running context cannot complete:
+   * `"stay"` (default) keeps today's rule — the switch fails and the Session stays on the model
+   * it is on, leaving the context untouched — while `"discard"` drops the context without sending
+   * anything and completes the switch on the target (see `ContextEngine.switchContext`). The
+   * second one is the only way out of a model that cannot answer at all — an exhausted quota, a
+   * rejected credential — since the summarize request would be that same model's.
+   */
+  onCompactionFailure?: SwitchFailurePolicy;
 }
 
 /**
@@ -943,7 +953,10 @@ export class Session {
    *
    * Returns the terminal status: `completed` — the Session is on the target, and children
    * spawned from here inherit it; anything else — the switch was stopped or its compaction
-   * failed (the events say how) and the Session stays on the model it was on.
+   * failed (the events say how) and the Session stays on the model it was on. That last part is
+   * what `opts.onCompactionFailure: "discard"` changes for a failed compaction: the context is
+   * dropped and the switch completes, which is how a Session leaves a model whose requests all
+   * fail (see `ModelSwitchOptions`).
    */
   async *switchModel(opts: ModelSwitchOptions): AsyncGenerator<OmniMessage, StopReason> {
     const target: ModelRef = { provider: opts.provider, model_id: opts.modelId };
@@ -976,7 +989,12 @@ export class Session {
     if (!(yield* this.ensureEngine(opts.signal))) return "aborted";
     this.switchTarget = target;
     try {
-      const status = yield* this.engine!.switchContext(opts.signal);
+      const status = yield* this.engine!.switchContext(
+        opts.signal,
+        opts.onCompactionFailure === undefined
+          ? undefined
+          : { onCompactionFailure: opts.onCompactionFailure },
+      );
       // Input an aborted bootstrap left with the Session rides on like the engine's pending
       // input: its text alone, in memory (the original stays where the abort wrote it).
       if (status === "completed") {
