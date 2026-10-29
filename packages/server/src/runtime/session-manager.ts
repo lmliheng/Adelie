@@ -202,11 +202,15 @@ export interface RuntimeSession {
    * the target by then; a refusal is thrown before the first event; a Session that never ran
    * switches without streaming anything. Optional: test fakes may omit it, reading as
    * "switching is not available".
+   *
+   * `onCompactionFailure` is core's own field of the same name (`"discard"` drops the context
+   * and switches anyway); the manager passes it straight through and never reads it.
    */
   switchModel?(opts: {
     provider: string;
     modelId: string;
     signal: AbortSignal;
+    onCompactionFailure?: SwitchFailurePolicy;
   }): AsyncGenerator<OmniMessage, StopReason>;
   /**
    * The Session's thinking level (core `Session.thinkingLevel`, plain state): soft-limited —
