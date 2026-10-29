@@ -55,7 +55,7 @@ function RegistryChip({ entry }: { entry: ThemeRegistryTheme }) {
     return (
       <span
         aria-hidden
-        className="flex h-9 items-center justify-center rounded-[var(--ui-radius-sm)] border border-dashed border-line text-[10px] text-fg-subtle"
+        className="flex h-9 items-center justify-center rounded-[var(--ui-radius-sm)] border border-dashed border-line text-xs text-fg-subtle"
       >
         {S.settings.themeRegistry}
       </span>
@@ -119,7 +119,7 @@ function RegistryCard({
         <span className="block truncate text-sm text-fg-emphasis">
           {localizedText(locale, entry.name, entry.nameZh)}
         </span>
-        <span className="block truncate text-[11px] text-fg-subtle">
+        <span className="block truncate text-xs text-fg-subtle">
           {S.settings.themeRegistryBy(entry.author)}
           {version === null ? "" : ` · ${version}`}
         </span>
@@ -127,7 +127,7 @@ function RegistryCard({
       {description !== null && <p className="line-clamp-2 text-xs text-fg-muted">{description}</p>}
       <span className="mt-auto flex items-center gap-1.5 pt-0.5">
         {entry.installed && (
-          <span className="text-[11px] text-fg-subtle">{S.settings.themeRegistryInstalled}</span>
+          <span className="text-xs text-fg-subtle">{S.settings.themeRegistryInstalled}</span>
         )}
         <Button
           size="sm"
