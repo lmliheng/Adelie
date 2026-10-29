@@ -2120,6 +2120,31 @@ const workspaceFiles = {
     });
     return empty();
   },
+  /**
+   * A .docx's text as Markdown, which the server extracts for the Files panel's Word preview
+   * (see `routes/workspace-files.ts`). The demo Workspace is text, so the "extraction" is simply
+   * what the fixtures hold at that path — the panel routes on the file's name and never reads
+   * these bytes as a document. The legacy-.doc and no-extraction answers are the server's own
+   * codes, so the panel's two refusal messages are exercised here too.
+   */
+  previewText: ({ store, query }: Ctx) => {
+    const path = normalizePath(query.get("path") ?? "");
+    const content = store.f.workspace.content[path];
+    if (content === undefined) notFound("File");
+    const name = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+    if (name.endsWith(".doc"))
+      fail(
+        415,
+        "doc_legacy",
+        "Legacy .doc files cannot be previewed; save the file as .docx or download it.",
+      );
+    if (!name.endsWith(".docx"))
+      fail(415, "preview_unavailable", "No text preview for this file type.");
+    return raw(content, {
+      "content-type": "text/markdown; charset=utf-8",
+      etag: `"${content.length}-${path.length}"`,
+    });
+  },
   search: ({ store, query }: Ctx): WorkspaceSearchResponse => {
     const q = (query.get("q") ?? "").toLowerCase();
     if (q === "") fail(400, "empty_query", "Nothing to search for.");
@@ -2144,6 +2169,7 @@ for (const base of ["/api/sessions/:sessionId/files", "/api/projects/:projectId/
   router
     .get(base, workspaceFiles.list)
     .get(`${base}/content`, workspaceFiles.read)
+    .get(`${base}/preview-text`, workspaceFiles.previewText)
     .put(`${base}/content`, workspaceFiles.write)
     .delete(`${base}/content`, workspaceFiles.remove)
     .post(`${base}/reveal`, workspaceFiles.reveal)

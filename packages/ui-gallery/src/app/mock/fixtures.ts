@@ -1230,6 +1230,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     entries: {
       "": [
         dir("corpus", 1),
+        dir("docs", 2),
         dir("scripts", 3),
         dir("src", 0),
         dir("test", 0),
@@ -1244,6 +1245,9 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         file("memory.md", 5_118, 1),
       ],
       "corpus/penguin-docs": [file("server-api.md", 31_004, 1), file("omni-message.md", 22_870, 1)],
+      // Two Word documents, because the Files panel shows them two different ways: a .docx is
+      // previewed as Markdown the server extracts, a legacy .doc only says to save it as .docx.
+      docs: [file("quarterly-report.docx", 24_576, 2), file("contract.doc", 39_936, 6)],
       scripts: [file("check-links.mjs", 1_984, 3)],
       src: [file("bm25.ts", 3_102, 5), file("rag.ts", 1_410, 0)],
       test: [file("rag.test.ts", 2_206, 0)],
@@ -1268,6 +1272,14 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         "# Memory\n\nMemory files are Markdown with a frontmatter name and description.\n",
       "corpus/penguin-docs/server-api.md": "# Server API\n\nEvery route is listed here.\n",
       "corpus/penguin-docs/omni-message.md": "# OmniMessage\n\nThe message protocol.\n",
+      // What the server's extractor would hand the panel for this .docx (the mock holds the
+      // Workspace as text, so this one "binary" file is kept as its extracted Markdown).
+      "docs/quarterly-report.docx": `# ${L("季度报告", "Quarterly report")}\n\n${L(
+        "## 摘要\n\n语料库补齐到 4 个上游仓库，检索命中率 0.81。\n\n- 新增 MCP 文档 3 篇\n- 每周链接检查已接入 CI\n",
+        "## Summary\n\nThe corpus now covers four upstream repositories; hit rate 0.81.\n\n- Three new MCP documents\n- The weekly link check runs in CI\n",
+      )}`,
+      // A legacy .doc only ever reaches the "save it as .docx" message, so its bytes never matter.
+      "docs/contract.doc": "",
     },
   };
 

@@ -10,6 +10,7 @@ import { describe, expect, it } from "vitest";
 import * as api from "../../web/src/api/endpoints";
 import { ApiError, UNMOCKED } from "../src/app/mock/errors";
 import { answerAsResponse } from "../src/app/mock/fetch-shim";
+import { IDS } from "../src/app/mock/ids";
 import { router } from "../src/app/mock/routes";
 import { resetStore } from "../src/app/mock/store";
 
@@ -307,6 +308,46 @@ describe("the mocked API", () => {
       undefined,
     );
     expect(missing.status).toBe(404);
+  });
+
+  it("extracts a Word document for the Files panel, and answers what it cannot with the server's codes", async () => {
+    const store = resetStore({ lang: "en", signedIn: true });
+    const session = store.f.sessions[0]!.sessionId;
+    const dir = { projectId: store.f.project.projectId, workspace: IDS.workspace, machineId: null };
+
+    // Both ways the panel names a Workspace: by Session and by directory.
+    for (const url of [
+      api.workspaceFileTextUrl(session, "docs/quarterly-report.docx"),
+      api.workspaceDirFileTextUrl(dir, "docs/quarterly-report.docx"),
+    ]) {
+      const extracted = await answerAsResponse("GET", url, undefined);
+      expect(extracted.status).toBe(200);
+      expect(extracted.headers.get("etag")).toMatch(/^".+"$/);
+      expect(await extracted.text()).toContain("Quarterly report");
+    }
+
+    const legacy = await answerAsResponse(
+      "GET",
+      api.workspaceFileTextUrl(session, "docs/contract.doc"),
+      undefined,
+    );
+    expect(legacy.status).toBe(415);
+    expect((await legacy.json()).error.code).toBe("doc_legacy");
+
+    const plain = await answerAsResponse(
+      "GET",
+      api.workspaceFileTextUrl(session, "README.md"),
+      undefined,
+    );
+    expect(plain.status).toBe(415);
+    expect((await plain.json()).error.code).toBe("preview_unavailable");
+
+    const gone = await answerAsResponse(
+      "GET",
+      api.workspaceFileTextUrl(session, "docs/nope.docx"),
+      undefined,
+    );
+    expect(gone.status).toBe(404);
   });
 
   it("refuses what needs a server behind it with one code the app turns into a toast", async () => {
