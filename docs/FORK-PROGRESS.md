@@ -18920,3 +18920,71 @@ cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · ui-gallery **20 / 14
 ### 下一轮
 
 豆包式画板二期那条在途改动（如果还没被它自己的提交收走）先让它落，再谈别的。
+
+## 发版 v0.5.10（2026-10-30 00:30 CST，用户「可以更新版本了」）
+
+### 开工自检
+
+- `/root/adelie-fork` 的 `main` 在 `9eeb78d6`（第一百六十轮），`origin/main` 与它同号。工作树**不干净**：
+  豆包式画板快捷条那一批在途改动还挂在树里（`packages/ui/.../lightbox/{lightbox.tsx,image-board.ts}`、两个 ui 测试、
+  `packages/web/src/features/chat/chat-input.tsx`、`packages/web/src/lib/{strings,strings-en,ui-strings}.ts`、
+  两份 `changelog/unreleased/2026-10-29-image-board-bar{,.zh}.md`），自 10-29 23:08 起没有再动过。
+- 发版必须构建，而未提交的半成品不能进包、也不能丢，所以先把这**一整批收进 `git stash`**
+  （`wip(image-board-bar)…`），补丁另存 `release-0510/worktree-inflight-tracked.patch` 与
+  `worktree-inflight-untracked.tgz`；树清干净后发版，发完原样 `git stash pop` 放回去。
+- `github.com` 这次通了（`curl -sSI` 200 / 0.35 s，`api.github.com` 200），所以提交、标签、资产上传都走直连，
+  不必再走 Git Data API 那一套。
+
+### 发版条件
+
+- 自 `v0.5.9`（`4be9fdd8`）起 `main` 上落了 **34 笔提交，其中 13 个用户看得见的改动**：文件面板读 Word 与 PDF、
+  回复里的图片从工作区取且点开看全图、`use-seedream` 让 Agent 能生成图片、外观页的主题库、模型没额度也能在
+  这次对话里换掉它、子智能体归到派发它的那次调用、离开模型流时取消上游请求、目标模式的预算算整轮、桌面端
+  「检查更新」每次真去问源、推送平台到旧运行时不再被拒、分叉与清除浏览数据被拒时原因留在框里、取消的消息流
+  不再倒出缓存事件。patch 而非 minor：数据根、配置格式、包名与既有请求接口都没变。
+
+### 门禁与提交
+
+- 第一遍整仓 `typecheck` **红了**：`packages/server/test/session-switch-model.test.ts` 读 `opts.onCompactionFailure`
+  报「属性不存在」—— 服务端 `RuntimeSession.switchModel` 的内联参数类型写死了三个字段，上一轮只补了核心与路由。
+  运行时的行为一直是对的（真实会话走核心自己的类型），补的是这处注解，另开一笔 `db2f033a`。
+  **教训**：上一轮只单独跑了几个包，漏了这种交叉点，这一轮的 `typecheck` 跑的是整仓。
+- 版本戳 `60347f1a` `chore(release): 0.5.10` —— **35 个文件**（root + 10 个工作区包 + 23 个对外插件 +
+  `packages/core/src/index.ts` 的 `VERSION`；四个 private sandbox 插件仍停 0.2.3）。比 0.5.9 那轮的 34 个多一个：
+  `plugins/use-seedream` 是这一版新加的包。发布正文 `c126bc3d` `docs(release): v0.5.10 的发布正文`。
+- 门禁：`typecheck` `EXIT=0`、`lint` 0 警告 0 错误（2321 文件）、`format:check` 干净、`pnpm build` `EXIT=0`。
+- 提交与标签直推：`git -c http.version=HTTP/1.1 push … main`（`9eeb78d6..c126bc3d`）一次成功；
+  `git tag -a v0.5.10 c126bc3d` → tag 对象 `2956a00c`，推上去 `* [new tag]`。`origin/main` 已对齐 `c126bc3d`。
+
+### 造包（本机，标签之后）
+
+- 先把 `build` 重跑一遍（标签已打，`penguin --version` 读的是构建时的 `git describe`），再照
+  `.github/workflows/release.yml` 的三步造载荷：`pnpm deploy` 出 `out/penguin/lib` + `web` + `bin` + `lib/plugins`
+  （20123 个文件），三个载荷 **linux-x64 110M / universal 55M / win32-x64 144M**，封成安装包
+  **114.2M / 56.9M / 150.2M**（三个 `.sha256` 自校验都过，bundle 内 payload 的校验和与记录一致）。
+- `scripts/package-release-bundles.sh` 仍然要五件载荷才肯打包，所以还是用 scratchpad 里那份只封三件的改写版
+  （成员、校验和、tar/zip 参数与它逐行一致，**没有改仓库里那份**）；`install.sh` / `install.ps1` 用 `sed` 就地
+  打上 `v0.5.10` 的版本戳再封进去（**本机脚本别漏这一处**，两个文件里都 grep 到了戳）。
+- **这一轮把 Windows 桌面包的 MinGit 补上了**：以前本机造 exe 时 `packages/desktop/build/minigit` 只有
+  `.gitkeep`，CI 的 Windows 作业才会把 MinGit 解进去，于是本机造的 exe 里 `resources/git` 是空的。这次从
+  npmmirror 取 `MinGit-2.55.0.3-64-bit.zip`（38.8M）解进去，exe 里 `resources/git/{cmd,etc,mingw64,usr}` 都在。
+- 桌面两平台：Linux AppImage 155.3M / deb 122.3M（`dpkg-deb -f … Version` = `0.5.10`）、Windows exe 162.3M
+  + blockmap；`latest.yml` / `latest-linux.yml` 都写 0.5.10，里面记的 sha512 与 size 与真实文件逐个比过。
+
+### 渠道
+
+- GitHub Release **id `428141055`**，14 件资产全 `uploaded`，`releases/latest` 指向 v0.5.10；逐件拿 GitHub 记录的
+  `digest` 与本机 `sha256` 对过：deb / AppImage / exe / 三个载荷 / install.sh / install.ps1 八件全对上。
+- **上传中途断过一次**：第一次那趟在最后一件（`penguin-win32-x64.zip`，150M）传到一半时进程没了，日志 0 字节、
+  资产停在 12/14（前面 12 件都已 uploaded）。没有重跑整趟，改用 `upload_rest.py` 先读 Release 现有资产名、
+  只补缺的两件，44 s 传完。**记下来**：这台上传一件 100M 以上的要十几到几十分钟，中途被打断是可能的，
+  补传的入口要留（按资产名去重、不重传已完成的）。
+- 门禁与产物的三个 .sha256 之外，14 件资产逐件列了 sha256 与大小备用（下载站要用其中 6 件）。
+- npm：**27 个包全到 0.5.10**（23 插件 + amsp / core / server / cli），脚本逐个先查注册表再发，跳过已有版本，
+  收尾是 `PUBLISH-ALL-DONE`。
+- 3003 下载站：`/downloads/index.json` 换 v0.5.10（6 件，size/sha256 取自本轮产物），页头角标 v0.5.9 → v0.5.10；
+  改前备份 `index.json.bak-20261030-v0510` / `index.html.bak-20261030-v0510`，本机那份 Windows exe 也换成新的。
+- 现网：`penguin update` 不走（github.com 由上到下未必稳），改用本轮自己的安装包离线升级
+  （`install.sh --archive dist-artifacts/penguin-linux-x64.tar.gz`，`Bundle checksum OK` / `Payload checksum OK`），
+  `/root/.adelie` 里 bin/lib/web 换成 0.5.10、`penguin --version` = `v0.5.10`、`web/assets` 里能 grep 到「主题目录」，
+  数据根与 `/root/.penguin/data` 软链没动。重启排进 `systemd-run --unit=adelie-live-restart-0510`。
