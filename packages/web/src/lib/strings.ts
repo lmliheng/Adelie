@@ -1302,6 +1302,9 @@ export const zh = {
     /** A pager's two steps, as their names and tooltips (the shared UI package's `Pager`). */
     previousPage: "上一页",
     nextPage: "下一页",
+    /** The shared UI package's `Lightbox`: stepping through one batch of pictures. */
+    previousImage: "上一张图片",
+    nextImage: "下一张图片",
     name: "名称",
     username: "用户名",
     role: "角色",

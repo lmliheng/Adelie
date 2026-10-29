@@ -1254,6 +1254,9 @@ export const en: Strings = {
     /** A pager's two steps, as their names and tooltips (the shared UI package's `Pager`). */
     previousPage: "Previous page",
     nextPage: "Next page",
+    /** The shared UI package's `Lightbox`: stepping through one batch of pictures. */
+    previousImage: "Previous image",
+    nextImage: "Next image",
     name: "Name",
     username: "Username",
     role: "Role",

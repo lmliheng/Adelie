@@ -53,6 +53,11 @@ export interface UiStrings {
   next: string;
   /** What a pager's "2/5" readout says aloud: the page, then how many there are (`Pager`). */
   pagePosition: (page: number, pageCount: number) => string;
+  /** The lightbox's save action, as its label and its name (`Lightbox`). */
+  download: string;
+  /** The lightbox's two steps through a batch of pictures, as their names and tooltips. */
+  previousImage: string;
+  nextImage: string;
 }
 
 /** The English fallbacks, used wherever no provider is mounted (a test, a stand-alone page). */
@@ -75,6 +80,9 @@ export const DEFAULT_UI_STRINGS: UiStrings = {
   previous: "Previous page",
   next: "Next page",
   pagePosition: (page, pageCount) => `Page ${page} of ${pageCount}`,
+  download: "Download",
+  previousImage: "Previous image",
+  nextImage: "Next image",
 };
 
 const UiStringsContext = createContext<UiStrings>(DEFAULT_UI_STRINGS);

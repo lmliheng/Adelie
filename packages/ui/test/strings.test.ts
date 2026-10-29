@@ -29,6 +29,7 @@ describe("UiStrings", () => {
       "copied",
       "copyCode",
       "dismiss",
+      "download",
       "expand",
       "fewer",
       "hidePassword",
@@ -37,9 +38,11 @@ describe("UiStrings", () => {
       "moreInfo",
       "moreInfoAbout",
       "next",
+      "nextImage",
       "notifications",
       "pagePosition",
       "previous",
+      "previousImage",
       "showPassword",
     ]);
     expect(DEFAULT_UI_STRINGS).toMatchObject({

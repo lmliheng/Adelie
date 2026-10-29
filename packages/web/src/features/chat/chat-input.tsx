@@ -882,6 +882,14 @@ export function ChatInput({
   const textRef = useRef(text);
   textRef.current = text;
   const [images, setImages] = useState<string[]>([]);
+  /**
+   * The staged images as one batch for the lightbox: opening any of them lets the reader step
+   * through the rest of the strip, instead of closing and hunting for the next thumbnail.
+   */
+  const imageBatch = useMemo(
+    () => images.map((url) => ({ src: url, alt: S.chat.imageAlt })),
+    [images, S.chat.imageAlt],
+  );
   // Videos staged from the "+" menu, a drop or a paste: held exactly like images (a base64 data
   // URL), but as whole entries rather than bare strings — the picked name is what the clip is
   // called when the model that takes none gets it as a scratchpad file, and the chip shows it too.
@@ -2227,6 +2235,7 @@ export function ChatInput({
               <ZoomableImage
                 src={url}
                 alt={S.chat.imageAlt}
+                group={imageBatch}
                 className="h-16 w-16 rounded-md border border-gray-200 object-cover dark:border-gray-700"
               />
               <button
