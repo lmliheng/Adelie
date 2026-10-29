@@ -2450,6 +2450,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-29 | 5.60 | **回复里的图片点一下看全图**（不是移植：`packages/ui/src/components/content/prose/prose.tsx` 的 `ProseImagesProvider` 新增 `zoomable`（默认关），`img` 适配器在它打开时渲染成 `ZoomableImage`，两种情形仍是普通 `<img>` —— 空 src、以及被链接包住的图片（`ProseInLinkContext` 由 `MdLink` 给子节点置位，不做 DOM 查询）；`packages/ui/src/components/overlays/lightbox/lightbox.tsx` 的 `ZoomableImage` 把其余 `<img>` 属性（`title` / `width` / `height`）转发给缩略图；`packages/web/src/features/chat/workspace-refs.tsx` 给整条对话打开 `zoomable`；用例：`packages/ui/test/prose.test.ts`（＋5：默认关、开、空 src、在链接里、链接旁边）、`packages/ui/test/lightbox.test.ts`（＋1：缩略图保留调用方属性）、`packages/web/test/md.test.ts`（＋1：会话里是按钮、别的界面不是）；changelog 中英一对。**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**）· `oxlint` 6 个改动文件 **0 警告 0 错误** · 6 个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（69 + 1 跳过）/ 1438 通过 / 6 跳过** · ui **130 / 1063**（+7，本笔新增）· cli **38 / 561** · server **205 / 2995 通过 / 15 跳过** · web **271 / 3338 通过 / 2 跳过**（+1）· **两态实测**（一次性 `mktemp` 数据根 + mock 模型、真服务 8941 + mock 8940、系统 chromium、1280×900；探针 `probe-zoom.mjs` 每态往工作区写一张 1600×1000 棋盘 PNG，再让 mock 的 `image reply test` 分支回三张图）：**改前**（`git checkout c400aa2c -- packages/{ui,web}/{src,test}` + 重建 web）`.md-body` 里 **0 个 button**、图渲染 768×480（阅读栏宽）、点第一张图 **无覆盖层**、回车也**无覆盖层**；**改后** **3 个 button**、点一下 `.ui-scrim` **1 层**、里面的图 `src=/api/sessions/<id>/files/content?path=shot.png`、`natural 1600×1000`、渲染 **1126×705**（按自己尺寸，改前是 768×480）、关闭按钮 `aria-label="关闭"`、**Esc 关掉后覆盖层 0 层且对话还在**、**回车也能打开**；两态 console **无 error / 无 pageerror**；截图 `r156/{before-after 各自}-{transcript,lightbox}.png` 与 JSON 在 scratchpad · **反证**（按钮嵌在 `<a href>` 里到底怎么点，纯 HTML 探针 `probe-anchor.mjs`）：两条 click 监听**都触发**、`defaultPrevented=false`、新标签页确实开了 —— 这就是「被链接包住的图片不做放大目标」这条规则的理由 · 端口只用 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在一次性 `mktemp` 根，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/*/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 408dbf8c |
 | 2026-10-29 | 7.52 | **画廊的 mock 补上文件面板的 Word 预览路由，那条既有红转绿**（不是移植：`packages/ui-gallery/src/app/mock/routes.ts` 的 `workspaceFiles` 新增 `previewText`（照服务端 `http/routes/workspace-files.ts` 的三条出口：文件不在 404、`.doc` → 415 `doc_legacy`、其余类型 → 415 `preview_unavailable`、`.docx` → Markdown + `ETag`），挂到 `/api/sessions/:sessionId/files` 与 `/api/projects/:projectId/workspace-files` 两个 base；`src/app/mock/fixtures.ts` 的演示工作区多一个 `docs/`（`quarterly-report.docx` 里存的就是服务端会抽取出来的 Markdown、`contract.doc` 空着）；`test/mock-api.test.ts` +1 条用例。**无新依赖、不碰接口、无新文案**） | 画廊 `vitest run` 全绿 **20 文件 / 141 通过**（改前 `mock-api.test.ts` 1 failed / 13 passed，失败行正是本笔要修的那条）· 画廊 `tsc --noEmit` `EXIT=0` · 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 590 类型）· 逐包 test **`EXIT=0`、0 失败**：core **71 文件（70 + 1 跳过）/ 1449 通过 / 6 跳过** · ui **130 / 1063** · server **206 / 3011 通过 / 15 跳过** · cli **38 / 561** · web **271 / 3339 通过 / 2 跳过**（那条 de-slop 红在本轮顺手修掉，见 7.53）· 改动三个文件 `prettier --check` 干净 · `git diff --check` 干净 · **两态实测**（真浏览器 + 画廊 dev 7372，`app.html?route=/chat/s-hooks-index&lang=zh`，右侧栏 › 文件浏览 › `docs`）：**改前**两条地址直取都是 **404 `gallery_unmocked`**；**改后**两条都是 **200**、`etag` `"74-26"`、正文 `# 季度报告 …`，面板里 `.docx` 画成 Markdown 标题 + 列表（`r159/after-docx.png`）、`.doc` 显示「旧版 .doc 无法预览，用 Word 另存为 .docx 后即可预览」（`r159/after-doc.png`）；两态 console **无 error / 无 pageerror**、无一条 ≥400 · 端口只用 7372（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；临时文件只在 scratchpad · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `b162ea6a` |
 | 2026-10-29 | 7.53 | **外观页主题库的三处生造字号换回字号阶梯**（不是移植：`packages/web/src/features/settings/theme-registry-section.tsx` 三行，`text-[10px]` / `text-[11px]` ×2 → `text-xs`。今天 12:46 那笔主题库提交（`1a223bf7`）带上来的 de-slop 红，本轮的 web 门禁撞上，顺手修掉） | `test/deslop.test.ts` 24 条通过（rule 13 转绿）、`test/theme-import.test.ts` 6 条通过 · `prettier --check` 与 `oxlint` 对该文件干净 · web 整套 **271 文件 / 3339 通过 / 2 跳过** · **真浏览器**（画廊 7372，`app.html?…&open=settings.appearance`）：主题库卡片照旧 —— 标题、`作者 lmliheng · v1.0.0`（13px，字号档生效）、简介、`导入` 按钮都在，无裁切、console 无 error（`r159/appearance-cards.png`） | `74240065` |
+| 2026-10-30 | 画板二期 | **点开一张图，图下有能真的做事的胶囊条**（接手在途改动，不是移植：`packages/ui/src/components/overlays/lightbox/image-board.ts` 新增（`stepIndex` 首尾回绕、`pixelSizeLabel` 未加载时闭嘴、`downloadName` 依次取 URL 末段 / `path=` 携带的名字 / `data:` 的类型名 / 兜底），`lightbox.tsx` 的 `Lightbox` 新增 `images` 批（按 `src` 开在被点的那张、缩略图标 `aria-current`、「2 / 3」计数、左右步进、按 `downloadName` 存当前那张、左上角真实像素角标只认已加载那张的读数），`ZoomableImage` 透传 `group`；`packages/ui/src/strings.ts` 三个无障碍键（`download` / `previousImage` / `nextImage`）由 web 的中英词典映射；`packages/web/src/features/chat/chat-input.tsx` 把草稿里已上传的图片当成一批；用例 `packages/ui/test/image-board.test.ts`（新）+ `lightbox.test.ts`（+8 组批、+1 保存名）+ `strings.test.ts`；changelog 中英一对。**没有编造按钮**：编辑、拆图层这类要生成服务支撑的动作一个不放 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`）· `prettier --check` 12 个改动文件干净 · `oxlint` 10 个文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`**：core **70 文件 / 1452 通过 / 6 跳过** · ui **131 文件 / 1084 通过**（+2 文件 / +21 用例）· web **271 文件 / 3339 通过 / 2 跳过** · cli **38 / 561** · server **206 文件 / 3013 通过 / 15 跳过**（首跑 4 条 hook 超时，本机 load 9.2 下整套并行所致，`--maxWorkers=3` 复跑全绿、四个文件单跑 66/66；server 本笔零改动）· **真浏览器**（一次性数据根 `/root/adelie-fork-data/r160`、服务端 8967、mock 8931、系统 chromium 1280×900，两态见正文）：草稿里两张图点开第一张 → 覆盖层 `1 / 2`、角标 `40 × 30`、`下载` 链接 `download="image.png"`、缩略图 2 个；按「下一张图片」→ `2 / 2`、角标 `1280 × 860`；按「上一张图片」→ 回到 `1 / 2`；Esc 关掉后草稿仍留 2 张；console **0 error / 0 pageerror**（`r160/{01-composer,02-open-first,03-next}.png`）· 端口只用 8967 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `e62db0f0` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -18988,3 +18989,66 @@ cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · ui-gallery **20 / 14
   （`install.sh --archive dist-artifacts/penguin-linux-x64.tar.gz`，`Bundle checksum OK` / `Payload checksum OK`），
   `/root/.adelie` 里 bin/lib/web 换成 0.5.10、`penguin --version` = `v0.5.10`、`web/assets` 里能 grep 到「主题目录」，
   数据根与 `/root/.penguin/data` 软链没动。重启排进 `systemd-run --unit=adelie-live-restart-0510`。
+
+## 第一百六十一轮：画板二期那条在途改动收尾落地（2026-10-30）
+
+### 开工自检：树里是上一轮没收尾的半成品，接手做完
+
+`/root/adelie-fork` 的 `main` 在 `1fe924ae`（v0.5.10 记档那一笔）。`git status --short` **不干净** ——
+正是第一百五十七 / 一百六十轮反复点名的那批「豆包式画板」在途改动：`lightbox.tsx`、新增
+`image-board.ts`、两个 ui 测试、`chat-input.tsx`、三份 web 词典、两份 changelog，
+最后写入 **10-29 23:08**，此后八个多小时没人碰过。
+
+判成「作者的会话已经不在了、这活可以接手」的三条证据：① 此刻机器上没有任何在建的 node / vitest
+进程（只有 7777 现网服务）；② 这棵树在 23:08 之后没有任何一次写入；③ 那个时间点对应的会话目录
+已不在。中间还有一次 03:00 的轮次动过这套改动（在 scratchpad `…/03-00-28-…/r158` 里留下探针与三张
+截图），但它同样没收尾：台账没写、`tests.log` 是 0 字节、文件没提交。第一百六十轮末尾那句
+「豆包式画板二期那条在途改动先让它落，再谈别的」就是这件事。
+
+同步：`git fetch origin` 走 SSH 仍不通（`Permission denied (publickey)`），改走
+`https://x-access-token:…@github.com/…` 时 TLS 被掐断（`GnuTLS recv error (-110)`），于是用
+`api.github.com` 核对 —— `branches/main` 与 `commits/main` 都是 `1fe924ae`，与本机 `HEAD` 同号，
+没有要拉的东西。
+
+### 这一轮做了什么
+
+把上一轮那批改动**读完、验完、落地**，一个字节都没有改它的设计：
+
+- `image-board.ts`：三步算术单独成模块 —— `stepIndex`（首尾回绕的轮播）、`pixelSizeLabel`
+  （`<img>` 未加载时报 0，宁可不显示也不写「0 × 0」）、`downloadName`（URL 末段 → `path=` 里携带的
+  名字 → `data:` 的类型名 → 兜底，一个散落的 `%` 不让整个名字作废）。
+- `lightbox.tsx`：`images` 一批图时开在被点的那张、缩略图 `aria-current`、`2 / 3` 计数、左右步进、
+  `download` 属性用 `downloadName`、左上角角标只认**已加载那张**的读数（换图时把上一个读数丢掉）。
+  单张图只有「下载」—— 没有可步进的地方就不摆按钮。
+- 这一条的分寸：编辑、拆图层、抠背景这些是生成服务的活，本仓没有对应的端点，所以**一个按钮都不放**。
+- 其余四处是接线：ui 三个无障碍键、web 中英词典映射、草稿已上传的图片当作一批。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）。
+- 逐包 test **`EXIT=0`**：core **70 文件 / 1452 通过 / 6 跳过** · ui **131 文件 / 1084 通过**
+  （比上一轮 +2 文件 / +21 用例，正是这条带的）· web **271 / 3339 通过 / 2 跳过** · cli **38 / 561** ·
+  server **206 文件 / 3013 通过 / 15 跳过**。
+  **server 首跑红了 4 条**，全是 `Hook timed out in 10000ms`，且第二次跑换成了另外几条（`id-validation`、
+  `scheduler`…）—— 本机 `load average 9.2`，整套并行把它拖垮了，与代码无关（server 本笔零改动）。
+  `--maxWorkers=3` 复跑全绿，四个文件单跑 **66/66**，数字与 5.60 的基线一致。
+- 12 个改动 / 新增文件 `prettier --check` 干净，10 个源码与用例文件 `oxlint` 0 警告 0 错误。
+- **真浏览器**（一次性数据根 `/root/adelie-fork-data/r160`、服务端 8967、mock 8931、系统 chromium
+  1280×900；web 先 `pnpm --filter @adelie/web build` 重建）：草稿里传两张图（40×30 与 1280×860），
+  点开第一张 → `.ui-scrim` 一层、计数 `1 / 2`、左上角 `40 × 30`、`下载` 的 `href` 是 `data:image/png;…`
+  且 `download="image.png"`、缩略图 2 个；「下一张图片」→ `2 / 2`、角标变 `1280 × 860`；「上一张图片」
+  → 回到 `1 / 2`；Esc 关掉覆盖层，草稿里两张图仍在；**console 0 error / 0 pageerror**。
+  截图 `r160/{01-composer,02-open-first,03-next}.png` 与探针 `r160/probe.mjs` 在 scratchpad。
+- 端口只用 8967 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r160`，一个字节没往 `~/.adelie` / `~/.penguin` 里写。
+
+### 没做 / 留着
+
+- 缩略图条在**极小图**（40×30）上会和角标挤在一起 —— 角标贴的是图片本身那个框，图片比角标还小时就
+  显得压着。不影响点击，没改；真要动是下一期的事。
+- 画板三期（框选 / 涂抹这类交互）照旧没开始，要等生成服务那侧有对应端点。
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+
+### 下一轮
+
+上游那几笔能落的（要避开 2.5 与 4.x 的拍板项），或把画板三期往前推一步。
