@@ -1,10 +1,12 @@
 /**
  * The lightbox's arithmetic (src/components/overlays/lightbox/image-board.ts): stepping through a
- * batch wraps at both ends, the pixel badge speaks only when a picture's own size is known, and a
- * download takes the file's name from where the picture came from.
+ * batch wraps at both ends, the pixel badge speaks only when a picture's own size is known, a
+ * download takes the file's name from where the picture came from, and the corner chips only sit
+ * on a picture big enough to hold them.
  */
 import { describe, expect, it } from "vitest";
 import {
+  cornerChipsFit,
   downloadName,
   pixelSizeLabel,
   stepIndex,
@@ -42,6 +44,34 @@ describe("pixelSizeLabel", () => {
 
   it("rounds a fractional size rather than printing it", () => {
     expect(pixelSizeLabel(1280.4, 719.6)).toBe("1280 × 720");
+  });
+});
+
+describe("cornerChipsFit", () => {
+  it("keeps the chips on a picture with room to spare", () => {
+    expect(cornerChipsFit(1600, 1000)).toBe(true);
+    expect(cornerChipsFit(1280, 860)).toBe(true);
+  });
+
+  it("puts them above the picture when the picture is smaller than the chips", () => {
+    // The thumbnail of a sprite: 40 × 30 is smaller than either chip.
+    expect(cornerChipsFit(40, 30)).toBe(false);
+    // A wide banner leaves no height for the band.
+    expect(cornerChipsFit(1200, 80)).toBe(false);
+    // A column leaves no width for the two chips side by side.
+    expect(cornerChipsFit(120, 900)).toBe(false);
+  });
+
+  it("draws the line at three bands of height and two chips of width", () => {
+    expect(cornerChipsFit(160, 120)).toBe(true);
+    expect(cornerChipsFit(159, 120)).toBe(false);
+    expect(cornerChipsFit(160, 119)).toBe(false);
+  });
+
+  it("answers no for a size that was never measured", () => {
+    expect(cornerChipsFit(0, 0)).toBe(false);
+    expect(cornerChipsFit(Number.NaN, 720)).toBe(false);
+    expect(cornerChipsFit(720, Number.POSITIVE_INFINITY)).toBe(false);
   });
 });
 

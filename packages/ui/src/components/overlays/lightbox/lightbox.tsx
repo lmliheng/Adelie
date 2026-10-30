@@ -14,6 +14,12 @@
  * The bar carries only what the page can really do: save the file (a plain `download` link, no
  * request of its own) and move within the batch. Editing actions a generation service would back
  * have no endpoint behind them here, and a row of buttons that cannot work is worse than none.
+ *
+ * The close glyph and the size badge hang in the picture's top corners while the picture leaves
+ * room for them; on a picture smaller than either chip they are set beside it instead — the size
+ * to its left, the close glyph to its right, both over the backdrop — because there they still
+ * read while on the picture they would be the whole picture (and above it the two would collide
+ * on a picture narrower than they are).
  */
 import { useState } from "react";
 import type { ComponentPropsWithoutRef } from "react";
@@ -23,7 +29,7 @@ import { ICONS } from "../../icons/icons";
 import { GlyphIcon } from "../../icons/glyph-icon/glyph-icon";
 import { CloseIcon, DownloadIcon } from "../../icons/marks/marks";
 import { useEscLayer } from "../esc-layers/esc-layers";
-import { downloadName, pixelSizeLabel, stepIndex } from "./image-board";
+import { cornerChipsFit, downloadName, pixelSizeLabel, stepIndex } from "./image-board";
 import type { LightboxImage } from "./image-board";
 
 export type { LightboxImage };
@@ -73,10 +79,17 @@ export function Lightbox({ open, src, alt, onClose, closeLabel, images }: Lightb
   );
   const at = Math.min(Math.max(step ?? opening, 0), batch.length - 1);
   const shown = batch[at] ?? { src, alt };
-  const badge =
+  /**
+   * The reading, or `null` while it does not belong to the picture on screen. Nothing has loaded
+   * yet for a picture still arriving, and then the chips stay in the corners: that is where every
+   * other picture keeps them, and jumping up a line on load would be the bigger distraction.
+   */
+  const size =
     measured !== null && measured.src === shown.src
-      ? pixelSizeLabel(measured.width, measured.height)
+      ? { width: measured.width, height: measured.height }
       : null;
+  const badge = size === null ? null : pixelSizeLabel(size.width, size.height);
+  const chipsInCorners = size === null || cornerChipsFit(size.width, size.height);
   const multi = batch.length > 1;
 
   return createPortal(
@@ -89,12 +102,16 @@ export function Lightbox({ open, src, alt, onClose, closeLabel, images }: Lightb
     >
       <div className="anim-pop relative">
         {/* Close glyph: top-right inside the frame, floating over the image on a translucent
-            disc of the ink colour, which keeps it visible on any image. */}
+            disc of the ink colour, which keeps it visible on any image. On a picture too small
+            to hold it, it steps outside the frame's right edge — `left-full` — where the disc
+            still reads against the dimmed page and covers no part of the picture. */}
         <button
           type="button"
           aria-label={closeLabel ?? strings.close}
           onClick={close}
-          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-fg/50 text-canvas transition-colors duration-150 hover:bg-fg/70"
+          className={`absolute flex h-7 w-7 items-center justify-center rounded-full bg-fg/50 text-canvas transition-colors duration-150 hover:bg-fg/70 ${
+            chipsInCorners ? "right-2 top-2" : "left-full top-0 ml-1.5"
+          }`}
         >
           <CloseIcon />
         </button>
@@ -112,9 +129,15 @@ export function Lightbox({ open, src, alt, onClose, closeLabel, images }: Lightb
           className="max-h-[85vh] max-w-[88vw] rounded-lg border border-line bg-surface"
         />
         {/* The picture's own pixel size, opposite the close glyph: what the file is, not what the
-            window made of it. */}
+            window made of it. It travels with the close glyph, so the two never sit on a picture
+            that is smaller than they are — `whitespace-nowrap` because beside a narrow picture its
+            box has no width to wrap inside. */}
         {badge !== null && (
-          <span className="absolute left-2 top-2 rounded-full bg-fg/50 px-2 py-0.5 text-xs tabular-nums text-canvas">
+          <span
+            className={`absolute whitespace-nowrap rounded-full bg-fg/50 px-2 py-0.5 text-xs tabular-nums text-canvas ${
+              chipsInCorners ? "left-2 top-2" : "right-full top-0 mr-1.5"
+            }`}
+          >
             {badge}
           </span>
         )}

@@ -1,7 +1,7 @@
 /**
  * The lightbox's arithmetic, apart from its markup so it can be read on its own: which picture of
- * a batch a step lands on, what a picture's own pixel size reads as, and what name a download
- * saves under.
+ * a batch a step lands on, what a picture's own pixel size reads as, what name a download saves
+ * under, and whether a picture is big enough to carry the two corner chips on itself.
  */
 
 /** One picture of the lightbox's batch: what to fetch, and the words that describe it. */
@@ -27,6 +27,24 @@ export function stepIndex(at: number, step: number, count: number): number {
 export function pixelSizeLabel(width: number, height: number): string | null {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) return null;
   return `${Math.round(width)} × ${Math.round(height)}`;
+}
+
+/** The height the two corner chips need from the picture's top edge: 8px in, plus the close disc. */
+export const CHIP_BAND = 36;
+
+/**
+ * Whether the two corner chips — the close disc top-right, the size badge top-left — can sit on
+ * the picture itself. They are always drawn within {@link CHIP_BAND} of the top edge and, side by
+ * side with a gap between them, need about 140px of width. A picture that cannot give them that
+ * much is smaller than the words describing it (a 40 × 30 sprite is smaller than either chip), so
+ * the lightbox moves the chips beside the picture instead of onto it: a chip that covers the
+ * picture it is describing is worse than one placed a step outside it.
+ */
+export function cornerChipsFit(width: number, height: number): boolean {
+  if (!Number.isFinite(width) || !Number.isFinite(height)) return false;
+  // Three bands of height keeps the chips under a third of the picture, and 160px leaves the two
+  // chips room side by side with a gap — narrower than that and they touch each other.
+  return height >= CHIP_BAND * 3 + 12 && width >= 160;
 }
 
 /** What a `data:` URL's media type says the file is called, when it says anything. */
