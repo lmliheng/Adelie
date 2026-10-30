@@ -1783,7 +1783,14 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       mock 里没有路由，CI 上 `test (rest)` / `test-macos (rest)` / `test-windows (rest)` 三个分片跟着红。
       为什么挑这一条、两态读数见「第一百五十九轮」一节。
 - [x] **7.53 外观页主题库的三处生造字号换回字号阶梯**（**2026-10-29 第一百五十九轮**顺带，提交见该节；`packages/web/src/features/settings/theme-registry-section.tsx` 三行：`text-[10px]` 与两处 `text-[11px]` → `text-xs`（本仓最小的那一档），**无新依赖、不碰接口、无新文案**）：这不是待办里的条码，是本轮跑 web 门禁时撞上的红 —— 今天 12:46 那笔主题库提交带上来的三处生造字号，让 `test/deslop.test.ts` 的「文字大小只走字号阶梯」在整仓红着（`rule 13: 3 new`），规则自己写着「修掉新出现的那处，不要加白名单」，于是顺手修掉。见「第一百五十九轮」一节。
-
+- [x] **7.54 回复里的图片点开看全图，进了浏览器套件**（**2026-10-30 第一百六十二轮**落地，提交见该节；
+      `packages/web/e2e/reply-image.spec.mjs` 末尾续第 4 段，**只加用例、不碰产品代码、无新依赖**）：
+      5.60 的放大层当时只由 ui / web 的单测与一次两态探针覆盖，套件里没有它 —— 而它失败的地方都在浏览器里
+      （`fixed` + portal 的覆盖层要被对话的 `overflow-hidden` 祖先放过、角标读的是覆盖层真加载那张图的
+      natural size、Esc 走共享的 escape-layer 栈）。断言：三张图都是按钮的缩略图（坏图也是）；点第一张 →
+      `.ui-scrim` 0 → 1 层、`src` 仍是会话文件路由、角标 `2 × 2`、`下载` 的 `download="shot.png"`、单张图
+      没有步进按钮；Esc 之后覆盖层消失、三张图仍在。反证：关掉 `prose.tsx` 的 `zoomable` 重建 web 后，
+      这条红在 `.md-body button img` 期望 3、实得 0。两态读数与截图见「第一百六十二轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2451,6 +2458,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-29 | 7.52 | **画廊的 mock 补上文件面板的 Word 预览路由，那条既有红转绿**（不是移植：`packages/ui-gallery/src/app/mock/routes.ts` 的 `workspaceFiles` 新增 `previewText`（照服务端 `http/routes/workspace-files.ts` 的三条出口：文件不在 404、`.doc` → 415 `doc_legacy`、其余类型 → 415 `preview_unavailable`、`.docx` → Markdown + `ETag`），挂到 `/api/sessions/:sessionId/files` 与 `/api/projects/:projectId/workspace-files` 两个 base；`src/app/mock/fixtures.ts` 的演示工作区多一个 `docs/`（`quarterly-report.docx` 里存的就是服务端会抽取出来的 Markdown、`contract.doc` 空着）；`test/mock-api.test.ts` +1 条用例。**无新依赖、不碰接口、无新文案**） | 画廊 `vitest run` 全绿 **20 文件 / 141 通过**（改前 `mock-api.test.ts` 1 failed / 13 passed，失败行正是本笔要修的那条）· 画廊 `tsc --noEmit` `EXIT=0` · 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 590 类型）· 逐包 test **`EXIT=0`、0 失败**：core **71 文件（70 + 1 跳过）/ 1449 通过 / 6 跳过** · ui **130 / 1063** · server **206 / 3011 通过 / 15 跳过** · cli **38 / 561** · web **271 / 3339 通过 / 2 跳过**（那条 de-slop 红在本轮顺手修掉，见 7.53）· 改动三个文件 `prettier --check` 干净 · `git diff --check` 干净 · **两态实测**（真浏览器 + 画廊 dev 7372，`app.html?route=/chat/s-hooks-index&lang=zh`，右侧栏 › 文件浏览 › `docs`）：**改前**两条地址直取都是 **404 `gallery_unmocked`**；**改后**两条都是 **200**、`etag` `"74-26"`、正文 `# 季度报告 …`，面板里 `.docx` 画成 Markdown 标题 + 列表（`r159/after-docx.png`）、`.doc` 显示「旧版 .doc 无法预览，用 Word 另存为 .docx 后即可预览」（`r159/after-doc.png`）；两态 console **无 error / 无 pageerror**、无一条 ≥400 · 端口只用 7372（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；临时文件只在 scratchpad · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `b162ea6a` |
 | 2026-10-29 | 7.53 | **外观页主题库的三处生造字号换回字号阶梯**（不是移植：`packages/web/src/features/settings/theme-registry-section.tsx` 三行，`text-[10px]` / `text-[11px]` ×2 → `text-xs`。今天 12:46 那笔主题库提交（`1a223bf7`）带上来的 de-slop 红，本轮的 web 门禁撞上，顺手修掉） | `test/deslop.test.ts` 24 条通过（rule 13 转绿）、`test/theme-import.test.ts` 6 条通过 · `prettier --check` 与 `oxlint` 对该文件干净 · web 整套 **271 文件 / 3339 通过 / 2 跳过** · **真浏览器**（画廊 7372，`app.html?…&open=settings.appearance`）：主题库卡片照旧 —— 标题、`作者 lmliheng · v1.0.0`（13px，字号档生效）、简介、`导入` 按钮都在，无裁切、console 无 error（`r159/appearance-cards.png`） | `74240065` |
 | 2026-10-30 | 画板二期 | **点开一张图，图下有能真的做事的胶囊条**（接手在途改动，不是移植：`packages/ui/src/components/overlays/lightbox/image-board.ts` 新增（`stepIndex` 首尾回绕、`pixelSizeLabel` 未加载时闭嘴、`downloadName` 依次取 URL 末段 / `path=` 携带的名字 / `data:` 的类型名 / 兜底），`lightbox.tsx` 的 `Lightbox` 新增 `images` 批（按 `src` 开在被点的那张、缩略图标 `aria-current`、「2 / 3」计数、左右步进、按 `downloadName` 存当前那张、左上角真实像素角标只认已加载那张的读数），`ZoomableImage` 透传 `group`；`packages/ui/src/strings.ts` 三个无障碍键（`download` / `previousImage` / `nextImage`）由 web 的中英词典映射；`packages/web/src/features/chat/chat-input.tsx` 把草稿里已上传的图片当成一批；用例 `packages/ui/test/image-board.test.ts`（新）+ `lightbox.test.ts`（+8 组批、+1 保存名）+ `strings.test.ts`；changelog 中英一对。**没有编造按钮**：编辑、拆图层这类要生成服务支撑的动作一个不放 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`）· `prettier --check` 12 个改动文件干净 · `oxlint` 10 个文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`**：core **70 文件 / 1452 通过 / 6 跳过** · ui **131 文件 / 1084 通过**（+2 文件 / +21 用例）· web **271 文件 / 3339 通过 / 2 跳过** · cli **38 / 561** · server **206 文件 / 3013 通过 / 15 跳过**（首跑 4 条 hook 超时，本机 load 9.2 下整套并行所致，`--maxWorkers=3` 复跑全绿、四个文件单跑 66/66；server 本笔零改动）· **真浏览器**（一次性数据根 `/root/adelie-fork-data/r160`、服务端 8967、mock 8931、系统 chromium 1280×900，两态见正文）：草稿里两张图点开第一张 → 覆盖层 `1 / 2`、角标 `40 × 30`、`下载` 链接 `download="image.png"`、缩略图 2 个；按「下一张图片」→ `2 / 2`、角标 `1280 × 860`；按「上一张图片」→ 回到 `1 / 2`；Esc 关掉后草稿仍留 2 张；console **0 error / 0 pageerror**（`r160/{01-composer,02-open-first,03-next}.png`）· 端口只用 8967 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `e62db0f0` |
+| 2026-10-30 | 7.54 | **回复里的图片点开看全图，进了浏览器套件**（`packages/web/e2e/reply-image.spec.mjs` 末尾续第 4 段：点第一张图 → `.ui-scrim` 0 → 1 层、`src` 仍是会话文件路由、角标 `2 × 2`、`download="shot.png"`、单张图没有步进按钮，Esc 之后覆盖层消失而三张图仍在；**只加用例、不碰产品代码、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（+1 跳过）/ 1452 通过 / 6 跳过** · ui **131 / 1084** · cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · server **206 / 3013 通过 / 15 跳过**（首跑 2 条红是 `load average 7.8` 下的并行超时，两个文件单跑 24/24 绿，`--maxWorkers=3` 复跑全绿） · 改动文件 `prettier --check` 干净 · **真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r162`、服务端 8972、mock 8971、系统 chromium 1280×900）：改后 **1 passed**，探针读数 —— 缩略图 **768×480** → 点开 **978×612**、角标 `1600 × 1000`、`download="shot.png"`、步进按钮 0 个、Esc 后图 3 张仍在；**反证** 关掉 `prose.tsx` 的 `zoomable` 重建 web → 红在 `.md-body button img` 期望 3 实得 0 · console 两态只有一条既有的 `403 …/machines`、无 pageerror · 端口只用 8972 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `c1f369aa` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -19052,3 +19060,85 @@ cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · ui-gallery **20 / 14
 ### 下一轮
 
 上游那几笔能落的（要避开 2.5 与 4.x 的拍板项），或把画板三期往前推一步。
+
+## 第一百六十二轮：回复里的图片点开看全图，进了浏览器套件（2026-10-30，条目 7.54）
+
+### 开工自检
+
+`/root/adelie-fork` 的 `main` 在 `238fa0eb`（第一百六十一轮），`git status --short` **干净**。
+`git fetch origin` 走 SSH 仍报 `Permission denied (publickey)`；按 URL 拉上游（`github.com` HTTPS）报
+`GnuTLS recv error (-110)`，与本机这一段路的网络状况一致。于是照第一百五十四 / 五十五轮那条路用
+`api.github.com` 核对：`branches/main` 与 `commits/main` 都是 `238fa0eb`，与本机 `HEAD` 同号，没有要拉的。
+
+### 选活：表上仍全卡着，接第一百五十六轮点名的「下一轮的一小条」
+
+未勾选的仍是 **2.2c**（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（拍板）、**3.6**（模型 key）、
+**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。上游这一轮再探一次尖端是 **`be13a969`**
+（`#1390`），比我们记的 `9f6c4538` 多六笔，逐笔量过全都不能落：
+
+- `#1375` / `#1380` 是 `packages/landing`（2.5 已删）。
+- `#1390`（pin Benchmark 到显式提交）改的是 `plugins/agent-evaluation/**`——**本树没有这个插件目录**
+  （`ls plugins/` 里只有我们自己的那些），整份无处落地。
+- `#1376` / `#1377` / `#1378`（机器那条线的三个后继）要 `packages/web/src/features/chat/history-load-failed.tsx`
+  与 `packages/server/src/machines/machine-sockets.ts`，**两个文件本树都没有**（`git apply --check` 直接
+  `No such file or directory`）——它们压在 `#1344`（43 文件 / +1381 −621 的重试行）与 `#1343`（要
+  `machine-sockets.ts`）之上，而 `#1343` 的补丁本机也因缺 `machine-sockets.ts` 而落不下去。
+
+于是做第一百五十六轮结尾留的那一条：**`reply-image.spec.mjs` 里点一下回复中的图、断言放大层出现**
+（`5.60`「回复里的图片点一下看全图」当时只由 `prose.test.ts` / `lightbox.test.ts` / `md.test.ts` 的单测
+与一次两态探针覆盖，套件里没有这一层）。
+
+### 做了什么（一个文件，只加用例、不碰产品代码）
+
+`packages/web/e2e/reply-image.spec.mjs`（+33）：在既有那条用例的末尾续第 4 段 ——
+`5.60` 的放大层此前没有任何浏览器套件覆盖，而它失败的地方恰好都在浏览器里（覆盖层是 `fixed` 且走 portal，
+必须不被对话的 `overflow-hidden` 祖先裁掉；角标读的是**覆盖层真加载的那张图**的 natural size；Esc 走的是
+共享的 escape-layer 栈）。断言逐条：三张图都是按钮的缩略图（坏图也是，因为渲染时无从知道会不会 404，见
+`prose.tsx`）；点第一张 → `.ui-scrim` 从 0 层变 1 层、里面的 `src` 仍是那条会话文件路由、`alt` 是
+`the picture`、角标文本 `2 × 2`、`下载` 的 `download` 是 `shot.png`（路由自己那段 `content` 不算文件名、
+取的是 `path=` 里带的名字）；单张图**没有**「上一张 / 下一张」；按 Esc → 覆盖层 0 层、对话里的三张图还在。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件（+1 跳过）/ 1452 通过 / 6 跳过** · ui **131 / 1084** ·
+  cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · server **206 / 3013 通过 / 15 跳过**。
+  **server 首跑红了 2 条**（`messaging-qq-transport` 的掉心跳那条、`reset-admin-password` 的复位那条），
+  两个文件单跑 **24/24 全绿**，`load average 7.8` 下整套并行把它拖垮了；按历次口径
+  `--maxWorkers=3` 复跑全绿，数字与第一百六十一轮一致。本笔零产品改动。
+- `prettier --check` 对改动的这一个文件干净。
+- **真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r162`、服务端 8972、mock 8931 → 本轮用 8971、
+  系统 chromium 1280×900；web 先 `pnpm --filter @adelie/web build` 重建）：
+  - **改后绿**：`reply-image.spec.mjs` **1 passed**；同一套件里这条用例的两态读数由探针记下 ——
+    缩略图 **768×480**（1600×1000 的棋盘图，阅读栏宽度）→ 点开后 **978×612**（`max-w-88vw` 被 `max-h-85vh` 收住）、
+    角标 `1600 × 1000`、`下载` 的 `download="shot.png"`、步进按钮 **0 个**、Esc 之后图 **3 张仍在**。
+  - **反证**：把 `prose.tsx` 的 `zoomable` 条件临时改成 `false &&` 重建 web，同一条用例**红**在
+    `.md-body button img` 期望 3、实得 0（然后 `git checkout --` 还原并重建）。这证明新断言真的连着
+    「点开看全图」这件事，不是一条恒真的断言。
+  - console：两态都只有一条 `403 GET /api/projects/<p>/machines`（本机构建没有机器功能，页面照旧去问它，
+    与这一条无关、改前也有），**无 pageerror**。截图 `01-transcript.png` / `02-lightbox.png` /
+    `03-after-esc.png` 与探针 `probe.spec.mjs`、`pw.config.mjs` 在会话 scratchpad 的 `r162/`。
+- 端口只用 8972 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r162`，一个字节没往 `~/.adelie` / `~/.penguin` 里写。
+- `pnpm` 这一轮不在 `PATH` 里（`/root/.local/share/pnpm/bin`），每道门禁都先把它加进 `PATH` 再跑；
+  Playwright 自带浏览器没装，用 `/usr/bin/chromium`（临时配置放在 scratchpad，仓库里的配置未动）。
+
+### 没做 / 留着
+
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+- 上游 `#1343`（机器升级握手，9 文件 / +1077）**不是一轮的量**：它要
+  `packages/server/src/machines/machine-sockets.ts`，那是 `#1365` 那条 socket 重构的产物，本树没有。
+  要落它得先决定「跟不跟 `#1365` / `#1370` 那条把 `packages/web/src/api/socket.ts` 整份换掉的线」，
+  这件事仍是拍板项。
+- `#1390` 若要落，前提是先把 `plugins/agent-evaluation` 那个插件搬进来（它自己要 `#1341` 的
+  Benchmark 包），比这一笔本身大得多。
+- 第一百六十一轮记的「极小图上的角标挤压」仍在（截图里 `1600 × 1000` 那个角标就压在图上），不影响点击。
+
+### 下一轮
+
+上游那几笔能落的仍压在大前置上；本仓可动的候选是「跟不跟 `#1365` / `#1370` 的 socket 重构」
+（拍板）与画板三期（等生成端点）。若都不动，则按 7.x 的口径继续把登记在案的边角收掉。
+
+### 提交
+
+- 用例：**`c1f369aa`**；本轮台账（7.54、上表那一行、本节）另起一笔。
