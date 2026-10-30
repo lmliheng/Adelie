@@ -47,9 +47,13 @@ describe("skills api", () => {
   const plugins = (agentId: string) => `/api/projects/${projectId}/agents/${agentId}/plugins`;
   /** The plugins route beside a skills route: library installs go through plugins. */
   const toPlugins = (skillsUrl: string) => skillsUrl.replace(/\/skills$/, "/plugins");
-  /** The skill names the preinstalled plugins ship, sorted — the installed-list order. */
+  /**
+   * The skill names the preinstalled plugins ship, sorted — the installed-list order. Read from
+   * the test's own root, like the seeding under test: the ambient root is this machine's, where a
+   * plugin someone imported would join the expected set and turn this assertion red for no reason.
+   */
   const preinstalledSkillNames = () =>
-    loadPreinstalledPlugins()
+    loadPreinstalledPlugins(t.root)
       .flatMap((p) => p.skills.map((s) => s.name))
       .sort();
 

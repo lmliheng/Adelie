@@ -205,7 +205,8 @@ describe("models preset & catalog enrichment", () => {
     });
     expect(wholeGroup.status).toBe(200);
     const groupBody = (await wholeGroup.json()) as ModelsResponse;
-    const firstMask = pick(groupBody, group[0]!.provider, group[0]!.modelId).credential?.apiKeyMasked;
+    const firstMask = pick(groupBody, group[0]!.provider, group[0]!.modelId).credential
+      ?.apiKeyMasked;
     expect(firstMask).toBeTruthy();
     for (const m of group) {
       expect(pick(groupBody, m.provider, m.modelId).credential?.apiKeyMasked, m.modelId).toBe(

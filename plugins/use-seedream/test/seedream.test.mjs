@@ -120,6 +120,13 @@ async function run(args, { env = {}, workspace } = {}) {
   }
 }
 
+/**
+ * A saved path as the tests talk about it: relative to the run's directory, with `/` between the
+ * segments. The kit reports absolute paths, which a Windows run joins with `\`, while the names
+ * asserted below are the ones the Skill's instructions show the user — always written with `/`.
+ */
+const relativeTo = (dir, absolute) => path.relative(dir, absolute).split(path.sep).join("/");
+
 /** The JSON lines of a stream: progress and usage text are plain lines and are skipped here. */
 const jsonLines = (text) =>
   text
@@ -281,7 +288,7 @@ describe("the seedream kit", () => {
     assert.deepEqual(
       jsonLines(stdout)
         .at(-1)
-        .paths.map((p) => path.relative(dir, p)),
+        .paths.map((p) => relativeTo(dir, p)),
       ["layers/001-base.png", "layers/002-z1-猫-主体-01.png"],
     );
   });
@@ -299,7 +306,7 @@ describe("the seedream kit", () => {
     assert.equal(body.layer_decomposition, undefined);
     const result = jsonLines(stdout).at(-1);
     assert.deepEqual(
-      result.paths.map((p) => path.relative(dir, p)),
+      result.paths.map((p) => relativeTo(dir, p)),
       ["group/001-base.png", "group/002-base.png", "group/003-base.png"],
     );
     assert.deepEqual(fs.readdirSync(path.join(dir, "group")).sort(), [
@@ -351,7 +358,7 @@ describe("the seedream kit", () => {
     const result = jsonLines(stdout).at(-1);
     // Base first, then z0, then z1 — the running number follows the stacking order…
     assert.deepEqual(
-      result.paths.map((p) => path.relative(dir, p)),
+      result.paths.map((p) => relativeTo(dir, p)),
       ["layers/001-base.png", "layers/002-z0-cat-outline.png", "layers/003-z1-背景.png"],
     );
     // The Chinese layer name is kept as is — it is the name the user will look for.

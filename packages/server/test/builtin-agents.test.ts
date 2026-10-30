@@ -52,8 +52,11 @@ describe("built-in Agent provisioning", () => {
       (
         await fs.readdir(path.join(t.root, projectId, "agents", agentId, "agent_state", "skills"))
       ).sort();
+    // The library is read from the test's own root, the one the server seeded from: without it the
+    // lookup falls back to the ambient data root, and a plugin someone imported on this machine
+    // would join the expected set while the seeded Agent only ever gets the shipped ones.
     expect(await skillsOf("default_agent")).toEqual(
-      loadPreinstalledPlugins()
+      loadPreinstalledPlugins(t.root)
         .flatMap((plugin) => plugin.skills.map((skill) => skill.name))
         .sort(),
     );

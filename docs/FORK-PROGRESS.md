@@ -1791,6 +1791,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `.ui-scrim` 0 → 1 层、`src` 仍是会话文件路由、角标 `2 × 2`、`下载` 的 `download="shot.png"`、单张图
       没有步进按钮；Esc 之后覆盖层消失、三张图仍在。反证：关掉 `prose.tsx` 的 `zoomable` 重建 web 后，
       这条红在 `.md-body button img` 期望 3、实得 0。两态读数与截图见「第一百六十二轮」一节。
+- [x] **7.55 CI 的两处红：prettier 少折一行、Windows 上拼出来的路径用 `\`**（**2026-10-30 第一百六十四轮**
+      落地，提交见该节；3 个测试文件 + 一份台账，**只贴格式与归一化分隔符：不碰产品代码、不改接口、无新依赖**）：
+      `main` 上连着三笔 CI 都是红的（`41068032061` / `41038719135` / `40997118080`），红的只有两处内容 ——
+      `style (prettier)` 一条 `packages/server/test/models.test.ts`（第一百六十三轮加的四条借 key 用例里有一行
+      超过列宽没折），`test-windows (rest)` 三处断言（`plugins/use-seedream` 的三条用例拿 `path.relative`
+      直接跟 `layers/001-base.png` 这种用 `/` 写的名字比，Windows 上 `path.relative` 给的是
+      `layers\001-base.png`）；`ci` 是聚合门禁，只是跟着红。顺带发现并修掉一处**本机才红**的测试脆弱：
+      `built-in Agent provisioning` 与 `skills api` 那三条拿默认数据根读「库里的预置插件」，本机
+      `~/.adelie/data/plugins` 里装了 `gpu-model-serving` 等用户插件，于是期望集比落盘的种子多一条 ——
+      改成从测试自己的根读。细节、反证与两端读数见「第一百六十四轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2459,6 +2469,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-29 | 7.53 | **外观页主题库的三处生造字号换回字号阶梯**（不是移植：`packages/web/src/features/settings/theme-registry-section.tsx` 三行，`text-[10px]` / `text-[11px]` ×2 → `text-xs`。今天 12:46 那笔主题库提交（`1a223bf7`）带上来的 de-slop 红，本轮的 web 门禁撞上，顺手修掉） | `test/deslop.test.ts` 24 条通过（rule 13 转绿）、`test/theme-import.test.ts` 6 条通过 · `prettier --check` 与 `oxlint` 对该文件干净 · web 整套 **271 文件 / 3339 通过 / 2 跳过** · **真浏览器**（画廊 7372，`app.html?…&open=settings.appearance`）：主题库卡片照旧 —— 标题、`作者 lmliheng · v1.0.0`（13px，字号档生效）、简介、`导入` 按钮都在，无裁切、console 无 error（`r159/appearance-cards.png`） | `74240065` |
 | 2026-10-30 | 画板二期 | **点开一张图，图下有能真的做事的胶囊条**（接手在途改动，不是移植：`packages/ui/src/components/overlays/lightbox/image-board.ts` 新增（`stepIndex` 首尾回绕、`pixelSizeLabel` 未加载时闭嘴、`downloadName` 依次取 URL 末段 / `path=` 携带的名字 / `data:` 的类型名 / 兜底），`lightbox.tsx` 的 `Lightbox` 新增 `images` 批（按 `src` 开在被点的那张、缩略图标 `aria-current`、「2 / 3」计数、左右步进、按 `downloadName` 存当前那张、左上角真实像素角标只认已加载那张的读数），`ZoomableImage` 透传 `group`；`packages/ui/src/strings.ts` 三个无障碍键（`download` / `previousImage` / `nextImage`）由 web 的中英词典映射；`packages/web/src/features/chat/chat-input.tsx` 把草稿里已上传的图片当成一批；用例 `packages/ui/test/image-board.test.ts`（新）+ `lightbox.test.ts`（+8 组批、+1 保存名）+ `strings.test.ts`；changelog 中英一对。**没有编造按钮**：编辑、拆图层这类要生成服务支撑的动作一个不放 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`）· `prettier --check` 12 个改动文件干净 · `oxlint` 10 个文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`**：core **70 文件 / 1452 通过 / 6 跳过** · ui **131 文件 / 1084 通过**（+2 文件 / +21 用例）· web **271 文件 / 3339 通过 / 2 跳过** · cli **38 / 561** · server **206 文件 / 3013 通过 / 15 跳过**（首跑 4 条 hook 超时，本机 load 9.2 下整套并行所致，`--maxWorkers=3` 复跑全绿、四个文件单跑 66/66；server 本笔零改动）· **真浏览器**（一次性数据根 `/root/adelie-fork-data/r160`、服务端 8967、mock 8931、系统 chromium 1280×900，两态见正文）：草稿里两张图点开第一张 → 覆盖层 `1 / 2`、角标 `40 × 30`、`下载` 链接 `download="image.png"`、缩略图 2 个；按「下一张图片」→ `2 / 2`、角标 `1280 × 860`；按「上一张图片」→ 回到 `1 / 2`；Esc 关掉后草稿仍留 2 张；console **0 error / 0 pageerror**（`r160/{01-composer,02-open-first,03-next}.png`）· 端口只用 8967 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `e62db0f0` |
 | 2026-10-30 | 7.54 | **回复里的图片点开看全图，进了浏览器套件**（`packages/web/e2e/reply-image.spec.mjs` 末尾续第 4 段：点第一张图 → `.ui-scrim` 0 → 1 层、`src` 仍是会话文件路由、角标 `2 × 2`、`download="shot.png"`、单张图没有步进按钮，Esc 之后覆盖层消失而三张图仍在；**只加用例、不碰产品代码、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（+1 跳过）/ 1452 通过 / 6 跳过** · ui **131 / 1084** · cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · server **206 / 3013 通过 / 15 跳过**（首跑 2 条红是 `load average 7.8` 下的并行超时，两个文件单跑 24/24 绿，`--maxWorkers=3` 复跑全绿） · 改动文件 `prettier --check` 干净 · **真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r162`、服务端 8972、mock 8971、系统 chromium 1280×900）：改后 **1 passed**，探针读数 —— 缩略图 **768×480** → 点开 **978×612**、角标 `1600 × 1000`、`download="shot.png"`、步进按钮 0 个、Esc 后图 3 张仍在；**反证** 关掉 `prose.tsx` 的 `zoomable` 重建 web → 红在 `.md-body button img` 期望 3 实得 0 · console 两态只有一条既有的 `403 …/machines`、无 pageerror · 端口只用 8972 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `9544162e` |
+| 2026-10-30 | 7.55 | **CI 两处红转绿 + 本机才红的三条测试脆弱**（不是移植；**测试面三处，产品代码零改动**）：①`packages/server/test/models.test.ts` 一行按 prettier 折开（第一百六十三轮那笔带上来没折，`style (prettier)` 因此红）；②`plugins/use-seedream/test/seedream.test.mjs` 新增 `relativeTo(dir, absolute)` —— 套件报的 `paths` 是绝对路径，断言里写的名字是 `/` 分隔的（SKILL.md 给用户看的也是 `/`），Windows 上 `path.relative` 给 `\`，三条用例因此红，现在统一按 `path.sep` 归一；③`packages/server/test/builtin-agents.test.ts` 与 `skills.test.ts` 的预置技能集改成从**测试自己的根**（`t.root`）读库 —— 原先走 `loadPreinstalledPlugins()` 的默认根，本机 `~/.adelie/data/plugins` 里的 `gpu-model-serving` 等用户插件混进期望集，三条用例在「代码没问题的机器上」红 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型）· 整仓 `pnpm format:check` **干净**（1m29s）· oxlint 四个改动文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`、0 失败**：ui **131 / 1092** · core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · cli **38 / 561** · web **272 / 3346 通过 / 2 跳过** · server **207 文件 / 3021 通过 / 15 跳过**（改前同一套是 205 文件全过 + 2 文件 3 条红）· `plugins/use-seedream` `node --test` **12/12** · **反证（Windows 那一半）**：`path.win32` 复算 `relative(dir, abs)` 得 `layers\001-base.png`（改前断言值），归一后 `layers/001-base.png`（改后），与 CI 日志里 actual / expected 逐字一致 · **反证（本机那三条）**：`ADELIE_HOME` 指向空目录时三条本来就是绿的，指向本机真实根就红；改成 `t.root` 后**同一个真实根的进程里 29/29 全绿** · 没有界面改动，所以没起服务、没开浏览器 · 端口一个没碰，数据只落在测试自己的临时根与 `/root/adelie-fork-data` 之外的两份仓库构建产物里 | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -19211,3 +19222,70 @@ cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · ui-gallery **20 / 14
 ### 提交
 
 - 产品、文档、changelog 六件：**`0a683980`**；本轮台账另起一笔。
+
+## 第一百六十四轮：CI 的两处红转绿，顺带拆掉一处「本机才红」的测试脆弱（2026-10-30，条目 7.55）
+
+### 开工自检
+
+`main` 在 `51ecf6cf`（`chore(release): 0.6.0`，另一条线 21:58 落的发版提交），`git fetch origin` 后与
+`origin/main` 同号。`git status --short` **不干净**，两处：`packages/server/test/models.test.ts`（一行按
+prettier 折开）与 `plugins/use-seedream/test/seedream.test.mjs`（新增 `relativeTo()` 归一化路径分隔符）。
+两者都是**测试面的成品**，mtime 22:05、此后这个 worktree 再没被写过（22:06 的 `FETCH_HEAD` 之后只有另一条线
+在 `/root/rel-060` 那个 worktree 里打安装包，`ps` 里与本树相关的进程一个也没有）——按前面的口径当作
+**无主半成品接手**：本轮一个字节没改写，只核对它们正是 CI 红灯要的东西，再补完验证与台账。
+
+### 选活：待办全卡着，本轮做「CI 红转绿」
+
+未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、4.1–4.3
+（明令不动）、5.6 / 5.10（拍板 / 新依赖）；上游这一轮多出来的七笔里 `#1375` / `#1380` 是已删的
+`packages/landing`，`#1390` 改的是本树没有的 `plugins/agent-evaluation`，`#1376` / `#1377` / `#1378`
+仍压在本树没有的 `history-load-failed.tsx` / `machine-sockets.ts` 上（第一百六十二轮已量过，结论不变）。
+
+于是抬头看**自己的门禁**：`main` 上连着三笔 CI 都是红的（`41068032061`（`51ecf6cf`）、`41038719135`
+（`970c33d8`）、`40997118080`（`4a42e031`）），22 个 job 里红 3 个 —— `style (prettier)`、
+`test-windows (rest)`，以及只做聚合的 `ci`（`##[error]a CI job did not succeed (failure success …)`）。
+红的内容只有两处，而两处都已有成品躺在工作树里。**为什么是这一条**：CI 是每一轮的门禁本身，红着的时候
+后面每一轮都得自己解释「这红跟我无关」；而它修起来是测试面三处、产品代码零改动。
+
+### 做了什么
+
+- `packages/server/test/models.test.ts`：`pick(...).credential?.apiKeyMasked` 那一行按 prettier 折成两行
+  （第一百六十三轮的四条新用例带上来没折 —— CI 的 `style (prettier)` 只报这一个文件）。
+- `plugins/use-seedream/test/seedream.test.mjs`：新增 `relativeTo(dir, absolute)` =
+  `path.relative(dir, absolute).split(path.sep).join("/")`，三条断言改用它。理由是套件报的 `paths` 是
+  **绝对路径**（Windows 上是 `\` 分隔），而断言与 SKILL.md 里给用户看的名字都写 `/`；只归一**测试读出来的
+  那一段**，产物路径本身不动。
+- `packages/server/test/builtin-agents.test.ts`（`loadPreinstalledPlugins(t.root)`）与
+  `packages/server/test/skills.test.ts`（`preinstalledSkillNames()` 里同样传 `t.root`）：这两处原先读的是
+  **默认数据根**「库里的预置插件集」，而落盘种子用的是测试自己的临时根 —— 两边只在「这台机器的
+  `~/.adelie/data/plugins` 是空的」时才一致。本机装了 `gpu-model-serving` / `csu-mail` / `lieflat-charts` /
+  `use-offerdao` / `wechat-miniprogram` 五个用户插件，期望集因此比种子多一条 `gpu-model-serving`，三条用例
+  在**代码没问题的机器上**红了（CI 的 runner 没有用户插件，所以那边一直是绿的）。这正是本轮自己撞上的红：
+  它不属 CI，却会让后面每一轮在本机复跑 server 时都得先解释一遍。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）。
+- 整仓 `pnpm format:check` **干净**（1m29s）—— 这就是 CI `style (prettier)` 那一步跑的命令。
+- oxlint 四个改动文件 **0 警告 0 错误**。
+- 逐包 test **`EXIT=0`、0 失败**：ui **131 文件 / 1092 通过** · core **70 通过 / 1 跳过（1452 通过 /
+  6 跳过）** · cli **38 / 561** · web **272 文件 / 3346 通过 / 2 跳过** · server **207 文件 / 3021 通过 /
+  15 跳过**（`--maxWorkers=3`；改前同一套是 205 文件全过 + `builtin-agents` 与 `skills` 两个文件里的 3 条红）。
+- `plugins/use-seedream`：`node --test "test/*.test.mjs"` **12/12**（Linux 上行为不变，归一化对 `/` 是恒等）。
+- **反证（Windows 那一半）**：`path.win32` 复算 `relative('C:\…\run1', 'C:\…\run1\layers\001-base.png')` 得
+  `layers\001-base.png`（改前的断言值），`split(sep).join("/")` 之后是 `layers/001-base.png`（改后），与 CI
+  日志里 `actual` / `expected` 逐字一致；本机没有 Windows，真正的复核留给推送后的 `test-windows (rest)`。
+- **反证（本机那三条）**：`ADELIE_HOME=/tmp/r164-root`（空根）跑那两个文件 **29/29 绿** —— 说明红只在
+  「默认根里有用户插件」时出现；改完 `t.root` 后，**在默认根就是本机真实根的那个进程里**再跑同一对文件
+  **29/29 绿**。
+- 没有界面改动，所以没起服务、没开浏览器；端口一个没碰（3003 / 3004 / 4000 / 7364 / 7369 全程未动）。
+
+### 没做 / 留着
+
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+- 上游那七笔仍压在大前置上（见「选活」）；`#1365` / `#1370` 的 socket 重构跟不跟，仍是拍板项。
+- 0.6.0 的发布收尾（GitHub Release / 下载站 `index.json` / 现网升级）是另一条线在做，本轮一个字节没碰。
+
+### 提交
+
+- 三个测试文件：见「已完成的轮次」那一行；台账（7.55、上表那一行、本节）另起一笔。
