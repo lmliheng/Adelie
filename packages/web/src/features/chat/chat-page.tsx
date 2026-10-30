@@ -102,6 +102,7 @@ import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
+import { SEEDREAM_SKILL, replyImageActionBuilder } from "../../lib/image-actions";
 import { onPluginConfigSaved } from "../../lib/plugin-config-event";
 import { approvalModeChoices } from "./approval-mode";
 import type { ComposerReference } from "../../lib/workspace-tree";
@@ -1580,6 +1581,50 @@ export function ChatPage() {
     composerRef.current?.addReference(reference);
   }, []);
 
+  /**
+   * A reply picture's actions (lib/image-actions.ts), offered only while this Session's Agent has
+   * the image Skill installed — the list is already here for the composer's own Skill picker, and
+   * an Agent without it could only fail, so the picture keeps the bar it has always had.
+   *
+   * Nothing is posted by the browser against an image endpoint: the App has none. "Split into
+   * layers" is one deterministic Seedream call, so it goes out as a turn of the user's own; the
+   * redraw stops at the composer, because what changes is the prompt and generation is billed per
+   * image. Both leave whatever the user had typed alone — the turn is posted directly rather than
+   * through the composer's Send, and only the redraw (a composed prompt, like the schedules
+   * panel's and the draft screen's) takes the text body, which is what that gesture asks for.
+   */
+  const askWithPicture = useCallback(
+    async (message: string) => {
+      if (!selected) return;
+      try {
+        // queueIfBusy: an action tapped while a turn is running joins the queue rather than
+        // failing on a busy Session.
+        await api.postTask(selected.sessionId, {
+          input: [{ type: "text", text: message }],
+          queueIfBusy: true,
+        });
+      } catch (e) {
+        toastError(apiErrorText(e, { modelId: selected.modelId }));
+      }
+    },
+    [selected, toastError],
+  );
+  const composeImageRedraw = useCallback((prompt: string) => {
+    // The Skill rides with the prompt, so pressing Send builds the same [use_skills] message the
+    // one-click action would have posted.
+    composerRef.current?.fillPrompt(prompt, [SEEDREAM_SKILL]);
+  }, []);
+  const imageActions = useMemo(
+    () =>
+      replyImageActionBuilder({
+        skills: agentSkills,
+        words: S.chat.imageAction,
+        ask: (message) => void askWithPicture(message),
+        compose: composeImageRedraw,
+      }),
+    [agentSkills, askWithPicture, composeImageRedraw],
+  );
+
   // A fresh Session row from the server, applied wherever the page reads the row from: the
   // paged list, and the direct lookup's copy for a row the list does not hold (see
   // resolveRoutedSession).
@@ -2008,6 +2053,7 @@ export function ChatPage() {
     },
     onOpenFile: openWorkspaceFile,
     ...(workspaceFileUrl === undefined ? {} : { workspaceFileUrl }),
+    ...(imageActions === undefined ? {} : { imageActions }),
     onOpenSubagent: (sessionId, origin) => {
       // Chip click: the agents tab focused on that child (the focus chain ends with the
       // child's own id), with the graph pinned to this chip's Task.

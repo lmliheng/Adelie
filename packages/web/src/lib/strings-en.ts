@@ -3524,6 +3524,20 @@ export const en: Strings = {
     openPreview: "Click to preview",
     showMoreFiles: (n: number) => `Show ${n} more ${n === 1 ? "file" : "files"}`,
     showLess: "Show less",
+    /**
+     * What a conversation can do with a picture a reply points at, once the picture is open in the
+     * lightbox: the two buttons' words, and the instruction each one carries (see
+     * lib/image-actions.ts). The instruction IS the message — the App has no image endpoint of its
+     * own — and `path` is the picture as the reply named it, relative to the Workspace.
+     */
+    imageAction: {
+      layers: "Split into layers",
+      redraw: "Redraw from this one",
+      layersPrompt: (path: string) =>
+        `Using the seedream skill, split \`${path}\` in the Workspace into layers (--layers), writing the base image and every transparent layer PNG back into the Workspace.`,
+      redrawPrompt: (path: string) =>
+        `Using the seedream skill, make another version of \`${path}\` in the Workspace, with it as the reference image: `,
+    },
     memoryChangesTitle: (n: number) => `${n} memory ${n === 1 ? "update" : "updates"}`,
     memoryScopeWorkspace: (key: string) => `Workspace memory (${key})`,
     memoryOpWrite: "Wrote",

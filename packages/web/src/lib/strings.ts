@@ -3572,6 +3572,22 @@ export const zh = {
     openPreview: "点击预览",
     showMoreFiles: (n: number) => `显示其余 ${n} 个文件`,
     showLess: "收起",
+    /**
+     * What a conversation can do with a picture a reply points at, once the picture is open in the
+     * lightbox: the two buttons' words, and the instruction each one carries. The instruction is
+     * the message itself — the App has no image endpoint of its own, so an action is a sentence to
+     * the Agent rather than a request the browser makes (see lib/image-actions.ts). `path` is the
+     * picture as the reply named it, relative to the Workspace, and the Skill is named so the turn
+     * does not depend on the model reaching for it by itself.
+     */
+    imageAction: {
+      layers: "拆图层",
+      redraw: "照这张改一版",
+      layersPrompt: (path: string) =>
+        `用 seedream 技能把工作区里的 \`${path}\` 拆成图层（--layers），底图和每层透明 PNG 都写回工作区。`,
+      redrawPrompt: (path: string) =>
+        `用 seedream 技能，以工作区里的 \`${path}\` 作为参考图改一版：`,
+    },
     /** Memory-change card below the file summary and the Memory side panel: titles, scope/op tooltips, collapsed row. */
     memoryChangesTitle: (n: number) => `${n} 条记忆更新`,
     memoryScopeWorkspace: (key: string) => `工作区记忆（${key}）`,

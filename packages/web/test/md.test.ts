@@ -31,7 +31,8 @@ const WS = "/home/user/workspaces/tmp-1";
 /**
  * Renders inside a conversation's Workspace, the way MessageStream wraps its items. `onOpenFile`
  * is passed through as given — undefined included — since that is how a stream with no file
- * opener wired renders.
+ * opener wired renders. No picture actions either: this file is about links and srcs, and
+ * image-actions covers what a picture offers once it is open.
  */
 const renderWithOpener = (
   text: string,
@@ -45,6 +46,7 @@ const renderWithOpener = (
       // A conversation serves a picture out of its own file route; reply-image.test.ts covers
       // how a src is sorted, this file covers that the src reaching the DOM is that one.
       fileUrl: (path) => `/api/sessions/s1/files/raw?path=${encodeURIComponent(path)}`,
+      imageActions: undefined,
       children: createElement(Md, { text, streaming }),
     }),
   );

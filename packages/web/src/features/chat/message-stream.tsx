@@ -10,6 +10,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode, RefObject } from "react";
 import { EmptyState, Spinner } from "@adelie/ui";
+import type { LightboxAction } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import type { ChatItem } from "../../lib/omni/stream-model";
 import type { MemoryChangeRow } from "../../lib/omni/memory-changes";
@@ -70,6 +71,13 @@ export interface StreamRenderContext {
    * WorkspaceRefsProvider).
    */
   workspaceFileUrl?: (path: string) => string;
+  /**
+   * What this conversation can do with a picture a reply points at, given the picture's
+   * Workspace-relative path — the lightbox's action row (lib/image-actions.ts). Absent, a picture
+   * opens with the download and the stepping alone. Must be stable, for the same reason
+   * `workspaceFileUrl` must: every picture in the transcript reads it through context.
+   */
+  imageActions?: (path: string) => readonly LightboxAction[] | null;
   /** Opens the subagents panel focused on this child session (subagent chip click); `origin` is the ctx.origin at the chip's render level — the child's ancestor chain, excluding its own id. */
   onOpenSubagent?: (sessionId: string, origin: string[]) => void;
   /** Opens the Memory panel on its list (memory-changes card header); the button doesn't render if this isn't wired up. */
@@ -550,6 +558,7 @@ export function MessageStream({
               workspace={ctx.workspace ?? null}
               onOpenFile={ctx.onOpenFile}
               fileUrl={ctx.workspaceFileUrl}
+              imageActions={ctx.imageActions}
             >
               <MessageItems items={items} ctx={ctx} />
             </WorkspaceRefsProvider>

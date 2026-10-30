@@ -12,8 +12,11 @@
  * inside a dialog closes alone and leaves the dialog up.
  *
  * The bar carries only what the page can really do: save the file (a plain `download` link, no
- * request of its own) and move within the batch. Editing actions a generation service would back
- * have no endpoint behind them here, and a row of buttons that cannot work is worse than none.
+ * request of its own), move within the batch, and whatever the caller's `actions` add. The
+ * package itself knows of no generation service, so it offers none — a row of buttons that cannot
+ * work is worse than none — but a surface that does know of one (a conversation whose Agent has an
+ * image tool) hands its own words and its own work in, and the bar is where they belong: the
+ * gesture starts from the picture, at its own size, in one place rather than two.
  *
  * The close glyph and the size badge hang in the picture's top corners while the picture leaves
  * room for them; on a picture smaller than either chip they are set beside it instead — the size
@@ -34,6 +37,26 @@ import type { LightboxImage } from "./image-board";
 
 export type { LightboxImage };
 
+/**
+ * One thing the surface that opened the lightbox can do with the picture, beside the download.
+ * The lightbox draws the button and owns nothing else about it: the caller writes the word on it,
+ * decides in its own language, and does the work — because whether there is anything to do, and
+ * what, depends on the page rather than on the picture.
+ *
+ * `onSelect` runs after the overlay has closed. That order is the point: the action usually puts
+ * something in the page underneath (a prompt in the composer, a request to the Agent), and doing
+ * it under a scrim leaves the reader looking at the picture they just acted on instead of at the
+ * result.
+ */
+export interface LightboxAction {
+  /** Identity of the action across renders. */
+  key: string;
+  /** The word on the button, in the caller's language. */
+  label: string;
+  /** What the action does, run once the overlay is gone. */
+  onSelect: () => void;
+}
+
 export interface LightboxProps {
   open: boolean;
   src: string;
@@ -48,9 +71,14 @@ export interface LightboxProps {
    * download.
    */
   images?: readonly LightboxImage[];
+  /**
+   * Extra things this page can do with the picture, drawn in the bar after the download. Omitted
+   * or empty, the bar is exactly the download and the stepping (see {@link LightboxAction}).
+   */
+  actions?: readonly LightboxAction[];
 }
 
-export function Lightbox({ open, src, alt, onClose, closeLabel, images }: LightboxProps) {
+export function Lightbox({ open, src, alt, onClose, closeLabel, images, actions }: LightboxProps) {
   const strings = useUiStrings();
   // Closing resets the step, so the next opening starts on the caller's own picture rather than on
   // whichever one the reader last looked at.
@@ -162,7 +190,8 @@ export function Lightbox({ open, src, alt, onClose, closeLabel, images }: Lightb
         </div>
       )}
 
-      {/* The capsule bar: step within the batch on the left, save on the right. */}
+      {/* The capsule bar: step within the batch on the left, save on the right, and whatever the
+          page itself can do with the picture beyond saving it. */}
       <div className="anim-pop flex items-center gap-1 rounded-full border border-line bg-surface px-1.5 py-1">
         {multi && (
           <>
@@ -195,6 +224,22 @@ export function Lightbox({ open, src, alt, onClose, closeLabel, images }: Lightb
           <DownloadIcon />
           <span>{strings.download}</span>
         </a>
+        {/* The page's own actions. The overlay closes first, and the action then runs against the
+            page the picture came from — `close()` also drops the step, so reopening starts on the
+            caller's picture again. */}
+        {actions?.map((action) => (
+          <button
+            key={action.key}
+            type="button"
+            onClick={() => {
+              close();
+              action.onSelect();
+            }}
+            className="flex h-7 items-center rounded-full px-2 text-xs text-fg transition-colors duration-150 hover:bg-surface-muted"
+          >
+            {action.label}
+          </button>
+        ))}
       </div>
     </div>,
     document.body,
@@ -209,6 +254,7 @@ export function ZoomableImage({
   closeLabel,
   lazy = false,
   group,
+  actions,
   ...imgProps
 }: {
   src: string;
@@ -221,6 +267,8 @@ export function ZoomableImage({
   lazy?: boolean;
   /** The batch this picture belongs to, when the caller has one (a message's attachments). */
   group?: readonly LightboxImage[];
+  /** What this page can do with the picture, drawn in the lightbox's bar (see {@link LightboxAction}). */
+  actions?: readonly LightboxAction[];
 } & Omit<ComponentPropsWithoutRef<"img">, "src" | "alt" | "className" | "loading">) {
   const [open, setOpen] = useState(false);
   return (
@@ -244,6 +292,7 @@ export function ZoomableImage({
         onClose={() => setOpen(false)}
         closeLabel={closeLabel}
         {...(group !== undefined ? { images: group } : {})}
+        {...(actions !== undefined ? { actions } : {})}
       />
     </>
   );

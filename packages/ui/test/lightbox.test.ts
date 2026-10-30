@@ -177,6 +177,32 @@ describe("Lightbox's bar", () => {
   });
 });
 
+describe("Lightbox's actions", () => {
+  const actions = [
+    { key: "layers", label: "拆图层", onSelect: noop },
+    { key: "redraw", label: "照这张改一版", onSelect: noop },
+  ] as const;
+
+  it("draws the page's own actions in the bar, in the caller's words", () => {
+    const html = renderStatic(
+      createElement(Lightbox, { open: true, src: "/a.png", alt: "Chart", onClose: noop, actions }),
+    );
+    const labels = [...html.matchAll(/<button[^>]*>([^<]*)<\/button>/g)].map((m) => m[1]);
+    expect(labels).toEqual(["拆图层", "照这张改一版"]);
+  });
+
+  it("leaves the bar exactly as it was when the page offers nothing", () => {
+    const html = lightbox();
+    expect(html).toContain(">Download</span>");
+    expect([...html.matchAll(/<button\b/g)]).toHaveLength(1); // the close glyph, and nothing else
+  });
+
+  it("closes the overlay before running the action, so the page underneath acts in the open", () => {
+    const text = readFileSync(join(SRC_DIR, "components/overlays/lightbox/lightbox.tsx"), "utf8");
+    expect(text).toMatch(/close\(\);\s*\n\s*action\.onSelect\(\);/);
+  });
+});
+
 describe("Lightbox with a batch", () => {
   it("opens on the picture that was clicked, not on the batch's first", () => {
     const [shown] = images(batchOpened());

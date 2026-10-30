@@ -28,7 +28,9 @@
  * A picture is a plain `<img>` — unless a `ProseImagesProvider` above turns `zoomable` on, which is
  * what a conversation does: there a click opens the picture in the lightbox, because a 2000px
  * screenshot fitted to the reading column is too small to read and there was no way to see it whole
- * short of the Files panel. Every other surface keeps the still picture a README expects.
+ * short of the Files panel. Every other surface keeps the still picture a README expects. The same
+ * provider may bring a second resolver saying what can be done with the picture once it is open —
+ * the conversation's Agent having an image tool, say — and those actions ride to the lightbox.
  *
  * Two optional props open the renderer to a surface with its own nodes — the channel message body,
  * which keeps `@mentions` as chips — without a second copy of the pipeline drifting from this one.
@@ -41,6 +43,7 @@ import ReactMarkdown from "react-markdown";
 import type { Components, ExtraProps, Options } from "react-markdown";
 import { CodeBlock } from "../code-block/code-block";
 import { ZoomableImage } from "../../overlays/lightbox/lightbox";
+import type { LightboxAction } from "../../overlays/lightbox/lightbox";
 import { NO_REHYPE_PLUGINS, REHYPE_PLUGINS, REMARK_PLUGINS } from "./markdown-plugins";
 import "katex/dist/katex.min.css";
 import "./prose.css";
@@ -119,6 +122,23 @@ export type ProseImageResolver = (src: string, alt: string) => { src: string } |
 
 const ProseImagesContext = createContext<ProseImageResolver | null>(null);
 
+/**
+ * What a surface above can do with one picture, from the src and alt the Markdown wrote — the
+ * same pair the image resolver gets, so a surface that has already resolved a src to a file can
+ * offer actions about that file. `null` (or an empty list) means nothing beyond the lightbox's
+ * own download and stepping.
+ *
+ * A different question from the resolver's, which says where the picture is FETCHED from: a
+ * surface may serve the file and still have nothing to offer, and the App's own origin serves no
+ * file at all while the actions are about one. Kept apart so each answer stays honest.
+ */
+export type ProseImageActionsResolver = (
+  src: string,
+  alt: string,
+) => readonly LightboxAction[] | null;
+
+const ProseImageActionsContext = createContext<ProseImageActionsResolver | null>(null);
+
 /** Whether a click on a picture below opens it in the lightbox; off unless a provider turns it on. */
 const ProseImageZoomContext = createContext(false);
 
@@ -145,15 +165,25 @@ const ProseInLinkContext = createContext(false);
 export function ProseImagesProvider({
   resolve,
   zoomable = false,
+  actions = null,
   children,
 }: {
   resolve: ProseImageResolver | null;
   zoomable?: boolean;
+  /**
+   * What can be done with the pictures below, on top of the lightbox's download (see
+   * {@link ProseImageActionsResolver}). Only a surface that mounts the lightbox reads it; it
+   * costs a surface that leaves it out nothing, and it too must keep its identity while its
+   * inputs do.
+   */
+  actions?: ProseImageActionsResolver | null;
   children?: ReactNode;
 }): ReactElement {
   return (
     <ProseImageZoomContext.Provider value={zoomable}>
-      <ProseImagesContext.Provider value={resolve}>{children}</ProseImagesContext.Provider>
+      <ProseImageActionsContext.Provider value={actions}>
+        <ProseImagesContext.Provider value={resolve}>{children}</ProseImagesContext.Provider>
+      </ProseImageActionsContext.Provider>
     </ProseImageZoomContext.Provider>
   );
 }
@@ -197,12 +227,14 @@ function MdLink({
  *
  * With `zoomable` above, the picture becomes a {@link ZoomableImage} and a click opens it whole —
  * which is the difference between seeing that a screenshot is a screenshot and reading what is in
- * it. Two cases keep the still `<img>`: an empty src, where there is nothing to enlarge (the
- * lightbox would open on the browser's broken-image placeholder), and a picture the author wrapped
- * in a link (`[![shot](shot.png)](…)`) — there the click is the link's, and a button in an anchor
- * would fire both (measured: the button's own handler, then the anchor's navigation), so the
- * picture would open a tab and an overlay at once. An author who made the picture a link meant the
- * link.
+ * it. A provider that also offered actions hands them to that lightbox; the picture itself stays
+ * exactly the thumbnail it was, because an action row on every picture in a long transcript would
+ * be a gallery of buttons rather than a conversation. Two cases keep the still `<img>`: an empty
+ * src, where there is nothing to enlarge (the lightbox would open on the browser's broken-image
+ * placeholder), and a picture the author wrapped in a link (`[![shot](shot.png)](…)`) — there the
+ * click is the link's, and a button in an anchor would fire both (measured: the button's own
+ * handler, then the anchor's navigation), so the picture would open a tab and an overlay at once.
+ * An author who made the picture a link meant the link.
  */
 function MdImage({
   node: _node,
@@ -212,12 +244,24 @@ function MdImage({
 }: ComponentPropsWithoutRef<"img"> & ExtraProps) {
   const resolve = useContext(ProseImagesContext);
   const zoomable = useContext(ProseImageZoomContext);
+  const actions = useContext(ProseImageActionsContext);
   const inLink = useContext(ProseInLinkContext);
   const written = typeof src === "string" ? src : "";
   const resolved = written === "" ? null : (resolve?.(written, alt ?? "") ?? null);
   const href = resolved?.src ?? written;
   if (zoomable && !inLink && href !== "") {
-    return <ZoomableImage src={href} alt={alt ?? ""} lazy {...imageProps} />;
+    // Asked with the src as WRITTEN, not the href the resolver produced: the surface above is the
+    // one that knows what that src names, and a file route's URL says nothing a caller can use.
+    const picture = actions?.(written, alt ?? "") ?? null;
+    return (
+      <ZoomableImage
+        src={href}
+        alt={alt ?? ""}
+        lazy
+        {...(picture !== null && picture.length > 0 ? { actions: picture } : {})}
+        {...imageProps}
+      />
+    );
   }
   return (
     <img {...imageProps} {...(href === "" ? {} : { src: href })} alt={alt ?? ""} loading="lazy" />

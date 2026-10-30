@@ -181,6 +181,24 @@ describe("Md images", () => {
     expect(html).not.toContain("src=");
   });
 
+  it("ask the actions resolver about the src as written, not the one the resolver produced", () => {
+    // What the surface above can do with the picture depends on what its src NAMES — a Workspace
+    // path — whereas the URL it renders is that surface's own private spelling (a file route).
+    const seen: [string, string][] = [];
+    renderStatic(
+      createElement(ProseImagesProvider, {
+        resolve: () => ({ src: "/api/sessions/s1/files/content?path=a.png" }),
+        zoomable: true,
+        actions: (src, alt) => {
+          seen.push([src, alt]);
+          return null;
+        },
+        children: createElement(Md, { text: "![截图](a.png)" }),
+      }),
+    );
+    expect(seen).toEqual([["a.png", "截图"]]);
+  });
+
   it("leave a picture the author wrapped in a link to that link", () => {
     const html = renderStatic(
       createElement(ProseImagesProvider, {
