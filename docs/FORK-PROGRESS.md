@@ -1810,6 +1810,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       分组没有这个动作、账号自己的表读过不被消费、被拒一次时框里什么都不丢。**反证**：把正文那一处
       退回、重建 Web 产物，同一个套件里**只有**「被拒」那条红，红在「框里找不到那条勾选框」——
       改前的框里只剩一段红字（截图与框内原文都留在 scratchpad 的 `r165/`）。见「第一百六十五轮」一节。
+- [x] **7.57 会话内换模型的确认框：正文跟着「压缩失败就直接切换」那个勾选框走；这条动作进了浏览器套件**
+      （**2026-10-31 第一百六十六轮**落地，提交见该节；文案一对 + `chat-page.tsx` 一处正文取值 +
+      1 个新 spec + changelog 一对，**不碰接口、无新依赖**）：`packages/web/e2e/
+      model-switch-discard.spec.mjs` 三条用例把 2026-10-30 落的「模型没额度了也能在这次对话里换掉它」
+      （`9eeb78d6`，此前只有 core / server 的用例与纯函数的单测，浏览器里一条都没有）钉进真服务：
+      不勾时框关着、正文承诺「压缩失败则保持当前模型」、请求体只有 `{provider, modelId}`；勾上后正文
+      换成放弃摘要那句、请求体带 `onCompactionFailure: "discard"`；空会话根本没有这个勾选框。写这条
+      用例时撞上正文与勾选框**互相矛盾**（勾上以后正文仍写着「保持」），同轮修掉。**反证**：只把
+      `chat-page.tsx` 退回、重建 Web 产物，同一个套件里**只有**「勾上」那条红，红在「正文仍写着保持」
+      —— 两态截图与正文原文留在 scratchpad 的 `r166/`。见「第一百六十六轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2480,6 +2490,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-30 | 7.54 | **回复里的图片点开看全图，进了浏览器套件**（`packages/web/e2e/reply-image.spec.mjs` 末尾续第 4 段：点第一张图 → `.ui-scrim` 0 → 1 层、`src` 仍是会话文件路由、角标 `2 × 2`、`download="shot.png"`、单张图没有步进按钮，Esc 之后覆盖层消失而三张图仍在；**只加用例、不碰产品代码、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（+1 跳过）/ 1452 通过 / 6 跳过** · ui **131 / 1084** · cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · server **206 / 3013 通过 / 15 跳过**（首跑 2 条红是 `load average 7.8` 下的并行超时，两个文件单跑 24/24 绿，`--maxWorkers=3` 复跑全绿） · 改动文件 `prettier --check` 干净 · **真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r162`、服务端 8972、mock 8971、系统 chromium 1280×900）：改后 **1 passed**，探针读数 —— 缩略图 **768×480** → 点开 **978×612**、角标 `1600 × 1000`、`download="shot.png"`、步进按钮 0 个、Esc 后图 3 张仍在；**反证** 关掉 `prose.tsx` 的 `zoomable` 重建 web → 红在 `.md-body button img` 期望 3 实得 0 · console 两态只有一条既有的 `403 …/machines`、无 pageerror · 端口只用 8972 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `9544162e` |
 | 2026-10-30 | 7.55 | **CI 两处红转绿 + 本机才红的三条测试脆弱**（不是移植；**测试面三处，产品代码零改动**）：①`packages/server/test/models.test.ts` 一行按 prettier 折开（第一百六十三轮那笔带上来没折，`style (prettier)` 因此红）；②`plugins/use-seedream/test/seedream.test.mjs` 新增 `relativeTo(dir, absolute)` —— 套件报的 `paths` 是绝对路径，断言里写的名字是 `/` 分隔的（SKILL.md 给用户看的也是 `/`），Windows 上 `path.relative` 给 `\`，三条用例因此红，现在统一按 `path.sep` 归一；③`packages/server/test/builtin-agents.test.ts` 与 `skills.test.ts` 的预置技能集改成从**测试自己的根**（`t.root`）读库 —— 原先走 `loadPreinstalledPlugins()` 的默认根，本机 `~/.adelie/data/plugins` 里的 `gpu-model-serving` 等用户插件混进期望集，三条用例在「代码没问题的机器上」红 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型）· 整仓 `pnpm format:check` **干净**（1m29s）· oxlint 四个改动文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`、0 失败**：ui **131 / 1092** · core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · cli **38 / 561** · web **272 / 3346 通过 / 2 跳过** · server **207 文件 / 3021 通过 / 15 跳过**（改前同一套是 205 文件全过 + 2 文件 3 条红）· `plugins/use-seedream` `node --test` **12/12** · **反证（Windows 那一半）**：`path.win32` 复算 `relative(dir, abs)` 得 `layers\001-base.png`（改前断言值），归一后 `layers/001-base.png`（改后），与 CI 日志里 actual / expected 逐字一致 · **反证（本机那三条）**：`ADELIE_HOME` 指向空目录时三条本来就是绿的，指向本机真实根就红；改成 `t.root` 后**同一个真实根的进程里 29/29 全绿** · 没有界面改动，所以没起服务、没开浏览器 · 端口一个没碰，数据只落在测试自己的临时根与 `/root/adelie-fork-data` 之外的两份仓库构建产物里 | 见本行提交 |
 | 2026-10-31 | 7.56 | **分配用户密钥被拒时原因留在列表上方，这条动作进了浏览器套件**（不是移植：源码 1 处 `packages/web/src/features/models/models-page.tsx` 的 `AssignUserKeyDialog` 正文结构 —— 「原因 / 骨架屏 / 空态 / 列表」四选一改成「原因（可有）」+ 三者之一，读失败时只剩原因；1 个新文件 `packages/web/e2e/models-assign-user-key.spec.mjs`（3 条：空账号的指路与不可点、勾一条全局密钥落到分组全部模型并以服务端掩码为准、自定义分组无此动作、账号表不被消费、被拒一次框里什么都不丢且重试落地）；changelog 一对。**无新依赖、不碰接口、无新文案**）：这是第一百六十四轮之后新露出来的一条 —— 另一条线 2026-10-30 落的「从用户密钥分配」有服务端用例与分组头部单测、浏览器里一条都没有；写这条用例时撞上它的拒绝路径把密钥列表整块顶掉，于是同轮修掉 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 两个改动文件 `prettier --check` 干净 · `oxlint` **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：web **272 文件 / 3346 通过 / 2 跳过** · core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · ui **131 / 1092** · cli **38 / 561** · server **207 文件 / 3021 通过 / 15 跳过** · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r165-1`、服务端 **8990**、mock LLM **8971**、系统 chromium 1280×900）：新 spec **3 passed（7.3 s）**，按最终源码重建 Web 产物后复跑仍 3 passed · **反证**：退回正文那一处并重建 Web 产物 → 同一个套件里**只有第三条红**（`getByRole('checkbox', { name: 'PROBE_MODEL_KEY_A' })` `element(s) not found`），改前框内原文只有「标题 + 说明 + `models store is closed` + 取消 / 确认」、勾选框 0 个，改后原因在列表上方、勾选框 1 个且勾选为 true · 两态 console 只有既有的 **403 `…/machines`** 与刻意造的 500，无其它 error、无 pageerror · 端口只用 8990 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r165-1`，探针 / 截图 / 日志在 scratchpad 的 `r165/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d4ad21f8` |
+| 2026-10-31 | 7.57 | **会话内换模型的确认框：正文跟着「压缩失败就直接切换」那个勾选框走，这条动作进了浏览器套件**（不是移植：`packages/web/src/lib/strings{,-en}.ts` 新增 `modelSwitchInSessionBodyDiscard`，`packages/web/src/features/chat/chat-page.tsx` 的正文改成读「形状 + 勾选状态」的一个 `modelSwitchBody`，新文件 `packages/web/e2e/model-switch-discard.spec.mjs` 三条真浏览器用例，`test/model-switch.test.ts` +1 条，changelog 一对。**无新依赖、不碰接口**）：换模型会先用**将要离开的那个模型**压上下文，而模型整个不可用（额度用尽、凭据被拒）时它自己压不动，`9eeb78d6` 因此给确认框加了一个默认不勾的「压缩失败就直接切换（放弃摘要）」—— 但正文仍写着「压缩失败则保持『当前模型』」，勾上之后同一框里两句相反。现在正文跟着勾选框走，换模型本身一字未改 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`、0 失败**：web **272 文件 / 3347 通过 / 2 跳过**（+1 正是本笔的新单测）· core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · ui **131 / 1092** · cli **38 / 561** · server **207 文件 / 3021 通过 / 15 跳过**（`--maxWorkers=3`）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r166`、服务端 **8991**、仓库自带 mock LLM **8981**、系统 chromium 1280×900）：新 spec **3 passed（9.5 s）**，按最终源码重建 Web 产物后复跑仍 **3 passed**；单跑探针读到两态正文 —— 不勾 `…压缩失败则保持「claude-4-8」。`／勾上 `…压缩失败则放弃摘要，直接以「claude-4-7」继续。`，勾选后发出的请求体是 `{"provider":"custom","modelId":"claude-4-7","onCompactionFailure":"discard"}`、不勾时没有那个字段，确认后 `202` 的提示条出现（截图 `r166/shots/{01-unchecked,02-checked}.png`）· **反证**：只把 `chat-page.tsx` 退回 `HEAD` 那一版、重建 Web 产物 → 同一个套件**只有「勾上」那条红**（红在正文仍写着「保持」，另两条绿），放回本笔 → **3 全过** · console 两态只有既有的 **403 `…/machines`**（非管理员账号的既有行为，两态一模一样），无 pageerror · 端口只用 8991 / 8981（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r166`，探针 / 两态截图 / 日志在 scratchpad 的 `r166/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -19386,3 +19397,80 @@ socket 重构上。
 ### 提交
 
 - 源码 + 用例 + changelog：**`d4ad21f8`**；台账（7.56、上表那一行、本节）另起一笔。
+
+## 第一百六十六轮：换模型确认框的正文跟着「放弃摘要」那个勾选框走，这条动作进了浏览器套件（2026-10-31，条目 7.57）
+
+### 开工自检
+
+`main` = `963957f7`（第一百六十五轮的台账提交），`git status --short` **干净**，`git fetch origin` 成功、
+与 `origin/main` 同号（没有可 ff 的提交）。工作树里没有另一条线的痕迹，`ps` 里没有本树相关进程。
+**注意**：`FORK-PROGRESS.md` 与 `FORK.md` 已在 2026-10-30 被收进 `docs/`（`4351221c`），本轮按新路径读。
+磁盘仍然吃紧（69G 用满、余 ~390M），构建与测试都跑得下，一次性数据根只用一份（`r166`）。
+
+### 选活：待办全卡着，接着 7.56 那一族，把前一笔界面动作的确认框补进套件
+
+表上未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、
+4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）。上游这一轮的尖端仍是 `e2bc3fbf`：`#1399` / `#1400`
+是 README 与微信群（文档面），`#1374` 加四个插件（要改预置插件集与抽屉），`#639` 是终端跨移动网络的
+socket 层（本树没有），`#1390` 要先把 `plugins/agent-evaluation` 搬进来（本树没有那个插件，实测
+`plugins/` 里没有 `agent-evaluation`）—— 都不属一轮的量。
+
+于是照 7.54 / 7.56 那一族继续看**上一笔落在界面上的东西**：2026-10-30 00:13 落的「模型没额度了，也能在
+这次对话里换掉它」（`9eeb78d6`）给会话内换模型的确认框加了一个默认不勾的「压缩失败就直接切换（放弃
+摘要）」，随提交带的是 core / server 用例与 web 的纯函数单测，**浏览器里一条都没有** —— 而这个勾选框
+的全部作用就是改它发出去的那个请求字段。写用例时撞上它的正文与勾选框**互相矛盾**（见下），同轮修掉。
+
+### 做了什么
+
+- `packages/web/src/lib/strings{,-en}.ts`：新键 `modelSwitchInSessionBodyDiscard(from, to)` —— 勾上时
+  那一版正文（「压缩失败则放弃摘要，直接以『目标』继续」／"…the conversation still moves to …, without
+  a summary."）。原来的 `modelSwitchInSessionBody` 一字未改，它就是「不勾」那一版。
+- `packages/web/src/features/chat/chat-page.tsx`：确认框的正文从 JSX 里的嵌套三元挪出来成一个
+  `modelSwitchBody` 值，按「形状 + 勾选状态」取值；注释写明为什么那一句不能与勾上的框并排 ——
+  它承诺「压缩失败则保持当前模型」，而勾上的框与接下来的行为正好相反。
+- `packages/web/test/model-switch.test.ts`：+1 条，中文新句逐字、两种语言的「放弃摘要」版都不再出现「保持」。
+- `packages/web/e2e/model-switch-discard.spec.mjs`（新，三条真浏览器用例）：
+  ① 不勾 → 框关着、正文承诺「保持」、请求体只有 `{provider, modelId}`，确认后 202 的提示条出现；
+  ② 勾上 → 正文换成放弃摘要那句、「保持」那句消失、请求体带 `onCompactionFailure: "discard"`；
+  ③ 没有上下文可压的会话（从没跑过）→ 按钮写「切换」，框里没有这个勾选框。
+  目标模型用 `claude-4-7`：`custom` 的 `modelId` 必须是引擎认识的 client type，`haiku-x`（`chat-tweaks`
+  里那个只用来开选择器、从不真的切）会被服务端以 `409 model_unavailable` 退回 —— 本轮实测踩到。
+- `changelog/unreleased/2026-10-31-model-switch-body-follows-discard{,zh}.md`：中英一对。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 /
+  591 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：web **272 文件 / 3347 通过 / 2 跳过**（+1 即本笔新单测）· core
+  **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · ui **131 / 1092** · cli **38 / 561** · server
+  **207 文件 / 3021 通过 / 15 跳过**（`--maxWorkers=3`）。
+- 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r166`、服务端 **8991**（`HOST=::`）、
+  仓库自带 mock LLM **8981**、系统 chromium 1280×900）：新 spec **3 passed（9.5 s）**，按最终源码重建
+  Web 产物后复跑仍 **3 passed**。探针单跑读到两态正文：不勾 `将先用当前模型「claude-4-8」压缩上下文，
+  成功后以「claude-4-7」继续本对话；压缩失败则保持「claude-4-8」。`；勾上 `…压缩失败则放弃摘要，
+  直接以「claude-4-7」继续。`；发出的请求体分别是 `{"provider":"custom","modelId":"claude-4-7"}` 与
+  `{"provider":"custom","modelId":"claude-4-7","onCompactionFailure":"discard"}`；确认后 `202` 的提示条
+  「正在用「claude-4-8」压缩上下文，完成后切换到「claude-4-7」。」出现。
+- **反证**：只把 `chat-page.tsx` 退回 `HEAD` 那一版（文案文件保留）、重建 Web 产物 → 同一个套件里
+  **只有「勾上」那条红**（红在 `expect(dialog).not.toContainText('压缩失败则保持「claude-4-8」')`，
+  另两条照旧绿），放回本笔再跑 → **3 全过**。
+- **console**：两态只有一条既有的 **403 `…/api/projects/…/machines`**（非管理员账号的既有行为），
+  无其它 error、无 pageerror。
+- 端口只用 8991 / 8981（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r166`，探针 / 两态截图 / 日志在 scratchpad 的 `r166/` 下
+  （`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+- 勾上之后**真的压缩失败**、上下文被丢弃的那条端到端路径仍只有 core / server 的用例
+  （`model-switch.test.ts` / `session-switch-model.test.ts`）与 `discard` 事件：浏览器里要造一次
+  「压不动」得让模型整个失败，而 mock 的失败分支（`quota fatal test`）挂在对话内容上、会连同这一轮
+  回复一起失败 —— 属另一条的口径。
+- 上游那几笔仍压在同一处前置上（见「选活」）。
+- 0.6.0 的发布收尾是另一条线在做，本轮一个字节没碰。
+
+### 提交
+
+- 源码 + 单测 + 用例 + changelog：见本行提交；台账（7.57、上表那一行、本节）另起一笔。
