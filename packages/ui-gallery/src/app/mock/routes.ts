@@ -70,6 +70,7 @@ import type {
   ModelProtocolDetectResponse,
   ModelsResponse,
   ModelTestResponse,
+  ModelUserKeyAssignResponse,
   ModelVisionDetectResponse,
   ImportedThemesResponse,
   ThemeRegistryResponse,
@@ -694,6 +695,25 @@ router
   .post("/api/projects/:projectId/models/detect-vision", (): ModelVisionDetectResponse => ({
     outcome: "unsupported",
   }))
+  // One of the account's own global secrets, copied onto a group's models as their key. The
+  // fixture holds no plaintext either, so the rows take the entry's masked value — which is what
+  // the page can see afterwards anyway, the whole point of the flow.
+  .post(
+    "/api/projects/:projectId/models/assign-user-key",
+    ({ store, body }): ModelUserKeyAssignResponse => {
+      const { provider, key } = record(body);
+      const entry = store.f.userVault.entries.find((e) => e.key === key);
+      if (entry === undefined) fail(400, "bad_request", `Not in your user vault: ${str(key)}.`);
+      const createdAt = new Date().toISOString();
+      let applied = 0;
+      for (const m of store.f.models.models) {
+        if (m.provider !== provider) continue;
+        m.credential = { ...(m.credential ?? {}), apiKeyMasked: entry.valueMasked, createdAt };
+        applied += 1;
+      }
+      return { applied };
+    },
+  )
   .post("/api/projects/:projectId/model-oauth/start", () =>
     readOnly("open a provider authorization flow"),
   )

@@ -2151,6 +2151,7 @@ export class SessionApiRoutes {
       machines: this.machines,
       projectConfigService,
       sessionsRepo,
+      userVault: this.userVault,
     };
     const modelDeps = {
       channels,
@@ -2159,6 +2160,7 @@ export class SessionApiRoutes {
       projectConfigService,
       access,
       sessionsRepo,
+      userVault: this.userVault,
     };
     this.modelOauthCallbackRoutes = modelOAuthCallbackRoutes(modelOAuthDeps);
     this.modelsRoutes = modelsRoutes(modelDeps);

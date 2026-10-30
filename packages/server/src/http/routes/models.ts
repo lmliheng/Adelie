@@ -4,8 +4,9 @@
  * POST /api/projects/:p/models/test, POST /api/projects/:p/models/detect,
  * POST /api/projects/:p/models/list, POST /api/projects/:p/models/detect-vision (the model
  * reference `(provider, modelId)` is sent as a pair in the request body, avoiding
- * URL-encoding issues), GET /api/projects/:p/models/balance. Any member can read (api_key is
- * masked) and read a group's balance; only the owner can modify, test, or detect.
+ * URL-encoding issues), POST /api/projects/:p/models/assign-user-key, GET
+ * /api/projects/:p/models/balance. Any member can read (api_key is masked) and read a group's
+ * balance; only the owner can modify, test, or detect.
  */
 import { Hono } from "hono";
 import type {
@@ -17,6 +18,7 @@ import type {
   ModelsUpdateRequest,
   ModelTestRequest,
   ModelUpdateEntry,
+  ModelUserKeyAssignResponse,
   ModelVisionDetectRequest,
   ServerEvent,
 } from "../../api/types.js";
@@ -28,6 +30,7 @@ import type { SessionManager } from "../../runtime/session-manager.js";
 import type { SessionIndex } from "../../mechanisms/sessions.js";
 import type { Access, ProjectConfigStore } from "../../mechanisms/projects.js";
 import type { Machines } from "../../machines/service.js";
+import type { UserVault } from "../../mechanisms/vault.js";
 import { ModelBalances } from "../../services/model-balance.js";
 
 /** What this route group reaches — bound by its module (src/modules). */
@@ -39,6 +42,8 @@ export interface ModelsRouteDeps {
   projectConfigService: ProjectConfigStore;
   access: Access;
   sessionsRepo: SessionIndex;
+  /** The caller's own user-level vault: the source of an assigned key (assign-user-key). */
+  userVault: UserVault;
 }
 
 /**
@@ -226,6 +231,33 @@ export function modelsRoutes(deps: ModelsRouteDeps): Hono<AppEnv> {
     const req = parseModelsUpdate(await readJson(c));
     const res = await deps.projectConfigService.updateModels(projectId, req);
     modelConfigChanged(deps, projectId);
+    return c.json(res);
+  });
+
+  // One entry of the caller's own user-level vault, written as this group's api_key. It exists
+  // because the browser cannot do it: every user-vault response is masked, so the value is only
+  // ever read here, server-side, and written straight into the Project's model config — which is
+  // why the request names a key and not a value. Like the Agent-side assign, it is a COPY: the
+  // group keeps what it was given, and a later edit of the global entry has to be assigned again.
+  // Owner-only, like every other write to the model config; the page offers the action only for
+  // groups whose rows share one endpoint (custom's, each reaching its own, is left out).
+  app.post("/assign-user-key", async (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectOwner(c.var.user.userId, projectId);
+    const body = await readJson(c);
+    const provider = requireString(body, "provider", {
+      minLen: 1,
+      maxLen: 64,
+      label: "provider",
+    });
+    const key = requireString(body, "key", { minLen: 1, maxLen: 128, label: "key" });
+    const value = await deps.userVault.readEntry(c.var.user.userId, key);
+    if (value === undefined) {
+      throw badRequest(`Not in your user vault: ${key}.`);
+    }
+    const applied = await deps.projectConfigService.setGroupApiKey(projectId, provider, value);
+    if (applied > 0) modelConfigChanged(deps, projectId);
+    const res: ModelUserKeyAssignResponse = { applied };
     return c.json(res);
   });
 

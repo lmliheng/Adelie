@@ -2158,6 +2158,19 @@ export const en: Strings = {
     groupApiKeyHint: (n: number): string =>
       `Applies to all ${n} models in this group; leave empty to keep them unchanged.`,
     getApiKey: "Manage keys",
+    /**
+     * Copying one of the account's own global secrets onto a group as its API key (the group
+     * header's action beside Enter key). The value never comes back from the server, so the person
+     * picks an ENTRY and the server performs the copy — the copy wording matches the Agent vault's
+     * own assign dialog, because it is the same kind of operation.
+     */
+    assignUserKey: "Assign a user key",
+    assignUserKeyTitle: (label: string): string => `Assign one of your user keys to ${label}`,
+    assignUserKeyHint: (n: number): string =>
+      `Pick one of your global secrets; it is copied onto all ${n} models in this group as their API key. A later edit of the global entry has to be assigned again.`,
+    assignUserKeyEmpty:
+      "Your user keys table is empty — add one from the account menu's User keys row first, then come back here.",
+    assignUserKeyMissing: "This group has no models to write the key to",
     getModelIds: "Get model IDs",
     groupKeyApplied: (n: number): string => `API key set for ${n} models`,
     oauthKey: "Connect",

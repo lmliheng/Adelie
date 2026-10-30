@@ -31,4 +31,11 @@ export abstract class UserVault {
     agentId: string,
     keys: string[],
   ): Promise<VaultResponse>;
+  /**
+   * One entry's plaintext, for a copy into something that is not a vault — today a Project's
+   * model credential (POST /api/projects/:p/models/assign-user-key). Nothing that builds a
+   * response calls this: the value must not cross the boundary, so its caller is a route that
+   * writes it into another file on this server. Undefined when the account has no such key.
+   */
+  abstract readEntry(userId: string, key: string): Promise<string | undefined>;
 }

@@ -1408,6 +1408,27 @@ export interface UserVaultAssignRequest {
   keys: string[];
 }
 
+/**
+ * POST /api/projects/:p/models/assign-user-key body: ONE entry of the caller's own user-level
+ * vault, written as the api_key of every model in a provider group. A copy, not a link: the
+ * group's models keep the value they were given, so a later change to the global entry has to
+ * be assigned again.
+ *
+ * The name, not the value: only the server can read the plaintext (the user vault is masked on
+ * every response), so the browser asks for the copy and the server performs it.
+ */
+export interface ModelUserKeyAssignRequest {
+  /** The provider group whose models take the key — the group's header is where this is asked. */
+  provider: string;
+  /** The user-level entry's key name; it must exist in the caller's own user-level vault. */
+  key: string;
+}
+
+/** …the outcome: how many models of that group took the key (the same count the group-key flow reports). */
+export interface ModelUserKeyAssignResponse {
+  applied: number;
+}
+
 // ---------------------------------------------------------------------------
 // Agent and its config (system_config.yaml + AGENTS.md)
 // ---------------------------------------------------------------------------

@@ -5,10 +5,11 @@
  *
  * The matrix, per group kind: the balance where the catalog declares one (TokenDance, DeepSeek)
  * and the group holds a key; Connect with its status on the three groups with a flow; Enter key
- * everywhere but custom; the speed test everywhere; Add model only where hand-added models are
- * taken (custom, vLLM, user-defined); Delete group only on a user-defined group. A member keeps
- * the two read-only parts and nothing that writes. A divider follows the balance wherever
- * something comes after it.
+ * and Assign a user key everywhere but custom (whose rows each reach their own endpoint, so one
+ * key written across them is never right); the speed test everywhere; Add model only where
+ * hand-added models are taken (custom, vLLM, user-defined); Delete group only on a user-defined
+ * group. A member keeps the two read-only parts and nothing that writes. A divider follows the
+ * balance wherever something comes after it.
  */
 import { describe, expect, it } from "vitest";
 import { MODEL_PROVIDERS, providerInfo } from "@adelie/core/model-catalog";
@@ -33,20 +34,32 @@ const keyed = [{ credential: { apiKeyMasked: "sk-t…1234" } }, {}];
 const keyless = [{}, { credential: {} }];
 
 describe("the group header's actions, in order, by group kind", () => {
-  it("TokenDance: balance once a key is stored, Connect, Enter key, speed test — no Add model", () => {
-    expect(owner("tokendance", true)).toEqual(["balance", "connect", "groupKey", "speedTest"]);
+  it("TokenDance: balance once a key is stored, Connect, Enter key, Assign a user key, speed test — no Add model", () => {
+    expect(owner("tokendance", true)).toEqual([
+      "balance",
+      "connect",
+      "groupKey",
+      "assignUserKey",
+      "speedTest",
+    ]);
     // Without a key there is nothing to ask the vendor with.
-    expect(owner("tokendance", false)).toEqual(["connect", "groupKey", "speedTest"]);
+    expect(owner("tokendance", false)).toEqual([
+      "connect",
+      "groupKey",
+      "assignUserKey",
+      "speedTest",
+    ]);
   });
 
   it("Penguin Go and ModelScope connect; a connected Penguin Go also syncs its catalog", () => {
-    expect(owner("penguin-go", false)).toEqual(["connect", "groupKey", "speedTest"]);
-    expect(owner("penguin-go", true)).toEqual(["connect", "platformSync", "groupKey", "speedTest"]);
-    expect(owner("modelscope", true)).toEqual(["connect", "groupKey", "speedTest"]);
+    const tail = ["groupKey", "assignUserKey", "speedTest"];
+    expect(owner("penguin-go", false)).toEqual(["connect", ...tail]);
+    expect(owner("penguin-go", true)).toEqual(["connect", "platformSync", ...tail]);
+    expect(owner("modelscope", true)).toEqual(["connect", ...tail]);
   });
 
   it("DeepSeek shows its balance and connects nowhere; the other vendors and gateways key and test only", () => {
-    expect(owner("deepseek", true)).toEqual(["balance", "groupKey", "speedTest"]);
+    expect(owner("deepseek", true)).toEqual(["balance", "groupKey", "assignUserKey", "speedTest"]);
     for (const id of [
       "openrouter",
       "siliconflow",
@@ -55,15 +68,21 @@ describe("the group header's actions, in order, by group kind", () => {
       "openai",
       "google",
     ]) {
-      expect(owner(id, true), id).toEqual(["groupKey", "speedTest"]);
+      expect(owner(id, true), id).toEqual(["groupKey", "assignUserKey", "speedTest"]);
     }
   });
 
   it("vLLM, custom and user-defined groups take hand-added models; only a user-defined group deletes", () => {
-    expect(owner("vllm")).toEqual(["groupKey", "speedTest", "addModel"]);
-    // Custom's rows each reach their own endpoint: no key written across them.
+    expect(owner("vllm")).toEqual(["groupKey", "assignUserKey", "speedTest", "addModel"]);
+    // Custom's rows each reach their own endpoint: no key written across them, by either action.
     expect(owner("custom")).toEqual(["speedTest", "addModel"]);
-    expect(owner("my-own-group")).toEqual(["groupKey", "speedTest", "addModel", "deleteGroup"]);
+    expect(owner("my-own-group")).toEqual([
+      "groupKey",
+      "assignUserKey",
+      "speedTest",
+      "addModel",
+      "deleteGroup",
+    ]);
   });
 
   it("Add model appears on no built-in group but custom and vLLM", () => {
@@ -81,9 +100,14 @@ describe("the group header's actions, in order, by group kind", () => {
   });
 
   it("a pinned balance stays in its header after the key is gone, so the pin can come off there", () => {
-    expect(owner("deepseek", false, true)).toEqual(["balance", "groupKey", "speedTest"]);
+    expect(owner("deepseek", false, true)).toEqual([
+      "balance",
+      "groupKey",
+      "assignUserKey",
+      "speedTest",
+    ]);
     // Only where the catalog declares a balance at all.
-    expect(owner("openrouter", false, true)).toEqual(["groupKey", "speedTest"]);
+    expect(owner("openrouter", false, true)).toEqual(["groupKey", "assignUserKey", "speedTest"]);
   });
 });
 
@@ -93,6 +117,7 @@ describe("a key lent by the server's environment", () => {
     expect(groupHeaderActions(group("deepseek"), facts)).toEqual([
       "balance",
       "groupKey",
+      "assignUserKey",
       "speedTest",
     ]);
     expect(groupHeaderActions(group("deepseek"), { ...facts, isOwner: false })).toEqual([

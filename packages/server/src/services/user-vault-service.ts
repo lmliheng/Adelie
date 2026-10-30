@@ -8,12 +8,15 @@
  * response carries masked values only — plaintext never leaves the server, the responses of a
  * write included.
  *
- * "Assign to an Agent" is the one cross-scope operation here, and it is a COPY: the named entries
- * are written into that Agent's own `.vault.toml` by the Agent config service — this service never
- * touches that file, and the Agent vault keeps its single writer. Same key overwrites, the Agent's
+ * "Assign to an Agent" and "assign to a group's models" are the two cross-scope operations here,
+ * and both are a COPY: the named entries are written into that Agent's own `.vault.toml` by the
+ * Agent config service — this service never touches that file, and the Agent vault keeps its
+ * single writer — or, for a model, the named entry's value goes into the Project's model
+ * credential (routes/models.ts reads it through {@link UserVaultService.readEntry}, which is why
+ * that read takes one key and never appears in a response). Same key overwrites, the Agent's
  * other entries stay. Nothing reads the user vault at Session time, so a later change to a
- * user-level entry does not reach an Agent that was assigned before it: the Agent keeps what it
- * was given until the user assigns again.
+ * user-level entry does not reach a target that was assigned before it: it keeps what it was
+ * given until the user assigns again.
  *
  * Lives in the Agents module because assigning reaches the Agent config service (the Agent's own
  * vault), whose existence check and masked read both come from there; the API layer reaches the
@@ -116,6 +119,15 @@ export class UserVaultService implements UserVault {
     const next = { ...prev, ...checked };
     await saveUserVault(this.root, userId, next);
     return maskTable(next);
+  }
+
+  /**
+   * One entry's plaintext, for a caller that writes it into another file on this server (the
+   * model credential; see the mechanism). A key the account does not have is `undefined` rather
+   * than an empty string, so the caller can name the failure.
+   */
+  async readEntry(userId: string, key: string): Promise<string | undefined> {
+    return (await loadUserVault(this.root, userId))[key];
   }
 
   /** Copy named user-level entries into one Agent's vault (see the module doc: a copy, not a link). */

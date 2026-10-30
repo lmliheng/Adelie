@@ -42,6 +42,7 @@ import type {
   ModelTestRequest,
   ModelUpdateEntry,
   ModelVisionDetectRequest,
+  VaultEntryInfo,
 } from "@adelie/server/api";
 import {
   Button,
@@ -845,6 +846,8 @@ export function ModelsPage() {
   const [groupDropHint, setGroupDropHint] = useState<{ key: string; after: boolean } | null>(null);
   /** Vendor group (provider id) currently having its API key configured in bulk. */
   const [groupKeyFor, setGroupKeyFor] = useState<string | null>(null);
+  /** Vendor group (provider id) whose API key is being copied from the account's own user keys. */
+  const [assignKeyFor, setAssignKeyFor] = useState<string | null>(null);
   /** Vendor group (provider id) whose authorization dialog is open (groups that publish a key-minting flow only). */
   const [oauthFor, setOauthFor] = useState<string | null>(null);
   /** Whether the open authorization actually wrote a key — see the dialog's `onClose`. */
@@ -1327,6 +1330,24 @@ export function ModelsPage() {
             <span className={HEADER_LABEL}>{S.models.groupApiKey}</span>
           </Button>
         );
+      case "assignUserKey":
+        // The account's own global secrets, copied onto this group as its API key. It stands
+        // beside Enter key because it writes the same field; what differs is where the value comes
+        // from — and only the server can read it, so the copy is made there (see the dialog).
+        return (
+          <Button
+            size="icon"
+            variant="ghost"
+            className={HEADER_BUTTON}
+            disabled={busy}
+            aria-label={`${S.models.assignUserKey} ${provider.label}`}
+            title={S.models.assignUserKey}
+            onClick={() => setAssignKeyFor(group.provider.id)}
+          >
+            <GlyphIcon d={ICONS.user} size={ICON_SIZE.groupHeaderAction} />
+            <span className={HEADER_LABEL}>{S.models.assignUserKey}</span>
+          </Button>
+        );
       case "speedTest": {
         // One icon for both directions: it starts a run (after the confirmation) and, while
         // its own group's run is going, stops it — the gauge turns into the registry's square in
@@ -1672,6 +1693,25 @@ export function ModelsPage() {
             ).then((outcome) => {
               if (!outcome.ok) toastError(outcome.reason);
             });
+          }}
+        />
+      )}
+
+      {/* The group's key copied from the account's own global secrets. Unlike its neighbours this
+          dialog does its own write (the value lives only on the server, so it cannot go through
+          the page's whole-table PUT): it closes on success and the page reloads the table to show
+          the masked key it now holds. */}
+      {projectId && assignKeyFor !== null && (
+        <AssignUserKeyDialog
+          projectId={projectId}
+          provider={assignKeyFor}
+          providerLabel={MODEL_PROVIDERS.find((p) => p.id === assignKeyFor)?.label ?? assignKeyFor}
+          count={rows?.filter((r) => r.provider === assignKeyFor).length ?? 0}
+          onClose={() => setAssignKeyFor(null)}
+          onAssigned={(applied) => {
+            setAssignKeyFor(null);
+            toastSuccess(S.models.groupKeyApplied(applied));
+            void load();
           }}
         />
       )}
@@ -3997,6 +4037,134 @@ function GroupKeyDialog({
           <Link href={provider.apiKeyUrl} external variant="standalone" className="text-xs">
             {S.models.getApiKey}
           </Link>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Copy one of the account's global secrets onto a group as its API key
+// ---------------------------------------------------------------------------
+
+/**
+ * The account's own user keys, offered one at a time (a model holds ONE key), plus the copy
+ * itself. The list is a fresh read every time the dialog opens and is read-only: editing the
+ * account's table is the account menu's dialog, and this one copies.
+ *
+ * The write is this dialog's own (POST ···/models/assign-user-key) rather than the page's
+ * whole-table PUT, because the value never reaches the browser: the request names the entry and
+ * the server takes the plaintext from the user vault and writes it into the model config. That is
+ * also why the dialog, not the page, reports a refusal — nothing has changed when one comes back.
+ */
+function AssignUserKeyDialog({
+  projectId,
+  provider,
+  providerLabel,
+  count,
+  onClose,
+  onAssigned,
+}: {
+  projectId: string;
+  /** The group's provider id — what the server writes the key onto. */
+  provider: string;
+  providerLabel: string;
+  /** How many models of the group take it (the count the copy reports). */
+  count: number;
+  onClose: () => void;
+  onAssigned: (applied: number) => void;
+}) {
+  const [entries, setEntries] = useState<VaultEntryInfo[] | null>(null);
+  const [picked, setPicked] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const table = await api.getUserVault();
+        if (!cancelled) setEntries(table.entries);
+      } catch (e) {
+        if (!cancelled) setError(apiErrorText(e));
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const confirm = async () => {
+    if (picked === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await api.assignUserKeyToModels(projectId, { provider, key: picked });
+      if (res.applied === 0) {
+        // Nothing was written, so nothing is reported as written: a group with no rows is the
+        // only way here, and it closes nothing.
+        setError(S.models.assignUserKeyMissing);
+        setBusy(false);
+        return;
+      }
+      onAssigned(res.applied);
+    } catch (e) {
+      setError(apiErrorText(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      title={S.models.assignUserKeyTitle(providerLabel)}
+      onClose={onClose}
+      widthClass="sm:max-w-lg"
+      footer={
+        <>
+          <Button size="sm" onClick={onClose}>
+            {S.common.cancel}
+          </Button>
+          <Button
+            size="sm"
+            variant="primary"
+            disabled={busy || picked === null}
+            onClick={() => void confirm()}
+          >
+            {S.common.confirm}
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-3">
+        <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+          {S.models.assignUserKeyHint(count)}
+        </p>
+        {error !== null ? (
+          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
+        ) : entries === null ? (
+          <SkeletonList rows={3} />
+        ) : entries.length === 0 ? (
+          <EmptyState dashed title={S.models.assignUserKeyEmpty} />
+        ) : (
+          <div className="overflow-y-auto rounded-md border border-gray-200 dark:border-gray-800">
+            {entries.map((entry) => (
+              <div
+                key={entry.key}
+                className="flex items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 last:border-b-0 dark:border-gray-800/60"
+              >
+                <Checkbox
+                  checked={picked === entry.key}
+                  // One key per model: picking a second replaces the first, the way a radio would.
+                  onChange={(on) => setPicked(on ? entry.key : null)}
+                  label={<span className="font-mono text-xs">{entry.key}</span>}
+                />
+                <span className="shrink-0 font-mono text-xs text-gray-500 dark:text-gray-400">
+                  {entry.valueMasked}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </Modal>

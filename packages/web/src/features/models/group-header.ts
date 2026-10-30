@@ -4,9 +4,9 @@
  *
  * The actions stand in a fixed order: the balance (where the catalog declares one), then a
  * divider, Connect with its status (groups whose key comes from an authorization flow), Sync (a
- * connected Penguin Go), Enter key, the speed test, Add model (groups that take hand-added
- * models), Delete group (user-defined groups). A member sees what they can read — the balance
- * and the connection status, without its button; every action that writes is the owner's.
+ * connected Penguin Go), Enter key, Assign a user key, the speed test, Add model (groups that take
+ * hand-added models), Delete group (user-defined groups). A member sees what they can read — the
+ * balance and the connection status, without its button; every action that writes is the owner's.
  */
 import {
   MODEL_PROVIDERS,
@@ -28,7 +28,14 @@ export const HEADER_TEXT = "flex h-7 shrink-0 items-center px-1.5 text-xs";
 export const HEADER_LABEL = "hidden text-xs @3xl:inline";
 
 export type GroupHeaderAction =
-  "balance" | "connect" | "platformSync" | "groupKey" | "speedTest" | "addModel" | "deleteGroup";
+  | "balance"
+  | "connect"
+  | "platformSync"
+  | "groupKey"
+  | "assignUserKey"
+  | "speedTest"
+  | "addModel"
+  | "deleteGroup";
 
 /** A row as far as its key is concerned: a stored (masked) key, or one lent by the server's environment. */
 export interface KeyedRowLike {
@@ -96,6 +103,8 @@ export function groupHeaderActions(
   if (provider.id === PENGUIN_GO_PROVIDER_ID && keyStored) actions.push("platformSync");
   // Custom's rows each reach their own endpoint, so one key written across them is never right.
   if (provider.id !== "custom") actions.push("groupKey");
+  // Same gate and same reason: what is copied is one key, and this group's models would share it.
+  if (provider.id !== "custom") actions.push("assignUserKey");
   actions.push("speedTest");
   if (isAddableGroup(provider.id)) actions.push("addModel");
   // A built-in group is catalog identity; a user-defined one exists only through its rows.

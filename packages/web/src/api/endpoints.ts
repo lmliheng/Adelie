@@ -103,6 +103,8 @@ import type {
   ModelsUpdateRequest,
   ModelTestRequest,
   ModelTestResponse,
+  ModelUserKeyAssignRequest,
+  ModelUserKeyAssignResponse,
   ModelVisionDetectRequest,
   ModelVisionDetectResponse,
   OrganizationCreateRequest,
@@ -521,6 +523,18 @@ export const putDefaultModel = (projectId: string, body: DefaultModelUpdateReque
     method: "PUT",
     body,
   });
+
+/**
+ * One of the caller's own global secrets (the account menu's user keys), copied onto every model
+ * of a provider group as its api_key. The request names the entry, never its value: only the
+ * server can read the plaintext, so the copy happens there. A copy, not a link — editing the
+ * global entry afterwards means assigning again.
+ */
+export const assignUserKeyToModels = (projectId: string, body: ModelUserKeyAssignRequest) =>
+  apiFetch<ModelUserKeyAssignResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/models/assign-user-key`,
+    { method: "POST", body },
+  );
 
 /**
  * A group's account balance, read by the server with the group's stored key (the key never

@@ -2205,6 +2205,19 @@ export const zh = {
     groupApiKeyTitle: (label: string): string => `为「${label}」统一配置 API key`,
     groupApiKeyHint: (n: number): string => `将写入该分组下全部 ${n} 个模型；留空不改动。`,
     getApiKey: "前往密钥管理",
+    /**
+     * Copying one of the account's own global secrets onto a group as its API key (the group
+     * header's action beside 填写密钥). The value never comes back from the server, so the person
+     * picks an ENTRY and the server performs the copy — the copy wording matches the Agent vault's
+     * own assign dialog, because it is the same kind of operation.
+     */
+    assignUserKey: "从用户密钥分配",
+    assignUserKeyTitle: (label: string): string => `给「${label}」分配一条全局密钥`,
+    assignUserKeyHint: (n: number): string =>
+      `选一条你的全局密钥，拷贝给该分组下全部 ${n} 个模型作为 API key；之后全局那条改了，要重新分配才会同步。`,
+    assignUserKeyEmpty:
+      "你的用户密钥里还没有条目——先在左下角账号菜单 ›「用户密钥」里添加，再回到这里分配。",
+    assignUserKeyMissing: "这个分组里没有模型，没有可写入的对象",
     getModelIds: "获取模型 id",
     groupKeyApplied: (n: number): string => `已为 ${n} 个模型配置 API key`,
     // 供应商授权取 key（模型分组头部动作）：整个 PKCE 流程都在服务端跑，前端只拿到一个
