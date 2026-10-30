@@ -4140,10 +4140,16 @@ function AssignUserKeyDialog({
         <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
           {S.models.assignUserKeyHint(count)}
         </p>
-        {error !== null ? (
-          <p className="text-xs text-red-600 dark:text-red-400">{error}</p>
-        ) : entries === null ? (
-          <SkeletonList rows={3} />
+        {/* The reason stands ABOVE what this dialog offers, never instead of it: a refused copy
+            writes nothing, leaves the entry picked and keeps 确认 as the retry, so replacing the
+            list would take away the choice that retry repeats — and every other entry one might
+            pick instead — at the very moment the person is deciding what to do about it. Only a
+            failed READ has nothing to list behind it, and that is what replaces the skeleton. */}
+        {error !== null && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
+        {entries === null ? (
+          error === null ? (
+            <SkeletonList rows={3} />
+          ) : null
         ) : entries.length === 0 ? (
           <EmptyState dashed title={S.models.assignUserKeyEmpty} />
         ) : (
