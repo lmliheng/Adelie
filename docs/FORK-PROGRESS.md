@@ -1801,6 +1801,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `built-in Agent provisioning` 与 `skills api` 那三条拿默认数据根读「库里的预置插件」，本机
       `~/.adelie/data/plugins` 里装了 `gpu-model-serving` 等用户插件，于是期望集比落盘的种子多一条 ——
       改成从测试自己的根读。细节、反证与两端读数见「第一百六十四轮」一节。
+- [x] **7.56 分配用户密钥被拒时，原因留在列表上方、不再把列表顶掉；这条动作进了浏览器套件**
+      （**2026-10-31 第一百六十五轮**落地，提交见该节；源码 1 处 `AssignUserKeyDialog` 的正文结构 +
+      1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：`packages/web/e2e/
+      models-assign-user-key.spec.mjs` 三条用例把另一条线 2026-10-30 落的「从用户密钥分配」
+      （`80a71c3f`，此前只有服务端用例与分组头部的单测）钉进真浏览器：空账号被指到「用户密钥」且
+      「确认」不可点、勾一条全局密钥后分组下全部模型拿到同一条（以**服务端回报的掩码**为准）、自定义
+      分组没有这个动作、账号自己的表读过不被消费、被拒一次时框里什么都不丢。**反证**：把正文那一处
+      退回、重建 Web 产物，同一个套件里**只有**「被拒」那条红，红在「框里找不到那条勾选框」——
+      改前的框里只剩一段红字（截图与框内原文都留在 scratchpad 的 `r165/`）。见「第一百六十五轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2470,6 +2479,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-30 | 画板二期 | **点开一张图，图下有能真的做事的胶囊条**（接手在途改动，不是移植：`packages/ui/src/components/overlays/lightbox/image-board.ts` 新增（`stepIndex` 首尾回绕、`pixelSizeLabel` 未加载时闭嘴、`downloadName` 依次取 URL 末段 / `path=` 携带的名字 / `data:` 的类型名 / 兜底），`lightbox.tsx` 的 `Lightbox` 新增 `images` 批（按 `src` 开在被点的那张、缩略图标 `aria-current`、「2 / 3」计数、左右步进、按 `downloadName` 存当前那张、左上角真实像素角标只认已加载那张的读数），`ZoomableImage` 透传 `group`；`packages/ui/src/strings.ts` 三个无障碍键（`download` / `previousImage` / `nextImage`）由 web 的中英词典映射；`packages/web/src/features/chat/chat-input.tsx` 把草稿里已上传的图片当成一批；用例 `packages/ui/test/image-board.test.ts`（新）+ `lightbox.test.ts`（+8 组批、+1 保存名）+ `strings.test.ts`；changelog 中英一对。**没有编造按钮**：编辑、拆图层这类要生成服务支撑的动作一个不放 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`）· `prettier --check` 12 个改动文件干净 · `oxlint` 10 个文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`**：core **70 文件 / 1452 通过 / 6 跳过** · ui **131 文件 / 1084 通过**（+2 文件 / +21 用例）· web **271 文件 / 3339 通过 / 2 跳过** · cli **38 / 561** · server **206 文件 / 3013 通过 / 15 跳过**（首跑 4 条 hook 超时，本机 load 9.2 下整套并行所致，`--maxWorkers=3` 复跑全绿、四个文件单跑 66/66；server 本笔零改动）· **真浏览器**（一次性数据根 `/root/adelie-fork-data/r160`、服务端 8967、mock 8931、系统 chromium 1280×900，两态见正文）：草稿里两张图点开第一张 → 覆盖层 `1 / 2`、角标 `40 × 30`、`下载` 链接 `download="image.png"`、缩略图 2 个；按「下一张图片」→ `2 / 2`、角标 `1280 × 860`；按「上一张图片」→ 回到 `1 / 2`；Esc 关掉后草稿仍留 2 张；console **0 error / 0 pageerror**（`r160/{01-composer,02-open-first,03-next}.png`）· 端口只用 8967 / 8931，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `e62db0f0` |
 | 2026-10-30 | 7.54 | **回复里的图片点开看全图，进了浏览器套件**（`packages/web/e2e/reply-image.spec.mjs` 末尾续第 4 段：点第一张图 → `.ui-scrim` 0 → 1 层、`src` 仍是会话文件路由、角标 `2 × 2`、`download="shot.png"`、单张图没有步进按钮，Esc 之后覆盖层消失而三张图仍在；**只加用例、不碰产品代码、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 文件（+1 跳过）/ 1452 通过 / 6 跳过** · ui **131 / 1084** · cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · server **206 / 3013 通过 / 15 跳过**（首跑 2 条红是 `load average 7.8` 下的并行超时，两个文件单跑 24/24 绿，`--maxWorkers=3` 复跑全绿） · 改动文件 `prettier --check` 干净 · **真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r162`、服务端 8972、mock 8971、系统 chromium 1280×900）：改后 **1 passed**，探针读数 —— 缩略图 **768×480** → 点开 **978×612**、角标 `1600 × 1000`、`download="shot.png"`、步进按钮 0 个、Esc 后图 3 张仍在；**反证** 关掉 `prose.tsx` 的 `zoomable` 重建 web → 红在 `.md-body button img` 期望 3 实得 0 · console 两态只有一条既有的 `403 …/machines`、无 pageerror · 端口只用 8972 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `9544162e` |
 | 2026-10-30 | 7.55 | **CI 两处红转绿 + 本机才红的三条测试脆弱**（不是移植；**测试面三处，产品代码零改动**）：①`packages/server/test/models.test.ts` 一行按 prettier 折开（第一百六十三轮那笔带上来没折，`style (prettier)` 因此红）；②`plugins/use-seedream/test/seedream.test.mjs` 新增 `relativeTo(dir, absolute)` —— 套件报的 `paths` 是绝对路径，断言里写的名字是 `/` 分隔的（SKILL.md 给用户看的也是 `/`），Windows 上 `path.relative` 给 `\`，三条用例因此红，现在统一按 `path.sep` 归一；③`packages/server/test/builtin-agents.test.ts` 与 `skills.test.ts` 的预置技能集改成从**测试自己的根**（`t.root`）读库 —— 原先走 `loadPreinstalledPlugins()` 的默认根，本机 `~/.adelie/data/plugins` 里的 `gpu-model-serving` 等用户插件混进期望集，三条用例在「代码没问题的机器上」红 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型）· 整仓 `pnpm format:check` **干净**（1m29s）· oxlint 四个改动文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`、0 失败**：ui **131 / 1092** · core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · cli **38 / 561** · web **272 / 3346 通过 / 2 跳过** · server **207 文件 / 3021 通过 / 15 跳过**（改前同一套是 205 文件全过 + 2 文件 3 条红）· `plugins/use-seedream` `node --test` **12/12** · **反证（Windows 那一半）**：`path.win32` 复算 `relative(dir, abs)` 得 `layers\001-base.png`（改前断言值），归一后 `layers/001-base.png`（改后），与 CI 日志里 actual / expected 逐字一致 · **反证（本机那三条）**：`ADELIE_HOME` 指向空目录时三条本来就是绿的，指向本机真实根就红；改成 `t.root` 后**同一个真实根的进程里 29/29 全绿** · 没有界面改动，所以没起服务、没开浏览器 · 端口一个没碰，数据只落在测试自己的临时根与 `/root/adelie-fork-data` 之外的两份仓库构建产物里 | 见本行提交 |
+| 2026-10-31 | 7.56 | **分配用户密钥被拒时原因留在列表上方，这条动作进了浏览器套件**（不是移植：源码 1 处 `packages/web/src/features/models/models-page.tsx` 的 `AssignUserKeyDialog` 正文结构 —— 「原因 / 骨架屏 / 空态 / 列表」四选一改成「原因（可有）」+ 三者之一，读失败时只剩原因；1 个新文件 `packages/web/e2e/models-assign-user-key.spec.mjs`（3 条：空账号的指路与不可点、勾一条全局密钥落到分组全部模型并以服务端掩码为准、自定义分组无此动作、账号表不被消费、被拒一次框里什么都不丢且重试落地）；changelog 一对。**无新依赖、不碰接口、无新文案**）：这是第一百六十四轮之后新露出来的一条 —— 另一条线 2026-10-30 落的「从用户密钥分配」有服务端用例与分组头部单测、浏览器里一条都没有；写这条用例时撞上它的拒绝路径把密钥列表整块顶掉，于是同轮修掉 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 两个改动文件 `prettier --check` 干净 · `oxlint` **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：web **272 文件 / 3346 通过 / 2 跳过** · core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · ui **131 / 1092** · cli **38 / 561** · server **207 文件 / 3021 通过 / 15 跳过** · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r165-1`、服务端 **8990**、mock LLM **8971**、系统 chromium 1280×900）：新 spec **3 passed（7.3 s）**，按最终源码重建 Web 产物后复跑仍 3 passed · **反证**：退回正文那一处并重建 Web 产物 → 同一个套件里**只有第三条红**（`getByRole('checkbox', { name: 'PROBE_MODEL_KEY_A' })` `element(s) not found`），改前框内原文只有「标题 + 说明 + `models store is closed` + 取消 / 确认」、勾选框 0 个，改后原因在列表上方、勾选框 1 个且勾选为 true · 两态 console 只有既有的 **403 `…/machines`** 与刻意造的 500，无其它 error、无 pageerror · 端口只用 8990 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r165-1`，探针 / 截图 / 日志在 scratchpad 的 `r165/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d4ad21f8` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -19296,3 +19306,80 @@ prettier 折开）与 `plugins/use-seedream/test/seedream.test.mjs`（新增 `re
   本地这笔的树、父、身份与同一个时间戳在服务端重建 —— 树号 `f902c3e5` 两边一致，正文（含末尾换行）也没被
   吃掉，**服务端算出来的号就是本地的 `884503bc`**，然后 `PATCH refs/heads/main`（`force: false`）指过去，
   本地 `refs/remotes/origin/main` 手工对齐到同一个号，`git status -sb` 干净。
+
+## 第一百六十五轮：分配用户密钥被拒时原因留在列表上方，这条动作进了浏览器套件（2026-10-31，条目 7.56）
+
+### 开工自检
+
+`main` = `eeb2e756`（第一百六十四轮的台账提交），`git status --short` **干净**。`git fetch origin`
+两条通道都不通（`GnuTLS recv error (-110)`，随后 `Failed to connect to github.com port 443`，
+`https://github.com/` 本身 20 秒超时，SSH 仍是 `Permission denied (publickey)`），于是按第一百五十四
+轮那条路用 `api.github.com` 核对尖端：`GET /repos/lmliheng/Adelie/branches/main` 给的正是
+`eeb2e756c4ceb27891b02c8cd5019a7d9f6be2da`，与本地 `HEAD` / `origin/main` 同号，**同步已完成**（没有
+`merge --ff-only` 可做）。工作树里也没有另一条线的痕迹（`/root/penguin-harness` 已不在，
+`ps` 里没有本树相关进程）。
+
+### 选活：待办全卡着，本轮做「刚落的界面动作进套件 + 顺手修它的一处拒绝」
+
+未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、4.1–4.3
+（明令不动）、5.6 / 5.10（拍板 / 新依赖）。上游这一轮多出六笔：`#1399` / `#1400` 是 README 与微信群
+（文档面，本树的 README 早已是自己的）、`#1374` 加四个插件（要改预置插件集与抽屉，另立一条）、
+`#639` 是终端跨移动网络（要本树没有的 socket 层），`#1376` / `#1377` / `#1379` 仍压在那个拍板中的
+socket 重构上。
+
+于是抬头看**上一笔落在界面上的东西**：另一条线 2026-10-30 21:08 落了「模型分组的 key 可以直接从用户
+密钥分配」（`80a71c3f`），服务端有用例、`group-header.ts` 有单测，**浏览器里一条都没有** —— 而这正是
+7.54 / 7.62 那一族的做法（用户点得到的动作，套件里要有一条真浏览器用例）。写这条用例时撞上它的一处
+拒绝路径：`AssignUserKeyDialog` 的正文是「原因 / 骨架屏 / 空态 / 列表」**四选一**，所以写失败时原因
+把列表**顶掉了** —— 勾好的那条、以及能改勾的其余几条一起消失，只剩「取消」和「确认」。这与 7.19–7.50
+那一族立的规矩（拒绝时卡片留着、原因加进去）相反，于是同轮修掉。
+
+### 做了什么
+
+- `packages/web/src/features/models/models-page.tsx`：`AssignUserKeyDialog` 的正文改成「原因（可有）」
+  + 「骨架屏 / 空态 / 列表」三者之一；骨架屏只在**没读到表也没出错**时出现（读失败时框里本来就没有列表，
+  只剩原因一句）。注释写明为什么原因不能顶掉列表：拒绝没有写下任何东西，勾选与「确认」都还在，重试要
+  重复的正是那次勾选。
+- `packages/web/e2e/models-assign-user-key.spec.mjs`（新，三条真浏览器用例）：
+  ① 没有用户密钥的账号 → 框里是要去哪儿添加、「确认」不可点、没有任何勾选框；
+  ② 勾一条全局密钥 → 分组下**全部**模型拿到同一条（断言取的是服务端回报的 `credential.apiKeyMasked`，
+  不是页面的猜测）、自定义分组（`Custom`）**没有**这个动作、卡片上的掩码与回报一致、账号自己的表读过
+  不被消费；顺带钉住「一条模型只拿一条密钥」（勾第二条会顶掉第一条）；
+  ③ 被拒一次 → 框还在、列表还在、勾选还在、服务端一行都没写；放行后同一按钮再点一次就落地。
+  夹具：每个用例自己的账号与项目；表用 `clearApiKey: true` 播种（不带 `apiKey` 的条目会**保留**旧 key，
+  天真的重跑会从上一轮分配的那条开始）。
+- `changelog/unreleased/2026-10-31-assign-user-key-refusal{,zh}.md`：中英一对。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 /
+  591 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：web **272 文件 / 3346 通过 / 2 跳过** · core **70 通过 / 1 跳过
+  （1452 通过 / 6 跳过）** · ui **131 / 1092** · cli **38 / 561** · server **207 文件 / 3021 通过 /
+  15 跳过**（`--maxWorkers=3`）。
+- 两个改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r165-1`、服务端 **8990**、本仓自带
+  mock LLM **8971**、系统 chromium 1280×900）：新 spec **3 passed（7.3 s）**，按最终源码重建 Web 产物
+  后复跑仍 **3 passed**。
+- **反证**：把正文那一处 `git checkout --` 退回、`--filter @adelie/web build` 重建，同一个服务端再跑
+  → **只有第三条红**，红在 `getByRole('dialog', …).getByRole('checkbox', { name: 'PROBE_MODEL_KEY_A' })`
+  `element(s) not found`，另两条照旧绿；改前那次框内的原文（`r165/before-2-dialog-refused.png` 与探针读数）
+  是「标题 + 说明 + `models store is closed` + 取消 / 确认」，**勾选框 0 个**；改后是「标题 + 说明 +
+  原因 + `PROBE_MODEL_KEY_A` `sk-a…2222`（已勾）+ 取消 / 确认」，**勾选框 1 个、勾选状态 true**。
+- **console**：两态各只有一条既有的 **403 `…/api/projects/…/machines`**（非管理员账号的既有行为）与
+  **刻意造的那次 500**（拒绝用例的 `page.route`），**无其它 error、无 pageerror**。
+- 端口只用 8990 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r165-1`，探针 / 截图 / 日志都在 scratchpad 的 `r165/` 下
+  （`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+- 这条动作的**空分组**分支（服务端 `applied === 0` → 「这个分组里没有模型，没有可写入的对象」）没有
+  用例：界面上有行的分组才画得出头部动作，要造空分组得绕开页面播种，属另一条的口径。
+- 上游那六笔仍压在同一处前置上（见「选活」）。
+- 0.6.0 的发布收尾是另一条线在做，本轮一个字节没碰。
+
+### 提交
+
+- 源码 + 用例 + changelog：**`d4ad21f8`**；台账（7.56、上表那一行、本节）另起一笔。
