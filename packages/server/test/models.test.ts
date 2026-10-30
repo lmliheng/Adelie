@@ -156,6 +156,176 @@ describe("models preset & catalog enrichment", () => {
     await expect(readFile(path.join(projectDir, "project_config.toml"), "utf8")).rejects.toThrow();
   });
 
+  it("a preset a sync adds to a gateway group borrows the group's key instead of arriving unconfigured", async () => {
+    const cfgFile = path.join(t.root, projectId, ".project_config.toml");
+    const GATEWAY = "https://tokendance.space/gateway/v1";
+    const row = (modelId: string, extra: Record<string, unknown> = {}) => ({
+      provider: "tokendance",
+      modelId,
+      clientType: "openai-chat",
+      baseUrl: GATEWAY,
+      ...extra,
+    });
+
+    // The table before the sync: one TokenDance row, the key pasted once.
+    const first = await api.put(url(), {
+      defaultModel: { provider: "tokendance", modelId: "deepseek-v4-flash-0731" },
+      models: [row("deepseek-v4-flash-0731", { apiKey: "sk-group-gateway-1" })],
+    });
+    expect(first.status).toBe(200);
+
+    // What "sync presets" sends: the row that was there (restating no key at all) plus a preset
+    // the catalog carries and this table does not — the shape that used to land keyless.
+    const synced = await api.put(url(), {
+      models: [row("deepseek-v4-flash-0731"), row("deepseek-v4-pro")],
+    });
+    expect(synced.status).toBe(200);
+    const body = (await synced.json()) as ModelsResponse;
+    const stored = pick(body, "tokendance", "deepseek-v4-flash-0731").credential?.apiKeyMasked;
+    expect(stored).toBeTruthy();
+    expect(pick(body, "tokendance", "deepseek-v4-pro").credential?.apiKeyMasked).toBe(stored);
+    // Borrowed, never echoed: the plaintext stays on disk.
+    expect(JSON.stringify(body)).not.toContain("sk-group-gateway-1");
+
+    const cfgRaw = await readFile(cfgFile, "utf8");
+    expect(cfgRaw.split('api_key = "sk-group-gateway-1"').length - 1).toBe(2);
+
+    // The shape the rule exists for: a whole gateway group, the key pasted on one row of it.
+    // One endpoint behind one login, so every preset the group carries is answered by that key.
+    const group = MODEL_CATALOG.filter((m) => m.provider === "tokendance" && m.retired !== true);
+    expect(group.length).toBeGreaterThan(4);
+    const wholeGroup = await api.put(url(), {
+      models: group.map((m, i) => ({
+        provider: m.provider,
+        modelId: m.modelId,
+        ...(m.clientType !== undefined ? { clientType: m.clientType } : {}),
+        ...(m.baseUrl !== undefined ? { baseUrl: m.baseUrl } : {}),
+        ...(i === 0 ? { apiKey: "sk-group-gateway-1" } : {}),
+      })),
+    });
+    expect(wholeGroup.status).toBe(200);
+    const groupBody = (await wholeGroup.json()) as ModelsResponse;
+    const firstMask = pick(groupBody, group[0]!.provider, group[0]!.modelId).credential?.apiKeyMasked;
+    expect(firstMask).toBeTruthy();
+    for (const m of group) {
+      expect(pick(groupBody, m.provider, m.modelId).credential?.apiKeyMasked, m.modelId).toBe(
+        firstMask,
+      );
+    }
+    const groupRaw = await readFile(cfgFile, "utf8");
+    expect(groupRaw.split('api_key = "sk-group-gateway-1"').length - 1).toBe(group.length);
+  });
+
+  it("a group holding two different keys is left to decide: the new row arrives keyless", async () => {
+    const GATEWAY = "https://tokendance.space/gateway/v1";
+    const row = (modelId: string, extra: Record<string, unknown> = {}) => ({
+      provider: "tokendance",
+      modelId,
+      clientType: "openai-chat",
+      baseUrl: GATEWAY,
+      ...extra,
+    });
+    const twoKeys = await api.put(url(), {
+      models: [
+        row("deepseek-v4-flash-0731", { apiKey: "sk-first-account" }),
+        row("deepseek-v4-pro", { apiKey: "sk-second-account" }),
+      ],
+    });
+    expect(twoKeys.status).toBe(200);
+
+    const added = await api.put(url(), {
+      models: [row("deepseek-v4-flash-0731"), row("deepseek-v4-pro"), row("deepseek-v4.1-flash")],
+    });
+    expect(added.status).toBe(200);
+    // Two accounts under one group is a deliberate state: picking one of them would be a guess.
+    expect(
+      pick((await added.json()) as ModelsResponse, "tokendance", "deepseek-v4.1-flash").credential
+        ?.apiKeyMasked,
+    ).toBeUndefined();
+  });
+
+  it("a row the request clears stays keyless: a clear is not filled back in by the row beside it", async () => {
+    const GATEWAY = "https://tokendance.space/gateway/v1";
+    const row = (modelId: string, extra: Record<string, unknown> = {}) => ({
+      provider: "tokendance",
+      modelId,
+      clientType: "openai-chat",
+      baseUrl: GATEWAY,
+      ...extra,
+    });
+    await api.put(url(), {
+      models: [
+        row("deepseek-v4-flash-0731", { apiKey: "sk-group-gateway-1" }),
+        row("deepseek-v4-pro"),
+      ],
+    });
+    // Both rows do have the key by now (the second borrowed it) …
+    const before = (await (await api.get(url())).json()) as ModelsResponse;
+    expect(pick(before, "tokendance", "deepseek-v4-pro").credential?.apiKeyMasked).toBeTruthy();
+
+    // … and taking one of them back is what keeps it keyless.
+    const cleared = await api.put(url(), {
+      models: [row("deepseek-v4-flash-0731"), row("deepseek-v4-pro", { clearApiKey: true })],
+    });
+    expect(cleared.status).toBe(200);
+    const body = (await cleared.json()) as ModelsResponse;
+    expect(pick(body, "tokendance", "deepseek-v4-pro").credential?.apiKeyMasked).toBeUndefined();
+    expect(
+      pick(body, "tokendance", "deepseek-v4-flash-0731").credential?.apiKeyMasked,
+    ).toBeTruthy();
+  });
+
+  it("a preset pointed at another endpoint is another service: nothing is borrowed across them", async () => {
+    const GATEWAY = "https://tokendance.space/gateway/v1";
+    const row = (modelId: string, extra: Record<string, unknown> = {}) => ({
+      provider: "tokendance",
+      modelId,
+      clientType: "openai-chat",
+      ...extra,
+    });
+    await api.put(url(), {
+      models: [row("deepseek-v4-flash-0731", { apiKey: "sk-gateway-account", baseUrl: GATEWAY })],
+    });
+
+    // The next preset is answered by the user's own relay: the gateway key is not its key.
+    const relayed = await api.put(url(), {
+      models: [
+        row("deepseek-v4-flash-0731", { baseUrl: GATEWAY }),
+        row("deepseek-v4-pro", { baseUrl: "https://relay.example/v1" }),
+      ],
+    });
+    expect(relayed.status).toBe(200);
+    const body = (await relayed.json()) as ModelsResponse;
+    expect(pick(body, "tokendance", "deepseek-v4-pro").credential?.apiKeyMasked).toBeUndefined();
+    expect(
+      pick(body, "tokendance", "deepseek-v4-flash-0731").credential?.apiKeyMasked,
+    ).toBeTruthy();
+
+    // A row added by hand is the user's own entry: replacing it without its key has always meant
+    // the credential does not migrate, and the rows beside it do not change that.
+    const custom = (modelId: string, baseUrl: string, extra: Record<string, unknown> = {}) => ({
+      provider: "custom",
+      modelId,
+      clientType: "openai-chat",
+      baseUrl,
+      ...extra,
+    });
+    await api.put(url(), {
+      models: [custom("self-hosted-a", "https://a.example/v1", { apiKey: "sk-service-a" })],
+    });
+    const plain = await api.put(url(), {
+      models: [
+        custom("self-hosted-a", "https://a.example/v1"),
+        custom("self-hosted-b", "https://a.example/v1"),
+      ],
+    });
+    expect(plain.status).toBe(200);
+    const plainBody = (await plain.json()) as ModelsResponse;
+    expect(pick(plainBody, "custom", "self-hosted-b").credential?.apiKeyMasked).toBeUndefined();
+    // The row that carried the key keeps it on its own account, base URL and all.
+    expect(pick(plainBody, "custom", "self-hosted-a").credential?.apiKeyMasked).toBeTruthy();
+  });
+
   it("a new Project is preset with every built-in model (provider and model_id as separate fields + catalog info)", async () => {
     const res = await api.get(url());
     expect(res.status).toBe(200);

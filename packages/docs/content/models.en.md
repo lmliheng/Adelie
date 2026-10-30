@@ -309,7 +309,7 @@ Syncing:
 - adds catalog models the Project does not have, retired rows excepted: one the Project already has is kept current, but a Project without it never gets it (see [Preset models](#preset-models));
 - resets each existing catalog model's vision flag, context window, protocol, prices, and base URL to the catalog's values;
 - fills in an empty display name, but never overwrites one;
-- never touches API keys, **Max output tokens**, fast mode, or models and groups you added yourself.
+- never touches API keys, **Max output tokens**, fast mode, or models and groups you added yourself. The one exception is a built-in preset row without a key: where its group and endpoint hold exactly one key — the usual shape of a gateway group — it takes that key instead of being drawn as having no key configured. A group holding two different keys leaves it blank, and a model you added yourself is not one of these.
 
 **Dismiss** hides the notice until a later catalog change.
 

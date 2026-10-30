@@ -82,6 +82,7 @@ import type {
   ModelRefDto,
   ModelsResponse,
   ModelsUpdateRequest,
+  ModelUpdateEntry,
   ModelTestRequest,
   ModelTestResponse,
   ModelVisionDetectRequest,
@@ -222,6 +223,47 @@ function scheduledRateAt(
 
 function optStr(v: unknown): string | undefined {
   return typeof v === "string" && v !== "" ? v : undefined;
+}
+
+/** One row a keyless entry may borrow a key from: its group and the endpoint it speaks to. */
+interface KeyPoolRow {
+  provider: string;
+  baseUrl: string | undefined;
+  apiKey: string | undefined;
+}
+
+/**
+ * The key a keyless row may borrow from the rows beside it: the single `api_key` the pool
+ * holds for the same provider **and the same base URL**, or undefined when there is none or
+ * when those rows disagree about it.
+ *
+ * "Sync presets" adds a catalog entry with no credential. That is right for a model nobody has
+ * reached yet, and wrong for the fourteenth row of a gateway group: TokenDance — like every
+ * other gateway — is one endpoint behind one key, so a preset the catalog carries later is the
+ * same login as the rows beside it. Left keyless it reads "no key configured" and fails its own
+ * speed test next to twelve rows that work, and the only cure the user has is pasting the same
+ * key a thirteenth time. Borrowing it is what makes the sync finish the job they started when
+ * they pasted it once.
+ *
+ * Borrowing stays inside an unambiguous group. Two different keys under one provider and one
+ * base URL are two accounts (or a deliberate split), and picking one of them for a new row
+ * would be a guess; a different base URL is a different service, where a shared provider id
+ * says nothing about the credential. Both cases leave the row keyless, exactly as it was before
+ * this rule existed.
+ */
+function groupApiKey(
+  pool: readonly KeyPoolRow[],
+  provider: string,
+  baseUrl: string | undefined,
+): string | undefined {
+  const target = baseUrl ?? "";
+  const keys = new Set<string>();
+  for (const row of pool) {
+    if (row.provider !== provider) continue;
+    if ((row.baseUrl ?? "") !== target) continue;
+    if (row.apiKey !== undefined) keys.add(row.apiKey);
+  }
+  return keys.size === 1 ? [...keys][0] : undefined;
 }
 
 /** Command-policy rules as DTOs: per-rule `enabled` made explicit (stored absence = on). */
@@ -1292,6 +1334,32 @@ export class ProjectConfigService implements ProjectConfigStore {
     const hadModelScopeGroup = prevModels.some(
       (model) => model.provider === MODELSCOPE_PROVIDER_ID,
     );
+    // Where a keyless preset row may borrow a key from (see groupApiKey): the stored table plus
+    // the rows this request itself brings a key for. Both halves are needed, because the models
+    // page writes the whole table — the row that carries the key and the preset that needs it
+    // arrive together, in an order the page chooses, and borrowing from the stored table alone
+    // would make the outcome depend on that order. The endpoint is resolved the way the write
+    // below resolves it, so a row is judged under the base URL it is about to have.
+    const baseUrlOf = (entry: ModelUpdateEntry): string | undefined => {
+      if (entry.baseUrl === null) return undefined;
+      if (entry.baseUrl !== undefined) return entry.baseUrl;
+      const ref = entry.renamedFrom ?? { provider: entry.provider, modelId: entry.modelId };
+      return optStr(prevModels.find((m) => entryMatches(m, ref.provider, ref.modelId))?.base_url);
+    };
+    const keyPool: KeyPoolRow[] = [
+      ...prevModels.map((m) => ({
+        provider: optStr(m.provider) ?? "",
+        baseUrl: optStr(m.base_url),
+        apiKey: optStr(m.api_key),
+      })),
+      ...req.models
+        .filter((entry) => !entry.clearApiKey && entry.apiKey !== undefined)
+        .map((entry) => ({
+          provider: entry.provider,
+          baseUrl: baseUrlOf(entry),
+          apiKey: entry.apiKey,
+        })),
+    ];
 
     // A vendor group carries the built-in catalog and nothing else: its entries persist no
     // client_type, so AgentHub places each one by the spelling of the model id alone, and an
@@ -1449,6 +1517,23 @@ export class ProjectConfigService implements ProjectConfigStore {
         next.api_key = entry.apiKey;
         next.created_at = new Date().toISOString();
         if (entry.provider === MODELSCOPE_PROVIDER_ID) clearModelScopeProviderAuthToken = true;
+      } else if (
+        !entry.clearApiKey &&
+        next.api_key === undefined &&
+        catalogEntryFor(entry.provider, entry.modelId) !== undefined
+      ) {
+        // A preset row this request leaves keyless borrows its group's key when the table holds
+        // exactly one for that provider + base URL (see groupApiKey). "Sync presets" is what puts
+        // a catalog entry here without a credential, and a preset the catalog has carried since
+        // before this rule reached the table is still keyless — saving the page is what fills it
+        // in. Only the catalog's own rows borrow: a row added by hand is the user's own entry,
+        // where replacing it without its key has always meant the credential does not migrate.
+        const borrowed = groupApiKey(keyPool, entry.provider, baseUrlOf(entry));
+        if (borrowed !== undefined) {
+          next.api_key = borrowed;
+          next.created_at = new Date().toISOString();
+          if (entry.provider === MODELSCOPE_PROVIDER_ID) clearModelScopeProviderAuthToken = true;
+        }
       }
       if (entry.baseUrl === null) delete next.base_url;
       else if (entry.baseUrl !== undefined) next.base_url = entry.baseUrl;
