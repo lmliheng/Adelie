@@ -19274,7 +19274,9 @@ prettier 折开）与 `plugins/use-seedream/test/seedream.test.mjs`（新增 `re
 - `plugins/use-seedream`：`node --test "test/*.test.mjs"` **12/12**（Linux 上行为不变，归一化对 `/` 是恒等）。
 - **反证（Windows 那一半）**：`path.win32` 复算 `relative('C:\…\run1', 'C:\…\run1\layers\001-base.png')` 得
   `layers\001-base.png`（改前的断言值），`split(sep).join("/")` 之后是 `layers/001-base.png`（改后），与 CI
-  日志里 `actual` / `expected` 逐字一致；本机没有 Windows，真正的复核留给推送后的 `test-windows (rest)`。
+  日志里 `actual` / `expected` 逐字一致。本机没有 Windows，真正的复核由**推送后的 CI** 给出：
+  run `41080497336`（`884503bc`）**22 个 job 全绿**，`style (prettier)` 与 `test-windows (rest)` 双双成功，
+  聚合门禁 `ci` 也成功 —— 就是这三笔红转绿的直接证据。
 - **反证（本机那三条）**：`ADELIE_HOME=/tmp/r164-root`（空根）跑那两个文件 **29/29 绿** —— 说明红只在
   「默认根里有用户插件」时出现；改完 `t.root` 后，**在默认根就是本机真实根的那个进程里**再跑同一对文件
   **29/29 绿**。
@@ -19288,4 +19290,9 @@ prettier 折开）与 `plugins/use-seedream/test/seedream.test.mjs`（新增 `re
 
 ### 提交
 
-- 三个测试文件：见「已完成的轮次」那一行；台账（7.55、上表那一行、本节）另起一笔。
+- 三个测试文件：**`884503bc`**；台账（7.55、上表那一行、本节）另起一笔。
+- **推送走的是 `api.github.com` 的 Git Data API**（与第一百六十二轮同一条路）：`git push origin main`
+  在 300 秒后 `Connection timed out`，SSH 仍是 `Permission denied (publickey)`，只有 api 通。办法是拿
+  本地这笔的树、父、身份与同一个时间戳在服务端重建 —— 树号 `f902c3e5` 两边一致，正文（含末尾换行）也没被
+  吃掉，**服务端算出来的号就是本地的 `884503bc`**，然后 `PATCH refs/heads/main`（`force: false`）指过去，
+  本地 `refs/remotes/origin/main` 手工对齐到同一个号，`git status -sb` 干净。
