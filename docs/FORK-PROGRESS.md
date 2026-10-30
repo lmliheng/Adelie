@@ -19371,6 +19371,9 @@ socket 重构上。
 - 端口只用 8990 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
   `/root/adelie-fork-data/r165-1`，探针 / 截图 / 日志都在 scratchpad 的 `r165/` 下
   （`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`）。
+- 推送后 CI run **`41114768272`**（`824f9c58`）**completed success**。注意 **CI 不跑这套浏览器 e2e**：
+  `ci.yml` 里唯一的 e2e 是 `installer-e2e` 那步的 `pnpm test:e2e`（= `@adelie/core` 的活模型用例，
+  没有 key 时整步跳过），所以本笔的证据是上面那次单跑与反证，CI 绿只说明门禁其余部分没被碰到。
 
 ### 没做 / 留着
 
