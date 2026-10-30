@@ -3110,6 +3110,13 @@ export const zh = {
     modelSwitchInSessionBody: (from: string, to: string): string =>
       `将先用当前模型「${from}」压缩上下文，成功后以「${to}」继续本对话；压缩失败则保持「${from}」。`,
     /**
+     * Body while the escape hatch below is ticked: the plain body promises that a failed
+     * compaction keeps the current model, which a ticked box contradicts — so the sentence
+     * follows the box rather than leaving two promises in one dialog.
+     */
+    modelSwitchInSessionBodyDiscard: (from: string, to: string): string =>
+      `将先用当前模型「${from}」压缩上下文，成功后以「${to}」继续本对话；压缩失败则放弃摘要，直接以「${to}」继续。`,
+    /**
      * The escape hatch, offered only where a compaction really runs: the model to leave is the
      * one that has to summarize, so a model whose every request fails (no quota left, a rejected
      * credential) can never summarize itself and the switch would fail forever.

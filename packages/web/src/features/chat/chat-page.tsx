@@ -2277,6 +2277,29 @@ export function ChatPage() {
   /** Background tasks the conversation still owns — the same live count the sidebar row's mark carries. */
   const backgroundCount = selected === null ? 0 : sessionBackgroundTasks(selected);
 
+  /**
+   * The in-session switch dialog's sentence — each shape promises what the switch will do to
+   * the context and nothing more. The escape hatch changes the compacting shape: with the box
+   * ticked a failed compaction switches anyway, so the plain body's "it stays on the current
+   * model" would be the opposite of what the dialog is about to do.
+   */
+  const modelSwitchBody =
+    modelSwitchAsk === null || selected === null
+      ? null
+      : modelSwitchAsk.shape === "empty"
+        ? S.chat.modelSwitchInSessionDirectBody(modelDisplay(modelSwitchAsk.to))
+        : modelSwitchAsk.shape === "compacted"
+          ? S.chat.modelSwitchInSessionCompactedBody(modelDisplay(modelSwitchAsk.to))
+          : modelSwitchAsk.discardIfCompactionFails
+            ? S.chat.modelSwitchInSessionBodyDiscard(
+                modelDisplay({ provider: selected.provider, modelId: selected.modelId }),
+                modelDisplay(modelSwitchAsk.to),
+              )
+            : S.chat.modelSwitchInSessionBody(
+                modelDisplay({ provider: selected.provider, modelId: selected.modelId }),
+                modelDisplay(modelSwitchAsk.to),
+              );
+
   return (
     // data-dock-host: the docks' edge bands, drop preview and the bottom dock's height
     // ratio all measure this column (dock-drag.tsx / dock-panel.tsx).
@@ -2877,18 +2900,7 @@ export function ChatPage() {
           if (!modelSwitchPosting) setModelSwitchAsk(null);
         }}
       >
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          {modelSwitchAsk === null || selected === null
-            ? null
-            : modelSwitchAsk.shape === "empty"
-              ? S.chat.modelSwitchInSessionDirectBody(modelDisplay(modelSwitchAsk.to))
-              : modelSwitchAsk.shape === "compacted"
-                ? S.chat.modelSwitchInSessionCompactedBody(modelDisplay(modelSwitchAsk.to))
-                : S.chat.modelSwitchInSessionBody(
-                    modelDisplay({ provider: selected.provider, modelId: selected.modelId }),
-                    modelDisplay(modelSwitchAsk.to),
-                  )}
-        </p>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{modelSwitchBody}</p>
         {stream.taskState !== "idle" && (
           <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             {S.chat.thinkingSwitchBusyHint}

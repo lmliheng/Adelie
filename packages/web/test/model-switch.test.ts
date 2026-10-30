@@ -114,6 +114,18 @@ describe("/model copy", () => {
     expect(en.chat.modelSwitchInSessionBody("A", "B")).toContain('"B"');
   });
 
+  it("the body follows the discard box instead of promising to stay beside it", () => {
+    // Ticking "switch even if it cannot be compacted" makes a failed compaction switch anyway,
+    // so the plain body's "it stays on the current model" would contradict the very box.
+    expect(zh.chat.modelSwitchInSessionBodyDiscard("A", "B")).toBe(
+      "将先用当前模型「A」压缩上下文，成功后以「B」继续本对话；压缩失败则放弃摘要，直接以「B」继续。",
+    );
+    expect(zh.chat.modelSwitchInSessionBodyDiscard("A", "B")).not.toContain("保持");
+    expect(en.chat.modelSwitchInSessionBodyDiscard("A", "B")).toContain('"B"');
+    expect(en.chat.modelSwitchInSessionBodyDiscard("A", "B")).toMatch(/without a summary/);
+    expect(en.chat.modelSwitchInSessionBodyDiscard("A", "B")).not.toMatch(/stays on/);
+  });
+
   it("right after a compaction, neither the dialog nor the toast promises a compaction", () => {
     // The server runs no compaction for a just-compacted Session (design: no second pair), so
     // the copy for that shape must not say "compact".
