@@ -19147,3 +19147,67 @@ cli **38 / 561** · web **271 / 3339 通过 / 2 跳过** · ui-gallery **20 / 14
   会吃掉正文末尾那个换行，所以同一笔提交在那边是另一个号 —— 本机按同一个树、同一个 parent、
   去掉末尾换行的正文与同一组时间戳重算了一遍 `commit-tree`，两笔逐一与 API 返回的号对上
   （`9544162e` / `4adae4b7`），然后把本地 `main` 与 `origin/main` 直接指过去，`git status` 干净。
+
+## 第一百六十三轮：同步预置补上的网关模型，直接沿用分组里那把 key（2026-10-30，用户点单）
+
+### 开工自检
+
+`main` 在 `4a42e031`（第一百六十二轮的台账那笔）。`git status --short` **不干净**，两类东西要分开看：
+`packages/server/src/services/project-config-service.ts` 与 `packages/server/test/models.test.ts` 是
+**本轮上半段留下的半成品**（借 key 的规则写了一半，既有用例还红着两条）；`image-board.ts` /
+`lightbox.tsx` / `image-board.test.ts` 与两份 `2026-10-30-lightbox-chips-beside-tiny-picture.*` 是
+**别的线**的在途改动，本轮一个字节没碰，`git add` 也只加了自己那六个文件。
+
+### 用户点单
+
+截图是 TokenDance 分组的 17 条模型：13 条各有一把 `sk-8…af20`，4 条写着「未配置 key 测速失败」。
+问的是「模型配置更新不会沿用之前的密钥，改进一下」。
+
+原因在**前端**：**同步预置**是一条纯前端的合并（`packages/web/src/features/models/catalog-sync.ts` 的
+`syncRowsWithCatalog`），新条目由 `presetToRow` 生成，`apiKeyInput: ""` —— 密钥明文永不下发
+（`CredentialInfo.apiKeyMasked`），所以这件事只能服务端做。
+
+### 做了什么
+
+- `packages/server/src/services/project-config-service.ts`：新增 `KeyPoolRow` 与
+  `groupApiKey(pool, provider, baseUrl)` —— 返回「同分组、同 base URL」下唯一的那把 `api_key`，不唯一
+  就返回空（两把 key = 两个账号或有意的拆分，替你挑一把就是瞎猜；base URL 不同就是另一个服务）。
+- `updateModelsUnlocked` 的密钥写入分支多了 `else if`：这次请求没给 key、条目上也没有旧 key、且**这条
+  是内置目录里的预置**时，向池子借一把并记 `created_at`（ModelScope 分组照旧清 provider auth token）。
+- 池子是**已存的表 + 这次请求自己带 key 的行**（base URL 按写入时同样的口径解析，含 `renamedFrom`
+  回退）。模型页每次保存都写整张表，带 key 的那条可能在预置之前也可能在之后，两边都算进去，结果才与
+  顺序无关 —— 只用旧表算，同一个请求里先写下的兄弟行不算数。
+- 借只发生在目录条目上：自己添加的模型保持原语义（不带 key 替换它 = 凭证不迁移，既有那条
+  `rekeying without renamedFrom` 用例就是它）；明确**清除已存 API key** 的条目也不会被旁边的填回来。
+- 文档：`packages/docs/content/models.{zh,en}.md` 的「同步预置模型」原先写「绝不动 API key」，把这一处
+  例外写清楚（同组同端点只有一把 key 才沿用，两把则留空，自己添加的不在其列）。
+- changelog：`changelog/unreleased/2026-10-30-preset-key-follows-the-group.{md,zh.md}`。
+- 测试：`packages/server/test/models.test.ts` 四条新用例 —— 借 key 本身（响应里始终没有明文）、一次请求
+  里整组 17 条（模拟截图那一刻：整组只有一条带 key，落盘 `api_key` 条数等于组内条目数）、组内两把不同
+  的 key 留空、明确清除不被填回；外加「指向别的端点」与「自己添加的条目不借」合在第四条里。
+
+### 验证
+
+- 整仓 `typecheck` **`EXIT=0`**（14 个包全 `Done`，含 server）。
+- 整仓 `lint` **0 警告 0 错误**（2323 文件）、`format:check` **干净**（含别的线那批在途文件）。
+- server 全量 `vitest run --passWithNoTests` **`EXIT=0`：206 文件 / 3017 通过 / 15 跳过**。
+  首跑（不限并发）红了 1 条：`machines-models-sync` 的「creates the Project over there under the same
+  id」`Test timed out in 5000ms`；那个文件单跑 **11/11 全绿**（该条 493ms），随后 `--maxWorkers=3` 复跑
+  整套全绿 —— `load average 9+` 拖的，与本笔无关。
+- `packages/docs` 测试 **8 文件 / 62 通过**。
+- `test/models.test.ts` **37 条全绿**（33 条既有 + 4 条新增，其中第一条含整组那一段）。
+- **反证**：把借 key 分支的 `catalogEntryFor(...) !== undefined` 临时改成 `… && false`，那条用例当场
+  **转红**（`expected undefined to be 'sk-g…ay-1'`，models.test.ts:186），随后按 sha256 还原
+  （`3c9e2d0a…` 前后一致）。
+- 没有前端改动，所以没起浏览器：补齐发生在服务端，页面保存后重新读到的就是打码值。
+- 端口一个没碰（本轮没起任何服务），数据没往 `~/.adelie` / `~/.penguin` 里写。
+
+### 没做 / 留着
+
+- 别的线那批画板改动原样留在工作树（` M` 三处 + 两个 `??` changelog），未提交、未动。
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+- 没推送（这一笔先给用户看 diff 与文案）。
+
+### 提交
+
+- 产品、文档、changelog 六件：**`0a683980`**；本轮台账另起一笔。
