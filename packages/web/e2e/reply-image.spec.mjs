@@ -94,4 +94,36 @@ test("a picture of the Workspace renders, and only that src is rewritten", async
   const box = await own.boundingBox();
   expect(box?.width ?? 0).toBeGreaterThan(0);
   expect(box?.width ?? 0).toBeLessThanOrEqual(1280);
+
+  // 4. A click puts that picture on a layer of its own, whole; Esc gives the conversation back.
+  //    Asserted in the browser rather than only in the unit tests because what fails here is the
+  //    browser's: a `fixed` layer inside a transcript's overflow-hidden ancestors, the natural
+  //    size read off a picture the overlay has really loaded, and Esc reaching the shared
+  //    escape-layer stack. All three srcs are thumbnails of buttons — a broken picture is one too,
+  //    since whether it loads is not known when the Markdown renders (see prose.tsx).
+  await expect(page.locator(".md-body button img")).toHaveCount(3);
+  const scrim = page.locator(".ui-scrim");
+  await expect(scrim).toHaveCount(0);
+  await own.click();
+  await expect(scrim).toHaveCount(1);
+
+  // The overlay shows the same file the thumbnail fetched from the Session's route.
+  const whole = scrim.locator("img");
+  await expect(whole).toHaveAttribute(
+    "src",
+    new RegExp(`/api/sessions/${sessionId}/files/content\\?path=shot\\.png`),
+  );
+  await expect(whole).toHaveAttribute("alt", "the picture");
+  // The badge reads the picture that loaded, not the box it happens to be drawn in.
+  await expect(scrim.getByText("2 × 2")).toBeVisible();
+  // Saving keeps the name the route carries in `path=`, not its own `content` segment.
+  await expect(scrim.getByRole("link", { name: "下载" })).toHaveAttribute("download", "shot.png");
+  // One picture is not a batch: there is nowhere to step, so no stepping buttons are drawn.
+  await expect(scrim.getByRole("button", { name: "上一张图片" })).toHaveCount(0);
+  await expect(scrim.getByRole("button", { name: "下一张图片" })).toHaveCount(0);
+
+  // Esc closes the overlay alone; the pictures of the conversation are still there.
+  await page.keyboard.press("Escape");
+  await expect(scrim).toHaveCount(0);
+  await expect(images).toHaveCount(3);
 });
