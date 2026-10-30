@@ -1,6 +1,6 @@
 {
   "name": "penguin-harness",
-  "version": "0.5.10",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "description": "Adelie — TypeScript AI Agent (SDK + CLI).",

@@ -1,6 +1,6 @@
 {
   "name": "@adelie/agent-development",
-  "version": "0.5.10",
+  "version": "0.6.0",
   "description": "Agent development on Adelie: build agent apps on the SDK or connect them to an agent over the Agent API, call any model through one unified LLM API, manage models and secrets, and orchestrate agents, sessions, costs and schedules.",
   "license": "Apache-2.0",
   "repository": {
