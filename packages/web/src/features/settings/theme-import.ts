@@ -64,3 +64,18 @@ export function themeImportErrorText(err: unknown): string {
   }
   return apiErrorText(err);
 }
+
+/**
+ * The same failure, told apart from the ONE answer that is a question rather than a refusal.
+ *
+ * A 409 `theme_exists` is the overwrite confirmation's cue: both flows answer it by asking, and its
+ * card resends the very request. Everything else is a refusal — the reason the surface that asked
+ * keeps on screen (the dialog's own body, the card under the button that offered it) instead of a
+ * notification that dismisses itself while the reader is still looking at what did not happen. So
+ * the rule "409 means ask, anything else means say why" lives here once rather than in each
+ * caller's catch, and `null` means "open the question" — never "nothing to say".
+ */
+export function themeImportRefusal(err: unknown): string | null {
+  if (err instanceof ApiError && err.status === 409 && err.code === "theme_exists") return null;
+  return themeImportErrorText(err);
+}

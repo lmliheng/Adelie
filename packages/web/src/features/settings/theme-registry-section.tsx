@@ -22,16 +22,21 @@
  * opens the overwrite confirmation, whose confirm resends with `overwrite: true`. The card carries
  * "installed" from the server's answer (it compares the catalogue against the directory per
  * request), so after an import the grid is re-read rather than guessed at.
+ *
+ * AN IMPORT THAT WAS REFUSED SAYS WHY ON ITS OWN CARD. The card is what the operator clicked, and
+ * the catalogue above it is where "that entry is gone" or "the file does not match the id it was
+ * listed under" has to be read; a toast said it over a grid the reader could not tell apart, and
+ * dismissed itself while the card that would retry sat there looking untouched.
  */
 import { useCallback, useEffect, useState } from "react";
-import { Button, ConfirmModal, InfoPopover, toastError, toastSuccess } from "@adelie/ui";
+import { Button, ConfirmModal, InfoPopover, toastSuccess } from "@adelie/ui";
 import type { ThemeRegistryResponse, ThemeRegistryTheme } from "@adelie/server/api";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
+import { toneInk } from "../../lib/tone";
 import { useLocale } from "../../state/locale";
 import { localizedText } from "../chat/skill-use";
-import { themeImportErrorText } from "./theme-import";
+import { themeImportRefusal } from "./theme-import";
 
 /** One mode's four colours, filled in where the catalogue left a name out. */
 type ModeColours = Readonly<Record<string, string>>;
@@ -100,11 +105,14 @@ function RegistryCard({
   entry,
   locale,
   busy,
+  refusal,
   onInstall,
 }: {
   entry: ThemeRegistryTheme;
   locale: "zh" | "en";
   busy: boolean;
+  /** Why this card's import was refused, or null — another card's sentence never lands here. */
+  refusal: string | null;
   onInstall: () => void;
 }) {
   const description =
@@ -143,6 +151,19 @@ function RegistryCard({
               : S.settings.themeRegistryImport}
         </Button>
       </span>
+      {/* The sentence stays on the card whose button was refused, in the card's own width, with the
+          whole of it on hover: two cards can look alike, and the one that failed is the one whose
+          import has to be rethought (a stale entry, a mismatched file). */}
+      {refusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={S.common.refused(refusal)}
+          data-tooltip-content="text"
+          className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {S.common.refused(refusal)}
+        </p>
+      )}
     </div>
   );
 }
@@ -165,6 +186,8 @@ export function ThemeRegistrySection({
   const [busyId, setBusyId] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [failed, setFailed] = useState(false);
+  /** The card whose import was refused, and why — one at a time, like the import itself. */
+  const [refusal, setRefusal] = useState<{ id: string; text: string } | null>(null);
 
   const load = useCallback(async () => {
     setReading(true);
@@ -172,6 +195,8 @@ export function ThemeRegistrySection({
       const res = await api.getThemeRegistry();
       setCatalogue(res);
       setFailed(false);
+      // The grid is re-read from the server, so a sentence about a card of the old one is stale.
+      setRefusal(null);
     } catch {
       // The request itself failed (not the registry): the shared sentence, and a row that can be
       // asked again rather than a page that pretends there is no library.
@@ -187,6 +212,8 @@ export function ThemeRegistrySection({
 
   const install = async (entry: ThemeRegistryTheme, overwrite: boolean) => {
     setBusyId(entry.id);
+    // The sentence on the card belongs to the attempt before this one, whatever it says.
+    setRefusal(null);
     try {
       const res = await api.importThemeFromRegistry({
         id: entry.id,
@@ -201,11 +228,12 @@ export function ThemeRegistrySection({
       await onImported();
       await load();
     } catch (e) {
-      if (e instanceof ApiError && e.status === 409 && e.code === "theme_exists") {
+      const text = themeImportRefusal(e);
+      if (text === null) {
         setPending({ id: entry.id, name: localizedText(locale, entry.name, entry.nameZh) });
       } else {
         setPending(null);
-        toastError(themeImportErrorText(e));
+        setRefusal({ id: entry.id, text });
       }
     } finally {
       setBusyId(null);
@@ -258,6 +286,7 @@ export function ThemeRegistrySection({
               entry={entry}
               locale={locale}
               busy={busyId === entry.id}
+              refusal={refusal?.id === entry.id ? refusal.text : null}
               onInstall={() => void install(entry, entry.installed)}
             />
           ))}

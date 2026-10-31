@@ -14,8 +14,10 @@
  * Both flows are the same import twice, as in the plugin dialogs: one carries the file in the
  * request, the other a URL the server fetches, and a 409 `theme_exists` opens the overwrite
  * confirmation whose confirm resends THAT request with `overwrite: true` (so the user never picks
- * the file twice), while any other failure rolls back to a toast. The list is re-read on success,
- * which is how the new theme appears in the picker above.
+ * the file twice), while any other failure is kept in the dialog's own body — the file or the
+ * address is still there, the confirm button still sends it, and the reason belongs beside them
+ * rather than in a notification that dismisses itself over an open dialog. The list is re-read on
+ * success, which is how the new theme appears in the picker above.
  *
  * Admin-only by the server's own rule — the themes directory is installation-level, and every
  * browser that signs in on this machine is painted by it — so the caller (the appearance section)
@@ -29,17 +31,17 @@ import {
   HiddenFileInput,
   Input,
   Modal,
+  NoticeStrip,
   Segmented,
   toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { useLocale } from "../../state/locale";
 import { localizedText } from "../chat/skill-use";
 import { UPLOAD_LABEL_CLASS } from "../agents/skills-tab";
-import { themeFileTooLarge, themeImportErrorText } from "./theme-import";
+import { themeFileTooLarge, themeImportRefusal } from "./theme-import";
 
 /** Which way the file arrives: picked here, or fetched by the server from an address. */
 type Source = "upload" | "download";
@@ -73,10 +75,17 @@ export function ThemeImportActions({
   const [url, setUrl] = useState("");
   // The 409 confirmation, the only state the two flows share.
   const [pending, setPending] = useState<ImportRequest | null>(null);
+  /**
+   * The last attempt's refusal, kept in the dialog's body. It belongs to the request that was sent
+   * (a picked file, an address), so opening the dialog, closing it, switching the source and the
+   * next attempt each clear it: a sentence about the file must not sit beside a URL.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   const close = () => {
     setOpen(false);
     setPicked(null);
+    setRefusal(null);
   };
 
   /** Success path, shared by both flows: close, toast, re-read the list. */
@@ -90,20 +99,23 @@ export function ThemeImportActions({
   };
 
   /**
-   * A 409 lands in the overwrite confirmation instead of a toast — it is a question, not a failure
-   * — and every other refusal (or a missing admin right) rolls back to one.
+   * A 409 lands in the overwrite confirmation instead of the body — it is a question, not a failure
+   * — and every other refusal (or a missing admin right) stays in the dialog, under the file or the
+   * address it was about, until the next attempt.
    */
   const failed = (e: unknown, request: ImportRequest) => {
-    if (e instanceof ApiError && e.status === 409 && e.code === "theme_exists") {
+    const text = themeImportRefusal(e);
+    if (text === null) {
       setPending(request);
     } else {
       setPending(null);
-      toastError(themeImportErrorText(e));
+      setRefusal(text);
     }
   };
 
   const upload = async (dataBase64: string, overwrite: boolean) => {
     setBusy(true);
+    setRefusal(null);
     try {
       const res = await api.importThemeArchive({ dataBase64, ...(overwrite ? { overwrite } : {}) });
       await imported(localizedText(locale, res.theme.name, res.theme.nameZh));
@@ -116,6 +128,7 @@ export function ThemeImportActions({
 
   const download = async (target: string, overwrite: boolean) => {
     setBusy(true);
+    setRefusal(null);
     try {
       const res = await api.importThemeFromUrl({
         url: target,
@@ -176,7 +189,15 @@ export function ThemeImportActions({
       {/* The entry sits beside "read again": the two are the same read and the same write, so they
           belong to one row of actions on the folder. Bordered rather than a third line of small
           text, because it is the only one of them that brings something in. */}
-      <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+      <Button
+        size="sm"
+        variant="secondary"
+        onClick={() => {
+          // A fresh opening asks nothing of the last one: no sentence from an earlier attempt.
+          setRefusal(null);
+          setOpen(true);
+        }}
+      >
         {S.settings.themeImport}
       </Button>
 
@@ -210,7 +231,11 @@ export function ThemeImportActions({
               { value: "download", label: S.settings.themeImportSourceUrl },
             ]}
             value={source}
-            onChange={setSource}
+            onChange={(next) => {
+              // The refusal was about the other source's request; this one has sent nothing yet.
+              setRefusal(null);
+              setSource(next);
+            }}
           />
           {source === "upload" ? (
             <>
@@ -251,6 +276,18 @@ export function ThemeImportActions({
                 autoFocus
               />
             </>
+          )}
+          {/* The refusal sits under the source it was about, inside the dialog that asked: the
+              picked file or the address is still here, and the confirm button beside it is what
+              retries. A toast said the same thing over an open dialog and left with it. */}
+          {refusal !== null && (
+            <NoticeStrip
+              tone="danger"
+              role="alert"
+              className="rounded-md border px-2.5 py-2 text-xs"
+            >
+              <span data-slot="body">{S.common.refused(refusal)}</span>
+            </NoticeStrip>
           )}
         </div>
       </Modal>

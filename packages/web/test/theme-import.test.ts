@@ -1,6 +1,7 @@
 /**
- * The two pure parts of the theme import dialog (features/settings/theme-import.ts): what a failed
- * import says, and the check the browser makes before reading a picked file.
+ * The pure parts of the theme import (features/settings/theme-import.ts): what a failed import
+ * says, which of its answers are a refusal rather than a question, and the check the browser makes
+ * before reading a picked file.
  *
  * What is worth pinning here is that a refusal is never replaced by a sentence of the app's own
  * when the server had something specific to say: `theme_invalid` carries the reader's collected
@@ -18,6 +19,7 @@ import {
   THEME_FILE_LIMIT_KB,
   themeFileTooLarge,
   themeImportErrorText,
+  themeImportRefusal,
 } from "../src/features/settings/theme-import";
 
 describe("主题导入失败时说的话", () => {
@@ -74,6 +76,35 @@ describe("主题导入失败时说的话", () => {
     expect(themeImportErrorText(empty)).toBe(apiErrorText(empty));
     // Not an ApiError at all (a thrown non-HTTP failure): the shared text, not a crash or a blank.
     expect(themeImportErrorText(new Error("boom"))).toBe(S.common.unknownError);
+  });
+});
+
+describe("拒绝与「问题」的分界", () => {
+  it("409 theme_exists 是问题，不是拒绝：调用方拿 null 去开覆盖确认", () => {
+    expect(themeImportRefusal(new ApiError(409, "theme_exists", "…"))).toBeNull();
+  });
+
+  it("其余一律是拒绝，且就是那句与失败同一个表里的话", () => {
+    // A code with its own copy: the localized sentence, so a reader who is on 中文 is not shown the
+    // server's English.
+    expect(themeImportRefusal(new ApiError(404, "registry_theme_not_found", "…"))).toBe(
+      S.settings.themeRegistryGone,
+    );
+    expect(themeImportRefusal(new ApiError(400, "download_failed", "…"))).toBe(
+      S.settings.themeImportDownloadFailed,
+    );
+    // A code nobody localized still says something: the shared mapping, never an empty line.
+    const odd = new ApiError(500, "something_new", "it broke");
+    expect(themeImportRefusal(odd)).toBe(apiErrorText(odd));
+    expect(themeImportRefusal(odd)).not.toBe("");
+    expect(themeImportRefusal(new Error("boom"))).toBe(S.common.unknownError);
+  });
+
+  it("409 别的码不是问题：它没有覆盖确认可开，仍按拒绝说", () => {
+    // `theme_exists` is the one 409 the flows ask about; a conflict from anywhere else has no card
+    // to open, so it must not vanish into a silent null.
+    const other = new ApiError(409, "conflict", "…");
+    expect(themeImportRefusal(other)).toBe(apiErrorText(other));
   });
 });
 
