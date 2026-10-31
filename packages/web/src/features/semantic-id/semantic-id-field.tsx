@@ -13,6 +13,13 @@
  * for a real name, rather than a toast that would be gone by the time the user looks down.
  * Nothing is proposed on its own: typing a name never rewrites the id.
  *
+ * THE REQUEST ITSELF CAN FAIL — no access to the Project the model is spent from, company mode
+ * switched off under an org or channel dialog, the connection gone — and then the box is left
+ * exactly as it was. That failure is drawn in the same place as the note (the shared refusal
+ * lead-in, in danger ink, `role="alert"`), because the button is the thing that just did nothing
+ * and it is where the reader is looking: a toast explains a button that still sits there, and
+ * only for six seconds.
+ *
  * The button says what it does in words — a model is asked for the id, which is not something
  * a sparkles glyph on its own tells anyone — so it sits BESIDE the box rather than inside it,
  * where a label would crowd the value it is meant to leave room for. What it must stay outside
@@ -27,21 +34,12 @@
 import { useId, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { SemanticIdKind } from "@adelie/server/api";
-import {
-  Button,
-  FieldError,
-  FieldHint,
-  FieldLabel,
-  GlyphIcon,
-  ICON_SIZE,
-  Input,
-  toastError,
-} from "@adelie/ui";
+import { Button, FieldError, FieldHint, FieldLabel, GlyphIcon, ICON_SIZE, Input } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { refusalText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
-import { idSuggestNotice, proposalValue } from "./id-suggest-notice";
+import { idSuggestLine, idSuggestNotice, proposalValue } from "./id-suggest-notice";
 import type { IdSuggestNotice } from "./id-suggest-notice";
 
 /** Generate (lucide sparkles): the four-pointed star with its two smaller companions. */
@@ -94,16 +92,23 @@ export function SemanticIdField({
   const [busy, setBusy] = useState(false);
   /** What the last proposal has to say about the id it filled in; cleared by the next edit or attempt. */
   const [notice, setNotice] = useState<IdSuggestNotice | null>(null);
+  /**
+   * Why the last request never answered — the reason the button did nothing at all. It stays
+   * until the next edit or attempt, which is what makes it readable after the click.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
   const derivable = source.trim() !== "";
   // The caller's validation outranks the proposal's own note: a rejected id is about what is
   // in the box, which is what the user is looking at.
   const showError = error !== undefined;
-  const below = showError || notice !== null;
+  const line = idSuggestLine(notice, refusal);
+  const below = showError || line !== null;
 
   const generate = async () => {
     if (projectId === null) return;
     setBusy(true);
     setNotice(null);
+    setRefusal(null);
     try {
       const res = await api.suggestSemanticId(projectId, {
         name: source.trim(),
@@ -113,9 +118,10 @@ export function SemanticIdField({
       onChange(proposalValue(res.id, lockedPrefix));
       setNotice(idSuggestNotice(res, S.semanticId.idSuggest));
     } catch (e) {
-      // The request itself failed (offline, no permission, the mode switched off): the id is
-      // unchanged and there is nothing to say under the field.
-      toastError(apiErrorText(e));
+      // The request never answered (offline, no permission, the mode switched off): the box is
+      // untouched and the button did nothing, so the reason goes under the field — `refusalText`
+      // because the sentence may be the app's own rather than the server's.
+      setRefusal(refusalText(e));
     } finally {
       setBusy(false);
     }
@@ -133,6 +139,7 @@ export function SemanticIdField({
       {...(below ? { "aria-describedby": messageId } : {})}
       onChange={(e) => {
         setNotice(null);
+        setRefusal(null);
         onChange(e.target.value);
       }}
       {...(onEnter !== undefined
@@ -179,11 +186,11 @@ export function SemanticIdField({
       </div>
       {showError ? (
         <FieldError id={messageId}>{error}</FieldError>
-      ) : notice?.tone === "attention" ? (
+      ) : line?.kind === "attention" ? (
         // A placeholder id: what the user must act on, so it takes the slot the error would.
         // `status` rather than `alert` — the box holds a valid id, nothing was rejected.
         <span id={messageId} role="status" className={`mt-1 block text-xs ${toneInk.attention}`}>
-          {notice.text}
+          {line.text}
         </span>
       ) : (
         <>
@@ -191,11 +198,22 @@ export function SemanticIdField({
               is punctuation, and punctuation is part of the language. The id rule stays on
               screen beside a quiet note — it is what the user reads while typing. */}
           <FieldHint>{`${hint}${generateHint ?? S.semanticId.idGenerateHint}`}</FieldHint>
-          {notice !== null && (
+          {line?.kind === "refusal" ? (
+            // The button did nothing and the box still holds what it held: the reason belongs
+            // under it, in the shared refusal lead-in. `alert`, because a toast was announced
+            // once and then left, while the button stays.
+            <p
+              id={messageId}
+              role="alert"
+              className={`mt-1 block text-xs break-words ${toneInk.danger}`}
+            >
+              {S.common.refused(line.text)}
+            </p>
+          ) : line?.kind === "muted" ? (
             <span id={messageId} role="status" className={`mt-1 block text-xs ${toneInk.muted}`}>
-              {notice.text}
+              {line.text}
             </span>
-          )}
+          ) : null}
         </>
       )}
     </div>

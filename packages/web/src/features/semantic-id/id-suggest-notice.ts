@@ -39,6 +39,30 @@ export function idSuggestNotice(
 }
 
 /**
+ * The single line the field draws under the box, and which of the three it is: the shared refusal
+ * lead-in (the request itself failed), the attention-toned note (the box holds a placeholder), or
+ * the quiet one (the id is a transliteration).
+ *
+ * The refusal is asked for FIRST even though the field never holds both at once: `generate`
+ * clears the note before it asks, so a verdict about an id in the box can only be older than the
+ * answer about the click that asked for another one. Spelling the order out here means a later
+ * edit that keeps a note around cannot quietly hide why the button did nothing.
+ */
+export type IdSuggestLine =
+  | { kind: "refusal"; text: string }
+  | { kind: "attention"; text: string }
+  | { kind: "muted"; text: string };
+
+export function idSuggestLine(
+  notice: IdSuggestNotice | null,
+  refusal: string | null,
+): IdSuggestLine | null {
+  if (refusal !== null) return { kind: "refusal", text: refusal };
+  if (notice === null) return null;
+  return { kind: notice.tone, text: notice.text };
+}
+
+/**
  * What goes in the box: the proposal, less the part the field draws in front of the box. The
  * server answers a non-admin's Project id whole (`alice-research_lab`) while the box holds only
  * what follows `alice-`; an id that does not start with the locked part is left whole, so the

@@ -6,7 +6,8 @@
  */
 import { describe, expect, it } from "vitest";
 import type { SemanticIdSuggestReason, SemanticIdSuggestResponse } from "@adelie/server/api";
-import { idSuggestNotice } from "../src/features/semantic-id/id-suggest-notice";
+import { idSuggestLine, idSuggestNotice } from "../src/features/semantic-id/id-suggest-notice";
+import type { IdSuggestNotice } from "../src/features/semantic-id/id-suggest-notice";
 import { zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";
 
@@ -75,5 +76,29 @@ describe("idSuggestNotice", () => {
     expect(idSuggestNotice(res, en.semanticId.idSuggest)?.text).toContain(
       en.semanticId.idSuggest.reasonUnknown,
     );
+  });
+});
+
+describe("idSuggestLine", () => {
+  const QUIET: IdSuggestNotice = { tone: "muted", text: "按名称转写生成" };
+
+  it("says nothing while the box speaks for itself", () => {
+    expect(idSuggestLine(null, null)).toBeNull();
+  });
+
+  it("passes a note through with the tone it was given", () => {
+    expect(idSuggestLine(QUIET, null)).toEqual({ kind: "muted", text: "按名称转写生成" });
+    expect(idSuggestLine({ tone: "attention", text: "请填写名称" }, null)).toEqual({
+      kind: "attention",
+      text: "请填写名称",
+    });
+  });
+
+  it("draws a failed request as a refusal of its own — the reason the button did nothing", () => {
+    expect(idSuggestLine(null, "not_found")).toEqual({ kind: "refusal", text: "not_found" });
+  });
+
+  it("lets a refusal outrank a note left over from an earlier proposal", () => {
+    expect(idSuggestLine(QUIET, "not_found")).toEqual({ kind: "refusal", text: "not_found" });
   });
 });
