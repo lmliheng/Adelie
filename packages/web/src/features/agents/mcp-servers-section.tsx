@@ -20,8 +20,13 @@
  * of it, but the server is not connected in any turn, so its `mcp__*` tools leave the tool
  * list. That is the way to park a plugin's bridge (the WPS add-on, say) without deleting it
  * and having to re-add it later; the row dims while it is off.
+ *
+ * That switch writes nothing optimistically either — it sends the list, and the row keeps what
+ * the server has until the write lands — so a refused flip draws the server's words under the
+ * switch that asked, instead of in a toast that dismissed itself six seconds later. Which row
+ * draws it is `toggleRefusalFor`'s question (see `mcp-servers-toggle.ts`).
  */
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { MCPServerConfig } from "@adelie/core/interfaces";
 import {
   Button,
@@ -62,6 +67,7 @@ import {
   type McpServerFormState,
   type McpTransportKind,
 } from "./mcp-servers-form";
+import { flippedEnabled, toggleRefusalFor, type McpToggleRefusal } from "./mcp-servers-toggle";
 import { toneInk } from "../../lib/tone";
 
 /** Maps a validation error code to its localized message. */
@@ -121,6 +127,27 @@ function TestBadge({ result }: { result: RowTestResult | undefined }) {
   );
 }
 
+/**
+ * The sentence under a row whose switch flip the server refused — `null` for every other row, and
+ * for a flip that has not been refused (the host picks the row with `toggleRefusalFor`).
+ *
+ * `line-clamp-2` keeps a long server sentence from heightening the band; the whole text is on
+ * hover, the way the list rows and the other switches in the app carry theirs.
+ */
+function ToggleRefusal({ refusal }: { refusal: string | null }) {
+  if (refusal === null) return null;
+  return (
+    <p
+      role="alert"
+      data-tooltip={S.common.refused(refusal)}
+      data-tooltip-content="text"
+      className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+    >
+      {S.common.refused(refusal)}
+    </p>
+  );
+}
+
 export function McpServersSection({
   agentId,
   initial,
@@ -143,6 +170,12 @@ export function McpServersSection({
   // The words for a delete the server refused, drawn inside the confirmation that asked for it
   // (see confirmDelete): retrying is the next thing the person does, and the button is in there.
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  // The server's words for a flip of a row's switch it refused, drawn under that switch: the
+  // switch keeps the state the server has, so without this line a refused flip leaves nothing at
+  // all on screen once its toast is gone. Cleared at the start of every flip (it is that attempt's
+  // answer, not the row's standing state) and by every write that lands — the list those rows are
+  // taken from may have moved, and the sentence names a position in it.
+  const [toggleRefusal, setToggleRefusal] = useState<McpToggleRefusal | null>(null);
   // Connectivity probe: runs the current form state through POST /config/mcp-test
   // (server-side connect + discovery, nothing saved); the result pops as a toast.
   const [testing, setTesting] = useState(false);
@@ -193,6 +226,9 @@ export function McpServersSection({
         config: { mcpServers: next },
       });
       setServers(res.config.mcpServers);
+      // The rows just moved to what the server holds; a sentence about a position in the old list
+      // would point at whatever slid into it (see the state's comment).
+      setToggleRefusal(null);
       toastSuccess(S.agent.savedTakesEffect);
       return null;
     } catch (e) {
@@ -301,21 +337,11 @@ export function McpServersSection({
 
   /** Flips one row's switch and persists it; the whole list is PUT back, like every edit here. */
   const toggleEnabled = async (index: number) => {
-    const entry = servers[index];
-    if (!entry) return;
-    const next = servers.map((s, i) => {
-      if (i !== index) return s;
-      if (!enabledOf(s)) {
-        // Back on: drop the key rather than store `true`, so the entry keeps following the
-        // default (core reads an absent `enabled` as on — same normalization as the form).
-        const config = { ...s.config };
-        delete config["enabled"];
-        return { name: s.name, config };
-      }
-      return { name: s.name, config: { ...s.config, enabled: false } };
-    });
-    const err = await persist(next);
-    if (err !== null) toastError(err);
+    if (!servers[index]) return;
+    // This flip's answer replaces the last one's (see the state's comment).
+    setToggleRefusal(null);
+    const err = await persist(flippedEnabled(servers, index));
+    if (err !== null) setToggleRefusal({ index, text: err });
   };
 
   /**
@@ -387,57 +413,80 @@ export function McpServersSection({
             </th>
           </TableHead>
           <TableBody>
-            {servers.map((entry, index) => (
-              <TableRow key={entry.name}>
-                <TableCell>
-                  <Switch
-                    checked={enabledOf(entry)}
-                    disabled={busy}
-                    onChange={() => void toggleEnabled(index)}
-                    title={enabledOf(entry) ? S.agent.mcpDisableHint : S.agent.mcpEnableHint}
-                    aria-label={`${entry.name} ${S.agent.mcpEnabled}`}
-                  />
-                </TableCell>
-                <TableCell
-                  className={`font-mono text-xs ${enabledOf(entry) ? "" : "text-gray-400 dark:text-gray-500"}`}
-                >
-                  {entry.name}
-                </TableCell>
-                <TableCell className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                  {transportOf(entry)}
-                </TableCell>
-                <TableCell className="font-mono text-xs text-gray-500 dark:text-gray-400">
-                  {permissionOf(entry)}
-                </TableCell>
-                <TableCell
-                  className={`max-w-[360px] truncate font-mono text-xs ${
-                    enabledOf(entry)
-                      ? "text-gray-500 dark:text-gray-400"
-                      : "text-gray-400 dark:text-gray-500"
-                  }`}
-                >
-                  {targetOf(entry)}
-                </TableCell>
-                {showBadges && (
-                  <TableCell align="right">
-                    <TestBadge result={rowResults.get(entry.name)} />
-                  </TableCell>
-                )}
-                <TableCell align="right" nowrap>
-                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => openEdit(index)}>
-                    {S.common.edit}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => askDelete(index)}
-                  >
-                    {S.agent.mcpRemove}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            {servers.map((entry, index) => {
+              // A refused flip's sentence goes in a band of its own under that row: the switch's
+              // own cell is one control wide, and a long server sentence inside it would squeeze
+              // the columns beside it — the name column would wrap on every row, including rows
+              // that were never written to.
+              const refusal = toggleRefusalFor(toggleRefusal, index);
+              return (
+                <Fragment key={index}>
+                  <TableRow>
+                    <TableCell>
+                      <Switch
+                        checked={enabledOf(entry)}
+                        disabled={busy}
+                        onChange={() => void toggleEnabled(index)}
+                        title={enabledOf(entry) ? S.agent.mcpDisableHint : S.agent.mcpEnableHint}
+                        aria-label={`${entry.name} ${S.agent.mcpEnabled}`}
+                      />
+                    </TableCell>
+                    <TableCell
+                      className={`font-mono text-xs ${enabledOf(entry) ? "" : "text-gray-400 dark:text-gray-500"}`}
+                    >
+                      {entry.name}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {transportOf(entry)}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-gray-500 dark:text-gray-400">
+                      {permissionOf(entry)}
+                    </TableCell>
+                    <TableCell
+                      className={`max-w-[360px] truncate font-mono text-xs ${
+                        enabledOf(entry)
+                          ? "text-gray-500 dark:text-gray-400"
+                          : "text-gray-400 dark:text-gray-500"
+                      }`}
+                    >
+                      {targetOf(entry)}
+                    </TableCell>
+                    {showBadges && (
+                      <TableCell align="right">
+                        <TestBadge result={rowResults.get(entry.name)} />
+                      </TableCell>
+                    )}
+                    <TableCell align="right" nowrap>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => openEdit(index)}
+                      >
+                        {S.common.edit}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => askDelete(index)}
+                      >
+                        {S.agent.mcpRemove}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                  {refusal !== null && (
+                    <TableRow>
+                      {/* span every column of this table: the refusal belongs to the row, not to
+                          a column of it */}
+                      <TableCell colSpan={showBadges ? 7 : 6} className="pt-0">
+                        <ToggleRefusal refusal={refusal} />
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              );
+            })}
           </TableBody>
         </Table>
       )}
