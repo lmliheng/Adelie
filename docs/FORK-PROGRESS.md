@@ -1856,6 +1856,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       重建 Web 产物，同一个套件**三条全红**（都死在 `toHaveText` 上，改前屏幕上没有那一行），放回后
       再跑 **3 passed**。**还差**：Agent 设置页的定时任务 tab 用的是表格 + 文字按钮，不是共用这一行，
       本轮没动。见「第一百六十九轮」一节。
+- [x] **7.61 Agent 设置页的定时任务 tab：启用 / 停用被拒时，原因留在那一行的状态徽标下面；这条动作进了浏览器套件**
+      （**2026-10-31 第一百七十轮**落地，提交见该节；源码 1 处（状态 + 一块画句子的小组件）+
+      1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.60 结尾点名的那一处
+      「还差」—— 同一件东西的第三处列表，用的是表格 + 文字按钮，所以句子落在状态徽标下面而不是名字下面。
+      翻转的归属沿用 7.60 收进 `src` 的纯函数 `scheduleRefusalFor()`（任务的名字 = Agent 目录 + 文件名），
+      下一次翻转才清。`packages/web/e2e/agent-schedule-toggle-refusal.spec.mjs` 两条真服务端用例：被拒
+      的翻转把原因留在那一行的徽标下面（旁边那一行没有）、通知区里没有可点的 toast、按钮与徽标仍停在
+      服务端记着的位置，且 toast 该消失的七秒之后那一行还在；放开拒绝后同一次点击真的落地、那一行随之
+      消失、按钮与徽标一起移动（停用 → 启用，生效 → 停用）。**反证**：只把 `schedules-tab.tsx` 退回
+      `HEAD`、重建 Web 产物，同一个套件**两条全红**（都死在 `getByRole("alert")` 上：改前那里什么都
+      没有），放回后再跑 **2 passed**。见「第一百七十轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2530,6 +2541,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-31 | 7.58 | **远程控制的连接开关被拒时，原因留在开关下面，不再只活在一条六秒的 toast 里**（不是移植：源码 1 处 `packages/web/src/features/messaging/messaging-binding-editor.tsx`（`useMessagingBinding` 多一个 `toggleRefusal`，失败的状态请求经 `apiErrorText` 填它、不再 `toastError`；`selectChannel` 与下一次翻转清空；正文把它画在状态行下面，`role="alert"`、danger 色、限两行、整句挂悬停，与 `lastError` 同形）+ 单测 1 条 + 1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：开关不做乐观写入，被拒即弹回服务端记着的位置 —— 于是原因此前只剩一条 toast，六秒后屏幕上是一个不动的开关加一句已消失的解释，而这里的失败（另一个会话占着这个机器人、凭证没保存、连接断了）正是读者要据此动作的那几条。编辑器的两个宿主（侧栏弹窗与对话内的远程控制面板）共用正文，两处一起生效。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖），而「消息绑定」是台账点名尚未逐处摸过的那几面之一，这一处是全文件里唯一还「只弹 toast」的写入 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动三个文件 `prettier --check` 干净 · `oxlint` **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 通过文件 + 1 跳过 / 1456 通过 / 6 跳过**（含另一条线在途的 4 条主题桥用例）· ui **131 / 1092** · cli **38 / 561** · web **272 文件 / 3348 通过 / 2 跳过**（+1 即本笔新单测）· server 首跑 1 条失败、复跑 **207 文件 / 3021 通过 / 15 跳过、0 失败**（满载下的偶发，与台账第一百六十轮记的同一种）· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r167a`、服务端 **8995**（`HOST=::`）、仓库自带 mock LLM **8975**、系统 chromium 1280×900）：新 spec **2 passed（14.8 s）**，两态 console 只有既有的 `…/machines` **403** 与刻意造的 **409**，无 pageerror · **反证**：只把 `messaging-binding-editor.tsx` `git stash push --` 这一个路径、重建 Web 产物 → 同一份 spec **2 failed**（都死在「框里找不到 alert」），`git stash pop` 后重建 → **2 passed** · **真看一眼**：`r167/shot-{1-before,2-refused,3-after-7s}.png`，红字「操作被拒绝：该机器人的连接已在另一个会话中启用：先在那边停用，再在此启用。」正贴在「启用连接」开关与状态行下方，开关仍在关位；7 秒后同一行还在 · 端口只用 8995 / 8975（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r167a`，探针与截图在 scratchpad 的 `r167/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-10-31 | 7.59 | **生成 id 的请求被拒时，原因留在 id 框下面、不再只活一条六秒的 toast，这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/semantic-id/semantic-id-field.tsx` 多一个 `refusal` 状态（失败经 `refusalText` 填、不再 `toastError`，输入变化与下一次生成清空）+ `id-suggest-notice.ts` 新增纯函数 `idSuggestLine`（拒绝 > 占位提示 > 安静的转写说明）；1 个新 spec + 单测 4 条 + changelog 一对，**不碰接口、无新文案、无新依赖**）：请求本身失败（没访问权、公司模式被关、连接断了）时框里什么都没变，原因此前只有一条 toast —— 六秒后只剩一个什么都没做的按钮；现在它画在框下面（`role="alert"`、danger 色、共享引子 `S.common.refused`），五个创建对话框共用这一份正文，因此五处同时生效。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 只剩桌面壳 / 部署单元，3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖），而 id 字段的这颗按钮是全仓唯一一处「文件自己的注释写着不要用 toast、它自己却用了」的地方 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · 逐包 test **`EXIT=0`**：core **70 通过文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **272 文件 / 3352 通过 / 2 跳过**（+4 即本笔新单测）· server **206 / 207 文件、3020 通过 / 15 跳过、1 失败** —— 那一条是 `test/themes.test.ts` 的「放进去一份好主题」，**不是本笔**：另一条线在途的调色桥（`packages/core/src/internal/external-theme.ts`，未提交）让 `externalThemeCss` 多写出一行 `--color-gray-900/950`，而本机为跑 e2e 重建了 core 的 dist，服务端测试从 dist 读到的就是带桥的那一版；本笔未碰主题相关任何文件（`git diff --stat` 只有语义 id 三个文件 + spec + changelog）· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r168`、服务端 **8996**（`HOST=::`）、仓库自带 mock LLM、系统 chromium 1280×900）：新 spec **2 passed（12.0 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed** · **两态截图**：回退版是顶部一条 toast「资源不存在，或你没有访问权限。」、框下空白，7.6 秒后连 toast 也没了；改后同一条话以红字留在框下面，7.6 秒后仍在（`r168/{r168-before,r168-after}-{1-before,2-refused,3-after-8s}.png`）· **反证**：只把 `semantic-id-field.tsx` 退回 `HEAD`、重建 Web 产物 → 同一个套件**两条全红**（都死在框里找不到 alert），放回后再重建 → **2 passed** · 端口只用 8996（mock 用仓库自带脚本），跑完都已停，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r168`，探针与截图在 scratchpad 的 `r168/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-10-31 | 7.60 | **定时任务的启用开关被拒时，原因留在那一行下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/schedules/schedule-toggle.ts`（新，`ScheduleToggleRefusal` + 纯函数 `scheduleRefusalFor()`：任务的名字 = Agent 目录 + 文件名，两个 Agent 可以同名，所以只让被拒的那一行画出这句话）、`schedule-row.tsx` 多一个 `refusal` 属性，在名字与排期行下面画 danger 色的 `role="alert"`（限两行、整句挂悬停，引子复用 `S.common.refused`、没有新文案）、以及两个共用这一行的宿主 `schedules-page.tsx` / `schedule-panel.tsx` 各留一份 `toggleRefusal`（翻转前清空、被拒时经 `apiErrorText` 填上，不再走 `toastError`）；+ 单测 1 个文件 4 条 + 新 spec 1 个（3 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这个开关不做乐观写入，被拒时列表没变、开关没动，原因此前只剩一条六秒的 toast，六秒后屏幕上就是「点了没反应」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **1456 通过 / 6 跳过**（比上一轮基线多 4 条，正是另一条线在途的调色桥用例）· ui **1092** · cli **561** · web **272 文件 / 3356 通过 / 2 跳过**（+4 即本笔单测）· server **3020 通过 / 1 失败 / 15 跳过** —— 那条红是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**：它读 core 的 dist，而 dist（15:04 构建）里有另一条线**在途未提交**的调色桥（工作区的 `external-theme.ts` 里 5 处 `PALETTE_BRIDGE`、`HEAD` 的同一文件里 0 处），第一百六十八轮的提交信息里已记过同一条红 · 改动文件 `prettier --check` 干净、`oxlint` 0 警告 0 错误、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r169`、服务端 **8997**（`HOST=::`）、仓库自带 mock LLM **8996**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **3 passed（21.1 s）**；探针（`r169/probe.mjs`）量到被拒后那一行是「操作被拒绝：该定时任务已不存在。」、旁边那一行 **0 条** alert、通知区 **0 个**可点按钮、开关 `aria-checked="true"`（服务端里任务仍启用）、**7 秒后那一行仍在**；放开拒绝后同一开关再点一次：alert **0**、`aria-checked="false"`；console 只有既有的 `…/api/projects/…/machines` **403** 与本轮刻意造的 **404**，无其它 error、无 pageerror（截图 `r169/shot-{1-before,2-refused,3-after-7s,4-after-success}.png`）· **反证**：把本笔三个源码文件退回 `HEAD`、新模块挪走、重建 Web 产物，同一份 spec **3 failed**（都死在 `toHaveText` 上，改前屏幕上没有那一行），放回、重建 → **3 passed** · 端口只用 8997 / 8996（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r169`，探针 / 临时配置 / 截图在 scratchpad 的 `r169/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | `e7d5369e` |
+| 2026-10-31 | 7.61 | **Agent 设置页的定时任务 tab：启用 / 停用被拒时，原因留在那一行的状态徽标下面；这条动作进了浏览器套件**（不是移植：源码 1 处 `packages/web/src/features/agents/schedules-tab.tsx` —— 多一个 `toggleRefusal` 状态（失败经 `apiErrorText` 填、不再 `toastError`，下一次翻转开始清空）+ 一块 `ToggleRefusal` 画在状态徽标下面（共享引子 `S.common.refused`、danger 色、`role="alert"`、限两行、整句挂悬停，`whitespace-normal` 让它在 `nowrap` 的格里换行）；归属沿用第一百六十九轮收进 `src` 的纯函数 `scheduleRefusalFor()`，没有新单测（那 4 条已经钉住这条规则）；1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.60 结尾点名的「还差」那一处 —— 同一件东西的第三处列表，只是它是表格 + 文字按钮而不是共用 `ScheduleRow`；按钮同样不做乐观写入，被拒时按钮与徽标都不动，原因此前只剩一条六秒的 toast，六秒后就是「点了没反应」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **273 文件 / 3356 通过 / 2 跳过** · server **3020 通过 / 1 失败 / 15 跳过** —— 那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**（第一百六十八 / 一百六十九轮已记过同一条：它读 core 的 dist，而 dist 里有另一条线在途未提交的调色桥；`grep -c PALETTE_BRIDGE` 在工作的 `external-theme.ts` 里 5、在 `HEAD` 的同一文件里 0）· 本笔只动 `packages/web` 的两个文件 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r170`、服务端 **8987**（`HOST=::`）、仓库自带 mock LLM **8986**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（12.5 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed** · 探针读到被拒后状态格 **212×74 px**、句子两行 32 px、未截断、徽标仍是「生效」、`role="alert"` 在**这一格**里、**7 秒后仍在**；放开拒绝后同一颗按钮落地、alert **0**、按钮变「启用」、徽标变「停用」；console 只有既有的 `…/machines` **403** 与本轮刻意造的 **404**，无其它 error、无 pageerror（截图 `r170/shot-{1-before,2-refused,3-after-7s,4-after-success}.png`）· **反证**：只把 `schedules-tab.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在 `statusCell(...).getByRole("alert")` 的 `toHaveText` 上），改前截图里原因此刻只在顶部一条 toast「该定时任务已不存在。」、状态格只有「生效」；放回、重建 → **2 passed** · 端口只用 8987 / 8986（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r170`，探针 / 临时配置 / 截图在 scratchpad 的 `r170/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -19670,3 +19682,67 @@ core 因此是 1456 条（比 1452 多 4 条，正是它那 4 条主题桥用例
 
 - 源码 + 单测 + 用例 + changelog：**`e7d5369e`**（见上表那一行）；台账（7.60、上表那一行、本节）另起一笔，
   两笔都只带自己的路径。
+
+## 第一百七十轮：Agent 设置页的定时任务 tab，启用 / 停用被拒时原因留在那一行的徽标下面（2026-10-31，条目 7.61）
+
+### 开工自检
+
+`git status --short` **不干净**：`packages/core/src/internal/external-theme.ts` 与
+`packages/core/test/external-theme.test.ts` 两处被改（mtime 10:57），是自进化那条线
+（`session-2026-10-27-20-43-36-0f67df1c`）**验过、等用户点头才提交**的在途调色桥 —— 与第一百六十七 /
+一百六十八 / 一百六十九轮遇到的是同一件，判据也一样（它之后 git 再没被写过、`ps` 里没有进程落在这棵树）。
+**处置照旧**：不替它提交、不回滚、不 stash，本轮只动自己的文件，**每一笔提交都带 pathspec**。
+它的两处在门禁里一并跑了：core 因此是 **1456** 条（比基线多 4 条，正是它那 4 条主题桥用例）。
+
+### 选活
+
+表上未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、
+4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）—— 全都等人。于是接着 7.19–7.60 那一族做完最后一面：
+上一轮结尾点名「Agent 设置页的定时任务 tab 用的是表格 + 文字按钮，不是共用这一行，本轮没动」，
+这一轮就做它 —— 它是同一件东西的第三处列表，也是这一族里最后一个「动作被拒后屏幕上什么都不留」的写入。
+
+### 做了什么
+
+- `packages/web/src/features/agents/schedules-tab.tsx`：多一个 `toggleRefusal` 状态（`ScheduleToggleRefusal`，
+  类型与纯函数都来自 `../schedules/schedule-toggle`）；`toggle()` 在发起前清空、被拒时经 `apiErrorText`
+  填上而不是 `toastError`；状态徽标下面多一块 `ToggleRefusal`（`role="alert"`、`toneInk.danger`、
+  `line-clamp-2`、`max-w-56`、`whitespace-normal` 让它在 `nowrap` 的格里换行、整句挂悬停、引子复用
+  `S.common.refused`，**没有新增文案**）。`toastError` 的导入随之删掉（文件里不再用）。
+- 归属沿用 `scheduleRefusalFor()` —— 这个 tab 只列一个 Agent 的任务，但「哪一行画这句话」不另写一套，
+  与另外两处共用同一条规则。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）。
+- 逐包 test：core **1456 / 6 跳过** · ui **1092** · cli **561** · web **273 文件 / 3356 通过 / 2 跳过** —— 全绿；
+  **server 3020 通过 / 1 失败 / 15 跳过**，那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**：
+  它读 core 的 dist，而 dist（15:04 构建）里有另一条线**在途未提交**的调色桥（工作区的 `external-theme.ts`
+  里 5 处 `PALETTE_BRIDGE`、`HEAD` 的同一文件里 0 处）。本笔只动 `packages/web`。
+- 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r170`、服务端 **8987**（`HOST=::`）、
+  仓库自带 mock LLM **8986**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、
+  跑完移出仓库）：新 spec **2 passed（12.5 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**。
+  探针（`r170/tmp-e2e/tmp-r170-probe.spec.mjs`）读到被拒后状态格 **212×74 px**、句子两行 32 px、
+  `scrollHeight` 未越界（没被截断）、徽标仍是「生效」、`role="alert"` 就在**这一格**里、**7 秒后仍在**；
+  放开拒绝后同一颗按钮落地、alert **0**、按钮变「启用」、徽标变「停用」；console 只有既有的
+  `…/api/projects/…/machines` **403** 与本轮刻意造的 **404**，无其它 error、无 pageerror
+  （截图 `r170/shot-{1-before,2-refused,3-after-7s,4-after-success}.png`）。
+- **反证**：只把 `schedules-tab.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在
+  `statusCell(row).getByRole("alert")` 的 `toHaveText` 上：改前那一格里什么都没有），改前截图里原因此刻
+  只在顶部一条 toast「该定时任务已不存在。」（`r170/proof-prefix-refused.png`），状态格只有「生效」；
+  放回、重建 → **2 passed**。
+- 端口只用 8987 / 8986（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r170`。
+
+### 没做 / 留着
+
+- **MCP 服务器表的启用开关仍是 toast-only**：这一族最后剩下的一处即时写入（`mcp-servers-section.tsx`
+  的 `toggleEnabled`），下一轮可以做它 —— 它是一条列表里的一行，句子的落点与这里同形。
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+- 台账第 168 轮的小节仍然缺失（第一百六十九轮已记过一次），本轮不补写别人的叙述。
+
+### 提交
+
+- 源码 + 用例 + changelog：见上表那一行的 commit（只带 `packages/web/src/features/agents/schedules-tab.tsx`、
+  `packages/web/e2e/agent-schedule-toggle-refusal.spec.mjs`、`changelog/unreleased/2026-10-31-agent-schedule-toggle-refusal{,.zh}.md`）；
+  台账（7.61、上表那一行、本节）另起一笔。两笔都不带另一条线那两个文件。
