@@ -19,6 +19,12 @@ export default defineConfig({
     include: ["test/**/*.test.ts"],
     // Every vi.stubGlobal (fetch, localStorage, …) is undone before the next test starts.
     unstubGlobals: true,
+    // Several suites here scan every source file of the package with the TypeScript compiler, and
+    // dock-state's beforeAll imports a whole module graph: on an idle machine those take 2–4s, so
+    // the 5s default leaves no headroom and the suite went red on a loaded box while the same
+    // files passed alone. The timeouts only bound the wait; the assertions are unchanged.
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
     // `vitest run --coverage`: branch and line coverage of the app's own source.
     coverage: { provider: "v8", include: ["src/**"] },
   },
