@@ -233,6 +233,11 @@ export interface MessagingBindingEditorState {
    * must). The switch only looks disabled while gated: a click explains instead of toggling.
    */
   enableGate: EnablePrerequisite | null;
+  /**
+   * Why the last flip of the switch did not settle (null when nothing was refused). It stays
+   * until the next flip or a channel switch, which is what makes it readable after the attempt.
+   */
+  toggleRefusal: string | null;
   /** The id hosts give their Save action, so a switch gated on unsaved edits can focus it. */
   saveButtonId: string;
   /**
@@ -359,6 +364,8 @@ export function useMessagingBinding(
   const [fieldErrors, setFieldErrors] = useState<MessagingFormErrors>({});
   const [busy, setBusy] = useState(false);
   const [toggling, setToggling] = useState(false);
+  /** The server's refusal of the last flip of the switch, until the next flip or channel switch. */
+  const [toggleRefusal, setToggleRefusal] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const saveButtonId = useId();
@@ -419,6 +426,9 @@ export function useMessagingBinding(
   };
 
   const selectChannel = (channel: MessagingChannel) => {
+    // The refusal belongs to the switch of the channel it was refused on: another channel's
+    // switch is a different control, and carrying the sentence across would accuse it.
+    setToggleRefusal(null);
     patchForm({ channel });
   };
 
@@ -529,15 +539,26 @@ export function useMessagingBinding(
     }
   };
 
-  /** The Switch: connect/disconnect the SELECTED channel with its stored credentials. */
+  /**
+   * The Switch: connect/disconnect the SELECTED channel with its stored credentials.
+   *
+   * A refused flip leaves its reason in `toggleRefusal`, under the switch, and NOT in a toast:
+   * the switch springs back to where the server still has it (nothing is written optimistically),
+   * so the toast was the only trace of why, and it is gone in six seconds — while the reader who
+   * looked away has a switch that refuses to move and one sentence they never got to read. The
+   * reasons here are the settled ones a reader acts on (`*_not_bound`, another conversation
+   * already polling this bot's token, a lost connection), and the switch is exactly where they
+   * were looking when it happened.
+   */
   const toggleEnabled = async (next: boolean) => {
+    setToggleRefusal(null);
     setToggling(true);
     try {
       const res = await api.setMessagingBindingState(sessionId, selected, next);
       applyChannel(selected, res.binding, res.status);
       onChanged?.(sessionId, next && res.binding?.enabled === true ? selected : null);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setToggleRefusal(apiErrorText(e));
     } finally {
       setToggling(false);
     }
@@ -562,6 +583,7 @@ export function useMessagingBinding(
     testable: form !== null && formTestable(form, facts.secretConfigured),
     toggleBusy: toggling || busy,
     enableGate,
+    toggleRefusal,
     saveButtonId,
     adoptBinding: (binding) =>
       applyChannel(binding.channel, binding, channels[binding.channel].status),
@@ -836,6 +858,19 @@ export function MessagingBindingBody({ b }: { b: MessagingBindingEditorState }) 
             {S.messaging.status[facts.status.state]}
           </span>
         </div>
+        {/* The refused flip: first of the lines under the status row, because it is about the
+            control above it rather than about the connection's own health. `role="alert"` so it
+            is announced when it arrives — a toast was announced once and then left. */}
+        {b.toggleRefusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={S.common.refused(b.toggleRefusal)}
+            data-tooltip-content="text"
+            className={`line-clamp-2 text-xs break-words ${toneInk.danger}`}
+          >
+            {S.common.refused(b.toggleRefusal)}
+          </p>
+        )}
         {facts.status.state === "error" && facts.status.lastError !== undefined && (
           <p
             data-tooltip={facts.status.lastError}

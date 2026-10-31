@@ -84,6 +84,7 @@ function stateOf(
     testable: false,
     toggleBusy: false,
     enableGate: null,
+    toggleRefusal: null,
     saveButtonId: "save-under-test",
     adoptBinding: () => {},
     save: noop,
@@ -206,6 +207,24 @@ describe("MessagingBindingBody", () => {
     // Bounded so an error still cannot push the probes far, with the whole text on hover.
     expect(html).toContain("line-clamp-2");
     expect(html).toContain(`data-tooltip="${lastError}"`);
+  });
+
+  it("keeps a refused flip's reason under the switch, not in a toast that leaves in six seconds", () => {
+    // The switch writes nothing optimistically, so a refusal springs it back to where the
+    // server still has it. A toast was the only trace of why, and a reader who looked away
+    // was left with a switch that would not move and no sentence saying why.
+    const reason = "telegram_not_bound";
+    const html = render(stateOf("telegram", {}, { toggleRefusal: reason }));
+    // The shared lead-in, so the line reads the way every other refused write in the app does.
+    expect(html).toContain(`>${S.common.refused(reason)}</p>`);
+    // Announced when it arrives: `alert`, not a silent paragraph.
+    expect(html).toContain(`role="alert"`);
+    // Under the status row — below the switch the reader just flipped, not at the form's foot.
+    const rowAt = html.indexOf("flex flex-wrap items-center gap-2 text-xs");
+    expect(rowAt).toBeGreaterThanOrEqual(0);
+    expect(html.slice(rowAt, html.indexOf(S.common.refused(reason), rowAt))).toContain("</div>");
+    // And it is the flip's own line: with nothing refused, no alert is on screen at all.
+    expect(render(stateOf("telegram"))).not.toContain(`role="alert"`);
   });
 
   it('closes the form with the delivery options, each explanation behind its label\'s "?"', () => {
