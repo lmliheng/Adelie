@@ -23,7 +23,6 @@ import {
   Segmented,
   SettingsEmpty,
   SkeletonList,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -43,6 +42,8 @@ import {
 import type { ScheduleFilter } from "./schedule-panel-state";
 import { refreshSchedules, useProjectSchedules } from "./schedule-store";
 import { ScheduleSuggestions } from "./schedule-suggestions";
+import { scheduleRefusalFor } from "./schedule-toggle";
+import type { ScheduleToggleRefusal } from "./schedule-toggle";
 import { toggleBody } from "./schedule-upsert";
 
 /** How often the list refetches while on screen — about the server's own re-read cadence for the schedule directory. */
@@ -61,7 +62,8 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
   const projectId = currentProject?.projectId ?? null;
   const isOwner = currentProject?.role === "owner";
   // The shared store's list, narrowed to this conversation; only the first load's failure shows
-  // in place, and row actions report via toast.
+  // in place, the switch's own refusals show under their row, and the rest of the row actions
+  // report via toast.
   const { items: projectItems, error } = useProjectSchedules(projectId, session.sessionId);
   const items = projectItems === null ? null : sessionSchedules(projectItems, session.sessionId);
   const [query, setQuery] = useState("");
@@ -75,6 +77,9 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
   // The server's words for a delete it refused, drawn inside that same confirmation — the
   // panel's copy of the page's rule, since both list the same rows (`ScheduleRow`).
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  // The server's words for a flip of a row's switch it refused, drawn under that row — the
+  // panel's copy of the page's rule, since both list the same rows (`ScheduleRow`).
+  const [toggleRefusal, setToggleRefusal] = useState<ScheduleToggleRefusal | null>(null);
   // AI dialog: non-null means open, seeded with a suggestion's prompt or nothing.
   const [ai, setAi] = useState<{ initial: string } | null>(null);
 
@@ -104,13 +109,17 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
    */
   const toggle = async (item: ProjectScheduleItem) => {
     if (!projectId) return;
+    // The sentence on screen belonged to the attempt before, not to the one about to be made.
+    setToggleRefusal(null);
     setBusy(true);
     try {
       await api.updateSchedule(projectId, item.agentId, item.name, toggleBody(item, !item.enabled));
       toastSuccess(item.enabled ? S.schedule.toastDisabled : S.schedule.toastEnabled);
       await refreshSchedules(projectId);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // Under the row, not in a toast: the switch does not move either way, so the reason has to
+      // stay where the reader is looking — and it has to outlive six seconds.
+      setToggleRefusal({ agentId: item.agentId, name: item.name, text: apiErrorText(e) });
     } finally {
       setBusy(false);
     }
@@ -199,6 +208,7 @@ export function SchedulePanel({ session, active, onPrefillComposer }: SchedulePa
                   item={item}
                   owner={isOwner}
                   busy={busy}
+                  refusal={scheduleRefusalFor(toggleRefusal, item)}
                   onToggle={() => void toggle(item)}
                   onEdit={() => setForm({ editing: item })}
                   onDelete={() => {

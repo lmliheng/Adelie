@@ -90,6 +90,7 @@ export function ScheduleRow({
   onToggle,
   onEdit,
   onDelete,
+  refusal = null,
 }: {
   item: ScheduleItem;
   owner: boolean;
@@ -97,6 +98,12 @@ export function ScheduleRow({
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  /**
+   * The server's words for a flip of THIS row's switch it refused (the host picks the row with
+   * `scheduleRefusalFor`). The switch keeps the position the server has — nothing is written
+   * optimistically — so without this line the attempt leaves no trace at all.
+   */
+  refusal?: string | null;
 }) {
   const { locale } = useLocale();
   const line = describeSchedule(item, locale);
@@ -124,6 +131,20 @@ export function ScheduleRow({
         >
           {line}
         </div>
+        {/* Under the switch's row, where the reader was looking when the flip did not settle: the
+            same alert shape (and the same shared lead-in) the dialogs and the messaging switch
+            use for a refused write. `line-clamp-2` keeps a long server sentence from stretching
+            the list; the whole text is on hover. */}
+        {refusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={S.common.refused(refusal)}
+            data-tooltip-content="text"
+            className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {S.common.refused(refusal)}
+          </p>
+        )}
       </div>
       {owner && (
         <>

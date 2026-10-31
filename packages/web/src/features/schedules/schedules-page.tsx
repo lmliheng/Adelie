@@ -52,7 +52,6 @@ import {
   Segmented,
   SettingsEmpty,
   SkeletonList,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -66,6 +65,8 @@ import type { ScheduleFilter } from "./schedule-panel-state";
 import { ScheduleFormModal } from "./schedule-form-modal";
 import { ScheduleRow } from "./schedule-row";
 import { refreshSchedules, useProjectSchedules } from "./schedule-store";
+import { scheduleRefusalFor } from "./schedule-toggle";
+import type { ScheduleToggleRefusal } from "./schedule-toggle";
 import { toggleBody } from "./schedule-upsert";
 
 /**
@@ -116,6 +117,10 @@ export function SchedulesPage() {
   // The server's words for a delete it refused, drawn inside that same confirmation: the reason
   // has to survive the six-second toast, because retrying is the next thing the user does.
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  // The server's words for a flip of a row's switch it refused, drawn under that row: the switch
+  // keeps the server's position (nothing is written optimistically), so this sentence is the only
+  // trace the attempt leaves on screen.
+  const [toggleRefusal, setToggleRefusal] = useState<ScheduleToggleRefusal | null>(null);
   // The "new task" button's Agent picker.
   const [agentsOpen, setAgentsOpen] = useState(false);
 
@@ -165,13 +170,17 @@ export function SchedulesPage() {
    */
   const toggle = async (item: ProjectScheduleItem) => {
     if (!projectId) return;
+    // The sentence on screen belonged to the attempt before, not to the one about to be made.
+    setToggleRefusal(null);
     setBusy(true);
     try {
       await api.updateSchedule(projectId, item.agentId, item.name, toggleBody(item, !item.enabled));
       toastSuccess(item.enabled ? S.schedule.toastDisabled : S.schedule.toastEnabled);
       await refreshSchedules(projectId);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // Under the row, not in a toast: the switch does not move either way, so the reason has to
+      // stay where the reader is looking — and it has to outlive six seconds.
+      setToggleRefusal({ agentId: item.agentId, name: item.name, text: apiErrorText(e) });
     } finally {
       setBusy(false);
     }
@@ -434,6 +443,7 @@ export function SchedulesPage() {
                       item={item}
                       owner={isOwner}
                       busy={busy}
+                      refusal={scheduleRefusalFor(toggleRefusal, item)}
                       onToggle={() => void toggle(item)}
                       onEdit={() => setForm({ agentId: item.agentId, editing: item })}
                       onDelete={() => {
