@@ -12,6 +12,9 @@
  * below the table's min width.
  * Readable by any member; toggle/edit/delete are owner-only — PUT has whole-file
  * replace semantics, so toggling also resends every field and only flips `enabled`.
+ * A refused flip draws its reason under that row's status badge (`ToggleRefusal`, the same
+ * rule the shared row's switch uses); the other row actions report via toast or the dialog
+ * that asked for them.
  *
  * Prompt-injection controls (usePromptInjection): the schedules.enabled switch, the
  * {{SCHEDULES}}-placeholder alert and the editable schedules.prompt section, mirroring the
@@ -33,7 +36,6 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import type { BadgeStyle } from "@adelie/ui";
@@ -46,7 +48,10 @@ import { AiCreateModal } from "../ai-create";
 import { AiCreateButtons } from "../ai-create/ai-create-buttons";
 import { ScheduleFormModal } from "../schedules/schedule-form-modal";
 import { ScheduleSuggestions, scheduleExamples } from "../schedules/schedule-suggestions";
+import { scheduleRefusalFor } from "../schedules/schedule-toggle";
+import type { ScheduleToggleRefusal } from "../schedules/schedule-toggle";
 import { toggleBody } from "../schedules/schedule-upsert";
+import { toneInk } from "../../lib/tone";
 import { usePromptInjection } from "./prompt-injection-controls";
 
 /** Display status → badge. A finished one-off is settled: a neutral tag, solid so it still reads. */
@@ -58,6 +63,27 @@ const STATUS_BADGE: Record<ScheduleStatus, BadgeStyle> = {
   missed: { tone: "attention" },
   invalid: { tone: "danger" },
 };
+
+/**
+ * The sentence under a row's status badge for a flip of its 启用 / 停用 the server refused —
+ * `null` for every other row, and for a flip that has not been refused (the host picks the row
+ * with `scheduleRefusalFor`). A `nowrap` cell still wraps this one block (`whitespace-normal`),
+ * and `line-clamp-2` keeps a long server sentence from stretching the column; the whole text is
+ * on hover, the way the shared row's own line carries it.
+ */
+function ToggleRefusal({ refusal }: { refusal: string | null }) {
+  if (refusal === null) return null;
+  return (
+    <p
+      role="alert"
+      data-tooltip={S.common.refused(refusal)}
+      data-tooltip-content="text"
+      className={`mt-1 line-clamp-2 max-w-56 whitespace-normal break-words text-xs ${toneInk.danger}`}
+    >
+      {S.common.refused(refusal)}
+    </p>
+  );
+}
 
 export function SchedulesTab({
   agentId,
@@ -80,7 +106,8 @@ export function SchedulesTab({
   });
 
   const [data, setData] = useState<SchedulesResponse | null>(null);
-  // Tab-level error is only the initial list load failure; row/edit actions report via toast.
+  // Tab-level error is only the initial list load failure; a refused flip keeps its reason under
+  // that row, the other row actions report via toast.
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Form dialog: non-null means open (editing that row, or null for a new task).
@@ -92,6 +119,13 @@ export function SchedulesTab({
   // The server's words for a delete it refused, drawn inside that same confirmation: the toast
   // that used to carry them dismissed itself while the retry was still the next thing to do.
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  // The server's words for a flip of a row's 启用 / 停用 it refused. That button writes nothing
+  // optimistically (the row keeps the state the server has), so a refusal leaves no trace at all —
+  // and the reason was a toast, gone six seconds later, beside a button that had not moved. Same
+  // rule as the shared row's switch about which row may draw it (`scheduleRefusalFor`), since a
+  // task is named the same way here: this tab lists one Agent's tasks, but the row the sentence
+  // belongs to is still decided by the rule the other two surfaces use.
+  const [toggleRefusal, setToggleRefusal] = useState<ScheduleToggleRefusal | null>(null);
 
   const load = useCallback(async () => {
     if (!projectId || !agentId) return;
@@ -124,12 +158,14 @@ export function SchedulesTab({
   const toggle = async (item: ScheduleItem) => {
     if (!projectId) return;
     setBusy(true);
+    // This flip's answer replaces the last one's: the line belongs to the attempt, not the row.
+    setToggleRefusal(null);
     try {
       await api.updateSchedule(projectId, agentId, item.name, toggleBody(item, !item.enabled));
       toastSuccess(item.enabled ? S.schedule.toastDisabled : S.schedule.toastEnabled);
       await load();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setToggleRefusal({ agentId, name: item.name, text: apiErrorText(e) });
     } finally {
       setBusy(false);
     }
@@ -216,6 +252,12 @@ export function SchedulesTab({
                       {S.schedule.statusNames[item.status] ?? item.status}
                     </Badge>
                   </span>
+                  {/* Under the badge the button would have moved: the same alert shape (and the
+                      same shared lead-in) the shared row, the dialogs and the other switches use
+                      for a refused write. */}
+                  <ToggleRefusal
+                    refusal={scheduleRefusalFor(toggleRefusal, { agentId, name: item.name })}
+                  />
                 </TableCell>
                 <TableCell nowrap className="text-xs text-gray-500 dark:text-gray-400">
                   {item.period !== undefined ? (
