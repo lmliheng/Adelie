@@ -1820,6 +1820,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       用例时撞上正文与勾选框**互相矛盾**（勾上以后正文仍写着「保持」），同轮修掉。**反证**：只把
       `chat-page.tsx` 退回、重建 Web 产物，同一个套件里**只有**「勾上」那条红，红在「正文仍写着保持」
       —— 两态截图与正文原文留在 scratchpad 的 `r166/`。见「第一百六十六轮」一节。
+- [x] **7.58 远程控制的连接开关被拒时，原因留在开关下面、不再只活六秒；这条动作进了浏览器套件**
+      （**2026-10-31 第一百六十七轮**落地，提交见该节；源码 1 处 + 单测 1 条 + 1 个新 spec +
+      changelog 一对，**不碰接口、无新文案、无新依赖**）：开关不做乐观写入，被拒就弹回服务端记着的
+      位置，于是原因此前只剩一条 toast，六秒后屏幕上一个不动的开关加一句已消失的解释。现在它在
+      `toggleRefusal` 里留着、画在状态行下面（`role="alert"`、danger 色、限两行、整句挂悬停），下一次
+      翻转与切渠道才清（复用 `S.common.refused`，没有新文案）。`packages/web/e2e/
+      messaging-toggle-refusal.spec.mjs` 两条真服务端用例：被拒的启用把原因留在开关旁边、什么都不写
+      （开关仍关、通知区里没有可点的 toast），且 toast 该消失的六秒之后那一行还在；放开拒绝后下一次
+      翻转真的落地、那一行随之消失。**反证**：只把 `messaging-binding-editor.tsx` 退回、重建 Web 产物，
+      同一个套件**两条全红**（框里找不到 alert），放回后再跑 2 passed。见「第一百六十七轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2491,6 +2501,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-30 | 7.55 | **CI 两处红转绿 + 本机才红的三条测试脆弱**（不是移植；**测试面三处，产品代码零改动**）：①`packages/server/test/models.test.ts` 一行按 prettier 折开（第一百六十三轮那笔带上来没折，`style (prettier)` 因此红）；②`plugins/use-seedream/test/seedream.test.mjs` 新增 `relativeTo(dir, absolute)` —— 套件报的 `paths` 是绝对路径，断言里写的名字是 `/` 分隔的（SKILL.md 给用户看的也是 `/`），Windows 上 `path.relative` 给 `\`，三条用例因此红，现在统一按 `path.sep` 归一；③`packages/server/test/builtin-agents.test.ts` 与 `skills.test.ts` 的预置技能集改成从**测试自己的根**（`t.root`）读库 —— 原先走 `loadPreinstalledPlugins()` 的默认根，本机 `~/.adelie/data/plugins` 里的 `gpu-model-serving` 等用户插件混进期望集，三条用例在「代码没问题的机器上」红 | 六包 `typecheck` **`EXIT=0`**（`src/ifaces.json unchanged`，195 接口 / 591 类型）· 整仓 `pnpm format:check` **干净**（1m29s）· oxlint 四个改动文件 **0 警告 0 错误** · 逐包 test **`EXIT=0`、0 失败**：ui **131 / 1092** · core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · cli **38 / 561** · web **272 / 3346 通过 / 2 跳过** · server **207 文件 / 3021 通过 / 15 跳过**（改前同一套是 205 文件全过 + 2 文件 3 条红）· `plugins/use-seedream` `node --test` **12/12** · **反证（Windows 那一半）**：`path.win32` 复算 `relative(dir, abs)` 得 `layers\001-base.png`（改前断言值），归一后 `layers/001-base.png`（改后），与 CI 日志里 actual / expected 逐字一致 · **反证（本机那三条）**：`ADELIE_HOME` 指向空目录时三条本来就是绿的，指向本机真实根就红；改成 `t.root` 后**同一个真实根的进程里 29/29 全绿** · 没有界面改动，所以没起服务、没开浏览器 · 端口一个没碰，数据只落在测试自己的临时根与 `/root/adelie-fork-data` 之外的两份仓库构建产物里 | 见本行提交 |
 | 2026-10-31 | 7.56 | **分配用户密钥被拒时原因留在列表上方，这条动作进了浏览器套件**（不是移植：源码 1 处 `packages/web/src/features/models/models-page.tsx` 的 `AssignUserKeyDialog` 正文结构 —— 「原因 / 骨架屏 / 空态 / 列表」四选一改成「原因（可有）」+ 三者之一，读失败时只剩原因；1 个新文件 `packages/web/e2e/models-assign-user-key.spec.mjs`（3 条：空账号的指路与不可点、勾一条全局密钥落到分组全部模型并以服务端掩码为准、自定义分组无此动作、账号表不被消费、被拒一次框里什么都不丢且重试落地）；changelog 一对。**无新依赖、不碰接口、无新文案**）：这是第一百六十四轮之后新露出来的一条 —— 另一条线 2026-10-30 落的「从用户密钥分配」有服务端用例与分组头部单测、浏览器里一条都没有；写这条用例时撞上它的拒绝路径把密钥列表整块顶掉，于是同轮修掉 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 两个改动文件 `prettier --check` 干净 · `oxlint` **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：web **272 文件 / 3346 通过 / 2 跳过** · core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · ui **131 / 1092** · cli **38 / 561** · server **207 文件 / 3021 通过 / 15 跳过** · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r165-1`、服务端 **8990**、mock LLM **8971**、系统 chromium 1280×900）：新 spec **3 passed（7.3 s）**，按最终源码重建 Web 产物后复跑仍 3 passed · **反证**：退回正文那一处并重建 Web 产物 → 同一个套件里**只有第三条红**（`getByRole('checkbox', { name: 'PROBE_MODEL_KEY_A' })` `element(s) not found`），改前框内原文只有「标题 + 说明 + `models store is closed` + 取消 / 确认」、勾选框 0 个，改后原因在列表上方、勾选框 1 个且勾选为 true · 两态 console 只有既有的 **403 `…/machines`** 与刻意造的 500，无其它 error、无 pageerror · 端口只用 8990 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r165-1`，探针 / 截图 / 日志在 scratchpad 的 `r165/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d4ad21f8` |
 | 2026-10-31 | 7.57 | **会话内换模型的确认框：正文跟着「压缩失败就直接切换」那个勾选框走，这条动作进了浏览器套件**（不是移植：`packages/web/src/lib/strings{,-en}.ts` 新增 `modelSwitchInSessionBodyDiscard`，`packages/web/src/features/chat/chat-page.tsx` 的正文改成读「形状 + 勾选状态」的一个 `modelSwitchBody`，新文件 `packages/web/e2e/model-switch-discard.spec.mjs` 三条真浏览器用例，`test/model-switch.test.ts` +1 条，changelog 一对。**无新依赖、不碰接口**）：换模型会先用**将要离开的那个模型**压上下文，而模型整个不可用（额度用尽、凭据被拒）时它自己压不动，`9eeb78d6` 因此给确认框加了一个默认不勾的「压缩失败就直接切换（放弃摘要）」—— 但正文仍写着「压缩失败则保持『当前模型』」，勾上之后同一框里两句相反。现在正文跟着勾选框走，换模型本身一字未改 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`、0 失败**：web **272 文件 / 3347 通过 / 2 跳过**（+1 正是本笔的新单测）· core **70 通过 / 1 跳过（1452 通过 / 6 跳过）** · ui **131 / 1092** · cli **38 / 561** · server **207 文件 / 3021 通过 / 15 跳过**（`--maxWorkers=3`）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r166`、服务端 **8991**、仓库自带 mock LLM **8981**、系统 chromium 1280×900）：新 spec **3 passed（9.5 s）**，按最终源码重建 Web 产物后复跑仍 **3 passed**；单跑探针读到两态正文 —— 不勾 `…压缩失败则保持「claude-4-8」。`／勾上 `…压缩失败则放弃摘要，直接以「claude-4-7」继续。`，勾选后发出的请求体是 `{"provider":"custom","modelId":"claude-4-7","onCompactionFailure":"discard"}`、不勾时没有那个字段，确认后 `202` 的提示条出现（截图 `r166/shots/{01-unchecked,02-checked}.png`）· **反证**：只把 `chat-page.tsx` 退回 `HEAD` 那一版、重建 Web 产物 → 同一个套件**只有「勾上」那条红**（红在正文仍写着「保持」，另两条绿），放回本笔 → **3 全过** · console 两态只有既有的 **403 `…/machines`**（非管理员账号的既有行为，两态一模一样），无 pageerror · 端口只用 8991 / 8981（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r166`，探针 / 两态截图 / 日志在 scratchpad 的 `r166/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
+| 2026-10-31 | 7.58 | **远程控制的连接开关被拒时，原因留在开关下面，不再只活在一条六秒的 toast 里**（不是移植：源码 1 处 `packages/web/src/features/messaging/messaging-binding-editor.tsx`（`useMessagingBinding` 多一个 `toggleRefusal`，失败的状态请求经 `apiErrorText` 填它、不再 `toastError`；`selectChannel` 与下一次翻转清空；正文把它画在状态行下面，`role="alert"`、danger 色、限两行、整句挂悬停，与 `lastError` 同形）+ 单测 1 条 + 1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：开关不做乐观写入，被拒即弹回服务端记着的位置 —— 于是原因此前只剩一条 toast，六秒后屏幕上是一个不动的开关加一句已消失的解释，而这里的失败（另一个会话占着这个机器人、凭证没保存、连接断了）正是读者要据此动作的那几条。编辑器的两个宿主（侧栏弹窗与对话内的远程控制面板）共用正文，两处一起生效。**为什么是它**：待办里能一轮做完的条目仍然没有（2.2c 桌面壳 / 部署单元、3.5 拍板、3.6 模型 key、4.1–4.3 明令不动、5.6 / 5.10 拍板 / 新依赖），而「消息绑定」是台账点名尚未逐处摸过的那几面之一，这一处是全文件里唯一还「只弹 toast」的写入 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动三个文件 `prettier --check` 干净 · `oxlint` **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 通过文件 + 1 跳过 / 1456 通过 / 6 跳过**（含另一条线在途的 4 条主题桥用例）· ui **131 / 1092** · cli **38 / 561** · web **272 文件 / 3348 通过 / 2 跳过**（+1 即本笔新单测）· server 首跑 1 条失败、复跑 **207 文件 / 3021 通过 / 15 跳过、0 失败**（满载下的偶发，与台账第一百六十轮记的同一种）· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r167a`、服务端 **8995**（`HOST=::`）、仓库自带 mock LLM **8975**、系统 chromium 1280×900）：新 spec **2 passed（14.8 s）**，两态 console 只有既有的 `…/machines` **403** 与刻意造的 **409**，无 pageerror · **反证**：只把 `messaging-binding-editor.tsx` `git stash push --` 这一个路径、重建 Web 产物 → 同一份 spec **2 failed**（都死在「框里找不到 alert」），`git stash pop` 后重建 → **2 passed** · **真看一眼**：`r167/shot-{1-before,2-refused,3-after-7s}.png`，红字「操作被拒绝：该机器人的连接已在另一个会话中启用：先在那边停用，再在此启用。」正贴在「启用连接」开关与状态行下方，开关仍在关位；7 秒后同一行还在 · 端口只用 8995 / 8975（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r167a`，探针与截图在 scratchpad 的 `r167/` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -19474,3 +19485,94 @@ socket 层（本树没有），`#1390` 要先把 `plugins/agent-evaluation` 搬�
 ### 提交
 
 - 源码 + 单测 + 用例 + changelog：见本行提交；台账（7.57、上表那一行、本节）另起一笔。
+
+## 第一百六十七轮：远程控制的连接开关被拒时，原因留在开关下面（2026-10-31，条目 7.58）
+
+### 开工自检
+
+`main` = `ff79b99a`（09:00 那条线落的「几处扫描源码的用例不再被 5 秒超时判红」），比 `origin/main`
+（`9f9c534c`）**多一笔未推的提交**；`git fetch origin` 之后没有可 ff 的提交。
+**开工时工作区不干净**：`packages/core/src/internal/external-theme.ts` 与
+`packages/core/test/external-theme.test.ts` 两处被改（mtime 10:57），作者是自进化那条线的
+`session-2026-10-27-20-43-36-0f67df1c`（`_013` 段），它的 `request_end` 停在 11:02:21 且尾段答复原文写着
+「赛博朋克卡片全白…已修好并验过…**没提交、没推、没写 changelog**，按你的规矩等你点头」—— 即**等用户
+拍板在途改动**，不是无主半成品。判据：它之后 git 再没被写过、`ps` 里没有进程落在这棵树、本轮的
+trace 是 11:00 之后唯一还在写的一份。
+**处置**：不替它提交、不回滚、不 stash（换机/重启后用户随时可以回那句话），本轮只动自己的文件，
+**每一笔提交都带 pathspec**（先例：台账第 68 / 69 / 117 / 142 / 161 轮）。它的两处在门禁里一并跑了：
+core 因此是 1456 条（比 1452 多 4 条，正是它那 4 条主题桥用例），全绿。
+**顺带修了一件环境事**：本机 `pnpm` 11:12 起整个不可用 —— `/root/.local/share/pnpm/bin/pnpm` 是个
+指向 `~/.cache/node/corepack/v1/pnpm/11.18.0/bin/pnpm.cjs` 的壳，而那个 corepack 缓存没了、
+`corepack` 本身也不在 PATH。按 `package.json` 的 `packageManager: pnpm@11.18.0` 把同版本装到
+`/root/.local/share/pnpm-tool`（`npm i -g --prefix`，避开与已有 `pnpx` 冲突的 EEXIST），在
+`/usr/local/bin/pnpm` 放一个启动壳。**没有覆盖任何既有文件**，另一条线问过用户「要不要修回来」、
+本轮直接修好了。
+
+### 选活：待办全卡着，接台账点名「尚未逐处摸过」的那一面里唯一还「只弹 toast」的写入
+
+表上未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、
+4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）。台账第一百三十五 / 一百四十二轮的「下一轮」点名过
+还没逐处摸过的几面：对话停靠栏、终端、工作区浏览器、内置浏览器、消息绑定。本轮逐个量了：
+
+- 工作区浏览器：`applyDelete` / `applyRename` / `applyCreate` 都是**写成功才关框**、被拒进
+  `removeRefusal` 一类的槽（早前的轮次已做完）。
+- 内置浏览器：`clear-data-dialog.tsx` 的注释自己写着原因画在框里（已做完）。
+- 终端 / 停靠栏的「关闭 shell」：`killTerminal` 是**有意的乐观 + 静默**，失败由延迟刷新与服务器对账
+  （`terminal-list.ts` 写明），不是缺陷。
+- 消息绑定：`save()`/`toggleEnabled()` 失败都只 `toastError`；其中**开关**是最疼的一处 —— 它一被拒就
+  弹回原状，屏幕上没有任何东西能留下原因。
+
+所以做这一条：**开关被拒时原因留在开关下面**。
+
+### 做了什么
+
+- `packages/web/src/features/messaging/messaging-binding-editor.tsx`：
+  - `useMessagingBinding` 多一个 `toggleRefusal`；`toggleEnabled` 失败时填它（`apiErrorText`，所以是
+    服务端的原话、或该码的本地化句子），不再走 `toastError`；下一次翻转与 `selectChannel` 清空
+    （另一个渠道的开关是另一个控件，不该继承这句指责）。
+  - 正文把它画在状态行下面那几行的**最前**：`role="alert"`（出现时会被读屏念到）、`toneInk.danger`、
+    `line-clamp-2`、整句挂在悬停上 —— 与既有的 `lastError` / `lastConnectionError` 同一种形状。
+    句子复用共享的 `S.common.refused`，**没有新增文案**。
+  - 编辑器的两个宿主（侧栏弹窗、对话内的远程控制面板）共用这份正文，两处一起生效。
+- `packages/web/test/messaging-binding-editor.test.ts`：+1 条（这条文件本来就用 `renderToStaticMarkup`
+  渲染正文，所以拒绝可以在纯单测里钉住位置与 alert 语义）。
+- `packages/web/e2e/messaging-toggle-refusal.spec.mjs`（新，两条真服务端用例）。
+- `changelog/unreleased/2026-10-31-messaging-toggle-refusal{,zh}.md`：中英一对。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 /
+  591 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 通过文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** ·
+  cli **38 / 561** · web **272 文件 / 3348 通过 / 2 跳过**（+1 即本笔）· server 首跑 1 条失败、复跑
+  **207 文件 / 3021 通过 / 15 跳过**（满载下的偶发，与第一百六十轮记的同一种；失败的那一条复跑即绿）。
+- 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r167a`、服务端 **8995**（`HOST=::`）、
+  仓库自带 mock LLM **8975**、系统 chromium 1280×900 —— 下载的 Playwright 浏览器本机没有，临时配置
+  `use.launchOptions.executablePath` 指 `/usr/bin/chromium` 并放包内跑、跑完移出仓库）：
+  新 spec **2 passed（14.8 s）**。`account_enabled_elsewhere` 这个码前端**有**本地化句子，所以屏幕上
+  是「操作被拒绝：该机器人的连接已在另一个会话中启用：先在那边停用，再在此启用。」（第一次写用例时
+  按英文 message 断言，红了一次，按真界面改回来）。两条用例的 console 里只有既有的
+  `…/api/projects/…/machines` **403** 与刻意造的 **409**，无其它 error、无 pageerror。
+- **反证**：只把 `messaging-binding-editor.tsx` `git stash push --` 这一个路径、重建 Web 产物 → 同一份
+  spec **2 failed**（都死在 `getByRole("alert")` 上，改前框里没有这一行），`git stash pop` 后重建 →
+  **2 passed**。
+- **真看一眼**：`r167/shot-{1-before,2-refused,3-after-7s}.png` —— 红字正贴在「启用连接」开关与状态行
+  下面（在「测试连接 / 发送测试消息」之上），开关仍在关位；**7 秒后同一行还在**（toast 早已消失）。
+- 端口只用 8995 / 8975（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r167a`，探针 / 临时 playwright 配置 / 截图在 scratchpad 的 `r167/` 下
+  （`packages/web/dist`、`packages/web/test-results/` 都是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 待办里那几条卡点（2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10）照旧等人拍板或等 key。
+- **同文件里 `save()` 失败仍只有 toast**：它没有开关那种「弹回原状、屏幕上什么都没留下」的形态
+  （框一直开着、凭证还在、读者手里有「保存」按钮），本轮按最小改动只做开关这一处。
+- **另一条线的两处主题桥改动仍未提交**，等用户在它那条会话里回一句「提交」。本轮一个字节没碰；
+  它若继续写、本轮之后仍有干净工作区的问题，照这本台账「不替它收尾、每笔带 pathspec」的口径走。
+- 上游那几笔仍压在同一处前置上（见「选活」）。
+
+### 提交
+
+- 源码 + 单测 + 用例 + changelog：见本行提交；台账（7.58、上表那一行、本节）另起一笔，
+  两笔都只带自己的路径。
