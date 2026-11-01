@@ -3,8 +3,8 @@
  * DOM: path breadcrumbs, back/forward history, what the list shows and in which order,
  * type-to-select, the sidebar's places (Quick access, with the user's own additions and
  * removals, and the machine's locations — drives, volumes, mounts — with their names), the
- * context menu's items, the keyboard map, what the box for a folder the server may not read
- * offers, and the footer's no-folder button.
+ * context menu's items, the keyboard map, the rule a new folder's name has to keep, what the box
+ * for a folder the server may not read offers, and the footer's no-folder button.
  *
  * Paths come from whichever machine is being browsed, so nothing here asks the browser's own
  * platform about a path — a Windows server's `C:\Users\me` and a Linux one's `/home/me` both
@@ -80,6 +80,21 @@ export function parentOf(path: string): string | null {
 export function baseName(path: string): string {
   const crumbs = splitBreadcrumbs(path);
   return crumbs[crumbs.length - 1]?.label ?? path;
+}
+
+/**
+ * Whether `name` names one folder, so it can be made inside the folder on screen.
+ *
+ * The server's own rule, asked before the request: `dirs.ts`'s `dirNameError` refuses the
+ * empty string, `.` and `..`, either separator a name may travel with, and a NUL — each of
+ * them is a path rather than a name, and would either escape the folder on screen or name
+ * nothing. Asking it here lets the box say so without a round trip; what the filesystem
+ * dislikes on its own (`*` on Windows, a name that is too long) still comes back from the
+ * server as a refusal, since only it can know.
+ */
+export function canMakeFolder(name: string): boolean {
+  if (name === "" || name === "." || name === "..") return false;
+  return !/[\\/]/.test(name) && !name.includes("\0");
 }
 
 /** The separator a path's own family uses: a drive path or a UNC share splits on `\`. */

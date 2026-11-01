@@ -29,6 +29,8 @@
  *   names the folder a temporary Workspace would get (a Windows path keeps its separator) —
  *   none without the Agent's directory, while another machine is browsed, or for an unknown
  *   layout.
+ * - A new folder's name is one segment: a separator, `.` / `..`, a NUL or nothing at all is
+ *   refused before the request, since the server would say the same thing.
  */
 import { describe, expect, it } from "vitest";
 import type { DirEntryInfo, DirListResponse, DirLocation } from "@adelie/server/api";
@@ -38,6 +40,7 @@ import {
   addToQuickAccess,
   canGoBack,
   canGoForward,
+  canMakeFolder,
   clearButton,
   defaultPlaces,
   deniedBox,
@@ -573,5 +576,23 @@ describe("the footer's no-folder button", () => {
     );
     expect(tempWorkspacePath("/srv/agents/a/state")).toBeNull();
     expect(tempWorkspacePath("/")).toBeNull();
+  });
+});
+
+describe("a new folder's name", () => {
+  it("takes any name that is one segment", () => {
+    for (const name of ["docs", "docs 2026", ".config", "..hidden", "a.b", "日本語"]) {
+      expect(canMakeFolder(name), name).toBe(true);
+    }
+  });
+
+  it("refuses a name that is a path rather than a name", () => {
+    for (const name of ["a/b", "a\\b", ".", "..", "a\u0000b"]) {
+      expect(canMakeFolder(name), JSON.stringify(name)).toBe(false);
+    }
+  });
+
+  it("refuses nothing at all, which would name no folder", () => {
+    expect(canMakeFolder("")).toBe(false);
   });
 });

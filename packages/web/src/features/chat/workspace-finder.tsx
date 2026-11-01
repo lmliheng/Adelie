@@ -32,6 +32,11 @@
  * with anything in it, never the root or the Project's own directory, and only after the
  * confirmation card says so (features/chat/workspace-finder-model.ts decides what either menu
  * offers).
+ *
+ * A New folder the server refuses keeps its reason where the name is. The box stays open with
+ * the name that was typed, because the name is the thing to change, so the sentence belongs
+ * under that box rather than in a notification that dismisses itself over it: it goes when the
+ * box goes, and nothing on screen then claims a folder was made.
  */
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -66,10 +71,11 @@ import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { writeClipboard } from "../../lib/clipboard";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { isElectronRenderer } from "../../lib/desktop-renderer";
 import { formatDateTime } from "../../lib/format";
 import { STAT_ICONS } from "../../lib/stat-icons";
+import { toneInk } from "../../lib/tone";
 import { machineLabel, nameOnMachine, workspaceMachines } from "../../lib/workspace-machines";
 import type { WorkspaceMachine } from "../../lib/workspace-machines";
 import { useSessions } from "../../state/sessions";
@@ -80,6 +86,7 @@ import {
   baseName,
   canGoBack,
   canGoForward,
+  canMakeFolder,
   clearButton,
   defaultPlaces,
   deniedBox,
@@ -254,6 +261,13 @@ export function WorkspaceFinder({
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [creating, setCreating] = useState(false);
+  /**
+   * Why the last name was refused, drawn under the box until the name changes or a new attempt
+   * starts. The box keeps the caret there because the name is the thing to change, so the
+   * sentence is about the thing still on screen; it is not toasted, which would leave the same
+   * box looking untouched (7.64's rule for a refused write).
+   */
+  const [newFolderRefusal, setNewFolderRefusal] = useState<string | null>(null);
   const newFolderRef = useRef<HTMLInputElement>(null);
   /**
    * The folder the Delete confirmation is about (null: nothing is being removed), and whether
@@ -563,6 +577,8 @@ export function WorkspaceFinder({
     if (!canCreateFolder) return;
     setFilter("");
     setNewFolderName("");
+    // A fresh box: whatever the last one was refused for is not about this name.
+    setNewFolderRefusal(null);
     setNewFolderOpen(true);
   };
 
@@ -570,8 +586,8 @@ export function WorkspaceFinder({
    * Makes the folder the box names, then reveals it: the folder on screen is re-read with the
    * new one selected, so what was made is on screen rather than merely reported. A refusal —
    * a name taken, one the system will not accept — leaves the box open with what was typed,
-   * since the name is the thing to change; the reason is shown as a toast, which can speak
-   * while the box keeps the caret.
+   * since the name is the thing to change, so the reason is drawn under that box and stays
+   * until the name changes; the box keeps the caret for the same reason.
    */
   const createFolder = () => {
     const parent = view.listing?.path ?? null;
@@ -581,12 +597,22 @@ export function WorkspaceFinder({
       newFolderRef.current?.focus();
       return;
     }
+    // Any attempt makes the sentence about the last one stale, so it is cleared before this one
+    // can fail — a refusal that repeats then arrives as a fresh sentence rather than as none.
+    setNewFolderRefusal(null);
+    // A name that is a path rather than a name is refused here: the server would say the same
+    // thing, and the box can say it without asking.
+    if (!canMakeFolder(name)) {
+      setNewFolderRefusal(S.errors.byCode.dir_name_invalid);
+      newFolderRef.current?.focus();
+      return;
+    }
     setCreating(true);
     api
       .createDir(projectId, parent, name)
       .then((res) => load(parent, { record: false, select: res.path }))
       .catch((err: unknown) => {
-        toastError(apiErrorText(err));
+        setNewFolderRefusal(refusalText(err));
         newFolderRef.current?.focus();
       })
       .finally(() => setCreating(false));
@@ -1531,39 +1557,62 @@ export function WorkspaceFinder({
     );
   } else {
     // The name box rides at the head of the list, where the folder it will make will appear, and
-    // an otherwise-empty folder shows it instead of "this folder is empty".
+    // an otherwise-empty folder shows it instead of "this folder is empty". A refused name is
+    // said under the box itself (`role="alert"`, danger ink, two lines at most with the whole of
+    // it on hover — a server's reason runs long), inside the field's own column so it wraps
+    // where the name does rather than under the folder glyph.
     const newFolderRow = newFolderOpen ? (
-      <div className="flex select-none items-center gap-1 py-1 pl-3 pr-2">
-        <GlyphIcon d={ICONS.folder} size={ICON_SIZE.rowLead} className="shrink-0 text-gray-400" />
-        <input
-          ref={newFolderRef}
-          value={newFolderName}
-          aria-label={f.newFolder}
-          placeholder={f.newFolderName}
-          data-tooltip={f.newFolderHint}
-          disabled={creating}
-          {...noAutofill}
-          onChange={(e) => setNewFolderName(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-              e.preventDefault();
-              // The finder's own Enter opens the selected folder; this Enter makes the folder.
-              e.stopPropagation();
-              createFolder();
-            } else if (e.key === "Escape") {
-              // Escape closes the box, not the finder (see the wrapper's key map).
-              e.preventDefault();
-              e.stopPropagation();
-              setNewFolderOpen(false);
-            }
-          }}
-          // Focus moving away — to the list, to another control — abandons the new folder, the
-          // way Explorer's does; a request already in flight is left to finish.
-          onBlur={() => {
-            if (!creating) setNewFolderOpen(false);
-          }}
-          className="h-6 min-w-0 flex-1 rounded-sm border border-gray-300 bg-white px-1.5 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:border-gray-400 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
-        />
+      <div className="flex select-none items-start gap-1 py-1 pl-3 pr-2">
+        <div className="flex h-6 shrink-0 items-center">
+          <GlyphIcon d={ICONS.folder} size={ICON_SIZE.rowLead} className="text-gray-400" />
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <input
+            ref={newFolderRef}
+            value={newFolderName}
+            aria-label={f.newFolder}
+            placeholder={f.newFolderName}
+            data-tooltip={f.newFolderHint}
+            disabled={creating}
+            {...noAutofill}
+            onChange={(e) => {
+              setNewFolderName(e.target.value);
+              // The sentence was about the name that was refused, and this is another one.
+              setNewFolderRefusal(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                // The finder's own Enter opens the selected folder; this Enter makes the folder.
+                e.stopPropagation();
+                createFolder();
+              } else if (e.key === "Escape") {
+                // Escape closes the box, not the finder (see the wrapper's key map).
+                e.preventDefault();
+                e.stopPropagation();
+                setNewFolderOpen(false);
+              }
+            }}
+            // Focus moving away — to the list, to another control — abandons the new folder, the
+            // way Explorer's does; a request already in flight is left to finish. The sentence
+            // goes with the box: nothing was written, and nothing is left on screen claiming it
+            // was.
+            onBlur={() => {
+              if (!creating) setNewFolderOpen(false);
+            }}
+            className="h-6 w-full min-w-0 rounded-sm border border-gray-300 bg-white px-1.5 text-sm text-gray-800 outline-none placeholder:text-gray-400 focus:border-gray-400 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+          />
+          {newFolderRefusal !== null && (
+            <p
+              role="alert"
+              data-tooltip={S.common.refused(newFolderRefusal)}
+              data-tooltip-content="text"
+              className={`line-clamp-2 mt-1 break-words pl-1.5 text-xs ${toneInk.danger}`}
+            >
+              {S.common.refused(newFolderRefusal)}
+            </p>
+          )}
+        </div>
       </div>
     ) : null;
     body = (
