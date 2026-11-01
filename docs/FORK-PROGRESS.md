@@ -20109,7 +20109,7 @@ origin/main...HEAD` = `0 0`。这一轮开工时也没有另一条线的进程�
 
 ### 提交
 
-- 源码 + 单测 + 用例 + changelog：见本行之上的提交（只带
+- 源码 + 单测 + 用例 + changelog：**`372aebf6`**（只带
   `packages/web/src/features/chat/workspace-finder.tsx`、
   `packages/web/src/features/chat/workspace-finder-model.ts`、
   `packages/web/test/workspace-finder.test.ts`、
