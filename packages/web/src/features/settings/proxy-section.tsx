@@ -26,6 +26,13 @@
  * It carries its own busy flag rather than borrowing Save's: a measurement is not an unsaved
  * edit, so it neither blocks Save nor is blocked by it.
  *
+ * A run whose requests fail (a lost session, a dead server — every outcome the test itself can
+ * have arrives inside a 200 and lands on its target's row) says why in this block rather than in a
+ * toast: a failed run fills no row, so the block looks exactly as it did before it ran, and the
+ * sentence belongs to the button that just did nothing rather than to a notification that
+ * dismisses itself over it (7.66, the rule the write refusals follow). It stays until the next run
+ * or a save, which supersedes the path it describes.
+ *
  * The targets — name and exact URL — come from the server and are listed before anyone presses
  * the button, so the page shows concretely what will be requested and a reader can see that
  * these are plain unauthenticated GETs. A frontend copy of that list could drift from the URLs
@@ -52,6 +59,8 @@ import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
+import { probeRefusalFor } from "./proxy-probe";
+import type { ProxyProbeRefusal } from "./proxy-probe";
 
 /** Brand names: identical in every locale, so they are keyed off the server's provider id rather than doubled into both dictionaries. */
 const PROVIDER_LABEL: Record<ProxyProbeProvider, string> = {
@@ -81,6 +90,11 @@ export function ProxySection() {
   const [results, setResults] = useState<Map<ProxyProbeProvider, ProxyProbeDto> | null>(null);
   const [probing, setProbing] = useState(false);
   /**
+   * Why the last run's requests failed, drawn under the button until the next run or a save. One
+   * sentence per run, and none from a superseded one — the rule is `probeRefusalFor`'s.
+   */
+  const [probeRefusal, setProbeRefusal] = useState<ProxyProbeRefusal | null>(null);
+  /**
    * Which run each in-flight answer belongs to. A result can land after its run stopped being
    * the current one — a save adopts new settings mid-flight — and a row filled from a
    * superseded run would report a path nothing travelled.
@@ -97,6 +111,7 @@ export function ProxySection() {
     // counter also discards whatever is still in flight against the old one.
     runSeq.current += 1;
     setResults(null);
+    setProbeRefusal(null);
     setProbing(false);
   };
 
@@ -161,9 +176,8 @@ export function ProxySection() {
     // figure beside a live one cannot be told apart. An empty map, not null — null is "never
     // run", and the rows read it to tell "not tested" from "still measuring".
     setResults(new Map());
-    // One toast per run, not one per target: a lost session fails every request identically,
-    // and six copies of the same sentence is not six pieces of information.
-    let reported = false;
+    // The sentence about the last run describes a path this one may no longer travel.
+    setProbeRefusal(null);
     void Promise.allSettled(
       targets.map((t) =>
         api
@@ -174,10 +188,11 @@ export function ProxySection() {
           })
           .catch((e: unknown) => {
             // Every outcome the probe itself can have, reachable or not, comes back inside a
-            // 200; only the request failing (a lost session, a dead server) lands here.
-            if (runSeq.current !== run || reported) return;
-            reported = true;
-            toastError(apiErrorText(e));
+            // 200; only the request failing (a lost session, a dead server) lands here. Kept in
+            // the block rather than toasted: nothing was filled in, and the button is the retry.
+            setProbeRefusal((prev) =>
+              probeRefusalFor(prev, { run, liveRun: runSeq.current, error: e }),
+            );
           }),
       ),
     ).finally(() => {
@@ -240,6 +255,19 @@ export function ProxySection() {
             {probing ? S.settings.proxyProbeRunning : S.settings.proxyProbeRun}
           </Button>
         </div>
+        {/* The run's own failure, in the block that ran and above the targets it could not fill:
+            it is about every one of them, so it belongs to none of their rows. Clamped to two
+            lines with the whole of it on hover, because a server's words run long. */}
+        {probeRefusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={S.common.refused(probeRefusal.text)}
+            data-tooltip-content="text"
+            className={`mt-2 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {S.common.refused(probeRefusal.text)}
+          </p>
+        )}
         <ul className="mt-3 space-y-3">
           {(targets ?? []).map((t) => {
             // This row's own answer, shown the moment it exists — the rows still waiting keep
