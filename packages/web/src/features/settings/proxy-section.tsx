@@ -37,6 +37,15 @@
  * the button, so the page shows concretely what will be requested and a reader can see that
  * these are plain unauthenticated GETs. A frontend copy of that list could drift from the URLs
  * the server really fetches, so it is fetched, not hard-coded.
+ *
+ * Two more refusals say why in this section rather than in a toast (7.67, the same rule). A save
+ * refused for anything but the address — a lost session, a dead server, a 500 — wrote nothing, so
+ * the form comes back exactly as it was and Save is the retry: its sentence sits above the Save
+ * row until the next save replaces it. Settings that fail to LOAD leave every control disabled
+ * with no explanation at all, so that sentence goes above the controls rather than below them —
+ * up there it is read first, which is what it is for: for as long as it stands, the two switches
+ * and the address field are showing the form's defaults, not what the server holds. Leaving the
+ * section and coming back re-mounts it, and that is the retry; neither sentence carries a button.
  */
 import { useEffect, useRef, useState } from "react";
 import type {
@@ -45,22 +54,14 @@ import type {
   ProxyProbeTargetDto,
   ServerSettings,
 } from "@adelie/server/api";
-import {
-  Button,
-  Input,
-  SettingsSection,
-  ToggleRow,
-  toastError,
-  toastInfo,
-  toastSuccess,
-} from "@adelie/ui";
+import { Button, Input, SettingsSection, ToggleRow, toastInfo, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
+import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
 import { probeRefusalFor } from "./proxy-probe";
 import type { ProxyProbeRefusal } from "./proxy-probe";
+import { proxySaveRefusal } from "./proxy-save-refusal";
 
 /** Brand names: identical in every locale, so they are keyed off the server's provider id rather than doubled into both dictionaries. */
 const PROVIDER_LABEL: Record<ProxyProbeProvider, string> = {
@@ -83,6 +84,16 @@ export function ProxySection() {
   const [proxyUrl, setProxyUrl] = useState("");
   /** Inline error under the address input (the server's invalid_proxy_url rejection). */
   const [addressError, setAddressError] = useState<string | null>(null);
+  /**
+   * Why the last save was refused for anything but the address, drawn above the Save row until
+   * the next save replaces it. Nothing was written, so the form and the sentence agree.
+   */
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
+  /**
+   * Why the settings could not be read, drawn above the controls. Non-null means nothing has been
+   * hydrated: every control below is disabled and showing the form's defaults, not the server's.
+   */
+  const [loadRefusal, setLoadRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   /** What the probe would request, listed before it is run (null until it arrives). */
   const [targets, setTargets] = useState<ProxyProbeTargetDto[] | null>(null);
@@ -123,11 +134,13 @@ export function ProxySection() {
         if (!cancelled) adopt(res.settings);
       })
       .catch((e: unknown) => {
-        // Controls stay disabled; leaving and returning to the section retries the fetch.
-        if (!cancelled) toastError(apiErrorText(e));
+        // Kept above the controls, not toasted: they stay disabled until a later mount retries,
+        // and a section of dead controls with no sentence beside it is the worse answer.
+        if (!cancelled) setLoadRefusal(refusalText(e));
       });
-    // The target list is static server-side, so its failure is not worth a second toast on
-    // top of the settings one — the block simply stays empty until a retry succeeds.
+    // The target list is static server-side, so its failure gets no sentence of its own on top of
+    // the settings one — the block simply stays empty, and its button stays disabled, until a
+    // retry succeeds.
     void api
       .adminGetProxyProbeTargets()
       .then((res) => {
@@ -151,18 +164,18 @@ export function ProxySection() {
     }
     setBusy(true);
     setAddressError(null);
+    // Another attempt: the sentence about the last one is stale from this moment on.
+    setSaveRefusal(null);
     try {
       const res = await api.adminPutSettings({ proxyForApp, proxyForAgent, proxyUrl });
       adopt(res.settings);
       toastSuccess(S.common.saved);
     } catch (e) {
-      // The address is the only validated field: its rejection renders inline;
-      // anything else (auth, network) is a generic failure toast.
-      if (e instanceof ApiError && e.code === "invalid_proxy_url") {
-        setAddressError(apiErrorText(e));
-      } else {
-        toastError(apiErrorText(e));
-      }
+      // The address is the only validated field, so its rejection renders under it; anything else
+      // (auth, network, a 500) is about the whole form and renders above the Save row.
+      const refusal = proxySaveRefusal(e);
+      if (refusal.field === "address") setAddressError(refusal.text);
+      else setSaveRefusal(refusal.text);
     } finally {
       setBusy(false);
     }
@@ -216,6 +229,20 @@ export function ProxySection() {
           </Button>
         }
       >
+        {/* Above the controls, because it is about all of them: with no settings read, the two
+            switches and the address below show the form's defaults, and this sentence is the only
+            thing that says so. Clamped to two lines with the whole of it on hover, because a
+            server's words run long. */}
+        {loadRefusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={S.common.refused(loadRefusal)}
+            data-tooltip-content="text"
+            className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {S.common.refused(loadRefusal)}
+          </p>
+        )}
         <ToggleRow
           variant="plain"
           label={S.settings.proxyForApp}
@@ -242,6 +269,18 @@ export function ProxySection() {
             if (addressError !== null) setAddressError(null);
           }}
         />
+        {/* The save's own failure, just above the Save button that is its retry. The address's
+            rejection is drawn under the input instead (7.67). */}
+        {saveRefusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={S.common.refused(saveRefusal)}
+            data-tooltip-content="text"
+            className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {S.common.refused(saveRefusal)}
+          </p>
+        )}
       </SettingsSection>
       <section className="mt-6">
         <div className="flex items-center justify-between gap-3">
