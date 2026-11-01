@@ -16,14 +16,20 @@
  * The row sits beside the CLI-sessions filter because both decide what the conversation
  * list holds. Export is deliberately not here: a Trace is downloaded from the conversation
  * it belongs to, in the chat's Trace panel.
+ *
+ * A refused import says why in this row rather than in a toast: the import writes nothing on
+ * failure, so the three controls stay exactly as they were, and picking a file again is the
+ * retry — the sentence belongs to the row that just did nothing, not to a notification that
+ * dismisses itself over it (7.64, the same rule the write refusals follow).
  */
 import { useEffect, useState } from "react";
 import type { ChangeEvent } from "react";
 import type { AgentSummary, ProjectSummary } from "@adelie/server/api";
-import { HiddenFileInput, PrefRow, Select, UploadIcon, toastError, toastSuccess } from "@adelie/ui";
+import { HiddenFileInput, PrefRow, Select, UploadIcon, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { refusalText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { agentDisplayName, projectDisplayName, useProject } from "../../state/project";
 import { useSessions } from "../../state/sessions";
 
@@ -31,6 +37,19 @@ import { useSessions } from "../../state/sessions";
 const MAX_TRACE_BYTES = 14 * 1024 * 1024;
 /** A whole-Session bundle is several shards in one file, so it gets the server's larger ceiling. */
 const MAX_TRACE_BUNDLE_BYTES = 48 * 1024 * 1024;
+
+/**
+ * The sentence a picked file draws before any of it is read, or `null` when it may be read.
+ *
+ * Which ceiling applies is decided by the file, the same way the server decides it: a `.json`
+ * bundle may be several shards' worth, a `.jsonl` Trace file is one shard. Judged on the file
+ * itself — its size, never its bytes — so a 40MB file is not read into memory to be told so.
+ */
+export function traceImportSizeRefusal(fileName: string, sizeBytes: number): string | null {
+  const bundle = fileName.toLowerCase().endsWith(".json");
+  if (sizeBytes <= (bundle ? MAX_TRACE_BUNDLE_BYTES : MAX_TRACE_BYTES)) return null;
+  return bundle ? S.settings.importTraceBundleTooLarge : S.settings.importTraceTooLarge;
+}
 
 /**
  * The Projects the row offers, and the one it is on. The import route answers anyone but the
@@ -63,6 +82,11 @@ export function TraceImportRow() {
   const [pickedAgent, setPickedAgent] = useState("");
   const [agents, setAgents] = useState<readonly AgentSummary[]>([]);
   const [importing, setImporting] = useState(false);
+  /**
+   * Why the last attempt was refused, drawn under the pickers until the next one starts. One
+   * sentence at a time, like the import itself: the row has one pick and one destination.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   /** Destination Project, derived like the Agent below: only owned Projects are offered at all. */
   const { projects: ownedProjects, projectId } = traceImportTargets(
@@ -113,8 +137,8 @@ export function TraceImportRow() {
       if (projectId === currentProject?.projectId) await reload();
       toastSuccess(S.settings.importTraceDone(target));
     } catch (e: unknown) {
-      // Transient action failure → toast (the app's one notification rule).
-      toastError(apiErrorText(e));
+      // Kept on the row rather than toasted: nothing was written, and the pick below is the retry.
+      setRefusal(refusalText(e));
     } finally {
       setImporting(false);
     }
@@ -125,11 +149,13 @@ export function TraceImportRow() {
     // Reset before reading so re-picking the same file fires change again.
     e.target.value = "";
     if (!file || agentId === "") return;
+    // Another attempt: the sentence about the last one is stale from this moment on.
+    setRefusal(null);
     // Which ceiling applies is decided by the file, the same way the server decides it: a
     // `.json` bundle may be several shards' worth, a `.jsonl` Trace file is one shard.
-    const bundle = file.name.toLowerCase().endsWith(".json");
-    if (file.size > (bundle ? MAX_TRACE_BUNDLE_BYTES : MAX_TRACE_BYTES)) {
-      toastError(bundle ? S.settings.importTraceBundleTooLarge : S.settings.importTraceTooLarge);
+    const tooLarge = traceImportSizeRefusal(file.name, file.size);
+    if (tooLarge !== null) {
+      setRefusal(tooLarge);
       return;
     }
     const reader = new FileReader();
@@ -137,7 +163,7 @@ export function TraceImportRow() {
       const url = reader.result as string;
       void runImport(url.slice(url.indexOf(",") + 1)); // strip the data:...;base64, prefix
     };
-    reader.onerror = () => toastError(S.common.unknownError);
+    reader.onerror = () => setRefusal(S.common.unknownError);
     reader.readAsDataURL(file);
   };
 
@@ -149,7 +175,10 @@ export function TraceImportRow() {
     <PrefRow label={S.settings.importTrace} info={S.settings.importTraceInfo}>
       {/* Each picker is boxed to a fixed width — a Select fills its container, and three
           full-width controls would stack one per line. Long names truncate in the trigger.
-          The row still wraps at phone width, where three controls do not fit side by side. */}
+          The row still wraps at phone width, where three controls do not fit side by side.
+          The refusal takes a line of its own below them (`w-full` in the wrapping row): it is
+          clamped to two lines with the whole of it on hover, because a server's reason (a
+          Session id that is already here, a bundle that failed to parse) runs long. */}
       <div className="flex flex-wrap items-center justify-end gap-2">
         <div className="w-32">
           <Select
@@ -199,6 +228,16 @@ export function TraceImportRow() {
           <UploadIcon size={14} />
           {importing ? S.settings.importTraceRunning : S.settings.importTracePick}
         </label>
+        {refusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={S.common.refused(refusal)}
+            data-tooltip-content="text"
+            className={`line-clamp-2 w-full max-w-96 break-words text-right text-xs ${toneInk.danger}`}
+          >
+            {S.common.refused(refusal)}
+          </p>
+        )}
       </div>
     </PrefRow>
   );
