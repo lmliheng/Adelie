@@ -17,6 +17,8 @@ import type {
   AgentConfigUpdateRequest,
   AgentCreateRequest,
   AgentCreateResponse,
+  AgentDeleteResponse,
+  AgentDeletionResponse,
   AgentHooksResponse,
   AgentImportRequest,
   AgentImportResponse,
@@ -1589,8 +1591,22 @@ export const getUsage = (
 
 // Agent deletion & Workspace files --------------------------------------------------
 
+/**
+ * Deletes an Agent. The answer carries the background removal of its files to follow; a server
+ * from before that removal moved to the background answers 204 once everything is gone, which
+ * reads as undefined here.
+ */
 export const deleteAgent = (projectId: string, agentId: string) =>
-  apiFetch<void>(`/api/projects/${projectId}/agents/${agentId}`, { method: "DELETE" });
+  apiFetch<AgentDeleteResponse | undefined>(
+    `/api/projects/${encodeURIComponent(projectId)}/agents/${encodeURIComponent(agentId)}`,
+    { method: "DELETE" },
+  );
+
+/** Where a delete's background removal stands (404 `agent_deletion_not_found` once it is unknown). */
+export const getAgentDeletion = (projectId: string, deletionId: string) =>
+  apiFetch<AgentDeletionResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/agent-deletions/${encodeURIComponent(deletionId)}`,
+  );
 
 export const listWorkspaceFiles = (sessionId: string, path: string) =>
   apiFetch<WorkspaceFilesResponse>(`/api/sessions/${sessionId}/files`, { query: { path } });

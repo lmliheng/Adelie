@@ -132,7 +132,7 @@ import { Channels, Config, Desktop } from "../../hmr/capabilities.js";
 import { Sessions as ManagerIface, SessionServiceIface } from "../../runtime/session-manager.js";
 import { Messaging } from "../../runtime/messaging/bridge.js";
 
-import { agentsRoutes } from "./agents.js";
+import { agentDeletionsRoutes, agentsRoutes } from "./agents.js";
 import { agentConfigRoutes } from "./agent-config.js";
 import { vaultRoutes } from "./vault.js";
 import { modelsRoutes } from "./models.js";
@@ -2021,6 +2021,12 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
         order: 140,
       },
       {
+        id: "session-api.agent-deletions",
+        prefix: "/api/projects/:projectId/agent-deletions",
+        auth: "user",
+        order: 141,
+      },
+      {
         id: "session-api.agent-config",
         prefix: "/api/projects/:projectId/agents/:agentId/config",
         auth: "user",
@@ -2104,6 +2110,7 @@ export class SessionApiRoutes {
   @Bind("session-api.chat-defaults") chatDefaultsRoutes!: Hono<AppEnv>;
   @Bind("session-api.command-policy") commandPolicyRoutes!: Hono<AppEnv>;
   @Bind("session-api.agents") agentsRoutes!: Hono<AppEnv>;
+  @Bind("session-api.agent-deletions") agentDeletionsRoutes!: Hono<AppEnv>;
   @Bind("session-api.agent-config") agentConfigRoutes!: Hono<AppEnv>;
   @Bind("session-api.vault") vaultRoutes!: Hono<AppEnv>;
   @Bind("session-api.agent-sessions") agentSessionsRoutes!: Hono<AppEnv>;
@@ -2189,6 +2196,7 @@ export class SessionApiRoutes {
       sessionsRepo,
       traceIndex: this.traceIndex,
     });
+    this.agentDeletionsRoutes = agentDeletionsRoutes({ access, agentService: this.agents });
     this.agentConfigRoutes = agentConfigRoutes({ agentConfigService, manager, access });
     this.vaultRoutes = vaultRoutes({
       agentConfigService,

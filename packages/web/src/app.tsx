@@ -15,6 +15,7 @@ import { useEffect } from "react";
 import {
   ClipboardWriterProvider,
   CodeHighlighterProvider,
+  ProgressToasts,
   Toaster,
   TooltipLayer,
 } from "@adelie/ui";
@@ -53,6 +54,8 @@ export function App({ initialPath }: { initialPath?: string } = {}) {
                 <AppRouter {...(initialPath === undefined ? {} : { initialPath })} />
                 {/* Top toast overlay: portaled to body, z-index above modals, shared site-wide. */}
                 <Toaster />
+                {/* Long operations' progress cards, bottom right (an Agent's files being removed). */}
+                <ProgressToasts />
                 {/* The hover hints of every `data-tooltip` element: one listener set, one panel. */}
                 <TooltipLayer />
               </LocaleScope>

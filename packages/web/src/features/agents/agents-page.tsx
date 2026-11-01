@@ -17,6 +17,10 @@
  * Skills from a project directory's .agents/skills or .claude/skills — through form-variant
  * dropdowns over the shared multi-select panel, with select all / select none. A plain new Agent
  * otherwise starts with none.
+ *
+ * A delete answers once the Agent has left every list; its files are removed in the background,
+ * on a progress card that appears only when that takes a while (agent-deletion-progress.ts), so
+ * a folder full of installed dependencies no longer holds the request open.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
@@ -83,6 +87,7 @@ import { mergeAgents } from "../../lib/benchmark-merge";
 import type { AgentSource } from "../../lib/benchmark-merge";
 import { useSessions } from "../../state/sessions";
 import { scoped, scopedValue, type Scoped } from "../../lib/project-scope";
+import { followAgentDeletion } from "./agent-deletion-progress";
 
 /** Built-in Agent shipped with every Project (default_agent only; the server also rejects deletion, so no delete entry point is shown here). */
 const BUILTIN_AGENT_IDS = new Set(["default_agent"]);
@@ -452,8 +457,17 @@ export function AgentsPage() {
     setBusy(true);
     setDeleteError(null);
     try {
-      await api.deleteAgent(projectId, deleting.agentId);
+      const answer = await api.deleteAgent(projectId, deleting.agentId);
       setDeleting(null);
+      // The Agent is gone from every list already; its files go in the background, on a card
+      // that shows once that takes a while (an older server answered after removing them).
+      if (answer !== undefined) {
+        void followAgentDeletion({
+          projectId,
+          name: deleting.name,
+          deletion: answer.deletion,
+        });
+      }
       await reloadAgents();
     } catch (e) {
       setDeleteError(apiErrorText(e));
