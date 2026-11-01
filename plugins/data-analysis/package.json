@@ -8,6 +8,10 @@
     "url": "git+https://github.com/lmliheng/Adelie.git",
     "directory": "plugins/data-analysis"
   },
+  "keywords": [
+    "adelie-plugin",
+    "penguin-harness"
+  ],
   "files": [
     "plugin.json",
     "icon.svg",

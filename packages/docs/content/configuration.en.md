@@ -23,6 +23,7 @@ The CLI and the server load a `.env` file from the working directory on startup.
 | `ADELIE_SEED_ADMIN_PASSWORD` | Fixed initial password for the seeded built-in admin (automated tests / e2e) | Unset: a random password is generated |
 | `ADELIE_LANG` | CLI language (`en` / `zh`), set with `penguin config lang` | `en` |
 | `ADELIE_UPDATE_CHECK` | `off` disables the Web App's new-release check | Enabled |
+| `ADELIE_PLUGIN_MARKET` | `off` lists only the plugins this build carries in the plugin market, never querying npm | Enabled |
 | `PENGUIN_NO_LOGIN_SHELL_ENV` | Any non-empty value stops the desktop app from importing the login shell's environment on macOS/Linux GUI launches | Unset: the import runs |
 | `ADELIE_SHELL` | The shell that runs agent commands (an executable name or path) | Unset: picked automatically, see [Tools & Approval](/tools#command-sessions) |
 | `ADELIE_CLI_ENTRY` | The CLI entry script this installation offers the agents it runs (see [PATH launcher](#path-launcher)) | Set by `penguin server` / `penguin web` and by the desktop app |
@@ -35,6 +36,7 @@ Notes:
 - `PENGUIN_GO_ORIGIN`: server configuration, not an endpoint the browser can name. It must be a bare HTTPS origin; plain HTTP is accepted only for `localhost`, `127.0.0.1` and `[::1]`, for integration environments. A path, credentials, a query string or a fragment is rejected at startup. See [Connect an account](/models#connect-an-account).
 - `MODELSCOPE_BRIDGE_URL`: server configuration like `PENGUIN_GO_ORIGIN`, not an endpoint the browser can name. It must be an HTTPS address with no credentials, query string or fragment. Unlike `PENGUIN_GO_ORIGIN`, a path prefix **is** allowed, because the production bridge lives under `https://go.penguin.ooo/modelscope`. See [Connect an account](/models#connect-an-account).
 - `ADELIE_UPDATE_CHECK`: `off` turns off the automatic release check, nothing else. Model requests, an enabled remote-control connection, provider key authorization and the proxy test still reach the network.
+- `ADELIE_PLUGIN_MARKET`: the market's shelf has two sides — the plugins this build carries (read locally, no network) and the ones published to npm. For the second the server queries npm's search API once, caching the result for ten minutes (for two minutes after a failure, serving the previous listing). With `off` that side is never queried and the shelf is the local one alone, which is what an offline or closed network wants. See [Plugins](/skills).
 - `PENGUIN_NO_LOGIN_SHELL_ENV`: without it, the import fills only variables the launch left unset. See [Desktop quickstart](/quickstart-desktop).
 - `ADELIE_CLI_ENTRY`: when the server was started from a source checkout, it falls back to that checkout's `packages/cli/dist/penguin.js`.
 

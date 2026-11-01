@@ -2791,6 +2791,14 @@ export const zh = {
     detailMarketLink: "查看市场条目",
     /** The "built in" tag on a library plugin: it ships with the build and needs no download. */
     libraryBuiltinHint: "随本次构建自带；安装到 Agent 即可在那里使用。",
+    /**
+     * The verb on a PUBLISHED plugin's row: the entry is on the shelf because its package was
+     * published to npm, not because this build carries it, so the row's one step is to fetch it
+     * into the plugin library — the npm import an operator would otherwise type into the
+     * download dialog themselves. Reuses the dialog's copy for everything after that (the
+     * success toast, the overwrite question).
+     */
+    addToLibrary: "装入插件库",
     /** Plugin count in the group header (small text to the right of the category name). */
     pluginCount: (n: number): string => `${n} 个插件`,
     /** Search box of the create dialog's plugin picker. */

@@ -17,7 +17,7 @@ A **Skill** is a set of reusable instructions that an agent reads when a task ca
 ## Browse plugins
 
 1. In the sidebar, select **Plugins**.
-2. Browse the lists. **Installed plugins** comes first and starts folded; select its header to unfold it. It holds the plugin library, followed by the server plugins the current Project asks for. **Available** lists the server plugins the Project can still add.
+2. Browse the lists. **Installed plugins** comes first and starts folded; select its header to unfold it. It holds the plugin library, followed by the server plugins the current Project asks for. **Available** lists the server plugins the Project can still add, plus the plugins published to npm that this build does not carry (their row's button is **Add to the library**).
 3. To narrow the lists, type in the search box, or pick options in the filter column beside them: **Categories**, **Contains** and **Status**. **Clear filters** clears the picks and the search box. Both lists unfold while a search or filter is active.
 4. Select a library plugin's card to open its details.
 
@@ -168,6 +168,8 @@ To upload a zip file:
 A server plugin extends the server itself rather than an agent: it is an npm package of server modules, such as a sandbox backend. A Project asks for the server plugins it needs, and the server runs every plugin that any of its Projects asks for, so what a plugin contributes is available to every Project.
 
 On the **Plugins** page, a server plugin's row shows its package name, description, version and status, with tags for its categories, **built in** when it ships with Adelie, and its keywords. Select a row to open the plugin's page, with its license, authors, links and documentation. The shelf is complete: the four sandbox backends are hand-written entries, and every plugin package this build carries has one of its own (the library's skills/hooks packages included), with version, description, license, category and keywords read from the package itself. Only a plugin imported on this machine has no entry, and therefore no page.
+
+The shelf has a second side: **the plugins published to npm**. A package scoped `@adelie/` that carries the `adelie-plugin` keyword appears on the shelf with its next version — no release of Adelie required. The server queries npm for that side (the listing is cached for ten minutes, or two after a failure, in which case the previous one is served; `ADELIE_PLUGIN_MARKET=off` stops the query altogether — see [Configuration](/configuration)). A plugin this build already carries does not gain a second row: the local copy wins for a shared name, because that is the one installed. An entry only the npm side has offers one action, **Add to the library**: it fetches the package into this machine's plugin directory, after which it is like any other plugin and installing it on an agent is what puts it to work. That step is an admin's, and it is the same path as **Download from a URL or npm** in the page header.
 
 To add a server plugin to the current Project:
 

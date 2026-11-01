@@ -52,6 +52,7 @@ import type {
   PluginDirectoryResponse,
   PluginFilesResponse,
   PluginImportResponse,
+  PluginIndexEntry,
   PluginIndexResponse,
   PluginLibraryResponse,
   PluginReadmeResponse,
@@ -64,7 +65,12 @@ import type { Access } from "../../mechanisms/projects.js";
 import type { Sessions as ManagerIface } from "../../runtime/session-manager.js";
 import { Bind, Component, Use } from "@adelie/core/kernel";
 import { agentHooksRoutes } from "./hooks.js";
-import { builtinPluginRegistry, shippedPluginNames } from "../../plugin/registry.js";
+import {
+  builtinPluginRegistry,
+  configuredPluginMarket,
+  shippedPluginNames,
+} from "../../plugin/registry.js";
+import type { PluginRegistry } from "../../plugin/registry.js";
 import { pluginBases } from "../../plugin/loader.js";
 import type { PluginBase } from "../../plugin/loader.js";
 
@@ -527,16 +533,34 @@ export class PluginRoutes {
 export function pluginRegistryRoutes(
   bases: () => readonly PluginBase[],
   root: () => string,
+  /** The published side of the shelf, or null when this deployment lists only what it carries. */
+  published: PluginRegistry | null = null,
 ): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
-  const registry = builtinPluginRegistry({
+  const builtin = builtinPluginRegistry({
     bases,
     // The shelf is what this build ships: read per call, because a push moves both the
     // assets prefix the bases name and the library a deployment carries.
     shipped: () => shippedPluginNames(root(), bases()),
   });
+  // The sources, in precedence order: what this build carries first, then the published side.
+  // A package both of them list is ONE entry — the build's, whose version is the one installed
+  // here — so a plugin that ships needs no entry written for it on the published side.
+  const sources: readonly PluginRegistry[] = published === null ? [builtin] : [builtin, published];
+  const index = async (): Promise<PluginIndexEntry[]> => {
+    const seen = new Set<string>();
+    const entries: PluginIndexEntry[] = [];
+    for (const source of sources) {
+      for (const entry of await source.index()) {
+        if (seen.has(entry.name)) continue;
+        seen.add(entry.name);
+        entries.push(entry);
+      }
+    }
+    return entries;
+  };
   app.get("/", async (c) => {
-    const body: PluginIndexResponse = { plugins: await registry.index() };
+    const body: PluginIndexResponse = { plugins: await index() };
     return c.json(body);
   });
   app.get("/readme", async (c) => {
@@ -546,11 +570,18 @@ export function pluginRegistryRoutes(
     }
     // Only entries this deployment actually lists: the readme map is keyed by specifier,
     // and answering for an unlisted name would make the endpoint a probe of what exists.
-    const listed = (await registry.index()).some((e) => e.name === name);
+    const listed = (await index()).some((e) => e.name === name);
     if (!listed) {
       return c.json({ error: { code: "not_found", message: "no such plugin" } }, 404);
     }
-    const body: PluginReadmeResponse = { name, readme: await registry.readme(name) };
+    // The first source that has one: a shipped package's README is the copy on this machine,
+    // and only a package this build does not carry falls through to the published one.
+    let readme: string | null = null;
+    for (const source of sources) {
+      readme = await source.readme(name);
+      if (readme !== null) break;
+    }
+    const body: PluginReadmeResponse = { name, readme };
     return c.json(body);
   });
   return app;
@@ -561,6 +592,12 @@ export function pluginRegistryRoutes(
  * nested under /api/plugins/registry so both views answer under one prefix. The specifier
  * is a query parameter on `readme`, not a path segment, because it is scoped
  * (`@scope/name`) and would otherwise have to survive two rounds of slash encoding.
+ *
+ * The shelf has two sides and only one of them is local: what this build carries, and what the
+ * project has published (`npmPluginRegistry`). The published side is the server's second
+ * automatic outbound call — the update check's is the first — and follows the same rules: one
+ * cached lookup, a bounded timeout, never an error the page has to handle, and a switch
+ * (`ADELIE_PLUGIN_MARKET=off`) for a deployment that must not dial out at all.
  */
 @Component({
   contributes: {
@@ -577,12 +614,15 @@ export function pluginRegistryRoutes(
 export class PluginRegistryRoutes {
   @Use() private readonly config!: Config;
   @Use() private readonly hmr!: Hmr;
+  /** Environment to read ADELIE_PLUGIN_MARKET from; a test wires its own. */
+  private env: Record<string, string | undefined> = process.env;
   @Bind("PluginRegistryRoutes.routes") routes!: Hono<AppEnv>;
   setup() {
     // Read per request: a push moves the shipped prefix to a new assets directory.
     this.routes = pluginRegistryRoutes(
       () => pluginBases(this.config.root, this.hmr.assetsDir()),
       () => this.config.root,
+      configuredPluginMarket(this.env),
     );
   }
 }

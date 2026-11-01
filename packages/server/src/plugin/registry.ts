@@ -292,3 +292,241 @@ export function httpPluginRegistry(
     readme: () => Promise.resolve(null),
   };
 }
+
+// ---------------------------------------------------------------------------
+// The published side of the shelf
+// ---------------------------------------------------------------------------
+
+/** The npm registry this reads: npm's own, the same constant services/plugin-download.ts names. */
+const NPM_REGISTRY = "https://registry.npmjs.org";
+
+/**
+ * The keyword a plugin package publishes itself under. It is how the market finds a plugin
+ * that is NOT part of a build — a package the repository never carried, or one an older build
+ * predates — without anyone curating a list: publish `@adelie/<name>` with this keyword and its
+ * next version appears on the shelf.
+ */
+export const PLUGIN_KEYWORD = "adelie-plugin";
+
+/**
+ * The scopes the market lists from npm. One entry today: Adelie's own packages, which is what
+ * makes the keyword safe to read — a keyword alone would let anyone put their package in front
+ * of every user's Install button, while nobody outside the project can publish under this scope.
+ * Widening this list is the deliberate act of letting another publisher onto the shelf.
+ */
+const MARKET_SCOPES: readonly string[] = ["@adelie/"];
+
+/** How long a successful listing of the published side is reused. */
+export const NPM_LIST_TTL_MS = 10 * 60 * 1000;
+/** How long a failed listing is reused (short: a transient failure should heal on its own). */
+export const NPM_LIST_FAILURE_TTL_MS = 2 * 60 * 1000;
+/** How long one npm request may take. Bounded so an unreachable registry cannot pin a page load. */
+const NPM_TIMEOUT_MS = 10_000;
+
+/** What the npm registry reads through; a test stands in a canned fetch and a clock. */
+export interface NpmRegistryOptions {
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+  /** How long a successful listing is served from cache. */
+  ttlMs?: number;
+  /** How long a failed listing is served from cache. */
+  failureTtlMs?: number;
+  now?: () => number;
+}
+
+/** The npm search document's package object, as much of it as the index entry needs. */
+interface NpmSearchPackage {
+  name?: unknown;
+  version?: unknown;
+  description?: unknown;
+  license?: unknown;
+  keywords?: unknown;
+  date?: unknown;
+  publisher?: { username?: unknown };
+  author?: { name?: unknown };
+  maintainers?: Array<{ username?: unknown }>;
+  links?: { npm?: unknown; repository?: unknown };
+}
+
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === "string" && value !== "";
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter(isNonEmptyString) : [];
+}
+
+/**
+ * A repository link the registry hands out, turned into a page a reader can open: npm writes
+ * `git+https://…/x.git`, and the `git+` prefix and the `.git` tail are both for `git clone`,
+ * not for a browser. Anything that is not http(s) after that is dropped — the index's links
+ * are rendered as links, so a `git://` or a bare path would be a dead one.
+ */
+function browsableRepository(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  let value = raw.trim();
+  if (value.startsWith("git+")) value = value.slice(4);
+  if (value.endsWith(".git")) value = value.slice(0, -4);
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * One search result as an index entry, or null when this package cannot be described by one.
+ *
+ * Every field the entry needs must come from the package: an entry invented around a package
+ * the registry described incompletely would put a nameless or licenseless row in front of the
+ * reader, which is worse than leaving the package off (the same call the built-in registry's
+ * own reader makes). `homepage` is the package's npm page — the one address the registry knows
+ * is a page — and no `categories` are set: a category is the plugin's own (`plugin.json`), which
+ * lives in the tarball, not in a search result.
+ */
+function searchEntry(raw: unknown): PluginIndexEntry | null {
+  if (typeof raw !== "object" || raw === null) return null;
+  const { package: pkg } = raw as { package?: unknown };
+  if (typeof pkg !== "object" || pkg === null) return null;
+  const p = pkg as NpmSearchPackage;
+  const { name, version, description, license } = p;
+  if (
+    !isNonEmptyString(name) ||
+    !isNonEmptyString(version) ||
+    !isNonEmptyString(description) ||
+    !isNonEmptyString(license)
+  ) {
+    return null;
+  }
+  if (!MARKET_SCOPES.some((scope) => name.startsWith(scope))) return null;
+  const authors = [
+    ...new Set(
+      [
+        p.publisher?.username,
+        p.author?.name,
+        ...(p.maintainers ?? []).map((m) => m?.username),
+      ].filter(isNonEmptyString),
+    ),
+  ];
+  if (authors.length === 0) return null;
+  const keywords = stringArray(p.keywords);
+  const date = typeof p.date === "string" ? Date.parse(p.date) : Number.NaN;
+  const repository = browsableRepository(p.links?.repository);
+  const homepage = typeof p.links?.npm === "string" ? p.links.npm : undefined;
+  return {
+    name,
+    version,
+    description,
+    authors,
+    license,
+    ...(repository === undefined ? {} : { repository }),
+    ...(homepage === undefined ? {} : { homepage }),
+    ...(keywords.length === 0 ? {} : { keywords }),
+    ...(Number.isFinite(date) ? { updatedAt: Math.floor(date / 1000) } : {}),
+  };
+}
+
+/**
+ * The published side of the market: `@adelie` packages that carry the plugin keyword, read from
+ * npm's search API. This is what lets a plugin reach the shelf without a release — the built-in
+ * registry can only describe what a build carries.
+ *
+ * Strictly fail-soft, like the update check: `index()` never throws. A failed lookup answers
+ * with whatever the last successful one found (nothing, the first time) and is retried after a
+ * short TTL, because a plugin page that cannot reach npm must still show the library. One
+ * listing is shared by every caller and served from cache between lookups, so opening the page
+ * repeatedly is one request per TTL.
+ *
+ * `readme` reads the package's own README from its packument — the file the package publishes,
+ * the same one the built-in side reads from a local copy — and caches per name, including a
+ * miss. It is a second request, made only when somebody opens an entry.
+ */
+export function npmPluginRegistry(options: NpmRegistryOptions = {}): PluginRegistry {
+  const {
+    fetchImpl = fetch,
+    timeoutMs = NPM_TIMEOUT_MS,
+    ttlMs = NPM_LIST_TTL_MS,
+    failureTtlMs = NPM_LIST_FAILURE_TTL_MS,
+    now = Date.now,
+  } = options;
+  const listing = `${NPM_REGISTRY}/-/v1/search?text=${encodeURIComponent(`keywords:${PLUGIN_KEYWORD}`)}&size=250`;
+  let cached: { entries: PluginIndexEntry[]; expiresAt: number } | null = null;
+  let inflight: Promise<PluginIndexEntry[]> | null = null;
+  const readmes = new Map<string, string | null>();
+
+  const search = async (): Promise<PluginIndexEntry[]> => {
+    const res = await fetchImpl(listing, {
+      headers: { accept: "application/json", "user-agent": "adelie-server" },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!res.ok) throw new Error(`npm search answered HTTP ${res.status}`);
+    const body = (await res.json()) as { objects?: unknown };
+    const objects = Array.isArray(body.objects) ? body.objects : [];
+    return objects.map(searchEntry).filter((e): e is PluginIndexEntry => e !== null);
+  };
+
+  return {
+    source: "npm",
+    index: async () => {
+      if (cached !== null && now() < cached.expiresAt) return cached.entries;
+      inflight ??= search().then(
+        (entries) => {
+          cached = { entries, expiresAt: now() + ttlMs };
+          return entries;
+        },
+        (err: unknown) => {
+          // The stale listing is better than an empty shelf; with none, the page simply shows
+          // the library. One line, not a thrown error: this runs on a page load.
+          console.warn(
+            `plugin market: npm listing failed (${err instanceof Error ? err.message : String(err)}${cached === null ? "" : "; serving the previous listing"})`,
+          );
+          const entries = cached?.entries ?? [];
+          cached = { entries, expiresAt: now() + failureTtlMs };
+          return entries;
+        },
+      );
+      try {
+        return await inflight;
+      } finally {
+        inflight = null;
+      }
+    },
+    readme: async (name) => {
+      const hit = readmes.get(name);
+      if (hit !== undefined) return hit;
+      let found: string | null = null;
+      try {
+        const res = await fetchImpl(`${NPM_REGISTRY}/${encodeURIComponent(name)}`, {
+          headers: { accept: "application/json", "user-agent": "adelie-server" },
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        if (res.ok) {
+          const body = (await res.json()) as { readme?: unknown };
+          found = isNonEmptyString(body.readme) ? body.readme : null;
+        }
+      } catch {
+        // A readme nobody can fetch is a missing readme, not a failed page: it is not cached,
+        // so the next visit tries again.
+        return null;
+      }
+      readmes.set(name, found);
+      return found;
+    },
+  };
+}
+
+/**
+ * The published side as this process is configured, or null when the deployment has opted out.
+ *
+ * `ADELIE_PLUGIN_MARKET=off` is for a machine that must reach nobody (an air-gapped install, a
+ * locked-down network): the market then lists only what the build carries, exactly as it did
+ * before this side existed. Reading it here rather than inside `npmPluginRegistry` keeps the
+ * switch with the decision it makes, and out of the registry, which is one cached lookup whether
+ * or not anybody uses it.
+ */
+export function configuredPluginMarket(
+  env: Record<string, string | undefined>,
+): PluginRegistry | null {
+  return env["ADELIE_PLUGIN_MARKET"] === "off" ? null : npmPluginRegistry();
+}

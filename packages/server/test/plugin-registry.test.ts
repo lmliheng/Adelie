@@ -24,12 +24,15 @@ import type { PluginIndexEntry, PluginIndexResponse } from "../src/api/types.js"
 import type { PluginBase } from "../src/plugin/loader.js";
 import {
   builtinPluginRegistry,
+  configuredPluginMarket,
   httpPluginRegistry,
+  npmPluginRegistry,
   parsePluginIndex,
   shippedPluginNames,
 } from "../src/plugin/registry.js";
 import type { PluginRegistry } from "../src/plugin/registry.js";
-import { fakeFetch, jsonResponse } from "./fixtures/fetch.js";
+import { pluginRegistryRoutes } from "../src/http/routes/plugins.js";
+import { fakeFetch, fetchFailed, jsonResponse } from "./fixtures/fetch.js";
 import { apiClient, createTestApp, loginAdmin } from "./helpers.js";
 import type { TestApp } from "./helpers.js";
 
@@ -356,10 +359,15 @@ describe("what this build ships", () => {
 describe("the registry routes", () => {
   let t: TestApp;
   beforeAll(async () => {
+    // Without this the app's shelf would have its published side too, and listing it is a real
+    // request to npm — the switch is what a test has instead of the network. The merge of the
+    // two sides is covered below, against a registry that never dials out.
+    process.env.ADELIE_PLUGIN_MARKET = "off";
     t = await createTestApp();
   });
   afterAll(async () => {
     await t.cleanup();
+    delete process.env.ADELIE_PLUGIN_MARKET;
   });
 
   it("requires auth, then serves the builtin index", async () => {
@@ -415,5 +423,231 @@ describe("the registry routes", () => {
     expect((await apiClient(t.app, admin.cookie).get("/api/plugins/registry/readme")).status).toBe(
       400,
     );
+  });
+});
+
+/**
+ * The published side of the shelf: the `@adelie` packages that carry the plugin keyword, read
+ * from npm's search API. No network — the same fetch fake as above, plus an injected clock — and
+ * the behaviour pinned is what a page load depends on: one listing serves every caller, a failure
+ * keeps the previous one rather than emptying the shelf, and a readme is the package's own.
+ */
+describe("npmPluginRegistry", () => {
+  const listing = "https://registry.npmjs.org/-/v1/search?text=keywords%3Aadelie-plugin&size=250";
+  const packument = "https://registry.npmjs.org/%40adelie%2Fuse-example";
+
+  /** One result of npm's search API, as much of it as the shelf reads. */
+  const hit = (over: Record<string, unknown> = {}) => ({
+    package: {
+      name: "@adelie/use-example",
+      version: "1.2.0",
+      description: "An example plugin.",
+      license: "Apache-2.0",
+      keywords: ["adelie-plugin", "example"],
+      date: "2026-10-30T12:00:00.000Z",
+      publisher: { username: "lmliheng" },
+      links: {
+        npm: "https://www.npmjs.com/package/@adelie/use-example",
+        repository: "git+https://github.com/lmliheng/Adelie.git",
+      },
+      ...over,
+    },
+  });
+
+  it("maps a search result into a shelf entry, with the page and the repository a reader can open", async () => {
+    const fake = fakeFetch(() => jsonResponse({ objects: [hit()] }));
+    const entries = await npmPluginRegistry({ fetchImpl: fake.fetch }).index();
+    // One request, the keyword it searches for, and nothing else dialled.
+    expect(fake.calls.map((call) => call.url)).toEqual([listing]);
+    expect(entries).toEqual([
+      {
+        name: "@adelie/use-example",
+        version: "1.2.0",
+        description: "An example plugin.",
+        authors: ["lmliheng"],
+        license: "Apache-2.0",
+        // npm hands out a clone URL (`git+…git`); the shelf links a page instead.
+        repository: "https://github.com/lmliheng/Adelie",
+        homepage: "https://www.npmjs.com/package/@adelie/use-example",
+        keywords: ["adelie-plugin", "example"],
+        updatedAt: Math.floor(Date.parse("2026-10-30T12:00:00.000Z") / 1000),
+      },
+    ]);
+  });
+
+  it("leaves out a package the shelf cannot describe, and any outside the market's own scopes", async () => {
+    // The scope is what keeps the keyword safe to read: anyone can publish a package with it,
+    // nobody outside the project can publish under @adelie/.
+    const fake = fakeFetch(() =>
+      jsonResponse({
+        objects: [
+          hit({ name: "@acme/not-ours" }),
+          hit({ license: undefined }),
+          hit({ description: undefined }),
+          hit({ version: undefined }),
+          hit({ publisher: undefined, author: undefined, maintainers: [] }),
+          hit({
+            links: {
+              npm: "https://www.npmjs.com/package/@adelie/use-example",
+              repository: "git://example.invalid/x.git",
+            },
+          }),
+          { package: null },
+          null,
+        ],
+      }),
+    );
+    const entries = await npmPluginRegistry({ fetchImpl: fake.fetch }).index();
+    expect(entries).toHaveLength(1);
+    // A repository npm gives as something a browser cannot open is dropped, not rendered as a
+    // dead link; everything else the entry needs came from the package.
+    expect(entries[0]?.repository).toBeUndefined();
+    expect(entries[0]?.name).toBe("@adelie/use-example");
+  });
+
+  it("serves one cached listing, keeps the previous one across a failure, and retries it briefly", async () => {
+    let now = 0;
+    let answer = (): Response => jsonResponse({ objects: [hit()] });
+    const fake = fakeFetch(() => answer());
+    const registry = npmPluginRegistry({
+      fetchImpl: fake.fetch,
+      now: () => now,
+      ttlMs: 1000,
+      failureTtlMs: 10,
+    });
+
+    expect((await registry.index()).map((e) => e.name)).toEqual(["@adelie/use-example"]);
+    await registry.index();
+    now = 999;
+    await registry.index();
+    // Three page loads inside the TTL are one npm request.
+    expect(fake.calls).toHaveLength(1);
+
+    // The TTL elapsed and npm cannot be reached: the stale listing is better than an empty shelf.
+    now = 1001;
+    answer = () => {
+      throw fetchFailed("ECONNREFUSED");
+    };
+    expect((await registry.index()).map((e) => e.name)).toEqual(["@adelie/use-example"]);
+    expect(fake.calls).toHaveLength(2);
+
+    // A failure is cached for the shorter TTL, so a page opened twice does not retry twice...
+    now = 1002;
+    await registry.index();
+    expect(fake.calls).toHaveLength(2);
+    // ...and the retry after it is the recovery, with nothing to lose.
+    now = 1012;
+    await registry.index();
+    expect(fake.calls).toHaveLength(3);
+  });
+
+  it("answers an empty shelf rather than throwing when npm is unreachable and there is nothing cached", async () => {
+    const refused = fakeFetch(() => {
+      throw fetchFailed("ECONNREFUSED");
+    });
+    expect(await npmPluginRegistry({ fetchImpl: refused.fetch }).index()).toEqual([]);
+    // An HTTP error is the same story: the library is what the page falls back to.
+    const http = fakeFetch(() => new Response("nope", { status: 503 }));
+    expect(await npmPluginRegistry({ fetchImpl: http.fetch }).index()).toEqual([]);
+  });
+
+  it("answers a readme from the package's own packument, and caches the hit and the miss alike", async () => {
+    const fake = fakeFetch((call) =>
+      call.url === listing
+        ? jsonResponse({ objects: [hit()] })
+        : jsonResponse({ readme: "# use-example\n" }),
+    );
+    const registry = npmPluginRegistry({ fetchImpl: fake.fetch });
+    await registry.index();
+    expect(await registry.readme("@adelie/use-example")).toBe("# use-example\n");
+    // A readme is asked for once per name, however many times the entry is opened.
+    expect(await registry.readme("@adelie/use-example")).toBe("# use-example\n");
+    expect(fake.calls.map((call) => call.url)).toEqual([listing, packument]);
+
+    // A package that publishes no readme is a miss, cached like a hit.
+    const bare = fakeFetch(() => jsonResponse({}));
+    const other = npmPluginRegistry({ fetchImpl: bare.fetch });
+    expect(await other.readme("@adelie/readme-less")).toBeNull();
+    expect(await other.readme("@adelie/readme-less")).toBeNull();
+    expect(bare.calls).toHaveLength(1);
+
+    // A miss nobody answered is not cached: the next visit tries again.
+    const broken = fakeFetch(() => {
+      throw fetchFailed("ECONNREFUSED");
+    });
+    const third = npmPluginRegistry({ fetchImpl: broken.fetch });
+    expect(await third.readme("@adelie/use-example")).toBeNull();
+    expect(await third.readme("@adelie/use-example")).toBeNull();
+    expect(broken.calls).toHaveLength(2);
+  });
+});
+
+describe("configuredPluginMarket", () => {
+  it("is the published side, and null where the deployment opted out of dialling out", () => {
+    expect(configuredPluginMarket({})?.source).toBe("npm");
+    expect(configuredPluginMarket({ ADELIE_PLUGIN_MARKET: "on" })?.source).toBe("npm");
+    // The switch is authoritative: an air-gapped deployment lists only what its build carries.
+    expect(configuredPluginMarket({ ADELIE_PLUGIN_MARKET: "off" })).toBeNull();
+  });
+});
+
+/**
+ * The shelf as the route assembles it: what this build carries first, then the published side,
+ * one entry per name. A name both sides carry is the BUILD's entry — its version is the one
+ * installed here — and its readme is the copy on this machine, so the published side is a
+ * fallback rather than a second opinion.
+ */
+describe("the shelf's two sides", () => {
+  const REPO_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
+  const published: PluginIndexEntry = {
+    name: "@adelie/not-in-this-build",
+    version: "0.1.0",
+    description: "Published without a release.",
+    authors: ["Prism Shadow"],
+    license: "Apache-2.0",
+  };
+  const fromNpm = (entries: PluginIndexEntry[], readme: string | null = null): PluginRegistry => ({
+    source: "npm",
+    index: async () => entries,
+    readme: async () => readme,
+  });
+  const shelf = (side: PluginRegistry | null) =>
+    pluginRegistryRoutes(
+      () => [],
+      () => REPO_ROOT,
+      side,
+    );
+  const listed = async (side: PluginRegistry | null): Promise<PluginIndexEntry[]> =>
+    ((await (await shelf(side).request("/")).json()) as PluginIndexResponse).plugins;
+
+  it("lists what the build carries first, one entry per name", async () => {
+    const builtin = await listed(null);
+    expect(builtin.length).toBeGreaterThan(0);
+    // A published copy of a name the build already carries: the entry on the shelf stays the
+    // build's, whose version is the one this machine installs.
+    const shadowing = { ...builtin[builtin.length - 1]!, version: "9.9.9" };
+    const merged = await listed(fromNpm([shadowing, published]));
+    expect(merged.map((e) => e.name)).toEqual([...builtin.map((e) => e.name), published.name]);
+    expect(merged.at(-2)?.version).not.toBe("9.9.9");
+  });
+
+  it("falls through to the published side's readme only for a package this build does not carry", async () => {
+    const side = fromNpm([published], "# from npm\n");
+    const body = await shelf(side).request(`/readme?name=${encodeURIComponent(published.name)}`);
+    expect(await body.json()).toEqual({ name: published.name, readme: "# from npm\n" });
+
+    // A shipped package's readme is read here, so the published copy is never consulted.
+    const shipped = "@adelie/requirements-box";
+    const ours = await shelf(side).request(`/readme?name=${encodeURIComponent(shipped)}`);
+    const readme = (await ours.json()) as { readme: string | null };
+    expect(readme.readme).toContain("#");
+    expect(readme.readme).not.toBe("# from npm\n");
+  });
+
+  it("still refuses a name neither side lists, so the route cannot probe for what exists", async () => {
+    const res = await shelf(fromNpm([published])).request(
+      "/readme?name=" + encodeURIComponent("@someone/not-listed"),
+    );
+    expect(res.status).toBe(404);
   });
 });

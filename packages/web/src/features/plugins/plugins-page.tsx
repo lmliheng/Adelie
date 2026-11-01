@@ -112,7 +112,7 @@ import { downloadArchive } from "../agents/archive-download";
 import type { WriteOutcome } from "../models/write-outcome";
 import { PluginDetailModal } from "./plugin-detail";
 import { PluginImportActions } from "./plugin-import-dialog";
-import { pluginImportErrorText } from "./plugin-import";
+import { pluginImportErrorText, pluginNameFromError } from "./plugin-import";
 import { SettingsDialog } from "../settings/settings-dialog";
 import { formatRelativeDate } from "../../lib/format";
 import { SkillTile } from "../skills/skill-icon-view";
@@ -380,6 +380,17 @@ export function PluginsPage() {
    * button that retries it is in this card.
    */
   const [applyRefusal, setApplyRefusal] = useState<string | null>(null);
+
+  /**
+   * Fetching a published plugin into the library, by specifier (null = none): the row's own busy
+   * state, and — when the name is already taken — the overwrite confirmation that the import
+   * dialog raises for the same 409.
+   */
+  const [publishing, setPublishing] = useState<string | null>(null);
+  const [overwriteImport, setOverwriteImport] = useState<{
+    specifier: string;
+    name: string;
+  } | null>(null);
 
   /**
    * Open the confirmation for one module plugin change, without the previous refusal: that
@@ -761,12 +772,60 @@ export function PluginsPage() {
     return { ok: true };
   };
 
+  /**
+   * "Add to the library" on a published plugin's row: exactly the import the header's dialog
+   * performs — POST /api/plugins/download, which the server reads as an npm package name — so a
+   * plugin that is on the shelf because it was published needs no typed address. An admin's
+   * action, like every other write into the plugin directory, and the row keeps the refresh:
+   * once it lands, the library listing carries the new card and this row is gone.
+   *
+   * A 409 (the name is taken) opens the same overwrite question the dialog asks for its own
+   * imports rather than a toast: it is a question, and the answer resends the request with
+   * `overwrite`.
+   */
+  const addPublishedToLibrary = async (specifier: string, overwrite = false) => {
+    setPublishing(specifier);
+    try {
+      const res = await api.importPluginFromUrl({
+        url: specifier,
+        ...(overwrite ? { overwrite: true } : {}),
+      });
+      setOverwriteImport(null);
+      toastSuccess(S.plugins.importDoneToast(res.plugin.name));
+      await reloadLibrary();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 409 && e.code === "plugin_exists") {
+        setOverwriteImport({
+          specifier,
+          name: pluginNameFromError(e, specifier.split("/").pop() ?? specifier),
+        });
+      } else {
+        setOverwriteImport(null);
+        toastError(pluginImportErrorText(e));
+      }
+    } finally {
+      setPublishing(null);
+    }
+  };
+
   // The library's rows, divided by what the Agent the page is working with holds (the value
   // each card's tag shows), then the module rows the Project does not list yet. The two lists
   // below are exactly these: nothing else decides which section a row lands in.
   const libraryRows = installedPluginRows(groups ?? [], locale, deployment, index ?? [], view);
   const offeredRows = availablePluginRows(deployment, index ?? [], view);
-  const divided = splitPluginRows(libraryRows, agents, installed, currentAgent?.agentId ?? null);
+  // What the project published and this deployment does not carry: rows that only exist on the
+  // shelf. They go through the same division so a published plugin is filed with what is offered.
+  const publishedRows = publishedPluginRows(
+    index ?? [],
+    (view.remote ?? deployment)?.shipped ?? [],
+    (groups ?? []).flatMap((group) => group.plugins.map((plugin) => plugin.name)),
+  );
+  const divided = splitPluginRows(
+    [...libraryRows, ...publishedRows],
+    agents,
+    installed,
+    currentAgent?.agentId ?? null,
+  );
   const allInstalled = divided.installed;
   const allAvailable = [...divided.available, ...offeredRows];
   const facets = pluginFacets([...allInstalled, ...allAvailable]);
@@ -805,6 +864,49 @@ export function PluginsPage() {
       onDelete={removePlugin}
     />
   );
+
+  /**
+   * The row a module or published plugin draws, whichever list it is filed under. A module row's
+   * verbs depend on that list — installed offers Remove, available offers Install — while a
+   * published one only ever offers the first step, because it is nowhere until it is fetched.
+   */
+  const shelfRow = (
+    row: Extract<PluginRow, { kind: "module" | "published" }>,
+    install: boolean,
+  ) => {
+    if (row.kind === "published") {
+      return (
+        <ModuleRow
+          key={`published:${row.specifier}`}
+          specifier={row.specifier}
+          entry={row.entry}
+          state="none"
+          shipped={false}
+          installLabel={S.plugins.addToLibrary}
+          busy={publishing === row.specifier}
+          blocked={publishing !== null && publishing !== row.specifier}
+          onInstall={isAdmin ? () => void addPublishedToLibrary(row.specifier) : null}
+          onRemove={null}
+        />
+      );
+    }
+    return (
+      <ModuleRow
+        key={`module:${row.specifier}`}
+        specifier={row.specifier}
+        entry={row.entry}
+        state={row.state}
+        error={row.error}
+        shipped={row.shipped}
+        onlyOn={row.onlyOn}
+        removeBlocked={row.removeBlocked}
+        busy={pendingSpecifier === row.specifier}
+        blocked={pendingSpecifier !== null && pendingSpecifier !== row.specifier}
+        onInstall={install && isAdmin ? () => askApply(row.specifier, true) : null}
+        onRemove={install || !isAdmin ? null : () => askApply(row.specifier, false)}
+      />
+    );
+  };
 
   // The scrollbar gutter stays reserved: a filter that shortens the page below the viewport
   // would otherwise take the scrollbar with it and shift everything sideways at the click.
@@ -930,24 +1032,7 @@ export function PluginsPage() {
               onToggle={() => setInstalledOpen((v) => !v)}
             >
               {installedRows.map((row) =>
-                row.kind === "library" ? (
-                  libraryCard(row)
-                ) : (
-                  <ModuleRow
-                    key={`module:${row.specifier}`}
-                    specifier={row.specifier}
-                    entry={row.entry}
-                    state={row.state}
-                    error={row.error}
-                    shipped={row.shipped}
-                    onlyOn={row.onlyOn}
-                    removeBlocked={row.removeBlocked}
-                    busy={pendingSpecifier === row.specifier}
-                    blocked={pendingSpecifier !== null && pendingSpecifier !== row.specifier}
-                    onInstall={null}
-                    onRemove={isAdmin ? () => askApply(row.specifier, false) : null}
-                  />
-                ),
+                row.kind === "library" ? libraryCard(row) : shelfRow(row, false),
               )}
             </PluginList>
             {availableRows.length > 0 && (
@@ -957,21 +1042,7 @@ export function PluginsPage() {
                 onToggle={() => setAvailableOpen((v) => !v)}
               >
                 {availableRows.map((row) =>
-                  row.kind === "library" ? (
-                    libraryCard(row)
-                  ) : (
-                    <ModuleRow
-                      key={`module:${row.specifier}`}
-                      specifier={row.specifier}
-                      entry={row.entry}
-                      state={row.state}
-                      shipped={row.shipped}
-                      busy={pendingSpecifier === row.specifier}
-                      blocked={pendingSpecifier !== null && pendingSpecifier !== row.specifier}
-                      onInstall={isAdmin ? () => askApply(row.specifier, true) : null}
-                      onRemove={null}
-                    />
-                  ),
+                  row.kind === "library" ? libraryCard(row) : shelfRow(row, true),
                 )}
               </PluginList>
             )}
@@ -1053,11 +1124,31 @@ export function PluginsPage() {
           </div>
         </ConfirmModal>
       )}
+      {/* Fetching a published plugin into the library, when its name is already taken: the row's
+          own confirm, and the same question the header's import dialog asks — one name, one
+          plugin, and the answer re-sends the request with overwrite, which is what replaces the
+          existing copy's files. */}
+      {overwriteImport !== null && (
+        <ConfirmModal
+          open
+          title={S.plugins.importOverwriteTitle}
+          tone="primary"
+          confirmLabel={S.plugins.importOverwriteAction}
+          cancelLabel={S.common.cancel}
+          busy={publishing !== null}
+          onClose={() => setOverwriteImport(null)}
+          onConfirm={() => void addPublishedToLibrary(overwriteImport.specifier, true)}
+        >
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            {S.plugins.importOverwriteBody(overwriteImport.name)}
+          </p>
+        </ConfirmModal>
+      )}
     </PageFrame>
   );
 }
 
-/** One row of the page: a library plugin (skills / hooks, installed per Agent) or a module plugin (listed per Project). */
+/** One row of the page: a library plugin (skills / hooks, installed per Agent), a module plugin (listed per Project), or a published one (on the shelf, not here yet). */
 type PluginRow =
   | {
       kind: "library";
@@ -1070,7 +1161,20 @@ type PluginRow =
        */
       market?: MarketState;
     }
-  | ModulePluginRow;
+  | ModulePluginRow
+  | PublishedPluginRow;
+/**
+ * A plugin the project has published but this deployment does not carry: an entry on the shelf
+ * whose package is neither part of this build nor in the library. The row exists so the plugin is
+ * visible where plugins are browsed, and its verb is the first step of installing it — fetch it
+ * into the library (the npm import an operator would otherwise have to type), after which it
+ * behaves like any other plugin.
+ */
+interface PublishedPluginRow {
+  kind: "published";
+  specifier: string;
+  entry: PluginIndexEntry;
+}
 interface ModulePluginRow {
   kind: "module";
   specifier: string;
@@ -1202,6 +1306,12 @@ export function splitPluginRows(
   const installed: PluginRow[] = [];
   const available: PluginRow[] = [];
   for (const row of rows) {
+    // A published plugin is nowhere yet — not on an Agent, not even in the library — so it
+    // belongs with what could be installed whatever Agent the page is working with.
+    if (row.kind === "published") {
+      available.push(row);
+      continue;
+    }
     if (row.kind === "module" || currentAgentId === null) {
       installed.push(row);
       continue;
@@ -1256,6 +1366,31 @@ export function availablePluginRows(
     if (listed.has(name) || seen.has(name)) continue;
     seen.add(name);
     rows.push({ kind: "module", specifier: name, entry: undefined, state: "none", shipped: true });
+  }
+  return rows;
+}
+
+/**
+ * The plugins the project has published that this deployment does not carry yet: shelf entries
+ * whose package is neither part of this build nor in the library. What is left is the published
+ * side of the market — a plugin that reached npm without a release — and each becomes a row whose
+ * verb fetches it into the library.
+ *
+ * An entry the build ships is left to `availablePluginRows` (a module row for a Project to ask
+ * for), and one the library already holds is left to the card that library row draws: those are
+ * the same plugin seen from where it can actually be installed, and a second row for it would
+ * claim a state the other row contradicts.
+ */
+export function publishedPluginRows(
+  index: readonly PluginIndexEntry[],
+  shipped: readonly string[],
+  library: readonly string[],
+): PublishedPluginRow[] {
+  const known = new Set([...shipped, ...library.map((name) => name.split("/").pop() ?? name)]);
+  const rows: PublishedPluginRow[] = [];
+  for (const entry of index) {
+    if (known.has(entry.name) || known.has(entry.name.split("/").pop() ?? entry.name)) continue;
+    rows.push({ kind: "published", specifier: entry.name, entry });
   }
   return rows;
 }
@@ -1342,6 +1477,11 @@ export function rowFacets(row: PluginRow): {
     // The state the card's tag shows, not a blanket "installed": a library plugin the working
     // Agent does not hold is offered, whichever section the page currently files it under.
     return { categories: [row.category], kinds, states: [libraryState(row)] };
+  }
+  // A published plugin is not here, so nothing on this machine says what it carries: its kinds
+  // stay empty rather than being guessed from a search result. It is offered, which is one state.
+  if (row.kind === "published") {
+    return { categories: row.entry.categories ?? [], kinds: [], states: ["available"] };
   }
   const states: PluginState[] =
     row.state === "active"
@@ -2100,6 +2240,7 @@ function ModuleRow({
   removeBlocked,
   busy,
   blocked,
+  installLabel,
   onInstall,
   onRemove,
 }: {
@@ -2118,10 +2259,17 @@ function ModuleRow({
   busy: boolean;
   /** Another row's is: one at a time, so the rest are held rather than queued. */
   blocked: boolean;
+  /**
+   * What the install verb says, when it is not the Project's own install. A published row
+   * fetches the package into the library rather than listing it for the Project, so its verb
+   * names that first step instead.
+   */
+  installLabel?: string;
   onInstall: (() => void) | null;
   onRemove: (() => void) | null;
 }) {
   const { locale } = useLocale();
+  const installText = installLabel ?? S.plugins.install;
   const stateText =
     state === "active"
       ? S.plugins.stateActive
@@ -2225,9 +2373,9 @@ function ModuleRow({
               <Button
                 size="sm"
                 className="h-8 w-8 shrink-0 justify-center p-0"
-                aria-label={`${busy ? S.plugins.installing : S.plugins.install} ${specifier}`}
+                aria-label={`${busy ? S.plugins.installing : installText} ${specifier}`}
                 aria-busy={busy}
-                title={busy ? S.plugins.installing : S.plugins.install}
+                title={busy ? S.plugins.installing : installText}
                 disabled={busy || blocked}
                 onClick={onInstall}
               >

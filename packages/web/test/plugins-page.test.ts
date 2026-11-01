@@ -36,6 +36,7 @@ import {
   outdatedAgentIds,
   pluginInstalled,
   pluginUpdatePlan,
+  publishedPluginRows,
   rowFacets,
   splitPluginRows,
   type AgentInstalls,
@@ -147,6 +148,32 @@ describe("availablePluginRows", () => {
     expect(rows.map((r) => [r.specifier, r.entry, r.shipped])).toEqual([
       ["@adelie/sandbox-bwrap", undefined, true],
     ]);
+  });
+});
+
+/**
+ * The published side of the shelf: entries that are on the market because their package was
+ * published to npm, not because this build carries it. The row exists so such a plugin is
+ * visible where plugins are browsed, and its verb fetches it into the library.
+ */
+describe("publishedPluginRows", () => {
+  it("offers an entry this build does not carry and the library does not hold", () => {
+    const rows = publishedPluginRows(
+      [entry("@adelie/not-in-this-build"), entry("@adelie/csu-mail")],
+      [],
+      ["csu-mail"],
+    );
+    expect(rows.map((r) => r.specifier)).toEqual(["@adelie/not-in-this-build"]);
+  });
+
+  it("leaves a shipped one to the row that installs it, and a library one to its card", () => {
+    // The two lists name the same package differently — the shelf by its package specifier, the
+    // library by the directory it was read from — so both spellings count as known.
+    expect(
+      publishedPluginRows([entry("@adelie/sandbox-bwrap")], ["@adelie/sandbox-bwrap"], []),
+    ).toEqual([]);
+    expect(publishedPluginRows([entry("@adelie/csu-mail")], [], ["csu-mail"])).toEqual([]);
+    expect(publishedPluginRows([entry("csu-mail")], [], ["csu-mail"])).toEqual([]);
   });
 });
 
@@ -362,6 +389,13 @@ describe("splitPluginRows", () => {
   const nameOfRow = (row: ReturnType<typeof splitPluginRows>["installed"][number]): string =>
     row.kind === "library" ? row.plugin.name : row.specifier;
 
+  /** A shelf entry that only the published side carries: nowhere on this machine yet. */
+  const publishedRow = (name: string) => ({
+    kind: "published" as const,
+    specifier: name,
+    entry: entry(name),
+  });
+
   it("puts a library plugin the working Agent holds under installed, and one it lacks under available", () => {
     const { installed, available } = splitPluginRows(
       [held, missing, projectRow],
@@ -372,6 +406,29 @@ describe("splitPluginRows", () => {
     // The Project's own module rows are not per-Agent and stay in the installed list.
     expect(installed.map(nameOfRow)).toEqual(["web-design", "@acme/shared"]);
     expect(available.map(nameOfRow)).toEqual(["csu-mail"]);
+  });
+
+  it("files a published plugin under available whatever Agent the page is working with", () => {
+    const shelf = publishedRow("@adelie/not-in-this-build");
+    const rows = [held, missing, projectRow, shelf];
+    const agents = [agent("alpha")];
+    const held_ = new Map([["alpha", installs({ "web-design": "2026.08.01.1" }, {})]]);
+
+    // With an Agent selected: the library plugin it lacks is offered beside it.
+    expect(splitPluginRows(rows, agents, held_, "alpha").available.map(nameOfRow)).toEqual([
+      "csu-mail",
+      "@adelie/not-in-this-build",
+    ]);
+    // With none: the library either way stays where it is, but a published plugin is nowhere
+    // until it is fetched — no Agent's install state can make it installed, so it is offered
+    // in both cases.
+    const none = splitPluginRows(rows, agents, held_, null);
+    expect(none.available.map(nameOfRow)).toEqual(["@adelie/not-in-this-build"]);
+    expect(none.installed.map(nameOfRow)).not.toContain("@adelie/not-in-this-build");
+
+    // Its facets say it is offered, and claim nothing about what it carries: nothing on this
+    // machine has read the package yet.
+    expect(rowFacets(shelf)).toEqual({ categories: [], kinds: [], states: ["available"] });
   });
 
   it("files a copy the server lists as behind under installed: an update is what that card offers", () => {

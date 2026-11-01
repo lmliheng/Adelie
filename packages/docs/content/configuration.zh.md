@@ -23,6 +23,7 @@ CLI 和服务器启动时会从工作目录加载 `.env` 文件。
 | `ADELIE_SEED_ADMIN_PASSWORD` | 预置内置管理员的固定初始密码（自动化测试 / e2e） | 未设置：生成随机密码 |
 | `ADELIE_LANG` | CLI 语言（`en` / `zh`），用 `penguin config lang` 设置 | `en` |
 | `ADELIE_UPDATE_CHECK` | 设为 `off` 时关闭 Web App 的新版本检查 | 启用 |
+| `ADELIE_PLUGIN_MARKET` | 设为 `off` 时插件市场只列出本次构建自带的插件，不查询 npm | 启用 |
 | `PENGUIN_NO_LOGIN_SHELL_ENV` | 设为任意非空值后，桌面应用在 macOS/Linux 上从图形界面启动时不再导入登录 shell 的环境变量 | 未设置：照常导入 |
 | `ADELIE_SHELL` | 运行 Agent 命令的 shell（可执行文件名或路径） | 未设置：自动选择，见[工具与审批](/tools#命令会话) |
 | `ADELIE_CLI_ENTRY` | 本安装提供给所运行 Agent 的 CLI 入口脚本（见 [PATH 启动脚本](#path-启动脚本)） | 由 `penguin server` / `penguin web` 和桌面应用设置 |
@@ -35,6 +36,7 @@ CLI 和服务器启动时会从工作目录加载 `.env` 文件。
 - `PENGUIN_GO_ORIGIN`：它是服务端配置，不接受浏览器指定的端点。取值必须是不带路径的 HTTPS 源；只有 `localhost`、`127.0.0.1` 和 `[::1]` 这类集成环境可以用明文 HTTP。带路径、凭据、查询参数或 fragment 的取值会在启动时被拒绝。见[连接账户](/models#连接账户)。
 - `MODELSCOPE_BRIDGE_URL`：与 `PENGUIN_GO_ORIGIN` 一样是服务端配置，不接受浏览器指定的端点。它必须是不带凭据、查询参数或 fragment 的 HTTPS 地址。不同之处是**它允许带路径前缀**，因为生产环境的中转层就挂在 `https://go.penguin.ooo/modelscope` 下。见[连接账户](/models#连接账户)。
 - `ADELIE_UPDATE_CHECK`：设为 `off` 只关闭自动的版本检查，不影响其他对外请求：模型请求、已启用的远程控制连接、Key 授权和代理测试照常联网。
+- `ADELIE_PLUGIN_MARKET`：插件市场的货架有两侧，一侧是本次构建自带的插件（本地读，不联网），另一侧是发布到 npm 的插件。服务器为此查一次 npm 的搜索接口，结果缓存十分钟（失败时缓存两分钟并沿用上一次的结果）。设为 `off` 后这一侧完全不查，货架只剩本地那一侧——断网或封闭环境里应当如此。见[插件](/skills)。
 - `PENGUIN_NO_LOGIN_SHELL_ENV`：不设置时，导入只填补启动过程没有设置的变量。见[桌面应用快速开始](/quickstart-desktop)。
 - `ADELIE_CLI_ENTRY`：服务器从源码检出启动时，会回退到检出目录中的 `packages/cli/dist/penguin.js`。
 

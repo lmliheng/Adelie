@@ -2750,6 +2750,14 @@ export const en: Strings = {
     detailMarketLink: "View market entry",
     /** The "built in" tag on a library plugin: it ships with the build and needs no download. */
     libraryBuiltinHint: "Ships with this build; install it to an agent to use it there.",
+    /**
+     * The verb on a PUBLISHED plugin's row: the entry is on the shelf because its package was
+     * published to npm, not because this build carries it, so the row's one step is to fetch it
+     * into the plugin library \u2014 the npm import an operator would otherwise type into the
+     * download dialog themselves. Reuses the dialog's copy for everything after that (the
+     * success toast, the overwrite question).
+     */
+    addToLibrary: "Add to the library",
     pluginCount: (n: number): string => (n === 1 ? "1 plugin" : `${n} plugins`),
     searchPlaceholder: "Search plugins",
     /** Section labels of the plugin detail Modal. */
