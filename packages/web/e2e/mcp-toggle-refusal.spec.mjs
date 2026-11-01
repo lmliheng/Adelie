@@ -111,9 +111,7 @@ const seed = () => [
   { name: QUIET, config: { url: "https://quiet.example.com/mcp" } },
 ];
 
-test("a refused flip keeps the reason under that row, and only that row", async ({
-  page,
-}) => {
+test("a refused flip keeps the reason under that row, and only that row", async ({ page }) => {
   const { listed } = await projectWithServers(page, "r171refuse", seed());
   const before = await listed();
 
