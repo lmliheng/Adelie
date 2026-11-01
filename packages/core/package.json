@@ -65,6 +65,7 @@
     "@adelie/csu-mail": "workspace:*",
     "@adelie/data-analysis": "workspace:*",
     "@adelie/goal": "workspace:*",
+    "@adelie/gpu-model-serving": "workspace:*",
     "@adelie/humanizer": "workspace:*",
     "@adelie/lesson-video": "workspace:*",
     "@adelie/model-development": "workspace:*",

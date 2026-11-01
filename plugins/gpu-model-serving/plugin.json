@@ -1,0 +1,9 @@
+{
+  "description": "Stand up an OpenAI-compatible LLM endpoint on a rented or owned GPU box: pick the instance, fetch and quantize weights, serve with SGLang — speculative decoding, prefix caching and tool calling for agent workloads — then verify it and expose the port. Carries the CUDA/JIT traps that cost hours the first time (CCCL header checks, MAX_JOBS OOM, flashinfer cubin version skew, NVFP4 checkpoints, mamba state cache).",
+  "description_zh": "在租用或自有的 GPU 机器上部署 OpenAI 兼容的模型服务：选实例、拉权重与量化、用 SGLang 开投机解码/前缀缓存/tool calling 服务 agent 负载，再验证并开放端口。附带第一次部署会耗掉数小时的 CUDA/JIT 坑（CCCL 头文件校验、MAX_JOBS 内存打爆、flashinfer cubin 版本错位、NVFP4 checkpoint、mamba 状态缓存）。",
+  "short_description": "Self-host an LLM endpoint on a GPU box with SGLang.",
+  "short_description_zh": "在 GPU 机器上用 SGLang 自部署模型接口。",
+  "version": "2026.10.30.1",
+  "category": "software-development",
+  "preinstall": false
+}
