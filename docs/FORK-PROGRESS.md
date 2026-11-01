@@ -1884,6 +1884,22 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       同一份 spec **2 failed / 1 passed**（两处都不见 alert；409 那条不变），放回后再跑 **3 passed**。
       见「第一百七十二轮」一节。
 
+- [x] **7.64 设置 → 通用「导入 Trace」整行动作被拒时，原因留在这一行下面，不再只活六秒；这条动作进了浏览器套件**
+      （**2026-11-01 第一百七十三轮**落地，提交见该节；源码 1 处（一个纯函数 + 一个状态 + 一句话）+
+      单测 4 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.63
+      结尾点名的两处之一。这条行是一行三个控件（项目 / Agent / 选文件），而它三条失败的路——服务端
+      拒绝、按文件种类超上限、浏览器读不出来——此前都只进一条六秒的 toast；被拒时这一行一个字都没
+      写进去、三个控件原样不动、再选一次文件就是重试，所以那句话属于这一行。现在它画在三个控件下面
+      的一行（`role="alert"`、danger 色、限两行、整句挂悬停），留到下一次尝试开始。「按哪个上限算」
+      （`.jsonl` 14MB / 整会话 `.json` 包 48MB）提成纯函数 `traceImportSizeRefusal()`，组件不再自己
+      分支。`packages/web/e2e/trace-import-refusal.spec.mjs` 两条真服务端用例：同一份 Trace 导两次
+      （路由自己的 409）——原因留在这一行、通知区没有可点的 toast、七秒后仍在、目的地两个下拉没动，
+      再选另一份即清掉并落进第二个会话；`.jsonl` 多一字节就地拒绝且一条上传请求都没发，随后换成放得
+      下的文件照旧落地。**反证**：把 `trace-import-row.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec
+      **2 failed**（都死在 `row.getByRole("alert")` 的 `toHaveText` 上），改前探针量到行内 alert **0**
+      条、通知区 **2** 个可点 toast（七秒后 **0** 个）；放回、重建后再跑 **2 passed**。
+      见「第一百七十三轮」一节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -2560,6 +2576,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-10-31 | 7.61 | **Agent 设置页的定时任务 tab：启用 / 停用被拒时，原因留在那一行的状态徽标下面；这条动作进了浏览器套件**（不是移植：源码 1 处 `packages/web/src/features/agents/schedules-tab.tsx` —— 多一个 `toggleRefusal` 状态（失败经 `apiErrorText` 填、不再 `toastError`，下一次翻转开始清空）+ 一块 `ToggleRefusal` 画在状态徽标下面（共享引子 `S.common.refused`、danger 色、`role="alert"`、限两行、整句挂悬停，`whitespace-normal` 让它在 `nowrap` 的格里换行）；归属沿用第一百六十九轮收进 `src` 的纯函数 `scheduleRefusalFor()`，没有新单测（那 4 条已经钉住这条规则）；1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.60 结尾点名的「还差」那一处 —— 同一件东西的第三处列表，只是它是表格 + 文字按钮而不是共用 `ScheduleRow`；按钮同样不做乐观写入，被拒时按钮与徽标都不动，原因此前只剩一条六秒的 toast，六秒后就是「点了没反应」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **273 文件 / 3356 通过 / 2 跳过** · server **3020 通过 / 1 失败 / 15 跳过** —— 那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**（第一百六十八 / 一百六十九轮已记过同一条：它读 core 的 dist，而 dist 里有另一条线在途未提交的调色桥；`grep -c PALETTE_BRIDGE` 在工作的 `external-theme.ts` 里 5、在 `HEAD` 的同一文件里 0）· 本笔只动 `packages/web` 的两个文件 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r170`、服务端 **8987**（`HOST=::`）、仓库自带 mock LLM **8986**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（12.5 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed** · 探针读到被拒后状态格 **212×74 px**、句子两行 32 px、未截断、徽标仍是「生效」、`role="alert"` 在**这一格**里、**7 秒后仍在**；放开拒绝后同一颗按钮落地、alert **0**、按钮变「启用」、徽标变「停用」；console 只有既有的 `…/machines` **403** 与本轮刻意造的 **404**，无其它 error、无 pageerror（截图 `r170/shot-{1-before,2-refused,3-after-7s,4-after-success}.png`）· **反证**：只把 `schedules-tab.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在 `statusCell(...).getByRole("alert")` 的 `toHaveText` 上），改前截图里原因此刻只在顶部一条 toast「该定时任务已不存在。」、状态格只有「生效」；放回、重建 → **2 passed** · 端口只用 8987 / 8986（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r170`，探针 / 临时配置 / 截图在 scratchpad 的 `r170/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-01 | 7.62 | **MCP Server 表的开关被拒时，原因留在那一行下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：`packages/web/src/features/agents/mcp-servers-toggle.ts`（新，`McpToggleRefusal` + `flippedEnabled()`：一次翻转产出的列表，沿用原规则「关掉写 `false`、重新打开删掉这个键」+ `toggleRefusalFor()`：行按**位置**认而不是名字 —— 弹窗拒重名、手改配置里可能重名，按名字画会画两遍）、`mcp-servers-section.tsx` 多一个 `toggleRefusal` 状态（失败经 `apiErrorText` 填、不再 `toastError`，下一次翻转与**任意一次落地写入**都清空）与一条横跨各列的提示带；+ 单测 1 个文件 8 条 + 新 spec 1 个（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这一族的最后一处即时写入 —— 开关不做乐观写入，被拒时行不动、开关不动，原因此前只剩一条六秒的 toast，六秒后就是「点了没反应」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · hmr 无测试 · web **274 文件 / 3364 通过 / 2 跳过**（+1 文件 +8 条即本笔单测）· server **3020 通过 / 1 失败 / 15 跳过** —— 那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**（第一百六十八 / 一百六十九 / 一百七十轮已记过同一条：服务端测试读 core 的 dist，而 dist（10-31 15:04 构建）里有另一条线在途未提交的调色桥；`grep -c PALETTE_BRIDGE` 在工作的 `external-theme.ts` 里 5、在 `HEAD` 的同一文件里 0）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r171`、服务端 **8988**（`HOST=::`）、仓库自带 mock LLM **8990**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（12.4 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；探针量到被拒后开关格仍是 **80×43 px**（与改前一致）、提示带 **742×16 px**、句子是「操作被拒绝：agent config is read-only」、开关 `aria-checked="true"`（服务端里仍启用）、**7 秒后仍在**；放开拒绝后同一开关再点一次：提示带消失、开关变 `false`、旁行配置一字未动，再打开时发出去的条目里没有 `enabled` 键；console 只有既有的 `…/api/projects/…/machines` **403** 与本轮刻意造的 **500**，无其它 error、无 pageerror（截图 `r171/after/shot-{1-before,2-refused,3-after-7s,4-after-success}.png`）· **反证**：把 `mcp-servers-section.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在提示带上的 `toHaveText` 上，改前截图里那一行下面什么都没有）；放回、重建 → **2 passed** · 端口只用 8988 / 8990（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r171`，探针 / 临时配置 / 截图在 scratchpad 的 `r171/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-01 | 7.63 | **外观页两处主题导入被拒时，原因留在原地（对话框正文里 / 被点的那张主题库卡片上），不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/settings/theme-import.ts` 新增纯函数 `themeImportRefusal()`（409 `theme_exists` 是「问题」不是「拒绝」→ `null`，其余给 `themeImportErrorText` 那句；两个调用方此前各写一遍这条分支）、`theme-import-dialog.tsx` 多一个 `refusal` 状态（失败经它填、不再 `toastError`，开框 / 关框 / 切换来源 / 下一次尝试各清一次）画在正文底部、`theme-registry-section.tsx` 多一个 `{id, text}` 的 `refusal`（下一次尝试与每次重读目录清空）画在**被拒那张卡**的按钮下面（`role="alert"`、danger 色、限两行、整句挂 `data-tooltip`，引子复用 `S.common.refused`、**没有新增文案**）；+ 单测 3 条 + 新 spec 1 个（3 条）+ changelog 一对，**不碰接口、无新依赖**）：换了一族（7.19–7.62 收的是开关 / 写入被拒，这一条是「行内动作被拒后只剩 toast」的第一处）—— 导入对话框在失败时本来就留着，主题库的卡片更是一动不动，原因此前只剩一条六秒的 toast，屏上不止一张卡时连是哪一张都看不出来 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **274 文件 / 3367 通过 / 2 跳过**（+3 即本笔单测）· server **3020 通过 / 1 失败 / 15 跳过** —— 那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**（第一百六十八～一百七十一轮已记过同一条：服务端测试读 core 的 dist，而 dist 里有另一条线在途未提交的调色桥；`grep -c PALETTE_BRIDGE` 在工作区的 `external-theme.ts` 里 5、在 `HEAD` 的同一文件里 0；本笔只动 `packages/web`）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r172`、服务端 **8998**（`HOST=::`）、仓库自带 mock LLM **8994**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **3 passed（22.3 s）**，放回最终源码重建 Web 产物后复跑仍 **3 passed**；两态探针（`r172/probe.mjs`，同一个服务端、只换 `dist`）—— 改后：被拒那张卡里 `role="alert"` **1 条**（249×32，`scrollHeight == clientHeight` 未截断）、旁的卡 **0 条**、通知区 **0 个**可点按钮、**7 秒后仍在**，对话框留着且地址原样；改前：卡片 **0 条** alert、通知区 **1 个**可点按钮（六秒后 **0 个**）、框里也 **0 条** —— 原因确实只活在 toast 里；两态 console 只有刻意造的 **404**（主题库那条）与 **400**（地址那条），无其它 error、无 pageerror（截图 `r172/shots-{after,before}/shot-{1-catalogue,2-card-refused,3-card-after-7s,4-dialog-filled,5-dialog-refused,6-dialog-after-7s}.png`）· **反证**：把三个源码文件退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed / 1 passed**（两处都死在「框里 / 卡片里找不到 alert」上，409 那条本来就不变）；放回、重建 → **3 passed** · 端口只用 8998 / 8994（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r172`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r172/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `68864f88` |
+| 2026-11-01 | 7.64 | **设置 → 通用「导入 Trace」被拒时，原因留在这一行下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：`packages/web/src/features/settings/trace-import-row.tsx` —— 新增纯函数 `traceImportSizeRefusal(fileName, sizeBytes)`（`.jsonl` 走 14MB、整会话 `.json` 包走服务端那 48MB，只看文件名与大小、不看内容）；组件多一个 `refusal` 状态，三条失败的路（服务端拒绝经共享的 `refusalText()`、超上限、FileReader 出错）都填它、不再 `toastError`，再选一个文件时清空；句子画在三个控件下面的一行（`role="alert"`、`line-clamp-2`、整句挂 `data-tooltip`、`w-full max-w-96` 让它在换行格里独占一行且不把控件挤走）；+ 单测 1 个文件 4 条 + 新 spec 1 个（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：换族之后的第二处，也是 7.63 结尾点名的两处之一 —— 这一行的三条失败路此前都只进一条六秒的 toast，而它被拒时什么都没写、三个控件原样不动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3371 通过 / 2 跳过**（+1 文件 +4 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过**（全绿，`themes.test.ts` 那条旧红已随另一条线的调色桥入库而转绿）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r173b`、服务端 **8999**（`HOST=::`）、仓库自带 mock LLM **8995**、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（22.9 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；探针（`r173/probe.mjs`）量到被拒那一行：控件行 360×26 px（与改前一致）、句子 384×16 px 就在它下面（`scrollHeight == clientHeight` 未截断）、`role="alert"` 在读屏上与整句悬停里都在、**7 秒后仍在**；390 px 手机上句子 356×32 px（两行）、不出屏；两态 console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r173/shots/desktop-{1-before,2-refused,3-after-7s,4-phone}.png`）· **反证**：把 `trace-import-row.tsx` 退回 `HEAD`、重建 Web 产物 —— 同一份 spec **2 failed**（`row.getByRole("alert")` 一条都找不到），单独跑「改前」探针（`r173/probe-before.mjs`）量到行内 alert **0** 条、通知区 **2** 个可点 toast（成功 + 这句）、**七秒后 0 个**，截图 `r173/shots/before-{2-refused,3-after-7s}.png`；放回、重建 → **2 passed** · 端口只用 8999 / 8995（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r173b`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r173/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `eb3fad01` |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -19924,3 +19941,84 @@ core 因此是 1456 条（比 1452 多 4 条，正是它那 4 条主题桥用例
   `packages/web/e2e/theme-import-refusal.spec.mjs`、
   `changelog/unreleased/2026-11-01-theme-import-refusal{,.zh}.md`）；台账（7.63、上表那一行、本节）
   另起一笔。两笔都不带另一条线那两个文件。
+
+## 第一百七十三轮：设置 → 通用「导入 Trace」被拒时，原因留在这一行下面（2026-11-01，条目 7.64）
+
+### 开工自检
+
+`main` = `5baea308`（第一百七十二轮的发布提交），`git status --short` **干净** —— 与前几轮不同，另一条线
+那对在途的调色桥文件这次已经落进了历史（第一百七十轮的提交说明里记过它，`store.ts` 那批主题写入也早就
+在树里）。`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`，
+`git rev-list --left-right --count origin/main...HEAD` = `0 0`。
+
+### 选活
+
+表上未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、
+4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）—— 全都等人。第一百七十二轮结尾写下的下一处有两个候选
+（`trace-import-row` 的整行动作、工作区选择器的新建文件夹），本轮取前者：它是**当前屏幕上真能点到的
+一处**，而且三条失败的路彼此不同（服务端拒绝、按文件种类超上限、浏览器读不出来），一次能把「这一族
+的规则」讲干净。新建文件夹留给后面 —— 它会随失焦收框，句子的落点要另想。
+
+### 做了什么
+
+- `packages/web/src/features/settings/trace-import-row.tsx`：
+  - 新增 `traceImportSizeRefusal(fileName, sizeBytes)` —— 「这个文件按哪个上限算」（`.jsonl` 轨迹文件
+    14MB、整会话 `.json` 包走服务端那 48MB）从此只在一处，且只看文件名与大小、不看内容（40MB 的文件
+    不会被读进内存才被告知超限）。返回该说的话，或 `null` 表示可以读。
+  - 多一个 `refusal` 状态（一次一条，与导入本身一样）。三条失败的路都填它、不再 `toastError`：服务端
+    拒绝走共享的 `refusalText()`（7.19 那条规则，`ApiError` 之外还认得自带句子的 `Error`）、超上限、
+    `FileReader` 出错；再选一个文件时清空（从那一刻起「上一次」的句子就是过期的）。
+  - 句子画在三个控件那一行的末尾（`w-full max-w-96`，所以在换行格里独占一行、又不把三个控件挤走），
+    `role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`（仓库禁用原生 `title`）。
+  - 文件头注释补上这条规则为什么成立：被拒的导入什么都没写，三个控件原样不动，再选一次就是重试。
+- 没有新增文案：服务端那句本来就是本地化的（`trace_session_exists` 在 `S.errors.byCode` 里），两条上限
+  句子本来就在 `S.settings` 里。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）。
+- 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** ·
+  web **275 文件 / 3371 通过 / 2 跳过**（+1 文件 +4 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过**
+  —— 这一轮 server 全绿，第一百六十八～一百七十二轮记的那条 `themes.test.ts` 旧红已不在（另一条线的
+  调色桥入库之后，dist 与源码一致）。
+- 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净。
+- **单测**（`packages/web/test/trace-import-row.test.ts`，4 条）：轨迹文件到自己那个上限都放行、多一字节即
+  拒绝；20MB 的整会话包照读、过了 48MB 才用包那句拒绝；48MB 以上的轨迹文件拿到的是轨迹那句而不是包那句；
+  扩展名不分大小写，选择器不给的名字拿到小的那个上限。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r173b`、服务端 **8999**（`HOST=::`）、仓库自带
+  mock LLM **8995**、系统 chromium 1280×900，临时 playwright 配置与两个探针放 `packages/web/e2e/` 里跑、
+  跑完移出仓库）：新 spec **2 passed（22.9 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**。
+  - 两条用例的会话 id 带每次运行的后缀，所以同一个数据根上重跑也成立（导入的会话 id 是全安装唯一的）。
+  - 第一处坑：`setInputFiles` 之后立刻断言是**提前**的 —— 文件选择本身不阻塞，导入是随后的事，于是改成
+    等那一次 `POST …/traces/import` 的响应（成功 **200**、重名 **409**），断言才咬得住。
+  - 第二处坑：这一行的 Agent 列表是拿到项目之后才取的，列表空时它**自己禁用**选择（`busy` 里有
+    `agentId === ""`），所以在空列表时选文件是空操作 —— 用例要先等「导入到 Agent」那个按钮写着
+    `General Agent`。
+- **两态探针**（`r173/probe.mjs`，同一个服务端、只换 `packages/web/dist`）：改后 —— 控件行 **360×26 px**
+  （与改前一致，没被句子挤动）、句子 **384×16 px** 就在它下面、`scrollHeight == clientHeight`
+  （没被两行截断）、`role="alert"` 与整句悬停都在、通知区 **0** 个可点按钮、**7 秒后仍在**；
+  390 px 手机上句子 **356×32 px**（两行）、不出屏；**改前** —— 行内 alert **0** 条、通知区 **2** 个可点
+  toast（成功那条 + 这句话）、**七秒后 0 个**，也就是原因确实只活在 toast 里。两态 console 只有刻意造的
+  **409**，无其它 error、无 pageerror（截图 `r173/shots/desktop-{1-before,2-refused,3-after-7s,4-phone}.png`
+  与 `r173/shots/before-{2-refused,3-after-7s}.png`）。
+- **反证**：把 `trace-import-row.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在
+  `row.getByRole("alert")` 的 `toHaveText` 上，`element(s) not found`）；放回、重建 → **2 passed**。
+- 端口只用 8999 / 8995（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r173b`，探针 / 临时配置 / 截图在 scratchpad 的 `r173/` 下。
+
+### 没做 / 留着
+
+- **同一族里还没摸过的面**：`workspace-finder.tsx` 的「新建文件夹」（会随失焦收框，句子的落点要另想；
+  删除文件夹第一百四十三轮已判为有意不动）、`proxy-section.tsx` 的探测（只在丢会话 / 死服务端时才落到
+  toast）。下一轮从新建文件夹里挑。
+- 客户端决定「按哪个上限算」用的是**扩展名**，服务端用的是**内容**的第一个字符 —— 一份内容不是 JSON
+  的 `.json` 文件会先被读出来、再被服务端按 14MB 那档拒（同时带 400 与它的英文句子，web 没有为它写
+  本地化文案）。这不是本轮的范围，记在这里。
+- 台账里 **7.62 的清单行**仍缺（第一百七十一轮只落了表行与本节），本轮不补写别人的叙述。
+
+### 提交
+
+- 源码 + 单测 + 用例 + changelog：**`eb3fad01`**（只带
+  `packages/web/src/features/settings/trace-import-row.tsx`、`packages/web/test/trace-import-row.test.ts`、
+  `packages/web/e2e/trace-import-refusal.spec.mjs`、
+  `changelog/unreleased/2026-11-01-trace-import-refusal{,.zh}.md`）；台账（7.64、上表那一行、本节）另起一笔。
