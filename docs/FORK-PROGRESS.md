@@ -1142,6 +1142,20 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       而作者把它做成链接就是要链接。**为什么是这一条**：表上未勾选的仍是 2.2c（桌面壳与部署单元）、3.5（拍板
       取哪个桌面壳）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖），而这一条正是上一轮
       自己点名的「顺带项」——用户下一句话就会说「图太小了，点不开」。
+- [x] **5.61 删除大 Agent 不再卡住应用：目录一次 rename 移走，内容在后台删，右下角有进度卡片**
+      （上游 `4dca3c66` `#1348`，**2026-11-01 第一百七十六轮落地**，提交见该节，照改动落、不是合分支）：
+      `AgentService.deleteAgent` 不再在请求里 `await fs.rm(dir, {recursive:true})` —— Node 24 的 JS rimraf 会在
+      一次删除里把约 2N 个请求一起塞进 libuv 的四个线程，服务端其余读文件的请求全排在后面，确认框一直转；
+      而 `agent_state/` 是最先消失的一块，中途被杀就留下「列表里有、点进去 404」的幽灵行。现在先 `rename` 到
+      `agents/.deleting/<id>-<time>`（移不走就 409 `agent_folder_busy`、什么都不删），删掉索引行，`202` 返回
+      这次删除；内容由 `services/tree-purge.ts` 在后台以两个并发槽删除，进度经
+      `GET …/agent-deletions/:deletionId` 读出，下次启动由 `resumeDeletions()`（`Startup.setup` 调用）接着删；
+      列表只列「目录仍是一个 Agent」的索引行。界面侧新增 UI 包的 `ProgressToasts`（`startProgress`）与 web 的
+      `agent-deletion-progress.ts`，删除耗时超过 600ms 才出现卡片，关掉卡片不影响删除。
+      **本地化**：本树没有 workbench 机制、没有「机器那边的 Agent」，所以移动前两处 `releaseAgent` / 机器分支
+      没落；「仍是组织员工」那条拒绝属于本树还没有的公司模式改动，一并省去（`agent_employed` 文案也没加）；
+      上游用例里的 `durableDatabase` / `restartTestApp` 本树脚手架没有，改用直接调用 `resumeDeletions()`
+      并补一条不依赖权限位的「上次没删完的目录下次启动接着删」。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2612,6 +2626,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-01 | 7.64 | **设置 → 通用「导入 Trace」被拒时，原因留在这一行下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：`packages/web/src/features/settings/trace-import-row.tsx` —— 新增纯函数 `traceImportSizeRefusal(fileName, sizeBytes)`（`.jsonl` 走 14MB、整会话 `.json` 包走服务端那 48MB，只看文件名与大小、不看内容）；组件多一个 `refusal` 状态，三条失败的路（服务端拒绝经共享的 `refusalText()`、超上限、FileReader 出错）都填它、不再 `toastError`，再选一个文件时清空；句子画在三个控件下面的一行（`role="alert"`、`line-clamp-2`、整句挂 `data-tooltip`、`w-full max-w-96` 让它在换行格里独占一行且不把控件挤走）；+ 单测 1 个文件 4 条 + 新 spec 1 个（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：换族之后的第二处，也是 7.63 结尾点名的两处之一 —— 这一行的三条失败路此前都只进一条六秒的 toast，而它被拒时什么都没写、三个控件原样不动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3371 通过 / 2 跳过**（+1 文件 +4 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过**（全绿，`themes.test.ts` 那条旧红已随另一条线的调色桥入库而转绿）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r173b`、服务端 **8999**（`HOST=::`）、仓库自带 mock LLM **8995**、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（22.9 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；探针（`r173/probe.mjs`）量到被拒那一行：控件行 360×26 px（与改前一致）、句子 384×16 px 就在它下面（`scrollHeight == clientHeight` 未截断）、`role="alert"` 在读屏上与整句悬停里都在、**7 秒后仍在**；390 px 手机上句子 356×32 px（两行）、不出屏；两态 console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r173/shots/desktop-{1-before,2-refused,3-after-7s,4-phone}.png`）· **反证**：把 `trace-import-row.tsx` 退回 `HEAD`、重建 Web 产物 —— 同一份 spec **2 failed**（`row.getByRole("alert")` 一条都找不到），单独跑「改前」探针（`r173/probe-before.mjs`）量到行内 alert **0** 条、通知区 **2** 个可点 toast（成功 + 这句）、**七秒后 0 个**，截图 `r173/shots/before-{2-refused,3-after-7s}.png`；放回、重建 → **2 passed** · 端口只用 8999 / 8995（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r173b`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r173/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `eb3fad01` |
 | 2026-11-01 | 7.65 | **Workspace 选择器的「新建文件夹」被拒时，原因留在名称框下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/chat/workspace-finder.tsx` 多一个 `newFolderRefusal` 状态（服务端拒绝经共享的 `refusalText()` 填、不再 `toastError`，开框 / 换名字 / 下一次尝试开始时清空），句子画在名称框自己那一列里、输入框下面（`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`），为此这一行从「图标 + 输入框」改成「图标 \| 一列（输入框 + 句子）」；`workspace-finder-model.ts` 新增纯函数 `canMakeFolder()`（与服务端 `dirs.ts` 的 `dirNameError` 同一条规则：空串 / `.` / `..` / 两种分隔符 / NUL 都不是一段），发请求之前先判，带分隔符的名字因此一条请求都不发；3 条单测 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：被拒时名称框本来就留着（名字在、光标也放回框里，因为要改的是名字、再按 Enter 就是重试），原因此前只剩一条六秒的 toast，六秒后就是一个看起来没被碰过的框 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（4 文件）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3374 通过 / 2 跳过**（+3 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过** · hmr 无测试文件 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r174`、服务端 **8973**（`HOST=::`）、仓库自带 mock LLM **8971**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（13.1 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；两处坑——侧栏「新建工作区」在 390px 下是抽屉里的按钮（手机那一腿先按桌面宽度开框再改窗口），选择器的地址栏输入框失焦即把段落拼回去（`locator.fill()` 会在下一次解析时扑空，改成先给列表焦点 → Ctrl+L → 逐字敲 → Enter）· **两态读数**：桌面 1280×900 输入框 **536×24 px**（y=245）、句子 **536×16 px** 就在下面（y=273）、`role="alert"` 与整句悬停都在；390px 手机 输入框 **350×24**、句子 **350×16**、无横向溢出；console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r174/{desktop,phone}.png`）· **反证**：把两个源码文件退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：改前行内没有 alert，原因只在 toast 里），放回、重建后再跑 **2 passed** · 端口只用 8973 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r174`，探针 / 临时配置 / 截图在 scratchpad 的 `r174/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-01 | 7.66 | **代理选项的「连通性测速」被拒时，原因留在测速块里，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/settings/proxy-probe.ts`（新，`ProxyProbeRefusal` + 纯函数 `probeRefusalFor(current, {run, liveRun, error})`：同一轮只认第一句、被保存换掉的那一轮一句话都不加也不减、下一轮的句子替换上一轮的；句子取自共享的 `refusalText()`）+ `proxy-section.tsx`（多一个 `probeRefusal` 状态：失败的那条请求填它、不再 `toastError`，运行开始与 `adopt()` 各清一次，句子画在按钮行与目标列表之间 —— `role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`）+ 单测 6 条 + 1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.65 结尾点名的那一处，也是这一族里最后一块「只在丢会话 / 死服务端时才落到 toast」的面 —— 测速自己能得到的结果（已连通 / 超时 / 域名 / 拒绝 / TLS）都在 200 里回来、各落在那一行，只有请求本身失败是错误，而这一种一个格子都填不上，原来那句话只活在一条六秒的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 593 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **277 文件 / 3385 通过 / 2 跳过**（+1 文件 +6 条即本笔单测）· server **208 文件 / 3038 通过 / 15 跳过** · hmr 无测试文件 · 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（38 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r175`、服务端 **8974**（`HOST=::`）、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **1 passed（9.7 s）**，按最终源码重建 Web 产物后复跑仍 **1 passed**；两态探针（`r175/probe.mjs`，同一个服务端、只换 `dist`）—— **改后**：块里 `role="alert"` **1 条**（「操作被拒绝：服务器内部错误，请稍后重试。」）、通知区 **0** 个可点 toast、**七秒后仍在**、六行仍「未测试」；**改前**：块里 **0 条** alert、通知区 **1** 个 toast（七秒后 **0** 个）、六行同样「未测试」；真发出去的请求两态都是 **6** 条；390 px 手机上句子 **356×16 px**、页面 `scrollWidth − clientWidth = 0` 不出屏；两态 console 只有刻意桩出的 6 条 500，无其它 error、无 pageerror（截图 `r175/shots-{after,before}/1-refused.png`、`2-after-7s.png` 与 `shots-phone/`）· **反证**：把 `proxy-section.tsx` 退回 `HEAD`、新模块挪走、重建 Web 产物，同一份 spec **1 failed**（死在块里 `getByRole("alert")` 的 `toHaveText` 上），放回、重建 → **1 passed** · 端口只用 8974（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r175`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r175/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `72e9af28` |
+| 2026-11-01 | 5.61 | **删除大 Agent 不再卡住应用**（上游 `4dca3c66` `#1348` 移植，照改动落、不是合分支；30 文件 / +1562 −48，其中 server 11 个（新增 `services/tree-purge.ts`、`agent-service.ts` 的 moveAside/startPurge/resumeDeletions、`202 {deletion}` 与新的进度路由）、ui 3 个（新增 `ProgressToasts`）、web 5 个（新增 `agent-deletion-progress.ts`、删除改走 202 的答案、`agent_folder_busy` 一句文案）、ui-gallery 的 mock、文档两份与 changelog 一对）：删除不再在请求里 `await fs.rm` —— 目录一次 rename 进 `agents/.deleting/`、删索引行、`202 {deletion}` 返回，内容由新服务在后台以两个并发槽删除，进度经 `GET …/agent-deletions/:deletionId` 读出，下次启动 `resumeDeletions()` 接着删；移不走就 409 `agent_folder_busy`、什么都不删；列表只列「目录仍是 Agent」的行，半删的幽灵行不再出现；界面侧新增 `ProgressToasts`，超过 600ms 才出卡片。**本地化**：workbench / 机器侧 Agent / 「组织员工」那三处本树没有，未落；上游用例的 `durableDatabase` / `restartTestApp` 换成直接调 `resumeDeletions()`，另补一条不依赖权限位的 resume 用例 | 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，196 接口 / 594 类型）· ui-gallery `typecheck` `EXIT=0` · 逐包 test **0 失败**：core **1456** / 6 跳过 · ui **1100**（+8 即本笔）· cli **561** · web **3389** / 2 跳过（+4 即本笔）· server **209 文件 / 3041 通过 / 17 跳过**（+1 文件；跳过的两条按权限位，root 下必跳）· oxlint 0 警告 0 错误、prettier 干净 · **真服务端 + 真浏览器**（数据根 `/root/adelie-fork-data/r176`、**8991**、系统 chromium 1280×900）：35,721 条目的 Agent，`DELETE` **202 / 318ms** 返回、目录 **294ms** 离开 agents 目录、卡片 **939ms** 出现（「正在删除 Agent「r176_big」」+「已删除 20,567 / 35,721 项」）、**2,357ms** 读到 done，列表里只剩 `General Agent`，console **0 error**、无 ≥400；截图 `r176/1-card.png` 与 `r176/result.json` 在 scratchpad · **改前那一态的真浏览器读数没做**（要退回源码重建），替代证据是同一轮量到的请求 318ms / 后台 2,357ms 三个数 | `8de40b0f4` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -20223,3 +20238,103 @@ hmr/capabilities,http/routes/desktop,services/desktop-service,services/desktop-u
   `packages/web/test/proxy-probe.test.ts`、
   `packages/web/e2e/proxy-probe-refusal.spec.mjs`、
   `changelog/unreleased/2026-11-01-proxy-probe-refusal{,.zh}.md`；台账（7.66、上表那一行、本节）另起一笔。
+
+## 第一百七十六轮：删除大 Agent 不再卡住应用 —— 目录一次 rename 移走，内容在后台删，右下角有进度卡片（2026-11-01，条目 5.61）
+
+### 开工自检
+
+`main` 在 `06681fd70`（另一条线的「插件市场的货架也列出发布到 npm 的插件」），`git status --short` **干净**。
+`git fetch origin` 两次都撞 `GnuTLS recv error (-110)`，第三次带 `-c http.version=HTTP/1.1` 才通 —— 通完
+`origin/main` 与本地 `HEAD` 同号，`merge --ff-only` 报 `Already up to date`，没有要拉的。`upstream` 这个
+远端指的 `/root/penguin-harness` 目录**已是空的**（不是 git 仓），所以上游提交一律从
+`refs/adelie-tmp/upstream-main-r164`（2026-10-30 拉到的尖端 `7b1b28daa`）里读。
+
+### 选活：表上仍全卡着，从上游挑一条**产品缺陷类**、本树能整块落的
+
+未勾选的仍是 **2.2c**（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（拍板）、**3.6**（模型 key）、
+**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）；7.19–7.66 那一族「被拒之后只剩 toast」
+第一百七十五轮已经收干净，且没有点名下一处。于是照「从具体撞见的红里找」那条口径，把上游 `r164` 里
+还没落、且不碰 2.5 / 4.x 的提交按「能不能整块落」过了一遍：
+
+- 45 笔里**没有一笔**能零冲突应用（`git apply -3 --check` 逐笔跑过），所以只能是逐处解决冲突的移植。
+- 机器那条线（`#1343` / `#1344` / `#1370` / `#1365` / `#1376`–`#1378`）都压在本树没有的
+  `machine-sockets.ts` 上；`#1356`（异常结束时已计量的请求只统计一次）第一百四十六轮已量过、本树走不到
+  那个形态；`#1374`（四个上游插件）、`#1375` / `#1380`（landing）、`#1352`（上游支持插件）都是品牌面或
+  本树没有的目录。
+- 挑中 **`#1348`**：删一个目录很大的 Agent 时服务端卡住、以及删到一半被杀留下的幽灵行，两条都是用户
+  看得见的真缺陷，父提交正是本树已落的 `aff7ee37` 那条线，且不引入新依赖、不碰包名与流水线。
+
+### 做了什么
+
+- `packages/server/src/services/agent-service.ts`（+256 −?）：`deleteAgent` 先 `refuseBuiltinDeletion`，
+  再 `moveAside`（`fs.rename` 到 `agents/.deleting/<id>-<time>`，`ENOENT` 视为已经没有目录；`EBUSY` /
+  `EPERM` / `EACCES` 重试 4 次后 409 `agent_folder_busy`，什么都不删），删掉索引行后 `startPurge`；
+  新增 `agentDeletion()` / `resumeDeletions()` / `startPurge()`，删除状态留在内存里（`counting` /
+  `removing` / `done` / `failed`，完成的留 10 分钟让晚一步的轮询还读得到），后台删除同一时间只保持
+  `PURGE_SLOTS = 2` 个文件系统调用在飞；`setup()` 里用 `ctx.effect` 在卸载时 abort。`listAgents` 只列
+  「目录仍是一个 Agent」的索引行（与各路由的 `agentConfig.exists` 同一判据），半删的幽灵行因此不再出现。
+- `packages/server/src/services/tree-purge.ts`（新，219 行）：一次删除的计数与移除，`failed` 时把操作系统
+  的原话记进 `error`、把条目按「在 agent 目录里的位置」写出来（不泄露数据根的绝对路径）。
+- `packages/server/src/http/routes/agents.ts`：`DELETE …/agents/:agentId` 改答 `202 {deletion}`；新增
+  `GET …/agent-deletions/:deletionId`（仅所有者，未知的 404 `agent_deletion_not_found`）。
+- `platform.ts` / `mechanisms/agents.ts` / `sessions.ts` / `session-service.ts` / `trace-index.ts` /
+  `scheduler.ts`：启动时 `resumeDeletions()`、接口上多一个抽象方法、新路由的装配与索引行的清理。
+- `packages/ui/src/components/overlays/progress-toasts/progress-toasts.tsx`（新）：`startProgress()` 的
+  卡片栈，跑满 `PROGRESS_REVEAL_MS = 600ms` 才出现，完成后再留 4 秒，失败留到关掉；`ProgressBar` 的
+  `role="progressbar"` 在没有数量时不给 `aria-valuenow`（读作「忙」而不是「快完了」）。
+- `packages/web/src/features/agents/agent-deletion-progress.ts`（新）：每 `500ms` 读一次删除进度，
+  404 视为删完（服务端记不住了），连续 20 次读失败就悄悄收卡片；卡片挂在 App 根上，离开 Agents 页也跟着。
+- `packages/web/src/features/agents/agents-page.tsx` / `app.tsx` / `api/endpoints.ts` / 两份文案表：
+  删除改走 `202` 的答案并把 `followAgentDeletion` 交出去，右下角挂 `<ProgressToasts />`，新增
+  `agent_folder_busy` 一句（498 条文案里只加这一条）。
+- `packages/ui-gallery` 的 mock 跟着改成 `202 {deletion}` 与 404 的进度路由。
+- 三份文档 + changelog 中英一对（按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与本地化取舍）。
+
+**本地化**（都写进 changelog 了）：本树没有 workbench 机制、也没有「机器那边的 Agent」，所以上游在移动
+目录之前的两处 `workbenches.releaseAgent()` 与 `drafts.deleteByAgent()` / 机器分支没有落；「仍是组织员工」
+那条 409 属于本树还没有的公司模式改动，一并省去（`agent_employed` 文案也没加）；`routes/agents.ts` 里
+`HttpError` 换成 `@adelie/core` 的 scope 后补了一行 import。上游用例用到的 `durableDatabase` /
+`restartTestApp` 本树脚手架没有，改成直接调用 `resumeDeletions()`（`platform.ts` 里启动时调的就是它），
+另补一条不依赖权限位的新用例：「上次没删完的目录，下次启动接着删」。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 /
+  594 类型）；另加 `@adelie/ui-gallery` **`EXIT=0`**（本笔改了它的 mock）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件（+1 跳过）/ 1456 通过 / 6 跳过** · ui **132 / 1100**
+  （+1 文件 8 条即本笔的 `progress-toasts.test.ts`）· cli **38 / 561** · web **278 文件 / 3389 通过 /
+  2 跳过**（+1 文件 4 条即本笔的 `agent-deletion-progress.test.ts`）· server **209 / 3041 通过 /
+  17 跳过**（+1 文件；跳过的 17 = 基线 15 + 本笔两条按权限位的用例，root 下必跳）。
+  参考：上一轮 server 是 208 文件 / 3038 通过 / 15 跳过。
+- `oxlint` 本笔 7 个包 **0 警告 0 错误**（1697 文件）、`prettier --check` 改动文件干净、`git diff --check` 干净。
+- **新用例本身**：`packages/server/test/agent-delete-background.test.ts` 5 条 —— 半删的幽灵行不进列表、
+  移不走的目录 409 且什么都不删（权限位，root 下跳过）、3 万级条目的目录「立刻离开列表 + 后台删完 + id
+  可再用 + 新 Agent 不受影响」、删不掉的条目留到下次启动（权限位，root 下跳过）、**上次没删完的目录在
+  `resumeDeletions()` 之后被删干净**（这条不依赖权限位，本轮真跑到）。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r176`、服务端 **8991**（`HOST=::`）、
+  系统 chromium 1280×900，探针临时放 `packages/web/e2e/` 里跑、跑完移出仓库）：建一个 Agent、往它的
+  `workspaces/ws_big` 写 **35,721** 个条目，在 Agents 页点删除并确认 —— `DELETE` **202**、请求本身
+  **318 ms** 就返回；目录 **294 ms** 内离开 agents 目录；右下角卡片在 **939 ms** 出现，标题
+  「正在删除 Agent「r176_big」」、副行「已删除 20,567 / 35,721 项」，**2,357 ms** 时读到
+  `removed == total` 并转成完成态（即后台那 7.4 倍于请求时长的工作不再占着请求）；列表里那一刻只剩
+  `General Agent`，删除前的 Agent 行已经不在了；删完后 `GET …/agents` 只剩 `default_agent`；
+  两态 console **0 error**、**0 pageerror**、**无一条 ≥400**。截图 `r176/1-card.png`（卡片正在跑）
+  与 `2-finished.png`、原始读数 `r176/result.json`、探针 `r176/probe.mjs` 都在 scratchpad。
+  **没有做「改前」那一态的真浏览器读数**：那一态要把 server + web 退回 `HEAD` 再重建，本轮时间花在
+  冲突与门禁上；能替代它的是同一轮量到的三个数（请求 318 ms、目录离开 294 ms、后台删完 2,357 ms）——
+  改前的代码要在这 2,357 ms 里一直等，且结束时没有任何界面提示。
+- 端口只用 8991（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r176`，一个字节没往 `~/.adelie` / `~/.penguin` 里写。
+
+### 没做 / 留着
+
+- 「改前」那一态的真浏览器读数没做（见上）；要补的话是下一轮的一小条：`git checkout HEAD -- <本笔的
+  server / web 源文件>` + 重建 + 同一份探针。
+- 上游那条 409 的 `agent_folder_busy` 用例在本机 **root 下必然跳过**（权限位对 root 无效），只在
+  CI 的非 root 用户上真的跑到；本轮的替代是不依赖权限位的那条 resume 用例。
+- workbench 释放、机器侧的 Agent、公司模式的「在职员工不能删」仍等各自的拍板项（2.2c / 3.5 / #1027）。
+
+### 提交
+
+源文件 + 用例 + mock + 文档 + changelog：**`8de40b0f4`**（30 文件 / +1562 −48）；台账（5.61、上表那一行、本节）另起一笔。
+
