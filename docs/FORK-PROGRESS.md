@@ -1156,6 +1156,24 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       没落；「仍是组织员工」那条拒绝属于本树还没有的公司模式改动，一并省去（`agent_employed` 文案也没加）；
       上游用例里的 `durableDatabase` / `restartTestApp` 本树脚手架没有，改用直接调用 `resumeDeletions()`
       并补一条不依赖权限位的「上次没删完的目录下次启动接着删」。
+- [x] **5.62 终端在移动网络下不再假死：两端互相探测，页面自己重连、由服务端快照重绘**
+      （上游 `f52617695` `#639`，**2026-11-02 第一百七十七轮落地**，提交见该节，照改动落、不是合分支）：
+      手机上的 socket 不会礼貌关闭（基站切换、运营商 NAT 回收空闲流、浏览器冻结标签页），页面手里于是留着
+      一条再也不会传字节的连接 —— 界面上写着「已连接」，实际一动不动，唯一的回去方式是刷新，而服务端的
+      pty 一直好好的。现在两端互相 Ping/Pong 探测（`terminal/frames.ts` 的 `Ping` 0x07 / `Pong` 0x08，
+      负载是探测方自己的时钟读数、原样回显，往返时延由此得出）：服务端每 15 秒探一次、对一个**应答过探测
+      之后**又沉默 75 秒的观察者用 `terminate` 关掉；页面由新的 `terminal-connection.ts` 管接入、心跳与
+      重连（退避 0.5s→15s 带抖动，`online` / `visibilitychange` 把等待收成立刻重试，拨号 15 秒、存在探测
+      10 秒、唤醒探测 5 秒各自带时钟，任何时刻只有一次接入在途），重连后由服务端的 `Restore` 快照整屏重绘。
+      三个按局域网调出来的常量改成按链路测量（新文件 `terminal/link-quality.ts`）：合并窗口取实测往返的
+      四分之一（5–50ms）、背压高水位从固定 1MB 改成 0.75 秒的时间界（下限 128KB、上限 1MB，积压量改按 ws
+      的发送回调数「终端产出了多少字节」而不是 `bufferedAmount`）、容器尺寸静置 120ms 后才落一次且只有
+      行列真的变了才发。流上开了 permessage-deflate（13 位窗口、不保留客户端上下文），512 字节以下的小帧
+      由发送方逐条判定不压。**兼容**：只有应答过探测的对端才会被沉默判决（每侧一个 `answersProbes`，每次
+      socket 打开时清掉），因此热更新后的新服务端不会每 75 秒关掉一个旧页面，新页面也不会约每分钟重连到
+      旧服务端。**本地化**：16 个文件本树全有、三方试落零冲突，没有要舍弃的上游功能（机器侧终端外壳与
+      `terminal-panel.tsx` 本就不在这一笔里）；changelog 按本仓写法改成 `2026-11-02-terminal-on-a-slow-link{,.zh}.md`、
+      去掉上游 PR 行、写明移植来源。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -2627,6 +2645,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-01 | 7.65 | **Workspace 选择器的「新建文件夹」被拒时，原因留在名称框下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/chat/workspace-finder.tsx` 多一个 `newFolderRefusal` 状态（服务端拒绝经共享的 `refusalText()` 填、不再 `toastError`，开框 / 换名字 / 下一次尝试开始时清空），句子画在名称框自己那一列里、输入框下面（`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`），为此这一行从「图标 + 输入框」改成「图标 \| 一列（输入框 + 句子）」；`workspace-finder-model.ts` 新增纯函数 `canMakeFolder()`（与服务端 `dirs.ts` 的 `dirNameError` 同一条规则：空串 / `.` / `..` / 两种分隔符 / NUL 都不是一段），发请求之前先判，带分隔符的名字因此一条请求都不发；3 条单测 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：被拒时名称框本来就留着（名字在、光标也放回框里，因为要改的是名字、再按 Enter 就是重试），原因此前只剩一条六秒的 toast，六秒后就是一个看起来没被碰过的框 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（4 文件）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3374 通过 / 2 跳过**（+3 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过** · hmr 无测试文件 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r174`、服务端 **8973**（`HOST=::`）、仓库自带 mock LLM **8971**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（13.1 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；两处坑——侧栏「新建工作区」在 390px 下是抽屉里的按钮（手机那一腿先按桌面宽度开框再改窗口），选择器的地址栏输入框失焦即把段落拼回去（`locator.fill()` 会在下一次解析时扑空，改成先给列表焦点 → Ctrl+L → 逐字敲 → Enter）· **两态读数**：桌面 1280×900 输入框 **536×24 px**（y=245）、句子 **536×16 px** 就在下面（y=273）、`role="alert"` 与整句悬停都在；390px 手机 输入框 **350×24**、句子 **350×16**、无横向溢出；console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r174/{desktop,phone}.png`）· **反证**：把两个源码文件退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：改前行内没有 alert，原因只在 toast 里），放回、重建后再跑 **2 passed** · 端口只用 8973 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r174`，探针 / 临时配置 / 截图在 scratchpad 的 `r174/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-01 | 7.66 | **代理选项的「连通性测速」被拒时，原因留在测速块里，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/settings/proxy-probe.ts`（新，`ProxyProbeRefusal` + 纯函数 `probeRefusalFor(current, {run, liveRun, error})`：同一轮只认第一句、被保存换掉的那一轮一句话都不加也不减、下一轮的句子替换上一轮的；句子取自共享的 `refusalText()`）+ `proxy-section.tsx`（多一个 `probeRefusal` 状态：失败的那条请求填它、不再 `toastError`，运行开始与 `adopt()` 各清一次，句子画在按钮行与目标列表之间 —— `role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`）+ 单测 6 条 + 1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.65 结尾点名的那一处，也是这一族里最后一块「只在丢会话 / 死服务端时才落到 toast」的面 —— 测速自己能得到的结果（已连通 / 超时 / 域名 / 拒绝 / TLS）都在 200 里回来、各落在那一行，只有请求本身失败是错误，而这一种一个格子都填不上，原来那句话只活在一条六秒的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 593 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **277 文件 / 3385 通过 / 2 跳过**（+1 文件 +6 条即本笔单测）· server **208 文件 / 3038 通过 / 15 跳过** · hmr 无测试文件 · 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（38 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r175`、服务端 **8974**（`HOST=::`）、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **1 passed（9.7 s）**，按最终源码重建 Web 产物后复跑仍 **1 passed**；两态探针（`r175/probe.mjs`，同一个服务端、只换 `dist`）—— **改后**：块里 `role="alert"` **1 条**（「操作被拒绝：服务器内部错误，请稍后重试。」）、通知区 **0** 个可点 toast、**七秒后仍在**、六行仍「未测试」；**改前**：块里 **0 条** alert、通知区 **1** 个 toast（七秒后 **0** 个）、六行同样「未测试」；真发出去的请求两态都是 **6** 条；390 px 手机上句子 **356×16 px**、页面 `scrollWidth − clientWidth = 0` 不出屏；两态 console 只有刻意桩出的 6 条 500，无其它 error、无 pageerror（截图 `r175/shots-{after,before}/1-refused.png`、`2-after-7s.png` 与 `shots-phone/`）· **反证**：把 `proxy-section.tsx` 退回 `HEAD`、新模块挪走、重建 Web 产物，同一份 spec **1 failed**（死在块里 `getByRole("alert")` 的 `toHaveText` 上），放回、重建 → **1 passed** · 端口只用 8974（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r175`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r175/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `72e9af28` |
 | 2026-11-01 | 5.61 | **删除大 Agent 不再卡住应用**（上游 `4dca3c66` `#1348` 移植，照改动落、不是合分支；30 文件 / +1562 −48，其中 server 11 个（新增 `services/tree-purge.ts`、`agent-service.ts` 的 moveAside/startPurge/resumeDeletions、`202 {deletion}` 与新的进度路由）、ui 3 个（新增 `ProgressToasts`）、web 5 个（新增 `agent-deletion-progress.ts`、删除改走 202 的答案、`agent_folder_busy` 一句文案）、ui-gallery 的 mock、文档两份与 changelog 一对）：删除不再在请求里 `await fs.rm` —— 目录一次 rename 进 `agents/.deleting/`、删索引行、`202 {deletion}` 返回，内容由新服务在后台以两个并发槽删除，进度经 `GET …/agent-deletions/:deletionId` 读出，下次启动 `resumeDeletions()` 接着删；移不走就 409 `agent_folder_busy`、什么都不删；列表只列「目录仍是 Agent」的行，半删的幽灵行不再出现；界面侧新增 `ProgressToasts`，超过 600ms 才出卡片。**本地化**：workbench / 机器侧 Agent / 「组织员工」那三处本树没有，未落；上游用例的 `durableDatabase` / `restartTestApp` 换成直接调 `resumeDeletions()`，另补一条不依赖权限位的 resume 用例 | 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，196 接口 / 594 类型）· ui-gallery `typecheck` `EXIT=0` · 逐包 test **0 失败**：core **1456** / 6 跳过 · ui **1100**（+8 即本笔）· cli **561** · web **3389** / 2 跳过（+4 即本笔）· server **209 文件 / 3041 通过 / 17 跳过**（+1 文件；跳过的两条按权限位，root 下必跳）· oxlint 0 警告 0 错误、prettier 干净 · **真服务端 + 真浏览器**（数据根 `/root/adelie-fork-data/r176`、**8991**、系统 chromium 1280×900）：35,721 条目的 Agent，`DELETE` **202 / 318ms** 返回、目录 **294ms** 离开 agents 目录、卡片 **939ms** 出现（「正在删除 Agent「r176_big」」+「已删除 20,567 / 35,721 项」）、**2,357ms** 读到 done，列表里只剩 `General Agent`，console **0 error**、无 ≥400；截图 `r176/1-card.png` 与 `r176/result.json` 在 scratchpad · **改前那一态的真浏览器读数没做**（要退回源码重建），替代证据是同一轮量到的请求 318ms / 后台 2,357ms 三个数 | `8de40b0f4` |
+| 2026-11-02 | 5.62 | **终端在移动网络下不再假死，断了会自己重连**（上游 `f52617695` `#639` 移植，照改动落、不是合分支；16 文件 / +1683 −108：server 8 个（新增 `terminal/link-quality.ts`、`stream.ts` 的心跳与按链路测量的窗口/水位、`ws.ts` 的 permessage-deflate、`frames.ts` 的 Ping/Pong、两个测试文件）、web 5 个（新增 `terminal-connection.ts`（336 行）与它的 22 条用例、`terminal-view.tsx` 把 socket 的一生交出去并让尺寸静置、`terminal-page.tsx` 把 `reconnecting` 画成警示色、两份文案表各一句「重连中」）、changelog 一对）：两端互相 Ping/Pong 探测（负载原样回显、往返时延由此得出），服务端每 15 秒探一次、对应答过探测之后又沉默 75 秒的观察者用 `terminate` 关掉；页面按有界退避自己重新接入、由服务端的 `Restore` 快照整屏重绘，`online` / `visibilitychange` 把等待收成立刻重试，拨号 / 存在探测 / 唤醒探测各带时钟、同一时刻只有一次接入在途；合并窗口跟随实测往返（5–50ms）、背压高水位从固定 1MB 改成 0.75 秒的时间界、容器尺寸静置 120ms 后只发行列真变了的那一次；流上开了 permessage-deflate（13 位窗口、不保留客户端上下文），小帧由发送方逐条判定不压。**兼容**：只有应答过探测的对端才会被沉默判决（`answersProbes`），新旧两端混跑互不伤害。**本地化**：16 个文件本树全有、三方试落零冲突，没有要舍弃的上游功能；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 594 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **279 文件 / 3411 通过 / 2 跳过**（+1 文件 +22 条即本笔的 `terminal-connection.test.ts`）· server **209 文件 / 3051 通过 / 17 跳过**（+10 条即本笔的终端用例）· 改动 14 个文件 `prettier --check` 干净、`oxlint` 改动面 **0 警告 0 错误**（30 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r177`、服务端 **8991**（`HOST=::`）、系统 chromium 1280×900，探针 `r177/probe.mjs` 在页面里把链路「切断」：已有的 socket 永久吞掉收发、新拨号一律到手就关，派发 `online` 模拟手机重新注册网络）：**改前**（`terminal-view.tsx` / `terminal-page.tsx` 退回 `HEAD` 重建）状态自始至终卡在「已连接」、断链 8 秒后仍是「已连接」、恢复网络后敲的命令**到不了 pty**（`capture` 里没有 `R177AFTER`）——正是「假死」；**改后** 转「重连中」（8 秒后仍在）、恢复网络后回到「已连接」，`capture` 里既有断链前的 `R177BEFORE`（快照重绘回来的）也有恢复后敲的 `R177AFTER`；两态 console **0 error**、无 pageerror（截图 `r177/shots-{before,after}/` 各 5 张） · 端口只用 8991（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r177`，探针 / 截图 / 消息文件在 scratchpad 的 `r177/` 下（`packages/*/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `be87f4d3f` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -20338,3 +20357,89 @@ hmr/capabilities,http/routes/desktop,services/desktop-service,services/desktop-u
 
 源文件 + 用例 + mock + 文档 + changelog：**`8de40b0f4`**（30 文件 / +1562 −48）；台账（5.61、上表那一行、本节）另起一笔。
 
+## 第一百七十七轮：终端在移动网络下不再假死 —— 两端互相探测，页面自己重连、由服务端快照重绘（2026-11-02，条目 5.62）
+
+### 开工自检
+
+`main` 在 `74ead7534`（上一轮「删除大 Agent 不再卡住应用」，另一条线的合并已经落在它上面），
+`git status --short` **干净**。`git fetch origin` 一次就通（`-c http.version=HTTP/1.1` 才用得上这条备注，
+这次没撞 `GnuTLS recv error`），`merge --ff-only origin/main` 报 `Already up to date`。`upstream` 那个远端仍指
+`/root/penguin-harness`（空目录），所以上游一律按 URL 取到 `refs/adelie-tmp/*`（本轮 `upstream-main-r177`）。
+
+### 选活：表上仍全卡着，从上游挑一条本树能整块落的产品缺陷
+
+未勾选的仍是 **2.2c**（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（拍板）、**3.6**（模型 key）、
+**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）；7.19–7.66 那一族「被拒之后只剩 toast」第一百七十五轮
+已经收干净、第一百七十六轮也确认「没有点名过的面了」。第一百七十六轮取到的是上游 `r164` 的尖端
+`7b1b28daa`，本轮把它之后的三笔过了一遍：
+
+- `9ff93184e`、`e2bc3fbf3` 是 README 的图片与微信群链接，纯文档面，不做。
+- `f52617695`（`#639`，16 文件 / +1639 −108）：**终端在移动网络下不再假死**。手机上的 socket 不会礼貌关闭
+  —— 基站切换、运营商 NAT 回收空闲流、标签页被冻结 —— 页面手里留下的是一条再也不会传字节的连接，而界面上
+  写着「已连接」，服务端的 pty 一直好好的，唯一的回去方式是刷新。这是用户撞得上的真缺陷，且
+  **16 个文件本树全有、`git apply -3 --check` 零冲突**、不引入新依赖、不碰 desktop、不碰品牌面与流水线。
+
+### 做了什么
+
+主要改动照上游落，本地化只做本仓要求的形态调整：
+
+- `packages/server/src/terminal/frames.ts`：新增 `Ping` 0x07 / `Pong` 0x08 两个不透明操作码（负载是探测方
+  自己的时钟读数、对端原样回显），并写清「为什么两端都要探」。
+- `packages/server/src/terminal/link-quality.ts`（新，132 行）：`RoundTripEstimator`（样本权重 1/5 的平滑，
+  负值与 `NaN` 忽略）与 `SocketDrainMeter`（按投递速率推「这个观察者还能落后多少字节才追上得」），两者在
+  没有测量值时都答旧常量，因此局域网行为不变。
+- `packages/server/src/terminal/stream.ts`：心跳（服务端每 15 秒探一次；对一个**应答过探测之后**又沉默 75 秒
+  的观察者用 `terminate` 关掉，而不是礼貌 close）；背压积压量改成按 ws 的发送回调数「终端产出了多少字节」
+  （压缩之后 `bufferedAmount` 是线上字节，会被读成「没落后」）；合并窗口与高水位都改为每 socket 读取。
+- `packages/server/src/terminal/output-coalescer.ts`：窗口参数可以是函数，且**按 burst 读取、不缓存**。
+- `packages/server/src/terminal/ws.ts`：`perMessageDeflate` 开起来（13 位窗口、客户端不保留上下文、
+  `concurrencyLimit: 10`），并删掉随实现搬走的三条死常量。
+- `packages/web/src/features/terminal/terminal-connection.ts`（新，336 行）：socket 的一生 —— 首次接入、
+  心跳、有界退避（0.5s→15s 带抖动）的重连、`online` / `visibilitychange` 的立刻重试、被冻结的标签页只探测
+  不判决、存在探测与拨号各自的时钟、单飞（同一时刻只有一次接入在途）、`answersProbes` 的兼容规则。
+- `packages/web/src/features/terminal/terminal-view.tsx`：socket 的生命周期整块交出去，本文件只剩「一帧
+  是什么意思」与「状态怎么画」；容器尺寸静置 120ms、只在行列真的变了时发一次 update。
+- `packages/web/src/features/terminal/terminal-page.tsx` / 两份文案表：`reconnecting` 画成警示色，新增
+  「重连中」一句（中英各一条）。
+- 用例：`packages/web/test/terminal-connection.test.ts`（新，22 条，假 socket + 可控时钟）、
+  `packages/server/test/terminal.test.ts`（+95 行，窗口推导、平滑、负往返、慢投递下的下限）与
+  `packages/server/test/terminal-stream.test.ts`（+268 行，真 socket 上回显客户端探测；洪水用例改成不可压缩的
+  随机字节，并在断言前等那一轮真的落地）。
+- changelog 一对按本仓写法改成 `changelog/unreleased/2026-11-02-terminal-on-a-slow-link{,.zh}.md`（去掉上游
+  PR 行、写明移植来源）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`core` / `server` / `web` / `ui` / `cli` / `hmr` 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，196 接口 / 594 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** ·
+  cli **38 / 561** · web **279 文件 / 3411 通过 / 2 跳过**（+1 文件 +22 条即本笔）· server **209 文件 /
+  3051 通过 / 17 跳过**（+10 条即本笔）。
+- 改动 14 个文件 `prettier --check` 干净、`oxlint` 改动面 **0 警告 0 错误**（30 文件）、`git diff --check` 干净。
+- **真服务端 + 真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r177`、服务端 **8991**（`HOST=::`）、
+  系统 chromium 1280×900，探针 `r177/probe.mjs`）：手机上的假死没法用 CDP 的离线模拟复现（它对已建立的
+  WebSocket 不可靠），所以在页面里把链路「切断」—— 已有的 socket 永久吞掉收发、新拨号一律到手就关，再派发
+  `online`（手机重新注册到网络）。**改前**（`terminal-view.tsx` / `terminal-page.tsx` 退回 `HEAD` 后重建
+  Web 产物）：状态自始至终卡在「已连接」，断链 8 秒后仍是「已连接」，网络回来后敲的 `echo R177AFTER`
+  **到不了 pty**（`/api/terminals/:id/capture` 里没有它）—— 正是用户看到的「假死」。**改后**：状态转
+  「重连中」、8 秒后仍在（不是「连接错误」），网络回来后回到「已连接」，`capture` 里既有断链前敲的
+  `R177BEFORE`（重连时由服务端快照重绘回来的）也有恢复后敲的 `R177AFTER`。两态 console **0 error**、
+  0 pageerror（截图 `r177/shots-{before,after}/{1-ready,2-reconnecting,3-still-reconnecting,4-ready-again,5-typed-after}.png`）。
+- **一处教训（写下来免得再踩）**：做「改前」那一态时先用了 `git checkout -- <path>` —— 那是**从索引**恢复，
+  而索引里正是刚 `git apply -3` 放进去的新版本，于是白重建、白跑一次（读数与改后一模一样）。要退回已提交的
+  版本得写 `git checkout HEAD -- <path>`，它会连索引一起改掉；把新版本拿回来则用
+  `git apply -3 --include=<path> …` 只挑那两个文件。
+- 端口只用 8991（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r177`，探针 / 截图 / 提交消息在 scratchpad 的 `r177/` 下；`packages/*/dist` 是产物，未 `git add`。
+
+### 没做 / 留着
+
+- 手机尺寸（390 px）那一腿没有单独截图：这一笔的界面变化是状态词与颜色，1280×900 的截图已经看清
+  「重连中」是警示色、`reconnecting` 与 `connecting` 分开。
+- 服务端那一半（关掉沉默观察者、Ping 回显、压缩后的积压计数）只有单测与真服务端上的连通性，没有单独的两态
+  读数：这些行为在浏览器里看不见，真断链的两态读数已经由客户端那一半给出。
+- 2.2c 的尾巴、3.5 / 3.6、5.6 / 5.10、4.1–4.3 仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源文件 + 用例 + changelog：**`be87f4d3f`**（16 文件 / +1683 −108）；台账（5.62、上表那一行、本节）另起一笔。
