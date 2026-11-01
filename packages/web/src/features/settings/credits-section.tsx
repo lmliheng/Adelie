@@ -9,6 +9,11 @@
  * why the page itself is visible to everyone, the desktop shell's window included. The page is
  * the list and nothing else; the rail already names it.
  *
+ * The themes are the page's other half, and for the same reason: a theme is a work someone
+ * chose, and its licence is not visible anywhere else in the product. The three the app ships
+ * come with it, and the four in the library are fetched from a directory Adelie does not own —
+ * both are Apache-2.0, which is stated here rather than assumed from the app's own licence.
+ *
  * Each licence text is a disclosure (the WAI-ARIA pattern: a real button with `aria-expanded`
  * and `aria-controls`, the panel kept in the DOM and `hidden` while folded). A licence runs to
  * pages, so the open panel scrolls inside a capped height rather than pushing the next font a
@@ -95,10 +100,41 @@ function CreditRow({ font }: { font: FontCredit }) {
 
 export function CreditsSection() {
   return (
-    <ul className="divide-y divide-gray-100 dark:divide-gray-800/60">
-      {FONT_CREDITS.map((font) => (
-        <CreditRow key={font.id} font={font} />
-      ))}
-    </ul>
+    <div className="space-y-6">
+      <ul className="divide-y divide-gray-100 dark:divide-gray-800/60">
+        {FONT_CREDITS.map((font) => (
+          <CreditRow key={font.id} font={font} />
+        ))}
+      </ul>
+      <ThemeCredit />
+    </div>
+  );
+}
+
+/** The theme library's own project page, linked like a font's upstream (see ThemeCredit). */
+const THEME_LIBRARY_URL = "https://github.com/lmliheng/adelie-themes";
+
+/**
+ * Where the themes come from and what licence they carry. Static words rather than a fetch: the
+ * library is a directory this app reads on demand, and the page that must stay readable offline —
+ * and answerable for what the app itself ships — cannot depend on it being reachable. The live
+ * list of what the library holds is the Appearance page's, next to the picker.
+ */
+function ThemeCredit() {
+  return (
+    <div>
+      <p className="text-sm font-medium">{S.settings.creditsThemeLibrary}</p>
+      <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+        {S.settings.creditsThemeLibraryInfo}
+      </p>
+      <a
+        href={THEME_LIBRARY_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="text-link mt-1 inline-block text-xs break-all underline-offset-2 hover:underline"
+      >
+        {THEME_LIBRARY_URL}
+      </a>
+    </div>
   );
 }

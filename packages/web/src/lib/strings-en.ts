@@ -377,6 +377,9 @@ export const en: Strings = {
     creditsSource: "Source",
     creditsPackaged: "Packaged as",
     creditsLicenseText: "Full license text",
+    creditsThemeLibrary: "Themes",
+    creditsThemeLibraryInfo:
+      "The app ships three themes of its own (Primer, Frost, Console). The four in the theme library on the Appearance page — Cyberpunk, Doodle, Clay Glow and Skeuo — are maintained by lmliheng and fetched on request. All seven are Apache-2.0, the licence Adelie itself carries, and a theme file holds colour and size values only, never code.",
     agentApiTitle: "Agent API",
     agentApiToggle: "Allow the Agent API",
     agentApiHint:

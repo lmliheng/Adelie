@@ -447,6 +447,13 @@ export const zh = {
     /** The npm package a face arrives through, under the type's own project link. */
     creditsPackaged: "打包来源",
     creditsLicenseText: "许可全文",
+    /**
+     * The theme half of the credits page: what the app ships, and what the library it reads from
+     * offers. Static words — the page cannot depend on the library being reachable.
+     */
+    creditsThemeLibrary: "主题",
+    creditsThemeLibraryInfo:
+      "应用自带三套主题（通用、白领、极客），随 Adelie 一起提供。外观页「主题库」里的四套——赛博朋克、手绘涂鸦、陶光、拟物化——由 lmliheng 维护，按需取用。七套都是 Apache-2.0，与 Adelie 同一个许可；一份主题只含颜色与尺寸这类取值，不含代码。",
     /** Settings › Server › Agent API: the admin's switch over every Agent's public API, and the question before it goes off. */
     agentApiTitle: "Agent API",
     agentApiToggle: "允许 Agent API",
