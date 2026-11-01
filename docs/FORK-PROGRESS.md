@@ -1900,6 +1900,21 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       条、通知区 **2** 个可点 toast（七秒后 **0** 个）；放回、重建后再跑 **2 passed**。
       见「第一百七十三轮」一节。
 
+- [x] **7.65 Workspace 选择器的「新建文件夹」被拒时，原因留在名称框下面，不再只活六秒；这条动作进了浏览器套件**
+      （**2026-11-01 第一百七十四轮**落地，提交见该节；源码 2 处（一个纯函数 + 一个状态 + 一句话）+
+      单测 3 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.64
+      结尾点名的两处之一里选中的一处 —— 名称框被拒时本来就留着、名字也在、光标也放回框里（要改的是
+      名字，再按 Enter 就是重试），可原因只落进一条六秒的 toast，于是读者面对的是一个看起来没被碰过
+      的框。现在句子画在框里的输入框下面（`role="alert"`、danger 色、限两行、整句挂悬停），留到名字
+      改动或下一次尝试开始，框走它就走。「名字是不是一段」提成纯函数 `canMakeFolder()`（与服务端
+      `dirs.ts` 的 `dirNameError` 同一条规则），发请求之前先判，因此带分隔符的名字一条请求都不发。
+      `packages/web/e2e/finder-new-folder-refusal.spec.mjs` 两条真服务端用例：文件夹里已有的名字（路由
+      自己的 409）把原因留在框下、输入的名字还在、通知区没有可点的 toast、七秒后仍在，换一个名字即清掉
+      并把文件夹真的建到磁盘；带分隔符的名字就地拒绝且一条新建请求都没发，Esc 时句子跟着框一起消失。
+      **反证**：把 `workspace-finder{,-model}.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**
+      （都死在 `getByRole("alert")` 的 `toHaveText` 上），放回后再跑 **2 passed**。
+      见「第一百七十四轮」一节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -2577,6 +2592,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-01 | 7.62 | **MCP Server 表的开关被拒时，原因留在那一行下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：`packages/web/src/features/agents/mcp-servers-toggle.ts`（新，`McpToggleRefusal` + `flippedEnabled()`：一次翻转产出的列表，沿用原规则「关掉写 `false`、重新打开删掉这个键」+ `toggleRefusalFor()`：行按**位置**认而不是名字 —— 弹窗拒重名、手改配置里可能重名，按名字画会画两遍）、`mcp-servers-section.tsx` 多一个 `toggleRefusal` 状态（失败经 `apiErrorText` 填、不再 `toastError`，下一次翻转与**任意一次落地写入**都清空）与一条横跨各列的提示带；+ 单测 1 个文件 8 条 + 新 spec 1 个（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这一族的最后一处即时写入 —— 开关不做乐观写入，被拒时行不动、开关不动，原因此前只剩一条六秒的 toast，六秒后就是「点了没反应」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · hmr 无测试 · web **274 文件 / 3364 通过 / 2 跳过**（+1 文件 +8 条即本笔单测）· server **3020 通过 / 1 失败 / 15 跳过** —— 那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**（第一百六十八 / 一百六十九 / 一百七十轮已记过同一条：服务端测试读 core 的 dist，而 dist（10-31 15:04 构建）里有另一条线在途未提交的调色桥；`grep -c PALETTE_BRIDGE` 在工作的 `external-theme.ts` 里 5、在 `HEAD` 的同一文件里 0）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r171`、服务端 **8988**（`HOST=::`）、仓库自带 mock LLM **8990**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（12.4 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；探针量到被拒后开关格仍是 **80×43 px**（与改前一致）、提示带 **742×16 px**、句子是「操作被拒绝：agent config is read-only」、开关 `aria-checked="true"`（服务端里仍启用）、**7 秒后仍在**；放开拒绝后同一开关再点一次：提示带消失、开关变 `false`、旁行配置一字未动，再打开时发出去的条目里没有 `enabled` 键；console 只有既有的 `…/api/projects/…/machines` **403** 与本轮刻意造的 **500**，无其它 error、无 pageerror（截图 `r171/after/shot-{1-before,2-refused,3-after-7s,4-after-success}.png`）· **反证**：把 `mcp-servers-section.tsx` 退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在提示带上的 `toHaveText` 上，改前截图里那一行下面什么都没有）；放回、重建 → **2 passed** · 端口只用 8988 / 8990（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r171`，探针 / 临时配置 / 截图在 scratchpad 的 `r171/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-01 | 7.63 | **外观页两处主题导入被拒时，原因留在原地（对话框正文里 / 被点的那张主题库卡片上），不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/settings/theme-import.ts` 新增纯函数 `themeImportRefusal()`（409 `theme_exists` 是「问题」不是「拒绝」→ `null`，其余给 `themeImportErrorText` 那句；两个调用方此前各写一遍这条分支）、`theme-import-dialog.tsx` 多一个 `refusal` 状态（失败经它填、不再 `toastError`，开框 / 关框 / 切换来源 / 下一次尝试各清一次）画在正文底部、`theme-registry-section.tsx` 多一个 `{id, text}` 的 `refusal`（下一次尝试与每次重读目录清空）画在**被拒那张卡**的按钮下面（`role="alert"`、danger 色、限两行、整句挂 `data-tooltip`，引子复用 `S.common.refused`、**没有新增文案**）；+ 单测 3 条 + 新 spec 1 个（3 条）+ changelog 一对，**不碰接口、无新依赖**）：换了一族（7.19–7.62 收的是开关 / 写入被拒，这一条是「行内动作被拒后只剩 toast」的第一处）—— 导入对话框在失败时本来就留着，主题库的卡片更是一动不动，原因此前只剩一条六秒的 toast，屏上不止一张卡时连是哪一张都看不出来 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **274 文件 / 3367 通过 / 2 跳过**（+3 即本笔单测）· server **3020 通过 / 1 失败 / 15 跳过** —— 那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**（第一百六十八～一百七十一轮已记过同一条：服务端测试读 core 的 dist，而 dist 里有另一条线在途未提交的调色桥；`grep -c PALETTE_BRIDGE` 在工作区的 `external-theme.ts` 里 5、在 `HEAD` 的同一文件里 0；本笔只动 `packages/web`）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r172`、服务端 **8998**（`HOST=::`）、仓库自带 mock LLM **8994**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **3 passed（22.3 s）**，放回最终源码重建 Web 产物后复跑仍 **3 passed**；两态探针（`r172/probe.mjs`，同一个服务端、只换 `dist`）—— 改后：被拒那张卡里 `role="alert"` **1 条**（249×32，`scrollHeight == clientHeight` 未截断）、旁的卡 **0 条**、通知区 **0 个**可点按钮、**7 秒后仍在**，对话框留着且地址原样；改前：卡片 **0 条** alert、通知区 **1 个**可点按钮（六秒后 **0 个**）、框里也 **0 条** —— 原因确实只活在 toast 里；两态 console 只有刻意造的 **404**（主题库那条）与 **400**（地址那条），无其它 error、无 pageerror（截图 `r172/shots-{after,before}/shot-{1-catalogue,2-card-refused,3-card-after-7s,4-dialog-filled,5-dialog-refused,6-dialog-after-7s}.png`）· **反证**：把三个源码文件退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed / 1 passed**（两处都死在「框里 / 卡片里找不到 alert」上，409 那条本来就不变）；放回、重建 → **3 passed** · 端口只用 8998 / 8994（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r172`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r172/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `68864f88` |
 | 2026-11-01 | 7.64 | **设置 → 通用「导入 Trace」被拒时，原因留在这一行下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：`packages/web/src/features/settings/trace-import-row.tsx` —— 新增纯函数 `traceImportSizeRefusal(fileName, sizeBytes)`（`.jsonl` 走 14MB、整会话 `.json` 包走服务端那 48MB，只看文件名与大小、不看内容）；组件多一个 `refusal` 状态，三条失败的路（服务端拒绝经共享的 `refusalText()`、超上限、FileReader 出错）都填它、不再 `toastError`，再选一个文件时清空；句子画在三个控件下面的一行（`role="alert"`、`line-clamp-2`、整句挂 `data-tooltip`、`w-full max-w-96` 让它在换行格里独占一行且不把控件挤走）；+ 单测 1 个文件 4 条 + 新 spec 1 个（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：换族之后的第二处，也是 7.63 结尾点名的两处之一 —— 这一行的三条失败路此前都只进一条六秒的 toast，而它被拒时什么都没写、三个控件原样不动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3371 通过 / 2 跳过**（+1 文件 +4 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过**（全绿，`themes.test.ts` 那条旧红已随另一条线的调色桥入库而转绿）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r173b`、服务端 **8999**（`HOST=::`）、仓库自带 mock LLM **8995**、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（22.9 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；探针（`r173/probe.mjs`）量到被拒那一行：控件行 360×26 px（与改前一致）、句子 384×16 px 就在它下面（`scrollHeight == clientHeight` 未截断）、`role="alert"` 在读屏上与整句悬停里都在、**7 秒后仍在**；390 px 手机上句子 356×32 px（两行）、不出屏；两态 console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r173/shots/desktop-{1-before,2-refused,3-after-7s,4-phone}.png`）· **反证**：把 `trace-import-row.tsx` 退回 `HEAD`、重建 Web 产物 —— 同一份 spec **2 failed**（`row.getByRole("alert")` 一条都找不到），单独跑「改前」探针（`r173/probe-before.mjs`）量到行内 alert **0** 条、通知区 **2** 个可点 toast（成功 + 这句）、**七秒后 0 个**，截图 `r173/shots/before-{2-refused,3-after-7s}.png`；放回、重建 → **2 passed** · 端口只用 8999 / 8995（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r173b`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r173/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `eb3fad01` |
+| 2026-11-01 | 7.65 | **Workspace 选择器的「新建文件夹」被拒时，原因留在名称框下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/chat/workspace-finder.tsx` 多一个 `newFolderRefusal` 状态（服务端拒绝经共享的 `refusalText()` 填、不再 `toastError`，开框 / 换名字 / 下一次尝试开始时清空），句子画在名称框自己那一列里、输入框下面（`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`），为此这一行从「图标 + 输入框」改成「图标 \| 一列（输入框 + 句子）」；`workspace-finder-model.ts` 新增纯函数 `canMakeFolder()`（与服务端 `dirs.ts` 的 `dirNameError` 同一条规则：空串 / `.` / `..` / 两种分隔符 / NUL 都不是一段），发请求之前先判，带分隔符的名字因此一条请求都不发；3 条单测 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：被拒时名称框本来就留着（名字在、光标也放回框里，因为要改的是名字、再按 Enter 就是重试），原因此前只剩一条六秒的 toast，六秒后就是一个看起来没被碰过的框 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（4 文件）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3374 通过 / 2 跳过**（+3 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过** · hmr 无测试文件 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r174`、服务端 **8973**（`HOST=::`）、仓库自带 mock LLM **8971**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（13.1 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；两处坑——侧栏「新建工作区」在 390px 下是抽屉里的按钮（手机那一腿先按桌面宽度开框再改窗口），选择器的地址栏输入框失焦即把段落拼回去（`locator.fill()` 会在下一次解析时扑空，改成先给列表焦点 → Ctrl+L → 逐字敲 → Enter）· **两态读数**：桌面 1280×900 输入框 **536×24 px**（y=245）、句子 **536×16 px** 就在下面（y=273）、`role="alert"` 与整句悬停都在；390px 手机 输入框 **350×24**、句子 **350×16**、无横向溢出；console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r174/{desktop,phone}.png`）· **反证**：把两个源码文件退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：改前行内没有 alert，原因只在 toast 里），放回、重建后再跑 **2 passed** · 端口只用 8973 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r174`，探针 / 临时配置 / 截图在 scratchpad 的 `r174/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
@@ -20022,3 +20038,80 @@ core 因此是 1456 条（比 1452 多 4 条，正是它那 4 条主题桥用例
   `packages/web/src/features/settings/trace-import-row.tsx`、`packages/web/test/trace-import-row.test.ts`、
   `packages/web/e2e/trace-import-refusal.spec.mjs`、
   `changelog/unreleased/2026-11-01-trace-import-refusal{,.zh}.md`）；台账（7.64、上表那一行、本节）另起一笔。
+
+## 第一百七十四轮：Workspace 选择器「新建文件夹」被拒时，原因留在名称框下面（2026-11-01，条目 7.65）
+
+### 开工自检
+
+`main` = `b5ac7854`（第一百七十三轮的台账提交），`git status --short` **干净**；`git fetch origin &&
+git merge --ff-only origin/main` 报 `Already up to date`；`git rev-list --left-right --count
+origin/main...HEAD` = `0 0`。这一轮开工时也没有另一条线的进程在这棵树里。
+
+### 选活
+
+表上未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、
+4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）—— 全都等人。第一百七十三轮结尾写下的下一处有两个
+候选（`workspace-finder.tsx` 的新建文件夹、`proxy-section.tsx` 的探测），并按「下一轮从新建文件夹里
+挑」指定了前者，本轮照它做：名称框被拒时**本来就留着**（名字在、光标在框里），所以句子该留在框上，
+而不是六秒后消失。
+
+### 做了什么
+
+- `packages/web/src/features/chat/workspace-finder.tsx`：
+  - 多一个 `newFolderRefusal` 状态（一次一条，与那次尝试一一对应）。此前服务端拒绝走 `toastError`，
+    现在走共享的 `refusalText()` 填它；开框、换名字（第一次敲键）、下一次尝试开始时清空。
+  - 句子画在名称框自己的那一列里、输入框下面（`role="alert"`、danger 色、`line-clamp-2`、整句挂
+    `data-tooltip` + `data-tooltip-content="text"`，仓库禁用原生 `title`）。为了让句子与名字对齐，
+    这一行从「图标 + 输入框」改成「图标 | 一列（输入框 + 句子）」，图标单独包在 `h-6` 的盒子里与
+    输入框等高。
+  - 发请求之前先判「名字是不是一段」：不成立就把 `dir_name_invalid` 那句直接画出来，一条请求都不发。
+  - 文件头注释补上这条规则为什么成立：被拒时什么都没写，框留着、名字留着，再按 Enter 就是重试；
+    句子随框走，屏幕上不会留下「假装建过」的东西。
+- `packages/web/src/features/chat/workspace-finder-model.ts`：新增 `canMakeFolder(name)` —— 服务端
+  `dirs.ts` 的 `dirNameError` 那条规则（空串、`.`、`..`、两种分隔符、NUL 都不是一段），纯函数，
+  不需要 DOM 就能测。
+- 没有新增文案：两句都在 `S.errors.byCode` 里（`dir_exists` / `dir_name_invalid`），经
+  `S.common.refused()` 引出来。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** ·
+  cli **38 / 561** · web **275 文件 / 3374 通过 / 2 跳过**（+3 条即本笔单测）· server **207 文件 /
+  3021 通过 / 15 跳过** · hmr 无测试文件。
+- 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（4 文件）、`git diff --check` 干净。
+- **单测**（`packages/web/test/workspace-finder.test.ts`，3 条）：普通名字、带点 / 空格、点开头、
+  非 ASCII 名字都放行；`a/b`、`a\b`、`.`、`..`、含 NUL 的名字都拒绝；空名字拒绝。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r174`、服务端 **8973**（`HOST=::`）、
+  仓库自带 mock LLM **8971**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、
+  跑完移出仓库）：新 spec **2 passed（13.1 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**。
+  - 两处坑：①侧栏的「新建工作区」在 390px 宽下是抽屉里的按钮，手机那一腿要**先按桌面宽度打开框**再
+    改窗口；②选择器的地址栏输入框在失焦时会把段落拼回去，用 `locator.fill()` 会在下一次解析时扑空
+    —— 改成「先给列表焦点、再 Ctrl+L、再逐字敲、再 Enter」，与真人操作一致（探针量到这条路上字段
+    一直留到 Enter 之后才收）。
+- **两态读数**（`r174/probe-shots.mjs`，同一个服务端）：桌面 1280×900 —— 输入框 **536×24 px** 在
+  y=245，句子 **536×16 px** 就在它下面（y=273）、`role="alert"`，整句与 `data-tooltip` 都是
+  「操作被拒绝：这个名称已被占用。」；390px 手机 —— 输入框 **350×24**、句子 **350×16**，没有横向溢出。
+  console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r174/{desktop,phone}.png`）。
+- **反证**：把 `workspace-finder.tsx` 与 `workspace-finder-model.ts` 退回 `HEAD`、重建 Web 产物，
+  同一份 spec **2 failed**（第一条死在 `toHaveText`：行内没有 alert；第二条同样找不到 alert），
+  放回、重建后再跑 **2 passed**。
+- 端口只用 8973 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r174`，探针 / 临时配置 / 截图在 scratchpad 的 `r174/` 下。
+
+### 没做 / 留着
+
+- **同一族里还没摸过的面**：`proxy-section.tsx` 的探测（只在丢会话 / 死服务端时才落到 toast）。
+- 名称框的句子**随框一起消失**是这一条的取舍：框被 Esc / 失焦 / 成功建好收走时，屏幕上没有留下任何
+  假装建过的痕迹，所以没有理由让它比框活得更久。若以后要让它在框收起后仍留在列表上方，得先想清楚
+  它属于哪一行（现在没有「刚被拒的那一行」这种东西）。
+- 7.62 的清单行仍缺（第一百七十一轮只落了表行与本节），本轮不补写别人的叙述。
+
+### 提交
+
+- 源码 + 单测 + 用例 + changelog：见本行之上的提交（只带
+  `packages/web/src/features/chat/workspace-finder.tsx`、
+  `packages/web/src/features/chat/workspace-finder-model.ts`、
+  `packages/web/test/workspace-finder.test.ts`、
+  `packages/web/e2e/finder-new-folder-refusal.spec.mjs`、
+  `changelog/unreleased/2026-11-01-finder-new-folder-refusal{,.zh}.md`）；台账（7.65、上表那一行、本节）另起一笔。
