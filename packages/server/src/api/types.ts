@@ -5035,6 +5035,53 @@ export interface DesktopPetCommandMessage {
   showPet?: boolean;
 }
 
+// Windows login item (desktop mode, Windows only)
+//
+// Whether Windows itself starts Adelie when the user signs in. The switch rides the same
+// utilityProcess message channel as the tray icon above: the shell reports the state ITS OPERATING
+// SYSTEM holds, the page reads it at GET /api/desktop/login-item and writes through PUT, which is
+// relayed back.
+//
+// WHAT TRAVELS IS WINDOWS' OWN RECORD, not a preference of ours, and `supported` travels with it:
+// the entry can be turned off from Task Manager › Startup apps and read back, and a shell that has
+// no login item to manage (Linux today) says so rather than offering a switch that writes nothing.
+// See the shell's src/login-item.ts for why there is no preference file beside it.
+
+/** What the shell's operating system currently says about starting Adelie when the user signs in. */
+export interface DesktopLoginItemStatus {
+  /** This build has a login item to manage at all — the shell runs on Windows. */
+  supported: boolean;
+  /** The app is registered to start at sign-in, and that entry is not disabled. */
+  openAtLogin: boolean;
+}
+
+/** What one PUT asks the shell to change; one optional field, the shape the tray patch beside it uses. */
+export interface DesktopLoginItemPatch {
+  openAtLogin?: boolean;
+}
+
+/**
+ * GET / PUT /api/desktop/login-item (desktop-shell sessions only): the sign-in switch.
+ * `status` is null until the shell's first push lands (a beat after server start). A page that
+ * finds null — or a status with `supported: false` — draws no row, which is the honest rendering
+ * for every platform this build cannot answer for.
+ */
+export interface DesktopLoginItemStatusResponse {
+  status: DesktopLoginItemStatus | null;
+}
+
+/** Shell → server push over the utilityProcess message channel. */
+export interface DesktopLoginItemStatusMessage {
+  type: "desktop-login-item-status";
+  status: DesktopLoginItemStatus;
+}
+
+/** Server → shell command over the utilityProcess message channel (relayed from the PUT above). */
+export interface DesktopLoginItemCommandMessage {
+  type: "desktop-login-item-command";
+  openAtLogin?: boolean;
+}
+
 // Desktop folder access (desktop mode, macOS)
 //
 // macOS privacy protection (TCC) guards Desktop, Documents, Downloads and removable and network

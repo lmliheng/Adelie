@@ -38,6 +38,14 @@
  * of this same origin, it is a plain browser with no IPC bridge of its own — the whole reason it
  * can be delivered by the platform rather than the shell.
  *
+ * Login item (Windows): Settings › Appearance can register the installed app to start when the
+ * user signs in — off by default, and offered only where there is an entry to manage (see
+ * login-item.ts). Windows keeps that record itself, in the user's own Run key: the shell reads it
+ * back out of the operating system rather than storing it, and reports what it finds, so an entry
+ * the user disabled in Task Manager shows here as off. The launch the entry itself starts carries
+ * a flag, and that launch opens no visible window — it waits in the tray, which is where every
+ * other path back to the app already is.
+ *
  * Built-in browser: the main window (and no other) may host <webview> guests in the
  * `persist:penguin-browser` partition, and builtin-browser.ts relays raw CDP and cookie writes
  * for them over that same port. That relay is the only part of the browser the shell carries,
@@ -69,6 +77,7 @@ import path from "node:path";
 import { app, BrowserWindow, dialog, screen, session, shell } from "electron";
 import type { WindowOpenHandlerResponse } from "electron";
 import { resolveRoot } from "@adelie/core";
+import type { DesktopLoginItemStatus } from "@adelie/server/api";
 import { mintApiToken } from "@adelie/server/auth-token";
 import { liveServerLock } from "@adelie/server/lock";
 import type { ServerLock } from "@adelie/server/lock";
@@ -90,6 +99,14 @@ import { logLine, logServerOutput, startDesktopLog, stopDesktopLog } from "./des
 import { handleFolderAccessFrame } from "./folder-access.js";
 import type { FolderAccessFrameDeps } from "./folder-access.js";
 import { applyLoginShellEnv } from "./login-shell-env.js";
+import {
+  loginItemStatusMessage,
+  loginItemStatusOf,
+  loginItemWrite,
+  parseLoginItemCommand,
+  startedAtLogin,
+  supportsLoginItem,
+} from "./login-item.js";
 import { installAppMenu } from "./menu.js";
 import { startEmbeddedServer, stopEmbeddedServer } from "./server-process.js";
 import type { EmbeddedServer } from "./server-process.js";
@@ -153,6 +170,19 @@ let showPet = false;
  * own report arrives only once a window has loaded far enough to send it.
  */
 let trayLocale: TrayLocale = "en";
+/**
+ * Whether this launch was started by Windows' own login item (see login-item.ts). Read from
+ * process.argv rather than anywhere near Electron, for the same reason `profile` is.
+ */
+const launchedAtLogin = startedAtLogin(process.argv);
+/**
+ * Whether this launch keeps its window hidden: the login item started it AND there is a tray icon
+ * to bring the window back from. A hidden app with no icon would be a window nobody can reopen
+ * except by launching the app again, which is why the tray is part of the condition — the same
+ * reasoning `hidesOnClose` (util.ts) applies to close-to-tray. Resolved before boot, once the
+ * tray's own preference has been read and the install attempted.
+ */
+let startHidden = false;
 let server: EmbeddedServer | null = null;
 /** The live server child, for pushes that are not answers to one of its messages. */
 let relayChild: EmbeddedServer["child"] | null = null;
@@ -231,7 +261,15 @@ function createWindow(url: string): void {
     },
   });
   builtinBrowser.host(win);
-  win.once("ready-to-show", () => win?.show());
+  // Shown when it has painted — unless it was Windows' login item that started this launch, in
+  // which case the window is built and loaded but stays hidden: the tray is where the app waits,
+  // and every other way back to it (the tray menu, a second launch, the Dock) calls
+  // showMainWindow. Built rather than skipped, because a launch with no window at all is a shape
+  // nothing else in this file has: the pet waits on this window's first load, and the sign-in
+  // token that a fresh launch redeems arrives with it.
+  win.once("ready-to-show", () => {
+    if (!startHidden) win?.show();
+  });
   // Close-to-tray: the window goes away, the app and its embedded server stay, and the tray
   // icon is the way back. Every real exit — the tray's Quit, the app menu's, an OS logout —
   // passes through before-quit first, which is what `quitting` reports.
@@ -662,13 +700,60 @@ function pushPetStatus(): void {
   relayChild?.postMessage(petStatusMessage(showPet));
 }
 
+// --- the Windows login item -------------------------------------------------
+
+/**
+ * Whether this build has a sign-in entry to manage at all (see supportsLoginItem in
+ * login-item.ts): the installed app, on Windows. Every other form answers the page with
+ * `supported: false`, and the page draws no row for that rather than a switch that writes nothing.
+ */
+const loginItemSupported = supportsLoginItem({ platform: process.platform, profile });
+
+/**
+ * Reads Windows' own record of the sign-in entry, straight from the operating system. Nothing is
+ * cached and nothing is stored: the user can disable the entry from Task Manager without the app
+ * being told, so every push and every read is a fresh look (which is also why there is no
+ * userData file beside the tray's and the pet's — see login-item.ts).
+ */
+function loginItemStatus(): DesktopLoginItemStatus {
+  return loginItemStatusOf({
+    supported: loginItemSupported,
+    executableWillLaunchAtLogin:
+      loginItemSupported && app.getLoginItemSettings().executableWillLaunchAtLogin,
+  });
+}
+
+/**
+ * Applies Settings › Appearance's sign-in switch: the Run entry is written or deleted now, and
+ * what Windows says afterwards is pushed back to the page. `enabled: true` is what makes turning
+ * the switch back on take effect after the entry was disabled in Task Manager (see
+ * loginItemWrite).
+ */
+function setLoginItem(openAtLogin: boolean): void {
+  if (loginItemSupported) {
+    try {
+      app.setLoginItemSettings(
+        loginItemWrite({ name: identity.name, execPath: process.execPath, openAtLogin }),
+      );
+    } catch (err) {
+      logLine(`[shell] the sign-in entry could not be written: ${String(err)}`);
+    }
+  }
+  pushLoginItemStatus();
+}
+
+/** Tells the page what Windows says about starting at sign-in, which is what its row renders. */
+function pushLoginItemStatus(): void {
+  relayChild?.postMessage(loginItemStatusMessage(loginItemStatus()));
+}
+
 /**
  * Shell relay over the utilityProcess port: forward the account-menu row's check/install
- * frames to the updater, the Appearance switch's frames to the tray and to the pet window, the
- * built-in browser's commands to its guests and the Workspace picker's folder-access requests to
- * folder-access.ts, push every updater status fold back, and push all three current states now —
- * the fresh child, restarts included, must not start blind. The subscription dies with the child;
- * the next start wires the next one.
+ * frames to the updater, the Appearance switch's frames to the tray, to the pet window and to
+ * Windows' login item, the built-in browser's commands to its guests and the Workspace picker's
+ * folder-access requests to folder-access.ts, push every updater status fold back, and push all
+ * four current states now — the fresh child, restarts included, must not start blind. The
+ * subscription dies with the child; the next start wires the next one.
  */
 function wireShellRelay(child: EmbeddedServer["child"]): void {
   relayChild = child;
@@ -688,6 +773,10 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
     }
     const pet = parsePetCommand(message);
     if (pet !== null && pet.showPet !== undefined) setShowPet(pet.showPet);
+    const loginItem = parseLoginItemCommand(message);
+    if (loginItem !== null && loginItem.openAtLogin !== undefined) {
+      setLoginItem(loginItem.openAtLogin);
+    }
   });
   const unsubscribe = onUpdaterStatus((status) => child.postMessage(updaterStatusMessage(status)));
   child.on("exit", () => {
@@ -697,6 +786,7 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
   child.postMessage(updaterStatusMessage(getUpdaterStatus()));
   pushTrayStatus();
   pushPetStatus();
+  pushLoginItemStatus();
 }
 
 /** Starts (or restarts) the embedded server and points the window at the claim link. */
@@ -899,6 +989,12 @@ if (!app.requestSingleInstanceLock()) {
       // same rule the Web App applies to its own "follow the system" default.
       trayLocale = trayPrefs.locale ?? resolveTrayLocale(app.getLocale());
       openTray();
+      // A launch Windows' own login item started waits in the tray instead of popping a window
+      // over whatever the user just signed in to open — but only where there is a tray icon to
+      // come back from (see startHidden). The attempt above is what decides that: a platform with
+      // no tray leaves `tray` null, and this launch then behaves like any other.
+      startHidden = launchedAtLogin && tray !== null;
+      if (startHidden) logLine("[shell] started by the sign-in entry; waiting in the tray");
       // The pet's preference, read before boot for the same reason: the window it decides about
       // is opened by the main window's first load, which boot is what starts.
       showPet = readPetPrefs(app.getPath("userData")).showPet;

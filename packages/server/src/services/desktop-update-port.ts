@@ -1,23 +1,27 @@
 /**
- * Shell↔server message-port relay (desktop mode only): client updates, the tray icon, and the
- * Workspace picker's macOS folder access.
+ * Shell↔server message-port relay (desktop mode only): client updates, the tray icon, the desktop
+ * pet, the Windows login item, and the Workspace picker's macOS folder access.
  *
  * Under the desktop shell this server runs as an Electron utilityProcess, which injects
  * `process.parentPort` — an EventEmitter-ish port to the shell. The shell pushes its
- * updater snapshot and its tray state through it, and the routes forward the page's
- * check/download/install commands and its tray switch back. Folder access is the one
+ * updater snapshot, its tray state, its pet state and what Windows says about starting the app at
+ * sign-in through it, and the routes forward the page's check/download/install commands, its tray
+ * and pet switches and its sign-in switch back. Folder access is the one
  * request that is answered: the shell reads the folder and replies under the request's id.
  * Under a plain `penguin server|web` run the port does not exist and this module wires
  * nothing; those routes then answer 503 `shell_unreachable`.
  *
- * Wire shapes live in api/types.ts (the updater, tray and folder-access messages) so the
- * shell imports the same contract.
+ * Wire shapes live in api/types.ts (the updater, tray, pet, login-item and folder-access messages)
+ * so the shell imports the same contract.
  */
 import { randomUUID } from "node:crypto";
 import type {
   DesktopFolderAccessMessage,
   DesktopFolderAccessResult,
   DesktopFolderAccessResultMessage,
+  DesktopLoginItemCommandMessage,
+  DesktopLoginItemStatus,
+  DesktopLoginItemStatusMessage,
   DesktopOpenPrivacySettingsMessage,
   DesktopPetCommandMessage,
   DesktopPetStatus,
@@ -100,6 +104,19 @@ export function parsePetStatusMessage(data: unknown): DesktopPetStatus | null {
   return { showPet: status.showPet };
 }
 
+/** Validates one shell login-item push. Same rule as the tray's: strict on the discriminator and on every field it carries. */
+export function parseLoginItemStatusMessage(data: unknown): DesktopLoginItemStatus | null {
+  if (typeof data !== "object" || data === null) return null;
+  const msg = data as Partial<DesktopLoginItemStatusMessage>;
+  if (msg.type !== "desktop-login-item-status") return null;
+  const status = msg.status as Partial<DesktopLoginItemStatus> | undefined;
+  if (typeof status !== "object" || status === null) return null;
+  // Both fields, with no default for either: a push that cannot say whether the platform is even
+  // supported would have the page draw a switch it cannot promise anything about.
+  if (typeof status.supported !== "boolean" || typeof status.openAtLogin !== "boolean") return null;
+  return { supported: status.supported, openAtLogin: status.openAtLogin };
+}
+
 /** Validates one shell reply to a folder-access request; null when the frame is not one. */
 export function parseFolderAccessResultMessage(
   data: unknown,
@@ -143,6 +160,11 @@ export function wireShellUpdatePort(desktop: DesktopService, port: ShellPort): v
         desktop.setPetStatus(pet);
         return;
       }
+      const loginItem = parseLoginItemStatusMessage(e.data);
+      if (loginItem !== null) {
+        desktop.setLoginItemStatus(loginItem);
+        return;
+      }
       // A reply nobody waits for any more (its request timed out) is dropped.
       const access = parseFolderAccessResultMessage(e.data);
       if (access !== null) awaiting.get(access.id)?.(access);
@@ -167,6 +189,12 @@ export function wireShellUpdatePort(desktop: DesktopService, port: ShellPort): v
       type: "desktop-pet-command",
       ...patch,
     } satisfies DesktopPetCommandMessage);
+  });
+  desktop.onLoginItemCommand((patch) => {
+    port.postMessage({
+      type: "desktop-login-item-command",
+      ...patch,
+    } satisfies DesktopLoginItemCommandMessage);
   });
   desktop.onFolderAccessRequest(
     (path) =>

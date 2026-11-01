@@ -853,6 +853,10 @@ export const en: Strings = {
     trayIcon: "Tray icon",
     trayIconInfo:
       "The desktop app keeps an icon in the system tray — the Windows notification area, the macOS menu bar, the Linux tray — for as long as it runs: click it to come back to the window, right-click it to start a session or quit. On by default; turning it off removes the icon at once, no restart, and closing the window then no longer hides it, so the app stays in the Dock on macOS and quits on Windows and Linux.",
+    /** Desktop shell only (Windows): the sign-in entry; drawn only where the shell answers `supported`. */
+    startAtLogin: "Start when you sign in",
+    startAtLoginInfo:
+      "Starts Adelie when you sign in to Windows, waiting in the tray without opening a window — click the tray icon to open it. Off by default. The entry is registered for the current user (the Run key under HKCU), so it needs no administrator rights and installs no service. Disable it in Task Manager › Startup apps and this switch shows off to match; uninstalling removes it.",
     /** Desktop shell only: the companion window at /pet. */
     showPet: "Desktop pet",
     showPetInfo:

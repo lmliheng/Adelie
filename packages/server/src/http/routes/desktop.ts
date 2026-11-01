@@ -1,7 +1,8 @@
 /**
  * Desktop-mode routes: POST /api/desktop/shutdown, the client-update relay under
  * /api/desktop/update, the tray-icon preference at /api/desktop/tray, the pet-window
- * preference at /api/desktop/pet, the Privacy & Security pane at
+ * preference at /api/desktop/pet, the Windows sign-in switch at /api/desktop/login-item, the
+ * Privacy & Security pane at
  * /api/desktop/privacy-settings, plus the shared desktop-mode guard that turns off
  * multi-user surfaces (see rejectInDesktopMode).
  *
@@ -9,14 +10,16 @@
  * shutdown route is authenticated by the shell's Bearer token, not the cookie session (the
  * shell holds no cookie), so its group is unauthenticated and checks the token itself; it
  * answers 202 first, then triggers the graceful shutdown a beat later so the response is not
- * cut off by the closing listener. The update, tray, pet and privacy-settings routes are
- * called by the page, so their groups sit behind the cookie gate and are further restricted
+ * cut off by the closing listener. The update, tray, pet, login-item and privacy-settings routes
+ * are called by the page, so their groups sit behind the cookie gate and are further restricted
  * to the shell's own windows.
  */
 import { Hono } from "hono";
 import type { Context, MiddlewareHandler } from "hono";
 import { Bind, Component, Use } from "@adelie/core/kernel";
 import type {
+  DesktopLoginItemPatch,
+  DesktopLoginItemStatusResponse,
   DesktopPetPatch,
   DesktopPetStatusResponse,
   DesktopTrayPatch,
@@ -216,6 +219,49 @@ export function desktopPetRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
 }
 
 /**
+ * Starting Adelie when the user signs in to Windows. Unlike the switches above, the state this
+ * reads is not one the shell keeps: it is what Windows itself has recorded, so the shell reads it
+ * back out of the operating system on every launch and whenever the switch is thrown. GET returns
+ * that reading — null only until the shell's first push, and `supported: false` wherever there is
+ * no sign-in entry to manage (every non-Windows platform), which the page renders as no row at all.
+ * PUT relays the patch; like the tray and the pet, it acknowledges and the push is what tells the
+ * truth. A patch that is empty, or whose field is not a boolean, is a caller bug and never reaches
+ * the shell. The members are optional on a layer older than this switch.
+ */
+export function desktopLoginItemRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+  const refusal = "Starting at sign-in is managed from the desktop app's own window.";
+
+  app.get("/", (c) => {
+    const desktop = shellSessionOf(deps, c, refusal);
+    const status = desktop.getLoginItemStatus?.() ?? null;
+    return c.json({ status } satisfies DesktopLoginItemStatusResponse);
+  });
+
+  app.put("/", async (c) => {
+    const desktop = shellSessionOf(deps, c, refusal);
+    const body = (await c.req.json().catch(() => null)) as { openAtLogin?: unknown } | null;
+    const patch: DesktopLoginItemPatch = {};
+    if (body?.openAtLogin !== undefined) {
+      if (typeof body.openAtLogin !== "boolean") {
+        throw new HttpError(400, "invalid_open_at_login", "openAtLogin must be a boolean.");
+      }
+      patch.openAtLogin = body.openAtLogin;
+    }
+    // An empty patch is a caller bug, not a no-op worth relaying to the shell.
+    if (patch.openAtLogin === undefined) {
+      throw new HttpError(400, "empty_login_item_patch", "Pass openAtLogin.");
+    }
+    if (!desktop.requestLoginItemCommand?.(patch)) {
+      throw new HttpError(503, "shell_unreachable", "The desktop shell is not listening.");
+    }
+    return c.body(null, 202);
+  });
+
+  return app;
+}
+
+/**
  * Opens System Settings at a Privacy & Security pane — Files and Folders, or Full Disk Access —
  * for the Workspace picker's box about a folder macOS refused. The shell opens it (on macOS
  * only) and sends nothing back, so the answer is an acknowledgement. Like the relays above, the
@@ -301,6 +347,26 @@ export class DesktopPetRoutes {
   @Bind("DesktopPetRoutes.routes") routes!: Hono<AppEnv>;
   setup() {
     this.routes = desktopPetRoutes({ desktop: this.desktop.current() });
+  }
+}
+
+@Component({
+  contributes: {
+    "HttpModule.routes": [
+      {
+        id: "DesktopLoginItemRoutes.routes",
+        prefix: "/api/desktop/login-item",
+        auth: "user",
+        order: 10,
+      },
+    ],
+  },
+})
+export class DesktopLoginItemRoutes {
+  @Use() private readonly desktop!: Desktop;
+  @Bind("DesktopLoginItemRoutes.routes") routes!: Hono<AppEnv>;
+  setup() {
+    this.routes = desktopLoginItemRoutes({ desktop: this.desktop.current() });
   }
 }
 

@@ -327,6 +327,41 @@ export function AppearanceSection() {
     void api.setDesktopPet({ showPet: next }).catch(() => setShowPet(!next));
   };
 
+  // Starting at sign-in. This one has no default to fall back on, so `null` — nothing read yet,
+  // or a request that failed — draws no row at all, and neither does a shell that answers
+  // `supported: false` (a non-Windows platform, or a dev shell). The state is Windows' own record
+  // rather than a preference of ours: the shell reads it back out of the operating system, so a
+  // switch the user turned off in Task Manager › Startup apps arrives here as off.
+  const [startAtLogin, setStartAtLogin] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!offersShellChrome) return;
+    let live = true;
+    void api.getDesktopLoginItem().then(
+      (res) => {
+        if (live) setStartAtLogin(res.status?.supported === true ? res.status.openAtLogin : null);
+      },
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [offersShellChrome]);
+  // Optimistic like the two above, but re-read afterwards: the reply to the write is only an
+  // acknowledgement, and Windows' record is what this row is meant to show — the entry can be
+  // refused by policy, and a locked-down machine can leave it disabled however often we ask.
+  const changeStartAtLogin = (next: boolean): void => {
+    setStartAtLogin(next);
+    void api.setDesktopLoginItem({ openAtLogin: next }).then(
+      () => {
+        void api.getDesktopLoginItem().then(
+          (res) => setStartAtLogin(res.status?.supported === true ? res.status.openAtLogin : null),
+          () => {},
+        );
+      },
+      () => setStartAtLogin(!next),
+    );
+  };
+
   const themeOptions: ReadonlyArray<{ value: ThemeMode; label: string }> = [
     { value: "light", label: S.settings.themeLight },
     { value: "dark", label: S.settings.themeDark },
@@ -429,6 +464,14 @@ export function AppearanceSection() {
           info={S.settings.trayIconInfo}
           checked={trayIcon}
           onChange={changeTrayIcon}
+        />
+      )}
+      {offersShellChrome && startAtLogin !== null && (
+        <ToggleRow
+          label={S.settings.startAtLogin}
+          info={S.settings.startAtLoginInfo}
+          checked={startAtLogin}
+          onChange={changeStartAtLogin}
         />
       )}
       {offersShellChrome && (

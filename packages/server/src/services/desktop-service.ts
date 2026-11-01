@@ -15,9 +15,10 @@
  * Comparisons hash both sides first so timingSafeEqual gets equal-length buffers.
  *
  * The service is also the shell↔web relay for the surfaces the shell owns: client updates, the
- * tray icon and the pet window. In both directions it is the same utilityProcess message channel
- * (index.ts wires the port) — the shell pushes its current state, the web reads it at
- * GET /api/desktop/update, /api/desktop/tray or /api/desktop/pet and writes back a command that
+ * tray icon, the pet window and the Windows login item. In both directions it is the same
+ * utilityProcess message channel (index.ts wires the port) — the shell pushes its current state,
+ * the web reads it at GET /api/desktop/update, /api/desktop/tray, /api/desktop/pet or
+ * /api/desktop/login-item and writes back a command that
  * is forwarded to the shell. The window itself stays a plain browser — every capability flows
  * through this HTTP surface, never a renderer IPC bridge.
  *
@@ -28,6 +29,8 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 import type {
   DesktopFolderAccessResult,
+  DesktopLoginItemPatch,
+  DesktopLoginItemStatus,
   DesktopPetPatch,
   DesktopPetStatus,
   DesktopPrivacyPane,
@@ -155,6 +158,39 @@ export class DesktopService {
   requestPetCommand(patch: DesktopPetPatch): boolean {
     if (!this.petCommandSender) return false;
     this.petCommandSender(patch);
+    return true;
+  }
+
+  // --- login-item relay (Windows) --------------------------------------------
+
+  private loginItemStatus: DesktopLoginItemStatus | null = null;
+  private loginItemCommandSender: ((patch: DesktopLoginItemPatch) => void) | null = null;
+
+  /**
+   * What Windows currently says about starting the app when the user signs in; null until the
+   * shell's first push lands. Where the tray and the pet fall back to their own defaults, this one
+   * has none to fall back to and does not invent one: the state belongs to the operating system,
+   * and the page draws its row only for a status a shell has actually confirmed `supported`. An
+   * absent status is therefore rendered as no row at all rather than as a wrong switch.
+   */
+  getLoginItemStatus(): DesktopLoginItemStatus | null {
+    return this.loginItemStatus;
+  }
+
+  /** index.ts stores each shell push here (already validated at the message port). */
+  setLoginItemStatus(status: DesktopLoginItemStatus): void {
+    this.loginItemStatus = status;
+  }
+
+  /** index.ts registers the message-port sender; absent outside a shell-forked process. */
+  onLoginItemCommand(sender: (patch: DesktopLoginItemPatch) => void): void {
+    this.loginItemCommandSender = sender;
+  }
+
+  /** Invoked by the login-item route; false when no shell port is wired (tests, plain runs). */
+  requestLoginItemCommand(patch: DesktopLoginItemPatch): boolean {
+    if (!this.loginItemCommandSender) return false;
+    this.loginItemCommandSender(patch);
     return true;
   }
 

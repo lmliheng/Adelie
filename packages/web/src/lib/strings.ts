@@ -908,6 +908,13 @@ export const zh = {
     trayIcon: "托盘图标",
     trayIconInfo:
       "桌面应用运行期间在系统托盘（Windows 通知区、macOS 菜单栏、Linux 托盘）常驻一个图标，点击即可回到窗口，右键可开新会话或退出。默认开启；关掉后图标立即消失，无需重启，此时关闭窗口不再收进托盘：macOS 应用留在 Dock，Windows 与 Linux 关窗即退出。",
+    /**
+     * Desktop shell only (Windows): the sign-in entry. The row is drawn only for a shell that
+     * answers `supported`, and its value is what Windows itself holds — see the switch's note.
+     */
+    startAtLogin: "开机自启动",
+    startAtLoginInfo:
+      "登录 Windows 后自动启动 Adelie，开机那一次只在托盘待命、不弹窗，点托盘图标就能打开窗口。默认关闭；这条登记写在当前用户的启动项里（HKCU 的 Run 键），不需要管理员权限，不上系统服务。你在「任务管理器 › 启动应用」里禁用它，这里也会如实显示成关闭；卸载时会一并删掉。",
     /** Desktop shell only: the companion window at /pet. */
     showPet: "桌面宠物",
     showPetInfo:

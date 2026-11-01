@@ -158,6 +158,10 @@ nsis:
   # (uninstallerSidebar defaults to installerSidebar).
   installerSidebar: build/nsis/installerSidebar.bmp
   installerHeader: build/nsis/installerHeader.bmp
+  # The installer's own NSIS hooks: `customUnInstall` removes the sign-in entry Settings ›
+  # Appearance can register (HKCU's Run value and its StartupApproved half), which would otherwise
+  # outlive the app as a dead row in Task Manager › Startup apps. See build/installer.nsh.
+  include: build/installer.nsh
 
 linux:
   # Pre-rendered freedesktop icon set (scripts/render-icon.mjs): a directory of NxN.png

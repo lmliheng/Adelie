@@ -228,6 +228,8 @@ import type {
   UpdateJobStatus,
   UpdateProfileRequest,
   UpdateProfileResponse,
+  DesktopLoginItemPatch,
+  DesktopLoginItemStatusResponse,
   DesktopPetPatch,
   DesktopPetStatusResponse,
   DesktopTrayPatch,
@@ -2565,6 +2567,22 @@ export const getDesktopPet = () => apiFetch<DesktopPetStatusResponse>("/api/desk
  */
 export const setDesktopPet = (patch: DesktopPetPatch) =>
   apiFetch<void>("/api/desktop/pet", { method: "PUT", body: patch });
+
+// Desktop sign-in entry (desktop-shell sessions only, Windows) --------------------------
+
+/**
+ * What Windows itself says about starting the app when the user signs in, as the shell last read
+ * it. `status` is null until that first read lands, and `status.supported` is false wherever there
+ * is no entry to manage (every non-Windows platform, and a dev shell) — both of which the
+ * Appearance page renders as no row at all, because there is no honest default for a switch that
+ * is really a registry value.
+ */
+export const getDesktopLoginItem = () =>
+  apiFetch<DesktopLoginItemStatusResponse>("/api/desktop/login-item");
+
+/** Relays the sign-in switch to the shell, which writes the entry and pushes back what Windows says. */
+export const setDesktopLoginItem = (patch: DesktopLoginItemPatch) =>
+  apiFetch<void>("/api/desktop/login-item", { method: "PUT", body: patch });
 
 // ---- Workflows (an Agent's own extension packages, served as tabs beside the chat) ----
 const workflowsBase = (projectId: string, agentId: string) =>
