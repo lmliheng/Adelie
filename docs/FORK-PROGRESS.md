@@ -20047,6 +20047,12 @@ core 因此是 1456 条（比 1452 多 4 条，正是它那 4 条主题桥用例
 git merge --ff-only origin/main` 报 `Already up to date`；`git rev-list --left-right --count
 origin/main...HEAD` = `0 0`。这一轮开工时也没有另一条线的进程在这棵树里。
 
+**收工时的另一条线（记一笔，下一轮别慌）**：这一轮提交推送完之后（15:31）`git status --short` 里多出
+七个桌面壳 / 服务端文件（`packages/desktop/src/{main,login-item}.ts`、`packages/server/src/{api/types,
+hmr/capabilities,http/routes/desktop,services/desktop-service,services/desktop-update-port}.ts`，mtime
+15:27–15:31）—— 那是另一条线刚开工的活，不是本轮的（本轮只碰 `packages/web` 的四个文件与 changelog），
+一个都没 `git add`。
+
 ### 选活
 
 表上未勾选的仍是 2.2c（写侧只剩桌面壳 / 既有部署单元 / 发布动作）、3.5（拍板）、3.6（模型 key）、
