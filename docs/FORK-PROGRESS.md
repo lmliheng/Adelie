@@ -1915,6 +1915,24 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       （都死在 `getByRole("alert")` 的 `toHaveText` 上），放回后再跑 **2 passed**。
       见「第一百七十四轮」一节。
 
+- [x] **7.66 代理选项的「连通性测速」被拒时，原因留在测速块里，不再只活六秒；这条动作进了浏览器套件**
+      （**2026-11-01 第一百七十五轮**落地，提交 `72e9af28`；源码 2 处（一个纯函数 + 一个状态 + 一句话）+
+      单测 6 条 + 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.65
+      结尾点名的那一处，也是这一族里最后一块「只在丢会话 / 死服务端时才落到 toast」的面 —— 测速自己
+      能有的每种结果（已连通 / 超时 / 域名 / 拒绝 / TLS）都在 200 里回来、各自落在那一行上，只有请求
+      本身失败才是错误，而这一种**一个格子都填不上**：整块与按下按钮之前一模一样、六个目标都还写着
+      「未测试」，原因是一条盖在它上面的通知，六秒后连通知也没了。现在句子画在「测速」按钮与目标列表
+      之间（`role="alert"`、danger 色、限两行、整句挂悬停），一次运行只一句，下一次运行开始或保存换掉
+      它描述的路径时消失。「一条失败请求该不该换来一句话」提成纯函数
+      `probeRefusalFor()`（`packages/web/src/features/settings/proxy-probe.ts`）：同一轮只认第一句、
+      保存已经换掉的那一轮的回答不加不减。
+      `packages/web/e2e/proxy-probe-refusal.spec.mjs` 一条真服务端用例（探测路由桩成 500 `internal`）：
+      一次运行只在块里留一句、真发六条请求、通知区 0 个可点 toast、六个目标仍「未测试」且没有任何一行
+      在画它、七秒后仍在，随后让这一轮成功则句子消失、六行都填上。
+      **反证**：把 `proxy-section.tsx` 退回 `HEAD`、把新模块挪走、重建 Web 产物，同一份 spec **1 failed**
+      （死在块里 `getByRole("alert")` 的 `toHaveText` 上），放回后再跑 **1 passed**。
+      见「第一百七十五轮」一节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -2593,7 +2611,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-01 | 7.63 | **外观页两处主题导入被拒时，原因留在原地（对话框正文里 / 被点的那张主题库卡片上），不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/settings/theme-import.ts` 新增纯函数 `themeImportRefusal()`（409 `theme_exists` 是「问题」不是「拒绝」→ `null`，其余给 `themeImportErrorText` 那句；两个调用方此前各写一遍这条分支）、`theme-import-dialog.tsx` 多一个 `refusal` 状态（失败经它填、不再 `toastError`，开框 / 关框 / 切换来源 / 下一次尝试各清一次）画在正文底部、`theme-registry-section.tsx` 多一个 `{id, text}` 的 `refusal`（下一次尝试与每次重读目录清空）画在**被拒那张卡**的按钮下面（`role="alert"`、danger 色、限两行、整句挂 `data-tooltip`，引子复用 `S.common.refused`、**没有新增文案**）；+ 单测 3 条 + 新 spec 1 个（3 条）+ changelog 一对，**不碰接口、无新依赖**）：换了一族（7.19–7.62 收的是开关 / 写入被拒，这一条是「行内动作被拒后只剩 toast」的第一处）—— 导入对话框在失败时本来就留着，主题库的卡片更是一动不动，原因此前只剩一条六秒的 toast，屏上不止一张卡时连是哪一张都看不出来 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **274 文件 / 3367 通过 / 2 跳过**（+3 即本笔单测）· server **3020 通过 / 1 失败 / 15 跳过** —— 那条红仍是 `test/themes.test.ts`「放进去一份好主题」，**不是本笔**（第一百六十八～一百七十一轮已记过同一条：服务端测试读 core 的 dist，而 dist 里有另一条线在途未提交的调色桥；`grep -c PALETTE_BRIDGE` 在工作区的 `external-theme.ts` 里 5、在 `HEAD` 的同一文件里 0；本笔只动 `packages/web`）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r172`、服务端 **8998**（`HOST=::`）、仓库自带 mock LLM **8994**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **3 passed（22.3 s）**，放回最终源码重建 Web 产物后复跑仍 **3 passed**；两态探针（`r172/probe.mjs`，同一个服务端、只换 `dist`）—— 改后：被拒那张卡里 `role="alert"` **1 条**（249×32，`scrollHeight == clientHeight` 未截断）、旁的卡 **0 条**、通知区 **0 个**可点按钮、**7 秒后仍在**，对话框留着且地址原样；改前：卡片 **0 条** alert、通知区 **1 个**可点按钮（六秒后 **0 个**）、框里也 **0 条** —— 原因确实只活在 toast 里；两态 console 只有刻意造的 **404**（主题库那条）与 **400**（地址那条），无其它 error、无 pageerror（截图 `r172/shots-{after,before}/shot-{1-catalogue,2-card-refused,3-card-after-7s,4-dialog-filled,5-dialog-refused,6-dialog-after-7s}.png`）· **反证**：把三个源码文件退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed / 1 passed**（两处都死在「框里 / 卡片里找不到 alert」上，409 那条本来就不变）；放回、重建 → **3 passed** · 端口只用 8998 / 8994（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r172`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r172/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `68864f88` |
 | 2026-11-01 | 7.64 | **设置 → 通用「导入 Trace」被拒时，原因留在这一行下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：`packages/web/src/features/settings/trace-import-row.tsx` —— 新增纯函数 `traceImportSizeRefusal(fileName, sizeBytes)`（`.jsonl` 走 14MB、整会话 `.json` 包走服务端那 48MB，只看文件名与大小、不看内容）；组件多一个 `refusal` 状态，三条失败的路（服务端拒绝经共享的 `refusalText()`、超上限、FileReader 出错）都填它、不再 `toastError`，再选一个文件时清空；句子画在三个控件下面的一行（`role="alert"`、`line-clamp-2`、整句挂 `data-tooltip`、`w-full max-w-96` 让它在换行格里独占一行且不把控件挤走）；+ 单测 1 个文件 4 条 + 新 spec 1 个（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：换族之后的第二处，也是 7.63 结尾点名的两处之一 —— 这一行的三条失败路此前都只进一条六秒的 toast，而它被拒时什么都没写、三个控件原样不动 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 逐包 test **`EXIT=0`**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3371 通过 / 2 跳过**（+1 文件 +4 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过**（全绿，`themes.test.ts` 那条旧红已随另一条线的调色桥入库而转绿）· 改动文件 `prettier --check` 干净、`oxlint` **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r173b`、服务端 **8999**（`HOST=::`）、仓库自带 mock LLM **8995**、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（22.9 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；探针（`r173/probe.mjs`）量到被拒那一行：控件行 360×26 px（与改前一致）、句子 384×16 px 就在它下面（`scrollHeight == clientHeight` 未截断）、`role="alert"` 在读屏上与整句悬停里都在、**7 秒后仍在**；390 px 手机上句子 356×32 px（两行）、不出屏；两态 console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r173/shots/desktop-{1-before,2-refused,3-after-7s,4-phone}.png`）· **反证**：把 `trace-import-row.tsx` 退回 `HEAD`、重建 Web 产物 —— 同一份 spec **2 failed**（`row.getByRole("alert")` 一条都找不到），单独跑「改前」探针（`r173/probe-before.mjs`）量到行内 alert **0** 条、通知区 **2** 个可点 toast（成功 + 这句）、**七秒后 0 个**，截图 `r173/shots/before-{2-refused,3-after-7s}.png`；放回、重建 → **2 passed** · 端口只用 8999 / 8995（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r173b`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r173/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `eb3fad01` |
 | 2026-11-01 | 7.65 | **Workspace 选择器的「新建文件夹」被拒时，原因留在名称框下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/chat/workspace-finder.tsx` 多一个 `newFolderRefusal` 状态（服务端拒绝经共享的 `refusalText()` 填、不再 `toastError`，开框 / 换名字 / 下一次尝试开始时清空），句子画在名称框自己那一列里、输入框下面（`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`），为此这一行从「图标 + 输入框」改成「图标 \| 一列（输入框 + 句子）」；`workspace-finder-model.ts` 新增纯函数 `canMakeFolder()`（与服务端 `dirs.ts` 的 `dirNameError` 同一条规则：空串 / `.` / `..` / 两种分隔符 / NUL 都不是一段），发请求之前先判，带分隔符的名字因此一条请求都不发；3 条单测 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：被拒时名称框本来就留着（名字在、光标也放回框里，因为要改的是名字、再按 Enter 就是重试），原因此前只剩一条六秒的 toast，六秒后就是一个看起来没被碰过的框 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，195 接口 / 591 类型）· 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（4 文件）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **275 文件 / 3374 通过 / 2 跳过**（+3 条即本笔单测）· server **207 文件 / 3021 通过 / 15 跳过** · hmr 无测试文件 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r174`、服务端 **8973**（`HOST=::`）、仓库自带 mock LLM **8971**、系统 chromium 1280×900，临时 playwright 配置放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（13.1 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；两处坑——侧栏「新建工作区」在 390px 下是抽屉里的按钮（手机那一腿先按桌面宽度开框再改窗口），选择器的地址栏输入框失焦即把段落拼回去（`locator.fill()` 会在下一次解析时扑空，改成先给列表焦点 → Ctrl+L → 逐字敲 → Enter）· **两态读数**：桌面 1280×900 输入框 **536×24 px**（y=245）、句子 **536×16 px** 就在下面（y=273）、`role="alert"` 与整句悬停都在；390px 手机 输入框 **350×24**、句子 **350×16**、无横向溢出；console 只有刻意造的 **409**，无其它 error、无 pageerror（截图 `r174/{desktop,phone}.png`）· **反证**：把两个源码文件退回 `HEAD`、重建 Web 产物，同一份 spec **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：改前行内没有 alert，原因只在 toast 里），放回、重建后再跑 **2 passed** · 端口只用 8973 / 8971（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r174`，探针 / 临时配置 / 截图在 scratchpad 的 `r174/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
-
+| 2026-11-01 | 7.66 | **代理选项的「连通性测速」被拒时，原因留在测速块里，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/settings/proxy-probe.ts`（新，`ProxyProbeRefusal` + 纯函数 `probeRefusalFor(current, {run, liveRun, error})`：同一轮只认第一句、被保存换掉的那一轮一句话都不加也不减、下一轮的句子替换上一轮的；句子取自共享的 `refusalText()`）+ `proxy-section.tsx`（多一个 `probeRefusal` 状态：失败的那条请求填它、不再 `toastError`，运行开始与 `adopt()` 各清一次，句子画在按钮行与目标列表之间 —— `role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`）+ 单测 6 条 + 1 个新 spec + changelog 一对，**不碰接口、无新文案、无新依赖**）：这是 7.65 结尾点名的那一处，也是这一族里最后一块「只在丢会话 / 死服务端时才落到 toast」的面 —— 测速自己能得到的结果（已连通 / 超时 / 域名 / 拒绝 / TLS）都在 200 里回来、各落在那一行，只有请求本身失败是错误，而这一种一个格子都填不上，原来那句话只活在一条六秒的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 593 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** · cli **38 / 561** · web **277 文件 / 3385 通过 / 2 跳过**（+1 文件 +6 条即本笔单测）· server **208 文件 / 3038 通过 / 15 跳过** · hmr 无测试文件 · 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（38 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r175`、服务端 **8974**（`HOST=::`）、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **1 passed（9.7 s）**，按最终源码重建 Web 产物后复跑仍 **1 passed**；两态探针（`r175/probe.mjs`，同一个服务端、只换 `dist`）—— **改后**：块里 `role="alert"` **1 条**（「操作被拒绝：服务器内部错误，请稍后重试。」）、通知区 **0** 个可点 toast、**七秒后仍在**、六行仍「未测试」；**改前**：块里 **0 条** alert、通知区 **1** 个 toast（七秒后 **0** 个）、六行同样「未测试」；真发出去的请求两态都是 **6** 条；390 px 手机上句子 **356×16 px**、页面 `scrollWidth − clientWidth = 0` 不出屏；两态 console 只有刻意桩出的 6 条 500，无其它 error、无 pageerror（截图 `r175/shots-{after,before}/1-refused.png`、`2-after-7s.png` 与 `shots-phone/`）· **反证**：把 `proxy-section.tsx` 退回 `HEAD`、新模块挪走、重建 Web 产物，同一份 spec **1 failed**（死在块里 `getByRole("alert")` 的 `toHaveText` 上），放回、重建 → **1 passed** · 端口只用 8974（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r175`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r175/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `72e9af28` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -20121,3 +20139,87 @@ hmr/capabilities,http/routes/desktop,services/desktop-service,services/desktop-u
   `packages/web/test/workspace-finder.test.ts`、
   `packages/web/e2e/finder-new-folder-refusal.spec.mjs`、
   `changelog/unreleased/2026-11-01-finder-new-folder-refusal{,.zh}.md`）；台账（7.65、上表那一行、本节）另起一笔。
+
+## 第一百七十五轮：代理选项「连通性测速」被拒时，原因留在测速块里（2026-11-01，条目 7.66）
+
+### 为什么是这一条
+
+`待办` 里剩下的每一条都卡着：2.2c 的尾巴（桌面壳写侧 / 既有部署单元 / 画廊 mock）要么本轮纪律不许
+碰、要么是发布动作；3.5 要用户拍板取哪个桌面壳；3.6 要模型 key（卡点）；4.1–4.3 明令不动；5.6 的 core
+一半与 5.10 都在等用户一句话（促销搬进 Project 配置、mermaid 依赖）。这一族（7.19 起「被拒时原因留在
+原地，不再只活六秒」）是本线一直往下做的活，上一轮（7.65）结尾在「没做 / 留着」里点名了本轮的这处
+`proxy-section.tsx` 的探测 —— 于是本轮就是它，编号 7.66。
+
+这一处与前面几处不同的是：它**不是**「写了被拒」，而是「请求本身失败」（丢会话 / 死服务端）。测速自己
+能得到的每种结果（已连通 / 超时 / 域名 / 拒绝 / TLS）都在 200 里回来、各自落在那个目标那一行；只有请求
+失败才 reject。而这一种一个格子都填不上 —— 整块与按下按钮之前一模一样、六个目标都还写着「未测试」，
+原因只有一条六秒的通知，转头走开的人分不出「没测」和「测不了」。
+
+### 做了什么
+
+- `packages/web/src/features/settings/proxy-probe.ts`（新）：`ProxyProbeRefusal`（句子 + 它属于哪一轮）与
+  纯函数 `probeRefusalFor(current, {run, liveRun, error})`。这一块需要的两条规则都在这里：
+  - **一次运行只有一句**：一次运行会并发发出六条请求，丢会话时六条同样地失败，同一句话复制六份不是
+    六条信息；
+  - **被保存换掉的那一轮不说话**：`adopt()` 会把运行计数 +1，别的轮次还在飞的回答落地时不加也不减 ——
+    描述一条不再走的路径的句子，与保存会清掉的旧数字一样是错的。
+  句子本身取自共享的 `refusalText()`，因此没有新增文案。
+- `packages/web/src/features/settings/proxy-section.tsx`：多一个 `probeRefusal` 状态；失败的那条请求填它
+  （不再 `toastError`），运行开始与 `adopt()` 各清一次（原来那个局部的 `reported` 布尔量随之删掉，规则搬
+  进纯函数）；句子画在「测速」按钮行与目标列表之间 —— 它说的是这一轮，不属于任何单独一个目标 ——
+  `role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`。文件头注释补上这条规则的缘由。
+- 保存那条路上「地址以外的失败」仍是 toast（不在本条范围），水合失败也仍是 toast —— 它们的界面此刻
+  不是「看起来没被碰过的一个动作」，本条不动它们。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 593 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **131 / 1092** ·
+  cli **38 / 561** · web **277 文件 / 3385 通过 / 2 跳过**（+1 文件 +6 条即本笔单测）· server **208 文件 /
+  3038 通过 / 15 跳过** · hmr 无测试文件。
+- 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（38 文件）、`git diff --check` 干净。
+- **单测**（`packages/web/test/proxy-probe.test.ts`，6 条）：失败的请求画出它自己的句子；同一轮的第二条
+  拒绝保留第一句；被保存换掉的那一轮**不加也不减**（空着仍是空着、已有句子原样留着）；下一轮的句子替换
+  上一轮的；连不上时用客户端自己的措辞（`network_error` 不在错误码表里、句子是客户端建的）；什么信息都
+  没有的值退回通用那句。
+- **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r175`、服务端 **8974**（`HOST=::`）、
+  系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec
+  `proxy-probe-refusal.spec.mjs` **1 passed（9.7 s）**，按最终源码重建 Web 产物后复跑仍 **1 passed**。
+  探测路由桩成 500 `internal`（真去连六家厂商会让这条用例依赖外网），页面上的句子是应用自己的那句
+  「操作被拒绝：服务器内部错误，请稍后重试。」。
+- **两态读数**（`r175/probe.mjs`，同一个服务端、只换 `dist`）—— **改后**：块里 `role="alert"` **1 条**、
+  通知区 **0** 个可点 toast、**七秒后仍在**、六行仍「未测试」、真发出 **6** 条请求；**改前**：块里 **0 条**
+  alert、通知区 **1** 个可点 toast（七秒后 **0** 个）、六行同样「未测试」。390 px 手机上句子
+  **356×16 px**、页面 `scrollWidth − clientWidth = 0` 不出屏（手机腿与上一轮同样的坑：用户菜单在 390 下
+  在抽屉里，要**先按桌面宽度打开对话框**再改窗口）。两态 console 只有刻意桩出的 6 条 500，无其它 error、
+  无 pageerror（截图 `r175/shots-{after,before}/{1-refused,2-after-7s}.png` 与 `r175/shots-phone/`）。
+- **反证**：把 `proxy-section.tsx` 退回 `HEAD`、新模块挪走、重建 Web 产物 —— 同一份 spec **1 failed**
+  （死在块里 `getByRole("alert")` 的 `toHaveText` 上：改前块里一条 alert 都没有），放回、重建 → **1 passed**。
+- 端口只用 8974（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r175`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r175/` 下。
+
+### 没做 / 留着
+
+- 同一块里另外两处失败仍是 toast：水合失败（那时控件本就禁用、留在原地说不出更多）与保存时「地址以外
+  的失败」（`invalid_proxy_url` 本来就已经画在地址框下面）。要收的话是另一条，得先想清楚它们各自该画在
+  哪一行。
+- 这一族到此为止没有点名过的面了；往下的新条目从具体撞见的红或用户点单里出。
+
+### 与另一条线的交汇
+
+- 本轮开工时 `git status --short` 干净；**干活途中**另一条线开始写「插件市场读 npm」（server 的
+  `plugins.ts` / `plugin/registry.ts` 与两份 docs、`plugins/*/package.json`、`strings*.ts` 与一对
+  changelog）—— 那些文件本轮**一个没动**，提交时只带本笔自己的路径；两道门（typecheck 与逐包 test）
+  跑的是两边合起来的工作区，结果全绿。
+- 上游 `origin/main` 仍是 `a488bcb7a`（`git fetch` 两次都撞 `GnuTLS recv error (-110)`，改用
+  `api.github.com` 查到的 HEAD 与本地记录一致），所以本轮不涉及合并；本地比远端多出的那笔
+  （`8e1872bde`，插件库收下 gpu-model-serving）随本轮一起推上去。
+
+### 提交
+
+- 源码 + 单测 + 用例 + changelog：**`72e9af28`**（只带
+  `packages/web/src/features/settings/proxy-section.tsx`、
+  `packages/web/src/features/settings/proxy-probe.ts`、
+  `packages/web/test/proxy-probe.test.ts`、
+  `packages/web/e2e/proxy-probe-refusal.spec.mjs`、
+  `changelog/unreleased/2026-11-01-proxy-probe-refusal{,.zh}.md`；台账（7.66、上表那一行、本节）另起一笔。
