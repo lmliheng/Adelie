@@ -151,9 +151,13 @@ describe("imported themes", () => {
 
     const css = await (await t.app.request("/api/themes.css")).text();
     // Light first and both modes in one base rule, dark only what it changes — so the sheet needs
-    // no promise about which stylesheet the browser read first.
+    // no promise about which stylesheet the browser read first. The bridge rule after the dark one
+    // re-points Tailwind's gray rungs onto the theme's own tokens, which is how a theme makes the
+    // app's `bg-white` / `text-gray-500` follow it; this theme declares a canvas and a surface and
+    // no ink, so exactly those two rungs are bridged and only under `.dark` — the one mode it
+    // changes. (core's external-theme.test.ts pins the mapping in full.)
     expect(css).toContain(
-      '@layer ui-theme{\n:root[data-theme="warm-paper"],:root[data-theme="warm-paper"].dark{--ui-canvas:#f7f3ec;--ui-surface:#fffdf8}\n:root[data-theme="warm-paper"].dark{--ui-canvas:#16130f}\n}',
+      '@layer ui-theme{\n:root[data-theme="warm-paper"],:root[data-theme="warm-paper"].dark{--ui-canvas:#f7f3ec;--ui-surface:#fffdf8}\n:root[data-theme="warm-paper"].dark{--ui-canvas:#16130f}\n:root[data-theme="warm-paper"].dark{--color-gray-900:var(--ui-surface);--color-gray-950:var(--ui-canvas)}\n}',
     );
     // A preset is scoped to its own theme as well: it paints only under the theme that lists it.
     expect(css).toContain(

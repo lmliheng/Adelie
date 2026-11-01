@@ -23,6 +23,13 @@
  * base rule is the bare `:root` — which is why a half-filled theme warns rather than fails: it
  * paints, it is just more Primer than its author meant.
  *
+ * AND IT CARRIES THE PALETTE BRIDGE. Most of the app still paints with Tailwind palette classes
+ * (`bg-white`, `text-gray-500`, `border-gray-200`) rather than the token utilities the contract
+ * names, and a shipped theme keeps those following it by re-pointing Tailwind's `--color-gray-*`
+ * from its own values — the "gray bridge" at the top of `github.css` and `geek.css`. An imported
+ * theme cannot do that for itself (its names are the contract's own), so every theme this module
+ * writes gets the same bridge, out of its own tokens: see {@link PALETTE_BRIDGE_LIGHT}.
+ *
  * THE LAYERS ARE NAMED (`@layer ui-theme`, `@layer ui-accent`) for the same reason: an unlayered
  * rule beats every layered one, so an imported theme that declared `--ui-font-sans` unlayered
  * would override the user's own font pairing, which lives in `ui-font`, last of the three.
@@ -236,6 +243,88 @@ export function readExternalTheme(value: unknown): ExternalThemeRead {
   };
 }
 
+/**
+ * The palette bridge, light mode: every Tailwind gray rung the app still paints with, and the
+ * contract token whose meaning it carries. `github.css` declares the same correspondence for
+ * itself (`--ui-surface-muted` is its `--color-gray-50`, `--ui-line-muted` its `--color-gray-100`,
+ * `--ui-line` its `--color-gray-200`, and so on into the ink), and a shipped theme writes the table
+ * out by hand because its file IS css. An imported theme cannot: its values are confined to the
+ * contract's `--ui-*` names, so a file that arrived as data would leave every `bg-white`,
+ * `bg-gray-50` and `text-gray-500` in the app on the default theme's ramp — which is why a dark
+ * imported theme showed dark `bg-white` cards (that one rung IS bridged by the default theme, to
+ * `var(--ui-surface)`) with white `bg-gray-50` bands, light `border-gray-200` borders and unreadable
+ * `text-gray-700` ink beside them. This module writes the bridge for it, out of its own tokens.
+ *
+ * WHY EVERY VALUE IS A REFERENCE AND NOT A COLOUR. `var(--ui-surface-muted)` is not this theme's
+ * `--color-gray-50` — it is whatever that token means in the mode the rule matches, so ONE table
+ * serves a light and a dark theme, and a theme that changes a token in `dark` moves the rung with
+ * it. A literal would pin the rung to a single mode, which is exactly the failure being fixed.
+ */
+const PALETTE_BRIDGE_LIGHT: ReadonlyArray<readonly [string, string]> = [
+  ["--color-gray-50", "--ui-surface-muted"],
+  ["--color-gray-100", "--ui-line-muted"],
+  ["--color-gray-200", "--ui-line"],
+  ["--color-gray-300", "--ui-line-emphasis"],
+  ["--color-gray-400", "--ui-fg-subtle"],
+  ["--color-gray-500", "--ui-fg-muted"],
+  ["--color-gray-600", "--ui-fg-muted"],
+  ["--color-gray-700", "--ui-fg"],
+  ["--color-gray-800", "--ui-fg"],
+  ["--color-gray-900", "--ui-fg-emphasis"],
+  ["--color-gray-950", "--ui-fg-emphasis"],
+];
+
+/**
+ * The palette bridge, dark mode. The ramp inverts its roles: `dark:` pairs spell the washes, lines
+ * and fills on the rungs the light side keeps for ink, and the ink on the rungs it keeps for
+ * borders. The rungs follow `geek.css`, the one shipped theme that writes its dark bridge out with
+ * its reasons — 100 carries the body ink, 300 and 400 the muted ink, 500 the subtle, 700 and 800
+ * the lines, 900 the raised fill a panel sits on and 950 the recessed one.
+ *
+ * THREE RUNGS DEPART FROM THAT SHAPE, because the app's own usage says its dark ramp is not a pure
+ * inversion: 50 stays a wash (nothing in the app spells `dark:*-50`, while `bg-gray-50` is a wash
+ * in both modes), 200 follows the lines rather than the ink (its unpaired use is `border-gray-200`,
+ * a border either way), and `--color-white` is absent on purpose — the default theme makes it
+ * `var(--ui-surface)` in every mode, which is what a card wants and what a text on a fill does not
+ * need since those fills are accents.
+ */
+const PALETTE_BRIDGE_DARK: ReadonlyArray<readonly [string, string]> = [
+  ["--color-gray-50", "--ui-surface-muted"],
+  ["--color-gray-100", "--ui-fg"],
+  ["--color-gray-200", "--ui-line"],
+  ["--color-gray-300", "--ui-fg-muted"],
+  ["--color-gray-400", "--ui-fg-muted"],
+  ["--color-gray-500", "--ui-fg-subtle"],
+  ["--color-gray-600", "--ui-fg-subtle"],
+  ["--color-gray-700", "--ui-line"],
+  ["--color-gray-800", "--ui-line"],
+  ["--color-gray-900", "--ui-surface"],
+  ["--color-gray-950", "--ui-canvas"],
+];
+
+/**
+ * One bridge rule's declarations, for the rungs whose token this theme actually declares.
+ *
+ * A rung whose token the theme leaves out is SKIPPED rather than defaulted: the default theme's
+ * own value for that token is often an alias back to the rung being set (`--ui-fg` is
+ * `var(--color-gray-900)` there), and a bridge entry pointing at it would make the two names
+ * reference each other — a cycle, which css resolves by throwing away BOTH values. The theme's own
+ * value is skipped for the same reason: a file that spells `--ui-line: var(--color-gray-200)` wants
+ * the default ramp it inherited, not a loop through its own name.
+ */
+function paletteBridge(
+  rungs: ReadonlyArray<readonly [string, string]>,
+  declared: Readonly<Record<string, string>>,
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [name, token] of rungs) {
+    const value = declared[token];
+    if (value === undefined || value.includes("--color-")) continue;
+    out[name] = `var(${token})`;
+  }
+  return out;
+}
+
 function declarations(tokens: Readonly<Record<string, string>>): string {
   return Object.entries(tokens)
     .map(([name, value]) => `${name}:${value}`)
@@ -257,8 +346,21 @@ export function externalThemeCss(theme: ExternalTheme): string {
   const [base, baseDark] = roots(theme.id, null);
   out.push("@layer ui-theme{");
   out.push(`${base},${baseDark}{${declarations(theme.light)}}`);
-  if (theme.dark !== undefined && Object.keys(theme.dark).length > 0) {
-    out.push(`${baseDark}{${declarations(theme.dark)}}`);
+  // The palette bridge follows the rule it bridges (and the dark one follows the dark rule, which
+  // is what lets it win that selector: both carry `.dark`, so the later rule is the one that holds).
+  const lightBridge = paletteBridge(PALETTE_BRIDGE_LIGHT, theme.light);
+  if (Object.keys(lightBridge).length > 0) {
+    out.push(`${base},${baseDark}{${declarations(lightBridge)}}`);
+  }
+  const dark = theme.dark;
+  if (dark !== undefined && Object.keys(dark).length > 0) {
+    out.push(`${baseDark}{${declarations(dark)}}`);
+    // A theme with no dark rule keeps its own values in dark mode, and this bridge keeps its light
+    // mapping with them; one is emitted only where the theme says what dark changes.
+    const darkBridge = paletteBridge(PALETTE_BRIDGE_DARK, { ...theme.light, ...dark });
+    if (Object.keys(darkBridge).length > 0) {
+      out.push(`${baseDark}{${declarations(darkBridge)}}`);
+    }
   }
   out.push("}");
   const accents = theme.accents ?? [];

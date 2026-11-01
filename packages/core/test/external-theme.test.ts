@@ -165,6 +165,105 @@ describe("externalThemeCss", () => {
     expect(externalThemesCss([])).toContain("no imported themes");
     expect(externalThemesCss([read(VALID)])).toContain('data-theme="warm-paper"');
   });
+
+  /**
+   * The palette bridge: most of the app still spells `bg-white` / `text-gray-500` /
+   * `border-gray-200`, and a shipped theme keeps those following it by re-pointing Tailwind's
+   * `--color-gray-*` from its own values. An imported theme cannot declare those names itself, so
+   * without this it paints its own tokens dark and leaves every palette-class rung on the default
+   * theme's ramp — dark cards with white header bands, light borders and unreadable ink.
+   */
+  const FULL = {
+    id: "full",
+    name: "Full",
+    light: {
+      "--ui-canvas": "#ffffff",
+      "--ui-surface": "#ffffff",
+      "--ui-surface-muted": "#f1f0ee",
+      "--ui-line-muted": "#eeeeee",
+      "--ui-line": "#dddddd",
+      "--ui-line-emphasis": "#cccccc",
+      "--ui-fg-subtle": "#999999",
+      "--ui-fg-muted": "#777777",
+      "--ui-fg": "#222222",
+      "--ui-fg-emphasis": "#000000",
+    },
+    dark: {
+      "--ui-canvas": "#111111",
+      "--ui-surface": "#1a1a1a",
+      "--ui-surface-muted": "#222222",
+      "--ui-line": "#333333",
+      "--ui-fg": "#eeeeee",
+      "--ui-fg-emphasis": "#ffffff",
+    },
+  };
+
+  it("re-points Tailwind's gray ramp onto the theme's own tokens, in both modes", () => {
+    const css = externalThemeCss(read(FULL));
+    // Light: the correspondence the default theme declares for itself, expressed in this theme's
+    // tokens instead of its literals — so a dark imported theme moves the whole ramp with it.
+    expect(css).toContain(
+      ':root[data-theme="full"],:root[data-theme="full"].dark{--color-gray-50:var(--ui-surface-muted);' +
+        "--color-gray-100:var(--ui-line-muted);--color-gray-200:var(--ui-line);" +
+        "--color-gray-300:var(--ui-line-emphasis);--color-gray-400:var(--ui-fg-subtle);" +
+        "--color-gray-500:var(--ui-fg-muted);--color-gray-600:var(--ui-fg-muted);" +
+        "--color-gray-700:var(--ui-fg);--color-gray-800:var(--ui-fg);" +
+        "--color-gray-900:var(--ui-fg-emphasis);--color-gray-950:var(--ui-fg-emphasis)}",
+    );
+    // Dark: the ramp inverts — the low rungs carry the ink, the high ones the fills. Emitted after
+    // the light bridge, which is what lets it win the `.dark` selector the two share.
+    expect(css).toContain(
+      ':root[data-theme="full"].dark{--color-gray-50:var(--ui-surface-muted);' +
+        "--color-gray-100:var(--ui-fg);--color-gray-200:var(--ui-line);" +
+        "--color-gray-300:var(--ui-fg-muted);--color-gray-400:var(--ui-fg-muted);" +
+        "--color-gray-500:var(--ui-fg-subtle);--color-gray-600:var(--ui-fg-subtle);" +
+        "--color-gray-700:var(--ui-line);--color-gray-800:var(--ui-line);" +
+        "--color-gray-900:var(--ui-surface);--color-gray-950:var(--ui-canvas)}",
+    );
+    // `--color-white` is left to the default theme: it is `var(--ui-surface)` there in every mode.
+    expect(css).not.toContain("--color-white");
+    // The dark bridge is the LATER of the two, which is what makes it win the `.dark` selector they
+    // share (same specificity, so the cascade decides by position).
+    expect(css.indexOf("--color-gray-100:var(--ui-fg)")).toBeGreaterThan(
+      css.indexOf("--color-gray-100:var(--ui-line-muted)"),
+    );
+  });
+
+  it("bridges only the rungs whose token this theme declares", () => {
+    // `warm-paper` declares ink and a canvas and nothing else: no line, wash or subtle rung is
+    // bridged, because pointing one at a token the default theme aliases back onto that same rung
+    // would leave css with a cycle — which it resolves by discarding both values.
+    const css = externalThemeCss(read(VALID));
+    expect(css).toContain(
+      ':root[data-theme="warm-paper"],:root[data-theme="warm-paper"].dark' +
+        "{--color-gray-700:var(--ui-fg);--color-gray-800:var(--ui-fg)}",
+    );
+    expect(css).not.toContain("--color-gray-200");
+    expect(css).not.toContain("--color-gray-500");
+    expect(css).not.toContain("--color-gray-50:");
+  });
+
+  it("leaves a rung alone when the theme's own value is an alias back into the palette", () => {
+    const css = externalThemeCss(
+      read({
+        id: "aliased",
+        name: "Aliased",
+        light: { "--ui-line": "var(--color-gray-200)", "--ui-fg": "#222222" },
+      }),
+    );
+    expect(css).toContain("--ui-line:var(--color-gray-200)");
+    expect(css).not.toContain("--color-gray-200:var(--ui-line)");
+    // The rung beside it, whose token is a plain colour, is still bridged.
+    expect(css).toContain("--color-gray-700:var(--ui-fg)");
+  });
+
+  it("writes no dark bridge for a theme that only sets light values", () => {
+    const css = externalThemeCss(
+      read({ id: "bare", name: "Bare", light: { "--ui-fg": "#111111", "--ui-canvas": "#ffffff" } }),
+    );
+    expect(css).toContain("--color-gray-700:var(--ui-fg)");
+    expect(css).not.toContain("--color-gray-950");
+  });
 });
 
 describe("the id pattern", () => {
