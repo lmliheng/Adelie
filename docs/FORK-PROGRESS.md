@@ -20630,3 +20630,10 @@ hmr/capabilities,http/routes/desktop,services/desktop-service,services/desktop-u
 
 源文件 + 单测 + spec + changelog：**`d4549d2ee`**（7 文件 / +305 −23，含两份 changelog 与 152 行 spec）；
 台账（7.68 的待办行、上表那一行、本节）另起一笔。
+
+**推送走了 api.github.com**：这一轮 `github.com:443` 两次都不通（先是 `GnuTLS recv error (-110)`，
+加上 `-c http.version=HTTP/1.1` 后变成「134 秒后连不上 443」），而 `api.github.com` 一直可达。于是按台账的
+老办法用 Git Data API 复现同一批提交：逐个文件建 blob、以父提交的树为 `base_tree` 建树、建提交（作者、
+提交者、时间戳、说明一律照抄本地那份），最后把 `refs/heads/main` 移过去 —— 建出来的三个对象 sha 与本地
+**逐字相同**（`a82ada9181` / `002c7cc453` / `87bdb7408`），所以远端 main 就是本地 HEAD。脚本留在
+scratchpad 的 `r179/push-api.py`。下一轮先 `git fetch`：若 443 通了就正常 push，不通就还走这条路。
