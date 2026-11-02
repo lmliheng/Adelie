@@ -2006,6 +2006,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `packages/web/e2e/plugins-read-refusal.spec.mjs` 一条真服务端用例（`GET /api/admin/plugin-config`
       桩成 500 `internal`）：页面上一条句子、零张卡片、通知区 0 个可点 toast、七秒后仍在，放开后离开
       再回来句子消失、沙盒那张卡片画出来。见「第一百八十一轮」一节。
+- [x] **7.71 插件卡片保存被拒（而服务端没点名字段）时，原因留在卡片上、保存按钮的正上方，不再只活
+      六秒**（**2026-11-02 第一百八十二轮**落地，提交见「已完成的轮次」；源码 2 处（一个新纯函数 + 一个
+      状态 / 一处渲染 / 一处分支改写），单测 7 条 + 1 个新 spec（1 条）+ changelog 一对，**不碰接口、
+      无新文案、无新依赖**）：这是第一百八十一轮结尾在「没做 / 留着」里点名的第一处 —— 服务端校验不过
+      时点名字段、那句话画在字段下面，这一半一直是对的；但保存还能以**不点名任何字段**的方式失败
+      （配置组在页面底下没了 404 `plugin_config_unknown`、登录过期、500、机器连不上），此前它们只进
+      一条六秒的通知，通知一走每个输入框都还是原样，看上去就是「点了没反应」。现在那句留在这张卡片里
+      （`role="alert"`、危险色、限两行、整句挂悬停、引子复用 `S.common.refused`），留到下一次点保存
+      （先清空）或换了机器 / 重新挂载。「落在哪一格」提成纯函数 `pluginSaveRefusal()`。
+      `packages/web/e2e/plugin-config-save-refusal.spec.mjs` 一条真服务端用例（配置读桩成一张只有文本
+      框的卡片、写桩成 500 `internal`）：卡片上一条句子、通知区 0 个可点 toast、输入框里的值没变、
+      七秒后仍在，放开拒绝再点同一颗保存按钮句子消失、第二次请求发出。见「第一百八十二轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2693,6 +2705,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 
 | 2026-11-02 | 7.69 | **设置 →「服务器」→「上传限制」读不出来时，原因留在两个输入框上面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 4 处 —— `packages/web/src/features/settings/server-switch-read.ts` **改名**成 `settings-read.ts` 并泛化（第三个页面开始问同一个问题）：`SettingsRead<T>` + `readServerSettings(pick)` 读一次 `GET /api/admin/settings`、把 pick 出来的那部分交回（一个布尔，或这一页要的那对数），失败仍收成 `{status:"unread",reason}` 而**从不抛出**，`settingsReadRefusal(read)` 同前（共享 `refusalText()` 外面套 `S.common.refused` 引子，读到了返回 null）；`agent-api-section.tsx` / `company-section.tsx` 只跟着改名，语义一字未动；`uploads-section.tsx` 把 `settings: ServerSettings \| null` 收成 `stored: {maxMb,totalMb} \| null`（`adopt()` 因此只认这两个数）、多一个 `loadRefusal` 画在两个输入框**上面**（`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`；读那条路不再 `toastError`，写的那条路一个字没动）+ 单测 8 条（上一轮 6 条沿用 + 2 条新的）+ 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是第一百七十九轮「没做 / 留着」点名的第一处，也是这一族（7.19–7.68「被拒之后只剩 toast」）在设置页里最后两块「读失败」中的第二块 —— 两个数字都要等服务端的值到达才能填，读失败留下的是两个灰着、空着的框加一条六秒的通知 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **282 文件 / 3430 通过 / 2 跳过**（+1 文件 +8 条即改名后的 `settings-read.test.ts`）· server **211 文件 / 3077 通过 / 17 跳过**（与前一轮同数，本笔只动 `packages/web`）· hmr 无测试文件 · 改动文件、单测、spec 与 changelog 一对 `prettier --check` 干净、`oxlint` 改动面 **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 ×2 + 真浏览器两态**（两份 `dist`：`r180/{after,before}-dist`，主包 md5 `6d4fcb89…` / `d05b13ca…` 两端核过是两份不同的东西；一次性数据根 `/root/adelie-fork-data/r180{a,b}`、服务端 **8991**（改后）/ **8993**（改前）、仓库自带 mock LLM **8992**、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec `uploads-read-refusal.spec.mjs` **1 passed（9.2 s）**；两态探针 `r180/probe.mjs`（同一份 `GET /api/admin/settings` 桩成 500，同一套读数）—— **改后**：区里 `role="alert"` **1 条**（542×16 px，y=190，就在两个输入框上面）、两个输入框 `disabled` 且为空、通知区 **0** 个可点 toast、**七秒后句子仍在**；放行后离开这一页再回来 → alert **0** 条、两个框可用、值是服务端存着的 **100 / 120**（`reads` 计数确认真的重发了请求）。**改前**（两份源码退回 `HEAD` 的那份产物）：区里 **0 条** alert、两个框同样停用且为空、通知区**当场 1 个**可点 toast（「服务器内部错误，请稍后重试。」）、**七秒后 0 个** —— 原因确实只活在 toast 里；放行后同样回到 100 / 120（这一半两态一致，确属同一件事）。两态 console 只有刻意桩出的 **500**，无 pageerror（截图 `r180/shots/{after,before}-{refused,refused-late,healed}.png`）· **反证**：同一份 spec 在改前产物上 **1 failed**（死在区里 `getByRole("alert")` 的 `toHaveText` 上：改前区里没有 alert），改后产物 **1 passed** · **相邻回归**：上一轮的 `server-switch-read-refusal.spec.mjs`（两个开关页跟着改名后）**2 passed（9.1 s + 9.0 s）** · 端口只用 8991 / 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r180{a,b}`，探针 / 临时配置 / 两态产物 / 截图 / `test-results` 在 scratchpad 的 `r180/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d8c1f6f80a` |
 | 2026-11-02 | 7.70 | **设置 →「插件」读不出来时，原因留在页面上，不再只剩一个空页与一条六秒的通知；这条动作进了浏览器套件**（不是移植：源码 4 处 —— 新增 `packages/web/src/features/settings/plugin-config-read.ts`（`pluginConfigUnreadable(name, reason)`：机器点名，本机用自己的措辞，不把选择器上那个光秃秃的「本机」塞进机器的句式），`plugins-section.tsx` 失败时收成空列表并把那句话留下、两种共用同一条 `role="alert"` 的提示条、读这条路上不再 `toastError`（远程机器失败时说的是什么一字未动），`strings.ts` / `strings-en.ts` 新增 `plugins.thisServerUnreadable`；另加新单测 4 条、新 spec 1 条与 changelog 一对） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· 改动面六个文件 `oxlint` **0 警告 0 错误** · 同六个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **283 文件 / 3434 通过 / 2 跳过**（+1 文件、+4 用例）· server **211 文件 / 3077 通过 / 17 跳过**（与前一轮同数，本笔只动 `packages/web`）· **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r181`、服务端 **8994**、仓库自带 mock LLM **8995**、系统 chromium 1280×900，两份 `dist`（本笔 / 源码退回 `HEAD` 的改前态）先后挂上去，探针把 `GET /api/admin/plugin-config` 桩成 500 `internal`：**改前** 页面上 `role="alert"` **0 条**、section 的 innerText **为空**（真是一张空页）、通知区 **1 个**可点 toast、七秒后 **0 个**、卡片 0；**改后** 一条 alert「无法读取本机的插件：服务器内部错误，请稍后重试。」（542×32 px，y=190，就在卡片本该出现的地方）、卡片 0、通知区 **0 / 0**（根本没有 toast）、七秒后那句话仍在；两态放开拒绝后离开再回来都画出沙盒那张卡片（`[data-plugin-config="sandbox"]`，正文「沙盒 sandbox 启用 保存」），spec 里 `reads` 计数确认真的重发了请求 · 新 spec `plugins-read-refusal.spec.mjs` **1 passed（9.5 s）** · **反证**：同一份 spec 跑改前产物 **1 failed**（死在 section 里 `getByRole("alert")` 的 `toHaveText` 上：改前那里没有 alert），放回、重建后再跑 **1 passed** · **相邻回归（真浏览器四个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 + `plugins-install-refusal` 2 + `proxy-settings-refusal` 2 **9 passed（36.1 s）** · 端口只用 8994 / 8995（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r181`，探针 / 临时 playwright 配置 / 两态读数 / 截图 / `test-results` 在 scratchpad 的 `r181/` 下（`packages/web/dist` 是产物，未 `git add`；e2e 里的临时配置与探针跑完已移出仓库）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e6a996181` |
+| 2026-11-02 | 7.71 | **插件卡片保存被拒（而服务端没点名字段）时，原因留在卡片上、保存按钮的正上方，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/settings/plugin-config-save.ts`（新，35 行：`pluginSaveRefusal(error)` 答「这次被拒该落在哪一格」—— `plugin_config_invalid` 且消息以 `"<字段>"` 开头就交回那个字段名（单元格的 `<字段>.<行>.<列>` 原样带过去，表格自己会在下面列出来），其余一律 `field: null` 即这张卡片；文案仍走 `refusalText()`：应用有译文的码按译文说，没有的就照服务端写的那样说）+ `plugins-section.tsx`（多一个按卡片名记的 `saveRefusals`：开始保存时清掉这一张的、失败且没点名字段时写上、保存成功 / 改动机器 / 重新挂载时清空；卡片里保存按钮**上方**画一条 `role="alert"` 的危险色句子（限两行、整句挂 `data-tooltip`、引子复用共享的 `S.common.refused`），`toastError` 从这条路上撤掉 —— 安装那条路一个字没动；点名字段的那一支原样保留，只是判定搬进了上面的纯函数）+ 单测 7 条 + 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是第一百八十一轮「没做 / 留着」点名的第一处，也是这一族（7.19–7.70「被拒之后只剩 toast」）在设置页里剩下的最后一个**写**点 —— 服务端校验不过时点名字段、那句话画在字段下面，这一半一直是对的；但保存还能以**不点名任何字段**的方式失败（配置组在页面底下没了 404 `plugin_config_unknown`、登录过期、500、机器连不上），此前它们只进一条六秒的通知，通知一走卡片上每个输入框都还是原样，看上去就是「点了没反应」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔不动服务契约）· 改动面 4 个文件 `oxlint` **0 警告 0 错误** · 同 4 个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **284 文件 / 3441 通过 / 2 跳过**（+1 文件、+7 条即本笔单测） · server **211 文件 / 3077 通过 / 17 跳过**（第一次整包跑时 `test/terminal-stream.test.ts` 的 permessage-deflate 那条红了一次，单跑该文件 **18 全过**、整包重跑 **3077 全过** —— 全量并发下的时序，与本笔只动 `packages/web` 无关） · **真服务端 ×2 + 真浏览器两态（同一份探针）**：一次性数据根 `/root/adelie-fork-data/r182`、服务端 **8986**（`HOST=127.0.0.1`）、仓库自带 mock LLM **8931**、系统 chromium 1280×900，两份 `dist` 先后挂上去（`GET /api/admin/plugin-config` 桩成一张只有文本框的卡片、`PUT` 桩成 500 `internal`）：**改前** 拒绝后卡片里 `role="alert"` **0 条**、通知区 **1 个**可点 toast、输入框仍是「探针取值」；**七秒后 0 条 alert 且 0 个 toast** —— 原因彻底没了，卡片看上去像没被点过；**改后** 卡片里 **1 条**「操作被拒绝：服务器内部错误，请稍后重试。」（508×16 px，y=318，就在保存按钮上方、红色 `oklch(0.577 0.245 27.325)`）、通知区 **0 个**、**七秒后仍在**；放开拒绝再点同一颗按钮 → alert **0** 条、1 条成功 toast、`writes` 2。两态 console 只有刻意桩出的 **500**，无 pageerror（截图 `r182/{after-final,before}/{1-before,2-refused,3-refused-late,4-healed}.png`） · 新 spec `plugin-config-save-refusal.spec.mjs` **1 passed（9.0 s）** · **反证**：两个源码文件退回 `HEAD`、新模块与单测挪走、重建 Web 产物，同一份 spec **1 failed**（死在 `card.getByRole("alert")` 的 `toHaveText` 上：改前卡片里没有 alert），放回、重建 → **1 passed** · **相邻回归（真浏览器五个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 + `plugins-install-refusal` 2 + `plugins-read-refusal` 1 + 本笔 1 **9 passed（35.4 s）** · 端口只用 8986 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r182`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r182/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`；e2e 里那两个临时文件跑完已移出仓库） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `19e42b9c4` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -20837,3 +20850,87 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 
 源文件 + 单测 + spec + changelog：**`e6a996181`**（8 文件 / +307 −11）；台账（7.70 的待办行、上表那一行、
 本节）另起一笔。
+
+## 第一百八十二轮：插件卡片保存被拒时，原因留在卡片上（2026-11-02，条目 7.71）
+
+### 开工自检
+
+`main` 在 `dd0927423`（第一百八十一轮之后那一笔台账），`git status --short` **干净**；`git fetch origin`
+把远端拉到同一个号，`git merge --ff-only origin/main` 报 `Already up to date`。没有切分支、没碰
+`legacy/main`、没推 upstream。
+
+### 选活：表上仍全卡着，于是收第一百八十一轮点名的那一处「写」
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（拍板）、**3.6**（模型
+key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。第一百八十一轮「没做 / 留着」按顺序
+点名了两处，第一处是**插件卡片的保存**：
+
+- 设置 →「插件」每张卡片自己保存，走 `PUT /api/admin/plugin-config`。服务端校验不过时**点名字段**
+  （`plugin_config_invalid`，消息以 `"<字段>"` 开头），那句话画在那个字段下面 —— 这一半一直是对的。
+- 但保存还能以**不点名任何字段**的方式失败：配置组在页面底下没了（`404 plugin_config_unknown` ——
+  插件或后端被卸掉）、登录过期、服务端 500、机器连不上。这些此前只进一条六秒的通知（`toastError`），
+  通知一走，卡片上每个输入框都还是原样 —— 看上去就是「点了没反应」，而保存按钮其实就是重试。
+
+### 做了什么
+
+- `packages/web/src/features/settings/plugin-config-save.ts`（新）：`pluginSaveRefusal(error)` —— 一次
+  被拒的保存该落在哪一格。`plugin_config_invalid` 且消息以 `"<字段>"` 开头就交回那个字段名
+  （表格单元格的 `<字段>.<行>.<列>` 原样带过去，表格自己会在下面列出它们），其余一律 `field: null`
+  即这张卡片。文案走 `refusalText()`：应用有译文的码按译文说（`internal` 有），没有的就照服务端写
+  的那样说 —— 点名字段那一支此前就是这么读的，一个字没变。为什么不抛、为什么落在卡片上，写在
+  模块头里（7.19 那条全应用口径）。
+- `packages/web/src/features/settings/plugins-section.tsx`：多一个按卡片名记的 `saveRefusals` ——
+  开始保存时清掉这一张的、失败且没点名字段时写上、改动机器或重新挂载时整体清空；卡片里**保存按钮
+  上方**画一条 `role="alert"` 的危险色句子（限两行、整句挂 `data-tooltip`、引子复用共享的
+  `S.common.refused`）。`toastError` 从这条路上撤掉（安装那条路一个字没动）；点名字段那一支原样
+  保留，只是判定搬进了上面的纯函数。模块头的「保存怎么失败」一段跟着补齐。
+- 没有新文案、没有新接口、没有新依赖：那句话用的是共享引子，`S.common.refused()`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** ·
+  cli **38 / 561** · web **284 文件 / 3441 通过 / 2 跳过**（+1 文件、+7 条即本笔单测）·
+  server **211 文件 / 3077 通过 / 17 跳过** —— 第一次整包跑时 `test/terminal-stream.test.ts` 的
+  permessage-deflate 那条红了一次，**单跑该文件 18 全过、整包重跑 3077 全过**（全量并发下的时序；
+  本笔只动 `packages/web`）。
+- 改动面 4 个文件 `oxlint` **0 警告 0 错误**；同 4 个文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r182`、
+  服务端 **8986**、仓库自带 mock LLM **8931**、系统 chromium 1280×900。配置读桩成一张只有文本框的
+  卡片、写桩成 500 `internal`，两份 `dist` 先后挂上去：
+
+  | 量点 | 改前（源码退回 `HEAD` 的那份产物） | 改后（本笔） |
+  | --- | --- | --- |
+  | 卡片里的 `role="alert"` | **0 条** | **1 条**（508×16 px，y=318，就在保存按钮上面） |
+  | 那一行的颜色 | — | `oklch(0.577 0.245 27.325)`（危险色） |
+  | 通知区可点 toast（当场 / 七秒后） | **1 个 / 0 个** | **0 / 0** —— 根本没有 toast |
+  | 七秒后卡片上那句话 | 没有（0 条 alert、0 个 toast，原因彻底没了） | 仍在 |
+  | 输入框里的值 | 「探针取值」（没被写、也没被清） | 同左 |
+  | 放开后同一颗按钮 | 1 条成功 toast、`writes` 2 | 同左（alert 归 0） |
+
+  两态 console 只有刻意桩出的 **500**，无 pageerror；截图
+  `r182/{after-final,before}/{1-before,2-refused,3-refused-late,4-healed}.png`。
+- 新 spec `plugin-config-save-refusal.spec.mjs` **1 passed（9.0 s）**。
+- **反证**：两个源码文件退回 `HEAD`、新模块与单测挪走、重建 Web 产物 → 同一份 spec **1 failed**
+  （死在 `card.getByRole("alert")` 的 `toHaveText` 上：改前卡片里没有 alert），放回、重建 → **1 passed**。
+- **相邻回归（真浏览器五个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 +
+  `plugins-install-refusal` 2 + `plugins-read-refusal` 1 + 本笔 1 **9 passed（35.4 s）**。
+- 端口只用 8986 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r182`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r182/` 下
+  （`packages/web/dist`、`test-results` 都是产物，未 `git add`；e2e 里那两个临时文件跑完已移出仓库）。
+
+### 没做 / 留着
+
+- 第一百八十一轮点名的**第二处**：安装之后那次重读失败（`installOffered` 的 `catch` → `toastError`）。
+  它不在水合这一族里、也不是「保存被拒」：卡片与草稿都还在，提示行与动作都已经是新的，重试是下一次
+  动作。留给下一轮，视它是不是值得为一条「装完之后读不到」单独开一张提示。
+- 服务端的两条码 `plugin_config_invalid` / `plugin_config_unknown` 在 `S.errors.byCode` 里**没有译文**，
+  所以字段行与卡片上那句话照服务端写的英文说。这是一处**既有**的缺口（字段行一直如此），不是本笔
+  引入的；要不要补译文、补了会不会盖掉服务端点名的字段与原因，是另一件事，值单独一条。
+- 2.2c 的尾巴、3.5 / 3.6、5.6 / 5.10、4.1–4.3 仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源文件 + 单测 + spec + changelog：**`19e42b9c4`**（6 文件 / +422 −10）；台账（7.71 的待办行、
+上表那一行、本节）另起一笔。
