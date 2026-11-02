@@ -12,7 +12,10 @@
  * nothing is written until its Save, which sends each changed entry of the card in one PUT. A secret field always starts empty and shows
  * the stored value's mask under it: blank keeps what is stored, typing replaces it, and the
  * clear checkbox drops it. The server validates against the same schema and answers a
- * rejected field by name, which renders under that field.
+ * rejected field by name, which renders under that field; a save it refuses for any other
+ * reason (the group went away, the session expired, the machine is unreachable) keeps the
+ * reason on the card, above its Save — the drafts are untouched, so that button is the retry
+ * (plugin-config-save.ts).
  *
  * Each server keeps its own values, so the page edits one machine at a time: a picker at the
  * top switches between this server and the machines the Project holds a connection to, and
@@ -26,8 +29,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { PluginConfigEntry, PluginConfigField } from "@adelie/server/api";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
+import { toneInk } from "../../lib/tone";
 import { useLocale } from "../../state/locale";
 import { localizedText } from "../chat/skill-use";
 import { apiErrorText } from "../../lib/api-error";
@@ -55,6 +58,7 @@ import { ConfigField } from "./plugin-config-field";
 import { ConfigHeading } from "./plugin-config-heading";
 import { withLiveParts } from "./plugin-config-live";
 import { pluginConfigUnreadable } from "./plugin-config-read";
+import { pluginSaveRefusal } from "./plugin-config-save";
 import { SandboxBackendPrompt } from "./sandbox-backend-prompt";
 import {
   Button,
@@ -96,6 +100,13 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   /** Secret fields whose stored value the next Save drops, keyed `<plugin>\0<field>`. */
   const [clearing, setClearing] = useState<Set<string>>(new Set());
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  /**
+   * Why a card's save was refused for a reason that names no field — the group went away under
+   * the page, the session expired, the server errored, the machine is unreachable — keyed by the
+   * card's name. Drawn just above the Save button that is its retry, rather than as a toast: the
+   * drafts are exactly as they were, so a card that looks untouched is the worse answer.
+   */
+  const [saveRefusals, setSaveRefusals] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
   /**
    * A group action awaiting confirmation, with its own title. A plugin cannot mark an action
@@ -150,6 +161,8 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
     setEntries(null);
     setLoadError(null);
     setFieldErrors({});
+    // A sentence about a save describes the values another machine (or another mount) held.
+    setSaveRefusals({});
     void api.adminGetPluginConfig(machine).then(
       (config) => {
         if (!cancelled) adopt(config.plugins);
@@ -265,6 +278,12 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
       return;
     }
     setBusy(card.name);
+    // Another attempt: the sentence about the last one is stale from this moment on.
+    setSaveRefusals((prev) => {
+      const next = { ...prev };
+      delete next[card.name];
+      return next;
+    });
     for (const [entry] of updates) clearErrorsOf(entry.name);
     try {
       for (const [entry, values] of updates) {
@@ -274,14 +293,14 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
           if (saved !== undefined) adoptOne(saved);
           else adopt(res.plugins);
         } catch (e) {
-          // A rejected field is named in the message as `"field" …`; it renders under that field.
-          const named =
-            e instanceof ApiError && e.code === "plugin_config_invalid"
-              ? /^"([^"]+)"/.exec(e.message)?.[1]
-              : undefined;
-          if (named !== undefined) {
-            setFieldErrors({ [`${entry.name}\0${named}`]: apiErrorText(e) });
-          } else toastError(apiErrorText(e));
+          // A rejected field is named in the message as `"field" …`, and renders under that
+          // field; anything else is about the card that asked, and stays there (7.71).
+          const refusal = pluginSaveRefusal(e);
+          if (refusal.field !== null) {
+            setFieldErrors({ [`${entry.name}\0${refusal.field}`]: refusal.text });
+          } else {
+            setSaveRefusals((prev) => ({ ...prev, [card.name]: refusal.text }));
+          }
           return;
         }
       }
@@ -497,6 +516,7 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
       <FocusCard focus={focus} ready={entries.length > 0} />
       {cards.map((card) => {
         const children = entries.filter((e) => e.parent === card.name);
+        const saveRefusal = saveRefusals[card.name] ?? null;
         return (
           <section
             key={card.name}
@@ -528,6 +548,19 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
                 {fields(child)}
               </div>
             ))}
+            {/* The save's own failure, above the button that is its retry — the fields are
+                exactly as they were, so nothing else on this card would say it. Clamped to two
+                lines with the whole of it on hover, because a server's words run long. */}
+            {saveRefusal !== null && (
+              <p
+                role="alert"
+                data-tooltip={S.common.refused(saveRefusal)}
+                data-tooltip-content="text"
+                className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+              >
+                {S.common.refused(saveRefusal)}
+              </p>
+            )}
             <div className="flex justify-end">
               <Button
                 size="sm"
