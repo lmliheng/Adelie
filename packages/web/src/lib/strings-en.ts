@@ -2767,6 +2767,8 @@ export const en: Strings = {
     sharedCannotRemove: "Enabled on all machines: remove it in the All machines view.",
     machineUnreadable: (name: string, reason: string) =>
       `Could not read what ${name} runs: ${reason}`,
+    /** The same line about this server: the picker's bare label does not fit the machine phrasing. */
+    thisServerUnreadable: (reason: string) => `Could not read this server's plugins: ${reason}`,
     /** Header icon button opening the Settings dialog on its Plugins page (admin only). */
     openSettings: "Plugin settings",
     pageDesc:

@@ -54,6 +54,7 @@ import type { Draft } from "./plugin-config-draft";
 import { ConfigField } from "./plugin-config-field";
 import { ConfigHeading } from "./plugin-config-heading";
 import { withLiveParts } from "./plugin-config-live";
+import { pluginConfigUnreadable } from "./plugin-config-read";
 import { SandboxBackendPrompt } from "./sandbox-backend-prompt";
 import {
   Button,
@@ -115,7 +116,11 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   const { machineIds, machineLabels } = useSessions();
   /** The machine whose settings the page shows and saves: null for this server. */
   const [machine, setMachine] = useState<string | null>(null);
-  /** Why the picked machine's settings could not be read, when they could not. */
+  /**
+   * Why the settings on screen could not be read — the sentence drawn where the cards would be,
+   * null when the read landed. It is about this server or the picked machine (`nameOf`), and it
+   * stays until another machine is picked or the page is opened again.
+   */
   const [loadError, setLoadError] = useState<string | null>(null);
   const nameOf = (id: string) => machineLabels.get(id) ?? id;
   const projectId = useProject().currentProject?.projectId ?? null;
@@ -151,14 +156,14 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
       },
       (e: unknown) => {
         if (cancelled) return;
-        if (machine === null) {
-          toastError(apiErrorText(e));
-          return;
-        }
-        // A machine that cannot answer — no connection, or a build without these routes —
-        // shows an empty page with the reason, not this server's settings under its name.
+        // A read that failed leaves no settings to draw: an empty page that says why, rather
+        // than this server's settings under a machine's name. The reason stays on screen —
+        // the page is blank in this state, so a toast would be the only account of it there
+        // ever was, and it is gone six seconds later.
         adopt([]);
-        setLoadError(apiErrorText(e));
+        setLoadError(
+          pluginConfigUnreadable(machine === null ? null : nameOf(machine), apiErrorText(e)),
+        );
       },
     );
     return () => {
@@ -478,9 +483,15 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   return (
     <SettingsSection>
       {picker}
-      {machine !== null && loadError !== null && (
-        <NoticeStrip tone="attention" as="p" className="rounded-md px-3 py-2 text-xs">
-          {S.plugins.machineUnreadable(nameOf(machine), loadError)}
+      {loadError !== null && (
+        <NoticeStrip
+          tone="attention"
+          as="p"
+          // The page is empty under it, so this line is the whole account of the state.
+          role="alert"
+          className="rounded-md px-3 py-2 text-xs"
+        >
+          {loadError}
         </NoticeStrip>
       )}
       <FocusCard focus={focus} ready={entries.length > 0} />

@@ -2812,6 +2812,12 @@ export const zh = {
     /** Remove is unavailable in a machine's view for a plugin the shared table lists. */
     sharedCannotRemove: "已对所有机器启用：请在「所有机器」视图中移除。",
     machineUnreadable: (name: string, reason: string) => `无法读取 ${name} 运行的插件：${reason}`,
+    /**
+     * The same line about this server, whose plugins the page draws when no machine is picked:
+     * the picker's label cannot be glued into the machine phrasing — it is a bare
+     * "This server" and would read as if it were a machine's name.
+     */
+    thisServerUnreadable: (reason: string) => `无法读取本机的插件：${reason}`,
     /** Header icon button opening the Settings dialog on its Plugins page (admin only). */
     openSettings: "插件设置",
     pageDesc:
