@@ -19,7 +19,7 @@ import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
-import { readServerSwitch, serverSwitchRefusal } from "./server-switch-read";
+import { readServerSettings, settingsReadRefusal } from "./settings-read";
 
 /** Turns the switch off on the server. Reached only through the confirm. */
 const switchOffAgentApiServer = (): Promise<ServerSettingsResponse> =>
@@ -82,13 +82,13 @@ export function AgentApiSection() {
 
   useEffect(() => {
     let cancelled = false;
-    void readServerSwitch((settings) => settings.agentApiEnabled).then((read) => {
+    void readServerSettings((settings) => settings.agentApiEnabled).then((read) => {
       if (cancelled) return;
       if (read.status === "read") {
         setStored(read.value);
         setEnabled(read.value);
       } else {
-        setLoadRefusal(serverSwitchRefusal(read));
+        setLoadRefusal(settingsReadRefusal(read));
       }
     });
     return () => {

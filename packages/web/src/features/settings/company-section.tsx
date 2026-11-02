@@ -22,7 +22,7 @@ import { apiErrorText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
 import { useAuth } from "../../state/auth";
 import { writeCompanyMode } from "./company-mode-write";
-import { readServerSwitch, serverSwitchRefusal } from "./server-switch-read";
+import { readServerSettings, settingsReadRefusal } from "./settings-read";
 
 export function CompanySection() {
   const { refresh } = useAuth();
@@ -37,13 +37,13 @@ export function CompanySection() {
 
   useEffect(() => {
     let cancelled = false;
-    void readServerSwitch((settings) => settings.companyMode).then((read) => {
+    void readServerSettings((settings) => settings.companyMode).then((read) => {
       if (cancelled) return;
       if (read.status === "read") {
         setStored(read.value);
         setCompanyMode(read.value);
       } else {
-        setLoadRefusal(serverSwitchRefusal(read));
+        setLoadRefusal(settingsReadRefusal(read));
       }
     });
     return () => {

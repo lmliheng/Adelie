@@ -9,22 +9,39 @@
  * that goes stale. A value outside it is refused by the server with `invalid_attachment_limit`
  * and rendered inline under the field, the same way the proxy section handles a bad address.
  *
+ * Both fields stay disabled until the stored numbers arrive, so a read that fails leaves two dead
+ * fields showing nothing — which is why the reason is drawn above them rather than in a toast that
+ * dismisses itself: the reader has to be told why, and leaving the page and coming back is the
+ * retry (`readServerSettings`).
+ *
  * Saving takes effect immediately — the attachment validators and the request body cap both
  * read the setting per request — so there is nothing to restart and nothing to warn about.
  */
 import { useEffect, useState } from "react";
-import type { ServerSettings } from "@adelie/server/api";
 import { Button, Input, SettingsSection, toastError, toastInfo, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { useAuth } from "../../state/auth";
+import { readServerSettings, settingsReadRefusal } from "./settings-read";
+
+/** The two numbers this page is about, as they are stored. */
+interface StoredLimits {
+  maxMb: number;
+  totalMb: number;
+}
+
+const limitsOf = (settings: {
+  attachmentMaxMb: number;
+  attachmentTotalMb: number;
+}): StoredLimits => ({ maxMb: settings.attachmentMaxMb, totalMb: settings.attachmentTotalMb });
 
 export function UploadsSection() {
   const { uploadLimits, refresh } = useAuth();
-  /** Stored settings as hydrated on mount (null until then) — the no-change baseline. */
-  const [settings, setSettings] = useState<ServerSettings | null>(null);
+  /** Stored limits as hydrated on mount (null until then) — the no-change baseline. */
+  const [stored, setStored] = useState<StoredLimits | null>(null);
   // Kept as strings: a number input that clears to NaN cannot be typed into (backspacing the
   // last digit would snap the field back to a value the user is in the middle of replacing).
   const [maxMb, setMaxMb] = useState("");
@@ -38,33 +55,31 @@ export function UploadsSection() {
     max: boolean;
     total: boolean;
   } | null>(null);
+  /** Why the settings could not be read, drawn above the fields it left dead (null once read). */
+  const [loadRefusal, setLoadRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   /** Adopt server-side truth: the baseline and the drafts move together. */
-  const adopt = (next: ServerSettings) => {
-    setSettings(next);
-    setMaxMb(String(next.attachmentMaxMb));
-    setTotalMb(String(next.attachmentTotalMb));
+  const adopt = (next: StoredLimits) => {
+    setStored(next);
+    setMaxMb(String(next.maxMb));
+    setTotalMb(String(next.totalMb));
   };
 
   useEffect(() => {
     let cancelled = false;
-    void api
-      .adminGetSettings()
-      .then((res) => {
-        if (!cancelled) adopt(res.settings);
-      })
-      .catch((e: unknown) => {
-        // Controls stay disabled; leaving and returning to the section retries the fetch.
-        if (!cancelled) toastError(apiErrorText(e));
-      });
+    void readServerSettings(limitsOf).then((read) => {
+      if (cancelled) return;
+      if (read.status === "read") adopt(read.value);
+      else setLoadRefusal(settingsReadRefusal(read));
+    });
     return () => {
       cancelled = true;
     };
   }, []);
 
   const save = async () => {
-    if (settings === null || busy) return;
+    if (stored === null || busy) return;
     const parsedMax = Number(maxMb.trim());
     const parsedTotal = Number(totalMb.trim());
     // Shape-check locally so an empty or non-numeric field never becomes a NaN in the request
@@ -79,7 +94,7 @@ export function UploadsSection() {
       });
       return;
     }
-    if (parsedMax === settings.attachmentMaxMb && parsedTotal === settings.attachmentTotalMb) {
+    if (parsedMax === stored.maxMb && parsedTotal === stored.totalMb) {
       toastInfo(S.common.noChangesToSave);
       return;
     }
@@ -90,7 +105,7 @@ export function UploadsSection() {
         attachmentMaxMb: parsedMax,
         attachmentTotalMb: parsedTotal,
       });
-      adopt(res.settings);
+      adopt(limitsOf(res.settings));
       // The composer reads the limits from /api/me, so re-pull them: without this the tab that
       // just raised the cap would keep refusing files at the old number until the next reload.
       await refresh().catch(() => {});
@@ -106,7 +121,7 @@ export function UploadsSection() {
     }
   };
 
-  const hydrated = settings !== null;
+  const hydrated = stored !== null;
   return (
     <SettingsSection
       actions={
@@ -120,6 +135,18 @@ export function UploadsSection() {
         </Button>
       }
     >
+      {/* Why the two fields are dead: the read failed, so neither holds a stored number. Drawn
+          first, because the fields below it do not represent the server in this state. */}
+      {loadRefusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={loadRefusal}
+          data-tooltip-content="text"
+          className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {loadRefusal}
+        </p>
+      )}
       <Input
         label={S.settings.attachmentMaxMb}
         required
