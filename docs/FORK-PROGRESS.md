@@ -1974,6 +1974,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       danger 色、限两行、整句挂悬停；「什么拒绝画在哪一个槽」提成纯函数
       `proxySaveRefusal()`（`packages/web/src/features/settings/proxy-save-refusal.ts`：
       `invalid_proxy_url` 落地址框，其余落设置区）。见「第一百七十八轮」一节。
+- [x] **7.68 两个服务器开关（Agent API / 公司模式）读不出来时，原因留在开关下面，不再只活六秒；
+      这条动作进了浏览器套件**（**2026-11-02 第一百七十九轮**落地，提交见「已完成的轮次」；源码 3 处
+      （一个新模块 + 两个状态与两句话）+ 单测 6 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、
+      无新文案、无新依赖**）：这是第一百七十八轮结尾在「没做 / 留着」里点名的第一处 —— 这两页各是一个
+      服务端级开关，都等到服务端的值到达才能用，所以一次读失败留下的是一个灰着的开关，而原因只活在一条
+      六秒的通知里，六秒后屏上什么都没有。现在那句话画在开关下面（被拒的写入本来就在用的那一行：
+      `role="alert"`、danger 色、限两行、整句挂悬停），留到离开这一页再回来 —— 重新挂载即重新拉取，
+      那就是重试。`readServerSwitch()` / `serverSwitchRefusal()`
+      （`packages/web/src/features/settings/server-switch-read.ts`）收着「一次失败的读取变成哪句话」。
+      见「第一百七十九轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2657,6 +2667,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-01 | 5.61 | **删除大 Agent 不再卡住应用**（上游 `4dca3c66` `#1348` 移植，照改动落、不是合分支；30 文件 / +1562 −48，其中 server 11 个（新增 `services/tree-purge.ts`、`agent-service.ts` 的 moveAside/startPurge/resumeDeletions、`202 {deletion}` 与新的进度路由）、ui 3 个（新增 `ProgressToasts`）、web 5 个（新增 `agent-deletion-progress.ts`、删除改走 202 的答案、`agent_folder_busy` 一句文案）、ui-gallery 的 mock、文档两份与 changelog 一对）：删除不再在请求里 `await fs.rm` —— 目录一次 rename 进 `agents/.deleting/`、删索引行、`202 {deletion}` 返回，内容由新服务在后台以两个并发槽删除，进度经 `GET …/agent-deletions/:deletionId` 读出，下次启动 `resumeDeletions()` 接着删；移不走就 409 `agent_folder_busy`、什么都不删；列表只列「目录仍是 Agent」的行，半删的幽灵行不再出现；界面侧新增 `ProgressToasts`，超过 600ms 才出卡片。**本地化**：workbench / 机器侧 Agent / 「组织员工」那三处本树没有，未落；上游用例的 `durableDatabase` / `restartTestApp` 换成直接调 `resumeDeletions()`，另补一条不依赖权限位的 resume 用例 | 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，196 接口 / 594 类型）· ui-gallery `typecheck` `EXIT=0` · 逐包 test **0 失败**：core **1456** / 6 跳过 · ui **1100**（+8 即本笔）· cli **561** · web **3389** / 2 跳过（+4 即本笔）· server **209 文件 / 3041 通过 / 17 跳过**（+1 文件；跳过的两条按权限位，root 下必跳）· oxlint 0 警告 0 错误、prettier 干净 · **真服务端 + 真浏览器**（数据根 `/root/adelie-fork-data/r176`、**8991**、系统 chromium 1280×900）：35,721 条目的 Agent，`DELETE` **202 / 318ms** 返回、目录 **294ms** 离开 agents 目录、卡片 **939ms** 出现（「正在删除 Agent「r176_big」」+「已删除 20,567 / 35,721 项」）、**2,357ms** 读到 done，列表里只剩 `General Agent`，console **0 error**、无 ≥400；截图 `r176/1-card.png` 与 `r176/result.json` 在 scratchpad · **改前那一态的真浏览器读数没做**（要退回源码重建），替代证据是同一轮量到的请求 318ms / 后台 2,357ms 三个数 | `8de40b0f4` |
 | 2026-11-02 | 7.67 | **代理选项的保存被拒（地址以外的原因）、以及设置读不出来时，原因都留在设置区里，不再只活六秒；这两条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/settings/proxy-save-refusal.ts`（新，27 行：`ProxySaveRefusal` + 纯函数 `proxySaveRefusal(error)` → `{field: "address" \| "section", text}`，`invalid_proxy_url` 落地址框、其余落设置区，句子走共享的 `refusalText()`）+ `proxy-section.tsx`（多两个状态：`saveRefusal`（下一次保存开始时清空）、`loadRefusal`（重新挂载时自然清掉），两条失败的路不再 `toastError`；读不出来那句画在控件**上面**（先读到它，且此刻开关与地址显示的是表单默认值），保存那句画在地址下面、保存按钮上面（它就是这次保存的重试）—— 都是 `role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`；7.66 的测速块不动）+ 单测 5 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是第一百七十五轮「没做 / 留着」点名的两处，也是 7.63–7.66 那一族里「写被拒」之外剩下的两块「只在请求失败时才落到 toast」的面 —— 保存被拒时什么都没写、表单原样不动；读不出来时每个控件都停用、显示的是表单默认值，而页面对此一个字都不留 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 594 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **280 文件 / 3416 通过 / 2 跳过**（+1 文件 +5 条即本笔的 `proxy-save-refusal.test.ts`）· server **209 文件 / 3051 通过 / 17 跳过** · hmr 无测试文件 · 改动文件与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（4 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r178`、服务端 **8967**（`HOST=::`）、仓库自带 mock LLM **8966**、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec **2 passed（9.4 s + 9.1 s）**，按最终源码重建 Web 产物后复跑仍 **2 passed**；两态探针（`r178/probe.mjs`，同一个服务端、只换 `dist`）—— **改后**：读不出来那句 `role="alert"` **1 条**（542×16 px，y=190，就在两个开关上面，未截断）、两个开关 / 地址 / 保存 / 测速**全 disabled**、通知区 **0** 个可点 toast、**七秒后仍在**；保存被拒那句 **1 条**（542×16 px，y=333，地址下面、保存上面）、表单仍留着敲进去的 `http://127.0.0.1:9`、通知区 **0**、七秒后仍在。**改前**（`proxy-section.tsx` 退回 `HEAD` 重建）：两处 **0 条** alert，通知区各 **1** 个可点 toast（「服务器内部错误，请稍后重试。」），**七秒后 0 个** —— 原因确实只活在 toast 里；两态 console 只有刻意桩出的 **2 条 500**，无其它 error、无 pageerror（截图 `r178/shots-{after,before}/` 各 4 张）· **反证**：同一份 spec 在改前产物上 **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：行内没有 alert），放回、重建 → **2 passed** · 端口只用 8967 / 8966（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r178`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r178/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-02 | 5.62 | **终端在移动网络下不再假死，断了会自己重连**（上游 `f52617695` `#639` 移植，照改动落、不是合分支；16 文件 / +1683 −108：server 8 个（新增 `terminal/link-quality.ts`、`stream.ts` 的心跳与按链路测量的窗口/水位、`ws.ts` 的 permessage-deflate、`frames.ts` 的 Ping/Pong、两个测试文件）、web 5 个（新增 `terminal-connection.ts`（336 行）与它的 22 条用例、`terminal-view.tsx` 把 socket 的一生交出去并让尺寸静置、`terminal-page.tsx` 把 `reconnecting` 画成警示色、两份文案表各一句「重连中」）、changelog 一对）：两端互相 Ping/Pong 探测（负载原样回显、往返时延由此得出），服务端每 15 秒探一次、对应答过探测之后又沉默 75 秒的观察者用 `terminate` 关掉；页面按有界退避自己重新接入、由服务端的 `Restore` 快照整屏重绘，`online` / `visibilitychange` 把等待收成立刻重试，拨号 / 存在探测 / 唤醒探测各带时钟、同一时刻只有一次接入在途；合并窗口跟随实测往返（5–50ms）、背压高水位从固定 1MB 改成 0.75 秒的时间界、容器尺寸静置 120ms 后只发行列真变了的那一次；流上开了 permessage-deflate（13 位窗口、不保留客户端上下文），小帧由发送方逐条判定不压。**兼容**：只有应答过探测的对端才会被沉默判决（`answersProbes`），新旧两端混跑互不伤害。**本地化**：16 个文件本树全有、三方试落零冲突，没有要舍弃的上游功能；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 594 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **279 文件 / 3411 通过 / 2 跳过**（+1 文件 +22 条即本笔的 `terminal-connection.test.ts`）· server **209 文件 / 3051 通过 / 17 跳过**（+10 条即本笔的终端用例）· 改动 14 个文件 `prettier --check` 干净、`oxlint` 改动面 **0 警告 0 错误**（30 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r177`、服务端 **8991**（`HOST=::`）、系统 chromium 1280×900，探针 `r177/probe.mjs` 在页面里把链路「切断」：已有的 socket 永久吞掉收发、新拨号一律到手就关，派发 `online` 模拟手机重新注册网络）：**改前**（`terminal-view.tsx` / `terminal-page.tsx` 退回 `HEAD` 重建）状态自始至终卡在「已连接」、断链 8 秒后仍是「已连接」、恢复网络后敲的命令**到不了 pty**（`capture` 里没有 `R177AFTER`）——正是「假死」；**改后** 转「重连中」（8 秒后仍在）、恢复网络后回到「已连接」，`capture` 里既有断链前的 `R177BEFORE`（快照重绘回来的）也有恢复后敲的 `R177AFTER`；两态 console **0 error**、无 pageerror（截图 `r177/shots-{before,after}/` 各 5 张） · 端口只用 8991（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r177`，探针 / 截图 / 消息文件在 scratchpad 的 `r177/` 下（`packages/*/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `be87f4d3f` |
+| 2026-11-02 | 7.68 | **两个服务器开关（Agent API / 公司模式）读不出来时，原因留在开关下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/settings/server-switch-read.ts`（新，43 行：`readServerSwitch(pick)` 读一次 `GET /api/admin/settings`，答 `{status:"read",value}` 或 `{status:"unread",reason}`，**失败从不抛出**（这两页自己没有什么可重试的）；`serverSwitchRefusal(read)` 把后者变成本地化的那句 —— 共享 `refusalText()` 外面套共享的 `S.common.refused` 引子，读到了返回 null）+ `agent-api-section.tsx` 与 `company-section.tsx`（各多一个 `loadRefusal` 状态，画在开关下面、`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`；读那条路不再 `toastError`，写的那条路一个字没动）+ 单测 6 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是第一百七十八轮「没做 / 留着」点名的第一处，也是同一族（7.19–7.67「被拒之后只剩 toast」）在设置页里最后两块「读失败」中的第一块 —— 两个开关都要等服务端的值到达才能用，所以读失败留下的是一个灰着的开关 + 一条六秒的通知，通知一走就什么都不剩 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 594 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **281 文件 / 3422 通过 / 2 跳过**（+1 文件 +6 条即本笔的 `server-switch-read.test.ts`）· server **209 文件 / 3051 通过 / 17 跳过**（与前一轮同数，本笔不动它）· hmr 无测试文件 · 改动文件、单测、spec 与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（5 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r179`、服务端 **8979**（`HOST=::`）、仓库自带 mock LLM **8978**、系统 chromium 1280×900，临时 playwright 配置与两个探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec `server-switch-read-refusal.spec.mjs` **2 passed（9.3 s + 9.0 s）**；两态探针 `r179/probe.mjs`（同一个服务端、只换 `dist`）—— **改后**：Agent API 区里 `role="alert"` **1 条**（542×16 px，y=236，就在开关下面）、开关 `disabled`；公司模式区里同样 **1 条**（542×16 px，y=222）、开关停用；两处通知区 **0** 个可点按钮，**七秒后仍在**；放行后再进这一页 → 两处 alert **0** 条、开关 `enabled`，值分别是「开」（服务端默认）与「关」。**改前**（两个源码文件退回 `HEAD`、重建 Web 产物）：两处区里 **0 条** alert，`r179/toast.mjs` 在开关旁边当场量到 **1 条**通知（「服务器内部错误，请稍后重试。」）、**七秒后 0 条** —— 原因确实只活在 toast 里，而灰着的开关一个字都没有。两态 console 只有刻意桩出的 500（各 1–2 条），无 pageerror · **反证**：同一份 spec 在改前产物上 **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：区里没有 alert），放回、重建 → **2 passed** · 端口只用 8979 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r179`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r179/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d4549d2ee` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -20538,3 +20549,84 @@ hmr/capabilities,http/routes/desktop,services/desktop-service,services/desktop-u
 
 源文件 + 用例 + changelog：见下一笔（5 个文件：新纯函数、改动的设置区、单测、e2e spec、changelog 一对）；
 台账（7.67 的待办行、上表那一行、本节）另起一笔。
+
+## 第一百七十九轮：两个服务器开关读不出来时，原因留在开关下面（2026-11-02，条目 7.68）
+
+### 开工自检
+
+`main` 在 `74338dd50`（另一条线的 0.6.2 发布提交），`git status --short` **干净**。第一次 `git fetch origin`
+撞 `GnuTLS recv error (-110)`，第二次就通了；`merge --ff-only origin/main` 报 `Already up to date`。上游
+`main` 逐条核过（`api.github.com` 的 commits），尖端仍是 **`e2bc3fbf3a`**，即第一百七十八轮记的那两笔
+纯文档提交，没有可以整块落的产品代码。
+
+### 选活：表上仍全卡着，于是收第一百七十八轮点名的第一处
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（拍板）、**3.6**（模型 key）、
+**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）；7.19–7.67 那一族「被拒之后只剩 toast」在
+设置页里还剩几块「读失败」的面，第一百七十八轮在「没做 / 留着」里按顺序点了名，第一处就是
+`agent-api-section.tsx` / `company-section.tsx` 的水合。两页形状与刚修完的代理选项一模一样：
+
+1. **Agent API**（设置 → 服务器 → Agent API）。开关要等服务端的 `agentApiEnabled` 到达才可用。
+2. **公司模式**（设置 → 服务器 → 公司模式）。同上，等 `companyMode`。
+
+读失败时：开关一直 `disabled`、显示的其实是组件自己的初始值（一个 `true`、一个 `false`），而原因只进了一条
+六秒的通知 —— 六秒后就是一个谁都读不到的开关，页面对它一个字都没有。写入被拒时这两页**本来就有**一行
+「操作被拒绝：…」，所以这次不用新造面，只是让读失败也落在同一行上。
+
+### 做了什么
+
+- `packages/web/src/features/settings/server-switch-read.ts`（新，43 行）：`ServerSwitchRead` =
+  `{ status: "read", value }` | `{ status: "unread", reason }`；
+  `readServerSwitch(pick)` 读一次 `GET /api/admin/settings` 并把失败收成后者（**从不抛出** —— 这两页自己
+  没有什么可重试的，离开再回来才是重试）；`serverSwitchRefusal(read)` 把失败变成本地化的那句（共享
+  `refusalText()` 外套共享的 `S.common.refused` 引子），读到了返回 `null`。两页共用一份，省掉两段各写一遍的
+  effect。
+- `agent-api-section.tsx` / `company-section.tsx`：各多一个 `loadRefusal` 状态，画在开关下面 ——
+  `role="alert"`、danger 色、`line-clamp-2 break-words`、整句挂 `data-tooltip`，与被拒写入那一行同一种写法；
+  只由重新挂载清掉。读那条路不再 `toastError`（`toastError` 的 import 随之拿掉），写的那条路一个字没动。
+  两处文件头都补了一句「读失败说在哪里、重试在哪里」。
+- changelog 一对：`changelog/unreleased/2026-11-02-server-switch-read-refusal{,.zh}.md`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 594 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** ·
+  cli **38 / 561** · web **281 文件 / 3422 通过 / 2 跳过**（+1 文件、+6 条即本笔的 `server-switch-read.test.ts`）·
+  server **209 文件 / 3051 通过 / 17 跳过**（与第一百七十八轮同数，本笔不动它）。
+- 改动文件、单测、spec 与 changelog 一对 `prettier --check` 干净，`oxlint` **0 警告 0 错误**（5 文件），
+  `git diff --check` 干净。
+- **真服务端 + 真浏览器（两态）**：一次性数据根 `/root/adelie-fork-data/r179`、服务端 **8979**（`HOST=::`）、
+  仓库自带 mock LLM **8978**、系统 chromium 1280×900，临时 playwright 配置与两个探针放 `packages/web/e2e/`
+  里跑、跑完移出仓库。新 spec `server-switch-read-refusal.spec.mjs` **2 passed（9.3 s + 9.0 s）**；两态读数
+  （`r179/probe.mjs`，同一个服务端、只换 `dist`）：
+
+  | 量点 | 改前（两个源码文件退回 `HEAD`） | 改后（本笔） |
+  | --- | --- | --- |
+  | Agent API：区里 `role="alert"` | **0 条** | **1 条**（542×16 px，y=236，开关下面） |
+  | Agent API：开关 | `disabled`、显示 `true`（组件初值） | 同上，解释就在下面 |
+  | 公司模式：区里 `role="alert"` | **0 条** | **1 条**（542×16 px，y=222） |
+  | 公司模式：开关 | `disabled`、显示 `false`（组件初值） | 同上 |
+  | 通知区（开关旁边当场量） | **1 条**「服务器内部错误，请稍后重试。」，**七秒后 0 条** | 改后**一次都没有** |
+  | 放行后再进这一页 | — | 两处 alert **0** 条、开关 `enabled`，值分别是开（服务端默认）与关 |
+
+  两态 console 只有刻意桩出来的 500（改前 1 条、改后 2 条 —— 各节一次读），无 pageerror；截图
+  `r179/{after,before}-{agent-api,company}-refused.png` 与 `r179/{after,before}-toast-{early,late}.png`。
+- **反证**：把 `agent-api-section.tsx` / `company-section.tsx` 退回 `HEAD`、新模块留着不引即不参与构建，
+  重建 Web 产物，同一份 spec **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：区里没有 alert）；
+  放回本笔、重建 → **2 passed**。
+- 端口只用 8979 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r179`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r179/` 下
+  （`packages/web/dist` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 这两页**写入**被拒那一行还是老写法（没有 `role="alert"`、没有两行截断与悬停），改成与读那一行同一种写法
+  是另一条 —— 它一直留在屏上，不属于「只活六秒」这一族。
+- 设置页里同类「读失败只剩一条 toast」的面还剩两处：`uploads-section.tsx` 的读取与
+  `plugins-section.tsx` 的水合（`storage-section.tsx` 那几处是动作被拒，属另一族）。
+- 2.2c 的尾巴、3.5 / 3.6、5.6 / 5.10、4.1–4.3 仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源文件 + 单测 + spec + changelog：**`d4549d2ee`**（7 文件 / +305 −23，含两份 changelog 与 152 行 spec）；
+台账（7.68 的待办行、上表那一行、本节）另起一笔。
