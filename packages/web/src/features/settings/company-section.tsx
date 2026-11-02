@@ -8,18 +8,21 @@
  * backfilling what was missed, and only brings the mode switch back — nobody's shell moves into
  * company mode by it (state/company.tsx). A write that fails puts the switch back on the stored
  * value and names the reason on a line under it (a toast would leave the switch and the message
- * on separate surfaces). The auth context is refreshed afterwards because the shell reads the
+ * on separate surfaces). A settings read that fails names the reason on that same line: the
+ * switch stays disabled until a stored value arrives, and leaving the page and coming back is
+ * the retry. The auth context is refreshed afterwards because the shell reads the
  * flag from /api/me, not from this page. The mode is a beta; the line under the switch says so
  * wherever the switch stands.
  */
 import { useEffect, useState } from "react";
-import { SettingsSection, ToggleRow, toastError } from "@adelie/ui";
+import { SettingsSection, ToggleRow } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
 import { useAuth } from "../../state/auth";
 import { writeCompanyMode } from "./company-mode-write";
+import { readServerSwitch, serverSwitchRefusal } from "./server-switch-read";
 
 export function CompanySection() {
   const { refresh } = useAuth();
@@ -29,19 +32,20 @@ export function CompanySection() {
   const [companyMode, setCompanyMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>(undefined);
+  /** Why the settings could not be read, drawn on the same line under the switch (null once read). */
+  const [loadRefusal, setLoadRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void api
-      .adminGetSettings()
-      .then((res) => {
-        if (cancelled) return;
-        setStored(res.settings.companyMode);
-        setCompanyMode(res.settings.companyMode);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) toastError(apiErrorText(e));
-      });
+    void readServerSwitch((settings) => settings.companyMode).then((read) => {
+      if (cancelled) return;
+      if (read.status === "read") {
+        setStored(read.value);
+        setCompanyMode(read.value);
+      } else {
+        setLoadRefusal(serverSwitchRefusal(read));
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -83,6 +87,17 @@ export function CompanySection() {
         />
         {/* The reason the switch went back, under the switch it went back on. */}
         {error !== undefined && <p className={`mt-2 text-xs ${toneInk.danger}`}>{error}</p>}
+        {/* Why the switch never came on: the read failed, so it has no stored value to show. */}
+        {loadRefusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={loadRefusal}
+            data-tooltip-content="text"
+            className={`mt-2 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {loadRefusal}
+          </p>
+        )}
         {/* The mode is a beta, and this switch signs a whole server up for it: the warning
             stands under it unconditionally rather than behind the page's "?", which is a
             click away and is read once. */}

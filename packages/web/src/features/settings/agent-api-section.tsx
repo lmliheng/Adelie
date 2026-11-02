@@ -9,14 +9,17 @@
  * landed; one the server refused keeps the card with the reason drawn inside it, so the retry is
  * the button that was just pressed rather than a line under the switch the card had left behind.
  * A write that fails on the way on puts the knob back on the stored value and says why under it.
+ * A settings read that fails says why under the switch too: the knob stays shut until a stored
+ * value arrives, and leaving the page and coming back is the retry.
  */
 import { useEffect, useState } from "react";
 import type { ServerSettingsResponse } from "@adelie/server/api";
-import { ConfirmModal, SettingsSection, ToggleRow, toastError } from "@adelie/ui";
+import { ConfirmModal, SettingsSection, ToggleRow } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
+import { readServerSwitch, serverSwitchRefusal } from "./server-switch-read";
 
 /** Turns the switch off on the server. Reached only through the confirm. */
 const switchOffAgentApiServer = (): Promise<ServerSettingsResponse> =>
@@ -74,19 +77,20 @@ export function AgentApiSection() {
   const [confirmOff, setConfirmOff] = useState(false);
   /** The reason the last off-write was refused; drawn inside the card that asked, not under it. */
   const [offRefusal, setOffRefusal] = useState<string | null>(null);
+  /** Why the settings could not be read, drawn under the switch it left shut (null once read). */
+  const [loadRefusal, setLoadRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    void api
-      .adminGetSettings()
-      .then((res) => {
-        if (cancelled) return;
-        setStored(res.settings.agentApiEnabled);
-        setEnabled(res.settings.agentApiEnabled);
-      })
-      .catch((e: unknown) => {
-        if (!cancelled) toastError(apiErrorText(e));
-      });
+    void readServerSwitch((settings) => settings.agentApiEnabled).then((read) => {
+      if (cancelled) return;
+      if (read.status === "read") {
+        setStored(read.value);
+        setEnabled(read.value);
+      } else {
+        setLoadRefusal(serverSwitchRefusal(read));
+      }
+    });
     return () => {
       cancelled = true;
     };
@@ -149,6 +153,18 @@ export function AgentApiSection() {
           }}
           disabled={stored === null || busy}
         />
+        {/* Why the switch is shut, under the switch — this is the only thing that says so once
+            the read failed, and it stays until the page is entered again. */}
+        {loadRefusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={loadRefusal}
+            data-tooltip-content="text"
+            className={`mt-2 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {loadRefusal}
+          </p>
+        )}
         {error !== undefined && <p className={`mt-2 text-xs ${toneInk.danger}`}>{error}</p>}
       </div>
       <AgentApiServerOffConfirm
