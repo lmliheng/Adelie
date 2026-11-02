@@ -41,6 +41,7 @@ import type {
   ChatDefaultsDto,
   CommandPolicyDto,
   DefaultModelResponse,
+  DesktopLoginItemStatusResponse,
   DesktopPetStatusResponse,
   DesktopTrayStatusResponse,
   DesktopUpdateStatusResponse,
@@ -2687,6 +2688,10 @@ router
   // "unknown" (null, which the page and the Appearance switch read as off) and the write lands.
   .get("/api/desktop/pet", (): DesktopPetStatusResponse => ({ status: null }))
   .put("/api/desktop/pet", () => empty())
+  // Starting at sign-in, the same shape: Windows' own record is unknown here (null draws no row,
+  // which is the honest answer for a browser gallery) and the write is acknowledged.
+  .get("/api/desktop/login-item", (): DesktopLoginItemStatusResponse => ({ status: null }))
+  .put("/api/desktop/login-item", () => empty())
   .post("/api/desktop/privacy-settings", () => notFound("Desktop mode"));
 
 // ---------------------------------------------------------------------------------------------
