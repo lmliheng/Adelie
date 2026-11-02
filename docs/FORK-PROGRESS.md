@@ -1993,6 +1993,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       这一族（7.19–7.68「被拒之后只剩 toast」）在设置页里最后两块「读失败」中的第二块 —— 两个数字都要等
       服务端存着的值到达才能填，所以读失败留下的是两个灰着、空着的框 + 一条六秒的通知，通知一走就什么都
       不剩。见「第一百八十轮」一节。
+- [x] **7.70 设置 →「插件」读不出来时，原因留在页面上，不再只剩一个空页与一条六秒的通知；
+      这条动作进了浏览器套件**（**2026-11-02 第一百八十一轮**落地，提交见「已完成的轮次」；源码 4 处
+      （一个新纯函数 + 一个状态与一句话 + 两个文案），单测 4 条 + 1 个新 spec（1 条）+ changelog 一对，
+      **不碰接口、无新依赖**）：这是第一百八十轮结尾在「没做 / 留着」里点名的那一处，也是这一族
+      （7.19–7.69「被拒之后只剩 toast」）在设置页里最后一块「读失败」—— 插件页按配置项一张卡片地画，
+      而读回来之前什么都不画，所以本机这条读失败留下的是一个**空页**，理由只进了一条六秒的通知：通知
+      一走，屏上没有任何东西说明这页为什么是空的。选中的远程机器本来就在页面上说明原因（一条
+      `NoticeStrip`），本机没有 —— 现在两种共用同一条路子：失败时收成空列表、把句子留在卡片本该出现的
+      地方（`role="alert"`），远端点名那台机器，本机用自己的措辞（选择器上那个光秃秃的「本机」塞进
+      机器的句式里读不通）。「哪一句话」提成纯函数 `pluginConfigUnreadable()`。
+      `packages/web/e2e/plugins-read-refusal.spec.mjs` 一条真服务端用例（`GET /api/admin/plugin-config`
+      桩成 500 `internal`）：页面上一条句子、零张卡片、通知区 0 个可点 toast、七秒后仍在，放开后离开
+      再回来句子消失、沙盒那张卡片画出来。见「第一百八十一轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2679,6 +2692,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-02 | 7.68 | **两个服务器开关（Agent API / 公司模式）读不出来时，原因留在开关下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/settings/server-switch-read.ts`（新，43 行：`readServerSwitch(pick)` 读一次 `GET /api/admin/settings`，答 `{status:"read",value}` 或 `{status:"unread",reason}`，**失败从不抛出**（这两页自己没有什么可重试的）；`serverSwitchRefusal(read)` 把后者变成本地化的那句 —— 共享 `refusalText()` 外面套共享的 `S.common.refused` 引子，读到了返回 null）+ `agent-api-section.tsx` 与 `company-section.tsx`（各多一个 `loadRefusal` 状态，画在开关下面、`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`；读那条路不再 `toastError`，写的那条路一个字没动）+ 单测 6 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是第一百七十八轮「没做 / 留着」点名的第一处，也是同一族（7.19–7.67「被拒之后只剩 toast」）在设置页里最后两块「读失败」中的第一块 —— 两个开关都要等服务端的值到达才能用，所以读失败留下的是一个灰着的开关 + 一条六秒的通知，通知一走就什么都不剩 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，196 接口 / 594 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **281 文件 / 3422 通过 / 2 跳过**（+1 文件 +6 条即本笔的 `server-switch-read.test.ts`）· server **209 文件 / 3051 通过 / 17 跳过**（与前一轮同数，本笔不动它）· hmr 无测试文件 · 改动文件、单测、spec 与 changelog 一对 `prettier --check` 干净、`oxlint` **0 警告 0 错误**（5 文件）、`git diff --check` 干净 · **真服务端 + 真浏览器两态**（一次性数据根 `/root/adelie-fork-data/r179`、服务端 **8979**（`HOST=::`）、仓库自带 mock LLM **8978**、系统 chromium 1280×900，临时 playwright 配置与两个探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec `server-switch-read-refusal.spec.mjs` **2 passed（9.3 s + 9.0 s）**；两态探针 `r179/probe.mjs`（同一个服务端、只换 `dist`）—— **改后**：Agent API 区里 `role="alert"` **1 条**（542×16 px，y=236，就在开关下面）、开关 `disabled`；公司模式区里同样 **1 条**（542×16 px，y=222）、开关停用；两处通知区 **0** 个可点按钮，**七秒后仍在**；放行后再进这一页 → 两处 alert **0** 条、开关 `enabled`，值分别是「开」（服务端默认）与「关」。**改前**（两个源码文件退回 `HEAD`、重建 Web 产物）：两处区里 **0 条** alert，`r179/toast.mjs` 在开关旁边当场量到 **1 条**通知（「服务器内部错误，请稍后重试。」）、**七秒后 0 条** —— 原因确实只活在 toast 里，而灰着的开关一个字都没有。两态 console 只有刻意桩出的 500（各 1–2 条），无 pageerror · **反证**：同一份 spec 在改前产物上 **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：区里没有 alert），放回、重建 → **2 passed** · 端口只用 8979 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r179`，探针 / 临时配置 / 截图 / `test-results` 在 scratchpad 的 `r179/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d4549d2ee` |
 
 | 2026-11-02 | 7.69 | **设置 →「服务器」→「上传限制」读不出来时，原因留在两个输入框上面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 4 处 —— `packages/web/src/features/settings/server-switch-read.ts` **改名**成 `settings-read.ts` 并泛化（第三个页面开始问同一个问题）：`SettingsRead<T>` + `readServerSettings(pick)` 读一次 `GET /api/admin/settings`、把 pick 出来的那部分交回（一个布尔，或这一页要的那对数），失败仍收成 `{status:"unread",reason}` 而**从不抛出**，`settingsReadRefusal(read)` 同前（共享 `refusalText()` 外面套 `S.common.refused` 引子，读到了返回 null）；`agent-api-section.tsx` / `company-section.tsx` 只跟着改名，语义一字未动；`uploads-section.tsx` 把 `settings: ServerSettings \| null` 收成 `stored: {maxMb,totalMb} \| null`（`adopt()` 因此只认这两个数）、多一个 `loadRefusal` 画在两个输入框**上面**（`role="alert"`、danger 色、`line-clamp-2`、整句挂 `data-tooltip`；读那条路不再 `toastError`，写的那条路一个字没动）+ 单测 8 条（上一轮 6 条沿用 + 2 条新的）+ 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是第一百七十九轮「没做 / 留着」点名的第一处，也是这一族（7.19–7.68「被拒之后只剩 toast」）在设置页里最后两块「读失败」中的第二块 —— 两个数字都要等服务端的值到达才能填，读失败留下的是两个灰着、空着的框加一条六秒的通知 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **282 文件 / 3430 通过 / 2 跳过**（+1 文件 +8 条即改名后的 `settings-read.test.ts`）· server **211 文件 / 3077 通过 / 17 跳过**（与前一轮同数，本笔只动 `packages/web`）· hmr 无测试文件 · 改动文件、单测、spec 与 changelog 一对 `prettier --check` 干净、`oxlint` 改动面 **0 警告 0 错误**、`git diff --check` 干净 · **真服务端 ×2 + 真浏览器两态**（两份 `dist`：`r180/{after,before}-dist`，主包 md5 `6d4fcb89…` / `d05b13ca…` 两端核过是两份不同的东西；一次性数据根 `/root/adelie-fork-data/r180{a,b}`、服务端 **8991**（改后）/ **8993**（改前）、仓库自带 mock LLM **8992**、系统 chromium 1280×900，临时 playwright 配置与探针放 `packages/web/e2e/` 里跑、跑完移出仓库）：新 spec `uploads-read-refusal.spec.mjs` **1 passed（9.2 s）**；两态探针 `r180/probe.mjs`（同一份 `GET /api/admin/settings` 桩成 500，同一套读数）—— **改后**：区里 `role="alert"` **1 条**（542×16 px，y=190，就在两个输入框上面）、两个输入框 `disabled` 且为空、通知区 **0** 个可点 toast、**七秒后句子仍在**；放行后离开这一页再回来 → alert **0** 条、两个框可用、值是服务端存着的 **100 / 120**（`reads` 计数确认真的重发了请求）。**改前**（两份源码退回 `HEAD` 的那份产物）：区里 **0 条** alert、两个框同样停用且为空、通知区**当场 1 个**可点 toast（「服务器内部错误，请稍后重试。」）、**七秒后 0 个** —— 原因确实只活在 toast 里；放行后同样回到 100 / 120（这一半两态一致，确属同一件事）。两态 console 只有刻意桩出的 **500**，无 pageerror（截图 `r180/shots/{after,before}-{refused,refused-late,healed}.png`）· **反证**：同一份 spec 在改前产物上 **1 failed**（死在区里 `getByRole("alert")` 的 `toHaveText` 上：改前区里没有 alert），改后产物 **1 passed** · **相邻回归**：上一轮的 `server-switch-read-refusal.spec.mjs`（两个开关页跟着改名后）**2 passed（9.1 s + 9.0 s）** · 端口只用 8991 / 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r180{a,b}`，探针 / 临时配置 / 两态产物 / 截图 / `test-results` 在 scratchpad 的 `r180/` 下（`packages/web/dist` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d8c1f6f80a` |
+| 2026-11-02 | 7.70 | **设置 →「插件」读不出来时，原因留在页面上，不再只剩一个空页与一条六秒的通知；这条动作进了浏览器套件**（不是移植：源码 4 处 —— 新增 `packages/web/src/features/settings/plugin-config-read.ts`（`pluginConfigUnreadable(name, reason)`：机器点名，本机用自己的措辞，不把选择器上那个光秃秃的「本机」塞进机器的句式），`plugins-section.tsx` 失败时收成空列表并把那句话留下、两种共用同一条 `role="alert"` 的提示条、读这条路上不再 `toastError`（远程机器失败时说的是什么一字未动），`strings.ts` / `strings-en.ts` 新增 `plugins.thisServerUnreadable`；另加新单测 4 条、新 spec 1 条与 changelog 一对） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· 改动面六个文件 `oxlint` **0 警告 0 错误** · 同六个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **283 文件 / 3434 通过 / 2 跳过**（+1 文件、+4 用例）· server **211 文件 / 3077 通过 / 17 跳过**（与前一轮同数，本笔只动 `packages/web`）· **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r181`、服务端 **8994**、仓库自带 mock LLM **8995**、系统 chromium 1280×900，两份 `dist`（本笔 / 源码退回 `HEAD` 的改前态）先后挂上去，探针把 `GET /api/admin/plugin-config` 桩成 500 `internal`：**改前** 页面上 `role="alert"` **0 条**、section 的 innerText **为空**（真是一张空页）、通知区 **1 个**可点 toast、七秒后 **0 个**、卡片 0；**改后** 一条 alert「无法读取本机的插件：服务器内部错误，请稍后重试。」（542×32 px，y=190，就在卡片本该出现的地方）、卡片 0、通知区 **0 / 0**（根本没有 toast）、七秒后那句话仍在；两态放开拒绝后离开再回来都画出沙盒那张卡片（`[data-plugin-config="sandbox"]`，正文「沙盒 sandbox 启用 保存」），spec 里 `reads` 计数确认真的重发了请求 · 新 spec `plugins-read-refusal.spec.mjs` **1 passed（9.5 s）** · **反证**：同一份 spec 跑改前产物 **1 failed**（死在 section 里 `getByRole("alert")` 的 `toHaveText` 上：改前那里没有 alert），放回、重建后再跑 **1 passed** · **相邻回归（真浏览器四个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 + `plugins-install-refusal` 2 + `proxy-settings-refusal` 2 **9 passed（36.1 s）** · 端口只用 8994 / 8995（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r181`，探针 / 临时 playwright 配置 / 两态读数 / 截图 / `test-results` 在 scratchpad 的 `r181/` 下（`packages/web/dist` 是产物，未 `git add`；e2e 里的临时配置与探针跑完已移出仓库）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e6a996181` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -20741,3 +20755,85 @@ spec）；台账（7.69 的待办行、上表那一行、本节）另起一笔�
 先落成 `13744791a`，远端是 `d8c1f6f80a`。本轮按上游元数据在本地用 `commit-tree` 逐字复现了这两个对象
 （`git rev-parse` 得到的就是 `2f0cd9ff7e` / `d8c1f6f80a`，各字段逐字相同），把 `main` 对齐过去，再把台账
 这一笔建在 `d8c1f6f80a` 之上；台账里记的是远端那个号。
+
+## 第一百八十一轮：插件页读不出来时，原因留在页面上（2026-11-02，条目 7.70）
+
+### 开工自检
+
+`main` 在 `c00bfd627`（第一百八十轮之后那一笔台账），`git status --short` **干净**；`git fetch origin`
+把远端拉到同一个号，`git merge --ff-only origin/main` 报 `Already up to date`。没有切分支、没碰
+`legacy/main`、没推 upstream。
+
+### 选活：表上仍全卡着，于是收第一百八十轮点名的最后一处
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳 / 既有部署单元 / 发布动作）、**3.5**（拍板）、**3.6**（模型
+key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。第一百八十轮按顺序点名的最后一处
+就是插件页的水合：
+
+- 设置 →「插件」按配置项一张卡片地画，而 `GET /api/admin/plugin-config` 回来之前它什么都不画。
+  **本机**这条读失败留下的是一个空页（`entries` 停在 `null`，渲染只画一个空的 `SettingsSection`），
+  理由只进了一条六秒的通知 —— 通知一走，屏上没有任何东西说明这页为什么是空的。选中的远程机器
+  本来就在页面上说明原因（一条 `NoticeStrip` 加机器名），本机没有；第一百八十轮结尾点名了这一处，
+  它也是「被拒之后只剩 toast」这一族在设置页里最后一块「读失败」。
+
+### 做了什么
+
+- `packages/web/src/features/settings/plugin-config-read.ts`（新）：`pluginConfigUnreadable(name,
+  reason)` —— 一次读失败变成的那句话。远端点名那台机器（`S.plugins.machineUnreadable`），本机用自己的
+  措辞（`S.plugins.thisServerUnreadable`）：选择器上那个光秃秃的「本机」塞进「无法读取 X 运行的插件」
+  里读不通，所以不给它套机器的句式。为什么不抛、为什么留在页面上，写在模块头里（7.19 那条全应用口径：
+  拒绝留在它说的那件事所在的面上）。
+- `packages/web/src/features/settings/plugins-section.tsx`：水合失败时不再分本机 / 远程两条路 ——
+  两种都 `adopt([])`（空页，而不是把本机的设置画在机器名下面）并 `setLoadError(...)` 收到那句话；
+  渲染那处从「`machine !== null && loadError !== null` 时用机器名拼句子」收成「有那句话就画」，
+  并给这条 `NoticeStrip` 挂上 `role="alert"`（空白页上它是这次失败唯一的一句话）。读这条路上不再
+  `toastError`；写、动作、安装那几条路一个字没动。
+- `packages/web/src/lib/strings{,-en}.ts`：新增 `plugins.thisServerUnreadable`，就在 `machineUnreadable`
+  旁边，并写明为什么不能复用机器的句式。
+- changelog 一对：`changelog/unreleased/2026-11-02-plugins-read-refusal{,.zh}.md`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** ·
+  cli **38 / 561** · web **283 文件 / 3434 通过 / 2 跳过**（+1 文件、+4 条即新单测）·
+  server **211 文件 / 3077 通过 / 17 跳过**（与前一轮同数，本笔只动 `packages/web`）。
+- 改动面六个文件 `oxlint` **0 警告 0 错误**；同六个文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r181`、服务端
+  **8994**（`ADELIE_PROFILE` 未设、`ADELIE_SEED_ADMIN_PASSWORD` 给死）、仓库自带 mock LLM **8995**、
+  系统 chromium 1280×900。两份 `dist` 先后挂上去：本笔的、以及把三个源码文件退回 `HEAD` 后重建的
+  改前态。探针把 `GET /api/admin/plugin-config` 桩成 500 `internal`，读数如下：
+
+  | 量点 | 改前（源码退回 `HEAD` 的那份产物） | 改后（本笔） |
+  | --- | --- | --- |
+  | 页面上 `role="alert"` | **0 条** | **1 条**（542×32 px，y=190，就在卡片本该出现的地方） |
+  | 那一页的正文 | **空字符串**（真是一张空页） | 「无法读取本机的插件：服务器内部错误，请稍后重试。」 |
+  | 卡片 | 0 | 0（失败时也不假装有） |
+  | 通知区（当场 / 七秒后） | **1 个**可点 toast / **0 个** | **0 / 0** —— 根本没有 toast |
+  | 七秒后页面上那句话 | 没有 | 仍在 |
+  | 放行后离开再回来 | 画出沙盒那张卡片 | 同左（spec 里的 `reads` 计数确认真的重发了请求） |
+
+  两态 console 只有刻意桩出来的 500，无 pageerror；截图 `r181/{after,before}-{refused,refused-late,healed}.png`。
+- 新 spec `plugins-read-refusal.spec.mjs` **1 passed（9.5 s）**。
+- **反证**：同一份 spec 跑改前产物 **1 failed**（死在 section 里 `getByRole("alert")` 的 `toHaveText`
+  上：改前那里没有 alert），放回、重建后再跑 **1 passed**。
+- **相邻回归（真浏览器四个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 +
+  `plugins-install-refusal` 2 + `proxy-settings-refusal` 2 **9 passed（36.1 s）**。
+- 端口只用 8994 / 8995（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r181`，探针 / 临时 playwright 配置 / 两态读数 / 截图 / `test-results` 在
+  scratchpad 的 `r181/` 下（`packages/web/dist` 是产物，未 `git add`；e2e 里那两个临时文件跑完已移出仓库）。
+
+### 没做 / 留着
+
+- 这一族（7.19–7.70「被拒之后只剩 toast」）在**设置页**里就到此为止：剩下的要么本来就在行内
+  （卡片字段的错误、动作确认框里的 `refusal`），要么属于另一族（`storage-section.tsx` 的动作被拒）。
+- 同一页里还有两处「失败只落 toast」，都不是水合、也都不在设置页这一族里：卡片保存被拒而服务端
+  没点名某个字段时（`save()` 的 `else` 分支），以及安装之后那次重读失败（`installOffered` 的
+  `catch`）—— 后者是动作之后的刷新，卡片与草稿都还在，重试是下一次动作。
+- 2.2c 的尾巴、3.5 / 3.6、5.6 / 5.10、4.1–4.3 仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源文件 + 单测 + spec + changelog：**`e6a996181`**（8 文件 / +307 −11）；台账（7.70 的待办行、上表那一行、
+本节）另起一笔。
