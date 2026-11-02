@@ -21,6 +21,7 @@ export const en: Strings = {
     usage: "Cost Center",
     traces: "Trajectories",
     benchmark: "Evaluation Center",
+    browser: "Server Browser",
     // Collapsed-rail tooltips (product-specified wording; new chat reuses chat.newSessionMenu, the other pages reuse the page names above).
     lastConversation: "Last conversation",
     // The rail avatar's tooltip says what the control does; who is signed in stays in its accessible name.
@@ -358,6 +359,44 @@ export const en: Strings = {
       join: (sentences: string[]): string => sentences.join(" "),
       heavyTab: (size: string): string => `Uses ${size} of memory`,
     },
+  },
+
+  /**
+   * The server browser page: a browser the server itself runs, for the deployments that cannot
+   * have the desktop window's one (a Linux box reached over the network).
+   */
+  serverBrowser: {
+    pageTitle: "Server Browser",
+    intro: "The browser runs on this server and its picture is streamed here. Admins only.",
+    /** The address bar. */
+    address: "Address",
+    addressPlaceholder: "Type an address and press Enter, e.g. example.com",
+    go: "Go",
+    back: "Back",
+    forward: "Forward",
+    reload: "Reload",
+    stop: "Stop the browser",
+    start: "Start the browser",
+    starting: "Starting the browser…",
+    /** While the page in the browser is loading. */
+    loading: "Loading…",
+    /** The frame area before anything has been loaded. */
+    empty: "Type an address above to start browsing.",
+    /** The frame area while the browser has no page yet. */
+    idleTitle: "The browser is not running",
+    idleBody: "Opening this page starts it; the button above starts it by hand.",
+    unavailableTitle: "This server cannot show a browser",
+    /** The browser is switched off for this server by its own configuration. */
+    unavailableOff: "Switched off by the administrator (ADELIE_SERVER_BROWSER=off).",
+    /** Nothing on this machine can draw a page. */
+    unavailableNoBrowser: "There is no Chromium or Chrome on this server.",
+    unavailableBody: "ADELIE_SERVER_BROWSER_BIN names one that lives somewhere else.",
+    /** Something went wrong between this page and the browser on the server. */
+    failed: (reason: string): string => `Could not reach the browser on the server: ${reason}`,
+    /** The picture is not being received any more; the browser on the server may have stopped. */
+    streamEnded: "The picture stopped; the browser on the server may have shut down.",
+    /** The frame area's keyboard hint: what a visitor can do with the page. */
+    hint: "Click the picture to use the page, or just type.",
   },
 
   tracePanel: {

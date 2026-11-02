@@ -22,6 +22,8 @@ export const NAV_ICONS = {
   benchmark: ICONS.trophy,
   /** Terminal (a `>_` prompt in a window frame). */
   terminal: ICONS.terminalWindow,
+  /** The server browser (a globe: a page fetched from somewhere the window is not). */
+  browser: ICONS.globe,
   /** Company mode's overview. */
   orgOverview: ICONS.dashboard,
   /** The org chart. */

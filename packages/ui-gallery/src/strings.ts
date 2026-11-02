@@ -131,6 +131,12 @@ export const zh = {
       description: "本机与远程机器：安装状态、连接、探测结果，以及添加 ssh 主机。",
       how: "侧栏 › 机器（仅管理员）。",
     },
+    browser: {
+      title: "服务器浏览器",
+      description:
+        "浏览器跑在服务器上，画面实时传到这个页面：地址栏、前进后退、刷新，点画面就能操作它打开的那个网页。",
+      how: "侧栏 › 服务器浏览器（仅管理员）。",
+    },
     usage: {
       title: "成本中心",
       description:

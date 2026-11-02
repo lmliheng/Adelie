@@ -49,6 +49,7 @@ export const DOCS_NAV: DocsSectionDef[] = [
       "chat",
       "files",
       "builtin-browser",
+      "server-browser",
       "schedules",
       "remote-control",
       "agents",

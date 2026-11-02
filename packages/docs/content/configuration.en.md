@@ -24,6 +24,8 @@ The CLI and the server load a `.env` file from the working directory on startup.
 | `ADELIE_LANG` | CLI language (`en` / `zh`), set with `penguin config lang` | `en` |
 | `ADELIE_UPDATE_CHECK` | `off` disables the Web App's new-release check | Enabled |
 | `ADELIE_PLUGIN_MARKET` | `off` lists only the plugins this build carries in the plugin market, never querying npm | Enabled |
+| `ADELIE_SERVER_BROWSER` | `off` switches off the server's own browser | Enabled |
+| `ADELIE_SERVER_BROWSER_BIN` | The Chromium / Chrome the server's browser runs | Unset: looked up on `PATH` |
 | `PENGUIN_NO_LOGIN_SHELL_ENV` | Any non-empty value stops the desktop app from importing the login shell's environment on macOS/Linux GUI launches | Unset: the import runs |
 | `ADELIE_SHELL` | The shell that runs agent commands (an executable name or path) | Unset: picked automatically, see [Tools & Approval](/tools#command-sessions) |
 | `ADELIE_CLI_ENTRY` | The CLI entry script this installation offers the agents it runs (see [PATH launcher](#path-launcher)) | Set by `penguin server` / `penguin web` and by the desktop app |
@@ -37,6 +39,8 @@ Notes:
 - `MODELSCOPE_BRIDGE_URL`: server configuration like `PENGUIN_GO_ORIGIN`, not an endpoint the browser can name. It must be an HTTPS address with no credentials, query string or fragment. Unlike `PENGUIN_GO_ORIGIN`, a path prefix **is** allowed, because the production bridge lives under `https://go.penguin.ooo/modelscope`. See [Connect an account](/models#connect-an-account).
 - `ADELIE_UPDATE_CHECK`: `off` turns off the automatic release check, nothing else. Model requests, an enabled remote-control connection, provider key authorization and the proxy test still reach the network.
 - `ADELIE_PLUGIN_MARKET`: the market's shelf has two sides — the plugins this build carries (read locally, no network) and the ones published to npm. For the second the server queries npm's search API once, caching the result for ten minutes (for two minutes after a failure, serving the previous listing). With `off` that side is never queried and the shelf is the local one alone, which is what an offline or closed network wants. See [Plugins](/skills).
+- `ADELIE_SERVER_BROWSER`: with `off`, the server browser is left entirely alone — the page says it is switched off and no route starts a process. For a deployment that does not want a browser pulled up on the host. See [Server browser](/server-browser).
+- `ADELIE_SERVER_BROWSER_BIN`: names a browser installed on the server under none of the usual names (`chromium`, `chromium-browser`, `google-chrome-stable`, `google-chrome`, `chrome`). See [Server browser](/server-browser).
 - `PENGUIN_NO_LOGIN_SHELL_ENV`: without it, the import fills only variables the launch left unset. See [Desktop quickstart](/quickstart-desktop).
 - `ADELIE_CLI_ENTRY`: when the server was started from a source checkout, it falls back to that checkout's `packages/cli/dist/penguin.js`.
 

@@ -109,6 +109,8 @@ import type {
   SessionsBatchResponse,
   SessionsResponse,
   SessionTracesResponse,
+  ServerBrowserState,
+  ServerBrowserStatus,
   SshHostResponse,
   StorageApplyResponse,
   StoragePlanEntryView,
@@ -2723,6 +2725,78 @@ router
   .get("/api/builtin-browser/history", (): BuiltinBrowserHistoryResponse => ({ entries: [] }))
   .delete("/api/builtin-browser/history", () => empty())
   .post("/api/builtin-browser/clear-data", browserUnavailable);
+
+// ---------------------------------------------------------------------------------------------
+// The server browser: a browser the SERVER runs. The demo has no such process, so it answers as
+// a server that does have one — the address bar, the toolbar and the input path are what the
+// gallery is for. The picture is the one thing a browser-less demo cannot produce, so the frame
+// stream answers with the header of a single blank frame and nothing after it.
+// ---------------------------------------------------------------------------------------------
+
+/** The demo's browser: a page standing still, which the toolbar and the address bar then move. */
+let serverBrowserPage: ServerBrowserState = {
+  url: "https://example.com/",
+  title: "Example Domain",
+  loading: false,
+  width: 1280,
+  height: 800,
+};
+
+const serverBrowserStatus = (): ServerBrowserStatus => ({
+  available: true,
+  running: true,
+  state: { ...serverBrowserPage },
+});
+
+const serverBrowserInput = (body: unknown): ServerBrowserStatus => {
+  // The picture does not move in the demo, so only the state a caller can see changes: a wheel
+  // says the page is loading for a beat, which is what the strip above the picture shows.
+  const given = record(body).events;
+  if (Array.isArray(given) && given.some((event) => record(event).type === "wheel")) {
+    serverBrowserPage = { ...serverBrowserPage, loading: true };
+  }
+  return serverBrowserStatus();
+};
+
+router
+  .get("/api/server-browser", serverBrowserStatus)
+  .post("/api/server-browser/start", serverBrowserStatus)
+  .post("/api/server-browser/stop", (): ServerBrowserStatus => ({
+    available: true,
+    running: false,
+    state: null,
+  }))
+  .post("/api/server-browser/navigate", ({ body }): ServerBrowserStatus => {
+    const url = String(record(body).url ?? "");
+    serverBrowserPage = {
+      ...serverBrowserPage,
+      url,
+      title: url.replace(/^https?:\/\//, "").replace(/\/$/, ""),
+      loading: false,
+    };
+    return serverBrowserStatus();
+  })
+  .post("/api/server-browser/back", serverBrowserStatus)
+  .post("/api/server-browser/forward", serverBrowserStatus)
+  .post("/api/server-browser/reload", (): ServerBrowserStatus => {
+    serverBrowserPage = { ...serverBrowserPage, loading: false };
+    return serverBrowserStatus();
+  })
+  .post("/api/server-browser/resize", ({ body }): ServerBrowserStatus => {
+    const { width, height } = record(body);
+    serverBrowserPage = {
+      ...serverBrowserPage,
+      width: typeof width === "number" ? Math.round(width) : serverBrowserPage.width,
+      height: typeof height === "number" ? Math.round(height) : serverBrowserPage.height,
+    };
+    return serverBrowserStatus();
+  })
+  .post("/api/server-browser/input", ({ body }) => serverBrowserInput(body))
+  .get("/api/server-browser/frames", () =>
+    raw("--adelie-browser-frame\r\nContent-Type: image/jpeg\r\nContent-Length: 0\r\n\r\n", {
+      "content-type": "multipart/x-mixed-replace; boundary=adelie-browser-frame",
+    }),
+  );
 
 // ---------------------------------------------------------------------------------------------
 // Company mode: off in the demo, so every organization route answers as the server does then

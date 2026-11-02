@@ -121,6 +121,12 @@ export const en: GalleryStrings = {
         "This machine and remote ones: install state, connections, probe results, and adding an ssh host.",
       how: "Sidebar › Machines (admins only).",
     },
+    browser: {
+      title: "Server Browser",
+      description:
+        "A browser running on the server, streamed into this page: address bar, back/forward, reload, and the page it loaded is clickable.",
+      how: "Sidebar › Server Browser (admins only).",
+    },
     usage: {
       title: "Cost center",
       description:
