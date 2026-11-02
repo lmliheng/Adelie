@@ -732,6 +732,16 @@ export const en: Strings = {
       no: "The trash entry was empty afterwards and has been removed.",
     },
     storageTrashSkippedLine: (path: string, reason: string): string => `${path}: ${reason}`,
+    /**
+     * A trash write the server refused, drawn under the button that asked: which action, the entry
+     * it was for where there is one, and the reason as the server gave it.
+     */
+    storageTrashRefusedRestore: (id: string, reason: string): string =>
+      `Restoring "${id}" was refused: ${reason}`,
+    storageTrashRefusedPurge: (id: string, reason: string): string =>
+      `Deleting "${id}" for good was refused: ${reason}`,
+    storageTrashRefusedExpired: (reason: string): string =>
+      `Deleting what is past retention was refused: ${reason}`,
     uploadLimitsTitle: "Upload limits",
     /** Its two number fields, both in whole MB. */
     attachmentMaxMb: "Max attachment size (MB)",

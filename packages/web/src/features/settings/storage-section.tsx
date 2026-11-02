@@ -27,7 +27,10 @@
  * thing a cleanup decision must not be based on. The same rule governs the bill: a row this
  * version cannot move is drawn rather than dropped, a refusal is reported with the server's own
  * reason instead of a summary, and the fingerprint an approval sends is the one the displayed bill
- * carries (storage-review.ts) — never one re-read from somewhere else.
+ * carries (storage-review.ts) — never one re-read from somewhere else. The trash's three writes
+ * follow the same rule (storage-trash-refusal.ts): an entry whose restore or deletion was refused
+ * is still listed exactly as it was, so the reason stays under the buttons that asked, where the
+ * retry is — and one of those three is the only deletion in the app.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -60,8 +63,9 @@ import {
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { formatBytes, formatDateTime } from "../../lib/format";
+import { toneInk } from "../../lib/tone";
 import {
   storageClassCost,
   storageClassLabel,
@@ -86,6 +90,8 @@ import {
   storageUnselectClass,
 } from "./storage-review";
 import type { StorageBillGroup } from "./storage-review";
+import { storageTrashKey, storageTrashRefused } from "./storage-trash-refusal";
+import type { StorageTrashRefusal } from "./storage-trash-refusal";
 
 /** A section of the page: its heading, an optional line saying what the heading's rows mean. */
 function Block({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -538,6 +544,25 @@ function ApplyResult({ result }: { result: StorageApplyResponse }) {
   );
 }
 
+/**
+ * The line a refused trash write leaves, drawn under the buttons that asked for it.
+ *
+ * It stays until another trash write is started, because nothing on this page is what a retry
+ * would change: the entry is still listed exactly as it was, and the same button is the retry.
+ */
+function TrashRefusalLine({ text }: { text: string }) {
+  return (
+    <p
+      role="alert"
+      data-tooltip={text}
+      data-tooltip-content="text"
+      className={`mt-1 max-w-[220px] text-left text-xs break-words whitespace-normal ${toneInk.danger}`}
+    >
+      {text}
+    </p>
+  );
+}
+
 /** The trash: what a move put aside, entry by entry, with the two things a person may do with it. */
 function TrashBlock({
   entries,
@@ -546,6 +571,7 @@ function TrashBlock({
   busy,
   restored,
   purged,
+  refusal,
   onRestore,
   onPurge,
 }: {
@@ -555,6 +581,8 @@ function TrashBlock({
   busy: string | null;
   restored: StorageRestoreResponse | null;
   purged: StoragePurgeResponse | null;
+  /** The last trash write the server refused — `key` says which row (or the batch) asked for it. */
+  refusal: StorageTrashRefusal | null;
   onRestore: (id: string) => void;
   /** Without an id: only the entries past the retention. */
   onPurge: (id?: string) => void;
@@ -601,11 +629,11 @@ function TrashBlock({
                   <Button
                     size="sm"
                     disabled={!enabled || busy !== null}
-                    aria-busy={busy === `restore:${entry.id}`}
+                    aria-busy={busy === storageTrashKey("restore", entry.id)}
                     title={enabled ? undefined : S.settings.storageModeRequired}
                     onClick={() => onRestore(entry.id)}
                   >
-                    {busy === `restore:${entry.id}`
+                    {busy === storageTrashKey("restore", entry.id)
                       ? S.settings.storageTrashRestoring
                       : S.settings.storageTrashRestore}
                   </Button>
@@ -616,12 +644,19 @@ function TrashBlock({
                     variant="danger"
                     className="ml-2"
                     disabled={!enabled || busy !== null}
-                    aria-busy={busy === `purge:${entry.id}`}
+                    aria-busy={busy === storageTrashKey("purge", entry.id)}
                     title={enabled ? undefined : S.settings.storageModeRequired}
                     onClick={() => onPurge(entry.id)}
                   >
                     {S.settings.storageTrashPurge}
                   </Button>
+                  {/* Under the two buttons that were pressed, whichever of them was refused: the
+                      row is what stayed, and pressing the same one again is the retry. */}
+                  {refusal !== null &&
+                    (refusal.key === storageTrashKey("restore", entry.id) ||
+                      refusal.key === storageTrashKey("purge", entry.id)) && (
+                      <TrashRefusalLine text={refusal.text} />
+                    )}
                 </TableCell>
               </TableRow>
             ))}
@@ -629,17 +664,22 @@ function TrashBlock({
         </Table>
       )}
       {entries.some((entry) => entry.expired) && (
-        <div className="mt-3 flex justify-end">
+        <div className="mt-3 flex flex-col items-end">
           <Button
             size="sm"
             variant="danger"
             disabled={!enabled || busy !== null}
-            aria-busy={busy === "purge:expired"}
+            aria-busy={busy === storageTrashKey("purgeExpired", null)}
             title={enabled ? undefined : S.settings.storageModeRequired}
             onClick={() => onPurge()}
           >
             {S.settings.storageTrashPurgeExpired}
           </Button>
+          {/* The batch names no entry, so its refusal is its own sentence — and it is the one the
+              server answers about entries this page may not even be showing. */}
+          {refusal !== null && refusal.key === storageTrashKey("purgeExpired", null) && (
+            <TrashRefusalLine text={refusal.text} />
+          )}
         </div>
       )}
       {restored !== null && (
@@ -710,6 +750,12 @@ export function StorageSection() {
   const [trashBusy, setTrashBusy] = useState<string | null>(null);
   const [restored, setRestored] = useState<StorageRestoreResponse | null>(null);
   const [purged, setPurged] = useState<StoragePurgeResponse | null>(null);
+  /**
+   * The last trash write the server refused, kept until another one starts: the entry is still
+   * listed exactly as it was, so a line that outlives the toast is the only account of why
+   * nothing happened (7.19's rule, app-wide).
+   */
+  const [trashRefusal, setTrashRefusal] = useState<StorageTrashRefusal | null>(null);
   /** The path whose pin request is in flight, so one row's button is busy and no others are. */
   const [pinning, setPinning] = useState<string | null>(null);
 
@@ -856,15 +902,20 @@ export function StorageSection() {
 
   const restore = async (id: string) => {
     if (trashBusy !== null) return;
-    setTrashBusy(`restore:${id}`);
+    const key = storageTrashKey("restore", id);
+    setTrashBusy(key);
     setRestored(null);
     setPurged(null);
+    setTrashRefusal(null);
     try {
       setRestored(await api.adminRestoreStorageTrash(id));
       // Trees came back into the data root, so the ledger is a measurement of a moment that has
       // just passed; re-measuring is what keeps the two halves of the page telling one story.
       await Promise.all([measure(), loadState()]);
     } catch (e) {
+      // The row stays exactly as it was — same id, same size, same state — so the reason has to
+      // stay with it: the same button is the retry, and a toast would be gone before it is read.
+      setTrashRefusal(storageTrashRefused(key, refusalText(e)));
       toastError(apiErrorText(e));
     } finally {
       setTrashBusy(null);
@@ -873,15 +924,20 @@ export function StorageSection() {
 
   const purge = async (id?: string) => {
     if (trashBusy !== null) return;
-    setTrashBusy(id === undefined ? "purge:expired" : `purge:${id}`);
+    const key = storageTrashKey(id === undefined ? "purgeExpired" : "purge", id ?? null);
+    setTrashBusy(key);
     setRestored(null);
     setPurged(null);
+    setTrashRefusal(null);
     try {
       setPurged(await api.adminPurgeStorageTrash(id));
       // The trash is part of the ledger's own figures, so the report is re-read rather than left
       // showing the size of what has just been deleted.
       await Promise.all([measure(), loadState()]);
     } catch (e) {
+      // This is the one deletion in the app: a person who pressed it has to be told, where they
+      // pressed it, that nothing was deleted and why.
+      setTrashRefusal(storageTrashRefused(key, refusalText(e)));
       toastError(apiErrorText(e));
     } finally {
       setTrashBusy(null);
@@ -1061,6 +1117,7 @@ export function StorageSection() {
         busy={trashBusy}
         restored={restored}
         purged={purged}
+        refusal={trashRefusal}
         onRestore={(id) => void restore(id)}
         onPurge={(id) => void purge(id)}
       />

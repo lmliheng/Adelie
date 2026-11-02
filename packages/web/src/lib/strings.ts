@@ -797,6 +797,17 @@ export const zh = {
       no: "回收站条目已经空了，随之被移除。",
     },
     storageTrashSkippedLine: (path: string, reason: string): string => `${path}：${reason}`,
+    /**
+     * A trash write the server refused, drawn under the button that asked: which action, the entry
+     * it was for where there is one, and the reason as the server gave it. The words name the same
+     * action the button does, so the line still reads right under the batch button.
+     */
+    storageTrashRefusedRestore: (id: string, reason: string): string =>
+      `恢复「${id}」被拒：${reason}`,
+    storageTrashRefusedPurge: (id: string, reason: string): string =>
+      `彻底删除「${id}」被拒：${reason}`,
+    storageTrashRefusedExpired: (reason: string): string =>
+      `彻底删除已过保留期的条目被拒：${reason}`,
     uploadLimitsTitle: "上传限制",
     /** Its two number fields, both in whole MB. */
     attachmentMaxMb: "单个附件上限（MB）",
