@@ -42,6 +42,6 @@ The page has one page and no tabs: what it exists for is watching a page your ow
 
 The picture, the clicks, the wheel and the keyboard all work. Whether a data-centre IP can sign into some platform, or make its video play, is that platform's risk control and login problem and has nothing to do with this page showing a page. A browser under its default user agent cannot open some sites at all (it lands on a captcha interstitial), and those sites ask for a sign-in in a real desktop browser too.
 
-## Input methods are not wired up yet
+## What an input method types gets there too
 
-What travels back is the keyboard: letters, digits, symbols, Enter, Tab and the arrow keys all reach the page. Chinese — anything an input method composes first and then hands over as a whole string — does not, because the composing happens on your side and there is nothing there to catch it yet. That is the next thing to add, not a setting.
+The keyboard travels as keys: letters, digits, symbols, Enter, Tab and the arrow keys, one at a time. A composed character is not a key press, so an invisible field sits over the picture — that is where the composing lands, and when it commits the whole string goes over at once as `insertText`. The keys pressed during composing are no longer forwarded as ordinary keys, which would both send the page the wrong thing and cut the composition short.

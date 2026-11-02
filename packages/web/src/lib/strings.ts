@@ -465,6 +465,8 @@ export const zh = {
     streamEnded: "画面已中断，浏览器可能已经停止。",
     /** The frame area's keyboard hint: what a visitor can do with the page. */
     hint: "点击画面可与页面交互，也可以直接输入。",
+    /** The invisible editable element an input method composes into, over the picture. */
+    inputSurface: "在这里打字，字会送到那个页面",
   },
 
   /** The Trace dock panel (the current conversation's Trace files). */

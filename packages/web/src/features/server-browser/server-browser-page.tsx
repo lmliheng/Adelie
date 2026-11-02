@@ -277,6 +277,12 @@ function Frame({
 }) {
   const image = useRef<HTMLImageElement | null>(null);
   const surface = useRef<HTMLDivElement | null>(null);
+  /**
+   * The invisible editable element over the picture. An input method has nowhere to compose
+   * without one: Chinese (and anything else that is composed before it is committed) would never
+   * reach the page, because what travels on the keyboard path is a key, not a composed string.
+   */
+  const field = useRef<HTMLTextAreaElement | null>(null);
   /** The size the page is currently drawn at, so a resize of the same size is not sent twice. */
   const drawnAt = useRef("");
 
@@ -354,6 +360,10 @@ function Frame({
   const key =
     (action: "down" | "up") =>
     (event: React.KeyboardEvent<HTMLDivElement>): void => {
+      // While an input method is composing, the keys are its business: they are not characters
+      // yet (the composed text arrives as one piece below), and forwarding or swallowing them
+      // here would both send the page the wrong thing and cut the composition short.
+      if (event.nativeEvent.isComposing || event.key === "Process") return;
       event.preventDefault();
       // Printable keys carry their text so the page receives a real character; everything else is
       // a named key the page's own handlers see.
@@ -370,6 +380,25 @@ function Frame({
         ...(text === undefined ? {} : { text }),
       });
     };
+
+  /**
+   * Text that arrived as a whole — an input method committing, or a character inserted some way
+   * other than a key press. It goes to the page as one `insertText` rather than as keys, and the
+   * element it was composed in is emptied so the same text is not sent twice. What the element
+   * holds is the truth; the composition's own last string is what stands in when the browser has
+   * already taken the text back out of it.
+   */
+  const composed = useCallback(
+    (committed: string): void => {
+      const box = field.current;
+      if (box === null) return;
+      const text = box.value === "" ? committed : box.value;
+      if (text === "") return;
+      box.value = "";
+      send({ type: "text", text });
+    },
+    [send],
+  );
 
   return (
     <div className="overflow-hidden rounded-lg border border-[--line] bg-[--surface-sunken]">
@@ -417,6 +446,26 @@ function Frame({
                 </p>
               </div>
             )}
+            {/* What an input method composes into: invisible, over everything, and the thing a
+                click on the picture focuses. Without it a composed character has nowhere to land
+                and is lost — the keyboard path carries keys, and a composed string is not one. */}
+            <textarea
+              ref={field}
+              aria-label={S.serverBrowser.inputSurface}
+              tabIndex={-1}
+              spellCheck={false}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              className="absolute inset-0 h-full w-full resize-none overflow-hidden border-0 bg-transparent text-transparent caret-transparent outline-none"
+              onCompositionEnd={(event) => composed(event.data)}
+              // Text that arrives without a composition — an insert from the browser rather than a
+              // key press — is text as well. During a composition it is not yet: that is what
+              // `composed` is for, when it commits.
+              onInput={(event) => {
+                if (!event.nativeEvent.isComposing) composed("");
+              }}
+            />
           </>
         )}
       </div>

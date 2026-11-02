@@ -30,7 +30,7 @@ Opening **Server Browser** in the sidebar is enough: the browser is started when
 
 - The address bar follows a browser's rules: a bare domain like `example.com` opens over `https://`, and Enter opens what you typed. Anything that is not http or https is refused.
 - The picture is the page. **Click it to use it**: clicks, double-clicks, right-clicks, drags and the wheel all reach the page, and so does the keyboard — Tab, Enter and the arrow keys included.
-- **Typing with an input method does not get there yet.** What travels is the keyboard: letters, digits, symbols, Enter, Tab and the arrow keys all work, but the step where an input method composes first and hands over the whole string is not wired up, so Chinese and anything else that needs one cannot be typed into the page for now.
+- **Typing with an input method works too.** Letters, digits, symbols, Enter, Tab and the arrow keys travel as keys, and a composed character — Chinese, and anything else an input method hands over as a whole string — travels as that string. There is an invisible field over the picture, and that is where the composing happens.
 - The line above the picture shows the page's title, its address, and whether it is still loading; the right-hand end is the size the browser is drawing the page at.
 - The page is redrawn at the size of the box on this page. Narrow the window and the page on the server narrows with it — what you see in this area is the viewport, so nothing has to be magnified.
 - When the picture stops — the browser was stopped, or the server was restarted — a line and a **Reload** button take its place; the button reconnects.

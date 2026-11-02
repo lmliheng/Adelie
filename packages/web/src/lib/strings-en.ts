@@ -397,6 +397,8 @@ export const en: Strings = {
     streamEnded: "The picture stopped; the browser on the server may have shut down.",
     /** The frame area's keyboard hint: what a visitor can do with the page. */
     hint: "Click the picture to use the page, or just type.",
+    /** The invisible editable element an input method composes into, over the picture. */
+    inputSurface: "Type here; what you type goes to the page",
   },
 
   tracePanel: {
