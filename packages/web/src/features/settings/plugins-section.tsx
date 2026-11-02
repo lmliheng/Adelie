@@ -24,7 +24,9 @@
  *
  * Values hydrate when the section mounts and the saved response is adopted as the new
  * baseline, the proxy page's rule; the plugin picks the change up through its watch, so
- * nothing here says "restart".
+ * nothing here says "restart". Either read failing — that first one, or the one an install makes
+ * afterwards to bring the cards' live parts up to date — keeps its reason on the page rather than
+ * in a toast that would be gone before the person looked (plugin-config-read.ts).
  */
 import { useEffect, useRef, useState } from "react";
 import type { PluginConfigEntry, PluginConfigField } from "@adelie/server/api";
@@ -57,7 +59,7 @@ import type { Draft } from "./plugin-config-draft";
 import { ConfigField } from "./plugin-config-field";
 import { ConfigHeading } from "./plugin-config-heading";
 import { withLiveParts } from "./plugin-config-live";
-import { pluginConfigUnreadable } from "./plugin-config-read";
+import { pluginConfigStale, pluginConfigUnreadable } from "./plugin-config-read";
 import { pluginSaveRefusal } from "./plugin-config-save";
 import { SandboxBackendPrompt } from "./sandbox-backend-prompt";
 import {
@@ -128,11 +130,14 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   /** The machine whose settings the page shows and saves: null for this server. */
   const [machine, setMachine] = useState<string | null>(null);
   /**
-   * Why the settings on screen could not be read — the sentence drawn where the cards would be,
-   * null when the read landed. It is about this server or the picked machine (`nameOf`), and it
-   * stays until another machine is picked or the page is opened again.
+   * Why the settings on screen could not be read, null when the read landed. Two reads can fail:
+   * the one on mount leaves the page empty under this sentence (nothing to draw), and the one
+   * after an install leaves the cards as the machine answered before it (`pluginConfigStale`).
+   * Either way it is about this server or the picked machine (`nameOf`), it is drawn where the
+   * cards are, and it stays until another machine is picked, a read lands, or the page is opened
+   * again.
    */
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
   const nameOf = (id: string) => machineLabels.get(id) ?? id;
   const projectId = useProject().currentProject?.projectId ?? null;
   /** The backend package the install prompt offers, while it is open. */
@@ -159,7 +164,7 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   useEffect(() => {
     let cancelled = false;
     setEntries(null);
-    setLoadError(null);
+    setReadError(null);
     setFieldErrors({});
     // A sentence about a save describes the values another machine (or another mount) held.
     setSaveRefusals({});
@@ -174,7 +179,7 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
         // the page is blank in this state, so a toast would be the only account of it there
         // ever was, and it is gone six seconds later.
         adopt([]);
-        setLoadError(
+        setReadError(
           pluginConfigUnreadable(machine === null ? null : nameOf(machine), apiErrorText(e)),
         );
       },
@@ -401,8 +406,14 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
     try {
       const config = await api.adminGetPluginConfig(machine);
       setEntries((prev) => withLiveParts(prev ?? [], config.plugins));
+      // The cards say what the machine answered: nothing is stale any more.
+      setReadError(null);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The package toasts said what installed, but the cards' notices, actions and backend
+      // report are what the machine said before the install — a card that still reads "no
+      // backend for this OS" is the worst answer, and a six-second toast over it was all that
+      // said why (7.72). Say it where the cards are; opening the page again is the retry.
+      setReadError(pluginConfigStale(machine === null ? null : nameOf(machine), apiErrorText(e)));
     } finally {
       setInstalling(false);
     }
@@ -502,15 +513,17 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   return (
     <SettingsSection>
       {picker}
-      {loadError !== null && (
+      {readError !== null && (
         <NoticeStrip
           tone="attention"
           as="p"
-          // The page is empty under it, so this line is the whole account of the state.
+          // Under a failed first read the page is empty, and under a failed read after an install
+          // the cards keep what the machine said before it: either way this line is the account
+          // of the state, so it is read out rather than glanced at.
           role="alert"
           className="rounded-md px-3 py-2 text-xs"
         >
-          {loadError}
+          {readError}
         </NoticeStrip>
       )}
       <FocusCard focus={focus} ready={entries.length > 0} />

@@ -2769,6 +2769,16 @@ export const en: Strings = {
       `Could not read what ${name} runs: ${reason}`,
     /** The same line about this server: the picker's bare label does not fit the machine phrasing. */
     thisServerUnreadable: (reason: string) => `Could not read this server's plugins: ${reason}`,
+    /**
+     * The read again after an install (pluginConfigStale): the cards stay on screen with what the
+     * machine answered before it, so the line says what is being shown rather than that nothing
+     * could be read — "may still be" because a later read of the notices can land on its own.
+     */
+    machineStale: (name: string, reason: string) =>
+      `Could not read what ${name} runs again after the install (the state on the cards may still be from before it): ${reason}`,
+    /** The same line about this server: the picker's bare label does not fit the machine phrasing. */
+    thisServerStale: (reason: string) =>
+      `Could not read this server's plugin state again after the install (the state on the cards may still be from before it): ${reason}`,
     /** Header icon button opening the Settings dialog on its Plugins page (admin only). */
     openSettings: "Plugin settings",
     pageDesc:

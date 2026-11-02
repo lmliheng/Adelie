@@ -2818,6 +2818,16 @@ export const zh = {
      * "This server" and would read as if it were a machine's name.
      */
     thisServerUnreadable: (reason: string) => `无法读取本机的插件：${reason}`,
+    /**
+     * The read again after an install (pluginConfigStale): the cards stay on screen with what the
+     * machine answered before it, so the line says what is being shown rather than that nothing
+     * could be read — "may still be" because a later read of the notices can land on its own.
+     */
+    machineStale: (name: string, reason: string) =>
+      `安装之后没能重新读取 ${name} 上的插件状态（卡片上的状态可能仍是安装前的）：${reason}`,
+    /** The same line about this server, whose label would read as a machine's name (see above). */
+    thisServerStale: (reason: string) =>
+      `安装之后没能重新读取本机的插件状态（卡片上的状态可能仍是安装前的）：${reason}`,
     /** Header icon button opening the Settings dialog on its Plugins page (admin only). */
     openSettings: "插件设置",
     pageDesc:
