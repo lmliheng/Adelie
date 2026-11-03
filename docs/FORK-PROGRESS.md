@@ -2054,6 +2054,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       （点名「开启」/「关闭」失败）、固定那句画在那一行的按钮下面（按钮自己的措辞 + 路径 + 服务端原话），
       都留到下一次同一种写为止，同一个控件就是重试。失败通知保留。见「第一百八十五轮」一节。
 
+- [x] **7.75 Agent 各分区的「启用」开关被拒时，原因留在卡片下面，不再只活六秒**（**2026-11-03
+      第一百八十六轮**落地，提交见「已完成的轮次」；源码 4 处（一个新纯模块、两对句 + 五个名词、
+      两处状态 + 两个 `catch`、两处绘制），单测 +6 条 + 1 个新 spec（2 条）+ changelog 一对，
+      **不碰接口、无新依赖**）：第一百八十五轮把设置页收完之后，Agent 设置里还剩这一族最上面那颗
+      开关 —— 记忆有自己的卡片，技能 / 密钥保险柜 / 定时任务 / 钩子共用 `usePromptInjection` 那
+      一张。两处都不做乐观写入（卡片画的是服务端答回来的配置），所以被拒时开关静静地停在原处、原因
+      只在六秒的通知里；而这颗开关正是它下面整个功能的闸门（记忆进不进上下文、Agent 读不读得到
+      保险柜、新会话装不装钩子）。现在那句话画在卡片正下方（`role="alert"`），点名这一次请求的方向
+      （开关没动，方向不会自己显出来），说的是功能自己的名词（「记忆」/「钩子」）而不是已以「启用」
+      开头的标签；留到下一次同一种写为止，同一颗开关就是重试。失败通知保留。见「第一百八十六轮」一节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -2744,6 +2755,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-03 | 7.72 | **安装插件之后那次重读失败时，原因留在页面上、卡片的上方，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/settings/plugin-config-read.ts` 新增 `pluginConfigStale()`（与 `pluginConfigUnreadable` 并排：一个说页面底下是空的，一个说卡片可能还是安装前的）、`packages/web/src/lib/strings{,-en}.ts` 两对新文案 `plugins.{machineStale,thisServerStale}`、`packages/web/src/features/settings/plugins-section.tsx` 的 `loadError` 收成 `readError`（挂载时那次读 / 安装之后那次重读）且 `installOffered` 的 `catch` 从 `toastError` 改写成它、读成功时清掉；单测 +5 条、新 spec 1 条、changelog 一对） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **284 文件 / 3446 通过 / 2 跳过**（+5 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · 改动面六个文件 `oxlint` **0 警告 0 错误**、六个文件与一对 changelog `prettier --check` 干净、`git diff --check` 干净 · **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r183-{before,after}`、两个端口 **8996 改前 / 8997 改后**、仓库自带 mock LLM 8951、系统 chromium 1280×900，两份 web 产物分别挂上去（改前那份是四个源码文件退回 `HEAD` 后重建的）—— 探针把配置读与安装写都桩住，读数：失败后 0.6 s 页面上 `role="alert"` **改前 0 条 / 改后 1 条**（琥珀色条，就在卡片上方），0.6 s 通知区 **改前 2 条**（`已安装 @adelie/sandbox-bwrap` + `服务器内部错误，请稍后重试。`）**/ 改后 1 条**（只有安装那条），**7.6 s 后改前 alert 仍是 0、通知区 0 条（原因彻底没了），改后那句仍在**；放开拒绝、离开这一页再回来，两态 alert 都归 0、第 3 次读发出；两态 console 只有刻意桩出的 500、无 pageerror；截图 `r183/shots/{after,before}-{1-prompt,2-right-after,3-after-7s,4-reopened}.png` · 新 spec 在改后产物上 **1 passed（9.7 s；最终产物 9.9 s）**，**反证**跑改前产物 **1 failed**（`section.getByRole("alert")` 的 `toHaveText`：`element(s) not found`）· **相邻回归（真浏览器四个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 + `plugin-config-save-refusal` 1 + `plugins-read-refusal` 1 **7 passed（31.0 s）** · 端口只用 8951 / 8996 / 8997（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r183-{before,after}`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r183/` 下 | 见本行提交 |
 | 2026-11-03 | 7.73 | **回收站的还原 / 彻底删除被拒时，原因留在那一行的按钮下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 4 处 —— `packages/web/src/features/settings/storage-trash-refusal.ts`（新，58 行：`storageTrashKey(action, id)` 是三个写操作在途时用的键也是拒绝画在哪一行的答案、`storageTrashRefused(key, reason)` 把键与原因变成一句话，批次用自己的词 `purge:expired`）、`packages/web/src/lib/strings{,-en}.ts` 三对文案 `storageTrashRefused{Restore,Purge,Expired}`、`storage-section.tsx` 的 `trashRefusal` 状态（开始时清、被拒时写）与两个 `catch`（`restore` / `purge` 从 `toastError` 改写成它，通知保留）、`TrashRefusalLine` 画在那一行的按钮下方 / 批次按钮下方；单测 +8 条、新 spec 1 条、changelog 一对，**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔不动服务契约）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **285 文件 / 3454 通过 / 2 跳过**（+1 文件、+8 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过**（与前一轮同数，本笔只动 `packages/web`）· 改动面六个文件 `oxlint` **0 警告 0 错误**；同六个文件与一对 changelog `prettier --check` 干净（两个文件 `--write` 后复检）；`git diff --check` 干净 · **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r184`（改后）与 `r184-before`、两个端口 **8998 改后 / 8997 改前**、仓库自带 mock LLM 8999、系统 chromium 1280×900，两份 web 产物分别挂上去（改前那份是三个源码文件退回 `HEAD`、新模块与单测挪走之后重建的，`grep 彻底删除已过保留期的条目被拒` = 0）—— 探针把回收站的读与两个写都桩住，读数：按「恢复」失败后 0.7 s 那一行的 `role="alert"` **改前 0 条 / 改后 1 条**（`恢复「20261103120000」被拒：服务器内部错误，请稍后重试。`，红字 `oklch(0.577 0.245 27.325)` 就在两个按钮下面）、通知区 **1 条（两态相同：本页保留通知）**，**7.6 s 后改前 alert 仍是 0、通知区 0 条（原因彻底没了），改后那句仍在**；再按「彻底删除」，改后那句话换成 `彻底删除「20261103120000」被拒：…`（仍然只有 1 条），改前 0 条；放开拒绝再按同一颗按钮，两态 alert 都归 0、`writes` 都是 `restore,purge,purge`；那一行的编号 / 移入时间 / 条目 / 体积 / 状态两态全程未变；两态 console 只有刻意桩出的 500（2 条）、无 pageerror；截图 `r184/shots/{after,before}-{1-before,2-restore-refused,3-seven-seconds-later,4-purge-refused,5-healed}.png` · 新 spec 在最终产物上 **1 passed（9.6 s；首跑 9.5 s）**，**反证**跑改前产物 **1 failed**（`row.getByRole("alert")` 的 `toHaveText`：`element(s) not found`）· 端口只用 8997 / 8998 / 8999（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r184{,-before}`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r184/` 下 | `2f0459a9a` |
 | 2026-11-03 | 7.74 | **清理模式的开关与每行的「固定 / 取消固定」被拒时，原因留在控件旁边，不再只活六秒；这两个动作进了浏览器套件**（不是移植：源码 4 处 —— `packages/web/src/features/settings/storage-settings-refusal.ts`（新，48 行：`storageModeRefused(enabled, reason)` 给出开关那句、方向来自这一次请求想去的那个位置，`storagePinRefused(path, pinned, reason)` 给出固定那句连它该画在哪一行）、`packages/web/src/lib/strings{,-en}.ts` 三句新文案（清理模式开关 / 固定 / 取消固定，都点明哪一次动作）、`packages/web/src/features/settings/storage-section.tsx`（`modeRefusal` / `pinRefusal` 两个状态，写开始时清掉、被拒时写上；`ModeRow` 与 `BillRow` 各多一个 `refusal`，前者画在状态说明下面、后者画在那一行的按钮下面，`BillGroup` 按 `path` 只交给对上的那行）+ 单测 1 个 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案外的界面结构、无新依赖**）：第一百八十四轮「没做 / 留着」点名的同一页最后两处写点。两个写都不做乐观写入（开关永远显示服务端答回来的位置、被拒的固定不会把按钮改成「取消固定」），所以失败此前只剩一条六秒的通知 —— 开关是这一页其余每个写操作的闸门，固定是决定某条路径会不会再出现在下一份账单里的那一下 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔只动 `packages/web`）· 改动面六个文件 `oxlint` **0 警告 0 错误** · 六个文件与一对 changelog `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检，复检后重跑用例 2 passed）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **286 文件 / 3463 通过 / 2 跳过**（+1 文件、+9 条即本笔单测）· server 首跑 **1 条失败 / 211 文件**、复跑 **211 文件 / 3077 通过 / 17 跳过、0 失败**（满载下的偶发，与台账第一百六十轮、7.58 记的同一种；本笔未碰 server）· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r185`、服务端 **8991**（`HOST=127.0.0.1`）、仓库自带 mock LLM **8990**、系统 chromium 1280×900）：新 spec **2 passed（9.3 s / 9.4 s）**，与上一轮的 `storage-trash-refusal.spec.mjs` 同服务连跑 **3 passed（29.6 s）** · **反证**：把三个源码文件 `git stash push --` 掉、重建 Web 产物 → 同一份 spec **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：`element(s) not found`），同一份探针的读数改成 `modeAlerts 0 / pinAfter.alerts 0`；`git stash pop` + 重建 → **2 passed** · **两态实测真看一眼**（探针 `r185/probe.mjs`，同一份跑两态）：**改前** 按开关后页面上 `alert` **0 条**（屏幕顶端一条 toast「服务器内部错误，请稍后重试。」），7.6 s 后 toast 也没了、开关仍在开位；**改后** 状态说明下面一条红字「关闭清理模式被拒：服务器内部错误，请稍后重试。」（`oklch(0.577 0.245 27.325)`），7.6 s 后原样还在；固定的那一行同样 —— 改前 `alerts 0`，改后按钮下面「固定「workspaces/probe」被拒：服务器内部错误，请稍后重试。」且按钮仍写「固定」；放开拒绝后两处都走通（开关真的关掉、按钮变「取消固定」、句子归 0）。两态 console 只有刻意桩出的 500，无 pageerror、无其它 ≥400；截图 `r185/{after,before}/shots/*.png`、两态读数在 scratchpad 的 `r185/` · 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r185`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `101c5aa89` |
+| 2026-11-03 | 7.75 | **Agent 各分区的「启用」开关被拒时，原因留在卡片下面，不再只活六秒；两处都进了浏览器套件**（不是移植：源码 4 处 —— `packages/web/src/features/agents/feature-switch-refusal.ts`（新，24 行：`featureSwitchRefused(noun, enabled, reason)` 给出这一次请求的方向 + 功能自己的名词 + 服务端原话）、`packages/web/src/lib/strings{,-en}.ts` 两对句 `agent.switchOnRefused` / `switchOffRefused` 与五个名词（`memory.switchNoun` 与 `{skills,vault,schedule,hooks}.injection.switchNoun`）、`prompt-injection-controls.tsx` 与 `memory-tab.tsx` 各一个 `switchRefusal` 状态（开始时清、被拒时写）与卡片下方那一行，+ 单测 6 条 + 2 条新 spec + changelog 一对，**不碰接口、无新依赖**）：第一百八十五轮把设置页收完之后，Agent 设置里剩下的同一族写点 —— 记忆自己的卡片与技能 / 密钥保险柜 / 定时任务 / 钩子共用的那张。两处都不做乐观写入（卡片画的是服务端答回来的配置），所以被拒时开关停在原处、原因只在六秒的通知里；而这颗开关正是它下面整个功能的闸门 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔只动 `packages/web`）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **287 文件 / 3469 通过 / 2 跳过**（+1 文件、+6 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · 改动面七个文件 `oxlint` **0 警告 0 错误**；同七个文件与一对 changelog `prettier --check` 干净（`strings.ts` 首跑一条，`--write` 后复检）、`git diff --check` 干净 · **真服务端 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r186`、端口 **8992**（`HOST=::`）、仓库自带 mock LLM **8993**、系统 chromium 1280×900，两份 web 产物分别挂上去（改前那份是四个源码文件 `git stash push --` 掉、新模块挪走之后重建的）—— 探针把配置写桩成 500：失败后 0.8 s 页面上 `role="alert"` **改前 0 条 / 改后 1 条**（红字「关闭记忆的开关被拒：agent config is read-only」就在卡片下面），**7.6 s 后改前 alert 仍是 0、通知区 0 条（原因彻底没了），改后那句仍在**；两态开关都没动（仍在开位）；两态 console 只有刻意桩出的 500 与既有的 `machines` 403（两态相同），无 pageerror；截图 `r186/{after,before}/{1-switch-refused,2-seven-seconds-later}.png` · 新 spec 在最终产物上 **2 passed（15.3 s / 14.9 s）**，**反证**跑改前产物 **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：`element(s) not found`）· **相邻回归（真浏览器三份 spec）**：`agent-config-refusal` 2 + `agent-schedule-toggle-refusal` 2 + `mcp-toggle-refusal` 2 **6 passed（28.0 s）** · 端口只用 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r186`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r186/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | `a1b5138c5` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -21252,4 +21264,98 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 源文件 + 单测 + spec + changelog：**`101c5aa89`**（8 文件 / +521 −1）；台账（7.74 的待办行、
+上表那一行、本节）另起一笔。
+
+## 第一百八十六轮：Agent 各分区的「启用」开关被拒时，原因留在卡片下面（2026-11-03，条目 7.75）
+
+### 开工自检
+
+`main` 在 `5f16d1a12`（第一百八十五轮之后那一笔台账），`git status --short` **干净**；
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。没有切分支、没碰
+`legacy/main`、没推 upstream。
+
+### 选活：表上仍全卡着，于是接同一族的下一处
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳写侧 / 既有部署单元 / 发布动作，而本轮纪律明令不碰 desktop）、
+**3.5**（拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+
+第一百八十五轮把设置页那一页收完了，这一族的下一站就是 Agent 设置：那里已经有几处照着做的
+（`mcp-servers-section` 的 MCP 行开关、`schedules-tab` 的启用 / 停用、概览两张卡片、API 页三张卡片
+——7.61 / 7.62 / 7.69），唯独每个标签页**最上面那颗「启用」开关**还只落 toast：
+
+- 记忆页自己的卡片（`memory-tab.tsx` 的 `toggleEnabled`）；
+- 技能 / 密钥保险柜 / 定时任务 / 钩子共用的那张（`prompt-injection-controls.tsx` 的
+  `usePromptInjection().toggleCard`）。
+
+两处都不做乐观写入 —— 卡片画的是服务端答回来的 `config` —— 所以被拒时开关静静地停在原处，解释只有
+一条六秒的通知。而这颗开关是它下面整个功能的闸门：记忆进不进上下文、Agent 读不读得到保险柜、新会话
+装不装钩子。到此这一族在 Agent 设置里就只剩「插入占位符」那个按钮与提示词保存两处（见下）。
+
+### 做了什么
+
+- `packages/web/src/features/agents/feature-switch-refusal.ts`（新，24 行）：
+  `featureSwitchRefused(noun, enabled, reason)` —— 功能的名词、**这一次请求想去的方向**、服务端原话。
+  方向必须点名：开关没动，屏幕上既可能是「为什么还开着」也可能是「为什么还关着」，说反了等于说错
+  （与 7.74 的 `storageModeRefused` 同一条判断）。名词不能说卡片标签：五张卡片的标签都已以「启用」开头，
+  放进「开启…」里会说两遍「启用」。
+- `packages/web/src/lib/strings{,-en}.ts`：`agent.switchOnRefused` / `agent.switchOffRefused` 两对句，
+  加五个名词（`memory.switchNoun`、`{skills,vault,schedule,hooks}.injection.switchNoun`），各写在它
+  自己那张卡片的标签旁边。
+- `packages/web/src/features/agents/prompt-injection-controls.tsx`：`switchRefusal` 状态（发出写时清掉、
+  被拒时写上）；`toggleCard` 从单张 `ToggleRow` 变成「卡片 + 那句话」的片段，`role="alert"`、危险色、
+  就在卡片下面。失败通知保留。
+- `packages/web/src/features/agents/memory-tab.tsx`：同样的状态与同样的一行，画在记忆卡片下面。
+- 没有新接口、没有新依赖：还是同一次 `PUT …/agents/:id/config`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** ·
+  cli **38 / 561** · web **287 文件 / 3469 通过 / 2 跳过**（+1 文件、+6 条即本笔单测）·
+  server **211 文件 / 3077 通过 / 17 跳过**。
+- 改动面七个文件 `oxlint` **0 警告 0 错误**；同七个文件与一对 changelog `prettier --check` 干净
+  （`strings.ts` 首跑一条，`--write` 后复检、只多出本笔那 13 行）；`git diff --check` 干净。
+- **真服务端 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r186`、服务端
+  **8992**（`HOST=::`，回环走 `localhost`）、仓库自带 mock LLM **8993**、系统 chromium 1280×900；两份
+  web 产物分别挂上去（改前那份是四个源码文件 `git stash push --` 掉、新模块挪走之后重建的）。探针把
+  配置写桩成 500 `agent_config_read_only`：
+
+  | 量点 | 改前 | 改后 |
+  | --- | --- | --- |
+  | 按下开关后 0.8 s 页面上的 `role="alert"` | **0 条** | **1 条**：`关闭记忆的开关被拒：agent config is read-only` |
+  | 那句话的位置 | — | 卡片正下方（危险色） |
+  | 通知区 0.8 s | 一条 `agent config is read-only` | 同一条（保留） |
+  | 7.6 s 后 | alert **0 条**、通知区 **0 条**（原因彻底没了） | 同一句**还在**（通知区空） |
+  | 开关位置 | 仍在开位 | 仍在开位（本来就没动） |
+
+  两态 console 只有刻意桩出的 500 与既有的 `machines` **403**（两态一模一样，非管理员账号的既有行为），
+  无 pageerror；截图 `r186/{after,before}/{1-switch-refused,2-seven-seconds-later}.png`。
+- 新 spec `agent-switch-refusal.spec.mjs` **2 passed（15.3 s / 14.9 s）**：一条记忆卡片、一条共享的
+  技能卡片（两条不同的代码路径、同一句话）；两条都断言通知区没有可关闭的条目、开关没动、七秒后句子仍在，
+  记忆那条再放开拒绝、按同一颗开关走通。
+- **反证**：同一份 spec 跑改前产物 **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：
+  `element(s) not found`）；放回、重建后再跑 **2 passed**。
+- **相邻回归（真浏览器三份 spec）**：`agent-config-refusal` 2 + `agent-schedule-toggle-refusal` 2 +
+  `mcp-toggle-refusal` 2 **6 passed（28.0 s）**。
+- 端口只用 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r186`，探针 / 临时 playwright 配置 / 两态读数 / 截图都在 scratchpad 的
+  `r186/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）。
+- **一处自己踩的坑（记下来）**：新 spec 第一版在 `page.goto` 之后直接读开关位置 —— 记忆页那颗开关在
+  概览还没回来时先按自己的默认值（`useState(true)`）画出来，于是同一份 spec 在「上一轮把它写成了
+  false」的数据根上读到真、点下去却是「开启」，断言方向反了。改成先把开关**用接口种成已知位置**、再
+  等 `GET …/memory` 这次读回来，才读位置；页面上这一处竞态对用户没有可见后果（加载完成后开关就正了），
+  属测试夹具问题，不是产品缺陷。
+
+### 没做 / 留着
+
+- Agent 设置里这一族还剩两处：`insertPlaceholder`（模板缺占位符时那条提示条上的按钮，记忆 / 技能 /
+  保险柜 / 定时任务四个页面各一个，走 `POST …/memory/template-placeholder` 与三个同形接口）与提示词
+  保存（走 `requestSave` 的确认框，失败时框已关、只剩通知）。前者是「一条提示条 + 一个按钮」，后者要
+  先想清楚确认框关掉之后的落点，留到下一轮或用户点单。
+- 2.2c 的尾巴（桌面壳写侧 / 既有部署单元 `adelie-app.service`）、3.5 / 3.6、5.6 / 5.10、4.1–4.3
+  仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源文件 + 单测 + spec + changelog：**`a1b5138c5`**（9 文件 / +456 −10）；台账（7.75 的待办行、
 上表那一行、本节）另起一笔。
