@@ -2103,6 +2103,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       取词，连接成功给 `null`）。连接成功仍是那条带工具数与耗时的通知（模型库那张卡片的写法）。见
       「第一百八十九轮」一节。
 
+- [x] **7.79 模型库配置弹窗的「测试连通性」被拒时，原因留在按钮下面，不再只活六秒；这条动作进了浏览器
+      套件**（**2026-11-04 第一百九十轮**落地，提交见「已完成的轮次」；源码 2 处（一个新纯模块、一处状态 +
+      一处分支改写 + 一处绘制）+ 单测 7 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案、
+      无新依赖**）：第一百八十九轮留下的口子（`features/` 里仍写着 `toastError` 的那一批）在「模型库」这条
+      线上最显眼的一处 —— 弹窗里那颗按钮跑的是表单里尚未保存的值，失败不写任何东西、弹窗一个字都不变，
+      而原因只活在六秒的通知里，旁边 `apiKey` / `baseUrl` / `modelId` 正是读者要照着改的那几格。现在那句话
+      画在按钮那一行的下面（`role="alert"`、危险色、限两行、整句挂悬停），留到表单被编辑或下一次测试开始。
+      「一次答复变成哪句话」提成纯函数 `modelTestRefusal(answer, fix)`：请求本身失败走 `refusalText`、答复
+      没细节时退回通用那句、能路由却失败的把路由原句原样带过去，`fix`（`unroutableFix`，按下那一刻对表单
+      求值）换成 `testStalePin` / `testNotRoutable`，被换掉的原句照旧进控制台。连接成功仍是带延时的通知。
+      见「第一百九十轮」一节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -2797,6 +2809,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-03 | 7.76 | **插入占位符被拒时，原因留在那条提示条下面，不再只活六秒；记忆页与技能页各进了浏览器套件**（不是移植：源码 6 处 —— `packages/web/src/features/agents/placeholder-insert-refusal.ts`（新，25 行：`placeholderInsertRefused(token, legacy, reason)` 给出是哪一个占位符、这一次按的是「插入」还是「迁移」、服务端原话）、`packages/web/src/lib/strings{,-en}.ts` 两对句 `agent.placeholderInsertRefused` / `placeholderMigrateRefused` 与四处 `placeholderToken`（记忆、技能、保险柜、定时任务各一个，写在它自己那条提示条与按钮的文案旁边）、`memory-tab.tsx` 与 `prompt-injection-controls.tsx` 各一个 `insertRefusal` 状态（发出写时清掉、被拒时写上）与提示条下方那一行，+ 单测 5 条 + 2 条新 spec + changelog 一对，**不碰接口、无新依赖**）：第一百八十六轮「没做 / 留着」点名的第一处 —— 这四个小节的按钮都请服务端把占位符写进提示词模板，而写没落地之前页面上什么都不动，所以被拒之后提示条与按钮都还在、原因却只在六秒的通知里；这一处正是整个功能接进上下文的那条路 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔只动 `packages/web`）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **288 文件 / 3474 通过 / 2 跳过**（+1 文件、+5 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · 改动面七个文件 `oxlint` **0 警告 0 错误**；同七个文件与一对 changelog `prettier --check` 干净（`memory-tab.tsx` 与新 spec 首跑各一条，`--write` 后复检、只动本笔那几行）、`git diff --check` 干净 · **真服务端 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r187`、端口 **8992**（`HOST=::`）、仓库自带 mock LLM **8993**、系统 chromium 1280×900，两份 web 产物分别挂上去（改前那份是四个源码文件 `git stash push --` 掉、新模块挪走之后重建的）；探针先把该 Agent 的提示词模板换成不含占位符的纯文本（默认模板里什么都有，提示条根本不出现），再把占位符写桩成 500：按下「插入」后 0.8 s 页面上 `role="alert"` **改前 0 条 / 改后 1 条**（记忆页「插入 {{MEMORY}} 占位符被拒：agent config is read-only」、技能页同一句换成 {{SKILLS}}，都正好在提示条下面），**7.6 s 后改前 alert 仍是 0、通知区 0 条（原因彻底没了），改后那句仍在**；两态提示条与按钮都没动（被拒没有写入）；两态 console 只有刻意桩出的 500 与既有的 `machines` 403（两态一模一样），无 pageerror；截图 `r187/{after-final,before}/{memory,skills}-{1-refused,2-seven-seconds-later}.png` · 新 spec 在最终产物上 **2 passed（16.1 s / 15.7 s；复跑 15.8 s / 15.5 s）**，**反证**跑改前产物 **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：`element(s) not found`）· **相邻回归（真浏览器三份 spec）**：`agent-config-refusal` 2 + `agent-switch-refusal` 2 + `memory-write-refusal` 3 **7 passed（44.8 s）** · 端口只用 8992 / 8993（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r187`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r187/` 下（临时 spec 与临时配置跑完即删；`packages/web/dist`、`test-results` 都是产物，未 `git add`） | `af336ae61` |
 | 2026-11-03 | 7.77 | **保存确认框被拒时留在原地说明原因，不再关掉之后只剩一条六秒的通知；提示词页与记忆页各进了浏览器套件**（不是移植：源码 5 处 —— `packages/web/src/features/agents/save-confirm-outcome.ts`（新，34 行：`awaitSave(run)` 等这次写入、落地给 `{ ok: true }`、被拒给 `{ ok: false, reason }`，原因按每处拒绝槽同一条规则读（`refusalText`），判定词复用模型库那份 `WriteOutcome`）、`save-confirm.tsx`（`busy` + `refusal`，打开卡片时清空；写入在途两颗按钮都锁、被拒时原因画在卡片自己那句下面、只有写入落地才关）、`agent-settings-page.tsx`（四处 `requestSave(() => void onSave(...))` 去掉 `void`，让卡片拿到 promise；页面级 `save` 的 catch 发完通知再 rethrow）、`memory-tab.tsx` 与 `prompt-injection-controls.tsx`（各自 `.then/.catch` 的写入链交回、catch 里发完通知 rethrow）；单测 `save-confirm-outcome.test.ts` 6 条 + 新 spec `agent-save-refusal.spec.mjs` 2 条 + changelog 一对）：第一百八十七轮「没做 / 留着」点名的最后一处。Agent 设置每一次保存都先弹同一张卡片，它过去在同一次点击里就把自己关掉 —— 写被拒之后表单里那条没保存的修改还在、卡片没了、原因只剩提示区一条六秒的通知。现在卡片等到服务器答复：在途时两颗按钮锁着，被拒时服务端的原话画在 `ConfirmModal` 的 `refusal` 槽里（与「还原为默认配置」、模型库那些确认框同一规则），留到这次写入落地；确认按钮就是重试，只有真写进去才关。失败通知保留 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，199 接口 / 598 类型）· `oxlint` 七个改动文件 **0 警告 0 错误** · 同七个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **289 文件 / 3480 通过 / 2 跳过**（+1 文件、+6 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过**（首跑 `terminal-stream` 的 permessage-deflate 那条 1 红，单跑 18 条全过、整套复跑全绿 —— 与 web 侧改动无关的计时抖动，记在这里）· **反证（真界面）**：同一份新 spec 跑改前产物 **2 failed**（两条都死在 `getByRole("dialog", { name: "保存修改" })` 上 —— 卡片在点下确认后就不见了），放回、重建后 **2 passed（15.6s / 8.4s）** · **本轮主证据（真服务端 + 真浏览器，两态同一份探针）**：一次性数据根 `/root/adelie-fork-data/r188`、服务端 **8996**（`HOST=::`，回环走 `localhost`）、仓库自带 mock LLM **8997**、系统 chromium 1280×900；两份 web 产物分别是`r188/after-dist` 与 `r188/before-dist`。探针在 `page.route` 上把 `PUT …/config` 桩成 500 并量 1.2 s / 7.6 s 两个时点：**改前** —— 卡片 `null`（不在了），截图上只剩一条写着 `agent state is read-only` 的通知，表单里那条未保存的修改仍在；**改后** —— 卡片仍在且 `innerText` 是「确定保存这些修改吗？修改将写入服务器上的配置文件。\n\n操作被拒绝：agent state is read-only\n取消\n保存」，7.6 s 后同一个字符串逐字不变，通知区 0 条（失败通知已自行消失，原因却还在）。两态 console 都只有桩出来的 500 与既有的 `machines` **403**（非管理员账号的既有行为），无 pageerror · **相邻回归（真浏览器四份 spec）**：`agent-config-refusal` 2 + `agent-switch-refusal` 2 + `memory-write-refusal` 3 + `placeholder-insert-refusal` 2 **9 passed（1.3m）** · 端口只用 8996 / 8997（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r188`，探针 / 两态产物 / 截图都在 scratchpad 的 `r188/` 下（临时 playwright 配置跑完即删；`packages/web/dist`、`test-results` 都是产物，未 `git add`） | `c42d5022d` |
 | 2026-11-04 | 7.78 | **MCP Server 编辑卡片里那颗「测试连接」被拒时，原因留在按钮下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/agents/mcp-test-refusal.ts`（新，44 行：`mcpTestRefusal(answer)` 把一次探测的答复变成卡片里那句话，连接成功给 `null`；三种答复各按 `refusalText` 的既有规则取词）、`mcp-servers-section.tsx`（一个 `testRefusal` 状态：探测开始清掉、被拒写上、成功不写；`patchForm` / `openAdd` / `openEdit` 都清掉它，因为探测送的正是这份表单的全部值；句子画在按钮那一行下面（`role="alert"`、危险色、限两行、整句挂悬停）；`toastError` 的导入去掉）+ 单测 `mcp-test-refusal.test.ts` 6 条 + 新 spec `mcp-test-refusal.spec.mjs` 2 条 + changelog 一对）：第一百八十八轮把这一族在 Agent 设置与设置页里收完，本轮补上同一块里最后一个只在 toast 里的面 —— MCP 区块的另外三个写（开关、删除、保存）早就把原因留在行 / 卡片里，只有卡片里那颗探测按钮的两条失败路仍走 `toastError`。它跑的是表单里尚未保存的值，失败之后卡片一个字都没变，六秒后屏上没有任何东西说明这颗按钮被按过。文案复用 `mcpTestFail(detail)`，本轮没有新文案；连接成功仍是带工具数与耗时的那条通知 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，199 接口 / 598 类型）· 四个改动文件 `oxlint` **0 警告 0 错误** · 四个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **290 文件 / 3486 通过 / 2 跳过**（+1 文件、+6 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · 新 spec **2 passed（9.5 s / 2.1 s）** · **反证**：两处源码退回 `HEAD`、新模块挪走、重建产物，同一份 spec **2 failed**（都死在卡片里 `getByRole("alert")` 上），放回重建后 **2 passed** · **两态探针（真服务端 + 真浏览器，`POST …/mcp-test` 桩 500）**：改前 1.2 s 卡片 0 条 alert、通知区 1 条；7.6 s 卡片 0 条、通知区 0 条（**原因彻底没了**）。改后 1.2 s 与 7.6 s 卡片都是同一条`连接失败：服务器内部错误，请稍后重试。`、通知区 0 条，表单的 `url` 两态都原样；截图 `r189/{before,after}/*.png`；两态 console 只有桩出来的 500 与既有的 `machines` 403 · 相邻回归 `agent-config-refusal` 2 + `mcp-delete-refusal` 2 + `mcp-toggle-refusal` 2 **6 passed（22.1 s）** · **整套 e2e 217 passed / 2 failed（20.8 m）**：`scroll-follow-bounce` 的滚轮步长（实测 81 px 期望 > 100）**用改前产物单跑依旧红**，与本笔无关；`server-switch-read-refusal` 整套里红一条、**单跑 3 passed**（排序抖动）· 端口只用 8992 / 8993（跑完都已停；8996 / 8997 上是上一轮留下的服务端，**不是我起的、没有动**，也是本轮先踩到的坑），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r189-*`，探针 / 两态产物 / 截图在 scratchpad 的 `r189/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | 见本行提交 |
+| 2026-11-04 | 7.79 | **模型库配置弹窗的「测试连通性」被拒时，原因留在按钮下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/models/model-test-refusal.ts`（新，60 行：`modelTestRefusal(answer, fix)` 把一次探测的答复变成弹窗里那句话，连接成功给 `null`；请求本身失败走 `refusalText`、答复没细节时退回通用那句、能路由却失败的把路由原句原样带过去，`fix` 换成 `testStalePin` / `testNotRoutable`）、`models-page.tsx`（一个 `testRefusal` 状态：探测开始清掉、`set()` 里每次编辑都清掉、被拒时写上；`reportTestFailure` 从「取一段文本」改成「收整份答复」并把被换掉的原句照旧 `console.warn`；句子画在按钮那一行下面（`role="alert"`、危险色、限两行、整句挂悬停））+ 单测 `model-test-refusal.test.ts` 7 条 + 新 spec `models-test-refusal.spec.mjs` 2 条 + changelog 一对）：第一百八十九轮留下的口子（`features/` 里仍写着 `toastError` 的那一批）在模型库这条线上最显眼的一处 —— 那颗按钮跑的是表单里尚未保存的值，失败不写任何东西、弹窗一个字都不变，六秒后屏上没有任何东西说明它被按过。文案复用 `testFailed(detail)` / `testStalePin` / `testNotRoutable`，本轮没有新文案；连接成功仍是带延时的那条通知 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，199 接口 / 598 类型）· 四个改动文件 `oxlint` **0 警告 0 错误** · 四个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **291 文件 / 3493 通过 / 2 跳过**（+1 文件、+7 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** —— 服务端第一次是与 Web 构建并排跑的、`EXIT=1`，单独重跑全绿（并排那次的失败没留日志，只记「单独跑是绿的」）· 新 spec **2 passed（9.3 s / 2.1 s）** · **反证**：两处源码退回 `HEAD`、新模块挪走、重建产物，同一份 spec **2 failed**（都死在弹窗里 `getByRole("alert")` 上），放回重建后 **2 passed** · **两态探针（真服务端 + 真浏览器，`POST …/models/test` 桩成 `{ok:false,message}`）**：改前 1.2 s 弹窗 0 条 alert、通知区 1 条；7.6 s 弹窗 0 条、通知区 0 条（**原因彻底没了**）。改后 1.2 s 与 7.6 s 弹窗都是同一条 `连通失败：connect ECONNREFUSED 127.0.0.1:9`、通知区 0 条，表单的 `baseUrl` 两态都原样；截图 `r190/{before,after}/*.png`；两态 console 只有既有的 `machines` 403 · 相邻回归 `models-save-refusal` 3 + `models-delete-model` 2 + `models-delete-group` 2 + `models-sync-order` 2 + `models-assign-user-key` 3 **12 passed（36.2 s）** · **整套 e2e 217 passed / 4 failed（20.8 m）**：`scroll-follow-bounce` 三种主题全红（同一个量点 `gesture 1: the wheel scrolled up`，实测 **42** px 期望 > 100）**用改前产物单跑 2 failed / 1 passed，依旧红**，是这台机器的 headless 滚轮步长；`server-switch-read-refusal` 整套里红了公司模式那条，**单跑 2 passed**（9.4 s / 9.2 s，整套里跑成 24.0 s，排序 / 时序抖动）· 端口只用 8990 / 8991（跑完都已停；开工时 8996 / 8997 上已有人占着，**不是本轮起的、没有动**），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r190-*`，探针 / 两态产物 / 截图在 scratchpad 的 `r190/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | `08a40a77f` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -21676,3 +21689,101 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 ### 提交
 
 源文件 + 单测 + spec + changelog：本笔；台账（7.78 的待办行、上表那一行、本节）另起一笔。
+
+## 第一百九十轮：模型库配置弹窗的「测试连通性」被拒时留在按钮下面说明原因（2026-11-04，条目 7.79）
+
+### 开工自检
+
+`main` 在 `e380cba70`（第一百八十九轮之后那一笔台账笔误修正），`git status --short` **干净**（无输出）。
+`git fetch origin` **两次都没连上 github.com**（第一次 `GnuTLS recv error (-110): The TLS connection was
+non-properly terminated.`，第二次 `curl 28 Failed to connect to github.com port 443 after 133631 ms`），
+但本地 `origin/main` 已经是 `e380cba70`、与 `HEAD` 相同（上一轮推送留下的引用），`git merge --ff-only
+origin/main` 无事可做 —— 按「已同步」开工。没有切分支、没碰 `legacy/main`、没推 upstream。
+
+### 选活：表上仍全卡着，接这一族在模型库里最显眼的一处
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳写侧 / 既有部署单元 / 发布动作，而本轮纪律明令不碰 desktop）、
+**3.5**（拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+第一百八十九轮结尾留下的口子是：「`features/` 里仍写着 `toastError` 的文件还有一批（公司模式、频道、
+日历、财务、员工、工作区浏览器 / Finder、内置浏览器、消息绑定、模型库的若干处）—— 下一条自然的口子是
+逐个看哪个是行内动作」。本轮挑的是**模型库配置弹窗里那颗「测试连通性」**：它与上一轮那颗 MCP 探测
+同日而语 —— 跑的是表单里尚未保存的值，失败不写任何东西、卡片一个字都不变，而原因只活在六秒的通知里；
+可它就在「模型库」这条线的正中间，旁边 `apiKey` / `baseUrl` / `modelId` 三个格正是读者要照着改的。
+
+### 做了什么
+
+- `packages/web/src/features/models/model-test-refusal.ts`（新，60 行）：`modelTestRefusal(answer, fix)`
+  —— 一次探测的答复变成弹窗里那句话，连接成功给 `null`。三种答复各按既有规则取词：请求本身失败走
+  `refusalText`（错误码对应的本地化句子，客户端自己抛的错保留自己的话）；路由答复里没有细节时退回
+  `S.common.unknownError`（按钮下面一行空白比它取代的那条通知说得更少）；能路由却失败的把路由自己的
+  句子原样带过去（那是「key 错了」与「地址错了」诊断得出来的东西）。`fix`（`unroutableFix` 在按下那一刻
+  对表单求值）把句子换成 `testStalePin` / `testNotRoutable`。
+- `packages/web/src/features/models/models-page.tsx`：一个 `testRefusal` 状态 —— 探测开始时清掉（上一次的
+  答复）、`set()` 里清掉（表单任何一次编辑都让那句话描述的表单不在屏上了）、被拒时写上。句子画在按钮
+  那一行的下面（`role="alert"`、危险色、`line-clamp-2`、整句挂 `data-tooltip`）；`reportTestFailure` 从
+  「取一段文本」改成「收整份答复」，并把被换掉的原始句子在路由不了时照旧 `console.warn` 出去。连接成功
+  仍是 `testOk(latencyMs)` 那条通知。
+- `packages/web/src/lib/strings{,-en}.ts`：**没有新文案** —— 复用 `testFailed(detail)` / `testStalePin` /
+  `testNotRoutable`，也就是卡片自己那行状态用的同一批句子。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，
+  199 接口 / 598 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）·
+  cli **561**（38）· web **291 文件 / 3493 通过 / 2 跳过**（+1 文件、+7 条即本笔单测）·
+  server **211 文件 / 3077 通过 / 17 跳过**。（服务端那包第一次是与 Web 构建**并排**跑的，`EXIT=1`；
+  单独重跑一次全绿 —— 并排那次的失败没有留日志，这里只记下「单独跑是绿的」这一条事实。）
+- 改动面四个文件 `oxlint` **0 警告 0 错误**；四个文件与一对 changelog `prettier --check` 干净；
+  `git diff --check` 干净。
+- 新 spec `models-test-refusal.spec.mjs` **2 passed（9.3 s / 2.1 s）**：用例①路由答复失败 → 按钮行下面
+  出现 `连通失败：connect ECONNREFUSED 127.0.0.1:9`、通知区 0 个可点条目、`baseUrl` 原样、**七秒后仍在**、
+  改一个字段即清掉；用例②请求本身失败（500 加错误码）→ 画的是应用自己的 `连通失败：服务器内部错误，
+  请稍后重试。`，而探测带走的是表单里未保存的 `apiKey: "sk-probe"` 与 `baseUrl`；放行后同一颗按钮重试
+  —— 句子消失、`连通正常（1200 ms）` 那条通知出现、探测发了两次。
+- **反证（真界面）**：把两处源码退回 `HEAD`、新模块挪走、重建 Web 产物（`r190/before-dist`），同一份
+  spec **2 failed**（都死在弹窗里 `getByRole("alert")` 上）；放回、重建后 **2 passed**。
+- **本轮主证据（真服务端 + 真浏览器，两态同一份探针）**：一次性数据根（`mktemp` 在
+  `/root/adelie-fork-data/r190-*`）、服务端 **8990**（`HOST=::`，回环走 `localhost`）、仓库自带
+  mock LLM **8991**、系统 chromium 1280×900；两份 web 产物分别是 `packages/web/dist`（改后）与
+  scratchpad 的 `r190/before-dist`（改前）。探针在 `page.route` 上把 `POST …/models/test` 桩成
+  `{ok:false, message:"connect ECONNREFUSED 127.0.0.1:9"}`，量 1.2 s 与 7.6 s 两个时点：
+
+  | 量点 | 改前 | 改后 |
+  | --- | --- | --- |
+  | 弹窗里的 `role="alert"` | **0 条** | 1 条：`连通失败：connect ECONNREFUSED 127.0.0.1:9` |
+  | 1.2 s 时的通知区 | **1 条**（原因只在这里） | 0 条 |
+  | 7.6 s 时的通知区 | **0 条**（原因彻底没了） | 0 条（原因在弹窗里） |
+  | 表单里的 `baseUrl` | 原样 | 原样（没有保存任何东西） |
+  | 截图 | `r190/before/{1.2s,7.6s}*.png`：按钮下面什么都没有 | `r190/after/{1.2s,7.6s,7.6s-hover}.png`：红字那句 |
+
+  两态 console 都只有既有的 `machines` **403**（非管理员账号的既有行为），无 pageerror。
+- **相邻回归（真浏览器五份 spec）**：`models-save-refusal` 3 + `models-delete-model` 2 +
+  `models-delete-group` 2 + `models-sync-order` 2 + `models-assign-user-key` 3 **12 passed（36.2 s）**。
+- **整套 e2e**：`217 passed / 4 failed（20.8 m）`。四条红都与本笔无关，且都有据：
+  1. `scroll-follow-bounce` 的 Primer / Frost / Console 三种主题全红，死在同一个量点
+     （`gesture 1: the wheel scrolled up`，实测 **42** px，期望 > 100）—— **用改前产物单跑同一条 spec
+     依旧红**（`2 failed / 1 passed`），是这台机器的 headless 滚轮步长问题，不是本轮引入的（上一轮实测 81 px，
+     同一个量点）。
+  2. `server-switch-read-refusal`（7.68 那一族）整套里红了「公司模式开关读不出来时应显示关闭」，**单跑
+     `2 passed`**（9.4 s / 9.2 s；整套里那一条跑了 24.0 s）—— 排序 / 时序抖动，与上一轮同一现象。
+- 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；开工时 8996 / 8997 上
+  已有人占着（不是本轮起的，按纪律没动）；数据只落在 `/root/adelie-fork-data/r190-*`（脚本退出时清掉），
+  探针 / 两态产物 / 截图都在 scratchpad 的 `r190/` 下；`packages/web/dist`、`test-results` 都是产物，
+  未 `git add`。
+
+### 没做 / 留着
+
+- 同一个弹窗里还有**第二颗探测按钮**没跟上：`baseUrl` 字段右上角那颗「检测协议」(`detectOnce`) 的三条
+  失败路仍走 `toastError` / `toastInfo`（`detectFailedBody`、`detectFellBack`）。它同样是行内动作、同样
+  不写任何东西，本该与这颗同处一个口子；本轮没动它，因为「保存时顺带检测」那条路（`mode === "save"`）
+  的提示语与语义都绑在保存流程上，得单独读一遍再改，免得把「保存失败」的话说成「检测失败」。
+- `features/` 里仍写着 `toastError` 的文件还有一批（公司模式、频道、日历、财务、员工、工作区浏览器 /
+  Finder、内置浏览器、消息绑定、模型库的其它几处、插件市场）—— 逐个看哪个是行内动作、哪个是页面级动作，
+  按同一判据挑一处能真跑出来的。
+- 2.2c 的尾巴（桌面壳写侧 / 既有部署单元 `adelie-app.service`）、3.5 / 3.6、5.6 / 5.10、4.1–4.3
+  仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源文件 + 单测 + spec + changelog：本笔；台账（7.79 的待办行、上表那一行、本节）另起一笔。
