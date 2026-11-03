@@ -2044,6 +2044,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       同一颗按钮就是重试。失败通知保留（这一页的「执行清理」被拒时本来就是两者并存）。见「第一百八十四轮」
       一节。
 
+- [x] **7.74 清理模式的开关与每一行的「固定 / 取消固定」被拒时，原因留在控件旁边，不再只活六秒**
+      （**2026-11-03 第一百八十五轮**落地，提交见「已完成的轮次」；源码 4 处（一个新纯模块、三对新
+      文案、两处状态 + 两个 `catch`、两处绘制），单测 +9 条 + 1 个新 spec（2 条）+ changelog 一对，
+      **不碰接口、无新依赖**）：第一百八十四轮「没做 / 留着」点名的同一页最后两处 —— `saveMode`
+      （清理模式开关）与 `pin`（固定路径）。两处都不做乐观写入，所以被拒时控件静静地停在服务端给的
+      位置上，原因此前只剩一条六秒的通知；而这一页的开关正是其余每个写操作的闸门（「没有人看过就什么
+      都不动」），固定则决定某条路径会不会再出现在下一份账单里。现在开关那句画在它的状态说明下面
+      （点名「开启」/「关闭」失败）、固定那句画在那一行的按钮下面（按钮自己的措辞 + 路径 + 服务端原话），
+      都留到下一次同一种写为止，同一个控件就是重试。失败通知保留。见「第一百八十五轮」一节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -2733,6 +2743,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-02 | 7.71 | **插件卡片保存被拒（而服务端没点名字段）时，原因留在卡片上、保存按钮的正上方，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/settings/plugin-config-save.ts`（新，35 行：`pluginSaveRefusal(error)` 答「这次被拒该落在哪一格」—— `plugin_config_invalid` 且消息以 `"<字段>"` 开头就交回那个字段名（单元格的 `<字段>.<行>.<列>` 原样带过去，表格自己会在下面列出来），其余一律 `field: null` 即这张卡片；文案仍走 `refusalText()`：应用有译文的码按译文说，没有的就照服务端写的那样说）+ `plugins-section.tsx`（多一个按卡片名记的 `saveRefusals`：开始保存时清掉这一张的、失败且没点名字段时写上、保存成功 / 改动机器 / 重新挂载时清空；卡片里保存按钮**上方**画一条 `role="alert"` 的危险色句子（限两行、整句挂 `data-tooltip`、引子复用共享的 `S.common.refused`），`toastError` 从这条路上撤掉 —— 安装那条路一个字没动；点名字段的那一支原样保留，只是判定搬进了上面的纯函数）+ 单测 7 条 + 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新文案、无新依赖**）：这是第一百八十一轮「没做 / 留着」点名的第一处，也是这一族（7.19–7.70「被拒之后只剩 toast」）在设置页里剩下的最后一个**写**点 —— 服务端校验不过时点名字段、那句话画在字段下面，这一半一直是对的；但保存还能以**不点名任何字段**的方式失败（配置组在页面底下没了 404 `plugin_config_unknown`、登录过期、500、机器连不上），此前它们只进一条六秒的通知，通知一走卡片上每个输入框都还是原样，看上去就是「点了没反应」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔不动服务契约）· 改动面 4 个文件 `oxlint` **0 警告 0 错误** · 同 4 个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **284 文件 / 3441 通过 / 2 跳过**（+1 文件、+7 条即本笔单测） · server **211 文件 / 3077 通过 / 17 跳过**（第一次整包跑时 `test/terminal-stream.test.ts` 的 permessage-deflate 那条红了一次，单跑该文件 **18 全过**、整包重跑 **3077 全过** —— 全量并发下的时序，与本笔只动 `packages/web` 无关） · **真服务端 ×2 + 真浏览器两态（同一份探针）**：一次性数据根 `/root/adelie-fork-data/r182`、服务端 **8986**（`HOST=127.0.0.1`）、仓库自带 mock LLM **8931**、系统 chromium 1280×900，两份 `dist` 先后挂上去（`GET /api/admin/plugin-config` 桩成一张只有文本框的卡片、`PUT` 桩成 500 `internal`）：**改前** 拒绝后卡片里 `role="alert"` **0 条**、通知区 **1 个**可点 toast、输入框仍是「探针取值」；**七秒后 0 条 alert 且 0 个 toast** —— 原因彻底没了，卡片看上去像没被点过；**改后** 卡片里 **1 条**「操作被拒绝：服务器内部错误，请稍后重试。」（508×16 px，y=318，就在保存按钮上方、红色 `oklch(0.577 0.245 27.325)`）、通知区 **0 个**、**七秒后仍在**；放开拒绝再点同一颗按钮 → alert **0** 条、1 条成功 toast、`writes` 2。两态 console 只有刻意桩出的 **500**，无 pageerror（截图 `r182/{after-final,before}/{1-before,2-refused,3-refused-late,4-healed}.png`） · 新 spec `plugin-config-save-refusal.spec.mjs` **1 passed（9.0 s）** · **反证**：两个源码文件退回 `HEAD`、新模块与单测挪走、重建 Web 产物，同一份 spec **1 failed**（死在 `card.getByRole("alert")` 的 `toHaveText` 上：改前卡片里没有 alert），放回、重建 → **1 passed** · **相邻回归（真浏览器五个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 + `plugins-install-refusal` 2 + `plugins-read-refusal` 1 + 本笔 1 **9 passed（35.4 s）** · 端口只用 8986 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r182`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r182/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`；e2e 里那两个临时文件跑完已移出仓库） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `19e42b9c4` |
 | 2026-11-03 | 7.72 | **安装插件之后那次重读失败时，原因留在页面上、卡片的上方，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/settings/plugin-config-read.ts` 新增 `pluginConfigStale()`（与 `pluginConfigUnreadable` 并排：一个说页面底下是空的，一个说卡片可能还是安装前的）、`packages/web/src/lib/strings{,-en}.ts` 两对新文案 `plugins.{machineStale,thisServerStale}`、`packages/web/src/features/settings/plugins-section.tsx` 的 `loadError` 收成 `readError`（挂载时那次读 / 安装之后那次重读）且 `installOffered` 的 `catch` 从 `toastError` 改写成它、读成功时清掉；单测 +5 条、新 spec 1 条、changelog 一对） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **284 文件 / 3446 通过 / 2 跳过**（+5 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · 改动面六个文件 `oxlint` **0 警告 0 错误**、六个文件与一对 changelog `prettier --check` 干净、`git diff --check` 干净 · **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r183-{before,after}`、两个端口 **8996 改前 / 8997 改后**、仓库自带 mock LLM 8951、系统 chromium 1280×900，两份 web 产物分别挂上去（改前那份是四个源码文件退回 `HEAD` 后重建的）—— 探针把配置读与安装写都桩住，读数：失败后 0.6 s 页面上 `role="alert"` **改前 0 条 / 改后 1 条**（琥珀色条，就在卡片上方），0.6 s 通知区 **改前 2 条**（`已安装 @adelie/sandbox-bwrap` + `服务器内部错误，请稍后重试。`）**/ 改后 1 条**（只有安装那条），**7.6 s 后改前 alert 仍是 0、通知区 0 条（原因彻底没了），改后那句仍在**；放开拒绝、离开这一页再回来，两态 alert 都归 0、第 3 次读发出；两态 console 只有刻意桩出的 500、无 pageerror；截图 `r183/shots/{after,before}-{1-prompt,2-right-after,3-after-7s,4-reopened}.png` · 新 spec 在改后产物上 **1 passed（9.7 s；最终产物 9.9 s）**，**反证**跑改前产物 **1 failed**（`section.getByRole("alert")` 的 `toHaveText`：`element(s) not found`）· **相邻回归（真浏览器四个 spec）**：`plugin-action-refusal` 2 + `plugin-card-refusal` 3 + `plugin-config-save-refusal` 1 + `plugins-read-refusal` 1 **7 passed（31.0 s）** · 端口只用 8951 / 8996 / 8997（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r183-{before,after}`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r183/` 下 | 见本行提交 |
 | 2026-11-03 | 7.73 | **回收站的还原 / 彻底删除被拒时，原因留在那一行的按钮下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 4 处 —— `packages/web/src/features/settings/storage-trash-refusal.ts`（新，58 行：`storageTrashKey(action, id)` 是三个写操作在途时用的键也是拒绝画在哪一行的答案、`storageTrashRefused(key, reason)` 把键与原因变成一句话，批次用自己的词 `purge:expired`）、`packages/web/src/lib/strings{,-en}.ts` 三对文案 `storageTrashRefused{Restore,Purge,Expired}`、`storage-section.tsx` 的 `trashRefusal` 状态（开始时清、被拒时写）与两个 `catch`（`restore` / `purge` 从 `toastError` 改写成它，通知保留）、`TrashRefusalLine` 画在那一行的按钮下方 / 批次按钮下方；单测 +8 条、新 spec 1 条、changelog 一对，**无新依赖、不碰接口**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔不动服务契约）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **285 文件 / 3454 通过 / 2 跳过**（+1 文件、+8 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过**（与前一轮同数，本笔只动 `packages/web`）· 改动面六个文件 `oxlint` **0 警告 0 错误**；同六个文件与一对 changelog `prettier --check` 干净（两个文件 `--write` 后复检）；`git diff --check` 干净 · **真服务端 ×2 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r184`（改后）与 `r184-before`、两个端口 **8998 改后 / 8997 改前**、仓库自带 mock LLM 8999、系统 chromium 1280×900，两份 web 产物分别挂上去（改前那份是三个源码文件退回 `HEAD`、新模块与单测挪走之后重建的，`grep 彻底删除已过保留期的条目被拒` = 0）—— 探针把回收站的读与两个写都桩住，读数：按「恢复」失败后 0.7 s 那一行的 `role="alert"` **改前 0 条 / 改后 1 条**（`恢复「20261103120000」被拒：服务器内部错误，请稍后重试。`，红字 `oklch(0.577 0.245 27.325)` 就在两个按钮下面）、通知区 **1 条（两态相同：本页保留通知）**，**7.6 s 后改前 alert 仍是 0、通知区 0 条（原因彻底没了），改后那句仍在**；再按「彻底删除」，改后那句话换成 `彻底删除「20261103120000」被拒：…`（仍然只有 1 条），改前 0 条；放开拒绝再按同一颗按钮，两态 alert 都归 0、`writes` 都是 `restore,purge,purge`；那一行的编号 / 移入时间 / 条目 / 体积 / 状态两态全程未变；两态 console 只有刻意桩出的 500（2 条）、无 pageerror；截图 `r184/shots/{after,before}-{1-before,2-restore-refused,3-seven-seconds-later,4-purge-refused,5-healed}.png` · 新 spec 在最终产物上 **1 passed（9.6 s；首跑 9.5 s）**，**反证**跑改前产物 **1 failed**（`row.getByRole("alert")` 的 `toHaveText`：`element(s) not found`）· 端口只用 8997 / 8998 / 8999（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r184{,-before}`，探针 / 临时 playwright 配置 / 两态读数 / 截图在 scratchpad 的 `r184/` 下 | `2f0459a9a` |
+| 2026-11-03 | 7.74 | **清理模式的开关与每行的「固定 / 取消固定」被拒时，原因留在控件旁边，不再只活六秒；这两个动作进了浏览器套件**（不是移植：源码 4 处 —— `packages/web/src/features/settings/storage-settings-refusal.ts`（新，48 行：`storageModeRefused(enabled, reason)` 给出开关那句、方向来自这一次请求想去的那个位置，`storagePinRefused(path, pinned, reason)` 给出固定那句连它该画在哪一行）、`packages/web/src/lib/strings{,-en}.ts` 三句新文案（清理模式开关 / 固定 / 取消固定，都点明哪一次动作）、`packages/web/src/features/settings/storage-section.tsx`（`modeRefusal` / `pinRefusal` 两个状态，写开始时清掉、被拒时写上；`ModeRow` 与 `BillRow` 各多一个 `refusal`，前者画在状态说明下面、后者画在那一行的按钮下面，`BillGroup` 按 `path` 只交给对上的那行）+ 单测 1 个 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新文案外的界面结构、无新依赖**）：第一百八十四轮「没做 / 留着」点名的同一页最后两处写点。两个写都不做乐观写入（开关永远显示服务端答回来的位置、被拒的固定不会把按钮改成「取消固定」），所以失败此前只剩一条六秒的通知 —— 开关是这一页其余每个写操作的闸门，固定是决定某条路径会不会再出现在下一份账单里的那一下 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型 —— 本笔只动 `packages/web`）· 改动面六个文件 `oxlint` **0 警告 0 错误** · 六个文件与一对 changelog `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检，复检后重跑用例 2 passed）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **38 / 561** · web **286 文件 / 3463 通过 / 2 跳过**（+1 文件、+9 条即本笔单测）· server 首跑 **1 条失败 / 211 文件**、复跑 **211 文件 / 3077 通过 / 17 跳过、0 失败**（满载下的偶发，与台账第一百六十轮、7.58 记的同一种；本笔未碰 server）· **真服务端 + 真浏览器**（一次性数据根 `/root/adelie-fork-data/r185`、服务端 **8991**（`HOST=127.0.0.1`）、仓库自带 mock LLM **8990**、系统 chromium 1280×900）：新 spec **2 passed（9.3 s / 9.4 s）**，与上一轮的 `storage-trash-refusal.spec.mjs` 同服务连跑 **3 passed（29.6 s）** · **反证**：把三个源码文件 `git stash push --` 掉、重建 Web 产物 → 同一份 spec **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：`element(s) not found`），同一份探针的读数改成 `modeAlerts 0 / pinAfter.alerts 0`；`git stash pop` + 重建 → **2 passed** · **两态实测真看一眼**（探针 `r185/probe.mjs`，同一份跑两态）：**改前** 按开关后页面上 `alert` **0 条**（屏幕顶端一条 toast「服务器内部错误，请稍后重试。」），7.6 s 后 toast 也没了、开关仍在开位；**改后** 状态说明下面一条红字「关闭清理模式被拒：服务器内部错误，请稍后重试。」（`oklch(0.577 0.245 27.325)`），7.6 s 后原样还在；固定的那一行同样 —— 改前 `alerts 0`，改后按钮下面「固定「workspaces/probe」被拒：服务器内部错误，请稍后重试。」且按钮仍写「固定」；放开拒绝后两处都走通（开关真的关掉、按钮变「取消固定」、句子归 0）。两态 console 只有刻意桩出的 500，无 pageerror、无其它 ≥400；截图 `r185/{after,before}/shots/*.png`、两态读数在 scratchpad 的 `r185/` · 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r185`，一个字节没往 `~/.penguin` / `~/.adelie` 里写（`packages/web/dist`、`test-results` 都是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `101c5aa89` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -21155,3 +21166,90 @@ key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依�
 对象算出了不同的 sha（同样的 tree、parent、作者与时间；重建本地对象时怎么摆都还原不出它的字节，
 多半是它在对象上另加了东西）。所以远端已经是新哈希，本地 `main` 在 `git fetch` 通了之后
 `reset --hard origin/main` 对齐到远端这两个号 —— 下一轮的开工自检因此还是干净的一棵树。
+
+## 第一百八十五轮：清理模式的开关与「固定」被拒时，原因留在控件旁边（2026-11-03，条目 7.74）
+
+### 开工自检
+
+`main` 在 `33d264f70`（第一百八十四轮之后那一笔台账），`git status --short` **干净**；
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`（上一轮结尾记的网络问题
+这一轮没有再出现）。没有切分支、没碰 `legacy/main`、没推 upstream。
+
+### 选活：表上仍全卡着，于是收同页最后两处
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳 / 既有部署单元 / 发布动作，而本轮纪律明令不碰 desktop）、
+**3.5**（拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+第一百八十四轮结尾在「没做 / 留着」里点名这一页还剩两处「失败只落 toast」：`saveMode`（清理模式
+开关）与 `pin`（固定路径）。本轮把它们一起收完 —— 是同一页、同一条口径（7.19）、同一簇代码。
+
+逐处量了这一页的写点：`measure` / `loadState` / `scan` / `apply` / 回收站三个写都已经把原因留在
+页面上，只有这两个还是 `toastError`：
+
+- `saveMode(next)` —— `PUT …/admin/storage/settings`；
+- `pin(path, pinned)` —— `POST …/plans/:id/pin`。
+
+两处都**不做乐观写入**：开关显示的是服务端答回来的位置，被拒的固定也不会把那颗按钮改成「取消固定」。
+于是被拒之后屏幕上是一个静静地停在原处的控件，解释只有一条六秒的通知 —— 而这一页的开关正是其余
+每个写操作的闸门（「没有人看过就什么都不动」），固定则是决定某条路径会不会再出现在下一份账单里的那一下。
+
+### 做了什么
+
+- `packages/web/src/features/settings/storage-settings-refusal.ts`（新，48 行）：
+  - `storageModeRefused(enabled, reason)` —— 开关要画的那句，方向来自**这一次请求想去的那个位置**
+    （不是页面上显示的位置：被拒时开关根本没动，说反了就等于说错）；
+  - `storagePinRefused(path, pinned, reason)` → `{ path, text }` —— 固定那句，用按钮自己的措辞
+    （「固定」/「取消固定」），`path` 是它该画在哪一行的答案（同一个页面上每行一个按钮）。
+- `packages/web/src/lib/strings{,-en}.ts`：三对文案 `storageModeRefused` / `storagePinRefused` /
+  `storageUnpinRefused`，就在各自按钮的文案下面。
+- `packages/web/src/features/settings/storage-section.tsx`：`modeRefusal` / `pinRefusal` 两个状态，
+  写操作开始时清掉、被拒时写上；`ModeRow` 多一个 `refusal`（画在状态说明下面、`role="alert"`、
+  危险色）；`BillRow` 多一个 `refusal`（画在那一行按钮下面，写法与回收站那条同形），`BillGroup`
+  按 `path` 只交给对上的那一行。失败通知保留 —— 这一页的「执行清理」被拒时本来就是「页面上一条 +
+  一条通知」并存。
+- 没有新接口、没有新依赖：还是同一次 `PUT …/settings` 与 `POST …/plans/:id/pin`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1100** ·
+  cli **38 / 561** · web **286 文件 / 3463 通过 / 2 跳过**（+1 文件、+9 条即本笔单测）·
+  server 首跑 1 条失败、复跑 **211 文件 / 3077 通过 / 17 跳过、0 失败**（满载下的偶发，与台账
+  第一百六十轮、7.58 记的同一种；本笔未碰 `packages/server`）。
+- 改动面六个文件 `oxlint` **0 警告 0 错误**；六个文件与一对 changelog `prettier --check` 干净
+  （新 spec 首跑一条，`--write` 后复检并重跑用例）；`git diff --check` 干净。
+- **真服务端 + 真浏览器（两态，同一份探针）**：一次性数据根 `/root/adelie-fork-data/r185`、端口
+  **8991**、仓库自带 mock LLM **8990**、系统 chromium 1280×900。探针把账单列表桩成一条条目、把两个写
+  都桩成 500 `internal`：
+
+  | 量点 | 改前（三个源码文件 `git stash push --` 掉后的产物） | 改后（本笔） |
+  | --- | --- | --- |
+  | 按开关后页面上 `role="alert"` | **0 条**（只有顶端一条 toast） | **1 条**：`关闭清理模式被拒：服务器内部错误，请稍后重试。` |
+  | 那句话的位置 | — | 状态说明下面（危险色 `oklch(0.577 0.245 27.325)`） |
+  | 开关的位置 | 仍在开位 | 仍在开位（本来就没动） |
+  | 7.6 s 后 | toast 没了、`alert` **0 条** | 同一句**还在** |
+  | 点「固定」后那一行 | `alert` **0 条**、按钮仍「固定」 | **1 条**：`固定「workspaces/probe」被拒：…`，按钮仍「固定」 |
+  | 7.6 s 后那一行 | 0 条 | 同一句还在 |
+  | 放开拒绝再按同一颗按钮 | 按钮变「取消固定」 | 同左（`alert` 归 0、开关真的关掉） |
+
+  两态 console 只有刻意桩出的两条 500，无 pageerror、无其它 ≥400；截图
+  `r185/{after,before}/shots/{1-mode-before,2-mode-refused,3-mode-refused-7s-later,4-pin-before,5-pin-refused,6-pin-refused-7s-later,7-pin-healed,8-mode-healed}.png`。
+- 新 spec `storage-settings-refusal.spec.mjs` **2 passed（9.3 s / 9.4 s）**；与上一轮的
+  `storage-trash-refusal.spec.mjs` 同服务连跑 **3 passed（29.6 s）**。
+- **反证**：同一份 spec 跑改前产物 **2 failed**（都死在 `getByRole("alert")` 的 `toHaveText` 上：
+  `element(s) not found`），同一份探针的读数变成 `modeAlerts 0` / `pinAfter.alerts 0`；放回、重建后
+  再跑 **2 passed**。
+- 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r185`，探针 / 两态读数 / 截图 / 临时 playwright 配置都在 scratchpad 的
+  `r185/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 这一页的「失败只落 toast」到此收完：剩下的两处按 7.73 的判断不属这一族（`projectId === null` 时
+  那句「请先打开一个项目」时框仍开着；`installInOrder` 的逐包失败是安装本身的结果）。
+- 2.2c 的尾巴（桌面壳写侧 / 既有部署单元 `adelie-app.service`）、3.5 / 3.6、5.6 / 5.10、4.1–4.3
+  仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源文件 + 单测 + spec + changelog：**`101c5aa89`**（8 文件 / +521 −1）；台账（7.74 的待办行、
+上表那一行、本节）另起一笔。
