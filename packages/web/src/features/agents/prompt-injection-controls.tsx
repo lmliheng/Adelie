@@ -44,6 +44,7 @@ import { apiErrorText, refusalText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
 import { useProject } from "../../state/project";
 import { featureSwitchRefused } from "./feature-switch-refusal";
+import { placeholderInsertRefused } from "./placeholder-insert-refusal";
 import { useSaveConfirm } from "./save-confirm";
 
 export type PromptInjectionFeature = "skills" | "vault" | "schedules" | "hooks";
@@ -64,6 +65,8 @@ interface PromptInjectionStrings extends ToggleStrings {
   templateMissing: string;
   legacyTemplate?: string;
   insertPlaceholder: string;
+  /** What a refused insert names (placeholder-insert-refusal.ts): the token this section's strip and button carry. */
+  placeholderToken: string;
   migrate?: string;
   promptSection: string;
   promptSectionHint: string;
@@ -133,6 +136,9 @@ export function usePromptInjection({
   // The server's words for a flip it refused, drawn under the switch card: the switch stays where
   // the server has it, so this line is the only account of why it did not move.
   const [switchRefusal, setSwitchRefusal] = useState<string | null>(null);
+  // The server's words for a refused placeholder write, drawn under the alert strip: the template
+  // still has no placeholder, so the strip and its button stay and that button is the retry.
+  const [insertRefusal, setInsertRefusal] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const { requestSave, element: saveConfirm } = useSaveConfirm();
 
@@ -192,8 +198,10 @@ export function usePromptInjection({
           : feature === "schedules"
             ? api.insertSchedulesPlaceholder
             : null;
-    // Only the alert strip calls this, and a switch-only feature has no alert strip.
-    if (insert === null) return;
+    // Only the alert strip calls this, and a switch-only feature has neither a strip nor prompt
+    // strings (the token the refusal names comes from them).
+    if (insert === null || promptStrings === null) return;
+    setInsertRefusal(null);
     try {
       const dto = await insert(projectId, agentId);
       setState(dto);
@@ -201,6 +209,15 @@ export function usePromptInjection({
       toastSuccess(S.agent.savedTakesEffect);
       onConfigChanged?.();
     } catch (e) {
+      // Nothing was written — the template the strip is drawn from is unchanged — so the sentence
+      // belongs under that strip, where the button that retries it still is.
+      setInsertRefusal(
+        placeholderInsertRefused(
+          promptStrings.placeholderToken,
+          state?.legacySectionPresent === true,
+          refusalText(e),
+        ),
+      );
       toastError(apiErrorText(e));
     }
   };
@@ -244,24 +261,33 @@ export function usePromptInjection({
   // features that can report legacySectionPresent); everything else gets the plain insert.
   const legacy = state?.legacySectionPresent === true;
   const alertStrip = promptStrings !== null && state !== null && !state.templateHasPlaceholder && (
-    <Notice
-      tone="attention"
-      variant="callout"
-      action={
-        canEdit
-          ? {
-              label: legacy
-                ? (promptStrings.migrate ?? promptStrings.insertPlaceholder)
-                : promptStrings.insertPlaceholder,
-              onClick: () => void insertPlaceholder(),
-            }
-          : undefined
-      }
-    >
-      {legacy
-        ? (promptStrings.legacyTemplate ?? promptStrings.templateMissing)
-        : promptStrings.templateMissing}
-    </Notice>
+    <>
+      <Notice
+        tone="attention"
+        variant="callout"
+        action={
+          canEdit
+            ? {
+                label: legacy
+                  ? (promptStrings.migrate ?? promptStrings.insertPlaceholder)
+                  : promptStrings.insertPlaceholder,
+                onClick: () => void insertPlaceholder(),
+              }
+            : undefined
+        }
+      >
+        {legacy
+          ? (promptStrings.legacyTemplate ?? promptStrings.templateMissing)
+          : promptStrings.templateMissing}
+      </Notice>
+      {/* A refused write leaves this strip — and with it the button that was pressed — in place,
+          so the reason can sit directly under it; that button is the retry. */}
+      {insertRefusal !== null && (
+        <p role="alert" className={`text-xs break-words ${toneInk.danger}`}>
+          {insertRefusal}
+        </p>
+      )}
+    </>
   );
 
   const promptSection = promptStrings !== null && state !== null && (

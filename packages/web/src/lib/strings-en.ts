@@ -1621,6 +1621,16 @@ export const en: Strings = {
       `Turning the ${noun} switch on was refused: ${reason}`,
     switchOffRefused: (noun: string, reason: string): string =>
       `Turning the ${noun} switch off was refused: ${reason}`,
+    /**
+     * A placeholder the server refused to write into the prompt template
+     * (placeholder-insert-refusal.ts), drawn under the strip that asked: which placeholder and the
+     * reason, as the server gave it. The second verb is for a legacy template, whose button
+     * migrates the old hardcoded section instead of inserting.
+     */
+    placeholderInsertRefused: (token: string, reason: string): string =>
+      `Inserting the ${token} placeholder was refused: ${reason}`,
+    placeholderMigrateRefused: (token: string, reason: string): string =>
+      `Migrating to the ${token} placeholder was refused: ${reason}`,
     takesEffectSuffix:
       " — new conversations pick it up right away, running ones after their next compaction",
     listTitle: "Agents",
@@ -2394,6 +2404,8 @@ export const en: Strings = {
     templateMissing:
       "The prompt template has no {{MEMORY}} placeholder, so memory never enters the context.",
     insertPlaceholder: "Insert the {{MEMORY}} placeholder",
+    /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+    placeholderToken: "{{MEMORY}}",
     insertPlaceholderDone: "Inserted",
     promptSection: "Memory prompt",
     promptSectionHint:
@@ -2567,6 +2579,8 @@ export const en: Strings = {
       legacyTemplate:
         "The template still carries the legacy hardcoded # Vault section: one-click migration replaces it in place with the {{VAULT}} placeholder, wording unchanged, after which it is editable below.",
       insertPlaceholder: "Insert the {{VAULT}} placeholder",
+      /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+      placeholderToken: "{{VAULT}}",
       migrate: "Migrate to the {{VAULT}} placeholder",
       promptSection: "Vault prompt",
       promptSectionHint:
@@ -2750,6 +2764,8 @@ export const en: Strings = {
       templateMissing:
         "The prompt template has no {{SCHEDULES}} placeholder, so the scheduled-tasks section never enters the context.",
       insertPlaceholder: "Insert the {{SCHEDULES}} placeholder",
+      /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+      placeholderToken: "{{SCHEDULES}}",
       promptSection: "Schedules prompt",
       promptSectionHint:
         "What the template's {{SCHEDULES}} placeholder expands to — teaches the model to manage scheduled tasks with its file tools; nothing is injected when the toggle is off or the template lacks the placeholder.",
@@ -3156,6 +3172,8 @@ export const en: Strings = {
       legacyTemplate:
         "The template still carries the legacy hardcoded # Skills section: one-click migration replaces it in place with the {{SKILLS}} placeholder, wording unchanged, after which it is editable below.",
       insertPlaceholder: "Insert the {{SKILLS}} placeholder",
+      /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+      placeholderToken: "{{SKILLS}}",
       migrate: "Migrate to the {{SKILLS}} placeholder",
       promptSection: "Skills prompt",
       promptSectionHint:

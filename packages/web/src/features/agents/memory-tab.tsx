@@ -70,6 +70,7 @@ import { useAuth } from "../../state/auth";
 import { useLocale } from "../../state/locale";
 import { useProject } from "../../state/project";
 import { featureSwitchRefused } from "./feature-switch-refusal";
+import { placeholderInsertRefused } from "./placeholder-insert-refusal";
 import { useSaveConfirm } from "./save-confirm";
 import { useAiBridge } from "../ai-create";
 import { buildMemoryAddPrompt, buildMemoryEditPrompt } from "./memory-chat-prompts";
@@ -158,6 +159,9 @@ export function MemoryTab({
   // The server's words for a flip of the memory switch it refused, drawn under that card: the
   // switch keeps the position the server has, so this line is the only account of why.
   const [switchRefusal, setSwitchRefusal] = useState<string | null>(null);
+  // The server's words for a refused placeholder write, drawn under the strip that asked: the
+  // template still has no {{MEMORY}}, so the strip and its button stay and that button is the retry.
+  const [insertRefusal, setInsertRefusal] = useState<string | null>(null);
   const collapseKey = userId && projectId ? collapsedStoreKey(userId, projectId, agentId) : null;
   const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsedScopes(collapseKey));
   const [memoryPrompt, setMemoryPrompt] = useState("");
@@ -288,12 +292,17 @@ export function MemoryTab({
   /** The explicit adoption path for an agent whose template predates Memory: one idempotent config write. */
   const insertPlaceholder = async () => {
     if (!projectId) return;
+    setInsertRefusal(null);
     try {
       const overview = await api.insertMemoryPlaceholder(projectId, agentId);
       setTemplateHasMemory(overview.templateHasMemory);
       toastSuccess(S.memory.insertPlaceholderDone);
       onConfigChanged?.();
     } catch (e) {
+      // Nothing was written, so the template still has no placeholder and the strip below stays —
+      // that keeps the sentence next to the button that retries it (Memory has no legacy section
+      // to migrate, so the verb is always "insert").
+      setInsertRefusal(placeholderInsertRefused(S.memory.placeholderToken, false, refusalText(e)));
       toastError(apiErrorText(e));
     }
   };
@@ -618,13 +627,22 @@ export function MemoryTab({
       )}
 
       {!templateHasMemory && (
-        <Notice
-          tone="attention"
-          variant="callout"
-          action={{ label: S.memory.insertPlaceholder, onClick: () => void insertPlaceholder() }}
-        >
-          {S.memory.templateMissing}
-        </Notice>
+        <>
+          <Notice
+            tone="attention"
+            variant="callout"
+            action={{ label: S.memory.insertPlaceholder, onClick: () => void insertPlaceholder() }}
+          >
+            {S.memory.templateMissing}
+          </Notice>
+          {/* A refused write leaves the strip (and its button) in place, so the reason can sit
+              right under it — the strip's own button is what retries. */}
+          {insertRefusal !== null && (
+            <p role="alert" className={`text-xs break-words ${toneInk.danger}`}>
+              {insertRefusal}
+            </p>
+          )}
+        </>
       )}
 
       {groups === null ? (

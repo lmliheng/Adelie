@@ -1665,6 +1665,16 @@ export const zh = {
      */
     switchOnRefused: (noun: string, reason: string): string => `开启${noun}的开关被拒：${reason}`,
     switchOffRefused: (noun: string, reason: string): string => `关闭${noun}的开关被拒：${reason}`,
+    /**
+     * A placeholder the server refused to write into the prompt template
+     * (placeholder-insert-refusal.ts), drawn under the strip that asked: which placeholder — four
+     * sections share this sentence — and the reason, as the server gave it. The second verb is for
+     * a legacy template, whose button migrates the old hardcoded section instead of inserting.
+     */
+    placeholderInsertRefused: (token: string, reason: string): string =>
+      `插入 ${token} 占位符被拒：${reason}`,
+    placeholderMigrateRefused: (token: string, reason: string): string =>
+      `迁移为 ${token} 占位符被拒：${reason}`,
     /** Appended to an action's own toast (skill install / uninstall) — same timing statement. */
     takesEffectSuffix: "；新对话立即生效，进行中的对话在下一次压缩后生效",
     listTitle: "Agents",
@@ -2454,6 +2464,8 @@ export const zh = {
     userScope: "用户记忆",
     templateMissing: "提示词模板中没有 {{MEMORY}} 占位符，记忆不会进入上下文。",
     insertPlaceholder: "插入 {{MEMORY}} 占位符",
+    /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+    placeholderToken: "{{MEMORY}}",
     insertPlaceholderDone: "已插入",
     promptSection: "记忆提示词",
     promptSectionHint:
@@ -2628,6 +2640,8 @@ export const zh = {
       legacyTemplate:
         "模板仍是旧版硬编码的 # Vault 段落：一键迁移会将该段落原位替换为 {{VAULT}} 占位符，措辞不变，此后可在下方编辑。",
       insertPlaceholder: "插入 {{VAULT}} 占位符",
+      /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+      placeholderToken: "{{VAULT}}",
       migrate: "迁移为 {{VAULT}} 占位符",
       promptSection: "保险柜提示词",
       promptSectionHint: "注入模板 {{VAULT}} 占位符的内容；开关关闭或模板无占位符时不注入。",
@@ -2800,6 +2814,8 @@ export const zh = {
       switchNoun: "定时任务",
       templateMissing: "提示词模板中没有 {{SCHEDULES}} 占位符，定时任务小节不会进入上下文。",
       insertPlaceholder: "插入 {{SCHEDULES}} 占位符",
+      /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+      placeholderToken: "{{SCHEDULES}}",
       promptSection: "定时任务提示词",
       promptSectionHint:
         "注入模板 {{SCHEDULES}} 占位符的内容，教模型用文件工具管理定时任务；开关关闭或模板无占位符时不注入。",
@@ -3196,6 +3212,8 @@ export const zh = {
       legacyTemplate:
         "模板仍是旧版硬编码的 # Skills 段落：一键迁移会将该段落原位替换为 {{SKILLS}} 占位符，措辞不变，此后可在下方编辑。",
       insertPlaceholder: "插入 {{SKILLS}} 占位符",
+      /** What a refused insert names (placeholder-insert-refusal.ts): the token its button also carries. */
+      placeholderToken: "{{SKILLS}}",
       migrate: "迁移为 {{SKILLS}} 占位符",
       promptSection: "技能提示词",
       promptSectionHint: "注入模板 {{SKILLS}} 占位符的内容；开关关闭或模板无占位符时不注入。",
