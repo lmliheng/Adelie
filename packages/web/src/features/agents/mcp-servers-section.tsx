@@ -7,8 +7,9 @@
  * inside the modal instead of half-applying.
  *
  * Connectivity testing mirrors the models page: the modal carries a standalone
- * "test connection" button in a top action row (result as a toast, tool count +
- * latency — the models dialog idiom), and the section header offers a bulk test that
+ * "test connection" button in a top action row (a connecting answer pops as a toast with the
+ * tool count and latency — the models dialog idiom — while a refused probe keeps its sentence
+ * under that button, see `mcp-test-refusal.ts`), and the section header offers a bulk test that
  * probes every configured server sequentially behind a confirm dialog, writing a
  * tone-colored badge onto each row as its result lands (the group speed-test idiom).
  *
@@ -45,7 +46,6 @@ import {
   TableHeaderCell,
   TableRow,
   Textarea,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import type { OptionMenuChoice } from "@adelie/ui";
@@ -68,6 +68,7 @@ import {
   type McpTransportKind,
 } from "./mcp-servers-form";
 import { flippedEnabled, toggleRefusalFor, type McpToggleRefusal } from "./mcp-servers-toggle";
+import { mcpTestRefusal } from "./mcp-test-refusal";
 import { toneInk } from "../../lib/tone";
 
 /** Maps a validation error code to its localized message. */
@@ -177,8 +178,13 @@ export function McpServersSection({
   // taken from may have moved, and the sentence names a position in it.
   const [toggleRefusal, setToggleRefusal] = useState<McpToggleRefusal | null>(null);
   // Connectivity probe: runs the current form state through POST /config/mcp-test
-  // (server-side connect + discovery, nothing saved); the result pops as a toast.
+  // (server-side connect + discovery, nothing saved). A probe that connects pops as a toast; one
+  // that does not leaves its sentence under the button that asked (see `mcp-test-refusal.ts`),
+  // because a failed probe changes nothing else on the card — without that line the form looks
+  // exactly as it did before the press. Cleared by every edit to the form (the probe sent exactly
+  // these values) and at the start of the next probe.
   const [testing, setTesting] = useState(false);
+  const [testRefusal, setTestRefusal] = useState<string | null>(null);
   // Bulk test: confirm dialog open / run in progress / per-row results keyed by server name.
   const [testAllOpen, setTestAllOpen] = useState(false);
   const [testAllRunning, setTestAllRunning] = useState(false);
@@ -243,6 +249,7 @@ export function McpServersSection({
     setEditIndex(null);
     setFieldErrors({});
     setModalError(null);
+    setTestRefusal(null);
   };
 
   const openEdit = (index: number) => {
@@ -252,6 +259,7 @@ export function McpServersSection({
     setEditIndex(index);
     setFieldErrors({});
     setModalError(null);
+    setTestRefusal(null);
   };
 
   const closeModal = () => {
@@ -263,6 +271,9 @@ export function McpServersSection({
     setForm((prev) => (prev ? { ...prev, ...patch } : prev));
     setFieldErrors({});
     setModalError(null);
+    // The probe sent the whole form, so any edit makes its sentence describe values that are no
+    // longer on screen.
+    setTestRefusal(null);
   };
 
   /** Probes the current form state (unsaved values on purpose: verify before persisting). */
@@ -273,13 +284,16 @@ export function McpServersSection({
       setFieldErrors(built.errors);
       return;
     }
+    // This probe's answer replaces the last one's (see the state's comment).
+    setTestRefusal(null);
     setTesting(true);
     try {
       const res = await api.testAgentMcpServer(projectId, agentId, built.server);
-      if (res.ok) toastSuccess(S.agent.mcpTestOk(res.tools?.length ?? 0, res.latencyMs));
-      else toastError(S.agent.mcpTestFail(res.error ?? S.common.unknownError));
+      const refusal = mcpTestRefusal({ result: res });
+      if (refusal === null) toastSuccess(S.agent.mcpTestOk(res.tools?.length ?? 0, res.latencyMs));
+      else setTestRefusal(refusal);
     } catch (e) {
-      toastError(S.agent.mcpTestFail(apiErrorText(e)));
+      setTestRefusal(mcpTestRefusal({ result: null, error: e }));
     } finally {
       setTesting(false);
     }
@@ -524,8 +538,8 @@ export function McpServersSection({
               </p>
             </div>
             {/* Entry-level action right under the tabs — the models dialog idiom: a standalone
-                test button, enabled once the target (command / url) is filled in; the result
-                pops as a toast. */}
+                test button, enabled once the target (command / url) is filled in; a connecting
+                answer pops as a toast, a refused one stays below (see `mcp-test-refusal.ts`). */}
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 size="sm"
@@ -535,6 +549,19 @@ export function McpServersSection({
                 {testing ? S.agent.mcpTesting : S.agent.mcpTest}
               </Button>
             </div>
+            {testRefusal !== null && (
+              // Under the button that asked, not over the card: `line-clamp-2` keeps a long
+              // stderr tail from heightening the modal, and the whole sentence is on hover, the
+              // way every other refusal slot in the app carries its longer form.
+              <p
+                role="alert"
+                data-tooltip={testRefusal}
+                data-tooltip-content="text"
+                className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+              >
+                {testRefusal}
+              </p>
+            )}
             <Input
               size="sm"
               label={S.agent.mcpName}
