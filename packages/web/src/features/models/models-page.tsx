@@ -77,7 +77,7 @@ import {
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { useDocumentTitle } from "../../lib/use-document-title";
 import { useProject } from "../../state/project";
 import { useAuth } from "../../state/auth";
@@ -167,6 +167,8 @@ import { GroupBalance } from "./group-balance";
 import { isPinned, usePinnedBalance } from "./balance";
 import { refusalOf } from "./write-outcome";
 import type { WriteOutcome } from "./write-outcome";
+import { modelTestRefusal } from "./model-test-refusal";
+import type { ModelTestAnswer } from "./model-test-refusal";
 
 /**
  * The authorization flows a group's Connect dialog can run, keyed by the flow named in that
@@ -2666,6 +2668,13 @@ function ModelDialog({
   /** Connectivity test in progress. */
   const [testing, setTesting] = useState(false);
   /**
+   * The sentence the last refused probe left under the button row (model-test-refusal.ts). It
+   * lives on the dialog rather than in a toast because the form it names is on the dialog: cleared
+   * by every edit (the probe sent exactly the values it describes) and at the start of the next
+   * probe.
+   */
+  const [testRefusal, setTestRefusal] = useState<string | null>(null);
+  /**
    * Action pending confirmation: anything that writes to the Project config goes through a
    * confirmation step — save config / set as default / set as vision proxy model / delete.
    * (Adding a new custom model isn't confirmed: opening the dialog is itself a clear intent.)
@@ -2751,6 +2760,9 @@ function ModelDialog({
 
   const set = (patch: Partial<RowState>) => {
     setForm((prev) => ({ ...prev, ...patch }));
+    // A refused probe described the values it was sent: any edit makes that sentence describe a
+    // form that is no longer on screen, so it goes with the field it named.
+    setTestRefusal(null);
     // Clear the error marker for whichever field was changed (keys match RowState field names).
     setFieldErrors((prev) => {
       const next = { ...prev };
@@ -2760,22 +2772,25 @@ function ModelDialog({
   };
 
   /**
-   * What a failed probe says. An entry its group cannot place fails upstream with AgentHub's
-   * own sentence — the id, then the list of client types it does support — which names an
-   * internal vocabulary and leaves the reader to infer what to do about it. That case gets a
-   * message naming the problem and the fix its own shape calls for (unroutableFix); every
-   * other failure still relays the upstream text, which is what makes a wrong key or a wrong
-   * endpoint diagnosable. The relayed sentence is not lost either way: it goes to the console,
-   * where a developer looking into a report can still read it.
+   * What a failed probe says: the sentence under the button (model-test-refusal.ts), not a toast —
+   * the form it describes is right there, and a toast would be gone before the reader finished
+   * reading the reason against it. The refusal is judged on the form as it was pressed, because
+   * that is what the probe sent.
    */
-  const reportTestFailure = (message: string) => {
+  const reportTestFailure = (answer: ModelTestAnswer) => {
     const fix = unroutableFix(form.provider, form.modelId, form.clientType);
-    if (fix === null) {
-      toastError(S.models.testFailed(message));
-      return;
+    // An entry its group cannot place gets the advice instead of the route's sentence (see
+    // modelTestRefusal); that sentence is not lost — it goes to the console, where whoever reads
+    // a report can still find the id and the client types it named. Every other failure is
+    // relayed in the line itself, so only this case needs the extra copy.
+    if (fix !== null) {
+      const relayed =
+        answer.result === null
+          ? refusalText(answer.error)
+          : (answer.result.message ?? S.common.unknownError);
+      console.warn(`[models] ${form.provider}/${form.modelId.trim()}: ${relayed}`);
     }
-    console.warn(`[models] ${form.provider}/${form.modelId.trim()}: ${message}`);
-    toastError(fix === "sync" ? S.models.testStalePin : S.models.testNotRoutable);
+    setTestRefusal(modelTestRefusal(answer, fix));
   };
 
   /**
@@ -2787,6 +2802,9 @@ function ModelDialog({
    */
   const runTest = async () => {
     setTesting(true);
+    // The previous probe's sentence described a form that may have been edited since, and this
+    // press is a new question: the line goes while the answer is in flight.
+    setTestRefusal(null);
     try {
       // Always tests against the **current form draft**, unaffected by already-persisted
       // values (per user intent: test exactly what's typed right now):
@@ -2810,9 +2828,9 @@ function ModelDialog({
       body.fastMode = form.fastMode;
       const res = await api.testModel(projectId, body);
       if (res.ok) toastSuccess(S.models.testOk(res.latencyMs ?? 0));
-      else reportTestFailure(res.message ?? "");
+      else reportTestFailure({ result: res });
     } catch (e) {
-      reportTestFailure(apiErrorText(e));
+      reportTestFailure({ result: null, error: e });
     } finally {
       setTesting(false);
     }
@@ -3500,6 +3518,19 @@ function ModelDialog({
                 </>
               )}
             </div>
+            {testRefusal !== null && (
+              // Under the buttons that asked, not over the dialog: `line-clamp-2` keeps a long
+              // upstream sentence from heightening it, and the whole text is on hover, the way
+              // every other refusal slot in the app carries its longer form.
+              <p
+                role="alert"
+                data-tooltip={testRefusal}
+                data-tooltip-content="text"
+                className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+              >
+                {testRefusal}
+              </p>
+            )}
           </div>
         )}
 
