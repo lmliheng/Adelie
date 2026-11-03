@@ -705,6 +705,12 @@ export const zh = {
     storageModeFailed: "无法读取清理模式设置，因此按「已关闭」处理。",
     /** The hint on every write control the mode gates, so a disabled button says why. */
     storageModeRequired: "需要先开启清理模式",
+    /**
+     * A mode switch the server refused, drawn under the sentence that describes the switch: which
+     * way it was asked to move (the switch itself never moved), and the reason as the server gave it.
+     */
+    storageModeRefused: (enabled: boolean, reason: string): string =>
+      `${enabled ? "开启" : "关闭"}清理模式被拒：${reason}`,
     /** The bill's own state, one sentence each: the difference decides whether a selection may run. */
     storagePlanStateText: {
       usable: "尚未执行，且仍在有效期内：勾选的条目可以被移动。",
@@ -757,6 +763,13 @@ export const zh = {
     storageExcludedTitle: (count: number): string => `这份账单排除了 ${count} 条已固定路径`,
     storagePin: "固定",
     storageUnpin: "取消固定",
+    /**
+     * A pin the server refused, drawn under that row's own button in its words: pinning and
+     * unpinning are two different asks, and the path says which row it is about.
+     */
+    storagePinRefused: (path: string, reason: string): string => `固定「${path}」被拒：${reason}`,
+    storageUnpinRefused: (path: string, reason: string): string =>
+      `取消固定「${path}」被拒：${reason}`,
     /** The one action that moves something, and what it does when it does it. */
     storageApply: "执行清理",
     storageApplying: "清理中…",

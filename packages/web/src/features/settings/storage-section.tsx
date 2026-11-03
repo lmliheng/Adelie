@@ -30,7 +30,10 @@
  * carries (storage-review.ts) — never one re-read from somewhere else. The trash's three writes
  * follow the same rule (storage-trash-refusal.ts): an entry whose restore or deletion was refused
  * is still listed exactly as it was, so the reason stays under the buttons that asked, where the
- * retry is — and one of those three is the only deletion in the app.
+ * retry is — and one of those three is the only deletion in the app. The mode switch and each
+ * row's pin follow it as well (storage-settings-refusal.ts): neither moves optimistically, so a
+ * refused one leaves its control exactly where the server has it, and the sentence says why beside
+ * that control.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -92,6 +95,8 @@ import {
 import type { StorageBillGroup } from "./storage-review";
 import { storageTrashKey, storageTrashRefused } from "./storage-trash-refusal";
 import type { StorageTrashRefusal } from "./storage-trash-refusal";
+import { storageModeRefused, storagePinRefused } from "./storage-settings-refusal";
+import type { StoragePinRefusal } from "./storage-settings-refusal";
 
 /** A section of the page: its heading, an optional line saying what the heading's rows mean. */
 function Block({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
@@ -291,12 +296,15 @@ function ModeRow({
   settings,
   busy,
   failed,
+  refusal,
   onChange,
 }: {
   settings: StorageSettings | null;
   busy: boolean;
   /** The settings could not be read: the switch then shows the position the page acts on (off). */
   failed: boolean;
+  /** A switch the server refused: the position it asked for, and why — drawn beside the switch. */
+  refusal: string | null;
   onChange: (enabled: boolean) => void;
 }) {
   const enabled = settings?.enabled === true;
@@ -323,6 +331,14 @@ function ModeRow({
             ? S.settings.storageModeOn
             : S.settings.storageModeOff}
       </p>
+      {/* The switch never moved (the position comes from the server's answer, never the click), so
+          this sentence is the only account of why it is still where it is — and the switch above it
+          is the retry. */}
+      {refusal !== null && (
+        <p role="alert" className={`mt-1 text-xs break-words ${toneInk.danger}`}>
+          {refusal}
+        </p>
+      )}
     </Block>
   );
 }
@@ -362,6 +378,7 @@ function BillGroup({
   approvable,
   enabled,
   pinning,
+  pinRefusal,
   onToggleRow,
   onSelectClass,
   onUnselectClass,
@@ -379,6 +396,8 @@ function BillGroup({
   enabled: boolean;
   /** The path whose pin request is in flight, so one row's button is busy and no others are. */
   pinning: string | null;
+  /** The last pin the server refused — its path says which row draws the line. */
+  pinRefusal: StoragePinRefusal | null;
   onToggleRow: (path: string) => void;
   onSelectClass: (classKey: StorageClass) => void;
   onUnselectClass: (classKey: StorageClass) => void;
@@ -440,6 +459,7 @@ function BillGroup({
               movable={movable.has(entry.path)}
               enabled={enabled}
               pinning={pinning}
+              refusal={pinRefusal?.path === entry.path ? pinRefusal.text : null}
               onToggleRow={onToggleRow}
               onPin={onPin}
             />
@@ -458,6 +478,7 @@ function BillRow({
   movable,
   enabled,
   pinning,
+  refusal,
   onToggleRow,
   onPin,
 }: {
@@ -468,6 +489,8 @@ function BillRow({
   movable: boolean;
   enabled: boolean;
   pinning: string | null;
+  /** A pin of this row the server refused: the sentence to draw under its button, or null. */
+  refusal: string | null;
   onToggleRow: (path: string) => void;
   onPin: (path: string, pinned: boolean) => void;
 }) {
@@ -506,6 +529,18 @@ function BillRow({
         >
           {pinned ? S.settings.storageUnpin : S.settings.storagePin}
         </Button>
+        {/* The button still says what it said before the click (nothing is pinned optimistically),
+            so the refusal belongs under it: the same button is the retry. */}
+        {refusal !== null && (
+          <p
+            role="alert"
+            data-tooltip={refusal}
+            data-tooltip-content="text"
+            className={`mt-1 max-w-[220px] text-left text-xs break-words whitespace-normal ${toneInk.danger}`}
+          >
+            {refusal}
+          </p>
+        )}
       </TableCell>
     </TableRow>
   );
@@ -758,6 +793,13 @@ export function StorageSection() {
   const [trashRefusal, setTrashRefusal] = useState<StorageTrashRefusal | null>(null);
   /** The path whose pin request is in flight, so one row's button is busy and no others are. */
   const [pinning, setPinning] = useState<string | null>(null);
+  /**
+   * The last mode switch or pin the server refused, kept until the next one starts: neither write
+   * moves optimistically, so the control itself still shows the position the server holds and this
+   * line is the only account of why (7.19's rule, app-wide).
+   */
+  const [modeRefusal, setModeRefusal] = useState<string | null>(null);
+  const [pinRefusal, setPinRefusal] = useState<StoragePinRefusal | null>(null);
 
   const measure = useCallback(async () => {
     setBusy(true);
@@ -822,10 +864,14 @@ export function StorageSection() {
   const saveMode = async (next: boolean) => {
     if (modeBusy) return;
     setModeBusy(true);
+    setModeRefusal(null);
     try {
       setSettings((await api.adminUpdateStorageSettings({ enabled: next })).settings);
       toastSuccess(S.common.saved);
     } catch (e) {
+      // The switch snaps back to the position the server still holds (it was never moved), so the
+      // reason has to stay beside it: nothing on this page changed, and the switch is the retry.
+      setModeRefusal(storageModeRefused(next, refusalText(e)));
       toastError(apiErrorText(e));
     } finally {
       setModeBusy(false);
@@ -882,6 +928,7 @@ export function StorageSection() {
   const pin = async (path: string, pinned: boolean) => {
     if (plan === null || pinning !== null) return;
     setPinning(path);
+    setPinRefusal(null);
     try {
       setSettings((await api.adminPinStoragePath(plan.id, { path, pinned })).settings);
       // A pinned path is refused by an apply, so it must not stay ticked: the refusal is
@@ -894,6 +941,9 @@ export function StorageSection() {
         });
       }
     } catch (e) {
+      // The row is not pinned and nothing else about it changed, so the reason is drawn under the
+      // button that asked, in that button's own words.
+      setPinRefusal(storagePinRefused(path, pinned, refusalText(e)));
       toastError(apiErrorText(e));
     } finally {
       setPinning(null);
@@ -976,6 +1026,7 @@ export function StorageSection() {
         settings={settings}
         busy={modeBusy}
         failed={modeFailed}
+        refusal={modeRefusal}
         onChange={(next) => void saveMode(next)}
       />
       {report === null && (
@@ -1061,6 +1112,7 @@ export function StorageSection() {
                       approvable={approvable}
                       enabled={enabled}
                       pinning={pinning}
+                      pinRefusal={pinRefusal}
                       onToggleRow={(path) =>
                         setSelection((current) => storageTogglePath(plan, current, path, pins))
                       }

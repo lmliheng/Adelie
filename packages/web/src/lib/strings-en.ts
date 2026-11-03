@@ -639,6 +639,12 @@ export const en: Strings = {
     storageModeFailed: "Could not read the cleanup mode's settings, so this page treats it as off.",
     /** The hint on every write control the mode gates, so a disabled button says why. */
     storageModeRequired: "Turn the cleanup mode on first",
+    /**
+     * A mode switch the server refused, drawn under the sentence that describes the switch: which
+     * way it was asked to move (the switch itself never moved), and the reason as the server gave it.
+     */
+    storageModeRefused: (enabled: boolean, reason: string): string =>
+      `Turning the cleanup mode ${enabled ? "on" : "off"} was refused: ${reason}`,
     /** The bill's own state, one sentence each: the difference decides whether a selection may run. */
     storagePlanStateText: {
       usable: "Not applied yet, and still within its day: the entries you tick can be moved.",
@@ -691,6 +697,14 @@ export const en: Strings = {
     storageExcludedTitle: (count: number): string => `This bill left out ${count} pinned paths`,
     storagePin: "Pin",
     storageUnpin: "Unpin",
+    /**
+     * A pin the server refused, drawn under that row's own button in its words: pinning and
+     * unpinning are two different asks, and the path says which row it is about.
+     */
+    storagePinRefused: (path: string, reason: string): string =>
+      `Pinning "${path}" was refused: ${reason}`,
+    storageUnpinRefused: (path: string, reason: string): string =>
+      `Unpinning "${path}" was refused: ${reason}`,
     /** The one action that moves something, and what it does when it does it. */
     storageApply: "Clean up",
     storageApplying: "Cleaning up…",
