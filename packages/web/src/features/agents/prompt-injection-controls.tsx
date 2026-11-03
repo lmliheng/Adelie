@@ -40,8 +40,10 @@ import {
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { useProject } from "../../state/project";
+import { featureSwitchRefused } from "./feature-switch-refusal";
 import { useSaveConfirm } from "./save-confirm";
 
 export type PromptInjectionFeature = "skills" | "vault" | "schedules" | "hooks";
@@ -49,6 +51,8 @@ export type PromptInjectionFeature = "skills" | "vault" | "schedules" | "hooks";
 /** What every feature supplies: the switch card's label, plus the two strings a switch-only feature needs in place of the prompt section's own wording. */
 interface ToggleStrings {
   enable: string;
+  /** What a refused flip of this switch names (feature-switch-refusal.ts): the feature, not the label — the label already starts with "启用". */
+  switchNoun: string;
   /** Disclosed beside the label ("?"): what the switch decides and when a change lands. Omitted where the tab's own description already says it. */
   enableHint?: string;
   /** Toast after a successful flip; defaults to the agent-config wording, whose compaction clause only fits a prompt section. */
@@ -126,6 +130,9 @@ export function usePromptInjection({
   const [state, setState] = useState<SectionConfigState | null>(null);
   const [prompt, setPrompt] = useState("");
   const [switchBusy, setSwitchBusy] = useState(false);
+  // The server's words for a flip it refused, drawn under the switch card: the switch stays where
+  // the server has it, so this line is the only account of why it did not move.
+  const [switchRefusal, setSwitchRefusal] = useState<string | null>(null);
   const promptRef = useRef<HTMLTextAreaElement>(null);
   const { requestSave, element: saveConfirm } = useSaveConfirm();
 
@@ -158,12 +165,16 @@ export function usePromptInjection({
   const toggleEnabled = async (next: boolean) => {
     if (!projectId) return;
     setSwitchBusy(true);
+    setSwitchRefusal(null);
     try {
       const res = await api.putAgentConfig(projectId, agentId, featurePatch({ enabled: next }));
       applyConfig(res.config);
       toastSuccess(strings.savedToast ?? S.agent.savedTakesEffect);
       onConfigChanged?.();
     } catch (e) {
+      // The switch never moved (its position comes from the config the server answers with), so
+      // the reason stays beside it — and the switch itself is the retry.
+      setSwitchRefusal(featureSwitchRefused(strings.switchNoun, next, refusalText(e)));
       toastError(apiErrorText(e));
     } finally {
       setSwitchBusy(false);
@@ -209,14 +220,24 @@ export function usePromptInjection({
     });
 
   const toggleCard = state !== null && (
-    <ToggleRow
-      variant="card"
-      label={strings.enable}
-      info={strings.enableHint}
-      checked={state.enabled}
-      onChange={(v) => void toggleEnabled(v)}
-      disabled={switchBusy || !canEdit}
-    />
+    <>
+      <ToggleRow
+        variant="card"
+        label={strings.enable}
+        info={strings.enableHint}
+        checked={state.enabled}
+        onChange={(v) => void toggleEnabled(v)}
+        disabled={switchBusy || !canEdit}
+      />
+      {/* The card is drawn from the config the server answered with, never from the click, so a
+          refused flip leaves it in the old position — this sentence is what says why, and the
+          switch above it is the retry. Cleared when the next flip is sent. */}
+      {switchRefusal !== null && (
+        <p role="alert" className={`text-xs break-words ${toneInk.danger}`}>
+          {switchRefusal}
+        </p>
+      )}
+    </>
   );
 
   // Legacy templates get the migration wording (and the legacy strings always exist for the

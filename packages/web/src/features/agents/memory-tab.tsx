@@ -63,11 +63,13 @@ import {
 import type { SheetSnap } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { formatRelativeDate } from "../../lib/format";
 import { useAuth } from "../../state/auth";
 import { useLocale } from "../../state/locale";
 import { useProject } from "../../state/project";
+import { featureSwitchRefused } from "./feature-switch-refusal";
 import { useSaveConfirm } from "./save-confirm";
 import { useAiBridge } from "../ai-create";
 import { buildMemoryAddPrompt, buildMemoryEditPrompt } from "./memory-chat-prompts";
@@ -153,6 +155,9 @@ export function MemoryTab({
   // Tab-level error is the initial load failure only; actions report via toast.
   const [error, setError] = useState<string | null>(null);
   const [switchBusy, setSwitchBusy] = useState(false);
+  // The server's words for a flip of the memory switch it refused, drawn under that card: the
+  // switch keeps the position the server has, so this line is the only account of why.
+  const [switchRefusal, setSwitchRefusal] = useState<string | null>(null);
   const collapseKey = userId && projectId ? collapsedStoreKey(userId, projectId, agentId) : null;
   const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsedScopes(collapseKey));
   const [memoryPrompt, setMemoryPrompt] = useState("");
@@ -262,6 +267,7 @@ export function MemoryTab({
   const toggleEnabled = async (next: boolean) => {
     if (!projectId) return;
     setSwitchBusy(true);
+    setSwitchRefusal(null);
     try {
       const res = await api.putAgentConfig(projectId, agentId, {
         config: { memory: { enabled: next } },
@@ -270,6 +276,9 @@ export function MemoryTab({
       toastSuccess(S.agent.savedTakesEffect);
       onConfigChanged?.();
     } catch (e) {
+      // Nothing moved: the switch shows what the server answered with, and a refused write has no
+      // answer — so the reason stays under the card, where the switch that retries it is.
+      setSwitchRefusal(featureSwitchRefused(S.memory.switchNoun, next, refusalText(e)));
       toastError(apiErrorText(e));
     } finally {
       setSwitchBusy(false);
@@ -599,6 +608,14 @@ export function MemoryTab({
         onChange={(v) => void toggleEnabled(v)}
         disabled={switchBusy}
       />
+
+      {/* The switch shows the position the server holds (a refused write answers nothing), so this
+          sentence is what says why it did not move — and the switch above it is the retry. */}
+      {switchRefusal !== null && (
+        <p role="alert" className={`text-xs break-words ${toneInk.danger}`}>
+          {switchRefusal}
+        </p>
+      )}
 
       {!templateHasMemory && (
         <Notice

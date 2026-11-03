@@ -1612,6 +1612,15 @@ export const en: Strings = {
     savedTakesEffect:
       "Saved. New conversations pick it up right away; running ones after their next compaction.",
     savedTakesEffectNow: "Saved. It takes effect immediately, including running conversations.",
+    /**
+     * A feature's enable switch that the server refused (feature-switch-refusal.ts), drawn under
+     * the card that holds it: which way the switch was asked to move — it never moved, the
+     * position on screen is the server's — and the reason, as the server gave it.
+     */
+    switchOnRefused: (noun: string, reason: string): string =>
+      `Turning the ${noun} switch on was refused: ${reason}`,
+    switchOffRefused: (noun: string, reason: string): string =>
+      `Turning the ${noun} switch off was refused: ${reason}`,
     takesEffectSuffix:
       " — new conversations pick it up right away, running ones after their next compaction",
     listTitle: "Agents",
@@ -2380,6 +2389,7 @@ export const en: Strings = {
   memory: {
     desc: "Long-term memory across Sessions (stored in agent_state/memory/): the agent saves what is worth keeping as it works, and you can also just ask it to remember something. User memory applies to all of this agent's sessions; workspace memory is kept per workspace. Memory edits are made by the agent in chat. Turning the switch off only stops memory from being used and deletes nothing.",
     enable: "Enable memory",
+    switchNoun: "memory",
     userScope: "User memory",
     templateMissing:
       "The prompt template has no {{MEMORY}} placeholder, so memory never enters the context.",
@@ -2551,6 +2561,7 @@ export const en: Strings = {
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "Enable vault",
+      switchNoun: "vault",
       templateMissing:
         "The prompt template has no {{VAULT}} placeholder, so the vault section never enters the context.",
       legacyTemplate:
@@ -2735,6 +2746,7 @@ export const en: Strings = {
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "Enable schedules",
+      switchNoun: "schedules",
       templateMissing:
         "The prompt template has no {{SCHEDULES}} placeholder, so the scheduled-tasks section never enters the context.",
       insertPlaceholder: "Insert the {{SCHEDULES}} placeholder",
@@ -3046,6 +3058,7 @@ export const en: Strings = {
     /** The Agent-level switch card at the top of the tab (usePromptInjection); hooks have no prompt half. */
     injection: {
       enable: "Enable hooks",
+      switchNoun: "hooks",
       enableHint:
         "With it on, every Session this agent starts runs all installed hook packages at the loop's hook points. With it off, a new Session runs no hooks at all and the installed packages stay on disk. A Task already running keeps the setting it started with until its context is compacted.",
       savedToast: "Saved — takes effect from the next turn",
@@ -3137,6 +3150,7 @@ export const en: Strings = {
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "Enable skills",
+      switchNoun: "skills",
       templateMissing:
         "The prompt template has no {{SKILLS}} placeholder, so the skills section never enters the context.",
       legacyTemplate:

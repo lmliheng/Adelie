@@ -1658,6 +1658,13 @@ export const zh = {
     savedTakesEffect: "已保存。新对话立即生效；进行中的对话在下一次压缩后生效。",
     /** Save feedback when the change touched compaction settings only: the engine re-reads them at every compaction checkpoint, so a running conversation does not have to reach one first. */
     savedTakesEffectNow: "已保存，立即生效（包括进行中的对话）。",
+    /**
+     * A feature's enable switch that the server refused (feature-switch-refusal.ts), drawn under
+     * the card that holds it: which way the switch was asked to move — it never moved, the
+     * position on screen is the server's — and the reason, as the server gave it.
+     */
+    switchOnRefused: (noun: string, reason: string): string => `开启${noun}的开关被拒：${reason}`,
+    switchOffRefused: (noun: string, reason: string): string => `关闭${noun}的开关被拒：${reason}`,
     /** Appended to an action's own toast (skill install / uninstall) — same timing statement. */
     takesEffectSuffix: "；新对话立即生效，进行中的对话在下一次压缩后生效",
     listTitle: "Agents",
@@ -2442,6 +2449,8 @@ export const zh = {
   memory: {
     desc: "跨 Session 的长期记忆（存于 agent_state/memory/）：agent 会在对话中自行记下值得保留的信息，你也可以直接让它记住某件事。用户记忆对本 Agent 的所有会话生效，工作区记忆按工作区隔离；记忆修改在对话中由 agent 完成。关闭开关只停止使用记忆，不删除任何文件。",
     enable: "启用记忆",
+    /** What a refused flip of this switch names (feature-switch-refusal.ts): the switch, not the label. */
+    switchNoun: "记忆",
     userScope: "用户记忆",
     templateMissing: "提示词模板中没有 {{MEMORY}} 占位符，记忆不会进入上下文。",
     insertPlaceholder: "插入 {{MEMORY}} 占位符",
@@ -2614,6 +2623,7 @@ export const zh = {
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "启用密钥保险柜",
+      switchNoun: "密钥保险柜",
       templateMissing: "提示词模板中没有 {{VAULT}} 占位符，保险柜小节不会进入上下文。",
       legacyTemplate:
         "模板仍是旧版硬编码的 # Vault 段落：一键迁移会将该段落原位替换为 {{VAULT}} 占位符，措辞不变，此后可在下方编辑。",
@@ -2787,6 +2797,7 @@ export const zh = {
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "启用定时任务",
+      switchNoun: "定时任务",
       templateMissing: "提示词模板中没有 {{SCHEDULES}} 占位符，定时任务小节不会进入上下文。",
       insertPlaceholder: "插入 {{SCHEDULES}} 占位符",
       promptSection: "定时任务提示词",
@@ -3089,6 +3100,7 @@ export const zh = {
     /** The Agent-level switch card at the top of the tab (usePromptInjection); hooks have no prompt half. */
     injection: {
       enable: "启用钩子",
+      switchNoun: "钩子",
       enableHint:
         "开启后，该 Agent 新建的 Session 会在钩子点运行全部已安装的钩子包；关闭后新建的 Session 不运行任何钩子，已安装的包仍保留在磁盘上。进行中的 Task 保持开始时的设置，直到其上下文被压缩。",
       savedToast: "已保存，自下一轮对话起生效",
@@ -3179,6 +3191,7 @@ export const zh = {
     /** Prompt-injection controls (toggle card / template alert / prompt editor), mirroring the memory tab's set. */
     injection: {
       enable: "启用技能",
+      switchNoun: "技能",
       templateMissing: "提示词模板中没有 {{SKILLS}} 占位符，技能小节不会进入上下文。",
       legacyTemplate:
         "模板仍是旧版硬编码的 # Skills 段落：一键迁移会将该段落原位替换为 {{SKILLS}} 占位符，措辞不变，此后可在下方编辑。",
