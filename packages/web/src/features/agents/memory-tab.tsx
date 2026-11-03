@@ -335,7 +335,7 @@ export function MemoryTab({
   const savePrompts = () =>
     requestSave(() => {
       if (!projectId) return;
-      void api
+      return api
         .putAgentConfig(projectId, agentId, {
           config: { memory: { prompt: memoryPrompt, workspacePrompt } },
         })
@@ -345,7 +345,12 @@ export function MemoryTab({
           toastSuccess(S.agent.savedTakesEffect);
           onConfigChanged?.();
         })
-        .catch((e: unknown) => toastError(apiErrorText(e)));
+        .catch((e: unknown) => {
+          toastError(apiErrorText(e));
+          // Handed back to the save card, which keeps the reason under its own sentence
+          // (save-confirm.tsx) — the toast above would otherwise be the only trace of it.
+          throw e;
+        });
     });
 
   const openView = async (scope: MemoryScopeInfo, file: MemoryFileInfo) => {

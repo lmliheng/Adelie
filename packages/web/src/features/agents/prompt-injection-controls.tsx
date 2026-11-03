@@ -226,14 +226,19 @@ export function usePromptInjection({
   const savePrompt = () =>
     requestSave(() => {
       if (!projectId) return;
-      void api
+      return api
         .putAgentConfig(projectId, agentId, featurePatch({ prompt }))
         .then((res) => {
           applyConfig(res.config);
           toastSuccess(S.agent.savedTakesEffect);
           onConfigChanged?.();
         })
-        .catch((e: unknown) => toastError(apiErrorText(e)));
+        .catch((e: unknown) => {
+          toastError(apiErrorText(e));
+          // Handed back to the save card, which keeps the reason under its own sentence
+          // (save-confirm.tsx) — the toast above would otherwise be the only trace of it.
+          throw e;
+        });
     });
 
   const toggleCard = state !== null && (

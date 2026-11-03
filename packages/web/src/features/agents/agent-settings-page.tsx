@@ -266,6 +266,9 @@ export function AgentSettingsPage() {
         }
       } catch (e) {
         toastError(apiErrorText(e));
+        // The save card asked for this write, so it is the card that says why (save-confirm.tsx):
+        // it waits on this promise and keeps the refusal under its own sentence.
+        throw e;
       }
     },
     [projectId, agentId, reloadAgents],
@@ -346,6 +349,10 @@ export function AgentSettingsPage() {
   );
 }
 
+/**
+ * A tab's write, handed to the save confirmation: the card awaits it, so every tab passes the
+ * promise on rather than `void`-ing it (save-confirm.tsx keeps a refused write in the card).
+ */
 type SaveFn = (update: AgentConfigUpdateRequest) => Promise<void>;
 
 function OverviewTab({
@@ -428,7 +435,7 @@ function OverviewTab({
       toastInfo(S.common.noChangesToSave);
       return;
     }
-    requestSave(() => void onSave({ config }));
+    requestSave(() => onSave({ config }));
   };
 
   const runImport = async (dataBase64: string, confirm: boolean) => {
@@ -717,7 +724,7 @@ function PromptTab({ data, onSave }: { data: AgentConfigResponse; onSave: SaveFn
       toastInfo(S.common.noChangesToSave);
       return;
     }
-    requestSave(() => void onSave(update));
+    requestSave(() => onSave(update));
   };
 
   /**
@@ -855,7 +862,7 @@ function RuntimeTab({ data, onSave }: { data: AgentConfigResponse; onSave: SaveF
       toastInfo(S.common.noChangesToSave);
       return;
     }
-    requestSave(() => void onSave({ config }));
+    requestSave(() => onSave({ config }));
   };
 
   // S is reassigned on language switch (live binding), so read it during render rather than hoisting to a module-level constant.
@@ -1083,7 +1090,7 @@ function ToolsTab({ data, onSave }: { data: AgentConfigResponse; onSave: SaveFn 
       toastInfo(S.common.noChangesToSave);
       return;
     }
-    requestSave(() => void onSave({ config: { toolsBuiltin: tools } }));
+    requestSave(() => onSave({ config: { toolsBuiltin: tools } }));
   };
 
   /** Whether a tool's config schema declares the optional `description` call argument (only then does the per-row switch make sense). */
