@@ -2234,6 +2234,8 @@ export const zh = {
     detectVisionNeedsId: "请先填写模型 id，再进行检测。",
     detectVisionOk: "该模型接受图片输入，已开启视觉",
     detectVisionNo: "该模型不接受图片输入，视觉保持关闭",
+    /** 视觉探测一次没得出结论时，画在视觉开关下面的那一行；先讲清探的是视觉，再带出服务端给的句子（协议探测那句不适用）。 */
+    detectVisionFailed: (detail: string): string => `视觉检测失败：${detail}`,
     /** Shown only while the vision switch is OFF: images are then read via the configured vision proxy model (read_file hands them to it). */
     visionOffProxyHint: "使用视觉代理模型读图",
     /** Switch label for the per-model fast mode (the provider's premium faster serving tier); the switch is only rendered for models whose AgentHub client can carry the parameter. */

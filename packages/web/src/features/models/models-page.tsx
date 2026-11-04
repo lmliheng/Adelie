@@ -171,6 +171,7 @@ import { modelTestRefusal } from "./model-test-refusal";
 import type { ModelTestAnswer } from "./model-test-refusal";
 import { detectProtocolRefusal } from "./detect-refusal";
 import type { DetectPress } from "./detect-refusal";
+import { visionProbeRefusal } from "./vision-refusal";
 
 /**
  * The authorization flows a group's Connect dialog can run, keyed by the flow named in that
@@ -2735,6 +2736,13 @@ function ModelDialog({
   const detectInFlight = useRef<Promise<DetectOutcome | null> | null>(null);
   /** Vision probe in progress (its own control, so its own busy state). */
   const [visionDetecting, setVisionDetecting] = useState(false);
+  /**
+   * The sentence the last vision probe that decided nothing left under the vision switch
+   * (vision-refusal.ts). It lives on the dialog for the same reason the other two probes' lines do:
+   * it names the key, the URL and the id this form holds, and a toast would be gone before the
+   * reader had read it against them. Cleared by every edit and at the start of the next press.
+   */
+  const [visionRefusal, setVisionRefusal] = useState<string | null>(null);
   /** Single-flight guard for the vision probe: it bills the user, so never twice at once. */
   const visionInFlight = useRef<Promise<void> | null>(null);
   const isNew = row === null;
@@ -2772,9 +2780,11 @@ function ModelDialog({
     setForm((prev) => ({ ...prev, ...patch }));
     // A refused probe described the values it was sent: any edit makes that sentence describe a
     // form that is no longer on screen, so it goes with the field it named. Same for the detection
-    // line below — a detection reads the URL, the key and the id, so every one of them retires it.
+    // and vision lines below — both read the URL, the key and the id, so every one of them retires
+    // it.
     setTestRefusal(null);
     setDetectRefusal(null);
+    setVisionRefusal(null);
     // Clear the error marker for whichever field was changed (keys match RowState field names).
     setFieldErrors((prev) => {
       const next = { ...prev };
@@ -2960,22 +2970,29 @@ function ModelDialog({
   };
 
   /**
-   * Vision probe. Mirrors protocol detection — always clickable, single-flight, toast-only
-   * — with one deliberate difference: it is a REAL completion on the user's credential
+   * Vision probe. Mirrors protocol detection — always clickable, single-flight — with one
+   * deliberate difference: it is a REAL completion on the user's credential
    * (an image request cannot be shaped to cost nothing the way the protocol probes are), so
    * it only ever runs from this button, never implicitly and never on save.
    *
    * Three outcomes, because "the probe failed" and "the model says no" are different facts:
    * a hit switches vision ON, a definitive image rejection switches it OFF, and a probe
-   * that learned nothing leaves the switch exactly as the user had it.
+   * that learned nothing leaves the switch exactly as the user had it — and, unlike the other
+   * two, has to say why on the form itself (vision-refusal.ts): the sentence names what was
+   * probed, and nothing here writes anything the reader could read the answer off instead.
    */
   const detectVisionFromButton = async () => {
     if (visionInFlight.current) return;
     const modelId = form.modelId.trim();
     if (!modelId) {
-      toastError(S.models.detectVisionNeedsId);
+      // Nothing is asked of the route without an id, but the press still happened: the line says
+      // why, next to the control, instead of only in a toast that is gone by the time the reader
+      // has scrolled to the id it names.
+      setVisionRefusal(visionProbeRefusal({ kind: "unprobeable" }));
       return;
     }
+    // This run describes the form as it stands now; the previous line described the one it replaced.
+    setVisionRefusal(null);
     setVisionDetecting(true);
     const run = (async () => {
       try {
@@ -2994,10 +3011,12 @@ function ModelDialog({
           set({ vision: false });
           toastInfo(S.models.detectVisionNo);
         } else {
-          toastError(S.models.detectFailedBody);
+          // Learned nothing: the switch stays as the reader left it, and the line carries the
+          // provider's own sentence back to the form.
+          setVisionRefusal(visionProbeRefusal({ kind: "answer", result: res }));
         }
-      } catch {
-        toastError(S.models.detectFailedBody);
+      } catch (e) {
+        setVisionRefusal(visionProbeRefusal({ kind: "failed", error: e }));
       } finally {
         setVisionDetecting(false);
       }
@@ -3872,11 +3891,13 @@ function ModelDialog({
               <div className={toggleCellClass}>
                 {/* Detect sits inline after the switch — the protocol control's idiom, but next
                     to the setting it fills in rather than at a field's top-right, since this row
-                    has no field to hang off. Always clickable, single-flight, toast-only, like
-                    protocol detection; it just costs a real (tiny) completion, so it never runs
-                    on its own. `flex-wrap` is what lets the switch and the trigger share a
-                    half-width cell: when they do not both fit, the trigger drops onto its own
-                    line inside the cell instead of widening the grid column. */}
+                    has no field to hang off. Always clickable and single-flight, like protocol
+                    detection; it just costs a real (tiny) completion, so it never runs on its own.
+                    Its two verdicts announce themselves through the switch they moved, while a
+                    press that decided nothing leaves the line drawn below (visionRefusal).
+                    `flex-wrap` is what lets the switch and the trigger share a half-width cell:
+                    when they do not both fit, the trigger drops onto its own line inside the cell
+                    instead of widening the grid column. */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                   <label
                     className={`inline-flex items-center gap-2 ${canEdit ? "cursor-pointer" : "cursor-not-allowed"}`}
@@ -3905,6 +3926,21 @@ function ModelDialog({
                     </Button>
                   )}
                 </div>
+                {visionRefusal !== null && (
+                  // Under the switch row the button sits in, inside this half-width cell:
+                  // `line-clamp-2` keeps a long upstream sentence from heightening the form, and the
+                  // whole text is on hover, the way every other refusal slot carries its longer form.
+                  // Drawn above the off-state hint so it stays adjacent to the control that was
+                  // pressed; the hint is a standing explanation, not the answer to this press.
+                  <p
+                    role="alert"
+                    data-tooltip={visionRefusal}
+                    data-tooltip-content="text"
+                    className={`mt-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+                  >
+                    {visionRefusal}
+                  </p>
+                )}
                 {!form.vision && (
                   <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
                     {S.models.visionOffProxyHint}

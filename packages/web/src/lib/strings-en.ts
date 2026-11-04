@@ -2189,6 +2189,8 @@ export const en: Strings = {
     detectVisionNeedsId: "Fill in the model id first, then detect.",
     detectVisionOk: "This model accepts images; vision turned on",
     detectVisionNo: "This model does not accept images; vision left off",
+    /** The vision probe learned nothing: name what was probed, then relay the route's own sentence. */
+    detectVisionFailed: (detail: string): string => `Vision probe failed: ${detail}`,
     visionOffProxyHint: "Images are read via the vision proxy model",
     fastMode: "Fast mode",
     fastModeHint:
