@@ -69,6 +69,7 @@ import { formatDateTime } from "../../lib/format";
 import { toneInk, type Tone } from "../../lib/tone";
 import { QQScanConnect } from "./qq-scan-connect";
 import { WeChatScanConnect } from "./wechat-scan-connect";
+import { messagingTestRefusal } from "./messaging-test-refusal";
 import {
   bindingsToForm,
   emptyMessagingForm,
@@ -238,6 +239,12 @@ export interface MessagingBindingEditorState {
    * until the next flip or a channel switch, which is what makes it readable after the attempt.
    */
   toggleRefusal: string | null;
+  /**
+   * Why the last credential probe did not get through (null when it connected or none ran). It
+   * stays under the button that asked until the form is edited, the channel is switched or the
+   * next probe starts — see `messaging-test-refusal.ts`.
+   */
+  testRefusal: string | null;
   /** The id hosts give their Save action, so a switch gated on unsaved edits can focus it. */
   saveButtonId: string;
   /**
@@ -368,6 +375,8 @@ export function useMessagingBinding(
   const [toggleRefusal, setToggleRefusal] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
+  /** The last refused credential probe, under the button that asked (see `messaging-test-refusal.ts`). */
+  const [testRefusal, setTestRefusal] = useState<string | null>(null);
   const saveButtonId = useId();
 
   /** Which session the form was loaded for (the initial load runs once per session, not per poll flip). */
@@ -405,6 +414,8 @@ export function useMessagingBinding(
       // A swapped session must never show the previous one's fields while its load runs.
       setForm(null);
       setBaseline(null);
+      // Nor the previous session's probe answer: its fields are about to leave the screen.
+      setTestRefusal(null);
       void refresh(true);
     }
     const timer = poll ? setInterval(() => void refresh(false), STATUS_POLL_MS) : null;
@@ -423,12 +434,17 @@ export function useMessagingBinding(
   const patchForm = (patch: Partial<MessagingFormState>) => {
     setForm((prev) => (prev ? { ...prev, ...patch } : prev));
     setFieldErrors({});
+    // The probe sent exactly the values on the form, so any edit makes its sentence describe a
+    // connection nothing asked about any more.
+    setTestRefusal(null);
   };
 
   const selectChannel = (channel: MessagingChannel) => {
     // The refusal belongs to the switch of the channel it was refused on: another channel's
     // switch is a different control, and carrying the sentence across would accuse it.
     setToggleRefusal(null);
+    // Same rule for the probe: another channel's credentials are not what that button tested.
+    setTestRefusal(null);
     patchForm({ channel });
   };
 
@@ -467,34 +483,47 @@ export function useMessagingBinding(
     }
   };
 
+  /**
+   * Probes the selected channel with the form's current (unsaved) values and saves nothing.
+   *
+   * A connection that gets through pops its numbers as a toast; one that does not leaves its
+   * sentence under the button that asked, and NOT in a toast (see `messaging-test-refusal.ts`):
+   * the card is otherwise unchanged, so six seconds later nothing on screen would say the button
+   * had been pressed — while the credential fields that sentence points at sit right below it.
+   */
   const testConnection = async () => {
     if (!form) return;
+    // This probe's answer replaces the last one's.
+    setTestRefusal(null);
     setTesting(true);
     try {
       const draft = formToTest(form);
+      const res =
+        draft.channel === "telegram"
+          ? await api.testTelegramBinding(sessionId, draft.body)
+          : draft.channel === "qq"
+            ? await api.testQQBinding(sessionId, draft.body)
+            : // No body on WeChat: this channel's probe reads the stored binding, there being no draft.
+              draft.channel === "wechat"
+              ? await api.testWeChatBinding(sessionId)
+              : await api.testFeishuBinding(sessionId, draft.body);
+      const refusal = messagingTestRefusal({ result: res });
+      if (refusal !== null) {
+        setTestRefusal(refusal);
+        return;
+      }
+      // Connected: what is left of Telegram's notices is the success line and the Group Privacy
+      // caveat — the failure branch was answered above.
       if (draft.channel === "telegram") {
-        const res = await api.testTelegramBinding(sessionId, draft.body);
         for (const notice of telegramTestNotices(res)) {
-          if (notice.tone === "error") toastError(notice.text);
-          else if (notice.tone === "info") toastInfo(notice.text);
+          if (notice.tone === "info") toastInfo(notice.text);
           else toastSuccess(notice.text);
         }
-      } else if (draft.channel === "qq") {
-        const res = await api.testQQBinding(sessionId, draft.body);
-        if (res.ok) toastSuccess(S.messaging.testOk(res.latencyMs ?? 0));
-        else toastError(S.messaging.testFail(res.error ?? S.common.unknownError));
-      } else if (draft.channel === "wechat") {
-        // No body: this channel's probe reads the stored binding, there being no draft.
-        const res = await api.testWeChatBinding(sessionId);
-        if (res.ok) toastSuccess(S.messaging.testOk(res.latencyMs ?? 0));
-        else toastError(S.messaging.testFail(res.error ?? S.common.unknownError));
       } else {
-        const res = await api.testFeishuBinding(sessionId, draft.body);
-        if (res.ok) toastSuccess(S.messaging.testOk(res.latencyMs ?? 0));
-        else toastError(S.messaging.testFail(res.error ?? S.common.unknownError));
+        toastSuccess(S.messaging.testOk(res.latencyMs ?? 0));
       }
     } catch (e) {
-      toastError(S.messaging.testFail(apiErrorText(e)));
+      setTestRefusal(messagingTestRefusal({ result: null, error: e }));
     } finally {
       setTesting(false);
     }
@@ -584,6 +613,7 @@ export function useMessagingBinding(
     toggleBusy: toggling || busy,
     enableGate,
     toggleRefusal,
+    testRefusal,
     saveButtonId,
     adoptBinding: (binding) =>
       applyChannel(binding.channel, binding, channels[binding.channel].status),
@@ -941,7 +971,8 @@ export function MessagingBindingBody({ b }: { b: MessagingBindingEditorState }) 
           </p>
         )}
       </div>
-      {/* Entry-level probes — the MCP dialog idiom: standalone buttons, results as toasts. */}
+      {/* Entry-level probes — the MCP dialog idiom: standalone buttons, a connecting answer as a
+          toast, a refused one drawn below them (see `messaging-test-refusal.ts`). */}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           size="sm"
@@ -972,6 +1003,19 @@ export function MessagingBindingBody({ b }: { b: MessagingBindingEditorState }) 
           {b.sendingTest ? S.messaging.sendingTestMessage : S.messaging.sendTestMessage}
         </Button>
       </div>
+      {/* Under the button that asked, not over the card: `line-clamp-2` keeps a long platform
+          sentence from pushing the fields down, and the whole text is on hover, the way every
+          other refusal slot in the app carries its longer form. */}
+      {b.testRefusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={b.testRefusal}
+          data-tooltip-content="text"
+          className={`line-clamp-2 text-xs break-words ${toneInk.danger}`}
+        >
+          {b.testRefusal}
+        </p>
+      )}
       {/* The gating reason closes the control block rather than sitting under the switch:
           it comes and goes with the switch's own state, so anything below it shifts by a
           line — trailing the probes leaves both of them at a fixed offset. */}

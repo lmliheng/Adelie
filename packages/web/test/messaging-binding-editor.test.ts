@@ -85,6 +85,7 @@ function stateOf(
     toggleBusy: false,
     enableGate: null,
     toggleRefusal: null,
+    testRefusal: null,
     saveButtonId: "save-under-test",
     adoptBinding: () => {},
     save: noop,
@@ -225,6 +226,29 @@ describe("MessagingBindingBody", () => {
     expect(html.slice(rowAt, html.indexOf(S.common.refused(reason), rowAt))).toContain("</div>");
     // And it is the flip's own line: with nothing refused, no alert is on screen at all.
     expect(render(stateOf("telegram"))).not.toContain(`role="alert"`);
+  });
+
+  it("keeps a refused credential probe under the button that asked", () => {
+    // The probe runs the form's unsaved values and writes nothing, so a refusal leaves the card
+    // exactly as it was — the sentence is the only account of the press, and the fields it points
+    // at are the ones right below it.
+    const line = S.messaging.testFail("Unauthorized");
+    const html = render(stateOf("telegram", {}, { testRefusal: line }));
+    expect(html).toContain(`>${line}</p>`);
+    expect(html).toContain('role="alert"');
+    // Between the probe buttons and the credential fields: under the button, not at the form's foot.
+    const buttonAt = html.indexOf(S.messaging.test);
+    const fieldsAt = html.indexOf(S.telegram.botToken);
+    const lineAt = html.indexOf(line);
+    expect(buttonAt).toBeGreaterThanOrEqual(0);
+    expect(fieldsAt).toBeGreaterThan(buttonAt);
+    expect(lineAt).toBeGreaterThan(buttonAt);
+    expect(lineAt).toBeLessThan(fieldsAt);
+    // Bounded, with the whole platform sentence on hover.
+    expect(html).toContain(`data-tooltip="${line}"`);
+    expect(html).toContain("line-clamp-2");
+    // And it is that probe's own line: with nothing refused, the card draws none.
+    expect(render(stateOf("telegram"))).not.toContain('role="alert"');
   });
 
   it('closes the form with the delivery options, each explanation behind its label\'s "?"', () => {
