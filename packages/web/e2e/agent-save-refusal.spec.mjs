@@ -98,6 +98,10 @@ test("a refused prompt save keeps the card, its sentence, and says why", async (
   await interceptSave(page, state);
 
   await page.goto(`/agents/${AGENT}?tab=prompt`);
+  // Type only after the tab's own read has landed: filling first let the arriving config overwrite
+  // the field, and the save then carried the old value (a bundle that loads a little later flipped
+  // this between green and red).
+  await expect(page.getByLabel("system_prompt 模板")).toHaveValue(/baseline seed/);
   await page.getByLabel("system_prompt 模板").fill(NEXT);
   await page.getByRole("button", { name: "保存", exact: true }).click();
 
@@ -142,6 +146,8 @@ test("a refused memory prompt save keeps the card too", async ({ page }) => {
   await interceptSave(page, state);
 
   await page.goto(`/agents/${AGENT}?tab=memory`);
+  // Same wait as the Prompt tab above, for the same reason.
+  await expect(page.getByLabel("主提示词")).toHaveValue(/baseline seed/);
   await page.getByLabel("主提示词").fill(NEXT);
   await page.getByRole("button", { name: "保存", exact: true }).click();
 
