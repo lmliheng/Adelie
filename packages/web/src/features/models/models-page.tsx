@@ -169,6 +169,8 @@ import { refusalOf } from "./write-outcome";
 import type { WriteOutcome } from "./write-outcome";
 import { modelTestRefusal } from "./model-test-refusal";
 import type { ModelTestAnswer } from "./model-test-refusal";
+import { detectProtocolRefusal } from "./detect-refusal";
+import type { DetectPress } from "./detect-refusal";
 
 /**
  * The authorization flows a group's Connect dialog can run, keyed by the flow named in that
@@ -2708,10 +2710,18 @@ function ModelDialog({
   /**
    * Whether the last detection run came back empty, purely to tint the suffix trigger
    * amber. That tint is the control's own appearance, not a message occupying the form —
-   * the wording of both outcomes lives in a toast. It is deliberately the only trace left:
-   * a hit needs none, because the suffix then shows the protocol it applied.
+   * the wording of a miss lives in `detectRefusal` below. A hit needs neither, because the
+   * suffix then shows the protocol it applied.
    */
   const [detectFailed, setDetectFailed] = useState(false);
+  /**
+   * The sentence a detection that found nothing left under the base URL field (detect-refusal.ts).
+   * It lives on the dialog for the same reason the connectivity test's line does: the URL and the
+   * API key it names are the fields the reader is about to change, and a toast would be gone before
+   * they finished reading it against them. Cleared by every edit, by a manual pick, and at the
+   * start of the next manual run.
+   */
+  const [detectRefusal, setDetectRefusal] = useState<string | null>(null);
   /**
    * Monotonic run counter: each detection captures it and only the newest run may apply
    * its result — a manual protocol pick or a re-run supersedes anything still in flight.
@@ -2761,8 +2771,10 @@ function ModelDialog({
   const set = (patch: Partial<RowState>) => {
     setForm((prev) => ({ ...prev, ...patch }));
     // A refused probe described the values it was sent: any edit makes that sentence describe a
-    // form that is no longer on screen, so it goes with the field it named.
+    // form that is no longer on screen, so it goes with the field it named. Same for the detection
+    // line below — a detection reads the URL, the key and the id, so every one of them retires it.
     setTestRefusal(null);
+    setDetectRefusal(null);
     // Clear the error marker for whichever field was changed (keys match RowState field names).
     setFieldErrors((prev) => {
       const next = { ...prev };
@@ -2850,34 +2862,37 @@ function ModelDialog({
    * is always live and a failure explains itself afterwards instead of being pre-empted by
    * a disabled control.
    *
-   * Outcomes are announced with a toast, like the connectivity test in this same dialog:
-   * transient and non-blocking, nothing to dismiss before carrying on. The Toaster portals
-   * to document.body at z-[100] against the Modal's z-50, so a toast raised from inside
-   * this dialog renders above it rather than behind or clipped by it.
+   * Outcomes are announced differently by kind. A hit is a toast (`detectedProtocol*`): transient,
+   * non-blocking, and the suffix then shows the protocol it applied — nothing to read against the
+   * form. The Toaster portals to document.body at z-[100] against the Modal's z-50, so that toast
+   * renders above this dialog rather than behind or clipped by it. A miss is NOT a toast: it is a
+   * sentence under the base URL field (`detectRefusal`, built by detect-refusal.ts), where
+   * the two fields it names are, and where it stays until the form changes — a toast left a form
+   * that looked untouched with nothing on it saying the button had been pressed.
    *
-   * Every failure — unreachable, timeout, gateway junk, nothing matched, an invalid URL
-   * that never left the browser, a server error — raises the SAME message naming the two
-   * things the user can act on (API key, base URL). Per maintainer: the finer distinctions
-   * are invisible from the outside, and wording one of them as "the endpoint responded"
-   * read as success. The per-probe outcomes stay in the endpoint's response for debugging.
+   * Every failure names the two things the user can act on (API key, base URL) — see
+   * detectProtocolRefusal for the one shape that does not, and why.
    *
    * A stale run (superseded by a manual pick or a newer run) discards its result instead
    * of clobbering the form, and stays silent.
    */
   const detectOnce = async (mode: DetectMode): Promise<DetectOutcome | null> => {
-    // What an empty result means depends on who asked. A manual run simply failed; a save
-    // run silently resolves to the compatible client and says so, because the save it was
-    // serving is still going through.
-    const failed = () => {
+    // What a miss is reported as depends on who asked. A manual run explains itself in the form; a
+    // save run silently resolves to the compatible client and says so, because the save it was
+    // serving is still going through — that note reports a write that happened, not a refusal.
+    const failed = (press: DetectPress) => {
       setDetectFailed(true);
       if (mode === "save") toastInfo(S.models.detectFellBack);
-      else toastError(S.models.detectFailedBody);
+      else setDetectRefusal(detectProtocolRefusal(press));
     };
+    // The previous answer described a URL that may have been edited since, and this press is a new
+    // question: the line goes while that answer is in flight.
+    if (mode === "manual") setDetectRefusal(null);
     const baseUrl = form.baseUrl.trim();
     // An unusable URL is just another failure: the server would 400 it, and the user gets
     // the same message either way rather than a distinct piece of API error text.
     if (!detectableBaseUrl(baseUrl)) {
-      failed();
+      failed({ kind: "unprobeable" });
       return null;
     }
     const seq = ++detectSeq.current;
@@ -2905,10 +2920,10 @@ function ModelDialog({
         set({ clientType: res.detected, ...patch });
         return { clientType: res.detected, ...patch };
       }
-      failed();
+      failed({ kind: "answer", result: res });
       return null;
-    } catch {
-      if (seq === detectSeq.current) failed();
+    } catch (e) {
+      if (seq === detectSeq.current) failed({ kind: "failed", error: e });
       return null;
     } finally {
       if (seq === detectSeq.current) setDetecting(false);
@@ -2935,7 +2950,7 @@ function ModelDialog({
    */
   const detectFromButton = async () => {
     const detected = await runDetect("manual");
-    if (detected === null) return; // detectOnce already raised the failure toast
+    if (detected === null) return; // detectOnce already put the miss in the form
     const name = S.models.protocolNames[detected.clientType] ?? detected.clientType;
     toastSuccess(
       detected.baseUrl === undefined
@@ -3630,7 +3645,7 @@ function ModelDialog({
               </FieldLabel>
               {/* Always live: no API key is needed (the server falls back to the stored key
                   and then to the protocol's env var), and anything that does go wrong is
-                  explained in a popup. `detecting` only guards re-entrancy. */}
+                  explained below this field. `detecting` only guards re-entrancy. */}
               <Button
                 variant="link"
                 size="sm"
@@ -3697,6 +3712,19 @@ function ModelDialog({
             )}
           </div>
           {fieldErrors.baseUrl && <FieldError>{fieldErrors.baseUrl}</FieldError>}
+          {detectRefusal !== null && (
+            // Under the field the probe read (the button that asked sits in the label row above),
+            // and the same slot the connectivity test's refusal uses: `line-clamp-2` keeps a long
+            // upstream sentence from heightening the form, and the whole text is on hover.
+            <p
+              role="alert"
+              data-tooltip={detectRefusal}
+              data-tooltip-content="text"
+              className={`mt-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+            >
+              {detectRefusal}
+            </p>
+          )}
           {/* Why the field above (and the price row below) will not take an edit — one line for
               both, since the lock is one rule. It is shown rather than left to the greyed
               control alone: a read-only field with no reason reads as a broken one, and the way
@@ -3707,11 +3735,12 @@ function ModelDialog({
               {S.models.officialLockedHint}
             </p>
           )}
-          {/* No detection verdict is rendered here (per maintainer): a result must not take
-              up room in the form. Both outcomes are toasts, and where the protocol ENDED UP
-              is already visible in the suffix above, which is the thing that actually holds
-              it. Nothing conditional remains below the field, so the idle and post-detection
-              layouts are identical — no reserved height, no shift. */}
+          {/* A detection VERDICT takes no room here (per maintainer): a hit needs none, because
+              where the protocol ended up is the suffix above, which is the thing that holds it.
+              A miss is not a verdict but a refusal, and it does get a line — the one drawn above
+              the lock note (detectRefusal): it names the URL and the key, both within a glance of
+              it, and it stays until the form changes. Idle and post-hit layouts stay identical:
+              that line exists only while there is something to account for. */}
         </div>
 
         {/* 3) Context window + max output tokens side by side (one row): the "Token" unit
