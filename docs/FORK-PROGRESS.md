@@ -2136,6 +2136,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       协议，且服务端转来的那句截断的上游原文（最能定位问题的那一句）被通用句盖住；现在以「视觉检测失败：」
       带出它，请求本身没发出去时念错误码自己的本地化句子，表单还没有模型 id 时同一行说缺 id。见
       「第一百九十二轮」一节。
+- [x] **7.82 内置浏览器的「设置主页」存不下去时，原因留在地址字段下面，不再只活六秒**
+      （**2026-11-04 第一百九十三轮**落地，提交见「已完成的轮次」；源码 1 处 + 1 个新 spec（1 条）+
+      changelog 一对，**不碰接口、无新文案、无新依赖**）：第一百九十二轮「没做 / 留着」点名的第一个
+      `features/` 里的口子 —— 三颗探测按钮都在弹窗里说完之后，下一批是「行内动作的失败只活六秒」那一类
+      文件，逐个看哪个是行内动作、哪个是页面级动作。这一条是弹窗里最干净的一例：它只问一件事（新建标签页
+      与主页按钮打开哪个地址），「保存」发出去的正是字段里的那一条，失败之后要改的也正是它 —— 而理由此前
+      只在六秒的通知里，通知消失后弹窗与按键前一模一样、那句话点名的地址就在眼前却没有标记。现在它画在
+      地址字段下面（`role="alert"`、危险色、限两行、整句挂悬停），留到字段被编辑（打字 /「使用当前页面」/
+      「清除」）或下一次保存开始；字段自己的「将打开 …」提示照旧留着（理由是加上去的，不是换掉那一行）。
+      句子的来源改成 `refusalText`，即全应用拒绝位那条规则（7.19）。见「第一百九十三轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2834,6 +2844,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-04 | 7.79 | **模型库配置弹窗的「测试连通性」被拒时，原因留在按钮下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/models/model-test-refusal.ts`（新，60 行：`modelTestRefusal(answer, fix)` 把一次探测的答复变成弹窗里那句话，连接成功给 `null`；请求本身失败走 `refusalText`、答复没细节时退回通用那句、能路由却失败的把路由原句原样带过去，`fix` 换成 `testStalePin` / `testNotRoutable`）、`models-page.tsx`（一个 `testRefusal` 状态：探测开始清掉、`set()` 里每次编辑都清掉、被拒时写上；`reportTestFailure` 从「取一段文本」改成「收整份答复」并把被换掉的原句照旧 `console.warn`；句子画在按钮那一行下面（`role="alert"`、危险色、限两行、整句挂悬停））+ 单测 `model-test-refusal.test.ts` 7 条 + 新 spec `models-test-refusal.spec.mjs` 2 条 + changelog 一对）：第一百八十九轮留下的口子（`features/` 里仍写着 `toastError` 的那一批）在模型库这条线上最显眼的一处 —— 那颗按钮跑的是表单里尚未保存的值，失败不写任何东西、弹窗一个字都不变，六秒后屏上没有任何东西说明它被按过。文案复用 `testFailed(detail)` / `testStalePin` / `testNotRoutable`，本轮没有新文案；连接成功仍是带延时的那条通知 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，199 接口 / 598 类型）· 四个改动文件 `oxlint` **0 警告 0 错误** · 四个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **291 文件 / 3493 通过 / 2 跳过**（+1 文件、+7 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** —— 服务端第一次是与 Web 构建并排跑的、`EXIT=1`，单独重跑全绿（并排那次的失败没留日志，只记「单独跑是绿的」）· 新 spec **2 passed（9.3 s / 2.1 s）** · **反证**：两处源码退回 `HEAD`、新模块挪走、重建产物，同一份 spec **2 failed**（都死在弹窗里 `getByRole("alert")` 上），放回重建后 **2 passed** · **两态探针（真服务端 + 真浏览器，`POST …/models/test` 桩成 `{ok:false,message}`）**：改前 1.2 s 弹窗 0 条 alert、通知区 1 条；7.6 s 弹窗 0 条、通知区 0 条（**原因彻底没了**）。改后 1.2 s 与 7.6 s 弹窗都是同一条 `连通失败：connect ECONNREFUSED 127.0.0.1:9`、通知区 0 条，表单的 `baseUrl` 两态都原样；截图 `r190/{before,after}/*.png`；两态 console 只有既有的 `machines` 403 · 相邻回归 `models-save-refusal` 3 + `models-delete-model` 2 + `models-delete-group` 2 + `models-sync-order` 2 + `models-assign-user-key` 3 **12 passed（36.2 s）** · **整套 e2e 217 passed / 4 failed（20.8 m）**：`scroll-follow-bounce` 三种主题全红（同一个量点 `gesture 1: the wheel scrolled up`，实测 **42** px 期望 > 100）**用改前产物单跑 2 failed / 1 passed，依旧红**，是这台机器的 headless 滚轮步长；`server-switch-read-refusal` 整套里红了公司模式那条，**单跑 2 passed**（9.4 s / 9.2 s，整套里跑成 24.0 s，排序 / 时序抖动）· 端口只用 8990 / 8991（跑完都已停；开工时 8996 / 8997 上已有人占着，**不是本轮起的、没有动**），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r190-*`，探针 / 两态产物 / 截图在 scratchpad 的 `r190/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | `08a40a77f` |
 | 2026-11-04 | 7.80 | **模型库配置弹窗的「检测协议」没认出协议时，原因留在 base URL 字段下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 2 处 —— `packages/web/src/features/models/detect-refusal.ts`（新，47 行：`detectProtocolRefusal(press)` 把一次按键的结局变成那句话，认出协议给 `null`；答复里没有协议与「URL 没能离开浏览器」共用那句点名 API Key 与 base URL 的老话，请求本身失败走 `refusalText`）、`models-page.tsx`（一个 `detectRefusal` 状态：手动检测开始清掉、任一次编辑或手动选协议清掉、没认出来时写上；`failed()` 从「弹 toast」改成「收一份结局进来」，保存流程那条 `detectFellBack` 提示原样保留；句子画在 base URL 字段下面，错误行之后、锁定说明之前）+ 单测 `detect-refusal.test.ts` 6 条 + 新 spec `models-detect-refusal.spec.mjs` 2 条 + changelog 一对）：第一百九十轮「没做 / 留着」点名的第二颗探测按钮 —— 它跑的是表单里尚未保存的 base URL 与 key，什么都不写，所以没认出来之后表单一个字都不变，而那句话点名的两个字段就在同屏，此前只在六秒的通知里。现在它留到表单被编辑、手动选协议或下一次检测开始；保存时顺带检测没认出来的那条提示仍是通知（讲的是一次写下去的保存，不是拒绝）。顺带修一处指错地方的诊断：请求本身没发出去（服务端 500 / 登录过期 / 连接断了）此前也念「请检查 API Key 与 base URL」，现在念错误码自己的本地化句子。文案零新增 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，199 接口 / 598 类型 —— 本笔只动 `packages/web`）· 四个改动文件 `oxlint` **0 警告 0 错误** · 四个文件与一对 changelog `prettier --check` 干净（新单测首跑一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **292 文件 / 3499 通过 / 2 跳过**（+1 文件、+6 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · 新 spec **2 passed（13.4 s）** · **反证**：`models-page.tsx` 退回 `HEAD`、新模块挪走、只重建 web 产物（`r191/before-dist`），同一份 spec **2 failed**（都死在弹窗里 `getByRole("alert")` 上：`element(s) not found`），放回重建后 **2 passed** · **两态探针（真服务端 + 真浏览器，同一份脚本，`POST …/models/detect` 桩成「答复里没有协议」与 500）**：**改前** 1.2 s 弹窗 0 条 alert、通知区 1 条；7.6 s 弹窗 0 条、通知区 0 条（**原因彻底没了**）；请求失败那一态同样只是一条「请检查 API Key 与 base URL」的通知。**改后** 1.2 s 与 7.6 s 弹窗都是同一条 `无法检测接口协议，请检查 API Key 与 base URL。`、通知区 0 条；请求失败那一态弹窗里是 `服务器内部错误，请稍后重试。`（不再叫读者去改那两个字段）；两态 `baseUrl` 都原样；截图 `r191/out/{before,after}/*.png`；两态 console 只有既有的 `machines` 403 与刻意桩出的 500，无 pageerror · 相邻回归 `models-test-refusal` 2 + `models-save-refusal` 3 + `models-delete-model` 2 + `models-delete-group` 2 **9 passed（34.1 s）** · **整套 e2e 220 passed / 3 failed（21.3 m）**：`chat.spec`（`#shim-ok`）**用改前产物单跑同样红**；`scroll-follow-bounce` 两条（`gesture 5/6: the wheel scrolled up`）**改前产物单跑依旧 2 failed / 1 passed**；`server-switch-read-refusal` 那条**单跑 2 passed**（整套里 24.0 s，时序抖动） · **顺带修掉一处被本笔撞红的用例竞态**：`agent-save-refusal` 两条用例 `goto` 后立刻 `fill`，被并发读回的配置盖掉、保存带走旧值 —— 本笔产物下 3 跑 2 红，加上「等字段里出现种子文本」后改后 3 跑全绿、改前 2 跑全绿（单独一笔 `5226bf0c9`，只动用例） · 端口只用 8982–8987（跑完都已停；开工时 8996 / 8997 上另有别线起的服务端，**不是我起的、没有动**），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r191-*`，探针 / 两态产物 / 截图在 scratchpad 的 `r191/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | 见本行提交 |
 | 2026-11-04 | 7.81 | **模型库配置弹窗的视觉探测没得出结论时，原因留在视觉开关下面，不再只活六秒；这条动作进了浏览器套件**（不是移植：源码 3 处 —— `packages/web/src/features/models/vision-refusal.ts`（新，54 行：`visionProbeRefusal(press)` 把一次按键变成那句话，接受与拒绝两种有结论的答复给 `null`；没学到的带出路线转来的上游原文，缺了就退回通用文本；请求本身失败走 `refusalText`；表单没有模型 id 时用同一行说缺 id）、`models-page.tsx`（一个 `visionRefusal` 状态：每次按键开始清掉、`set()` 里每一处编辑都清掉、没有 id 或没得出结果时写上；`detectVisionFromButton` 的三条失败路从 `toastError` 改成写这一行，两种有结论的答复保留原通知；句子画在视觉开关那一行下面、视觉关闭时那行常驻说明的上面）、`lib/strings{,-en}.ts`（一对新文案 `detectVisionFailed(detail)`））：第一百九十一轮「没做 / 留着」点名的第三颗探测按钮。它花用户自己的额度发一次极小的图片请求，接受与拒绝会把开关挪到读者眼前（那一下就是交代），「什么也没学到」则什么都不写 —— 于是理由成了那次按键唯一的痕迹，而它此前只在六秒的通知里，通知消失后表单与按键前一模一样。顺带修一处**说错了标的**的诊断：四条失败路此前借的是协议探测那句「无法检测接口协议，请检查 API Key 与 base URL」，读者按的是关于图片的按钮、答的却是协议，而且服务端转来的那句截断的上游原文（最能定位问题的一句）被通用句盖住 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，199 接口 / 598 类型 —— 本笔只动 `packages/web`） · 六个改动文件（含一对 changelog）`oxlint` **0 警告 0 错误**、`prettier --check` 干净；`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **293 文件 / 3508 通过 / 2 跳过**（+1 文件、+9 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · 新 spec **2 passed（9.6 s / 2.2 s）** · **反证**：三个源码文件退回 `HEAD`、重建 web 产物（`r192/before-dist`），同一份 spec **2 failed**（都死在弹窗里 `getByRole("alert")` 上：`element(s) not found`），放回重建后 **2 passed** · **两态探针（真服务端 + 真浏览器，同一份脚本，`POST …/models/detect-vision` 打桩）**：**改前** 1.2 s 弹窗 0 条 alert、通知区 1 条（`无法检测接口协议，请检查 API Key 与 base URL。` —— 讲的还是协议）；7.6 s 弹窗 0 条、通知区 0 条（**原因彻底没了**）。**改后** 1.2 s 与 7.6 s 弹窗都是同一条 `视觉检测失败：401 Unauthorized: invalid api key`，通知区 0 条；请求本身失败那一态弹窗里是 `视觉检测失败：服务器内部错误，请稍后重试。`；两态下探测带走的都是表单里的 provider / model id / base URL，什么都没写；截图 `r192/out/{before,after}/*.png`；两态 console 只有既有的 `machines` 403 与刻意桩出的 500，无 pageerror · 相邻回归（真浏览器四份 spec，含本笔）`models-vision-refusal` 2 + `models-detect-refusal` 2 + `models-test-refusal` 2 + `models-save-refusal` 3 **9 passed（43.2 s）** · **整套 e2e 222 passed / 3 failed（21.2 m）**，三条红都与本笔无关且都有据：`project-switch` 在复用过的数据根上建 Project 撞 409（**换干净数据根单跑 1 passed**）；`scroll-follow-bounce` 整套里红 Primer 一条、**干净根单跑三种主题全红**（`gesture N: the wheel scrolled up`，都是没到 >100 px 的阈值），**用改前产物单跑同样 2 failed / 1 passed**，是这台机器的 headless 滚轮步长；`server-switch-read-refusal` 整套里红公司模式那条、**干净根单跑 2 passed**（时序抖动，与前几轮同一现象） · 端口只用 8994 / 8995 / 8996 / 8997（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r192*`，探针 / 临时 playwright 配置 / 两态产物 / 截图在 scratchpad 的 `r192/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | `28477dec8` |
+| 2026-11-04 | 7.82 | **内置浏览器的「设置主页」存不下去时，原因留在地址字段下面，不再只活六秒**（不是移植：源码 1 处 —— `packages/web/src/features/builtin-browser/homepage-dialog.tsx`：字段旁边多一个 `refusal` 状态，`edit()`（打字 /「使用当前页面」/「清除」）清掉它、`save()` 在发请求之前清掉并在失败时写上；失败不再 `toastError`，句子改成 `S.builtinBrowser.homepageFailed(refusalText(err))`（7.19 的拒绝位规则，请求没到服务端时念错误码自己的句子）；那句话画在地址字段下面（`role="alert"`、危险色、限两行、整句挂悬停），字段自己的「将打开 …」提示照旧留着。第一百九十二轮「没做 / 留着」点名的 `features/` 那批行内动作里的第一处 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，199 接口 / 598 类型 —— 本笔只动 `packages/web`） · 两个改动文件 `oxlint` **0 警告 0 错误**、四个文件（含 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456**/6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **293 文件 / 3508 通过 / 2 跳过** · server **211 文件 / 3077 通过 / 17 跳过** · 新 spec **1 passed（10.3 s）** · **反证**：源码那一个文件退回 `HEAD`、重建 web 产物后同一份 spec **1 failed**（死在弹窗里 `getByRole("alert")`：`element(s) not found`），放回重建后 **1 passed** · **两态探针（真服务端 + 真浏览器，同一份脚本，`PUT …/builtin-browser/settings` 桩成 500）**：**改前** 1.2 s 弹窗 0 条 alert、通知区 1 条（`无法保存主页：homepage refused by the probe`）；7.6 s 弹窗 0 条、通知区 **0 条**（**原因彻底没了**，字段与按钮与按键前一模一样）。**改后** 1.2 s 与 7.6 s 弹窗都是同一条、通知区 0 条；两态字段与「将打开 https://example.com/」提示都原样；截图 `r193/out/{before,after}/{1_2s,7_6s}.png`；两态 console 只有刻意桩出的 500，无 pageerror · 相邻回归（真浏览器三份 spec，含本笔）`builtin-browser-homepage-refusal` 1 + `builtin-browser-clear-refusal` 1 + `dock` 11 + `mobile-dock` 1 **13 passed（47.3 s）** · **整套 e2e 222 passed / 4 failed（21.3 m）**：`scroll-follow-bounce` 三条主题（`gesture N: moved after the gesture`）**干净数据根单跑同样 2 failed / 1 passed**，这台机器的 headless 滚轮步长（前几轮同一现象）；`server-switch-read-refusal` 公司模式那条**干净数据根单跑 2 passed（9.6 s / 9.1 s）**，时序抖动 · 端口只用 8990 / 8991（单 spec 与探针）、8930 / 8931（整套）、8932（干净根复跑），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r193-{e2e2,full,ssrr}`，探针 / 临时 playwright 配置 / 两态产物 / 截图都在 scratchpad 的 `r193/` 下（`packages/web/dist`、`test-results` 都是产物，未 `git add`） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -22003,3 +22014,99 @@ origin/main` 无事可做 —— 按「已同步」开工。没有切分支、�
 
 源文件 + 一对文案 + 单测 + spec + changelog：**`28477dec8`**（8 文件 / +526 −13）；
 台账（7.81 的待办行、上表那一行、本节）另起一笔。
+
+## 第一百九十三轮：内置浏览器的「设置主页」存不下去时留在地址字段下面说明原因（2026-11-04，条目 7.82）
+
+### 开工自检
+
+`main` 在 `e30dc49a5`（第一百九十二轮台账的统计改正），`git status --short` **干净**（无输出）；
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`，本地 `HEAD` 没变。
+没有切分支、没碰 `legacy/main`、没推 upstream。开工时 89xx 上没有别线起的服务端在跑（只有 3003 的
+设计站在监听）。台账路径注意：它在 `docs/FORK-PROGRESS.md`（本轮任务书里写作根目录下的
+`FORK-PROGRESS.md`，已按实际路径读）。
+
+### 选活：表上仍全卡着，接上一轮点名的 `features/` 里第一个行内动作
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳写侧 / 既有部署单元 / 发布动作，而本轮纪律明令不碰 desktop）、
+**3.5**（拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+第一百九十二轮「没做 / 留着」给下一轮点的口子是：`features/` 里仍写着 `toastError` 的那一批，逐个看
+哪个是行内动作、哪个是页面级动作，按同一判据（失败后要改的东西在不在这张屏上）挑一处能真跑出来的。
+
+先把那一批按同一判据过了一遍（169 处 `toastError` / 40 个文件），挑中**内置浏览器的「设置主页」弹窗**
+（`features/builtin-browser/homepage-dialog.tsx`）：它只问一件事 —— 新建标签页与主页按钮打开哪个地址 ——
+「保存」发出去的正是字段里的那一条，失败之后要改的也正是它，旁边那颗按钮就是重试；而理由此前只落进一条
+六秒的通知，通知消失后弹窗与按键前一模一样，那句话点名的地址就在眼前却没有任何标记。同目录里
+`clear-data-dialog` 已经有过一轮（它借的是 `ConfirmModal` 的 `refusal` 槽），`features/settings/
+theme-import-dialog` 也早就把拒绝留在弹窗体里 —— 这一处是同一规矩在**字段**旁边还缺的那一格。
+
+被排除的、以及为什么：`workspace-finder` 的新建文件夹早就有行内拒绝（`newFolderRefusal`）；`browser-actions`
+的 `openFailed` 是地址栏的页面级失败，理由该去哪一格要另想；公司模式 / 频道 / 日历 / 财务那一批多数是
+页面级写（列表本身变了才是交代），下一轮再说。
+
+### 做了什么
+
+- `packages/web/src/features/builtin-browser/homepage-dialog.tsx`：字段旁边多一个 `refusal` 状态 ——
+  `edit()`（打字、「使用当前页面」、「清除」）清掉它，`save()` 在发请求**之前**清掉、失败时写上。
+  失败不再 `toastError`，句子是 `S.builtinBrowser.homepageFailed(refusalText(err))`（7.19 那条全应用拒绝位
+  规则：请求没到服务端时念错误码自己的本地化句子）。那句话画在地址字段下面（`role="alert"`、危险色、
+  限两行、整句挂悬停），字段自己的「将打开 …」提示照旧留着 —— 理由是加上去的，不是把唯一告诉读者这条记录
+  会做什么的那一行换掉（`Input` 的 `error` 槽会把 hint 顶掉，所以没走那个槽）。
+- 头注释写明两件事：为什么这句留在这里（要改的就是这个字段、重试就是这颗按钮）、以及它属于产生它的那一次
+  尝试（编辑即失效、下次按键先清掉）。
+- **无新文案**：`homepageFailed(reason)` 原本就在，措辞一字未改；**无新纯逻辑模块**，因此本轮没有新增
+  vitest 用例 —— 行为由新 spec 钉住（与第一百九十一 / 一百九十二轮不同，那两条各有一段「一句话怎么算」
+  的分支要提出来单独测）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）。
+- `oxlint` 两个改动文件 **0 警告 0 错误**；`prettier --check` 四个文件（含 changelog 一对）干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）·
+  cli **561**（38）· web **293 文件 / 3508 通过 / 2 跳过** · server **211 文件 / 3077 通过 / 17 跳过**。
+- **新 spec** `packages/web/e2e/builtin-browser-homepage-refusal.spec.mjs`（1 条，真服务端 + 把桌面壳提供的
+  `<webview>` 桩掉 + 浏览器那条设置路由拦在页面内）：**1 passed（10.3 s）**。它依次钉住：被拒绝的保存留下
+  弹窗、字段与「将打开 …」提示；拒绝画在字段下面、通知区 0 条；**7 秒后（超过错误通知的 6 秒）那句话仍在**；
+  改一个字它立刻消失；再按一次（仍被拒）它回来；放行后弹窗关闭，那次写入带走的正是字段里的那一条
+  （`{ homepage: "https://example.org/" }`），三次写入逐次对得上。
+- **反证**：把 `homepage-dialog.tsx` 退回 `HEAD`、重建 web 产物，同一份 spec **1 failed**（死在
+  `dialog.getByRole("alert")`：`element(s) not found`）；放回重建后 **1 passed**。
+- **两态探针**（真服务端 + 真浏览器，同一份脚本 `r193/probe.mjs`，`PUT …/builtin-browser/settings` 桩成
+  500 并带一个没有翻译的码）：
+
+  | 量点 | 改前 | 改后 |
+  | --- | --- | --- |
+  | 1.2 s 弹窗里的 `role="alert"` | **0 条**；那句 `无法保存主页：homepage refused by the probe` 在通知区（1 条） | 弹窗 1 条：同一句，通知区 0 条 |
+  | 7.6 s 弹窗里的 `role="alert"` | **0 条**（通知区也归 0，**原因彻底没了**） | 1 条（逐字不变） |
+  | 字段与「将打开 …」提示 | 原样 | 原样 |
+  | 截图 | `r193/out/before/{1_2s,7_6s}.png`：弹窗里什么都没有，原因在盖住它的通知里 | `r193/out/after/{1_2s,7_6s}.png`：红字那句贴在地址字段下面 |
+
+  两态 console 都只有刻意桩出的那个 500，无 pageerror。
+- **相邻回归**（真浏览器三份 spec，含本笔）：`builtin-browser-homepage-refusal` 1 + `builtin-browser-clear-refusal`
+  1 + `dock` 11 + `mobile-dock` 1 **13 passed（47.3 s）**。
+- **整套 e2e**：`222 passed / 4 failed（21.3 m）`。四条红都与本笔无关，且都有据：
+  1-3. `scroll-follow-bounce` 三种主题（`gesture N: moved after the gesture` / `the wheel scrolled up`）——
+     **干净数据根单跑同样 `2 failed / 1 passed`**，这台机器的 headless 滚轮步长，前几轮同一现象。
+  4. `server-switch-read-refusal` 公司模式那条（开关被写回 `checked`）—— **干净数据根单跑 2 passed
+     （9.6 s / 9.1 s）**，整套里复用过的数据根 + 时序抖动，与第一百九十 / 一百九十一 / 一百九十二轮同一现象。
+- 端口只用 8990 / 8991（单 spec 与探针）、8930 / 8931（整套）、8932（干净根复跑，跑完都已停）；
+  3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r193-{e2e2,full,ssrr}`，
+  探针 / 临时 playwright 配置（它只做一件事：`executablePath` 指到 `/usr/bin/chromium`，并从 `packages/web`
+  的 `package.json` 解析 `@playwright/test`）/ 两态产物 / 截图都在 scratchpad 的 `r193/` 下；
+  `packages/web/dist`、`test-results` 都是产物，未 `git add`。
+
+### 没做 / 留着
+
+- 同一判据下还剩的口子：`features/builtin-browser/` 的 `browser-actions.openFailed`（地址栏的页面级失败，
+  理由该落在地址栏还是视口要另想）、公司模式的日历 / 财务 / 员工 / 工单几处（多数是页面级写，失败后要改的
+  东西不在这一屏上，通知是对的地方）、`features/messaging/*`（凭证字段旁边其实已经有行内提示，5.25 那一轮
+  做的是门，不是写失败）。**下一轮的自然口子**：`features/company/ticket-dialog.tsx` 与
+  `features/company/employee-dialogs.tsx` 这两处弹窗内的写 —— 它们与这一条同形（弹窗、字段、保存），
+  先看它们的失败之后要改的是不是同屏那几格。
+- 2.2c 的尾巴（桌面壳写侧 / 既有部署单元 `adelie-app.service`）、3.5 / 3.6、5.6 / 5.10、4.1–4.3
+  仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源码 1 个 + 新 spec 1 个 + changelog 一对：见本行提交；台账（7.82 的待办行、上表那一行、本节）
+另起一笔。
