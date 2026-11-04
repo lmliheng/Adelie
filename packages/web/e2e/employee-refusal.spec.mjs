@@ -1,19 +1,25 @@
 /**
- * Regression: hiring a subordinate and editing one of an employee's single fields (here its
- * budget) are asked in a confirmation card, and a refused write keeps that question — with the
- * server's words inside it — instead of leaving only a toast behind.
+ * Regression: hiring a subordinate, editing one of an employee's single fields (here its budget),
+ * and renewing an employee's desk all answer a refused write where it was asked — with the
+ * server's words inside the card or the dialog — instead of leaving only a toast behind.
  *
- * Both cards in `features/company/employee-dialogs.tsx` used to close themselves in the `catch`
- * of their own write, so a refusal left the chart file untouched (nothing was written) while the
- * reason fell into a toast that dismissed itself after a few seconds and sat over a card that was
- * already gone. They now close only once their write landed; a refusal leaves the card standing
- * with the reason drawn under its sentence (`ConfirmModal`'s `refusal` slot), so the retry is the
- * button that was pressed and cancelling decides nothing.
+ * The two confirmation cards in `features/company/employee-dialogs.tsx` used to close themselves
+ * in the `catch` of their own write, so a refusal left the chart file untouched (nothing was
+ * written) while the reason fell into a toast that dismissed itself after a few seconds and sat
+ * over a card that was already gone. They now close only once their write landed; a refusal
+ * leaves the card standing with the reason drawn under its sentence (`ConfirmModal`'s `refusal`
+ * slot), so the retry is the button that was pressed and cancelling decides nothing.
  *
- * The organization, its CEO and the employee edited in the second test are made through the API
- * rather than through the dialogs: this spec is about the two confirmations, not about creation.
- * Company mode is off on a fresh server, so each test turns the admin master switch on first
- * (idempotent), and the Project gets the mock as its model so the onboarding overlay stays off.
+ * The desk renewal is its own dialog rather than a confirmation, and its second write (the desk
+ * session, after the workspace patch has already landed) had the same shape: the dialog stayed
+ * open, so the reason in a toast had a question on screen to answer and nothing to answer it
+ * with. That reason now sits above the field, because the renewal — not the box — is what was
+ * refused.
+ *
+ * The organization, its CEO and the employees are made through the API rather than through the
+ * dialogs: this spec is about the writes' refusals, not about creation. Company mode is off on a
+ * fresh server, so each test turns the admin master switch on first (idempotent), and the Project
+ * gets the mock as its model so the onboarding overlay stays off.
  */
 import { test, expect, request } from "@playwright/test";
 import { ADMIN_ID, ADMIN_PASSWORD, login, provisionAndLogin } from "./auth.mjs";
@@ -243,4 +249,72 @@ test("a refused budget edit keeps the card, its sentence and the stored budget",
   await again.getByRole("button", { name: "保存", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "设置 Dana Dev 的预算" })).toHaveCount(0);
   await expect.poll(async () => Math.round((await budgetOf()) * 7)).toBe(60);
+});
+
+test("a refused desk renewal keeps the dialog and the reason, past the toast's six seconds", async ({
+  page,
+}) => {
+  const { projectId, orgBase } = await setUp(page, "r194renew");
+  const hired = await page.request.post(`${orgBase}/${ORG}/employees`, {
+    data: {
+      newAgent: { agentId: `${ORG}_dev`, name: "Dana Dev" },
+      title: "站点工程师",
+      reportsTo: `${ORG}_ceo`,
+    },
+  });
+  expect(hired.ok(), "hire the employee").toBeTruthy();
+
+  await openChart(page, projectId);
+  await page.getByRole("button", { name: "Dana Dev · 员工操作" }).click();
+  await page.getByRole("menuitem", { name: "换工位" }).click();
+  const dialog = page.getByRole("dialog", { name: "为 Dana Dev 换工位" });
+  await expect(dialog).toBeVisible();
+  // What it will do stays on screen; the spec is prefilled with the current one, so confirming
+  // without touching it renews the desk and writes no chart.
+  await expect(dialog.getByText("换工位会开一个新的工位会话", { exact: false })).toBeVisible();
+
+  const renewals = [];
+  await page.route(
+    `**/api/projects/${projectId}/organizations/${ORG}/employees/**`,
+    async (route) => {
+      if (route.request().method() !== "POST") return route.fallback();
+      renewals.push(route.request().url());
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: REFUSAL }),
+      });
+    },
+  );
+
+  await dialog.getByRole("button", { name: "换工位", exact: true }).click();
+
+  // The reason is in the dialog that asked, not in the notification region, and the dialog is
+  // still the question it was asking — the retry is the button that was just pressed.
+  await expect(dialog.getByText(REFUSAL.message)).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" })).not.toContainText(REFUSAL.message);
+  expect(renewals).toHaveLength(1);
+  await expect(dialog).toBeVisible();
+  expect(await dialog.innerText()).toContain("换工位会开一个新的工位会话");
+
+  // Past the six seconds an error notification lives: the sentence is still there. This is the
+  // whole point — a toast would have left the open dialog with a dead button and no reason.
+  await page.waitForTimeout(7000);
+  await expect(dialog.getByText(REFUSAL.message)).toBeVisible();
+
+  // Closing decides nothing, and reopening the dialog does not carry the previous answer.
+  await dialog.getByRole("button", { name: "取消" }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "Dana Dev · 员工操作" }).click();
+  await page.getByRole("menuitem", { name: "换工位" }).click();
+  const again = page.getByRole("dialog", { name: "为 Dana Dev 换工位" });
+  await expect(again).toBeVisible();
+  await expect(again.getByText(REFUSAL.message)).toHaveCount(0);
+
+  // The retry lands: the dialog goes and the new desk session is where the page takes the reader.
+  await page.unroute(`**/api/projects/${projectId}/organizations/${ORG}/employees/**`);
+  await again.getByRole("button", { name: "换工位", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "为 Dana Dev 换工位" })).toHaveCount(0);
+  await expect(page).toHaveURL(/\/chat\/[^/]+$/);
+  await expect(page.getByText("已换到新的工位会话")).toBeVisible();
 });

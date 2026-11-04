@@ -26,11 +26,11 @@ import {
   ICONS,
   Input,
   Modal,
+  NoticeStrip,
   RuledSection,
   Segmented,
   Select,
   Textarea,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -620,6 +620,11 @@ export function EmployeeEditDialog({
  * spec is written first and its 400 lands under the field, leaving the desk alone. A renewal
  * that fails after the chart was already rewritten keeps the dialog open and asks the page to
  * reload, so what is on screen never disagrees with the file.
+ *
+ * That second write's refusal is drawn in the dialog too, above the field: it is about the
+ * renewal rather than about what is in the box, so it does not take the field's own error slot —
+ * and the retry is the button that was just pressed, which a toast dismissing itself after a few
+ * seconds would leave without its reason over a dialog that is still open.
  */
 export function DeskRenewDialog({
   open,
@@ -642,12 +647,19 @@ export function DeskRenewDialog({
 }) {
   const [workspace, setWorkspace] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
+  /**
+   * The server's words for a renewal it refused: drawn in the dialog above the field, since the
+   * box is not what has to change. It belongs to the attempt that produced it — a new attempt
+   * clears it first, and so does a fresh opening of the dialog.
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setWorkspace(employee.workspace);
     setError(undefined);
+    setRefusal(null);
   }, [open, employee]);
 
   const confirm = async () => {
@@ -656,6 +668,8 @@ export function DeskRenewDialog({
       setError(S.common.requiredField);
       return;
     }
+    // A new attempt, not the last one: whatever the server said about it is not this one's answer.
+    setRefusal(null);
     setBusy(true);
     let patched = false;
     try {
@@ -681,7 +695,7 @@ export function DeskRenewDialog({
       toastSuccess(S.company.chart.renewed);
       onRenewed(desk.sessionId);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setRefusal(apiErrorText(e));
       if (patched) onChartChanged();
     } finally {
       setBusy(false);
@@ -705,6 +719,13 @@ export function DeskRenewDialog({
       }
     >
       <div className="space-y-3">
+        {refusal !== null && (
+          // Above the field rather than under it: the renewal, not the box, is what was refused,
+          // and the reader can still see the spec they tried it with.
+          <NoticeStrip tone="danger" role="alert" className="rounded-md border px-2.5 py-2 text-xs">
+            <span data-slot="body">{S.common.refused(refusal)}</span>
+          </NoticeStrip>
+        )}
         {/* This dialog is its own confirmation, so what it will do stays on screen instead of
             hiding behind a "?" the reader would have to open before deciding. */}
         <p className="text-xs text-gray-500 dark:text-gray-400">
