@@ -4313,6 +4313,8 @@ export const en: Strings = {
     nodeDone: "done",
     openAsSession: "Jump to this session",
     subagentGone: "This subagent session no longer exists and could not be revived",
+    /** A message the panel could not deliver to the child (subagent-send-refusal.ts). */
+    sendRefused: (reason: string) => `The message did not reach the subagent: ${reason}`,
   },
 
   files: {

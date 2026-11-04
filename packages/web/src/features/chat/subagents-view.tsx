@@ -38,11 +38,11 @@ import {
   EmptyState,
   GlyphIcon,
   ICON_SIZE,
+  NoticeStrip,
   StatusIcon,
   Text,
   toastError,
 } from "@adelie/ui";
-import { ApiError } from "../../api/client";
 import { abortSubagent, getAgentSkills, messageSubagent, patchSession } from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
@@ -64,6 +64,7 @@ import type { TopologyNode } from "./agent-topology";
 import { AgentTopologyView } from "./agent-topology-view";
 import { MessageStream } from "./message-stream";
 import type { StreamRenderContext } from "./message-stream";
+import { subagentSendRefused } from "./subagent-send-refusal";
 import type { ComposerReference } from "../../lib/workspace-tree";
 
 interface Selection {
@@ -413,14 +414,14 @@ function SubagentComposer({
     : undefined;
 
   const send = (text: string) => messageSubagent(sessionId, childSessionId, text);
+  /**
+   * The server's answer to a message that never reached the child, kept above the composer that
+   * still holds the text (subagent-send-refusal.ts): the retry is that same button, and a toast
+   * would have dismissed itself over it after six seconds.
+   */
+  const [sendRefusal, setSendRefusal] = useState<string | null>(null);
   const sendFailure = (err: unknown): void => {
-    toastError(
-      err instanceof ApiError && err.code === "subagent_gone"
-        ? S.subagentPanel.subagentGone
-        : err instanceof Error
-          ? err.message
-          : String(err),
-    );
+    setSendRefusal(subagentSendRefused(err));
   };
 
   return (
@@ -430,6 +431,19 @@ function SubagentComposer({
           or wider, and the composer must line up with the messages above it rather than span
           the surface. A docked panel is narrower than the cap, so there it changes nothing. */}
       <div className="mx-auto max-w-3xl">
+        {sendRefusal !== null && (
+          // Right above the box it belongs to: the draft is still in there, and pressing send
+          // again is the whole retry. Cleared by the next attempt (both send and steer), so the
+          // line always describes the press that produced it.
+          <NoticeStrip
+            tone="danger"
+            role="alert"
+            data-testid="subagent-send-refusal"
+            className="mb-2 rounded-md border px-2.5 py-2 text-xs"
+          >
+            <span data-slot="body">{sendRefusal}</span>
+          </NoticeStrip>
+        )}
         <ChatInput
           variant="subagent"
           controlRef={controlRef}
@@ -441,6 +455,7 @@ function SubagentComposer({
               .join("\n\n")
               .trim();
             if (!text) return false;
+            setSendRefusal(null);
             try {
               await send(text);
               return true;
@@ -450,6 +465,7 @@ function SubagentComposer({
             }
           }}
           onSteer={async (text: string) => {
+            setSendRefusal(null);
             try {
               await send(text);
               // steered/started/resumed alike: the message reached the child (the race where

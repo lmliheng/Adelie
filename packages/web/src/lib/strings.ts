@@ -4380,6 +4380,11 @@ export const zh = {
     openAsSession: "跳转到该会话",
     /** The child's session record no longer exists and could not be revived. */
     subagentGone: "该子会话已不存在，无法恢复",
+    /**
+     * A message the panel could not deliver to the child (subagent-send-refusal.ts), drawn above
+     * the composer that still holds the text: the action, then the server's own words.
+     */
+    sendRefused: (reason: string) => `消息没有送到子会话：${reason}`,
   },
 
   files: {
