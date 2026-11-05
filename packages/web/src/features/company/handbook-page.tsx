@@ -5,8 +5,9 @@
  * index (`README.md`, the page every trigger makes the employee read first) leading the rows,
  * then folders and documents nested as they are on disk, with one button that collapses them
  * all. Right, the selected document rendered as Markdown (anything else preformatted),
- * edited in place through a monospace textarea with save and cancel, and — for every document
- * but the index — deleted behind the shared confirmation, which closes only once its own delete
+ * edited in place through a monospace textarea with save and cancel — a save the server refuses
+ * keeps its reason above the draft, where the button that retries it is — and, for every document
+ * but the index, deleted behind the shared confirmation, which closes only once its own delete
  * landed: a refusal keeps the card standing with the server's words inside it, where the button
  * that retries them is. The new-document dialog refuses a path the server would, starts from
  * the selected document's own folder so a document lands beside its siblings, then creates the
@@ -35,13 +36,13 @@ import {
   RuledSection,
   Skeleton,
   Textarea,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import type { TreeToggle } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { formatBytes, formatDateTime, formatRelativeShort } from "../../lib/format";
 import { isShortcut } from "../../lib/shortcuts/match";
 import { currentPlatform } from "../../lib/shortcuts/platform";
@@ -52,6 +53,7 @@ import { useLocale } from "../../state/locale";
 import { OrgEmptyLine, OrgPage, useOrg } from "./org-layout";
 import { ErrorLine } from "./shared";
 import { COLLAPSE_ALL_ICON, HandbookExplorer } from "./handbook-explorer";
+import { handbookSaveRefusal } from "./handbook-save-refusal";
 import {
   HANDBOOK_INDEX,
   ancestorFolders,
@@ -88,6 +90,8 @@ export function HandbookPage() {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  /** The words of a save the server refused, kept above the draft whose save button retries it. */
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -124,6 +128,8 @@ export function HandbookPage() {
     setDoc(null);
     setDocError(null);
     setEditing(false);
+    // Another document is another draft: the last one's refusal is not about this text.
+    setSaveRefusal(null);
     api
       .getOrgHandbookFile(projectId, orgId, selected)
       .then((res) => {
@@ -184,11 +190,20 @@ export function HandbookPage() {
     if (doc === null) return;
     setDraft(doc.content);
     setEditing(true);
+    setSaveRefusal(null);
+  };
+
+  /** Leaving the editor drops the draft, and with it the answer about the draft's save. */
+  const cancelEdit = () => {
+    setEditing(false);
+    setSaveRefusal(null);
   };
 
   const save = async () => {
     if (doc === null || saving) return;
     setSaving(true);
+    // The last answer is not this attempt's: the line goes when Save is pressed again.
+    setSaveRefusal(null);
     try {
       const res = await api.putOrgHandbookFile(projectId, orgId, doc.path, draft);
       setDoc(res);
@@ -201,7 +216,9 @@ export function HandbookPage() {
       toastSuccess(S.common.saved);
       void loadList();
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The editor stays open with the draft in it, so the reason stays where the draft and the
+      // button that retries it are (7.19's rule) rather than in a toast that outlives nothing.
+      setSaveRefusal(handbookSaveRefusal(e, draft, doc.content));
     } finally {
       setSaving(false);
     }
@@ -381,7 +398,7 @@ export function HandbookPage() {
                   <span className="hidden text-xs text-gray-400 sm:inline dark:text-gray-500">
                     {S.company.handbook.editorHint(saveShortcut)}
                   </span>
-                  <Button size="sm" disabled={saving} onClick={() => setEditing(false)}>
+                  <Button size="sm" disabled={saving} onClick={cancelEdit}>
                     {S.common.cancel}
                   </Button>
                   <Button size="sm" variant="primary" disabled={saving} onClick={() => void save()}>
@@ -411,6 +428,16 @@ export function HandbookPage() {
               )}
             </div>
           </div>
+          {editing && saveRefusal !== null && (
+            <p
+              role="alert"
+              data-tooltip={saveRefusal}
+              data-tooltip-content="text"
+              className={`mb-2 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+            >
+              {saveRefusal}
+            </p>
+          )}
           {docError !== null ? (
             <EmptyState
               title={S.company.handbook.documentLoadFailed}
@@ -430,7 +457,11 @@ export function HandbookPage() {
               autoFocus
               disabled={saving}
               className="min-h-[50vh]"
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                // A new draft has not been refused yet: the line described the text as it was.
+                setSaveRefusal(null);
+              }}
               onKeyDown={onEditorKey}
             />
           ) : doc.content.trim() === "" ? (

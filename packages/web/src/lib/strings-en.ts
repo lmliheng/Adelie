@@ -5687,6 +5687,11 @@ export const en: Strings = {
       documentDeleted: "Document deleted",
       loadFailed: "Could not load the handbook",
       documentLoadFailed: "Could not load the document",
+      /** Above the editor after a refused save: the server's reason, and that Save is the retry. */
+      saveRefused: (reason: string) => `Could not save: ${reason}`,
+      /** The same refusal while the editor holds text the file does not: nothing typed was lost. */
+      saveRefusedDraftKept: (reason: string) =>
+        `Could not save: ${reason} (what you edited is still in the editor, not in the file)`,
       /** A row's tooltip: when the file was last written, and its size. */
       updatedAt: (time: string, size: string): string => `Updated ${time} · ${size}`,
       /** Beside the editor's buttons: what the text is, and the save shortcut (null while unbound). */

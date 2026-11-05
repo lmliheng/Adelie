@@ -5732,6 +5732,10 @@ export const zh = {
       documentDeleted: "文档已删除",
       loadFailed: "手册加载失败",
       documentLoadFailed: "文档加载失败",
+      /** Above the editor after a refused save: the server's reason, and that Save is the retry. */
+      saveRefused: (reason: string) => `保存失败：${reason}`,
+      /** The same refusal while the editor holds text the file does not: nothing typed was lost. */
+      saveRefusedDraftKept: (reason: string) => `保存失败：${reason}（编辑器里的改动没有写进文件）`,
       /** A row's tooltip: when the file was last written, and its size. */
       updatedAt: (time: string, size: string): string => `更新于 ${time} · ${size}`,
       /** Beside the editor's buttons: what the text is, and the save shortcut (null while unbound). */
