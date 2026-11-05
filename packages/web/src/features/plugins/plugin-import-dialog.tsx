@@ -6,9 +6,10 @@
  * Both are the same import twice: one carries the archive in the request, the other a URL the
  * server fetches, and everything after the POST is shared — a 409 `plugin_exists` opens the
  * overwrite confirmation, whose confirm resends THAT request with `overwrite: true` (so the
- * user never picks the file twice, nor retypes the name), and any other failure rolls back to a
- * toast. The library list and the directory line are re-read on success, which is how the new
- * card appears.
+ * user never picks the file twice, nor retypes the name), and any other failure keeps its
+ * sentence inside the dialog that asked, under the source field it names (see
+ * ImportRefusalLine and plugin-import-refusal.ts). The library list and the directory line are
+ * re-read on success, which is how the new card appears.
  *
  * Each dialog carries the same optional name field, for the one case the archive cannot answer
  * itself: plugin.json at the very root of the zip has no directory to take a name from. Left
@@ -27,7 +28,7 @@
  * by every Project, so a member cannot write into it — the caller (plugins-page) renders this
  * component only for an admin, and the routes answer 403 `admin_required` regardless.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import {
   Button,
@@ -42,18 +43,17 @@ import {
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
+import { toneInk } from "../../lib/tone";
 import { UPLOAD_LABEL_CLASS } from "../agents/skills-tab";
 import {
   PLUGIN_ZIP_LIMIT_MB,
-  pluginImportErrorText,
   pluginNameBody,
-  pluginNameFromError,
   pluginNameFromUrl,
   pluginNameInvalid,
   pluginZipTooLarge,
 } from "./plugin-import";
+import { importFailure } from "./plugin-import-refusal";
 
 /**
  * One import request, in the shape the retry needs: repeatable exactly as it was sent, `name`
@@ -146,6 +146,27 @@ function PluginRulesDialog({ open, onClose }: { open: boolean; onClose: () => vo
   );
 }
 
+/**
+ * One refused import's sentence, drawn under the source field of the dialog that asked.
+ *
+ * The same line every refusal slot in the app draws (7.19's family): an alert to a screen
+ * reader, the danger tone, two lines with the whole text on hover — a long upstream sentence
+ * (a registry error, a 403 from the hosting site) must not be able to heighten the dialog past
+ * the fields and buttons, and it is still all there for whoever needs it.
+ */
+function ImportRefusalLine({ text }: { text: string }) {
+  return (
+    <p
+      role="alert"
+      data-tooltip={text}
+      data-tooltip-content="text"
+      className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+    >
+      {text}
+    </p>
+  );
+}
+
 /** The opener: a text button where the panel used to sit, so the rules stay at the same foot. */
 function RulesLink({ onClick }: { onClick: () => void }) {
   return (
@@ -177,9 +198,23 @@ export function PluginImportActions({
   const [downloadName, setDownloadName] = useState("");
   // The 409 confirmation, and the only state both flows share.
   const [pending, setPending] = useState<PendingOverwrite | null>(null);
+  /**
+   * The words of a refused import, under the source field of the dialog that asked — keyed by
+   * that dialog, so a sentence can never surface under the wrong one.
+   */
+  const [refusal, setRefusal] = useState<{ source: "upload" | "download"; text: string } | null>(
+    null,
+  );
   // The rules dialog is shared by both import dialogs: they describe one plugin shape, so a
   // single open flag keeps the two from stacking two copies of the same prose.
   const [rulesOpen, setRulesOpen] = useState(false);
+
+  // Where a refusal goes is decided when the answer comes back, not when the request left:
+  // Cancel stays live during an import, so the dialog may be gone by then (importFailure).
+  const uploadOpenRef = useRef(uploadOpen);
+  uploadOpenRef.current = uploadOpen;
+  const downloadOpenRef = useRef(downloadOpen);
+  downloadOpenRef.current = downloadOpen;
 
   const uploadNameInvalid = pluginNameInvalid(uploadName);
   const downloadNameInvalid = pluginNameInvalid(downloadName);
@@ -187,6 +222,7 @@ export function PluginImportActions({
   /** Success path, shared by both flows: close what was open, toast, re-read the library. */
   const imported = async (name: string) => {
     setPending(null);
+    setRefusal(null);
     setUploadOpen(false);
     setPicked(null);
     setUploadName("");
@@ -201,24 +237,46 @@ export function PluginImportActions({
    * Closing the upload dialog drops what was picked with it — unlike the download dialog's URL,
    * which survives a cancel (it is one pasted string the user would have to find again), the
    * archive is a base64 body held in memory, and a dialog opened to start over has no use for it.
+   * A refusal goes with it for the same reason: it described that archive.
    */
   const closeUpload = () => {
     setUploadOpen(false);
     setPicked(null);
     setUploadName("");
+    setRefusal(null);
+  };
+
+  /** Opens the download dialog without the previous attempt's reason: that one is answered. */
+  const openDownload = () => {
+    setRefusal(null);
+    setDownloadOpen(true);
+  };
+
+  const closeDownload = () => {
+    setDownloadOpen(false);
+    setRefusal(null);
   };
 
   /**
-   * A 409 lands in the overwrite confirmation instead of a toast — it is a question, not a
-   * failure — and every other refusal (or a missing admin right) rolls back to one.
+   * A 409 lands in the overwrite confirmation — it is a question, not a failure — and every
+   * other refusal keeps its sentence in the dialog that asked, where the source field it names
+   * and the button that retries it both still are (importFailure decides which of the three).
    */
   const failed = (e: unknown, request: ImportRequest, fallbackName: string) => {
-    if (e instanceof ApiError && e.status === 409 && e.code === "plugin_exists") {
-      setPending({ ...request, pluginName: pluginNameFromError(e, fallbackName) });
-    } else {
-      setPending(null);
-      toastError(pluginImportErrorText(e));
+    const opened = request.source === "upload" ? uploadOpenRef : downloadOpenRef;
+    const outcome = importFailure(e, fallbackName, opened.current);
+    if (outcome.kind === "ask") {
+      setRefusal(null);
+      setPending({ ...request, pluginName: outcome.pluginName });
+      return;
     }
+    setPending(null);
+    if (outcome.kind === "field") {
+      setRefusal({ source: request.source, text: outcome.text });
+      return;
+    }
+    setRefusal(null);
+    toastError(outcome.text);
   };
 
   /** POST the archive body; `overwrite` only ever set by the confirmation's retry. */
@@ -228,6 +286,8 @@ export function PluginImportActions({
     fallbackName: string,
     overwrite: boolean,
   ) => {
+    // The sentence the last attempt left described the last attempt: this one replaces it.
+    setRefusal(null);
     setBusy("upload");
     try {
       const res = await api.importPluginArchive({
@@ -246,6 +306,8 @@ export function PluginImportActions({
 
   /** POST the URL; the server derives the name from it (and `subdir` from a tree URL). */
   const download = async (target: string, name: string, overwrite: boolean) => {
+    // Same as the upload above: this attempt is what the dialog will be asked about.
+    setRefusal(null);
     setBusy("download");
     try {
       const res = await api.importPluginFromUrl({
@@ -280,6 +342,8 @@ export function PluginImportActions({
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
+      // A newly picked archive starts without the previous one's reason.
+      setRefusal(null);
       // Strip the `data:…;base64,` prefix the FileReader adds.
       setPicked({
         dataBase64: dataUrl.slice(dataUrl.indexOf(",") + 1),
@@ -312,15 +376,17 @@ export function PluginImportActions({
           import runs, since one import at a time is what the confirmation's single pending slot
           can carry. */}
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        <Button size="sm" disabled={busy !== null} onClick={() => setUploadOpen(true)}>
-          {busy === "upload" ? S.plugins.importUploading : S.plugins.importUpload}
-        </Button>
         <Button
           size="sm"
-          variant="primary"
           disabled={busy !== null}
-          onClick={() => setDownloadOpen(true)}
+          onClick={() => {
+            setRefusal(null);
+            setUploadOpen(true);
+          }}
         >
+          {busy === "upload" ? S.plugins.importUploading : S.plugins.importUpload}
+        </Button>
+        <Button size="sm" variant="primary" disabled={busy !== null} onClick={openDownload}>
           {busy === "download" ? S.plugins.importDownloading : S.plugins.importDownload}
         </Button>
       </div>
@@ -366,13 +432,19 @@ export function PluginImportActions({
               </span>
             )}
           </div>
+          {/* Under the archive it was about: a refused upload wrote nothing, so the file and the
+              name above are still exactly what the next press will send. */}
+          {refusal?.source === "upload" && <ImportRefusalLine text={refusal.text} />}
           <Input
             size="sm"
             label={S.plugins.pluginNameLabel}
             hint={S.plugins.pluginNameHint}
             placeholder={S.plugins.pluginNamePlaceholder}
             value={uploadName}
-            onChange={(e) => setUploadName(e.target.value)}
+            onChange={(e) => {
+              setUploadName(e.target.value);
+              setRefusal(null);
+            }}
             error={uploadNameInvalid ? S.plugins.pluginNameInvalid : undefined}
             autoComplete="off"
           />
@@ -383,7 +455,7 @@ export function PluginImportActions({
       <Modal
         open={downloadOpen}
         title={S.plugins.downloadTitle}
-        onClose={() => setDownloadOpen(false)}
+        onClose={closeDownload}
         widthClass="sm:max-w-lg"
         footer={
           <>
@@ -391,7 +463,7 @@ export function PluginImportActions({
                 modal): the request is already on its way, and it still reports itself — a
                 success through the toast and the refreshed list, a 409 through the overwrite
                 confirmation, which is a dialog of its own. */}
-            <Button size="sm" onClick={() => setDownloadOpen(false)}>
+            <Button size="sm" onClick={closeDownload}>
               {S.common.cancel}
             </Button>
             <Button
@@ -412,18 +484,27 @@ export function PluginImportActions({
             label={S.plugins.downloadUrlLabel}
             hint={S.plugins.downloadUrlHint}
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              setRefusal(null);
+            }}
             placeholder={S.plugins.downloadUrlPlaceholder}
             autoComplete="off"
             autoFocus
           />
+          {/* Under the address it names: a refused download wrote nothing, so the URL and the
+              name above are still exactly what the next press will send. */}
+          {refusal?.source === "download" && <ImportRefusalLine text={refusal.text} />}
           <Input
             size="sm"
             label={S.plugins.pluginNameLabel}
             hint={S.plugins.pluginNameHint}
             placeholder={S.plugins.pluginNamePlaceholder}
             value={downloadName}
-            onChange={(e) => setDownloadName(e.target.value)}
+            onChange={(e) => {
+              setDownloadName(e.target.value);
+              setRefusal(null);
+            }}
             error={downloadNameInvalid ? S.plugins.pluginNameInvalid : undefined}
             autoComplete="off"
           />
