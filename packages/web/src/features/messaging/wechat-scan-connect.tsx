@@ -30,11 +30,12 @@ import type {
   WeChatBindingInfo,
   WeChatScanPollResponse,
 } from "@adelie/server/api";
-import { Button, Input, toastError, toastInfo, toastSuccess } from "@adelie/ui";
+import { Button, Input, toastInfo, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { apiErrorText } from "../../lib/api-error";
+import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { QrCode } from "./qq-scan-connect";
+import { ScanRefusalLine, scanStartRefusal, scanStopRefusal } from "./scan-refusal";
 
 /**
  * Consecutive poll failures ridden out before the code comes down. The interval fires
@@ -94,7 +95,7 @@ export function wechatScanStep(attempt: WeChatScanAttempt, tally: WeChatScanTall
       ? { kind: "wait" }
       : {
           kind: "stop",
-          notice: S.wechat.scanFailed(apiErrorText(attempt.error)),
+          notice: S.wechat.scanFailed(refusalText(attempt.error)),
           tone: "error",
           releaseTask: true,
         };
@@ -155,6 +156,13 @@ export function WeChatScanConnect({
   const [phase, setPhase] = useState<ScanPhase>({ kind: "idle" });
   const [verifyCode, setVerifyCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+  /**
+   * Why the last attempt did not get through, until the next one begins. Drawn on this card —
+   * under the button when the code came down, under the pairing-code input when a number was
+   * refused — rather than left to a toast: the control beside it is the retry, so the reason has
+   * to outlive the six seconds a notification lives (`scan-refusal.ts`).
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
   /** The task the effects act on, read by the unmount cleanup without re-running it. */
   const taskRef = useRef<string | null>(null);
   /** Set once the component is going away, so an in-flight poll stops writing state. */
@@ -166,6 +174,8 @@ export function WeChatScanConnect({
     async (refreshed: boolean) => {
       setPhase({ kind: "starting" });
       setVerifyCode("");
+      // A new attempt owns the line: what the previous one said is about a code this one replaces.
+      setRefusal(null);
       // A new code starts a fresh failure count; only a scan the USER asked for starts a
       // fresh refresh count, or the cap on automatic replacement would never be reached.
       tallyRef.current = { failures: 0, refreshes: refreshed ? tallyRef.current.refreshes : 0 };
@@ -190,7 +200,7 @@ export function WeChatScanConnect({
         if (goneRef.current) return;
         taskRef.current = null;
         setPhase({ kind: "idle" });
-        toastError(S.wechat.scanFailed(apiErrorText(e)));
+        setRefusal(scanStartRefusal(S.wechat.scanFailed, e));
       }
     },
     [sessionId],
@@ -199,6 +209,8 @@ export function WeChatScanConnect({
   const stop = useCallback(() => {
     const taskId = taskRef.current;
     taskRef.current = null;
+    // Cancelling abandons the attempt, so the reason it failed goes with it.
+    setRefusal(null);
     setPhase({ kind: "idle" });
     if (taskId !== null) void api.cancelWeChatScan(sessionId, taskId).catch(() => {});
   }, [sessionId]);
@@ -249,8 +261,11 @@ export function WeChatScanConnect({
         // A run of failed polls says nothing about the server, so the task may well still be
         // live: it is released here the way cancel and unmount release one.
         if (step.releaseTask) void api.cancelWeChatScan(sessionId, taskId).catch(() => {});
-        if (step.tone === "info") toastInfo(step.notice);
-        else toastError(step.notice);
+        // A fault stays on the card under the control that asks again; `already_bound` is news
+        // (nothing failed, nothing to retry) and keeps the toast every connecting answer uses.
+        const fault = scanStopRefusal(step);
+        if (fault !== null) setRefusal(fault);
+        else toastInfo(step.notice);
       })();
     }, pollMs);
     return () => {
@@ -278,13 +293,17 @@ export function WeChatScanConnect({
     const code = verifyCode.trim();
     if (code === "") return;
     setVerifying(true);
+    // A fresh submit owns the line; what the previous digits got wrong is history now.
+    setRefusal(null);
     try {
       await api.verifyWeChatScan(sessionId, taskId, code);
       // Cleared on submit rather than on acceptance: the platform reports a wrong code by
       // asking again, and leaving the rejected digits in the box would read as accepted.
       setVerifyCode("");
     } catch (e) {
-      toastError(S.wechat.scanFailed(apiErrorText(e)));
+      // The QR stays up: the code is still the thing being authorized, so the reason for the
+      // refused digits belongs beside the input rather than in a toast that outlives nothing.
+      setRefusal(scanStartRefusal(S.wechat.scanFailed, e));
     } finally {
       setVerifying(false);
     }
@@ -292,7 +311,7 @@ export function WeChatScanConnect({
 
   if (phase.kind !== "waiting") {
     return (
-      <div>
+      <div className="space-y-1.5">
         <Button
           size="sm"
           disabled={phase.kind === "starting" || enabled}
@@ -305,6 +324,10 @@ export function WeChatScanConnect({
               ? S.wechat.scanRescan
               : S.wechat.scanStart}
         </Button>
+        {/* Under the button that asked, because that button is the retry: `line-clamp-2` keeps a
+            long platform sentence from pushing the fields down, and the whole text is on hover,
+            the way every other refusal slot in the app carries its longer form. */}
+        {refusal !== null && <ScanRefusalLine text={refusal} />}
       </div>
     );
   }
@@ -333,7 +356,11 @@ export function WeChatScanConnect({
               size="sm"
               aria-label={S.wechat.verifyLabel}
               value={verifyCode}
-              onChange={(e) => setVerifyCode(e.target.value)}
+              onChange={(e) => {
+                setVerifyCode(e.target.value);
+                // The sentence is about the digits that were refused; editing them retires it.
+                setRefusal(null);
+              }}
               className="w-28 font-mono"
               inputMode="numeric"
               autoComplete="off"
@@ -346,6 +373,9 @@ export function WeChatScanConnect({
         ) : (
           <p>{S.wechat.scanSteps}</p>
         )}
+        {/* A refused pairing code is the one fault the card can show while the QR is still up:
+            the input above stays, so the reason sits under it. */}
+        {needsCode && refusal !== null && <ScanRefusalLine text={refusal} />}
         {/* Only shown once a code has actually lapsed: a standing note that codes expire is
             noise until one does. */}
         {phase.refreshed && (

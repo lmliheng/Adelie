@@ -21,10 +21,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { encode } from "uqr";
 import type { MessagingBindingInfo, QQBindingInfo, QQScanPollResponse } from "@adelie/server/api";
-import { Button, toastError, toastSuccess } from "@adelie/ui";
+import { Button, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { apiErrorText } from "../../lib/api-error";
+import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
+import { ScanRefusalLine, scanStartRefusal } from "./scan-refusal";
 
 /** Modules of quiet zone around the code — four is what the QR spec asks for. */
 const QUIET_ZONE = 4;
@@ -118,7 +119,7 @@ export function qqScanStep(attempt: QQScanAttempt, tally: QQScanTally): QQScanSt
       ? { kind: "wait" }
       : {
           kind: "stop",
-          notice: S.qq.scanFailed(apiErrorText(attempt.error)),
+          notice: S.qq.scanFailed(refusalText(attempt.error)),
           releaseTask: true,
         };
   }
@@ -150,6 +151,12 @@ export function QQScanConnect({
   onBound: (binding: MessagingBindingInfo) => void;
 }) {
   const [phase, setPhase] = useState<ScanPhase>({ kind: "idle" });
+  /**
+   * Why the last attempt did not get through, until the next one begins. Drawn under the control
+   * that asks again rather than left to a toast: the button beside it is the retry, so the reason
+   * has to outlive the six seconds a notification lives (`scan-refusal.ts`).
+   */
+  const [refusal, setRefusal] = useState<string | null>(null);
   /** The task the effects act on, read by the unmount cleanup without re-running it. */
   const taskRef = useRef<string | null>(null);
   /** Set once the component is going away, so an in-flight poll stops writing state. */
@@ -160,6 +167,8 @@ export function QQScanConnect({
   const start = useCallback(
     async (refreshed: boolean) => {
       setPhase({ kind: "starting" });
+      // A new attempt owns the line: what the previous one said is about a code this one replaces.
+      setRefusal(null);
       // A new task starts a fresh failure count; only a scan the USER asked for starts a
       // fresh refresh count, or the cap on automatic replacement would never be reached.
       tallyRef.current = { failures: 0, refreshes: refreshed ? tallyRef.current.refreshes : 0 };
@@ -183,7 +192,7 @@ export function QQScanConnect({
         if (goneRef.current) return;
         taskRef.current = null;
         setPhase({ kind: "idle" });
-        toastError(S.qq.scanFailed(apiErrorText(e)));
+        setRefusal(scanStartRefusal(S.qq.scanFailed, e));
       }
     },
     [sessionId],
@@ -192,6 +201,8 @@ export function QQScanConnect({
   const stop = useCallback(() => {
     const taskId = taskRef.current;
     taskRef.current = null;
+    // Cancelling abandons the attempt, so the reason it failed goes with it.
+    setRefusal(null);
     setPhase({ kind: "idle" });
     if (taskId !== null) void api.cancelQQScan(sessionId, taskId).catch(() => {});
   }, [sessionId]);
@@ -236,7 +247,9 @@ export function QQScanConnect({
         // live: it is released here the way cancel and unmount release one, rather than left
         // holding its key until the sweep.
         if (step.releaseTask) void api.cancelQQScan(sessionId, taskId).catch(() => {});
-        toastError(step.notice);
+        // Every one of QQ's stops is a fault — the code came down with nothing to show for it —
+        // and the card now stands in front of its own button again, so the reason stays there.
+        setRefusal(step.notice);
       })();
     }, pollMs);
     return () => {
@@ -265,7 +278,7 @@ export function QQScanConnect({
     // once, then in the way forever — so it is disclosed in the setup fold rather than
     // standing beside the button: a control is not a title for a sentence.
     return (
-      <div>
+      <div className="space-y-1.5">
         <Button
           size="sm"
           disabled={phase.kind === "starting" || enabled}
@@ -274,6 +287,8 @@ export function QQScanConnect({
         >
           {phase.kind === "starting" ? S.qq.scanStarting : S.qq.scanStart}
         </Button>
+        {/* Under the button that asked, because that button is the retry. */}
+        {refusal !== null && <ScanRefusalLine text={refusal} />}
       </div>
     );
   }
