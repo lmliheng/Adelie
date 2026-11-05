@@ -179,10 +179,13 @@ describe("a loaded workflow", { timeout: 30_000 }, () => {
   /** The demo as its one load left it. */
   let wf: WorkflowInfo;
 
+  // The boot compiles the demo before it answers (that list below is what waits on the
+  // compiler), so this hook needs the same deadline as the cases it serves: a loaded
+  // monorepo run pushes it past the 10s POSIX hook default while nothing is wrong.
   beforeAll(async () => {
     ({ t, owner, ownerCookie, dir } = await workflowApp());
     [wf] = (await listOf(owner)) as [WorkflowInfo];
-  });
+  }, 30_000);
   afterAll(async () => {
     await t.cleanup();
   });
