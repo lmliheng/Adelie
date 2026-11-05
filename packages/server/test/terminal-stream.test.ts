@@ -478,12 +478,20 @@ describePty("terminal stream compression", () => {
 
         // A large burst of barely compressible bytes stays compressed: RSV1 set, and —
         // random base64 shrinks little — still far past the threshold on the wire.
+        //
+        // Waited for, not sampled once: the marker is part of the command line, so the pty
+        // echoes it back before the command has produced anything at all, and on a loaded
+        // runner that echo is what `runAndWait` returns on — a bare expect() then reads the
+        // wire in the gap before the burst's own frame arrives.
         await runAndWait(
           client,
           "head -c 4000 /dev/urandom | base64; echo big-burst-done",
           "big-burst-done",
         );
-        expect(client.wire.some((f) => f.rsv1 && f.length >= 512)).toBe(true);
+        await client.waitFor(
+          () => client.wire.some((f) => f.rsv1 && f.length >= 512),
+          "the large frame on the wire compressed",
+        );
       } finally {
         await client.close();
         await api.delete(`/api/terminals/${terminal.id}`);
