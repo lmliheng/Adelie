@@ -160,7 +160,7 @@ export function WeChatScanConnect({
    * Why the last attempt did not get through, until the next one begins. Drawn on this card —
    * under the button when the code came down, under the pairing-code input when a number was
    * refused — rather than left to a toast: the control beside it is the retry, so the reason has
-   * to outlive the six seconds a notification lives (`scan-refusal.ts`).
+   * to outlive the six seconds a notification lives (`scan-refusal.tsx`).
    */
   const [refusal, setRefusal] = useState<string | null>(null);
   /** The task the effects act on, read by the unmount cleanup without re-running it. */

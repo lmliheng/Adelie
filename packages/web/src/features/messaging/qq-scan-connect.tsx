@@ -154,7 +154,7 @@ export function QQScanConnect({
   /**
    * Why the last attempt did not get through, until the next one begins. Drawn under the control
    * that asks again rather than left to a toast: the button beside it is the retry, so the reason
-   * has to outlive the six seconds a notification lives (`scan-refusal.ts`).
+   * has to outlive the six seconds a notification lives (`scan-refusal.tsx`).
    */
   const [refusal, setRefusal] = useState<string | null>(null);
   /** The task the effects act on, read by the unmount cleanup without re-running it. */
