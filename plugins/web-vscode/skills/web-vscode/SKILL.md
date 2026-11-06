@@ -121,6 +121,10 @@ node scripts/install.mjs uninstall           # 停服务、删单元，文件留
 node scripts/install.mjs uninstall --purge   # 连 /opt/web-vscode 一起删
 ```
 
+只停「这个安装目录自己的」单元：`web-vscode*.service` 里 ExecStart 指向别的目录的一律跳过并提示，
+所以同机另一份安装或手工维护的入口不会被带走；单元名是固定的，装第二份时遇到别人的同名单元会拒绝覆盖
+（要覆盖加 `--force`）。
+
 code-server 本体不会被卸（可能还有别的用途），要删自己 `npm rm -g code-server`。
 
 ## 参考资料

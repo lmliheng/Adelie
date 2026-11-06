@@ -3,7 +3,7 @@
   "description_zh": "把 VS Code 装到服务器上做成能用的浏览器版本：code-server + 自带证书机构的 HTTPS 反向代理，配上 Windows/macOS/iOS/Android 的证书信任步骤，以及验收必须跑的三项检查——包括为什么「点继续前往」的自签证书仍然跑不了 webview。",
   "short_description": "VS Code in the browser: code-server, HTTPS proxy, trusted certificate, verified.",
   "short_description_zh": "浏览器版 VS Code：code-server + HTTPS 反代 + 证书信任 + 端到端验收。",
-  "version": "2026.11.06.1",
+  "version": "2026.11.06.2",
   "category": "software-development",
   "preinstall": false
 }

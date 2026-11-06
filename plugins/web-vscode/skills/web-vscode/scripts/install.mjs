@@ -32,6 +32,9 @@ const PROXY_TEMPLATE = path.join(HERE, "proxy-server.js");
 const SERVICE_CODE = "web-vscode.service";
 const SERVICE_PROXY = "web-vscode-proxy.service";
 
+// 单元目录：默认 /etc/systemd/system。测这套逻辑时指到临时目录，别去碰真机的单元。
+const UNIT_DIR = process.env.WEB_VSCODE_UNIT_DIR || "/etc/systemd/system";
+
 const DEFAULTS = {
   prefix: "/opt/web-vscode",
   port: 6666,
@@ -125,6 +128,18 @@ function localIPv4() {
     }
   }
   return out;
+}
+
+/**
+ * 一个单元文件是不是这个安装目录生成的：找 prefix，但要求它后面不是一个路径字符。
+ * 这样 /opt/web-vscode 不会命中 /opt/web-vscode-proxy —— 兄弟目录名太像，误判的代价是删掉别人的服务。
+ */
+function unitBelongsTo(body, prefix) {
+  for (let i = body.indexOf(prefix); i !== -1; i = body.indexOf(prefix, i + 1)) {
+    const next = body[i + prefix.length];
+    if (next === undefined || !/[A-Za-z0-9_-]/.test(next)) return true;
+  }
+  return false;
 }
 
 function certFingerprint(file) {
@@ -408,9 +423,21 @@ async function install(opts) {
   // 5. 起服务
   if (useSystemd) {
     if (dry) {
-      info(`将写入 /etc/systemd/system/${SERVICE_CODE} 与 ${SERVICE_PROXY}，并 enable --now`);
+      info(`将写入 ${UNIT_DIR}/${SERVICE_CODE} 与 ${SERVICE_PROXY}，并 enable --now`);
     } else {
-      const unitDir = "/etc/systemd/system";
+      const unitDir = UNIT_DIR;
+      // 单元名固定：同一台机器上装第二份会覆盖第一份的单元。已有的单元如果不是这个 prefix
+      // 生成的，说明另一份安装（或手工维护的入口）正在用它，宁可不装也不覆盖。
+      for (const unit of [SERVICE_CODE, SERVICE_PROXY]) {
+        const file = path.join(unitDir, unit);
+        if (
+          fs.existsSync(file) &&
+          !unitBelongsTo(fs.readFileSync(file, "utf8"), prefix) &&
+          !force
+        ) {
+          fail(`${file} 已存在且指向别的安装目录；先卸载那一份，或换 --prefix，或加 --force 覆盖`);
+        }
+      }
       writeFile(path.join(unitDir, SERVICE_CODE), unitCodeServer(prefix, port, workspace), 0o644);
       writeFile(path.join(unitDir, SERVICE_PROXY), unitProxy(prefix, tlsPort), 0o644);
       sh("systemctl", ["daemon-reload"]);
@@ -527,12 +554,21 @@ function ca(opts) {
 
 function uninstall(opts) {
   const prefix = path.resolve(opts.prefix || DEFAULTS.prefix);
+  // 单元文件里写着它自己的安装目录。只停写着「这个 prefix」的单元：
+  // 同一台机器上另一个安装实例（或手工维护的入口）不能被一次 --prefix 清理带走。
   for (const unit of [SERVICE_PROXY, SERVICE_CODE]) {
-    if (trySh("systemctl", ["is-enabled", unit]) !== null) {
-      trySh("systemctl", ["disable", "--now", unit]);
-      fs.rmSync(`/etc/systemd/system/${unit}`, { force: true });
-      ok(`已停止并删除 ${unit}`);
+    const file = path.join(UNIT_DIR, unit);
+    if (!fs.existsSync(file)) {
+      info(`${unit} 不存在，跳过`);
+      continue;
     }
+    if (!unitBelongsTo(fs.readFileSync(file, "utf8"), prefix)) {
+      warn(`${unit} 指向的不是 ${prefix}，不碰它（要停请手动 systemctl disable --now ${unit}）`);
+      continue;
+    }
+    trySh("systemctl", ["disable", "--now", unit]);
+    fs.rmSync(file, { force: true });
+    ok(`已停止并删除 ${unit}`);
   }
   trySh("systemctl", ["daemon-reload"]);
   const runDir = path.join(prefix, "run");
