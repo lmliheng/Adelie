@@ -4455,6 +4455,11 @@ export const zh = {
     saveConfirm: (name: string): string => `保存对 ${name} 的修改？Workspace 中的该文件将被覆盖。`,
     editTooLarge: (kb: number): string => `文件超过 ${kb}KB，无法在此编辑，请下载后编辑`,
     saveTooLarge: (mb: number): string => `内容超过 ${mb}MB 写入上限，未保存`,
+    /** Under the header after a refused save: the server's reason, and that Save is the retry. */
+    saveRefused: (reason: string): string => `保存失败：${reason}`,
+    /** The same refusal while the editor holds text the file does not: nothing typed was lost. */
+    saveRefusedDraftKept: (reason: string): string =>
+      `保存失败：${reason}（编辑器里的改动没有写进文件）`,
     discardTitle: "放弃未保存的修改",
     discardBody: (name: string): string => `${name} 有未保存的修改，放弃这些修改？`,
     discard: "放弃",

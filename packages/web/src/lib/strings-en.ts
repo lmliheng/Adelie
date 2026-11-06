@@ -4389,6 +4389,11 @@ export const en: Strings = {
       `The file is larger than ${kb}KB and cannot be edited here — download it instead`,
     saveTooLarge: (mb: number): string =>
       `The content exceeds the ${mb}MB write limit and was not saved`,
+    /** Under the header after a refused save: the server's reason, and that Save is the retry. */
+    saveRefused: (reason: string): string => `Could not save: ${reason}`,
+    /** The same refusal while the editor holds text the file does not: nothing typed was lost. */
+    saveRefusedDraftKept: (reason: string): string =>
+      `Could not save: ${reason} (what you edited is still in the editor, not in the file)`,
     discardTitle: "Discard unsaved changes",
     discardBody: (name: string): string => `${name} has unsaved changes. Discard them?`,
     discard: "Discard",

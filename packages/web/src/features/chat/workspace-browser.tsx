@@ -156,6 +156,7 @@ import { setCloseGuard } from "../dock/close-guard";
 import { tabKey } from "../dock/dock-state";
 import { PAPERCLIP_ICON } from "./attached-files-banner";
 import { PdfPreview } from "./pdf-preview";
+import { editorSaveRefusal } from "./editor-save-refusal";
 import { WorkspaceTreeView } from "./workspace-tree-view";
 
 /**
@@ -566,6 +567,13 @@ export function WorkspaceBrowser({
   const [sourceError, setSourceError] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [saving, setSaving] = useState(false);
+  /**
+   * The words of a save the server refused, and the file they are about: the editor stays open
+   * with the draft in it and the header's Save is the retry, so the sentence is drawn under that
+   * header (see editor-save-refusal.ts) rather than in a toast that outlives nothing. Keyed by
+   * path so a different file's editor can never show it.
+   */
+  const [saveRefusal, setSaveRefusal] = useState<{ path: string; text: string } | null>(null);
   const [saveConfirm, setSaveConfirm] = useState(false);
   /** A save the server refused because the file had changed (non-null shows the conflict dialog). */
   const [conflict, setConflict] = useState<{ name: string } | null>(null);
@@ -693,6 +701,7 @@ export function WorkspaceBrowser({
     setPreview(null);
     setSourceError(null);
     setEditor(null);
+    setSaveRefusal(null);
     setSaveConfirm(false);
     setConflict(null);
     setDiscardPrompt(null);
@@ -1444,6 +1453,8 @@ export function WorkspaceBrowser({
     }
     if (previewRef.current?.path !== current.path) return;
     editorOpening.current = at;
+    // A fresh edit of a file starts without the words of another edit's refused save.
+    setSaveRefusal(null);
     setEditor({ path: current.path, baseline: content, draft: content, version });
   };
 
@@ -1462,6 +1473,9 @@ export function WorkspaceBrowser({
     const current = editorRef.current;
     if (current === null) return;
     setEditor({ ...current, draft });
+    // The words were about the text that was not written; a different text is a different
+    // save, and answers the old sentence.
+    setSaveRefusal(null);
     const key = draftKey(scopeKey, current.path);
     if (draft === current.baseline) unsavedDrafts.delete(key);
     else unsavedDrafts.set(key, draft);
@@ -1498,6 +1512,8 @@ export function WorkspaceBrowser({
   const save = async (opts?: { overwrite?: boolean }): Promise<void> => {
     setSaveConfirm(false);
     setConflict(null);
+    // Another attempt answers the previous one, whatever it says.
+    setSaveRefusal(null);
     const current = editorRef.current;
     if (current === null) return;
     const sent = current.draft;
@@ -1555,7 +1571,10 @@ export function WorkspaceBrowser({
         setConflict({ name: baseName(current.path) });
         return;
       }
-      toastError(apiErrorText(err));
+      // Nothing was written, and the editor is still holding the draft: the reason stays under
+      // the header whose Save retries it (7.19's rule), not in a toast over a panel that then
+      // looks exactly as it did before the press.
+      setSaveRefusal({ path: current.path, text: editorSaveRefusal(err, sent, current.baseline) });
     } finally {
       if (scopeKeyRef.current === key) setSaving(false);
     }
@@ -2700,6 +2719,20 @@ export function WorkspaceBrowser({
         />
         {fileRowActions}
       </div>
+
+      {/* A save the server refused: the editor below still holds text the file does not, and the
+          Save in the header above is the retry — so the reason stays between the two. Drawn only
+          for the file the editor is actually on: the words are about that draft. */}
+      {editing !== null && saveRefusal !== null && saveRefusal.path === editing.path && (
+        <p
+          role="alert"
+          data-tooltip={saveRefusal.text}
+          data-tooltip-content="text"
+          className={`shrink-0 border-b border-gray-200 px-3 py-1 line-clamp-2 break-words text-xs dark:border-gray-800 ${toneInk.danger}`}
+        >
+          {saveRefusal.text}
+        </p>
+      )}
 
       <div className="relative flex min-h-0 flex-1">
         {narrow ? (
