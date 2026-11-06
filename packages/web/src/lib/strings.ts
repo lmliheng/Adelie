@@ -2967,6 +2967,14 @@ export const zh = {
     usedByAgents: (n: number): string => (n === 0 ? "未被使用" : `${n} 个 Agent 在用`),
     /** Title on a disabled quick-start button: it pre-selects one of the plugin's skills on the currently selected Agent, so the plugin has to be installed there first. */
     quickInvokeNeedsInstall: "先在当前 Agent 安装该插件后才能快捷调用",
+    /**
+     * Why an install onto one Agent did not land, drawn under the button or the row that sent it
+     * (install-refusal.ts): a refusal leaves the plugin where it was, so that control and its
+     * button are the retry — and the Agent is named because the manage-installs Modal has one row
+     * per Agent while the card follows the page's selection.
+     */
+    installRefused: (plugin: string, agent: string, reason: string) =>
+      `未能将 ${plugin} 安装到 ${agent}：${reason}`,
     /** Top toast shown on successful install / uninstall. */
     installedToast: (plugin: string, agent: string): string => `已将 ${plugin} 安装到 ${agent}`,
     uninstalledToast: (plugin: string, agent: string): string => `已从 ${agent} 卸载 ${plugin}`,

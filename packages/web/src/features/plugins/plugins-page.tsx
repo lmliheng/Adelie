@@ -38,9 +38,11 @@
  * - Download "manage installs": a Modal listing every Agent in the current Project —
  *   not-installed shows "Install", installed shows "Installed" (hover switches to
  *   "Uninstall", click to uninstall); any member can operate it; optimistic update, a
- *   top-level toast on success for install/uninstall, rollback plus a toast on failure.
- *   A refusal is not always a toast: the two writes the card asks about first (uninstall,
- *   update) keep their confirmation open with the server's words inside it — see the
+ *   top-level toast on success for install/uninstall, rollback on failure.
+ *   A refusal is not a toast: an install's — from this row's toggle or the card's one-click
+ *   button — is drawn under that plugin's card, naming the Agent it could not reach
+ *   (install-refusal.ts), while the three writes the card asks about first (update, uninstall,
+ *   delete) keep their confirmation open with the server's words inside it — see the
  *   PluginCard's three confirmations. Installed means the whole plugin is: every one of its
  *   skills is in the Agent's installed skills and, when it ships a hook package, that package is
  *   in the Agent's installed hooks —
@@ -114,6 +116,8 @@ import { PluginDetailModal } from "./plugin-detail";
 import { PluginImportActions } from "./plugin-import-dialog";
 import { pluginImportErrorText, pluginNameFromError } from "./plugin-import";
 import { libraryAddRefused } from "./library-add-refusal";
+import { installRefusalFor, installRefused } from "./install-refusal";
+import type { InstallRefusal } from "./install-refusal";
 import { SettingsDialog } from "../settings/settings-dialog";
 import { formatRelativeDate } from "../../lib/format";
 import { SkillTile } from "../skills/skill-icon-view";
@@ -393,6 +397,17 @@ export function PluginsPage() {
     name: string;
   } | null>(null);
   /**
+   * The sentence for the last install onto an Agent this page did not get, and the plugin it was
+   * for: it is drawn under that plugin's card (install-refusal.ts). It lives here rather than in
+   * the card because an install moves the card into the other section before the answer arrives,
+   * so the instance that sent the request no longer exists by the time a refusal comes back.
+   */
+  const [installRefusal, setInstallRefusal] = useState<{
+    plugin: string;
+    text: string;
+  } | null>(null);
+
+  /**
    * The server's words for the last "add to the library" it refused, and the row they belong to.
    * It has to outlive a toast: the write changed nothing, so that row is still on the shelf with
    * the same button, and the sentence belongs in it (library-add-refusal.ts).
@@ -557,15 +572,21 @@ export function PluginsPage() {
    * and its `pluginUpdates` moved, and both are read off that list.
    *
    * The answer is a {@link WriteOutcome} rather than a toast: uninstall is asked about first, so
-   * a refusal belongs in the card that asked (its retry button is there). The install paths have
-   * no card to keep — the card's one-click button and a manage-installs row's toggle — and they
-   * add the toast themselves; nothing is toasted here.
+   * a refusal belongs in the card that asked (its retry button is there). An install is not asked
+   * about, so its refusal is kept here instead — the page outlives the cards — and drawn under
+   * the card of that plugin (install-refusal.ts); nothing is toasted either way.
    *
    * Only an install moves the snapshot before the answer. An uninstall waits for it: removing the
    * current Agent's copy on the way out flips the card to "not installed" and carries it into the
    * other section, which unmounts the very confirmation that asked — and with it a refusal's
    * reason. The row reads "Installed" until the answer arrives, which is also what a refused one
    * leaves it at.
+   *
+   * The optimistic move is also why the install's refusal cannot live in the card: it files the
+   * card into the other section on the way out and back on a refusal, so the instance that sent
+   * the request is unmounted either way. The sentence names the Agent for the same reason the
+   * Modal needs it to: the card's own button installs to the Agent the page is working with, while
+   * a refused row may have been aimed at another one.
    */
   const toggleInstall = async (
     agentId: string,
@@ -576,7 +597,11 @@ export function PluginsPage() {
     // behind that gate). The generic sentence is what a write that never left would report.
     if (!projectId) return { ok: false, reason: S.common.unknownError };
     const prev = installed.get(agentId) ?? NO_INSTALLS;
-    if (on) setAgentInstalls(agentId, withPlugin(prev, plugin, on));
+    if (on) {
+      // One attempt, one reason: the sentence of the attempt before belonged to it.
+      setInstallRefusal(null);
+      setAgentInstalls(agentId, withPlugin(prev, plugin, on));
+    }
     const target = agents.find((a) => a.agentId === agentId);
     const agentName = target ? agentDisplayName(target) : agentId;
     try {
@@ -609,7 +634,16 @@ export function PluginsPage() {
       }
     } catch (e) {
       setAgentInstalls(agentId, prev);
-      return { ok: false, reason: apiErrorText(e) };
+      const reason = apiErrorText(e);
+      // An install has no confirmation to keep the reason in and no card instance that survives
+      // its own optimistic move: the page holds it, keyed by plugin, for the card that comes back.
+      if (on) {
+        setInstallRefusal({
+          plugin: plugin.name,
+          text: installRefused(plugin.name, agentName, reason),
+        });
+      }
+      return { ok: false, reason };
     }
     void reloadAgents();
     return { ok: true };
@@ -873,6 +907,7 @@ export function PluginsPage() {
       installed={installed}
       marketSpecifier={marketEntryFor(row.plugin, index ?? [])?.name ?? null}
       canDelete={isAdmin}
+      installRefusal={installRefusalFor(installRefusal, row.plugin.name)}
       onQuickInvoke={quickInvoke}
       onToggleInstall={toggleInstall}
       onUpdateOutdated={updateOutdated}
@@ -1725,6 +1760,7 @@ function PluginCard({
   installed,
   marketSpecifier,
   canDelete,
+  installRefusal,
   onQuickInvoke,
   onToggleInstall,
   onUpdateOutdated,
@@ -1739,6 +1775,13 @@ function PluginCard({
   marketSpecifier: string | null;
   /** Whether this account may delete, which is the account's admin right and not a Project role (see the page header). */
   canDelete: boolean;
+  /**
+   * Why the last install of this plugin onto an Agent did not land, naming that Agent
+   * (install-refusal.ts). The page keeps it rather than this card: an install moves the snapshot
+   * optimistically, so the card is filed into the other section and remounts on the way — and a
+   * sentence held here would go with the instance that sent it. Undefined when there is none.
+   */
+  installRefusal?: string;
   onQuickInvoke: (skillName: string) => void;
   onToggleInstall: (agentId: string, plugin: PluginItem, on: boolean) => Promise<WriteOutcome>;
   onUpdateOutdated: (name: string, agentIds: string[]) => Promise<WriteOutcome>;
@@ -1782,15 +1825,6 @@ function PluginCard({
   const askDelete = () => {
     setDeleteOpen(true);
     setDeleteRefusal(null);
-  };
-
-  /**
-   * The card's install paths — no confirmation, so no card to keep a refusal in: the reason
-   * takes the toast here (the same sentence a refused confirm would draw inside its dialog).
-   */
-  const installNow = async (agentId: string) => {
-    const outcome = await onToggleInstall(agentId, plugin, true);
-    if (!outcome.ok) toastError(outcome.reason);
   };
 
   /**
@@ -1882,184 +1916,202 @@ function PluginCard({
     .filter((v): v is string => v !== null)
     .join(" · ");
   return (
-    <div className="flex items-center gap-3 rounded-md p-4 transition-colors hover:bg-gray-100/70 dark:hover:bg-gray-800/60">
-      <button
-        type="button"
-        onClick={() => setDetailOpen(true)}
-        className="min-w-0 flex-1 text-left"
-      >
-        {/* Header: the plugin icon centered across the two text rows (rounded tile in the plugin's
-            own palette color — see SkillTile; deliberately a bit smaller than the two rows),
-            with the name and short description on one line each to the right. */}
-        <div className="flex items-center gap-3">
-          <SkillTile
-            icon={plugin.icon}
-            name={plugin.name}
-            fallback={ICONS.puzzle}
-            size={36}
-            glyph={20}
-          />
-          <div className="min-w-0 flex-1">
-            <span
-              className="block truncate font-mono text-[length:var(--ui-text-code-size)] font-semibold"
-              data-tooltip={plugin.name}
-              data-tooltip-content="code"
-            >
-              {plugin.name}
-            </span>
-            {/* Short description truncates to one line (full description goes into title for hover reading). */}
-            <p
-              className="mt-0.5 truncate text-xs leading-5 text-gray-500 dark:text-gray-400"
-              data-tooltip={fullDescription}
-              data-tooltip-content="text"
-            >
-              {description}
-            </p>
-          </div>
-        </div>
-        {/* Metadata line under the header (e.g. `v2026.08.29.1 · updated 3 days ago · used by
-            2 agents`); what the plugin contains lives in the detail Modal this card opens. */}
-        <p
-          className="mt-2.5 truncate text-xs text-gray-400 dark:text-gray-500"
-          data-tooltip={meta}
-          data-tooltip-content="text"
+    <div className="rounded-md p-4 transition-colors hover:bg-gray-100/70 dark:hover:bg-gray-800/60">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setDetailOpen(true)}
+          className="min-w-0 flex-1 text-left"
         >
-          {meta}
-        </p>
-        {/* Tag line: the category, where the plugin came from (the build, or the server's plugin
-            directory — the two kinds carry different actions, so this is what says which a card
-            is), and what it carries. */}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
-          <Tag>{category}</Tag>
-          {isUser ? (
-            <Tag title={S.plugins.userBadgeHint}>{S.plugins.userBadge}</Tag>
-          ) : (
-            <Tag title={S.plugins.libraryBuiltinHint}>{S.plugins.builtin}</Tag>
-          )}
-          {plugin.skills.length > 0 && <Tag mono>{S.skills.skillCount(plugin.skills.length)}</Tag>}
-          {plugin.hooks.length > 0 && <Tag mono>{S.hooks.hookCount(plugin.hooks.length)}</Tag>}
-          {/* The shelf's state, relative to the Agent the page is working with: the same value
-              the one-click button acts on, named so the reader knows which Agent it is about. */}
-          {market !== undefined && (
-            <Tag title={S.plugins.marketStateHint(marketAgentName ?? "")}>
-              {S.plugins.marketState[market]}
-            </Tag>
-          )}
-        </div>
-      </button>
-      {detailOpen && (
-        <PluginDetailModal
-          plugin={plugin}
-          meta={meta}
-          marketSpecifier={marketSpecifier}
-          onClose={() => setDetailOpen(false)}
-        />
-      )}
-      {/* Actions: equal-square light icon buttons in a single row, vertically centered at the
-          card's right edge (copy goes into aria-label and title). */}
-      <div className="flex shrink-0 items-center justify-center gap-1.5">
-        {/* The shelf's one-click action, on the Agent the page is working with: install when that
-            Agent holds nothing of this plugin, or the update an outdated copy gets elsewhere on
-            the card (that one confirms first, because it overwrites installed files). The card's
-            primary action, so it carries a label rather than a glyph; with no Agent selected
-            there is nothing to install to and the shelf's state is not shown either. */}
-        {market === "available" && marketAgent !== null && (
-          <Button
-            size="sm"
-            className="h-8 shrink-0"
-            aria-label={`${S.plugins.marketInstall(marketAgentName ?? "")} ${plugin.name}`}
-            title={S.plugins.marketInstall(marketAgentName ?? "")}
-            onClick={() => void installNow(marketAgent.agentId)}
-          >
-            {S.plugins.install}
-          </Button>
-        )}
-        {market === "updatable" && marketAgent !== null && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 shrink-0"
-            aria-label={`${S.plugins.marketUpdate(marketAgentName ?? "")} ${plugin.name}`}
-            title={S.plugins.marketUpdate(marketAgentName ?? "")}
-            onClick={() => askUpdate([marketAgent.agentId])}
-          >
-            {S.skills.updateAction}
-          </Button>
-        )}
-        {/* Light (secondary): an update nudge, not the card's primary action. The last stop on
-            the plugins trail, so it carries the dot itself — straddling the top-right corner of
-            the button's border, the anchoring rule update-dot.tsx states for a button. The mark
-            is decorative; what is waiting is already in this button's own title and accessible
-            name, which is why no sr-only sentence is added beside it. */}
-        {outdated.length > 0 && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="relative h-8 w-8 shrink-0 justify-center p-0"
-            aria-label={`${S.plugins.updateOutdated(outdated.length)} ${plugin.name}`}
-            title={S.plugins.updateOutdated(outdated.length)}
-            onClick={() => askUpdate(outdated)}
-          >
-            <GlyphIcon d={ICONS.rotateCw} size={ICON_SIZE.iconButton} />
-            <UpdateDot
-              size="inline"
-              position="right-0.5 top-0.5 -translate-y-1/2 translate-x-1/2"
+          {/* Header: the plugin icon centered across the two text rows (rounded tile in the plugin's
+              own palette color — see SkillTile; deliberately a bit smaller than the two rows),
+              with the name and short description on one line each to the right. */}
+          <div className="flex items-center gap-3">
+            <SkillTile
+              icon={plugin.icon}
+              name={plugin.name}
+              fallback={ICONS.puzzle}
+              size={36}
+              glyph={20}
             />
-          </Button>
+            <div className="min-w-0 flex-1">
+              <span
+                className="block truncate font-mono text-[length:var(--ui-text-code-size)] font-semibold"
+                data-tooltip={plugin.name}
+                data-tooltip-content="code"
+              >
+                {plugin.name}
+              </span>
+              {/* Short description truncates to one line (full description goes into title for hover reading). */}
+              <p
+                className="mt-0.5 truncate text-xs leading-5 text-gray-500 dark:text-gray-400"
+                data-tooltip={fullDescription}
+                data-tooltip-content="text"
+              >
+                {description}
+              </p>
+            </div>
+          </div>
+          {/* Metadata line under the header (e.g. `v2026.08.29.1 · updated 3 days ago · used by
+              2 agents`); what the plugin contains lives in the detail Modal this card opens. */}
+          <p
+            className="mt-2.5 truncate text-xs text-gray-400 dark:text-gray-500"
+            data-tooltip={meta}
+            data-tooltip-content="text"
+          >
+            {meta}
+          </p>
+          {/* Tag line: the category, where the plugin came from (the build, or the server's plugin
+              directory — the two kinds carry different actions, so this is what says which a card
+              is), and what it carries. */}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
+            <Tag>{category}</Tag>
+            {isUser ? (
+              <Tag title={S.plugins.userBadgeHint}>{S.plugins.userBadge}</Tag>
+            ) : (
+              <Tag title={S.plugins.libraryBuiltinHint}>{S.plugins.builtin}</Tag>
+            )}
+            {plugin.skills.length > 0 && (
+              <Tag mono>{S.skills.skillCount(plugin.skills.length)}</Tag>
+            )}
+            {plugin.hooks.length > 0 && <Tag mono>{S.hooks.hookCount(plugin.hooks.length)}</Tag>}
+            {/* The shelf's state, relative to the Agent the page is working with: the same value
+                the one-click button acts on, named so the reader knows which Agent it is about. */}
+            {market !== undefined && (
+              <Tag title={S.plugins.marketStateHint(marketAgentName ?? "")}>
+                {S.plugins.marketState[market]}
+              </Tag>
+            )}
+          </div>
+        </button>
+        {detailOpen && (
+          <PluginDetailModal
+            plugin={plugin}
+            meta={meta}
+            marketSpecifier={marketSpecifier}
+            onClose={() => setDetailOpen(false)}
+          />
         )}
-        {plugin.skills.length > 0 && (
+        {/* Actions: equal-square light icon buttons in a single row, vertically centered at the
+            card's right edge (copy goes into aria-label and title). */}
+        <div className="flex shrink-0 items-center justify-center gap-1.5">
+          {/* The shelf's one-click action, on the Agent the page is working with: install when that
+              Agent holds nothing of this plugin, or the update an outdated copy gets elsewhere on
+              the card (that one confirms first, because it overwrites installed files). The card's
+              primary action, so it carries a label rather than a glyph; with no Agent selected
+              there is nothing to install to and the shelf's state is not shown either. */}
+          {market === "available" && marketAgent !== null && (
+            <Button
+              size="sm"
+              className="h-8 shrink-0"
+              aria-label={`${S.plugins.marketInstall(marketAgentName ?? "")} ${plugin.name}`}
+              title={S.plugins.marketInstall(marketAgentName ?? "")}
+              onClick={() => void onToggleInstall(marketAgent.agentId, plugin, true)}
+            >
+              {S.plugins.install}
+            </Button>
+          )}
+          {market === "updatable" && marketAgent !== null && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 shrink-0"
+              aria-label={`${S.plugins.marketUpdate(marketAgentName ?? "")} ${plugin.name}`}
+              title={S.plugins.marketUpdate(marketAgentName ?? "")}
+              onClick={() => askUpdate([marketAgent.agentId])}
+            >
+              {S.skills.updateAction}
+            </Button>
+          )}
+          {/* Light (secondary): an update nudge, not the card's primary action. The last stop on
+              the plugins trail, so it carries the dot itself — straddling the top-right corner of
+              the button's border, the anchoring rule update-dot.tsx states for a button. The mark
+              is decorative; what is waiting is already in this button's own title and accessible
+              name, which is why no sr-only sentence is added beside it. */}
+          {outdated.length > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="relative h-8 w-8 shrink-0 justify-center p-0"
+              aria-label={`${S.plugins.updateOutdated(outdated.length)} ${plugin.name}`}
+              title={S.plugins.updateOutdated(outdated.length)}
+              onClick={() => askUpdate(outdated)}
+            >
+              <GlyphIcon d={ICONS.rotateCw} size={ICON_SIZE.iconButton} />
+              <UpdateDot
+                size="inline"
+                position="right-0.5 top-0.5 -translate-y-1/2 translate-x-1/2"
+              />
+            </Button>
+          )}
+          {plugin.skills.length > 0 && (
+            <Button
+              size="sm"
+              className="h-8 w-8 shrink-0 justify-center p-0"
+              aria-label={`${S.skills.quickInvoke} ${plugin.name}`}
+              title={quickStartSkill ? S.skills.quickInvoke : S.plugins.quickInvokeNeedsInstall}
+              disabled={quickStartSkill === undefined}
+              onClick={() => {
+                if (quickStartSkill) onQuickInvoke(quickStartSkill.name);
+              }}
+            >
+              <GlyphIcon d={ICONS.paperPlane} size={ICON_SIZE.iconButton} />
+            </Button>
+          )}
           <Button
             size="sm"
             className="h-8 w-8 shrink-0 justify-center p-0"
-            aria-label={`${S.skills.quickInvoke} ${plugin.name}`}
-            title={quickStartSkill ? S.skills.quickInvoke : S.plugins.quickInvokeNeedsInstall}
-            disabled={quickStartSkill === undefined}
-            onClick={() => {
-              if (quickStartSkill) onQuickInvoke(quickStartSkill.name);
-            }}
+            aria-label={`${S.skills.manageInstall} ${plugin.name}`}
+            title={S.skills.manageInstall}
+            onClick={() => setInstallOpen(true)}
           >
-            <GlyphIcon d={ICONS.paperPlane} size={ICON_SIZE.iconButton} />
+            <GlyphIcon d={INSTALL_ICON} size={ICON_SIZE.iconButton} />
           </Button>
-        )}
-        <Button
-          size="sm"
-          className="h-8 w-8 shrink-0 justify-center p-0"
-          aria-label={`${S.skills.manageInstall} ${plugin.name}`}
-          title={S.skills.manageInstall}
-          onClick={() => setInstallOpen(true)}
-        >
-          <GlyphIcon d={INSTALL_ICON} size={ICON_SIZE.iconButton} />
-        </Button>
-        {/* Export, for a user plugin only (a built-in is in the build, so there is nothing to take
-            a copy of): the archive download the Skills and Hooks rows export with, open to every
-            member — the route is a read. */}
-        {isUser && (
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-8 w-8 shrink-0 justify-center p-0"
-            aria-label={`${S.plugins.exportPlugin} ${plugin.name}`}
-            title={S.plugins.exportPlugin}
-            onClick={() => void onExport(plugin.name)}
-          >
-            <DownloadIcon size={ICON_SIZE.iconButton} />
-          </Button>
-        )}
-        {/* Delete, for a user plugin and an admin: the one action that removes files from the
-            machine, so it takes the danger variant and confirms first. */}
-        {isUser && canDelete && (
-          <Button
-            size="sm"
-            variant="danger"
-            className="h-8 w-8 shrink-0 justify-center p-0"
-            aria-label={`${S.plugins.deletePluginAction} ${plugin.name}`}
-            title={S.plugins.deletePluginAction}
-            onClick={askDelete}
-          >
-            <GlyphIcon d={ICONS.trash} size={ICON_SIZE.iconButton} />
-          </Button>
-        )}
+          {/* Export, for a user plugin only (a built-in is in the build, so there is nothing to take
+              a copy of): the archive download the Skills and Hooks rows export with, open to every
+              member — the route is a read. */}
+          {isUser && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="h-8 w-8 shrink-0 justify-center p-0"
+              aria-label={`${S.plugins.exportPlugin} ${plugin.name}`}
+              title={S.plugins.exportPlugin}
+              onClick={() => void onExport(plugin.name)}
+            >
+              <DownloadIcon size={ICON_SIZE.iconButton} />
+            </Button>
+          )}
+          {/* Delete, for a user plugin and an admin: the one action that removes files from the
+              machine, so it takes the danger variant and confirms first. */}
+          {isUser && canDelete && (
+            <Button
+              size="sm"
+              variant="danger"
+              className="h-8 w-8 shrink-0 justify-center p-0"
+              aria-label={`${S.plugins.deletePluginAction} ${plugin.name}`}
+              title={S.plugins.deletePluginAction}
+              onClick={askDelete}
+            >
+              <GlyphIcon d={ICONS.trash} size={ICON_SIZE.iconButton} />
+            </Button>
+          )}
+        </div>
       </div>
+      {/* An install this card offered that did not land: the card is back with the button that
+          retries it, so the reason sits under the row rather than in a notification that
+          dismisses itself (install-refusal.ts). */}
+      {installRefusal !== undefined && (
+        <p
+          role="alert"
+          data-testid="install-refusal"
+          data-tooltip={installRefusal}
+          data-tooltip-content="text"
+          className={`mt-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {installRefusal}
+        </p>
+      )}
       {installOpen && (
         <Modal
           open
@@ -2079,7 +2131,7 @@ function PluginCard({
                 outdated={outdated.includes(a.agentId)}
                 onToggle={(on) => {
                   // Install runs directly; uninstall deletes the installed files, so it confirms first.
-                  if (on) void installNow(a.agentId);
+                  if (on) void onToggleInstall(a.agentId, plugin, true);
                   else askUninstall(a.agentId);
                 }}
                 onUpdate={() => askUpdate([a.agentId])}

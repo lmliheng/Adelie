@@ -2918,6 +2918,14 @@ export const en: Strings = {
       n === 0 ? "not used yet" : n === 1 ? "used by 1 agent" : `used by ${n} agents`,
     /** Title on a disabled quick-start button: it pre-selects one of the plugin's skills on the currently selected agent, so the plugin has to be installed there first. */
     quickInvokeNeedsInstall: "Install this plugin on the current agent first to quick-start",
+    /**
+     * Why an install onto one Agent did not land, drawn under the button or the row that sent it
+     * (install-refusal.ts): a refusal leaves the plugin where it was, so that control and its
+     * button are the retry — and the Agent is named because the manage-installs Modal has one row
+     * per Agent while the card follows the page's selection.
+     */
+    installRefused: (plugin: string, agent: string, reason: string) =>
+      `Could not install ${plugin} to ${agent}: ${reason}`,
     installedToast: (plugin: string, agent: string): string => `Installed ${plugin} to ${agent}`,
     uninstalledToast: (plugin: string, agent: string): string =>
       `Uninstalled ${plugin} from ${agent}`,
