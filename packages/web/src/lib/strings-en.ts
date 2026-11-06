@@ -775,9 +775,11 @@ export const en: Strings = {
     speechInfo:
       "The browser records; the server transcribes. The recording goes to the provider below, " +
       "and the provider key stays on this server rather than being handed to every page. Once " +
-      "it is set, the microphone button in the composer works.",
+      "it is set, the microphone button in the composer works. Both sites speak the same " +
+      "protocol with the same model; only the address differs.",
     speechBaseUrl: "Service address",
-    speechBaseUrlHint: "The provider's site, e.g. https://tokendance.space",
+    speechBaseUrlHint:
+      "The provider's site: https://tokendance.space for the gateway, https://dashscope.aliyuncs.com for Alibaba's own",
     speechModel: "Model",
     speechModelHint: "The provider's model id, e.g. qwen-audio-3.1-asr-flash-streaming",
     speechApiKey: "API key",

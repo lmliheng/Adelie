@@ -837,9 +837,10 @@ export const zh = {
     /** Disclosed at the pane heading: where the audio goes, and where the key lives. */
     speechInfo:
       "录音在浏览器里完成，识别在服务器上做：录音交给下列服务商转成文字，服务商密钥只留在这台服务器上，" +
-      "不随页面下发。配好之后，聊天输入框的麦克风按钮就能用。",
+      "不随页面下发。配好之后，聊天输入框的麦克风按钮就能用。两家用同一套协议、同一个模型，只有站点不同。",
     speechBaseUrl: "服务地址",
-    speechBaseUrlHint: "服务商的站点地址，例如 https://tokendance.space",
+    speechBaseUrlHint:
+      "服务商的站点地址：词元跳动填 https://tokendance.space，阿里百炼填 https://dashscope.aliyuncs.com",
     speechModel: "识别模型",
     speechModelHint: "服务商那边的模型 ID，例如 qwen-audio-3.1-asr-flash-streaming",
     speechApiKey: "API 密钥",

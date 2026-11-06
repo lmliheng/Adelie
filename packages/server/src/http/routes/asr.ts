@@ -25,7 +25,7 @@ import {
   AsrError,
   DEFAULT_ASR_BASE_URL,
   DEFAULT_ASR_MODEL,
-  transcribeStreaming,
+  transcribe,
 } from "../../services/asr.js";
 
 /** Sample rates a recording may arrive at; the protocol accepts these and nothing else. */
@@ -96,7 +96,7 @@ export function asrRoutes(deps: AsrRouteDeps): Hono<AppEnv> {
     const sampleRate = parseSampleRate(body.sampleRate);
     const pcm = parseAudio(body.dataBase64);
     try {
-      const text = await transcribeStreaming({
+      const text = await transcribe({
         baseUrl: stored.baseUrl,
         model: stored.model,
         apiKey: stored.apiKey,

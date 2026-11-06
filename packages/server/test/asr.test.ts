@@ -1,6 +1,6 @@
 /**
  * Speech input, end to end through the real HTTP app: the composer's recording goes up to
- * /api/asr/transcribe, the server makes ONE WebSocket call to the configured provider and
+ * /api/asr/transcribe, the server makes ONE WebSocket call to the configured service and
  * answers with the transcript.
  *
  * The upstream is a fake `ws` server on a loopback port, so the cases below drive the real
@@ -16,6 +16,7 @@
  * - Transcribing with no key configured is refused before any socket is opened.
  * - Transcribing with one reaches the configured site and returns the provider's sentence
  *   frames joined in arrival order; an empty transcript is a 200, not an error.
+ * - A sentence the provider revises is counted once, not once per revision.
  * - A `task-failed` frame is a 502 carrying the provider's own words; a site that refuses the
  *   connection is a 502 named `asr_unreachable`, not a refusal by the provider.
  * - An empty, non-PCM or over-long body is refused with its own code.
@@ -28,6 +29,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import type { AsrConfig, AsrConfigResponse, AsrTranscribeResponse } from "../src/api/types.js";
 import {
   ASR_MAX_BYTES,
+  BAILIAN_WS_PATH,
   DEFAULT_ASR_BASE_URL,
   DEFAULT_ASR_MODEL,
   asrWebSocketUrl,
@@ -66,10 +68,14 @@ interface FakeUpstream {
 /**
  * A provider that follows the streaming protocol and nothing else: it answers `run-task`
  * with either `task-started` or the failure the case asked for, collects the audio frames,
- * and on `finish-task` emits the sentences and ends the task.
+ * and on `finish-task` emits the sentences and ends the task. A sentence may be given as a
+ * bare string (one finished sentence) or as the frame object itself, which is how the
+ * revision cases say what they mean.
  */
+type FakeSentence = string | Record<string, unknown>;
+
 async function startFakeUpstream(
-  options: { sentences?: string[]; fail?: { code: string; message: string } } = {},
+  options: { sentences?: FakeSentence[]; fail?: { code: string; message: string } } = {},
 ): Promise<FakeUpstream> {
   const seen: FakeUpstream["seen"] = {
     authorization: undefined,
@@ -109,11 +115,18 @@ async function startFakeUpstream(
       }
       if (frame.header?.action === "finish-task") {
         seen.finished = true;
-        for (const text of options.sentences ?? ["你好"]) {
+        for (const sentence of options.sentences ?? ["你好"]) {
           socket.send(
             JSON.stringify({
               header: { event: "result-generated" },
-              payload: { output: { sentence: { text, sentence_end: true } } },
+              payload: {
+                output: {
+                  sentence:
+                    typeof sentence === "string"
+                      ? { text: sentence, sentence_end: true }
+                      : sentence,
+                },
+              },
             }),
           );
         }
@@ -336,9 +349,46 @@ describe("speech input", () => {
     expect(upstream.seen.runTask?.payload.parameters.sample_rate).toBe(16000);
   });
 
-  // The two pure helpers the route and the flow above rest on.
-  it("derives the endpoint from the site's origin, however the site was spelled", () => {
-    expect(asrWebSocketUrl("")).toBe(`wss://tokendance.space/gateway/alibaba/api-ws/v1/inference`);
+  it("counts a sentence the provider revises once, not once per revision", async () => {
+    // The shape the service really sends: the same sentence_id again and again with more of it
+    // as the words are recognized, and `sentence_end` on the last of them.
+    upstream = await startFakeUpstream({
+      sentences: [
+        { sentence_id: 1, text: "你好", sentence_end: false },
+        { sentence_id: 1, text: "你好，世界", sentence_end: false },
+        { sentence_id: 1, text: "你好，世界。", sentence_end: true },
+        { sentence_id: 2, text: "再见。" },
+      ],
+    });
+    await putConfig({ baseUrl: upstream.url, model: "m", apiKey: "sk-test-key" });
+
+    const res = await transcribe("admin");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as AsrTranscribeResponse).text).toBe("你好，世界。再见。");
+  });
+
+  it("counts a finished sentence that names no sentence_id, and ignores an unfinished one", async () => {
+    // The gateway's own example prints only the frames marked `sentence_end`; a half-sentence
+    // with no id has nothing to replace, so it is a revision of something already counted.
+    upstream = await startFakeUpstream({
+      sentences: [
+        { text: "你好" },
+        { text: "你好，世界。", sentence_end: true },
+        { text: "你好，世界。再见。", sentence_end: true },
+      ],
+    });
+    await putConfig({ baseUrl: upstream.url, model: "m", apiKey: "sk-test-key" });
+
+    const res = await transcribe("admin");
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as AsrTranscribeResponse).text).toBe(
+      "你好，世界。你好，世界。再见。",
+    );
+  });
+
+  // The pure helpers the route and the flows above rest on.
+  it("picks the endpoint from the site's origin, however it was spelled", () => {
+    expect(asrWebSocketUrl("")).toBe("wss://tokendance.space/gateway/alibaba/api-ws/v1/inference");
     expect(asrWebSocketUrl("https://tokendance.space")).toBe(
       "wss://tokendance.space/gateway/alibaba/api-ws/v1/inference",
     );
@@ -348,6 +398,17 @@ describe("speech input", () => {
     );
     expect(asrWebSocketUrl("http://127.0.0.1:9000")).toBe(
       "ws://127.0.0.1:9000/gateway/alibaba/api-ws/v1/inference",
+    );
+    // Alibaba's own site, public and international alike, serves the models one path shorter.
+    expect(asrWebSocketUrl("https://dashscope.aliyuncs.com")).toBe(
+      `wss://dashscope.aliyuncs.com${BAILIAN_WS_PATH}`,
+    );
+    expect(asrWebSocketUrl("https://dashscope-intl.aliyuncs.com/api/v1")).toBe(
+      `wss://dashscope-intl.aliyuncs.com${BAILIAN_WS_PATH}`,
+    );
+    // A name that merely ends in the same letters is not that site.
+    expect(asrWebSocketUrl("https://aliyuncs.com.example.test")).toBe(
+      "wss://aliyuncs.com.example.test/gateway/alibaba/api-ws/v1/inference",
     );
   });
 
@@ -365,7 +426,7 @@ describe("speech input", () => {
           payload: { output: { sentence: { text: "句一", sentence_end: true } } },
         }),
       ),
-    ).toEqual({ kind: "sentence", text: "句一" });
+    ).toEqual({ kind: "sentence", id: null, text: "句一", final: true });
     expect(
       parseAsrEvent(
         JSON.stringify({
@@ -379,8 +440,8 @@ describe("speech input", () => {
     expect(
       transcriptOf([
         { kind: "started" },
-        { kind: "sentence", text: "甲" },
-        { kind: "sentence", text: "乙" },
+        { kind: "sentence", id: null, text: "甲", final: true },
+        { kind: "sentence", id: null, text: "乙", final: true },
         { kind: "finished" },
       ]),
     ).toBe("甲乙");
