@@ -2217,6 +2217,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `refusalText`（7.19）。**有意不改的**：`plugins-page.tsx` 的「加入插件库」行内动作（要走它自己的
       409 提问）、上传对话框里压缩包过大 / 读取失败这两处在按下之前就拒的检查（它们没有改写任何东西，
       也与一次请求无关）。见「第一百九十九轮」一节。
+- [x] **7.89 文件面板的保存被拒时，原因留在标题行下面，不再只活六秒**
+      （**2026-11-06 第二百轮**落地，提交见「已完成的轮次」；源码 2 处（新增一个纯判断模块、
+      面板容器）+ 一对文案 + 1 个新单测文件（6 条）+ 1 个新 spec（2 条）+ changelog 一对，
+      **不碰接口、无新依赖**）：第一百九十九轮「没做 / 留着」点名的 `chat/workspace-browser.tsx`
+      （工作区编辑器那笔保存）。预览的原地编辑里，那次写入没落地时面板上什么都没变 —— 编辑框还开着、
+      草稿还在里面、标题行的保存按钮就是重试 —— 而理由只落进一条六秒的通知，六秒后屏幕与按下之前
+      一模一样，磁盘上那份仍是旧内容，用户打的字只在编辑框里，却没有一句话说明为什么。现在那句话画在
+      **标题行与编辑框之间**：`role="alert"`、危险色、限两行、整句挂悬停，由开始编辑、改动草稿、下一次
+      保存与切换 Session 清掉，并且带着文件路径、只画在它所属的那份草稿上。念哪句话收进纯判定
+      `editorSaveRefusal(error, sent, baseline)`：草稿与文件不同时补一句「编辑器里的改动没有写进文件」，
+      相同时只念原因；请求没到服务端时念错误码自己的本地化句子（`refusalText`，7.19）。**有意不改的**：
+      `file_changed`（409）仍进它自己的覆盖确认框（那是提问），以及「内容超过写入上限」这条按下保存时的
+      本地检查（没有发出请求、也没有改写什么）。见「第二百轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2922,6 +2935,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-05 | 7.86 | **扫码连接失败时，原因留在那张卡片上，不再只活六秒**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/messaging/scan-refusal.tsx`（`scanStartRefusal` 按 `refusalText` 念没到服务端的错误、`scanStopRefusal` 只把故障留在卡片上、`ScanRefusalLine` 两张卡共用的一行），`qq-scan-connect.tsx` / `wechat-scan-connect.tsx` 各多一个 `refusal` 状态 —— 写在原来走 `toastError` 的失败上（起不来的扫码、放弃的轮询、微信被拒的配对码），由下一次尝试与「取消」清掉，画在发问的控件下面（`role="alert"`、危险色、限两行、整句挂悬停）；两个 `scanStep` 的轮询失败措辞改走 `refusalText`；`already_bound` 仍走通知；1 个新单测文件 + 1 个新 spec + changelog 一对，不碰接口、无新文案、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· `oxlint` 五个改动文件 **0 警告 0 错误** · `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **全部 0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **296 文件 / 3525 通过 / 2 跳过**（+1 文件、+5 条即本笔）· server **211 文件 / 3077 通过 / 17 跳过**（首跑一处抖动、复跑全绿，用例名没留在输出里）· **新 spec** `scan-refusal.spec.mjs` **4 passed（31.1 s）**（真服务端 + 真浏览器）：起不来时句子在按钮下面、通知区里没有、**7 秒后仍在**；再按一次它消失并换成新码；轮询连失败三次撤码并留下原因；微信被拒的配对码留在输入框旁边、改数字即消失 · **反证**：两份组件 `git stash` 后重建（改前产物留底 `r197/before-dist`），同一份 spec **4 failed**（都死在 `getByRole("alert")`：`element(s) not found`）· **两态探针**（同一脚本 `r197/probe.mjs`，`POST …/messaging/qq/scan` 桩成 500）：**改前** 1.2 s 对话框里 `role="alert"` **0 条**、那句话在通知区，7.6 s **两边都没了**；**改后** 1.2 s 与 7.6 s 都是同一条 `扫码连接失败：服务器内部错误，请稍后重试。`、通知区空；两态 console 的意外错误都是 `[]`（只剩既有的 `machines` 403 与本轮桩的 500）；截图 `r197/out/{before,after}/7_6s.png` · 相邻回归（真浏览器三份 spec）`scan-refusal` 4 + `messaging-test-refusal` 3 + `messaging-toggle-refusal` 2 **9 passed（1.1m）** · **整套 e2e** **231 passed / 4 failed（26.5m）**，四条红都与本笔无关且都有据（`chat.spec` 的 `#shim-ok`、`scroll-follow-bounce` 的滚轮步长、`server-switch-read-refusal` 公司模式那条 —— 均与上一轮同一现象；`files-action-refusal` 的删除重试一条**换干净根单跑三条全 passed（12.6 s）**） · 端口只用 9120 / 9121 / 9122 / 9123 / 9124，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r197-{after,before,e2e,clean}`，探针 / 两态 dist / 截图 / 临时 playwright 配置都在 scratchpad 的 `r197/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） | `c0e560cb0`（+`bac30408f` 注释订正） |
 | 2026-11-05 | 7.87 | **员工手册的保存被拒时，原因留在草稿上方，不再只活六秒**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/company/handbook-save-refusal.ts`（`handbookSaveRefusal(error, draft, stored)`：按 `refusalText` 念原因，草稿与文件那份不同时补一句「编辑器里的改动没有写进文件」，相同就只念原因），`handbook-page.tsx` 的 `save` 的 `catch` 不再走 `toastError` 而是写进 `saveRefusal` 状态、由开始编辑 / 取消 / 草稿 `onChange` / 换文档 / 下一次保存清掉，那一行画在文档标题行与文本框之间（`role="alert"`、危险色、限两行、整句挂悬停）；双语文案 `saveRefused` / `saveRefusedDraftKept`；1 个新单测文件 + 1 个新 spec + changelog 一对，不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· `oxlint` 六个改动文件 **0 警告 0 错误** · `prettier --check` 干净（`strings.ts` 首跑一条，`--write` 把两条文案并成单行后复检通过）· `git diff --check` 干净 · 逐包 test **全部 0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **297 文件 / 3530 通过 / 2 跳过**（+1 文件、+5 条即本笔）· server **211 文件 / 3077 通过 / 17 跳过** · **新 spec** `handbook-save-refusal.spec.mjs` **1 passed（11.4 s）**（真服务端 + 真浏览器）：被拒的保存把句子画在草稿上方、通知区里没有它、文件仍是旧内容而编辑器仍留着草稿；**7 秒后仍在**；改动文字它就消失；重试后编辑器关闭且文件里是新内容；被拒之后按取消，草稿与句子一起走 · **反证**：只把 `handbook-page.tsx` `git stash`（改前产物留底 `r198/before-dist`）重建 web，同一份 spec **1 failed**（死在对话框里 `getByRole("alert")`：`element(s) not found`）；`git stash pop` 重建后 **1 passed** · **两态探针**（同一脚本 `r198/probe.mjs`，`PUT …/handbook/files/…` 桩成 500）：**改前** 1.2 s 标题行下面 `role="alert"` **0 条**、`the organization store is mid-rewrite` 在通知区，7.6 s **两边都没了**（编辑器仍开、草稿仍在、保存按钮仍在）；**改后** 1.2 s 与 7.6 s 都是同一条 `保存失败：…（编辑器里的改动没有写进文件）`、通知区空；两态 `fileAfter` 都是旧内容；console 的意外错误两态都只有既有的 `machines` 403 与本轮桩的 500；截图 `r198/out/{before,after}/{1_2s,7_6s}.png` · 相邻回归（真浏览器两份 spec）`handbook-save-refusal` 1 + `handbook-delete-refusal` 1 **2 passed（17.4 s）** · **整套 e2e**（干净根 `/root/adelie-fork-data/r198-e2e-*`、9170）**232 passed / 4 failed（23.0m）**，四条红与上一轮同族且都有据：`chat.spec` 的 `#shim-ok`、`scroll-follow-bounce` 两条（headless 的滚轮步长）、`server-switch-read-refusal` 的公司模式那条 —— 这一条**换干净根单跑两条都 passed（9.5 s / 9.1 s）** · 端口只用 9150 / 9151 / 9160 / 9161 / 9162 / 9163 / 9170 / 9171，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r198-*`，探针 / 两态 dist / 截图 / 临时 playwright 配置都在 scratchpad 的 `r198/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `28b3362b` |
 | 2026-11-05 | 7.88 | **插件导入被拒时，原因留在发问的那个对话框里，不再只活六秒**（不是移植：源码 2 处 —— 新增 `packages/web/src/features/plugins/plugin-import-refusal.ts`（`importFailure(error, fallbackName, dialogOpen)`：三种去向 —— 409 `plugin_exists` 带插件名进覆盖确认、对话框还开着就把句子留在来源字段下面、对话框已关就仍走通知；插件错误码用自己的文案，其余按 `refusalText` 即 7.19 的规则），`plugin-import-dialog.tsx` 多一个按「发问的对话框」区分的 `refusal` 状态 + 两个打开标记的 ref 影子（答复回来时才决定去哪）+ `ImportRefusalLine`（`role="alert"`、危险色、限两行、整句挂悬停），上传对话框画在文件选择行下面、下载对话框画在地址字段下面，由改动来源 / 名字、选新压缩包、开始下一笔、关闭任一对话框、打开对话框与导入成功清掉；原来内联的 409 分支与两条 toast 收进纯判定；1 个新单测文件 + 1 个新 spec + changelog 一对，不碰接口、无新文案、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· `oxlint` 四个改动文件 **0 警告 0 错误** · `prettier --check` 六个文件（含 changelog 一对）干净（spec 首跑 `--write` 一次）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **298 文件 / 3537 通过 / 2 跳过**（+1 文件、+7 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · **新 spec** `plugin-import-refusal.spec.mjs` **2 passed（14.8 s）**（真服务端 + 真浏览器）：被拒的下载把句子画在地址字段下面、通知区里没有它、对话框 / 地址 / 按钮都还在；**7 秒后**仍在；改地址即消失；重试（桩改成功）对话框关闭并报出导入成功；第二条在请求进行中按取消，句子出现在通知区（`2 passed` 在 `prettier --write` 之后又复跑一次，同样 14.8 s） · **反证**：把组件 `git checkout HEAD --`、新模块移走、重建 web（改前产物留底 `r199/before-dist`），同一份 spec **1 failed / 1 passed** —— 死在 `dialog.getByRole('alert')` 的 `toHaveText`（`element(s) not found`），通过的那条是「取消后改走通知」，那正是本轮**有意不变**的行为 · **两态探针**（真服务端 + 真浏览器，同一脚本 `r199/probe.mjs`，`POST /api/plugins/download` 桩成 502 `download_failed`）：**改前** 1.2 s 对话框里 `role="alert"` **0 条**、那句话在通知区，7.6 s **对话框里仍然 0 条、通知区也没了**（原因彻底消失，对话框 / 地址 / 按钮原样）；**改后** 1.2 s 与 7.6 s 对话框里都是同一条 `下载失败，请确认该地址可以访问。`、通知区空；两态 console 只有本轮桩的 502，无 pageerror；截图 `r199/out/{before,after}/{1_2s,7_6s}.png`，肉眼看了改后那张红字就贴在地址字段下面 · 相邻回归（真浏览器六份 spec、十二条）`plugin-action` 2 + `plugin-card` 3 + `plugin-config-save` 1 + `plugin-import` 2 + `plugins-backend-refresh` 1 + `plugins-install` 2 + `plugins-read` 1 **12 passed（58.3 s）** · **整套 e2e**（干净根 `/root/adelie-fork-data/r199-e2e-full`、9181/mock 8931）**236 passed / 2 failed（22.8 m）**，两条红都与本笔无关：`scroll-follow-bounce` 的 Primer 一条（`wheeling up … never moves the view back down`）**换干净根单跑同样 2 failed / 1 passed**（Primer 与 Console 都红在滚轮步长上，前几轮同一现象）；`server-switch-read-refusal` 公司模式那条在整套用过的根上红、**换干净根单跑 passed（那条 spec 1 条）** · 端口只用 9180（单 spec 与两态探针）、9181 / 8931（整套）、9182（干净根复跑），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r199-*`，探针 / 两态 dist / 截图 / 临时 playwright 配置都在 scratchpad 的 `r199/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `630372c9a` |
+| 2026-11-06 | 7.89 | **文件面板的保存被拒时，原因留在标题行下面，不再只活六秒**（不是移植：源码 2 处 —— 新增 `packages/web/src/features/chat/editor-save-refusal.ts`（`editorSaveRefusal(error, sent, baseline)`：按 `refusalText` 念原因，这一笔送出去的文本与文件里那份不同时补一句「编辑器里的改动没有写进文件」，相同时只念原因），`workspace-browser.tsx` 的编辑器多一个 `saveRefusal` 状态（带文件路径、只在它所属的草稿上画）—— `save()` 的失败分支不再 `toastError` 而是写上这句话，由开始编辑 / 改动草稿 / 下一次保存 / 切换 Session 清掉，句子画在标题行与编辑框之间（`role="alert"`、危险色、限两行、整句挂悬停）；`file_changed`（409）仍进它自己的覆盖确认框、超写入上限那条本地检查仍走通知；双语文案 `saveRefused` / `saveRefusedDraftKept`；1 个新单测文件 + 1 个新 spec + changelog 一对，不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· `oxlint` 三个改动文件 **0 警告 0 错误** · `prettier --check` 七个文件（含 changelog 一对、spec）干净（spec 首跑 `--write` 一次）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **299 文件 / 3543 通过 / 2 跳过**（+1 文件、+6 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · **新 spec** `editor-save-refusal.spec.mjs` **2 passed（15.2 s）**（真服务端 + 真浏览器，写入桩成 403 `dir_permission_denied`）：句子在标题行下面、通知区里没有它；文件仍是旧内容、编辑框仍留着草稿、保存按钮仍可再按；**7 秒后**仍在；改一个字即消失；放行后重试落盘且句子不再回来；第二条退出编辑时句子与草稿一起走 · **反证**：`workspace-browser.tsx` `git checkout HEAD --` + 重建 web（改后产物留底 `r200/after-dist`），同一份 spec **2 failed**（都死在 `getByRole("alert")`：`element(s) not found`），放回重建后 **2 passed** · **两态探针**（真服务端 + 真浏览器，同一脚本 `r200/probe.mjs`，`PUT …/files/content` 桩成 403）：**改前** 1.2 s 面板里 `role="alert"` **0 条**、那句话在通知区，7.6 s **面板与通知区都没了**（原因彻底消失，草稿与按钮原样）；**改后** 1.2 s 与 7.6 s 都是同一条 `保存失败：没有访问该目录的权限。（编辑器里的改动没有写进文件）`、通知区空；两态 console 只有本轮桩的 403，无 pageerror；截图 `r200/out/{before,after}/{1_2s,7_6s}.png`，肉眼看了改后那张红字就在标题行下面 · 相邻回归（真浏览器四份 spec、十一条）`files-action-refusal` 3 + `files-folders` 5 + `files-switch` 1 + `editor-save-refusal` 2 **11 passed（44.4 s）** · **整套 e2e**（干净根 `/root/adelie-fork-data/r200-e2e-full`、9191 / mock 8941）**235 passed / 5 failed（23.3 m）**，五条红都与本笔无关且都有据：`scroll-follow-bounce` 三条（Primer / Frost / Console，headless 的滚轮步长，前几轮同一现象）；`server-switch-read-refusal` 公司模式那条在整套用过的根上红、`subagent.spec` 那条登录撞 `socket hang up` —— **两条都换干净根 `r200-e2e-clean`（9192）复跑 passed（8 passed / 49.3 s）** · 端口只用 9190 / 9191 / 9192 / 8940 / 8941，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r200-*`，探针 / 两态 dist / 截图 / 临时 playwright 配置都在 scratchpad 的 `r200/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `02bf3617c` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -22748,3 +22762,92 @@ theme-import-dialog` 也早就把拒绝留在弹窗体里 —— 这一处是同
 
 源码 1 个 + 新模块 1 个 + 新单测 1 个 + 新 spec 1 个 + changelog 一对：`630372c9a`（6 文件）；
 台账（7.88 的待办行、上表那一行、本节）另起一笔。
+
+## 第二百轮：文件面板的保存被拒时，原因留在标题行下面（2026-11-06，条目 7.89）
+
+### 开工自检
+
+`main` 在 `ce601b6a2`（第一百九十九轮那两笔台账提交），`git status --short` **干净**（无输出）。
+`git fetch origin` 第一次撞上 `GnuTLS recv error (-110)`，重试一次成功、`git merge --ff-only origin/main`
+报 `Already up to date.` —— 远端就是本地这个提交。开工时 91xx / 92xx 上没有服务端。
+
+### 选活：表上仍全卡着，接第一百九十九轮「没做 / 留着」的名单
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳写侧 / 既有部署单元 / 发布动作，本轮纪律明令不碰 desktop）、
+**3.5**（拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+第一百九十九轮点名的那几处里，`workspace-browser.tsx` 的编辑器保存是最像的一处（上一轮也这么说）：
+
+- `machines-page.tsx` 的两处、`plugins-page.tsx` 的「加入插件库」、`draft-view.tsx` 的两处、
+  `features/settings/plugins-section.tsx` 的四处，按判据核过都还差一层（要改的东西不在屏上，或者早就
+  有自己的行内位）；
+- 编辑器的保存最直：失败之后**编辑框、草稿、标题行的保存按钮全在原地**，磁盘上那份没动，而理由
+  只在六秒的通知里 —— 那六秒正是用户还在对着草稿读它的时候，过了就一点都不剩。
+
+### 做了什么
+
+- 新增 `packages/web/src/features/chat/editor-save-refusal.ts`：`editorSaveRefusal(error, sent, baseline)`
+  —— 纯判定，按 `refusalText`（7.19）念原因，`sent`（这一笔实际送出去的文本）与 `baseline`（文件里那份）
+  不同时补一句「编辑器里的改动没有写进文件」，相同时只念原因（没改就按保存，什么都没丢）。
+- `workspace-browser.tsx`：编辑器多一个 `saveRefusal` 状态 `{ path, text }` —— **带文件路径**，只在它所属
+  的那份草稿上画，切换文件不会把上一份的话带过去。`save()` 的失败分支不再 `toastError`，而是写上这句话；
+  开始编辑、改动草稿（`updateDraft`）、下一次 `save()` 开始、切换 Session 各自清掉。
+  句子画在面板标题行与正文之间（`role="alert"`、`toneInk.danger`、`line-clamp-2`、整句挂
+  `data-tooltip`），与全应用其它拒绝位同形。
+- `packages/web/src/lib/strings{,-en}.ts`：一对新文案 `files.saveRefused(reason)` /
+  `files.saveRefusedDraftKept(reason)`。
+- **有意不改的**：`file_changed`（409）仍进它自己的覆盖确认框 —— 那是提问不是失败；「内容超过写入上限」
+  这条在按下保存时的本地检查仍走通知（没有发出请求、也没有改写什么，要改的是内容本身）。
+- 1 个新单测文件（6 条）、1 个新 spec（2 条）、changelog 一对。**不碰接口、无新依赖**。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 /
+  598 类型 —— 本笔只动 `packages/web`）。
+- 逐包 test **`EXIT=0`、0 失败**：core **1456** 通过 / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）·
+  cli **561**（38）· web **299 文件 / 3543 通过 / 2 跳过**（+1 文件、+6 条即本笔）·
+  server **211 文件 / 3077 通过 / 17 跳过**。
+- `oxlint` 三个改动文件 **0 警告 0 错误**；`prettier --check` 七个文件（含 changelog 一对、spec）干净
+  （spec 首跑 `--write` 一次）；`git diff --check` 干净。
+- **新 spec** `packages/web/e2e/editor-save-refusal.spec.mjs` **2 passed（15.2 s）**（真服务端 + 真浏览器，
+  系统 Chromium；写入桩成 403 `dir_permission_denied`）：句子在标题行下面、通知区里没有它；文件仍是旧内容、
+  编辑框仍留着草稿、保存按钮仍可再按；**7 秒后**仍在；改一个字即消失；放行后重试落盘、句子不再回来。
+  第二条：被拒之后退出编辑（确认放弃），句子与草稿一起走。
+- **反证**：`workspace-browser.tsx` `git checkout HEAD --`、重建 web（改后产物先留底 `r200/after-dist`），
+  同一份 spec **2 failed**（都死在 `getByRole("alert")`：`element(s) not found`）；放回重建后 **2 passed**。
+- **两态探针**（真服务端 + 真浏览器，同一份脚本 `r200/probe.mjs`，`PUT …/files/content` 桩成 403）：
+
+  | 量点 | 改前（`checkout HEAD` 重建） | 改后 |
+  | --- | --- | --- |
+  | 1.2 s 面板里的 `role="alert"` | **0 条**；那句话在通知区 | 1 条：`保存失败：没有访问该目录的权限。（编辑器里的改动没有写进文件）`，通知区空 |
+  | 7.6 s 面板里的 `role="alert"` | **0 条**（通知也归 0，**原因彻底没了**） | 1 条（逐字不变） |
+  | 编辑框 / 保存按钮 / 磁盘 | 草稿仍在、按钮仍在、磁盘仍是旧内容 | 同上 |
+  | console 的意外错误 | 只有本轮桩的 403 | 同上 |
+  | 截图 | `r200/out/before/{1_2s,7_6s}.png` | `r200/out/after/{1_2s,7_6s}.png`（红字就在标题行下面） |
+
+- **相邻回归**（真浏览器四份 spec、十一条）：`files-action-refusal` 3 + `files-folders` 5 +
+  `files-switch` 1 + `editor-save-refusal` 2 **11 passed（44.4 s）**。
+- **整套 e2e**（干净根 `/root/adelie-fork-data/r200-e2e-full`、9191 + mock 8941）：
+  **235 passed / 5 failed（23.3 m）**，五条红都与本笔无关且都有据：`scroll-follow-bounce` 三条
+  （Primer / Frost / Console，`wheeling up … never moves the view back down`，这台机器 headless 的滚轮
+  步长，前几轮同一现象）；`server-switch-read-refusal` 公司模式那条在整套用过的根上红、
+  `subagent.spec` 那条 `POST /api/auth/login` 撞 `socket hang up`（224 ms 就死在登录上）——
+  **两条都换干净根 `/root/adelie-fork-data/r200-e2e-clean`（9192）复跑 passed（8 passed / 49.3 s）**。
+- 端口只用 9190（单 spec 与两态探针）、9191 / 8941（整套）、9192（干净根复跑）、8940（探针的 mock）；
+  3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r200-*`，探针 /
+  两态 dist / 截图 / 临时 playwright 配置都在 scratchpad 的 `r200/` 下（`packages/web/dist`、
+  `test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- 全仓仍走通知的写入还有几处没逐个摸过：`machines-page.tsx`（机器页的写入）、
+  `plugins-page.tsx` 的「加入插件库」、`draft-view.tsx`（3 处）、`features/settings/plugins-section.tsx`
+  （4 处，插件包下发的那条最像），以及 `workspace-browser.tsx` 里其余九处（上传、新建、删除、搜索、
+  重新读取）—— 下一轮从这几处按同一判据挑。
+- 2.2c 的尾巴（桌面壳写侧 / 既有部署单元 `adelie-app.service`）、3.5 / 3.6、5.6 / 5.10、
+  4.1–4.3 仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源码 1 个 + 新模块 1 个 + 新单测 1 个 + 新 spec 1 个 + changelog 一对：`02bf3617c`（8 文件）；
+台账（7.89 的待办行、上表那一行、本节）另起一笔。
