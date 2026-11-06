@@ -61,13 +61,14 @@ import { ConfigHeading } from "./plugin-config-heading";
 import { withLiveParts } from "./plugin-config-live";
 import { pluginConfigStale, pluginConfigUnreadable } from "./plugin-config-read";
 import { pluginSaveRefusal } from "./plugin-config-save";
+import { backendInstallRefusal } from "./sandbox-backend-refusal";
+import type { BackendInstallFailure, BackendInstallStop } from "./sandbox-backend-refusal";
 import { SandboxBackendPrompt } from "./sandbox-backend-prompt";
 import {
   Button,
   ConfirmModal,
   NoticeStrip,
   SettingsSection,
-  toastError,
   toastInfo,
   toastSuccess,
 } from "@adelie/ui";
@@ -140,9 +141,15 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
   const [readError, setReadError] = useState<string | null>(null);
   const nameOf = (id: string) => machineLabels.get(id) ?? id;
   const projectId = useProject().currentProject?.projectId ?? null;
-  /** The backend package the install prompt offers, while it is open. */
+  /** The backend packages the install prompt offers, while it is open. */
   const [offered, setOffered] = useState<string[] | null>(null);
   const [installing, setInstalling] = useState(false);
+  /**
+   * Why a run of those installs left packages behind, and which ones — drawn inside the prompt
+   * that asked, under the button that retries them (sandbox-backend-refusal.ts). Null when the
+   * last run installed everything, or before the first one.
+   */
+  const [installRefusal, setInstallRefusal] = useState<string | null>(null);
 
   const adopt = (list: PluginConfigEntry[]) => {
     setEntries(list);
@@ -367,56 +374,86 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
    */
   const offerBackend = (entry: PluginConfigEntry) => {
     const pkgs = backendToOffer(entry, machine ?? THIS_SERVER_KEY);
-    if (pkgs !== null) setOffered(pkgs);
+    if (pkgs === null) return;
+    // A fresh question: the sentence under it belonged to the attempt before.
+    setInstallRefusal(null);
+    setOffered(pkgs);
   };
   const closePrompt = (dontAskAgain: boolean) => {
     if (dontAskAgain) dismissBackendPrompt(machine ?? THIS_SERVER_KEY);
     setOffered(null);
+    setInstallRefusal(null);
   };
 
   /**
    * Installs the offered backends the way the Plugins page does, one after another: into this
    * Project's table for the machine on screen only — this server's own machine id when the card
-   * shows this server, so no other machine is asked to run it. A request that fails stops the
-   * run and is reported; either way the prompt closes and the card's live parts (notices, the
-   * backend report) are read again, so what did install shows; drafts being edited are kept.
+   * shows this server, so no other machine is asked to run it.
+   *
+   * The prompt closes on a run that installed everything, not on the request: a package the
+   * server listed but the process could not load, or a request that never answered, leaves the
+   * machine without the backend the card asked for — so the dialog stays open with that reason
+   * under its question, offering only the packages still missing, and its own Install button is
+   * the retry (a toast was the only account of a refusal before, gone six seconds later, over a
+   * card still reading "no backend for this OS"). Either way the card's live parts are read again,
+   * so what did install shows.
    */
   const installOffered = async (dontAskAgain: boolean) => {
     if (offered === null || installing) return;
     if (projectId === null) {
-      toastError(S.settings.sandboxBackendPrompt.noProject);
+      // The dialog that asked keeps its own precondition too: its button is where the next try is.
+      setInstallRefusal(S.settings.sandboxBackendPrompt.noProject);
       return;
     }
+    const pkgs = offered;
+    const installed: string[] = [];
+    const failures: BackendInstallFailure[] = [];
+    let stopped: BackendInstallStop | null = null;
+    setInstallRefusal(null);
     setInstalling(true);
     let target = machine;
     await installInOrder(
-      offered,
+      pkgs,
       async (pkg) => {
         const to = (target ??= (await api.getInstalledPlugins(projectId)).machineId);
         const res = await api.installPlugin(projectId, pkg, to);
         return res.plugins.find((p) => p.specifier === pkg)?.error;
       },
       {
-        installed: (pkg) => toastSuccess(S.plugins.deploymentInstalledToast(pkg)),
-        failed: (pkg, error) => toastError(S.plugins.deploymentFailedToast(pkg, error)),
-        threw: (e) => toastError(apiErrorText(e)),
+        installed: (pkg) => {
+          installed.push(pkg);
+          toastSuccess(S.plugins.deploymentInstalledToast(pkg));
+        },
+        failed: (pkg, error) => failures.push({ pkg, error }),
+        threw: (e) => {
+          stopped = { error: e };
+        },
       },
     );
-    closePrompt(dontAskAgain);
     try {
       const config = await api.adminGetPluginConfig(machine);
       setEntries((prev) => withLiveParts(prev ?? [], config.plugins));
       // The cards say what the machine answered: nothing is stale any more.
       setReadError(null);
     } catch (e) {
-      // The package toasts said what installed, but the cards' notices, actions and backend
-      // report are what the machine said before the install — a card that still reads "no
-      // backend for this OS" is the worst answer, and a six-second toast over it was all that
-      // said why (7.72). Say it where the cards are; opening the page again is the retry.
+      // The packages that did install are already in the Project's table, but the cards' notices,
+      // actions and backend report are what the machine said before the install — a card that
+      // still reads "no backend for this OS" is the worst answer, and a six-second toast over it
+      // was all that said why (7.72). Say it where the cards are; opening the page again is the
+      // retry.
       setReadError(pluginConfigStale(machine === null ? null : nameOf(machine), apiErrorText(e)));
     } finally {
       setInstalling(false);
     }
+    const remaining = pkgs.filter((p) => !installed.includes(p));
+    if (remaining.length === 0) {
+      closePrompt(dontAskAgain);
+      return;
+    }
+    // Only what is still missing: the retry must not install again what already landed, because
+    // every install reloads the server's plugins and stops agent runs in progress.
+    setOffered(remaining);
+    setInstallRefusal(backendInstallRefusal(failures, stopped, remaining));
   };
 
   // Only when there is another machine to pick: a single server has nothing to switch to.
@@ -614,6 +651,7 @@ export function PluginsSection({ focus }: { focus?: string } = {}) {
         pkgs={offered}
         machineName={machine === null ? S.plugins.thisServer : nameOf(machine)}
         busy={installing}
+        refusal={installRefusal}
         onInstall={(dontAskAgain) => void installOffered(dontAskAgain)}
         onLater={(dontAskAgain) => {
           if (!installing) closePrompt(dontAskAgain);

@@ -806,6 +806,16 @@ export const en: Strings = {
       later: "Not now",
       dontAsk: "Don't ask again for this machine",
       noProject: "Open a Project first: the backend is installed into the current Project.",
+      /** The run stopped on a request that never answered — the reason, not a package's own. */
+      installStopped: (reason: string) => `The install request failed: ${reason}`,
+      /**
+       * What the prompt keeps after a run that left packages behind: the reasons it has (a package
+       * that would not load, a request that failed), then the ones still missing — they are what
+       * the Install button behind this sentence retries.
+       */
+      installRefused: (reasons: readonly string[], missing: readonly string[]) =>
+        `${reasons.length > 0 ? `${reasons.join("; ")}. ` : ""}` +
+        `Not installed yet: ${missing.join(", ")}. Install again to retry.`,
     },
     theme: "Theme",
     themeInfo:

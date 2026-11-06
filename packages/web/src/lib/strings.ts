@@ -869,6 +869,16 @@ export const zh = {
       later: "暂不",
       dontAsk: "此机器不再询问",
       noProject: "请先打开一个项目：后端会安装到当前项目。",
+      /** The run stopped on a request that never answered — the reason, not a package's own. */
+      installStopped: (reason: string) => `安装请求失败：${reason}`,
+      /**
+       * What the prompt keeps after a run that left packages behind: the reasons it has (a package
+       * that would not load, a request that failed), then the ones still missing — they are what
+       * the Install button behind this sentence retries.
+       */
+      installRefused: (reasons: readonly string[], missing: readonly string[]) =>
+        `${reasons.length > 0 ? `${reasons.join("；")}。` : ""}` +
+        `还没装上：${missing.join("、")}。可以再点一次「安装」。`,
     },
     theme: "主题",
     themeInfo: "应用的整体风格：布局、线条、字体与动效随之改变，内容与其他设置不受影响。",
