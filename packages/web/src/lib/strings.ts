@@ -4421,6 +4421,14 @@ export const zh = {
       `超过 ${mb}MB 上传上限，已跳过：${names}`,
     /** A dropped folder is not a file the upload endpoint can take; it is named and skipped. */
     folderDropSkipped: (names: string): string => `不支持上传文件夹，已跳过：${names}`,
+    /**
+     * Above the listing after an upload the server refused: nothing landed, so the files are still
+     * only where they were picked from, and Save is not the retry — picking them again is.
+     */
+    uploadRefused: (dir: string, reason: string): string => `上传到 ${dir} 失败：${reason}`,
+    /** The same refusal when part of the batch landed: the rest has to be picked again by name. */
+    uploadRefusedPartial: (dir: string, names: string, reason: string): string =>
+      `上传到 ${dir} 时，${names} 没有上传：${reason}`,
     /** Upload-overwrite confirmation: same-name files in the target directory will be replaced. */
     overwriteTitle: "覆盖同名文件",
     overwriteConfirm: (n: number): string => `目标目录已存在以下 ${n} 个同名文件，上传将覆盖：`,

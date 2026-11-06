@@ -4351,6 +4351,14 @@ export const en: Strings = {
       `Over the ${mb}MB upload limit, skipped: ${names}`,
     /** A dropped folder is not a file the upload endpoint can take; it is named and skipped. */
     folderDropSkipped: (names: string): string => `Folders cannot be uploaded, skipped: ${names}`,
+    /**
+     * Above the listing after an upload the server refused: nothing landed, so the files are still
+     * only where they were picked from, and picking them again is the retry.
+     */
+    uploadRefused: (dir: string, reason: string): string => `Could not upload to ${dir}: ${reason}`,
+    /** The same refusal when part of the batch landed: the rest has to be picked again by name. */
+    uploadRefusedPartial: (dir: string, names: string, reason: string): string =>
+      `Not uploaded to ${dir}: ${names} — ${reason}`,
     /** Upload-overwrite confirmation: same-name files in the target directory will be replaced. */
     overwriteTitle: "Overwrite existing files",
     overwriteConfirm: (n: number): string =>

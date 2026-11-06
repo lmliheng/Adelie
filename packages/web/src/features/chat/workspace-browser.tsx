@@ -157,6 +157,7 @@ import { tabKey } from "../dock/dock-state";
 import { PAPERCLIP_ICON } from "./attached-files-banner";
 import { PdfPreview } from "./pdf-preview";
 import { editorSaveRefusal } from "./editor-save-refusal";
+import { uploadRefusalLine } from "./upload-refusal";
 import { WorkspaceTreeView } from "./workspace-tree-view";
 
 /**
@@ -605,6 +606,12 @@ export function WorkspaceBrowser({
   );
   // ------------------------------------------------------------------------ upload / drop
   const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
+  /**
+   * The words of an upload the server refused, drawn above the listing (see upload-refusal.ts):
+   * the file is not in the tree and the panel otherwise looks untouched, so a toast that dismisses
+   * itself would leave the reader with a directory that simply does not hold what they dropped.
+   */
+  const [uploadRefusal, setUploadRefusal] = useState<string | null>(null);
   /** Picked files whose names collide with the target directory's listing (non-null shows the overwrite confirm). */
   const [pendingUpload, setPendingUpload] = useState<{
     files: File[];
@@ -711,6 +718,7 @@ export function WorkspaceBrowser({
     // the Session forever. A staged overwrite confirmation is dropped for the same reason:
     // answering it after the switch would upload the old Session's files into this one.
     setUploading(null);
+    setUploadRefusal(null);
     setPendingUpload(null);
     setSaving(false);
     // An open menu points at a path in the Session that just left; its actions would run
@@ -1597,6 +1605,9 @@ export function WorkspaceBrowser({
   const doUpload = async (picked: File[], dir: string): Promise<void> => {
     const key = scopeKey;
     setUploading({ done: 0, total: picked.length });
+    // A fresh pick answers the last refusal: whatever it said was about files that are no longer
+    // the ones being sent.
+    setUploadRefusal(null);
     const uploaded: string[] = [];
     try {
       for (const [i, file] of picked.entries()) {
@@ -1618,7 +1629,18 @@ export function WorkspaceBrowser({
       }
       toastSuccess(S.files.uploadedCount(uploaded.length));
     } catch (err) {
-      toastError(apiErrorText(err));
+      // Nothing else on screen moved: the panel still shows a directory without these files, and
+      // picking them again is the retry — so the reason stays above the rows.
+      if (scopeKeyRef.current === key) {
+        setUploadRefusal(
+          uploadRefusalLine(
+            err,
+            dirLabel(dir),
+            uploaded.length,
+            picked.slice(uploaded.length).map((f) => f.name),
+          ),
+        );
+      }
     } finally {
       if (scopeKeyRef.current === key) setUploading(null);
     }
@@ -2719,6 +2741,19 @@ export function WorkspaceBrowser({
         />
         {fileRowActions}
       </div>
+
+      {/* An upload the server refused: nothing was written, so the panel looks untouched and
+          picking the files again is the retry — the reason stays above what it is about. */}
+      {uploadRefusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={uploadRefusal}
+          data-tooltip-content="text"
+          className={`shrink-0 border-b border-gray-200 px-3 py-1 line-clamp-2 break-words text-xs dark:border-gray-800 ${toneInk.danger}`}
+        >
+          {uploadRefusal}
+        </p>
+      )}
 
       {/* A save the server refused: the editor below still holds text the file does not, and the
           Save in the header above is the retry — so the reason stays between the two. Drawn only
