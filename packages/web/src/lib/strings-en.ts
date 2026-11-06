@@ -2889,6 +2889,11 @@ export const en: Strings = {
      * success toast, the overwrite question).
      */
     addToLibrary: "Add to the library",
+    /**
+     * Why that verb did not land, drawn in the row itself (library-add-refusal.ts): the write
+     * changes nothing on a refusal, so the row and its button are the retry.
+     */
+    libraryAddRefused: (reason: string): string => `Could not add it to the library: ${reason}`,
     pluginCount: (n: number): string => (n === 1 ? "1 plugin" : `${n} plugins`),
     searchPlaceholder: "Search plugins",
     /** Section labels of the plugin detail Modal. */

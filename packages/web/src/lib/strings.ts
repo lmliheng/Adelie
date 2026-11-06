@@ -2937,6 +2937,11 @@ export const zh = {
      * success toast, the overwrite question).
      */
     addToLibrary: "装入插件库",
+    /**
+     * Why that verb did not land, drawn in the row itself (library-add-refusal.ts): the write
+     * changes nothing on a refusal, so the row and its button are the retry.
+     */
+    libraryAddRefused: (reason: string): string => `装入插件库失败：${reason}`,
     /** Plugin count in the group header (small text to the right of the category name). */
     pluginCount: (n: number): string => `${n} 个插件`,
     /** Search box of the create dialog's plugin picker. */

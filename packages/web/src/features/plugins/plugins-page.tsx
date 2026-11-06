@@ -113,6 +113,7 @@ import type { WriteOutcome } from "../models/write-outcome";
 import { PluginDetailModal } from "./plugin-detail";
 import { PluginImportActions } from "./plugin-import-dialog";
 import { pluginImportErrorText, pluginNameFromError } from "./plugin-import";
+import { libraryAddRefused } from "./library-add-refusal";
 import { SettingsDialog } from "../settings/settings-dialog";
 import { formatRelativeDate } from "../../lib/format";
 import { SkillTile } from "../skills/skill-icon-view";
@@ -390,6 +391,15 @@ export function PluginsPage() {
   const [overwriteImport, setOverwriteImport] = useState<{
     specifier: string;
     name: string;
+  } | null>(null);
+  /**
+   * The server's words for the last "add to the library" it refused, and the row they belong to.
+   * It has to outlive a toast: the write changed nothing, so that row is still on the shelf with
+   * the same button, and the sentence belongs in it (library-add-refusal.ts).
+   */
+  const [libraryRefusal, setLibraryRefusal] = useState<{
+    specifier: string;
+    reason: string;
   } | null>(null);
 
   /**
@@ -782,9 +792,15 @@ export function PluginsPage() {
    * A 409 (the name is taken) opens the same overwrite question the dialog asks for its own
    * imports rather than a toast: it is a question, and the answer resends the request with
    * `overwrite`.
+   *
+   * Any other refusal is drawn IN this row (library-add-refusal.ts): the fetch wrote nothing, so
+   * the row is still here with the same button, and a notification would take the reason away
+   * after six seconds while the retry stayed on screen. One attempt, one reason: starting the
+   * next one clears it.
    */
   const addPublishedToLibrary = async (specifier: string, overwrite = false) => {
     setPublishing(specifier);
+    setLibraryRefusal(null);
     try {
       const res = await api.importPluginFromUrl({
         url: specifier,
@@ -801,7 +817,7 @@ export function PluginsPage() {
         });
       } else {
         setOverwriteImport(null);
-        toastError(pluginImportErrorText(e));
+        setLibraryRefusal({ specifier, reason: libraryAddRefused(e) });
       }
     } finally {
       setPublishing(null);
@@ -883,6 +899,7 @@ export function PluginsPage() {
           state="none"
           shipped={false}
           installLabel={S.plugins.addToLibrary}
+          refusal={libraryRefusal?.specifier === row.specifier ? libraryRefusal.reason : undefined}
           busy={publishing === row.specifier}
           blocked={publishing !== null && publishing !== row.specifier}
           onInstall={isAdmin ? () => void addPublishedToLibrary(row.specifier) : null}
@@ -2238,6 +2255,7 @@ function ModuleRow({
   shipped,
   onlyOn,
   removeBlocked,
+  refusal,
   busy,
   blocked,
   installLabel,
@@ -2255,6 +2273,12 @@ function ModuleRow({
   onlyOn?: string[];
   /** Why Remove is unavailable in this view, when it is. */
   removeBlocked?: string;
+  /**
+   * Why the last write this row offers was refused. It is drawn in the row because a refusal
+   * changes nothing: the row and its button are what the reader retries from, and a sentence
+   * that dismisses itself would be gone before the second attempt.
+   */
+  refusal?: string;
   /** This row's own install or removal is running. */
   busy: boolean;
   /** Another row's is: one at a time, so the rest are held rather than queued. */
@@ -2357,53 +2381,70 @@ function ModuleRow({
     </>
   );
   return (
-    <div className="flex items-center gap-3 rounded-md p-4 transition-colors hover:bg-gray-100/70 dark:hover:bg-gray-800/60">
-      {entry !== undefined ? (
-        <Link to={`/plugins/registry/${specifier}`} className="min-w-0 flex-1">
-          {body}
-        </Link>
-      ) : (
-        <div className="min-w-0 flex-1">{body}</div>
-      )}
-      {/* The verb, in the library card's shape: one square light icon button, its copy in
-          aria-label and title. While it runs, a spinner stands in for the glyph. */}
-      <div className="flex shrink-0 items-center justify-center gap-1.5">
-        {state === "none"
-          ? onInstall !== null && (
-              <Button
-                size="sm"
-                className="h-8 w-8 shrink-0 justify-center p-0"
-                aria-label={`${busy ? S.plugins.installing : installText} ${specifier}`}
-                aria-busy={busy}
-                title={busy ? S.plugins.installing : installText}
-                disabled={busy || blocked}
-                onClick={onInstall}
-              >
-                {busy ? (
-                  <StatusIcon state="running" />
-                ) : (
-                  <GlyphIcon d={INSTALL_ICON} size={ICON_SIZE.iconButton} />
-                )}
-              </Button>
-            )
-          : onRemove !== null && (
-              <Button
-                size="sm"
-                className="h-8 w-8 shrink-0 justify-center p-0"
-                aria-label={`${S.plugins.uninstall} ${specifier}`}
-                aria-busy={busy}
-                title={removeBlocked ?? S.plugins.uninstall}
-                disabled={busy || blocked || removeBlocked !== undefined}
-                onClick={onRemove}
-              >
-                {busy ? (
-                  <StatusIcon state="running" />
-                ) : (
-                  <GlyphIcon d={ICONS.trash} size={ICON_SIZE.iconButton} />
-                )}
-              </Button>
-            )}
+    <div className="rounded-md transition-colors hover:bg-gray-100/70 dark:hover:bg-gray-800/60">
+      <div className="flex items-center gap-3 p-4">
+        {entry !== undefined ? (
+          <Link to={`/plugins/registry/${specifier}`} className="min-w-0 flex-1">
+            {body}
+          </Link>
+        ) : (
+          <div className="min-w-0 flex-1">{body}</div>
+        )}
+        {/* The verb, in the library card's shape: one square light icon button, its copy in
+            aria-label and title. While it runs, a spinner stands in for the glyph. */}
+        <div className="flex shrink-0 items-center justify-center gap-1.5">
+          {state === "none"
+            ? onInstall !== null && (
+                <Button
+                  size="sm"
+                  className="h-8 w-8 shrink-0 justify-center p-0"
+                  aria-label={`${busy ? S.plugins.installing : installText} ${specifier}`}
+                  aria-busy={busy}
+                  title={busy ? S.plugins.installing : installText}
+                  disabled={busy || blocked}
+                  onClick={onInstall}
+                >
+                  {busy ? (
+                    <StatusIcon state="running" />
+                  ) : (
+                    <GlyphIcon d={INSTALL_ICON} size={ICON_SIZE.iconButton} />
+                  )}
+                </Button>
+              )
+            : onRemove !== null && (
+                <Button
+                  size="sm"
+                  className="h-8 w-8 shrink-0 justify-center p-0"
+                  aria-label={`${S.plugins.uninstall} ${specifier}`}
+                  aria-busy={busy}
+                  title={removeBlocked ?? S.plugins.uninstall}
+                  disabled={busy || blocked || removeBlocked !== undefined}
+                  onClick={onRemove}
+                >
+                  {busy ? (
+                    <StatusIcon state="running" />
+                  ) : (
+                    <GlyphIcon d={ICONS.trash} size={ICON_SIZE.iconButton} />
+                  )}
+                </Button>
+              )}
+        </div>
       </div>
+      {/* A write this row offered that did not land: the row still stands, its button is the
+          retry, so the reason sits under the row rather than in a notification that dismisses
+          itself. Outside the link on purpose — the row's body is a link to the registry page, and
+          clicking a reason should not take the reader somewhere else. */}
+      {refusal !== undefined && (
+        <p
+          role="alert"
+          data-testid="row-refusal"
+          data-tooltip={refusal}
+          data-tooltip-content="text"
+          className={`-mt-1 px-4 pb-3 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {refusal}
+        </p>
+      )}
     </div>
   );
 }
