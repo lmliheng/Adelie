@@ -2267,6 +2267,23 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       **有意不改的**：409 `plugin_exists` 仍进它自己的覆盖确认（那是提问，带着插件名，答复会把同一个
       请求带上 `overwrite` 重发），以及卡片的一键安装与「管理安装」里的行内开关（它们要改的是装到哪个
       Agent，下一轮按同一判据挑）。见「第二百零三轮」一节。
+- [x] **7.93 插件装不到某个 Agent 上时，原因留在那张卡片里，不再只活六秒**
+      （**2026-11-07 第二百零四轮**落地，提交见「已完成的轮次」；源码 3 处（新增一个纯判断模块、
+      页面、卡片）+ 一对文案 + 1 个新单测文件（5 条）+ 1 个新 spec（2 条）+ changelog 一对，
+      **不碰接口、无新依赖**）：第二百零三轮「没做 / 留着」名单里的两处 —— 卡片的一键安装与
+      「管理安装」每一行的安装开关 —— 其实是同一个函数，而且后者根本留不住槽位，所以**两处一起
+      收**。装不上时（服务端拒、插件不在库中、请求没到）文件仍没装上去、卡片与那一行仍在原地、
+      按钮仍是那个按钮，而原因只落进一条六秒的通知；六秒后屏幕与按下之前一模一样，却没说为什么。
+      现在那句话画在**那张插件卡片里**（`role="alert"`、危险色、限两行、整句挂悬停），并且点名
+      装上不去的那个 Agent —— 「管理安装」里每个 Agent 一行、卡片上的按钮又跟着当前选中的 Agent
+      走，不点名就分不清是哪一个没装上；它留到下一次尝试开始。念哪句话收进
+      `installRefused(plugin, agent, reason)`，交给哪张卡片收进 `installRefusalFor(refusal, plugin)`。
+      **句子为什么归页面记、不归卡片**：安装是乐观的，请求发出时页面先把插件在该 Agent 上标记为
+      已安装、卡片因此被归进「已安装」那一段（发请求的实例就此卸载），拒绝后标记回滚、卡片重新
+      出现 —— 第一版正是把状态放在卡片里，**实测页面上一个字都没有**；改成页面按插件名记着、
+      交给回来的那张卡片，才读得到。「管理安装」对话框随这同一次移动关掉，所以它的行不再留槽位
+      （重试时再从卡片点开）。**有意不改的**：三个确认框（更新 / 卸载 / 删除）仍把拒绝留在框里，
+      成功那条仍走成功通知。见「第二百零四轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -2976,6 +2993,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-06 | 7.90 | **文件面板的上传被拒时，原因留在列表上方，不再只活六秒**（不是移植：源码 2 处 —— 新增 `packages/web/src/features/chat/upload-refusal.ts`（`uploadRefusalLine(error, target, sent, unsent)`：按 `refusalText` 念原因，整批都没上去时只说「上传到 <目录> 失败：<原因>」，半途卡住时点名没有上去的那几个，目录名按面板自己的叫法、根是 `.`），`workspace-browser.tsx` 多一个 `uploadRefusal` 状态 —— `doUpload()` 的失败分支不再 `toastError` 而是写上这句话，由下一次上传开始与切换 Session 清掉，句子画在标题行与列表之间（`role="alert"`、危险色、限两行、整句挂悬停）；选中阶段的上传上限 / 文件夹跳过两条本地检查仍走通知；双语文案 `uploadRefused` / `uploadRefusedPartial`；1 个新单测文件 + 1 个新 spec + changelog 一对，不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型） · `oxlint` 六个改动文件 **0 警告 0 错误** · `prettier --check` 六个文件干净（两个新文件首跑 `--write` 一次） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过） · ui **1100**（132）· cli **561**（38）· web **300 文件 / 3550 通过 / 2 跳过**（+1 文件、+7 条即本笔单测） · server **211 文件 / 3077 通过 / 17 跳过** · **新 spec** `upload-refusal.spec.mjs` **2 passed（13.3 s）**（真服务端 + 真浏览器，写入桩成 403 `dir_permission_denied`）：句子在标题行下面、通知区里没有它；目录仍空、树里没有这一行、选择器仍可再选；**7 秒后**仍在；放行后重挑一次落盘、行出现、句子不再回来；第二条三文件里第一个真落盘、第二个 403，句子只点名 `b.md, c.md`、`a.md` 在磁盘上且不算失败 · **反证**：`workspace-browser.tsx` `git checkout HEAD --` + 重建 web（改后那份留底 `r201/after-workspace-browser.tsx`），同一份 spec **2 failed**（都死在 `getByRole("alert")`：`element(s) not found`），放回重建后 **2 passed** · **两态探针**（真服务端 + 真浏览器，同一脚本 `r201/probe.mjs`，`PUT …/files/content` 桩成 403）：**改前** 1.2 s 面板里 `role="alert"` **0 条**、那句话在通知区（`没有访问该目录的权限。`），7.6 s **面板与通知区都没了**（原因彻底消失，目录仍空、选择器原样）；**改后** 1.2 s 与 7.6 s 都是同一条 `上传到 . 失败：没有访问该目录的权限。`、通知区空；两态 console 只有本轮桩的 403、无 pageerror；截图 `r201/out/{before,after}/{1_2s,7_6s}.png`，肉眼看了改后那张红字就在标题行下面 · 相邻回归（真浏览器五份 spec、十二条）`files-action-refusal` 3 + `files-switch` 1 + `files-folders` 5 + `uploads-read-refusal` 1 + `upload-refusal` 2 **12 passed**（25.8 s + 27.1 s 两批）· 端口只用 9190 / 8940，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r201-e2e`，探针 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r201/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 9b5fc76e5 |
 | 2026-11-06 | 7.91 | **沙箱后端的安装没落地时，对话框留着：原因在框里，重试也在框里**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/settings/sandbox-backend-refusal.ts`（`backendInstallRefusal(failures, stopped, remaining)`：全部装好时给 `null`；装不上的包按 `deploymentFailedToast` 念服务端原话，没答复的请求按 `refusalText`（7.19 的规则）念错误码自己的本地化句子；理由末尾的句号先剥掉再由整句补，免得「。。」；只点名还缺的包），`sandbox-backend-prompt.tsx` 多一个 `refusal` 属性（画在 `ConfirmModal` 的拒绝槽里、问题下面），`plugins-section.tsx` 的 `installOffered()` 把这一轮的失败收起来不再走通知 —— 对话框只在**全部装好**时关闭，否则把要装的包收窄成还缺的那几个并留下那句话（重试只装这些，因为每次安装都会重新装载插件、中止正在进行的 Agent 运行），「请先打开一个项目」那条前提也改留在框里；双语文案 `sandboxBackendPrompt.installStopped(reason)` / `installRefused(reasons, missing)`；1 个新单测文件（8 条）+ 1 个新 spec（3 条）+ changelog 一对，不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型） · `oxlint` 七个改动文件 **0 警告 0 错误** · `prettier --check` 七个文件（含 changelog 一对、spec）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **301 文件 / 3558 通过 / 2 跳过**（+1 文件、+8 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · **新 spec** `sandbox-backend-install-refusal.spec.mjs` **3 passed（16.3 s）**（真服务端 + 真浏览器，`/api/admin/plugin-config` 与 `**/api/projects/*/plugins/installed*` 由 `page.route` 供给）：安装桩成 500 `internal` 时对话框留着、`role="alert"` 是「安装请求失败：服务器内部错误，请稍后重试。还没装上：@adelie/sandbox-bwrap。可以再点一次「安装」。」、通知区里没有它；**7 秒后**仍在且「安装」按钮 `toBeEnabled()`；放行后重按，对话框关闭、第二次 POST 与第一次逐字相同、出现「已安装」通知；装上了但加载不了的包按服务端原话念；两个包的这一轮卡在第二个时，框里只剩第二个（不再出现第一个）、重试只发这一个（`posts` 依次为 BW / DSH / DSH） · **反证**：四份源码与文案 `git checkout HEAD --`、新模块移走（改后源码留底 `r202/after-backup/`）、重建 web，同一份 spec **3 failed**（三条都死在对话框的 `getByRole("alert")`：`element(s) not found`），放回重建后 **3 passed** · **两态探针**（真服务端 + 真浏览器，同一脚本 `r202/probe.mjs`，安装桩成 500）：**改前** 1.2 s 对话框 **已关**（`dialogOpen: 0`）、原因只在通知区（`服务器内部错误，请稍后重试。`），7.6 s **对话框与通知区都没有了**（原因彻底消失，卡片仍写着「没有…后端」）；**改后** 1.2 s 与 7.6 s 对话框都在（`dialogOpen: 1`）、里面就是那一整句、通知区为空；两态 console 都只有本轮桩的 500，无 pageerror；截图 `r202/out/{before,after2}/{1_2s,7_6s}.png`，肉眼看了改后那张红字就贴在问题下面、按钮在下面 · 相邻回归（真浏览器三份 spec、四条）`plugins-backend-refresh-refusal` 1 + `plugin-config-save-refusal` 1 + `plugin-action-refusal` 2 **4 passed（24.9 s）**（第一份正是同一条安装路径：装完之后重读失败仍留在卡片上，未受影响）· 端口只用 9200 / 8941，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r202-e2e`，探针 / 两态源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r202/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ed5599796` |
 | 2026-11-06 | 7.92 | **插件库的「装入插件库」被拒时，原因留在那一行下面，不再只活六秒**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/plugins/library-add-refusal.ts`（`libraryAddRefused(error)`：插件错误码按 `pluginImportErrorText` 念它们自己的文案、绝不念线上英文原文，本仓自己抛的值按 `refusalText`（7.19），整句由 `S.plugins.libraryAddRefused(reason)` 补成「装入插件库失败：…」），`plugins-page.tsx` 多一个 `libraryRefusal`（specifier + 句子）—— `addPublishedToLibrary()` 的失败分支不再 `toastError` 而是写上这句话（409 `plugin_exists` 仍进它自己的覆盖确认），开始下一次尝试时清掉，上架行经 `ModuleRow` 新增的 `refusal` 槽读到它；那一行从单行 flex 改成列（原来的行 + 下面的句子），句子落在**链接之外**所以点它不会被带去 registry 页；双语文案 `plugins.libraryAddRefused(reason)`；1 个新单测文件（5 条）+ 1 个新 spec（2 条）+ changelog 一对，不碰接口、无新依赖） | 六包 `typecheck`（根 `pnpm typecheck`）**`EXIT=0`**（七个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，199 接口 / 598 类型）· `oxlint` 五个改动文件 **0 警告 0 错误** · `prettier --check` 六个文件（含 spec）干净（`plugins-page.tsx` 与新单测首跑 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）· cli **561**（38）· web **302 文件 / 3563 通过 / 2 跳过**（+1 文件、+5 条即本笔单测）· server **211 文件 / 3077 通过 / 17 跳过** · hmr 无测试文件（`EXIT=0`）· **新 spec** `plugin-library-add-refusal.spec.mjs` **2 passed（12.8 s）**（真服务端 + 真浏览器，`GET /api/plugins/registry` 与 `POST /api/plugins/download` 由 `page.route` 供给 —— 开发数据根既不发布也不自带这个包，没有夹具就没有上架行）：取包桩成 502 `download_failed` 时句子出现在那一行里（`toHaveText` 逐字「装入插件库失败：下载失败，请确认该地址可以访问。」）、通知区里没有它、行与可用的重试按钮都还在；**七秒后**（超过错误通知活着的 6 秒）仍在；桩改成功后重按，句子消失、两次 POST 都是 `{url: SPEC}`；第二条：409 `plugin_exists` 弹「覆盖同名用户插件」（带着插件名）、不画拒绝句，按「覆盖导入」后框关闭、第二次 POST 是 `{url: SPEC, overwrite: true}` · **反证**：三份源码与文案 `git checkout HEAD --`（改后源码留底 `r203/after-backup/`）、重建 web，同一份 spec **1 failed / 1 passed** —— 死在 `getByRole("alert")` 的 `toBeVisible`（`element(s) not found`），通过的那条是 409，正是本轮**有意不变**的行为；放回重建后 **2 passed（12.8 s）** · **两态探针**（真服务端 + 真浏览器，同一脚本 `r203/probe.mjs`，取包桩成 502）：**改前** 1.2 s 行内 `role="alert"` **0 条**、那句话在通知区（`关闭下载失败，请确认该地址可以访问。`），7.6 s **行内仍 0 条、通知区也没了**（原因彻底消失，行与按钮原样）；**改后** 1.2 s 与 7.6 s 都是**行内**同一条（`inRow: true`、`insideLink: false`、708×28 px 落在 x=321 / y=412）、通知区空；两态 console 只有本轮桩的 502，无 pageerror；截图 `r203/{before,after}/shots/{1_2s,7_6s}.png`，肉眼看了改后那张红字就在那一行下面、安装按钮在右侧 · 相邻回归（真浏览器五份 spec、十条）`plugin-import-refusal` 2 + `plugins-install-refusal` 2 + `plugin-action-refusal` 2 + `plugin-card-refusal` 3 + `plugins-read-refusal` 1 **10 passed（40.2 s）** · 端口只用 9210 / 9211 / 9212 / 9213 / 9214 / 9215 与 8961–8966（mock），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r203-*`，探针 / 改后源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r203/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `067fb8f45` |
+| 2026-11-07 | 7.93 | **插件装不到某个 Agent 上时，原因留在那张卡片里，不再只活六秒**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/plugins/install-refusal.ts`（`installRefused(plugin, agent, reason)` 造句子、`installRefusalFor(refusal, plugin)` 决定交给哪张卡片），`plugins-page.tsx` 多一个页面级 `installRefusal`（插件名 + 句子）—— `toggleInstall` 在安装开始前清掉它、失败时写上它（卸载那条路不变，仍把结论交回问话的确认框），卡片经新增的 `installRefusal` 属性读到并画在**卡片里**（原外层 flex 改成列：原来那一行 + 下面的句子；`role="alert"`、危险色、限两行、整句挂悬停），卡片自己的 `installNow` 与它那句 toast 一并删掉；双语文案 `plugins.installRefused(plugin, agent, reason)`；1 个新单测文件（5 条）+ 1 个新 spec（2 条）+ changelog 一对，不碰接口、无新依赖。**为什么归页面记**：安装是乐观的，卡片被归进「已安装」那一段、发请求的实例卸载，回滚后才重新出现 —— 状态放在卡片里实测一个字也画不出来） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 / 599 类型 —— 本笔只动 `packages/web`） · `oxlint` 六个改动文件 **0 警告 0 错误** · `prettier --check` 六个文件（含 spec）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（70 文件 + 1 跳过） · ui **1100**（132） · cli **561**（38） · web **304 文件 / 3575 通过 / 2 跳过**（+1 文件、+5 条即本笔；另 1 个文件 / 7 条是另一条线已在 `main` 上的语音输入笔） · server **212 文件 / 3092 通过 / 17 跳过** · hmr 无测试文件（`EXIT=0`） · **新 spec** `plugin-install-refusal.spec.mjs` **2 passed（19.7 s）**（真服务端 + 真浏览器；`GET /api/plugins` 供一个没人装过的用户插件，`POST …/agents/:a/plugins` 桩成 500 `unknown_plugin` + 一句英文原文 —— 开发数据根不发布任何插件，没有夹具就没有卡片）：卡片一键安装被拒时句子出现在**卡片里**、逐字「未能将 probe-plugin 安装到 General Agent：该插件不在插件库中。」、念的是界面自己的话（没有 RAW ENGLISH）、通知区里没有它、重试按钮仍可用、**七秒后**仍在，重试成功后消失、两次请求体都是 `{names:["probe-plugin"]}`；第二条：从「管理安装」那一行安装被拒时对话框随卡片的乐观移动关掉（`toHaveCount(0)`）、卡片回到「可安装」并在下面留着同一句话、同样活过七秒，从卡片再开对话框重试成功后句子消失 · **反证**：三份源码 `git checkout HEAD --`（改后源码留底 `r204/after-backup/`）、重建 web，同一份 spec **2 failed**（两条都死在 `getByRole("alert")` 的 `toBeVisible`：`element(s) not found`），放回重建后 **2 passed（20.0 s）** · **两态探针**（真服务端 + 真浏览器，同一脚本 `r204/probe.mjs`，安装桩成 500）：**改前** 1.2 s 页面上 `role="alert"` **0 条**、那句话在通知区（`该插件不在插件库中。`），7.6 s **通知区也空了**（原因彻底消失，卡片与按钮原样）；**改后** 1.2 s 与 7.6 s 都是**卡片里**同一条（`inCard: true`、676×16 px 落在 x=337 / y=404），通知区只剩它自己的关闭按钮；两态 console 只有本轮桩的 500、无 pageerror；截图 `r204/out/{before,after}/shots/{1_2s,7_6s}.png`，肉眼看了改后那张红字就在卡片标签行下面 · 相邻回归（真浏览器五份 spec、十一条）：`plugin-card-refusal` 3 + `plugins-install-refusal` 2 **5 passed（12.7 s）**、`plugin-action-refusal` 2 + `plugin-import-refusal` 2 + `plugin-library-add-refusal` 2 **6 passed（30.4 s）** · 端口只用 9220，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r204-install`，探针 / 改后源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r204/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `6e0a3d93f` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -23161,3 +23179,108 @@ theme-import-dialog` 也早就把拒绝留在弹窗体里 —— 这一处是同
 
 源码 3 个 + 新模块 1 个 + 新单测 1 个 + 新 spec 1 个 + changelog 一对：`067fb8f45`（8 文件）；
 台账（7.92 的待办行、上表那一行、本节）另起一笔。
+
+## 第二百零四轮：插件装不到某个 Agent 上时，原因留在那张卡片里（2026-11-07，条目 7.93）
+
+### 开工自检
+
+`main` 在 `437ff93e8`（另一条线的 `feat(web,server): 输入框能语音输入，识别在服务器上做`，本地与
+`origin/main` 同点 —— 第二百零三轮收工时它已经在树上），`git status --short` **干净**；
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date.`。开工时 92xx 上没起
+服务端，也没有别的会话进程在写这棵树。
+
+### 选活：表上仍全卡着，接第二百零三轮「没做 / 留着」的名单
+
+未勾选的仍是 **2.2c**（尾巴只剩桌面壳写侧 / 既有部署单元 / 发布动作，本轮纪律明令不碰 desktop）、
+**3.5**（拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+
+第二百零三轮点名的名单是「卡片的一键安装与『管理安装』里的行内开关（拒绝句要画进那个模态框，
+下一轮按同一判据挑）」，另有 `draft-view.tsx` 那两处与 `machines-page.tsx` 的 `configure`（读）。
+逐个核过：`draft-view.tsx` 的两处（思考等级写回滚、新对话第一条消息发不出去）与 `chat-page.tsx`
+里那一大片同族，仍属「发送 / 切换」面，单独一轮更合适；`machines-page.tsx` 那处是**读**。于是取
+前面那一对，而它们其实是**同一个函数** `installNow`（卡片一键安装与模态框每一行的「安装」各一个
+调用点），所以两处一起收 —— 这也是这一轮唯一偏离「一次一处」的地方，理由写在下节。
+
+### 做了什么
+
+- 新增 `packages/web/src/features/plugins/install-refusal.ts`：
+  `installRefused(plugin, agent, reason)` 造那句话（插件 + Agent + 原因，原因是 `toggleInstall`
+  已经算好的那份 —— `apiErrorText`，本仓自己抛的值走 `refusalText` 的规则），
+  `installRefusalFor(refusal, plugin)` 决定交给哪张卡片 —— 纯判断，不依赖页面就能测。
+- `features/plugins/plugins-page.tsx`：页面多一个 `installRefusal`（插件名 + 句子）；
+  `toggleInstall` 在安装开始前清掉它、失败时写上它（**卸载那条路一字未动**，仍把结论交回问话的
+  确认框）；`libraryCard` 按插件名把它交给对应的卡片；卡片拿到新增的 `installRefusal` 属性，外层
+  从单行 flex 改成列（原来那一行 + 下面的句子），句子 `role="alert"`、危险色、限两行、整句挂悬停
+  （与 7.89–7.92 同一套写法）。卡片里原来那个 `installNow` 与它那句 `toastError` 一并删掉。
+- `lib/strings{,-en}.ts`：一条新文案 `plugins.installRefused(plugin, agent, reason)`
+  （「未能将 X 安装到 Y：原因」）。
+- **有意不改的**：三个确认框（更新 / 卸载 / 删除）仍把拒绝留在框里；成功那一条仍走成功通知
+  （那是确认，不是拒绝）。**不碰接口、无新依赖、不碰 desktop。**
+
+### 一个必须记下来的弯路（第一版错在哪）
+
+第一版把句子存在**卡片**里（`installNow` 自己 `setInstallRefusal`），理由看起来挺顺：谁发起的谁
+留着。跑真浏览器时两句都红：点完按钮，卡片里什么也没有。原因在代码里本来就写着 —— 安装是**乐观**
+的，`toggleInstall` 在请求发出时先把插件在该 Agent 上标记为已安装，于是卡片被归进「已安装」那一段
+（`PluginList` 换了父元素，同一个 key 也重新挂载），服务端拒绝后标记回滚、卡片再挂回来：**发请求的
+那个实例在答复到达之前就已经卸载过**，句子跟着它一起没了。改成「页面按插件名记着」之后一次就过。
+
+顺带的结论：「管理安装」对话框也随同一次乐观移动关掉（第二次实测确认 `toHaveCount(0)`），所以
+**它自己那几行不再留槽位** —— 拒绝时说这句话的位置就是回来那张卡片，并点名是哪个 Agent 没装上。
+上一轮记的「拒绝句要画进那个模态框」在这个乐观移动下做不到；要真做到得让安装也「等答复再动」
+（卸载那条路就是这么做的），那是另一种取舍，本轮没动。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 /
+  599 类型 —— 本笔只动 `packages/web`）。
+- 逐包 test **`EXIT=0`、0 失败**：core **1456** 通过 / 6 跳过（70 文件 + 1 跳过）· ui **1100**（132）·
+  cli **561**（38）· web **304 文件 / 3575 通过 / 2 跳过**（+1 文件、+5 条即本笔；另外 1 个文件 /
+  7 条来自另一条线已在 `main` 上的语音输入那一笔，所以与上一轮记的 302 / 3563 不是同一个基线）·
+  server **212 文件 / 3092 通过 / 17 跳过** · hmr 无测试文件（`EXIT=0`）。
+- `oxlint` 六个改动文件 **0 警告 0 错误**；`prettier --check` 六个文件（含 spec）干净；
+  `git diff --check` 干净。
+- **新 spec** `packages/web/e2e/plugin-install-refusal.spec.mjs` **2 passed（19.7 s）**（真服务端 +
+  真浏览器；`GET /api/plugins` 供一个没人装过的用户插件，`POST …/agents/:a/plugins` 桩成 500
+  `unknown_plugin` 加一句英文原文 —— 开发数据根既不发布也不自带任何用户插件，没有夹具就没有卡片；
+  不需要模型 key）：
+  1. 卡片一键安装被拒 → 句子出现在**卡片里**、逐字「未能将 probe-plugin 安装到 General Agent：
+     该插件不在插件库中。」、念的是界面自己的话（页面上没有 RAW ENGLISH）、通知区里没有它、
+     重试按钮仍可用；**七秒后**仍在；重试成功后消失，两次请求体都是 `{names:["probe-plugin"]}`。
+  2. 从「管理安装」那一行安装被拒 → 对话框随卡片的乐观移动关掉、卡片回到「可安装」并在下面留着
+     同一句话（同样活过七秒），再从卡片打开对话框重试成功、句子消失。
+- **反证**：三份源码与文案 `git checkout HEAD --`（改后源码留底 `r204/after-backup/`）、重建 web 产物，
+  同一份 spec **2 failed**（两条都死在 `getByRole("alert")` 的 `toBeVisible`：`element(s) not found`）；
+  放回重建后 **2 passed（20.0 s）**。
+- **两态探针**（真服务端 + 真浏览器，同一脚本 `r204/probe.mjs`，安装桩成 500）：
+
+  | 量点 | 改前（`checkout HEAD` 重建） | 改后 |
+  | --- | --- | --- |
+  | 1.2 s `role="alert"` | **0 条** | **1 条**（`inCard: true`，676×16 px，x=337 / y=404） |
+  | 1.2 s 那句话在哪 | 通知区：`该插件不在插件库中。` | 卡片里：`未能将 probe-plugin 安装到 General Agent：该插件不在插件库中。` |
+  | 7.6 s | **通知区也空了**（原因彻底消失，卡片与按钮原样） | 卡片里逐字不变 |
+  | console | 只有本轮桩的 500，无 pageerror | 同上 |
+  | 截图 | `r204/out/before/shots/{1_2s,7_6s}.png` | `r204/out/after/shots/{1_2s,7_6s}.png`（红字在卡片标签行下面） |
+
+- **相邻回归**（真浏览器五份 spec、十一条）：`plugin-card-refusal` 3 + `plugins-install-refusal` 2
+  **5 passed（12.7 s）**；`plugin-action-refusal` 2 + `plugin-import-refusal` 2 +
+  `plugin-library-add-refusal` 2 **6 passed（30.4 s）** —— 同一页、同一批写入路径，都未受影响。
+- 端口只用 9220（服务端）；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r204-install`，探针 / 改后源码留底 / 截图 / 临时 playwright 配置都在
+  scratchpad 的 `r204/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- 「拒绝句画进『管理安装』模态框里」这件事，在当前的乐观安装下做不到（对话框随卡片的移动关掉）。
+  真要做，得让安装也「等答复再动」（与卸载同一条规则），这会丢掉那一瞬的即时反馈 —— 留作一个
+  可选的下一步，等有人觉得值得再动。
+- `draft-view.tsx` 那两处（思考等级写回滚 / 新对话首条消息发不出去）与 `machines-page.tsx` 的
+  `configure`（读，不是写）留给后面。
+- 2.2c 的尾巴（桌面壳写侧 / 既有部署单元 `adelie-app.service`）、3.5 / 3.6、5.6 / 5.10、
+  4.1–4.3 仍等各自的条件（桌面壳纪律、用户拍板、模型 key、发布动作）。
+
+### 提交
+
+源码 3 个 + 新模块 1 个 + 新单测 1 个 + 新 spec 1 个 + changelog 一对：`6e0a3d93f`（8 文件）；
+台账（7.93 的待办行、上表那一行、本节）另起一笔。
