@@ -8,9 +8,10 @@ import {
   DEFAULT_ATTACHMENT_MAX_MB,
   DEFAULT_ATTACHMENT_TOTAL_MB,
 } from "../../services/attachment-limits.js";
+import { DEFAULT_ASR_BASE_URL, DEFAULT_ASR_MODEL } from "../../services/asr.js";
 import { Component, Use } from "@adelie/core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
-import type { Settings } from "../../mechanisms/settings.js";
+import type { AsrSettings, Settings } from "../../mechanisms/settings.js";
 
 /** Key of the "application uses the proxy" switch (the server's own outbound dispatcher); default on. */
 const PROXY_FOR_APP_KEY = "proxy_for_app";
@@ -38,6 +39,11 @@ const ATTACHMENT_TOTAL_MB_KEY = "attachment_total_mb";
 const COMPANY_MODE_KEY = "companyMode";
 /** Key of the Agent API switch; default on (see getAgentApiEnabled). */
 const AGENT_API_KEY = "agentApiEnabled";
+
+/** Speech input: the provider site, the model id, and the key to ask it with (see getAsrSettings). */
+const ASR_BASE_URL_KEY = "asrBaseUrl";
+const ASR_MODEL_KEY = "asrModel";
+const ASR_API_KEY = "asrApiKey";
 
 @Component()
 export class ServerSettingsRepo implements Settings {
@@ -181,5 +187,37 @@ export class ServerSettingsRepo implements Settings {
 
   setAgentApiEnabled(value: boolean): void {
     this.set(AGENT_API_KEY, JSON.stringify(value));
+  }
+
+  /**
+   * Speech input settings. The site and the model read as the built-in defaults when their rows
+   * are absent or unreadable — the page must show what a recording would actually use, and a
+   * blank field that silently meant "the default" would not. The key has no default: an unset
+   * one reads as "", and the transcribe route turns that into its own refusal.
+   */
+  getAsrSettings(): AsrSettings {
+    return {
+      baseUrl: this.getString(ASR_BASE_URL_KEY, DEFAULT_ASR_BASE_URL),
+      model: this.getString(ASR_MODEL_KEY, DEFAULT_ASR_MODEL),
+      apiKey: this.getString(ASR_API_KEY, ""),
+    };
+  }
+
+  setAsrSettings(value: AsrSettings): void {
+    this.set(ASR_BASE_URL_KEY, JSON.stringify(value.baseUrl));
+    this.set(ASR_MODEL_KEY, JSON.stringify(value.model));
+    this.set(ASR_API_KEY, JSON.stringify(value.apiKey));
+  }
+
+  /** A stored JSON string, or `fallback` when the row is absent, unreadable, blank or not a string. */
+  private getString(key: string, fallback: string): string {
+    const raw = this.get(key);
+    if (raw === null) return fallback;
+    try {
+      const value: unknown = JSON.parse(raw);
+      return typeof value === "string" && value.trim() !== "" ? value : fallback;
+    } catch {
+      return fallback;
+    }
   }
 }

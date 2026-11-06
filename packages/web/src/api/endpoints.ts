@@ -31,6 +31,10 @@ import type {
   AgentVaultConfigDto,
   AllProjectSchedulesResponse,
   ApprovalDecisionRequest,
+  AsrConfigResponse,
+  AsrConfigUpdateRequest,
+  AsrTranscribeRequest,
+  AsrTranscribeResponse,
   AuthLoginRequest,
   AuthResponse,
   BenchmarkCasesResponse,
@@ -334,6 +338,23 @@ export const adminDeleteUser = (userId: string) =>
 
 /** Server-global settings (admin only): currently the "use system HTTP proxy" switch. */
 export const adminGetSettings = () => apiFetch<ServerSettingsResponse>("/api/admin/settings");
+
+/**
+ * Speech input (admin only): the provider site, model and key the server transcribes the
+ * composer's recording with. The read is masked — it carries `hasKey`, never the key.
+ */
+export const getAsrConfig = () => apiFetch<AsrConfigResponse>("/api/asr/config");
+
+/** Stores the speech-model settings; an omitted or empty `apiKey` keeps the stored one. */
+export const putAsrConfig = (body: AsrConfigUpdateRequest) =>
+  apiFetch<AsrConfigResponse>("/api/asr/config", { method: "PUT", body });
+
+/**
+ * Transcribes one recording (any signed-in user — the admin configured the key). The audio
+ * rides base64 because it is binary, as every other binary body in this API does.
+ */
+export const asrTranscribe = (body: AsrTranscribeRequest) =>
+  apiFetch<AsrTranscribeResponse>("/api/asr/transcribe", { method: "POST", body });
 
 /*
  * Plugin configuration is kept by each server in its own database, so `server` names the

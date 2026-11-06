@@ -321,6 +321,57 @@ export interface ServerSettingsResponse {
 }
 
 /**
+ * Speech input — the composer's microphone (GET|PUT /api/asr/config, admin only).
+ *
+ * The recognition runs on the server, never in the browser: the desktop shell has no Web
+ * Speech API, so a browser-side recognizer would make the two clients behave differently,
+ * and the key would have to be handed to every browser that opens the page. The recording
+ * goes up to this server, and this server makes the provider call with the key stored here.
+ *
+ * `baseUrl` and `model` are never empty (an unset one is the built-in default), so the page
+ * shows what a recording would actually use. `apiKey` is write-only — the read carries
+ * `hasKey` instead, the same rule a Project's model credentials follow.
+ */
+export interface AsrConfig {
+  /** The speech provider's site, e.g. `https://tokendance.space`. */
+  baseUrl: string;
+  /** The upstream model id. */
+  model: string;
+  /** Whether a key is stored. The key itself never crosses this boundary. */
+  hasKey: boolean;
+}
+
+export interface AsrConfigResponse {
+  config: AsrConfig;
+}
+
+export interface AsrConfigUpdateRequest {
+  baseUrl?: string;
+  model?: string;
+  /** Omitted or empty keeps the stored key; a non-empty value replaces it. */
+  apiKey?: string;
+}
+
+/**
+ * POST /api/asr/transcribe request: one utterance, base64 as every other binary body in this
+ * API is (the composer records raw little-endian PCM16 mono and encodes it here).
+ */
+export interface AsrTranscribeRequest {
+  /** The recording, base64-encoded. */
+  dataBase64: string;
+  /** 8000 or 16000; omitted takes 16000, the rate the composer records at. */
+  sampleRate?: number;
+}
+
+/**
+ * POST /api/asr/transcribe result: the transcript of one uploaded utterance, which may be
+ * empty — silence is a legitimate answer and is not an error.
+ */
+export interface AsrTranscribeResponse {
+  text: string;
+}
+
+/**
  * The data root's storage ledger (GET /api/admin/storage) — what is on disk under
  * `ADELIE_HOME`, what each thing is for, and what a person could clean up.
  *

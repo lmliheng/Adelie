@@ -281,6 +281,12 @@ export const ICONS = {
   /** A picture: the rounded frame, and a mountain line across its lower half. */
   image:
     "M6 5h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3zM3 15l5-5 4 4 3-3 6 6",
+  /**
+   * A microphone: the capsule, its yoke and the stand. Speech input — the composer's record
+   * button, and the settings page that holds the model it transcribes with.
+   */
+  microphone:
+    "M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zM19 11a7 7 0 0 1-14 0M12 18v3M9 21h6",
   /** Three sliders set at different heights (feather sliders): how something behaves, adjustable. */
   sliders: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
   /** A four-pointed spark: effort and thought, the dial a model thinks harder on. */

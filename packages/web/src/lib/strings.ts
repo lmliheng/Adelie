@@ -833,6 +833,20 @@ export const zh = {
     uploadLimitsInfo: (count: number, imageMb: number): string =>
       `一条消息最多 ${count} 个附件；对话内嵌图片另有 ${imageMb}MB 上限，不随此设置变化——` +
       `图片会进入对话与轨迹，每次翻阅历史与恢复会话都要重新付出它的体积。`,
+    speechTitle: "语音输入",
+    /** Disclosed at the pane heading: where the audio goes, and where the key lives. */
+    speechInfo:
+      "录音在浏览器里完成，识别在服务器上做：录音交给下列服务商转成文字，服务商密钥只留在这台服务器上，" +
+      "不随页面下发。配好之后，聊天输入框的麦克风按钮就能用。",
+    speechBaseUrl: "服务地址",
+    speechBaseUrlHint: "服务商的站点地址，例如 https://tokendance.space",
+    speechModel: "识别模型",
+    speechModelHint: "服务商那边的模型 ID，例如 qwen-audio-3.1-asr-flash-streaming",
+    speechApiKey: "API 密钥",
+    speechApiKeyHint: "留空表示沿用已保存的密钥",
+    /** The two states of the stored key, shown beside the key field. */
+    speechKeyStored: "已保存密钥",
+    speechKeyMissing: "尚未保存密钥，语音输入暂不可用",
     /** The fold holding the fields a settings group marks advanced. */
     pluginAdvanced: "高级选项",
     /** A table cell its row does not let change, beside the lock mark. */
@@ -4030,6 +4044,20 @@ export const zh = {
     uploadVideoDesc: "为本条消息附加视频",
     uploadFile: "上传文件",
     uploadFileDesc: "文件存入会话临时目录，模型按路径读取",
+    /**
+     * The composer's microphone, beside the "+": `dictate` starts a recording, `dictateStop`
+     * ends it and transcribes. The two in-flight labels say which half is running — a recording
+     * nobody has ended and a recording being transcribed look alike otherwise, and only one of
+     * them needs the user to do something.
+     */
+    dictate: "语音输入",
+    dictateStop: "结束录音并识别",
+    dictating: "正在录音",
+    transcribing: "正在识别…",
+    /** A recording that came back as nothing, said where the draft is rather than as a toast. */
+    dictateHeardNothing: "没有听清，请再说一次。",
+    /** The microphone was refused before any recording started (no device, or permission denied). */
+    dictateUnavailable: "无法使用麦克风：请检查浏览器或系统的麦克风权限。",
     removeFile: "移除文件",
     /**
      * Toast for a picked file rejected before reading. The limit is admin-settable and differs
@@ -5821,6 +5849,16 @@ export const zh = {
       too_many_files: "一条消息附加的文件过多。",
       payload_too_large: "请求体过大。",
       image_too_large: "图片过大，无法随对话发送。",
+      asr_not_configured: "还没有配置语音识别模型，请在「设置 → 服务器 → 语音输入」里配置。",
+      asr_unreachable: "连不上语音服务，请检查设置里的服务地址与网络。",
+      asr_timeout: "语音服务没有及时返回结果，请再试一次。",
+      asr_empty_audio: "没有录到声音，请再试一次。",
+      asr_too_long: "录音太长了，请说得短一点。",
+      asr_bad_audio: "录音数据不完整，请再试一次。",
+      asr_bad_sample_rate: "录音的采样率不受支持。",
+      invalid_asr_base_url: "服务地址必须是完整的 http(s) 地址。",
+      invalid_asr_model: "识别模型不能为空。",
+      invalid_asr_api_key: "API 密钥不能为空。",
       dir_not_absolute: "目录必须是绝对路径。",
       dir_not_found: "该目录不存在或不可访问。",
       dir_permission_denied: "没有访问该目录的权限。",

@@ -123,6 +123,7 @@ import { OrgRuns, OrgSessions } from "./runtime/organization/deps.js";
 import { TerminalRelay } from "./machines/terminal-relay.js";
 import { ProjectAdminRoutes } from "./http/routes/projects.js";
 import { AdminRoutes } from "./http/routes/admin.js";
+import { AsrRoutes } from "./http/routes/asr.js";
 import { MeRoutes } from "./http/routes/me.js";
 import { UserVaultRoutes } from "./http/routes/user-vault.js";
 import { AuthRoutes } from "./http/routes/auth.js";
@@ -471,6 +472,7 @@ export class CompanyModule {}
     InstallRoutes,
     VersionRoutes,
     FeedbackRoutes,
+    AsrRoutes,
     HmrRoutes,
     DesktopRoutes,
     DesktopUpdateRoutes,

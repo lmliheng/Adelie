@@ -58,6 +58,9 @@ function memorySettings(maxMb = 7): Settings {
     getAttachmentTotalMb: () => maxMb * 10,
     setAttachmentTotalMb: () => {},
     getAttachmentLimitsMb: () => ({ attachmentMaxMb: maxMb, attachmentTotalMb: maxMb * 10 }),
+    // Speech input is not what this file is about; the stub reads as "nothing configured".
+    getAsrSettings: () => ({ baseUrl: "", model: "", apiKey: "" }),
+    setAsrSettings: () => {},
   };
 }
 

@@ -770,6 +770,21 @@ export const en: Strings = {
       `conversation keep a separate ${imageMb}MB limit that this setting does not raise — an ` +
       `inline image enters the conversation and the Trace, where its size is paid again on ` +
       `every history page and resume.`,
+    speechTitle: "Speech input",
+    /** Disclosed at the pane heading: where the audio goes, and where the key lives. */
+    speechInfo:
+      "The browser records; the server transcribes. The recording goes to the provider below, " +
+      "and the provider key stays on this server rather than being handed to every page. Once " +
+      "it is set, the microphone button in the composer works.",
+    speechBaseUrl: "Service address",
+    speechBaseUrlHint: "The provider's site, e.g. https://tokendance.space",
+    speechModel: "Model",
+    speechModelHint: "The provider's model id, e.g. qwen-audio-3.1-asr-flash-streaming",
+    speechApiKey: "API key",
+    speechApiKeyHint: "Leave empty to keep the stored key",
+    /** The two states of the stored key, shown beside the key field. */
+    speechKeyStored: "A key is stored",
+    speechKeyMissing: "No key yet — speech input is unavailable",
     /** The fold holding the fields a settings group marks advanced. */
     pluginAdvanced: "Advanced",
     /** A table cell its row does not let change, beside the lock mark. */
@@ -3955,6 +3970,21 @@ export const en: Strings = {
     uploadVideoDesc: "Attach a video to this message",
     uploadFile: "Upload file",
     uploadFileDesc: "Saved to the session scratchpad; the model reads them by path",
+    /**
+     * The composer's microphone, beside the "+": `dictate` starts a recording, `dictateStop`
+     * ends it and transcribes. The two in-flight labels say which half is running — a recording
+     * nobody has ended and a recording being transcribed look alike otherwise, and only one of
+     * them needs the user to do something.
+     */
+    dictate: "Voice input",
+    dictateStop: "Stop and transcribe",
+    dictating: "Recording",
+    transcribing: "Transcribing…",
+    /** A recording that came back as nothing, said where the draft is rather than as a toast. */
+    dictateHeardNothing: "Nothing was heard — please try again.",
+    /** The microphone was refused before any recording started (no device, or permission denied). */
+    dictateUnavailable:
+      "The microphone is unavailable: check the browser's or the system's permission for it.",
     removeFile: "Remove file",
     attachmentTooLarge: (name: string, limitMb: number): string =>
       `${name} exceeds the ${limitMb}MB limit and was not attached.`,
@@ -5780,6 +5810,18 @@ export const en: Strings = {
       too_many_files: "Too many files attached to one message.",
       payload_too_large: "The request is too large.",
       image_too_large: "The image is too large to send inline.",
+      asr_not_configured:
+        "No speech model is configured — set one under Settings → Server → Speech input.",
+      asr_unreachable:
+        "The speech service could not be reached; check the service address and the network.",
+      asr_timeout: "The speech service did not answer in time; please try again.",
+      asr_empty_audio: "Nothing was recorded; please try again.",
+      asr_too_long: "The recording is too long; please say less.",
+      asr_bad_audio: "The recording is incomplete; please try again.",
+      asr_bad_sample_rate: "The recording's sample rate is not supported.",
+      invalid_asr_base_url: "The service address must be a full http(s) URL.",
+      invalid_asr_model: "The model id cannot be empty.",
+      invalid_asr_api_key: "The API key cannot be empty.",
       dir_not_absolute: "The directory must be an absolute path.",
       dir_not_found: "That directory does not exist or is inaccessible.",
       dir_permission_denied: "The server is not allowed to access that directory.",

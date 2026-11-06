@@ -26,6 +26,7 @@ import { ShortcutsSection } from "./shortcuts-section";
 import { AccountSection } from "./account-section";
 import { ProxySection } from "./proxy-section";
 import { UploadsSection } from "./uploads-section";
+import { AsrSection } from "./asr-section";
 import { CompanySection } from "./company-section";
 import { AgentApiSection } from "./agent-api-section";
 import { PluginsSection } from "./plugins-section";
@@ -54,6 +55,8 @@ const SECTION_ICONS: Record<SettingsSectionKey, string> = {
     "M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3.6 9h16.8M3.6 15h16.8M12 3a15 15 0 0 0 0 18M12 3a15 15 0 0 1 0 18",
   /** Up arrow over a base: uploads. */
   uploads: "M12 15V4m0 0L7 9m5-5l5 5M4 20h16",
+  /** Microphone: speech input. */
+  speech: ICONS.microphone,
   /** The building the mode switch wears: company mode. */
   company: ICONS.building,
   /** Angle brackets: programs calling the Agents. */
@@ -111,6 +114,7 @@ export function SettingsDialog({
     credits: S.settings.creditsTitle,
     proxy: S.settings.proxyTitle,
     uploads: S.settings.uploadLimitsTitle,
+    speech: S.settings.speechTitle,
     company: S.settings.companyModeTitle,
     agentApi: S.settings.agentApiTitle,
     plugins: S.settings.pluginsTitle,
@@ -127,6 +131,7 @@ export function SettingsDialog({
     shortcuts: S.settings.shortcutsInfo,
     proxy: S.settings.proxyInfo,
     uploads: S.settings.uploadLimitsInfo(uploadLimits.attachmentMaxCount, uploadLimits.imageMaxMb),
+    speech: S.settings.speechInfo,
     company: S.settings.companyModeServerInfo,
     agentApi: S.settings.agentApiHint,
     plugins: S.settings.pluginsInfo,
@@ -174,6 +179,7 @@ export function SettingsDialog({
       {current === "credits" && <CreditsSection />}
       {current === "proxy" && <ProxySection />}
       {current === "uploads" && <UploadsSection />}
+      {current === "speech" && <AsrSection />}
       {current === "company" && <CompanySection />}
       {current === "agentApi" && <AgentApiSection />}
       {current === "plugins" && (

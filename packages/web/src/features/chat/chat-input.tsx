@@ -118,6 +118,7 @@ import {
   SlashMenu,
   SlashPicker,
   TagInput,
+  ToolbarTrigger,
   ZoomableImage,
   noAutofill,
   toastError,
@@ -125,6 +126,7 @@ import {
 } from "@adelie/ui";
 import type { MenuSelectOption, TagInputChip } from "@adelie/ui";
 import { S } from "../../lib/strings";
+import { toneInk } from "../../lib/tone";
 import { formatBytes, humanizeTokens } from "../../lib/format";
 import { fitTextarea } from "../../lib/textarea-fit";
 import { useLocale } from "../../state/locale";
@@ -156,6 +158,7 @@ import type { HistoryStep } from "./input-history";
 import { isStopAction, midRunAction } from "./composer-send";
 import { steeringSummary } from "./queued-summary";
 import { PAPERCLIP_ICON } from "./attached-files-banner";
+import { useDictation } from "./use-asr-recorder";
 import { FileDropZone } from "./drop-zone";
 import { ContextGauge } from "./context-gauge";
 import { modelWindowBelowCompactionLimit } from "../../lib/context";
@@ -881,6 +884,28 @@ export function ChatInput({
   /** Live text mirror for slash-command run() closures (the commands memo deliberately doesn't depend on text). */
   const textRef = useRef(text);
   textRef.current = text;
+  /**
+   * The microphone. A transcript is appended to whatever is already typed rather than replacing
+   * it: dictation is a way to write into this draft, not a way to write a new one, and someone
+   * who has typed half a sentence should not lose it by speaking the rest.
+   */
+  const dictation = useDictation(
+    useCallback(
+      (transcript: string) => {
+        const spoken = transcript.trim();
+        if (spoken === "") return;
+        // Read the draft from the mirror rather than from a state updater: the append has a
+        // second effect (telling the host), and an updater may run twice.
+        const previous = textRef.current;
+        const joined =
+          previous.trim() === "" ? spoken : `${previous.replace(/\s+$/, "")} ${spoken}`;
+        setText(joined);
+        onTextChange?.(joined);
+        textareaRef.current?.focus();
+      },
+      [onTextChange],
+    ),
+  );
   const [images, setImages] = useState<string[]>([]);
   /**
    * The staged images as one batch for the lightbox: opening any of them lets the reader step
@@ -2460,6 +2485,23 @@ export function ChatInput({
         onChange={onPickAttachments}
       />
 
+      {/* What the microphone has to say: a refused transcription, or a recording that came back
+          empty. Drawn here, above the card, for the same reason the queued-follow-up hint is —
+          it belongs to the input, and a toast would be gone while the empty box it explains
+          stays. Cleared by the next keystroke or the next recording. */}
+      {dictation.notice !== null && (
+        <p
+          role="alert"
+          data-tooltip={dictation.notice.text}
+          data-tooltip-content="text"
+          className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${
+            dictation.notice.failed ? toneInk.danger : "text-gray-400 dark:text-gray-500"
+          }`}
+        >
+          {dictation.notice.text}
+        </p>
+      )}
+
       {/* Unified input card: the multi-line text body occupies the top area, with all controls
           collected onto a single bottom row that never shares a line with the text. The card
           collapses its toolbar by its own width (help text and button text hide under its
@@ -2520,6 +2562,8 @@ export function ChatInput({
             const caretNow = e.target.selectionStart ?? value.length;
             setText(value);
             onTextChange?.(value);
+            // Typing answers whatever the last recording said, so the line stops claiming it.
+            dictation.clearNotice();
             setCaret(caretNow);
             setSlashIndex(0);
             // Closing via Escape only persists for "the same token": continuing to type within
@@ -2549,8 +2593,8 @@ export function ChatInput({
                   : S.chat.inputPlaceholder,
         }}
         tools={
-          // The three icon buttons — +, permission, skills — sit as one tight cluster: the row's
-          // wider gap would read them as unrelated controls.
+          // The four icon buttons — +, microphone, permission, skills — sit as one tight cluster:
+          // the row's wider gap would read them as unrelated controls.
           <>
             {/* "+" extension menu, leading the row: input add-ons (image upload, video upload,
                 file attachment, goal mode) plus the input settings footer (mid-run send mode —
@@ -2611,6 +2655,36 @@ export function ChatInput({
                 ]}
                 footer={<SteerModeRow steerMode={steerMode} onChangeSteerMode={setSteerMode} />}
                 direction={models && onChangeModel ? "down" : "up"}
+              />
+            )}
+            {/* The microphone, right beside the "+": the other way to put words in the box.
+                One click starts recording, the next ends it and transcribes; the server does
+                the recognizing (Settings > Server > Speech input holds the model and key), so
+                this button needs nothing from the model picked for the conversation. Disabled
+                only while a recording is being transcribed — speaking is orthogonal to a run,
+                and the draft stays writable throughout one. */}
+            {variant === "session" && (
+              <ToolbarTrigger
+                glyph={
+                  <GlyphIcon
+                    d={ICONS.microphone}
+                    size={ICON_SIZE.iconButton}
+                    className={
+                      dictation.state === "recording" ? toneInk.danger : "shrink-0 text-fg-muted"
+                    }
+                  />
+                }
+                ariaLabel={dictation.state === "recording" ? S.chat.dictateStop : S.chat.dictate}
+                tooltip={
+                  dictation.state === "recording"
+                    ? S.chat.dictateStop
+                    : dictation.state === "transcribing"
+                      ? S.chat.transcribing
+                      : S.chat.dictate
+                }
+                disabled={dictation.state === "transcribing"}
+                {...(dictation.state === "idle" ? {} : { "data-state": dictation.state })}
+                onClick={dictation.toggle}
               />
             )}
             <PermissionSelect
