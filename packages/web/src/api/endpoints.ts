@@ -33,6 +33,8 @@ import type {
   ApprovalDecisionRequest,
   AsrConfigResponse,
   AsrConfigUpdateRequest,
+  AsrTestRequest,
+  AsrTestResponse,
   AsrTranscribeRequest,
   AsrTranscribeResponse,
   AuthLoginRequest,
@@ -348,6 +350,14 @@ export const getAsrConfig = () => apiFetch<AsrConfigResponse>("/api/asr/config")
 /** Stores the speech-model settings; an omitted or empty `apiKey` keeps the stored one. */
 export const putAsrConfig = (body: AsrConfigUpdateRequest) =>
   apiFetch<AsrConfigResponse>("/api/asr/config", { method: "PUT", body });
+
+/**
+ * Asks the configured service whether it will take this site, this model and this key: one whole
+ * task with no audio in it. An omitted field falls back to what is stored, so a check may be run
+ * on a form that has not been saved. `ok: false` is the check's answer, not a failed request.
+ */
+export const testAsrConfig = (body: AsrTestRequest) =>
+  apiFetch<AsrTestResponse>("/api/asr/test", { method: "POST", body });
 
 /**
  * Transcribes one recording (any signed-in user — the admin configured the key). The audio

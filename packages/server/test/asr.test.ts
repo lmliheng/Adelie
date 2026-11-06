@@ -18,7 +18,13 @@
  *   frames joined in arrival order; an empty transcript is a 200, not an error.
  * - A sentence the provider revises is counted once, not once per revision.
  * - A `task-failed` frame is a 502 carrying the provider's own words; a site that refuses the
- *   connection is a 502 named `asr_unreachable`, not a refusal by the provider.
+ *   connection is a 502 named `asr_unreachable`, not a refusal by the provider. A handshake that
+ *   never completes is explained by asking the same address once over HTTP, so a refused
+ *   credential (401) is named as such and any other answer is reported with its status.
+ * - The connectivity check (POST /api/asr/test) runs the same task against the fields the form
+ *   holds — stored ones when it omits them — and writes none of them; a service that refuses or
+ *   cannot be reached comes back 200 with `ok: false` and the sentence explaining why, while a
+ *   field it cannot resolve, or no key anywhere, is a 400.
  * - An empty, non-PCM or over-long body is refused with its own code.
  */
 import { createServer } from "node:http";
@@ -26,7 +32,12 @@ import type { AddressInfo } from "node:net";
 import { WebSocketServer } from "ws";
 import type { Server as HttpServer } from "node:http";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import type { AsrConfig, AsrConfigResponse, AsrTranscribeResponse } from "../src/api/types.js";
+import type {
+  AsrConfig,
+  AsrConfigResponse,
+  AsrTestResponse,
+  AsrTranscribeResponse,
+} from "../src/api/types.js";
 import {
   ASR_MAX_BYTES,
   BAILIAN_WS_PATH,
@@ -150,6 +161,25 @@ async function startFakeUpstream(
 /** 100 ms of silence at 16 kHz mono PCM16 — a body the route accepts. */
 const ONE_FRAME = new Uint8Array(3200);
 
+/**
+ * A site that answers every request with one HTTP status and never upgrades: what a service looks
+ * like when the credential is wrong, and what the diagnostic behind a failed handshake asks. The
+ * WebSocket layer reports this the same way it reports a host that does not exist, so the HTTP
+ * answer is the only thing that tells the two apart.
+ */
+async function startHttpRefuser(status: number): Promise<{ url: string; close(): Promise<void> }> {
+  const http: HttpServer = createServer((_req, res) => {
+    res.writeHead(status, { "content-type": "text/plain" });
+    res.end("no");
+  });
+  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+  const { port } = http.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${port}`,
+    close: () => new Promise<void>((resolve) => http.close(() => resolve())),
+  };
+}
+
 describe("speech input", () => {
   let t: TestApp;
   let admin: ReturnType<typeof apiClient>;
@@ -182,6 +212,7 @@ describe("speech input", () => {
     return ((await res.json()) as AsrConfigResponse).config;
   };
   const putConfig = (body: unknown, client = admin) => client.put("/api/asr/config", body);
+  const testConfig = (body: unknown, client = admin) => client.post("/api/asr/test", body);
   const errorCode = async (res: Response) =>
     ((await res.json()) as { error: { code: string; message: string } }).error;
 
@@ -312,6 +343,116 @@ describe("speech input", () => {
     const res = await transcribe("admin");
     expect(res.status).toBe(502);
     expect((await errorCode(res)).code).toBe("asr_unreachable");
+  });
+
+  it("names a refused credential as such, rather than blaming the network", async () => {
+    const refusing = await startHttpRefuser(401);
+    await putConfig({ baseUrl: refusing.url, model: "m", apiKey: "sk-wrong" });
+
+    const res = await transcribe("admin");
+    expect(res.status).toBe(502);
+    const err = await errorCode(res);
+    expect(err.code).toBe("asr_credential_refused");
+    expect(err.message).toContain("401");
+    await refusing.close();
+  });
+
+  it("reports a site that answers the upgrade with something else, status and all", async () => {
+    const plain = await startHttpRefuser(200);
+    await putConfig({ baseUrl: plain.url, model: "m", apiKey: "sk-test-key" });
+
+    const res = await transcribe("admin");
+    expect(res.status).toBe(502);
+    const err = await errorCode(res);
+    expect(err.code).toBe("asr_unreachable");
+    expect(err.message).toContain("HTTP 200");
+    await plain.close();
+  });
+
+  it("checks the fields the form holds, before they are saved, and writes none of them", async () => {
+    upstream = await startFakeUpstream({ sentences: [] });
+    const res = await testConfig({
+      baseUrl: upstream.url,
+      model: "draft-model",
+      apiKey: "sk-draft",
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as AsrTestResponse;
+    expect(body.ok).toBe(true);
+    expect(body.message).toBe("");
+    // The endpoint reported says which of the two sites this address resolved to.
+    expect(body.endpoint).toBe(
+      `${upstream.url.replace(/^http/, "ws")}/gateway/alibaba/api-ws/v1/inference`,
+    );
+    // The form's fields reached the provider, as a whole task from run-task to finish-task…
+    expect(upstream.seen.authorization).toBe("Bearer sk-draft");
+    expect(upstream.seen.runTask?.payload.model).toBe("draft-model");
+    expect(upstream.seen.finished).toBe(true);
+    // …and none of them were stored.
+    expect(await getConfig()).toEqual({
+      baseUrl: DEFAULT_ASR_BASE_URL,
+      model: DEFAULT_ASR_MODEL,
+      hasKey: false,
+    });
+  });
+
+  it("falls back to the stored site, model and key when the check omits them", async () => {
+    upstream = await startFakeUpstream({ sentences: [] });
+    await putConfig({ baseUrl: upstream.url, model: "stored-model", apiKey: "sk-stored" });
+
+    const res = await testConfig({});
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as AsrTestResponse).ok).toBe(true);
+    expect(upstream.seen.authorization).toBe("Bearer sk-stored");
+    expect(upstream.seen.runTask?.payload.model).toBe("stored-model");
+  });
+
+  it("answers a refusing service as not ok, in the service's own words, and a dead one by name", async () => {
+    upstream = await startFakeUpstream({
+      fail: {
+        code: "Arrearage",
+        message: "Access denied, please make sure your account is in good standing.",
+      },
+    });
+    const refused = await testConfig({ baseUrl: upstream.url, model: "m", apiKey: "sk-x" });
+    // 200: the check ran. What it found is the body.
+    expect(refused.status).toBe(200);
+    const body = (await refused.json()) as AsrTestResponse;
+    expect(body.ok).toBe(false);
+    expect(body.message).toContain("in good standing");
+    await upstream.close();
+    upstream = null;
+
+    // Nothing listening: the check names the transport rather than inventing a refusal.
+    const dead = await testConfig({ baseUrl: "http://127.0.0.1:1", model: "m", apiKey: "sk-x" });
+    expect(dead.status).toBe(200);
+    const deadBody = (await dead.json()) as AsrTestResponse;
+    expect(deadBody.ok).toBe(false);
+    expect(deadBody.message).toContain("Could not reach");
+  });
+
+  it("refuses a check it cannot resolve, and one with no key anywhere, without opening a socket", async () => {
+    const bad = await testConfig({ baseUrl: "not a url", apiKey: "sk-x" });
+    expect(bad.status).toBe(400);
+    expect((await errorCode(bad)).code).toBe("invalid_asr_base_url");
+
+    const keyless = await testConfig({});
+    expect(keyless.status).toBe(400);
+    expect((await errorCode(keyless)).code).toBe("asr_not_configured");
+  });
+
+  it("tells a wrong key from a site that is not there in the check too", async () => {
+    const refusing = await startHttpRefuser(401);
+    const res = await testConfig({ baseUrl: refusing.url, model: "m", apiKey: "sk-wrong" });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as AsrTestResponse;
+    expect(body.ok).toBe(false);
+    expect(body.message).toContain("401");
+    await refusing.close();
+  });
+
+  it("keeps the connectivity check to admins", async () => {
+    expect((await testConfig({}, user)).status).toBe(403);
   });
 
   it("refuses an empty, odd-length or over-long recording with its own code", async () => {

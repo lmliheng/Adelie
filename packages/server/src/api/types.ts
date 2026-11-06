@@ -372,6 +372,29 @@ export interface AsrTranscribeResponse {
 }
 
 /**
+ * POST /api/asr/test request: the settings page's connectivity check. Every field is optional
+ * and falls back to what is stored, so the page can check the form BEFORE saving it — and an
+ * omitted or empty `apiKey` means the stored one, exactly as a PUT reads it.
+ */
+export interface AsrTestRequest {
+  baseUrl?: string;
+  model?: string;
+  apiKey?: string;
+}
+
+/**
+ * POST /api/asr/test result. `ok: false` is a check that RAN and found a problem, not a failed
+ * request: `message` is then the provider's own words (nothing is translated in between), and
+ * `endpoint` is the WebSocket the check actually used — the site setting resolves to two
+ * different paths, so naming it is how the operator sees which one this site took.
+ */
+export interface AsrTestResponse {
+  ok: boolean;
+  message: string;
+  endpoint: string;
+}
+
+/**
  * The data root's storage ledger (GET /api/admin/storage) — what is on disk under
  * `ADELIE_HOME`, what each thing is for, and what a person could clean up.
  *

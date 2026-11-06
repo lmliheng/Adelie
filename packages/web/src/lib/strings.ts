@@ -848,6 +848,18 @@ export const zh = {
     /** The two states of the stored key, shown beside the key field. */
     speechKeyStored: "已保存密钥",
     speechKeyMissing: "尚未保存密钥，语音输入暂不可用",
+    /**
+     * The connectivity check: one whole task against the site, so an operator learns before
+     * recording that the key, the site or the model is wrong. It checks what is on screen rather
+     * than what is stored — saving a key just to find out whether it works is the wrong order —
+     * and both sentences name the endpoint, because the one thing invisible in the fields is
+     * which of the two paths a site address resolves to.
+     */
+    speechTest: "测试连通性",
+    speechTestRunning: "正在测试…",
+    speechTestOk: (endpoint: string): string => `连通正常，用的是 ${endpoint}`,
+    /** Followed by the service's own sentence, untranslated. */
+    speechTestFailed: (endpoint: string): string => `连不通，用的是 ${endpoint}：`,
     /** The fold holding the fields a settings group marks advanced. */
     pluginAdvanced: "高级选项",
     /** A table cell its row does not let change, beside the lock mark. */
@@ -4065,8 +4077,29 @@ export const zh = {
     transcribing: "正在识别…",
     /** A recording that came back as nothing, said where the draft is rather than as a toast. */
     dictateHeardNothing: "没有听清，请再说一次。",
-    /** The microphone was refused before any recording started (no device, or permission denied). */
-    dictateUnavailable: "无法使用麦克风：请检查浏览器或系统的麦克风权限。",
+    /**
+     * The microphone could not be asked for at all. The browser exposes one only on an origin it
+     * calls secure, and an http address that is not localhost is not one — so this is not a
+     * permission the user can go and grant, and the line says so rather than sending them off to
+     * look for a prompt that will never appear. `dictateInsecureHelp` is the way out, on hover.
+     */
+    dictateInsecure:
+      "这个地址（http 的非本机地址）拿不到麦克风：浏览器只在 https 或 localhost 下才给。",
+    dictateInsecureHelp:
+      "浏览器把 http 的非本机地址当作「不安全上下文」，在那里 navigator.mediaDevices 根本不存在——" +
+      "不是你没授权，是它连权限框都不会弹。三条出路：① 用桌面版 Adelie，它跑在 localhost 上；" +
+      "② 让 Adelie 走 https；③ 临时把这个地址加进 " +
+      "chrome://flags/#unsafely-treat-insecure-origin-as-secure，重启浏览器后生效。",
+    /** This browser has no capture support at all. */
+    dictateUnsupported: "这个浏览器不支持网页录音，换一个浏览器再试。",
+    /** Denied earlier: undoing that is a click in the address bar, not in this page. */
+    dictateDenied: "浏览器里的麦克风权限是「拒绝」：点地址栏左边的图标改成「允许」，再点一次。",
+    /** No capture device on this machine. */
+    dictateNoDevice: "没有找到可用的麦克风设备。",
+    /** A device exists but another program is holding it. */
+    dictateBusy: "麦克风被别的程序占着，关掉那个程序再试。",
+    /** The catch-all: a refusal this product has no name for, said without blaming the user. */
+    dictateUnavailable: "无法使用麦克风，请再试一次。",
     removeFile: "移除文件",
     /**
      * Toast for a picked file rejected before reading. The limit is admin-settable and differs
@@ -5860,6 +5893,8 @@ export const zh = {
       image_too_large: "图片过大，无法随对话发送。",
       asr_not_configured: "还没有配置语音识别模型，请在「设置 → 服务器 → 语音输入」里配置。",
       asr_unreachable: "连不上语音服务，请检查设置里的服务地址与网络。",
+      asr_credential_refused:
+        "语音服务不认这把密钥：到「设置 → 服务器 → 语音输入」检查 API 密钥，改完点「测试连通性」。",
       asr_timeout: "语音服务没有及时返回结果，请再试一次。",
       asr_empty_audio: "没有录到声音，请再试一次。",
       asr_too_long: "录音太长了，请说得短一点。",

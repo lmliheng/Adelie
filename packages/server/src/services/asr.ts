@@ -57,11 +57,18 @@ const CHUNK_PAUSE_MS = 10;
 /** How long the socket itself may take to open. */
 const HANDSHAKE_TIMEOUT_MS = 15_000;
 
+/**
+ * How long the diagnostic below may take. Shorter than the handshake: it runs only once the
+ * handshake has already failed, and it asks a question a server that is there answers at once.
+ */
+const PROBE_TIMEOUT_MS = 8_000;
+
 /** How long the whole call may take, on top of the audio's own length. */
 const OVERALL_SLACK_MS = 30_000;
 
 /** A failure the route turns into an HTTP answer. `code` is what the Web App localizes. */
-export type AsrErrorCode = "asr_unreachable" | "asr_upstream" | "asr_timeout";
+export type AsrErrorCode =
+  "asr_unreachable" | "asr_credential_refused" | "asr_upstream" | "asr_timeout";
 
 export class AsrError extends Error {
   constructor(
@@ -211,7 +218,11 @@ export async function transcribe(req: AsrRequest): Promise<string> {
   const deadline = Date.now() + OVERALL_SLACK_MS + durationMs(req.pcm.length, req.sampleRate);
 
   try {
-    await frames.opened(HANDSHAKE_TIMEOUT_MS);
+    try {
+      await frames.opened(HANDSHAKE_TIMEOUT_MS);
+    } catch (err) {
+      throw err instanceof AsrError ? await explainHandshake(err, req) : err;
+    }
     // One utterance is one task, and both frames have to name the same one: `finish-task`
     // closes the task `run-task` opened.
     const task = taskId();
@@ -251,6 +262,82 @@ export async function transcribe(req: AsrRequest): Promise<string> {
   } finally {
     frames.dispose();
   }
+}
+
+/**
+ * How much silence a connectivity check plays: half a second at 16 kHz mono PCM16. Not none —
+ * `finish-task` on a task that never carried audio is a shape the protocol does not document,
+ * and this is short enough to be free while still being a whole request end to end.
+ */
+const PROBE_BYTES = ASR_SAMPLE_RATE;
+
+/** What a connectivity check found. */
+export interface AsrProbe {
+  /** Whether the configured site answered a whole task with this model and key. */
+  ok: boolean;
+  /** The provider's own words when it refused, this product's sentence when it was unreachable; empty when ok. */
+  message: string;
+}
+
+/**
+ * Ask the configured service whether it will take this site, this model and this key: one task,
+ * opened and finished, over half a second of silence. It is the call a recording makes minus the
+ * recording, so what it proves is what pressing the microphone proves — `ok` means the next
+ * utterance reaches a service that answers it.
+ *
+ * A refusal is an ANSWER, not a failure of the check: everything comes back as `ok: false`
+ * carrying the sentence the provider sent, which is what the settings page puts in front of the
+ * operator. Only a bug inside this file throws.
+ */
+export async function probeAsr(req: Omit<AsrRequest, "pcm" | "sampleRate">): Promise<AsrProbe> {
+  try {
+    await transcribe({ ...req, pcm: new Uint8Array(PROBE_BYTES), sampleRate: ASR_SAMPLE_RATE });
+    return { ok: true, message: "" };
+  } catch (err) {
+    if (err instanceof AsrError) return { ok: false, message: err.message };
+    throw err;
+  }
+}
+
+/**
+ * A handshake that never completed, explained.
+ *
+ * The transport cannot say WHY: undici's WebSocket reports a refused credential, a path that is
+ * not the endpoint and a host that does not exist with the same bare `TypeError` and the same
+ * close code, so all three used to arrive as "could not reach" — and an operator sent to look at
+ * the network for a key that is simply wrong. The two are told apart by asking the same address
+ * once over HTTP with the same credential, which a service that is there answers at once (the
+ * path wants an upgrade, so a working credential reads 4xx and a refused one reads 401).
+ *
+ * When even that request cannot be made, the socket's own sentence stands: nothing is there to
+ * ask. Only a handshake failure is explained this way — a socket that dies mid-task is not a
+ * configuration problem and keeps its own name.
+ */
+async function explainHandshake(err: AsrError, req: AsrRequest): Promise<AsrError> {
+  if (err.code !== "asr_unreachable") return err;
+  let status: number;
+  try {
+    const res = await fetch(asrWebSocketUrl(req.baseUrl).replace(/^ws/, "http"), {
+      headers: { Authorization: `Bearer ${req.apiKey}` },
+      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    });
+    status = res.status;
+    await res.text();
+  } catch {
+    return err;
+  }
+  if (status === 401 || status === 403) {
+    return new AsrError(
+      "asr_credential_refused",
+      `The speech service refused the credential (HTTP ${status}).`,
+      502,
+    );
+  }
+  return new AsrError(
+    "asr_unreachable",
+    `The speech service answered HTTP ${status} instead of upgrading the connection.`,
+    502,
+  );
 }
 
 /**

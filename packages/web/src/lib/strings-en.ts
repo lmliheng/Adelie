@@ -787,6 +787,18 @@ export const en: Strings = {
     /** The two states of the stored key, shown beside the key field. */
     speechKeyStored: "A key is stored",
     speechKeyMissing: "No key yet — speech input is unavailable",
+    /**
+     * The connectivity check: one whole task against the site, so an operator learns before
+     * recording that the key, the site or the model is wrong. It checks what is on screen rather
+     * than what is stored — saving a key just to find out whether it works is the wrong order —
+     * and both sentences name the endpoint, because the one thing invisible in the fields is
+     * which of the two paths a site address resolves to.
+     */
+    speechTest: "Test connection",
+    speechTestRunning: "Testing…",
+    speechTestOk: (endpoint: string): string => `Reachable, at ${endpoint}`,
+    /** Followed by the service's own sentence, untranslated. */
+    speechTestFailed: (endpoint: string): string => `Not reachable, at ${endpoint}: `,
     /** The fold holding the fields a settings group marks advanced. */
     pluginAdvanced: "Advanced",
     /** A table cell its row does not let change, beside the lock mark. */
@@ -3992,9 +4004,31 @@ export const en: Strings = {
     transcribing: "Transcribing…",
     /** A recording that came back as nothing, said where the draft is rather than as a toast. */
     dictateHeardNothing: "Nothing was heard — please try again.",
-    /** The microphone was refused before any recording started (no device, or permission denied). */
-    dictateUnavailable:
-      "The microphone is unavailable: check the browser's or the system's permission for it.",
+    /**
+     * The microphone could not be asked for at all. The browser exposes one only on an origin it
+     * calls secure, and an http address that is not localhost is not one — so this is not a
+     * permission the user can go and grant, and the line says so rather than sending them off to
+     * look for a prompt that will never appear. `dictateInsecureHelp` is the way out, on hover.
+     */
+    dictateInsecure:
+      "This address has no microphone: the browser only offers one on https or localhost.",
+    dictateInsecureHelp:
+      "A browser treats an http address that is not localhost as an insecure context, and there " +
+      "navigator.mediaDevices does not exist at all — you are not being asked for permission, " +
+      "you would never even be prompted. Three ways out: (1) use the Adelie desktop app, which " +
+      "runs on localhost; (2) put Adelie behind https; (3) temporarily add this address to " +
+      "chrome://flags/#unsafely-treat-insecure-origin-as-secure and restart the browser.",
+    /** This browser has no capture support at all. */
+    dictateUnsupported: "This browser cannot record from a microphone.",
+    /** Denied earlier: undoing that is a click in the address bar, not in this page. */
+    dictateDenied:
+      "Microphone access is set to Block: choose Allow from the icon in the address bar, then try again.",
+    /** No capture device on this machine. */
+    dictateNoDevice: "No microphone was found on this machine.",
+    /** A device exists but another program is holding it. */
+    dictateBusy: "Another program is using the microphone — close it and try again.",
+    /** The catch-all: a refusal this product has no name for, said without blaming the user. */
+    dictateUnavailable: "The microphone could not be used — please try again.",
     removeFile: "Remove file",
     attachmentTooLarge: (name: string, limitMb: number): string =>
       `${name} exceeds the ${limitMb}MB limit and was not attached.`,
@@ -5824,6 +5858,8 @@ export const en: Strings = {
         "No speech model is configured — set one under Settings → Server → Speech input.",
       asr_unreachable:
         "The speech service could not be reached; check the service address and the network.",
+      asr_credential_refused:
+        "The speech service refused this key: check the API key under Settings → Server → Speech input, then run Test connection.",
       asr_timeout: "The speech service did not answer in time; please try again.",
       asr_empty_audio: "Nothing was recorded; please try again.",
       asr_too_long: "The recording is too long; please say less.",

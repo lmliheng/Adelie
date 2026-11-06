@@ -11,9 +11,19 @@
  * PCM16 mono, base64 like every other binary body in this API — which is forwarded to the
  * provider and never written to disk. The answer is the transcript, which may be empty:
  * silence is not an error.
+ *
+ * POST /api/asr/test is an admin's too: the settings page's connectivity check. It resolves the
+ * fields the same way a PUT does — an omitted one falls back to what is stored — so the page can
+ * check a form it has not saved yet, and what it answers is what a save with those fields would
+ * produce. Nothing is written either way.
  */
 import { Hono } from "hono";
-import type { AsrConfig, AsrConfigResponse, AsrTranscribeResponse } from "../../api/types.js";
+import type {
+  AsrConfig,
+  AsrConfigResponse,
+  AsrTestResponse,
+  AsrTranscribeResponse,
+} from "../../api/types.js";
 import { HttpError } from "../errors.js";
 import { readJson } from "../validate.js";
 import { Bind, Component, Use } from "@adelie/core/kernel";
@@ -25,6 +35,8 @@ import {
   AsrError,
   DEFAULT_ASR_BASE_URL,
   DEFAULT_ASR_MODEL,
+  asrWebSocketUrl,
+  probeAsr,
   transcribe,
 } from "../../services/asr.js";
 
@@ -54,11 +66,17 @@ export function asrRoutes(deps: AsrRouteDeps): Hono<AppEnv> {
 
   app.get("/config", requireAdmin, (c) => c.json({ config: config() } satisfies AsrConfigResponse));
 
-  app.put("/config", requireAdmin, async (c) => {
-    const body = await readJson(c);
+  /**
+   * The site, the model and the key a request names. An omitted field falls back to what is
+   * stored, `null` means the built-in default, and an omitted or empty key keeps the stored one
+   * (the read never hands it back, so a page that only edits the model must not have to blank
+   * its own credential to save).
+   *
+   * One rule for both verbs below: the PUT stores what this returns and the check probes it, so a
+   * field the save would refuse is refused by the check as well, with the same code.
+   */
+  const resolve = (body: Record<string, unknown>) => {
     const stored = deps.settings.getAsrSettings();
-    // Every field is validated before any is written, so a PUT naming one bad value leaves
-    // the rest as they were.
     const baseUrl =
       body.baseUrl === undefined
         ? stored.baseUrl
@@ -71,16 +89,39 @@ export function asrRoutes(deps: AsrRouteDeps): Hono<AppEnv> {
         : body.model === null
           ? DEFAULT_ASR_MODEL
           : parseModel(body.model);
-    // Omitted or empty keeps the stored key — the read never hands it back, so a page that
-    // only edits the model must not have to blank its own credential to save.
     const apiKey =
       body.apiKey === undefined
         ? stored.apiKey
         : typeof body.apiKey === "string" && body.apiKey.trim() === ""
           ? stored.apiKey
           : parseApiKey(body.apiKey);
-    deps.settings.setAsrSettings({ baseUrl, model, apiKey });
+    return { baseUrl, model, apiKey };
+  };
+
+  app.put("/config", requireAdmin, async (c) => {
+    // Every field is validated before any is written, so a PUT naming one bad value leaves
+    // the rest as they were.
+    deps.settings.setAsrSettings(resolve(await readJson(c)));
     return c.json({ config: config() } satisfies AsrConfigResponse);
+  });
+
+  /**
+   * The settings page's connectivity check: one whole task against the resolved site. It answers
+   * 200 with `ok: false` when the service refused — the check itself ran, and the operator wants
+   * the provider's sentence, not an HTTP status. Only the fields being unresolvable (400) or no
+   * key being stored (400) are errors here.
+   */
+  app.post("/test", requireAdmin, async (c) => {
+    const { baseUrl, model, apiKey } = resolve(await readJson(c));
+    if (apiKey === "") {
+      throw new HttpError(
+        400,
+        "asr_not_configured",
+        "No speech model is configured: set one under Settings > Server > Speech input.",
+      );
+    }
+    const probe = await probeAsr({ baseUrl, model, apiKey });
+    return c.json({ ...probe, endpoint: asrWebSocketUrl(baseUrl) } satisfies AsrTestResponse);
   });
 
   app.post("/transcribe", async (c) => {

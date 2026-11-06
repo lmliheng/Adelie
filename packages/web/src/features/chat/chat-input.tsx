@@ -2492,7 +2492,7 @@ export function ChatInput({
       {dictation.notice !== null && (
         <p
           role="alert"
-          data-tooltip={dictation.notice.text}
+          data-tooltip={dictation.notice.detail ?? dictation.notice.text}
           data-tooltip-content="text"
           className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${
             dictation.notice.failed ? toneInk.danger : "text-gray-400 dark:text-gray-500"

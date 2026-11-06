@@ -8,9 +8,10 @@
  *
  * Two things the browser will not do for us:
  *
- *   - `getUserMedia` is refused outright on an insecure origin, and a refused one is
- *     indistinguishable from a permission the user denied. Both read as "no microphone", which
- *     is what the notice says.
+ *   - On an origin it does not consider secure the microphone is not refused, it is ABSENT: the
+ *     page has no `navigator.mediaDevices`, so no prompt appears and no permission can be
+ *     granted. lib/mic-access.ts tells that case apart from a denial, a missing device and a busy
+ *     one — four sentences, and only one of them is the user's to undo.
  *   - A recording of silence transcribes to the empty string. That is a legitimate answer from
  *     the provider, not a failure, so it is reported as "nothing was heard" rather than as an
  *     error — and the draft is left exactly as it was.
@@ -18,6 +19,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../../api/endpoints";
 import { ASR_SAMPLE_RATE, encodeBase64, toAsrPcm } from "../../lib/asr-audio";
+import { microphoneObstacle, microphoneRefusal } from "../../lib/mic-access";
+import type { MicrophoneRefusal } from "../../lib/mic-access";
 import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 
@@ -31,6 +34,11 @@ export type DictationState = "idle" | "recording" | "transcribing";
  */
 export interface DictationNotice {
   text: string;
+  /**
+   * The long version, shown on hover. Set where the one-line text can only name the obstacle and
+   * the way out does not fit — an insecure origin, whose three fixes are a paragraph.
+   */
+  detail?: string;
   failed: boolean;
 }
 
@@ -78,11 +86,30 @@ export function useDictation(onTranscript: (text: string) => void): Dictation {
 
   const start = useCallback(() => {
     void (async () => {
+      // Asked before anything is asked for: on a page without a microphone the browser would not
+      // even show a permission prompt, so "grant it" is advice the user cannot act on. What they
+      // can act on is the address — hence the paragraph on hover.
+      const obstacle = microphoneObstacle({
+        isSecureContext: window.isSecureContext,
+        mediaDevices: navigator.mediaDevices,
+      });
+      if (obstacle === "insecure") {
+        setNotice({
+          text: S.chat.dictateInsecure,
+          detail: S.chat.dictateInsecureHelp,
+          failed: true,
+        });
+        return;
+      }
+      if (obstacle === "unsupported") {
+        setNotice({ text: S.chat.dictateUnsupported, failed: true });
+        return;
+      }
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch {
-        setNotice({ text: S.chat.dictateUnavailable, failed: true });
+      } catch (e) {
+        setNotice({ text: refusalNotice(microphoneRefusal(e)), failed: true });
         return;
       }
       const recorder = new MediaRecorder(stream);
@@ -116,6 +143,20 @@ export function useDictation(onTranscript: (text: string) => void): Dictation {
   const clearNotice = useCallback(() => setNotice(null), []);
 
   return { state, notice, clearNotice, toggle };
+}
+
+/** What a refused `getUserMedia` is worth saying, by what the browser called the refusal. */
+function refusalNotice(refusal: MicrophoneRefusal): string {
+  switch (refusal) {
+    case "denied":
+      return S.chat.dictateDenied;
+    case "missing":
+      return S.chat.dictateNoDevice;
+    case "busy":
+      return S.chat.dictateBusy;
+    case "other":
+      return S.chat.dictateUnavailable;
+  }
 }
 
 /** The decoded recording, as the channels themselves — what the PCM conversion consumes. */
