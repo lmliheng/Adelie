@@ -236,6 +236,7 @@ Agent 可以在 Task 中重写自己的 `SKILL.md`。结合 Benchmark 评估和�
 | | `use-claude-code` | 通过 SSH 在远程主机上运行 Claude Code：持久 expect 会话、带 stdin 修复的无头 `-p` 模式、tmux 驱动的交互式 TUI，以及多轮连续性（不预装：需要时从插件库安装） |
 | | `wechat-miniprogram` | 在无桌面的 Linux 服务器上把微信小程序从代码做到发布：扫码登录 mp.weixin.qq.com、从公众号后台切到小程序后台、取 AppID 与上传密钥、加 IP 白名单、用 miniprogram-ci 上传、交付校验过的预览码、填写必填的用户隐私保护指引、提交审核与发布（不预装） |
 | | `gpu-model-serving` | 在租用或自有的 GPU 机器上立起一个 OpenAI 兼容的模型服务：选实例与权重落盘的位置、直接取已量化好的 checkpoint、搭好 pip 装的 CUDA 工具链、把 `serve.sh` 以 detached 方式拉起，最后按 SGLang 开投机解码、前缀缓存与 tool calling 的状态逐项验证；第一次部署会踩的坑按「现象 → 原因 → 修法」写进参考文档（不预装：需要时从插件库安装） |
+| | `web-vscode` | 把 VS Code 装到服务器上、做成浏览器里真正能用的版本：code-server 只监听回环，HTTPS 反代终结 TLS 并直通 WebSocket，站点证书由本机自签的 CA 签发；附 Windows / macOS / iOS / Android 的证书信任步骤，以及三项验收（安全上下文、Service Worker、notebook 渲染成单元格）。也记下那些让人以为「装坏了」的坑——点「继续前往」的自签证书救不了 webview、受限模式会把 `.ipynb` 打开成 JSON、6665–6669 是浏览器的危险端口（不预装：需要时从插件库安装） |
 | AI 应用开发 | `agent-development` | Adelie 上的 Agent 开发，包含四个 Skill：`penguin-sdk`（基于 SDK 构建 Agent/AI/RAG 应用，或经 Agent API 把程序接入 Agent；动手前先问用哪种方式）、`unified-llm-api`（通过 `@prismshadow/agenthub` 调用模型 API）、`penguin-config`（管理模型密钥、默认值和 Vault 机密）和 `penguin-orchestration`（在 shell 里驱动 Agent、Session、成本和定时任务） |
 | | `model-development` | 在自己的硬件上做模型开发，包含三个 Skill：`llamafactory`（微调）、`ollama`（运行本地模型）和 `vllm`（在 OpenAI 兼容端点后面提供服务） |
 | | `skill-porting` | 把外部来源（插件市场、skills.sh 注册表、GitHub 仓库或本地文件夹）的 Skill 经审查和规范化后移植到 Agent |

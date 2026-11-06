@@ -1,0 +1,9 @@
+{
+  "description": "Stand up VS Code in the browser on a server and make it actually usable: code-server, an HTTPS reverse proxy with its own certificate authority, the certificate-trust steps for Windows, macOS, iOS and Android, and the checks that decide the install is done — including why a self-signed certificate clicked through in the browser still cannot run webviews.",
+  "description_zh": "把 VS Code 装到服务器上做成能用的浏览器版本：code-server + 自带证书机构的 HTTPS 反向代理，配上 Windows/macOS/iOS/Android 的证书信任步骤，以及验收必须跑的三项检查——包括为什么「点继续前往」的自签证书仍然跑不了 webview。",
+  "short_description": "VS Code in the browser: code-server, HTTPS proxy, trusted certificate, verified.",
+  "short_description_zh": "浏览器版 VS Code：code-server + HTTPS 反代 + 证书信任 + 端到端验收。",
+  "version": "2026.11.06.1",
+  "category": "software-development",
+  "preinstall": false
+}

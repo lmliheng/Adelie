@@ -81,6 +81,7 @@
     "@adelie/use-wps-office": "workspace:*",
     "@adelie/use-claude-code": "workspace:*",
     "@adelie/wechat-miniprogram": "workspace:*",
+    "@adelie/web-vscode": "workspace:*",
     "@prismshadow/agenthub": "^0.4.15",
     "arktype": "^2.2.3",
     "smol-toml": "^1.3.0",

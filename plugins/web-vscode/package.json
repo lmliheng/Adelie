@@ -1,0 +1,24 @@
+{
+  "name": "@adelie/web-vscode",
+  "version": "0.6.4",
+  "description": "Stand up VS Code in the browser on a server and make it actually usable: code-server behind an HTTPS reverse proxy with a local certificate authority, verified end to end, with the certificate-trust steps for Windows, macOS, iOS and Android.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lmliheng/Adelie.git",
+    "directory": "plugins/web-vscode"
+  },
+  "keywords": [
+    "adelie-plugin",
+    "penguin-harness"
+  ],
+  "files": [
+    "plugin.json",
+    "icon.svg",
+    "skills",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -138,6 +138,9 @@ importers:
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
+      '@adelie/web-vscode':
+        specifier: workspace:*
+        version: link:../../plugins/web-vscode
       '@adelie/wechat-miniprogram':
         specifier: workspace:*
         version: link:../../plugins/wechat-miniprogram
@@ -247,6 +250,9 @@ importers:
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
+      '@adelie/web-vscode':
+        specifier: workspace:*
+        version: link:../../plugins/web-vscode
       '@adelie/wechat-miniprogram':
         specifier: workspace:*
         version: link:../../plugins/wechat-miniprogram
@@ -362,6 +368,9 @@ importers:
       '@adelie/use-wps-office':
         specifier: workspace:*
         version: link:../../plugins/use-wps-office
+      '@adelie/web-vscode':
+        specifier: workspace:*
+        version: link:../../plugins/web-vscode
       '@adelie/wechat-miniprogram':
         specifier: workspace:*
         version: link:../../plugins/wechat-miniprogram
@@ -864,6 +873,8 @@ importers:
 
   plugins/use-wps-office: {}
 
+  plugins/web-vscode: {}
+
   plugins/wechat-miniprogram: {}
 
 packages:
@@ -956,6 +967,9 @@ packages:
 
   '@adelie/use-wps-office@file:plugins/use-wps-office':
     resolution: {directory: plugins/use-wps-office, type: directory}
+
+  '@adelie/web-vscode@file:plugins/web-vscode':
+    resolution: {directory: plugins/web-vscode, type: directory}
 
   '@adelie/wechat-miniprogram@file:plugins/wechat-miniprogram':
     resolution: {directory: plugins/wechat-miniprogram, type: directory}
@@ -4996,6 +5010,7 @@ snapshots:
       '@adelie/use-seedance': file:plugins/use-seedance
       '@adelie/use-seedream': file:plugins/use-seedream
       '@adelie/use-wps-office': file:plugins/use-wps-office
+      '@adelie/web-vscode': file:plugins/web-vscode
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)
@@ -5039,6 +5054,7 @@ snapshots:
       '@adelie/use-seedance': file:plugins/use-seedance
       '@adelie/use-seedream': file:plugins/use-seedream
       '@adelie/use-wps-office': file:plugins/use-wps-office
+      '@adelie/web-vscode': file:plugins/web-vscode
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)
@@ -5078,6 +5094,7 @@ snapshots:
       '@adelie/use-seedance': file:plugins/use-seedance
       '@adelie/use-seedream': file:plugins/use-seedream
       '@adelie/use-wps-office': file:plugins/use-wps-office
+      '@adelie/web-vscode': file:plugins/web-vscode
       '@adelie/wechat-miniprogram': file:plugins/wechat-miniprogram
       '@modelcontextprotocol/client': 2.0.0
       '@prismshadow/agenthub': 0.4.15(patch_hash=ea5d826854c282dbcac78892b7290b6cf2f522f22168a5ba9624a09acc00941f)(supports-color@10.2.2)(ws@8.21.0)(zod@4.4.3)
@@ -5194,6 +5211,8 @@ snapshots:
   '@adelie/use-seedream@file:plugins/use-seedream': {}
 
   '@adelie/use-wps-office@file:plugins/use-wps-office': {}
+
+  '@adelie/web-vscode@file:plugins/web-vscode': {}
 
   '@adelie/wechat-miniprogram@file:plugins/wechat-miniprogram': {}
 

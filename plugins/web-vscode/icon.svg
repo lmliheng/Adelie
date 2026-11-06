@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Web VS Code">
+  <rect x="4" y="12" width="56" height="40" rx="5" fill="#2f6fed"/>
+  <path d="M26 22 14 32l12 10z" fill="#eaf1ff"/>
+  <path d="M34 44 50 22" fill="none" stroke="#eaf1ff" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="50" cy="47" r="9" fill="#0b3ea8"/>
+  <path d="M45.5 47h9M50 42.5v9" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round"/>
+</svg>

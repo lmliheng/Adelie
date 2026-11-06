@@ -39,7 +39,8 @@
     "@adelie/use-seedream": "workspace:*",
     "@adelie/use-wps-office": "workspace:*",
     "@adelie/use-claude-code": "workspace:*",
-    "@adelie/wechat-miniprogram": "workspace:*"
+    "@adelie/wechat-miniprogram": "workspace:*",
+    "@adelie/web-vscode": "workspace:*"
   },
   "devDependencies": {
     "@adelie/cli": "workspace:*",
