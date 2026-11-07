@@ -3428,6 +3428,15 @@ export const en: Strings = {
     draftSubtitle: "The self-evolving agent that excels at AI development tasks",
     /** The draft's first message did not go out: nothing was written, the text is still in the card. */
     draftSendRefused: (reason: string) => `Could not send this message: ${reason}`,
+    /**
+     * A picked thinking level was refused: the control still reads the level it read before, so the
+     * sentence says the pick did not take. `forAgent` is set where the write goes through to the
+     * Agent's settings (the draft's picker), which is a wider change than this one conversation.
+     */
+    thinkingLevelRefused: (reason: string, forAgent?: boolean) =>
+      forAgent
+        ? `Could not change the thinking level (also the Agent's default, unchanged): ${reason}`
+        : `Could not change the thinking level: ${reason}`,
     /** Second tooltip line on a shortcut row: the click fills the composer, it does not send. */
     shortcutFillHint: "Click to fill the composer — edit it if you like, then send",
     /** The draft screen's saved-prompt folder: prompts the user wrote and saved, stored per user on the server. */

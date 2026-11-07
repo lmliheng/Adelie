@@ -594,6 +594,7 @@ export function ChatInput({
   defaultModel,
   thinkingLevel,
   onChangeThinkingLevel,
+  thinkingRefusal,
   turnThinkingLevel,
   onChangeTurnThinkingLevel,
   contextWindow,
@@ -747,6 +748,14 @@ export function ChatInput({
    * becomes the Agent's new default).
    */
   onChangeThinkingLevel?: (level: string) => void;
+  /**
+   * A picked level the write refused — the sentence drawn above the card, or null/absent. Both
+   * pickers write the level straight through and display what they read back, so a refused write
+   * changes nothing else on screen and a notification would be the only trace of it (gone after
+   * six seconds, control unchanged). The parent owns the sentence because it owns the write, and
+   * hands it over only while it still describes the Agent / Session on screen.
+   */
+  thinkingRefusal?: string | null;
   /**
    * Session state: the Session's thinking level to DISPLAY — the parent resolves it as "the
    * user's pick for this session, else the Agent config's level" ("" = neither known yet),
@@ -2499,6 +2508,21 @@ export function ChatInput({
           }`}
         >
           {dictation.notice.text}
+        </p>
+      )}
+
+      {/* A thinking-level pick the write refused: drawn above the card, next to the microphone's
+          notice and for the same reason — it explains a control inside the card, and the control
+          itself still reads the level it read before, so a toast would leave a click that looks
+          like it never registered. The whole sentence hangs on hover (the line is clamped). */}
+      {thinkingRefusal != null && thinkingRefusal !== "" && (
+        <p
+          role="alert"
+          data-tooltip={thinkingRefusal}
+          data-tooltip-content="text"
+          className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {thinkingRefusal}
         </p>
       )}
 

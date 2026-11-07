@@ -52,14 +52,14 @@ import type {
   SkillMetadataItem,
   TaskInputPart,
 } from "@adelie/server/api";
-import { AgentAvatar, Chevron, Dropdown, MenuItem, AppLogo, toastError } from "@adelie/ui";
+import { AgentAvatar, Chevron, Dropdown, MenuItem, AppLogo } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { UNCONFINED, draftSandboxAfter } from "../../lib/permission-level";
 import type { PermissionPick } from "../../lib/permission-level";
 import { formatMonthDay } from "../../lib/format";
-import { apiErrorText } from "../../lib/api-error";
 import { sendRefusalReason, sendRefused } from "./first-send-refusal";
+import { thinkingLevelRefused } from "./thinking-level-refusal";
 import { rememberSessionMachine } from "../../lib/session-machines";
 import { cachedMachineAgents, rememberMachineAgents } from "../../lib/machine-cache";
 import { useAuth } from "../../state/auth";
@@ -493,6 +493,14 @@ export function DraftView({
     agentThinkingLevel === null || chatDefaults === null
       ? null
       : effectiveThinkingLevel(agentThinkingLevel, chatDefaults.thinkingLevel);
+  /**
+   * A refused level write and the Agent it was aimed at. The display rolls back to the level it
+   * read before, so this sentence is the only thing saying the press did not take; it is handed to
+   * the composer only while that Agent is still the one on screen.
+   */
+  const [thinkingRefusal, setThinkingRefusal] = useState<{ agentId: string; text: string } | null>(
+    null,
+  );
   /** Live mirror for the rollback value (a stale closure would roll back to an outdated level). */
   const thinkingRef = useRef<string | null>(null);
   thinkingRef.current = agentThinkingLevel;
@@ -501,6 +509,7 @@ export function DraftView({
       // "" (no override) is not persistable through the config API — the picker disables that row.
       if (!agentId || !level) return;
       const rollback = thinkingRef.current;
+      setThinkingRefusal(null); // The new attempt answers for itself; the old sentence goes.
       setAgentThinkingLevel(level); // Optimistic: the derived display follows immediately.
       api
         .putAgentConfig(projectId, agentId, {
@@ -508,7 +517,9 @@ export function DraftView({
         })
         .catch((e: unknown) => {
           setAgentThinkingLevel(rollback);
-          toastError(apiErrorText(e));
+          // This picker writes through to the Agent's settings, so the refusal left more than
+          // this draft alone — the sentence says so (forAgent).
+          setThinkingRefusal({ agentId, text: thinkingLevelRefused(e, true) });
         });
     },
     [projectId, agentId],
@@ -909,6 +920,7 @@ export function DraftView({
           onChangeModel={setModelRef}
           thinkingLevel={thinkingLevel}
           onChangeThinkingLevel={onChangeThinkingLevel}
+          thinkingRefusal={thinkingRefusal?.agentId === agentId ? thinkingRefusal.text : null}
           {...(models?.defaultModel !== undefined ? { defaultModel: models.defaultModel } : {})}
           {...(contextWindow !== undefined ? { contextWindow } : {})}
           contextNow={0}

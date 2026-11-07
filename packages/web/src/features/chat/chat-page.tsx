@@ -114,6 +114,7 @@ import {
   thinkingLevelLabel,
 } from "./thinking-level";
 import type { StagedThinkingSwitch } from "./thinking-level";
+import { thinkingLevelRefused } from "./thinking-level-refusal";
 import { ChatDropRegion } from "./drop-zone";
 import { ConversationOutline, OutlineMenuButton, useOutlineRailFit } from "./conversation-outline";
 import { DraftView } from "./draft-view";
@@ -1641,18 +1642,25 @@ export function ChatPage() {
   // Pins a picked level on the Session so it outlives this tab: PATCH, then swap the
   // returned row into the session store (the picker reads it back from there); it applies
   // from the next LLM request (a pick mid-chat reaches here through the confirm dialog, which
-  // offers to compact first). Modeled on onChangePermission — a failed write surfaces as a
-  // toast and leaves the level as it was, rather than showing a level the server does not have.
+  // offers to compact first). Modeled on onChangePermission: a failed write leaves the level as
+  // it was and the composer keeps the sentence saying why (7.95) — the picker itself reads the
+  // store, so a toast would be the only trace of a press that changed nothing.
+  const [thinkingRefusal, setThinkingRefusal] = useState<{
+    sessionId: string;
+    text: string;
+  } | null>(null);
   const applyTurnThinkingLevel = useCallback(
     (level: string) => {
       if (!selected) return;
+      const sessionId = selected.sessionId;
+      setThinkingRefusal(null); // The new attempt answers for itself; the old sentence goes.
       void api
-        .patchSession(selected.sessionId, {
+        .patchSession(sessionId, {
           thinkingLevel: level as SessionPatchRequest["thinkingLevel"],
         })
         .then((res) => replace(res.session))
         .catch((e: unknown) => {
-          toastError(apiErrorText(e));
+          setThinkingRefusal({ sessionId, text: thinkingLevelRefused(e) });
         });
     },
     [selected, replace],
@@ -2229,6 +2237,9 @@ export function ChatPage() {
       turnThinkingLevel={sessionThinkingLevel(turnThinkingLevel, agentThinkingLevel)}
       // Guarded: a mid-chat change stages behind the prefix-cache confirm dialog (issue #310).
       onChangeTurnThinkingLevel={onPickTurnThinkingLevel}
+      thinkingRefusal={
+        thinkingRefusal?.sessionId === selected.sessionId ? thinkingRefusal.text : null
+      }
       {...(contextWindow !== undefined ? { contextWindow } : {})}
       {...(compactionLimit !== undefined ? { compactionLimit } : {})}
       onChangeCompactionLimit={onChangeCompactionLimit}
