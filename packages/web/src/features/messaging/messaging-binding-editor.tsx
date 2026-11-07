@@ -70,6 +70,7 @@ import { toneInk, type Tone } from "../../lib/tone";
 import { QQScanConnect } from "./qq-scan-connect";
 import { WeChatScanConnect } from "./wechat-scan-connect";
 import { messagingTestRefusal } from "./messaging-test-refusal";
+import { messagingTestMessageRefusal } from "./messaging-test-message-refusal";
 import { messagingSaveRefusal } from "./messaging-save-refusal";
 import {
   bindingsToForm,
@@ -247,6 +248,12 @@ export interface MessagingBindingEditorState {
    */
   testRefusal: string | null;
   /**
+   * Why the last test message did not land (null when it was sent or none went out). It stays
+   * under the two probe buttons until the next press or a channel switch — see
+   * `messaging-test-message-refusal.ts`.
+   */
+  testMessageRefusal: string | null;
+  /**
    * Why the last save did not land (null when nothing was refused). It stays at the end of the
    * card — above Save in both hosts — until the next save starts or the channel is switched,
    * which is what makes it readable after the attempt — see `messaging-save-refusal.ts`.
@@ -385,6 +392,13 @@ export function useMessagingBinding(
   /** The last refused credential probe, under the button that asked (see `messaging-test-refusal.ts`). */
   const [testRefusal, setTestRefusal] = useState<string | null>(null);
   /**
+   * The last test message that did not land, under the same row (see
+   * `messaging-test-message-refusal.ts`). Separate from `testRefusal`: that one is about a probe
+   * that writes nothing, this one about a message the chat may or may not have received — and the
+   * two are answered by different buttons, so one never stands for the other.
+   */
+  const [testMessageRefusal, setTestMessageRefusal] = useState<string | null>(null);
+  /**
    * The last refused save, at the end of the card (see `messaging-save-refusal.ts`). Separate from
    * `testRefusal` because it is about a write that was supposed to change something, not about a
    * probe: the two are answered by different buttons and one never stands for the other.
@@ -429,6 +443,8 @@ export function useMessagingBinding(
       setBaseline(null);
       // Nor the previous session's probe answer: its fields are about to leave the screen.
       setTestRefusal(null);
+      // Nor the test message that session's chat was sent: that chat is not this one's.
+      setTestMessageRefusal(null);
       // Nor why that other conversation's save failed: this form is a different one.
       setSaveRefusal(null);
       void refresh(true);
@@ -460,6 +476,8 @@ export function useMessagingBinding(
     setToggleRefusal(null);
     // Same rule for the probe: another channel's credentials are not what that button tested.
     setTestRefusal(null);
+    // And for the test message: it went to the other channel's chat, if it went anywhere.
+    setTestMessageRefusal(null);
     // And for the save: another channel's form is not the one that failed to write.
     setSaveRefusal(null);
     patchForm({ channel });
@@ -546,13 +564,22 @@ export function useMessagingBinding(
     }
   };
 
+  /**
+   * Sends one fixed line into the chat the connection already knows (the outbound leg, end to
+   * end). A message that landed pops its confirmation; one that did not leaves its sentence under
+   * the buttons and NOT in a toast (see `messaging-test-message-refusal.ts`): the card is
+   * otherwise identical, so six seconds later nothing on screen would say the button had been
+   * pressed — while the connection the message went through sits on the rows right above.
+   */
   const sendTestMessage = async () => {
     setSendingTest(true);
+    // This press's answer replaces the last one's.
+    setTestMessageRefusal(null);
     try {
       await api.sendMessagingTestMessage(sessionId, selected);
       toastSuccess(S.messaging.testMessageSent);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setTestMessageRefusal(messagingTestMessageRefusal(e));
     } finally {
       setSendingTest(false);
     }
@@ -641,6 +668,7 @@ export function useMessagingBinding(
     enableGate,
     toggleRefusal,
     testRefusal,
+    testMessageRefusal,
     saveRefusal,
     saveButtonId,
     adoptBinding: (binding) =>
@@ -1042,6 +1070,19 @@ export function MessagingBindingBody({ b }: { b: MessagingBindingEditorState }) 
           className={`line-clamp-2 text-xs break-words ${toneInk.danger}`}
         >
           {b.testRefusal}
+        </p>
+      )}
+      {/* The second button's own answer, in the same block and after the probe's line so the
+          reading order matches the row (test, then send). A button of its own needs a slot of its
+          own: a refused probe says nothing about whether a message reached the chat. */}
+      {b.testMessageRefusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={b.testMessageRefusal}
+          data-tooltip-content="text"
+          className={`line-clamp-2 text-xs break-words ${toneInk.danger}`}
+        >
+          {b.testMessageRefusal}
         </p>
       )}
       {/* The gating reason closes the control block rather than sitting under the switch:

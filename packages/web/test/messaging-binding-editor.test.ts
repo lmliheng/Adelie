@@ -16,6 +16,8 @@
  * - The delivery and Markdown options close the form, each switch rendered from its own field
  *   with its explanation behind a "?"; QQ's replies-only rule is stated on screen; the selector
  *   offers all four channels.
+ * - A refused test message gets a line of its own under the same row — a refused probe says
+ *   nothing about whether the chat received the message, and the two buttons are not the same one.
  * - The help stacks three collapsed, self-titled folds with the relocated explanation, the
  *   Telegram-only troubleshooting entries, and each channel's tutorial link.
  * - A Telegram test reports success with the Group Privacy caveat as a second line, nothing
@@ -86,6 +88,7 @@ function stateOf(
     enableGate: null,
     toggleRefusal: null,
     testRefusal: null,
+    testMessageRefusal: null,
     saveRefusal: null,
     saveButtonId: "save-under-test",
     adoptBinding: () => {},
@@ -249,6 +252,34 @@ describe("MessagingBindingBody", () => {
     expect(html).toContain(`data-tooltip="${line}"`);
     expect(html).toContain("line-clamp-2");
     // And it is that probe's own line: with nothing refused, the card draws none.
+    expect(render(stateOf("telegram"))).not.toContain('role="alert"');
+  });
+
+  it("keeps a refused test message under the same row, as that button's own line", () => {
+    // The send button writes nothing either, so its refusal leaves a card that looks untouched —
+    // and a refused probe says nothing about whether a message reached the chat, which is why the
+    // two buttons get two slots rather than one.
+    const line = S.messaging.testMessageRefused("Bot is not a member of this chat.");
+    const probeLine = S.messaging.testFail("Unauthorized");
+    const html = render(
+      stateOf("telegram", {}, { testRefusal: probeLine, testMessageRefusal: line }),
+    );
+    expect(html).toContain(`>${line}</p>`);
+    expect(html).toContain('role="alert"');
+    // Under the row, in the control block before the credential fields; the probe's line first,
+    // so the two read in the order of the buttons that answered them.
+    const rowAt = html.indexOf(S.messaging.test);
+    const fieldsAt = html.indexOf(S.telegram.botToken);
+    const probeAt = html.indexOf(probeLine);
+    const lineAt = html.indexOf(line);
+    expect(rowAt).toBeGreaterThanOrEqual(0);
+    expect(fieldsAt).toBeGreaterThan(rowAt);
+    expect(probeAt).toBeGreaterThan(rowAt);
+    expect(lineAt).toBeGreaterThan(probeAt);
+    expect(lineAt).toBeLessThan(fieldsAt);
+    // Bounded, with the whole sentence on hover.
+    expect(html).toContain(`data-tooltip="${line}"`);
+    // And it is that button's own line: with nothing refused, the card draws none.
     expect(render(stateOf("telegram"))).not.toContain('role="alert"');
   });
 

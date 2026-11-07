@@ -4367,6 +4367,18 @@ export const zh = {
     sendingTestMessage: "发送中…",
     testMessageSent: "测试消息已发送",
     /**
+     * A test message the platform did not take, drawn under the button that sent it
+     * (messaging-test-message-refusal.ts): nothing else on the card changes, so once the
+     * six-second notification is gone this line is the only account of the press.
+     */
+    testMessageRefused: (reason: string): string => `测试消息没有发出去：${reason}`,
+    /**
+     * The one case where "it did not go out" would be a claim the client cannot make: the request
+     * never came back with an answer, so the server may have delivered it with only the reply lost.
+     */
+    testMessageUnconfirmed: (reason: string): string =>
+      `没能确认测试消息是否已送达：${reason}（对方可能已经收到，先到聊天里看一眼）`,
+    /**
      * A save the server refused, drawn at the end of the card, above Save (messaging-save-refusal.ts):
      * the form still holds what was typed and still reads as unsaved, so this line is the only
      * thing that says the write did not land once the six-second notification is gone.
