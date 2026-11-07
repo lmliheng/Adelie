@@ -23874,3 +23874,11 @@ settings / workspace / messaging 五个面在 7.89–7.97 已逐处清完；剩�
 
 新模块 1 个 + API 页 1 个 + 新单测 1 个 + 既有单测 1 个 + 新 spec 1 个 + 文案三条（按 hunk 入索引）+
 changelog 一对（9 个文件）：`0797c368b`；台账（7.98 的待办行、上表那一行、本节）另起一笔。
+
+**第二百零九轮补记（推送后的 CI 实测）**：run `42425239411`（head `f81e222f8`）22 个作业里
+`test (server)`、`test-macos (server)` 与汇总 `ci` 红；两处红的都是
+`test/server-browser.test.ts`（macOS 上是 `findBrowserBinary` 那两条 —— 跑器上没有浏览器；ubuntu 上是
+「真的渲染一个页面」31 s 后 500），本笔只动 `packages/web`，本地 server 套件 **3114 通过**。
+`test-macos (server)` 在**上一笔 `f96b27805` 上就已经红**（同一文件同两条），是跑器环境问题；
+`POST …/actions/runs/42425239411/rerun-failed-jobs` 重跑后 `test (server)` 转绿，`test-macos (server)`
+仍红 —— 给下一轮的口径：**这两条红先看 `findBrowserBinary` 与本机有没有浏览器，别去翻自己的改动**。
