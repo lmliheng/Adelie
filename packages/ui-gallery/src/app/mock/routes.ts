@@ -29,6 +29,9 @@ import type {
   AgentVaultConfigDto,
   AllProjectSchedulesResponse,
   ApprovalMode,
+  AsrConfigResponse,
+  AsrTestResponse,
+  AsrTranscribeResponse,
   AuthResponse,
   BenchmarkCasesResponse,
   BuiltinBrowserHistoryResponse,
@@ -164,6 +167,23 @@ const record = (body: unknown): Record<string, unknown> =>
 
 const str = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;
+
+/**
+ * Where the provider's WebSocket sits for a configured site — the server's own rule, minus its
+ * refusals: Alibaba's sites serve the models one path shorter, the reseller's gateway is the
+ * default shape. The gallery only needs a plausible string to render next to the check.
+ */
+function asrEndpoint(baseUrl: string): string {
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return "wss://tokendance.space/gateway/alibaba/api-ws/v1/inference";
+  }
+  const bailian = url.hostname === "aliyuncs.com" || url.hostname.endsWith(".aliyuncs.com");
+  const scheme = url.protocol === "http:" ? "ws:" : "wss:";
+  return `${scheme}//${url.host}${bailian ? "/api-ws/v1/inference" : "/gateway/alibaba/api-ws/v1/inference"}`;
+}
 
 /** Function declarations rather than arrows: only those narrow control flow as `never` calls. */
 function readOnly(what: string): never {
@@ -342,6 +362,36 @@ router
   })
   .get("/api/admin/settings", ({ store }): ServerSettingsResponse => ({
     settings: store.f.serverSettings,
+  }))
+  // Speech input: the masked read, the save, the settings page's connectivity check and the
+  // composer's transcription. The key stays write-only here as it is on the server — a save
+  // records that one is stored, never what it is. There is no provider behind the gallery, so
+  // the check answers from what the form would save rather than from a real call.
+  .get("/api/asr/config", ({ store }): AsrConfigResponse => ({ config: store.f.asrConfig }))
+  .put("/api/asr/config", ({ store, body }): AsrConfigResponse => {
+    const update = record(body);
+    const baseUrl = str(update.baseUrl).trim();
+    const model = str(update.model).trim();
+    if (baseUrl !== "") store.f.asrConfig.baseUrl = baseUrl;
+    if (model !== "") store.f.asrConfig.model = model;
+    if (str(update.apiKey).trim() !== "") store.f.asrConfig.hasKey = true;
+    return { config: store.f.asrConfig };
+  })
+  .post("/api/asr/test", ({ store, body }): AsrTestResponse => {
+    const request = record(body);
+    const named = str(request.baseUrl).trim();
+    const baseUrl = named !== "" ? named : store.f.asrConfig.baseUrl;
+    const ok = str(request.apiKey).trim() !== "" || store.f.asrConfig.hasKey;
+    return {
+      ok,
+      message: ok ? "" : "Could not reach the speech service.",
+      endpoint: asrEndpoint(baseUrl),
+    };
+  })
+  .post("/api/asr/transcribe", (): AsrTranscribeResponse => ({
+    // Every signed-in user may talk into the admin's key. The gallery has no such key, so it
+    // answers with the one thing a demo can honestly say instead of a transcript.
+    text: "The gallery has no speech provider behind it, so this is the recording's stand-in text.",
   }))
   // The storage ledger's page, and the human-reviewed cleanup that reads it. The mode gates every
   // write here exactly as it does on the server, so the gallery can be walked through both pages:

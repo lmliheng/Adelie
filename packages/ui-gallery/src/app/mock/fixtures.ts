@@ -10,6 +10,7 @@ import type {
   AgentApiSettings,
   AgentConfigResponse,
   AgentSummary,
+  AsrConfig,
   BenchmarkCaseSummary,
   BenchmarkSummary,
   CaseMaterial,
@@ -121,6 +122,11 @@ export interface DemoFixtures {
   me: Omit<MeResponse, "user">;
   prefs: UiPrefs;
   serverSettings: ServerSettings;
+  /**
+   * The speech model the composer's microphone transcribes with, as the settings page reads it:
+   * masked, so a key is reported as stored rather than written down. A save mutates the row.
+   */
+  asrConfig: AsrConfig;
   /** The storage ledger the Settings page renders; read-only, and what the page measures again. */
   storageReport: StorageReport;
   /**
@@ -1548,6 +1554,13 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       attachmentTotalMb: 120,
       companyMode: false,
       agentApiEnabled: true,
+    },
+    // A configured speech model, so the settings page opens on a filled form: the default
+    // gateway's address, its one model, and a key that is reported as stored rather than shown.
+    asrConfig: {
+      baseUrl: "https://tokendance.space",
+      model: "qwen-audio-3.1-asr-flash-streaming",
+      hasKey: true,
     },
     // A ledger with one of everything the page has a branch for: a class that is never a
     // candidate, three that are, a duplicate-looking environment pair, and one path the scan
