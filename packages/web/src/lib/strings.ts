@@ -2027,9 +2027,18 @@ export const zh = {
     apiOwnerOnly: "只有 Project 所有者可以更改这些设置。",
     apiAdminOff:
       "管理员已在服务器设置中关闭 Agent API：所有 API 请求都会被拒绝，这里的设置与密钥保留。",
+    /**
+     * A refused flip of the switch above: it never moved, so external programs are still refused —
+     * and the switch itself is the retry.
+     */
+    apiEnableRefused: (reason: string): string =>
+      `API 访问没有打开，外部程序仍然无法调用：${reason}`,
     apiApprovalMode: "API 会话的审批模式",
     apiApprovalModeHint:
       "应用于之后新建的 API 会话；需要确认时，确认请求会发给调用方，也可在 Web App 中回答。",
+    /** A refused change: the select fell back to the stored mode, so the sentence names the one asked for. */
+    apiApprovalModeRefused: (mode: string, reason: string): string =>
+      `审批方式没有改成「${mode}」：${reason}`,
     apiConnection: "连接",
     apiBaseUrl: "Base URL",
     apiAgentId: "Agent ID",
@@ -2050,6 +2059,12 @@ export const zh = {
       `删除密钥「${name}」？使用它的程序会立即被拒绝，此操作不可撤销。`,
     apiOpen: "允许无密钥访问",
     apiOpenHint: "任何能访问此地址的程序都能与该 Agent 对话；仅建议本机使用。",
+    /**
+     * A refused keyless-off: the switch never moved, so the exposure the reader just tried to close
+     * is still open — and that half is what they have to act on.
+     */
+    apiKeylessOffRefused: (reason: string): string =>
+      `无密钥访问没有关掉，任何能访问此地址的程序仍然无需密钥就能调用：${reason}`,
     apiExamples: "示例",
     /** Turning the Agent's API off asks first: every program using it is refused from then on. */
     apiOpenTitle: "允许无密钥访问？",

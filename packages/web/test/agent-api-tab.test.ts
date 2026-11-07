@@ -15,6 +15,9 @@
  * - With the admin's server-wide switch off, the tab's switch is disabled and says why, to every
  *   member and not only an admin (the tab's own read carries the switch); a member who is not the
  *   owner finds every control disabled, no key actions, and is told why.
+ * - The three writes that ask nothing first draw a refused reason under the control that asked:
+ *   the API switch, the approval select and the keyless switch — one alert each, in its own place,
+ *   and none at all when nothing was refused.
  * - Turning the API off asks first, in the danger tone. Answered yes, it writes the switch off
  *   and hands on what the server stored; a failed write is handed on as the failure.
  * - Deleting a key asks first, naming it. Answered yes, it deletes that key and hands on its id;
@@ -218,6 +221,28 @@ describe("the API tab", () => {
     expect(run).toContain(`data-tooltip="${S.agent.apiAdminOff}"`);
     const enabled = render().slice(render().indexOf(S.agent.apiTry));
     expect(enabled).not.toMatch(/<input[^>]*disabled=""/);
+  });
+
+  it("draws each refused write's reason under the control that asked, and no alert when none was refused", () => {
+    // Nothing refused: the tab has no alert at all — the sentences appear only when asked for.
+    expect(render()).not.toContain('role="alert"');
+
+    const enable = S.agent.apiEnableRefused("write refused");
+    const mode = S.agent.apiApprovalModeRefused(
+      S.chat.approvalModeNames["always-ask"] as string,
+      "write refused",
+    );
+    const keyless = S.agent.apiKeylessOffRefused("write refused");
+    const html = render({
+      enableRefusal: enable,
+      approvalRefusal: mode,
+      keylessOffRefusal: keyless,
+    });
+    expect(html.split('role="alert"').length - 1).toBe(3);
+    // Each one sits under its own control: the switch, the approval select, the keyless switch.
+    expect(html.indexOf(enable)).toBeLessThan(html.indexOf(S.agent.apiApprovalMode));
+    expect(html.indexOf(mode)).toBeGreaterThan(html.indexOf(S.agent.apiApprovalMode));
+    expect(html.indexOf(keyless)).toBeGreaterThan(html.indexOf(S.agent.apiOpenHint));
   });
 
   it("leaves a member who is not the owner every control disabled and no key action", () => {

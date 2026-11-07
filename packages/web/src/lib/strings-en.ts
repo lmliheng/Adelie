@@ -1997,9 +1997,18 @@ export const en: Strings = {
     apiOwnerOnly: "Only the Project owner can change these settings.",
     apiAdminOff:
       "An admin has turned the Agent API off for this server: every API request is refused, and the settings and keys here are kept.",
+    /**
+     * A refused flip of the switch above: it never moved, so external programs are still refused —
+     * and the switch itself is the retry.
+     */
+    apiEnableRefused: (reason: string): string =>
+      `API access was not turned on; external programs still cannot call it: ${reason}`,
     apiApprovalMode: "Approval mode for API conversations",
     apiApprovalModeHint:
       "Applies to API conversations created from now on; when a mode asks, the request goes to the caller and can also be answered here.",
+    /** A refused change: the select fell back to the stored mode, so the sentence names the one asked for. */
+    apiApprovalModeRefused: (mode: string, reason: string): string =>
+      `The approval mode was not changed to "${mode}": ${reason}`,
     apiConnection: "Connection",
     apiBaseUrl: "Base URL",
     apiAgentId: "Agent ID",
@@ -2020,6 +2029,12 @@ export const en: Strings = {
     apiOpen: "Allow keyless access",
     apiOpenHint:
       "Anything that can reach this address can talk to the agent; recommended for loopback use only.",
+    /**
+     * A refused keyless-off: the switch never moved, so the exposure the reader just tried to close
+     * is still open — and that half is what they have to act on.
+     */
+    apiKeylessOffRefused: (reason: string): string =>
+      `Keyless access was not turned off; anything that can reach this address can still call it without a key: ${reason}`,
     apiExamples: "Examples",
     apiOpenTitle: "Allow keyless access?",
     apiOpenBody:

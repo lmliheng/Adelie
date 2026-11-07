@@ -9,9 +9,12 @@
  * Save: turning the API on writes at once, while turning it off and deleting a key ask first,
  * because a program using them is refused from then on. Those three questions close only once
  * their write landed; one the server refused keeps the card open with the reason drawn inside it,
- * so the retry is the button that was just pressed rather than a toast that has already left. A
- * new key's secret exists only in the create response: it is shown once, in a panel with its copy
- * button, until Done, and afterwards the list names the key by its prefix alone.
+ * so the retry is the button that was just pressed rather than a toast that has already left. The
+ * writes that ask nothing first (turning the API on, the approval mode, turning keyless access off)
+ * have no card to keep a reason in, so theirs is drawn under the switch or the select that made it
+ * — which never moved, and is the retry. A new key's secret exists only in the create response: it
+ * is shown once, in a panel with its copy button, until Done, and afterwards the list names the key
+ * by its prefix alone.
  *
  * The admin's server-wide switch (Settings › Server › Agent API) overrides every Agent: when it is
  * off the switch here is disabled and says so, and nothing is lost. The tab's own read carries that
@@ -42,7 +45,6 @@ import {
   Select,
   SkeletonList,
   ToggleRow,
-  toastError,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { apiErrorText } from "../../lib/api-error";
@@ -51,6 +53,11 @@ import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import { useProject } from "../../state/project";
 import { APPROVAL_MODES } from "../chat/approval-mode";
+import {
+  apiApprovalModeRefused,
+  apiEnabledRefused,
+  apiKeylessOffRefused,
+} from "./api-write-refusal";
 import { ApiTryPanel } from "./api-try-panel";
 
 /** The public API's root on the server this page was served from. */
@@ -335,6 +342,12 @@ export interface ApiTabViewProps {
   draftError?: string;
   /** A just-created key's secret, until Done; null otherwise. */
   secret: string | null;
+  /** The switch's own refusal, drawn under it: the API is still off and the switch is the retry. */
+  enableRefusal?: string;
+  /** The select's refusal, naming the mode asked for: the select is back on the stored mode. */
+  approvalRefusal?: string;
+  /** The keyless switch's refusal: keyless access is still open, and the switch is the retry. */
+  keylessOffRefusal?: string;
   onToggleEnabled: (next: boolean) => void;
   onApprovalMode: (mode: ApprovalMode) => void;
   onToggleOpen: (next: boolean) => void;
@@ -365,6 +378,11 @@ export function ApiTabView(p: ApiTabViewProps) {
           onChange={p.onToggleEnabled}
           disabled={!p.isOwner || serverOff || p.busy}
         />
+        {p.enableRefusal !== undefined && (
+          <p role="alert" className={`text-xs break-words ${toneInk.danger}`}>
+            {p.enableRefusal}
+          </p>
+        )}
         {serverOff && <p className="text-xs text-fg-muted">{S.agent.apiAdminOff}</p>}
         {!p.isOwner && <p className="text-xs text-fg-muted">{S.agent.apiOwnerOnly}</p>}
       </div>
@@ -390,6 +408,11 @@ export function ApiTabView(p: ApiTabViewProps) {
                 </option>
               ))}
             </Select>
+            {p.approvalRefusal !== undefined && (
+              <p role="alert" className={`mt-1 text-xs break-words ${toneInk.danger}`}>
+                {p.approvalRefusal}
+              </p>
+            )}
           </div>
 
           <RuledSection title={S.agent.apiConnection}>
@@ -457,6 +480,11 @@ export function ApiTabView(p: ApiTabViewProps) {
                 disabled={!p.isOwner || p.busy}
               />
               <p className={`text-xs ${toneInk.attention}`}>{S.agent.apiOpenHint}</p>
+              {p.keylessOffRefusal !== undefined && (
+                <p role="alert" className={`text-xs break-words ${toneInk.danger}`}>
+                  {p.keylessOffRefusal}
+                </p>
+              )}
             </div>
           </RuledSection>
 
@@ -491,9 +519,9 @@ export function ApiTab({
 }) {
   const { reloadAgents } = useProject();
   const [settings, setSettings] = useState<AgentApiSettings | null>(null);
-  // Only the initial load failure renders inline; a write with no question of its own (turning the
-  // API on, the approval mode, keyless off) reports via toast; a write asked for in a card reports
-  // inside that card (the three refusals below).
+  // Only the initial load failure renders inline; a write with no question of its own reports under
+  // the control that asked for it; a write asked for in a card reports inside that card (the three
+  // refusals below).
   const [loadError, setLoadError] = useState<string | null>(null);
   const [serverEnabled, setServerEnabled] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -505,6 +533,11 @@ export function ApiTab({
   const [offRefusal, setOffRefusal] = useState<string | null>(null);
   const [keylessRefusal, setKeylessRefusal] = useState<string | null>(null);
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  // The same reason for the three writes no card holds: each stays under its own control, which is
+  // still in its old position and is the retry.
+  const [enableRefusal, setEnableRefusal] = useState<string | null>(null);
+  const [approvalRefusal, setApprovalRefusal] = useState<string | null>(null);
+  const [keylessOffRefusal, setKeylessOffRefusal] = useState<string | null>(null);
   const [draftName, setDraftName] = useState<string | null>(null);
   const [draftError, setDraftError] = useState<string | undefined>(undefined);
   const [secret, setSecret] = useState<string | null>(null);
@@ -528,9 +561,12 @@ export function ApiTab({
     };
   }, [projectId, agentId]);
 
-  /** One settings write: the stored answer replaces the view, a failure says why. */
+  /**
+   * One settings write that asks nothing first: the stored answer replaces the view, and a refused
+   * one is handed back to the control that asked for it, where it stays.
+   */
   const write = useCallback(
-    async (patch: AgentApiUpdateRequest) => {
+    async (patch: AgentApiUpdateRequest, refused: (error: unknown) => void) => {
       setBusy(true);
       try {
         const res = await api.putAgentApi(projectId, agentId, patch);
@@ -539,7 +575,7 @@ export function ApiTab({
         // The Agents list marks an Agent whose API is on.
         if (patch.enabled !== undefined) void reloadAgents();
       } catch (e) {
-        toastError(apiErrorText(e));
+        refused(e);
       } finally {
         setBusy(false);
       }
@@ -584,21 +620,35 @@ export function ApiTab({
         draftName={draftName}
         {...(draftError !== undefined ? { draftError } : {})}
         secret={secret}
+        {...(enableRefusal !== null ? { enableRefusal } : {})}
+        {...(approvalRefusal !== null ? { approvalRefusal } : {})}
+        {...(keylessOffRefusal !== null ? { keylessOffRefusal } : {})}
         onToggleEnabled={(next) => {
-          if (next) void write({ enabled: true });
-          else {
+          if (next) {
+            // The press that follows is the retry, so the sentence from the last one goes first.
+            setEnableRefusal(null);
+            void write({ enabled: true }, (e) => setEnableRefusal(apiEnabledRefused(e)));
+          } else {
             // Open first, then drop the previous refusal: that sentence belonged to the attempt
             // before this one.
             setConfirmOff(true);
             setOffRefusal(null);
           }
         }}
-        onApprovalMode={(approvalMode) => void write({ approvalMode })}
+        onApprovalMode={(approvalMode) => {
+          setApprovalRefusal(null);
+          void write({ approvalMode }, (e) =>
+            setApprovalRefusal(apiApprovalModeRefused(approvalMode, e)),
+          );
+        }}
         onToggleOpen={(open) => {
           if (open) {
             setConfirmKeyless(true);
             setKeylessRefusal(null);
-          } else void write({ open: false });
+          } else {
+            setKeylessOffRefusal(null);
+            void write({ open: false }, (e) => setKeylessOffRefusal(apiKeylessOffRefused(e)));
+          }
         }}
         onStartKey={() => {
           setDraftName("");
