@@ -123,12 +123,29 @@ describe.skipIf(!usable)("penguin-bwrap live enforcement (host-gated)", () => {
   });
 
   it("network: none leaves the process with loopback only and no resolution", async () => {
+    // The sandbox still reads the host's `/etc/hosts` (bwrap binds `/` read-only), so a name
+    // listed there resolves with no network at all: probing such a name would test the
+    // developer's hosts file, not the confinement. Take a public name this host does NOT map,
+    // and pin the positive control first — with the network on it must resolve, otherwise
+    // "no resolution" below would prove nothing.
+    const probed = ["example.com", "www.example.com", "cloudflare.com"].find(
+      (name) =>
+        !readFileSync("/etc/hosts", "utf8")
+          .split("\n")
+          .map((line) => line.replace(/#.*/, "").trim())
+          .some((line) => line.split(/\s+/).slice(1).includes(name)),
+    );
+    if (!probed) throw new Error("every probe name is mapped in this host's /etc/hosts");
+
     policy = { mode: "workspace-write" };
     expect(interfaces((await run("cat /proc/net/dev")).out).length).toBeGreaterThan(1);
+    expect((await run(`getent hosts ${probed} >/dev/null 2>&1; echo exit=$?`)).out).toContain(
+      "exit=0",
+    );
 
     policy = { mode: "workspace-write", network: "none" };
     expect(interfaces((await run("cat /proc/net/dev")).out)).toEqual(["lo"]);
-    expect((await run("getent hosts github.com 2>&1; echo exit=$?")).out).toMatch(/exit=[^0]/);
+    expect((await run(`getent hosts ${probed} 2>&1; echo exit=$?`)).out).toMatch(/exit=[^0]/);
   });
 
   it("mask-paths: a masked directory reads as empty and its secret is unreachable", async () => {
