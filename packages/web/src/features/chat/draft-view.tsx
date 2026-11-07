@@ -59,6 +59,7 @@ import { UNCONFINED, draftSandboxAfter } from "../../lib/permission-level";
 import type { PermissionPick } from "../../lib/permission-level";
 import { formatMonthDay } from "../../lib/format";
 import { apiErrorText } from "../../lib/api-error";
+import { sendRefusalReason, sendRefused } from "./first-send-refusal";
 import { rememberSessionMachine } from "../../lib/session-machines";
 import { cachedMachineAgents, rememberMachineAgents } from "../../lib/machine-cache";
 import { useAuth } from "../../state/auth";
@@ -93,6 +94,7 @@ import { effectiveThinkingLevel } from "./thinking-level";
 import { WorkspaceSelect, pillClass } from "./workspace-select";
 import { FilesPanelToggle } from "./dock-toggles";
 import { sameModelRef } from "../models/model-grouping";
+import { toneInk } from "../../lib/tone";
 
 /** Coalescing window for writing body text to the cache: keystrokes are frequent, so a short batch accumulates before persisting (option changes are still written immediately). */
 const DRAFT_SAVE_DEBOUNCE_MS = 300;
@@ -738,6 +740,13 @@ export function DraftView({
   // a racing navigation. A ref rather than state — the composer disables its own send button
   // off its `busy` state, and nothing else on this page renders differently mid-send.
   const sendingRef = useRef(false);
+  /**
+   * The reason this draft's last send did not go out. Sending is the page's only write, and a
+   * refusal changes nothing else on screen: the text stays in the card, the send button is the
+   * retry — so the sentence belongs right under the card instead of in a notification that lives
+   * six seconds (first-send-refusal.ts). Cleared when the next attempt starts.
+   */
+  const [sendRefusal, setSendRefusal] = useState<string | null>(null);
   // Whether this draft's page is still the one open: the first send's round trips can outlast
   // it, and a new draft of the same Project would reuse its dock scope.
   const openRef = useRef(true);
@@ -750,11 +759,14 @@ export function DraftView({
 
   // First message sent: only now is the Session created (Agent / Workspace / Model / approval
   // mode are all locked in together), then the route jumps once sent; returns false on any
-  // failure, so the input area keeps the draft and can resend.
+  // failure, so the input area keeps the draft and can resend — with the reason left under the
+  // card by the catch below.
   const onSend = useCallback(
     async (input: TaskInputPart[], goal: { budget: number } | null = null): Promise<boolean> => {
       if (!agentId || sendingRef.current) return false;
       sendingRef.current = true;
+      // This attempt's own reason, not the one the attempt before it left (one attempt, one reason).
+      setSendRefusal(null);
       // The draft's own docks, named now: the send takes round trips, and the user may be on
       // another conversation by the time it has a Session to hand them to.
       const dockScope = currentDockScope();
@@ -802,7 +814,9 @@ export function DraftView({
         // this empty Session, otherwise every resend attempt would create another one, piling up
         // empty sessions with no messages in the sidebar (best-effort cleanup).
         if (createdId) void api.deleteSession(createdId).catch(() => undefined);
-        toastError(apiErrorText(e, modelRef ? { modelId: modelRef.modelId } : {}));
+        // Nothing was written and the card still holds the message: the reason stays under it,
+        // where the send button that retries is (see the `sendRefusal` state).
+        setSendRefusal(sendRefused(sendRefusalReason(e, modelRef?.modelId)));
         return false;
       } finally {
         sendingRef.current = false;
@@ -915,6 +929,21 @@ export function DraftView({
           initialText={cached.text ?? ""}
           onTextChange={onTextChange}
         />
+
+        {/* The first message did not go out: nothing was written (an empty Session is deleted
+            again), the text and the staged files are still in the card above, and the send button
+            is the retry — so the reason stays right here, under what it is about. */}
+        {sendRefusal !== null && (
+          <p
+            role="alert"
+            data-testid="draft-send-refusal"
+            data-tooltip={sendRefusal}
+            data-tooltip-content="text"
+            className={`mt-2 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {sendRefusal}
+          </p>
+        )}
 
         {/* Ownership selection right below the card (small pill dropdowns, styled after ChatGPT's project picker button) */}
         <div className="mt-2 flex flex-wrap items-center gap-2">

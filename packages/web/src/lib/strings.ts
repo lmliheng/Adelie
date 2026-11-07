@@ -3495,6 +3495,8 @@ export const zh = {
     machineTag: (machine: string) => `[SSH: ${machine}]`,
     newSessionInWorkspace: "在此工作区新建对话",
     draftSubtitle: "最擅长 AI 开发任务的自进化 Agent",
+    /** The draft's first message did not go out: nothing was written, the text is still in the card. */
+    draftSendRefused: (reason: string) => `没能发出这条消息：${reason}`,
     /** Second tooltip line on a shortcut row: the click fills the composer, it does not send. */
     shortcutFillHint: "点击填入输入框，可修改后自行发送",
     /** The draft screen's saved-prompt folder: prompts the user wrote and saved, stored per user on the server. */

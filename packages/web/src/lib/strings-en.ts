@@ -3426,6 +3426,8 @@ export const en: Strings = {
     machineTag: (machine: string) => `[SSH: ${machine}]`,
     newSessionInWorkspace: "New chat in this workspace",
     draftSubtitle: "The self-evolving agent that excels at AI development tasks",
+    /** The draft's first message did not go out: nothing was written, the text is still in the card. */
+    draftSendRefused: (reason: string) => `Could not send this message: ${reason}`,
     /** Second tooltip line on a shortcut row: the click fills the composer, it does not send. */
     shortcutFillHint: "Click to fill the composer — edit it if you like, then send",
     /** The draft screen's saved-prompt folder: prompts the user wrote and saved, stored per user on the server. */
