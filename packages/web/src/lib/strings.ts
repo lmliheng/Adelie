@@ -4366,6 +4366,12 @@ export const zh = {
     sendTestMessage: "发送测试消息",
     sendingTestMessage: "发送中…",
     testMessageSent: "测试消息已发送",
+    /**
+     * A save the server refused, drawn at the end of the card, above Save (messaging-save-refusal.ts):
+     * the form still holds what was typed and still reads as unsaved, so this line is the only
+     * thing that says the write did not land once the six-second notification is gone.
+     */
+    saveRefused: (reason: string): string => `保存失败：${reason}`,
     statusLabel: "连接状态",
     status: {
       disconnected: "未连接",

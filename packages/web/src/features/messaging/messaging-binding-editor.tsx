@@ -70,6 +70,7 @@ import { toneInk, type Tone } from "../../lib/tone";
 import { QQScanConnect } from "./qq-scan-connect";
 import { WeChatScanConnect } from "./wechat-scan-connect";
 import { messagingTestRefusal } from "./messaging-test-refusal";
+import { messagingSaveRefusal } from "./messaging-save-refusal";
 import {
   bindingsToForm,
   emptyMessagingForm,
@@ -245,6 +246,12 @@ export interface MessagingBindingEditorState {
    * next probe starts — see `messaging-test-refusal.ts`.
    */
   testRefusal: string | null;
+  /**
+   * Why the last save did not land (null when nothing was refused). It stays at the end of the
+   * card — above Save in both hosts — until the next save starts or the channel is switched,
+   * which is what makes it readable after the attempt — see `messaging-save-refusal.ts`.
+   */
+  saveRefusal: string | null;
   /** The id hosts give their Save action, so a switch gated on unsaved edits can focus it. */
   saveButtonId: string;
   /**
@@ -377,6 +384,12 @@ export function useMessagingBinding(
   const [sendingTest, setSendingTest] = useState(false);
   /** The last refused credential probe, under the button that asked (see `messaging-test-refusal.ts`). */
   const [testRefusal, setTestRefusal] = useState<string | null>(null);
+  /**
+   * The last refused save, at the end of the card (see `messaging-save-refusal.ts`). Separate from
+   * `testRefusal` because it is about a write that was supposed to change something, not about a
+   * probe: the two are answered by different buttons and one never stands for the other.
+   */
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
   const saveButtonId = useId();
 
   /** Which session the form was loaded for (the initial load runs once per session, not per poll flip). */
@@ -416,6 +429,8 @@ export function useMessagingBinding(
       setBaseline(null);
       // Nor the previous session's probe answer: its fields are about to leave the screen.
       setTestRefusal(null);
+      // Nor why that other conversation's save failed: this form is a different one.
+      setSaveRefusal(null);
       void refresh(true);
     }
     const timer = poll ? setInterval(() => void refresh(false), STATUS_POLL_MS) : null;
@@ -445,6 +460,8 @@ export function useMessagingBinding(
     setToggleRefusal(null);
     // Same rule for the probe: another channel's credentials are not what that button tested.
     setTestRefusal(null);
+    // And for the save: another channel's form is not the one that failed to write.
+    setSaveRefusal(null);
     patchForm({ channel });
   };
 
@@ -541,7 +558,15 @@ export function useMessagingBinding(
     }
   };
 
-  /** Save = persist the selected channel's credentials (no connection side effect; the toggle owns that). */
+  /**
+   * Save = persist the selected channel's credentials (no connection side effect; the toggle owns that).
+   *
+   * A refused write leaves its reason at the end of the card and NOT in a toast: the fields keep
+   * every value that was typed, the saved baseline does not move (so the form still reads as
+   * unsaved), and the success toast never comes — six seconds later nothing on screen would say
+   * the button had been pressed, while the credential the server rejected is a field on this very
+   * form. Save is the retry, so the sentence stays until the next press.
+   */
   const save = async () => {
     if (!form) return;
     const built = formToPut(form, channels[form.channel].secretConfigured);
@@ -550,6 +575,8 @@ export function useMessagingBinding(
       return;
     }
     setBusy(true);
+    // This save's answer replaces the last one's.
+    setSaveRefusal(null);
     try {
       const res =
         built.channel === "telegram"
@@ -562,7 +589,7 @@ export function useMessagingBinding(
       applyChannel(built.channel, res.binding, res.status);
       toastSuccess(S.common.saved);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setSaveRefusal(messagingSaveRefusal(e));
     } finally {
       setBusy(false);
     }
@@ -614,6 +641,7 @@ export function useMessagingBinding(
     enableGate,
     toggleRefusal,
     testRefusal,
+    saveRefusal,
     saveButtonId,
     adoptBinding: (binding) =>
       applyChannel(binding.channel, binding, channels[binding.channel].status),
@@ -1275,6 +1303,23 @@ export function MessagingBindingBody({ b }: { b: MessagingBindingEditorState }) 
         checked={delivery.renderMarkdown}
         onChange={(v) => patchDelivery({ renderMarkdown: v })}
       />
+      {/* The refused save closes the card, which is where Save sits in both hosts: the dock panel
+          puts its own Save row right below this body, and the dialog's footer follows the body and
+          the FAQ folds — so one slot here is above that button in either host, and the two hosts
+          stay free to place their action where they already do. `role="alert"` so the sentence is
+          announced when it arrives (a toast was announced once and then left), `line-clamp-2` so a
+          long server sentence cannot push the form around, and the whole text on hover the way
+          every other refusal slot carries its longer form. */}
+      {b.saveRefusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={b.saveRefusal}
+          data-tooltip-content="text"
+          className={`line-clamp-2 text-xs break-words ${toneInk.danger}`}
+        >
+          {b.saveRefusal}
+        </p>
+      )}
     </div>
   );
 }

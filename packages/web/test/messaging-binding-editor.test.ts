@@ -86,6 +86,7 @@ function stateOf(
     enableGate: null,
     toggleRefusal: null,
     testRefusal: null,
+    saveRefusal: null,
     saveButtonId: "save-under-test",
     adoptBinding: () => {},
     save: noop,
@@ -248,6 +249,25 @@ describe("MessagingBindingBody", () => {
     expect(html).toContain(`data-tooltip="${line}"`);
     expect(html).toContain("line-clamp-2");
     // And it is that probe's own line: with nothing refused, the card draws none.
+    expect(render(stateOf("telegram"))).not.toContain('role="alert"');
+  });
+
+  it("keeps a refused save at the form's foot, where both hosts put their Save action", () => {
+    // Save writes nothing optimistically, so a refusal leaves the card exactly as it was — still
+    // unsaved, no success toast — and the sentence is the only account of the press. It closes
+    // the body because that is above Save in BOTH hosts (the dialog's footer, the panel's own
+    // row under the form), which is why the slot lives here rather than in either host.
+    const line = S.messaging.saveRefused(S.errors.byCode["internal"] as string);
+    const html = render(stateOf("telegram", {}, { saveRefusal: line }));
+    expect(html).toContain(`>${line}</p>`);
+    expect(html).toContain('role="alert"');
+    // At the foot: after the delivery options that close the form, not among the controls.
+    expect(html.indexOf(line)).toBeGreaterThan(html.indexOf(S.messaging.renderMarkdown));
+    expect(html.indexOf(line)).toBeGreaterThan(html.indexOf(S.telegram.botToken));
+    // Bounded, with the whole sentence on hover.
+    expect(html).toContain(`data-tooltip="${line}"`);
+    expect(html).toContain("line-clamp-2");
+    // And it is that save's own line: with nothing refused, the card draws none.
     expect(render(stateOf("telegram"))).not.toContain('role="alert"');
   });
 

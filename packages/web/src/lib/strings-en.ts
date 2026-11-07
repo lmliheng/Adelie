@@ -4301,6 +4301,12 @@ export const en: Strings = {
     sendTestMessage: "Send test message",
     sendingTestMessage: "Sending…",
     testMessageSent: "Test message sent",
+    /**
+     * A save the server refused, drawn at the end of the card, above Save (messaging-save-refusal.ts):
+     * the form still holds what was typed and still reads as unsaved, so this line is the only
+     * thing that says the write did not land once the six-second notification is gone.
+     */
+    saveRefused: (reason: string): string => `Save failed: ${reason}`,
     statusLabel: "Connection status",
     status: {
       disconnected: "Not connected",
