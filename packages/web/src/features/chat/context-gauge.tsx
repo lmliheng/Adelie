@@ -93,6 +93,7 @@ import { formatPercent, humanizeTokens } from "../../lib/format";
 import { S } from "../../lib/strings";
 import { contextComposition } from "./context-parts";
 import type { ContextPartKey } from "./context-parts";
+import { contextThresholdRefused } from "./context-threshold-refusal";
 
 /**
  * Panel geometry. The width is applied inline rather than as a `w-*` class because the same
@@ -166,9 +167,9 @@ export function ContextGauge({
   agentName?: string;
   /**
    * Writes a new `compaction.max_context_length` to the Agent and re-reads the config this
-   * gauge was given, rejecting when the write failed (the caller reports it). Its absence
-   * leaves the cutter a readout: a composer with no Agent config to write back to must not
-   * offer to change one.
+   * gauge was given, rejecting when the write failed — this file draws that reason inside the
+   * confirmation that asked, next to the Save that retries. Its absence leaves the cutter a
+   * readout: a composer with no Agent config to write back to must not offer to change one.
    */
   onChangeCompactionLimit?: (maxContextLength: number) => Promise<void>;
 }) {
@@ -184,6 +185,13 @@ export function ContextGauge({
   const [pendingThreshold, setPendingThreshold] = useState<number | null>(null);
   const [proposal, setProposal] = useState<number | null>(null);
   const [savingThreshold, setSavingThreshold] = useState(false);
+  /**
+   * The confirmation's own account of a write it asked for and the server refused, kept until
+   * the next attempt: the card stays open on the edited value (the Save in it is the retry), so
+   * the reason belongs in that card — a toast would sit above a dialog the person is still
+   * looking at, and be gone before the second press (7.19's rule, app-wide).
+   */
+  const [thresholdRefusal, setThresholdRefusal] = useState<string | null>(null);
   // Bumped after a successful write: the panel's data is a snapshot from when it opened, and
   // its `compactionThreshold` would otherwise keep overriding the fresher value the config
   // refetch just produced.
@@ -211,15 +219,29 @@ export function ContextGauge({
   const confirmThreshold = async (tokens: number): Promise<void> => {
     if (!onChangeCompactionLimit) return;
     setSavingThreshold(true);
+    // The card's previous answer belonged to the attempt before this press, not to this one.
+    setThresholdRefusal(null);
     try {
       await onChangeCompactionLimit(tokens);
       setProposal(null);
       setReloadTick((n) => n + 1);
-    } catch {
-      // Reported by the caller; the dialog stays open on its edited value.
+    } catch (e) {
+      // The dialog stays open on its edited value, and it is the dialog that says why: the
+      // cutter proposed a number, the Save wrote it, and neither moved.
+      setThresholdRefusal(contextThresholdRefused(tokens, e));
     } finally {
       setSavingThreshold(false);
     }
+  };
+  /** A newly proposed value starts without the previous attempt's reason. */
+  const proposeThreshold = (tokens: number): void => {
+    setThresholdRefusal(null);
+    setProposal(tokens);
+  };
+  /** Closing the card ends the question: the reason it held has nothing left to sit under. */
+  const closeThresholdDialog = (): void => {
+    setProposal(null);
+    setThresholdRefusal(null);
   };
 
   // The ring draws no numbers, so its accessible name carries them: the ratio AND the figures it
@@ -272,7 +294,7 @@ export function ContextGauge({
               editable={onChangeCompactionLimit !== undefined}
               pendingThreshold={pendingThreshold}
               onPendingThreshold={setPendingThreshold}
-              onProposeThreshold={(tokens) => setProposal(tokens)}
+              onProposeThreshold={proposeThreshold}
             />
           </div>,
           document.body,
@@ -284,7 +306,8 @@ export function ContextGauge({
           proposed={proposal}
           contextWindow={win}
           busy={savingThreshold}
-          onClose={() => setProposal(null)}
+          refusal={thresholdRefusal}
+          onClose={closeThresholdDialog}
           onConfirm={confirmThreshold}
         />
       )}
@@ -752,6 +775,7 @@ function ThresholdDialog({
   proposed,
   contextWindow,
   busy,
+  refusal,
   onClose,
   onConfirm,
 }: {
@@ -762,6 +786,8 @@ function ThresholdDialog({
   proposed: number;
   contextWindow: number | undefined;
   busy: boolean;
+  /** The words for a write this card asked for and the server refused, or null when nothing was. */
+  refusal: string | null;
   onClose: () => void;
   onConfirm: (tokens: number) => void;
 }) {
@@ -779,6 +805,7 @@ function ThresholdDialog({
       cancelLabel={S.common.cancel}
       confirmDisabled={!valid}
       busy={busy}
+      {...(refusal !== null ? { refusal } : {})}
       onClose={onClose}
       onConfirm={() => {
         if (valid) onConfirm(tokens);

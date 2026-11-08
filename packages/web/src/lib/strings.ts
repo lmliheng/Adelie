@@ -3903,6 +3903,9 @@ export const zh = {
     contextThresholdInvalid: "必须是大于 0 的整数",
     contextThresholdCapped: (n: string): string => `超出模型窗口，实际生效的阈值是 ${n}`,
     contextThresholdSaved: (n: string): string => `压缩阈值已改为 ${n}，立即生效`,
+    /** Refused write, drawn inside the confirmation that asked: n = the threshold that was asked for, reason = the server's words (or ours). */
+    contextThresholdRefused: (n: string, reason: string): string =>
+      `压缩阈值没有改成 ${n}，Agent 上仍然是原来的值：${reason}`,
     /** Composer notice: the model's window is below the Agent's configured compaction threshold; n = window, m = threshold. */
     contextWindowUnderThreshold: (n: string, m: string): string =>
       `当前模型的上下文窗口 ${n} 小于本 Agent 的压缩阈值 ${m}，压缩实际会在窗口边缘触发。拖动上下文面板里的虚线或在 Agent 设置中把阈值调到窗口以下，立即生效。`,

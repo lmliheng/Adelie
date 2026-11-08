@@ -800,19 +800,17 @@ export function ChatPage() {
    * Compaction settings are re-read by the engine at every compaction checkpoint, so this
    * applies to the conversation on screen without waiting for a rotation — which is what the
    * toast says. Rejecting rather than swallowing the failure is what keeps the dialog open on
-   * the value the user typed.
+   * the value the user typed, and the dialog is what says why: it draws the reason in its own
+   * card next to the Save that retries it (context-gauge.tsx), instead of a toast above it.
    */
   const onChangeCompactionLimit = useCallback(
     async (maxContextLength: number): Promise<void> => {
       if (!projectId || !selectedAgentId) return;
-      try {
-        await api.putAgentConfig(projectId, selectedAgentId, {
-          config: { compaction: { maxContextLength } },
-        });
-      } catch (e) {
-        toastError(apiErrorText(e));
-        throw e;
-      }
+      // Rejects when the write was refused, which is what keeps the confirmation that asked for
+      // it open on the typed number — and that card is what draws the reason (context-gauge.tsx).
+      await api.putAgentConfig(projectId, selectedAgentId, {
+        config: { compaction: { maxContextLength } },
+      });
       setCompactionLimit(configuredCompactionLimit(maxContextLength));
       setAgentConfigTick((n) => n + 1);
       toastSuccess(S.chat.contextThresholdSaved(humanizeTokens(maxContextLength)));

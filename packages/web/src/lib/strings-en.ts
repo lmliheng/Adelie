@@ -3836,6 +3836,9 @@ export const en: Strings = {
       `Above the model window — the threshold in force will be ${n}`,
     contextThresholdSaved: (n: string): string =>
       `Compaction threshold changed to ${n}; it applies immediately`,
+    /** Refused write, drawn inside the confirmation that asked: n = the threshold that was asked for, reason = the server's words (or ours). */
+    contextThresholdRefused: (n: string, reason: string): string =>
+      `The compaction threshold was not changed to ${n} — the Agent still has the old value: ${reason}`,
     contextWindowUnderThreshold: (n: string, m: string): string =>
       `This model's context window ${n} is smaller than this agent's compaction threshold ${m}, so compaction actually fires at the edge of the window. Drag the dashed mark in the context panel, or set the threshold below the window in the agent settings — it applies immediately.`,
     contextWindowUnderThresholdAction: "Open agent settings",
