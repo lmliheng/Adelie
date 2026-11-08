@@ -3243,6 +3243,13 @@ export const zh = {
       "该 Agent 已安装的技能（agent_state/skills/，文件即事实来源）：元数据注入系统提示词，正文由模型按需读取；卸载会删除整个技能目录。",
     agentTabEmpty: "尚未安装任何技能",
     exportSkill: "打包导出",
+    /**
+     * An export the download refused (skill-export-refusal.ts), drawn under the row that asked:
+     * the file was not saved and the installed copy was not touched, which is what the second
+     * half says; the reason goes last, as in every other refusal sentence.
+     */
+    exportRefused: (skill: string, reason: string): string =>
+      `技能 ${skill} 没有导出成 zip，它仍然装在这个 Agent 上：${reason}`,
     importSkill: "导入技能",
     importChatTitle: "推荐：让 Agent 在对话中安装",
     importChatWhy: "Agent 能完整阅读、审查并按需调整技能内容，比直接上传更可靠。",

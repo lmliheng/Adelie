@@ -38,7 +38,6 @@ import {
   SkeletonList,
   Textarea,
   buttonClass,
-  toastError,
   toastSuccess,
   useCopied,
 } from "@adelie/ui";
@@ -46,12 +45,15 @@ import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { useLocale } from "../../state/locale";
 import { agentDisplayName, useProject } from "../../state/project";
 import { SkillTile } from "../skills/skill-icon-view";
 import { localizedShortText } from "../chat/skill-use";
 import { useAiBridge } from "../ai-create";
 import { downloadArchive } from "./archive-download";
+import { skillExportRefusalFor, skillExportRefused } from "./skill-export-refusal";
+import type { SkillExportRefusal } from "./skill-export-refusal";
 import { buildImportPrompt } from "./skill-import-source";
 import { usePromptInjection } from "./prompt-injection-controls";
 
@@ -95,6 +97,9 @@ export function SkillsTab({
   // The words for an uninstall the server refused, drawn inside the confirmation that asked for
   // it (see confirmRemove): retrying is the next thing the person does, and the button is in there.
   const [removeRefusal, setRemoveRefusal] = useState<string | null>(null);
+  // The words for an export that did not land, drawn in the row that asked (skill-export-refusal.ts):
+  // the row, the skill and the same button are still there, which a six-second toast is not.
+  const [exportRefusal, setExportRefusal] = useState<SkillExportRefusal | null>(null);
   // Import modal: the source for the chat-install prompt + upload state travel with the modal.
   const [importOpen, setImportOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -128,13 +133,20 @@ export function SkillsTab({
   const agent = agents.find((a) => a.agentId === agentId);
   const agentName = agent ? agentDisplayName(agent) : agentId;
 
-  /** "Export as zip": the shared archive download (archive-download.ts); a failure surfaces as a toast. */
+  /**
+   * "Export as zip": the shared archive download (archive-download.ts). A refused one leaves its
+   * reason in the row that asked (skill-export-refusal.ts) — the row, the skill and the same
+   * button are all still there, so a toast that dismisses itself after six seconds is the one
+   * thing that would carry that reason away. Starting an attempt clears the previous sentence:
+   * it belonged to the attempt before, not to the skill this one is about.
+   */
   const exportSkill = async (name: string) => {
     if (!projectId) return;
+    setExportRefusal(null);
     try {
       await downloadArchive(api.agentSkillArchiveUrl(projectId, agentId, name), name);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setExportRefusal({ skill: name, text: skillExportRefused(name, e) });
     }
   };
 
@@ -279,60 +291,82 @@ export function SkillsTab({
         <SettingsEmpty>{S.skills.agentTabEmpty}</SettingsEmpty>
       ) : (
         <Card padding="none">
-          {skills.map((skill) => (
-            <div
-              key={skill.name}
-              className="flex items-center gap-3 border-b border-gray-100 px-3 py-2.5 transition-colors duration-150 last:border-b-0 hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40"
-            >
-              <SkillTile icon={skill.icon} name={skill.name} size={36} glyph={20} />
-              <div className="min-w-0 flex-1">
-                <span
-                  className="block truncate font-mono text-[length:var(--ui-text-code-size)] font-semibold"
-                  data-tooltip={skill.name}
-                  data-tooltip-content="code"
-                >
-                  {skill.name}
-                </span>
-                {/* Short description truncates to one line (full description goes into title for hover reading). */}
-                <p
-                  className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400"
-                  data-tooltip={skill.description}
-                  data-tooltip-content="text"
-                  data-tooltip-extra={skill.description !== localizedShortText(locale, skill)}
-                >
-                  {localizedShortText(locale, skill)}
-                </p>
+          {skills.map((skill) => {
+            // One refusal, one row: an attempt supersedes the reason of the attempt before it.
+            const refusal = skillExportRefusalFor(exportRefusal, skill.name);
+            return (
+              // The row is a column so a refused export can put its reason under the line that
+              // asked for it, without pushing any other row sideways.
+              <div
+                key={skill.name}
+                className="border-b border-gray-100 last:border-b-0 dark:border-gray-800/60"
+              >
+                <div className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                  <SkillTile icon={skill.icon} name={skill.name} size={36} glyph={20} />
+                  <div className="min-w-0 flex-1">
+                    <span
+                      className="block truncate font-mono text-[length:var(--ui-text-code-size)] font-semibold"
+                      data-tooltip={skill.name}
+                      data-tooltip-content="code"
+                    >
+                      {skill.name}
+                    </span>
+                    {/* Short description truncates to one line (full description goes into title for hover reading). */}
+                    <p
+                      className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400"
+                      data-tooltip={skill.description}
+                      data-tooltip-content="text"
+                      data-tooltip-extra={skill.description !== localizedShortText(locale, skill)}
+                    >
+                      {localizedShortText(locale, skill)}
+                    </p>
+                  </div>
+                  {metaLine(skill) !== "" && (
+                    <span
+                      className="hidden shrink-0 text-xs text-gray-400 sm:block dark:text-gray-500"
+                      data-tooltip={metaLine(skill)}
+                    >
+                      {metaLine(skill)}
+                    </span>
+                  )}
+                  {/* Icon-only row actions (same affordance as the agents page cards: neutral
+                      bordered icon for export, danger variant with red text/hover for delete);
+                      the tooltip + aria-label carry the wording. */}
+                  <IconButton
+                    label={`${S.skills.exportSkill} ${skill.name}`}
+                    title={S.skills.exportSkill}
+                    disabled={busy}
+                    onClick={() => void exportSkill(skill.name)}
+                  >
+                    <DownloadIcon size={14} className="text-gray-600 dark:text-gray-300" />
+                  </IconButton>
+                  <IconButton
+                    variant="danger"
+                    label={`${S.skills.uninstall} ${skill.name}`}
+                    title={S.skills.uninstall}
+                    disabled={busy}
+                    onClick={() => askRemove(skill.name)}
+                  >
+                    <GlyphIcon d={ICONS.trash} size={14} />
+                  </IconButton>
+                </div>
+                {/* An export that did not land: this row still holds the button that retries it,
+                    so the reason sits under it rather than in a notification that dismisses
+                    itself (skill-export-refusal.ts). */}
+                {refusal !== undefined && (
+                  <p
+                    role="alert"
+                    data-testid="export-refusal"
+                    data-tooltip={refusal}
+                    data-tooltip-content="text"
+                    className={`px-3 pb-2.5 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+                  >
+                    {refusal}
+                  </p>
+                )}
               </div>
-              {metaLine(skill) !== "" && (
-                <span
-                  className="hidden shrink-0 text-xs text-gray-400 sm:block dark:text-gray-500"
-                  data-tooltip={metaLine(skill)}
-                >
-                  {metaLine(skill)}
-                </span>
-              )}
-              {/* Icon-only row actions (same affordance as the agents page cards: neutral
-                  bordered icon for export, danger variant with red text/hover for delete);
-                  the tooltip + aria-label carry the wording. */}
-              <IconButton
-                label={`${S.skills.exportSkill} ${skill.name}`}
-                title={S.skills.exportSkill}
-                disabled={busy}
-                onClick={() => void exportSkill(skill.name)}
-              >
-                <DownloadIcon size={14} className="text-gray-600 dark:text-gray-300" />
-              </IconButton>
-              <IconButton
-                variant="danger"
-                label={`${S.skills.uninstall} ${skill.name}`}
-                title={S.skills.uninstall}
-                disabled={busy}
-                onClick={() => askRemove(skill.name)}
-              >
-                <GlyphIcon d={ICONS.trash} size={14} />
-              </IconButton>
-            </div>
-          ))}
+            );
+          })}
         </Card>
       )}
 
