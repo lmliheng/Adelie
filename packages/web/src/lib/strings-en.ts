@@ -4680,6 +4680,41 @@ export const en: Strings = {
     errorsClearIrreversible: "This cannot be undone.",
     errorsClearDone: (count: number): string =>
       `Deleted ${count} error record${count === 1 ? "" : "s"}`,
+    /**
+     * Ignoring: the fourth view of the table, the row action that silences a class, and the rule
+     * list that says what is being held back. The records are never deleted — which is why this
+     * action takes no confirmation where clearing does, and why the notice below says so outright.
+     */
+    errorsIgnored: "Ignored",
+    errorsEmptyIgnored: "No ignored errors",
+    errorsIgnoreAction: "Ignore this kind",
+    /** The dialog's confirm button: the action's own verb. */
+    errorsIgnore: "Ignore",
+    errorsIgnoreFragment: "Only ignore records whose message contains",
+    errorsIgnoreFragmentHint: "Leave empty to ignore every record with this source and code.",
+    errorsIgnoreRules: "Ignore rules",
+    errorsIgnoreRuleNone: "No ignore rules yet.",
+    /** A rule narrowed to a message fragment says so; a whole-class rule says nothing extra. */
+    errorsIgnoreRuleFragment: (fragment: string): string => `message contains "${fragment}"`,
+    errorsIgnoreRuleHidden: (count: number): string =>
+      `${count} record${count === 1 ? "" : "s"} hidden`,
+    errorsIgnoreRuleHiddenNone: "No records hidden yet",
+    errorsIgnoreRuleLast: (time: string): string => `newest ${time}`,
+    errorsUnignore: "Stop ignoring",
+    errorsIgnoreNotice: "The records are still stored — they are only left out of the other views.",
+    errorsUnignoreDone: (label: string): string => `Showing ${label} again`,
+    /** After ignoring: which class went, and how many records the range on screen just lost. */
+    errorsIgnoreDone: (label: string, count: number): string =>
+      `Ignoring ${label} · hid ${count} record${count === 1 ? "" : "s"}`,
+    errorsIgnoreUndo: "Undo",
+    /** The clear sentence on the ignored view: what goes is that view's own table, and nothing else is touched. */
+    errorsClearScopeIgnored: (count: number, range: string): string =>
+      `Deletes this Project's ${count} ignored error record${count === 1 ? "" : "s"} ${range}. Records that are not ignored and records outside that range are kept.`,
+    errorsClearScopeIgnoredAgent: (count: number, range: string, agentId: string): string =>
+      `Deletes this Project's ${count} ignored error record${count === 1 ? "" : "s"} for agent ${agentId} ${range}. Records that are not ignored, other agents and records outside that range are kept.`,
+    /** Shown in the clear confirmation when the range holds ignored records: the sentence above never counts them. */
+    errorsClearKeepsIgnored: (count: number): string =>
+      `${count} ignored record${count === 1 ? "" : "s"} is not included.`,
   },
 
   /** The Trace panel's own view of a Trace file (trace-file-view / timeline-chart); the standalone browsing page these once also served is gone. */

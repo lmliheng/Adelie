@@ -248,6 +248,9 @@ import type {
   DesktopTrayPatch,
   DesktopTrayStatusResponse,
   HookArchiveInstallRequest,
+  UsageErrorIgnoreAdded,
+  UsageErrorIgnoreWrite,
+  UsageErrorIgnores,
   UsageErrorKind,
   UsageErrorsClearResponse,
   UsageErrorsPage,
@@ -1531,6 +1534,8 @@ export const getUsageErrors = (
     agentId?: string;
     /** Narrow to one category; the cost-center badge asks for `unexpected` with `limit: 1`. */
     kind?: UsageErrorKind;
+    /** Read the other side of the Project's ignore rules: the records a rule covers, which every other read leaves out. */
+    ignored?: boolean;
   },
 ) =>
   apiFetch<UsageErrorsPage>(`/api/projects/${encodeURIComponent(projectId)}/usage/errors`, {
@@ -1543,6 +1548,7 @@ export const getUsageErrors = (
       toTs: params.toTs,
       agentId: params.agentId,
       kind: params.kind,
+      ignored: params.ignored === true ? "1" : undefined,
       utcOffsetMinutes: viewerUtcOffsetMinutes(),
     },
   });
@@ -1567,6 +1573,8 @@ export const clearUsageErrors = (
     agentId?: string;
     /** Narrow to one category; the panel sends whatever its table is showing. */
     kind?: UsageErrorKind;
+    /** The ignore side the table is showing: `true` clears the rows a rule covers, absent the rows no rule covers. */
+    ignored?: boolean;
   },
 ) =>
   apiFetch<UsageErrorsClearResponse>(
@@ -1581,8 +1589,56 @@ export const clearUsageErrors = (
         until: params.until,
         agentId: params.agentId,
         kind: params.kind,
+        ignored: params.ignored === true ? "1" : undefined,
       },
     },
+  );
+
+/**
+ * The Project's ignore rules — the error classes nothing in the panel's default view shows, each
+ * with how many records it covers and when the newest of them was. Owner only: the panel reports
+ * the count to everyone (the dashboard's `errors.ignored`), but managing the rules is the same
+ * kind of act as clearing, so it draws the same line.
+ */
+export const getUsageErrorIgnores = (projectId: string) =>
+  apiFetch<UsageErrorIgnores>(
+    `/api/projects/${encodeURIComponent(projectId)}/usage/errors/ignores`,
+  );
+
+/**
+ * Silences one class of errors. Nothing is deleted — the rule only decides which records the reads
+ * select — so this is undoable, and the answer says how many records it covers in the range the
+ * caller was looking at, which is what the caller reports having just hidden. A class the Project
+ * already ignores is a 409.
+ *
+ * The range rides along because the number is scoped to it: the same range the table on screen
+ * was read with, so "隐藏 349 条" names the rows that just left it.
+ */
+export const ignoreUsageErrors = (
+  projectId: string,
+  body: UsageErrorIgnoreWrite,
+  params: { from?: string; to?: string; fromTs?: string; toTs?: string; agentId?: string } = {},
+) =>
+  apiFetch<UsageErrorIgnoreAdded>(
+    `/api/projects/${encodeURIComponent(projectId)}/usage/errors/ignores`,
+    {
+      method: "POST",
+      body,
+      query: {
+        from: params.from,
+        to: params.to,
+        fromTs: params.fromTs,
+        toTs: params.toTs,
+        agentId: params.agentId,
+      },
+    },
+  );
+
+/** Removes one rule, re-exposing every record it covered — the whole of the undo, since nothing was deleted. */
+export const unignoreUsageErrors = (projectId: string, id: number) =>
+  apiFetch<{ removed: boolean }>(
+    `/api/projects/${encodeURIComponent(projectId)}/usage/errors/ignores/${String(id)}`,
+    { method: "DELETE" },
   );
 
 /**

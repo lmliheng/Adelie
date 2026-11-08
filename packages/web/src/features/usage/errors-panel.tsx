@@ -14,11 +14,14 @@
  * The outer frame is provided by the caller's ChartCard (full width, below the four business charts).
  */
 import { useEffect, useMemo, useState } from "react";
-import type { UsageErrorItem, UsageErrors } from "@adelie/server/api";
+import type { UsageErrorIgnoreRule, UsageErrorItem, UsageErrors } from "@adelie/server/api";
 import {
   Badge,
   ConfirmModal,
   CopyButton,
+  GlyphIcon,
+  ICONS,
+  Input,
   Pager,
   Segmented,
   toastError,
@@ -34,8 +37,14 @@ import { toneInk } from "../../lib/tone";
 /** The two error categories. */
 type ErrorKindKey = "unexpected" | "expected";
 
-/** The table's own category control: one of the two, or both. */
-type ErrorKindFilter = ErrorKindKey | "all";
+/**
+ * The table's own control: one of the two categories, both, or the ignored view. The last is not a
+ * category — it is the other side of the ignore rules, which is why the table's kinds are still
+ * both drawn there (see activeFilters) — but it is the same kind of choice: which slice of the
+ * filtered set the table below shows, and therefore what its pager, its row count and the clear
+ * act on.
+ */
+type ErrorKindFilter = ErrorKindKey | "all" | "ignored";
 
 /** The date/agent filter the panel reads through, and that a clear deletes through. */
 export interface ErrorsFilters {
@@ -52,6 +61,12 @@ export interface ErrorsFilters {
    * table they never saw.
    */
   kind?: ErrorKindKey;
+  /**
+   * The ignored view: true reads the records the Project's rules cover, which every other view
+   * leaves out. Merged in here like `kind`, and for the same reason — the clear takes what the
+   * table shows, and on this view that is exactly the ignored rows.
+   */
+  ignored?: boolean;
 }
 
 /** The quick range presets the clear confirmation names by name; a custom range is named by its dates. */
@@ -80,15 +95,39 @@ export function errorsClearScopeText(
     preset !== undefined
       ? S.usage.errorsClearRangePreset(preset)
       : S.usage.errorsClearRangeCustom(filters.from ?? "", filters.to ?? "");
-  const kind = filters.kind !== undefined ? kindLabel(filters.kind) : undefined;
   const agent =
     filters.agentId !== undefined && filters.agentId !== "" ? filters.agentId : undefined;
+  // The ignored view reads its own set, and what it keeps is every record no rule covers — not
+  // "the other category". Naming it with the category sentence would describe the wrong delete, so
+  // it has its own.
+  if (filters.ignored === true) {
+    return agent !== undefined
+      ? S.usage.errorsClearScopeIgnoredAgent(count, range, agent)
+      : S.usage.errorsClearScopeIgnored(count, range);
+  }
+  const kind = filters.kind !== undefined ? kindLabel(filters.kind) : undefined;
   if (kind !== undefined && agent !== undefined) {
     return S.usage.errorsClearScopeKindAgent(count, range, kind, agent);
   }
   if (kind !== undefined) return S.usage.errorsClearScopeKind(count, range, kind);
   if (agent !== undefined) return S.usage.errorsClearScopeAgent(count, range, agent);
   return S.usage.errorsClearScope(count, range);
+}
+
+/**
+ * The line a clear's confirmation adds when the range holds records an ignore rule is keeping off
+ * the table — null when there is none to add. Without it, the sentence above reads as the whole
+ * range while the ignored records are neither counted nor shown; on the ignored view those records
+ * ARE that sentence's subject, so adding this would count them twice. Pure and exported for the
+ * reason `errorsClearScopeText` is: this package's vitest runs in `node`, so an opened dialog is
+ * not something a test can inspect.
+ */
+export function errorsClearKeepsIgnoredText(
+  ignored: number,
+  filters: ErrorsFilters,
+): string | null {
+  if (ignored <= 0 || filters.ignored === true) return null;
+  return S.usage.errorsClearKeepsIgnored(ignored);
 }
 
 /**
@@ -146,6 +185,91 @@ export function errorCopyText(e: UsageErrorItem): string {
     head.push(`×${e.count}`, S.usage.errorsFirstAt(formatDateTime(e.firstTs)));
   }
   return `${head.join(" · ")}\n${e.message}`;
+}
+
+/**
+ * One ignore rule as the panel words it: the bracketed class the table's own column shows, plus
+ * the fragment when the rule covers only part of that class — because a rule that says
+ * `[llm] llm_retried` while in fact covering only its socket drops would be claiming more than it
+ * does, and "why is this particular record still here" is the question the list exists to answer.
+ *
+ * Pure and exported for the same reason the two text builders beside it are: this package's vitest
+ * runs in `node`, where a rendered list is readable but a click is not.
+ */
+export function ignoreRuleText(rule: UsageErrorIgnoreRule): string {
+  const label = sourceCode(rule.source, rule.code);
+  return rule.messageLike !== null
+    ? `${label} · ${S.usage.errorsIgnoreRuleFragment(rule.messageLike)}`
+    : label;
+}
+
+/**
+ * The ignored view's own explanation: the rules that put those rows there, each with what it covers
+ * and how new the newest of it is, and the way back out. Drawn above the table because it is the
+ * answer to the question that table raises ("why is this hidden?").
+ *
+ * A component of its own rather than a block inside the panel for the reason the text builders are
+ * functions: this package's vitest runs in `node`, the panel fetches the rules in an effect, and
+ * `renderToStaticMarkup` never runs effects — so a list drawn inline could only ever be asserted as
+ * "no rules yet". Exported, it is renderable with rules in hand.
+ */
+export function IgnoreRulesBox({
+  rules,
+  onUnignore,
+}: {
+  /** null while the list is not read yet (never fetched, or a read that failed) — drawn as the empty state, which is also what a Project with no rules shows. */
+  rules: UsageErrorIgnoreRule[] | null;
+  onUnignore: (rule: UsageErrorIgnoreRule) => void;
+}) {
+  return (
+    <div className="mt-3 rounded-lg border border-gray-200 px-3 py-2 text-xs dark:border-gray-800">
+      <div className="flex items-baseline justify-between gap-2">
+        <span className="font-medium text-gray-700 dark:text-gray-300">
+          {S.usage.errorsIgnoreRules}
+        </span>
+        <span className="text-gray-400 dark:text-gray-500">{S.usage.errorsIgnoreNotice}</span>
+      </div>
+      {rules === null || rules.length === 0 ? (
+        <p className="mt-1 text-gray-400 dark:text-gray-500">{S.usage.errorsIgnoreRuleNone}</p>
+      ) : (
+        <ul className="mt-1 space-y-1">
+          {rules.map((rule) => (
+            <li
+              key={rule.id}
+              className="flex flex-wrap items-baseline gap-x-3 gap-y-1"
+              data-ignore-rule={rule.id}
+            >
+              <span className="break-words font-mono text-gray-500 dark:text-gray-400">
+                {ignoreRuleText(rule)}
+              </span>
+              <span className="text-gray-400 dark:text-gray-500">
+                {rule.hidden > 0
+                  ? S.usage.errorsIgnoreRuleHidden(rule.hidden)
+                  : S.usage.errorsIgnoreRuleHiddenNone}
+              </span>
+              {rule.lastTs !== null && (
+                <span className="text-gray-400 dark:text-gray-500">
+                  {S.usage.errorsIgnoreRuleLast(formatDateTime(rule.lastTs))}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={() => onUnignore(rule)}
+                className="rounded-md border border-gray-200 px-2 py-0.5 text-gray-500 transition-colors duration-150 hover:border-gray-300 hover:text-gray-700 dark:border-gray-800 dark:hover:border-gray-700 dark:hover:text-gray-300"
+              >
+                {S.usage.errorsUnignore}
+              </button>
+              {/* The owner's own words for why it is silenced, when they wrote any. Muted, and last:
+                  it explains a rule that is already fully described without it. */}
+              {rule.note !== null && (
+                <span className="text-gray-400 dark:text-gray-500">{rule.note}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 /** A single small stat: name + value, one row side by side (not turned into a chart). */
@@ -209,6 +333,7 @@ export function ErrorsPanel({
   filters,
   preset,
   canClear,
+  canIgnore,
   onReload,
 }: {
   errors: UsageErrors;
@@ -227,6 +352,13 @@ export function ErrorsPanel({
    */
   canClear: boolean;
   /**
+   * Whether this viewer may manage the ignore rules (Project owner, the same line the clear
+   * draws). A member still sees the ignored view and the count in the stats — what a rule hides
+   * must never be hidden from them — but not the rules themselves, which are the management
+   * surface.
+   */
+  canIgnore: boolean;
+  /**
    * Reload the dashboard — the stats above the table are the caller's data, not this panel's.
    * Called after a clear, and when the confirmation opens: the sentence names a count read at
    * the click, and the stats behind it would otherwise keep the snapshot from before the page's
@@ -234,7 +366,7 @@ export function ErrorsPanel({
    */
   onReload: () => void;
 }) {
-  const { total, unexpected, topCode, recent, rows } = errors;
+  const { total, unexpected, ignored, topCode, recent, rows } = errors;
   // Page size is read off the first page rather than duplicating the server's ERROR_RECENT_N:
   // whenever a second page exists at all, `recent` is exactly that many rows, so the two cannot
   // drift apart into skipping or repeating rows. (Empty means a single empty page anyway.)
@@ -255,9 +387,15 @@ export function ErrorsPanel({
   // lives here rather than in the page's filter bar.
   const [kindFilter, setKindFilter] = useState<ErrorKindFilter>("all");
   // What the reads, the count and the clear all go by: the page's filter, plus this table's own
-  // category when one is chosen (see ErrorsFilters.kind).
+  // control when one is chosen (see ErrorsFilters.kind / .ignored). The ignored view is the other
+  // side of the same axis and covers both categories — a rule does not care which one it hides.
   const activeFilters = useMemo<ErrorsFilters>(
-    () => (kindFilter === "all" ? filters : { ...filters, kind: kindFilter }),
+    () =>
+      kindFilter === "all"
+        ? filters
+        : kindFilter === "ignored"
+          ? { ...filters, ignored: true }
+          : { ...filters, kind: kindFilter },
     [filters, kindFilter],
   );
   // A new dashboard response invalidates the offsets being paged through, so paging goes back to
@@ -368,6 +506,100 @@ export function ErrorsPanel({
       setClearing(false);
     }
   };
+  // The Project's ignore rules, read only on the view that manages them: the other views never draw
+  // them, and a request whose answer is not on screen is a request not worth making. A member never
+  // asks — the route is the owner's, and the ignored rows and the count are theirs to see anyway.
+  const [rules, setRules] = useState<UsageErrorIgnoreRule[] | null>(null);
+  // Bumped after a rule is added or removed, so the list above re-reads without a second state
+  // machine: the version is the effect's dependency, and the effect is what fetches.
+  const [rulesVersion, setRulesVersion] = useState(0);
+  // The class the dialog is about to silence, with the two fields it may narrow by.
+  const [ignoreTarget, setIgnoreTarget] = useState<UsageErrorItem | null>(null);
+  const [ignoreFragment, setIgnoreFragment] = useState("");
+  const [ignoring, setIgnoring] = useState(false);
+  // The rule just made, kept so the panel can offer the undo in place: the row it stood for is
+  // already gone from the table below, so a notice floating elsewhere would point at nothing. The
+  // count is the answer the write carried, not the stats above — those are still the dashboard's
+  // older snapshot until the reload lands.
+  const [justIgnored, setJustIgnored] = useState<{
+    id: number;
+    label: string;
+    hidden: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (kindFilter !== "ignored" || !canIgnore) {
+      setRules(null);
+      return;
+    }
+    let cancelled = false;
+    api
+      .getUsageErrorIgnores(projectId)
+      .then((res) => {
+        if (!cancelled) setRules(res.rules);
+      })
+      .catch((e: unknown) => {
+        // Leave the list out rather than blanking it under an error: the table below is the
+        // reader's actual answer, and the rules are the explanation of it.
+        if (!cancelled) {
+          setRules(null);
+          toastError(apiErrorText(e));
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId, kindFilter, canIgnore, rulesVersion]);
+
+  /**
+   * Silences a class. What the dialog adds over the row is the fragment: the same source · code
+   * often carries both the noise and the one line worth seeing (`llm_retried` drops its socket all
+   * afternoon and once returns a 500), so the narrowing has to be reachable from the row it is
+   * about, not only from an API.
+   *
+   * The range rides along so the answer can say how many records just left the screen, and the
+   * notice stays until it is undone or the panel is remounted — the action is reversible, so this
+   * is where the caller's "撤销" lives rather than in a confirmation it does not need.
+   */
+  const runIgnore = async () => {
+    if (ignoreTarget === null) return;
+    const { source, code } = ignoreTarget;
+    setIgnoring(true);
+    try {
+      const added = await api.ignoreUsageErrors(
+        projectId,
+        { source, code, messageLike: ignoreFragment },
+        activeFilters,
+      );
+      const label = sourceCode(source, code);
+      setIgnoreTarget(null);
+      setIgnoreFragment("");
+      setJustIgnored({ id: added.rule.id, label, hidden: added.hidden });
+      setRulesVersion((v) => v + 1);
+      toastSuccess(S.usage.errorsIgnoreDone(label, added.hidden));
+      // The stats above the table are the dashboard's own numbers, so the whole response is
+      // refetched: the ignored count and the table's own first page both move with this.
+      onReload();
+    } catch (e) {
+      toastError(apiErrorText(e));
+    } finally {
+      setIgnoring(false);
+    }
+  };
+
+  /** Removes a rule, whichever side of the panel asked — the rule list or the notice left by the row. */
+  const unignore = async (id: number, label: string) => {
+    try {
+      await api.unignoreUsageErrors(projectId, id);
+      setJustIgnored((current) => (current?.id === id ? null : current));
+      setRulesVersion((v) => v + 1);
+      toastSuccess(S.usage.errorsUnignoreDone(label));
+      onReload();
+    } catch (e) {
+      toastError(apiErrorText(e));
+    }
+  };
+
   // Message rows expanded to their full text (index into the current page); one line each by default.
   const [expanded, setExpanded] = useState<ReadonlySet<number>>(new Set());
   useEffect(() => setExpanded(new Set()), [items]);
@@ -391,6 +623,10 @@ export function ErrorsPanel({
           muted={unexpected === 0}
         />
         <Stat label={S.usage.errorsExpected} value={String(total - unexpected)} muted />
+        {/* The other side of the same range: what the rules are holding back. Drawn always, so the
+            numbers above are never read as the whole truth — a zero above with a number here says
+            "nothing loud is left", not "nothing is happening". */}
+        <Stat label={S.usage.errorsIgnored} value={String(ignored)} muted />
         {topCode && (
           <Stat
             label={S.usage.errorsTopCode}
@@ -399,27 +635,71 @@ export function ErrorsPanel({
         )}
       </div>
 
-      {/* The table's own filter: one category or both. Right-aligned directly above the table it
-          narrows, so it reads as that table's control rather than as part of the stats row. It is
-          drawn whenever the panel has a table to narrow — an empty page keeps it, since it is the
-          only way back to the category the reader came from. */}
+      {/* The table's own filter: one category, both, or the ignored view. Right-aligned directly
+          above the table it narrows, so it reads as that table's control rather than as part of the
+          stats row. It is drawn whenever the panel has a table to narrow — an empty page keeps it,
+          since it is the only way back to the view the reader came from. */}
       <div className="mt-3 flex justify-end">
-        <div className="w-56">
+        <div className="w-72">
           <Segmented
             options={[
               { value: "all", label: S.usage.errorsFilterAll },
               { value: "unexpected", label: S.usage.errorsUnexpected },
               { value: "expected", label: S.usage.errorsExpected },
+              { value: "ignored", label: S.usage.errorsIgnored },
             ]}
             value={kindFilter}
             onChange={setKindFilter}
+            // Four ways to slice the table, so four chips on one row: the default of three would
+            // wrap the ignored view onto a line of its own and read as a footnote to the others.
+            cols={4}
           />
         </div>
       </div>
 
+      {/* The ignored view's own explanation (see IgnoreRulesBox), drawn only for the owner: managing
+          the rules is the owner's, exactly as clearing is. Every other reader still gets the view
+          and the count in the stats — what a rule hides is never hidden from them. */}
+      {kindFilter === "ignored" && canIgnore && (
+        <IgnoreRulesBox
+          rules={rules}
+          onUnignore={(rule) => void unignore(rule.id, ignoreRuleText(rule))}
+        />
+      )}
+
+      {/* What the last row action did, with the way back. The row it names is already gone from the
+          table below, so the undo has to stand where the table is — a toast would have dismissed
+          itself before the reader decided they wanted it back. */}
+      {justIgnored !== null && (
+        <div
+          data-ignore-notice={justIgnored.id}
+          className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-md bg-surface-muted px-2.5 py-1.5 text-xs text-gray-500 dark:text-gray-400"
+        >
+          <span className="break-words">
+            {S.usage.errorsIgnoreDone(justIgnored.label, justIgnored.hidden)}
+          </span>
+          <button
+            type="button"
+            onClick={() => void unignore(justIgnored.id, justIgnored.label)}
+            className="inline-flex items-center gap-1 rounded-sm text-fg-subtle transition-colors duration-150 hover:text-fg-muted"
+          >
+            <GlyphIcon d={ICONS.undo} size={12} />
+            {S.usage.errorsIgnoreUndo}
+          </button>
+        </div>
+      )}
+
       {/* Recent-errors table */}
       {items.length === 0 ? (
-        <Empty text={kindFilter === "all" ? S.usage.errorsEmpty : S.usage.errorsEmptyKind} />
+        <Empty
+          text={
+            kindFilter === "all"
+              ? S.usage.errorsEmpty
+              : kindFilter === "ignored"
+                ? S.usage.errorsEmptyIgnored
+                : S.usage.errorsEmptyKind
+          }
+        />
       ) : (
         <div className="mt-2.5 overflow-x-auto overflow-y-clip border-t border-gray-200 dark:border-gray-800">
           {/* The columns beside the message are fixed-width and the message column takes the rest, so
@@ -427,9 +707,10 @@ export function ErrorsPanel({
               zero width and pushes the others past the edge. `min-w` states that floor, and
               this box scrolls it sideways when the viewport is narrower — the page itself must
               never scroll sideways (styles.css). `overflow-y-clip` keeps browsers from reserving
-              a vertical scrollbar gutter beside the horizontal one. 752 = the old floor plus the
-              copy column's 32, so that column costs the message column nothing. */}
-          <table className="w-full min-w-[752px] table-fixed text-xs">
+              a vertical scrollbar gutter beside the horizontal one. 784 = the old floor plus the
+              copy column's 32 and the ignore column's 32, so those two cost the message column
+              nothing. */}
+          <table className="w-full min-w-[784px] table-fixed text-xs">
             <thead className="text-left text-gray-400 dark:text-gray-500">
               <tr>
                 <Th className="w-32">{S.common.time}</Th>
@@ -439,8 +720,10 @@ export function ErrorsPanel({
                 <Th className="w-72">{S.usage.errorsColCode}</Th>
                 <Th className="w-20">{S.usage.errorsColKind}</Th>
                 <Th>{S.usage.errorsColMessage}</Th>
-                {/* The copy column: the glyph names its action itself, so the header stays
-                    empty rather than repeating it for a screen reader twice per row. */}
+                {/* The two action columns: the copy glyph names its action itself, and so does the
+                    ignore one, so both headers stay empty rather than repeating them for a screen
+                    reader. */}
+                <Th className="w-8" />
                 <Th className="w-8" />
               </tr>
             </thead>
@@ -506,6 +789,27 @@ export function ErrorsPanel({
                         label={S.usage.errorsCopy}
                         size="sm"
                       />
+                    </td>
+                    {/* Silence this class: the row's own source · code, which is what the rule
+                        covers. Offered to the owner only (the route is theirs) and only where
+                        silencing something makes sense — on the ignored view every row already is.
+                        The glyph's tooltip names the action, and the dialog that follows names the
+                        consequence and lets it be narrowed to a message fragment. */}
+                    <td className="py-1.5 pl-2 align-top">
+                      {canIgnore && kindFilter !== "ignored" && (
+                        <button
+                          type="button"
+                          aria-label={S.usage.errorsIgnoreAction}
+                          data-tooltip={S.usage.errorsIgnoreAction}
+                          onClick={() => {
+                            setIgnoreTarget(e);
+                            setIgnoreFragment("");
+                          }}
+                          className="inline-flex size-5 items-center justify-center rounded-sm text-fg-subtle transition-colors duration-150 hover:bg-surface-muted hover:text-fg-muted"
+                        >
+                          <GlyphIcon d={ICONS.eyeOff} />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -574,9 +878,52 @@ export function ErrorsPanel({
               {errorsClearScopeText(activeFilters, preset, confirmTarget.total)}
             </p>
           )}
+          {/* The sentence above counts what the table showed, which on every view but this one
+              leaves the ignored records out — so the reader is told they exist rather than left to
+              read "N records" as the whole range. On the ignored view those rows ARE the sentence's
+              subject, and this would be counting them twice (see errorsClearKeepsIgnoredText). */}
+          {errorsClearKeepsIgnoredText(ignored, activeFilters) !== null && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {errorsClearKeepsIgnoredText(ignored, activeFilters)}
+            </p>
+          )}
           <p className="text-xs text-gray-500 dark:text-gray-400">
             {S.usage.errorsClearIrreversible}
           </p>
+        </div>
+      </ConfirmModal>
+
+      {/* Silencing a class. No danger tone and no "cannot be undone" here, because neither is true:
+          nothing is deleted, and the notice this leaves behind puts it back in one click. What the
+          card adds over the row button is the narrowing — the fragment — which is the difference
+          between hiding a class and hiding a class's noise. */}
+      <ConfirmModal
+        open={ignoreTarget !== null}
+        tone="primary"
+        glyph={ICONS.eyeOff}
+        title={S.usage.errorsIgnoreAction}
+        confirmLabel={S.usage.errorsIgnore}
+        cancelLabel={S.common.cancel}
+        busy={ignoring}
+        onClose={() => {
+          setIgnoreTarget(null);
+          setIgnoreFragment("");
+        }}
+        onConfirm={() => void runIgnore()}
+      >
+        <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
+          {ignoreTarget !== null && (
+            <p className="break-words font-mono text-gray-500 dark:text-gray-400">
+              {sourceCode(ignoreTarget.source, ignoreTarget.code)}
+            </p>
+          )}
+          <Input
+            label={S.usage.errorsIgnoreFragment}
+            hint={S.usage.errorsIgnoreFragmentHint}
+            value={ignoreFragment}
+            onChange={(e) => setIgnoreFragment(e.target.value)}
+            maxLength={200}
+          />
         </div>
       </ConfirmModal>
     </div>

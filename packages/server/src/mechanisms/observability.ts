@@ -6,6 +6,9 @@ import type { Opaque } from "@adelie/core/kernel";
 import type {
   ErrorCodeCount,
   ErrorFilter,
+  ErrorIgnoreRule,
+  ErrorIgnoreRuleInsert,
+  ErrorIgnoreRuleMatch,
   ErrorItem,
   ErrorRecordInsert,
   ErrorSummary,
@@ -22,6 +25,9 @@ import type {
   UnsettledUsageRow,
 } from "../db/repos/usage.js";
 import type {
+  UsageErrorIgnoreAdded,
+  UsageErrorIgnoreRule,
+  UsageErrorIgnoreWrite,
   UsageErrorsPage,
   UsageGroupBy,
   UsageResponse,
@@ -56,6 +62,7 @@ import type {
   ToolListReadyPayload,
 } from "@adelie/core";
 import type {
+  ErrorIgnoreAddInput,
   UsageQuery,
   UsageErrorsClearQuery,
   UsageErrorsQuery,
@@ -78,6 +85,14 @@ export abstract class ErrorLog {
   abstract deleteFiltered(projectId: string, f?: Omit<ErrorFilter, "includeGlobal">): number;
   abstract deleteByAgent(projectId: string, agentId: string): void;
   abstract deleteByProject(projectId: string): void;
+  abstract ignoreRules(projectId: string): ErrorIgnoreRule[];
+  abstract addIgnoreRule(projectId: string, r: ErrorIgnoreRuleInsert): ErrorIgnoreRule | null;
+  abstract removeIgnoreRule(projectId: string, id: number): boolean;
+  abstract ignoreRuleMatches(
+    projectId: string,
+    rule: ErrorIgnoreRuleMatch,
+    f?: Omit<ErrorFilter, "ignored">,
+  ): number;
 }
 
 /** Errors: the mechanism ErrorRecorder implements. */
@@ -126,6 +141,14 @@ export abstract class UsageQueries {
   abstract query(projectId: string, q: UsageQuery): Promise<UsageResponse>;
   abstract queryErrors(projectId: string, q: UsageErrorsQuery): UsageErrorsPage;
   abstract clearErrors(projectId: string, q: UsageErrorsClearQuery): number;
+  abstract errorIgnores(projectId: string): UsageErrorIgnoreRule[];
+  /** Adds one rule; null when the Project already has one for that class (the route answers 409). */
+  abstract addErrorIgnore(
+    projectId: string,
+    input: ErrorIgnoreAddInput,
+    range?: Omit<UsageErrorsClearQuery, "until" | "kind" | "includeGlobalErrors">,
+  ): UsageErrorIgnoreAdded | null;
+  abstract removeErrorIgnore(projectId: string, id: number): boolean;
   abstract modelTotals(projectId: string): UsageModelTotals;
   /** Fixes the cost of every usage row that has none yet; returns how many it settled. */
   abstract settleUnsettledCosts(): Promise<number>;

@@ -19,6 +19,9 @@
 import type {
   UsageAgentSeries,
   UsageBucket,
+  UsageErrorIgnoreAdded,
+  UsageErrorIgnoreRule,
+  UsageErrorIgnoreWrite,
   UsageErrors,
   UsageErrorsPage,
   UsageGranularity,
@@ -29,7 +32,7 @@ import type {
   UsageResponse,
   UsageSeriesPoint,
 } from "../api/types.js";
-import type { ErrorFilter } from "../db/repos/errors.js";
+import type { ErrorFilter, ErrorIgnoreRule } from "../db/repos/errors.js";
 import type {
   UsageModelSums,
   UsageGroupModelSums,
@@ -117,6 +120,12 @@ export interface UsageErrorsQuery {
   agentId?: string;
   /** Narrow to one category — `unexpected` (500s / runtime exceptions) or `expected`; absent counts both. */
   kind?: string;
+  /**
+   * Which side of the ignore rules to read: true = only the records a rule covers (the panel's
+   * "ignored" view), absent = only the records no rule covers, which is every other view. One more
+   * narrowing of the same filter, so a page never widens what the summary above it counted.
+   */
+  ignored?: boolean;
   /** Admin only: include errors with no Project attribution (see the ErrorsRepo file header). */
   includeGlobalErrors?: boolean;
   /** The viewer's offset east of UTC, in minutes (see {@link UsageQuery}). */
@@ -143,6 +152,8 @@ export interface UsageErrorsClearQuery {
   agentId?: string;
   /** Narrow to one category, the value the caller's reads carry; absent counts both. */
   kind?: string;
+  /** The ignore side the caller's reads carry: true clears the rows a rule covers (the "ignored" view's own table), absent clears the rows no rule covers. */
+  ignored?: boolean;
   /** Admin only, the value the caller's reads carry: an admin's clear takes the unattributed rows an admin's panel shows. */
   includeGlobalErrors?: boolean;
 }
@@ -163,6 +174,37 @@ export function requestCostUsd(
 /** In-process Map key for a paired reference (\0-separated, the same style as session-manager's agentKey; never persisted). */
 function refKey(provider: string, modelId: string): string {
   return `${provider}\0${modelId}`;
+}
+
+/**
+ * What {@link UsageService.addErrorIgnore} takes: the caller's own input plus the owner the route
+ * resolved from the session. `createdBy` is deliberately not part of the wire type — a body that
+ * could name its own author would let one Project's owner file a rule under someone else's name.
+ */
+export interface ErrorIgnoreAddInput extends UsageErrorIgnoreWrite {
+  createdBy: string;
+}
+
+/**
+ * The range half of a clear or ignore query, as the repo's filter. The two writes share it because
+ * both answer for the range the caller was looking at: what a clear removes, and what a new rule
+ * takes off the screen.
+ */
+function rangeFilter(
+  q: Omit<UsageErrorsClearQuery, "until" | "kind" | "includeGlobalErrors">,
+): Omit<ErrorFilter, "ignored"> {
+  return {
+    ...(q.agentId !== undefined ? { agentId: q.agentId } : {}),
+    ...(q.from !== undefined ? { from: q.from } : {}),
+    ...(q.to !== undefined ? { to: q.to } : {}),
+    ...(q.fromTs !== undefined ? { fromTs: q.fromTs } : {}),
+    ...(q.toTs !== undefined ? { toTs: q.toTs } : {}),
+  };
+}
+
+/** The repo's rule row as the API contract spells it. The contract is a separate declaration because it is what the frontend imports; the shape is the repo's. */
+function toIgnoreRuleDto(rule: ErrorIgnoreRule): UsageErrorIgnoreRule {
+  return { ...rule };
 }
 
 @Component()
@@ -387,6 +429,7 @@ export class UsageService implements UsageQueries {
       ...(q.fromTs !== undefined ? { fromTs: q.fromTs } : {}),
       ...(q.toTs !== undefined ? { toTs: q.toTs } : {}),
       ...(q.kind !== undefined ? { kind: q.kind } : {}),
+      ...(q.ignored === true ? { ignored: true } : {}),
       ...(q.includeGlobalErrors === true ? { includeGlobal: true } : {}),
     };
     return {
@@ -415,8 +458,52 @@ export class UsageService implements UsageQueries {
       ...(q.toTs !== undefined ? { toTs: q.toTs } : {}),
       ...(q.until !== undefined ? { until: q.until } : {}),
       ...(q.kind !== undefined ? { kind: q.kind } : {}),
+      ...(q.ignored === true ? { ignored: true } : {}),
       ...(q.includeGlobalErrors === true ? { includeGlobal: true } : {}),
     });
+  }
+
+  /** The Project's ignore rules, oldest first, each with what it currently covers. */
+  errorIgnores(projectId: string): UsageErrorIgnoreRule[] {
+    return this.errors.ignoreRules(projectId).map(toIgnoreRuleDto);
+  }
+
+  /**
+   * Silences one class of errors for this Project. Records are not touched — the rule only changes
+   * which ones the reads select — so this is undoable and answers with how many records it covers
+   * in the range the caller was looking at, which is what a caller reports having just hidden.
+   *
+   * `null` when the Project already has a rule for that class: the same (source, code, fragment)
+   * is one rule, and re-adding it is a refusal rather than a second row covering the same records.
+   */
+  addErrorIgnore(
+    projectId: string,
+    input: ErrorIgnoreAddInput,
+    range: Omit<UsageErrorsClearQuery, "until" | "kind" | "includeGlobalErrors"> = {},
+  ): UsageErrorIgnoreAdded | null {
+    const fragment = input.messageLike?.trim() ? input.messageLike.trim() : null;
+    const rule = this.errors.addIgnoreRule(projectId, {
+      source: input.source,
+      code: input.code,
+      messageLike: fragment,
+      note: input.note ?? null,
+      createdBy: input.createdBy,
+      createdAt: this.clock.now().toISOString(),
+    });
+    if (rule === null) return null;
+    return {
+      rule: toIgnoreRuleDto(rule),
+      hidden: this.errors.ignoreRuleMatches(
+        projectId,
+        { source: rule.source, code: rule.code, messageLike: rule.messageLike },
+        rangeFilter(range),
+      ),
+    };
+  }
+
+  /** Removes one rule, re-exposing the records it covered (they were never deleted); false when this Project has no such rule. */
+  removeErrorIgnore(projectId: string, id: number): boolean {
+    return this.errors.removeIgnoreRule(projectId, id);
   }
 
   /** Error statistics: summary info (total / unexpected / most common error code) + the table's first N rows and its row count, all filtered by the selected range. */
@@ -425,6 +512,9 @@ export class UsageService implements UsageQueries {
     return {
       total,
       unexpected,
+      // The other side of the same filter, so the panel can report what its rules hold back rather
+      // than showing a bare zero: counted under the caller's range, on the ignored side of the axis.
+      ignored: this.errors.summary(projectId, { ...f, ignored: true }).total,
       topCode: this.errors.topCode(projectId, f),
       recent: this.errors.recent(projectId, f, ERROR_RECENT_N, 0, utcOffsetMinutes),
       rows: this.errors.rowCount(projectId, f, utcOffsetMinutes),

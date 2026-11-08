@@ -130,6 +130,18 @@ CREATE TABLE IF NOT EXISTS error_records (     -- server-side error capture (the
   message    TEXT NOT NULL             -- truncated to 500 chars (no stack stored: stacks go to logs only)
 );
 CREATE INDEX IF NOT EXISTS idx_error_project_date ON error_records(project_id, date);
+CREATE TABLE IF NOT EXISTS error_ignore_rules ( -- what the error panel's "ignore" leaves out: the records stay in error_records and the reads stop selecting them (ErrorsRepo.conds); NOT rebuildable from files, and only a person makes one
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id   TEXT NOT NULL,
+  source       TEXT NOT NULL,   -- the error_records.source this rule covers
+  code         TEXT NOT NULL,   -- the error_records.code this rule covers
+  message_like TEXT,            -- NULL = the whole source · code class; otherwise only messages containing this substring. Never "": instr(x, '') is > 0 for every row, so the empty string would silently mean "everything"
+  note         TEXT,            -- why it was silenced, in the owner's own words; shown in the rule list
+  created_by   TEXT NOT NULL,   -- the Project owner who made it
+  created_at   TEXT NOT NULL
+);
+-- One rule per (source, code, message fragment): re-adding one is what this refuses. ifnull maps the NULL fragment (the whole class) onto '' so the two spellings of "no fragment" cannot both exist; the index also serves the per-Project read, whose only other predicate is the (source, code) pair.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_error_ignore_rule ON error_ignore_rules(project_id, source, code, ifnull(message_like, ''));
 CREATE TABLE IF NOT EXISTS schedule_state (    -- schedule runtime state (files are declarative intent; the system never writes back)
   project_id      TEXT NOT NULL,
   agent_id        TEXT NOT NULL,

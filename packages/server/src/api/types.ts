@@ -4327,12 +4327,73 @@ export interface UsageErrors {
   total: number;
   /** Count of unexpected ones (500 / runtime exceptions) among them — the part the frontend highlights. */
   unexpected: number;
+  /**
+   * How many of the range's records an ignore rule is currently keeping out of all of the above:
+   * counted under the same date/agent filter, but on the other side of the ignore axis (the ones
+   * the panel's stats and table do not show). The panel reports it so a silenced error class is
+   * never invisible twice over — the numbers above say what is shown, never a bare zero.
+   */
+  ignored: number;
   /** The most frequent source · code (null when there are no errors). */
   topCode: UsageErrorCount | null;
   /** Most recent N rows (reverse chronological) — the first page; older ones come from `GET /usage/errors`. */
   recent: UsageErrorItem[];
   /** How many rows the table has for this filter (records folded per {@link UsageErrorItem}) — what the pager counts. */
   rows: number;
+}
+
+/**
+ * One rule keeping a class of errors out of the panel's default view. The records stay in the
+ * table; the reads stop selecting them (see {@link UsageErrors.ignored}, and the ErrorsRepo's own
+ * note on why filtering happens on read rather than on insert).
+ */
+export interface UsageErrorIgnoreRule {
+  id: number;
+  /** The `error_records.source` it covers. */
+  source: string;
+  /** The `error_records.code` it covers. */
+  code: string;
+  /** The message fragment a covered record must contain; null covers the whole source · code class. */
+  messageLike: string | null;
+  /** Why it was silenced, in the owner's words; null when they wrote none. */
+  note: string | null;
+  /** The Project owner who made it. */
+  createdBy: string;
+  createdAt: string;
+  /** How many of the Project's records it covers, all time. */
+  hidden: number;
+  /** The newest one it covers; null while it covers none yet — the figure that says "it stopped". */
+  lastTs: string | null;
+}
+
+/** What `POST /usage/errors/ignores` takes: the class to silence, and why. */
+export interface UsageErrorIgnoreWrite {
+  source: string;
+  code: string;
+  /**
+   * The message fragment, or null/absent for the whole class. Blank reads as the whole class:
+   * `instr(x, '')` is > 0 for every row, so an empty fragment would mean "cover everything".
+   */
+  messageLike?: string | null;
+  note?: string | null;
+}
+
+/**
+ * `POST /usage/errors/ignores` — the rule that was made, and how much it took off screen.
+ *
+ * `hidden` counts the records the new rule covers **within the range the request carried** (all
+ * time when it carried none), which is what the caller says it just hid. It is deliberately not
+ * the rule's own `hidden`, which is always all time: one answers "what did this button do", the
+ * other "what does this rule hold back".
+ */
+export interface UsageErrorIgnoreAdded {
+  rule: UsageErrorIgnoreRule;
+  hidden: number;
+}
+
+/** `GET /usage/errors/ignores` — the Project's rules, oldest first. */
+export interface UsageErrorIgnores {
+  rules: UsageErrorIgnoreRule[];
 }
 
 /**

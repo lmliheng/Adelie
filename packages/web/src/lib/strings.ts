@@ -4741,6 +4741,39 @@ export const zh = {
       `将删除本项目中 Agent「${agentId}」${range}的 ${count} 条「${kind}」错误记录，另一类、其他 Agent 与其余时间段的记录保留。`,
     errorsClearIrreversible: "此操作不可恢复。",
     errorsClearDone: (count: number): string => `已删除 ${count} 条错误记录`,
+    /**
+     * Ignoring: the fourth view of the table, the row action that silences a class, and the rule
+     * list that says what is being held back. The records are never deleted — which is why this
+     * action takes no confirmation where clearing does, and why the notice below says so outright.
+     */
+    errorsIgnored: "已忽略",
+    errorsEmptyIgnored: "暂无被忽略的异常",
+    errorsIgnoreAction: "忽略这类异常",
+    /** The dialog's confirm button: the action's own verb. */
+    errorsIgnore: "忽略",
+    errorsIgnoreFragment: "只忽略消息包含以下内容的记录",
+    errorsIgnoreFragmentHint: "留空则忽略这一来源与错误码下的全部记录。",
+    errorsIgnoreRules: "忽略规则",
+    errorsIgnoreRuleNone: "还没有忽略规则。",
+    /** A rule narrowed to a message fragment says so; a whole-class rule says nothing extra. */
+    errorsIgnoreRuleFragment: (fragment: string): string => `消息含「${fragment}」`,
+    errorsIgnoreRuleHidden: (count: number): string => `已隐藏 ${count} 条`,
+    errorsIgnoreRuleHiddenNone: "尚未隐藏任何记录",
+    errorsIgnoreRuleLast: (time: string): string => `最近一条 ${time}`,
+    errorsUnignore: "取消忽略",
+    errorsIgnoreNotice: "被忽略的记录仍在库里，只是不再出现在其他视图里。",
+    errorsUnignoreDone: (label: string): string => `已恢复 ${label} 的异常`,
+    /** After ignoring: which class went, and how many records the range on screen just lost. */
+    errorsIgnoreDone: (label: string, count: number): string =>
+      `已忽略 ${label} · 本次隐藏 ${count} 条记录`,
+    errorsIgnoreUndo: "撤销",
+    /** The clear sentence on the ignored view: what goes is that view's own table, and nothing else is touched. */
+    errorsClearScopeIgnored: (count: number, range: string): string =>
+      `将删除本项目 ${range}的 ${count} 条已忽略的错误记录，未被忽略的记录与其余时间段的记录保留。`,
+    errorsClearScopeIgnoredAgent: (count: number, range: string, agentId: string): string =>
+      `将删除本项目中 Agent「${agentId}」${range}的 ${count} 条已忽略的错误记录，未被忽略的记录、其他 Agent 与其余时间段的记录保留。`,
+    /** Shown in the clear confirmation when the range holds ignored records: the sentence above never counts them. */
+    errorsClearKeepsIgnored: (count: number): string => `另有 ${count} 条已忽略的记录不在此列。`,
   },
 
   /** The Trace panel's own view of a Trace file (trace-file-view / timeline-chart); the standalone browsing page these once also served is gone. */

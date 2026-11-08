@@ -9,6 +9,9 @@
  *   and the row count are rows, the summary still counts records.
  * - A clear follows the caller's read: a member's leaves the unattributed rows, an admin's
  *   takes them; another Project's rows are out of reach either way.
+ * - An ignore rule (a source · code, optionally narrowed by a message fragment) takes that class
+ *   off every read's default side without deleting a row: the reads, the clear and the rule's own
+ *   coverage count all take the same axis; rules are per Project and go with it.
  * - Past its cap the log evicts its oldest rows by count, never misled by id gaps.
  *
  * The recorder (ErrorRecorder):
@@ -42,6 +45,8 @@
  *   offset no clock uses is a 400.
  * - Clearing takes exactly the filter or trailing window on screen, never an unbounded range;
  *   a member may not clear; an admin's clear takes the unattributed rows it showed.
+ * - The owner silences a class (never a member, and never a non-member's Project), the panel then
+ *   reports it under `ignored` and reads it back on request, and removing the rule restores it.
  * - Deleting a Project deletes its error records and nobody else's.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -62,7 +67,13 @@ import {
   withOrigin,
 } from "@adelie/core";
 import type { OmniMessage, StopReason } from "@adelie/core";
-import type { ProjectCreateResponse, UsageErrorsPage, UsageResponse } from "../src/api/types.js";
+import type {
+  ProjectCreateResponse,
+  UsageErrorIgnoreAdded,
+  UsageErrorIgnores,
+  UsageErrorsPage,
+  UsageResponse,
+} from "../src/api/types.js";
 import { openDatabase } from "../src/db/database.js";
 import { ErrorsRepo } from "../src/db/repos/errors.js";
 import type { ErrorRecordInsert } from "../src/db/repos/errors.js";
@@ -245,6 +256,161 @@ describe("errors-repo", () => {
 
     expect(repo.deleteFiltered("p1", { includeGlobal: true })).toBe(1);
     expect(remaining()).toEqual(["other tenant"]);
+  });
+
+  // —— Ignoring: rules that keep a class off the panel's default view, on read, without losing a row ——
+
+  it("an ignore rule takes a whole class out of every read, while the records stay in the table", () => {
+    // Three of the class to silence, two of another one that must keep showing.
+    for (let i = 0; i < 3; i++) repo.insert(row("2026-07-06", { code: "internal" }));
+    for (let i = 0; i < 2; i++)
+      repo.insert(row("2026-07-06", { source: "messaging", code: "messaging_connect_failed" }));
+
+    const rule = repo.addIgnoreRule("p1", {
+      source: "http",
+      code: "internal",
+      createdBy: "owner",
+      createdAt: "2026-07-06T10:00:00.000Z",
+    });
+    expect(rule).toMatchObject({ source: "http", code: "internal", messageLike: null, hidden: 3 });
+
+    // Every read not asked for the ignored side leaves the class out …
+    expect(repo.summary("p1")).toEqual({ total: 2, unexpected: 2 });
+    expect(repo.topCode("p1")).toMatchObject({ source: "messaging", count: 2 });
+    expect(repo.recent("p1").map((r) => r.source)).toEqual(["messaging"]);
+    expect(repo.rowCount("p1")).toBe(1);
+    // … and the other side reads exactly it, which is what the panel's "ignored" view shows.
+    expect(repo.summary("p1", { ignored: true })).toEqual({ total: 3, unexpected: 3 });
+    expect(repo.recent("p1", { ignored: true }).map((r) => r.source)).toEqual(["http"]);
+    // Nothing was deleted: the rule changes which rows the reads select, not what is stored.
+    expect(
+      db.prepare("SELECT COUNT(*) AS n FROM error_records WHERE code = 'internal'").get(),
+    ).toEqual({ n: 3 });
+  });
+
+  it("a fragment narrows a rule to the messages that contain it", () => {
+    const at = (message: string) => repo.insert(row("2026-07-06", { code: "internal", message }));
+    at("other side closed");
+    at("other side closed (again)");
+    at("disk full");
+    repo.addIgnoreRule("p1", {
+      source: "http",
+      code: "internal",
+      messageLike: "other side closed",
+      createdBy: "owner",
+      createdAt: "2026-07-06T10:00:00.000Z",
+    });
+
+    // A literal substring, not a pattern: the two sharing it go, the third stays.
+    expect(repo.recent("p1").map((r) => r.message)).toEqual(["disk full"]);
+    expect(repo.summary("p1")).toEqual({ total: 1, unexpected: 1 });
+    expect(repo.summary("p1", { ignored: true })).toEqual({ total: 2, unexpected: 2 });
+  });
+
+  it("a blank fragment means the whole class, not a rule that swallows every record", () => {
+    repo.insert(row("2026-07-06", { code: "internal", message: "boom" }));
+    repo.insert(
+      row("2026-07-06", { source: "session", code: "session_run_failed", message: "nope" }),
+    );
+    // instr(x, '') is > 0 for every row: keeping the empty string would make this one rule cover
+    // every record in the table, so a blank fragment has to read as "no fragment".
+    const rule = repo.addIgnoreRule("p1", {
+      source: "http",
+      code: "internal",
+      messageLike: "   ",
+      createdBy: "owner",
+      createdAt: "2026-07-06T10:00:00.000Z",
+    });
+    expect(rule?.messageLike).toBeNull();
+    expect(repo.summary("p1")).toEqual({ total: 1, unexpected: 1 });
+    expect(repo.recent("p1").map((r) => r.source)).toEqual(["session"]);
+  });
+
+  it("one rule per class: the same (source, code, fragment) is refused, a different fragment is another rule", () => {
+    const make = (messageLike: string | null) =>
+      repo.addIgnoreRule("p1", {
+        source: "http",
+        code: "internal",
+        messageLike,
+        createdBy: "owner",
+        createdAt: "2026-07-06T10:00:00.000Z",
+      });
+
+    expect(make(null)).not.toBeNull();
+    // The same class is one rule, not two rows saying it twice.
+    expect(make(null)).toBeNull();
+    expect(make("other side closed")).not.toBeNull();
+    // A blank fragment is the whole class, so it collides with the whole-class rule above.
+    expect(make("  ")).toBeNull();
+    expect(repo.ignoreRules("p1")).toHaveLength(2);
+  });
+
+  it("rules are per Project, and deleting a Project takes its rules with it", () => {
+    repo.insert(row("2026-07-06", { projectId: "p1", code: "internal" }));
+    repo.insert(row("2026-07-06", { projectId: "p2", code: "internal" }));
+    const rule = (projectId: string) =>
+      repo.addIgnoreRule(projectId, {
+        source: "http",
+        code: "internal",
+        createdBy: "owner",
+        createdAt: "2026-07-06T10:00:00.000Z",
+      });
+    rule("p1");
+    rule("p2");
+
+    // p2's rule silences p2's records only, so the same class in p1 reads untouched.
+    expect(repo.summary("p1")).toEqual({ total: 0, unexpected: 0 });
+    expect(repo.summary("p1", { ignored: true })).toEqual({ total: 1, unexpected: 1 });
+    expect(repo.summary("p2", { ignored: true })).toEqual({ total: 1, unexpected: 1 });
+
+    // A rule names one Project's errors and means nothing once they are gone.
+    repo.deleteByProject("p1");
+    expect(repo.ignoreRules("p1")).toEqual([]);
+    expect(repo.ignoreRules("p2")).toHaveLength(1);
+    expect(repo.summary("p2", { ignored: true })).toEqual({ total: 1, unexpected: 1 });
+  });
+
+  it("a clear on either side takes only that side's rows", () => {
+    for (let i = 0; i < 2; i++)
+      repo.insert(row("2026-07-06", { code: "internal", message: "silenced" }));
+    repo.insert(
+      row("2026-07-06", { source: "session", code: "session_run_failed", message: "shown" }),
+    );
+    repo.addIgnoreRule("p1", {
+      source: "http",
+      code: "internal",
+      createdBy: "owner",
+      createdAt: "2026-07-06T10:00:00.000Z",
+    });
+
+    // Default side: the rows the panel shows, and no other.
+    expect(repo.deleteFiltered("p1")).toBe(1);
+    expect(repo.summary("p1", { ignored: true })).toEqual({ total: 2, unexpected: 2 });
+
+    // Standing on the ignored view, the same button is the one that may take the covered rows.
+    expect(repo.deleteFiltered("p1", { ignored: true })).toBe(2);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM error_records").get()).toEqual({ n: 0 });
+  });
+
+  it("ignoreRuleMatches counts a class against a range, saved or not", () => {
+    repo.insert(row("2026-07-05", { code: "internal" }));
+    repo.insert(row("2026-07-06", { code: "internal" }));
+    repo.insert(row("2026-07-06", { code: "internal", message: "other side closed" }));
+    repo.insert(row("2026-07-07", { code: "internal" }));
+
+    const wholeClass = { source: "http", code: "internal", messageLike: null };
+    expect(repo.ignoreRuleMatches("p1", wholeClass)).toBe(4);
+    // Against a caller's range, which is what a new rule reports having just hidden.
+    expect(repo.ignoreRuleMatches("p1", wholeClass, { from: "2026-07-06", to: "2026-07-06" })).toBe(
+      2,
+    );
+    expect(repo.ignoreRuleMatches("p1", wholeClass, { from: "2026-07-06", to: "2026-07-07" })).toBe(
+      3,
+    );
+    // A fragment narrows it; the axis is never applied here — it counts what a rule will take off.
+    expect(repo.ignoreRuleMatches("p1", { ...wholeClass, messageLike: "other side closed" })).toBe(
+      1,
+    );
   });
 
   // —— Row cap (the second line of defense against error storms; the first is ErrorRecorder's short-window dedup) ——
@@ -1577,6 +1743,229 @@ describe("HTTP onError persistence (integration)", () => {
     const del = await api.delete(`/api/projects/${projectId}`);
     expect(del.status).toBe(204);
     expect(errorRows().map((r) => r.project_id)).toEqual([null]);
+  });
+
+  // —— Ignoring: the owner silences a class, the panel reads one side or the other, nothing is lost ——
+
+  it("an ignore rule takes a class off the panel while its records stay in the table", async () => {
+    // Seeded directly so the repeats are exact — going through HTTP would collapse them into the
+    // recorder's dedup window.
+    const repo = wire(ErrorsRepo, { db: t.deps.db });
+    const seed = (code: string, message: string, ts: string) =>
+      repo.insert({
+        ts,
+        date: ts.slice(0, 10),
+        projectId,
+        agentId: null,
+        sessionId: null,
+        source: "http",
+        kind: "unexpected",
+        code,
+        status: 500,
+        message,
+      });
+    seed("internal", "other side closed", "2026-07-27T01:00:00.000Z");
+    seed("internal", "other side closed", "2026-07-27T02:00:00.000Z");
+    seed("agent_not_found", "no such agent", "2026-07-27T03:00:00.000Z");
+
+    const added = await api.post(`/api/projects/${projectId}/usage/errors/ignores`, {
+      source: "http",
+      code: "internal",
+      note: "engine reconnects by design",
+    });
+    expect(added.status).toBe(201);
+    const body = (await added.json()) as UsageErrorIgnoreAdded;
+    expect(body.hidden).toBe(2);
+    expect(body.rule).toMatchObject({
+      source: "http",
+      code: "internal",
+      messageLike: null,
+      hidden: 2,
+    });
+
+    // The dashboard drops it from what it shows and reports it once under `ignored`: a silenced
+    // class is not invisible twice over.
+    const dashboard = (await (
+      await api.get(`/api/projects/${projectId}/usage?groupBy=date`)
+    ).json()) as UsageResponse;
+    expect(dashboard.errors).toMatchObject({ total: 1, ignored: 2 });
+    expect(dashboard.errors.recent.map((e) => e.code)).toEqual(["agent_not_found"]);
+
+    // The page follows the same axis, and asking for the ignored side reads exactly the covered rows.
+    const shown = (await (
+      await api.get(`/api/projects/${projectId}/usage/errors?offset=0&limit=20`)
+    ).json()) as UsageErrorsPage;
+    expect(shown.total).toBe(1);
+    expect(shown.items.map((e) => e.code)).toEqual(["agent_not_found"]);
+    const ignored = (await (
+      await api.get(`/api/projects/${projectId}/usage/errors?offset=0&limit=20&ignored=1`)
+    ).json()) as UsageErrorsPage;
+    expect(ignored.total).toBe(2);
+    expect(ignored.items.map((e) => e.code)).toEqual(["internal"]);
+
+    // The records were never touched: the rule decides which rows the reads select, not what is stored.
+    expect(errorRows().filter((r) => r.code === "internal")).toHaveLength(2);
+  });
+
+  it("a new rule's hidden figure counts the records it takes off the range it was made from", async () => {
+    const repo = wire(ErrorsRepo, { db: t.deps.db });
+    const seed = (ts: string, agentId: string) =>
+      repo.insert({
+        ts,
+        date: ts.slice(0, 10),
+        projectId,
+        agentId,
+        sessionId: null,
+        source: "http",
+        kind: "unexpected",
+        code: "internal",
+        status: 500,
+        message: "boom",
+      });
+    seed("2026-07-27T01:00:00.000Z", "a1");
+    seed("2026-07-27T02:00:00.000Z", "a2");
+    seed("2026-07-29T01:00:00.000Z", "a1");
+
+    // The range is the panel's own — the one its reads carry — so the number matches the table it
+    // came from; the rule itself is permanent and covers all three. A body that names its own
+    // author is ignored: the owner is the session's, so a rule can never be filed under someone else.
+    const added = (await (
+      await api.post(
+        `/api/projects/${projectId}/usage/errors/ignores?from=2026-07-27&to=2026-07-27&agentId=a1`,
+        { source: "http", code: "internal", createdBy: "someone_else" },
+      )
+    ).json()) as UsageErrorIgnoreAdded;
+    expect(added.hidden).toBe(1);
+    expect(added.rule.hidden).toBe(3);
+    expect(added.rule).toMatchObject({ createdBy: "err_user", note: null });
+  });
+
+  it("ignoring the same class twice is refused, and unignoring puts the rows back", async () => {
+    const repo = wire(ErrorsRepo, { db: t.deps.db });
+    repo.insert({
+      ts: "2026-07-27T01:00:00.000Z",
+      date: "2026-07-27",
+      projectId,
+      agentId: null,
+      sessionId: null,
+      source: "http",
+      kind: "unexpected",
+      code: "internal",
+      status: 500,
+      message: "boom",
+    });
+    const write = { source: "http", code: "internal" };
+    // The refusals below are recorded by app.onError like any other, so the seeded row is read
+    // back by code rather than by counting the table.
+    const visible = async () =>
+      (
+        (await (
+          await api.get(`/api/projects/${projectId}/usage/errors?offset=0&limit=20`)
+        ).json()) as UsageErrorsPage
+      ).items
+        .map((e) => e.code)
+        .filter((code) => code === "internal");
+
+    const first = await api.post(`/api/projects/${projectId}/usage/errors/ignores`, write);
+    expect(first.status).toBe(201);
+    const ruleId = ((await first.json()) as UsageErrorIgnoreAdded).rule.id;
+    expect(await visible()).toEqual([]);
+
+    // The same (source, code, fragment) is one rule: a second row covering the same records would
+    // only say the same thing twice.
+    const again = await api.post(`/api/projects/${projectId}/usage/errors/ignores`, write);
+    expect(again.status).toBe(409);
+    expect(((await again.json()) as { error: { code: string } }).error.code).toBe(
+      "ignore_rule_exists",
+    );
+
+    const listed = (await (
+      await api.get(`/api/projects/${projectId}/usage/errors/ignores`)
+    ).json()) as UsageErrorIgnores;
+    expect(listed.rules.map((r) => r.id)).toEqual([ruleId]);
+    expect(listed.rules[0]!.hidden).toBe(1);
+
+    const removed = await api.delete(`/api/projects/${projectId}/usage/errors/ignores/${ruleId}`);
+    expect(await removed.json()).toEqual({ removed: true });
+    // Nothing was ever deleted, so removing the rule is the whole of the undo.
+    expect(await visible()).toEqual(["internal"]);
+
+    // A rule this Project does not have is a 404, not a silent success.
+    expect(
+      (await api.delete(`/api/projects/${projectId}/usage/errors/ignores/${ruleId}`)).status,
+    ).toBe(404);
+    expect(
+      (await api.delete(`/api/projects/${projectId}/usage/errors/ignores/not-a-number`)).status,
+    ).toBe(400);
+  });
+
+  it("the default view's clear leaves the ignored rows; standing on the ignored view it takes them", async () => {
+    const repo = wire(ErrorsRepo, { db: t.deps.db });
+    const seed = (code: string, ts: string) =>
+      repo.insert({
+        ts,
+        date: ts.slice(0, 10),
+        projectId,
+        agentId: null,
+        sessionId: null,
+        source: "http",
+        kind: "unexpected",
+        code,
+        status: 500,
+        message: code,
+      });
+    seed("internal", "2026-07-27T01:00:00.000Z");
+    seed("internal", "2026-07-27T02:00:00.000Z");
+    seed("agent_not_found", "2026-07-27T03:00:00.000Z");
+    await api.post(`/api/projects/${projectId}/usage/errors/ignores`, {
+      source: "http",
+      code: "internal",
+    });
+
+    // The button empties the table on screen: the ignored rows are not on it, so they stay.
+    const cleared = await api.delete(
+      `/api/projects/${projectId}/usage/errors?from=2026-07-27&to=2026-07-27`,
+    );
+    expect(await cleared.json()).toEqual({ deleted: 1 });
+    expect(errorRows().filter((r) => r.code === "internal")).toHaveLength(2);
+
+    // Standing on the ignored view, the same button is the one that may take those rows.
+    const clearedIgnored = await api.delete(
+      `/api/projects/${projectId}/usage/errors?from=2026-07-27&to=2026-07-27&ignored=1`,
+    );
+    expect(await clearedIgnored.json()).toEqual({ deleted: 2 });
+    expect(errorRows().filter((r) => r.code === "internal")).toHaveLength(0);
+  });
+
+  it("ignore management is the owner's, like the clear; a member still reads the panel and sees the count", async () => {
+    seedRow({ date: "2026-07-27", code: "internal", kind: "unexpected" });
+    const write = { source: "http", code: "internal" };
+    const member = await provisionUser(t.app, "member_user");
+    expect(member.user.isAdmin).toBe(false);
+    await api.post(`/api/projects/${projectId}/members`, { userId: "member_user" });
+    const memberApi = apiClient(t.app, member.cookie);
+    const outsiderApi = apiClient(t.app, (await provisionUser(t.app, "outsider_user")).cookie);
+    const rulesPath = `/api/projects/${projectId}/usage/errors/ignores`;
+
+    // The owner silences the seeded class; the member then reads its effect as a count, without the
+    // rule list. Read before the refusals below, whose own 403 / 404 are recorded like any error.
+    expect((await api.post(rulesPath, write)).status).toBe(201);
+    const memberView = (await (
+      await memberApi.get(`/api/projects/${projectId}/usage?groupBy=date`)
+    ).json()) as UsageResponse;
+    expect(memberView.errors).toMatchObject({ total: 0, ignored: 1 });
+
+    // Reading the panel is a member's right; managing what it hides is the owner's.
+    expect((await memberApi.get(`/api/projects/${projectId}/usage/errors?offset=0`)).status).toBe(
+      200,
+    );
+    expect((await memberApi.get(rulesPath)).status).toBe(403);
+    expect((await memberApi.post(rulesPath, write)).status).toBe(403);
+    expect((await memberApi.delete(`${rulesPath}/1`)).status).toBe(403);
+    // A non-member is not told the Project exists, let alone allowed to silence its errors.
+    expect((await outsiderApi.get(rulesPath)).status).toBe(404);
+    expect((await outsiderApi.post(rulesPath, write)).status).toBe(404);
+    expect((await outsiderApi.delete(`${rulesPath}/1`)).status).toBe(404);
   });
 });
 

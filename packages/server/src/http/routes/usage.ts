@@ -5,26 +5,44 @@
  * sets the time-series precision, defaulting to day; fromTs/toTs bound a
  * trailing window down to instants — required for minute — and must be given
  * together);
- * GET /api/projects/:p/usage/errors?offset&limit&from&to&fromTs&toTs&agentId&kind — one page
+ * GET /api/projects/:p/usage/errors?offset&limit&from&to&fromTs&toTs&agentId&kind&ignored — one page
  * of the error detail table, for paging back past the first page the dashboard already
  * returns (both reads also take `utcOffsetMinutes`, the viewer's offset from UTC, whose
- * calendar day the table folds a day's repeats by);
- * DELETE /api/projects/:p/usage/errors?from&to&fromTs&toTs&until&agentId&kind — empties that table
+ * calendar day the table folds a day's repeats by; `ignored` reads the other side of the
+ * Project's ignore rules);
+ * DELETE /api/projects/:p/usage/errors?from&to&fromTs&toTs&until&agentId&kind&ignored — empties that table
  * for the filter the panel is showing (owner only; `from`/`to` are required, unlike on the
  * reads; an admin's clear also takes the unattributed rows an admin's read shows; `until`
  * stops at the newest record the confirmation counted);
+ * GET /api/projects/:p/usage/errors/ignores — the Project's ignore rules, each with what it
+ * covers (owner only);
+ * POST /api/projects/:p/usage/errors/ignores?from&to&fromTs&toTs&agentId — adds one rule, and
+ * answers how many records it covers in that range (owner only; `source` and `code` required,
+ * `messageLike` narrows it to messages containing that fragment; 409 when the class is already
+ * ignored);
+ * DELETE /api/projects/:p/usage/errors/ignores/:id — removes one rule (owner only; 404 when this
+ * Project has none);
  * GET /api/projects/:p/usage/model-totals — lifetime Token total per Model, unfiltered.
  */
 import { Hono } from "hono";
 import type { Context } from "hono";
 import type {
+  UsageErrorIgnoreAdded,
+  UsageErrorIgnores,
   UsageErrorKind,
   UsageErrorsClearResponse,
   UsageGranularity,
   UsageGroupBy,
 } from "../../api/types.js";
 import type { AppEnv } from "../../auth/middleware.js";
-import { badRequest, optionalDateParam, paginationQuery, requireValidId } from "../validate.js";
+import {
+  badRequest,
+  optionalDateParam,
+  paginationQuery,
+  parseNonNegativeInt,
+  requireValidId,
+} from "../validate.js";
+import { HttpError } from "../errors.js";
 import type { UsageQueries } from "../../mechanisms/observability.js";
 import type { Access } from "../../mechanisms/projects.js";
 
@@ -89,6 +107,41 @@ function tsWindowQuery(c: Context<AppEnv>): { fromTs?: string; toTs?: string } {
   return { ...(fromTs !== undefined ? { fromTs } : {}), ...(toTs !== undefined ? { toTs } : {}) };
 }
 
+/**
+ * The error panel's range: the dates, the trailing window and the Agent every error read and write
+ * shares. One parser for all four, so "the range on screen" means the same thing to the reads, to a
+ * clear, and to the count a new ignore rule reports having hidden.
+ */
+function errorRangeQuery(c: Context<AppEnv>): {
+  from?: string;
+  to?: string;
+  fromTs?: string;
+  toTs?: string;
+  agentId?: string;
+} {
+  const from = optionalDateParam(c.req.query("from"), "from");
+  const to = optionalDateParam(c.req.query("to"), "to");
+  const agentId = c.req.query("agentId");
+  return {
+    ...(from !== undefined ? { from } : {}),
+    ...(to !== undefined ? { to } : {}),
+    ...tsWindowQuery(c),
+    ...(agentId !== undefined && agentId !== "" ? { agentId } : {}),
+  };
+}
+
+/**
+ * Which side of the Project's ignore rules to read or clear: `1` the records a rule covers, `0`
+ * (or nothing) the ones no rule covers. Validated like `kind` and for the same reason — a typo
+ * that passed through would silently read the other side and report the wrong table as empty.
+ */
+function ignoredQuery(c: Context<AppEnv>): boolean | undefined {
+  const raw = c.req.query("ignored");
+  if (raw === undefined || raw === "" || raw === "0" || raw === "false") return undefined;
+  if (raw === "1" || raw === "true") return true;
+  throw badRequest("ignored must be 0 or 1.");
+}
+
 export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
 
@@ -151,11 +204,8 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
     const projectId = requireValidId(c, "projectId");
     deps.access.requireProjectAccess(c.var.user.userId, projectId);
     const { offset, limit } = paginationQuery(c);
-    const from = optionalDateParam(c.req.query("from"), "from");
-    const to = optionalDateParam(c.req.query("to"), "to");
-    const window = tsWindowQuery(c);
+    const range = errorRangeQuery(c);
     const utcOffsetMinutes = utcOffsetQuery(c);
-    const agentId = c.req.query("agentId");
     const kindRaw = c.req.query("kind");
     // `kind` narrows to one of the two categories the panel's stats already separate. It is
     // validated against that closed set rather than passed through, so a typo asks for
@@ -167,6 +217,7 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
     ) {
       throw badRequest(`kind must be one of ${ERROR_KINDS.join(" / ")}.`);
     }
+    const ignored = ignoredQuery(c);
     return c.json(
       deps.usageService.queryErrors(projectId, {
         offset,
@@ -174,46 +225,42 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
         // Same admin-only rule as the dashboard: a regular member seeing another tenant's
         // unattributed errors would be a cross-tenant leak.
         includeGlobalErrors: c.var.user.isAdmin,
-        ...(from !== undefined ? { from } : {}),
-        ...(to !== undefined ? { to } : {}),
-        ...window,
+        ...range,
         ...(utcOffsetMinutes !== undefined ? { utcOffsetMinutes } : {}),
-        ...(agentId !== undefined && agentId !== "" ? { agentId } : {}),
         ...(kindRaw !== undefined && kindRaw !== "" ? { kind: kindRaw } : {}),
+        ...(ignored !== undefined ? { ignored } : {}),
       }),
     );
   });
 
   // Empties the error table for the filter the panel is showing. Takes the same date, window,
-  // agent and category filter as the two reads above and no other: a clear removes exactly the
-  // rows the caller was looking at, never the Project's whole history behind a narrowed view —
-  // the date range is required for that reason, where the reads leave it optional. `kind` is
-  // accepted because the panel now has that control: its table and its button read the same
-  // filter, so a reader narrowed to one category keeps the other one.
+  // agent, category and ignore side as the two reads above and no other: a clear removes exactly
+  // the rows the caller was looking at, never the Project's whole history behind a narrowed view —
+  // the date range is required for that reason, where the reads leave it optional. `kind` and
+  // `ignored` are accepted because the panel has those controls: its table and its button read the
+  // same filter, so a reader narrowed to one category keeps the other one, and a reader standing
+  // on the ignored view is the one person who may delete those rows.
   app.delete("/errors", (c) => {
     const projectId = requireValidId(c, "projectId");
     // Owner only, the rule Agent deletion applies to error rows already (it cascade-deletes
     // them): membership is enough to READ the panel, but these rows are the Project's shared
     // history and one member emptying them takes them from everyone.
     deps.access.requireProjectOwner(c.var.user.userId, projectId);
-    const from = optionalDateParam(c.req.query("from"), "from");
-    const to = optionalDateParam(c.req.query("to"), "to");
+    const range = errorRangeQuery(c);
     // Both bounds are required here, unlike on the two reads: a missing bound reads as
     // unbounded on that side, and an unbounded clear is the Project's entire history — for an
     // admin, every unattributed row in the instance along with it, rows that sit in every
     // other Project's admin panel. The panel already withholds the action while either date
     // input is blank (see clearableFilter); this is that same rule where it can be enforced,
     // rather than a promise only the caller who uses the UI keeps.
-    if (from === undefined || to === undefined) {
+    if (range.from === undefined || range.to === undefined) {
       throw badRequest("from and to are both required.");
     }
-    const window = tsWindowQuery(c);
     // The boundary the confirmation counted, optional: without it the clear takes everything
     // the filter matches, which is what a caller that never showed a count is asking for. A
     // malformed instant is refused rather than dropped — a clear that quietly ignores its
     // boundary would remove rows the sentence said were kept.
     const until = optionalTsParam(c.req.query("until"), "until");
-    const agentId = c.req.query("agentId");
     const kindRaw = c.req.query("kind");
     // Validated against the same closed set the read uses: an unrecognized category would
     // otherwise match no rows, and a clear that silently matches nothing reads as "already
@@ -225,20 +272,86 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
     ) {
       throw badRequest(`kind must be one of ${ERROR_KINDS.join(" / ")}.`);
     }
+    const ignored = ignoredQuery(c);
     // The same admin visibility the reads above carry, so a clear takes exactly the rows the
     // caller's panel showed. An admin's panel shows the unattributed rows (login failures,
     // process crashes) and so an admin's clear takes them; a member's never shows them, so a
     // clear can never become a way to remove a row its caller was not allowed to see.
     const deleted = deps.usageService.clearErrors(projectId, {
       includeGlobalErrors: c.var.user.isAdmin,
-      from,
-      to,
-      ...window,
+      ...range,
       ...(until !== undefined ? { until } : {}),
-      ...(agentId !== undefined && agentId !== "" ? { agentId } : {}),
       ...(kindRaw !== undefined && kindRaw !== "" ? { kind: kindRaw } : {}),
+      ...(ignored !== undefined ? { ignored } : {}),
     });
     return c.json({ deleted } satisfies UsageErrorsClearResponse);
+  });
+
+  // The Project's ignore rules: the error classes its owner has taken out of the panel's default
+  // view. Owner only, the line the clear draws and for the same reason — a rule changes what
+  // everyone reading this Project sees. The panel reports the count to members on its own (the
+  // dashboard's `errors.ignored`), so reading the rules themselves is management, not disclosure.
+  app.get("/errors/ignores", (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectOwner(c.var.user.userId, projectId);
+    return c.json({ rules: deps.usageService.errorIgnores(projectId) } satisfies UsageErrorIgnores);
+  });
+
+  // Adds one rule. The records are not touched — the rule only decides which ones the reads select
+  // — so this is undoable, and the answer carries how many records it covers in the range the
+  // caller was looking at: what the caller says it just hid. The range is the same one the reads
+  // and the clear take, so the number matches the table it came from.
+  app.post("/errors/ignores", async (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectOwner(c.var.user.userId, projectId);
+    const body = (await c.req.json().catch(() => null)) as {
+      source?: unknown;
+      code?: unknown;
+      messageLike?: unknown;
+      note?: unknown;
+    } | null;
+    // A rule with no source or no code covers nothing while reading as a rule, so both are
+    // required rather than defaulted; the lengths are capped because they are matched against two
+    // columns and the note is drawn in a list row.
+    const source = typeof body?.source === "string" ? body.source.trim() : "";
+    const code = typeof body?.code === "string" ? body.code.trim() : "";
+    if (source === "" || code === "") throw badRequest("source and code are both required.");
+    if (source.length > 64 || code.length > 200) {
+      throw badRequest("source must be at most 64 characters and code at most 200.");
+    }
+    const messageLike = typeof body?.messageLike === "string" ? body.messageLike : null;
+    const note = typeof body?.note === "string" ? body.note : null;
+    if ((messageLike?.length ?? 0) > 200 || (note?.length ?? 0) > 200) {
+      throw badRequest("messageLike and note must be at most 200 characters.");
+    }
+    const added = deps.usageService.addErrorIgnore(
+      projectId,
+      { source, code, messageLike, note, createdBy: c.var.user.userId },
+      errorRangeQuery(c),
+    );
+    // Already ignored: the same (source, code, fragment) is one rule, and a second row covering the
+    // same records would leave the list saying the same thing twice.
+    if (added === null) {
+      throw new HttpError(
+        409,
+        "ignore_rule_exists",
+        `This Project already ignores [${source}] ${code}.`,
+      );
+    }
+    return c.json(added satisfies UsageErrorIgnoreAdded, 201);
+  });
+
+  // Removes one rule, which re-exposes every record it covered — nothing was ever deleted, so this
+  // is the whole of the undo.
+  app.delete("/errors/ignores/:id", (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectOwner(c.var.user.userId, projectId);
+    const id = parseNonNegativeInt(c.req.param("id") ?? "");
+    if (id === null) throw badRequest("id must be a non-negative integer.");
+    if (!deps.usageService.removeErrorIgnore(projectId, id)) {
+      throw new HttpError(404, "ignore_rule_not_found", "No such ignore rule in this Project.");
+    }
+    return c.json({ removed: true });
   });
 
   return app;

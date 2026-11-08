@@ -19,6 +19,16 @@
  * deleteByProject removes rows, id and row count diverge, and the approximation would
  * wrongly delete still-valid data within the cap. The first line of defense is
  * ErrorRecorder's short-window deduplication.
+ *
+ * **Ignoring** (error_ignore_rules) keeps recurring-by-design noise — an engine that
+ * reconnects, a tool that reports a missing file — off the panel without losing it: a rule
+ * says which records are covered, and `ErrorFilter.ignored` picks one side of it. The
+ * filtering happens **on read, never on insert**: the recorder sits on the error-handling
+ * path and must not grow a table lookup that can fail, the records stay answerable ("has
+ * this stopped?"), and the engine's own dedup and the row cap already bound the storm. The
+ * axis narrows every read and the clear together, exactly as `kind` does, so a clear still
+ * takes exactly what its caller was looking at — including, from the ignored view, the
+ * covered rows themselves.
  */
 import { Component, Use } from "@adelie/core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
@@ -70,6 +80,13 @@ export interface ErrorFilter {
   agentId?: string;
   /** One error category (`unexpected` / `expected`); absent counts both, which is what the panel shows. */
   kind?: string;
+  /**
+   * Which side of the ignore rules to read: `true` = only the records a rule covers (the panel's
+   * "ignored" view), absent or `false` = only the records no rule covers (its default view). One
+   * axis among the others — it narrows `summary` / `topCode` / `recent` / `rowCount` and
+   * `deleteFiltered` alike, so what a clear takes stays exactly what its caller read.
+   */
+  ignored?: boolean;
   /** Whether to include unattributed errors (`project_id IS NULL`): admins only, defaults to false (see file header). */
   includeGlobal?: boolean;
 }
@@ -106,6 +123,50 @@ export interface ErrorItem {
 }
 
 /**
+ * One rule that keeps a class of errors out of the panel's default view. A record is covered
+ * when its source and code equal the rule's, and — when the rule carries a fragment — its
+ * message contains it. The record itself is untouched: only the reads stop selecting it.
+ */
+export interface ErrorIgnoreRule {
+  id: number;
+  source: string;
+  code: string;
+  /** NULL = the whole source · code class; otherwise only messages containing this substring. Never an empty string (see the schema). */
+  messageLike: string | null;
+  /** Why it was silenced, in the owner's words; NULL when they wrote none. */
+  note: string | null;
+  /** The Project owner who made it. */
+  createdBy: string;
+  createdAt: string;
+  /** How many of this Project's records the rule covers, all time — the rule list's figure. */
+  hidden: number;
+  /** The newest one it covers; NULL while it covers none (a rule made ahead of the noise). */
+  lastTs: string | null;
+}
+
+/** What `addIgnoreRule` writes (the id and the two derived figures come from the table). */
+export interface ErrorIgnoreRuleInsert {
+  source: string;
+  code: string;
+  /**
+   * The message fragment, or null/absent for the whole class. An empty or blank string is read
+   * as the whole class: `instr(x, '')` is > 0 for every row, so keeping the empty string would
+   * mean a rule that covers everything.
+   */
+  messageLike?: string | null;
+  note?: string | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+/** The part of a rule that decides which records it covers — a saved rule's own two columns, or one a caller is only counting. */
+export interface ErrorIgnoreRuleMatch {
+  source: string;
+  code: string;
+  messageLike: string | null;
+}
+
+/**
  * The calendar day a record falls on in the table: the viewer's, from their offset east of UTC
  * applied to `ts`, or — with no offset given — the `date` column, which is the server's own.
  * The offset is bound rather than spliced in, as the modifier `date()` takes.
@@ -121,6 +182,22 @@ function dayOf(utcOffsetMinutes: number | undefined): {
     params: { dayShift: `${sign}${Math.abs(utcOffsetMinutes)} minutes` },
   };
 }
+
+/**
+ * The predicate a record must satisfy to be covered by one of its Project's rules: an EXISTS over
+ * the rules, correlated on the OUTER `error_records` row. The inner `r.source` / `r.code` are the
+ * rule's own columns, so they have to be qualified — written as `r.source = source` the right-hand
+ * name would resolve to `r` and the comparison would be the rule against itself, covering every
+ * record in sight. The fragment test is `instr`, not LIKE: a fragment is literal text, and a LIKE
+ * would first have to escape whatever `%` and `_` it happens to contain.
+ */
+const COVERED_BY_A_RULE = `EXISTS (
+       SELECT 1 FROM error_ignore_rules r
+        WHERE r.project_id = error_records.project_id
+          AND r.source = error_records.source
+          AND r.code = error_records.code
+          AND (r.message_like IS NULL OR instr(error_records.message, r.message_like) > 0)
+     )`;
 
 @Component()
 export class ErrorsRepo implements ErrorLog {
@@ -170,11 +247,31 @@ export class ErrorsRepo implements ErrorLog {
       .run({ excess });
   }
 
-  /** WHERE fragment and named params: this Project (admins additionally get unattributed errors), plus optional date/agent filter. */
+  /**
+   * WHERE fragment and named params: everything the caller filtered by — this Project (admins
+   * additionally get unattributed errors), the dates, the window, the Agent, the category — and
+   * then the one axis that is not a column on the table, `ignored`, resolved against the rules.
+   */
   private conds(
     projectId: string,
     f: ErrorFilter,
   ): { where: string; params: Record<string, string> } {
+    const { conds, params } = this.scopeConds(projectId, f);
+    // The default view is what no rule covers; the ignored view is what one does. Both sides are
+    // the same predicate, so neither can drift from the other or from `ignoreRuleMatches`.
+    conds.push(f.ignored === true ? COVERED_BY_A_RULE : `NOT ${COVERED_BY_A_RULE}`);
+    return { where: conds.join(" AND "), params };
+  }
+
+  /**
+   * `conds` without the ignore axis: the Project, the dates, the window, the Agent and the
+   * category. Kept apart for the two callers that must NOT be narrowed by a rule — counting what
+   * one rule covers, and matching a rule against the rows it will cover from now on.
+   */
+  private scopeConds(
+    projectId: string,
+    f: ErrorFilter,
+  ): { conds: string[]; params: Record<string, string> } {
     // Unattributed errors (login failures, process crashes, ...) are visible only to admins; otherwise it's a cross-tenant leak — see file header.
     const conds = [
       f.includeGlobal === true ? "(project_id = :pid OR project_id IS NULL)" : "project_id = :pid",
@@ -209,7 +306,7 @@ export class ErrorsRepo implements ErrorLog {
       conds.push("kind = :kind");
       params.kind = f.kind;
     }
-    return { where: conds.join(" AND "), params };
+    return { conds, params };
   }
 
   /** Total count + how many are unexpected. */
@@ -327,8 +424,109 @@ export class ErrorsRepo implements ErrorLog {
       .run(projectId, agentId);
   }
 
-  /** Cascading cleanup on Project deletion (unattributed errors belong to no Project and are unaffected). */
+  /**
+   * Cascading cleanup on Project deletion (unattributed errors belong to no Project and are
+   * unaffected). The Project's ignore rules go with it: they name its errors and mean nothing
+   * once those are gone.
+   */
   deleteByProject(projectId: string): void {
     this.db.prepare("DELETE FROM error_records WHERE project_id = ?").run(projectId);
+    this.db.prepare("DELETE FROM error_ignore_rules WHERE project_id = ?").run(projectId);
   }
+
+  /**
+   * The rules keeping this Project's errors out of its default view, oldest first, each with what
+   * it covers right now. The two figures are correlated subqueries rather than a join: a rule that
+   * covers nothing yet still belongs in the list ("I silenced this before it came back"), and a
+   * rule list is a handful of rows that the panel draws whole.
+   */
+  ignoreRules(projectId: string): ErrorIgnoreRule[] {
+    const rows = this.db
+      .prepare(
+        `SELECT r.id, r.source, r.code, r.message_like, r.note, r.created_by, r.created_at,
+                (SELECT COUNT(*) FROM error_records e
+                  WHERE e.project_id = r.project_id AND e.source = r.source AND e.code = r.code
+                    AND (r.message_like IS NULL OR instr(e.message, r.message_like) > 0)) AS hidden,
+                (SELECT MAX(e.ts) FROM error_records e
+                  WHERE e.project_id = r.project_id AND e.source = r.source AND e.code = r.code
+                    AND (r.message_like IS NULL OR instr(e.message, r.message_like) > 0)) AS last_ts
+           FROM error_ignore_rules r
+          WHERE r.project_id = ? ORDER BY r.id`,
+      )
+      .all(projectId);
+    return rows.map((r) => ({
+      id: r.id as number,
+      source: r.source as string,
+      code: r.code as string,
+      messageLike: (r.message_like ?? null) as string | null,
+      note: (r.note ?? null) as string | null,
+      createdBy: r.created_by as string,
+      createdAt: r.created_at as string,
+      hidden: r.hidden as number,
+      lastTs: (r.last_ts ?? null) as string | null,
+    }));
+  }
+
+  /**
+   * Adds one rule, or answers null when the Project already has a rule for that class — the same
+   * (source, code, fragment) is one rule, not two, and the answer is the caller's to turn into a
+   * refusal. Checked here rather than left to the unique index so the ordinary case is a value
+   * and not a caught constraint error; the index remains the backstop.
+   */
+  addIgnoreRule(projectId: string, r: ErrorIgnoreRuleInsert): ErrorIgnoreRule | null {
+    const fragment = blankToNull(r.messageLike);
+    const duplicate = this.db
+      .prepare(
+        `SELECT 1 FROM error_ignore_rules
+          WHERE project_id = ? AND source = ? AND code = ? AND ifnull(message_like, '') = ifnull(?, '')`,
+      )
+      .get(projectId, r.source, r.code, fragment);
+    if (duplicate) return null;
+    const res = this.db
+      .prepare(
+        `INSERT INTO error_ignore_rules
+           (project_id, source, code, message_like, note, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(projectId, r.source, r.code, fragment, blankToNull(r.note), r.createdBy, r.createdAt);
+    return this.ignoreRules(projectId).find((rule) => rule.id === Number(res.lastInsertRowid))!;
+  }
+
+  /** Removes one rule from this Project; false when there was no such rule in it. */
+  removeIgnoreRule(projectId: string, id: number): boolean {
+    const res = this.db
+      .prepare("DELETE FROM error_ignore_rules WHERE project_id = ? AND id = ?")
+      .run(projectId, id);
+    return Number(res.changes) > 0;
+  }
+
+  /**
+   * How many of this Project's records one class covers — `ignoreRules`' own figure, but read
+   * against a caller's range instead of all time, and against a class that need not be saved yet.
+   * Deliberately not narrowed by the ignore axis: what it counts is exactly the records the rule
+   * will take off a panel showing that range.
+   */
+  ignoreRuleMatches(
+    projectId: string,
+    rule: ErrorIgnoreRuleMatch,
+    f: Omit<ErrorFilter, "ignored"> = {},
+  ): number {
+    const { conds, params } = this.scopeConds(projectId, f);
+    const scoped: Record<string, string> = { ...params, rSource: rule.source, rCode: rule.code };
+    conds.push("source = :rSource", "code = :rCode");
+    if (rule.messageLike !== null) {
+      conds.push("instr(message, :rMessage) > 0");
+      scoped.rMessage = rule.messageLike;
+    }
+    const row = this.db
+      .prepare(`SELECT COUNT(*) AS n FROM error_records WHERE ${conds.join(" AND ")}`)
+      .get(scoped)!;
+    return row.n as number;
+  }
+}
+
+/** An absent, empty or whitespace-only string is no string at all — the two columns where that distinction is the whole meaning. */
+function blankToNull(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }

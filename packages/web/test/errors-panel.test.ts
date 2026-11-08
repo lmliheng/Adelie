@@ -8,17 +8,21 @@
  * The other is the confirmation's wording, which is the whole safety mechanism here: the delete
  * is scoped to the filter on screen, so a dialog that named the Project's whole history, or
  * only the visible page, would send someone into an irreversible action describing the wrong
- * set. That sentence is a pure function for exactly this reason — this package's vitest runs in
- * `node`, deliberately, so an opened dialog is not something a test can read.
+ * set — as would one that left out the records an ignore rule is holding back. Those sentences
+ * are pure functions for exactly this reason — this package's vitest runs in `node`,
+ * deliberately, so an opened dialog is not something a test can read.
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import type { UsageErrorItem, UsageErrors } from "@adelie/server/api";
+import type { UsageErrorIgnoreRule, UsageErrorItem, UsageErrors } from "@adelie/server/api";
 import {
   ErrorsPanel,
+  IgnoreRulesBox,
   errorCopyText,
+  errorsClearKeepsIgnoredText,
   errorsClearScopeText,
+  ignoreRuleText,
 } from "../src/features/usage/errors-panel";
 import type { ErrorsFilters } from "../src/features/usage/errors-panel";
 import { formatDateTime } from "../src/lib/format";
@@ -37,11 +41,12 @@ const item = (code: string): UsageErrorItem => ({
   firstTs: "2026-08-27T10:00:00.000Z",
 });
 
-function errorsOf(items: UsageErrorItem[]): UsageErrors {
+function errorsOf(items: UsageErrorItem[], ignored = 0): UsageErrors {
   const total = items.reduce((sum, e) => sum + e.count, 0);
   return {
     total,
     unexpected: total,
+    ignored,
     topCode: null,
     recent: items,
     rows: items.length,
@@ -53,17 +58,20 @@ const FILTERS: ErrorsFilters = { from: "2026-08-01", to: "2026-08-27" };
 function render(
   opts: {
     items?: UsageErrorItem[];
+    ignored?: number;
     canClear?: boolean;
+    canIgnore?: boolean;
     filters?: ErrorsFilters;
   } = {},
 ): string {
   const items = opts.items ?? [item("internal")];
   return renderToStaticMarkup(
     createElement(ErrorsPanel, {
-      errors: errorsOf(items),
+      errors: errorsOf(items, opts.ignored ?? 0),
       projectId: "p1",
       filters: opts.filters ?? FILTERS,
       canClear: opts.canClear ?? true,
+      canIgnore: opts.canIgnore ?? true,
       onReload: () => {},
     }),
   );
@@ -124,10 +132,11 @@ describe("ErrorsPanel rows", () => {
     const recent = Array.from({ length: 10 }, (_, i) => item(`code_${i}`));
     const html = renderToStaticMarkup(
       createElement(ErrorsPanel, {
-        errors: { total: 40, unexpected: 40, topCode: null, recent, rows: 25 },
+        errors: { total: 40, unexpected: 40, ignored: 0, topCode: null, recent, rows: 25 },
         projectId: "p1",
         filters: FILTERS,
         canClear: true,
+        canIgnore: true,
         onReload: () => {},
       }),
     );
@@ -281,4 +290,134 @@ describe("ErrorsPanel copy action", () => {
     expect(text).toContain(S.usage.errorsExpected);
     expect(text).not.toContain("undefined");
   });
+});
+
+/** The rule list, rendered on its own: the panel fetches it in an effect, which `renderToStaticMarkup` never runs. */
+describe("IgnoreRulesBox", () => {
+  const rule = (over: Partial<UsageErrorIgnoreRule> = {}): UsageErrorIgnoreRule => ({
+    id: 7,
+    source: "llm",
+    code: "llm_retried",
+    messageLike: null,
+    note: null,
+    createdBy: "owner",
+    createdAt: "2026-08-27T10:00:00.000Z",
+    hidden: 349,
+    lastTs: "2026-08-27T09:00:00.000Z",
+    ...over,
+  });
+
+  const box = (rules: UsageErrorIgnoreRule[] | null): string =>
+    renderToStaticMarkup(createElement(IgnoreRulesBox, { rules, onUnignore: () => {} }));
+
+  it("draws the empty state when the Project has no rules yet, rather than an empty list", () => {
+    for (const rules of [null, []]) {
+      const html = box(rules);
+      expect(html).toContain(S.usage.errorsIgnoreRules);
+      expect(html).toContain(S.usage.errorsIgnoreRuleNone);
+    }
+  });
+
+  it("gives each rule what it covers, how much and how new, and the way back out", () => {
+    const html = box([rule()]);
+    expect(html).toContain("[llm] llm_retried");
+    expect(html).toContain(S.usage.errorsIgnoreRuleHidden(349));
+    expect(html).toContain(S.usage.errorsIgnoreRuleLast(formatDateTime(rule().lastTs!)));
+    expect(html).toContain(S.usage.errorsUnignore);
+    expect(html).toContain(S.usage.errorsIgnoreNotice);
+  });
+
+  it("a rule that covers nothing yet says so instead of standing for a zero", () => {
+    const html = box([rule({ hidden: 0, lastTs: null })]);
+    expect(html).toContain(S.usage.errorsIgnoreRuleHiddenNone);
+    expect(html).not.toContain(S.usage.errorsIgnoreRuleHidden(0));
+  });
+
+  it("carries the owner's own reason when they wrote one", () => {
+    expect(box([rule({ note: "引擎每次都会自己重连" })])).toContain("引擎每次都会自己重连");
+  });
+
+  // The one sentence a rule must not overstate: `[llm] llm_retried` covers every record of that
+  // code, and one narrowed to a fragment covers only part of it — the list has to say which.
+  for (const [locale, dict] of Object.entries({ zh, en })) {
+    it(`${locale}: a fragment-narrowed rule names the fragment, a whole-class one does not`, () => {
+      setActiveStrings(dict);
+      const narrowed = ignoreRuleText(rule({ messageLike: "UND_ERR_SOCKET" }));
+      expect(narrowed).toContain("[llm] llm_retried");
+      expect(narrowed).toContain("UND_ERR_SOCKET");
+      expect(narrowed).toContain(dict.usage.errorsIgnoreRuleFragment("UND_ERR_SOCKET"));
+
+      const whole = ignoreRuleText(rule());
+      expect(whole).toBe("[llm] llm_retried");
+      expect(whole).not.toContain(dict.usage.errorsIgnoreRuleFragment(""));
+    });
+  }
+});
+
+describe("ErrorsPanel ignore action", () => {
+  it("is offered to the Project owner only: the route refuses a member, so the panel does not promise it", () => {
+    expect(render({ canIgnore: true })).toContain(S.usage.errorsIgnoreAction);
+    expect(render({ canIgnore: false })).not.toContain(S.usage.errorsIgnoreAction);
+  });
+
+  it("is drawn once per row, and goes with the rows", () => {
+    const html = render({ items: [item("internal"), item("tool_failed:exec_command")] });
+    expect(html.split(`aria-label="${S.usage.errorsIgnoreAction}"`).length - 1).toBe(2);
+    expect(render({ items: [] })).not.toContain(S.usage.errorsIgnoreAction);
+  });
+});
+
+describe("ErrorsPanel ignored view", () => {
+  it("is one of the control's four choices, beside the two categories and both", () => {
+    const html = render({ items: [item("internal")] });
+    for (const label of [
+      S.usage.errorsFilterAll,
+      S.usage.errorsUnexpected,
+      S.usage.errorsExpected,
+      S.usage.errorsIgnored,
+    ]) {
+      expect(html).toContain(label);
+    }
+  });
+
+  it("reports what the rules hold back, so the numbers beside it are never read as the whole range", () => {
+    const html = render({ items: [item("internal")], ignored: 261 });
+    expect(html).toContain(`>${S.usage.errorsIgnored}<`);
+    expect(html).toContain(">261<");
+  });
+
+  it("says in the clear confirmation that the ignored records are not the ones it counts", () => {
+    // The sentence names what the table showed; on any other view that leaves the ignored rows out,
+    // and a reader taking "42 records" for the whole range would be reading it wrong. The dialog is
+    // not renderable here (see the file header), so its own wording is asserted as a pure function.
+    expect(errorsClearKeepsIgnoredText(5, FILTERS)).toBe(S.usage.errorsClearKeepsIgnored(5));
+    // Nothing held back: nothing to add. On the ignored view those records are the sentence's own
+    // subject, so the note would count them twice.
+    expect(errorsClearKeepsIgnoredText(0, FILTERS)).toBeNull();
+    expect(errorsClearKeepsIgnoredText(5, { ...FILTERS, ignored: true })).toBeNull();
+  });
+});
+
+describe("errorsClearScopeText on the ignored view", () => {
+  for (const [locale, dict] of Object.entries({ zh, en })) {
+    it(`${locale}: names the ignored records as such, and keeps what is not ignored`, () => {
+      setActiveStrings(dict);
+      const text = errorsClearScopeText({ ...FILTERS, ignored: true }, "7d", 6);
+      // It says "ignored" in the interface's own word for it — the sentence names the set it takes.
+      expect(text.toLowerCase()).toContain(dict.usage.errorsIgnored.toLowerCase());
+      expect(text).toContain("6");
+      expect(text).toContain(dict.usage.errorsClearRangePreset("7d"));
+      // Not the category sentence: the ignored view is not a category, and what it keeps is every
+      // record no rule covers rather than "the other category".
+      expect(text).not.toContain(dict.usage.errorsClearRangeCustom(FILTERS.from!, FILTERS.to!));
+
+      const perAgent = errorsClearScopeText(
+        { ...FILTERS, ignored: true, agentId: "agent-7" },
+        "7d",
+        2,
+      );
+      expect(perAgent).toContain("agent-7");
+      expect(perAgent).toContain(dict.usage.errorsClearRangePreset("7d"));
+    });
+  }
 });
