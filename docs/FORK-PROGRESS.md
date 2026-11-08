@@ -2343,6 +2343,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       （`role="alert"`、危险色、整句换行），留到该控件再次被按下为止（开关与下拉就是重试），并且
       三句说得不一样：API 仍然没打开 / 审批方式没有改成「被要求的那一档」/ 无密钥访问仍然开着。
       见「第二百零九轮」一节。
+- [x] **7.99 新增分组「导入模型」的保存在被拒时，原因留在对话框里，不再只活六秒**
+      （**2026-11-08 第二百一十轮**落地，提交见「已完成的轮次」；源码 3 处（新增一个纯判断模块、
+      模型页与它的对话框、`write-outcome` 那份清单）+ 一对文案 + 1 个新单测文件（4 条）+
+      1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新依赖**）：第二百零九轮末尾那句「先重新
+      扫一遍 `toastError` 写入分支」量出来的一处，而且是**代码注释自己承认、但事实不成立**的一处 ——
+      `importGroup` 的文档写着「导入一落地对话框就关，这里没有卡片可承接」，可它只在**写入成功**时
+      关；被拒时对话框连同字段原样留着，页面上却没有那个分组。那条路是一次整表 `PUT`，所以被拒时
+      什么都没写（分组不存在、列表里一条也没进），而原因只在一条六秒的通知里，通知一走屏幕上再没有
+      一句解释。现在那句话画在**对话框自己的报错行**（base URL 下面、按钮上面 —— 「获取模型列表
+      失败」占的同一个位置），留到改表单、切换模式或下一次尝试为止，导入按钮就是重试；句子点出
+      两件事：哪个分组没有建成、以及表没有动（只说「保存失败」会留下「是不是进了一半」的疑问）。
+      见「第二百一十轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3058,6 +3070,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-07 | 7.96 | **远程控制面板里保存被拒时，原因留在表单里，不再只活六秒**（不是移植：源码 2 处 —— 新增 `packages/web/src/features/messaging/messaging-save-refusal.ts`（`messagingSaveRefusal(error)`：原因走 `refusalText`（7.19 的规则：服务端答复按错误码念界面自己的本地化句子、绝不念线上英文原文；本仓自己抛的值按它写的念；什么都没答复的落到通用文案），整句由 `S.messaging.saveRefused(reason)` 补成「保存失败：…」，校验失败不算这条 —— 挡下保存的字段自己会说话），`messaging-binding-editor.tsx` 的 hook 多一个 `saveRefusal`（在下一次保存开始时、切换渠道时、改指另一个会话时清掉；保存的失败分支不再 `toastError` 而是写上它），`MessagingBindingBody` 把它画成 body 的最后一个元素（`role="alert"`、危险色、限两行、整句挂 `data-tooltip`）—— 两个宿主（会话行对话框的页脚、停靠面板表单下面那一行）里它都在「保存」上方，所以一个槽位就够；双语文案 `messaging.saveRefused(reason)`；1 个新单测文件（5 条）+ 既有编辑器单测补一条渲染断言 + 1 个新 spec（3 条）+ changelog 一对，不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 / 609 类型） · `oxlint` 七个改动文件 **0 警告 0 错误** · `prettier --check` 九个文件（含 spec 与 changelog 一对）干净（新单测首跑 `--write` 一次，复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** / 6 跳过（71 文件 + 1 跳过） · ui **1100**（132） · cli **561**（38） · web **308 文件 / 3613 通过 / 2 跳过**（+1 文件 / +5 条即新模块的单测，+1 条是既有编辑器单测里新补的渲染断言；另一条线在途的忽略规则用例仍在树里，所以与上一轮记的 307 / 3607 同源） · server **212 文件 / 3114 通过 / 17 跳过** · hmr 无测试文件（`EXIT=0`） · **新 spec** `messaging-save-refusal.spec.mjs` **3 passed（23.5 s）**（真服务端 + 真浏览器；`PUT …/messaging/feishu` 桩成 500 `internal` + 一句英文原文）：①会话行对话框里保存被拒 —— 句子在卡片末尾、逐字「保存失败：服务器内部错误，请稍后重试。」、念的是界面自己的话（没有 RAW ENGLISH）、通知区里没有它、改过的 App ID 仍在、保存按钮仍可用、**七秒后**仍在，写入只发了一次且带着改后的值；②放行后重按同一个按钮 —— 句子消失、弹出普通的「已保存」，两次请求体依次是改前改后的值；③走另一个宿主（对话里的远程控制停靠面板，`dock-toggle-right` + `dock-pick-messaging`）—— 同一句话落在**那个面板自己的「保存」上方**（比对了两个盒子的 y），七秒后仍在 · **反证**：把编辑器换回 `HEAD` 那一版（新模块与文案留着、只是没人引用）、重建 web，同一份 spec **3 failed**（三条都死在 `getByRole("alert")` 的 `toHaveText`：`element(s) not found`）；放回重建后 **3 passed（23.5 s）**，`diff -q` 与留底逐字节一致、重建成的主包 md5 `dff86fc5…` 与改后那份相同 · **两态探针**（真服务端 + 真浏览器，同一脚本 `r207/probe.mjs`，两份 web 产物各挂一个数据根与端口 9250 / 9251，PUT 桩成 500，admin 账号取证）：**改前** 1.2 s 卡片里 `role="alert"` **0 条**、那句话只在通知区（`服务器内部错误，请稍后重试。`），7.6 s **通知区也空了**（原因彻底消失，App ID 仍是改后的值）；**改后** 1.2 s 与 7.6 s 都是**卡片末尾**同一条（488×16 px 落在 x=780 / y=586，`aboveSave: true`）、通知区空；两态 console 都只有本轮桩的 500、无 pageerror；截图 `r207/out/{before,after}/shots/{1_2s,7_6s}.png`，肉眼看了改后那张红字就在「保存」上方、App ID 仍是 `probe-save-edited` · **相邻回归**（真浏览器三份 spec、九条，都操作同一张卡片）：`messaging-test-refusal` 3 + `messaging-toggle-refusal` 2 + `scan-refusal` 4 **9 passed**（与本 spec 3 条合跑 **12 passed / 1.3m**） · 端口只用 9250 / 9251（服务端）与 8961（mock 模型，未真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r207-{after,before}`，探针 / 两份产物 / 改后源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r207/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `864f7852` |
 | 2026-11-08 | 7.97 | **发送测试消息被拒时，原因留在按钮下面，不再只活六秒**（不是移植：源码 2 处 —— 新增 `packages/web/src/features/messaging/messaging-test-message-refusal.ts`（`messagingTestMessageRefusal(error)`：服务端答复了才说「没有发出去」——`<channel>_send_failed` 保留平台原话（错误码那句只是把按钮又念一遍），其余按 `refusalText`（7.19 的规则）念界面自己的句子；而没等到答复的（客户端自己的状态 0 `network_error`、或根本不是 `ApiError` 的值）只写「没能确认是否已送达」，因为服务端可能已经投出去了、只是回程丢了），`messaging-binding-editor.tsx` 的 hook 多一个 `testMessageRefusal`（下一次按下开始时、切换渠道时、改指另一个会话时清掉；**改字段不清** —— 这条消息走的是已存下的绑定，不是草稿），`sendTestMessage` 的失败分支不再 `toastError` 而是写上它，两个按钮下面那一行按「先探测、后发送」的顺序画两句话；双语文案 `messaging.testMessageRefused(reason)` 与 `messaging.testMessageUnconfirmed(reason)`；1 个新单测文件（8 条）+ 既有编辑器单测补一条渲染断言 + 1 个新 spec（3 条）+ changelog 一对，不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 / 609 类型 —— 本笔只动 `packages/web`） · `oxlint` 七个改动文件 **0 警告 0 错误** · `prettier --check` 七个文件（含 spec）干净（新单测与 spec 首跑 `--write` 一次，复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** 通过 / 6 跳过（71 文件 + 1 跳过） · ui **1100**（132） · cli **561**（38） · web **309 文件 / 3622 通过 / 2 跳过**（+1 文件 / +9 条即本笔；另一条线在途的忽略规则用例仍在树里，所以与上一轮记的 308 / 3613 同源） · server **212 文件 / 3114 通过 / 17 跳过** · hmr 无测试文件（`EXIT=0`） · **新 spec** `messaging-test-message-refusal.spec.mjs` **3 passed（10.0 s / 2.4 s / 2.3 s，放回后复跑 9.6 s / 2.4 s / 2.3 s）**（真服务端 + 真浏览器；`GET …/messaging` 与 `POST …/messaging/feishu/test-message` 都由 `page.route` 供给 —— 按钮要「已连接 + 已知聊天」才可按，这两件事没有真平台造不出来）：①发送被拒（502 `feishu_send_failed` + 平台原话）—— 句子在卡片里、逐字「测试消息没有发出去：Bot is not a member of this chat.」、只有一条、通知区里没有它、**七秒后**仍在且按钮仍可按，请求只发了一次；②同一按钮放行后重按 —— 句子消失、弹出普通的「测试消息已发送」，两次请求都记下来了，而中途改 App ID **不会**清掉句子（它说的是已存绑定投出去的那一条）；③请求一直不回答（`route.abort` → 客户端的状态 0 `network_error`）—— 只念「没能确认测试消息是否已送达：…」，整句里**没有**「测试消息没有发出去」 · **反证**：把编辑器换回 `HEAD` 那一版（新模块与文案留着、只是没人引用；改后源码留底 `r208/after-editor.tsx`）、重建 web，同一份 spec **3 failed**（三条都死在 `getByRole("alert")`：`element(s) not found`）；放回重建后 **3 passed**，`diff -q` 与留底逐字节一致 · **两态探针**（真服务端 + 真浏览器，同一脚本 `r208/probe.mjs`，两份 web 产物各跑一次，502 桩在发送路由上）：**改前** 1.2 s 卡片里 `role="alert"` **0 条**、那句话只在通知区（「飞书消息发送失败。」），7.6 s **通知区也空了**（原因彻底消失，按钮原样）；**改后** 1.2 s 与 7.6 s 都是**按钮行下面**同一条（414×16 px 落在 x=433 / y=294）、通知区空；两态 console 只有按设计的那一条 `GET …/machines` 403 与本轮桩的 502、无 pageerror，肉眼看了改后那张截图（红字就在「测试连接 / 发送测试消息」下面、App ID 上面） · **相邻回归**（真浏览器四份 spec、十五条，都操作同一张卡片）：`messaging-save-refusal` 3 + `messaging-test-refusal` 3 + `messaging-toggle-refusal` 2 + `scan-refusal` 4 与本 spec 3 条合跑 **15 passed（1.5m）** · 端口只用 9260（服务端）与 8962（mock 模型，未真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r208`，探针 / 改后源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r208/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`；临时配置跑完即删） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `aa4c0b13b` |
 | 2026-11-08 | 7.98 | **API 页里三处不问就写的开关与下拉被拒时，原因留在各自控件下面，不再只活六秒**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/agents/api-write-refusal.ts`（`apiEnabledRefused(err)` / `apiApprovalModeRefused(mode, err)` / `apiKeylessOffRefused(err)`：原因走 `refusalText`（7.19 的规则），审批方式那一句自己解析模式的显示名；三句故意说得不一样 —— API 仍然没打开 / 审批方式没有改成「被要求的那一档」/ 无密钥访问仍然开着），`api-tab.tsx` 的 `write()` 把被拒的写交还给按下它的控件（三个槽位在该控件再次按下时先清掉），`ApiTabView` 在开关下、审批下拉下与无密钥开关下各画一条 `role="alert"` 行，这个文件不再引用 `toastError`；双语文案 `agent.apiEnableRefused` / `agent.apiApprovalModeRefused` / `agent.apiKeylessOffRefused`；1 个新单测文件（9 条）+ 既有 `agent-api-tab` 单测补一条渲染断言 + 1 个新 spec（3 条）+ changelog 一对，不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 / 609 类型 —— 本笔只动 `packages/web`） · `oxlint` 七个改动文件 **0 警告 0 错误** · `prettier --check` 七个文件（含 spec）干净（新单测与源码首跑 `--write` 一次，复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** 通过 / 6 跳过（71 文件 + 1 跳过） · ui **1100**（132） · cli **561**（38） · web **310 文件 / 3632 通过 / 2 跳过**（+1 文件 / +10 条即本笔；另一条线在途的忽略规则用例仍在树里，与上一轮记的 309 / 3622 同源） · server **212 文件 / 3114 通过 / 17 跳过** · hmr 无测试文件（`EXIT=0`） · **新 spec** `agent-api-write-refusal.spec.mjs` **3 passed（9.2 s / 9.4 s / 8.8 s）**（真服务端 + 真浏览器；三处写都在 `page.route` 上被拒成 500 `internal` + 一句英文原文，并且每次都从 API 读回服务端状态）：①打开 API 被拒 —— 句子在开关下面、逐字「API 访问没有打开，外部程序仍然无法调用：服务器内部错误，请稍后重试。」、只有一条、通知区里没有它、**七秒后**仍在、开关仍是关、服务端仍 `enabled:false`、请求只发了一次且带 `{enabled:true}`，放行后按同一个开关句子消失、开关打开；②审批方式被拒 —— 句子逐字「审批方式没有改成「总是询问」：…」在下拉下面，下拉退回存着的「放行只读」、服务端仍 `read-only`、七秒后仍在，放行后重选则句子消失、服务端变 `always-ask`；③关掉无密钥访问被拒 —— 句子逐字「无密钥访问没有关掉，任何能访问此地址的程序仍然无需密钥就能调用：…」在开关下面，开关仍开、服务端仍 `open:true`、七秒后仍在，放行后句子消失、`open:false` · **反证**：同一份 spec 跑在**改前产物**（HEAD 版 `api-tab.tsx` 重新构建的那一份）上 **3 failed**（三条都死在 `getByRole("alert")` 的 `toHaveCount(1)`：`unexpected value "0"`）；换回改后产物 **3 passed**，格式化后重建再复跑一次仍 **3 passed** · **两态探针**（真服务端 + 真浏览器，同一脚本 `r209/probe.mjs`，两份 web 产物各跑一次，PUT 桩成 500）：**改前** 三处 1.2 s 页面里 `role="alert"` **0 条**、那句话只在通知区（`服务器内部错误，请稍后重试。`），7.6 s **通知区也空了**（原因彻底消失），而三次写入后服务端都没变（`approvalMode` 仍 `read-only`、`open` 仍 `true`、`enabled` 仍 `false`）；**改后** 三处 1.2 s 与 7.6 s 都是各自控件下面那一条（审批下拉下 384×16 px 落在 x=400 / y=369；无密钥开关下 768×16 px 落在 x=400 / y=681，两句先后并存；API 开关下 768×16 px 落在 x=400 / y=267），通知区空、服务端同样没变；两态 console 只有按设计的 `GET …/machines` 403 与本轮桩的 500、无 pageerror；截图 `r209/{before,after}/shots/{approval,keyless,enable}-{1_2s,7_6s}.png`，肉眼看了两态 keyless 那张：改前只有顶部那条橙色通知，改后红字一条在下拉下、一条在无密钥开关下而开关仍开 · **相邻回归**（真浏览器三份 spec、六条，都操作同一张页）：既有 `agent-api-refusal` 3（关 API / 允许无密钥 / 删密钥三张卡片）**3 passed（9.0 s）** + 本笔 3 条 **3 passed** · 端口只用 9270–9274（服务端）与 8963 / 8964 / 8931（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r209-*`，探针 / 两份产物 / 改后源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r209/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`；临时配置跑完即删） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `0797c368b` |
+| 2026-11-08 | 7.99 | **新增分组「导入模型」的保存在被拒时，原因留在对话框里，不再只活六秒**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/models/group-import-refusal.ts`（`groupImportRefusal(name, outcome)`：写入成功答 `null`，被拒给整句）；`models-page.tsx` 的 `importGroup` 把 `persist` 的判定交还给对话框、不再 `toastError`（它原来那段「导入一落地对话框就关、这里没有卡片可承接」的注释是错的 —— 它只在写入成功时关），`AddGroupDialog.runImport` 把拒绝画进对话框自己的报错行、切换模式时清掉；`write-outcome.ts` 的文件头补上这条路）+ 一对文案 `models.groupImportRefused(name, reason)` + 1 个新单测文件（4 条）+ 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 / 609 类型 —— 本笔只动 `packages/web`）· `oxlint` 七个改动文件 **0 警告 0 错误** · `prettier --check` 九个文件（含 spec 与 changelog 一对）干净（spec 首跑 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **1456** 通过 / 6 跳过（71 文件）· ui **1100**（132）· cli **561**（38）· web **311 文件 / 3636 通过 / 2 跳过**（+1 文件 / +4 条即本笔；另一条线在途的忽略规则用例仍在树里，与上一轮记的 310 / 3632 同源）· server 首跑 1 条红（`test/hmr-host.test.ts` 里的一条，同一套其余 3113 条过），复跑 **212 文件 / 3114 通过 / 17 跳过、0 失败**（与上一轮基线同数），那一条单独复跑 **22 passed** —— 本笔不碰 server · **新 spec** `models-group-import-refusal.spec.mjs` **2 passed（10.6–11.0 s / 3.7–3.9 s）**（真服务端 + 真浏览器；`models/list` 与整表 `PUT` 都由 `page.route` 供给，没有一个请求离开这台机器）：①被拒时整句在对话框里、逐字「分组「probeimport」没有建成，导入的模型一个都没写进表：models store is closed」、只有一条、通知区里没有它、列表与写入各只发生一次、对话框与字段原样、**七秒后**仍在、服务端表里该分组一条也没有且行数不变；②切换模式退掉那句话（切回导入也不回来），放行后重按同一个按钮 → 对话框关、两次 PUT、表里正好是 `probe-import-a` / `probe-import-b` · **反证**：把 `models-page.tsx` 退回 `HEAD`（新模块与文案留着，改后源码留底 `r210/after-models-page.tsx`）、重建 web，同一份 spec **2 failed**（两条都死在对话框里找不到那句 `models store is closed`）；放回重建后 **2 passed**，`diff -q` 与留底逐字节一致 · **两态探针**（真服务端 + 真浏览器，同一脚本 `r210/probe.mjs`，时间窗从服务端答复算起）：**改前** 1.2 s 那句话**只在通知区**（落在页顶 y=21，`sentenceInDialog:false`），7.6 s **通知区也空了**（原因彻底消失，对话框仍开着）；**改后** 1.2 s 与 7.6 s 都是**对话框里**同一条（350×32 px 落在 x=465 / y=544.5，两行，`role="alert"`），通知区空；两态 console 只有按设计的 `…/machines` 403 与本轮桩的 500、无 pageerror；截图 `r210/out/{before3,after}/shots/{1_2s,7_6s,3_written}.png`，肉眼看了两态 1.2 s 那两张（改前页顶一条白底通知、对话框里空白；改后红字就在 base URL 下面、按钮上面）· **相邻回归**（真浏览器，模型库一族十份 spec、二十条）：`models-assign-user-key` 3 + `models-delete-group` 2 + `models-delete-model` 2 + `models-detect-refusal` 2 + 本笔 2 + `models-save-refusal` 3 + `models-sync-order` 2 + `models-test-refusal` 2 + `models-vision-refusal` 2 **20 passed（1.4m）** · 端口只用 9281（服务端）与 8935（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的一次性数据根 `r210/data`，探针 / 两态截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r210/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`；临时探针跑完即移出仓库）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `153a99a05` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -23882,3 +23895,105 @@ changelog 一对（9 个文件）：`0797c368b`；台账（7.98 的待办行、�
 `test-macos (server)` 在**上一笔 `f96b27805` 上就已经红**（同一文件同两条），是跑器环境问题；
 `POST …/actions/runs/42425239411/rerun-failed-jobs` 重跑后 `test (server)` 转绿，`test-macos (server)`
 仍红 —— 给下一轮的口径：**这两条红先看 `findBrowserBinary` 与本机有没有浏览器，别去翻自己的改动**。
+
+## 第二百一十轮：新增分组「导入模型」的保存在被拒时，原因留在对话框里（2026-11-08，条目 7.99）
+
+### 开工自检：工作区里仍是那条「等点头」的 13 个文件（第三次照第六形态共存）
+
+开工 `git status --short` **不干净**：`usage` / `errors` 那 13 个文件（server 7 + web 6，含两个
+文案文件）—— 与第二百零六–二百零九轮判过、各写过一节的是同一份（作者是 `self_evolution` 的长会话
+`session-2026-10-27-20-43-36-0f67df1c`，收尾原文写着「你说「提交」，我就只挑我这 13 个文件提交」）。
+脏文件 mtime 18:07–18:31（11-07），`.git/index` 停在 11-08 07:43:20、`.git/FETCH_HEAD` 停在
+07:26 —— 都晚于它们，之后 git 再没被这条线写过；`ps` 与 `/proc/*/cwd` 里没有进程落在这棵树。
+按第六形态：**不提交、不回滚、不 stash**，本轮照常做自己的条目，每一笔提交都带路径（两个文案
+文件共用，按 hunk 入索引）。`HEAD` = `origin/main` = `1e6f6e5e8`（第二百零九轮的 CI 实测补记），
+`git fetch origin && git merge --ff-only origin/main` 报 `Already up to date`。
+
+### 选活：表上仍全卡着，接第二百零九轮「重新扫一遍 `toastError`」的名单
+
+未勾选的仍只有 **2.2c**（尾巴只剩桌面壳写侧 / 既有部署单元 / 发布动作，纪律明令不碰 desktop）、
+**3.5**（拍板）、**3.6**（模型 key）、**4.1–4.3**（明令不动）、**5.6** / **5.10**（拍板 / 新依赖）。
+第二百零九轮末尾点名的下一步是「先重新扫一遍 `packages/web/src` 里剩下的 `toastError(` 分支，把
+『读失败』与『有确认卡片承接』的排除掉，再量一处」。本轮扫到 102 处，逐处量下来**模型库 → 新增分组
+→ 导入模型** 这条最实：它是**写入**，而且代码自己的注释承认了一件事 —— `importGroup` 的文档写着
+「导入一落地对话框就关，这里没有卡片可承接」，可对话框只在**写入成功**时关；被拒时它连同字段原样
+留着（判定也确实交回给了对话框），所以「没有卡片可承接」是错的：卡片一直在，只是把话交给了通知。
+其余剩下的多是读失败（打开记忆文件、导出 zip、目录列举）或已由确认卡片承接（关 API / 允许无密钥 /
+删密钥 / 模板插入），以及两处失败时**连宿主都没有**的（`dock-terminal.ts` 开终端、
+`browser-actions.ts` 开标签页）。
+
+### 做了什么
+
+- 新增 `packages/web/src/features/models/group-import-refusal.ts`：`groupImportRefusal(name, outcome)`
+  —— 写入成功答 `null`（那时对话框已经关了），被拒时给整句
+  `S.models.groupImportRefused(name, reason)` =「分组「X」没有建成，导入的模型一个都没写进表：原因」。
+  句子点出两件事：哪个分组没有建成、以及**表没有动** —— 导入是一次整表 `PUT`，被拒时什么都没写；
+  只说「保存失败」会留下「是不是进了一半」的疑问，而那正是读者按下按钮之前要先确认的。
+- `packages/web/src/features/models/models-page.tsx`：`importGroup` 返回 `persist` 的 `WriteOutcome`
+  （原来返回布尔、失败时 `toastError`），并在被拒时把表退回导入前；`AddGroupDialog.runImport`
+  把拒绝画进对话框自己的报错行（base URL 下面、按钮上面，「获取模型列表失败」占的同一个位置），
+  切换模式时清掉上一次的答复（那句话描述的是已经离开的那条流程），字段与按钮原样 —— 导入按钮就是
+  重试。`onImport` 的型别随之改成 `Promise<WriteOutcome>`，两处注释改成事实。
+- `packages/web/src/features/models/write-outcome.ts`：文件头那份「哪些调用点把话交给卡片」的清单补上
+  导入这条路（它不是异常，是「只在写入成功时关」的另一种卡片）。
+- `packages/web/src/lib/strings{,-en}.ts`：`models.groupImportRefused(name, reason)`。
+- 1 个新单测文件（4 条）+ 1 个新 spec（2 条）+ changelog 一对。**不碰接口、无新依赖、不碰 desktop。**
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，
+  200 接口 / 609 类型 —— 本笔只动 `packages/web`）。
+- `oxlint` 七个改动文件 **0 警告 0 错误**；`prettier --check` 九个文件（含 spec 与 changelog 一对）
+  干净（spec 首跑一条 `--write`，复检通过）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **1456** 通过 / 6 跳过（71 文件）· ui **1100**（132）·
+  cli **561**（38）· web **311 文件 / 3636 通过 / 2 跳过**（+1 文件 / +4 条即本笔；另一条线在途的
+  忽略规则用例仍在树里，与上一轮记的 310 / 3632 同源）· server 首跑 **1 条红**
+  （`test/hmr-host.test.ts` 里的一条；同一套其余 3113 条过），复跑 **212 文件 / 3114 通过 / 17 跳过、
+  0 失败**（与上一轮基线同数），那一条单独复跑 **22 passed** —— 本笔不碰 server，是满载下的偶发，
+  与第一百六十轮记的同一种。
+- **新 spec** `models-group-import-refusal.spec.mjs` **2 passed（10.6–11.0 s / 3.7–3.9 s）**（真服务端
+  + 真浏览器；这条流程的两个路由 —— `models/list` 与整表 `PUT` —— 都由 `page.route` 供给，没有一个
+  请求离开这台机器）：①被拒时整句在对话框里、逐字「分组「probeimport」没有建成，导入的模型一个都
+  没写进表：models store is closed」、只有一条、通知区里没有它、列表与写入各只发生一次、对话框与
+  字段原样、**七秒后**仍在、服务端表里该分组一条也没有且行数不变；②切换模式退掉那句话（切回导入
+  也不回来），放行后重按同一个按钮 → 对话框关、两次 `PUT`、表里正好是 `probe-import-a` /
+  `probe-import-b`。
+- **反证**：把 `models-page.tsx` 退回 `HEAD`（新模块与文案留着，只是没人引用；改后源码留底
+  `r210/after-models-page.tsx`）、重建 web 产物，同一份 spec **2 failed**（两条都死在对话框里找不到
+  那句 `models store is closed`）；放回重建后 **2 passed**，`diff -q` 与留底逐字节一致。
+- **两态探针**（真服务端 + 真浏览器，同一脚本 `r210/probe.mjs`，时间窗从**服务端答复**算起 ——
+  从点击算起的那一版量在请求落地之前，读数不可用，已作废）：
+
+  | 量点 | 改前（HEAD 的 `models-page.tsx`） | 改后 |
+  | --- | --- | --- |
+  | 1.2 s 那句话在哪 | **只在通知区**（页顶 y=21，`sentenceInDialog:false`） | **对话框里**（350×32 px，x=465 / y=544.5，两行，`role="alert"`） |
+  | 对话框 | 开着、字段原样 | 同左 |
+  | 7.6 s | **通知区也空了**（原因彻底消失） | 同上，逐字不变 |
+  | console | 按设计的 `…/machines` 403 + 本轮桩的 500，无 pageerror | 同左 |
+  | 截图 | `r210/out/before3/shots/*` | `r210/out/after/shots/*`（红字就在 base URL 下方、按钮上方） |
+
+- **相邻回归**（真浏览器，模型库一族十份 spec、二十条）：`models-assign-user-key` 3 +
+  `models-delete-group` 2 + `models-delete-model` 2 + `models-detect-refusal` 2 + 本笔 2 +
+  `models-save-refusal` 3 + `models-sync-order` 2 + `models-test-refusal` 2 +
+  `models-vision-refusal` 2 —— **20 passed（1.4m）**。
+- 端口只用 9281（服务端）与 8935（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 /
+  7369 一个没碰；数据只落在 scratchpad 的一次性数据根 `r210/data`，探针 / 两态截图 / 改后源码留底 /
+  临时 playwright 配置都在 scratchpad 的 `r210/` 下（`packages/web/dist`、`test-results/` 都是产物，
+  未 `git add`；临时探针跑完即移出仓库）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- 工作区里那条「等点头」的忽略规则（13 文件）**原样没动**。你若认可，在原会话回一句「提交」即可。
+- 停靠栏开终端（`dock-terminal.ts`）与内置浏览器开标签页（`browser-actions.ts`）这两处失败时
+  **没有宿主面**（连标签页都没建），要改得先决定「失败也开一个标签页」这种结构问题，单独一轮。
+- 「只活六秒」这一族在 chat / plugins / settings / workspace / messaging / agents / models 七个面
+  已逐处清完（7.89–7.99）。下一轮继续从剩余的 `toastError(` 分支里挑**写入**的（读失败、有确认卡片
+  承接的排除掉），先量一处再决定；Agent 设置的记忆 / 技能 / 钩子三个页里的 `toastError` 大多已是
+  「读失败」或「已由确认卡片承接」，剩下的要逐处确认宿主面。
+
+### 提交
+
+新模块 1 个 + 模型页 1 个 + `write-outcome` 1 个 + 新单测 1 个 + 新 spec 1 个 + 文案两条（按 hunk
+入索引）+ changelog 一对（9 个文件）：`153a99a05`；台账（7.99 的待办行、上表那一行、本节）
+另起一笔。
