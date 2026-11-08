@@ -147,6 +147,7 @@ import { dismissTodo } from "../../lib/todo-dismissals";
 import { noticeCounts } from "../../lib/bulk-update";
 import { refreshProjectTodos } from "../../lib/use-project-todos";
 import { buildImportedRows } from "./group-import";
+import { groupImportRefusal } from "./group-import-refusal";
 import { tpsTone, ttftTone } from "./speed-test";
 import type { SpeedResult, SpeedTone } from "./speed-test";
 import { toneDot, toneInk } from "../../lib/tone";
@@ -1105,24 +1106,29 @@ export function ModelsPage() {
 
   /**
    * Import-mode landing from the add-group dialog: one table PUT with the appended rows,
-   * then the new group is opened so the result is visible immediately. Returns persist's
-   * verdict so the dialog stays up (fields intact) when saving failed.
+   * then the new group is opened so the result is visible immediately. The answer is
+   * persist's own verdict, not a boolean: the dialog stays up with its fields when the save
+   * was refused, so it is also the card that carries the reason (see `groupImportRefusal`).
    *
    * A failed save is rolled back to the table as it stood: persist otherwise keeps the
    * attempted rows on screen (right for a field edit the user is still holding), which
    * here would show the whole group as if it existed and make the dialog's own name check
    * report the name as taken on the retry.
    *
-   * The refusal is raised as a toast: the add-group dialog closes the moment the import lands
-   * and keeps its own fields, so there is no card here to carry the server's words.
+   * The refusal is deliberately not raised as a toast: the dialog that asked is still on
+   * screen, with the fields the retry sends, and a notification sits over it and leaves after
+   * six seconds — leaving that dialog looking exactly as it did before the press, with no
+   * account of why the group is still missing from the page behind it.
    */
   const importGroup = async (
     nextRows: RowState[],
     name: string,
     added: number,
     skipped: number,
-  ): Promise<boolean> => {
-    if (!projectId) return false;
+  ): Promise<WriteOutcome> => {
+    // Unreachable through the page (it renders nothing without a Project, and the dialog is
+    // behind that gate). The generic sentence is what a write that never left would report.
+    if (!projectId) return { ok: false, reason: S.common.unknownError };
     const before = rows;
     const outcome = await persist(
       nextRows,
@@ -1131,9 +1137,8 @@ export function ModelsPage() {
       S.models.groupImported(added, skipped),
     );
     if (!outcome.ok) {
-      toastError(outcome.reason);
       setRows(before);
-      return false;
+      return outcome;
     }
     if (!expanded.has(name)) {
       const next = new Set(expanded);
@@ -1142,7 +1147,7 @@ export function ModelsPage() {
       saveExpandedProviders(projectId, next);
     }
     setAddGroupOpen(false);
-    return true;
+    return outcome;
   };
   const editingRow =
     editing !== null ? rows?.find((r) => sameModelRef(rowRef(r), editing)) : undefined;
@@ -2047,13 +2052,16 @@ function AddGroupDialog({
   onClose: () => void;
   /** Create-only confirm: open the add-model dialog for the named group. */
   onManual: (name: string) => void;
-  /** Import landing: persist the appended rows; resolves false when saving failed (the dialog stays open). */
+  /**
+   * Import landing: persist the appended rows. A refused save answers `ok: false` and leaves the
+   * dialog open, so its reason has somewhere to be drawn (`groupImportRefusal`).
+   */
   onImport: (
     nextRows: RowState[],
     name: string,
     added: number,
     skipped: number,
-  ) => Promise<boolean>;
+  ) => Promise<WriteOutcome>;
 }) {
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
@@ -2175,7 +2183,12 @@ function AddGroupDialog({
         return;
       }
       setImporting(S.models.groupImportSaving(built.added));
-      await onImport([...rows, ...built.rows], n, built.added, built.skipped);
+      // The verdict decides the dialog's fate: a written import closes it (the landing above
+      // does that), a refused one keeps it up, so the reason goes into the slot this dialog
+      // already uses for its own failures — under the button that retries it.
+      const outcome = await onImport([...rows, ...built.rows], n, built.added, built.skipped);
+      const refusal = groupImportRefusal(n, outcome);
+      if (refusal !== null) setError(refusal);
     } catch (e) {
       setError(apiErrorText(e));
     } finally {
@@ -2244,7 +2257,12 @@ function AddGroupDialog({
             { value: "import", label: S.models.groupModeImport },
           ]}
           value={mode}
-          onChange={setMode}
+          // The mode switch retires the previous answer: a refused import's sentence, or a
+          // failed listing's, described the flow the reader just left.
+          onChange={(next) => {
+            setMode(next);
+            setError(null);
+          }}
         />
         {mode === "import" && (
           <>

@@ -2118,6 +2118,13 @@ export const en: Strings = {
       skipped > 0
         ? `Imported ${added} models, skipped ${skipped} entries`
         : `Imported ${added} models`,
+    /**
+     * A refused import save, drawn in the dialog that asked (group-import-refusal.ts): the group is
+     * not there and neither is anything from the listing — the table is one write, so it is all or
+     * nothing, and the reader has to know which of the two they are looking at before retrying.
+     */
+    groupImportRefused: (name: string, reason: string): string =>
+      `The group “${name}” was not created — none of the imported models were written: ${reason}`,
     groupNameLabel: "Group name",
     groupNameHint: "Starts with a lowercase letter / digit; may contain - and _",
     groupNameInvalid:

@@ -2150,6 +2150,13 @@ export const zh = {
     groupImportEmpty: "该端点没有可导入的模型",
     groupImported: (added: number, skipped: number): string =>
       skipped > 0 ? `已导入 ${added} 个模型，跳过 ${skipped} 个条目` : `已导入 ${added} 个模型`,
+    /**
+     * A refused import save, drawn in the dialog that asked (group-import-refusal.ts): the group is
+     * not there and neither is anything from the listing — the table is one write, so it is all or
+     * nothing, and the reader has to know which of the two they are looking at before retrying.
+     */
+    groupImportRefused: (name: string, reason: string): string =>
+      `分组「${name}」没有建成，导入的模型一个都没写进表：${reason}`,
     groupNameLabel: "分组名",
     groupNameHint: "小写字母 / 数字开头，可含 - 与 _",
     groupNameInvalid: "分组名只能用小写字母、数字、- 与 _（首字符为字母或数字），长度不超过 32",

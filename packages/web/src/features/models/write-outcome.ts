@@ -8,8 +8,10 @@
  * while retrying was also the first thing to leave.
  *
  * The words are the caller's to place: a call site with a card still on screen hands them to that
- * card, and the two that have none (a group key written from a dialog that closes on submit, the
- * presets sync started from the toolbar) keep the toast.
+ * card, and the ones with none (a group key written from a dialog that closes on submit, the
+ * presets sync started from the toolbar) keep the toast. The add-group dialog's import is the
+ * other way round — it closes only on a written save — so its refusal goes back into that dialog
+ * (`groupImportRefusal`).
  */
 export type WriteOutcome = { ok: true } | { ok: false; reason: string };
 
