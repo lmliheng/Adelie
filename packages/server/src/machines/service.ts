@@ -75,6 +75,7 @@ import type { ClassCtx } from "@adelie/core/kernel";
 import { machinesRoutes } from "../http/routes/machines.js";
 import { machinesProxy } from "./proxy.js";
 import { HttpError } from "../http/errors.js";
+import type { Errors } from "../mechanisms/observability.js";
 import type { Access } from "../mechanisms/projects.js";
 import { Hono } from "hono";
 import { MachinesRepo } from "../db/repos/machines.js";
@@ -132,6 +133,12 @@ export interface MachinesEffects {
   loadConfig: (projectId: string) => Promise<ProjectConfig>;
   /** Injected so a test can pin the recorded timestamp instead of asserting around the clock. */
   now: () => Date;
+  /**
+   * Where a failure with no caller to throw to is reported — the standing-intent timer below
+   * is the one such path here. Silent by default: a service built outside the platform (a test)
+   * has no error table, and the rejection it would have recorded is the test's own to assert.
+   */
+  recordError: (err: unknown) => void;
 }
 
 /** The id of the entry standing for the machine this server runs on. */
@@ -230,6 +237,7 @@ export class MachinesService {
       upgrade: upgradeRemote,
       loadConfig: (projectId) => loadProjectConfig(dataRoot, projectId),
       now: () => new Date(),
+      recordError: () => {},
       ...effects,
     };
   }
@@ -1107,8 +1115,33 @@ export class MachinesService {
     // The check above and this one both look at #stopped: either await is long enough for a
     // hot push's stop() to land, and a timer installed after it would never be cleared.
     if (!this.#stopped && this.#keepHeld === null) {
-      this.#keepHeld = setInterval(() => void this.autoConnect(), KEEP_HELD_MS);
+      this.#keepHeld = setInterval(() => void this.#keepHeldTick(), KEEP_HELD_MS);
       this.#keepHeld.unref?.();
+    }
+  }
+
+  /**
+   * One attempt of the standing intent, from the timer.
+   *
+   * The boot path in platform.ts is fire-and-forget too, but it has somewhere to put a
+   * rejection (its own `.catch`); a timer callback has nobody to throw to, so a rejection here
+   * would escape to the process as an unhandled rejection — which is what used to happen once a
+   * minute whenever a sweep failed. It is recorded instead, under the same source and code as
+   * that boot path: one machine failing to come back is one class in the error centre, and one
+   * rule there silences both occasions.
+   *
+   * The guard first: a stop() landing between the tick and this call retires the generation,
+   * and reading a closed database to tell its error table about it helps nobody.
+   */
+  async #keepHeldTick(): Promise<void> {
+    if (this.#stopped) return;
+    try {
+      await this.autoConnect();
+    } catch (err) {
+      // A stop() that arrived while this sweep was awaiting closed the database underneath it:
+      // that rejection IS the retirement, and reporting it would be telling the error table of a
+      // database this generation no longer owns about its own shutdown.
+      if (!this.#stopped) this.#effects.recordError(err);
     }
   }
 
@@ -1537,6 +1570,7 @@ export class MachinesModule {
   @Use() private readonly db!: Db;
   @Use() private readonly hmr!: Hmr;
   @Use() private readonly access!: Access;
+  @Use() private readonly errors!: Errors;
   @Provide() machines!: Machines;
   @Bind("MachinesModule.routes") routes!: Hono<AppEnv>;
   @Bind("MachinesModule.server-proxy") serverProxyRoutes!: Hono<AppEnv>;
@@ -1545,8 +1579,18 @@ export class MachinesModule {
     // after — every stored reference to this machine, here and on the machines it reaches,
     // points at it. A test that supplies its own service mints none.
     const repo = new MachinesRepo(this.db as unknown as DatabaseSync);
-    const machines = new MachinesService(this.paths.root, repo.ownId(), repo, {}, () =>
-      this.hmr.assetsDir(),
+    const machines = new MachinesService(
+      this.paths.root,
+      repo.ownId(),
+      repo,
+      {
+        // The standing-intent timer's failures have no caller to throw to; they go to the error
+        // centre under the same source and code the boot path uses for the same failure
+        // (platform.ts), so one machine that will not come back is one silenceable class.
+        recordError: (err) =>
+          this.errors.record({ source: "process", err, code: "machines_reconnect_failed" }),
+      },
+      () => this.hmr.assetsDir(),
     );
     this.machines = machines;
     this.routes = machinesRoutes({ machines, access: this.access });

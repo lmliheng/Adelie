@@ -13,6 +13,10 @@
  * - A stop() landing while start() is still reaching out installs no timer at all.
  * - A retired generation's start() reaches nothing, so a late caller cannot revive it.
  * - An App's cleanup retires its machines generation — a start() afterwards touches nothing.
+ * - A sweep from the timer that fails is RECORDED: a timer callback has no caller to throw to,
+ *   so before this it escaped to the process as an unhandled rejection, once a minute.
+ * - A stop() landing while a sweep is still reaching out records nothing: the closed database
+ *   underneath it is the retirement, not a fault.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import fs from "node:fs";
@@ -45,9 +49,11 @@ describe("machines generation lifetime", () => {
   /**
    * A service over a fresh root and store, with only the reaching-out faked: one alias in the
    * ssh config, no build to hand over, and a counter for every read of that config — which is
-   * what a re-hold sweep starts with.
+   * what a re-hold sweep starts with. `overrides` replaces the fake itself: a sweep that fails
+   * is the subject of two cases below, and one of them needs the service's own handle while the
+   * fake is still being built.
    */
-  const harness = async () => {
+  const harness = async (overrides: Partial<MachinesEffects> = {}) => {
     const root = await makeTempRoot();
     const store = openDatabase(":memory:");
     open.push({ store, root });
@@ -59,6 +65,7 @@ describe("machines generation lifetime", () => {
       },
       resolvePlan: () => null,
       now: () => new Date("2026-08-24T12:00:00.000Z"),
+      ...overrides,
     };
     const service = new MachinesService(
       root,
@@ -116,5 +123,62 @@ describe("machines generation lifetime", () => {
     const afterCleanup = built.reads();
     await built.service.start();
     expect(built.reads()).toBe(afterCleanup);
+  });
+
+  it("a sweep from the timer that fails is recorded, not left as an unhandled rejection", async () => {
+    vi.useFakeTimers();
+    // A rejection nobody handles is reported a turn later; the listener is how this case can
+    // see one that escapes, since a registered listener keeps Node from failing the run itself.
+    const escapes: unknown[] = [];
+    const onEscape = (reason: unknown) => escapes.push(reason);
+    process.on("unhandledRejection", onEscape);
+    try {
+      const recorded: unknown[] = [];
+      let reads = 0;
+      const built = await harness({
+        // The boot's own sweep reads the config and gets an answer; every read after it is the
+        // timer's, and that one fails — an ssh config gone unreadable, a closed store, anything.
+        listAliases: () => {
+          reads += 1;
+          if (reads > 1) throw new Error("ssh config unreadable");
+          return ["nas"];
+        },
+        recordError: (err) => recorded.push(err),
+      });
+      await built.service.start();
+      await vi.advanceTimersByTimeAsync(KEEP_HELD_MS);
+      await new Promise((resolve) => process.nextTick(resolve));
+
+      expect(recorded.map((err) => (err as Error).message)).toEqual(["ssh config unreadable"]);
+      expect(escapes).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onEscape);
+    }
+  });
+
+  it("a stop() landing while a sweep is reaching out records nothing", async () => {
+    vi.useFakeTimers();
+    const recorded: unknown[] = [];
+    let service: MachinesService | null = null;
+    let reads = 0;
+    const built = await harness({
+      listAliases: () => {
+        reads += 1;
+        if (reads > 1) {
+          // The hot push arriving mid-sweep: what the sweep was reading closes underneath it.
+          // That failure is the retirement itself, so no one needs to hear about it.
+          service?.stop();
+          throw new Error("database is not open");
+        }
+        return ["nas"];
+      },
+      recordError: (err) => recorded.push(err),
+    });
+    service = built.service;
+    await built.service.start();
+    await vi.advanceTimersByTimeAsync(KEEP_HELD_MS);
+
+    expect(reads).toBeGreaterThan(1);
+    expect(recorded).toEqual([]);
   });
 });
