@@ -1,6 +1,6 @@
 {
   "name": "@adelie/gpu-model-serving",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "Stand up an OpenAI-compatible LLM endpoint on a rented or owned GPU box: pick the instance, fetch and quantize weights, serve with SGLang — speculative decoding, prefix caching and tool calling for agent workloads — then verify it and expose the port.",
   "license": "Apache-2.0",
   "repository": {
