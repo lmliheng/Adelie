@@ -2394,6 +2394,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       归哪一行。句子除念原因外还明说钩子包仍装在这个 Agent 上。这份改动是 2026-11-08 夜里那条线写下的
       半成品（会话在验收途中被模型通道 402 打断，`hooks-tab.tsx` 当时正停在「改前」那一版上做反证），
       本轮把它接完并逐项重验，见「第二百一十四轮」一节。
+- [x] **7.104 退役的那一代 machines 不再装「保持连接」的定时器**（**2026-11-10 第二百一十七轮**落地，
+      提交见「已完成的轮次」；源码 1 处（`machines/service.ts` 新增 `#stopped` 与 `start()` 里的两处判断）+
+      测试拆台 1 处（`test/helpers.ts` 的 `cleanup()` 补 `deps.machines.stop()`）+ 1 个新单测文件（4 条）+
+      changelog 一对，**不碰接口、无新依赖**）：第二百一十六轮发版时记下的那条 —— `@adelie/server` 全量
+      用例全过却有 3 条 unhandled rejection。成因是热推时旧一代的 dispose 调用 `stop()`，而 `start()` 在落定
+      之前要先走网络（先交构建、再重新保持连接），一次热推完全可能落在中间：那个每分钟重试的定时器装在这些
+      await **之后**、完全不看 `stop()` 有没有来过，于是再也没人清它，它每分钟去读一个已退役那一代早就关掉的
+      数据库。现在每代自己记住「已被退役」，`start()` 在开头、每个 await 之后与装定时器之前都看一眼；测试套件
+      那一侧同源的泄漏（拆台从没调用过 `machines.stop()`）一并堵上。见「第二百一十七轮」一节。
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -3114,6 +3123,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-08 | 7.102 | **错误中心能忽略某一类报错，记录一条都不删**（本轮功能，不是移植：源码 13 处 + 1 个新 spec + changelog 一对 —— 服务端 6 处：`packages/server/src/db/schema.ts` 新增表 `error_ignore_rules`（按项目存 `source` + `code` + 可选 `message_like`，唯一索引按 `ifnull(message_like, '')`）、`db/repos/errors.ts` 的 `conds` 多一个「不被任何规则覆盖」的条件（`ignored` 时取反）并新增规则的增 / 删 / 读、`services/usage-service.ts` 把 `ignored` 贯通到两个读与清空、回报规则覆盖多少条并接上 `errors.ignored`、`mechanisms/observability.ts` 的 `UsageQueries` 多三个方法、`http/routes/usage.ts` 三条 `requireProjectOwner` 路由（`GET` / `POST /usage/errors/ignores`、`DELETE /usage/errors/ignores/:id`；同一类已有规则 409 `ignore_rule_exists`、无此规则 404 `ignore_rule_not_found`、id 非法 400）+ 两个读与清空多一个 `ignored` 参数（非 0/1 即 400）、`api/types.ts` 的契约；web 7 处：`api/endpoints.ts` 三个调用、`features/usage/errors-panel.tsx`（分段控件第四颗「已忽略」并 `cols={4}`、统计行「已忽略 N」、行内 `eyeOff` 动作「忽略这类异常」、忽略卡（可留空的消息片段）、可撤销横条 `data-ignore-notice`、`IgnoreRulesBox` 规则列表、清空确认句「另有 N 条已忽略的记录不在此列。」、`ignored` 视图自己的清空句）、`usage-page.tsx` 传 `canIgnore={role === "owner"}`、`lib/strings{,-en}.ts` 33 + 35 条文案；单测 +391（server）/ +151（web）、1 个新 spec、changelog 一对） | 两包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 / 609 类型） · `oxlint` 13 个改动文件 **0 警告 0 错误** · `prettier --check` 16 个文件干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`**：server 单测 `test/errors.test.ts` **78 通过**（19.0 s）、web 单测 `test/errors-panel.test.ts` **35 通过**（7.1 s）；**两包全量**：server **212 文件 / 3114 通过 / 17 跳过**（162 s）、web **313 文件 / 3651 通过 / 2 跳过**（241 s），都与上一轮基线同数（本笔没动、也没删别人的用例）· **新 spec** `errors-ignore.spec.mjs` **2 passed（7.3 s；真服务端 + 真浏览器）**：一条走行内按钮 —— 忽略后表里不再有它、通知与横条都说隐藏几条，而 API 读回来那条记录**还在**（同一个 id）、默认视图读不到它、`ignored=1` 读得到，规则列表里正是这一类，按「撤销」后规则没了、记录回到默认视图；另一条走「已忽略」视图 —— 清空确认句里那句「另有 N 条…」、规则列表念出这一类与已隐藏几条、表里就是那批记录，按「取消忽略」后规则清空、记录回到「全部」视图 · **视觉探针**（`r213/probe.mjs` + `r213/playwright.config.mjs`，真服务端 + 真浏览器，四张截图 `r213/out/{01-panel,02-dialog,03-notice,04-ignored}.png`）肉眼看了 01 与 04：四颗页签排成一行、统计行有「已忽略 0 / 1」、最右两颗图标（复制 + 眼睛）、规则框逐字「`[llm] llm_fatal`　已隐藏 1 条　最近一条 2026-11-08 19:43　取消忽略」与其上那句「被忽略的记录仍在库里，只是不再出现在其他视图里。」、横条「已忽略 [llm] llm_fatal · 本次隐藏 1 条记录 ↺ 撤销」；console 只有按设计的 `…/machines` 403、无 pageerror · 端口只用 9250（服务端）与 8961（mock 模型），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r213-ignore`，探针 / 临时 playwright 配置 / 四张截图 / 服务端日志都在 scratchpad 的 `r213/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`；临时配置与探针跑完即从仓库删掉） · 没有切版本号、没发 npm、没发安装包、没发发布汇总（这一版的功能说明此前已按用户口径发过飞书：`om_x100b61c44eeaf4a4ddbb1b91254d02e`） | `674ef7459` |
 | 2026-11-10 | 7.103 | **钩子页的「打包导出」被拒时，原因留在发问的那一行下面，不再只活六秒**（不是移植：源码 3 处 —— 新增 `packages/web/src/features/agents/hook-export-refusal.ts`（`hookExportRefused(hook, error)`：原因走 `refusalText`（7.19 的规则）；`hookExportRefusalFor(refusal, hook)`：这次拒绝归哪一行），`hooks-tab.tsx` 的 `exportHook` 不再 `toastError` 而是记下 `{ hook, text }` 交给那一行，列表行从单行 flex 改成「行 + 可选的拒绝行」（悬停背景与分隔线留在外层），这个文件不再引用 `toastError`；一对文案 `hooks.exportRefused(hook, reason)`；1 个新单测文件（9 条）+ 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新依赖**。这份改动写在 2026-11-08 夜里那条线上，会话在验收途中被模型通道 402 打断，`hooks-tab.tsx` 正停在反证用的「改前」那一版；本轮接回「改后」那一版并逐项重验） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，200 接口 / 609 类型 —— 本笔只动 `packages/web`） · `oxlint` 六个改动文件 **0 警告 0 错误** · `prettier --check` 七个文件（含 spec 与 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **1100**（132 文件） · cli **561**（38 文件） · web **314 文件 / 3660 通过 / 2 跳过**（+1 文件 / +9 条即本笔） · server **212 文件 / 3125 通过 / 6 跳过**（总数与上一轮基线同数）· 新 spec 单跑 **2 passed（12.0 s）**、**反证**把 `hooks-tab.tsx` 换回 `HEAD` 重建 web 后同一份 spec **2 failed**（两条都死在 `getByTestId('hook-export-refusal')` 的 `toHaveCount(1)`：`unexpected value "0"`）· **相邻回归**（真服务端 + 真浏览器，五份 spec 八条）：`hook-export-refusal` 2 + `hook-uninstall-refusal` 2 + `skill-export-refusal` 2 + `skills` 1 + `agent-create-skills` 1 **8 passed（36.8 s）** · **视觉探针**（`r214/probe.mjs`，归档路由桩成 500）：改后 1.2 s 与 7.6 s 都是那一行下面同一条 `role="alert"`（`alerts:1` / `hookRefusal:1`、`toasts:0`、行高 58 → 84 只多出那一行），放行后重试 `alerts:0` 并拿到 `goal-v2026.10.28.1.zip`、已安装列表未变；截图 `r214/out/after-0{1..4}.png`，肉眼看了 02：红字在 `goal` 那一行下面、与技能页同一条式子（`px-3 pb-2.5 line-clamp-2`）、版本与两颗图标按钮没被挤动；console 只有按设计的 `…/machines` 403 与本轮桩的 500、无 pageerror · 端口只用 9280（服务端）与 8945（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的一次性数据根 `r214/data-*`，探针 / 临时 playwright 配置 / 截图 / 服务端日志都在 scratchpad 的 `r214/` 下（`packages/web/dist`、`test-results/` 都是产物，未 `git add`） · `git fetch` 连不上 github.com:443（`GnuTLS recv error (-110)`），改由 `api.github.com` 核对远端 `main` = `2dbd4bb88` = 本地 `HEAD`，`git merge --ff-only origin/main` 报 `Already up to date` · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `c6213b920` |
 | 2026-11-10 | 用户点单（不在 7.x 待办里） | **服务器浏览器整套删掉**（用户原话「不要服务器浏览器这个功能 全删了」。删：`packages/server/src/server-browser/{cdp,process,session}.ts`、`services/server-browser-service.ts`、`http/routes/server-browser.ts`、`test/server-browser{,-cdp}.test.ts`、`web/src/features/server-browser/{frame-geometry.ts,server-browser-page.tsx}`、`web/test/server-browser-frame.test.ts`、`docs/content/server-browser.{zh,en}.md`；改接线：`server/src/platform.ts`（import + `ServerBrowserModule` + 根模块 children）、`server/src/api/types.ts`（`ServerBrowser*` 一段 72 行）、`web/src/{router.tsx,module.json,api/endpoints.ts,lib/strings.ts,lib/strings-en.ts,lib/nav-icons.ts,lib/nav-group-collapse.ts}`（`NavGroupKey` 的 `"browser"`、`nav.browser`、`NAV_ICONS.browser` 一并去掉）、`web/test/{nav-group-collapse,shortcut-guard}.test.ts`、`ui-gallery/src/app/mock/routes.ts`（页面替身 72 行）、`docs/src/lib/nav.ts`、`docs/content/configuration.{zh,en}.md`；changelog 加一对（`2026-11-10-remove-server-browser`，与既有的 `2026-11-01-server-browser` 那一对互链，后者作为历史保留）；**桌面 App 自己的内置浏览器（`builtin-browser`）一律没动**；27 个文件，+14 −3192） | 四包 `typecheck` **`EXIT=0`**（server / web / ui-gallery / docs；`gen:ifaces` 重生成 **197 接口 / 605 类型**，比上一轮少 3 接口 / 4 类型，即 `ServerBrowser*` 那几个） · `oxlint` 12 个改动文件 **0 警告 0 错误** · `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：server **210 文件 / 3099 通过 / 6 跳过**（比上一轮基线少 2 文件 / 26 条，即删掉的两份 server-browser 用例）、web **313 文件 / 3654 通过 / 2 跳过**（少 1 文件 / 6 条，即 `server-browser-frame.test.ts`）、docs **8 文件 / 62 通过**、ui-gallery **20 文件 / 141 通过**（顺手补上第 213 轮漏掉的三条忽略接口桩与 `ignored` 字段，修前 1 条红） · **两包 build `EXIT=0`**（`@adelie/server` / `@adelie/web`） · **真接口核对**（`r215/verify-removal.sh`：临时数据根 + 端口 8963 + 刚构建的产物 + 登录 admin）：匿名与已登录下 `GET /api/server-browser` 与 `/api/server-browser/frames` 都是 **404 `not_found`**（删之前是 401 —— 路由在、只是没登录），`GET …/usage/errors` 200、`…/usage/errors/ignores` 200 `{"rules":[]}`、`/api/version` 200，首页引用与磁盘上的 `assets/index-C7KRGNKU.js` 一致；两个产物里 `server-browser` / `ServerBrowser` / 「服务器浏览器」字样 **0 个文件** · **真浏览器核对**（`r215/probe-ui.sh` + `probe-ui.mjs`，chromium-headless-shell，端口 8964）：登录后侧栏逐行是「新建对话 / 智能体 / 模型库 / 插件市场 / 机器管理 / 成本中心 / 评估中心 / 工作区」，没有那一行、全页「服务器浏览器」出现 **0 次**；直接访问 `/browser` 落到 **`/chat/new`**；截图 `r215/out/{01-chat,02-browser-path}.png` 肉眼看了 01；console 只有一条 401（临时实例上的既有现象，无 pageerror） · 端口只用 8963 / 8964，3003 / 3004 / 4000 / 7364 / 7369 与现网 7777 一个没碰；数据只落在 `/tmp/r215-*` 的一次性数据根，脚本 / 探针 / 截图都在 scratchpad 的 `r215/` 下 | `74626ea30`（画廊那笔 `e7a2fb334`） |
+| 2026-11-10 | 7.104 | **退役的那一代 machines 不再装「保持连接」的定时器**（第二百一十六轮发版门禁里那条遗留：server 全量用例全过却有 3 条 unhandled rejection。源码 1 处 —— `packages/server/src/machines/service.ts` 新增 `#stopped`（注释写明为什么：`start()` 落定前要走网络，热推的 `stop()` 可能落在中间）、`start()` 在开头 / `syncOutOfDate()` 之后 / 装定时器之前各看它一眼、`stop()` 先置位；测试拆台 1 处 —— `packages/server/test/helpers.ts` 的 `cleanup()` 在 `db.close()` 之前补 `deps.machines.stop()`，与平台自己的 dispose 效果对齐；1 个新单测文件 `test/machines-lifecycle.test.ts`（4 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（hmr / server / web / cli / core / ui 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约） · `oxlint` 3 个改动文件 **0 警告 0 错误** · `prettier --check` 5 个文件（含 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 文件 / 1100 通过** · cli **38 文件 / 561 通过** · server **211 文件 / 3103 通过 / 6 跳过**（+1 文件 / +4 条即本笔；上一次基线是 210 / 3099） · web **313 文件 / 3654 通过 / 2 跳过** · **新单测四种状态**（假定时器逐条量）：未停止的一代 `advanceTimersByTimeAsync(60_000)` 之后 alias 读数为 **+1**（对照，证明后面两条不是空断言）；`start()` 途中落下的 `stop()` 之后推进 **180_000** 毫秒读数为 **0 条新增**（没有定时器）；停止之后 `start()` 的读数为 **0**；`createTestApp` 的 App 拆台之后 `start()` 读数为 **0**（证明拆台真调用了 `stop()`）· **反证**：把 `service.ts` 与 `helpers.ts` 退回 `HEAD`、只留新用例 → **3 failed / 1 passed**（「途中停止」「停止后 start」「拆台后 start」三条红，红在读数 1 / 1 / 2；活着的正是那条对照），放回后 **4 passed** · **真服务端**：改后的源码（`tsx src/index.ts`）在一次性数据根 + **9281** 上起来，`/healthz` 200、`/` 200（`<title>Adelie</title>`）、`/api/me` 401（首访预期），跑过一个重试周期（>70 s）后日志里 `Unhandled` / `Error:` / `database is not open` **一条都没有**，随后停掉 · 端口只用 9281，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的 `r217/data-boot`，留底与启动日志都在 `r217/` 下 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `367fb0fdf` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -24557,3 +24567,77 @@ sandbox-wsl 32、use-seedance 8、use-seedream 12、use-wps-office 24。
   的用例也已经不依赖本机 hosts 了。
 - 数据根里的 `browser-profile/` 已在上一轮按用户要求删掉，这一版不涉及。
 - `/root/rel-066` 与 `/tmp` 下的发布中间物，收尾时清。
+
+## 第二百一十七轮：退役的那一代 machines 不再装「保持连接」的定时器（2026-11-10，条目 7.104）
+
+### 开工自检
+
+`git status --short` 干净，`HEAD` = `e9011ee9d`；`git fetch origin` 与 `git merge --ff-only origin/main` 都干净
+（`Already up to date`，`git push` 本轮也能直推了 —— 上一轮还得走 Git Data API）。
+
+### 选活
+
+待办表上仍未勾的那几条一条都动不了：2.2c 只剩桌面壳 / 既有部署那一侧（桌面壳依赖没装、单元文件属发布动作）、
+3.5 要拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.3 的落地顺序要第二台机器、5.6 要把促销搬进
+Project 配置（等拍板）、5.10 要新依赖 `mermaid`（等拍板）。第二百一十六轮发版时在「没做 / 留着」里写下了下一件
+可做的事、连修法都写好了 —— server 包那 3 条 unhandled rejection，本轮把它带走。
+
+### 这条 bug 是什么
+
+`@adelie/server` 全量用例全过、退出码却是非 0：3 条 unhandled rejection，栈是
+`MachinesService.autoConnect` → `#allMachines()` → `MachinesRepo.get` → `Error: database is not open`。
+两处同源的漏洞：
+
+1. **产品侧**：热推时旧一代的 dispose 效果调 `stop()`，而 `start()` 在落定之前要先走网络 —— 先
+   `syncOutOfDate()` 把构建交给落后的机器、再 `autoConnect()` 重新保持记录里说「曾被保持」的连接 —— 所以一次
+   热推完全可能落在中间。那个每分钟重试的定时器装在这些 await **之后**，完全不看 `stop()` 有没有来过。
+   它再也没人清，于是每分钟读一次已退役那一代早就关掉的数据库；`void this.autoConnect()` 的拒绝没人接，
+   按 Node 的默认行为这会一路冒到进程。**本轮为什么现在才红**：`#allMachines()` 要遍历宿主机 ssh 配置里的
+   别名，而 2026-11-10 17:08 才有人往 `/root/.ssh/config` 加了 `Host github.com`（走 `ssh.github.com:443`）。
+2. **测试侧**：`createTestApp` 的 `cleanup()` 会 dispose 热宿主、关掉数据库，却从不调用 `machines.stop()`。
+   平台自己在 `platform.ts` 用 `effect(() => machines.stop())` 收这一代，而热宿主的资源登记表里没有这台
+   `setInterval`。于是在某个用例里启动的 App 会把定时器留给这个 worker 的余生。
+
+### 做了什么
+
+- `packages/server/src/machines/service.ts`：新增私有 `#stopped`（注释写明为什么：`start()` 落定前要走网络，
+  热推的 `stop()` 可能落在中间，退役那一代装上的定时器会去读已经关掉的数据库）；`start()` 在开头、
+  `syncOutOfDate()` 之后、装定时器之前各看它一眼；`stop()` 第一件事就是置位。后继的那一代是新实例，照旧从头开始。
+- `packages/server/test/helpers.ts`：`cleanup()` 在 `db.close()` 之前补 `deps.machines.stop()`，注释写明它与
+  `hmr.dispose()` 是同一类「平台自己的东西」、热宿主的登记表装不下它。
+- 新增 `packages/server/test/machines-lifecycle.test.ts`（4 条，假定时器）：活着一代每分钟照常重试（对照）、
+  `start()` 途中落下的 `stop()` 一个定时器都不装、退役那一代的 `start()` 什么也不碰、App 拆台之后
+  `start()` 什么也不碰（这一条同时证明拆台真的调用了 `stop()`）。
+- changelog 一对 `2026-11-10-machines-hold-timer-after-stop{.zh,}.md`（含「Verification / 验证」一节）。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（`@adelie/hmr` / `server` / `web` / `core` / `ui` / `cli` 六个 `Done`；
+  `gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）。
+  注：提示词里写的 `@prismshadow/*` 包名早已不成立，本仓包名是 `@adelie/*`。
+- `oxlint` 3 个改动文件 **0 警告 0 错误**；`prettier --check` 5 个文件（含 changelog 一对）干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 文件 / 1100 通过** ·
+  cli **38 文件 / 561 通过** · server **211 文件 / 3103 通过 / 6 跳过**（+1 文件 / +4 条即本笔，上一次基线
+  210 / 3099）· web **313 文件 / 3654 通过 / 2 跳过**。
+- **反证**：把 `service.ts` 与 `helpers.ts` 退回 `HEAD`、只留新用例 → **3 failed / 1 passed**（三条红在读数
+  1 / 1 / 2；活着的正是那条「活着一代每分钟重试」的对照，说明红不是空断言）；放回后 **4 passed**。
+- **真服务端**：改后的源码（`node node_modules/tsx/dist/cli.mjs src/index.ts`）用一次性数据根起在 **9281**：
+  `/healthz` 200、`/` 200（`<title>Adelie</title>`）、`/api/me` 401（首访预期）；跑过一个重试周期（>70 s）后
+  日志里 `Unhandled` / `Error:` / `database is not open` **一条都没有**，随后停掉。
+- 端口只用 9281，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的 `r217/data-boot`，
+  改后源码留底、启动日志都在 scratchpad 的 `r217/` 下（没有产物进仓库）。本笔不改界面，因此没有浏览器截图。
+
+### 没做 / 留着
+
+- 定时器回调里的 `void this.autoConnect()` 本身仍不接拒绝：`#stopped` 挡住的是「退役之后才装的定时器」，
+  而恰好与 `stop()` 撞在同一刻的那一次调用仍可能拒绝。要接的话得先定「这条错误记到哪」（这个服务手里没有
+  `errors`），另行一步 —— 这一件值得下一轮做。
+- 上一轮遗留的 `/root/.ssh/config` 里那条 `Host github.com` **没动**（github.com 直推就靠它，本轮 `git push`
+  实测直推成功）。
+- `/root/rel-066` 与 `/tmp` 下的发布中间物按上一轮的说法留着清，本轮没碰。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(server)` 一笔：`367fb0fdf`（源码 1 + 测试拆台 1 + 新单测 1 + changelog 一对 = 5 个文件）；台账另起一笔。
