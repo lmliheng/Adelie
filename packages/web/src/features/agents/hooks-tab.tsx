@@ -7,7 +7,8 @@
  * glyph when it has none), then the package name with the hook points it answers at right
  * beside it (one bare chip each — `stop`, `user_prompt` — wrapping with the name), its
  * localized description below, and the trailing slot: the version, export and uninstall.
- * Export downloads the installed directory as a zip; the "Import hook" modal offers the
+ * Export downloads the installed directory as a zip, and a refused one leaves its reason under
+ * the row that asked (hook-export-refusal.ts); the "Import hook" modal offers the
  * Skills tab's two paths: the recommended chat import (a source field taking a URL / repo /
  * local path / description / another tool's hooks config, whose generated review-then-install
  * prompt — hook-import.ts — can be copied or prefilled into a new chat with this Agent) and a
@@ -38,7 +39,6 @@ import {
   SettingsEmpty,
   SkeletonList,
   Textarea,
-  toastError,
   toastSuccess,
   useCopied,
 } from "@adelie/ui";
@@ -46,12 +46,15 @@ import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { useLocale } from "../../state/locale";
 import { agentDisplayName, useProject } from "../../state/project";
 import { localizedText } from "../chat/skill-use";
 import { SkillTile } from "../skills/skill-icon-view";
 import { useAiBridge } from "../ai-create";
 import { downloadArchive } from "./archive-download";
+import { hookExportRefusalFor, hookExportRefused } from "./hook-export-refusal";
+import type { HookExportRefusal } from "./hook-export-refusal";
 import { buildHookImportPrompt } from "./hook-import";
 import { usePromptInjection } from "./prompt-injection-controls";
 import { UPLOAD_LABEL_CLASS } from "./skills-tab";
@@ -85,7 +88,8 @@ export function HooksTab({
   });
 
   const [hooks, setHooks] = useState<HookItem[] | null>(null);
-  // Tab-level error is only the initial list load failure; row actions report via toast.
+  // Tab-level error is only the initial list load failure; row actions report in place (the
+  // export's reason under its row, an uninstall's inside its confirmation) or inside the modal.
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   // Package name pending uninstall confirmation (non-null shows the confirm modal).
@@ -93,6 +97,9 @@ export function HooksTab({
   // The words for an uninstall the server refused, drawn inside the confirmation that asked for
   // it (see confirmRemove): retrying is the next thing the person does, and the button is in there.
   const [removeRefusal, setRemoveRefusal] = useState<string | null>(null);
+  // The words for an export that did not land, drawn in the row that asked (hook-export-refusal.ts):
+  // the row, the package and the same button are still there, which a six-second toast is not.
+  const [exportRefusal, setExportRefusal] = useState<HookExportRefusal | null>(null);
   // Import modal: the source for the chat-import prompt + upload state travel with the modal.
   const [importOpen, setImportOpen] = useState(false);
   const [source, setSource] = useState("");
@@ -126,13 +133,20 @@ export function HooksTab({
   const agent = agents.find((a) => a.agentId === agentId);
   const agentName = agent ? agentDisplayName(agent) : agentId;
 
-  /** "Export as zip": the shared archive download (archive-download.ts); a failure surfaces as a toast. */
+  /**
+   * "Export as zip": the shared archive download (archive-download.ts). A refused one leaves its
+   * reason in the row that asked (hook-export-refusal.ts) — the row, the package and the same
+   * button are all still there, so a toast that dismisses itself after six seconds is the one
+   * thing that would carry that reason away. Starting an attempt clears the previous sentence:
+   * it belonged to the attempt before, not to the package this one is about.
+   */
   const exportHook = async (name: string) => {
     if (!projectId) return;
+    setExportRefusal(null);
     try {
       await downloadArchive(api.agentHookArchiveUrl(projectId, agentId, name), name);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setExportRefusal({ hook: name, text: hookExportRefused(name, e) });
     }
   };
 
@@ -277,71 +291,91 @@ export function HooksTab({
         <Card padding="none">
           {hooks.map((hook) => {
             const description = localizedText(locale, hook.description, hook.descriptionZh);
+            // One refusal, one row: an attempt supersedes the reason of the attempt before it.
+            const refusal = hookExportRefusalFor(exportRefusal, hook.name);
             return (
+              // The row is a column so a refused export can put its reason under the line that
+              // asked for it, without pushing any other row sideways (the Skills tab's shape).
               <div
                 key={hook.name}
-                className="flex items-center gap-3 border-b border-gray-100 px-3 py-2.5 transition-colors duration-150 last:border-b-0 hover:bg-gray-50 dark:border-gray-800/60 dark:hover:bg-gray-800/40"
+                className="border-b border-gray-100 last:border-b-0 dark:border-gray-800/60"
               >
-                <SkillTile
-                  icon={hook.icon}
-                  name={hook.name}
-                  fallback={ICONS.fishHook}
-                  size={36}
-                  glyph={20}
-                />
-                <div className="min-w-0 flex-1">
-                  {/* Title row: the name with the hook points it answers at right beside it — bare
-                      point names, wrapping onto a second line rather than truncating. */}
-                  <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                    <span
-                      className="max-w-full truncate font-mono text-[length:var(--ui-text-code-size)] font-semibold"
-                      data-tooltip={hook.name}
-                      data-tooltip-content="code"
+                <div className="flex items-center gap-3 px-3 py-2.5 transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                  <SkillTile
+                    icon={hook.icon}
+                    name={hook.name}
+                    fallback={ICONS.fishHook}
+                    size={36}
+                    glyph={20}
+                  />
+                  <div className="min-w-0 flex-1">
+                    {/* Title row: the name with the hook points it answers at right beside it — bare
+                        point names, wrapping onto a second line rather than truncating. */}
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                      <span
+                        className="max-w-full truncate font-mono text-[length:var(--ui-text-code-size)] font-semibold"
+                        data-tooltip={hook.name}
+                        data-tooltip-content="code"
+                      >
+                        {hook.name}
+                      </span>
+                      {hook.events.map((event) => (
+                        <Badge key={event}>{event}</Badge>
+                      ))}
+                    </div>
+                    {/* Description truncates to one line (the full text goes into title for hover reading). */}
+                    <p
+                      className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400"
+                      data-tooltip={description}
+                      data-tooltip-content="text"
                     >
-                      {hook.name}
-                    </span>
-                    {hook.events.map((event) => (
-                      <Badge key={event}>{event}</Badge>
-                    ))}
+                      {description}
+                    </p>
                   </div>
-                  {/* Description truncates to one line (the full text goes into title for hover reading). */}
-                  <p
-                    className="mt-0.5 truncate text-xs text-gray-500 dark:text-gray-400"
-                    data-tooltip={description}
-                    data-tooltip-content="text"
+                  {hook.version !== "" && (
+                    <span
+                      className="hidden shrink-0 text-xs text-gray-400 sm:block dark:text-gray-500"
+                      data-tooltip={hook.version}
+                    >
+                      {hook.version}
+                    </span>
+                  )}
+                  {/* Icon-only row actions (the Skills tab's pair: neutral bordered icon for export,
+                      danger variant with red text/hover for delete); the tooltip + aria-label carry the wording. */}
+                  <Button
+                    size="icon"
+                    title={S.hooks.exportHook}
+                    aria-label={`${S.hooks.exportHook} ${hook.name}`}
+                    disabled={busy}
+                    onClick={() => void exportHook(hook.name)}
                   >
-                    {description}
-                  </p>
+                    <DownloadIcon size={14} className="text-gray-600 dark:text-gray-300" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="danger"
+                    title={S.skills.uninstall}
+                    aria-label={`${S.skills.uninstall} ${hook.name}`}
+                    disabled={busy}
+                    onClick={() => askRemove(hook.name)}
+                  >
+                    <GlyphIcon d={ICONS.trash} size={14} />
+                  </Button>
                 </div>
-                {hook.version !== "" && (
-                  <span
-                    className="hidden shrink-0 text-xs text-gray-400 sm:block dark:text-gray-500"
-                    data-tooltip={hook.version}
+                {/* An export that did not land: this row still holds the button that retries it,
+                    so the reason sits under it rather than in a notification that dismisses
+                    itself (hook-export-refusal.ts). */}
+                {refusal !== undefined && (
+                  <p
+                    role="alert"
+                    data-testid="hook-export-refusal"
+                    data-tooltip={refusal}
+                    data-tooltip-content="text"
+                    className={`px-3 pb-2.5 line-clamp-2 break-words text-xs ${toneInk.danger}`}
                   >
-                    {hook.version}
-                  </span>
+                    {refusal}
+                  </p>
                 )}
-                {/* Icon-only row actions (the Skills tab's pair: neutral bordered icon for export,
-                    danger variant with red text/hover for delete); the tooltip + aria-label carry the wording. */}
-                <Button
-                  size="icon"
-                  title={S.hooks.exportHook}
-                  aria-label={`${S.hooks.exportHook} ${hook.name}`}
-                  disabled={busy}
-                  onClick={() => void exportHook(hook.name)}
-                >
-                  <DownloadIcon size={14} className="text-gray-600 dark:text-gray-300" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="danger"
-                  title={S.skills.uninstall}
-                  aria-label={`${S.skills.uninstall} ${hook.name}`}
-                  disabled={busy}
-                  onClick={() => askRemove(hook.name)}
-                >
-                  <GlyphIcon d={ICONS.trash} size={14} />
-                </Button>
               </div>
             );
           })}

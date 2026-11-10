@@ -3108,6 +3108,9 @@ export const en: Strings = {
     /** The agents page's hook-count stat (hover title / accessible name). */
     hookCount: (n: number): string => (n === 1 ? "1 hook package" : `${n} hook packages`),
     exportHook: "Export",
+    /** An export the download refused (hook-export-refusal.ts), drawn under the row that asked. */
+    exportRefused: (hook: string, reason: string): string =>
+      `The hook package ${hook} was not exported as a zip — it is still installed on this Agent: ${reason}`,
     importHook: "Import hook",
     importChatTitle: "Recommended: import it by chatting with the agent",
     importChatWhy:

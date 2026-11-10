@@ -3150,6 +3150,13 @@ export const zh = {
     /** The agents page's hook-count stat (hover title / accessible name). */
     hookCount: (n: number): string => `${n} 个钩子包`,
     exportHook: "打包导出",
+    /**
+     * An export the download refused (hook-export-refusal.ts), drawn under the row that asked.
+     * Says the package is still installed because a failed export is when a reader wonders whether
+     * the files were touched; the reason goes last, as in every other refusal sentence.
+     */
+    exportRefused: (hook: string, reason: string): string =>
+      `钩子包 ${hook} 没有导出成 zip，它仍然装在这个 Agent 上：${reason}`,
     importHook: "导入钩子",
     importChatTitle: "推荐：让 Agent 在对话中导入",
     importChatWhy:
