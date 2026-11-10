@@ -1952,10 +1952,9 @@ router
     store.f.usageErrors = kind ? store.f.usageErrors.filter((e) => e.kind !== kind) : [];
     return { deleted: going.length };
   })
-  .get(
-    "/api/projects/:projectId/usage/errors/ignores",
-    (): UsageErrorIgnores => ({ rules: demoIgnoreRules }),
-  )
+  .get("/api/projects/:projectId/usage/errors/ignores", (): UsageErrorIgnores => ({
+    rules: demoIgnoreRules,
+  }))
   .post("/api/projects/:projectId/usage/errors/ignores", ({ body }): UsageErrorIgnoreAdded => {
     const given = record(body);
     const rule: UsageErrorIgnoreRule = {
