@@ -3144,6 +3144,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-10 | 7.104 | **退役的那一代 machines 不再装「保持连接」的定时器**（第二百一十六轮发版门禁里那条遗留：server 全量用例全过却有 3 条 unhandled rejection。源码 1 处 —— `packages/server/src/machines/service.ts` 新增 `#stopped`（注释写明为什么：`start()` 落定前要走网络，热推的 `stop()` 可能落在中间）、`start()` 在开头 / `syncOutOfDate()` 之后 / 装定时器之前各看它一眼、`stop()` 先置位；测试拆台 1 处 —— `packages/server/test/helpers.ts` 的 `cleanup()` 在 `db.close()` 之前补 `deps.machines.stop()`，与平台自己的 dispose 效果对齐；1 个新单测文件 `test/machines-lifecycle.test.ts`（4 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（hmr / server / web / cli / core / ui 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约） · `oxlint` 3 个改动文件 **0 警告 0 错误** · `prettier --check` 5 个文件（含 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 文件 / 1100 通过** · cli **38 文件 / 561 通过** · server **211 文件 / 3103 通过 / 6 跳过**（+1 文件 / +4 条即本笔；上一次基线是 210 / 3099） · web **313 文件 / 3654 通过 / 2 跳过** · **新单测四种状态**（假定时器逐条量）：未停止的一代 `advanceTimersByTimeAsync(60_000)` 之后 alias 读数为 **+1**（对照，证明后面两条不是空断言）；`start()` 途中落下的 `stop()` 之后推进 **180_000** 毫秒读数为 **0 条新增**（没有定时器）；停止之后 `start()` 的读数为 **0**；`createTestApp` 的 App 拆台之后 `start()` 读数为 **0**（证明拆台真调用了 `stop()`）· **反证**：把 `service.ts` 与 `helpers.ts` 退回 `HEAD`、只留新用例 → **3 failed / 1 passed**（「途中停止」「停止后 start」「拆台后 start」三条红，红在读数 1 / 1 / 2；活着的正是那条对照），放回后 **4 passed** · **真服务端**：改后的源码（`tsx src/index.ts`）在一次性数据根 + **9281** 上起来，`/healthz` 200、`/` 200（`<title>Adelie</title>`）、`/api/me` 401（首访预期），跑过一个重试周期（>70 s）后日志里 `Unhandled` / `Error:` / `database is not open` **一条都没有**，随后停掉 · 端口只用 9281，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的 `r217/data-boot`，留底与启动日志都在 `r217/` 下 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `367fb0fdf` |
 | 2026-11-10 | 7.105 | **「保持连接」定时器里那次重试的失败被记下来，不再冒成 unhandled rejection**（第二百一十七轮末尾点名的下一件：定时器回调 `void this.autoConnect()` 本身不接拒绝，`#stopped` 只挡住「退役之后才装的定时器」。源码 2 处 —— `packages/server/src/machines/service.ts` 的 `MachinesEffects` 多一个 `recordError`（默认静默：在平台之外被造出来的服务没有错误表）、定时器改调私有 `#keepHeldTick()`（先看 `#stopped`，`autoConnect()` 的拒绝在 catch 里交给 `recordError`，若 `stop()` 正好落在这趟扫描中间则不记 —— 被关掉的数据库就是退役本身）；`MachinesModule` 注入 `Errors`，把这条记成与启动那一趟**同一个** `process` / `machines_reconnect_failed`，一台回不来的机器在错误中心是一类、一条忽略规则静音两边；既有用例 1 处（harness 收 overrides）+ 2 条新用例 + changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约） · `oxlint` 2 个改动文件 **0 警告 0 错误** · `prettier --check` 4 个文件（含 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 文件 / 1100 通过** · cli **38 文件 / 561 通过** · server **211 文件 / 3105 通过 / 6 跳过**（+2 条即本笔，上一次基线 211 / 3103）· web **313 文件 / 3654 通过 / 2 跳过** · **新用例四种状态**：定时器那一跳的 `listAliases` 抛错 → `recordError` 收到**一条** `ssh config unreadable`、`unhandledRejection` 监听器收到**零条**（启动那一趟照常读到配置，是这两条断言的对照）；扫描途中 `stop()` → 读数为 2 次（证明那一跳真跑了）、`recordError` **零条** · **反证**：把 `service.ts` 退回 `HEAD`、只留新用例 → **2 failed / 4 passed**（新那条红在 `expected [] to deeply equal [ 'ssh config unreadable' ]`，整轮还多报一条 `Errors 1 error` 的 unhandled rejection —— 正是改前的行为；另一条是「App 拆台」那条撞上新生成的模块表：`@Use field 'errors' is not a requirement`），放回后 **6 passed** · **真服务端**：改后的源码（`node node_modules/tsx/dist/cli.mjs src/index.ts`）用一次性数据根起在 **9283**：`/healthz` 200、`/` 200（`<title>Adelie</title>`）、`/api/me` 401（首访预期），日志 12 行内 `Unhandled` / `Error:` / `database is not open` / `ModuleBoot` **一条都没有**（`MachinesModule` 真解析出了 `Errors`），随后停掉 · 端口只用 9283，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的 `r218/data-boot`，改后源码留底与启动日志都在 `r218/` 下（没有产物进仓库）· 本笔不改界面，因此没有浏览器截图 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `a71ae33fa` |
 | 2026-11-11 | 7.106 | **火忘式审计：CLI 里丢掉的响应体不再让整条命令崩掉**（第二百一十八轮末尾点名的「服务里的 fire-and-forget 只在 machines/ 里数过，别处要单独一轮量」。这一轮把 server / core / cli 三个包的 `void <promise>` 逐处量过（清单与三类结论见本轮一节）：逃得出去且会结束进程的只剩 CLI 五处 `void res.body?.cancel()` —— 源码 2 处（`client.ts` 新增 `discardBody()` 并接上 request() 空答复 / 401 换 token / human_required 重试两半共四处，`serve.ts` 的就绪探测一处）+ 1 个新单测文件（4 条）+ serve.test.ts 1 条 + changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型；首跑红一次是我自己测试少传一个参数，改完复跑全绿） · `oxlint` 4 个改动文件 **0 警告 0 错误** · `prettier --check` 6 个文件干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **39 文件 / 566 通过**（+1 文件 / +5 条即本笔，基线 38 / 561） · server **211 / 3105 / 6 跳过** · web **313 / 3654 / 2 跳过** · hmr 无测试文件 · **新用例五种状态**：丢一个出错的身体、丢一个正常取消的身体、丢一个没有身体的响应三条都让 `unhandledRejection` 监听器零收到；`content-length: 0` 且身体已出错的 `request()` 仍 resolve 成 `undefined`（fetch 桩一次）；身体被留成出错状态的就绪探测仍答 `{ready: true}`、零逃逸 · **实测 `cancel()` 什么时候拒绝**（node 直接量）：发完头就打 socket → `terminated`；被 `AbortSignal.timeout()` 中止 → `TimeoutError: … aborted due to timeout`；而「头到了就断、丢弃紧跟其后」实测 40/40 次 cancel 都是 resolve —— 所以真网络自然复现不了，窗口在 401 那次读 token 文件与 human_required 那次读克隆体之间 · **反证**：五处调用点退回 `void res.body?.cancel()`（改后源码留底 `r219/after/`，辅助函数留着） → **2 failed / 30 passed**（一条红在 `expected [Error{…}] to deeply equal []`，另一条收到 `The operation was aborted due to timeout`），放回后 **32 passed**、`diff -q` 与留底一致 · **真服务端 + 真 CLI**：改后的 CLI 重新 build，与按源码起的临时服务端（数据根 `r219/data-real2`、端口 **9294**）走完往返：`penguin project ls` 答 `default_project / default / owner`、`penguin ls` 答 `No sessions … yet.`，服务端日志对应 `GET /api/projects 200` 与 `…/sessions 200`，随后停掉 · 端口只用 9293（随起随停）/ 9294，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 scratchpad 的 `r219/data-real*`，脚本 / 改后源码留底 / 两端日志都在 `r219/` 下（`packages/cli/dist` 是产物，未 `git add`）· 本笔不改界面，没有浏览器截图 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `8ba92f074` |
+| 2026-11-11 | 7.107 | **插件卡片的「导出插件」被拒时，原因留在那张卡片里，不再只活六秒**（7.101 技能页 / 7.103 钩子页同一族的第三处，也是第二百一十四轮末尾点名的「同一族里还剩两处」里**已有 `role="alert"` 槽、最便宜**的那一处；不是移植：源码 3 处 —— 新增 `packages/web/src/features/plugins/plugin-export-refusal.ts`（`pluginExportRefused`，原因走 `refusalText`）、`plugins-page.tsx`（卡片的 `onExport` 从「返回 void、失败弹通知」改成返回 `WriteOutcome`，与这张卡片已有的更新 / 卸载 / 删除三条同一个渠道；句子存在**卡片自己**身上而不是页面上 —— 导出不会把卡片挪到另一个分区、不会重挂，与 `installRefusal` 不同；卡片里新增 `[data-testid="export-refusal"]` 的 `role="alert"` 行，每次尝试开始先清上一句）、`strings{,-en}.ts` 各一句 `plugins.exportRefused`。**句子说「导出只是读取，它的文件没有被改动」而不是「插件仍在目录里」**：这次拒绝正是 `unknown_plugin`（插件已不在库里）时，后半句会是假的。不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型） · `oxlint` 5 个改动文件 **0 警告 0 错误** · `prettier --check` 7 个文件（含 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1100** · cli **39 / 566** · server **211 / 3105 / 6 跳过** · web **314 文件 / 3660 通过 / 2 跳过**（+1 文件 / +6 条即本笔，基线 313 / 3654；改后源码复跑一次同数）；hmr 无测试文件 · **新用例 6 条**（服务端给的原因按错误码念、界面自己抛的句子原样保留、什么都读不到时落通用文案、念出插件名、「导出只是读取」那半句、英文那一句） · **真服务端 + 真浏览器、改前改后两态**（数据根 `/root/adelie-fork-data/r220`、`ADELIE_WEB_DIST=packages/web/dist`、`localhost:9301`、登录 admin；**拒绝是真的、不是桩**：页面画完后把 `<root>/plugins/demo-export` 改名移走，`GET /api/plugins/demo-export/archive` 真答 404 `unknown_plugin`）：**改后** —— `[data-testid="export-refusal"]` **1 个**、`role="alert"`、逐字「插件 demo-export 没有导出成 zip，导出只是读取，它的文件没有被改动：该插件不在插件库中。」、句子落在卡片内（卡片 x 321–1029 / y 542–689.5，句子 x 337–1013 / y 657.5–673.5，在按钮行 589.75–621.75 之下）、**通知区 0 条**、**7.5 秒后仍在**；把目录改回来再按同一颗按钮 → 浏览器真拿到 `demo-export-v2026.11.11.1.zip`、句子归 0。**反证（真界面，改前源码）**：`git checkout HEAD -- plugins-page.tsx` + 重建 web + 同一条探针 → `export-refusal` **0 个**、通知区 1 条「该插件不在插件库中。」、**7.5 秒后通知也没了**；把源码放回、重建、再跑一次 → 与改后逐项一致。两态 console 各只有那条**故意造的 404**（`GET …/archive`），无 pageerror；**另跑一遍干净页**（`/plugins` + `/chat`，不触发任何拒绝）：console **0 error**、**0 条 ≥400** · 端口只用 9301，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；探针 / 截图 / 改后源码留底都在 scratchpad 的 `r220/` 下（`packages/web/dist` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `5ebaf9a92` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -24861,3 +24862,85 @@ body）—— 这两个 await 里连接完全可能断。跑真网络自然复�
 ### 提交
 
 `fix(cli)` 一笔：`8ba92f074`（源码 2 + 新单测 1 + 既有单测 1 + changelog 一对 = 6 个文件）；台账另起一笔。
+
+## 第二百二十轮：插件卡片的「导出插件」被拒时，原因留在那张卡片里（2026-11-11，条目 7.107）
+
+### 开工自检
+
+`git status --short` 干净，`HEAD` = `97d78b1fb`（上一轮那笔台账）。`git fetch origin` 与
+`git merge --ff-only origin/main` 都干净（后者报 `Already up to date`）。分支 `main`，没有别的线在写这棵树。
+
+### 选活
+
+待办表上未勾的那几条这一轮一条都动不了（与上几轮同样）：2.2c 只剩桌面壳 / 既有部署那一侧、3.5 要拍板取哪个
+桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 要把逐行促销搬进 Project 配置（等拍板）、5.10 要新依赖
+`mermaid`（等拍板）。第二百一十四轮（7.103）末尾的「没做 / 留着」把这一族剩下的两处点了名：**记忆页的按组导出**
+（要先给 `CollapsibleSection` 找个槽）与**插件卡片的导出**（「卡片已有 `role="alert"` 槽，最便宜」）。取后者：
+同一族（7.101 技能页、7.103 钩子页）已经有现成的规则与形状，改动面最小、还能用真浏览器把两态量出来。
+
+### 做了什么
+
+- 新增 `packages/web/src/features/plugins/plugin-export-refusal.ts`：`pluginExportRefused(plugin, error)`
+  造句，原因走 `refusalText`（与全应用每一个拒绝同一个规则：服务端给的原因按错误码念，界面自己抛的原样保留）。
+  文件头写明这一族的三处、以及**为什么句子说「导出只是读取，它的文件没有被改动」而不是「插件仍在目录里」**
+  —— 导出确实只是读，而这次拒绝恰恰可能是 `unknown_plugin`（插件已不在库里），后半句会是假的。
+- `packages/web/src/features/plugins/plugins-page.tsx`：卡片的 `onExport` 从「返回 void、失败 `toastError`」
+  改成返回 `WriteOutcome`（与这张卡片已有的更新 / 卸载 / 删除三条拒绝同一个渠道）；句子存在**卡片自己**身上
+  （`exportRefusal`）而不是页面上 —— 导出不会把卡片挪到另一个分区、不会让它重挂，所以发问的那一份实例就是
+  留下句子的那一份（`installRefusal` 之所以在页面上，正是因为它相反）；新增
+  `[data-testid="export-refusal"]` 的 `role="alert"` 行（危险色、最多两行、整句挂悬停），
+  `exportThis()` 每次尝试开始先清掉上一句、只在被拒时留下一句。
+- `packages/web/src/lib/strings{,-en}.ts`：新增一句 `plugins.exportRefused(plugin, reason)`。
+- `packages/web/test/plugin-export-refusal.test.ts`（新增，6 条）+ changelog 一对
+  `2026-11-11-plugin-export-refusal{.zh,}.md`。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型
+  —— 本笔不动服务契约）。
+- `oxlint` 5 个改动文件 **0 警告 0 错误**；`prettier --check` 7 个文件（含 changelog 一对）干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1100** ·
+  cli **39 / 566** · server **211 / 3105 / 6 跳过** · web **314 文件 / 3660 通过 / 2 跳过**
+  （+1 文件 / +6 条即本笔，上一次基线 313 / 3654）。改前源码那一趟之后又把改后源码放回重跑了一次 web，
+  数字与第一次逐项相同。hmr 无测试文件。
+- **本轮主证据（真服务端 + 真浏览器，改前改后两态，拒绝是真的）**：重建 web 产物后，一次性数据根
+  `/root/adelie-fork-data/r220`（`ADELIE_PROFILE=dev` + `ADELIE_SEED_ADMIN_PASSWORD` +
+  **`ADELIE_WEB_DIST=packages/web/dist`** —— 服务端默认读的是 `packages/server/web-dist` 那份旧产物，不指过来
+  看到的是 10 月 30 日的页面）、`localhost:9301`；往 `<root>/plugins/demo-export` 放一个只有
+  `plugin.json` + 一个 `SKILL.md`（**要有 frontmatter**，缺了 `readLibraryPlugin` 会把这个用户插件整个跳过）
+  的用户插件，登录 admin 后打开 `/plugins`。**拒绝由服务端真给**：页面画完后把那个目录改名移走，再按卡片的
+  导出按钮 —— `GET /api/plugins/demo-export/archive` 真答 **404 `unknown_plugin`**（和另一个管理员此刻把插件
+  删掉一模一样），全程没有 `page.route` 桩。
+  **改后**：`[data-testid="export-refusal"]` **1 个**、`role="alert"`、逐字「插件 demo-export 没有导出成 zip，
+  导出只是读取，它的文件没有被改动：该插件不在插件库中。」，句子在**卡片之内、按钮行之下**（卡片
+  x 321–1029 / y 542–689.5；句子 x 337–1013 / y 657.5–673.5；按钮行 y 589.75–621.75），**通知区 0 条**，
+  **7.5 秒之后仍在**；把目录改回来再按同一颗按钮 → 浏览器真拿到 `demo-export-v2026.11.11.1.zip`、句子归 0。
+  **反证（真界面，改前源码）**：`git checkout HEAD -- …/plugins-page.tsx` + 重建 web + **同一条探针** →
+  `export-refusal` **0 个**、通知区 1 条「该插件不在插件库中。」、**7.5 秒后连通知也没了**（正是这一条要改的
+  形状）；把源码放回、重建、再跑一次 → 与改后逐项一致。
+- **console**：两态各只有那条**故意造的 404**（`GET …/archive`，浏览器把它记成一条 failed resource）；
+  pageerror 0 条。**另跑一遍干净页**（`/plugins` + `/chat`，不触发任何拒绝）：console **0 error**、
+  **0 条 ≥400**。
+- 端口只用 9301，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r220`，
+  探针 `probe.mjs` / `clean.mjs`、两态 `measure.json`、六张截图、改后源码留底都在 scratchpad 的 `r220/` 下
+  （`packages/web/dist` 是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- 同一族里还剩**记忆页的按组导出**：它的宿主是折叠段的标题条，得先给 `CollapsibleSection` 找一个槽，不是一轮
+  的小改，留给它自己一轮。
+- `chat-page.tsx` 的「撤回 steering」「转到后台」「换权限档」、设置里的快捷键写盘、更新流程这几个动作仍然
+  **没有确定的宿主**（与第二百一十二 / 二百一十四轮记的是同一批）。
+- 上一轮点名的三处 `void …syncModelsEverywhere()`（`http/routes/models.ts` 两处、`plugins-installed.ts` 一处）
+  仍未接：那个方法按机器吞掉错误，逃得出去的只有 `list()` / `repo.get` 这两下，而真拒绝今天会以
+  `unhandled_rejection` 记进错误中心（没有语境）。要给它语境（哪个项目、哪一步）得先定错误码 —— 下一轮候选。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔：`5ebaf9a92`（源码 3 + 新单测 1 + changelog 一对 = 7 个文件）；台账另起一笔。
+`git push origin main` 照旧失败（`GnuTLS recv error (-110)`，github.com:443 不通），改走 Git Data API 复现
+同一笔提交 —— 树与父提交都用本地那份、author/committer 与时间戳逐字照抄，**API 造出的 SHA 与本地逐字相同**
+（`5ebaf9a92`），ref 已移到它上面。
