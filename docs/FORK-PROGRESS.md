@@ -24457,3 +24457,103 @@ changelog 一对（9 个文件）：`0797c368b`；台账（7.98 的待办行、�
 - **重启**：交给瞬时单元 `adelie-live-restart-rmbrowser-162116.service`（睡 900 秒后 `systemctl restart` 再自验），
   证据写 `/root/Adelie_develop/live-update-rmbrowser-verify.log` —— 本会话就跑在这个服务的 cgroup 里，
   当场重启会把自己掐死。重启后拿到的才是新前端包，浏览器标签要刷新。
+
+## 第二百一十六轮：正式发 0.6.6（2026-11-10，用户当天在会话里点的）
+
+### 为什么这一轮
+
+用户当天先看了一眼现网（还是 0.6.4 的版本串），摆出三条路，选了第三条：**正式发一版**，
+把攒下的东西按正规发布链发出去，现网也从「0.6.5 之前的产物 + 增量替换」换成正式安装包。
+自 `v0.6.5`（2026-11-07）起 `main` 上落了 **11 笔用户看得见的改动**（阈值 10）+ 14 笔台账。
+
+### 这一版装了什么
+
+| 提交 | 内容 |
+| --- | --- |
+| `674ef7459` | 错误中心能忽略某一类报错 —— 新表 `error_ignore_rules`、三条 owner 路由、第四个页签与行内「忽略这类」；记录一条不删，过滤只在读路径 |
+| `74626ea30` | 服务器浏览器整套删掉（破坏性：那一页与全部 `/api/server-browser` 路由、两个环境变量） |
+| `c6213b920` `a0435b97c` | 钩子包 / 技能「打包导出」被拒时，原因留在发问的那一行下面 |
+| `622d59b75` `153a99a05` `0797c368b` `aa4c0b13b` `864f7852d` `e5d588236` `7c14ffa22` | 另七处「被拒的原因只活六秒」搬到发起动作的控件旁边（压缩阈值、新增分组导入、API 页三处写、测试消息、远程控制保存、思考等级、新对话第一条消息） |
+| `e7a2fb334` | 画廊的假接口补上错误中心那三条忽略路由（上一轮漏的） |
+
+### 四道门禁（隔离树 `/root/rel-066`，tag `v0.6.6`）
+
+| 门禁 | 结果 | 原始输出 |
+| --- | --- | --- |
+| `pnpm -r build` | 过 | `/root/rel-066-gates2.log` |
+| `pnpm typecheck` | 过（十包 Done；`gen:ifaces` 报 unchanged，197 接口 / 605 类型） | 同上 |
+| `pnpm lint` | 过，0 警告 0 错误（2469 文件） | 同上 |
+| `pnpm format:check` | 过（**第一次跑是红的**，见下） | 同上 |
+| 全量测试（逐包，`tests-066.sh`） | **10559 + 44 通过 / 0 条用例失败 / 3 条 unhandled rejection** | 同上 |
+
+逐包：amsp 72、cli 561、core 1456（跳 6）、desktop 315、docs 62、server **3099（跳 6）**、ui 1100、
+ui-gallery 141、web **3654（跳 2）**、sandbox-bwrap 29、sandbox-dsh 21（跳 1）、sandbox-seatbelt 17（跳 5）、
+sandbox-wsl 32、use-seedance 8、use-seedream 12、use-wps-office 24。
+
+**第一处红：上一轮那笔画廊改动没按 prettier 折行。** `packages/ui-gallery/src/app/mock/routes.ts` 里
+`get("/api/projects/:projectId/usage/errors/ignores", …)` 被 prettier 换成另一种折法，`format:check` 因此红在
+一个演示文件上（上一轮只跑了 ui-gallery 的用例与 typecheck，没跑 format:check）。**已在 main 上另起一笔
+`84d9d089c` 修掉**，并把 `v0.6.6` 挪到那一笔（当时还没有任何 Release 引用它，删 ref 重建即可），
+发布树跟着切过去、重新打戳，四道门禁因此是在最终那一笔上重跑的。
+
+**第二处红（留着没改，是环境导致的、与本版无关）：** `@adelie/server` 的 3099 条用例**全部通过**，
+但 vitest 报 **3 条 unhandled rejection**，于是整包退出码非 0。根因查清了：
+
+- 栈是 `MachinesService.autoConnect` → `#allMachines()` → `MachinesRepo.get` → `Error: database is not open`。
+- `machines/service.ts` 的 `start()` 装了一个 60 秒的「保持连接」`setInterval`（`KEEP_HELD_MS`），
+  产品里由平台的 dispose effect（`effect(() => machines.stop())`）清掉；而 `test/helpers.ts` 的
+  `cleanup()` 是手写拆台的（只 `hmr.dispose()` / `channels.dispose()` / `db.close()`），**没有 `machines.stop()`**。
+  更关键的是 `start()` 是 fire-and-forget（`platform.ts` 里 `void this.machines.start()`），
+  若它还在 `await` 里、`cleanup()` 就先跑完，定时器是在拆台**之后**才装上的 —— 这一次 `stop()` 清不掉它。
+- 为什么现在才红：`#allMachines()` 遍历**宿主机 ssh 配置里的别名**。今天 **17:08:25** 有人往
+  `/root/.ssh/config` 加了 `Host github.com`（走 `ssh.github.com:443` 的那条通道），于是每次自动重连都会去查库，
+  撞上已关闭的 database。加之前（当天 16:50 那一轮门禁）server 包是**干净**的。
+- 与本版的改动无关：本版 server 侧的 diff 是删掉服务器浏览器那套 + 错误中心忽略规则 + 版本戳，
+  `machines/*` 与 `auth-sessions.test.ts` 一个字节都没动（`git show v0.6.5:packages/server/src/machines/service.ts`
+  第 1097 行就是同一个定时器）。
+- **故意没有改**：稳妥的修法是两处 —— `helpers.ts` 的 `cleanup()` 补 `deps.machines.stop()`（对齐平台做法），
+  以及 `start()` 在 `stop()` 已经跑过时不要再装定时器（一个 `#stopped` 守卫）。这动的是产品代码，
+  发版这一轮不该顺手改，留给下一轮。
+
+### 发布链（隔离树 `/root/rel-066`，`git worktree add --detach v0.6.6`）
+
+| 步骤 | 结果 | 日志 |
+| --- | --- | --- |
+| 提交 `2d9e9cab5`（38 个文件：版本戳 37 + 发布说明 1） | 走 Git Data API 推送（`git ls-remote` 60 秒超时，github.com:443 仍不通），**API 造出的 SHA 与本地逐字相同** | 终端 |
+| 标签 `v0.6.6` | 先指向 `2d9e9cab5`，修掉 prettier 那笔后删 ref 重建到 `84d9d089c`（当时还没有 Release 引用它） | 终端 |
+| `pnpm install --frozen-lockfile` | 过（5.4 s，store 命中） | `/root/rel-066-install.log` |
+| `stamp-066.sh` | VERSION 0.6.6 / BUILD_DATE 2026-11-10 / BUILD_COMMIT `84d9d089c`，install.sh·ps1 戳 v0.6.6 | 终端 |
+| electron `install.js` | 补上 pnpm 跳过的 postinstall（312 M） | `/root/rel-066-electron-install.log` |
+| 载荷（linux-x64 110M / universal 56M / win32-x64 144M） | 过 | `/root/rel-066-payloads.log` |
+| 三件安装包 + 校验（成员、内层校验和、安装器逐字节一致、版本戳） | 过 | `/root/rel-066-bundles.log` |
+| 桌面三件（AppImage 155M / deb 122M / exe 162M + blockmap + latest*.yml） | 过（未签名，EVSign 跳过） | `/root/rel-066-desktop.log` |
+| npm 发布 **29 个名字** | 29 个成功、4 个 private 跳过、0 失败，`PUBLISH-ALL-DONE` | `/root/rel-066-npm.log` |
+| 草稿 Release → 14 件并发上传 → 逐件核 digest → 发布 | 全部 uploaded，14 件 digest 与本地 sha256 一致，`releases/latest` = v0.6.6（2026-11-10T09:56:17Z） | `/root/rel-066-upload.log` |
+| 3003 下载区清单 | 换到 v0.6.6（6 件，旧清单留 `.bak-20261110-v065`），本机那份 Windows 包一并换掉 | 终端 |
+| 冒烟：`--archive` 装到 `/tmp/adelie-smoke` | 「Adelie v0.6.6 installed」，`penguin --version` = v0.6.6 | 终端 |
+| 冒烟实例（端口 7795，临时数据根） | `/` 302（首登流程）、`/healthz` 302、`/api/me` 401；带 `Host: localhost` 时 200 且标题是 `Adelie` | `/tmp/smoke-066-boot.txt` |
+
+这一版多出来的一个名字：`@adelie/web-vscode`（0.6.5 那轮才加进来的），所以是 **29** 个而不是 28 个。
+
+### 现网（7777）
+
+`PENGUIN_INSTALL_DIR=/root/.adelie sh dist-artifacts/install.sh --archive dist-artifacts/penguin-linux-x64.tar.gz
+--no-modify-path`：只换 `bin/lib/web/node`，数据根没动，没有 `.old/.staging` 残留；盘上
+`penguin --version` 与 `lib/package.json` 都是 **0.6.6**。
+
+换完先验**磁盘上那份产物**（`/root/Adelie_develop/deployed-066-check.sh`：部署产物 + 临时数据根 + 端口 8966 +
+登录 admin，不碰 7777 与它的数据根）：`error_ignore_rules` 表在、web 产物里「服务器浏览器」0 个文件、
+`/api/server-browser` 与 `/frames` 匿名与已登录都 404、`…/usage/errors/ignores` 匿名 401 已登录 200、
+**立一条规则 201、撤销 200、撤销后规则列表回到空**。全文见 `/root/Adelie_develop/deployed-066-check.log`。
+
+**重启交给瞬时单元**（本会话就跑在 `adelie-server.service` 的 cgroup 里，当场重启会把自己掐死）：
+`adelie-live-restart-066` 睡 1500 秒后 `systemctl restart` 再自核验，证据写
+`/root/Adelie_develop/rel-066-live-restart-verify.txt`。
+
+### 没做 / 留着
+
+- server 包那 3 条 unhandled rejection **没修**（见上），修法已经写在这里，下一轮可以顺手带走。
+- `/root/.ssh/config` 里今天新加的 `Host github.com`（走 443）**没动** —— github.com 直连靠它，`sandbox-bwrap`
+  的用例也已经不依赖本机 hosts 了。
+- 数据根里的 `browser-profile/` 已在上一轮按用户要求删掉，这一版不涉及。
+- `/root/rel-066` 与 `/tmp` 下的发布中间物，收尾时清。
