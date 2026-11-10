@@ -111,9 +111,11 @@ import { draftKey, loadDraft, saveDraft } from "../chat/draft-cache";
 import { prepareNewChatDraft } from "../chat/new-chat";
 import { localizedShortText, localizedText } from "../chat/skill-use";
 import { downloadArchive } from "../agents/archive-download";
+import { refusalOf } from "../models/write-outcome";
 import type { WriteOutcome } from "../models/write-outcome";
 import { PluginDetailModal } from "./plugin-detail";
 import { PluginImportActions } from "./plugin-import-dialog";
+import { pluginExportRefused } from "./plugin-export-refusal";
 import { pluginImportErrorText, pluginNameFromError } from "./plugin-import";
 import { libraryAddRefused } from "./library-add-refusal";
 import { installRefusalFor, installRefused } from "./install-refusal";
@@ -773,12 +775,17 @@ export function PluginsPage() {
    * one the Skills and Hooks tabs export with). Open to any member — GET
    * /api/plugins/:plugin/archive is a plain read of a directory everyone can already browse —
    * and the way to keep a copy of a plugin an admin may delete off the machine.
+   *
+   * The refusal comes back as a {@link WriteOutcome} rather than a toast: the card that asked is
+   * still on screen with the button that retries it, and a toast dismisses itself after six
+   * seconds over the list (7.19's rule; plugin-export-refusal.ts draws the sentence).
    */
-  const exportPlugin = async (name: string) => {
+  const exportPlugin = async (name: string): Promise<WriteOutcome> => {
     try {
       await downloadArchive(api.pluginArchiveUrl(name), name);
+      return { ok: true };
     } catch (e) {
-      toastError(apiErrorText(e));
+      return { ok: false, reason: pluginExportRefused(name, e) };
     }
   };
 
@@ -1785,7 +1792,7 @@ function PluginCard({
   onQuickInvoke: (skillName: string) => void;
   onToggleInstall: (agentId: string, plugin: PluginItem, on: boolean) => Promise<WriteOutcome>;
   onUpdateOutdated: (name: string, agentIds: string[]) => Promise<WriteOutcome>;
-  onExport: (name: string) => Promise<void>;
+  onExport: (name: string) => Promise<WriteOutcome>;
   onDelete: (plugin: PluginItem) => Promise<WriteOutcome>;
 }) {
   const { locale } = useLocale();
@@ -1810,6 +1817,12 @@ function PluginCard({
   const [updateRefusal, setUpdateRefusal] = useState<string | null>(null);
   const [uninstallRefusal, setUninstallRefusal] = useState<string | null>(null);
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  /**
+   * The reason an "Export plugin" that did not land left under the row
+   * (plugin-export-refusal.ts). Held here rather than on the page (unlike the install refusal
+   * above): an export moves nothing, so the card instance that asked is still the one on screen.
+   */
+  const [exportRefusal, setExportRefusal] = useState<string | null>(null);
   /** A user plugin, i.e. one from the server's plugin directory: the only kind the library can delete, and the only kind that carries a "user" mark. */
   const isUser = plugin.source === "user";
 
@@ -1858,6 +1871,16 @@ function PluginCard({
     setDeleting(false);
     if (outcome.ok) setDeleteOpen(false);
     else setDeleteRefusal(outcome.reason);
+  };
+
+  /**
+   * "Export plugin": one attempt, one reason — starting attempt clears the sentence the one
+   * before it left (so it is not read as this attempt's), and only a refusal leaves one behind.
+   * A written one clears it: the zip is on disk and the line no longer has anything to say.
+   */
+  const exportThis = async () => {
+    setExportRefusal(null);
+    setExportRefusal(refusalOf(await onExport(plugin.name)));
   };
 
   /** Display name of the Agent pending uninstall (falls back to the raw id below). */
@@ -2077,7 +2100,7 @@ function PluginCard({
               className="h-8 w-8 shrink-0 justify-center p-0"
               aria-label={`${S.plugins.exportPlugin} ${plugin.name}`}
               title={S.plugins.exportPlugin}
-              onClick={() => void onExport(plugin.name)}
+              onClick={() => void exportThis()}
             >
               <DownloadIcon size={ICON_SIZE.iconButton} />
             </Button>
@@ -2110,6 +2133,20 @@ function PluginCard({
           className={`mt-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
         >
           {installRefusal}
+        </p>
+      )}
+      {/* An export this card offered that did not land: the card is still here with the button
+          that retries it, so the reason sits under the row rather than in a notification that
+          dismisses itself (plugin-export-refusal.ts). */}
+      {exportRefusal !== null && (
+        <p
+          role="alert"
+          data-testid="export-refusal"
+          data-tooltip={exportRefusal}
+          data-tooltip-content="text"
+          className={`mt-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {exportRefusal}
         </p>
       )}
       {installOpen && (

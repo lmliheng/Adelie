@@ -3068,6 +3068,13 @@ export const zh = {
     userBadgeHint: "来自用户插件目录：可导出备份，由管理员导入或删除",
     /** Card actions of a user plugin (a built-in plugin keeps today's actions only). */
     exportPlugin: "导出插件",
+    /**
+     * An export the download refused (plugin-export-refusal.ts), drawn under the row that asked.
+     * Says the export only reads, because that is the one moment a reader wonders whether the
+     * attempt touched the plugin; the reason goes last, as in every other refusal sentence.
+     */
+    exportRefused: (plugin: string, reason: string): string =>
+      `插件 ${plugin} 没有导出成 zip，导出只是读取，它的文件没有被改动：${reason}`,
     deletePluginAction: "删除插件",
     deleteConfirmTitle: (name: string): string => `删除 ${name}`,
     deleteConfirmBody: (name: string): string =>

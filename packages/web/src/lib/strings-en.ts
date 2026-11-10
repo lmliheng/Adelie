@@ -3022,6 +3022,9 @@ export const en: Strings = {
       "From the user plugin directory: exportable as a backup, imported and deleted by an admin",
     /** Card actions of a user plugin (a built-in plugin keeps today's actions only). */
     exportPlugin: "Export plugin",
+    /** An export the download refused (plugin-export-refusal.ts), drawn under the row that asked. */
+    exportRefused: (plugin: string, reason: string): string =>
+      `The plugin ${plugin} was not exported as a zip — an export only reads, so nothing in it was changed: ${reason}`,
     deletePluginAction: "Delete plugin",
     deleteConfirmTitle: (name: string): string => `Delete ${name}`,
     deleteConfirmBody: (name: string): string =>
