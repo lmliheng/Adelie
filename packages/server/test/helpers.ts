@@ -434,6 +434,11 @@ export async function createTestApp(options: TestAppOptions = {}): Promise<TestA
       // sweeps its resource registry, which is where every live pty is registered.
       deps.hmr.dispose();
       deps.channels.dispose();
+      // Machines holds a once-a-minute re-hold timer and live ssh sessions — the same kind of
+      // platform-owned thing, but the hot host's registry does not carry them. Left running,
+      // the timer outlives this root's database and every later test file in the worker pays
+      // for it with "database is not open" (the platform's own dispose effect calls this).
+      deps.machines.stop();
       deps.db.close();
       // maxRetries: Windows can report ENOTEMPTY/EBUSY while handles from the test's own
       // just-closed files (SQLite, trace writers) are still being released — Node's rm

@@ -190,6 +190,13 @@ export class MachinesService {
   readonly #jobs = new Map<string, MachineJob>();
   /** The standing intent: while this App lives, machines recorded as held are re-held when found dropped. */
   #keepHeld: ReturnType<typeof setInterval> | null = null;
+  /**
+   * Whether this generation has been retired. start() reaches out over the network before it
+   * settles, so a hot push's stop() can land while it is still awaiting: the generation must
+   * then install nothing — a timer on a retired generation would read a database that is
+   * already closed, once a minute, until the process ends.
+   */
+  #stopped = false;
   /** Per machine, when the next re-hold may be tried (epoch ms) and how many tries have failed in a row. */
   readonly #reholdNotBefore = new Map<string, number>();
   readonly #reholdFailures = new Map<string, number>();
@@ -1083,17 +1090,23 @@ export class MachinesService {
    * slow to answer must not hold up the App that serves everything else.
    */
   async start(): Promise<void> {
+    // A generation that stop() already retired is not started: whatever it opened would be
+    // outside that stop()'s sweep, and its timer would outlive the database underneath it.
+    if (this.#stopped) return;
     // The build first, the connections second: a machine behind this build is brought
     // forward over a transient session and its server restarted, and only then re-held —
     // so the connection that stays is to the server that will keep running, and the Model
     // config handed over as it connects lands on the build that will read it.
     await this.syncOutOfDate();
+    if (this.#stopped) return;
     await this.autoConnect();
     // Held is a standing intent, not a boot-time attempt: a machine that could not be
     // re-held at boot — the network still settling, its server not yet up — or that drops
     // later and whose session did not come back, is tried again on a widening wait until it
     // is held or a person stops using it. Unref'd: a timer must not keep a process alive.
-    if (this.#keepHeld === null) {
+    // The check above and this one both look at #stopped: either await is long enough for a
+    // hot push's stop() to land, and a timer installed after it would never be cleared.
+    if (!this.#stopped && this.#keepHeld === null) {
       this.#keepHeld = setInterval(() => void this.autoConnect(), KEEP_HELD_MS);
       this.#keepHeld.unref?.();
     }
@@ -1105,6 +1118,7 @@ export class MachinesService {
    * Nothing here closes by a remembered pid: the child handles are this generation's own.
    */
   stop(): void {
+    this.#stopped = true;
     if (this.#keepHeld !== null) clearInterval(this.#keepHeld);
     this.#keepHeld = null;
     closeAllConnections();
