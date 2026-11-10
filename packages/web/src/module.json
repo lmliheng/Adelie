@@ -125,17 +125,6 @@
         "renderer": {
           "builtin": "SchedulesPage"
         }
-      },
-      {
-        "id": "web.server-browser",
-        "key": "browser",
-        "path": "/browser",
-        "nav": "main",
-        "admin": true,
-        "released": true,
-        "renderer": {
-          "builtin": "ServerBrowserPage"
-        }
       }
     ]
   }

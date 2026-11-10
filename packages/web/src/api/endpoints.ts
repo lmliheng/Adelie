@@ -207,11 +207,6 @@ import type {
   SessionsBatchRequest,
   SessionsBatchResponse,
   SessionTracesResponse,
-  ServerBrowserInput,
-  ServerBrowserInputRequest,
-  ServerBrowserNavigateRequest,
-  ServerBrowserResizeRequest,
-  ServerBrowserStatus,
   SkillArchiveInstallRequest,
   SteerRequest,
   StorageApplyRequest,
@@ -2880,55 +2875,6 @@ export const clearBuiltinBrowserData = (storages: BuiltinBrowserStorage[]) =>
   apiFetch<void>(builtinBrowserPath("/clear-data"), {
     method: "POST",
     body: { storages },
-    server: null,
-  });
-
-// ---- The server browser (a browser the SERVER runs; every route is admin-only) ----
-/**
- * Always this server's: the browser is a process on the machine serving this window, which is
- * the point — a desktop app's own browser lives in its window (see the built-in browser above).
- */
-const serverBrowserPath = (rest: string) => `/api/server-browser${rest}`;
-
-/** Where the live picture is: an MJPEG stream, which an `<img>` renders as it arrives. */
-export const SERVER_BROWSER_FRAMES_URL = serverBrowserPath("/frames");
-
-/** Whether this server can show a browser at all, and what it is doing. */
-export const getServerBrowserStatus = () =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath(""), { server: null });
-export const startServerBrowser = () =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/start"), { method: "POST", server: null });
-export const stopServerBrowser = () =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/stop"), { method: "POST", server: null });
-/** A bare host is given its scheme by the server; anything that is not a web address is a 400. */
-export const navigateServerBrowser = (url: string) =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/navigate"), {
-    method: "POST",
-    body: { url } satisfies ServerBrowserNavigateRequest,
-    server: null,
-  });
-export const serverBrowserBack = () =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/back"), { method: "POST", server: null });
-export const serverBrowserForward = () =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/forward"), { method: "POST", server: null });
-export const reloadServerBrowser = (hard: boolean) =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/reload"), {
-    method: "POST",
-    body: { hard },
-    server: null,
-  });
-/** Draws the page at another size — what the viewer's frame box just became. */
-export const resizeServerBrowser = (width: number, height: number) =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/resize"), {
-    method: "POST",
-    body: { width, height } satisfies ServerBrowserResizeRequest,
-    server: null,
-  });
-/** One batch of input events, in page coordinates and in order. */
-export const sendServerBrowserInput = (events: ServerBrowserInput[]) =>
-  apiFetch<ServerBrowserStatus>(serverBrowserPath("/input"), {
-    method: "POST",
-    body: { events } satisfies ServerBrowserInputRequest,
     server: null,
   });
 

@@ -88,8 +88,6 @@ import { ErrorRecorder } from "./runtime/error-recorder.js";
 import { UsageRecorder } from "./runtime/usage-recorder.js";
 import { UsageService } from "./services/usage-service.js";
 import { StorageAdmin, StorageService } from "./services/storage-service.js";
-import { ServerBrowser, ServerBrowserService } from "./services/server-browser-service.js";
-import { ServerBrowserRoutes } from "./http/routes/server-browser.js";
 import { ProjectConfigService } from "./services/project-config-service.js";
 import { ModelOAuthService } from "./services/model-oauth-service.js";
 import { PlatformAuth, PlatformAuthProvider } from "./services/platform-auth-service.js";
@@ -497,18 +495,6 @@ export class ApiModule {}
 })
 export class WorkflowsModule {}
 
-/**
- * The browser the server renders itself, for the deployments that cannot have the desktop one:
- * a group of its own, because its two nodes are the whole of it — the browser (which spawns a
- * Chromium and owns the profile in the data root) and the routes over it. Nothing else in the
- * tree names it, so both stay in the group and only `ServerBrowser` leaves it.
- */
-@Module({
-  children: [ServerBrowserService, ServerBrowserRoutes],
-  exports: [ServerBrowser],
-})
-export class ServerBrowserModule {}
-
 /** The root: provides nothing and requires nothing; it exists so the groups have a scope to see each other in. */
 @Module({
   children: [
@@ -531,7 +517,6 @@ export class ServerBrowserModule {}
     MachinesModule,
     TerminalRelay,
     WorkflowsModule,
-    ServerBrowserModule,
     BuiltinBrowserModule,
     AgentApiModule,
     Startup,

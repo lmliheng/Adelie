@@ -28,7 +28,6 @@ export const zh = {
     usage: "成本中心",
     traces: "轨迹观测",
     benchmark: "评估中心",
-    browser: "服务器浏览器",
     // Collapsed-rail tooltips (product-specified wording; new chat reuses chat.newSessionMenu, the other pages reuse the page names above).
     lastConversation: "最近一次对话",
     // The rail avatar's tooltip says what the control does; who is signed in stays in its accessible name.
@@ -427,46 +426,6 @@ export const zh = {
       /** A heavy tab's tooltip line in the strip, after its title, and its mark's accessible name. */
       heavyTab: (size: string): string => `占用 ${size} 内存`,
     },
-  },
-
-  /**
-   * The server browser page: a browser the server itself runs, for the deployments that cannot
-   * have the desktop window's one (a Linux box reached over the network).
-   */
-  serverBrowser: {
-    pageTitle: "服务器浏览器",
-    intro: "浏览器在这个服务器上运行，画面实时传到这里。只有服务器管理员可以使用。",
-    /** The address bar. */
-    address: "地址栏",
-    addressPlaceholder: "输入网址后回车，例如 example.com",
-    go: "打开",
-    back: "后退",
-    forward: "前进",
-    reload: "刷新",
-    stop: "停止浏览器",
-    start: "启动浏览器",
-    starting: "正在启动浏览器…",
-    /** While the page in the browser is loading. */
-    loading: "加载中…",
-    /** The frame area before anything has been loaded. */
-    empty: "在上方输入一个网址开始浏览。",
-    /** The frame area while the browser has no page yet. */
-    idleTitle: "浏览器还没有启动",
-    idleBody: "打开这个页面时会自动启动它；也可以按上面的按钮自行启动。",
-    unavailableTitle: "这台服务器不能显示浏览器",
-    /** The browser is switched off for this server by its own configuration. */
-    unavailableOff: "已被管理员关闭（ADELIE_SERVER_BROWSER=off）。",
-    /** Nothing on this machine can draw a page. */
-    unavailableNoBrowser: "这台服务器上没有找到 Chromium 或 Chrome。",
-    unavailableBody: "可以用 ADELIE_SERVER_BROWSER_BIN 指定一个浏览器程序的位置。",
-    /** Something went wrong between this page and the browser on the server. */
-    failed: (reason: string): string => `无法连接服务器上的浏览器：${reason}`,
-    /** The picture is not being received any more; the browser on the server may have stopped. */
-    streamEnded: "画面已中断，浏览器可能已经停止。",
-    /** The frame area's keyboard hint: what a visitor can do with the page. */
-    hint: "点击画面可与页面交互，也可以直接输入。",
-    /** The invisible editable element an input method composes into, over the picture. */
-    inputSurface: "在这里打字，字会送到那个页面",
   },
 
   /** The Trace dock panel (the current conversation's Trace files). */
