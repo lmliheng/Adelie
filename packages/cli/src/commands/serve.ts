@@ -31,6 +31,7 @@ import path from "node:path";
 import { DEFAULT_SERVER_PORT, SERVER_RESTART_EXIT_CODE, resolveRoot } from "@adelie/core";
 import { liveServerLock } from "@adelie/server/lock";
 import type { Command } from "commander";
+import { discardBody } from "../client.js";
 import type { Messages, WebProbeFailureKind } from "../i18n.js";
 import { registerResetPasswordCommand } from "./reset-password.js";
 import { registerStatusCommand } from "./server-status.js";
@@ -317,7 +318,7 @@ export async function waitForReady(
       // (127.0.0.1 is reserved for previews); the probe only needs to know the port answers,
       // so treat that 302 as ready rather than chasing it to a name that may resolve to ::1.
       const res = await fetch(url, { redirect: "manual", signal: AbortSignal.timeout(1000) });
-      void res.body?.cancel();
+      discardBody(res);
       return { ready: true };
     } catch (error) {
       // The service isn't listening yet (or this probe timed out): retain the reason and keep polling.

@@ -245,6 +245,18 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Lets go of a response body nobody is going to read. `cancel()` itself rejects whenever the
+ * stream is already errored — a connection that died mid-body, a probe the readiness timeout
+ * aborted — and the CLI installs no unhandled-rejection handler, so Node's default ends the
+ * process for it: a command that only meant to drop a body would die instead of carrying on.
+ * The server's own drop sites (model-balance, plugin-download, theme-download, proxy-probe)
+ * all swallow this already; the SSE reader below does the same for its reader.
+ */
+export function discardBody(res: Response): void {
+  void res.body?.cancel().catch(() => undefined);
+}
+
 export class ServerClient {
   private token: string | null;
   private tokenSource: TokenSource;
@@ -287,7 +299,7 @@ export class ServerClient {
     });
     if (!res.ok) throw await this.toError(res);
     if (res.status === 204 || res.headers.get("content-length") === "0") {
-      void res.body?.cancel();
+      discardBody(res);
       return undefined as T;
     }
     const text = await res.text();
@@ -310,7 +322,7 @@ export class ServerClient {
     if (this.tokenSource === "env" || !this.conn.loopback) return res;
     const fresh = readTokenFile(this.conn.root);
     if (fresh === null || fresh === this.token) return res;
-    void res.body?.cancel();
+    discardBody(res);
     this.token = fresh;
     this.tokenSource = "file";
     const headers = { ...(init.headers as Record<string, string>), ...this.headers() };
@@ -339,10 +351,10 @@ export class ServerClient {
     }
     const retried = await fetch(`${this.conn.baseUrl}${apiPath}`, { ...init, headers });
     if (retried.status === 401) {
-      void retried.body?.cancel();
+      discardBody(retried);
       return refused;
     }
-    void refused.body?.cancel();
+    discardBody(refused);
     return retried;
   }
 

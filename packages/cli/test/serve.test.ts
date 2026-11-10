@@ -151,6 +151,32 @@ describe("readiness probe diagnostics", () => {
     });
   });
 
+  it("reports ready for a probe whose body was left errored, without a stray rejection", async () => {
+    // The 1s AbortSignal on each probe produces exactly this: headers arrived, then the
+    // connection died (or the timeout fired) before anyone read the body, so the stream is
+    // errored and its cancel() rejects. A CLI with no unhandled-rejection handler would die.
+    const errored = new Response(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new Error("The operation was aborted due to timeout"));
+        },
+      }),
+      { status: 200 },
+    );
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(errored);
+    const seen: unknown[] = [];
+    const onRejection = (reason: unknown) => seen.push(reason);
+    process.on("unhandledRejection", onRejection);
+    try {
+      await expect(waitForReady("http://127.0.0.1:7364/", 0, 0)).resolves.toEqual({ ready: true });
+      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(seen).toEqual([]);
+    } finally {
+      process.off("unhandledRejection", onRejection);
+    }
+  });
+
   it("retains the nested undici error from the last failed probe", async () => {
     const cause = Object.assign(new Error("Connect Timeout Error"), {
       code: "UND_ERR_CONNECT_TIMEOUT",
