@@ -3439,6 +3439,13 @@ export const en: Strings = {
       forAgent
         ? `Could not change the thinking level (also the Agent's default, unchanged): ${reason}`
         : `Could not change the thinking level: ${reason}`,
+    /**
+     * A picked permission preset (or approval mode) was refused: the button re-reads the Session and
+     * therefore shows the old level again, so the sentence says the pick did not take and that the
+     * Session kept what it had — the route writes nothing at all when it refuses.
+     */
+    permissionRefused: (reason: string) =>
+      `Could not change the permission (the Session keeps the one it had): ${reason}`,
     /** Second tooltip line on a shortcut row: the click fills the composer, it does not send. */
     shortcutFillHint: "Click to fill the composer — edit it if you like, then send",
     /** The draft screen's saved-prompt folder: prompts the user wrote and saved, stored per user on the server. */

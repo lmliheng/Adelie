@@ -595,6 +595,7 @@ export function ChatInput({
   thinkingLevel,
   onChangeThinkingLevel,
   thinkingRefusal,
+  permissionRefusal,
   turnThinkingLevel,
   onChangeTurnThinkingLevel,
   contextWindow,
@@ -756,6 +757,15 @@ export function ChatInput({
    * hands it over only while it still describes the Agent / Session on screen.
    */
   thinkingRefusal?: string | null;
+  /**
+   * A picked permission preset the write refused — the sentence drawn above the card, next to the
+   * thinking level's, or null/absent. Same reasoning: the permission button re-reads the Session
+   * once the PATCH settles, so a refusal puts the old level back and the button is the retry; a
+   * notification would be the only trace of a click that visibly did nothing. The parent owns the
+   * sentence because it owns the write, and hands it over only while it still describes the
+   * Session on screen.
+   */
+  permissionRefusal?: string | null;
   /**
    * Session state: the Session's thinking level to DISPLAY — the parent resolves it as "the
    * user's pick for this session, else the Agent config's level" ("" = neither known yet),
@@ -2523,6 +2533,22 @@ export function ChatInput({
           className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
         >
           {thinkingRefusal}
+        </p>
+      )}
+
+      {/* A permission preset the write refused: same slot, same reason — the button inside the
+          card re-read the Session and went back to the level it had, and the route wrote nothing.
+          The sentence therefore names the fact the reverted button cannot show (the Session keeps
+          what it had) and stays until the next pick. */}
+      {permissionRefusal != null && permissionRefusal !== "" && (
+        <p
+          role="alert"
+          data-testid="permission-refusal"
+          data-tooltip={permissionRefusal}
+          data-tooltip-content="text"
+          className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {permissionRefusal}
         </p>
       )}
 

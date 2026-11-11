@@ -3529,6 +3529,12 @@ export const zh = {
       forAgent
         ? `没能切换思考等级（同时是 Agent 的默认档，没有改动）：${reason}`
         : `没能切换思考等级：${reason}`,
+    /**
+     * A picked permission preset (or approval mode) was refused: the button re-reads the Session and
+     * therefore shows the old level again, so the sentence says the pick did not take and that the
+     * Session kept what it had — the route writes nothing at all when it refuses.
+     */
+    permissionRefused: (reason: string) => `没能切换权限（会话仍是原来的权限）：${reason}`,
     /** Second tooltip line on a shortcut row: the click fills the composer, it does not send. */
     shortcutFillHint: "点击填入输入框，可修改后自行发送",
     /** The draft screen's saved-prompt folder: prompts the user wrote and saved, stored per user on the server. */

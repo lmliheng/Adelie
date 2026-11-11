@@ -115,6 +115,7 @@ import {
 } from "./thinking-level";
 import type { StagedThinkingSwitch } from "./thinking-level";
 import { thinkingLevelRefused } from "./thinking-level-refusal";
+import { permissionRefused } from "./permission-refusal";
 import { ChatDropRegion } from "./drop-zone";
 import { ConversationOutline, OutlineMenuButton, useOutlineRailFit } from "./conversation-outline";
 import { DraftView } from "./draft-view";
@@ -1734,20 +1735,30 @@ export function ChatPage() {
   // A preset from the permission button: the approval mode and the Session's own sandbox
   // policy in one PATCH, applied from the next tool call and command. A refused change (a
   // non-admin loosening past the server's settings) stores nothing — the route checks every
-  // field before writing any — so the Session is as it was, and the toast says why.
+  // field before writing any — so the Session is as it was and the button goes back to the
+  // level it read before: it is the retry, and the sentence saying why lives above the card
+  // (7.95's slot, same shape) instead of in a notification that outlives nothing.
+  const [permissionRefusal, setPermissionRefusal] = useState<{
+    sessionId: string;
+    text: string;
+  } | null>(null);
   const onChangePermission = useCallback(
     (pick: PermissionPick) => {
       if (!selected || modeSaving) return;
+      const sessionId = selected.sessionId;
       setModeSaving(true);
+      setPermissionRefusal(null); // One attempt, one reason: the new pick answers for itself.
       // Returned so the permission button keeps the pick on screen until the save settles.
       return api
-        .patchSession(selected.sessionId, {
+        .patchSession(sessionId, {
           approvalMode: pick.approvalMode,
           // Absent for an approval-mode pick: the Session's policy is left as it is.
           ...(pick.sandbox !== undefined ? { sandbox: pick.sandbox } : {}),
         })
         .then((res) => replace(res.session))
-        .catch((e: unknown) => toastError(apiErrorText(e)))
+        .catch((e: unknown) => {
+          setPermissionRefusal({ sessionId, text: permissionRefused(e) });
+        })
         .finally(() => setModeSaving(false));
     },
     [selected, modeSaving, replace],
@@ -2237,6 +2248,9 @@ export function ChatPage() {
       onChangeTurnThinkingLevel={onPickTurnThinkingLevel}
       thinkingRefusal={
         thinkingRefusal?.sessionId === selected.sessionId ? thinkingRefusal.text : null
+      }
+      permissionRefusal={
+        permissionRefusal?.sessionId === selected.sessionId ? permissionRefusal.text : null
       }
       {...(contextWindow !== undefined ? { contextWindow } : {})}
       {...(compactionLimit !== undefined ? { compactionLimit } : {})}
