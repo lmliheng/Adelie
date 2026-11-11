@@ -76,6 +76,7 @@ import { machinesRoutes } from "../http/routes/machines.js";
 import { machinesProxy } from "./proxy.js";
 import { HttpError } from "../http/errors.js";
 import type { Errors } from "../mechanisms/observability.js";
+import type { ErrorRecordArgs } from "../runtime/error-recorder.js";
 import type { Access } from "../mechanisms/projects.js";
 import { Hono } from "hono";
 import { MachinesRepo } from "../db/repos/machines.js";
@@ -135,10 +136,30 @@ export interface MachinesEffects {
   now: () => Date;
   /**
    * Where a failure with no caller to throw to is reported — the standing-intent timer below
-   * is the one such path here. Silent by default: a service built outside the platform (a test)
-   * has no error table, and the rejection it would have recorded is the test's own to assert.
+   * and the whole-fleet push are the two such paths here. `code` is the class it is filed
+   * under, so one rule in the error centre silences that class and nothing else; `projectId`
+   * is the Project whose edit asked for the work, when there was one (a boot sweep has none).
+   * Silent by default: a service built outside the platform (a test) has no error table, and
+   * the rejection it would have recorded is the test's own to assert.
    */
-  recordError: (err: unknown) => void;
+  recordError: (err: unknown, code: string, projectId?: string) => void;
+}
+
+/**
+ * How a machines failure with no caller reaches the error centre (machines/service.ts).
+ *
+ * `process` is the honest source: this is an error escaping a background task, not an HTTP
+ * answer — the boot sweep in platform.ts files its own class the same way. What was missing
+ * was not the record but the context: `code` says which step, and the Project is filled in
+ * when someone's edit is what set the work off, so the panel can point at it instead of
+ * leaving a bare message that could have come from anywhere.
+ */
+export function machinesErrorRecord(
+  err: unknown,
+  code: string,
+  projectId?: string,
+): ErrorRecordArgs {
+  return { source: "process", err, code, ctx: projectId === undefined ? undefined : { projectId } };
 }
 
 /** The id of the entry standing for the machine this server runs on. */
@@ -1141,7 +1162,7 @@ export class MachinesService {
       // A stop() that arrived while this sweep was awaiting closed the database underneath it:
       // that rejection IS the retirement, and reporting it would be telling the error table of a
       // database this generation no longer owns about its own shutdown.
-      if (!this.#stopped) this.#effects.recordError(err);
+      if (!this.#stopped) this.#effects.recordError(err, "machines_reconnect_failed");
     }
   }
 
@@ -1505,24 +1526,35 @@ export class MachinesService {
    * interface member is a contract change a pushed platform pays for.
    */
   async syncModelsEverywhere(projectId: string): Promise<void> {
-    const connected = this.list(projectId).filter(
-      (m) => !m.local && m.installed !== null && m.connection !== null,
-    );
-    await Promise.all(
-      connected.map(async (machine) => {
-        const address = machine.id;
-        const port =
-          this.#liveSession(address) === null ? null : (this.repo.get(address)?.remotePort ?? null);
-        if (port === null) return;
-        try {
-          await this.#syncCoalesced(address, this.#targetOf(machine.alias), port, () => [
-            projectId,
-          ]);
-        } catch {
-          // Best effort: the connect log is where a sync's own words go; this one has none.
-        }
-      }),
-    );
+    try {
+      const connected = this.list(projectId).filter(
+        (m) => !m.local && m.installed !== null && m.connection !== null,
+      );
+      await Promise.all(
+        connected.map(async (machine) => {
+          const address = machine.id;
+          const port =
+            this.#liveSession(address) === null
+              ? null
+              : (this.repo.get(address)?.remotePort ?? null);
+          if (port === null) return;
+          try {
+            await this.#syncCoalesced(address, this.#targetOf(machine.alias), port, () => [
+              projectId,
+            ]);
+          } catch {
+            // Best effort per machine: the connect log is where a sync's own words go; this one has none.
+          }
+        }),
+      );
+    } catch (err) {
+      // Best effort one level up too. The catch above covers a sync that failed, but listing
+      // the Project's machines and reading their rows happen outside it — and every caller of
+      // this is fire-and-forget (the models PUT, the default switch, a plugin change), so an
+      // escape here reached the process unhandled, filed as a bare `unhandled_rejection` that
+      // named neither the Project nor the step. This files it as one, with both.
+      this.#effects.recordError(err, "fleet_sync_failed", projectId);
+    }
   }
 }
 
@@ -1586,9 +1618,10 @@ export class MachinesModule {
       {
         // The standing-intent timer's failures have no caller to throw to; they go to the error
         // centre under the same source and code the boot path uses for the same failure
-        // (platform.ts), so one machine that will not come back is one silenceable class.
-        recordError: (err) =>
-          this.errors.record({ source: "process", err, code: "machines_reconnect_failed" }),
+        // (platform.ts), so one machine that will not come back is one silenceable class. The
+        // code is the port's, not this wiring's: the fleet push files its own class the same way.
+        recordError: (err, code, projectId) =>
+          this.errors.record(machinesErrorRecord(err, code, projectId)),
       },
       () => this.hmr.assetsDir(),
     );
