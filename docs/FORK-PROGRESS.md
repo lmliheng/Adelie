@@ -2436,6 +2436,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       插入占位符 / 确认式保存，共 7 个调用点，横跨记忆页、四个分区共享的那套、以及页面共享的 `save`）；
       `openView` 仍走通知，因为它没有可以留住的宿主（面板正是因为读不到才没打开），写在注释里。见
       「第二百二十四轮」一节。
+- [x] **7.112 没打开的那条记忆，原因留在它自己那一行**
+      （**2026-11-12 第二百二十五轮**落地，提交见「已完成的轮次」；源码 3 处（新增
+      `memory-file-refusal.ts`、`memory-tab.tsx` 的 `openView` 与 `fileRow`）+ `packages/ui` 的 `ListRow`
+      多一个 `notice` 槽 + 一对文案 + 1 个新单测文件（9 条）+ `list-row.test.ts` 加 2 条 + 1 个新 spec
+      （2 条）+ changelog 一对，**不碰接口、无新依赖**）：第二百二十四轮末尾点名的「`openView` 打开一条记忆
+      被拒时仍弹通知。没有宿主（面板没开、行上没有位置），要做得先定这句话归行还是归组」。答案是**行**：眼睛
+      按钮就是那一行自己的动作，面板没开也就不存在任何面板可以承接，而那一行的按钮仍在原地就是重试 —— 与
+      7.101 / 7.103 同形。为此 `ListRow` 加了 `notice`（整行的说明，画在行内、行的横线之上），句子认的是
+      分组的 key 与文件的名字而不是标题。见「第二百二十五轮」一节。
+
 ## 发布 v0.2.0（2026-10-05）
 
 用户要求「先发布最新版本到 GitHub，说明是基于 penguin harness 做的」。这一版是**源码版**：
@@ -3164,6 +3174,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-11 | 7.109 | **记忆组没有导出成时，原因留在那一组里，不再只活六秒**（7.101 技能页 / 7.103 钩子页 / 7.107 插件卡片同一族的第四处，也是第二百二十一 / 二百二十 / 二百一十四轮末尾点名的下一件 —— 这一族的最后一处。不是移植：源码 4 处 —— `packages/ui` 的 `CollapsibleSection` 新增 `notice` 槽（head 与 fold 之间、卡片之内、折叠时也看得见；这一处的宿主是折叠段的标题条，正是 7.101 之后一直记着的「要先给 CollapsibleSection 找个槽」）；新增 `packages/web/src/features/agents/memory-export-refusal.ts`（`memoryExportRefused(scope, error)` 按 `refusalText` 造句、`memoryExportRefusalFor(refusal, scopeKey)` 按**键**决定这句归哪一组 —— 不是按标题，两个工作区的目录可以同名）；`memory-tab.tsx` 的 `exportScope` 失败不再 `toastError`，记进 `exportRefusal` 交给那一组的 `notice`（每次尝试开始先清上一句），`scopeTitle` 提到模块级（拒绝句在失败那一刻造句，而那条路径可能在组件提前返回之后）；一对文案 `memory.exportRefused(scope, reason)`。句子说「导出只是读取，记忆一条都没有被改动」，而不是「这一组还在」—— 导出确实只读，而 7.107 记过的那条道理同样成立。1 个新单测文件（9 条）+ ui 用例 1 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 9 个改动文件 **0 警告 0 错误** · `prettier --check` 11 个文件（含 spec 与 changelog 一对）干净（首跑 3 个文件 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 通过文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 文件 / 1101 通过**（+1 条即本笔，基线 1100） · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **315 文件 / 3669 通过 / 2 跳过**（+1 文件 / +9 条即本笔，基线 314 / 3660） · **新 spec** `memory-export-refusal.spec.mjs` **2 passed（9.6 s + 2.1 s，整套 13.2 s）**（真服务端 + 真浏览器；记忆经导入路由种进 user 组，拒绝由 `page.route` 把那一路 `GET …/memory/scopes/*/export` 答成 500 `internal` + 一句英文原文，每次都从 API 读回服务端那份记忆）：①被拒时句子**只在那一组里**（`xpath=../../..` 拿到的卡片之内）、`role="alert"`、逐字「记忆组「用户记忆」没有导出成文档，导出只是读取，记忆一条都没有被改动：服务器内部错误，请稍后重试。」、head 行文字与尝试前一模一样、**通知区 0 条**、**七秒后仍在**；把组折起来 → 正文 `grid-rows-[0fr]`、句子仍 `toBeVisible`；服务端的记忆与开始时逐项相同。②放行后按同一颗按钮 → 句子归 0、浏览器真拿到 `default_agent-user-memory-20261111-1513.json`、请求发了两次、记忆原样 · **反证**：把 `memory-tab.tsx` 退回 `HEAD`（改后源码留底 `r222/after/`）、重建 web 产物，同一份 spec **2 failed**（两条都死在 `getByTestId("export-refusal")` 的 `toHaveCount(1)`：`unexpected value "0"`）；放回重建后 **2 passed** · **两态探针**（`r222/probe.mjs`，真服务端 **9322** + 真浏览器，一次性数据根 `/root/adelie-fork-data/r222-probe`，同一脚本量 1.2 s / 7.5 s 两刻）：两刻都是同一条 `role="alert"`（`alerts:1`、通知区 `toasts:0`）；几何 —— 卡片 x400–1168 / y307–442，head y308–348，notice y348–381（在 head 之下、卡片之内）；折起来后 `bodyClass` 为 `grid grid-rows-[0fr]`、`alerts:1`、`visible:true`；放行后 `alerts:0` 且文件名 `default_agent-user-memory-20261111-1513.json`；截图 `r222/out/probe/{01-refused,02-after-7s,03-folded,04-retried}.png`，肉眼看了 01 与 03（红字就在「用户记忆 1 条 / 导出 导入 添加」那一行之下；折起来之后那一行是这一组仅有的东西，句子仍完整可见） · **console**：带拒绝的那一页只有两条 —— 故意造的 500（`…/export`）与这一页一进来就发的 `GET …/machines` 403（普通成员拿不到机器；改前产物上同样有，与本笔无关），pageerror **0 条**；另开一页不触发拒绝，仍只有那条 403、没有别的 ≥400 · 端口只用 9321 / 9322（服务端）与 8971 / 8972（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/{r222,r222-probe}`，探针 / 两态截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r222/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `a5fa64263` |
 | 2026-11-11 | 7.110 | **记忆页选中的文件没有导入成时，原因留在那一组里，不再只活六秒**（7.109 末尾点名的那一件 —— 它当时留成「这句话归那一组还是归文件选择器」的一轮；答案是**那一组**：文件输入就是这一组标题条上「导入」那个标签，选择器没有别的位置。不是移植：一组记忆整组转移的两个方向现在共用同一个槽，所以 `memory-export-refusal.ts` 改名成 `memory-group-refusal.ts`，类型 `MemoryExportRefusal` → `MemoryGroupRefusal`、`memoryExportRefusalFor` → `memoryGroupRefusalFor`，新增 `memoryImportRefused(scope, error)`：文档解析错误保留它自己的本地化句子（「这个文件里没有记忆。」不会被压成「不是记忆导出文件。」），读文件时别的原因（File API 自己的拒绝，消息是浏览器原话、从不本地化）落到「这个文件不是记忆导出文件。」；`memory-tab.tsx` 的 `exportRefusal` 改成 `groupRefusal`（后一次尝试盖掉前一次，不分方向），`pickImport` 的失败不再 `toastError`、写进那一组的 `notice`，选文件开始先清上一句，槽的 test id 从 `export-refusal` 改成 `memory-refusal`；一对文案 `memory.importRefused(scope, reason)`。句子说「这个文件没有读成，记忆一条都没有被改动」—— 解析在页面里做，一个请求都没发出去。不碰接口、无新依赖） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 7 个改动文件 **0 警告 0 错误** · `prettier --check` 9 个文件（含 spec 与 changelog 一对）干净（首跑 3 个文件 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1101** · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **315 文件 / 3674 通过 / 2 跳过**（+5 条即本笔的导入用例，基线 3669）；hmr 无测试文件 · **新 spec** `memory-group-refusal.spec.mjs`（由 `memory-export-refusal.spec.mjs` 改名，4 条）**4 passed（9.3 s + 1.9 s + 8.5 s + 1.4 s，整套 22.6 s）**（真服务端 + 真浏览器）：①两条导出用例原样通过；②一条 `.txt` 从那一组的文件输入进去 → `[data-testid=memory-refusal]` 里逐字「记忆组「用户记忆」没有导入，这个文件没有读成，记忆一条都没有被改动：这个文件不是记忆导出文件。」、**导入框没开**、通知区 0 条、**发往 `/memory/` 的 POST 一条都没有**、head 行文字与原样一致、折起来后仍可见、**七秒后仍在**，换成真的文档后句子归 0、导入框打开、服务端的记忆逐项不变；③先被拒的导出紧接一次坏文件 → 一组只有后一次那一句 · **反证（只回退行为，保留新 testid）**：把 `pickImport` 的 catch 改回 `toastError(e instanceof MemoryDocumentError ? e.message : S.memory.importInvalidFile)`、重建 web，同一份 spec **2 failed**（两条新用例都死在 `getByTestId("memory-refusal").toHaveCount(1)`：`unexpected value "0"`），两条导出用例照旧通过；放回、重建后 **4 passed** · **两态探针**（`r223/probe.mjs`，真服务端 **9341** + 真浏览器，一次性数据根 `/root/adelie-fork-data/r223-probe-a`，同一脚本量 1.2 s / 7.5 s 两刻，**不看 testid、只看两版都有的东西**）：**改后** 1.2 s 与 7.5 s 都是那一组的 `role="alert"` 1 条、通知区文字为空、导入框 0 个；几何 —— 卡片 x400–1168 / y307–442（折起来高度 75，句子 y357–373 仍在卡片内）；选到真文档后 `alerts:0`、导入框 1 个 · **反证（真界面，改前源码）**：`git checkout HEAD -- memory-tab.tsx memory-transfer.ts strings*.ts` + `memory-export-refusal.ts` 放回 + 重建 web + **同一条探针** → 1.2 s 那一组里 **0 条** `role="alert"`、原因只在通知区（`这个文件不是记忆导出文件。`），**7.5 s 时通知区也空了**（原因彻底消失，组与文件选择器原样）、折起来更是 0 条；把源码放回、重建、再跑一次 → 与「改后」逐项一致（`after` / `before` / `after2` 三份 measure 都在 scratchpad）· 两态 console 各 **0 error**、无 pageerror、**无一条 ≥400** · 端口只用 9341 / 9342（服务端），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r223-probe-a` 与 `r223-e2e`，探针 / 两态截图 / 三份 measure / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r223/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `04ef36dba` |
 | 2026-11-11 | 7.111 | **被拒的写入已经有地方留着原因时，不再另弹一条重复的通知**（第二百二十三轮末尾点名的前一族：`toggleEnabled` / `insertPlaceholder` 是「句子已经就地留了、另外又弹一条重复的通知」。不是移植：源码 3 处、**7 个 `toastError`** —— `memory-tab.tsx` 的开关（`switchRefusal`）、占位符条（`insertRefusal`）、这一页自己的提示词保存（保存卡片）；`prompt-injection-controls.tsx` 同样的三处（技能 / 保险柜 / 定时任务 / 钩子共享）；`agent-settings-page.tsx` 页面共享的 `save`（每个设置表单都经 `useSaveConfirm` 走到它）。**成功的通知一条没动** —— 开关是静默移动的，那是写成功唯一的交代；`openView` 的读取失败仍走通知，因为它没有可以留住的宿主（面板正是因为读不到才没打开），这一句写进了注释。三份既有 spec 的「通知区没有东西」从 `toHaveCount(0)` 改成立刻读一次（`expectNoToast`）—— 会重试的写法对着一条六秒后自己过期的通知同样通过，那正是这几份用例在讲的事，也是它们过去每条要跑十五秒的原因；`agent-save-refusal.spec.mjs` 另加 1 条（技能页的共享提示词写入，保存 Promise 的第三种形状，此前没有浏览器用例钉过）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 6 个改动文件 **0 警告 0 错误** · `prettier --check` 8 个文件（含 changelog 一对）干净（首跑 `prompt-injection-controls.tsx` `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1101** · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **315 文件 / 3674 通过 / 2 跳过**（与上一轮基线同数，本笔只删通知、没有新单测）· **三份 spec 7 条全绿（52.6 s，改前 1.2 分钟以上）**：`agent-save-refusal` 3（含新增的共享提示词写入）+ `agent-switch-refusal` 2 + `placeholder-insert-refusal` 2 —— 每条拒绝对「通知区一个按钮都没有」都是**立刻读一次**（`expectNoToast`，先等 400 ms 让拒绝自己的渲染落地）· **反证**：把三份源码 `git checkout HEAD --`（改后源码留底 `r224/after/`）、重建 web，**同一套 7 条全红**，每条都死在 `expectNoToast` 的 `toBe(0)`（`Received: 1` —— 那句重复的通知确实在）；放回、重建后 **7 passed** · **两态探针**（`r224/probe.mjs`，真服务端 **9381** + 真浏览器，一次性数据根 `/root/adelie-fork-data/r224-e2e`，`PUT …/config` 桩成 500，同一脚本量 1.2 s / 7.5 s 两刻）：**改前** 1.2 s 那一刻通知区**一个按钮**、文字逐字「服务器内部错误，请稍后重试。」，7.5 s 时通知区空了（原因只剩卡片下那句）；**改后** 1.2 s 与 7.5 s 都是通知区 0 个按钮、`innerHTML` 36 字符（空区），`role=alert` 那句「关闭记忆的开关被拒：服务器内部错误，请稍后重试。」两刻都在，开关仍在服务器的位置上；截图 `r224/out/{before,after}-01-1_2s.png` 肉眼看过（改前页顶多出一条白底通知，改后只有卡片下面那行红字）· **console**：两态都只有本轮桩出来的那一条 500，pageerror **0 条** · **相邻回归（真浏览器三份 spec、九条）**： `agent-config-refusal` 2 + `memory-write-refusal` 3 + `memory-group-refusal` 4 **9 passed（36.7 s）** · 端口只用 9381（服务端）与 8981（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰； 数据只落 `/root/adelie-fork-data/r224-e2e`，探针 / 两态截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置 都在 scratchpad 的 `r224/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `3d6d24ec7` |
+| 2026-11-12 | 7.112 | **没打开的那条记忆，原因留在它自己那一行**（第二百二十四轮末尾点名的那一件 —— 它当时留成「这句话归行还是归组」的一轮；答案是**行**：眼睛按钮是那一行自己的动作，面板没开就没有面板可以承接，而那一行的按钮仍在原地就是重试。不是移植：源码 3 处 —— 新增 `packages/web/src/features/agents/memory-file-refusal.ts`（`memoryViewRefused(title, error)` 走 `refusalText`（7.19 的规则）；`memoryFileRefusalFor(refusal, scopeKey, fileName)` 认分组的 key 与文件的名字、不认标题），`memory-tab.tsx` 的 `openView` 不再 `toastError` 而是记下 `{ scopeKey, fileName, text }`（每次尝试开始先清掉上一句）、`fileRow` 把它交给行；`packages/ui` 的 `ListRow` 多一个 `notice`（整行的说明，画在行内、行的横线之上，于是原因属于那一行而旁边的文字列宽度不动）；一对文案 `memory.viewRefused(title, reason)`；1 个新单测文件（9 条）+ `list-row.test.ts` 加 2 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约） · `oxlint` 8 个改动文件 **0 警告 0 错误** · `prettier --check` 10 个文件（含 spec 与 changelog 一对）干净（首跑 `memory-tab.tsx` 与 spec `--write` 一次，复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103**（+2 即本笔的 `notice` 用例，基线 1101） · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **316 文件 / 3683 通过 / 2 跳过**（+1 文件 / +9 条即本笔，基线 315 / 3674） · **新 spec** `memory-view-refusal.spec.mjs` **2 passed（9.5 s + 2.5 s，首跑 9.8 s / 2.6 s）**（真服务端 + 真浏览器，读取路由由 `page.route` 拒成 500 `internal` + 一句英文原文，每次都从 API 读回服务端那份记忆）：①被拒时句子**只在那一行里**（眼睛按钮的 `ancestor::li` 之内）、`role="alert"`、逐字「记忆「Probe view memory」没有打开，打开只是读取，记忆一条都没有被改动：服务器内部错误，请稍后重试。」、**通知区 0 条**、面板没开（整名「编辑」的那颗按钮 0 个）、**七秒后仍在**、两条记忆在磁盘上逐项与开始时相同；放行后同一颗眼睛按钮 → 句子归 0、面板打开、记忆仍原样。②先被拒的那一行紧接点开另一条记忆 → 一次尝试盖掉前一句（`memory-file-refusal` 归 0、面板打开） · **反证**：把 `memory-tab.tsx` 退回 `HEAD`（改后源码留底 `r225/after/`）、重建 web 产物，同一份 spec **2 failed**（两条都死在 `getByTestId("memory-file-refusal").toHaveCount(1)`：`unexpected value "0"`）；放回重建后 **2 passed** · **两态探针**（`r225/probe.mjs`，真服务端 **9391** + 真浏览器，一次性数据根 `/root/adelie-fork-data/r225-e2e`，同一脚本量 1.2 s / 7.5 s 两刻，只按两版都有的东西取数）：**改前** 1.2 s 通知区**一个按钮**、逐字「服务器内部错误，请稍后重试。」（`htmlLength` 388），7.5 s 通知区空了（0 个按钮、36 字符），`role=alert` 0 条、面板没开、行高 58.5625；**改后** 1.2 s 与 7.5 s 都是同一条 `role=alert`（`insideRow: true`，y 465.125 / 高 16），行高 82.5625、行的底边 491.125 在句子底边 481.125 之下（句子在行的横线之内），通知区 0 个按钮 / 36 字符；放行后重试的第三刻 `alerts: 0`、面板打开、行高回到 58.5625；截图 `r225/out/{before,after}-01-1_2s.png` 与 `after-03-retried.png` 肉眼看过（改前页顶一条白底通知、行没有变化；改后通知区空着，红字就在那条记忆的描述下面、卡片边界紧贴其后） · **console**：两态都只有按设计的 `GET …/machines` 403 与本轮桩出来的那条 500，pageerror **0 条** · **相邻回归**（真浏览器，记忆一族两份 spec、七条）：`memory-group-refusal` 4 + `memory-write-refusal` 3 **7 passed（31.7 s）** · `git fetch` 首跑 TLS 断开（`GnuTLS recv error (-110)`），重试即通、`--ff-only` 已同步到 `66ead7e0a` · 端口只用 9391（服务端）与 8991（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r225-e2e`，探针 / 两态截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r225/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `49a8ea098` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -25299,3 +25310,88 @@ expect 超时（15 s）里反复重试，于是它等到六秒后通知自己过
 ### 提交
 
 `fix(web)` 一笔：`3d6d24ec7`（三份源码 + 三份 spec + changelog 一对 = 8 个文件）；台账另起一笔。
+
+## 第二百二十五轮：没打开的那条记忆，原因留在它自己那一行（2026-11-12，条目 7.112）
+
+### 开工自检
+
+- `git status --short` 干净、`main` 与 `origin/main` 同一笔（`66ead7e0a`）。第一次 `git fetch origin` 断在 TLS
+  （`GnuTLS recv error (-110): The TLS connection was non-properly terminated.`），重试一次即通，`--ff-only`
+  合并报 `Already up to date`。没有切分支、没碰 `legacy/main`、没推 upstream。
+- 表上 7.x 已无未勾选条目（`awk` 数过：第 7 节里一个 `- [ ]` 也没有），第 5 节剩下的 5.6 / 5.10 与 2.2c /
+  3.5 / 3.6 各自卡在「要用户拍板」「要 key」「桌面壳」上（4.1–4.3 按纪律不动），于是接第二百二十四轮末尾
+  点名留给「它自己一轮」的那一件。
+
+### 选活：这句话归行还是归组 —— 行
+
+- 第二百二十四轮把它留成一道没有答案的问题：「打开一条记忆被拒时仍弹通知；没有宿主（面板没开、行上没有
+  位置），要做得先定这句话归行还是归组」。
+- 答案是**行**。理由不在措辞上，在动作的归属上：眼睛按钮是**那一行自己的**动作（同一行还有编辑与删除），
+  面板没打开就不存在任何面板可以承接这句话 —— 而那一行原样还在，按钮就在原地，它本身就是重试。这与
+  7.101（技能「打包导出」）、7.103（钩子「打包导出」）是同一个形状：读失败、页面一处未变、发问的那一行是
+  唯一的落点。归组则会说成「记忆组『用户记忆』没有打开……」，读的人点的是其中某一条。
+- 行的槽也不是凭空来的：`ListRow` 此前只有 title / description / meta / trailing，没有整行的一行说明的
+  位置（`CollapsibleSection` 有 `notice`，行没有）。所以这一笔给 `ListRow` 加了一个可选 `notice`，画在行
+  标签之内、行的横线之上 —— 横线属于行标签本身，只有把句子放进标签里，它才排在横线**之上**，而 `w-full`
+  让它自己占一行、不会去挤旁边的文字列。
+
+### 做了什么
+
+- `packages/web/src/features/agents/memory-file-refusal.ts`（新增）：`MemoryFileRefusal`（`scopeKey` +
+  `fileName` + `text`）、`memoryViewRefused(title, error)`（原因走 `refusalText`，与全应用一致）、
+  `memoryFileRefusalFor(refusal, scopeKey, fileName)`（认 key 与文件名，不认标题：标题是标签，两条记忆可能
+  同名，两个工作区的末段也可能同名）。文件头写清「为什么宿主是行、为什么这句话可以说『什么都没改』」——
+  打开只读一个文件。
+- `packages/web/src/features/agents/memory-tab.tsx`：`openView` 每次尝试开始先清掉上一句，失败时写进
+  `viewRefusal` 而不是 `toastError`（这一页不再 import 它）；`fileRow` 把该行那一句交给 `notice`，带上
+  `role="alert"` 与 `data-testid="memory-file-refusal"`；页首那条「打开记忆走通知」的旧注释改写。
+- `packages/ui/src/components/data/list-row/list-row.tsx`：`notice` 槽（组件头的说明补一段「为什么是整行、
+  为什么在标签内」）。
+- `packages/web/src/lib/strings{,-en}.ts`：`memory.viewRefused(title, reason)` 各一句。
+- 单测：`packages/web/test/memory-file-refusal.test.ts`（9 条，含「另一行 / 另一组读不到」与两种语言）、
+  `packages/ui/test/list-row.test.ts` 加 2 条（`notice` 是行标签的最后一个子节点、没有拒绝时不出现）。
+- spec：`packages/web/e2e/memory-view-refusal.spec.mjs`（2 条，真服务端 + 真浏览器）。
+- changelog 一对（`2026-11-12-memory-view-refusal{,.zh}.md`）。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型）。
+- `oxlint` 8 个改动文件 **0 警告 0 错误**；`prettier --check` 10 个文件干净（首跑 `memory-tab.tsx` 与 spec 各
+  `--write` 一次，复检通过）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103**（+2） · cli **39 / 566**
+  · server **212 文件 / 3110 通过 / 6 跳过** · web **316 文件 / 3683 通过 / 2 跳过**（+1 文件 / +9 条）。
+- **新 spec 2 passed（9.5 s + 2.5 s）**：真服务端（9391、数据根 `/root/adelie-fork-data/r225-e2e`）+ 真浏览器
+  （`/usr/bin/chromium`；仓库自带配置要求的那版 headless shell 本机没装）。被拒的那条读：句子只出现一次、就在
+  那一行里、逐字是「记忆「Probe view memory」没有打开，打开只是读取，记忆一条都没有被改动：服务器内部错误，请稍后
+  重试。」、通知区 0 条、面板没开、七秒后仍在、两条记忆与磁盘上逐项相同；放行后同一颗眼睛按钮 → 句子归 0、面板
+  打开、记忆原样。第二条：先被拒的句子被下一次尝试（另一条记忆）盖掉。
+- **反证**：把 `memory-tab.tsx` 退回 `HEAD`（改后源码留底 `r225/after/`）、重建 web，同一份 spec **2 failed**，
+  两条都死在 `getByTestId("memory-file-refusal")` 的 `toHaveCount(1)`（`Received: 0`）；放回、重建后 **2 passed**。
+- **两态探针**（`r225/probe.mjs`，同一脚本、同一页面、只按两版都有的东西取数）：**改前** 1.2 s 通知区一个按钮、
+  文字逐字「服务器内部错误，请稍后重试。」（`htmlLength` 388），7.5 s 通知区空了（0 个按钮、36 字符），`role=alert`
+  一条也没有，行高 58.5625；**改后** 1.2 s 与 7.5 s 都是同一条 `role=alert`（`insideRow: true`，y 465.125、高 16），
+  行高 82.5625、行的底边 491.125 在句子底边 481.125 之下，通知区 0 个按钮；放行后重试那一刻 `alerts: 0`、面板打开、
+  行高回到 58.5625。截图 `r225/out/{before,after}-01-1_2s.png`、`after-03-retried.png` 肉眼看过。两态 console 都只有
+  按设计的 `GET …/machines` 403 与本轮桩的 500，pageerror **0 条**。
+- **相邻回归**（真浏览器，记忆一族两份 spec、七条）：`memory-group-refusal` 4 + `memory-write-refusal` 3
+  **7 passed（31.7 s）**。
+- 端口只用 9391（服务端）与 8991（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落 `/root/adelie-fork-data/r225-e2e`，探针 / 两态截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置
+  都在 scratchpad 的 `r225/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- **`memory-tab.tsx` 的 `openView` 与组那一侧的槽各管各的**：同一刻页面上可能一条行内句子（读取失败）与一条
+  组内句子（整组导出 / 导入失败）同时存在 —— 两个槽本来就分属两组不同的动作，这一轮没有把它们合并成一个。
+- 同一份清单里还剩的**别的手势**：`chat-page.tsx` 的「撤回 steering」「转到后台」「换权限档」、设置里的快捷键
+  写盘、更新流程，仍然**没有确定的宿主**（与第二百一十二 / 二百一十四 / 二百二十 / 二百二十一 / 二百二十二 /
+  二百二十三 / 二百二十四轮记的是同一批）。
+- `memory-tab.tsx` 的折叠状态 localStorage 键还叫 `penguin.memoryCollapsed.…`（2.1c 改名时的遗留，只影响本机已存
+  的折叠状态），不在本笔范围。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔：`49a8ea098`（ui 组件 + 它的用例 + 记忆页 + 新模块 + 两处文案 + 新单测 + 新 spec + changelog
+一对 = 10 个文件，+548 −19）；台账另起一笔。
