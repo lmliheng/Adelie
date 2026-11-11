@@ -2545,6 +2545,13 @@ export const zh = {
     exportScope: "导出",
     exportScopeHint: "将该组全部记忆下载为一份 JSON 文档",
     exportScopeLabel: (scope: string): string => `导出${scope}`,
+    /**
+     * An export the download refused (memory-export-refusal.ts), drawn in the group that asked.
+     * Says the export only reads, because that is the one moment a reader wonders whether the
+     * attempt touched the memories; the reason goes last, as in every other refusal sentence.
+     */
+    exportRefused: (scope: string, reason: string): string =>
+      `记忆组「${scope}」没有导出成文档，导出只是读取，记忆一条都没有被改动：${reason}`,
     importScope: "导入",
     importScopeHint: "从导出的 JSON 文档恢复记忆到该组",
     importScopeLabel: (scope: string): string => `导入到${scope}`,

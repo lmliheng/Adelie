@@ -793,9 +793,9 @@ const memoryScopeBase = (projectId: string, agentId: string, scopeKey: string) =
 
 /**
  * One scope as a transfer document. Fetched as ordinary JSON rather than followed as a download
- * link so a failure arrives as an ApiError and reaches the user as a toast — a bare `<a download>`
- * would save the error body as a file (the skills tab hit the same wall). The server still sets
- * Content-Disposition, for anyone opening the URL directly.
+ * link so a failure arrives as an ApiError and is shown in the group that asked — a bare
+ * `<a download>` would save the error body as a file (the skills tab hit the same wall). The server
+ * still sets Content-Disposition, for anyone opening the URL directly.
  */
 export const exportMemoryScope = (projectId: string, agentId: string, scopeKey: string) =>
   apiFetch<MemoryScopeExport>(`${memoryScopeBase(projectId, agentId, scopeKey)}/export`);

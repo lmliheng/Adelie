@@ -74,6 +74,8 @@ import { placeholderInsertRefused } from "./placeholder-insert-refusal";
 import { useSaveConfirm } from "./save-confirm";
 import { useAiBridge } from "../ai-create";
 import { buildMemoryAddPrompt, buildMemoryEditPrompt } from "./memory-chat-prompts";
+import { memoryExportRefusalFor, memoryExportRefused } from "./memory-export-refusal";
+import type { MemoryExportRefusal } from "./memory-export-refusal";
 import {
   MemoryDocumentError,
   memoryDocumentFileName,
@@ -132,6 +134,16 @@ interface Selected {
   file: MemoryFileInfo;
 }
 
+/**
+ * A group's name in the interface: user memory, or a Workspace's last path segment (its key as a
+ * last resort). Module level because the export refusal names the group it was made for, and that
+ * sentence is built where the attempt fails — during a render that may have returned early.
+ */
+const scopeTitle = (scope: MemoryScopeInfo): string =>
+  scope.kind === "user"
+    ? S.memory.userScope
+    : (scope.workspacePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? scope.scopeKey);
+
 export function MemoryTab({
   agentId,
   onConfigChanged,
@@ -162,6 +174,10 @@ export function MemoryTab({
   // The server's words for a refused placeholder write, drawn under the strip that asked: the
   // template still has no {{MEMORY}}, so the strip and its button stay and that button is the retry.
   const [insertRefusal, setInsertRefusal] = useState<string | null>(null);
+  // The reason an export that did not land left in the group that asked (memory-export-refusal.ts):
+  // the group's head strip, its export button and every memory are still there, so a notification
+  // that dismisses itself after six seconds is the one thing that would carry that reason away.
+  const [exportRefusal, setExportRefusal] = useState<MemoryExportRefusal | null>(null);
   const collapseKey = userId && projectId ? collapsedStoreKey(userId, projectId, agentId) : null;
   const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsedScopes(collapseKey));
   const [memoryPrompt, setMemoryPrompt] = useState("");
@@ -412,11 +428,17 @@ export function MemoryTab({
 
   /**
    * Downloads one group as a transfer document. Fetched as JSON and saved through an object URL
-   * rather than followed as a link, so a failed request becomes a toast instead of an error body
-   * saved to disk (the skills tab's export made the same call).
+   * rather than followed as a link, so a failed request stays a value this tab can show instead of
+   * an error body saved to disk (the skills tab's export made the same call).
+   *
+   * A refusal leaves its reason in the group that asked (memory-export-refusal.ts): the group, its
+   * export button and every memory are still on screen, so a six-second notification is the one
+   * thing that would carry the reason away. Starting an attempt clears the previous sentence — it
+   * belonged to the attempt before, not to the group this one is about.
    */
   const exportScope = async (scope: MemoryScopeInfo) => {
     if (!projectId) return;
+    setExportRefusal(null);
     try {
       const doc = await api.exportMemoryScope(projectId, agentId, scope.scopeKey);
       const url = URL.createObjectURL(
@@ -430,7 +452,10 @@ export function MemoryTab({
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setExportRefusal({
+        scopeKey: scope.scopeKey,
+        text: memoryExportRefused(scopeTitle(scope), e),
+      });
     }
   };
 
@@ -533,11 +558,6 @@ export function MemoryTab({
   };
 
   if (error) return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
-
-  const scopeTitle = (scope: MemoryScopeInfo): string =>
-    scope.kind === "user"
-      ? S.memory.userScope
-      : (scope.workspacePath?.split(/[\\/]/).filter(Boolean).at(-1) ?? scope.scopeKey);
 
   // Icon-only row actions (the skills tab's affordance: neutral bordered icons, danger
   // variant with red text/hover for delete); the tooltip + aria-label carry the wording.
@@ -656,6 +676,7 @@ export function MemoryTab({
         <div className={enabled ? "space-y-4" : "space-y-4 opacity-60"}>
           {groups.map(({ scope, files }) => {
             const open = !collapsed.has(scope.scopeKey);
+            const refusal = memoryExportRefusalFor(exportRefusal, scope.scopeKey);
             return (
               /* One collapsible section per scope: the head strip folds the group; the group's
                  own actions sit after the toggle, outside it, since a button cannot hold
@@ -684,6 +705,23 @@ export function MemoryTab({
                 meta={S.memory.itemCount(files.length)}
                 open={open}
                 onOpenChange={() => toggleCollapsed(scope.scopeKey)}
+                notice={
+                  /* An export this group offered that did not land: the head strip (and the button
+                     that retries it) is on the card whether the group is folded or not, so the
+                     reason sits under that strip rather than in a notification that dismisses
+                     itself (memory-export-refusal.ts). */
+                  refusal !== undefined ? (
+                    <p
+                      role="alert"
+                      data-testid="export-refusal"
+                      data-tooltip={refusal}
+                      data-tooltip-content="text"
+                      className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+                    >
+                      {refusal}
+                    </p>
+                  ) : undefined
+                }
                 actions={
                   /* Whole-group transfer, icon + label (the labels are what say which way a
                      transfer goes, wherever the row is wide enough to keep them): export for any

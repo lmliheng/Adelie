@@ -17,6 +17,10 @@
  * One long line would make the column wider than the card: every row in the section would run past
  * its edge, and the card would clip each row's actions.
  *
+ * The `notice` slot sits between the head strip and the fold, inside the card and outside the
+ * folded body — a line the section itself has to show (a refusal of what its head offered) stays
+ * readable while the body is folded, which is exactly when the head's buttons are all that shows.
+ *
  * Open or folded is the caller's when it passes `open` (a page that remembers it), the section's
  * own otherwise, starting from `defaultOpen`.
  */
@@ -33,6 +37,8 @@ export interface CollapsibleSectionProps {
   meta?: ReactNode;
   /** The section's own controls, after the toggle. */
   actions?: ReactNode;
+  /** A line the section has to show, between the head strip and the body: visible while folded. */
+  notice?: ReactNode;
   /** Whether the body shows, when the caller keeps it. */
   open?: boolean;
   /** Where an uncontrolled section starts. */
@@ -48,6 +54,7 @@ export function CollapsibleSection({
   leading,
   meta,
   actions,
+  notice,
   open: openProp,
   defaultOpen = true,
   onOpenChange,
@@ -82,6 +89,11 @@ export function CollapsibleSection({
         </button>
         {actions !== undefined && <div className="flex shrink-0 items-center gap-1">{actions}</div>}
       </div>
+      {notice !== undefined && (
+        <div data-slot="notice" className="border-t border-line-muted px-3 py-2">
+          {notice}
+        </div>
+      )}
       <div
         data-slot="body"
         data-layout-motion

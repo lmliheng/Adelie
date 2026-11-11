@@ -49,4 +49,20 @@ describe("CollapsibleSection", () => {
   it("follows the caller's open over its own default", () => {
     expect(render({ open: false, defaultOpen: true })).toContain('aria-expanded="false"');
   });
+
+  it("draws a notice inside the card and outside the fold, so folding keeps it readable", () => {
+    const notice = createElement("p", { role: "alert" }, "not exported");
+    for (const html of [render({ notice }), render({ notice, defaultOpen: false })]) {
+      const head = html.indexOf('data-slot="head"');
+      const slot = html.indexOf('data-slot="notice"');
+      const body = html.indexOf('data-slot="body"');
+      expect(head).toBeGreaterThan(-1);
+      // After the head strip (the buttons that asked), before the body it does not fold with.
+      expect(head).toBeLessThan(slot);
+      expect(slot).toBeLessThan(body);
+      expect(html).toContain('<p role="alert">not exported</p>');
+    }
+    // No slot, no empty strip: the card reads exactly as it did before the prop existed.
+    expect(render({})).not.toContain('data-slot="notice"');
+  });
 });
