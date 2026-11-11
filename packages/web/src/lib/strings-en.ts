@@ -2491,9 +2491,15 @@ export const en: Strings = {
     exportScope: "Export",
     exportScopeHint: "Download every memory in this group as one JSON document",
     exportScopeLabel: (scope: string): string => `Export ${scope}`,
-    /** An export the download refused (memory-export-refusal.ts), drawn in the group that asked. */
+    /** An export the download refused (memory-group-refusal.ts), drawn in the group that asked. */
     exportRefused: (scope: string, reason: string): string =>
       `The memory group "${scope}" was not exported as a document — an export only reads, so no memory was changed: ${reason}`,
+    /**
+     * A picked file the import never got to read (memory-group-refusal.ts), drawn in the group
+     * whose import control picked it.
+     */
+    importRefused: (scope: string, reason: string): string =>
+      `The memory group "${scope}" was not imported — this file could not be read, so no memory was changed: ${reason}`,
     importScope: "Import",
     importScopeHint: "Restore memories into this group from an exported JSON document",
     importScopeLabel: (scope: string): string => `Import into ${scope}`,

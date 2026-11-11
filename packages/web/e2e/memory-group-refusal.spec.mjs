@@ -1,14 +1,18 @@
 /**
- * Regression: a memory group's "Export" that the download refused leaves its reason inside the
+ * Regression: a memory group's whole-group attempt that did not land leaves its reason inside the
  * group that asked, instead of only in a notification that dismisses itself after six seconds.
+ * Two directions share that slot — an "Export" the download refused (7.109) and a picked file the
+ * import never got to read (7.110).
  *
- * The export is a plain fetch of one scope's transfer document: nothing is written on the server,
- * no memory moves and no client state changes, so a refusal leaves the group, its export button and
- * every memory on screen. That is exactly where the reason belongs (7.19's rule) — before this,
- * `exportScope` answered with `toastError`, and a reader who looked away had no file and nothing
- * saying why. The Skills (7.101), Hooks (7.103) and plugin card (7.107) twins are the same family;
- * this one hangs off a folded section, so its reason sits in `CollapsibleSection`'s `notice` slot —
- * inside the card, under the head strip, and visible while the group is folded.
+ * An export is a plain fetch of one scope's transfer document: nothing is written on the server, no
+ * memory moves and no client state changes, so a refusal leaves the group, its export button and
+ * every memory on screen. A picked file that is not a document stops even earlier — the parse runs
+ * in the page, so not a single request leaves it. Both times the reason belongs where the attempt
+ * was made (7.19's rule); before this, each answered with `toastError`, and a reader who looked away
+ * had either no file or an unopened dialog and nothing saying why. The Skills (7.101), Hooks (7.103)
+ * and plugin card (7.107) twins are the same family; this one hangs off a folded section, so its
+ * reason sits in `CollapsibleSection`'s `notice` slot — inside the card, under the head strip, and
+ * visible while the group is folded.
  *
  * The memory is seeded through the export document the import route accepts (the tab has no "new
  * file" form by design: a memory's text is the model's document). The refused download is the
@@ -91,8 +95,8 @@ const exportButton = (page) => page.getByRole("button", { name: `导出${SCOPE}`
 /** The group's card: the export button's head strip, then the section itself. */
 const groupCard = (page) => exportButton(page).locator("xpath=../../..");
 
-/** The reason line inside that card. */
-const refusalLine = (page) => page.getByTestId("export-refusal");
+/** The reason line inside that card (one slot, whichever direction put the sentence there). */
+const refusalLine = (page) => page.getByTestId("memory-refusal");
 
 /** The notification region: a refusal must not be announced there (that is the old toast). */
 const notifications = (page) => page.getByRole("region", { name: "通知" });
@@ -133,14 +137,14 @@ test("a refused export keeps its reason in the group, folded or not, and nothing
   await expect(refusalLine(page)).toHaveText(
     `记忆组「${SCOPE}」没有导出成文档，导出只是读取，记忆一条都没有被改动：${REASON}`,
   );
-  await expect(groupCard(page).getByTestId("export-refusal")).toHaveCount(1);
+  await expect(groupCard(page).getByTestId("memory-refusal")).toHaveCount(1);
   expect(await groupCard(page).locator('[data-slot="head"]').innerText()).toBe(headLine);
   await expect(notifications(page).getByRole("button")).toHaveCount(0);
   expect(state.seen).toHaveLength(1);
   expect(state.seen[0]).toMatch(/\/memory\/scopes\/user\/export$/);
 
   // One group, one sentence: no other card grew one.
-  await expect(page.getByTestId("export-refusal")).toHaveCount(1);
+  await expect(page.getByTestId("memory-refusal")).toHaveCount(1);
 
   // Six seconds is where the old toast gave up; the sentence is still there.
   await page.waitForTimeout(7000);
@@ -189,4 +193,86 @@ test("the retry after a refused export lands, and only a new attempt clears the 
   // A refused export changed neither side: the memory is still listed and still on disk.
   await expect(page.getByText(TITLE, { exact: true })).toBeVisible();
   expect(await files()).toEqual(before);
+});
+
+test("a picked file that is not a memory document keeps its reason in the group that picked it", async ({
+  page,
+}) => {
+  const { files } = await projectWithMemory(page, "r223memimportrefuse", "What the group held.");
+  const before = await files();
+
+  // Watch the whole conversation: this refusal happens before any request, and that is the claim.
+  const requests = [];
+  page.on("request", (r) => requests.push(`${r.method()} ${new URL(r.url()).pathname}`));
+
+  await page.goto(`/agents/${AGENT}?tab=memory`);
+  await expect(page.getByText(TITLE, { exact: true })).toBeVisible();
+  await expect(refusalLine(page)).toHaveCount(0);
+  const headLine = await groupCard(page).locator('[data-slot="head"]').innerText();
+  const importModal = page.getByRole("dialog", { name: "导入记忆" });
+  const importInput = groupCard(page).locator('input[type="file"]');
+
+  // The group's own import control takes a file that is not a transfer document: the parse stops
+  // in the page, so the import dialog never opens and the only thing that can say why is this line.
+  await importInput.setInputFiles({
+    name: "notes.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("not a memory document at all\n"),
+  });
+
+  await expect(refusalLine(page)).toHaveCount(1);
+  await expect(refusalLine(page)).toHaveText(
+    `记忆组「${SCOPE}」没有导入，这个文件没有读成，记忆一条都没有被改动：这个文件不是记忆导出文件。`,
+  );
+  await expect(groupCard(page).getByTestId("memory-refusal")).toHaveCount(1);
+  await expect(importModal).toHaveCount(0);
+  expect(await groupCard(page).locator('[data-slot="head"]').innerText()).toBe(headLine);
+  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+  // The refusal happened before any request: nothing about this group was written, or even asked.
+  expect(requests.filter((line) => line.startsWith("POST ") && line.includes("/memory/"))).toEqual(
+    [],
+  );
+
+  // One group, one sentence — and folded, the head strip is all that shows while it stays readable.
+  await expect(page.getByTestId("memory-refusal")).toHaveCount(1);
+  await groupCard(page).getByRole("button", { expanded: true }).first().click();
+  await expect(groupCard(page).locator('[data-slot="body"]')).toHaveClass(/grid-rows-\[0fr\]/);
+  await expect(refusalLine(page)).toBeVisible();
+
+  // Six seconds is where the old toast gave up; the sentence is still there.
+  await page.waitForTimeout(7000);
+  await expect(refusalLine(page)).toHaveCount(1);
+
+  // The same control with a real document: the sentence goes and the import dialog opens, so the
+  // retry really is the control that asked rather than a fresh trip to the file picker.
+  await importInput.setInputFiles({
+    name: "user-memory.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify(documentFor("A real document."))),
+  });
+  await expect(refusalLine(page)).toHaveCount(0);
+  await expect(importModal).toBeVisible();
+
+  // Nothing was written by the refused pick: the group on disk is exactly as it was.
+  expect(await files()).toEqual(before);
+});
+
+test("one group shows one sentence, whichever direction wrote it last", async ({ page }) => {
+  await projectWithMemory(page, "r223memoneslot", "Kept until it is exported.");
+  const state = { seen: [], refuse: true };
+  await interceptExport(page, state);
+
+  await page.goto(`/agents/${AGENT}?tab=memory`);
+  await expect(page.getByText(TITLE, { exact: true })).toBeVisible();
+  await exportButton(page).click();
+  await expect(refusalLine(page)).toHaveCount(1);
+
+  // Then a pick fails for a different reason: the slot carries the later attempt, not both.
+  await groupCard(page)
+    .locator('input[type="file"]')
+    .setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("nope") });
+  await expect(page.getByTestId("memory-refusal")).toHaveCount(1);
+  await expect(refusalLine(page)).toHaveText(
+    `记忆组「${SCOPE}」没有导入，这个文件没有读成，记忆一条都没有被改动：这个文件不是记忆导出文件。`,
+  );
 });

@@ -74,10 +74,13 @@ import { placeholderInsertRefused } from "./placeholder-insert-refusal";
 import { useSaveConfirm } from "./save-confirm";
 import { useAiBridge } from "../ai-create";
 import { buildMemoryAddPrompt, buildMemoryEditPrompt } from "./memory-chat-prompts";
-import { memoryExportRefusalFor, memoryExportRefused } from "./memory-export-refusal";
-import type { MemoryExportRefusal } from "./memory-export-refusal";
 import {
-  MemoryDocumentError,
+  memoryExportRefused,
+  memoryGroupRefusalFor,
+  memoryImportRefused,
+} from "./memory-group-refusal";
+import type { MemoryGroupRefusal } from "./memory-group-refusal";
+import {
   memoryDocumentFileName,
   parseMemoryScopeDocument,
   planMemoryImport,
@@ -174,10 +177,11 @@ export function MemoryTab({
   // The server's words for a refused placeholder write, drawn under the strip that asked: the
   // template still has no {{MEMORY}}, so the strip and its button stay and that button is the retry.
   const [insertRefusal, setInsertRefusal] = useState<string | null>(null);
-  // The reason an export that did not land left in the group that asked (memory-export-refusal.ts):
-  // the group's head strip, its export button and every memory are still there, so a notification
-  // that dismisses itself after six seconds is the one thing that would carry that reason away.
-  const [exportRefusal, setExportRefusal] = useState<MemoryExportRefusal | null>(null);
+  // The reason one whole-group attempt did not land, kept in the group that asked
+  // (memory-group-refusal.ts): the group's head strip, the control that asked and every memory are
+  // still there, so a notification that dismisses itself after six seconds is the one thing that
+  // would carry that reason away. One slot for both directions — a later attempt supersedes it.
+  const [groupRefusal, setGroupRefusal] = useState<MemoryGroupRefusal | null>(null);
   const collapseKey = userId && projectId ? collapsedStoreKey(userId, projectId, agentId) : null;
   const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsedScopes(collapseKey));
   const [memoryPrompt, setMemoryPrompt] = useState("");
@@ -431,14 +435,14 @@ export function MemoryTab({
    * rather than followed as a link, so a failed request stays a value this tab can show instead of
    * an error body saved to disk (the skills tab's export made the same call).
    *
-   * A refusal leaves its reason in the group that asked (memory-export-refusal.ts): the group, its
+   * A refusal leaves its reason in the group that asked (memory-group-refusal.ts): the group, its
    * export button and every memory are still on screen, so a six-second notification is the one
    * thing that would carry the reason away. Starting an attempt clears the previous sentence — it
    * belonged to the attempt before, not to the group this one is about.
    */
   const exportScope = async (scope: MemoryScopeInfo) => {
     if (!projectId) return;
-    setExportRefusal(null);
+    setGroupRefusal(null);
     try {
       const doc = await api.exportMemoryScope(projectId, agentId, scope.scopeKey);
       const url = URL.createObjectURL(
@@ -452,27 +456,38 @@ export function MemoryTab({
       anchor.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      setExportRefusal({
+      setGroupRefusal({
         scopeKey: scope.scopeKey,
         text: memoryExportRefused(scopeTitle(scope), e),
       });
     }
   };
 
-  /** Reads the picked file and opens the import modal; a file that is not a document never gets that far. */
+  /**
+   * Reads the picked file and opens the import modal; a file that is not a document never gets that
+   * far. That refusal is this group's too (memory-group-refusal.ts): the file input is the group's
+   * own import control, so the attention line would float over a list while the reader is looking
+   * at the head strip that asked — and it would be gone in six seconds, leaving a pick that did
+   * nothing and nothing saying why.
+   */
   const pickImport = async (scope: MemoryScopeInfo, event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     // Cleared so picking the same file again still fires a change event.
     event.target.value = "";
     if (!file) return;
+    // A picked document starts without the previous attempt's reason, whichever direction it went.
+    setGroupRefusal(null);
     try {
       const doc = parseMemoryScopeDocument(await file.text());
       setImportMode("skip");
-      // A newly picked document starts without the previous attempt's reason.
+      // A newly picked document starts the dialog without the previous attempt's reason.
       setImportRefusal(null);
       setImporting({ scope, fileName: file.name, doc });
     } catch (e) {
-      toastError(e instanceof MemoryDocumentError ? e.message : S.memory.importInvalidFile);
+      setGroupRefusal({
+        scopeKey: scope.scopeKey,
+        text: memoryImportRefused(scopeTitle(scope), e),
+      });
     }
   };
 
@@ -676,7 +691,7 @@ export function MemoryTab({
         <div className={enabled ? "space-y-4" : "space-y-4 opacity-60"}>
           {groups.map(({ scope, files }) => {
             const open = !collapsed.has(scope.scopeKey);
-            const refusal = memoryExportRefusalFor(exportRefusal, scope.scopeKey);
+            const refusal = memoryGroupRefusalFor(groupRefusal, scope.scopeKey);
             return (
               /* One collapsible section per scope: the head strip folds the group; the group's
                  own actions sit after the toggle, outside it, since a button cannot hold
@@ -706,14 +721,15 @@ export function MemoryTab({
                 open={open}
                 onOpenChange={() => toggleCollapsed(scope.scopeKey)}
                 notice={
-                  /* An export this group offered that did not land: the head strip (and the button
-                     that retries it) is on the card whether the group is folded or not, so the
-                     reason sits under that strip rather than in a notification that dismisses
-                     itself (memory-export-refusal.ts). */
+                  /* A whole-group attempt this card offered that did not land — an export the
+                     server would not serve, or a file the import never got to read: the head strip
+                     (and the control that retries it) is on the card whether the group is folded or
+                     not, so the reason sits under that strip rather than in a notification that
+                     dismisses itself (memory-group-refusal.ts). */
                   refusal !== undefined ? (
                     <p
                       role="alert"
-                      data-testid="export-refusal"
+                      data-testid="memory-refusal"
                       data-tooltip={refusal}
                       data-tooltip-content="text"
                       className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}

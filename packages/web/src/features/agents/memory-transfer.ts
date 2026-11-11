@@ -18,7 +18,7 @@ import { S } from "../../lib/strings";
 const SCOPE_FORMAT: MemoryScopeExport["format"] = "penguin-memory-scope";
 const SCOPE_FORMAT_VERSION: MemoryScopeExport["version"] = 1;
 
-/** A picked file that is not a scope document. Its message is already localized, so callers toast it as is. */
+/** A picked file that is not a scope document. Its message is already localized, so the group that picked it shows it as is (memory-group-refusal.ts). */
 export class MemoryDocumentError extends Error {
   constructor(message: string) {
     super(message);
