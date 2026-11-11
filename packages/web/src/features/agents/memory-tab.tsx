@@ -168,7 +168,9 @@ export function MemoryTab({
   const [templateHasMemory, setTemplateHasMemory] = useState(true);
   const [memoryDir, setMemoryDir] = useState("");
   const [groups, setGroups] = useState<ScopeGroup[] | null>(null);
-  // Tab-level error is the initial load failure only; actions report via toast.
+  // Tab-level error is the initial load failure only; an action that has nowhere to keep its
+  // refusal — opening a memory, whose panel never got as far as opening — reports via toast, while
+  // the ones below that draw the sentence where they asked do not toast as well.
   const [error, setError] = useState<string | null>(null);
   const [switchBusy, setSwitchBusy] = useState(false);
   // The server's words for a flip of the memory switch it refused, drawn under that card: the
@@ -301,9 +303,10 @@ export function MemoryTab({
       onConfigChanged?.();
     } catch (e) {
       // Nothing moved: the switch shows what the server answered with, and a refused write has no
-      // answer — so the reason stays under the card, where the switch that retries it is.
+      // answer — so the reason stays under the card, where the switch that retries it is. No toast
+      // beside it: that line is the whole account of the refusal, and a second copy of it that
+      // dismisses itself after six seconds only adds noise above the card it came from.
       setSwitchRefusal(featureSwitchRefused(S.memory.switchNoun, next, refusalText(e)));
-      toastError(apiErrorText(e));
     } finally {
       setSwitchBusy(false);
     }
@@ -321,9 +324,9 @@ export function MemoryTab({
     } catch (e) {
       // Nothing was written, so the template still has no placeholder and the strip below stays —
       // that keeps the sentence next to the button that retries it (Memory has no legacy section
-      // to migrate, so the verb is always "insert").
+      // to migrate, so the verb is always "insert"). The strip and this line are on screen, so a
+      // notification carrying the same words would say it twice.
       setInsertRefusal(placeholderInsertRefused(S.memory.placeholderToken, false, refusalText(e)));
-      toastError(apiErrorText(e));
     }
   };
 
@@ -366,9 +369,9 @@ export function MemoryTab({
           onConfigChanged?.();
         })
         .catch((e: unknown) => {
-          toastError(apiErrorText(e));
           // Handed back to the save card, which keeps the reason under its own sentence
-          // (save-confirm.tsx) — the toast above would otherwise be the only trace of it.
+          // (save-confirm.tsx) — and nothing is toasted for it: that card is what the person is
+          // reading, and a notification beside it would repeat the sentence while outliving it.
           throw e;
         });
     });

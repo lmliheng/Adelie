@@ -28,19 +28,10 @@ import type {
   AgentSkillsConfigDto,
   AgentVaultConfigDto,
 } from "@adelie/server/api";
-import {
-  Button,
-  Card,
-  InfoPopover,
-  Notice,
-  Textarea,
-  ToggleRow,
-  toastError,
-  toastSuccess,
-} from "@adelie/ui";
+import { Button, Card, InfoPopover, Notice, Textarea, ToggleRow, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText, refusalText } from "../../lib/api-error";
+import { refusalText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
 import { useProject } from "../../state/project";
 import { featureSwitchRefused } from "./feature-switch-refusal";
@@ -179,9 +170,10 @@ export function usePromptInjection({
       onConfigChanged?.();
     } catch (e) {
       // The switch never moved (its position comes from the config the server answers with), so
-      // the reason stays beside it — and the switch itself is the retry.
+      // the reason stays beside it — and the switch itself is the retry. Nothing is toasted as
+      // well: the line is the whole account, and a copy of it that dismisses itself after six
+      // seconds would only be noise above the card it came from.
       setSwitchRefusal(featureSwitchRefused(strings.switchNoun, next, refusalText(e)));
-      toastError(apiErrorText(e));
     } finally {
       setSwitchBusy(false);
     }
@@ -210,7 +202,8 @@ export function usePromptInjection({
       onConfigChanged?.();
     } catch (e) {
       // Nothing was written — the template the strip is drawn from is unchanged — so the sentence
-      // belongs under that strip, where the button that retries it still is.
+      // belongs under that strip, where the button that retries it still is. The strip carries it,
+      // so a notification would say the same thing a second time.
       setInsertRefusal(
         placeholderInsertRefused(
           promptStrings.placeholderToken,
@@ -218,7 +211,6 @@ export function usePromptInjection({
           refusalText(e),
         ),
       );
-      toastError(apiErrorText(e));
     }
   };
 
@@ -234,9 +226,9 @@ export function usePromptInjection({
           onConfigChanged?.();
         })
         .catch((e: unknown) => {
-          toastError(apiErrorText(e));
           // Handed back to the save card, which keeps the reason under its own sentence
-          // (save-confirm.tsx) — the toast above would otherwise be the only trace of it.
+          // (save-confirm.tsx) — and nothing is toasted for it: that card is what the person is
+          // reading, and a notification beside it would repeat the sentence while outliving it.
           throw e;
         });
     });

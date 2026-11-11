@@ -46,7 +46,6 @@ import {
   Tabs,
   Textarea,
   UpdateDot,
-  toastError,
   toastInfo,
   toastSuccess,
 } from "@adelie/ui";
@@ -265,9 +264,10 @@ export function AgentSettingsPage() {
           void reloadAgents();
         }
       } catch (e) {
-        toastError(apiErrorText(e));
         // The save card asked for this write, so it is the card that says why (save-confirm.tsx):
-        // it waits on this promise and keeps the refusal under its own sentence.
+        // it waits on this promise and keeps the refusal under its own sentence — which is also
+        // why nothing is toasted here. The copy used to go to the notification region as well,
+        // where it repeated the same words and outlived the card by six seconds.
         throw e;
       }
     },

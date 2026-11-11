@@ -9,6 +9,12 @@
  * tab's own card and the card the Skills / Vault / Schedules / Hooks tabs share
  * (`usePromptInjection`), which are two separate code paths behind the same sentence.
  *
+ * The line is the whole account of the refusal, so nothing is also raised in the notification
+ * region: that copy repeated the same words above the card it came from and was gone six seconds
+ * later. "No notification" is read immediately after the line appears (see `expectNoToast`),
+ * because a retrying `toHaveCount(0)` would also pass once a toast had expired on its own — which
+ * is the behaviour this file exists to tell apart.
+ *
  * The refusal is injected where the page's own write is: `page.route` answers the config PUT with
  * the server's words instead of forwarding it, so the reason proved to be on screen is the one the
  * failed request carried. The code is one the app has no sentence for, so the server's own words
@@ -91,6 +97,18 @@ async function seedMemory(page, projectId, enabled) {
 const notifications = (page) => page.getByRole("region", { name: "通知" });
 
 /**
+ * Nothing was raised in the notification region for this refusal, read at once.
+ *
+ * `toHaveCount(0)` retries for the whole expect timeout, so it also passes against a toast that
+ * simply expired after six seconds — the very behaviour this file is about. This reads the count
+ * once, after a short settle so the refusal's own render has landed.
+ */
+async function expectNoToast(page) {
+  await page.waitForTimeout(400);
+  expect(await notifications(page).getByRole("button").count()).toBe(0);
+}
+
+/**
  * The line the card must draw, from the position the switch was in before the click: the sentence
  * names the direction that failed, and a refused flip leaves the switch where the server has it, so
  * the direction is never inferable from the screen afterwards.
@@ -129,9 +147,9 @@ test("a refused flip of the Memory switch keeps the reason under the card, and t
   await toggle.click();
 
   // The reason is under the card that asked, drawn as one sentence and not as a toast: the
-  // notification region holds no dismissible button while this line is on screen.
+  // notification region holds no dismissible button at all, read before any of them could expire.
   await expect(page.getByRole("alert")).toHaveText(line);
-  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+  await expectNoToast(page);
   expect(state.seen).toHaveLength(1);
   // Nothing moved, because nothing was written: the switch is still where the server has it.
   await expectUnmoved(toggle, wasOn);
@@ -167,7 +185,7 @@ test("a refused flip of the shared Skills switch keeps the reason under that car
   // Same shape as the Memory card above, and the same sentence builder — but a different tab and a
   // different write path (`usePromptInjection`), which is why both are asserted.
   await expect(page.getByRole("alert")).toHaveText(line);
-  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+  await expectNoToast(page);
   expect(state.seen).toHaveLength(1);
   await expectUnmoved(toggle, wasOn);
 

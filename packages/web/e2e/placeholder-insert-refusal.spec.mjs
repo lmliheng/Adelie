@@ -9,6 +9,10 @@
  * Memory's own strip and the one the Skills / Vault / Schedules tabs share
  * (`usePromptInjection`) — two different code paths behind the same sentence.
  *
+ * The strip carries the sentence, so nothing is also raised in the notification region; "no
+ * notification" is read immediately after the line appears (`expectNoToast`), since a retrying
+ * `toHaveCount(0)` would also pass once a toast had expired by itself.
+ *
  * A plain template is written first: the default template already carries every placeholder, so
  * there would be no strip to press. The refusal is injected where the page's own write is —
  * `page.route` answers the placeholder POST with the server's words instead of forwarding it — and
@@ -85,6 +89,18 @@ async function interceptInsert(page, projectId, feature, state) {
 /** The notification region: a refusal must not be announced there (that is the old toast). */
 const notifications = (page) => page.getByRole("region", { name: "通知" });
 
+/**
+ * Nothing was raised in the notification region for this refusal, read at once.
+ *
+ * `toHaveCount(0)` retries for the whole expect timeout, so it also passes against a toast that
+ * simply expired after six seconds — the very behaviour this file is about. This reads the count
+ * once, after a short settle so the refusal's own render has landed.
+ */
+async function expectNoToast(page) {
+  await page.waitForTimeout(400);
+  expect(await notifications(page).getByRole("button").count()).toBe(0);
+}
+
 test("a refused Memory placeholder insert keeps the reason under the strip, and the button retries", async ({
   page,
 }) => {
@@ -103,7 +119,7 @@ test("a refused Memory placeholder insert keeps the reason under the strip, and 
   // that asked are untouched, which is what makes that same button the retry.
   const line = `插入 {{MEMORY}} 占位符被拒：${REFUSAL.message}`;
   await expect(page.getByRole("alert")).toHaveText(line);
-  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+  await expectNoToast(page);
   await expect(insert).toBeVisible();
   expect(state.seen).toHaveLength(1);
 
@@ -138,7 +154,7 @@ test("a refused Skills placeholder insert keeps the reason under that strip, and
   // different write path (`usePromptInjection`), which is why both are asserted.
   const line = `插入 {{SKILLS}} 占位符被拒：${REFUSAL.message}`;
   await expect(page.getByRole("alert")).toHaveText(line);
-  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+  await expectNoToast(page);
   await expect(insert).toBeVisible();
   expect(state.seen).toHaveLength(1);
 
