@@ -6,6 +6,11 @@
  * A row that opens what it names takes `onClick`: the mark and the text become one button, and
  * the trailing actions stay outside it, since a button cannot hold another.
  *
+ * A row whose own action was refused takes `notice`: the sentence is drawn full width under the
+ * row's line, inside the row and above its rule, so the reason belongs to the row that holds the
+ * action to retry. Anything the caller puts there must not stretch the row: it is the row's own
+ * line, so it wraps rather than widening the text column beside it.
+ *
  * The text gives way and the actions never do. Title and description truncate to one line each,
  * whatever their length, and a cut-off line shows whole on hover through the app's tooltip layer,
  * which reads the line's own text, so it needs no attribute. The meta and the actions keep their
@@ -62,6 +67,11 @@ export interface ListRowProps {
   meta?: ReactNode;
   /** The row's own actions. */
   trailing?: ReactNode;
+  /**
+   * A whole line the row keeps under its text: the reason one of its own actions was refused,
+   * where the action that retries it still is.
+   */
+  notice?: ReactNode;
   /** Opens what the row names: the mark and the text become one button. */
   onClick?: () => void;
   /** `li` inside a `ul` or `ol`; a `div` otherwise (the default). */
@@ -75,6 +85,7 @@ export function ListRow({
   description,
   meta,
   trailing,
+  notice,
   onClick,
   as: Tag = "div",
   className = "",
@@ -117,6 +128,10 @@ export function ListRow({
           )}
         </div>
       )}
+      {/* The row's own line, under the text and inside the row's rule: `w-full` is what makes it
+          wrap there instead of widening the text column, and it stays inside the row's hover
+          surface so the reason reads as this row's. */}
+      {notice !== undefined && <div className="w-full">{notice}</div>}
     </Tag>
   );
 }

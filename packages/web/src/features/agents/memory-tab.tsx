@@ -56,7 +56,6 @@ import {
   UploadIcon,
   bodyWithoutFrontmatter,
   buttonClass,
-  toastError,
   toastSuccess,
   useCopied,
 } from "@adelie/ui";
@@ -74,6 +73,8 @@ import { placeholderInsertRefused } from "./placeholder-insert-refusal";
 import { useSaveConfirm } from "./save-confirm";
 import { useAiBridge } from "../ai-create";
 import { buildMemoryAddPrompt, buildMemoryEditPrompt } from "./memory-chat-prompts";
+import { memoryFileRefusalFor, memoryViewRefused } from "./memory-file-refusal";
+import type { MemoryFileRefusal } from "./memory-file-refusal";
 import {
   memoryExportRefused,
   memoryGroupRefusalFor,
@@ -168,9 +169,9 @@ export function MemoryTab({
   const [templateHasMemory, setTemplateHasMemory] = useState(true);
   const [memoryDir, setMemoryDir] = useState("");
   const [groups, setGroups] = useState<ScopeGroup[] | null>(null);
-  // Tab-level error is the initial load failure only; an action that has nowhere to keep its
-  // refusal — opening a memory, whose panel never got as far as opening — reports via toast, while
-  // the ones below that draw the sentence where they asked do not toast as well.
+  // Tab-level error is the initial load failure only: every action below keeps its refusal where it
+  // asked (the slots under this one), so nothing that fails once the page is up becomes a
+  // notification that dismisses itself.
   const [error, setError] = useState<string | null>(null);
   const [switchBusy, setSwitchBusy] = useState(false);
   // The server's words for a flip of the memory switch it refused, drawn under that card: the
@@ -184,6 +185,10 @@ export function MemoryTab({
   // still there, so a notification that dismisses itself after six seconds is the one thing that
   // would carry that reason away. One slot for both directions — a later attempt supersedes it.
   const [groupRefusal, setGroupRefusal] = useState<MemoryGroupRefusal | null>(null);
+  // The reason one memory did not open, kept in the row whose eye button asked
+  // (memory-file-refusal.ts): the panel never came up, so that row is the only thing left holding
+  // the read's retry — and a notification would carry the reason away after six seconds.
+  const [viewRefusal, setViewRefusal] = useState<MemoryFileRefusal | null>(null);
   const collapseKey = userId && projectId ? collapsedStoreKey(userId, projectId, agentId) : null;
   const [collapsed, setCollapsed] = useState<Set<string>>(() => readCollapsedScopes(collapseKey));
   const [memoryPrompt, setMemoryPrompt] = useState("");
@@ -378,13 +383,21 @@ export function MemoryTab({
 
   const openView = async (scope: MemoryScopeInfo, file: MemoryFileInfo) => {
     if (!projectId) return;
+    // A fresh attempt starts without the previous one's reason, whichever memory it was for.
+    setViewRefusal(null);
     try {
       const res = await api.getMemoryFile(projectId, agentId, scope.scopeKey, file.name);
       setSheetSnap("half"); // Every mobile open starts at the browsing height, like the chat panels.
       setViewing({ scope, file: res.file, content: res.content });
       setViewOpen(true);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // Handed to this row, which keeps the reason under its eye button — and nothing is toasted
+      // for it: the panel is what the person asked for, and it is not there to say anything.
+      setViewRefusal({
+        scopeKey: scope.scopeKey,
+        fileName: file.name,
+        text: memoryViewRefused(file.title, e),
+      });
     }
   };
 
@@ -607,20 +620,41 @@ export function MemoryTab({
   );
 
   // A memory's title is its file's identifier, so it keeps the data face on the code rung.
-  const fileRow = (scope: MemoryScopeInfo, file: MemoryFileInfo) => (
-    <ListRow
-      key={file.name}
-      as="li"
-      title={<span className="font-mono text-[length:var(--ui-text-code-size)]">{file.title}</span>}
-      description={file.description ? file.description : undefined}
-      meta={
-        <span className="tabular-nums">
-          {file.updatedAt ?? formatRelativeDate(file.modifiedAt, locale)}
-        </span>
-      }
-      trailing={rowActions(scope, file)}
-    />
-  );
+  const fileRow = (scope: MemoryScopeInfo, file: MemoryFileInfo) => {
+    const refusal = memoryFileRefusalFor(viewRefusal, scope.scopeKey, file.name);
+    return (
+      <ListRow
+        key={file.name}
+        as="li"
+        title={
+          <span className="font-mono text-[length:var(--ui-text-code-size)]">{file.title}</span>
+        }
+        description={file.description ? file.description : undefined}
+        meta={
+          <span className="tabular-nums">
+            {file.updatedAt ?? formatRelativeDate(file.modifiedAt, locale)}
+          </span>
+        }
+        trailing={rowActions(scope, file)}
+        /* A memory that did not open: this row still holds the eye button that retries it, so the
+           reason sits under the row rather than in a notification that dismisses itself
+           (memory-file-refusal.ts). */
+        notice={
+          refusal !== undefined ? (
+            <p
+              role="alert"
+              data-testid="memory-file-refusal"
+              data-tooltip={refusal}
+              data-tooltip-content="text"
+              className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+            >
+              {refusal}
+            </p>
+          ) : undefined
+        }
+      />
+    );
+  };
 
   /** Metadata + rendered body of the memory in view, shared by the Drawer and the Sheet. */
   const viewMeta = viewing && (

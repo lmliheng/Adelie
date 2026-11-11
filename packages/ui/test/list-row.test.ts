@@ -9,6 +9,8 @@
  *   ending in an ellipsis, and the line's hover hint carries all of it — never half a character.
  * - Given a description a row can show, it is rendered whole with no hint of its own (the
  *   tooltip layer shows a cut-off line's own text).
+ * - Given an action of the row's own that was refused, the reason is a line of its own inside the
+ *   row and above the row's rule, after the action that retries it.
  *
  * How rows fit their card at every width is measured in a browser: ui-gallery's
  * e2e/list-row-width.spec.mjs.
@@ -98,5 +100,27 @@ describe("ListRow", () => {
     expect(html).toMatch(
       /<button type="button" class="[^"]*"><span[^>]*><img[^>]*\/><\/span>(?:(?!<\/button>).)*case-01(?:(?!<\/button>).)*<\/button><div class="ml-auto[^"]*"><div[^>]*><button type="button" aria-label="Export">/,
     );
+  });
+
+  it("keeps a refused action's reason inside the row, on its own line above the row's rule", () => {
+    const html = renderStatic(
+      createElement(ListRow, {
+        as: "li",
+        title: "probe-memory.md",
+        onClick: () => {},
+        trailing,
+        notice: createElement("p", { role: "alert" }, "It did not open"),
+      }),
+    );
+    // The rule is the row tag's own border, so the reason has to be a child of that tag — and the
+    // last child, so nothing sits between it and the line it belongs under.
+    expect(html).toMatch(/<div class="w-full"><p role="alert">It did not open<\/p><\/div><\/li>$/);
+    // Under the action that retries it, which keeps the width it had.
+    expect(html.indexOf("It did not open")).toBeGreaterThan(html.indexOf('aria-label="Export"'));
+  });
+
+  it("draws no notice line when nothing was refused", () => {
+    const html = renderStatic(createElement(ListRow, { title: "pdf", trailing }));
+    expect(html).not.toContain('class="w-full"');
   });
 });

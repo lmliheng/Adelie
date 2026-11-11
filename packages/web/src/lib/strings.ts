@@ -2559,6 +2559,13 @@ export const zh = {
      */
     importRefused: (scope: string, reason: string): string =>
       `记忆组「${scope}」没有导入，这个文件没有读成，记忆一条都没有被改动：${reason}`,
+    /**
+     * A memory that did not open (memory-file-refusal.ts), drawn in the row whose eye button asked.
+     * Says the attempt only read, because a panel that fails to appear is exactly the moment a
+     * reader wonders whether the memory survived it; the reason goes last, as in every refusal.
+     */
+    viewRefused: (title: string, reason: string): string =>
+      `记忆「${title}」没有打开，打开只是读取，记忆一条都没有被改动：${reason}`,
     importScope: "导入",
     importScopeHint: "从导出的 JSON 文档恢复记忆到该组",
     importScopeLabel: (scope: string): string => `导入到${scope}`,

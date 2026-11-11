@@ -2500,6 +2500,9 @@ export const en: Strings = {
      */
     importRefused: (scope: string, reason: string): string =>
       `The memory group "${scope}" was not imported — this file could not be read, so no memory was changed: ${reason}`,
+    /** A memory that did not open (memory-file-refusal.ts), drawn in the row whose eye asked. */
+    viewRefused: (title: string, reason: string): string =>
+      `The memory "${title}" did not open — opening only reads, so no memory was changed: ${reason}`,
     importScope: "Import",
     importScopeHint: "Restore memories into this group from an exported JSON document",
     importScopeLabel: (scope: string): string => `Import into ${scope}`,
