@@ -25481,3 +25481,88 @@ expect 超时（15 s）里反复重试，于是它等到六秒后通知自己过
 
 `fix(web)` 一笔：`f493a86ac`（新模块 + 输入框 + 会话页 + 两处文案 + 新单测 + 新 spec + changelog 一对 = 9 个文件，
 +344 −3）；台账另起一笔。
+
+## 第二百二十七轮：自进化循环里正式发 0.6.7（2026-11-12，定时任务 01:00Z）
+
+### 为什么这一轮
+
+定时任务按 `/root/evolution/LOOP.md` 跑一轮：先在 `/root/adelie-fork` 跑四道门禁，再按阈值判断要不要发版。
+自 `v0.6.6`（2026-11-10）起 `main` 上落了 **10 笔用户看得见的改动**（阈值 10），四道门禁全绿 → 这一版发出去。
+
+### 这一版装了什么
+
+| 提交 | 内容 |
+| --- | --- |
+| `a5fa64263` | 记忆组的「导出」被拒时，原因留在那一组里（折叠段的 `notice` 槽） |
+| `04ef36dba` | 记忆组「导入」选中的文件读不成时，原因留在同一处 |
+| `3d6d24ec7` | 已经有地方留原因的拒绝不再重复弹一条通知（三份文件、七个调用点；成功的通知没动） |
+| `49a8ea098` | 记忆一行的「查看」被拒时，原因留在那一行里（`ListRow` 的 `notice` 槽） |
+| `f493a86ac` | 换权限档被拒时，原因留在输入卡上方 |
+| `5ebaf9a92` | 插件卡片「导出插件」被拒时，原因留在卡片上 |
+| `f3e624c2a` | 「推送整队机器」连开头都没做到时，错误中心记下项目与错误码 `fleet_sync_failed` |
+| `a71ae33fa` | 「保持连接」定时器里那次重试的失败记进错误中心（`machines_reconnect_failed`） |
+| `367fb0fdf` | 退役的那一代 machines 不再装重试定时器（热推落在 `start()` 的 await 中间时） |
+| `8ba92f074` | CLI 丢掉的响应体不再让整条命令崩掉（五处 `discardBody`） |
+
+### 四道门禁
+
+`/root/adelie-fork` @ `55025a8df`（本轮起点的干净树），原始输出在
+`/root/evolution/runs/2026-11-12-0100/gate-*.txt`：
+
+| 门禁 | 结果 | 用时 |
+| --- | --- | --- |
+| `pnpm typecheck` | 过（八包） | 164 s |
+| `pnpm lint` | 过，0 警告 0 错误（2483 文件 / 3 规则） | 3 s |
+| `pnpm format:check` | 过（All matched files use Prettier code style） | 91 s |
+| `pnpm -r test` | **10612 通过 / 20 跳过 / 0 失败** | 256 s |
+
+逐包通过数：server 3110（跳 6）、web 3688（跳 2）、core 1456（跳 6）、ui 1103、cli 566、desktop 315、
+ui-gallery 141、amsp 72、docs 62、sandbox-wsl 32、sandbox-bwrap 29、sandbox-dsh 21（跳 1）、
+sandbox-seatbelt 17（跳 5）。
+
+发布树 `/root/rel-067`（tag `v0.6.7`）上重跑全套（`build` → 四道 → 逐包测试，`maxWorkers=2`）：
+build 过、typecheck 过、lint 0/0、format 过、测试 **10612 通过 / 20 跳过 / 0 失败 / 0 条 unhandled rejection**，
+`ALL TESTS PASS`（655 s，`gate-rel067-tests.txt`）。上一版发版时 server 包那 3 条 unhandled rejection，
+正是这一版 `367fb0fdf` + `a71ae33fa` 修掉的那两条路径，这轮发布树里一条都没有了。
+
+### 发布链（`/root/rel-067`，`git worktree add --detach v0.6.7`）
+
+| 步骤 | 结果 |
+| --- | --- |
+| 提交 `6fefb873c`（37 个版本戳 + 发布正文 1） | `git push origin main` 第一次 300 s 超时（`curl 28`），重试成功 `55025a8df..6fefb873c` |
+| 标签 `v0.6.7` | 推送一次成功（`70ff7f38e`） |
+| `pnpm install --frozen-lockfile` | 过（5 s，store 命中） |
+| `stamp-067.sh` | VERSION 0.6.7 / BUILD_DATE 2026-11-12 / BUILD_COMMIT `6fefb873c`；install.sh·ps1 戳 v0.6.7 |
+| **`pnpm -r build`（stamp 之后再跑一次）** | 见下「这一轮踩到的」 |
+| 载荷（linux-x64 110M / universal 56M / win32-x64 144M） | 过 |
+| 三件安装包 + `validate-bundles.sh` | 过（成员集合、内层校验和、安装器逐字节一致、版本戳） |
+| 桌面三件（AppImage 155M / deb 122M / exe 162M + blockmap + latest*.yml） | 过（未签名，EVSign 跳过）；产物里 `BUILD_DATE = "2026-11-12"` |
+| npm **29 个名字** | 29 个成功、0 跳过、0 失败，`PUBLISH-ALL-DONE`（231 s） |
+| 草稿 Release → 14 件并发上传 → 逐件核 digest → 发布 | 14 件 uploaded、digest 与本地 sha256 全一致；`releases/latest` = v0.6.7（`2026-11-12T02:04:16Z`） |
+| 3003 下载区 `index.json` | 换到 v0.6.7（6 件，旧清单留 `.bak-20261112-v066`），本机那份 Windows 包一并换掉 |
+| 冒烟：`--archive` 装到 `/tmp/adelie-smoke067` | 「Adelie v0.6.7 installed」，`penguin --version` = v0.6.7，`lib/package.json` = 0.6.7，`BUILD_COMMIT` = `6fefb873c` |
+| 冒烟实例（端口 7796，临时数据根 `/tmp/smoke067-data`） | `/` 200 且标题是 `Adelie`；`/api/me` 401（未登录）；首登链接打印正常；跑完已停 |
+
+### 这一轮踩到的（留给下一版）
+
+- **`build` 必须在 `stamp` 之后再跑一次。** 这轮照旧先跑门禁（含 `pnpm -r build`）、后跑 `stamp`，结果
+  `packages/*/dist` 里 `BUILD_DATE`/`BUILD_COMMIT` 还是 `null` —— 而上一版发出去的 `@adelie/core@0.6.6`
+  里是 `"2026-11-10"`。发现后补跑了一次 `pnpm -r build`，并把载荷、安装包、桌面包**整套重做**，
+  发布树里逐件核过 `BUILD_DATE = "2026-11-12"`。下一版的脚本顺序应当改成
+  `stamp → build → 打包`，门禁可以留在 stamp 之前跑（它测的是源码）。
+- **脚本复制过来之后要 `sed` 掉内容里残留的旧编号。** `gates-067.sh` 里的 `tests-066.sh` 没有随文件名一起改，
+  发布树第一次跑门禁就是在这一句上失败的（`No such file or directory`，四道里前四步都过了）。
+- **npm 上 `@adelie/server@0.6.7` 一度是「版本记录在、tarball 404」。** 重发报
+  `409 Cannot publish over previously staged version`，`npm unpublish --force` 报 403
+  （granular token 绕 2FA 不许做这个动作），`npm stage list --json` 返回 `[]`（暂存记录对两把 token 都不可见）。
+  约 15 分钟后版本端点与 tarball 都变 200，`npm install -g @adelie/cli@0.6.7` 能把 server 拉下来 ——
+  只是传播慢，**不是暂存**，别照 409 那句话去审批。期间曾把 `@adelie/cli` 的 `latest` 临时指回 0.6.6，
+  确认后已改回 0.6.7。
+
+### 没做 / 留着
+
+- **现网 `/root/.adelie`（7777）没有换装、也没有重启。** 本会话就跑在 `adelie-server.service` 里，
+  重启会把这一轮掐死；换装与重启是要用户点头的事，留给用户或下一轮。
+- `/root/rel-067` 发布树与 `/tmp/adelie-smoke067`、`/tmp/smoke067-data` 收尾时清掉。
+- server 包那三条 unhandled rejection 的根因修复已经在 `v0.6.6` 之后落进 `main`，这一版带上了；
+  没有别的新账。
