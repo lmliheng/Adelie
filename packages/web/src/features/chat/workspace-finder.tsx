@@ -277,6 +277,14 @@ export function WorkspaceFinder({
    */
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  /**
+   * Why the removal the card asked for was refused, drawn inside that same card until the next
+   * attempt or until it is closed. The card's button is the retry: the refusal the server almost
+   * always gives here is "not empty", and emptying the folder and pressing the same button again
+   * is the whole fix — a toast would take the reason away with the card still standing (7.64's
+   * rule for a refused write).
+   */
+  const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
   /** The address bar is a path field (clicked, or ⌘⇧G) rather than breadcrumbs; the draft is what it holds. */
   const [addressEditing, setAddressEditing] = useState(false);
   const [addressDraft, setAddressDraft] = useState("");
@@ -626,20 +634,24 @@ export function WorkspaceFinder({
    */
   const askDelete = (path: string, onMachine: string | null) => {
     if (onMachine !== null) return;
+    // A fresh question: whatever the last card was refused for was about that folder.
+    setDeleteRefusal(null);
     setDeleteTarget(path);
   };
 
   /**
    * Removes the empty folder the card named. A folder that is not empty — the case the card
-   * warned about — comes back as its own refusal, shown as a toast: unlike a folder name there
-   * is nothing in the dialog to change, so the card closes on the reason rather than staying
-   * open on it. Afterwards the list is read again, since a folder that is gone must not stay on
-   * screen; when the folder removed was the one being browsed, the finder stands in its parent.
+   * warned about — comes back as its own refusal, and the card stays open on it: the button that
+   * sent it is the retry, and emptying the folder is done outside the card without losing it.
+   * Afterwards the list is read again, since a folder that is gone must not stay on screen; when
+   * the folder removed was the one being browsed, the finder stands in its parent.
    */
   const deleteFolder = () => {
     const target = deleteTarget;
     if (target === null || deleting) return;
     setDeleting(true);
+    // Any attempt makes the sentence about the last one stale, so it goes before this one can fail.
+    setDeleteRefusal(null);
     api
       .deleteDir(projectId, target)
       .then((res) => {
@@ -650,10 +662,7 @@ export function WorkspaceFinder({
         if (parent !== null) load(parent, { record: false });
         else refresh();
       })
-      .catch((err: unknown) => {
-        setDeleteTarget(null);
-        toastError(apiErrorText(err));
-      })
+      .catch((err: unknown) => setDeleteRefusal(refusalText(err)))
       .finally(() => setDeleting(false));
   };
 
@@ -1832,7 +1841,9 @@ export function WorkspaceFinder({
           assumed: the card names the folder, says the rule the server enforces (only an empty
           folder can go) and waits. It stacks over this dialog of its own accord — Modals are
           portaled to body and share one Escape stack — so one Escape closes the card and leaves
-          the finder where it was browsing. */}
+          the finder where it was browsing. The card also keeps the server's words when it
+          refuses the removal (`refusal`): "not empty" is something the user fixes in the folder
+          behind the card, then presses this same button again. */}
       <ConfirmModal
         open={deleteTarget !== null}
         title={f.deleteFolderTitle}
@@ -1840,8 +1851,12 @@ export function WorkspaceFinder({
         confirmLabel={S.common.delete}
         cancelLabel={S.common.cancel}
         busy={deleting}
-        onClose={() => setDeleteTarget(null)}
+        onClose={() => {
+          setDeleteTarget(null);
+          setDeleteRefusal(null);
+        }}
         onConfirm={deleteFolder}
+        {...(deleteRefusal !== null ? { refusal: S.common.refused(deleteRefusal) } : {})}
       >
         <p className="break-all text-sm text-gray-600 dark:text-gray-300">
           {deleteTarget !== null ? f.deleteFolderConfirm(baseName(deleteTarget)) : ""}
