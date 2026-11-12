@@ -2465,6 +2465,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       这就是一次改动悄悄没了。一次 PUT 带的是整份文档（含「全部恢复默认」），所以句子归**整页**、画在列表
       上方；`store` 记下写入方的原始失败值（抛出的、被拒的都算），由下一次尝试 / hydrate / 账号边界清掉。
       见「第二百二十八轮」一节。
+- [x] **7.115 快捷键没能从账号读取时，原因留在设置页顶部，不再什么都不说**
+      （**2026-11-12 第二百二十九轮**落地，提交见「已完成的轮次」；源码 5 处（`store.ts` 记账 + 三个读点、
+      `use-keymap.ts` 的新 hook、`shortcut-runtime.tsx` 把读的拒绝交给 store、`shortcuts-section.tsx` 顶部那一槽）+
+      一对文案（新增 `loadRefused(reason)`）+ 1 个新单测文件（9 条）+ 1 个新 spec（1 条）+ changelog 一对，
+      **不碰接口、无新依赖**）：第二百二十八轮末尾点名的「第一次 hydrate 失败仍然只在注释里写着『镜像照旧』」
+      —— 那一页此时显示的是本浏览器镜像，可能是**上一个账号的文档**，也可能只是默认值，而一次改动是**整份文档**
+      的一次 PUT（服务端对 `keybindings` 是整份替换、不是合并），所以读失败时改一条，能抹掉账号上还留着的覆盖。
+      两件事都写在句子里，画在它所解释的那些行之上；问题一旦落定（读到，或一次写入真正落地）就消失。
+      见「第二百二十九轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3197,6 +3206,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-12 | 7.112 | **没打开的那条记忆，原因留在它自己那一行**（第二百二十四轮末尾点名的那一件 —— 它当时留成「这句话归行还是归组」的一轮；答案是**行**：眼睛按钮是那一行自己的动作，面板没开就没有面板可以承接，而那一行的按钮仍在原地就是重试。不是移植：源码 3 处 —— 新增 `packages/web/src/features/agents/memory-file-refusal.ts`（`memoryViewRefused(title, error)` 走 `refusalText`（7.19 的规则）；`memoryFileRefusalFor(refusal, scopeKey, fileName)` 认分组的 key 与文件的名字、不认标题），`memory-tab.tsx` 的 `openView` 不再 `toastError` 而是记下 `{ scopeKey, fileName, text }`（每次尝试开始先清掉上一句）、`fileRow` 把它交给行；`packages/ui` 的 `ListRow` 多一个 `notice`（整行的说明，画在行内、行的横线之上，于是原因属于那一行而旁边的文字列宽度不动）；一对文案 `memory.viewRefused(title, reason)`；1 个新单测文件（9 条）+ `list-row.test.ts` 加 2 条 + 1 个新 spec（2 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约） · `oxlint` 8 个改动文件 **0 警告 0 错误** · `prettier --check` 10 个文件（含 spec 与 changelog 一对）干净（首跑 `memory-tab.tsx` 与 spec `--write` 一次，复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103**（+2 即本笔的 `notice` 用例，基线 1101） · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **316 文件 / 3683 通过 / 2 跳过**（+1 文件 / +9 条即本笔，基线 315 / 3674） · **新 spec** `memory-view-refusal.spec.mjs` **2 passed（9.5 s + 2.5 s，首跑 9.8 s / 2.6 s）**（真服务端 + 真浏览器，读取路由由 `page.route` 拒成 500 `internal` + 一句英文原文，每次都从 API 读回服务端那份记忆）：①被拒时句子**只在那一行里**（眼睛按钮的 `ancestor::li` 之内）、`role="alert"`、逐字「记忆「Probe view memory」没有打开，打开只是读取，记忆一条都没有被改动：服务器内部错误，请稍后重试。」、**通知区 0 条**、面板没开（整名「编辑」的那颗按钮 0 个）、**七秒后仍在**、两条记忆在磁盘上逐项与开始时相同；放行后同一颗眼睛按钮 → 句子归 0、面板打开、记忆仍原样。②先被拒的那一行紧接点开另一条记忆 → 一次尝试盖掉前一句（`memory-file-refusal` 归 0、面板打开） · **反证**：把 `memory-tab.tsx` 退回 `HEAD`（改后源码留底 `r225/after/`）、重建 web 产物，同一份 spec **2 failed**（两条都死在 `getByTestId("memory-file-refusal").toHaveCount(1)`：`unexpected value "0"`）；放回重建后 **2 passed** · **两态探针**（`r225/probe.mjs`，真服务端 **9391** + 真浏览器，一次性数据根 `/root/adelie-fork-data/r225-e2e`，同一脚本量 1.2 s / 7.5 s 两刻，只按两版都有的东西取数）：**改前** 1.2 s 通知区**一个按钮**、逐字「服务器内部错误，请稍后重试。」（`htmlLength` 388），7.5 s 通知区空了（0 个按钮、36 字符），`role=alert` 0 条、面板没开、行高 58.5625；**改后** 1.2 s 与 7.5 s 都是同一条 `role=alert`（`insideRow: true`，y 465.125 / 高 16），行高 82.5625、行的底边 491.125 在句子底边 481.125 之下（句子在行的横线之内），通知区 0 个按钮 / 36 字符；放行后重试的第三刻 `alerts: 0`、面板打开、行高回到 58.5625；截图 `r225/out/{before,after}-01-1_2s.png` 与 `after-03-retried.png` 肉眼看过（改前页顶一条白底通知、行没有变化；改后通知区空着，红字就在那条记忆的描述下面、卡片边界紧贴其后） · **console**：两态都只有按设计的 `GET …/machines` 403 与本轮桩出来的那条 500，pageerror **0 条** · **相邻回归**（真浏览器，记忆一族两份 spec、七条）：`memory-group-refusal` 4 + `memory-write-refusal` 3 **7 passed（31.7 s）** · `git fetch` 首跑 TLS 断开（`GnuTLS recv error (-110)`），重试即通、`--ff-only` 已同步到 `66ead7e0a` · 端口只用 9391（服务端）与 8991（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r225-e2e`，探针 / 两态截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r225/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `49a8ea098` |
 | 2026-11-12 | 7.113 | **换权限档被拒时，原因留在输入框上方，不再只活六秒**（第二百二十五轮末尾点名那一族手势的第一处，与 7.95 同形；不是移植：源码 3 处 —— 新增 `packages/web/src/features/chat/permission-refusal.ts`（`permissionRefused(error)` 走 `refusalText`，并说清会话仍是原来的权限），`chat-page.tsx` 的 `onChangePermission` 把拒绝写进按 sessionId 归属的 `permissionRefusal`（每次尝试开始先清掉上一句）、不再 `toastError`，`chat-input.tsx` 多一个可选的 `permissionRefusal` 画在卡片上方（`role="alert"`、危险色、限两行、整句挂悬停、`data-testid="permission-refusal"`）；一对文案；1 个新单测文件（5 条）+ 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 7 个改动文件 **0 警告 0 错误** · `prettier --check` 7 个文件与 changelog 一对干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **317 文件 / 3688 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 316 / 3683）· **新 spec 1 passed（9.7 s）**（真服务端 9401 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r226-e2e`，PATCH 由 `page.route` 拒成 500）：句子在卡片上方、逐字「没能切换权限（会话仍是原来的权限）：服务器内部错误，请稍后重试。」、七秒后仍在、通知区不含线上英文原话、按钮退回「权限: 总是询问」、服务端那一行仍是 `always-ask`、只发过一次 PATCH；同一次重试写成功后句子归零、按钮变「权限: 全部放行」、服务端跟上 · **反证**：把 `chat-input.tsx` / `chat-page.tsx` 退回 `HEAD`（改后源码留底 `r226/after/`）、重建 web，同一份 spec **1 failed**（死在 `getByTestId("permission-refusal").toHaveCount(1)`，`Received: 0`）；放回、重建后 **1 passed** · **两态探针**（`r226/probe.mjs`，同一脚本、同一页面、只按两版都有的东西取数，量 1.2 s / 7.5 s 两刻）：**改前** 1.2 s 通知区**一个按钮**、文字逐字「服务器内部错误，请稍后重试。」，7.5 s 通知区空了，`role=alert` **两刻都是 0 条**，按钮两刻都读「总是询问」、服务端 `always-ask`；**改后** 1.2 s 与 7.5 s 都是同一条 `role=alert`（`data-testid=permission-refusal`）、通知区 0 个按钮、按钮仍「总是询问」、服务端仍 `always-ask`；截图 `r226/out/{before,after}-01-1_2s.png`（改前页顶一条白底通知、压着初始密码提示条；改后通知区空着，红字在警告条下面、卡片上面）与两态的 7.5 s 截图肉眼看过；两态 console 都只有按设计的 `GET …/machines` 403 与本轮桩的 500，pageerror **0 条** · **相邻回归**（真浏览器）：`thinking-level-refusal` 2 条 **passed**（同一槽、同一句法，没被这一笔带坏）· 端口只用 9401（服务端）与 9001（mock 模型，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r226-e2e`，探针 / 两态截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r226/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `f493a86ac` |
 | 2026-11-12 | 7.114 | **快捷键没能保存到账号时，原因留在设置页顶部，不再只活六秒**（第二百二十六轮末尾点名那一族手势里的一处 ——「设置里的快捷键写盘」；不是移植：源码 4 处 —— `lib/shortcuts/store.ts` 的 `persister` 返回值开始被看（同步抛出的、答成被拒 Promise 的都记进 `saveFailure`，存原始值不存句子，切语言会重新造句），并新增 `shortcutSaveFailure()` / `subscribeShortcutSaveFailure()` / `shortcutSaveFailureVersion()`，清它的三处是下一次尝试 / 一次 hydrate / 账号边界；`lib/shortcuts/use-keymap.ts` 的 `useShortcutSaveFailure()`；`shortcut-runtime.tsx` 把请求本身交出去、不再自己 `catch` + `toastError`；`shortcuts-section.tsx` 在列表上方画那一句（`role="alert"`、`data-testid="shortcut-save-refusal"`、危险色、限两行、整句挂悬停）。宿主是整页不是某一行：一次 PUT 带的是整份文档（含「全部恢复默认」），而那一行本来就说不出话 —— 镜像先写，行上照样显示账号从没收到的那串组合，下一次加载又把账号那份盖回来；一对文案 （`saveFailed` → `saveRefused(reason)`，原因收在句末与全应用同形）；1 个新单测文件（8 条）+ 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 8 个改动文件 **0 警告 0 错误** · `prettier --check` 全部干净（首跑新单测 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **318 文件 / 3696 通过 / 2 跳过**（+1 文件 / +8 条即本笔，基线 317 / 3688）· **新 spec 1 passed（9.4 s）**，连跑两次都绿（真服务端 **9411** + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r228-e2e-b`，PUT 由 `page.route` 拒成 500 `internal` + 一句英文原文；开头把该账号的 keybindings 清成 `{ v: 1 }`，所以可重跑）：句子在列表上方、逐字「快捷键没能保存到账号；这一改动只在这个浏览器里生效，重新加载后会退回账号上原来的快捷键：服务器内部错误，请稍后重试。」、**通知区 0 条**、**七秒后仍在**、那一行仍读 `Ctrl+Shift+9`、账号那份与改前逐字相同；紧接着的一次改动落定，句子归 0、账号的 `linux` 段有了条目· **反证**：6 个源码文件退回 `HEAD`（改后源码留底 `r228/after/`）、重建 web，同一份 spec **1 failed**（死在 `getByTestId("shortcut-save-refusal").toBeVisible()`：元素不存在）；放回重建后 **1 passed**· **两态探针**（`r228/probe.mjs`，同一脚本、同一页面、只按两版都有的东西取数，1.2 s / 7.5 s 两刻）：**改前** 1.2 s 通知区**一个按钮**、逐字「快捷键未能保存到账号」，7.5 s 通知区空了、`role=alert` 两刻 0 条、那一行两刻都读 `Ctrl+Shift+9`、账号 `{ v: 1 }`；**改后** 1.2 s 与 7.5 s 都是同一条 `role=alert`（y 114 / 高 32，第一行 y 188 —— 句子在它所反驳的行之上）、通知区 0 个按钮；截图 `r228/out/{before,after}-01-1_2s.png` 肉眼看过（改前页顶一条白底通知、压着初始密码提示条，页面本身一片安静；改后通知区没有东西，红字就在「快捷键」标题下面、分组之上）· 两态 console 都只有按设计的 `GET …/machines` 403 与本轮桩的 500，pageerror **0 条**· 端口只用 9411 与 9011（mock，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r228-e2e-b`，探针 / 两态截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r228/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `7dbf5e74c` |
+| 2026-11-12 | 7.115 | **快捷键没能从账号读取时，原因留在设置页顶部，不再什么都不说**（**2026-11-12 第二百二十九轮**落地，提交见「已完成的轮次」；源码 5 处（`store.ts` 记账 + 三个读点、`use-keymap.ts` 的新 hook、`shortcut-runtime.tsx` 把读的拒绝交给 store、`shortcuts-section.tsx` 顶部那一槽）+ 一对文案（新增 `loadRefused(reason)`）+ 1 个新单测文件（9 条）+ 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新依赖**）：键位表先于任何请求存在，所以 `GET /api/me/prefs` 回来之前各行读的是**浏览器镜像** —— 可能是上一个账号留在这个浏览器里的文档，也可能只是默认值，而页面上一处都看不出来；更要紧的是一次改动就是**整份文档**的一次 PUT（服务端对 `keybindings` 整份替换，不合并），读失败时改一条会把镜像整份写回账号、抹掉账号上还留着的覆盖。现在这句话画在列表上方、先于它所解释的那些行（`role="alert"`、`data-testid="shortcut-load-failure"`、attention 色、限两行、整句挂悬停），说清两件事与「重新加载会再读一次」；问题一旦落定（读到，或一次写入真正落地）就消失。见「第二百二十九轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 8 个改动文件 **0 警告 0 错误** · 七个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：web **319 文件 / 3705 通过 / 2 跳过**（+1 文件 / +9 条即本笔，基线 318 / 3696）· core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · **新 spec 1 passed（10.6 s）**，相邻 `shortcut-save-refusal.spec.mjs` 同服务 **1 passed（9.5 s）**（8940 真服务端 + mock 8941 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r229-e2e`）：句子在列表上方、逐字「没能从账号读取快捷键；下面这一份来自这个浏览器（可能属于上一个账号，也可能只是默认值），改动会整份写回账号、盖掉账号上原来的按键。重新加载这一页会再读一次：服务器内部错误，请稍后重试。」、一行读镜像的「未设置」、通知区 **0 条**、七秒后仍在、账号那份仍是 `{ v: 1 }`；读恢复后重新加载，句子与那一行都没了 · **反证**：6 个源码文件退回 `HEAD` + 重建 web + 改前产物挂同一套 8942 真服务端 → 同一份 spec **1 failed**（`toBeVisible` 找不到 `shortcut-load-failure`）；放回、重建后 **1 passed** · **两态探针**（`r229/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 `localhost:9430` / 改前 `localhost:9431`，一次性数据根 `r229-{after,before}`，账号先播 `terminal.close` 覆盖、镜像里另有一个 `editor.save: null`，`GET /api/me/prefs` 由 `page.route` 拒成 500）：**改前** 1.2 s / 7.5 s 都是 `loadLine 0`、`alerts 0`、通知区 0 个按钮（页面一片安静，行上「保存」读镜像的**未设置**、账号的 `terminal.close` 覆盖在页面上看不见），此时改一条 → 账号变成 `{ v: 1, linux: { "editor.save": null, "sessions.search": "Mod+Shift+Digit8" } }`、**`terminal.close` 没了**；**改后** 两刻都是同一条 `role=alert`（y 190 / 高 32，第一行 y 264）· 通知区 0 个按钮；截图 `r229/{before,after}-01-open.png` 肉眼看过 · 两态 console 只有本轮桩的 500 与 `GET …/machines` 403，pageerror **0 条** · 端口只用 9430 / 9431 / 8940 / 8941 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r229-{after,before,e2e,e2e-before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r229/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `adf9486d2` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -25656,4 +25666,77 @@ build 过、typecheck 过、lint 0/0、format 过、测试 **10612 通过 / 20 �
 - 第一次 hydrate 失败（`getPrefs()` 被拒）仍然只在注释里写着「镜像照旧」，**页面上没有一句话**：那一页此时显示
   的是本浏览器的镜像，而不是账号的副本。它和这一笔不是同一件事（那是读、这是写），留作单独一条的候选。
 - 这一句画在设置页里；如果哪天有别的入口也能改键（例如桌面壳），它得有自己的槽 —— 桌面壳按纪律本轮没碰。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+## 第二百二十九轮：快捷键没能从账号读取时，原因留在设置页顶部（2026-11-12，条目 7.115）
+
+### 开工自检
+
+- `git status --short` 干净、`main` 与 `origin/main` 同一笔（`a249344c9`），`git fetch origin` 一次就通，
+  `--ff-only` 合并报 `Already up to date`。没有切分支、没碰 `legacy/main`、没推 upstream。
+- 表上 7.x 已无未勾选条目；第 5 节剩下的 5.6 / 5.10 与 2.2c / 3.5 / 3.6 各自卡在「要用户拍板」「要 key」
+  「桌面壳」上（4.1–4.3 与 2.5 按纪律不动），于是接第二百二十八轮 `没做 / 留着` 里点名的那一条：
+  **第一次 hydrate 失败，页面上没有一句话**。
+
+### 选活：为什么是它，代价比 7.114 那一侧更大
+
+- 键位表必须先于任何请求存在（分发器在模块求值时就装上），所以在 `GET /api/me/prefs` 回来之前，各行读的是
+  浏览器镜像；读到之后才换成账号那一份。**这次读被拒**时镜像是怎么来的就怎么留着 —— 它可能是**上一个账号**
+  留在这个浏览器里的文档，也可能只是默认值，而页面上没有任何一处能让人看出来。
+- 更要紧的是第二件事：一次改动就是**整份文档**的一次 PUT（`PUT /api/me/prefs` 对顶层键浅合并，
+  `keybindings` 因此是整份替换）。读失败时改一条，按下的是「按镜像那一份写回账号」，账号上还留着的覆盖会跟着
+  没了 —— 本轮两态探针里就把这件事量出来了（见下）。
+- 宿主与 7.114 同一个：一次 PUT 属于整页，句子画在列表上方、先于它所解释的那些行被读到。两句话可以同时在场
+  （读失败 + 写失败），读的那句在前。
+
+### 做了什么
+
+- `packages/web/src/lib/shortcuts/store.ts`：新增 `loadFailure`（原始值，切语言会重新造句）与
+  `noteHydrateFailure()` / `shortcutLoadFailure()` / `subscribeShortcutLoadFailure()` /
+  `shortcutLoadFailureVersion()`。清掉它的四处都写了理由（一个账号一个问题）：
+  `hydrateFromServer`（账号答了，哪怕是「什么都没存」）、`sendToAccount` 里**落地**的那次写入（从那刻起账号持有
+  屏幕上的这一份）、`setKeybindingsPersister`（账号边界）、测试用的重置。
+- `packages/web/src/lib/shortcuts/use-keymap.ts`：`useShortcutLoadFailure()`。
+- `packages/web/src/features/settings/shortcut-runtime.tsx`：读 prefs 的 `catch` 不再空吞，把错误交给 store。
+- `packages/web/src/features/settings/shortcuts-section.tsx`：顶部第一槽（`role="alert"`、
+  `data-testid="shortcut-load-failure"`、attention 色 —— 没有东西坏掉，只是这一页没法为它显示的内容作保），
+  限两行、整句挂悬停。
+- `packages/web/src/lib/strings{,-en}.ts`：`loadRefused(reason)`，原因收在句末（与全应用同一形状）。
+- 单测 `packages/web/test/shortcut-load-failure.test.ts`（9 条）；spec
+  `packages/web/e2e/shortcut-load-refusal.spec.mjs`（1 条，真服务端 + 真浏览器，读被桩成 500，可重跑）；changelog 一对。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型）。
+- `oxlint` 8 个改动文件 **0 警告 0 错误**；`prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：web **319 文件 / 3705 通过 / 2 跳过**（+1 文件 / +9 条即本笔，基线 318 / 3696）
+  · core **70 文件 / 1456** · ui **132 / 1103** · cli **39 / 566** · server **212 / 3110 通过 / 6 跳过**。
+- **新 spec 1 passed（10.6 s）**，相邻的 `shortcut-save-refusal.spec.mjs` 同服务 **1 passed（9.5 s）**
+  （8940 真服务端 + mock 8941 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r229-e2e`）：
+  句子在列表上方、逐字「没能从账号读取快捷键；下面这一份来自这个浏览器（可能属于上一个账号，也可能只是默认值），
+  改动会整份写回账号、盖掉账号上原来的按键。重新加载这一页会再读一次：服务器内部错误，请稍后重试。」、
+  一行读镜像的「未设置」、**通知区 0 条**、七秒后仍在、账号那份仍是 `{ v: 1 }`；读恢复后重新加载，句子与那一行都没了。
+- **反证**：把 6 个源码文件退回 `HEAD`、重建 web、把改前产物挂到同一套 8942 真服务端 → 同一份 spec **1 failed**
+  （死在 `getByTestId("shortcut-load-failure")` 的 `toBeVisible`：element(s) not found）；放回、重建后 **1 passed**。
+- **两态探针**（`r229/probe.mjs`，同一脚本、两条腿各挂自己的 web 产物：改后 `localhost:9430`、改前 `localhost:9431`，
+  一次性数据根 `r229-{after,before}`，admin 登录 + 账号先播一条 `terminal.close` 覆盖、浏览器镜像里另有一个
+  `editor.save: null`，`GET /api/me/prefs` 由 `page.route` 拒成 500）：**改前** 1.2 s 与 7.5 s 都是
+  `loadLine 0`、`alerts 0`、通知区 0 个按钮 —— 页面一片安静，而行上「保存」读的是镜像的**未设置**、账号的
+  `terminal.close` 覆盖在页面上**看不见**；此时改一条 → 账号的 `keybindings` 变成
+  `{ v: 1, linux: { "editor.save": null, "sessions.search": "Mod+Shift+Digit8" } }`，**`terminal.close` 没了**
+  （句子里说的那件事，量出来了）。**改后** 1.2 s 与 7.5 s 都是同一条 `role="alert"`（y 190 / 高 32，
+  第一行 y 264 —— 句子在它所解释的行之上）、通知区 0 个按钮；同一张页面的截图
+  `r229/{before,after}-01-open.png` 肉眼看过（改前「快捷键」标题下面直接是分组；改后标题下面是一行 amber 的句子）。
+  两态 console 都只有按设计的 **500**（本轮桩的读）与 `GET …/machines` 403，**pageerror 0 条**。
+- 端口只用 9430 / 9431 / 8940 / 8941 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落 `/root/adelie-fork-data/r229-{after,before,e2e,e2e-before}`，探针 / 两态产物（`after-dist` / `before-dist`）/
+  截图 / 临时 playwright 配置都在 scratchpad 的 `r229/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- `chat-page.tsx` 的「撤回 steering」与「转到后台」仍然只在通知里说原因（第二百二十八轮记的同一批）：前者被拒的
+  409 正是「消息已经发出去了」，它依附的那一行随即退场；后者 409 是「没有后台形态」，卡片自己会落定 —— 两句都还
+  没有定宿主。更新流程那一批也照旧。
+- 这一句只画在快捷键页。别的读 prefs 的地方（主题、公司模式、待办忽略）都各自 fail-open，没有跟着改。
 - 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
