@@ -77,6 +77,38 @@ function noteSaveFailure(error: unknown): void {
   publishSaveFailure(error);
 }
 
+/**
+ * Why the account's copy was never read (`null` while it was).
+ *
+ * The dispatcher installs at module evaluation — before auth, before any prefs request answers — so
+ * the keymap comes from the browser mirror until `GET /api/me/prefs` arrives. When that read is
+ * refused the mirror simply stands, and it is the previous account's document or nothing at all;
+ * worse, an edit then writes that document back **whole**, because one PUT replaces `keybindings`
+ * instead of merging, so it can take away overrides the account held. No row can say any of this:
+ * they read the mirror and look exactly like the account's copy. So the store keeps the raw failure
+ * (not a sentence, so a language switch re-words it) for the page that holds the edits (7.115), and
+ * drops it the moment the question is settled — a hydrate, or a write that lands (the account then
+ * holds what is on screen).
+ */
+let loadFailure: unknown = null;
+let loadFailureVersion = 0;
+const loadFailureListeners = new Set<() => void>();
+
+function publishLoadFailure(next: unknown): void {
+  loadFailure = next;
+  loadFailureVersion++;
+  for (const listener of [...loadFailureListeners]) listener();
+}
+
+function clearLoadFailure(): void {
+  if (loadFailure !== null) publishLoadFailure(null);
+}
+
+/** The prefs read the runtime asked for was refused: what the page shows is the mirror, not the account's copy. */
+export function noteHydrateFailure(error: unknown): void {
+  publishLoadFailure(error);
+}
+
 function storage(): KeybindingsStorage | null {
   if (storageOverride !== null) return storageOverride;
   try {
@@ -140,13 +172,14 @@ function storeMirror(compact: StoredKeybindings): void {
 /**
  * Hands the compact document to the account. A writer that answers with a promise is watched: a
  * rejection (or a synchronous throw) is remembered rather than swallowed, because nothing awaits
- * an edit — the mirror already carries it.
+ * an edit — the mirror already carries it. A write that lands also settles the earlier question of
+ * what the account held: from then on it holds this document.
  */
 function sendToAccount(compact: StoredKeybindings): void {
   if (persister === null) return;
   try {
     const sent = persister(compact);
-    if (sent instanceof Promise) void sent.catch(noteSaveFailure);
+    if (sent instanceof Promise) void sent.then(clearLoadFailure, noteSaveFailure);
   } catch (error) {
     noteSaveFailure(error);
   }
@@ -174,6 +207,8 @@ export function setKeybindingsPersister(fn: ((doc: StoredKeybindings) => unknown
   writtenThisSession = false;
   // Another account's failed write is not this one's news.
   clearSaveFailure();
+  // Nor is what the previous account's read said: this one's read is about to be asked for.
+  clearLoadFailure();
 }
 
 /**
@@ -187,6 +222,8 @@ export function setKeybindingsPersister(fn: ((doc: StoredKeybindings) => unknown
 export function hydrateFromServer(stored: unknown): void {
   // The screen is the account's copy again, so a sentence about a write it never got is stale.
   clearSaveFailure();
+  // And the account's copy has now been read, so nothing is left to warn about.
+  clearLoadFailure();
   if (stored !== undefined && stored !== null) {
     storeMirror(compactDoc(sanitizeStored(stored)));
     invalidate();
@@ -305,6 +342,20 @@ export function shortcutSaveFailureVersion(): number {
   return saveFailureVersion;
 }
 
+/** Why the account's copy was never read, as it arrived — `null` once a read or a write settles it. */
+export function shortcutLoadFailure(): unknown {
+  return loadFailure;
+}
+
+export function subscribeShortcutLoadFailure(listener: () => void): () => void {
+  loadFailureListeners.add(listener);
+  return () => loadFailureListeners.delete(listener);
+}
+
+export function shortcutLoadFailureVersion(): number {
+  return loadFailureVersion;
+}
+
 /**
  * The browser's `code → character` map, when it exposes one: defaults move to the key that types
  * their US character, and labels show the character a key actually types.
@@ -328,6 +379,7 @@ export function configureKeybindingsStoreForTests(options: {
   writtenThisSession = false;
   persister = null;
   clearSaveFailure();
+  clearLoadFailure();
   invalidate();
 }
 

@@ -14,9 +14,12 @@ import {
   keyboardLayout,
   keymap,
   keymapVersion,
+  shortcutLoadFailure,
+  shortcutLoadFailureVersion,
   shortcutSaveFailure,
   shortcutSaveFailureVersion,
   subscribeKeymap,
+  subscribeShortcutLoadFailure,
   subscribeShortcutSaveFailure,
 } from "./store";
 import type { Chord, CommandId, Keymap } from "./types";
@@ -38,6 +41,20 @@ export function useShortcutSaveFailure(): unknown {
     shortcutSaveFailureVersion,
   );
   return shortcutSaveFailure();
+}
+
+/**
+ * Why the account's copy was never read (null once it was). What the page shows is then the browser
+ * mirror — possibly a previous account's document — and an edit writes that document back whole, so
+ * the page that holds the edits is where the sentence belongs.
+ */
+export function useShortcutLoadFailure(): unknown {
+  useSyncExternalStore(
+    subscribeShortcutLoadFailure,
+    shortcutLoadFailureVersion,
+    shortcutLoadFailureVersion,
+  );
+  return shortcutLoadFailure();
 }
 
 /** The command's chord as bound, whether or not this host can deliver it. */

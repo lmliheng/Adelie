@@ -13,6 +13,11 @@
  * cannot show it anyway: the browser mirror was written first, so the row keeps showing the chord
  * the edit just made. The sentence is up there so that it is read before the rows it contradicts,
  * and the next edit — any edit — replaces it.
+ *
+ * A read that was refused says so there too, and first (7.115): the rows then come from the browser
+ * mirror, which is the previous account's document or the defaults, and an edit writes that document
+ * back whole. Neither line is a notification — both are facts about this page that survive as long
+ * as they hold.
  */
 import { useState } from "react";
 import { Button, ConfirmModal, GlyphIcon, ICON_SIZE, SettingsSection } from "@adelie/ui";
@@ -24,7 +29,11 @@ import { SHORTCUT_COMMANDS, SHORTCUT_GROUPS, commandById } from "../../lib/short
 import { browserCommon, browserReserved, desktopReserved } from "../../lib/shortcuts/reserved";
 import { isOverridden, resetAll, resetBinding, setBinding } from "../../lib/shortcuts/store";
 import type { Chord, CommandId, ShortcutCommand } from "../../lib/shortcuts/types";
-import { useKeymap, useShortcutSaveFailure } from "../../lib/shortcuts/use-keymap";
+import {
+  useKeymap,
+  useShortcutLoadFailure,
+  useShortcutSaveFailure,
+} from "../../lib/shortcuts/use-keymap";
 import { toneInk } from "../../lib/tone";
 import { ShortcutRecorder } from "./shortcut-recorder";
 
@@ -122,6 +131,7 @@ function ShortcutRow({
 export function ShortcutsSection() {
   const keymap = useKeymap();
   const saveFailure = useShortcutSaveFailure();
+  const loadFailure = useShortcutLoadFailure();
   const conflicts = findConflicts(keymap, SHORTCUT_COMMANDS);
   const overriddenCount = SHORTCUT_COMMANDS.filter((cmd) => isOverridden(cmd.id)).length;
   const [confirmReset, setConfirmReset] = useState(false);
@@ -146,6 +156,17 @@ export function ShortcutsSection() {
         </Button>
       }
     >
+      {loadFailure !== null && (
+        <p
+          role="alert"
+          data-testid="shortcut-load-failure"
+          data-tooltip={S.shortcuts.loadRefused(refusalText(loadFailure))}
+          data-tooltip-content="text"
+          className={`line-clamp-2 break-words text-xs ${toneInk.attention}`}
+        >
+          {S.shortcuts.loadRefused(refusalText(loadFailure))}
+        </p>
+      )}
       {saveFailure !== null && (
         <p
           role="alert"

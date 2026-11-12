@@ -187,6 +187,12 @@ export const en: Strings = {
     desktopMenuReserved: "Overrides the desktop app's menu shortcut of the same keys",
     saveRefused: (reason: string): string =>
       `Shortcuts could not be saved to the account; the change applies in this browser only and reverts to the account's shortcuts on the next load: ${reason}`,
+    /**
+     * A read the account refused: the rows below are the browser mirror, not the account's copy, and a
+     * write would replace the account's whole document with it — so the sentence names both costs.
+     */
+    loadRefused: (reason: string): string =>
+      `The account's shortcuts could not be read; these come from this browser instead (a previous account's, or just the defaults), and an edit is written back as the whole document, replacing the account's own bindings. Reloading this page reads them again: ${reason}`,
   },
 
   /** Server-side terminal (the in-app dock and the standalone /terminal page). */

@@ -207,6 +207,12 @@ export const zh = {
     /** A write the account refused: the row still shows the new chord, so the sentence says what the account holds. */
     saveRefused: (reason: string): string =>
       `快捷键没能保存到账号；这一改动只在这个浏览器里生效，重新加载后会退回账号上原来的快捷键：${reason}`,
+    /**
+     * A read the account refused: the rows below are the browser mirror, not the account's copy, and a
+     * write would replace the account's whole document with it — so the sentence names both costs.
+     */
+    loadRefused: (reason: string): string =>
+      `没能从账号读取快捷键；下面这一份来自这个浏览器（可能属于上一个账号，也可能只是默认值），改动会整份写回账号、盖掉账号上原来的按键。重新加载这一页会再读一次：${reason}`,
   },
 
   /** Server-side terminal (the in-app dock and the standalone /terminal page). */
