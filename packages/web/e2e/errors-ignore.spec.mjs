@@ -232,3 +232,61 @@ test("the ignored view names the rules, and 取消忽略 re-exposes every record
 function row(page, target) {
   return page.locator("tbody tr").filter({ hasText: target.code });
 }
+
+test("a refused ignore keeps the card, its sentence and every record", async ({ page }) => {
+  test.setTimeout(120_000);
+  // A fresh account per run: the rules are the Project's, so a rerun on the same data root would
+  // otherwise find the rule a previous run left behind and start from a table with no such row.
+  const user = `ignorerefuse_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const { projectId, sessionId } = await prepare(page, user);
+  const target = await seedError(page, projectId, sessionId);
+
+  await page.goto("/usage");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
+
+  const REFUSAL = { code: "errors_store_closed", message: "ignore store is closed" };
+  await page.route("**/api/projects/*/usage/errors/ignores*", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: REFUSAL }),
+    });
+  });
+
+  const targetRow = row(page, target).first();
+  await expect(targetRow).toBeVisible();
+  await targetRow.getByRole("button", { name: "忽略这类异常", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  const sentence = await dialog.innerText();
+  await dialog.getByRole("button", { name: "忽略", exact: true }).click();
+
+  // The reason is in the card that asked — the card stays open on the class it named — and it is
+  // not a toast: the notification region holds no dismissible button, and the card reads exactly
+  // as before plus the one line.
+  await expect(dialog.getByText(REFUSAL.message)).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" }).getByRole("button")).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  expect((await dialog.innerText()).replace(/\n操作被拒绝：[^\n]*/, "")).toBe(sentence);
+
+  // Nothing was silenced: the row is still in the table, there is no notice to undo, and the
+  // Project has no rule — the records were never in question.
+  await expect(targetRow).toBeVisible();
+  await expect(page.locator("[data-ignore-notice]")).toHaveCount(0);
+  expect(await readRules(page, projectId)).toHaveLength(0);
+
+  // Reopening the card starts clean, and letting the write through lands exactly as the plain
+  // path does: the class leaves the table and one rule takes its place.
+  await dialog.getByRole("button", { name: "取消", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await targetRow.getByRole("button", { name: "忽略这类异常", exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(REFUSAL.message)).toHaveCount(0);
+  expect(await dialog.innerText()).toBe(sentence);
+  await page.unroute("**/api/projects/*/usage/errors/ignores*");
+  await dialog.getByRole("button", { name: "忽略", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(row(page, target)).toHaveCount(0);
+  expect(await readRules(page, projectId)).toHaveLength(1);
+});

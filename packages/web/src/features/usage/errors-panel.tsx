@@ -456,6 +456,11 @@ export function ErrorsPanel({
     until: string;
   } | null>(null);
   const [counting, setCounting] = useState(false);
+  // Why the delete the card asked for did not land. It sits in the card, not in a toast: the
+  // card is still open on the sentence that was refused, and a deletion whose reason dismissed
+  // itself after six seconds reads as "nothing happened" — with the same sentence waiting to be
+  // confirmed again. Cleared when the attempt starts and when the card closes.
+  const [clearRefusal, setClearRefusal] = useState<string | null>(null);
 
   /**
    * Reads the count the dialog will name, then opens it. `limit: 1` is all it needs: `total`
@@ -463,6 +468,9 @@ export function ErrorsPanel({
    */
   const openClear = async () => {
     setCounting(true);
+    // A card that closed on a refusal and is being opened again starts clean: its sentence was
+    // about the previous count, which this read has just replaced.
+    setClearRefusal(null);
     try {
       const res = await api.getUsageErrors(projectId, { offset: 0, limit: 1, ...activeFilters });
       const newest = res.items[0]?.ts;
@@ -490,6 +498,7 @@ export function ErrorsPanel({
   const runClear = async () => {
     if (confirmTarget === null) return;
     setClearing(true);
+    setClearRefusal(null);
     try {
       const res = await api.clearUsageErrors(projectId, {
         ...activeFilters,
@@ -501,7 +510,7 @@ export function ErrorsPanel({
       // refetched rather than patched here; that also restores page 0 from the new snapshot.
       onReload();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setClearRefusal(apiErrorText(e));
     } finally {
       setClearing(false);
     }
@@ -517,6 +526,10 @@ export function ErrorsPanel({
   const [ignoreTarget, setIgnoreTarget] = useState<UsageErrorItem | null>(null);
   const [ignoreFragment, setIgnoreFragment] = useState("");
   const [ignoring, setIgnoring] = useState(false);
+  // Same rule as the clear's card: the rule this card asked for did not land, so the reason stays
+  // in the card that asked — the row's dialog is the only place that knows which class it was
+  // about, and the notice that would carry an undo only appears when the write succeeds.
+  const [ignoreRefusal, setIgnoreRefusal] = useState<string | null>(null);
   // The rule just made, kept so the panel can offer the undo in place: the row it stood for is
   // already gone from the table below, so a notice floating elsewhere would point at nothing. The
   // count is the answer the write carried, not the stats above — those are still the dashboard's
@@ -565,6 +578,7 @@ export function ErrorsPanel({
     if (ignoreTarget === null) return;
     const { source, code } = ignoreTarget;
     setIgnoring(true);
+    setIgnoreRefusal(null);
     try {
       const added = await api.ignoreUsageErrors(
         projectId,
@@ -581,7 +595,7 @@ export function ErrorsPanel({
       // refetched: the ignored count and the table's own first page both move with this.
       onReload();
     } catch (e) {
-      toastError(apiErrorText(e));
+      setIgnoreRefusal(apiErrorText(e));
     } finally {
       setIgnoring(false);
     }
@@ -804,6 +818,9 @@ export function ErrorsPanel({
                           onClick={() => {
                             setIgnoreTarget(e);
                             setIgnoreFragment("");
+                            // A different class: the previous card's refusal named the class it
+                            // was about, not this one.
+                            setIgnoreRefusal(null);
                           }}
                           className="inline-flex size-5 items-center justify-center rounded-sm text-fg-subtle transition-colors duration-150 hover:bg-surface-muted hover:text-fg-muted"
                         >
@@ -869,7 +886,11 @@ export function ErrorsPanel({
         confirmLabel={S.usage.errorsClear}
         cancelLabel={S.common.cancel}
         busy={clearing}
-        onClose={() => setConfirmingClear(false)}
+        refusal={clearRefusal === null ? undefined : S.common.refused(clearRefusal)}
+        onClose={() => {
+          setConfirmingClear(false);
+          setClearRefusal(null);
+        }}
         onConfirm={() => void runClear()}
       >
         <div className="space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
@@ -905,9 +926,11 @@ export function ErrorsPanel({
         confirmLabel={S.usage.errorsIgnore}
         cancelLabel={S.common.cancel}
         busy={ignoring}
+        refusal={ignoreRefusal === null ? undefined : S.common.refused(ignoreRefusal)}
         onClose={() => {
           setIgnoreTarget(null);
           setIgnoreFragment("");
+          setIgnoreRefusal(null);
         }}
         onConfirm={() => void runIgnore()}
       >

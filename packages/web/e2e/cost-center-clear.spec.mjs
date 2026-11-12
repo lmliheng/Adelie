@@ -238,12 +238,23 @@ test("a refused delete keeps the dialog and the rows, and a retry clears them", 
   const sentence = await dialog.innerText();
   await dialog.getByRole("button", { name: "清空" }).click();
 
-  await expect(page.getByText(/errors store is closed/)).toBeVisible();
+  await expect(dialog.getByText(/errors store is closed/)).toBeVisible();
   await expect(dialog).toBeVisible();
-  // The sentence is still the one that was being confirmed: the refused write changed nothing.
-  expect(await dialog.innerText()).toBe(sentence);
+  // The reason is in the card that asked, and it is not a toast: the notification region holds
+  // no dismissible button, and the card reads exactly as before plus the one line (the sentence
+  // is still the one that was being confirmed — the refused write changed nothing).
+  await expect(page.getByRole("region", { name: "通知" }).getByRole("button")).toHaveCount(0);
+  expect((await dialog.innerText()).replace(/\n操作被拒绝：[^\n]*/, "")).toBe(sentence);
   await expect(page.getByText(/^已删除 \d+ 条错误记录$/)).toHaveCount(0);
   expect((await seen.read()).total).toBe(before.total);
+
+  // Closing the card decides nothing, and reopening it does not carry the old reason.
+  await dialog.getByRole("button", { name: "取消", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await page.getByRole("button", { name: "清空", exact: true }).click();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText(/errors store is closed/)).toHaveCount(0);
+  expect(await dialog.innerText()).toBe(sentence);
 
   // Let the delete through: the retry closes the dialog, reports, and empties the table.
   await page.unroute("**/api/projects/*/usage/errors*");
