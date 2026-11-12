@@ -383,6 +383,10 @@ export function ChatPage() {
   // The dialog stays open (its buttons busy) until the switch request answers, so a double
   // click cannot post the switch twice.
   const [modelSwitchPosting, setModelSwitchPosting] = useState(false);
+  // A switch the server refused, in its own words, drawn inside the dialog that asked for it
+  // (see confirmModelSwitch): a toast says the same thing but dismisses itself out of a card the
+  // user is still looking at, six seconds before they read why the conversation stayed put.
+  const [modelSwitchRefusal, setModelSwitchRefusal] = useState<string | null>(null);
 
   const routeSessionId = params.sessionId ?? null;
   // The docks' arrangement lives in the dock store (features/dock) — tabs, active tab,
@@ -1900,6 +1904,9 @@ export function ChatPage() {
       // Read at pick time: the model's items mutate in place. The live tail decides, behind
       // whatever window was backfilled above it.
       const shape = switchContextShape([...stream.prefixItems, ...stream.model.items]);
+      // A fresh pick answers the last attempt: whatever it was refused for was about the model
+      // that pick asked for, not this one.
+      setModelSwitchRefusal(null);
       setModelSwitchAsk({ to: ref, shape, discardIfCompactionFails: false });
     },
     [selected, stream.taskState, stream.prefixItems, stream.model],
@@ -1911,11 +1918,15 @@ export function ChatPage() {
   // never ran and switched inside the request: the row comes back with the response — under a
   // new id when the server had to rebuild a Session that left no Trace, which the page follows.
   // A refusal (409 busy / same model / not configured / unavailable / compaction not configured)
-  // is a toast.
+  // keeps this dialog and draws the sentence inside it: the card is what asked for the write, its
+  // button is the retry, and the conversation is still on the model it named before — a toast
+  // would be gone six seconds before the user looks back at a card that had closed itself.
   const confirmModelSwitch = useCallback(async () => {
     const ask = modelSwitchAsk;
     if (!selected || ask === null || modelSwitchPosting) return;
     setModelSwitchPosting(true);
+    // Another attempt answers the previous one, whatever it says.
+    setModelSwitchRefusal(null);
     const from = modelDisplay({ provider: selected.provider, modelId: selected.modelId });
     const to = modelDisplay(ask.to);
     try {
@@ -1930,10 +1941,12 @@ export function ChatPage() {
       });
       if ("session" in res) {
         applySessionRow(res.session);
+        setModelSwitchAsk(null);
         toastSuccess(S.chat.modelSwitchInSessionApplied(to));
         await syncHealedSessionId(selected.sessionId, res.session.sessionId);
         return;
       }
+      setModelSwitchAsk(null);
       // Only a switch that compacts may say so; one that continues from a held summary runs
       // no compaction and must not promise one.
       toastInfo(
@@ -1944,10 +1957,9 @@ export function ChatPage() {
     } catch (e) {
       // The codes that take a model name are about the model the Session is on (its loader's
       // missing credential); a refusal of the target names it in its own message.
-      toastError(apiErrorText(e, { modelId: selected.modelId }));
+      setModelSwitchRefusal(apiErrorText(e, { modelId: selected.modelId }));
     } finally {
       setModelSwitchPosting(false);
-      setModelSwitchAsk(null);
     }
   }, [
     modelSwitchAsk,
@@ -2905,7 +2917,9 @@ export function ChatPage() {
           is immediate) and a transcript ending in a completed compaction or a model switch (no
           compaction runs; the conversation continues from what is already held). The session
           can start running while the dialog is up (a queued follow-up, a schedule): the confirm
-          is then disabled and the body says why, exactly like the thinking dialog. */}
+          is then disabled and the body says why, exactly like the thinking dialog. A refused
+          switch keeps this card and shows the server's sentence in it, under the sentence and
+          the box whose button retries the same switch. */}
       <ConfirmModal
         open={modelSwitchAsk !== null}
         title={S.chat.modelSwitchInSessionTitle}
@@ -2918,9 +2932,13 @@ export function ChatPage() {
         cancelLabel={S.common.cancel}
         confirmDisabled={stream.taskState !== "idle"}
         busy={modelSwitchPosting}
+        refusal={modelSwitchRefusal === null ? undefined : S.common.refused(modelSwitchRefusal)}
         onConfirm={() => void confirmModelSwitch()}
         onClose={() => {
-          if (!modelSwitchPosting) setModelSwitchAsk(null);
+          if (modelSwitchPosting) return;
+          setModelSwitchAsk(null);
+          // A card closed by its user takes its last answer with it: the next pick asks anew.
+          setModelSwitchRefusal(null);
         }}
       >
         <p className="text-sm text-gray-600 dark:text-gray-300">{modelSwitchBody}</p>
