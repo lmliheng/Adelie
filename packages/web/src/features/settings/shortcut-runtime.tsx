@@ -3,13 +3,12 @@
  * terminal pool: after sign-in it reads the account's prefs and reconciles the browser mirror
  * against `keybindings` (the server wins; an edit made before the answer is pushed; an absent
  * copy clears a mirror that may belong to another account), and it installs the writer that
- * carries every later edit to `PUT /api/me/prefs`. A failed write is reported and leaves the
- * mirror standing — the next hydrate reconciles.
+ * carries every later edit to `PUT /api/me/prefs`. The request itself is handed over — the store
+ * remembers a refused write and the shortcuts page draws it (7.114), because the mirror was
+ * already written and still stands: the next hydrate reconciles.
  */
 import { useEffect } from "react";
-import { toastError } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { S } from "../../lib/strings";
 import { hydrateFromServer, setKeybindingsPersister } from "../../lib/shortcuts/store";
 import { useAuth } from "../../state/auth";
 
@@ -18,9 +17,7 @@ export function ShortcutRuntime() {
   const userId = user?.userId ?? null;
   useEffect(() => {
     if (userId === null) return;
-    setKeybindingsPersister((doc) => {
-      void api.putPrefs({ keybindings: doc }).catch(() => toastError(S.shortcuts.saveFailed));
-    });
+    setKeybindingsPersister((doc) => api.putPrefs({ keybindings: doc }));
     let cancelled = false;
     void api
       .getPrefs()

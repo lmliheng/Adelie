@@ -185,7 +185,8 @@ export const en: Strings = {
     browserCommon:
       "The browser also uses this combination; in a browser tab it takes over that browser function",
     desktopMenuReserved: "Overrides the desktop app's menu shortcut of the same keys",
-    saveFailed: "Shortcuts could not be saved to the account",
+    saveRefused: (reason: string): string =>
+      `Shortcuts could not be saved to the account; the change applies in this browser only and reverts to the account's shortcuts on the next load: ${reason}`,
   },
 
   /** Server-side terminal (the in-app dock and the standalone /terminal page). */

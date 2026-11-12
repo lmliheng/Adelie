@@ -9,12 +9,35 @@ import { useSyncExternalStore } from "react";
 import { formatChord } from "./format";
 import { currentHost, currentPlatform } from "./platform";
 import { shownOnHost } from "./reserved";
-import { bindingOf, keyboardLayout, keymap, keymapVersion, subscribeKeymap } from "./store";
+import {
+  bindingOf,
+  keyboardLayout,
+  keymap,
+  keymapVersion,
+  shortcutSaveFailure,
+  shortcutSaveFailureVersion,
+  subscribeKeymap,
+  subscribeShortcutSaveFailure,
+} from "./store";
 import type { Chord, CommandId, Keymap } from "./types";
 
 export function useKeymap(): Keymap {
   useSyncExternalStore(subscribeKeymap, keymapVersion, keymapVersion);
   return keymap();
+}
+
+/**
+ * Why the last edit never reached the account (null while it did). The settings page's row cannot
+ * say this — the mirror was written first, so the row shows the new chord either way — which is
+ * why the page that holds the edits reads it here.
+ */
+export function useShortcutSaveFailure(): unknown {
+  useSyncExternalStore(
+    subscribeShortcutSaveFailure,
+    shortcutSaveFailureVersion,
+    shortcutSaveFailureVersion,
+  );
+  return shortcutSaveFailure();
 }
 
 /** The command's chord as bound, whether or not this host can deliver it. */

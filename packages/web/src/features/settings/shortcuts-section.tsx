@@ -6,9 +6,17 @@
  * heading the only divider. A row's hint is a fact about its current state, kept on screen: a
  * conflict with another command first, then a claim on the chord from outside the page (a browser
  * tab never receives ⌘W; ⌘P takes over the browser's Print; the desktop menu also carries ⌘R).
+ *
+ * A write the account refused says so at the top of the page rather than in a notification that
+ * dismisses itself (7.114, the rule every write refusal follows). Not on a row: one PUT carries the
+ * whole document — every row's edit, and "Reset all" — so the failure is about the page, and a row
+ * cannot show it anyway: the browser mirror was written first, so the row keeps showing the chord
+ * the edit just made. The sentence is up there so that it is read before the rows it contradicts,
+ * and the next edit — any edit — replaces it.
  */
 import { useState } from "react";
 import { Button, ConfirmModal, GlyphIcon, ICON_SIZE, SettingsSection } from "@adelie/ui";
+import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { conflictsOf, findConflicts, type Conflict } from "../../lib/shortcuts/conflicts";
 import { currentHost, currentPlatform } from "../../lib/shortcuts/platform";
@@ -16,7 +24,7 @@ import { SHORTCUT_COMMANDS, SHORTCUT_GROUPS, commandById } from "../../lib/short
 import { browserCommon, browserReserved, desktopReserved } from "../../lib/shortcuts/reserved";
 import { isOverridden, resetAll, resetBinding, setBinding } from "../../lib/shortcuts/store";
 import type { Chord, CommandId, ShortcutCommand } from "../../lib/shortcuts/types";
-import { useKeymap } from "../../lib/shortcuts/use-keymap";
+import { useKeymap, useShortcutSaveFailure } from "../../lib/shortcuts/use-keymap";
 import { toneInk } from "../../lib/tone";
 import { ShortcutRecorder } from "./shortcut-recorder";
 
@@ -113,6 +121,7 @@ function ShortcutRow({
 
 export function ShortcutsSection() {
   const keymap = useKeymap();
+  const saveFailure = useShortcutSaveFailure();
   const conflicts = findConflicts(keymap, SHORTCUT_COMMANDS);
   const overriddenCount = SHORTCUT_COMMANDS.filter((cmd) => isOverridden(cmd.id)).length;
   const [confirmReset, setConfirmReset] = useState(false);
@@ -137,6 +146,17 @@ export function ShortcutsSection() {
         </Button>
       }
     >
+      {saveFailure !== null && (
+        <p
+          role="alert"
+          data-testid="shortcut-save-refusal"
+          data-tooltip={S.shortcuts.saveRefused(refusalText(saveFailure))}
+          data-tooltip-content="text"
+          className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {S.shortcuts.saveRefused(refusalText(saveFailure))}
+        </p>
+      )}
       {groups.map(({ group, commands }) => (
         <div key={group}>
           <h3 className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">

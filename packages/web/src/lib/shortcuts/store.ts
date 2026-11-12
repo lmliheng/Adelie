@@ -46,7 +46,36 @@ const listeners = new Set<() => void>();
 /** Whether this tab edited the bindings since it loaded: what decides an absent server copy's fate on hydrate. */
 let writtenThisSession = false;
 /** Where a write goes after the mirror: the account's prefs, installed once the session is signed in. */
-let persister: ((doc: StoredKeybindings) => void) | null = null;
+let persister: ((doc: StoredKeybindings) => unknown) | null = null;
+
+/**
+ * Why the last write to the account's copy failed (`null` while the account holds every edit).
+ *
+ * The mirror is written first, so a refused write leaves each row showing the chord the edit just
+ * made: the rows cannot say that the account never heard, and the next load hydrates the account's
+ * copy over the mirror, which is exactly the change disappearing. So the store remembers the
+ * failure — kept as the raw value, not a sentence, so a language switch re-words it — and the page
+ * that holds the edits reads it (7.114). Its own version counter keeps `useSyncExternalStore`'s
+ * snapshot memoization honest.
+ */
+let saveFailure: unknown = null;
+let saveFailureVersion = 0;
+const saveFailureListeners = new Set<() => void>();
+
+function publishSaveFailure(next: unknown): void {
+  saveFailure = next;
+  saveFailureVersion++;
+  for (const listener of [...saveFailureListeners]) listener();
+}
+
+/** Each attempt supersedes the last sentence: this edit may be the one that lands. */
+function clearSaveFailure(): void {
+  if (saveFailure !== null) publishSaveFailure(null);
+}
+
+function noteSaveFailure(error: unknown): void {
+  publishSaveFailure(error);
+}
 
 function storage(): KeybindingsStorage | null {
   if (storageOverride !== null) return storageOverride;
@@ -108,12 +137,28 @@ function storeMirror(compact: StoredKeybindings): void {
   }
 }
 
+/**
+ * Hands the compact document to the account. A writer that answers with a promise is watched: a
+ * rejection (or a synchronous throw) is remembered rather than swallowed, because nothing awaits
+ * an edit — the mirror already carries it.
+ */
+function sendToAccount(compact: StoredKeybindings): void {
+  if (persister === null) return;
+  try {
+    const sent = persister(compact);
+    if (sent instanceof Promise) void sent.catch(noteSaveFailure);
+  } catch (error) {
+    noteSaveFailure(error);
+  }
+}
+
 /** A user edit: mirror first, so it applies at once here and in every other tab, then the account. */
 function writeStored(doc: StoredKeybindings): void {
   const compact = compactDoc(doc);
   storeMirror(compact);
   writtenThisSession = true;
-  persister?.(compact);
+  clearSaveFailure();
+  sendToAccount(compact);
   invalidate();
 }
 
@@ -124,9 +169,11 @@ function writeStored(doc: StoredKeybindings): void {
  * client-side and reloads nothing — so the "edited this session" mark starts over here: an edit
  * made under the previous account must never be read as pending for the next one.
  */
-export function setKeybindingsPersister(fn: ((doc: StoredKeybindings) => void) | null): void {
+export function setKeybindingsPersister(fn: ((doc: StoredKeybindings) => unknown) | null): void {
   persister = fn;
   writtenThisSession = false;
+  // Another account's failed write is not this one's news.
+  clearSaveFailure();
 }
 
 /**
@@ -138,6 +185,8 @@ export function setKeybindingsPersister(fn: ((doc: StoredKeybindings) => void) |
  * account does not resurrect the previous account's bindings.
  */
 export function hydrateFromServer(stored: unknown): void {
+  // The screen is the account's copy again, so a sentence about a write it never got is stale.
+  clearSaveFailure();
   if (stored !== undefined && stored !== null) {
     storeMirror(compactDoc(sanitizeStored(stored)));
     invalidate();
@@ -242,6 +291,20 @@ export function keymapVersion(): number {
   return version;
 }
 
+/** The last refused write to the account's copy, as it arrived — `null` once one lands or a hydrate arrives. */
+export function shortcutSaveFailure(): unknown {
+  return saveFailure;
+}
+
+export function subscribeShortcutSaveFailure(listener: () => void): () => void {
+  saveFailureListeners.add(listener);
+  return () => saveFailureListeners.delete(listener);
+}
+
+export function shortcutSaveFailureVersion(): number {
+  return saveFailureVersion;
+}
+
 /**
  * The browser's `code → character` map, when it exposes one: defaults move to the key that types
  * their US character, and labels show the character a key actually types.
@@ -264,6 +327,7 @@ export function configureKeybindingsStoreForTests(options: {
   if (options.layout !== undefined) layout = options.layout;
   writtenThisSession = false;
   persister = null;
+  clearSaveFailure();
   invalidate();
 }
 

@@ -204,7 +204,9 @@ export const zh = {
     browserReserved: "浏览器保留了这个组合，只在桌面应用里生效",
     browserCommon: "浏览器本身也用这个组合，在浏览器里会取代它的那个功能",
     desktopMenuReserved: "会覆盖桌面应用菜单里使用同一组合的快捷键",
-    saveFailed: "快捷键未能保存到账号",
+    /** A write the account refused: the row still shows the new chord, so the sentence says what the account holds. */
+    saveRefused: (reason: string): string =>
+      `快捷键没能保存到账号；这一改动只在这个浏览器里生效，重新加载后会退回账号上原来的快捷键：${reason}`,
   },
 
   /** Server-side terminal (the in-app dock and the standalone /terminal page). */
