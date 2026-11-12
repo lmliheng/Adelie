@@ -10,6 +10,9 @@
  * a notification that dismissed itself after six seconds, leaving a control that looked as though
  * it had not registered the click.
  *
+ * The subagent panel's picker is the third caller: it pins the level on a child Session and, since
+ * 2026-11-12, adopts it only once that PATCH has landed — the same shape, the same sentence.
+ *
  * Which words: `refusalText`, the rule every refusal slot in the app follows (7.19) — an answer
  * the server gave is read through its code's own localized sentence, and a value this codebase
  * raised itself is shown as it wrote it.

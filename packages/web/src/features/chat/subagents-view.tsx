@@ -41,14 +41,13 @@ import {
   NoticeStrip,
   StatusIcon,
   Text,
-  toastError,
 } from "@adelie/ui";
 import { abortSubagent, getAgentSkills, messageSubagent, patchSession } from "../../api/endpoints";
-import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import type { NestedSessionMeta, StreamModel } from "../../lib/omni/stream-model";
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
+import { thinkingLevelRefused } from "./thinking-level-refusal";
 import type { PermissionPick } from "../../lib/permission-level";
 import { noteSessionSeen } from "../../lib/session-seen";
 import { useProject } from "../../state/project";
@@ -399,12 +398,24 @@ function SubagentComposer({
   // The level pinned on the child Session from this panel ("" = untouched, the child runs at
   // its own level): mirrors the main composer's per-session pick, scoped to this child —
   // written through PATCH on the child; core applies it from the child's next LLM request.
+  // Adopted only once the PATCH has landed, like the main composer (which swaps the returned row
+  // in): adopting a pick up front left the picker reading a level the child was never pinned to
+  // when the write was refused.
   const [turnLevel, setTurnLevel] = useState("");
+  /**
+   * A pin the child's PATCH refused. The picker therefore still reads what the child runs at, and
+   * this sentence — drawn above the card, in the composer's thinking-refusal slot — is the only
+   * account of the press (7.95's rule): a toast would be gone after six seconds while the picker
+   * went on showing the old level.
+   */
+  const [levelRefusal, setLevelRefusal] = useState<string | null>(null);
   const pinChildLevel = (level: string): void => {
-    setTurnLevel(level);
+    setLevelRefusal(null); // The new attempt answers for itself; the old sentence goes.
     void patchSession(childSessionId, {
       thinkingLevel: level as SessionPatchRequest["thinkingLevel"],
-    }).catch((err: unknown) => toastError(apiErrorText(err)));
+    })
+      .then(() => setTurnLevel(level))
+      .catch((err: unknown) => setLevelRefusal(thinkingLevelRefused(err)));
   };
 
   const modelRef = meta ? { provider: meta.provider, modelId: meta.modelId } : null;
@@ -488,6 +499,7 @@ function SubagentComposer({
           // PATCHed onto the child Session and applies from its next LLM request.
           turnThinkingLevel={turnLevel || fallbackThinkingLevel}
           onChangeTurnThinkingLevel={pinChildLevel}
+          thinkingRefusal={levelRefusal}
           {...(contextWindow !== undefined ? { contextWindow } : {})}
           contextNow={contextNow}
           vision={false}
