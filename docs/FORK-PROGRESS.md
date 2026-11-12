@@ -2482,6 +2482,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       面板的思考等级选择器**先在屏幕上采用**点中的档、再 PATCH，被拒时只弹一条通知，于是留下两处假象：
       选择器读着 `高`、子会话仍在 `中` 上跑，而原因六秒后自己消失。主输入框的两个选择器从来是
       「写成功才采用」，这个面板钉的也是同一个会话行、走同一条路由，现在照同一形状来。见「第二百三十轮」一节。
+- [x] **7.117 错误中心的两个确认框被拒时，原因留在卡片里，不再只活六秒**
+      （**2026-11-12 第二百三十一轮**落地，提交见「已完成的轮次」；源码 1 处
+      （`errors-panel.tsx`：删除卡片新增 `clearRefusal`、忽略卡片新增 `ignoreRefusal`，交给共享卡片的 `refusal` 槽，
+      两处 `toastError` 一并删掉）+ 2 份既有 spec 的改写与新增（各 1 条）+ changelog 一对，
+      **不碰接口、无新依赖、无新文案**）：成本中心的异常面板里有两个「先问再写」的卡片 —— 清空（删掉这一范围内的
+      每一条记录）与忽略这类异常（加一条把某一类藏起来的规则）。成功时关掉、被拒时留着，这两点本来都对，但原因
+      只活在一条六秒后自己消失的通知里，于是卡片读起来和没点之前一模一样：删除那张上，是「删掉已被拒的记录」
+      这句话又在等人确认一次；忽略那张上，是那一类仍在表里而屏幕上一字不说是为什么。`ConfirmModal` 的
+      `refusal` 槽与全应用那句 `操作被拒绝：<原因>` 都是现成的（别的面板的确认框早就在用），
+      而这个面板的两处恰好没接上。见「第二百三十一轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3216,6 +3226,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-12 | 7.114 | **快捷键没能保存到账号时，原因留在设置页顶部，不再只活六秒**（第二百二十六轮末尾点名那一族手势里的一处 ——「设置里的快捷键写盘」；不是移植：源码 4 处 —— `lib/shortcuts/store.ts` 的 `persister` 返回值开始被看（同步抛出的、答成被拒 Promise 的都记进 `saveFailure`，存原始值不存句子，切语言会重新造句），并新增 `shortcutSaveFailure()` / `subscribeShortcutSaveFailure()` / `shortcutSaveFailureVersion()`，清它的三处是下一次尝试 / 一次 hydrate / 账号边界；`lib/shortcuts/use-keymap.ts` 的 `useShortcutSaveFailure()`；`shortcut-runtime.tsx` 把请求本身交出去、不再自己 `catch` + `toastError`；`shortcuts-section.tsx` 在列表上方画那一句（`role="alert"`、`data-testid="shortcut-save-refusal"`、危险色、限两行、整句挂悬停）。宿主是整页不是某一行：一次 PUT 带的是整份文档（含「全部恢复默认」），而那一行本来就说不出话 —— 镜像先写，行上照样显示账号从没收到的那串组合，下一次加载又把账号那份盖回来；一对文案 （`saveFailed` → `saveRefused(reason)`，原因收在句末与全应用同形）；1 个新单测文件（8 条）+ 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新依赖**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 8 个改动文件 **0 警告 0 错误** · `prettier --check` 全部干净（首跑新单测 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · web **318 文件 / 3696 通过 / 2 跳过**（+1 文件 / +8 条即本笔，基线 317 / 3688）· **新 spec 1 passed（9.4 s）**，连跑两次都绿（真服务端 **9411** + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r228-e2e-b`，PUT 由 `page.route` 拒成 500 `internal` + 一句英文原文；开头把该账号的 keybindings 清成 `{ v: 1 }`，所以可重跑）：句子在列表上方、逐字「快捷键没能保存到账号；这一改动只在这个浏览器里生效，重新加载后会退回账号上原来的快捷键：服务器内部错误，请稍后重试。」、**通知区 0 条**、**七秒后仍在**、那一行仍读 `Ctrl+Shift+9`、账号那份与改前逐字相同；紧接着的一次改动落定，句子归 0、账号的 `linux` 段有了条目· **反证**：6 个源码文件退回 `HEAD`（改后源码留底 `r228/after/`）、重建 web，同一份 spec **1 failed**（死在 `getByTestId("shortcut-save-refusal").toBeVisible()`：元素不存在）；放回重建后 **1 passed**· **两态探针**（`r228/probe.mjs`，同一脚本、同一页面、只按两版都有的东西取数，1.2 s / 7.5 s 两刻）：**改前** 1.2 s 通知区**一个按钮**、逐字「快捷键未能保存到账号」，7.5 s 通知区空了、`role=alert` 两刻 0 条、那一行两刻都读 `Ctrl+Shift+9`、账号 `{ v: 1 }`；**改后** 1.2 s 与 7.5 s 都是同一条 `role=alert`（y 114 / 高 32，第一行 y 188 —— 句子在它所反驳的行之上）、通知区 0 个按钮；截图 `r228/out/{before,after}-01-1_2s.png` 肉眼看过（改前页顶一条白底通知、压着初始密码提示条，页面本身一片安静；改后通知区没有东西，红字就在「快捷键」标题下面、分组之上）· 两态 console 都只有按设计的 `GET …/machines` 403 与本轮桩的 500，pageerror **0 条**· 端口只用 9411 与 9011（mock，本轮没有一次真调用），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r228-e2e-b`，探针 / 两态截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r228/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `7dbf5e74c` |
 | 2026-11-12 | 7.115 | **快捷键没能从账号读取时，原因留在设置页顶部，不再什么都不说**（**2026-11-12 第二百二十九轮**落地，提交见「已完成的轮次」；源码 5 处（`store.ts` 记账 + 三个读点、`use-keymap.ts` 的新 hook、`shortcut-runtime.tsx` 把读的拒绝交给 store、`shortcuts-section.tsx` 顶部那一槽）+ 一对文案（新增 `loadRefused(reason)`）+ 1 个新单测文件（9 条）+ 1 个新 spec（1 条）+ changelog 一对，**不碰接口、无新依赖**）：键位表先于任何请求存在，所以 `GET /api/me/prefs` 回来之前各行读的是**浏览器镜像** —— 可能是上一个账号留在这个浏览器里的文档，也可能只是默认值，而页面上一处都看不出来；更要紧的是一次改动就是**整份文档**的一次 PUT（服务端对 `keybindings` 整份替换，不合并），读失败时改一条会把镜像整份写回账号、抹掉账号上还留着的覆盖。现在这句话画在列表上方、先于它所解释的那些行（`role="alert"`、`data-testid="shortcut-load-failure"`、attention 色、限两行、整句挂悬停），说清两件事与「重新加载会再读一次」；问题一旦落定（读到，或一次写入真正落地）就消失。见「第二百二十九轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 8 个改动文件 **0 警告 0 错误** · 七个源码 / 用例文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：web **319 文件 / 3705 通过 / 2 跳过**（+1 文件 / +9 条即本笔，基线 318 / 3696）· core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **212 文件 / 3110 通过 / 6 跳过** · **新 spec 1 passed（10.6 s）**，相邻 `shortcut-save-refusal.spec.mjs` 同服务 **1 passed（9.5 s）**（8940 真服务端 + mock 8941 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r229-e2e`）：句子在列表上方、逐字「没能从账号读取快捷键；下面这一份来自这个浏览器（可能属于上一个账号，也可能只是默认值），改动会整份写回账号、盖掉账号上原来的按键。重新加载这一页会再读一次：服务器内部错误，请稍后重试。」、一行读镜像的「未设置」、通知区 **0 条**、七秒后仍在、账号那份仍是 `{ v: 1 }`；读恢复后重新加载，句子与那一行都没了 · **反证**：6 个源码文件退回 `HEAD` + 重建 web + 改前产物挂同一套 8942 真服务端 → 同一份 spec **1 failed**（`toBeVisible` 找不到 `shortcut-load-failure`）；放回、重建后 **1 passed** · **两态探针**（`r229/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 `localhost:9430` / 改前 `localhost:9431`，一次性数据根 `r229-{after,before}`，账号先播 `terminal.close` 覆盖、镜像里另有一个 `editor.save: null`，`GET /api/me/prefs` 由 `page.route` 拒成 500）：**改前** 1.2 s / 7.5 s 都是 `loadLine 0`、`alerts 0`、通知区 0 个按钮（页面一片安静，行上「保存」读镜像的**未设置**、账号的 `terminal.close` 覆盖在页面上看不见），此时改一条 → 账号变成 `{ v: 1, linux: { "editor.save": null, "sessions.search": "Mod+Shift+Digit8" } }`、**`terminal.close` 没了**；**改后** 两刻都是同一条 `role=alert`（y 190 / 高 32，第一行 y 264）· 通知区 0 个按钮；截图 `r229/{before,after}-01-open.png` 肉眼看过 · 两态 console 只有本轮桩的 500 与 `GET …/machines` 403，pageerror **0 条** · 端口只用 9430 / 9431 / 8940 / 8941 / 8942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r229-{after,before,e2e,e2e-before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r229/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `adf9486d2` |
 | 2026-11-12 | 7.116 | **子会话的思考等级没能钉住时，选择器退回子会话实际在跑的那一档，原因留在它的输入框上方**（不是移植：源码 2 处 —— `packages/web/src/features/chat/subagents-view.tsx`（`pinChildLevel` 改成 PATCH 落地才 `setTurnLevel`，新增 `levelRefusal` 交给 `thinkingRefusal`，`toastError` 与 `apiErrorText` 的导入一起撤掉）+ `thinking-level-refusal.ts` 的模块注释补上第三个调用方；1 个新 spec `packages/web/e2e/subagent-thinking-refusal.spec.mjs`（1 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：7.95 / 7.113 同一族里此前漏掉的一处 —— 面板的选择器**先在屏幕上采用**点中的档再 PATCH，被拒时只剩一条六秒的通知，于是选择器读着 `高` 而子会话仍在 `中` 上跑。**为什么是它**：待办表上能一轮做完的条目仍没有（2.2c 只剩桌面壳 / 既有部署那一侧、3.5 要拍板、3.6 要 key、4.1–4.3 与 2.5 按纪律不动、5.6 / 5.10 要拍板 / 新依赖），而主输入框的两个选择器一直是「写成功才采用」，这一处是全仓唯一反着来的一处 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型）· `oxlint` 3 个改动文件 **0 警告 0 错误** · 5 个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 通过文件 + 1 跳过 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数，本笔只加浏览器用例）· **新 spec 1 passed（13.7 s）**，相邻四份 spec 同服务连跑 **8 passed（1.1 m）**（`subagent` 4 + `subagent-send-refusal` 1 + `thinking-level-refusal` 2 + 本笔 1；8948 真服务端 + mock 8949 + `/usr/bin/chromium`）· **反证**：把两个源码文件退回 `HEAD`（改后版留底 `r230/after/`）重建 web、产物拷到 `r230/before-dist`，同一份 spec 挂在同一套服务形状上 **1 failed**（死在 `getByRole("alert").filter({ hasText: "没能切换思考等级" })` 的 `toBeVisible`：element(s) not found）；放回、重建后 **1 passed** · **两态探针**（`r230/probe.mjs`，同一脚本、两条腿各挂自己的 web 产物：改后 8944、改前 8946，子会话 `PATCH` 由 `page.route` 拒成 500，量 1.2 s / 7.5 s）：**改前** 选择器 `高`、`role=alert` 0 条、通知区 1 个按钮（逐字「服务器内部错误，请稍后重试。」），7.5 s 通知区空了而选择器仍 `高`；**改后** 两刻都是选择器 `中`、`role=alert` 1 条逐字「没能切换思考等级：服务器内部错误，请稍后重试。」、通知区 0 个按钮；截图 `r230/shots/{before,after}-02-refused-1_2s.png` 肉眼看过（改前页顶一条白底通知、子会话选择器写 `高`；改后子会话输入框上方一行红字、选择器写 `中`）；两态 console 都只有既有的 `…/machines` **403** 与本轮桩的 **500**，pageerror 0 条 · 端口只用 8940 / 8941 / 8942 / 8943 / 8944 / 8945 / 8946 / 8947 / 8948 / 8949（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r230-{e2e,before,after,neigh}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r230/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `5c4aef576` |
+| 2026-11-12 | 7.117 | **错误中心的两个确认框被拒时，原因留在卡片里，不再只活六秒**（**2026-11-12 第二百三十一轮**落地，提交见「已完成的轮次」；源码 1 处（`errors-panel.tsx`：删除卡片新增 `clearRefusal`、忽略卡片新增 `ignoreRefusal`，交给共享卡片的 `refusal` 槽，两处 `toastError` 一并删掉）+ 2 份既有 spec（被拒删除那条改写、被拒忽略新增 1 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：成本中心异常面板里的两个「先问再写」的卡片 —— 清空（删掉这一范围内的每一条记录）与忽略这类异常（加一条把某一类藏起来的规则）—— 成功时关掉、被拒时留着本来都对，但原因只活在一条六秒后自己消失的通知里：删除那张上，「删掉已被拒的记录」这句话又在等人确认一次；忽略那张上，那一类仍在表里而屏幕上一字不说是为什么。`ConfirmModal` 的 `refusal` 槽与全应用那句 `操作被拒绝：<原因>` 都是现成的（别的面板的确认框早就在用），而这两处恰好没接上；句子在下次尝试开始或卡片关闭时清掉，重新打开是一张干净的卡片。见「第二百三十一轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 3 个改动文件 **0 警告 0 错误** · 5 个改动文件（含 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数：本笔只改面板与浏览器用例，没有新单测）· **两份相关 spec 5 passed（17.4 s）**（`cost-center-clear` 2 + `errors-ignore` 3；8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r231-e2e`）：被拒的清空让卡片留着、原因逐字「操作被拒绝：errors store is closed」写在卡片里、通知区 0 个按钮、卡片其余逐字与之前相同、关掉再打开是一张干净的卡片；被拒的忽略同理，那一行仍在表里、没有 `data-ignore-notice`、Project 上没有规则，重试落下一条规则 · **反证（同一份 spec 跑改前产物）**：把 `errors-panel.tsx` 退回 `HEAD` 重建 web、产物拷到 `r231/before-dist` 挂 8952 → **2 failed / 3 passed**（正是这两条：卡片里找不到原因）· **两态探针（真服务端 ×2 + 真浏览器，同一脚本两条腿各挂自己的 web 产物）**：改后 8950、改前 8952，两张卡片各自的 `DELETE` / `POST …/ignores` 由 `page.route` 拒成 500，量 1.2 s / 7.5 s —— **改前** 卡片逐字不变、原因只在通知区（`notifyButtons` 1）而 7.5 s 后通知区为 0、卡片仍一字不提；**改后** 两刻都是卡片里一行「操作被拒绝：errors store is closed」、通知区 0 个按钮；截图 `r231/shots/{before,after}-{clear,ignore}-{1_2s,7_5s}.png` 肉眼看过（改前页顶一条白底通知、卡片干净；改后卡片里一条浅红条） · 两态 console 只有既有的 `GET …/machines` **403** 与本轮两处桩的 **500**，pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r231-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r231/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e84167aa4` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -25825,3 +25836,74 @@ build 过、typecheck 过、lint 0/0、format 过、测试 **10612 通过 / 20 �
 ### 提交
 
 `fix(web)` 一笔：`5c4aef576`（两个源码 + 一个新 spec + changelog 一对 = 5 个文件）；台账另起一笔。
+
+## 第二百三十一轮：错误中心的两个确认框被拒时，原因留在卡片里（2026-11-12，条目 7.117）
+
+### 开工自检
+
+- `git status --short` 干净、分支 `main`、`HEAD` = `0f9ec58cd`（上一轮那笔台账）；`git fetch origin` +
+  `git merge --ff-only origin/main` 报 `Already up to date`。没有切分支、没碰 `legacy/main`、没推 upstream。
+- 表上 7.x 已无未勾选条目；剩下的 2.2c 只差桌面壳 / 既有部署那一侧，3.5 要拍板取哪个桌面壳、3.6 要模型 key、
+  4.1–4.3 与 2.5 按纪律不动、5.6 / 5.10 要拍板或新依赖。于是接上一轮「没做 / 留着」点名的那一族的邻座 ——
+  重新扫了一遍 `packages/web/src` 里剩下的 `toastError(`（84 处 / 30 个文件），挑的是**卡片自己就是宿主**的那两处。
+
+### 选活：为什么是这两个
+
+- 判据还是 7.89 以来那一条：**写入被拒时，原因要留在发问的那个东西上**。全仓的确认框里，写失败后仍只弹一条六秒通知的
+  不少，但绝大多数是**表单里的确认**（表单本身还开着、旁边另有拒绝位）或**没有写入的确认**；真正符合「卡片关掉才算
+  完事、卡片留着就是全部交代」而 `refusal` 槽空着的，就是成本中心异常面板的这两张。
+- 宿主现成：`ConfirmModal` 早有 `refusal` 槽（文档写着「A toast says the same thing, but it dismisses itself out
+  of the card the user is still looking at」），全应用那句 `操作被拒绝：<原因>` 也是现成的（`S.common.refused`）。
+  所以这一轮**没有新文案、没有新控件、不碰接口**。
+- 两张卡片各自的代价不一样，但同一句话都成立：**清空**是唯一一处真删除，被拒后卡片原样留在屏上，读起来就是那句话
+  又在等人确认一次；**忽略这类异常**被拒后那一类还在表里，而「撤销」那条通知只在**成功**时才出现，所以没有任何地方
+  说得出为什么。
+
+### 做了什么
+
+- `packages/web/src/features/usage/errors-panel.tsx`：删除卡片新增 `clearRefusal`、忽略卡片新增 `ignoreRefusal`；
+  `runClear` / `runIgnore` 的 `catch` 从 `toastError(apiErrorText(e))` 改成写进各自的状态，每次尝试开始先清上一句；
+  卡片关闭时清掉；**删除卡片在打开时也清一次**（它那句话说的是一次刚刚重新读过的计数，上一次拒绝的原因不该跨过来）；
+  忽略卡片的入口（行上那颗按钮）换一类时也清一次。两张卡片都把状态交给 `refusal` 槽。注释按「为什么」写：
+  为什么归卡片、为什么不再另弹通知（7.111 的规则）。
+- 同一文件里**其余三处 `toastError` 有意保留**：`openClear` 读计数、忽略规则列表的读、`取消忽略` —— 这三处都没有
+  一个「发问的卡片」在背后（前两处是读，第三处的宿主是规则行，属于另一件事）。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型）。
+- `oxlint` 3 个改动文件 **0 警告 0 错误**；5 个改动文件（含 changelog 一对）`prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** ·
+  web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过** —— 与上一轮基线同数
+  （本笔只改面板与浏览器用例，没有新单测：句子本身由已有的 `S.common.refused` 与卡片组件钉着）。
+- **两份相关 spec 5 passed（17.4 s）**（`cost-center-clear` 2 条 + `errors-ignore` 3 条；8950 真服务端 +
+  mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r231-e2e`）：被拒的清空让卡片留着、
+  原因逐字「操作被拒绝：errors store is closed」写在卡片里、通知区 0 个按钮、卡片其余逐字与之前相同、关掉再打开是
+  一张干净的卡片；被拒的忽略同理，那一行仍在表里、没有 `data-ignore-notice`、Project 上没有规则，重试落下一条规则。
+  新用例每次用一个新账号（`ignorerefuse_<时间戳>`）：规则挂在 Project 上，固定用户名会让同一数据根上的重跑从上一轮
+  留下的规则开始、那时表里根本没有那一行。
+- **反证**：把 `errors-panel.tsx` 退回 `HEAD`、重建 web、产物拷到 `r231/before-dist` 挂在 8952，
+  同一份 spec **2 failed / 3 passed** —— 正是这两条，死在「卡片里找不到原因」。
+- **两态探针**（`r231/probe.mjs`，同一脚本、两条腿各挂自己的 web 产物：改后 8950 / 改前 8952，一次性数据根
+  `r231-{e2e,before}`，两张卡片的 `DELETE` 与 `POST …/ignores` 由 `page.route` 拒成 500，量 1.2 s / 7.5 s）：
+  **改前** 两张卡片的文字逐字不变、原因只在通知区（`notifyButtons` 1），7.5 s 后通知区为 0 而卡片仍一字不提；
+  **改后** 两刻都是卡片里一行「操作被拒绝：errors store is closed」、通知区 0 个按钮。截图
+  `r231/shots/{before,after}-{clear,ignore}-{1_2s,7_5s}.png` 肉眼看过：改前页顶一条白底通知、卡片干净；
+  改后卡片里一条浅红条。两态 console 只有既有的 `GET …/machines` **403** 与本轮两处桩的 **500**，pageerror 0 条。
+- 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r231-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的
+  `r231/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- 同一面板里仍走通知的三处：`openClear` 读计数（没有卡片可归 —— 卡片正是这次读之后才打开的）、忽略规则列表的读
+  （读失败时列表索性不画，句子没有宿主）、`取消忽略`（宿主是规则行 / 那条通知，要做得先定句子归行还是归通知）。
+- 全仓还有一批确认框没有 `refusal`：绝大多数是**没有写入的确认**（恢复默认、清终端、清理类）或**表单里的确认**
+  （表单自己还开着、旁边另有拒绝位），不是同一件事；要一轮一轮按「关掉才算完事」这条判据挑，别整批套。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔：`e84167aa4`（源码 1 + 两份既有 spec + changelog 一对 = 5 个文件）；台账另起一笔。
