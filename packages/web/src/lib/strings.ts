@@ -1693,6 +1693,18 @@ export const zh = {
     commandPolicyRulePattern: "正则表达式",
     commandPolicyRuleDesc: "描述",
     commandPolicyInvalidPattern: "正则表达式无效",
+    /**
+     * A Save this page was refused (command-policy-save-refusal.ts), drawn above the Save button
+     * that asked: one Save writes the switch and the whole rule list, so the sentence has to say
+     * which policy the engine is still running — the controls above show the buffered draft, not
+     * the one in force.
+     */
+    commandPolicyRefused: (reason: string): string =>
+      `没能保存命令策略，项目里仍是上一次保存的那一份：${reason}`,
+    commandPolicyRefusedStillOn: (reason: string): string =>
+      `没能保存命令策略，命令拦截仍处于启用状态（规则也还是上一次保存的）：${reason}`,
+    commandPolicyRefusedStillOff: (reason: string): string =>
+      `没能保存命令策略，命令拦截仍处于停用状态（规则也还是上一次保存的）：${reason}`,
     deleteProject: "删除项目",
     deleteConfirm: "确认删除该项目？项目目录将被递归删除，不可恢复。",
     deleteDefaultForbidden: "default_project 与 CLI 共用，不允许在 Web 端删除",

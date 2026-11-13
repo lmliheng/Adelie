@@ -1647,6 +1647,17 @@ export const en: Strings = {
     commandPolicyRulePattern: "Regular expression",
     commandPolicyRuleDesc: "Description",
     commandPolicyInvalidPattern: "Invalid regular expression",
+    /**
+     * A Save this page was refused (command-policy-save-refusal.ts), drawn above the Save button
+     * that asked: one Save writes the switch and the whole rule list, so the sentence says which
+     * policy the engine is still running — the controls above show the buffered draft.
+     */
+    commandPolicyRefused: (reason: string): string =>
+      `Could not save the command policy — the Project still holds the last one it saved: ${reason}`,
+    commandPolicyRefusedStillOn: (reason: string): string =>
+      `Could not save the command policy — command blocking is still ON, with the rules from the last save: ${reason}`,
+    commandPolicyRefusedStillOff: (reason: string): string =>
+      `Could not save the command policy — command blocking is still OFF, with the rules from the last save: ${reason}`,
     deleteProject: "Delete Project",
     deleteConfirm:
       "Delete this Project? Its directory will be removed recursively and cannot be recovered.",

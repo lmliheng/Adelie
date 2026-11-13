@@ -37,6 +37,7 @@ import {
   chatDefaultsSaveRefused,
   type ChatDefaultsWrite,
 } from "../../lib/chat-defaults-save-refusal";
+import { commandPolicySaveRefused } from "../../lib/command-policy-save-refusal";
 import { memberWriteRefused, type MemberRefusal } from "../../lib/member-write-refusal";
 import { toneInk } from "../../lib/tone";
 import {
@@ -983,6 +984,8 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
   const [busy, setBusy] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [rules, setRules] = useState<CommandPolicyRuleDto[]>([]);
+  /** The sentence the last refused Save left (command-policy-save-refusal.ts), if any. */
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
   /** Index being edited inline, "new" for the add form, null when idle. */
   const [editing, setEditing] = useState<number | "new" | null>(null);
 
@@ -993,6 +996,8 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
     setSaved(null);
     setLoadError(null);
     setEditing(null);
+    // A sentence about THIS project's refused Save must not outlive the switch to another one.
+    setSaveRefusal(null);
     api
       .getCommandPolicy(projectId)
       .then((res) => {
@@ -1018,6 +1023,8 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
   const save = async () => {
     if (busy || !dirty) return;
     setBusy(true);
+    // Cleared first: an earlier refusal must not hang over a later attempt that may well land.
+    setSaveRefusal(null);
     try {
       const stored = await api.putCommandPolicy(projectId, { enabled, rules });
       setSaved(stored);
@@ -1025,7 +1032,14 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
       setRules(stored.rules);
       toastSuccess(S.common.saved);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // Not a toast: the switch and the list above now show the draft, and the sentence is what
+      // says which policy the engine is still running (command-policy-save-refusal.ts).
+      setSaveRefusal(
+        commandPolicySaveRefused(
+          { enabled, savedEnabled: saved === null ? enabled : saved.enabled },
+          e,
+        ).text,
+      );
     } finally {
       setBusy(false);
     }
@@ -1169,17 +1183,36 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
             </div>
           </div>
           {isOwner && (
-            <div className="mt-2 flex justify-end border-t border-gray-100 pt-3 dark:border-gray-800/60">
-              {/* Blocked while a rule editor is open, like every other control here: the
-                  editor is keyed by index, so a save that replaced the list underneath it
-                  would leave a stale draft that Apply then writes over the wrong rule. */}
-              <Button
-                size="sm"
-                disabled={busy || !dirty || editing !== null}
-                onClick={() => void save()}
-              >
-                {S.common.save}
-              </Button>
+            <div className="mt-2 flex items-end gap-3 border-t border-gray-100 pt-3 dark:border-gray-800/60">
+              {/* A refused Save belongs beside the button that asked, saying which policy the
+                  engine is still running (command-policy-save-refusal.ts): the switch and the list
+                  above show the buffered draft, and the toast this replaced could not say so. It
+                  sits in the button's OWN row rather than above it — the rule list alone overflows
+                  this dialog's scroll box, and a sentence stacked over the button pushed the
+                  retry out of view at exactly the moment it was needed. */}
+              {saveRefusal !== null && (
+                <p
+                  role="alert"
+                  data-testid="command-policy-refusal"
+                  data-tooltip={saveRefusal}
+                  data-tooltip-content="text"
+                  className={`line-clamp-2 min-w-0 flex-1 break-words text-xs ${toneInk.danger}`}
+                >
+                  {saveRefusal}
+                </p>
+              )}
+              <div className="ml-auto shrink-0">
+                {/* Blocked while a rule editor is open, like every other control here: the
+                    editor is keyed by index, so a save that replaced the list underneath it
+                    would leave a stale draft that Apply then writes over the wrong rule. */}
+                <Button
+                  size="sm"
+                  disabled={busy || !dirty || editing !== null}
+                  onClick={() => void save()}
+                >
+                  {S.common.save}
+                </Button>
+              </div>
             </div>
           )}
         </>
