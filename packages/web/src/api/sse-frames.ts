@@ -4,10 +4,13 @@
  * other surface can: did the server write and nothing arrived, or was nothing ever written?
  * The page holds the received half only — the server's own writes are not visible from here.
  *
- * Off by default, and it stays off unless the reader switches it on (the Trace panel's Transport
- * toggle writes `penguin.sseFrames`): the ring keeps a payload's first characters, which is not
- * something to record behind the reader's back, and the toggle is also what makes the cost
- * bounded and deliberate rather than paid by every reader of every Session.
+ * On by default, and the reader can turn it off (the Trace panel's Transport toggle writes
+ * `penguin.sseFrames` with the OFF choice). It used to default off, and that turned out to
+ * defeat the point: a stream that went quiet is noticed AFTER the fact, and frames recorded
+ * only from the moment the reader switches it on are exactly the frames that are already gone.
+ * The cost is what keeps it bearable rather than the default: entries live in this page's memory
+ * only (never written to storage, never sent anywhere), the ring keeps the recent past (300
+ * entries), and a payload is kept as its first characters (SSE_PREVIEW_CHARS).
  *
  * Bounded: frames arrive at up to a few per second, so the ring keeps the recent past
  * (SSE_FRAME_CAP) and the oldest fall out. A channel that went quiet for longer than the
@@ -60,12 +63,15 @@ const listeners = new Set<() => void>();
 /** Bytes of a payload, counted on the payload's own encoding rather than on UTF-16 code units. */
 const encoder = new TextEncoder();
 
-/** Whether this browser is recording frames. Anything unreadable (private browsing, no storage) reads as off. */
+/**
+ * Whether this browser is recording frames. On unless the reader turned it off; anything
+ * unreadable (private browsing, no storage) reads as on, since the entries never leave memory.
+ */
 export function sseFramesEnabled(): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === "1";
+    return localStorage.getItem(STORAGE_KEY) !== "0";
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -76,8 +82,8 @@ export function sseFramesEnabled(): boolean {
  */
 export function setSseFramesEnabled(on: boolean): void {
   try {
-    if (on) localStorage.setItem(STORAGE_KEY, "1");
-    else localStorage.removeItem(STORAGE_KEY);
+    if (on) localStorage.removeItem(STORAGE_KEY);
+    else localStorage.setItem(STORAGE_KEY, "0");
   } catch {
     /* best-effort persistence (private browsing, quota) — the current page still records */
   }

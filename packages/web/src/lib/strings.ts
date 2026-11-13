@@ -451,7 +451,7 @@ export const zh = {
     transportOn: "记录中",
     transportOff: "已关闭",
     transportHint:
-      "打开后记录本浏览器实际收到的实时帧：实时流停了时，用它看是数据没送到，还是服务端没写。",
+      "已关闭：打开后重新记录本浏览器收到的实时帧（只留在本页内存，最多 300 条）—— 实时流停了时，用它看是数据没送到，还是服务端没写。",
     transportCount: (n: number) => `最近 ${n} 帧，新的在上`,
     transportEmpty: "还没有收到帧",
     transportClear: "清空",

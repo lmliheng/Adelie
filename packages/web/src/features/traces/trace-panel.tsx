@@ -110,15 +110,29 @@ export function TracePanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, listTick, session.sessionId]);
 
+  // The Transport view is rendered ABOVE these branches rather than inside the populated one:
+  // a Session with no Trace at all — nothing has run yet, or a run died before its first write —
+  // is exactly when "did the stream deliver anything" is the question being asked, and an empty
+  // state that swallowed the one view that answers it made the feature unreachable there.
+  const transport = <SseFrameList sessionId={session.sessionId} active={active} />;
+
   // The failure owns the whole panel only where there is nothing to keep: no listing yet
   // (here), or a listing with no file in it (below). With a file on screen it is a strip
   // above it instead.
   if (files === null) {
-    if (error !== null) return <EmptyState title={S.tracePanel.loadFailed} description={error} />;
     return (
-      <div className="space-y-3 p-4">
-        <Skeleton className="h-5 w-2/3" />
-        <Skeleton className="h-5 w-1/2" />
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="space-y-3">
+          {transport}
+          {error !== null ? (
+            <EmptyState title={S.tracePanel.loadFailed} description={error} />
+          ) : (
+            <>
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-5 w-1/2" />
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -127,8 +141,18 @@ export function TracePanel({
   // selected file falls back to the newest one rather than emptying the panel.
   const activeFile = activeTraceFile(files, fileIndex);
   if (activeFile === null) {
-    if (error !== null) return <EmptyState title={S.tracePanel.loadFailed} description={error} />;
-    return <EmptyState title={S.tracePanel.empty} description={S.tracePanel.emptyHint} />;
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="space-y-3">
+          {transport}
+          {error !== null ? (
+            <EmptyState title={S.tracePanel.loadFailed} description={error} />
+          ) : (
+            <EmptyState title={S.tracePanel.empty} description={S.tracePanel.emptyHint} />
+          )}
+        </div>
+      </div>
+    );
   }
 
   const visibleFiles = showAllFiles ? files : files.slice(0, FILE_PILL_CAP);
@@ -143,9 +167,9 @@ export function TracePanel({
             {S.tracePanel.loadFailed} · {error}
           </NoticeStrip>
         )}
-        {/* What this browser received on the live streams (off unless switched on): the one
+        {/* What this browser received on the live streams (off unless switched off): the one
             place a stalled stream can be told from a quiet one. */}
-        <SseFrameList sessionId={session.sessionId} active={active} />
+        {transport}
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-xs text-gray-400">{S.traces.filesTitle}</span>
           {visibleFiles.map((f) => (

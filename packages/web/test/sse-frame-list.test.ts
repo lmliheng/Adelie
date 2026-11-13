@@ -1,7 +1,7 @@
 /**
- * The Transport view's markup (features/traces/sse-frame-list.tsx): off by default, and what a
- * reader gets once it is on — the recorded frames, newest first, in the wire's own words, with
- * another Session's channel kept out.
+ * The Transport view's markup (features/traces/sse-frame-list.tsx): on by default, so frames are
+ * there when a reader goes looking, and what a reader gets — the recorded frames, newest first,
+ * in the wire's own words, with another Session's channel kept out.
  */
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -35,7 +35,16 @@ afterEach(() => {
 const render = (sessionId = "s1") =>
   renderToStaticMarkup(createElement(SseFrameList, { sessionId, active: true }));
 
-it("starts off, saying what turning it on would do", () => {
+it("records from the start, listing what arrived", () => {
+  noteSseFrame(receivedEntry("session", "s1", "ping", null, "{}"));
+  const html = render();
+  expect(html).toContain(S.tracePanel.transportOn);
+  expect(html).toContain(S.tracePanel.transportCount(1));
+  expect(html).not.toContain(S.tracePanel.transportHint);
+});
+
+it("while switched off, says what turning it back on would do", () => {
+  setSseFramesEnabled(false);
   noteSseFrame(receivedEntry("session", "s1", "ping", null, "{}"));
   const html = render();
   expect(html).toContain(S.tracePanel.transportOff);

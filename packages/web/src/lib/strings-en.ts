@@ -381,7 +381,7 @@ export const en: Strings = {
     transportOn: "Recording",
     transportOff: "Off",
     transportHint:
-      "Records the live frames this browser actually received, so a stalled stream can be read as data that never arrived rather than a server that never wrote.",
+      "Off: turning it back on records the live frames this browser receives (this page's memory only, the last 300) — so a stalled stream can be read as data that never arrived rather than a server that never wrote.",
     transportCount: (n: number) => `Last ${n} frames, newest first`,
     transportEmpty: "No frames received yet",
     transportClear: "Clear",

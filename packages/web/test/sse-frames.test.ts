@@ -49,12 +49,7 @@ beforeEach(() => {
 const frame = (id: string | null = null) =>
   receivedEntry("session", "s1", "ping", id, JSON.stringify({ type: "task_state" }));
 
-it("records nothing until the toggle is on, and drops the ring when it goes off", () => {
-  expect(sseFramesEnabled()).toBe(false);
-  noteSseFrame(frame());
-  expect(sseFrames()).toEqual([]);
-
-  setSseFramesEnabled(true);
+it("records by default, and drops the ring while it is switched off", () => {
   expect(sseFramesEnabled()).toBe(true);
   noteSseFrame(frame());
   expect(sseFrames()).toHaveLength(1);
@@ -62,6 +57,14 @@ it("records nothing until the toggle is on, and drops the ring when it goes off"
   setSseFramesEnabled(false);
   expect(sseFramesEnabled()).toBe(false);
   expect(sseFrames()).toEqual([]);
+  // Switched off means nothing new lands either — the ring on screen is the past, not a resuming list.
+  noteSseFrame(frame());
+  expect(sseFrames()).toEqual([]);
+
+  setSseFramesEnabled(true);
+  expect(sseFramesEnabled()).toBe(true);
+  noteSseFrame(frame());
+  expect(sseFrames()).toHaveLength(1);
 });
 
 it("keeps the newest cap's worth, dropping the oldest", () => {

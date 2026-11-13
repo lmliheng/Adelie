@@ -185,9 +185,9 @@ The approval mechanism itself is covered in [Tools & Approval](/tools).
 
 ### The Transport view (the live frames this page received)
 
-The **Transport** toggle at the top of the Trace panel is off by default. Switched on, it records every frame this browser **actually received** on the live streams and lists them newest first: the SSE event name (`message` / `server_event` / `ping`), the id the channel gave it, its byte length and the opening of its payload — plus connection markers (`open` / `reopen` / `stalled` / `live` / `probe` / `error` / `closed`) and a `silence` marker carrying the length of any quiet stretch longer than the server's heartbeat. `user` on a row marks the `GET /api/events` stream; the rest belong to this Session.
+The **Transport** view at the top of the Trace panel records by default, with nothing to switch on first. It records every frame this browser **actually received** on the live streams and lists them newest first: the SSE event name (`message` / `server_event` / `ping`), the id the channel gave it, its byte length and the opening of its payload — plus connection markers (`open` / `reopen` / `stalled` / `live` / `probe` / `error` / `closed`) and a `silence` marker carrying the length of any quiet stretch longer than the server's heartbeat. `user` on a row marks the `GET /api/events` stream; the rest belong to this Session.
 
-It holds the receiving half: a frame in the list proves one arrived, and its absence proves nothing about what the server wrote. That is exactly why it exists — when a conversation looks stuck, it is where "the data never arrived" is told apart from "the server never wrote". The choice is remembered in this browser (`penguin.sseFrames`), and the ring keeps the newest 300 entries.
+It holds the receiving half: a frame in the list proves one arrived, and its absence proves nothing about what the server wrote. That is exactly why it exists — when a conversation looks stuck, it is where "the data never arrived" is told apart from "the server never wrote". The view is there in every state of the listing, including a Session with no Trace file yet; whoever does not want it can turn it off, and the choice is remembered in this browser (`penguin.sseFrames`). The ring keeps the newest 300 entries.
 
 ### Moving Trace files across deployments
 

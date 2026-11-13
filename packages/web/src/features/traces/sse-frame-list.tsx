@@ -1,7 +1,7 @@
 /**
  * The Trace panel's Transport view: the SSE frames this browser actually received, newest first,
- * behind a toggle that is OFF by default (see api/sse-frames.ts — it stores payload prefixes, so
- * it is the reader's call, and the state is remembered in localStorage).
+ * behind a toggle that is ON by default (see api/sse-frames.ts — the frames live in this page's
+ * memory, and the off choice is remembered in localStorage).
  *
  * Its question is the one nothing else on screen can answer: the live stream went quiet — did
  * data ever arrive, and what was in it? A row is one frame off the wire (its SSE event name, its
@@ -14,8 +14,8 @@
  * prove that a frame arrived, never that one was never sent.
  *
  * Live while it shows: frames land as the run streams, so the list re-renders on the recorder's
- * own notifications. A hidden dock tab (or a turned-off toggle) records nothing to the screen and
- * subscribes to nothing.
+ * own notifications. A hidden dock tab (or a switched-off toggle) records nothing to the screen
+ * and subscribes to nothing.
  */
 import { useEffect, useReducer, useState } from "react";
 import { formatBytes, humanizeDuration } from "../../lib/format";
