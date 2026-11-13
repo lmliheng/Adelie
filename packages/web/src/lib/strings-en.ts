@@ -4027,6 +4027,15 @@ export const en: Strings = {
     batchClear: "Clear selection",
     batchArchiveDone: (n: number) => `Archived ${n} chats`,
     batchUnarchiveDone: (n: number) => `Unarchived ${n} chats`,
+    /**
+     * A batch archive / unarchive the server refused (wholly or in part): how many of the ticked
+     * chats did not change, then the server's words. Neither action asks first, so this sentence
+     * stays in the bar that holds their buttons — the ticks left behind are what a retry acts on.
+     */
+    batchArchiveRefused: (n: number, reason: string) =>
+      `${n} of the selected chats were not archived: ${reason}`,
+    batchUnarchiveRefused: (n: number, reason: string) =>
+      `${n} of the selected chats were not unarchived: ${reason}`,
     batchDeleteTitle: "Delete selected chats",
     batchDeleteConfirm: (n: number) =>
       `Delete the ${n} selected chats? Their messages and Trace will be removed permanently.`,

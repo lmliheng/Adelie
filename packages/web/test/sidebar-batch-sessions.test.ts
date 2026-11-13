@@ -69,6 +69,21 @@ describe("the batch bar's words", () => {
     );
   });
 
+  it("says how many of a refused archive did not change, in both dictionaries", () => {
+    expect(zh.chat.batchArchiveRefused(2, "session store is read-only")).toBe(
+      "还有 2 个对话没有归档：session store is read-only",
+    );
+    expect(zh.chat.batchUnarchiveRefused(1, "session store is read-only")).toBe(
+      "还有 1 个对话没有取消归档：session store is read-only",
+    );
+    expect(en.chat.batchArchiveRefused(1, "session store is read-only")).toBe(
+      "1 of the selected chats were not archived: session store is read-only",
+    );
+    expect(en.chat.batchUnarchiveRefused(2, "session store is read-only")).toBe(
+      "2 of the selected chats were not unarchived: session store is read-only",
+    );
+  });
+
   it("names each row's box after the conversation it stands for", () => {
     expect(zh.chat.batchSelectRow("修构建")).toBe("选中「修构建」");
     expect(en.chat.batchSelectRow("Fix the build")).toBe('Select "Fix the build"');
@@ -119,7 +134,10 @@ describe("the batch wiring", () => {
     // A batch is N writes, so its outcomes are read per row — `all` would drop the rows that did
     // land, and only the landed ones may be forgotten.
     expect(SIDEBAR).toContain("await Promise.allSettled(");
-    expect(SIDEBAR).toContain("forgetDeletedSessions(landed);");
+    expect(SIDEBAR).toContain("forgetDeletedSessions(landedRows);");
+    // Both actions read their outcomes through the one splitter, so neither can drift from the
+    // rule that a batch is N writes (lib/batch-outcome.ts).
+    expect(SIDEBAR.match(/splitBatchOutcome\(targets, results\)/g)).toHaveLength(2);
   });
 
   it("keeps the delete's confirmation, asked once for the whole selection", () => {
@@ -135,14 +153,44 @@ describe("the batch wiring", () => {
     );
   });
 
-  it("drops the ticks when the mode is left, and clears them after an action lands", () => {
+  it("drops the ticks when the mode is left, and leaves only the rows that did not go", () => {
     expect(TOGGLE).toContain("setBatchMode(false)");
     expect(TOGGLE).toContain("setBatchSelected(new Set())");
-    expect(SIDEBAR).toContain("const clearBatchSelection = () => setBatchSelected(new Set());");
-    // Archived rows are no longer the ones the reader picked, and a delete clears a fully landed
-    // batch — but a refused one keeps exactly the rows that did not go ticked for the retry.
-    expect(SIDEBAR.match(/setBatchSelected\(new Set\(\)\)/g)?.length).toBeGreaterThanOrEqual(3);
-    expect(SIDEBAR).toContain("setBatchSelected(new Set(refused.map((s) => s.sessionId)));");
+    // Neither action clears the selection outright: both keep exactly the refused rows ticked, so
+    // a fully landed batch clears them by itself and a partial one leaves the retry's rows.
+    expect(
+      SIDEBAR.match(/setBatchSelected\(new Set\(refused\.map\(\(s\) => s\.sessionId\)\)\);/g),
+    ).toHaveLength(2);
+    // "取消选择" is the explicit way out, and it takes the bar's last refusal with it.
+    const clear = SIDEBAR.slice(
+      SIDEBAR.indexOf("const clearBatchSelection = () => {"),
+      SIDEBAR.indexOf("/**", SIDEBAR.indexOf("const clearBatchSelection = () => {")),
+    );
+    expect(clear).toContain("setBatchArchiveRefusal(null);");
+    expect(clear).toContain("setBatchSelected(new Set());");
+  });
+
+  it("keeps a refused archive in the bar, over exactly the rows a retry would act on", () => {
+    const bar = SIDEBAR.slice(
+      SIDEBAR.indexOf("{batchMode && batchSelected.size > 0 && ("),
+      SIDEBAR.indexOf("unsent new chats, newest first"),
+    );
+    // No card asks before an archive, so the bar that holds its two buttons is where its refusal
+    // has to be read — not a toast above a list that looks untouched.
+    expect(bar).toContain("batchArchiveRefusal !== null");
+    expect(bar).toContain('data-testid="batch-archive-refusal"');
+    expect(bar).toContain("{batchArchiveRefusal}");
+    expect(SIDEBAR).toContain(
+      "S.chat.batchArchiveRefused(refused.length, apiErrorText(firstReason))",
+    );
+    expect(SIDEBAR).toContain(
+      "S.chat.batchUnarchiveRefused(refused.length, apiErrorText(firstReason))",
+    );
+    // Rows that landed take the server's own copy (the archived flag that moves them into the
+    // folder); the refused ones stay ticked, and a fully landed batch still just says so.
+    expect(SIDEBAR).toContain("for (const row of landed) replace(row.value.session);");
+    expect(SIDEBAR).toContain("if (refused.length === 0) {");
+    expect(SIDEBAR).toContain("S.chat.batchArchiveDone(landed.length)");
   });
 
   it("stops reordering rows while they are being picked", () => {

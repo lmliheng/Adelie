@@ -4119,6 +4119,12 @@ export const zh = {
     batchClear: "取消选择",
     batchArchiveDone: (n: number) => `已归档 ${n} 个对话`,
     batchUnarchiveDone: (n: number) => `已取消归档 ${n} 个对话`,
+    /**
+     * 批量归档 / 批量取消归档被拒（全部或一部分）：几个没改成，然后是服务端自己说的话。归档与取消归档没有
+     * 确认卡片，因此这句话留在它们的按钮所在的那条栏目里 —— 留下来的勾选就是重试的对象。
+     */
+    batchArchiveRefused: (n: number, reason: string) => `还有 ${n} 个对话没有归档：${reason}`,
+    batchUnarchiveRefused: (n: number, reason: string) => `还有 ${n} 个对话没有取消归档：${reason}`,
     batchDeleteTitle: "删除选中的对话",
     batchDeleteConfirm: (n: number) =>
       `确定删除选中的 ${n} 个对话？其消息与 Trace 将被移除，且不可恢复。`,

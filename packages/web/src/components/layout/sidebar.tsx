@@ -83,7 +83,6 @@ import {
   SkeletonList,
   UpdateDot,
   UserAvatar,
-  toastError,
   toastInfo,
   toastSuccess,
 } from "@adelie/ui";
@@ -101,6 +100,8 @@ import {
 import type { SessionActivity } from "../../lib/session-activity";
 import { forgetSession, noteSessionSeen, useSessionSeen } from "../../lib/session-seen";
 import { apiErrorText } from "../../lib/api-error";
+import { splitBatchOutcome } from "../../lib/batch-outcome";
+import { toneInk } from "../../lib/tone";
 import { useAuth } from "../../state/auth";
 import { useLocale } from "../../state/locale";
 import { agentDisplayName, projectDisplayName, useProject } from "../../state/project";
@@ -655,6 +656,12 @@ export function Sidebar({
    * ticked is exactly what did not go.
    */
   const [batchDeleteRefusal, setBatchDeleteRefusal] = useState<string | null>(null);
+  /**
+   * Why the last batch archive / unarchive did not finish — the same rule, one host further out:
+   * those two act straight from the bar (no card asks first), so the bar is what a refusal has to
+   * be read from, under the buttons that sent it. The ticks it left behind are the retry.
+   */
+  const [batchArchiveRefusal, setBatchArchiveRefusal] = useState<string | null>(null);
   /** Parked draft conversation pending delete confirmation (null = none). */
   const [deletingDraft, setDeletingDraft] = useState<DraftSessionEntry | null>(null);
   /** Parked draft conversations of this user × Project, newest first (reactive module store). */
@@ -1389,12 +1396,16 @@ export function Sidebar({
     if (batchMode) {
       setBatchMode(false);
       setBatchSelected(new Set());
+      // The bar is gone with the mode, and so is any meaning its last refusal had.
+      setBatchArchiveRefusal(null);
       return;
     }
     setBatchMode(true);
   };
 
   const toggleBatchRow = (sessionId: string) => {
+    // The bar's refusal counts the rows it refused; ticks that no longer match it make it untrue.
+    setBatchArchiveRefusal(null);
     setBatchSelected((prev) => {
       const next = new Set(prev);
       if (next.has(sessionId)) next.delete(sessionId);
@@ -1411,30 +1422,46 @@ export function Sidebar({
    * menu runs — the server has no bulk route, and a batch that fails halfway must not hide which
    * rows landed. Archiving the conversation on screen opens the archived folder, or its row would
    * vanish from the list with no way back (the row menu's toggle does the same).
+   *
+   * The outcomes are read per row (`splitBatchOutcome`, the same rule the batch delete follows):
+   * the rows that landed take the server's own copy, the refused ones stay ticked — they are the
+   * rows still there — and the bar keeps the count of what is left plus the server's words. That
+   * bar is the retry, so this reason cannot live in a toast over it.
    */
-  const batchSetArchived = async (archived: boolean) => {
+  const batchSetArchived = async (archived: boolean): Promise<void> => {
     const targets = batchTargets();
     if (targets.length === 0) return;
     setBatchBusy(true);
+    // Another attempt answers the previous one, whatever it says.
+    setBatchArchiveRefusal(null);
     try {
-      const results = await Promise.all(
+      const results = await Promise.allSettled(
         targets.map((s) => api.patchSession(s.sessionId, { archived })),
       );
-      for (const res of results) replace(res.session);
-      const openOne = targets.find((s) => s.sessionId === activeSessionId);
+      const { landed, refused, firstReason } = splitBatchOutcome(targets, results);
+      // The rows that landed now hold the server's version of themselves (including the archived
+      // flag that moves them into the folder) — the refused ones are left exactly as they were.
+      for (const row of landed) replace(row.value.session);
+      setBatchSelected(new Set(refused.map((s) => s.sessionId)));
+      const openOne = landed.find((row) => row.target.sessionId === activeSessionId);
       if (archived && openOne !== undefined) {
         setOpenFolders((prev) =>
-          new Set(prev).add(folderKey(sessionGroupKey(openOne), "archived")),
+          new Set(prev).add(folderKey(sessionGroupKey(openOne.target), "archived")),
         );
       }
-      toastSuccess(
+      if (refused.length === 0) {
+        toastSuccess(
+          archived
+            ? S.chat.batchArchiveDone(landed.length)
+            : S.chat.batchUnarchiveDone(landed.length),
+        );
+        return;
+      }
+      setBatchArchiveRefusal(
         archived
-          ? S.chat.batchArchiveDone(targets.length)
-          : S.chat.batchUnarchiveDone(targets.length),
+          ? S.chat.batchArchiveRefused(refused.length, apiErrorText(firstReason))
+          : S.chat.batchUnarchiveRefused(refused.length, apiErrorText(firstReason)),
       );
-      setBatchSelected(new Set());
-    } catch (e) {
-      toastError(apiErrorText(e));
     } finally {
       setBatchBusy(false);
     }
@@ -1458,22 +1485,11 @@ export function Sidebar({
     setBatchDeleteRefusal(null);
     try {
       const results = await Promise.allSettled(targets.map((s) => api.deleteSession(s.sessionId)));
-      const landed: SessionInfo[] = [];
-      const refused: SessionInfo[] = [];
       // The card shows ONE reason under its sentence, so the first refusal's words are the ones
       // kept — the rows themselves say which of them is still there to retry.
-      let firstReason: unknown;
-      results.forEach((result, i) => {
-        const target = targets[i];
-        if (target === undefined) return;
-        if (result.status === "fulfilled") {
-          landed.push(target);
-          return;
-        }
-        if (refused.length === 0) firstReason = result.reason;
-        refused.push(target);
-      });
-      forgetDeletedSessions(landed);
+      const { landed, refused, firstReason } = splitBatchOutcome(targets, results);
+      const landedRows = landed.map((row) => row.target);
+      forgetDeletedSessions(landedRows);
       setBatchSelected(new Set(refused.map((s) => s.sessionId)));
       if (refused.length === 0) {
         setBatchConfirmDelete(false);
@@ -1482,9 +1498,9 @@ export function Sidebar({
       }
       // Only a conversation that actually went away is left for: when the open one was one of the
       // refused rows it is still on screen, so there is nowhere to go.
-      const openOne = landed.find((s) => s.sessionId === activeSessionId);
+      const openOne = landedRows.find((s) => s.sessionId === activeSessionId);
       if (openOne !== undefined) {
-        const deleted = new Set(landed.map((s) => s.sessionId));
+        const deleted = new Set(landedRows.map((s) => s.sessionId));
         const rest = (byAgent.get(openOne.agentId) ?? []).filter(
           (s) => !deleted.has(s.sessionId) && sessionCategory(s) === "active",
         );
@@ -1496,7 +1512,10 @@ export function Sidebar({
   };
 
   /** Clear the ticks, staying in the mode (the bar's own control — leaving is the header's toggle). */
-  const clearBatchSelection = () => setBatchSelected(new Set());
+  const clearBatchSelection = () => {
+    setBatchArchiveRefusal(null);
+    setBatchSelected(new Set());
+  };
 
   /**
    * New chat: enters draft state (/chat/new) without creating a Session — Model / Workspace /
@@ -2751,7 +2770,8 @@ export function Sidebar({
               loses no row to a control that has nothing to act on — the same rule the requirement
               box's batch bar follows. Every action goes through the route the row's own menu
               already uses (one PATCH or DELETE per conversation), and the delete keeps its
-              confirmation, now asked once for the whole selection. */}
+              confirmation, now asked once for the whole selection. A refused archive / unarchive
+              answers in the bar itself: it acts without asking, so there is no card to keep. */}
           {batchMode && batchSelected.size > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1 rounded-md border border-line-emphasis px-2 py-1.5">
               <span className="mr-auto px-0.5 text-xs text-fg-muted">
@@ -2788,6 +2808,20 @@ export function Sidebar({
               <Button size="xs" variant="link" disabled={batchBusy} onClick={clearBatchSelection}>
                 {S.chat.batchClear}
               </Button>
+              {/* An archive / unarchive the server refused: nothing else on screen moved, the refused
+                  rows are still ticked right below, and the two buttons above are the retry — so the
+                  reason stays in the bar that sent it (the delete's own card is not involved). */}
+              {batchArchiveRefusal !== null && (
+                <p
+                  role="alert"
+                  data-testid="batch-archive-refusal"
+                  data-tooltip={batchArchiveRefusal}
+                  data-tooltip-content="text"
+                  className={`w-full line-clamp-2 break-words px-0.5 text-xs ${toneInk.danger}`}
+                >
+                  {batchArchiveRefusal}
+                </p>
+              )}
             </div>
           )}
 
