@@ -26413,3 +26413,91 @@ retry"，也就是上一轮记下的那一族里最后一处「有宿主、却�
 ### 提交
 
 `fix(web)` 一笔（源码 4 + 新单测 1 + 新 spec 1 + changelog 一对 = 8 个文件）；台账另起一笔。
+| 2026-11-14 | 7.126 | **命令策略的保存被拒时，原因留在保存按钮那一行，并说清引擎仍在执行哪一份**（**2026-11-14 第二百四十一轮**落地，提交见「已完成的轮次」；源码 4 处（新增纯逻辑 `packages/web/src/lib/command-policy-save-refusal.ts` 的 `commandPolicySaveRefused`（`{ enabled, savedEnabled }` → 那句话，原因走 `refusalText`），`project-dialogs.tsx` 的 `SecurityPolicySection`：`save()` 不再 `toastError` 而是填 `saveRefusal`、每次尝试先清、切项目一并清，句子 `data-testid="command-policy-refusal"`、`role="alert"`、限两行、悬停看全文，画在**保存按钮那一行**的左侧，而不是压在它上方）＋ 词典三句（开关仍启用 / 开关仍停用 / 存下来的策略没被动过，中英）＋ 1 个新单测（6 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百三十九轮末尾点名的那最后一处 —— 这一页一次 Save 整块 PUT「主开关 + 全部规则」，被拒时屏幕上的控件显示的是引擎**没有在跑**的那一份（刚关掉拦截的人以为下一条命令不会被挡，刚加 deny 规则的人以为它在生效），而拒绝只落在一条六秒通知里、念的是错误自己的话 | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）· `oxlint` 6 个改动文件 **0 警告 0 错误** · `prettier --check` 8 个文件（含 spec 与 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **213 / 3117 / 6 跳过** · web **329 文件 / 3759 通过 / 2 跳过**（+1 文件 / +6 条即本笔，基线 328 / 3753）· **新单测 6 passed**（被拒的关掉说仍启用；被拒的打开说仍停用；开关没动时不声称它变过；映射过的码念界面语言；无话可说落通用文案；跟随当前词典）· **新 spec 2 passed（10.1 s + 2.7 s）**（真服务端 8994 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r241-after`；两次拒绝都是服务端自己的答话：路由把规则上限写成 `MAX_RULES = 64`，spec 先用 API 把项目物化到 64 条（长 deny 列表本来就会到的状态），草稿再通过表单加进第 65 条 —— ① 同时把主开关也关掉：句子逐字「没能保存命令策略，命令拦截仍处于启用状态（规则也还是上一次保存的）：rules exceeds 64 entries.」、`role=alert`、通知区 **0 个按钮**、七秒后仍在、`GET command-policy` 与之前 `toEqual` 相同（仍启用、仍 64 条），把表恢复到上限内后按**同一个按钮**即落地；② 只动规则表：句子只说「项目里仍是上一次保存的那一份」、**不含「启用状态」/「停用状态」**、存下来的策略 `toEqual` 之前那份，重试即落地）· **反证（同一份 spec 跑改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8995 与另一个一次性数据根 `r241-before` 跑同一份 spec → **2 failed**，两条都死在 `getByTestId("command-policy-refusal")` 找不到
+
+## 第二百四十一轮：命令策略的保存被拒时，说清引擎仍在执行哪一份（2026-11-14，条目 7.126）
+
+### 开工
+
+- `git status --short` 干净，`main` 上是 `103c3095a`（另一条线 00:22 的 `fix(web)`：「轨迹面板的『传输』默认就
+  开着，没有轨迹的会话里也看得见」）。`git fetch origin` 三次都被 TLS 掐断（`GnuTLS recv error (-110)`），
+  只能看本地引用：`origin/main` = `ae11269bb`，本地**领先 1 笔** —— 那正是上面那笔没落台账、也没推上去的提交。
+  按「工作区干净、但 HEAD 有一笔没入台账的提交」的口径，**第二百四十轮留空号**给它补记，本轮记
+  **第二百四十一轮 / 7.126**；它随本轮一起推上去。
+- 待办里最靠前未勾选的 **2.2c** 仍只剩桌面壳一侧（本轮纪律不碰 `packages/desktop`）与既有部署单元 / 文档面；
+  3.5 要用户拍板、3.6 要模型 key、5.3 的②③④要第二台机器、5.6 与 5.10 等用户拍板、4.1–4.3 明令不动。
+  于是接第二百三十九轮「没做 / 留着」点名的最后一处：项目设置「安全策略」页的 Save
+  （`project-dialogs.tsx` 里唯一还在 `toastError(apiErrorText(e))` 的写）。
+- 顺手记一笔：定时任务提示词里的包名仍是 `@prismshadow/*`，本树早已是 `@adelie/*`（4.1 之外的改名已落），
+  按 `pnpm --filter @prismshadow/...` 跑会得到「No projects matched the filters」。
+
+### 为什么是这一条
+
+这一页缓冲「主开关 + 整张规则表」，一次 Save 整块 PUT，所以被拒时**屏幕上的开关和规则表显示的是引擎没有在跑的
+那一份**。它的两种读者都会读错同一件事：刚把命令拦截关掉的人以为下一条命令不会被挡，刚加了一条 deny 规则的人
+以为它在生效。而拒绝只落在一条六秒通知里，念的是错误自己的话 —— 七秒后连那句话都没有，留下一张看起来已经保存
+的列表。这正是全应用那条「被拒的原因留在发问的地方」的规则，而这一页是项目设置里最后一处仍发通知的写。
+
+### 改了什么
+
+- `packages/web/src/lib/command-policy-save-refusal.ts`（新增，纯逻辑）：`commandPolicySaveRefused(attempt,
+  error)` —— `{ enabled, savedEnabled }` 加上那句话。主开关是这次尝试的一部分时就点名仍在生效的那个状态
+  （`commandPolicyRefusedStillOn` / `StillOff`），只动规则表时说存下来的那一份没被动过
+  （`commandPolicyRefused`）—— 后一种情形**绝口不提**开关变过。原因走 `refusalText`，与这一族其余各处同一条
+  规则。
+- `packages/web/src/components/layout/project-dialogs.tsx` 的 `SecurityPolicySection`：新增 `saveRefusal` 槽；
+  `save()` 每次尝试先清掉上一次那句，被拒时填句子而不是 `toastError`；切 Project 的 effect 也清一次（一句话
+  不能跨项目活下来）。句子画在**保存按钮自己那一行**的左侧（`flex items-end` + 文本 `flex-1`、按钮 `shrink-0`）。
+- 词典三句（`strings.ts` / `strings-en.ts`）。
+
+### 一处过程记录：句子一开始压在按钮上方，量出来把「重试」推出了视野
+
+初版把句子放在按钮上方（与「新对话默认值」那一页同形）。真浏览器量了一遍几何：规则表本身就把这个对话框撑成
+`scrollHeight ≈ 4000 / clientHeight 630` 的滚动框，句子出现后**改后**产物里保存按钮的底边落在 815，而滚动框的
+底边是 791 —— 按同一个按钮重试时，按钮的下半截已经在视野外；**改前**产物里同一次保存之后按钮是 749–775，完整可见。
+于是把句子挪进按钮那一行：两行封顶（`line-clamp-2`）下这一行的高度只比按钮高约 6 px，复量按钮 754–780，完整在框内。
+这条不是猜的：`r241/probe4.mjs` 在两份产物上分别打印按钮与滚动框的 `getBoundingClientRect`。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 ——
+  本笔只动 `packages/web`）。
+- `oxlint` 6 个改动文件 **0 警告 0 错误**；`prettier --check` 8 个文件（含 spec 与 changelog 一对）干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** ·
+  server **213 文件 / 3117 通过 / 6 跳过** · web **329 文件 / 3759 通过 / 2 跳过**（+1 文件 / +6 条即本笔，
+  基线 328 / 3753）。
+- **新单测 6 passed**：被拒的「关掉」说拦截仍启用；被拒的「打开」说仍停用；开关没动时既不等于「仍启用」那句、
+  也不等于「仍停用」那句；映射过的错误码念界面自己的话（`Internal server error.` 不出现）；无话可说落到
+  `S.common.unknownError`；句子跟随当前词典。
+- **新 spec 2 passed（10.1 s + 2.7 s）**（真服务端 8994 + 真浏览器 `/usr/bin/chromium` + 一次性数据根
+  `/root/adelie-fork-data/r241-after`；两次拒绝都是服务端自己的答话 —— `http/routes/command-policy.ts` 把规则
+  上限写成 `MAX_RULES = 64`，spec 先用 API 把项目物化到 64 条，草稿再通过表单加进第 65 条）：① 同时把主开关也
+  关掉 —— 句子逐字「没能保存命令策略，命令拦截仍处于启用状态（规则也还是上一次保存的）：rules exceeds 64
+  entries.」，`role=alert`，通知区 **0 个按钮**，七秒后仍在，`GET command-policy` 与之前 `toEqual` 相同
+  （仍启用、仍 64 条），把表恢复到上限内后按**同一个按钮**即落地；② 只动规则表 —— 句子只说「项目里仍是上一次
+  保存的那一份」，**不含「启用状态」/「停用状态」**，存下来的策略与之前 `toEqual` 相同，重试即落地。
+- **反证**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8995 与另一个一次性数据根 `r241-before`
+  跑同一份 spec → **2 failed**，两条都死在 `getByTestId("command-policy-refusal")` 找不到。
+- **两态探针**（`r241/probe3.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s，拒绝同样由服务端自己给）：
+  **改前** 1.2 s 通知区 1 条「rules exceeds 64 entries.」、拒绝槽 0，7.5 s 通知区 0 条、对话框里一片安静 ——
+  而服务端仍是「启用、64 条」；**改后** 两刻都是「没能保存命令策略，命令拦截仍处于启用状态（规则也还是上一次
+  保存的）：rules exceeds 64 entries.」、通知区 0 条、拒绝槽 1。两态 console 都只有本轮故意造的那条 400
+  （`PUT …/command-policy`），pageerror 0 条；截图四张肉眼看过（改前 1.2 s 那张是**页顶**一条白底通知、按钮旁
+  什么都没有；改后那张红字就在保存按钮左边、页顶没有通知）。
+- 端口只用 8994 / 8995（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r241{-after,-before}`，两态产物 / 探针 / 截图 / 临时 playwright 配置（`r241/`）都在
+  scratchpad 里。
+
+### 没做 / 留着
+
+- **这一页从没说过 64 条这个上限**，到顶时也不把「添加规则」置灰 —— 本轮只让被拒之后说得清，没动那条护栏本身。
+  下一轮就做这一处（`7.127` 待记）：到顶时禁用入口并写出一句上限，单测 + 真浏览器用例同形。
+- 其余仍只发通知的写照旧（`workspace-browser` 的文件保存、`storage-section` 的清理按钮、`settings` 的更新流程等），
+  它们大多没有可承接的宿主，暂不一一搬。
+- 4.1–4.3（npm scope 与发布链路）与 2.5（四个上游包的去留）仍等用户拍板；3.6 仍等模型 key。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔 `a085c2ada`（源码 3 + 新纯逻辑 1 + 新单测 1 + 新 spec 1 + changelog 一对 = 8 个文件）；台账另起一笔。
