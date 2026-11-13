@@ -2544,6 +2544,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       （被拒的写原因留在发问的地方）在「设置」与「成本中心」两处收完之后，项目设置对话框里的成员表还是一条
       通知 —— 添加不存在的账号、移除一个已经不在名单里的成员，两种拒绝都只活六秒，而这期间表格看起来与
       被拒之前一模一样：没被移出的成员与已经移出的长得一样，什么都没说。见「第二百三十八轮」一节。
+- [x] **7.125 项目设置「新对话默认值」的一次保存被拒时，说清哪一半已经存进了项目**
+      （**2026-11-13 第二百三十九轮**落地，提交见「已完成的轮次」；源码 4 处（新增纯逻辑
+      `packages/web/src/lib/chat-defaults-save-refusal.ts` 的 `chatDefaultsSaveRefused`，
+      `project-dialogs.tsx` 的 `ChatDefaultsSection` 记住这次在写哪一处、那一块是否已落地，句子画在控件网格
+      下方）＋ 词典三句（中英）＋ 1 个新单测（6 条）＋ 1 个新 spec（2 条）＋ changelog 一对，
+      **不碰接口、无新依赖**）：第二百三十八轮末尾点名的下一处 —— 这一页的一次保存**写两处**（`[default_chat]`
+      整块，再是默认模型），而拒绝只落在一条六秒的通知里、念着错误自己的话。于是「那一块已经存进去了、模型那一半
+      被拒」的一次保存，与「哪儿都没去成」的那一次读起来一模一样，六秒后那句话消失，留下读者猜项目现在拿着哪
+      一半。现在句子画在发问的那组控件下方并点名哪一半：那一块被拒时说默认值仍是原来的；模型被拒而那一块已落地
+      时说默认值已保存、模型仍是原来的；只有模型被拒时绝口不提「已保存」。见「第二百三十九轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -26320,3 +26330,86 @@ build 过、typecheck 过、lint 0/0、format 过、测试 **10612 通过 / 20 �
 ### 提交
 
 `fix(web)` 一笔（源码 3 + 新单测 1 + 新 spec 1 + changelog 一对 = 7 个文件）；台账另起一笔。
+| 2026-11-13 | 7.125 | **项目设置「新对话默认值」的一次保存被拒时，说清哪一半已经存进了项目**（**2026-11-13 第二百三十九轮**落地，提交见「已完成的轮次」；源码 4 处（新增纯逻辑 `packages/web/src/lib/chat-defaults-save-refusal.ts` 的 `chatDefaultsSaveRefused`（`{ write: "defaults" \| "model"; defaultsLanded }` → 那句话，原因走 `refusalText`），`project-dialogs.tsx` 的 `ChatDefaultsSection`：`save()` 记下这次在写哪一处（`writing`，块在前、模型在后）与那一块是否已落地（`changed` 非空即已落地），被拒时不再 `toastError` 而是填 `saveRefusal`，句子 `data-testid="chat-defaults-refusal"`、`role="alert"`、危险色、限两行、悬停看全文，画在控件网格与保存按钮之间，每次尝试开始时先清掉上一次那句）＋ 词典三句（`chatDefaultsRefused` / `chatDefaultsModelRefused` / `chatDefaultsModelRefusedAfterSave`，中英）＋ 1 个新单测（6 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百三十八轮末尾点名的下一处 —— 这一页的一次保存**写两处**（`[default_chat]` 整块 PUT，然后默认模型的窄路由），可拒绝只落在一条六秒的通知里、念的是错误自己的话，于是「那一块已经存进去了、模型那一半被拒」的一次保存与「哪儿都没去成」的那一次读起来一模一样，六秒后连那句话都没了，读者只能猜项目现在拿着哪一半 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 6 个改动文件 **0 警告 0 错误** · `prettier --check` 8 个文件（含 spec 与 changelog 一对）干净（新单测首跑 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **213 文件 / 3117 通过 / 6 跳过** · web **327 文件 / 3750 通过 / 2 跳过**（+1 文件 / +6 条即本笔，基线 326 / 3744）· **新单测 6 passed**（块被拒时说没有保存并念错误码自己那句；块已落地而模型被拒时说清哪一半进了项目；同样一句模型拒绝在块没动时绝不声称保存过；没走到请求就失败的保留它自己的话；什么都没得说时落通用文案；当前词典决定语言）· **新 spec 2 passed（10.1 s + 2.5 s）**（真服务端 8993 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r239-after`；两次拒绝都是**服务端自己给的**：把挑中的模型从这个项目的 `models` 里删掉（就是另一个标签页的模型页会做的事），窄路由答 400 `defaultModel must be included in models: (provider=…, model_id=…)`）—— 两半都动过那一次：句子逐字「新对话默认值已保存，但默认模型没能改（项目里仍是原来的模型）：…」、`role=alert`、通知区 **0 个按钮**、七秒后仍在，`GET chat-defaults` 里那一块真的是新等级而 `GET models` 的默认模型真的没变，把模型加回去后按**同一个按钮**就让模型那一半落地（默认模型变成它、句子归 0）；只改模型那一次：句子只说「没能改默认模型，项目里仍是原来的模型」、**不含「已保存」**、存下来的那一块与之前读到的 `toEqual` 相同，重试即落地 · **反证（同一份 spec 跑改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂 8994 与另一个一次性数据根 `/root/adelie-fork-data/r239-before` → **2 failed**，两条都死在 `getByTestId("chat-defaults-refusal")` 找不到 · **两态探针**（`r239/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，量 1.2 s / 7.5 s，拒绝同样由服务端自己给）：**改前** 1.2 s 通知区 1 条、逐字只有 `defaultModel must be included in models: (provider=openrouter, model_id=anthropic/claude-sonnet-5).`、拒绝槽 0，7.5 s 通知区 0 条、对话框里一片安静（而那一块在服务端已是「高」、默认模型仍是 deepseek-flash）；**改后** 两刻都是控件下方那句「新对话默认值已保存，但默认模型没能改（项目里仍是原来的模型）：…」、通知区 0 条，服务端同样「块落地、默认模型没变」· 两态 console 都只有本轮**故意造的**那一条 400（`PUT …/models/default`），pageerror **0 条** · 截图 `r239/shots/{before,after}-{1.2s,7.5s}.png` 肉眼看过（改前 1.2 s 那张页顶一条白底通知、对话框里 Save 上方什么都没有，改后 1.2 s 那张红字就在 Workspace 与保存之间、页顶没有通知）· 端口只用 8993 / 8994（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r239{,-after,-before,-after-dist,-before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r239/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `84f180b0d` |
+
+## 第二百三十九轮：一次保存写两处时，说清哪一半进了项目（2026-11-13，条目 7.125）
+
+### 开工
+
+- `git status --short` 干净，`main` 上是 `b1c9281b9`（`docs(readme)`：首屏图标换成会动的企鹅）。
+  `git fetch origin` 两次都被 TLS 掐断（`GnuTLS recv error (-110)`），改用 `git ls-remote origin main`
+  核对：`origin/main` 正是 `b1c9281b96…`，与本地 HEAD 同一个提交，所以这一步**已经同步**，没有东西要合。
+- 待办里最靠前未勾选的 **2.2c** 仍只剩三件：桌面壳一侧的写点（本轮纪律不碰 `packages/desktop`）、
+  既有部署单元 `adelie-app.service`（发布动作）、`packages/docs` / `changelog` 那一面（2.5 的口径留到发布期）。
+  第十二轮以来一直按这个口径跳过它，本轮照旧。
+- 于是接第二百三十八轮末尾自己点名的「另起一轮」：项目设置里另外两处仍发通知的写之一 ——
+  `ChatDefaultsSection` 的保存。编号 `7.125` / 第二百三十九轮。
+
+### 为什么是这一条
+
+这一页的一次保存**写两处**：先是 `[default_chat]` 整块（Agent / 工作目录 / 审批模式 / 思考等级，声明式整块
+PUT），再是这个项目的默认模型（窄路由 `PUT /models/default`）。它们按这个顺序发出，所以第二次可以在这第一次
+已经落地之后被拒 —— 而拒绝只落在一条六秒的通知里，念的是错误自己的话（`apiErrorText(e)`），别的什么都没有。
+于是一次「那一块已经存进去了、模型那一半被拒」的保存，与一次「哪儿都没去成」的保存读起来一模一样，六秒后
+连那句话都消失，读者只能猜项目现在拿着哪一半。源码自己的注释写着 "Failures toast and keep the edits for
+retry"，也就是上一轮记下的那一族里最后一处「有宿主、却把原因交给通知」的地方。
+
+### 改了什么
+
+- `packages/web/src/lib/chat-defaults-save-refusal.ts`（新增，纯逻辑）：`chatDefaultsSaveRefused(attempt,
+  error)` —— `{ write: "defaults" | "model"; defaultsLanded: boolean }` 加上那句话；原因走 `refusalText`
+  （服务端答的按错误码自己那句本地化文案念，本仓库自己抛出的原样显示）。文件头写明为什么这句话归这组控件、
+  以及为什么它必须说清哪一半 —— 一次保存两处写，是这一页独有的性质。
+- `packages/web/src/components/layout/project-dialogs.tsx`：`ChatDefaultsSection` 的 `save()` 记下
+  `writing`（这一次在写哪一处；块在前、模型在后）与「那一块是否已落地」（catch 里 `changed` 非空即已落地；
+  块先发，所以被拒的模型写可以带着已落地的块过来）；被拒时不再 `toastError`，而是填 `saveRefusal`，
+  句子画在控件网格与保存按钮之间（`data-testid="chat-defaults-refusal"`、`role="alert"`、`toneInk.danger`、
+  `line-clamp-2`、悬停看全文），每次尝试开始时先清掉上一次那句。两处写本身、它们的顺序、`changed` 的分发
+  与成功那条路径一个字节都没改。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`chatDefaultsRefused`（块被拒：项目里仍是原来的值）、
+  `chatDefaultsModelRefused`（只有模型被拒：没说别处被保存过）、`chatDefaultsModelRefusedAfterSave`（块已落地、
+  模型被拒：明说哪一半保存了），中英各三句。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 /
+  612 类型 —— 本笔不动服务契约）。
+- `oxlint` 6 个改动文件 **0 警告 0 错误**；`prettier --check` 8 个文件（含 spec 与 changelog 一对）干净
+  （新单测首跑需 `--write` 一次，复检通过）；`git diff --check` 干净。
+- 逐包 `test` **`EXIT=0`、0 失败**：core 70 文件 / 1456 通过 / 6 跳过 · ui 132 / 1103 · cli 39 / 566 ·
+  server 213 文件 / 3117 通过 / 6 跳过 · web 327 文件 / 3750 通过 / 2 跳过（+1 文件 / +6 条即本笔，
+  基线 326 / 3744）。
+- 新 spec `packages/web/e2e/chat-defaults-save-refusal.spec.mjs` **2 passed（10.1 s + 2.5 s）**（真服务端 8993
+  + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `r239-after`）。两次拒绝都是**服务端自己的答话**，不是桩：
+  把挑中的那个模型从这个项目的 `models` 表里删掉（另一个标签页的模型页干的正是这件事），窄路由于是答 400
+  `defaultModel must be included in models: (provider=…, model_id=…)`。两条用例：① 两半都动过 —— 句子逐字
+  「新对话默认值已保存，但默认模型没能改（项目里仍是原来的模型）：…」、`role=alert`、通知区 0 个按钮、
+  七秒后仍在；`GET chat-defaults` 里那一块真的是新等级、`GET models` 的默认模型真的没变；把模型加回去后按
+  **同一个按钮**就让模型那一半落地（默认模型变成它、句子归 0）。② 只改了模型 —— 句子只说「没能改默认模型，
+  项目里仍是原来的模型」、**不含「已保存」**，存下来的那一块与之前读到的 `toEqual` 相同，重试即落地。
+- **反证**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8994 与另一个数据根 `r239-before` 跑同一份
+  spec → **2 failed**，两条都死在 `getByTestId("chat-defaults-refusal")` 找不到。
+- **两态探针**（`r239/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，量 1.2 s / 7.5 s，拒绝同样由服务端自己
+  给）：**改前** 1.2 s 通知区 1 条、逐字只有 `defaultModel must be included in models: (provider=openrouter,
+  model_id=anthropic/claude-sonnet-5).`、拒绝槽 0；7.5 s 通知区 0 条、对话框里一片安静 —— 而那一块在服务端
+  已是「高」、默认模型仍是 `deepseek/deepseek-flash`。**改后** 两刻都是控件下方那句「新对话默认值已保存，
+  但默认模型没能改（项目里仍是原来的模型）：…」、通知区 0 条，服务端同样「块落地、默认模型没变」。两态 console
+  都只有本轮故意造的那条 400（`PUT …/models/default`），pageerror 0 条；截图四张肉眼看过（改前 1.2 s 那张页顶
+  一条白底通知、对话框里保存按钮上方什么都没有；改后 1.2 s 那张红字就在 Workspace 与保存之间、页顶没有通知）。
+- 端口只用 8993 / 8994（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r239{,-after,-before,-after-dist,-before-dist}`，探针 / 两态产物 / 截图 / 临时
+  playwright 配置（`r239/playwright.config.mjs`）都在 scratchpad 的 `r239/` 下。
+- 一处过程记录：探针第一版用 `locator.innerText()` 读一个改前产品里不存在的元素，它会等满自己的超时（30 s），
+  于是「1.2 s」那条读数其实发生在点击后三十多秒 —— 截图里看不到通知就是这个原因，改前那条读数（通知区 0 条）
+  也就成了假象。改成「拒绝句走一次 DOM 查询、其余读数各带 500 ms 上限」后复跑，两态都量到了真实的两刻。
+
+### 没做 / 留着
+
+- 项目设置里最后一处仍发通知的写：`SecurityPolicySection` 的命令策略保存。它与这一条不同形 —— 写一处、
+  成功后另有自己的「已保存」约定，且它的拒绝也只有一个宿主（本页），留着下一轮。
+- 4.1–4.3（npm scope 与发布链路）与 2.5（四个上游包的去留）仍等用户拍板；3.6 仍等模型 key。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔（源码 4 + 新单测 1 + 新 spec 1 + changelog 一对 = 8 个文件）；台账另起一笔。
