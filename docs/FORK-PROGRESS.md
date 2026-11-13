@@ -2510,6 +2510,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       拒绝只落在一条六秒后自己消失的通知里：文件夹仍在列表里、看起来没被碰过，而它为什么留着的理由已经没了。
       而这条拒绝恰恰是**能修的**：在卡片外把文件夹清空，再按同一个按钮就是重试 —— 所以卡片不该关。见
       「第二百三十三轮」一节。
+- [x] **7.121 结束终端被拒时，原因留在发问的那张卡片里 —— 而且这一处连通知都没有过**
+      （**2026-11-13 第二百三十五轮**落地，提交见「已完成的轮次」；源码 3 处（`terminal-list.ts`：
+      `killTerminal` 改走 `apiFetch`、被拒时撤回乐观删除并把错误抛给调用方；`dock-panel.tsx`：
+      `killConfirmed` 变 async、成功才 `removeTab`、被拒写 `killRefusal` 接 `refusal` 槽；
+      `terminal-page.tsx`：同理，被拒不关窗）+ 1 个新单测（4 条）+ 1 个新 spec（3 条）+ 词典一条
+      （`terminal_not_found`）+ changelog 一对，**不碰接口、无新依赖**）：第二百三十三轮末尾点名的那一处
+      ——「`terminal-page` / `dock-panel` 的结束终端是发出后不等回话（`void killTerminal`），失败时页面上
+      什么都不说 —— 那不是『原因只活六秒』，是**根本没有说过话**」。它的两头本来就都在这族里：两张卡片都是
+      「先问再写」的 ConfirmModal、被问的写就是那个 DELETE，只是谁都不看答案；而被调用方更糟 ——
+      `killTerminal` 不读 `res.ok`、`catch {}` 吞掉网络失败，并且先把条目从列表里删了从不还回来，于是被拒时
+      **标签消失、Shell 还在跑、屏幕上一个字都没有**。见「第二百三十五轮」一节。
+      **编号说明**：HEAD 上的 `43ca2f85f`（实时流一个字节都收不到时页面不再停在原地）是今早另一条线的一笔、
+      没有落台账行，`7.120` 与第二百三十四轮留给它补记，所以本条从 `7.121` / 第二百三十五轮续。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3247,6 +3260,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-12 | 7.117 | **错误中心的两个确认框被拒时，原因留在卡片里，不再只活六秒**（**2026-11-12 第二百三十一轮**落地，提交见「已完成的轮次」；源码 1 处（`errors-panel.tsx`：删除卡片新增 `clearRefusal`、忽略卡片新增 `ignoreRefusal`，交给共享卡片的 `refusal` 槽，两处 `toastError` 一并删掉）+ 2 份既有 spec（被拒删除那条改写、被拒忽略新增 1 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：成本中心异常面板里的两个「先问再写」的卡片 —— 清空（删掉这一范围内的每一条记录）与忽略这类异常（加一条把某一类藏起来的规则）—— 成功时关掉、被拒时留着本来都对，但原因只活在一条六秒后自己消失的通知里：删除那张上，「删掉已被拒的记录」这句话又在等人确认一次；忽略那张上，那一类仍在表里而屏幕上一字不说是为什么。`ConfirmModal` 的 `refusal` 槽与全应用那句 `操作被拒绝：<原因>` 都是现成的（别的面板的确认框早就在用），而这两处恰好没接上；句子在下次尝试开始或卡片关闭时清掉，重新打开是一张干净的卡片。见「第二百三十一轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 3 个改动文件 **0 警告 0 错误** · 5 个改动文件（含 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数：本笔只改面板与浏览器用例，没有新单测）· **两份相关 spec 5 passed（17.4 s）**（`cost-center-clear` 2 + `errors-ignore` 3；8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r231-e2e`）：被拒的清空让卡片留着、原因逐字「操作被拒绝：errors store is closed」写在卡片里、通知区 0 个按钮、卡片其余逐字与之前相同、关掉再打开是一张干净的卡片；被拒的忽略同理，那一行仍在表里、没有 `data-ignore-notice`、Project 上没有规则，重试落下一条规则 · **反证（同一份 spec 跑改前产物）**：把 `errors-panel.tsx` 退回 `HEAD` 重建 web、产物拷到 `r231/before-dist` 挂 8952 → **2 failed / 3 passed**（正是这两条：卡片里找不到原因）· **两态探针（真服务端 ×2 + 真浏览器，同一脚本两条腿各挂自己的 web 产物）**：改后 8950、改前 8952，两张卡片各自的 `DELETE` / `POST …/ignores` 由 `page.route` 拒成 500，量 1.2 s / 7.5 s —— **改前** 卡片逐字不变、原因只在通知区（`notifyButtons` 1）而 7.5 s 后通知区为 0、卡片仍一字不提；**改后** 两刻都是卡片里一行「操作被拒绝：errors store is closed」、通知区 0 个按钮；截图 `r231/shots/{before,after}-{clear,ignore}-{1_2s,7_5s}.png` 肉眼看过（改前页顶一条白底通知、卡片干净；改后卡片里一条浅红条） · 两态 console 只有既有的 `GET …/machines` **403** 与本轮两处桩的 **500**，pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r231-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r231/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e84167aa4` |
 | 2026-11-13 | 7.118 | **会话里换模型被拒时，原因留在发问的那张卡片里，不再只活六秒**（**2026-11-13 第二百三十二轮**落地，提交见「已完成的轮次」；源码 1 处（`chat-page.tsx`：新增 `modelSwitchRefusal` 状态；`confirmModelSwitch` 被拒时不再 `toastError` 而是填它；两条成功路径各自关卡片（以前在 `finally` 里关，等于不问结果）；卡片接上 `refusal` 槽，`onClose` 里连它一起清掉）+ 1 个新 spec `packages/web/e2e/model-switch-refusal.spec.mjs`（2 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：会话工具栏的模型选择器是「先问再写」的卡片（用当前模型压缩后切换，另有一个压缩失败就放弃摘要的逃生口），以前无论服务器答什么都自己关掉；被拒（会话正忙 / 目标模型没配置或不可用 / 项目没配压缩）只落在一条六秒后自己消失的通知里 —— 对话仍停在原来那个模型上，屏幕上留下的是凭空消失的卡片和一句来不及读的字。源码注释自己写着 “A refusal … is a toast”，这一轮改成 7.89 以来那一族的口径：卡片就是发问的东西，它的按钮就是重试。见「第二百三十二轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个改动文件 + changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数：本笔只改卡片与浏览器用例，没有新单测）· **新 spec 2 passed（16.7 s）**（8940 真服务端 + mock 8941 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r232-e2e.*`）：被拒的切换让卡片留着、原因逐字「操作被拒绝：服务器内部错误，请稍后重试。」写在卡片里、通知区没有那句话、7.5 s 后仍在、服务器上的会话仍是 `claude-4-8`，随后同一个按钮重试落地并关卡片；另一条 409 （`model_unavailable`）读出接口自己的话，取消之后下一次选择是干净的卡片 · **反证**：把 `chat-page.tsx` 退回 `HEAD` 重建 web、产物拷到 `r232/before-dist` 挂 8942 → 同一份 spec **2 failed**（都死在卡片里找不到 `role="alert"`），放回重建后 **2 passed** · **两态探针**（`r232/probe.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8946 / 改前 8944，各一套一次性数据根，`switch-model` 由 `page.route` 拒成 500，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、卡片上没有 alert、1.2 s 时通知区一行「服务器内部错误，请稍后重试。」（`notifyButtons:1`）、7.5 s 后通知区空；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：服务器内部错误，请稍后重试。」、通知区 0 个按钮；截图 `r232/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、红字在卡片里、输入框的模型仍是 `claude-4-8`；改前卡片没了、只有页顶一条浮着的白底通知）· 两态 console 只有本轮桩的 **500**，pageerror 0 条 · **整套浏览器 e2e**（`r232/run-all.sh`，真服务端 8930 + mock 8931 + `/usr/bin/chromium`）：**279 passed、6 failed（27.7 m）**，六条全部与这一笔无关且在改前产物上同样红：`chat.spec` 与 `draft.spec` 拿 `r232/before-dist` 复跑同样**2 failed**，`scroll-follow-bounce` 的 Primer / Frost 在改前产物上也红（本机 chromium 150 下的滚动时序），`server-switch-read-refusal` 单跑 **2 passed**（满载下的偶发，与台账记过的同一种）· 端口只用 8930 / 8931 / 8940–8964（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r232-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r232/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `6e13c33f7` |
 | 2026-11-13 | 7.119 | **文件夹删不掉时，原因留在发问的那张卡片里，不再只活六秒**（**2026-11-13 第二百三十三轮**落地，提交见「已完成的轮次」；源码 1 处（`workspace-finder.tsx`：新增 `deleteRefusal` 状态、`deleteFolder` 被拒时不再关卡片而是填它、打开卡片与每次尝试开始时清掉、卡片按 `S.common.refused(...)` 接上 `refusal` 槽并在 `onClose` 里清掉）+ 1 个新 spec `packages/web/e2e/finder-delete-folder-refusal.spec.mjs`（2 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：工作区选择器里删除文件夹是先问再写的卡片，卡片自己写着服务端的规则（只能删空文件夹），可它以前无论答案是什么都会关掉 —— 「文件夹非空」这条拒绝只落在一条六秒的通知里，文件夹仍在列表里、看起来没被碰过，而它为什么留着的理由已经没了。而这条拒绝恰恰是能修的：在卡片外把文件夹清空、再按同一个按钮就是重试，所以卡片不该关。现在只在删除落地后才关；被拒时服务端的话画在卡片里（`操作被拒绝：<原因>`），留在下次尝试或关闭之前。见「第二百三十三轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个改动文件 + changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数：本笔只改卡片与浏览器用例，没有新单测）· **新 spec 2 passed（14.2 s）**（8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r233-e2e`）：装着文件的文件夹被拒、卡片里逐字「操作被拒绝：该文件夹不是空的，只能删除空文件夹。」、通知区 0 个按钮、7 s 后仍在、盘上什么都没少 —— 随后在卡片外删掉那个文件、同一个按钮重试落地 200、文件夹从列表与盘上同时消失；被拒之后按 Escape 关掉，下一次打开的是一张没有 `role="alert"` 的干净卡片 · **反证（同一份 spec 跑改前产物）**：把 `workspace-finder.tsx` 退回 `HEAD` 重建 web、产物拷到 `r233-before-dist` 挂 8952 → **2 failed**（两条都死在卡片里找不到 `role="alert"`）· **两态探针**（`r233/probe.spec.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8950、改前 8952，各一套一次性数据根，`DELETE` 由真服务端以 **409 `dir_not_empty`** 拒绝，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、卡片上没有 alert、1.2 s 时通知区 1 个按钮而 7.5 s 后 0 个；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：该文件夹不是空的，只能删除空文件夹。」、通知区 0 个按钮；截图 `r233/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、红条在卡片里、文件夹仍在列表里；改前卡片没了、页顶那条通知到 7.5 s 已经消失） · 两态 console 只有本轮故意要的那两条（`/api/me` 的 403 与 `dir_not_empty` 的 409 各一条 `failed to load resource`），pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r233-{e2e,before,after-dist,before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r233/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `b177ece94` |
+| 2026-11-13 | 7.121 | **结束终端被拒时，原因留在发问的那张卡片里 —— 而这一处以前连通知都没有过**（**2026-11-13 第二百三十五轮**落地，提交见「已完成的轮次」；源码 3 处（`terminal-list.ts`：`killTerminal` 的 DELETE 改走 `apiFetch`（非 2xx → `ApiError`、连不上 → `network_error`），被拒时清 `pendingKills`、把条目放回并重读一次列表、再把错误抛给调用方；`dock-panel.tsx`：`killConfirmed` 变 async、成功才 `removeTab` 并关卡片、被拒写 `killRefusal` 接 `refusal` 槽（`S.common.refused(refusalText(err))`），开卡片与关卡片时清掉；`terminal-page.tsx`：同样，被拒不 `window.close()`）+ 1 个新单测 `terminal-kill-refusal.test.ts`（4 条）+ 1 个新 spec `terminal-kill-refusal.spec.mjs`（3 条）+ 词典一条（`terminal_not_found` 中英）+ changelog 一对，**不碰接口、无新依赖**）：第二百三十三轮末尾点名的「发出后不等回话」那一类 —— 两张卡片都是「先问再写」的 ConfirmModal、被问的写就是那个 DELETE，可两边都 `void killTerminal(...)`；而被调用方不读 `res.ok`、空 `catch` 吞掉网络失败、还先把条目从列表里删掉从不还回来，于是被拒时标签消失、窗口关掉、Shell 仍在服务端跑着，屏幕上**一个字都没有** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **323 文件 / 3727 通过 / 2 跳过**（相对上一行台账的 319 / 3705 是 +4 文件 / +22 条，其中本笔 1 文件 / 4 条，其余来自 HEAD 上那一笔未入台账的 `43ca2f85f`）· server **212 文件 / 3110 通过 / 6 跳过** · **新单测 4 passed**（被拒的 DELETE 把条目放回并以 `terminal_not_found` 拒绝、且确实重读过列表；连不上算 `network_error` 且条目同样放回；真的落地的那次条目留在外面、URL 是 `/server/M1/api/terminals/…`；200 带 body 不算失败）· **新 spec 3 passed（9.7 s + 2.0 s + 8.9 s）**（8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r234-e2e`）：停靠栏终端标签的 × → 卡片里逐字「操作被拒绝：该终端已不存在或已被关闭。」、通知区 0 个按钮、七秒后仍在、标签与活着的 Shell 都还在（`GET /api/terminals` 仍列 1 条 alive）—— 放行后同一个按钮重试 204、卡片与停靠栏一起消失、Shell 数归 0；被拒后 Escape 关掉，下一次打开的卡片没有 `role="alert"`；独立 `/terminal` 窗口按 terminal.close（Ctrl+Alt+`）同样把 `internal` 那句留在卡片里、窗口不关、状态仍是 `ready`、Shell 仍活着，重试后归 0 · **反证（同一份 spec 跑改前产物）**：5 个源码文件退回 `HEAD` 重建 web、产物挂 8952（独立数据根 `/root/adelie-fork-data/r234-before`）→ **3 failed**（三条都死在卡片里找不到 `role="alert"` —— 改前卡片早已关掉）· **两态探针**（`r234/probe.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8950 / 改前 8952，`DELETE` 由 `page.route` 拒成 404 `terminal_not_found`，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、`terminalTabs:0`、`dockOpen:null`、`alive:1`（Shell 还在跑，屏幕一字不提）；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：该终端已不存在或已被关闭。」、`notifyButtons:0`、`terminalTabs:1`、`alive:1`；截图 `r234/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、句子在卡片内、底部停靠栏与终端仍在；改前页面上只剩对话页，停靠栏与标签都不见了）· 两态 console 只有既有的 `GET …/machines` **403** 与本轮桩的 **404**，pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r234-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r234/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `38c3eb528` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -26063,3 +26077,78 @@ build 过、typecheck 过、lint 0/0、format 过、测试 **10612 通过 / 20 �
 ### 提交
 
 `fix(web)` 一笔：`b177ece94`（源码 1 + 新 spec + changelog 一对 = 4 个文件）；台账另起一笔。
+
+## 第二百三十五轮：结束终端被拒时，原因留在发问的那张卡片里（2026-11-13，条目 7.121）
+
+### 为什么是这一条
+
+第二百三十三轮末尾的「没做 / 留着」点名了一处，而且说清了它与前几轮的区别：「`terminal-page` /
+`dock-panel` 的结束终端是**发出后不等回话**（`void killTerminal`），失败时页面上什么都不说 —— 那不是
+『原因只活六秒』，是**根本没有说过话**，属另一类缺陷，值得单独一轮」。待办里仍未勾的都是要拍板或要凭证的
+（2.2c 卡在桌面壳那一半、3.5 / 3.6、4.1–4.3、5.6 / 5.10），所以接这一处。
+
+它的两头都在这一族里：两张卡片都是「先问再写」的 `ConfirmModal`，被问的写就是那个 `DELETE`，卡片的按钮
+本来就是重试。真正缺的是三件事 —— 调用方不看结果、被调用方不读回话、以及乐观删除从不撤回。
+
+### 改了什么
+
+- `packages/web/src/features/terminal/terminal-list.ts`：`killTerminal` 的 DELETE 由裸 `fetch` 改走
+  `apiFetch`（`server: machineForTerminal(id)`，URL 与原来完全一样）—— 非 2xx 于是成为全应用同一个
+  `ApiError`（码按词典本地化）、连不上成为 `network_error`。被拒时**清掉 `pendingKills` 的记号、把条目
+  放回、并重读一次列表**，然后把错误抛给调用方：对一个真的已经没了的 Shell，列表的 404 会让它再次消失，
+  那正是用户要的结果；对一台答不上来的机器，标签与它的 pty 一起留下。成功路径一字未动（延迟两次重读）。
+- `packages/web/src/features/dock/dock-panel.tsx`：`killConfirmed` 变 async；成功才 `removeTab` + 关卡片，
+  被拒写 `killRefusal`（`refusalText`），卡片按 `S.common.refused(...)` 接上 `refusal` 槽；打开卡片
+  （`closeTab`）与关闭（`onClose`）时清掉。`onConfirm` 改成 `() => void killConfirmed()`。
+- `packages/web/src/features/terminal/terminal-page.tsx`：同理，并被拒时**不 `window.close()`** —— 窗口是
+  那个 Shell 唯一被显示的地方，关掉等于把它藏起来。开卡片走新增的 `askToKill`（先清句子）。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：词典多一条码 `terminal_not_found`（DELETE 自己的
+  404，服务端原文是英文的 `Terminal does not exist or has been closed.`，界面中文时不该露出来）。
+- 无新依赖、无接口变更、无 `gen:ifaces` 变化。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck`：`EXIT=0`，六次 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`（197 接口 / 605 类型）。
+- `oxlint` 7 个改动文件 0 警告 0 错误；9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 `test`：core 70 文件 / 1456 通过 / 6 跳过 · ui 132 / 1103 · cli 39 / 566 · web 323 文件 / 3727 通过 /
+  2 跳过 · server 212 文件 / 3110 通过 / 6 跳过，`EXIT=0`、0 失败。web 相对上一行台账（319 / 3705）多出的
+  4 文件 / 22 条里，本笔只有 1 文件 / 4 条，其余是 HEAD 上那笔未入台账的 `43ca2f85f` 带来的。
+- 新单测 `packages/web/test/terminal-kill-refusal.test.ts` **4 passed**：被拒的 DELETE 把条目放回、以
+  `terminal_not_found` 拒绝、并且真的重读过列表；连不上算 `network_error`、条目同样放回；落地的那次条目
+  留在外面且地址是 `/server/M1/api/terminals/…`；200 带 body 不算失败。
+- 新 spec `packages/web/e2e/terminal-kill-refusal.spec.mjs` **3 passed（9.7 s + 2.0 s + 8.9 s）**，8950
+  真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根：停靠栏的 × → 卡片里逐字「操作被拒绝：该终端
+  已不存在或已被关闭。」、通知区 0 个按钮、七秒后仍在、标签与活着的 Shell 都还在 —— 放行后同一个按钮重试
+  204、卡片与停靠栏一起消失、Shell 归 0；被拒后 Escape 关掉、下一次卡片干净；独立窗口按 terminal.close
+  同样把 `internal` 那句留在卡片里、窗口不关、状态仍 `ready`，重试后 Shell 归 0。
+- **反证**：5 个源码文件退回 `HEAD`、重建 web、产物挂在 8952（独立数据根）跑同一份 spec → **3 failed**，
+  三条都死在卡片里找不到 `role="alert"`（改前卡片早已关掉）。
+- **两态探针**（`r234/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，`DELETE` 桩成 404，量 1.2 s / 7.5 s）：
+  **改前** 两刻都是 `cardOpen:false`、`terminalTabs:0`、`dockOpen:null`、`alive:1`；**改后** 两刻都是
+  `cardOpen:true`、卡片里那句话、`notifyButtons:0`、`terminalTabs:1`、`alive:1`。截图四张肉眼看过。
+  两态 console 只有既有的 `GET …/machines` 403 与本轮桩的 404，pageerror 0 条。
+- 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r234-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad
+  的 `r234/` 下。
+
+### 同步这一轮的开头
+
+`git status --short` 干净，HEAD 是 `43ca2f85f`；`git fetch origin` 三次都失败（`GnuTLS recv error (-110)`、
+一次 `Failed to connect to github.com port 443`），改用 `api.github.com` 核对：远端 `main` 的头正是
+`43ca2f85f`，与本地一致，所以没有东西要合。`43ca2f85f` 自己（流无声断开时页面续接）是今早另一条线的一笔、
+**没有落台账行**，本轮的编号因此取 `7.121` / 第二百三十五轮，把 `7.120` 与第二百三十四轮留给它补记。
+
+### 没做 / 留着
+
+- 这一族（被拒的原因留在发问的地方）在终端上收干净了：两个调用点都看结果，共享的那次删除也不再吞回话。
+- 同一族里仍只发通知、而且**没有可承接宿主**的几处照旧留着（`models-page` 的快速模式、`sidebar` 的删草稿 /
+  移出工作区、`shortcuts-section` 的「全部恢复默认」）；`dock-terminal.ts` 创建终端失败仍走通知 —— 点击发生在
+  「+」菜单或快捷键上，菜单已经关了，通知就是唯一的宿主。
+- 下一轮的第一顺位候选：`workspace-browser.tsx` 的保存/删除类写（`toastError` 若干处）与 `sidebar.tsx:1437`
+  的会话动作 —— 它们旁边都有可见的宿主（那个文件的编辑器、那一行会话），值得逐处量一次。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔：`38c3eb528`（源码 5 + 新单测 1 + 新 spec 1 + changelog 一对 = 9 个文件）；台账另起一笔。
