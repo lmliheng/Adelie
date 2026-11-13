@@ -253,6 +253,8 @@ import type {
   UsageGroupBy,
   UsageModelTotals,
   UsageResponse,
+  UsageSessionDays,
+  RunningSessionsResponse,
   VaultResponse,
   VaultUpdateRequest,
   UserVaultAssignRequest,
@@ -1643,6 +1645,26 @@ export const unignoreUsageErrors = (projectId: string, id: number) =>
  */
 export const getUsageModelTotals = (projectId: string) =>
   apiFetch<UsageModelTotals>(`/api/projects/${encodeURIComponent(projectId)}/usage/model-totals`);
+
+/**
+ * Usage by calendar day, each day split by Session — the account menu's run record. One request
+ * for the whole list: the Sessions are named server-side (titles included), so the dialog needs
+ * no follow-up lookup for a conversation the sidebar has not loaded.
+ */
+export const getUsageSessionDays = (projectId: string, days: number) =>
+  apiFetch<UsageSessionDays>(`/api/projects/${encodeURIComponent(projectId)}/usage/session-days`, {
+    query: { days },
+  });
+
+/**
+ * The Sessions this server is running right now in this Project. One project-level read rather
+ * than a per-Agent list filter: the account menu asks "what is running anywhere", and the
+ * sidebar's paged lists cannot answer it for a group nobody expanded.
+ */
+export const getRunningSessions = (projectId: string) =>
+  apiFetch<RunningSessionsResponse>(
+    `/api/projects/${encodeURIComponent(projectId)}/sessions/running`,
+  );
 
 export const getUsage = (
   projectId: string,

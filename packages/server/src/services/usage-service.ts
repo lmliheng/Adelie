@@ -30,6 +30,7 @@ import type {
   UsageModelSeries,
   UsageModelTotals,
   UsageResponse,
+  UsageSessionDay,
   UsageSeriesPoint,
 } from "../api/types.js";
 import type { ErrorFilter, ErrorIgnoreRule } from "../db/repos/errors.js";
@@ -536,6 +537,87 @@ export class UsageService implements UsageQueries {
         requests: r.requests,
       })),
     };
+  }
+
+  /**
+   * Usage by calendar day, each day split by Session — the account menu's "会话运行记录":
+   * which conversations spent the Tokens, day by day. One grouped scan over the last `days`
+   * calendar days (today included), folded here into days and Sessions; both levels sum the
+   * same rows, so a day's figure is the sum of its Sessions' and the window's is the sum of
+   * the days'.
+   *
+   * Days with no records are left out rather than drawn as zeros — a day nobody used the app
+   * is not a row worth reading — but today is always answered, at zero when nothing has run,
+   * because "今天花了多少" is the one figure the list is opened for. Within a day, Sessions
+   * are ordered by Token total, descending.
+   */
+  sessionDays(projectId: string, opts: { days?: number } = {}): UsageSessionDay[] {
+    const days = Math.min(Math.max(opts.days ?? 7, 1), 90);
+    const now = this.clock.now();
+    const today = formatLocalDate(now);
+    const rows = this.usage.sessionDayByModel(projectId, {
+      from: localDateMinusDays(now, days - 1),
+      to: today,
+    });
+    const byDate = new Map<string, UsageSessionDay>();
+    for (const r of rows) {
+      let day = byDate.get(r.date);
+      if (!day) {
+        day = {
+          date: r.date,
+          cacheRead: 0,
+          cacheWrite: 0,
+          output: 0,
+          total: 0,
+          requests: 0,
+          cost: null,
+          hasUncosted: false,
+          sessions: [],
+        };
+        byDate.set(r.date, day);
+      }
+      let session = day.sessions.find((s) => s.sessionId === r.sessionId);
+      if (!session) {
+        session = {
+          sessionId: r.sessionId,
+          agentId: r.agentId,
+          cacheRead: 0,
+          cacheWrite: 0,
+          output: 0,
+          total: 0,
+          requests: 0,
+          cost: null,
+          hasUncosted: false,
+        };
+        day.sessions.push(session);
+      }
+      for (const target of [day, session]) {
+        target.cacheRead += r.cacheRead;
+        target.cacheWrite += r.cacheWrite;
+        target.output += r.output;
+        target.total += r.total;
+        target.requests += r.requests;
+        if (r.cost !== null) target.cost = (target.cost ?? 0) + r.cost;
+        if (r.uncosted > 0) target.hasUncosted = true;
+      }
+    }
+    const out = [...byDate.values()];
+    for (const day of out) day.sessions.sort((a, b) => b.total - a.total);
+    out.sort((a, b) => b.date.localeCompare(a.date));
+    if (!byDate.has(today)) {
+      out.unshift({
+        date: today,
+        cacheRead: 0,
+        cacheWrite: 0,
+        output: 0,
+        total: 0,
+        requests: 0,
+        cost: null,
+        hasUncosted: false,
+        sessions: [],
+      });
+    }
+    return out;
   }
 
   /**

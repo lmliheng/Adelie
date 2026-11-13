@@ -23,6 +23,8 @@
  * DELETE /api/projects/:p/usage/errors/ignores/:id — removes one rule (owner only; 404 when this
  * Project has none);
  * GET /api/projects/:p/usage/model-totals — lifetime Token total per Model, unfiltered.
+ * GET /api/projects/:p/usage/session-days?days= — usage by calendar day, each day split by
+ * Session (the account menu's run record; days 1..90, default 7).
  */
 import { Hono } from "hono";
 import type { Context } from "hono";
@@ -33,6 +35,7 @@ import type {
   UsageErrorsClearResponse,
   UsageGranularity,
   UsageGroupBy,
+  UsageSessionDays,
 } from "../../api/types.js";
 import type { AppEnv } from "../../auth/middleware.js";
 import {
@@ -44,12 +47,15 @@ import {
 } from "../validate.js";
 import { HttpError } from "../errors.js";
 import type { UsageQueries } from "../../mechanisms/observability.js";
+import type { SessionIndex } from "../../mechanisms/sessions.js";
 import type { Access } from "../../mechanisms/projects.js";
 
 /** What this route group reaches — bound by its module (src/modules). */
 export interface UsageRouteDeps {
   access: Access;
   usageService: UsageQueries;
+  /** The Session index, read only to name a Session's row in the day-by-Session breakdown (it holds no title of its own). */
+  sessionsRepo: SessionIndex;
 }
 
 const GROUP_BYS: readonly UsageGroupBy[] = ["date", "agent", "model", "session"];
@@ -193,6 +199,33 @@ export function usageRoutes(deps: UsageRouteDeps): Hono<AppEnv> {
     const projectId = requireValidId(c, "projectId");
     deps.access.requireProjectAccess(c.var.user.userId, projectId);
     return c.json(deps.usageService.modelTotals(projectId));
+  });
+
+  // Usage by calendar day, each day split by Session — the account menu's "会话运行记录": one
+  // request answers "which conversations spent the Tokens these days, and how much". The
+  // Sessions' titles are added here from the Session index (the usage rows carry only ids), so
+  // a reader recognises a conversation instead of decoding a session id; a Session deleted
+  // since keeps its id and no title.
+  app.get("/session-days", (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectAccess(c.var.user.userId, projectId);
+    const raw = c.req.query("days");
+    const parsed = raw === undefined || raw === "" ? 7 : /^\d{1,3}$/.test(raw) ? Number(raw) : NaN;
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 90) {
+      throw badRequest("days must be a whole number between 1 and 90.");
+    }
+    const titles = new Map<string, string | undefined>();
+    const days = deps.usageService.sessionDays(projectId, { days: parsed }).map((day) => ({
+      ...day,
+      sessions: day.sessions.map((row) => {
+        if (!titles.has(row.sessionId)) {
+          titles.set(row.sessionId, deps.sessionsRepo.findById(row.sessionId)?.title ?? undefined);
+        }
+        const title = titles.get(row.sessionId);
+        return { ...row, ...(title !== undefined ? { title } : {}) };
+      }),
+    }));
+    return c.json({ days } satisfies UsageSessionDays);
   });
 
   // One page of the error detail table, newest first. The dashboard response above already

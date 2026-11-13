@@ -697,6 +697,7 @@ The paths below omit the `/api/projects/:projectId` prefix.
 | Method | Path | Description |
 | --- | --- | --- |
 | GET | `/agents/:agentId/sessions` | Lists the agent's Sessions with their run state, whichever client created them, unless `excludeOrg=1` asks for the user's own rows only |
+| GET | `/sessions/running` | The Project's Sessions this server is running or compacting right now: → `{sessions}` (whole rows, running before compacting) |
 | POST | `/agents/:agentId/sessions` | Creates a Session: `{modelId?, provider?, workspace?, approvalMode?, client?, source?}` → 201 `{session}` |
 | GET | `/dirs?path=` | Server-side directory browser behind the Workspace picker |
 | POST | `/dirs/access` | Desktop app: has the shell read a folder macOS refused, in the app's own name, so that macOS asks the user: `{path}` → `{granted, packaged}` |
@@ -728,6 +729,7 @@ The paths below omit the `/api/projects/:projectId` prefix.
 | --- | --- | --- |
 | GET | `/usage` | Usage statistics |
 | GET | `/usage/model-totals` | Lifetime Token total per model; takes no filters |
+| GET | `/usage/session-days?days=` | Usage of the last `days` calendar days (today included, 1–90, default 7) by day and by Session: → `{days}` |
 | GET | `/usage/errors` | One page of the error detail table, newest first: → `{items, total, rows}` |
 | DELETE | `/usage/errors` | Empties the error table for the current filter: → `{deleted}` (Project owner only) |
 | GET | `/agents/:agentId/traces` | Trace files as a date → Session drill-down |
@@ -747,6 +749,7 @@ The paths below omit the `/api/projects/:projectId` prefix.
 | `agentId`, `provider`, `modelId` | Filters |
 
 - `GET /usage/errors` takes `offset`, `limit`, the same `from` / `to` / `fromTs` / `toTs` / `agentId` filter, and an optional `kind` (`unexpected` or `expected`).
+- `GET /usage/session-days` splits usage by local calendar day and, within a day, by Session: `{days:[{date, total, cost, requests, sessions:[{sessionId, agentId, title?, total, cost, requests}]}]}`, newest day first. Days with no usage are absent, but today is always present (possibly all zeros), so "what did I spend today" always has an answer. `title` comes from the Session index and is omitted for a Session deleted since. A `days` outside 1–90 is a 400.
 - The error table folds the records of one day that share a source, code, kind and message into one row, with its `count`, its latest time `ts` and its first time `firstTs`. `offset`, `limit` and `rows` count those rows; `total` and the dashboard's summary figures count records. `GET /usage` and `GET /usage/errors` take an optional `utcOffsetMinutes`, the reader's offset east of UTC (−840 to 840), which decides the day; without it the day is the server's own.
 - `DELETE /usage/errors` takes the same filter as the reads, `from` / `to` / `fromTs` / `toTs` / `agentId`, but no `kind`, because the panel offers no such control. `from` and `to` are both required here (400 otherwise), because an open bound would clear the whole history rather than a filtered part. An optional `until` (an ISO-8601 instant) stops the delete at that moment: the cost center re-reads the count when its confirmation opens and passes the **newest record's time** from that read, so the number in the dialog is the number that goes even when a record arrives between the two requests (loading the page itself records one). A malformed `until` is a 400 rather than silently ignored. The clear reaches exactly what the caller's reads reach: an admin's clear also removes the unattributed rows that only an admin's read shows, and a member's clear never does.
 - `GET /agents/:agentId/traces` also accepts `limit` and `offset` for paging, and `category` (which requires `limit`) to list one category of Sessions. The paged listing leaves out `company` Sessions, which are in no category; the full drill-down without `limit` lists every Trace.

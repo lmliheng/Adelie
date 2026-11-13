@@ -8,6 +8,13 @@
  * Only the trigger differs, so the trigger is the caller's: it is handed the menu's own open
  * state, which is what keeps "what opening means" here rather than in two places.
  *
+ * The menu also answers the two questions the rest of the shell leaves unanswered, because the
+ * footer is where a user looks when something is "going on somewhere": what is running right
+ * now (the project-level list at the top, live from the user channel — see
+ * features/account/running-sessions.ts), and what the recent conversations cost (the run log
+ * dialog behind its own row). Both are the Project's, not this account's: they name work the
+ * user started from anywhere.
+ *
  * The dialogs are mounted OUTSIDE the panel: the panel's children unmount the moment the menu
  * closes, and a row closes the menu as it opens its dialog.
  *
@@ -15,21 +22,35 @@
  * it once a nickname stands in for it. Both anchors are avatars, and the rail's is nothing but
  * an avatar, so without the header the menu never says whose account its rows act on.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate } from "react-router";
-import { ConfirmModal, Dropdown, ICON_GAP, Menu, MenuItem, UserAvatar } from "@adelie/ui";
+import {
+  ActivityIcon,
+  ConfirmModal,
+  Dropdown,
+  ICON_GAP,
+  Menu,
+  MenuItem,
+  MenuLabel,
+  MenuSeparator,
+  UserAvatar,
+} from "@adelie/ui";
 import type { DropdownPortal } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { useAuth } from "../../state/auth";
 import { UpdateRow } from "../account/update-row";
 import { UserVaultDialog } from "../account/user-vault-dialog";
+import { SessionLogDialog } from "../../features/account/session-log-dialog";
+import { useRunningSessions } from "../../features/account/running-sessions";
 import { FeedbackDialog, useFeedbackChannel } from "../account/feedback-dialog";
 import { openFeedbackBoard } from "../../lib/feedback-board";
 import { openUpdateModal } from "../../lib/use-update-flow";
 import { SettingsDialog } from "../../features/settings/settings-dialog";
 import { onSettingsRequest } from "../../features/settings/settings-request";
 import type { SettingsSectionKey } from "../../lib/settings-sections";
+import { agentDisplayName, useProject } from "../../state/project";
+import { workspaceLabel } from "../../lib/session-grouping";
 
 export function UserMenu({
   trigger,
@@ -54,16 +75,26 @@ export function UserMenu({
 }) {
   const navigate = useNavigate();
   const { user, logout, desktopMode } = useAuth();
+  const { agents, setCurrentAgentId } = useProject();
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   /** The account's own global secrets, the one row here that edits data rather than navigating. */
   const [vaultOpen, setVaultOpen] = useState(false);
+  /** The per-conversation usage dialog; mounted outside the panel like the rest. */
+  const [logOpen, setLogOpen] = useState(false);
   /** The page a request asked for; the menu's own row asks for none (the viewer's first). */
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey | undefined>(undefined);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   /** The feedback row and its dialog; both live here because the row sits inside the panel and
    *  the dialog must outlive it. */
   const feedback = useFeedbackChannel();
+  /** What is running right now, fetched on open and kept in step by the user channel. */
+  const { sessions: running } = useRunningSessions(open);
+  const agentNames = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of agents) map.set(a.agentId, agentDisplayName(a));
+    return map;
+  }, [agents]);
 
   // Settings can be asked for from outside this menu (see settings-request.ts): the request
   // opens the same dialog, on the page it names.
@@ -115,6 +146,53 @@ export function UserMenu({
               section registry rather than by this row. The preference rows that used to
               stack here live on its pages now. */}
           <Menu>
+            {/* What is running right now, above the navigation rows: this is the one part of the
+                panel that changes without anyone pressing anything, and the empty line is an
+                answer too ("nothing is running"). A row opens its conversation — the Agent
+                follows the Session, the same way the sidebar's own cross-group click does. The
+                list scrolls rather than pushing the rows below it out of the panel. */}
+            <MenuLabel>{S.account.running.title}</MenuLabel>
+            {running.length === 0 ? (
+              <div role="presentation" className="px-3.5 pb-1.5 text-xs text-fg-muted">
+                {S.account.running.empty}
+              </div>
+            ) : (
+              <div role="presentation" className="max-h-48 overflow-y-auto">
+                {running.map((s) => (
+                  <MenuItem
+                    key={s.sessionId}
+                    glyph={
+                      <ActivityIcon
+                        activity={s.status === "compacting" ? "compacting" : "running"}
+                        label={
+                          s.status === "compacting" ? S.chat.statusCompacting : S.chat.statusRunning
+                        }
+                      />
+                    }
+                    label={s.title ?? S.account.running.untitled}
+                    description={`${agentNames.get(s.agentId) ?? s.agentId} · ${workspaceLabel(s.workspace)}`}
+                    trailing={
+                      s.status === "compacting" ? S.chat.statusCompacting : S.chat.statusRunning
+                    }
+                    onSelect={() => {
+                      setOpen(false);
+                      setCurrentAgentId(s.agentId);
+                      navigate(`/chat/${s.sessionId}`);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+            {/* The run record, right under the live list it explains: days of usage, split by
+                conversation, in a dialog mounted outside this panel. */}
+            <MenuSeparator />
+            <MenuItem
+              label={S.account.sessionLog.row}
+              onSelect={() => {
+                setOpen(false);
+                setLogOpen(true);
+              }}
+            />
             <MenuItem
               label={S.settings.title}
               onSelect={() => {
@@ -204,6 +282,9 @@ export function UserMenu({
       {/* The account's own secrets, mounted here like the settings dialog so it outlives the
           menu that opened it. */}
       <UserVaultDialog open={vaultOpen} onClose={() => setVaultOpen(false)} />
+      {/* The run record, likewise outside the panel — and it survives its own row's menu
+          closing, which is the point of mounting it here. */}
+      <SessionLogDialog open={logOpen} onClose={() => setLogOpen(false)} />
       {/* Feedback, likewise outside the panel: its row closes the menu as it opens this. */}
       <FeedbackDialog open={feedback.open} onClose={() => feedback.setOpen(false)} />
       {/* Signing out is confirmed first: the row sits in a menu of harmless entries, and a

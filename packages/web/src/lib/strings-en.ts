@@ -1489,6 +1489,36 @@ export const en: Strings = {
       overwriteConfirm: (key: string): string =>
         `"${key}" already exists — saving will overwrite its value, which cannot be recovered.`,
     },
+    /**
+     * The account menu's live block: which conversations are running at this very moment. The
+     * rows sit above the account's own rows (they change without anyone pressing anything), and
+     * the empty line matters — "nothing is running" is an answer, not a gap.
+     */
+    running: {
+      title: "Running now",
+      empty: "No conversation is running",
+      untitled: "Untitled conversation",
+    },
+    /**
+     * The account menu's run record: usage by day, each day split by Session.
+     */
+    sessionLog: {
+      row: "Session run log",
+      title: "Session run log",
+      desc: "Usage for the last few days — one row per day, and expanding it shows the Tokens, cost and Requests of each conversation.",
+      today: "Today",
+      yesterday: "Yesterday",
+      range: (days: number): string => `Last ${days} days`,
+      tokens: "Tokens",
+      cost: "Cost",
+      requests: "Requests",
+      sessions: (n: number): string => (n === 1 ? "1 conversation" : `${n} conversations`),
+      emptyDay: "No usage recorded on this day",
+      empty: "No usage recorded recently",
+      loadFailed: (reason: string): string => `Could not load: ${reason}`,
+      unknownSession: "Deleted conversation",
+      unpriced: "unpriced",
+    },
   },
 
   /**

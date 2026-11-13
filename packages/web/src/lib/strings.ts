@@ -1538,6 +1538,38 @@ export const zh = {
       overwriteTitle: "覆盖已有全局密钥",
       overwriteConfirm: (key: string): string => `「${key}」已存在，保存将覆盖原值且不可恢复。`,
     },
+    /**
+     * The account menu's live block: which conversations are running at this very moment. The
+     * rows sit above the account's own rows (they change without anyone pressing anything), and
+     * the empty line matters — "nothing is running" is an answer, not a gap.
+     */
+    running: {
+      title: "正在运行",
+      empty: "没有正在运行的会话",
+      untitled: "未命名会话",
+    },
+    /**
+     * The account menu's run record: usage by day, each day split by Session. The copy names
+     * what a row shows, because the dialog is reached from a menu of pages and has no other
+     * introduction.
+     */
+    sessionLog: {
+      row: "会话运行记录",
+      title: "会话运行记录",
+      desc: "最近几天的用量：每天合计一行，展开能看到每个会话花了多少 Token、多少钱、多少次请求。",
+      today: "今天",
+      yesterday: "昨天",
+      range: (days: number): string => `最近 ${days} 天`,
+      tokens: "Token",
+      cost: "费用",
+      requests: "请求",
+      sessions: (n: number): string => `${n} 个会话`,
+      emptyDay: "这一天没有用量记录",
+      empty: "最近还没有用量记录",
+      loadFailed: (reason: string): string => `读取失败：${reason}`,
+      unknownSession: "已删除的会话",
+      unpriced: "未计价",
+    },
   },
 
   /**

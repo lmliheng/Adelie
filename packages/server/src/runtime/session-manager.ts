@@ -768,6 +768,36 @@ export class SessionManager {
     return this.entries.get(sessionId)?.status ?? "idle";
   }
 
+  /**
+   * Every Session this process holds in a live state — running or compacting — across all
+   * Projects and Agents. `statusOf` answers one id at a time, and a Session nobody is looking
+   * at has no row in any client's list; the account menu's "what is running right now" asks
+   * the whole table instead, which is a walk over the entries this process already keeps.
+   */
+  liveSessions(): Array<{
+    sessionId: string;
+    projectId: string;
+    agentId: string;
+    status: SessionStatus;
+  }> {
+    const out: Array<{
+      sessionId: string;
+      projectId: string;
+      agentId: string;
+      status: SessionStatus;
+    }> = [];
+    for (const e of this.entries.values()) {
+      if (e.status === "idle") continue;
+      out.push({
+        sessionId: e.sessionId,
+        projectId: e.projectId,
+        agentId: e.agentId,
+        status: e.status,
+      });
+    }
+    return out;
+  }
+
   pendingApprovalCount(sessionId: string): number {
     return this.entries.get(sessionId)?.approvals.size ?? 0;
   }
@@ -2554,6 +2584,7 @@ export abstract class Sessions extends Interface<
   Pick<
     SessionManager,
     | "statusOf"
+    | "liveSessions"
     | "pendingApprovalCount"
     | "pendingApprovals"
     | "pendingFollowUpCount"

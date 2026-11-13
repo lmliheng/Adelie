@@ -141,6 +141,9 @@ import type {
   UsageGroupBy,
   UsageModelTotals,
   UsageResponse,
+  UsageSessionDay,
+  UsageSessionDays,
+  RunningSessionsResponse,
   UserInfo,
   VaultResponse,
   VersionHistoryResponse,
@@ -1349,6 +1352,14 @@ router
       offset: Number(query.get("offset")) || 0,
     });
   })
+  // The account menu's "what is running now": the demo's live Sessions (four of them run in
+  // the fixtures), running first, matching the real route's ordering rule.
+  .get("/api/projects/:projectId/sessions/running", ({ store }): RunningSessionsResponse => ({
+    sessions: [
+      ...store.f.sessions.filter((s) => s.status === "running"),
+      ...store.f.sessions.filter((s) => s.status === "compacting"),
+    ],
+  }))
   // The sidebar's whole reload in one request: each entry answered as the GET route would,
   // and an Agent the demo does not have is an answer about that Agent (`absent`), never a
   // failure of the batch.
@@ -1995,6 +2006,72 @@ router
       totals.set(key, entry);
     }
     return { totals: [...totals.values()] };
+  })
+  // Usage by day, split by Session (the account menu's run record). The fixtures are daily
+  // rows that already name their Session, so this folds the same rows the cost center reads;
+  // today is always answered, at zero when nothing ran.
+  .get("/api/projects/:projectId/usage/session-days", ({ store, query }): UsageSessionDays => {
+    const days = Number(query.get("days") ?? "7");
+    if (!Number.isInteger(days) || days < 1 || days > 90) {
+      fail(400, "bad_request", "days must be a whole number between 1 and 90.");
+    }
+    const today = dayKey(store.f.now);
+    const from = dayKey(store.f.now - (days - 1) * 86_400_000);
+    const byDate = new Map<string, UsageSessionDay>();
+    for (const row of store.f.usage) {
+      if (row.date < from || row.date > today) continue;
+      const day = byDate.get(row.date) ?? {
+        date: row.date,
+        cacheRead: 0,
+        cacheWrite: 0,
+        output: 0,
+        total: 0,
+        requests: 0,
+        cost: 0,
+        hasUncosted: false,
+        sessions: [],
+      };
+      const title = store.f.sessions.find((s) => s.sessionId === row.sessionId)?.title;
+      const session = day.sessions.find((s) => s.sessionId === row.sessionId) ?? {
+        sessionId: row.sessionId,
+        agentId: row.agentId,
+        ...(title !== undefined ? { title } : {}),
+        cacheRead: 0,
+        cacheWrite: 0,
+        output: 0,
+        total: 0,
+        requests: 0,
+        cost: 0,
+        hasUncosted: false,
+      };
+      if (!day.sessions.includes(session)) day.sessions.push(session);
+      for (const target of [day, session]) {
+        target.cacheRead += row.cacheRead;
+        target.cacheWrite += row.cacheWrite;
+        target.output += row.output;
+        target.total += row.cacheRead + row.cacheWrite + row.output;
+        target.requests += row.requests;
+        target.cost = (target.cost ?? 0) + costOf(row);
+      }
+      byDate.set(row.date, day);
+    }
+    const out = [...byDate.values()];
+    for (const day of out) day.sessions.sort((a, b) => b.total - a.total);
+    out.sort((a, b) => b.date.localeCompare(a.date));
+    if (!byDate.has(today)) {
+      out.unshift({
+        date: today,
+        cacheRead: 0,
+        cacheWrite: 0,
+        output: 0,
+        total: 0,
+        requests: 0,
+        cost: 0,
+        hasUncosted: false,
+        sessions: [],
+      });
+    }
+    return { days: out };
   })
   .get("/api/projects/:projectId/usage", ({ store, query }): UsageResponse => {
     const groupBy = (query.get("groupBy") ?? "date") as UsageGroupBy;

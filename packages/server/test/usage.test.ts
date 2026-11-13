@@ -542,6 +542,89 @@ describe("usage-service model totals (unfiltered, for the models page)", () => {
   });
 });
 
+describe("usage-service sessionDays (day x Session breakdown)", () => {
+  let db: DatabaseSync;
+  let repo: UsageRepo;
+  const NOW = new Date("2026-08-20T10:00:00");
+  let service: UsageService;
+
+  beforeEach(() => {
+    db = openDatabase(":memory:");
+    repo = wire(UsageRepo, { db: db });
+    service = wire(UsageService, {
+      usage: repo,
+      errors: wire(ErrorsRepo, { db: db }),
+      lookupPricing: async () => undefined,
+      clock: { now: () => NOW },
+    });
+  });
+  afterEach(() => db.close());
+
+  function insert(date: string, opts: Partial<Parameters<UsageRepo["insert"]>[0]> = {}): void {
+    repo.insert({
+      cost: 0.001,
+      ts: `${date}T00:00:00.000Z`,
+      date,
+      projectId: "p1",
+      agentId: "a1",
+      sessionId: "s1",
+      originSessionId: null,
+      modelId: "m1",
+      provider: "custom",
+      cacheRead: 10,
+      cacheWrite: 1,
+      output: 5,
+      total: 100,
+      ...opts,
+    });
+  }
+
+  it("splits each day by Session, newest day first, with a day's figure the sum of its rows", () => {
+    insert("2026-08-20", { sessionId: "s1", total: 100 });
+    insert("2026-08-20", { sessionId: "s1", total: 100, modelId: "m2" });
+    insert("2026-08-20", { sessionId: "s2", total: 300, agentId: "a2" });
+    insert("2026-08-18", { sessionId: "s1", total: 50 });
+    const days = service.sessionDays("p1", { days: 7 });
+    // One row per (day, Session, model) folds into one row per (day, Session).
+    expect(days.map((d) => d.date)).toEqual(["2026-08-20", "2026-08-18"]);
+    const [today, older] = days as [(typeof days)[number], (typeof days)[number]];
+    expect(today.total).toBe(500);
+    expect(today.requests).toBe(3);
+    expect(today.cost).toBeCloseTo(0.003, 12);
+    // Sessions ordered by Token total, descending.
+    expect(today.sessions.map((s) => [s.sessionId, s.total, s.agentId])).toEqual([
+      ["s2", 300, "a2"],
+      ["s1", 200, "a1"],
+    ]);
+    expect(older.total).toBe(50);
+  });
+
+  it("leaves empty days out but always answers today — at zero when nothing ran", () => {
+    insert("2026-08-18");
+    const days = service.sessionDays("p1", { days: 7 });
+    expect(days.map((d) => d.date)).toEqual(["2026-08-20", "2026-08-18"]);
+    expect(days[0]).toMatchObject({ total: 0, requests: 0, cost: null, sessions: [] });
+  });
+
+  it("is scoped to the window and the Project", () => {
+    insert("2026-08-20");
+    insert("2026-08-13"); // eight days back: outside a 7-day window
+    insert("2026-08-20", { projectId: "p2" });
+    const days = service.sessionDays("p1", { days: 7 });
+    expect(days.map((d) => d.date)).toEqual(["2026-08-20"]);
+    expect(days[0]?.total).toBe(100);
+  });
+
+  it("flags a Session whose Requests ran on an unpriced Model", () => {
+    insert("2026-08-20", { cost: null });
+    insert("2026-08-20", { cost: 0.002 });
+    const [today] = service.sessionDays("p1", { days: 7 });
+    expect(today?.hasUncosted).toBe(true);
+    expect(today?.cost).toBeCloseTo(0.002, 12);
+    expect(today?.sessions[0]?.hasUncosted).toBe(true);
+  });
+});
+
 describe("usage-service series (zero-filled time-series buckets)", () => {
   let db: DatabaseSync;
   let repo: UsageRepo;

@@ -75,6 +75,17 @@ export interface UsageGroupModelSums extends UsageModelSums {
   key: string;
 }
 
+/**
+ * Raw sums by (calendar day, Session, Agent) x Model: the "which conversations spent the
+ * Tokens on which day" breakdown. The Agent rides along because two Agents' Sessions are
+ * different conversations, and the caller names them without a second lookup.
+ */
+export interface UsageSessionDaySums extends UsageModelSums {
+  date: string;
+  sessionId: string;
+  agentId: string;
+}
+
 /** Time-series bucket x Model sums, with the success-rate counts folded in. */
 export interface UsageSeriesModelSums extends UsageGroupModelSums {
   /** Successful requests in the bucket. */
@@ -306,6 +317,28 @@ export class UsageRepo implements UsageStore {
       )
       .all(params);
     return rows.map((r) => ({ key: r.key as string, ...toSums(r) }));
+  }
+
+  /**
+   * Per-(calendar day, Session, Agent) x paired reference sums: the day-by-day
+   * "which conversations spent the Tokens" view. Same filter and same `date`
+   * column as `groupsByModel`, so a total here adds up to the cost center's.
+   */
+  sessionDayByModel(projectId: string, f: UsageFilter = {}): UsageSessionDaySums[] {
+    const { where, params } = this.conds(projectId, f);
+    const rows = this.db
+      .prepare(
+        `SELECT date, session_id, agent_id, provider, model_id, ${SUM_COLUMNS}
+         FROM usage_records WHERE ${where}
+         GROUP BY date, session_id, agent_id, provider, model_id`,
+      )
+      .all(params);
+    return rows.map((r) => ({
+      date: r.date as string,
+      sessionId: r.session_id as string,
+      agentId: r.agent_id as string,
+      ...toSums(r),
+    }));
   }
 
   /**

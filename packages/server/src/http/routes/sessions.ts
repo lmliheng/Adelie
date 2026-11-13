@@ -40,11 +40,13 @@ import type {
   SessionProcessesResponse,
   SessionResponse,
   SessionsResponse,
+  RunningSessionsResponse,
   SessionsBatchResponse,
   SubagentMessageResponse,
   RetryNowResponse,
   TaskCreateResponse,
   SessionSandbox,
+  SessionInfo,
 } from "../../api/types.js";
 import { compactionThresholdFor } from "../../services/context-breakdown.js";
 import { decodeCursor } from "../../services/message-window.js";
@@ -939,6 +941,42 @@ export function agentSessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
       ...(source !== undefined ? { source } : {}),
     });
     return c.json({ session } satisfies SessionCreateResponse, 201);
+  });
+
+  return app;
+}
+
+/**
+ * Project-level entry: GET /api/projects/:p/sessions/running — the Sessions this server is
+ * running (or compacting) right now, as whole rows.
+ *
+ * The sidebar's lists are paged per Agent and category, so "what is running" is not something
+ * any one of them can answer: a conversation running in a group nobody has expanded, or an
+ * archived one, has no row on screen. This walks the runtime's own table instead (every live
+ * Session this process holds) and keeps those of the Project the caller asked about, so the
+ * account menu can name all of them in one cheap request. Rows are projected through the same
+ * `toInfo` the lists use, so a row here carries what a row there carries — title, Agent,
+ * Workspace, live status.
+ */
+export function runningSessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+
+  app.get("/", async (c) => {
+    const projectId = requireValidId(c, "projectId");
+    deps.access.requireProjectAccess(c.var.user.userId, projectId);
+    const live = deps.manager
+      .liveSessions()
+      .filter((e) => e.projectId === projectId)
+      // Running before compacting (a run waiting on compaction is the second thing to report),
+      // then by id, which is the creation order a Session id encodes.
+      .sort((a, b) => (a.status === b.status ? 0 : a.status === "running" ? -1 : 1));
+    const sessions: SessionInfo[] = [];
+    for (const entry of live) {
+      const row = deps.sessionsRepo.findById(entry.sessionId);
+      if (!row) continue; // The entry outlived its row (deleted mid-run): nothing to name.
+      sessions.push(await deps.sessionService.toInfo(row, await deps.sessionService.hasTrace(row)));
+    }
+    return c.json({ sessions } satisfies RunningSessionsResponse);
   });
 
   return app;
@@ -2051,6 +2089,12 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
         order: 255,
       },
       {
+        id: "session-api.sessions-running",
+        prefix: "/api/projects/:projectId/sessions/running",
+        auth: "user",
+        order: 256,
+      },
+      {
         id: "session-api.usage",
         prefix: "/api/projects/:projectId/usage",
         auth: "user",
@@ -2115,6 +2159,7 @@ export class SessionApiRoutes {
   @Bind("session-api.vault") vaultRoutes!: Hono<AppEnv>;
   @Bind("session-api.agent-sessions") agentSessionsRoutes!: Hono<AppEnv>;
   @Bind("session-api.sessions-batch") sessionsBatchRoutes!: Hono<AppEnv>;
+  @Bind("session-api.sessions-running") runningSessionsRoutes!: Hono<AppEnv>;
   @Bind("session-api.usage") usageRoutes!: Hono<AppEnv>;
   @Bind("session-api.workspace-files") workspaceFilesRoutes!: Hono<AppEnv>;
   @Bind("session-api.sessions") sessionsRoutes!: Hono<AppEnv>;
@@ -2206,7 +2251,8 @@ export class SessionApiRoutes {
     });
     this.agentSessionsRoutes = agentSessionsRoutes(sessionsDeps);
     this.sessionsBatchRoutes = sessionsBatchRoutes(sessionsDeps);
-    this.usageRoutes = usageRoutes({ access, usageService: this.usage });
+    this.runningSessionsRoutes = runningSessionsRoutes(sessionsDeps);
+    this.usageRoutes = usageRoutes({ access, usageService: this.usage, sessionsRepo });
     this.workspaceFilesRoutes = workspaceFilesRoutes({
       access,
       workspaceFiles: this.workspaceFiles,

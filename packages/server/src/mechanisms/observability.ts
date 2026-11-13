@@ -22,6 +22,7 @@ import type {
   UsageRecordInsert,
   UsageSeriesGranularity,
   UsageSeriesModelSums,
+  UsageSessionDaySums,
   UnsettledUsageRow,
 } from "../db/repos/usage.js";
 import type {
@@ -32,6 +33,7 @@ import type {
   UsageGroupBy,
   UsageResponse,
   UsageModelTotals,
+  UsageSessionDay,
 } from "../api/types.js";
 import type { UsageContext } from "../runtime/usage-recorder.js";
 import type {
@@ -119,6 +121,7 @@ export abstract class UsageStore {
     granularity: UsageSeriesGranularity,
     f?: UsageFilter,
   ): UsageSeriesModelSums[];
+  abstract sessionDayByModel(projectId: string, f?: UsageFilter): UsageSessionDaySums[];
   abstract agentSeries(
     projectId: string,
     granularity: UsageSeriesGranularity,
@@ -139,6 +142,13 @@ export abstract class UsageRecording {
 @Interface()
 export abstract class UsageQueries {
   abstract query(projectId: string, q: UsageQuery): Promise<UsageResponse>;
+  /**
+   * Usage by calendar day, each day split by Session (newest day first, `days` back from
+   * today inclusive). Days with no usage are absent; today is always present, at zero when
+   * nothing ran. The rows carry no Session title — the route that serves them adds it from
+   * the Session index, which this service does not hold.
+   */
+  abstract sessionDays(projectId: string, opts?: { days?: number }): UsageSessionDay[];
   abstract queryErrors(projectId: string, q: UsageErrorsQuery): UsageErrorsPage;
   abstract clearErrors(projectId: string, q: UsageErrorsClearQuery): number;
   abstract errorIgnores(projectId: string): UsageErrorIgnoreRule[];

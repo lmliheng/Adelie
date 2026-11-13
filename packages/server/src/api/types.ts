@@ -2254,6 +2254,17 @@ export interface SessionsResponse {
 }
 
 /**
+ * `GET /api/projects/:projectId/sessions/running` — the Sessions of this Project this server
+ * is running (or compacting) right now, as whole rows. The account menu lists them so the user
+ * can see what is running without opening conversations one by one; a live status is enough to
+ * know one is due, and the row carries the title, Agent and Workspace to name it.
+ */
+export interface RunningSessionsResponse {
+  /** Running first, then compacting; most recently active first within each. */
+  sessions: SessionInfo[];
+}
+
+/**
  * One page request inside POST /api/projects/:p/sessions/batch — the same knobs the
  * Agent-level list takes, carried per entry so one call can stand in for a whole sidebar
  * reload (one first page per Agent, plus every other page pair already open).
@@ -4430,6 +4441,53 @@ export interface UsageErrorsPage {
 export interface UsageErrorsClearResponse {
   /** How many rows were deleted, so the caller can say what went instead of guessing. */
   deleted: number;
+}
+
+/**
+ * One Session's usage inside one calendar day — the row a "where did the Tokens go today"
+ * list shows. `sessionId` names it; `title` and `agentId` are what a reader recognises it by
+ * (a deleted Session keeps only its id, so `title` is absent).
+ */
+export interface UsageSessionDayRow {
+  sessionId: string;
+  agentId: string;
+  /** The Session's title, when the row still exists; absent for a Session deleted since. */
+  title?: string;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
+  total: number;
+  requests: number;
+  /** Sum of the costs fixed when the Requests completed (USD); null when none had a price. */
+  cost: number | null;
+  /** Some of this Session's Requests ran on a Model with no price, so `cost` is a lower bound. */
+  hasUncosted: boolean;
+}
+
+/** One calendar day's usage, broken down by Session, newest Sessions first within the day. */
+export interface UsageSessionDay {
+  /** Local calendar day the rows were recorded under, `yyyy-mm-dd`. */
+  date: string;
+  cacheRead: number;
+  cacheWrite: number;
+  output: number;
+  total: number;
+  requests: number;
+  cost: number | null;
+  hasUncosted: boolean;
+  sessions: UsageSessionDayRow[];
+}
+
+/**
+ * `GET /api/projects/:projectId/usage/session-days` — usage by calendar day, each day split
+ * by Session: "which conversations spent the Tokens, and how much". Total Token counts match
+ * the cost center's (`cacheRead + cacheWrite + output`); cost sums the figures fixed when the
+ * Requests completed. Days with no usage are absent, except today, which always appears
+ * (possibly at zero) so "today's total" is never missing.
+ */
+export interface UsageSessionDays {
+  /** Newest day first. */
+  days: UsageSessionDay[];
 }
 
 export interface UsageResponse {
