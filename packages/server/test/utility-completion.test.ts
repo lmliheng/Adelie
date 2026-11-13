@@ -22,6 +22,7 @@ import type { LLMOutcome, OmniMessage } from "@adelie/core";
 import {
   ProjectConfigService,
   collectUtilityCompletion,
+  freeModelEntries,
   utilityCompletionConfig,
 } from "../src/services/project-config-service.js";
 import { makeTempRoot } from "./helpers.js";
@@ -72,6 +73,13 @@ describe("utilityCompletionConfig", () => {
   it("never tightens to an uncapped entry's -1", () => {
     expect(utilityCompletionConfig("m-bench", { api_key: "sk-1", max_tokens: -1 }).maxTokens).toBe(
       300,
+    );
+  });
+
+  it("waits out the single-attempt timeout unless the walk hands it what is left of its budget", () => {
+    expect(utilityCompletionConfig("m-bench", { api_key: "sk-1" }).requestTimeoutMs).toBe(15_000);
+    expect(utilityCompletionConfig("m-bench", { api_key: "sk-1" }, 4_000).requestTimeoutMs).toBe(
+      4_000,
     );
   });
 });
@@ -139,57 +147,107 @@ describe("collectUtilityCompletion", () => {
   });
 });
 
+/** One `[[models]]` row, as the config stores one: a paired reference, plus whatever is given. */
+const row = (provider: string, modelId: string, rest = ""): string =>
+  `[[models]]\nprovider = "${provider}"\nmodel_id = "${modelId}"\n${rest}\n`;
+
+/** The three-bucket pricing table a $0 row carries. */
+const ZERO_PRICING =
+  'pricing = { unit = "usd_per_mtok", cache_read = 0, cache_write = 0, output = 0 }\n';
+
+describe("freeModelEntries", () => {
+  it("keeps the Project's $0-priced rows in config order, and drops everything else", () => {
+    const raw = {
+      models: [
+        {
+          provider: "openrouter",
+          model_id: "a:free",
+          pricing: { cache_read: 0, cache_write: 0, output: 0 },
+        },
+        {
+          provider: "deepseek",
+          model_id: "paid",
+          pricing: { cache_read: 0.04, cache_write: 2, output: 8 },
+        },
+        // No pricing at all is unpriced, not free.
+        { provider: "vllm", model_id: "unpriced" },
+        {
+          provider: "zai",
+          model_id: "glm-4.7-flash",
+          pricing: { cache_read: 0, cache_write: 0, output: 0 },
+        },
+        // A hand-edited file may carry the same reference twice; it is asked once.
+        {
+          provider: "openrouter",
+          model_id: "a:free",
+          pricing: { cache_read: 0, cache_write: 0, output: 0 },
+        },
+        { model_id: "providerless" },
+      ],
+    };
+    expect(freeModelEntries(raw).map((c) => `${c.provider}/${c.modelId}`)).toEqual([
+      "openrouter/a:free",
+      "zai/glm-4.7-flash",
+    ]);
+  });
+
+  it("reads a missing bucket as 0 and any price on any bucket as not free", () => {
+    const raw = {
+      models: [
+        { provider: "p", model_id: "one-bucket", pricing: { cache_read: 0 } },
+        { provider: "p", model_id: "output-priced", pricing: { cache_read: 0, output: 0.5 } },
+      ],
+    };
+    expect(freeModelEntries(raw).map((c) => c.modelId)).toEqual(["one-bucket"]);
+  });
+});
+
 describe("completeOnce", () => {
-  it("says which way it fell through when the Project has nothing to run it on", async () => {
+  it("says there is no free model to run when the Project lists none", async () => {
     const root = await makeTempRoot();
     const service = wire(ProjectConfigService, { paths: { root } });
     // No `.project_config.toml` at all.
     expect(await service.completeOnce("p1", "Name: Plugin Marketplace")).toEqual({
       ok: false,
       cause: "no_model",
-      error: "the Project names no default model",
+      error: "the Project has no free ($0-priced) model that can be run",
     });
 
     await fs.mkdir(projectDir(root, "p1"), { recursive: true });
     const file = projectConfigPath(root, "p1");
-    // A config that names no default model.
-    await fs.writeFile(file, '[[models]]\nprovider = "custom"\nmodel_id = "m-bench"\n', "utf8");
-    expect(await service.completeOnce("p1", "Name: Plugin Marketplace")).toMatchObject({
-      ok: false,
-      cause: "no_model",
-    });
-
-    // A default model whose entry is gone: there is nothing to build a client from, and a
-    // guess at the credential would be worse than no answer.
+    // A paid row is not a candidate even when it is the Project's default model: this ask must
+    // not spend anything, which is the whole point of the walk.
     await fs.writeFile(
       file,
-      '[default_model]\nprovider = "custom"\nmodel_id = "m-bench"\n',
+      '[default_model]\nprovider = "deepseek"\nmodel_id = "deepseek-flash"\n\n' +
+        row("deepseek", "deepseek-flash", 'api_key = "sk-paid"\n') +
+        'pricing = { unit = "usd_per_mtok", cache_read = 0.04, cache_write = 2, output = 8 }\n',
       "utf8",
     );
     expect(await service.completeOnce("p1", "Name: Plugin Marketplace")).toEqual({
       ok: false,
       cause: "no_model",
-      error: "the default model custom/m-bench has no entry in the Project config",
+      error: "the Project has no free ($0-priced) model that can be run",
     });
   });
 
-  it("collapses a construction that throws into a reason instead of an exception", async () => {
+  it("walks past a free row it cannot build and names the next one's dead end", async () => {
     const root = await makeTempRoot();
     const service = wire(ProjectConfigService, { paths: { root } });
     await fs.mkdir(projectDir(root, "p1"), { recursive: true });
-    // An entry whose model id no client can be routed from, and no protocol pinned: the SDK
-    // throws while building the client, before any network I/O.
+    // Two free rows, neither carrying a credential: the first is skipped without being asked
+    // and the second one's dead end is the one reported — which holds only if the walk moved on.
     await fs.writeFile(
       projectConfigPath(root, "p1"),
-      '[default_model]\nprovider = "custom"\nmodel_id = "not-a-routable-model-xyz"\n\n' +
-        '[[models]]\nprovider = "custom"\nmodel_id = "not-a-routable-model-xyz"\n',
+      row("custom", "free-one", ZERO_PRICING) + "\n" + row("custom", "free-two", ZERO_PRICING),
       "utf8",
     );
     const result = await service.completeOnce("p1", "Name: Plugin Marketplace");
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.cause).toBe("failed");
-      expect(result.error).toContain("not-a-routable-model-xyz");
+      // Never asked, so "nothing to run it on" rather than a model that failed.
+      expect(result.cause).toBe("no_model");
+      expect(result.error).toContain("free-two");
     }
   });
 });

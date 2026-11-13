@@ -1438,8 +1438,8 @@ export const zh = {
         `模型没有给出可用的 ID（${reason}），已填入占位 ID，请改成有含义的英文名`,
       /** Why the proposal fell through, keyed by the server's reason code. */
       reasons: {
-        no_default_model: "未配置默认模型",
-        model_failed: "模型调用失败",
+        no_free_model: "这个 Project 里没有可用的免费（0 定价）模型",
+        model_failed: "免费模型的调用都失败了",
         unusable_answer: "模型回答不可用",
         no_ascii: "名称里没有可转写的英文",
       },

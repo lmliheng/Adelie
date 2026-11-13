@@ -53,7 +53,7 @@ const LIBRARY_VERSION = "2026.09.14.1";
 const NO_MODEL: UtilityCompletion = {
   ok: false,
   cause: "no_model",
-  error: "the Project names no default model",
+  error: "the Project has no free ($0-priced) model that can be run",
 };
 const answered = (text: string): UtilityCompletion => ({ ok: true, text });
 const failed = (error: string): UtilityCompletion => ({ ok: false, cause: "failed", error });
@@ -958,12 +958,12 @@ describe("organization runtime", () => {
         source: "placeholder",
         reason: "unusable_answer",
       });
-      // Nothing to ask: the Project names no default model.
+      // Nothing to ask: the Project has no free model to run.
       completion.answers = [];
       expect(await service.suggestId(P, { name: "市场推广", kind: "channel" })).toEqual({
         id: placeholderFor("channel"),
         source: "placeholder",
-        reason: "no_default_model",
+        reason: "no_free_model",
       });
       // The request failed on the wire.
       completion.answers = [failed("connect ETIMEDOUT")];

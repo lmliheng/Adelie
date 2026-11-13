@@ -2912,7 +2912,7 @@ router
       .replace(/^-+|-+$/g, "");
     return id === ""
       ? { id: `untitled-${dayKey(Date.now())}`, source: "placeholder", reason: "no_ascii" }
-      : { id, source: "fallback", reason: "no_default_model" };
+      : { id, source: "fallback", reason: "no_free_model" };
   })
   .get("/api/projects/:projectId/organizations/:orgId", companyOff)
   .patch("/api/projects/:projectId/organizations/:orgId", companyOff)

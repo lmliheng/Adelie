@@ -1,12 +1,12 @@
 /**
  * A semantic id for a display name, whatever kind of object the create dialog names: the one
- * proposal every `suggest-id` answer comes from. The Project's default model translates the
+ * proposal every `suggest-id` answer comes from. A free model of the Project translates the
  * name into one English identifier in the kind's spelling — the common case is a Chinese name,
  * which nothing mechanical can transliterate — and the ASCII slug of the name answers whenever
- * the model is unavailable, refuses or answers with something no id can be built from. A name
- * that neither path can name gets a dated placeholder and the reason it fell that far: the
- * dialog fills the box and asks for a meaningful name in its place, which is a better answer
- * than a refusal that leaves the box empty and the user with nothing to type.
+ * no free model is configured, none of them answers, or the answer names nothing an id can be
+ * built from. A name that neither path can name gets a dated placeholder and the reason it fell
+ * that far: the dialog fills the box and asks for a meaningful name in its place, which is a
+ * better answer than a refusal that leaves the box empty and the user with nothing to type.
  *
  * The caller decides what surrounds the proposal and passes it in: the kind's rule (a
  * non-admin's Project rule depends on who asks), the ids to avoid, where a dead end is
@@ -22,7 +22,7 @@ import { fallbackSemanticId, placeholderSemanticId, sanitizeSuggestedId } from "
 import type { SemanticIdRule } from "./semantic-id.js";
 
 export interface SemanticIdSuggestDeps {
-  /** One short completion on the Project's default model; absent when nothing can be asked at all. */
+  /** One short completion on a free model of the Project; absent when nothing can be asked at all. */
   completeOnce?: ((projectId: string, prompt: string) => Promise<UtilityCompletion>) | undefined;
   /** Records one dead end of the model half (already truncated), for the log and the errors panel. */
   recordFailure: (projectId: string, detail: string) => void;
@@ -102,7 +102,7 @@ async function modelSemanticId(
     const res = await complete(projectId, prompt);
     if (!res.ok) {
       record(res.error);
-      return { reason: res.cause === "no_model" ? "no_default_model" : "model_failed" };
+      return { reason: res.cause === "no_model" ? "no_free_model" : "model_failed" };
     }
     const id = sanitizeSuggestedId(res.text, input.rule, avoid);
     if (id !== null) return { id };

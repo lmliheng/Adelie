@@ -39,7 +39,7 @@ An organization lives inside a Project, at `<project>/organizations/<org_id>/`, 
 5. Optional: choose a **Model**, a **Company workspace** and a **CEO budget**.
 6. Select **Create**. The CEO's desk session opens.
 
-**Generate with AI** always leaves an id in the box. The Project's default model proposes a short English snake_case id. When it cannot, an ASCII slug of the name is used. When neither works, the field gets a dated placeholder, and a note under it says why and asks you to replace it.
+**Generate with AI** always leaves an id in the box. A **free ($0-priced)** model of the Project proposes a short English snake_case id, and one that gives no answer is followed by the next. When none of them can, an ASCII slug of the name is used. When neither works, the field gets a dated placeholder, and a note under it says why and asks you to replace it. The Project's default model is not consulted — this step costs nothing.
 
 ### From the CLI
 

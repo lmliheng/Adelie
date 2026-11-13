@@ -6164,13 +6164,14 @@ export interface SemanticIdSuggestRequest {
 
 /**
  * Why a proposal fell all the way through to a placeholder — what the client tells the user to
- * explain the id it was just handed. `no_default_model`: the Project has no default model to
- * ask. `model_failed`: it was asked and the request failed (no credential, a rejection, a
- * timeout). `unusable_answer`: it answered twice and neither answer yielded an id.
- * `no_ascii`: no model was consulted at all and the name carries no ASCII to transliterate.
+ * explain the id it was just handed. `no_free_model`: the Project lists no free ($0-priced)
+ * model that can be asked, or no such entry carries a usable credential. `model_failed`: a free
+ * model was asked and every request failed (a rejection, a timeout). `unusable_answer`: it
+ * answered twice and neither answer yielded an id. `no_ascii`: no model was consulted at all
+ * and the name carries no ASCII to transliterate.
  */
 export type SemanticIdSuggestReason =
-  "no_default_model" | "model_failed" | "unusable_answer" | "no_ascii";
+  "no_free_model" | "model_failed" | "unusable_answer" | "no_ascii";
 
 export interface SemanticIdSuggestResponse {
   /**

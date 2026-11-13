@@ -1384,8 +1384,8 @@ export const en: Strings = {
         `The model gave no usable id (${reason}); a placeholder was filled in — please change it to something meaningful`,
       /** Why the proposal fell through, keyed by the server's reason code. */
       reasons: {
-        no_default_model: "no default model configured",
-        model_failed: "the model request failed",
+        no_free_model: "this Project has no free ($0-priced) model to ask",
+        model_failed: "every free model request failed",
         unusable_answer: "the model's answer was unusable",
         no_ascii: "the name carries no ASCII to transliterate",
       },

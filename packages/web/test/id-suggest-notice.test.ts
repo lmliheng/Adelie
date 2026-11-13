@@ -12,7 +12,7 @@ import { zh } from "../src/lib/strings";
 import { en } from "../src/lib/strings-en";
 
 const REASONS = Object.keys({
-  no_default_model: true,
+  no_free_model: true,
   model_failed: true,
   unusable_answer: true,
   no_ascii: true,

@@ -28,7 +28,7 @@ const failed = (error: string): UtilityCompletion => ({ ok: false, cause: "faile
 const NO_MODEL: UtilityCompletion = {
   ok: false,
   cause: "no_model",
-  error: "the Project names no default model",
+  error: "the Project has no free ($0-priced) model that can be run",
 };
 
 /** Today's `yyyymmdd`, which is what a placeholder carries. */
@@ -127,7 +127,7 @@ describe("suggest-id routes", () => {
     expect(await suggest(owner, { name: "报告写手", kind: "agent" })).toEqual({
       id: `agent_${stamp()}`,
       source: "placeholder",
-      reason: "no_default_model",
+      reason: "no_free_model",
     });
     completion.answers = [answered("报告写手"), answered("写手")];
     expect(await suggest(owner, { name: "官网改版", kind: "project" })).toEqual({
@@ -163,7 +163,7 @@ describe("suggest-id routes", () => {
     expect(await suggest(owner, { name: "报告写作", kind: "benchmark" })).toEqual({
       id: `benchmark-${stamp()}`,
       source: "placeholder",
-      reason: "no_default_model",
+      reason: "no_free_model",
     });
 
     // A member may create Agents but not Benchmarks, and is refused the proposal the same way.

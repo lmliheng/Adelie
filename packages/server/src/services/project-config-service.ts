@@ -339,6 +339,15 @@ const SPEED_PROBE_PROMPT =
  */
 const UTILITY_COMPLETION_BUDGET = 300;
 const UTILITY_COMPLETION_TIMEOUT_MS = 15_000;
+/**
+ * How many free models one utility ask may actually be sent to, and how long the whole walk may
+ * take. A naming dialog is waiting on the answer, so a run of dead or throttled free endpoints
+ * must not add up to a stall: each attempt gets what is left of the budget, up to the single
+ * attempt timeout above, and candidates that cannot be built at all (no credential, no
+ * routable id) cost neither an attempt nor a wait.
+ */
+const UTILITY_COMPLETION_ATTEMPTS = 4;
+const UTILITY_COMPLETION_WALK_BUDGET_MS = 30_000;
 
 /**
  * What one utility completion produced: the model's text, or why there is none. A bare null
@@ -368,9 +377,9 @@ function outcomeDetail(outcome: LLMOutcome): string {
 }
 
 /**
- * The model config one utility completion runs with, built from the Project's default model
- * entry. Exported because two of its fields decide whether an answer arrives at all, and
- * reading them here costs no network:
+ * The model config one utility completion runs with, built from a Project's model entry.
+ * Exported because two of its fields decide whether an answer arrives at all, and reading them
+ * here costs no network:
  *
  * - `thinkingLevel: "none"`, the level core's own out-of-band requests use. Every provider the
  *   product ships works with it; a level that leaves thinking on spends the budget below on
@@ -379,10 +388,14 @@ function outcomeDetail(outcome: LLMOutcome): string {
  *   a budget cut to the size of an identifier. A reasoning model spends its thinking out of the
  *   same cap, so a budget that small ends the request at `finish_reason=length` with the answer
  *   never started (see `probeVerdict`, which tolerates exactly that ending for the probe).
+ *
+ * `requestTimeoutMs` defaults to the single attempt timeout; the walk in `completeOnce` passes
+ * what is left of its budget, so the last candidate of a slow run cannot overshoot it.
  */
 export function utilityCompletionConfig(
   modelId: string,
   entry: Record<string, unknown>,
+  requestTimeoutMs: number = UTILITY_COMPLETION_TIMEOUT_MS,
 ): GenerativeModelConfig {
   const clientType = canonicalClientType(optStr(entry.client_type));
   // The same credential rule as every other client the harness builds (see core's
@@ -402,8 +415,38 @@ export function utilityCompletionConfig(
     tools: [],
     thinkingLevel: "none",
     maxTokens: metaMaxTokens(UTILITY_COMPLETION_BUDGET, optNum(entry.max_tokens)),
-    requestTimeoutMs: UTILITY_COMPLETION_TIMEOUT_MS,
+    requestTimeoutMs,
   };
+}
+
+/**
+ * A Project's free model entries, in the order its config lists them: what a utility ask is
+ * allowed to spend. "Free" is the same reading the models page badges with — a `pricing` table
+ * that is present and says 0 on all three buckets. An entry with no pricing at all is unpriced
+ * rather than free, and a self-hosted row that bills nobody through a rate the catalog cannot
+ * know is deliberately not counted here: this is about not spending, not about who pays.
+ *
+ * Pure, so the walk's own ordering and filtering are unit tested without a config file.
+ */
+export function freeModelEntries(
+  raw: RawTable,
+): Array<{ provider: string; modelId: string; entry: RawTable }> {
+  const out: Array<{ provider: string; modelId: string; entry: RawTable }> = [];
+  const seen = new Set<string>();
+  for (const entry of asArray(raw.models)) {
+    const provider = optStr(entry.provider);
+    const modelId = optStr(entry.model_id);
+    if (provider === undefined || modelId === undefined) continue;
+    const pricing = pricingDtoOf(entry.pricing);
+    if (pricing === undefined) continue;
+    if (pricing.cacheRead !== 0 || pricing.cacheWrite !== 0 || pricing.output !== 0) continue;
+    // One entry per reference: a duplicated row in a hand-edited file must not be asked twice.
+    const key = `${provider}\u0000${modelId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ provider, modelId, entry });
+  }
+  return out;
 }
 
 /**
@@ -928,15 +971,21 @@ export class ProjectConfigService implements ProjectConfigStore {
   }
 
   /**
-   * One short completion on the Project's **default** model, for utility asks that belong to
-   * no Session — today the English identifier a display name is translated into. Everything
-   * comes from the stored default entry (credential, base URL, pinned protocol), and the
-   * answer is the model's plain text. Nothing throws: no default model, no entry for it, a
-   * construction that throws on a missing credential, a refusal, a timeout, or an answer with
-   * no text all come back as `{ ok: false }` carrying the reason, which the caller records so
-   * the errors panel can say why the ask produced nothing. Callers must still have a result
-   * that works without it. The request is not metered — it carries no Session to attribute
-   * it to.
+   * One short completion on a **free** model of the Project, for utility asks that belong to
+   * no Session — today the English identifier a display name is translated into. A free model
+   * is walked first, and several of them: free endpoints are throttled, delisted and retired
+   * routinely, one dead endpoint says nothing about the next, and the ask must not cost
+   * anything, so the Project's default model is deliberately not among the candidates. What
+   * the caller gets when none of them answers is the reason, and its own fallback.
+   *
+   * The walk is bounded twice over: at most `UTILITY_COMPLETION_ATTEMPTS` requests are sent,
+   * and together they get `UTILITY_COMPLETION_WALK_BUDGET_MS`. A candidate that cannot be built
+   * at all — no credential, no routable id — costs neither an attempt nor a wait, so a config
+   * full of unusable free rows does not eat the budget of the ones that work. Nothing throws:
+   * no free entry, an entry with no credential, a refusal, a timeout, or an answer with no text
+   * all come back as `{ ok: false }` carrying the reason, which the caller records so the
+   * errors panel can say why the ask produced nothing. Callers must still have a result that
+   * works without it. The request is not metered — it carries no Session to attribute it to.
    *
    * Thinking is off and the budget is the shared meta budget, for the same reason core's own
    * out-of-band requests set them that way: a reasoning model spends thinking out of
@@ -945,36 +994,60 @@ export class ProjectConfigService implements ProjectConfigStore {
    */
   async completeOnce(projectId: string, prompt: string): Promise<UtilityCompletion> {
     const raw = await this.readRaw(projectId);
-    const ref = optRef(raw.default_model);
-    if (ref === undefined) {
-      return { ok: false, cause: "no_model", error: "the Project names no default model" };
+    const candidates = freeModelEntries(raw);
+    const deadline = Date.now() + UTILITY_COMPLETION_WALK_BUDGET_MS;
+    // The last thing that went wrong, whether it was a build that threw or a request that
+    // produced nothing: the caller records one line, and the most recent dead end is the one
+    // worth naming.
+    let failure: Extract<UtilityCompletion, { ok: false }> | undefined;
+    let sent = 0;
+    for (const candidate of candidates) {
+      if (sent >= UTILITY_COMPLETION_ATTEMPTS) break;
+      const remaining = deadline - Date.now();
+      if (remaining < 1000) break;
+      let llm: GenerativeModel;
+      try {
+        // Inside the try for the same reason as the probes: the SDK throws during
+        // construction when a credential is missing or the id cannot be routed, and that must
+        // read as one candidate being unusable rather than an exception out of a dialog's
+        // helper. Such a candidate is skipped without being asked.
+        llm = new GenerativeModel({
+          ...utilityCompletionConfig(
+            candidate.modelId,
+            candidate.entry,
+            Math.min(UTILITY_COMPLETION_TIMEOUT_MS, remaining),
+          ),
+          ...this.requestApiKeyResolver(projectId, candidate.provider, candidate.modelId),
+        });
+      } catch (err) {
+        failure = {
+          ok: false,
+          cause: "failed",
+          error: (err instanceof Error ? err.message : String(err)).slice(0, MAX_FAILURE_DETAIL),
+        };
+        continue;
+      }
+      sent += 1;
+      const res = await collectUtilityCompletion(
+        llm.streamGenerate({ newMessages: [userText(prompt)] }),
+      );
+      if (res.ok) return res;
+      failure = res;
     }
-    const entry = asArray(raw.models).find((m) => entryMatches(m, ref.provider, ref.model_id));
-    if (entry === undefined) {
+    if (sent === 0) {
+      // Nothing was ever asked, so "no model" is the honest reading rather than a model that
+      // failed: the Project either lists no free entry or has no credential for any of them.
       return {
         ok: false,
         cause: "no_model",
-        error: `the default model ${ref.provider}/${ref.model_id} has no entry in the Project config`,
+        error: failure?.error ?? "the Project has no free ($0-priced) model that can be run",
       };
     }
-    try {
-      // Inside the try for the same reason as the probes: the SDK throws during
-      // construction when a credential is missing, and that must read as a failure with a
-      // reason rather than an exception out of a dialog's helper.
-      const llm = new GenerativeModel({
-        ...utilityCompletionConfig(ref.model_id, entry),
-        ...this.requestApiKeyResolver(projectId, ref.provider, ref.model_id),
-      });
-      return await collectUtilityCompletion(
-        llm.streamGenerate({ newMessages: [userText(prompt)] }),
-      );
-    } catch (err) {
-      return {
-        ok: false,
-        cause: "failed",
-        error: (err instanceof Error ? err.message : String(err)).slice(0, MAX_FAILURE_DETAIL),
-      };
-    }
+    return {
+      ok: false,
+      cause: "failed",
+      error: failure?.error ?? "every free model of the Project gave no answer",
+    };
   }
 
   async testModel(projectId: string, req: ModelTestRequest): Promise<ModelTestResponse> {
