@@ -6049,6 +6049,7 @@ export const zh = {
       approval_not_found: "该授权请求已处理或已失效。",
       process_not_found: "该后台进程已结束或已被移除。",
       process_running: "该后台进程仍在运行，请先结束再移除。",
+      terminal_not_found: "该终端已不存在或已被关闭。",
       memory_file_not_found: "该记忆文件已不存在。",
       memory_scope_not_found: "该记忆范围已不存在。",
       task_in_progress: "该 Session 已有任务在运行。",

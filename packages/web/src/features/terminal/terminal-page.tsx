@@ -26,6 +26,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ConfirmModal, GlyphIcon, ICONS, ICON_SIZE } from "@adelie/ui";
 import { S } from "../../lib/strings";
+import { refusalText } from "../../lib/api-error";
 import { useCoarsePointer } from "../../lib/use-coarse-pointer";
 import { useVisualViewportHeight } from "../../lib/use-visual-viewport-height";
 import { useTerminalChrome } from "./terminal-appearance";
@@ -172,14 +173,31 @@ export function TerminalPage() {
    * stays, showing the exited shell with "New terminal" one click away. The kill is awaited
    * first so the dock's detach watcher, which probes the shell when the window closes, finds
    * it ended rather than restoring a tab for it.
+   *
+   * A kill the server REFUSED leaves both the shell and this window in place: the card stays
+   * open with the server's own words in it (`killRefusal`), and its button is the retry — the
+   * window is the only surface that shell is shown on, so closing it over a shell that is still
+   * running would hide the thing the user has to deal with.
    */
   const [confirmKill, setConfirmKill] = useState(false);
+  const [killRefusal, setKillRefusal] = useState<string | null>(null);
   const killConfirmed = useCallback(async () => {
     if (!info) return;
+    setKillRefusal(null); // this attempt's own answer is the one that gets drawn
+    try {
+      await killTerminal(info.id);
+    } catch (err) {
+      setKillRefusal(refusalText(err));
+      return;
+    }
     setConfirmKill(false);
-    await killTerminal(info.id);
     window.close();
   }, [info]);
+
+  const askToKill = useCallback(() => {
+    setKillRefusal(null);
+    setConfirmKill(true);
+  }, []);
 
   const statusText =
     status === "exited" && detail
@@ -234,16 +252,20 @@ export function TerminalPage() {
         ensure={ensure}
         onStatus={onStatus}
         onInfo={setInfo}
-        onCloseRequest={info ? () => setConfirmKill(true) : undefined}
+        onCloseRequest={info ? askToKill : undefined}
         className="min-h-0 flex-1 overflow-hidden px-2 py-1"
       />
       <ConfirmModal
         open={confirmKill}
         title={S.dock.killConfirmTitle}
-        onClose={() => setConfirmKill(false)}
+        onClose={() => {
+          setConfirmKill(false);
+          setKillRefusal(null); // the sentence belonged to that question
+        }}
         onConfirm={() => void killConfirmed()}
         confirmLabel={S.terminal.killShell}
         cancelLabel={S.common.cancel}
+        refusal={killRefusal === null ? undefined : S.common.refused(killRefusal)}
       >
         {info && (
           <p className="break-words text-sm text-gray-600 dark:text-gray-300">

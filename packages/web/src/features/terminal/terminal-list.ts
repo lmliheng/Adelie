@@ -12,14 +12,15 @@
  *   tab cannot see (a shell exiting on its own, terminals opened from another window).
  */
 import type { TerminalInfo } from "./terminal-view";
+import { apiFetch } from "../../api/client";
 import { probeSession } from "../../api/session-probe";
 import { pruneTerminalTabs } from "../dock/dock-state";
 import { apiUrl } from "../../lib/server-context";
 import {
+  machineForTerminal,
   rememberTerminalMachine,
   terminalMachinesPublished,
   terminalSources,
-  terminalUrl,
 } from "../../lib/terminal-machines";
 
 /**
@@ -204,17 +205,34 @@ export function noteTerminalCreated(info: TerminalInfo): void {
  * list (count, tabs, badge) before the server round-trip; delayed refreshes reconcile once
  * the pty has actually exited, with `pendingKills` keeping the dying shell from
  * reappearing in between.
+ *
+ * The DELETE can be REFUSED — the shell is already gone under this id (404
+ * `terminal_not_found`), the machine holding it does not answer, this window is not signed
+ * in any more — and nothing here used to look: the entry was gone before the answer, so the
+ * tab vanished while the shell kept running and the screen said nothing at all. A refusal
+ * now takes the entry back (a shell the server would not end is still a shell the user has)
+ * and rejects with the server's words, for the card that asked to draw (the card keeps
+ * itself open on one, exactly like every other refusal in the app).
  */
 export async function killTerminal(id: string): Promise<void> {
+  // What the list held before the entry left it: a refusal puts exactly this back, since the
+  // alternative — re-reading the server — would show the truth a round trip later and flicker.
+  const previous = raw;
   pendingKills.set(id, Date.now() + 10_000);
   commit(raw.filter((t) => t.id !== id));
   try {
-    await fetch(terminalUrl(`/api/terminals/${encodeURIComponent(id)}`), {
+    await apiFetch<void>(`/api/terminals/${encodeURIComponent(id)}`, {
       method: "DELETE",
-      credentials: "same-origin",
+      server: machineForTerminal(id),
     });
-  } catch {
-    // The delayed refreshes below still reconcile with whatever the server thinks.
+  } catch (err) {
+    // Nothing was ended. Un-hide the entry so the pane and its tab keep their owner, and ask
+    // the server what it thinks now: a 404 for a shell that really is gone takes it away
+    // again, which is the outcome the user asked for anyway.
+    pendingKills.delete(id);
+    if (!raw.some((t) => t.id === id)) commit(previous);
+    void refreshTerminals();
+    throw err;
   }
   for (const delay of [300, 1500]) {
     setTimeout(() => void refreshTerminals(), delay);

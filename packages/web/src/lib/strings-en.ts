@@ -5997,6 +5997,7 @@ export const en: Strings = {
       approval_not_found: "This approval request was already answered, or is no longer valid.",
       process_not_found: "This background process already exited, or was removed.",
       process_running: "This background process is still running — stop it before removing it.",
+      terminal_not_found: "This terminal no longer exists, or it has been closed.",
       memory_file_not_found: "This memory file no longer exists.",
       memory_scope_not_found: "This memory scope no longer exists.",
       task_in_progress: "This Session already has a task running.",

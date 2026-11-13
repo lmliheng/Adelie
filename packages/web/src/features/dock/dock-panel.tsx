@@ -73,6 +73,7 @@ import {
 } from "@adelie/ui";
 import type { DockPickerChoice, DockTabItem } from "@adelie/ui";
 import { S } from "../../lib/strings";
+import { refusalText } from "../../lib/api-error";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import { chordKeys } from "../../components/ui/chord-kbd";
 import { useDisplayedBinding, useShortcutLabel } from "../../lib/shortcuts/use-keymap";
@@ -313,8 +314,16 @@ export function DockPanel({
   // a close guard (the Files panel's editor holding unsaved text), which asks first: the
   // tab's × is the one gesture here that really unmounts a body.
   const [confirmKill, setConfirmKill] = useState<{ id: string; label: string } | null>(null);
+  /**
+   * The server's words for a kill it refused, for the card that asked to draw. The entry and
+   * the tab stay (the shell is still running), so this sentence is the only place that says so
+   * — it is cleared when the card opens again and when it closes, and the card's own button is
+   * the retry.
+   */
+  const [killRefusal, setKillRefusal] = useState<string | null>(null);
   const closeTab = useCallback((tab: DockTab, label: string) => {
     if (tab.kind === "terminal") {
+      setKillRefusal(null);
       setConfirmKill({ id: tab.terminalId, label });
       return;
     }
@@ -323,9 +332,17 @@ export function DockPanel({
   // Hiding puts the surface away and nothing else — every body stays mounted at zero size —
   // so there is nothing to ask about, however much unsaved work a tab is holding.
   const hide = useCallback(() => hideView(view), [view]);
-  const killConfirmed = useCallback(() => {
+  const killConfirmed = useCallback(async () => {
     if (!confirmKill) return;
-    void killTerminal(confirmKill.id);
+    setKillRefusal(null); // this attempt's own answer is the one that gets drawn
+    try {
+      await killTerminal(confirmKill.id);
+    } catch (err) {
+      // Refused: the tab is only removed by a kill that landed, so it is still in the strip
+      // and its × is where the user retries from.
+      setKillRefusal(refusalText(err));
+      return;
+    }
     removeTab(`terminal:${confirmKill.id}`);
     setConfirmKill(null);
   }, [confirmKill]);
@@ -834,10 +851,14 @@ export function DockPanel({
     <ConfirmModal
       open={confirmKill !== null}
       title={S.dock.killConfirmTitle}
-      onClose={() => setConfirmKill(null)}
-      onConfirm={killConfirmed}
+      onClose={() => {
+        setConfirmKill(null);
+        setKillRefusal(null); // the sentence belonged to that question
+      }}
+      onConfirm={() => void killConfirmed()}
       confirmLabel={S.terminal.killShell}
       cancelLabel={S.common.cancel}
+      refusal={killRefusal === null ? undefined : S.common.refused(killRefusal)}
     >
       {confirmKill !== null && (
         <p className="break-words text-sm text-gray-600 dark:text-gray-300">
