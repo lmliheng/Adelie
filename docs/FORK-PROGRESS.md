@@ -2535,6 +2535,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       这些对话说法不一），所有勾选都还留着，而原因只在一条六秒的通知里。见「第二百三十七轮」一节。
       **编号说明**：HEAD 上未入台账的 `165725081`（`feat(web,server)` 左下角菜单能看正在跑的会话与按天花费）
       是今天中午另一条线的一笔，`7.122` 与第二百三十六轮留给它补记，所以本条从 `7.123` / 第二百三十七轮续。
+- [x] **7.124 项目设置里的成员写被拒时，原因留在发问的那张表上方，不再只活六秒**
+      （**2026-11-13 第二百三十八轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑
+      `packages/web/src/lib/member-write-refusal.ts` 的 `memberWriteRefused`，
+      `project-dialogs.tsx` 的 `MembersSection` 新增 `refusal` 状态与表上方那行 `role="alert"`、
+      `addMember` / `doRemove` 被拒不弹通知）＋ 1 个新单测（5 条）+ 1 个新 spec（2 条）+ 词典两对
+      （`memberAddRefused` / `memberRemoveRefused`）+ changelog 一对，**不碰接口、无新依赖**）：这一族
+      （被拒的写原因留在发问的地方）在「设置」与「成本中心」两处收完之后，项目设置对话框里的成员表还是一条
+      通知 —— 添加不存在的账号、移除一个已经不在名单里的成员，两种拒绝都只活六秒，而这期间表格看起来与
+      被拒之前一模一样：没被移出的成员与已经移出的长得一样，什么都没说。见「第二百三十八轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3274,6 +3283,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-13 | 7.119 | **文件夹删不掉时，原因留在发问的那张卡片里，不再只活六秒**（**2026-11-13 第二百三十三轮**落地，提交见「已完成的轮次」；源码 1 处（`workspace-finder.tsx`：新增 `deleteRefusal` 状态、`deleteFolder` 被拒时不再关卡片而是填它、打开卡片与每次尝试开始时清掉、卡片按 `S.common.refused(...)` 接上 `refusal` 槽并在 `onClose` 里清掉）+ 1 个新 spec `packages/web/e2e/finder-delete-folder-refusal.spec.mjs`（2 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：工作区选择器里删除文件夹是先问再写的卡片，卡片自己写着服务端的规则（只能删空文件夹），可它以前无论答案是什么都会关掉 —— 「文件夹非空」这条拒绝只落在一条六秒的通知里，文件夹仍在列表里、看起来没被碰过，而它为什么留着的理由已经没了。而这条拒绝恰恰是能修的：在卡片外把文件夹清空、再按同一个按钮就是重试，所以卡片不该关。现在只在删除落地后才关；被拒时服务端的话画在卡片里（`操作被拒绝：<原因>`），留在下次尝试或关闭之前。见「第二百三十三轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个改动文件 + changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数：本笔只改卡片与浏览器用例，没有新单测）· **新 spec 2 passed（14.2 s）**（8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r233-e2e`）：装着文件的文件夹被拒、卡片里逐字「操作被拒绝：该文件夹不是空的，只能删除空文件夹。」、通知区 0 个按钮、7 s 后仍在、盘上什么都没少 —— 随后在卡片外删掉那个文件、同一个按钮重试落地 200、文件夹从列表与盘上同时消失；被拒之后按 Escape 关掉，下一次打开的是一张没有 `role="alert"` 的干净卡片 · **反证（同一份 spec 跑改前产物）**：把 `workspace-finder.tsx` 退回 `HEAD` 重建 web、产物拷到 `r233-before-dist` 挂 8952 → **2 failed**（两条都死在卡片里找不到 `role="alert"`）· **两态探针**（`r233/probe.spec.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8950、改前 8952，各一套一次性数据根，`DELETE` 由真服务端以 **409 `dir_not_empty`** 拒绝，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、卡片上没有 alert、1.2 s 时通知区 1 个按钮而 7.5 s 后 0 个；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：该文件夹不是空的，只能删除空文件夹。」、通知区 0 个按钮；截图 `r233/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、红条在卡片里、文件夹仍在列表里；改前卡片没了、页顶那条通知到 7.5 s 已经消失） · 两态 console 只有本轮故意要的那两条（`/api/me` 的 403 与 `dir_not_empty` 的 409 各一条 `failed to load resource`），pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r233-{e2e,before,after-dist,before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r233/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `b177ece94` |
 | 2026-11-13 | 7.121 | **结束终端被拒时，原因留在发问的那张卡片里 —— 而这一处以前连通知都没有过**（**2026-11-13 第二百三十五轮**落地，提交见「已完成的轮次」；源码 3 处（`terminal-list.ts`：`killTerminal` 的 DELETE 改走 `apiFetch`（非 2xx → `ApiError`、连不上 → `network_error`），被拒时清 `pendingKills`、把条目放回并重读一次列表、再把错误抛给调用方；`dock-panel.tsx`：`killConfirmed` 变 async、成功才 `removeTab` 并关卡片、被拒写 `killRefusal` 接 `refusal` 槽（`S.common.refused(refusalText(err))`），开卡片与关卡片时清掉；`terminal-page.tsx`：同样，被拒不 `window.close()`）+ 1 个新单测 `terminal-kill-refusal.test.ts`（4 条）+ 1 个新 spec `terminal-kill-refusal.spec.mjs`（3 条）+ 词典一条（`terminal_not_found` 中英）+ changelog 一对，**不碰接口、无新依赖**）：第二百三十三轮末尾点名的「发出后不等回话」那一类 —— 两张卡片都是「先问再写」的 ConfirmModal、被问的写就是那个 DELETE，可两边都 `void killTerminal(...)`；而被调用方不读 `res.ok`、空 `catch` 吞掉网络失败、还先把条目从列表里删掉从不还回来，于是被拒时标签消失、窗口关掉、Shell 仍在服务端跑着，屏幕上**一个字都没有** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **323 文件 / 3727 通过 / 2 跳过**（相对上一行台账的 319 / 3705 是 +4 文件 / +22 条，其中本笔 1 文件 / 4 条，其余来自 HEAD 上那一笔未入台账的 `43ca2f85f`）· server **212 文件 / 3110 通过 / 6 跳过** · **新单测 4 passed**（被拒的 DELETE 把条目放回并以 `terminal_not_found` 拒绝、且确实重读过列表；连不上算 `network_error` 且条目同样放回；真的落地的那次条目留在外面、URL 是 `/server/M1/api/terminals/…`；200 带 body 不算失败）· **新 spec 3 passed（9.7 s + 2.0 s + 8.9 s）**（8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r234-e2e`）：停靠栏终端标签的 × → 卡片里逐字「操作被拒绝：该终端已不存在或已被关闭。」、通知区 0 个按钮、七秒后仍在、标签与活着的 Shell 都还在（`GET /api/terminals` 仍列 1 条 alive）—— 放行后同一个按钮重试 204、卡片与停靠栏一起消失、Shell 数归 0；被拒后 Escape 关掉，下一次打开的卡片没有 `role="alert"`；独立 `/terminal` 窗口按 terminal.close（Ctrl+Alt+`）同样把 `internal` 那句留在卡片里、窗口不关、状态仍是 `ready`、Shell 仍活着，重试后归 0 · **反证（同一份 spec 跑改前产物）**：5 个源码文件退回 `HEAD` 重建 web、产物挂 8952（独立数据根 `/root/adelie-fork-data/r234-before`）→ **3 failed**（三条都死在卡片里找不到 `role="alert"` —— 改前卡片早已关掉）· **两态探针**（`r234/probe.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8950 / 改前 8952，`DELETE` 由 `page.route` 拒成 404 `terminal_not_found`，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、`terminalTabs:0`、`dockOpen:null`、`alive:1`（Shell 还在跑，屏幕一字不提）；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：该终端已不存在或已被关闭。」、`notifyButtons:0`、`terminalTabs:1`、`alive:1`；截图 `r234/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、句子在卡片内、底部停靠栏与终端仍在；改前页面上只剩对话页，停靠栏与标签都不见了）· 两态 console 只有既有的 `GET …/machines` **403** 与本轮桩的 **404**，pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r234-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r234/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `38c3eb528` |
 | 2026-11-13 | 7.123 | **批量归档只成功一半时，说清哪些对话没有动 —— 而且列表不再与服务器说法不一**（**2026-11-13 第二百三十七轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑 `packages/web/src/lib/batch-outcome.ts`（`splitBatchOutcome(targets, results)`：哪些落地了、哪些被拒了、第一个被拒的原因），`components/layout/sidebar.tsx`：`batchSetArchived` 由 `Promise.all` + `toastError` 改成 `Promise.allSettled` 并逐行读结果 —— 落地的行 `replace(row.value.session)`、被拒的行成为新的勾选、`已归档` 文件夹只在本条真的归档时展开、批量栏新增 `batchArchiveRefusal` 一行（`role="alert"`、危险色、占满整行，每次尝试开始 / 勾选变化 / 取消选择 / 离开批量模式时清掉）；`confirmBatchDelete` 也改用同一个拆分函数（行为不变））+ 1 个新单测 `batch-outcome.test.ts`（6 条）+ 既有 `sidebar-batch-sessions.test.ts` 加两条断言组（文案 + 批量栏的拒绝槽 + 两个动作共用拆分函数，删除那边三条因共用而改写）+ 1 个新 spec `session-batch-archive-refusal.spec.mjs`（2 条）+ 词典两对（`batchArchiveRefused` / `batchUnarchiveRefused` 中英）+ changelog 一对，**不碰接口、无新依赖**）：批量栏没有批量接口，归档与取消归档给每条勾选的对话各发一个 PATCH，可它们的回话是**整体**读的 —— 第一个被拒的行把其余每一行的回话都丢掉，服务端已经归档的行照样原样留在活动列表里（`已归档` 文件夹根本不出现），所有勾选都还留着（含已经搬走的那些），原因只在一条六秒的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **325 文件 / 3739 通过 / 2 跳过**（相对上一行台账的 323 / 3727 是 +2 文件 / +12 条：本笔 1 文件 / 6 条，其余来自 HEAD 那笔未入台账的 `165725081`）· server **213 文件 / 3117 通过 / 6 跳过**（同来源 +1 文件 / +7 条）· **新单测 6 passed**（每行对自己的回话；夹在中间的拒绝不影响它后面落地的行；只保留第一个原因；整批被拒时每行都还在；结果比行短时不凭空造结果；没有对应行的结果被忽略）· **新 spec 2 passed（9.8 s + 2.0 s）**（8962 真服务端 + 8963 mock 模型 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r237-final3`）：勾两条、其中一条的 PATCH 被拒成 500 —— 那句话逐字「还有 1 个对话没有归档：session store is read-only」在批量栏里、通知区 0 个按钮、七秒后仍在、被拒的行仍勾选而落地的那条真的归档（接口读回 `archived: true`）并搬进 `已归档（1）`、勾选只剩被拒的那条 —— 随后同一个按钮重试、批量栏带着那句话一起消失、两条在服务端都 `archived: true`（PATCH 次数 2 / 1）；另一条是整批被拒时两个勾选都留着、「取消选择」把那句话一并带走、再勾一条时没有残留 · **回归**：`session-batch-delete-refusal.spec.mjs`（既有、未改）**2 passed** —— 删除那条路改用了同一个拆分函数 · **反证（同一份 spec 跑改前产物）**：`sidebar.tsx` 退回 `HEAD` 重建 web、产物挂 8966（独立数据根 `/root/adelie-fork-data/r237-before2`）→ **2 failed**（两条都死在 `getByTestId('batch-archive-refusal')` 元素不存在）· **两态探针**（`r237/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，PATCH 由 `page.route` 拒成 500 `session_store_read_only`，量 1.2 s / 7.5 s）：**改前** 两刻 `barText: null`、通知区 1 个按钮（1.2 s 时逐字「session store is read-only」）→ 7.5 s 后 0 个、`keptTicked: true` 与 **`goneTicked: true`**（服务器已经归档了它，列表却还把它当活动行、还留着勾选）、`archivedHeader: 0`（`已归档` 文件夹压根没出现）；**改后** 两刻都是批量栏里一行 `role="alert"`「还有 1 个对话没有归档：session store is read-only」、通知区 0 个按钮、`keptTicked: true` / `goneTicked: false`、`archivedHeader: 1`、`goneArchived: true`；截图 `r237/out/{after,before}-{1_2s,7_5s}.png` 与批量栏局部 `after-bar-crop.png` 肉眼看过（改后红字在栏内、下方只剩被拒那条勾着、已归档（1）里是搬走的那条；改前页顶一条白底通知、两行都还在活动列表里）· 两态 console 各只有本轮故意要的那条 500，pageerror 0 条 · 端口只用 8950–8967（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r237-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r237/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `364ea5984` |
+| 2026-11-13 | 7.124 | **项目设置里的成员写被拒时，原因留在发问的那张表上方，不再只活六秒**（**2026-11-13 第二百三十八轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑 `packages/web/src/lib/member-write-refusal.ts` 的 `memberWriteRefused`，`project-dialogs.tsx` 的 `MembersSection` 新增 `refusal` 状态与表上方那行 `role="alert"`、`addMember` / `doRemove` 被拒不弹通知）＋ 词典两对（`memberAddRefused` / `memberRemoveRefused`）＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：授予与收回权限都是普通写入，被拒时屏幕上的东西一样都没少（添加框里还是那个名字、成员的整行连同「移除」按钮都还在，重试就是同一个控件），缺的只是原因 —— 它落在一条六秒后自己消失的通知里、飘在看起来没被碰过的表之上，于是**没被移出的成员与已经移出的长得一模一样**。现在两种方向都把句子留在表上方（`role="alert"`、危险色、限两行、悬停看全文），点名那个账号（这一页是名单，连着两次尝试说的是两个人）并说明名单没有变化；每次尝试开始先清掉上一次那句，落地的那次重试一并清掉，本页不再发通知。见「第二百三十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔不动服务契约）· `oxlint` 5 个改动文件 **0 警告 0 错误** · `prettier --check` 6 个文件（含 spec 与 changelog 一对）干净（首跑新单测 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **213 文件 / 3117 通过 / 6 跳过** · web **326 文件 / 3744 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 325 / 3739）· **新 spec 2 passed（9.4 s + 2.1 s）**（真服务端 8990 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r238-after`；两次拒绝都是**服务端自己给的**，不是桩：加一个不存在的账号答 404 `user_not_found`、移除一个刚被别人移出的成员答 404 `member_not_found`）：添加那条 —— 句子在表上方、逐字「没能把「ghost_…」加进成员，名单没有变化：该用户已不存在。」、`role=alert`、打完的名字还在框里、表的行数没变、通知区 **0 个按钮**、**七秒后仍在**，随后往同一个框里换一个真账号就把行加进去（行数 +1、句子归 0、服务端成员表里真有它）；移除那条 —— 句子逐字「没能把「target_…」移出成员，名单没有变化：该用户不是本项目的成员。」、那一行仍在、通知区 0 个按钮，把成员身份补回去后按**同一个按钮**就落地（行与句子一起消失）· **反证（同一份 spec 跑改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8991 与另一个一次性数据根 `/root/adelie-fork-data/r238-before` → **2 failed**，两条都死在`getByTestId("member-refusal")` 找不到 · **两态探针**（`r238/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻）：**改前** 1.2 s 通知区 1 条「该用户已不存在。」、拒绝槽 0、7.5 s 时通知区 0 条、整块屏幕一片安静（表格 2 行、框里的名字还在）；**改后** 两刻都是表上方那一行 `role=alert`、通知区 0 个按钮，表格仍是 2 行、框里仍是那个名字 · 两态 console 都只有本轮**故意造的**那一条 404（`POST …/members`），pageerror **0 条** · 截图 `r238/{before,after}-{1.2s,7.5s}.png` 肉眼看过（改前 7.5 s 那张里表上方什么都没有，改后 1.2 s 那张里红字就在「成员」标题之下、表之上）· 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r238{,-after,-before,-after-dist,-before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r238/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `cf90349a6` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -26239,3 +26249,74 @@ build 过、typecheck 过、lint 0/0、format 过、测试 **10612 通过 / 20 �
 ### 提交
 
 `fix(web)` 一笔（源码 4 + 单测 2 + 新 spec 1 + changelog 一对 = 9 个文件）；台账另起一笔。
+
+## 第二百三十八轮：项目设置里的成员写被拒时，原因留在发问的那张表上方（2026-11-13，条目 7.124）
+
+### 开工自检
+
+- `git status --short` 干净，`main` 上是 `51df2f2ee`（第二百三十七轮的台账）。`git fetch origin` 与
+  `git merge --ff-only origin/main` 都干净（`Already up to date`，远端 `main` = 本地 `HEAD`）。
+  没有切分支、没碰 `legacy/main`、没推 upstream。
+- 表上仍未勾的仍是那 8 条、一条都动不了：2.2c（只剩桌面壳 / 既有部署 / 画廊 mock 数据这三处，前两条要
+  桌面壳或发布动作）、3.5（要用户拍板取哪个桌面壳）、3.6（要模型 key）、4.1–4.3（明令不动）、5.6 / 5.10
+  （要拍板：促销费率搬进 Project 配置、mermaid 这个渲染依赖）。因此照前几轮的做法，从「被拒的写原因留在
+  发问的地方」这一族的剩余清单里挑一处新的，记为 `7.124` / 第二百三十八轮。
+
+### 为什么是这一条
+
+第二百三十五 / 二百三十七轮把侧栏、终端、批量栏收完之后，`projects/web/src` 里剩下的 `toastError` 分两类：
+读失败（多数已有就地句子）与**写**失败。写失败里最像这一族的一处是项目设置的「成员」页：授予与收回权限都是
+普通写入，被拒时**屏幕上什么都没变**（添加框里还是那个名字、成员的整行连同「移除」按钮都还在），所以重试
+就是同一个控件 —— 缺的只是原因，而原因只落在一条六秒的通知里。同一个文件里，`GeneralSection` 删除卡片
+早就在用 `ConfirmModal` 的 `refusal` 槽，`MembersSection` 自己的注释也明写着「action failures pop a toast」。
+两边的拒绝都是真拒绝、不需要任何桩：加一个不存在的账号答 404 `user_not_found`，移除一个刚被别人移出的成员
+答 404 `member_not_found`。
+
+### 改了什么
+
+- `packages/web/src/lib/member-write-refusal.ts`（新增，纯逻辑）：`memberWriteRefused(write, error)` ——
+  `{ kind: "add" | "remove", userId }` 加上那句话，原因走 `refusalText`；那次写随句子一起回来，因为读者
+  要重试的正是它。文件头写明为什么这句话归表格、以及为什么要点名账号（这一页是一张名单）。
+- `packages/web/src/components/layout/project-dialogs.tsx`：`MembersSection` 新增 `refusal` 状态，画在表
+  上方（`data-testid="member-refusal"`、`role="alert"`、`toneInk.danger`、`line-clamp-2`、悬停看全文）；
+  `addMember` / `doRemove` 被拒时写它而不是 `toastError`，每次尝试开始时先清掉上一次那句（落地的那次重试
+  随之清掉）。成员的读写、表格布局、按钮与禁用条件一个字节都没改。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`memberAddRefused` / `memberRemoveRefused`
+  （中：`没能把「X」加进成员，名单没有变化：<原因>` / `…移出成员…`）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 /
+  612 类型 —— 本笔不动服务契约）。
+- `oxlint` 5 个改动文件 **0 警告 0 错误**；`prettier --check` 6 个文件（含 spec 与 changelog 一对）干净
+  （新单测首跑需 `--write` 一次，复检通过）；`git diff --check` 干净。
+- 逐包 `test` **`EXIT=0`、0 失败**：core 70 文件 / 1456 通过 / 6 跳过 · ui 132 / 1103 · cli 39 / 566 ·
+  server 213 文件 / 3117 通过 / 6 跳过 · web 326 文件 / 3744 通过 / 2 跳过（+1 文件 / +5 条即本笔，
+  基线 325 / 3739）。
+- 新 spec `packages/web/e2e/member-write-refusal.spec.mjs` **2 passed（9.4 s + 2.1 s）**（真服务端 8990 +
+  真浏览器 `/usr/bin/chromium` + 一次性数据根 `r238-after`，两次拒绝都是服务端自己的答话）：添加 —— 句子
+  在表上方、`role=alert`、逐字「没能把「ghost_…」加进成员，名单没有变化：该用户已不存在。」、打完的名字
+  还在框里、表行数没变、通知区 0 个按钮、七秒后仍在；同一个框换真账号即落地（行数 +1、句子归 0、服务端
+  成员表里真有它）。移除 —— 逐字「没能把「target_…」移出成员，名单没有变化：该用户不是本项目的成员。」、
+  那一行仍在、通知区 0 个按钮；把成员身份补回去后按同一个按钮就落地（行与句子一起消失）。
+- **反证**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8991 与另一个一次性数据根 `r238-before`
+  跑同一份 spec → **2 failed**，两条都死在 `getByTestId("member-refusal")` 找不到。
+- **两态探针**（`r238/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻）：**改前** 1.2 s
+  通知区 1 条「该用户已不存在。」、拒绝槽 0，7.5 s 时通知区 0 条、表格上方一片安静（表格 2 行、框里的名字
+  还在）；**改后** 两刻都是表上方那一行 `role=alert`、通知区 0 个按钮，表格仍 2 行、框里仍是那个名字。
+  两态 console 都只有本轮故意造的那条 404（`POST …/members`），pageerror 0 条；截图四张肉眼看过。
+- 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r238*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r238/` 下。
+
+### 没做 / 留着
+
+- 同一份「被拒的写」清单里仍只发通知、而且**没有可承接宿主**的几处照旧：`models-page` 的快速模式、
+  `sidebar` 的删草稿 / 移出工作区（前者纯本地、后者是列表本身，round 235/237 已核过）、`dock-terminal.ts`
+  的新建终端（菜单已经关了，通知是唯一宿主）。
+- 项目设置里另外两处写仍是通知：`ChatDefaultsSection` 的保存与 `SecurityPolicySection` 的命令策略保存
+  （前者一次 Save 会写两处、部分失败要说清哪半落了地，后者是「保存成功要静默」的另一套约定，另起一轮）。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔（源码 3 + 新单测 1 + 新 spec 1 + changelog 一对 = 7 个文件）；台账另起一笔。
