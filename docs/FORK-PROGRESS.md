@@ -2523,6 +2523,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       **标签消失、Shell 还在跑、屏幕上一个字都没有**。见「第二百三十五轮」一节。
       **编号说明**：HEAD 上的 `43ca2f85f`（实时流一个字节都收不到时页面不再停在原地）是今早另一条线的一笔、
       没有落台账行，`7.120` 与第二百三十四轮留给它补记，所以本条从 `7.121` / 第二百三十五轮续。
+- [x] **7.123 批量归档只成功一半时，说清哪些对话没有动 —— 而且列表不再与服务器说法不一**
+      （**2026-11-13 第二百三十七轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑
+      `packages/web/src/lib/batch-outcome.ts` 的 `splitBatchOutcome`，`sidebar.tsx` 的 `batchSetArchived`
+      改走 `Promise.allSettled` 并逐行读结果、落地的行 `replace(row.value.session)`、被拒的行留在勾选里、
+      批量栏新增 `batchArchiveRefusal` 一行；`confirmBatchDelete` 也改用同一个拆分函数）+ 1 个新单测
+      （6 条）+ 既有单测加断言 + 1 个新 spec（2 条）+ 词典两对（`batchArchiveRefused` /
+      `batchUnarchiveRefused`）+ changelog 一对，**不碰接口、无新依赖**）：批量栏没有批量接口，归档与取消归档
+      给每条勾选的对话各发一个 PATCH，可它们的回话是**整体**读的（`Promise.all`）—— 第一个被拒的行把其余每一行
+      的回话都丢了，服务端**已经归档**的行照样原样留在活动列表里（`已归档` 文件夹根本不出现，列表与服务器对
+      这些对话说法不一），所有勾选都还留着，而原因只在一条六秒的通知里。见「第二百三十七轮」一节。
+      **编号说明**：HEAD 上未入台账的 `165725081`（`feat(web,server)` 左下角菜单能看正在跑的会话与按天花费）
+      是今天中午另一条线的一笔，`7.122` 与第二百三十六轮留给它补记，所以本条从 `7.123` / 第二百三十七轮续。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3261,6 +3273,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-13 | 7.118 | **会话里换模型被拒时，原因留在发问的那张卡片里，不再只活六秒**（**2026-11-13 第二百三十二轮**落地，提交见「已完成的轮次」；源码 1 处（`chat-page.tsx`：新增 `modelSwitchRefusal` 状态；`confirmModelSwitch` 被拒时不再 `toastError` 而是填它；两条成功路径各自关卡片（以前在 `finally` 里关，等于不问结果）；卡片接上 `refusal` 槽，`onClose` 里连它一起清掉）+ 1 个新 spec `packages/web/e2e/model-switch-refusal.spec.mjs`（2 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：会话工具栏的模型选择器是「先问再写」的卡片（用当前模型压缩后切换，另有一个压缩失败就放弃摘要的逃生口），以前无论服务器答什么都自己关掉；被拒（会话正忙 / 目标模型没配置或不可用 / 项目没配压缩）只落在一条六秒后自己消失的通知里 —— 对话仍停在原来那个模型上，屏幕上留下的是凭空消失的卡片和一句来不及读的字。源码注释自己写着 “A refusal … is a toast”，这一轮改成 7.89 以来那一族的口径：卡片就是发问的东西，它的按钮就是重试。见「第二百三十二轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个改动文件 + changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数：本笔只改卡片与浏览器用例，没有新单测）· **新 spec 2 passed（16.7 s）**（8940 真服务端 + mock 8941 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r232-e2e.*`）：被拒的切换让卡片留着、原因逐字「操作被拒绝：服务器内部错误，请稍后重试。」写在卡片里、通知区没有那句话、7.5 s 后仍在、服务器上的会话仍是 `claude-4-8`，随后同一个按钮重试落地并关卡片；另一条 409 （`model_unavailable`）读出接口自己的话，取消之后下一次选择是干净的卡片 · **反证**：把 `chat-page.tsx` 退回 `HEAD` 重建 web、产物拷到 `r232/before-dist` 挂 8942 → 同一份 spec **2 failed**（都死在卡片里找不到 `role="alert"`），放回重建后 **2 passed** · **两态探针**（`r232/probe.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8946 / 改前 8944，各一套一次性数据根，`switch-model` 由 `page.route` 拒成 500，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、卡片上没有 alert、1.2 s 时通知区一行「服务器内部错误，请稍后重试。」（`notifyButtons:1`）、7.5 s 后通知区空；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：服务器内部错误，请稍后重试。」、通知区 0 个按钮；截图 `r232/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、红字在卡片里、输入框的模型仍是 `claude-4-8`；改前卡片没了、只有页顶一条浮着的白底通知）· 两态 console 只有本轮桩的 **500**，pageerror 0 条 · **整套浏览器 e2e**（`r232/run-all.sh`，真服务端 8930 + mock 8931 + `/usr/bin/chromium`）：**279 passed、6 failed（27.7 m）**，六条全部与这一笔无关且在改前产物上同样红：`chat.spec` 与 `draft.spec` 拿 `r232/before-dist` 复跑同样**2 failed**，`scroll-follow-bounce` 的 Primer / Frost 在改前产物上也红（本机 chromium 150 下的滚动时序），`server-switch-read-refusal` 单跑 **2 passed**（满载下的偶发，与台账记过的同一种）· 端口只用 8930 / 8931 / 8940–8964（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r232-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r232/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `6e13c33f7` |
 | 2026-11-13 | 7.119 | **文件夹删不掉时，原因留在发问的那张卡片里，不再只活六秒**（**2026-11-13 第二百三十三轮**落地，提交见「已完成的轮次」；源码 1 处（`workspace-finder.tsx`：新增 `deleteRefusal` 状态、`deleteFolder` 被拒时不再关卡片而是填它、打开卡片与每次尝试开始时清掉、卡片按 `S.common.refused(...)` 接上 `refusal` 槽并在 `onClose` 里清掉）+ 1 个新 spec `packages/web/e2e/finder-delete-folder-refusal.spec.mjs`（2 条）+ changelog 一对，**不碰接口、无新依赖、无新文案**）：工作区选择器里删除文件夹是先问再写的卡片，卡片自己写着服务端的规则（只能删空文件夹），可它以前无论答案是什么都会关掉 —— 「文件夹非空」这条拒绝只落在一条六秒的通知里，文件夹仍在列表里、看起来没被碰过，而它为什么留着的理由已经没了。而这条拒绝恰恰是能修的：在卡片外把文件夹清空、再按同一个按钮就是重试，所以卡片不该关。现在只在删除落地后才关；被拒时服务端的话画在卡片里（`操作被拒绝：<原因>`），留在下次尝试或关闭之前。见「第二百三十三轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个改动文件 + changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **319 文件 / 3705 通过 / 2 跳过** · server **212 文件 / 3110 通过 / 6 跳过**（与上一轮基线同数：本笔只改卡片与浏览器用例，没有新单测）· **新 spec 2 passed（14.2 s）**（8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r233-e2e`）：装着文件的文件夹被拒、卡片里逐字「操作被拒绝：该文件夹不是空的，只能删除空文件夹。」、通知区 0 个按钮、7 s 后仍在、盘上什么都没少 —— 随后在卡片外删掉那个文件、同一个按钮重试落地 200、文件夹从列表与盘上同时消失；被拒之后按 Escape 关掉，下一次打开的是一张没有 `role="alert"` 的干净卡片 · **反证（同一份 spec 跑改前产物）**：把 `workspace-finder.tsx` 退回 `HEAD` 重建 web、产物拷到 `r233-before-dist` 挂 8952 → **2 failed**（两条都死在卡片里找不到 `role="alert"`）· **两态探针**（`r233/probe.spec.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8950、改前 8952，各一套一次性数据根，`DELETE` 由真服务端以 **409 `dir_not_empty`** 拒绝，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、卡片上没有 alert、1.2 s 时通知区 1 个按钮而 7.5 s 后 0 个；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：该文件夹不是空的，只能删除空文件夹。」、通知区 0 个按钮；截图 `r233/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、红条在卡片里、文件夹仍在列表里；改前卡片没了、页顶那条通知到 7.5 s 已经消失） · 两态 console 只有本轮故意要的那两条（`/api/me` 的 403 与 `dir_not_empty` 的 409 各一条 `failed to load resource`），pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r233-{e2e,before,after-dist,before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r233/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `b177ece94` |
 | 2026-11-13 | 7.121 | **结束终端被拒时，原因留在发问的那张卡片里 —— 而这一处以前连通知都没有过**（**2026-11-13 第二百三十五轮**落地，提交见「已完成的轮次」；源码 3 处（`terminal-list.ts`：`killTerminal` 的 DELETE 改走 `apiFetch`（非 2xx → `ApiError`、连不上 → `network_error`），被拒时清 `pendingKills`、把条目放回并重读一次列表、再把错误抛给调用方；`dock-panel.tsx`：`killConfirmed` 变 async、成功才 `removeTab` 并关卡片、被拒写 `killRefusal` 接 `refusal` 槽（`S.common.refused(refusalText(err))`），开卡片与关卡片时清掉；`terminal-page.tsx`：同样，被拒不 `window.close()`）+ 1 个新单测 `terminal-kill-refusal.test.ts`（4 条）+ 1 个新 spec `terminal-kill-refusal.spec.mjs`（3 条）+ 词典一条（`terminal_not_found` 中英）+ changelog 一对，**不碰接口、无新依赖**）：第二百三十三轮末尾点名的「发出后不等回话」那一类 —— 两张卡片都是「先问再写」的 ConfirmModal、被问的写就是那个 DELETE，可两边都 `void killTerminal(...)`；而被调用方不读 `res.ok`、空 `catch` 吞掉网络失败、还先把条目从列表里删掉从不还回来，于是被拒时标签消失、窗口关掉、Shell 仍在服务端跑着，屏幕上**一个字都没有** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **323 文件 / 3727 通过 / 2 跳过**（相对上一行台账的 319 / 3705 是 +4 文件 / +22 条，其中本笔 1 文件 / 4 条，其余来自 HEAD 上那一笔未入台账的 `43ca2f85f`）· server **212 文件 / 3110 通过 / 6 跳过** · **新单测 4 passed**（被拒的 DELETE 把条目放回并以 `terminal_not_found` 拒绝、且确实重读过列表；连不上算 `network_error` 且条目同样放回；真的落地的那次条目留在外面、URL 是 `/server/M1/api/terminals/…`；200 带 body 不算失败）· **新 spec 3 passed（9.7 s + 2.0 s + 8.9 s）**（8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r234-e2e`）：停靠栏终端标签的 × → 卡片里逐字「操作被拒绝：该终端已不存在或已被关闭。」、通知区 0 个按钮、七秒后仍在、标签与活着的 Shell 都还在（`GET /api/terminals` 仍列 1 条 alive）—— 放行后同一个按钮重试 204、卡片与停靠栏一起消失、Shell 数归 0；被拒后 Escape 关掉，下一次打开的卡片没有 `role="alert"`；独立 `/terminal` 窗口按 terminal.close（Ctrl+Alt+`）同样把 `internal` 那句留在卡片里、窗口不关、状态仍是 `ready`、Shell 仍活着，重试后归 0 · **反证（同一份 spec 跑改前产物）**：5 个源码文件退回 `HEAD` 重建 web、产物挂 8952（独立数据根 `/root/adelie-fork-data/r234-before`）→ **3 failed**（三条都死在卡片里找不到 `role="alert"` —— 改前卡片早已关掉）· **两态探针**（`r234/probe.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8950 / 改前 8952，`DELETE` 由 `page.route` 拒成 404 `terminal_not_found`，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、`terminalTabs:0`、`dockOpen:null`、`alive:1`（Shell 还在跑，屏幕一字不提）；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：该终端已不存在或已被关闭。」、`notifyButtons:0`、`terminalTabs:1`、`alive:1`；截图 `r234/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、句子在卡片内、底部停靠栏与终端仍在；改前页面上只剩对话页，停靠栏与标签都不见了）· 两态 console 只有既有的 `GET …/machines` **403** 与本轮桩的 **404**，pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r234-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r234/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `38c3eb528` |
+| 2026-11-13 | 7.123 | **批量归档只成功一半时，说清哪些对话没有动 —— 而且列表不再与服务器说法不一**（**2026-11-13 第二百三十七轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑 `packages/web/src/lib/batch-outcome.ts`（`splitBatchOutcome(targets, results)`：哪些落地了、哪些被拒了、第一个被拒的原因），`components/layout/sidebar.tsx`：`batchSetArchived` 由 `Promise.all` + `toastError` 改成 `Promise.allSettled` 并逐行读结果 —— 落地的行 `replace(row.value.session)`、被拒的行成为新的勾选、`已归档` 文件夹只在本条真的归档时展开、批量栏新增 `batchArchiveRefusal` 一行（`role="alert"`、危险色、占满整行，每次尝试开始 / 勾选变化 / 取消选择 / 离开批量模式时清掉）；`confirmBatchDelete` 也改用同一个拆分函数（行为不变））+ 1 个新单测 `batch-outcome.test.ts`（6 条）+ 既有 `sidebar-batch-sessions.test.ts` 加两条断言组（文案 + 批量栏的拒绝槽 + 两个动作共用拆分函数，删除那边三条因共用而改写）+ 1 个新 spec `session-batch-archive-refusal.spec.mjs`（2 条）+ 词典两对（`batchArchiveRefused` / `batchUnarchiveRefused` 中英）+ changelog 一对，**不碰接口、无新依赖**）：批量栏没有批量接口，归档与取消归档给每条勾选的对话各发一个 PATCH，可它们的回话是**整体**读的 —— 第一个被拒的行把其余每一行的回话都丢掉，服务端已经归档的行照样原样留在活动列表里（`已归档` 文件夹根本不出现），所有勾选都还留着（含已经搬走的那些），原因只在一条六秒的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **325 文件 / 3739 通过 / 2 跳过**（相对上一行台账的 323 / 3727 是 +2 文件 / +12 条：本笔 1 文件 / 6 条，其余来自 HEAD 那笔未入台账的 `165725081`）· server **213 文件 / 3117 通过 / 6 跳过**（同来源 +1 文件 / +7 条）· **新单测 6 passed**（每行对自己的回话；夹在中间的拒绝不影响它后面落地的行；只保留第一个原因；整批被拒时每行都还在；结果比行短时不凭空造结果；没有对应行的结果被忽略）· **新 spec 2 passed（9.8 s + 2.0 s）**（8962 真服务端 + 8963 mock 模型 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r237-final3`）：勾两条、其中一条的 PATCH 被拒成 500 —— 那句话逐字「还有 1 个对话没有归档：session store is read-only」在批量栏里、通知区 0 个按钮、七秒后仍在、被拒的行仍勾选而落地的那条真的归档（接口读回 `archived: true`）并搬进 `已归档（1）`、勾选只剩被拒的那条 —— 随后同一个按钮重试、批量栏带着那句话一起消失、两条在服务端都 `archived: true`（PATCH 次数 2 / 1）；另一条是整批被拒时两个勾选都留着、「取消选择」把那句话一并带走、再勾一条时没有残留 · **回归**：`session-batch-delete-refusal.spec.mjs`（既有、未改）**2 passed** —— 删除那条路改用了同一个拆分函数 · **反证（同一份 spec 跑改前产物）**：`sidebar.tsx` 退回 `HEAD` 重建 web、产物挂 8966（独立数据根 `/root/adelie-fork-data/r237-before2`）→ **2 failed**（两条都死在 `getByTestId('batch-archive-refusal')` 元素不存在）· **两态探针**（`r237/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，PATCH 由 `page.route` 拒成 500 `session_store_read_only`，量 1.2 s / 7.5 s）：**改前** 两刻 `barText: null`、通知区 1 个按钮（1.2 s 时逐字「session store is read-only」）→ 7.5 s 后 0 个、`keptTicked: true` 与 **`goneTicked: true`**（服务器已经归档了它，列表却还把它当活动行、还留着勾选）、`archivedHeader: 0`（`已归档` 文件夹压根没出现）；**改后** 两刻都是批量栏里一行 `role="alert"`「还有 1 个对话没有归档：session store is read-only」、通知区 0 个按钮、`keptTicked: true` / `goneTicked: false`、`archivedHeader: 1`、`goneArchived: true`；截图 `r237/out/{after,before}-{1_2s,7_5s}.png` 与批量栏局部 `after-bar-crop.png` 肉眼看过（改后红字在栏内、下方只剩被拒那条勾着、已归档（1）里是搬走的那条；改前页顶一条白底通知、两行都还在活动列表里）· 两态 console 各只有本轮故意要的那条 500，pageerror 0 条 · 端口只用 8950–8967（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r237-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r237/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `364ea5984` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -26152,3 +26165,77 @@ build 过、typecheck 过、lint 0/0、format 过、测试 **10612 通过 / 20 �
 ### 提交
 
 `fix(web)` 一笔：`38c3eb528`（源码 5 + 新单测 1 + 新 spec 1 + changelog 一对 = 9 个文件）；台账另起一笔。
+
+## 第二百三十七轮：批量归档只成功一半时，说清哪些对话没有动（2026-11-13，条目 7.123）
+
+### 开工自检
+
+- `git status --short` 干净，`main` 上是 `165725081`。第一次 `git fetch origin` 挂了六分钟没有结果（卡在
+  连 github.com），杀掉重试一次即通（`EXIT=0`），`origin/main` = `165725081` = 本地 HEAD，
+  `git merge --ff-only` 报 `Already up to date`。没有切分支、没碰 `legacy/main`、没推 upstream。
+- 表上仍未勾的是 2.2c（卡在桌面壳那一半）、3.5 / 3.6 / 4.1–4.3（拍板 / key / 明令不动）、5.6 / 5.10
+  （都要用户拍板：促销费率搬进 Project 配置、mermaid 这个渲染依赖），所以接第二百三十五轮末尾点名的
+  第一顺位候选：`sidebar.tsx` 的会话批量动作。
+
+### 为什么是这一条
+
+`workspace-browser.tsx` 那一侧的保存 / 上传 / 新建 / 重命名 / 删除在更早的轮次里都已经把原因落在宿主上
+（`saveRefusal` / `uploadRefusal` / `createRefusal` / `renameRefusal` / `removeRefusal`），剩下真正还是
+「原因只活六秒」的只有侧栏这一个：`batchSetArchived`。而它不只是措辞问题 —— 那里写着 `Promise.all`，
+第一个被拒的行会把其余每一行的回话都丢掉，于是**服务端已经归档的行继续显示在活动列表里**、`已归档` 文件夹
+不出现、所有勾选都还留着。旁边的 `confirmBatchDelete` 早在第二百二十几轮就按「一批是 N 次写」改成
+`allSettled` 并把这个规则写在注释里，同一个文件里的两件事因此各说各话。
+
+### 改了什么
+
+- `packages/web/src/lib/batch-outcome.ts`（新增，纯逻辑）：`splitBatchOutcome(targets, results)` 把
+  `allSettled` 的结果对回它们各自的行 —— `landed`（行 + 它那次请求的回话）、`refused`（就是重试要作用的
+  那些行）、`firstReason`（一个宿主只画一句，哪些行没动由行自己说）。文件头写清为什么不能用 `Promise.all`。
+- `packages/web/src/components/layout/sidebar.tsx`：
+  1. `batchSetArchived` 改走 `Promise.allSettled` + 上面那个拆分函数；落地的行 `replace(row.value.session)`
+     （服务端自己那一份，含让行搬进文件夹的 `archived`），被拒的行成为新的勾选，`已归档` 文件夹只在
+     「正在看的那条真的归档了」时展开，整批成功时照旧一条成功通知并清空勾选；
+  2. 新增 `batchArchiveRefusal` 状态，由批量栏画出来（`role="alert"`、`toneInk.danger`、`w-full`、
+     `line-clamp-2`、悬停看全文），在每次尝试开始、勾选变化、取消选择、离开批量模式时清掉 —— 这句话数的是
+     它当时那些勾选；
+  3. `confirmBatchDelete` 改用同一个拆分函数（行为不变，只把「拆分」这一段收成一处）；
+  4. `toastError` 在这个文件里不再被用到，从 import 里删掉。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`batchArchiveRefused` / `batchUnarchiveRefused`
+  （`还有 N 个对话没有归档：<原因>` / `N of the selected chats were not archived: <原因>`）。
+
+### 验证（都不是推测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）。
+- `oxlint` 7 个改动文件 **0 警告 0 错误**；`prettier --check` 9 个文件干净（`strings.ts` 与 spec 各
+  `--write` 一次后复检通过）；`git diff --check` 干净。
+- 逐包 `test` **`EXIT=0`、0 失败**：core 70 文件 / 1456 通过 / 6 跳过 · ui 132 / 1103 · cli 39 / 566 ·
+  web 325 文件 / 3739 通过 / 2 跳过（+2 文件 / +12 条：本笔 1 文件 / 6 条，其余来自 `165725081`）·
+  server 213 文件 / 3117 通过 / 6 跳过（同来源 +1 文件 / +7 条）。
+- 新单测 `packages/web/test/batch-outcome.test.ts` **6 passed**；既有
+  `sidebar-batch-sessions.test.ts` **14 passed**（新增两语文案与批量栏拒绝槽的断言，删除那边三条因共用
+  拆分函数而改写）。
+- 新 spec `packages/web/e2e/session-batch-archive-refusal.spec.mjs` **2 passed（9.8 s + 2.0 s）**，
+  另与删除那份一起跑 **4 passed** 复核过一次（同一份 spec 连跑两轮都绿）。
+- **回归**：`session-batch-delete-refusal.spec.mjs`（既有、未改）**2 passed**。
+- **反证**：`sidebar.tsx` 退回 `HEAD` 重建 web、产物挂 8966 跑同一份 spec → **2 failed**，两条都死在
+  `getByTestId('batch-archive-refusal')` 不存在。
+- **两态探针**（`r237/probe.mjs`）：改前 1.2 s 通知区一条「session store is read-only」、7.5 s 后没了，
+  而 `goneArchived: true`（服务器已归档）时 `goneTicked: true`、`archivedHeader: 0` —— 列表与服务器
+  说法不一；改后两刻都是批量栏里那一行，通知区 0 个按钮，`goneTicked: false`、`archivedHeader: 1`。
+  两态 console 只有本轮故意要的那条 500，pageerror 0 条。
+- 端口只用 8950–8967（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r237-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r237/` 下。
+
+### 没做 / 留着
+
+- 批量栏没有「批量取消归档也一并说清」之外的新东西：取消归档走的是同一条函数，两个方向的拒绝文案都已给。
+- 同一份「被拒的写」清单里仍只发通知、而且**没有可承接宿主**的几处照旧：`models-page` 的快速模式、
+  `sidebar` 的删草稿 / 移出工作区、`shortcuts-section` 的「全部恢复默认」、`dock-terminal.ts` 的新建终端
+  （菜单已经关了，通知是唯一宿主）。
+- `workspace-browser.tsx` 里剩下的 `toastError` 都是**本地**判定（大小、拖入跳过）或「屏幕上什么都没有变」
+  的一类（`reveal` 在别的窗口里开门），不是服务端拒绝，不在这一族里。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔（源码 4 + 单测 2 + 新 spec 1 + changelog 一对 = 9 个文件）；台账另起一笔。
