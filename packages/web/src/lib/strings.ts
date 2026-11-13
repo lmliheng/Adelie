@@ -1641,6 +1641,14 @@ export const zh = {
     members: "成员",
     addMember: "添加成员",
     removeMember: "移除",
+    /**
+     * A member write this page was refused (member-write-refusal.ts), drawn above the table that
+     * asked: the account it was about, and the fact that the list below is still the old one.
+     */
+    memberAddRefused: (userId: string, reason: string): string =>
+      `没能把「${userId}」加进成员，名单没有变化：${reason}`,
+    memberRemoveRefused: (userId: string, reason: string): string =>
+      `没能把「${userId}」移出成员，名单没有变化：${reason}`,
     /** New-conversation defaults section (Project settings): prefills each new conversation's agent / working directory / approval mode / thinking level / default model. */
     chatDefaultsTitle: "新对话默认值",
     chatDefaultsHint: "新建对话时预填的默认值：Agent、工作目录、审批模式、思考等级与默认模型。",

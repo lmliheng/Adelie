@@ -1594,6 +1594,14 @@ export const en: Strings = {
     members: "Members",
     addMember: "Add member",
     removeMember: "Remove",
+    /**
+     * A member write this page was refused (member-write-refusal.ts), drawn above the table that
+     * asked: the account it was about, and the fact that the list below is still the old one.
+     */
+    memberAddRefused: (userId: string, reason: string): string =>
+      `Could not add "${userId}" as a member; the list below is unchanged: ${reason}`,
+    memberRemoveRefused: (userId: string, reason: string): string =>
+      `Could not remove "${userId}" from the members; the list below is unchanged: ${reason}`,
     /** New-chat defaults section (Project settings): prefill for every new chat. */
     chatDefaultsTitle: "New chat defaults",
     chatDefaultsHint:
