@@ -441,6 +441,22 @@ export const zh = {
     empty: "暂无轨迹",
     emptyHint: "该会话还没有产生 Trace 文件",
     loadFailed: "轨迹加载失败",
+    /**
+     * The Transport view (features/traces/sse-frame-list.tsx): the SSE frames this browser
+     * actually received. `transportHint` says what turning it on does; the frame's own names
+     * (`open` / `ping` / `server_event` / `silence` …) are the protocol's words and stay as they
+     * are.
+     */
+    transport: "传输",
+    transportOn: "记录中",
+    transportOff: "已关闭",
+    transportHint:
+      "打开后记录本浏览器实际收到的实时帧：实时流停了时，用它看是数据没送到，还是服务端没写。",
+    transportCount: (n: number) => `最近 ${n} 帧，新的在上`,
+    transportEmpty: "还没有收到帧",
+    transportClear: "清空",
+    transportChannel: "用户级",
+    transportSilence: (gap: string) => `静默 ${gap}`,
   },
 
   settings: {
@@ -3830,6 +3846,13 @@ export const zh = {
     sessionOnOfflineMachine: (machine: string) => `这个对话在 ${machine} 上，当前没有连接。`,
     sessionOnOfflineMachineUnknown: "这个对话在某台机器上，当前没有连接。",
     sessionOfflineHint: "连接恢复后会自动打开。",
+    /**
+     * The stalled-stream strip above the composer (features/chat/stream-stalled-banner.tsx):
+     * the live stream is not delivering, so the page refetches the conversation on a timer.
+     * It names what the page is doing, not which layer failed — the reader's question is
+     * whether the conversation still works.
+     */
+    streamStalled: "实时连接已断开，正在定时刷新",
     emptyStream: "发送一条消息开始对话",
     historyLoadFailed: "历史消息加载失败",
     statsLabel: "统计信息",

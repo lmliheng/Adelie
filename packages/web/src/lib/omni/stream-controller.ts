@@ -177,6 +177,14 @@ export interface StreamController {
   load: () => Promise<void>;
   /** Retry entry point after a history load failure (keeps the buffer, refetches history). */
   retry: () => Promise<void>;
+  /**
+   * Refetch the transcript in place, keeping the pending-approvals table — the resync rebuild
+   * clears it, where a refresh is not a resync: an approval on screen has to stay answerable.
+   * The entry point for a page that keeps itself current on a timer while the live stream is
+   * stalled (see api/sse.ts), and therefore a no-op while a load is in flight, after a failed
+   * one, and once disposed: a caller may fire it on a timer without checking anything.
+   */
+  refresh: () => Promise<void>;
   /** Prepend the previous window (scroll-up backfill); no-op while loading, failed, at the beginning, or before the initial load settled. */
   loadOlder: () => Promise<void>;
   /** SSE OmniMessage entry point (`eventId`: the SSE event id, used for live-tail cursor alignment). */
@@ -370,14 +378,16 @@ export function createStreamController(deps: StreamControllerDeps): StreamContro
    * The decision runs inside load() (it needs the response); this entry only picks the
    * request shape.
    */
-  const rebuild = async (): Promise<void> => {
+  const rebuild = async (keepPending = false): Promise<void> => {
     epoch += 1;
     phase = "buffering";
     buffer = [];
     // Clear the pending-approvals table: an approval decided while
     // disconnected shouldn't leave a lingering button; the server will
     // resend still-pending approval_request events on the same connection afterward, naturally rebuilding it.
-    clearPending();
+    // A refresh (keepPending) skips this: it is not a resync, nothing is resent, and a lone
+    // still-pending approval would simply disappear from the screen.
+    if (!keepPending) clearPending();
     // Atomic swap — deliberately NOT `onLoading(true)`. The fresh model (shared localDecisions
     // injected, so approvals decided on this end stay labeled "manual") is handed to load(), which
     // makes it the visible model only once history is back in hand. Until then the OLD transcript
@@ -604,6 +614,10 @@ export function createStreamController(deps: StreamControllerDeps): StreamContro
       await load(epoch, createStreamModel(localDecisions), {
         page: { kind: "tail", limit: TAIL_UNITS },
       });
+    },
+    refresh: async () => {
+      if (disposed || failed || phase !== "live") return;
+      await rebuild(true);
     },
     loadOlder,
     handleOmni: (msg, eventId = null) => {

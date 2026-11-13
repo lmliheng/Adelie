@@ -21,6 +21,7 @@ import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
 import { formatBytes } from "../../lib/format";
 import { TraceFileView } from "./trace-file-view";
+import { SseFrameList } from "./sse-frame-list";
 import {
   activeTraceFile,
   advanceTraceRefresh,
@@ -142,6 +143,9 @@ export function TracePanel({
             {S.tracePanel.loadFailed} · {error}
           </NoticeStrip>
         )}
+        {/* What this browser received on the live streams (off unless switched on): the one
+            place a stalled stream can be told from a quiet one. */}
+        <SseFrameList sessionId={session.sessionId} active={active} />
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-xs text-gray-400">{S.traces.filesTitle}</span>
           {visibleFiles.map((f) => (

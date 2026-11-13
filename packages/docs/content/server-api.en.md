@@ -1244,7 +1244,8 @@ The bundled Web App connects in this order:
 3. If the response carries `live` (a Task is running), drop the buffered partial events the cursor already covers and apply `live.fragments` on top of the history. The in-progress message reappears with its streamed prefix intact.
 4. Replay the buffer, removing the overlap.
 5. Continue with the live stream.
-6. Once the stream has sent a `ping`, treat 50 seconds without any event as a dead connection: close it and reconnect with `?lastEventId=` set to the last id received. Check at once when the page becomes visible, since background timers run late. A stream that never sends `ping` comes from a server older than the heartbeat event; leave it to the browser's own reconnection.
+6. Watch the connection against two deadlines, because two failures look different from here. A connection that receives nothing at all within 30 seconds is open but not connected: close it and reconnect with `?lastEventId=` set to the last id received (a current server answers a subscribe with its `task_state` snapshot at once, so this holds against every server version). Once the stream has spoken, 50 seconds without any event is a dead connection — but only for a stream that has sent a `ping`: silence from a server older than the heartbeat event is its normal state. Check at once when the page becomes visible, since background timers run late.
+7. After three connections in a row that opened and received not a single byte, the channel is not coming back on its own: stop reopening at once, try one fresh connection a minute, and say so on screen. A page showing live state should then keep itself current with a periodic `GET /messages` until a probe finally receives an event.
 
 ## Type Imports
 

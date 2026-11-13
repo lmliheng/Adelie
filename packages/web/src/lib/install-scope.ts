@@ -145,6 +145,12 @@ export const KEY_RULES: readonly KeyRule[] = [
   },
   {
     kind: "exact",
+    key: "penguin.sseFrames",
+    scope: "browser",
+    why: "Whether the Trace panel's Transport view records SSE frames; a debugging instrument of this browser, naming nothing on the server.",
+  },
+  {
+    kind: "exact",
     key: "penguin.terminal.theme",
     scope: "browser",
     why: "Terminal appearance pin (light/dark/follow-app); appearance only.",

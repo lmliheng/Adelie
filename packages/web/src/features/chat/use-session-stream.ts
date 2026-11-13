@@ -9,7 +9,8 @@
  * 3. Disconnects are auto-reconnected by the browser (Last-Event-ID built in; server replays from
  *    its buffer), and a connection that went silent is reopened by api/sse.ts from the last id
  *    seen; resync_required → controller rebuilds the model and keeps consuming the same
- *    connection;
+ *    connection; a stream api/sse.ts judges STALLED (nothing arrives at all — a proxy eating the
+ *    body) is refreshed on a timer instead, so the conversation keeps moving without it;
  * 4. task_state in the stream is the authoritative run state (server pushes the current snapshot
  *    on subscribe); initialStatus only serves as the first-frame placeholder, driving the input
  *    area state and the Session list badge;
@@ -41,6 +42,9 @@ export type { OlderHistoryState, PendingApproval } from "../../lib/omni/stream-c
 
 /** Minimum spacing between version commits: below one frame at 8fps, invisible as staleness, but ~8× fewer full re-parses of the growing message during a fast large-code stream. */
 const BUMP_MIN_INTERVAL_MS = 120;
+
+/** How often a stall-refreshing page refetches the transcript while the live stream is not delivering (api/sse.ts reports the verdict). */
+const STALL_REFRESH_MS = 6_000;
 
 export interface SessionStreamState {
   /**
@@ -89,6 +93,13 @@ export interface SessionStreamState {
   markLocalDecision: (toolCallId: string) => void;
   /** Removed from the pending table immediately after this client submits a decision (optimistic update; keyed by approvalKey). */
   resolveApproval: (key: string) => void;
+  /**
+   * The live stream is not delivering (several connections in a row received nothing — see
+   * api/sse.ts), so this page refreshes the transcript on a timer instead of waiting for
+   * events that are not coming. Drives the strip above the composer; the composition is
+   * unchanged, and the window is short enough that a running Task still reads as running.
+   */
+  streamStalled: boolean;
   /** History load failure message (paired with retry to show a retry entry point). */
   error: string | null;
   /** Re-fetch history (only meaningful after a load failure). */
@@ -124,6 +135,7 @@ export function useSessionStream(
   const [subagents, setSubagents] = useState<SubagentRuntimeInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pendingTick, setPendingTick] = useState(0);
+  const [streamStalled, setStreamStalled] = useState(false);
   const [goal, setGoal] = useState<GoalBannerState | null>(null);
   const [describes, setDescribes] = useState<string | null>(sessionId);
 
@@ -207,6 +219,7 @@ export function useSessionStream(
       setSubagents([]);
       setLoading(false);
       setError(null);
+      setStreamStalled(false);
       setGoal(null);
       setPendingTick((t) => t + 1);
       setVersion((v) => v + 1);
@@ -225,6 +238,7 @@ export function useSessionStream(
     setReturnedSteering([]);
     setPendingFollowUps([]);
     setSubagents([]);
+    setStreamStalled(false);
     setPendingTick((t) => t + 1);
 
     // Restore an in-flight goal's banner (only when still active — a long-finished goal
@@ -266,10 +280,36 @@ export function useSessionStream(
     });
     controllerRef.current = controller;
 
+    // While the stream is stalled this page is its own source of truth: nothing will arrive on
+    // the connection, so the transcript is refetched on a timer. A refresh keeps the pending
+    // approvals and never blanks what is on screen, and the controller refuses one while
+    // another is in flight — so a tick landing on a slow fetch costs nothing, and re-entry needs
+    // no guard here. Background tabs have their timers throttled by the browser, which bounds
+    // what an unwatched page spends on this.
+    let poll: number | undefined;
+    const stopPolling = () => {
+      if (poll === undefined) return;
+      window.clearInterval(poll);
+      poll = undefined;
+    };
+    const pollWhileStalled = () => {
+      if (poll !== undefined) return;
+      void controller.refresh();
+      poll = window.setInterval(() => void controller.refresh(), STALL_REFRESH_MS);
+    };
+
     // Connect-first: subscribe to the stream before fetching history.
     const conn = openSessionStream(sessionId, {
       onOmniMessage: controller.handleOmni,
       onServerEvent: controller.handleServer,
+      // The connection's liveness verdict drives the strip and the refresh timer above: they
+      // start together the moment the stream is judged dead, and stop the moment it delivers
+      // an event again.
+      onLiveness: (state) => {
+        setStreamStalled(state === "stalled");
+        if (state === "stalled") pollWhileStalled();
+        else stopPolling();
+      },
       // Hydrate the goal banner only once the subscription is live (fires on first connect and
       // every reconnect); the prev/active guards keep it from clobbering a live banner.
       onOpen: hydrateGoal,
@@ -283,6 +323,7 @@ export function useSessionStream(
 
     return () => {
       goalFetchStale = true;
+      stopPolling();
       controller.dispose();
       conn.close();
       if (rafRef.current !== null) {
@@ -337,6 +378,7 @@ export function useSessionStream(
     pendingApprovals: controllerRef.current?.pendingApprovals ?? EMPTY_PENDING,
     markLocalDecision,
     resolveApproval,
+    streamStalled,
     error,
     retry,
     goal,

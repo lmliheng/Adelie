@@ -371,6 +371,22 @@ export const en: Strings = {
     empty: "No traces yet",
     emptyHint: "This session has not produced a Trace file yet",
     loadFailed: "Failed to load traces",
+    /**
+     * The Transport view (features/traces/sse-frame-list.tsx): the SSE frames this browser
+     * actually received. `transportHint` says what turning it on does; the frame's own names
+     * (`open` / `ping` / `server_event` / `silence` …) are the protocol's words and stay as they
+     * are.
+     */
+    transport: "Transport",
+    transportOn: "Recording",
+    transportOff: "Off",
+    transportHint:
+      "Records the live frames this browser actually received, so a stalled stream can be read as data that never arrived rather than a server that never wrote.",
+    transportCount: (n: number) => `Last ${n} frames, newest first`,
+    transportEmpty: "No frames received yet",
+    transportClear: "Clear",
+    transportChannel: "user",
+    transportSilence: (gap: string) => `silent ${gap}`,
   },
 
   settings: {
@@ -3745,6 +3761,13 @@ export const en: Strings = {
     sessionOnOfflineMachineUnknown:
       "This conversation is on a machine that is not connected right now.",
     sessionOfflineHint: "It will open as soon as the connection is back.",
+    /**
+     * The stalled-stream strip above the composer (features/chat/stream-stalled-banner.tsx):
+     * the live stream is not delivering, so the page refetches the conversation on a timer.
+     * It names what the page is doing, not which layer failed — the reader's question is
+     * whether the conversation still works.
+     */
+    streamStalled: "The live connection dropped — refreshing on a timer",
     emptyStream: "Send a message to start the conversation",
     historyLoadFailed: "Failed to load history",
     statsLabel: "Stats",

@@ -304,9 +304,13 @@ export function formatRelativeShort(iso: string, locale: "zh" | "en"): string {
   return formatMonthDay(localYmd(d), locale);
 }
 
-/** ISO timestamp → local `HH:mm:ss` (inline display in the Trace timeline); returns the input unchanged if parsing fails. */
-export function formatTime(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
+/**
+ * ISO timestamp (or epoch milliseconds) → local `HH:mm:ss` (inline display in the Trace timeline
+ * and the Transport view); a number is accepted so a live record's own clock can be printed
+ * without a round trip through ISO text.
+ */
+export function formatTime(when: string | number): string {
+  const d = new Date(when);
+  if (Number.isNaN(d.getTime())) return String(when);
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
 }

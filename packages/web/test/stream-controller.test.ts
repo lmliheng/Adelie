@@ -1045,3 +1045,54 @@ describe("history load failure and retry (#6)", () => {
     expect(h.controller.model.items.filter((i) => i.kind === "user_text")).toHaveLength(1);
   });
 });
+
+describe("refresh (the page keeping itself current while the live stream is stalled)", () => {
+  const PRESENT = ["user_text", "tool_call", "assistant_text"];
+  const TC = at(
+    toolCall({ name: "x", arguments: "{}", toolCallId: "t1" }),
+    "2026-07-05T00:00:01.000Z",
+  );
+  const TAIL: OmniMessage[] = [
+    at(userText("q1"), "2026-07-05T00:00:00.000Z"),
+    TC,
+    at(assistantText("a1"), "2026-07-05T00:00:02.000Z"),
+  ];
+
+  it("refetches the tail in place, keeping a pending approval no resync would have resent", async () => {
+    const h = createHarness();
+    const p = h.controller.load();
+    h.resolveLoad(TAIL, undefined, undefined, pageInfo());
+    await p;
+    h.controller.handleServer({ type: "approval_request", toolCall: TC });
+    expect(h.controller.pendingApprovals.size).toBe(1);
+
+    const r = h.controller.refresh();
+    // The transcript stays exactly as it is until the refetch lands — a reader watching a
+    // stalled stream must not see the conversation blank out once a minute.
+    expect(h.controller.model.items.map((i) => i.kind)).toEqual(PRESENT);
+    expect(h.pageArgs.at(-1)).toEqual({ kind: "tail", limit: TAIL_UNITS });
+    h.resolveLoad(TAIL, undefined, undefined, pageInfo());
+    await r;
+    // The refetched history lands in a fresh model (no duplication), and the approval is still
+    // answerable: the table survives a refresh, which is what tells it apart from a resync rebuild.
+    expect(h.controller.model.items.map((i) => i.kind)).toEqual(PRESENT);
+    expect(h.controller.pendingApprovals.size).toBe(1);
+  });
+
+  it("is a no-op while a load is in flight, after a failed one, and once disposed", async () => {
+    const h = createHarness();
+    // In flight (the initial load holds the pipeline): a second fetch would race its epoch.
+    const p = h.controller.load();
+    await h.controller.refresh();
+    expect(h.loadCalls()).toBe(1);
+    h.rejectLoad(new Error("network error"));
+    await p;
+
+    // Failed: the page shows the error and its Retry entry point, not a silent retry loop.
+    await h.controller.refresh();
+    expect(h.loadCalls()).toBe(1);
+    h.controller.dispose();
+    await h.controller.refresh();
+    expect(h.loadCalls()).toBe(1);
+  });
+});

@@ -135,6 +135,7 @@ import type { CostStatDisplay } from "./header-stats";
 import { buildInputHistory } from "./input-history";
 import { buildOutline } from "./outline-model";
 import { GoalStatusBanner } from "./goal-banner";
+import { StreamStalledBanner } from "./stream-stalled-banner";
 import { handoffMessage, modelSwitchMessage } from "./agent-handoff";
 import { modelLabel } from "./model-select";
 import { sessionModelPickerDisabled, sessionRowStale, switchContextShape } from "./model-switch";
@@ -2790,6 +2791,10 @@ export function ChatPage() {
                           className="shrink-0 border-t border-gray-200 bg-canvas px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 md:pb-3 dark:border-gray-800"
                         >
                           <div className="mx-auto max-w-3xl">
+                            {/* Stalled stream (the live connection delivers nothing, so the page
+                                refetches on a timer): the reader is told why the conversation
+                                may lag, and it clears itself once an event gets through again. */}
+                            {stream.streamStalled && <StreamStalledBanner />}
                             {/* Goal banner docked above the composer: an in-flight goal's progress
                                 (restored on load while still active), or the terminal state reached
                                 during this page's lifetime. The stop button is the composer's

@@ -183,6 +183,12 @@ Both are priced by the same rule: the Project's current rates for the model, at 
 
 The approval mechanism itself is covered in [Tools & Approval](/tools).
 
+### The Transport view (the live frames this page received)
+
+The **Transport** toggle at the top of the Trace panel is off by default. Switched on, it records every frame this browser **actually received** on the live streams and lists them newest first: the SSE event name (`message` / `server_event` / `ping`), the id the channel gave it, its byte length and the opening of its payload — plus connection markers (`open` / `reopen` / `stalled` / `live` / `probe` / `error` / `closed`) and a `silence` marker carrying the length of any quiet stretch longer than the server's heartbeat. `user` on a row marks the `GET /api/events` stream; the rest belong to this Session.
+
+It holds the receiving half: a frame in the list proves one arrived, and its absence proves nothing about what the server wrote. That is exactly why it exists — when a conversation looks stuck, it is where "the data never arrived" is told apart from "the server never wrote". The choice is remembered in this browser (`penguin.sseFrames`), and the ring keeps the newest 300 entries.
+
 ### Moving Trace files across deployments
 
 - **Export:** in a conversation's Trace panel, **Export** downloads the selected file verbatim as JSONL.
