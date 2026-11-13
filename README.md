@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="packages/web/public/adelie-icon.svg" alt="Adelie logo" width="88" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/readme/adelie-icon-dark.gif" />
+    <img src="assets/readme/adelie-icon-light.gif" alt="Adelie logo: the penguin steps into the orbit and blinks twice" width="96" />
+  </picture>
 </p>
 
 <h1 align="center">Adelie</h1>
