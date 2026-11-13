@@ -9,9 +9,10 @@
  * the 65th rule believed it was enforced.
  *
  * The refusal here is the server's own answer: the route caps the rule list at 64 entries
- * (`MAX_RULES`, `http/routes/command-policy.ts`) and the page never says so and never stops you at
- * it. The spec materializes the 64-rule list through the API — exactly what a Project with a long
- * deny list already holds — then adds the 65th one through the form, the way a user does.
+ * (`MAX_RULES`, `http/routes/command-policy.ts`). Since 7.127 the page declares that ceiling and
+ * stops the add entry point at it, so the 65th rule can no longer be typed here — the spec stores
+ * the list one short of the ceiling through the API (exactly what such a Project holds) and lets
+ * the outgoing PUT carry one more rule, see `saveOnePastCeiling`.
  */
 import { test, expect } from "@playwright/test";
 import { ADMIN_ID, ADMIN_PASSWORD, login } from "./auth.mjs";
@@ -60,8 +61,39 @@ async function storePolicy(page, projectId, body) {
   return put.json();
 }
 
+/**
+ * Lets the page save a legal draft while the route receives one rule past its ceiling.
+ *
+ * The rejection this spec is about is the route's own, and since 7.127 the form refuses to grow a
+ * 64-rule list — which is the point of that guard. So the draft is stored one rule short, the form
+ * fills it to 64, and this interceptor appends one rule to the outgoing PUT only: the route gets
+ * the shape a Project from a build without the guard would carry, and answers it with its real
+ * validation and its real 400. Nothing else about the page or the server is stubbed; call the
+ * returned function before a retry that should land.
+ */
+async function saveOnePastCeiling(page) {
+  const pattern = "**/api/projects/*/command-policy";
+  await page.route(pattern, async (route) => {
+    if (route.request().method() !== "PUT") return route.continue();
+    const body = route.request().postDataJSON();
+    await route.continue({
+      postData: JSON.stringify({
+        ...body,
+        rules: [...body.rules, { name: "past-the-ceiling", pattern: "\\bpast-the-ceiling\\b" }],
+      }),
+    });
+  });
+  return () => page.unroute(pattern);
+}
+
 /** Opens Project settings → Security policy through the sidebar, the way a user gets there. */
 async function openSecurity(page) {
+  // A data root with no model credential yet greets the chat page with its guide, which sits
+  // above everything on its own scrim — dismiss it before reaching into the sidebar.
+  const guide = page.getByRole("dialog", { name: "尚未配置模型 credential" });
+  await guide.waitFor({ state: "visible", timeout: 4000 }).catch(() => {});
+  if (await guide.count()) await guide.getByRole("button", { name: "稍后" }).click();
+
   const projects = await (await page.request.get(`${BASE}/api/projects`)).json();
   const project = projects.projects[0];
   const sidebar = page.getByRole("complementary");
@@ -98,21 +130,26 @@ test("a refused Save that would have switched blocking off says it is still on",
   await login(page.request, ADMIN_ID, ADMIN_PASSWORD);
   const projectId = await projectIdOf(page);
   const factory = await policyOf(page, projectId);
-  // Normalized first, so a rerun starts from the switch ON and the list at the ceiling.
-  await storePolicy(page, projectId, { enabled: true, rules: fullList(factory.defaultRules) });
+  // Normalized first, so a rerun starts from the switch ON and the list one rule short of the
+  // ceiling — the last rule the form can still add (7.127 keeps the entry point inert at 64).
+  await storePolicy(page, projectId, {
+    enabled: true,
+    rules: fullList(factory.defaultRules).slice(0, MAX_RULES - 1),
+  });
   const storedBefore = await policyOf(page, projectId);
-  expect(storedBefore.rules).toHaveLength(MAX_RULES);
+  expect(storedBefore.rules).toHaveLength(MAX_RULES - 1);
 
   await page.goto(`${BASE}/chat`);
   const dialog = await openSecurity(page);
   await expect(masterSwitch(dialog)).toHaveAttribute("aria-checked", "true");
 
-  // The draft asks for two things: a rule past the ceiling, and blocking off. The rule comes
-  // first because the list goes inert the moment the master switch is off.
+  // The draft asks for two things: the rule that fills the list to the ceiling, and blocking off.
+  // The rule comes first because the list goes inert the moment the master switch is off.
   await addRule(page, dialog, "past-the-ceiling");
   await masterSwitch(dialog).click();
   await expect(masterSwitch(dialog)).toHaveAttribute("aria-checked", "false");
 
+  const stopIntercepting = await saveOnePastCeiling(page);
   await dialog.getByRole("button", { name: "保存" }).click();
 
   const refusal = dialog.getByTestId("command-policy-refusal");
@@ -125,7 +162,7 @@ test("a refused Save that would have switched blocking off says it is still on",
   // Nothing was reported through a notification instead.
   await expect(notices(page).getByRole("button")).toHaveCount(0);
 
-  // Nothing was written: still ON, still exactly the 64 rules read before.
+  // Nothing was written: still ON, still exactly the rules read before.
   expect(await policyOf(page, projectId)).toEqual(storedBefore);
 
   // Six seconds is how long a toast lives: the sentence has to outlive it.
@@ -133,6 +170,8 @@ test("a refused Save that would have switched blocking off says it is still on",
   await expect(refusal).toBeVisible();
 
   // Back to a list the route accepts, then press the same button: it lands, the sentence goes.
+  // The interceptor comes off first, so the retry carries the list the page really holds.
+  await stopIntercepting();
   await masterSwitch(dialog).click();
   await expect(masterSwitch(dialog)).toHaveAttribute("aria-checked", "true");
   await dialog.getByRole("button", { name: "恢复默认" }).click();
@@ -148,7 +187,11 @@ test("a refused rule-list edit does not claim the switch moved", async ({ page }
   await login(page.request, ADMIN_ID, ADMIN_PASSWORD);
   const projectId = await projectIdOf(page);
   const factory = await policyOf(page, projectId);
-  await storePolicy(page, projectId, { enabled: true, rules: fullList(factory.defaultRules) });
+  // One rule short of the ceiling, so the form can add the one that fills the list.
+  await storePolicy(page, projectId, {
+    enabled: true,
+    rules: fullList(factory.defaultRules).slice(0, MAX_RULES - 1),
+  });
   const storedBefore = await policyOf(page, projectId);
 
   await page.goto(`${BASE}/chat`);
@@ -157,6 +200,7 @@ test("a refused rule-list edit does not claim the switch moved", async ({ page }
 
   // Only the rule list changes: the switch stays where the Project has it.
   await addRule(page, dialog, "one-too-many");
+  const stopIntercepting = await saveOnePastCeiling(page);
   await dialog.getByRole("button", { name: "保存" }).click();
 
   const refusal = dialog.getByTestId("command-policy-refusal");
@@ -169,6 +213,7 @@ test("a refused rule-list edit does not claim the switch moved", async ({ page }
   expect(await policyOf(page, projectId)).toEqual(storedBefore);
 
   // "Restore defaults" brings the list back under the ceiling; the same button lands it.
+  await stopIntercepting();
   await dialog.getByRole("button", { name: "恢复默认" }).click();
   await dialog.getByRole("button", { name: "保存" }).click();
   await expect(refusal).toHaveCount(0);

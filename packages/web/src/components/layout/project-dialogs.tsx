@@ -37,6 +37,7 @@ import {
   chatDefaultsSaveRefused,
   type ChatDefaultsWrite,
 } from "../../lib/chat-defaults-save-refusal";
+import { ruleLimitHint } from "../../lib/command-policy-rule-limit";
 import { commandPolicySaveRefused } from "../../lib/command-policy-save-refusal";
 import { memberWriteRefused, type MemberRefusal } from "../../lib/member-write-refusal";
 import { toneInk } from "../../lib/tone";
@@ -974,9 +975,11 @@ export function RuleEditor({
  * list — the factory rules are seeded data with no special status (edit / disable /
  * delete / add all apply), and "restore defaults" re-buffers the factory set served by the
  * API (buffered like every other edit — Save is what writes it). Owner edits buffer
- * locally with ONE explicit Save (dialog convention: failures toast, success toasts
- * saved); members see the effective state read-only. The list dims AND disables while the
- * master switch is off, but Save stays live so the toggle itself can be saved.
+ * locally with ONE explicit Save (a refusal is a sentence beside the button that asked —
+ * command-policy-save-refusal.ts; a success toasts "saved"); members see the effective
+ * state read-only. The list dims AND disables while the master switch is off, but Save stays
+ * live so the toggle itself can be saved. The route's 64-rule ceiling is enforced here too
+ * (command-policy-rule-limit.ts): at 64 the count row says so and "Add rule" goes inert.
  */
 function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOwner: boolean }) {
   const [saved, setSaved] = useState<CommandPolicyDto | null>(null);
@@ -1013,6 +1016,9 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
       cancelled = true;
     };
   }, [projectId]);
+
+  /** At the route's rule ceiling: "Add rule" goes inert and the count row says why (7.127). */
+  const ruleLimit = ruleLimitHint(rules.length);
 
   const dirty =
     saved !== null &&
@@ -1071,10 +1077,25 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
               every control focusable, so each one below disables on `!enabled` as well. */}
           <div className={enabled ? "" : "opacity-50"}>
             <div className="flex items-center justify-between gap-2 border-t border-gray-100 py-1.5 dark:border-gray-800/60">
-              <p className="text-xs font-medium text-gray-500">
-                {S.project.commandPolicyRules} ·{" "}
-                <span className="font-semibold">{rules.length}</span>
-              </p>
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="shrink-0 text-xs font-medium text-gray-500">
+                  {S.project.commandPolicyRules} ·{" "}
+                  <span className="font-semibold">{rules.length}</span>
+                </p>
+                {/* The route refuses the 65th rule, but nothing in the form said a ceiling
+                    existed: the list is the one thing here that can outgrow its file silently
+                    ("Add rule" stayed live at 64 and the Save that followed was the first mention
+                    of any limit). The line sits on the count's own row — the same row that opens
+                    the form — and the button below goes inert with it. */}
+                {ruleLimit !== null && (
+                  <p
+                    data-testid="command-policy-rule-limit"
+                    className={`line-clamp-2 min-w-0 break-words text-xs ${toneInk.attention}`}
+                  >
+                    {ruleLimit}
+                  </p>
+                )}
+              </div>
               {isOwner && (
                 <div className="flex items-center gap-1">
                   <Button
@@ -1088,7 +1109,7 @@ function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOw
                   <Button
                     size="sm"
                     variant="ghost"
-                    disabled={busy || !enabled || editing !== null}
+                    disabled={busy || !enabled || editing !== null || ruleLimit !== null}
                     onClick={() => setEditing("new")}
                   >
                     {S.project.commandPolicyAddRule}

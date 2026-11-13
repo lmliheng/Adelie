@@ -1648,6 +1648,12 @@ export const en: Strings = {
     commandPolicyRuleDesc: "Description",
     commandPolicyInvalidPattern: "Invalid regular expression",
     /**
+     * The route's ceiling on the rule list (command-policy-rule-limit.ts), shown on the count row
+     * once the buffered list reaches it: the Add button next to it goes inert at the same moment.
+     */
+    commandPolicyRuleLimit: (limit: number): string =>
+      `This list is at its ${limit}-rule limit — delete one to add another.`,
+    /**
      * A Save this page was refused (command-policy-save-refusal.ts), drawn above the Save button
      * that asked: one Save writes the switch and the whole rule list, so the sentence says which
      * policy the engine is still running — the controls above show the buffered draft.

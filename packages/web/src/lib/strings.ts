@@ -1694,6 +1694,12 @@ export const zh = {
     commandPolicyRuleDesc: "描述",
     commandPolicyInvalidPattern: "正则表达式无效",
     /**
+     * The route's ceiling on the rule list (command-policy-rule-limit.ts), shown on the count row
+     * once the buffered list reaches it: the Add button next to it goes inert at the same moment.
+     */
+    commandPolicyRuleLimit: (limit: number): string =>
+      `已达 ${limit} 条规则的上限，删除一条后才能再加。`,
+    /**
      * A Save this page was refused (command-policy-save-refusal.ts), drawn above the Save button
      * that asked: one Save writes the switch and the whole rule list, so the sentence has to say
      * which policy the engine is still running — the controls above show the buffered draft, not
