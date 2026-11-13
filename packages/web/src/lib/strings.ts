@@ -1658,6 +1658,17 @@ export const zh = {
     chatDefaultsThinkingNotSet: "未设置（跟随智能体配置）",
     /** The model default shares its source with the Models page (the same default_model); this is just another entry point. */
     chatDefaultsModelHint: "与模型页的默认模型同步",
+    /**
+     * A Save this section was refused (chat-defaults-save-refusal.ts), drawn under the controls
+     * that asked: one Save writes the block AND the default model, so the sentence has to say
+     * which half the Project now holds.
+     */
+    chatDefaultsRefused: (reason: string): string =>
+      `没能保存新对话默认值，项目里仍是原来的值：${reason}`,
+    chatDefaultsModelRefused: (reason: string): string =>
+      `没能改默认模型，项目里仍是原来的模型：${reason}`,
+    chatDefaultsModelRefusedAfterSave: (reason: string): string =>
+      `新对话默认值已保存，但默认模型没能改（项目里仍是原来的模型）：${reason}`,
     /** Settings dialog tab rail. */
     settingsTabGeneral: "通用",
     settingsTabMembers: "成员",

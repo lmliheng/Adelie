@@ -33,6 +33,10 @@ import {
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
+import {
+  chatDefaultsSaveRefused,
+  type ChatDefaultsWrite,
+} from "../../lib/chat-defaults-save-refusal";
 import { memberWriteRefused, type MemberRefusal } from "../../lib/member-write-refusal";
 import { toneInk } from "../../lib/tone";
 import {
@@ -553,9 +557,11 @@ function MembersSection({ projectId, isOwner }: { projectId: string; isOwner: bo
  * the same top-level `default_model` (via the narrow PUT /models/default route), never a
  * second key; changing it also releases the draft-cached model pin exactly as the models
  * page does (shared clearDraftModelRef helper). Owner edits with ONE explicit Save for the
- * whole section (dialog convention: failures toast, success is silent — the refreshed
- * values are the confirmation); members see the values read-only. Mounted per dialog open
- * (the Modal unmounts its children when closed), so reopening always refetches.
+ * whole section; that Save is up to two writes, so a refusal says which of them the Project
+ * took under the controls that asked (7.125, `chat-defaults-save-refusal.ts`) instead of
+ * leaving a sentence that cannot tell a half-saved form from an unsaved one. Members see the
+ * values read-only. Mounted per dialog open (the Modal unmounts its children when closed), so
+ * reopening always refetches.
  */
 function ChatDefaultsSection({ projectId, isOwner }: { projectId: string; isOwner: boolean }) {
   const { user } = useAuth();
@@ -571,6 +577,8 @@ function ChatDefaultsSection({ projectId, isOwner }: { projectId: string; isOwne
   const [thinking, setThinking] = useState("");
   /** The default-model pick (paired reference; seeded from the models response's defaultModel). */
   const [modelRef, setModelRef] = useState<ModelRefDto | null>(null);
+  /** The sentence the last refused Save left, drawn under the controls that asked. */
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -614,7 +622,9 @@ function ChatDefaultsSection({ projectId, isOwner }: { projectId: string; isOwne
   /**
    * One Save persists both writes: the `[default_chat]` block (whole-block PUT — a field
    * left "not set" is simply omitted, which clears it) and, when changed, the default
-   * model via the narrow route. Failures toast and keep the edits for retry.
+   * model via the narrow route. A refusal leaves its sentence under the controls and keeps
+   * the edits for retry; because these are two writes in that order, the sentence also says
+   * whether the block ahead of the refused one landed (see `chat-defaults-save-refusal.ts`).
    *
    * Each landed write also resets the saving user's new-conversation draft so new chats
    * pick the change up instead of being shadowed by the values a previous /chat/new visit
@@ -626,12 +636,20 @@ function ChatDefaultsSection({ projectId, isOwner }: { projectId: string; isOwne
   const save = async () => {
     if (busy || (!blockDirty && !modelDirty)) return;
     setBusy(true);
+    // A new question starts here: the sentence from the attempt before it is about edits that
+    // may well be stored by now, or an edit the user has since changed.
+    setSaveRefusal(null);
     // Collected per landed write, dispatched in `finally`: when the block PUT lands but the
     // model PUT throws, the block change still happened server-side and live views must
     // still reseed from it.
     let changed: ChatDefaultsChangedDetail | null = null;
+    // Which of the two writes this attempt is on. The block goes first, so a refused model
+    // write can arrive with the block already stored — the one thing the sentence has to say
+    // and the one thing a bare error message cannot.
+    let writing: ChatDefaultsWrite = "model";
     try {
       if (blockDirty) {
+        writing = "defaults";
         const body: ChatDefaultsDto = {
           ...(agentId ? { agentId } : {}),
           ...(workspace.trim() ? { workspace: workspace.trim() } : {}),
@@ -647,6 +665,7 @@ function ChatDefaultsSection({ projectId, isOwner }: { projectId: string; isOwne
         if (user) clearDraftChatDefaults(user.userId, projectId);
         changed = { projectId, defaults: stored };
       }
+      writing = "model";
       if (modelDirty && modelRef) {
         const res = await api.putDefaultModel(projectId, {
           provider: modelRef.provider,
@@ -663,7 +682,14 @@ function ChatDefaultsSection({ projectId, isOwner }: { projectId: string; isOwne
       // anything was actually written (the early-return above guards the no-op case).
       if (changed) toastSuccess(S.common.saved);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setSaveRefusal(
+        chatDefaultsSaveRefused(
+          // `changed` non-null here means the block write already landed: the model write is
+          // the only one that can be refused after it.
+          { write: writing, defaultsLanded: changed !== null },
+          e,
+        ).text,
+      );
     } finally {
       if (changed) dispatchChatDefaultsChanged(changed);
       setBusy(false);
@@ -775,6 +801,20 @@ function ChatDefaultsSection({ projectId, isOwner }: { projectId: string; isOwne
               />
             </div>
           </div>
+          {/* A refused Save belongs under the controls that asked, saying which of its two
+              writes the Project took (chat-defaults-save-refusal.ts): the toast this replaced
+              could not tell a half-saved form from an unsaved one. */}
+          {saveRefusal !== null && (
+            <p
+              role="alert"
+              data-testid="chat-defaults-refusal"
+              data-tooltip={saveRefusal}
+              data-tooltip-content="text"
+              className={`mt-3 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+            >
+              {saveRefusal}
+            </p>
+          )}
           <div className="mt-3 flex justify-end">
             <Button
               size="sm"

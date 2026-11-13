@@ -1612,6 +1612,17 @@ export const en: Strings = {
     chatDefaultsThinkingNotSet: "Not set (follow the agent's config)",
     /** The model default is single-sourced with the Models page (the same default_model); this is just another entry point. */
     chatDefaultsModelHint: "Same default model as the Models page",
+    /**
+     * A Save this section was refused (chat-defaults-save-refusal.ts), drawn under the controls
+     * that asked: one Save writes the block AND the default model, so the sentence has to say
+     * which half the Project now holds.
+     */
+    chatDefaultsRefused: (reason: string): string =>
+      `Could not save the new-chat defaults; the Project still holds the old ones: ${reason}`,
+    chatDefaultsModelRefused: (reason: string): string =>
+      `Could not change the default model; the Project still holds the old one: ${reason}`,
+    chatDefaultsModelRefusedAfterSave: (reason: string): string =>
+      `The new-chat defaults were saved, but the default model could not be changed (the Project still holds the old one): ${reason}`,
     /** Settings dialog tab rail. */
     settingsTabGeneral: "General",
     settingsTabMembers: "Members",
