@@ -14,6 +14,7 @@
 import { useEffect, useReducer } from "react";
 import type { DesktopUpdateStatus } from "@adelie/server/api";
 import * as api from "../api/endpoints";
+import { apiErrorText } from "./api-error";
 import { clientCheckSettle } from "./desktop-update";
 import type { ClientCheckSettle } from "./desktop-update";
 
@@ -97,7 +98,9 @@ export async function requestClientCheck(): Promise<void> {
   } catch (e) {
     watch = null;
     notifyAll();
-    settleListener?.({ kind: "failed", message: e instanceof Error ? e.message : String(e) });
+    // `refused`, not `failed`: the shell never heard about this check, so its snapshot is not an
+    // answer to it. The reason goes through apiErrorText so it reads like every other refusal.
+    settleListener?.({ kind: "refused", reason: apiErrorText(e) });
   }
 }
 

@@ -12,8 +12,10 @@
  * and offer a retry; an install form that cannot update itself says why. A failure that is
  * the host being unable to reach GitHub offers one thing more: the hand-off to an Agent
  * that can diagnose the network and fetch the release itself (lib/update-troubleshoot.ts).
- * A request this dialog itself makes and is refused (starting the download, restarting into
- * it) leaves its reason at the end of the body, above the footer button that retries it.
+ * A request this dialog itself makes and is refused (asking for a check, starting the download,
+ * restarting into it) leaves its reason at the end of the body, above the footer button that retries
+ * it. A refused check is the one case with nothing to draw above it: the check learned nothing, so on
+ * a first run the body holds nothing at all and the footer gains the "check now" button that retries.
  *
  * The flow and the actions live in `use-update-flow.ts`; this file only renders.
  */
@@ -47,7 +49,14 @@ export function UpdateModal() {
       open={modalOpen}
       title={S.update.title}
       onClose={closeUpdateModal}
-      footer={<Footer mode={mode} flow={flow} openTroubleshoot={openTroubleshoot} />}
+      footer={
+        <Footer
+          mode={mode}
+          flow={flow}
+          openTroubleshoot={openTroubleshoot}
+          hasRefusal={requestRefusal !== null}
+        />
+      }
     >
       <div className="space-y-3">
         {currentVersion !== null && (
@@ -55,7 +64,12 @@ export function UpdateModal() {
             {S.update.currentVersion(currentVersion)}
           </p>
         )}
-        <Body mode={mode} flow={flow} openTroubleshoot={openTroubleshoot} />
+        <Body
+          mode={mode}
+          flow={flow}
+          openTroubleshoot={openTroubleshoot}
+          hasRefusal={requestRefusal !== null}
+        />
         {/* One of the modal's own requests was refused: the reason stays here, right above the
             footer whose button retries it, and it stays until the next attempt (7.19's family —
             it used to be a toast over this dialog, gone in six seconds). */}
@@ -90,13 +104,21 @@ function Body({
   mode,
   flow,
   openTroubleshoot,
+  hasRefusal,
 }: {
   mode: UpdateMode;
   flow: UpdateFlow;
   openTroubleshoot: (() => void) | null;
+  /** A request of this dialog was refused; the sentence below the body accounts for it. */
+  hasRefusal: boolean;
 }): ReactNode {
   switch (flow.kind) {
     case "unknown":
+      // Nothing has answered yet, and nothing is on the wire (that is `checking`). The spinner is
+      // for the gap before the app's first lookup lands; once one of this dialog's own checks has
+      // been refused, no answer is coming and the sentence is the whole account — a spinner here
+      // would claim otherwise for as long as the dialog stays open.
+      return hasRefusal ? null : <Line spinner>{S.update.checkingBody}</Line>;
     case "checking":
       return <Line spinner>{S.update.checkingBody}</Line>;
     case "disabled":
@@ -204,10 +226,12 @@ function Footer({
   mode,
   flow,
   openTroubleshoot,
+  hasRefusal,
 }: {
   mode: UpdateMode;
   flow: UpdateFlow;
   openTroubleshoot: (() => void) | null;
+  hasRefusal: boolean;
 }): ReactNode {
   const close = (
     <Button size="sm" onClick={closeUpdateModal}>
@@ -216,6 +240,18 @@ function Footer({
   );
   switch (flow.kind) {
     case "unknown":
+      // Nothing is known: with a refused check, this button is what retries it — the sentence
+      // above it promises one (7.19's family), and without it the only way out would be closing.
+      return hasRefusal ? (
+        <>
+          {close}
+          <Button size="sm" variant="primary" onClick={() => void checkForUpdates()}>
+            {S.update.checkNow}
+          </Button>
+        </>
+      ) : (
+        close
+      );
     case "checking":
       return close;
     case "up-to-date":
@@ -293,7 +329,7 @@ function Footer({
 }
 
 /**
- * A request this dialog made — starting the download, or restarting into it — refused. The
+ * A request this dialog made — a check, starting the download, or restarting into it — refused. The
  * sentence (the step named, then the reason) takes the danger ink and sits at the end of the body,
  * immediately above the footer whose button retries it; it is clamped to two lines and its whole
  * text stays one hover away, like every other refusal slot in the app.

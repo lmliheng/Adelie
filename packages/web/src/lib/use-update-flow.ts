@@ -61,9 +61,9 @@ interface FlowState extends FlowLocal {
   /** The server's self-update job as last polled (release mode). */
   job: UpdateJobStatus | null;
   /**
-   * The last of the modal's own two requests that was refused, as the sentence the modal draws
-   * above its footer (lib/update-request-refusal.ts). Null when none has, and cleared by the next
-   * attempt — the same rule every refusal slot in the app follows (7.19).
+   * The last of the modal's own three requests (check / download / restart) that was refused, as the
+   * sentence the modal draws above its footer (lib/update-request-refusal.ts). Null when none has,
+   * and cleared by the next attempt — the same rule every refusal slot in the app follows (7.19).
    */
   requestRefusal: string | null;
 }
@@ -117,6 +117,8 @@ export function closeUpdateModal(): void {
 export async function checkForUpdates(): Promise<void> {
   const s = store.getState();
   if (s.checking) return;
+  // A new attempt answers for itself; the last sentence goes (7.19's rule for every slot).
+  store.setState({ requestRefusal: null });
   if (s.mode === "client") {
     await requestClientCheck();
     return;
@@ -130,7 +132,9 @@ export async function checkForUpdates(): Promise<void> {
     else if (outcome.kind === "found") toastSuccess(S.update.foundNew(outcome.latestVersion));
     else toastSuccess(S.update.upToDate);
   } catch (e) {
-    if (!quiet()) toastError(apiErrorText(e));
+    // The request never reached an answer: the body still shows the previous one (or "checking"
+    // was all there ever was), so this sentence is the only account of the press.
+    refuseRequest("check", e);
   } finally {
     store.setState({ checking: false });
   }
@@ -260,6 +264,15 @@ export function useUpdateFlowOwner(): void {
   // A settled client check reports in the modal when it is open, as a toast otherwise.
   useEffect(() => {
     onClientCheckSettle((settle) => {
+      // A check our own server refused never reached the shell, so there is no answer to draw in
+      // the body: it is the same refusal as `checkForUpdates`'s — the same sentence, the same slot,
+      // the same toast when the modal was closed while it was on the wire.
+      if (settle.kind === "refused") {
+        if (quiet())
+          store.setState({ requestRefusal: updateRequestRefused("check", settle.reason) });
+        else toastError(updateRequestRefused("check", settle.reason));
+        return;
+      }
       if (quiet()) return;
       switch (settle.kind) {
         case "up-to-date":

@@ -26,6 +26,14 @@ export type ClientCheckSettle =
   | { kind: "ready"; version: string | null }
   | { kind: "unsupported"; reason: "dev" | "linux-not-appimage" | null }
   /**
+   * The check request itself was refused by our own server, so the shell was never asked and its
+   * snapshot still says whatever it said before. `reason` is apiErrorText output. Distinct from
+   * `failed` below on purpose: that one is the shell reporting that a lookup (or a download) went
+   * wrong — an answer the modal's body draws — while here nothing was asked at all, and the only
+   * account of it is the sentence the modal keeps above the button that retries it.
+   */
+  | { kind: "refused"; reason: string }
+  /**
    * `message` is the shell's own failure text when there is one — an updater error is
    * not always a failed check (a download that fails its sha512 or, on Windows, its
    * Authenticode publisher check lands here too), so the generic "check failed" wording

@@ -1267,10 +1267,12 @@ export const zh = {
     /** The shell's own updater failure text — a failed download or signature check, not only a failed lookup. */
     clientUpdateFailed: (detail: string) => `客户端更新失败：${detail}`,
     /**
-     * 弹窗自己发出的两个请求（开始下载、重启并生效）在后端动手之前就被拒了；`reason` 是 apiErrorText 的输出。
-     * 句子画在弹窗里、发问的那颗按钮上方，两颗各自点名自己的那一步：下载那句意味着一个字节都没取到，
-     * 重启那句意味着新版本已经装好、但还没有跑起来。
+     * 弹窗自己发出的三个请求（检查更新、开始下载、重启并生效）在后端动手之前就被拒了；`reason` 是
+     * apiErrorText 的输出。句子画在弹窗里、发问的那颗按钮上方，三句各自点名自己的那一步：检查那句
+     * 意味这次没问到结果（服务端对「查」一个字都没说），下载那句意味着一个字节都没取到，重启那句
+     * 意味着新版本已经装好、但还没有跑起来。
      */
+    checkRefused: (reason: string) => `没能检查更新，这次没有问到结果：${reason}`,
     downloadRefused: (reason: string) => `没能开始下载这次更新，更新没有开始：${reason}`,
     restartRefused: (reason: string) => `没能重启，新版本已装好但还没有生效：${reason}`,
     restartTimedOut: "服务迟迟没有回来，请查看终端里 penguin web 的输出后手动刷新页面",
