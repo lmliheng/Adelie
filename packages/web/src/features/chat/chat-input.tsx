@@ -147,6 +147,12 @@ import { SELECTABLE_THINKING_LEVELS, thinkingLevelLabel } from "./thinking-level
 import { BOOK_ICON, buildSkillsMessage, localizedShortText, skillSlashItems } from "./skill-use";
 import { GOAL_ICON, UNLIMITED_BUDGET, parseBudgetInput } from "./goal-use";
 import { mergeRecalledDraft } from "./recall-draft";
+import {
+  queuedRecallRefusalHosted,
+  queuedRecallRefused,
+  queuedRecallRefusalShown,
+} from "./queued-recall-refusal";
+import type { QueuedRecallQueue, QueuedRecallRefusal, RecallAnswer } from "./queued-recall-refusal";
 import { buildExampleFill } from "./example-fill";
 import {
   caretOnFirstLine,
@@ -506,25 +512,47 @@ function QueuedMessageLine({
   label,
   onRecall,
   disabled,
+  refusal = null,
 }: {
   label: string;
   onRecall?: () => void;
   disabled: boolean;
+  /**
+   * Why the last recall of this very line was refused. The line stays exactly as it was — same
+   * content, same button — so the sentence hangs directly under it, as a second block of the same
+   * entry (not a wrapping row: the label must keep truncating beside the button the way it does
+   * without a refusal). That button is the retry; a notification dismisses itself after six
+   * seconds and would leave a press that looks like it never registered (7.19's rule).
+   */
+  refusal?: string | null;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1">
-      <p className="min-w-0 truncate text-xs text-gray-400 dark:text-gray-500">{label}</p>
-      {onRecall && (
-        <button
-          type="button"
-          aria-label={S.chat.recallQueued}
-          data-tooltip={S.chat.recallQueuedTitle}
-          disabled={disabled}
-          onClick={onRecall}
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-1">
+        <p className="min-w-0 truncate text-xs text-gray-400 dark:text-gray-500">{label}</p>
+        {onRecall && (
+          <button
+            type="button"
+            aria-label={S.chat.recallQueued}
+            data-tooltip={S.chat.recallQueuedTitle}
+            disabled={disabled}
+            onClick={onRecall}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-gray-500 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+          >
+            <GlyphIcon d={ICONS.undo} size={13} />
+          </button>
+        )}
+      </div>
+      {refusal !== null && (
+        <p
+          role="alert"
+          data-testid="queued-recall-refusal"
+          data-tooltip={refusal}
+          data-tooltip-content="text"
+          className={`mt-0.5 line-clamp-2 break-words text-xs ${toneInk.danger}`}
         >
-          <GlyphIcon d={ICONS.undo} size={13} />
-        </button>
+          {refusal}
+        </p>
       )}
     </div>
   );
@@ -676,12 +704,12 @@ export function ChatInput({
    */
   returnedSteering?: PendingSteeringInfo[];
   /**
-   * Recall an undelivered steering message (#287): resolves to its original content, which
-   * this component restores into the draft (text / images / files), or null when the recall
-   * failed (already delivered — the parent toasts). Renders the recall button on each
-   * pending-steering line when supplied.
+   * Recall an undelivered steering message (#287): resolves to its original content, which this
+   * component restores into the draft (text / images / files), or to the error that refused it —
+   * drawn under that queued line, not toasted, because the line is still there and is the retry.
+   * Renders the recall button on each pending-steering line when supplied.
    */
-  onRecallSteering?: (steerId: string) => Promise<RecalledMessageResponse | null>;
+  onRecallSteering?: (steerId: string) => Promise<RecallAnswer | null>;
   /**
    * Follow-up queue (session state only): posts the full input with `queueIfBusy` — a busy
    * session holds it server-side and auto-sends it as an ordinary next task once the current
@@ -698,7 +726,7 @@ export function ChatInput({
    */
   pendingFollowUps?: PendingFollowUpInfo[];
   /** Recall a queued follow-up (#287): same contract as onRecallSteering, for the follow-up queue. */
-  onRecallFollowUp?: (followUpId: string) => Promise<RecalledMessageResponse | null>;
+  onRecallFollowUp?: (followUpId: string) => Promise<RecallAnswer | null>;
   /**
    * Used instead of onSend when an `/agent` target chip is staged: opens a new chat for the
    * target agent (the current Session receives no message). Returns whether it succeeded
@@ -1215,6 +1243,21 @@ export function ChatInput({
   // returns its original content. One recall at a time; the id doubles as the busy flag so
   // every recall button disables while one is in flight.
   const [recallingId, setRecallingId] = useState<string | null>(null);
+  /**
+   * The last refused recall, keyed to the queue and the entry it was about: the sentence is drawn
+   * under that very line (both queues hang in this same card, one above the other), and only that
+   * line's button, pressed again, can clear it — see queued-recall-refusal.ts for why it is not a
+   * toast.
+   */
+  const [recallRefusal, setRecallRefusal] = useState<QueuedRecallRefusal | null>(null);
+  useEffect(() => {
+    // The sentence says "this one is still queued", so it may not outlive the line it describes:
+    // once the entry is delivered or recalled elsewhere, the reason has no subject left.
+    if (recallRefusal === null) return;
+    if (!queuedRecallRefusalHosted(recallRefusal, pendingSteering, pendingFollowUps)) {
+      setRecallRefusal(null);
+    }
+  }, [recallRefusal, pendingSteering, pendingFollowUps]);
   /** Restores recalled content into the draft: its text goes in FRONT of whatever is currently typed (it was composed first), attachments likewise; caret parked at the end, applyHistory-style. */
   const applyRecalled = (r: RecalledMessageResponse) => {
     // The recall round-trip may have taken keystrokes: read the live value off the controlled
@@ -1256,22 +1299,29 @@ export function ChatInput({
     });
   };
   const recallQueued = async (
+    queue: QueuedRecallQueue,
     id: string,
-    recall: (id: string) => Promise<RecalledMessageResponse | null>,
+    recall: (id: string) => Promise<RecallAnswer | null>,
   ) => {
     // `busy` too: a send in flight is about to clear the draft, which would wipe the
     // restored content if the recall slid in between. Both conditions also disable the
     // buttons, so this guard is only the race backstop — the refusal is never silent.
     if (recallingId !== null || busy) return;
     setRecallingId(id);
+    // Every press starts clean: the last sentence was about the last press (7.19's rule).
+    setRecallRefusal(null);
     try {
-      const r = await recall(id);
-      if (r) {
-        // The mirror entry is gone server-side; drop the local post-202 bridge flag with it,
-        // or the bare "steering queued" hint would resurrect once pendingSteering empties.
-        setSteerPending(false);
-        applyRecalled(r);
+      const answer = await recall(id);
+      // null: no request was made at all (no Session selected), so there is nothing to say.
+      if (answer === null) return;
+      if (answer.kind === "refused") {
+        setRecallRefusal(queuedRecallRefused(queue, id, answer.error));
+        return;
       }
+      // The mirror entry is gone server-side; drop the local post-202 bridge flag with it,
+      // or the bare "steering queued" hint would resurrect once pendingSteering empties.
+      setSteerPending(false);
+      applyRecalled(answer.message);
     } finally {
       setRecallingId(null);
     }
@@ -1295,7 +1345,7 @@ export function ChatInput({
     const next = returnedSteering.find((p) => !autoRecalledIds.current.has(p.id));
     if (!next) return;
     autoRecalledIds.current.add(next.id);
-    void recallQueued(next.id, onRecallSteering);
+    void recallQueued("steer", next.id, onRecallSteering);
     // recallQueued is re-created every render; depending on it would re-run this on each one.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [returnedSteering, onRecallSteering, busy, recallingId]);
@@ -2436,8 +2486,9 @@ export function ChatInput({
               key={p.id ?? i}
               label={S.chat.steerQueuedItem(steeringSummary(p))}
               disabled={recallingId !== null || busy}
+              refusal={queuedRecallRefusalShown(recallRefusal, "steer", p.id)}
               {...(onRecallSteering && p.id
-                ? { onRecall: () => void recallQueued(p.id, onRecallSteering) }
+                ? { onRecall: () => void recallQueued("steer", p.id, onRecallSteering) }
                 : {})}
             />
           ))}
@@ -2461,8 +2512,9 @@ export function ChatInput({
               key={p.id}
               label={S.chat.followUpQueuedItem(steeringSummary(p))}
               disabled={recallingId !== null || busy}
+              refusal={queuedRecallRefusalShown(recallRefusal, "followUp", p.id)}
               {...(onRecallFollowUp
-                ? { onRecall: () => void recallQueued(p.id, onRecallFollowUp) }
+                ? { onRecall: () => void recallQueued("followUp", p.id, onRecallFollowUp) }
                 : {})}
             />
           ))}

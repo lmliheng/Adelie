@@ -129,6 +129,7 @@ Some drafts cannot be steered:
 A steering message that has not reached the agent yet ("Steering queued — delivered with the next turn: …") and each queued follow-up end in a **Recall** button, a curved arrow. It puts the message back into the composer, in front of what you have typed, attachments included, so you can edit and send it again.
 
 - A steering message that already reached the agent cannot be recalled, and neither can a follow-up that has started.
+- When the recall is refused, the reason is written under that queued message: the message and its **Recall** button stay where they are, and pressing it again is the retry.
 - When the run ends before a steering message is delivered, for example because you pressed **Stop** while a tool was running, the message returns to the composer by itself, attachments and all.
 
 ### Approve tool calls

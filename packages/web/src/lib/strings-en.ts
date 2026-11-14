@@ -3750,6 +3750,14 @@ export const en: Strings = {
     recallQueued: "Recall",
     /** Its tooltip: what the icon does, spelled out. */
     recallQueuedTitle: "Recall to the input box to edit and resend",
+    /**
+     * A refused recall, drawn under the queued line whose button was pressed. The line itself is
+     * right above and still shows the content, so the sentence only adds the reason — which is
+     * also the one thing that can say whether the message is still queued (a 5xx) or has just
+     * gone out (the server's `not_pending` / `follow_up_started`).
+     */
+    recallQueuedRefused: (reason: string): string =>
+      `Could not recall this queued message: ${reason}`,
     send: "Send",
     stop: "Stop",
     compact: "Compact context",

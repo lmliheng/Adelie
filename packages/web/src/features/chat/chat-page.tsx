@@ -100,6 +100,7 @@ import type { ForkTarget } from "./task-stats-line";
 import { latestTaskHasSubagent, modelTaskStartCount, taskStartCount } from "./agent-topology";
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
+import type { RecallAnswer } from "./queued-recall-refusal";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
 import { SEEDREAM_SKILL, replyImageActionBuilder } from "../../lib/image-actions";
@@ -1671,34 +1672,38 @@ export function ChatPage() {
   );
 
   // Recall a queued message back into the composer (#287): the DELETE returns the original
-  // content (text / images / files) and the input area restores it as the draft. A 409 —
-  // not_pending (steering already delivered) or follow_up_started (the follow-up already
-  // became a task) — surfaces as a toast, each with its own sentence; the queued hint
-  // retires on its own via the re-broadcast task_state.
+  // content (text / images / files) and the input area restores it as the draft. A refusal — 409
+  // not_pending (the steering already reached the model) or follow_up_started (the follow-up
+  // became a task), or anything else the route answers — travels back to the composer as it was,
+  // which draws its reason under the queued line that was pressed: that line stays on screen and
+  // is the retry, so a six-second notification would be the only trace of a press that changed
+  // nothing (7.19's rule). The queued hint itself retires on its own via the re-broadcast
+  // task_state.
   const onRecallSteering = useCallback(
-    async (steerId: string) => {
+    async (steerId: string): Promise<RecallAnswer | null> => {
       if (!selected) return null;
       try {
-        return await api.recallSteer(selected.sessionId, steerId);
+        return { kind: "recalled", message: await api.recallSteer(selected.sessionId, steerId) };
       } catch (e) {
-        toastError(apiErrorText(e));
-        return null;
+        return { kind: "refused", error: e };
       }
     },
     [selected],
   );
 
   const onRecallFollowUp = useCallback(
-    async (followUpId: string) => {
+    async (followUpId: string): Promise<RecallAnswer | null> => {
       if (!selected) return null;
       try {
         // A queued follow-up carries no thinking level of its own: the level lives on the
         // Session and applies per model context, so a resend goes out at whatever the Session
         // is pinned to.
-        return await api.recallFollowUp(selected.sessionId, followUpId);
+        return {
+          kind: "recalled",
+          message: await api.recallFollowUp(selected.sessionId, followUpId),
+        };
       } catch (e) {
-        toastError(apiErrorText(e));
-        return null;
+        return { kind: "refused", error: e };
       }
     },
     [selected],

@@ -3836,6 +3836,13 @@ export const zh = {
     recallQueued: "撤回",
     /** Its tooltip: what the icon does, spelled out. */
     recallQueuedTitle: "撤回到输入框，编辑后重新发送",
+    /**
+     * A refused recall, drawn under the queued line whose button was pressed. The line itself is
+     * right above and still shows the content, so the sentence only adds the reason — which is
+     * also the one thing that can say whether the message is still queued (a 5xx) or has just
+     * gone out (the server's `not_pending` / `follow_up_started`).
+     */
+    recallQueuedRefused: (reason: string): string => `这条排队消息没能撤回：${reason}`,
     send: "发送",
     stop: "停止",
     compact: "压缩上下文",
