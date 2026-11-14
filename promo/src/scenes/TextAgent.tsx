@@ -1,22 +1,17 @@
 import React from "react";
-import {
-  AbsoluteFill,
-  Easing,
-  interpolate,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
-import { fade, grow, push, typed } from "../motion";
-import { C, MONO, SANS } from "../theme";
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame } from "remotion";
+import { fade, push } from "../motion";
+import { C, MONO, SAFE, SANS } from "../theme";
 
 /**
- * Scene 3 — 听懂 (270–570). The scene this cut exists for: an agent is a paragraph in
- * a file. The left page is a real document (`agents/default_agent/agent_state/AGENTS.md`
- * is re-read on every session by `loadAgentState`); the four lines that carry rules
- * are typed one at a time, and each one grows a capability on the right.
+ * Scene 3 — 听懂 (270–570). The scene the film exists for: an agent is a paragraph in a
+ * file.
  *
- * The page is a whole document rather than four floating lines: a full-height editor
- * with three-quarters of it blank would be exactly the emptiness this cut is fixing.
+ * v2 printed this as a full-bleed white page with a hairline seam and 22px mono, which on
+ * screen read as a document — correct, and much too quiet for the one idea that has to
+ * land. v3 does what v1 did with its window: the editor becomes an object sitting in the
+ * dark, 26px mono on a `#0d0d0d` panel, and each rule that finishes typing pushes a
+ * capability into the card on the right. Reading is still the point; it is just lit.
  */
 
 const PATH = "agents/default_agent/agent_state/AGENTS.md";
@@ -30,22 +25,22 @@ type Line = {
 const DOC: Line[] = [
   { text: "# AGENTS.md", kind: "title" },
   { text: "", kind: "body" },
-  { text: "你是 Adelie 的研究助理。", kind: "body", at: 20 },
+  { text: "你是 Adelie 的研究助理。", kind: "body", at: 18 },
   { text: "", kind: "body" },
   { text: "## 每天", kind: "head" },
-  { text: "每天 09:00 汇总 arXiv 上 cs.CL 的新论文，", kind: "body", at: 46 },
-  { text: "按主题分组，每条不超过两行。", kind: "body", at: 46 },
+  { text: "每天 09:00 汇总 arXiv 上 cs.CL 的新论文，", kind: "body", at: 42 },
+  { text: "按主题分组，每条不超过两行。", kind: "body", at: 42 },
   { text: "", kind: "body" },
   { text: "## 写下去", kind: "head" },
-  { text: "写进 ~/notes/arxiv/YYYY-MM-DD.md，", kind: "body", at: 62 },
-  { text: "并在聊天里只报标题与条数。", kind: "body", at: 62 },
+  { text: "写进 ~/notes/arxiv/YYYY-MM-DD.md，", kind: "body", at: 58 },
+  { text: "并在聊天里只报标题与条数。", kind: "body", at: 58 },
   { text: "", kind: "body" },
   { text: "## 兜底", kind: "head" },
-  { text: "不确定的论文放在最后，标「待确认」。", kind: "body", at: 78 },
+  { text: "不确定的论文放在最后，标「待确认」。", kind: "body", at: 74 },
 ];
 
 const CARDS = [
-  { title: "定时任务", detail: "09:00 · 每天", at: 30 },
+  { title: "定时任务", detail: "每天 09:00", at: 30 },
   { title: "文件工具", detail: "写 ~/notes/arxiv/", at: 46 },
   { title: "输出约束", detail: "每条不超过两行", at: 62 },
   { title: "兜底规则", detail: "「待确认」单独一段", at: 78 },
@@ -53,32 +48,33 @@ const CARDS = [
 
 export const TextAgent: React.FC = () => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
 
-  const merge = interpolate(frame, [96, 112], [0, 1], {
+  const merge = interpolate(frame, [96, 114], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.inOut(Easing.cubic),
   });
-  const caption =
-    frame >= 240 ? "改这段文字，就是进化。" : "写一段话，就是一个智能体。";
-  const captionAt = frame >= 240 ? 240 : 112;
+  const secondCaption = frame >= 168;
+
   const cursorOn = Math.floor(frame / 8) % 2 === 0;
 
   return (
     <AbsoluteFill style={{ transform: `scale(${push(frame, 300)})` }}>
-      {/* ── the page: bleeds off the left edge, stops at the seam ── */}
+      {/* ── the editor: an object in the dark, not a page ── */}
       <div
         style={{
           position: "absolute",
-          left: 0,
-          top: 0,
-          width: 1248,
-          height: 1080,
-          background: C.paper,
-          borderRight: `1px solid ${C.line}`,
+          left: SAFE,
+          top: 84,
+          width: 1080,
+          height: 856,
+          background: C.panel,
+          border: `1px solid ${C.line}`,
+          borderRadius: 18,
+          boxShadow: "0 50px 140px rgba(0, 0, 0, 0.85)",
+          overflow: "hidden",
           opacity: fade(frame, 0, 10),
-          transform: `translateX(${interpolate(frame, [0, 20], [-60, 0], {
+          transform: `translateY(${interpolate(frame, [0, 22], [34, 0], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
             easing: Easing.out(Easing.cubic),
@@ -87,46 +83,55 @@ export const TextAgent: React.FC = () => {
       >
         <div
           style={{
-            position: "absolute",
-            left: 96,
-            top: 44,
-            fontFamily: MONO,
-            fontSize: 14,
-            color: C.muted,
+            height: 62,
+            borderBottom: `1px solid ${C.lineSoft}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "0 24px",
+            background: C.panelLift,
           }}
         >
-          {PATH}
+          <div
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: 10,
+              background: C.accent,
+            }}
+          />
+          <div style={{ fontFamily: MONO, fontSize: 17, color: C.muted }}>
+            {PATH}
+          </div>
+          <div
+            style={{
+              marginLeft: "auto",
+              fontFamily: MONO,
+              fontSize: 15,
+              color: C.subtle,
+            }}
+          >
+            纯文本 · 每次会话重新读取
+          </div>
         </div>
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            right: 0,
-            top: 80,
-            height: 1,
-            background: C.line,
-          }}
-        />
 
-        <div style={{ position: "absolute", left: 96, top: 120, right: 60 }}>
+        <div style={{ position: "absolute", left: 40, top: 108, right: 40 }}>
           {DOC.map((line, i) => {
             const shown =
               line.at === undefined
                 ? line.text
-                : typed(line.text, frame, line.at, 1.1);
+                : typedLine(line.text, frame, line.at, 1.05);
             const typing =
               line.at !== undefined && shown.length < line.text.length;
-            const isLast =
-              typing || (line.at !== undefined && frame >= line.at);
             return (
-              <div key={i} style={{ display: "flex", gap: 24, height: 46 }}>
+              <div key={i} style={{ display: "flex", gap: 22, height: 50 }}>
                 <div
                   style={{
-                    width: 28,
+                    width: 30,
                     textAlign: "right",
                     fontFamily: MONO,
-                    fontSize: 14,
-                    lineHeight: "46px",
+                    fontSize: 15,
+                    lineHeight: "50px",
                     color: C.subtle,
                   }}
                 >
@@ -135,16 +140,11 @@ export const TextAgent: React.FC = () => {
                 <div
                   style={{
                     fontFamily: MONO,
-                    fontSize: line.kind === "title" ? 24 : 22,
-                    lineHeight: "46px",
+                    fontSize: line.kind === "title" ? 29 : 26,
+                    lineHeight: "50px",
                     whiteSpace: "pre",
-                    color:
-                      line.kind === "head"
-                        ? C.muted
-                        : line.kind === "title"
-                          ? C.ink
-                          : C.ink,
-                    opacity: line.kind === "head" ? 0.9 : 1,
+                    color: line.kind === "head" ? C.accent : C.ink,
+                    fontWeight: line.kind === "title" ? 600 : 400,
                   }}
                 >
                   {shown}
@@ -152,21 +152,15 @@ export const TextAgent: React.FC = () => {
                     <span
                       style={{
                         display: "inline-block",
-                        width: 11,
-                        height: 24,
-                        marginLeft: 2,
-                        verticalAlign: "-4px",
+                        width: 13,
+                        height: 28,
+                        marginLeft: 3,
+                        verticalAlign: "-6px",
                         background: C.accent,
                         opacity: cursorOn ? 1 : 0,
                       }}
                     />
                   )}
-                  {!typing &&
-                    isLast &&
-                    line.at !== undefined &&
-                    frame < line.at + 8 && (
-                      <span style={{ opacity: 0 }}> </span>
-                    )}
                 </div>
               </div>
             );
@@ -178,92 +172,82 @@ export const TextAgent: React.FC = () => {
       <div
         style={{
           position: "absolute",
-          left: 1248,
-          top: 0,
-          width: 672,
-          height: 1080,
+          left: 1208,
+          top: 84,
+          width: 648,
+          height: 856,
         }}
       >
         <div
           style={{
-            position: "absolute",
-            left: 48,
-            top: 300,
             fontFamily: SANS,
-            fontSize: 14,
-            color: C.muted,
-            opacity: fade(frame, 24, 10) * (1 - merge),
+            fontSize: 19,
+            letterSpacing: "0.14em",
+            color: C.subtle,
+            opacity: fade(frame, 20, 10) * (1 - merge),
           }}
         >
           这段文字配出来的
         </div>
 
         {CARDS.map((card, i) => {
-          const cardIn = grow(frame, fps, card.at + 6);
-          const lineIn = interpolate(frame, [card.at, card.at + 8], [0, 1], {
-            extrapolateLeft: "clamp",
-            extrapolateRight: "clamp",
-            easing: Easing.out(Easing.cubic),
-          });
+          const cardIn = interpolate(
+            frame,
+            [card.at + 4, card.at + 16],
+            [0, 1],
+            {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+              easing: Easing.out(Easing.cubic),
+            },
+          );
           return (
-            <div key={card.title} style={{ opacity: 1 - merge }}>
+            <div
+              key={card.title}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 60 + i * 116,
+                width: 648,
+                height: 96,
+                display: "flex",
+                alignItems: "center",
+                gap: 16,
+                padding: "0 26px",
+                background: C.panel,
+                border: `1px solid ${C.line}`,
+                borderRadius: 16,
+                opacity: cardIn * (1 - merge),
+                transform: `translateX(${(1 - cardIn) * 40}px)`,
+              }}
+            >
               <div
                 style={{
-                  position: "absolute",
-                  left: 0,
-                  top: 372 + i * 92 + 34,
-                  width: 40 * lineIn,
-                  height: 1,
-                  background: C.line,
+                  width: 9,
+                  height: 9,
+                  borderRadius: 9,
+                  background: C.accent,
                 }}
               />
               <div
                 style={{
-                  position: "absolute",
-                  left: 48,
-                  top: 336 + i * 92,
-                  width: 528,
-                  height: 76,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 18,
-                  padding: "0 22px",
-                  background: C.paper,
-                  border: `1px solid ${C.line}`,
-                  borderRadius: 14,
-                  transform: `scale(${cardIn.scale})`,
-                  opacity: cardIn.opacity * fade(frame, card.at, 6),
-                  transformOrigin: "left center",
+                  fontFamily: SANS,
+                  fontSize: 27,
+                  fontWeight: 600,
+                  color: C.ink,
                 }}
               >
-                <div
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 8,
-                    background: C.accent,
-                  }}
-                />
-                <div
-                  style={{
-                    fontFamily: SANS,
-                    fontSize: 22,
-                    fontWeight: 600,
-                    color: C.ink,
-                  }}
-                >
-                  {card.title}
-                </div>
-                <div
-                  style={{
-                    fontFamily: MONO,
-                    fontSize: 15,
-                    color: C.muted,
-                    marginLeft: "auto",
-                  }}
-                >
-                  {card.detail}
-                </div>
+                {card.title}
+              </div>
+              <div
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 18,
+                  color: C.muted,
+                  marginLeft: "auto",
+                }}
+              >
+                {card.detail}
               </div>
             </div>
           );
@@ -273,32 +257,33 @@ export const TextAgent: React.FC = () => {
           <div
             style={{
               position: "absolute",
-              left: 48,
-              top: 236,
-              width: 528,
-              height: 560,
-              background: C.paper,
-              border: `1px solid ${C.line}`,
-              borderRadius: 18,
-              padding: 28,
+              left: 0,
+              top: 0,
+              width: 648,
+              height: 856,
+              background: C.panel,
+              border: `1px solid ${C.accentLine}`,
+              borderRadius: 20,
+              padding: "34px 34px 30px",
               opacity: merge,
-              transform: `scale(${0.96 + merge * 0.04})`,
-              transformOrigin: "left top",
+              transform: `scale(${0.94 + merge * 0.06})`,
+              transformOrigin: "right center",
               display: "flex",
               flexDirection: "column",
+              boxShadow: "0 50px 140px rgba(0, 0, 0, 0.85)",
             }}
           >
-            <div style={{ fontFamily: MONO, fontSize: 13, color: C.muted }}>
-              智能体
+            <div style={{ fontFamily: MONO, fontSize: 16, color: C.subtle }}>
+              一个智能体
             </div>
             <div
               style={{
                 fontFamily: SANS,
-                fontSize: 42,
-                fontWeight: 600,
+                fontSize: 60,
+                fontWeight: 700,
                 color: C.ink,
-                marginTop: 4,
-                letterSpacing: "-0.01em",
+                marginTop: 6,
+                letterSpacing: "-0.02em",
               }}
             >
               研究助理
@@ -307,8 +292,8 @@ export const TextAgent: React.FC = () => {
               style={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 8,
-                marginTop: 20,
+                gap: 10,
+                marginTop: 26,
               }}
             >
               {["定时任务", "文件工具", "输出格式", "兜底规则"].map((tag) => (
@@ -316,12 +301,12 @@ export const TextAgent: React.FC = () => {
                   key={tag}
                   style={{
                     fontFamily: SANS,
-                    fontSize: 15,
+                    fontSize: 19,
                     color: C.ink,
                     border: `1px solid ${C.line}`,
-                    background: C.panel,
+                    background: C.panelLift,
                     borderRadius: 999,
-                    padding: "6px 14px",
+                    padding: "8px 18px",
                   }}
                 >
                   {tag}
@@ -331,32 +316,32 @@ export const TextAgent: React.FC = () => {
 
             <div
               style={{
-                marginTop: 28,
+                marginTop: 40,
                 display: "flex",
                 flexDirection: "column",
-                gap: 14,
+                gap: 22,
               }}
             >
               {[
                 ["配置", "AGENTS.md · 14 行"],
                 ["工具", "读文件 / 写文件 / 执行命令"],
                 ["下一次运行", "明天 09:00"],
+                ["回滚", "snapshots/v1 · 随时可回"],
               ].map(([k, v]) => (
-                <div
-                  key={k}
-                  style={{ display: "flex", gap: 12, alignItems: "baseline" }}
-                >
+                <div key={k}>
                   <div
-                    style={{
-                      fontFamily: SANS,
-                      fontSize: 14,
-                      color: C.muted,
-                      width: 92,
-                    }}
+                    style={{ fontFamily: SANS, fontSize: 17, color: C.subtle }}
                   >
                     {k}
                   </div>
-                  <div style={{ fontFamily: MONO, fontSize: 14, color: C.ink }}>
+                  <div
+                    style={{
+                      fontFamily: MONO,
+                      fontSize: 21,
+                      color: C.ink,
+                      marginTop: 4,
+                    }}
+                  >
                     {v}
                   </div>
                 </div>
@@ -367,10 +352,10 @@ export const TextAgent: React.FC = () => {
               style={{
                 marginTop: "auto",
                 fontFamily: SANS,
-                fontSize: 13,
-                color: C.subtle,
+                fontSize: 19,
+                color: C.accent,
                 borderTop: `1px solid ${C.lineSoft}`,
-                paddingTop: 14,
+                paddingTop: 20,
               }}
             >
               改这段文字，它就换一个活法
@@ -379,38 +364,46 @@ export const TextAgent: React.FC = () => {
         )}
       </div>
 
-      {/* ── the bleed bar along the bottom ── */}
+      {/* ── the line that carries the idea ── */}
       <div
         style={{
           position: "absolute",
-          left: 0,
-          right: 0,
-          bottom: 0,
-          height: 96,
-          background: C.panel,
-          borderTop: `1px solid ${C.line}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          opacity: interpolate(frame, [112, 128], [0, 1], {
+          left: SAFE,
+          right: SAFE,
+          bottom: 44,
+          fontFamily: SANS,
+          fontSize: 46,
+          fontWeight: 600,
+          color: secondCaption ? C.ink : C.muted,
+          opacity: interpolate(frame, [108, 124], [0, 1], {
             extrapolateLeft: "clamp",
             extrapolateRight: "clamp",
           }),
         }}
       >
-        <div
-          key={caption}
-          style={{
-            fontFamily: SANS,
-            fontSize: 26,
-            fontWeight: 600,
-            color: C.ink,
-            opacity: fade(frame, captionAt, 10),
-          }}
-        >
-          {caption}
-        </div>
+        {secondCaption ? (
+          <>
+            所以想让它进化，<span style={{ color: C.accent }}>不用换模型</span>
+            ，改这段文字就行。
+          </>
+        ) : (
+          <>
+            <span style={{ color: C.accent }}>写一段话</span>
+            ，就是一个智能体。
+          </>
+        )}
       </div>
     </AbsoluteFill>
   );
+};
+
+/** Types out `text`, one character every `perChar` frames after `delay`. */
+const typedLine = (
+  text: string,
+  frame: number,
+  delay: number,
+  perChar = 1.05,
+) => {
+  const n = Math.max(0, Math.floor((frame - delay) / perChar));
+  return text.slice(0, Math.min(text.length, n));
 };

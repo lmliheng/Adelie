@@ -6,14 +6,21 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from "remotion";
-import { grow, push, rise, typed } from "../motion";
-import { C, MONO, SANS } from "../theme";
+import { push, rise, typed } from "../motion";
+import { C, MONO, SANS, UI } from "../theme";
 
 /**
- * Scene 4 — 看见 (570–840). The interface is rebuilt, not screenshotted: a still
- * capture can't make tool calls grow one by one, and the whole point here is the
- * *time* a task takes. The window is 1728×880 and its bottom edge sits on the frame's
- * bottom edge, so the screen stands on the paper instead of floating in a void.
+ * Scene 4 — 看见 (570–840).
+ *
+ * v2 ran the window edge-to-edge on white paper; v1 floated it on black, and that is the
+ * single biggest difference in how the film reads. v3 floats it again — 1720 wide, 100px
+ * of black on every side, one long shadow under it — and then renders the interior with
+ * the app's own dark theme (`github.css` `.dark`, copied into `UI`): canvas `#121212`,
+ * surface `#1a1a1a`, line `#262626`, ink `#d6d6d6`. Adelie follows the system's dark
+ * mode, so this is the window a viewer on a dark desktop actually has.
+ *
+ * The interface is still rebuilt rather than screenshotted: the point of the scene is the
+ * *time* a task takes, and a still capture cannot make six tool calls grow one by one.
  */
 
 const NAV = [
@@ -61,474 +68,577 @@ export const Demo: React.FC = () => {
       <div
         style={{
           position: "absolute",
-          left: 96,
-          top: 200,
-          width: 1728,
-          height: 880,
-          background: C.paper,
-          border: `1px solid ${C.line}`,
-          borderRadius: "18px 18px 0 0",
-          boxShadow: "0 30px 80px rgba(14, 28, 55, 0.10)",
+          left: 100,
+          top: 92,
+          width: 1720,
+          height: 896,
+          background: UI.canvas,
+          border: `1px solid ${UI.line}`,
+          borderRadius: 16,
+          boxShadow: "0 60px 140px rgba(0, 0, 0, 0.85)",
           display: "flex",
+          flexDirection: "column",
           overflow: "hidden",
-          ...rise(frame, fps, 0, 24),
+          ...rise(frame, fps, 0, 30),
         }}
       >
-        {/* ── sidebar ── */}
+        {/* ── title bar ── */}
         <div
           style={{
-            width: 268,
-            borderRight: `1px solid ${C.line}`,
-            background: C.panel,
+            height: 52,
+            background: UI.chrome,
+            borderBottom: `1px solid ${UI.line}`,
             display: "flex",
-            flexDirection: "column",
-            padding: "20px 16px",
+            alignItems: "center",
+            padding: "0 18px",
+            gap: 8,
           }}
         >
+          {["#ff5f57", "#febc2e", "#28c840"].map((dot) => (
+            <div
+              key={dot}
+              style={{
+                width: 13,
+                height: 13,
+                borderRadius: 13,
+                background: dot,
+                opacity: 0.85,
+              }}
+            />
+          ))}
+          <div
+            style={{
+              flex: 1,
+              textAlign: "center",
+              fontFamily: SANS,
+              fontSize: 16,
+              color: UI.subtle,
+            }}
+          >
+            Adelie · default
+          </div>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
-              paddingLeft: 6,
-            }}
-          >
-            <div
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 6,
-                background: C.navy,
-                color: C.paper,
-                fontFamily: SANS,
-                fontSize: 12,
-                fontWeight: 700,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              A
-            </div>
-            <div
-              style={{
-                fontFamily: SANS,
-                fontSize: 15,
-                fontWeight: 600,
-                color: C.ink,
-              }}
-            >
-              Adelie
-            </div>
-          </div>
-
-          <div
-            style={{
-              marginTop: 26,
-              display: "flex",
-              flexDirection: "column",
-              gap: 2,
-            }}
-          >
-            {NAV.map((item, i) => (
-              <div
-                key={item}
-                style={{
-                  fontFamily: SANS,
-                  fontSize: 14,
-                  color: i === 0 ? C.ink : C.muted,
-                  background: i === 0 ? C.paper : "transparent",
-                  border: `1px solid ${i === 0 ? C.line : "transparent"}`,
-                  borderRadius: 8,
-                  padding: "8px 10px",
-                }}
-              >
-                {item}
-              </div>
-            ))}
-          </div>
-
-          <div
-            style={{
-              marginTop: "auto",
+              gap: 8,
+              border: `1px solid ${UI.line}`,
+              borderRadius: 999,
+              padding: "5px 14px",
               fontFamily: SANS,
-              fontSize: 12,
-              color: C.subtle,
-              paddingLeft: 6,
+              fontSize: 14,
+              color: UI.muted,
             }}
           >
-            内测版 · v0.6.8
+            <div
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 7,
+                background: UI.success,
+              }}
+            />
+            本地运行
           </div>
         </div>
 
-        {/* ── main ── */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          {/* ── sidebar ── */}
           <div
             style={{
-              height: 58,
-              borderBottom: `1px solid ${C.line}`,
+              width: 316,
+              borderRight: `1px solid ${UI.line}`,
+              background: UI.surface,
               display: "flex",
-              alignItems: "center",
-              padding: "0 24px",
-              gap: 12,
+              flexDirection: "column",
+              padding: "18px 14px",
             }}
           >
             <div
               style={{
-                fontFamily: SANS,
-                fontSize: 15,
-                fontWeight: 600,
-                color: C.ink,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "4px 8px",
               }}
             >
-              销售月报
+              <div
+                style={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: 7,
+                  background: C.navy,
+                  color: "#ffffff",
+                  fontFamily: SANS,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                A
+              </div>
+              <div
+                style={{
+                  fontFamily: SANS,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: UI.fgEmphasis,
+                }}
+              >
+                default
+              </div>
             </div>
+
             <div
               style={{
-                marginLeft: "auto",
-                fontFamily: SANS,
-                fontSize: 12,
-                color: C.muted,
-                border: `1px solid ${C.line}`,
-                borderRadius: 999,
-                padding: "4px 10px",
+                marginTop: 16,
+                display: "flex",
+                flexDirection: "column",
+                gap: 1,
               }}
             >
-              本地运行
+              {NAV.map((item, i) => (
+                <div
+                  key={item}
+                  style={{
+                    fontFamily: SANS,
+                    fontSize: 17,
+                    color: i === 0 ? UI.fgEmphasis : UI.muted,
+                    background: i === 0 ? UI.surfaceMuted : "transparent",
+                    borderRadius: 7,
+                    padding: "9px 10px",
+                  }}
+                >
+                  {item}
+                </div>
+              ))}
+            </div>
+
+            <div
+              style={{
+                margin: "22px 0 10px",
+                paddingLeft: 10,
+                fontFamily: SANS,
+                fontSize: 13,
+                letterSpacing: "0.1em",
+                color: UI.subtle,
+              }}
+            >
+              最近
+            </div>
+            {["整理 11 月销售月报", "竞品官网调研", "简历投递跟进"].map(
+              (t, i) => (
+                <div
+                  key={t}
+                  style={{
+                    fontFamily: SANS,
+                    fontSize: 16,
+                    color: i === 0 ? UI.fg : UI.subtle,
+                    background: i === 0 ? UI.surfaceMuted : "transparent",
+                    borderRadius: 7,
+                    padding: "9px 10px",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {t}
+                </div>
+              ),
+            )}
+
+            <div
+              style={{
+                marginTop: "auto",
+                fontFamily: SANS,
+                fontSize: 13,
+                color: UI.subtle,
+                paddingLeft: 10,
+              }}
+            >
+              内测版 · v0.6.8
             </div>
           </div>
 
-          <div style={{ flex: 1, padding: "26px 28px", position: "relative" }}>
-            {sent && (
+          {/* ── main ── */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <div
+              style={{
+                height: 54,
+                borderBottom: `1px solid ${UI.line}`,
+                display: "flex",
+                alignItems: "center",
+                padding: "0 26px",
+                gap: 12,
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: SANS,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: UI.fgEmphasis,
+                }}
+              >
+                整理 11 月销售月报
+              </div>
               <div
                 style={{
                   display: "flex",
-                  justifyContent: "flex-end",
-                  opacity: interpolate(frame, [38, 46], [0, 1], {
-                    extrapolateLeft: "clamp",
-                    extrapolateRight: "clamp",
-                  }),
+                  alignItems: "center",
+                  gap: 8,
+                  border: `1px solid ${done ? UI.successLine : UI.line}`,
+                  background: done
+                    ? "rgba(16, 185, 129, 0.10)"
+                    : UI.surfaceMuted,
+                  borderRadius: 999,
+                  padding: "4px 12px",
+                  fontFamily: SANS,
+                  fontSize: 14,
+                  color: done ? UI.success : UI.muted,
                 }}
               >
+                {done
+                  ? "✓ 运行完毕 · 34s · 6 步"
+                  : `运行中 · ${toolCount} / 6 步`}
+              </div>
+            </div>
+
+            <div
+              style={{ flex: 1, padding: "22px 30px", position: "relative" }}
+            >
+              {sent && (
                 <div
                   style={{
-                    maxWidth: 620,
-                    background: C.panel,
-                    border: `1px solid ${C.line}`,
-                    borderRadius: 14,
-                    padding: "12px 16px",
-                    fontFamily: SANS,
-                    fontSize: 15,
-                    lineHeight: "24px",
-                    color: C.ink,
-                  }}
-                >
-                  {PROMPT}
-                </div>
-              </div>
-            )}
-
-            {sent && (
-              <div style={{ marginTop: 26 }}>
-                <div
-                  style={{
-                    fontFamily: SANS,
-                    fontSize: 13,
-                    color: done ? C.success : C.muted,
-                    marginBottom: 12,
-                  }}
-                >
-                  {done
-                    ? "运行完毕 · 34s · 6 步"
-                    : `运行中 · ${toolCount} / 6 步`}
-                </div>
-                {TOOLS.map((tool, i) => {
-                  const at = 62 + i * 12;
-                  if (frame < at) return null;
-                  const ok = frame >= at + 8;
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        height: 48,
-                        borderBottom: `1px solid ${C.lineSoft}`,
-                        opacity: interpolate(frame, [at, at + 5], [0, 1], {
-                          extrapolateLeft: "clamp",
-                          extrapolateRight: "clamp",
-                        }),
-                        transform: `translateY(${interpolate(
-                          frame,
-                          [at, at + 6],
-                          [-8, 0],
-                          {
-                            extrapolateLeft: "clamp",
-                            extrapolateRight: "clamp",
-                            easing: Easing.out(Easing.cubic),
-                          },
-                        )}px)`,
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 9,
-                          border: `1.5px solid ${ok ? C.success : C.subtle}`,
-                          color: ok ? C.success : C.subtle,
-                          fontFamily: SANS,
-                          fontSize: 11,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        {ok ? "✓" : ""}
-                      </div>
-                      <div
-                        style={{ fontFamily: MONO, fontSize: 14, color: C.ink }}
-                      >
-                        {tool.name}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: MONO,
-                          fontSize: 13,
-                          color: C.muted,
-                        }}
-                      >
-                        {tool.detail}
-                      </div>
-                      <div
-                        style={{
-                          marginLeft: "auto",
-                          fontFamily: MONO,
-                          fontSize: 12,
-                          color: C.subtle,
-                        }}
-                      >
-                        {tool.ms}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-            {frame >= 156 && (
-              <div
-                style={{
-                  marginTop: 18,
-                  border: `1px solid ${C.line}`,
-                  borderRadius: 14,
-                  padding: "18px 20px",
-                  background: C.paper,
-                  width: 720,
-                  opacity: grow(frame, fps, 156).opacity,
-                  transform: `translateY(${interpolate(
-                    frame,
-                    [156, 170],
-                    [16, 0],
-                    {
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    opacity: interpolate(frame, [38, 46], [0, 1], {
                       extrapolateLeft: "clamp",
                       extrapolateRight: "clamp",
-                      easing: Easing.out(Easing.cubic),
-                    },
-                  )}px)`,
-                }}
-              >
-                <div
-                  style={{ display: "flex", alignItems: "baseline", gap: 10 }}
+                    }),
+                  }}
                 >
                   <div
                     style={{
+                      maxWidth: 700,
+                      background: UI.surfaceMuted,
+                      border: `1px solid ${UI.line}`,
+                      borderRadius: 14,
+                      padding: "13px 18px",
                       fontFamily: SANS,
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: C.ink,
+                      fontSize: 19,
+                      lineHeight: "30px",
+                      color: UI.fg,
                     }}
                   >
-                    11 月销售月报
-                  </div>
-                  <div
-                    style={{ fontFamily: MONO, fontSize: 12, color: C.muted }}
-                  >
-                    .docx
+                    {PROMPT}
                   </div>
                 </div>
-                <div
-                  style={{
-                    marginTop: 16,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 12,
-                  }}
-                >
-                  {[
-                    { label: "华东", value: 1, note: "+12%" },
-                    { label: "华南", value: 0.62, note: "+4%" },
-                    { label: "华北", value: 0.41, note: "-3%" },
-                  ].map((row, i) => {
-                    const growP = interpolate(
-                      frame,
-                      [160 + i * 4, 172 + i * 4],
-                      [0, 1],
-                      {
-                        extrapolateLeft: "clamp",
-                        extrapolateRight: "clamp",
-                        easing: Easing.out(Easing.cubic),
-                      },
-                    );
+              )}
+
+              {sent && (
+                <div style={{ marginTop: 20 }}>
+                  {TOOLS.map((tool, i) => {
+                    const at = 62 + i * 12;
+                    if (frame < at) return null;
+                    const ok = frame >= at + 8;
                     return (
                       <div
-                        key={row.label}
+                        key={i}
                         style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: 12,
+                          gap: 14,
+                          height: 52,
+                          borderBottom: `1px solid ${UI.line}`,
+                          opacity: interpolate(frame, [at, at + 5], [0, 1], {
+                            extrapolateLeft: "clamp",
+                            extrapolateRight: "clamp",
+                          }),
+                          transform: `translateY(${interpolate(
+                            frame,
+                            [at, at + 6],
+                            [-10, 0],
+                            {
+                              extrapolateLeft: "clamp",
+                              extrapolateRight: "clamp",
+                              easing: Easing.out(Easing.cubic),
+                            },
+                          )}px)`,
                         }}
                       >
                         <div
                           style={{
-                            width: 34,
+                            width: 20,
+                            height: 20,
+                            borderRadius: 10,
+                            border: `1.5px solid ${ok ? UI.success : UI.subtle}`,
+                            color: ok ? UI.success : UI.subtle,
                             fontFamily: SANS,
-                            fontSize: 13,
-                            color: C.muted,
-                          }}
-                        >
-                          {row.label}
-                        </div>
-                        <div
-                          style={{
-                            flex: 1,
-                            height: 8,
-                            background: C.panel,
-                            borderRadius: 4,
-                          }}
-                        >
-                          <div
-                            style={{
-                              width: `${row.value * 100 * growP}%`,
-                              height: 8,
-                              borderRadius: 4,
-                              background: C.ink,
-                              opacity: 0.85,
-                            }}
-                          />
-                        </div>
-                        <div
-                          style={{
-                            width: 46,
-                            textAlign: "right",
-                            fontFamily: MONO,
                             fontSize: 12,
-                            color: row.note.startsWith("-") ? C.muted : C.ink,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
                           }}
                         >
-                          {row.note}
+                          {ok ? "✓" : ""}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 18,
+                            color: UI.fgEmphasis,
+                            width: 190,
+                          }}
+                        >
+                          {tool.name}
+                        </div>
+                        <div
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 17,
+                            color: UI.muted,
+                          }}
+                        >
+                          {tool.detail}
+                        </div>
+                        <div
+                          style={{
+                            marginLeft: "auto",
+                            fontFamily: MONO,
+                            fontSize: 15,
+                            color: UI.subtle,
+                          }}
+                        >
+                          {tool.ms}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              )}
+
+              {frame >= 156 && (
                 <div
                   style={{
-                    marginTop: 14,
-                    paddingTop: 12,
-                    borderTop: `1px solid ${C.lineSoft}`,
-                    fontFamily: SANS,
-                    fontSize: 13,
-                    color: C.subtle,
+                    marginTop: 16,
+                    border: `1px solid ${UI.line}`,
+                    borderRadius: 14,
+                    padding: "18px 22px",
+                    background: UI.surface,
+                    width: 760,
+                    opacity: interpolate(frame, [156, 168], [0, 1], {
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                    }),
+                    transform: `translateY(${interpolate(
+                      frame,
+                      [156, 172],
+                      [16, 0],
+                      {
+                        extrapolateLeft: "clamp",
+                        extrapolateRight: "clamp",
+                        easing: Easing.out(Easing.cubic),
+                      },
+                    )}px)`,
                   }}
                 >
-                  文件已写进工作区，可以直接打开
+                  <div
+                    style={{ display: "flex", alignItems: "baseline", gap: 10 }}
+                  >
+                    <div
+                      style={{
+                        fontFamily: SANS,
+                        fontSize: 18,
+                        fontWeight: 600,
+                        color: UI.fgEmphasis,
+                      }}
+                    >
+                      11 月销售月报
+                    </div>
+                    <div
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 14,
+                        color: UI.subtle,
+                      }}
+                    >
+                      .docx
+                    </div>
+                    <div
+                      style={{
+                        marginLeft: "auto",
+                        fontFamily: SANS,
+                        fontSize: 14,
+                        color: UI.muted,
+                      }}
+                    >
+                      已写进工作区
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      marginTop: 16,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 12,
+                    }}
+                  >
+                    {[
+                      { label: "华东", value: 1, note: "+12%" },
+                      { label: "华南", value: 0.62, note: "+4%" },
+                      { label: "华北", value: 0.41, note: "-3%" },
+                    ].map((row, i) => {
+                      const growP = interpolate(
+                        frame,
+                        [160 + i * 4, 172 + i * 4],
+                        [0, 1],
+                        {
+                          extrapolateLeft: "clamp",
+                          extrapolateRight: "clamp",
+                          easing: Easing.out(Easing.cubic),
+                        },
+                      );
+                      return (
+                        <div
+                          key={row.label}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 14,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: 40,
+                              fontFamily: SANS,
+                              fontSize: 16,
+                              color: UI.muted,
+                            }}
+                          >
+                            {row.label}
+                          </div>
+                          <div
+                            style={{
+                              flex: 1,
+                              height: 9,
+                              background: UI.fill,
+                              borderRadius: 5,
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: `${row.value * 100 * growP}%`,
+                                height: 9,
+                                borderRadius: 5,
+                                background: UI.link,
+                              }}
+                            />
+                          </div>
+                          <div
+                            style={{
+                              width: 52,
+                              textAlign: "right",
+                              fontFamily: MONO,
+                              fontSize: 15,
+                              color: row.note.startsWith("-")
+                                ? UI.subtle
+                                : UI.success,
+                            }}
+                          >
+                            {row.note}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
 
-          {/* ── composer ── */}
-          <div style={{ padding: "0 28px 22px" }}>
-            <div
-              style={{
-                border: `1px solid ${C.line}`,
-                borderRadius: 14,
-                padding: "12px 14px",
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                background: C.paper,
-              }}
-            >
+            {/* ── composer ── */}
+            <div style={{ padding: "0 30px 20px" }}>
               <div
                 style={{
-                  fontFamily: SANS,
-                  fontSize: 15,
-                  color: sent ? C.subtle : C.ink,
+                  border: `1px solid ${UI.lineEmphasis}`,
+                  borderRadius: 14,
+                  padding: "13px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  background: UI.surface,
                 }}
               >
-                {sent ? "继续追问…" : prompt}
-                {!sent && (
-                  <span
-                    style={{
-                      display: "inline-block",
-                      width: 2,
-                      height: 18,
-                      background: C.accent,
-                      verticalAlign: "-3px",
-                      marginLeft: 2,
-                      opacity: Math.floor(frame / 8) % 2 === 0 ? 1 : 0,
-                    }}
-                  />
-                )}
-              </div>
-              <div style={{ marginLeft: "auto", position: "relative" }}>
                 <div
                   style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    background: C.ink,
-                    color: C.paper,
                     fontFamily: SANS,
-                    fontSize: 16,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    fontSize: 18,
+                    color: sent ? UI.subtle : UI.fg,
                   }}
                 >
-                  ↑
+                  {sent ? "继续追问…" : prompt}
+                  {!sent && (
+                    <span
+                      style={{
+                        display: "inline-block",
+                        width: 2,
+                        height: 22,
+                        background: UI.link,
+                        verticalAlign: "-4px",
+                        marginLeft: 2,
+                        opacity: Math.floor(frame / 8) % 2 === 0 ? 1 : 0,
+                      }}
+                    />
+                  )}
                 </div>
-                {/* the cursor slides to the button, then the ripple is the click */}
-                <div
-                  style={{
-                    position: "absolute",
-                    left: 0,
-                    top: 0,
-                    width: 34,
-                    height: 34,
-                    borderRadius: 10,
-                    border: `1px solid ${C.accent}`,
-                    opacity: ripple > 0 && ripple < 1 ? 1 - ripple : 0,
-                    transform: `scale(${1 + ripple * 1.6})`,
-                  }}
-                />
-                {frame >= 10 && frame < 30 && (
+                <div style={{ marginLeft: "auto", position: "relative" }}>
+                  <div
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: UI.fill,
+                      color: UI.fgEmphasis,
+                      fontFamily: SANS,
+                      fontSize: 18,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    ↑
+                  </div>
                   <div
                     style={{
                       position: "absolute",
-                      left: interpolate(cursorToSend, [0, 1], [-480, 0]),
-                      top: interpolate(cursorToSend, [0, 1], [-180, 0]),
-                      width: 14,
-                      height: 14,
-                      borderRadius: 7,
-                      background: C.accent,
-                      opacity: 1 - ripple,
+                      left: 0,
+                      top: 0,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      border: `1px solid ${UI.link}`,
+                      opacity: ripple > 0 && ripple < 1 ? 1 - ripple : 0,
+                      transform: `scale(${1 + ripple * 1.6})`,
                     }}
                   />
-                )}
+                  {frame >= 10 && frame < 30 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        left: interpolate(cursorToSend, [0, 1], [-520, 0]),
+                        top: interpolate(cursorToSend, [0, 1], [-200, 0]),
+                        width: 16,
+                        height: 16,
+                        borderRadius: 9,
+                        background: "#ffffff",
+                        boxShadow: "0 2px 10px rgba(0,0,0,0.8)",
+                        opacity: 1 - ripple,
+                      }}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>

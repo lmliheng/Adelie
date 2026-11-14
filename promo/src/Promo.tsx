@@ -1,6 +1,6 @@
 import React from "react";
 import { AbsoluteFill, Sequence, useCurrentFrame } from "remotion";
-import { PaperBackdrop } from "./PaperBackdrop";
+import { Backdrop } from "./Backdrop";
 import { sceneOpacity } from "./motion";
 import { C } from "./theme";
 import { Open } from "./scenes/Open";
@@ -32,25 +32,34 @@ export const SCENES = [
 
 export const TOTAL_FRAMES = 1800; // 60.0s @ 30fps
 
+/** No overlap: `sceneOpacity` snaps each scene in, so neighbours must not co-render. */
+export const OVERLAP = 0;
+
 /** Fades a scene in and out without ever going through black (§5 "场景进出"). */
-const SceneSlot: React.FC<{ duration: number; children: React.ReactNode }> = ({
-  duration,
-  children,
-}) => {
+const SceneSlot: React.FC<{
+  duration: number;
+  body: number;
+  children: React.ReactNode;
+}> = ({ duration, body, children }) => {
   const frame = useCurrentFrame();
   return (
-    <AbsoluteFill style={{ opacity: sceneOpacity(frame, duration) }}>
+    <AbsoluteFill style={{ opacity: sceneOpacity(frame, duration, body) }}>
       {children}
     </AbsoluteFill>
   );
 };
 
 export const Promo: React.FC = () => (
-  <AbsoluteFill style={{ backgroundColor: C.paper, overflow: "hidden" }}>
-    <PaperBackdrop />
+  <AbsoluteFill style={{ backgroundColor: C.canvas, overflow: "hidden" }}>
+    <Backdrop />
     {SCENES.map(({ id, from, to, Scene }) => (
-      <Sequence key={id} from={from} durationInFrames={to - from} name={id}>
-        <SceneSlot duration={to - from}>
+      <Sequence
+        key={id}
+        from={from}
+        durationInFrames={Math.min(to - from + OVERLAP, TOTAL_FRAMES - from)}
+        name={id}
+      >
+        <SceneSlot duration={to - from + OVERLAP} body={to - from}>
           <Scene />
         </SceneSlot>
       </Sequence>

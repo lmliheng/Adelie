@@ -3,9 +3,17 @@ import { Easing, interpolate, spring } from "remotion";
 /** The film's single easing set (DESIGN.md §5). */
 export const SPRING = { damping: 200, stiffness: 110, mass: 0.6 } as const;
 
-/** Rises into place: spring displacement + a short fade. */
+/**
+ * Rises into place: spring displacement + a short fade.
+ *
+ * `PREROLL` frames of the spring are spent before the scene's first frame, because a cut
+ * arrives on a composed frame, not on an empty one — without it the first ~8 frames after
+ * every cut showed a half-built layout on a half-lit background.
+ */
+const PREROLL = 6;
+
 export const rise = (frame: number, fps: number, delay = 0, distance = 28) => {
-  const p = spring({ frame: frame - delay, fps, config: SPRING });
+  const p = spring({ frame: frame - delay + PREROLL, fps, config: SPRING });
   return {
     transform: `translateY(${(1 - p) * distance}px)`,
     opacity: Math.min(1, p * 1.6),
@@ -59,12 +67,25 @@ export const push = (frame: number, duration: number) =>
   1 +
   interpolate(frame, [0, duration], [0, 0.012], { extrapolateRight: "clamp" });
 
-/** Scene wrapper: 8-frame cross fade in, 8-frame out, never a black dip. */
-export const sceneOpacity = (frame: number, duration: number) =>
-  Math.min(
-    interpolate(frame, [0, 8], [0, 1], { extrapolateRight: "clamp" }),
-    interpolate(frame, [duration - 8, duration], [1, 0], {
-      extrapolateLeft: "clamp",
-      extrapolateRight: "clamp",
-    }),
-  );
+/**
+ * A scene snaps in over five frames from 55% rather than dissolving from black.
+ *
+ * v2 faded every scene in and out through black, which on a black canvas is a visible
+ * dip at all sixteen cuts; a cross-dissolve was tried and was worse, because the two
+ * layouts sat on top of each other for ten frames and read as a double exposure. What is
+ * left is neither: the cut is a cut, and the short lift only keeps it from strobing.
+ */
+export const sceneOpacity = (
+  frame: number,
+  duration: number,
+  body = duration,
+) => {
+  const inRamp = interpolate(frame, [0, 5], [0.55, 1], {
+    extrapolateRight: "clamp",
+  });
+  const outRamp = interpolate(frame, [body - 2, body + 2], [1, 0.7], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+  return Math.min(inRamp, outRamp);
+};

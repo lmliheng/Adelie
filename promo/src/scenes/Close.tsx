@@ -26,14 +26,14 @@ export const Close: React.FC = () => {
           position: "absolute",
           left: 0,
           right: 0,
-          top: 210,
+          top: 176,
           display: "flex",
           justifyContent: "center",
           opacity: mark,
         }}
       >
         <BrandMark
-          size={300}
+          size={326}
           arc={mark}
           spin={frame * 0.12}
           scale={0.9 + mark * 0.1}
@@ -45,10 +45,10 @@ export const Close: React.FC = () => {
           position: "absolute",
           left: 0,
           right: 0,
-          top: 540,
+          top: 528,
           textAlign: "center",
           fontFamily: SANS,
-          fontSize: 116,
+          fontSize: 132,
           fontWeight: 600,
           letterSpacing: "-0.02em",
           color: C.ink,
@@ -68,10 +68,10 @@ export const Close: React.FC = () => {
           position: "absolute",
           left: 0,
           right: 0,
-          top: 700,
+          top: 712,
           textAlign: "center",
           fontFamily: SANS,
-          fontSize: 34,
+          fontSize: 38,
           fontWeight: 500,
           color: C.muted,
           letterSpacing: "0.01em",
@@ -86,7 +86,7 @@ export const Close: React.FC = () => {
           position: "absolute",
           left: 0,
           right: 0,
-          top: 812,
+          top: 830,
           display: "flex",
           justifyContent: "center",
           opacity: fade(frame, 40, 12),
@@ -96,11 +96,11 @@ export const Close: React.FC = () => {
           style={{
             border: `1px solid ${C.line}`,
             borderRadius: 999,
-            padding: "12px 24px",
+            padding: "14px 28px",
             fontFamily: MONO,
             fontSize: 18,
             color: C.ink,
-            background: C.paper,
+            background: C.panelLift,
           }}
         >
           github.com/lmliheng/Adelie
@@ -112,7 +112,7 @@ export const Close: React.FC = () => {
           position: "absolute",
           left: 0,
           right: 0,
-          bottom: 168,
+          bottom: 108,
           height: 1,
           background: C.line,
         }}

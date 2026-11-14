@@ -53,7 +53,7 @@ export const BrandMark: React.FC<{
           position: "absolute",
           left: (size - plate) / 2,
           top: (size - plate) / 2,
-          filter: "drop-shadow(0 18px 40px rgba(14, 28, 55, 0.16))",
+          filter: "drop-shadow(0 24px 60px rgba(0, 0, 0, 0.9))",
         }}
       >
         <rect
@@ -62,8 +62,8 @@ export const BrandMark: React.FC<{
           width={198}
           height={198}
           rx={46}
-          fill={C.paper}
-          stroke={C.line}
+          fill="#ffffff"
+          stroke="rgba(255,255,255,0.14)"
           strokeWidth={2}
         />
         {/* body: narrow at the head, wide at the feet */}
@@ -72,10 +72,10 @@ export const BrandMark: React.FC<{
           fill={C.navy}
         />
         {/* belly */}
-        <ellipse cx={100} cy={128} rx={25} ry={32} fill={C.paper} />
+        <ellipse cx={100} cy={128} rx={25} ry={32} fill="#ffffff" />
         {/* eyes: the white ring around them is the species' mark */}
-        <circle cx={84} cy={90} r={14} fill={C.paper} />
-        <circle cx={116} cy={90} r={14} fill={C.paper} />
+        <circle cx={84} cy={90} r={14} fill="#ffffff" />
+        <circle cx={116} cy={90} r={14} fill="#ffffff" />
         <circle cx={84} cy={91} r={6.5} fill={C.navy} />
         <circle cx={116} cy={91} r={6.5} fill={C.navy} />
         {/* beak */}

@@ -35,8 +35,8 @@ export const Cost: React.FC = () => {
         style={{
           position: "absolute",
           left: 96,
-          top: 300,
-          width: 780,
+          top: 380,
+          width: 820,
           ...rise(frame, fps, 0, 24),
         }}
       >
@@ -58,10 +58,10 @@ export const Cost: React.FC = () => {
           style={{
             marginTop: 26,
             fontFamily: SANS,
-            fontSize: 20,
-            lineHeight: "34px",
+            fontSize: 22,
+            lineHeight: "38px",
             color: C.muted,
-            maxWidth: 620,
+            maxWidth: 660,
           }}
         >
           耗时、token、花了多少钱，都记在这张账单上；
@@ -73,24 +73,25 @@ export const Cost: React.FC = () => {
         style={{
           position: "absolute",
           left: 1032,
-          top: 168,
-          width: 792,
+          top: 244,
+          width: 812,
           border: `1px solid ${C.line}`,
           borderRadius: 18,
-          background: C.paper,
-          padding: "26px 30px 30px",
+          background: C.panelLift,
+          padding: "30px 34px 34px",
+          boxShadow: "0 40px 120px rgba(0,0,0,0.8)",
           ...rise(frame, fps, 6, 26),
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline" }}>
-          <div style={{ fontFamily: SANS, fontSize: 15, color: C.muted }}>
+          <div style={{ fontFamily: SANS, fontSize: 17, color: C.muted }}>
             本次任务
           </div>
           <div
             style={{
               marginLeft: "auto",
               fontFamily: MONO,
-              fontSize: 13,
+              fontSize: 15,
               color: C.subtle,
             }}
           >
@@ -121,13 +122,13 @@ export const Cost: React.FC = () => {
             gap: 10,
           }}
         >
-          <div style={{ fontFamily: SANS, fontSize: 14, color: C.muted }}>
+          <div style={{ fontFamily: SANS, fontSize: 16, color: C.muted }}>
             花了
           </div>
           <div
             style={{
               fontFamily: MONO,
-              fontSize: 46,
+              fontSize: 52,
               fontWeight: 600,
               color: C.ink,
               letterSpacing: "-0.02em",
@@ -139,10 +140,10 @@ export const Cost: React.FC = () => {
 
         <div
           style={{
-            marginTop: 22,
+            marginTop: 26,
             display: "flex",
             flexDirection: "column",
-            gap: 14,
+            gap: 20,
           }}
         >
           {STEPS.map((step, i) => {
@@ -158,9 +159,9 @@ export const Cost: React.FC = () => {
               >
                 <div
                   style={{
-                    width: 92,
+                    width: 104,
                     fontFamily: SANS,
-                    fontSize: 14,
+                    fontSize: 17,
                     color: C.muted,
                   }}
                 >
@@ -169,27 +170,26 @@ export const Cost: React.FC = () => {
                 <div
                   style={{
                     flex: 1,
-                    height: 10,
-                    background: C.panel,
-                    borderRadius: 5,
+                    height: 12,
+                    background: C.line,
+                    borderRadius: 6,
                   }}
                 >
                   <div
                     style={{
                       width: `${(step.seconds / max) * 100 * growP}%`,
-                      height: 10,
-                      borderRadius: 5,
-                      background: C.ink,
-                      opacity: 0.8,
+                      height: 12,
+                      borderRadius: 6,
+                      background: `linear-gradient(90deg, ${C.ring}, ${C.accent})`,
                     }}
                   />
                 </div>
                 <div
                   style={{
-                    width: 56,
+                    width: 64,
                     textAlign: "right",
                     fontFamily: MONO,
-                    fontSize: 13,
+                    fontSize: 15,
                     color: C.subtle,
                   }}
                 >
@@ -198,6 +198,23 @@ export const Cost: React.FC = () => {
               </div>
             );
           })}
+        </div>
+
+        <div
+          style={{
+            marginTop: 26,
+            paddingTop: 18,
+            borderTop: `1px solid ${C.lineSoft}`,
+            display: "flex",
+            alignItems: "baseline",
+            gap: 12,
+            fontFamily: SANS,
+            fontSize: 17,
+            color: C.muted,
+          }}
+        >
+          <span style={{ color: C.success }}>✓</span>
+          每一步都能翻回去看它当时做了什么
         </div>
       </div>
 

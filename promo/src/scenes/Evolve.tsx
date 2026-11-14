@@ -7,13 +7,16 @@ import {
   useVideoConfig,
 } from "remotion";
 import { fade, rise, roll } from "../motion";
-import { C, MONO, SANS } from "../theme";
+import { C, MONO, SAFE, SANS } from "../theme";
 
 /**
- * Scene 6 — 相信它会变强 (1080–1350). v1 drew three score cards and let the numbers
- * grow on their own; nobody could see *why* the number moved. Here the only thing that
- * moves is text: the evaluation points at two failing lines, the lines get rewritten,
- * and the score rolls **after** the diff settles. That order is the whole argument.
+ * Scene 6 — 相信它会变强 (1080–1350).
+ *
+ * The one thing that may move in this scene is text: the evaluation points at two failing
+ * lines, those two lines get rewritten, and the score rolls **after** the diff settles.
+ * That order is the argument. v1 showed three score cards with numbers growing on their
+ * own, which proves nothing; v3 keeps v1's big-number payoff but hangs it on a diff the
+ * viewer has just watched being edited.
  */
 
 const LINES = [
@@ -39,25 +42,58 @@ export const Evolve: React.FC = () => {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
-  const failureIn = fade(frame, 60, 12);
+  const failureIn = fade(frame, 40, 12);
   const v2 = roll(frame, 200, 26, 78, 62);
   const v3 = roll(frame, 240, 22, 91, 78);
 
   return (
     <AbsoluteFill>
+      {/* ── heading ── */}
+      <div
+        style={{
+          position: "absolute",
+          left: SAFE,
+          top: 84,
+          ...rise(frame, fps, 0, 22),
+        }}
+      >
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 19,
+            letterSpacing: "0.2em",
+            color: C.accent,
+          }}
+        >
+          自进化
+        </div>
+        <div
+          style={{
+            marginTop: 10,
+            fontFamily: SANS,
+            fontSize: 62,
+            fontWeight: 700,
+            letterSpacing: "-0.02em",
+            color: C.ink,
+          }}
+        >
+          它给自己打分，然后改自己的文字。
+        </div>
+      </div>
+
       {/* ── the text being evolved ── */}
       <div
         style={{
           position: "absolute",
-          left: 96,
-          top: 190,
-          width: 700,
-          height: 548,
+          left: SAFE,
+          top: 286,
+          width: 1010,
+          height: 628,
           border: `1px solid ${C.line}`,
-          borderRadius: 16,
-          background: C.paper,
-          padding: "22px 26px",
-          ...rise(frame, fps, 0, 20),
+          borderRadius: 18,
+          background: C.panel,
+          padding: "24px 30px",
+          boxShadow: "0 40px 120px rgba(0,0,0,0.8)",
         }}
       >
         <div
@@ -65,65 +101,57 @@ export const Evolve: React.FC = () => {
             display: "flex",
             alignItems: "baseline",
             gap: 10,
-            paddingBottom: 14,
+            paddingBottom: 16,
             borderBottom: `1px solid ${C.lineSoft}`,
+            fontFamily: MONO,
+            fontSize: 16,
+            color: C.muted,
           }}
         >
-          <div style={{ fontFamily: MONO, fontSize: 13, color: C.muted }}>
-            AGENTS.md
-          </div>
-          <div style={{ fontFamily: MONO, fontSize: 12, color: C.subtle }}>
-            · v1
+          <div>AGENTS.md</div>
+          <div style={{ color: C.subtle }}>· v1</div>
+          <div style={{ marginLeft: "auto", color: C.subtle }}>
+            snapshots/ 每轮之前自动快照
           </div>
         </div>
 
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 22 }}>
           {LINES.map((line, i) => (
-            <div key={i} style={{ marginBottom: 14 }}>
+            <div key={i} style={{ marginBottom: 12 }}>
               <div
                 style={{
                   fontFamily: MONO,
-                  fontSize: 16,
-                  lineHeight: "26px",
-                  color: C.ink,
-                  position: "relative",
+                  fontSize: 23,
+                  lineHeight: "38px",
+                  color: line.flag ? C.ink : C.muted,
                   display: "inline-block",
+                  textDecoration: line.flag ? "underline wavy" : "none",
+                  textDecorationColor: `rgba(248, 113, 113, ${highlight})`,
+                  textUnderlineOffset: 8,
+                  textDecorationThickness: 2,
                 }}
               >
                 {line.text}
-                {line.flag && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      left: 0,
-                      right: 0,
-                      bottom: -4,
-                      height: 6,
-                      opacity: highlight,
-                      backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='6'><path d='M0 4 Q2 0 4 4 T8 4' fill='none' stroke='%23a1a1a1' stroke-width='1.2'/></svg>")`,
-                      backgroundRepeat: "repeat-x",
-                    }}
-                  />
-                )}
               </div>
               {FIXES.filter((f) => f.after === i).map((fix) => (
                 <div
                   key={fix.text}
                   style={{
-                    marginTop: 8,
-                    marginLeft: 0,
-                    paddingLeft: 12,
+                    marginTop: 10,
+                    display: "inline-block",
+                    paddingLeft: 16,
+                    paddingRight: 20,
                     borderLeft: `2px solid ${C.accent}`,
                     background: C.accentWash,
                     fontFamily: MONO,
-                    fontSize: 15,
-                    lineHeight: "24px",
+                    fontSize: 22,
+                    lineHeight: "36px",
                     color: C.ink,
                     opacity: fade(frame, 120, 16),
                     transform: `translateX(${interpolate(
                       frame,
                       [120, 140],
-                      [-10, 0],
+                      [-14, 0],
                       {
                         extrapolateLeft: "clamp",
                         extrapolateRight: "clamp",
@@ -137,207 +165,187 @@ export const Evolve: React.FC = () => {
               ))}
             </div>
           ))}
+          {["## 工具", "读：工作区里的一切文件", "写：只在 ~/notes 下"].map(
+            (line) => (
+              <div
+                key={line}
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 22,
+                  lineHeight: "40px",
+                  color: C.subtle,
+                }}
+              >
+                {line}
+              </div>
+            ),
+          )}
         </div>
 
         <div
           style={{
             position: "absolute",
-            left: 26,
-            right: 26,
-            bottom: 18,
+            left: 30,
+            right: 30,
+            bottom: 20,
             borderTop: `1px solid ${C.lineSoft}`,
             paddingTop: 14,
-            display: "flex",
             fontFamily: MONO,
-            fontSize: 12,
+            fontSize: 16,
             color: C.subtle,
           }}
         >
-          <div>snapshots/ · 每轮之前自动快照</div>
-          <div style={{ marginLeft: "auto" }}>v1 → v2 → v3</div>
+          +2 行 · 分数在下一轮才动
         </div>
       </div>
 
-      {/* ── what the evaluation pointed at ── */}
+      {/* ── scores ── */}
       <div
         style={{
           position: "absolute",
-          left: 836,
-          top: 190,
-          width: 400,
-          height: 400,
-          border: `1px solid ${C.line}`,
-          borderRadius: 16,
-          background: C.panel,
-          padding: "24px 24px",
-          opacity: failureIn,
-        }}
-      >
-        <div style={{ fontFamily: SANS, fontSize: 14, color: C.muted }}>
-          评估
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 10,
-            marginTop: 6,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: MONO,
-              fontSize: 86,
-              fontWeight: 600,
-              color: C.ink,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {Math.round(roll(frame, 0, 24, 62))}
-          </div>
-          <div style={{ fontFamily: SANS, fontSize: 12, color: C.subtle }}>
-            示意数据
-          </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: 26,
-            borderTop: `1px solid ${C.line}`,
-            paddingTop: 16,
-          }}
-        >
-          {["摘要常常超过两行", "「待确认」还是并进了主题"].map((item, i) => (
-            <div
-              key={item}
-              style={{
-                fontFamily: SANS,
-                fontSize: 15,
-                lineHeight: "24px",
-                color: C.ink,
-                marginBottom: 10,
-                opacity: fade(frame, 70 + i * 8, 10),
-              }}
-            >
-              · {item}
-            </div>
-          ))}
-        </div>
-        <div
-          style={{
-            fontFamily: SANS,
-            fontSize: 12,
-            color: C.subtle,
-            marginTop: 8,
-          }}
-        >
-          失分点都指得回上面那两句
-        </div>
-      </div>
-
-      {/* ── the round after the rewrite ── */}
-      <div
-        style={{
-          position: "absolute",
-          left: 1276,
-          top: 190,
-          width: 548,
-          height: 400,
+          left: 1128,
+          top: 286,
+          width: 728,
+          height: 628,
           display: "flex",
           flexDirection: "column",
-          gap: 16,
-          opacity: fade(frame, 196, 12),
+          gap: 18,
         }}
       >
         <div
           style={{
             border: `1px solid ${C.line}`,
-            borderRadius: 16,
-            background: C.paper,
-            padding: "20px 22px",
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
+            borderRadius: 18,
+            background: C.panel,
+            padding: "26px 30px",
+            opacity: failureIn,
+            transform: `translateY(${(1 - failureIn) * 24}px)`,
           }}
         >
-          <div style={{ fontFamily: MONO, fontSize: 13, color: C.muted }}>
-            v2
+          <div style={{ fontFamily: SANS, fontSize: 18, color: C.muted }}>
+            v1 · 基线，自己出题自测
           </div>
           <div
             style={{
-              fontFamily: MONO,
-              fontSize: 38,
-              fontWeight: 600,
-              color: C.ink,
-            }}
-          >
-            {Math.round(v2)}
-          </div>
-          <div
-            style={{
-              fontFamily: SANS,
-              fontSize: 13,
-              color: C.muted,
-              marginLeft: "auto",
-            }}
-          >
-            改完这段文字
-          </div>
-        </div>
-
-        {frame >= 232 && (
-          <div
-            style={{
-              border: `1px solid ${C.accentLine}`,
-              borderRadius: 16,
-              background: C.accentWash,
-              padding: "20px 22px",
               display: "flex",
-              alignItems: "center",
-              gap: 16,
-              opacity: fade(frame, 238, 10),
+              alignItems: "baseline",
+              gap: 12,
+              marginTop: 2,
             }}
           >
-            <div style={{ fontFamily: MONO, fontSize: 13, color: C.accent }}>
-              v3
-            </div>
             <div
               style={{
                 fontFamily: MONO,
-                fontSize: 38,
-                fontWeight: 600,
+                fontSize: 132,
+                fontWeight: 700,
+                lineHeight: "150px",
                 color: C.ink,
+                letterSpacing: "-0.04em",
               }}
             >
-              {Math.round(v3)}
+              {Math.round(roll(frame, 0, 24, 62))}
             </div>
-            <div
-              style={{
-                fontFamily: SANS,
-                fontSize: 13,
-                color: C.accent,
-                marginLeft: "auto",
-              }}
-            >
-              当前版本
+            <div style={{ fontFamily: MONO, fontSize: 22, color: C.subtle }}>
+              / 100
             </div>
           </div>
-        )}
+          <div
+            style={{
+              marginTop: 12,
+              borderTop: `1px solid ${C.line}`,
+              paddingTop: 16,
+            }}
+          >
+            {["摘要常常超过两行", "「待确认」还是并进了主题"].map((item, i) => (
+              <div
+                key={item}
+                style={{
+                  fontFamily: SANS,
+                  fontSize: 21,
+                  lineHeight: "34px",
+                  color: C.muted,
+                  opacity: fade(frame, 50 + i * 8, 10),
+                }}
+              >
+                <span style={{ color: "#f87171" }}>×</span> {item}
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div
-          style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}
+          style={{ display: "flex", gap: 18, opacity: fade(frame, 196, 12) }}
         >
+          {[
+            {
+              label: "v2",
+              value: Math.round(v2),
+              note: "改完这段文字",
+              accent: false,
+            },
+            {
+              label: "v3",
+              value: Math.round(v3),
+              note: "当前版本",
+              accent: true,
+            },
+          ].map((card) => (
+            <div
+              key={card.label}
+              style={{
+                flex: 1,
+                border: `1px solid ${card.accent ? C.accentLine : C.line}`,
+                borderRadius: 18,
+                background: card.accent ? C.accentWash : C.panel,
+                padding: "24px 26px",
+              }}
+            >
+              <div
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 17,
+                  color: card.accent ? C.accent : C.muted,
+                }}
+              >
+                {card.label}
+              </div>
+              <div
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 84,
+                  fontWeight: 700,
+                  lineHeight: "100px",
+                  color: C.ink,
+                  letterSpacing: "-0.03em",
+                }}
+              >
+                {card.value}
+              </div>
+              <div
+                style={{
+                  fontFamily: SANS,
+                  fontSize: 17,
+                  color: card.accent ? C.accent : C.subtle,
+                }}
+              >
+                {card.note}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {PILLS.map((pill) => (
             <div
               key={pill}
               style={{
                 fontFamily: SANS,
-                fontSize: 13,
-                color: C.ink,
+                fontSize: 17,
+                color: C.muted,
                 border: `1px solid ${C.line}`,
                 borderRadius: 999,
-                padding: "6px 12px",
-                background: C.paper,
+                padding: "7px 16px",
+                background: C.panel,
               }}
             >
               {pill}
@@ -349,15 +357,18 @@ export const Evolve: React.FC = () => {
       <div
         style={{
           position: "absolute",
-          left: 96,
-          bottom: 76,
+          left: SAFE,
+          bottom: 92,
           fontFamily: SANS,
-          fontSize: 20,
+          fontSize: 34,
+          fontWeight: 600,
           color: C.muted,
-          opacity: fade(frame, 150, 12),
+          opacity: fade(frame, 150, 14),
         }}
       >
-        找失分点 → 改这段文字 → 分数才动
+        找失分点 <span style={{ color: C.subtle }}>→</span> 改这段文字{" "}
+        <span style={{ color: C.subtle }}>→</span>{" "}
+        <span style={{ color: C.ink }}>分数才动</span>
       </div>
     </AbsoluteFill>
   );

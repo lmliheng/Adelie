@@ -40,8 +40,8 @@ export const Local: React.FC = () => {
           position: "absolute",
           left: 40,
           right: 40,
-          top: 150,
-          bottom: 90,
+          top: 132,
+          bottom: 76,
           border: `1px solid ${C.line}`,
           borderRadius: 26,
           opacity: 0.4 + grow * 0.6,
@@ -52,7 +52,7 @@ export const Local: React.FC = () => {
             position: "absolute",
             left: 34,
             top: -12,
-            background: C.paper,
+            background: C.canvas,
             padding: "0 12px",
             fontFamily: SANS,
             fontSize: 14,
@@ -67,7 +67,7 @@ export const Local: React.FC = () => {
         style={{
           position: "absolute",
           left: 96,
-          top: 232,
+          top: 214,
           width: 1728,
           ...rise(frame, fps, 4, 26),
         }}
@@ -75,7 +75,7 @@ export const Local: React.FC = () => {
         <div
           style={{
             fontFamily: SANS,
-            fontSize: 64,
+            fontSize: 72,
             fontWeight: 600,
             letterSpacing: "-0.02em",
             color: C.ink,
@@ -88,8 +88,8 @@ export const Local: React.FC = () => {
           style={{
             marginTop: 26,
             fontFamily: SANS,
-            fontSize: 24,
-            lineHeight: "40px",
+            fontSize: 27,
+            lineHeight: "44px",
             color: C.muted,
             maxWidth: 1400,
           }}
@@ -102,7 +102,7 @@ export const Local: React.FC = () => {
         style={{
           position: "absolute",
           left: 96,
-          top: 466,
+          top: 500,
           display: "flex",
           gap: 24,
           opacity: interpolate(frame, [14, 32], [0, 1], {
@@ -119,11 +119,11 @@ export const Local: React.FC = () => {
           <div
             key={row.k}
             style={{
-              width: 552,
+              width: 566,
               border: `1px solid ${C.line}`,
               borderRadius: 14,
-              background: C.panel,
-              padding: "20px 22px",
+              background: C.panelLift,
+              padding: "22px 26px",
             }}
           >
             <div style={{ fontFamily: SANS, fontSize: 15, color: C.muted }}>
@@ -148,7 +148,38 @@ export const Local: React.FC = () => {
           position: "absolute",
           left: 96,
           right: 96,
-          bottom: 196,
+          top: 672,
+          height: 1,
+          background: C.line,
+          opacity: interpolate(frame, [20, 34], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
+        }}
+      />
+      <div
+        style={{
+          position: "absolute",
+          left: 96,
+          top: 700,
+          fontFamily: SANS,
+          fontSize: 20,
+          color: C.muted,
+          opacity: interpolate(frame, [22, 36], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          }),
+        }}
+      >
+        模型随你换，接哪一家由你决定
+      </div>
+
+      <div
+        style={{
+          position: "absolute",
+          left: 96,
+          right: 96,
+          bottom: 176,
           display: "flex",
           gap: 14,
           flexWrap: "wrap",
@@ -160,8 +191,8 @@ export const Local: React.FC = () => {
             style={{
               border: `1px solid ${C.line}`,
               borderRadius: 999,
-              background: C.panel,
-              padding: "12px 22px",
+              background: C.panelLift,
+              padding: "13px 24px",
               fontFamily: SANS,
               fontSize: 18,
               color: C.ink,

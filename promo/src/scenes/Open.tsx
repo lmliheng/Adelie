@@ -11,9 +11,9 @@ import { BrandMark } from "../BrandMark";
 import { C, SAFE, SANS } from "../theme";
 
 /**
- * Scene 1 — 认得它 (0–120). The icon lands, the orbit draws itself, the wordmark
- * closes its tracking. No subtitle: the first thing a viewer must recognise is the
- * app they may already have seen in the dock.
+ * Scene 1 — 认得它 (0–120). The icon lands, the orbit draws itself, the wordmark closes
+ * its tracking. Nothing else: the first thing a viewer must recognise is the app they
+ * may already have in the dock. The glow behind the plate is the scene's only light.
  */
 export const Open: React.FC = () => {
   const frame = useCurrentFrame();
@@ -37,12 +37,12 @@ export const Open: React.FC = () => {
     easing: Easing.out(Easing.cubic),
   });
 
-  const tracking = interpolate(frame, [36, 62], [0.3, 0.03], {
+  const tracking = interpolate(frame, [36, 64], [0.34, 0.02], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
     easing: Easing.out(Easing.cubic),
   });
-  const wordOpacity = interpolate(frame, [36, 62], [0, 1], {
+  const wordOpacity = interpolate(frame, [36, 64], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   });
@@ -54,14 +54,14 @@ export const Open: React.FC = () => {
           position: "absolute",
           left: 0,
           right: 0,
-          top: 190,
+          top: 168,
           display: "flex",
           justifyContent: "center",
           transform: `translateY(${(1 - drop) * -26}px) rotate(${rotate}deg)`,
           opacity: drop,
         }}
       >
-        <BrandMark size={452} arc={arc} spin={spin} />
+        <BrandMark size={500} arc={arc} spin={spin} />
       </div>
 
       <div
@@ -69,10 +69,10 @@ export const Open: React.FC = () => {
           position: "absolute",
           left: 0,
           right: 0,
-          top: 736,
+          top: 742,
           textAlign: "center",
           fontFamily: SANS,
-          fontSize: 104,
+          fontSize: 112,
           fontWeight: 600,
           letterSpacing: `${tracking}em`,
           color: C.ink,
@@ -82,8 +82,7 @@ export const Open: React.FC = () => {
         Adelie
       </div>
 
-      {/* The safe-area rule as a hairline: it bleeds off both edges, which is what
-          keeps the last frame of the scene from reading as empty. */}
+      {/* The safe-area rule as a hairline that bleeds off both edges. */}
       <div
         style={{
           position: "absolute",
