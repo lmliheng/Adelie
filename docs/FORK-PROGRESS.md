@@ -2584,6 +2584,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       八处 `toastError(apiErrorText(e))` —— 三处（遍历读不到、模式读不到、扫描被拒）**原因只在一条六秒的
       通知里**，页面自己那句话不带原因；五处（开关、固定、恢复、彻底删除、执行清理）**已经各有说明行却又
       同时弹一条**，同一次被拒说两遍，其中一遍盖在页面顶部。见「第二百四十七轮」一节。
+- [x] **7.130 更新弹窗自己发出的两个请求被拒时，原因留在弹窗里、就在那颗按钮上方**
+      （**2026-11-14 第二百四十八轮**落地，提交见「已完成的轮次」；源码 5 处（新增纯逻辑
+      `packages/web/src/lib/update-request-refusal.ts` 的 `updateRequestRefused(step, reason)`，
+      `use-update-flow.ts` 的状态多一个 `requestRefusal`、两个动作改走同一个 `refuseRequest`、
+      打开 / 关闭 / 每次新尝试都清掉，`update-modal.tsx` 在正文末尾画 `role="alert"` 那一行，
+      `strings.ts` / `strings-en.ts` 的 `requestFailed` 拆成 `downloadRefused` / `restartRefused`）
+      ＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：
+      第二百四十七轮末尾点名的邻座之一。这两个请求只有这个弹窗能发，而两处被拒都只有一条通知 ——
+      「无法执行更新操作：…」浮在弹窗**之上**，弹窗本身原样显示「新版本可用」（或它在等的重启），
+      六秒后原因没了，只剩一颗刚按过的按钮。现在句子在正文末尾、重试那颗按钮正上方，留到下一次尝试；
+      两句各自点名下载还是重启（后果不同：一个字节没取到 / 已装好但没跑起来）。只有「请求已在路上、
+      弹窗被关掉」那一小段仍发通知。见「第二百四十八轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3325,6 +3337,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-13 | 7.123 | **批量归档只成功一半时，说清哪些对话没有动 —— 而且列表不再与服务器说法不一**（**2026-11-13 第二百三十七轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑 `packages/web/src/lib/batch-outcome.ts`（`splitBatchOutcome(targets, results)`：哪些落地了、哪些被拒了、第一个被拒的原因），`components/layout/sidebar.tsx`：`batchSetArchived` 由 `Promise.all` + `toastError` 改成 `Promise.allSettled` 并逐行读结果 —— 落地的行 `replace(row.value.session)`、被拒的行成为新的勾选、`已归档` 文件夹只在本条真的归档时展开、批量栏新增 `batchArchiveRefusal` 一行（`role="alert"`、危险色、占满整行，每次尝试开始 / 勾选变化 / 取消选择 / 离开批量模式时清掉）；`confirmBatchDelete` 也改用同一个拆分函数（行为不变））+ 1 个新单测 `batch-outcome.test.ts`（6 条）+ 既有 `sidebar-batch-sessions.test.ts` 加两条断言组（文案 + 批量栏的拒绝槽 + 两个动作共用拆分函数，删除那边三条因共用而改写）+ 1 个新 spec `session-batch-archive-refusal.spec.mjs`（2 条）+ 词典两对（`batchArchiveRefused` / `batchUnarchiveRefused` 中英）+ changelog 一对，**不碰接口、无新依赖**）：批量栏没有批量接口，归档与取消归档给每条勾选的对话各发一个 PATCH，可它们的回话是**整体**读的 —— 第一个被拒的行把其余每一行的回话都丢掉，服务端已经归档的行照样原样留在活动列表里（`已归档` 文件夹根本不出现），所有勾选都还留着（含已经搬走的那些），原因只在一条六秒的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **325 文件 / 3739 通过 / 2 跳过**（相对上一行台账的 323 / 3727 是 +2 文件 / +12 条：本笔 1 文件 / 6 条，其余来自 HEAD 那笔未入台账的 `165725081`）· server **213 文件 / 3117 通过 / 6 跳过**（同来源 +1 文件 / +7 条）· **新单测 6 passed**（每行对自己的回话；夹在中间的拒绝不影响它后面落地的行；只保留第一个原因；整批被拒时每行都还在；结果比行短时不凭空造结果；没有对应行的结果被忽略）· **新 spec 2 passed（9.8 s + 2.0 s）**（8962 真服务端 + 8963 mock 模型 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r237-final3`）：勾两条、其中一条的 PATCH 被拒成 500 —— 那句话逐字「还有 1 个对话没有归档：session store is read-only」在批量栏里、通知区 0 个按钮、七秒后仍在、被拒的行仍勾选而落地的那条真的归档（接口读回 `archived: true`）并搬进 `已归档（1）`、勾选只剩被拒的那条 —— 随后同一个按钮重试、批量栏带着那句话一起消失、两条在服务端都 `archived: true`（PATCH 次数 2 / 1）；另一条是整批被拒时两个勾选都留着、「取消选择」把那句话一并带走、再勾一条时没有残留 · **回归**：`session-batch-delete-refusal.spec.mjs`（既有、未改）**2 passed** —— 删除那条路改用了同一个拆分函数 · **反证（同一份 spec 跑改前产物）**：`sidebar.tsx` 退回 `HEAD` 重建 web、产物挂 8966（独立数据根 `/root/adelie-fork-data/r237-before2`）→ **2 failed**（两条都死在 `getByTestId('batch-archive-refusal')` 元素不存在）· **两态探针**（`r237/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，PATCH 由 `page.route` 拒成 500 `session_store_read_only`，量 1.2 s / 7.5 s）：**改前** 两刻 `barText: null`、通知区 1 个按钮（1.2 s 时逐字「session store is read-only」）→ 7.5 s 后 0 个、`keptTicked: true` 与 **`goneTicked: true`**（服务器已经归档了它，列表却还把它当活动行、还留着勾选）、`archivedHeader: 0`（`已归档` 文件夹压根没出现）；**改后** 两刻都是批量栏里一行 `role="alert"`「还有 1 个对话没有归档：session store is read-only」、通知区 0 个按钮、`keptTicked: true` / `goneTicked: false`、`archivedHeader: 1`、`goneArchived: true`；截图 `r237/out/{after,before}-{1_2s,7_5s}.png` 与批量栏局部 `after-bar-crop.png` 肉眼看过（改后红字在栏内、下方只剩被拒那条勾着、已归档（1）里是搬走的那条；改前页顶一条白底通知、两行都还在活动列表里）· 两态 console 各只有本轮故意要的那条 500，pageerror 0 条 · 端口只用 8950–8967（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r237-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r237/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `364ea5984` |
 | 2026-11-13 | 7.124 | **项目设置里的成员写被拒时，原因留在发问的那张表上方，不再只活六秒**（**2026-11-13 第二百三十八轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑 `packages/web/src/lib/member-write-refusal.ts` 的 `memberWriteRefused`，`project-dialogs.tsx` 的 `MembersSection` 新增 `refusal` 状态与表上方那行 `role="alert"`、`addMember` / `doRemove` 被拒不弹通知）＋ 词典两对（`memberAddRefused` / `memberRemoveRefused`）＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：授予与收回权限都是普通写入，被拒时屏幕上的东西一样都没少（添加框里还是那个名字、成员的整行连同「移除」按钮都还在，重试就是同一个控件），缺的只是原因 —— 它落在一条六秒后自己消失的通知里、飘在看起来没被碰过的表之上，于是**没被移出的成员与已经移出的长得一模一样**。现在两种方向都把句子留在表上方（`role="alert"`、危险色、限两行、悬停看全文），点名那个账号（这一页是名单，连着两次尝试说的是两个人）并说明名单没有变化；每次尝试开始先清掉上一次那句，落地的那次重试一并清掉，本页不再发通知。见「第二百三十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔不动服务契约）· `oxlint` 5 个改动文件 **0 警告 0 错误** · `prettier --check` 6 个文件（含 spec 与 changelog 一对）干净（首跑新单测 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **213 文件 / 3117 通过 / 6 跳过** · web **326 文件 / 3744 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 325 / 3739）· **新 spec 2 passed（9.4 s + 2.1 s）**（真服务端 8990 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r238-after`；两次拒绝都是**服务端自己给的**，不是桩：加一个不存在的账号答 404 `user_not_found`、移除一个刚被别人移出的成员答 404 `member_not_found`）：添加那条 —— 句子在表上方、逐字「没能把「ghost_…」加进成员，名单没有变化：该用户已不存在。」、`role=alert`、打完的名字还在框里、表的行数没变、通知区 **0 个按钮**、**七秒后仍在**，随后往同一个框里换一个真账号就把行加进去（行数 +1、句子归 0、服务端成员表里真有它）；移除那条 —— 句子逐字「没能把「target_…」移出成员，名单没有变化：该用户不是本项目的成员。」、那一行仍在、通知区 0 个按钮，把成员身份补回去后按**同一个按钮**就落地（行与句子一起消失）· **反证（同一份 spec 跑改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8991 与另一个一次性数据根 `/root/adelie-fork-data/r238-before` → **2 failed**，两条都死在`getByTestId("member-refusal")` 找不到 · **两态探针**（`r238/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻）：**改前** 1.2 s 通知区 1 条「该用户已不存在。」、拒绝槽 0、7.5 s 时通知区 0 条、整块屏幕一片安静（表格 2 行、框里的名字还在）；**改后** 两刻都是表上方那一行 `role=alert`、通知区 0 个按钮，表格仍是 2 行、框里仍是那个名字 · 两态 console 都只有本轮**故意造的**那一条 404（`POST …/members`），pageerror **0 条** · 截图 `r238/{before,after}-{1.2s,7.5s}.png` 肉眼看过（改前 7.5 s 那张里表上方什么都没有，改后 1.2 s 那张里红字就在「成员」标题之下、表之上）· 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r238{,-after,-before,-after-dist,-before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r238/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `cf90349a6` |
 | 2026-11-14 | 7.129 | **存储台账页的三处失败把原因留在自己的位置上，而这一页的五处写入不再说两遍**（**2026-11-14 第二百四十七轮**落地；源码 4 处（新增纯逻辑 `features/settings/storage-failure.ts` 的 `storageFailureText`，`storage-section.tsx` 的 `failed` / `modeFailed` / `scanFailed` 三个布尔改存句子本身、五处已有说明行的 `catch` 去掉 `toastError`、所有失败改走 `refusalText`，`strings.ts` / `strings-en.ts` 三条句子改带 `reason` 的函数）＋ 1 个新单测 `storage-failure.test.ts`（6 条）＋ 1 个新 spec `storage-page-failure.spec.mjs`（3 条）＋ 既有两份存储 spec 各加一条即时读一次的 `expectNoToast` ＋ changelog 一对，**不碰接口、无新依赖**）：这一页还剩八处 `toastError(apiErrorText(e))` —— 三处（遍历读不到、清理模式/账单/回收站读不到、扫描被拒）页面自己那句话不带原因、原因只在一条六秒的通知里；五处（开关、固定、恢复、彻底删除、执行清理）已经各有说明行却又同时弹一条，同一次被拒说两遍、其中一遍盖在页面顶部。现在三处各自把服务端的话放进自己那句话里，画在自己的控件旁边（报告表头处 / 开关下面那行 / 账单块上方），五处只留说明行。见「第二百四十七轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 5 个源码/单测文件 + 3 份 spec **0 警告 0 错误** · `prettier --check` 10 个改动文件（含 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **332 文件 / 3778 通过 / 2 跳过**（相对上一行台账的 331 / 3772 是 +1 文件 / +6 条，即本笔的新单测）· **新 spec 3 passed（10.0 s + 9.7 s + 9.2 s）**（真服务端 9451 + mock 模型 9452 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r247-after2`）：三处各一条 —— 带原因的句子在页面上、通知区 0 个按钮（`expectNoToast`，先等 400 ms 让这次拒绝自己的渲染落地）、七秒后仍在；放行后同一个控件（重新测量 / 重新扫描）真的落地（报告表头出现、服务端账单数 +1）· **既有两份存储 spec 3 passed**：开关、固定、回收站三种拒绝都在，且通知区 0 个按钮 · **反证（改前产物）**：三份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9453 与另一个一次性数据根 `/root/adelie-fork-data/r247-before2` → **同一批 6 条全红**（三条死在找不到带原因的那句话；三条死在 `expectNoToast` 的 `toBe(0)`、`Received: 1`）· **两态探针**（`r247/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，三处各一组）：**改前** 1.2 s 带原因的那句 0 条 / 老句子 1 条 / 通知区 **1 个按钮**（文字就是服务端那句话），7.5 s 通知区 **0 个**、老句子仍是 1 条 —— 原因没了；**改后** 两刻都是带原因的那句 1 条（逐字「无法取得存储报告：服务器内部错误，请稍后重试。」等三句）、老句子 0 条、通知区 **0 个按钮**，模式那一组开关仍是 `aria-checked=false`（页面按「已关闭」处理，句子说明为什么）· 两态 console 都只有本轮**故意造的**那三条 500，pageerror **0 条** · 相邻回归：同批 `storage-*` 三份 spec 在改后产物上 **6 passed（59.8 s）** · 端口只用 9451 / 9452 / 9453（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r247-{after,after2,before,before2}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r247/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `1f4bbe8f5` |
+| 2026-11-14 | 7.130 | **更新弹窗自己发出的两个请求被拒时，原因留在弹窗里、就在那颗按钮上方**（**2026-11-14 第二百四十八轮**落地；源码 5 处（新增纯逻辑 `packages/web/src/lib/update-request-refusal.ts` 的 `updateRequestRefused(step, reason)`，`use-update-flow.ts` 的 store 多一个 `requestRefusal`（存的就是那句话）、`downloadUpdate` / `installUpdate` 改走同一个 `refuseRequest`（弹窗开着写它、关着才发通知），`update-modal.tsx` 在正文末尾画 `role="alert"` 一行、限两行、整句在悬停里，`strings.ts` / `strings-en.ts` 的 `requestFailed` 拆成 `downloadRefused` / `restartRefused`）＋ 1 个新单测 `update-request-refusal.test.ts`（5 条）＋ 1 个新 spec `update-request-refusal.spec.mjs`（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：这两个请求只有这个弹窗能发，而两处被拒都只有一条通知「无法执行更新操作：…」浮在弹窗之上，弹窗本身原样显示「新版本可用」（或它在等的重启），六秒后原因没了。现在句子在正文末尾、重试那颗按钮正上方，留到下一次尝试；两句各自点名下载 / 重启。见「第二百四十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`） · `oxlint` 6 个源码 / 单测文件 **0 警告 0 错误** · `prettier --check` 7 个改动文件（含 changelog 一对）干净（新单测首跑 `--write` 一次，复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **333 文件 / 3783 通过 / 2 跳过**（基线 332 / 3778，+1 文件 / +5 条即本笔的新单测） · **新 spec 2 passed（9.5 s + 9.4 s）**（真服务端 9471 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r248`；浏览器的更新检查是桩（`update-check` 答「有新版本 9.9.9」），两处拒绝由 `page.route` 拒成 500 `internal`，落地的两半是**真服务端**：它不经 CLI 启动，`POST /api/version/update` 立刻答 `done` / `unsupported` / `not_launched_via_cli`（不 spawn 任何进程），`POST /api/version/restart` 答 `restarting:false` / `no_supervisor`（不重启））—— ①② 句子在弹窗里、`role=alert`、逐字「没能开始下载这次更新，更新没有开始：服务器内部错误，请稍后重试。」/「没能重启，新版本已装好但还没有生效：服务器内部错误，请稍后重试。」、通知区 0 个按钮（`expectNoToast`，先等 400 ms）、七秒后仍在、弹窗仍停在同一步（新版本可用 / v9.9.9 已就绪），放行后同一颗按钮落地、句子消失 · **反证（改前产物）**：四份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9472 与另一个一次性数据根 `/root/adelie-fork-data/r248-before` → **同一份 spec 2 failed**，两条都死在找不到带原因的那句话（`getByText` 的 `toBeVisible`，element(s) not found） · **两态探针**（`r248/probe-env/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，下载与重启各一组）：**改前** 1.2 s 拒绝槽 0、通知区 **1 个按钮**（逐字「无法执行更新操作：服务器内部错误，请稍后重试。」，浮在弹窗上方），7.5 s 通知区 **0**、弹窗里一个字都没有；**改后** 两刻都是弹窗正文末尾那一行带原因的句子、通知区 **0 个按钮**，弹窗正文其余各行不变 · 两态 console 都只有本轮**故意造的**那条 500（资源加载），pageerror **0 条** · 截图 `r248/shots/{before,after}-{download,restart}-{1_2s,7_5s}.png` 肉眼看过：改前页顶一条白底通知、弹窗里什么都没有；改后红字在弹窗正文末尾、「稍后 / 下载并更新」正上方，无挤压无溢出 · 端口只用 9471 / 9472（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r248{,-before}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r248/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `bda770da9` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -26878,3 +26891,104 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 `fix(web)` 一笔 `1f4bbe8f5`（源码 4 + 新单测 1 + 新 spec 1 + 既有两份 spec + changelog 一对 = 10 个文件）；
 台账另起一笔。
+
+## 第二百四十八轮：更新弹窗自己发出的两个请求被拒时，原因留在弹窗里（2026-11-14，条目 7.130）
+
+### 开工自检
+
+- `git status --short` 干净，分支 `main`，`HEAD` = `917a444d2`（第二百四十七轮的台账）。
+- 同步：`git fetch origin` 三次：前两次 `GnuTLS recv error (-110)`，第三次 `Failed to connect to
+  github.com port 443`（都 134 s 才失败）；`api.github.com` 通 —— `GET /repos/lmliheng/Adelie/git/ref/heads/main`
+  答 `917a444d225ac768761f8ea92f960b6996b41856`，与本地 `HEAD` 同一笔，`git merge --ff-only origin/main`
+  报 `Already up to date`，于是同步这一步等价完成（没有切分支、没碰 `legacy/main`、没推 upstream）。
+- **编号**：HEAD 上那两笔（`1f4bbe8f5` / `917a444d2`）都在台账里（第二百四十七轮），没有空号要留，
+  本轮记 **第二百四十八轮 / 7.130**。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧，本轮纪律不碰 `packages/desktop`）、
+  3.5 要拍板、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板；于是接第二百四十七轮「没做 / 留着」
+  点名的邻座之一：**设置里的更新流程**。
+
+### 为什么是这一条
+
+7.19 / 7.111 这一族定的是「被拒的写入把原因留在发问的地方，那儿已经有了就不再另弹一条」。第二百四十
+七轮收完存储台账页之后，`chat-page.tsx` 的「撤回 steering」「转到后台」与「设置里的更新流程」被点了名。
+前一处的宿主本身会随排队项的离场而消失（排队那行是服务端 task_state 喂的），要先定「句子归行还是归
+输入区」，是单独一轮的设计题；更新流程这一处则是**清楚的一处缺陷**：
+
+- 「下载并更新」与「重启并更新」这两个请求**只有这一个弹窗能发**，而两处被拒的交代都是同一条通知
+  「无法执行更新操作：…」，浮在弹窗**之上**；
+- 弹窗本身在按完之后一点没变 —— 还是「新版本 v9.9.9 可用」（或「v9.9.9 已就绪」）加原来那颗按钮，
+  于是读者看到的画面与被拒之前一模一样，唯一说了原因的那条六秒后就没了；
+- 更新流程自己的失败（任务跑了但失败、检查答了一个错误）本来就在弹窗正文里有位置（`flow.kind ===
+  "error"`），只有这两个「请求根本没到后端」的失败没有 —— 这一族要的正是把这一处补齐。
+
+### 改了什么
+
+- `packages/web/src/lib/update-request-refusal.ts`（新增）：`updateRequestRefused(step, reason)`，
+  两个取值 `download` / `restart`。文件头写清为什么两个步骤各说各的（后果不同：下载被拒＝一个字节
+  都没取到，重启被拒＝新版本已装好、只是还没跑起来），以及为什么不并成一句「更新操作失败」。
+- `packages/web/src/lib/use-update-flow.ts`：`FlowState` 多一个 `requestRefusal: string | null`（存的就是
+  那句话）；`downloadUpdate` / `installUpdate` 改走同一个 `refuseRequest(step, e)` —— 弹窗开着就写进状态
+  （弹窗画它），关着才发通知（请求已经在路上、弹窗被关掉的那一小段，原因不能因为落脚处没了就丢）；
+  打开弹窗、关闭弹窗、以及两个动作各自的**每次新尝试**都先清掉它（7.19 给每个拒绝槽定的规则）；
+  `useUpdateFlow()` 把它交出去。
+- `packages/web/src/components/account/update-modal.tsx`：正文末尾画 `role="alert"` 一行（危险色、限两行、
+  整句停在悬停提示里、`data-testid="update-request-refusal"`），位置就在底部按钮上方 —— 那颗按钮就是重试。
+  模块头注释补上这一点。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`requestFailed`（两步共用一句）拆成
+  `downloadRefused` / `restartRefused`，各自点名那一步并说出它的后果。
+- 没有接口变化、没有新依赖、服务端行为没变。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 /
+  612 类型 —— 本笔只动 `packages/web`）。
+- `oxlint` 6 个源码 / 单测文件 **0 警告 0 错误**；`prettier --check` 7 个改动文件（含 changelog 一对）
+  干净（新单测首跑 `--write` 一次，复检通过）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** ·
+  cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **333 文件 / 3783 通过 / 2 跳过**
+  （基线 332 / 3778，+1 文件 / +5 条即本笔的新单测）。
+- **新单测 5 passed**：下载那句、重启那句、原因原样传递（含中文标点）、两句互不相同、中英两种语言。
+- **新 spec 2 passed（9.5 s + 9.4 s）**（真服务端 9471 + `/usr/bin/chromium` + 一次性数据根
+  `/root/adelie-fork-data/r248`）：浏览器的更新检查是桩（答「有新版本 9.9.9」），两处拒绝是 `page.route`
+  的 500 `internal`；**落地的两半是真服务端** —— 它不经 CLI 启动，`POST /api/version/update` 立刻答
+  `done` / `unsupported` / `not_launched_via_cli`（不 spawn 任何进程），`POST /api/version/restart` 答
+  `restarting:false` / `no_supervisor`（不重启）。①下载：句子在弹窗里、`role=alert`、逐字
+  「没能开始下载这次更新，更新没有开始：服务器内部错误，请稍后重试。」、通知区 0 个按钮（`expectNoToast`，
+  先等 400 ms 让这次拒绝自己的渲染落地）、七秒后仍在、弹窗仍停在「新版本 v9.9.9 可用」与那颗按钮上；
+  放行后同一颗按钮 → 句子消失、正文换成服务端自己的「当前服务不是通过 penguin web 或 penguin server
+  启动的，无法从这里更新」。②重启：先把下载答成 `done` / `updated` 让弹窗进「v9.9.9 已就绪」，再拒
+  `POST /api/version/restart` → 逐字「没能重启，新版本已装好但还没有生效：服务器内部错误，请稍后重试。」、
+  通知区 0 个按钮、七秒后仍在、正文仍是「v9.9.9 已就绪」；放行后同一颗按钮 → 句子消失、服务端答
+  `no_supervisor`，正文换成「当前服务不是由 penguin web 或 penguin server 托管…」、那颗按钮不再有。
+- **反证（改前产物）**：四份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9472 与另一个一次性
+  数据根 `/root/adelie-fork-data/r248-before` → **同一份 spec 2 failed**，两条都死在找不到带原因的那句
+  话（`getByText(...).toBeVisible`：element(s) not found）。
+- **两态探针**（`r248/probe-env/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，
+  下载与重启各一组）：**改前** 1.2 s 拒绝槽 0、通知区 **1 个按钮**（逐字「无法执行更新操作：服务器内部
+  错误，请稍后重试。」，浮在弹窗上方），7.5 s 通知区归 **0**、弹窗里一个字都没多；**改后** 两刻都是弹窗
+  正文末尾那一行带原因的句子、通知区 **0 个按钮**，弹窗正文其余各行不变。
+- 两态 console 都只有本轮**故意造的**那条 500（资源加载），pageerror **0 条**。
+- 截图 `r248/shots/{before,after}-{download,restart}-{1_2s,7_5s}.png` 肉眼看过：改前页顶一条白底通知、
+  弹窗里什么都没有；改后红字在弹窗正文末尾、「稍后 / 下载并更新」正上方，两行折行、无挤压无溢出。
+- 端口只用 9471 / 9472（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r248{,-before}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 /
+  改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r248/` 下（`packages/web/dist`、`test-results/`
+  是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- **同一族的下一个邻座：更新检查本身**。`checkForUpdates()` 里那次「检查更新」在弹窗开着时若请求本身
+  抛错（我们自己的服务端不通），现在是 `if (!quiet()) toastError(...)` —— 弹窗开着就**什么都不显示**，
+  而弹窗可能停在「正在检查更新…」或上一份结果上。它比这两个动作更需要单独一轮：得先定「检查失败」与
+  已有的 `flow.kind === "error"`（服务端答了 error 字段那条路）怎么不打架。
+- **`chat-page.tsx` 的「撤回 steering」与「转到后台」** 仍留着：撤回排队消息时被拒的那一行会随服务端的
+  `task_state` 离场，宿主归行还是归输入区要先定；转后台的拒绝则要落在工具卡上，那张卡的位置还没定。
+- 移动端（390 宽）没有单独量：这一行在弹窗正文里、与正文其余各行同一个 `space-y-3` 槽，弹窗本身在窄屏
+  是底部抽屉，正文照旧滚动。
+- 4.1–4.3（npm scope 与发布链路）与 2.5（四个上游包的去留）仍等用户拍板；3.6 仍等模型 key。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔（源码 5 + 新单测 1 + 新 spec 1 + changelog 一对 = 9 个文件）；台账另起一笔。
