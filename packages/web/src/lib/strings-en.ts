@@ -1207,8 +1207,15 @@ export const en: Strings = {
     unsupportedToast: "This install cannot be updated from the web UI",
     /** The shell's own updater failure text — a failed download or signature check, not only a failed lookup. */
     clientUpdateFailed: (detail: string) => `Client update failed: ${detail}`,
-    /** A download / restart request failed before the backend could act; `detail` is apiErrorText output. */
-    requestFailed: (detail: string) => `Could not run the update action: ${detail}`,
+    /**
+     * A request the modal itself made — starting the download, or restarting into it — was refused
+     * before the backend could act; `reason` is apiErrorText output. Drawn inside the modal, above
+     * the button that retries it, and each names its own step: the download one means nothing was
+     * fetched, the restart one means the new version is installed but not running yet.
+     */
+    downloadRefused: (reason: string) => `Could not start downloading this update: ${reason}`,
+    restartRefused: (reason: string) =>
+      `Could not restart, so the new version is installed but not running yet: ${reason}`,
     restartTimedOut:
       "The service has not come back — check penguin web's output in the terminal, then reload this page",
   },

@@ -27,6 +27,7 @@ import {
   type UpdateFlow,
   type UpdateMode,
 } from "./update-flow";
+import { updateRequestRefused, type UpdateRequestStep } from "./update-request-refusal";
 import {
   forceUpdateCheck,
   getVersionInfo,
@@ -59,6 +60,12 @@ interface FlowState extends FlowLocal {
   modalOpen: boolean;
   /** The server's self-update job as last polled (release mode). */
   job: UpdateJobStatus | null;
+  /**
+   * The last of the modal's own two requests that was refused, as the sentence the modal draws
+   * above its footer (lib/update-request-refusal.ts). Null when none has, and cleared by the next
+   * attempt — the same rule every refusal slot in the app follows (7.19).
+   */
+  requestRefusal: string | null;
 }
 
 const store = createStore<FlowState>(() => ({
@@ -69,6 +76,7 @@ const store = createStore<FlowState>(() => ({
   downloadRequested: false,
   restart: "none",
   job: null,
+  requestRefusal: null,
 }));
 
 /** The flow for the current caches and local state — the one computation every surface renders. */
@@ -95,13 +103,15 @@ function quiet(): boolean {
 }
 
 export function openUpdateModal(): void {
-  store.setState({ modalOpen: true });
+  // Opening starts a fresh account of the modal's own requests: whatever the last visit left is
+  // no longer about anything on screen.
+  store.setState({ modalOpen: true, requestRefusal: null });
   if (opensWithCheck(currentFlow())) void checkForUpdates();
 }
 
 /** Closing never cancels anything: a download in flight keeps going and reports through the row. */
 export function closeUpdateModal(): void {
-  store.setState({ modalOpen: false });
+  store.setState({ modalOpen: false, requestRefusal: null });
 }
 
 export async function checkForUpdates(): Promise<void> {
@@ -130,7 +140,8 @@ export async function checkForUpdates(): Promise<void> {
 export async function downloadUpdate(): Promise<void> {
   const s = store.getState();
   if (s.downloadRequested) return;
-  store.setState({ downloadRequested: true, restart: "none" });
+  // The new attempt answers for itself; the old sentence goes (7.19's rule for every slot).
+  store.setState({ downloadRequested: true, restart: "none", requestRefusal: null });
   try {
     if (s.mode === "client") {
       await requestClientDownload();
@@ -145,7 +156,7 @@ export async function downloadUpdate(): Promise<void> {
     const job = await api.startUpdateJob();
     store.setState({ job, downloadRequested: false });
   } catch (e) {
-    toastError(S.update.requestFailed(apiErrorText(e)));
+    refuseRequest("download", e);
     store.setState({ downloadRequested: false });
   }
 }
@@ -153,6 +164,7 @@ export async function downloadUpdate(): Promise<void> {
 /** The user's "restart and update". */
 export async function installUpdate(): Promise<void> {
   const s = store.getState();
+  store.setState({ requestRefusal: null });
   try {
     if (s.mode === "client") {
       await requestClientInstall();
@@ -162,8 +174,21 @@ export async function installUpdate(): Promise<void> {
     const res = await api.restartServer();
     store.setState({ restart: res.restarting ? "requested" : "manual" });
   } catch (e) {
-    toastError(S.update.requestFailed(apiErrorText(e)));
+    refuseRequest("restart", e);
   }
+}
+
+/**
+ * One of the modal's two requests was refused before the backend could act. The modal is open in
+ * every case a user can press either button (it is the only surface that offers them), so the
+ * sentence belongs in it, above the footer whose button retries it; the toast is only for the
+ * window where the request was already on the wire and the modal got closed — a reason is never
+ * dropped just because its host went away.
+ */
+function refuseRequest(step: UpdateRequestStep, e: unknown): void {
+  const text = updateRequestRefused(step, apiErrorText(e));
+  if (quiet()) store.setState({ requestRefusal: text });
+  else toastError(text);
 }
 
 /** Passive read of the flow, for the row, the badge and the modal's rendering. */
@@ -174,6 +199,8 @@ export function useUpdateFlow(): {
   isAdmin: boolean;
   /** The running version, for the modal's header and the row's chip. */
   currentVersion: string | null;
+  /** The last of the modal's own requests that was refused, or null (see FlowState.requestRefusal). */
+  requestRefusal: string | null;
 } {
   const state = useStore(store);
   const { version } = useVersionInfo(false);
@@ -187,6 +214,7 @@ export function useUpdateFlow(): {
       state.mode === "client"
         ? (getDesktopUpdateStatus()?.appVersion ?? null)
         : (version?.version ?? null),
+    requestRefusal: state.requestRefusal,
   };
 }
 

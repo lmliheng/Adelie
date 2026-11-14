@@ -1266,8 +1266,13 @@ export const zh = {
     unsupportedToast: "当前安装方式不支持在线更新",
     /** The shell's own updater failure text — a failed download or signature check, not only a failed lookup. */
     clientUpdateFailed: (detail: string) => `客户端更新失败：${detail}`,
-    /** A download / restart request failed before the backend could act; `detail` is apiErrorText output. */
-    requestFailed: (detail: string) => `无法执行更新操作：${detail}`,
+    /**
+     * 弹窗自己发出的两个请求（开始下载、重启并生效）在后端动手之前就被拒了；`reason` 是 apiErrorText 的输出。
+     * 句子画在弹窗里、发问的那颗按钮上方，两颗各自点名自己的那一步：下载那句意味着一个字节都没取到，
+     * 重启那句意味着新版本已经装好、但还没有跑起来。
+     */
+    downloadRefused: (reason: string) => `没能开始下载这次更新，更新没有开始：${reason}`,
+    restartRefused: (reason: string) => `没能重启，新版本已装好但还没有生效：${reason}`,
     restartTimedOut: "服务迟迟没有回来，请查看终端里 penguin web 的输出后手动刷新页面",
   },
 

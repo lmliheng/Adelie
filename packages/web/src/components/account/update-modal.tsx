@@ -12,6 +12,8 @@
  * and offer a retry; an install form that cannot update itself says why. A failure that is
  * the host being unable to reach GitHub offers one thing more: the hand-off to an Agent
  * that can diagnose the network and fetch the release itself (lib/update-troubleshoot.ts).
+ * A request this dialog itself makes and is refused (starting the download, restarting into
+ * it) leaves its reason at the end of the body, above the footer button that retries it.
  *
  * The flow and the actions live in `use-update-flow.ts`; this file only renders.
  */
@@ -37,7 +39,7 @@ const RELEASES_URL = "https://github.com/lmliheng/Adelie/releases";
 
 export function UpdateModal() {
   useUpdateFlowOwner();
-  const { mode, flow, modalOpen, currentVersion } = useUpdateFlow();
+  const { mode, flow, modalOpen, currentVersion, requestRefusal } = useUpdateFlow();
   const openTroubleshoot = useTroubleshootOffer(flow);
   if (mode === "none") return null;
   return (
@@ -54,6 +56,10 @@ export function UpdateModal() {
           </p>
         )}
         <Body mode={mode} flow={flow} openTroubleshoot={openTroubleshoot} />
+        {/* One of the modal's own requests was refused: the reason stays here, right above the
+            footer whose button retries it, and it stays until the next attempt (7.19's family —
+            it used to be a toast over this dialog, gone in six seconds). */}
+        {requestRefusal !== null && <RequestRefusal text={requestRefusal} />}
       </div>
     </Modal>
   );
@@ -284,6 +290,26 @@ function Footer({
         </>
       );
   }
+}
+
+/**
+ * A request this dialog made — starting the download, or restarting into it — refused. The
+ * sentence (the step named, then the reason) takes the danger ink and sits at the end of the body,
+ * immediately above the footer whose button retries it; it is clamped to two lines and its whole
+ * text stays one hover away, like every other refusal slot in the app.
+ */
+function RequestRefusal({ text }: { text: string }) {
+  return (
+    <p
+      role="alert"
+      data-testid="update-request-refusal"
+      data-tooltip={text}
+      data-tooltip-content="text"
+      className={`line-clamp-2 break-words text-sm ${toneInk.danger}`}
+    >
+      {text}
+    </p>
+  );
 }
 
 function Line({ spinner, children }: { spinner?: boolean; children: ReactNode }) {
