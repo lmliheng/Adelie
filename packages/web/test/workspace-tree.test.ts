@@ -31,6 +31,7 @@ import {
   PREVIEW_MIN_WIDTH,
   TREE_LAYOUT_MIN_WIDTH,
   TREE_MIN_WIDTH,
+  VIDEO_PREVIEW_LIMIT,
   ancestorDirs,
   canEditPreview,
   clampTreeWidth,
@@ -41,6 +42,7 @@ import {
   flattenTree,
   isDirty,
   isNarrowLayout,
+  listingSize,
   looksLikeText,
   maxTreeWidth,
   needsDiscardConfirm,
@@ -128,6 +130,24 @@ describe("listings", () => {
 
   it("upsertEntry into a directory with no listing yet starts one", () => {
     expect(upsertEntry(LISTINGS, "new", file("n.txt")).get("new")).toEqual([file("n.txt")]);
+  });
+});
+
+describe("listingSize", () => {
+  const withClip: Listings = upsertEntry(LISTINGS, "", file("clip.mp4", VIDEO_PREVIEW_LIMIT + 1));
+
+  it("reads an entry's size out of the listing that holds it", () => {
+    expect(listingSize(withClip, "clip.mp4")).toBe(VIDEO_PREVIEW_LIMIT + 1);
+    expect(listingSize(LISTINGS, "x.txt")).toBe(1);
+    expect(listingSize(LISTINGS, "a/y.md")).toBe(1);
+  });
+
+  it("says nothing for a path no loaded listing covers — opened by reference, or a name no entry carries", () => {
+    // The directory was never listed (a file opened by an `@path` reference loads its dirs late).
+    expect(listingSize(withClip, "unlisted/f.txt")).toBeNull();
+    // The directory is listed, the name is not in it.
+    expect(listingSize(withClip, "a/missing.md")).toBeNull();
+    expect(listingSize(withClip, "nope.txt")).toBeNull();
   });
 });
 
@@ -235,6 +255,10 @@ describe("file kinds", () => {
     expect(previewKindFor("index.HTML")).toBe("html");
     expect(previewKindFor(".gitignore")).toBe("text");
     expect(previewKindFor("photo.PNG")).toBe("image");
+    // An mp4 gets the pane's own player; the size check against VIDEO_PREVIEW_LIMIT happens
+    // where the view is built, so the kind itself does not depend on how big the file is.
+    expect(previewKindFor("clip.mp4")).toBe("video");
+    expect(previewKindFor("movie.MP4")).toBe("video");
     expect(previewKindFor("paper.pdf")).toBe("pdf");
     // Word previews through the server's text extraction, in both the modern and the legacy
     // extension: the panel tells them apart when it loads one (a .doc gets its own message).
@@ -250,6 +274,8 @@ describe("file kinds", () => {
     expect(previewKindOf("README.md")).toBe("md");
     // No extraction fetch in the read-only browser: a Word file reads as unsupported there.
     expect(previewKindOf("设计稿.docx")).toBe("unsupported");
+    // Nor does it play a video: it has no player and no listing to judge a size against.
+    expect(previewKindOf("clip.mp4")).toBe("unsupported");
   });
 
   it("takes UTF-8 text for text, including a chunk cut inside a multi-byte character", () => {

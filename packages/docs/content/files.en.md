@@ -71,6 +71,7 @@ Select a file in the tree to open it in the preview. How a file is shown depends
 | Text | With syntax highlighting and line numbers |
 | Images | Inline. Select the image to zoom. |
 | PDF | Painted page by page in the panel; scroll to move through it |
+| Video (`.mp4`) | Played in the panel, with pause and seek; not previewed over 50MB |
 | Word (`.docx`) | The document's headings, paragraphs, lists and tables, laid out as read-only text |
 | Anything else | Offered as a download. See [Download a file](#download-a-file). |
 
@@ -86,6 +87,8 @@ An HTML file can also be opened in a new browser tab: in the preview, select **O
 A text preview reads up to 1MB. A larger file is shown truncated, with the message "File too large; preview truncated, download for the full file", and cannot be edited here. **Download** is in the preview header.
 
 PDFs are drawn by the app itself — each page painted onto a canvas as you scroll — so the preview does not depend on the client's own PDF viewer and looks the same everywhere. Long documents paint lazily as pages come into view.
+
+A video (`.mp4`) plays in the panel rather than navigating away. The server answers the file in byte ranges, so seeking fetches just that span instead of re-reading from the start. A video over 50MB is not previewed here — that is the server's read ceiling — and the panel says so rather than mounting a player that cannot load.
 
 A Word preview shows the document's body: headings, paragraphs, bold and italic runs, lists and tables are kept, while images and comments are not. It is read-only: there is no editor and no source view, because what is on screen is not the file. The body is capped at 200,000 characters — download for more. A legacy `.doc` is a binary format and is answered with a note to save it as `.docx`; a `.docx` the server cannot read says so and offers the download.
 
@@ -189,6 +192,7 @@ In the desktop app's own window, a **Show in folder** button sits beside **Downl
 | --- | --- |
 | Text preview | Up to 1MB. Larger files are shown truncated and cannot be edited here. |
 | Markdown rendering | Up to 64KB. Larger files open in the source view. |
+| Video preview | Up to 50MB. Larger videos are not previewed. |
 | Upload size | 14MB per file |
 | Save size | 14MB per file |
 | Search | Stops at 200 matches or 20,000 entries walked |

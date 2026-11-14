@@ -25,6 +25,7 @@ import type { AppEnv } from "../../auth/middleware.js";
 import type { Access } from "../../mechanisms/projects.js";
 import type { FileReveal, WorkspaceFiles } from "../../mechanisms/workspace.js";
 import { MAX_UPLOAD_BYTES } from "../../services/workspace-files-service.js";
+import { parseByteRange } from "../../services/byte-range.js";
 import { DocxPreviewError, docxToMarkdown } from "../../services/docx-preview.js";
 import { assertWorkspaceAllowed } from "../../services/workspace-guard.js";
 import { HttpError } from "../errors.js";
@@ -94,19 +95,45 @@ export function registerWorkspaceFileRoutes(
     const inertSvg = !download && !preview && scriptable === "svg";
     const effectiveType =
       !download && scriptable === "html" && !preview ? "text/plain; charset=utf-8" : contentType;
-    return new Response(new Uint8Array(data), {
-      status: 200,
+    const commonHeaders = {
+      "Content-Type": effectiveType,
+      "Content-Disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      "X-Content-Type-Options": "nosniff",
+      // A Workspace file is whatever the Agent last wrote to that path. Letting a browser
+      // cache it by URL is how a re-read after a settled turn paints the previous version.
+      "Cache-Control": "no-store",
+      // Not a cache validator — no-store above means nothing ever revalidates. It is the
+      // version of the bytes in this response, which the Files panel's editor hands back
+      // as `ifVersion` on save so the write can refuse to overwrite a newer file.
+      ETag: version,
+      // This route can answer a byte range, which is what makes an mp4 play and seek: a
+      // `<video>` asks for `bytes=0-` first and for an offset on every seek. Say so on every
+      // answer, including the ones that ignore the header.
+      "Accept-Ranges": "bytes",
+    };
+    const answer = parseByteRange(c.req.header("range"), data.length);
+    if (answer.kind === "unsatisfiable") {
+      // The requested offset is past the end of the file (a video the Agent has since
+      // rewritten shorter). A media element can act on this; a 200 with the whole file it
+      // just said it did not want would restart playback from the beginning.
+      return new Response(null, {
+        status: 416,
+        headers: {
+          "Content-Range": `bytes */${data.length}`,
+          "Accept-Ranges": "bytes",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
+    }
+    const partial = answer.kind === "partial";
+    const body = partial ? data.subarray(answer.start, answer.end + 1) : data;
+    return new Response(new Uint8Array(body), {
+      status: partial ? 206 : 200,
       headers: {
-        "Content-Type": effectiveType,
-        "Content-Disposition": `${disposition}; filename*=UTF-8''${encodeURIComponent(fileName)}`,
-        "X-Content-Type-Options": "nosniff",
-        // A Workspace file is whatever the Agent last wrote to that path. Letting a browser
-        // cache it by URL is how a re-read after a settled turn paints the previous version.
-        "Cache-Control": "no-store",
-        // Not a cache validator — no-store above means nothing ever revalidates. It is the
-        // version of the bytes in this response, which the Files panel's editor hands back
-        // as `ifVersion` on save so the write can refuse to overwrite a newer file.
-        ETag: version,
+        ...commonHeaders,
+        ...(partial
+          ? { "Content-Range": `bytes ${answer.start}-${answer.end}/${data.length}` }
+          : {}),
         ...(preview && scriptable
           ? {
               "Content-Security-Policy":

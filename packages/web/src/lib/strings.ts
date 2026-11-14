@@ -4706,6 +4706,9 @@ export const zh = {
     /** The pane paints PDFs itself (features/chat/pdf-preview.tsx); these are its two states. */
     pdfLoading: "正在打开 PDF…",
     pdfFailed: "PDF 读取失败，可下载后用阅读器查看",
+    /** An mp4 past the size the pane (and the content route, which reads the file whole) will
+     *  take. Naming no way out on purpose: at this size the download link is refused too. */
+    previewVideoTooLarge: (mb: number): string => `这个视频超过 ${mb}MB，不在页面里预览`,
     uploadedCount: (n: number): string => `已上传 ${n} 个文件`,
     uploading: (done: number, total: number): string => `正在上传 ${done}/${total}…`,
     /** Oversize picks are named and skipped before anything is read. */

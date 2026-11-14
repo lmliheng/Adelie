@@ -470,12 +470,15 @@ describe("workspace-files-service", () => {
  */
 let t: TestApp;
 let owner: ReturnType<typeof apiClient>;
+let ownerCookie: string;
 let outsider: ReturnType<typeof apiClient>;
 let projectId: string;
 
 beforeAll(async () => {
   t = await createTestApp();
-  owner = apiClient(t.app, (await provisionUser(t.app, "owner")).cookie);
+  const ownerCred = await provisionUser(t.app, "owner");
+  ownerCookie = ownerCred.cookie;
+  owner = apiClient(t.app, ownerCred.cookie);
   outsider = apiClient(t.app, (await provisionUser(t.app, "outsider")).cookie);
   const created = (await (
     await owner.post("/api/projects", { projectId: "owner-ws", name: "project" })
@@ -573,6 +576,46 @@ describe("files/stat route (batch existence check)", () => {
   it("files/content is never cached: the path holds whatever the Agent last wrote", async () => {
     const res = await owner.get(`/api/sessions/${sessionId}/files/content?path=a.txt`);
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("files/content plays a video: mp4 is served as video/mp4, and a byte range comes back as a 206 slice — 416 only when it starts past the end", async () => {
+    await fs.writeFile(path.join(workspace, "clip.mp4"), "0123456789");
+    const url = `/api/sessions/${sessionId}/files/content?path=clip.mp4`;
+    // A Range header is what a `<video>` sends and apiClient's get carries none, so these are
+    // the owner's own requests with one, as the element makes them.
+    const ranged = (range: string) =>
+      t.app.request(url, { headers: { cookie: ownerCookie, range } });
+
+    // The whole read carries the real type: a player on a nosniff response refuses octet-stream.
+    const whole = await owner.get(url);
+    expect(whole.status).toBe(200);
+    expect(whole.headers.get("content-type")).toBe("video/mp4");
+    expect(whole.headers.get("accept-ranges")).toBe("bytes");
+    expect(await whole.text()).toBe("0123456789");
+
+    // What a player asks first (from the start) and again on every seek.
+    const head = await ranged("bytes=0-3");
+    expect(head.status).toBe(206);
+    expect(head.headers.get("content-range")).toBe("bytes 0-3/10");
+    expect(head.headers.get("content-type")).toBe("video/mp4");
+    expect(head.headers.get("accept-ranges")).toBe("bytes");
+    expect(await head.text()).toBe("0123");
+
+    // Open-ended runs to the file's last byte.
+    const tail = await ranged("bytes=6-");
+    expect(tail.status).toBe(206);
+    expect(tail.headers.get("content-range")).toBe("bytes 6-9/10");
+    expect(await tail.text()).toBe("6789");
+
+    // Past the end: 416 naming the size with no span — how a player learns the file shrank.
+    const past = await ranged("bytes=10-");
+    expect(past.status).toBe(416);
+    expect(past.headers.get("content-range")).toBe("bytes */10");
+
+    // An unparseable range is ignored rather than refused: the whole file, still 200.
+    const junk = await ranged("bytes=abc");
+    expect(junk.status).toBe(200);
+    expect(await junk.text()).toBe("0123456789");
   });
 
   it("files/content: the read carries a version the write demands back — a save over an Agent's rewrite is 409, not a silent overwrite", async () => {

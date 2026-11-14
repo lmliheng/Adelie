@@ -4619,6 +4619,9 @@ export const en: Strings = {
     /** The pane paints PDFs itself (features/chat/pdf-preview.tsx); these are its two states. */
     pdfLoading: "Opening the PDF…",
     pdfFailed: "The PDF could not be read; download it to open in a reader",
+    /** An mp4 past the size the pane (and the content route, which reads the file whole) will
+     *  take. Naming no way out on purpose: at this size the download link is refused too. */
+    previewVideoTooLarge: (mb: number): string => `This video is over ${mb}MB, not previewed here`,
     uploadedCount: (n: number): string => (n === 1 ? "1 file uploaded" : `${n} files uploaded`),
     uploading: (done: number, total: number): string => `Uploading ${done}/${total}…`,
     /** Oversize picks are named and skipped before anything is read. */

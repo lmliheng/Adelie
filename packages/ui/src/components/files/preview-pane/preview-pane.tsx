@@ -38,6 +38,8 @@ export type PreviewView =
   /** `reloadKey` remounts the image when the file is re-read under the same URL. */
   | { kind: "image"; src: string; alt: string; reloadKey?: Key }
   | { kind: "pdf"; src: string; title: string; reloadKey?: Key }
+  /** A video file the pane plays itself. `reloadKey` remounts it when the file is re-read under the same URL, so a rewritten video is not the one left on screen. */
+  | { kind: "video"; src: string; title: string; reloadKey?: Key }
   /** An embedded page the caller frames itself, with its own sandbox. */
   | { kind: "embed"; node: ReactNode }
   /**
@@ -101,6 +103,24 @@ function viewBody(view: PreviewView): ReactNode {
           src={view.src}
           title={view.title}
           className="h-full min-h-[60vh] w-full rounded-md border border-line"
+        />
+      );
+    case "video":
+      // The player is the pane's own, not a navigation to the file: the browser's built-in
+      // video page is a whole document away from the panel, and the panel is where a seek
+      // belongs. `controls` is the whole UI, and the element paints its own letterbox — the
+      // pane adds the same border and radius it gives an image or a PDF, nothing more.
+      return (
+        <video
+          key={view.reloadKey}
+          src={view.src}
+          title={view.title}
+          controls
+          // Metadata first: the poster frame and the duration arrive before the bytes do, so a
+          // large file does not have to be fetched for the pane to say what it is.
+          preload="metadata"
+          playsInline
+          className="max-h-full w-full rounded-md border border-line"
         />
       );
     case "embed":

@@ -112,6 +112,7 @@ import {
   DEFAULT_TEXT_FILE_NAME,
   TEXT_PREVIEW_LIMIT,
   TREE_MIN_WIDTH,
+  VIDEO_PREVIEW_LIMIT,
   WORKSPACE_UPLOAD_LIMIT_MB,
   ancestorDirs,
   baseName,
@@ -126,6 +127,7 @@ import {
   isDirty,
   isNarrowLayout,
   isWithin,
+  listingSize,
   looksLikeText,
   maxTreeWidth,
   movedListings,
@@ -215,7 +217,7 @@ function withStorageShim(html: string): string {
 interface Preview {
   path: string;
   name: string;
-  kind: "text" | "md" | "image" | "html" | "pdf" | "doc" | "unsupported";
+  kind: "text" | "md" | "image" | "html" | "pdf" | "doc" | "video" | "unsupported";
   /** Content for kind=text/md/html (may be truncated). */
   content?: string;
   truncated?: boolean;
@@ -849,6 +851,15 @@ export function WorkspaceBrowser({
       }
       if (kind === "image") {
         present({ path: filePath, name, kind: "image", nonce });
+        return;
+      }
+      // Video: the pane plays it from the content URL, which answers byte ranges so the file
+      // streams and seeks (see the server's byte-range.ts). Whether it is small enough to play
+      // is decided where the view is built, not here — this call happens before the listing
+      // that holds the size has necessarily arrived (a file opened by an `@path` reference
+      // loads its directories in the background), while the view is rebuilt on every render.
+      if (kind === "video") {
+        present({ path: filePath, name, kind: "video", nonce });
         return;
       }
       // PDF: the panel paints it itself (see features/chat/pdf-preview.tsx). Handing the file to
@@ -2316,6 +2327,22 @@ export function WorkspaceBrowser({
         alt: p.name,
         reloadKey: p.nonce,
       };
+    }
+    // Video: played from the content URL, which now streams byte ranges so seeking does not
+    // fetch the file from the start. Judged here rather than when the preview was opened: the
+    // size comes from the loaded listing, and a file opened by reference can be previewed
+    // before its directory arrives — this function runs on every render, so the answer catches
+    // up the moment the listing lands. Above the limit the content route would 413 the whole
+    // read anyway, so there is nothing to wait for and no player worth mounting.
+    if (p.kind === "video") {
+      const size = listingSize(listings, p.path);
+      if (size !== null && size > VIDEO_PREVIEW_LIMIT) {
+        return {
+          kind: "unsupported",
+          message: S.files.previewVideoTooLarge(VIDEO_PREVIEW_LIMIT / MB_BYTES),
+        };
+      }
+      return { kind: "video", src: files.fileUrl(p.path), title: p.name, reloadKey: p.nonce };
     }
     if (p.kind === "pdf") {
       // Painted here rather than embedded: the pane must not depend on the client's own PDF

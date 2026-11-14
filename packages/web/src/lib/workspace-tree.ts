@@ -313,13 +313,23 @@ const TEXT_EXTS = new Set([
 ]);
 const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "webp", "svg"]);
 const HTML_EXTS = new Set(["html", "htm"]);
+/** Containers the preview pane plays itself. MP4 only: it is the one every browser decodes. */
+const VIDEO_EXTS = new Set(["mp4"]);
+
+/**
+ * Largest video the panel will preview, in bytes — the server's `MAX_READ_BYTES`, mirrored so an
+ * mp4 the content route would refuse is refused before a player asks for it. Above this the route
+ * answers 413 `file_too_large` (the file is read whole to be served), so a preview is not on
+ * offer however long the reader waits; saying so up front is the honest version of that.
+ */
+export const VIDEO_PREVIEW_LIMIT = 50 * 1024 * 1024;
 
 /**
  * How a file previews, decided from its name. `unknown` is not "unsupported" yet: the
  * browser reads such a file's first bytes and treats it as text when they look like text
  * (a Makefile, a LICENSE, a dotfile with no extension).
  */
-export type PreviewKind = "text" | "md" | "image" | "html" | "pdf" | "doc" | "unknown";
+export type PreviewKind = "text" | "md" | "image" | "html" | "pdf" | "doc" | "video" | "unknown";
 
 /** The lowercased extension, or the whole lowercased name when it has none ("Makefile" → "makefile", ".env" → "env"). */
 export function extOf(name: string): string {
@@ -330,6 +340,7 @@ export function extOf(name: string): string {
 export function previewKindFor(name: string): PreviewKind {
   const ext = extOf(name);
   if (IMAGE_EXTS.has(ext)) return "image";
+  if (VIDEO_EXTS.has(ext)) return "video";
   if (ext === "pdf") return "pdf";
   // Word previews through the server's own text extraction (a .docx is a zip of XML, see
   // services/docx-preview.ts), read-only: a preview of a document is not its source.
@@ -353,7 +364,24 @@ export function previewKindOf(name: string): FileBrowserPreviewKind {
   // A Word document needs the server's extraction fetch, which this read-only browser does not
   // do; it names the type instead of drawing an empty pane.
   if (kind === "doc") return "unsupported";
+  // Nor does it play a video: that browser draws files it was handed a URL for, with no listing
+  // to judge a size against and no player of its own (the Files panel's preview pane has one).
+  if (kind === "video") return "unsupported";
   return kind === "unknown" ? "unsupported" : kind;
+}
+
+/**
+ * The size the loaded listings state for `path`, or null when none of them covers it — a file
+ * opened by a reference (an `@path` in a message, a search hit) whose directory was never
+ * listed. The Files panel shows a row's size from the same entries, so a preview that asks
+ * this question and a tree that shows the number always agree.
+ */
+export function listingSize(listings: Listings, path: string): number | null {
+  const cut = path.lastIndexOf("/");
+  const dir = cut < 0 ? "" : path.slice(0, cut);
+  const name = cut < 0 ? path : path.slice(cut + 1);
+  const entry = (listings.get(dir) ?? []).find((candidate) => candidate.name === name);
+  return entry === undefined ? null : entry.sizeBytes;
 }
 
 /**

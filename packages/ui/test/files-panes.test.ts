@@ -73,6 +73,24 @@ describe("PreviewPane", () => {
     expect(unsupported).toContain(">No preview for this type</p>");
   });
 
+  it("plays a video itself: a controls element, metadata preloaded, in the pane's own box", () => {
+    const html = pane({
+      kind: "video",
+      src: "https://example.test/api/sessions/s/files/content?path=clip.mp4",
+      title: "clip.mp4",
+      reloadKey: 3,
+    });
+    expect(html).toMatch(/<video[^>]*\bcontrols\b/);
+    expect(html).toContain('src="https://example.test/api/sessions/s/files/content?path=clip.mp4"');
+    expect(html).toContain('title="clip.mp4"');
+    // Metadata first: the poster frame and the duration arrive before the bytes do.
+    expect(html).toContain('preload="metadata"');
+    // Inline playback: the static renderer keeps the JSX prop's own casing.
+    expect(html).toMatch(/playsinline/i);
+    // The same box an image or a PDF gets — the element paints its own letterbox.
+    expect(classTokens(html)).toEqual(expect.arrayContaining(["border-line", "rounded-md"]));
+  });
+
   it("notes a cut-short file under the text", () => {
     const html = pane({
       kind: "source",
