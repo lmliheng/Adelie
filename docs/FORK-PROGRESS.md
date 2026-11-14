@@ -2574,6 +2574,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       被浏览器悄悄截掉后面那截**，屏幕上没有一个字说少了东西，而存下去的是被截过的那一条；正则尤其糟，截断后
       若仍编译得过去，规则匹配的就不是粘贴进来的那条。现在三个字段各自到顶时在它自己下面说出上限并说明这意味
       着什么，退一个字就一起消失；打开一条已存着 512 个字符的规则，编辑器一出现就带着它。见「第二百四十六轮」一节。
+- [x] **7.129 存储台账页的三处失败把原因留在自己的位置上，而这一页的五处写入不再说两遍**
+      （**2026-11-14 第二百四十七轮**落地，提交见「已完成的轮次」；源码 4 处（新增纯逻辑
+      `packages/web/src/features/settings/storage-failure.ts` 的 `storageFailureText`，
+      `storage-section.tsx` 的三个布尔改存句子本身、五处已有说明行的 `catch` 不再弹通知、所有失败改走
+      `refusalText`，`strings.ts` / `strings-en.ts` 三条句子改带 `reason` 的函数）＋ 1 个新单测（6 条）＋
+      1 个新 spec（3 条）＋ 既有两份存储 spec 各加一条「通知区 0 个按钮」的即时断言 ＋ changelog 一对，
+      **不碰接口、无新依赖**）：第二百四十六轮把这一族在安全策略页收完之后，`storage-section.tsx` 里还剩
+      八处 `toastError(apiErrorText(e))` —— 三处（遍历读不到、模式读不到、扫描被拒）**原因只在一条六秒的
+      通知里**，页面自己那句话不带原因；五处（开关、固定、恢复、彻底删除、执行清理）**已经各有说明行却又
+      同时弹一条**，同一次被拒说两遍，其中一遍盖在页面顶部。见「第二百四十七轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3314,6 +3324,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-13 | 7.121 | **结束终端被拒时，原因留在发问的那张卡片里 —— 而这一处以前连通知都没有过**（**2026-11-13 第二百三十五轮**落地，提交见「已完成的轮次」；源码 3 处（`terminal-list.ts`：`killTerminal` 的 DELETE 改走 `apiFetch`（非 2xx → `ApiError`、连不上 → `network_error`），被拒时清 `pendingKills`、把条目放回并重读一次列表、再把错误抛给调用方；`dock-panel.tsx`：`killConfirmed` 变 async、成功才 `removeTab` 并关卡片、被拒写 `killRefusal` 接 `refusal` 槽（`S.common.refused(refusalText(err))`），开卡片与关卡片时清掉；`terminal-page.tsx`：同样，被拒不 `window.close()`）+ 1 个新单测 `terminal-kill-refusal.test.ts`（4 条）+ 1 个新 spec `terminal-kill-refusal.spec.mjs`（3 条）+ 词典一条（`terminal_not_found` 中英）+ changelog 一对，**不碰接口、无新依赖**）：第二百三十三轮末尾点名的「发出后不等回话」那一类 —— 两张卡片都是「先问再写」的 ConfirmModal、被问的写就是那个 DELETE，可两边都 `void killTerminal(...)`；而被调用方不读 `res.ok`、空 `catch` 吞掉网络失败、还先把条目从列表里删掉从不还回来，于是被拒时标签消失、窗口关掉、Shell 仍在服务端跑着，屏幕上**一个字都没有** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 605 类型 —— 本笔不动服务契约）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **323 文件 / 3727 通过 / 2 跳过**（相对上一行台账的 319 / 3705 是 +4 文件 / +22 条，其中本笔 1 文件 / 4 条，其余来自 HEAD 上那一笔未入台账的 `43ca2f85f`）· server **212 文件 / 3110 通过 / 6 跳过** · **新单测 4 passed**（被拒的 DELETE 把条目放回并以 `terminal_not_found` 拒绝、且确实重读过列表；连不上算 `network_error` 且条目同样放回；真的落地的那次条目留在外面、URL 是 `/server/M1/api/terminals/…`；200 带 body 不算失败）· **新 spec 3 passed（9.7 s + 2.0 s + 8.9 s）**（8950 真服务端 + mock 8951 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r234-e2e`）：停靠栏终端标签的 × → 卡片里逐字「操作被拒绝：该终端已不存在或已被关闭。」、通知区 0 个按钮、七秒后仍在、标签与活着的 Shell 都还在（`GET /api/terminals` 仍列 1 条 alive）—— 放行后同一个按钮重试 204、卡片与停靠栏一起消失、Shell 数归 0；被拒后 Escape 关掉，下一次打开的卡片没有 `role="alert"`；独立 `/terminal` 窗口按 terminal.close（Ctrl+Alt+`）同样把 `internal` 那句留在卡片里、窗口不关、状态仍是 `ready`、Shell 仍活着，重试后归 0 · **反证（同一份 spec 跑改前产物）**：5 个源码文件退回 `HEAD` 重建 web、产物挂 8952（独立数据根 `/root/adelie-fork-data/r234-before`）→ **3 failed**（三条都死在卡片里找不到 `role="alert"` —— 改前卡片早已关掉）· **两态探针**（`r234/probe.mjs`，同一脚本两条腿各挂自己的 web 产物：改后 8950 / 改前 8952，`DELETE` 由 `page.route` 拒成 404 `terminal_not_found`，量 1.2 s / 7.5 s）：**改前** 两刻都是 `cardOpen:false`、`terminalTabs:0`、`dockOpen:null`、`alive:1`（Shell 还在跑，屏幕一字不提）；**改后** 两刻都是 `cardOpen:true`、卡片里一行「操作被拒绝：该终端已不存在或已被关闭。」、`notifyButtons:0`、`terminalTabs:1`、`alive:1`；截图 `r234/shots/{after,before}-{1_2s,7_5s}.png` 肉眼看过（改后卡片留着、句子在卡片内、底部停靠栏与终端仍在；改前页面上只剩对话页，停靠栏与标签都不见了）· 两态 console 只有既有的 `GET …/machines` **403** 与本轮桩的 **404**，pageerror 0 条 · 端口只用 8950 / 8951 / 8952（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r234-{e2e,before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r234/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `38c3eb528` |
 | 2026-11-13 | 7.123 | **批量归档只成功一半时，说清哪些对话没有动 —— 而且列表不再与服务器说法不一**（**2026-11-13 第二百三十七轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑 `packages/web/src/lib/batch-outcome.ts`（`splitBatchOutcome(targets, results)`：哪些落地了、哪些被拒了、第一个被拒的原因），`components/layout/sidebar.tsx`：`batchSetArchived` 由 `Promise.all` + `toastError` 改成 `Promise.allSettled` 并逐行读结果 —— 落地的行 `replace(row.value.session)`、被拒的行成为新的勾选、`已归档` 文件夹只在本条真的归档时展开、批量栏新增 `batchArchiveRefusal` 一行（`role="alert"`、危险色、占满整行，每次尝试开始 / 勾选变化 / 取消选择 / 离开批量模式时清掉）；`confirmBatchDelete` 也改用同一个拆分函数（行为不变））+ 1 个新单测 `batch-outcome.test.ts`（6 条）+ 既有 `sidebar-batch-sessions.test.ts` 加两条断言组（文案 + 批量栏的拒绝槽 + 两个动作共用拆分函数，删除那边三条因共用而改写）+ 1 个新 spec `session-batch-archive-refusal.spec.mjs`（2 条）+ 词典两对（`batchArchiveRefused` / `batchUnarchiveRefused` 中英）+ changelog 一对，**不碰接口、无新依赖**）：批量栏没有批量接口，归档与取消归档给每条勾选的对话各发一个 PATCH，可它们的回话是**整体**读的 —— 第一个被拒的行把其余每一行的回话都丢掉，服务端已经归档的行照样原样留在活动列表里（`已归档` 文件夹根本不出现），所有勾选都还留着（含已经搬走的那些），原因只在一条六秒的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 7 个改动文件 **0 警告 0 错误** · 9 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · web **325 文件 / 3739 通过 / 2 跳过**（相对上一行台账的 323 / 3727 是 +2 文件 / +12 条：本笔 1 文件 / 6 条，其余来自 HEAD 那笔未入台账的 `165725081`）· server **213 文件 / 3117 通过 / 6 跳过**（同来源 +1 文件 / +7 条）· **新单测 6 passed**（每行对自己的回话；夹在中间的拒绝不影响它后面落地的行；只保留第一个原因；整批被拒时每行都还在；结果比行短时不凭空造结果；没有对应行的结果被忽略）· **新 spec 2 passed（9.8 s + 2.0 s）**（8962 真服务端 + 8963 mock 模型 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r237-final3`）：勾两条、其中一条的 PATCH 被拒成 500 —— 那句话逐字「还有 1 个对话没有归档：session store is read-only」在批量栏里、通知区 0 个按钮、七秒后仍在、被拒的行仍勾选而落地的那条真的归档（接口读回 `archived: true`）并搬进 `已归档（1）`、勾选只剩被拒的那条 —— 随后同一个按钮重试、批量栏带着那句话一起消失、两条在服务端都 `archived: true`（PATCH 次数 2 / 1）；另一条是整批被拒时两个勾选都留着、「取消选择」把那句话一并带走、再勾一条时没有残留 · **回归**：`session-batch-delete-refusal.spec.mjs`（既有、未改）**2 passed** —— 删除那条路改用了同一个拆分函数 · **反证（同一份 spec 跑改前产物）**：`sidebar.tsx` 退回 `HEAD` 重建 web、产物挂 8966（独立数据根 `/root/adelie-fork-data/r237-before2`）→ **2 failed**（两条都死在 `getByTestId('batch-archive-refusal')` 元素不存在）· **两态探针**（`r237/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，PATCH 由 `page.route` 拒成 500 `session_store_read_only`，量 1.2 s / 7.5 s）：**改前** 两刻 `barText: null`、通知区 1 个按钮（1.2 s 时逐字「session store is read-only」）→ 7.5 s 后 0 个、`keptTicked: true` 与 **`goneTicked: true`**（服务器已经归档了它，列表却还把它当活动行、还留着勾选）、`archivedHeader: 0`（`已归档` 文件夹压根没出现）；**改后** 两刻都是批量栏里一行 `role="alert"`「还有 1 个对话没有归档：session store is read-only」、通知区 0 个按钮、`keptTicked: true` / `goneTicked: false`、`archivedHeader: 1`、`goneArchived: true`；截图 `r237/out/{after,before}-{1_2s,7_5s}.png` 与批量栏局部 `after-bar-crop.png` 肉眼看过（改后红字在栏内、下方只剩被拒那条勾着、已归档（1）里是搬走的那条；改前页顶一条白底通知、两行都还在活动列表里）· 两态 console 各只有本轮故意要的那条 500，pageerror 0 条 · 端口只用 8950–8967（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r237-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r237/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `364ea5984` |
 | 2026-11-13 | 7.124 | **项目设置里的成员写被拒时，原因留在发问的那张表上方，不再只活六秒**（**2026-11-13 第二百三十八轮**落地，提交见「已完成的轮次」；源码 2 处（新增纯逻辑 `packages/web/src/lib/member-write-refusal.ts` 的 `memberWriteRefused`，`project-dialogs.tsx` 的 `MembersSection` 新增 `refusal` 状态与表上方那行 `role="alert"`、`addMember` / `doRemove` 被拒不弹通知）＋ 词典两对（`memberAddRefused` / `memberRemoveRefused`）＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：授予与收回权限都是普通写入，被拒时屏幕上的东西一样都没少（添加框里还是那个名字、成员的整行连同「移除」按钮都还在，重试就是同一个控件），缺的只是原因 —— 它落在一条六秒后自己消失的通知里、飘在看起来没被碰过的表之上，于是**没被移出的成员与已经移出的长得一模一样**。现在两种方向都把句子留在表上方（`role="alert"`、危险色、限两行、悬停看全文），点名那个账号（这一页是名单，连着两次尝试说的是两个人）并说明名单没有变化；每次尝试开始先清掉上一次那句，落地的那次重试一并清掉，本页不再发通知。见「第二百三十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔不动服务契约）· `oxlint` 5 个改动文件 **0 警告 0 错误** · `prettier --check` 6 个文件（含 spec 与 changelog 一对）干净（首跑新单测 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **213 文件 / 3117 通过 / 6 跳过** · web **326 文件 / 3744 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 325 / 3739）· **新 spec 2 passed（9.4 s + 2.1 s）**（真服务端 8990 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r238-after`；两次拒绝都是**服务端自己给的**，不是桩：加一个不存在的账号答 404 `user_not_found`、移除一个刚被别人移出的成员答 404 `member_not_found`）：添加那条 —— 句子在表上方、逐字「没能把「ghost_…」加进成员，名单没有变化：该用户已不存在。」、`role=alert`、打完的名字还在框里、表的行数没变、通知区 **0 个按钮**、**七秒后仍在**，随后往同一个框里换一个真账号就把行加进去（行数 +1、句子归 0、服务端成员表里真有它）；移除那条 —— 句子逐字「没能把「target_…」移出成员，名单没有变化：该用户不是本项目的成员。」、那一行仍在、通知区 0 个按钮，把成员身份补回去后按**同一个按钮**就落地（行与句子一起消失）· **反证（同一份 spec 跑改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8991 与另一个一次性数据根 `/root/adelie-fork-data/r238-before` → **2 failed**，两条都死在`getByTestId("member-refusal")` 找不到 · **两态探针**（`r238/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻）：**改前** 1.2 s 通知区 1 条「该用户已不存在。」、拒绝槽 0、7.5 s 时通知区 0 条、整块屏幕一片安静（表格 2 行、框里的名字还在）；**改后** 两刻都是表上方那一行 `role=alert`、通知区 0 个按钮，表格仍是 2 行、框里仍是那个名字 · 两态 console 都只有本轮**故意造的**那一条 404（`POST …/members`），pageerror **0 条** · 截图 `r238/{before,after}-{1.2s,7.5s}.png` 肉眼看过（改前 7.5 s 那张里表上方什么都没有，改后 1.2 s 那张里红字就在「成员」标题之下、表之上）· 端口只用 8990 / 8991（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r238{,-after,-before,-after-dist,-before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r238/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `cf90349a6` |
+| 2026-11-14 | 7.129 | **存储台账页的三处失败把原因留在自己的位置上，而这一页的五处写入不再说两遍**（**2026-11-14 第二百四十七轮**落地；源码 4 处（新增纯逻辑 `features/settings/storage-failure.ts` 的 `storageFailureText`，`storage-section.tsx` 的 `failed` / `modeFailed` / `scanFailed` 三个布尔改存句子本身、五处已有说明行的 `catch` 去掉 `toastError`、所有失败改走 `refusalText`，`strings.ts` / `strings-en.ts` 三条句子改带 `reason` 的函数）＋ 1 个新单测 `storage-failure.test.ts`（6 条）＋ 1 个新 spec `storage-page-failure.spec.mjs`（3 条）＋ 既有两份存储 spec 各加一条即时读一次的 `expectNoToast` ＋ changelog 一对，**不碰接口、无新依赖**）：这一页还剩八处 `toastError(apiErrorText(e))` —— 三处（遍历读不到、清理模式/账单/回收站读不到、扫描被拒）页面自己那句话不带原因、原因只在一条六秒的通知里；五处（开关、固定、恢复、彻底删除、执行清理）已经各有说明行却又同时弹一条，同一次被拒说两遍、其中一遍盖在页面顶部。现在三处各自把服务端的话放进自己那句话里，画在自己的控件旁边（报告表头处 / 开关下面那行 / 账单块上方），五处只留说明行。见「第二百四十七轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 5 个源码/单测文件 + 3 份 spec **0 警告 0 错误** · `prettier --check` 10 个改动文件（含 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **332 文件 / 3778 通过 / 2 跳过**（相对上一行台账的 331 / 3772 是 +1 文件 / +6 条，即本笔的新单测）· **新 spec 3 passed（10.0 s + 9.7 s + 9.2 s）**（真服务端 9451 + mock 模型 9452 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r247-after2`）：三处各一条 —— 带原因的句子在页面上、通知区 0 个按钮（`expectNoToast`，先等 400 ms 让这次拒绝自己的渲染落地）、七秒后仍在；放行后同一个控件（重新测量 / 重新扫描）真的落地（报告表头出现、服务端账单数 +1）· **既有两份存储 spec 3 passed**：开关、固定、回收站三种拒绝都在，且通知区 0 个按钮 · **反证（改前产物）**：三份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9453 与另一个一次性数据根 `/root/adelie-fork-data/r247-before2` → **同一批 6 条全红**（三条死在找不到带原因的那句话；三条死在 `expectNoToast` 的 `toBe(0)`、`Received: 1`）· **两态探针**（`r247/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，三处各一组）：**改前** 1.2 s 带原因的那句 0 条 / 老句子 1 条 / 通知区 **1 个按钮**（文字就是服务端那句话），7.5 s 通知区 **0 个**、老句子仍是 1 条 —— 原因没了；**改后** 两刻都是带原因的那句 1 条（逐字「无法取得存储报告：服务器内部错误，请稍后重试。」等三句）、老句子 0 条、通知区 **0 个按钮**，模式那一组开关仍是 `aria-checked=false`（页面按「已关闭」处理，句子说明为什么）· 两态 console 都只有本轮**故意造的**那三条 500，pageerror **0 条** · 相邻回归：同批 `storage-*` 三份 spec 在改后产物上 **6 passed（59.8 s）** · 端口只用 9451 / 9452 / 9453（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r247-{after,after2,before,before2}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r247/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `1f4bbe8f5` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -26771,3 +26782,99 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 ### 提交
 
 `fix(web)` 一笔 `1ca102027`（源码 4 + 新单测 1 + 新 spec 1 + changelog 一对 = 8 个文件）；台账另起一笔。
+
+## 第二百四十七轮：存储台账页的失败只在自己的位置上说一次原因（2026-11-14，条目 7.129）
+
+### 开工自检
+
+- `git status --short` 干净，分支 `main`，`HEAD` = `90e558d87`（第二百四十六轮的台账）。
+- 同步：`git fetch origin` 两次都断在 TLS（`GnuTLS recv error (-110)`，github.com 的 https 今天不通），
+  `api.github.com` 通 —— 查 `GET /repos/lmliheng/Adelie/commits/main` 得 `90e558d87`，与本地 `HEAD`
+  同一笔，`origin/main` 也是它，于是同步这一步等价完成（没有切分支、没碰 `legacy/main`、没推 upstream）。
+- **编号**：HEAD 上那两笔（`1ca102027` / `90e558d87`）都在台账里（第二百四十六轮），没有空号要留，本轮记
+  **第二百四十七轮 / 7.129**。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧，本轮纪律不碰 `packages/desktop`）、
+  3.5 要拍板、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板；于是接第二百四十六轮「没做 / 留着」
+  那一族的邻座 —— 这一页还剩八处 `toastError`。
+
+### 为什么是这一条
+
+7.111 已经定了规则（写入被拒时原因留在发问的地方，那儿已经有了就不再另弹一条），也把当时能收的
+七处收了；`storage-section.tsx` 不在那次的范围里，于是它同时带着这一族的两半：
+
+- **三处原因没有宿主**：`measure`（遍历读不到）、`loadState`（清理模式、账单、回收站一起读不到）、
+  `scan`（扫描被拒）。页面自己那句话是固定的 ——「无法取得存储报告。」「无法读取清理模式设置，因此按
+  「已关闭」处理。」「扫描失败，没有可以审阅的账单。」—— 而服务端到底说了什么只在一条六秒的通知里。
+  这一页的第一句承诺是「没有人审阅就不移动任何东西」，它的读取与扫描正是兑现承诺的那几步：量不到就
+  没有报告可读，读不到模式就不知道能提供什么，扫不出账单就没有可审阅的东西 —— 三句话都在说「不行」，
+  却都不说为什么，而那个「为什么」六秒后就没了。
+- **五处说两遍**：开关、固定、恢复、彻底删除、执行清理都已经各有说明行（`storage-settings-refusal.ts` /
+  `storage-trash-refusal.ts`），却又各自再弹一条同样的话。同一次拒绝在屏幕上出现两次，其中一次浮在
+  页面顶部、盖住标题六秒，而且位置离发问的控件很远 —— 读者更可能读到的偏偏是那一份。
+
+### 改了什么
+
+- `packages/web/src/features/settings/storage-failure.ts`（新增）：`storageFailureText(failure, reason)`，
+  三个取值 `report` / `state` / `scan`。文件头写清为什么分三种（它们画在三个不同位置，读者要知道是哪一步
+  没答上来），以及为什么不并成一句「存储页出错了」。
+- `packages/web/src/features/settings/storage-section.tsx`：`failed` / `modeFailed` / `scanFailed` 从
+  `boolean` 改成 `string | null`（存的就是那句话），三个 `catch` 写进 `storageFailureText(...)`；五处已有
+  说明行的 `catch` 去掉 `toastError`；所有失败改走 `refusalText`（请求发出之前就失败的场合显示出它自己
+  那句话，而不是「未知错误」）；`toastError` / `apiErrorText` 的导入随之消失；`ModeRow` 的 `failed` 改成
+  `string | null` 并用 `??` 画句子；模块头注释补上这一族。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`storageFailed` / `storageModeFailed` /
+  `storageScanFailed` 改成带 `reason` 的函数，在「永远成立的那半句」后面接上原因。模式那句仍写明这一页
+  按「已关闭」处理 —— 它确实如此，模式下面的每个控件也正是因此不可用。
+- 没有接口变化、没有新依赖、服务端行为没变。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 /
+  612 类型 —— 本笔只动 `packages/web`）。
+- `oxlint` 5 个源码 / 单测文件 + 3 份 spec **0 警告 0 错误**；`prettier --check` 10 个改动文件（含 changelog
+  一对）干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** ·
+  server **214 文件 / 3121 通过 / 6 跳过** · web **332 文件 / 3778 通过 / 2 跳过**（基线 331 / 3772，+1 文件 /
+  +6 条即本笔的新单测）。
+- **新单测 6 passed**：三种失败各说各的、原因原样传递（含中文标点）、三句话互不相同、中英两种语言。
+- **新 spec 3 passed（10.0 s + 9.7 s + 9.2 s）**（真服务端 9451 + mock 模型 9452 + `/usr/bin/chromium` +
+  一次性数据根 `/root/adelie-fork-data/r247-after2`）：三处各一条 —— 带原因的句子在页面上、通知区 0 个按钮、
+  七秒后仍在；放行后同一个控件真的落地（报告表头出现 / 服务端账单数 +1）。扫描那条的「没写出账单」是问
+  服务器数的（`GET …/plans` 前后相等），不是看 DOM —— 页面会采纳服务器上最新那份账单，DOM 里本来就可能
+  有一份旧的。
+- **既有两份存储 spec 3 passed**：开关、固定、回收站三种拒绝仍在，各加了一条「通知区 0 个按钮」。它们的
+  `toHaveCount(0)` 改成 7.111 那一轮定下的 `expectNoToast`（先等 400 ms、再立刻读一次）—— 会重试的写法
+  对着一条六秒后自己过期的通知同样通过，那正是这几份用例在讲的事。
+- **反证（改前产物）**：三份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9453 与另一个一次性数据根
+  `/root/adelie-fork-data/r247-before2` → **同一批 6 条全红**：三条死在找不到带原因的那句话（改前的句子不带
+  原因），三条死在 `expectNoToast` 的 `toBe(0)` / `Received: 1`（那句重复的通知确实在）。
+- **两态探针**（`r247/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，三处各一组）：
+  **改前** 1.2 s 带原因的那句 0 条、老句子 1 条、通知区 **1 个按钮**（文字就是服务端那句话，浮在页面顶部），
+  7.5 s 通知区归 **0**、老句子仍是 1 条 —— 原因没了；**改后** 两刻都是带原因的那句 1 条（逐字「无法取得存储
+  报告：服务器内部错误，请稍后重试。」「无法读取清理模式设置，因此按「已关闭」处理：…」「扫描失败，没有可以
+  审阅的账单：…」）、老句子 0 条、通知区 **0 个按钮**，模式那一组开关仍是 `aria-checked=false`（页面按「已关闭」
+  处理，句子说明为什么）。截图 `r247/shots/{before,after}-0{1,2,3}-*-{1_2s,7_5s}.png` 肉眼看过：改前页顶多一条
+  白底通知、页面里那句话不带原因；改后通知区干净、那句话就在自己控件的位置上，无挤压无溢出。
+- 两态 console 都只有本轮**故意造的**那三条 500，pageerror **0 条**。
+- 端口只用 9451 / 9452 / 9453（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r247-{after,after2,before,before2}`，探针 / 两态产物（`after-dist` / `before-dist`）/
+  截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r247/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- 三句话沿用那一页原来那句的**墨色**（灰、与说明文字同一档），没有像写入的拒绝那样用危险色：它们是替换掉
+  一行说明、而不是在面板上新增一条告警。要改是另一件事（同一页三处一起定）。
+- 模式读不到那一处**没有重试按钮**（读取只在挂载时发生，页面上没有「重读设置」这类控件）—— 重载页面才是
+  重试，这一轮只让原因留下，没有加一个新控件。
+- `apply` 的失败仍然只在上方那条 `NoticeStrip` 里说一次（`refusalText`），它本来就没有重复的通知，这轮没动。
+- 同一族的邻座仍留着：`chat-page.tsx` 的「撤回 steering」「转到后台」（被拒的那一行随即退场，宿主要先定）、
+  设置里的更新流程；全仓其余「没有写入的确认」按 7.111 / 第二百三十一轮的判据不套。
+- 4.1–4.3（npm scope 与发布链路）与 2.5（四个上游包的去留）仍等用户拍板；3.6 仍等模型 key。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔 `1f4bbe8f5`（源码 4 + 新单测 1 + 新 spec 1 + 既有两份 spec + changelog 一对 = 10 个文件）；
+台账另起一笔。
