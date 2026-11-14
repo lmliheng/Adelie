@@ -33,7 +33,9 @@
  * retry is — and one of those three is the only deletion in the app. The mode switch and each
  * row's pin follow it as well (storage-settings-refusal.ts): neither moves optimistically, so a
  * refused one leaves its control exactly where the server has it, and the sentence says why beside
- * that control.
+ * that control. The three failures that are not about a write — the walk, the read of the mode,
+ * the scan — follow it too (storage-failure.ts): each leaves its reason where its own control is,
+ * once, instead of a six-second notification over the top of the page.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
@@ -61,12 +63,11 @@ import {
   TableHead,
   TableHeaderCell,
   TableRow,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText, refusalText } from "../../lib/api-error";
+import { refusalText } from "../../lib/api-error";
 import { formatBytes, formatDateTime } from "../../lib/format";
 import { toneInk } from "../../lib/tone";
 import {
@@ -93,6 +94,7 @@ import {
   storageUnselectClass,
 } from "./storage-review";
 import type { StorageBillGroup } from "./storage-review";
+import { storageFailureText } from "./storage-failure";
 import { storageTrashKey, storageTrashRefused } from "./storage-trash-refusal";
 import type { StorageTrashRefusal } from "./storage-trash-refusal";
 import { storageModeRefused, storagePinRefused } from "./storage-settings-refusal";
@@ -302,7 +304,7 @@ function ModeRow({
   settings: StorageSettings | null;
   busy: boolean;
   /** The settings could not be read: the switch then shows the position the page acts on (off). */
-  failed: boolean;
+  failed: string | null;
   /** A switch the server refused: the position it asked for, and why — drawn beside the switch. */
   refusal: string | null;
   onChange: (enabled: boolean) => void;
@@ -325,11 +327,7 @@ function ModeRow({
         />
       </div>
       <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-        {failed
-          ? S.settings.storageModeFailed
-          : enabled
-            ? S.settings.storageModeOn
-            : S.settings.storageModeOff}
+        {failed ?? (enabled ? S.settings.storageModeOn : S.settings.storageModeOff)}
       </p>
       {/* The switch never moved (the position comes from the server's answer, never the click), so
           this sentence is the only account of why it is still where it is — and the switch above it
@@ -759,19 +757,24 @@ export function StorageSection() {
   /** The last measurement (null until one lands) — replaced, never patched, by the next. */
   const [report, setReport] = useState<StorageReport | null>(null);
   const [busy, setBusy] = useState(false);
-  /** A measurement that failed: the page says so and offers to try again. */
-  const [failed, setFailed] = useState(false);
+  /**
+   * A measurement that failed: the page says so and offers to try again, with the reason in the
+   * same sentence. A failed walk leaves the report above (or nothing) exactly as it was, so the
+   * reason has to be drawn here rather than in a notification that dismisses itself.
+   */
+  const [failed, setFailed] = useState<string | null>(null);
 
   /** The cleanup mode, and with it the pins; null until the server has answered. */
   const [settings, setSettings] = useState<StorageSettings | null>(null);
   const [modeBusy, setModeBusy] = useState(false);
-  /** The mode's settings could not be read, so the page behaves as if it were off. */
-  const [modeFailed, setModeFailed] = useState(false);
+  /** The mode's settings could not be read, so the page behaves as if it were off — and says why. */
+  const [modeFailed, setModeFailed] = useState<string | null>(null);
 
   /** The bill under review, or null when there is none. */
   const [plan, setPlan] = useState<StoragePlanView | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [scanFailed, setScanFailed] = useState(false);
+  /** The last scan the server refused (or never reached), in the page's own sentence. */
+  const [scanFailed, setScanFailed] = useState<string | null>(null);
 
   /** The ticked paths — empty is the default a page and a fresh bill both open in. */
   const [selection, setSelection] = useState<ReadonlySet<string>>(NO_SELECTION);
@@ -803,14 +806,14 @@ export function StorageSection() {
 
   const measure = useCallback(async () => {
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     try {
       setReport((await api.adminGetStorageReport()).report);
     } catch (e) {
-      // The reason is worth a toast (403, a lost session, a dead server), but the page also has
-      // to change: a spinner that never stops claims the walk is still running.
-      setFailed(true);
-      toastError(apiErrorText(e));
+      // The page also has to change — a spinner that never stops claims the walk is still running —
+      // and the reason is drawn where the report would have been: beside the button that asked, and
+      // in the same sentence as "could not read", because that button is the retry.
+      setFailed(storageFailureText("report", refusalText(e)));
     } finally {
       setBusy(false);
     }
@@ -836,10 +839,12 @@ export function StorageSection() {
       setTrash(trashRes.entries);
       setTtlDays(trashRes.ttlDays);
       setPlan((current) => current ?? storageOpenPlan(plansRes.plans));
-      setModeFailed(false);
+      setModeFailed(null);
     } catch (e) {
-      setModeFailed(true);
-      toastError(apiErrorText(e));
+      // One sentence under the switch for all three: a mode known while the trash is not (or the
+      // reverse) would draw a half-true page, and the reason belongs beside the control whose
+      // position it had to guess.
+      setModeFailed(storageFailureText("state", refusalText(e)));
     }
   }, []);
 
@@ -871,8 +876,8 @@ export function StorageSection() {
     } catch (e) {
       // The switch snaps back to the position the server still holds (it was never moved), so the
       // reason has to stay beside it: nothing on this page changed, and the switch is the retry.
+      // Said once, here — the same sentence in a toast would outlive nothing and cover the page.
       setModeRefusal(storageModeRefused(next, refusalText(e)));
-      toastError(apiErrorText(e));
     } finally {
       setModeBusy(false);
     }
@@ -881,7 +886,7 @@ export function StorageSection() {
   const scan = async () => {
     if (scanning) return;
     setScanning(true);
-    setScanFailed(false);
+    setScanFailed(null);
     setApplied(null);
     setApplyFailed(null);
     try {
@@ -892,9 +897,9 @@ export function StorageSection() {
       setSelection(NO_SELECTION);
     } catch (e) {
       // With the mode off the server refuses this with `storage_mode_off`; the page disables the
-      // button instead, so reaching here means the mode changed elsewhere since it was read.
-      setScanFailed(true);
-      toastError(apiErrorText(e));
+      // button instead, so reaching here means the mode changed elsewhere since it was read. Either
+      // way the reason is drawn above the bill that was not written — that block is the retry.
+      setScanFailed(storageFailureText("scan", refusalText(e)));
     } finally {
       setScanning(false);
     }
@@ -917,9 +922,9 @@ export function StorageSection() {
       await Promise.all([measure(), loadState()]);
     } catch (e) {
       // A refusal here is the interesting case (a stale bill, an entry that came alive, the mode
-      // turned off elsewhere): it is kept on the page, where the selection it refused still is.
-      setApplyFailed(apiErrorText(e));
-      toastError(apiErrorText(e));
+      // turned off elsewhere): it is kept on the page, where the selection it refused still is —
+      // once, not also in a toast over the page.
+      setApplyFailed(refusalText(e));
     } finally {
       setApplying(false);
     }
@@ -942,9 +947,8 @@ export function StorageSection() {
       }
     } catch (e) {
       // The row is not pinned and nothing else about it changed, so the reason is drawn under the
-      // button that asked, in that button's own words.
+      // button that asked, in that button's own words — and nowhere else.
       setPinRefusal(storagePinRefused(path, pinned, refusalText(e)));
-      toastError(apiErrorText(e));
     } finally {
       setPinning(null);
     }
@@ -966,7 +970,6 @@ export function StorageSection() {
       // The row stays exactly as it was — same id, same size, same state — so the reason has to
       // stay with it: the same button is the retry, and a toast would be gone before it is read.
       setTrashRefusal(storageTrashRefused(key, refusalText(e)));
-      toastError(apiErrorText(e));
     } finally {
       setTrashBusy(null);
     }
@@ -988,7 +991,6 @@ export function StorageSection() {
       // This is the one deletion in the app: a person who pressed it has to be told, where they
       // pressed it, that nothing was deleted and why.
       setTrashRefusal(storageTrashRefused(key, refusalText(e)));
-      toastError(apiErrorText(e));
     } finally {
       setTrashBusy(null);
     }
@@ -1030,16 +1032,15 @@ export function StorageSection() {
         onChange={(next) => void saveMode(next)}
       />
       {report === null && (
-        <p className="text-sm text-gray-400">
-          {failed ? S.settings.storageFailed : S.settings.storageLoading}
-        </p>
+        <p className="text-sm text-gray-400">{failed ?? S.settings.storageLoading}</p>
       )}
       {report !== null && (
         <>
-          {failed && (
+          {failed !== null && (
             // A re-measure that failed leaves the previous report on screen — it is still the last
-            // truth about the disk — so the page has to say which one is being read.
-            <p className="text-xs text-gray-500 dark:text-gray-400">{S.settings.storageFailed}</p>
+            // truth about the disk — so the page has to say which one is being read, and why this
+            // one is not newer.
+            <p className="text-xs text-gray-500 dark:text-gray-400">{failed}</p>
           )}
           <ReportHeader report={report} />
           <Block title={S.settings.storageClassesTitle}>
@@ -1052,10 +1053,8 @@ export function StorageSection() {
       )}
       {enabled && (
         <Block title={S.settings.storageBillTitle}>
-          {scanFailed && (
-            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-              {S.settings.storageScanFailed}
-            </p>
+          {scanFailed !== null && (
+            <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">{scanFailed}</p>
           )}
           {plan === null ? (
             <EmptyState

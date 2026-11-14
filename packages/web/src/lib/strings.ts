@@ -599,7 +599,12 @@ export const zh = {
     storageRescan: "重新测量",
     storageRescanning: "测量中…",
     storageLoading: "正在测量…",
-    storageFailed: "无法取得存储报告。",
+    /**
+     * A measurement that could not be read: the reason is the server's own words (`refusalText`),
+     * drawn where the report would have been — a toast said it for six seconds and left a page that
+     * only said "could not read".
+     */
+    storageFailed: (reason: string): string => `无法取得存储报告：${reason}`,
     /** The class table and its columns. */
     storageClassesTitle: "按类别",
     storageColClass: "类别",
@@ -684,8 +689,9 @@ export const zh = {
     storageModeOff:
       "已关闭：本页只测量并列出磁盘上的内容，扫描、固定、移动和清空都不会发生，没有任何东西会被挪动。" +
       "这是默认状态，也不会自己改变。",
-    /** The mode's settings could not be read: the page then behaves as if it were off. */
-    storageModeFailed: "无法读取清理模式设置，因此按「已关闭」处理。",
+    /** The mode's settings could not be read: the page then behaves as if it were off, and says why. */
+    storageModeFailed: (reason: string): string =>
+      `无法读取清理模式设置，因此按「已关闭」处理：${reason}`,
     /** The hint on every write control the mode gates, so a disabled button says why. */
     storageModeRequired: "需要先开启清理模式",
     /**
@@ -707,7 +713,7 @@ export const zh = {
       "「重新扫描」会遍历数据根目录并写出一份账单，列出的条目是这次扫描的候选。" +
       "账单本身不移动任何东西：移动只发生在你勾选条目并按下「执行清理」之后。",
     storageScanEmpty: "这次扫描没有找到候选条目，因此这份账单里没有可以移动的东西。",
-    storageScanFailed: "扫描失败，没有可以审阅的账单。",
+    storageScanFailed: (reason: string): string => `扫描失败，没有可以审阅的账单：${reason}`,
     /** The bill's own header. */
     storageBillTitle: "账单",
     storageBillId: "账单编号",

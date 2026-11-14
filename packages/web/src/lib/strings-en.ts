@@ -528,7 +528,12 @@ export const en: Strings = {
     storageRescan: "Measure again",
     storageRescanning: "Measuring…",
     storageLoading: "Measuring…",
-    storageFailed: "Could not read the storage report.",
+    /**
+     * A measurement that could not be read: the reason is the server's own words (`refusalText`),
+     * drawn where the report would have been — a toast said it for six seconds and left a page that
+     * only said "could not read".
+     */
+    storageFailed: (reason: string): string => `Could not read the storage report: ${reason}`,
     /** The class table and its columns. */
     storageClassesTitle: "By class",
     storageColClass: "Class",
@@ -617,8 +622,9 @@ export const en: Strings = {
     storageModeOff:
       "Off: this page only measures and lists what is on disk — no scan, pin, move or purge happens, and nothing is moved. " +
       "This is the default, and nothing changes it on its own.",
-    /** The mode's settings could not be read: the page then behaves as if it were off. */
-    storageModeFailed: "Could not read the cleanup mode's settings, so this page treats it as off.",
+    /** The mode's settings could not be read: the page then behaves as if it were off, and says why. */
+    storageModeFailed: (reason: string): string =>
+      `Could not read the cleanup mode's settings, so this page treats it as off: ${reason}`,
     /** The hint on every write control the mode gates, so a disabled button says why. */
     storageModeRequired: "Turn the cleanup mode on first",
     /**
@@ -640,7 +646,8 @@ export const en: Strings = {
       "A scan walks the data root and writes out a bill; its entries are what this scan found. " +
       'The bill moves nothing by itself: a move happens only after you tick entries and press "Clean up".',
     storageScanEmpty: "This scan found no candidates, so this bill has nothing that could move.",
-    storageScanFailed: "The scan failed, so there is no bill to review.",
+    storageScanFailed: (reason: string): string =>
+      `The scan failed, so there is no bill to review: ${reason}`,
     /** The bill's own header. */
     storageBillTitle: "Bill",
     storageBillId: "Bill id",

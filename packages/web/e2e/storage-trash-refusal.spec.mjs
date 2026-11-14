@@ -17,6 +17,21 @@ import { ADMIN_ID, ADMIN_PASSWORD, login } from "./auth.mjs";
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
 
+/** The shared notification region: a refusal must not also land in it. */
+const notices = (page) => page.getByRole("region", { name: "通知" });
+
+/**
+ * Nothing was raised in the notification region for this refusal, read at once.
+ *
+ * `toHaveCount(0)` retries for the whole expect timeout, so it would also pass against a toast
+ * that simply expired after six seconds — the very behaviour this file is about. This reads the
+ * count once, after a short settle so the refusal's own render has landed.
+ */
+async function expectNoToast(page) {
+  await page.waitForTimeout(400);
+  expect(await notices(page).getByRole("button").count()).toBe(0);
+}
+
 /** An entry as `GET …/trash` would list one: a compact timestamp id, as a run is moved at. */
 const TRASH_ID = "20261103120000";
 
@@ -136,6 +151,8 @@ test("a refused restore or deletion says so under its row, past the toast it use
   await row.getByRole("button", { name: "恢复", exact: true }).click();
   await expect(row.getByRole("alert")).toHaveText(RESTORE_REFUSED);
   await expect(row.getByRole("alert")).toHaveCount(1);
+  // Said once, under the row: the same sentence no longer arrives as a toast as well.
+  await expectNoToast(page);
   // Still listed as it was — nothing was restored, so nothing about the row may change.
   await expect(row).toBeVisible();
   expect(writes.map((w) => w.action)).toEqual(["restore"]);

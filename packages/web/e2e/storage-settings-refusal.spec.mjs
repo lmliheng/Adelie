@@ -18,6 +18,21 @@ import { ADMIN_ID, ADMIN_PASSWORD, login } from "./auth.mjs";
 const BASE = process.env.BASE_URL;
 const MOCK = process.env.MOCK_URL;
 
+/** The shared notification region: a refusal must not also land in it. */
+const notices = (page) => page.getByRole("region", { name: "通知" });
+
+/**
+ * Nothing was raised in the notification region for this refusal, read at once.
+ *
+ * `toHaveCount(0)` retries for the whole expect timeout, so it would also pass against a toast
+ * that simply expired after six seconds — the very behaviour this file is about. This reads the
+ * count once, after a short settle so the refusal's own render has landed.
+ */
+async function expectNoToast(page) {
+  await page.waitForTimeout(400);
+  expect(await notices(page).getByRole("button").count()).toBe(0);
+}
+
 /** The one path the stubbed bill lists, and the words both refusals use for it. */
 const PATH = "workspaces/probe";
 
@@ -134,6 +149,8 @@ test("a refused cleanup-mode switch says so beside the switch, past the toast it
   await mode.click();
   const line = settings.getByRole("alert");
   await expect(line).toHaveText("关闭清理模式被拒：服务器内部错误，请稍后重试。");
+  // Said once, beside the switch: the same sentence no longer arrives as a toast as well.
+  await expectNoToast(page);
   // The switch never moved: the position is the server's answer, not the click.
   await expect(mode).toHaveAttribute("aria-checked", "true");
   expect(writes).toEqual([{ enabled: false }]);
@@ -181,6 +198,7 @@ test("a refused pin says so under the row's own button, past the toast it used t
     `固定「${PATH}」被拒：服务器内部错误，请稍后重试。`,
   );
   await expect(row.getByRole("alert")).toHaveCount(1);
+  await expectNoToast(page);
   // The button still says "固定": nothing was pinned, so nothing about the row may claim it was.
   await expect(row.getByRole("button", { name: "固定", exact: true })).toBeVisible();
   expect(writes).toEqual([{ path: PATH, pinned: true }]);
