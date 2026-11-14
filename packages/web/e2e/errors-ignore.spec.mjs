@@ -290,3 +290,119 @@ test("a refused ignore keeps the card, its sentence and every record", async ({ 
   await expect(row(page, target)).toHaveCount(0);
   expect(await readRules(page, projectId)).toHaveLength(1);
 });
+
+/**
+ * The undo is a write with two hosts, and both keep their place when it is refused.
+ *
+ * The notice under the table keeps saying how many records it hid and keeps its 撤销; the rule's
+ * row in the ignored view keeps its 取消忽略. So the retry is that same button — and the reason has
+ * to stand under it, where the press was made, rather than in a notification that dismisses itself
+ * over a page that looks as if nothing was pressed (7.19's rule). The rules are read back through
+ * the API on both sides of every step: the sentence says the records are still hidden, and only
+ * the route can tell whether they are.
+ */
+const REFUSED = { code: "errors_store_closed", message: "ignore store is closed" };
+const notifications = (page) => page.getByRole("region", { name: "通知" });
+
+/** Refuse the DELETE that undoes a rule; `page.unroute` lets it through again. */
+async function refuseUnignore(page) {
+  // `ignores/**` rather than `ignores*`: the glob's `*` stops at a slash, and the undo's URL carries
+  // the rule's id after one.
+  await page.route("**/api/projects/*/usage/errors/ignores/**", async (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: REFUSED }),
+    });
+  });
+}
+
+test("a refused 撤销 keeps the notice, its sentence and the rule", async ({ page }) => {
+  test.setTimeout(140_000);
+  const user = `ignorerefuseundo_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const { projectId, sessionId } = await prepare(page, user);
+  const target = await seedError(page, projectId, sessionId);
+
+  await page.goto("/usage");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
+  await ignoreFromRow(page, target);
+
+  const notice = page.locator("[data-ignore-notice]");
+  await expect(notice).toBeVisible();
+  await refuseUnignore(page);
+  await notice.getByRole("button", { name: "撤销", exact: true }).click();
+
+  // The sentence is inside the notice, names the class, and is not a toast: the notification
+  // region holds no dismissible button, and the notice still offers the same way back out.
+  await expect(notice.getByTestId("ignore-notice-undo-refusal")).toBeVisible();
+  await expect(notice).toContainText(REFUSED.message);
+  await expect(notice).toContainText("忽略规则还在");
+  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+  await expect(notice.getByRole("button", { name: "撤销", exact: true })).toBeVisible();
+
+  // Seven seconds later it is still there — the whole difference from the toast it used to be.
+  await page.waitForTimeout(7000);
+  await expect(notice.getByTestId("ignore-notice-undo-refusal")).toBeVisible();
+  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+
+  // Nothing moved: the rule is still the Project's one, and the records are still behind it.
+  expect(await readRules(page, projectId)).toHaveLength(1);
+  expect(await readTable(page, projectId)).toMatchObject({
+    items: expect.not.arrayContaining([expect.objectContaining({ code: target.code })]),
+  });
+
+  // The same button, let through, lands: the notice goes, the rows come back.
+  await page.unroute("**/api/projects/*/usage/errors/ignores/**");
+  await notice.getByRole("button", { name: "撤销", exact: true }).click();
+  await expect(page.locator("[data-ignore-notice]")).toHaveCount(0);
+  await expect(row(page, target).first()).toBeVisible();
+  expect(await readRules(page, projectId)).toHaveLength(0);
+});
+
+test("a refused 取消忽略 keeps its sentence on the rule's own row, and only there", async ({
+  page,
+}) => {
+  test.setTimeout(140_000);
+  const user = `ignorerefuserow_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+  const { projectId, sessionId } = await prepare(page, user);
+  const target = await seedError(page, projectId, sessionId);
+
+  await page.goto("/usage");
+  await expect(page.locator("tbody tr").first()).toBeVisible();
+  await ignoreFromRow(page, target);
+
+  await page.getByRole("button", { name: "已忽略", exact: true }).click();
+  const ruleRow = page.locator("[data-ignore-rule]").first();
+  await expect(ruleRow).toBeVisible();
+  await expect(ruleRow).toContainText(target.code);
+
+  await refuseUnignore(page);
+  await ruleRow.getByRole("button", { name: "取消忽略", exact: true }).click();
+
+  // The sentence stands with the row that asked, and the notice from the earlier ignore — still on
+  // screen, still offering its own 撤销 — does not claim this refusal as its own.
+  await expect(page.getByTestId("ignore-rule-undo-refusal")).toHaveCount(1);
+  await expect(ruleRow.getByTestId("ignore-rule-undo-refusal")).toContainText(REFUSED.message);
+  await expect(page.getByTestId("ignore-notice-undo-refusal")).toHaveCount(0);
+  await expect(notifications(page).getByRole("button")).toHaveCount(0);
+  await expect(ruleRow.getByRole("button", { name: "取消忽略", exact: true })).toBeVisible();
+
+  await page.waitForTimeout(7000);
+  await expect(ruleRow.getByTestId("ignore-rule-undo-refusal")).toBeVisible();
+
+  // Undoing nothing: one rule is still there, and the records are still held back.
+  expect(await readRules(page, projectId)).toHaveLength(1);
+  const ignored = await readTable(page, projectId, { ignored: "1" });
+  expect(ignored.items.some((i) => i.code === target.code)).toBe(true);
+
+  // Retrying on the same row lands: the rule goes, the sentence goes with it. The ignored view has
+  // nothing left to hold back, so the records are back to being listed — under 全部, the view that
+  // shows them.
+  await page.unroute("**/api/projects/*/usage/errors/ignores/**");
+  await ruleRow.getByRole("button", { name: "取消忽略", exact: true }).click();
+  await expect(page.getByText("还没有忽略规则。")).toBeVisible();
+  expect(await readRules(page, projectId)).toHaveLength(0);
+  await page.getByRole("button", { name: "全部", exact: true }).click();
+  await expect(row(page, target).first()).toBeVisible();
+});

@@ -4832,6 +4832,13 @@ export const en: Strings = {
     errorsUnignore: "Stop ignoring",
     errorsIgnoreNotice: "The records are still stored — they are only left out of the other views.",
     errorsUnignoreDone: (label: string): string => `Showing ${label} again`,
+    /**
+     * The undo's refusal, drawn under the button that asked (the notice's Undo or the rule's
+     * Stop ignoring). It says the rule is still there, because a refused undo leaves those records
+     * hidden exactly as before.
+     */
+    errorsUnignoreRefused: (label: string, reason: string): string =>
+      `Could not show ${label} again; the ignore rule is still in place and those records stay hidden: ${reason}`,
     /** After ignoring: which class went, and how many records the range on screen just lost. */
     errorsIgnoreDone: (label: string, count: number): string =>
       `Ignoring ${label} · hid ${count} record${count === 1 ? "" : "s"}`,
@@ -6058,6 +6065,8 @@ export const en: Strings = {
         "This import would overwrite or delete memories. Confirm it to continue.",
       schedule_exists: "A scheduled task with this name already exists.",
       schedule_not_found: "This scheduled task no longer exists.",
+      ignore_rule_not_found:
+        "This ignore rule no longer exists — it may already have been removed elsewhere.",
       model_not_addable:
         "This group carries its built-in models only; add the model under a custom group.",
       model_not_routable:

@@ -337,6 +337,28 @@ describe("IgnoreRulesBox", () => {
     expect(box([rule({ note: "引擎每次都会自己重连" })])).toContain("引擎每次都会自己重连");
   });
 
+  it("draws a refused 取消忽略 under the rule it was about, and under no other", () => {
+    // Two rules, one refusal: the press was about one of them, and the sentence has to stand with
+    // that row — the same text under the other row would name a rule nobody asked to undo.
+    const html = renderToStaticMarkup(
+      createElement(IgnoreRulesBox, {
+        rules: [rule(), rule({ id: 8, code: "llm_truncated" })],
+        onUnignore: () => {},
+        refusal: {
+          host: "rule",
+          id: 7,
+          text: "没能恢复 [llm] llm_retried 的异常，忽略规则还在：boom",
+        },
+      }),
+    );
+    expect(html.split('data-testid="ignore-rule-undo-refusal"').length - 1).toBe(1);
+    expect(html).toContain("忽略规则还在");
+    // The refused row keeps its way back out: the retry is that same button.
+    expect(html.split(`>${S.usage.errorsUnignore}<`).length - 1).toBe(2);
+    // No refusal in hand: nothing is drawn, as before.
+    expect(box([rule()])).not.toContain("ignore-rule-undo-refusal");
+  });
+
   // The one sentence a rule must not overstate: `[llm] llm_retried` covers every record of that
   // code, and one narrowed to a fragment covers only part of it — the list has to say which.
   for (const [locale, dict] of Object.entries({ zh, en })) {

@@ -4909,6 +4909,13 @@ export const zh = {
     errorsUnignore: "取消忽略",
     errorsIgnoreNotice: "被忽略的记录仍在库里，只是不再出现在其他视图里。",
     errorsUnignoreDone: (label: string): string => `已恢复 ${label} 的异常`,
+    /**
+     * The undo's refusal, drawn under the button that asked (the notice's 撤销 or the rule's
+     * 取消忽略). It says the rule is still there, because a refused undo leaves those records
+     * hidden exactly as before.
+     */
+    errorsUnignoreRefused: (label: string, reason: string): string =>
+      `没能恢复 ${label} 的异常，忽略规则还在、这些记录仍被隐藏：${reason}`,
     /** After ignoring: which class went, and how many records the range on screen just lost. */
     errorsIgnoreDone: (label: string, count: number): string =>
       `已忽略 ${label} · 本次隐藏 ${count} 条记录`,
@@ -6115,6 +6122,7 @@ export const zh = {
       memory_import_confirm_required: "本次导入会覆盖或删除已有记忆，请确认后继续。",
       schedule_exists: "已存在同名定时任务。",
       schedule_not_found: "该定时任务已不存在。",
+      ignore_rule_not_found: "这条忽略规则已经不存在（可能已在别处被撤销）。",
       model_not_addable: "该分组只承载内置模型，不能再添加其他模型；请在自定义分组中添加。",
       model_not_routable:
         "该模型 ID 无法按厂商分组的协议路由。厂商分组只承载内置模型；请在自定义分组中添加该模型，并选择或检测其接口协议。",

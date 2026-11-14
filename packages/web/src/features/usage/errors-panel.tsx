@@ -30,6 +30,11 @@ import {
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
+import {
+  ignoreUndoRefused,
+  type IgnoreUndoHost,
+  type IgnoreUndoRefusal,
+} from "./ignore-undo-refusal";
 import { formatDateTime } from "../../lib/format";
 import { Empty } from "./usage-charts";
 import { toneInk } from "../../lib/tone";
@@ -216,10 +221,17 @@ export function ignoreRuleText(rule: UsageErrorIgnoreRule): string {
 export function IgnoreRulesBox({
   rules,
   onUnignore,
+  refusal = null,
 }: {
   /** null while the list is not read yet (never fetched, or a read that failed) — drawn as the empty state, which is also what a Project with no rules shows. */
   rules: UsageErrorIgnoreRule[] | null;
   onUnignore: (rule: UsageErrorIgnoreRule) => void;
+  /**
+   * The refused undo to draw, under the row it is about: the rule stays listed and keeps its
+   * button, so the retry is that same button — and the reason has to stand with it rather than in
+   * a notification that dismisses itself (7.19's rule).
+   */
+  refusal?: IgnoreUndoRefusal | null;
 }) {
   return (
     <div className="mt-3 rounded-lg border border-gray-200 px-3 py-2 text-xs dark:border-gray-800">
@@ -263,6 +275,19 @@ export function IgnoreRulesBox({
                   it explains a rule that is already fully described without it. */}
               {rule.note !== null && (
                 <span className="text-gray-400 dark:text-gray-500">{rule.note}</span>
+              )}
+              {/* The refused 取消忽略, on the row that asked. `basis-full` so the sentence takes a
+                  line of its own below the rule instead of being folded in beside it. */}
+              {refusal !== null && refusal.host === "rule" && refusal.id === rule.id && (
+                <p
+                  role="alert"
+                  data-testid="ignore-rule-undo-refusal"
+                  data-tooltip={refusal.text}
+                  data-tooltip-content="text"
+                  className={`basis-full line-clamp-2 break-words ${toneInk.danger}`}
+                >
+                  {refusal.text}
+                </p>
               )}
             </li>
           ))}
@@ -539,6 +564,9 @@ export function ErrorsPanel({
     label: string;
     hidden: number;
   } | null>(null);
+  // The refused undo of a rule, keyed by that rule: the notice's 撤销 and the rule list's 取消忽略
+  // are two different places on the page, and only the one that was pressed may draw it.
+  const [undoRefusal, setUndoRefusal] = useState<IgnoreUndoRefusal | null>(null);
 
   useEffect(() => {
     if (kindFilter !== "ignored" || !canIgnore) {
@@ -602,7 +630,9 @@ export function ErrorsPanel({
   };
 
   /** Removes a rule, whichever side of the panel asked — the rule list or the notice left by the row. */
-  const unignore = async (id: number, label: string) => {
+  const unignore = async (host: IgnoreUndoHost, id: number, label: string) => {
+    // Each attempt starts clean (7.19): the last refusal was about the last press.
+    setUndoRefusal(null);
     try {
       await api.unignoreUsageErrors(projectId, id);
       setJustIgnored((current) => (current?.id === id ? null : current));
@@ -610,7 +640,10 @@ export function ErrorsPanel({
       toastSuccess(S.usage.errorsUnignoreDone(label));
       onReload();
     } catch (e) {
-      toastError(apiErrorText(e));
+      // Both hosts stay on screen — the notice keeps its 撤销, the row keeps its 取消忽略 — so the
+      // sentence goes under the one that was pressed. The host is part of the key because the
+      // notice names the same rule id the ignored view lists.
+      setUndoRefusal(ignoreUndoRefused(host, id, label, e));
     }
   };
 
@@ -677,7 +710,8 @@ export function ErrorsPanel({
       {kindFilter === "ignored" && canIgnore && (
         <IgnoreRulesBox
           rules={rules}
-          onUnignore={(rule) => void unignore(rule.id, ignoreRuleText(rule))}
+          refusal={undoRefusal}
+          onUnignore={(rule) => void unignore("rule", rule.id, ignoreRuleText(rule))}
         />
       )}
 
@@ -694,12 +728,28 @@ export function ErrorsPanel({
           </span>
           <button
             type="button"
-            onClick={() => void unignore(justIgnored.id, justIgnored.label)}
+            onClick={() => void unignore("notice", justIgnored.id, justIgnored.label)}
             className="inline-flex items-center gap-1 rounded-sm text-fg-subtle transition-colors duration-150 hover:text-fg-muted"
           >
             <GlyphIcon d={ICONS.undo} size={12} />
             {S.usage.errorsIgnoreUndo}
           </button>
+          {/* The refused undo, under the button that asked: the records are still hidden, and the
+              sentence takes a line of its own (`basis-full`) so the notice's own wording stays
+              readable above it. */}
+          {undoRefusal !== null &&
+            undoRefusal.host === "notice" &&
+            undoRefusal.id === justIgnored.id && (
+              <p
+                role="alert"
+                data-testid="ignore-notice-undo-refusal"
+                data-tooltip={undoRefusal.text}
+                data-tooltip-content="text"
+                className={`basis-full line-clamp-2 break-words ${toneInk.danger}`}
+              >
+                {undoRefusal.text}
+              </p>
+            )}
         </div>
       )}
 
