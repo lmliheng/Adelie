@@ -1654,6 +1654,13 @@ export const en: Strings = {
     commandPolicyRuleLimit: (limit: number): string =>
       `This list is at its ${limit}-rule limit — delete one to add another.`,
     /**
+     * One rule field's own ceiling (command-policy-rule-limit.ts), shown under the field once its
+     * value reaches it: the input stops taking text there, so a longer paste was cut silently —
+     * what the field holds is what gets saved.
+     */
+    commandPolicyFieldLimit: (limit: number): string =>
+      `This field stops at ${limit} characters — anything past that was not written in, so check it is still complete.`,
+    /**
      * A Save this page was refused (command-policy-save-refusal.ts), drawn above the Save button
      * that asked: one Save writes the switch and the whole rule list, so the sentence says which
      * policy the engine is still running — the controls above show the buffered draft.

@@ -1700,6 +1700,14 @@ export const zh = {
     commandPolicyRuleLimit: (limit: number): string =>
       `已达 ${limit} 条规则的上限，删除一条后才能再加。`,
     /**
+     * One rule field's own ceiling (command-policy-rule-limit.ts), shown under the field once its
+     * value reaches it. The input stops taking text there, which means a longer paste was cut
+     * without a word — so the sentence says that, not just the number: what the field holds is what
+     * gets saved, and a cut pattern may match something other than what was pasted.
+     */
+    commandPolicyFieldLimit: (limit: number): string =>
+      `已达 ${limit} 个字符的上限，超出的部分没有被写进来，请确认内容仍然完整。`,
+    /**
      * A Save this page was refused (command-policy-save-refusal.ts), drawn above the Save button
      * that asked: one Save writes the switch and the whole rule list, so the sentence has to say
      * which policy the engine is still running — the controls above show the buffered draft, not

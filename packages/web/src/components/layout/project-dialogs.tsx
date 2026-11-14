@@ -37,7 +37,11 @@ import {
   chatDefaultsSaveRefused,
   type ChatDefaultsWrite,
 } from "../../lib/chat-defaults-save-refusal";
-import { ruleLimitHint } from "../../lib/command-policy-rule-limit";
+import {
+  COMMAND_POLICY_FIELD_LIMITS,
+  ruleFieldLimitHint,
+  ruleLimitHint,
+} from "../../lib/command-policy-rule-limit";
 import { commandPolicySaveRefused } from "../../lib/command-policy-save-refusal";
 import { memberWriteRefused, type MemberRefusal } from "../../lib/member-write-refusal";
 import { toneInk } from "../../lib/tone";
@@ -874,6 +878,23 @@ function sameRule(a: CommandPolicyRuleDto, b: CommandPolicyRuleDto): boolean {
 }
 
 /**
+ * One rule field's ceiling, said under that field (command-policy-rule-limit.ts). It appears the
+ * moment the value reaches the limit — which is also the moment the browser may have cut the tail
+ * off a paste: a truncated pattern that still compiles would otherwise be saved as a rule matching
+ * something other than what was pasted, with nothing on screen having changed.
+ */
+function RuleFieldLimitNote({ testId, children }: { testId: string; children: string }) {
+  return (
+    <p
+      data-testid={testId}
+      className={`mt-1 line-clamp-2 break-words text-xs ${toneInk.attention}`}
+    >
+      {children}
+    </p>
+  );
+}
+
+/**
  * Buffered rule editor, shared by add and edit: local field state, the pattern validated
  * as a compilable regex on apply (the server re-checks — "saved" must equal "enforced").
  * Exported for test/command-policy-add-rule.test.ts, which renders it on its own.
@@ -891,6 +912,9 @@ export function RuleEditor({
   const [pattern, setPattern] = useState(initial?.pattern ?? "");
   const [desc, setDesc] = useState(initial?.description ?? "");
   const [err, setErr] = useState<string | undefined>(undefined);
+  const nameLimit = ruleFieldLimitHint("name", name.length);
+  const patternLimit = ruleFieldLimitHint("pattern", pattern.length);
+  const descLimit = ruleFieldLimitHint("description", desc.length);
 
   const apply = () => {
     const n = name.trim();
@@ -924,13 +948,18 @@ export function RuleEditor({
             label={S.project.commandPolicyRuleName}
             required
             value={name}
-            maxLength={64}
+            maxLength={COMMAND_POLICY_FIELD_LIMITS.name}
             // The editor mounts only on an explicit Add / Edit click, so taking focus is what
             // that click asked for: it puts the caret in the first field for a keyboard user,
             // and the browser's scroll-on-focus keeps the form in view on a short viewport.
             autoFocus
             onChange={(e) => setName(e.target.value)}
           />
+          {nameLimit !== null && (
+            <RuleFieldLimitNote testId="command-policy-rule-name-limit">
+              {nameLimit}
+            </RuleFieldLimitNote>
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <Input
@@ -939,7 +968,7 @@ export function RuleEditor({
             label={S.project.commandPolicyRulePattern}
             required
             value={pattern}
-            maxLength={512}
+            maxLength={COMMAND_POLICY_FIELD_LIMITS.pattern}
             {...(err !== undefined ? { error: err } : {})}
             onChange={(e) => {
               setPattern(e.target.value);
@@ -949,15 +978,27 @@ export function RuleEditor({
               if (e.key === "Enter") apply();
             }}
           />
+          {patternLimit !== null && (
+            <RuleFieldLimitNote testId="command-policy-rule-pattern-limit">
+              {patternLimit}
+            </RuleFieldLimitNote>
+          )}
         </div>
       </div>
-      <Input
-        size="sm"
-        label={S.project.commandPolicyRuleDesc}
-        value={desc}
-        maxLength={300}
-        onChange={(e) => setDesc(e.target.value)}
-      />
+      <div>
+        <Input
+          size="sm"
+          label={S.project.commandPolicyRuleDesc}
+          value={desc}
+          maxLength={COMMAND_POLICY_FIELD_LIMITS.description}
+          onChange={(e) => setDesc(e.target.value)}
+        />
+        {descLimit !== null && (
+          <RuleFieldLimitNote testId="command-policy-rule-desc-limit">
+            {descLimit}
+          </RuleFieldLimitNote>
+        )}
+      </div>
       <div className="flex justify-end gap-2">
         <Button size="sm" variant="ghost" onClick={onCancel}>
           {S.common.cancel}
@@ -979,7 +1020,9 @@ export function RuleEditor({
  * command-policy-save-refusal.ts; a success toasts "saved"); members see the effective
  * state read-only. The list dims AND disables while the master switch is off, but Save stays
  * live so the toggle itself can be saved. The route's 64-rule ceiling is enforced here too
- * (command-policy-rule-limit.ts): at 64 the count row says so and "Add rule" goes inert.
+ * (command-policy-rule-limit.ts): at 64 the count row says so and "Add rule" goes inert — and each
+ * rule field says its own length ceiling under itself once the value reaches it, because that is
+ * where a long paste gets cut.
  */
 function SecurityPolicySection({ projectId, isOwner }: { projectId: string; isOwner: boolean }) {
   const [saved, setSaved] = useState<CommandPolicyDto | null>(null);
