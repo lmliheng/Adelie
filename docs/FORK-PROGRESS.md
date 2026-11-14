@@ -26591,3 +26591,94 @@ PUT 多带一条**」：服务端看到的是旧版本才会存下的形状，�
 
 `fix(web)` 一笔 `2c5e2bba2`（源码 4 处 + 新纯逻辑 1 + 新单测 1 + 新 spec 1 + 上一轮 spec 改写 + changelog 一对
 = 9 个文件）；台账另起一笔。
+
+## 第二百四十五轮：自进化循环里正式发 0.6.8（2026-11-14，定时任务 01:00Z）
+
+### 为什么这一轮
+
+定时任务按 `/root/evolution/LOOP.md` 跑一轮：先在 `/root/adelie-fork` 跑四道门禁，再按阈值判断要不要发版。
+自 `v0.6.7`（2026-11-12）起 `main` 上落了 **16 笔用户看得见的改动**（阈值 10），四道门禁全绿 → 这一版发出去。
+github.com 与 api.github.com 这一轮都通，提交与标签都是直推，没用 Git Data API。
+
+### 这一版装了什么
+
+| 提交 | 内容 |
+| --- | --- |
+| `7dbf5e74c` | 快捷键没能保存到账号时，原因留在设置页顶部 |
+| `adf9486d2` | 快捷键没能从账号读取时，原因留在设置页顶部 |
+| `5c4aef576` | 子会话的思考等级没能钉住时，原因留在它的输入框上方 |
+| `e84167aa4` | 错误中心两张卡（清除、忽略）被拒时，原因留在卡片里 |
+| `6e13c33f7` | 会话里换模型被拒时，原因留在卡片里 |
+| `b177ece94` | 文件夹删不掉时，原因留在卡片里 |
+| `43ca2f85f` | 实时流一个字节都收不到时，页面不再停在原地（30 秒无事件重开、三条判停） |
+| `38c3eb528` | 结束终端被拒时，原因留在卡片里，标签不再提前离开 |
+| `165725081` | 左下角菜单能看到正在跑的会话，也能按天查会话花了多少 Token |
+| `364ea5984` | 批量归档只成功一半时，说清哪些对话没有动 |
+| `cf90349a6` | 项目设置里的成员写被拒时，原因留在表上方 |
+| `84f180b0d` | 一次保存写两处时，说清哪一半进了项目 |
+| `103c3095a` | 轨迹面板的「传输」默认就开着，没有轨迹的会话里也看得见 |
+| `a085c2ada` | 命令策略的保存被拒时，说清引擎仍在执行哪一份 |
+| `2c5e2bba2` | 安全策略页说出规则表的上限，到顶时把「添加规则」关掉 |
+| `37ea1dbaf` | 「用 AI 生成 id」只挑项目里的免费模型，不再走付费默认模型 |
+
+（另有 15 笔 `docs(progress)` 台账与 2 笔 README 动图，不计入阈值。）
+
+### 四道门禁
+
+`/root/adelie-fork` @ `234c9ad0c`（本轮起点的干净树），原始输出在
+`/root/evolution/runs/2026-11-14-0900/gate-*.txt`：
+
+| 门禁 | 结果 | 用时 |
+| --- | --- | --- |
+| `pnpm typecheck` | 过（八包） | 168 s |
+| `pnpm lint` | 过，0 警告 0 错误（2520 文件 / 3 规则） | 3 s |
+| `pnpm format:check` | 过（All matched files use Prettier code style） | 94 s |
+| `pnpm -r test` | **10699 通过 / 20 跳过 / 0 失败** | 262 s |
+
+逐包通过数：web 3764（跳 2）、server 3121（跳 6）、core 1456（跳 6）、ui 1103、cli 566、desktop 315、
+ui-gallery 141、amsp 72、docs 62、sandbox-wsl 32、sandbox-bwrap 29、sandbox-dsh 21（跳 1）、
+sandbox-seatbelt 17（跳 5）。
+
+发布树 `/root/rel-068`（tag `v0.6.8`）上按 `stamp → build → 四道` 的顺序重跑：build 过、typecheck 过、
+lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`ALL TESTS PASS`（整段 18 分钟，
+含 `pnpm -r build` 一次）。
+
+### 发布链（`/root/rel-068`，`git worktree add --detach v0.6.8`）
+
+| 步骤 | 结果 |
+| --- | --- |
+| 提交 `f34b702ad`（37 个版本戳 + 发布正文 1） | `git push origin main` 一次成功（`234c9ad0c..f34b702ad`） |
+| 标签 `v0.6.8` | 推送一次成功（`0ed2230b7`） |
+| `pnpm install --frozen-lockfile` | 过（5 s，store 命中） |
+| `stamp-068.sh` | VERSION 0.6.8 / BUILD_DATE 2026-11-14 / BUILD_COMMIT `f34b702ad`；install.sh·ps1 戳 v0.6.8 |
+| `pnpm -r build`（stamp 之后） | 过；`packages/core/dist` 里 `BUILD_DATE = "2026-11-14"`、`BUILD_COMMIT = "f34b702ad…"` |
+| 载荷（linux-x64 110M / universal 56M / win32-x64 144M） | 过（penguin 目录 20139 个文件） |
+| 三件安装包 + `validate-bundles.sh` | 过（成员集合、内层校验和、安装器逐字节一致、版本戳 v0.6.8） |
+| 桌面三件（AppImage 155M / deb 122M / exe 162M + blockmap + latest*.yml） | 过（未签名，EVSign 跳过）；`latest.yml` / `latest-linux.yml` 都是 0.6.8 |
+| npm **29 个名字** | 29 个成功、0 跳过、0 失败，`PUBLISH-ALL-DONE`（约 2 分钟） |
+| 草稿 Release → 14 件并发上传 → 逐件核 digest → 发布 | 14 件 uploaded、digest 与本地 sha256 全一致；`releases/latest` = v0.6.8（`2026-11-14T01:47:01Z`） |
+| 3003 下载区 `index.json` | 换到 v0.6.8（6 件，旧清单留 `.bak-20261114-v067`），本机那份 Windows 包一并换掉 |
+| 冒烟：`npm install --prefix /tmp/smoke-068 @adelie/cli@0.6.8` | 装成；`penguin --version` = v0.6.8，server/core 都是 0.6.8 |
+| Release 上的 `install.sh` | 取回 19642 B，`EMBEDDED_RELEASE_VERSION="v0.6.8"`，sha256 与本地一致 |
+
+### 这一轮踩到的
+
+- **`@adelie/server@0.6.8` 又是一次「发布了但元数据要等」。** 09:40 发布成功，09:41 版本端点 404、
+  **tarball 却已经 200**，packument 里连 0.6.8 都还没有；09:46 版本端点 200。约 6 分钟，比上一版的 15 分钟短。
+  期间 `npm stage list` 是空的（不是暂存），登录态 packument 的 `time.modified` 还停在 11-12 ——
+  别被它骗成「没发出去」。
+- **npm 客户端自己的缓存也会让 `npm install @adelie/cli@0.6.8` 报 `ETARGET`**：元数据已经在注册表上，
+  但本地 npm 缓存里的 packument 还是旧的。加 `--prefer-online` 就好了；冒烟那一步第一次就是这么失败的。
+- 其余照抄上一版的顺序没有新坑：`stamp → build → 载荷 → 安装包 → 桌面 → npm → Release`；
+  `bundles-068.sh` 之后记得把 `install.sh`/`install.ps1` 补进 `dist-artifacts/`，`upload_rest.py` 的 14 件清单要它。
+
+### 没做 / 留着
+
+- **现网 `/root/.adelie`（7777）没有换装、也没有重启。** 本会话就跑在 `adelie-server.service` 里，
+  重启会把这一轮掐死；换装与重启是要用户点头的事。
+- `/root/rel-068` 发布树与 `/tmp/smoke-068` 收尾时清掉。
+- `/root/evolve-1108`、`/root/rel-head`、`/root/rel-transport-fix` 三个旧工作树仍在（不是这一轮的，没动）。
+
+### 提交
+
+`chore(release)` 一笔 `f34b702ad`（37 个版本戳 + `docs/releases/RELEASE-v0.6.8.md` = 38 个文件）；台账另起一笔。
