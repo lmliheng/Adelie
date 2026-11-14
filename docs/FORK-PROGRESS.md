@@ -2564,6 +2564,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       只换来一句 `rules exceeds 64 entries.`，而这一页既不说明也不拦：计数行只写「规则 · 64」，「添加规则」
       照样亮着、表单照样打开，规则能填、能保存，然后被拒 —— 上限是那句拒绝第一次提到的，且说在被拒之后。
       现在到顶时计数行说出它、入口同一刻变灰（删掉一条后两者一起回来）。见「第二百四十四轮」一节。
+- [x] **7.128 安全策略页的三个规则字段说出自己的长度上限，并说清超出的那截没有被写进来**
+      （**2026-11-14 第二百四十六轮**落地，提交见「已完成的轮次」；源码 4 处（`command-policy-rule-limit.ts`
+      多 `COMMAND_POLICY_FIELD_LIMITS` 与 `ruleFieldLimitHint`，`project-dialogs.tsx` 的 `RuleEditor` 三个
+      `maxLength` 改读常量、每个字段下多一行提示，模块与 `SecurityPolicySection` 的头注释跟上）＋ 词典一句
+      （中英）＋ 1 个新单测（8 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：
+      第二百四十四轮末尾点名的下一处。那条记的是「名称 64 / 正则 512 / 描述 300 仍只在 `maxLength` 上、
+      要不要搬同一套等有人撞上再说」—— 这一轮认定它就是真缺陷：上限落在输入框上意味着**粘贴的一段更长文本
+      被浏览器悄悄截掉后面那截**，屏幕上没有一个字说少了东西，而存下去的是被截过的那一条；正则尤其糟，截断后
+      若仍编译得过去，规则匹配的就不是粘贴进来的那条。现在三个字段各自到顶时在它自己下面说出上限并说明这意味
+      着什么，退一个字就一起消失；打开一条已存着 512 个字符的规则，编辑器一出现就带着它。见「第二百四十六轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -26425,6 +26435,7 @@ retry"，也就是上一轮记下的那一族里最后一处「有宿主、却�
 `fix(web)` 一笔（源码 4 + 新单测 1 + 新 spec 1 + changelog 一对 = 8 个文件）；台账另起一笔。
 | 2026-11-14 | 7.126 | **命令策略的保存被拒时，原因留在保存按钮那一行，并说清引擎仍在执行哪一份**（**2026-11-14 第二百四十一轮**落地，提交见「已完成的轮次」；源码 4 处（新增纯逻辑 `packages/web/src/lib/command-policy-save-refusal.ts` 的 `commandPolicySaveRefused`（`{ enabled, savedEnabled }` → 那句话，原因走 `refusalText`），`project-dialogs.tsx` 的 `SecurityPolicySection`：`save()` 不再 `toastError` 而是填 `saveRefusal`、每次尝试先清、切项目一并清，句子 `data-testid="command-policy-refusal"`、`role="alert"`、限两行、悬停看全文，画在**保存按钮那一行**的左侧，而不是压在它上方）＋ 词典三句（开关仍启用 / 开关仍停用 / 存下来的策略没被动过，中英）＋ 1 个新单测（6 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百三十九轮末尾点名的那最后一处 —— 这一页一次 Save 整块 PUT「主开关 + 全部规则」，被拒时屏幕上的控件显示的是引擎**没有在跑**的那一份（刚关掉拦截的人以为下一条命令不会被挡，刚加 deny 规则的人以为它在生效），而拒绝只落在一条六秒通知里、念的是错误自己的话 | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）· `oxlint` 6 个改动文件 **0 警告 0 错误** · `prettier --check` 8 个文件（含 spec 与 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **213 / 3117 / 6 跳过** · web **329 文件 / 3759 通过 / 2 跳过**（+1 文件 / +6 条即本笔，基线 328 / 3753）· **新单测 6 passed**（被拒的关掉说仍启用；被拒的打开说仍停用；开关没动时不声称它变过；映射过的码念界面语言；无话可说落通用文案；跟随当前词典）· **新 spec 2 passed（10.1 s + 2.7 s）**（真服务端 8994 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r241-after`；两次拒绝都是服务端自己的答话：路由把规则上限写成 `MAX_RULES = 64`，spec 先用 API 把项目物化到 64 条（长 deny 列表本来就会到的状态），草稿再通过表单加进第 65 条 —— ① 同时把主开关也关掉：句子逐字「没能保存命令策略，命令拦截仍处于启用状态（规则也还是上一次保存的）：rules exceeds 64 entries.」、`role=alert`、通知区 **0 个按钮**、七秒后仍在、`GET command-policy` 与之前 `toEqual` 相同（仍启用、仍 64 条），把表恢复到上限内后按**同一个按钮**即落地；② 只动规则表：句子只说「项目里仍是上一次保存的那一份」、**不含「启用状态」/「停用状态」**、存下来的策略 `toEqual` 之前那份，重试即落地）· **反证（同一份 spec 跑改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂在 8995 与另一个一次性数据根 `r241-before` 跑同一份 spec → **2 failed**，两条都死在 `getByTestId("command-policy-refusal")` 找不到
 | 2026-11-14 | 7.127 | **安全策略页说出规则表的上限，并在到顶时把「添加规则」关掉**（**2026-11-14 第二百四十四轮**落地，提交见「已完成的轮次」；源码 4 处（新增纯逻辑 `packages/web/src/lib/command-policy-rule-limit.ts` 的 `COMMAND_POLICY_RULE_LIMIT` 与 `ruleLimitHint`，`project-dialogs.tsx` 的 `SecurityPolicySection` 把句子画在计数行、「添加规则」的 `disabled` 加上同一条，模块头注释改正「失败弹通知」那句）＋ 词典一句（中英）＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ 上一轮 spec 那两条用例的触发方式改写 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百四十一轮末尾点名的那一处 —— 服务端把一份策略限制在 64 条，第 65 条只换来一句 `rules exceeds 64 entries.`，而页面既不说明也不拦：计数行只写「规则 · 64」，「添加规则」照样亮着，表单打开、规则能填能保存，然后被拒，上限是那句拒绝第一次提到的、且说在被拒之后 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 7 个改动文件 **0 警告 0 错误** · `prettier --check` 9 个文件（含 spec 与 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 / 3121 / 6 跳过**（上一轮记的 213 / 3117 之后另有一笔 server 提交）· web **330 文件 / 3764 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 329 / 3759）· **新单测 5 passed**（放得下时什么都不说；到顶说出上限且句子里有那个数字；已超出也照样说；跟随当前词典；常量等于服务端路由里的 `MAX_RULES`——读服务端源码对账）· **新 spec 2 passed（5.8 s + 5.5 s）**（真服务端 8996 + 真浏览器 `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r242-after`；页面先关掉空数据根上的「尚未配置模型 credential」引导）：64 条时句子在、`添加规则` **`disabled`**、点它不开表单；删掉一条后句子消失、按钮可点、表单真打开；63 条时什么都不说、按钮可点· **上一轮 spec 改触发后 2 passed（13.6 s + 6.2 s）**：护栏封住「表单加第 65 条」，改成「API 存 63 条 → 表单补到 64 → 出站 PUT 多带一条」，服务端照旧用**自己的**校验答 400 `rules exceeds 64 entries.`，两条断言一字未改· **反证（改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂 8997 与另一个一次性数据根 `r242-before` 跑新 spec → **1 failed / 1 passed**：到顶那条死在 `getByTestId("command-policy-rule-limit")` 找不到（未到顶那条在改前本就成立，属预期）· **两态探针**（`r242/probe.mjs`，同一脚本两条腿各挂自己的产物，先经 API 存 64 条）：**改前** 64 条 → 句子 0 条、`添加规则` `disabled=false`、点它 **`formOpened=true`**（正是缺口）；**改后** 64 条 → 句子逐字「已达 64 条规则的上限，删除一条后才能再加。」、`disabled=true`、`formOpened=false`；两态在 63 条时读数一致（句子 0、按钮可点、表单开）；两态 console **0 error / 0 pageerror**；截图四张肉眼看过（`r242/shots/{before,after}-{64,63}.png`：改前「添加规则」是深色可点、整页没有一句上限；改后那句琥珀色就压在计数旁边、按钮变灰，布局无挤压）· 端口只用 8996 / 8997 / 8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r242{-after,-before,-before-dist}`，探针 / 两态产物 / 截图 / 临时 playwright 配置（`r242/`）都在 scratchpad 里（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `2c5e2bba2` |
+| 2026-11-14 | 7.128 | **安全策略页的三个规则字段说出自己的长度上限，并说清超出的那截没有被写进来**（**2026-11-14 第二百四十六轮**落地，提交见「已完成的轮次」；源码 4 处（`packages/web/src/lib/command-policy-rule-limit.ts` 新增 `COMMAND_POLICY_FIELD_LIMITS` 与 `ruleFieldLimitHint`（未到顶 `null`、到顶含超出时是那句话），`components/layout/project-dialogs.tsx` 的 `RuleEditor` 三个 `maxLength` 改读常量、每个字段下多一行 `data-testid="command-policy-rule-{name,pattern,desc}-limit"` 的告警色提示，模块与 `SecurityPolicySection` 两处头注释跟上）＋ 词典一句（中英）＋ 1 个新单测（8 条）＋ 1 个新 spec（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百四十四轮末尾点名的下一处 —— 服务端把一条规则的名称 / 正则 / 描述分别限在 64 / 512 / 300 个字符，页面的三个输入框也带着同样的 `maxLength`，而上限落在输入框上意味着**粘贴的一段更长文本会被浏览器悄悄截掉后面那截**：屏幕上没有一个字说少了东西，存下去的却是被截过的那一条；正则尤其糟，截断后若仍编译得过去，这条规则匹配的东西就不是粘贴进来的那条，「存下来了」不再等于「我写下的那一份」。现在三个字段各自到顶时在**它自己下面**说出上限并说明这意味着什么（超出的部分没有被写进来、请确认内容仍然完整），退一个字离开上限那句话一起消失；打开一条已经存着 512 个字符的规则，编辑器一出现就带着它 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 6 个改动文件 **0 警告 0 错误** · `prettier --check` 8 个文件（含 spec 与 changelog 一对）干净（两个新文件首跑 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **331 文件 / 3772 通过 / 2 跳过**（+1 文件 / +8 条即本笔，基线 330 / 3764）· **新单测 8 passed**（未到顶什么都不说；到顶说出上限且句子里有那个数字；已超出照样说；那句话讲的是「被截掉了什么」而不只是一个数字（中英各一）；三个常量等于服务端路由的 `MAX_RULE_*_LEN`——读服务端源码对账；三个输入框的 `maxLength` 就是这三个数（React SSR 保留 `maxLength` 的拼写）；打开一条名称已到顶的规则时只有名称那一行说话；三个都短时一行都没有）· **新 spec 2 passed（2.8 s + 5.5 s）**（真服务端 8999 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r246`；空数据根不需要模型 key —— 即 3.6 那个卡点）：往正则框里**用键盘**（`insertText`，不是 `fill()`——那会把值写超过上限，是真实浏览器不会产生的状态）粘贴 632 个字符 → 值停在 **512**、那句话在、**只有它一个字段在说**、退一个字（Backspace）后 0 条；名称 74 → 64、描述 340 → 300 同样到顶；另一条打开存着 512 个字符的规则 —— 编辑器一出现那句话就在（值就是会存下去的那份），编辑器用「取消」关掉、这一 spec 不写盘 · **反证（改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂 **8998** 与另一个一次性数据根 `/root/adelie-fork-data/r246-before` 跑同一份 spec → **2 failed**（两条都在 `getByTestId("command-policy-rule-pattern-limit")` 上 `element(s) not found`）· **视觉探针**（`r246/probe.mjs`，真服务端 + 真浏览器，改后产物）：打开 512 字符那条 → 提示逐字「已达 512 个字符的上限，超出的部分没有被写进来，请确认内容仍然完整。」、类名带 `text-amber-600 dark:text-amber-400`、名称行 0 条；表单里键入 632 个字符 → `valueLength: 512`、同一句话在；退一格后 0 条；`logs` 空（console 0 error / 0 warning、pageerror 0 条）；截图 `r246/shots/{after-opened-at-ceiling,after-paste-cut}.png` 肉眼看过（琥珀色那行就压在正则框下面、在名称/正则那一行的同一列里，描述框与按钮未被挤压、无溢出）· 端口只用 8999 / 8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r246{,-before}`，探针 / 两态产物（`r246/{after,before}-dist`）/ 截图 / 临时 playwright 配置都在 scratchpad 的 `r246/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `1ca102027` |
 
 ## 第二百四十一轮：命令策略的保存被拒时，说清引擎仍在执行哪一份（2026-11-14，条目 7.126）
 
@@ -26682,3 +26693,81 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 ### 提交
 
 `chore(release)` 一笔 `f34b702ad`（37 个版本戳 + `docs/releases/RELEASE-v0.6.8.md` = 38 个文件）；台账另起一笔。
+
+## 第二百四十六轮：安全策略页的三个规则字段说出自己的长度上限（2026-11-14，条目 7.128）
+
+### 开工
+
+- `git status --short` 干净，`main` 上是 `d2d4f67f4`（第二百四十五轮的台账，记录自进化循环里正式发 0.6.8）。
+- 同步：`git fetch origin` 两次被掐（一次 `GnuTLS recv error (-110)`、一次 443 连不上、约 134 秒后超时），
+  `git ls-remote` 通了一次；`git merge --ff-only origin/main` 报 `Already up to date`，本地 `origin/main` 就是
+  `d2d4f67f4`。开工时工作区干净，`ps` 里没有别的线在本树上跑。
+- **编号**：HEAD 上那四笔（`2c5e2bba2` / `234c9ad0c` / `f34b702ad` / `d2d4f67f4`）都已在台账里（第二百四十四 /
+  二百四十五轮），没有空号要留，本轮记 **第二百四十六轮 / 7.128**。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧，本轮纪律不碰 `packages/desktop`）、3.5 要
+  用户拍板、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 等用户拍板；于是接第二百四十四轮「没做 / 留着」点名的
+  下一处。
+
+### 为什么是这一条
+
+上一轮临走时把「名称 64 / 正则 512 / 描述 300 只是输入框上的 `maxLength`」记成「等有人撞上再说」。这一轮认定它
+就是真缺陷，理由不是「少了一句说明」，而是**上限落在输入框上会改写用户输入**：粘贴一段更长的文本时，浏览器
+把超出上限的尾巴直接丢掉，屏幕上没有任何东西变了样子（值就是从上限那一刻起不再变长），于是一段 632 个字符的
+正则被保存成 512 个字符的那条。截断后若还能编译（绝大多数正则都还能），这条规则匹配的东西就不再是粘贴进来的
+那条 —— 而这张表是**否决什么命令**的名单，一条悄悄变过的正则在安全页上是最不该发生的事。同一页的另两个字段
+（名称、描述）也一样静默，只是后果轻一些。
+
+这一族的规则（7.95 起）是「原因留在发问的那个入口旁边」。这里的「原因」就是上限本身，所以句子落在**那个字段
+自己下面**，而不是页顶或通知区。
+
+### 改了什么
+
+- `packages/web/src/lib/command-policy-rule-limit.ts`：新增 `COMMAND_POLICY_FIELD_LIMITS`（镜像服务端
+  `MAX_RULE_NAME_LEN` / `MAX_RULE_PATTERN_LEN` / `MAX_RULE_DESCRIPTION_LEN`）与
+  `ruleFieldLimitHint(field, length)` —— 未到顶是 `null`，到顶（含已经超出）是那句话。模块头注释重写：把列表
+  上限（上一轮的 `ruleLimitHint`）与字段上限分成两种沉默说清。上一轮那份「读服务端源码对账」的手法照用。
+- `packages/web/src/components/layout/project-dialogs.tsx` 的 `RuleEditor`：三个 `maxLength` 改读常量，每个
+  字段下多一行提示（新增本地组件 `RuleFieldLimitNote`，`data-testid="command-policy-rule-{name,pattern,desc}-limit"`、
+  告警色 `toneInk.attention`、最多两行）；`SecurityPolicySection` 与模块的两处头注释补上这一层。
+- 词典（`strings.ts` / `strings-en.ts`）：一句带数字的说明，说的是「超出的部分没有被写进来」而不只是数字。
+- 没有接口变化、没有新依赖、服务端行为没变。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）。
+- `oxlint` 6 个改动文件 **0 警告 0 错误**；`prettier --check` 8 个文件（含 spec 与 changelog 一对）干净
+  （两个新文件首跑 `--write` 一次，复检通过）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** ·
+  server **214 文件 / 3121 通过 / 6 跳过** · web **331 文件 / 3772 通过 / 2 跳过**（+1 文件 / +8 条即本笔，
+  基线 330 / 3764）。
+- **新单测 8 passed**：未到顶什么都不说；到顶说出上限且句子里有那个数字；已超出（旧数据）照样说；那句话讲的是
+  「被截掉了什么」而不只是一个数字（中英各一）；三个常量等于服务端路由的三个常量（读服务端源码对账）；三个输入
+  框的 `maxLength` 就是这三个数（React 的 SSR 保留 `maxLength` 的拼写 —— 第一次写成小写红了，改回后过）；打开一条
+  名称已到顶的规则时只有名称那一行说话；三个字段都短时一行都没有。
+- **新 spec 2 passed（2.8 s + 5.5 s）**（真服务端 8999 + `/usr/bin/chromium` + 一次性数据根
+  `/root/adelie-fork-data/r246`）：往正则框里**用键盘**粘贴 632 个字符（`insertText`，不用 `fill()` —— 后者会把值
+  写超过上限，那是真实浏览器不会产生的状态）→ 值停在 **512**、那句话在、**只有它一个字段在说**、退一个字之后
+  0 条；名称 74 → 64、描述 340 → 300 同样到顶；另一条打开存着 512 个字符的规则 —— 编辑器一出现那句话就在（屏幕上
+  那份值本来就是会存下去的那份），用「取消」关掉、这一 spec 不写盘。
+- **反证（改前产物）**：`project-dialogs.tsx` 退回 `HEAD`、重建 web、产物挂 8998 与另一个一次性数据根
+  `r246-before`，跑同一份 spec → **2 failed**，两条都死在那两个 `data-testid` 上 `element(s) not found`。
+- **视觉探针**（`r246/probe.mjs`，改后产物）：打开 512 字符那条 → 提示逐字「已达 512 个字符的上限，超出的部分没有
+  被写进来，请确认内容仍然完整。」、类名带 `text-amber-600 dark:text-amber-400`、名称行 0 条；表单里键入 632 个
+  字符 → 值 512、同一句话在；退一格后 0 条；`logs` 空（console 0 error / 0 warning、pageerror 0 条）。截图
+  `r246/shots/{after-opened-at-ceiling,after-paste-cut}.png` 肉眼看过：琥珀色那行就压在正则框下面、与它同一列，
+  描述框与按钮没被挤压、无溢出。
+- 端口只用 8999 / 8998（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r246{,-before}`，探针 / 两态产物 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r246/` 下。
+
+### 没做 / 留着
+
+- 字段上限本身仍只在输入框上拦（没有改成「先写进去、保存时再报错」）—— 这一轮补的是那句话，不是换实现。
+- 「恢复默认」与「保存」不受这些提示影响：恢复默认会把列表变短、不改字段值；上限由输入框自己挡，保存永远看到的是
+  合法长度。
+- 4.1–4.3（npm scope 与发布链路）与 2.5（四个上游包的去留）仍等用户拍板；3.6 仍等模型 key。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+`fix(web)` 一笔 `1ca102027`（源码 4 + 新单测 1 + 新 spec 1 + changelog 一对 = 8 个文件）；台账另起一笔。
