@@ -1,7 +1,7 @@
 # Adelie 仓库文档
 
 Adelie 这个 fork 自己的说明文档都放在这个目录里，仓库根只留约定俗成的那几份
-（`README.md` / `README.zh.md`、`CHANGELOG.md` / `CHANGELOG.zh.md`、`THIRD-PARTY-NOTICES.md`、`LICENSE`）。
+（`README.md` / `README.en.md`、`CHANGELOG.md` / `CHANGELOG.zh.md`、`THIRD-PARTY-NOTICES.md`、`LICENSE`）。
 
 | 文件                                       | 讲什么                                                            |
 | ------------------------------------------ | ----------------------------------------------------------------- |
@@ -11,7 +11,7 @@ Adelie 这个 fork 自己的说明文档都放在这个目录里，仓库根只�
 
 仓库里别处的文档：
 
-- `README.md` / `README.zh.md`（仓库根）——项目门面：卖点、安装、系统需求。
+- `README.md` / `README.en.md`（仓库根）——项目门面：卖点、安装、系统需求；中文是默认语言，英文在 `README.en.md`。
 - [`../packages/docs/`](../packages/docs/)——面向用户的文档站（`pnpm dev:docs`），内容是
   `packages/docs/content/<slug>.<zh|en>.md`，导航由 `src/lib/nav.ts` 定义。
 - [`../CHANGELOG.md`](../CHANGELOG.md)——每个版本一行，链到对应的 `changelog/<版本>/`。

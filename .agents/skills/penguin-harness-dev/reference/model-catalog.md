@@ -48,7 +48,7 @@ is — a single coloured glyph in that row reads as a mistake.
 
 **Moving the default reaches further than adding a model.** `defaultProjectConfig()` in
 `packages/core/src/state/project-config.ts` holds it, and six documented first-run commands pin it
-by hand — `README.md`, `README.zh.md`, and `quickstart-cli` / `quickstart-sdk` in both languages —
+by hand — `README.md`, `README.en.md`, and `quickstart-cli` / `quickstart-sdk` in both languages —
 each ending `--set-default`, which writes `default_model`. Leave them on the old id and the
 documented first run silently undoes the change on every fresh install. The `models` and
 `configuration` samples carry it in two places that must move together, the `default_model` line

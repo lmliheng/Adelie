@@ -289,18 +289,18 @@ const README_TABLES = [
     heading: (c: PluginCategory) => c.title,
     optional: false,
   },
-  // Adelie (2026-10-05): the English root README no longer repeats this table — its body was
-  // reduced to the header block on purpose, so the file is allowed to carry no table at all.
-  // Only its ABSENCE is tolerated: put a table back and the guard below re-arms on it.
+  // Adelie (2026-11-14): Chinese became the root README and the English one moved to
+  // README.en.md. The English file is allowed to carry no table at all; only its ABSENCE is
+  // tolerated — put a table back and the guard below re-arms on it.
   {
-    label: "README.md",
-    file: "../../../README.md",
+    label: "README.en.md",
+    file: "../../../README.en.md",
     heading: (c: PluginCategory) => c.title,
     optional: true,
   },
   {
-    label: "README.zh.md",
-    file: "../../../README.zh.md",
+    label: "README.md",
+    file: "../../../README.md",
     heading: (c: PluginCategory) => c.titleZh ?? c.title,
     optional: false,
   },
