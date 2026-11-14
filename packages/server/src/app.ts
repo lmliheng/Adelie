@@ -394,7 +394,11 @@ export function createApp(boot: ServerBoot): Hono<AppEnv> {
   });
   app.notFound((c) => c.json(errorBody("not_found", "Endpoint does not exist."), 404));
 
-  // Request logging: a minimal one-liner (method path status ms).
+  // Request logging: a minimal one-liner (method path status ms). This is the only access log:
+  // it wraps the platform's HTTP surface, so that surface must not log the same request again
+  // (src/http/app.ts). A logger in both layers wrote two lines per request — doubling the log
+  // and, where the platform declines a path this layer goes on to serve, naming a status the
+  // client never saw.
   app.use("*", async (c, next) => {
     const start = performance.now();
     await next();

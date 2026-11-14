@@ -2,7 +2,7 @@ import { Interface, Module, Provide, Use } from "@adelie/core/kernel";
 import type { Opaque, Slot, ClassCtx } from "@adelie/core/kernel";
 import { Hono } from "hono";
 import type { AppEnv } from "../auth/middleware.js";
-import { Config, Log } from "../hmr/capabilities.js";
+import { Config } from "../hmr/capabilities.js";
 import type { MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { authMiddleware, jsonOnlyWrites } from "../auth/middleware.js";
@@ -42,7 +42,6 @@ export interface HttpSlots {
 @Module()
 export class HttpModule {
   @Use() private readonly config!: Config;
-  @Use() private readonly log!: Log;
   @Use() private readonly auth!: Auth;
   @Use() private readonly errors!: Errors;
   @Use() private readonly settings!: Settings;
@@ -64,13 +63,10 @@ export class HttpModule {
       return handleError(normalized, c);
     });
     app.notFound(() => declined());
-    app.use("*", async (c, next) => {
-      const start = performance.now();
-      await next();
-      this.log.line(
-        `${c.req.method} ${c.req.path} ${c.res.status} ${Math.round(performance.now() - start)}ms`,
-      );
-    });
+    // No access log here: the host layer wraps this app and logs every request once with the
+    // status the client actually gets (src/app.ts). A logger here too wrote a second line for
+    // each request — and for a path this surface declines, one naming the decline's 404 while
+    // the host went on to answer the file it found.
     // The same header the host layer puts ahead of its copies of these two checks (src/app.ts):
     // their refusals answer before the Agent API's group runs, and a browser caller must read the
     // code, not a CORS failure.
