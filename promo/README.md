@@ -29,7 +29,20 @@ npm run render     # 出整片 out/adelie-promo.mp4
 npx remotion still Promo out/f430.png --frame=430
 ```
 
-整片渲染在 8 核 / 无 GPU 的机器上约 20 分钟（`concurrency 4`，SwiftShader 软渲染）。
+整片渲染在 8 核 / 无 GPU 的机器上大约 15–20 分钟（SwiftShader 软渲染）。**这台机器的
+Chromium 会在 3–5 分钟后崩掉**（渲染器进程消失、node 端一直等，没有报错），整片一次渲不完，
+所以带了一个分段脚本：每段 150 帧、每段一个全新的浏览器，崩了就重试，最后用图片序列拼回 1800 帧。
+
+```bash
+./render-chunks.sh              # 出 out/chunks/c-*.mp4，坏了就重试
+```
+
+拼接要走图片序列（各段的容器时长有 1–2 帧的误差，直接 `-c copy` 拼会多出重复帧）：
+
+```bash
+for f in out/chunks/c-*.mp4; do ffmpeg -i "$f" -vsync 0 -q:v 1 -start_number $n out/seq1/f%05d.jpg; done
+ffmpeg -framerate 30 -i out/seq1/f%05d.jpg -c:v libx264 -crf 20 -pix_fmt yuv420p out/adelie-promo.mp4
+```
 
 ## 时间线
 
