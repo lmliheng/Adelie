@@ -27247,3 +27247,99 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 - 历史现在是 `b2ad8cbf`（远端宣传片）→ `31f1ac52e`（会话待做清单，原 `d76b2a0e3`）→ `f7c53fd89`（本轮）→
   `c7a7433ed`（访问日志去重，原 `59ff77670`）；`git -c http.version=HTTP/1.1 push origin main` **一次成功**
   （`b2ad8cbf3..c7a7433ed`）。
+
+## 第二百五十一轮：文件面板里能直接播 mp4 了，并正式发 0.6.9（2026-11-15，条目 7.133）
+
+### 开工自检
+
+- 用户两句要求：①「文件系统增加 mp4 视频文件预览，如果过大可以禁止预览」；②「做好后可以发布到现网，
+  如果提交次数足够可以更新版本再更新现网」。
+- `git status --short` 干净，`HEAD` = `42c20c687`（第二百五十轮的台账；这一棵正是现网 `/root/.adelie` 装着的那份）。
+- 自 `v0.6.8`（`f34b702ad`）起攒了 **25 笔**（含宣传片那几笔与两条别的线的提交）→ 过阈值 10，按第②句发 **v0.6.9**。
+- 待办里 2.2c（写侧只剩桌面壳）、3.5 / 5.6 / 5.10（要拍板）、3.6（要模型 key）、4.1–4.3（明令不动）状态都没变，
+  本轮照用户点单走视频预览这一条。
+
+### 为什么是这么做的
+
+- 工作区文件面板此前只有图片 / 文本 / 未知三类：选中一个 mp4 只会落到「不支持预览」那格，哪怕它就躺在
+  磁盘上、浏览器本来就能播。要让它真能播，只补前端不够：`<video>` 要能拖动进度条，服务端就得会**分段
+  响应**（`Range`），否则整个上百 MB 的文件会被一次性读进内存、拖一下又从头来。
+- 「过大禁止预览」是用户明确提的。上限取 **50MB**：这个尺寸的 mp4 在浏览器里预载 metadata 不疼、
+  真按整份读也扛得住；再大在页面里播只会把浏览器和内存拖垮，不如把话说明白。
+
+### 改了什么
+
+- `packages/server/src/services/workspace-files-service.ts`：`CONTENT_TYPES[".mp4"] = "video/mp4"`。
+- **新增** `packages/server/src/services/byte-range.ts`：纯函数 `parseByteRange(header, size)` →
+  `{kind:"whole"|"partial"|"unsatisfiable"}`（只认单段；多段 / 畸形 / 倒序一律退回整份；支持 `bytes=-n`
+  后缀形式；起点 ≥ size 判 unsatisfiable），配 8 条单测。
+- `packages/server/src/http/routes/workspace-files.ts`：`/content` 认 `Range` → 206 + `Content-Range`，
+  越界 → 416 + `bytes */<size>`，其余照旧 200；**所有响应都带 `Accept-Ranges: bytes`**。
+- `packages/ui/src/components/files/preview-pane/preview-pane.tsx`：`PreviewView` 加
+  `{kind:"video";src;title;reloadKey?}`，画 `<video controls preload="metadata" playsInline …>`。
+  不能用 `bg-black` 那种字面色 —— ui 包的 deslop 规则 20 只收设计令牌，外框用 `border-line` 的圆角。
+- `packages/web/src/lib/workspace-tree.ts`：`VIDEO_EXTS`、`export const VIDEO_PREVIEW_LIMIT = 50*1024*1024`、
+  `PreviewKind` 加 `"video"`、`previewKindFor` 认 mp4、`previewKindOf` 把 video 归到 `unsupported`
+  （没有服务端导航就播不了）、新增 `listingSize(listings, path)`。
+- `packages/web/src/features/chat/workspace-browser.tsx`：`previewPath` 只负责把 video 摆上来，
+  **上限判定放在渲染期的 `previewViewOf`** —— 从对话里的引用点开时目录列表是后到的，判定必须每次渲染
+  重算，否则第一次渲染拿不到大小就会放行。超限返回 `{kind:"unsupported", message: S.files.previewVideoTooLarge(50)}`。
+- 文案 `files.previewVideoTooLarge(mb)` 中英各一句；文档 `files.zh.md` / `files.en.md` 的类型表、预览段与限制表。
+- changelog 一对：`changelog/unreleased/2026-11-15-workspace-video-preview.{md,zh.md}`。
+- 单测：新 `packages/server/test/byte-range.test.ts`（8 条）、`packages/server/test/workspace-files.test.ts`
+  加 mp4 与 `Range` 用例（另加 module 级 `ownerCookie`，用来发带 `Range` 头的原始请求）、
+  `packages/web/test/workspace-tree.test.ts`（mp4→video / video→unsupported / 新 `describe("listingSize")`）、
+  `packages/ui/test/files-panes.test.ts`（video 视图；静态渲染里 `playsInline` 出的是 `playsInline`，
+  断言用 `/playsinline/i`）。
+- **新增 e2e** `packages/web/e2e/video-preview.spec.mjs` 两条：真浏览器解码 mp4 并断言 206；一个 51MB 的
+  mp4 只出限制文案、不挂 `<video>`。
+
+### 验证（全部实测）
+
+- `pnpm typecheck`（整仓）**EXIT=0**；`oxlint` **0 warnings**；目标文件 `prettier --check` 全过。
+- 整仓 `pnpm -r test`（`systemd-run --scope -p MemoryMax=8G`，日志 `/tmp/fulltest-video.log`）**`PNPM_EXIT=0`**：
+  core 70 文件 / 1456 通过 / 6 跳过 · ui 132 / 1104 · server 216 / 3141 / 6 跳过 · web 335 / 3797 / 2 跳过 ·
+  cli 39 / 566 · desktop 27 / 315 · docs 8 / 62 · amsp 2 / 72 · ui-gallery 20 / 141 · 四个 sandbox 插件全绿。
+- e2e 单条 spec（假模型 8931 + 一次性数据根 8930，`SKIP_BUILD=1`）→ **2 passed**。仓库那份 playwright
+  配置要 chromium 1228、本机缓存只有 1248，于是用临时配置（`testDir` 指回仓库 e2e、
+  `executablePath=/usr/bin/chromium-headless-shell`）才跑得起来。
+- 临时实例体检（`check-tree-video.sh`，对 `/root/rel-069/out/penguin` 8966、对 `/root/.adelie` 8967）：
+  整份 → 200 + `video/mp4` + `Accept-Ranges: bytes`；`bytes=0-3` → 206 `bytes 0-3/2165`、真收到 4 字节；
+  `bytes=100-` → 206；起点越界 → 416；一个请求只记一行日志；待做清单那几条路由也在。
+
+### 发 0.6.9 与上现网
+
+- **门禁**（`/tmp/rel069-gates.log`）：build ✓ / typecheck ✓ / lint ✓ / 全量测试 `ALL TESTS PASS` ✓；
+  **只有 `format:check` 红，11 个文件全在 `promo/`**（另一条线的宣传片工程，入库时就没格式化）。
+  按「不改无关文件」没动它 —— 远端 `main` 的 `style (prettier)` 作业在这一笔之前（`42c20c687`）就已经是红的。
+- **npm**：29 个名字全部有 0.6.9（`NPM_TOKEN_ADELIE`，日志 `/tmp/rel069-npm.log`）。`@adelie/{amsp,core,server,cli}`
+  一开始占位 404、重发报 409 `Cannot publish over previously staged version`，**没升版本号**，约 5 分钟后
+  四个都 200 —— 与之前几轮同一种自愈。
+- **GitHub Release**：草稿 id `445636411`（target `2b1192585`）→ 14 件 762MB（4 路并发，逐件 sha256 核对）
+  → 发布（`published_at=2026-11-14T22:43:25Z`，`releases/latest` = v0.6.9）。第一次用 `nohup … &` 起上传进程
+  被壳退出时清掉、只上去 5 件，改 `systemd-run --scope` 才 14 件齐。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 v0.6.9（线上已核对），本机那份 Windows 包也换了。
+- **现网**：`install.sh` 把 0.6.9 装进 `/root/.adelie`，装完**立刻把旧前端 rsync 回去**（盘上前端必须与现网
+  服务端同一代），`lib/package.json`=0.6.9、`bin/penguin`=v0.6.9、无 `.old/.staging` 残渣、数据根一个字没动。
+  重启排成 `systemd-run` 延后单元 `adelie-live-restart-069`（06:44:27 起，`sleep 900` → 约 06:59:27
+  `systemctl restart adelie-server`，随后换新前端并自核验，证据写 `/root/Adelie_develop/rel-069-live-restart-verify.txt`）。
+  **本会话就在 `adelie-server.service` 的 cgroup 里，重启会掐掉这一轮**，所以答复提前给出。
+
+### 没做 / 留着
+
+- `promo/` 那 11 个未格式化文件没碰：`prettier --check .` 与远端 CI 的 `style (prettier)` 会一直红，
+  是另一条线入库时留下的，留给它自己或下一轮统一收。
+- 真正的「切换视频源」没做：`previewKindOf` 把 video 归到 unsupported（没有服务端导航就播不了），
+  只有带工作区面板的那条路能播。够用，先不动。
+- 拖拽进度、画中画、倍速这些交给浏览器原生控件，界面里不再自己加按钮。
+- 发版收尾（清 `/root/rel-069-bundles`、`/tmp` 残留、`git worktree remove` 发布树）留到重启之后；
+  `/root/rel-069` 整棵留作回退料。
+
+### 提交与推送
+
+- 功能一笔 `68c213efe`（17 个文件：源码 7 + 单测 5 + changelog 2 + 文档 2 + e2e 1）。
+- 发版一笔 `2b1192585`（38 个文件：各 `package.json` 的 0.6.8→0.6.9、core 的 `VERSION`、
+  `docs/releases/RELEASE-v0.6.9.md`）。
+- 两笔都是先本地提交、再走 Git Data API 送（本机 `git push` 超时；`git fetch -c http.version=HTTP/1.1` 通、
+  `push` 不通），远端 SHA 与本地逐字相同；标签 `v0.6.9` 同样走 API 打在 `2b1192585` 上。
+- 台账这一笔随本文件另起。
