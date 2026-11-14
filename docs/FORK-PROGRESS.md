@@ -2608,6 +2608,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       说了原因的那条通知在弹窗开着时根本不会弹。现在它走同一个拒绝槽（句子点名是「检查」这一步，留到下次
       尝试），并且与流程自己的 `error` 状态分清：后者是服务端**答了**「查了但查失败」，这里请求根本没问到
       答案。见「第二百四十九轮」一节。
+- [x] **7.132 错误中心里撤销一条忽略规则被拒时，原因留在按下去的那颗按钮旁边，并且只说一次**
+      （**2026-11-15 第二百五十轮**落地，提交见「已完成的轮次」；新增纯逻辑
+      `packages/web/src/features/usage/ignore-undo-refusal.ts` 的 `ignoreUndoRefused(host, id, label,
+      error)`，`errors-panel.tsx` 的 `unignore` 改签名并在被拒时写 `undoRefusal` 而不是弹通知、通知条与
+      `IgnoreRulesBox` 各在自己那一处画（`IgnoreRulesBox` 多一个可选 `refusal`），
+      `strings.ts` / `strings-en.ts` 加 `usage.errorsUnignoreRefused` 与 `errors.byCode.ignore_rule_not_found`
+      ＋ 1 个新单测（6 条）＋ 既有 `errors-panel.test.ts` 加 1 条 ＋ `e2e/errors-ignore.spec.mjs` 加 2 条
+      ＋ changelog 一对，**不碰接口、无新依赖**）：这条 DELETE 有两颗按钮（忽略后那条通知上的「撤销」、
+      被忽略视图里规则行上的「取消忽略」），被拒时两边屏幕上都一点没变，原因却只在一条六秒后自己消失的
+      通知里 —— 而「这些记录仍然被隐藏」恰恰是读者此刻要知道的事。现在句子按「哪一处问的 + 哪一条规则」
+      定位、只画在按过的那一处，直说规则还在、记录仍被隐藏；顺带补上这条路径唯一真会出现的
+      `ignore_rule_not_found` 的中英说法（此前只能落到服务器那句英文原文）。见「第二百五十轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3351,6 +3363,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-14 | 7.129 | **存储台账页的三处失败把原因留在自己的位置上，而这一页的五处写入不再说两遍**（**2026-11-14 第二百四十七轮**落地；源码 4 处（新增纯逻辑 `features/settings/storage-failure.ts` 的 `storageFailureText`，`storage-section.tsx` 的 `failed` / `modeFailed` / `scanFailed` 三个布尔改存句子本身、五处已有说明行的 `catch` 去掉 `toastError`、所有失败改走 `refusalText`，`strings.ts` / `strings-en.ts` 三条句子改带 `reason` 的函数）＋ 1 个新单测 `storage-failure.test.ts`（6 条）＋ 1 个新 spec `storage-page-failure.spec.mjs`（3 条）＋ 既有两份存储 spec 各加一条即时读一次的 `expectNoToast` ＋ changelog 一对，**不碰接口、无新依赖**）：这一页还剩八处 `toastError(apiErrorText(e))` —— 三处（遍历读不到、清理模式/账单/回收站读不到、扫描被拒）页面自己那句话不带原因、原因只在一条六秒的通知里；五处（开关、固定、恢复、彻底删除、执行清理）已经各有说明行却又同时弹一条，同一次被拒说两遍、其中一遍盖在页面顶部。现在三处各自把服务端的话放进自己那句话里，画在自己的控件旁边（报告表头处 / 开关下面那行 / 账单块上方），五处只留说明行。见「第二百四十七轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 5 个源码/单测文件 + 3 份 spec **0 警告 0 错误** · `prettier --check` 10 个改动文件（含 changelog 一对）干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **332 文件 / 3778 通过 / 2 跳过**（相对上一行台账的 331 / 3772 是 +1 文件 / +6 条，即本笔的新单测）· **新 spec 3 passed（10.0 s + 9.7 s + 9.2 s）**（真服务端 9451 + mock 模型 9452 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r247-after2`）：三处各一条 —— 带原因的句子在页面上、通知区 0 个按钮（`expectNoToast`，先等 400 ms 让这次拒绝自己的渲染落地）、七秒后仍在；放行后同一个控件（重新测量 / 重新扫描）真的落地（报告表头出现、服务端账单数 +1）· **既有两份存储 spec 3 passed**：开关、固定、回收站三种拒绝都在，且通知区 0 个按钮 · **反证（改前产物）**：三份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9453 与另一个一次性数据根 `/root/adelie-fork-data/r247-before2` → **同一批 6 条全红**（三条死在找不到带原因的那句话；三条死在 `expectNoToast` 的 `toBe(0)`、`Received: 1`）· **两态探针**（`r247/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，三处各一组）：**改前** 1.2 s 带原因的那句 0 条 / 老句子 1 条 / 通知区 **1 个按钮**（文字就是服务端那句话），7.5 s 通知区 **0 个**、老句子仍是 1 条 —— 原因没了；**改后** 两刻都是带原因的那句 1 条（逐字「无法取得存储报告：服务器内部错误，请稍后重试。」等三句）、老句子 0 条、通知区 **0 个按钮**，模式那一组开关仍是 `aria-checked=false`（页面按「已关闭」处理，句子说明为什么）· 两态 console 都只有本轮**故意造的**那三条 500，pageerror **0 条** · 相邻回归：同批 `storage-*` 三份 spec 在改后产物上 **6 passed（59.8 s）** · 端口只用 9451 / 9452 / 9453（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r247-{after,after2,before,before2}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 两份 measure / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r247/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `1f4bbe8f5` |
 | 2026-11-14 | 7.130 | **更新弹窗自己发出的两个请求被拒时，原因留在弹窗里、就在那颗按钮上方**（**2026-11-14 第二百四十八轮**落地；源码 5 处（新增纯逻辑 `packages/web/src/lib/update-request-refusal.ts` 的 `updateRequestRefused(step, reason)`，`use-update-flow.ts` 的 store 多一个 `requestRefusal`（存的就是那句话）、`downloadUpdate` / `installUpdate` 改走同一个 `refuseRequest`（弹窗开着写它、关着才发通知），`update-modal.tsx` 在正文末尾画 `role="alert"` 一行、限两行、整句在悬停里，`strings.ts` / `strings-en.ts` 的 `requestFailed` 拆成 `downloadRefused` / `restartRefused`）＋ 1 个新单测 `update-request-refusal.test.ts`（5 条）＋ 1 个新 spec `update-request-refusal.spec.mjs`（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：这两个请求只有这个弹窗能发，而两处被拒都只有一条通知「无法执行更新操作：…」浮在弹窗之上，弹窗本身原样显示「新版本可用」（或它在等的重启），六秒后原因没了。现在句子在正文末尾、重试那颗按钮正上方，留到下一次尝试；两句各自点名下载 / 重启。见「第二百四十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`） · `oxlint` 6 个源码 / 单测文件 **0 警告 0 错误** · `prettier --check` 7 个改动文件（含 changelog 一对）干净（新单测首跑 `--write` 一次，复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **333 文件 / 3783 通过 / 2 跳过**（基线 332 / 3778，+1 文件 / +5 条即本笔的新单测） · **新 spec 2 passed（9.5 s + 9.4 s）**（真服务端 9471 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r248`；浏览器的更新检查是桩（`update-check` 答「有新版本 9.9.9」），两处拒绝由 `page.route` 拒成 500 `internal`，落地的两半是**真服务端**：它不经 CLI 启动，`POST /api/version/update` 立刻答 `done` / `unsupported` / `not_launched_via_cli`（不 spawn 任何进程），`POST /api/version/restart` 答 `restarting:false` / `no_supervisor`（不重启））—— ①② 句子在弹窗里、`role=alert`、逐字「没能开始下载这次更新，更新没有开始：服务器内部错误，请稍后重试。」/「没能重启，新版本已装好但还没有生效：服务器内部错误，请稍后重试。」、通知区 0 个按钮（`expectNoToast`，先等 400 ms）、七秒后仍在、弹窗仍停在同一步（新版本可用 / v9.9.9 已就绪），放行后同一颗按钮落地、句子消失 · **反证（改前产物）**：四份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9472 与另一个一次性数据根 `/root/adelie-fork-data/r248-before` → **同一份 spec 2 failed**，两条都死在找不到带原因的那句话（`getByText` 的 `toBeVisible`，element(s) not found） · **两态探针**（`r248/probe-env/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，下载与重启各一组）：**改前** 1.2 s 拒绝槽 0、通知区 **1 个按钮**（逐字「无法执行更新操作：服务器内部错误，请稍后重试。」，浮在弹窗上方），7.5 s 通知区 **0**、弹窗里一个字都没有；**改后** 两刻都是弹窗正文末尾那一行带原因的句子、通知区 **0 个按钮**，弹窗正文其余各行不变 · 两态 console 都只有本轮**故意造的**那条 500（资源加载），pageerror **0 条** · 截图 `r248/shots/{before,after}-{download,restart}-{1_2s,7_5s}.png` 肉眼看过：改前页顶一条白底通知、弹窗里什么都没有；改后红字在弹窗正文末尾、「稍后 / 下载并更新」正上方，无挤压无溢出 · 端口只用 9471 / 9472（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r248{,-before}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r248/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `bda770da9` |
 | 2026-11-14 | 7.131 | **更新弹窗发出的「检查更新」被拒时，原因留在弹窗里；什么都不知道时不再转圈，底部给出重试**（**2026-11-14 第二百四十九轮**落地；源码 7 处（`packages/web/src/lib/update-request-refusal.ts` 的 `UpdateRequestStep` 加 `check` 并在文件头写清它与流程 `error` 状态的界线，`use-update-flow.ts` 的 `checkForUpdates()` 每次尝试先清槽、release 侧被拒改走 `refuseRequest("check", e)`、owner 把客户端结算的新种类 `refused` 写进同一个槽，`desktop-update.ts` / `use-desktop-update.ts` 让「请求没问到」与「壳自己报失败」分开、原因走 `apiErrorText`，`update-modal.tsx` 在 `unknown` + 有拒绝时不画 spinner、底部补「检查更新」，`strings.ts` / `strings-en.ts` 加 `checkRefused(reason)`）＋ 1 个新单测（该文件 5 条改写为 6 条）＋ 1 个新 spec `update-check-refusal.spec.mjs`（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百四十八轮末尾点名的邻座。这个请求被拒时弹窗里什么都不变 —— 有上一次结果就继续显示它，什么都不知道就**一直转着「正在检查更新…」**、底部只有「关闭」，而唯一说了原因的那条通知在弹窗开着时根本不会弹（`if (!quiet())`）。现在它走同一个拒绝槽（句子点名「检查」这一步、留到下一次尝试），并与流程自己的 `error` 状态分清：后者是服务端**答了**「查了但查失败」，这里请求根本没问到答案。见「第二百四十九轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 9 个源码 / 单测 / spec 文件 **0 警告 0 错误** · `prettier --check` 全部干净（首跑 `strings-en.ts` / `use-update-flow.ts` 各 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **333 文件 / 3784 通过 / 2 跳过**（基线 333 / 3783，+1 条即本笔的新单测）· **新 spec 2 passed（10.1 s + 9.7 s）**（真服务端 9481 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r249`；浏览器那边的更新检查全程是桩）—— ①什么都不知道时打开弹窗（加载时那次检查也被拒，自动检查再被拒）：句子「没能检查更新，这次没有问到结果：服务器内部错误，请稍后重试。」在弹窗里、`role=alert`、**「正在检查更新…」0 条**、通知区 0 个按钮（`expectNoToast`，先等 400 ms）、七秒后仍在，底部的「检查更新」放行后落到「新版本 v9.9.9 可用」；②已有上一次结果时按「检查更新」被拒：句子在、「已是最新版本」原样在、七秒后仍在，放行后换上新结果 · **反证（改前产物）**：七份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9482 与另一个一次性数据根 `/root/adelie-fork-data/r249-before` → **同一份 spec 2 failed**，两条都死在找不到带原因的那句话（`getByText(...).toBeVisible`，element(s) not found）· **两态探针**（`r249/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，A＝什么都不知道、B＝已有上一次结果）：**改前** A 两刻都是「正在检查更新…」1 条、没有原因、通知区 0、底部只有「关闭」（**两刻一模一样，转圈永远不停**），B 两刻都是「已是最新版本」+ 底部「关闭 / 检查更新」、没有原因；**改后** A 两刻都是正文只剩那句红字（spinner 0）、底部「关闭 / 检查更新」，B 两刻都是「已是最新版本」+ 那句红字、底部两颗按钮；两态通知区都是 0 个按钮（探针的 `refusal` 计数把 `data-testid` 与文本各数一次，所以显示 2，实际句子 1 条）· 两态 console 都只有本轮**故意造的**那条 500（资源加载），pageerror **0 条** · 截图 `r249/shots/{before,after}-{A-nothing-known,B-previous-answer}-{1_2s,7_5s}.png` 肉眼看过：改前弹窗里一个转圈 + 「正在检查更新…」、底部只有「关闭」；改后没有转圈，红字在正文末尾、「关闭 / 检查更新」正上方，两行折行、无挤压无溢出 · **相邻回归**：上一轮的 `update-request-refusal` 2 passed（11.7 s + 10.1 s，同一个槽、同一个弹窗）· 端口只用 9481 / 9482（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r249{,-before}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置 / PLAN 都在 scratchpad 的 `r249/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `46a2da5e38b1da0473ce546928ddf4c1a849a2b2` |
+| 2026-11-15 | 7.132 | **错误中心里撤销一条忽略规则被拒时，原因留在按下去的那颗按钮旁边，并且只说一次**（**2026-11-15 第二百五十轮**落地；源码 6 处（新增纯逻辑 `packages/web/src/features/usage/ignore-undo-refusal.ts` 的 `ignoreUndoRefused(host, id, label, error)`，`errors-panel.tsx` 的 `unignore` 多一个 `host` 入参、每次尝试先清 `undoRefusal`、被拒写这句话而不是弹通知、通知条与 `IgnoreRulesBox` 各自只在自己那一处画（后者多一个可选 `refusal` 入参，句子 `basis-full` 独占一行），`strings.ts` / `strings-en.ts` 加 `usage.errorsUnignoreRefused(label, reason)` 与 `errors.byCode.ignore_rule_not_found`）＋ 1 个新单测 `ignore-undo-refusal.test.ts`（6 条）＋ 既有 `errors-panel.test.ts` 加 1 条（两条规则、一条拒绝时只画在 id 对上那一行、两行按钮都在）＋ `e2e/errors-ignore.spec.mjs` 加 2 条 ＋ changelog 一对，**不碰接口、无新依赖**）：这条 DELETE 有两颗按钮（忽略后那条通知上的「撤销」、被忽略视图规则行上的「取消忽略」），被拒时两边屏幕上都一点没变 —— 通知条照旧写着隐藏了多少条、规则照旧列着，所以重试就是同一个按钮，只有原因落在一条六秒后自己消失、还浮在页面顶部的通知里；而「这些记录仍然被隐藏」正是此刻要知道的事。现在句子按「哪一处问的 + 哪一条规则」定位，只画在按过的那一处（通知条里 / 规则行下面），直说规则还在、记录仍被隐藏，本页不再为这两颗按钮弹通知；顺带补上这条路径唯一真会出现的 `ignore_rule_not_found` 的中英说法。见「第二百五十轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 7 个源码 / 单测 / spec 文件 **0 警告 0 错误** · `prettier --check` 全部干净（首跑 `errors-panel.tsx` / `errors-panel.test.ts` 各 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **215 文件 / 3132 通过 / 6 跳过** · web **335 文件 / 3795 通过 / 2 跳过**（基线 333 / 3784，本笔 +1 文件 / 6 条 + 既有文件 1 条，其余来自 HEAD 上另一条线的 `d76b2a0e3`）· **新 spec 2 passed（12.2 s + 12.4 s）**（真服务端 9490 + 仓库自带 mock 模型 9491 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r250b`）：两条都从面板自己的行动作造出真忽略规则，`page.route` 把 DELETE 拒成 500 —— ①通知条的「撤销」被拒：句子逐字「没能恢复 [llm] llm_fatal 的异常，忽略规则还在、这些记录仍被隐藏：ignore store is closed」在通知条内、`role=alert`、通知区 0 个按钮、七秒后仍在、「撤销」还在，规则经 API 读回仍是 1 条、记录仍被隐藏；放行后同一个按钮落地、通知条消失、行回到表里；②规则行的「取消忽略」被拒：句子只在这一行（`ignore-rule-undo-refusal` 1 条），同一规则的通知条（仍在屏幕上、仍有自己的「撤销」）**不替它说话**（`ignore-notice-undo-refusal` 0 条），通知区 0 个按钮、七秒后仍在，规则 1 条、被忽略那一侧仍能看到那条记录；放行后规则 0 条、规则表落到空态、记录回到「全部」· **反证（改前产物）**：把四份源码退回 `HEAD`、新增模块移出、重建 web（改前产物 `index-Cq5BLkn6.js`、改后 `index-fFK7uFCE.js`，两份都核过）挂 9492 与另一个一次性数据根 `/root/adelie-fork-data/r250c`，同一份 spec 同一过滤（`-g refused`）→ **2 failed**（两条都停在 `getByTestId("ignore-notice-undo-refusal" / "ignore-rule-undo-refusal")` 上 element(s) not found，15 s 超时），改后同一过滤 **3 passed**· **两态探针**（`r250/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，量 1.2 s / 7.5 s 两刻，两个视角各一遍）：**改前** 两个视角两刻都是「句子 0 条」，1.2 s 时通知区 1 个按钮（那句 `ignore store is closed`），7.5 s 时 0 个 —— 屏幕上什么都没说、规则仍是 1 条；**改后** 通知条视角两刻都是通知条里那句话 1 条、规则行 0 条，规则行视角两刻都是规则行里那句话 1 条、通知条 0 条，两态两视角通知区都是 0 个按钮 · 两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · 截图 `r250/shots/{before,after}/{notice,rule}-{1_2s,7_5s}.png` 肉眼看过（改前：规则行下没有字、页顶一条「ignore store is closed」的浮动通知；改后：红字就压在规则行下面，通知条与规则表都没被挤动）· **相邻回归**：`cost-center-clear` 2 + `cost-center-read` 2 + `cost-center-refresh` 2 **6 passed（23.4 s）** · 端口只用 9490 / 9491 / 9492（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r250{b,c}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置 / PLAN 都在 scratchpad 的 `r250/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `f7c53fd89` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -27123,3 +27136,114 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
   挂着别人没推的提交，就把它 rebase 到 `origin/main` 上；若只剩本轮这两笔（内容远端都有），
   `git reset --hard origin/main` 即可收敛 —— 那两笔的号作废，内容远端都有，台账这份文本两边也已经一致。
 - 本轮这两笔的本地原件另收在 `refs/adelie-tmp/r249-local` 兜底。
+
+## 第二百五十轮：错误中心里撤销一条忽略规则被拒时，原因留在按下去的那颗按钮旁边（2026-11-15，条目 7.132）
+
+### 开工自检
+
+- `git status --short` 干净，分支 `main`，`HEAD` = `d76b2a0e3`（另一条线 01:24 的
+  `feat(web,server)`「侧栏底部多了会话待做清单」）。
+- 同步：`git fetch origin` 首跑 `GnuTLS recv error (-110)`（github.com 的 https 又一次不通，134 s 才失败），
+  而 `api.github.com` 通 —— 查 `GET /repos/lmliheng/Adelie/git/ref/heads/main` 得 `b2ad8cbf`（宣传片那几笔），
+  本地缺。**这轮试出一条新路**：`git -c http.version=HTTP/1.1 fetch origin main` **一次就通**
+  （`e6b91df68..b2ad8cbf3`，14 MB 左右），`push` 同样带 `-c http.version=HTTP/1.1` 也一次就通 ——
+  所以「github.com 不通」这半年的真相更像 **HTTP/2 上的大传输被掐**，而不是整个站不通。
+- **编号**：HEAD 上那两笔（`31f1ac52e` 是 rebase 后的会话待做清单，原 `d76b2a0e3`）的台账记在它自己名下，
+  本轮记 **第二百五十轮 / 7.132**。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（写侧剩下的全在桌面壳一侧，本轮纪律不碰 `packages/desktop`）、
+  3.5 要拍板、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板；于是接第二百四十七 / 二百四十八 /
+  二百四十九轮那一族的邻座：**错误中心里那两颗「撤销忽略」的按钮**。
+
+### 为什么是这一条
+
+7.111 定了规则（被拒的写入把原因留在发问的地方，那儿已经有了就不再另弹一条），第二百三十一轮收过这一页
+的两张确认框（7.117），但这一页还有一处从没摸过：忽略规则这条 DELETE 有**两颗**按钮 ——
+
+- 忽略成功之后压在表格上方那条通知里的「撤销」；
+- 被忽略视图里，规则列表每一行的「取消忽略」。
+
+两处 `catch` 都只有一句 `toastError(apiErrorText(e))`。被拒时屏幕上**两边都一点没变**：通知条照旧写着
+「已忽略 …· 本次隐藏 N 条记录」、按钮照旧亮着，规则也照旧列在那里 —— 所以重试就是同一个按钮，缺的只是
+原因；而那条原因写在一条六秒后自己消失、还浮在页面顶部的通知里。这一处比别处更值得补，是因为被拒的
+正是「让这些记录回来」这件事：一份看起来没被碰过的页面会让人以为它们还藏着（它们确实还藏着），却不说
+为什么删不掉。
+
+顺带发现这条路径上唯一**真会**出现的服务端拒绝没有中文说法：`ignore_rule_not_found`（另一处已经撤销了
+这条规则，或列表是旧的）在 `S.errors.byCode` 里没有条目，于是落到服务器那句英文原文。
+
+### 改了什么
+
+- `packages/web/src/features/usage/ignore-undo-refusal.ts`（新增）：`ignoreUndoRefused(host, id, label,
+  error)`，`host` 取 `notice` / `rule`。键里必须有宿主，因为通知条与规则行指的是**同一个规则 id** ——
+  只按 id 分不出是哪一处问的，句子就会在两处同时出现。原因走 `refusalText`（服务端答的话按码念界面
+  语言，本仓库自己抬起来的失败保留原话）。
+- `packages/web/src/features/usage/errors-panel.tsx`：新增 `undoRefusal` 状态；`unignore(host, id, label)`
+  每次尝试先清掉上一次那句（7.19 的规则），被拒改为写这句话而不是弹通知；通知条与 `IgnoreRulesBox`
+  各自只在自己那一处画（`data-testid` 分别 `ignore-notice-undo-refusal` / `ignore-rule-undo-refusal`，
+  `role="alert"`、危险色、限两行、整句停在悬停提示里、`basis-full` 独占一行）；`IgnoreRulesBox` 多一个
+  可选的 `refusal` 入参，规则的按钮原样留着（重试就是它）。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`usage.errorsUnignoreRefused(label, reason)`；
+  `errors.byCode.ignore_rule_not_found` 中英各一句。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 /
+  612 类型 —— 本笔只动 `packages/web`）。
+- `oxlint` 7 个源码 / 单测 / spec 文件 **0 警告 0 错误**；`prettier --check` 全部干净（首跑
+  `errors-panel.tsx` 与 `errors-panel.test.ts` 各 `--write` 一次，复检通过）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** ·
+  cli **39 / 566** · server **215 文件 / 3132 通过 / 6 跳过** · web **335 文件 / 3795 通过 / 2 跳过**
+  （基线 333 / 3784；本笔 +1 文件 / 6 条，既有 `errors-panel.test.ts` 再 +1 条，其余来自 HEAD 上那两笔）。
+- **新 spec 2 passed（12.2 s + 12.4 s）**，整套 `errors-ignore.spec.mjs` **5 passed（34.5 s）**
+  （真服务端 9490 `HOST=::` + 仓库自带 mock 模型 9491 + `/usr/bin/chromium` + 一次性数据根
+  `/root/adelie-fork-data/r250b`）：两条都先走面板自己的行动作造出真忽略规则，再让 `page.route` 把
+  DELETE 拒成 500 —— ①通知条的「撤销」被拒：句子逐字「没能恢复 [llm] llm_fatal 的异常，忽略规则还在、
+  这些记录仍被隐藏：ignore store is closed」在通知条内、`role=alert`、通知区 **0 个按钮**、七秒后仍在、
+  「撤销」还在，规则经 API 读回仍是 1 条、记录仍被隐藏；放行后同一个按钮落地、通知条消失、行回到表里；
+  ②规则行的「取消忽略」被拒：句子只在这一行（`ignore-rule-undo-refusal` 1 条），同一条规则的通知条
+  （仍在屏幕上、仍有自己的「撤销」）**不替它说话**（`ignore-notice-undo-refusal` 0 条），通知区 0 个按钮、
+  七秒后仍在，规则 1 条、被忽略那一侧仍能看到那条记录；放行后规则 0 条、规则表落到空态、记录回到「全部」。
+- **反证（改前产物）**：四份源码退回 `HEAD`、新增模块移出、重建 web（改前产物主包 `index-Cq5BLkn6.js`、
+  改后 `index-fFK7uFCE.js`，两端核过确实是两份不同的东西），改前产物挂 **9492** 与另一个一次性数据根
+  `/root/adelie-fork-data/r250c`，同一份 spec 同一过滤（`-g refused`）→ **2 failed**：两条都停在
+  `getByTestId("ignore-notice-undo-refusal")` / `getByTestId("ignore-rule-undo-refusal")` 上
+  `element(s) not found`（15 s 超时）；改后同一过滤 **3 passed**。
+- **两态探针**（`r250/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，量 1.2 s / 7.5 s 两刻，通知条与规则行
+  各跑一遍，DELETE 同样由 `page.route` 拒成 500）：**改前** 两个视角两刻都是「句子 0 条」，1.2 s 时通知区
+  **1 个按钮**（那句 `ignore store is closed`），7.5 s 时 **0 个** —— 屏幕上什么都没说、规则仍是 1 条；
+  **改后** 通知条视角两刻都是通知条里那句话 1 条、规则行 0 条，规则行视角两刻都是规则行里那句话 1 条、
+  通知条 0 条；两态两视角通知区都是 0 个按钮。两态 console 都只有既有的 `GET …/machines` **403** 与本轮
+  **故意造的** 500，pageerror **0 条**。
+- 截图 `r250/shots/{before,after}/{notice,rule}-{1_2s,7_5s}.png` 肉眼看过：改前规则行下面没有字、页顶是
+  一条「ignore store is closed」的浮动通知；改后红字就压在规则行下面（通知条与规则表都没被挤动）。
+- **相邻回归**：同一页的 `cost-center-clear` 2 + `cost-center-read` 2 + `cost-center-refresh` 2
+  **6 passed（23.4 s）**。
+- 端口只用 9490 / 9491 / 9492（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r250{b,c}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 /
+  临时 playwright 配置 / PLAN 都在 scratchpad 的 `r250/` 下（`packages/web/dist`、`test-results/` 是产物，
+  未 `git add`）。没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 没做 / 留着
+
+- **404 `ignore_rule_not_found` 不刷新列表**：规则其实已经没了时，句子说清「规则已经不存在」，但那一行
+  仍留在屏幕上，直到下一次读（切视图、重新打开页面）。要不要在被拒即重读一次（那一行与句子会一起消失）
+  是一个小决定，本轮按最小改动没动 —— 目前「重试就是同一个按钮」在这里会一直失败，句子里已经说了原因。
+- **`errors-panel.tsx` 里另外三处 `toastError`** 有意留着：`openClear` 的计数读、忽略规则列表读、清空后的
+  重读，都是**读**失败且各自有页面自己的空态与说明（文件里的注释写着为什么）。
+- `asr-section.tsx` 里两处 `if (!(e instanceof ApiError)) toastError(...)` 与它自己的 `showRefusal` 说两遍，
+  同属这一族但属设置页那一支（第二百四十七轮收的是存储页），留着给后面的轮次。
+- `chat-page.tsx` 的「撤回 steering」与「转到后台」仍留着（宿主归行还是归输入区要先定）。
+- 4.1–4.3（npm scope 与发布链路）与 2.5（四个上游包的去留）仍等用户拍板；3.6 仍等模型 key。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交与推送
+
+- 源码与 changelog 一笔：**`f7c53fd89`**（9 个文件：源码 4 + 单测 2 + spec 1 + changelog 一对）；台账另起一笔。
+- 推送前先收敛历史：`git -c http.version=HTTP/1.1 fetch` 之后远端已有第二百四十九轮那四笔（内容与本地
+  `940d30378` / `614344d09` / `95f8f2a1d` / `2ccb80193` 相同、号不同），于是
+  `git rebase --onto origin/main 2ccb80193 main` 只重放真正的两笔；**那一条把 `59ff77670`（另一条线的
+  访问日志去重）一起漏掉了**（它落在被丢弃的区间里），发现后 `git cherry-pick 59ff77670` 补回
+  （现为 `c7a7433ed`），并逐个比对确认 rebase 前后除了宣传片那批文件没有别的差异。
+- 历史现在是 `b2ad8cbf`（远端宣传片）→ `31f1ac52e`（会话待做清单，原 `d76b2a0e3`）→ `f7c53fd89`（本轮）→
+  `c7a7433ed`（访问日志去重，原 `59ff77670`）；`git -c http.version=HTTP/1.1 push origin main` **一次成功**
+  （`b2ad8cbf3..c7a7433ed`）。
