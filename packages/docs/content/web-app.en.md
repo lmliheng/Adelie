@@ -99,6 +99,7 @@ From top to bottom, the sidebar holds:
 | **Evaluation Center** | Benchmarks: evaluate agents and optimize them against a Benchmark | [Evaluation Center](/evaluation-center) |
 
 - The conversation list, with search and grouping by Workspace, agent or time. See [Chat](/chat).
+- A **To do** block: the open conversation's to-do list. The number in its header is *how many are left / how many there are*, and the arrow at its end collapses or opens it. A tick means done, an entry can be removed, and typing in the box at the bottom and pressing Enter adds one. The list is not browser state: it is `TODO.json` in this conversation's scratchpad, and the agent reads and writes the same file — what you add here is there on its next turn, and what it adds as it works shows up when the turn ends. A write that fails puts that one change back and says so; **Try again** retries it.
 - Your user row at the bottom. It opens the account menu:
   - **Settings**. See [Settings](/settings).
   - The update row, which names where an update stands and opens the update dialog. See [Updates](/updates).

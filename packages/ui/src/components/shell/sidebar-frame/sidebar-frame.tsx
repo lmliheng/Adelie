@@ -57,6 +57,13 @@ export interface SidebarFrameProps {
   pinned?: ReactNode;
   /** The scroll area: the page nav and the list. */
   children?: ReactNode;
+  /**
+   * A block pinned above the account row, on the column's foot — the chat page's 待做 list.
+   * Drawn only when given, and never scrolled: it is chrome the reader acts on, not a list that
+   * rides away with the nav. A caller with nothing to show passes nothing, since an empty `foot`
+   * still costs its rule.
+   */
+  foot?: ReactNode;
   /** The account row at the foot: the account menu's trigger. */
   account: ReactNode;
   /** Layers the column opens (its dialogs), mounted after it. */
@@ -71,6 +78,7 @@ export function SidebarFrame({
   collapse,
   pinned,
   children,
+  foot,
   account,
   overlays,
   rootRef,
@@ -107,6 +115,7 @@ export function SidebarFrame({
       <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-clip px-2 pb-2">
         {children}
       </div>
+      {foot !== undefined && <div className="shrink-0 border-t border-line p-2">{foot}</div>}
       <div className="shrink-0 border-t border-line p-2">{account}</div>
       {overlays}
     </div>

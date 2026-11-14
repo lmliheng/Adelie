@@ -1527,6 +1527,25 @@ export const zh = {
     initialPasswordBanner: "当前账号正在使用初始密码，建议尽快修改",
     changeNow: "去修改",
     /**
+     * The sidebar foot's 待做 block: this Session's own to-do list, kept in its scratchpad as
+     * TODO.json — the same file the Agent writes. `count` is what is left out of how many;
+     * `failed` says an edit was put back, which the block must never do silently.
+     */
+    todos: {
+      title: "待做",
+      empty: "这个会话还没有待做",
+      count: (left: number, total: number): string => `${left}/${total}`,
+      addPlaceholder: "加一条待做…",
+      markDone: "标记为已完成",
+      markUndone: "标记为未完成",
+      remove: "删除这一条",
+      expand: "展开待做",
+      collapse: "收起待做",
+      failed: "待做没能保存，这一步已经撤回",
+      readFailed: "没能读到这个会话的待做清单",
+      retry: "重试",
+    },
+    /**
      * The user-level vault dialog (the account menu's 用户密钥 row): this account's own
      * key-value table, stored outside every Project. The copy explains what the table is and,
      * just as important, that it reaches no agent on its own — assigning is a separate step

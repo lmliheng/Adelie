@@ -196,6 +196,9 @@ import type {
   SessionPatchRequest,
   SessionProcessesResponse,
   SessionResponse,
+  SessionTodoItem,
+  SessionTodosPutRequest,
+  SessionTodosResponse,
   PluginIndexResponse,
   PluginConfigResponse,
   PluginConfigActionResponse,
@@ -1295,6 +1298,17 @@ export const postTask = (sessionId: string, body: TaskCreateRequest) =>
 
 export const getGoal = (sessionId: string) =>
   apiFetch<GoalResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/goal`);
+
+/** The Session's to-do list (the sidebar's 待做 block), read from TODO.json in its scratchpad. */
+export const getSessionTodos = (sessionId: string) =>
+  apiFetch<SessionTodosResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/todos`);
+
+/** Replaces the Session's to-do list with `items` and answers what was stored. */
+export const putSessionTodos = (sessionId: string, items: SessionTodoItem[]) =>
+  apiFetch<SessionTodosResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/todos`, {
+    method: "PUT",
+    body: { items } satisfies SessionTodosPutRequest,
+  });
 
 export const postApproval = (
   sessionId: string,

@@ -774,6 +774,8 @@ Benchmark 属于 Project，不属于某个 Agent：一个 Benchmark 可以评估
 | GET | `/stream` | SSE 事件流；见[流式传输（SSE）](#流式传输sse) |
 | GET | `/context` | 当前模型上下文的组成，以及压缩将从哪里开始 |
 | GET | `/goal` | 当前 Session 最近一次目标运行 |
+| GET | `/todos` | 这个 Session 的待做清单（侧栏底部「待做」块读的就是它） |
+| PUT | `/todos` | 用 `{items}` 整份替换待做清单 |
 
 - `GET /` 返回 Session 的信息。与列表行不同，单个 Session 的响应还带 `tracePath`，即最新 Trace 文件的绝对路径。`orgId` 标记公司模式缓存持有的会话（工位会话，或这个组织某个工单的贡献会话）；普通 Session 一律不带这个字段，列表路由同样会设置它。
 - `PATCH /` 先校验全部字段再写入任何一个，`sandbox` 选择（`{mode?, network?}`）也在其中：非管理员选的档位比服务端的沙盒设置更宽时为 `403` `sandbox_forbidden`，本机没有后端能实施的档位为 `400` `sandbox_unsupported`；被拒的请求什么都不落盘，`approvalMode` 与 `title` 也不例外。Session 的 `sandbox` 视图里，`presets` 中比服务端设置更宽的行带 `aboveCeiling: true`（只出现在响应里），与这条拒绝用同一次比较：非管理员选这样的行会被拒绝。
@@ -782,6 +784,8 @@ Benchmark 属于 Project，不属于某个 Agent：一个 Benchmark 可以评估
 - 窗口式响应中的图片按引用下发。在带 `tracePosition` 的记录里，PNG、JPEG、GIF 或 WebP 的 `data:` URL（无论是用户的 `image_url`，还是工具输出 `images` 中的一项）会被替换为 `/api/sessions/:sessionId/trace-image?file=<fileIndex>&ordinal=<ordinal>`，`images` 的第 k 项再加 `&i=<k>`。这条路由返回解码后的图片，带图片自身的类型、`Cache-Control: private, max-age=31536000, immutable` 和 `X-Content-Type-Options: nosniff`。记录中没有对应图片时返回 404 `trace_image_not_found`，参数缺失或格式不对时返回 400。子 Agent 的消息、其他类型的图片以及全量读取都保留原来的 `data:` URL。
 - `GET /context` 返回当前模型上下文的各个组成部分，外加 `compactionThreshold`：上下文达到多大（以 Token 计）时，Session 的下一个请求会开始压缩。这个阈值就是 Agent 的 `compaction.max_context_length`，上限不超过模型上下文窗口的剩余空间。压缩未启用、读不到 Agent 配置，或阈值不低于窗口时，这个值是 `null`。这条路由每次调用都读取最新的 Trace 文件，所以数值是快照，不是实时计数器。
 - `GET /goal` 返回 `{goal}`：Session 从未跑过目标时为 `null`，否则为 `{objective, status, budget, used, rounds}`。`status` 取值为 `active`、`complete`、`blocked`、`budget_limited` 或 `aborted`，`budget` 为 -1 表示不限制。目标只存活在它的运行期间，所以 Session 已停止运行、目标却仍是 active 时，会报告为 `aborted`。见[目标模式](/goal-mode)。
+- `GET /todos` 返回 `{items}`，即这个 Session 的待做清单：`{text, done}` 的数组，读自它 scratchpad 里的 `TODO.json`。这与目标插件的 `GOAL.json` 是同一种文件 —— 会话自己的一份 JSON，Agent 用自己的文件工具直接读写 —— 所以页面和 Agent 看到的是同一份清单。文件不存在（或读不出）时是空清单而不是 404：每个 Session 都有这份清单，多数只是没写过。文件由 Agent 可写，所以每一项都会校验，不是 `{text, done}` 形状的项会被丢掉，过长的文本会被截断而不是让读取失败。
+- `PUT /todos` 用 `{items}` 整份替换，返回真正存下的内容，并顺手创建还不存在的 scratchpad 目录。清单最多 200 条、单条文本最多 500 字符，超出返回 400 而不是静默截断 —— 是调用方发来的，就该由它改。页面每加一条、勾一条、删一条都发一次整份清单；除它之外只有 Agent 在写同一个文件，所以最后写入者胜。
 
 ### GET /messages 上的 `live` 字段
 

@@ -134,6 +134,7 @@ import {
 import type { FolderCategory, SessionPartition } from "../../lib/session-grouping";
 import { machineForSession } from "../../lib/session-machines";
 import { backgroundSourceMark } from "../../lib/session-source-mark";
+import { SessionTodos } from "../../features/account/session-todos";
 import { nameOnMachine } from "../../lib/workspace-machines";
 import {
   initialNavGroupCollapsed,
@@ -2527,6 +2528,12 @@ export function Sidebar({
               </SidebarNavArea>
             ),
           })}
+      // The open conversation's to-do list, pinned above the account row. Only a real Session
+      // has one to keep: a draft has no id the server would answer for, and the other pages
+      // have no open conversation at all, so both leave the block — and its rule — out.
+      {...(activeSessionId === null || activeSessionId === DRAFT_SESSION_ID
+        ? {}
+        : { foot: <SessionTodos sessionId={activeSessionId} /> })}
       account={accountRow}
       overlays={dialogs}
     >

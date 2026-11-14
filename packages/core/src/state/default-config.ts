@@ -475,6 +475,7 @@ Some messages carry system-synthesized \`[tag]...[/tag]\` blocks — not user te
 # Suggested workflows
 Recommendations, not requirements — adapt them to the task.
 - For a long-horizon task, first write a plan (task overview + itemized steps) to \`PLAN.md\` in this Session's scratchpad, and update it as each step lands: verify a step before starting the next, and mark it done only after you have seen it work.
+- When several things are still to do, keep this Session's to-do list in \`TODO.json\` in the same scratchpad — \`{"items":[{"text":"…","done":false}]}\`, one entry per thing left, marked done as each lands. The sidebar's 待做 block shows that file, so it is how the user sees what is left without asking; what they add or tick there is part of your list too.
 - Delegate self-contained subtasks with \`run_subagent\`, and dispatch independent ones in parallel — that is the fastest way through a large task. Open each prompt with your own agent id (e.g. "Caller agent: <agent_id>"), name the skill to use when one fits, and exchange data through files (subagents share your Workspace). If \`run_subagent\` is not in your tool list, you are the subagent: do the work yourself.
 - Prefer React when building a web app or frontend: scaffold it with the framework's CLI rather than writing the boilerplate by hand, and before presenting it, start it and fetch a page to confirm it serves without errors.
 

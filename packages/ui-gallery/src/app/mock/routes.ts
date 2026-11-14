@@ -109,6 +109,8 @@ import type {
   SessionInfo,
   SessionProcessesResponse,
   SessionResponse,
+  SessionTodosPutRequest,
+  SessionTodosResponse,
   SessionsBatchResponse,
   SessionsResponse,
   SessionTracesResponse,
@@ -1591,6 +1593,13 @@ router
     return json({ sessionId } satisfies TaskCreateResponse, 202);
   })
   .get("/api/sessions/:sessionId/goal", (): GoalResponse => ({ goal: null }))
+  // The sidebar foot's 待做 block reads every open conversation. The demo starts the list empty
+  // and keeps nothing: the PUT answers the list that was sent, so an edit lands visibly and a
+  // reload drops it again.
+  .get("/api/sessions/:sessionId/todos", (): SessionTodosResponse => ({ items: [] }))
+  .put("/api/sessions/:sessionId/todos", ({ body }): SessionTodosResponse => ({
+    items: (body as SessionTodosPutRequest).items,
+  }))
   .post("/api/sessions/:sessionId/approvals/:toolCallId", ({ store, params, body }) => {
     const decision = record(body).decision === "deny" ? "deny" : "allow";
     if (!store.decide(params.sessionId!, params.toolCallId!, decision)) {

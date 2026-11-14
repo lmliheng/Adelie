@@ -1480,6 +1480,21 @@ export const en: Strings = {
     passwordMismatch: "New passwords do not match",
     initialPasswordBanner: "This account is using its initial password. Please change it soon.",
     changeNow: "Change now",
+    /** The sidebar foot's 待做 block: this Session's own to-do list (TODO.json in its scratchpad). */
+    todos: {
+      title: "To do",
+      empty: "Nothing on this conversation's list yet",
+      count: (left: number, total: number): string => `${left}/${total}`,
+      addPlaceholder: "Add a to-do…",
+      markDone: "Mark as done",
+      markUndone: "Mark as not done",
+      remove: "Remove this entry",
+      expand: "Show the to-do list",
+      collapse: "Hide the to-do list",
+      failed: "That change was not saved and has been put back",
+      readFailed: "This conversation's to-do list could not be read",
+      retry: "Try again",
+    },
     /**
      * The user-level vault dialog (the account menu's "User secrets" row): this account's own
      * key-value table, stored outside every Project. The copy explains what the table is and,

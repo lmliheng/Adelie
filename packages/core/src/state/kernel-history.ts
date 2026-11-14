@@ -22,7 +22,7 @@ import { createHash } from "node:crypto";
  * change without it moving. (The reverse — moving it with no default change — is inert rather
  * than an error: nothing is keyed by version, so there is no table to fall out of sync with.)
  */
-export const KERNEL_VERSION = "2026-10-05";
+export const KERNEL_VERSION = "2026-11-15";
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -210,12 +210,18 @@ export function isKernelOutdated(kernelVersion: string | null | undefined): bool
  *   system — links never in code formatting, a final answer that stands on its own, a
  *   one-sentence refusal), one specific question with options, and doing the work rather than
  *   pasting it. The prompt tab moved.
- * - `2026-10-05` (current) — the product renamed: Adelie (this tree is a fork of PenguinHarness,
+ * - `2026-10-05` — the product renamed: Adelie (this tree is a fork of PenguinHarness,
  *   and every user-visible mention of the old name became the new one, the default system
  *   prompt's own included). The prompt tab moved.
+ * - `2026-11-15` (current) — the default system prompt's # Suggested workflows gained the
+ *   Session to-do list: when several things are still to do, keep them in `TODO.json` in the
+ *   Session's scratchpad, `{"items":[{"text":"…","done":false}]}`, marked done as each lands.
+ *   The sidebar's 待做 block reads that same file, so the list is how the user sees what is
+ *   left without asking, and what they add or tick there is the Agent's list too. The prompt
+ *   tab moved.
  */
 export const KERNEL_DEFAULT_TAB_HASHES: Readonly<Record<KernelTab, string>> = {
-  prompt: "e6c6815b83ddc7f27d9e188f3f8d4311d5992a6ee6dcbae8c9cdb7bb7e62f220",
+  prompt: "6dc01249afe8b031a76a226763e3da93bda9fc69cf5868dfb045578365d69825",
   runtime: "5dfea06a5e801950c24f44f5527e62435ae4facc311a6587e53aa69983ab0346",
   tools: "a5e067fe58899be651c3c0541f587b2d5999030dc3008a39737a8fe21f5f7a23",
   skills: "7e343aa692e5eaeadfc8add6bb375fb50ac33ef81ebe460490fc219b0f3d707f",
@@ -243,6 +249,7 @@ export const KERNEL_SUPERSEDED_TAB_HASHES: KernelSupersededTabHashes = {
     "048198c37b8d7840352c225fdfcb15baf2679973c6eab4bf400d492daf6ce254", // the toggles template, before the # File system search-scope rule
     "f9576833f73192d69c962bf21bd2049d0c8f5389ba4b9700ca9bd95ea545d3b0", // the search-scope template, before the 2026-09-11 guardrails and interaction rules
     "9b2b54a241c7b8ac92faf7177d6f42c9c87b54f2e6d89411b37c53e5061ca515", // the guardrails template, before the product renamed to Adelie
+    "e6c6815b83ddc7f27d9e188f3f8d4311d5992a6ee6dcbae8c9cdb7bb7e62f220", // the renamed template, before the Session to-do list joined # Suggested workflows
   ],
   runtime: [
     "808ae1d1b544f46daff4f59f1e62357b89a61f60803061e86b10635616e0102c", // compaction.max_context_length was 128000, before the rise to 256000

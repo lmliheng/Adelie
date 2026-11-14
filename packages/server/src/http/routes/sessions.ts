@@ -47,6 +47,8 @@ import type {
   TaskCreateResponse,
   SessionSandbox,
   SessionInfo,
+  SessionTodoItem,
+  SessionTodosResponse,
 } from "../../api/types.js";
 import { compactionThresholdFor } from "../../services/context-breakdown.js";
 import { decodeCursor } from "../../services/message-window.js";
@@ -56,6 +58,12 @@ import { PREVIEW_TOKEN_TTL_MS, resolvePreviewTarget } from "../../services/previ
 import type { AppEnv } from "../../auth/middleware.js";
 import type { SessionRow } from "../../db/repos/sessions.js";
 import { assertWorkspaceAllowed } from "../../services/workspace-guard.js";
+import {
+  normalizeTodosInput,
+  parseTodos,
+  serializeTodos,
+  todosFilePath,
+} from "../../services/session-todos.js";
 import { isGoalOutcome } from "../../runtime/goal-events.js";
 import { HttpError } from "../errors.js";
 import { sseEndpoint, streamRevocation } from "../sse.js";
@@ -1697,6 +1705,42 @@ export function sessionsRoutes(deps: SessionsRouteDeps): Hono<AppEnv> {
         rounds: typeof g.round === "number" ? g.round : 0,
       },
     } satisfies GoalResponse);
+  });
+
+  // The Session's to-do list: `TODO.json` in its scratchpad, the same kind of file the goal
+  // plugin keeps. The sidebar's 待做 block reads it here; the Agent writes the same file with
+  // its own tools, so both sides work on one list. A missing file is an empty list, not a 404 —
+  // every Session has this, most simply never filled it in.
+  app.get("/:sessionId/todos", async (c) => {
+    const row = resolveSession(c);
+    let raw: string;
+    try {
+      raw = await fs.readFile(
+        todosFilePath(deps.config.root, row.projectId, row.agentId, row.sessionId),
+        "utf8",
+      );
+    } catch {
+      return c.json({ items: [] } satisfies SessionTodosResponse);
+    }
+    return c.json({ items: parseTodos(raw) } satisfies SessionTodosResponse);
+  });
+
+  // Replaces the whole list. The page sends what it is showing after an add, a tick or a
+  // removal; the Agent writes the file directly. A target that does not exist yet is created,
+  // since the first entry a reader types is how most lists start.
+  app.put("/:sessionId/todos", async (c) => {
+    const row = resolveSession(c);
+    const body = await readJson(c);
+    let items: SessionTodoItem[];
+    try {
+      items = normalizeTodosInput(body.items);
+    } catch (err) {
+      throw badRequest(err instanceof Error ? err.message : String(err));
+    }
+    const file = todosFilePath(deps.config.root, row.projectId, row.agentId, row.sessionId);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, serializeTodos(items), "utf8");
+    return c.json({ items } satisfies SessionTodosResponse);
   });
 
   app.post("/:sessionId/approvals/:toolCallId", async (c) => {

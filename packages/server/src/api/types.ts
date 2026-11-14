@@ -2761,6 +2761,30 @@ export interface GoalResponse {
   goal: GoalStateView | null;
 }
 
+/** One entry of a Session's to-do list — the sidebar's 待做 block. */
+export interface SessionTodoItem {
+  text: string;
+  done: boolean;
+}
+
+/**
+ * `GET /api/sessions/:sessionId/todos`: the Session's to-do list, read from `TODO.json` in its
+ * scratchpad. The Agent keeps that file with its own tools and the page writes it back through
+ * the PUT below, so this is the one list both sides see. An empty list is a normal answer.
+ */
+export interface SessionTodosResponse {
+  items: SessionTodoItem[];
+}
+
+/**
+ * `PUT /api/sessions/:sessionId/todos`: the whole list, replacing what is stored. The page sends
+ * the list it is showing after an add, a tick or a removal — the list is short and private to one
+ * reader, so a per-entry API would buy an ordering guarantee nobody needs.
+ */
+export interface SessionTodosPutRequest {
+  items: SessionTodoItem[];
+}
+
 /**
  * `POST /api/sessions/:sessionId/switch-model`: switch this Session to another model in place.
  * The running context is closed on the model it ran on, then the next one opens on the target.
