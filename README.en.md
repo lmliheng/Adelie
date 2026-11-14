@@ -148,8 +148,9 @@ and local models with a custom endpoint.
 
 | Requirement | Support |
 | --- | --- |
-| Operating system | Windows 10+ (x64), Linux (x64), macOS (arm64 / x64) |
-| Runtime | Nothing to install — the installers bundle Node |
+| Operating system — desktop app | Windows 10+ (x64), Linux (x64) |
+| Operating system — CLI and Web app | Windows, Linux, macOS (arm64 / x64), installed from npm |
+| Runtime | Nothing to install for the desktop app — the installers bundle Node; the CLI from npm needs Node >= 24 |
 | Model | an API key for at least one model provider |
 
 ## Install
@@ -163,7 +164,14 @@ one whole version — the desktop app, the CLI, the server and the Web frontend 
 | --- | --- |
 | Windows 10+ (x64) | `adelie-desktop-win32-x64.exe` — NSIS installer, per-user, installs under `%LOCALAPPDATA%` |
 | Linux (x64) | `adelie-desktop-linux-x86_64.AppImage` or `adelie-desktop-linux-amd64.deb` |
-| macOS | not built yet — the dmg/zip targets wait for an Apple Developer ID |
+| macOS | not published — see below |
+
+The macOS build exists and is wired up — `electron-builder` has its dmg/zip targets and CI builds
+one on every run — but releases **do not attach it**: shipping it needs an Apple Developer ID to
+sign and notarize with, and an unsigned, unnotarized build would be stopped by Gatekeeper and could
+not receive updates (no `latest-mac.yml` is published either). On macOS, use the CLI or the Web app
+for now: `npm install -g @adelie/cli` (needs Node >= 24 on the machine), then `penguin web` opens
+the same interface.
 
 The Windows installer is **not code-signed yet**, so SmartScreen shows its warning once
 ("More info → Run anyway"). The app checks for updates itself against this repo's GitHub Releases,
