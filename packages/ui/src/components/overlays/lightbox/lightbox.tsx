@@ -18,6 +18,10 @@
  * image tool) hands its own words and its own work in, and the bar is where they belong: the
  * gesture starts from the picture, at its own size, in one place rather than two.
  *
+ * An action that does not get through leaves its reason under that bar, beside the picture and the
+ * button that was pressed (see {@link LightboxAction} and `action-press.ts`): the refusal belongs
+ * to the press, not to the page, and the overlay is the only place both are in view.
+ *
  * The close glyph and the size badge hang in the picture's top corners while the picture leaves
  * room for them; on a picture smaller than either chip they are set beside it instead — the size
  * to its left, the close glyph to its right, both over the backdrop — because there they still
@@ -32,6 +36,7 @@ import { ICONS } from "../../icons/icons";
 import { GlyphIcon } from "../../icons/glyph-icon/glyph-icon";
 import { CloseIcon, DownloadIcon } from "../../icons/marks/marks";
 import { useEscLayer } from "../esc-layers/esc-layers";
+import { pressLightboxAction } from "./action-press";
 import { cornerChipsFit, downloadName, pixelSizeLabel, stepIndex } from "./image-board";
 import type { LightboxImage } from "./image-board";
 
@@ -43,18 +48,26 @@ export type { LightboxImage };
  * decides in its own language, and does the work — because whether there is anything to do, and
  * what, depends on the page rather than on the picture.
  *
- * `onSelect` runs after the overlay has closed. That order is the point: the action usually puts
- * something in the page underneath (a prompt in the composer, a request to the Agent), and doing
- * it under a scrim leaves the reader looking at the picture they just acted on instead of at the
- * result.
+ * `onSelect`'s answer decides what happens to the overlay (see `pressLightboxAction`). A plain
+ * action puts something in the page underneath (a prompt in the composer), so the overlay closes
+ * with the press and the reader lands on the result rather than on the picture they just acted on.
+ * One that answers with a promise is still working — usually a request the caller has to deliver,
+ * and whose refusal only it can word — so the overlay stays up, the button reads as busy, and the
+ * sentence the promise resolves to is drawn under the bar: the press that did not get out, with
+ * the button that pressed it still there to press again (7.19's rule — a reason that expires with
+ * a notification over an unchanged picture says nothing six seconds later).
  */
 export interface LightboxAction {
   /** Identity of the action across renders. */
   key: string;
   /** The word on the button, in the caller's language. */
   label: string;
-  /** What the action does, run once the overlay is gone. */
-  onSelect: () => void;
+  /**
+   * What the action does, run when the button is pressed. Returning a promise keeps the overlay up
+   * until it settles; a non-empty string it resolves to is this press's refusal (drawn under the
+   * bar), while an empty answer means the work landed and the overlay closes.
+   */
+  onSelect: () => void | Promise<string | null | undefined>;
 }
 
 export interface LightboxProps {
@@ -81,14 +94,24 @@ export interface LightboxProps {
 export function Lightbox({ open, src, alt, onClose, closeLabel, images, actions }: LightboxProps) {
   const strings = useUiStrings();
   // Closing resets the step, so the next opening starts on the caller's own picture rather than on
-  // whichever one the reader last looked at.
+  // whichever one the reader last looked at — and drops the previous press's refusal with it: a
+  // second visit is a fresh look at the picture, not a reminder of what failed there before.
   const close = () => {
     setStep(null);
+    setBusyAction(null);
+    setRefusal(null);
     onClose();
   };
   useEscLayer(open, close);
   // The step the reader took from the caller's picture, or null while they have taken none.
   const [step, setStep] = useState<number | null>(null);
+  /**
+   * The action whose answer is still outstanding, if any: its button is busy meanwhile, so a second
+   * tap does not deliver the same turn twice. The overlay stays up while it runs (action-press.ts).
+   */
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+  /** The last press's refusal, in the caller's words, drawn under the bar until the next press. */
+  const [refusal, setRefusal] = useState<string | null>(null);
   /**
    * The pixel size of the picture that loaded, tagged with its src: switching pictures leaves the
    * previous reading behind, and the badge must not show another picture's numbers while the next
@@ -224,23 +247,47 @@ export function Lightbox({ open, src, alt, onClose, closeLabel, images, actions 
           <DownloadIcon />
           <span>{strings.download}</span>
         </a>
-        {/* The page's own actions. The overlay closes first, and the action then runs against the
-            page the picture came from — `close()` also drops the step, so reopening starts on the
-            caller's picture again. */}
+        {/* The page's own actions, each answered on its own terms: a plain one runs and the overlay
+            closes with it, one that answers with a promise keeps the overlay up while it runs and
+            has its refusal drawn below (see `pressLightboxAction`). */}
         {actions?.map((action) => (
           <button
             key={action.key}
             type="button"
-            onClick={() => {
-              close();
-              action.onSelect();
-            }}
-            className="flex h-7 items-center rounded-full px-2 text-xs text-fg transition-colors duration-150 hover:bg-surface-muted"
+            disabled={busyAction === action.key}
+            onClick={() =>
+              pressLightboxAction(action.onSelect, (press) => {
+                if (press.kind === "pending") {
+                  setBusyAction(action.key);
+                  setRefusal(null);
+                  return;
+                }
+                setBusyAction(null);
+                if (press.kind === "refused") setRefusal(press.text);
+                else close();
+              })
+            }
+            className="flex h-7 items-center rounded-full px-2 text-xs text-fg transition-colors duration-150 hover:bg-surface-muted disabled:opacity-50"
           >
             {action.label}
           </button>
         ))}
       </div>
+
+      {/* The press that did not get out, in the caller's own words: under the bar that holds the
+          button it came from, which has not moved and is therefore the retry. Two lines at most,
+          the whole sentence one hover away — the same shape as the other refusal slots. */}
+      {refusal !== null && (
+        <p
+          role="alert"
+          data-testid="lightbox-refusal"
+          data-tooltip={refusal}
+          data-tooltip-content="text"
+          className="anim-fade line-clamp-2 max-w-[88vw] break-words text-center text-xs text-tone-danger-fg"
+        >
+          {refusal}
+        </p>
+      )}
     </div>,
     document.body,
   );

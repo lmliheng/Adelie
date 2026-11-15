@@ -197,9 +197,13 @@ describe("Lightbox's actions", () => {
     expect([...html.matchAll(/<button\b/g)]).toHaveLength(1); // the close glyph, and nothing else
   });
 
-  it("closes the overlay before running the action, so the page underneath acts in the open", () => {
+  it("hands every press to the runner that decides between closing and staying up", () => {
+    // The order and the choice live in action-press.ts (tested on its own): the bar must not go
+    // back to closing first and running afterwards, which would throw away an action's answer —
+    // and with it the refusal the picture is the only place to show.
     const text = readFileSync(join(SRC_DIR, "components/overlays/lightbox/lightbox.tsx"), "utf8");
-    expect(text).toMatch(/close\(\);\s*\n\s*action\.onSelect\(\);/);
+    expect(text).toMatch(/pressLightboxAction\(action\.onSelect/);
+    expect(text).not.toMatch(/close\(\);\s*\n\s*action\.onSelect\(\);/);
   });
 });
 

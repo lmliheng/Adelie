@@ -3928,6 +3928,13 @@ export const en: Strings = {
         `Using the seedream skill, split \`${path}\` in the Workspace into layers (--layers), writing the base image and every transparent layer PNG back into the Workspace.`,
       redrawPrompt: (path: string) =>
         `Using the seedream skill, make another version of \`${path}\` in the Workspace, with it as the reference image: `,
+      /**
+       * The layer split's turn did not get out (see lib/image-actions.ts): the picture's bar draws
+       * this under itself, where the button that posted it still is. Nothing ran — the message never
+       * reached the Agent, so the Workspace holds the same files it did.
+       */
+      refused: (reason: string) =>
+        `Couldn't split this picture into layers, and no message was sent: ${reason}`,
     },
     memoryChangesTitle: (n: number) => `${n} memory ${n === 1 ? "update" : "updates"}`,
     memoryScopeWorkspace: (key: string) => `Workspace memory (${key})`,

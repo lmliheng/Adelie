@@ -54,8 +54,14 @@ export interface ReplyImageActionWiring {
   skills: readonly { name: string }[];
   /** The active dictionary's words for this feature (`S.chat.imageAction`). */
   words: ReplyImageWords;
-  /** Sends an instruction to the Agent as a message of the user's own. */
-  ask: (message: string) => void;
+  /**
+   * Sends an instruction to the Agent as a message of the user's own. It answers with the sentence
+   * the picture's bar draws when the turn does not get out, and `null` when it did: the lightbox
+   * keeps the overlay up for that answer (see `LightboxAction`), because the refusal belongs beside
+   * the picture and the button that posted it — a toast over an unchanged picture says nothing six
+   * seconds later (7.19's rule). The layer split is the only action that posts at all.
+   */
+  ask: (message: string) => Promise<string | null>;
   /** Puts an instruction in the composer, to be finished and sent by hand. */
   compose: (prompt: string) => void;
 }

@@ -73,6 +73,17 @@ describe("replyImageActionBuilder", () => {
     expect(compose).not.toHaveBeenCalled();
   });
 
+  it("hands the bar the sentence a refused turn comes back with", async () => {
+    // The lightbox keeps the overlay up for this answer and draws it under the bar (7.19's rule);
+    // nothing about it is the builder's business beyond passing it through unchanged.
+    const { builder } = wiring({
+      ask: async () => "没能把这张图拆成图层：服务器内部错误，请稍后重试。",
+    });
+    await expect(builder?.("shot.png")?.[0]?.onSelect()).resolves.toBe(
+      "没能把这张图拆成图层：服务器内部错误，请稍后重试。",
+    );
+  });
+
   it("stops the redraw at the composer, leaving the send to the user", () => {
     const { builder, ask, compose } = wiring();
     builder?.("shots/cat.png")?.[1]?.onSelect();

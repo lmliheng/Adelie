@@ -4034,6 +4034,12 @@ export const zh = {
         `用 seedream 技能把工作区里的 \`${path}\` 拆成图层（--layers），底图和每层透明 PNG 都写回工作区。`,
       redrawPrompt: (path: string) =>
         `用 seedream 技能，以工作区里的 \`${path}\` 作为参考图改一版：`,
+      /**
+       * The layer split's turn did not get out — the picture's bar draws this under itself, where
+       * the button that posted it still is (see lib/image-actions.ts). Nothing ran and nothing was
+       * written: the turn never reached the Agent, so the Workspace holds the same files it did.
+       */
+      refused: (reason: string) => `没能把这张图拆成图层，这条消息没有发出：${reason}`,
     },
     /** Memory-change card below the file summary and the Memory side panel: titles, scope/op tooltips, collapsed row. */
     memoryChangesTitle: (n: number) => `${n} 条记忆更新`,

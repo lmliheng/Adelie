@@ -110,6 +110,7 @@ import {
   sendRefusalShown,
 } from "./message-send-refusal";
 import type { SendRefusal } from "./message-send-refusal";
+import { sendRefusalReason } from "./first-send-refusal";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
 import { SEEDREAM_SKILL, replyImageActionBuilder } from "../../lib/image-actions";
@@ -1659,10 +1660,15 @@ export function ChatPage() {
    * image. Both leave whatever the user had typed alone — the turn is posted directly rather than
    * through the composer's Send, and only the redraw (a composed prompt, like the schedules
    * panel's and the draft screen's) takes the text body, which is what that gesture asks for.
+   *
+   * A turn that does not get out answers with its sentence instead of a notification: the lightbox
+   * holds the overlay open for it, and draws it under the bar where the button that posted it still
+   * is (7.19's rule). Nothing ran in that case, so the sentence names the message that was not
+   * sent rather than claiming anything about the Workspace.
    */
   const askWithPicture = useCallback(
-    async (message: string) => {
-      if (!selected) return;
+    async (message: string): Promise<string | null> => {
+      if (!selected) return null;
       try {
         // queueIfBusy: an action tapped while a turn is running joins the queue rather than
         // failing on a busy Session.
@@ -1670,11 +1676,12 @@ export function ChatPage() {
           input: [{ type: "text", text: message }],
           queueIfBusy: true,
         });
+        return null;
       } catch (e) {
-        toastError(apiErrorText(e, { modelId: selected.modelId }));
+        return S.chat.imageAction.refused(sendRefusalReason(e, selected.modelId));
       }
     },
-    [selected, toastError],
+    [selected],
   );
   const composeImageRedraw = useCallback((prompt: string) => {
     // The Skill rides with the prompt, so pressing Send builds the same [use_skills] message the
@@ -1686,7 +1693,7 @@ export function ChatPage() {
       replyImageActionBuilder({
         skills: agentSkills,
         words: S.chat.imageAction,
-        ask: (message) => void askWithPicture(message),
+        ask: (message) => askWithPicture(message),
         compose: composeImageRedraw,
       }),
     [agentSkills, askWithPicture, composeImageRedraw],
