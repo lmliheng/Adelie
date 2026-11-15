@@ -2686,6 +2686,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       分叉、什么都不写，「本会话保持不变」成立；工位里它**先写员工条目、再换工位、最后才投消息**，被拒可能
       落在写之后，所以那一句只说「这条消息没有发出」并指向组织图（页面在画它的同时重拉一次）。`/model`
       那颗芯片的形状与 `/agent` 完全一样，所以宿主还是输入卡上方那一行。见「第二百五十七轮」一节。
+- [x] **7.139 `/compact` 没能开始压缩时，原因留在输入卡上方**（**2026-11-16 第二百五十八轮**落地，提交见
+      「已完成的轮次」；源码 4 处 —— `packages/web/src/features/chat/message-send-refusal.ts` 新增
+      `compactionRefusalLine(sessionId, err)`（原因仍走同一个 `sendRefusalReason`，**不传模型 id**：被拒的压缩
+      走不到模型调用），`chat-page.tsx` 的 `runCompaction` 加可选 `onRefused`（命令那一侧写卡片上方的槽，
+      对话框那一侧照旧拿通知），`onCompact` 每次尝试先清上一句，两份词典各加 `chat.compactRefused(reason)`）
+      ＋ 既有单测加 6 条 ＋ 1 个新 spec `e2e/compact-refusal.spec.mjs`（2 条）＋ **改既有 spec
+      `e2e/compact-abort.spec.mjs` 的两条断言**（同一件事的面换了：原来断言通知按钮，现在断言 `send-refusal`
+      那一行）＋ 文档 `chat.zh.md` / `chat.en.md` 各一段 ＋ changelog 一对，**不碰接口、无新依赖**）：
+      `/compact` 是输入框里唯一什么都不投递的操作，服务端不肯开始时（没配压缩 / 还没有完成过一轮 / 刚刚压缩过）
+      它什么都没写，而原因只活在一条六秒后自己消失的通知里（7.19 的规则）。见「第二百五十八轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3435,6 +3445,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-15 | 7.136 | **已有对话里发不出去的消息，原因留在输入卡上方，不再只活六秒**（**2026-11-15 第二百五十五轮**落地；源码 6 处（新增纯逻辑 `packages/web/src/features/chat/message-send-refusal.ts` 的 `SendRefusal` / `sendRefusalLine(sessionId, err, modelId)` / `sendRefusalShown(refusal, sessionId)`，`chat-page.tsx` 的任务、运行中的跟进、插话三条发送路径改走它并多一个按会话分开的 `sendRefusal` 状态，`chat-input.tsx` 多一个可选 `sendRefusal` 画在卡片上方那一排（与思考等级 / 权限预设两条同一位置），`first-send-refusal.ts` 与两份词典共用 `chat.sendRefused(reason)` —— 键名从 `draftSendRefused` 改过来，两个屏幕共用一句，名字说的是消息而不是页面）＋ 1 个新单测 `message-send-refusal.test.ts`（10 条）＋ `first-send-refusal.test.ts` 跟着改键名 ＋ 1 个新 spec `e2e/session-send-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 各一段 ＋ changelog 一对，**不碰接口、无新依赖**）：草稿页的第一条消息 7.94 已经这么做了，已有对话这一侧仍是通知 —— 被拒时文字、附件、发送按钮全都原样留着，按钮就是重试，而原因六秒后自己消失，一次按压看起来根本没发生（7.19 的规则）。句子按会话分开存（输入区跨对话一直挂着）；插话的 409 不算拒绝，那表示本轮已结束、输入区会改写成本轮的普通任务。见「第二百五十五轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔不动服务契约）· `npx oxlint` 9 个改动文件 **0 警告 0 错误** · 改动文件 `prettier --check` 干净（新单测首跑 `--write` 一次，复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3826 通过 / 2 跳过**（+1 文件 / +10 条即本笔）· `@adelie/docs` **8 文件 / 62 通过**（本笔改了它两份内容）· **新 spec 2 passed（10.0 s + 2.2 s）**（真服务端 9441 + 仓库自带 mock 模型 9442 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r256-after`）：① 任务 POST 桩成 500 `internal`（带一句英文原文）—— 句子在卡片上方、逐字「没能发出这条消息：服务器内部错误，请稍后重试。」、不含线上英文、**量到它的下缘（770）在输入框上缘（783）之上**、通知区 0 个按钮、文字仍在、按钮仍可点、**七秒后**仍在；放行后按同一颗按钮 → 消息发出、句子消失；② 同一会话再按一次、换成 `not_found` —— 句子换成新原因、**只有一条**、通知区仍 0 个按钮、文字仍在、两次 POST 都发出 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：五份源码退回 `HEAD`、新模块移出、重建 web 挂到 `/root/adelie-fork-data/r256-before` 的 9431 → **2 failed**（两条都死在 `getByTestId('send-refusal')` 的 `toHaveText`：`element(s) not found`），源码放回重建后 **2 passed** · **两态探针（真服务端 + 真浏览器 1280×900，量 1.2 s / 7.6 s）**：**改后** 两刻都是句子 1 条、`role=alert`、**在输入卡正上方**（句子 y=754..770、输入框 y=783）、通知区 0 个按钮、文字仍在、按钮仍可点，截图 `r256/shots-after/7_6s.png` 里红字就压在卡片上方、下面那张卡里是没发出去的文字；**反证（改前产物 `r256/before-dist` + 9431）** 两刻都是句子 0 条，1.2 s 时通知区 **1 个按钮**（浮在页顶的「服务器内部错误，请稍后重试。」）、7.6 s 时 **0**（原因真的没了），截图 `r256/shots-before/1_2s.png`；两态 console 都只有既有的 `GET …/machines` 403 与本轮**故意造的** 500，pageerror 0 条 · **相邻回归（真浏览器）**：`draft-send-refusal.spec.mjs` **2 passed（19.7 s）** —— 草稿页那条走的是同一个 `sendRefused` 与同一个判断，键名换了它照旧 · 端口只用 9431 / 9441 / 9442（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r256-{after,before}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r256/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `d4a020c8c` |
 | 2026-11-15 | 7.137 | **`/agent` 交接没能开出新对话时，原因留在输入卡上方，草稿与目标小卡片都原样留着**（**2026-11-15 第二百五十六轮**落地；源码 4 处 —— `packages/web/src/features/chat/message-send-refusal.ts` 新增 `handoffRefusalLine(sessionId, err, agent, modelId?)`（原因仍走同一个 `sendRefusalReason`，只把句子换成「交给谁 + 本会话没动」），`chat-page.tsx` 的 `onHandoff` 每次尝试先清上一句、catch 里写进既有的 `sendRefusal` 槽而不是 `toastError`，两份词典各加 `chat.handoffRefused(agent, reason)`）＋ 既有单测加 6 条 ＋ 1 个新 spec `e2e/handoff-send-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 各一段 ＋ changelog 一对，**不碰接口、无新依赖**）：暂存 `/agent` 之后发送按钮做的是「把这份草稿交给那个 Agent」—— 新开一个对话、把草稿作为它的第一条消息投出去；两半任何一半被拒就什么都没写（新建的空会话被删掉），草稿、暂存文件与目标小卡片都还在那张卡上，所以按钮就是重试，而原因此前只活在一条六秒后自己消失的通知里（7.19 的规则；草稿页 7.94、已有对话 7.136 都已改到卡上方）。`/model` 那一侧有意留着：公司模式里它换的是员工桌上的模型（`switchDeskModel`）、并不新建会话，一句话说不准两个语义。见「第二百五十六轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web` 与文档）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 改动文件 `prettier --check` 干净（单测首跑 `--write` 一次，复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3832 通过 / 2 跳过**（基线 338 / 3826，+6 即本笔的新单测）· `@adelie/docs` **8 文件 / 62 通过**（本笔改了它两份内容）· **新 spec 2 passed（10.2 s + 2.4 s）**（真服务端 9441 + 仓库自带 mock 模型 9442 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r257-e2e`；目标 Agent 经 `POST …/agents` 创建、`/agent` 小卡片走真指令暂存）：① 新对话创建被 `page.route` 拒成 500 `internal`（带一句英文原文）—— 句子在卡片上方、逐字「没能把这条消息交接给 helper_agent，本会话保持不变：服务器内部错误，请稍后重试。」、不含线上英文、**量到它的下缘 742 在输入框上缘 783 之上**、通知区 0 个按钮、草稿与目标小卡片都还在、发送按钮仍可点、**七秒后仍在**、这一次只发出一个创建请求且项目里没有多出会话；放行后按同一颗按钮 → 落进新对话、消息真发出、会话数 +1；② 换成 `model_credential_missing`（新对话建在项目默认模型上，而这句错误自己不带模型名）—— 句子点名 `claude-4-8`、只有一行、通知区 0、草稿与芯片都还在 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：四份源码退回 `HEAD`、重建 web（改前产物 `index-*.js` 里 `grep -c 没能把这条消息交接给` 为 0），同一数据根同一端口 → **2 failed**，两条都死在 `getByTestId('send-refusal')` 的 `toBeVisible`（`element(s) not found`），源码放回重建后 **2 passed** · **两态探针（真服务端 + 真浏览器 1280×900，量 1.2 s / 7.6 s）**：**改后** 两刻都是句子 1 条、`role=alert`、**在输入卡正上方**（句子 y=726..742、输入框 y=783）、目标芯片 1 个、草稿仍在、通知区 0 个按钮、会话数没变，截图 `r257/shots-after/after-7_6s.png` 里红字压在卡片上方、卡里是 `helper_agent ×` 芯片与没发出去的草稿；**反证（改前产物 `r257/before-dist` + 同一端口）** 1.2 s 时句子 0 条、通知区 **1 个按钮**（浮在页顶的「服务器内部错误，请稍后重试。」，截图 `r257/shots-before/before-1_2s.png`），7.6 s 时通知区 **0**、卡片周围一个字都没有；两态 console error 都只有既有的 `GET …/machines` 403（非管理员账号的既有行为，两态一模一样）与本轮**故意造的** 500，pageerror **0 条** · 端口只用 9441 / 9442（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r257-e2e`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置 / PLAN 都在 scratchpad 的 `r257/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `011582729` |
 | 2026-11-15 | 7.138 | **`/model` 换模型没能开出新对话时，原因留在输入卡上方；工位那一支只说真成立的事**（**2026-11-15 第二百五十七轮**落地；源码 5 处 —— `packages/web/src/features/chat/message-send-refusal.ts` 新增 `PickedModel` / `modelSwitchRefusalLine(sessionId, err, model)` / `deskModelRefusalLine(sessionId, err, model)`（原因仍走同一个 `sendRefusalReason`，`model_credential_missing` 用上游 id 点名、句子里用小卡片上的显示名），`chat-page.tsx` 的 `onSwitchModel` 每次尝试先清上一句、两支的 `catch` 各写一句而不再 `toastError`（工位那一支仍照旧重拉组织图与组织会话），`modelDisplay` 从文件下半段挪到 `onSwitchModel` 之前，两份词典各加 `chat.modelSwitchRefused(model, reason)` / `chat.deskModelRefused(model, reason)`）＋ 既有单测加 8 条 ＋ 1 个新 spec `e2e/model-fork-refusal.spec.mjs`（3 条）＋ 文档 `chat.zh.md` / `chat.en.md` 各一段、`company-mode.zh.md` / `.en.md` 各补一句 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百五十六轮末尾点名的那一族里剩下的第一处 —— 普通对话里 `/model` 是分叉、什么都不写，草稿与小卡片都还在卡上、按钮就是重试，而原因只活在一条六秒后自己消失的通知里（7.19 的规则）。工位另说一句：那里它**先写员工条目、再换工位、最后才投那条消息**，被拒可能落在写之后，所以那一句只说「这条消息没有发出」并指向组织图，不声称本会话没被改动。见「第二百五十七轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web` 与文档）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 改动文件 `prettier --check` 干净（新单测与 spec 首跑 `--write` 一次，复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3840 通过 / 2 跳过**（基线 338 / 3832，+8 即本笔的新单测）· `@adelie/docs` **8 文件 / 62 通过**（本笔改了它四份内容）· **新 spec 3 passed（10.3 s + 2.6 s + 11.0 s）**（真服务端 9451 + 仓库自带 mock 模型 9452 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r258-e2e`；`/model` 小卡片走真指令暂存）：① 分叉被 `page.route` 拒成 500 `internal`（带一句英文原文）—— 句子在卡片上方、逐字「没能用 claude-4-8 开一个新对话，本会话保持不变：服务器内部错误，请稍后重试。」、不含线上英文、**量到它的下缘在输入框上缘之上**、通知区 0 个按钮、草稿与小卡片都还在、按钮仍可点、**七秒后仍在**、只发出一个创建请求且会话数没变；放行后按同一颗按钮 → 落进新对话，`GET /api/sessions/<新 id>` 的 `modelId` 是 `claude-4-8`；② 换成 `model_credential_missing` —— 句子点名被选的模型、只有一行、通知区 0、草稿与芯片都还在；③ **工位**（真组织 + 真 CEO 工位会话，先经后台开关打开公司模式、`POST …/organizations` 建组织、等工位 `status` 变 `idle`，再把 `PATCH …/employees/<agent>` 拒成 500）—— 句子逐字「没能把这张桌子换到 claude-4-9，这条消息没有发出；桌子现在用哪个模型以组织图为准：服务器内部错误，请稍后重试。」、**不含「本会话保持不变」**、不含线上英文、通知区 0 个按钮、草稿与芯片都在、PATCH 只发一次且请求体里的 `model` 正是 `custom/claude-4-9`、组织图里那位员工仍在项目的默认模型上、**七秒后仍在** · **反证（同一份 spec，改前源码 + 改前 web 产物）**：四份源码退回 `HEAD`（`strings.ts` 里 `deskModelRefused` 计数 0）、重建 web 挂到 `/root/adelie-fork-data/r258-before` 的 9435（改前产物里 `grep -rl 没能把这张桌子换到` 为空、改后产物里能搜到）→ **3 failed**，三条都死在 `getByTestId('send-refusal')` 的 `toBeVisible`（`element(s) not found`）；源码放回重建（产物 hash 与改后那份逐字节相同）后 **3 passed** · **两态探针（真服务端 + 真浏览器 1280×900，量 1.3 s / 7.6 s）**：**改后（9451）** 两刻都是句子 1 条、`role=alert`、逐字「没能用 claude-4-8 开一个新对话，本会话保持不变：服务器内部错误，请稍后重试。」、通知区 0 个按钮、草稿与芯片都在、按钮可点，截图 `r258/shots-after/r258after-{1_2s,7_6s}.png` 里红字就压在输入卡上方、卡里是 `claude-4-8 ×` 芯片与没发出去的那句；**反证（改前产物 `r258/before-dist` + 9435）** 1.3 s 时句子 0 条、通知区 **1 个按钮**（浮在页顶的「服务器内部错误，请稍后重试。」，截图 `r258/shots-before/r258before-1_2s.png`），7.6 s 时通知区 **0**、卡片上方一个字都没有；两态 console 都只有既有的 `GET …/machines` 403（非管理员账号的既有行为，两态一模一样）与本轮**故意造的** 500，pageerror **0 条** · **相邻回归（真浏览器）**：`handoff-send-refusal.spec.mjs` **2 passed**、`model-switch-refusal.spec.mjs`（工具栏那颗在**本对话内**换模型的确认框，另一条路）**2 passed**；`draft.spec.mjs` 在它的 Workspace 选择器那一步（第 218 行）失败，**改前产物（9435）上同样失败** —— 既有红，与本笔无关，故本笔的 `/model` 分叉成功那一半由新 spec 第 ① 条覆盖 · 端口只用 9435 / 9436 / 9451 / 9452（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r258-{e2e,before,adj}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r258/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `80b763b81` |
+| 2026-11-16 | 7.139 | **`/compact` 没能开始压缩时，原因留在输入卡上方**（**2026-11-16 第二百五十八轮**落地；源码 4 处 —— `packages/web/src/features/chat/message-send-refusal.ts` 新增 `compactionRefusalLine(sessionId, err)`（原因仍走同一个 `sendRefusalReason`，**不传模型 id**：被拒的压缩走不到模型调用），`chat-page.tsx` 的 `runCompaction` 加可选 `onRefused`（命令那一侧写卡片上方的槽，对话框那一侧照旧拿通知）、`onCompact` 每次尝试先清上一句，两份词典各加 `chat.compactRefused(reason)`）＋ 既有单测加 6 条 ＋ 1 个新 spec `e2e/compact-refusal.spec.mjs`（2 条）＋ **改既有 spec `e2e/compact-abort.spec.mjs` 的两条断言**（反馈的面换了：原来断言通知按钮，现在断言 `send-refusal` 那一行）＋ 文档 `chat.zh.md` / `chat.en.md` 各一段 ＋ changelog 一对，**不碰接口、无新依赖**）：`/compact` 是输入框里唯一什么都不投递的操作，服务端不肯开始时它什么都没写（斜杠记号已被收回，对话与上下文都是原来那份），而原因原本只活在一条六秒后自己消失的通知里（7.19 的规则）。思考等级对话框的「压缩后再切」有意保持通知：那一按是复合的（等级照样切过去），说「本会话保持不变」会是假的。见「第二百五十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web` 与文档；任务模板里的 `--filter @prismshadow/...` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 改动文件 `prettier --check` 干净（新单测首跑 `--write` 一次，复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3846 通过 / 2 跳过**（基线 338 / 3840，+6 即本笔的新单测）· `@adelie/docs` **8 文件 / 62 通过** · **新 spec 2 passed（9.9 s + 9.2 s）**（真服务端 9461 + 仓库自带 mock 模型 9462 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r259-e2e`）：① `POST …/compact` 被 `page.route` 拒成 500 `internal`（带一句英文原文）—— 句子在卡片上方、逐字「没能压缩这段上下文，本会话保持不变：服务器内部错误，请稍后重试。」、不含线上英文、**量到它的下缘 770 在输入框上缘 783 之上**、通知区 0 个按钮、只发出一个请求、输入框被清空、**七秒后仍在**；② **不打桩的真拒绝**（从未跑过一轮的对话拿到 409 `nothing_to_compact`）—— 界面自己那句「当前上下文还没有可压缩的内容（尚未完成一轮对话）。」落在卡片上、只有一行、通知区 0、七秒后仍在 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：四份源码退回 `HEAD`、重建 web（改前产物 `grep -c 没能压缩这段上下文` 为 0）挂到 `/root/adelie-fork-data/r259-before` 的 9465 → **2 failed**，两条都死在 `getByTestId('send-refusal')` 的 `toBeVisible`（`element(s) not found`，服务端日志里那条 `POST …/compact 409` 说明真拒绝确实走到了路由）；源码放回重建后 **2 passed** · **探针（真服务端 + 真浏览器 1280×900，量 1.2 s / 7.6 s）**：两刻都是句子 1 条、`role=alert`、下缘 770 在卡片上缘 783 之上、通知区 0 个按钮，截图 `r259/shots/after-{1_2s,7_6s}.png` 里红字压在输入卡上方、卡里是空输入框；console 只有既有的 `GET …/machines` 403 与本轮**故意造的** 409，pageerror **0 条** · **相邻回归（真浏览器）**：`compaction.spec.mjs` **2 passed**、`compact-abort.spec.mjs`（改完断言后）**2 passed**、`handoff-send-refusal.spec.mjs` **2 passed**；`compact-abort` 第一遍跑**红了两条**（它守的正是这件事的面换了），改断言后转绿 · 端口只用 9461 / 9462 / 9465（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r259-{e2e,before}`，探针 / 改后产物与源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r259/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `da31bff79` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -27904,4 +27915,95 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔 `80b763b81`（12 个文件：源码 4 —— 新增模块函数、`chat-page`、两份词典；单测 1；spec 1；
   文档 4；changelog 2）。
+- 台账这一笔随本文件另起。
+
+## 第二百五十八轮：`/compact` 没能开始压缩时，原因留在输入卡上方（2026-11-16，条目 7.139）
+
+### 开工自检
+
+- `git status --short` 干净、分支 `main`、`HEAD` 是第二百五十七轮之后那笔 `02dbbd243`（台账）。
+  `git fetch origin` 头两次被 GnuTLS（`-110`）掐掉，第三次同一个命令通过；`git rev-list --count
+  HEAD..origin/main` 为 **0**，`origin/main` 正是 `02dbbd243`，即已同步。没有切分支、没碰 `legacy/main`、
+  没推 upstream。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（「还差什么」逐条看下来，剩下的全在桌面壳一侧 + 既有部署单元
+  + 桌面壳自己的开关，而本轮纪律明令不碰 desktop / electron）；然后 3.5（要用户拍板取哪个桌面壳）、
+  3.6（要模型 key）、4.1–4.3（明令不动）、5.3（`[~]`，卡在「有第二台 Linux 机器时端到端」）、
+  5.6 / 5.10（拍板 / 新依赖）。第 7 节 7.1–7.138 已全勾，于是接第二百五十七轮末尾点名的那一族。
+
+### 选活：为什么是 `/compact`，以及为什么只管指令那一侧
+
+- 第二百五十七轮做完 `/model` 之后把剩下两件写在「没做」里：`askWithPicture`（回复图片的动作栏，要往
+  `packages/ui` 的回复图片里开槽）与 `runCompaction`（`/compact`）。后者是**最小的一处**：宿主不用新建，
+  就是输入卡上方那一个既有槽 `send-refusal`。
+- 但 `runCompaction` 有两个调用方，按下它们的**结果不一样**：`/compact` 命令什么都没写（命令执行时斜杠记号
+  已被收回，对话与上下文都是原来那份），所以「本会话保持不变」成立；思考等级对话框的「压缩后再切」
+  是复合的 —— 压缩没能开始**等级也照样切过去** —— 在那种地方说「本会话保持不变」是错的，所以它照旧拿通知
+  （它本来也有 `thinkingSwitchCompactionFailed` 那条）。于是 `runCompaction` 只加一个可选的 `onRefused`，
+  由调用方决定把原因放哪，服务端那一条路仍然只有一处。
+
+### 做了什么
+
+- **新增** `packages/web/src/features/chat/message-send-refusal.ts` 的 `compactionRefusalLine(sessionId, err)`：
+  原因仍是同一个 `sendRefusalReason`，所以路由自己的三个 409 码（`nothing_to_compact` / `already_compacted` /
+  `compaction_not_configured`）都读界面自己的句子；**不传模型 id**，因为被拒的压缩在校验那一步就返回、
+  走不到任何模型调用（`model_credential_missing` 不可能是这一下的答复）。
+- `packages/web/src/features/chat/chat-page.tsx`：`runCompaction(onRefused?)`；`else` 那一支仍是
+  `toastError`（对话框那一侧）。`onCompact` 每次尝试先 `setSendRefusal(null)`，再把
+  `compactionRefusalLine` 写进同一个槽。
+- 两份词典各加 `chat.compactRefused(reason)`（中英），句子是「没能压缩这段上下文，本会话保持不变：…」——
+  对每一种拒绝都成立，而且不暗示卡片能提供的重试（命令的记号已经收回）。
+- 文档 `chat.zh.md` / `chat.en.md` 的「使用斜杠命令」一节各加一段：服务端什么时候会拒绝、拒绝时什么都没改、
+  原因画在哪里，以及真正开始之后才失败的压缩记在对话里的压缩行上（链到「查看 Agent 的工作过程」）。
+- changelog 一对 `2026-11-16-compact-refusal.{md,zh.md}`。
+- **改既有 spec `packages/web/e2e/compact-abort.spec.mjs` 的两条断言**：它守的正是「`/compact` 被拒时必须有
+  反馈」这件事，而反馈的面从通知按钮换成了卡片上方那一行 —— 不改它，这一轮会把两条既有绿变红。断言对象
+  换成 `getByTestId("send-refusal")`，文案仍按码自己的措辞（`/没有可压缩的内容/`、`/刚刚压缩过/`，并断言
+  **不**出现 `/尚未完成一轮对话/`），native dialog 那一条照旧。
+- 有意没动：`askWithPicture`（宿主仍要往 `packages/ui` 的回复图片里开槽，属另一处结构）。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 /
+  612 类型 —— 本笔只动 `packages/web` 与文档）。包名已从 `@prismshadow/*` 换成 `@adelie/*`（任务模板里的
+  `--filter @prismshadow/...` 在本树匹配不到任何项目，按仓库实际包名跑）。
+- `npx oxlint` 6 个改动文件 **0 警告 0 错误**；改动文件 `prettier --check` 干净（新单测首跑 `--write` 一次，
+  复检通过；`*.md` 按本仓口径不在 prettier 范围）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105** · cli **39 / 566** ·
+  server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3846 通过 / 2 跳过**（基线 338 / 3840，+6 即本笔
+  的新单测）· `@adelie/docs` **8 文件 / 62 通过**（本笔改了它两份内容）。
+- **新 spec 2 passed（9.9 s + 9.2 s）**（真服务端 9461 + 仓库自带 mock 模型 9462 + `/usr/bin/chromium` +
+  一次性数据根 `/root/adelie-fork-data/r259-e2e`）：① 把 `POST …/compact` 用 `page.route` 拒成 500
+  `internal`（带一句英文原文）—— 句子在卡片上方、逐字「没能压缩这段上下文，本会话保持不变：服务器内部错误，
+  请稍后重试。」、不含线上英文、**量到它的下缘 770 在输入框上缘 783 之上**、通知区 0 个按钮、只发出一个请求、
+  记号被收回（输入框为空）、**七秒后仍在**；② **不打桩的真拒绝**（从未跑过一轮的对话拿到 409
+  `nothing_to_compact`）—— 界面自己那句「当前上下文还没有可压缩的内容（尚未完成一轮对话）。」落在卡片上、
+  只有一行、通知区 0、输入框为空、七秒后仍在。
+- **反证（同一份 spec，改前源码 + 改前 web 产物）**：四份源码退回 `HEAD`、重建 web（改前产物
+  `grep -c 没能压缩这段上下文` 为 0）挂到 `/root/adelie-fork-data/r259-before` 的 9465 → **2 failed**，两条都死在
+  `getByTestId('send-refusal')` 的 `toBeVisible`（`element(s) not found`）；服务端日志里那一条
+  `POST /api/sessions/…/compact 409` 说明真拒绝那一半确实走到了路由、只是没有地方画。源码放回、重建后
+  **2 passed**。
+- **探针（真服务端 + 真浏览器 1280×900，量 1.2 s / 7.6 s）**：两刻都是句子 1 条、`role=alert`、
+  逐字「没能压缩这段上下文，本会话保持不变：当前上下文还没有可压缩的内容（尚未完成一轮对话）。」、
+  下缘 770 在卡片上缘 783 之上、通知区 0 个按钮，截图 `r259/shots/after-{1_2s,7_6s}.png` 里红字就压在输入卡
+  上方、卡里是空的输入框；console 只有既有的 `GET …/machines` 403（非管理员账号的既有行为）与本轮
+  **故意造的** 409，pageerror **0 条**。
+- **相邻回归（真浏览器）**：`compaction.spec.mjs` **2 passed**、`compact-abort.spec.mjs`（改完断言后）
+  **2 passed**、`handoff-send-refusal.spec.mjs` **2 passed**。**第一遍跑 `compact-abort` 时它红了两条** ——
+  那正是它守的这件事的面换了（断言通知按钮）；改断言后转绿，这也是本轮的实测之一，不是事后补的说明。
+- 端口只用 9461 / 9462 / 9465（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r259-{e2e,before}`，探针 / 改后产物与源码留底 / 截图 / 临时 playwright 配置都在
+  scratchpad 的 `r259/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- `askWithPicture`（回复图片的「拆成分层」）：宿主应是那张图片自己的动作栏，要往 `packages/ui` 的回复图片
+  里加一个槽，属另一处结构。
+- 思考等级对话框的「压缩后再切」**有意**保持通知（复合结果，见上）。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 功能一笔 `da31bff79`（11 个文件：源码 4 —— 新增模块函数、`chat-page`、两份词典；单测 1；spec 1 新 + 1 改
+  （`compact-abort` 的两条断言）；文档 2；changelog 2）。
 - 台账这一笔随本文件另起。
