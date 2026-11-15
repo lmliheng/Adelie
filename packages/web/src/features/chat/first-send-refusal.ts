@@ -29,5 +29,7 @@ export function sendRefusalReason(err: unknown, modelId?: string): string {
 
 /** The sentence: what could not be sent, then why. */
 export function sendRefused(reason: string): string {
-  return S.chat.draftSendRefused(reason);
+  // One sentence for both screens: a conversation that already exists draws the same line above its
+  // composer (message-send-refusal.ts), so the dictionary key names the message, not this page.
+  return S.chat.sendRefused(reason);
 }

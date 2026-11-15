@@ -56,13 +56,13 @@ describe("sendRefusalReason", () => {
 describe("sendRefused", () => {
   it("names what failed, then the reason", () => {
     const line = sendRefused("没有可用的默认模型。");
-    expect(line).toBe(S.chat.draftSendRefused("没有可用的默认模型。"));
+    expect(line).toBe(S.chat.sendRefused("没有可用的默认模型。"));
     expect(line.endsWith("没有可用的默认模型。")).toBe(true);
   });
 
   it("speaks the active language", () => {
     setActiveStrings(EN);
-    expect(sendRefused("denied")).toBe(EN.chat.draftSendRefused("denied"));
+    expect(sendRefused("denied")).toBe(EN.chat.sendRefused("denied"));
     expect(sendRefused("denied")).toBe("Could not send this message: denied");
   });
 });

@@ -101,6 +101,8 @@ import { latestTaskHasSubagent, modelTaskStartCount, taskStartCount } from "./ag
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
 import type { RecallAnswer } from "./queued-recall-refusal";
+import { sendRefusalLine, sendRefusalShown } from "./message-send-refusal";
+import type { SendRefusal } from "./message-send-refusal";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
 import { SEEDREAM_SKILL, replyImageActionBuilder } from "../../lib/image-actions";
@@ -1323,22 +1325,34 @@ export function ChatPage() {
     [reloadSessions, navigate],
   );
 
+  /**
+   * The reason the last message on this card did not go out: the card keeps the text, the staged
+   * files and the send button (that button is the retry), so the sentence it drew above itself says
+   * why the press changed nothing — instead of a notification that dismissed itself after six
+   * seconds (message-send-refusal.ts, 7.19's rule). Scoped by Session: the composer stays mounted
+   * across conversations, and a sentence must not follow the reader into a chat that never failed.
+   * Cleared when the next attempt starts.
+   */
+  const [sendRefusal, setSendRefusal] = useState<SendRefusal | null>(null);
+
   const onSend = useCallback(
     async (input: TaskInputPart[], goal: { budget: number } | null): Promise<boolean> => {
       if (!selected) return false;
+      const sessionId = selected.sessionId;
+      setSendRefusal(null); // The new attempt answers for itself; the old sentence goes.
       try {
         // No thinking level rides a task: the level belongs to the model context (pinned on
         // the Session through PATCH, see applyTurnThinkingLevel).
-        const res = await api.postTask(selected.sessionId, {
+        const res = await api.postTask(sessionId, {
           input,
           ...(goal ? { goal } : {}),
         });
         discardSessionDraft();
-        await syncHealedSessionId(selected.sessionId, res.sessionId);
+        await syncHealedSessionId(sessionId, res.sessionId);
         return true;
       } catch (e) {
-        // Returning false -> the input area keeps the draft, letting the user fix it and resend (the error copy includes the session model's upstream id).
-        toastError(apiErrorText(e, { modelId: selected.modelId }));
+        // Returning false -> the input area keeps the draft, letting the user fix it and resend (the error copy includes the session model's upstream id); the reason goes above the card, whose send button is the retry (message-send-refusal.ts).
+        setSendRefusal(sendRefusalLine(sessionId, e, selected.modelId));
         return false;
       }
     },
@@ -1501,13 +1515,17 @@ export function ChatPage() {
   const onQueueFollowUp = useCallback(
     async (input: TaskInputPart[]): Promise<boolean> => {
       if (!selected) return false;
+      const sessionId = selected.sessionId;
+      setSendRefusal(null);
       try {
-        const res = await api.postTask(selected.sessionId, { input, queueIfBusy: true });
+        const res = await api.postTask(sessionId, { input, queueIfBusy: true });
         discardSessionDraft();
-        await syncHealedSessionId(selected.sessionId, res.sessionId);
+        await syncHealedSessionId(sessionId, res.sessionId);
         return true;
       } catch (e) {
-        toastError(apiErrorText(e, { modelId: selected.modelId }));
+        // Same card, same button as onSend (the run state only decides whether the message is
+        // queued), so the same slot says why it did not go out.
+        setSendRefusal(sendRefusalLine(sessionId, e, selected.modelId));
         return false;
       }
     },
@@ -1544,13 +1562,15 @@ export function ChatPage() {
       files: { fileName: string; dataUrl: string }[] = [],
     ): Promise<"queued" | "not_running" | "failed"> => {
       if (!selected) return "failed";
+      const sessionId = selected.sessionId;
+      setSendRefusal(null);
       try {
         // A steered clip goes inline only on a model that takes video input; anywhere else it
         // becomes an ordinary file attachment (scratchpad + `[attached file: <path>]` line), which
         // is the only shape the server accepts there — it refuses an inline video rather than
         // handing a provider a request it would reject. The choice itself is steerVideoFields'.
         const clip = steerVideoFields(videos, video);
-        await api.postSteer(selected.sessionId, {
+        await api.postSteer(sessionId, {
           text,
           ...(images.length > 0 ? { images } : {}),
           ...(clip.videos ? { videos: clip.videos } : {}),
@@ -1559,8 +1579,11 @@ export function ChatPage() {
         discardSessionDraft();
         return "queued";
       } catch (e) {
+        // 409 is not a refusal: the run had already ended, and the input area delivers the whole
+        // draft as a task instead (so the attempt continues and answers for itself). Everything
+        // else is this card's send button failing, and says so above the card.
         if (e instanceof ApiError && e.status === 409) return "not_running";
-        toastError(apiErrorText(e, { modelId: selected.modelId }));
+        setSendRefusal(sendRefusalLine(sessionId, e, selected.modelId));
         return "failed";
       }
     },
@@ -2274,6 +2297,7 @@ export function ChatPage() {
       permissionRefusal={
         permissionRefusal?.sessionId === selected.sessionId ? permissionRefusal.text : null
       }
+      sendRefusal={sendRefusalShown(sendRefusal, selected.sessionId)}
       {...(contextWindow !== undefined ? { contextWindow } : {})}
       {...(compactionLimit !== undefined ? { compactionLimit } : {})}
       onChangeCompactionLimit={onChangeCompactionLimit}

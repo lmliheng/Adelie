@@ -3557,8 +3557,12 @@ export const en: Strings = {
     machineTag: (machine: string) => `[SSH: ${machine}]`,
     newSessionInWorkspace: "New chat in this workspace",
     draftSubtitle: "The self-evolving agent that excels at AI development tasks",
-    /** The draft's first message did not go out: nothing was written, the text is still in the card. */
-    draftSendRefused: (reason: string) => `Could not send this message: ${reason}`,
+    /**
+     * A message did not go out: the text is still in the card, and for a draft's first message
+     * nothing was written at all. One sentence for both screens (the draft page's and an existing
+     * conversation's composer) — the key therefore names the message, not the screen.
+     */
+    sendRefused: (reason: string) => `Could not send this message: ${reason}`,
     /**
      * A picked thinking level was refused: the control still reads the level it read before, so the
      * sentence says the pick did not take. `forAgent` is set where the write goes through to the

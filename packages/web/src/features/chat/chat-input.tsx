@@ -624,6 +624,7 @@ export function ChatInput({
   onChangeThinkingLevel,
   thinkingRefusal,
   permissionRefusal,
+  sendRefusal = null,
   turnThinkingLevel,
   onChangeTurnThinkingLevel,
   contextWindow,
@@ -794,6 +795,15 @@ export function ChatInput({
    * Session on screen.
    */
   permissionRefusal?: string | null;
+  /**
+   * A message this card could not send — the sentence drawn above the card, next to the other two
+   * refusals, or null/absent. A refused send changes nothing on screen: the text, the staged files
+   * and the send button all stay exactly as they were, so the button is the retry and a notification
+   * would be the only trace of a press that appears to have done nothing (message-send-refusal.ts).
+   * The parent owns the sentence because it owns the write, and hands it over only while it still
+   * describes the Session on screen — this component stays mounted across conversations.
+   */
+  sendRefusal?: string | null;
   /**
    * Session state: the Session's thinking level to DISPLAY — the parent resolves it as "the
    * user's pick for this session, else the Agent config's level" ("" = neither known yet),
@@ -2601,6 +2611,23 @@ export function ChatInput({
           className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
         >
           {permissionRefusal}
+        </p>
+      )}
+
+      {/* A message this card could not send: the same slot again — the send button that asked is
+          inside the card below, still enabled, still holding the text, so it is the retry and the
+          sentence says why the press did nothing. It stays until the next attempt starts, which is
+          what makes it different from the six-second notification it replaced: the reader can look
+          again and see what the server said. */}
+      {sendRefusal != null && sendRefusal !== "" && (
+        <p
+          role="alert"
+          data-testid="send-refusal"
+          data-tooltip={sendRefusal}
+          data-tooltip-content="text"
+          className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {sendRefusal}
         </p>
       )}
 

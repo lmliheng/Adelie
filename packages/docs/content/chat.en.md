@@ -55,6 +55,8 @@ A shortcut is a name (at most 40 characters) and a prompt (at most 4000 characte
 
 Press Enter to send, and Shift+Enter for a new line. In an empty composer, the up and down arrows recall the messages you typed earlier in this Session.
 
+When a message does not get out — the network dropped, the server refused, this model's key is unusable — the message, its attachments and the send button all stay in the card, the reason is written on the line just above it, and pressing send again is the retry. That sentence stays until the next attempt starts: it says why this one did not go out, not a reminder that disappears after six seconds.
+
 ### Attach images and files
 
 - Paste an image into the composer. Pasting accepts images only.
