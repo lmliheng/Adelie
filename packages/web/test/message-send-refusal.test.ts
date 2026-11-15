@@ -7,14 +7,19 @@
  * things it must get right: a server answer speaks the interface's language (with the model's name
  * where the copy needs it), and a send that never reached the route keeps what it knows instead of
  * flattening to the generic text (7.19's rule). And it belongs to one Session only: the composer
- * stays mounted while another conversation is opened.
+ * stays mounted while another conversation is opened. The same slot carries a refused `/agent`
+ * handoff, whose words name the Agent and say this conversation was not touched.
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/client";
 import { en as EN } from "../src/lib/strings-en";
 import { S, setActiveStrings, zh as ZH } from "../src/lib/strings";
 import { sendRefused } from "../src/features/chat/first-send-refusal";
-import { sendRefusalLine, sendRefusalShown } from "../src/features/chat/message-send-refusal";
+import {
+  handoffRefusalLine,
+  sendRefusalLine,
+  sendRefusalShown,
+} from "../src/features/chat/message-send-refusal";
 
 afterEach(() => {
   setActiveStrings(ZH);
@@ -67,6 +72,68 @@ describe("sendRefusalLine", () => {
   it("draws the same sentence the draft screen does — one sentence, two screens", () => {
     const err = new ApiError(500, "internal", "boom");
     expect(sendRefusalLine("s", err).text).toBe(sendRefused(S.errors.byCode.internal));
+  });
+});
+
+describe("handoffRefusalLine", () => {
+  it("names the Agent the draft was handed to, and that this conversation is untouched", () => {
+    const line = handoffRefusalLine(
+      "session-a",
+      new ApiError(500, "internal", "boom"),
+      "helper_agent",
+    );
+    expect(line.sessionId).toBe("session-a");
+    expect(line.text).toBe(S.chat.handoffRefused("helper_agent", S.errors.byCode.internal));
+    expect(line.text).toContain("helper_agent");
+  });
+
+  it("is the plain send's sentence with one clause replaced, not a second copy of the reason", () => {
+    const err = new ApiError(400, "no_default_model", "RAW ENGLISH");
+    const plain = sendRefusalLine("s", err).text;
+    const handoff = handoffRefusalLine("s", err, "helper_agent").text;
+    expect(plain).toBe(S.chat.sendRefused(S.errors.noDefaultModel));
+    expect(handoff).not.toContain("RAW ENGLISH");
+    expect(handoff.endsWith(S.errors.noDefaultModel)).toBe(true);
+  });
+
+  it("names the model the new conversation would have been created on", () => {
+    // The handoff carries no model of its own: the new conversation is created on the Project's
+    // default, whose id `model_credential_missing` does not carry.
+    const line = handoffRefusalLine(
+      "s",
+      new ApiError(400, "model_credential_missing", "RAW ENGLISH"),
+      "helper_agent",
+      "deepseek-flash",
+    );
+    expect(line.text).toBe(
+      S.chat.handoffRefused("helper_agent", S.errors.modelCredentialMissing("deepseek-flash")),
+    );
+    expect(line.text).toContain("deepseek-flash");
+  });
+
+  it("keeps what a request that never reached the route has to say", () => {
+    expect(handoffRefusalLine("s", new Error("Failed to fetch"), "helper_agent").text).toBe(
+      S.chat.handoffRefused("helper_agent", "Failed to fetch"),
+    );
+    expect(handoffRefusalLine("s", undefined, "helper_agent").text).toBe(
+      S.chat.handoffRefused("helper_agent", S.common.unknownError),
+    );
+  });
+
+  it("speaks the active language", () => {
+    setActiveStrings(EN);
+    const line = handoffRefusalLine("s", new ApiError(500, "internal", "x"), "helper_agent");
+    expect(line.text).toBe(EN.chat.handoffRefused("helper_agent", EN.errors.byCode.internal));
+  });
+
+  it("belongs to the conversation the chip was staged on", () => {
+    const line = handoffRefusalLine(
+      "session-a",
+      new ApiError(500, "internal", "x"),
+      "helper_agent",
+    );
+    expect(sendRefusalShown(line, "session-a")).toBe(line.text);
+    expect(sendRefusalShown(line, "session-b")).toBeNull();
   });
 });
 

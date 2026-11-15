@@ -101,7 +101,7 @@ import { latestTaskHasSubagent, modelTaskStartCount, taskStartCount } from "./ag
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
 import type { RecallAnswer } from "./queued-recall-refusal";
-import { sendRefusalLine, sendRefusalShown } from "./message-send-refusal";
+import { handoffRefusalLine, sendRefusalLine, sendRefusalShown } from "./message-send-refusal";
 import type { SendRefusal } from "./message-send-refusal";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
@@ -1476,6 +1476,9 @@ export function ChatPage() {
         }),
       };
       let createdId: string | null = null;
+      const sessionId = selected.sessionId;
+      // The attempt that is starting answers for itself: the sentence of the one before goes.
+      setSendRefusal(null);
       try {
         const created = await api.createSession(projectId, target.agentId, {
           approvalMode: selected.approvalMode,
@@ -1490,9 +1493,14 @@ export function ChatPage() {
         return true;
       } catch (e) {
         if (createdId) void api.deleteSession(createdId).catch(() => undefined);
-        // The new chat uses the project's default model (createSession doesn't specify a model reference), so the error copy's model context follows suit.
-        toastError(
-          apiErrorText(e, models?.defaultModel ? { modelId: models.defaultModel.modelId } : {}),
+        // Nothing was handed over, and the chip and the draft are still on the card whose Send was pressed: the reason goes above it rather than into a toast, the same slot an ordinary send uses (message-send-refusal.ts). The new chat uses the project's default model (createSession doesn't specify a model reference), so the error copy's model context follows suit.
+        setSendRefusal(
+          handoffRefusalLine(
+            sessionId,
+            e,
+            agentDisplayName(target),
+            models?.defaultModel ? models.defaultModel.modelId : undefined,
+          ),
         );
         return false;
       }

@@ -3563,6 +3563,9 @@ export const en: Strings = {
      * conversation's composer) — the key therefore names the message, not the screen.
      */
     sendRefused: (reason: string) => `Could not send this message: ${reason}`,
+    /** A staged `/agent` handoff that did not get out (see strings.ts). */
+    handoffRefused: (agent: string, reason: string) =>
+      `Could not hand this message to ${agent}; this conversation is unchanged: ${reason}`,
     /**
      * A picked thinking level was refused: the control still reads the level it read before, so the
      * sentence says the pick did not take. `forAgent` is set where the write goes through to the

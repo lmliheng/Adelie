@@ -3658,6 +3658,14 @@ export const zh = {
      */
     sendRefused: (reason: string) => `没能发出这条消息：${reason}`,
     /**
+     * A staged `/agent` handoff did not get out: Send opens a NEW conversation for the picked Agent
+     * and posts the draft as its first message. Nothing was written when it refuses (the empty
+     * conversation is deleted again), so the sentence names the Agent and says this conversation is
+     * untouched — the chip and the draft are still on the card that asked.
+     */
+    handoffRefused: (agent: string, reason: string) =>
+      `没能把这条消息交接给 ${agent}，本会话保持不变：${reason}`,
+    /**
      * A picked thinking level was refused: the control still reads the level it read before, so the
      * sentence says the pick did not take. `agent` is set where the write goes through to the
      * Agent's settings (the draft's picker), which is a wider change than this one conversation.

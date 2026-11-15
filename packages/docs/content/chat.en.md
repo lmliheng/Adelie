@@ -205,6 +205,8 @@ The new Session keeps the agent, the Workspace and the approval mode. It opens w
 
 A new conversation opens with that agent and your text, showing where it was handed off from. With an empty composer, only the handoff itself is sent. As with `/model`, × or Backspace cancels, and the chip is saved with the draft.
 
+If the new conversation does not open (the network dropped, the server refused, the model's key is unusable) nothing is written: your text and staged files stay in the composer, the `/agent` chip stays too, so pressing send again is the retry. The reason is written on the line above the card and stays until the next attempt; this conversation is unchanged.
+
 ## Fork a conversation
 
 Under each finished reply, a stats line shows input and output Tokens, TPS, elapsed time and cost, then the reply time, copy and **Fork**. On a wide window the line appears when you point at the reply; on a phone it is always shown, without TPS. Fork is offered on replies that contain text.
