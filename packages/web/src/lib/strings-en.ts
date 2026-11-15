@@ -3572,6 +3572,9 @@ export const en: Strings = {
     /** `/model` on a desk, where the write may have landed before the refusal (see strings.ts). */
     deskModelRefused: (model: string, reason: string) =>
       `Could not move this desk onto ${model}; the message was not sent, and the org chart is the record of the model the desk is on now: ${reason}`,
+    /** `/compact` was refused and the context was left as it was (see strings.ts). */
+    compactRefused: (reason: string) =>
+      `Could not compact this context; this conversation is unchanged: ${reason}`,
     /**
      * A picked thinking level was refused: the control still reads the level it read before, so the
      * sentence says the pick did not take. `forAgent` is set where the write goes through to the

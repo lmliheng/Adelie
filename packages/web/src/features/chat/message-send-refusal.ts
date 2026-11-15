@@ -9,12 +9,13 @@
  * explaining why gone (7.19's rule, app-wide). The draft screen's first send already works this way
  * (first-send-refusal.ts, 7.94); this module is the same slot for a conversation that already
  * exists, where the attempt may be a task, a queued follow-up or a steering message — all three are
- * this one card's send button, in the mode the run state puts it in — and for a staged `/agent`
- * handoff or `/model` switch, whose Send opens a new conversation but is pressed on this same card.
- * The two switch sentences differ because the two presses write different things: a handoff and a
- * model fork write nothing into this conversation, while `/model` on a DESK first writes the
- * employee's model to the org chart — a refusal there may come after that write (see
- * `deskModelRefusalLine`).
+ * this one card's send button, in the mode the run state puts it in — for a staged `/agent`
+ * handoff or `/model` switch, whose Send opens a new conversation but is pressed on this same card,
+ * and for `/compact`, which posts nothing and asks the server to close the context instead.
+ * The sentences differ because the presses write different things: a handoff and a model fork write
+ * nothing into this conversation, while `/model` on a DESK first writes the employee's model to the
+ * org chart — a refusal there may come after that write (see `deskModelRefusalLine`) — and a
+ * refused `/compact` leaves the context exactly as it was (see `compactionRefusalLine`).
  *
  * The words are the same pair as the draft screen's, and deliberately shared rather than copied:
  * `sendRefusalReason` reads an answer through the code's own localized sentence (naming the model
@@ -104,6 +105,24 @@ export function deskModelRefusalLine(
     sessionId,
     text: S.chat.deskModelRefused(model.label, sendRefusalReason(err, model.modelId)),
   };
+}
+
+/**
+ * `/compact` typed into this card: the one press in the composer that posts nothing and instead asks
+ * the server to close the context. The server answers 202 when it starts and 409 when it will not —
+ * and then it has written nothing either: the slash token is gone from the box (running a command
+ * consumes it), the conversation is the same one with the same context, so what the reader used to
+ * get was a notification that expired over an unchanged screen (7.19's rule).
+ *
+ * The slot is the same one a refused send uses, because the press is this card's. It lands here
+ * rather than in the thinking level's "compact, then switch" path, whose press is a compound one:
+ * that one still switches the level, so "this conversation is unchanged" would be a lie there (see
+ * how chat-page draws that path). No `modelId` is passed on: a compaction the server refuses is
+ * refused before any model call (it is configured, there is something to compact, and the Session
+ * is idle), so `model_credential_missing` cannot be the answer to this press.
+ */
+export function compactionRefusalLine(sessionId: string, err: unknown): SendRefusal {
+  return { sessionId, text: S.chat.compactRefused(sendRefusalReason(err)) };
 }
 
 /** What the composer draws: the sentence while it still describes the Session on screen. */

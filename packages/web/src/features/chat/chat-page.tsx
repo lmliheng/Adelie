@@ -102,6 +102,7 @@ import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
 import type { RecallAnswer } from "./queued-recall-refusal";
 import {
+  compactionRefusalLine,
   deskModelRefusalLine,
   handoffRefusalLine,
   modelSwitchRefusalLine,
@@ -1855,24 +1856,37 @@ export function ChatPage() {
   // the compaction itself runs asynchronously, so a true here means "started", not
   // "finished" — the outcome only shows up on the stream (see the staged-switch watcher).
   // false means the server refused it (409 while a task runs / nothing to compact / …) and
-  // the reason has already been surfaced as a toast.
-  const runCompaction = useCallback(async (): Promise<boolean> => {
-    if (!selected) return false;
-    try {
-      // compact shares get-or-resume-or-heal with tasks: it can likewise self-heal to a new session_id.
-      const res = await api.postCompact(selected.sessionId);
-      await syncHealedSessionId(selected.sessionId, res.sessionId);
-      return true;
-    } catch (e) {
-      toastError(apiErrorText(e, { modelId: selected.modelId }));
-      return false;
-    }
-  }, [selected, syncHealedSessionId]);
+  // the reason has been reported: `onRefused` where the caller has a slot for it (the
+  // /compact command draws it above the card, compactionRefusalLine), a toast otherwise —
+  // which is the dialog's case, whose own press is a compound one (the level still switches,
+  // see compactThenThinkingSwitch).
+  const runCompaction = useCallback(
+    async (onRefused?: (err: unknown) => void): Promise<boolean> => {
+      if (!selected) return false;
+      try {
+        // compact shares get-or-resume-or-heal with tasks: it can likewise self-heal to a new session_id.
+        const res = await api.postCompact(selected.sessionId);
+        await syncHealedSessionId(selected.sessionId, res.sessionId);
+        return true;
+      } catch (e) {
+        if (onRefused !== undefined) onRefused(e);
+        else toastError(apiErrorText(e, { modelId: selected.modelId }));
+        return false;
+      }
+    },
+    [selected, syncHealedSessionId, toastError],
+  );
 
-  // The composer's /compact command: unchanged behavior (fire it, errors land as a toast).
+  // The composer's /compact command. Typing it consumes the token and asks for the compaction;
+  // a refusal has written nothing — this conversation and its context are the ones that were
+  // there before the press — so the reason is drawn above that same card rather than in a
+  // notification that expires over an unchanged screen (7.19's rule, compactionRefusalLine).
   const onCompact = useCallback(async () => {
-    await runCompaction();
-  }, [runCompaction]);
+    if (!selected) return;
+    const sessionId = selected.sessionId;
+    setSendRefusal(null); // The new attempt answers for itself; the old sentence goes.
+    await runCompaction((e) => setSendRefusal(compactionRefusalLine(sessionId, e)));
+  }, [selected, runCompaction]);
 
   // Session picker pick: pinned directly while it cannot hurt (empty transcript, a re-pick
   // of the displayed level, or right after a successful compaction), staged behind the

@@ -99,6 +99,8 @@ Type `/` to open the slash menu. Press Enter or Tab to run the highlighted entry
 
 `/compact`, `/agent` and `/model` appear only in a started conversation: a draft has no context to compact, and it picks its agent and model up front.
 
+Only the server starts a compaction, and it sometimes refuses: this agent has no context compaction configured, no conversation turn has finished yet, or it was just compacted. A refusal changes nothing (running the command consumes its slash token, and the conversation and its context are the ones that were there), so the reason is drawn on the line above the composer — the same place a message that did not go out uses — instead of in a notice that expires. A compaction that did start can still fail, and that is recorded on the compaction row in the conversation; see [Follow the agent's work](#follow-the-agents-work).
+
 ### Set a goal
 
 **Goal mode**, in the + menu or through `/goal`, turns your message into an objective. The harness then keeps running Tasks until the goal is complete, blocked or out of its **Token budget**, which you can set on the goal chip.

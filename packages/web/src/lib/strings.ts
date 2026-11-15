@@ -3681,6 +3681,13 @@ export const zh = {
     deskModelRefused: (model: string, reason: string) =>
       `没能把这张桌子换到 ${model}，这条消息没有发出；桌子现在用哪个模型以组织图为准：${reason}`,
     /**
+     * `/compact` was typed into this conversation and the server would not start the compaction (not
+     * configured, nothing to compact yet, or already compacted). Nothing was written either — the
+     * slash token is consumed, the conversation and its context stay as they were — so the sentence
+     * says that instead of leaving the reason in a notification that expires over an unchanged screen.
+     */
+    compactRefused: (reason: string) => `没能压缩这段上下文，本会话保持不变：${reason}`,
+    /**
      * A picked thinking level was refused: the control still reads the level it read before, so the
      * sentence says the pick did not take. `agent` is set where the write goes through to the
      * Agent's settings (the draft's picker), which is a wider change than this one conversation.

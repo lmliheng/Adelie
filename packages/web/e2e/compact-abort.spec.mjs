@@ -5,7 +5,9 @@
  * still 0 -> `compact()` returns immediately, **producing no message at all**. The server used
  * to still return 202, so the frontend would wait forever for a compaction banner that never
  * comes — from the user's perspective, it just looks like "nothing happened after sending the
- * compact command." Now the server explicitly returns 409 based on `session.compactability()`.
+ * compact command." Now the server explicitly returns 409 based on `session.compactability()`, and
+ * the page draws that reason on the line above the input card (`send-refusal`), where it stays
+ * instead of expiring with a six-second notification.
  *
  * Second test case: compacting twice in a row. The internal state is identical to the above
  * (sessionTurns === 0), but the message the user should see is completely different — they just
@@ -78,9 +80,9 @@ test("aborting before any turn completes: /compact says so instead of doing noth
   await expect(page.getByRole("button", { name: "停止" })).toHaveCount(0);
 
   // The actual user path: type /compact in the input box and press Enter (slash menu).
-  // Feedback goes through a **top toast** (the shared UI package's Toaster; the toast
-  // itself is a clickable, dismissible button), not a native browser alert — the latter would
-  // trigger Playwright's dialog event, which lets us assert we didn't fall back to it.
+  // Feedback goes through the line **above the input card** (`role="alert"`, the slot a refused
+  // send uses — compactionRefusalLine), not a native browser alert — the latter would trigger
+  // Playwright's dialog event, which lets us assert we didn't fall back to it.
   const nativeDialogs = [];
   page.on("dialog", (d) => {
     nativeDialogs.push(d.message());
@@ -90,8 +92,8 @@ test("aborting before any turn completes: /compact says so instead of doing noth
   await ta.press("Enter");
 
   // There must be feedback — silently doing nothing is exactly the bug being tested for.
-  await expect(page.getByRole("button", { name: /没有可压缩的内容/ })).toBeVisible();
-  expect(nativeDialogs, "feedback must be an in-app toast, not a native alert").toHaveLength(0);
+  await expect(page.getByTestId("send-refusal")).toContainText(/没有可压缩的内容/);
+  expect(nativeDialogs, "feedback must be an in-app line, not a native alert").toHaveLength(0);
   // And indeed no compaction was started (no compaction row).
   await expect(compactionRows(page)).toHaveCount(0);
 });
@@ -148,20 +150,23 @@ test("compacting twice in a row: says the context was just compacted, not that n
     await row.first().click();
   };
 
-  // First /compact: compacts normally, shows the row, no toast expected.
+  // First /compact: compacts normally, shows the row, and nothing is drawn above the card.
   await runCompact();
   await expect(compactionRows(page)).toHaveCount(1);
-  // No compact-unavailable toast (match the 409 reasons' own wording, not bare "compact" —
-  // usernames like "dblcompact" would collide).
+  // No compact-unavailable line above the card (match the 409 reasons' own wording, not bare
+  // "compact" — usernames like "dblcompact" would collide).
   await expect(
-    page.getByRole("button", { name: /没有配置上下文压缩|没有可压缩的内容|刚刚压缩过/ }),
+    page.getByTestId("send-refusal").filter({
+      hasText: /没有配置上下文压缩|没有可压缩的内容|刚刚压缩过/,
+    }),
   ).toHaveCount(0);
 
   // Second /compact: there's no conversation yet in the new context -> tell the user clearly, and the wording must match reality.
   await runCompact();
-  await expect(page.getByRole("button", { name: /刚刚压缩过/ })).toBeVisible();
+  const line = page.getByTestId("send-refusal");
+  await expect(line).toContainText(/刚刚压缩过/);
   // Having just finished a full round, saying "no completed conversation round yet" would be absurd.
-  await expect(page.getByRole("button", { name: /尚未完成一轮对话/ })).toHaveCount(0);
-  expect(nativeDialogs, "feedback must be an in-app toast, not a native alert").toHaveLength(0);
+  await expect(line).not.toContainText(/尚未完成一轮对话/);
+  expect(nativeDialogs, "feedback must be an in-app line, not a native alert").toHaveLength(0);
   await expect(compactionRows(page)).toHaveCount(1); // no second compaction row
 });

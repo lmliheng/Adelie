@@ -10,7 +10,8 @@
  * stays mounted while another conversation is opened. The same slot carries the two staged switches:
  * a refused `/agent` handoff, whose words name the Agent and say this conversation was not touched,
  * and a refused `/model` — a fork, which wrote nothing and says the same, or a desk, where the
- * employee's model may already be written, so its sentence points at the chart instead.
+ * employee's model may already be written, so its sentence points at the chart instead — and the one
+ * press that posts nothing at all: a `/compact` the server would not start.
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/client";
@@ -18,6 +19,7 @@ import { en as EN } from "../src/lib/strings-en";
 import { S, setActiveStrings, zh as ZH } from "../src/lib/strings";
 import { sendRefused } from "../src/features/chat/first-send-refusal";
 import {
+  compactionRefusalLine,
   deskModelRefusalLine,
   handoffRefusalLine,
   modelSwitchRefusalLine,
@@ -234,6 +236,55 @@ describe("deskModelRefusalLine", () => {
     });
     expect(line.text).toBe(EN.chat.deskModelRefused("Claude 4.8", EN.errors.byCode.internal));
     expect(line.text).not.toContain("unchanged");
+  });
+});
+
+describe("compactionRefusalLine", () => {
+  it("says the context was left as it was, in this Session", () => {
+    const line = compactionRefusalLine("session-a", new ApiError(409, "nothing_to_compact", "RAW"));
+    expect(line.sessionId).toBe("session-a");
+    expect(line.text).toBe(S.chat.compactRefused(S.errors.byCode.nothing_to_compact));
+    // What is true of a refused `/compact`: nothing was written, the context is the same one.
+    expect(line.text).toContain("本会话保持不变");
+    expect(line.text).not.toContain("RAW");
+  });
+
+  it("reads every reason the route refuses with through its own sentence", () => {
+    // The three codes `startCompact` answers 409 with — the ones this press meets in practice.
+    const codes = ["nothing_to_compact", "already_compacted", "compaction_not_configured"] as const;
+    for (const code of codes) {
+      const line = compactionRefusalLine("s", new ApiError(409, code, "RAW ENGLISH"));
+      expect(line.text).toBe(S.chat.compactRefused(S.errors.byCode[code]));
+      expect(line.text).not.toContain("RAW");
+    }
+  });
+
+  it("names no model — a refused compaction never reaches a model call", () => {
+    const line = compactionRefusalLine("s", new ApiError(409, "nothing_to_compact", "RAW"));
+    expect(line.text).not.toContain("claude");
+    expect(line.text).not.toContain("deepseek");
+  });
+
+  it("keeps what a request that never reached the route has to say", () => {
+    expect(compactionRefusalLine("s", new Error("Failed to fetch")).text).toBe(
+      S.chat.compactRefused("Failed to fetch"),
+    );
+    expect(compactionRefusalLine("s", undefined).text).toBe(
+      S.chat.compactRefused(S.common.unknownError),
+    );
+  });
+
+  it("speaks the active language", () => {
+    setActiveStrings(EN);
+    expect(compactionRefusalLine("s", new ApiError(409, "already_compacted", "x")).text).toBe(
+      EN.chat.compactRefused(EN.errors.byCode.already_compacted),
+    );
+  });
+
+  it("is drawn only while the reader is still in that conversation", () => {
+    const line = compactionRefusalLine("session-a", new ApiError(409, "already_compacted", "x"));
+    expect(sendRefusalShown(line, "session-a")).toBe(line.text);
+    expect(sendRefusalShown(line, "session-b")).toBeNull();
   });
 });
 
