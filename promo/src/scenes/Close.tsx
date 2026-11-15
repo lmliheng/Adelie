@@ -32,12 +32,7 @@ export const Close: React.FC = () => {
           opacity: mark,
         }}
       >
-        <BrandMark
-          size={326}
-          arc={mark}
-          spin={frame * 0.12}
-          scale={0.9 + mark * 0.1}
-        />
+        <BrandMark size={326} arc={mark} spin={frame * 0.12} scale={0.9 + mark * 0.1} />
       </div>
 
       <div

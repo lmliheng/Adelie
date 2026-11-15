@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  AbsoluteFill,
-  Easing,
-  interpolate,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { fade, rise, roll } from "../motion";
 import { C, MONO, SAFE, SANS } from "../theme";
 
@@ -110,9 +104,7 @@ export const Evolve: React.FC = () => {
         >
           <div>AGENTS.md</div>
           <div style={{ color: C.subtle }}>· v1</div>
-          <div style={{ marginLeft: "auto", color: C.subtle }}>
-            snapshots/ 每轮之前自动快照
-          </div>
+          <div style={{ marginLeft: "auto", color: C.subtle }}>snapshots/ 每轮之前自动快照</div>
         </div>
 
         <div style={{ marginTop: 22 }}>
@@ -148,16 +140,11 @@ export const Evolve: React.FC = () => {
                     lineHeight: "36px",
                     color: C.ink,
                     opacity: fade(frame, 120, 16),
-                    transform: `translateX(${interpolate(
-                      frame,
-                      [120, 140],
-                      [-14, 0],
-                      {
-                        extrapolateLeft: "clamp",
-                        extrapolateRight: "clamp",
-                        easing: Easing.out(Easing.cubic),
-                      },
-                    )}px)`,
+                    transform: `translateX(${interpolate(frame, [120, 140], [-14, 0], {
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                      easing: Easing.out(Easing.cubic),
+                    })}px)`,
                   }}
                 >
                   + {fix.text}
@@ -165,21 +152,19 @@ export const Evolve: React.FC = () => {
               ))}
             </div>
           ))}
-          {["## 工具", "读：工作区里的一切文件", "写：只在 ~/notes 下"].map(
-            (line) => (
-              <div
-                key={line}
-                style={{
-                  fontFamily: MONO,
-                  fontSize: 22,
-                  lineHeight: "40px",
-                  color: C.subtle,
-                }}
-              >
-                {line}
-              </div>
-            ),
-          )}
+          {["## 工具", "读：工作区里的一切文件", "写：只在 ~/notes 下"].map((line) => (
+            <div
+              key={line}
+              style={{
+                fontFamily: MONO,
+                fontSize: 22,
+                lineHeight: "40px",
+                color: C.subtle,
+              }}
+            >
+              {line}
+            </div>
+          ))}
         </div>
 
         <div
@@ -245,9 +230,7 @@ export const Evolve: React.FC = () => {
             >
               {Math.round(roll(frame, 0, 24, 62))}
             </div>
-            <div style={{ fontFamily: MONO, fontSize: 22, color: C.subtle }}>
-              / 100
-            </div>
+            <div style={{ fontFamily: MONO, fontSize: 22, color: C.subtle }}>/ 100</div>
           </div>
           <div
             style={{
@@ -273,9 +256,7 @@ export const Evolve: React.FC = () => {
           </div>
         </div>
 
-        <div
-          style={{ display: "flex", gap: 18, opacity: fade(frame, 196, 12) }}
-        >
+        <div style={{ display: "flex", gap: 18, opacity: fade(frame, 196, 12) }}>
           {[
             {
               label: "v2",
@@ -367,8 +348,7 @@ export const Evolve: React.FC = () => {
         }}
       >
         找失分点 <span style={{ color: C.subtle }}>→</span> 改这段文字{" "}
-        <span style={{ color: C.subtle }}>→</span>{" "}
-        <span style={{ color: C.ink }}>分数才动</span>
+        <span style={{ color: C.subtle }}>→</span> <span style={{ color: C.ink }}>分数才动</span>
       </div>
     </AbsoluteFill>
   );

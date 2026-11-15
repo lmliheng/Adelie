@@ -6,9 +6,7 @@ Config.setChromiumOpenGlRenderer("swangle");
 
 // Use the browser that is installed instead of downloading Remotion's own headless
 // shell: this repo is rendered on a server whose package manager already has Chromium.
-Config.setBrowserExecutable(
-  process.env.REMOTION_BROWSER ?? "/usr/bin/chromium",
-);
+Config.setBrowserExecutable(process.env.REMOTION_BROWSER ?? "/usr/bin/chromium");
 
 Config.setVideoImageFormat("jpeg");
 Config.setOverwriteOutput(true);

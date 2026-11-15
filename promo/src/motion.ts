@@ -38,13 +38,7 @@ export const fade = (frame: number, delay = 0, frames = 10) =>
   });
 
 /** A number rolling from 0 (or `from`) to `to`, three-step ease out. */
-export const roll = (
-  frame: number,
-  delay: number,
-  frames: number,
-  to: number,
-  from = 0,
-) =>
+export const roll = (frame: number, delay: number, frames: number, to: number, from = 0) =>
   interpolate(frame, [delay, delay + frames], [from, to], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -52,20 +46,14 @@ export const roll = (
   });
 
 /** Types out `text`: one character every `perChar` frames after `delay`. */
-export const typed = (
-  text: string,
-  frame: number,
-  delay: number,
-  perChar = 1.1,
-) => {
+export const typed = (text: string, frame: number, delay: number, perChar = 1.1) => {
   const n = Math.max(0, Math.floor((frame - delay) / perChar));
   return text.slice(0, Math.min(text.length, n));
 };
 
 /** The slow push every scene keeps (§5): 1 → 1.012 across the scene. */
 export const push = (frame: number, duration: number) =>
-  1 +
-  interpolate(frame, [0, duration], [0, 0.012], { extrapolateRight: "clamp" });
+  1 + interpolate(frame, [0, duration], [0, 0.012], { extrapolateRight: "clamp" });
 
 /**
  * A scene snaps in over five frames from 55% rather than dissolving from black.
@@ -75,11 +63,7 @@ export const push = (frame: number, duration: number) =>
  * layouts sat on top of each other for ten frames and read as a double exposure. What is
  * left is neither: the cut is a cut, and the short lift only keeps it from strobing.
  */
-export const sceneOpacity = (
-  frame: number,
-  duration: number,
-  body = duration,
-) => {
+export const sceneOpacity = (frame: number, duration: number, body = duration) => {
   const inRamp = interpolate(frame, [0, 5], [0.55, 1], {
     extrapolateRight: "clamp",
   });

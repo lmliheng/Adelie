@@ -100,9 +100,7 @@ export const TextAgent: React.FC = () => {
               background: C.accent,
             }}
           />
-          <div style={{ fontFamily: MONO, fontSize: 17, color: C.muted }}>
-            {PATH}
-          </div>
+          <div style={{ fontFamily: MONO, fontSize: 17, color: C.muted }}>{PATH}</div>
           <div
             style={{
               marginLeft: "auto",
@@ -118,11 +116,8 @@ export const TextAgent: React.FC = () => {
         <div style={{ position: "absolute", left: 40, top: 108, right: 40 }}>
           {DOC.map((line, i) => {
             const shown =
-              line.at === undefined
-                ? line.text
-                : typedLine(line.text, frame, line.at, 1.05);
-            const typing =
-              line.at !== undefined && shown.length < line.text.length;
+              line.at === undefined ? line.text : typedLine(line.text, frame, line.at, 1.05);
+            const typing = line.at !== undefined && shown.length < line.text.length;
             return (
               <div key={i} style={{ display: "flex", gap: 22, height: 50 }}>
                 <div
@@ -191,16 +186,11 @@ export const TextAgent: React.FC = () => {
         </div>
 
         {CARDS.map((card, i) => {
-          const cardIn = interpolate(
-            frame,
-            [card.at + 4, card.at + 16],
-            [0, 1],
-            {
-              extrapolateLeft: "clamp",
-              extrapolateRight: "clamp",
-              easing: Easing.out(Easing.cubic),
-            },
-          );
+          const cardIn = interpolate(frame, [card.at + 4, card.at + 16], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+            easing: Easing.out(Easing.cubic),
+          });
           return (
             <div
               key={card.title}
@@ -273,9 +263,7 @@ export const TextAgent: React.FC = () => {
               boxShadow: "0 50px 140px rgba(0, 0, 0, 0.85)",
             }}
           >
-            <div style={{ fontFamily: MONO, fontSize: 16, color: C.subtle }}>
-              一个智能体
-            </div>
+            <div style={{ fontFamily: MONO, fontSize: 16, color: C.subtle }}>一个智能体</div>
             <div
               style={{
                 fontFamily: SANS,
@@ -329,11 +317,7 @@ export const TextAgent: React.FC = () => {
                 ["回滚", "snapshots/v1 · 随时可回"],
               ].map(([k, v]) => (
                 <div key={k}>
-                  <div
-                    style={{ fontFamily: SANS, fontSize: 17, color: C.subtle }}
-                  >
-                    {k}
-                  </div>
+                  <div style={{ fontFamily: SANS, fontSize: 17, color: C.subtle }}>{k}</div>
                   <div
                     style={{
                       fontFamily: MONO,
@@ -398,12 +382,7 @@ export const TextAgent: React.FC = () => {
 };
 
 /** Types out `text`, one character every `perChar` frames after `delay`. */
-const typedLine = (
-  text: string,
-  frame: number,
-  delay: number,
-  perChar = 1.05,
-) => {
+const typedLine = (text: string, frame: number, delay: number, perChar = 1.05) => {
   const n = Math.max(0, Math.floor((frame - delay) / perChar));
   return text.slice(0, Math.min(text.length, n));
 };

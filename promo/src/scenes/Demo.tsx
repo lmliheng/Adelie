@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  AbsoluteFill,
-  Easing,
-  interpolate,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { push, rise, typed } from "../motion";
 import { C, MONO, SANS, UI } from "../theme";
 
@@ -23,15 +17,7 @@ import { C, MONO, SANS, UI } from "../theme";
  * *time* a task takes, and a still capture cannot make six tool calls grow one by one.
  */
 
-const NAV = [
-  "新建对话",
-  "智能体",
-  "模型库",
-  "插件市场",
-  "评估中心",
-  "机器管理",
-  "成本中心",
-];
+const NAV = ["新建对话", "智能体", "模型库", "插件市场", "评估中心", "机器管理", "成本中心"];
 
 const TOOLS = [
   { name: "read_file", detail: "sales/2026-11.csv", ms: "0.4s" },
@@ -228,26 +214,24 @@ export const Demo: React.FC = () => {
             >
               最近
             </div>
-            {["整理 11 月销售月报", "竞品官网调研", "简历投递跟进"].map(
-              (t, i) => (
-                <div
-                  key={t}
-                  style={{
-                    fontFamily: SANS,
-                    fontSize: 16,
-                    color: i === 0 ? UI.fg : UI.subtle,
-                    background: i === 0 ? UI.surfaceMuted : "transparent",
-                    borderRadius: 7,
-                    padding: "9px 10px",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {t}
-                </div>
-              ),
-            )}
+            {["整理 11 月销售月报", "竞品官网调研", "简历投递跟进"].map((t, i) => (
+              <div
+                key={t}
+                style={{
+                  fontFamily: SANS,
+                  fontSize: 16,
+                  color: i === 0 ? UI.fg : UI.subtle,
+                  background: i === 0 ? UI.surfaceMuted : "transparent",
+                  borderRadius: 7,
+                  padding: "9px 10px",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {t}
+              </div>
+            ))}
 
             <div
               style={{
@@ -290,9 +274,7 @@ export const Demo: React.FC = () => {
                   alignItems: "center",
                   gap: 8,
                   border: `1px solid ${done ? UI.successLine : UI.line}`,
-                  background: done
-                    ? "rgba(16, 185, 129, 0.10)"
-                    : UI.surfaceMuted,
+                  background: done ? "rgba(16, 185, 129, 0.10)" : UI.surfaceMuted,
                   borderRadius: 999,
                   padding: "4px 12px",
                   fontFamily: SANS,
@@ -300,15 +282,11 @@ export const Demo: React.FC = () => {
                   color: done ? UI.success : UI.muted,
                 }}
               >
-                {done
-                  ? "✓ 运行完毕 · 34s · 6 步"
-                  : `运行中 · ${toolCount} / 6 步`}
+                {done ? "✓ 运行完毕 · 34s · 6 步" : `运行中 · ${toolCount} / 6 步`}
               </div>
             </div>
 
-            <div
-              style={{ flex: 1, padding: "22px 30px", position: "relative" }}
-            >
+            <div style={{ flex: 1, padding: "22px 30px", position: "relative" }}>
               {sent && (
                 <div
                   style={{
@@ -357,16 +335,11 @@ export const Demo: React.FC = () => {
                             extrapolateLeft: "clamp",
                             extrapolateRight: "clamp",
                           }),
-                          transform: `translateY(${interpolate(
-                            frame,
-                            [at, at + 6],
-                            [-10, 0],
-                            {
-                              extrapolateLeft: "clamp",
-                              extrapolateRight: "clamp",
-                              easing: Easing.out(Easing.cubic),
-                            },
-                          )}px)`,
+                          transform: `translateY(${interpolate(frame, [at, at + 6], [-10, 0], {
+                            extrapolateLeft: "clamp",
+                            extrapolateRight: "clamp",
+                            easing: Easing.out(Easing.cubic),
+                          })}px)`,
                         }}
                       >
                         <div
@@ -433,21 +406,14 @@ export const Demo: React.FC = () => {
                       extrapolateLeft: "clamp",
                       extrapolateRight: "clamp",
                     }),
-                    transform: `translateY(${interpolate(
-                      frame,
-                      [156, 172],
-                      [16, 0],
-                      {
-                        extrapolateLeft: "clamp",
-                        extrapolateRight: "clamp",
-                        easing: Easing.out(Easing.cubic),
-                      },
-                    )}px)`,
+                    transform: `translateY(${interpolate(frame, [156, 172], [16, 0], {
+                      extrapolateLeft: "clamp",
+                      extrapolateRight: "clamp",
+                      easing: Easing.out(Easing.cubic),
+                    })}px)`,
                   }}
                 >
-                  <div
-                    style={{ display: "flex", alignItems: "baseline", gap: 10 }}
-                  >
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
                     <div
                       style={{
                         fontFamily: SANS,
@@ -491,16 +457,11 @@ export const Demo: React.FC = () => {
                       { label: "华南", value: 0.62, note: "+4%" },
                       { label: "华北", value: 0.41, note: "-3%" },
                     ].map((row, i) => {
-                      const growP = interpolate(
-                        frame,
-                        [160 + i * 4, 172 + i * 4],
-                        [0, 1],
-                        {
-                          extrapolateLeft: "clamp",
-                          extrapolateRight: "clamp",
-                          easing: Easing.out(Easing.cubic),
-                        },
-                      );
+                      const growP = interpolate(frame, [160 + i * 4, 172 + i * 4], [0, 1], {
+                        extrapolateLeft: "clamp",
+                        extrapolateRight: "clamp",
+                        easing: Easing.out(Easing.cubic),
+                      });
                       return (
                         <div
                           key={row.label}
@@ -543,9 +504,7 @@ export const Demo: React.FC = () => {
                               textAlign: "right",
                               fontFamily: MONO,
                               fontSize: 15,
-                              color: row.note.startsWith("-")
-                                ? UI.subtle
-                                : UI.success,
+                              color: row.note.startsWith("-") ? UI.subtle : UI.success,
                             }}
                           >
                             {row.note}

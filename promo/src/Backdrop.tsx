@@ -28,8 +28,7 @@ export const Backdrop: React.FC = () => {
       {/* the dot field */}
       <AbsoluteFill
         style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(rgba(255,255,255,0.05) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
           backgroundPosition: "0px 0px",
           opacity: 0.55,

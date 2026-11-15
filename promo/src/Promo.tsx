@@ -43,9 +43,7 @@ const SceneSlot: React.FC<{
 }> = ({ duration, body, children }) => {
   const frame = useCurrentFrame();
   return (
-    <AbsoluteFill style={{ opacity: sceneOpacity(frame, duration, body) }}>
-      {children}
-    </AbsoluteFill>
+    <AbsoluteFill style={{ opacity: sceneOpacity(frame, duration, body) }}>{children}</AbsoluteFill>
   );
 };
 

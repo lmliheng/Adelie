@@ -1,11 +1,5 @@
 import React from "react";
-import {
-  AbsoluteFill,
-  Easing,
-  interpolate,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, Easing, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { fade, rise, roll } from "../motion";
 import { C, MONO, SANS } from "../theme";
 
@@ -64,8 +58,7 @@ export const Cost: React.FC = () => {
             maxWidth: 660,
           }}
         >
-          耗时、token、花了多少钱，都记在这张账单上；
-          跑完之后，任何一步都能翻回去看它当时做了什么。
+          耗时、token、花了多少钱，都记在这张账单上； 跑完之后，任何一步都能翻回去看它当时做了什么。
         </div>
       </div>
 
@@ -84,9 +77,7 @@ export const Cost: React.FC = () => {
         }}
       >
         <div style={{ display: "flex", alignItems: "baseline" }}>
-          <div style={{ fontFamily: SANS, fontSize: 17, color: C.muted }}>
-            本次任务
-          </div>
+          <div style={{ fontFamily: SANS, fontSize: 17, color: C.muted }}>本次任务</div>
           <div
             style={{
               marginLeft: "auto",
@@ -101,15 +92,8 @@ export const Cost: React.FC = () => {
 
         <div style={{ display: "flex", gap: 44, marginTop: 18 }}>
           <Metric label="步骤" value={Math.round(roll(frame, 10, 34, 42))} />
-          <Metric
-            label="工具调用"
-            value={Math.round(roll(frame, 14, 34, 18))}
-          />
-          <Metric
-            label="tokens"
-            value={Math.round(roll(frame, 18, 34, 128))}
-            suffix="k"
-          />
+          <Metric label="工具调用" value={Math.round(roll(frame, 14, 34, 18))} />
+          <Metric label="tokens" value={Math.round(roll(frame, 18, 34, 128))} suffix="k" />
         </div>
 
         <div
@@ -122,9 +106,7 @@ export const Cost: React.FC = () => {
             gap: 10,
           }}
         >
-          <div style={{ fontFamily: SANS, fontSize: 16, color: C.muted }}>
-            花了
-          </div>
+          <div style={{ fontFamily: SANS, fontSize: 16, color: C.muted }}>花了</div>
           <div
             style={{
               fontFamily: MONO,
@@ -153,10 +135,7 @@ export const Cost: React.FC = () => {
               easing: Easing.out(Easing.cubic),
             });
             return (
-              <div
-                key={step.label}
-                style={{ display: "flex", alignItems: "center", gap: 14 }}
-              >
+              <div key={step.label} style={{ display: "flex", alignItems: "center", gap: 14 }}>
                 <div
                   style={{
                     width: 104,
@@ -242,9 +221,7 @@ const Metric: React.FC<{ label: string; value: number; suffix?: string }> = ({
   suffix,
 }) => (
   <div>
-    <div style={{ fontFamily: SANS, fontSize: 13, color: C.muted }}>
-      {label}
-    </div>
+    <div style={{ fontFamily: SANS, fontSize: 13, color: C.muted }}>{label}</div>
     <div
       style={{
         fontFamily: MONO,

@@ -1,10 +1,5 @@
 import React from "react";
-import {
-  AbsoluteFill,
-  interpolate,
-  useCurrentFrame,
-  useVideoConfig,
-} from "remotion";
+import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
 import { rise } from "../motion";
 import { C, MONO, SANS } from "../theme";
 
@@ -15,15 +10,7 @@ import { C, MONO, SANS } from "../theme";
  * edges are the point rather than empty margin.
  */
 
-const PROVIDERS = [
-  "Claude",
-  "GPT",
-  "Gemini",
-  "DeepSeek",
-  "Qwen",
-  "Moonshot",
-  "Ollama",
-];
+const PROVIDERS = ["Claude", "GPT", "Gemini", "DeepSeek", "Qwen", "Moonshot", "Ollama"];
 
 export const Local: React.FC = () => {
   const frame = useCurrentFrame();
@@ -126,9 +113,7 @@ export const Local: React.FC = () => {
               padding: "22px 26px",
             }}
           >
-            <div style={{ fontFamily: SANS, fontSize: 15, color: C.muted }}>
-              {row.k}
-            </div>
+            <div style={{ fontFamily: SANS, fontSize: 15, color: C.muted }}>{row.k}</div>
             <div
               style={{
                 fontFamily: MONO,
@@ -200,15 +185,10 @@ export const Local: React.FC = () => {
                 extrapolateLeft: "clamp",
                 extrapolateRight: "clamp",
               }),
-              transform: `translateY(${interpolate(
-                frame,
-                [26 + i * 3, 40 + i * 3],
-                [10, 0],
-                {
-                  extrapolateLeft: "clamp",
-                  extrapolateRight: "clamp",
-                },
-              )}px)`,
+              transform: `translateY(${interpolate(frame, [26 + i * 3, 40 + i * 3], [10, 0], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+              })}px)`,
             }}
           >
             {name}
