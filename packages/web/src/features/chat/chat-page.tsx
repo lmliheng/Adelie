@@ -117,6 +117,8 @@ import {
 import type { StagedThinkingSwitch } from "./thinking-level";
 import { thinkingLevelRefused } from "./thinking-level-refusal";
 import { permissionRefused } from "./permission-refusal";
+import { backgroundMoveAnswer } from "./background-move";
+import type { BackgroundMoveAnswer } from "./background-move";
 import { ChatDropRegion } from "./drop-zone";
 import { ConversationOutline, OutlineMenuButton, useOutlineRailFit } from "./conversation-outline";
 import { DraftView } from "./draft-view";
@@ -1728,15 +1730,17 @@ export function ChatPage() {
   // "Move to background" on an executing tool call: the call returns a background handle and
   // the turn carries on. 404 means it finished in the click's race window and 409 that the
   // tool has no background form — the card settles on its own either way, so neither is worth
-  // a toast; anything else is a real failure the user should see.
+  // a word; anything else is a real failure, and the reason goes back with the answer so the
+  // row that was pressed can say it (see background-move.ts — a notification dismissed itself
+  // after six seconds and left a press that looked like it never registered).
   const onSendToBackground = useCallback(
-    async (toolCallId: string) => {
-      if (!selected) return;
+    async (toolCallId: string): Promise<BackgroundMoveAnswer> => {
+      if (!selected) return { kind: "settled" };
       try {
         await api.postToolCallBackground(selected.sessionId, toolCallId);
+        return { kind: "moved" };
       } catch (e) {
-        if (e instanceof ApiError && (e.status === 404 || e.status === 409)) return;
-        toastError(apiErrorText(e));
+        return backgroundMoveAnswer(e);
       }
     },
     [selected],

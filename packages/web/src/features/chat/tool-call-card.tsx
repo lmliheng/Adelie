@@ -11,7 +11,7 @@
  * segment is shown; the wait itself is marked by the hourglass icon alone, since the approval
  * block below the row is always on screen and names the tool and its arguments.
  */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DETACHED_TOOL_NOTE_PREFIX } from "@adelie/core/interfaces";
 import { ToolCallCard, useElapsedPast } from "@adelie/ui";
 import type { RunState, ToolCallDuration } from "@adelie/ui";
@@ -24,6 +24,7 @@ import type { ToolCallItem } from "../../lib/omni/stream-model";
 import { useTheme } from "../../state/theme";
 import { agentIdFromRunSubagentArgs } from "./agent-topology";
 import { SessionSubagentChip } from "./subagent-chip";
+import { backgroundMoveRefused } from "./background-move";
 import type { StreamRenderContext } from "./message-stream";
 
 /** Tools that accept the optional model-written `description` argument. */
@@ -384,6 +385,19 @@ export function SessionToolCall({ item, ctx }: { item: ToolCallItem; ctx: Stream
             ? { live: true, sinceMs: item.argStartedAtMs }
             : undefined;
   const sendToBackground = ctx.onSendToBackground;
+  // One press, one reason (7.19): each attempt starts clean, and the refusal is this row's own —
+  // the sentence is drawn under it (the `refusal` prop below) while the action beside it is still
+  // there to press again. 404 / 409 answer `null`: the call stopped or its tool has no background
+  // form, and the row settles by itself either way.
+  const [backgroundRefusal, setBackgroundRefusal] = useState<string | null>(null);
+  const backgroundAction =
+    sendToBackground !== undefined &&
+    showsBackgroundAction(item.name, item.argumentsText, executing, ctx.origin, executedPastDelay);
+  const moveToBackground = async (): Promise<void> => {
+    if (sendToBackground === undefined) return;
+    setBackgroundRefusal(null);
+    setBackgroundRefusal(backgroundMoveRefused(await sendToBackground(item.toolCallId)));
+  };
 
   return (
     <ToolCallCard
@@ -410,21 +424,18 @@ export function SessionToolCall({ item, ctx }: { item: ToolCallItem; ctx: Stream
       // is a no-op on an already-fired controller, and once the call closes the action unmounts
       // on its own — which is also the feedback.
       action={
-        sendToBackground !== undefined &&
-        showsBackgroundAction(
-          item.name,
-          item.argumentsText,
-          executing,
-          ctx.origin,
-          executedPastDelay,
-        )
+        backgroundAction
           ? {
               label: S.chat.sendToBackground,
               hint: S.chat.sendToBackgroundHint,
-              onClick: () => void sendToBackground(item.toolCallId),
+              onClick: () => void moveToBackground(),
             }
           : undefined
       }
+      // Why the last press of that action was refused, under the row that carries it. Gated on the
+      // action still being offered: once the call settles there is nothing left to retry, and a
+      // sentence about a move that can no longer be attempted would only outlive its subject.
+      refusal={backgroundAction && backgroundRefusal !== null ? backgroundRefusal : undefined}
       pending={
         pending
           ? {

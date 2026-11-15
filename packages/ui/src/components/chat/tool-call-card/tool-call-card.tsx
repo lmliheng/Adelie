@@ -10,7 +10,9 @@
  * waiting call's hourglass is enough because its approval block is on screen. The row's right end
  * holds one thing at a time: a marker saying where the call's work went ("background"), or an
  * action the caller offers on a running call (send it to the background). An action is a text
- * button with no padding of its own, so a row carrying one measures like a row without.
+ * button with no padding of its own, so a row carrying one measures like a row without; a
+ * refusal of that action takes the one line directly under the row, where the button it belongs
+ * to is still on screen to be pressed again.
  *
  * Stacked sticky, the second level (the thinking row's): while the expanded output scrolls, the
  * row pins right below the stuck work-group header, on an opaque ground. Collapsing from stuck
@@ -70,6 +72,15 @@ export interface ToolCallCardProps {
   marker?: string;
   /** An action at the row's right end, in the marker's slot. */
   action?: { label: string; hint?: string; onClick: () => void };
+  /**
+   * Why the last press of {@link action} was refused, drawn directly under the row. Absent (not
+   * empty) when nothing was refused. It sits under the row rather than beside the action because
+   * the row is one line high at every breakpoint: a second line under it reads as part of the
+   * same card, while a sentence squeezed at the right end would push the row's own words around.
+   * Whoever draws it owns its lifetime — it should go as soon as the action it explains can no
+   * longer be pressed.
+   */
+  refusal?: string;
   /** The call waits on a decision: the approval block shows under the row. */
   pending?: ApprovalRequest;
   /** The call's arguments as sent, shown in full when expanded. */
@@ -98,6 +109,7 @@ export function ToolCallCard({
   duration,
   marker,
   action,
+  refusal,
   pending,
   argumentsText,
   output,
@@ -206,6 +218,21 @@ export function ToolCallCard({
           <Chevron open={open} className="text-fg-subtle" />
         </button>
       </div>
+
+      {refusal !== undefined && (
+        // The action's refusal, on its own line under the row: the row keeps its one-line shape,
+        // and the sentence stays attached to the button that was pressed (which has not moved —
+        // it is the retry). Two lines at most, the whole sentence one hover away.
+        <p
+          role="alert"
+          data-testid="tool-call-refusal"
+          data-tooltip={refusal}
+          data-tooltip-content="text"
+          className="line-clamp-2 break-words border-t border-line-muted px-3 py-1.5 text-xs text-tone-danger-fg"
+        >
+          {refusal}
+        </p>
+      )}
 
       {pending !== undefined && (
         <ApprovalBlock name={name} nameTooltip={nameTooltip} {...pending} />

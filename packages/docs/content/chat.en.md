@@ -140,6 +140,8 @@ When a tool call needs your approval, it shows allow and deny buttons in the con
 
 When an `exec_command` or `run_subagent` call has been running for 10 seconds, its row offers **Send to background**. The call returns at once with a handle to the work, nothing is stopped, and the turn continues instead of waiting. The result arrives later as a background-task notice. The row then shows **[Background]**, and a moved command appears under [Processes](#processes).
 
+When that step is refused, the reason appears under the row, and the row and its action stay where they were — pressing it again is the retry. Nothing is said when the call had already stopped or its tool has no background form: the row settles by itself.
+
 ### Retry or give up
 
 When a model request fails and the harness waits at least 2s before retrying, the retry line counts down to the next attempt. Select **Retry now** to skip the wait, or **Give up** to stop the Task.

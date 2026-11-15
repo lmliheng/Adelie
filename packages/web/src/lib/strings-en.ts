@@ -3701,6 +3701,9 @@ export const en: Strings = {
     /** Its tooltip: what the click does to the call and to the conversation. */
     sendToBackgroundHint:
       "Send this call to the background; the conversation carries on, and its completion arrives as a background notice.",
+    /** The line under a tool row whose "send to background" was refused; the action beside it is still there to press again. */
+    backgroundMoveRefused: (reason: string) =>
+      `Couldn't send this call to the background: ${reason}`,
     pendingApprovals: (n: number) => `${n} pending approval${n > 1 ? "s" : ""}`,
     jumpToLatest: "Jump to latest",
     /** Top-of-stream affordance while the previous history window is being fetched (scroll-up backfill). */

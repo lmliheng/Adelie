@@ -16,6 +16,7 @@ import type { ChatItem } from "../../lib/omni/stream-model";
 import type { MemoryChangeRow } from "../../lib/omni/memory-changes";
 import type { TaskStats } from "../../lib/omni/task-stats";
 import type { PendingApproval } from "./use-session-stream";
+import type { BackgroundMoveAnswer } from "./background-move";
 import { MessageItem } from "./message-item";
 import { WorkspaceRefsProvider } from "./workspace-refs";
 import { SessionWorkGroup, isWorkItem } from "./work-group";
@@ -35,8 +36,11 @@ export interface StreamRenderContext {
    * background task and the turn carries on. Only honored on main-session items — a
    * subagent's call belongs to the child Session's environment, which the route does not
    * target (same rule as onRetryNow). The button does not render if this isn't wired up.
+   *
+   * The answer comes back so the row that was pressed can say why it was refused (see
+   * background-move.ts); the two answers that settle the row by themselves say nothing.
    */
-  onSendToBackground?: (toolCallId: string) => Promise<void>;
+  onSendToBackground?: (toolCallId: string) => Promise<BackgroundMoveAnswer>;
   /** Origin chain at the current render level (empty array for the main session; subagent cards append one level each). */
   origin: string[];
   /**

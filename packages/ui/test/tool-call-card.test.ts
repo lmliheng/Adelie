@@ -93,4 +93,21 @@ describe("ToolCallCard", () => {
     expect(html).toMatch(/data-tooltip="Keep it running"[^>]*>Send to background<\/button>/);
     expect(html).toContain("subagent row");
   });
+
+  it("draws a refused action on its own line under the row, and nothing when none was refused", () => {
+    const refused = "Could not send this call to the background: internal error";
+    const html = card({
+      state: "running",
+      action: { label: "Send to background", onClick: () => {} },
+      refusal: refused,
+    });
+    expect(html).toMatch(/role="alert"[^>]*data-testid="tool-call-refusal"/);
+    expect(html).toMatch(
+      /data-tooltip="Could not send this call to the background: internal error"/,
+    );
+    expect(html).toContain(`>${refused}</p>`);
+    // The row itself is untouched: the action is still offered above the sentence.
+    expect(html).toContain(">Send to background</button>");
+    expect(card({})).not.toContain('data-testid="tool-call-refusal"');
+  });
 });

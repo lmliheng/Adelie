@@ -18,6 +18,10 @@
  *  - "background server test" -> tool_use(exec_command) whose command outlives its yield
  *    window (processes.spec: the promoted background process shows in the session's
  *    process list and can be stopped from there)
+ *  - "background move test" -> tool_use(exec_command) still executing in the FOREGROUND past
+ *    the 10 s gate (sleep 45 inside a 60 s yield window), so the row offers "send to
+ *    background" (background-move-refusal.spec refuses that POST and reads where the reason
+ *    lands)
  *  - "background exit test" -> tool_use(exec_command) whose command outlives the yield
  *    window but exits on its own shortly after (processes.spec: the exited row can be
  *    removed from the process list)
@@ -565,6 +569,18 @@ const server = http.createServer((req, res) => {
       block(res, 0, { type: "tool_use", id: "toolu_bg_1", name: "exec_command", input: {} }, [
         { type: "input_json_delta", partial_json: '{"cmd": "sleep 600",' },
         { type: "input_json_delta", partial_json: ' "yield_time_ms": 300}' },
+      ]);
+      messageStop(res, "tool_use", 14);
+      return;
+    }
+
+    // "Send to background" probe (background-move-refusal.spec): an exec_command that is still
+    // executing in the FOREGROUND after the row's 10 s gate — the yield window sits beyond the
+    // sleep, so the engine does not promote it, and the row keeps offering the action.
+    if (flat.includes("background move test") && !hasToolResult) {
+      block(res, 0, { type: "tool_use", id: "toolu_bgmove_1", name: "exec_command", input: {} }, [
+        { type: "input_json_delta", partial_json: '{"cmd": "sleep 45",' },
+        { type: "input_json_delta", partial_json: ' "yield_time_ms": 60000}' },
       ]);
       messageStop(res, "tool_use", 14);
       return;
