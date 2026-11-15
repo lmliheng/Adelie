@@ -2633,6 +2633,23 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       六秒后自己消失的通知里。现在句子按「哪条队列 + 哪一条记录」定位、只画在按过的那一行下面，说的只是
       原因本身（`not_pending` / `follow_up_started` 两种服务端说法各自点明消息的去向，5xx 则记录仍在
       队列里 —— 上面那一行就是实情）。见「第二百五十二轮」一节。
+- [x] **7.135 把工具调用「转入后台执行」被拒时，原因留在这张卡片那一行下面，并且只说一次**
+      （**2026-11-15 第二百五十四轮**落地，提交见「已完成的轮次」；新增纯逻辑
+      `packages/web/src/features/chat/background-move.ts` 的 `BackgroundMoveAnswer` /
+      `backgroundMoveAnswer(error)` / `backgroundMoveRefused(answer)`，`chat-page.tsx` 的
+      `onSendToBackground` 改成回这个答案、不再自己弹通知，`tool-call-card.tsx` 把「动作可不可用」只算一次
+      （`backgroundAction`）并用它同时决定要不要给动作、要不要画句子，`packages/ui` 的 `ToolCallCard`
+      多一个可选 `refusal`（那一行下面的单独一行，`role="alert"`、危险色、限两行、整句在悬停里），
+      `strings.ts` / `strings-en.ts` 加 `chat.backgroundMoveRefused` ＋ 1 个新单测（7 条）＋ `ui` 既有
+      单测加 1 条 ＋ 1 个新 spec `e2e/background-move-refusal.spec.mjs`（2 条，`mock-llm.mjs` 加一条
+      `background move test` 分支：`sleep 45` 配 60 秒 yield，让这次调用停在**前台**并越过 10 秒的门）
+      ＋ 文档 `chat.zh.md` / `chat.en.md` 各一条 ＋ changelog 一对，**不碰接口、无新依赖**）：这条路由只有
+      三种回答 —— 204 把活儿交出去（那一行自己会标 **[后台任务]**）、404 是调用刚好在这一下之前结束、409 是
+      这个工具没有后台形态（后两种卡片自己落定，不值得说一句）；其余都是真的失败，而原因此前只在一条六秒后
+      自己消失的通知里，那一行与按之前一模一样 —— 动作还在、还亮着，一次按压看起来根本没发生（7.19 的规
+      则）。现在句子落在这张卡片那一行下面，按过的那颗按钮就在它上面一行、仍是重试；句子只说原因（路由除
+      那两种回答之外不报告这次调用的状态），每次尝试先清上一句，调用落定、动作消失时句子跟着一起走。
+      见「第二百五十四轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3378,6 +3395,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-14 | 7.131 | **更新弹窗发出的「检查更新」被拒时，原因留在弹窗里；什么都不知道时不再转圈，底部给出重试**（**2026-11-14 第二百四十九轮**落地；源码 7 处（`packages/web/src/lib/update-request-refusal.ts` 的 `UpdateRequestStep` 加 `check` 并在文件头写清它与流程 `error` 状态的界线，`use-update-flow.ts` 的 `checkForUpdates()` 每次尝试先清槽、release 侧被拒改走 `refuseRequest("check", e)`、owner 把客户端结算的新种类 `refused` 写进同一个槽，`desktop-update.ts` / `use-desktop-update.ts` 让「请求没问到」与「壳自己报失败」分开、原因走 `apiErrorText`，`update-modal.tsx` 在 `unknown` + 有拒绝时不画 spinner、底部补「检查更新」，`strings.ts` / `strings-en.ts` 加 `checkRefused(reason)`）＋ 1 个新单测（该文件 5 条改写为 6 条）＋ 1 个新 spec `update-check-refusal.spec.mjs`（2 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百四十八轮末尾点名的邻座。这个请求被拒时弹窗里什么都不变 —— 有上一次结果就继续显示它，什么都不知道就**一直转着「正在检查更新…」**、底部只有「关闭」，而唯一说了原因的那条通知在弹窗开着时根本不会弹（`if (!quiet())`）。现在它走同一个拒绝槽（句子点名「检查」这一步、留到下一次尝试），并与流程自己的 `error` 状态分清：后者是服务端**答了**「查了但查失败」，这里请求根本没问到答案。见「第二百四十九轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 9 个源码 / 单测 / spec 文件 **0 警告 0 错误** · `prettier --check` 全部干净（首跑 `strings-en.ts` / `use-update-flow.ts` 各 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **214 文件 / 3121 通过 / 6 跳过** · web **333 文件 / 3784 通过 / 2 跳过**（基线 333 / 3783，+1 条即本笔的新单测）· **新 spec 2 passed（10.1 s + 9.7 s）**（真服务端 9481 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r249`；浏览器那边的更新检查全程是桩）—— ①什么都不知道时打开弹窗（加载时那次检查也被拒，自动检查再被拒）：句子「没能检查更新，这次没有问到结果：服务器内部错误，请稍后重试。」在弹窗里、`role=alert`、**「正在检查更新…」0 条**、通知区 0 个按钮（`expectNoToast`，先等 400 ms）、七秒后仍在，底部的「检查更新」放行后落到「新版本 v9.9.9 可用」；②已有上一次结果时按「检查更新」被拒：句子在、「已是最新版本」原样在、七秒后仍在，放行后换上新结果 · **反证（改前产物）**：七份源码退回 `HEAD`、新增模块与单测移出、重建 web、产物挂 9482 与另一个一次性数据根 `/root/adelie-fork-data/r249-before` → **同一份 spec 2 failed**，两条都死在找不到带原因的那句话（`getByText(...).toBeVisible`，element(s) not found）· **两态探针**（`r249/probe.mjs`，同一脚本两条腿各挂自己的产物，量 1.2 s / 7.5 s 两刻，A＝什么都不知道、B＝已有上一次结果）：**改前** A 两刻都是「正在检查更新…」1 条、没有原因、通知区 0、底部只有「关闭」（**两刻一模一样，转圈永远不停**），B 两刻都是「已是最新版本」+ 底部「关闭 / 检查更新」、没有原因；**改后** A 两刻都是正文只剩那句红字（spinner 0）、底部「关闭 / 检查更新」，B 两刻都是「已是最新版本」+ 那句红字、底部两颗按钮；两态通知区都是 0 个按钮（探针的 `refusal` 计数把 `data-testid` 与文本各数一次，所以显示 2，实际句子 1 条）· 两态 console 都只有本轮**故意造的**那条 500（资源加载），pageerror **0 条** · 截图 `r249/shots/{before,after}-{A-nothing-known,B-previous-answer}-{1_2s,7_5s}.png` 肉眼看过：改前弹窗里一个转圈 + 「正在检查更新…」、底部只有「关闭」；改后没有转圈，红字在正文末尾、「关闭 / 检查更新」正上方，两行折行、无挤压无溢出 · **相邻回归**：上一轮的 `update-request-refusal` 2 passed（11.7 s + 10.1 s，同一个槽、同一个弹窗）· 端口只用 9481 / 9482（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r249{,-before}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置 / PLAN 都在 scratchpad 的 `r249/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `46a2da5e38b1da0473ce546928ddf4c1a849a2b2` |
 | 2026-11-15 | 7.132 | **错误中心里撤销一条忽略规则被拒时，原因留在按下去的那颗按钮旁边，并且只说一次**（**2026-11-15 第二百五十轮**落地；源码 6 处（新增纯逻辑 `packages/web/src/features/usage/ignore-undo-refusal.ts` 的 `ignoreUndoRefused(host, id, label, error)`，`errors-panel.tsx` 的 `unignore` 多一个 `host` 入参、每次尝试先清 `undoRefusal`、被拒写这句话而不是弹通知、通知条与 `IgnoreRulesBox` 各自只在自己那一处画（后者多一个可选 `refusal` 入参，句子 `basis-full` 独占一行），`strings.ts` / `strings-en.ts` 加 `usage.errorsUnignoreRefused(label, reason)` 与 `errors.byCode.ignore_rule_not_found`）＋ 1 个新单测 `ignore-undo-refusal.test.ts`（6 条）＋ 既有 `errors-panel.test.ts` 加 1 条（两条规则、一条拒绝时只画在 id 对上那一行、两行按钮都在）＋ `e2e/errors-ignore.spec.mjs` 加 2 条 ＋ changelog 一对，**不碰接口、无新依赖**）：这条 DELETE 有两颗按钮（忽略后那条通知上的「撤销」、被忽略视图规则行上的「取消忽略」），被拒时两边屏幕上都一点没变 —— 通知条照旧写着隐藏了多少条、规则照旧列着，所以重试就是同一个按钮，只有原因落在一条六秒后自己消失、还浮在页面顶部的通知里；而「这些记录仍然被隐藏」正是此刻要知道的事。现在句子按「哪一处问的 + 哪一条规则」定位，只画在按过的那一处（通知条里 / 规则行下面），直说规则还在、记录仍被隐藏，本页不再为这两颗按钮弹通知；顺带补上这条路径唯一真会出现的 `ignore_rule_not_found` 的中英说法。见「第二百五十轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web`）· `oxlint` 7 个源码 / 单测 / spec 文件 **0 警告 0 错误** · `prettier --check` 全部干净（首跑 `errors-panel.tsx` / `errors-panel.test.ts` 各 `--write` 一次，复检通过）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1103** · cli **39 / 566** · server **215 文件 / 3132 通过 / 6 跳过** · web **335 文件 / 3795 通过 / 2 跳过**（基线 333 / 3784，本笔 +1 文件 / 6 条 + 既有文件 1 条，其余来自 HEAD 上另一条线的 `d76b2a0e3`）· **新 spec 2 passed（12.2 s + 12.4 s）**（真服务端 9490 + 仓库自带 mock 模型 9491 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r250b`）：两条都从面板自己的行动作造出真忽略规则，`page.route` 把 DELETE 拒成 500 —— ①通知条的「撤销」被拒：句子逐字「没能恢复 [llm] llm_fatal 的异常，忽略规则还在、这些记录仍被隐藏：ignore store is closed」在通知条内、`role=alert`、通知区 0 个按钮、七秒后仍在、「撤销」还在，规则经 API 读回仍是 1 条、记录仍被隐藏；放行后同一个按钮落地、通知条消失、行回到表里；②规则行的「取消忽略」被拒：句子只在这一行（`ignore-rule-undo-refusal` 1 条），同一规则的通知条（仍在屏幕上、仍有自己的「撤销」）**不替它说话**（`ignore-notice-undo-refusal` 0 条），通知区 0 个按钮、七秒后仍在，规则 1 条、被忽略那一侧仍能看到那条记录；放行后规则 0 条、规则表落到空态、记录回到「全部」· **反证（改前产物）**：把四份源码退回 `HEAD`、新增模块移出、重建 web（改前产物 `index-Cq5BLkn6.js`、改后 `index-fFK7uFCE.js`，两份都核过）挂 9492 与另一个一次性数据根 `/root/adelie-fork-data/r250c`，同一份 spec 同一过滤（`-g refused`）→ **2 failed**（两条都停在 `getByTestId("ignore-notice-undo-refusal" / "ignore-rule-undo-refusal")` 上 element(s) not found，15 s 超时），改后同一过滤 **3 passed**· **两态探针**（`r250/probe.mjs`，同一脚本两条腿各挂自己的 web 产物，量 1.2 s / 7.5 s 两刻，两个视角各一遍）：**改前** 两个视角两刻都是「句子 0 条」，1.2 s 时通知区 1 个按钮（那句 `ignore store is closed`），7.5 s 时 0 个 —— 屏幕上什么都没说、规则仍是 1 条；**改后** 通知条视角两刻都是通知条里那句话 1 条、规则行 0 条，规则行视角两刻都是规则行里那句话 1 条、通知条 0 条，两态两视角通知区都是 0 个按钮 · 两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · 截图 `r250/shots/{before,after}/{notice,rule}-{1_2s,7_5s}.png` 肉眼看过（改前：规则行下没有字、页顶一条「ignore store is closed」的浮动通知；改后：红字就压在规则行下面，通知条与规则表都没被挤动）· **相邻回归**：`cost-center-clear` 2 + `cost-center-read` 2 + `cost-center-refresh` 2 **6 passed（23.4 s）** · 端口只用 9490 / 9491 / 9492（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r250{b,c}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置 / PLAN 都在 scratchpad 的 `r250/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `f7c53fd89` |
 | 2026-11-15 | 7.134 | **撤回一条排队消息被拒时，原因留在按下去的那一行下面，并且只说一次**（**2026-11-15 第二百五十二轮**落地；源码 5 处（新增纯逻辑 `packages/web/src/features/chat/queued-recall-refusal.ts` 的 `queuedRecallRefused(queue, id, error)` 与 `queuedRecallRefusalShown` / `queuedRecallRefusalHosted` 及 `RecallAnswer`，`chat-input.tsx` 两个撤回回调改回 `RecallAnswer`、`recallQueued` 带队列名、每次尝试先清 `recallRefusal`、记录离开队列后由 effect 清、`QueuedMessageLine` 多一个可选 `refusal`（`role=alert`、 `data-testid="queued-recall-refusal"`、限两行、整句在悬停里），`chat-page.tsx` 两个回调不再弹通知， `strings.ts` / `strings-en.ts` 加 `chat.recallQueuedRefused(reason)`）＋ 1 个新单测 `queued-recall-refusal.test.ts`（12 条）＋ 1 个新 spec `e2e/queued-recall-refusal.spec.mjs`（3 条）＋ 文档 `chat.zh.md` / `chat.en.md` 各一条 ＋ changelog 一对，**不碰接口、无新依赖**）：插话与跟进消息两条队列的「撤回」发同一个形状的 DELETE、两行排在同一个输入框卡片里；被拒时那一行原样不动（内容、按钮都在，所以按钮就是重试），原因却只落在一条六秒后自己消失的通知里。现在句子按「哪条队列 + 哪一条记录」定位、只画在按过的那一行下面，只说原因本身（`not_pending` / `follow_up_started` 自己点明去向，5xx 则记录仍在队列里）。见「第二百五十二轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔只动 `packages/web` 与两份文档）· `npx oxlint` 全仓 **0 警告 0 错误**（2558 文件）· 9 个源码 / 用例 / changelog 文件 `prettier --check` 干净（首跑 4 个 `--write` 一次，复检通过；`*.md` 不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1104** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **336 文件 / 3809 通过 / 2 跳过**（基线 335 / 3797，+1 文件 / +12 条即本笔）· `@adelie/docs` **8 / 62** · **新 spec 3 passed**（真服务端 9382 + 仓库自带 mock 模型 8972 + `/usr/bin/chromium-headless-shell` + 一次性数据根 `/root/adelie-fork-data/r252-e2e`）： ① 409 `not_pending` —— 句子在那一行下面、`role=alert`、逐字「这条排队消息没能撤回：该插话已随本轮送达模型，无法撤回。」、不含线上英文、那一行与箭头都在且箭头仍可点、草稿仍空、通知区 0 个按钮；② 先 500 再 409 —— 一次只有一句、第二次是新那句；③ 两条排队只按第二条 —— 句子 1 条且 y 坐标在第二行与第一行的底边之下（真几何） · **反证（改前源码）**：四份源码退回 `HEAD`、新增模块移出、重建 web → **3 failed**，三条都停在 `[data-testid="queued-recall-refusal"]` 的 `toHaveCount(1)` 上（`34 × locator resolved to 0 elements`），放回重建后 **3 passed** · **相邻回归**：`chat-tweaks` 1 + `steer-abort` 1 + `steer-reload` 1 + 本笔 3 **6 passed（28.6 s）** · **两态探针（真服务端 + 真浏览器）**：宽屏 1280×900 下排队截图、被拒后红字压在那一行下面（`refusalUnderLine: true`，间距 6px）、草稿仍空；console 只有本轮**故意造的** 409 与既有的 `GET …/machines` 403（非管理员账号既有行为），pageerror 0 条 · **窄屏 390×844 DPR 2 + 140 字长标签**（另起 9384 / 8974 与 `/root/adelie-fork-data/r252-mobile`）：标签仍单行（342×16）、箭头仍在同一行（x=358，与标签中线差 <4px），句子落地后标签上移 18px、句子在其底边下 4px · 截图 `r252/{probe-1-queued,probe-2-refused,probe-3-mobile-long}.png` 肉眼看过：箭头就在那一行行尾，红字紧贴其下、未压输入框 · 端口只用 9382 / 9383 / 9384 与 8972 / 8973 / 8974（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r252-{e2e,probe,mobile}`，探针 / 临时 playwright 配置 / 改后源码留底 / 截图都在 scratchpad 的 `r252/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `31fb96acb` |
+| 2026-11-15 | 7.135 | **工具调用「转入后台执行」被拒时，原因留在这张卡片那一行下面，并且只说一次**（**2026-11-15 第二百五十四轮**落地；源码 4 处（新增纯逻辑 `packages/web/src/features/chat/background-move.ts` 的 `BackgroundMoveAnswer` / `backgroundMoveAnswer(error)` / `backgroundMoveRefused(answer)`，`chat-page.tsx` 的 `onSendToBackground` 改回这个答案、不再 `toastError`，`tool-call-card.tsx` 把动作可用性只算一次（`backgroundAction`）并用同一道门决定要不要画句子，`packages/ui` 的 `ToolCallCard` 多一个可选 `refusal`（那一行下面单独一行、`role=alert`、`data-testid="tool-call-refusal"`、危险色、限两行、整句在悬停里），`strings.ts` / `strings-en.ts` 加 `chat.backgroundMoveRefused(reason)`）＋ 1 个新单测 `background-move.test.ts`（7 条）＋ `ui` 既有 `tool-call-card.test.ts` 加 1 条 ＋ 1 个新 spec `e2e/background-move-refusal.spec.mjs`（2 条）＋ `e2e/mock-llm.mjs` 加一条 `background move test` 分支（`sleep 45` 配 60 秒 yield，让调用停在前台并越过 10 秒的门）＋ 文档 `chat.zh.md` / `chat.en.md` 各一条 ＋ changelog 一对，**不碰接口、无新依赖**）：这条路由只有三种回答 —— 204 把活儿交出去（那一行自己标 **[后台任务]**）、404 是调用刚好在这之前结束、409 是这个工具没有后台形态，后两种卡片自己落定、不值得说一句；其余都是真的失败，原因此前只在一条六秒后自己消失的通知里，那一行与按之前一模一样（动作还在、还亮着），一次按压看起来根本没发生（7.19 的规则）。现在句子落在这张卡片那一行下面，按过的按钮就在它上面一行、仍是重试；句子只说原因，每次尝试先清上一句，调用落定、动作消失时句子跟着一起走。见「第二百五十四轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不动服务契约）· `npx oxlint` 11 个改动文件 **0 警告 0 错误** · `prettier --check` 全部干净（首跑 4 个文件 `--write` 一次，复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105**（+1 即本笔）· cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **337 文件 / 3816 通过 / 2 跳过**（+1 文件 / +7 条即本笔）· `@adelie/docs` **8 / 62** · **新 spec 2 passed（20.4 s + 13.8 s）**（真服务端 9441 + 仓库自带 mock 模型 9442 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r254-e2e`）：① POST 由 `page.route` 拒成 500 —— 句子在那一行下面、`role=alert`、逐字「没能把这次调用转入后台：服务器内部错误，请稍后重试。」、**不含**线上英文、动作仍在同一行上可点、通知区 0 个按钮、**七秒后仍在**；放行后按同一颗按钮 → 句子与动作一起消失，服务端 `GET …/processes` 里真有 `sleep 45`（活儿确实交出去了）；② 拒成 409（`tool_not_detachable`）—— 屏幕上一个字都没有、通知区 0 个按钮，卡片自己落定 · **反证（改前源码）**：五份源码退回 `HEAD`、新增模块移出、重建 web → **1 failed**（第 ① 条停在 `getByTestId("tool-call-refusal")` 的 `toBeVisible`：`element(s) not found`；第 ② 条照旧通过，因为它在改前改后都断言「什么都不说」），放回重建后 **2 passed** · **相邻回归**：`processes.spec.mjs` **3 passed（10.7 s）**（同一张卡片、同一条 `[后台任务]` 标记与进程列表）· **两态探针（真服务端 + 真浏览器 1280×900，量 1.2 s / 7.5 s）**：**改后** 两刻都是句子 1 条、`role=alert`、**在那一行正下方且与行左缘对齐**（`underRow: true`）、动作仍在、通知区 0 个按钮；截图 `r254/shots/1_2s.png` 里红字压在「执行命令」那一行下面、右侧仍是「转入后台执行」；**反证（真界面，改前产物 `/root/adelie-fork-data/r254-before` + 9431）** 两刻都是**句子 0 条**，1.2 s 时通知区 **1 个按钮**（浮在页顶的「服务器内部错误，请稍后重试。」）、7.5 s 时 **0**（原因真的没了），截图 `r254/shots-before/1_2s.png` · 两态 console 都只有既有的 `GET …/machines` 403 与本轮**故意造的** 500，pageerror 0 条 · 把这次移动放行后按同一颗按钮：改后那次的会话轨迹里写着「background by the user with process_id proc-adaaee5f; leave it running」 · 端口只用 9421 / 9422 / 9431 / 9441 / 9442（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r254-{after,probe,before,e2e}`，探针 / 两态产物（`before-dist` / `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r254/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -27494,3 +27512,96 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 ### 提交
 
 - 这一笔（11 个文件，+100/−263），台账随本文件另起一笔。
+
+## 第二百五十四轮：转入后台执行被拒时，原因留在这张卡片那一行下面（2026-11-15，条目 7.135）
+
+### 开工自检
+
+- `git status --short` 干净、分支 `main`、`HEAD` 与 `origin/main` 同一笔（`456a5292e`）；`git -c
+  http.version=HTTP/1.1 fetch origin` 一次即通，`--merge --ff-only origin/main` 报 `Already up to date`。
+  没有切分支、没碰 `legacy/main`、没推 upstream。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（"还差什么"那两段逐条看下来，剩下的全在桌面壳一侧 + 既有部署
+  单元 + 桌面壳自己的开关，而本轮纪律明令不碰 desktop / electron；`ui-gallery` 的 mock 路径与
+  `packages/docs` 按 2.5 的口径有意留到发布期）；然后 3.5（要用户拍板取哪个桌面壳）、3.6（要模型 key）、
+  4.1–4.3（明令不动）、5.3（`[~]`，卡在「有第二台 Linux 机器时端到端」）、5.6 / 5.10（拍板 / 新依赖）。
+  第 7 节里 7.1–7.134 已全勾，7.133 只出现在轮次标题里（第二百五十一轮那笔用户点单的 mp4 + 0.6.9，没往
+  表里加行），于是接第二百五十二轮末尾点名的那一族「仍没有确定宿主的手势」：`chat-page.tsx` 的
+  「转到后台」。
+- 第二百二十六 / 二百五十轮留下的判断是「409 是『这个工具没有后台形态』，卡片自己会落定，不值得说」——
+  这一轮把它收干净：**404 / 409 继续沉默**，而**其余失败**（5xx、请求根本没到路由）原先仍是一条六秒后
+  自己消失的通知。
+
+### 选活：为什么宿主就是这一行
+
+- 被拒时屏幕上什么都不变：动作还在、还亮着，这次调用仍在执行 —— 所以重试就是同一颗按钮。这与 7.132 /
+  7.134 同一个形状（问的那个控件还在原地，句子就该在它旁边），也是 7.19 那条全应用规则的最后几处之一。
+- 宿主选「这一行下面」而不是「按钮旁边」：这一行在任何断点都是一行高（右端只放一样东西 —— 标记或动作），
+  把句子挤到右端会把行里原本的字挤走；单独一行仍属于同一张卡片，按过的按钮就在它上面一行。
+- 句子只说原因：路由除 404 / 409 之外不报告这次调用的状态（`detachToolCall` 是同步的，能答的只有「没在跑」
+  与「不可分离」），所以不替它断言「仍在当前对话里执行」。每次尝试先清上一句；调用落定、动作消失时句子
+  跟着一起走 —— 那时已经没有可重试的东西了。
+
+### 做了什么
+
+- **新增** `packages/web/src/features/chat/background-move.ts`：`BackgroundMoveAnswer`（`moved` /
+  两种沉默的回答 `settled` / `refused` 带原始错误）、`backgroundMoveAnswer(error)` 判断一次失败属于哪
+  一种、`backgroundMoveRefused(answer)` 经 `refusalText` 组句（句子在词典里）。
+- `packages/web/src/features/chat/chat-page.tsx`：`onSendToBackground` 改成回 `BackgroundMoveAnswer`，
+  不再 `toastError`；注释写明为什么原因要跟着答案回去。
+- `packages/web/src/features/chat/message-stream.tsx`：`StreamRenderContext.onSendToBackground` 的返回
+  类型跟着改。
+- `packages/web/src/features/chat/tool-call-card.tsx`：动作可用性只算一次（`backgroundAction`），同一道门
+  同时决定「给不给动作」与「画不画句子」；句子归这张卡片自己（`backgroundRefusal`，每次尝试先清），以
+  `refusal` 交给共享卡片。
+- `packages/ui/src/components/chat/tool-call-card/tool-call-card.tsx`：新增可选 `refusal`，画成那一行
+  下面的单独一行（`role="alert"`、`data-testid="tool-call-refusal"`、危险色、限两行、整句在悬停里）；
+  属性注释与文件头写清它为什么在行下面、以及它的生命周期归调用者。
+- 文案 `chat.backgroundMoveRefused(reason)` 中英各一句；文档 `chat.zh.md` / `chat.en.md` 的「转入后台」
+  一节各加一条：被拒时原因写在那一行下面、按钮仍在，再点一次就是重试；调用已结束或工具没有后台形态时不出
+  提示。changelog 一对。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 /
+  612 类型 —— 本笔不动服务契约）。
+- `npx oxlint` 11 个改动文件 **0 警告 0 错误**；改动文件 `prettier --check` 干净（首跑 4 个文件
+  `--write` 一次，复检通过；两份 `*.md` 按本仓口径不在 prettier 范围）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105**（+1 即本笔）·
+  cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **337 文件 / 3816 通过 / 2 跳过**
+  （+1 文件 / +7 条即本笔）· `@adelie/docs` **8 文件 / 62 通过**（本笔改了它的两份内容）。
+- **新 spec 2 passed（20.4 s + 13.8 s）**（真服务端 + 仓库自带 mock 模型 + `/usr/bin/chromium`，一次性
+  数据根 `/root/adelie-fork-data/r254-e2e`，服务端 9441 / 模型 9442）：① POST 由 `page.route` 拒成 500
+  —— 句子在那一行下面、`role=alert`、逐字「没能把这次调用转入后台：服务器内部错误，请稍后重试。」、
+  **不含**线上英文、动作仍在同一行上可点、通知区 0 个按钮、**七秒后仍在**；放行后按同一颗按钮 → 句子与
+  动作一起消失，服务端 `GET …/processes` 里真有 `sleep 45`（活儿确实交出去了）；② 拒成 409
+  （`tool_not_detachable`）—— 屏幕上一个字都没有、通知区 0 个按钮，卡片自己落定。
+- **反证（同一份 spec，改前源码）**：五份源码退回 `HEAD`、新增模块移出、重建 web → **1 failed**（第 ①
+  条停在 `getByTestId("tool-call-refusal")` 的 `toBeVisible`：`element(s) not found`；第 ② 条照旧通过，
+  因为它在改前改后都断言「什么都不说」），放回重建后 **2 passed**。
+- **相邻回归（真浏览器）**：`processes.spec.mjs` **3 passed（10.7 s）** —— 同一张卡片、同一条
+  `[后台任务]` 标记与那份进程列表。
+- **两态探针（真服务端 + 真浏览器 1280×900，量 1.2 s / 7.5 s）**：**改后** 两刻都是句子 1 条、
+  `role=alert`、**在那一行正下方且与行左缘对齐**（`underRow: true`）、动作仍在、通知区 0 个按钮；
+  截图 `r254/shots/1_2s.png` 里红字压在「执行命令」那一行下面、右端仍是「转入后台执行」。**反证（真界面，
+  改前产物挂 `/root/adelie-fork-data/r254-before` + 9431）** 两刻都是**句子 0 条**，1.2 s 时通知区
+  **1 个按钮**（浮在页顶的「服务器内部错误，请稍后重试。」）、7.5 s 时 **0**（原因真的没了），截图
+  `r254/shots-before/1_2s.png`。两态 console 都只有既有的 `GET …/machines` 403 与本轮**故意造的** 500，
+  pageerror 0 条。把这次移动放行后按同一颗按钮：改后那次的会话轨迹里写着「background by the user with
+  process_id proc-adaaee5f; leave it running」。
+- 端口只用 9421 / 9422 / 9431 / 9441 / 9442（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落 `/root/adelie-fork-data/r254-{after,probe,before,e2e}`，探针 / 两态产物（`before-dist` /
+  `after-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r254/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 第二百二十六轮点名的那一族「没有确定宿主」的手势到这一轮收完了（撤回 steering、换权限档、更新流程、
+  撤回排队消息，加上本轮的「转到后台」）。`chat-page.tsx` 剩下的 10 处 `toastError` 都是**发消息 / 压缩 /
+  建会话**的失败，宿主是输入框与草稿本身，与这一族不是同一个形状；`workspace-*` 与公司页那几处各有各的
+  宿主，得各自一轮。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 功能一笔（15 个文件：源码 7 + 两个包的单测 2 + spec 1 + mock 1 + 文档 2 + changelog 2）。
+- 台账这一笔随本文件另起。
