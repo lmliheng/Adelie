@@ -11,7 +11,7 @@
  *   reopens it: no silence window applies to it, and its first frame retired the
  *   dead-on-arrival watch.
  * - Given a connection that delivers nothing at all, it is reopened at the deadline, and after
- *   three in a row the stream is judged stalled: no connection is held open, the caller is told
+ *   two in a row the stream is judged stalled: no connection is held open, the caller is told
  *   once, and one fresh connection is tried a minute later; a frame on a probe returns it to
  *   live — and every reconnect, probes included, resumes from the newest id ever seen. A probe
  *   the browser gives up on schedules the next one: while stalled, nothing else is retrying.
@@ -102,55 +102,54 @@ it("a stream that never pinged is left alone: no silence window, no dead-on-arri
   expect(live(sources)).toEqual([sources[0]]);
 });
 
-it("a connection that delivers nothing is reopened at the deadline, and three of them stall the stream", () => {
+it("a connection that delivers nothing is reopened at the deadline, and two of them stall the stream", () => {
   const { sources, liveness } = subscribe();
-  silence(29_000);
+  silence(9_000);
   expect(sources).toHaveLength(1);
   silence(1_000);
   expect(sources[1]!.url).toBe("/api/sessions/s1/stream");
 
-  silence(30_000);
-  expect(sources).toHaveLength(3);
-  silence(30_000);
-  // Three in a row: nothing is left open, the caller is told once, and no connection is made
-  // on the next tick.
+  silence(10_000);
+  // The second silent connection is the last: nothing is left open, the caller is told once,
+  // and no connection is made on the next tick.
   expect(liveness).toEqual(["stalled"]);
+  expect(sources).toHaveLength(2);
   expect(live(sources)).toEqual([]);
   silence(59_000);
-  expect(sources).toHaveLength(3);
+  expect(sources).toHaveLength(2);
 
   // The probe opens one connection, which gets the same first-frame window as any other.
   silence(1_000);
-  expect(sources).toHaveLength(4);
-  expect(live(sources)).toEqual([sources[3]]);
-  silence(30_000);
+  expect(sources).toHaveLength(3);
+  expect(live(sources)).toEqual([sources[2]]);
+  silence(10_000);
   expect(liveness).toEqual(["stalled"]);
   expect(live(sources)).toEqual([]);
 });
 
 it("one frame on a probe brings a stalled stream back to live, and the probing stops", () => {
   const { sources, liveness } = subscribe();
-  silence(90_000);
+  silence(20_000);
   expect(liveness).toEqual(["stalled"]);
   silence(60_000);
-  sources[3]!.emit("server_event", JSON.stringify({ type: "task_state", state: "idle" }), "e-9");
+  sources[2]!.emit("server_event", JSON.stringify({ type: "task_state", state: "idle" }), "e-9");
   expect(liveness).toEqual(["stalled", "live"]);
   silence(60 * 60_000);
-  expect(sources).toHaveLength(4);
+  expect(sources).toHaveLength(3);
 });
 
 it("a probe the browser gives up on does not end the probing", () => {
   const { sources } = subscribe();
-  silence(90_000);
+  silence(20_000);
   silence(60_000); // the probe
-  expect(sources).toHaveLength(4);
+  expect(sources).toHaveLength(3);
   // The browser closes that probe (a non-200 answer): nothing retries it for us, so the stream
   // schedules the next probe itself rather than leaving the page with a dead stream forever.
-  sources[3]!.fail();
+  sources[2]!.fail();
   silence(59_000);
-  expect(sources).toHaveLength(4);
+  expect(sources).toHaveLength(3);
   silence(1_000);
-  expect(sources).toHaveLength(5);
+  expect(sources).toHaveLength(4);
 });
 
 it("a stalled stream keeps resuming from the newest id it ever saw", () => {
@@ -158,9 +157,9 @@ it("a stalled stream keeps resuming from the newest id it ever saw", () => {
   greet(sources[0]!, "e-5");
   silence(50_000); // the greeted connection goes quiet: one immediate reopen
   expect(sources[1]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-5");
-  silence(30_000 + 30_000 + 30_000); // three connections in a row with nothing on them
+  silence(10_000 + 10_000); // two connections in a row with nothing on them
   silence(60_000); // the probe
-  expect(sources[4]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-5");
+  expect(sources[3]!.url).toBe("/api/sessions/s1/stream?lastEventId=e-5");
 });
 
 it("every frame received is recorded, once recording is on", () => {

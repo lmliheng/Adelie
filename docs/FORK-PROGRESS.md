@@ -27605,3 +27605,14 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔（15 个文件：源码 7 + 两个包的单测 2 + spec 1 + mock 1 + 文档 2 + changelog 2）。
 - 台账这一笔随本文件另起。
+
+**同日续：用户从网吧实测，把降级的等待从 90 秒缩到约 20 秒**（用户报「只有刷新才能看到 Adelie 响应」，
+一两分钟后自愈）。现场证据：`/api/sessions/<id>/messages` 每约 6 秒来一次 —— 正是 11-13 上的降级轮询
+在跑（说明中间设备把响应体**整块**扣住，连订阅后立刻发的快照都没到）。那 90 秒靠两个常量相乘：
+`FIRST_FRAME_MS` 30 s × `MAX_STALLED` 3。用户点头后改成 **10 s × 2 ≈ 20 秒**，并同步重写
+`packages/web/test/sse.test.ts` 的时间线；真浏览器两态探针（`sse-live-probe/`，对着新产物）量到
+**第 20 秒**出现「正在定时刷新」、0 console error。**只动前端**，所以按现网增量的口径换
+`/root/.adelie/web`（旧前端留底 `/root/adelie-live-backup-20261115-1220-web`，新入口
+`index-BbngV3L0.js`），不重启。changelog 一对：`2026-11-15-stream-stall-sooner.{md,zh.md}`。
+另在工作区放了两个试播文件：`preview-test.mp4`（1.1MB，能播）与 `preview-too-large.mp4`（54.9MB，
+应当只出「超过 50MB」那句话）。

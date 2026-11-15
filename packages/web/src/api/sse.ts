@@ -38,10 +38,18 @@ import type { SseChannel } from "./sse-frames";
 
 /** The server pings every 20 s: this much silence means the connection is gone. */
 const SILENCE_MS = 50_000;
-/** A connection that has delivered nothing at all in this long never really connected. */
-const FIRST_FRAME_MS = 30_000;
-/** This many connections in a row with nothing on them: the stream is stalled, not flaky. */
-const MAX_STALLED = 3;
+/**
+ * A connection that has delivered nothing at all in this long never really connected. Shot
+ * short on purpose: this window is exactly how long a reader stares at a page that looks hung
+ * before anything happens, and a body-swallowing middlebox fails a fresh connection the same
+ * way every time, so a longer wait buys no certainty — only more of it.
+ */
+const FIRST_FRAME_MS = 10_000;
+/**
+ * This many connections in a row with nothing on them: the stream is stalled, not flaky. Two,
+ * so the fallback it triggers starts after about twenty seconds rather than a minute and a half.
+ */
+const MAX_STALLED = 2;
 /** While stalled, how often one fresh connection is tried. */
 const STALL_REPROBE_MS = 60_000;
 
