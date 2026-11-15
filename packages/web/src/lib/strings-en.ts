@@ -3566,6 +3566,12 @@ export const en: Strings = {
     /** A staged `/agent` handoff that did not get out (see strings.ts). */
     handoffRefused: (agent: string, reason: string) =>
       `Could not hand this message to ${agent}; this conversation is unchanged: ${reason}`,
+    /** A staged `/model` fork that did not get out (see strings.ts). */
+    modelSwitchRefused: (model: string, reason: string) =>
+      `Could not open a new conversation on ${model}; this conversation is unchanged: ${reason}`,
+    /** `/model` on a desk, where the write may have landed before the refusal (see strings.ts). */
+    deskModelRefused: (model: string, reason: string) =>
+      `Could not move this desk onto ${model}; the message was not sent, and the org chart is the record of the model the desk is on now: ${reason}`,
     /**
      * A picked thinking level was refused: the control still reads the level it read before, so the
      * sentence says the pick did not take. `forAgent` is set where the write goes through to the

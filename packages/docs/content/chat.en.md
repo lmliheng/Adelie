@@ -196,6 +196,7 @@ The new Session keeps the agent, the Workspace and the approval mode. It opens w
 - The handoff waits until the Session is idle, because it continues from the Session's Trace, which a running turn or a compaction is still writing. A line above the composer says so while it waits.
 - To cancel, select × on the chip, or press Backspace at the start of the text.
 - The chip is saved with the draft, so it survives a reload or a visit to another conversation.
+- When the new conversation does not open (the network drops, the server refuses, the model's key is unavailable), nothing is written: your text and any staged files stay in the composer exactly as they were, the `/model` chip included, so pressing Send again is the retry. The reason is drawn on the line above the card and stays there until the next attempt; this conversation is unchanged.
 
 ## Hand off to another agent
 

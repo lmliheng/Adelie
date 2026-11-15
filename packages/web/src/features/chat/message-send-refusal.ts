@@ -10,7 +10,11 @@
  * (first-send-refusal.ts, 7.94); this module is the same slot for a conversation that already
  * exists, where the attempt may be a task, a queued follow-up or a steering message — all three are
  * this one card's send button, in the mode the run state puts it in — and for a staged `/agent`
- * handoff, whose Send opens a new conversation but is pressed on this same card.
+ * handoff or `/model` switch, whose Send opens a new conversation but is pressed on this same card.
+ * The two switch sentences differ because the two presses write different things: a handoff and a
+ * model fork write nothing into this conversation, while `/model` on a DESK first writes the
+ * employee's model to the org chart — a refusal there may come after that write (see
+ * `deskModelRefusalLine`).
  *
  * The words are the same pair as the draft screen's, and deliberately shared rather than copied:
  * `sendRefusalReason` reads an answer through the code's own localized sentence (naming the model
@@ -54,6 +58,52 @@ export function handoffRefusalLine(
   modelId?: string,
 ): SendRefusal {
   return { sessionId, text: S.chat.handoffRefused(agent, sendRefusalReason(err, modelId)) };
+}
+
+/** The picked model as the copy names it: the chip's own label, plus the id the credential copy needs. */
+export interface PickedModel {
+  /** How the chip above the card names the pick (the configured display name, else the id). */
+  label: string;
+  /** The upstream id, for `model_credential_missing`, whose body names no model. */
+  modelId: string;
+}
+
+/**
+ * A staged `/model` fork that did not get out: Send opens a NEW conversation on the picked model
+ * and posts the draft as its first message. Nothing is persisted when it refuses (the empty
+ * conversation is deleted again and this one was never written to), so the sentence names the model
+ * and says this conversation is untouched — the chip and the draft are still on the card whose
+ * button is therefore the retry.
+ */
+export function modelSwitchRefusalLine(
+  sessionId: string,
+  err: unknown,
+  model: PickedModel,
+): SendRefusal {
+  return {
+    sessionId,
+    text: S.chat.modelSwitchRefused(model.label, sendRefusalReason(err, model.modelId)),
+  };
+}
+
+/**
+ * The same press on a DESK (`/model` in an employee's desk conversation). There the switch is the
+ * employee's rather than a fork: the picked model is written to the org chart, the desk is renewed
+ * onto it, and only then is the message posted — so a refusal can land with the chart already
+ * written, or with the new desk open and the message unsent. Claiming "nothing was written" would
+ * be false one step into the sequence; the sentence says what holds in every case (the message was
+ * not sent) and points at the chart for the model the desk is on now, which the caller reloads as
+ * it draws the line. The card keeps the draft and the chip either way, so its button retries.
+ */
+export function deskModelRefusalLine(
+  sessionId: string,
+  err: unknown,
+  model: PickedModel,
+): SendRefusal {
+  return {
+    sessionId,
+    text: S.chat.deskModelRefused(model.label, sendRefusalReason(err, model.modelId)),
+  };
 }
 
 /** What the composer draws: the sentence while it still describes the Session on screen. */

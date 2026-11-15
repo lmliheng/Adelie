@@ -7,8 +7,10 @@
  * things it must get right: a server answer speaks the interface's language (with the model's name
  * where the copy needs it), and a send that never reached the route keeps what it knows instead of
  * flattening to the generic text (7.19's rule). And it belongs to one Session only: the composer
- * stays mounted while another conversation is opened. The same slot carries a refused `/agent`
- * handoff, whose words name the Agent and say this conversation was not touched.
+ * stays mounted while another conversation is opened. The same slot carries the two staged switches:
+ * a refused `/agent` handoff, whose words name the Agent and say this conversation was not touched,
+ * and a refused `/model` — a fork, which wrote nothing and says the same, or a desk, where the
+ * employee's model may already be written, so its sentence points at the chart instead.
  */
 import { afterEach, describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/client";
@@ -16,7 +18,9 @@ import { en as EN } from "../src/lib/strings-en";
 import { S, setActiveStrings, zh as ZH } from "../src/lib/strings";
 import { sendRefused } from "../src/features/chat/first-send-refusal";
 import {
+  deskModelRefusalLine,
   handoffRefusalLine,
+  modelSwitchRefusalLine,
   sendRefusalLine,
   sendRefusalShown,
 } from "../src/features/chat/message-send-refusal";
@@ -134,6 +138,102 @@ describe("handoffRefusalLine", () => {
     );
     expect(sendRefusalShown(line, "session-a")).toBe(line.text);
     expect(sendRefusalShown(line, "session-b")).toBeNull();
+  });
+});
+
+describe("modelSwitchRefusalLine", () => {
+  it("names the picked model and says this conversation was not touched", () => {
+    const line = modelSwitchRefusalLine("session-a", new ApiError(500, "internal", "boom"), {
+      label: "Claude 4.8",
+      modelId: "claude-4-8",
+    });
+    expect(line.sessionId).toBe("session-a");
+    expect(line.text).toBe(S.chat.modelSwitchRefused("Claude 4.8", S.errors.byCode.internal));
+    // The chip's label, not the raw id: the sentence reads as the card above it does.
+    expect(line.text).toContain("Claude 4.8");
+    expect(line.text).not.toContain("RAW");
+  });
+
+  it("names the picked model when its key is missing — the answer carries no model id", () => {
+    const line = modelSwitchRefusalLine(
+      "s",
+      new ApiError(400, "model_credential_missing", "RAW ENGLISH"),
+      { label: "claude-4-8", modelId: "claude-4-8" },
+    );
+    expect(line.text).toBe(
+      S.chat.modelSwitchRefused("claude-4-8", S.errors.modelCredentialMissing("claude-4-8")),
+    );
+  });
+
+  it("keeps what a request that never reached the route has to say", () => {
+    expect(
+      modelSwitchRefusalLine("s", new Error("Failed to fetch"), {
+        label: "m",
+        modelId: "m",
+      }).text,
+    ).toBe(S.chat.modelSwitchRefused("m", "Failed to fetch"));
+  });
+
+  it("speaks the active language", () => {
+    setActiveStrings(EN);
+    const line = modelSwitchRefusalLine("s", new ApiError(500, "internal", "x"), {
+      label: "Claude 4.8",
+      modelId: "claude-4-8",
+    });
+    expect(line.text).toBe(EN.chat.modelSwitchRefused("Claude 4.8", EN.errors.byCode.internal));
+  });
+
+  it("belongs to the conversation the chip was staged on", () => {
+    const line = modelSwitchRefusalLine("session-a", new ApiError(500, "internal", "x"), {
+      label: "m",
+      modelId: "m",
+    });
+    expect(sendRefusalShown(line, "session-a")).toBe(line.text);
+    expect(sendRefusalShown(line, "session-b")).toBeNull();
+  });
+});
+
+describe("deskModelRefusalLine", () => {
+  it("does not claim the chart was left alone — the write may have landed before the refusal", () => {
+    const line = deskModelRefusalLine("session-a", new ApiError(500, "internal", "boom"), {
+      label: "Claude 4.8",
+      modelId: "claude-4-8",
+    });
+    expect(line.sessionId).toBe("session-a");
+    expect(line.text).toBe(S.chat.deskModelRefused("Claude 4.8", S.errors.byCode.internal));
+    // The two things that hold whatever step failed: the message was not sent, and the chart says
+    // which model the desk is on now. "unchanged" is exactly what it must not say — unlike the fork.
+    expect(line.text).toContain("这条消息没有发出");
+    expect(line.text).toContain("组织图");
+    expect(line.text).not.toContain("本会话保持不变");
+    expect(line.text).not.toBe(
+      modelSwitchRefusalLine("session-a", new ApiError(500, "internal", "boom"), {
+        label: "Claude 4.8",
+        modelId: "claude-4-8",
+      }).text,
+    );
+  });
+
+  it("names the picked model when its key is missing", () => {
+    const line = deskModelRefusalLine(
+      "s",
+      new ApiError(400, "model_credential_missing", "RAW ENGLISH"),
+      { label: "claude-4-8", modelId: "claude-4-8" },
+    );
+    expect(line.text).toBe(
+      S.chat.deskModelRefused("claude-4-8", S.errors.modelCredentialMissing("claude-4-8")),
+    );
+    expect(line.text).not.toContain("RAW");
+  });
+
+  it("speaks the active language", () => {
+    setActiveStrings(EN);
+    const line = deskModelRefusalLine("s", new ApiError(500, "internal", "x"), {
+      label: "Claude 4.8",
+      modelId: "claude-4-8",
+    });
+    expect(line.text).toBe(EN.chat.deskModelRefused("Claude 4.8", EN.errors.byCode.internal));
+    expect(line.text).not.toContain("unchanged");
   });
 });
 

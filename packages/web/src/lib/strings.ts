@@ -3666,6 +3666,21 @@ export const zh = {
     handoffRefused: (agent: string, reason: string) =>
       `没能把这条消息交接给 ${agent}，本会话保持不变：${reason}`,
     /**
+     * A staged `/model` fork did not get out: Send opens a NEW conversation on the picked model —
+     * a conversation nothing was written into — and this one stays exactly as it was, with the chip
+     * and the draft still on the card that asked. `model` is how the chip names the pick.
+     */
+    modelSwitchRefused: (model: string, reason: string) =>
+      `没能用 ${model} 开一个新对话，本会话保持不变：${reason}`,
+    /**
+     * `/model` on a DESK: the same press writes the employee's model to the org chart and renews the
+     * desk onto it, so a refusal can land after the write — the sentence must not claim the chart
+     * was left alone. It says what is certain in every case (the message was not sent) and points at
+     * the chart, which the page reloads as it draws this line, for which model the desk is on now.
+     */
+    deskModelRefused: (model: string, reason: string) =>
+      `没能把这张桌子换到 ${model}，这条消息没有发出；桌子现在用哪个模型以组织图为准：${reason}`,
+    /**
      * A picked thinking level was refused: the control still reads the level it read before, so the
      * sentence says the pick did not take. `agent` is set where the write goes through to the
      * Agent's settings (the draft's picker), which is a wider change than this one conversation.

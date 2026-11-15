@@ -101,7 +101,13 @@ import { latestTaskHasSubagent, modelTaskStartCount, taskStartCount } from "./ag
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
 import type { RecallAnswer } from "./queued-recall-refusal";
-import { handoffRefusalLine, sendRefusalLine, sendRefusalShown } from "./message-send-refusal";
+import {
+  deskModelRefusalLine,
+  handoffRefusalLine,
+  modelSwitchRefusalLine,
+  sendRefusalLine,
+  sendRefusalShown,
+} from "./message-send-refusal";
 import type { SendRefusal } from "./message-send-refusal";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
@@ -1359,6 +1365,15 @@ export function ChatPage() {
     [selected, turnThinkingLevel, discardSessionDraft, syncHealedSessionId],
   );
 
+  /** A model's display label for the switch dialog and its toasts: the configured name, else the id. */
+  const modelDisplay = useCallback(
+    (ref: ModelRefDto): string => {
+      const m = models?.models.find((x) => sameModelRef(x, ref));
+      return m ? modelLabel(m) : ref.modelId;
+    },
+    [models],
+  );
+
   // /model switch (handoff-style, mirroring onHandoff exactly): opens a NEW session for the
   // SAME agent on the picked model via the normal createSession API — deliberately with the
   // SOURCE session's Workspace, so files the conversation refers to stay reachable — then
@@ -1372,6 +1387,12 @@ export function ChatPage() {
   const onSwitchModel = useCallback(
     async (ref: ModelRefDto, input: TaskInputPart[]): Promise<boolean> => {
       if (!projectId || !selected) return false;
+      const sessionId = selected.sessionId;
+      // The attempt that is starting answers for itself: the sentence of the one before goes.
+      setSendRefusal(null);
+      // The pick as the copy names it — the chip's label, and the upstream id for the one answer
+      // that has to be told which model it is about (`model_credential_missing` names none).
+      const picked = { label: modelDisplay(ref), modelId: ref.modelId };
       // The source's latest trace file path comes from the single-session GET (list rows
       // don't carry it); best-effort — a brand-new source has no trace, the block then
       // simply omits the line.
@@ -1415,10 +1436,13 @@ export function ChatPage() {
             return true;
           }
         } catch (e) {
-          // The model may be written and the desk renewed by now; the lists say which.
+          // The model may be written and the desk renewed by now; the lists say which. The reason
+          // stays above the card whose Send was pressed — the draft and the chip are still there,
+          // so that button is the retry — with the chart reloaded to whatever is true now
+          // (message-send-refusal.ts, deskModelRefusalLine).
           void company.reloadOrgChart();
           void company.reloadOrgSessions();
-          toastError(apiErrorText(e, { modelId: ref.modelId }));
+          setSendRefusal(deskModelRefusalLine(sessionId, e, picked));
           return false;
         }
       }
@@ -1449,11 +1473,14 @@ export function ChatPage() {
         return true;
       } catch (e) {
         if (createdId) void api.deleteSession(createdId).catch(() => undefined);
-        toastError(apiErrorText(e, { modelId: ref.modelId }));
+        // Nothing was written: the empty conversation is deleted again, the source is untouched, and
+        // the chip and the draft are still on the card whose Send was pressed — so the reason goes
+        // above it rather than into a toast that expires (message-send-refusal.ts).
+        setSendRefusal(modelSwitchRefusalLine(sessionId, e, picked));
         return false;
       }
     },
-    [projectId, selected, addSession, discardSessionDraft, navigate, company],
+    [projectId, selected, addSession, discardSessionDraft, navigate, company, modelDisplay],
   );
 
   // /agent handoff: doesn't use the current Session — creates a new chat for the picked agent
@@ -1922,15 +1949,6 @@ export function ChatPage() {
     // The items are read from the model per run; `version` is the change signal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.version, stream.model, thinkingSwitch, applyTurnThinkingLevel]);
-
-  /** A model's display label for the switch dialog and its toasts: the configured name, else the id. */
-  const modelDisplay = useCallback(
-    (ref: ModelRefDto): string => {
-      const m = models?.models.find((x) => sameModelRef(x, ref));
-      return m ? modelLabel(m) : ref.modelId;
-    },
-    [models],
-  );
 
   // Session toolbar model picker: switches THIS conversation's model (the `/model` handoff opens
   // a new conversation instead). Re-picking the current model does nothing, and neither does a
