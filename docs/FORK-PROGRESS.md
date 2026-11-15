@@ -27451,3 +27451,46 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔 `31fb96acb`（11 个跟踪文件：源码 5 + 单测 1 + spec 1 + 文档 2 + changelog 2）。
 - 台账这一笔随本文件另起。
+
+## 第二百五十三轮：自进化循环的一轮，格式门禁红在宣传片工程（2026-11-15）
+
+### 这一轮是什么
+
+定时任务（`evolve-loop`，01:00Z）按 `/root/evolution/LOOP.md` 跑的一轮：四道门禁 → 记账 → 有改动就
+提交推送 → 到阈值才发版 → 汇报。本轮没有需求条目，动的是一处一直红着的门禁。
+
+### 四道门禁
+
+首跑（`d653d0fdb`）：typecheck 168 s 过、lint 3 s 过（2558 文件 0 warning 0 error）、
+**format 94 s 红在 `promo/` 11 个文件**、test 250 s 过（vitest 10765 通过 / 20 跳过 / 0 失败，
+插件 `node --test` 44 例全过）。
+
+### 红在哪、为什么
+
+- 红在 `promo/remotion.config.ts`、`promo/src/{Backdrop,Promo,motion}`、`promo/src/scenes/{Close,Cost,
+  Demo,Evolve,Local,Skills,TextAgent}`（11 个）。
+- 宣传片工程 `8a79b9a01` 进仓时按 prettier 默认 `printWidth: 80` 排的，仓库根 `.prettierrc.json` 是 100，
+  promo 自己没带配置 —— 于是 `prettier --check .` 一路判它不合规。与语义无关。
+- 同一处也是 CI 红的唯一原因：`d653d0fdb` / `8f5dcd86a` / `2b1192585` 三次 CI 都只红
+  `style (prettier)` 这一个作业（另外 21 个作业 green）。
+
+### 怎么修的
+
+- `pnpm exec prettier --write promo/` —— 仓库自己的格式化器，不动任何配置、不改 `.prettierignore`、
+  不为它开例外。9 个文件被重排，2 个本来就合规。
+- 只动排版的证据：把改动前后的源码都解析成 token 逐文件比对，差异只有行合并、多行参数表的尾逗号被去掉、
+  JSX 里 `{" "}` 变成字面空格（渲染同为 1 个空格）、whitespace-only 的 JSX 文本节点被删（React 本就忽略）；
+  全量 `git diff` 人工过了一遍，表达式与字面量一个没动。
+- 复跑四道门禁（`/root/evolution/runs/2026-11-15-0900/pass2/`）：typecheck 167 s、lint 3 s、
+  format 93 s、test 249 s，**四道全绿**，测试计数与首跑完全一致（10765 + 44，0 失败）。
+
+### 版本与推送
+
+- 距 `v0.6.9`（2026-11-15 06:06）只有 **1 个功能性提交**（`31fb96acb`），**不发版**（1/10）。
+- 提交 `d7d83b04d chore(promo): 宣传片工程的源码按仓库的排版规整，格式门禁重新变绿`，直推 `main` 成功。
+- 新 CI run 43662470366 在本轮收尾时 `in_progress`；下一轮核对 `style (prettier)` 是否转绿。
+- 现网 `/root/.adelie`（7777）没换装、没重启。
+
+### 提交
+
+- 这一笔（11 个文件，+100/−263），台账随本文件另起一笔。
