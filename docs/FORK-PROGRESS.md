@@ -28359,4 +28359,11 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 ### 提交
 
 - 功能一笔 **`246403872`**（12 个文件：源码 5、单测 2、spec 1、文档 2、changelog 2）。
-- 台账（条目 7.142、上表那一行、本节）随本文件另起一笔。
+- 台账（条目 7.142、上表那一行、本节）随本文件另起一笔：**`ea4eef1cd`**。
+- **推送通道**：`git push`（含 `-c http.version=HTTP/1.1`）这一轮**不通**（`github.com:443` 与本轮
+  `fetch` 同一个毛病），于是照既有做法走 `api.github.com` 的 Git Data API —— 以父提交的树为 `base_tree`
+  逐个写 blob，建树、建提交、移 `refs/heads/main`。**踩到一个新坑**：GitHub 自己会给提交对象补末尾换行，
+  所以把本地 `%B`（已带一个 `\n`）原样传过去会存成两个换行，算出来的 sha 与本地不同（`99c52fd59…`）；
+  传消息时**去掉末尾那一个换行**，两笔就都复算成与本地一模一样的 `246403872` / `ea4eef1cd`（树 sha 也对上），
+  ref 才移动。推完用 `GET /repos/lmliheng/Adelie/commits/main` 与 `contents/…?ref=main` 核对过，
+  `refs/remotes/origin/main` 在本地同步成同一个 sha。
