@@ -2728,6 +2728,23 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       拿到贵的那条。现在卡片留在原地、句子在框里（「没能先压缩上下文，思考等级仍是〈x〉：〈原因〉」），
       **仍要切换** 成了知道代价的选择，**取消** 真的什么都没改；已经开始的压缩后来失败/被中断时照旧应用等级
       并提示（那一条讲的是先后顺序，不是否决）。见「第二百六十二轮」一节。
+- [x] **7.143 审批决定被拒时，原因留在仍在发问的那个块里，两颗按钮仍是重试**（**2026-11-16
+      第二百六十三轮**落地，提交见「已完成的轮次」；`packages/web` 6 个文件 —— 新增纯逻辑
+      `features/chat/approval-refusal.ts`（`ApprovalAnswer` 与 `approvalAnswerRefused(decision, err)`，原因走
+      `refusalText`、决定用界面自己的 `S.chat.approve` / `deny` 点名），`chat-page.tsx` 的 `onApprove` 改为返回
+      `Promise<ApprovalAnswer>`（落地与 404 → `null`，其余 → 句子，待审批条目原样留着），
+      `message-stream.tsx` 的渲染上下文跟上类型，`tool-call-card.tsx` 按卡片自己存那份答案并交给审批块
+      （每次尝试先清、只在块还留在屏幕上时才画），两份词典各加 `chat.approvalAnswerRefused(decision, reason)`；
+      `packages/ui` 1 处 —— `ApprovalRequest` 多一个可选的 `refusal`，画在参数块与按钮之间（`role="alert"`、
+      `data-testid="approval-refusal"`、危险色、两行、整句挂悬停））＋ 新单测 `packages/web/test/
+      approval-refusal.test.ts`（5 条）＋ `packages/ui/test/tool-call-card.test.ts` 加 1 条 ＋ 1 个新 spec
+      `e2e/approval-answer-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 的「审批工具调用」一节
+      ＋ changelog 一对，**不碰接口、无新依赖**）：会话里按「允许 / 拒绝」是一个 POST，而它背后那句 `catch`
+      只认 404、**其余全被丢在地上** —— 服务器出错或连接断开时审批块与按之前一模一样，屏幕上没有一个字
+      （连一条通知都没有），同一份块继续问。现在被拒的决定把原因写在块里、两颗按钮正上方：哪一次决定没送到
+      （两颗按钮挨着摆，读者回到屏幕前未必知道刚才按的是哪一颗）与为什么；两颗按钮都留着 —— 什么都没写进去，
+      再点一次就是重试。404 仍然什么也不说（调用已经结束，块在同一个应答上消失）。子 Agent 的审批卡片同一条
+      规则。见「第二百六十三轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3481,6 +3498,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-16 | 7.140 | **回复图片的「拆图层」没能发出时，原因留在图片动作栏下面**（**2026-11-16 第二百五十九轮**落地；`packages/ui` 3 处 —— `LightboxAction.onSelect` 允许返回 `Promise<string | null | undefined>`（非空字符串 = 这次按下的拒绝，空值 = 工作落地、关灯箱），`lightbox.tsx` 为会回答的动作留住覆盖层（忙态按钮、不重复投递）并把句子画在胶囊动作栏下方（`role="alert"`、`data-testid="lightbox-refusal"`、危险色、两行、整句挂悬停），关灯箱时一并丢掉上一句；判定顺序抽成新纯模块 `src/components/overlays/lightbox/action-press.ts` 的 `pressLightboxAction`（先 `pending`，再恰好一次 `done` / `refused`，被拒的 promise 按已完成）；`packages/web` 4 处 —— `lib/image-actions.ts` 的 `ask` 返回 `Promise<string | null>`、`chat-page.tsx` 的 `askWithPicture` 不再 `toastError` 而是交回句子、两份词典各加 `chat.imageAction.refused(reason)`）＋ 新单测 `packages/ui/test/action-press.test.ts`（7 条）＋ 改既有 `packages/ui/test/lightbox.test.ts` 的「先关再跑」源扫描（改为「每次按下的处置交给 `pressLightboxAction`」）＋ 既有 `packages/web/test/image-actions.test.ts` 加 1 条 ＋ 1 个新 spec `e2e/image-action-refusal.spec.mjs`（1 条）＋ changelog 一对，**不碰接口、无新依赖、无新文档**）：第二百五十八轮末尾点名的那一族里剩下的最后一处 ——「拆图层」按下去是向 Agent 投一条消息（App 没有图像接口），被拒时什么都没写，而此前灯箱先关、动作再跑，原因只剩一条六秒后自己消失的通知挂在页顶，六秒后屏幕上是一个跟按之前一样的对话、图片与那颗失败的按钮都不在了（7.19 的规则）。见「第二百五十九轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/ui` 与 `packages/web`）· `npx oxlint` 11 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（新模块 / 新单测 / web 单测 / 新 spec 首跑 4 个文件不过，`--write` 后复检全绿；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 文件 / 1112 通过**（基线 132 / 1105，+1 文件 / +7 条即本笔）· cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3847 通过 / 2 跳过**（基线 338 / 3846，+1 即本笔的新单测）· **新 spec 1 passed（10.9 s）**，格式化后最终源码复跑 **1 passed（10.8 s）**（真服务端 9481 / 9495 + 仓库自带 mock 模型 9482 / 9496 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r260-e2e` / `r260-final`；Agent 经 `POST …/agents` 建、`use-seedream` 插件经接口装上、工作区里先放一张真 PNG）：把 `POST …/tasks` 用 `page.route` 拒成 500 `internal`（带一句英文原文）—— 覆盖层仍在（`scrim 1`）、句子逐字「没能把这张图拆成图层，这条消息没有发出：服务器内部错误，请稍后重试。」、不含线上英文、**量到它的 y 475 在按钮 y 430 之下**、通知区 0 个按钮、只发出一个请求、**七秒后仍在**；放开桩之后按同一颗按钮 → 覆盖层关掉、`使用技能：seedream` 与「拆成图层（--layers）」落进对话；再打开图片时上一句拒绝不再出现 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：5 份源码退回 `HEAD`、重建 web（改前产物里 `没能把这张图拆成图层` 为 0 个文件）挂到 `/root/adelie-fork-data/r260-before` 的 9485 → **1 failed**，死在 `getByTestId('lightbox-refusal')` 的 `toBeVisible`（`element(s) not found`）；源码放回、重建后 **1 passed** · **两态探针**（`r260/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9491、改前 9493，量 1.2 s / 7.6 s）：**改后** 两刻都是 `scrim 1`、`lightbox-refusal` 1 条逐字如上、按钮仍在、通知区 0 个按钮；**改前** 两刻都是 `scrim 0`、拒绝行 0 条、按钮 0 颗，1.2 s 时通知区 **1 个按钮**（页顶白底「服务器内部错误，请稍后重试。」）到 7.6 s **0** —— 截图为证 `r260/shots/{after,before}-{1_2s,7_6s}.png`，肉眼看过两态；两态 console 都只有既有的 `GET …/machines` 403 与本轮**故意造的** 500，pageerror **0 条** · **相邻回归（真浏览器）**：`reply-picture-actions.spec.mjs` **1 passed**（它守的正是「成功时覆盖层关掉、句子落进对话」，没被这一笔改成「留着不走」）· 端口只用 9481 / 9482 / 9485 / 9486 / 9487 / 9488 / 9491 / 9492 / 9493 / 9494 / 9495 / 9496（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r260-{e2e,e2e2,final,before,probe-after,probe-before}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置 / 跑 spec 的脚本都在 scratchpad 的 `r260/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `291e18a1f` |
 | 2026-11-16 | 7.141 | **文档根的 `lang` 跟着界面语言走**（**2026-11-16 第二百六十一轮**落地；源码 1 个文件 2 处 —— `packages/web/src/state/locale.tsx` 新增导出的 `documentLangFor(locale)`（`zh` → `zh-CN`、`en` → `en`）与 `applyDocumentLang(doc, locale)`（以文档为参数、幂等、没有根就什么都不做），`LocaleProvider` 与切换活动词典同一轮渲染时把生效语言写到文档根；用例 1 个（`packages/web/test/locale.test.ts` 加 4 条）；changelog 一对；上游 `9abdb766`（`#1212`）移植，**不碰接口、无新依赖、无新文档**：`index.html` 里那个静态 `zh-CN` 从来没有被应用改写过，英文界面（含「跟随系统」下的英文设备）被读屏与浏览器翻译当成中文宣告） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型）· `npx oxlint` 2 个改动文件 0 警告 0 错误 · 4 个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1112** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3851 通过 / 2 跳过**（基线 3847，+4 即本笔新用例）· **两态探针（真服务端 + 真浏览器，两条腿各挂自己的产物）**：改后 `localhost:9521`（`after-dist`）—— 首屏 `zh-CN` → 点「English」**不刷新**变 `en`（按钮同时变 `Sign in`）→ 点「中文」回 `zh-CN` → 存了 en 后 reload 仍是 `en` → 「跟随系统」在 en-US 设备上是 `en`；改前 `localhost:9531`（`before-dist`）—— **五刻全是 `zh-CN`**，而按钮已经写着 `Sign in`（标记与屏幕文字自相矛盾，正是本笔要修的缺陷）。两态 console 只有登录前既有的 `/api/me` 401，pageerror 0 条 · **整套浏览器 e2e（改后产物，318 通过 / 10 失败 / 30.4 min）与逐条基线**：失败集中在 5 个文件，用**改前产物**单跑同一批文件对比 —— `scroll-follow-bounce` 的 Primer 一格在两条腿上**都红**（各连跑两遍都红）、`ticket-create-refusal` 与 `ticket-refusal` 的 6 条在两条腿上**都红**（本机 pre-existing，与本笔无关）；`chat-defaults-save-refusal` 2 条与 `server-switch-read-refusal` 的 company 那条在单跑里**两条腿都绿**（整套里红是顺序/状态相关）；改后那一次多出的 Frost 一格随后各腿连跑两遍都绿（抖动）· 端口只用 9521 / 9531 与 e2e 的 8930 / 8931（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r261-*`，探针 / 两态产物 / 截图 / 改后源码留底都在 scratchpad 的 `r261/` 下 | `698030452` |
 | 2026-11-16 | 7.142 | **思考等级的「压缩后切换」没能开始压缩时，确认框留着、原因留在框里，等级不动**（**2026-11-16 第二百六十二轮**落地；`packages/web` 5 个文件 —— `features/chat/thinking-level.ts` 的 `StagedThinkingSwitch` 打开态多一个可选 `refusal`（`"settle"` 阶段与 `heldThinkingSwitch` 的 `notice: "none"` 一并删掉，卡片还在发问时不许任何东西在它背后放行这个选择），`features/chat/thinking-level-refusal.ts` 新增 `compactBeforeSwitchRefused(level, err)`（原因与 `/compact` 共用同一个 `sendRefusalReason`），`chat-page.tsx` 的 `compactThenThinkingSwitch` 传 `onRefused` 把卡片退回同一个等级的 `ask` 并写上句子（只改自己暂存的那一份状态）、「正在压缩」的提示改成服务端真的接受请求之后才发，两份词典各加 `chat.thinkingSwitchCompactRefused(still, reason)`）＋ 既有单测 2 份（`packages/web/test/thinking-level-refusal.test.ts` 加 3 条、`thinking-level.test.ts` 把 `"settle"` 那条换成「卡片带着拒绝句时仍被扣着」）＋ 1 个新 spec `e2e/thinking-switch-compact-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 讲思考等级那一段不再声称「等级照样切换」＋ changelog 一对，**不碰接口、无新依赖**）：那一按问的是两件事（先压缩、再切等级），服务端不肯开始压缩时其实两件都没做，可确认框照样关、下一轮就把选择放行、等级照常切过去，原因只活在一条六秒后自己消失的通知里 —— 选了便宜那条路的人安静地拿到了贵的那条（7.19 的规则）。现在卡片留在原地、句子写在它自己的问题下面（「没能先压缩上下文，思考等级仍是〈x〉：〈原因〉」），**仍要切换** 成了知道代价的选择，**取消** 真的什么都没改；已经开始的压缩后来失败/被中断时照旧应用等级并提示（那一条讲的是先后顺序，不是否决）。见「第二百六十二轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web` 与文档；任务模板里的 `--filter @prismshadow/...` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 8 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（`thinking-level.ts` 与 `thinking-level-refusal.test.ts` 首跑不过，`--write` 后复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1112** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3854 通过 / 2 跳过**（基线 338 / 3851，+3 即本笔新单测；格式化后复跑同数）· `@adelie/docs` **8 文件 / 62 通过**· **新 spec 2 passed（11.1 s + 3.3 s）**（真服务端 9561 + 仓库自带 mock 模型 9562 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r262-e2e`）：① 把 `POST …/compact` 拒成 500 `internal`（带一句英文原文）→ 卡片仍在、拒绝句逐字「没能先压缩上下文，思考等级仍是「中」：服务器内部错误，请稍后重试。」、不含线上英文、触发器仍读「中」、**一个 `PATCH` 都没发出**、通知区 0 个按钮、只发出一个请求、其它两个选择仍可点、**七秒后仍在**，之后按「仍要切换」才把 `thinkingLevel: high` 钉上并关框；② 被拒后按「取消」什么都没变（`GET …/sessions` 里没有 `high`），下一次选等级是一张干净的卡片、上一次的句子不再出现· **反证（同一份 spec，改前源码 + 改前 web 产物）**：5 份源码 `git stash push --`、重建 web（改前产物里 `没能先压缩上下文` 为 0 个文件）挂到 `/root/adelie-fork-data/r262-before` 的 9563 → **2 failed**，两条都死在 `getByRole('dialog').getByRole('alert')` 的 `toBeVisible`（`element(s) not found`）；`git stash pop` 重建后 **2 passed**· **两态探针**（`r262/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9561、改前 9563，量 1.2 s / 7.6 s）：**改后** 两刻都是 `card 1`、拒绝句 1 条逐字如上、触发器「中」、通知区 0 个按钮；**改前** 两刻都是 `card 0`、拒绝行 0 条，1.2 s 时触发器**已经是「高」**（等级在背后切了）、通知区 **2 个按钮**（「正在压缩上下文，压缩结束后切换思考等级。」与「服务器内部错误，请稍后重试。」），7.6 s 时通知区 0、屏幕上只剩一个已经换掉的等级 —— 截图 `r262/shots/{after,before}-{1_2s,7_6s}.png` 肉眼看过；两态 console 都只有既有的 `GET …/machines` 403 与本轮**故意造的** 500，pageerror **0 条**· **相邻回归（真浏览器）**：`thinking-level-refusal.spec.mjs` **2 passed**、`reloaded-followup.spec.mjs` **1 passed**（它钉的正是这张卡片的三个选择与「仍要切换」的 `PATCH`）· 端口只用 9561 / 9562 / 9563（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r262-{e2e,before}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r262/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `246403872` |
+| 2026-11-16 | 7.143 | **审批决定被拒时，原因留在仍在发问的那个块里，两颗按钮仍是重试**（**2026-11-16 第二百六十三轮**落地；`packages/web` 6 文件 —— 新增纯逻辑 `features/chat/approval-refusal.ts`（`ApprovalAnswer`、`approvalAnswerRefused(decision, err)`：原因走 `refusalText`、决定用 `S.chat.approve` / `deny` 点名），`chat-page.tsx` 的 `onApprove` 返回 `Promise<ApprovalAnswer>`（落地与 404 → `null`，其余 → 句子、待审批条目原样留着），`message-stream.tsx` 的渲染上下文跟上类型，`tool-call-card.tsx` 按卡片存那份答案（每次尝试先清、只在块还留在屏幕上时才画），两份词典各加 `chat.approvalAnswerRefused(decision, reason)`；`packages/ui` 1 处 —— `ApprovalRequest` 多一个可选的 `refusal`，画在参数块与按钮之间（`role="alert"`、`data-testid="approval-refusal"`、危险色、两行、整句挂悬停））＋ 新单测 `approval-refusal.test.ts`（5 条）＋ `packages/ui/test/tool-call-card.test.ts` 加 1 条 ＋ 新 spec `e2e/approval-answer-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 的「审批工具调用」一节 ＋ changelog 一对，**不碰接口、无新依赖**）：会话里按「允许 / 拒绝」是一个 POST，它背后那句 `catch` 只认 404、**其余全被丢在地上** —— 服务器出错或连接断开时审批块与按之前一模一样，屏幕上没有一个字（连通知都没有），同一份块继续问。现在被拒的决定把原因写在块里、两颗按钮正上方，指出是哪一次决定没送到与为什么；两颗按钮都留着（什么都没写进去，再点就是重试）；404 仍不说话（调用已结束，块在同一个应答上消失）；子 Agent 的审批卡片同一条规则 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/...` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 13 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（`approval-answer-refusal.spec.mjs` 首跑不过、`--write` 后复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1113**（+1 即本笔）· cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **339 文件 / 3859 通过 / 2 跳过**（基线 338 / 3854，+1 文件 / +5 条即本笔）· `@adelie/docs` **8 文件 / 62 通过** · **新 spec 2 passed（9.9 s + 2.3 s）**（真服务端 9641 + 仓库自带 mock 模型 9642 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r263-run`）：① `POST …/approvals/…` 拒成 500 `internal`（带英文原文）→ 审批块仍在发问、句子逐字「没能把「允许」交给服务器，这次调用仍在等你回答：服务器内部错误，请稍后重试。」、`role=alert`、不含线上英文、两颗按钮都在且仍可点、通知区 0 个按钮、**七秒后仍在**，放开桩后按同一颗按钮 → 句子消失、mock 第二轮回复到达（决定真的交上去了）；② 拒成 404 `tool_call_not_found` → 块安静收起、一句都没有、通知区 0 个按钮 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：6 份源码 `git stash push --`、新模块移出、重建 web（改前产物里 `approval-refusal` 为 0 个文件、改后 1 个）挂到 `/root/adelie-fork-data/r263-before` 的 9643 → **1 failed**（第 ① 条死在 `getByTestId('approval-refusal')` 的 `toBeVisible`：`element(s) not found`；第 ② 条照旧通过，因为它在两条腿上都说「什么都不说」）；放回重建后 **2 passed** · **两态探针**（`r263/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9641、改前 9643，量 1.2 s / 7.6 s）：**改后** 两刻都是 `refusalCount 1`、句子逐字如上、**`refusalAboveButtons: true`**（整行在「允许」上缘之上）、两颗按钮可见且可点、通知区 0 个按钮、审批块仍开着；**改前** 两刻都是 `refusalCount 0`、`notifyButtons 0` —— 按钮亮着、屏幕上没有一个字。截图 `r263/shots/{after,before}-{1_2s,7_6s}.png` 肉眼看过；两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · **相邻回归（真浏览器）**：`chat.spec.mjs`（整条路都在按「允许」）**1 passed**、`background-move-refusal.spec.mjs` **2 passed**、`permission-refusal.spec.mjs` **1 passed**，共 **4 passed（56.0 s）** · 端口只用 9641 / 9642 / 9643（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r263-{run,before}`，探针 / 两态产物 / 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r263/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ab2c9c13a` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -28367,3 +28385,114 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
   传消息时**去掉末尾那一个换行**，两笔就都复算成与本地一模一样的 `246403872` / `ea4eef1cd`（树 sha 也对上），
   ref 才移动。推完用 `GET /repos/lmliheng/Adelie/commits/main` 与 `contents/…?ref=main` 核对过，
   `refs/remotes/origin/main` 在本地同步成同一个 sha。
+
+## 第二百六十三轮：审批决定被拒时，原因留在仍在发问的那个块里（2026-11-16，条目 7.143）
+
+### 开工自检
+
+- `git status --short` 干净、分支 `main`、`HEAD` = `cf7393642`（第二百六十二轮的台账补记）。
+  `git fetch origin` 这一轮仍不通（`GnuTLS recv error (-110)`，`-c http.version=HTTP/1.1` 也一样），
+  `api.github.com` 通 —— 于是用 `GET /repos/lmliheng/Adelie/commits/main` 核对远端头，正是
+  **`cf7393642f7777a10c4886e9868c02a05c291db7`**，与本机 `HEAD` / `origin/main` 同一个提交；
+  `git merge --ff-only origin/main` 报 `Already up to date.`。没有切分支、没碰 `legacy/main`、没推 upstream。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（"还差什么"剩下的全在桌面壳一侧 + 既有部署单元 + 桌面壳自己的开关，
+  而本轮纪律明令不碰 desktop / electron）、3.5（要用户拍板）、3.6（要模型 key）、4.1–4.3 与 2.5（明令不动）、
+  5.6 / 5.10（拍板 / 新依赖）。第 7 节 **7.1–7.142 已全勾**。
+- 上游没有新东西：`api.github.com` 现查 `Prism-Shadow/penguin-harness` 尖端仍是 **`2b9bf8f8`**
+  （2026-11-14，与上一轮探到的同一个提交），之后那批提交仍是大件（浏览器命令贡献、公司命令模块、员工头像、
+  记忆脚本目录……），都不是一轮的量。
+- 于是回到本仓自己的线索：**上一轮「没做 / 留着」点名的那一处 —— 压缩真的开始了却失败时原因只活在通知里。
+  本轮开工先核它，发现台账那句说得不准**：`compaction-banner.tsx` 的失败行本来就带
+  `S.chat.compactionFailed(item.status, item.errorMessage)`（`失败（原因），保留当前上下文…`），
+  `stream-model` 也从 `compaction_end.error_message` 填了 `errorMessage`。所以那一条并不缺东西，
+  本轮**没有**照它做。
+
+### 选活：为什么是审批
+
+- 顺着「原因只活六秒（7.19）」这条扫描线往下一处扫，扫到会话里最核心的一个写点：**按「允许 / 拒绝」
+  就是审批的那一个 POST**，而 `chat-page.tsx` 的 `onApprove` 那句 `catch` **只认 404、其余全被丢在地上**。
+- 于是它的形态比同族任何一处都坏一层：不是「原因在通知里」，而是**一个字都没有**。服务器 500 或连接
+  断开时，审批块与按之前一模一样（两颗按钮都在、都还是亮的），同一份块继续问；按下去什么都没生效，
+  屏幕上没有任何东西说出来，连六秒的通知都没有。
+- 修法与它的兄弟卡片一致（7.135「转入后台执行」、7.95「权限」）：被拒的决定**什么都不写**，所以块留着、
+  两颗按钮就是重试，原因画在**按下去的那两颗按钮上方**；`404` 仍然不说话 —— 调用已经结束（或另一个窗口
+  已经决定了），块会在同一个应答上消失，那时再说一句只会比它解释的事活得更久。
+- 它只动 `packages/ui` 的一处槽位与 `packages/web` 的状态机、一句话与两份文档，不碰接口、不引依赖、
+  不碰桌面壳，一轮的量。
+
+### 做了什么
+
+- `packages/ui/src/components/chat/approval-block/approval-block.tsx`：`ApprovalRequest` 多一个可选的
+  `refusal`，画在参数块与按钮之间（`role="alert"`、`data-testid="approval-refusal"`、危险色、两行、
+  整句挂悬停）。块头注释补写「被拒的决定什么都不写，所以块原样留着、按钮就是重试，句子就落在这里」。
+- **新增** `packages/web/src/features/chat/approval-refusal.ts`：`ApprovalAnswer`（句子或 `null`）与
+  `approvalAnswerRefused(decision, err)` —— 原因走 `refusalText`（每个拒绝槽共用的那条规则，7.19），
+  决定用界面自己的 `S.chat.approve` / `S.chat.deny` 点名（两颗按钮挨着摆，读者回到屏幕前未必知道刚才
+  按的是哪一颗）。模块头注释写清「为什么 404 不说」与「为什么不是通知」。
+- `chat-page.tsx` 的 `onApprove` 改为返回 `Promise<ApprovalAnswer>`：落地 → 摘掉待审批条目并 `null`；
+  `404` → 同样摘掉并 `null`；其余 → 返回句子，**待审批条目原样留着**（块因此还在，按钮还能再按）。
+- `message-stream.tsx` 的渲染上下文跟上类型（`onApprove` 与它的注释）；`tool-call-card.tsx` 按卡片自己
+  存那份答案（`approvalRefusal`），每次尝试先清上一句，只在块还留在屏幕上时才交给审批块。
+- 两份词典各加 `chat.approvalAnswerRefused(decision, reason)`：中文「没能把「允许」交给服务器，这次调用
+  仍在等你回答：原因」，英文 `Couldn't hand your “Allow” decision to the server; this call is still waiting
+  on you: …`。
+- 文档 `chat.zh.md` / `chat.en.md` 的「审批工具调用 / Approve tool calls」一节加一段：决定没能交出去时
+  是什么样子（两颗按钮原样留着、按钮上方写原因、再点就是重试；调用已经结束时不会有这句）。
+- changelog 一对 `2026-11-16-approval-answer-refusal{.zh,}.md`。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 /
+  612 类型 —— 本笔不碰服务契约）。包名按仓库实际为 `@adelie/*`（任务模板里的 `@prismshadow/*` 在本树匹配
+  不到任何项目）。首跑 web 的三份用例夹具（`message-stream` / `transcript-images` / `transcript-videos`）
+  因为 `onApprove` 的返回类型改了而红，改成 `async () => null` 后六包全过。
+- `npx oxlint` 13 个改动文件 **0 警告 0 错误**；`prettier --check` 首跑 `approval-answer-refusal.spec.mjs`
+  不过，`--write` 后复检「All matched files use Prettier code style!」（`*.md` 按本仓口径不在 prettier
+  范围）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1113**（+1 即本笔）·
+  cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **339 文件 / 3859 通过 / 2 跳过**
+  （基线 338 / 3854，+1 文件 / +5 条即本笔）· `@adelie/docs` **8 文件 / 62 通过**（文档那一段改了这个包
+  自己的内容）。
+- **新 spec 2 passed（9.9 s + 2.3 s）**（真服务端 9641 + 仓库自带 mock 模型 9642 + `/usr/bin/chromium` +
+  一次性数据根 `/root/adelie-fork-data/r263-run`）：① `POST …/approvals/…` 被 `page.route` 拒成 500
+  `internal`（带一句英文原文）—— 审批块仍在发问、拒绝句逐字「没能把「允许」交给服务器，这次调用仍在等你
+  回答：服务器内部错误，请稍后重试。」、`role=alert`、不含线上英文、两颗按钮都在且仍可点、通知区 0 个按钮、
+  **七秒后仍在**，随后放开桩、按同一颗按钮 → 句子消失、mock 的第二轮回复「Command finished; the result
+  looks as expected.」到达（决定真的交给了服务器、这一轮接着跑）；② 拒成 404 `tool_call_not_found` ——
+  块安静地收起（`允许` 0 颗）、**一句都没有**、通知区 0 个按钮。
+- **反证（同一份 spec，改前源码 + 改前 web 产物）**：6 份源码 `git stash push --`、把新模块移出、重建 web
+  （改前产物里 `approval-refusal` 为 0 个文件，改后为 1 个）挂到 `/root/adelie-fork-data/r263-before` 的
+  9643 → **1 failed**（第 ① 条死在 `getByTestId('approval-refusal')` 的 `toBeVisible`：
+  `element(s) not found`；第 ② 条照旧通过，因为它在改前改后都断言「什么都不说」）；源码放回、重建后
+  **2 passed**。
+- **两态探针**（`r263/probe.mjs`，同一份脚本、两条腿各挂自己的产物：改后 9641、改前 9643，量 1.2 s / 7.6 s）：
+  **改后** 两刻都是 `refusalCount 1`、句子逐字如上、**`refusalAboveButtons: true`**（量到它整行在「允许」
+  上缘之上）、`allowVisible / allowEnabled / denyVisible` 全真、`notifyButtons 0`、审批块仍开着；
+  **改前** 两刻都是 `refusalCount 0`、`refusalText null`、`notifyButtons 0` —— 按钮亮着、屏幕上没有一个字。
+  截图 `r263/shots/{after,before}-{1_2s,7_6s}.png` 肉眼看过（改后：红字压在「允许 / 拒绝」上方一行；
+  改前：同一位置只有那颗参数行与两颗按钮）；两态 console 都只有既有的 `GET …/machines` **403** 与本轮
+  **故意造的** **500**，pageerror **0 条**。
+- **相邻回归（真浏览器）**：`chat.spec.mjs`（它整条路都在按「允许」并断言批准后的状态图标）**1 passed** ·
+  `background-move-refusal.spec.mjs` **2 passed** · `permission-refusal.spec.mjs` **1 passed**，
+  共 **4 passed（56.0 s）**。
+- 端口只用 9641 / 9642 / 9643（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r263-{run,before}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 /
+  改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r263/` 下（`packages/web/dist`、`test-results/`
+  是产物，未 `git add`）。
+- 一个环境上的坑（与上一轮同源，这里记细一点）：`ADELIE_SEED_ADMIN_PASSWORD` 只在**新建**管理员时生效，
+  `/root/adelie-fork-data` 里那份 `web.db` 早先已被别的轮次建过管理员（无密码状态），所以拿它起服务时
+  只打印 claim 链接、登录 401 —— 换成一次性数据根 `/root/adelie-fork-data/r263-run` 才按种子口令建好。
+  另外 `packages/server/web-dist` 是 **10 月 30 日的旧副本**（不是软链），本轮用 `ADELIE_WEB_DIST` 指到
+  `packages/web/dist` 才让两态产物真的生效 —— 上一轮没撞上它是因为那一轮的数据根本不需要 web 产物更新。
+
+### 没做 / 留着
+
+- `features/agents/api-try-panel.tsx` 的审批按钮（API 试用面板）仍把失败弹成通知：那是另一个面
+  （试用面板自己的一列事件行），按「一轮一处」留给后面的轮次。
+- `onApprove` 里 `stream.markLocalDecision` 仍在发请求之前：它只决定后来那条 `approval_decision` 事件
+  标成「手动」，与决定是否落地无关；被拒后再按一次仍会标成手动，这一点本轮没改。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+- 功能一笔 **`ab2c9c13a`**（17 个文件：源码 7（`packages/ui` 1 + `packages/web` 6）、单测 5、spec 1、文档 2、changelog 2）。
+- 台账（条目 7.143、上表那一行、本节）随本文件另起一笔。
