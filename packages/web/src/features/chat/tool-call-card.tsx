@@ -399,6 +399,16 @@ export function SessionToolCall({ item, ctx }: { item: ToolCallItem; ctx: Stream
     setBackgroundRefusal(backgroundMoveRefused(await sendToBackground(item.toolCallId)));
   };
 
+  // The same rule for the approval block: a refused decision wrote nothing, so the block keeps
+  // asking with both buttons (they are the retry) and the sentence about this press goes inside
+  // it. Every attempt starts clean, and the sentence is gated on the block still being on screen —
+  // once the decision lands, or a 404 drops the block, there is nothing left to explain.
+  const [approvalRefusal, setApprovalRefusal] = useState<string | null>(null);
+  const decide = async (decision: "allow" | "deny"): Promise<void> => {
+    setApprovalRefusal(null);
+    setApprovalRefusal(await ctx.onApprove(item.toolCallId, decision, ctx.origin));
+  };
+
   return (
     <ToolCallCard
       state={state}
@@ -441,8 +451,10 @@ export function SessionToolCall({ item, ctx }: { item: ToolCallItem; ctx: Stream
           ? {
               preview: previewArguments(item.name, item.argumentsText),
               payload: pendingFilePayload(item.name, item.argumentsText),
-              onDecide: (decision) => ctx.onApprove(item.toolCallId, decision, ctx.origin),
+              onDecide: decide,
               labels: { allow: S.chat.approve, deny: S.chat.deny },
+              // Above the buttons, and only while they are still there to press again.
+              ...(approvalRefusal !== null ? { refusal: approvalRefusal } : {}),
             }
           : undefined
       }

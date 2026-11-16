@@ -11,6 +11,11 @@
  *
  * The buttons are words at every breakpoint: an action a person presses reads as "Allow" and
  * "Deny", never as a glyph. Both stay disabled while the decision is being submitted.
+ *
+ * A refused decision leaves the block on screen — nothing was written, so the call asks exactly
+ * what it asked before, buttons included and re-enabled, and those buttons are the retry. The
+ * reason is drawn in `refusal`, between the arguments and the buttons it belongs to: a sentence
+ * anywhere else would be about a press the reader can no longer see.
  */
 import { useState } from "react";
 import { Button } from "../../actions/button/button";
@@ -62,6 +67,8 @@ export interface ApprovalRequest {
   payload?: string | null;
   onDecide: (decision: ApprovalChoice) => Promise<void>;
   labels: ApprovalLabels;
+  /** Why the last decision was refused: drawn above the buttons, which are still the retry. */
+  refusal?: string;
 }
 
 export interface ApprovalBlockProps extends ApprovalRequest {
@@ -78,6 +85,7 @@ export function ApprovalBlock({
   payload,
   onDecide,
   labels,
+  refusal,
 }: ApprovalBlockProps) {
   return (
     <div className="border-t border-line-muted bg-tone-attention-bg px-3 py-2">
@@ -96,6 +104,20 @@ export function ApprovalBlock({
         <pre className="mb-2 max-h-72 overflow-auto whitespace-pre-wrap break-all rounded-md bg-surface/70 px-2 py-1.5 text-xs leading-5 text-fg">
           {payload}
         </pre>
+      )}
+      {refusal !== undefined && (
+        // The refused decision, on its own line above the buttons it belongs to: both are still
+        // here (and enabled again) because nothing was written, so the sentence sits where the
+        // retry is. Two lines at most, the whole sentence one hover away.
+        <p
+          role="alert"
+          data-testid="approval-refusal"
+          data-tooltip={refusal}
+          data-tooltip-content="text"
+          className="mb-2 line-clamp-2 break-words text-xs text-tone-danger-fg"
+        >
+          {refusal}
+        </p>
       )}
       <ApprovalButtons onDecide={onDecide} labels={labels} />
     </div>

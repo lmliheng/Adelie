@@ -17,6 +17,7 @@ import type { MemoryChangeRow } from "../../lib/omni/memory-changes";
 import type { TaskStats } from "../../lib/omni/task-stats";
 import type { PendingApproval } from "./use-session-stream";
 import type { BackgroundMoveAnswer } from "./background-move";
+import type { ApprovalAnswer } from "./approval-refusal";
 import { MessageItem } from "./message-item";
 import { WorkspaceRefsProvider } from "./workspace-refs";
 import { SessionWorkGroup, isWorkItem } from "./work-group";
@@ -30,7 +31,16 @@ import type { ComposerReference } from "../../lib/workspace-tree";
 export interface StreamRenderContext {
   /** approvalKey(origin, toolCallId) → pending approval (disambiguates by origin when parent/child session tool_call_ids collide). */
   pendingApprovals: ReadonlyMap<string, PendingApproval>;
-  onApprove: (toolCallId: string, decision: "allow" | "deny", origin: string[]) => Promise<void>;
+  /**
+   * The decision a waiting call offers. The answer comes back so the block that was pressed can
+   * say why it was refused (see approval-refusal.ts); a decision that landed, and the 404 that
+   * means the call is no longer waiting, answer null and say nothing.
+   */
+  onApprove: (
+    toolCallId: string,
+    decision: "allow" | "deny",
+    origin: string[],
+  ) => Promise<ApprovalAnswer>;
   /**
    * "Move to background" on an executing tool call: the call hands its work back as a
    * background task and the turn carries on. Only honored on main-session items — a

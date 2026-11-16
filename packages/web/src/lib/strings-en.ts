@@ -3722,6 +3722,9 @@ export const en: Strings = {
     /** The line under a tool row whose "send to background" was refused; the action beside it is still there to press again. */
     backgroundMoveRefused: (reason: string) =>
       `Couldn't send this call to the background: ${reason}`,
+    /** The line inside a waiting call's approval block when its decision was refused; both buttons are still there to press again. Names the decision, because the two sit side by side. */
+    approvalAnswerRefused: (decision: string, reason: string) =>
+      `Couldn't hand your “${decision}” decision to the server; this call is still waiting on you: ${reason}`,
     pendingApprovals: (n: number) => `${n} pending approval${n > 1 ? "s" : ""}`,
     jumpToLatest: "Jump to latest",
     /** Top-of-stream affordance while the previous history window is being fetched (scroll-up backfill). */

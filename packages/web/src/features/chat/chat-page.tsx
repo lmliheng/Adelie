@@ -127,6 +127,8 @@ import {
 import type { StagedThinkingSwitch } from "./thinking-level";
 import { compactBeforeSwitchRefused, thinkingLevelRefused } from "./thinking-level-refusal";
 import { permissionRefused } from "./permission-refusal";
+import { approvalAnswerRefused } from "./approval-refusal";
+import type { ApprovalAnswer } from "./approval-refusal";
 import { backgroundMoveAnswer } from "./background-move";
 import type { BackgroundMoveAnswer } from "./background-move";
 import { ChatDropRegion } from "./drop-zone";
@@ -1777,17 +1779,31 @@ export function ChatPage() {
     [selected],
   );
 
+  // The approval block under a waiting call. A refused decision has written nothing — the call is
+  // still waiting on this person, with the same two buttons, and those buttons are the retry — so
+  // the reason goes back with the answer and is drawn inside that block (7.19's rule,
+  // approval-refusal.ts). 404 means the call is no longer waiting (it finished, or another window
+  // decided it): the pending table drops the block on that same answer, so nothing is said.
   const onApprove = useCallback(
-    async (toolCallId: string, decision: "allow" | "deny", origin: string[]) => {
-      if (!selected) return;
+    async (
+      toolCallId: string,
+      decision: "allow" | "deny",
+      origin: string[],
+    ): Promise<ApprovalAnswer> => {
+      if (!selected) return null;
       // A decision clicked locally is marked "manual"; removed from the pending table keyed by the origin composite key.
       stream.markLocalDecision(toolCallId);
       const key = approvalKey(origin, toolCallId);
       try {
         await api.postApproval(selected.sessionId, toolCallId, { decision });
         stream.resolveApproval(key);
+        return null;
       } catch (e) {
-        if (e instanceof ApiError && e.status === 404) stream.resolveApproval(key);
+        if (e instanceof ApiError && e.status === 404) {
+          stream.resolveApproval(key);
+          return null;
+        }
+        return approvalAnswerRefused(decision, e);
       }
     },
     [selected, stream],

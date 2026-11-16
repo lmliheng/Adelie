@@ -27,7 +27,7 @@ afterEach(() => forgetSessionMachines());
 
 const ctx: StreamRenderContext = {
   pendingApprovals: new Map(),
-  onApprove: async () => {},
+  onApprove: async () => null,
   origin: [],
   taskRunning: false,
 };

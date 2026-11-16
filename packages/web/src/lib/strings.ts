@@ -3830,6 +3830,9 @@ export const zh = {
     sendToBackgroundHint: "把这次调用转入后台执行，对话继续进行；它结束时会以后台任务通知送回。",
     /** The line under a tool row whose "send to background" was refused; the action beside it is still there to press again. */
     backgroundMoveRefused: (reason: string) => `没能把这次调用转入后台：${reason}`,
+    /** The line inside a waiting call's approval block when its decision was refused; both buttons are still there to press again. Names the decision, because the two sit side by side. */
+    approvalAnswerRefused: (decision: string, reason: string) =>
+      `没能把「${decision}」交给服务器，这次调用仍在等你回答：${reason}`,
     pendingApprovals: (n: number) => `${n} 个待审批`,
     jumpToLatest: "回到最新消息",
     /** Top-of-stream affordance while the previous history window is being fetched (scroll-up backfill). */

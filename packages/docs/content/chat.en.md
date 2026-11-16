@@ -140,6 +140,8 @@ A steering message that has not reached the agent yet ("Steering queued — deli
 
 When a tool call needs your approval, it shows allow and deny buttons in the conversation, and its step group opens. A subagent's pending approval shows as an amber dot on its row. You can change the approval mode during a Session. See [Tools and Approvals](/tools).
 
+If your decision could not be handed to the server (the server errored, the connection dropped), the call is still waiting on you: both buttons stay where they were, and a line above them says which decision did not get through and why — pressing again is the retry. A call that has already settled shows no such line, because it no longer needs an answer. Subagents' approval cards work the same way.
+
 ### Send a tool call to the background
 
 When an `exec_command` or `run_subagent` call has been running for 10 seconds, its row offers **Send to background**. The call returns at once with a handle to the work, nothing is stopped, and the turn continues instead of waiting. The result arrives later as a background-task notice. The row then shows **[Background]**, and a moved command appears under [Processes](#processes).

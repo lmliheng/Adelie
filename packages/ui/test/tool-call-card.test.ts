@@ -110,4 +110,26 @@ describe("ToolCallCard", () => {
     expect(html).toContain(">Send to background</button>");
     expect(card({})).not.toContain('data-testid="tool-call-refusal"');
   });
+
+  it("draws a refused decision inside the approval block, above the buttons it belongs to", () => {
+    const refused = "Could not hand this decision to the server; the call still waits";
+    const html = card({
+      state: "waiting",
+      pending: {
+        preview: "$ ls -la",
+        onDecide: async () => {},
+        labels: { allow: "允许", deny: "拒绝" },
+        refusal: refused,
+      },
+    });
+    expect(html).toMatch(/role="alert"[^>]*data-testid="approval-refusal"/);
+    expect(html).toContain(`>${refused}</p>`);
+    // Both buttons are still here — nothing was written, so they are the retry.
+    expect(html).toMatch(/<button[^>]*>允许<\/button>/);
+    expect(html).toMatch(/<button[^>]*>拒绝<\/button>/);
+    // Above the buttons, not under the row: the sentence belongs to the press that stayed here.
+    expect(html.indexOf('data-testid="approval-refusal"')).toBeLessThan(
+      html.indexOf(">允许</button>"),
+    );
+  });
 });

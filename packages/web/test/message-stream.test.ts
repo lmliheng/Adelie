@@ -37,7 +37,7 @@ describe("MessageStream links", () => {
     const onOpenFile = vi.fn();
     const ctx: StreamRenderContext = {
       pendingApprovals: new Map(),
-      onApprove: async () => {},
+      onApprove: async () => null,
       origin: [],
       taskRunning: false,
       workspace: WS,
