@@ -28496,3 +28496,9 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 ### 提交
 - 功能一笔 **`ab2c9c13a`**（17 个文件：源码 7（`packages/ui` 1 + `packages/web` 6）、单测 5、spec 1、文档 2、changelog 2）。
 - 台账（条目 7.143、上表那一行、本节）随本文件另起一笔。
+- **推送通道**：`git push` 与 `-c http.version=HTTP/1.1` 这一轮都**不通**（`github.com:443` 与本轮
+  `fetch` 同一个 `GnuTLS recv error (-110)`），`api.github.com` 通 —— 于是照既有做法走 Git Data API：
+  以父提交的树为 `base_tree` 逐个写 blob、建树、建提交、移 `refs/heads/main`。两笔的树 sha 与提交 sha
+  都与本机**逐字相同**（`ab2c9c13abee…` / `2b1e1a4cfb43…`，按上一轮记下的「提交消息去掉末尾那一个换行」
+  照办），ref 从 `cf7393642` 移到 `2b1e1a4cf`；推完用 `GET /repos/lmliheng/Adelie/commits/main` 复核，
+  `refs/remotes/origin/main` 在本地同步成同一个 sha。
