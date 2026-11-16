@@ -32,10 +32,12 @@
 <p align="center"><a href="README.md">简体中文</a> | English</p>
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/lmliheng/Adelie/main/assets/promo/adelie-promo.mp4" controls width="920"></video>
+  <a href="assets/promo/adelie-promo.mp4">
+    <img src="assets/promo/adelie-promo-preview.gif" alt="The film's first 9 seconds: the icon lands, the wordmark follows, then 'most AI just talks to you' is struck through" width="800" />
+  </a>
 </p>
 
-<p align="center"><sub>A 60-second film · 1920×1080 · no soundtrack · <a href="assets/promo/adelie-promo.mp4">download the mp4</a> · <a href="assets/promo/adelie-promo-poster.png">cover image</a></sub></p>
+<p align="center"><sub>A 60-second film · 1920×1080 · no soundtrack · the loop above is its first 9 seconds; click it to download the whole thing · <a href="assets/promo/adelie-promo-poster.png">cover image</a></sub></p>
 
 ## Why Adelie
 

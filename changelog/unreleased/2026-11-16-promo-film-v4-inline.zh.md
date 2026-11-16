@@ -1,4 +1,4 @@
-# 首页宣传片换成第四版成片，README 里直接能播放
+# 首页宣传片换成第四版成片；README 里放的是会动的 GIF，不是 `<video>`
 
 - **Date:** 2026-11-16
 - **Type:** docs
@@ -10,24 +10,26 @@
 一次真实会话的录屏，图标直接用仓库里的 `packages/web/public/adelie-icon.svg`，片子本身只有黑灰白。
 封面帧一并换掉（`assets/promo/adelie-promo-poster.png`）。
 
-## 为什么原来那块看不了
+## 原来那块看不了的原因
 
-原来 README 首屏挂着封面图，点它是 `assets/promo/adelie-promo.mp4` 的**仓库内相对链接**。GitHub 把
-它翻译成 `github.com/lmliheng/Adelie/blob/main/...` —— 一个 HTML 页面，页面上只有「Download raw file」，
-它不会播放；而 `raw.githubusercontent.com` 那一路返回的是 `application/octet-stream`，点开是下载，
-不是播放。所以封面看起来能点，点下去什么也放不出来。
+首页挂着封面图，点它是 `assets/promo/adelie-promo.mp4` 的**仓库内相对链接**。GitHub 把它翻译成
+`github.com/lmliheng/Adelie/blob/main/...` —— 一个 HTML 页面，页面上只有「Download raw file」，它不
+播放；`raw.githubusercontent.com` 那一路返回 `application/octet-stream`，点开是下载。
 
-## 现在怎么放
+## GitHub 的 README 不放 `<video>`
 
-两份根 README 都改成 GitHub 认的 `<video>` 标签，`src` 指向 `raw.githubusercontent.com` 上的同一个文件：
+先按常见写法试了 `<video src="…raw.githubusercontent.com/…">`：`POST /markdown` 的渲染结果里标签是
+留着的，但**仓库首页的 README 渲染会把它整段删掉** —— 实测推上去以后线上那一行只剩一个空 `<p>`，
+同类写法在 `peers/peerjs`、`schmich/instascan` 这些公开仓库的首页上也一样被删。
 
-```html
-<video src="https://raw.githubusercontent.com/lmliheng/Adelie/main/assets/promo/adelie-promo.mp4" controls width="920"></video>
-```
+活下来的只有 GitHub 自己托管的附件地址：`https://github.com/user-attachments/assets/<uuid>` 的
+`<video>` 会保留（渲染时会加上 `data-canonical-src`，见 `matt1398/claude-devtools`、
+`agentheroes/agentheroes`）。那种链接只能在网页里登录后把文件拖进输入框换来，本次没有走那条路。
 
-GitHub 的 markdown 清洗器保留 `video[src|controls|width|muted]`（`poster` 与 `playsinline` 会被去掉），
-浏览器把 raw 上的 mp4 当媒体源播放（实测 Chrome `readyState=4`、时长 60s）。同一段下面一行小字留着
-「下载 mp4」和「封面图」两条相对链接，网络放不出来时还能存下来看。
+## 现在放的是什么
 
-另注：把视频拖进 GitHub 的输入框、拿 `github.com/user-attachments/assets/<uuid>` 那种链接也是通行写法，
-但那需要在网页里登录后上传，本仓库没有走那条路 —— 仓库里的文件本身就是权威副本，链接不该指向别处。
+`assets/promo/adelie-promo-preview.gif`：片子**开头 9 秒**的循环预览，800×450、10fps、2.8MB ——
+图标落位、字标出现、划掉「大多数 AI，只会陪你聊天」、然后是那句立题。它是从成片里逐帧取的，没有重画。
+`<img>` 在 README 里由 GitHub 的 camo 代理，**不依赖读者能不能访问 raw**，打开页面就在动。
+
+点这张预览图 = `assets/promo/adelie-promo.mp4`（blob 页，可下载）；下面一行小字还留着整片与封面两条链接。

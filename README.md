@@ -29,10 +29,12 @@
 <p align="center"><a href="README.en.md">English</a> | 简体中文</p>
 
 <p align="center">
-  <video src="https://raw.githubusercontent.com/lmliheng/Adelie/main/assets/promo/adelie-promo.mp4" controls width="920"></video>
+  <a href="assets/promo/adelie-promo.mp4">
+    <img src="assets/promo/adelie-promo-preview.gif" alt="Adelie 宣传片前 9 秒：图标落位、字标出现，接着划掉「大多数 AI，只会陪你聊天」" width="800" />
+  </a>
 </p>
 
-<p align="center"><sub>60 秒宣传片 · 1920×1080 · 无声 · <a href="assets/promo/adelie-promo.mp4">下载 mp4</a> · <a href="assets/promo/adelie-promo-poster.png">封面图</a></sub></p>
+<p align="center"><sub>60 秒宣传片 · 1920×1080 · 无声 · 上图是开头 9 秒的循环预览，点它下载整片 mp4 · <a href="assets/promo/adelie-promo-poster.png">封面图</a></sub></p>
 
 ## 为什么选择 Adelie
 

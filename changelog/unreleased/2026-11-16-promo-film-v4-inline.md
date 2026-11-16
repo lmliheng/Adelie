@@ -1,4 +1,4 @@
-# The front-page film is the fourth cut, and the README plays it inline
+# The front-page film is the fourth cut; the README plays a GIF, not a `<video>`
 
 - **Date:** 2026-11-16
 - **Type:** docs
@@ -11,28 +11,30 @@ running Adelie plus the recording of one real conversation, the icon is the repo
 `packages/web/public/adelie-icon.svg`, and the film itself carries nothing but black, grey and white. The
 cover frame (`assets/promo/adelie-promo-poster.png`) was replaced with it.
 
-## Why the old one would not play
+## Why the old block would not play
 
-The front page used to show the cover image, linking to `assets/promo/adelie-promo.mp4` — a **repository
+The front page showed the cover image, linking to `assets/promo/adelie-promo.mp4` — a **repository
 relative** link. GitHub turns that into `github.com/lmliheng/Adelie/blob/main/...`, an HTML page whose only
-video affordance is "Download raw file"; it plays nothing. The `raw.githubusercontent.com` variant of the
-same path answers with `application/octet-stream`, so opening it downloads instead of playing. The cover
-looked clickable and clicking it produced nothing.
+video affordance is "Download raw file"; it plays nothing. The `raw.githubusercontent.com` path for the
+same file answers with `application/octet-stream`, so opening it downloads.
 
-## What it is now
+## GitHub's README does not keep `<video>`
 
-Both root READMEs use the `<video>` tag GitHub accepts, with `src` pointing at that same file on
-`raw.githubusercontent.com`:
+The obvious fix — `<video src="…raw.githubusercontent.com/…">` — survives `POST /markdown` but **is deleted
+outright by the README renderer on the repository page**: after pushing it, the line came back as an empty
+`<p>`. The same markup on `peers/peerjs` and `schmich/instascan` is stripped the same way.
 
-```html
-<video src="https://raw.githubusercontent.com/lmliheng/Adelie/main/assets/promo/adelie-promo.mp4" controls width="920"></video>
-```
+What does survive is GitHub's own attachment host: a `<video>` pointing at
+`https://github.com/user-attachments/assets/<uuid>` is kept, and the renderer adds `data-canonical-src`
+(see `matt1398/claude-devtools`, `agentheroes/agentheroes`). Those URLs only come from dragging a file
+into the web editor while signed in, which is not what this change did.
 
-GitHub's markdown sanitizer keeps `video[src|controls|width|muted]` (it drops `poster` and `playsinline`),
-and browsers take the mp4 off raw as a media source (Chrome: `readyState=4`, duration 60s). The line under
-it keeps two relative links, "download the mp4" and "cover image", for networks where the player cannot
-reach the file.
+## What ships instead
 
-Drag-and-drop uploads — the `github.com/user-attachments/assets/<uuid>` links many repositories use — also
-work, but they need a signed-in browser upload, and this repository should not point its own front page at
-somewhere other than the copy it ships.
+`assets/promo/adelie-promo-preview.gif` — the film's **first 9 seconds** as a loop: 800×450, 10 fps, 2.8 MB.
+The icon lands, the wordmark follows, "most AI just talks to you" is struck through, and the thesis arrives.
+Every frame is taken from the film; nothing was redrawn. As an `<img>` it is proxied by GitHub's camo, so it
+does not depend on the reader reaching raw.githubusercontent.com — the page simply moves.
+
+Clicking it opens the mp4's blob page for download; the caption line keeps direct links to the film and the
+cover image.
