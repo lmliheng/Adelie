@@ -675,9 +675,13 @@ describe("agent actions", () => {
   it("lists the popup a script opened as a new tab", async () => {
     const h = mount();
     h.shell.show(tab(2));
-    h.shell.cdp = page(() => {
-      // The page calls window.open: the shell denies it and asks for a tab instead.
-      h.shell.event({ kind: "open-request", url: "https://popup.test/", openerTabId: 2 });
+    h.shell.cdp = page((_tabId, _method, params) => {
+      // The page calls window.open: the shell denies it and asks for a tab instead. Only the
+      // script's own evaluate does: Page.enable and the monitor's round trips arrive first,
+      // and a popup they raised would be the one the test claimed, not the script's.
+      if (expressionOf(params).includes("window.open(")) {
+        h.shell.event({ kind: "open-request", url: "https://popup.test/", openerTabId: 2 });
+      }
       return evaluated({ ok: true });
     });
     const exec = h.call("POST", "/tabs/2/exec", {
