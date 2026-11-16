@@ -33,8 +33,9 @@ into the web editor while signed in, which is not what this change did.
 
 `assets/promo/adelie-promo-preview.gif` — the film's **first 9 seconds** as a loop: 800×450, 10 fps, 2.8 MB.
 The icon lands, the wordmark follows, "most AI just talks to you" is struck through, and the thesis arrives.
-Every frame is taken from the film; nothing was redrawn. As an `<img>` it is proxied by GitHub's camo, so it
-does not depend on the reader reaching raw.githubusercontent.com — the page simply moves.
+Every frame is taken from the film; nothing was redrawn. Being an `<img>`, GitHub rewrites it to `/raw/…`
+which 302s to raw.githubusercontent.com — the same path the icon GIF on the same page takes, so what can
+display can animate. A `<video>` differed not in reachability but in the tag itself: GitHub drops it.
 
 Clicking it opens the mp4's blob page for download; the caption line keeps direct links to the film and the
 cover image.

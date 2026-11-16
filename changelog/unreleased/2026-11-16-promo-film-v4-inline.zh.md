@@ -30,6 +30,8 @@
 
 `assets/promo/adelie-promo-preview.gif`：片子**开头 9 秒**的循环预览，800×450、10fps、2.8MB ——
 图标落位、字标出现、划掉「大多数 AI，只会陪你聊天」、然后是那句立题。它是从成片里逐帧取的，没有重画。
-`<img>` 在 README 里由 GitHub 的 camo 代理，**不依赖读者能不能访问 raw**，打开页面就在动。
+它是 `<img>`：README 里的图片由 GitHub 翻译成 `/raw/…` 再 302 到 `raw.githubusercontent.com`，
+和页面上那条图标 GIF 走的是同一条路 —— 能显示就能动。`<video>` 的差别不在取不到文件，
+而在 GitHub 压根不留那个标签。
 
 点这张预览图 = `assets/promo/adelie-promo.mp4`（blob 页，可下载）；下面一行小字还留着整片与封面两条链接。
