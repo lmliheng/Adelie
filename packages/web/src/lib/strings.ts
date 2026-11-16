@@ -3666,6 +3666,11 @@ export const zh = {
      */
     sendRefused: (reason: string) => `没能发出这条消息：${reason}`,
     /**
+     * Stop did not land: the run is still going and the same button is still up (pressing it again
+     * is the retry), so the sentence says the one thing the button cannot.
+     */
+    stopRefused: (reason: string) => `没能停下这次运行，它仍在继续：${reason}`,
+    /**
      * A staged `/agent` handoff did not get out: Send opens a NEW conversation for the picked Agent
      * and posts the draft as its first message. Nothing was written when it refuses (the empty
      * conversation is deleted again), so the sentence names the Agent and says this conversation is

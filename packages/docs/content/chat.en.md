@@ -115,6 +115,8 @@ See [Goal mode](/goal-mode).
 
 While a Task runs, the composer stays live and the toolbar keeps a single action button. With an empty composer it is **Stop**, which ends the Task; it also stops a running compaction.
 
+When a Stop does not reach the server (the server errored, or the connection dropped), the run is still going: the button stays as it was, and a line above the composer says the press did not land and why — pressing it again is the retry. The line belongs to that run and goes away when the Task ends.
+
 ### Steer or queue a message
 
 When you type while a Task runs, the button sends according to the **Mid-run send mode** at the bottom of the + menu. The choice is remembered in this browser.

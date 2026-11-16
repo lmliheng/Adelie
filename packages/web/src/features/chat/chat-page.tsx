@@ -108,6 +108,7 @@ import {
   modelSwitchRefusalLine,
   sendRefusalLine,
   sendRefusalShown,
+  stopRefusalLine,
 } from "./message-send-refusal";
 import type { SendRefusal } from "./message-send-refusal";
 import { sendRefusalReason } from "./first-send-refusal";
@@ -1345,6 +1346,21 @@ export function ChatPage() {
    */
   const [sendRefusal, setSendRefusal] = useState<SendRefusal | null>(null);
 
+  /**
+   * The reason a Stop on this card did not land. Nothing was stopped, so the card looks exactly as
+   * it did before the press — the same Stop button, the run still writing — and the sentence above
+   * it says what the button cannot: this run is still going. Kept in its own slot (rather than in
+   * `sendRefusal`) because it is the only refusal that stops being true by itself: it goes the
+   * moment this Session is idle again, not when the next press arrives (message-send-refusal.ts,
+   * `stopRefusalLine`; the same rule the API tab's Try it follows).
+   */
+  const [stopRefusal, setStopRefusal] = useState<SendRefusal | null>(null);
+  useEffect(() => {
+    // A run that is over cannot still be going: the sentence outliving it would describe a Stop
+    // nobody can press anymore.
+    if (stream.taskState === "idle") setStopRefusal(null);
+  }, [stream.taskState]);
+
   const onSend = useCallback(
     async (input: TaskInputPart[], goal: { budget: number } | null): Promise<boolean> => {
       if (!selected) return false;
@@ -1541,7 +1557,17 @@ export function ChatPage() {
 
   const onStop = useCallback(async () => {
     if (!selected) return;
-    await api.postAbort(selected.sessionId).catch(() => undefined);
+    const sessionId = selected.sessionId;
+    // The press either stops the run (the stream then reports it idle, and the sentence, if any,
+    // goes with it) or lands nowhere — in which case the card is unchanged and the reason has to
+    // be said above it (message-send-refusal.ts, `stopRefusalLine`). 404 draws nothing: the
+    // Session is gone, so is the run. The route's 204 is not an error — there was no run left to
+    // abort, which is the very state this press wanted.
+    const refusal = await api.postAbort(sessionId).then(
+      () => null,
+      (err: unknown) => stopRefusalLine(sessionId, err),
+    );
+    if (refusal !== null) setStopRefusal(refusal);
   }, [selected]);
 
   // Follow-up queue: post the full input with queueIfBusy — a busy session holds it
@@ -2374,6 +2400,7 @@ export function ChatPage() {
         permissionRefusal?.sessionId === selected.sessionId ? permissionRefusal.text : null
       }
       sendRefusal={sendRefusalShown(sendRefusal, selected.sessionId)}
+      stopRefusal={sendRefusalShown(stopRefusal, selected.sessionId)}
       {...(contextWindow !== undefined ? { contextWindow } : {})}
       {...(compactionLimit !== undefined ? { compactionLimit } : {})}
       onChangeCompactionLimit={onChangeCompactionLimit}

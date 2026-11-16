@@ -25,6 +25,7 @@ import {
   modelSwitchRefusalLine,
   sendRefusalLine,
   sendRefusalShown,
+  stopRefusalLine,
 } from "../src/features/chat/message-send-refusal";
 
 afterEach(() => {
@@ -284,6 +285,49 @@ describe("compactionRefusalLine", () => {
   it("is drawn only while the reader is still in that conversation", () => {
     const line = compactionRefusalLine("session-a", new ApiError(409, "already_compacted", "x"));
     expect(sendRefusalShown(line, "session-a")).toBe(line.text);
+    expect(sendRefusalShown(line, "session-b")).toBeNull();
+  });
+});
+
+describe("stopRefusalLine", () => {
+  it("says the run is still going, in this Session, through the code's own sentence", () => {
+    const line = stopRefusalLine("session-a", new ApiError(500, "internal", "RAW ENGLISH"));
+    expect(line).not.toBeNull();
+    expect(line?.sessionId).toBe("session-a");
+    expect(line?.text).toBe(S.chat.stopRefused(S.errors.byCode.internal));
+    // What is true after a refused Stop: nothing was stopped, so the button is still the retry.
+    expect(line?.text).toContain("仍在继续");
+    expect(line?.text).not.toContain("RAW ENGLISH");
+  });
+
+  it("says nothing when the Session itself is gone", () => {
+    // 404: the run the press was about went with the Session, so the sentence has no subject left.
+    expect(stopRefusalLine("s", new ApiError(404, "session_not_found", "RAW ENGLISH"))).toBeNull();
+  });
+
+  it("keeps what a Stop that never reached the route has to say", () => {
+    expect(stopRefusalLine("s", new Error("Failed to fetch"))?.text).toBe(
+      S.chat.stopRefused("Failed to fetch"),
+    );
+    expect(stopRefusalLine("s", undefined)?.text).toBe(S.chat.stopRefused(S.common.unknownError));
+  });
+
+  it("names no model — the abort route never reaches one", () => {
+    const line = stopRefusalLine("s", new ApiError(503, "internal", "RAW"));
+    expect(line?.text).not.toContain("claude");
+    expect(line?.text).not.toContain("deepseek");
+  });
+
+  it("speaks the active language", () => {
+    setActiveStrings(EN);
+    expect(stopRefusalLine("s", new ApiError(500, "internal", "x"))?.text).toBe(
+      EN.chat.stopRefused(EN.errors.byCode.internal),
+    );
+  });
+
+  it("is drawn only while the reader is still in that conversation", () => {
+    const line = stopRefusalLine("session-a", new ApiError(500, "internal", "x"));
+    expect(sendRefusalShown(line, "session-a")).toBe(line?.text);
     expect(sendRefusalShown(line, "session-b")).toBeNull();
   });
 });

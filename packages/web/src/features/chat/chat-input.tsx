@@ -625,6 +625,7 @@ export function ChatInput({
   thinkingRefusal,
   permissionRefusal,
   sendRefusal = null,
+  stopRefusal = null,
   turnThinkingLevel,
   onChangeTurnThinkingLevel,
   contextWindow,
@@ -804,6 +805,15 @@ export function ChatInput({
    * describes the Session on screen — this component stays mounted across conversations.
    */
   sendRefusal?: string | null;
+  /**
+   * A Stop this card sent that the server did not take — the sentence drawn above the card, next to
+   * the other refusals, or null/absent. Nothing was stopped, so the button is still Stop and the run
+   * it was about is still going: the sentence says that much, which the button cannot (a
+   * notification was the only trace of the press before, and it expired). The parent owns it
+   * because it owns the write, and hands it over only while it still describes the Session on
+   * screen — and only while that run is still going.
+   */
+  stopRefusal?: string | null;
   /**
    * Session state: the Session's thinking level to DISPLAY — the parent resolves it as "the
    * user's pick for this session, else the Agent config's level" ("" = neither known yet),
@@ -2628,6 +2638,23 @@ export function ChatInput({
           className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
         >
           {sendRefusal}
+        </p>
+      )}
+
+      {/* A Stop the server did not take: the same slot once more. Nothing was stopped, so the
+          button inside the card below is still Stop and pressing it again is the retry — what the
+          sentence adds is that the press landed nowhere and the run is therefore still going. It
+          goes with the run (chat-page drops it the moment this Session is idle again), never by a
+          timer. */}
+      {stopRefusal != null && stopRefusal !== "" && (
+        <p
+          role="alert"
+          data-testid="stop-refusal"
+          data-tooltip={stopRefusal}
+          data-tooltip-content="text"
+          className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {stopRefusal}
         </p>
       )}
 

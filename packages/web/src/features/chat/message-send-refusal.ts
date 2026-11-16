@@ -28,6 +28,8 @@
  * same shape as the thinking level's and the permission preset's slots), and hands it over only
  * while it still describes the Session on screen.
  */
+import { ApiError } from "../../api/client";
+import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { sendRefusalReason } from "./first-send-refusal";
 
@@ -123,6 +125,24 @@ export function deskModelRefusalLine(
  */
 export function compactionRefusalLine(sessionId: string, err: unknown): SendRefusal {
   return { sessionId, text: S.chat.compactRefused(sendRefusalReason(err)) };
+}
+
+/**
+ * Stop pressed on this card: one POST on the Session's abort route, and the press changed nothing
+ * on screen when the server did not take it — the run kept going, so the same Stop button is still
+ * up (and is the retry), while the words explaining why lived only in a notification that expired
+ * after six seconds (7.19's rule). The sentence is the same slot a refused send uses, because the
+ * press belongs to this card too: it says what did not land and that the run is still going, which
+ * is the fact the button cannot show on its own.
+ *
+ * **404 says nothing**: the Session itself is gone, so the run it asked about is over too — a
+ * sentence about a stop without a subject would outlive it (the rule `stopFailed` applies to the
+ * API tab's Try it). A 204 is not a refusal either: the route answers it when there was no run
+ * left to abort, and that is the race this press was trying to bring about.
+ */
+export function stopRefusalLine(sessionId: string, err: unknown): SendRefusal | null {
+  if (err instanceof ApiError && err.status === 404) return null;
+  return { sessionId, text: S.chat.stopRefused(refusalText(err)) };
 }
 
 /** What the composer draws: the sentence while it still describes the Session on screen. */

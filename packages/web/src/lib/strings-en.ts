@@ -3567,6 +3567,8 @@ export const en: Strings = {
      * conversation's composer) — the key therefore names the message, not the screen.
      */
     sendRefused: (reason: string) => `Could not send this message: ${reason}`,
+    /** Stop did not land: the run is still going, and the button is still the retry (see strings.ts). */
+    stopRefused: (reason: string) => `Stop did not land; the run is still going: ${reason}`,
     /** A staged `/agent` handoff that did not get out (see strings.ts). */
     handoffRefused: (agent: string, reason: string) =>
       `Could not hand this message to ${agent}; this conversation is unchanged: ${reason}`,
