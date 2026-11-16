@@ -2715,6 +2715,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       先解析成两者之一、写入落在根上且后写者胜、没有根不抛）＋ changelog 一对，**不碰接口、无新依赖、无新文档**）：
       `index.html` 里那个静态的 `zh-CN` 从来没有被应用改写过，于是英文界面（以及「跟随系统」下的英文设备）
       被读屏软件与浏览器翻译当成中文宣告 —— 一处从上游 `9abdb766`（`#1212`）移植的修复。见「第二百六十一轮」一节。
+- [x] **7.142 思考等级的「压缩后切换」没能开始压缩时，确认框留着、原因留在框里，等级不动**（**2026-11-16
+      第二百六十二轮**落地，提交见「已完成的轮次」；`packages/web` 5 个文件 —— `features/chat/thinking-level.ts`
+      的 `StagedThinkingSwitch` 打开态多一个可选 `refusal`、`"settle"` 阶段与 `heldThinkingSwitch` 的
+      `notice: "none"` 一并删掉，`features/chat/thinking-level-refusal.ts` 新增 `compactBeforeSwitchRefused(level, err)`
+      （原因与 `/compact` 共用 `sendRefusalReason`），`chat-page.tsx` 的 `compactThenThinkingSwitch` 传
+      `onRefused` 把卡片退回同一个等级的 `ask` 并写上句子、「正在压缩」的提示改成请求被接受之后才发，
+      两份词典各加 `chat.thinkingSwitchCompactRefused(still, reason)`）＋ 单测 2 份（+3 条、改 1 条）＋ 1 个新
+      spec `e2e/thinking-switch-compact-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 各一段 ＋
+      changelog 一对，**不碰接口、无新依赖**）：那一按是复合的（先压缩、再切等级），服务端不肯开始压缩时其实
+      什么都没做，可确认框照样关、等级照样切过去，原因只活在六秒后消失的通知里 —— 选了便宜那条路的人安静地
+      拿到贵的那条。现在卡片留在原地、句子在框里（「没能先压缩上下文，思考等级仍是〈x〉：〈原因〉」），
+      **仍要切换** 成了知道代价的选择，**取消** 真的什么都没改；已经开始的压缩后来失败/被中断时照旧应用等级
+      并提示（那一条讲的是先后顺序，不是否决）。见「第二百六十二轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3467,6 +3480,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-16 | 7.139 | **`/compact` 没能开始压缩时，原因留在输入卡上方**（**2026-11-16 第二百五十八轮**落地；源码 4 处 —— `packages/web/src/features/chat/message-send-refusal.ts` 新增 `compactionRefusalLine(sessionId, err)`（原因仍走同一个 `sendRefusalReason`，**不传模型 id**：被拒的压缩走不到模型调用），`chat-page.tsx` 的 `runCompaction` 加可选 `onRefused`（命令那一侧写卡片上方的槽，对话框那一侧照旧拿通知）、`onCompact` 每次尝试先清上一句，两份词典各加 `chat.compactRefused(reason)`）＋ 既有单测加 6 条 ＋ 1 个新 spec `e2e/compact-refusal.spec.mjs`（2 条）＋ **改既有 spec `e2e/compact-abort.spec.mjs` 的两条断言**（反馈的面换了：原来断言通知按钮，现在断言 `send-refusal` 那一行）＋ 文档 `chat.zh.md` / `chat.en.md` 各一段 ＋ changelog 一对，**不碰接口、无新依赖**）：`/compact` 是输入框里唯一什么都不投递的操作，服务端不肯开始时它什么都没写（斜杠记号已被收回，对话与上下文都是原来那份），而原因原本只活在一条六秒后自己消失的通知里（7.19 的规则）。思考等级对话框的「压缩后再切」有意保持通知：那一按是复合的（等级照样切过去），说「本会话保持不变」会是假的。见「第二百五十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web` 与文档；任务模板里的 `--filter @prismshadow/...` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 改动文件 `prettier --check` 干净（新单测首跑 `--write` 一次，复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **132 / 1105** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3846 通过 / 2 跳过**（基线 338 / 3840，+6 即本笔的新单测）· `@adelie/docs` **8 文件 / 62 通过** · **新 spec 2 passed（9.9 s + 9.2 s）**（真服务端 9461 + 仓库自带 mock 模型 9462 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r259-e2e`）：① `POST …/compact` 被 `page.route` 拒成 500 `internal`（带一句英文原文）—— 句子在卡片上方、逐字「没能压缩这段上下文，本会话保持不变：服务器内部错误，请稍后重试。」、不含线上英文、**量到它的下缘 770 在输入框上缘 783 之上**、通知区 0 个按钮、只发出一个请求、输入框被清空、**七秒后仍在**；② **不打桩的真拒绝**（从未跑过一轮的对话拿到 409 `nothing_to_compact`）—— 界面自己那句「当前上下文还没有可压缩的内容（尚未完成一轮对话）。」落在卡片上、只有一行、通知区 0、七秒后仍在 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：四份源码退回 `HEAD`、重建 web（改前产物 `grep -c 没能压缩这段上下文` 为 0）挂到 `/root/adelie-fork-data/r259-before` 的 9465 → **2 failed**，两条都死在 `getByTestId('send-refusal')` 的 `toBeVisible`（`element(s) not found`，服务端日志里那条 `POST …/compact 409` 说明真拒绝确实走到了路由）；源码放回重建后 **2 passed** · **探针（真服务端 + 真浏览器 1280×900，量 1.2 s / 7.6 s）**：两刻都是句子 1 条、`role=alert`、下缘 770 在卡片上缘 783 之上、通知区 0 个按钮，截图 `r259/shots/after-{1_2s,7_6s}.png` 里红字压在输入卡上方、卡里是空输入框；console 只有既有的 `GET …/machines` 403 与本轮**故意造的** 409，pageerror **0 条** · **相邻回归（真浏览器）**：`compaction.spec.mjs` **2 passed**、`compact-abort.spec.mjs`（改完断言后）**2 passed**、`handoff-send-refusal.spec.mjs` **2 passed**；`compact-abort` 第一遍跑**红了两条**（它守的正是这件事的面换了），改断言后转绿 · 端口只用 9461 / 9462 / 9465（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r259-{e2e,before}`，探针 / 改后产物与源码留底 / 截图 / 临时 playwright 配置都在 scratchpad 的 `r259/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `da31bff79` |
 | 2026-11-16 | 7.140 | **回复图片的「拆图层」没能发出时，原因留在图片动作栏下面**（**2026-11-16 第二百五十九轮**落地；`packages/ui` 3 处 —— `LightboxAction.onSelect` 允许返回 `Promise<string | null | undefined>`（非空字符串 = 这次按下的拒绝，空值 = 工作落地、关灯箱），`lightbox.tsx` 为会回答的动作留住覆盖层（忙态按钮、不重复投递）并把句子画在胶囊动作栏下方（`role="alert"`、`data-testid="lightbox-refusal"`、危险色、两行、整句挂悬停），关灯箱时一并丢掉上一句；判定顺序抽成新纯模块 `src/components/overlays/lightbox/action-press.ts` 的 `pressLightboxAction`（先 `pending`，再恰好一次 `done` / `refused`，被拒的 promise 按已完成）；`packages/web` 4 处 —— `lib/image-actions.ts` 的 `ask` 返回 `Promise<string | null>`、`chat-page.tsx` 的 `askWithPicture` 不再 `toastError` 而是交回句子、两份词典各加 `chat.imageAction.refused(reason)`）＋ 新单测 `packages/ui/test/action-press.test.ts`（7 条）＋ 改既有 `packages/ui/test/lightbox.test.ts` 的「先关再跑」源扫描（改为「每次按下的处置交给 `pressLightboxAction`」）＋ 既有 `packages/web/test/image-actions.test.ts` 加 1 条 ＋ 1 个新 spec `e2e/image-action-refusal.spec.mjs`（1 条）＋ changelog 一对，**不碰接口、无新依赖、无新文档**）：第二百五十八轮末尾点名的那一族里剩下的最后一处 ——「拆图层」按下去是向 Agent 投一条消息（App 没有图像接口），被拒时什么都没写，而此前灯箱先关、动作再跑，原因只剩一条六秒后自己消失的通知挂在页顶，六秒后屏幕上是一个跟按之前一样的对话、图片与那颗失败的按钮都不在了（7.19 的规则）。见「第二百五十九轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/ui` 与 `packages/web`）· `npx oxlint` 11 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（新模块 / 新单测 / web 单测 / 新 spec 首跑 4 个文件不过，`--write` 后复检全绿；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 文件 / 1112 通过**（基线 132 / 1105，+1 文件 / +7 条即本笔）· cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3847 通过 / 2 跳过**（基线 338 / 3846，+1 即本笔的新单测）· **新 spec 1 passed（10.9 s）**，格式化后最终源码复跑 **1 passed（10.8 s）**（真服务端 9481 / 9495 + 仓库自带 mock 模型 9482 / 9496 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r260-e2e` / `r260-final`；Agent 经 `POST …/agents` 建、`use-seedream` 插件经接口装上、工作区里先放一张真 PNG）：把 `POST …/tasks` 用 `page.route` 拒成 500 `internal`（带一句英文原文）—— 覆盖层仍在（`scrim 1`）、句子逐字「没能把这张图拆成图层，这条消息没有发出：服务器内部错误，请稍后重试。」、不含线上英文、**量到它的 y 475 在按钮 y 430 之下**、通知区 0 个按钮、只发出一个请求、**七秒后仍在**；放开桩之后按同一颗按钮 → 覆盖层关掉、`使用技能：seedream` 与「拆成图层（--layers）」落进对话；再打开图片时上一句拒绝不再出现 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：5 份源码退回 `HEAD`、重建 web（改前产物里 `没能把这张图拆成图层` 为 0 个文件）挂到 `/root/adelie-fork-data/r260-before` 的 9485 → **1 failed**，死在 `getByTestId('lightbox-refusal')` 的 `toBeVisible`（`element(s) not found`）；源码放回、重建后 **1 passed** · **两态探针**（`r260/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9491、改前 9493，量 1.2 s / 7.6 s）：**改后** 两刻都是 `scrim 1`、`lightbox-refusal` 1 条逐字如上、按钮仍在、通知区 0 个按钮；**改前** 两刻都是 `scrim 0`、拒绝行 0 条、按钮 0 颗，1.2 s 时通知区 **1 个按钮**（页顶白底「服务器内部错误，请稍后重试。」）到 7.6 s **0** —— 截图为证 `r260/shots/{after,before}-{1_2s,7_6s}.png`，肉眼看过两态；两态 console 都只有既有的 `GET …/machines` 403 与本轮**故意造的** 500，pageerror **0 条** · **相邻回归（真浏览器）**：`reply-picture-actions.spec.mjs` **1 passed**（它守的正是「成功时覆盖层关掉、句子落进对话」，没被这一笔改成「留着不走」）· 端口只用 9481 / 9482 / 9485 / 9486 / 9487 / 9488 / 9491 / 9492 / 9493 / 9494 / 9495 / 9496（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r260-{e2e,e2e2,final,before,probe-after,probe-before}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置 / 跑 spec 的脚本都在 scratchpad 的 `r260/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `291e18a1f` |
 | 2026-11-16 | 7.141 | **文档根的 `lang` 跟着界面语言走**（**2026-11-16 第二百六十一轮**落地；源码 1 个文件 2 处 —— `packages/web/src/state/locale.tsx` 新增导出的 `documentLangFor(locale)`（`zh` → `zh-CN`、`en` → `en`）与 `applyDocumentLang(doc, locale)`（以文档为参数、幂等、没有根就什么都不做），`LocaleProvider` 与切换活动词典同一轮渲染时把生效语言写到文档根；用例 1 个（`packages/web/test/locale.test.ts` 加 4 条）；changelog 一对；上游 `9abdb766`（`#1212`）移植，**不碰接口、无新依赖、无新文档**：`index.html` 里那个静态 `zh-CN` 从来没有被应用改写过，英文界面（含「跟随系统」下的英文设备）被读屏与浏览器翻译当成中文宣告） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型）· `npx oxlint` 2 个改动文件 0 警告 0 错误 · 4 个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1112** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3851 通过 / 2 跳过**（基线 3847，+4 即本笔新用例）· **两态探针（真服务端 + 真浏览器，两条腿各挂自己的产物）**：改后 `localhost:9521`（`after-dist`）—— 首屏 `zh-CN` → 点「English」**不刷新**变 `en`（按钮同时变 `Sign in`）→ 点「中文」回 `zh-CN` → 存了 en 后 reload 仍是 `en` → 「跟随系统」在 en-US 设备上是 `en`；改前 `localhost:9531`（`before-dist`）—— **五刻全是 `zh-CN`**，而按钮已经写着 `Sign in`（标记与屏幕文字自相矛盾，正是本笔要修的缺陷）。两态 console 只有登录前既有的 `/api/me` 401，pageerror 0 条 · **整套浏览器 e2e（改后产物，318 通过 / 10 失败 / 30.4 min）与逐条基线**：失败集中在 5 个文件，用**改前产物**单跑同一批文件对比 —— `scroll-follow-bounce` 的 Primer 一格在两条腿上**都红**（各连跑两遍都红）、`ticket-create-refusal` 与 `ticket-refusal` 的 6 条在两条腿上**都红**（本机 pre-existing，与本笔无关）；`chat-defaults-save-refusal` 2 条与 `server-switch-read-refusal` 的 company 那条在单跑里**两条腿都绿**（整套里红是顺序/状态相关）；改后那一次多出的 Frost 一格随后各腿连跑两遍都绿（抖动）· 端口只用 9521 / 9531 与 e2e 的 8930 / 8931（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r261-*`，探针 / 两态产物 / 截图 / 改后源码留底都在 scratchpad 的 `r261/` 下 | `698030452` |
+| 2026-11-16 | 7.142 | **思考等级的「压缩后切换」没能开始压缩时，确认框留着、原因留在框里，等级不动**（**2026-11-16 第二百六十二轮**落地；`packages/web` 5 个文件 —— `features/chat/thinking-level.ts` 的 `StagedThinkingSwitch` 打开态多一个可选 `refusal`（`"settle"` 阶段与 `heldThinkingSwitch` 的 `notice: "none"` 一并删掉，卡片还在发问时不许任何东西在它背后放行这个选择），`features/chat/thinking-level-refusal.ts` 新增 `compactBeforeSwitchRefused(level, err)`（原因与 `/compact` 共用同一个 `sendRefusalReason`），`chat-page.tsx` 的 `compactThenThinkingSwitch` 传 `onRefused` 把卡片退回同一个等级的 `ask` 并写上句子（只改自己暂存的那一份状态）、「正在压缩」的提示改成服务端真的接受请求之后才发，两份词典各加 `chat.thinkingSwitchCompactRefused(still, reason)`）＋ 既有单测 2 份（`packages/web/test/thinking-level-refusal.test.ts` 加 3 条、`thinking-level.test.ts` 把 `"settle"` 那条换成「卡片带着拒绝句时仍被扣着」）＋ 1 个新 spec `e2e/thinking-switch-compact-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 讲思考等级那一段不再声称「等级照样切换」＋ changelog 一对，**不碰接口、无新依赖**）：那一按问的是两件事（先压缩、再切等级），服务端不肯开始压缩时其实两件都没做，可确认框照样关、下一轮就把选择放行、等级照常切过去，原因只活在一条六秒后自己消失的通知里 —— 选了便宜那条路的人安静地拿到了贵的那条（7.19 的规则）。现在卡片留在原地、句子写在它自己的问题下面（「没能先压缩上下文，思考等级仍是〈x〉：〈原因〉」），**仍要切换** 成了知道代价的选择，**取消** 真的什么都没改；已经开始的压缩后来失败/被中断时照旧应用等级并提示（那一条讲的是先后顺序，不是否决）。见「第二百六十二轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔只动 `packages/web` 与文档；任务模板里的 `--filter @prismshadow/...` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 8 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（`thinking-level.ts` 与 `thinking-level-refusal.test.ts` 首跑不过，`--write` 后复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1112** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3854 通过 / 2 跳过**（基线 338 / 3851，+3 即本笔新单测；格式化后复跑同数）· `@adelie/docs` **8 文件 / 62 通过**· **新 spec 2 passed（11.1 s + 3.3 s）**（真服务端 9561 + 仓库自带 mock 模型 9562 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r262-e2e`）：① 把 `POST …/compact` 拒成 500 `internal`（带一句英文原文）→ 卡片仍在、拒绝句逐字「没能先压缩上下文，思考等级仍是「中」：服务器内部错误，请稍后重试。」、不含线上英文、触发器仍读「中」、**一个 `PATCH` 都没发出**、通知区 0 个按钮、只发出一个请求、其它两个选择仍可点、**七秒后仍在**，之后按「仍要切换」才把 `thinkingLevel: high` 钉上并关框；② 被拒后按「取消」什么都没变（`GET …/sessions` 里没有 `high`），下一次选等级是一张干净的卡片、上一次的句子不再出现· **反证（同一份 spec，改前源码 + 改前 web 产物）**：5 份源码 `git stash push --`、重建 web（改前产物里 `没能先压缩上下文` 为 0 个文件）挂到 `/root/adelie-fork-data/r262-before` 的 9563 → **2 failed**，两条都死在 `getByRole('dialog').getByRole('alert')` 的 `toBeVisible`（`element(s) not found`）；`git stash pop` 重建后 **2 passed**· **两态探针**（`r262/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9561、改前 9563，量 1.2 s / 7.6 s）：**改后** 两刻都是 `card 1`、拒绝句 1 条逐字如上、触发器「中」、通知区 0 个按钮；**改前** 两刻都是 `card 0`、拒绝行 0 条，1.2 s 时触发器**已经是「高」**（等级在背后切了）、通知区 **2 个按钮**（「正在压缩上下文，压缩结束后切换思考等级。」与「服务器内部错误，请稍后重试。」），7.6 s 时通知区 0、屏幕上只剩一个已经换掉的等级 —— 截图 `r262/shots/{after,before}-{1_2s,7_6s}.png` 肉眼看过；两态 console 都只有既有的 `GET …/machines` 403 与本轮**故意造的** 500，pageerror **0 条**· **相邻回归（真浏览器）**：`thinking-level-refusal.spec.mjs` **2 passed**、`reloaded-followup.spec.mjs` **1 passed**（它钉的正是这张卡片的三个选择与「仍要切换」的 `PATCH`）· 端口只用 9561 / 9562 / 9563（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r262-{e2e,before}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 / 改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r262/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `246403872` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -28240,3 +28254,109 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔 **`698030452`**（4 个文件：源码 1、单测 1、changelog 2）。
 - 台账（条目 7.141、上表那一行、本节）随本文件另起一笔。
+
+## 第二百六十二轮：「压缩后切换」没能开始压缩时，确认框留着、原因留在框里（2026-11-16，条目 7.142）
+
+### 开工自检
+
+- `git status --short` 干净、分支 `main`、`HEAD` 是第二百六十一轮之后那笔 `995bd3db1`（台账）。
+  **`git fetch origin` 这一轮不通**：`github.com:443` 三次尝试都失败（`GnuTLS recv error (-110)` 两次，
+  `Failed to connect … after 133434 ms` 一次；`-c http.version=HTTP/1.1` 也一样），而 `api.github.com` 与
+  `registry.npmjs.org` 都通 —— 于是用 `GET /repos/lmliheng/Adelie/commits/main` 核对远端头，正是
+  **`995bd3db1086a22b5ac7178df6cdca7d3de82b8b`**，与本机 `HEAD`/`origin/main` 同一个提交、没有落后的东西，
+  `git merge --ff-only origin/main` 报 `Already up to date.`。没有切分支、没碰 `legacy/main`、没推 upstream。
+- 待办里最靠前的未勾选条目仍是 **2.2c**（"还差什么"逐条看下来剩下的全在桌面壳一侧 + 既有部署单元 +
+  桌面壳自己的开关，而本轮纪律明令不碰 desktop / electron）、3.5（要用户拍板）、3.6（要模型 key）、
+  4.1–4.3 与 2.5（明令不动）、5.6 / 5.10（拍板 / 新依赖）。第 7 节 **7.1–7.141 已全勾**。
+- **上游也没有新东西可挑**：`api.github.com` 现查 `Prism-Shadow/penguin-harness` 尖端仍是 **`2b9bf8f8`**
+  （2026-11-14，与第二百六十一轮探到的同一个提交，之后没有新提交），那批大件仍是跨轮次重构。
+  于是回到本仓自己的线索：第二百五十九轮「没做 / 留着」里点名的那一处 —— 思考等级确认框的
+  **「压缩后切换」**。
+
+### 选活：为什么是它
+
+- 那一按问的是两件事：先压缩上下文、然后把等级切过去。压缩**能够开始**却后来失败/被中断时，等级仍然应用
+  并附一条提示 —— 那条口径是对的（讲的是先后顺序，不是否决），本轮不动它。
+- 问题在另一支：服务端**根本不肯开始**压缩（没配压缩、还没有完成过一轮、刚压缩过、Task 在跑）。这时两件事
+  都没做 —— 可确认框照样关、那个选择在下一轮就被放行，等级于是在读者没被知会的情况下切了过去，而原因只活在
+  一条六秒后自己消失的通知里。选了「便宜的那条路」的人安静地拿到了贵的那条（7.19 的规则）。
+- 修法与同族的兄弟卡片一致：**在会话内换模型**那张卡片就已经是「被拒时留着卡片、把服务端的原话画在框里」。
+  思考等级这张卡片有 `ConfirmModal` 的 `refusal` 槽却没用，而它自己的另外两个选择（仍要切换 / 取消）本来
+  就还在旁边 —— 让读者知道代价之后再选，比我替他选更诚实。
+- 它只动 `packages/web` 的状态机、一句话与一份文档，不碰接口、不引依赖、不碰桌面壳，一轮的量。
+
+### 做了什么
+
+- `packages/web/src/features/chat/thinking-level.ts`：`StagedThinkingSwitch` 的打开态多一个可选的
+  `refusal`；`"settle"` 阶段与 `heldThinkingSwitch` 的 `notice: "none"` 一并删掉 —— 卡片还在发问时，
+  不许有任何东西在它背后放行这个选择。注释写明「根本没开始的压缩不走这条释放路径」。
+- `packages/web/src/features/chat/chat-page.tsx`：`compactThenThinkingSwitch` 给 `runCompaction` 传
+  `onRefused`，被拒时把卡片退回**同一个等级**的 `ask` 并写上句子（`setThinkingSwitch` 只改自己暂存的那
+  一份，别处来的选择照旧优先）；`thinkingSwitchCompacting` 的提示从「按下就发」改成「服务端真的接受请求
+  之后才发」；watcher 的 `notice === "none"` 分支随之删掉；`ConfirmModal` 在 `ask` 且带 `refusal` 时把
+  句子交给它的 `refusal` 槽。`runCompaction` 与 `ConfirmModal` 的注释都跟着改写（它们此前各写着「对话
+  框那一侧照旧拿通知」）。
+- **新增** `packages/web/src/features/chat/thinking-level-refusal.ts` 的
+  `compactBeforeSwitchRefused(level, err)`：原因走与 `/compact` 命令**同一个** `sendRefusalReason`，于是
+  同样的拒绝在两种界面上说同样的话；点名的等级由调用方给（触发器与对话里仍然显示的那一个）。
+- 两份词典各加 `chat.thinkingSwitchCompactRefused(still, reason)`：「没能先压缩上下文，思考等级仍是
+  「x」：原因」—— 只说他真成立的两件事。
+- 文档 `chat.zh.md` / `chat.en.md` 讲思考等级那一段：原来那句「压缩失败、被中断或无法启动时，等级照样切换，
+  并以提示或报错说明」把两种情形混成一句，现在分开 —— 开始了却没完成 → 照旧应用并提示；根本没开始 →
+  卡片留着、原因在框里、等级不动。
+- changelog 一对 `2026-11-16-thinking-switch-compact-refusal{.zh,}.md`，并写明它取代
+  `2026-11-16-compact-refusal` 里「对话框有意保持原样」那句说明（那一笔当时是有意的，本轮把它改成同一族
+  的第三条）。
+- 有意没动：「压缩真的开始了却失败」那一条仍然只弹提示（它讲的是先后顺序，宿主是对话里的压缩行，不是
+  这张已经关掉的卡片）；`askWithPicture` 与 `/model` 的两句已在第二百五十九 / 二百五十七轮落地。
+
+### 验证（全部实测）
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 /
+  612 类型 —— 本笔不碰服务契约）。包名按仓库实际为 `@adelie/*`（任务模板里的 `@prismshadow/*` 在本树匹配
+  不到任何项目）。
+- `npx oxlint` 8 个改动文件 **0 警告 0 错误**；`prettier --check` 首跑 `thinking-level.ts` 与
+  `thinking-level-refusal.test.ts` 不过，`--write` 后复检「All matched files use Prettier code style!」
+  （`*.md` 按本仓口径不在 prettier 范围）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1112** · cli **39 / 566** ·
+  server **216 文件 / 3141 通过 / 6 跳过** · web **338 文件 / 3854 通过 / 2 跳过**（基线 338 / 3851，+3 即
+  本笔的新单测；格式化之后复跑同数）· `@adelie/docs` **8 文件 / 62 通过**（文档那一段改了这个包自己的内容）。
+- **新 spec 2 passed（11.1 s + 3.3 s）**（真服务端 9561 + 仓库自带 mock 模型 9562 + `/usr/bin/chromium` +
+  一次性数据根 `/root/adelie-fork-data/r262-e2e`）：① `POST …/compact` 被 `page.route` 拒成 500 `internal`
+  （带一句英文原文）—— 卡片仍在、拒绝句逐字「没能先压缩上下文，思考等级仍是「中」：服务器内部错误，请稍后
+  重试。」、不含线上英文、触发器仍读「中」、**一个 `PATCH` 都没发出**、通知区 0 个按钮、只发出一个请求、
+  另外两个选择仍可点、**七秒后仍在**，之后按「仍要切换」才把 `thinkingLevel: high` 钉上并关框；② 被拒后按
+  「取消」什么都没变（`GET …/sessions` 里没有 `high`），下一次选等级是一张干净的卡片、上一次的句子不再出现。
+- **反证（同一份 spec，改前源码 + 改前 web 产物）**：5 份源码 `git stash push --`、重建 web（改前产物里
+  `没能先压缩上下文` 为 0 个文件）挂到 `/root/adelie-fork-data/r262-before` 的 9563 → **2 failed**，两条都死在
+  `getByRole('dialog').getByRole('alert')` 的 `toBeVisible`（`element(s) not found`）；`git stash pop` 重建后
+  **2 passed**。
+- **两态探针**（`r262/probe.mjs`，同一份脚本、两条腿各挂自己的产物：改后 9561、改前 9563，量 1.2 s / 7.6 s）：
+  **改后** 两刻都是 `card 1`、拒绝句 1 条逐字如上、触发器「中」、通知区 0 个按钮；**改前** 两刻都是 `card 0`、
+  拒绝行 0 条，1.2 s 时触发器**已经是「高」**（等级在背后切了）、通知区 **2 个按钮**（「正在压缩上下文，
+  压缩结束后切换思考等级。」与「服务器内部错误，请稍后重试。」），7.6 s 时通知区 0、屏幕上只剩一个已经换掉的
+  等级。截图 `r262/shots/{after,before}-{1_2s,7_6s}.png` 肉眼看过（改后：红字压在卡片自己的问题下面、
+  三个选择都在；改前：页顶两条浮动通知、右下角等级芯片写着「高」、没有卡片）；两态 console 都只有既有的
+  `GET …/machines` **403** 与本轮**故意造的** **500**，pageerror **0 条**。
+- **相邻回归（真浏览器）**：`thinking-level-refusal.spec.mjs` **2 passed**、`reloaded-followup.spec.mjs`
+  **1 passed**（它钉的正是这张卡片的三个选择与「仍要切换」发出的那个 `PATCH`）。
+- 端口只用 9561 / 9562 / 9563（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r262-{e2e,before}`，探针 / 两态产物（`after-dist` / `before-dist`）/ 截图 /
+  改后源码留底 / 临时 playwright 配置都在 scratchpad 的 `r262/` 下（`packages/web/dist`、`test-results/`
+  是产物，未 `git add`）。
+- 一个环境上的坑记在这里：`exec_command` 里用 `&` 起的 mock 与服务端会随那条命令结束一起被收掉（尽管
+  `curl` 在同一个调用内已经 200），改成工具的后台运行才留得住；另外回环绑定要用 `HOST=::`，否则
+  `localhost` 先解析成 `::1` 的 Playwright 请求全是 `ECONNREFUSED`（与第二百六十一轮记的同一条）。
+
+### 没做 / 留着
+
+- 「压缩真的开始了却失败 / 被中断」仍然只有一条提示。它的宿主应当是对话里的压缩行（那里记着那次压缩的
+  结局），不是这张已经关掉的卡片 —— 留给下一轮或另一条线索。
+- `runCompaction` 在没有 `onRefused` 时的兜底仍是页顶通知；本树目前两个调用方都传了处理函数，那段兜底
+  只剩「将来有人新接一个调用方」这一种情形。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 功能一笔 **`246403872`**（12 个文件：源码 5、单测 2、spec 1、文档 2、changelog 2）。
+- 台账（条目 7.142、上表那一行、本节）随本文件另起一笔。
