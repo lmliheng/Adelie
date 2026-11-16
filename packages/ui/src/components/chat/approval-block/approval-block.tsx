@@ -31,10 +31,13 @@ export interface ApprovalLabels {
 export function ApprovalButtons({
   onDecide,
   labels,
+  refusal,
 }: {
   /** Submits the decision; the buttons stay disabled until it settles. */
   onDecide: (decision: ApprovalChoice) => Promise<void>;
   labels: ApprovalLabels;
+  /** Why the last decision was refused: drawn above the buttons, which are still the retry. */
+  refusal?: string;
 }) {
   const [busy, setBusy] = useState(false);
 
@@ -48,14 +51,32 @@ export function ApprovalButtons({
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <Button size="sm" variant="primary" disabled={busy} onClick={() => void decide("allow")}>
-        {labels.allow}
-      </Button>
-      <Button size="sm" disabled={busy} onClick={() => void decide("deny")}>
-        {labels.deny}
-      </Button>
-    </div>
+    <>
+      {refusal !== undefined && (
+        // The refused decision, on its own line above the buttons it belongs to: both are still
+        // here (and enabled again) because nothing was written, so the sentence sits where the
+        // retry is. Two lines at most, the whole sentence one hover away. It lives here rather
+        // than in each surface that asks, so a decision refused in the conversation and one
+        // refused in the API tab read the same.
+        <p
+          role="alert"
+          data-testid="approval-refusal"
+          data-tooltip={refusal}
+          data-tooltip-content="text"
+          className="mb-2 line-clamp-2 break-words text-xs text-tone-danger-fg"
+        >
+          {refusal}
+        </p>
+      )}
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="primary" disabled={busy} onClick={() => void decide("allow")}>
+          {labels.allow}
+        </Button>
+        <Button size="sm" disabled={busy} onClick={() => void decide("deny")}>
+          {labels.deny}
+        </Button>
+      </div>
+    </>
   );
 }
 
@@ -105,21 +126,7 @@ export function ApprovalBlock({
           {payload}
         </pre>
       )}
-      {refusal !== undefined && (
-        // The refused decision, on its own line above the buttons it belongs to: both are still
-        // here (and enabled again) because nothing was written, so the sentence sits where the
-        // retry is. Two lines at most, the whole sentence one hover away.
-        <p
-          role="alert"
-          data-testid="approval-refusal"
-          data-tooltip={refusal}
-          data-tooltip-content="text"
-          className="mb-2 line-clamp-2 break-words text-xs text-tone-danger-fg"
-        >
-          {refusal}
-        </p>
-      )}
-      <ApprovalButtons onDecide={onDecide} labels={labels} />
+      <ApprovalButtons onDecide={onDecide} labels={labels} refusal={refusal} />
     </div>
   );
 }

@@ -38,7 +38,9 @@
  *   wrong, and leaves the box as it was before any run.
  * - An approval.requested row offers Allow and Deny; an answer posts the decision to the
  *   Session's approvals route and its buttons go; an approval.decided from elsewhere, or the
- *   run's end, clears them too.
+ *   run's end, clears them too. An answer the server refused wrote nothing: the row keeps asking
+ *   with the reason above the same two buttons (never the wire's English); a 404 settles the row
+ *   in silence, since the call is no longer waiting.
  * - New conversation forgets the Session and the output and keeps the input.
  */
 import { describe, expect, it, vi } from "vitest";
@@ -47,9 +49,11 @@ import type { ReactElement, ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { AmspEvent, TokenCounts } from "@adelie/amsp";
 import { ApprovalButtons, Button, CopyButton } from "@adelie/ui";
+import { ApiError } from "../src/api/client";
 import {
   addPayload,
   answerApproval,
+  approvalAnswerFailed,
   eventFields,
   initialTryState,
   rawLines,
@@ -915,6 +919,58 @@ describe("a Try run", () => {
     expect(approvalsOn(decided)).toEqual([]);
     const ended = reduceTry(waiting, { type: "ended" });
     expect(approvalsOn(ended)).toEqual([]);
+  });
+
+  it("keeps a refused answer's reason above the buttons that are still the retry", () => {
+    const asked: AmspEvent = {
+      type: "approval.requested",
+      at: at(1),
+      tool_call: { tool_call_id: "call_1", name: "exec_command", arguments: '{"cmd":"date"}' },
+    };
+    const waiting = streaming([STARTED, asked]);
+    const refused = reduceTry(
+      waiting,
+      approvalAnswerFailed("call_1", "allow", new ApiError(500, "internal", "RAW ENGLISH")),
+    );
+
+    // The call still waits on this person, with the same two buttons.
+    expect(approvalsOn(refused)).toHaveLength(1);
+    const view = html(refused);
+    expect(view).toMatch(/<button[^>]*>允许<\/button>/);
+    expect(view).toMatch(/<button[^>]*>拒绝<\/button>/);
+    // The reason names the press and reads in the interface's own words, never the wire's.
+    expect(view).toMatch(/role="alert"[^>]*data-testid="approval-refusal"/);
+    expect(view).toContain(
+      S.chat.approvalAnswerRefused(S.chat.approve, S.errors.byCode.internal as string),
+    );
+    expect(view).not.toContain("RAW ENGLISH");
+    // Above the buttons: the sentence belongs to the press that stayed on this row.
+    expect(view.indexOf('data-testid="approval-refusal"')).toBeLessThan(
+      view.indexOf(`>${S.chat.approve}</button>`),
+    );
+
+    // A decision that lands afterwards still clears both the buttons and the sentence.
+    const settled = reduceTry(refused, { type: "decided", toolCallId: "call_1" });
+    expect(approvalsOn(settled)).toEqual([]);
+    expect(html(settled)).not.toContain('data-testid="approval-refusal"');
+  });
+
+  it("says nothing when the answer comes back 404: the call is no longer waiting", () => {
+    const asked: AmspEvent = {
+      type: "approval.requested",
+      at: at(1),
+      tool_call: { tool_call_id: "call_1", name: "exec_command", arguments: "{}" },
+    };
+    const waiting = streaming([STARTED, asked]);
+    const action = approvalAnswerFailed(
+      "call_1",
+      "deny",
+      new ApiError(404, "tool_call_not_found", "gone"),
+    );
+    expect(action).toEqual({ type: "decided", toolCallId: "call_1" });
+    const settled = reduceTry(waiting, action);
+    expect(approvalsOn(settled)).toEqual([]);
+    expect(html(settled)).not.toContain('data-testid="approval-refusal"');
   });
 
   it("forgets the Session and the output on New conversation, keeping the input", async () => {

@@ -13,7 +13,9 @@
  *   nothing compares them: the latest is what shows. Fragments find their row by the item they
  *   belong to — a tool call or result by its `tool_call_id`, since results interleave — so a row
  *   keeps its place when other rows come between its fragments.
- * - Every other event is a row of its own, with its key fields.
+ * - Every other event is a row of its own, with its key fields. An `approval.requested` row keeps
+ *   Allow and Deny while the call waits; a decision this panel could not hand over leaves the row
+ *   asking, with the reason above those buttons (`approvalAnswerFailed`).
  *
  * `run.done` gives the status strip, folded by the SDK's `RunCollector` as a program's
  * `result()` would be. The Session id that `run.started` names stays after the run, so the next
@@ -24,6 +26,8 @@ import { readSse, RunCollector } from "@adelie/amsp";
 import type { AmspError, AmspEvent, RunRequest, RunResult, TokenCounts } from "@adelie/amsp";
 import { ApiError } from "../../api/client";
 import * as api from "../../api/endpoints";
+import { approvalAnswerRefused } from "../chat/approval-refusal";
+import type { ApprovalDecision } from "../chat/approval-refusal";
 
 /** Where a one-line value is cut, so one long argument string does not take the row. */
 const CUT = 120;
@@ -73,8 +77,8 @@ export interface TryEventRow {
   /** The event's `type`; `?` for a payload that is not an AMSP event. */
   type: string;
   fields: TryField[];
-  /** On `approval.requested`: the call it asks about, and whether an answer is still open. */
-  approval?: { toolCallId: string; pending: boolean };
+  /** On `approval.requested`: the call it asks about, whether an answer is still open, and why a refused one was refused. */
+  approval?: { toolCallId: string; pending: boolean; refusal?: string };
   origin?: string;
 }
 
@@ -384,6 +388,8 @@ export type TryAction =
   | { type: "ended"; stopped?: boolean }
   | { type: "view"; view: TryView }
   | { type: "decided"; toolCallId: string }
+  /** An answer this panel sent was refused: `reason` says why, and the row keeps asking. */
+  | { type: "refused"; toolCallId: string; reason: string }
   | { type: "reset" };
 
 /** The panel before its first run: the example in the input, no Session. */
@@ -409,7 +415,19 @@ function settle(rows: TryRow[], toolCallId?: string): TryRow[] {
     r.kind === "event" &&
     r.approval?.pending === true &&
     (toolCallId === undefined || r.approval.toolCallId === toolCallId)
-      ? { ...r, approval: { ...r.approval, pending: false } }
+      ? { ...r, approval: { ...r.approval, pending: false, refusal: undefined } }
+      : r,
+  );
+}
+
+/**
+ * The row whose approval of `toolCallId` was refused: still open, with the sentence above its
+ * two buttons — nothing was written, so those buttons are the retry.
+ */
+function refuse(rows: TryRow[], toolCallId: string, reason: string): TryRow[] {
+  return rows.map((r) =>
+    r.kind === "event" && r.approval?.pending === true && r.approval.toolCallId === toolCallId
+      ? { ...r, approval: { ...r.approval, refusal: reason } }
       : r,
   );
 }
@@ -487,6 +505,8 @@ export function reduceTry(state: TryState, action: TryAction): TryState {
       return { ...state, view: action.view };
     case "decided":
       return { ...state, rows: settle(state.rows, action.toolCallId) };
+    case "refused":
+      return { ...state, rows: refuse(state.rows, action.toolCallId, action.reason) };
     case "reset":
       return { ...initialTryState(state.input), view: state.view };
   }
@@ -563,4 +583,27 @@ export async function answerApproval(
 ): Promise<void> {
   await api.postApproval(sessionId, toolCallId, { decision });
   dispatch({ type: "decided", toolCallId });
+}
+
+/**
+ * What a failed answer leaves, as the action that says it (7.19's rule, the same one
+ * approval-refusal.ts applies to the conversation view).
+ *
+ * A refused decision wrote nothing: the call still waits on this person, with the same two
+ * buttons — so the row keeps asking and the sentence above them names the decision that did not
+ * get through and why. A notification was not even that: it dismissed itself after six seconds
+ * and left a press that looked like it never registered.
+ *
+ * **404** is the one answer that says nothing: the call is no longer waiting (it finished, or
+ * another window decided it), so the row settles here rather than outliving its subject — the
+ * stream's own `approval.decided` would have settled it the same way.
+ */
+export function approvalAnswerFailed(
+  toolCallId: string,
+  decision: ApprovalDecision,
+  error: unknown,
+): TryAction {
+  return error instanceof ApiError && error.status === 404
+    ? { type: "decided", toolCallId }
+    : { type: "refused", toolCallId, reason: approvalAnswerRefused(decision, error) };
 }

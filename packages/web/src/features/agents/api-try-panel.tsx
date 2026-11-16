@@ -14,8 +14,9 @@
  *
  * Running again continues the same Session, as a program does with `session_id`; New
  * conversation starts over. Stop asks the Session's abort route, so the stream still ends with
- * its `run.done`; an approval the Agent's API approval mode asks for is answered on its row.
- * Leaving the tab mid-run closes the connection, which aborts the run on the server.
+ * its `run.done`; an approval the Agent's API approval mode asks for is answered on its row, and a
+ * refused answer leaves the reason there too, above the same two buttons (the row is still
+ * asking). Leaving the tab mid-run closes the connection, which aborts the run on the server.
  *
  * `ApiTryView` is the section for one state, with no state of its own; the reducer and the
  * driver behind `ApiTryPanel` live in api-try-log.ts.
@@ -39,6 +40,7 @@ import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import {
   answerApproval,
+  approvalAnswerFailed,
   initialTryState,
   rawLines,
   reduceTry,
@@ -256,7 +258,7 @@ function itemContent(row: TryItemRow, live: boolean) {
 
 /**
  * A standalone event's content: its key fields, and under them, while an approval waits, the
- * conversation view's own Allow and Deny.
+ * conversation view's own Allow and Deny — with the reason above them when a decision was refused.
  */
 function eventContent(row: TryEventRow, onApprove: ApiTryViewProps["onApprove"]) {
   const approval = row.approval;
@@ -268,6 +270,7 @@ function eventContent(row: TryEventRow, onApprove: ApiTryViewProps["onApprove"])
           <ApprovalButtons
             labels={{ allow: S.chat.approve, deny: S.chat.deny }}
             onDecide={(decision) => onApprove(approval.toolCallId, decision)}
+            refusal={approval.refusal}
           />
         </div>
       )}
@@ -535,7 +538,9 @@ export function ApiTryPanel({
         try {
           await answerApproval(state.sessionId, toolCallId, decision, dispatch);
         } catch (e) {
-          toastError(apiErrorText(e));
+          // A refused decision wrote nothing: the row keeps asking and says why, above the same
+          // two buttons (which are then the retry); a 404 settles the row in silence.
+          dispatch(approvalAnswerFailed(toolCallId, decision, e));
         }
       }}
     />
