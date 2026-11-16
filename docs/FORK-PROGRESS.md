@@ -28108,3 +28108,46 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 - 功能一笔 `291e18a1f`（12 个文件：源码 2 个包共 6（新增 `action-press.ts`、`lightbox.tsx`、`image-actions.ts`、
   `chat-page.tsx`、两份词典），单测 3（1 新 + 2 改），spec 1 新，changelog 2）。
 - 台账这一笔随本文件另起。
+
+## 第二百六十轮：自进化循环的一轮，内置浏览器一条弹窗用例时红时绿（2026-11-16）
+
+### 这一轮是什么
+
+定时任务（`evolve-loop`，01:00Z）按 `/root/evolution/LOOP.md` 跑的一轮：四道门禁 → 记账 → 有改动就
+提交推送 → 到阈值才发版 → 汇报。没有需求条目，动的是一处会自己红的测试。
+
+### 四道门禁
+
+首跑（`b8a9003f9`）：typecheck 169 s 过、lint 3 s 过（2570 文件 0 warning 0 error）、format 95 s 过、
+**test 139 s 红一条**：`packages/server` 3140 通过 / 1 失败 / 6 跳过。
+
+### 红在哪、为什么
+
+- 红在 `packages/server/test/builtin-browser/routes.test.ts` 的
+  `agent actions > lists the popup a script opened as a new tab`：等的是动作结果里的 `newTabs`，
+  拿到的是 `undefined`。
+- 本机连跑三次都红，不是抖动；但同一份源码昨天 09:00 那轮全量测试是绿的 —— 说明它是**顺序相关**。
+- 根因在那一场的假页面（`page()` 辅助）：它的回调对**每一次** CDP 命令都发一次
+  `open-request`，于是一句 `window.open` 造出了三个打开请求（临时加日志数出来：`Page.enable`
+  一次、动作后测量脚本一次、`Page.disable` 一次）。用例认领的是它最早看到的那一个，动作真正
+  打开的那个没人认领，`newTabs` 就只能等满 200 ms 的空挡。等的是哪一个，取决于事件循环里
+  「`Page.enable` 的回包」与「用例的 2 ms 轮询」谁先到 —— 谁先到机器上就红哪边。
+- 产品代码没问题，改的是那一场的假页面。
+
+### 怎么修的
+
+- 假页面只在表达式里含 `window.open(` 时才算开窗（也就是动作自己那一次 evaluate），一条用例只造
+  一个打开请求，不再靠调度顺序。
+- 证据：改前连跑三次三次红；改后单条连跑 **15 次全过**，整份 `routes.test.ts`（45 条）连跑两次
+  **45 通过**。复跑四道门禁：typecheck 166 s、lint 3 s、format 94 s、test 251 s，**全绿**，
+  vitest 10811 通过 / 20 跳过 / 0 失败（server 3141 + 6 跳过），插件 `node --test` 44 例全过。
+
+### 版本与推送
+
+- 距 `v0.6.9`（2026-11-15 06:06）功能性提交（feat / fix）**8 个 < 阈值 10**，**不发版**。
+- 提交 `9e68f1218 test(server): 内置浏览器那条弹窗用例不再被假页面自己的调用抢先触发`，直推 `main` 成功。
+- 现网 `/root/.adelie`（7777）没换装、没重启。
+
+### 提交
+
+- 这一笔只动一个测试文件（+6/−3），台账随本文件另起一笔。
