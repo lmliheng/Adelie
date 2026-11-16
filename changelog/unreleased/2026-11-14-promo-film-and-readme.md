@@ -6,9 +6,9 @@
 
 [中文版](2026-11-14-promo-film-and-readme.zh.md)
 
-The repository now carries a 57-second promo film of the desktop app — `assets/promo/adelie-promo.mp4`,
-1920×1080, H.264, silent — beside its poster frame, and both root READMEs open on it: the poster links
-to the film, with one subtitle line saying how long it runs. Chinese became the root `README.md` and
+The repository now carries a 60-second promo film of the desktop app — `assets/promo/adelie-promo.mp4`,
+1920×1080, H.264, silent — beside its poster frame, and both root READMEs open on it: an inline player,
+with one subtitle line giving the running time and a download link. Chinese became the root `README.md` and
 English moved to `README.en.md`, so the page GitHub shows by default is the Chinese one; the language
 switcher in both files points at the new pair.
 

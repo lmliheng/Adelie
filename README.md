@@ -29,12 +29,10 @@
 <p align="center"><a href="README.en.md">English</a> | 简体中文</p>
 
 <p align="center">
-  <a href="assets/promo/adelie-promo.mp4">
-    <img src="assets/promo/adelie-promo-poster.png" alt="Adelie 宣传片：57 秒看懂它在你的桌面上怎么干活" width="920" />
-  </a>
+  <video src="https://raw.githubusercontent.com/lmliheng/Adelie/main/assets/promo/adelie-promo.mp4" controls width="920"></video>
 </p>
 
-<p align="center"><sub>57 秒宣传片 · 1920×1080 · 点封面播放</sub></p>
+<p align="center"><sub>60 秒宣传片 · 1920×1080 · 无声 · <a href="assets/promo/adelie-promo.mp4">下载 mp4</a> · <a href="assets/promo/adelie-promo-poster.png">封面图</a></sub></p>
 
 ## 为什么选择 Adelie
 

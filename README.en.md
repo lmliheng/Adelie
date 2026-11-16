@@ -32,12 +32,10 @@
 <p align="center"><a href="README.md">简体中文</a> | English</p>
 
 <p align="center">
-  <a href="assets/promo/adelie-promo.mp4">
-    <img src="assets/promo/adelie-promo-poster.png" alt="Adelie promo film: 57 seconds of the agent working on your desktop" width="920" />
-  </a>
+  <video src="https://raw.githubusercontent.com/lmliheng/Adelie/main/assets/promo/adelie-promo.mp4" controls width="920"></video>
 </p>
 
-<p align="center"><sub>A 57-second film · 1920×1080 · click the cover to play</sub></p>
+<p align="center"><sub>A 60-second film · 1920×1080 · no soundtrack · <a href="assets/promo/adelie-promo.mp4">download the mp4</a> · <a href="assets/promo/adelie-promo-poster.png">cover image</a></sub></p>
 
 ## Why Adelie
 
