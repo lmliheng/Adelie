@@ -2191,6 +2191,11 @@ export const zh = {
     apiTryCacheWrite: "缓存写",
     apiTryElapsed: "用时",
     apiTryStreamBroken: "事件流在 run.done 之前结束。",
+    /**
+     * A Stop the server did not take (api-try-log.ts's stopFailed), drawn under the Stop button
+     * that asked: that button is still there, so pressing it again is the retry.
+     */
+    apiTryStopRefused: (reason: string) => `没能停下这次运行，它仍在继续：${reason}`,
   },
 
   models: {

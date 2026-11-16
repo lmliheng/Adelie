@@ -2152,6 +2152,8 @@ export const en: Strings = {
     apiTryCacheWrite: "Cache write",
     apiTryElapsed: "Elapsed",
     apiTryStreamBroken: "The stream ended before run.done.",
+    /** A Stop the server did not take (api-try-log.ts's stopFailed), drawn under the Stop button that asked. */
+    apiTryStopRefused: (reason: string) => `Stop did not land; the run is still going: ${reason}`,
   },
 
   models: {

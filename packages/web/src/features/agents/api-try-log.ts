@@ -15,7 +15,9 @@
  *   keeps its place when other rows come between its fragments.
  * - Every other event is a row of its own, with its key fields. An `approval.requested` row keeps
  *   Allow and Deny while the call waits; a decision this panel could not hand over leaves the row
- *   asking, with the reason above those buttons (`approvalAnswerFailed`).
+ *   asking, with the reason above those buttons (`approvalAnswerFailed`). A Stop the server did not
+ *   take is not a row — the run is still going, so it leaves the reason under the Stop button that
+ *   asked (`stopFailed`), and it stays until the stream ends or another run starts.
  *
  * `run.done` gives the status strip, folded by the SDK's `RunCollector` as a program's
  * `result()` would be. The Session id that `run.started` names stays after the run, so the next
@@ -26,6 +28,8 @@ import { readSse, RunCollector } from "@adelie/amsp";
 import type { AmspError, AmspEvent, RunRequest, RunResult, TokenCounts } from "@adelie/amsp";
 import { ApiError } from "../../api/client";
 import * as api from "../../api/endpoints";
+import { refusalText } from "../../lib/api-error";
+import { S } from "../../lib/strings";
 import { approvalAnswerRefused } from "../chat/approval-refusal";
 import type { ApprovalDecision } from "../chat/approval-refusal";
 
@@ -373,6 +377,8 @@ export interface TryState {
   result: { run: RunResult; elapsedMs: number | null } | null;
   /** A refusal before the stream. */
   error: { status: number; code: string; message: string } | null;
+  /** Why a Stop did not register, while the run it asked about is still going. */
+  stopRefusal: string | null;
   /** The body ended before `run.done`. */
   broken: boolean;
   /** `[DONE]` arrived. */
@@ -390,6 +396,8 @@ export type TryAction =
   | { type: "decided"; toolCallId: string }
   /** An answer this panel sent was refused: `reason` says why, and the row keeps asking. */
   | { type: "refused"; toolCallId: string; reason: string }
+  /** A Stop the server did not take: `reason` says why, and the run is still going. */
+  | { type: "stopRefused"; reason: string }
   | { type: "reset" };
 
 /** The panel before its first run: the example in the input, no Session. */
@@ -404,6 +412,7 @@ export function initialTryState(input: string): TryState {
     view: "rendered",
     result: null,
     error: null,
+    stopRefusal: null,
     broken: false,
     closed: false,
   };
@@ -462,6 +471,7 @@ export function reduceTry(state: TryState, action: TryAction): TryState {
         rows: [],
         result: null,
         error: null,
+        stopRefusal: null,
         broken: false,
         closed: false,
       };
@@ -500,6 +510,8 @@ export function reduceTry(state: TryState, action: TryAction): TryState {
         running: false,
         rows: settle(closeOpen(state.rows, () => true)),
         broken: action.stopped !== true && state.result === null && state.error === null,
+        // The stream ended, so any Stop still on screen no longer has a run to be about.
+        stopRefusal: null,
       };
     case "view":
       return { ...state, view: action.view };
@@ -507,6 +519,8 @@ export function reduceTry(state: TryState, action: TryAction): TryState {
       return { ...state, rows: settle(state.rows, action.toolCallId) };
     case "refused":
       return { ...state, rows: refuse(state.rows, action.toolCallId, action.reason) };
+    case "stopRefused":
+      return { ...state, stopRefusal: action.reason };
     case "reset":
       return { ...initialTryState(state.input), view: state.view };
   }
@@ -606,4 +620,23 @@ export function approvalAnswerFailed(
   return error instanceof ApiError && error.status === 404
     ? { type: "decided", toolCallId }
     : { type: "refused", toolCallId, reason: approvalAnswerRefused(decision, error) };
+}
+
+/**
+ * What a Stop the server did not take leaves, as the action that says it — the same rule as the
+ * refused decision above, one band up the card.
+ *
+ * Stop is one POST on the Session (`/api/sessions/:id/abort`), and a run that is under way leaves
+ * the panel exactly as it was: still running, the same Stop button in the same place. So the
+ * sentence goes under that button and names it (the press did not register; pressing it again is
+ * the retry), instead of a notification that dismissed itself after six seconds while the run kept
+ * writing rows — after which the panel looked like nothing had been pressed at all.
+ *
+ * **404** is the one answer that says nothing: the Session itself is gone, so the run it asked
+ * about is over too, and a sentence about a stop that no longer has a subject would outlive it.
+ */
+export function stopFailed(error: unknown): TryAction | null {
+  return error instanceof ApiError && error.status === 404
+    ? null
+    : { type: "stopRefused", reason: S.agent.apiTryStopRefused(refusalText(error)) };
 }

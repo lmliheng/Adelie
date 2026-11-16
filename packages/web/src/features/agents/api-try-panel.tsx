@@ -32,9 +32,7 @@ import {
   Segmented,
   StreamingCaret,
   Text,
-  toastError,
 } from "@adelie/ui";
-import { apiErrorText } from "../../lib/api-error";
 import { formatBytes } from "../../lib/format";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
@@ -46,6 +44,7 @@ import {
   reduceTry,
   rowLabel,
   runTry,
+  stopFailed,
   stopTry,
   tryBody,
 } from "./api-try-log";
@@ -62,6 +61,8 @@ export interface ApiTryViewProps {
   view: TryView;
   result: TryState["result"];
   error: TryState["error"];
+  /** Why the last Stop did not register; the run it asked about is still going. */
+  stopRefusal: string | null;
   /** The body ended before `run.done`. */
   broken: boolean;
   /** Nothing can run (the admin has the Agent API off); `disabledReason` says why. */
@@ -382,6 +383,21 @@ export function ApiTryView(p: ApiTryViewProps) {
             </Button>
           )}
         </div>
+        {p.stopRefusal !== null && (
+          // A Stop the server did not take, under the button that asked: the run it was about is
+          // still going (Stop is still up, so pressing it again is the retry), and the sentence is
+          // the same danger ink the refused approvals use. Two lines at most, the whole sentence
+          // one hover away.
+          <p
+            role="alert"
+            data-testid="api-try-stop-refusal"
+            data-tooltip={p.stopRefusal}
+            data-tooltip-content="text"
+            className="line-clamp-2 break-words text-xs text-tone-danger-fg"
+          >
+            {p.stopRefusal}
+          </p>
+        )}
       </div>
 
       {/* The output's header: the Session on the left, the views on the right. One line from sm
@@ -518,6 +534,7 @@ export function ApiTryPanel({
       view={state.view}
       result={state.result}
       error={state.error}
+      stopRefusal={state.stopRefusal}
       broken={state.broken}
       disabled={disabled}
       disabledReason={disabledReason}
@@ -529,7 +546,13 @@ export function ApiTryPanel({
         void runTry({ projectId, agentId }, dispatch, tryBody(state), controller.signal);
       }}
       onStop={() => {
-        stopTry(state, connection.current).catch((e: unknown) => toastError(apiErrorText(e)));
+        // A Stop the server did not take leaves the sentence under that same button, while the
+        // run it was about is still going; a 404 says nothing (the Session is gone, so the run
+        // is over too).
+        stopTry(state, connection.current).catch((e: unknown) => {
+          const action = stopFailed(e);
+          if (action !== null) dispatch(action);
+        });
       }}
       onNewSession={() => dispatch({ type: "reset" })}
       onView={(view) => dispatch({ type: "view", view })}

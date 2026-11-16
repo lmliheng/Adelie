@@ -59,6 +59,7 @@ import {
   rawLines,
   reduceTry,
   runTry,
+  stopFailed,
   stopTry,
   tryBody,
 } from "../src/features/agents/api-try-log";
@@ -231,6 +232,7 @@ function viewProps(state: TryState, over: Partial<ApiTryViewProps> = {}): ApiTry
     view: state.view,
     result: state.result,
     error: state.error,
+    stopRefusal: state.stopRefusal,
     broken: state.broken,
     disabled: false,
     onInput: noop,
@@ -971,6 +973,48 @@ describe("a Try run", () => {
     const settled = reduceTry(waiting, action);
     expect(approvalsOn(settled)).toEqual([]);
     expect(html(settled)).not.toContain('data-testid="approval-refusal"');
+  });
+
+  it("keeps a Stop's reason under the button that is still the retry", () => {
+    const asked: AmspEvent = {
+      type: "approval.requested",
+      at: at(1),
+      tool_call: { tool_call_id: "call_1", name: "exec_command", arguments: "{}" },
+    };
+    const running = streaming([STARTED, asked]);
+    const action = stopFailed(new ApiError(500, "internal", "RAW ENGLISH"));
+    expect(action).toEqual({
+      type: "stopRefused",
+      reason: S.agent.apiTryStopRefused(S.errors.byCode.internal as string),
+    });
+    const refused = reduceTry(running, action!);
+
+    // The run is still going: the Stop button is in the same place, and it is the retry.
+    const view = html(refused);
+    expect(refused.running).toBe(true);
+    expect(view).toMatch(/<button[^>]*>停止<\/button>/);
+    // The reason reads in the interface's own words, never the wire's, and says nothing was taken.
+    expect(view).toMatch(/role="alert"[^>]*data-testid="api-try-stop-refusal"/);
+    expect(view).toContain(S.agent.apiTryStopRefused(S.errors.byCode.internal as string));
+    expect(view).not.toContain("RAW ENGLISH");
+    // Under the button that asked: the sentence belongs to the press, not to the output below.
+    expect(view.indexOf(`<button[^>]*>停止</button>`)).toBeLessThan(
+      view.indexOf('data-testid="api-try-stop-refusal"'),
+    );
+
+    // It stays while the run keeps writing, and goes once the stream ends.
+    const more = reduceTry(refused, { type: "payload", data: JSON.stringify(TIME_RUN[2]!) });
+    expect(more.stopRefusal).toBe(action!.type === "stopRefused" ? action.reason : null);
+    const ended = reduceTry(more, { type: "ended", stopped: true });
+    expect(ended.stopRefusal).toBeNull();
+    expect(html(ended)).not.toContain('data-testid="api-try-stop-refusal"');
+
+    // A new run starts clean.
+    expect(reduceTry(refused, { type: "start" }).stopRefusal).toBeNull();
+  });
+
+  it("says nothing when Stop comes back 404: the Session, and so the run, is gone", () => {
+    expect(stopFailed(new ApiError(404, "not_found", "gone"))).toBeNull();
   });
 
   it("forgets the Session and the output on New conversation, keeping the input", async () => {
