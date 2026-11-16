@@ -164,7 +164,7 @@ In a started conversation, the picker shows the agent's configured level (or "�
 
 Changing the level mid-conversation lowers the prompt-cache hit rate and raises cost, so a dialog asks first:
 
-- **Compact, then switch** (recommended): compacts the context like `/compact`, then applies the level. If the compaction fails, is aborted or cannot start, the level is still applied, and a notice or error says so.
+- **Compact, then switch** (recommended): compacts the context like `/compact`, then applies the level. If the compaction started but did not finish (failed, aborted), the level is still applied and a notice says so. If it never started — the server refused it, for the same reasons `/compact` can be refused — the dialog stays open with the reason inside it and the level does not move, so you can pick **Switch anyway** or **Cancel** instead.
 - **Switch anyway**: applies the level at once.
 - **Cancel**: keeps the current level.
 

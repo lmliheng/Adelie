@@ -3400,6 +3400,8 @@ export const en: Strings = {
       `Context compacted; thinking level switched to "${to}".`,
     thinkingSwitchCompactFailed:
       "The compaction did not finish; the thinking level was switched anyway.",
+    thinkingSwitchCompactRefused: (still: string, reason: string): string =>
+      `Could not compact the context first — the thinking level is still "${still}": ${reason}`,
     modelSwitchInSessionTitle: "Switch model",
     modelSwitchInSessionConfirm: "Compact and switch",
     /** Confirm label when the transcript is empty: nothing to compact, so it only switches. */

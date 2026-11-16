@@ -125,7 +125,7 @@ import {
   thinkingLevelLabel,
 } from "./thinking-level";
 import type { StagedThinkingSwitch } from "./thinking-level";
-import { thinkingLevelRefused } from "./thinking-level-refusal";
+import { compactBeforeSwitchRefused, thinkingLevelRefused } from "./thinking-level-refusal";
 import { permissionRefused } from "./permission-refusal";
 import { backgroundMoveAnswer } from "./background-move";
 import type { BackgroundMoveAnswer } from "./background-move";
@@ -1863,10 +1863,9 @@ export function ChatPage() {
   // the compaction itself runs asynchronously, so a true here means "started", not
   // "finished" — the outcome only shows up on the stream (see the staged-switch watcher).
   // false means the server refused it (409 while a task runs / nothing to compact / …) and
-  // the reason has been reported: `onRefused` where the caller has a slot for it (the
-  // /compact command draws it above the card, compactionRefusalLine), a toast otherwise —
-  // which is the dialog's case, whose own press is a compound one (the level still switches,
-  // see compactThenThinkingSwitch).
+  // the reason has been reported: `onRefused` where the caller has a slot for it — the
+  // /compact command draws it above the card (compactionRefusalLine), the switch dialog draws
+  // it inside its own card (compactBeforeSwitchRefused) — a toast otherwise.
   const runCompaction = useCallback(
     async (onRefused?: (err: unknown) => void): Promise<boolean> => {
       if (!selected) return false;
@@ -1924,6 +1923,11 @@ export function ChatPage() {
   // compactions already on record, and the watcher below releases it once a new one ends
   // (either way it ends). Compaction cannot be started (nor queued) while the session is
   // busy, so the dialog disables this choice unless idle; the guard here is the same rule.
+  // A compaction the server refuses (nothing to compact, no compaction configured, …) did
+  // nothing at all: no compaction will ever settle, and the level is still the one on screen.
+  // The card therefore stays open on the same pick with the reason under its own question, so
+  // the reader can choose "switch anyway" knowing what it costs — the press asked for two
+  // things and only one of them failed.
   const compactThenThinkingSwitch = useCallback(() => {
     if (thinkingSwitch === null || stream.taskState !== "idle") return;
     const staged: StagedThinkingSwitch = {
@@ -1931,26 +1935,36 @@ export function ChatPage() {
       level: thinkingSwitch.level,
       baseline: compactionTally(stream.model.items),
     };
+    // The level the card's sentence names: the one the trigger and the transcript still show —
+    // nothing was switched, and nothing will be unless the reader presses "switch anyway".
+    const displayed = sessionThinkingLevel(turnThinkingLevel, agentThinkingLevel);
+    const current = thinkingLevelLabel(S.chat.thinkingLevelNames, displayed) ?? displayed;
     setThinkingSwitch(staged);
-    toastInfo(S.chat.thinkingSwitchCompacting);
-    void runCompaction().then((ok) => {
-      // Refused (the toast already said why, e.g. nothing to compact): no compaction will
-      // ever settle, so hand the pick to the watcher below to release — the user asked to
-      // switch, and only the compaction half of that failed. A pick staged meanwhile owns
-      // the state instead.
-      if (!ok) {
-        setThinkingSwitch((cur) =>
-          cur === staged ? { phase: "settle", level: staged.level } : cur,
-        );
-      }
+    void runCompaction((e) => {
+      setThinkingSwitch((cur) =>
+        cur === staged
+          ? { phase: "ask", level: staged.level, refusal: compactBeforeSwitchRefused(current, e) }
+          : cur,
+      );
+    }).then((ok) => {
+      // Started: the switch is held until that compaction ends (the watcher below).
+      if (ok) toastInfo(S.chat.thinkingSwitchCompacting);
     });
-  }, [thinkingSwitch, stream.taskState, stream.model, runCompaction]);
+  }, [
+    thinkingSwitch,
+    stream.taskState,
+    stream.model,
+    runCompaction,
+    turnThinkingLevel,
+    agentThinkingLevel,
+  ]);
 
   // Releases the pick held behind a running compaction: applied as soon as the compaction is
   // over, whichever way it ended. A failed/aborted compaction is reported (the context was
   // not rewritten, so this switch does cost cache hits) but never swallows the switch the
-  // user asked for. Runs on every stream version bump because the model's items are mutated
-  // in place.
+  // user asked for. A compaction that never STARTED is not here at all — the card is still
+  // open on that pick with its own reason (see compactThenThinkingSwitch). Runs on every
+  // stream version bump because the model's items are mutated in place.
   useEffect(() => {
     if (thinkingSwitch === null) return;
     const next = heldThinkingSwitch(thinkingSwitch, stream.model.items);
@@ -1963,10 +1977,9 @@ export function ChatPage() {
           thinkingLevelLabel(S.chat.thinkingLevelNames, next.level) ?? next.level,
         ),
       );
-    } else if (next.notice === "compaction-failed") {
+    } else {
       toastError(S.chat.thinkingSwitchCompactFailed);
     }
-    // notice "none": the compaction never started and runCompaction already said why.
     // The items are read from the model per run; `version` is the change signal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream.version, stream.model, thinkingSwitch, applyTurnThinkingLevel]);
@@ -2963,7 +2976,10 @@ export function ChatPage() {
           anyway (immediate, today's force path), or cancel (keeps the current level). The
           compact choice is unavailable while the session is busy — the server only starts a
           compaction on an idle session and does not queue it — and the body then says so.
-          After a successful compaction the guard lets a re-pick through without asking. */}
+          After a successful compaction the guard lets a re-pick through without asking. A
+          compaction that could not be started leaves this card open on the same pick with the
+          reason inside it (the `refusal` slot), so the other two choices are still one click
+          away and neither the level nor the context moved behind the reader's back. */}
       <ConfirmModal
         open={thinkingSwitch?.phase === "ask"}
         title={S.chat.thinkingSwitchTitle}
@@ -2972,6 +2988,9 @@ export function ChatPage() {
         cancelLabel={S.common.cancel}
         confirmDisabled={stream.taskState !== "idle"}
         onConfirm={compactThenThinkingSwitch}
+        {...(thinkingSwitch?.phase === "ask" && thinkingSwitch.refusal !== undefined
+          ? { refusal: thinkingSwitch.refusal }
+          : {})}
         secondaryLabel={S.chat.thinkingSwitchConfirm}
         onSecondary={() => {
           if (thinkingSwitch !== null) applyTurnThinkingLevel(thinkingSwitch.level);

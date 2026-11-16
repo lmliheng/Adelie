@@ -337,13 +337,12 @@ describe("heldThinkingSwitch (releasing the pick behind 'compact, then switch')"
     ).toEqual({ act: "apply", level: "high", notice: "compaction-failed" });
   });
 
-  it("applies the pick when the compaction never started (the server refused it)", () => {
-    // The refusal toast already said why, so there is no notice of our own.
-    expect(heldThinkingSwitch({ phase: "settle", level: "low" }, history)).toEqual({
-      act: "apply",
-      level: "low",
-      notice: "none",
-    });
+  it("waits while the card still shows the reason its compaction could not start", () => {
+    // A "compact, then switch" the server refused keeps the card open on the same pick: nothing was
+    // compacted, so nothing may be released behind it either — no compaction can now settle.
+    expect(
+      heldThinkingSwitch({ phase: "ask", level: "low", refusal: "nothing to compact" }, history),
+    ).toEqual({ act: "wait" });
   });
 });
 

@@ -13,7 +13,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/client";
 import { en as EN } from "../src/lib/strings-en";
 import { S, setActiveStrings, zh as ZH } from "../src/lib/strings";
-import { thinkingLevelRefused } from "../src/features/chat/thinking-level-refusal";
+import {
+  thinkingLevelRefused,
+  compactBeforeSwitchRefused,
+} from "../src/features/chat/thinking-level-refusal";
 
 afterEach(() => {
   setActiveStrings(ZH);
@@ -53,6 +56,33 @@ describe("thinkingLevelRefused", () => {
     );
     expect(thinkingLevelRefused(new Error("boom"), true)).toBe(
       EN.chat.thinkingLevelRefused("boom", true),
+    );
+  });
+});
+
+describe("compactBeforeSwitchRefused", () => {
+  it("names the level still in force and the code's own reason", () => {
+    const line = compactBeforeSwitchRefused(
+      "中",
+      new ApiError(409, "nothing_to_compact", "RAW ENGLISH"),
+    );
+    expect(line).not.toContain("RAW ENGLISH");
+    expect(line).toContain("中");
+    expect(line).toBe(
+      S.chat.thinkingSwitchCompactRefused("中", S.errors.byCode.nothing_to_compact as string),
+    );
+  });
+
+  it("keeps what a request that never reached the route has to say", () => {
+    expect(compactBeforeSwitchRefused("高", new Error("Failed to fetch"))).toBe(
+      S.chat.thinkingSwitchCompactRefused("高", "Failed to fetch"),
+    );
+  });
+
+  it("speaks the active language", () => {
+    setActiveStrings(EN);
+    expect(compactBeforeSwitchRefused("high", new Error("boom"))).toBe(
+      `Could not compact the context first — the thinking level is still "high": boom`,
     );
   });
 });

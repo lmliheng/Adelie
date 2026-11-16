@@ -248,12 +248,14 @@ export function compactionTally(items: ReadonlyArray<ThinkingSwitchItem>): Compa
  * the compaction is there to shrink.
  */
 export type StagedThinkingSwitch =
-  /** The dialog is open on this pick. */
-  | { phase: "ask"; level: string }
+  /**
+   * The dialog is open on this pick. `refusal` is the card's answer to a "compact, then switch"
+   * press whose compaction could not be started: the card stays open on the same pick (nothing
+   * was switched), and the sentence says why under its own question.
+   */
+  | { phase: "ask"; level: string; refusal?: string }
   /** A compaction was started; the pick lands when it settles (see compactionSettledSince). */
-  | { phase: "compacting"; level: string; baseline: CompactionTally }
-  /** The compaction never started (the server refused it): release the pick on the next pass. */
-  | { phase: "settle"; level: string };
+  | { phase: "compacting"; level: string; baseline: CompactionTally };
 
 /**
  * Whether a compaction has finished since the tally was taken, and how it ended:
@@ -285,19 +287,19 @@ export function compactionSettledSince(
  *   compaction ended**: a failed one only means the context was not rewritten (so the
  *   switch does cost cache hits), never that the user's choice is dropped.
  *   - `"compacted"`: the compaction completed, the cheap path worked out;
- *   - `"compaction-failed"`: it ended without completing — say so alongside the switch;
- *   - `"none"`: it never started (the server refused it and already said why).
+ *   - `"compaction-failed"`: it ended without completing — say so alongside the switch.
+ *
+ * A compaction that never STARTS is not on this path at all: the card keeps its question open
+ * with the reason under it (StagedThinkingSwitch's `ask.refusal`), because nothing was done yet.
  */
 export type HeldThinkingSwitch =
-  | { act: "wait" }
-  | { act: "apply"; level: string; notice: "compacted" | "compaction-failed" | "none" };
+  { act: "wait" } | { act: "apply"; level: string; notice: "compacted" | "compaction-failed" };
 
 export function heldThinkingSwitch(
   staged: StagedThinkingSwitch,
   items: ReadonlyArray<ThinkingSwitchItem>,
 ): HeldThinkingSwitch {
   if (staged.phase === "ask") return { act: "wait" };
-  if (staged.phase === "settle") return { act: "apply", level: staged.level, notice: "none" };
   const outcome = compactionSettledSince(items, staged.baseline);
   if (outcome === "pending") return { act: "wait" };
   return {

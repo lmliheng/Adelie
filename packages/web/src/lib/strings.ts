@@ -3462,6 +3462,9 @@ export const zh = {
     thinkingSwitchApplied: (to: string): string => `上下文已压缩，思考等级已切换为「${to}」。`,
     /** Compaction ended without completing — the switch still applies, so say both. */
     thinkingSwitchCompactFailed: "压缩未成功完成，思考等级已照常切换。",
+    /** The card's answer when "compact, then switch" could not start its compaction: nothing was compacted, so nothing was switched either — name the level still in force, then the reason. */
+    thinkingSwitchCompactRefused: (still: string, reason: string): string =>
+      `没能先压缩上下文，思考等级仍是「${still}」：${reason}`,
     /** In-conversation model switch (the session toolbar's model picker). Title is the confirm dialog's accessible name only. Unlike the thinking level there is no separate "switch anyway" button: a switch always compacts on the current model first, and a failed compaction keeps it — the opt-in box below is the one exception, and only where a compaction really runs. */
     modelSwitchInSessionTitle: "切换模型",
     modelSwitchInSessionConfirm: "压缩并切换",

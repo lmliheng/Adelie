@@ -16,9 +16,14 @@
  * Which words: `refusalText`, the rule every refusal slot in the app follows (7.19) — an answer
  * the server gave is read through its code's own localized sentence, and a value this codebase
  * raised itself is shown as it wrote it.
+ *
+ * The second builder here is the same rule one surface over: the mid-chat switch card's own
+ * "compact, then switch" press (compactBeforeSwitchRefused), whose card is the host because it is
+ * the thing that asked.
  */
 import { refusalText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
+import { sendRefusalReason } from "./first-send-refusal";
 
 /**
  * The line the composer draws above the card after a refused level change.
@@ -29,4 +34,18 @@ import { S } from "../../lib/strings";
  */
 export function thinkingLevelRefused(error: unknown, forAgent = false): string {
   return S.chat.thinkingLevelRefused(refusalText(error), forAgent);
+}
+
+/**
+ * The line the switch card draws when its recommended "compact, then switch" could not start the
+ * compaction.
+ *
+ * That press asks for two things and only the first one failed: nothing was compacted and nothing
+ * was switched, so the card keeps its question open on the same pick (see compactThenThinkingSwitch)
+ * and this sentence says both facts — the reason, and the level that is still in force — next to
+ * the "switch anyway" button that now decides it. The reason is read the same way `/compact`'s is
+ * (`sendRefusalReason`), so the same refusals say the same words on both surfaces.
+ */
+export function compactBeforeSwitchRefused(level: string, error: unknown): string {
+  return S.chat.thinkingSwitchCompactRefused(level, sendRefusalReason(error));
 }
