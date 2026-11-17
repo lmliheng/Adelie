@@ -146,7 +146,7 @@ export function SendButton({
 export interface SlashMenuItem {
   /** The command as typed, `/compact`. */
   command: string;
-  /** What it does; a long one truncates, whole in its tooltip. */
+  /** What it does; a long one takes a second line, and is whole in its tooltip. */
   description: string;
 }
 
@@ -154,6 +154,13 @@ export interface SlashMenuItem {
  * The slash list, opening upward from the composer's top edge. Its height is the caller's
  * measure of the room above (`maxHeight`), and the list scrolls inside it, so a long list never
  * runs off the top; the highlighted row keeps itself in view as the keyboard walks it.
+ *
+ * A row is the command in the mono face with what it does after it. Two widths keep that
+ * readable, because these descriptions are sentences while other menus' details are a few
+ * words: the panel is wider than a picker's, and the description takes a second line before it
+ * ellipsizes (the few still cut off show whole in their tooltip). The command gives way only if
+ * it is longer than the row — a user's own skill may be named anything — and never silently:
+ * a truncated one keeps its whole text in the DOM and comes back in the hover panel.
  */
 export function SlashMenu({
   items,
@@ -174,7 +181,7 @@ export function SlashMenu({
   return (
     <div
       style={{ maxHeight }}
-      className={`ui-glass ${menuPanelClass} absolute bottom-full left-0 z-40 mb-1.5 w-80 max-w-[calc(100vw-2rem)] overscroll-contain`}
+      className={`ui-glass ${menuPanelClass} absolute bottom-full left-0 z-40 mb-1.5 w-[26rem] max-w-[calc(100vw-2rem)] overscroll-contain`}
     >
       {items.map((item, i) => (
         <button
@@ -187,11 +194,11 @@ export function SlashMenu({
             i === active ? "bg-line-muted" : ""
           }`}
         >
-          <span className="shrink-0 font-mono text-fg">{item.command}</span>
+          <span className="max-w-[60%] shrink-0 truncate font-mono text-fg">{item.command}</span>
           <span
             data-tooltip={item.description}
             data-tooltip-content="text"
-            className="min-w-0 flex-1 truncate text-xs text-fg-muted"
+            className="line-clamp-2 min-w-0 flex-1 break-words text-xs leading-snug text-fg-muted"
           >
             {item.description}
           </span>

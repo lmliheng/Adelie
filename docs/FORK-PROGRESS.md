@@ -28721,3 +28721,27 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔 **`ae9cabcf9`**（11 个文件：源码 5、单测 1、spec 1、文档 2、changelog 2）。
 - 台账（条目 7.146、上表那一行、本节）随本文件另起一笔。
+
+## 第二百五十一轮（续）：输入框里 `/` 命令菜单的长说明不再被截掉（2026-11-15）
+
+（接在本轮后面，记在文件末尾，因为轮次编号在那之后由另一条线接着用了。）
+
+用户点单：「这里指令过长会怎么样，尝试优化」——指的是输入框打 `/` 弹出的命令与技能列表。
+
+- **先量，再改**：真浏览器里量出面板只有 **320px**，24 条命令里 **16 条**的说明被截
+  （`clientWidth/scrollWidth` 有 `174/228`、`118/395`、`110/261` 这种）；长名字更糟，
+  `/penguin-orchestration` 自己就占 176px，说明只剩 110px。被截的说明要靠悬停看全，而悬停浮层
+  正好压住下面几行候选 —— 挑起来反而更难。
+- **改动**（`packages/ui/src/components/chat/composer/composer.tsx`）：面板 `w-80` → `w-[26rem]`；
+  说明 `truncate` → `line-clamp-2 break-words leading-snug`；命令那一格加 `max-w-[60%]`（技能名字由
+  用户起，理论上可以长过整行，超了让命令自己省略，而不是把说明挤没）。
+- **改后再量**：24 行全部 `clientWidth === scrollWidth`、`scrollHeight === clientHeight`（两行内排完），
+  悬停 `/agent-initialization` 不再弹出浮层。用例改在 `packages/ui/test/composer.test.ts`
+  （面板宽度 / 两行截断 / 命令上限三项）。
+- **为什么是这个取舍**：这些说明是句子（别的菜单的 detail 只有几个词），截到半句等于没写；换行比
+  依赖浮层更直接。没有做左右对齐的网格 —— 量过：若把命令列固定成最宽那条（176px），说明一栏降到
+  208px，凭 `scrollWidth ≈ 420` 的 `/model` 那条会重新被截。
+- 只动前端（ui 的样式类）→ 按现网增量的口径换 `/root/.adelie/web`（旧前端留底
+  `/root/adelie-live-backup-20261115-1945-web`，新入口 `index-KpKmrzbd.js`），不重启。
+  changelog 一对：`2026-11-15-slash-menu-roomier.{md,zh.md}`。量测脚本与截图在
+  scratchpad 的 `slash-menu/`（`run.sh` + `slash.spec.mjs`，用现网那份程序目录起临时实例）。

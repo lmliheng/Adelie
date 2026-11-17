@@ -125,12 +125,22 @@ describe("SlashMenu", () => {
       expect.arrayContaining(["ui-glass", "absolute", "bottom-full", "overscroll-contain"]),
     );
     expect(menu).toContain("max-height:200px");
+    // Wider than a picker's panel: these descriptions are sentences, and the row has to hold one.
+    expect(classTokens(menu)).toContain("w-[26rem]");
   });
 
-  it("lists each command in the mono face, what it does truncating after it", () => {
+  it("lists each command in the mono face, what it does on a second line before it ellipsizes", () => {
     expect(menu).toContain(">/compact</span>");
     expect(menu).toContain('data-tooltip="Compress the context"');
-    expect(classTokens(menu)).toEqual(expect.arrayContaining(["font-mono", "truncate"]));
+    expect(classTokens(menu)).toEqual(expect.arrayContaining(["font-mono", "line-clamp-2"]));
+  });
+
+  it("lets a command longer than its half of the row give way, never the description", () => {
+    // The command is what the reader types, so it shrinks last and says so with an ellipsis —
+    // its whole text stays in the DOM and comes back in the hover panel.
+    expect(classTokens(menu)).toEqual(
+      expect.arrayContaining(["max-w-[60%]", "shrink-0", "truncate"]),
+    );
   });
 
   it("highlights the keyboard's row alone", () => {
