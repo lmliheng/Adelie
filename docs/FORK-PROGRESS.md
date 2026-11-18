@@ -2802,6 +2802,19 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       通知都没有。现在原因写在那个输入框上方，用面板自己的说法点名是哪一个运行还在继续，跟着这次运行同生
       共死（子会话回到空闲就收走）；404 一个字都不说（那是父会话不在了），路由的 204 也不是拒绝。见
       「第二百六十七轮」一节。
+- [x] **7.148 换布局不再丢掉子 Agent 面板里没发出的字与那几句原因**（**2026-11-18 第二百六十八轮**落地，
+      提交见「已完成的轮次」；`packages/web` 3 个文件 —— 新增纯逻辑 `subagent-composer-keep.ts`
+      （按**子会话**记的模块级记录 `draft` / `send` / `stop` / `level` / `pinnedLevel`，两个函数读写，
+      记录为空就整条删掉），`subagents-view.tsx` 的 `SubagentComposer` 把四处局部状态收成一份记录、所有
+      写入走同一个 `remember()`（先写存储再落状态，不等 effect），输入框接上 `useSessionDraft(childSessionId)`
+      的 `initialText` / `onTextChange` / `initialSkills` / `onSkillsChange`、`initialText` 先读记录再退回
+      缓存、发送或转述成功后两边一起清）＋ 新单测 `test/subagent-composer-keep.test.ts`（7 条）＋ 1 个新 spec
+      `e2e/subagent-composer-across-layout.spec.mjs`（2 条）＋ 文档 `chat.zh/en.md` 各一句 ＋ changelog 一对，
+      **不碰接口、无新依赖**）：第二百六十七轮末尾「没做 / 留着」点名的那一处 —— 智能体面板是一块停靠面板，
+      窗口跨过断点（右侧栏 ↔ 窄屏合并面）时它会换一个挂载点，原来那份被卸载，输入框自己状态里的一切都跟着
+      没了：打到一半的字、刚说明完「这次停止没成功」的那句话，跨一次断点就都不见了，再跨回来也不回来，而子
+      会话自始至终还在跑。现在草稿（按会话缓存，刷新也找得回）、两句拒绝原因、以及钉住的思考等级都还在，
+      理由与边界见「第二百六十八轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3560,6 +3573,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-17 | 7.145 | **API 标签页「试一试」的停止被拒时，原因留在仍是重试的那颗按钮下面**（**2026-11-17 第二百六十五轮**落地；`packages/web` 4 个文件 —— `features/agents/api-try-log.ts` 的 `TryState` 多一个 `stopRefusal`、新动作 `stopRefused`（`start` 与 `ended` 时清掉）、导出的 `stopFailed(err)`（404 → `null` —— 会话没了，运行也随之结束；其余 → 句子，走共用的 `refusalText` 与新增文案），`api-try-panel.tsx` 的句子画在输入行那排按钮下面（`role="alert"`、`data-testid="api-try-stop-refusal"`、危险色、两行封顶、整句挂悬停），`onStop` 的 `catch` 不再 `toastError`、改成派发那个动作，两本词典各加 `agent.apiTryStopRefused(reason)`）＋ 单测 `api-try-log.test.ts` 加 2 条 ＋ 新 spec `e2e/api-try-stop-refusal.spec.mjs`（2 条）＋ 文档 `agent-api.zh.md` / `agent-api.en.md` 的「试一试」一段 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百六十四轮末尾「没做 / 留着」点名的那一处 —— 试一试里按**停止**是一个 POST（`/api/sessions/:id/abort`），外面那句 `catch` 只把失败弹成一条**六秒后自己消失**的通知，而面板与按之前一模一样：运行照旧、停止按钮还在原处。现在原因写在那颗按钮下面（运行仍在继续，按钮留着就是重试），留到事件流结束或下一次运行；404 不说话 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 **`src/ifaces.json unchanged`**，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/...` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（改动的 6 个代码 / 测试 / spec 文件；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1113** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **339 文件 / 3863 通过 / 2 跳过**（基线 3861，**+2 即本笔**）· `@adelie/docs` **8 文件 / 62 通过**（满载并行时 ui 的 `token-contract` 扫描一条撞 30 s 超时、web 一条同因，单独复跑都全绿 —— 该扫描单独跑本身要 20.4 s）· **新 spec 2 passed（7.8 s + 4.1 s）**（真服务端 9646 / 9648 + 仓库自带 mock 模型 9647 / 9649 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r265-run{,2}`；mock 的 `slow text test` 让运行一直跑着）：① `POST …/abort` 拒成 500 `internal`（带英文原文）→ 句子逐字「没能停下这次运行，它仍在继续：服务器内部错误，请稍后重试。」、`role=alert`、不含线上英文、**停止仍可点**、通知区 0 个按钮、**四秒后仍在**，放开桩后按同一颗按钮 → 句子消失、`run.done` 行是 `aborted`；② 404 → 一句都不说、通知区 0 个按钮、停止还在 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：4 份源码 `git checkout HEAD --`（改后留底 `r265/after/`）重建 web（改前产物里 `api-try-stop-refusal` **0 个文件**）挂到 `/root/adelie-fork-data/r265-before` 的 9650 → **2 failed**（第①条死在 `getByTestId('api-try-stop-refusal')` 的 `toBeVisible`：`element(s) not found`；第②条死在通知区还有 **1** 个按钮 —— 改前 404 也弹通知）；放回重建后 **2 passed**，与相邻 `api-try-approval-refusal.spec.mjs` 同服务连跑 **4 passed（23.2 s）** · **两态探针**（`r265/probe.cjs`，同一脚本、两条腿各挂自己的产物（改后 9654 / 9655 与 9658 / 9659、改前 9656 / 9657），量 1.2 s / 7.6 s）：**改后** 两刻都是 `refusalCount 1`、句子逐字如上、**`sentenceBelowStop: true`**、停止按钮可见且可点、通知区 0 个按钮、`doneRows 0`（运行仍在跑）；**改前** 两刻都是 `refusalCount 0`，而 **1.2 s 时通知区 1 个按钮（「服务器内部错误，请稍后重试。」）、7.6 s 时 0** —— 正是那条会自己消失的通知。截图 `r265/shots/{after2,before3}-{1_2s,7_6s}.png` 肉眼看过（改后：红字压在停止按钮下面；改前：顶部一条通知、按钮下面空白）；两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · 端口只用 9646–9659（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r265-*`，探针 / 截图 / 两态产物 / 临时服务脚本都在 scratchpad 的 `r265/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `41a29db71` |
 | 2026-11-17 | 7.146 | **会话里的停止被拒时，原因留在输入卡上方**（**2026-11-17 第二百六十六轮**落地；`packages/web` 5 个文件 —— `features/chat/message-send-refusal.ts` 新增 `stopRefusalLine(sessionId, err)`（404 → `null`，其余 → 句子，走共用的 `refusalText` 与新增词典键），`features/chat/chat-page.tsx` 的 `stopRefusal` 单独一格、`stream.taskState` 回到 `idle` 时清掉、`onStop` 不再 `.catch(() => undefined)` 而是把原因写进这一格、渲染时按 Session 归属传给输入卡，`features/chat/chat-input.tsx` 多一个 `stopRefusal` 属性（`role="alert"`、`data-testid="stop-refusal"`、危险色、两行封顶、整句挂悬停，画在拒绝的发送那一条旁边），两本词典各加 `chat.stopRefused(reason)`）＋ 单测 `test/message-send-refusal.test.ts` 加 6 条 ＋ 新 spec `e2e/chat-stop-refusal.spec.mjs`（2 条）＋ 文档 `chat.zh.md` / `chat.en.md` 的「Task 运行期间」各一句 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百六十五轮末尾「没做 / 留着」点名的那一处 —— 会话输入卡上的**停止**是一个 POST（`/api/sessions/:id/abort`），外面那句 `.catch(() => undefined)` 把失败整个吞掉，而这里连一条会自己消失的通知都没有：服务器出错时输入卡与按之前一模一样（同一颗停止按钮、运行照旧在写），屏幕上没有一个字，读者分不出是点击丢了还是这次运行收不下来。现在原因写在输入卡上方那一条拒绝的发送已经占用的位置，说的是按钮画不出来的那句话（没有停下、运行仍在继续、同一颗按钮就是重试），并跟这次运行同生共死（`taskState` 一回到 `idle` 就收走，不靠计时器）；404 一个字都不说（会话没了，运行也随之结束），路由的 204 本来就不是拒绝（已经没有可中止的运行） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；`--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑，与第二百六十五轮同）· `oxlint` 6 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（单测文件首跑 `--write` 一次，复检通过；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1113** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **339 文件 / 3869 通过 / 2 跳过**（基线 3863，**+6 即本笔**）· `@adelie/docs` **8 / 62** · **新 spec 2 passed（7.3 s + 3.2 s）**（真服务端 9651 + 仓库自带 mock 模型 8961 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r266-after`；mock 的 `background move test` 是前台 `sleep 45`，整场运行都在跑）：① `POST …/abort` 拒成 500 `internal`（带英文原文）→ 句子逐字「没能停下这次运行，它仍在继续：服务器内部错误，请稍后重试。」、在输入卡上方、`role=alert`、不含线上英文、**停止仍可见**、通知区 0 个按钮、**四秒后仍在**、且没有占用 `send-refusal` 那一格，放开桩后按同一颗按钮 → 停止消失、句子随 Session 回到空闲一起收走；② 404 `session_not_found` → 一个字都不说（`stop-refusal` 与 `send-refusal` 各 0）、通知区 0 个按钮、停止仍在原处 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：5 份源码 `git checkout HEAD --`（改后留底 scratchpad `after-src/`）重建 web 挂到 `/root/adelie-fork-data/r266-before` 的 9653 → **1 failed / 1 passed**（第①条死在 `getByTestId('stop-refusal')` 的 `toBeVisible`：`element(s) not found`；第②条本来就断言「什么都没画」，两态都成立）；放回重建后 9655 与 9659 各复跑一次 **2 passed** · **相邻回归（真浏览器）**：`chat.spec.mjs` 1 + `compact-abort.spec.mjs` 2 **3 passed（22.8 s）**（两条都在按**停止**：成功那次按钮消失、`/compact` 的 409 句子仍在 `send-refusal` 那一格） · **两态探针**（`probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9657 / 8967、改前 9658 / 8968）：**改后** `found: true`、句子逐字如上、`role=alert`、红字在输入卡正上方（y 754，卡顶 774，宽 768×16）、停止按钮在卡内右下（1125,847，32×32）、`overflowX false`；**改前** `found: false`、`text null`，只有上下文窗口那条黄提示，停止按钮照旧 —— 屏幕上关于这一按一个字都没有。窄屏 390×844：句子 366×16 单行、`overflowX false`、停止按钮仍在。截图 `shots-after/{after-1280,after-390}.png` 与 `shots-before/after-1280.png` 肉眼看过；两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · 端口只用 8961–8971 / 9651–9661（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r266-*`，探针 / 两态产物 / 截图 / 临时 playwright 配置 / 起服务脚本都在 scratchpad 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `ae9cabcf9` |
 | 2026-11-18 | 7.147 | **子 Agent 面板里的停止被拒时，原因留在那个输入框上方**（**2026-11-18 第二百六十七轮**落地；`packages/web` 4 个文件 —— `features/chat/subagent-send-refusal.ts` 新增 `subagentStopRefused(err)`（返回 `string | null`，404 → `null`、其余走共用的 `refusalText` 与新增文案，模块头注释扩成覆盖落在这个输入框上的两种按压），`features/chat/subagents-view.tsx` 的 `SubagentComposer` 多一格 `stopRefusal`（子会话回到空闲时清掉，下一次按压也清掉）、`onStop` 不再 `catch(() => undefined)` 而是把原因写进这一格，句子画在输入框上方、拒绝的发送旁边（`role="alert"`、`data-testid="subagent-stop-refusal"`、危险色），两本词典各加 `subagentPanel.stopRefused(reason)`）＋ 单测 `test/subagent-send-refusal.test.ts` 加 5 条 ＋ 1 个新 spec `e2e/subagent-stop-refusal.spec.mjs`（2 条）＋ `e2e/mock-llm.mjs` 新增「slow subagent test」触发词（派下去的子会话自己那一轮跑前台 `sleep 45`，让面板的停止有东西可按）＋ 文档 `chat.zh.md` / `chat.en.md` 讲子 Agent 的那一条各补一句 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百六十六轮末尾「没做 / 留着」点名的那一处 —— 面板里按**停止**走的是 `abortSubagent(...).catch(() => undefined)`，失败整个被吞掉，服务器出错时面板与按之前一模一样（子会话照旧在跑、同一颗停止按钮），连一条会自己消失的通知都没有。现在原因写在那里，用面板自己的说法点名是哪一个运行还在继续，并跟这次运行同生共死；404 一个字都不说（父会话不在了），204 也不是拒绝。见「第二百六十七轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 7 个文件 **0 警告 0 错误** · `prettier --check` 干净（单测与 mock 首跑不过，`--write` 后复检全绿；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过**· ui **133 / 1114**（台账上一笔记的 1113，+1 来自 0.6.10 那批提交，本笔没动 ui）· cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过**· web **339 文件 / 3877 通过 / 2 跳过**（基线 3872，**+5 即本笔新单测**）· `@adelie/docs` **8 / 62** · **新 spec 2 passed（7.7 s + 3.7 s）**（真服务端 9674 + 仓库自带 mock 模型 9675 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r267-final`；子会话由 mock 新增的「slow subagent test」派出，自己那一轮是前台 `sleep 45`，整场运行都在跑）：① 把 `POST …/subagents/:child/abort` 拒成 500 `internal`（带英文原文）→ 句子逐字「没能停下这个子会话的这次运行，它仍在继续：服务器内部错误，请稍后重试。」、`role=alert`、不含线上英文、**停止仍在**、通知区 0 个按钮、**四秒后仍在**、`stop-refusal` / `send-refusal` / `subagent-send-refusal` 三格都是 0，放开桩后按同一颗按钮 → 停止消失、句子随运行回到空闲一起收走；② 404 `session_not_found` → 一个字都不说、通知区 0 个按钮、停止仍在 · **反证（同一份 spec，改前源码 + 改前 web 产物）**：4 份源码退回 `HEAD`（改后留底 scratchpad `r267/after-src/`）重建 web 挂到 `/root/adelie-fork-data/r267-before` 的 9662 → **1 failed / 1 passed**（第①条死在 `getByTestId('subagent-stop-refusal')` 的 `toBeVisible`：`element(s) not found`；第②条本来就断言「什么都没画」，两态都成立）；放回重建后**与改后产物逐字节相同**（`diff -rq`）· **两态探针**（`r267/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9664 / 9665、改前 9666 / 9667，量 1.2 s 与 7.6 s）：**改后** 两刻都是 `sentenceFound true`、句子逐字如上、`role=alert`、**在子会话输入框正上方**（句子 y 736–770，输入框顶 787）、停止按钮仍在（1229,851，32×32）、通知区 0 个按钮、`overflowX false`；**改前** 两刻都是 `sentenceFound false`，停止按钮照旧 —— 屏幕上关于这一按一个字都没有；390 宽度整场重跑：句子 374×50、在输入框上方、`overflowX false`。截图 `r267/shots/{after,before}-{1280-1_2s,1280-7_6s}.png` 与 `after-390-initial.png` 肉眼看过；两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · **相邻回归（真浏览器）**：`subagent.spec.mjs` 4 + `chat-stop-refusal.spec.mjs` 2 + `api-try-stop-refusal.spec.mjs` 2 **8 passed（46.4 s）** · 端口只用 9660–9675（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r267-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r267/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
+| 2026-11-18 | 7.148 | **换布局不再丢掉子 Agent 面板里没发出的字与那几句原因**（**2026-11-18 第二百六十八轮**落地；`packages/web` 3 个文件 —— 新增 `features/chat/subagent-composer-keep.ts`（按子会话记的模块级记录 `draft` / `send` / `stop` / `level` / `pinnedLevel`，`readSubagentComposerKeep` / `writeSubagentComposerKeep`，空记录整条删掉、`saysSomething` 判空），`features/chat/subagents-view.tsx` 的 `SubagentComposer` 把 `turnLevel` / `levelRefusal` / `sendRefusal` / `stopRefusal` 收成一份 `keep`、所有写入走同一个 `remember()`（先写存储再 `setKeep`，不等 effect）、输入框接上 `useSessionDraft(childSessionId)` 的 `initialText` / `onTextChange` / `initialSkills` / `onSkillsChange`，`initialText` 先读记录里的字再退回缓存，发送 / 转述成功后 `draft.discard()` 与 `remember({draft:""})` 一起清）＋ 新单测 `test/subagent-composer-keep.test.ts`（7 条）＋ 1 个新 spec `e2e/subagent-composer-across-layout.spec.mjs`（2 条，读的是 `[data-testid="dock"]:visible` 那一块）＋ 文档 `chat.zh.md` / `chat.en.md` 讲子 Agent 的那一条各一句 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百六十七轮末尾「没做 / 留着」点名的那一处 —— 停靠面板跨断点换挂载点，输入框状态整份重建，打到一半的字与那两句拒绝一起消失（上一轮探针 `draftKept false` 就是它的痕迹）。现在草稿 + 两句拒绝 + 钉住的等级都活着，`draft` 那一格另写一份的理由：草稿缓存有 300 ms 去抖、卸载时才补写，而补写发生在新的那份**已经读过缓存之后**（React 先渲染新子树再清理旧的）。见「第二百六十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 4 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（源码与 spec 首跑不过，`--write` 后复检全绿；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **340 文件 / 3884 通过 / 2 跳过**（基线 339 / 3877，**+1 文件 / +7 用例即本笔**）· `@adelie/docs` **8 / 62** · **新 spec 2 passed（4.2 s + 48.5 s）**（真服务端 9684 + 仓库自带 mock 模型 9685 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r268-after3`；子会话由 mock 的「slow subagent test」派出，自己那一轮是前台 `sleep 45`）：① 把 `POST …/subagents/:child/abort` 拒成 500 → 句子出现，子会话框里打半句「换布局前打的这一段」，缩到 390 → 句子逐字同上、那半句仍在，回 1280 → 仍在、通知区 0 个按钮，随后清空框（空框才把**停止**换回来）、放过中止 → 句子随运行回到空闲一起收走；② 把子会话消息 POST 拒成 500 → 原因写在框上方，跨过去/跨回来都在、草稿一个字没少，主卡 `send-refusal` / `stop-refusal` 两格都没被占用 · **反证（同一份 spec，改前源码 + 改前产物）**：源码 `git checkout HEAD -- subagents-view.tsx`、模块移出树、重建 web 挂到 `/root/adelie-fork-data/r268-before` 的 9686 → **2 failed / 0 passed**（① 390 上 `subagent-stop-refusal` 找不到，② 390 上连 `subagent-send-refusal` 都找不到，90 秒超时）；放回重建后**与改后产物逐字节相同**（`diff -rq`）· **两态探针**（`r268/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9688 / 9689、改前 9690 / 9691）：**改后** 三刻（1280 / 390 / 回 1280）都是 `sentenceFound true`、句子逐字「没能停下这个子会话的这次运行，它仍在继续：服务器内部错误，请稍后重试。」、`role=alert`、在子会话输入框正上方（390：句子 y 710 w 374×50、框 y 777；回 1280：句子 y 736、框 y 787）、`boxValue` 三刻都是「换布局前打的这一段」、`overflowX false`；**改前** 1280 有句子与草稿，390 与回 1280 **两者皆空**（`sentenceFound false`、`boxValue ""`）。截图 `r268/shots/{after-1280-refused-and-draft,after-390-after-resize,after-1280-back,before-…}.png` 肉眼看过；两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · **相邻回归（真浏览器，一个进程跑 5 份 spec）**：`subagent-composer-across-layout` 2 + `subagent-send-refusal` 1 + `subagent-thinking-refusal` 1 + `subagent-stop-refusal` 2 + `subagent.spec.mjs` 4（含「survives reloads」与草稿流那两条）**10 passed（1.8 m）** · 端口只用 9680–9693（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r268-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r268/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `28903349b` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -28808,6 +28822,77 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔 **`5f2e6a569`**（11 个文件：源码 4、单测 1、spec 1、mock 1、文档 2、changelog 2）。
 - 台账（条目 7.147、上表那一行、本节）随本文件另起一笔。
+
+## 第二百六十八轮：换布局不再丢掉子 Agent 面板里没发出的字与那几句原因（2026-11-18，条目 7.148）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.6 / 5.10（桌面壳一侧与既有部署
+单元、拍板、模型 key、明令不动、要把促销搬进项目配置才能做的 core 一半、要新依赖 `mermaid` 的 A2UI）——
+全都停在同一批前置上。第 7 节到 7.147 已全勾，可做的是第二百六十七轮末尾「没做 / 留着」点名的那一处：
+**换布局（桌面右侧栏 ↔ 窄屏合并面）把这句连同这个输入框里的一切一起丢掉**，上一轮探针量到的
+`draftKept: false` 就是它的痕迹。
+
+先把它读清楚：面板是一块停靠面板，窗口跨过断点时 `dockViews()` 把这块面板从右侧挪到下方合并面，两个挂载点
+各渲染一个 `DockPanel` —— 原来那份被卸载，新的一份从零开始挂载，所以 `SubagentComposer` 里的 `sendRefusal`、
+`stopRefusal`、`levelRefusal`、`turnLevel` 与输入框自身的文字一个都留不下。而屏幕上那几句仍然成立：子会话还
+在跑、停止按钮还在、草稿还在框里。
+
+### 做了什么
+
+- `packages/web/src/features/chat/subagent-composer-keep.ts`（新）：按**子会话**记的模块级记录
+  （`draft` / `send` / `stop` / `level` / `pinnedLevel`），`readSubagentComposerKeep` /
+  `writeSubagentComposerKeep`；记录里一样东西都没有时整条删掉（逛过多少个子会话也只留有话可说的那几个）。
+  模块状态而不是存储：这几句话说的都是还活着的这一按，随标签页一起消失（同 `chat-input.tsx` 的
+  `dismissedWindowNotices`）。放在 chat page 之外的另一个理由写进模块头：面板体是唯一的写者也是唯一的读者，
+  抬到页面上反而要把一份按子会话记的东西穿过停靠栏上下文。
+- `draft` 这一格不是重复：会话草稿缓存（`use-session-draft.ts`）有 300 ms 去抖、在卸载时才补写，而补写发生在
+  替换上来的那份**已经读过缓存之后** —— 第一版只接缓存，真浏览器里「打完字立刻缩窗口」那半句照样丢；这一格
+  改成每次编辑立刻写，`initialText` 先读它、再退回缓存。
+- `packages/web/src/features/chat/subagents-view.tsx`：四处局部状态收成一份 `keep`，所有写入走同一个
+  `remember()`（先写存储再 `setKeep`，不等 effect —— 否则又落回「新挂载读的时候还没写进去」的老问题）；
+  输入框接上 `useSessionDraft(childSessionId)` 的 `initialText` / `onTextChange` / `initialSkills` /
+  `onSkillsChange`；发送或转述成功后草稿缓存与记录里的字一起清（发送成功的那次清空不会回调，不主动清就会在
+  下次重挂载里复活）。
+- 文档 `chat.zh.md` / `chat.en.md` 讲子 Agent 的那一条各补一句；changelog 一对
+  （`2026-11-18-subagent-composer-across-layout.{md,zh.md}`）。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）。
+  任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑。
+- `oxlint` 4 个改动文件 0 警告 0 错误；`prettier --check` 干净（源码与 spec 首跑不过，`--write` 后复检通过；
+  `*.md` 不在 prettier 范围）；`git diff --check` 干净。
+- 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3141**
+  （6 跳过）· web 340 / **3884**（2 跳过；基线 339 / 3877，**+1 文件 / +7 用例即本笔**）· docs 8 / **62**。
+- **真浏览器两态（主证据）**：`packages/web/e2e/subagent-composer-across-layout.spec.mjs` 2 passed（真服务端
+  9684 + 仓库自带 mock 模型 9685 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r268-after3`）。
+  反证用同一份 spec 跑**改前源码 + 改前产物**（`r268/before-dist`，9686）：**2 failed / 0 passed** —— ①在 390
+  上 `subagent-stop-refusal` 已经找不到，②在 390 上连 `subagent-send-refusal` 都找不到（90 秒超时）；放回重建
+  后**与上面那份产物逐字节相同**（`diff -rq`）。
+- **两态探针**（`r268/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9688 / 9689、改前 9690 / 9691，量
+  1280 → 390 → 回 1280 三刻）：**改后** 三刻 `sentenceFound true`、句子逐字「没能停下这个子会话的这次运行，它
+  仍在继续：服务器内部错误，请稍后重试。」、`role=alert`、在子会话输入框正上方（390：句子 374×50 在 y 710、
+  框 y 777；回 1280：句子 y 736、框 y 787）、框里的字三刻都是「换布局前打的这一段」、`overflowX false`；
+  **改前** 1280 有句子与草稿，390 与回 1280 **两者皆空**。截图 `r268/shots/{after-1280-refused-and-draft,
+  after-390-after-resize,after-1280-back,before-…}.png` 肉眼看过；两态 console 都只有既有的
+  `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条**。
+- **相邻回归（真浏览器，一个进程跑 5 份 spec）**：`subagent-composer-across-layout` 2 +
+  `subagent-send-refusal` 1 + `subagent-thinking-refusal` 1 + `subagent-stop-refusal` 2 +
+  `subagent.spec.mjs` 4（含「survives reloads」与草稿流那两条）**10 passed（1.8 m）**。
+- 端口只用 9680–9693（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r268-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r268/` 下。
+
+### 没做 / 留着
+
+- **输入框上的「引用 chip」与附件类的东西仍会随重挂载消失**：草稿缓存只收文字与选中的技能，`addReference`
+  推进去的文件 / 目录 / 摘录 chip 不在其中，这一轮没扩它（那是 `draft-cache.ts` 的契约，要另定形状）。
+- **等级钉住之后的「生效值」仍以 `fallbackThinkingLevel` 兜底**：记录里留住了面板自己钉的那个等级，但子会话
+  若在别处被改过等级，面板仍显示它继承到的那个值 —— 那要读子会话自己的 Session 行，属另一件事。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 功能一笔（源码 2、单测 1、spec 1、文档 2、changelog 2）。
+- 台账（条目 7.148、上表那一行、本节）随本文件另起一笔。
 
 ## 第二百五十一轮（续）：输入框里 `/` 命令菜单的长说明不再被截掉（2026-11-15）
 
