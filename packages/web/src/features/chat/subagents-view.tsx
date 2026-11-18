@@ -66,6 +66,11 @@ import type { StreamRenderContext } from "./message-stream";
 import { subagentSendRefused, subagentStopRefused } from "./subagent-send-refusal";
 import { readSubagentComposerKeep, writeSubagentComposerKeep } from "./subagent-composer-keep";
 import type { SubagentComposerKeep } from "./subagent-composer-keep";
+import {
+  readSubagentSelection,
+  restoreSubagentSelection,
+  writeSubagentSelection,
+} from "./subagent-panel-selection";
 import { useSessionDraft } from "./use-session-draft";
 import type { ComposerReference } from "../../lib/workspace-tree";
 
@@ -74,6 +79,13 @@ interface Selection {
   /** ctx.origin chain of the selected conversation (ends with its own session id; empty = the root/main session). */
   origin: string[];
 }
+
+/**
+ * The chip-click jump commands this tab has already applied — one entry per click, weak because
+ * the page's command object is what is remembered and nothing else keeps it alive. See the
+ * focusRequest effect in the body: a remount must not replay a command it already obeyed.
+ */
+const appliedFocus = new WeakSet<Selection>();
 
 export function SubagentsView({
   session,
@@ -119,6 +131,19 @@ export function SubagentsView({
   const { sessions } = useSessions();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Selection | null>(null);
+  // What the reader picked before the last remount: this body is replaced when the layout moves
+  // the panel between docks (subagent-panel-selection.ts), and landing back on the auto-focused
+  // first child instead of the conversation they were reading is a different conversation.
+  const remembered = useMemo(() => readSubagentSelection(session.sessionId), [session.sessionId]);
+  // Every pick goes through here, not through setSelected: the pick is on screen only, so the
+  // record has to be written at the same moment (a later effect could lose the remount race).
+  const pick = useCallback(
+    (next: Selection) => {
+      setSelected(next);
+      writeSubagentSelection(session.sessionId, next);
+    },
+    [session.sessionId],
+  );
   // The selected child's composer, for the stream above it: "Add to conversation" in the
   // child's selection menu stages the excerpt there, in the conversation it was selected in.
   const childComposerRef = useRef<ComposerControl | null>(null);
@@ -127,11 +152,17 @@ export function SubagentsView({
   }, []);
 
   // A chip click focuses that child (fresh-object identity: re-clicking the same chip re-fires).
+  // A command is a press, not a state: this body is remounted when the layout moves the panel
+  // between docks, and the page keeps the last command standing, so without this record the new
+  // mount would replay it and undo whatever the reader picked from the graph in between
+  // (subagent-panel-selection.ts). The page drops its own commands when the tab closes; a layout
+  // move keeps the tab, so "already applied" has to be remembered out here too.
   useEffect(() => {
-    if (focusRequest) {
-      setSelected({ sessionId: focusRequest.sessionId, origin: focusRequest.origin });
+    if (focusRequest !== null && !appliedFocus.has(focusRequest)) {
+      appliedFocus.add(focusRequest);
+      pick({ sessionId: focusRequest.sessionId, origin: focusRequest.origin });
     }
-  }, [focusRequest]);
+  }, [focusRequest, pick]);
 
   // Structural child liveness from the server (session id → running): the topology consults
   // it before its text heuristics, so revived and panel-started rounds read correctly.
@@ -158,10 +189,12 @@ export function SubagentsView({
     [model, version, session.sessionId, taskRunning, taskScope, liveStates],
   );
 
-  // No explicit selection yet: auto-focus the displayed Task's first child (null when none spawned).
+  // No explicit selection yet: what the reader picked before the last remount (only while that
+  // child is still in the displayed Task's graph), then the Task's first child (null = none spawned).
   const firstChild = nodes.find((n) => n.depth > 0) ?? null;
   const active: Selection | null =
     selected ??
+    restoreSubagentSelection(remembered, nodes) ??
     (firstChild ? { sessionId: firstChild.sessionId, origin: firstChild.origin } : null);
 
   const labelFor = (node: TopologyNode): string => {
@@ -222,7 +255,7 @@ export function SubagentsView({
               nodes={nodes}
               selectedId={active?.sessionId ?? null}
               labelFor={labelFor}
-              onSelect={(node) => setSelected({ sessionId: node.sessionId, origin: node.origin })}
+              onSelect={(node) => pick({ sessionId: node.sessionId, origin: node.origin })}
             />
           </div>
         ) : (
