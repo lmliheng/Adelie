@@ -64,6 +64,9 @@ import { AgentTopologyView } from "./agent-topology-view";
 import { MessageStream } from "./message-stream";
 import type { StreamRenderContext } from "./message-stream";
 import { subagentSendRefused, subagentStopRefused } from "./subagent-send-refusal";
+import { readSubagentComposerKeep, writeSubagentComposerKeep } from "./subagent-composer-keep";
+import type { SubagentComposerKeep } from "./subagent-composer-keep";
+import { useSessionDraft } from "./use-session-draft";
 import type { ComposerReference } from "../../lib/workspace-tree";
 
 interface Selection {
@@ -395,27 +398,55 @@ function SubagentComposer({
     };
   }, [projectId, meta?.agentId]);
 
+  /**
+   * Everything this panel has already told the reader about the child, in one record: the text in
+   * the box, the three refusal lines the card draws (a message, a Stop, a thinking pin) and the
+   * level a pin that landed put the child on. Held OUTSIDE the component because this body is
+   * remounted whenever the layout moves it between the desktop right dock and the narrow merged
+   * surface — inside, every one of those went with the remount (subagent-composer-keep.ts).
+   */
+  const [keep, setKeep] = useState<SubagentComposerKeep>(() =>
+    readSubagentComposerKeep(childSessionId),
+  );
+  // Every write goes through here and lands in the store immediately, not in an effect: the text
+  // is written on each edit, and the mount that replaces this one renders before this one's
+  // cleanup runs — a value left for later is a value that remount never sees.
+  const keepRef = useRef(keep);
+  const remember = useCallback(
+    (patch: Partial<SubagentComposerKeep>) => {
+      const next = { ...keepRef.current, ...patch };
+      keepRef.current = next;
+      writeSubagentComposerKeep(childSessionId, next);
+      setKeep(next);
+    },
+    [childSessionId],
+  );
+
+  /**
+   * The unsent draft, staged skills included: the Session's own draft cache, keyed by the child
+   * (this box edits that child's conversation), so the text also survives a reload. Discarded once
+   * a send or a steer lands, which is when it stops being a draft.
+   */
+  const draft = useSessionDraft(childSessionId);
+
   // The level pinned on the child Session from this panel ("" = untouched, the child runs at
   // its own level): mirrors the main composer's per-session pick, scoped to this child —
   // written through PATCH on the child; core applies it from the child's next LLM request.
   // Adopted only once the PATCH has landed, like the main composer (which swaps the returned row
   // in): adopting a pick up front left the picker reading a level the child was never pinned to
   // when the write was refused.
-  const [turnLevel, setTurnLevel] = useState("");
-  /**
-   * A pin the child's PATCH refused. The picker therefore still reads what the child runs at, and
-   * this sentence — drawn above the card, in the composer's thinking-refusal slot — is the only
-   * account of the press (7.95's rule): a toast would be gone after six seconds while the picker
-   * went on showing the old level.
-   */
-  const [levelRefusal, setLevelRefusal] = useState<string | null>(null);
   const pinChildLevel = (level: string): void => {
-    setLevelRefusal(null); // The new attempt answers for itself; the old sentence goes.
+    remember({ level: null }); // The new attempt answers for itself; the old sentence goes.
     void patchSession(childSessionId, {
       thinkingLevel: level as SessionPatchRequest["thinkingLevel"],
-    })
-      .then(() => setTurnLevel(level))
-      .catch((err: unknown) => setLevelRefusal(thinkingLevelRefused(err)));
+    }).then(
+      () => remember({ pinnedLevel: level }),
+      // A refused pin leaves the picker reading what the child runs at, and this sentence — drawn
+      // inside the card, in the composer's thinking-refusal slot — is the only account of the
+      // press (7.95's rule): a toast would be gone after six seconds while the picker went on
+      // showing the old level.
+      (err: unknown) => remember({ level: thinkingLevelRefused(err) }),
+    );
   };
 
   const modelRef = meta ? { provider: meta.provider, modelId: meta.modelId } : null;
@@ -430,9 +461,8 @@ function SubagentComposer({
    * still holds the text (subagent-send-refusal.ts): the retry is that same button, and a toast
    * would have dismissed itself over it after six seconds.
    */
-  const [sendRefusal, setSendRefusal] = useState<string | null>(null);
   const sendFailure = (err: unknown): void => {
-    setSendRefusal(subagentSendRefused(err));
+    remember({ send: subagentSendRefused(err) });
   };
   /**
    * A Stop this panel's route did not take, kept above the same box (subagent-send-refusal.ts):
@@ -440,12 +470,11 @@ function SubagentComposer({
    * with the run — the child going idle clears it — never by a timer, the same rule the chat
    * card follows.
    */
-  const [stopRefusal, setStopRefusal] = useState<string | null>(null);
   useEffect(() => {
     // A run that is over cannot still be going: the sentence outliving it would describe a Stop
     // nobody can press anymore.
-    if (!running) setStopRefusal(null);
-  }, [running]);
+    if (!running && keepRef.current.stop !== null) remember({ stop: null });
+  }, [running, remember]);
 
   return (
     <div className="shrink-0 border-t border-gray-100 px-2 pb-2 pt-2 dark:border-gray-800/60">
@@ -454,7 +483,7 @@ function SubagentComposer({
           or wider, and the composer must line up with the messages above it rather than span
           the surface. A docked panel is narrower than the cap, so there it changes nothing. */}
       <div className="mx-auto max-w-3xl">
-        {sendRefusal !== null && (
+        {keep.send !== null && (
           // Right above the box it belongs to: the draft is still in there, and pressing send
           // again is the whole retry. Cleared by the next attempt (both send and steer), so the
           // line always describes the press that produced it.
@@ -464,10 +493,10 @@ function SubagentComposer({
             data-testid="subagent-send-refusal"
             className="mb-2 rounded-md border px-2.5 py-2 text-xs"
           >
-            <span data-slot="body">{sendRefusal}</span>
+            <span data-slot="body">{keep.send}</span>
           </NoticeStrip>
         )}
-        {stopRefusal !== null && (
+        {keep.stop !== null && (
           // The same strip for the other press that lands here: a Stop the route did not take. The
           // child is still running, so the button inside the box below is still 停止 and pressing
           // it again is the retry; the line says what the button cannot (nothing was stopped).
@@ -477,13 +506,24 @@ function SubagentComposer({
             data-testid="subagent-stop-refusal"
             className="mb-2 rounded-md border px-2.5 py-2 text-xs"
           >
-            <span data-slot="body">{stopRefusal}</span>
+            <span data-slot="body">{keep.stop}</span>
           </NoticeStrip>
         )}
         <ChatInput
           variant="subagent"
           controlRef={controlRef}
           status={running ? "running" : "idle"}
+          /* The draft is the child's, kept outside this component: a layout change remounts the
+             panel, and a half-typed follow-up must be waiting when it comes back. The record is
+             read first — it is the one written on the keystroke — and the Session draft cache is
+             the fallback that also covers a reload. */
+          initialText={keep.draft !== "" ? keep.draft : (draft.initial.text ?? "")}
+          onTextChange={(text: string) => {
+            draft.onTextChange(text); // The reload-survival cache (debounced)
+            remember({ draft: text }); // …and the record the next mount reads, right now
+          }}
+          initialSkills={draft.initial.skills ?? []}
+          onSkillsChange={draft.onSkillsChange}
           onSend={async (input: TaskInputPart[]) => {
             const text = input
               .filter((p): p is { type: "text"; text: string } => p.type === "text")
@@ -491,9 +531,13 @@ function SubagentComposer({
               .join("\n\n")
               .trim();
             if (!text) return false;
-            setSendRefusal(null);
+            remember({ send: null });
             try {
               await send(text);
+              // It is no longer a draft: the child's conversation has it. The cache and the record
+              // are cleared together — the clear on send does not call back, so nothing else would.
+              draft.discard();
+              remember({ draft: "" });
               return true;
             } catch (err) {
               sendFailure(err);
@@ -501,9 +545,11 @@ function SubagentComposer({
             }
           }}
           onSteer={async (text: string) => {
-            setSendRefusal(null);
+            remember({ send: null });
             try {
               await send(text);
+              draft.discard();
+              remember({ draft: "" });
               // steered/started/resumed alike: the message reached the child (the race where
               // the round settled mid-send simply started the next one). The queued hint
               // retires when the child's stream shows the delivered input.
@@ -520,21 +566,21 @@ function SubagentComposer({
             // case the card is unchanged and the reason has to be said above it
             // (subagent-send-refusal.ts, `subagentStopRefused`). The route's 204 is not an error:
             // there was no run left to stop, which is the state this press wanted.
-            setStopRefusal(null); // The new attempt answers for itself; the old sentence goes.
+            remember({ stop: null }); // The new attempt answers for itself; the old sentence goes.
             const refusal = await abortSubagent(sessionId, childSessionId).then(
               () => null,
               (err: unknown) => subagentStopRefused(err),
             );
-            if (refusal !== null) setStopRefusal(refusal);
+            if (refusal !== null) remember({ stop: refusal });
           }}
           modelRef={modelRef}
           models={models}
-          // Display: the user's pick for this child, else what the child actually runs at
-          // (spawn-pinned level, else the parent's effective level it inherited). A pick is
-          // PATCHed onto the child Session and applies from its next LLM request.
-          turnThinkingLevel={turnLevel || fallbackThinkingLevel}
+          // Display: the level this panel pinned (kept across a remount), else what the child
+          // actually runs at (spawn-pinned level, else the parent's effective level it inherited).
+          // A pick is PATCHed onto the child Session and applies from its next LLM request.
+          turnThinkingLevel={keep.pinnedLevel || fallbackThinkingLevel}
           onChangeTurnThinkingLevel={pinChildLevel}
-          thinkingRefusal={levelRefusal}
+          thinkingRefusal={keep.level}
           {...(contextWindow !== undefined ? { contextWindow } : {})}
           contextNow={contextNow}
           vision={false}
