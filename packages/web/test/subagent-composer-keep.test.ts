@@ -17,6 +17,7 @@ import {
   writeSubagentComposerKeep,
 } from "../src/features/chat/subagent-composer-keep";
 import type { SubagentComposerKeep } from "../src/features/chat/subagent-composer-keep";
+import type { ComposerReference } from "../src/lib/workspace-tree";
 
 /** A record with every field spoken for — the shape a press leaves behind. */
 const FULL: SubagentComposerKeep = {
@@ -25,6 +26,9 @@ const FULL: SubagentComposerKeep = {
   stop: "没能停下这个子会话的这次运行，它仍在继续：服务器内部错误，请稍后重试。",
   level: "没能钉住这个子会话的思考等级：服务器内部错误，请稍后重试。",
   pinnedLevel: "high",
+  references: [
+    { kind: "excerpt", excerpt: "Slow the TODO count down", text: "> Slow the TODO count down" },
+  ],
 };
 
 describe("subagent composer keep", () => {
@@ -77,5 +81,41 @@ describe("subagent composer keep", () => {
     // the remount (the picker would otherwise fall back to the level the child merely inherited).
     writeSubagentComposerKeep("child-pinned", { ...EMPTY_KEEP, pinnedLevel: "low" });
     expect(readSubagentComposerKeep("child-pinned")).toEqual({ ...EMPTY_KEEP, pinnedLevel: "low" });
+  });
+
+  it("keeps staged reference chips on their own", () => {
+    // The chips were staged by the child's own selection menu and nothing was sent, so a move
+    // between docks must hand them back — they have no draft cache to fall back on, because a
+    // quoted file may have moved on by the time storage is read again (chat-input.tsx).
+    const quote: ComposerReference = {
+      kind: "quote",
+      path: "src/app.ts",
+      text: "```ts\n1 | export const app = 1;\n```",
+      fromLine: 1,
+      toLine: 1,
+    };
+    writeSubagentComposerKeep("child-chips", { ...EMPTY_KEEP, references: [quote] });
+    expect(readSubagentComposerKeep("child-chips")).toEqual({ ...EMPTY_KEEP, references: [quote] });
+  });
+
+  it("keeps each chip list in the order it was staged in", () => {
+    // The chips are read top to bottom above the box, and the message carries them in that order:
+    // a store that reordered them would put the sentences in a different order than the reader
+    // arranged them.
+    const dir: ComposerReference = { kind: "dir", path: "src", text: "@src/" };
+    const file: ComposerReference = { kind: "file", path: "src/app.ts", text: "@src/app.ts" };
+    writeSubagentComposerKeep("child-order", { ...EMPTY_KEEP, references: [dir, file] });
+    expect(readSubagentComposerKeep("child-order").references).toEqual([dir, file]);
+  });
+
+  it("drops the entry once the last chip is gone", () => {
+    // Removing the last chip is the sent clear and the × alike: from then on this child has
+    // nothing staged, and the record must not survive as an empty shell.
+    writeSubagentComposerKeep("child-unchips", {
+      ...EMPTY_KEEP,
+      references: [FULL.references[0]!],
+    });
+    writeSubagentComposerKeep("child-unchips", { ...EMPTY_KEEP, references: [] });
+    expect(readSubagentComposerKeep("child-unchips")).toBe(EMPTY_KEEP);
   });
 });

@@ -648,6 +648,8 @@ export function ChatInput({
   skills,
   initialSkills,
   onSkillsChange,
+  initialReferences,
+  onReferencesChange,
   onHandoff,
   initialText,
   onTextChange,
@@ -895,6 +897,20 @@ export function ChatInput({
   initialSkills?: string[];
   /** Callback when selected skills change (check/prune; the clear after a successful send does not call back, same as onTextChange). */
   onSkillsChange?: (names: string[]) => void;
+  /**
+   * Staged references to start from (read once on mount, like initialSkills): the subagent
+   * panel's mount-crossing record hands back the chips its previous mount had staged
+   * (subagent-composer-keep.ts). Omitted elsewhere — the draft cache deliberately leaves
+   * references out (see the `references` state below).
+   */
+  initialReferences?: ComposerReference[];
+  /**
+   * Callback when the staged references change: added from a surface, removed by a chip's ×, and
+   * cleared after a successful send. The clear DOES call back here, unlike onTextChange: chips
+   * are never written to the draft cache, so the only place a sent quotation could linger is the
+   * caller's own record — left behind, the next remount would stage it again.
+   */
+  onReferencesChange?: (references: ComposerReference[]) => void;
   /** Draft's initial text (restored on mount; paired with onTextChange for draft auto-caching). */
   initialText?: string;
   /**
@@ -995,9 +1011,23 @@ export function ChatInput({
   /**
    * Quotations staged from the Files panel. Held here rather than in the draft cache, exactly
    * like attachments: what they quote is a file on disk that may have moved on by the time a
-   * stale draft is reopened, so they belong to this composer's life and not to the text's.
+   * stale draft is reopened, so they belong to this composer's life and not to the text's. They
+   * still outlive a MOUNT: the subagent panel's body is remounted whenever the layout moves it
+   * between docks, so that surface keeps the chips in its own record across mounts
+   * (subagent-composer-keep.ts) and hands them back as initialReferences.
    */
-  const [references, setReferences] = useState<ComposerReference[]>([]);
+  const [references, setReferences] = useState<ComposerReference[]>(initialReferences ?? []);
+  // Mirror of `references` for the imperative paths (addReference, a chip's ×), which need the
+  // list as it is now rather than as of their last render; every write goes through `stage`.
+  const referencesRef = useRef<ComposerReference[]>(references);
+  const stageReferences = useCallback(
+    (next: ComposerReference[]) => {
+      referencesRef.current = next;
+      setReferences(next);
+      onReferencesChange?.(next);
+    },
+    [onReferencesChange],
+  );
   const [busy, setBusy] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
   // Slash token start where Escape closed the menu: it stays shut for that one token.
@@ -1417,12 +1447,15 @@ export function ChatInput({
     },
     [skills, selectedSkills, onTextChange, onSkillsChange],
   );
-  const addReference = useCallback((reference: ComposerReference) => {
-    setReferences((prev) => [...prev, reference]);
-    // The chip is above the text body, so the caret stays where it was; focus follows the
-    // gesture back to the composer, which is where the sentence about it gets typed.
-    requestAnimationFrame(() => textareaRef.current?.focus());
-  }, []);
+  const addReference = useCallback(
+    (reference: ComposerReference) => {
+      stageReferences([...referencesRef.current, reference]);
+      // The chip is above the text body, so the caret stays where it was; focus follows the
+      // gesture back to the composer, which is where the sentence about it gets typed.
+      requestAnimationFrame(() => textareaRef.current?.focus());
+    },
+    [stageReferences],
+  );
   useImperativeHandle(controlRef, () => ({ fillPrompt, addReference }), [fillPrompt, addReference]);
 
   /** The slash token currently under the caret (kept in a ref so command run() closures always remove the live token). */
@@ -1844,7 +1877,7 @@ export function ChatInput({
         setImages([]);
         setVideos([]);
         setAttachments([]);
-        setReferences([]);
+        stageReferences([]);
         setTarget(null);
         setPendingModel(null);
         setSelectedSkills([]);
@@ -1888,7 +1921,7 @@ export function ChatInput({
           setImages([]);
           setVideos([]);
           setAttachments([]);
-          setReferences([]);
+          stageReferences([]);
         }
       } finally {
         setBusy(false);
@@ -2700,7 +2733,7 @@ export function ChatInput({
                     key={i}
                     reference={reference}
                     onRemove={() => {
-                      setReferences((prev) => prev.filter((_, j) => j !== i));
+                      stageReferences(referencesRef.current.filter((_, j) => j !== i));
                       textareaRef.current?.focus();
                     }}
                   />

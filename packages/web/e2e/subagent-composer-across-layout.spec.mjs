@@ -221,3 +221,61 @@ test("a layout change keeps the draft and the reason a message never reached the
   // And the panel's Stop refusal slot stayed empty: this press was a message, not a Stop.
   expect(await onScreenRefusal(page, "subagent-stop-refusal").count()).toBe(0);
 });
+
+test("a layout change keeps the chips staged above the child's box", async ({ page }) => {
+  await openSession(page, "sublayoutchips");
+  await spawnSlowChild(page);
+  await expect(childStop(page)).toBeVisible({ timeout: 30_000 });
+
+  // The child's own conversation: its prompt is the only user text in it. Selecting a passage
+  // there and taking 添加到对话 stages an excerpt chip in the CHILD's composer (the panel's own
+  // selection menu hands it to that box) — not in the parent's.
+  const EXCERPT = "Slow the TODO count down";
+  const passage = onScreenDock(page).getByText(EXCERPT, { exact: true }).first();
+  await expect(passage).toBeVisible({ timeout: 30_000 });
+  await passage.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  });
+  await passage.click({ button: "right" });
+  const addRow = page.getByRole("menuitem", { name: "添加到对话", exact: true });
+  await expect(addRow).toBeVisible();
+  await addRow.click();
+
+  const chip = () => onScreenDock(page).locator(`span[data-tooltip="${EXCERPT}"]`);
+  await expect(chip()).toBeVisible();
+  // The excerpt is a chip, not text: the draft it belongs to is still empty.
+  expect(await childBox(page).inputValue()).toBe("");
+  // Exactly one chip on the page: the parent's composer, which is mounted the whole time, did
+  // not take this staging — the panel's own selection menu handed it to the child's box.
+  expect(await page.locator(`span[data-tooltip="${EXCERPT}"]`).count()).toBe(1);
+
+  const read = async () => ({
+    chips: await chip().count(),
+    // The chip's × is what unstages it, and it has to be there on both sides too.
+    remove: await onScreenDock(page)
+      .getByRole("button", { name: `移除引用 ${EXCERPT}` })
+      .count(),
+    draft: await childBox(page).inputValue(),
+  });
+  const { narrow, wideAgain } = await acrossLayouts(page, read);
+
+  expect(narrow.chips).toBe(1);
+  expect(narrow.remove).toBe(1);
+  expect(narrow.draft).toBe("");
+  expect(wideAgain.chips).toBe(1);
+  expect(wideAgain.remove).toBe(1);
+
+  // Unstaged with its own ×, it stays gone across the next layout move — the record kept it
+  // only while it was staged.
+  await onScreenDock(page)
+    .getByRole("button", { name: `移除引用 ${EXCERPT}` })
+    .click();
+  await expect(chip()).toHaveCount(0);
+  const after = await acrossLayouts(page, read);
+  expect(after.narrow.chips).toBe(0);
+  expect(after.wideAgain.chips).toBe(0);
+});

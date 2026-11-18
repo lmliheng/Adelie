@@ -17,6 +17,13 @@
  * - The pinned thinking level replaces the fallback, which is what the child INHERITED at spawn.
  *   Once the PATCH has landed, that fallback is no longer what the child runs at, so dropping the
  *   pin would make the picker report a level the panel itself had already changed.
+ * - The staged references (chips above the box: a file, a directory, a quoted range, or an excerpt
+ *   of the child's own conversation, which its selection menu stages there). They are the reader's
+ *   own staging and nothing was sent, so a move between docks must not unstage them. Unlike the
+ *   text they do NOT ride the Session draft cache in either direction (see the `references` state
+ *   in chat-input.tsx: a file quoted ten minutes ago may have moved on, and a chip restored from
+ *   storage would claim a passage the file no longer holds), so this record is the only place
+ *   they survive — for the tab, exactly like the sentences above.
  *
  * Module state, not storage: these describe a live press and belong to the tab that saw it — the
  * same rule `dismissedWindowNotices` in chat-input.tsx follows. Keyed by the CHILD's Session id,
@@ -27,6 +34,8 @@
  * Kept out of the chat page on purpose: the parent page would have to thread a per-child record
  * through the dock context, while the panel body is the only writer and the only reader.
  */
+import type { ComposerReference } from "../../lib/workspace-tree";
+
 export interface SubagentComposerKeep {
   /**
    * The text in the box right now ("" = nothing typed). The Session draft cache holds the same
@@ -44,6 +53,8 @@ export interface SubagentComposerKeep {
   level: string | null;
   /** The level this panel pinned onto the child and the server took ("" = the panel never pinned one). */
   pinnedLevel: string;
+  /** The chips staged above the box (see the module header): empty = nothing staged. */
+  references: ComposerReference[];
 }
 
 /** A child the panel has said nothing about: the record a fresh mount starts from. */
@@ -53,6 +64,7 @@ export const EMPTY_KEEP: SubagentComposerKeep = {
   stop: null,
   level: null,
   pinnedLevel: "",
+  references: [],
 };
 
 const kept = new Map<string, SubagentComposerKeep>();
@@ -64,7 +76,8 @@ function saysSomething(keep: SubagentComposerKeep): boolean {
     keep.send !== null ||
     keep.stop !== null ||
     keep.level !== null ||
-    keep.pinnedLevel !== ""
+    keep.pinnedLevel !== "" ||
+    keep.references.length > 0
   );
 }
 

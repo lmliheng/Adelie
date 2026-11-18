@@ -524,6 +524,12 @@ function SubagentComposer({
           }}
           initialSkills={draft.initial.skills ?? []}
           onSkillsChange={draft.onSkillsChange}
+          /* The chips staged above the box travel the same way as the text (the child's own
+             selection menu stages them, via addReference): a layout change is not a new attempt,
+             and nothing was sent, so they have to be there afterwards. Read once on mount and
+             written on every add / remove; the sent clear writes through the same callback. */
+          initialReferences={keep.references}
+          onReferencesChange={(references) => remember({ references })}
           onSend={async (input: TaskInputPart[]) => {
             const text = input
               .filter((p): p is { type: "text"; text: string } => p.type === "text")
