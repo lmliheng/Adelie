@@ -63,7 +63,7 @@ import type { TopologyNode } from "./agent-topology";
 import { AgentTopologyView } from "./agent-topology-view";
 import { MessageStream } from "./message-stream";
 import type { StreamRenderContext } from "./message-stream";
-import { subagentSendRefused } from "./subagent-send-refusal";
+import { subagentSendRefused, subagentStopRefused } from "./subagent-send-refusal";
 import type { ComposerReference } from "../../lib/workspace-tree";
 
 interface Selection {
@@ -434,6 +434,18 @@ function SubagentComposer({
   const sendFailure = (err: unknown): void => {
     setSendRefusal(subagentSendRefused(err));
   };
+  /**
+   * A Stop this panel's route did not take, kept above the same box (subagent-send-refusal.ts):
+   * the child kept running, so the button inside the card is still 停止 and is the retry. It goes
+   * with the run — the child going idle clears it — never by a timer, the same rule the chat
+   * card follows.
+   */
+  const [stopRefusal, setStopRefusal] = useState<string | null>(null);
+  useEffect(() => {
+    // A run that is over cannot still be going: the sentence outliving it would describe a Stop
+    // nobody can press anymore.
+    if (!running) setStopRefusal(null);
+  }, [running]);
 
   return (
     <div className="shrink-0 border-t border-gray-100 px-2 pb-2 pt-2 dark:border-gray-800/60">
@@ -453,6 +465,19 @@ function SubagentComposer({
             className="mb-2 rounded-md border px-2.5 py-2 text-xs"
           >
             <span data-slot="body">{sendRefusal}</span>
+          </NoticeStrip>
+        )}
+        {stopRefusal !== null && (
+          // The same strip for the other press that lands here: a Stop the route did not take. The
+          // child is still running, so the button inside the box below is still 停止 and pressing
+          // it again is the retry; the line says what the button cannot (nothing was stopped).
+          <NoticeStrip
+            tone="danger"
+            role="alert"
+            data-testid="subagent-stop-refusal"
+            className="mb-2 rounded-md border px-2.5 py-2 text-xs"
+          >
+            <span data-slot="body">{stopRefusal}</span>
           </NoticeStrip>
         )}
         <ChatInput
@@ -490,7 +515,17 @@ function SubagentComposer({
           }}
           steeringDeliveredCount={deliveredInputs}
           onStop={async () => {
-            await abortSubagent(sessionId, childSessionId).catch(() => undefined);
+            // The press either aborts the child's current run (its stream then reports it idle and
+            // the sentence, if any, goes with it — the effect above) or lands nowhere, in which
+            // case the card is unchanged and the reason has to be said above it
+            // (subagent-send-refusal.ts, `subagentStopRefused`). The route's 204 is not an error:
+            // there was no run left to stop, which is the state this press wanted.
+            setStopRefusal(null); // The new attempt answers for itself; the old sentence goes.
+            const refusal = await abortSubagent(sessionId, childSessionId).then(
+              () => null,
+              (err: unknown) => subagentStopRefused(err),
+            );
+            if (refusal !== null) setStopRefusal(refusal);
           }}
           modelRef={modelRef}
           models={models}

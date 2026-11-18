@@ -4742,6 +4742,11 @@ export const zh = {
      * the composer that still holds the text: the action, then the server's own words.
      */
     sendRefused: (reason: string) => `消息没有送到子会话：${reason}`,
+    /**
+     * A Stop the panel's abort route did not take (subagent-send-refusal.ts), drawn above the
+     * child's composer whose button is still 停止: nothing was stopped, so the run is going on.
+     */
+    stopRefused: (reason: string) => `没能停下这个子会话的这次运行，它仍在继续：${reason}`,
   },
 
   files: {

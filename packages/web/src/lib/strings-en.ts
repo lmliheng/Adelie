@@ -4633,6 +4633,8 @@ export const en: Strings = {
     subagentGone: "This subagent session no longer exists and could not be revived",
     /** A message the panel could not deliver to the child (subagent-send-refusal.ts). */
     sendRefused: (reason: string) => `The message did not reach the subagent: ${reason}`,
+    /** A Stop the panel's abort route did not take (see strings.ts). */
+    stopRefused: (reason: string) => `Stop did not land; the subagent is still running: ${reason}`,
   },
 
   files: {

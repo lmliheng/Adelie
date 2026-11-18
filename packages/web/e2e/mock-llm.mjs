@@ -15,6 +15,9 @@
  *  - parent asked to delegate ("run a subagent") -> tool_use(run_subagent)
  *  - a repeat delegation later in the same conversation ("run another subagent", keyed on the
  *    LAST message so history can't shadow it) -> tool_use(run_subagent) again
+ *  - "slow subagent test" -> tool_use(run_subagent) handing down a prompt whose own turns run a
+ *    foreground `sleep 45`, so the child is still running while subagent-stop-refusal.spec
+ *    presses the panel's Stop
  *  - "background server test" -> tool_use(exec_command) whose command outlives its yield
  *    window (processes.spec: the promoted background process shows in the session's
  *    process list and can be stopped from there)
@@ -46,6 +49,8 @@ import http from "node:http";
 
 /** The run_subagent prompt; also the marker the mock uses to detect "this is the child session's own request". */
 const SUBAGENT_PROMPT = "Count the TODO items in the repository";
+/** The slow child's prompt ("slow subagent test" hands it down): its own turn runs a foreground `sleep 45`, so the panel's Stop has a run to press on (subagent-stop-refusal.spec). */
+const SLOW_SUBAGENT_PROMPT = "Slow the TODO count down";
 /** The long tail of the "background pair test" exited command (processes.spec hovers the row and expects this whole line in the tooltip). */
 const PAIR_LONG_ECHO =
   "the-exited-process-whose-command-line-runs-far-past-the-width-of-its-row-in-the-details-card";
@@ -561,6 +566,25 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    // Slow child (subagent-stop-refusal.spec): the prompt "slow subagent test" handed down. Its
+    // own turn runs a foreground `sleep 45`, so the panel's Stop has a live run to press on and
+    // keeps it — a refused abort changes nothing on screen. Keyed on the prompt only (the
+    // parent's second request carries it inside the tool_use but also a tool_result, i.e. it is
+    // matched by the generic branch below, not here).
+    if (flat.includes(SLOW_SUBAGENT_PROMPT) && !hasToolResult) {
+      block(
+        res,
+        0,
+        { type: "tool_use", id: "toolu_slow_sub_exec", name: "exec_command", input: {} },
+        [
+          { type: "input_json_delta", partial_json: '{"cmd"' },
+          { type: "input_json_delta", partial_json: ': "sleep 45"}' },
+        ],
+      );
+      messageStop(res, "tool_use", 10);
+      return;
+    }
+
     // Background-process test case (processes.spec): an exec_command that outlives its
     // yield window — the engine promotes it to a background process with a process_id,
     // which the session's process list (details popover) must surface and be able to stop.
@@ -712,6 +736,18 @@ const server = http.createServer((req, res) => {
       block(res, 0, { type: "tool_use", id: "toolu_mock_sub", name: "run_subagent", input: {} }, [
         { type: "input_json_delta", partial_json: '{"prompt": ' },
         { type: "input_json_delta", partial_json: `${JSON.stringify(SUBAGENT_PROMPT)}}` },
+      ]);
+      messageStop(res, "tool_use", 15);
+      return;
+    }
+
+    // Delegation to a deliberately SLOW child (subagent-stop-refusal.spec): the same tool call,
+    // handing down SLOW_SUBAGENT_PROMPT, whose own turn runs `sleep 45` — so the child is still
+    // running when the spec presses the panel's Stop.
+    if (flat.includes("slow subagent test") && !hasToolResult) {
+      block(res, 0, { type: "tool_use", id: "toolu_slow_sub", name: "run_subagent", input: {} }, [
+        { type: "input_json_delta", partial_json: '{"prompt": ' },
+        { type: "input_json_delta", partial_json: `${JSON.stringify(SLOW_SUBAGENT_PROMPT)}}` },
       ]);
       messageStop(res, "tool_use", 15);
       return;
