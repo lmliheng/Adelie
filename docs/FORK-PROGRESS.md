@@ -28745,3 +28745,32 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
   `/root/adelie-live-backup-20261115-1945-web`，新入口 `index-KpKmrzbd.js`），不重启。
   changelog 一对：`2026-11-15-slash-menu-roomier.{md,zh.md}`。量测脚本与截图在
   scratchpad 的 `slash-menu/`（`run.sh` + `slash.spec.mjs`，用现网那份程序目录起临时实例）。
+
+## 第二百五十一轮（续）：「正在运行」看不到正在跑的会话（2026-11-18）
+
+用户报：账号菜单里那块「正在运行」写着「没有正在运行的会话」，可是明明有对话在跑（现网 v0.6.9）。
+
+- **先分清是哪一头坏了**：接口 `GET /api/projects/:p/sessions/running`（`packages/server/src/http/routes/sessions.ts`
+  的 `runningSessionsRoutes`）读的是服务进程里那张表（`liveSessions()`）。用现网那份程序目录起临时实例
+  试过：会话在跑时它老实返回 `status:"running"`，空闲时返回空——**服务端没问题**。
+- **复现台**：`scratchpad/session-2026-10-27-20-43-36-0f67df1c/running-sessions/`（`run.sh` 起 mock-llm
+  8933 + 临时服务 8932；`pw.config.mjs` 用 `chromium-headless-shell`，`auth.mjs` 建用户）。页面挂在一个
+  TCP 中继后面，中继可按响应头定向吞掉 `text/event-stream`（普通请求照常）——这正是网吧里「流被扣住、
+  短请求还通」的形态。两条用例：健康路（跑起来就该在菜单里看到）、中继路。
+- **根因**：`packages/web/src/features/account/running-sessions.ts` 的 `mergeRunningSessions` 让用户频道的
+  状态**无条件**盖过项目级快照。频道是唯一会报告「运行结束」的来源，所以它必然记着一条 `idle`；于是页面
+  先收到过一次 idle 之后，下一次运行的 `running` 只要没投递到，快照说 running 也被盖成 idle、再被当成
+  「已结束」过滤掉——菜单说没有会话在跑，而它在跑。
+- **改法**：`mergeRunningSessions(fetched, live, baseline)` 多一个 `baseline`（发请求那一刻的
+  `liveStatuses` 快照），只有相对它移动过的状态才有权改写/丢弃一行；`useRunningSessions` 把
+  `{ sessions, baseline }` 存在一起，在 effect 里发请求前读 live。已知夹缝（一次往返内翻转又翻回）写进
+  注释，要根治得给每条状态带写入时刻，这一版不换。
+- **两态对照**（同一份程序目录、同一个临时实例）：
+  - 旧产物 `index-KpKmrzbd.js`——**与现网那份逐字节相同**（把源码 `git checkout HEAD --` 还原后重新构建，
+    产物 hash 一模一样，顺带说明我这处改动就是它与现网的唯一差别）→ 菜单显示「没有正在运行的会话」，而
+    服务端接口同刻返回 `running`：**红**。
+  - 新产物 `index-BYnOdUiS.js` → 页面自己那次 `sessions/running` 请求 **200** 并带回该会话，菜单显示它：
+    **绿**；两条用例（健康路、中继路）全过。
+- **验证**：web 全量 339 个文件 / 3872 条通过（2 条跳过）；`tsc --noEmit -p packages/web/tsconfig.json`
+  干净；oxlint 0 警告 0 错误；prettier 干净。端口只用了 8932 / 8933。
+- changelog 一对：`2026-11-18-running-sessions-stale-idle.{md,zh.md}`。
