@@ -28795,3 +28795,33 @@ Agent**。
   `computeKernelTabHashes(defaultSystemConfig())`，其余六个 tab 与上代一致。
 - changelog 一对：`2026-11-18-thinking-language.{md,zh.md}`。
 - **还没上现网**：这条要新 core 真跑起来才生效（Agent 装载时应用内核更新），等用户拍板发布 / 整棵换装。
+
+## 第二百五十一轮（续）：正式发 v0.6.10 并换装现网（2026-11-18）
+
+用户 2026-11-18 定：「如果提交次数够了 就直接发版吧 更新现网」。阈值（`/root/evolution/LOOP.md`）是自上次
+发版累积 ≥ 10 个功能性提交：自 `v0.6.9` 起 `main` 上 40 笔提交、其中非台账的 20 笔 → 过阈值，发 patch。
+
+- **版本号**：37 个文件（root + 10 个工作区包 + 对外插件各自的 `package.json` + `packages/core/src/index.ts`
+  的 `VERSION`）推到 `0.6.10`；四个 private 沙盒后端仍留在自己的 0.2.3。
+- **发布正文**：`docs/releases/RELEASE-v0.6.10.md`（人话：先说用户能感知的变化）。发布提交 **`0f1bd515c`**，
+  远端 main 与本地一致；标签 `v0.6.10`（远端标签对象 `ce34a0a8…`，本地另建一份，与 v0.6.9 同样的做法）。
+- **隔离树**：`/root/rel-0610`（`git worktree add --detach v0.6.10` + `pnpm install --frozen-lockfile`）。
+- **门禁全绿**：build / typecheck / lint（0 警告 0 错误）/ format:check 全过；测试 **17 个包、862 个文件、
+  10838 条全过**（`tests-0610.sh`，不设 `ADELIE_HOME`、`--maxWorkers=2`）。
+- **打戳**：`VERSION=0.6.10`、`BUILD_DATE=2026-11-18`、`BUILD_COMMIT=0f1bd515c…`，`install.sh`/`install.ps1`
+  = `v0.6.10`；戳完再 `pnpm -r build` 一次。
+- **载荷与安装包**：linux-x64 110M / universal 56M / win32-x64 144M 三件载荷，三件安装包 + `validate-bundles.sh`
+  全过。桌面三件：AppImage 155M、deb 122M、exe 162M（+ blockmap + `latest*.yml`），electron-builder 走
+  npmmirror、Windows 那个用 xvfb+wine。
+  - **踩到的坑**：`dist-artifacts/install.sh` 与 `install.ps1` 要手工拷进去 —— `validate-bundles.sh` 最后那两行
+    要 grep 它们，`upload_rest.py` 也上传这两件；`bundles-0610.sh` 只把它们放进安装包内部。
+- **npm**：29 个包发到 `0.6.10`（`PUBLISH-ALL-DONE`），走 `NPM_TOKEN_ADELIE` 的临时 npmrc。
+- **GitHub Release**：草稿 id `449778533` → 14 件资产上传并逐件核 sha256 → 发布
+  （`published_at 2026-11-18T09:49:19Z`），`releases/latest` 指向 `v0.6.10`。
+- **3003 下载区**：`index.json` 换到 `v0.6.10`（旧索引与本机那份旧 Windows 包各留一份带日期的备份），
+  本机那份 Windows 桌面包也换成新产物。
+- **现网**：`swap-live.sh` 装上 0.6.10（先把旧前端留底，装完立刻拷回去 —— 内存里还是旧服务端，盘上要跟着
+  它那一代），随后 `adelie-live-restart-0610` 瞬时单元 17:50 武装、`sleep 900` 后重启、装新前端并自核验，
+  证据写 `/root/Adelie_develop/rel-0610-live-restart-verify.txt`。
+- 这一版**前端产物没变**：`index-BYnOdUiS.js`，与今天 17:04 只换前端那次换上去的逐字节相同（换的是服务端与
+  core：内核版本前进到 2026-11-18，各 Agent 没改过的提示词会在装载时前进）。
