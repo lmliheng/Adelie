@@ -28774,3 +28774,24 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 - **验证**：web 全量 339 个文件 / 3872 条通过（2 条跳过）；`tsc --noEmit -p packages/web/tsconfig.json`
   干净；oxlint 0 警告 0 错误；prettier 干净。端口只用了 8932 / 8933。
 - changelog 一对：`2026-11-18-running-sessions-stale-idle.{md,zh.md}`。
+
+## 第二百五十一轮（续）：默认提示词要求用用户的语言思考（2026-11-18）
+
+用户问「adelie 思考过程都是英文 是不是和系统提示词是英文有关」，并选定**方案 2：改默认、推给所有
+Agent**。
+
+- **核实**：`packages/core/src/state/default-config.ts` 的 `DEFAULT_SYSTEM_PROMPT` 整篇英文，语言那句
+  只有 `always reply in the user's language`——**只管回复，不管思考**。现网那个 Agent 的
+  `system_config.yaml` 里就是这份默认（内核版本 `2026-10-05`）。
+- **改动**：`# Personality` 里紧接着回复那条加一句：思考也用用户的语言，因为思考是给用户看的（英文模板
+  仍用英文写）。这是提示词不是开关——能减少英文思考、不保证清零，这一点也如实告诉了用户。
+- **内核机制**：默认值实质变更必须走版本。`packages/core/src/state/kernel-history.ts` 的 `KERNEL_VERSION`
+  `2026-11-15` → `2026-11-18`；`KERNEL_DEFAULT_TAB_HASHES.prompt` 写新哈希 `bdfdd83c…a2af2`；旧哈希
+  `6dc01249…69825` 追加进 `KERNEL_SUPERSEDED_TAB_HASHES.prompt`（冻结，是「它曾经发出过」的记录）；世代
+  清单加一行说明移动了什么。落到 Agent 上的效果：stamp 落后的配置下次装载时按 tab 判定，没改过的 prompt
+  tab 自动前进，改过的整块保留。
+- **验证**：`kernel-version.test.ts` 先红——门禁精确点名 `prompt` 一个 tab 移动——按它写的办法补上哈希与
+  世代行后 19/19 转绿；core 全量 70 个文件 / 1456 条通过（6 条跳过）；新哈希取自
+  `computeKernelTabHashes(defaultSystemConfig())`，其余六个 tab 与上代一致。
+- changelog 一对：`2026-11-18-thinking-language.{md,zh.md}`。
+- **还没上现网**：这条要新 core 真跑起来才生效（Agent 装载时应用内核更新），等用户拍板发布 / 整棵换装。
