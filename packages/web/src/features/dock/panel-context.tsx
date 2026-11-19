@@ -14,6 +14,13 @@ import type { ReactNode } from "react";
 import type { DockPosition } from "./dock-state";
 import type { PanelId } from "./panel-registry";
 
+/**
+ * Where a panel body is drawn: the side or bottom dock, or the narrow window's merged surface.
+ * Bodies that keep their own place across a layout move tell those apart (workspace-view-memory.ts,
+ * memory-place.ts) — a move is what changes it, a remount on the same one is not.
+ */
+export type DockSurface = DockPosition | "merged";
+
 export interface DockPanelHandle {
   id: PanelId;
   /** Where its tab lives ("bottom" for the narrow merged view's own position). */

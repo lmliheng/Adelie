@@ -12,7 +12,7 @@
  * stays on the agent-settings tab — the list header links there — so this view never
  * duplicates the bridge-modal flows.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SessionInfo } from "@adelie/server/api";
 import { GlyphIcon, ICONS, ICON_SIZE, Md, SkeletonList, bodyWithoutFrontmatter } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -21,9 +21,11 @@ import { formatRelativeDate } from "../../lib/format";
 import type { MemoryChangeRow, MemoryLocateTarget } from "../../lib/omni/memory-changes";
 import { memoryRowKey } from "../../lib/omni/memory-changes";
 import { useLocale } from "../../state/locale";
+import type { DockSurface } from "../dock/panel-context";
 import { claimOnce } from "./dock-command-once";
 import { buildMemoryList, memoryNavBack, memoryNavForRequest } from "./memory-nav";
 import type { MemoryNavMode, ScopeFiles } from "./memory-nav";
+import { memoryPlaceKey, recallMemoryPlace, rememberMemoryPlace } from "./memory-place";
 
 /** Folder (Workspace scope; the User scope is ICONS.user), boxed arrow (open the settings tab), left arrow (back). */
 const FOLDER_ICON = "M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z";
@@ -57,6 +59,7 @@ export function ChatMemoryView({
   listingError,
   request,
   active,
+  surface,
   onOpenSettings,
 }: {
   session: SessionInfo;
@@ -69,13 +72,56 @@ export function ChatMemoryView({
   request: { target: MemoryLocateTarget | null } | null;
   /** Whether the panel is showing (detail loading waits for it). */
   active: boolean;
+  /** The dock surface this body is drawn on — what a layout move changes (see memory-place.ts). */
+  surface: DockSurface;
   /** Opens the agent-settings memory tab, where management (add / edit / delete) lives. */
   onOpenSettings?: () => void;
 }) {
   const { locale } = useLocale();
 
   // ---- navigation (memory-nav.ts): entry routing + back ----
-  const [mode, setMode] = useState<MemoryNavMode>({ kind: "list" });
+  // The place this body arrived into: a layout move mounts the body on the other surface, and the
+  // record written there hands back the level and the offsets the reader left (memory-place.ts).
+  // Any other mount (a tab reopened, a conversation switched back to) arrives on the surface the
+  // place was left on, so recall answers null and the panel starts over. Read once: the record is
+  // written on every change below, never on the way in.
+  const [arrived] = useState(() => recallMemoryPlace(session.sessionId, surface));
+  const [mode, setMode] = useState<MemoryNavMode>(arrived?.mode ?? { kind: "list" });
+  const modeRef = useRef(mode);
+  const listScroll = useRef(arrived?.listScroll ?? 0);
+  const detailScroll = useRef(arrived?.detailScroll ?? 0);
+
+  /** Writes the place as it stands now (see memory-place.ts on why never on the way out). */
+  const remember = () =>
+    rememberMemoryPlace(session.sessionId, {
+      surface,
+      mode: modeRef.current,
+      listScroll: listScroll.current,
+      detailScroll: detailScroll.current,
+    });
+
+  /**
+   * Every navigation goes through here, so the record follows the reader's own moves. The detail
+   * offset belongs to the memory it was read in: moving to another level or another memory drops it
+   * (that memory starts at its top, as it always has).
+   */
+  const goTo = (next: MemoryNavMode) => {
+    const nextKey = memoryPlaceKey(next);
+    if (nextKey === null || nextKey !== memoryPlaceKey(modeRef.current)) detailScroll.current = 0;
+    modeRef.current = next;
+    setMode(next);
+    remember();
+  };
+
+  const onListScroll = (e: { currentTarget: HTMLDivElement }) => {
+    listScroll.current = Math.round(e.currentTarget.scrollTop);
+    remember();
+  };
+  const onDetailScroll = (e: { currentTarget: HTMLDivElement }) => {
+    detailScroll.current = Math.round(e.currentTarget.scrollTop);
+    remember();
+  };
+
   // Landing on a located memory just shows its content — no highlight, no transient tint —
   // the same arrival the file-summary card's rows give (they only preview the file). One
   // command, once: this body is remounted when the layout moves the panel between docks, and
@@ -83,7 +129,9 @@ export function ChatMemoryView({
   // to the memory (or the list) they had already navigated away from.
   useEffect(() => {
     if (request === null || !claimOnce(request)) return;
-    setMode(memoryNavForRequest(request));
+    goTo(memoryNavForRequest(request));
+    // goTo only reads refs and the Session's id: the command is what this effect is about.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
 
   // ---- detail content (loaded per target; keyed so a stale response can't cross targets) ----
@@ -122,6 +170,31 @@ export function ChatMemoryView({
 
   const groups = buildMemoryList(scopes, changes);
 
+  // ---- the place comes back (memory-place.ts) ----
+  // Applied once the box that will hold it is on screen with its content in it: an offset set
+  // before the rows (or the memory's text) are drawn is clamped to 0 — the same ordering the Files
+  // panel's preview and tree wait for.
+  const listBoxRef = useRef<HTMLDivElement | null>(null);
+  const detailBoxRef = useRef<HTMLDivElement | null>(null);
+  const listPlaced = useRef(false);
+  const detailPlaced = useRef<string | null>(null);
+  /** The list is drawn once it has rows, the empty note, the error or the listing itself. */
+  const listDrawn = groups.length > 0 || scopes !== null || listingError !== null;
+  const detailReady =
+    detail !== null && detail.key === detailKey && (detail.failed || detail.content !== null);
+
+  useLayoutEffect(() => {
+    if (listPlaced.current || mode.kind !== "list" || !listDrawn) return;
+    listPlaced.current = true;
+    if (listBoxRef.current !== null) listBoxRef.current.scrollTop = listScroll.current;
+  }, [mode.kind, listDrawn]);
+
+  useLayoutEffect(() => {
+    if (detailKey === null || detailPlaced.current === detailKey || !detailReady) return;
+    detailPlaced.current = detailKey;
+    if (detailBoxRef.current !== null) detailBoxRef.current.scrollTop = detailScroll.current;
+  }, [detailKey, detailReady]);
+
   // ---- detail level ----
   if (mode.kind === "detail") {
     const target = mode.target;
@@ -135,7 +208,7 @@ export function ChatMemoryView({
         <div className="flex shrink-0 items-center gap-2 border-b border-gray-100 px-3 py-2 dark:border-gray-800/60">
           <button
             type="button"
-            onClick={() => setMode(memoryNavBack())}
+            onClick={() => goTo(memoryNavBack())}
             data-tooltip={S.chat.memoryBack}
             className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-200"
           >
@@ -159,7 +232,11 @@ export function ChatMemoryView({
               </span>
             )}
         </div>
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3.5 py-3">
+        <div
+          ref={detailBoxRef}
+          onScroll={onDetailScroll}
+          className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3.5 py-3"
+        >
           {listedRow?.description !== undefined && (
             <p className="text-xs text-gray-500 dark:text-gray-400">{listedRow.description}</p>
           )}
@@ -181,7 +258,7 @@ export function ChatMemoryView({
 
   // ---- list level ----
   return (
-    <div className="h-full min-h-0 overflow-y-auto">
+    <div ref={listBoxRef} onScroll={onListScroll} className="h-full min-h-0 overflow-y-auto">
       <div className="flex items-center gap-1 px-3.5 pb-1 pt-2">
         <span className="min-w-0 flex-1" />
         {onOpenSettings && (
@@ -239,7 +316,7 @@ export function ChatMemoryView({
                   <li key={memoryRowKey(row.target)}>
                     <button
                       type="button"
-                      onClick={() => setMode({ kind: "detail", target: row.target })}
+                      onClick={() => goTo({ kind: "detail", target: row.target })}
                       className="flex w-full cursor-pointer items-center gap-3 px-3.5 py-2 text-left transition-colors duration-150 hover:bg-gray-50 dark:hover:bg-gray-800/50"
                     >
                       <div className="min-w-0 flex-1">

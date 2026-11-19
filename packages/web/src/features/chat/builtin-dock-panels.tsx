@@ -131,6 +131,10 @@ function WorkspacePanelBody({ active }: DockPanelBodyProps) {
 function MemoryPanelBody({ active }: DockPanelBodyProps) {
   const { selected, sessionMemoryChanges, memoryListing, memoryRequest, openMemorySettings } =
     useChatDock();
+  // The surface this body is drawn on — a layout move changes it and only then does the panel's own
+  // place come back (memory-place.ts; a Session switch comes back to the same surface).
+  const { position, merged } = useDockPanel();
+  const surface = merged ? "merged" : position;
   if (!selected) return draftPlaceholder("memory");
   return (
     <ChatMemoryView
@@ -141,6 +145,7 @@ function MemoryPanelBody({ active }: DockPanelBodyProps) {
       listingError={memoryListing.error}
       request={memoryRequest}
       active={active}
+      surface={surface}
       // Management (add / edit / delete) lives on the agent-settings memory tab.
       onOpenSettings={() => openMemorySettings(selected.agentId)}
     />

@@ -28,8 +28,10 @@
  * across a move of the panel, not across a reload of the app.
  */
 
-/** Where a panel body is drawn: the side or bottom dock, or the narrow merged surface. */
-export type DockSurface = "right" | "bottom" | "merged";
+import type { DockSurface } from "../dock/panel-context";
+
+/** The dock's own notion of a body's surface, re-exported here for this module's readers. */
+export type { DockSurface };
 
 /** How a Markdown or HTML file was being read: rendered, or its own text. */
 export type WorkspaceReading = "rendered" | "source";
