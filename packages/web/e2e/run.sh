@@ -11,6 +11,9 @@ SRV_PORT="${SRV_PORT:-8930}"
 # App onto localhost and reserves 127.0.0.1 as the preview host, where /api answers 401.
 export BASE_URL="http://localhost:$SRV_PORT"
 export MOCK_URL="http://127.0.0.1:$MOCK_PORT"
+# The data root, for the specs whose fixture has to reach a file the App owns rather than one
+# the API serves (dock-command-across-layout.spec computes the path of a memory topic under it).
+export ADELIE_HOME="$DATA"
 
 cleanup() {
   [ -n "${MOCK_PID:-}" ] && kill "$MOCK_PID" 2>/dev/null

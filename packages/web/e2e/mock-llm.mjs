@@ -6,6 +6,9 @@
  *  - anything else -> the Anthropic Messages API branch below, which "Branches on request body:"
  *  - title request (the prompt opens with "You are a title generator.") -> short text
  *  - files-card probe ("files card test") -> text with two backtick paths (one real, one missing)
+ *  - "memory write test <abs path>" -> tool_use(write_file) keeping a note at <abs path>, then a
+ *    short final text (dock-command-across-layout.spec: the Task's summary card grows a memory
+ *    row, and the Memory panel can be landed on it from there)
  *  - "files rewrite test <cmd>" -> tool_use(exec_command) running <cmd>, then a short final text
  *    (files-folders.spec: the Agent rewrites a file the Files panel has open)
  *  - subagent's own turns (its prompt is the only user text) -> tool_use(exec_command) first,
@@ -56,6 +59,9 @@ const PAIR_LONG_ECHO =
   "the-exited-process-whose-command-line-runs-far-past-the-width-of-its-row-in-the-details-card";
 /** Background-subagent FAILURE prompt: the child session's every request is rejected 400, so its run fails after the retry ladder. */
 const SUBAGENT_FAIL_PROMPT = "Fail the TODO count on purpose";
+/** What the "memory write test" branch writes: frontmatter plus a body, in the shape a memory topic carries. */
+const MEMORY_TOPIC =
+  "---\nname: Probe memory\ndescription: A note this e2e run kept.\n---\n\nThe note the Memory panel was landed on.\n";
 
 const PORT = Number(process.env.MOCK_PORT || 8931);
 
@@ -366,6 +372,37 @@ const server = http.createServer((req, res) => {
         },
       ]);
       messageStop(res, "end_turn", 18);
+      return;
+    }
+
+    // Memory-write test case: the model keeps a note through the ordinary file tool, at the
+    // absolute path the prompt carries — the mock is another process, so the spec computes the
+    // path from the data root it started the server on. The Task then closes with a memory row
+    // in its summary card, which is what the panel's "land on this memory" command hangs off
+    // (dock-command-across-layout.spec). Gated on !isTitle for the usual reason: a title
+    // request repeats the user's words, and answering it with a tool call would leave the
+    // Session untitled.
+    const memoryWrite = /memory write test ([^"\s\\]+)/.exec(
+      JSON.stringify(messages[messages.length - 1] ?? {}),
+    );
+    if (memoryWrite && !isTitle) {
+      block(res, 0, { type: "tool_use", id: "toolu_memory_write", name: "write_file", input: {} }, [
+        {
+          type: "input_json_delta",
+          partial_json: JSON.stringify({
+            file_path: memoryWrite[1],
+            content: MEMORY_TOPIC,
+          }),
+        },
+      ]);
+      messageStop(res, "tool_use", 12);
+      return;
+    }
+    if (flat.includes("memory write test") && hasToolResult && !isTitle) {
+      block(res, 0, { type: "text", text: "" }, [
+        { type: "text_delta", text: "Kept that note in memory." },
+      ]);
+      messageStop(res, "end_turn", 8);
       return;
     }
 

@@ -158,6 +158,7 @@ import { setCloseGuard } from "../dock/close-guard";
 import { tabKey } from "../dock/dock-state";
 import { PAPERCLIP_ICON } from "./attached-files-banner";
 import { PdfPreview } from "./pdf-preview";
+import { claimOnce } from "./dock-command-once";
 import { editorSaveRefusal } from "./editor-save-refusal";
 import { uploadRefusalLine } from "./upload-refusal";
 import { WorkspaceTreeView } from "./workspace-tree-view";
@@ -1305,16 +1306,16 @@ export function WorkspaceBrowser({
   // External navigation command (clicking a file chip in a message / a file card): opens
   // the tree down to the target and previews it.
   //
-  // Each openRequest object is handled exactly once (the ref guard): this effect also
-  // re-runs when openFile's identity changes with the session, at which point openRequest
-  // is still the OLD session's request — the parent clears it only after child effects.
-  // Replaying it against the new session would resurrect the preview the session-switch
-  // reset just cleared. The parent creates a fresh object per click, so re-clicking the
-  // same file still re-triggers.
-  const handledOpenRequest = useRef<{ path: string } | null>(null);
+  // Each openRequest object is handled exactly once (claimOnce): this effect also re-runs
+  // when openFile's identity changes with the session, at which point openRequest is still
+  // the OLD session's request — the parent clears it only after child effects. Replaying it
+  // against the new session would resurrect the preview the session-switch reset just
+  // cleared. The claim is module scope rather than a ref because the body is remounted when
+  // the layout moves the panel between docks, while the page keeps the command standing: a
+  // fresh mount would otherwise reopen the file the reader had since closed. The parent
+  // creates a fresh object per click, so clicking the same file again still re-triggers.
   useEffect(() => {
-    if (!openRequest || handledOpenRequest.current === openRequest) return;
-    handledOpenRequest.current = openRequest;
+    if (!openRequest || !claimOnce(openRequest)) return;
     openFile(openRequest.path, { locate: true });
   }, [openRequest, openFile]);
 

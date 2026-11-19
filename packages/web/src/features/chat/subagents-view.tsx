@@ -63,6 +63,7 @@ import type { TopologyNode } from "./agent-topology";
 import { AgentTopologyView } from "./agent-topology-view";
 import { MessageStream } from "./message-stream";
 import type { StreamRenderContext } from "./message-stream";
+import { claimOnce } from "./dock-command-once";
 import { subagentSendRefused, subagentStopRefused } from "./subagent-send-refusal";
 import { readSubagentComposerKeep, writeSubagentComposerKeep } from "./subagent-composer-keep";
 import type { SubagentComposerKeep } from "./subagent-composer-keep";
@@ -79,13 +80,6 @@ interface Selection {
   /** ctx.origin chain of the selected conversation (ends with its own session id; empty = the root/main session). */
   origin: string[];
 }
-
-/**
- * The chip-click jump commands this tab has already applied — one entry per click, weak because
- * the page's command object is what is remembered and nothing else keeps it alive. See the
- * focusRequest effect in the body: a remount must not replay a command it already obeyed.
- */
-const appliedFocus = new WeakSet<Selection>();
 
 export function SubagentsView({
   session,
@@ -156,10 +150,10 @@ export function SubagentsView({
   // between docks, and the page keeps the last command standing, so without this record the new
   // mount would replay it and undo whatever the reader picked from the graph in between
   // (subagent-panel-selection.ts). The page drops its own commands when the tab closes; a layout
-  // move keeps the tab, so "already applied" has to be remembered out here too.
+  // move keeps the tab, so "already applied" has to be remembered out here too
+  // (dock-command-once.ts, shared with the Files and Memory panels' commands).
   useEffect(() => {
-    if (focusRequest !== null && !appliedFocus.has(focusRequest)) {
-      appliedFocus.add(focusRequest);
+    if (focusRequest !== null && claimOnce(focusRequest)) {
       pick({ sessionId: focusRequest.sessionId, origin: focusRequest.origin });
     }
   }, [focusRequest, pick]);

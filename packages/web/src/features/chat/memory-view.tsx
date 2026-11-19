@@ -21,6 +21,7 @@ import { formatRelativeDate } from "../../lib/format";
 import type { MemoryChangeRow, MemoryLocateTarget } from "../../lib/omni/memory-changes";
 import { memoryRowKey } from "../../lib/omni/memory-changes";
 import { useLocale } from "../../state/locale";
+import { claimOnce } from "./dock-command-once";
 import { buildMemoryList, memoryNavBack, memoryNavForRequest } from "./memory-nav";
 import type { MemoryNavMode, ScopeFiles } from "./memory-nav";
 
@@ -76,9 +77,12 @@ export function ChatMemoryView({
   // ---- navigation (memory-nav.ts): entry routing + back ----
   const [mode, setMode] = useState<MemoryNavMode>({ kind: "list" });
   // Landing on a located memory just shows its content — no highlight, no transient tint —
-  // the same arrival the file-summary card's rows give (they only preview the file).
+  // the same arrival the file-summary card's rows give (they only preview the file). One
+  // command, once: this body is remounted when the layout moves the panel between docks, and
+  // the page keeps the command standing, so a fresh mount would otherwise pull the reader back
+  // to the memory (or the list) they had already navigated away from.
   useEffect(() => {
-    if (request === null) return;
+    if (request === null || !claimOnce(request)) return;
     setMode(memoryNavForRequest(request));
   }, [request]);
 
