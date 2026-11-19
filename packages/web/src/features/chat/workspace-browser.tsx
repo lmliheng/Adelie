@@ -14,7 +14,10 @@
  *
  * The panel is addressed by its scope (api/workspace-files.ts): a Session's Workspace on the
  * chat page, or a directory named by its path on the new-chat draft, where no Session exists
- * yet. Everything below follows the scope; a new scope starts the panel over.
+ * yet. Everything below follows the scope; a new scope starts the panel over. A layout move is
+ * not a new scope: the dock redraws this body on another surface, and the reader's place in it —
+ * the open file, the unfolded folders, the directory the breadcrumbs name — comes back with it
+ * (workspace-view-memory.ts), while the tree's listings and the file itself are read again.
  *
  * A search box above the tree filters the rows the lazy tree has already loaded. The tree
  * can be hidden (toolbar toggle, shown by default), and the divider between the two panes
@@ -161,6 +164,8 @@ import { PdfPreview } from "./pdf-preview";
 import { claimOnce } from "./dock-command-once";
 import { editorSaveRefusal } from "./editor-save-refusal";
 import { uploadRefusalLine } from "./upload-refusal";
+import { recallWorkspaceView, rememberWorkspaceView } from "./workspace-view-memory";
+import type { DockSurface } from "./workspace-view-memory";
 import { WorkspaceTreeView } from "./workspace-tree-view";
 
 /**
@@ -473,6 +478,7 @@ const iconToggleClass = (on: boolean): string =>
 
 export function WorkspaceBrowser({
   scope,
+  surface,
   openRequest,
   active,
   reloadSignal,
@@ -483,6 +489,13 @@ export function WorkspaceBrowser({
    * new-chat draft's chosen folder). Changing it starts the panel over, as a Session switch does.
    */
   scope: FilesScope;
+  /**
+   * Which dock surface this body is drawn on (the dock's, handed down by the tab's body). The
+   * panel's place is kept against it: a layout move lands the same tab on another surface and the
+   * place comes back there, while a tab closed and reopened — or a Session switched away from and
+   * back to — returns to the same surface and starts over (see workspace-view-memory.ts).
+   */
+  surface: DockSurface;
   /** External navigation command (from clicking a file chip in a message): opens the tree
    *  down to that path and previews it. Triggers again whenever the object reference changes,
    *  even if path is the same as last time (clicking the same file again must still re-locate it). */
@@ -537,15 +550,27 @@ export function WorkspaceBrowser({
   previewIsolatedRef.current = previewIsolated;
 
   // ------------------------------------------------------------------------------- tree
+  /**
+   * Where this body came back to, read once (see workspace-view-memory.ts): a layout move
+   * remounts the panel on another dock surface, and the place — the open file, the unfolded
+   * folders, the directory the breadcrumbs name — is the reader's, not the page's, so it is read
+   * here and not added back. A remount that is not a move (a tab reopened, a Session switched
+   * away from and back) comes back to the surface the place was left on, and recalls nothing.
+   */
+  const [restoredView] = useState(() => recallWorkspaceView(scopeKey, surface));
   const [listings, setListings] = useState<Listings>(() => new Map());
   /** Open directories (the root is always open and never listed here). */
-  const [expanded, setExpanded] = useState<ReadonlySet<string>>(() => new Set());
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(
+    () => new Set(restoredView?.expanded ?? []),
+  );
   const [loadingDirs, setLoadingDirs] = useState<ReadonlySet<string>>(() => new Set());
   const [rootError, setRootError] = useState<string | null>(null);
   /** The directory the breadcrumbs name and uploads land in: the selected file's, or the last folder clicked. */
-  const [currentDir, setCurrentDir] = useState("");
+  const [currentDir, setCurrentDir] = useState(restoredView?.currentDir ?? "");
   /** The file chosen in the tree; the preview follows it once loaded. */
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [selectedPath, setSelectedPath] = useState<string | null>(
+    restoredView?.selectedPath ?? null,
+  );
   const [scrollTo, setScrollTo] = useState<{ path: string } | null>(null);
   /** The search box's text. Deliberately not persisted: a search is a thing you are doing, not a setting. */
   const [query, setQuery] = useState("");
@@ -737,6 +762,15 @@ export function WorkspaceBrowser({
     previewSeq++;
   }
 
+  // The place is written through on every change, never on the way out: a layout move mounts the
+  // arriving body before the leaving one is torn down, so an unmount-time write would land after
+  // the new mount had already read the record. The scope reset above reaches this too — with
+  // nothing to remember, it drops the record, so a body that started over leaves no place behind
+  // for the next move to pick up (see workspace-view-memory.ts).
+  useEffect(() => {
+    rememberWorkspaceView(scopeKey, { surface, selectedPath, currentDir, expanded: [...expanded] });
+  }, [scopeKey, surface, selectedPath, currentDir, expanded]);
+
   // ------------------------------------------------------------------ measured layout
   // The panel's own width decides the layout: a viewport breakpoint cannot know how much of
   // the window the dock was given. Measured in a layout effect so the first paint is right.
@@ -831,11 +865,15 @@ export function WorkspaceBrowser({
    * Loads `filePath` into the preview. `refresh` re-reads a file already on screen (the
    * settled-turn refresh below): it must not touch the things that belong to the user's
    * hands — the rendered/source choice — and a failed re-read leaves what is on screen
-   * alone instead of replacing a working preview with "unsupported".
+   * alone instead of replacing a working preview with "unsupported". `restored` is the same
+   * load on the way back into a remounted body (the panel's place): it reads the file exactly
+   * as a fresh open does, but does not announce a draft it reopens, since the reader was
+   * simply in the middle of typing it (see the restore effect below).
    */
   const previewPath = useCallback(
-    async (filePath: string, opts?: { refresh?: boolean }) => {
+    async (filePath: string, opts?: { refresh?: boolean; restored?: boolean }) => {
       const refresh = opts?.refresh === true;
+      const restored = opts?.restored === true;
       const key = scopeKey;
       const name = baseName(filePath);
       const kind = previewKindFor(name);
@@ -961,7 +999,10 @@ export function WorkspaceBrowser({
           else if (stashed !== undefined) {
             editorOpening.current = undefined;
             setEditor({ path: filePath, baseline: content, draft: stashed, version });
-            toastInfo(S.files.unsavedRestored(name));
+            // A draft that comes back on a fresh open is a surprise and says so; one that comes
+            // back with the panel's place (a layout move) is the text the reader was typing a
+            // moment ago, and telling them it was "restored" on every crossing is noise.
+            if (!restored) toastInfo(S.files.unsavedRestored(name));
           }
         }
       } catch {
@@ -972,6 +1013,22 @@ export function WorkspaceBrowser({
     },
     [scopeKey, files],
   );
+
+  // The way back into the panel's place: the states above came from the record, and this reads
+  // back what a place cannot hold — the tree's listings down to the open file and past every
+  // unfolded folder, and the file itself. An unfolded folder has to be listed here rather than
+  // lazily: it would otherwise come back as a row that is open with nothing under it, and its
+  // own first click is a collapse, so nothing would ever fetch it. Mount only — a scope switch
+  // is not a layout move, and starts the panel over instead of restoring anything.
+  useEffect(() => {
+    if (restoredView === null) return;
+    const dirs = new Set(restoredView.expanded);
+    const path = restoredView.selectedPath;
+    if (path !== null) for (const dir of ancestorDirs(path)) dirs.add(dir);
+    for (const dir of dirs) if (dir !== "") void loadDir(dir);
+    if (path !== null) void previewPath(path, { restored: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Lazy source fetch for isolated HTML previews: previewPath mounted the iframe without
   // downloading the text, so the first switch to the Source view fetches it here (as does

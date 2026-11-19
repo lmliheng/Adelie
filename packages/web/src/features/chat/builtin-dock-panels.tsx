@@ -13,6 +13,7 @@ import { S } from "../../lib/strings";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import { dockPanelDefinition, panelLabel, registerDockPanel } from "../dock/panel-registry";
 import type { DockPanelBodyProps, DockPanelDefinition, PanelId } from "../dock/panel-registry";
+import { useDockPanel } from "../dock/panel-context";
 import { isBrowserOffered, subscribeBrowser } from "../builtin-browser/browser-store";
 import { BuiltinBrowserPanel } from "../builtin-browser/browser-panel";
 import { TracePanel } from "../traces/trace-panel";
@@ -90,6 +91,11 @@ function WorkspacePanelBody({ active }: DockPanelBodyProps) {
     settledTurnSignal,
     addComposerReference,
   } = useChatDock();
+  // The surface this body is drawn on, which is what the panel keeps its place against: a layout
+  // move lands the same tab on another one, and only then does the place come back (see
+  // workspace-view-memory.ts — a Session switch comes back to the same surface and starts over).
+  const { position, merged } = useDockPanel();
+  const surface = merged ? "merged" : position;
   // The draft's Files panel browses the folder picked in the composer, addressed by the
   // directory itself; a temporary Workspace has none yet.
   if (!selected && draft && projectId) {
@@ -101,6 +107,7 @@ function WorkspacePanelBody({ active }: DockPanelBodyProps) {
           workspace: draftWorkspace.path,
           machineId: draftWorkspace.machineId,
         }}
+        surface={surface}
         active={active}
         onAddReference={addComposerReference}
       />
@@ -112,6 +119,7 @@ function WorkspacePanelBody({ active }: DockPanelBodyProps) {
   return (
     <WorkspaceBrowser
       scope={{ kind: "session", sessionId: selected.sessionId }}
+      surface={surface}
       openRequest={fileOpenRequest}
       active={active}
       reloadSignal={settledTurnSignal}
