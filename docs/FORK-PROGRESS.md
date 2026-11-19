@@ -2839,6 +2839,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       引用 chip 都留住了，**「你在看哪一个」**没留住：在调用图里点到另一个子 Agent 或主会话，跨一次断点面板
       就退回自动选中的第一个子 Agent，屏幕上换成了另一段对话。现在记录与调用图一起说了算，理由与边界见
       「第二百七十轮」一节。
+- [x] **7.151 换布局不再重放文件面板与记忆面板的那两条命令**（**2026-11-19 第二百七十一轮**落地，提交见
+      「已完成的轮次」；`packages/web` 4 个源码文件 —— 新增 `dock-command-once.ts`（模块级的 `claimOnce`：
+      同一个命令对象第一次返回 true、之后 false，页面每次点击都造新对象），`workspace-browser.tsx` 的
+      `openRequest` 从组件 ref 改用它，`memory-view.tsx` 的 `request` 也认领一次（此前每次挂载都重新应用），
+      `subagents-view.tsx` 把 7.150 那份私有 `WeakSet` 换成共用的认领）＋ 新单测 4 条 ＋ 1 个新 spec
+      `e2e/dock-command-across-layout.spec.mjs`（2 条）＋ mock 增一条 `memory write test <绝对路径>` 分支
+      ＋ `e2e/run.sh` 导出 `ADELIE_HOME` ＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十轮「没做 /
+      留着」点名的两处 —— 页面的跳转命令是「按一下」而不是状态，面板体却会在跨断点时整份重新挂载，记在
+      面板体里的「已经执行过」跟着旧挂载没了，于是新的挂载又执行一遍：文件面板把读者已经关掉、已经离开的
+      那个文件又打开，记忆面板把读者已经退出来的那条记忆又拽回去。现在这份账记在模块作用域，随标签页消失、
+      不随重新挂载消失。见「第二百七十一轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3600,6 +3611,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-18 | 7.148 | **换布局不再丢掉子 Agent 面板里没发出的字与那几句原因**（**2026-11-18 第二百六十八轮**落地；`packages/web` 3 个文件 —— 新增 `features/chat/subagent-composer-keep.ts`（按子会话记的模块级记录 `draft` / `send` / `stop` / `level` / `pinnedLevel`，`readSubagentComposerKeep` / `writeSubagentComposerKeep`，空记录整条删掉、`saysSomething` 判空），`features/chat/subagents-view.tsx` 的 `SubagentComposer` 把 `turnLevel` / `levelRefusal` / `sendRefusal` / `stopRefusal` 收成一份 `keep`、所有写入走同一个 `remember()`（先写存储再 `setKeep`，不等 effect）、输入框接上 `useSessionDraft(childSessionId)` 的 `initialText` / `onTextChange` / `initialSkills` / `onSkillsChange`，`initialText` 先读记录里的字再退回缓存，发送 / 转述成功后 `draft.discard()` 与 `remember({draft:""})` 一起清）＋ 新单测 `test/subagent-composer-keep.test.ts`（7 条）＋ 1 个新 spec `e2e/subagent-composer-across-layout.spec.mjs`（2 条，读的是 `[data-testid="dock"]:visible` 那一块）＋ 文档 `chat.zh.md` / `chat.en.md` 讲子 Agent 的那一条各一句 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百六十七轮末尾「没做 / 留着」点名的那一处 —— 停靠面板跨断点换挂载点，输入框状态整份重建，打到一半的字与那两句拒绝一起消失（上一轮探针 `draftKept false` 就是它的痕迹）。现在草稿 + 两句拒绝 + 钉住的等级都活着，`draft` 那一格另写一份的理由：草稿缓存有 300 ms 去抖、卸载时才补写，而补写发生在新的那份**已经读过缓存之后**（React 先渲染新子树再清理旧的）。见「第二百六十八轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）· `npx oxlint` 4 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（源码与 spec 首跑不过，`--write` 后复检全绿；`*.md` 按本仓口径不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **340 文件 / 3884 通过 / 2 跳过**（基线 339 / 3877，**+1 文件 / +7 用例即本笔**）· `@adelie/docs` **8 / 62** · **新 spec 2 passed（4.2 s + 48.5 s）**（真服务端 9684 + 仓库自带 mock 模型 9685 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r268-after3`；子会话由 mock 的「slow subagent test」派出，自己那一轮是前台 `sleep 45`）：① 把 `POST …/subagents/:child/abort` 拒成 500 → 句子出现，子会话框里打半句「换布局前打的这一段」，缩到 390 → 句子逐字同上、那半句仍在，回 1280 → 仍在、通知区 0 个按钮，随后清空框（空框才把**停止**换回来）、放过中止 → 句子随运行回到空闲一起收走；② 把子会话消息 POST 拒成 500 → 原因写在框上方，跨过去/跨回来都在、草稿一个字没少，主卡 `send-refusal` / `stop-refusal` 两格都没被占用 · **反证（同一份 spec，改前源码 + 改前产物）**：源码 `git checkout HEAD -- subagents-view.tsx`、模块移出树、重建 web 挂到 `/root/adelie-fork-data/r268-before` 的 9686 → **2 failed / 0 passed**（① 390 上 `subagent-stop-refusal` 找不到，② 390 上连 `subagent-send-refusal` 都找不到，90 秒超时）；放回重建后**与改后产物逐字节相同**（`diff -rq`）· **两态探针**（`r268/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9688 / 9689、改前 9690 / 9691）：**改后** 三刻（1280 / 390 / 回 1280）都是 `sentenceFound true`、句子逐字「没能停下这个子会话的这次运行，它仍在继续：服务器内部错误，请稍后重试。」、`role=alert`、在子会话输入框正上方（390：句子 y 710 w 374×50、框 y 777；回 1280：句子 y 736、框 y 787）、`boxValue` 三刻都是「换布局前打的这一段」、`overflowX false`；**改前** 1280 有句子与草稿，390 与回 1280 **两者皆空**（`sentenceFound false`、`boxValue ""`）。截图 `r268/shots/{after-1280-refused-and-draft,after-390-after-resize,after-1280-back,before-…}.png` 肉眼看过；两态 console 都只有既有的 `GET …/machines` **403** 与本轮**故意造的** 500，pageerror **0 条** · **相邻回归（真浏览器，一个进程跑 5 份 spec）**：`subagent-composer-across-layout` 2 + `subagent-send-refusal` 1 + `subagent-thinking-refusal` 1 + `subagent-stop-refusal` 2 + `subagent.spec.mjs` 4（含「survives reloads」与草稿流那两条）**10 passed（1.8 m）** · 端口只用 9680–9693（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r268-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r268/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）· 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `28903349b` |
 | 2026-11-19 | 7.149 | **换布局不再丢掉子 Agent 输入框上方暂存的引用 chip**（**2026-11-19 第二百六十九轮**落地；`packages/web` 3 个文件 —— `features/chat/subagent-composer-keep.ts` 的记录多一格 `references`（`ComposerReference[]`，写进「这块面板不能忘的事」那一段、空的算没话要说，并写明为什么草稿缓存不参与：十分钟前引用的文件可能已经变了），`features/chat/subagents-view.tsx` 的 `SubagentComposer` 把记录里的 chip 当 `initialReferences` 交回去、变化走文字用的那个 `remember()`，`features/chat/chat-input.tsx` 新增 `initialReferences` / `onReferencesChange` 两个 prop、内部加 `referencesRef` 与 `stageReferences`（暂存 / chip 的 × / 发送后清空都走它，清空**也**回调 —— 否则已发出的引用会留在调用方记录里、下次挂载又冒出来），草稿页两个都不传、行为不变）＋ 单测 `test/subagent-composer-keep.test.ts` **+3 条** ＋ 同一个 spec 加 1 条（第三个用例）＋ 文档 `chat.zh.md` / `chat.en.md` 讲子 Agent 的那一条各一句 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百六十八轮末尾「没做 / 留着」点名的第一处 —— 在子 Agent 自己的对话里选中一段、点「添加到对话」暂存的摘录 chip，跨一次断点就没了、再跨回来也不回来，而它一直没发出去。现在它和那半句话一样跨得过去，且仍只活在按会话记的那份记录里（不写 localStorage）。见「第二百六十九轮」一节 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 5 个改动文件 **0 警告 0 错误** · `prettier --check` 干净（单测与 spec 首跑不过，`--write` 后复检全绿） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **340 文件 / 3887 通过 / 2 跳过**（基线 340 / 3884，**+3 用例即本笔**） · `@adelie/docs` **8 / 62** · **新用例 3 passed（4.2 s + 48.5 s + 5.5 s）**（真服务端 9710 + 仓库自带 mock 模型 9711 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r269-after`）：① 子会话框上方摘录 chip 出现、框里仍是空的、整页只有这一枚（主输入卡没接这次暂存），1280 → 390 → 1280 三刻 chip 与它的 × 都在、都在框上方；拿 × 撤下后下一次换布局不回来；②③ 第二百六十八轮那两条（句子 + 半句话）照旧通过 · **反证（同一份 spec，改前源码 + 改前产物）**：三份源码退回 `HEAD`（改后留底 scratchpad `r269/after-src/`）、重建 web 挂到 `/root/adelie-fork-data/r269-before` 的 9712 → 新用例 **1 failed**（390 上 `narrow.chips` 期望 1、实得 0）；放回重建后**与改后产物逐字节相同**（`diff -rq`） · **两态探针**（`r269/probe.mjs`，同一脚本、两条腿各挂自己的产物：改后 9710 / 改前 9712）：**改后** 三刻（1280 / 390 / 回 1280）`chips 1` / `removeButton 1` / `chipAboveBox true` / `pageWideChips 1` / `overflowX false`，撤下后 `chips 0`；**改前** 1280 有 1 枚，390 与回 1280 都是 **0**（`chipAboveBox null`），撤下那一步连按钮都找不到。截图 `r269/shots/{after-1280,after-390,after-1280-back,before-1280,before-390,…}.png` 肉眼看过：改后 390 的子会话框上方是「Slow the TODO count…」+ ×，改前同宽同位置什么都没有；两态 console 只有既有的 `GET …/machines` **403**，pageerror **0 条** · **相邻回归（真浏览器）**：`selection-menu.spec.mjs` 2 passed（主输入卡的「添加到对话」与复制，正对本笔改的那条暂存路径） · 端口只用 9710 / 9711 / 9712（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r269-*`，探针 / 两态产物 / 截图 / 起服务日志都在 scratchpad 的 `r269/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `7bca80a85` |
 | 2026-11-19 | 7.150 | **换布局不再把子 Agent 面板切回它自己挑的那一段对话**（**2026-11-19 第二百七十轮**落地；`packages/web` 3 个文件 —— 新增 `src/features/chat/subagent-panel-selection.ts`（按**父会话**记的模块级记录（`SubagentSelection` = 会话 id 加 `ctx.origin` 链；`readSubagentSelection` / `writeSubagentSelection`，清空即删；纯函数 `restoreSubagentSelection(remembered, nodes)` 只在那段对话仍在当前 Task 的调用图里时返回它、`origin` 取自今天的节点），`subagents-view.tsx` 的 `selected` 全部写入走同一个 `pick()`（屏幕与记录同刻写）、渲染改成 `selected ?? restoreSubagentSelection(...) ?? 自动选中的第一个子 Agent`、`focusRequest` 的 effect 加一份 `WeakSet` 的「已经执行过」）＋ 新单测 `test/subagent-panel-selection.test.ts`（6 条）＋ 1 个新 spec `e2e/subagent-panel-selection-across-layout.spec.mjs`（2 条）＋ 文档 `chat.zh/en.md` 各一句 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百六十八 / 二百六十九轮那条线的下一步 —— 面板是一块停靠面板，跨断点时整份重建，字、原因、引用 chip 都留住了，**「你在看哪一个」**没留住：在调用图里点到另一个子 Agent 或主会话，换一次布局就退回自动选中的第一个子 Agent（探针实测：点主会话后 390 上又变成子 Agent 被选中、「主会话请在对话区查看」消失）。**现在**记录与调用图一起说了算，记录落空的那些情况（chip 把范围钉到别的 Task、流重新同步成新模型视图）照旧退回自动选中；顺带补掉同一条路上的重放 —— 页面那条「聚焦这个子 Agent」的跳转命令是一次性指令，重新挂载不再执行第二遍 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）· `oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个改动文件 `prettier --check` 干净（单测首跑不过，`--write` 后复检通过；`*.md` 不在 prettier 范围）· `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3141**（6 跳过）· web 341 / **3893**（2 跳过；基线 340 / 3887，**+1 文件 / +6 用例即本笔**）· docs 8 / **62** · **真服务端 + 真浏览器**（`run-spec.sh`：一次性数据根 `/root/adelie-fork-data/r270-*`、仓库自带 mock 模型、`/usr/bin/chromium`）：新 spec **2 passed（8.7 s）** · **反证**：把 `subagents-view.tsx` 退回 `HEAD` 重建（`r270/before-dist`，另起服务 9742）→ 第一条 **1 failed**（390 上 `pressed` 变 `[false, true]`、主会话那一句消失），放回改后源码重建后产出与留底 **逐字节相同**（`diff -rq`） · **真看一眼**：探针（9754 / 9755）三刻都是主会话节点在选（`pressed [true,false]`、`mainNote 1`），截图 `r270/shots/after-{2-desktop-root,3-narrow}.png` 肉眼看过 —— 1280 的右侧栏与 390 的合并面上都是节点 1 有蓝框、下面写着「主会话请在对话区查看」；两态 console 只有既有的 `GET …/machines` **403**，pageerror 0 条 · 端口只用 9740–9745 / 9750–9755（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r270-*`，探针 / 两态产物 / 日志都在 scratchpad 的 `r270/` 下 · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `5550df81e` |
+| 2026-11-19 | 7.151 | **换布局不再重放文件面板与记忆面板的那两条命令**（**2026-11-19 第二百七十一轮**落地；`packages/web` 4 个源码文件 —— 新增 `src/features/chat/dock-command-once.ts`（模块级 `claimOnce`：同一个命令对象第一次 true、之后 false；页面每次点击都造新对象，所以再点同一个文件仍是一条新命令；随标签页消失，不随重新挂载消失），`workspace-browser.tsx` 的 `openRequest` 从组件 ref 改用它，`memory-view.tsx` 的 `request` 也认领一次（此前每次挂载都重新应用，正是把读者拽回那条记忆的那一处），`subagents-view.tsx` 把 7.150 那份私有 `WeakSet` 换成共用的认领）＋ 新单测 `test/dock-command-once.test.ts`（4 条）＋ 1 个新 spec `e2e/dock-command-across-layout.spec.mjs`（2 条）＋ `e2e/mock-llm.mjs` 增一条 `memory write test <绝对路径>` 分支（普通 `write_file` 真写出那条记忆，卡片是真的；标题请求仍按 `!isTitle` 排除）＋ `e2e/run.sh` 导出 `ADELIE_HOME`（spec 要算记忆主题的绝对路径）＋ 文档无改动 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十轮「没做 / 留着」点名的两处 —— 页面交给面板的跳转命令是「按一下」而不是状态，面板体却会在跨断点时整份重新挂载，原先记在面板体里的「已经执行过」跟着旧挂载没了，新的挂载于是又执行一遍：文件面板把读者已经关掉、已经离开的文件又打开，记忆面板把读者已经退出来的那条记忆（或其列表）又拽回去。现在三条命令（含 7.150 的子 Agent 点选）用同一份模块级记录。见「第二百七十一轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 7 个改动文件 **0 警告 0 错误** · 7 个改动文件 `prettier --check` 干净（spec 与 mock 首跑不过，`--write` 后复检全绿；`*.md` 不在 prettier 范围） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **342 文件 / 3897 通过 / 2 跳过**（基线 341 / 3893，**+1 文件 / +4 用例即本笔**） · **新 spec 2 passed（4.3 s + 5.0 s）**（真服务端 9780 + 仓库自带 mock 模型 9781 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r271-after3`）：① 文件面板从回复里的卡片打开 `demo.html`（iframe 里是「Session A page」），读者随后在树里点 `note.txt`，1280 → 390 → 回 1280 三刻 `iframe` 计数都是 **0**；② 记忆面板落到 `probe-layout.md` 的详情（有「返回列表」），按回列表后跨 1280 → 390 → 1280，三刻「返回列表」与正文计数都是 **0**（仍停在列表） · **反证（同一份 spec，改前源码 + 改前产物）**：三份源码退回 `HEAD`（`dock-command-once.ts` 移出树）、重建 web 留底到 `r271/before-dist` 挂 9790 跑同一份 spec → **2 failed**：文件那条 390 上 `stalePreview` 期望 0、实得 **1**（旧的 `demo.html` iframe 又出现），记忆那条 390 上 `detail` 期望 0、实得 **1**（又回到那条记忆）；放回改后源码重建后产物与 `r271/after-dist` **逐字节相同**（`diff -rq` 无输出） · **两态探针**（`r271/look.mjs`，同一脚本、两条腿各挂自己的产物；改后 9810/9811 挂在 `r271-after4`、改前 9820/9821 挂在 `r271-before`）：**改后** —— 1280 文件面板面包屑 `./note.txt`、正文「the note the reader moved to」、`iframe 0`；390 文件面板回到树、`iframe 0`；记忆 1280 详情（`Probe memory` + 正文）→ 按「返回列表」→ 390 与回 1280 都是列表（`back 0`、`noteBody 0`）。**改前** —— 390 文件面板 `iframe 1`（面包屑 `./demo.html`、「Session A page」），记忆 390 与回 1280 都是 `back 1`、`noteBody 1`（被拽回详情）。截图 `r271/shots/{files-wide,files-narrow,memory-wide-detail,memory-wide-list,memory-narrow-list,memory-wide-again-list}.png` 与 `r271/shots-before/files-narrow.png` 肉眼看过；两态 console 只有既有的 `GET …/machines` **403**，pageerror 0 条 · **相邻回归（真浏览器）**：`subagent-panel-selection-across-layout.spec.mjs` **2 passed**（7.150 那条线，本笔把它的 `WeakSet` 换成共用认领）、`files-switch.spec.mjs` **1 passed**（文件面板切会话） · 端口只用 9760–9841（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r271-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r271/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `efb248233` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -29054,6 +29066,84 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔（源码 2、单测 1、spec 1、文档 2、changelog 2）：`5550df81e`。
 - 台账（条目 7.150、上表那一行、本节）随本文件另起一笔。
+
+## 第二百七十一轮：换布局不再重放文件面板与记忆面板的那两条命令（2026-11-19，条目 7.151）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.6 / 5.10（桌面壳一侧与既有部署
+单元、拍板、模型 key、明令不动、要把促销搬进项目配置才能做的 core 一半、要新依赖 `mermaid` 的 A2UI）——
+全都停在同一批前置上。第 7 节到 7.150 已全勾，直接可做的是第二百七十轮末尾「没做 / 留着」点名的两处：
+**同一个页面还往面板体里送着两条一次性命令，它们照样随重新挂载重放** —— `fileOpenRequest`（给 Files 面板）
+与 `memoryRequest`（给 Memory 面板）。
+
+先把它量出来。三个命令同出一源（`chat-page.tsx` 里那三个 state，每次点击造一个新对象，靠对象身份触发），
+但三处的「已经执行过」各记各的：子 Agent 点选是第二百七十轮刚加的模块级 `WeakSet`，另外两条仍是**组件实例
+的 ref**（`workspace-browser.tsx` 的 `handledOpenRequest`）或干脆**没有**（`memory-view.tsx` 的 effect 每挂载
+一次就应用一次）。面板体跨断点整份重新挂载时，ref 跟着旧实例没了、effect 又跑了一遍，于是：
+
+- 文件面板：从回复里的卡片点开 `demo.html`，读者随后在树里点 `note.txt`、把那个页面留在身后；缩到 390，
+  面板又打开 `demo.html`（面包屑 `./demo.html`、iframe 里又是「Session A page」）。改前探针里 390 上
+  `iframe` 计数 **1**，改后 **0**。
+- 记忆面板：从 Task 汇总卡片落到 `probe-layout.md`、读者按「返回列表」；缩到 390，又跳回那条记忆的详情。
+  改前 390 与回 1280 都是 `back 1` / `noteBody 1`，改后都是 **0**。
+
+### 做了什么
+
+- `packages/web/src/features/chat/dock-command-once.ts`（新）：模块级的 `claimOnce(command)` —— 同一个对象
+  第一次返回 true、之后 false。注释写清两件事：为什么是模块作用域（面板体跨断点重新挂载，page 一直握着
+  命令），以及为什么刷新之后从头开始是对的（一次性命令本来就不跨加载）。
+- `packages/web/src/features/chat/workspace-browser.tsx`：`openRequest` 的 effect 保留原来的「同一条命令只
+  执行一次」语义（会话切换时父组件要等子 effect 之后才清这个请求，重放会把已有的预览又拉回来），只是把
+  组件 ref 换成 `claimOnce`。
+- `packages/web/src/features/chat/memory-view.tsx`：`request` 的 effect 改成认领一次 —— 它此前每次挂载都重新
+  应用，正是把读者拽回那条记忆的那一处。
+- `packages/web/src/features/chat/subagents-view.tsx`：把 7.150 那份私有 `WeakSet` 换成交出来的共用认领，
+  三条命令从此只有一种记法（行为不变，spec 复跑照旧绿）。
+- `packages/web/e2e/mock-llm.mjs`：新增一条 `memory write test <绝对路径>` 分支 —— 模型走普通 `write_file`
+  把一条记忆真写出来（该会话以 `sandbox: danger-full-access` 建，否则默认的 `workspace-write` 会把写
+  AgentState 的调用拦在 Workspace 之外），于是 Task 汇总卡片里真的长出那条记忆行。
+- `packages/web/e2e/run.sh`：把 `ADELIE_HOME`（它本来就是这套 e2e 的数据根）一并导出给 playwright，
+  spec 用它算记忆主题的绝对路径。
+- 文档：无（这三处都是面板内部的行为，没有对读者可讲的界面变化；changelog 一对照旧）。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）。
+  任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑。
+- `oxlint` 7 个改动文件 0 警告 0 错误；`prettier --check` 干净（spec 与 mock 首跑不过，`--write` 后复检通过；
+  `*.md` 不在 prettier 范围）；`git diff --check` 干净。
+- 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3141**
+  （6 跳过）· web **342** / **3897**（2 跳过；基线 341 / 3893，**+1 文件 / +4 用例即本笔**）。
+- **真浏览器（主证据）**：新 spec `e2e/dock-command-across-layout.spec.mjs` **2 passed**（真服务端 9780 +
+  仓库自带 mock 模型 9781 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r271-after3`）。
+  ① 文件：卡片点开 `demo.html` → 树里点 `note.txt` → 1280 → 390 → 回 1280，三刻 `iframe` 都是 0；
+  ② 记忆：卡片落到 `probe-layout.md`（有「返回列表」）→ 按回列表 → 三刻「返回列表」与正文都是 0。
+- **反证（同一份 spec，改前源码 + 改前产物）**：三份源码退回 `HEAD`、`dock-command-once.ts` 移出树、重建 web
+  留底 `r271/before-dist` → **2 failed**（文件那条 390 上 `stalePreview` 期望 0 实得 **1**；记忆那条 390 上
+  `detail` 期望 0 实得 **1**）；放回改后源码重建，产物与 `r271/after-dist` **逐字节相同**（`diff -rq` 无输出），
+  再跑一次 **2 passed**。
+- **两态探针 + 真看一眼**（`r271/look.mjs`，同一脚本两条腿各挂自己的产物）：改后 9810/9811 挂在
+  `r271-after4`、改前 9820/9821 挂在 `r271-before`；截图
+  `r271/shots/{files-wide,files-narrow,memory-wide-detail,memory-wide-list,memory-narrow-list,memory-wide-again-list}.png`
+  与 `r271/shots-before/files-narrow.png` 肉眼看过 —— 改后 390 的文件面板是目录树（不再冒出 `demo.html`），
+  记忆面板是「用户记忆」列表；改前 390 的文件面板正是 `./demo.html` 的「Session A page」。两态 console 只有
+  既有的 `GET …/machines` **403**，pageerror 0 条。
+- **相邻回归（真浏览器）**：`subagent-panel-selection-across-layout.spec.mjs` 2 passed（本笔把它那份 `WeakSet`
+  换成共用认领）、`files-switch.spec.mjs` 1 passed（文件面板切会话，正对着 `openRequest` 那条路）。
+- 端口只用 9760–9841（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r271-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r271/` 下。
+
+### 没做 / 留着
+
+- **这一族到此收干净了**：页面交给面板体的三条命令（文件、记忆、子 Agent 点选）现在都走同一个 `claimOnce`；
+  下一次再出现「换布局又把某样东西恢复一遍」，应当先看是不是又加了一条新命令、而不是又漏在面板体里。
+- **跨断点仍会丢掉面板自己的本地选择**（Files 面板打开的是哪个文件、它在树里展开到哪一层）：这是组件状态，
+  不在命令这一族里，本轮没动；判断是它属于「停靠面板的视图状态要不要跨挂载保留」那一类，另立一条更合适。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 功能一笔（源码 4、单测 1、spec 1、mock 1、run.sh 1、changelog 2）：`efb248233`。
+- 台账（条目 7.151、上表那一行、本节）随本文件另起一笔。
 
 ## 第二百五十一轮（续）：输入框里 `/` 命令菜单的长说明不再被截掉（2026-11-15）
 
