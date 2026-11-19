@@ -14,6 +14,8 @@
  * over. The fixtures are three ordinary turns against the repository's mock model, so the file
  * really has three rounds — one per Task — with a timeline, a tool call and a reply in each.
  */
+import fs from "node:fs/promises";
+import path from "node:path";
 import { test, expect } from "@playwright/test";
 import { provisionAndLogin } from "./auth.mjs";
 
@@ -67,7 +69,7 @@ async function openSessionWithRounds(page, user) {
     await page.getByText(REPLY).nth(done).waitFor({ timeout: 60_000 });
     await page.waitForTimeout(300);
   }
-  return { sessionId };
+  return { sessionId, projectId };
 }
 
 /** The dock that is actually on screen (a collapsed one keeps its bodies mounted at zero size). */
@@ -213,4 +215,48 @@ test("a Trace tab closed and reopened still starts the panel over", async ({ pag
   await expect
     .poll(() => roundStates(page), { message: "the reopened panel starts over" })
     .toEqual(["0:false", "1:false", "2:true"]);
+});
+
+/**
+ * A Session that compacted holds one Trace file per compaction shard, and the pill row opens on
+ * the newest. A reader who picked an older shard was dropped back on the newest by a move; the
+ * picked shard is part of the place now (trace-place.ts's fileIndex).
+ */
+test("a layout change comes back to the shard the Trace panel had picked", async ({ page }) => {
+  const home = process.env.ADELIE_HOME;
+  expect(home, "ADELIE_HOME (e2e/run.sh exports the data root)").toBeTruthy();
+
+  const { projectId, sessionId } = await openSessionWithRounds(page, "traceplacesshard");
+
+  // The mock model cannot drive a real compaction inside a spec, so the second shard is a copy of
+  // the first in the same date directory — the pill row is what the place is about, and the server
+  // indexes every `_NNN.jsonl` it finds there.
+  const traces = path.join(home, projectId, "agents", AGENT, "traces");
+  const [date] = (await fs.readdir(traces)).sort();
+  const shardDir = path.join(traces, date);
+  await fs.copyFile(
+    path.join(shardDir, `${sessionId}_001.jsonl`),
+    path.join(shardDir, `${sessionId}_002.jsonl`),
+  );
+
+  await openTracePanel(page, sessionId);
+  await expect(onScreenDock(page).getByRole("button", { name: "#001" })).toBeVisible();
+
+  // The reader picks the older shard: the per-file export link follows the selection, which is
+  // how the spec reads it back (the pill's own styling is a colour rather than a state).
+  const pickedShard = (page) =>
+    page.evaluate(() => {
+      const link = [...document.querySelectorAll('a[href*="/traces/"]')].find((a) =>
+        /\/traces\/[^/]+\/\d+\/download$/.test(a.getAttribute("href") ?? ""),
+      );
+      const href = link?.getAttribute("href") ?? "";
+      return Number(/\/traces\/[^/]+\/(\d+)\/download$/.exec(href)?.[1] ?? NaN);
+    });
+  await expect.poll(() => pickedShard(page), { message: "the panel opens on the newest" }).toBe(2);
+  await onScreenDock(page).getByRole("button", { name: "#001" }).click();
+  await expect.poll(() => pickedShard(page)).toBe(1);
+
+  const { narrow, wideAgain } = await acrossLayouts(page, () => pickedShard(page));
+  expect(narrow).toBe(1);
+  expect(wideAgain).toBe(1);
 });

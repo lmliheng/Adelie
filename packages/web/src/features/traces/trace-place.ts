@@ -17,11 +17,14 @@
  * So a place is stored with the surface it was left on and is restored only from a body on a
  * different one.
  *
- * What is deliberately not here: which Trace file the pills have selected (a multi-shard Session
- * has several, and the pill's own selection is a separate feeder of the same record — see the note
- * in the round that introduced this file), the pinned row a bar-click jumps to (it clears itself
- * after a couple of seconds), and the transport strip's switch. Nor is it persisted anywhere: a
- * place is worth keeping across a move of the panel, not across a reload of the app.
+ * The picked shard is part of it too (fileIndex): a Session that compacted holds several Trace
+ * files, and a move used to drop the reader back on the newest one — the pill row's default, not
+ * what they were reading. It is kept as "null when it is that default", so the rule below
+ * ("a place that is where the panel opens by itself is dropped") still needs only the three halves.
+ *
+ * What is deliberately not here: the pinned row a bar-click jumps to (it clears itself after a
+ * couple of seconds) and the transport strip's switch. Nor is it persisted anywhere: a place is
+ * worth keeping across a move of the panel, not across a reload of the app.
  */
 import type { DockSurface } from "../dock/panel-context";
 
@@ -32,6 +35,11 @@ export interface TracePlace {
   expanded: number[];
   /** The panel's offset in pixels from its top (0 = the top). */
   scrollTop: number;
+  /**
+   * The shard the reader had picked, or null when it is the one the panel opens on (the newest
+   * file, which is also what a listing that dropped the pick falls back to).
+   */
+  fileIndex: number | null;
 }
 
 const places = new Map<string, TracePlace>();
@@ -41,6 +49,7 @@ const copyOf = (place: TracePlace): TracePlace => ({
   surface: place.surface,
   expanded: [...place.expanded],
   scrollTop: place.scrollTop,
+  fileIndex: place.fileIndex,
 });
 
 /**
@@ -65,13 +74,13 @@ export function recallTracePlace(sessionId: string, surface: DockSurface): Trace
  * stamped with the surface it came from, and the crossing back would read "same surface, start
  * over".
  *
- * A place that is exactly where the panel would open by itself — no round open, at the top — is
- * dropped rather than kept: remembering "nothing" would make the panel come back as if the reader
- * had been somewhere. (Once an analysis lands the newest round opens, so this is the state before
- * that, or after a reader has closed every round.)
+ * A place that is exactly where the panel would open by itself — no round open, at the top, on
+ * the newest shard — is dropped rather than kept: remembering "nothing" would make the panel come
+ * back as if the reader had been somewhere. (Once an analysis lands the newest round opens, so
+ * this is the state before that, or after a reader has closed every round.)
  */
 export function rememberTracePlace(sessionId: string, place: TracePlace): void {
-  if (place.expanded.length === 0 && place.scrollTop === 0) {
+  if (place.expanded.length === 0 && place.scrollTop === 0 && place.fileIndex === null) {
     places.delete(sessionId);
     return;
   }

@@ -62,21 +62,23 @@ export function TracePanel({
 }) {
   const [files, setFiles] = useState<FileRef[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [fileIndex, setFileIndex] = useState<number | null>(null);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [highlight, setHighlight] = useState<TraceHighlight | null>(null);
 
   // ---- the place comes back (trace-place.ts) ----
   // The place this body arrived into: a layout move mounts the body on the other surface, and the
-  // record written there hands back the open rounds and the offset the reader left. Any other
-  // mount (a tab reopened, a conversation switched back to) arrives on the surface the place was
-  // left on, so recall answers null and the panel starts over. Read once: the record is written on
-  // every change below, never on the way in.
+  // record written there hands back the open rounds, the offset and the picked shard the reader
+  // left. Any other mount (a tab reopened, a conversation switched back to) arrives on the surface
+  // the place was left on, so recall answers null and the panel starts over. Read once: the record
+  // is written on every change below, never on the way in.
   const [arrived] = useState(() => recallTracePlace(session.sessionId, surface));
+  // The pill's selection: the shard the reader had picked, or null until a listing pins the newest.
+  const [fileIndex, setFileIndex] = useState<number | null>(() => arrived?.fileIndex ?? null);
   /** The panel's place as it stands now — a ref, since a scroll moves it at the refresh rate. */
   const place = useRef({
     expanded: arrived?.expanded ?? [],
     scrollTop: arrived?.scrollTop ?? 0,
+    fileIndex: arrived?.fileIndex ?? null,
   });
   const remember = useCallback(
     () =>
@@ -84,6 +86,7 @@ export function TracePanel({
         surface,
         expanded: place.current.expanded,
         scrollTop: place.current.scrollTop,
+        fileIndex: place.current.fileIndex,
       }),
     [session.sessionId, surface],
   );
@@ -172,6 +175,17 @@ export function TracePanel({
     // `active` alone would only load once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, listTick, session.sessionId]);
+
+  // The selected shard is part of the place as well, and it is kept as "null when it is the
+  // default": a Session that compacted has several files, the panel opens on the newest, and a
+  // reader on an older shard must come back to it — but a reader on the newest must still leave a
+  // place that the "opens by itself" rule can drop. The listing is a dependency because the
+  // default moves when a newer shard appears while the reader stays where they were.
+  useEffect(() => {
+    if (files === null || fileIndex === null) return;
+    place.current.fileIndex = fileIndex === files[0]?.index ? null : fileIndex;
+    remember();
+  }, [files, fileIndex, remember]);
 
   // The Transport view is rendered ABOVE these branches rather than inside the populated one:
   // a Session with no Trace at all — nothing has run yet, or a run died before its first write —
