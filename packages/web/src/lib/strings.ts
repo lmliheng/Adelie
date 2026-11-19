@@ -2231,6 +2231,14 @@ export const zh = {
     /** Connectivity test on a built-in row missing its pin: the same split the card makes, so the two never give opposite advice. */
     testStalePin:
       "连通失败：该内置模型的条目早于目录为它钉下的协议，当前无法路由。重新同步内置目录即可补回该协议，它不属于自定义分组。",
+    /**
+     * Connectivity test on a self-hosted group (vLLM, Custom): the server refuses before dialing,
+     * because a group that presets no address of its own and an entry that carries none leave
+     * nowhere to send the probe. The line names the one empty field instead of relaying the raw
+     * network error the SDK would come back with after the full 20-second timeout.
+     */
+    testNoEndpoint:
+      "连通失败：这个分组是自建的，没有现成的服务地址 —— 先把你自己服务的 base URL 填上再测。",
     addGroup: "新增分组",
     addGroupTitle: "新增分组",
     addGroupDesc:

@@ -72,11 +72,31 @@ describe("modelTestRefusal", () => {
     );
   });
 
+  it("writes its own sentence for a probe that never left the server", () => {
+    // `no_endpoint`: a self-hosted group (vLLM, custom, a user-defined one) presets no address,
+    // and the form carried none either — so the server refused before dialing instead of waiting
+    // out a 20-second timeout at the SDK's own default endpoint. The route's words explain that
+    // to an API client; the dialog's line is the interface's, in the reader's language.
+    const answer = {
+      result: {
+        ok: false,
+        cause: "no_endpoint" as const,
+        message:
+          "Model vllm/Qwen/Qwen3.5-9B has no base URL, and its group has none of its own: set the base URL on the model entry to the address the endpoint answers on.",
+      },
+    };
+    expect(modelTestRefusal(answer, null)).toBe(S.models.testNoEndpoint);
+    expect(modelTestRefusal(answer, null)).not.toContain("has no base URL");
+  });
+
   it("speaks the active language", () => {
     setActiveStrings(EN);
     expect(modelTestRefusal({ result: { ok: false } }, null)).toBe(
       EN.models.testFailed(EN.common.unknownError),
     );
     expect(modelTestRefusal({ result: { ok: false } }, "sync")).toBe(EN.models.testStalePin);
+    expect(modelTestRefusal({ result: { ok: false, cause: "no_endpoint" } }, null)).toBe(
+      EN.models.testNoEndpoint,
+    );
   });
 });

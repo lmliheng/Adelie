@@ -2190,6 +2190,14 @@ export const en: Strings = {
     /** Connectivity test on a built-in row missing its pin: the same split the card makes, so the two never give opposite advice. */
     testStalePin:
       "Failed: this built-in model's entry predates the protocol the catalog now pins for it, so it cannot be routed. Re-syncing the built-in catalog restores that pin; it does not belong in a custom group.",
+    /**
+     * Connectivity test on a self-hosted group (vLLM, Custom): the server refuses before dialing,
+     * because a group that presets no address of its own and an entry that carries none leave
+     * nowhere to send the probe. The line names the one empty field instead of relaying the raw
+     * network error the SDK would come back with after the full 20-second timeout.
+     */
+    testNoEndpoint:
+      "Failed: this group is self-hosted and has no address of its own — fill in the base URL of your own service, then test again.",
     addGroup: "Add group",
     addGroupTitle: "Add group",
     addGroupDesc:

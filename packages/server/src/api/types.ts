@@ -1074,6 +1074,14 @@ export interface ModelVisionDetectResponse {
  */
 export interface ModelTestResponse {
   ok: boolean;
+  /**
+   * Why the probe never left the server, when it refused before any request: `no_endpoint` is a
+   * model whose group has no address of its own (vLLM, Custom) and whose entry, draft and
+   * environment carry none either, so there was nothing to connect to. A machine-readable reason
+   * because the sentence that belongs to it is the interface's to write (the UI's own languages),
+   * not the server's.
+   */
+  cause?: "no_endpoint";
   latencyMs?: number;
   /** Time from request start to the first streamed content (thinking or text), ms. */
   ttftMs?: number;

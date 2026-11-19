@@ -29583,3 +29583,41 @@ Agent**。
   证据写 `/root/Adelie_develop/rel-0610-live-restart-verify.txt`。
 - 这一版**前端产物没变**：`index-BYnOdUiS.js`，与今天 17:04 只换前端那次换上去的逐字节相同（换的是服务端与
   core：内核版本前进到 2026-11-18，各 Agent 没改过的提示词会在装载时前进）。
+
+## 第二百五十一轮（续）：自建分组的模型没填服务地址时，连通性测试不再干等 20 秒只说一句英文（2026-11-20）
+
+用户 2026-11-18 问：「vllm 服务商的模型都免费？我随便填 apikey，测试连通性失败，彻底检查模型库！」——先
+把模型库体检做完，再把他遇到的那次失败改掉。
+
+- **模型库体检（24 个分组 / 212 条模型，`vllm-probe/audit.ts` 只读）**：13 条 $0 定价**条条有出处**
+  （openrouter 两条 `:free`、`openrouter/free`、`tokendance/dots-3-note-preview` 预览期真 0、
+  `zhipu/glm-4.7-flash` 与 `iflytek/lite` 是厂商免费档、`custom/Atria-Dawn-Preview` 厂商未定价、
+  vLLM 8 条）；5 条没有 pricing（iflytek 两条、modelscope 三条）在代码注释里写明是**故意留空**。没发现
+  真正的错误数据，也没动它。vLLM 那 8 条 0 价是**故意的**：服务自己跑，成本是自己的硬件，0 价让它显示
+  「免费」徽标、成本中心记 0 —— 分组也不预设端点（`packages/core/src/state/model-catalog.ts` 第 646–658
+  行分组、3019–3116 行 8 条）。另记一个未改的摩擦点：vLLM 常不带鉴权，但这一版**必须填一把 key**才让测
+  （凭据规则：端点是自己的就不借环境变量）。
+- **用户那次失败的真因**：草稿里只填了 key、base URL 留空 → 探针没有地址，SDK 用了自己协议的默认端点
+  （`api.openai.com`），跑满 20 秒超时后回一句英文原文
+  `Connection error.: fetch failed: AggregateError (ETIMEDOUT)`。改前实测三条都是这个形状（vLLM 2143ms、
+  custom 2032ms、用户自建分组 2222ms）。
+- **改动**：`packages/server/src/services/project-config-service.ts` 的 `testModel` 在构造客户端前多一步
+  判断（草稿与已存条目都没有 base URL、分组没有 `gatewayBaseUrl`、环境里那个 `*_BASE_URL` 也没值、并且
+  这条模型确实有协议 —— 显式 `client_type` 或分组钉下的协议，如 vLLM 的 `openai-chat-vllm-adapter`）→
+  直接返回 `{ ok:false, cause:"no_endpoint", message:… }`；`packages/server/src/api/types.ts` 的
+  `ModelTestResponse` 多一个可选 `cause`；`packages/web/src/features/models/model-test-refusal.ts` 对这个
+  原因用界面自己的话（新增 `strings.ts`/`strings-en.ts` 的 `models.testNoEndpoint`），不再回放英文。
+  三类分组不碰（厂商分组、网关、条目内联地址的分组），没有协议的条目也放过（SDK 那句 `is not supported`
+  才更准）。
+- **验证**：探针（工作树新构建的 server 起临时实例 + 仓库自带假模型，8966/8933）改后同样三种输入
+  **12–16ms** 拿回 `cause:"no_endpoint"`；反向对照未变 —— 填了地址 76ms 通（`ok:true`）、填了地址不填 key
+  仍是凭据那条拒绝、厂商分组（deepseek）没有地址照旧真拨号拿回上游 401；`models.test.ts` 新增两条（三种
+  自建输入 × 省略/`baseUrl:null` 两种写法都必须拿到这个原因且**一个请求都没发出去**；厂商/网关/内联地址
+  分组照旧拨号），两条既有用例补上 base URL 保住各自原来的测点；web 新增一条 + 英文断言一条。server 模型
+  相关 6 文件 / 71 条、web 相关 5 文件 / 56 条全过，两包 `tsc --noEmit` 通过，改动文件 oxlint 0 警告、
+  prettier 干净，前端产物里两句新文案都在。
+- changelog 一对：`2026-11-20-model-test-no-endpoint.{md,zh.md}`。
+- **还没上现网**：这条改了服务端，不能只换前端 —— 要整棵换装 + 延后重启（或等下次发版），动手前问用户。
+- 另记一个**与本笔无关**的观察：往 vLLM 分组 PUT 一条不带 `client_type` 的条目后，探针仍按「is not
+  supported」拒绝（分组钉下的协议没有落在探针的 `client_type` 上）；界面保存时本来就会带上钉下的协议，
+  所以只在直接调接口时看得见，本笔不动它。

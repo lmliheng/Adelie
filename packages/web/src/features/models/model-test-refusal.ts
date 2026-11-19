@@ -50,6 +50,11 @@ export function modelTestRefusal(
   fix: "sync" | "custom" | null,
 ): string | null {
   if (answer.result !== null && answer.result.ok) return null;
+  // The one failure the server diagnoses before dialing, so it reaches the dialog as a reason
+  // rather than a relayed provider error: a self-hosted group has no address of its own, and
+  // without one there was nowhere to send the probe. The sentence names the empty field.
+  if (answer.result !== null && answer.result.cause === "no_endpoint")
+    return S.models.testNoEndpoint;
   if (fix === "sync") return S.models.testStalePin;
   if (fix === "custom") return S.models.testNotRoutable;
   const message =

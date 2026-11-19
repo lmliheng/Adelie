@@ -1508,19 +1508,109 @@ describe("model-reference rekeying and the connectivity test", () => {
   it("connectivity test: a model with no credential at all converges to ok:false instead of 500", async () => {
     // A model using the OpenAI protocol: the provider SDK throws at **client construction** because
     // the key is missing — if that construction were outside the try it would bubble up as a 500. Clear the env-var key so there's nowhere to get one (no real network request).
+    // The draft carries a base URL so the probe reaches the credential rule rather than the
+    // no-address refusal (that one is its own case below).
     const prev = process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_KEY;
     try {
       await api.put(url(), {
-        models: [{ provider: "custom", modelId: "no-key-openai", clientType: "openai" }],
+        models: [
+          {
+            provider: "custom",
+            modelId: "no-key-openai",
+            clientType: "openai",
+            baseUrl: "https://no-key.example.invalid/v1",
+          },
+        ],
       });
-      const res = await api.post(testUrl(), { provider: "custom", modelId: "no-key-openai" });
+      const res = await api.post(testUrl(), {
+        provider: "custom",
+        modelId: "no-key-openai",
+        baseUrl: "https://no-key.example.invalid/v1",
+      });
       expect(res.status).toBe(200);
       const body = (await res.json()) as ModelTestResponse;
       expect(body.ok).toBe(false);
       expect(typeof body.message).toBe("string");
     } finally {
       if (prev !== undefined) process.env.OPENAI_API_KEY = prev;
+    }
+  });
+
+  it("connectivity test: a self-hosted group with no address anywhere is refused before any dial", async () => {
+    // What the vLLM group did when a key was filled in and the base URL was left empty: the group
+    // presets no endpoint and its rows carry none, so the SDK fell back to its own default for the
+    // protocol — api.openai.com — spent the whole 20s timeout there and answered with a raw
+    // network error. The route now refuses before dialing and names the empty field, so the
+    // dialog can say it in the reader's own words (`testNoEndpoint`); no request may leave.
+    const savedBase = process.env.OPENAI_BASE_URL;
+    const savedKey = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_BASE_URL;
+    delete process.env.OPENAI_API_KEY;
+    const network = stubFetch(() => {
+      throw new Error("no request may leave the process for a probe with no address");
+    });
+    try {
+      for (const [provider, modelId, clientType] of [
+        // The group pins the protocol (vLLM) and the preset row stores it.
+        ["vllm", "Qwen/Qwen3.5-9B", undefined],
+        // A hand-added row in the custom group, and one in a user-defined group.
+        ["custom", "qwen3-32b", "openai-chat"],
+        ["my-lab", "qwen3-32b", "openai-chat"],
+      ] as const) {
+        for (const cleared of [false, true]) {
+          // `baseUrl: null` is the form's "cleared" — the stored entry has none either, so both
+          // spellings describe the same empty draft.
+          const res = await api.post(testUrl(), {
+            provider,
+            modelId,
+            apiKey: "sk-junk",
+            ...(clientType === undefined ? {} : { clientType }),
+            ...(cleared ? { baseUrl: null } : {}),
+          });
+          expect(res.status).toBe(200);
+          const body = (await res.json()) as ModelTestResponse;
+          expect(body.ok).toBe(false);
+          expect(body.cause).toBe("no_endpoint");
+          expect(body.message).toMatch(/has no base URL/);
+          expect(body.message).toMatch(/set the base URL on the model entry/);
+        }
+      }
+      expect(network.calls).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+      for (const [key, value] of [
+        ["OPENAI_BASE_URL", savedBase],
+        ["OPENAI_API_KEY", savedKey],
+      ] as const) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    }
+  });
+
+  it("connectivity test: a vendor group and a gateway still dial their own endpoint with an empty draft", async () => {
+    // The other side of the rule: a row without an address does have somewhere to go there. A
+    // vendor group's routed client defaults to that vendor's own endpoint, a gateway's endpoint is
+    // preset by the group, and a pinned group (Xiaomi) inlines the address on every row — none of
+    // them is the self-hosted case, so none is refused.
+    const network = stubFetch(() =>
+      jsonResponse({ error: { message: "test-reject", type: "invalid_request" } }, 401),
+    );
+    try {
+      for (const [provider, modelId] of [
+        ["deepseek", "deepseek-flash"],
+        ["tokendance", "glm-5.3"],
+        ["xiaomi", "mimo-v2.6-pro"],
+      ] as const) {
+        const res = await api.post(testUrl(), { provider, modelId, apiKey: "sk-junk" });
+        expect(res.status).toBe(200);
+        const body = (await res.json()) as ModelTestResponse;
+        expect(body.cause).toBeUndefined();
+      }
+      expect(network.calls.length).toBeGreaterThan(0);
+    } finally {
+      vi.unstubAllGlobals();
     }
   });
 
@@ -1639,7 +1729,9 @@ describe("model-reference rekeying and the connectivity test", () => {
 
   it("connectivity test: clearApiKey does not fall back to the stored key (the current draft is what gets tested)", async () => {
     // A key is already saved, but the test request carries clearApiKey — the server must **not** use
-    // the saved key. Clear the env var so "don't use the saved key" == no credential at all, so construction synchronously throws missing-credential (no network request, deterministic).
+    // the saved key. Clear the env var so "don't use the saved key" == no credential at all, so the
+    // probe resolves to the missing-key refusal before any request goes out (deterministic; the
+    // row carries a base URL so the credential rule is what answers, not the no-address refusal).
     const prev = process.env.OPENAI_API_KEY;
     delete process.env.OPENAI_API_KEY;
     try {
@@ -1649,6 +1741,7 @@ describe("model-reference rekeying and the connectivity test", () => {
             provider: "custom",
             modelId: "has-key-openai",
             clientType: "openai",
+            baseUrl: "https://has-key.example.invalid/v1",
             apiKey: "sk-saved-key",
           },
         ],
@@ -1659,12 +1752,15 @@ describe("model-reference rekeying and the connectivity test", () => {
         provider: "custom",
         modelId: "has-key-openai",
         clearApiKey: true,
+        baseUrl: "https://has-key.example.invalid/v1",
       });
       expect(cleared.status).toBe(200);
       const body = (await cleared.json()) as ModelTestResponse;
       expect(body.ok).toBe(false);
-      // Missing-credential is thrown synchronously at construction (message contains "credentials"); if the saved key were still used, it wouldn't be this message.
-      expect(body.message ?? "").toMatch(/credential/i);
+      // The refusal names the missing key; if the saved key had still been used, the row would
+      // have been dialed and the answer would be a network error instead.
+      expect(body.message ?? "").toMatch(/has no API key/);
+      expect(body.message ?? "").not.toMatch(/Connection error/);
     } finally {
       if (prev !== undefined) process.env.OPENAI_API_KEY = prev;
     }

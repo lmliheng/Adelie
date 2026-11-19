@@ -55,7 +55,10 @@ import {
 } from "@adelie/core";
 import {
   VENDOR_ENDPOINTS,
+  isVendorGroup,
+  providerClientType,
   providerInfo,
+  resolveModelEnv,
   unaddableModel,
   unroutableVendorModel,
 } from "@adelie/core/model-catalog";
@@ -1066,6 +1069,39 @@ export class ProjectConfigService implements ProjectConfigStore {
     // serving tier sessions would use, so a model rejecting fast_mode fails the test with
     // the actionable message before the config is saved.
     const fastMode = req.fastMode ?? entry.fast_mode === true;
+
+    // A self-hosted group — vLLM, custom, a user-defined one — presets no endpoint: its rows name
+    // the address themselves. With nothing in the draft and nothing on the stored entry there is
+    // nowhere to send the probe, and the SDK takes the one address it always has, its own default
+    // for the protocol (api.openai.com for an OpenAI-protocol row) — a name a self-hosted server
+    // has never answered to. It spends the whole 20s timeout there and returns a raw network
+    // error in English; refuse here, before dialing, and name the field that is empty.
+    //
+    // Three groups are left alone because a row without an address does have somewhere to go:
+    // a vendor group, whose routed client's default endpoint is that vendor's own (and which the
+    // credential rule already guards), and a gateway, whose endpoint the group itself presets
+    // (`gatewayBaseUrl`). The environment's `*_BASE_URL` is the last resort the routed client
+    // reads by itself — where it is set, there is an address and nothing to refuse. A row without
+    // a protocol (no explicit client_type, no pin from its group) is left to the SDK's own
+    // "is not supported" sentence, which names what is actually missing there.
+    const group = providerInfo(req.provider);
+    const protocol = clientType ?? providerClientType(req.provider);
+    const envInfo = protocol === undefined ? undefined : resolveModelEnv(req.modelId, protocol);
+    const envBaseUrl =
+      envInfo === undefined ? undefined : process.env[envInfo.envBaseUrlKey]?.trim();
+    if (
+      baseUrl === undefined &&
+      protocol !== undefined &&
+      !isVendorGroup(req.provider) &&
+      group?.gatewayBaseUrl === undefined &&
+      !envBaseUrl
+    ) {
+      return {
+        ok: false,
+        cause: "no_endpoint",
+        message: `Model ${req.provider}/${req.modelId} has no base URL, and its group has none of its own: set the base URL on the model entry to the address the endpoint answers on.`,
+      };
+    }
 
     const startedAt = Date.now();
     try {
