@@ -28,8 +28,8 @@
  * keeps the last committed rows and re-renders the closed directory's own descendants, inert, for
  * as long as the shrink lasts.
  */
-import { useEffect, useRef, useState } from "react";
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode, UIEventHandler } from "react";
 import { ICON_SIZE } from "../../../icon-scale";
 import { Chevron } from "../../icons/chevron/chevron";
 import { GlyphIcon } from "../../icons/glyph-icon/glyph-icon";
@@ -94,6 +94,15 @@ export interface FileTreeProps<Row extends FileTreeRow> {
   emptyLabel?: string;
   /** Extra classes on the tree container — its own layout and scrolling belong to the caller. */
   className?: string;
+  /**
+   * The tree's own box, for a caller that has to know where it is scrolled: the Workspace panel
+   * keeps that offset across a move between dock surfaces (workspace-view-memory.ts), and this
+   * div is the scroller — its layout and scrolling belong to the caller (className), so the
+   * caller is also the one that remembers them.
+   */
+  bodyRef?: (el: HTMLDivElement | null) => void;
+  /** The tree was scrolled: the same caller reads the offset off its own box. */
+  onScroll?: UIEventHandler<HTMLDivElement>;
   /** Shown in place of the rows when there are none: the caller's empty or no-match state. */
   children?: ReactNode;
   onToggleDir: (dir: string) => void;
@@ -113,12 +122,21 @@ export function FileTree<Row extends FileTreeRow>({
   rowTrailing,
   emptyLabel,
   className = "",
+  bodyRef,
+  onScroll,
   children,
   onToggleDir,
   onOpenFile,
 }: FileTreeProps<Row>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
+  const bindContainer = useCallback(
+    (el: HTMLDivElement | null) => {
+      containerRef.current = el;
+      bodyRef?.(el);
+    },
+    [bodyRef],
+  );
 
   // The descendants of directories that have just closed, by directory path. They are no
   // longer in `rows` — the caller closed the directory in the same commit that reported the
@@ -343,10 +361,13 @@ export function FileTree<Row extends FileTreeRow>({
 
   return (
     <div
-      ref={containerRef}
+      // Held steady across renders: a body ref that changed identity every render would force
+      // React to detach and reattach it (a null call) on every commit.
+      ref={bindContainer}
       role="tree"
       aria-label={label}
       onKeyDown={onKeyDown}
+      onScroll={onScroll}
       className={`py-1 ${className}`}
     >
       {rows.length === 0

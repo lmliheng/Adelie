@@ -1,12 +1,16 @@
 /**
  * The Files panel's own place, remembered across the move of the panel between dock surfaces
  * (a Session, or a directory — see filesScopeKey): which file is open, which folders are
- * unfolded, which directory the breadcrumbs name and uploads land in.
+ * unfolded, which directory the breadcrumbs name and uploads land in — and how the reader was
+ * looking at it, which the body also owns and which a remount throws away just as surely: the
+ * rendered/source choice for a Markdown or HTML file, and where the preview and the tree were
+ * scrolled.
  *
- * The panel keeps those three in component state, and a layout move throws that state away with
- * the body: the same tab is rendered by the other dock, or by the narrow merged surface, as a
- * fresh mount where the old one stood. The reader's place went with the old mount — the file they
- * were reading, the folders they had opened on the way to it. Module scope is what survives a
+ * The panel keeps all of that in component state (and the scroll offsets in the boxes
+ * themselves), and a layout move throws it away with the body: the same tab is rendered by the
+ * other dock, or by the narrow merged surface, as a fresh mount where the old one stood. The
+ * reader's place went with the old mount — the file they were reading, the folders they had
+ * opened on the way to it, the line they had scrolled down to. Module scope is what survives a
  * remount: the page outlives the move, the body does not.
  *
  * A remount is not always a move, though, and only a move keeps the place. The body is also
@@ -27,6 +31,12 @@
 /** Where a panel body is drawn: the side or bottom dock, or the narrow merged surface. */
 export type DockSurface = "right" | "bottom" | "merged";
 
+/** How a Markdown or HTML file was being read: rendered, or its own text. */
+export type WorkspaceReading = "rendered" | "source";
+
+/** Where a box was scrolled to, in its own pixels. */
+export type WorkspaceScroll = { top: number; left: number };
+
 export type WorkspaceView = {
   /** The surface the place was left on; the place is restored only elsewhere (see above). */
   surface: DockSurface;
@@ -36,6 +46,15 @@ export type WorkspaceView = {
   currentDir: string;
   /** The unfolded directories, in the order they were opened. */
   expanded: readonly string[];
+  /**
+   * The reader's rendered/source choice for the open file. Kept with the file, not with the
+   * panel: the choice is about what is in the preview, and a fresh file starts rendered.
+   */
+  reading: WorkspaceReading;
+  /** The preview's offset, or null while it is at the top (no file open: nothing to record). */
+  previewScroll: WorkspaceScroll | null;
+  /** The tree's offset, or null while it is at the top. */
+  treeScroll: WorkspaceScroll | null;
 };
 
 const views = new Map<string, WorkspaceView>();
@@ -46,6 +65,9 @@ const copyOf = (view: WorkspaceView): WorkspaceView => ({
   selectedPath: view.selectedPath,
   currentDir: view.currentDir,
   expanded: [...view.expanded],
+  reading: view.reading,
+  previewScroll: view.previewScroll === null ? null : { ...view.previewScroll },
+  treeScroll: view.treeScroll === null ? null : { ...view.treeScroll },
 });
 
 /**
@@ -65,12 +87,21 @@ export function recallWorkspaceView(scopeKey: string, surface: DockSurface): Wor
  * in a second copy too, see subagent-composer-keep.ts).
  *
  * A place that is exactly where a fresh panel starts — no file, the root directory, nothing
- * unfolded — is dropped rather than kept: remembering "nothing" would make the panel come back
- * as if the reader had been somewhere. A body that starts over (see above) reaches this too, so
- * the place it left behind is gone rather than lying in wait for the next move.
+ * unfolded, the preview rendered, neither box scrolled — is dropped rather than kept: remembering
+ * "nothing" would make the panel come back as if the reader had been somewhere. A body that starts
+ * over (see above) reaches this too, so the place it left behind is gone rather than lying in wait
+ * for the next move. Scrolling the tree alone is a place, though: the reader was looking at rows
+ * halfway down, and those rows are as lost to a remount as an open file is.
  */
 export function rememberWorkspaceView(scopeKey: string, view: WorkspaceView): void {
-  if (view.selectedPath === null && view.currentDir === "" && view.expanded.length === 0) {
+  if (
+    view.selectedPath === null &&
+    view.currentDir === "" &&
+    view.expanded.length === 0 &&
+    view.reading === "rendered" &&
+    view.previewScroll === null &&
+    view.treeScroll === null
+  ) {
     views.delete(scopeKey);
     return;
   }

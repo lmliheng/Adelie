@@ -7,6 +7,7 @@
  */
 import { FileTree } from "@adelie/ui";
 import type { TreeToggle } from "@adelie/ui";
+import type { UIEventHandler } from "react";
 import { S } from "../../lib/strings";
 import { formatBytes, formatDateTime } from "../../lib/format";
 import type { TreeRow } from "../../lib/workspace-tree";
@@ -21,6 +22,8 @@ export function WorkspaceTreeView({
   rootEmpty,
   filtering,
   toggled,
+  bodyRef,
+  onScroll,
   onToggleDir,
   onOpenFile,
 }: {
@@ -40,6 +43,10 @@ export function WorkspaceTreeView({
   filtering: boolean;
   /** The directory last opened or closed, whose subtree animates. Null: nothing to animate. */
   toggled: TreeToggle | null;
+  /** The tree's scrolling box, for the panel that keeps its offset across a move (see workspace-view-memory.ts). */
+  bodyRef?: (el: HTMLDivElement | null) => void;
+  /** Scrolled: the panel reads the offset off the same box. */
+  onScroll?: UIEventHandler<HTMLDivElement>;
   onToggleDir: (dir: string) => void;
   onOpenFile: (path: string) => void;
 }) {
@@ -68,6 +75,8 @@ export function WorkspaceTreeView({
       }
       emptyLabel={S.files.empty}
       className="min-h-0 flex-1 overflow-auto"
+      bodyRef={bodyRef}
+      onScroll={onScroll}
       onToggleDir={onToggleDir}
       onOpenFile={onOpenFile}
     >

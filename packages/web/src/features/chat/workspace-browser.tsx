@@ -165,7 +165,7 @@ import { claimOnce } from "./dock-command-once";
 import { editorSaveRefusal } from "./editor-save-refusal";
 import { uploadRefusalLine } from "./upload-refusal";
 import { recallWorkspaceView, rememberWorkspaceView } from "./workspace-view-memory";
-import type { DockSurface } from "./workspace-view-memory";
+import type { DockSurface, WorkspaceReading, WorkspaceScroll } from "./workspace-view-memory";
 import { WorkspaceTreeView } from "./workspace-tree-view";
 
 /**
@@ -589,8 +589,12 @@ export function WorkspaceBrowser({
   const [toggled, setToggled] = useState<TreeToggle | null>(null);
   // -------------------------------------------------------------------- preview / editor
   const [preview, setPreview] = useState<Preview | null>(null);
-  /** HTML / Markdown preview: rendered view (HTML via sandboxed iframe, Markdown via md-body) / source toggle. */
-  const [richView, setRichView] = useState<"rendered" | "source">("rendered");
+  /**
+   * HTML / Markdown preview: rendered view (HTML via sandboxed iframe, Markdown via md-body) /
+   * source toggle. It starts at the choice the reader left on this file (a layout move), which
+   * previewPath applies again when the file itself comes back (see the restore effect below).
+   */
+  const [richView, setRichView] = useState<WorkspaceReading>(restoredView?.reading ?? "rendered");
   /** Error from the lazy source fetch of an isolated HTML preview: scoped to the source
    *  view — the rendered iframe keeps working no matter what happens to this fetch. */
   const [sourceError, setSourceError] = useState<string | null>(null);
@@ -685,6 +689,42 @@ export function WorkspaceBrowser({
   /** The selection the preview's menu was opened over; null when there was none inside it. */
   const [menuSelection, setMenuSelection] = useState<PreviewSelection | null>(null);
   const previewBodyRef = useRef<HTMLDivElement | null>(null);
+  /** The tree's own scrolling box (FileTree's root, handed out through WorkspaceTreeView). */
+  const treeBodyRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * Where the two boxes were scrolled, as last seen by their scroll events — the record keeps
+   * them (see workspace-view-memory.ts), and a scroll does not go through React state: it fires
+   * at the refresh rate and nothing else on screen depends on it.
+   *
+   * The preview's offset is held with the file it belongs to: opening another file in the same
+   * body is a different reading, and carrying the old offset over would scroll the new file to a
+   * line nobody asked for.
+   */
+  const previewScrollRef = useRef<{ path: string; at: WorkspaceScroll } | null>(
+    restoredView !== null &&
+      restoredView.selectedPath !== null &&
+      restoredView.previewScroll !== null
+      ? { path: restoredView.selectedPath, at: { ...restoredView.previewScroll } }
+      : null,
+  );
+  const treeScrollRef = useRef<WorkspaceScroll | null>(
+    restoredView?.treeScroll == null ? null : { ...restoredView.treeScroll },
+  );
+  /**
+   * Where each box comes back to after a layout move, applied once the thing that makes the box
+   * tall enough is on screen — the file itself for the preview, the listings of every unfolded
+   * folder for the tree (both arrive after the mount, and scrolling early would just clamp).
+   */
+  const pendingPreviewScroll = useRef<{ path: string; at: WorkspaceScroll } | null>(
+    restoredView !== null &&
+      restoredView.selectedPath !== null &&
+      restoredView.previewScroll !== null
+      ? { path: restoredView.selectedPath, at: { ...restoredView.previewScroll } }
+      : null,
+  );
+  const pendingTreeScroll = useRef<WorkspaceScroll | null>(
+    restoredView?.treeScroll == null ? null : { ...restoredView.treeScroll },
+  );
   /** Where the source view was scrolled when Edit was pressed: the editor opens there. */
   const editorOpening = useRef<EditorScroll | undefined>(undefined);
   /** The editor's scroll box, read on the way out of the editor. */
@@ -705,6 +745,8 @@ export function WorkspaceBrowser({
   editorRef.current = editor;
   const currentDirRef = useRef(currentDir);
   currentDirRef.current = currentDir;
+  const selectedPathRef = useRef(selectedPath);
+  selectedPathRef.current = selectedPath;
   const previewRef = useRef(preview);
   previewRef.current = preview;
   const richViewRef = useRef(richView);
@@ -731,10 +773,14 @@ export function WorkspaceBrowser({
     setCurrentDir("");
     setSelectedPath(null);
     setScrollTo(null);
+    treeScrollRef.current = null;
+    pendingTreeScroll.current = null;
     setQuery("");
     setToggled(null);
     setPreview(null);
     setSourceError(null);
+    previewScrollRef.current = null;
+    pendingPreviewScroll.current = null;
     setEditor(null);
     setSaveRefusal(null);
     setSaveConfirm(false);
@@ -762,14 +808,55 @@ export function WorkspaceBrowser({
     previewSeq++;
   }
 
+  /**
+   * Writes the panel's place as it stands right now. State through the state itself; the two
+   * scroll offsets through the mirrors their scroll handlers keep (a scroll is not state — see
+   * previewScrollRef). The preview's offset travels with the file it belongs to, so an offset
+   * recorded against another file is not carried over.
+   */
+  const writePlace = (): void => {
+    rememberWorkspaceView(scopeKey, {
+      surface,
+      selectedPath: selectedPathRef.current,
+      currentDir: currentDirRef.current,
+      expanded: [...expandedRef.current],
+      reading: richViewRef.current,
+      previewScroll:
+        previewScrollRef.current !== null &&
+        previewScrollRef.current.path === selectedPathRef.current
+          ? previewScrollRef.current.at
+          : null,
+      treeScroll: treeScrollRef.current,
+    });
+  };
+
   // The place is written through on every change, never on the way out: a layout move mounts the
   // arriving body before the leaving one is torn down, so an unmount-time write would land after
   // the new mount had already read the record. The scope reset above reaches this too — with
   // nothing to remember, it drops the record, so a body that started over leaves no place behind
   // for the next move to pick up (see workspace-view-memory.ts).
   useEffect(() => {
-    rememberWorkspaceView(scopeKey, { surface, selectedPath, currentDir, expanded: [...expanded] });
-  }, [scopeKey, surface, selectedPath, currentDir, expanded]);
+    writePlace();
+    // writePlace reads the state through the mirrors it is given; the deps below are the state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scopeKey, surface, selectedPath, currentDir, expanded, richView]);
+
+  /**
+   * A scroll of one of the panel's own boxes. It goes through the mirrors and then straight into
+   * the record rather than through state: a scroll fires at the refresh rate, nothing on screen
+   * depends on the offset, and a layout move may come before any state changes again.
+   */
+  const noteScroll = (from: "preview" | "tree", el: HTMLElement): void => {
+    const at =
+      el.scrollTop === 0 && el.scrollLeft === 0 ? null : { top: el.scrollTop, left: el.scrollLeft };
+    if (from === "preview") {
+      const path = selectedPathRef.current;
+      previewScrollRef.current = at === null || path === null ? null : { path, at };
+    } else {
+      treeScrollRef.current = at;
+    }
+    writePlace();
+  };
 
   // ------------------------------------------------------------------ measured layout
   // The panel's own width decides the layout: a viewport breakpoint cannot know how much of
@@ -868,10 +955,16 @@ export function WorkspaceBrowser({
    * alone instead of replacing a working preview with "unsupported". `restored` is the same
    * load on the way back into a remounted body (the panel's place): it reads the file exactly
    * as a fresh open does, but does not announce a draft it reopens, since the reader was
-   * simply in the middle of typing it (see the restore effect below).
+   * simply in the middle of typing it (see the restore effect below). `reading` is the choice
+   * that came back with it then — the reader's rendered/source for this very file — and is the
+   * one thing a restored load repeats instead of starting over, including for a Markdown file
+   * past the size the rendered view defaults away from.
    */
   const previewPath = useCallback(
-    async (filePath: string, opts?: { refresh?: boolean; restored?: boolean }) => {
+    async (
+      filePath: string,
+      opts?: { refresh?: boolean; restored?: boolean; reading?: WorkspaceReading },
+    ) => {
       const refresh = opts?.refresh === true;
       const restored = opts?.restored === true;
       const key = scopeKey;
@@ -885,7 +978,7 @@ export function WorkspaceBrowser({
         if (nonce === previewSeq && scopeKeyRef.current === key) setPreview(p);
       };
       if (!refresh) {
-        setRichView("rendered");
+        setRichView(opts?.reading ?? "rendered");
         setSourceError(null);
       }
       if (kind === "image") {
@@ -972,8 +1065,15 @@ export function WorkspaceBrowser({
         const { content, truncated, version } = result;
         // Oversized Markdown defaults to the source view: feeding the whole block to remark is a
         // main-thread cost the highlighting worker does nothing about (see MD_RENDER_LIMIT). The
-        // reader can still switch to the rendered view, which makes it their informed choice.
-        if (!refresh && kind === "md" && content.length > MD_RENDER_LIMIT && nonce === previewSeq) {
+        // reader can still switch to the rendered view, which makes it their informed choice —
+        // and a choice coming back with a restored file (opts.reading) outranks this default.
+        if (
+          !refresh &&
+          opts?.reading === undefined &&
+          kind === "md" &&
+          content.length > MD_RENDER_LIMIT &&
+          nonce === previewSeq
+        ) {
           setRichView("source");
         }
         present({
@@ -1026,7 +1126,7 @@ export function WorkspaceBrowser({
     const path = restoredView.selectedPath;
     if (path !== null) for (const dir of ancestorDirs(path)) dirs.add(dir);
     for (const dir of dirs) if (dir !== "") void loadDir(dir);
-    if (path !== null) void previewPath(path, { restored: true });
+    if (path !== null) void previewPath(path, { restored: true, reading: restoredView.reading });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -2060,6 +2160,42 @@ export function WorkspaceBrowser({
   /** The file's text is on screen to read or to edit. Both present it the same way, so both take the Wrap toggle. */
   const textShown =
     sourceShown || (preview !== null && editor !== null && editor.path === preview.path);
+
+  // The place comes back with the reader's reading of it. The preview's offset is applied once
+  // the file it belongs to is on screen — the pane draws a skeleton until then, and a box with
+  // nothing tall in it can only scroll to zero. The pending copy is what is read, not the record:
+  // this mount has already written the record with its own (still fresh) offsets.
+  useLayoutEffect(() => {
+    const pending = pendingPreviewScroll.current;
+    if (pending === null) return;
+    if (editor !== null && editor.path === pending.path) {
+      // A reopened draft has a scroll of its own (the editor opens on its first line); the preview
+      // is laid out again when the editor closes, and that is a fresh look, not the old place.
+      pendingPreviewScroll.current = null;
+      return;
+    }
+    if (preview === null || preview.path !== pending.path || selectedPath !== pending.path) return;
+    const el = previewBodyRef.current;
+    if (el === null) return;
+    pendingPreviewScroll.current = null;
+    el.scrollTop = pending.at.top;
+    el.scrollLeft = pending.at.left;
+  }, [preview, selectedPath, richView, editor]);
+
+  // The tree likewise comes back where it was left, once the listings the place needs are in: an
+  // unfolded folder's rows arrive after the mount, and a box shorter than that offset would clamp
+  // it. On the narrow surface the tree is not drawn at all while a file is open (`showTree`), so
+  // the pending offset waits for the pane rather than for the mount.
+  useLayoutEffect(() => {
+    const pending = pendingTreeScroll.current;
+    if (pending === null || !showTree || rows.length === 0 || loadingDirs.size > 0) return;
+    const el = treeBodyRef.current;
+    if (el === null) return;
+    pendingTreeScroll.current = null;
+    el.scrollTop = pending.top;
+    el.scrollLeft = pending.left;
+  }, [rows, loadingDirs, showTree]);
+
   /** The upload picker's one name — its accessible name and its tooltip both — carrying the running count while an upload is in flight. */
   const uploadLabel =
     uploading !== null ? S.files.uploading(uploading.done, uploading.total) : S.files.upload;
@@ -2252,6 +2388,10 @@ export function WorkspaceBrowser({
         rootEmpty={rootListing !== undefined && rootListing.length === 0}
         filtering={filter !== ""}
         toggled={filter === "" ? toggled : null}
+        bodyRef={(el) => {
+          treeBodyRef.current = el;
+        }}
+        onScroll={(e) => noteScroll("tree", e.currentTarget)}
         onToggleDir={filter === "" ? toggleDir : openDirFromSearch}
         onOpenFile={openFile}
       />
@@ -2700,6 +2840,7 @@ export function WorkspaceBrowser({
         }
       }}
       bodyProps={{
+        onScroll: (e) => noteScroll("preview", e.currentTarget),
         onContextMenu: openPreviewMenu,
         onKeyDown: previewMenuKeyDown,
         onPointerDown: (e) => {
