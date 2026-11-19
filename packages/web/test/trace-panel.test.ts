@@ -34,7 +34,7 @@ const session = { sessionId: "s1" } as unknown as SessionInfo;
 
 it("draws the Transport view while the listing is still loading", () => {
   const html = renderToStaticMarkup(
-    createElement(TracePanel, { session, active: true, reloadSignal: 0 }),
+    createElement(TracePanel, { session, active: true, reloadSignal: 0, surface: "right" }),
   );
   expect(html).toContain(S.tracePanel.transport);
   // The loading branch still draws its skeleton below it.
@@ -43,7 +43,7 @@ it("draws the Transport view while the listing is still loading", () => {
 
 it("draws it with no Session selected either", () => {
   const html = renderToStaticMarkup(
-    createElement(TracePanel, { session, active: false, reloadSignal: 3 }),
+    createElement(TracePanel, { session, active: false, reloadSignal: 3, surface: "right" }),
   );
   expect(html).toContain(S.tracePanel.transport);
 });

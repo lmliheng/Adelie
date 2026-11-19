@@ -261,9 +261,24 @@ export interface FileState {
 /** What the view shows before a file's analysis lands, and after a switch to another file. */
 export const EMPTY_FILE: FileState = { analysis: null, expanded: new Set(), reveal: null };
 
+/**
+ * What the view shows when it arrives with a place from the other dock surface (trace-place.ts):
+ * the rounds the reader had open, and no round to scroll to. A view that arrived with a place is
+ * not "a file seen for the first time" — the reader's rounds stand, and the panel comes back where
+ * they left it rather than jumping to the newest round, which is what `reveal` would do.
+ */
+export function fileAtArrival(place: { expanded: readonly number[] } | null): FileState {
+  return { analysis: null, expanded: new Set(place?.expanded ?? []), reveal: null };
+}
+
 /** The view's state once an analysis of its file lands, from the state it held before. */
 export function fileAfterAnalysis(prev: FileState, analysis: TraceAnalysisResponse): FileState {
   const previous = prev.analysis?.tasks ?? null;
+  // A file seen for the first time opens on its newest round — unless the view arrived with the
+  // reader's rounds already in hand (fileAtArrival above): then they decide, and nothing scrolls.
+  if (previous === null && prev.expanded.size > 0) {
+    return { analysis, expanded: prev.expanded, reveal: null };
+  }
   return {
     analysis,
     expanded: expandedAfterAnalysis(previous, analysis.tasks, prev.expanded),
@@ -285,6 +300,9 @@ export function TraceFileView({
   reloadSignal,
   highlight,
   onHighlight,
+  arrived,
+  onRounds,
+  onSettled,
 }: {
   projectId: string;
   agentId: string;
@@ -299,9 +317,15 @@ export function TraceFileView({
   reloadSignal: number;
   highlight: TraceHighlight | null;
   onHighlight: (h: TraceHighlight | null) => void;
+  /** The place the panel arrived with from the other dock surface, or null for a fresh view (trace-place.ts). */
+  arrived: { expanded: readonly number[] } | null;
+  /** The rounds open now, in file order — the panel keeps them in the place's record. */
+  onRounds: (expanded: number[]) => void;
+  /** Called once everything the place names is drawn: the analysis, and each open round's events. */
+  onSettled: () => void;
 }) {
   const { currency } = useTheme();
-  const [file, setFile] = useState<FileState>(EMPTY_FILE);
+  const [file, setFile] = useState<FileState>(() => fileAtArrival(arrived));
   const [rounds, setRounds] = useState<ReadonlyMap<number, RoundEntry>>(new Map());
   const [shownRounds, setShownRounds] = useState(TRACE_ROUNDS_PAGE);
   const [error, setError] = useState<string | null>(null);
@@ -414,6 +438,28 @@ export function TraceFileView({
     if (reveal === null) return;
     rootRef.current?.querySelector(`[data-round="${reveal}"]`)?.scrollIntoView({ block: "start" });
   }, [reveal]);
+
+  // The reader's rounds go up to the panel, which keeps them in the place's record (trace-place.ts):
+  // a layout move mounts this view afresh, and the record is what brings those rounds back.
+  useEffect(() => {
+    onRounds([...expanded].sort((a, b) => a - b));
+    // onRounds only writes the record; the rounds themselves are what this effect is about.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [expanded]);
+
+  // Everything the place names is on screen once the analysis has landed AND every open round
+  // drawn in the window has its events: a round whose rows are still being read is a shorter card,
+  // and the panel's offset (applied at that moment) would land short.
+  const openedInWindow =
+    analysis === null
+      ? []
+      : visibleRounds(analysis.tasks, shownRounds).filter((t) => expanded.has(t.taskIndex));
+  const settled = analysis !== null && openedInWindow.every((t) => rounds.has(t.taskIndex));
+  useEffect(() => {
+    if (settled) onSettled();
+    // onSettled only flips a flag in the panel; `settled` is what this effect is about.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settled]);
 
   // The error takes the whole view only while there is nothing to take it from: this re-reads
   // on every settled turn now, so a blip mid-read would otherwise blank a file the user is in

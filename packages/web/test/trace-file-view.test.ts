@@ -25,6 +25,7 @@ import {
   EMPTY_FILE,
   TraceFileBody,
   fileAfterAnalysis,
+  fileAtArrival,
 } from "../src/features/traces/trace-file-view";
 import type { FileState, RoundEntry } from "../src/features/traces/trace-file-view";
 import { TRACE_ROUNDS_PAGE } from "../src/features/traces/trace-rounds";
@@ -254,5 +255,28 @@ describe("opening a file", () => {
 
   it("a file with no round yet scrolls nowhere until its first round appears", () => {
     expect(scrollRequests(statesAfter(analysisOf(0), analysisOf(0), analysisOf(1)))).toEqual([0]);
+  });
+
+  it("a view that arrived with the reader's rounds keeps them and scrolls nowhere", () => {
+    // A layout move hands the view the rounds the reader had open (trace-place.ts): the file is
+    // new to this mount, but the reader is not — their rounds stand, and nothing jumps to the
+    // newest round (the place's own offset is what puts the panel back where they were).
+    const arrived = fileAtArrival({ expanded: [0] });
+    const settled = fileAfterAnalysis(arrived, analysisOf(3));
+
+    expect([...settled.expanded]).toEqual([0]);
+    expect(settled.reveal).toBeNull();
+    const html = render({ analysis: settled.analysis!, expanded: [...settled.expanded] });
+    expect(count(html, /aria-expanded="true"/g)).toBe(1);
+    // The open card is the first round's, not the newest one's.
+    expect(html.indexOf('data-round="0"')).toBeLessThan(html.indexOf('data-round="1"'));
+  });
+
+  it("a refresh after that arrival still follows the run from the reader's rounds", () => {
+    // The rounds the reader opened stand across refreshes, and the run's new round opens beside
+    // them only when the newest one was open (the ordinary rule, unchanged by the arrival).
+    const arrived = fileAfterAnalysis(fileAtArrival({ expanded: [0] }), analysisOf(3));
+    expect([...fileAfterAnalysis(arrived, analysisOf(3)).expanded]).toEqual([0]);
+    expect(fileAfterAnalysis(arrived, analysisOf(3)).reveal).toBeNull();
   });
 });

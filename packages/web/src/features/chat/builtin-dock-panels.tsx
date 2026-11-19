@@ -154,6 +154,10 @@ function MemoryPanelBody({ active }: DockPanelBodyProps) {
 
 function TracePanelBody({ active }: DockPanelBodyProps) {
   const { selected, settledTurnSignal } = useChatDock();
+  // The surface this body is drawn on — a layout move changes it and only then does the panel's own
+  // place come back (trace-place.ts; a Session switch comes back to the same surface).
+  const { position, merged } = useDockPanel();
+  const surface = merged ? "merged" : position;
   if (!selected) return draftPlaceholder("trace");
   return (
     <TracePanel
@@ -161,6 +165,7 @@ function TracePanelBody({ active }: DockPanelBodyProps) {
       session={selected}
       active={active}
       reloadSignal={settledTurnSignal}
+      surface={surface}
     />
   );
 }

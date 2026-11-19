@@ -13,7 +13,7 @@
  * Task that finished while the tab was hidden still appears on return without a manual
  * refresh — while a hidden tab fetches nothing. trace-refresh.ts states the rule exactly.
  */
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SessionInfo } from "@adelie/server/api";
 import { DownloadIcon, EmptyState, ICON_SIZE, NoticeStrip, Skeleton } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -29,6 +29,8 @@ import {
   sortTraceFiles,
 } from "./trace-refresh";
 import type { TraceHighlight } from "./timeline-chart";
+import type { DockSurface } from "../dock/panel-context";
+import { recallTracePlace, rememberTracePlace } from "./trace-place";
 
 /** File pills rendered before the "+N" overflow control expands them (a long Session can hold dozens of compaction shards). */
 const FILE_PILL_CAP = 6;
@@ -43,10 +45,13 @@ export function TracePanel({
   session,
   active,
   reloadSignal,
+  surface,
 }: {
   session: SessionInfo;
   /** Whether the dock tab is showing; a hidden tab stays mounted and fetches nothing. */
   active: boolean;
+  /** The dock surface this body is drawn on — what a layout move changes (see trace-place.ts). */
+  surface: DockSurface;
   /**
    * The chat page's settled-turn counter, the same one the Files panel reads: bumped every time
    * a Task settles on this Session. A bump while the panel is showing re-lists the files and
@@ -60,6 +65,64 @@ export function TracePanel({
   const [fileIndex, setFileIndex] = useState<number | null>(null);
   const [showAllFiles, setShowAllFiles] = useState(false);
   const [highlight, setHighlight] = useState<TraceHighlight | null>(null);
+
+  // ---- the place comes back (trace-place.ts) ----
+  // The place this body arrived into: a layout move mounts the body on the other surface, and the
+  // record written there hands back the open rounds and the offset the reader left. Any other
+  // mount (a tab reopened, a conversation switched back to) arrives on the surface the place was
+  // left on, so recall answers null and the panel starts over. Read once: the record is written on
+  // every change below, never on the way in.
+  const [arrived] = useState(() => recallTracePlace(session.sessionId, surface));
+  /** The panel's place as it stands now — a ref, since a scroll moves it at the refresh rate. */
+  const place = useRef({
+    expanded: arrived?.expanded ?? [],
+    scrollTop: arrived?.scrollTop ?? 0,
+  });
+  const remember = useCallback(
+    () =>
+      rememberTracePlace(session.sessionId, {
+        surface,
+        expanded: place.current.expanded,
+        scrollTop: place.current.scrollTop,
+      }),
+    [session.sessionId, surface],
+  );
+  // The arriving body takes the record over: stamped with the surface it is on now, which is what
+  // lets the next crossing (back the other way) find a place to restore.
+  useLayoutEffect(() => {
+    remember();
+  }, [remember]);
+
+  /** The rounds the view reported as open: the reader's own choices, which the record keeps. */
+  const onRounds = useCallback(
+    (expanded: number[]) => {
+      place.current.expanded = expanded;
+      remember();
+    },
+    [remember],
+  );
+
+  // The box that scrolls the panel (the one the file view is drawn in). Its offset is the place's
+  // other half; the reader's own scroll is the only source of it, so it is read straight from the
+  // event rather than kept in React state.
+  const boxRef = useRef<HTMLDivElement | null>(null);
+  const onBoxScroll = (e: { currentTarget: HTMLDivElement }) => {
+    place.current.scrollTop = Math.round(e.currentTarget.scrollTop);
+    remember();
+  };
+
+  // Applied once the view says everything the place names is on screen (trace-file-view.tsx: the
+  // analysis has landed and every open round in the window has its events). An offset set before
+  // then is clamped short — an open round whose rows are still being read is a shorter card, the
+  // same ordering the Files and Memory panels wait for.
+  const [settled, setSettled] = useState(false);
+  const [placed, setPlaced] = useState(false);
+  useLayoutEffect(() => {
+    if (placed || !settled) return;
+    setPlaced(true);
+    if (arrived === null || boxRef.current === null) return;
+    boxRef.current.scrollTop = arrived.scrollTop;
+  }, [arrived, placed, settled]);
 
   // Fetch on show, and again on every settled turn while showing (trace-refresh.ts owns the
   // rule; a signal arriving while hidden is dropped and the re-show edge covers it). Split
@@ -158,7 +221,9 @@ export function TracePanel({
   const visibleFiles = showAllFiles ? files : files.slice(0, FILE_PILL_CAP);
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-3">
+    // This is the box the panel's place is measured in (trace-place.ts): the file view scrolls
+    // with the pills and the summary, so one offset covers all of it.
+    <div ref={boxRef} onScroll={onBoxScroll} className="min-h-0 flex-1 overflow-y-auto p-3">
       <div className="space-y-3">
         {/* A re-list that failed keeps everything below it and says so here; the listing on
             screen is the last one that arrived, so it may be a turn or two behind. */}
@@ -249,6 +314,11 @@ export function TracePanel({
           reloadSignal={listTick}
           highlight={highlight}
           onHighlight={setHighlight}
+          // The place the panel arrived with, and its two reports back: the rounds the reader
+          // has open now, and the moment everything the place names is on screen.
+          arrived={arrived}
+          onRounds={onRounds}
+          onSettled={() => setSettled(true)}
         />
       </div>
     </div>
