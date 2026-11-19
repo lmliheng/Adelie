@@ -2875,6 +2875,17 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       **不碰接口、无新依赖**）：第二百七十二轮「没做 / 留着」点名的两处 —— 面板只记住了「打开的是哪个文件」，
       「当时是怎么看它的」跟着旧挂载一起没了：真浏览器里切到源码、往下滚半屏的 Markdown 回来变成渲染后的最上面，
       滚到 `row-06` 的树回来从 `row-01` 开始。见「第二百七十三轮」一节。
+- [x] **7.154 换布局不再把记忆面板拽回列表顶上（读者停在哪一层、滚到哪一行）**（**2026-11-19 第二百七十四轮**
+      落地，提交见「已完成的轮次」；`packages/web` 3 个源码文件 —— 新增 `features/chat/memory-place.ts`（按会话记
+      `{ surface, mode, listScroll, detailScroll }`，`recallMemoryPlace` 只在记录所属表面与当前表面不同时交回、
+      `rememberMemoryPlace` 每次变化都写且「列表、在顶上」的记录整条删掉、进出各拷一份，`memoryPlaceKey` 给出层级
+      对应的 `memoryRowKey`），`memory-view.tsx` 的层级与两个偏移收成「挂载读一次 + `goTo()` 每次写」，两个偏移在
+      各自滚动盒的 `scroll` 里直接读、直接写进记录，交回交给两个 layout 效果各等自己的东西就位（列表等行 / 空态 /
+      报错画出来，记忆正文等那次读取落地），`builtin-dock-panels.tsx` 从 `useDockPanel()` 取所在表面交给面板；
+      `panel-context.tsx` 收下 `DockSurface` 这个说法、`workspace-view-memory.ts` 改为从它导入并转出）
+      ＋ 新单测 9 条 ＋ 1 个新 spec `e2e/memory-place-across-layout.spec.mjs`（3 条）＋ changelog 一对，
+      **不碰接口、无新依赖**）：第二百七十一轮只修了「命令不重放」，**读者自己停在哪一层、滚到哪一行**跟着旧挂载一起
+      没了 —— 真浏览器里 41 段的记忆滚到 600 后跨到 390 变成列表，列表滚到 400 后跨过去是 0。见「第二百七十四轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3639,6 +3650,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-19 | 7.151 | **换布局不再重放文件面板与记忆面板的那两条命令**（**2026-11-19 第二百七十一轮**落地；`packages/web` 4 个源码文件 —— 新增 `src/features/chat/dock-command-once.ts`（模块级 `claimOnce`：同一个命令对象第一次 true、之后 false；页面每次点击都造新对象，所以再点同一个文件仍是一条新命令；随标签页消失，不随重新挂载消失），`workspace-browser.tsx` 的 `openRequest` 从组件 ref 改用它，`memory-view.tsx` 的 `request` 也认领一次（此前每次挂载都重新应用，正是把读者拽回那条记忆的那一处），`subagents-view.tsx` 把 7.150 那份私有 `WeakSet` 换成共用的认领）＋ 新单测 `test/dock-command-once.test.ts`（4 条）＋ 1 个新 spec `e2e/dock-command-across-layout.spec.mjs`（2 条）＋ `e2e/mock-llm.mjs` 增一条 `memory write test <绝对路径>` 分支（普通 `write_file` 真写出那条记忆，卡片是真的；标题请求仍按 `!isTitle` 排除）＋ `e2e/run.sh` 导出 `ADELIE_HOME`（spec 要算记忆主题的绝对路径）＋ 文档无改动 ＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十轮「没做 / 留着」点名的两处 —— 页面交给面板的跳转命令是「按一下」而不是状态，面板体却会在跨断点时整份重新挂载，原先记在面板体里的「已经执行过」跟着旧挂载没了，新的挂载于是又执行一遍：文件面板把读者已经关掉、已经离开的文件又打开，记忆面板把读者已经退出来的那条记忆（或其列表）又拽回去。现在三条命令（含 7.150 的子 Agent 点选）用同一份模块级记录。见「第二百七十一轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 7 个改动文件 **0 警告 0 错误** · 7 个改动文件 `prettier --check` 干净（spec 与 mock 首跑不过，`--write` 后复检全绿；`*.md` 不在 prettier 范围） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **342 文件 / 3897 通过 / 2 跳过**（基线 341 / 3893，**+1 文件 / +4 用例即本笔**） · **新 spec 2 passed（4.3 s + 5.0 s）**（真服务端 9780 + 仓库自带 mock 模型 9781 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r271-after3`）：① 文件面板从回复里的卡片打开 `demo.html`（iframe 里是「Session A page」），读者随后在树里点 `note.txt`，1280 → 390 → 回 1280 三刻 `iframe` 计数都是 **0**；② 记忆面板落到 `probe-layout.md` 的详情（有「返回列表」），按回列表后跨 1280 → 390 → 1280，三刻「返回列表」与正文计数都是 **0**（仍停在列表） · **反证（同一份 spec，改前源码 + 改前产物）**：三份源码退回 `HEAD`（`dock-command-once.ts` 移出树）、重建 web 留底到 `r271/before-dist` 挂 9790 跑同一份 spec → **2 failed**：文件那条 390 上 `stalePreview` 期望 0、实得 **1**（旧的 `demo.html` iframe 又出现），记忆那条 390 上 `detail` 期望 0、实得 **1**（又回到那条记忆）；放回改后源码重建后产物与 `r271/after-dist` **逐字节相同**（`diff -rq` 无输出） · **两态探针**（`r271/look.mjs`，同一脚本、两条腿各挂自己的产物；改后 9810/9811 挂在 `r271-after4`、改前 9820/9821 挂在 `r271-before`）：**改后** —— 1280 文件面板面包屑 `./note.txt`、正文「the note the reader moved to」、`iframe 0`；390 文件面板回到树、`iframe 0`；记忆 1280 详情（`Probe memory` + 正文）→ 按「返回列表」→ 390 与回 1280 都是列表（`back 0`、`noteBody 0`）。**改前** —— 390 文件面板 `iframe 1`（面包屑 `./demo.html`、「Session A page」），记忆 390 与回 1280 都是 `back 1`、`noteBody 1`（被拽回详情）。截图 `r271/shots/{files-wide,files-narrow,memory-wide-detail,memory-wide-list,memory-narrow-list,memory-wide-again-list}.png` 与 `r271/shots-before/files-narrow.png` 肉眼看过；两态 console 只有既有的 `GET …/machines` **403**，pageerror 0 条 · **相邻回归（真浏览器）**：`subagent-panel-selection-across-layout.spec.mjs` **2 passed**（7.150 那条线，本笔把它的 `WeakSet` 换成共用认领）、`files-switch.spec.mjs` **1 passed**（文件面板切会话） · 端口只用 9760–9841（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r271-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r271/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `efb248233` |
 | 2026-11-19 | 7.152 | **换布局不再丢掉文件面板自己挑的那一行（打开的文件与树的展开）**（**2026-11-19 第二百七十二轮**落地；`packages/web` 3 个源码文件 —— 新增 `features/chat/workspace-view-memory.ts`（按 scope 记 `{ surface, selectedPath, currentDir, expanded }`；`recallWorkspaceView(scope, surface)` 只在记录所属表面与当前表面不同时交回、`rememberWorkspaceView` 每次变化都写且「无异于刚打开」的记录整条删掉、进出都拷一份数组；注释写明为什么在变化时写而不是卸载时写），`features/chat/workspace-browser.tsx` 的三个状态从记录初始化、一个只跑一次的挂载效果把打开的文件与每个展开目录的 listing 读回来（不列就是「开着却没有孩子」的行）、每次变化同步写回，`previewPath` 多一个 `restored` 选项（草稿照常重开，但 restore 不为它弹「草稿已恢复」），`features/chat/builtin-dock-panels.tsx` 的 Files 标签页体从 `useDockPanel()` 取所在表面 `merged ? "merged" : position` 交给面板 ——这是分辨「换布局」与「换会话 / 关标签页再开」的唯一事实）＋ 新单测 `test/workspace-view-memory.test.ts`（7 条）＋ 1 个新 spec `e2e/files-place-across-layout.spec.mjs`（3 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十一轮「没做 / 留着」点名的第一处 —— 面板自己的去处是组件状态，跨断点整份重新挂载就回到树根、展开项也合上；现在只有真的换了停靠面才交回，换会话与关标签页再开仍从树根开始（`files-switch.spec` 钉的正是会话那一半）。见「第二百七十二轮」一节 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 5 个改动文件 **0 警告 0 错误** · `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **343 文件 / 3904 通过 / 2 跳过**（基线 342 / 3897，**+1 文件 / +7 用例即本笔**） · **新 spec 3 passed（11.9 s）**（真服务端 9780 + 仓库自带 mock 模型 9781 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r272-after`）：① 打开 `util/helper.txt` → 390 预览仍在（`preview 1`、树那行 0）→ 回 1280 两者都在；② 只展开 `util` 不选文件，三刻 `helperRow 1`；③ 窄屏按「返回列表」回树后再跨回宽屏，**不会**重开刚关掉的文件 · **反证（同一份 spec，改前源码 + 改前产物）**：源码 `git checkout HEAD --` 两份、模块移出树、重建 web 挂到 `/root/adelie-fork-data/r272-before` 的 9782 → **3 failed**（① 390 上 `preview` 期望 1 实得 **0**；② 390 上 `helperRow` 期望 1 实得 **0**；③ 窄屏连「返回列表」都找不到，90 秒超时）；放回改后源码重建，产物与 `r272/after-dist` **逐字节相同**（`diff -rq` 无输出） · **两态探针**（`r272/look.mjs` + `run-look.sh`，同一脚本两条腿各挂自己的产物：改后 9786 / 改前 9788）：**改后** 三刻 `preview 1/1/1`、`helperRow 1/0/1`（窄屏只有预览）、`overflowX 0`；**改前** 390 与跨回宽屏都是 `preview 0`、`helperRow 0`。截图 `r272/shots/{file-wide,file-narrow,file-wide-again,folders-*}.png` 与 `r272/shots-before/…` 肉眼看过（改后 390 是 `./util/helper.txt` 的预览，改前同一刻是 `util` 合着、只有 `notes.md` 的树根）；两态 console 只有既有的 `GET …/machines` **403**，pageerror **0 条** · **相邻回归（真浏览器，一个进程跑 4 份 spec）**：`files-switch` 1（会话切走再回来仍旧从树根开始 —— 本笔的表面规则正钉在这里）、`dock-command-across-layout` 2（7.151 那条命令不再重放）、`files-folders` 5、`files-place-across-layout` 3，**11 passed（36.4 s）** · 端口只用 9780–9788（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r272-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r272/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `14ba25bf3` |
 | 2026-11-19 | 7.153 | **换布局不再丢掉读者看到的那一行（渲染 / 源码与预览、树的滚动位置）**（**2026-11-19 第二百七十三轮**落地；`packages/web` 3 个源码文件 + `packages/ui` 1 个 —— `workspace-view-memory.ts` 的记录多 `reading`（`"rendered" \| "source"`）与 `previewScroll` / `treeScroll`（`{ top, left } \| null`，进出各拷一份），「与刚打开时无异」的判据扩到「还得按渲染、两个框都在顶上」，**没开文件但树滚下去了也算一处地方**；`workspace-browser.tsx` 的「渲染 / 源码」从记录取初值、恢复时作为 `previewPath` 的 `reading` 交回（压过「过大的 Markdown 默认源码」那条默认，另开文件仍从「预览」开始），两个偏移在各自框的 `scroll` 里直接读、直接写进记录（不走 React 状态；预览的偏移与它所属的路径绑在一起存），交回交给两个 layout 效果各等自己的东西就位（预览等文件上屏、树等展开目录列完并且树真画着），scope 切换时两个偏移一起清掉；`file-tree.tsx` 新增 `bodyRef` / `onScroll` 把树的滚动盒交出去（`useCallback` 稳住 ref，免得每次 commit 拆装一遍）、`workspace-tree-view.tsx` 透传）＋ 新单测 2 条（共 9 条）＋ 1 个新 spec `e2e/files-reading-across-layout.spec.mjs`（3 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十二轮「没做 / 留着」点名的两处 —— 面板只记住了「打开的是哪个文件」，「当时是怎么看它的」跟着旧挂载一起没了（探针改前：390 与跨回 1280 都是 `source false`、`previewTop 0`、`treeTop 0`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约） · `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 6 个改动文件与一对 changelog `prettier --check` 干净（`workspace-browser.tsx` 与 spec 首跑不过，`--write` 后复检通过；`*.md` 不在 prettier 范围） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **343 文件 / 3906 通过 / 2 跳过**（基线 343 / 3904，**+2 条即本笔**） · **新 spec 3 passed（14.2 s；加完「另开文件仍是预览」那条后复跑 14.5 s）**（真服务端 9790 + 仓库自带 mock 模型 9791 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r273-after`）：① 长 Markdown 切「源码」→ 390 → 回 1280，三刻都是 `源码:true`，随后另开 `other.md` 是 `预览:true`；② 预览滚到 240 后往返，三刻都在 240；③ 不选文件把树滚到 160 后往返，三刻都在 160 · **反证（同一份 spec，改前源码 + 改前产物）**：四份源码退回 `HEAD`、重建 web 留底到 `r273/before-dist` 挂 9792 → **3 failed**（① 390 与回宽屏都是 `rendered:true / source:false`；② 390 上 `preview` 期望 >100 实得 **0**；③ 390 上 `tree` 期望 >50 实得 **0**）；放回改后源码重建，产物与 `r273/after-dist` **逐字节相同**（`diff -rq` 无输出） · **两态探针**（`r273/look.mjs` + `run-look.sh`，同一脚本两条腿各挂自己的产物：改后 9794/9795 在 `r273-look`、改前 9796/9797 在 `r273-look-before`）：**改后** 三刻都是 `{"source":true,"previewTop":240}` 与 `{"treeTop":160}`；**改前** 跨过去与跨回来都是 `source:false / previewTop:0 / treeTop:0`；两态 console 都只有既有的 `GET …/machines` **403**，pageerror **0 条**；截图 `r273/shots/{reading-wide,reading-narrow,reading-wide-again,tree-*,…}.png` 与 `r273/shots-before/…` 肉眼看过（改后 390 是源码第 9 行起、树从 `row-06` 起；改前同一刻是渲染后的「Paragraph 1」与 `row-01`） · **相邻回归（真浏览器，一个进程跑 5 份 spec）**：`files-place-across-layout` 3、`files-switch` 1、`dock-command-across-layout` 2、`files-folders` 5、新 spec 3，**14 passed（49.3 s）** · 端口只用 9790–9801（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r273-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r273/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `3daf15268` |
+| 2026-11-19 | 7.154 | **换布局不再把记忆面板拽回列表顶上（读者停在哪一层、滚到哪一行）**（**2026-11-19 第二百七十四轮**落地；`packages/web` 3 个源码文件 —— 新增 `features/chat/memory-place.ts`（按会话记 `{ surface, mode, listScroll, detailScroll }`，只在另一个停靠面交回、「列表、在顶上」整条删掉、进出各拷一份），`memory-view.tsx` 的层级与两个偏移收成「挂载读一次 + `goTo()` 每次写」、两个偏移在各自滚动盒的 `scroll` 里直接读并写进记录、交回交给两个 layout 效果各等自己的东西就位，`builtin-dock-panels.tsx` 从 `useDockPanel()` 取所在表面；`panel-context.tsx` 收下 `DockSurface`、`workspace-view-memory.ts` 改为从它导入并转出）＋ 新单测 9 条 ＋ 1 个新 spec `e2e/memory-place-across-layout.spec.mjs`（3 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十一轮只修了「命令不重放」，读者停在哪一层、滚到哪一行跟着旧挂载一起没了（改前：390 上退回列表、列表 400 → 0） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 7 个改动文件 **0 警告 0 错误** · 7 个改动文件 `prettier --check` 干净（spec 首跑不过，`--write` 后复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **344 文件 / 3915 通过 / 2 跳过**（基线 343 / 3906，**+1 文件 +9 条即本笔**） · **新 spec 3 passed（11.8 s）**（真服务端 9790 + 仓库自带 mock 模型 9791 + 一次性数据根 `/root/adelie-fork-data/r274-after2`）：① 长记忆滚到 600 → 390 → 回 1280，三刻都是 `detail:1 / scroll:600`；② 列表滚到 400 后往返，三刻 `detail:0 / scroll:400`；③ 打开记忆再「返回列表」后跨过去仍是列表 · **反证（同一份 spec，改前源码 + 改前产物）**：四份源码 stash 掉、重建 web 跑同一份 spec → **2 failed**（① 390 与跨回 1280 都是 `detail:0 / scroll:null`；② 列表的 400 变成 **0**），第三条改前就绿 · **两态探针**（`r274/look.mjs`，同一脚本两条腿）：改后 `{detail:1,scroll:600}` 三刻不变、列表 `400 → 400`；改前 `{detail:1,scroll:600} → {detail:0,scroll:null}`、列表 `400 → 0`；截图 `r274/shots-after/{wide,narrow,wide-again}-detail.png` 与 `r274/shots-before/…` 肉眼看过（改后 390 是「Probe long memory」正文第 19 段起，改前同一刻是 24 行的列表）；两态 console 都只有既有的 `GET …/machines` **403**，pageerror **0 条** · **相邻回归（真浏览器，一个进程跑 7 份 spec）**：`dock-command-across-layout` 2、`dock` 11、`files-place-across-layout` 3、`memory-group-refusal` 4、`memory-view-refusal` 2、`memory-write-refusal` 3、新 spec 3，**27 passed（1.5m）** · 端口只用 9790 / 9791（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r274-*`，探针 / 截图 / 改动备份都在 scratchpad 的 `r274/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -29315,6 +29327,75 @@ lint 0/0、format 过、逐包测试 **10699 通过 / 20 跳过 / 0 失败**，`
 
 - 功能一笔（源码 4、单测 1、spec 1、changelog 2）：`3daf15268`。
 - 台账（条目 7.153、上表那一行、本节）随本文件另起一笔。
+
+## 第二百七十四轮：换布局不再把记忆面板拽回列表顶上（2026-11-19，条目 7.154）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.6 / 5.10（桌面壳一侧与既有部署
+单元、拍板、模型 key、明令不动、要把促销搬进项目配置才能做的 core 一半、要新依赖 `mermaid` 的 A2UI）——
+全都停在同一批前置上。第 7 节到 7.153 已全勾，第 273 轮「没做 / 留着」没有点名下一条，但这一族（换布局 ≠ 重新挂载）
+里还剩一块同类的东西：**记忆面板自己的位置** —— 第二百七十一轮修的只是「命令不重放」，读者自己停在哪一层、
+滚到哪一行仍随旧挂载丢掉。
+
+先把它量出来。真浏览器里（改前产物）：一条 41 段的记忆滚到 600 px，跨到 390 那一刻退回列表（正文与返回按钮都不见了）；
+列表滚到 400 px，跨过去是 0，跨回来还是 0。
+
+沿用第二百七十二 / 二百七十三轮定下的口径：**重新挂载不等于换布局**，只有落在别的停靠面才交回这一处；换会话、
+关标签页再开仍旧从列表顶上开始。这一轮只是把这条线从文件面板延伸到记忆面板。
+
+### 做了什么
+
+- `packages/web/src/features/chat/memory-place.ts`（新）：按会话记一处位置 —— `surface`、`mode`（列表 / 某一条记忆）、
+  `listScroll`、`detailScroll`（像素）。`recallMemoryPlace(sessionId, surface)` 只在记录所属表面与当前表面**不同**时交回；
+  `rememberMemoryPlace` 每次变化都写、「列表 + 两个偏移都是 0」的记录整条删掉（不留一个「什么都没有」的地方等下一次
+  换布局）；`memoryPlaceKey(mode)` 给出层级对应的 `memoryRowKey`，偏移归属靠它判断；记录进出各拷一份
+  （`mode.target` 也拷，免得调用方手里的对象之后被改）。
+- `packages/web/src/features/dock/panel-context.tsx`：`DockSurface` 落在停靠面自己的模块里 —— 它本来就是「这块面板画在
+  哪」的说法，两个面板的记忆模块都从它取；`workspace-view-memory.ts` 改为导入并原样转出，读它的人一行不用改。
+- `packages/web/src/features/chat/memory-view.tsx`：
+  - 挂载时读一次记录作为初始层级与两个偏移（`useState` 惰性初值）；`goTo()` 收下所有导航 —— 列表行、返回、以及页面
+    的跳转命令 —— 每次先判「这是不是同一条记忆」，不是就作废那条偏移（那条记忆从顶上开始），再写记录。
+  - 两个偏移在各自滚动盒的 `scroll` 事件里直接读、直接写进记录（不走 React 状态：滚动按刷新率发生，屏幕上没有别的
+    东西依赖它）。
+  - 交回交给两个 layout 效果各等自己的东西就位：列表等行（或空态 / 报错 / 说"还没加载"的那一行）真的画出来，
+    记忆正文等那次读取落地 —— 早一步设偏移只会被夹回 0，和文件面板的预览与树同一个理由。
+- `packages/web/src/features/chat/builtin-dock-panels.tsx`：记忆面板那条体从 `useDockPanel()` 取所在表面
+  （`merged ? "merged" : position`）交给面板，与文件面板同一写法。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）。
+- `oxlint` 7 个改动文件 0 警告 0 错误；`prettier --check` 干净（spec 先 `--write` 再复检）；`git diff --check` 干净。
+- 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3141**（6 跳过）·
+  web **344** / **3915**（2 跳过；基线 343 / 3906，**+1 文件 +9 条即本笔**）。
+- **真浏览器（主证据）**：新 spec `e2e/memory-place-across-layout.spec.mjs` **3 passed（11.8 s）**（真服务端 9790 +
+  仓库自带 mock 模型 9791 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r274-after2`）：① 长记忆滚到 600 →
+  390 → 回 1280，三刻都是 `detail:1 / scroll:600`；② 列表滚到 400 后往返，三刻 `detail:0 / scroll:400`；③ 打开记忆再
+  「返回列表」后跨过去仍是列表。
+- **反证（同一份 spec，改前源码 + 改前产物）**：四份源码 `git stash`、重建 web 跑同一份 spec → **2 failed**（① 390 与
+  跨回 1280 都是 `detail:0 / scroll:null`；② 列表的 400 变成 **0**）；第三条改前就绿（它讲的正是「返回列表之后仍是
+  列表」）。`git stash pop` 后按最终源码重建，新 spec 复跑 **3 passed**。
+- **两态探针**（`r274/look.mjs`，同一份脚本两条腿各挂自己的产物，结构选择器读滚动盒）：**改后**三刻都是
+  `{"detail":1,"scroll":600}`、列表 `400 → 400`；**改前** `{"detail":1,"scroll":600} → {"detail":0,"scroll":null}`、
+  列表 `400 → 0`。截图 `r274/shots-after/{wide-detail,narrow-detail,wide-again-detail,wide-list,narrow-list}.png` 与
+  `r274/shots-before/…` 肉眼看过（改后 390 是「Probe long memory」正文第 19 段起，改前同一刻是 24 行的列表）。
+  两态 console 都只有既有的 `GET …/machines` **403**，pageerror **0 条**。
+- **相邻回归（真浏览器，一个进程跑 7 份 spec）**：`dock-command-across-layout` 2、`dock` 11、`files-place-across-layout` 3、
+  `memory-group-refusal` 4、`memory-view-refusal` 2、`memory-write-refusal` 3、新 spec 3，**27 passed（1.5m）**。
+- 端口只用 9790 / 9791（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r274-*`，探针 / 两态产物 / 截图 / 改动备份都在 scratchpad 的 `r274/` 下。
+
+### 没做 / 留着
+
+- **换会话、关标签页再开**仍从列表顶上开始（这一族的口径：只有换布局交回），这一轮没动。
+- **列表在一进一出记忆之后会回到顶上**（同一份挂载里，正文与列表是两棵不同的树）不是这一处 —— 这一轮只保证换布局
+  这一条路上「你在哪、滚到哪」不丢；那件事若要做，得先把列表的滚动盒在详情期间留着。
+- 记忆变更卡的展开态归会话，不属于这块面板，这一轮也没碰。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- 功能一笔（源码 4、单测 1、spec 1、changelog 2）：见下。
+- 台账（条目 7.154、上表那一行、本节）随本文件另起一笔。
 
 ## 第二百五十一轮（续）：输入框里 `/` 命令菜单的长说明不再被截掉（2026-11-15）
 
