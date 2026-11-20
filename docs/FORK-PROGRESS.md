@@ -2906,6 +2906,18 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       ＋ 新单测 1 条（共 7 条）＋ 既有 spec 加 1 条（共 4 条）＋ changelog 一对，**不碰接口、无新依赖**）：
       上一轮「没做 / 留着」点名的那一格 —— 多分片的会话里读者选了老一分片，跨过断点就回到最新那份
       （改前实测 1280 选 `#001` → 390 与跨回都是 `#002`）。见「第二百七十六轮」一节。
+- [x] **7.157 换布局不再丢掉消息绑定面板里没保存的改动**（**2026-11-20 第二百七十七轮**落地，提交见
+      「已完成的轮次」；`packages/web` 3 个源码文件 ＋ 1 个新模块 —— 新增 `features/messaging/messaging-form-keep.ts`
+      （按会话记 `{ surface, form }`，`recallMessagingForm` 只在记录所属表面与当前表面不同时交回、
+      `rememberMessagingForm` 进出各拷一份、`forgetMessagingForm` 删记录、`sameMessagingForm` 整份比较），
+      `messaging-binding-editor.tsx` 的 `useMessagingBinding` 多接可选 `surface`、初次加载把服务端那份当基线而把记录
+      当显示值、另一个 effect 在每次变化时写（与服务端一致时删），`messaging-panel.tsx` 把 `surface` 传下去，
+      `builtin-dock-panels.tsx` 的消息标签页从 `useDockPanel()` 取所在表面）
+      ＋ 新单测 7 条 ＋ 1 个新 spec `e2e/messaging-form-across-layout.spec.mjs`（3 条）＋ changelog 一对，
+      **不碰接口、无新依赖**）：这一族（换布局 ≠ 重新挂载）里最后一块带**读者自己输入**的面板 —— 粘进面板的机器人
+      token、敲进去的 App ID、切过去的渠道都只活在旧那份挂载里，跨一次断点就回到服务端那一份
+      （改前实测 390 上读到 `{appId:"", secret:""}`、跨回 1280 仍是空；渠道切到 QQ 也变回飞书）。
+      弹窗那个宿主不传 `surface`，既不读也不写这份记录。见「第二百七十七轮」一节。
 
 ## 发布 v0.2.0（2026-10-05）
 
@@ -3673,6 +3685,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-19 | 7.154 | **换布局不再把记忆面板拽回列表顶上（读者停在哪一层、滚到哪一行）**（**2026-11-19 第二百七十四轮**落地；`packages/web` 3 个源码文件 —— 新增 `features/chat/memory-place.ts`（按会话记 `{ surface, mode, listScroll, detailScroll }`，只在另一个停靠面交回、「列表、在顶上」整条删掉、进出各拷一份），`memory-view.tsx` 的层级与两个偏移收成「挂载读一次 + `goTo()` 每次写」、两个偏移在各自滚动盒的 `scroll` 里直接读并写进记录、交回交给两个 layout 效果各等自己的东西就位，`builtin-dock-panels.tsx` 从 `useDockPanel()` 取所在表面；`panel-context.tsx` 收下 `DockSurface`、`workspace-view-memory.ts` 改为从它导入并转出）＋ 新单测 9 条 ＋ 1 个新 spec `e2e/memory-place-across-layout.spec.mjs`（3 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十一轮只修了「命令不重放」，读者停在哪一层、滚到哪一行跟着旧挂载一起没了（改前：390 上退回列表、列表 400 → 0） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 7 个改动文件 **0 警告 0 错误** · 7 个改动文件 `prettier --check` 干净（spec 首跑不过，`--write` 后复检通过） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **344 文件 / 3915 通过 / 2 跳过**（基线 343 / 3906，**+1 文件 +9 条即本笔**） · **新 spec 3 passed（11.8 s）**（真服务端 9790 + 仓库自带 mock 模型 9791 + 一次性数据根 `/root/adelie-fork-data/r274-after2`）：① 长记忆滚到 600 → 390 → 回 1280，三刻都是 `detail:1 / scroll:600`；② 列表滚到 400 后往返，三刻 `detail:0 / scroll:400`；③ 打开记忆再「返回列表」后跨过去仍是列表 · **反证（同一份 spec，改前源码 + 改前产物）**：四份源码 stash 掉、重建 web 跑同一份 spec → **2 failed**（① 390 与跨回 1280 都是 `detail:0 / scroll:null`；② 列表的 400 变成 **0**），第三条改前就绿 · **两态探针**（`r274/look.mjs`，同一脚本两条腿）：改后 `{detail:1,scroll:600}` 三刻不变、列表 `400 → 400`；改前 `{detail:1,scroll:600} → {detail:0,scroll:null}`、列表 `400 → 0`；截图 `r274/shots-after/{wide,narrow,wide-again}-detail.png` 与 `r274/shots-before/…` 肉眼看过（改后 390 是「Probe long memory」正文第 19 段起，改前同一刻是 24 行的列表）；两态 console 都只有既有的 `GET …/machines` **403**，pageerror **0 条** · **相邻回归（真浏览器，一个进程跑 7 份 spec）**：`dock-command-across-layout` 2、`dock` 11、`files-place-across-layout` 3、`memory-group-refusal` 4、`memory-view-refusal` 2、`memory-write-refusal` 3、新 spec 3，**27 passed（1.5m）** · 端口只用 9790 / 9791（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r274-*`，探针 / 截图 / 改动备份都在 scratchpad 的 `r274/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 | 2026-11-20 | 7.155 | **换布局不再把轨迹面板拽回最新那一轮（读者开着哪几轮、滚到哪一行）**（**2026-11-20 第二百七十五轮**落地；`packages/web` 4 个源码文件 —— 新增 `features/traces/trace-place.ts`（按会话记 `{ surface, expanded, scrollTop }`，`recallTracePlace` 只在记录所属表面与当前表面不同时交回、`rememberTracePlace` 在「一轮没开、也在顶上」时整条删掉、进出各拷一份），`trace-panel.tsx` 的初值取自记录、滚动盒在 `scroll` 里直接读偏移写进记录、偏移等文件视图报「要的东西都画出来了」才设、新挂载先写一次记录盖上自己所在的面，`trace-file-view.tsx` 新增 `fileAtArrival()`（用读者的轮次作初值、不请求滚动）与 `fileAfterAnalysis()` 里「带着轮次到来就不按最新那一轮重新决定、也不设 `reveal`」那一支，视图把当前开着的轮次与「就位」报上去；`builtin-dock-panels.tsx` 从 `useDockPanel()` 取所在表面交给面板）＋ 新单测 6 条 ＋ `trace-file-view.test.ts` 2 条 ＋ 1 个新 spec `e2e/trace-place-across-layout.spec.mjs`（3 条）＋ changelog 一对，**不碰接口、无新依赖**）：第二百七十四轮「没做 / 留着」没有点名下一条，但这一族（换布局 ≠ 重新挂载）还剩同类的一块 —— **轨迹面板自己**：读者合上最新那一轮、打开第一轮再往下滚，跨过去就回到「最新那一轮开着、面板在它自己打开的起点」（改前实测 `[true,false,false]` @320 → `[false,false,true]` @846（390）与 @488（跨回）） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 8 个改动文件 **0 警告 0 错误** · 8 个改动文件 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3141 通过 / 6 跳过** · web **345 文件 / 3923 通过 / 2 跳过**（基线 344 / 3915，**+1 文件 +8 条即本笔**） · **新 spec 3 passed（19.0 s）**（真服务端 9862 + 仓库自带 mock 模型 9860 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r275-after`；三条各发三轮、每轮一张轮次卡）：① 合上第 3 轮、打开第 1 轮 → 390 → 回 1280，三刻都是 `[0:true,1:false,2:false]`；② 面板滚到 320 后往返，三刻都是 320；③ 换布局把位置带回来之后关掉标签页再开（关最后一个标签页会把停靠面收起来，用 `dock-toggle-right` 再拉起）→ 轮次回到 `[0:false,1:false,2:true]` · **反证（同一份 spec，改前产物）**：改前的 `packages/web/dist` 挂在 9861 上跑同一份 spec → **2 failed**（① 390 与跨回 1280 都是 `[false,false,true]`；② 期望 320、实得 **715**），第三条改前本来就绿（「关掉标签页仍从头开始」那条护栏） · **两态探针**（`r275/probe.mjs`，同一脚本两条腿各发三轮；改后 9862 / 改前 9861）：**改后** 三刻 `[true,false,false]` + `scrollTop 320`（narrow 上 scrollHeight 1705 / clientHeight 270）；**改前** 390 上 `[false,false,true]` / `scrollTop 846`、跨回宽屏 `[false,false,true]` / `488`；两态 console 都只有既有的 `GET …/machines` **403**，pageerror 0 条；截图 `r275/after-{wide,narrow,wide-again}.png` 肉眼看过（改后 390 与跨回 1280 都是「全局统计」下面开着第 1 轮、正文从该轮的时间线开始） · **相邻回归（真浏览器，一个进程跑 4 份 spec）**：`chat` 1（含轨迹面板那一整段）、`compaction` 2、`dock` 11（含「关掉最后一个标签页把停靠面收起来」）、新 spec 3，**16 passed（1.1m）** · 端口只用 9860 / 9861 / 9862（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r275-*`，探针 / 截图 / 两态读数都在 scratchpad 的 `r275/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `07f2d65bf` |
 | 2026-11-20 | 7.156 | **换布局不再把轨迹面板拽回最新那份分片（读者选的是哪一份）**（**2026-11-20 第二百七十六轮**落地；`packages/web` 2 个源码文件 —— `features/traces/trace-place.ts` 的 `TracePlace` 多一格 `fileIndex`（选中的分片，或 `null` 表示它就是面板自己打开的那一份、即最新，于是「落在面板自己起点上就整条丢掉」那条规则不必先拿到文件列表；`copyOf` 与丢弃条件跟上），`trace-panel.tsx` 的药丸初值取自记录（`arrived.fileIndex`），另有一个 effect 让记录跟着选择与列表走、选择是最新那份时记成 `null`）＋ 新单测 1 条（共 7 条）＋ 既有 spec 加 1 条（共 4 条）＋ changelog 一对，**不碰接口、无新依赖**）：压缩过的会话有多个分片，选中的是谁只活在面板状态里，跨断点就回到最新那份（改前实测 1280 上选 `#001` → 390 与跨回都是 `#002`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个改动文件 `prettier --check` 干净（单测先 `--write` 再复检） · `git diff --check` 干净 · 逐包 test **全绿**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3143 通过 / 6 跳过** · web **345 文件 / 3925 通过 / 2 跳过**（本笔 +1 条；台账上一轮记的 3923 与改前实测 3924 差 1，原因未追，照实测记账） · **新 spec 4 passed（23.7 s）**（真服务端 9870 + 仓库自带 mock 模型 9871 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r276-after`；第四条是这一笔：第二分片是同一日期目录里第一份的副本 —— mock 模型没法在一条用例里真跑出一次压缩） · **反证（同一份 spec，改前产物）**：把两个源码文件退回 `HEAD`、重建 web（产物留底到 scratchpad 的 `r276/before-dist`）、挂在 9872 上跑同一份 spec → **1 failed**（窄屏一侧读到 `#002`，而选的是 `#001`；另三条改前也绿）；把源码放回、重建，复跑 **4 passed** · **两态探针（真服务端 + 真浏览器）**：`r276/probe.mjs` 两腿各发一轮再复制出第二分片 —— **改后** 打开在 `#002`、点 `#001`、390 上是 `#001`、跨回 1280 还是 `#001`；**改前**（9872 + `before-dist`）同样的选法在两侧都变回 `#002`；药丸高亮的读数与截图 `r276/final-{5-pills-wide,6-pills-narrow}.png` 对得上（390 上 `#001` 有框、`#002` 没有），两态 pageerror 0 条，改后唯一的 ≥400 是既有的非管理员 `GET …/machines` **403** · **相邻回归（真浏览器，一个进程跑 4 份 spec）**：`chat` 1（含轨迹面板那一整段）、`dock` 11、`dock-command-across-layout` 2、新 spec 4 —— 首跑 16 passed / 1 failed（`dock-command` 的「记忆面板那条命令」在累积过的数据根上等不到「运行完毕」），**同一个用例在改前产物 + 干净数据根上 2 passed、在改后产物 + 干净数据根（9873、`r276-after-fresh`）上也 2 passed**，与该笔无关 · 端口只用 9870–9873（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r276-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r276/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `cd9994e82` |
+| 2026-11-20 | 7.157 | **换布局不再丢掉消息绑定面板里没保存的改动**（**2026-11-20 第二百七十七轮**落地；`packages/web` 3 个源码文件 ＋ 1 个新模块 —— 新增 `features/messaging/messaging-form-keep.ts`（按会话记 `{ surface, form }`；`recallMessagingForm` 只在记录所属表面与当前表面不同时交回，`rememberMessagingForm` 进出各拷一份，`forgetMessagingForm` 删记录，`sameMessagingForm` 整份比较而非 `formDirty`（后者只判选中的渠道，而读者可能在飞书填了 token 之后切到 QQ）），`messaging-binding-editor.tsx` 的 `useMessagingBinding` 多接可选的 `surface`：初次加载把服务端那一份当基线、把记录里的表单当显示值（于是那些编辑仍算没保存、仍要保存，与移动之前一样），另有一个 effect 每次变化都写记录、表单与服务端一致时删掉，`messaging-panel.tsx` 把 `surface` 传下去，`builtin-dock-panels.tsx` 的消息标签页从 `useDockPanel()` 取所在表面（`merged ? "merged" : position`）；弹窗宿主 `messaging-binding-modal.tsx` 不传 `surface`，既不读也不写这份记录）＋ 新单测 7 条 ＋ 1 个新 spec `e2e/messaging-form-across-layout.spec.mjs`（3 条）＋ changelog 一对，**不碰接口、无新依赖**）：这一族（换布局 ≠ 重新挂载）里最后一块带读者自己输入的面板 —— 粘进面板的机器人 token、敲进去的 App ID、切过去的渠道都只活在旧那份挂载里，跨一次断点就回到服务端那一份（改前实测 390 上读到 `{appId:"", secret:""}`、跨回 1280 仍是空；切到 QQ 再填的 ID 回来是 `{onQQ:"", qqPicked:"false"}`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 6 个改动文件（含 spec）`prettier --check` 干净（单测首跑不过，`--write` 后复检全绿） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3143 通过 / 6 跳过** · web **346 文件 / 3932 通过 / 2 跳过**（基线 345 / 3925，**+1 文件 +7 条即本笔**） · **新 spec 3 passed（10.8 s）**（真服务端 9882 + 仓库自带 mock 模型 9883 + `/usr/bin/chromium` + `/root/adelie-fork-data/r277-after`）：① 两格都敲上字，1280 → 390 → 1280 两侧都读回原字；② 切到 QQ 并填 App ID，往返之后仍在 QQ、字也在；③ 关掉标签页再开从服务端那份开始，随后那次跨界也没有东西可交 · **反证（同一份 spec，改前产物）**：`r277/before-dist` 挂在 9884 上跑同一份 spec → **2 failed**（① 390 读 `{appId:"", secret:""}`；② 读 `{onQQ:"", qqPicked:"false"}`），第三条改前也绿（它就是那条护栏） · **两态探针**（`r277/probe.mjs`，同一脚本两条腿各敲一次字；改后 9882 / 改前 9884 + `before-dist`）：**改后** 三刻都是 `cli_before_probe` + 密文；**改前** 390 与跨回 1280 都是 `""` / `""`；截图 `r277/after-{1-wide,2-narrow,3-wide-again}.png` 与 `r277/before-{1,2,3}-*.png` 肉眼看过（390 上改后 App ID 写着 `cli_before_probe`、下面密文有点，改前同刻是占位符），两态 pageerror 0 条，唯一的 ≥400 是既有的非管理员 `GET …/machines` **403** · **相邻回归（真浏览器，一个进程跑 4 份 spec）**：`messaging-save-refusal` 3、`messaging-test-refusal` 3、`messaging-test-message-refusal` 3、`dock` 10，**19 passed（1.2m）** · 端口只用 9880–9885（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r277-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r277/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -29692,3 +29705,71 @@ Agent**。
 
 - 功能一笔（源码 2、单测 1、spec 1、changelog 2）：`cd9994e82`。
 - 台账（条目 7.156、上表那一行、本节）随本文件另起一笔。
+
+## 第二百七十七轮：换布局不再丢掉消息绑定面板里没保存的改动（2026-11-20，条目 7.157）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.6 / 5.10（桌面壳一侧与既有部署
+单元、拍板、模型 key、明令不动、要把促销搬进项目配置才能做的 core 一半、要新依赖 `mermaid` 的 A2UI）——
+全都停在同一批前置上，第 7 节到 7.156 已全勾。这一族（换布局 ≠ 重新挂载）已经修完文件、记忆、轨迹三块面板与
+子 Agent 面板，剩下带**读者自己输入**的那一块正是消息绑定面板：它的表单是共享编辑器的组件状态，跨断点整份重新
+挂载、从服务端读回一份干净的，读者粘进去的 token 与敲进去的 App ID 就没了 —— 不是「读到哪」丢了，是**输入**丢了，
+比这一族前几轮丢的东西更值钱。
+
+先把它量出来。真浏览器里开一个会话的「远程控制」标签页，两格都敲上字（`cli_before_probe` 与一段密文），
+读三刻：宽屏 `cli_before_probe` + 密文，跨到 390 是 `""` / `""`，跨回 1280 仍是 `""` / `""`；切到 QQ 再填 ID 的
+那条腿，回来是 `{onQQ:"", qqPicked:"false"}`（连渠道选择一起回到飞书）。
+
+### 做了什么
+
+- `packages/web/src/features/messaging/messaging-form-keep.ts`（新）：按会话记 `{ surface, form }`。`recallMessagingForm`
+  只在记录所属表面与当前表面不同时交回，`rememberMessagingForm` 进出各拷一份（表单是一棵只有字符串、布尔与数字的
+  树，按渠道浅拷即精确），`forgetMessagingForm` 删记录。另导出 `sameMessagingForm`：**整份比较**，而不是复用
+  `formDirty`（那个判的是**选中的那个渠道**，为它紧接着的那次 Save 服务）—— 读者在飞书填了 token 再切到 QQ 看
+  一眼，`formDirty` 会说「没改」，而那块 token 一样会被重新挂载丢掉。
+- `packages/web/src/features/messaging/messaging-binding-editor.tsx`：`useMessagingBinding` 多接一个可选的
+  `surface`。初次加载把服务端那一份当**基线**、把记录里的表单当**显示值** —— 于是交回来的那些编辑仍算「没保存」、
+  仍得点 Save，与移动之前一样；另有一个 effect 在每次变化时写记录（不在卸载时写：换布局是先挂新的再拆旧的），
+  表单与服务端一致时（没敲东西，或刚保存过 —— `applyChannel` 会把表单与基线一起挪过去）删掉记录，不把「什么都没改」
+  记成一处位置。弹窗宿主不传 `surface`，既不读也不写。
+- `packages/web/src/features/messaging/messaging-panel.tsx`：面板把 `surface` 传给钩子。
+- `packages/web/src/features/chat/builtin-dock-panels.tsx`：消息标签页的体从 `useDockPanel()` 取所在表面
+  （`merged ? "merged" : position`），与文件、记忆、轨迹三块同一写法。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）。
+- `oxlint` 5 个改动文件 0 警告 0 错误；6 个改动文件（含 spec）`prettier --check` 干净（单测首跑不过，`--write`
+  后复检通过）；`git diff --check` 干净。
+- 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3143**
+  （6 跳过）· web 346 / **3932**（2 跳过；本笔 +1 文件 +7 条，基线 345 / 3925）。
+- **真浏览器（主证据）**：`e2e/messaging-form-across-layout.spec.mjs` **3 passed（10.8 s）**（真服务端 9882 +
+  仓库自带 mock 模型 9883 + `/usr/bin/chromium` + `/root/adelie-fork-data/r277-after`）：① 两格都敲上字，
+  1280 → 390 → 1280 两侧都读回原字；② 切到 QQ 并填 App ID，往返之后仍在 QQ、字也在；③ 关掉标签页再开从服务端
+  那份开始，随后那次跨界也没有东西可交（护栏）。
+- **反证（同一份 spec，改前产物）**：`r277/before-dist`（重建改前源码留下的产物）挂在 9884 上跑同一份 spec →
+  **2 failed**：① 390 上读到 `{appId:"", secret:""}`；② 读到 `{onQQ:"", qqPicked:"false"}`；第三条改前也绿。
+- **两态探针（真服务端 + 真浏览器）**：`r277/probe.mjs` 两腿各敲一次字 —— **改后**（9882）三刻都是
+  `cli_before_probe` + 密文；**改前**（9884 + `before-dist`）390 与跨回 1280 都是 `""` / `""`；截图
+  `r277/after-{1-wide,2-narrow,3-wide-again}.png`、`r277/before-{1-wide,2-narrow,3-wide-again}.png` 肉眼看过
+  （390 上改后 App ID 写着 `cli_before_probe`、下面密文有点；改前同刻是占位符 `cli_xxxxxxxxxxxxxxxx`），两态
+  pageerror 0 条，唯一的 ≥400 是既有的非管理员 `GET …/machines` **403**。
+- **相邻回归（真浏览器，一个进程跑 4 份 spec）**：`messaging-save-refusal` 3、`messaging-test-refusal` 3、
+  `messaging-test-message-refusal` 3、`dock` 10，**19 passed（1.2m）**（弹窗那两条与面板那条一起覆盖同一个共享
+  编辑器，`dock` 覆盖标签页的开合与搬家）。
+- 端口只用 9880–9885（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r277-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r277/` 下（`packages/web/dist`、
+  `test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 定时任务面板的搜索词与状态筛选（`query` / `filter`）不进记录 —— 与文件面板对搜索框的口径一致：那是「你正在做
+  的事」，不是「你停在哪」。
+- 轨迹面板的「传输条」开合（`SseFrameList`）仍旧不进记录，理由同上一轮。
+- 顺带记一个与取证有关的观察：改前腿第一次是挂在 `packages/web/dist` 上起的，而那份已在本轮重建时被改后源码
+  覆盖 —— 于是「改前」读出了与「改后」一样的值。改挂 `r277/before-dist` 才对上；**量改前必须挂一份留底的产物**，
+  不能靠同一个路径。
+
+### 提交
+
+- 功能一笔（源码 3 + 新模块 1 + 单测 1 + spec 1 + changelog 2）：`5c0885e6f`。
+- 台账（条目 7.157、上表那一行、本节）随本文件另起一笔。
