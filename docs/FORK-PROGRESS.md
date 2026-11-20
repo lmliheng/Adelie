@@ -2949,6 +2949,91 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       这一族（7.19 的规矩：拒绝留在尝试发生的地方）最后一块带**读者自己输入**的写 —— 组织频道的发送。
       失败时通知六秒就走，而框里的字（含 @ 提及）一个没少、发送按钮还在原处（改前实测：框上方 0 条、
       通知区 1 条、八秒后 0 条）。见「第二百八十轮」一节。
+- [x] **7.161 输入框拒掉过大的附件时，原因留在输入卡上方**（**2026-11-21 第二百八十一轮**落地，
+      提交见「已完成的轮次」；`packages/web` 3 个源码文件（2 改 1 新）＋ 2 本词典各一句 ＋ 1 份单测
+      ＋ 1 个新 spec ＋ changelog 一对 —— 新增 `features/chat/attachment-refusal.ts`
+      （`attachmentRefusalLine(rejected)`：空清单得 `null`，否则按上限分组、每组一句、名字保持挑选顺序），
+      `chat-input.tsx` 的三条 intake 与四个入口改为「先算出被拒清单、再统一写成一行」，
+      上方的拒绝栈里多一条 `data-testid="attachment-refusal"`，三处 `toastError` 删掉，
+      **不碰接口、无新依赖**）：这一族（7.19 的规矩）里最后一个**读者自己挑的文件被拒**的地方 ——
+      三个上限（图片 20MB / 视频 32MB / 附件管理员可设），拒掉时不产生任何 chip，于是六秒通知一走，
+      屏幕上就只剩一行「少了那个文件」的 chip（改前实测：框上方 0 条、通知区 1 条、八秒后 0 条）。
+      见「第二百八十一轮」一节。
+
+## 第二百八十一轮：输入框拒掉过大的附件时，原因留在输入卡上方（2026-11-21，条目 7.161）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（桌面壳 / 部署单元，发布动作）、3.5（拍板）、3.6（模型 key）、
+4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；第 7 节到 7.160 已全勾。上一轮那一节末尾点名的候选里，
+公司页那几处 `openDesk`（`channel-view` / `overview-page` / `org-chart-page` / `calendar-page` /
+`org-session-groups`）**不是同一族要改的东西**：它们是「点了没反应」的读取失败，族里的规矩写的却是
+「拒绝留在尝试发生的地方」——那批里有的连「尝试的位置」都没有（图表卡、48px 的折叠竖栏），要改先得造
+新表面，不该混进这一族。于是换到这一族里最后一块**读者自己挑的东西被拒**的地方：输入框的三个上限
+（图片 / 视频 / 附件），它被拒时屏幕上什么都不留（连个名字都没有）。
+
+**缺口是什么**（改前产物实测，见下）：在输入框里挑一张 21MB 的图点开，composer 在**读文件之前**就拒掉它
+—— 没有 chip、草稿一个字没加 —— 而那句「shot.png 超过 20MB 上限，未添加。」落在页面顶部的一条通知里，
+八秒后通知区空、输入卡上方 0 条：读者看到的只是一行「少了那个文件」的 chip。
+
+### 做了什么
+
+- `packages/web/src/features/chat/attachment-refusal.ts`（新）：`attachmentRefusalLine(rejected)` ——
+  入参是 `{name, limitMb}` 的清单；空清单返回 `null`（这也就是「下一次操作清掉上一句」），否则按上限
+  分组、按首次出现的顺序每组一句、组内名字保持挑选顺序。三个上限是不同的数，一次操作可能同时越过两个，
+  所以句子按上限而不是按文件分。
+- `packages/web/src/lib/strings.ts` / `strings-en.ts`：`chat.attachmentTooLarge` 从「一个名字 + 上限」改成
+  「一组名字 + 上限」，分隔符与句子都归词典自己（中文 `、`；英文 `, ` 并按单复数在
+  `exceeds/exceed`、`was/were` 之间选），与仓里其它列名同一个写法。
+- `packages/web/src/features/chat/chat-input.tsx`：`stageImages` / `stageVideos` / `addAttachments`
+  改成**返回**被拒清单、不再自己弹通知；`addMediaFiles` 合成图片与视频两半；五个入口（图片与视频两个
+  挑选器、附件挑选器、粘贴、拖放）各自在**一次手势结束时**写一行 —— 拖放一次带三个文件时，
+  三份清单合成一行，而不是后一条盖掉前一条。新增的 `mediaRefusal` 状态画在拒绝栈最前面
+  （`role="alert"`、`data-testid="attachment-refusal"`、危险色、两行、整句挂悬停）：它画在卡**上面**，
+  因为被拒的 chip 本来会长在卡的最上面。`toastError` 的 import 一并删掉（这个文件不再用通知说拒绝）。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约）。
+- `npx oxlint` 改动的源码 / 用例 / spec **0 警告 0 错误**；6 个改动文件与 changelog 一对 `prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3143**（6 跳过）·
+  web 350 / **3954**（2 跳过；基线 349 / 3949，本笔 +1 文件 +5 条单测）。
+- **新 spec 用例**（真服务端 9916 + 仓库自带 mock 模型 9917 + Playwright 自带 chromium +
+  `/root/adelie-fork-data/r281-a3`）：`attachment-refusal.spec.mjs` **2 passed（20.0 s）** ——
+  ① 挑一张 21MB 的图 → 输入卡上方一句「shot.png 超过 20MB 上限，未添加。」、`role=alert` 只一条、
+  通知区不含「超过 20MB」、没有 chip、草稿仍是空；**过了七秒那句话仍在**；再挑一张 1MB 的图 →
+  句子消失、chip 出现；② 拖放一次三个文件（21MB 图 + 33MB 片段 + 1KB 文本，页面里构造真
+  `DataTransfer` 与 `DragEvent` 交给聊天区）→ 一行两句、各说各的上限（20MB / 32MB），通知区没有一句，
+  `notes.txt` 照常进 chip 行。
+- **反证（同一份 spec，改前产物）**：`r281/before-dist`（三个源码退回 `HEAD` 重建，
+  `index-*.js` 里没有 `attachment-refusal`）挂在 9918 上 → **2 条全红**（找不到
+  `data-testid="attachment-refusal"`）。
+- **两态探针**（`r281/probe.mjs`，同一脚本两条腿各挂自己的产物、读 DOM）：**改后**（9916）1 秒与 8 秒
+  都是输入卡上方 1 条「shot.png 超过 20MB 上限，未添加。」、通知区空、chip 0；**改前**（9918）1 秒时
+  通知区正是那句、输入卡上方 0 条，8 秒后通知区空、输入卡上方仍是 0 条 —— 正是缺口。两态 console
+  各有一条 **403 `/api/projects/…/machines`**（非管理员账号的既有行为，两态一模一样），pageerror 0 条。
+  截图 `r281/shots/{after,before}-{1s,8s}.png` 肉眼看过：改后那句红字就在输入卡正上方，改前同一个位置是空的、
+  页面顶部一条通知。
+- **相邻回归（真浏览器，一个进程跑 3 份 spec）**：`attachment-refusal` 2 条 ＋ `draft-send-refusal` 2 条 ＋
+  `video-input` 1 条，**5 passed（38.8 s）** —— 视频那条正是「合上限的片段照常进 chip、发给模型」的那一半。
+- 端口只用 9916–9918（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r281-{a2,a3,b1}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r281/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 公司页那五处 `openDesk`（`channel-view` / `overview-page` / `org-chart-page` / `calendar-page` /
+  `org-session-groups`）仍是六秒通知。它们要的是**新的位置**（图表卡、48px 折叠竖栏、频道成员菜单），
+  不是把句子搬过去 —— 属另一笔。
+- `channel-view.tsx` 的 `loadEarlier`（往前翻一天失败）与 `workspace-browser.tsx` 的
+  `files.saveTooLarge` 也没动：前者是「这一次点没拿到」、没有草稿要解释，后者在文件面板里已经有
+  自己的上传拒绝位（7.90），要改得先看那一套。
+- 拖放里 `goalOn` 时「文件附件不收」的那句仍用 `toastInfo`：那不是上限拒绝，是一次拖放里的另一件事。
+
+### 提交
+
+- 功能一笔（源码 3 + 词典 2 + 单测 1 + spec 1 + changelog 2）：见本行提交。
+- 台账（条目 7.161、上表那一行、本节）随本文件另起一笔。
 
 ## 第二百八十轮：频道里没发出去的消息，原因留在输入框上方（2026-11-21，条目 7.160）
 
@@ -3852,6 +3937,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-20 | 7.158 | **上传限制的保存被拒时，原因留在表单里，不再只是一条六秒通知**（**2026-11-20 第二百七十八轮**落地；`packages/web` 4 个源码文件 —— 新增 `features/settings/uploads-save-refusal.ts`（`uploadsSaveRefusal(error)` → `{ slot, text }`：`invalid_attachment_limit` 落 `fields`、其余一切落 `section`，句子走 `refusalText`）与 `features/settings/asr-save-refusal.ts`（同一形状，`invalid_asr_base_url` / `invalid_asr_model` / `invalid_asr_api_key` 各归自己的输入框），`uploads-section.tsx` 的 `save()` 的 `catch` 去掉那句 `toastError`、新增 `refusal` 状态画在 Save 那一行上方（每次尝试前清空、读到服务端那份时清空），`asr-section.tsx` 的 `showRefusal` 改用它；两页的表单槽位都套上 `S.common.refused`（与相邻几页同一引导句）＋ 新单测 2 份（5 + 5 条）＋ 2 个新 spec（2 + 3 条）＋ changelog 一对，**不碰接口、无新依赖**）：这一族（7.19 的规矩：拒绝留在尝试发生的地方）里最后一个**只**落在通知里的设置页 —— 两个数字是一次 PUT 一起写的，成对的那条拒绝本来就画在框下，而其余任何失败（会话掉了、服务端死了、500）只落在一条六秒就走的通知里，两个框还留着敲进去的值、Save 还是那个重试按钮，读者转过眼就分不出「没存上」和「存上了」（改前实测：表单里 0 条、通知区 1 条、七秒后 0 条） | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 8 个改动文件 **0 警告 0 错误** · 9 个改动文件（含两份 spec 与 changelog 一对）`prettier --check` 干净（单测首跑不过，`--write` 后复检全绿） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3143 通过 / 6 跳过** · web **348 文件 / 3942 通过 / 2 跳过**（基线 347 / 3937，**+1 文件 +5 条**；另一份 5 条是同一轮加的 `asr-save-refusal` 单测，已含在 348 / 3942 里） · **新 spec 2 passed（8.6 s + 1.6 s）**（真服务端 9896 + 仓库自带 mock 模型 9897 + `/usr/bin/chromium` + `/root/adelie-fork-data/r278-after3`）：① 保存被拒（PUT 用 `page.route` 答 500 `internal`）的句子逐字「操作被拒绝：服务器内部错误，请稍后重试。」、`role=alert` 只一条、通知区按 DOM 读 **0 条**、七秒后仍在、服务端那两个数 `toEqual` 之前那份、两个框仍是敲进去的值，重试即落地（`{maxMb, totalMb+1}`）；② 合计低于单个上限（**真服务端**答 `invalid_attachment_limit`）→ 句子逐字「上传限制无效：请填写允许范围内的整数 MB，且合计不低于单个上限。」画在两个数字下面，表单槽位 0 条、通知区 0 条、服务端一分没变 · **反证（同一份 spec，改前产物）**：`r278/before-dist`（源码退回 `HEAD` 重建）挂在 9898 上 → **1 failed**（`section.getByRole("alert")` 找不到：改前表单里没有那句话），同批另两份 ASR spec 也红（它们是引导句那一处） · **两态探针**（`r278/probe.mjs`，同一脚本两条腿各自挂自己的产物，读 DOM 数通知）：**改后**（9900）上传限制两刻都是表单里那句「操作被拒绝：服务器内部错误，请稍后重试。」、通知区 0 条；**改前**（9906 + `before-dist`）表单里 **null**、通知区 **1** 条、七秒后通知区 0 条且表单里仍是 null（正是缺口）；语音输入那条腿改前表单里就有句子（`服务器内部错误，请稍后重试。`，无引导句）、通知区 0 条 —— 即它那句 `toastError` 的分支本来就到不了；截图 `r278/shots/{uploads,speech}-save-refused.png` 肉眼看过（那句红字就压在 Save 那一行上方、与上面一个字段隔一条线，页面上再没有别的通知条），两态 console 只有本轮**故意造的**那两条 500，pageerror 0 条 · **相邻回归（真浏览器，一个进程跑 3 份 spec）**：`uploads-read-refusal` 1、`proxy-settings-refusal` 2、`proxy-probe-refusal` 1，**4 passed（36.6 s）** · 端口只用 9896–9909（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r278-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r278/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e23662e53` |
 | 2026-11-20 | 7.159 | **主题导入弹窗里，选中的文件被浏览器拒掉时，原因也留在弹窗里**（**2026-11-20 第二百七十九轮**落地；`packages/web` 3 个源码文件 ＋ 1 份单测 ＋ 1 份既有 spec 加 1 条 ＋ changelog 一对 —— `features/settings/theme-import.ts` 新增 `pickedFileRefusal(cause)`（`too_large` / `unreadable` 各一句，都不走导入失败那张码表），`features/settings/theme-import-dialog.tsx` 的 `onPickFile` 把上限那条与 `FileReader` 读失败都放进弹窗自己的 `refusal` 槽位（画在来源下面、确认按钮旁的 `NoticeStrip`）、`toastError` 去掉，每次选择先清空上一句，落在上限内的文件被收下、句子跟着走；模块头与状态注释补上「一次没能变成请求的选择也走这个槽位」，**不碰接口、无新依赖**）：这一族（7.19 的规矩：拒绝留在尝试发生的地方）在主题导入弹窗里最后一处 —— 超过 256 KB 的文件在浏览器读第一个字节之前就被拒掉，而那句话落在一条盖在**打开着的**弹窗上的通知里，弹窗自己既没有文件名也没有句子，六秒后连通知也没了（改前实测：弹窗里 0 条、通知区 1 条、八秒后 0 条且弹窗里仍是 0 条） | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 4 个改动文件 **0 警告 0 错误** · 6 个改动文件（含两份 changelog）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 文件 / 3143 通过 / 6 跳过** · web **348 文件 / 3944 通过 / 2 跳过**（基线 3942，本笔 +2 条单测） · **新 spec 用例**（真服务端 9916 + 仓库自带 mock 模型 9917 + `/usr/bin/chromium` + `/root/adelie-fork-data/r279-a1`）：`theme-import-refusal.spec.mjs` 那 4 条 **4 passed（29.8 s）**，其中新的一条 —— 选 300 KB 文件 → 弹窗里 `role=alert` 逐字「操作被拒绝：这个文件超过了 256 KB 的上限。」、只一条、通知区按 DOM 读 **0 条**、弹窗仍在、「已选择」0 处、确认按钮 disabled、七秒后那句话仍在；再选一个小的 json → 句子消失、「已选择 small.json」出现、确认按钮可用 · **反证（同一份 spec，改前产物）**：`r279/before-dist`（两份源码退回 `HEAD` 重建）挂在 9918 上 → **1 failed**（弹窗里找不到 `role=alert`），另外三条照旧全绿 · **两态探针**（`r279/probe.mjs`，同一脚本两条腿各挂自己的产物、读 DOM）：**改后**（9916）立刻与八秒后都是弹窗里 1 条、通知区 0 条、确认 disabled；**改前**（9918）立刻是弹窗里 **0** 条、通知区 **1** 条（「这个文件超过了 256 KB 的上限。」）、八秒后通知区 **0** 条且弹窗里仍是 0 条；两态 console error / pageerror 各 **0 条**；截图 `r279/shots/{after,before}-pick-too-large.png` 肉眼看过（改后那句红字就在「选择 .json 文件」下面、弹窗里，页面上没有别的通知；改前弹窗里空白，只有顶部一条遮罩上的通知） · **相邻回归（真浏览器，一个进程跑 2 份 spec）**：`theme-import-refusal` 4 条（含新的一条）＋ `storage-settings-refusal` 2 条，**6 passed（47.7 s）** · `reader.onerror` 那条分支只有单测钉住（本机没法可靠地让 `FileReader` 失败），**没有**真浏览器取证 · 端口只用 9916–9918（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r279-{a1,b1}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r279/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `814eb3f45` |
 | 2026-11-21 | 7.160 | **频道里一条没发出去的消息，原因留在输入框上方**（**2026-11-21 第二百八十轮**落地；`packages/web` 3 个源码文件（2 改 1 新）＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— 新增 `features/company/channel-send-refusal.ts`（`channelSendRefusalLine(err)` = `S.company.channels.sendRefused(refusalText(err))`），`channel-composer.tsx` 多一个 `sendRefusal` 槽位画在输入行上方（框下面仍什么都不画，那里是「提示」的位置），`channel-view.tsx` 的 `send` 的 `catch` 不再 `toastError`、改记 `{ channelId, text }` 并在每次按下前清空、换频道随其它流状态一起清掉（迟到的失败不会跑去别的频道解释自己），两本词典各加 `company.channels.sendRefused`，**不碰接口、无新依赖**）：这一族（7.19 的规矩：拒绝留在尝试发生的地方）最后一块带**读者自己输入**的写 —— 组织频道的发送。服务端 500 时那句话落进一条盖在消息流上的通知、六秒后走掉，而框里的字（含 @ 提及）一个字没少、发送按钮还在原处（改前实测：框上方 0 条、通知区 1 条、八秒后 0 条）；读着的时候频道被别人归档（真 409 `channel_archived`）走的是同一条路 | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 7 个改动文件 **0 警告 0 错误** · 7 个改动文件（含 spec 与 changelog 一对）`prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **349 / 3949 / 2 跳过**（基线 348 / 3944，**+1 文件 +5 条**） · **新 spec 3 passed（14.1 s）**（真服务端 9916 + 仓库自带 mock 模型 9917 + `/usr/bin/chromium` + `/root/adelie-fork-data/r280-a1`）：① 存储回 500 → 框上方逐字「这条消息没有发出：服务器内部错误，请稍后重试。」、`role=alert` 只一条、通知区不含它、框里仍是那句话、按钮仍可按、服务端 0 条人写的消息、七秒后仍在，取消拦截再按一次 → 句子消失、消息进流、框清空、服务端恰好一条；② 读着的时候用 API 归档频道（真 409 `channel_archived`）→ 框上方是服务端那句（含 `is archived`）、通知区没有它、框里留着字、服务端 0 条；③ site 里失败一句 → 换到全员频道再换回来，两处都 0 条 · **反证（同一份 spec，改前产物）**：`r280/before-dist`（四个源码退回 `HEAD` 重建、`index-*.js` 里没有 `channel-send-refusal`）挂 9918 → **3 条全红** · **两态探针**（`r280/probe.mjs`，同一脚本两条腿各挂自己的产物、读 DOM）：**改后**（9916）框上方 1 条、通知区只有内测徽标、八秒后仍是那 1 条；**改前**（9918）框上方 0 条、`role=alert` 0 条、通知区里正是那句、八秒后通知区空 —— 正是缺口；截图 `r280/shots/{after,before}-send-refused{,-8s}.png` 肉眼看过（改后红字就在输入框正上方，改前同一位置空白、只有顶部一条通知）；两态 console 各两条（内测自带 403 + 本轮故意造的 500），pageerror 0 条 · **相邻回归（真浏览器，一个进程跑 2 份 spec）**：`channel-refusal` 2 + `channel-join-refusal` 2，**4 passed（11.7 s）** · 端口只用 9916–9918（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r280-{a1,b1}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r280/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `e22d6b06d` |
+| 2026-11-21 | 7.161 | **输入框拒掉过大的附件时，原因留在输入卡上方**（**2026-11-21 第二百八十一轮**落地；`packages/web` 3 个源码文件（2 改 1 新）＋ 2 本词典各一句 ＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— 新增 `features/chat/attachment-refusal.ts`（`attachmentRefusalLine(rejected)`：空清单得 `null`，否则按上限分组、每组一句、名字保持挑选顺序），`chat-input.tsx` 的 `stageImages` / `stageVideos` / `addAttachments` 改成返回被拒清单，五个入口（图片 / 视频挑选器、附件挑选器、粘贴、拖放）在一次手势结束时统一写一行，拒绝栈最前面多一条 `data-testid="attachment-refusal"`，三处 `toastError` 删掉；两本词典的 `chat.attachmentTooLarge` 改收「一组名字 + 上限」，分隔符与单复数归词典自己；**不碰接口、无新依赖**）：这一族（7.19）里最后一处「读者自己挑的东西被拒」—— 三个上限拒掉时连名字都不留，六秒通知一走屏幕上就只剩一行少了文件的 chip（改前实测：框上方 0 条、通知区 1 条、八秒后 0 条） · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型）· `npx oxlint` 0 警告 0 错误 · 6 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **0 失败**：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3143**（6 跳过）· web 350 / **3954**（2 跳过；基线 349 / 3949） · **新 spec（真服务端 9916 + 真浏览器 + 自带 mock 9917）**：`attachment-refusal.spec.mjs` **2 passed（20.0 s）** —— ① 21MB 的图 → 卡上方一句「shot.png 超过 20MB 上限，未添加。」、`role=alert` 一条、通知区无、无 chip、草稿空，**七秒后仍在**，再挑 1MB 的图 → 句子消失、chip 出；② 一次拖放三个文件（21MB 图 + 33MB 片段 + 1KB 文本，真 `DataTransfer` / `DragEvent`）→ 一行两句、各说各的上限，`notes.txt` 照常进 chip 行 · **反证**：`r281/before-dist`（三个源码退回 `HEAD` 重建，主包里没有 `attachment-refusal`）挂 9918 → **2 条全红** · **两态探针**（同一脚本两条腿）：改后 1 s / 8 s 都是卡上方 1 条、通知区空；改前 1 s 通知区正是那句、卡上方 0 条，8 s 后通知区空、卡上方仍 0 条 —— 正是缺口；两态 console 各一条 403 `/api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条；截图 `r281/shots/{after,before}-{1s,8s}.png` 肉眼看过 · **相邻回归（真浏览器，一个进程 3 份 spec）**：`attachment-refusal` 2 + `draft-send-refusal` 2 + `video-input` 1，**5 passed（38.8 s）** · 端口只用 9916–9918（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r281-{a2,a3,b1}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r281/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `6d07b6491` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
