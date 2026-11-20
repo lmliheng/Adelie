@@ -121,7 +121,6 @@ import {
   ToolbarTrigger,
   ZoomableImage,
   noAutofill,
-  toastError,
   toastInfo,
 } from "@adelie/ui";
 import type { MenuSelectOption, TagInputChip } from "@adelie/ui";
@@ -171,6 +170,8 @@ import { modelWindowBelowCompactionLimit } from "../../lib/context";
 import { splitMediaFiles } from "../../lib/file-drop";
 import { isLongPaste, longPasteFileName } from "../../lib/long-paste";
 import { splitBySize } from "../../lib/upload-limits";
+import { attachmentRefusalLine } from "./attachment-refusal";
+import type { RefusedFile } from "./attachment-refusal";
 import { appendMediaParts, dataUrlBytes, videoFromUrl } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
 import type { ComposerReference } from "../../lib/workspace-tree";
@@ -2023,19 +2024,26 @@ export function ChatInput({
   };
 
   /**
+   * What the composer turned away before reading it: a file over this intake's ceiling, named
+   * with that ceiling. Set on every intake (an empty list clears the line), never by a timer —
+   * see attachment-refusal.ts for why the sentence is drawn above the card instead of toasted.
+   */
+  const [mediaRefusal, setMediaRefusal] = useState<string | null>(null);
+
+  /**
    * Images staged from a batch that has already been partitioned (see lib/file-drop).
    *
    * They had no size check at all: an oversize paste was read into a data URL, JSON'd and uploaded,
    * freezing the tab on the way to a generic body-cap 413. They are capped well below file
    * attachments on purpose — an inline image rides the conversation and the Trace, where its size is
-   * paid again on every history page and every resume — and the ceiling is named in the toast, so
-   * what the composer refuses is what the server would.
+   * paid again on every history page and every resume — and the ceiling is named in the refusal line
+   * above the card, so what the composer refuses is what the server would.
+   *
+   * Returns what it refused, so a whole gesture (images and clips arrive together) can be said in
+   * one line instead of one per intake.
    */
-  const stageImages = (files: readonly File[]) => {
+  const stageImages = (files: readonly File[]): RefusedFile[] => {
     const { accepted, rejected } = splitBySize(files, uploadLimits.imageMaxMb);
-    for (const file of rejected) {
-      toastError(S.chat.attachmentTooLarge(file.name, uploadLimits.imageMaxMb));
-    }
     for (const file of accepted) {
       const reader = new FileReader();
       reader.onload = () => {
@@ -2045,6 +2053,7 @@ export function ChatInput({
       };
       reader.readAsDataURL(file);
     }
+    return rejected.map((file) => ({ name: file.name, limitMb: uploadLimits.imageMaxMb }));
   };
 
   /**
@@ -2057,12 +2066,10 @@ export function ChatInput({
    * entry holds the data URL its own read produced: no re-encode and no second copy of a string that
    * can be tens of megabytes (see lib/video-input).
    */
-  const stageVideos = (files: readonly File[]) => {
+  const stageVideos = (files: readonly File[]): RefusedFile[] => {
     const { accepted, rejected } = splitBySize(files, uploadLimits.videoMaxMb);
-    for (const file of rejected) {
-      toastError(S.chat.attachmentTooLarge(file.name, uploadLimits.videoMaxMb));
-    }
-    if (accepted.length === 0) return;
+    const refused = rejected.map((file) => ({ name: file.name, limitMb: uploadLimits.videoMaxMb }));
+    if (accepted.length === 0) return refused;
     void Promise.all(accepted.map(async (file) => ({ file, url: await readDataUrl(file) }))).then(
       (read) => {
         const staged = read.flatMap(({ file, url }) =>
@@ -2071,13 +2078,16 @@ export function ChatInput({
         if (staged.length > 0) setVideos((prev) => [...prev, ...staged]);
       },
     );
+    return refused;
   };
 
-  /** The media intake every entry point shares (the two "+" pickers, a paste, a drop): an image goes to the image list, a clip to the video list, each under its own ceiling. */
-  const addMediaFiles = (files: Iterable<File>) => {
+  /**
+   * The media intake every entry point shares (the two "+" pickers, a paste, a drop): an image
+   * goes to the image list, a clip to the video list, each under its own ceiling. Returns what the
+   * two ceilings turned away, so the gesture that caused it draws one line (see below). */
+  const addMediaFiles = (files: Iterable<File>): RefusedFile[] => {
     const { images: imageFiles, videos: videoFiles } = splitMediaFiles(files);
-    stageImages(imageFiles);
-    stageVideos(videoFiles);
+    return [...stageImages(imageFiles), ...stageVideos(videoFiles)];
   };
 
   const onPaste = (e: ClipboardEvent<HTMLTextAreaElement>) => {
@@ -2093,7 +2103,7 @@ export function ChatInput({
     }
     if (files.length > 0) {
       e.preventDefault();
-      addMediaFiles(files);
+      setMediaRefusal(attachmentRefusalLine(addMediaFiles(files)));
       return;
     }
     // A paste too long for the text box (a whole log) is attached as a text file instead:
@@ -2103,13 +2113,14 @@ export function ChatInput({
     if (!goalOn && isLongPaste(text)) {
       e.preventDefault();
       const name = longPasteFileName(new Date());
-      addAttachments([new File([text], name, { type: "text/plain" })]);
-      toastInfo(S.chat.longPasteAttached(name));
+      const refused = addAttachments([new File([text], name, { type: "text/plain" })]);
+      setMediaRefusal(attachmentRefusalLine(refused));
+      if (refused.length === 0) toastInfo(S.chat.longPasteAttached(name));
     }
   };
 
   const onPickFiles = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) addMediaFiles(e.target.files);
+    if (e.target.files) setMediaRefusal(attachmentRefusalLine(addMediaFiles(e.target.files)));
     e.target.value = "";
   };
 
@@ -2126,44 +2137,48 @@ export function ChatInput({
    * `[attached file: …]` lines the message ends up with — follow the order the files were
    * picked in, not the order the reads happened to finish in.
    */
-  const addAttachments = (files: Iterable<File>) => {
-    if (goalOn) return; // a goal takes no file attachments: the server refuses them
+  const addAttachments = (files: Iterable<File>): RefusedFile[] => {
+    if (goalOn) return []; // a goal takes no file attachments: the server refuses them
     const { accepted: picked, rejected } = splitBySize(files, uploadLimits.attachmentMaxMb);
-    for (const file of rejected) {
-      toastError(S.chat.attachmentTooLarge(file.name, uploadLimits.attachmentMaxMb));
-    }
-    if (picked.length === 0) return;
+    const refused = rejected.map((file) => ({
+      name: file.name,
+      limitMb: uploadLimits.attachmentMaxMb,
+    }));
+    if (picked.length === 0) return refused;
     void Promise.all(picked.map(readDataUrl)).then((urls) => {
       const staged = picked.flatMap((file, i) =>
         urls[i] ? [{ name: file.name, size: file.size, dataUrl: urls[i]! }] : [],
       );
       if (staged.length > 0) setAttachments((prev) => [...prev, ...staged]);
     });
+    return refused;
   };
 
   const onPickAttachments = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) addAttachments(e.target.files);
+    if (e.target.files) setMediaRefusal(attachmentRefusalLine(addAttachments(e.target.files)));
     e.target.value = "";
   };
 
   /**
    * Files dropped onto the chat area (see FileDropZone): one batch, partitioned into the SAME
    * intakes the "+" menu and paste use — images and videos join the media pipeline, each with its
-   * own cap and the same rejection toast, everything else joins the file-attachment pipeline (see
-   * uploadLimits). Goal mode takes images and videos but not files (nothing folds a file into the
-   * re-injected objective — the "+" menu grays its file entry out for the same reason); a drop has
-   * no disabled affordance to gray, so the refusal is said out loud instead of silently swallowing
-   * the files.
+   * own cap, everything else joins the file-attachment pipeline (see uploadLimits). Goal mode takes
+   * images and videos but not files (nothing folds a file into the re-injected objective — the "+"
+   * menu grays its file entry out for the same reason); a drop has no disabled affordance to gray,
+   * so the refusal is said out loud instead of silently swallowing the files.
+   *
+   * One drop can be turned away against three ceilings at once (an oversized image, an oversized
+   * clip and an oversized attachment arrive together), so the three lists are said in one line.
    */
   const addDroppedFiles = (dropped: File[]) => {
     if (variant !== "session") return; // Text-only surface: drops have nowhere to go.
     const batch = splitMediaFiles(dropped);
-    stageImages(batch.images);
-    stageVideos(batch.videos);
+    const refused = [...stageImages(batch.images), ...stageVideos(batch.videos)];
     if (batch.files.length > 0) {
       if (goalOn) toastInfo(S.chat.dropFilesGoalHint);
-      else addAttachments(batch.files);
+      else refused.push(...addAttachments(batch.files));
     }
+    setMediaRefusal(attachmentRefusalLine(refused));
   };
   /**
    * The image picker moved into the "+" menu, so the file input can no longer be a `<label>`
@@ -2623,6 +2638,24 @@ export function ChatInput({
           }`}
         >
           {dictation.notice.text}
+        </p>
+      )}
+
+      {/* A file this card turned away before reading it: drawn at the top of the refusal stack,
+          because the chips it never became would have sat at the top of the card below. Nothing was
+          added, so this line is the only evidence the pick happened — the six-second notification
+          it replaced left the reader looking at a chip row that simply lacks their file. It stays
+          until the next intake starts (attachment-refusal.ts says why one pick can refuse files
+          against more than one ceiling). */}
+      {mediaRefusal !== null && (
+        <p
+          role="alert"
+          data-testid="attachment-refusal"
+          data-tooltip={mediaRefusal}
+          data-tooltip-content="text"
+          className={`anim-fade mb-1 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {mediaRefusal}
         </p>
       )}
 

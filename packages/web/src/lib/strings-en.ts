@@ -4249,8 +4249,8 @@ export const en: Strings = {
     /** The catch-all: a refusal this product has no name for, said without blaming the user. */
     dictateUnavailable: "The microphone could not be used — please try again.",
     removeFile: "Remove file",
-    attachmentTooLarge: (name: string, limitMb: number): string =>
-      `${name} exceeds the ${limitMb}MB limit and was not attached.`,
+    attachmentTooLarge: (names: readonly string[], limitMb: number): string =>
+      `${names.join(", ")} ${names.length === 1 ? "exceeds" : "exceed"} the ${limitMb}MB limit and ${names.length === 1 ? "was" : "were"} not attached.`,
     /** Overlay covering the chat area while files are dragged over it (drag-and-drop upload). */
     dropFilesTitle: "Drop files to attach",
     dropFilesDesc: "Images, videos and files are added to the message draft",

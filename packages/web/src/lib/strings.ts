@@ -4364,11 +4364,13 @@ export const zh = {
     dictateUnavailable: "无法使用麦克风，请再试一次。",
     removeFile: "移除文件",
     /**
-     * Toast for a picked file rejected before reading. The limit is admin-settable and differs
-     * between file attachments and inline images, so it is passed in rather than written here.
+     * The composer's refusal line for files it turned away before reading them, one sentence per
+     * ceiling (a pick can refuse an image at 20MB and a clip at 32MB at once). Names are every file
+     * that ceiling refused, in picking order; the limit is admin-settable for attachments and
+     * compiled in for inline media, so it is passed in rather than written here.
      */
-    attachmentTooLarge: (name: string, limitMb: number): string =>
-      `${name} 超过 ${limitMb}MB 上限，未添加。`,
+    attachmentTooLarge: (names: readonly string[], limitMb: number): string =>
+      `${names.join("、")} 超过 ${limitMb}MB 上限，未添加。`,
     /** Overlay covering the chat area while files are dragged over it (drag-and-drop upload). */
     dropFilesTitle: "松开以添加附件",
     dropFilesDesc: "图片、视频与文件将添加到输入框",
