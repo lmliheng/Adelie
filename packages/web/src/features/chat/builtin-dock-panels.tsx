@@ -172,8 +172,19 @@ function TracePanelBody({ active }: DockPanelBodyProps) {
 
 function MessagingPanelBody({ active }: DockPanelBodyProps) {
   const { selected } = useChatDock();
+  // The surface this body is drawn on — a layout move changes it and only then does the form's
+  // unsaved text come back (messaging-form-keep.ts; a Session switch comes back to the same one).
+  const { position, merged } = useDockPanel();
+  const surface = merged ? "merged" : position;
   if (!selected) return draftPlaceholder("messaging");
-  return <MessagingPanel key={selected.sessionId} sessionId={selected.sessionId} active={active} />;
+  return (
+    <MessagingPanel
+      key={selected.sessionId}
+      sessionId={selected.sessionId}
+      active={active}
+      surface={surface}
+    />
+  );
 }
 
 function SchedulesPanelBody({ active }: DockPanelBodyProps) {

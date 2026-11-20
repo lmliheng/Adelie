@@ -73,6 +73,13 @@ import { messagingTestRefusal } from "./messaging-test-refusal";
 import { messagingTestMessageRefusal } from "./messaging-test-message-refusal";
 import { messagingSaveRefusal } from "./messaging-save-refusal";
 import {
+  forgetMessagingForm,
+  recallMessagingForm,
+  rememberMessagingForm,
+  sameMessagingForm,
+} from "./messaging-form-keep";
+import type { DockSurface } from "../dock/panel-context";
+import {
   bindingsToForm,
   emptyMessagingForm,
   formDirty,
@@ -370,9 +377,15 @@ export function useMessagingBinding(
     onChanged?: (sessionId: string, channel: MessagingChannel | null) => void;
     /** Fired when the initial load fails (the dialog closes itself; the panel shows its own retry). */
     onLoadFailed?: () => void;
+    /**
+     * The dock surface the host is drawn on — only the dock panel passes one. With it, the form
+     * the reader had typed is remembered and handed back when the panel moves to another surface
+     * (messaging-form-keep.ts); the dialog passes none, so it neither reads nor writes the record.
+     */
+    surface?: DockSurface;
   },
 ): MessagingBindingEditorState {
-  const { poll, onChanged, onLoadFailed } = opts;
+  const { poll, onChanged, onLoadFailed, surface } = opts;
   const [form, setForm] = useState<MessagingFormState | null>(null);
   /** What the form last loaded/saved — the dirty check compares against it. */
   const [baseline, setBaseline] = useState<MessagingFormState | null>(null);
@@ -408,6 +421,14 @@ export function useMessagingBinding(
 
   /** Which session the form was loaded for (the initial load runs once per session, not per poll flip). */
   const loadedFor = useRef<string | null>(null);
+  /**
+   * What the reader had typed into this panel before it moved to this surface, if anything
+   * (messaging-form-keep.ts). Read once per mount, before the initial load: a layout move puts a
+   * new body on the other surface, and the record is what the old one left for it.
+   */
+  const kept = useRef<MessagingFormState | null>(
+    surface === undefined ? null : recallMessagingForm(sessionId, surface),
+  );
 
   // Initial load fills the form; the poll afterwards refreshes ONLY the per-channel
   // facts (stored / secret / enabled / status / chat-known), never the fields being
@@ -422,9 +443,12 @@ export function useMessagingBinding(
         if (cancelled) return;
         setChannels(factsFromList(res));
         if (initial) {
-          const initialForm = bindingsToForm(res.bindings.map((b) => b.binding));
-          setForm(initialForm);
-          setBaseline(initialForm);
+          const stored = bindingsToForm(res.bindings.map((b) => b.binding));
+          // A body that arrived on another surface shows what the reader had typed into the one
+          // it replaced; the baseline stays the server's answer, so those edits still read as
+          // unsaved (and still have to be saved, as they would have before the move).
+          setForm(kept.current ?? stored);
+          setBaseline(stored);
           initialDone = true;
         }
       } catch (e) {
@@ -461,6 +485,17 @@ export function useMessagingBinding(
     // otherwise re-run it every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, poll]);
+
+  // Keep what the reader typed for the body that replaces this one when the layout moves the
+  // panel (messaging-form-keep.ts). Written on every change rather than on the way out — a move
+  // mounts the arriving body before the leaving one is torn down. A form that says what the
+  // server does (nothing typed, or just saved) leaves no record; the dialog host passes no
+  // surface and so neither reads nor writes one.
+  useEffect(() => {
+    if (surface === undefined || form === null || baseline === null) return;
+    if (sameMessagingForm(form, baseline)) forgetMessagingForm(sessionId);
+    else rememberMessagingForm(sessionId, surface, form);
+  }, [surface, sessionId, form, baseline]);
 
   const patchForm = (patch: Partial<MessagingFormState>) => {
     setForm((prev) => (prev ? { ...prev, ...patch } : prev));

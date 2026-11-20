@@ -20,9 +20,22 @@ import {
   MessagingBindingHelp,
   useMessagingBinding,
 } from "./messaging-binding-editor";
+import type { DockSurface } from "../dock/panel-context";
 
-export function MessagingPanel({ sessionId, active }: { sessionId: string; active: boolean }) {
-  const b = useMessagingBinding(sessionId, { poll: active });
+export function MessagingPanel({
+  sessionId,
+  active,
+  surface,
+}: {
+  sessionId: string;
+  active: boolean;
+  /**
+   * The dock surface this body is drawn on. The form the reader typed is handed back when the
+   * layout moves the panel to another one — and only then (messaging-form-keep.ts).
+   */
+  surface?: DockSurface;
+}) {
+  const b = useMessagingBinding(sessionId, { poll: active, surface });
 
   return (
     <div className="h-full overflow-y-auto p-3">
