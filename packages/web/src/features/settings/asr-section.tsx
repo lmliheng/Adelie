@@ -21,20 +21,12 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import type { AsrConfig, AsrTestResponse } from "@adelie/server/api";
-import {
-  Button,
-  Input,
-  PasswordInput,
-  SettingsSection,
-  toastError,
-  toastInfo,
-  toastSuccess,
-} from "@adelie/ui";
+import { Button, Input, PasswordInput, SettingsSection, toastInfo, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
 import { apiErrorText } from "../../lib/api-error";
 import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
+import { asrRefusal } from "./asr-save-refusal";
 
 export function AsrSection() {
   /** The stored config as hydrated on mount (null until then) — the no-change baseline. */
@@ -91,16 +83,17 @@ export function AsrSection() {
     ...(apiKey.trim() !== "" ? { apiKey: apiKey.trim() } : {}),
   });
 
-  /** A refusal both verbs share: the offending field, or the line above the buttons. */
+  /**
+   * A refusal both verbs share: the offending field, or the line above the buttons. Which slot it
+   * lands in, and why nothing is also raised as a toast beside it, is `asr-save-refusal.ts`'s
+   * to say — the sentence belongs where the attempt was made, and the button is the retry.
+   */
   const showRefusal = (e: unknown): void => {
-    const code = e instanceof ApiError ? e.code : "";
-    const text = apiErrorText(e);
+    const { slot, text } = asrRefusal(e);
     // Anything else (a lost session, a dead server) wrote nothing, so the form and the sentence
     // agree and the button is the retry.
-    if (code === "invalid_asr_base_url") setFieldError({ field: "baseUrl", text });
-    else if (code === "invalid_asr_model") setFieldError({ field: "model", text });
-    else if (code === "invalid_asr_api_key") setFieldError({ field: "apiKey", text });
-    else setRefusal(text);
+    if (slot === "section") setRefusal(text);
+    else setFieldError({ field: slot, text });
   };
 
   /**
@@ -117,7 +110,6 @@ export function AsrSection() {
       setCheck(await api.testAsrConfig(fields()));
     } catch (e: unknown) {
       showRefusal(e);
-      if (!(e instanceof ApiError)) toastError(apiErrorText(e));
     } finally {
       setTesting(false);
     }
@@ -152,7 +144,6 @@ export function AsrSection() {
       void runCheck();
     } catch (e: unknown) {
       showRefusal(e);
-      if (!(e instanceof ApiError)) toastError(apiErrorText(e));
     } finally {
       setBusy(false);
     }
@@ -263,14 +254,16 @@ export function AsrSection() {
           {checkText}
         </p>
       )}
+      {/* The form-wide refusal, behind the same lead-in every other section's uses («被拒绝»
+          names what the reason is about) and drawn above the row holding the button that retries. */}
       {refusal !== null && (
         <p
           role="alert"
-          data-tooltip={refusal}
+          data-tooltip={S.common.refused(refusal)}
           data-tooltip-content="text"
           className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
         >
-          {refusal}
+          {S.common.refused(refusal)}
         </p>
       )}
     </SettingsSection>

@@ -12,20 +12,21 @@
  * Both fields stay disabled until the stored numbers arrive, so a read that fails leaves two dead
  * fields showing nothing — which is why the reason is drawn above them rather than in a toast that
  * dismisses itself: the reader has to be told why, and leaving the page and coming back is the
- * retry (`readServerSettings`).
+ * retry (`readServerSettings`). A save refused for anything but the pair's own range is drawn in
+ * the section for the same reason: nothing was written, both fields still hold what was typed, and
+ * Save is the retry (which slot a failure goes to: `uploads-save-refusal.ts`).
  *
  * Saving takes effect immediately — the attachment validators and the request body cap both
  * read the setting per request — so there is nothing to restart and nothing to warn about.
  */
 import { useEffect, useState } from "react";
-import { Button, Input, SettingsSection, toastError, toastInfo, toastSuccess } from "@adelie/ui";
+import { Button, Input, SettingsSection, toastInfo, toastSuccess } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
 import { toneInk } from "../../lib/tone";
 import { useAuth } from "../../state/auth";
 import { readServerSettings, settingsReadRefusal } from "./settings-read";
+import { uploadsSaveRefusal } from "./uploads-save-refusal";
 
 /** The two numbers this page is about, as they are stored. */
 interface StoredLimits {
@@ -57,6 +58,8 @@ export function UploadsSection() {
   } | null>(null);
   /** Why the settings could not be read, drawn above the fields it left dead (null once read). */
   const [loadRefusal, setLoadRefusal] = useState<string | null>(null);
+  /** Why the last save was refused for another reason, drawn above the Save row. */
+  const [refusal, setRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   /** Adopt server-side truth: the baseline and the drafts move together. */
@@ -64,6 +67,7 @@ export function UploadsSection() {
     setStored(next);
     setMaxMb(String(next.maxMb));
     setTotalMb(String(next.totalMb));
+    setRefusal(null);
   };
 
   useEffect(() => {
@@ -100,6 +104,7 @@ export function UploadsSection() {
     }
     setBusy(true);
     setLimitError(null);
+    setRefusal(null);
     try {
       const res = await api.adminPutSettings({
         attachmentMaxMb: parsedMax,
@@ -111,11 +116,9 @@ export function UploadsSection() {
       await refresh().catch(() => {});
       toastSuccess(S.common.saved);
     } catch (e) {
-      if (e instanceof ApiError && e.code === "invalid_attachment_limit") {
-        setLimitError({ text: apiErrorText(e), max: true, total: true });
-      } else {
-        toastError(apiErrorText(e));
-      }
+      const { slot, text } = uploadsSaveRefusal(e);
+      if (slot === "fields") setLimitError({ text, max: true, total: true });
+      else setRefusal(text);
     } finally {
       setBusy(false);
     }
@@ -193,6 +196,19 @@ export function UploadsSection() {
           if (limitError !== null) setLimitError(null);
         }}
       />
+      {/* The other half of a refusal: one that is about the save rather than about a number. Both
+          fields keep what was typed and Save is the retry, so the sentence has to outlive a toast
+          to be worth anything (which slot a failure goes to: `uploads-save-refusal.ts`). */}
+      {refusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={S.common.refused(refusal)}
+          data-tooltip-content="text"
+          className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {S.common.refused(refusal)}
+        </p>
+      )}
     </SettingsSection>
   );
 }
