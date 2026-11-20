@@ -30,7 +30,9 @@
  * A channel the reader has not joined offers Join instead of the composer — people may read
  * every channel but post only in the ones they are in; joining asks first, because it is what
  * puts this channel's @-mentions in front of the reader from then on, and a refused join keeps
- * that card standing with the server's words inside it. An archived channel says
+ * that card standing with the server's words inside it. A message the server does not take keeps
+ * the draft in the box, and its reason is drawn above the composer whose send button is the
+ * retry (channel-send-refusal.ts). An archived channel says
  * it is read-only. Only the messages are essential: the chart and the Project's member list feed
  * names and the invite picker, so a hiccup there degrades names to ids rather than blocking
  * the page.
@@ -66,6 +68,7 @@ import { useOrg } from "./org-layout";
 import { principalLabel } from "./shared";
 import { orgKey } from "./company-nav";
 import { ChannelComposer } from "./channel-composer";
+import { channelSendRefusalLine } from "./channel-send-refusal";
 import { useChannelDraft } from "./channel-draft";
 import { ChannelHeader } from "./channel-header";
 import { ChannelMessageBody, ChannelReaderProvider, MentionChip } from "./channel-markdown";
@@ -128,6 +131,12 @@ export function ChannelView() {
   const [confirmJoin, setConfirmJoin] = useState(false);
   /** The server's own words for a refused join, drawn in the card that asked, next to its retry. */
   const [joinRefusal, setJoinRefusal] = useState<string | null>(null);
+  /**
+   * Why the last message did not go out, and the channel it was pressed in — the composer stays
+   * mounted across a channel switch, so an attempt that lands late must not explain itself in a
+   * channel that never failed (channel-send-refusal.ts).
+   */
+  const [sendRefusal, setSendRefusal] = useState<{ channelId: string; text: string } | null>(null);
   /** Messages that arrived while the view was scrolled up; shown on the pill. */
   const [pendingNew, setPendingNew] = useState(0);
   const [showJump, setShowJump] = useState(false);
@@ -164,6 +173,7 @@ export function ChannelView() {
     setPendingNew(0);
     setConfirmJoin(false);
     setJoinRefusal(null);
+    setSendRefusal(null);
     markedRef.current = null;
     firstDayRef.current = null;
     listedMemberRef.current = null;
@@ -362,6 +372,9 @@ export function ChannelView() {
   const draft = useChannelDraft(projectId, orgId, channelId);
 
   const send = async (text: string): Promise<boolean> => {
+    // Each press is a new attempt: the sentence about the last one goes first, so what is on
+    // screen always describes the press the reader just made.
+    setSendRefusal(null);
     try {
       const msg = await api.sendOrgChannelMessage(projectId, orgId, channelId, { text });
       draft.discard();
@@ -371,7 +384,10 @@ export function ChannelView() {
       );
       return true;
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The draft stays in the box and the send button stays enabled, so the sentence above the
+      // composer says why nothing was posted; a toast over the stream would be gone in six
+      // seconds while the box still held the words (7.19's rule).
+      setSendRefusal({ channelId, text: channelSendRefusalLine(e) });
       return false;
     }
   };
@@ -691,6 +707,7 @@ export function ChannelView() {
                 candidates={candidates}
                 names={names}
                 initialText={draft.initial}
+                sendRefusal={sendRefusal?.channelId === channelId ? sendRefusal.text : null}
                 onTextChange={draft.onTextChange}
                 onSend={send}
               />

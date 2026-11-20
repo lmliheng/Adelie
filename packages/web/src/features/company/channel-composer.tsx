@@ -39,7 +39,9 @@
  *
  * The keys are named in the placeholder and nothing is rendered under the box, the way
  * development mode's chat input reads: a line of hint below the composer is read once and
- * then costs a row of the stream on every later visit.
+ * then costs a row of the stream on every later visit. Above the box is where a refusal goes
+ * (`sendRefusal`): it is not a hint about the box but the answer to a press, and the send
+ * button right there is the retry (channel-send-refusal.ts).
  */
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -49,6 +51,7 @@ import type {
 } from "react";
 import { Button, Dropdown, ICON_GAP, MenuLabel, noAutofill } from "@adelie/ui";
 import { S } from "../../lib/strings";
+import { toneInk } from "../../lib/tone";
 import { fitTextarea } from "../../lib/textarea-fit";
 import { PrincipalChip } from "./shared";
 import {
@@ -111,6 +114,7 @@ export function ChannelComposer({
   candidates,
   names,
   initialText = "",
+  sendRefusal = null,
   onTextChange,
   onSend,
 }: {
@@ -118,6 +122,8 @@ export function ChannelComposer({
   names: ReadonlyMap<string, string>;
   /** The draft this channel was left with. Read once, at mount. */
   initialText?: string;
+  /** Why the last send was refused, drawn above the box (channel-send-refusal.ts). */
+  sendRefusal?: string | null;
   /** Every change of the box's text, the clearing after a send included. */
   onTextChange?: (text: string) => void;
   /** Sends the draft; resolves true once it is in the stream (the draft is then cleared). */
@@ -342,6 +348,22 @@ export function ChannelComposer({
 
   return (
     <div className="shrink-0 border-t border-gray-200 pt-3 dark:border-gray-800">
+      {/* A message this box could not send: the one thing drawn outside it, because it explains
+          a press rather than the box — the browser's own keys are hinted in the placeholder, and
+          a line under the box is read once and then costs a row of the stream. The send button
+          below is still enabled and the draft is still in the box, so it is the retry; the
+          sentence stays until the next attempt starts (channel-send-refusal.ts). */}
+      {sendRefusal != null && sendRefusal !== "" && (
+        <p
+          role="alert"
+          data-testid="channel-send-refusal"
+          data-tooltip={sendRefusal}
+          data-tooltip-content="text"
+          className={`anim-fade mb-2 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+        >
+          {sendRefusal}
+        </p>
+      )}
       <div className={`flex items-end ${ICON_GAP.menu}`}>
         <Dropdown
           className="min-w-0 flex-1"

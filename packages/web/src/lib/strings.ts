@@ -6059,6 +6059,12 @@ export const zh = {
         "只有 @ 才会打扰员工：@某位员工 送进它的工位会话，@all 送给频道里所有成员；不带 @ 的消息只是留言。",
       placeholder: "输入消息，Enter 发送，Shift+Enter 换行，@ 提及成员",
       send: "发送",
+      /**
+       * A message the channel did not take (channel-send-refusal.ts), drawn above the composer
+       * whose send button is still the retry: the reason is the server's own sentence, so the
+       * line has to say what that sentence is about.
+       */
+      sendRefused: (reason: string): string => `这条消息没有发出：${reason}`,
       you: "你",
       mentionAll: "所有人",
       mentionAllDesc: "频道全部成员",

@@ -5982,6 +5982,8 @@ export const en: Strings = {
         "Only an @ reaches an employee: @employee delivers to its desk session, @all to every member of the channel; a message without one is just a note.",
       placeholder: "Type a message — Enter sends, Shift+Enter breaks the line, @ mentions a member",
       send: "Send",
+      /** A message the channel did not take, drawn above the composer (see strings.ts). */
+      sendRefused: (reason: string): string => `This message did not go out: ${reason}`,
       you: "You",
       mentionAll: "Everyone",
       mentionAllDesc: "Every member of the channel",
