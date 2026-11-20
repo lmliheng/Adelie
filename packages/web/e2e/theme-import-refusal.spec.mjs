@@ -24,6 +24,9 @@ const MOCK = process.env.MOCK_URL;
 const CARD_REFUSED = "操作被拒绝：主题库里已经没有这个主题了，刷新一下再看。";
 const DIALOG_REFUSED = "操作被拒绝：取不回来：地址、网络或对方的状态码有问题。";
 
+/** The line a pick the browser would not read draws: no server answered this one. */
+const PICK_TOO_LARGE = "操作被拒绝：这个文件超过了 256 KB 的上限。";
+
 /** The catalogue both tests see: two cards, neither of them installed. */
 const CATALOGUE = {
   base: "https://registry.example.invalid/",
@@ -255,4 +258,47 @@ test("a refused theme dialog keeps its reason in the dialog, under the address i
   await dialog.getByRole("button", { name: "下载并导入", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   expect(attempts).toHaveLength(2);
+});
+
+test("a picked file the browser will not read keeps its reason beside the picker", async ({
+  page,
+}) => {
+  await ready(page);
+  await page.goto("/");
+  await openAppearance(page);
+  await page.getByRole("button", { name: "导入主题…", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "导入主题" });
+  await expect(dialog).toBeVisible();
+
+  // Past the cap core itself enforces, refused before the browser reads a byte: nothing is sent,
+  // and the file never becomes a request, so no route answers this one.
+  const picker = dialog.locator('input[type="file"]');
+  await picker.setInputFiles({
+    name: "huge.json",
+    mimeType: "application/json",
+    buffer: Buffer.alloc(300 * 1024),
+  });
+
+  // The sentence, in the dialog the pick happened in — and not a notification that would leave.
+  await expect(dialog.getByRole("alert")).toHaveText(PICK_TOO_LARGE);
+  await expect(dialog.getByRole("alert")).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "通知" }).getByRole("button")).toHaveCount(0);
+  await expect(dialog).toBeVisible();
+  // Nothing was taken: no file name beside the picker, and the confirm has nothing to send.
+  await expect(dialog.getByText("已选择", { exact: false })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "上传并导入", exact: true })).toBeDisabled();
+
+  // Six seconds is how long a toast lives; this sentence has to still be there after it.
+  await page.waitForTimeout(7_000);
+  await expect(dialog.getByRole("alert")).toHaveText(PICK_TOO_LARGE);
+
+  // Picking again is a new attempt: a file within the cap is taken and the sentence goes with it.
+  await picker.setInputFiles({
+    name: "small.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({ id: "probe", name: "Probe" })),
+  });
+  await expect(dialog.getByRole("alert")).toHaveCount(0);
+  await expect(dialog.getByText("已选择 small.json")).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "上传并导入", exact: true })).toBeEnabled();
 });

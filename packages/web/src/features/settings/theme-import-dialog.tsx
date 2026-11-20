@@ -16,7 +16,9 @@
  * confirmation whose confirm resends THAT request with `overwrite: true` (so the user never picks
  * the file twice), while any other failure is kept in the dialog's own body — the file or the
  * address is still there, the confirm button still sends it, and the reason belongs beside them
- * rather than in a notification that dismisses itself over an open dialog. The list is re-read on
+ * rather than in a notification that dismisses itself over an open dialog. The same holds for a
+ * pick that never becomes a request (past the size cap, or unreadable): the sentence says why the
+ * picker took nothing, and a toast over the dialog left nothing behind it. The list is re-read on
  * success, which is how the new theme appears in the picker above.
  *
  * Admin-only by the server's own rule — the themes directory is installation-level, and every
@@ -33,7 +35,6 @@ import {
   Modal,
   NoticeStrip,
   Segmented,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -41,7 +42,7 @@ import { S } from "../../lib/strings";
 import { useLocale } from "../../state/locale";
 import { localizedText } from "../chat/skill-use";
 import { UPLOAD_LABEL_CLASS } from "../agents/skills-tab";
-import { themeFileTooLarge, themeImportRefusal } from "./theme-import";
+import { themeFileTooLarge, themeImportRefusal, pickedFileRefusal } from "./theme-import";
 
 /** Which way the file arrives: picked here, or fetched by the server from an address. */
 type Source = "upload" | "download";
@@ -76,9 +77,10 @@ export function ThemeImportActions({
   // The 409 confirmation, the only state the two flows share.
   const [pending, setPending] = useState<ImportRequest | null>(null);
   /**
-   * The last attempt's refusal, kept in the dialog's body. It belongs to the request that was sent
-   * (a picked file, an address), so opening the dialog, closing it, switching the source and the
-   * next attempt each clear it: a sentence about the file must not sit beside a URL.
+   * The last attempt's refusal, kept in the dialog's body. It belongs to what the reader did last —
+   * a picked file (an import that was sent, or a pick the browser would not even read), or an
+   * address — so opening the dialog, closing it, switching the source, picking another file and
+   * the next attempt each clear it: a sentence about the file must not sit beside a URL.
    */
   const [refusal, setRefusal] = useState<string | null>(null);
 
@@ -149,10 +151,13 @@ export function ThemeImportActions({
     // event (the Skills tab's import does the same, for the same reason).
     e.target.value = "";
     if (!file) return;
+    // Picking is a new attempt: the sentence on screen was about the file before this one.
+    setRefusal(null);
     // Refused before reading: a theme file is small, and reading a large one into a base64 body
-    // only to be told so is work nobody asked for.
+    // only to be told so is work nobody asked for. The reason stays beside the picker rather than
+    // leaving with a toast — the picker still shows no file, and nothing beside it would say why.
     if (themeFileTooLarge(file.size)) {
-      toastError(S.settings.themeImportTooLarge);
+      setRefusal(pickedFileRefusal("too_large"));
       return;
     }
     const reader = new FileReader();
@@ -164,7 +169,9 @@ export function ThemeImportActions({
         fileName: file.name,
       });
     };
-    reader.onerror = () => toastError(S.common.unknownError);
+    // Same slot as the size refusal: the browser could not read what was picked, and the dialog is
+    // where the picker is.
+    reader.onerror = () => setRefusal(pickedFileRefusal("unreadable"));
     reader.readAsDataURL(file);
   };
 
@@ -279,7 +286,9 @@ export function ThemeImportActions({
           )}
           {/* The refusal sits under the source it was about, inside the dialog that asked: the
               picked file or the address is still here, and the confirm button beside it is what
-              retries. A toast said the same thing over an open dialog and left with it. */}
+              retries. A pick the browser would not read lands here too — in that case the file is
+              NOT here, and this line is the only thing that says why. A toast said the same over
+              an open dialog and left with it. */}
           {refusal !== null && (
             <NoticeStrip
               tone="danger"

@@ -8,7 +8,9 @@
  * reasons — the file's author is who has to fix them — while a code the app has its own copy for
  * gets that copy, because the server's message is English-only and the UI language may not be.
  * The cap is pinned against core's own constant: the browser refusing to read a file the server
- * would accept, or reading one it would refuse, is the one way these two numbers can disagree.
+ * would accept, or reading one it would refuse, is the one way these two numbers can disagree. And
+ * a pick that never becomes a request has its own two sentences here, because they are now drawn in
+ * the dialog beside the picker rather than left in a toast that dismisses itself.
  */
 import { describe, expect, it } from "vitest";
 import { MAX_THEME_FILE_BYTES } from "@adelie/core";
@@ -17,6 +19,7 @@ import { apiErrorText } from "../src/lib/api-error";
 import { S } from "../src/lib/strings";
 import {
   THEME_FILE_LIMIT_KB,
+  pickedFileRefusal,
   themeFileTooLarge,
   themeImportErrorText,
   themeImportRefusal,
@@ -116,5 +119,22 @@ describe("读取之前的那道上限", () => {
   it("按文件大小判断，正好到上限时不拦", () => {
     expect(themeFileTooLarge(THEME_FILE_LIMIT_KB * 1024)).toBe(false);
     expect(themeFileTooLarge(THEME_FILE_LIMIT_KB * 1024 + 1)).toBe(true);
+  });
+});
+
+describe("选中的文件没能变成一次导入时说的话", () => {
+  it("超限说的是上限那一句，读不出来说的是通用那句", () => {
+    expect(pickedFileRefusal("too_large")).toBe(S.settings.themeImportTooLarge);
+    expect(pickedFileRefusal("unreadable")).toBe(S.common.unknownError);
+    // Two causes, two sentences: the reader of a file that was never read cannot be told about a
+    // size cap they never hit.
+    expect(pickedFileRefusal("unreadable")).not.toBe(pickedFileRefusal("too_large"));
+  });
+
+  it("两句都不是空的，且随词典走", () => {
+    // Same reason as the codes above: these lines are drawn in the dialog, not in a toast that
+    // leaves, so an English reader gets the English copy of the same two.
+    expect(pickedFileRefusal("too_large")).not.toBe("");
+    expect(pickedFileRefusal("too_large")).toBe(S.settings.themeImportTooLarge);
   });
 });

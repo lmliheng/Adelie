@@ -1,6 +1,7 @@
 /**
  * The parts of importing a theme that are not the dialog, kept out of it so they can be tested: how
- * a failed import reads, and the two checks the browser can make before anything is sent.
+ * a failed import reads, how a picked file that the browser never got to read reads, and the two
+ * checks the browser can make before anything is sent.
  *
  * A failure's text is mostly the server's own codes turned into the reader's language
  * (`theme-import-dialog.tsx` explains why the dialog branches the same way). One code is special:
@@ -23,6 +24,17 @@ export const THEME_FILE_LIMIT_KB = 256;
 /** Whether a picked file is past the cap, judged on the file itself rather than after reading it. */
 export function themeFileTooLarge(sizeBytes: number): boolean {
   return sizeBytes > THEME_FILE_LIMIT_KB * 1024;
+}
+
+/**
+ * What the dialog says when a chosen file never becomes an import request — the two ways a pick
+ * fails before anything is sent: the browser refuses to read it because of its size, or the read
+ * itself fails. Neither is an answer from the server, so neither is one of the codes above; both
+ * happen beside the picker that chose the file, and that is where the sentence is drawn (a
+ * notification over the open dialog left nothing behind once its six seconds were up).
+ */
+export function pickedFileRefusal(cause: "too_large" | "unreadable"): string {
+  return cause === "too_large" ? S.settings.themeImportTooLarge : S.common.unknownError;
 }
 
 /**
