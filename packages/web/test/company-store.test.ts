@@ -43,6 +43,8 @@ const posted = (
   projectId: "p1",
   orgId: "acme",
   channelId,
+  // The day file the server read the line from; the badge counts do not read it.
+  date: "2026-09-02",
   message: message(over),
 });
 

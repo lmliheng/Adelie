@@ -304,7 +304,9 @@ export function ChannelView() {
   // here, not inside a setDays updater: bumping the pill is a side effect and an updater must
   // stay pure. It reads the latest list through a ref rather than this render's `days`, so
   // two messages arriving before React re-renders both land instead of the second
-  // overwriting the first.
+  // overwriting the first. The day is the one the event names — the file the line was read
+  // from — not today: a line appended to an earlier day's file is published by a scan that
+  // runs now, while the reader sits in a stream that may have that day loaded or not.
   const latestDays = useRef(days);
   latestDays.current = days;
   useCompanyEvents((ev) => {
@@ -312,7 +314,7 @@ export function ChannelView() {
     if (ev.channelId !== channelId) return;
     const current = latestDays.current;
     if (meta === null || current === null) return;
-    const next = appendMessage(current, meta.today, ev.message);
+    const next = appendMessage(current, ev.date, ev.message);
     // Unchanged means the message is already in the stream — the reader's own, appended on send.
     if (next === current) return;
     latestDays.current = next;

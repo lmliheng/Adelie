@@ -2599,6 +2599,12 @@ describe("organization runtime", () => {
           (e) => e.type === "org_channel" && e.channelId === "site" && e.message.id === msg.id,
         ),
       ).toBe(true);
+      // The event names the day file the line was read from, which is what the client groups by
+      // (the organization's timezone is UTC here, so that file is the one the timestamp falls in).
+      const announced = events.find(
+        (e) => e.type === "org_channel" && e.channelId === "site" && e.message.id === msg.id,
+      );
+      expect(announced?.type === "org_channel" ? announced.date : null).toBe(msg.time.slice(0, 10));
 
       // The same `@all` in the all-hands channel is every employee.
       started.length = 0;

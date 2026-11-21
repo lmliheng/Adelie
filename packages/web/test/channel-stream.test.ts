@@ -204,6 +204,37 @@ describe("appendMessage, lastMessageId and messageCount", () => {
     expect(messageCount(rolled)).toBe(3);
     expect(lastMessageId([{ date: "2026-09-02", messages: [] }])).toBeNull();
   });
+
+  it("puts a missing earlier day where its date sorts, and a middle one between its neighbours", () => {
+    // A live line read from a day file the opening load never fetched: a CLI or a hand edit
+    // appending to yesterday, or a write a second before midnight published after it.
+    const today = msg("user:alice", "2026-09-03T00:00:10Z");
+    const yesterday = msg("agent:ceo", "2026-09-02T23:59:58Z");
+    const twoDaysAgo = msg("user:bob", "2026-09-01T09:00:00Z");
+    const days = [{ date: "2026-09-03", messages: [today] }];
+
+    const withYesterday = appendMessage(days, "2026-09-02", yesterday);
+    // Oldest first is what the stream draws — the missing day must not land below today.
+    expect(withYesterday.map((d) => d.date)).toEqual(["2026-09-02", "2026-09-03"]);
+    expect(withYesterday[0]?.messages).toEqual([yesterday]);
+    expect(withYesterday[1]?.messages).toEqual([today]);
+    // The array it came from is untouched.
+    expect(days).toEqual([{ date: "2026-09-03", messages: [today] }]);
+
+    const withTwoAgo = appendMessage(withYesterday, "2026-09-01", twoDaysAgo);
+    expect(withTwoAgo.map((d) => d.date)).toEqual(["2026-09-01", "2026-09-02", "2026-09-03"]);
+
+    const between = msg("user:bob", "2026-09-02T12:00:00Z");
+    const middle = appendMessage(withTwoAgo, "2026-09-02", between);
+    expect(middle.map((d) => d.date)).toEqual(["2026-09-01", "2026-09-02", "2026-09-03"]);
+    expect(middle[1]?.messages).toEqual([yesterday, between]);
+
+    // A day already present keeps its place: no re-sorting, the message joins its own day.
+    const last = msg("user:bob", "2026-09-03T08:00:00Z");
+    const same = appendMessage(middle, "2026-09-03", last);
+    expect(same.map((d) => d.date)).toEqual(["2026-09-01", "2026-09-02", "2026-09-03"]);
+    expect(same[2]?.messages).toEqual([today, last]);
+  });
 });
 
 describe("hopChipShown", () => {

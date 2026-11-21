@@ -6403,6 +6403,13 @@ export type CompanyServerEvent =
       projectId: string;
       orgId: string;
       channelId: string;
+      /**
+       * The day file the line was read from (`yyyy-mm-dd`, the organization's timezone). The client
+       * groups by this and not by "today": a message appended to an earlier day's file — by a CLI,
+       * by a hand edit, or by a write that landed a second before midnight and is published by the
+       * scan after it — belongs to that day in the open stream too.
+       */
+      date: string;
       message: OrgChannelMessage;
     }
   /** A ticket's status, owner, blocked state or contributing sessions changed. */

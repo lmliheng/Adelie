@@ -188,9 +188,15 @@ export function joinedElsewhere(
 }
 
 /**
- * A message appended to its day (created at the end when that day is not loaded yet) — a
+ * A message appended to its day (created in day order when that day is not loaded yet) — a
  * new array, or the same one back when the id is already present, so a live event that
  * repeats a message the send already added changes nothing.
+ *
+ * `date` is the day file the message was read from, which is not necessarily today's: a line a
+ * CLI or a hand edit appended to an earlier day, or one written a second before midnight and
+ * published by the scan after it, arrives while the view is open. Such a day may not be loaded
+ * at all, and the stream is oldest first — appending it at the end would draw yesterday below
+ * today — so a missing day is inserted where its date sorts.
  */
 export function appendMessage(
   days: ChannelDay[],
@@ -199,7 +205,12 @@ export function appendMessage(
 ): ChannelDay[] {
   if (days.some((d) => d.messages.some((m) => m.id === message.id))) return days;
   const idx = days.findIndex((d) => d.date === date);
-  if (idx === -1) return [...days, { date, messages: [message] }];
+  if (idx === -1) {
+    const at = days.findIndex((d) => d.date > date);
+    const next = days.slice();
+    next.splice(at === -1 ? days.length : at, 0, { date, messages: [message] });
+    return next;
+  }
   return days.map((d, i) => (i === idx ? { ...d, messages: [...d.messages, message] } : d));
 }
 

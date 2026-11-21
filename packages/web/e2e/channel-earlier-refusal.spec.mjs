@@ -268,11 +268,11 @@ test("the first screen's own walk back that stops part way says so too, above th
   await page.waitForTimeout(7000);
   await expect(refusal(page)).toHaveText(STORE_SENTENCE);
 
-  // The retry lands: the sentence goes, and the day the walk stopped on arrives as its own section.
-  // Asserted on the day divider, not the message text: these day files are written straight into
-  // the data root, so the server's reconciler also picks them up and the view appends them to
-  // TODAY (their own date is not what the event carries) — the message text alone would pass even
-  // if the press had not fetched anything.
+  // The retry lands: the sentence goes — cleared at the start of every press, and left clear only by
+  // a read that came back — and the day the walk stopped on arrives as its own section. These day
+  // files are written straight into the data root, so the server's reconciler publishes them too,
+  // and since 7.166 that creates their own day in the open stream as well: this divider could have
+  // come from either path, so the cleared sentence is what proves the press.
   await page.unroute(mock.url);
   await earlierButton(page).click();
   await expect(refusal(page)).toHaveCount(0);

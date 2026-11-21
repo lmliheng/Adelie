@@ -740,6 +740,9 @@ export async function scanChannels(
           projectId: org.projectId,
           orgId: org.orgId,
           channelId,
+          // The file the line came out of, not "today": they differ for a line appended to an
+          // earlier day's file, and the open stream groups by the day it belongs to.
+          date,
           message: msg,
         });
         if (!triggers || org.config.status === "paused" || msg.sender === "system") continue;
