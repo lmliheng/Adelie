@@ -1,0 +1,60 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'dev.adelie.app'
+    compileSdk 35
+    // 这台机器只装了 36.0.0 的 build-tools，别让 AGP 去下载默认版本
+    buildToolsVersion '36.0.0'
+
+    defaultConfig {
+        applicationId 'dev.adelie.app'
+        minSdk 24
+        targetSdk 34
+        versionCode 4
+        versionName '1.0.1-beta'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    packaging {
+        // libnode.so 必须被解到 nativeLibraryDir 才能 exec（应用私有目录是 noexec）
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+
+    // 真机以外的验证：Robolectric 在 JVM 上用原生图形栈把界面画成 PNG
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.robolectric:robolectric:4.14.1'
+    testImplementation 'androidx.test:core:1.6.1'
+}

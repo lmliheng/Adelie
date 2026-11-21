@@ -20,6 +20,8 @@ Adelie 这个 fork 自己的说明文档都放在这个目录里，仓库根只�
 - [`../.github/CONTRIBUTING.zh.md`](../.github/CONTRIBUTING.zh.md)——上游的工作区指南
   （开发命令、质量门禁、仓库结构、changelog 规则）；`CODE_OF_CONDUCT`、`SECURITY` 与 PR 模板
   同在 `.github/` 下。
+- [`../android/`](../android/)——安卓 APK 的工程与打包脚本，自成一体的原生应用（源码入库，
+  生成物不入库）；看 [`../android/README.md`](../android/README.md)。
 
 > 加新文档时：fork 自己的说明放这个目录，逐条变更记进 `changelog/unreleased/`，面向用户的
 > 文档页放 `packages/docs/content/`——仓库根不再新增 `.md`。

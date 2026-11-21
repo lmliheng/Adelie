@@ -1,0 +1,4 @@
+// 只用来声明 Android Gradle 插件，模块配置在 app/build.gradle。
+plugins {
+    id 'com.android.application' version '8.7.3' apply false
+}
