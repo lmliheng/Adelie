@@ -2989,6 +2989,92 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       这张框被拒时本来就开着，缺的只是「原因画在哪」；句子里压在最后一个字段下方不行（正文会滚动，正好落在
       看不见的地方、而按钮就在页脚），所以放在按钮自己那一行。改前实测：1.2 秒时框里 0 条、通知区一句、
       9 秒后屏幕上 0 条。见「第二百八十四轮」一节。
+- [x] **7.165 频道首屏自己那趟「往回走」没读全时，原因也画在「更早的记录」按钮下面**（**2026-11-21
+      第二百八十五轮**落地，提交见「已完成的轮次」；`packages/web` 2 个源码文件（全改）＋ 既有 spec 改
+      三处 ＋ changelog 一对 —— `channel-view.tsx` 里首屏回走那一段的 `catch` 不再吞掉失败，改成
+      `setEarlierRefusal(channelEarlierRefusalLine(e))`，并且先过这一次加载自己的序号判断（切走之后迟到的
+      拒绝不在新频道上解释自己）；**没有新状态、没有新文案、不碰接口、无新依赖**）：上一轮「没做 / 留着」
+      里点名的那一处 —— 打开频道时那趟回走（今天 → 逐日往回，直到够 30 条或满 7 个日文件）有一天没读回来
+      时是**静默**的，屏幕上就是一个历史很少的频道，唯一的说明要等读者自己去点那颗按钮才可能出现。这一处
+      没有按压可以挂句子，但回走停下的那天正是按钮要取的第二天，所以复用同一个槽位：同一句话、同一个
+      `data-testid`、同一个 `role="alert"`。改前实测（真服务端 + 真浏览器）：首屏回走被拒 → 流里只剩今天、
+      通知区 0 条、屏幕上 0 条解释；改后 → 按钮下方一句「更早的记录没有取到：服务器内部错误，请稍后重试。」、
+      七秒后仍在、放开拦截按按钮后消失且那天成为「昨天」那一段。见「第二百八十五轮」一节。
+
+## 第二百八十五轮：频道首屏自己那趟回走没读全时，原因也留在那颗按钮下面（2026-11-21，条目 7.165）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（桌面壳 / 部署单元，发布动作）、3.5（拍板）、
+3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 / 新依赖）；第 7 节到 7.164 已全勾。上一轮「没做 / 留着」
+点名的两处里，公司页那五处 `openDesk` 要造新表面（属另一笔），另一处是**首屏「走回去」那一步失败是静默的**，
+上一轮写明「尚无按钮可挂句子，要改先决定句子落在哪」。本轮去看了那条路径：句子不需要新表面 ——
+回走停下的那一天，正是「更早的记录」按钮要取的第二天，所以画在按钮下面那一行就是它的原位。
+
+**缺口是什么**（改前产物实测，见下）：打开一个频道时，首屏是「今天 + 逐日往回」拼出来的。回走中途有一天
+被拒时，过去只是 `catch {}` 之后继续用走到的那点内容渲染 —— 在安静频道上就是"今天 + 一条系统消息"，
+屏幕上没有任何一句话说这次读失败了；通知区也是空的（这条路径从来没弹过 toast，是**纯静默**）。
+
+### 做了什么
+
+- `packages/web/src/features/company/channel-view.tsx`：首屏回走那一段的 `catch {}` 改成 `catch (e)` ——
+  先 `if (!current()) return;`（这次加载已被另一次加载或另一个频道取代时，迟到的拒绝不属于这里），
+  再 `setEarlierRefusal(channelEarlierRefusalLine(e))`。复用 `loadEarlier` 已有的那一个槽位、那一句文案：
+  两个来源落到读者眼里是同一件事（更早的日子没取到，按钮就是重试），两句话叠在按钮下面只是噪音。
+  今天那一天本身读失败的处理没动（那是致命的，走 `EmptyState` 的「重试」）。
+- `channel-earlier-refusal.ts` 的模块注释补一段：这一行有两个来源，以及为什么它们是同一句。
+- 文件头那段「一天没读回来时说明画在哪」的注释补一句首屏那趟回走。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约）。
+- `npx oxlint` 3 个改动文件 **0 警告 0 错误**；3 个改动文件 + changelog 一对 `prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test 全绿：core 70 文件 / **1456** 通过 / 6 跳过 · ui 133 / **1114** · cli 39 / **566** ·
+  server 216 / **3143** / 6 跳过 · web 351 / **3961** 通过 / 2 跳过（与上一轮同数：本笔没有新单测，
+  复用既有的 `channelEarlierRefusalLine`，行为靠真浏览器钉住）。
+- **`channel-earlier-refusal.spec.mjs` 从 2 条扩到 3 条**（真服务端 9990 + 仓库自带 mock 模型 9991 +
+  `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r285-a1`）：新的一条在**打开频道之前**就把往日那天的
+  路由拒成 500，于是失败的是首屏那趟回走 —— 今天的消息在流里、最老的那天不在、恰好一次请求被拒、
+  按钮下方一句「更早的记录没有取到：服务器内部错误，请稍后重试。」、页面上 `role=alert` 只一条、通知区不带它、
+  **过了七秒那句话仍在**；放开拦截按按钮 → 句子消失、那天成为「昨天 · 2026-11-20」那一段。
+  **三条全过（21.6 s）**。
+- **既有第 2 条用例的口径跟着改了**（这是本笔的行为变化，不是夹具噪声）：它原来最后一步断言「回到原频道
+  没有句子」，而那条路径正是首屏回走 —— 路由仍拒着，所以现在会真的失败并留下句子。改成断言「回来时句子在，
+  因为新的一次尝试也失败了」（并注明放开拦截就会清掉）。
+- **反证（同一份 spec，改前产物）**：只把 `channel-view.tsx` 退回 `HEAD`（`git stash push --` 只带这一个路径）、
+  重建 → `r285/before-dist`（主包 `index-B_Vt4Yob.js`，改后 `index-CBcpXY8r.js`；两份 md5 不同，改后那份与
+  恢复源码后重建的产物逐字节相同），`git stash pop` 后重建；改前产物由第二个服务端以 `ADELIE_WEB_DIST`
+  指过去（数据根 `/root/adelie-fork-data/r285-b1`，端口 9992）→ **2 failed / 1 passed**：新那条死在
+  `getByTestId("channel-earlier-refusal")` 找不到元素上，第 2 条死在「回来时句子不在」上，只有原本就有的
+  「点按钮失败」那条两边都过（它本来就不依赖本笔）。
+- **两态探针**（`r285/probe.mjs`，同一脚本两条腿、读 DOM 与网络）：**改后**（9990）首屏那段
+  `refusal` =「更早的记录没有取到：服务器内部错误，请稍后重试。」、流里只有今天；放开拦截按按钮后
+  `refusal` 消失、多出「昨天 · 2026-11-20」一段。**改前**（9992）同一动作 `refusal` = `null`（按钮下面
+  什么都没有），按按钮后同样多出昨天那一段 —— 差别就在那一行。
+- **真看一眼**：截图 `r285/shots/after-after-open.png` 与 `before-after-open.png` 肉眼看过 ——
+  改后按钮下面一行红字，改前同一位置空白。两态 console 各两条 error：一条是本轮刻意造的 500，
+  一条 403 `/api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条。
+- **相邻回归（真浏览器，一个进程 4 份 spec）**：`channel-earlier-refusal` 3 + `channel-send-refusal` 3 +
+  `channel-join-refusal` 2 + `channel-refusal` 2，**10 passed（44.8 s）**。
+- 端口只用 9990 / 9991 / 9992（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r285-{a1,b1}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r285/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 公司页那五处 `openDesk`（`channel-view` / `overview-page` / `org-chart-page` / `calendar-page` /
+  `org-session-groups`）仍是六秒通知，且要造新表面 —— 与上五轮同一结论，属另一笔。
+- 工单对话框里没有框的那几个写入仍弹 toast（扫描线上「无框可留」那一类）。
+- 一条**与本笔无关**的既有行为，本轮量到时顺带记下：spec 直接写进数据根的日文件会被服务端的对账器
+  （`scanChannels`，看最近 3 个日文件）当成新消息广播出去，而 `useCompanyEvents` 把它们一律
+  `appendMessage(…, meta.today, …)` 追加到**今天**那一段 —— 所以手写日文件在页面上会以「今天的消息」出现。
+  新用例因此断在日分隔线上而不是消息文本上。要不要让事件带上自己那一天、或让视图按 `msg.time` 归日，
+  是另一笔（会动 `OrgChannelEvent` 的语义），本轮只记录、不改。
+
+### 提交
+
+- 功能一笔（源码 2 + 既有 spec 1 + changelog 2）：`dd2ec9459`。
+- 台账（条目 7.165、上表那一行、本节）随本文件另起一笔。
 
 ## 第二百八十四轮：组织设置里被拒绝的保存，原因留在页脚那一行（2026-11-21，条目 7.164）
 
@@ -4195,6 +4281,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-21 | 7.162 | **频道里往前翻一天失败时，原因留在那个按钮下面**（**2026-11-21 第二百八十二轮**落地；`packages/web` 3 个源码文件（2 改 1 新）＋ 2 本词典各一句 ＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— 新增 `features/company/channel-earlier-refusal.ts`（`channelEarlierRefusalLine(err)` = `S.company.channels.earlierRefused(refusalText(err))`），`channel-view.tsx` 的 `loadEarlier` 不再 `toastError`、改成记一句话，句子画在「更早的记录」按钮正下方（`role="alert"`、`data-testid="channel-earlier-refusal"`、两行、整句挂悬停），每次点击先清上一句、换频道随其它流状态一起清，**不碰接口、无新依赖**）：7.161 那一节末尾点名的候选之一，也是这一族（7.19 的规矩）在**读**这一侧的第一处 —— 分页读失败时流里只是少了一天、按钮还在原处，而那六秒通知一走就再没有一个字说得清那次点击有没有发生 · 六包 `typecheck` `EXIT=0`（`src/ifaces.json unchanged`，197 接口 / 612 类型，本笔不碰服务契约）· `npx oxlint` 6 个改动文件 0 警告 0 错误 · 6 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3143**（6 跳过）· web 351 / **3959**（2 跳过；基线 350 / 3954，本笔 +1 文件 +5 条单测）· **新 spec 用例**（真服务端 9940 + 仓库自带 mock 模型 9941 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r282-a1`）：`channel-earlier-refusal.spec.mjs` **2 passed（12.8 s）** —— ① 首屏读满 7 天（今天 + 6 个往日，日文件由 spec 自己写进数据根，格式照 `parseChannelMessageLine`）、第 8 天留在按钮后面 → 点「更早的记录」，服务端答 500（码 `internal`）→ 按钮**正下方**一句「更早的记录没有取到：服务器内部错误，请稍后重试。」、`role=alert` 只一条、通知区没有它、按钮仍在且可点、流里仍没有那一天；**过了七秒那句话仍在**；去掉拦截再点一次 → 句子消失、那天的消息进流；② 换到全员频道再回来，句子不跟读者走 · **反证（同一份 spec，改前产物）**：`r282/before-dist`（三份源码退回 `HEAD` 重建，`index-DgMVVegM.js` 里没有那句「更早的记录没有取到」，改后 `index-C4MMWZc7.js` 里有）挂在 9942 上 → **2 条全红**（找不到 `data-testid="channel-earlier-refusal"`）· **两态探针**（`r282/probe.cjs`，同一脚本两条腿各挂自己的产物、读 DOM）：**改后**（9940）1.2 秒与 9 秒都是按钮下方 1 条、通知区不变；**改前**（9942）1.2 秒时那句在通知区、按钮下方 0 条，9 秒后通知区也空了 —— 正是缺口。另有一次不挂拦截的干净打开（`r282/console.cjs`）：6 条往日气泡都在，console 只有一条 403 `/api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条；截图 `r282/shots/{after,before}-{1s,9s}.png` 与 `after-plain.png` 肉眼看过（那句红字就在按钮下面一行）· **相邻回归（真浏览器，一个进程 3 份 spec）**：`channel-send-refusal` 3 + `channel-join-refusal` 2 + `channel-refusal` 2，**7 passed（24.6 s）** · 端口只用 9940–9942（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r282-{a1,b1}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r282/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `eb731fb06` |
 | 2026-11-21 | 7.163 | **编辑器里的草稿超过写入上限时，原因留在表头下面**（**2026-11-21 第二百八十三轮**落地；`packages/web` 4 个源码文件（全改）＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `features/chat/editor-save-refusal.ts` 新增 `editorSaveTooLargeRefusal(mb)`（= `S.files.saveRefusedDraftKept(S.files.saveTooLarge(mb))`，与相邻那两句同一形状），`workspace-browser.tsx` 的 `save()` 超过上限那一支不再 `toastError`、改成记进 `saveRefusal`（按文件路径记、草稿一改就清、表头上的「保存」仍是重试），`files.saveTooLarge` 由整句改成原因（中英各一句），**不碰接口、无新依赖**、写入上限本身（14MB）没动）：7.162 那一节末尾点名的候选，也是这一族（7.19 的规矩）里最后一处「读者自己写的东西被拒」—— 这一处连请求都没发出去，是面板自己量出来的，而那句唯一的说明落在一条盖在面板上的通知里，六秒后屏幕上一句解释都没有（改前实测：面板里 0 条、通知区 1 条、九秒后 0 条） · 六包 `typecheck` `EXIT=0`（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型，本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 6 个改动文件 0 警告 0 错误 · 6 个改动文件与 changelog 一对 `prettier --check` 干净（`strings-en.ts` 与单测首跑各一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3143**（6 跳过）· web 351 / **3961**（2 跳过；基线 351 / 3959，本笔 +2 条单测） · **新 spec 用例**（真服务端 9960 + 仓库自带 mock 模型 9961 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r283-a1`）：`editor-save-too-large.spec.mjs` **2 passed（44.2 s）** —— ① 编辑器里填 15MB 草稿 → 走确认框按「保存」→ 表头下面一句「保存失败：内容超过 14MB 写入上限（编辑器里的改动没有写进文件）」、`role=alert` 只一条、通知区没有这句、**写路由上一个请求都没有**（只观察不拦截，计数 0）、磁盘文件仍是 `first line\n`、编辑器仍持有 15MB 草稿、表头上的「保存」还在；**过了七秒那句话仍在**；改成短文本后句子消失、再按就落地（通知区「已保存」、文件内容跟着变）；② 退出编辑（× 再放弃）时句子跟着走 · **反证（同一份 spec，改前产物）**：四份源码 `git stash push --`（只带这四个路径）后重建 → `r283/before-dist`（`index-C4MMWZc7.js` 里仍是「内容超过 ${mb}MB 写入上限，未保存」，改后那份没有「未保存」字样），`git stash pop` 后重建 → 改后产物；两份产物各由一个服务端以 `ADELIE_WEB_DIST` 指过去（数据根 `/root/adelie-fork-data/r283-b1`，端口 9962）→ **2 条全红**（都死在 `dock.getByRole("alert")` 找不到那句话上） · **两态探针**（`r283/probe.cjs`，同一脚本两条腿各挂自己的产物、读 DOM，读数取按之后 1.2 s 与 9 s）：**改后**（9960）1.2 s 与 9 s 都是面板里 1 条「保存失败：内容超过 14MB 写入上限（编辑器里的改动没有写进文件）」、通知区空；**改前**（9962）1.2 s 时面板里 0 条、通知区正是「内容超过 14MB 写入上限，未保存」，9 s 后通知区也空了 —— 正是缺口；两态 `writes: 0`、磁盘文件都仍是 `first line\n`、编辑器都仍持有 15728640 个字符。另有一次不挂拦截的干净打开（`r283/console.cjs`）：唯一的 console error 是 403 `/api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条；截图 `r283/shots/{after,before}-{1s,9s}.png` 与 `plain.png` 肉眼看过（改后那句红字就在表头与编辑器之间，改前同一位置是空的、页面顶部一条通知） · **相邻回归（真浏览器，一个进程 2 份 spec）**：`editor-save-refusal` 2 + 本笔 2，**4 passed（55.5 s）** · 端口只用 9960–9962（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r283-{a1,b1}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r283/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `f713e3e00` |
 | 2026-11-21 | 7.164 | **组织设置里被拒绝的保存（与暂停 / 恢复）把原因留在页脚那一行**（**2026-11-21 第二百八十四轮**落地；`packages/web` 1 个源码文件 ＋ 1 个新 spec ＋ changelog 一对 —— `features/company/org-dialogs.tsx` 的 `OrganizationSettingsDialog` 新增 `saveRefusal`，`patch()`（保存与暂停 / 恢复共用的唯一一条写路径）`catch` 里不再 `toastError`、改为 `setSaveRefusal(apiErrorText(e))`，一次尝试开始时先清、设置重新加载（每次打开）也清，句子画在 `Modal` 的 footer 里、取消与保存的左边（`role="alert"`、`data-testid="org-settings-refusal"`、`line-clamp-2 mr-auto min-w-0 break-words`、危险色、整句挂 `data-tooltip`），未用的 `toastError` 导入去掉，**不碰接口、无新依赖、无新文案**）：7.40 那一节当年就记下「组织设置里 Save / 暂停恢复 的失败仍只弹 toast」，第一百二十四至一百二十七轮都在「还差什么」里点名；这张框被拒时本来就开着（`patch()` 失败只回 `false`，Save 不关框），缺的只是「原因画在哪」—— 压在最后一个字段下方不行（正文会滚动，那句话正好落在看不见的地方，而按钮在页脚），所以收进按钮自己那一行（7.126 同一处理）（改前实测：1.2 s 时框里 0 条、通知区一句、9 s 后屏幕上 0 条） · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 文件 / **1456** 通过 / 6 跳过 · ui 133 / **1114** · cli 39 / **566** · server 216 / **3143** / 6 跳过 · web 351 / **3961** 通过 / 2 跳过（本笔无新单测） · **新 spec 2 passed（14.9 s）**（真服务端 9970 + 仓库自带 mock 模型 9971 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r284-a1`）：① 改显示名 → 保存 → 那句「操作被拒绝：the organization store is mid-rewrite」在框里、通知区没有它、草稿还在、服务端仍是旧名字、PATCH 恰好一次且带新名字；**过了七秒仍在**；取消再打开不带它；重试落地、框关闭、服务端是新名字；② 暂停组织 → 同一句、服务端仍读 `active`、同一个按钮重试后读 `paused` · **反证（同一份 spec，改前产物）**：`org-dialogs.tsx` `git stash push --` 后重建 → `r284/before-dist`，`git stash pop` 后重建与工作区 `packages/web/dist` 逐字节相同；改前产物挂在 9972 上跑同一份 spec → **2 failed**（都死在 `getByTestId("org-settings-refusal")` 找不到元素） · **两态探针**（`r284/probe.mjs`，同一脚本两条腿、读 DOM，取 1.2 s 与 9 s）：**改后**（9980）两刻都是框里 1 条、通知区不带这句、草稿 `Probe refused name`、服务端 `r284probe` / `active`；**改前**（9982）1.2 s 框里 0 条、通知区带这句，9 s 后框里 0 条、通知区也空了；两态 `patches: 1` · **真看一眼**：截图 `r284/shots-{after,before}/after-{1s,9s}.png` 肉眼看过（改后红字在页脚「取消 / 保存」左边、9 秒后仍在）；两态 console 各一条 403（既有的非管理员读）与一条刻意造的 500，pageerror 0 条 · **相邻回归（真浏览器，一个进程 3 份 spec）**：`company` 1 + `org-delete-refusal` 1 + 本笔 2，**4 passed（37.2 s）** · 端口只用 9970–9983（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r284-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r284/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `017459841` |
+| 2026-11-21 | 7.165 | **频道首屏自己那趟回走没读全时，原因也留在「更早的记录」按钮下面**（**2026-11-21 第二百八十五轮**落地；`packages/web` 2 个源码文件（全改）＋ 既有 spec 改三处 ＋ changelog 一对 —— `features/company/channel-view.tsx` 首屏回走那一段的 `catch {}` 改成 `catch (e)`：先 `if (!current()) return;`（这次加载已被取代时迟到的拒绝不属于这里），再 `setEarlierRefusal(channelEarlierRefusalLine(e))`，复用 `loadEarlier` 已有的那句文案与那个槽位（同一句、同一个 `data-testid="channel-earlier-refusal"`、同一个 `role="alert"`），`channel-earlier-refusal.ts` 与文件头注释写明这一行有两个来源以及为什么它们是同一句，**没有新状态、没有新文案、不碰接口、无新依赖**）：上一轮「没做 / 留着」点名的那一处 —— 打开频道时那趟回走（今天 → 逐日往回，够 30 条或满 7 个日文件为止）有一天没读回来时是**纯静默**的：安静频道上流里只剩今天，通知区也空（这条路径从来没弹过 toast），屏幕上没有一个字说这次读失败了。回走停下的那天正是「更早的记录」按钮要取的第二天，所以那句话的原位就在按钮下面（改前实测：首屏回走被拒 → 流里只剩今天、按钮下方 0 条；改后 → 按钮下方一句「更早的记录没有取到：服务器内部错误，请稍后重试。」、七秒后仍在、放开拦截按按钮后消失且那天成为「昨天」那一段） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 3 个改动文件 **0 警告 0 错误** · 3 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 文件 / **1456** 通过 / 6 跳过 · ui 133 / **1114** · cli 39 / **566** · server 216 / **3143** / 6 跳过 · web 351 / **3961** 通过 / 2 跳过（与上一轮同数：本笔无新单测，复用既有的 `channelEarlierRefusalLine`） · **spec 扩到 3 条、全过（21.6 s）**（真服务端 9990 + 仓库自带 mock 模型 9991 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r285-a1`）：新的一条在**打开频道之前**就把往日那天的路由拒成 500 → 今天的消息在流里、最老的那天不在、恰好一次请求被拒、按钮下方一句服务端原因的句子、`role=alert` 只一条、通知区不带它、**七秒后仍在**；放开拦截按按钮 → 句子消失、那天成为「昨天 · 2026-11-20」那一段（断在日分隔线上：这些日文件是直接写进数据根的，服务端对账器也会把它们广播出来并被视图追加到「今天」，只看消息文本会在按压根本没取到东西时也通过） · 既有第 2 条的口径跟着改：回原频道会重跑首屏回走，路由仍拒着时句子因**新的**一次失败再次出现（原来是断言「没有句子」，那是改前静默的行为） · **反证（同一份 spec，改前产物）**：`channel-view.tsx` `git stash push --` 后重建 → `r285/before-dist`（主包 `index-B_Vt4Yob.js`，改后 `index-CBcpXY8r.js`；改后那份与恢复源码后重建的产物 md5 相同），`git stash pop` 后重建；改前产物挂 9992（数据根 `/root/adelie-fork-data/r285-b1`）→ **2 failed / 1 passed**（新那条死在找不到 `channel-earlier-refusal`，第 2 条死在「回来时句子不在」；原本就有的「点按钮失败」那条两边都过） · **两态探针**（`r285/probe.mjs`，同一脚本两条腿）：**改后**（9990）首屏 `refusal` =「更早的记录没有取到：服务器内部错误，请稍后重试。」，按按钮后 `refusal` 消失并多出「昨天 · 2026-11-20」一段；**改前**（9992）同一动作 `refusal` = `null`，按按钮后同样多出昨天那一段 —— 差别就在那一行；两态 console 各一条刻意造的 500 与一条 403 `/api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条 · **真看一眼**：截图 `r285/shots/{after,before}-after-open.png` 肉眼看过（改后按钮下方一行红字，改前同一位置空白） · **相邻回归（真浏览器，一个进程 4 份 spec）**：`channel-earlier-refusal` 3 + `channel-send-refusal` 3 + `channel-join-refusal` 2 + `channel-refusal` 2，**10 passed（44.8 s）** · 端口只用 9990–9992（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r285-{a1,b1}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r285/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `dd2ec9459` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
