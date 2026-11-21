@@ -3074,7 +3074,13 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
 ### 提交
 
 - 功能一笔（源码 2 + 既有 spec 1 + changelog 2）：`dd2ec9459`。
-- 台账（条目 7.165、上表那一行、本节）随本文件另起一笔。
+- 台账（条目 7.165、上表那一行、本节）随本文件另起一笔：`700e0d714`。
+- **推送**：`git push origin main` 两次都不通（先是 `GnuTLS recv error (-110)`，换
+  `git -c http.version=HTTP/1.1` 后 300 秒超时；同期 `api.github.com` 正常、`github.com/` 20 秒超时），
+  按既定做法（见 workspace 记忆）走 Git Data API：以远端 main（`6d6f7155a`）为基线逐路径建 blob / tree /
+  commit，**两笔 sha 与本地逐字节相同**，最后非强制移 `refs/heads/main`；远端 main 现为 `700e0d714`。
+  第一次尝试 tree 对、commit 差一个字节 —— 原因是消息尾部那个换行被剥掉了（`%B` 与 `cat-file` 的差别），
+  改成从 `git cat-file commit` 原样取消息即对齐。
 
 ## 第二百八十四轮：组织设置里被拒绝的保存，原因留在页脚那一行（2026-11-21，条目 7.164）
 
