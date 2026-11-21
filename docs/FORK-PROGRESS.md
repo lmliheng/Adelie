@@ -3000,6 +3000,105 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `data-testid`、同一个 `role="alert"`。改前实测（真服务端 + 真浏览器）：首屏回走被拒 → 流里只剩今天、
       通知区 0 条、屏幕上 0 条解释；改后 → 按钮下方一句「更早的记录没有取到：服务器内部错误，请稍后重试。」、
       七秒后仍在、放开拦截按按钮后消失且那天成为「昨天」那一段。见「第二百八十五轮」一节。
+- [x] **7.166 频道里实时到达的消息按它所在的日文件归日，不再一律算「今天」**（**2026-11-22
+      第二百八十六轮**落地，提交见「已完成的轮次」；服务端 2 个源码文件（全改）＋ 前端 2 个源码文件（全改）
+      ＋ 1 份单测 ＋ 1 个新 spec ＋ 既有 spec 改一处注释 ＋ changelog 一对 —— `CompanyServerEvent` 的
+      `org_channel` 多一个 `date`（读它的那个日文件，组织时区），`scanChannels` 广播时填上遍历中的那个
+      `date`；`channel-view` 的实时追加改用 `ev.date`，`appendMessage` 对还没加载的那一天按日期顺序插入，
+      **不碰存储格式、无新依赖、无新文案**）：第二百八十五轮「没做 / 留着」里记下的那一处 —— 对账器广播
+      出来的消息一律被算成「今天」`meta.today`，于是一条写进昨天日文件的行（CLI / 手改 / 午夜前一秒写出、
+      午夜后才被扫描广播）在打开着的频道里画进今天那一段，刷新后又回到它自己的日子：同一个频道两种读法
+      不一致（改前实测：实时视图只有「今天」一条分隔线、那行在它下面；刷新后「昨天」分隔线出现、那行上移）。
+      见「第二百八十六轮」一节。
+
+## 第二百八十六轮：频道里实时到达的消息按它所在的日文件归日（2026-11-22，条目 7.166）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（剩下的是桌面壳写侧、既有部署单元 `adelie-app.service`
+与两份非契约项，桌面壳按纪律不碰）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10（拍板 /
+新依赖）；第 7 节到 7.165 已全勾。第二百八十五轮「没做 / 留着」里除了公司页那五处 `openDesk`（要造新表面，
+属另一笔）与工单对话框「无框可留」那一类，还**明确记下了一处真缺陷**：spec 直接写进数据根的日文件会被
+对账器当成新消息广播出去，而视图一律把它们追加到**今天**那一段 —— 本轮去量它、修它。
+
+**缺口是什么**（改前产物实测，见下）：`org_channel` 事件带 `channelId` 与 `message`，**不带它来自哪个
+日文件**，于是 `channel-view` 的实时追加写死了 `meta.today`（服务端自己的今天）。对「此刻正在发的消息」是
+对的；对扫描器广播出来的其它每一行都不对：CLI 或手改往昨天的日文件里追加的一行、或者午夜前一秒写出、
+午夜后才被扫描到的一行，会被画进已经打开的频道的「今天」那一段 —— 而刷新之后同一条消息又回到它自己的
+日子。同一个频道的两种读法不一致，唯一的线索是那条消息自己的时钟（在「今天」里写着 04:00 / 23:59）。
+
+### 做了什么
+
+- `packages/server/src/api/types.ts`：`CompanyServerEvent` 的 `org_channel` 多一个 `date`（`yyyy-mm-dd`，
+  组织时区），注释写明它为什么存在。生产者只有一个，在本仓库内。
+- `packages/server/src/runtime/organization/reconcile.ts`：`scanChannels` 广播时填上正在遍历的那个日文件
+  的日子 —— 它本来就是那个循环的变量（`days.reverse()` 之后逐个 `date`），所以没有新增计算。
+- `packages/web/src/features/company/channel-view.tsx`：实时追加改用 `ev.date`，文件头那段注释补一句
+  「日子来自事件，不来自今天」。
+- `packages/web/src/features/company/channel-stream.ts`：`appendMessage` 遇到**还没加载**的那一天时按日期
+  顺序插进去，不再一律追加到数组末尾（流是按日期从旧到新画的，追加到末尾会把昨天画到今天下面）；已有那
+  一天的追加一字未改。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 事件类型不在那份契约里，没有生成物要提交）。
+  任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑。
+- `npx oxlint` 9 个改动文件 **0 警告 0 错误**；9 个改动文件 + changelog 一对 `prettier --check` 干净
+  （新 spec 首跑一条，`--write` 后复检）；`git diff --check` 干净。
+- 逐包 test 全绿：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** ·
+  server **216 / 3143 / 6 跳过** · web **351 / 3962 / 2 跳过**（基线 351 / 3961，**+1 即本笔新用例**）。
+  **一次记录**：把 core / ui / cli 三条并成一个 pnpm 递归跑时 `ui` 的 `token-contract.test.ts`
+  （55 条里那条 12.7 秒的扫盘用例）红过一次，单独跑该包 133 / 1114 全绿、单跑该文件 55 全过 ——
+  是负载下的超时，与本笔无关（本笔不碰 `packages/ui`）。
+- **新 spec**（`packages/web/e2e/channel-live-day.spec.mjs`；真服务端 9970 + 仓库自带 mock 模型 9971 +
+  `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r286-a2`）：频道打开时只有今天；把一行直接写进数据
+  根里昨天的日文件，再经由一次 API 写入触发对账广播（**不需要模型 key**，那一行不点任何人）→ 昨天成为今天
+  上面的独立一段、那行在它里面、`昨天 · 2026-11-21` 分隔线只一条、三条按 y 坐标从旧到新；**刷新后顺序一样**。
+  **1 passed（6.6 s）**。
+- **反证（同一份 spec，改前产物）**：四份源码（服务端 2、前端 2）`git stash push --`（只带这四个路径）后
+  重建 server + web → `r286/before-dist`（主包 `index-CBcpXY8r.js`，改后 `index-S2zGnTUu.js`；恢复源码后
+  重建，改后那份 md5 `7e66b63d…` 与 stash 前逐字节相同），改前产物由第二个服务端以 `ADELIE_WEB_DIST`
+  指过去（数据根 `/root/adelie-fork-data/r286-b2`，端口 9972）→ **1 failed（19.6 s）**，死在
+  `getByRole('log').getByText('昨天 · 2026-11-21', { exact: true })` 找不到元素上：那行被画进了今天（前一条
+  「那行可见」照过，正是「文本在、日子错」的形状）。
+- **两态探针**（`r286/probe.mjs`，同一脚本两条腿各挂自己的产物，读 DOM 的分隔线与那行的 y）：
+  **改后**（9970）实时 `dividers` = [昨天 118, 今天 204.4]、`lineTop` 158、`sectionAboveLine` = 昨天；
+  刷新后 [昨天 118, 今天 236.4]、`lineTop` 190、同上 —— 两态一致。**改前**（9972）实时 `dividers` =
+  **[今天 118] 只有一条**、`lineTop` 253.9、`sectionAboveLine` = **今天**；刷新后 [昨天 118, 今天 204.4]、
+  `lineTop` **158**、`sectionAboveLine` = **昨天** —— 正是「同一个频道两种读法不一致」。
+- **真看一眼**：截图 `r286/after/shot-2-after-line.png`、`r286/after/shot-3-after-reload.png`、
+  `r286/before/shot-2-after-line.png`、`r286/before/shot-3-after-reload.png` 肉眼看过 —— 改后那条消息在
+  「昨天 · 2026-11-21」下面、今天的两条在「今天 · 2026-11-22」下面；改前的实时视图里它在今天那一段中间
+  （时钟写着 04:00），刷新后才回到昨天。
+- 两态 console 各两条 error，都是 `403 /api/projects/…/machines`（非管理员账号的既有行为，两态一致），
+  **pageerror 0 条**。
+- **相邻回归（真浏览器，一个进程 5 份 spec）**：`channel-earlier-refusal` 3 + `channel-send-refusal` 3 +
+  `channel-join-refusal` 2 + `channel-refusal` 2 + 本笔 1，**11 passed（1.2 m）**；另跑 `company.spec.mjs`
+  **1 passed（33.8 s）**（公司模式全流程：建组织、见 CEO、看板、聊天）。
+- **既有 spec 的一处口径更新**：`channel-earlier-refusal.spec.mjs` 第 3 条原本写着「断在日分隔线上，因为这些
+  日文件是直接写进数据根的，对账器广播出来会被追加到今天」—— 那句描述的是本笔修掉的旧行为，改成「对账器
+  现在会按它自己的日子建段，所以分隔线可能来自两条路径，真正证明按压的是那句被清掉的句子」；用例本身没改。
+- 端口只用 9970 / 9971（改后 + mock）与 9972（改前），跑完全部已停；3003 / 3004 / 4000 / 7364 / 7369 一个
+  没碰；数据只落 `/root/adelie-fork-data/r286-{a2,b2}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r286/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`；临时放在 `packages/web/r286-probe.mjs` 的探针
+  跑完即删，未进仓库）。
+
+### 没做 / 留着
+
+- 公司页那五处 `openDesk`（`channel-view` / `overview-page` / `org-chart-page` / `calendar-page` /
+  `org-session-groups`）仍是六秒通知，要造新表面 —— 与前几轮同一结论，属另一笔。
+- 工单对话框里没有框的那几个写入仍弹 toast（扫描线上「无框可留」那一类，不是缺口）。
+- `workspace-browser.tsx` 里嵌套目录**列表**失败（`loadDir` 的非根分支）仍是 toast，同时那一行从树上消失：
+  读失败、且没有「读者按过的那个位置」可挂句子（那一行已经不在了），要改得先想清楚句子留在哪 —— 另一笔。
+- 事件里的 `date` 是必填（生产与消费两端都在本仓库、一起发版）；旧 bundle 配新服务端这一种组合不在考虑内，
+  真要兼容就得写成可选并回落到 `meta.today`，那会把这一个 bug 留在旧客户端上，所以没写。
+- 第二百八十五轮「没做 / 留着」里点名的三件事：本条做掉了「日文件被当成今天的消息」那一件，另两件仍在上面
+  第一、二点里。
+
+### 提交
+
+- 功能一笔（服务端源码 2 + 服务端用例 1 + 前端源码 2 + 单测 2 + 新 spec 1 + 既有 spec 注释 1 + changelog 2）：
+  `8a71b04ce`。
+- 台账（条目 7.166、上表那一行、本节）随本文件另起一笔。
 
 ## 第二百八十五轮：频道首屏自己那趟回走没读全时，原因也留在那颗按钮下面（2026-11-21，条目 7.165）
 
@@ -4288,6 +4387,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-21 | 7.163 | **编辑器里的草稿超过写入上限时，原因留在表头下面**（**2026-11-21 第二百八十三轮**落地；`packages/web` 4 个源码文件（全改）＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `features/chat/editor-save-refusal.ts` 新增 `editorSaveTooLargeRefusal(mb)`（= `S.files.saveRefusedDraftKept(S.files.saveTooLarge(mb))`，与相邻那两句同一形状），`workspace-browser.tsx` 的 `save()` 超过上限那一支不再 `toastError`、改成记进 `saveRefusal`（按文件路径记、草稿一改就清、表头上的「保存」仍是重试），`files.saveTooLarge` 由整句改成原因（中英各一句），**不碰接口、无新依赖**、写入上限本身（14MB）没动）：7.162 那一节末尾点名的候选，也是这一族（7.19 的规矩）里最后一处「读者自己写的东西被拒」—— 这一处连请求都没发出去，是面板自己量出来的，而那句唯一的说明落在一条盖在面板上的通知里，六秒后屏幕上一句解释都没有（改前实测：面板里 0 条、通知区 1 条、九秒后 0 条） · 六包 `typecheck` `EXIT=0`（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型，本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 6 个改动文件 0 警告 0 错误 · 6 个改动文件与 changelog 一对 `prettier --check` 干净（`strings-en.ts` 与单测首跑各一条，`--write` 后复检）· `git diff --check` 干净 · 逐包 test 全绿：core 70 / **1456**（6 跳过）· ui 133 / **1114** · cli 39 / **566** · server 216 / **3143**（6 跳过）· web 351 / **3961**（2 跳过；基线 351 / 3959，本笔 +2 条单测） · **新 spec 用例**（真服务端 9960 + 仓库自带 mock 模型 9961 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r283-a1`）：`editor-save-too-large.spec.mjs` **2 passed（44.2 s）** —— ① 编辑器里填 15MB 草稿 → 走确认框按「保存」→ 表头下面一句「保存失败：内容超过 14MB 写入上限（编辑器里的改动没有写进文件）」、`role=alert` 只一条、通知区没有这句、**写路由上一个请求都没有**（只观察不拦截，计数 0）、磁盘文件仍是 `first line\n`、编辑器仍持有 15MB 草稿、表头上的「保存」还在；**过了七秒那句话仍在**；改成短文本后句子消失、再按就落地（通知区「已保存」、文件内容跟着变）；② 退出编辑（× 再放弃）时句子跟着走 · **反证（同一份 spec，改前产物）**：四份源码 `git stash push --`（只带这四个路径）后重建 → `r283/before-dist`（`index-C4MMWZc7.js` 里仍是「内容超过 ${mb}MB 写入上限，未保存」，改后那份没有「未保存」字样），`git stash pop` 后重建 → 改后产物；两份产物各由一个服务端以 `ADELIE_WEB_DIST` 指过去（数据根 `/root/adelie-fork-data/r283-b1`，端口 9962）→ **2 条全红**（都死在 `dock.getByRole("alert")` 找不到那句话上） · **两态探针**（`r283/probe.cjs`，同一脚本两条腿各挂自己的产物、读 DOM，读数取按之后 1.2 s 与 9 s）：**改后**（9960）1.2 s 与 9 s 都是面板里 1 条「保存失败：内容超过 14MB 写入上限（编辑器里的改动没有写进文件）」、通知区空；**改前**（9962）1.2 s 时面板里 0 条、通知区正是「内容超过 14MB 写入上限，未保存」，9 s 后通知区也空了 —— 正是缺口；两态 `writes: 0`、磁盘文件都仍是 `first line\n`、编辑器都仍持有 15728640 个字符。另有一次不挂拦截的干净打开（`r283/console.cjs`）：唯一的 console error 是 403 `/api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条；截图 `r283/shots/{after,before}-{1s,9s}.png` 与 `plain.png` 肉眼看过（改后那句红字就在表头与编辑器之间，改前同一位置是空的、页面顶部一条通知） · **相邻回归（真浏览器，一个进程 2 份 spec）**：`editor-save-refusal` 2 + 本笔 2，**4 passed（55.5 s）** · 端口只用 9960–9962（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r283-{a1,b1}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r283/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `f713e3e00` |
 | 2026-11-21 | 7.164 | **组织设置里被拒绝的保存（与暂停 / 恢复）把原因留在页脚那一行**（**2026-11-21 第二百八十四轮**落地；`packages/web` 1 个源码文件 ＋ 1 个新 spec ＋ changelog 一对 —— `features/company/org-dialogs.tsx` 的 `OrganizationSettingsDialog` 新增 `saveRefusal`，`patch()`（保存与暂停 / 恢复共用的唯一一条写路径）`catch` 里不再 `toastError`、改为 `setSaveRefusal(apiErrorText(e))`，一次尝试开始时先清、设置重新加载（每次打开）也清，句子画在 `Modal` 的 footer 里、取消与保存的左边（`role="alert"`、`data-testid="org-settings-refusal"`、`line-clamp-2 mr-auto min-w-0 break-words`、危险色、整句挂 `data-tooltip`），未用的 `toastError` 导入去掉，**不碰接口、无新依赖、无新文案**）：7.40 那一节当年就记下「组织设置里 Save / 暂停恢复 的失败仍只弹 toast」，第一百二十四至一百二十七轮都在「还差什么」里点名；这张框被拒时本来就开着（`patch()` 失败只回 `false`，Save 不关框），缺的只是「原因画在哪」—— 压在最后一个字段下方不行（正文会滚动，那句话正好落在看不见的地方，而按钮在页脚），所以收进按钮自己那一行（7.126 同一处理）（改前实测：1.2 s 时框里 0 条、通知区一句、9 s 后屏幕上 0 条） · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 2 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 文件 / **1456** 通过 / 6 跳过 · ui 133 / **1114** · cli 39 / **566** · server 216 / **3143** / 6 跳过 · web 351 / **3961** 通过 / 2 跳过（本笔无新单测） · **新 spec 2 passed（14.9 s）**（真服务端 9970 + 仓库自带 mock 模型 9971 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r284-a1`）：① 改显示名 → 保存 → 那句「操作被拒绝：the organization store is mid-rewrite」在框里、通知区没有它、草稿还在、服务端仍是旧名字、PATCH 恰好一次且带新名字；**过了七秒仍在**；取消再打开不带它；重试落地、框关闭、服务端是新名字；② 暂停组织 → 同一句、服务端仍读 `active`、同一个按钮重试后读 `paused` · **反证（同一份 spec，改前产物）**：`org-dialogs.tsx` `git stash push --` 后重建 → `r284/before-dist`，`git stash pop` 后重建与工作区 `packages/web/dist` 逐字节相同；改前产物挂在 9972 上跑同一份 spec → **2 failed**（都死在 `getByTestId("org-settings-refusal")` 找不到元素） · **两态探针**（`r284/probe.mjs`，同一脚本两条腿、读 DOM，取 1.2 s 与 9 s）：**改后**（9980）两刻都是框里 1 条、通知区不带这句、草稿 `Probe refused name`、服务端 `r284probe` / `active`；**改前**（9982）1.2 s 框里 0 条、通知区带这句，9 s 后框里 0 条、通知区也空了；两态 `patches: 1` · **真看一眼**：截图 `r284/shots-{after,before}/after-{1s,9s}.png` 肉眼看过（改后红字在页脚「取消 / 保存」左边、9 秒后仍在）；两态 console 各一条 403（既有的非管理员读）与一条刻意造的 500，pageerror 0 条 · **相邻回归（真浏览器，一个进程 3 份 spec）**：`company` 1 + `org-delete-refusal` 1 + 本笔 2，**4 passed（37.2 s）** · 端口只用 9970–9983（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r284-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r284/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `017459841` |
 | 2026-11-21 | 7.165 | **频道首屏自己那趟回走没读全时，原因也留在「更早的记录」按钮下面**（**2026-11-21 第二百八十五轮**落地；`packages/web` 2 个源码文件（全改）＋ 既有 spec 改三处 ＋ changelog 一对 —— `features/company/channel-view.tsx` 首屏回走那一段的 `catch {}` 改成 `catch (e)`：先 `if (!current()) return;`（这次加载已被取代时迟到的拒绝不属于这里），再 `setEarlierRefusal(channelEarlierRefusalLine(e))`，复用 `loadEarlier` 已有的那句文案与那个槽位（同一句、同一个 `data-testid="channel-earlier-refusal"`、同一个 `role="alert"`），`channel-earlier-refusal.ts` 与文件头注释写明这一行有两个来源以及为什么它们是同一句，**没有新状态、没有新文案、不碰接口、无新依赖**）：上一轮「没做 / 留着」点名的那一处 —— 打开频道时那趟回走（今天 → 逐日往回，够 30 条或满 7 个日文件为止）有一天没读回来时是**纯静默**的：安静频道上流里只剩今天，通知区也空（这条路径从来没弹过 toast），屏幕上没有一个字说这次读失败了。回走停下的那天正是「更早的记录」按钮要取的第二天，所以那句话的原位就在按钮下面（改前实测：首屏回走被拒 → 流里只剩今天、按钮下方 0 条；改后 → 按钮下方一句「更早的记录没有取到：服务器内部错误，请稍后重试。」、七秒后仍在、放开拦截按按钮后消失且那天成为「昨天」那一段） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 3 个改动文件 **0 警告 0 错误** · 3 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 文件 / **1456** 通过 / 6 跳过 · ui 133 / **1114** · cli 39 / **566** · server 216 / **3143** / 6 跳过 · web 351 / **3961** 通过 / 2 跳过（与上一轮同数：本笔无新单测，复用既有的 `channelEarlierRefusalLine`） · **spec 扩到 3 条、全过（21.6 s）**（真服务端 9990 + 仓库自带 mock 模型 9991 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r285-a1`）：新的一条在**打开频道之前**就把往日那天的路由拒成 500 → 今天的消息在流里、最老的那天不在、恰好一次请求被拒、按钮下方一句服务端原因的句子、`role=alert` 只一条、通知区不带它、**七秒后仍在**；放开拦截按按钮 → 句子消失、那天成为「昨天 · 2026-11-20」那一段（断在日分隔线上：这些日文件是直接写进数据根的，服务端对账器也会把它们广播出来并被视图追加到「今天」，只看消息文本会在按压根本没取到东西时也通过） · 既有第 2 条的口径跟着改：回原频道会重跑首屏回走，路由仍拒着时句子因**新的**一次失败再次出现（原来是断言「没有句子」，那是改前静默的行为） · **反证（同一份 spec，改前产物）**：`channel-view.tsx` `git stash push --` 后重建 → `r285/before-dist`（主包 `index-B_Vt4Yob.js`，改后 `index-CBcpXY8r.js`；改后那份与恢复源码后重建的产物 md5 相同），`git stash pop` 后重建；改前产物挂 9992（数据根 `/root/adelie-fork-data/r285-b1`）→ **2 failed / 1 passed**（新那条死在找不到 `channel-earlier-refusal`，第 2 条死在「回来时句子不在」；原本就有的「点按钮失败」那条两边都过） · **两态探针**（`r285/probe.mjs`，同一脚本两条腿）：**改后**（9990）首屏 `refusal` =「更早的记录没有取到：服务器内部错误，请稍后重试。」，按按钮后 `refusal` 消失并多出「昨天 · 2026-11-20」一段；**改前**（9992）同一动作 `refusal` = `null`，按按钮后同样多出昨天那一段 —— 差别就在那一行；两态 console 各一条刻意造的 500 与一条 403 `/api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条 · **真看一眼**：截图 `r285/shots/{after,before}-after-open.png` 肉眼看过（改后按钮下方一行红字，改前同一位置空白） · **相邻回归（真浏览器，一个进程 4 份 spec）**：`channel-earlier-refusal` 3 + `channel-send-refusal` 3 + `channel-join-refusal` 2 + `channel-refusal` 2，**10 passed（44.8 s）** · 端口只用 9990–9992（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r285-{a1,b1}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r285/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `dd2ec9459` |
+| 2026-11-22 | 7.166 | **频道里实时到达的消息按它所在的日文件归日，不再一律算「今天」**（**2026-11-22 第二百八十六轮**落地；服务端 2 个源码文件（全改）＋ 服务端用例 1 ＋ 前端 2 个源码文件（全改）＋ 单测 2 ＋ 1 个新 spec ＋ 既有 spec 改一处注释 ＋ changelog 一对 —— `CompanyServerEvent` 的 `org_channel` 多一个 `date`（读它的那个日文件，组织时区；注释写明它不是「今天」的理由），`scanChannels` 广播时填上正在遍历的那个 `date`（本来就是循环变量，无新计算），`channel-view` 的实时追加改用 `ev.date`，`channel-stream` 的 `appendMessage` 对还没加载的那一天按日期顺序插入（原来一律追加到末尾，而流是从旧到新画的），`company-store` 夹具补 `date`，**不碰存储格式、不碰路由此、无新依赖、无新文案**）：第二百八十五轮「没做 / 留着」里记下的那处真缺陷 —— 扫描器广播出来的行一律被算成 `meta.today`，于是写进昨天日文件的那一行在打开着的频道里画进今天那一段，刷新后又回到它自己的日子，同一个频道两种读法不一致（改前实测：实时视图只有「今天」一条分隔线、那行 `sectionAboveLine` = 今天；刷新后「昨天」分隔线出现、那行上移到 158） | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 事件类型不在那份契约里；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 9 个改动文件 **0 警告 0 错误** · 9 个改动文件 + changelog 一对 `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3962 / 2 跳过**（基线 351 / 3961，**+1 即本笔新用例**；另记：core / ui / cli 三条并成一次递归跑时 ui 的 `token-contract.test.ts` 那条 12.7 秒扫盘用例红过一次，单独跑该包与该文件全绿 —— 负载超时，与本笔无关） · **新 spec 1 passed（6.6 s）**（真服务端 9970 + 仓库自带 mock 模型 9971 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r286-a2`）：频道开着时把一行直接写进数据根里昨天的日文件，再一次 API 写入触发对账广播（不需要模型 key，那行不点任何人）→ 昨天成为今天上面的独立一段、那行在它里面、分隔线只一条、三条按 y 从旧到新；刷新后顺序一样。**反证（同一份 spec，改前产物）**：四份源码 `git stash push --`（只带这四个路径）重建 server + web → `r286/before-dist`（主包 `index-CBcpXY8r.js`，改后 `index-S2zGnTUu.js`，恢复后重建的 md5 `7e66b63d…` 与 stash 前逐字节相同），改前产物挂 9972（数据根 `/root/adelie-fork-data/r286-b2`）→ **1 failed（19.6 s）**，死在 `getByText('昨天 · 2026-11-21', { exact: true })` 找不到元素上：那行被画进了今天。**两态探针**（`r286/probe.mjs`，同一脚本两条腿各挂自己的产物）：改后（9970）实时 [昨天 118, 今天 204.4]、`lineTop` 158、`sectionAboveLine` = 昨天，刷新后一致；改前（9972）实时 **只有 [今天 118]**、`lineTop` 253.9、`sectionAboveLine` = 今天，刷新后 [昨天 118, 今天 204.4]、`lineTop` 158 —— 正是两种读法不一致。两态 console 各两条 `403 /api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条。**真看一眼**：`r286/{after,before}/shot-{2,3}-*.png` 肉眼看过（改后那行在「昨天 · 2026-11-21」下面，改前在「今天 · 2026-11-22」中间、时钟写着 04:00）。**相邻回归（真浏览器，一个进程 5 份 spec）**：`channel-earlier-refusal` 3 + `channel-send-refusal` 3 + `channel-join-refusal` 2 + `channel-refusal` 2 + 本笔 1，**11 passed（1.2 m）**；另跑 `company.spec.mjs` **1 passed（33.8 s）**。`channel-earlier-refusal.spec.mjs` 第 3 条那句「断在分隔线上，因为对账器会把日文件追加到今天」描述的是旧行为，本轮改成按新行为写的注释（用例本身没改） · 端口只用 9970 / 9971 / 9972（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r286-{a2,b2}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r286/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`；探针临时放 `packages/web/r286-probe.mjs`，跑完即删） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `8a71b04ce` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
