@@ -6067,6 +6067,12 @@ export const zh = {
        * line has to say what that sentence is about.
        */
       sendRefused: (reason: string): string => `这条消息没有发出：${reason}`,
+      /**
+       * A day file behind "更早的记录" that did not come back (channel-earlier-refusal.ts), drawn
+       * under the button whose next press is the retry: the reason is usually the server's own
+       * sentence, so the line has to say what that sentence is about.
+       */
+      earlierRefused: (reason: string): string => `更早的记录没有取到：${reason}`,
       you: "你",
       mentionAll: "所有人",
       mentionAllDesc: "频道全部成员",

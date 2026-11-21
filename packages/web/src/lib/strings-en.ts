@@ -5984,6 +5984,8 @@ export const en: Strings = {
       send: "Send",
       /** A message the channel did not take, drawn above the composer (see strings.ts). */
       sendRefused: (reason: string): string => `This message did not go out: ${reason}`,
+      /** A day file behind "Earlier days" that did not come back (see strings.ts). */
+      earlierRefused: (reason: string): string => `Earlier days could not be loaded: ${reason}`,
       you: "You",
       mentionAll: "Everyone",
       mentionAllDesc: "Every member of the channel",

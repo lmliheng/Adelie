@@ -13,7 +13,8 @@
  * file, then earlier ones until the stream holds enough messages or the day budget runs out
  * (initialDaysToLoad) — so the reader lands at the bottom of real history rather than on a
  * blank day, and without the scroll jump a prepend after the first paint would cost. Anything
- * older stays behind "earlier", which prepends one day file per click.
+ * older stays behind "earlier", which prepends one day file per click — and a day that does not
+ * come back says why under that button, which is also the retry (channel-earlier-refusal.ts).
  *
  * The stream is drawn the way every chat client draws one, because a channel is read the way
  * every chat is: the UI package's ChannelRun and ChannelBubble draw a run and its messages —
@@ -50,7 +51,6 @@ import {
   ICON_SIZE,
   NoticeStrip,
   Skeleton,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import type { ChannelSender } from "@adelie/ui";
@@ -69,6 +69,7 @@ import { principalLabel } from "./shared";
 import { orgKey } from "./company-nav";
 import { ChannelComposer } from "./channel-composer";
 import { channelSendRefusalLine } from "./channel-send-refusal";
+import { channelEarlierRefusalLine } from "./channel-earlier-refusal";
 import { useChannelDraft } from "./channel-draft";
 import { ChannelHeader } from "./channel-header";
 import { ChannelMessageBody, ChannelReaderProvider, MentionChip } from "./channel-markdown";
@@ -127,6 +128,12 @@ export function ChannelView() {
   >([]);
   const [members, setMembers] = useState<string[]>([]);
   const [loadingEarlier, setLoadingEarlier] = useState(false);
+  /**
+   * Why the last "earlier days" press did not come back — the button stays up as the retry, so the
+   * sentence lives under it instead of in a notification that dismisses itself
+   * (channel-earlier-refusal.ts).
+   */
+  const [earlierRefusal, setEarlierRefusal] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [confirmJoin, setConfirmJoin] = useState(false);
   /** The server's own words for a refused join, drawn in the card that asked, next to its retry. */
@@ -174,6 +181,7 @@ export function ChannelView() {
     setConfirmJoin(false);
     setJoinRefusal(null);
     setSendRefusal(null);
+    setEarlierRefusal(null);
     markedRef.current = null;
     firstDayRef.current = null;
     listedMemberRef.current = null;
@@ -262,6 +270,8 @@ export function ChannelView() {
     const target = earlierDay(meta.days, days[0]?.date ?? meta.today);
     if (target === null) return;
     setLoadingEarlier(true);
+    // Another press answers the previous one, whatever it says.
+    setEarlierRefusal(null);
     try {
       const res = await api.getOrgChannelMessages(projectId, orgId, channelId, target);
       setDays((prev) =>
@@ -270,7 +280,9 @@ export function ChannelView() {
           : [{ date: target, messages: res.messages }, ...prev],
       );
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The day did not arrive and the stream is exactly as it was: the reason stays under the
+      // button that asked, which is also the retry (7.19's rule).
+      setEarlierRefusal(channelEarlierRefusalLine(e));
     } finally {
       setLoadingEarlier(false);
     }
@@ -658,7 +670,7 @@ export function ChannelView() {
                 ) : (
                   <>
                     {earlier !== null ? (
-                      <div className="flex justify-center py-2">
+                      <div className="flex flex-col items-center gap-1 py-2">
                         <Button
                           size="sm"
                           disabled={loadingEarlier}
@@ -666,6 +678,21 @@ export function ChannelView() {
                         >
                           {loadingEarlier ? S.common.loading : S.company.channels.earlierDays}
                         </Button>
+                        {/* A day that did not come back: the reason sits directly under the
+                            button that asked, which is still the retry. Capped at two lines with
+                            the whole sentence on hover, so a long sentence never buries the
+                            stream. */}
+                        {earlierRefusal !== null && (
+                          <p
+                            role="alert"
+                            data-testid="channel-earlier-refusal"
+                            data-tooltip={earlierRefusal}
+                            data-tooltip-content="text"
+                            className={`line-clamp-2 max-w-full break-words text-center text-xs ${toneInk.danger}`}
+                          >
+                            {earlierRefusal}
+                          </p>
+                        )}
                       </div>
                     ) : (
                       messageCount(days) > 0 && (
