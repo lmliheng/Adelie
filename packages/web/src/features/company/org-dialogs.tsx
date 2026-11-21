@@ -9,7 +9,8 @@
  * settings: name, mission, model, workspace, timezone, working language, approval mode, and
  * pause / resume — the one lifecycle control there is, since an organization is never deleted
  * through the App. Pause / resume writes its own PATCH the moment it is clicked; everything
- * else is a draft until Save.
+ * else is a draft until Save — and a write the server refuses keeps its words on the footer row,
+ * beside the button that sent it, because the dialog only closes on success.
  *
  * What the create dialog holds is kept as a draft (org-draft.ts) per user and Project, so an
  * accidental close, a reload or a switch back to development mode does not cost the mission
@@ -52,13 +53,13 @@ import {
   Modal,
   Select,
   Textarea,
-  toastError,
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { SEMANTIC_ID_PATTERN } from "../../lib/semantic-id";
 import { useAuth } from "../../state/auth";
 import { useCompany } from "../../state/company";
@@ -610,6 +611,13 @@ export function OrganizationSettingsDialog({
   const [typedId, setTypedId] = useState("");
   /** The words of a deletion the server refused, kept in the card that asked for it. */
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  /**
+   * The words of a Save (or a pause / resume) the server refused, kept in the row of the button
+   * that asked for it. The dialog already stays open on a refusal; without a place to put the
+   * reason, it fell into a toast — six seconds later nothing on the page said the write had been
+   * refused, while the draft still read as if it had been sent.
+   */
+  const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
   const { models, error: modelsError } = useProjectModels(projectId, open);
 
   const doDelete = async () => {
@@ -648,6 +656,8 @@ export function OrganizationSettingsDialog({
     let cancelled = false;
     setSettings(null);
     setLoadError(null);
+    // One attempt, one reason: a fresh open must not carry what the last one was refused for.
+    setSaveRefusal(null);
     void api
       .getOrganization(projectId, orgId)
       .then((detail) => {
@@ -668,13 +678,17 @@ export function OrganizationSettingsDialog({
 
   const patch = async (body: OrganizationPatchRequest) => {
     setBusy(true);
+    // A second press replaces the last reason rather than stacking on it.
+    setSaveRefusal(null);
     try {
       adopt(await api.patchOrganization(projectId, orgId, body));
       toastSuccess(S.common.saved);
       onChanged();
       return true;
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The dialog stays open here, so the reason has to stay in it: a toast would be gone in six
+      // seconds and would float over the box instead of sitting where Save was pressed.
+      setSaveRefusal(apiErrorText(e));
       return false;
     } finally {
       setBusy(false);
@@ -717,6 +731,22 @@ export function OrganizationSettingsDialog({
       widthClass="sm:max-w-lg"
       footer={
         <>
+          {/* A refused Save (or pause / resume) keeps its reason on the row it was attempted from.
+              It sits beside the two buttons rather than stacked above them: this body scrolls, and
+              a sentence added under the last field can land below the fold — the reader pressed
+              Save down here. `min-w-0` + the clamp are what keep it inside the row instead of
+              pushing the buttons out of the box. */}
+          {saveRefusal !== null && (
+            <p
+              role="alert"
+              data-testid="org-settings-refusal"
+              data-tooltip={S.common.refused(saveRefusal)}
+              data-tooltip-content="text"
+              className={`line-clamp-2 mr-auto min-w-0 break-words text-left text-xs ${toneInk.danger}`}
+            >
+              {S.common.refused(saveRefusal)}
+            </p>
+          )}
           <Button size="sm" onClick={onClose} disabled={busy}>
             {S.common.cancel}
           </Button>
