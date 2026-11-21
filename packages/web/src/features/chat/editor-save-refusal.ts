@@ -31,3 +31,15 @@ export function editorSaveRefusal(error: unknown, sent: string, baseline: string
   const reason = refusalText(error);
   return sent === baseline ? S.files.saveRefused(reason) : S.files.saveRefusedDraftKept(reason);
 }
+
+/**
+ * The line for the one refusal with no answer behind it: the panel measured the draft and it is
+ * over the write limit, so nothing was sent at all.
+ *
+ * Same slot and much the same words as a refused write, because it leaves the reader in the same
+ * place — the file on disk untouched, the draft still in the editor, Save the retry once the text
+ * fits. The draft is always what is too large here, so the sentence always says where it stayed.
+ */
+export function editorSaveTooLargeRefusal(mb: number): string {
+  return S.files.saveRefusedDraftKept(S.files.saveTooLarge(mb));
+}

@@ -12,7 +12,10 @@ import { afterEach, describe, expect, it } from "vitest";
 import { ApiError } from "../src/api/client";
 import { en as EN } from "../src/lib/strings-en";
 import { S, setActiveStrings, zh as ZH } from "../src/lib/strings";
-import { editorSaveRefusal } from "../src/features/chat/editor-save-refusal";
+import {
+  editorSaveRefusal,
+  editorSaveTooLargeRefusal,
+} from "../src/features/chat/editor-save-refusal";
 
 afterEach(() => {
   setActiveStrings(ZH);
@@ -62,6 +65,26 @@ describe("editorSaveRefusal", () => {
     const refused = new ApiError(500, "internal", "RAW ENGLISH");
     const line = editorSaveRefusal(refused, "draft", "stored");
     expect(line.startsWith("Could not save: ")).toBe(true);
+    expect(line).toContain("still in the editor, not in the file");
+  });
+});
+
+describe("editorSaveTooLargeRefusal", () => {
+  // The panel's own refusal — nothing was sent, so there is no server answer to read: the reason is
+  // the measured size, and the draft it measured is what the sentence has to say stayed put.
+  it("names the write limit and where the draft stayed", () => {
+    const line = editorSaveTooLargeRefusal(14);
+    expect(line).toBe(S.files.saveRefusedDraftKept(S.files.saveTooLarge(14)));
+    expect(line).toContain("14MB");
+    expect(line.startsWith("保存失败：")).toBe(true);
+    expect(line).toContain("编辑器里的改动没有写进文件");
+  });
+
+  it("follows the active language", () => {
+    setActiveStrings(EN);
+    const line = editorSaveTooLargeRefusal(14);
+    expect(line.startsWith("Could not save: ")).toBe(true);
+    expect(line).toContain("14MB write limit");
     expect(line).toContain("still in the editor, not in the file");
   });
 });

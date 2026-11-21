@@ -162,7 +162,7 @@ import { tabKey } from "../dock/dock-state";
 import { PAPERCLIP_ICON } from "./attached-files-banner";
 import { PdfPreview } from "./pdf-preview";
 import { claimOnce } from "./dock-command-once";
-import { editorSaveRefusal } from "./editor-save-refusal";
+import { editorSaveRefusal, editorSaveTooLargeRefusal } from "./editor-save-refusal";
 import { uploadRefusalLine } from "./upload-refusal";
 import { recallWorkspaceView, rememberWorkspaceView } from "./workspace-view-memory";
 import type { DockSurface, WorkspaceReading, WorkspaceScroll } from "./workspace-view-memory";
@@ -1696,7 +1696,13 @@ export function WorkspaceBrowser({
     const sent = current.draft;
     const blob = new Blob([sent]);
     if (blob.size > WORKSPACE_UPLOAD_LIMIT_MB * MB_BYTES) {
-      toastError(S.files.saveTooLarge(WORKSPACE_UPLOAD_LIMIT_MB));
+      // Nothing went out: the panel measured the draft itself. The file is untouched and Save is
+      // still the retry once the text fits, so the sentence stays under the same header as a
+      // refused write's (7.19's rule) instead of in a toast the draft outlives.
+      setSaveRefusal({
+        path: current.path,
+        text: editorSaveTooLargeRefusal(WORKSPACE_UPLOAD_LIMIT_MB),
+      });
       return;
     }
     const key = scopeKey;
