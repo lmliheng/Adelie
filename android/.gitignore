@@ -1,0 +1,16 @@
+# Gradle / AGP 的构建产物
+build/
+.gradle/
+.cxx/
+captures/
+
+# build-apk.sh 现摆进来的运行时：node 本体与 Adelie 打出的 payload，都是生成物
+app/src/main/jniLibs/
+app/src/main/assets/payload.zip
+
+# 本机配置与打好的包
+local.properties
+*.apk
+*.aab
+*.jks
+*.keystore

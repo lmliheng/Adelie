@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/nav_chat"
+        android:icon="@drawable/ic_nav_chat"
+        android:title="@string/tab_chat" />
+    <item
+        android:id="@+id/nav_agents"
+        android:icon="@drawable/ic_nav_agents"
+        android:title="@string/tab_agents" />
+    <item
+        android:id="@+id/nav_models"
+        android:icon="@drawable/ic_nav_models"
+        android:title="@string/tab_models" />
+    <item
+        android:id="@+id/nav_settings"
+        android:icon="@drawable/ic_nav_settings"
+        android:title="@string/tab_settings" />
+</menu>
