@@ -15,6 +15,10 @@
  * owns rather than serves — and the eighth stays behind the button. Their shape is the server's own
  * (one JSON line per message, `parseChannelMessageLine`'s rules); today's message is posted through
  * the API so the directory is found where the server put it instead of being assumed.
+ *
+ * The third case covers the same line reached by the other attempt: the walk the view does while
+ * opening a channel, refused from before the page is opened, leaves the stream with today only —
+ * and "less history than the channel has" used to be the whole story on screen.
  */
 import { test, expect, request } from "@playwright/test";
 import { existsSync, readdirSync, writeFileSync } from "node:fs";
@@ -235,6 +239,46 @@ test("a day that does not come back says so under the button, and the button is 
   await expect(stream(page).getByText(oldest)).toBeVisible();
 });
 
+test("the first screen's own walk back that stops part way says so too, above the button that continues", async ({
+  page,
+}) => {
+  const { projectId, orgId, oldest } = await setUp(page, "r285walk");
+
+  // Refused before the channel is opened: the walk the view does by itself (today, then earlier
+  // days until the first screen is full) is the attempt that fails here — there is no press.
+  const mock = refuseOlderDays(page, projectId, orgId);
+  await mock.install();
+  await openChannel(page, projectId, orgId);
+
+  // Today landed, the walk stopped on its first older day, so the stream holds no history before it.
+  await expect(stream(page).getByText(TODAY_TEXT)).toBeVisible();
+  await expect(stream(page).getByText(oldest)).toHaveCount(0);
+  expect(mock.seen).toHaveLength(1);
+
+  // The sentence says why, once, in the app's words — and not as a toast.
+  await expect(refusal(page)).toBeVisible();
+  await expect(refusal(page)).toHaveText(STORE_SENTENCE);
+  await expect(page.getByRole("alert")).toHaveCount(1);
+  await expect(notices(page)).not.toContainText("服务器内部错误");
+
+  // The button is the retry, and it continues from exactly the day the walk stopped on.
+  await expect(earlierButton(page)).toBeEnabled();
+
+  // Seven seconds on, the six-second toast would be gone — the sentence is still there.
+  await page.waitForTimeout(7000);
+  await expect(refusal(page)).toHaveText(STORE_SENTENCE);
+
+  // The retry lands: the sentence goes, and the day the walk stopped on arrives as its own section.
+  // Asserted on the day divider, not the message text: these day files are written straight into
+  // the data root, so the server's reconciler also picks them up and the view appends them to
+  // TODAY (their own date is not what the event carries) — the message text alone would pass even
+  // if the press had not fetched anything.
+  await page.unroute(mock.url);
+  await earlierButton(page).click();
+  await expect(refusal(page)).toHaveCount(0);
+  await expect(stream(page).getByText(/^昨天 · \d{4}-\d{2}-\d{2}$/)).toBeVisible();
+});
+
 test("the sentence belongs to the channel it happened in", async ({ page }) => {
   const { projectId, orgId } = await setUp(page, "r282scope");
   await openChannel(page, projectId, orgId);
@@ -245,9 +289,11 @@ test("the sentence belongs to the channel it happened in", async ({ page }) => {
   await expect(refusal(page)).toHaveText(STORE_SENTENCE);
 
   // Into the all-hands channel and back: the sentence described one channel's press and does not
-  // follow the reader anywhere.
+  // follow the reader anywhere. Coming back re-runs this channel's own opening walk, and the route
+  // still refuses older days — so the sentence is there again because the new attempt failed too,
+  // not because the old one was remembered (releasing the route clears it, see the first case).
   await openChannel(page, projectId, orgId, "default_channel");
   await expect(refusal(page)).toHaveCount(0);
   await openChannel(page, projectId, orgId);
-  await expect(refusal(page)).toHaveCount(0);
+  await expect(refusal(page)).toHaveText(STORE_SENTENCE);
 });

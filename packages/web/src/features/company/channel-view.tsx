@@ -15,6 +15,9 @@
  * blank day, and without the scroll jump a prepend after the first paint would cost. Anything
  * older stays behind "earlier", which prepends one day file per click — and a day that does not
  * come back says why under that button, which is also the retry (channel-earlier-refusal.ts).
+ * The same line covers the first screen's own walk: a day it could not read leaves the stream
+ * short of history, so the reason is drawn there too, over the button that continues from that
+ * very day — otherwise the page just looked like a channel with less history.
  *
  * The stream is drawn the way every chat client draws one, because a channel is read the way
  * every chat is: the UI package's ChannelRun and ChannelBubble draw a run and its messages —
@@ -231,9 +234,16 @@ export function ChannelView() {
           if (!current()) return;
           loaded = [{ date: target, messages: older.messages }, ...loaded];
         }
-      } catch {
+      } catch (e) {
         // An earlier day that fails is not fatal — today is already in hand and "earlier"
-        // stays for another attempt — so the stream renders with what the walk did reach.
+        // stays for another attempt — so the stream renders with what the walk did reach. But
+        // the screen then simply holds fewer days than it should, with nothing saying so: the
+        // failure is this view's own (no press to attach it to), yet the surface is the one the
+        // press already uses — the line under the "earlier" button, which is exactly the day the
+        // walk stopped on and therefore the retry (channel-earlier-refusal.ts). Another channel
+        // superseding this load owns the state now, so a late refusal must not land here.
+        if (!current()) return;
+        setEarlierRefusal(channelEarlierRefusalLine(e));
       }
       setDays(loaded);
       setMeta((prev) => ({
