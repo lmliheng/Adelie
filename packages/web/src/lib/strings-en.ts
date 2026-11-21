@@ -4695,6 +4695,12 @@ export const en: Strings = {
     overwriteConfirm: (n: number): string =>
       `The target directory already has ${n} file(s) with these names — uploading will overwrite:`,
     loadFailed: "Failed to load",
+    /**
+     * Under a directory row whose listing failed: the reason, and the fact that the row itself is
+     * the retry (the panel keeps the row where it was and does not close it).
+     */
+    dirListFailed: (reason: string): string =>
+      `This folder could not be read: ${reason} (click the row to retry)`,
     previewTruncated: "File too large; preview truncated, download for the full file",
     htmlRendered: "Preview",
     htmlSource: "Source",

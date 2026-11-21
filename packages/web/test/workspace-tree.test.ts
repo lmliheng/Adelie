@@ -6,8 +6,9 @@
  * - Listings sort directories before files by name; an entry upserts into sorted position,
  *   replacing a same-named one, starting a listing where there was none, never mutating.
  * - The tree's rows walk open directories depth first, number each row within its directory,
- *   and mark an open directory still loading or empty; a whole-Workspace search draws a flat
- *   list of hits named by their whole path, carrying size and time.
+ *   and mark an open directory still loading or empty — or, when its listing failed, carry the
+ *   reason that stands under the row; a whole-Workspace search draws a flat list of hits named
+ *   by their whole path, carrying size and time.
  * - A drop lands on a folder row, in a file row's directory, or in the current directory.
  * - Below the width threshold the panel is one column (two panes while unmeasured); an
  *   undragged tree takes about a third within readable bounds, and a dragged width is clamped.
@@ -180,6 +181,21 @@ describe("flattenTree", () => {
     const rows = flattenTree(LISTINGS, new Set(["a", "a/b"]));
     expect(rows.find((r) => r.path === "a/b")).toMatchObject({ loaded: true, empty: true });
     expect(rows.find((r) => r.path === "a")).toMatchObject({ loaded: true, empty: false });
+  });
+
+  it("keeps a row for a directory that failed to list and carries the reason on it", () => {
+    const failures = new Map([["a", "这个目录读不出来：该路径不存在。（点这一行重试）"]]);
+    const rows = flattenTree(new Map([["", [dir("a")]]]), new Set(["a"]), failures);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      path: "a",
+      expanded: true,
+      loaded: false,
+      error: "这个目录读不出来：该路径不存在。（点这一行重试）",
+    });
+    // A listed directory never carries a failure: the listing wins.
+    const listed = flattenTree(LISTINGS, new Set(["a"]), failures);
+    expect(listed.find((r) => r.path === "a")?.error).toBeUndefined();
   });
 });
 

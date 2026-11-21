@@ -4808,6 +4808,11 @@ export const zh = {
     overwriteTitle: "覆盖同名文件",
     overwriteConfirm: (n: number): string => `目标目录已存在以下 ${n} 个同名文件，上传将覆盖：`,
     loadFailed: "加载失败",
+    /**
+     * Under a directory row whose listing failed: the reason, and the fact that the row itself is
+     * the retry (the panel keeps the row where it was and does not close it).
+     */
+    dirListFailed: (reason: string): string => `这个目录读不出来：${reason}（点这一行重试）`,
     previewTruncated: "内容过大，预览已截断，请下载查看完整文件",
     htmlRendered: "预览",
     htmlSource: "源码",

@@ -25,6 +25,14 @@ export interface FileTreeRow {
   loaded: boolean;
   /** Directory rows: loaded and holding nothing. */
   empty: boolean;
+  /**
+   * Directory rows: why its listing could not be read, when that is what happened. The row stays
+   * (the reader's place in the tree is there) and the reason is drawn under it, in place of the
+   * children it does not have — a toast would be gone before the reader finished reading it, and
+   * a removed row would leave nothing to say the directory exists. The caller's own click handler
+   * decides what a click on such a row means (the Workspace makes it "try again").
+   */
+  error?: string;
 }
 
 /**

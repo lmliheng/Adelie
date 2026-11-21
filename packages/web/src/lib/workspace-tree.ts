@@ -1,9 +1,10 @@
 /**
  * Workspace files panel logic, kept DOM-free so it can be unit-tested:
  *   - the directory tree's shape — listings fetched lazily per directory and keyed by its
- *     Workspace-relative path ("" is the root), the set of open directories, and the flat
- *     row list the tree renders from the two (the row's own shape and the keyboard step over
- *     it are the UI package's `FileTree`'s, shared with the app's other file trees);
+ *     Workspace-relative path ("" is the root), the set of open directories, why a directory's
+ *     listing could not be read, and the flat row list the tree renders from them (the row's
+ *     own shape and the keyboard step over it are the UI package's `FileTree`'s, shared with
+ *     the app's other file trees);
  *   - the search box's filter over the rows that are loaded;
  *   - which directory a dropped batch lands in;
  *   - when the panel is too narrow for a tree beside a preview, and how wide the tree pane
@@ -105,6 +106,26 @@ export function movedListings(
   return new Map([...listings].map(([dir, entries]) => [movedPath(dir, from, to) ?? dir, entries]));
 }
 
+/** The failed listings with every directory the move touched filed under its new path. */
+export function movedFailures(
+  failures: ReadonlyMap<string, string>,
+  from: string,
+  to: string,
+): Map<string, string> {
+  return new Map([...failures].map(([dir, text]) => [movedPath(dir, from, to) ?? dir, text]));
+}
+
+/**
+ * The failed listings without `path` and everything under it: the entry those failures were
+ * about no longer exists, so reopening a same-named directory must not inherit its reason.
+ */
+export function droppedFailures(
+  failures: ReadonlyMap<string, string>,
+  path: string,
+): Map<string, string> {
+  return new Map([...failures].filter(([dir]) => !isWithin(dir, path)));
+}
+
 /** What a new text file is called until it is named. */
 export const DEFAULT_TEXT_FILE_NAME = "untitled.txt";
 
@@ -199,9 +220,14 @@ export interface TreeRow extends FileTreeRow {
 /**
  * The rows the tree draws, top to bottom: a depth-first walk from the root (always open)
  * into every open directory whose listing has arrived. An open directory that is still
- * loading contributes its own row and no children.
+ * loading contributes its own row and no children; one whose listing failed contributes its
+ * own row and the reason, so the reader's place in the tree survives the failure.
  */
-export function flattenTree(listings: Listings, expanded: ReadonlySet<string>): TreeRow[] {
+export function flattenTree(
+  listings: Listings,
+  expanded: ReadonlySet<string>,
+  failures: ReadonlyMap<string, string> = new Map(),
+): TreeRow[] {
   const rows: TreeRow[] = [];
   const walk = (dir: string, depth: number): void => {
     const entries = listings.get(dir) ?? [];
@@ -210,6 +236,9 @@ export function flattenTree(listings: Listings, expanded: ReadonlySet<string>): 
       const isDir = entry.kind === "dir";
       const open = isDir && expanded.has(path);
       const children = isDir ? listings.get(path) : undefined;
+      // A listing always wins over a remembered failure: the failure is cleared on success, and
+      // the two only overlap for the commit in which the listing arrives.
+      const reason = isDir && children === undefined ? failures.get(path) : undefined;
       rows.push({
         path,
         name: entry.name,
@@ -220,6 +249,7 @@ export function flattenTree(listings: Listings, expanded: ReadonlySet<string>): 
         expanded: open,
         loaded: !isDir || children !== undefined,
         empty: isDir && children !== undefined && children.length === 0,
+        ...(reason === undefined ? {} : { error: reason }),
         sizeBytes: entry.sizeBytes,
         mtime: entry.mtime,
       });

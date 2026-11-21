@@ -3,7 +3,8 @@
  *
  * - A folder's move carries it and every path under it to the new place, and leaves a sibling
  *   that only shares its prefix where it was.
- * - The open folders and the loaded listings follow the move, so the tree keeps its shape.
+ * - The open folders and the loaded listings follow the move, so the tree keeps its shape; so do
+ *   the directories whose listing failed, and a removed entry takes its failure with it.
  * - A new text file's name field selects the stem, so typing replaces `untitled` and keeps the
  *   extension; a dotfile's leading dot is part of its stem.
  * - A typed name loses the slashes at its ends, and a slash inside it stays: it creates the
@@ -12,6 +13,8 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_TEXT_FILE_NAME,
+  droppedFailures,
+  movedFailures,
   movedListings,
   movedPath,
   movedSet,
@@ -51,6 +54,24 @@ describe("following a move", () => {
     );
     expect([...listings.keys()].sort()).toEqual(["", "manual/guide", "src"]);
     expect(listings.get("manual/guide")?.map((e) => e.name)).toEqual(["intro.md"]);
+  });
+
+  it("the failures follow the move too, and a removed entry takes its failure with it", () => {
+    const failures = new Map([
+      ["docs/guide", "unreadable"],
+      ["src", "unreadable too"],
+    ]);
+    const moved = movedFailures(failures, "docs", "manual");
+    expect([...moved.keys()].sort()).toEqual(["manual/guide", "src"]);
+    expect(moved.get("manual/guide")).toBe("unreadable");
+
+    const dropped = droppedFailures(
+      new Map([...moved, ["manual/guide/deep", "x"]]),
+      "manual/guide",
+    );
+    expect([...dropped.keys()]).toEqual(["src"]);
+    // A prefix-sharing sibling is not the removed entry.
+    expect([...droppedFailures(new Map([["docs-old", "x"]]), "docs").keys()]).toEqual(["docs-old"]);
   });
 });
 

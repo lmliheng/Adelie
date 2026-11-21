@@ -10,7 +10,9 @@
  * rewrote the file under an editor holding nothing unsaved, it takes the new text in place.
  * OS files dropped anywhere on the panel upload into the current directory — onto a folder
  * row, into that folder. New text files and folders are made from the tree header's New
- * menu, a folder's menu or the blank space under the tree; folders rename and move whole.
+ * menu, a folder's menu or the blank space under the tree; folders rename and move whole. A
+ * directory whose listing fails keeps its row and says why under it — the reader's place in
+ * the tree is not a failed read's to take, and a click on that row is the retry.
  *
  * The panel is addressed by its scope (api/workspace-files.ts): a Session's Workspace on the
  * chat page, or a directory named by its path on the new-chat draft, where no Session exists
@@ -123,6 +125,7 @@ import {
   clampTreeWidth,
   defaultTreeWidth,
   dropTargetDir,
+  droppedFailures,
   expandTo,
   extOf,
   searchRows,
@@ -133,6 +136,7 @@ import {
   listingSize,
   looksLikeText,
   maxTreeWidth,
+  movedFailures,
   movedListings,
   movedPath,
   movedSet,
@@ -559,6 +563,13 @@ export function WorkspaceBrowser({
    */
   const [restoredView] = useState(() => recallWorkspaceView(scopeKey, surface));
   const [listings, setListings] = useState<Listings>(() => new Map());
+  /**
+   * Directories whose listing could not be read, and why. The row stays in the tree (its parent's
+   * listing still names it) and the reason is drawn under it (7.19's rule): the failure used to
+   * toast and drop the row, so six seconds later nothing on screen said the directory existed or
+   * what went wrong, and the only way back was to guess that Refresh would help.
+   */
+  const [failedDirs, setFailedDirs] = useState<ReadonlyMap<string, string>>(() => new Map());
   /** Open directories (the root is always open and never listed here). */
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(
     () => new Set(restoredView?.expanded ?? []),
@@ -739,6 +750,8 @@ export function WorkspaceBrowser({
   // value without re-creating themselves on every change.
   const listingsRef = useRef(listings);
   listingsRef.current = listings;
+  const failedDirsRef = useRef(failedDirs);
+  failedDirsRef.current = failedDirs;
   const expandedRef = useRef(expanded);
   expandedRef.current = expanded;
   const editorRef = useRef(editor);
@@ -767,6 +780,7 @@ export function WorkspaceBrowser({
   if (renderedScopeKey !== scopeKey) {
     setRenderedScopeKey(scopeKey);
     setListings(new Map());
+    setFailedDirs(new Map());
     setExpanded(new Set());
     setLoadingDirs(new Set());
     setRootError(null);
@@ -881,8 +895,9 @@ export function WorkspaceBrowser({
   /**
    * Fetches one directory's listing into the tree. Resolves true when it published; false
    * when it failed or was superseded (a newer request for the same directory, or a Session
-   * switch). The root's failure shows in the tree; a nested directory that fails to list
-   * (deleted mid-turn) toasts and leaves the tree.
+   * switch). The root's failure shows in place of the tree; a nested directory that fails to
+   * list keeps its row and carries the reason under it — the reader's place in the tree is not
+   * the failure's to take, and a click on that row is the retry (see toggleDir).
    */
   const loadDir = useCallback(
     async (dir: string): Promise<boolean> => {
@@ -891,6 +906,14 @@ export function WorkspaceBrowser({
       dirSeq.current.set(dir, seq);
       const current = () => scopeKeyRef.current === key && dirSeq.current.get(dir) === seq;
       setLoadingDirs((s) => new Set(s).add(dir));
+      // A retry starts without the old reason: it is about the last attempt, and a stale one
+      // would stand under a row that is being read right now.
+      setFailedDirs((m) => {
+        if (!m.has(dir)) return m;
+        const next = new Map(m);
+        next.delete(dir);
+        return next;
+      });
       try {
         const res = await files.list(dir);
         if (!current()) return false;
@@ -899,18 +922,19 @@ export function WorkspaceBrowser({
         return true;
       } catch (err) {
         if (!current()) return false;
-        const text = err instanceof ApiError ? err.message : S.files.loadFailed;
-        if (dir === "") {
-          setRootError(text);
-        } else {
-          toastError(text);
+        const text = err instanceof ApiError ? apiErrorText(err) : S.files.loadFailed;
+        if (dir === "") setRootError(text);
+        else {
+          setFailedDirs((m) => new Map(m).set(dir, S.files.dirListFailed(text)));
+          // Stale rows go: what the earlier read found is not what the directory holds now (the
+          // usual cause is that it was moved or deleted under an open tree), and leaving them
+          // under a row that says it could not be read would show both at once.
           setListings((m) => {
             if (!m.has(dir)) return m;
             const next = new Map(m);
             next.delete(dir);
             return next;
           });
-          setExpanded((s) => withExpanded(s, dir, false));
         }
         return false;
       } finally {
@@ -930,11 +954,16 @@ export function WorkspaceBrowser({
     void loadDir("");
   }, [loadDir]);
 
-  /** Re-reads everything on screen: the root and every open directory that has a listing. */
+  /**
+   * Re-reads everything on screen: the root and every open directory that has a listing — or
+   * whose last read failed, which is a directory the reader can see and asked to refresh.
+   */
   const refreshAll = useCallback(() => {
     void loadDir("");
     for (const dir of expandedRef.current) {
-      if (dir !== "" && listingsRef.current.has(dir)) void loadDir(dir);
+      if (dir !== "" && (listingsRef.current.has(dir) || failedDirsRef.current.has(dir))) {
+        void loadDir(dir);
+      }
     }
   }, [loadDir]);
 
@@ -1283,6 +1312,11 @@ export function WorkspaceBrowser({
     listingsRef.current = listingsNext;
     setExpanded(expandedNext);
     setListings(listingsNext);
+    // A failed directory that was renamed keeps its reason at the new path, so the row that
+    // looked unreadable a moment ago does not come back looking merely unopened.
+    const failedNext = movedFailures(failedDirsRef.current, from, to);
+    failedDirsRef.current = failedNext;
+    setFailedDirs(failedNext);
     const selectedNext = selectedPath === null ? null : movedPath(selectedPath, from, to);
     if (selectedNext !== null) {
       setSelectedPath(selectedNext);
@@ -1343,6 +1377,9 @@ export function WorkspaceBrowser({
       await filesRef.current.remove(target.path, target.version);
       setRemoveTarget(null);
       if (selectedPath === target.path) setSelectedPath(null);
+      // Whatever failure was remembered under the removed entry goes with it: a same-named
+      // directory created later must start out unread, not carrying another entry's reason.
+      setFailedDirs((m) => droppedFailures(m, target.path));
       refreshAll();
       toastSuccess(S.files.deleted(baseName(target.path)));
     } catch (err) {
@@ -1504,11 +1541,20 @@ export function WorkspaceBrowser({
 
   // ------------------------------------------------------------------ tree interactions
 
-  /** Opens or closes a directory and makes it the current one; a first open fetches its listing. */
+  /**
+   * Opens or closes a directory and makes it the current one; a first open fetches its listing.
+   * A directory whose listing failed is still open (it shows the reason under its row), so a
+   * click on it cannot mean "collapse" — it means the same thing the reason's presence invites:
+   * try the read again.
+   */
   const toggleDir = useCallback(
     (dir: string) => {
       setCurrentDir(dir);
       const open = !expandedRef.current.has(dir);
+      if (!open && failedDirsRef.current.has(dir)) {
+        void loadDir(dir);
+        return;
+      }
       setExpanded((s) => withExpanded(s, dir, open));
       // The subtree this toggle moves is the one that animates. The serial makes toggling the
       // same directory again a new event; the mark stands until the next toggle, since an
@@ -2141,8 +2187,11 @@ export function WorkspaceBrowser({
 
   const filter = query.trim();
   const rows = useMemo(
-    () => (filter === "" ? flattenTree(listings, expanded) : searchRows(searchResult?.hits ?? [])),
-    [listings, expanded, filter, searchResult],
+    () =>
+      filter === ""
+        ? flattenTree(listings, expanded, failedDirs)
+        : searchRows(searchResult?.hits ?? []),
+    [listings, expanded, failedDirs, filter, searchResult],
   );
   const rootListing = listings.get("");
   /**

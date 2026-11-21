@@ -1,7 +1,8 @@
 /**
  * The file tree (src/components/files/file-tree/file-tree.tsx): the WAI-ARIA tree shape over the
  * caller's flat rows, the attributes a caller's hit test resolves a row by, an open directory's
- * children nested in a group, the caller's words for an empty directory, and inks from tokens.
+ * children nested in a group, the caller's words for an empty directory, the reason a directory
+ * whose listing failed carries under its row, and inks from tokens.
  */
 import { createElement } from "react";
 import { describe, expect, it } from "vitest";
@@ -81,6 +82,23 @@ describe("FileTree", () => {
       expect.arrayContaining(["bg-tone-info-bg", "ring-tone-info-emphasis/60", "text-fg"]),
     );
     expect(html).not.toMatch(/gray-|sky-|dark:/);
+  });
+
+  it("draws a directory whose listing failed with the reason under it, and no group", () => {
+    const rows = [
+      row("src", "dir", 0, 1, 1, {
+        expanded: true,
+        loaded: false,
+        error: "This folder could not be read: gone (click the row to retry)",
+      }),
+    ];
+    const html = render({ rows, selectedPath: null });
+    // The row is still a row (the reader's place in the tree survives the failure)…
+    expect(html).toMatch(/aria-expanded="true"[^>]*data-tree-path="src"/);
+    // …and the reason stands where its children would, in the danger ink.
+    expect(html).toContain(">This folder could not be read: gone (click the row to retry)</p>");
+    expect(html).toContain("text-tone-danger-fg");
+    expect(html).not.toContain('role="group"');
   });
 
   it("shows the caller's empty state in place of rows when there are none", () => {

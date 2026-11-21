@@ -297,6 +297,21 @@ export function FileTree<Row extends FileTreeRow>({
   );
 
   /**
+   * An open directory whose listing failed says why, in place of the children it lacks. It sits
+   * where the children would and is not a row: the tree's own navigation never lands on it, and
+   * the reader's click on the directory above it is the retry.
+   */
+  const renderErrorLine = (row: Row): ReactNode => (
+    <p
+      key={`error:${row.path}`}
+      className="py-1 pr-2 text-xs text-tone-danger-fg"
+      style={{ paddingLeft: TREE_PAD_PX + (row.depth + 1) * TREE_INDENT_PX + CHEVRON_COL_PX }}
+    >
+      {row.error}
+    </p>
+  );
+
+  /**
    * The rows of `list` in `[start, end)`, with each open directory's descendants nested in a
    * group below it. `retained` marks a closing subtree, which draws its own nested groups but
    * animates nothing and takes no part in interaction.
@@ -317,7 +332,11 @@ export function FileTree<Row extends FileTreeRow>({
         continue;
       }
       const childrenEnd = subtreeEnd(list, i);
-      if (row.expanded && row.loaded) {
+      if (row.expanded && row.error !== undefined) {
+        // The listing failed: the reason stands where the children would be. A closing subtree
+        // cannot coexist with it — a failed directory has no rows of its own to shrink.
+        out.push(renderErrorLine(row));
+      } else if (row.expanded && row.loaded) {
         // The group mounts only once the listing is there, so a first open of an unloaded
         // directory animates when its rows arrive rather than around an empty box.
         const opening = !retained && toggled !== null && toggled.open && toggled.dir === row.path;
