@@ -14,6 +14,17 @@
     <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
     <link rel="icon" type="image/svg+xml" href="/adelie-icon.svg" />
     <title>Adelie</title>
+    <!-- Cascade-layer order, declared before /api/themes.css — see packages/web/test/head-layers.test.ts.
+         A set of layer names is ordered by where each name first appears, and the imported-theme
+         sheet carries `@layer ui-theme`. On an install with any imported theme, that sheet is the
+         first to name it, which would put every theme recipe BELOW Tailwind's utilities: a recipe's
+         padding, borders and hidden marks lose to `px-4` / `border` / `flex`. (Console's notice is
+         where it showed — the tag printed on top of the message.) Naming the layers here, in the
+         order the app's own stylesheet establishes them, fixes the order for the whole document
+         whatever order the two sheets load in, in a build or on the dev server. -->
+    <style>
+      @layer properties, theme, base, components, utilities, ui-theme, ui-accent, ui-font;
+    </style>
     <!-- Imported themes: the CSS every theme file in <data root>/themes/ becomes (server,
          GET /api/themes.css, no auth so the sign-in page paints the user's own theme too). Served
          empty when nothing is imported, so this link is never a failed request. It is here rather
