@@ -11,7 +11,9 @@
  * Past instances carry the outcome the scheduler recorded; every write confirms first, and
  * reports back whatever the server has to say about the rota. A confirmation that asked for a
  * write is dismissed by that write landing: when the server refuses one, its words stay inside
- * the card (`ConfirmModal`'s `refusal` slot) and the retry is the button that was pressed.
+ * the card (`ConfirmModal`'s `refusal` slot) and the retry is the button that was pressed. The
+ * edit dialog's 「打开工位会话」 link follows the same rule with the surface it already has: a
+ * desk it cannot open leaves its reason under the line the link lives on.
  *
  * An empty slot — a month cell, an hour row — is itself the control that creates there, and it
  * says so: a real button (CREATE_SLOT_CLASS) that tints with the theme's accent and spells out
@@ -41,13 +43,12 @@ import {
   Switch,
   Textarea,
   toastAttention,
-  toastError,
   toastSuccess,
   usePortalPanel,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { formatDateTime } from "../../lib/format";
 import { useDocumentTitle } from "../../lib/use-document-title";
 import { employeeColor } from "../../lib/category-colors";
@@ -212,6 +213,13 @@ export function CalendarPage() {
    */
   const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
   const [deleteRefusal, setDeleteRefusal] = useState<string | null>(null);
+  /**
+   * Why the desk the edit dialog's link asked for did not open. The dialog holds the link and is
+   * still standing when the request comes back, so the reason stays in it, under the row that
+   * asked (7.19's rule) — it used to be a toast that dismissed itself while the link's row sat
+   * there looking exactly as it had before the click.
+   */
+  const [deskRefusal, setDeskRefusal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   // The empty-calendar note goes away for good once read; the page's "?" carries the same
@@ -276,6 +284,8 @@ export function CalendarPage() {
 
   const openCreate = (atMs?: number) => {
     setFieldErrors({});
+    // A dialog opening is a new question: whatever the last one's link was refused for goes.
+    setDeskRefusal(null);
     setForm({
       editing: null,
       agentId: employeeFilter || (employees[0]?.agentId ?? ""),
@@ -290,6 +300,8 @@ export function CalendarPage() {
   };
   const openEdit = (ev: OrgCalendarItem) => {
     setFieldErrors({});
+    // Same as `openCreate`: the row's link belongs to the event this dialog was opened for.
+    setDeskRefusal(null);
     setForm({
       editing: { agentId: ev.agentId, name: ev.name },
       agentId: ev.agentId,
@@ -382,13 +394,18 @@ export function CalendarPage() {
     }
   };
 
-  /** Open the desk session an instance's run went to (a past, fired instance). */
+  /**
+   * Open the desk session an instance's run went to (a past, fired instance). A refusal stays in
+   * the edit dialog, under the row whose link was pressed: this function's caller never leaves
+   * the page, so the dialog is on screen to hold it, and the link is the retry.
+   */
   const openDesk = async (agentId: string) => {
+    setDeskRefusal(null);
     try {
       const desk = await api.getOrgDesk(projectId, orgId, agentId);
       navigate(`/chat/${desk.sessionId}`);
     } catch (e) {
-      toastError(apiErrorText(e));
+      setDeskRefusal(refusalText(e));
     }
   };
 
@@ -948,6 +965,18 @@ export function CalendarPage() {
                   <span className={toneInk.danger}>{editingEvent.invalidReason}</span>
                 )}
               </div>
+            )}
+            {/* The row asked, so the row answers: the link above is the retry, and the reason
+                sits directly under the line it lives on. */}
+            {deskRefusal !== null && (
+              <p
+                role="alert"
+                data-tooltip={S.common.refused(deskRefusal)}
+                data-tooltip-content="text"
+                className={`line-clamp-2 break-words text-xs ${toneInk.danger}`}
+              >
+                {S.common.refused(deskRefusal)}
+              </p>
             )}
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <Select
