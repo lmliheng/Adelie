@@ -98,6 +98,16 @@ function getOsVersion(): string {
 const MAX_TMP_ID_ATTEMPTS = 16;
 
 /**
+ * What a temporary Workspace's directory name starts with. One definition, two readers: the
+ * allocator below, and {@link isTemporaryWorkspace} — the shape a resumed Session's recorded
+ * Workspace is tested against. The cleanup machinery classifies `tmp-` directories the same way.
+ */
+const TEMP_WORKSPACE_PREFIX = "tmp-";
+
+/** The directory `workspaces/` a temporary Workspace lives under — the other half of that shape. */
+const WORKSPACES_DIR_NAME = "workspaces";
+
+/**
  * Create a temporary Workspace under `<agent>/workspaces/<workspace_id>`, where the
  * directory name is the workspace_id, shaped like `tmp-<8hex>`; if it collides with
  * an existing directory, regenerate the id. No symlinks are created inside the Workspace:
@@ -115,7 +125,7 @@ export async function createTempWorkspace(
   // silently when the directory already exists, which would put a new Session into
   // an existing temporary workspace; EEXIST means an id collision, so retry with a new id.
   for (let attempt = 0; attempt < MAX_TMP_ID_ATTEMPTS; attempt++) {
-    const dir = path.join(base, `tmp-${randomUUID().slice(0, 8)}`);
+    const dir = path.join(base, `${TEMP_WORKSPACE_PREFIX}${randomUUID().slice(0, 8)}`);
     try {
       await fs.mkdir(dir);
       return dir;
@@ -126,6 +136,49 @@ export async function createTempWorkspace(
   throw new Error(
     `failed to allocate a unique temp workspace id under ${base} after ${MAX_TMP_ID_ATTEMPTS} attempts`,
   );
+}
+
+/**
+ * Whether a recorded Workspace path names a **temporary Workspace** — the `<…>/workspaces/tmp-…`
+ * directory {@link createTempWorkspace} allocates for a Session that was not given one.
+ *
+ * Tested by shape rather than against this install's filesystem, because the path may name another
+ * machine's directory: a Session migrated from another install records that install's temp
+ * Workspace, which is exactly the case this answers. Both halves are checked — the parent is named
+ * `workspaces` and the leaf starts with `tmp-` — so a user's own `…/tmp-build` folder inside some
+ * `workspaces` directory is the only thing this can mistake, and a Session whose workspace is a
+ * directory the user chose is never one of these.
+ */
+export function isTemporaryWorkspace(dir: string): boolean {
+  return (
+    path.basename(dir).startsWith(TEMP_WORKSPACE_PREFIX) &&
+    path.basename(path.dirname(dir)) === WORKSPACES_DIR_NAME
+  );
+}
+
+/**
+ * Give a Session back a temporary Workspace this install does not have: create the recorded name
+ * under **this** install's `workspaces/` and return that path, or `null` when the recorded path is
+ * not a temporary Workspace — i.e. when it is a directory the user pointed the Session at, which
+ * this never fabricates.
+ *
+ * The leaf is kept (same name, this install's root), so resuming twice lands in the same place and
+ * the Session reads the same wherever it runs. `recursive` is right here where the allocator above
+ * insists on non-recursive: there, an existing directory means an id collision; here it means this
+ * very function ran before.
+ */
+export async function adoptTemporaryWorkspace(
+  dir: string,
+  root: string,
+  projectId: string,
+  agentId: string,
+): Promise<string | null> {
+  if (!isTemporaryWorkspace(dir)) return null;
+  const base = workspacesDir(root, projectId, agentId);
+  await fs.mkdir(base, { recursive: true });
+  const local = path.join(base, path.basename(dir));
+  await fs.mkdir(local, { recursive: true });
+  return local;
 }
 
 /**

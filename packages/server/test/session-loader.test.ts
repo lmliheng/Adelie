@@ -1,8 +1,10 @@
 /**
  * Integration tests for createCoreSessionLoader (#3/#13): failures recovering a
- * historical Session (Workspace deleted / Model removed from config / Trace
- * missing session_meta) all collapse into HttpError(409, session_unrecoverable),
- * preserving the original core message instead of bubbling up as a 500. A Session rebuilt
+ * historical Session (Model removed from config / Trace missing session_meta) collapse into
+ * HttpError(409, session_unrecoverable), preserving the original core message instead of bubbling
+ * up as a 500; a Workspace that is gone is answered as workspace_missing instead (the code whose
+ * sentence the UI carries), and a Workspace that is this product's own disappeared **temporary**
+ * one is recreated under this install rather than refused. A Session rebuilt
  * without a Trace records the source this process knows, else the one its row stands for
  * (`company` on the organization runtime's `org` row, `api` on the Agent API's `api` row), else
  * core's default.
@@ -68,7 +70,7 @@ describe("session-loader", () => {
     await fs.rm(root, { recursive: true, force: true });
   });
 
-  it("Trace exists but the Workspace was deleted → 409 session_unrecoverable, original message preserved", async () => {
+  it("Trace exists but the Workspace was deleted → 409 workspace_missing, original message preserved", async () => {
     await writeTraceFile(root, PROJECT, AGENT, "2026-07-06", SID, 1, [
       sessionMeta(meta()), // workspace points to a nonexistent directory
       userText("hi"),
@@ -77,8 +79,31 @@ describe("session-loader", () => {
     const err = await loader.load(row("/tmp/does-not-exist-xyz")).catch((e) => e);
     expect(err).toBeInstanceOf(HttpError);
     expect((err as HttpError).status).toBe(409);
-    expect((err as HttpError).code).toBe("session_unrecoverable");
+    // The code the UI has a sentence for — the same one the self-heal branch answers with — rather
+    // than the generic session_unrecoverable every other resume failure shares.
+    expect((err as HttpError).code).toBe("workspace_missing");
     expect((err as HttpError).message).toContain("Workspace no longer exists");
+  });
+
+  it("Trace records another install's temporary Workspace → resumed here, recreated under this root", async () => {
+    // A Session imported from another machine: the Trace names the source install's disposable
+    // temp Workspace. It is recreated under this install (same leaf), which is what makes a
+    // migrated conversation continuable at all.
+    const foreign = "/other/install/sjaaj/agents/default_agent/workspaces/tmp-1ef4ab87";
+    await saveProjectConfig(root, PROJECT, {
+      default_model: { provider: "anthropic", model_id: "claude-sonnet-4-6" },
+      models: [{ provider: "anthropic", model_id: "claude-sonnet-4-6", context_window: 1000 }],
+    });
+    await writeTraceFile(root, PROJECT, AGENT, "2026-07-06", SID, 1, [
+      sessionMeta(meta({ provider: "anthropic", model_id: "claude-sonnet-4-6", workspace: foreign })),
+      userText("hi"),
+    ]);
+    const loader = createCoreSessionLoader(root);
+    const resumed = await loader.load(row(foreign));
+    const local = path.join(root, PROJECT, "agents", AGENT, "workspaces", "tmp-1ef4ab87");
+    expect(resumed.workspaceDir).toBe(local);
+    expect((await fs.stat(local)).isDirectory()).toBe(true);
+    (resumed as unknown as { dispose(): void }).dispose();
   });
 
   it("Trace exists but the Model was removed from config → 409 session_unrecoverable", async () => {

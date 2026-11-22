@@ -74,6 +74,7 @@ import type {
   SessionOpenedContext,
 } from "./session.js";
 import {
+  adoptTemporaryWorkspace,
   createTempWorkspace,
   formatSessionId,
   mcpConnectOutcome,
@@ -120,6 +121,25 @@ import type {
  * raise this constant to allow deeper nesting.
  */
 const MAX_SUBAGENT_DEPTH = 1;
+
+/**
+ * A Session cannot be resumed because the Workspace its Trace records is not there — deleted, or
+ * never on this machine at all (a Trace imported from another install records the source machine's
+ * path). A directory the user pointed the Session at is never fabricated; the one case
+ * `resumeSession` recovers on its own is a **temporary** Workspace (see
+ * {@link adoptTemporaryWorkspace}), so reaching this error means a workspace that belongs to
+ * someone: the user's own directory, which only they can put back.
+ *
+ * A typed error rather than a message, because the host has to say something different about it:
+ * the Web server answers it as `workspace_missing` — the code whose sentence the UI already has —
+ * instead of the generic "Session is unrecoverable" the other resume failures share.
+ */
+export class WorkspaceGoneError extends Error {
+  constructor(readonly workspaceDir: string) {
+    super(`The original Session's Workspace no longer exists: ${workspaceDir}; cannot resume.`);
+    this.name = "WorkspaceGoneError";
+  }
+}
 
 export interface CreateAgentOptions {
   agentId?: string;
@@ -795,17 +815,32 @@ export class Agent {
       );
     }
 
-    // The Workspace carries over from the original Session and must still exist (throw if missing, never auto-create).
-    const workspaceDir = meta.workspace;
-    let stat;
+    // The Workspace carries over from the original Session and must still exist. A directory the
+    // user pointed a Session at is never auto-created (PRN-004): the files it held are theirs, and
+    // a Session that silently runs somewhere else is worse than one that refuses. The one path
+    // that recovers on its own is a **temporary** Workspace — this product's own disposable
+    // directory for a Session that was never given one — which is recreated under this install
+    // when the recorded path is not here at all: that is every Session migrating in from another
+    // machine (its Trace names the source install's path), and the temp workspace the local cleanup
+    // may have taken. Nothing of the user's is in either, and without this a migrated Session could
+    // never be continued.
+    let workspaceDir = meta.workspace;
+    let stat: Awaited<ReturnType<typeof fs.stat>> | null = null;
     try {
       stat = await fs.stat(workspaceDir);
     } catch {
-      throw new Error(
-        `The original Session's Workspace no longer exists: ${workspaceDir}; cannot resume.`,
-      );
+      stat = null;
     }
-    if (!stat.isDirectory()) {
+    if (stat === null) {
+      const adopted = await adoptTemporaryWorkspace(
+        workspaceDir,
+        this.state.root,
+        this.state.projectId,
+        this.state.agentId,
+      );
+      if (adopted === null) throw new WorkspaceGoneError(workspaceDir);
+      workspaceDir = adopted;
+    } else if (!stat.isDirectory()) {
       throw new Error(
         `The original Session's Workspace is not a directory: ${workspaceDir}; cannot resume.`,
       );

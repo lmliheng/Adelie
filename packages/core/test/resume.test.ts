@@ -5,7 +5,10 @@
  *   (Workspace / Model cannot be swapped).
  * - Pairing-fallback placeholders, once constructed, are written into the original trace file;
  *   session_meta is never written twice.
- * - Errors when the session doesn't exist / the workspace is missing / the model is no longer in the project config.
+ * - Errors when the session doesn't exist / a Workspace the user chose is missing / the model is no
+ *   longer in the project config; a missing **temporary** Workspace (this product's own disposable
+ *   directory, which is what a Trace migrated in from another install records) is recreated under
+ *   this install instead.
  * - `groupHistoryToUniMessages` groups by adjacent same role; `GenerativeModel.setHistory` injects into AgentHub.
  */
 import fs from "node:fs/promises";
@@ -29,7 +32,7 @@ import {
 import type { OmniMessage, TokenCounts } from "../src/omnimessage/index.js";
 import { GenerativeModel, groupHistoryToUniMessages } from "../src/llm/index.js";
 import { findLatestTraceFile, readTrace } from "../src/trace/index.js";
-import { agentsMdPath, tracesDir } from "../src/state/paths.js";
+import { agentsMdPath, tracesDir, workspacesDir } from "../src/state/paths.js";
 import { stubProviderKeys } from "./provider-keys.js";
 
 // The default project config ships with this model ((provider, model_id) pair reference; model_id is the upstream id).
@@ -237,13 +240,45 @@ describe("agent.resumeSession", () => {
     );
   });
 
-  it("errors when the recorded workspace no longer exists (PRN-004: no auto-create)", async () => {
+  it("errors when a Workspace the user chose no longer exists (PRN-004: no auto-create)", async () => {
     const agent = await createAgent({});
     const gone = path.join(workspace, "gone");
     await writeTraceFile(tmpRoot, SID, [metaFor(SID, gone), userText("x")]);
     await expect(agent.resumeSession({ sessionId: SID })).rejects.toThrow(
       /Workspace no longer exists/,
     );
+  });
+
+  it("recreates a temporary Workspace this install does not have (a Trace migrated in)", async () => {
+    // What a Session imported from another machine records: that install's own temp Workspace,
+    // which is not here. It holds nothing of the user's, so the resume recreates it under this
+    // install — same leaf, this install's root — instead of refusing, which is the difference
+    // between a migrated conversation that can be continued and one that never can.
+    const agent = await createAgent({});
+    const foreign =
+      "/other/install/projects/default_project/agents/default_agent/workspaces/tmp-1ef4ab87";
+    await writeTraceFile(tmpRoot, SID, [metaFor(SID, foreign), userText("x")]);
+    const session = await agent.resumeSession({ sessionId: SID });
+    const local = path.join(
+      workspacesDir(tmpRoot, "default_project", "default_agent"),
+      "tmp-1ef4ab87",
+    );
+    expect(session.workspaceDir).toBe(local);
+    expect((await fs.stat(local)).isDirectory()).toBe(true);
+  });
+
+  it("resumes a temporary Workspace that is right where the Trace says", async () => {
+    // The local case: the directory is here, so nothing is created and nothing is relocated —
+    // resuming twice must not walk the Session into a different directory.
+    const agent = await createAgent({});
+    const local = path.join(
+      workspacesDir(tmpRoot, "default_project", "default_agent"),
+      "tmp-5a5a5a5a",
+    );
+    await fs.mkdir(local, { recursive: true });
+    await writeTraceFile(tmpRoot, SID, [metaFor(SID, local), userText("x")]);
+    const session = await agent.resumeSession({ sessionId: SID });
+    expect(session.workspaceDir).toBe(local);
   });
 
   it("errors when the recorded model is no longer in the project config", async () => {

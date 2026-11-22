@@ -47,6 +47,7 @@ import {
   parseUserSteeringText,
   tracesDir,
   userText,
+  WorkspaceGoneError,
 } from "@adelie/core";
 import type {
   ApproveFn,
@@ -364,6 +365,14 @@ export function createCoreSessionLoader(
           // The credential key was deleted after the Session was created: only caught
           // here at recovery time; give the same actionable message.
           if (isMissingCredential(err)) throw modelCredentialMissing(row.modelId);
+          // A Workspace that is gone (deleted here, or belonging to the machine this Session's
+          // Trace was imported from): the code whose sentence the UI already carries — the same
+          // one the no-Trace path below answers with — rather than the generic
+          // "Session is unrecoverable" every other resume failure shares. The provider message
+          // keeps the path, which is what a log reader needs.
+          if (err instanceof WorkspaceGoneError) {
+            throw new HttpError(409, "workspace_missing", err.message);
+          }
           throw toUnrecoverableError(err);
         }
       }

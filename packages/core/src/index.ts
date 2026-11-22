@@ -117,7 +117,7 @@ export type {
 // `metaMaxTokens` is the output cap every out-of-band meta request shares — a small budget,
 // tightened by the entry's pinned per-model cap. Exported so a host running its own one-off
 // requests on a Project's model sizes them the way the SDK sizes its own.
-export { Agent, createAgent, metaMaxTokens } from "./agent.js";
+export { Agent, createAgent, metaMaxTokens, WorkspaceGoneError } from "./agent.js";
 export type {
   ControlEnvContext,
   CreateAgentOptions,

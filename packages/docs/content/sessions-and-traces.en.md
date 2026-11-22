@@ -110,6 +110,8 @@ The Trace is the single source of truth for recovery. There is no separate sessi
 
 Recovery requires that the Workspace still exists and the model is still configured in the Project.
 
+"Still exists" is judged differently for the two kinds of Workspace. A directory the user named is never fabricated: the files in it are theirs, and a Session silently running somewhere else is worse than one that refuses, so a missing one fails the resume and the interface says `workspace_missing`. A **temporary** Workspace — the `workspaces/tmp-<8hex>` an Automatic Session was given when it was named none — is recreated here under the same name: a Trace imported from another installation records that machine's path, and the local cleanup may have taken the directory, neither of which held anything of the user's, and without the recreation that Session could never be continued.
+
 Recovery guarantees structural legality:
 
 - Only committed turns are replayed, with `tool_call` / `tool_call_output` pairing intact.
@@ -195,3 +197,5 @@ It holds the receiving half: a frame in the list proves one arrived, and its abs
 - **Import:** in [Settings](/settings#import-a-trace) → **General**, **Import Trace** adds a file to the Project and agent you choose, as a new conversation. Files can be up to 14 MB.
 
 An import whose session id already exists anywhere in this installation is rejected, so an imported file always becomes index 001 of a new Session.
+
+Sending a message to an imported conversation treats its Workspace by the rule above: a temporary one is recreated here under the same name, and a directory the user named has to still be on this machine.
