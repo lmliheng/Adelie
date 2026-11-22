@@ -3054,6 +3054,99 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       读者按的就是那一行的按钮，而原来的原因是六秒通知（改前实测：弹层里 0 条、通知区 1 条、七秒后
       通知区也空了）。见「第二百九十轮」一节。
 
+- [x] **7.171 日历编辑弹窗里打不开的工位，原因留在链接所在的那一行下面**（**2026-11-22 第二百九十二轮**
+      落地，提交见「已完成的轮次」；`packages/web` 1 个源码文件 ＋ 1 个新 spec ＋ changelog 一对 ——
+      `openDesk` 把原因经 `refusalText` 写进新的 `deskRefusal` 状态、不再 `toastError`，句子画在元数据
+      那一行下面（`role="alert"`、危险墨色、悬停看全文），`openCreate` / `openEdit` 都会清掉它，
+      **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩四处
+      `openDesk`，这是其中**自有弹窗**的一处 —— 链接就在弹窗里、请求回来时弹窗仍站着，而原来的原因是
+      一条盖在弹窗标题上、六秒就走的通知（改前实测：800 毫秒时通知区里就是那句话、弹窗里 0 条，七秒后
+      两边都是 0 条）。见「第二百九十二轮」一节。
+
+## 第二百九十二轮：日历编辑弹窗里打不开的工位，原因留在链接所在的那一行下面（2026-11-22，条目 7.171）
+
+**开工**：`git status --short` 干净；`git fetch origin && git merge --ff-only origin/main` 把另一条线
+（v0.7.0 那笔发布与它的四条修复，`9beac7f2f..2502b44a1`）ff 进来 —— 第二百九十一轮已被它占了号，本轮
+因此是**第二百九十二轮**。ff 之后**六包 `typecheck` 先红**：`packages/server` 说 `@adelie/core` 没有导出
+`WorkspaceGoneError`，那是 ff 进来的一笔（`31dbbc979`）新加的导出，而 `packages/core/dist` 还是 07:08 的
+产物（workspace 依赖在 `node_modules` 里是硬链接副本，两边同一个 inode）。`pnpm --filter @adelie/core build`
+之后六包全绿 —— 这是环境重建，不是代码问题，记在这里免得下一轮再撞。
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（剩下的是桌面壳写侧、既有部署单元
+`adelie-app.service` 与两份非契约项）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6（促销搬进
+Project 配置要拍板）、5.10（要 mermaid 新依赖）；第 7 节到 7.170 已全勾。第二百九十轮「没做 / 留着」点名
+公司页余下四处 `openDesk`，其中日历编辑弹窗这一处的**表面已经存在**（弹窗就站在屏幕上，链接是弹窗里的
+一行），不用另造表面，属一轮的量。
+
+**缺口是什么**（改前产物实测，见下）：日程的「上次触发」已经发生过时，编辑弹窗的多信息那一行会给出
+「打开工位会话」（`GET …/employees/:id/desk`，没有就顺手建一个）。这次读失败时，原因只 `toastError` ——
+那条通知盖在弹窗自己的标题上（截图 `r292/life-before/shots/life-1-800ms.png` 里正好压在「编辑日程
+「pro…」」上），六秒后走了，链接那一行与点击之前一模一样。
+
+### 做了什么
+
+- `packages/web/src/features/company/calendar-page.tsx`：
+  - 新增 `deskRefusal` 状态（与 `saveRefusal` / `deleteRefusal` 并列），`openDesk` 开头清空、`catch` 里
+    经 `refusalText` 写进去 —— 不再 `toastError`，因此 `toastError` 的导入也删了。
+  - 句子画在元数据那一行（`editingEvent` 的 `flex flex-wrap` 那一行）**正下方**：`role="alert"`、
+    `line-clamp-2 break-words text-xs` 加危险墨色，悬停看全文 —— 与实时语音页那条拒绝行同一写法，
+    文字用 `S.common.refused(...)`（「操作被拒绝：…」，其余拒绝槽共用的那句）。
+  - `openCreate` / `openEdit` 都把 `deskRefusal` 清掉：弹窗打开是一个新的问题，上一个弹窗的链接被拒的
+    原因不该跟过来。
+  - 模块头补一句「编辑弹窗里的链接走同一条规矩，用它本来就有的表面」。
+- 没有新文案、没有新依赖、不碰接口。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 /
+  613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名
+  `@adelie/*` 跑）。
+- `npx oxlint` 1 个改动源码文件与 1 个新 spec **0 警告 0 错误**；源码、spec 与 changelog 一对
+  `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test 全绿（`EXIT=0`、0 失败）：core **70 文件 / 1458 通过 / 6 跳过** · ui **133 / 1115** ·
+  cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过**（core 与 server 的
+  基线比上一轮高，是 ff 进来的几笔带的新用例；web 只加真浏览器用例，单测数不变）。
+- **新用例**（`packages/web/e2e/calendar-desk-refusal.spec.mjs`，1 条，真服务端 9961 + 仓库自带 mock 模型
+  8932 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r292-a`）：工位路由答 500 并带上自己的话
+  → 句子在弹窗里、**量到起点在链接下缘之下**（`lineBox.y >= linkBox.y + linkBox.height - 1`）且在弹窗
+  内、通知区没有它、七秒后仍在、弹窗还站着且地址没变；关掉再打开 → 弹窗里 `alert` 数 **0**；解除拦截后
+  点同一个链接 → 跳到 `/chat/<会话>`。**1 passed（10.6 s）**。调度器状态（`lastFiredAt` /
+  `lastOutcome`）在测试里是**读日历列表时用 `page.route` 补上的两个显示字段** —— 只有真触发才会写它，
+  为两个字段跑一遍调度器不值当；事件、弹窗、工位路由全是真服务端的。
+- **反证（同一份 spec，改前产物）**：`r292/before-dist`（改前源码重建，主包 `index-BaLfRc61.js`；改后
+  `index-BbWX0Dsq.js`）挂在 9962、数据根 `/root/adelie-fork-data/r292-b` → **1 failed**，死在弹窗里找不到
+  `alert`。
+- **两态探针（真服务端 + 真浏览器，`r292/shape-check.mjs`）**：同一个动作（500 + 表里没有的码）——
+  **改前**（9962）：800 毫秒时通知堆栈里就是 `the desk session could not be reserved`、弹窗里 `alert`
+  为 **null**；七秒后堆栈**空**、`alert` 仍 null。**改后**（9961）：800 毫秒时堆栈里只有那句内测提示、
+  弹窗里是「操作被拒绝：the desk session could not be reserved」；七秒后**仍在**。三种失败形状
+  （500+未知码 / 400+未知码 / 500+表里有的码）改后都落在弹窗里，最后一种读出「操作被拒绝：资源不存在，
+  或你没有访问权限。」。截图 `r292/life-{before,after}/shots/life-{1-800ms,2-7s}.png` 与
+  `r292/after/shots/{1-dialog-open,2-refused,3-refused-7s,4-reopened-clean}.png` 肉眼看过；两态
+  pageerror 各 **0 条**，console 只有既有 `/machines` **403** 与探针自己拦下的 500 / 400。
+- **取证时的一条更正**：同一动作在 `r292/probe.mjs` 的读数里通知堆栈是空的（`r292/before*/` 那几份），
+  换成 `shape-check.mjs` 就能稳定复现那条六秒通知 —— 差异在探针脚本那一份，不在产物；正式证据用
+  `r292/life-*`，`probe.mjs` 的早期读数不采信。顺带说清：`r292/after/shots/` 里那次 `toasts: 1` 是
+  「内测功能」那条一次性提示，不是这次拒绝。
+- **相邻回归（真浏览器）**：`calendar-refusal` 2 + `company.spec` 1，**3 passed（38.5 s）**（同一页的两张
+  确认卡与整个公司模式那条主流程）。
+- 端口只用 9961 / 9962 / 8932（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r292-{a,b}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r292/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 公司页还剩三处 `openDesk` 是六秒通知：`overview-page`（顶部那颗按钮，页头没有槽位）、
+  `org-chart-page`（卡片上的节点菜单，菜单一关就没有表面）、`org-session-groups`（侧栏工位行与折叠
+  轨道上的头像）—— 后两处都要先决定句子挂在哪，其中侧栏那条还要决定它会不会撑开一个紧凑的列表。
+- 日程编辑弹窗的其它读失败（例如 `load()` 重新读日历失败）仍走页面顶部的 `Notice`，与这一处不是同一个
+  槽位，没顺手改。
+
+### 提交
+
+- 功能一笔（web 源码 1 + 新 spec 1 + changelog 2）：`0f0dcea0a`。
+- 台账（条目 7.171、上表那一行、本节）随本文件另起一笔。
+
 ## 第二百九十一轮：正式发 v0.7.0、换装现网，并把两份 README 与改动声明补上（2026-11-22）
 
 用户 2026-11-22 定：「推。并且更新至 0.7.0，并更新现网」—— 把攒在五条分支上的东西（桌宠语音通话、
@@ -4796,6 +4889,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-22 | 7.169 | **插件导入弹窗里，选中的 zip 超过上限 / 读不出来时，原因也留在弹窗里**（**2026-11-22 第二百八十九轮**落地；`packages/web` 2 个源码文件（全改，含一个新函数 `pluginPickRefusal`）＋ 两份词典各一句 ＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `pluginPickRefusal(cause)` 把「超过 14 MB」与「浏览器读不出来」两种选择前的拒绝各给一句话，弹窗新增 `refusePick` 把选中的包连同句子一起丢掉并写进 `refusal` 槽，`onPickFile` 的上限与 `FileReader` 的失败都走它（原来各一句 `toastError`），**不碰接口、无新依赖**）：同一条路上另外两个 zip 入口（技能 / 钩子标签页）早就把读失败画在弹窗里，只有插件导入这两处仍只弹六秒通知，而选择行旁边没有任何文件名（改前实测：上限那条通知区 1 条、弹窗里 0 条、七秒后两边都是 0 条；读失败那条一句笼统的「请求失败，请稍后重试」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 6 个改动文件（含新 spec）**0 警告 0 错误** · 它们与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1456 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3967 / 2 跳过**（基线 351 / 3965，**+2 即本笔新用例**） · **新 spec 2 passed（26.2 s）**（真服务端 9950 + 仓库自带 mock 模型 9951 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r289-a`）：① 14 MB + 1 字节的 zip → 句子逐字「插件包不能超过 14 MB，请压缩后重试」在选择文件那一行下面、通知区没有它、七秒后仍在、没有「已选择」、确认按钮不可点，换一个装得下的文件 → 句子消失、文件名出现、按钮回来；② 读失败（`FileReader` 打桩）→「这个 zip 读不出来，请换一个文件」在同一处、七秒后仍在 · **反证（同一份 spec，改前产物）**：`r289/before-dist`（`index-Bb4dP8M2.js`，md5 `e44a8ab95543185baa9301d8f3aeaaf9`，与上一轮留底逐字节相同；改后 `index-BheNs-IH.js`）挂 9952（数据根 `/root/adelie-fork-data/r289-b`）→ **2 failed**，都死在 `getByRole("alert")` 找不到元素 · **两态探针**（`r289/probe.mjs`）：改后（9954）`alertCount:1 / confirmDisabled:true / toasts:[]`，七秒后一样，换小文件后 `alertCount:0 / pickedLine:true / confirmDisabled:false`；改前（9956）`alertCount:0`、通知区一句同样的句子、**七秒后通知区也空了**，读失败那句是「请求失败，请稍后重试」同样七秒后空 —— 正是缺口；两态 pageerror 0 条 · **真看一眼**：`r289/shots/{after-1-cap-7s,after-2-unreadable-7s,after-3-small-picked,before-1-cap-7s}.png` 肉眼看过 · **相邻回归（真浏览器，一个进程 4 份 spec）**：`plugin-card-refusal` 3 + `plugin-config-save-refusal` 1 + 本笔 2 + `plugin-import-refusal` 2，**8 passed（54.8 s）** · 端口只用 9950–9959（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r289-*`，探针 / 两态产物 / 截图都在 scratchpad 的 `r289/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `3b78d6ab9` |
 | 2026-11-22 | 7.170 | **成员弹层里打不开的工位，原因留在问它的那一行下面**（**2026-11-22 第二百九十轮**落地；`packages/web` 1 个源码文件（`channel-header.tsx`，`MemberPopover` 自己拿 `opening` 与 `refusal: {principal, text}`、`close()` 一并清掉，头部 `openDesk` 改为返回 `refusalText(e)` 不再 `toastError`）＋ 既有 spec +1 条 ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩五处 `openDesk`，这是其中**自有面板**的一处 —— 弹层本来就站在屏幕上，读者按的就是那一行的按钮，而原来的原因是六秒就走的通知（改前实测：弹层里 0 条、通知区 1 条、七秒后通知区也空了） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1456 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3967 / 2 跳过**（与上一轮基线逐项相同） · **新用例 3 passed（16.5 s）**（真服务端 9950 + 自带 mock 8931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r290-a`）：工位路由答 500 带上自己的话 → 句子在弹层里、量到落在那一行下缘之下（`gapUnderRow: 0`）且在弹层内、通知区没有它、**七秒后仍在**、弹层还站着且地址没变；Esc 关掉再打开 → `alert` 数 0；解除拦截后点同一个按钮 → 跳到 `/chat/<会话>` · **反证（改前产物 `r290/before-dist`，主包 `index-BheNs-IH.js`；改后 `index-CTvcdXeN.js`）**：挂 9951 / 数据根 `/root/adelie-fork-data/r290-b` → **1 failed**，弹层里找不到那行字 · **真看一眼**：`r290/shots/{1-popover-open,2-refused,3-refused-7s,4-reopened-clean,5-retry-opened}.png` 肉眼看过，pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `channel-join-refusal` / `channel-send-refusal` / `company.spec` / `company-rail-hints` / `channel-earlier-refusal` / `channel-live-day` **12 passed**（首次 4 红是命令漏了 `ADELIE_HOME`，补上即绿） · 端口只用 9950 / 9951 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r290-*`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `e9162dfa5` |
 | 2026-11-22 | 发布 | **发 v0.7.0 并换装现网**（五条分支 cherry-pick 到 `main`：桌宠实时语音通话、安卓端第一次成包、密钥里非 ASCII 字符的修复、从别的机器搬来的会话、0.6.12 的发布说明 —— 跳首位数字，因为进了新东西；发布提交 `c310d99b5`，门禁在标签检出上 **rc=0 五步全绿**、各包累计 **10962 条通过**；门禁抓到两处真问题各修一笔 —— `ui-gallery` 假后端缺桌宠那四条 `/api/realtime/*` 接口（`ecca83b1d`）、`session-loader.test.ts` 读了 `RuntimeSession` 上不存在的 `workspaceDir` 且没过 prettier（`f8687591e`）→ 远端 `main` = `a7517f716`，标签 `v0.7.0` = 对象 `055df21970…`；三件载荷 linux-x64 114M / universal 57M / win32-x64 150M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.7.0；GitHub Release **id `454473256`** 14 件 762 MB 逐件核 sha256 后发布为 latest；3003 换上 v0.7.0 清单；现网 `/root/.adelie` 整棵换成 0.7.0、旧前端先拷回、瞬时单元 **22:09:51** 重启装上 `index-BaLfRc61.js` 并自核验；随后按用户「你没有更新文档和仓库 readme」补上两份 README 与 `FORK.md` 的改动声明） | 发布轮，逐项见「第二百九十一轮」一节；现网核验写 `rel-070-live-restart-verify.txt`：`penguin version` = v0.7.0、core 戳 `BUILD_DATE 2026-11-22 / BUILD_COMMIT a7517f716…`、7777 在听、`GET /` 200 / 匿名 `/api/me` 401 / 公网 200；`releases/latest` = v0.7.0 | `c310d99b5`（发布）+ 门禁两笔 `ecca83b1d` / `f8687591e` |
+| 2026-11-22 | 7.171 | **日历编辑弹窗里打不开的工位，原因留在链接所在的那一行下面**（**2026-11-22 第二百九十二轮**落地；`packages/web` 1 个源码文件（`calendar-page.tsx`：新增 `deskRefusal`，`openDesk` 改经 `refusalText` 写进去、不再 `toastError`，句子画在元数据那一行下面，`openCreate` / `openEdit` 清掉它）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩四处 `openDesk`，这是其中**自有弹窗**的一处 —— 链接就在弹窗里、请求回来时弹窗仍站着，而原来的原因是一条盖在弹窗标题上、六秒就走的通知（改前实测：800 毫秒时通知区里就是那句话、弹窗里 0 条，七秒后两边都是 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑；ff 进来的新导出让旧 `packages/core/dist` 先红一次，重建 core 后全绿） · `npx oxlint` 2 个改动文件（源码 + 新 spec）**0 警告 0 错误** · 它们与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过** · **新 spec 1 passed（10.6 s）**（真服务端 9961 + 自带 mock 8932 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r292-a`）：工位路由 500 + 自己的话 → 句子在弹窗里、量到起点在链接下缘之下且在弹窗内、通知区没有它、七秒后仍在、弹窗还站着且地址没变；关掉再打开 → `alert` 数 0；解除拦截后同一颗链接打开工位并进入 `/chat/<会话>` · **反证（改前产物 `r292/before-dist`，主包 `index-BaLfRc61.js`；改后 `index-BbWX0Dsq.js`）**挂 9962 / 数据根 `/root/adelie-fork-data/r292-b` → **1 failed**，弹窗里找不到 `alert` · **两态探针**（`r292/shape-check.mjs`）：改前 800 毫秒时通知堆栈里就是那句话、弹窗里 null，七秒后堆栈空；改后通知堆栈只有内测提示、弹窗里是「操作被拒绝：…」，七秒后仍在；三种失败形状（500/400 + 未知码、500 + 表里有的码）改后都落在弹窗里 · 截图 `r292/life-{before,after}/shots/life-{1-800ms,2-7s}.png` 与 `r292/after/shots/` 肉眼看过，两态 pageerror 0 条 · **相邻回归**（真浏览器）`calendar-refusal` 2 + `company.spec` 1，**3 passed（38.5 s）** · 端口只用 9961 / 9962 / 8932（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r292-*`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `0f0dcea0a` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
