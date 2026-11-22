@@ -76,8 +76,8 @@ export function updatePetPrefs(userDataDir: string, patch: Partial<PetPrefs>): P
 // --- the wire, to and from the Web App's Appearance settings -----------------
 
 /** Wraps what the pet window is currently doing for the port push. */
-export function petStatusMessage(showPet: boolean): DesktopPetStatusMessage {
-  return { type: "desktop-pet-status", status: { showPet } };
+export function petStatusMessage(showPet: boolean, call: boolean): DesktopPetStatusMessage {
+  return { type: "desktop-pet-status", status: { showPet, call } };
 }
 
 /**
@@ -91,10 +91,15 @@ export function parsePetCommand(data: unknown): PetCommand | null {
   if (msg.type !== "desktop-pet-command") return null;
   const patch: PetCommand = {};
   if (typeof msg.showPet === "boolean") patch.showPet = msg.showPet;
+  if (typeof msg.call === "boolean") patch.call = msg.call;
   return patch;
 }
 
-/** What one relayed command asks the shell to change; every field optional, as the route's patch is. */
+/**
+ * What one relayed command asks the shell to change; every field optional, as the route's patch is.
+ * `showPet` is persisted, `call` is not — a call lasts as long as its window does.
+ */
 export interface PetCommand {
   showPet?: boolean;
+  call?: boolean;
 }

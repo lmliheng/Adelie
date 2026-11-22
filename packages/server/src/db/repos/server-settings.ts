@@ -9,9 +9,14 @@ import {
   DEFAULT_ATTACHMENT_TOTAL_MB,
 } from "../../services/attachment-limits.js";
 import { DEFAULT_ASR_BASE_URL, DEFAULT_ASR_MODEL } from "../../services/asr.js";
+import {
+  DEFAULT_REALTIME_BASE_URL,
+  DEFAULT_REALTIME_MODEL,
+  DEFAULT_REALTIME_VOICE,
+} from "../../services/realtime.js";
 import { Component, Use } from "@adelie/core/kernel";
 import type { Db } from "../../hmr/capabilities.js";
-import type { AsrSettings, Settings } from "../../mechanisms/settings.js";
+import type { AsrSettings, RealtimeSettings, Settings } from "../../mechanisms/settings.js";
 
 /** Key of the "application uses the proxy" switch (the server's own outbound dispatcher); default on. */
 const PROXY_FOR_APP_KEY = "proxy_for_app";
@@ -44,6 +49,12 @@ const AGENT_API_KEY = "agentApiEnabled";
 const ASR_BASE_URL_KEY = "asrBaseUrl";
 const ASR_MODEL_KEY = "asrModel";
 const ASR_API_KEY = "asrApiKey";
+
+/** Real-time voice: the provider site, the model, the voice and the key the pet's call uses. */
+const REALTIME_BASE_URL_KEY = "realtimeBaseUrl";
+const REALTIME_MODEL_KEY = "realtimeModel";
+const REALTIME_VOICE_KEY = "realtimeVoice";
+const REALTIME_API_KEY = "realtimeApiKey";
 
 @Component()
 export class ServerSettingsRepo implements Settings {
@@ -207,6 +218,28 @@ export class ServerSettingsRepo implements Settings {
     this.set(ASR_BASE_URL_KEY, JSON.stringify(value.baseUrl));
     this.set(ASR_MODEL_KEY, JSON.stringify(value.model));
     this.set(ASR_API_KEY, JSON.stringify(value.apiKey));
+  }
+
+  /**
+   * Real-time voice settings, read the same way the speech-input ones are: the site, the model
+   * and the voice fall back to the built-in defaults so the page shows what a call would use; the
+   * key has none, because an unset key is what keeps the call button unavailable rather than
+   * silently failing on the first attempt.
+   */
+  getRealtimeSettings(): RealtimeSettings {
+    return {
+      baseUrl: this.getString(REALTIME_BASE_URL_KEY, DEFAULT_REALTIME_BASE_URL),
+      model: this.getString(REALTIME_MODEL_KEY, DEFAULT_REALTIME_MODEL),
+      voice: this.getString(REALTIME_VOICE_KEY, DEFAULT_REALTIME_VOICE),
+      apiKey: this.getString(REALTIME_API_KEY, ""),
+    };
+  }
+
+  setRealtimeSettings(value: RealtimeSettings): void {
+    this.set(REALTIME_BASE_URL_KEY, JSON.stringify(value.baseUrl));
+    this.set(REALTIME_MODEL_KEY, JSON.stringify(value.model));
+    this.set(REALTIME_VOICE_KEY, JSON.stringify(value.voice));
+    this.set(REALTIME_API_KEY, JSON.stringify(value.apiKey));
   }
 
   /** A stored JSON string, or `fallback` when the row is absent, unreadable, blank or not a string. */

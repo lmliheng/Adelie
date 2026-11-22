@@ -121,7 +121,14 @@ import {
   updateTrayPrefs,
 } from "./tray-prefs.js";
 import { parsePetCommand, petStatusMessage, readPetPrefs, updatePetPrefs } from "./pet-prefs.js";
-import { PET_WINDOW_OPTIONS, petShotPath, petWindowPosition, petWindowUrl } from "./pet-window.js";
+import {
+  PET_WINDOW_OPTIONS,
+  petResizedBounds,
+  petShotPath,
+  petWindowPosition,
+  petWindowSize,
+  petWindowUrl,
+} from "./pet-window.js";
 import { getUpdaterStatus, handleUpdaterCommand, initUpdater, onUpdaterStatus } from "./updater.js";
 import { parseUpdaterCommand, updaterStatusMessage } from "./updater-status.js";
 import {
@@ -164,6 +171,12 @@ let showTrayIcon = true;
  */
 let petWin: BrowserWindow | null = null;
 let showPet = false;
+/**
+ * Whether a call is open in the pet window, which is what sizes that window. It is NOT a
+ * preference and is never written to disk: a call lasts exactly as long as the page that opened it,
+ * so it starts false on every launch and returns to false when the window goes.
+ */
+let petCall = false;
 /**
  * The language the tray menu is drawn in. Seeded from the stored report, or from the device
  * when there is none, so the first menu of a fresh launch is already right — the Web App's
@@ -645,7 +658,8 @@ function openPet(): void {
       : screen.getPrimaryDisplay();
   const pet = new BrowserWindow({
     ...PET_WINDOW_OPTIONS,
-    ...petWindowPosition(display.workArea),
+    ...petWindowSize(petCall),
+    ...petWindowPosition(display.workArea, petWindowSize(petCall)),
   });
   petWin = pet;
   // Chrome, not a browsing surface: it opens no window, and a navigation that leaves the app
@@ -665,6 +679,10 @@ function openPet(): void {
   });
   pet.on("closed", () => {
     petWin = null;
+    // A call lives in that page: whatever it was doing went with it. Reset here rather than
+    // wherever a call is hung up, so a window destroyed mid-call cannot leave the next one
+    // opening at call size with nothing in it.
+    petCall = false;
   });
   void pet.loadURL(petWindowUrl(origin));
 }
@@ -697,7 +715,32 @@ function setShowPet(next: boolean): void {
 
 /** Tells the page what the pet window is actually doing, which is what its switch renders. */
 function pushPetStatus(): void {
-  relayChild?.postMessage(petStatusMessage(showPet));
+  relayChild?.postMessage(petStatusMessage(showPet, petCall));
+}
+
+/**
+ * Applies what the pet page reports about its own call: the window grows to the stage while one is
+ * open and returns to the resting size the moment it ends. Nothing persists — the page is the one
+ * that knows, and it reports the state it is actually in (see the Web App's /pet route), so this
+ * only ever follows it.
+ */
+function setPetCall(next: boolean): void {
+  if (next === petCall) return;
+  petCall = next;
+  applyPetSize();
+  pushPetStatus();
+}
+
+/**
+ * Resizes the pet window in place for the current call state, keeping its bottom-right corner
+ * where the user left it. A no-op when there is no window: a call without one has nothing to size,
+ * and the state still rides the next push so a window opened later comes up correct.
+ */
+function applyPetSize(): void {
+  const pet = petWin;
+  if (pet === null || pet.isDestroyed()) return;
+  const display = screen.getDisplayMatching(pet.getBounds());
+  pet.setBounds(petResizedBounds(pet.getBounds(), petWindowSize(petCall), display.workArea));
 }
 
 // --- the Windows login item -------------------------------------------------
@@ -772,7 +815,10 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
       return;
     }
     const pet = parsePetCommand(message);
-    if (pet !== null && pet.showPet !== undefined) setShowPet(pet.showPet);
+    if (pet !== null) {
+      if (pet.showPet !== undefined) setShowPet(pet.showPet);
+      if (pet.call !== undefined) setPetCall(pet.call);
+    }
     const loginItem = parseLoginItemCommand(message);
     if (loginItem !== null && loginItem.openAtLogin !== undefined) {
       setLoginItem(loginItem.openAtLogin);

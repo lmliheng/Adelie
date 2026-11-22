@@ -35,6 +35,7 @@ import { applyProxySettings, installGlobalProxyDispatcher } from "./net/proxy.js
 import { PluginHost } from "./plugin/host.js";
 import { loadPlugins } from "./plugin/loader.js";
 import { attachTerminalWebSocket } from "./terminal/ws.js";
+import { attachRealtimeWebSocket } from "./realtime/ws.js";
 import { loopbackHostRoles } from "./services/preview-token.js";
 import { acquireServerLock, liveServerLock, releaseServerLock } from "./lock.js";
 import { shellPortOf, wireShellUpdatePort } from "./services/desktop-update-port.js";
@@ -229,10 +230,15 @@ class PenguinServer {
   buildApp(): void {
     this.app = createApp(this.deps);
     attachTerminalWebSocket(this.httpServer as unknown as HttpServer, this.terminalWebSocketDeps());
+    attachRealtimeWebSocket(this.httpServer as unknown as HttpServer, this.realtimeWebSocketDeps());
     if (this.ipv6Loopback !== null) {
       attachTerminalWebSocket(
         this.ipv6Loopback as unknown as HttpServer,
         this.terminalWebSocketDeps(),
+      );
+      attachRealtimeWebSocket(
+        this.ipv6Loopback as unknown as HttpServer,
+        this.realtimeWebSocketDeps(),
       );
     }
   }
@@ -460,6 +466,7 @@ class PenguinServer {
     // loopback opened after buildApp() (never in practice — binding is quick) gets it here.
     if (this.app !== undefined) {
       attachTerminalWebSocket(loopback as unknown as HttpServer, this.terminalWebSocketDeps());
+      attachRealtimeWebSocket(loopback as unknown as HttpServer, this.realtimeWebSocketDeps());
     }
   }
 
@@ -471,6 +478,26 @@ class PenguinServer {
       // A getter: the upgrade handler asks per handshake, and gets the current generation's.
       get authService() {
         return auth();
+      },
+      log: (line: string) => console.log(line),
+    };
+  }
+
+  /**
+   * Real-time voice wiring, shared by every listener this process opens. The settings and the auth
+   * are read per handshake through the tree — the same way the terminal's are — so a settings
+   * change or a hot swap applies to the next call rather than to the next restart.
+   */
+  private realtimeWebSocketDeps() {
+    const tree = () => this.deps.tree;
+    return {
+      // A getter-carrying pair: the upgrade handler asks per handshake, and gets the current
+      // generation's settings and auth.
+      get settings() {
+        return tree().api<Settings>("SettingsModule", "Settings");
+      },
+      get authService() {
+        return tree().api<Auth>("IdentityModule", "Auth");
       },
       log: (line: string) => console.log(line),
     };

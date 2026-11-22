@@ -395,6 +395,76 @@ export interface AsrTestResponse {
 }
 
 /**
+ * Real-time voice — the desktop pet's call (GET|PUT /api/realtime/config, admin only).
+ *
+ * Unlike the composer's microphone above, a call is one long-lived WebSocket: audio up, audio
+ * down, a transcript of both, and the interruption that makes it a conversation. It runs on a
+ * speech-to-speech model, so the deployment stores a model and a voice as well as a key, and the
+ * relay that holds the key lives on the server (realtime/ws.ts) — the browser never sees it.
+ *
+ * `baseUrl`, `model` and `voice` are never empty (an unset one is the built-in default), so the
+ * page shows what a call would actually use. `apiKey` is write-only, like the speech-input key.
+ */
+export interface RealtimeConfig {
+  /** The provider's site, e.g. `https://dashscope.aliyuncs.com`. */
+  baseUrl: string;
+  /** The upstream realtime model id. */
+  model: string;
+  /** The voice the model answers in. */
+  voice: string;
+  /** Whether a key is stored. The key itself never crosses this boundary. */
+  hasKey: boolean;
+}
+
+export interface RealtimeConfigResponse {
+  config: RealtimeConfig;
+}
+
+export interface RealtimeConfigUpdateRequest {
+  baseUrl?: string;
+  model?: string;
+  voice?: string;
+  /** Omitted or empty keeps the stored key; a non-empty value replaces it. */
+  apiKey?: string;
+}
+
+/**
+ * POST /api/realtime/test request: the settings page's connectivity check. Every field is optional
+ * and falls back to what is stored, so the page can check the form before saving it.
+ */
+export interface RealtimeTestRequest {
+  baseUrl?: string;
+  model?: string;
+  voice?: string;
+  apiKey?: string;
+}
+
+/**
+ * POST /api/realtime/test result. `ok: false` is a check that RAN: `message` is then the
+ * provider's own sentence (nothing is translated in between), and `endpoint` is the WebSocket the
+ * check actually opened, so the operator can see which site the call would reach.
+ */
+export interface RealtimeTestResponse {
+  ok: boolean;
+  message: string;
+  endpoint: string;
+}
+
+/**
+ * GET /api/realtime/status (any signed-in user): whether a call is possible at all, and which
+ * model and voice it would use. The key is not part of this — only its presence is, which is what
+ * the pet page needs in order to offer the call button rather than fail on the first attempt.
+ */
+export interface RealtimeStatusResponse {
+  /** A key is stored, so a call button can lead somewhere. */
+  configured: boolean;
+  /** The model a call would run on (never empty). */
+  model: string;
+  /** The voice a call would answer in (never empty). */
+  voice: string;
+}
+
+/**
  * The data root's storage ledger (GET /api/admin/storage) — what is on disk under
  * `ADELIE_HOME`, what each thing is for, and what a person could clean up.
  *
@@ -5263,15 +5333,24 @@ export interface DesktopTrayCommandMessage {
 export interface DesktopPetStatus {
   /** The pet window is on screen (or about to be) while the shell runs. */
   showPet: boolean;
+  /**
+   * The pet has a call open, so the window is drawn at call size rather than at its resting
+   * size. Optional: a shell older than the call feature pushes no such field, which reads as
+   * "no call" — the only honest reading when the window has no call to show.
+   */
+  call?: boolean;
 }
 
 /**
- * What one PUT asks the shell to change. One field today, and optional all the same: the request
- * shape follows the tray patch beside it, and the pet window's own "hide me" writes the same
- * field the Settings switch does.
+ * What one PUT asks the shell to change. `showPet` is a preference the shell persists; `call` is
+ * not — it is the pet page saying a call has started or ended, so the shell resizes the window
+ * for as long as the call lasts and nothing survives a restart. Unlike the tray patch beside it,
+ * this one is transient in half its fields, which is why the route accepts either alone rather
+ * than requiring the pair.
  */
 export interface DesktopPetPatch {
   showPet?: boolean;
+  call?: boolean;
 }
 
 /**
@@ -5293,6 +5372,7 @@ export interface DesktopPetStatusMessage {
 export interface DesktopPetCommandMessage {
   type: "desktop-pet-command";
   showPet?: boolean;
+  call?: boolean;
 }
 
 // Windows login item (desktop mode, Windows only)

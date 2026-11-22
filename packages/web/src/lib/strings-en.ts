@@ -788,6 +788,33 @@ export const en: Strings = {
     speechTestOk: (endpoint: string): string => `Reachable, at ${endpoint}`,
     /** Followed by the service's own sentence, untranslated. */
     speechTestFailed: (endpoint: string): string => `Not reachable, at ${endpoint}: `,
+    realtimeTitle: "Real-time voice",
+    /** Disclosed at the pane heading: what a call is, and where the key lives. */
+    realtimeInfo:
+      "The speech-to-speech model behind the pet's call button: the microphone goes to the " +
+      "provider below, the answer is synthesized there, and the whole call is relayed by this " +
+      "server, so the provider key stays here rather than being handed to the page. It is not " +
+      "the speech input above — that one transcribes, this one talks.",
+    realtimeBaseUrl: "Service address",
+    realtimeBaseUrlHint: "The provider's site, e.g. https://dashscope.aliyuncs.com",
+    realtimeModel: "Realtime model",
+    realtimeModelHint: "The provider's model id, e.g. qwen3.8-omni-flash-realtime",
+    realtimeVoice: "Voice",
+    realtimeVoiceHint: "The voice the model answers in, e.g. Tina",
+    realtimeApiKey: "API key",
+    realtimeApiKeyHint: "Leave empty to keep the stored key",
+    /** The two states of the stored key, shown beside the key field. */
+    realtimeKeyStored: "A key is stored",
+    realtimeKeyMissing: "No key yet — the pet cannot take calls",
+    /**
+     * The connectivity check: one session opened and closed against the site, so an operator learns
+     * before a call that the key, the site or the model is wrong.
+     */
+    realtimeTest: "Test connection",
+    realtimeTestRunning: "Testing…",
+    realtimeTestOk: (endpoint: string): string => `Reachable, at ${endpoint}`,
+    /** Followed by the service's own sentence, untranslated. */
+    realtimeTestFailed: (endpoint: string): string => `Not reachable, at ${endpoint}: `,
     /** The fold holding the fields a settings group marks advanced. */
     pluginAdvanced: "Advanced",
     /** A table cell its row does not let change, beside the lock mark. */
@@ -1322,6 +1349,37 @@ export const en: Strings = {
         : `${count} tool calls are waiting for your approval`,
     budgetWarned: "An employee is close to their budget",
     budgetPaused: "An employee was paused on budget",
+    /**
+     * The call (real-time voice). The panel row starts one; the stage replaces the whole window
+     * while one is open, which is also when the shell grows that window.
+     */
+    callRow: "Voice call",
+    /** The panel row's action, and the stage's heading. */
+    callOpen: "Call",
+    /** The panel row's own line when a call is possible. */
+    callReady: "Press Call and talk into the microphone.",
+    callTitle: "On a call",
+    /** The stage's one word about the call, per state. */
+    callIdle: "Not started",
+    callConnecting: "Connecting…",
+    callListening: "Listening",
+    callThinking: "Thinking…",
+    callSpeaking: "Speaking…",
+    callEnded: "Call ended",
+    callEmpty: "Say something into the microphone.",
+    /** The two speakers, as the transcript prefixes them. */
+    callYou: "You",
+    callPet: "Adelie",
+    /** Appended to a reply that was talked over, so the turn reads as half a sentence. */
+    callInterrupted: "(interrupted)",
+    callHangUp: "Hang up",
+    /** The stage's exit once the call is over — the same button slot, a different act. */
+    callClose: "Close",
+    callMute: "Mute",
+    callUnmute: "Unmute",
+    /** The call button where no key is stored — the admin has one place to fix it, and it is named. */
+    callNotConfigured:
+      "Real-time voice is not configured yet: ask an admin to fill in the key under Settings › Server › Real-time voice.",
   },
 
   common: {

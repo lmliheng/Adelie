@@ -101,7 +101,12 @@ export function parsePetStatusMessage(data: unknown): DesktopPetStatus | null {
   const status = msg.status as Partial<DesktopPetStatus> | undefined;
   if (typeof status !== "object" || status === null) return null;
   if (typeof status.showPet !== "boolean") return null;
-  return { showPet: status.showPet };
+  // The call flag is carried only when the shell had one to say: a shell older than the call
+  // feature pushes the switch alone, and reading that as "no call" is what keeps its window
+  // working rather than rejected.
+  return typeof status.call === "boolean"
+    ? { showPet: status.showPet, call: status.call }
+    : { showPet: status.showPet };
 }
 
 /** Validates one shell login-item push. Same rule as the tray's: strict on the discriminator and on every field it carries. */
