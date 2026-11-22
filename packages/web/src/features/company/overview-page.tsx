@@ -21,6 +21,9 @@
  *
  * Loading discipline: the skeleton shows only until the first response or the first error;
  * a failed refresh keeps what was last read on screen under one error line with its retry.
+ * The desk button is the page's own action rather than a row's, so a desk it could not open
+ * answers under that button — the header's, or the guide's step 1 in a fresh organization — in
+ * the server's words, until the next press.
  */
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -38,11 +41,10 @@ import {
   RuledSection,
   Segmented,
   Text,
-  toastError,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { formatDateTime, formatMoney, formatRelativeShort } from "../../lib/format";
 import { useDocumentTitle } from "../../lib/use-document-title";
 import { toneDot, toneInk, toneSurface } from "../../lib/tone";
@@ -275,6 +277,7 @@ function StepCard({
   title,
   body,
   action,
+  note,
 }: {
   index: number;
   done: boolean;
@@ -282,6 +285,8 @@ function StepCard({
   title: string;
   body: string;
   action: ReactNode;
+  /** What this step's own button answered, drawn under the card's action row at full width. */
+  note?: ReactNode;
 }) {
   return (
     <li
@@ -312,6 +317,7 @@ function StepCard({
         )}
         {action}
       </span>
+      {note}
     </li>
   );
 }
@@ -330,6 +336,12 @@ export function OverviewPage() {
   const [calendarCount, setCalendarCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openingDesk, setOpeningDesk] = useState(false);
+  /**
+   * Why the CEO's desk did not open. The page stays right where it was when the answer comes
+   * back, so the reason is said under the button that asked instead of a toast that walked away
+   * while that button sat there looking untouched (7.19).
+   */
+  const [deskRefusal, setDeskRefusal] = useState<string | null>(null);
   /** The inbox chip in force; local to the visit, as a filter over one section should be. */
   const [inboxFilter, setInboxFilter] = useState<InboxFilter>("all");
 
@@ -339,6 +351,7 @@ export function OverviewPage() {
     setChart(null);
     setCalendarCount(null);
     setError(null);
+    setDeskRefusal(null);
   }, [projectId, orgId]);
 
   const load = useCallback(async () => {
@@ -390,11 +403,13 @@ export function OverviewPage() {
   const openCeoDesk = async () => {
     if (chart === null || openingDesk) return;
     setOpeningDesk(true);
+    setDeskRefusal(null);
     try {
       const desk = await api.getOrgDesk(projectId, orgId, chart.ceoAgentId);
       navigate(`/chat/${desk.sessionId}`);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The button is the retry, so the page stays put and says why in its own words.
+      setDeskRefusal(refusalText(e));
     } finally {
       setOpeningDesk(false);
     }
@@ -445,6 +460,23 @@ export function OverviewPage() {
   const inboxTotals = inboxCounts(inbox);
   const visibleInbox = inbox.filter((row) => inboxMatches(row, inboxFilter));
   const ceoName = names.get(chart.ceoAgentId) ?? chart.ceoAgentId;
+
+  /**
+   * The desk's answer in one shape: the server's sentence, two lines at most, the whole of it on
+   * hover. It is drawn under whichever control asked — the guide's step 1 in a fresh
+   * organization, the header button otherwise — and the two never show at once, since the guide
+   * and the header button are each other's alternative.
+   */
+  const deskRefusalLine = (text: string, className = "") => (
+    <p
+      role="alert"
+      data-tooltip={S.common.refused(text)}
+      data-tooltip-content="text"
+      className={`line-clamp-2 break-words text-xs ${toneInk.danger} ${className}`}
+    >
+      {S.common.refused(text)}
+    </p>
+  );
 
   const deskButton = (variant: "primary" | "secondary", size: "sm" | "md") => (
     <Button
@@ -506,6 +538,12 @@ export function OverviewPage() {
           className="mb-4"
         />
       )}
+
+      {/* The header's desk button was the attempt; this line is where its answer goes — the same
+          slot the refresh error above uses. A fresh organization has no header button (its
+          guide's step 1 is the same call to action and holds the line itself), so the two never
+          draw together. Cleared by the next press, so the button is the retry. */}
+      {deskRefusal !== null && !steps.fresh && deskRefusalLine(deskRefusal, "mb-4")}
 
       {/* Hero: name and state, the metadata line, and the mission folded to one line. The
           period's spend is not repeated here — it is the last cell of the KPI strip. */}
@@ -692,6 +730,9 @@ export function OverviewPage() {
                 title={stepText[step].title}
                 body={stepText[step].body}
                 action={stepAction(step, steps.next === step)}
+                {...(step === "ceo" && deskRefusal !== null
+                  ? { note: deskRefusalLine(deskRefusal) }
+                  : {})}
               />
             ))}
           </ol>
