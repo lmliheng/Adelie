@@ -3080,6 +3080,100 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       用户 2026-11-22 接过 Venice AI 那单之后甩两张截图报两个主题显示 bug，随后又要求「其他主题有
       类似问题 要一起改」。见「第二百九十四轮」一节。
 
+
+- [x] **7.174 概览页打不开的 CEO 工位，原因留在页面自己的答复行里**（**2026-11-23 第二百九十五轮**
+      落地，提交见「已完成的轮次」；`packages/web` 1 个源码文件 ＋ 1 个新 spec ＋ changelog 一对 ——
+      `openCeoDesk` 的 `catch` 经 `refusalText` 写进新的 `deskRefusal`、不再 `toastError`；页头有按钮
+      那一版画在正文最上方（与「刷新失败」同一槽），新建组织那一版画在「三步上手」第一步那张卡的按钮
+      下面（`StepCard` 多一个可选 `note`，整行宽度），**不碰接口、无新依赖、没有新文案**）：7.19 的规矩
+      （拒绝留在尝试发生的地方）在公司页还剩三处 `openDesk`，这是其中**页头按钮**的一处 —— 按过的按钮
+      与按之前一模一样，原因只在一条六秒就走的通知里（改前实测：800 毫秒时通知区里就是那句话、页面上
+      0 条，七秒后两边都是 0 条）。见「第二百九十五轮」一节。
+
+## 第二百九十五轮：概览页打不开的 CEO 工位，原因留在页面自己的答复行里（2026-11-23，条目 7.174）
+
+**开工**：`git status --short` 干净；`git fetch origin && git merge --ff-only origin/main` 报
+`Already up to date`（停在 `a0795854d`）。**第一次 `git push origin main` 被拒**（`tip … is behind`）：
+另一条线在这期间推了两轮 —— 第二百九十三轮 / 7.172（Venice AI 分组）与第二百九十四轮 / 7.173（导入主题
+的层叠层顺序）。本轮两笔 `git rebase origin/main` 之后重编为**第二百九十五轮 / 7.174**（工作区当时是干净的，
+没有任何文件受影响，只是台账里的号改了）。
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（剩下的是桌面壳写侧、既有部署单元
+`adelie-app.service` 与两份非契约项）、3.5（要拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6（促销搬进
+Project 配置要拍板）、5.10（要 mermaid 新依赖）；第 7 节到 7.171 已全勾。上一轮「没做 / 留着」点名公司页
+余下三处 `openDesk`，其中概览页这一处的表面最省事：按钮就在页头，页面在读失败时也不动，属一轮的量。
+
+**缺口是什么**（改前产物实测，见下）：概览页页头的「打开 CEO 工位」先读工位会话（没有就顺手建一个）
+再把人带进去，读失败时原因只 `toastError` —— 那条通知六秒后自己走了，页头那颗按钮与点之前一模一样，
+既没说被拒了、也没说为什么。
+
+### 做了什么
+
+- `packages/web/src/features/company/overview-page.tsx`：
+  - 新增 `deskRefusal` 状态；`openCeoDesk` 开头清空、`catch` 里经 `refusalText` 写进去 —— 不再
+    `toastError`，因此它的导入也删了；切换组织的那段重置一并清掉（上一个组织的答复不该跟过来）。
+  - 拒绝句收成一个 `deskRefusalLine(text, className?)`（`role="alert"`、危险墨色、限两行、悬停看全文、
+    文字用 `S.common.refused(...)`），画在**问它那颗按钮下面**：页头有按钮那一版落在正文最上方（与
+    「刷新失败」那条 `ErrorLine` 同一槽、`mb-4`）；新建组织那一版页头本来就没有按钮（它的第一步就是
+    同一件事），所以 `StepCard` 多一个可选 `note`，把句子画在那张卡片的动作行下面、占整行宽度。
+  - 两处互斥（`steps.fresh` 决定页头有没有按钮），所以同一刻只会画一条。
+  - 模块头与状态的注释各补一句「答案说在问它的那颗按钮下面」。
+- 没有新文案、没有新依赖、不碰接口。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 /
+  613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名
+  `@adelie/*` 跑）。
+- `npx oxlint` 改动源码与 1 个新 spec **0 警告 0 错误**；两者与 changelog 一对 `prettier --check` 干净
+  （spec 首跑不过，`--write` 一次后复检全绿）；`git diff --check` 干净。
+- 逐包 test 全绿（`EXIT=0`、0 失败）：core **70 文件 / 1458 通过 / 6 跳过** · ui **133 / 1115** ·
+  cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 文件 / 3970 通过 / 2 跳过**（变基进来的
+  另一条线那份 `head-layers.test.ts` 与模型分组那一例都在里面；本笔不新增单测）。
+- **变基之后重验一遍**：`pnpm --filter @adelie/core build`（server 的用例读 core 的 dist）→ 六包
+  `typecheck` 仍全绿 → 五包 test 仍 **`EXIT=0`、0 失败**（上面那组数就是变基后的）；`packages/web` 也在
+  最终树上重建（主包 `index-C-C9Bj56.js`，含另一条线的层序那一处）再跑一次 e2e，见下。
+- **新用例**（`packages/web/e2e/overview-desk-refusal.spec.mjs`，1 条，真服务端 9971 + 仓库自带 mock 模型
+  8933 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r293-a`）：先建一个组织并补一张工单（新建
+  组织的页头没有那颗按钮，它落在三步指引里；一张工单就让指引让位）→ 工位路由答 500 并带上自己的话 →
+  句子在页面上、**量到起点在页头按钮下缘之下**（`lineBox.y >= buttonBox.y + buttonBox.height - 1`）、
+  通知区没有它、按钮回到可点且文字是「打开 CEO 工位」、**七秒后仍在**、地址仍是 `/org/<项目>/<组织>/overview`；
+  解除拦截后按同一颗按钮 → 进入 `/chat/<会话>` 且那句子不在新页面上。**1 passed（9.5 s）**。
+  最终树上（变基后重建、服务端 9973 + mock 8934 + 数据根 `/root/adelie-fork-data/r293-c`）再来一次：
+  **1 passed（9.0 s）**。
+- **反证（同一份 spec，改前产物）**：`r293/before-dist`（`git checkout HEAD -- overview-page.tsx` 后重建，
+  主包 `index-BbWX0Dsq.js`；当时的改后产物 `index-BJzpOryR.js`）挂在 9972、数据根 `/root/adelie-fork-data/r293-b` →
+  **1 failed**，死在 `getByRole("alert")` 的 `toHaveText`（`element(s) not found`）。
+- **两态探针（真服务端 + 真浏览器，`r293/shape-check.mjs`）**：同一个动作（工位路由 500 + 表里没有的码）——
+  **改前**（9972）：800 毫秒时通知堆栈里就是 `the desk session could not be reserved`、页面上 `alert`
+  为 **null**；七秒后堆栈**空**、`alert` 仍 null。**改后**（9971）：800 毫秒时堆栈里只有那句内测提示、
+  页面上是「操作被拒绝：the desk session could not be reserved」；七秒后**仍在**；量到那行在页头按钮下缘
+  之下 **17 px**。**新建组织那条路**（`FRESH=1`，不补工单）：句子在三步指引第一步那张卡的按钮下面
+  **8 px**、七秒后仍在。截图 `r293/life-{before,after,fresh}/shots/life-{1-800ms,2-7s}.png` 肉眼看过
+  （改前页顶是一条通知、页面本身没有字；改后红字就压在概览标题下 / 指引那张卡里），两态 pageerror 各
+  **0 条**，console 只有既有 `/machines` **403** 与探针自己拦下的 500。
+- **取证途中的一条更正**：造工单要 `slug` —— 中文标题推不出 slug 时路由答 400 `slug_required`（第一次跑
+  就是红在这里），spec 里补上 `slug` 与把响应正文写进断言消息之后转绿。
+- **相邻回归（真浏览器）**：`company-rail-hints` 2 + `org-delete-refusal` 1 + `org-settings-refusal` 2
+  **5 passed（26.7 s）**，`company.spec` **1 passed（22.8 s）** —— 都是踏进概览页的那几条；最终树上
+  `company-rail-hints` 2 + 本笔 1 又跑了一次，**3 passed（19.0 s）**。
+- 端口只用 9971 / 9972 / 9973 / 8933 / 8934（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落 `/root/adelie-fork-data/r293-{a,b,c}`，探针 / 两态产物 / 截图 / 改后源码留底都在 scratchpad 的
+  `r293/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 公司页还剩两处 `openDesk` 是六秒通知：`org-chart-page`（卡片上的节点菜单，菜单一关就没有表面）、
+  `org-session-groups`（侧栏工位行与折叠轨道上的头像）—— 两处都要先决定句子挂在哪，其中侧栏那条还要
+  决定它会不会撑开一个紧凑的列表。
+- 概览页的其它读失败（`load()` 重新读组织 / 组织图失败）仍走页面顶部那条 `ErrorLine`，与这一处不是同
+  一个槽位，没顺手改。
+
+### 提交
+
+- 功能一笔（web 源码 1 + 新 spec 1 + changelog 2）：`faf079336`。
+- 台账（条目 7.174、上表那一行、本节）随本文件另起一笔。
+
 ## 第二百九十四轮：导入过主题的机器上主题配方不再被应用样式盖住；四套主题里文字压在填充上读不清的取值一起调了（2026-11-22，条目 7.173）
 
 **开工**：`git status --short` 干净，`HEAD` = 第二百九十三轮那两笔（`0ff955e9c` + 台账 `32976265a`）。
@@ -5086,6 +5180,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-22 | 7.171 | **日历编辑弹窗里打不开的工位，原因留在链接所在的那一行下面**（**2026-11-22 第二百九十二轮**落地；`packages/web` 1 个源码文件（`calendar-page.tsx`：新增 `deskRefusal`，`openDesk` 改经 `refusalText` 写进去、不再 `toastError`，句子画在元数据那一行下面，`openCreate` / `openEdit` 清掉它）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩四处 `openDesk`，这是其中**自有弹窗**的一处 —— 链接就在弹窗里、请求回来时弹窗仍站着，而原来的原因是一条盖在弹窗标题上、六秒就走的通知（改前实测：800 毫秒时通知区里就是那句话、弹窗里 0 条，七秒后两边都是 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑；ff 进来的新导出让旧 `packages/core/dist` 先红一次，重建 core 后全绿） · `npx oxlint` 2 个改动文件（源码 + 新 spec）**0 警告 0 错误** · 它们与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过** · **新 spec 1 passed（10.6 s）**（真服务端 9961 + 自带 mock 8932 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r292-a`）：工位路由 500 + 自己的话 → 句子在弹窗里、量到起点在链接下缘之下且在弹窗内、通知区没有它、七秒后仍在、弹窗还站着且地址没变；关掉再打开 → `alert` 数 0；解除拦截后同一颗链接打开工位并进入 `/chat/<会话>` · **反证（改前产物 `r292/before-dist`，主包 `index-BaLfRc61.js`；改后 `index-BbWX0Dsq.js`）**挂 9962 / 数据根 `/root/adelie-fork-data/r292-b` → **1 failed**，弹窗里找不到 `alert` · **两态探针**（`r292/shape-check.mjs`）：改前 800 毫秒时通知堆栈里就是那句话、弹窗里 null，七秒后堆栈空；改后通知堆栈只有内测提示、弹窗里是「操作被拒绝：…」，七秒后仍在；三种失败形状（500/400 + 未知码、500 + 表里有的码）改后都落在弹窗里 · 截图 `r292/life-{before,after}/shots/life-{1-800ms,2-7s}.png` 与 `r292/after/shots/` 肉眼看过，两态 pageerror 0 条 · **相邻回归**（真浏览器）`calendar-refusal` 2 + `company.spec` 1，**3 passed（38.5 s）** · 端口只用 9961 / 9962 / 8932（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r292-*`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `0f0dcea0a` |
 | 2026-11-22 | 7.172 | **模型库里多了一个 Venice AI 分组，收录它的无审查模型**（**2026-11-22 第二百九十三轮**落地；`packages/core` 1 个源码文件 ＋ 1 份单测 ＋ `packages/web` 1 份单测 ＋ `packages/docs` 两份模型页 ＋ changelog 一对 —— `MODEL_PROVIDERS` 新增 `venice`（label "Venice AI"、OpenAI 兼容的 `gatewayBaseUrl` `https://api.venice.ai/api/v1`、取 key 页 `https://venice.ai/settings/api` 与模型列表页 `https://docs.venice.ai/models/overview`），注释从「The seven gateway groups」改成 **eight**；`MODEL_CATALOG` 新增九条预置（`abliteration-abliterated-model-large-flash` 1M/视觉、`abliteration-abliterated-model-large-v2` 1M/纯文本、`deepseek-v4-1-flash-1017-uncensored` 与 `deepseek-v4-1-flash-uncensored` 各 1M/视觉、`glm-5-3-flash-uncensored` 1 048 576/视觉、`olafangensan-glm-4.7-flash-heretic` 200K/纯文本、`qwen-3-6-plus` 1M/视觉+视频、`venice-uncensored-1-2` 与 `venice-uncensored-role-play` 各 128K/视觉），每条 `clientType: "openai-chat"` 且内联端点，cluster 放在 abliteration 之后、custom 之前，**不碰接口、无新依赖**）：用户 2026-11-22 点单「在模型库中加 https://venice.ai 这个服务商」，中途 steering 补一句「主要加 ds flash uncensored等无审查模型」 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged` —— 本笔不碰服务契约） · `npx oxlint` 三个改动 `.ts` 文件 **0 警告 0 错误**、`prettier --check` 干净（`*.md` 不在 prettier 范围） · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 通过 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过**（基线 351 / 3965，**+3 即本笔**） · docs **8 / 62** · **协议实测**（`/root/rel-070` 带依赖树上直接构造 `AutoLLMClient`）：九条按 `clientType:"openai-chat"` 构造全 ok；改按 id 路由则 **6 条直接抛 `… is not supported`**，另 3 条（`deepseek-v4-1-flash-*` 两条、`glm-5-3-flash-uncensored`）不抛却被路由到那两家厂商的专属客户端 —— 故每条钉协议并内联端点 · **本机连不上 venice.ai**（curl 与 DoH 都被挡），模型事实与价格取自 models.dev 的 `venice` 提供方（其 toml 由 `https://api.venice.ai/api/v1/models?type=text` 同步生成），**真连上厂商那一步未做** · 没有切版本号、没发 npm、没发安装包、没发发布汇总；只进源码与文档，随下一版发出 | `0ff955e9c` |
 | 2026-11-22 | 7.173 | **导入过主题的机器上主题配方不再被应用自身样式盖住；四套主题里文字压在填充上读不清的取值一起调了**（**2026-11-22 第二百九十四轮**落地；本仓 `packages/web` 1 个源码文件（`index.html` 头部一条 `@layer` 顺序声明，排在 `/api/themes.css` 链接之前，并把各层名按应用自身样式表的顺序钉死）+ 1 个新测试 + changelog 一对；主题库仓库 `adelie-themes` 四套主题共 20 处取值（井槽 `--ui-line-muted` 三处 + 徽章墨色 `--ui-tone-*-fg` 十七处，只动明度）+ 三份 `index.json` 版本号 + `package.json`；另有 `theme-tools/check-files.py` 补上「墨色压填充」这条检查口径 —— **不碰接口、无新依赖、没有新文案**）：用户 2026-11-22 接过 Venice AI 那单之后甩两张截图报两个主题显示 bug，随后又要求「其他主题有类似问题 要一起改」 —— ①极客（内置）插件页那条提示的 `[WARN]` 标签压在正文上（`::before` 画出来的标签没有对手照旧画，配方的 `padding-inline-start` / `border:0` / `[data-slot=icon]{display:none}` 全被 Tailwind 的 `.px-4` / `.border` / `.flex` 压过，因为导入的主题表带着 `@layer ui-theme` 又必须排在最前，把 `ui-theme` 变成了优先级最低的一层）；②紧随其后：`--ui-line-muted` 既当淡线又被 17 处 `bg-line-muted` 当填充用（分段控件的井槽），画布本身就是中间调的几套浅色下淡墨读不出来（手绘涂鸦 2.11、赛博朋克 2.50、拟物化 3.61），徽章那一族（tone 墨色压各自浅底）也有十几处 3.9–4.5 | 本仓：新用例 `head-layers.test.ts` **2 passed** · `prettier --check` 起初对 `index.html` 报红（新 `<style>` 写成一行），按 prettier 拆行后干净 · 用改后头部重建 web 产物、产物 `index.html` 里顺序正确（`<style>` 25 行 → `/api/themes.css` 31 行 → 打包 CSS 39 行） · **真产物两态探针**（无头 chromium 加载 `packages/web/dist` 那份 CSS，静态复刻 `ui-notice` + `px-4/border/flex`）：无顺序声明 → `padStart=14.4px borderW=1px iconDisplay=flex`（＝用户截图），有顺序声明 → `74px / 0px / none`，对照（有声明、不挂主题表）→ `74px / 0px / none` · 主题库：`check-files.py`（已补上「墨色压填充」的组合）跑四套 **0 处低于 4.5、rc=0**，**反证**把 doodle 浅色淡线改回 `#9f9c96` 即报 **3 处 LOW、rc=1** · 审计脚本与内置三套对照：改后只剩圆盘那两对低于 4.5（3.58–4.07，图形按 3:1 过），内置 **github 浅色 4.35** 未动 · **真产物两态探针**读浏览器算出来的值：cyber 浅色 `2.50→5.80`、skeuo 浅色 `3.61→5.15`、doodle 浅色 `2.11→4.60`、doodle 深色圆盘 `3.77→4.07`，截图肉眼看过 · **推送与发布**：主题库 `push origin HEAD:main`（远端 `eb53cf9`）、`npm publish` 用 `NPM_TOKEN_ADELIE`（`NPM_TOKEN` 回 401）发出 `@lmliheng/adelie-themes@1.3.1`（发布后 registry 读副本仍报 1.3.0，等它跟上）；本仓 `push origin HEAD:main`（`a0795854d..` 之后的四笔：Venice 两笔 + 层序修复一笔 + 台账一笔）· 现网 `/root/.adelie` 与 `/root/.penguin/data` 一个字节没碰（现网数据根那份主题与库里的副本现在不同，等拍板） · 临时检出 `/root/rel-070` 里拷进去验证的文件已按具体路径还原、探针页清掉 | `1b4bdde9b`（本仓）+ `eb53cf9`（主题库） |
+| 2026-11-23 | 7.174 | **概览页打不开的 CEO 工位，原因留在页面自己的答复行里**（**2026-11-23 第二百九十五轮**落地；`packages/web` 1 个源码文件（`overview-page.tsx`：新增 `deskRefusal`，`openCeoDesk` 的 `catch` 经 `refusalText` 写进去、不再 `toastError`，拒绝句收成 `deskRefusalLine`，页头有按钮那一版画在正文最上方（与刷新失败同一槽），新建组织那一版给 `StepCard` 加可选 `note`、画在指引第一步那张卡的按钮下面，两处因 `steps.fresh` 互斥）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩三处 `openDesk`，这是其中**页头按钮**的一处 —— 读失败时页面留在原处，而原来的原因只在一条六秒就走的通知里，按过的按钮与之前一模一样（改前实测：800 毫秒时通知堆栈里就是那句话、页面上 0 条，七秒后两边都是 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 改动源码 + 新 spec **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净（spec 首跑 `--write` 一次，复检全绿） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（含变基进来的另一条线那份 `head-layers` 用例） · **新用例 1 passed（9.5 s）**（真服务端 9971 + 自带 mock 8933 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r293-a`）：补一张工单让三步指引让位 → 工位路由答 500 带上自己的话 → 句子在页面上、量到起点在页头按钮下缘之下、通知区没有它、按钮回到可点且文字复原、七秒后仍在、地址没变；解除拦截后按同一颗按钮 → 进入 `/chat/<会话>` 且新页面上没有那句 · **反证（改前产物 `r293/before-dist`，主包 `index-BbWX0Dsq.js`；改后 `index-BJzpOryR.js`）** 挂 9972 / 数据根 `/root/adelie-fork-data/r293-b` → **1 failed**（`getByRole("alert")` 找不到） · **两态探针**（`r293/shape-check.mjs`）：改前 800 毫秒时通知堆栈里就是那句话、页面 `alert` 为 null，七秒后堆栈空；改后 800 毫秒时页面就是「操作被拒绝：…」、堆栈只有内测提示，七秒后仍在，量到在页头按钮下缘之下 17 px；**新建组织那条路**（`FRESH=1`）在三步指引第一步的按钮下面 8 px、七秒后仍在 · 截图 `r293/life-{before,after,fresh}/shots/life-{1-800ms,2-7s}.png` 肉眼看过，两态 pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `company-rail-hints` 2 + `org-delete-refusal` 1 + `org-settings-refusal` 2 + `company.spec` 1 **6 passed**；变基后在最终树上重建 web（`index-C-C9Bj56.js`）重跑本笔 1 + `company-rail-hints` 2 **3 passed** · 端口只用 9971 / 9972 / 9973 / 8933 / 8934（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r293-{a,b,c}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `faf079336` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
