@@ -3033,6 +3033,97 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       后代重读再失败时原因照常画在它自己那一行下面（改前实测：点 docs 重试后 shallow.txt / deep.txt 仍在、
       fresh.txt / fresh-deep.txt 不在；改后相反）。见「第二百八十八轮」一节。
 
+- [x] **7.169 插件导入弹窗里，选中的 zip 超过上限 / 读不出来时，原因也留在弹窗里**（**2026-11-22
+      第二百八十九轮**落地，提交见「已完成的轮次」；web 2 个源码文件（全改，含一个新函数）＋ 两份词典各一句
+      ＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `plugin-import.ts` 新增
+      `pluginPickRefusal(cause)`（`too_large` 引用上限检查用的那个数字、`unreadable` 说读不出来，两者都
+      不是服务端的码），`plugin-import-dialog.tsx` 新增 `refusePick`（选中的文件连同句子一起丢掉）、
+      `onPickFile` 的上限与 `FileReader` 的失败都走它、每次选择开始先清空那个槽，删掉那两处
+      `toastError`，**不碰接口、无新依赖**）：7.159 那一节点名的同一族（7.19 的规矩：拒绝留在尝试发生的
+      地方）里最后一块**本地选文件** —— 同一条路上另外两个 zip 入口（技能 / 钩子标签页的导入）早就把读
+      失败画在弹窗里，只有插件导入这两处仍只弹一条六秒就走的通知，而选择行旁边没有任何文件名（改前实测：
+      上限那条通知区 1 条、弹窗里 0 条、七秒后两边都是 0 条；读失败那条是笼统的「请求失败，请稍后重试」）。
+      见「第二百八十九轮」一节。
+
+## 第二百八十九轮：插件导入弹窗拒掉一个 zip 时，原因留在选择文件那一行下面（2026-11-22，条目 7.169）
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（剩下的是桌面壳写侧、既有部署单元
+`adelie-app.service` 与两份非契约项）、3.5（拍板）、3.6（模型 key）、4.1–4.3（明令不动）、5.6 / 5.10
+（拍板 / 新依赖）；第 7 节到 7.168 已全勾。第二百八十八轮「没做 / 留着」点名的公司页那五处 `openDesk`
+每一处都要先造一个能挂句子的新表面（五个入口各缺自己的位置），不属这一轮的量；同一族里还剩最后一处
+**自成一体、有一模一样先例**的缺口 —— 插件导入弹窗的本地选文件（7.159 就是主题导入弹窗里的同一件事）。
+
+**缺口是什么**（改前产物实测，见下）：插件导入弹窗里两种拒绝发生在请求发出之前 —— `pluginZipTooLarge`
+（超过 14 MB 的解包上限，免得先去挣服务端的 413）与 `FileReader.onerror`（浏览器读不出来）—— 都只
+`toastError`。选一个这样的文件之后，选择文件那一行旁边不写文件名、确认按钮按不下去，唯一的说明是盖在
+弹窗上的通知，六秒后走了：之后弹窗与选文件之前一模一样，没有一个字说得出这个文件被拒了、为什么。
+
+### 做了什么
+
+- `packages/web/src/features/plugins/plugin-import.ts`：新增 `pluginPickRefusal(cause)` —— 没能变成请求的
+  那次选择的两句话。`too_large` 走 `S.plugins.importTooLarge(PLUGIN_ZIP_LIMIT_MB)`（与检查用同一个数字），
+  `unreadable` 走新文案 `S.plugins.importUnreadable`，理由写在注释里：都不是服务端答的码，码表对它们
+  没有话说。
+- `packages/web/src/features/plugins/plugin-import-dialog.tsx`：新增 `refusePick` —— 把选中的包连同句子
+  一起丢掉（于是选择行不写文件名、确认按钮也不会去发上一个包），并把句子写进弹窗的 `refusal` 槽；
+  `onPickFile` 在每次选择开始时先清空那个槽（原来这一步在 `reader.onload` 里，只覆盖「读成功」那一半），
+  上限与 `FileReader` 的失败都改走 `refusePick`，两处 `toastError` 删掉。模块头那段「拒绝留在问它的
+  弹窗里」补上这一种。
+- 两本词典各一句：`plugins.importUnreadable`（zh「这个 zip 读不出来，请换一个文件」/ en 同义）。
+- **一处取舍**：拒绝时把先前选好的包一起丢掉。理由是句子与选择行必须说同一件事 —— 选择行写着「已选择
+  a.zip」、下面却说「这个 zip 读不出来」，读者分不清在说哪个；丢掉之后确认按钮按不下去，重试就是重新
+  选一个文件（与主题导入弹窗同一形状，那边本来就没有「上一个文件」这个状态）。
+
+### 验证
+
+- 六包 `typecheck` `EXIT=0`（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的
+  `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）。
+- `npx oxlint` 5 个改动源码文件与 1 个新 spec **0 警告 0 错误**；5 个源码文件、新 spec 与 changelog 一对
+  `prettier --check` 干净；`git diff --check` 干净。
+- 逐包 test 全绿（`EXIT=0`、0 失败）：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1115** ·
+  cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3967 / 2 跳过**（基线 351 / 3965，
+  **+2 即本笔新用例**）。
+- **新 spec**（`packages/web/e2e/plugin-import-pick-refusal.spec.mjs`，真服务端 9950 + 仓库自带 mock 模型
+  9951 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r289-a`）：**2 passed（26.2 s）** ——
+  ① 14 MB + 1 字节的 zip → 句子逐字「插件包不能超过 14 MB，请压缩后重试」在选择文件那一行下面、
+  通知区没有它、**七秒后仍在**、选择行没有「已选择」、确认按钮不可点；换一个装得下的文件 → 句子消失、
+  「已选择 probe-small.zip」出现、按钮回来；关掉重开是干净的；② 读失败（`FileReader` 打桩，因为健康的
+  临时文件不会失败）→ 另一句「这个 zip 读不出来，请换一个文件」在同一处、七秒后仍在、通知区 0 条。
+- **反证（同一份 spec，改前产物）**：改前源码的产物留底为 `r289/before-dist`（主包
+  `index-Bb4dP8M2.js`，md5 `e44a8ab95543185baa9301d8f3aeaaf9`，与第二百八十八轮留底的 after-dist 逐字节
+  相同），改后 `index-BheNs-IH.js`；改前产物挂 9952（数据根 `/root/adelie-fork-data/r289-b`）→
+  **2 failed**，两条都死在 `getByRole("alert")` 找不到元素上。
+- **两态探针**（`r289/probe.mjs`，同一脚本两条腿各挂自己的产物、按 DOM 读）：**改后**（9954）上限那次
+  `alertCount:1 / alertText:「插件包不能超过 14 MB，请压缩后重试」 / pickedLine:false / confirmDisabled:true
+  / toasts:[]`，七秒后完全相同；读失败那次 `alertText:「这个 zip 读不出来，请换一个文件」`，同样七秒后仍在；
+  换一个装得下的文件后 `alertCount:0 / pickedLine:true / confirmDisabled:false`。**改前**（9956）上限那次
+  `alertCount:0`、通知区一句同样的句子，**七秒后通知区也空了**；读失败那 `alertCount:0`、通知区一句
+  「请求失败，请稍后重试」，七秒后同样空了 —— 正是缺口。两态 console **pageerror 0 条、error 0 条**。
+- **真看一眼**：`r289/shots/after-1-cap-7s.png`（红字压在「选择 zip 文件」下面一行）、
+  `after-2-unreadable-7s.png`（同一位置换成读不出来那句）、`after-3-small-picked.png`（「已选择
+  probe-small.zip」、无红字、确认按钮黑色可点）、`before-1-cap-7s.png`（同一时刻弹窗里什么都没有）。
+- **相邻回归（真浏览器，一个进程跑 4 份 spec）**：`plugin-card-refusal` 3、`plugin-config-save-refusal` 1、
+  本笔 2、`plugin-import-refusal` 2，**8 passed（54.8 s）**（同一弹窗的服务端拒绝那条、同一页卡片上的
+  拒绝、同一份通知读数）。
+- 端口只用 9950–9959（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r289-*`，探针 / 两态产物 / 截图 / 起服务脚本都在 scratchpad 的 `r289/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 公司页那五处 `openDesk`（`channel-view` / `overview-page` / `org-chart-page` / `calendar-page` /
+  `org-session-groups`）仍是六秒通知：每一处都要先决定句子挂在哪（侧栏行下面、成员弹层里、日历对话框
+  页脚、组织图卡片上），属另一笔，与第二百八十八轮的结论相同。
+- 技能 / 钩子两个标签页的 zip 入口没有「超过上限」的前置检查（只有读失败画在弹窗里）：它们的包不受那
+  14 MB 的限制，服务端答 413 时那句话本来就在弹窗里，故没动。
+- 工单对话框里没有框的那几个写入仍弹 toast（「无框可留」那一类，不是缺口）。
+
+### 提交
+
+- 功能一笔（web 源码 2 + 两份词典 + 单测 1 + 新 spec 1 + changelog 2，共 8 文件）：`3b78d6ab9`。
+- 台账（条目 7.169、上表那一行、本节）随本文件另起一笔。
+
 ## 第二百八十八轮：重试一个读不出来的目录时，仍开着的后代也跟着重新列一遍（2026-11-22，条目 7.168）
 
 **为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（剩下的是桌面壳写侧、既有部署单元
@@ -4572,6 +4663,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-22 | 7.167 | **文件树里读不出来的目录留着那一行，原因写在它下面**（**2026-11-22 第二百八十七轮**落地；UI 包 2 个源码文件（全改）＋ web 4 个源码文件（全改）＋ 两份词典各一句 ＋ ui 单测 1 条 ＋ web 单测 2 条 ＋ 1 个新 spec ＋ changelog 一对 —— `FileTreeRow` 多一个可选的 `error`，`FileTree` 在展开的目录行下面按危险色画出原因（与「空目录」那一行同一位置、不挂 `group`、不是一行），`flattenTree` 收一张「读失败」的表（有列表时永远以列表为准），`movedFailures` / `droppedFailures` 让原因跟着改名走 / 随删除丢掉，`loadDir` 的非根分支不再 `toastError`、也不再收起那一行（旧列表仍删掉），`refreshAll` 也重试失败且仍开着的目录，`toggleDir` 对失败的那一行是重读而不是收起，文案改走 `apiErrorText`，**不碰接口、无新依赖**）：第二百八十六轮「没做 / 留着」里记下的那处真缺陷 —— 根以下的目录读失败时过去是弹一条通知、同时把那一行从树上删掉并收起，六秒之后屏幕上没有一个字说得出这个目录还在、刚才怎么了，读者的位置被一次失败拿走；现在行留着、原因在它下面、点它就是重试（改前实测：点一个已删掉的目录 → 行 `aria-expanded="false"`、通知区一句英文原文 `File does not exist.`、七秒后屏幕上 0 条；改后 → 行 `aria-expanded="true"`、行下 1 条「这个目录读不出来：该路径不存在。（点这一行重试）」、七秒后仍在、放回目录再点子行出现） | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 本笔不碰服务契约；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 10 个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净（两个文件首跑各一条，`--write` 后复检） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1115**（+1 即本笔新用例）· cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3964 / 2 跳过**（基线 351 / 3962，**+2 即本笔新用例**） · **新 spec 2 passed（12.7 s）**（真服务端 9980 + 仓库自带 mock 模型 9981 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r287-c`）：① 目录在打开之前就被删掉 → 点它，原因画在仍在、仍 `aria-expanded="true"` 的那一行下面，**过了七秒仍在**；把目录放回去再点一次 → 子行出现、原因消失；② 已展开、子行在屏幕上的目录，它那一条列表请求被拒成 500（根照常应答）→ 点「刷新」→ 原因「服务器内部错误，请稍后重试。」出现、旧子行 `gone/note.txt` 不见、行仍展开；去掉拦截再点 → 子行回来、原因消失 · **反证（同一份 spec，改前产物）**：五份源码 `git stash push --`（只带这五个路径）后重建 web → `r287/before-dist`（主包 `index-S2zGnTUu.js`，改后 `index-tZbMYBNi.js`），`git stash pop` 后重建恢复；改前产物由第二个服务端以 `ADELIE_WEB_DIST` 指过去（数据根 `/root/adelie-fork-data/r287-d`，端口 9982）→ **2 failed**，两条都死在 `getByText("这个目录读不出来：…")` 找不到元素上 · **两态探针**（`r287/probe.mjs`，同一脚本两条腿各挂自己的产物）：改后（9980）行展开、行下 1 条原因、通知区没有它，7 秒后一样，放回后子行出现、行下 0 条；场景二行展开、子行 0 条、原因「服务器内部错误，请稍后重试。」、7 秒后仍在、放开后子行回来。改前（9982）同一动作行收起、行下 0 条、通知区一句 `File does not exist.`（场景二一句 `boom`），7 秒后通知区也空了 —— 正是缺口 · **真看一眼**：`r287/after-1-after-7s.png`（`gone` 展开、两行红字在它下面）、`r287/before-1-after-7s.png`（同一时刻只剩一个收起的 `gone`）、`r287/after-2-refresh.png`（刷新后行下那句「服务器内部错误」、旧子行不见）肉眼看过 · 两态 console：403 `/api/projects/…/machines`（非管理员账号既有行为）×2、刻意让那一条列表 404 一次与 500 一次；**pageerror 0 条** · 端口只用 9980 / 9981 / 9982（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r287-{a,b,c,d}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r287/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`；探针临时放 `packages/web/r287-probe.mjs`，跑完挪进 scratchpad） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `349c43808` |
 | 2026-11-22 | 7.166 | **频道里实时到达的消息按它所在的日文件归日，不再一律算「今天」**（**2026-11-22 第二百八十六轮**落地；服务端 2 个源码文件（全改）＋ 服务端用例 1 ＋ 前端 2 个源码文件（全改）＋ 单测 2 ＋ 1 个新 spec ＋ 既有 spec 改一处注释 ＋ changelog 一对 —— `CompanyServerEvent` 的 `org_channel` 多一个 `date`（读它的那个日文件，组织时区；注释写明它不是「今天」的理由），`scanChannels` 广播时填上正在遍历的那个 `date`（本来就是循环变量，无新计算），`channel-view` 的实时追加改用 `ev.date`，`channel-stream` 的 `appendMessage` 对还没加载的那一天按日期顺序插入（原来一律追加到末尾，而流是从旧到新画的），`company-store` 夹具补 `date`，**不碰存储格式、不碰路由此、无新依赖、无新文案**）：第二百八十五轮「没做 / 留着」里记下的那处真缺陷 —— 扫描器广播出来的行一律被算成 `meta.today`，于是写进昨天日文件的那一行在打开着的频道里画进今天那一段，刷新后又回到它自己的日子，同一个频道两种读法不一致（改前实测：实时视图只有「今天」一条分隔线、那行 `sectionAboveLine` = 今天；刷新后「昨天」分隔线出现、那行上移到 158） | 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型 —— 事件类型不在那份契约里；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 9 个改动文件 **0 警告 0 错误** · 9 个改动文件 + changelog 一对 `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1114** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3962 / 2 跳过**（基线 351 / 3961，**+1 即本笔新用例**；另记：core / ui / cli 三条并成一次递归跑时 ui 的 `token-contract.test.ts` 那条 12.7 秒扫盘用例红过一次，单独跑该包与该文件全绿 —— 负载超时，与本笔无关） · **新 spec 1 passed（6.6 s）**（真服务端 9970 + 仓库自带 mock 模型 9971 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r286-a2`）：频道开着时把一行直接写进数据根里昨天的日文件，再一次 API 写入触发对账广播（不需要模型 key，那行不点任何人）→ 昨天成为今天上面的独立一段、那行在它里面、分隔线只一条、三条按 y 从旧到新；刷新后顺序一样。**反证（同一份 spec，改前产物）**：四份源码 `git stash push --`（只带这四个路径）重建 server + web → `r286/before-dist`（主包 `index-CBcpXY8r.js`，改后 `index-S2zGnTUu.js`，恢复后重建的 md5 `7e66b63d…` 与 stash 前逐字节相同），改前产物挂 9972（数据根 `/root/adelie-fork-data/r286-b2`）→ **1 failed（19.6 s）**，死在 `getByText('昨天 · 2026-11-21', { exact: true })` 找不到元素上：那行被画进了今天。**两态探针**（`r286/probe.mjs`，同一脚本两条腿各挂自己的产物）：改后（9970）实时 [昨天 118, 今天 204.4]、`lineTop` 158、`sectionAboveLine` = 昨天，刷新后一致；改前（9972）实时 **只有 [今天 118]**、`lineTop` 253.9、`sectionAboveLine` = 今天，刷新后 [昨天 118, 今天 204.4]、`lineTop` 158 —— 正是两种读法不一致。两态 console 各两条 `403 /api/projects/…/machines`（非管理员账号既有行为，两态一致），pageerror 0 条。**真看一眼**：`r286/{after,before}/shot-{2,3}-*.png` 肉眼看过（改后那行在「昨天 · 2026-11-21」下面，改前在「今天 · 2026-11-22」中间、时钟写着 04:00）。**相邻回归（真浏览器，一个进程 5 份 spec）**：`channel-earlier-refusal` 3 + `channel-send-refusal` 3 + `channel-join-refusal` 2 + `channel-refusal` 2 + 本笔 1，**11 passed（1.2 m）**；另跑 `company.spec.mjs` **1 passed（33.8 s）**。`channel-earlier-refusal.spec.mjs` 第 3 条那句「断在分隔线上，因为对账器会把日文件追加到今天」描述的是旧行为，本轮改成按新行为写的注释（用例本身没改） · 端口只用 9970 / 9971 / 9972（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r286-{a2,b2}`，探针 / 两态产物 / 截图都在 scratchpad 的 `r286/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`；探针临时放 `packages/web/r286-probe.mjs`，跑完即删） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `8a71b04ce` |
 | 2026-11-22 | 7.168 | **重试一个读不出来的目录时，仍开着的后代也跟着重新列一遍**（**2026-11-22 第二百八十八轮**落地；`packages/web` 2 个源码文件（全改）＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `workspace-tree.ts` 新增 `openDirsUnder(expanded, dir)`（严格在目录下面的开着的目录；只共享前缀的兄弟不在、根不含），`loadDir` 开跑时先记住「这一次是一次重试」（趁这次尝试还没清掉失败记录）、成功那一支把这些后代排进读取队列（经 `loadDirRef`，回调不能把自己列进依赖），**不碰接口、不碰存储、无新依赖**）：第二百八十七轮「没做 / 留着」里点名的那处 —— 失败目录的列表被丢掉，它下面仍开着的目录的列表还留着，重试成功后那些行带着失败之前那一份回来，已删的还在、新写的不见，只有逐层收起再打开才更新（改前实测：点 docs 重试后 shallow.txt / deep.txt 仍在、fresh.txt / fresh-deep.txt 不在；改后相反、原因 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个改动文件与 changelog 一对 `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3965 / 2 跳过**（基线 351 / 3964，**+1 即本笔新用例**） · **新 spec 2 passed（7.5 s）**（真服务端 9930 + 仓库自带 mock 模型 9931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r288-a`）：① `docs` 列表被拒 → 「刷新」→ 原因在行下、`docs/api` 不再画出 → 盘上两层都换文件 → 放开并点 `docs` 重试：`docs/api/fresh.txt` 与 `docs/api/v1/fresh-deep.txt` 出现、`shallow.txt` / `deep.txt` 消失、原因 0 条；② 后代 `docs/api` 自己也被拒 → 它的行仍在、`aria-expanded="true"`、原因只有它那一条、旧行不在，放开后点它又是重试 · **反证（同一份 spec，改前产物）**：两份源码退回 `HEAD` 后重建 → `r288/before-dist`（主包 `index-tZbMYBNi.js`，改后 `index-Bb4dP8M2.js`），放回改后源码重建，md5 `e44a8ab95543185baa9301d8f3aeaaf9` 与留底的 `after-dist` 逐字节相同；改前产物挂 9934（数据根 `/root/adelie-fork-data/r288-b3`）→ **2 failed**（`fresh.txt` 找不到；原因数期望 1 实得 0） · **两态探针**（`r288/probe.mjs`，同一脚本两条腿各挂自己的产物、读 DOM）：改后（9930）重试后 `api:true / apiExpanded:true / shallow:false / fresh:true / deep:false / freshDeep:true / reason:0`；改前（9934）重试后 `shallow:true / fresh:false / deep:true / freshDeep:false` —— 正是失败之前那一份 · **真看一眼**：`r288/shots/{after,before}-{1-failed,2-retried}.png` 肉眼看过（改后 `docs > api > v1` 下是 `fresh-d…` 与 `fresh.txt`，改前同一刻是 `deep.txt` 与 `shallow.txt`） · 两态 console 都是既有的 `GET …/machines` **403** 与刻意造的 500，**pageerror 0 条** · **相邻回归（真浏览器，一个进程 5 份 spec）**：`files-dir-error` 2 + `files-folders` 5 + `files-place-across-layout` 3 + 本笔 2 + `files-switch` 1，**13 passed（50.0 s）** · 顺带记：`page.unroute(fn)` 只认当初交给 `page.route` 的同一个函数（第一稿用新拼的箭头函数放开，500 路由一直挂着） · 端口只用 9930 / 9931 / 9934 / 9935 / 9940 / 9941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r288-*`，探针 / 两态产物 / 截图都在 scratchpad 的 `r288/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `5462e0a59` |
+| 2026-11-22 | 7.169 | **插件导入弹窗里，选中的 zip 超过上限 / 读不出来时，原因也留在弹窗里**（**2026-11-22 第二百八十九轮**落地；`packages/web` 2 个源码文件（全改，含一个新函数 `pluginPickRefusal`）＋ 两份词典各一句 ＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `pluginPickRefusal(cause)` 把「超过 14 MB」与「浏览器读不出来」两种选择前的拒绝各给一句话，弹窗新增 `refusePick` 把选中的包连同句子一起丢掉并写进 `refusal` 槽，`onPickFile` 的上限与 `FileReader` 的失败都走它（原来各一句 `toastError`），**不碰接口、无新依赖**）：同一条路上另外两个 zip 入口（技能 / 钩子标签页）早就把读失败画在弹窗里，只有插件导入这两处仍只弹六秒通知，而选择行旁边没有任何文件名（改前实测：上限那条通知区 1 条、弹窗里 0 条、七秒后两边都是 0 条；读失败那条一句笼统的「请求失败，请稍后重试」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 6 个改动文件（含新 spec）**0 警告 0 错误** · 它们与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1456 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3967 / 2 跳过**（基线 351 / 3965，**+2 即本笔新用例**） · **新 spec 2 passed（26.2 s）**（真服务端 9950 + 仓库自带 mock 模型 9951 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r289-a`）：① 14 MB + 1 字节的 zip → 句子逐字「插件包不能超过 14 MB，请压缩后重试」在选择文件那一行下面、通知区没有它、七秒后仍在、没有「已选择」、确认按钮不可点，换一个装得下的文件 → 句子消失、文件名出现、按钮回来；② 读失败（`FileReader` 打桩）→「这个 zip 读不出来，请换一个文件」在同一处、七秒后仍在 · **反证（同一份 spec，改前产物）**：`r289/before-dist`（`index-Bb4dP8M2.js`，md5 `e44a8ab95543185baa9301d8f3aeaaf9`，与上一轮留底逐字节相同；改后 `index-BheNs-IH.js`）挂 9952（数据根 `/root/adelie-fork-data/r289-b`）→ **2 failed**，都死在 `getByRole("alert")` 找不到元素 · **两态探针**（`r289/probe.mjs`）：改后（9954）`alertCount:1 / confirmDisabled:true / toasts:[]`，七秒后一样，换小文件后 `alertCount:0 / pickedLine:true / confirmDisabled:false`；改前（9956）`alertCount:0`、通知区一句同样的句子、**七秒后通知区也空了**，读失败那句是「请求失败，请稍后重试」同样七秒后空 —— 正是缺口；两态 pageerror 0 条 · **真看一眼**：`r289/shots/{after-1-cap-7s,after-2-unreadable-7s,after-3-small-picked,before-1-cap-7s}.png` 肉眼看过 · **相邻回归（真浏览器，一个进程 4 份 spec）**：`plugin-card-refusal` 3 + `plugin-config-save-refusal` 1 + 本笔 2 + `plugin-import-refusal` 2，**8 passed（54.8 s）** · 端口只用 9950–9959（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r289-*`，探针 / 两态产物 / 截图都在 scratchpad 的 `r289/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `3b78d6ab9` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
