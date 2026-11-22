@@ -1044,7 +1044,11 @@ export const zh = {
     /** Desktop shell only: the companion window at /pet. */
     showPet: "桌面宠物",
     showPetInfo:
-      "桌面右下角常驻一只小企鹅：定时任务触发、有工具调用等你批准、公司预算告警时它会冒个气泡，点它可以看模型余额和客户端更新，也能在那里隐藏它。默认关闭；打开或关掉都立即生效，不会碰你正在用的窗口。",
+      "桌面右下角常驻一只桌宠：定时任务触发、有工具调用等你批准、公司预算告警时它会冒个气泡，点它可以看模型余额和客户端更新，也能在那里隐藏它。默认关闭；打开或关掉都立即生效，不会碰你正在用的窗口。",
+    /** Desktop shell only: which figure the companion window draws. */
+    petFigure: "桌宠形象",
+    petFigureInfo:
+      "桌宠长什么样：经典企鹅，或一条蓝色小鲸鱼。改完立即生效，不用重启，也不用重开桌宠窗口。",
     currencyInfo: "价格显示币种；存储始终为美元。",
     changePasswordInfo: "更改当前账号的登录密码。",
     /** Personal company-mode switch (general page) and the admin master switch (its own server page). */
@@ -1359,15 +1363,17 @@ export const zh = {
 
   /**
    * The desktop pet (its own window at /pet; the desktop app only). Its bubble and the panel
-   * behind the penguin are the whole surface, and they answer the three questions a person asks
+   * behind it are the whole surface, and they answer the three questions a person asks
    * while they are looking at the desktop rather than at the app: did anything need me, how much
    * model credit is left, and is there a new build.
    */
   pet: {
-    /** The penguin's tooltip and accessible name: what a click opens. */
+    /** The pet's tooltip and accessible name: what a click opens. */
     open: "点我：余额、新版本和通知",
     /** The panel's footer action, which writes the same preference the Appearance switch does. */
     hide: "隐藏桌宠",
+    /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
+    figureNames: { penguin: "企鹅", whale: "蓝色小鲸鱼" },
     refresh: "刷新",
     balance: "模型余额",
     /** No balance is pinned to the account (see features/models/balance.ts). */

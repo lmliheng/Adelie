@@ -239,6 +239,12 @@ export const KEY_RULES: readonly KeyRule[] = [
     scope: "browser",
     why: "Whether task-completion notifications were asked for; it pairs with an OS permission that belongs to this browser rather than to any data root, and clearing it would silently stop notifications the user opted into.",
   },
+  {
+    kind: "exact",
+    key: "penguin.petFigure",
+    scope: "browser",
+    why: "Which figure the desktop pet draws; an appearance choice of this browser, naming nothing on the server — and the companion window shares it through this origin's storage, so a wipe has no business resetting it.",
+  },
 
   // --------------------------------------------------------------- install-scoped state
   {

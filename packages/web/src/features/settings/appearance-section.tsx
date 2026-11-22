@@ -6,10 +6,13 @@
  * the app unless pinned (see TerminalThemeMode). The workbench launcher's row is here rather
  * than with the chat's own settings because it is the same kind of choice: whether a piece of
  * chrome is drawn. The tool short-name row is here for the same reason — it changes how a
- * tool call is spelled on screen, never what runs. So are the last two rows, the only chrome here
- * that is not drawn by this page at all: the desktop shell's tray icon and its pet window. Both
- * belong to the shell, only the shell's own window may reach them (see isDesktopShellWindow), so
- * both rows are absent in a browser.
+ * tool call is spelled on screen, never what runs. So are the shell's own rows at the end, the only
+ * chrome here that is not drawn by this page at all: the desktop shell's tray icon, its sign-in
+ * entry, and its pet window with the figure it draws. They belong to the shell, only the shell's own
+ * window may reach them (see isDesktopShellWindow), so all of those rows are absent in a browser. The
+ * figure is the one of them whose value is kept on this side: the pet is drawn by this app's own
+ * /pet page, so the choice is a browser preference (lib/pet-figure.ts) rather than a field in the
+ * shell's file.
  *
  * THEMES AN INSTALLATION IMPORTED are rows of the theme picker like the three the UI package
  * ships, and they arrive as data: this page lists them, paints their accents and says what a file
@@ -45,6 +48,8 @@ import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZES } from "@adelie/ui/boo
 import { S } from "../../lib/strings";
 import * as api from "../../api/endpoints";
 import { isDesktopShellWindow } from "../../lib/account-menu";
+import { PET_FIGURES } from "../../lib/pet-figure";
+import { usePetFigure } from "../../lib/use-pet-figure";
 import {
   launcherHiddenVersion,
   readLauncherHidden,
@@ -281,6 +286,10 @@ export function AppearanceSection() {
   const launcherShown = !readLauncherHidden();
   const { user, desktopMode, sessionVia } = useAuth();
   const offersShellChrome = isDesktopShellWindow({ desktopMode, sessionVia });
+  // The pet's figure: a preference of this browser rather than of the shell, because the drawing is
+  // made by this app's own /pet page — so this row and the companion window share one localStorage
+  // key (lib/pet-figure.ts), and either window's change reaches the other.
+  const [petFigure, setPetFigure] = usePetFigure();
   // The shell owns this one, so it is fetched rather than read from a store. Anything the
   // shell has not told us — no push yet, a request that failed — reads as on, the shell's
   // own default, so the row never claims the icon is off while it is sitting in the tray.
@@ -481,6 +490,16 @@ export function AppearanceSection() {
           checked={showPet}
           onChange={changeShowPet}
         />
+      )}
+      {offersShellChrome && (
+        <PrefRow label={S.settings.petFigure} info={S.settings.petFigureInfo}>
+          <Segmented
+            options={PET_FIGURES.map((id) => ({ value: id, label: S.pet.figureNames[id] }))}
+            value={petFigure}
+            onChange={setPetFigure}
+            cols={2}
+          />
+        </PrefRow>
       )}
     </div>
   );

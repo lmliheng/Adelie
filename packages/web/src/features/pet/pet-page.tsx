@@ -9,21 +9,26 @@
  *
  * Three things, in the order they are useful:
  *
- * - A bubble above the penguin when something happens (see pet-notice.ts), which fades on its own:
+ * - A bubble above the pet when something happens (see pet-notice.ts), which fades on its own:
  *   the pet speaks, it does not stack up a notification center.
  * - The panel behind a click: the pinned balance, the client-update state with the one action that
  *   state offers, the last notice, and the way to hide the pet again.
- * - The penguin, which carries the hand: it is what a person reaches for, so it is also what moves
- *   the window. The page moves its own window (`window.moveBy`, one step per pointer sample) rather
- *   than leaving the one visible thing inside a `no-drag` hole in a drag region it cannot use — the
- *   rest of the window keeps that OS drag region for the platforms whose window system delivers
- *   input to it. A press that stays put is a click and nothing else: it opens the panel and makes
- *   the pet hop, so a drag never also opens the panel on top of wherever the pet was put.
+ * - The figure itself, which carries the hand: it is what a person reaches for, so it is also what
+ *   moves the window. The page moves its own window (`window.moveBy`, one step per pointer sample)
+ *   rather than leaving the one visible thing inside a `no-drag` hole in a drag region it cannot
+ *   use — the rest of the window keeps that OS drag region for the platforms whose window system
+ *   delivers input to it. A press that stays put is a click and nothing else: it opens the panel and
+ *   makes the pet hop, so a drag never also opens the panel on top of wherever the pet was put.
+ *
+ * WHICH FIGURE IT IS comes from the reader's own choice (lib/pet-figure.ts): the penguin it has
+ * always been, or the whale. It is looked up in features/pet/figures.ts, so this page names no
+ * drawing of its own — the two are interchangeable and every behaviour below is written against
+ * whichever one is in force.
  *
  * The pet moves on its own too: it bobs, it blinks, its pupils follow the pointer (all three in
- * styles.css and penguin.tsx) and it hops when it has something to say.
+ * styles.css, and the two classes each figure carries) and it hops when it has something to say.
  *
- * In a plain browser tab (anyone can open /pet) the penguin still draws and the notices still
+ * In a plain browser tab (anyone can open /pet) the pet still draws and the notices still
  * arrive, and the two desktop-only readings say so instead of failing: everything about the shell
  * is gated on being the shell's own window, exactly as the update modal and the tray switch are. A
  * tab cannot move itself either — a browser ignores `moveBy` on a window a script did not open — so
@@ -38,10 +43,12 @@ import * as api from "../../api/endpoints";
 import { openUserEvents } from "../../api/sse";
 import { S } from "../../lib/strings";
 import { isDesktopShellWindow } from "../../lib/account-menu";
+import { usePetFigure } from "../../lib/use-pet-figure";
 import { useAuth } from "../../state/auth";
 import { useTheme } from "../../state/theme";
 import { useBalance, usePinnedBalance, requestBalance } from "../models/balance";
 import { PINNED_BALANCE_REFRESH_MS, balanceView } from "../models/group-balance";
+import { PET_FIGURE_VIEWS } from "./figures";
 import {
   noticeForEvent,
   noticeForUpdate,
@@ -53,7 +60,6 @@ import {
 import type { PetNotice } from "./pet-notice";
 import { DRAG_SLOP_PX, petStep, pupilShift } from "./pet-motion";
 import type { PetPoint } from "./pet-motion";
-import { Penguin } from "./penguin";
 import { CallStage } from "./voice/call-stage";
 import { usePetCall } from "./voice/use-pet-call";
 
@@ -146,6 +152,10 @@ function usePetBalance(inShell: boolean): { text: string; title: string; refresh
 export function PetPage() {
   const { desktopMode, sessionVia } = useAuth();
   const inShell = isDesktopShellWindow({ desktopMode, sessionVia });
+  // The drawing, from the reader's own choice: whichever it is, everything below treats it as
+  // "the pet" — it is the window's handle, its size and its animations either way.
+  const [figure] = usePetFigure();
+  const Figure = PET_FIGURE_VIEWS[figure];
   const [notices, setNotices] = useState<readonly PetNotice[]>([]);
   const [bubble, setBubble] = useState<PetNotice | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -430,7 +440,7 @@ export function PetPage() {
           {noticeText(bubble, S.pet)}
         </div>
       )}
-      {/* The penguin is the window's handle: it drags (usePointerDrag above), and a press that
+      {/* The pet is the window's handle: it drags (usePointerDrag above), and a press that
           stayed put is a click. `.pet-hop` replaces `.pet-bob` for as long as the hop lasts — one
           element, one animation, so the landing never fights the idle bob. `touch-none` keeps a
           finger's own scrolling and long-press gestures out of the drag. */}
@@ -445,7 +455,7 @@ export function PetPage() {
           hopping ? "pet-hop" : "pet-bob"
         }`}
       >
-        <Penguin className="h-full w-full" />
+        <Figure className="h-full w-full" />
       </button>
     </div>
   );

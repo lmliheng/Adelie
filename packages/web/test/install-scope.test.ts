@@ -87,6 +87,7 @@ const PREFERENCES: Record<string, string> = {
   "penguin.files.treeWidth": "220",
   "penguin.files.editorWrap": "1",
   "penguin.notifications": "1",
+  "penguin.petFigure": "whale",
   "penguin.keybindings": '{"v":1,"linux":{"terminal.close":"Mod+Alt+KeyW"}}',
 };
 

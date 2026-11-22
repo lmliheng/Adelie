@@ -985,7 +985,11 @@ export const en: Strings = {
     /** Desktop shell only: the companion window at /pet. */
     showPet: "Desktop pet",
     showPetInfo:
-      "A small penguin sits in the bottom-right corner of the desktop: it speaks up when a schedule fires, when tool calls are waiting for your approval, or when a company budget is nearly spent, and clicking it shows the model balance and the client-update state — and hides it again from there. Off by default; either way it takes effect at once and never touches the window you are working in.",
+      "A pet sits in the bottom-right corner of the desktop: it speaks up when a schedule fires, when tool calls are waiting for your approval, or when a company budget is nearly spent, and clicking it shows the model balance and the client-update state — and hides it again from there. Off by default; either way it takes effect at once and never touches the window you are working in.",
+    /** Desktop shell only: which figure the companion window draws. */
+    petFigure: "Pet figure",
+    petFigureInfo:
+      "What the pet looks like: the classic penguin, or a blue whale. The change lands at once — no restart, and no need to reopen the pet's window.",
     currencyInfo: "Display currency for prices; storage is always USD.",
     changePasswordInfo: "Change this account's sign-in password.",
     /** Personal company-mode switch (general page) and the admin master switch (its own server page). */
@@ -1307,15 +1311,17 @@ export const en: Strings = {
 
   /**
    * The desktop pet (its own window at /pet; the desktop app only). Its bubble and the panel
-   * behind the penguin are the whole surface, and they answer the three questions a person asks
-   * while they are looking at the desktop rather than at the app: did anything need me, how much
+   * behind it are the whole surface, and they answer the three questions a person asks while
+   * they are looking at the desktop rather than at the app: did anything need me, how much
    * model credit is left, and is there a new build.
    */
   pet: {
-    /** The penguin's tooltip and accessible name: what a click opens. */
+    /** The pet's tooltip and accessible name: what a click opens. */
     open: "Click for the balance, new versions and notices",
     /** The panel's footer action, which writes the same preference the Appearance switch does. */
     hide: "Hide the pet",
+    /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
+    figureNames: { penguin: "Penguin", whale: "Blue whale" },
     refresh: "Refresh",
     balance: "Model balance",
     /** No balance is pinned to the account (see features/models/balance.ts). */
