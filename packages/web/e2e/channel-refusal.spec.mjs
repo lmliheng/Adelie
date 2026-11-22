@@ -9,10 +9,13 @@
  * pressed and cancelling decides nothing. Un-archiving has no card — one menu row — and keeps its
  * toast, which is what this spec checks it does NOT do for the two cards.
  *
+ * The member popover's "open desk" button answers in the panel too: a desk the server could not
+ * open keeps the reason under that member's row, and the same button is the retry (the third test).
+ *
  * The organization, its channel and the invited CEO are made through the API rather than through
- * the dialogs: this spec is about the two confirmations, not about creation. Company mode is off
- * on a fresh server, so each test turns the admin master switch on first (idempotent), and the
- * Project gets the mock as its model so the onboarding overlay stays off the page.
+ * the dialogs: this spec is about the confirmations, not about creation. Company mode is off on a
+ * fresh server, so each test turns the admin master switch on first (idempotent), and the Project
+ * gets the mock as its model so the onboarding overlay stays off the page.
  */
 import { test, expect, request } from "@playwright/test";
 import { ADMIN_ID, ADMIN_PASSWORD, login, provisionAndLogin } from "./auth.mjs";
@@ -30,6 +33,11 @@ const LEAVE_REFUSAL = {
   message: "the channel roster is mid-rewrite",
 };
 const ARCHIVE_REFUSAL = { code: "channel_store_locked", message: "channel store is locked" };
+/** The desk route answers GET with a 500 of its own: the reason has to come back to the row. */
+const DESK_REFUSAL = {
+  code: "desk_reserve_failed",
+  message: "the desk session could not be reserved",
+};
 
 /** The admin master switch, off by default: turned on server-wide before the flow starts. */
 async function enableCompanyMode() {
@@ -236,4 +244,74 @@ test("a refused archive keeps the card, its sentence and the channel open", asyn
   await expect(again).toHaveCount(0);
   await expect.poll(async () => (await stored())?.archived).toBe(true);
   await expect(page.getByText("这个频道已归档，只读")).toBeVisible();
+});
+
+test("a desk that could not be opened keeps its reason under the member row", async ({ page }) => {
+  const { projectId } = await setUp(page, "r123desk");
+  await openChannel(page, projectId);
+
+  // The member popover: the reader and the invited CEO, and only the CEO has a desk to open.
+  const trigger = page.getByRole("button", { name: /^频道成员/ });
+  await trigger.click();
+  const panel = page.getByRole("dialog", { name: "频道成员" });
+  await expect(panel).toBeVisible();
+  const deskButton = panel.getByRole("button", { name: "打开工位会话" });
+  await expect(deskButton).toHaveCount(1);
+
+  const deskGets = [];
+  await page.route(
+    `**/api/projects/${projectId}/organizations/${ORG}/employees/*/desk`,
+    async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      deskGets.push(route.request().url());
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: DESK_REFUSAL }),
+      });
+    },
+  );
+
+  await deskButton.click();
+
+  // The reason is in the panel that asked, under the row whose button was pressed — and it is
+  // not a notification: that region never carries the server's words.
+  const line = panel.getByRole("alert");
+  await expect(line).toHaveText(DESK_REFUSAL.message);
+  await expect(page.getByRole("region", { name: "通知" })).not.toContainText(DESK_REFUSAL.message);
+  expect(deskGets).toHaveLength(1);
+  await expect(panel).toBeVisible();
+  expect(page.url()).toContain(`/org/${projectId}/${ORG}/channels/${CHANNEL}`);
+
+  // "Under the row" measured: the sentence starts below the row's bottom edge and stays inside
+  // the panel.
+  const rowBox = await deskButton.locator("xpath=..").boundingBox();
+  const lineBox = await line.boundingBox();
+  const panelBox = await panel.boundingBox();
+  expect(rowBox).not.toBeNull();
+  expect(lineBox).not.toBeNull();
+  expect(panelBox).not.toBeNull();
+  expect(lineBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 1);
+  expect(lineBox.y + lineBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height + 1);
+  expect(lineBox.x).toBeGreaterThanOrEqual(panelBox.x);
+
+  // Six seconds is how long a notification lived: the sentence is still there, said by the row.
+  await page.waitForTimeout(7000);
+  await expect(line).toHaveText(DESK_REFUSAL.message);
+  await expect(page.getByRole("region", { name: "通知" })).not.toContainText(DESK_REFUSAL.message);
+
+  // The panel is the question: closing it takes the reason with it, and reopening it is clean.
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  await trigger.click();
+  const again = page.getByRole("dialog", { name: "频道成员" });
+  await expect(again).toBeVisible();
+  await expect(again.getByRole("alert")).toHaveCount(0);
+
+  // The retry lands: the same button opens the desk, and the shell follows it into the session.
+  await page.unroute(`**/api/projects/${projectId}/organizations/${ORG}/employees/*/desk`);
+  await again.getByRole("button", { name: "打开工位会话" }).click();
+  await page.waitForURL(/\/chat\/[^/?#]+/);
+  expect(page.url()).toContain("/chat/");
+  await expect(page.getByRole("dialog", { name: "频道成员" })).toHaveCount(0);
 });

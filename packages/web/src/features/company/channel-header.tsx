@@ -17,8 +17,11 @@
  * closes only once its write landed, and a refusal draws the server's words under the card's own
  * sentence (the retry is the button that was pressed). Un-archiving has no card — it is one menu
  * row — so its refusal is a toast, like every other write here without a question of its own.
+ * Opening a member's desk asks nothing, but it is answered in its own panel either way: a desk
+ * that could not be opened keeps the reason under the row that asked, and that row's button is
+ * the retry.
  */
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router";
 import type { OrgChannelDetail, OrgChannelMember } from "@adelie/server/api";
@@ -47,7 +50,8 @@ import {
 import type { AvatarStackItem } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { useProject } from "../../state/project";
 import { Truncated } from "../../components/ui/truncated";
 import { ChannelTextDialog } from "./channel-dialogs";
@@ -95,25 +99,49 @@ function MemberAvatar({ member, size }: { member: OrgChannelMember; size: number
   return <AgentAvatar id={item.id} name={item.name} size={size} className="shrink-0 rounded" />;
 }
 
-/** The member list: who is in the channel, with an employee's desk session one click away. */
+/**
+ * The member list: who is in the channel, with an employee's desk session one click away. A desk
+ * that could not be opened keeps the reason under the member row that asked — the panel stays
+ * open, and that row's button is the retry.
+ */
 function MemberPopover({
   members,
   onOpenDesk,
-  openingDesk,
 }: {
   members: readonly OrgChannelMember[];
-  /** Opens an employee's desk session; takes the member's principal. */
-  onOpenDesk: (principal: string) => void;
-  /** The principal whose desk is being opened, so the rows do not fire twice. */
-  openingDesk: string | null;
+  /**
+   * Opens an employee's desk session; takes the member's principal and resolves with the reason
+   * it could not be opened, or null when the shell has followed it.
+   */
+  onOpenDesk: (principal: string) => Promise<string | null>;
 }) {
   const [open, setOpen] = useState(false);
+  /** The principal whose desk is being opened, so the rows do not fire twice. */
+  const [opening, setOpening] = useState<string | null>(null);
+  /**
+   * The reason the last attempt came back empty, kept with the row that asked. Closing the panel
+   * dismisses the question, so it dismisses the answer too (`close`): reopening is a new question
+   * and has to look like one.
+   */
+  const [refusal, setRefusal] = useState<{ principal: string; text: string } | null>(null);
+  const close = () => {
+    setOpen(false);
+    setRefusal(null);
+  };
   const { triggerRef, panelRef, position } = usePortalPanel({
     open,
-    onClose: () => setOpen(false),
+    onClose: close,
     estimatedHeight: Math.min(320, members.length * 32 + 24),
     panelWidth: PANEL_WIDTH,
   });
+  const openDesk = async (principal: string) => {
+    if (opening !== null) return;
+    setOpening(principal);
+    setRefusal(null);
+    const reason = await onOpenDesk(principal);
+    setOpening(null);
+    if (reason !== null) setRefusal({ principal, text: reason });
+  };
   const label = `${S.company.channels.memberList} · ${S.company.channels.memberCount(members.length)}`;
   return (
     <>
@@ -124,7 +152,7 @@ function MemberPopover({
         aria-label={label}
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? close() : setOpen(true))}
         className="flex shrink-0 items-center gap-1.5 rounded-md px-1.5 py-1 text-xs text-gray-600 transition-colors duration-150 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100"
       >
         {/* The first few only: the count beside the stack already says how many there are. */}
@@ -156,25 +184,31 @@ function MemberPopover({
               </p>
             ) : (
               members.map((m) => (
-                <div
-                  key={m.principal}
-                  className={`flex items-center ${ICON_GAP.row} px-2.5 py-1.5 text-xs`}
-                >
-                  <MemberAvatar member={m} size={ICON_SIZE.rowLead} />
-                  <Truncated text={m.name} className="min-w-0 flex-1" />
-                  {m.kind === "agent" && (
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="shrink-0"
-                      disabled={openingDesk !== null}
-                      onClick={() => onOpenDesk(m.principal)}
-                      leading={<GlyphIcon d={DESK_ICON} size={ICON_SIZE.inlineGlyph} />}
-                    >
-                      {S.company.openDesk}
-                    </Button>
+                <Fragment key={m.principal}>
+                  <div className={`flex items-center ${ICON_GAP.row} px-2.5 py-1.5 text-xs`}>
+                    <MemberAvatar member={m} size={ICON_SIZE.rowLead} />
+                    <Truncated text={m.name} className="min-w-0 flex-1" />
+                    {m.kind === "agent" && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="shrink-0"
+                        disabled={opening !== null}
+                        onClick={() => void openDesk(m.principal)}
+                        leading={<GlyphIcon d={DESK_ICON} size={ICON_SIZE.inlineGlyph} />}
+                      >
+                        {S.company.openDesk}
+                      </Button>
+                    )}
+                  </div>
+                  {/* The row asked, so the row answers: the reason sits directly under it, and
+                      the button beside it is the retry. */}
+                  {refusal !== null && refusal.principal === m.principal && (
+                    <p role="alert" className={`px-2.5 pb-1.5 text-xs ${toneInk.danger}`}>
+                      {refusal.text}
+                    </p>
                   )}
-                </div>
+                </Fragment>
               ))
             )}
           </div>,
@@ -292,7 +326,6 @@ export function ChannelHeader({
   const [archiveRefusal, setArchiveRefusal] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
-  const [openingDesk, setOpeningDesk] = useState<string | null>(null);
 
   // A channel switch must not leave the previous one's dialogs standing.
   const channelId = detail?.channelId ?? null;
@@ -324,19 +357,22 @@ export function ChannelHeader({
     detail.purpose !== "" ? detail.purpose : allHands ? null : S.company.channels.purposeEmpty;
   const candidates = inviteCandidates(employees, projectMembers, detail.members, query);
 
-  const openDesk = async (principal: string) => {
+  /**
+   * Opens an employee's desk session, following it into the shell. Returns the reason it could
+   * not be opened instead of saying it here: the member row that asked keeps its own line
+   * (`MemberPopover`), the way a toast used to carry it away from the panel still on screen.
+   */
+  const openDesk = async (principal: string): Promise<string | null> => {
     const parsed = parsePrincipal(principal);
-    if (parsed.kind !== "agent" || openingDesk !== null) return;
+    if (parsed.kind !== "agent") return null;
     const agentId = parsed.id;
-    setOpeningDesk(principal);
     try {
       const desk = await api.getOrgDesk(projectId, orgId, agentId);
       setCurrentAgentId(agentId);
       navigate(`/chat/${desk.sessionId}`);
+      return null;
     } catch (e) {
-      toastError(apiErrorText(e));
-    } finally {
-      setOpeningDesk(null);
+      return refusalText(e);
     }
   };
 
@@ -446,11 +482,7 @@ export function ChannelHeader({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <MemberPopover
-            members={detail.members}
-            onOpenDesk={(principal) => void openDesk(principal)}
-            openingDesk={openingDesk}
-          />
+          <MemberPopover members={detail.members} onOpenDesk={(principal) => openDesk(principal)} />
           {/* Inviting is a member's action, and never edits the all-hands channel — which
               already holds everyone, so its candidate list is empty by construction. Both
               refusals are the server's rule (`all_hands_immutable`, `not_a_member`); the
