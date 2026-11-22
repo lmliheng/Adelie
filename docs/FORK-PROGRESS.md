@@ -3063,6 +3063,79 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       一条盖在弹窗标题上、六秒就走的通知（改前实测：800 毫秒时通知区里就是那句话、弹窗里 0 条，七秒后
       两边都是 0 条）。见「第二百九十二轮」一节。
 
+- [x] **7.172 模型库里多了一个 Venice AI 分组，收录它的无审查模型**（**2026-11-22 第二百九十三轮**落地，
+      提交见「已完成的轮次」；`packages/core` 1 个源码文件 ＋ 1 份单测 ＋ `packages/web` 1 份单测 ＋
+      `packages/docs` 两份模型页 ＋ changelog 一对 —— `MODEL_PROVIDERS` 新增 `venice`（label "Venice AI"、
+      OpenAI 兼容的 `gatewayBaseUrl` `https://api.venice.ai/api/v1`、取 key 页与模型列表页），
+      `MODEL_CATALOG` 新增九条预置（无审查一条线：自家 `venice-uncensored-*`，加它转售的 abliterated /
+      「uncensored」微调），每条都 `clientType: "openai-chat"` 且内联端点，**不碰接口、无新依赖**）：
+      用户 2026-11-22 点单「在模型库中加 https://venice.ai 这个服务商」，中途补一句「主要加 ds flash
+      uncensored 等无审查模型」。见「第二百九十三轮」一节。
+
+## 第二百九十三轮：模型库里多了一个 Venice AI 分组，收录它的无审查模型（2026-11-22，条目 7.172）
+
+**开工**：`git status --short` 干净。本轮与另一条线撞了号：两支都从 `2502b44a1` 往后走，对方先合上
+（`0f0dcea0a` + 台账 `a0795854d`）并占了「第二百九十二轮 / 7.171」，所以先把工作树对齐到远端
+`main`（`a0795854d`）、把那笔代码 cherry-pick 过来，本轮改记**第二百九十三轮 / 7.172**。
+
+**为什么是这一条**：用户 2026-11-22 点单「在模型库中加 https://venice.ai 这个服务商」，中途 steering
+补一句「主要加 ds flash uncensored等无审查模型」—— 所以这一轮不是把 Venice 整份列表搬进来，而是照它
+的无审查产品线做一份预置。
+
+**来源（本机连不上 venice.ai，只能走间接源）**：curl 与 DoH 都被挡，所以模型事实与价格取自
+[models.dev](https://models.dev/api.json) 的 `venice` 提供方（本机可下载，134 条）。models.dev 仓库里
+`providers/venice/README.md` 写明它的 `models/*.toml` 是**从 Venice 自己的
+`https://api.venice.ai/api/v1/models?type=text` 同步生成**的，`provider.toml` 与各条 toml 的
+`base_url` 都是 `https://api.venice.ai/api/v1`；cost 字段是 USD / 百万 Token（用已知的 gpt-4o-mini
+0.15 / 0.6 交叉验证过）。`apiKeyUrl` 取 `https://venice.ai/settings/api`，`modelsUrl` 取
+`https://docs.venice.ai/models/overview`（官方 SDK README 引用的那一页）。
+
+### 做了什么
+
+- `packages/core/src/state/model-catalog.ts`：
+  - 新增 `VENICE_BASE_URL = "https://api.venice.ai/api/v1"`（紧跟 `ABLITERATION_BASE_URL` 之后）。
+  - `MODEL_PROVIDERS` 注释从「The seven gateway groups」改成 **eight**（列表加入 Venice AI），并新增
+    `venice` 一条（`envKey` / `envBaseUrlKey` 仍记 `OPENAI_*`，与所有网关一致），位置在 `abliteration`
+    之后、`vllm` 之前。
+  - `MODEL_CATALOG` 新增九条预置，每条 `clientType: "openai-chat"` 且内联 `VENICE_BASE_URL`：
+    `abliteration-abliterated-model-large-flash`（1M、视觉）、`abliteration-abliterated-model-large-v2`
+    （1M、纯文本）、`deepseek-v4-1-flash-1017-uncensored` 与 `deepseek-v4-1-flash-uncensored`（各 1M、
+    视觉、同价）、`glm-5-3-flash-uncensored`（1 048 576、视觉）、
+    `olafangensan-glm-4.7-flash-heretic`（200K、纯文本）、`qwen-3-6-plus`（1M、视觉 + 视频）、
+    `venice-uncensored-1-2` 与 `venice-uncensored-role-play`（各 128K、视觉）。三档价按 models.dev
+    那份同步集的字段逐条抄（`cache_write` 除 `qwen-3-6-plus` 外等于输入价）。
+  - cluster 位置在 abliteration cluster 之后、**custom cluster 之前**（`MODEL_CATALOG.at(-1)` 必须仍是
+    `Atria-Dawn-Preview`）；注释写明来源日期与两处只记基础档的说明（`qwen-3-6-plus` 在 256K 以上输入
+    2.5 / 输出 7.5；`gemma-4-uncensored` 被厂商标 deprecated 故未收录）。
+- `packages/core/test/model-catalog.test.ts`：`MODEL_PROVIDERS` 期望列表加 `venice`，加
+  `providerInfo("venice")!.gatewayBaseUrl`、`GATEWAYS` 加 `venice`，另加一段 venice 断言（九条的
+  id / 窗口 / 视觉 / 三档价 / 钉住的协议与内联端点 / 视频标志）。
+- `packages/web/test/model-grouping.test.ts`：分组默认顺序期望里 `venice` 排在 `abliteration` 之后、
+  `vllm` 之前。
+- `packages/docs/content/models.{zh,en}.md`：提供方表格各加一行；网关分组括注加 `venice`；新增
+  「Venice AI 分组 / The Venice AI group」小节（预置九条、为什么必须钉协议、价格来源与两处只记基础档）；
+  预置模型清单各加一行。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged` —— 本笔不碰服务契约）。
+- `npx oxlint` 三个改动的 `.ts` 文件 **0 警告 0 错误**；它们 `prettier --check` 干净（`*.md` 不在
+  prettier 范围里）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 通过 / 6 跳过** · ui **133 / 1115** ·
+  cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过**（基线 351 / 3965，
+  **+3 即本笔**） · docs **8 / 62**。
+- **协议实测**（在 `/root/rel-070` 这棵带依赖的 0.7.0 树上、直接构造 `AutoLLMClient`）：九条按
+  `clientType: "openai-chat"` 构造**全部 ok**；改成按 id 路由，九条里 **6 条直接抛
+  `… is not supported`**，另 3 条（`deepseek-v4-1-flash-*` 两条与 `glm-5-3-flash-uncensored`）虽不抛，
+  却被路由到那两家厂商的专属客户端 —— 正是注释里说的「请求形状按厂商自家服务假设」，所以每条都钉协议
+  并且内联端点。
+- 本机起不了 venice.ai 的连通性验证（无 key、且本机到该域名整条不通），所以这一笔只做到「目录与
+  分组形状正确、协议路由正确」；真连上厂商那一步留着。
+
+### 本轮不发版
+
+只进源码与文档，随下一版发出；npm 与安装包一律没动。
+
 ## 第二百九十二轮：日历编辑弹窗里打不开的工位，原因留在链接所在的那一行下面（2026-11-22，条目 7.171）
 
 **开工**：`git status --short` 干净；`git fetch origin && git merge --ff-only origin/main` 把另一条线
@@ -4890,6 +4963,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-22 | 7.170 | **成员弹层里打不开的工位，原因留在问它的那一行下面**（**2026-11-22 第二百九十轮**落地；`packages/web` 1 个源码文件（`channel-header.tsx`，`MemberPopover` 自己拿 `opening` 与 `refusal: {principal, text}`、`close()` 一并清掉，头部 `openDesk` 改为返回 `refusalText(e)` 不再 `toastError`）＋ 既有 spec +1 条 ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩五处 `openDesk`，这是其中**自有面板**的一处 —— 弹层本来就站在屏幕上，读者按的就是那一行的按钮，而原来的原因是六秒就走的通知（改前实测：弹层里 0 条、通知区 1 条、七秒后通知区也空了） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1456 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3967 / 2 跳过**（与上一轮基线逐项相同） · **新用例 3 passed（16.5 s）**（真服务端 9950 + 自带 mock 8931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r290-a`）：工位路由答 500 带上自己的话 → 句子在弹层里、量到落在那一行下缘之下（`gapUnderRow: 0`）且在弹层内、通知区没有它、**七秒后仍在**、弹层还站着且地址没变；Esc 关掉再打开 → `alert` 数 0；解除拦截后点同一个按钮 → 跳到 `/chat/<会话>` · **反证（改前产物 `r290/before-dist`，主包 `index-BheNs-IH.js`；改后 `index-CTvcdXeN.js`）**：挂 9951 / 数据根 `/root/adelie-fork-data/r290-b` → **1 failed**，弹层里找不到那行字 · **真看一眼**：`r290/shots/{1-popover-open,2-refused,3-refused-7s,4-reopened-clean,5-retry-opened}.png` 肉眼看过，pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `channel-join-refusal` / `channel-send-refusal` / `company.spec` / `company-rail-hints` / `channel-earlier-refusal` / `channel-live-day` **12 passed**（首次 4 红是命令漏了 `ADELIE_HOME`，补上即绿） · 端口只用 9950 / 9951 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r290-*`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `e9162dfa5` |
 | 2026-11-22 | 发布 | **发 v0.7.0 并换装现网**（五条分支 cherry-pick 到 `main`：桌宠实时语音通话、安卓端第一次成包、密钥里非 ASCII 字符的修复、从别的机器搬来的会话、0.6.12 的发布说明 —— 跳首位数字，因为进了新东西；发布提交 `c310d99b5`，门禁在标签检出上 **rc=0 五步全绿**、各包累计 **10962 条通过**；门禁抓到两处真问题各修一笔 —— `ui-gallery` 假后端缺桌宠那四条 `/api/realtime/*` 接口（`ecca83b1d`）、`session-loader.test.ts` 读了 `RuntimeSession` 上不存在的 `workspaceDir` 且没过 prettier（`f8687591e`）→ 远端 `main` = `a7517f716`，标签 `v0.7.0` = 对象 `055df21970…`；三件载荷 linux-x64 114M / universal 57M / win32-x64 150M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.7.0；GitHub Release **id `454473256`** 14 件 762 MB 逐件核 sha256 后发布为 latest；3003 换上 v0.7.0 清单；现网 `/root/.adelie` 整棵换成 0.7.0、旧前端先拷回、瞬时单元 **22:09:51** 重启装上 `index-BaLfRc61.js` 并自核验；随后按用户「你没有更新文档和仓库 readme」补上两份 README 与 `FORK.md` 的改动声明） | 发布轮，逐项见「第二百九十一轮」一节；现网核验写 `rel-070-live-restart-verify.txt`：`penguin version` = v0.7.0、core 戳 `BUILD_DATE 2026-11-22 / BUILD_COMMIT a7517f716…`、7777 在听、`GET /` 200 / 匿名 `/api/me` 401 / 公网 200；`releases/latest` = v0.7.0 | `c310d99b5`（发布）+ 门禁两笔 `ecca83b1d` / `f8687591e` |
 | 2026-11-22 | 7.171 | **日历编辑弹窗里打不开的工位，原因留在链接所在的那一行下面**（**2026-11-22 第二百九十二轮**落地；`packages/web` 1 个源码文件（`calendar-page.tsx`：新增 `deskRefusal`，`openDesk` 改经 `refusalText` 写进去、不再 `toastError`，句子画在元数据那一行下面，`openCreate` / `openEdit` 清掉它）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩四处 `openDesk`，这是其中**自有弹窗**的一处 —— 链接就在弹窗里、请求回来时弹窗仍站着，而原来的原因是一条盖在弹窗标题上、六秒就走的通知（改前实测：800 毫秒时通知区里就是那句话、弹窗里 0 条，七秒后两边都是 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑；ff 进来的新导出让旧 `packages/core/dist` 先红一次，重建 core 后全绿） · `npx oxlint` 2 个改动文件（源码 + 新 spec）**0 警告 0 错误** · 它们与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过** · **新 spec 1 passed（10.6 s）**（真服务端 9961 + 自带 mock 8932 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r292-a`）：工位路由 500 + 自己的话 → 句子在弹窗里、量到起点在链接下缘之下且在弹窗内、通知区没有它、七秒后仍在、弹窗还站着且地址没变；关掉再打开 → `alert` 数 0；解除拦截后同一颗链接打开工位并进入 `/chat/<会话>` · **反证（改前产物 `r292/before-dist`，主包 `index-BaLfRc61.js`；改后 `index-BbWX0Dsq.js`）**挂 9962 / 数据根 `/root/adelie-fork-data/r292-b` → **1 failed**，弹窗里找不到 `alert` · **两态探针**（`r292/shape-check.mjs`）：改前 800 毫秒时通知堆栈里就是那句话、弹窗里 null，七秒后堆栈空；改后通知堆栈只有内测提示、弹窗里是「操作被拒绝：…」，七秒后仍在；三种失败形状（500/400 + 未知码、500 + 表里有的码）改后都落在弹窗里 · 截图 `r292/life-{before,after}/shots/life-{1-800ms,2-7s}.png` 与 `r292/after/shots/` 肉眼看过，两态 pageerror 0 条 · **相邻回归**（真浏览器）`calendar-refusal` 2 + `company.spec` 1，**3 passed（38.5 s）** · 端口只用 9961 / 9962 / 8932（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r292-*`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `0f0dcea0a` |
+| 2026-11-22 | 7.172 | **模型库里多了一个 Venice AI 分组，收录它的无审查模型**（**2026-11-22 第二百九十三轮**落地；`packages/core` 1 个源码文件 ＋ 1 份单测 ＋ `packages/web` 1 份单测 ＋ `packages/docs` 两份模型页 ＋ changelog 一对 —— `MODEL_PROVIDERS` 新增 `venice`（label "Venice AI"、OpenAI 兼容的 `gatewayBaseUrl` `https://api.venice.ai/api/v1`、取 key 页 `https://venice.ai/settings/api` 与模型列表页 `https://docs.venice.ai/models/overview`），注释从「The seven gateway groups」改成 **eight**；`MODEL_CATALOG` 新增九条预置（`abliteration-abliterated-model-large-flash` 1M/视觉、`abliteration-abliterated-model-large-v2` 1M/纯文本、`deepseek-v4-1-flash-1017-uncensored` 与 `deepseek-v4-1-flash-uncensored` 各 1M/视觉、`glm-5-3-flash-uncensored` 1 048 576/视觉、`olafangensan-glm-4.7-flash-heretic` 200K/纯文本、`qwen-3-6-plus` 1M/视觉+视频、`venice-uncensored-1-2` 与 `venice-uncensored-role-play` 各 128K/视觉），每条 `clientType: "openai-chat"` 且内联端点，cluster 放在 abliteration 之后、custom 之前，**不碰接口、无新依赖**）：用户 2026-11-22 点单「在模型库中加 https://venice.ai 这个服务商」，中途 steering 补一句「主要加 ds flash uncensored等无审查模型」 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged` —— 本笔不碰服务契约） · `npx oxlint` 三个改动 `.ts` 文件 **0 警告 0 错误**、`prettier --check` 干净（`*.md` 不在 prettier 范围） · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 通过 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过**（基线 351 / 3965，**+3 即本笔**） · docs **8 / 62** · **协议实测**（`/root/rel-070` 带依赖树上直接构造 `AutoLLMClient`）：九条按 `clientType:"openai-chat"` 构造全 ok；改按 id 路由则 **6 条直接抛 `… is not supported`**，另 3 条（`deepseek-v4-1-flash-*` 两条、`glm-5-3-flash-uncensored`）不抛却被路由到那两家厂商的专属客户端 —— 故每条钉协议并内联端点 · **本机连不上 venice.ai**（curl 与 DoH 都被挡），模型事实与价格取自 models.dev 的 `venice` 提供方（其 toml 由 `https://api.venice.ai/api/v1/models?type=text` 同步生成），**真连上厂商那一步未做** · 没有切版本号、没发 npm、没发安装包、没发发布汇总；只进源码与文档，随下一版发出 | `0ff955e9c` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
