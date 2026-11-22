@@ -450,11 +450,12 @@ Adelie 升级可能改变内置的预置模型目录。一旦发生，Project ow
 | qwen-token-plan | `OPENAI_API_KEY` | Qwen Token Plan 订阅网关，预置 base URL `https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1`；价格取自各模型页面的官方牌价（预览模型只有配额倍率优惠，没有牌价） |
 | modelscope | `OPENAI_API_KEY` | 魔搭的 OpenAI 兼容 api-inference 网关，预置 base URL `https://api-inference.modelscope.cn/v1`；id 就是上游仓库名（如 `deepseek-ai/DeepSeek-V4.1-Flash`、`Qwen/Qwen3.8-27B`）；分组标题栏可以经授权中转层为你自动授权一把 token，也可以手动设置。见 [ModelScope 分组](#modelscope-分组) |
 | abliteration | `OPENAI_API_KEY` | abliteration.ai 自家那批「abliterated」（去审查微调）模型，OpenAI 兼容，预置 base URL `https://api.abliteration.ai/v1`；key 形如 `ak_…`；四条预置都固定 Chat Completions 客户端。见 [Abliteration 分组](#abliteration-分组) |
+| venice | `OPENAI_API_KEY` | Venice AI（venice.ai）的 OpenAI 兼容网关，预置 base URL `https://api.venice.ai/api/v1`；这一组收录的是它的无审查模型 —— 自家产品线加上它转售的 abliterated / 「uncensored」微调，共 9 条预置，全部固定 Chat Completions 客户端。见 [Venice AI 分组](#venice-ai-分组) |
 | volcengine | `OPENAI_API_KEY` | 字节跳动的火山方舟（Volcengine Ark），OpenAI 兼容，预置 base URL `https://ark.cn-beijing.volces.com/api/v3`；Doubao Seed 系列，加上方舟转售的 GLM / Kimi / DeepSeek，共 11 条预置，全部固定 Chat Completions 客户端。见 [Volcengine Ark 分组](#volcengine-ark-分组) |
 | vllm | `OPENAI_API_KEY` | 自托管 vLLM 服务器：协议固定为 `openai-chat-vllm-adapter`，无预置 base URL，八个预置模型价格均为 0（见[连接本地或自托管端点](#连接本地或自托管端点)） |
 | custom | `OPENAI_API_KEY` | 任意 OpenAI 协议端点；自带一个预置模型 Atria Dawn Preview（Anthropic Messages API，地址 `api.atria-asi.ai`，需要自己的 key，上下文窗口 256K，供应商公布价格之前定价 $0） |
 
-OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / qwen-pay-as-you-go / qwen-token-plan）走的是 AgentHub 通用的 OpenAI 协议客户端，对应变量是 `OPENAI_API_KEY`；其中没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。custom、vLLM 和自建分组同样如此，除非条目的 base URL 就是厂商自己的端点。ModelScope 也使用 `OPENAI_*` 凭据变量，因为它的凭据是 api-inference token，三条预置都固定使用通用 Responses 协议；没有 key 的 ModelScope 条目同样会被拒绝。
+OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / qwen-pay-as-you-go / qwen-token-plan / venice）走的是 AgentHub 通用的 OpenAI 协议客户端，对应变量是 `OPENAI_API_KEY`；其中没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。custom、vLLM 和自建分组同样如此，除非条目的 base URL 就是厂商自己的端点。ModelScope 也使用 `OPENAI_*` 凭据变量，因为它的凭据是 api-inference token，三条预置都固定使用通用 Responses 协议；没有 key 的 ModelScope 条目同样会被拒绝。
 
 - OpenRouter 分组的预置模型，以及你添加到该分组的任何模型，都使用 Responses 客户端（`client_type = "openai-responses"`），因为 OpenRouter 在同一个 base URL 上为它转售的每一个模型提供 Responses API。
 - 其他网关的预置模型使用 Chat Completions 客户端（`client_type = "openai-chat"`）。
@@ -501,6 +502,14 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - **协议。** 这些 id 没有一条能被 AgentHub 按名字认出来，所以每个条目都固定 Chat Completions 客户端（`client_type = "openai-chat"`）并把端点写在条目上；同一条端点上也有 `/responses`，要换协议在条目上改即可。和所有网关一样，没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。
 - **价格。** 取自服务自己的模型列表，单位是每百万 Token 多少美元：输入 1 或 3，输出 2、3 或 5，缓存命中的读价 0.1 或 0.3。它不额外收缓存写入费，所以 `cache_write` 记的就是输入价。
 
+### Venice AI 分组
+
+`venice` 收录 Venice AI（venice.ai）的**无审查模型** —— 这是这个分组存在的理由：它自家那条产品线（Venice Uncensored 1.2、Venice Role Play Uncensored），加上它转售的 abliterated 与「uncensored」微调（这些模型既不属于 Venice，也不来自原始实验室）。端点是 OpenAI 兼容的 `https://api.venice.ai/api/v1`，key 从设置页领取（<https://venice.ai/settings/api>），在分组标题栏用**填写密钥**设置一次即可。
+
+- **预置模型（9 条）。** DeepSeek 两条：`deepseek-v4-1-flash-uncensored` 与 `deepseek-v4-1-flash-1017-uncensored`；GLM 两条：`glm-5-3-flash-uncensored`、`olafangensan-glm-4.7-flash-heretic`；Venice 自家两条：`venice-uncensored-1-2`、`venice-uncensored-role-play`；另有 `abliteration-abliterated-model-large-flash`、`abliteration-abliterated-model-large-v2` 与 `qwen-3-6-plus`（Qwen 3.6 Plus Uncensored，Venice 自己的微调）。除 `abliteration-abliterated-model-large-v2` 与 `olafangensan-glm-4.7-flash-heretic` 只收文本外，其余都接受图像；`qwen-3-6-plus` 还接受视频。
+- **协议。** 每个条目都固定 Chat Completions 客户端（`client_type = "openai-chat"`）并把端点写在条目上。这一步不能省：`deepseek-v4-1-flash-*` 含 `deepseek-v4` 子串、`glm-5-3-flash-uncensored` 含 `glm-5`，交给 AgentHub 按名字自动路由会把它们送进那两家的专属客户端，而那种请求形状是照着厂家自己的服务做的，用在转售端点上不对。和所有网关一样，没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。
+- **价格。** 取自 Venice 自己的模型列表（`GET https://api.venice.ai/api/v1/models?type=text`），单位是每百万 Token 多少美元，2026-11-22 核对。九条里只有 `qwen-3-6-plus` 公布了真正的缓存写入价（输入 0.625、写入 0.78），其余各条的 `cache_write` 记的就是输入价。两条只记录基础档：`qwen-3-6-plus` 在输入超过 256K Token 后输入价升到 2.5、输出升到 7.5，目录放不下分档；Venice 的列表里另有一条 `gemma-4-uncensored`，被它自己标成 deprecated，所以没有做成预置。
+
 ### Volcengine Ark 分组
 
 `volcengine` 是字节跳动自己的模型平台火山方舟（Volcengine Ark），豆包 / Seed（`doubao-seed-*`）就是从这台端点上服务的。端点是 OpenAI 兼容的 `https://ark.cn-beijing.volces.com/api/v3`，key 从方舟控制台领取，在分组标题栏用**填写密钥**设置一次即可。
@@ -528,6 +537,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - `dots-3-note-preview`（TokenDance 上免费，512K 上下文）
 - `deepseek-ai/DeepSeek-V4.1-Flash`、`Qwen/Qwen3.8-27B`、`Qwen/Qwen3.8-Flash-Next`（ModelScope 的 api-inference，没有价格的预置条目）
 - `abliterated-model-large-v2` / `abliterated-model-large-flash`（Abliteration 的去审查模型）
+- `deepseek-v4-1-flash-uncensored` / `glm-5-3-flash-uncensored` / `venice-uncensored-1-2`（Venice AI 的无审查模型）
 
 列表并未穷尽所有模型。
 

@@ -317,6 +317,8 @@ const FIREWORKS_BASE_URL = "https://api.fireworks.ai/inference/v1";
 const TOKENDANCE_BASE_URL = "https://tokendance.space/gateway/v1";
 /** Abliteration's OpenAI-compatible base (its docs' base URL for every SDK and agent they wire up). */
 const ABLITERATION_BASE_URL = "https://api.abliteration.ai/v1";
+/** Venice AI's OpenAI-compatible base — the one its own API reference and every SDK under it use. */
+const VENICE_BASE_URL = "https://api.venice.ai/api/v1";
 const MINIMAX_BASE_URL = "https://api.minimax.io/v1";
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 const MODELSCOPE_BASE_URL = "https://api-inference.modelscope.cn/v1";
@@ -358,10 +360,10 @@ export const MODELSCOPE_PROVIDER_ID = "modelscope";
  * moves when the curation changes: a Project that has ever reordered its groups has every
  * key stored already, so it keeps the arrangement its user built.
  *
- * The seven gateway groups — OpenRouter, Fireworks AI, SiliconFlow, TokenDance, OpenCode Go,
- * Qwen Pay-As-You-Go and Qwen Token Plan — reach their models through AgentHub's generic
- * protocol clients (`openai-responses` for OpenRouter, `openai-chat` for the rest, and all
- * three generic clients within OpenCode Go). Those clients read the vendor variables
+ * The eight gateway groups — OpenRouter, Fireworks AI, SiliconFlow, TokenDance, OpenCode Go,
+ * Qwen Pay-As-You-Go, Qwen Token Plan and Venice AI — reach their models through AgentHub's
+ * generic protocol clients (`openai-responses` for OpenRouter, `openai-chat` for the rest, and
+ * all three generic clients within OpenCode Go). Those clients read the vendor variables
  * (**OPENAI_API_KEY / OPENAI_BASE_URL**, and ANTHROPIC_* for OpenCode Go's `ant-messages`
  * rows) when the credential is blank, not the gateway's own variable names, so every gateway
  * group records the OPENAI_* pair as the fact it is — and that is exactly why a keyless
@@ -642,6 +644,25 @@ export const MODEL_PROVIDERS: ModelProviderInfo[] = [
     apiKeyUrl: "https://abliteration.ai/console",
     modelsUrl: "https://docs.abliteration.ai/",
     gatewayBaseUrl: ABLITERATION_BASE_URL,
+  },
+  {
+    // Venice AI (venice.ai): a gateway fronting open and frontier models, and the reason it is
+    // catalogued here is its uncensored line — the vendor's own models plus the abliterated and
+    // "uncensored" fine-tunes of other vendors' models it serves (the cluster below is that
+    // curation, not its whole list). One Bearer key from the vendor's settings page serves the
+    // whole group, so no oauth or bridgeAuth. Every row pins the generic Chat Completions client
+    // and inlines this endpoint: Venice's ids are the seller's own spellings, and the ones that
+    // do carry a vendor substring (`deepseek-v4…`, `glm-5…`) would otherwise reach that vendor's
+    // dedicated client, whose request shape assumes the vendor's own service. The group carries
+    // the endpoint too, as every gateway does.
+    // https://docs.venice.ai/models/overview (the model catalogue), https://venice.ai/settings/api
+    id: "venice",
+    label: "Venice AI",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://venice.ai/settings/api",
+    modelsUrl: "https://docs.venice.ai/models/overview",
+    gatewayBaseUrl: VENICE_BASE_URL,
   },
   {
     // Self-hosted: the user runs the server, so there is no console to mint a key at
@@ -3469,6 +3490,111 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     supportsVision: true,
     clientType: "openai-chat",
     baseUrl: ABLITERATION_BASE_URL,
+  },
+  // -- Venice AI (gateway: OpenAI-compatible protocol, preset base URL). Curated for what the
+  // group is here for — its uncensored line: the vendor's own models and the abliterated /
+  // "uncensored" fine-tunes of other vendors' models — rather than the 130-odd rows its full
+  // list carries. Model facts and prices are the vendor's own, synced from
+  // https://api.venice.ai/api/v1/models?type=text (read 2026-11-22 through the models.dev
+  // provider set, which is generated from that endpoint): window, input modalities and the
+  // per-million-token USD rates below are that list's fields verbatim. cache_write repeats the
+  // input rate on every row but qwen-3-6-plus, whose list publishes a genuine write premium
+  // (0.78 on 0.625 input) — the same rule the other gateway clusters follow. Every row pins
+  // openai-chat and inlines the endpoint. Two notes on the curation: the vendor's list still
+  // carries `gemma-4-uncensored`, which it marks deprecated, so it is left out rather than
+  // preset for a later cleanup; and qwen-3-6-plus is billed more above a 256K prompt (input
+  // 2.5 / output 7.5), a tier this catalog cannot express, so the row stores the base rate.
+  // Dictionary order by upstream id, the newer revision of a series first.
+  {
+    modelId: "abliteration-abliterated-model-large-flash",
+    displayName: "Abliterated Large Flash",
+    provider: "venice",
+    contextWindow: 1000000,
+    pricing: usd(0.125, 1.25, 2.5),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "abliteration-abliterated-model-large-v2",
+    displayName: "Abliterated Large V2",
+    provider: "venice",
+    contextWindow: 1000000,
+    pricing: usd(0.3, 3, 5),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "deepseek-v4-1-flash-1017-uncensored",
+    displayName: "DeepSeek V4.1 Flash 1017 Uncensored",
+    provider: "venice",
+    contextWindow: 1000000,
+    pricing: usd(0.00825, 0.33, 1.32),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "deepseek-v4-1-flash-uncensored",
+    displayName: "DeepSeek V4.1 Flash Uncensored",
+    provider: "venice",
+    contextWindow: 1000000,
+    pricing: usd(0.00825, 0.33, 1.32),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "glm-5-3-flash-uncensored",
+    displayName: "GLM 5.3 Flash Uncensored",
+    provider: "venice",
+    contextWindow: 1048576,
+    pricing: usd(0.033, 0.165, 0.55),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "olafangensan-glm-4.7-flash-heretic",
+    displayName: "GLM 4.7 Flash Heretic",
+    provider: "venice",
+    contextWindow: 200000,
+    pricing: usd(0.035, 0.07, 0.4),
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "qwen-3-6-plus",
+    displayName: "Qwen 3.6 Plus Uncensored",
+    provider: "venice",
+    contextWindow: 1000000,
+    pricing: usd(0.0625, 0.78, 3.75),
+    supportsVision: true,
+    supportsVideo: true,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "venice-uncensored-1-2",
+    displayName: "Venice Uncensored 1.2",
+    provider: "venice",
+    contextWindow: 128000,
+    pricing: usd(0.2, 0.2, 0.9),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
+  },
+  {
+    modelId: "venice-uncensored-role-play",
+    displayName: "Venice Role Play Uncensored",
+    provider: "venice",
+    contextWindow: 128000,
+    pricing: usd(0.5, 0.5, 2),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: VENICE_BASE_URL,
   },
   // -- Custom (the group that otherwise holds only user-defined models). A preset may live
   // here only as a complete row — its own base URL and a pinned generic protocol — because the

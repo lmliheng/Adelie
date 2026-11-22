@@ -78,6 +78,7 @@ describe("model-catalog", () => {
       "qwen-token-plan",
       "modelscope",
       "abliteration",
+      "venice",
       "vllm",
       "custom",
     ]);
@@ -1052,6 +1053,7 @@ describe("model-catalog", () => {
       "https://api-inference.modelscope.cn/v1",
     );
     expect(providerInfo("abliteration")!.gatewayBaseUrl).toBe("https://api.abliteration.ai/v1");
+    expect(providerInfo("venice")!.gatewayBaseUrl).toBe("https://api.venice.ai/api/v1");
     const GATEWAYS = [
       "openrouter",
       "fireworks",
@@ -1062,6 +1064,7 @@ describe("model-catalog", () => {
       "qwen-pay-as-you-go",
       "modelscope",
       "abliteration",
+      "venice",
     ];
     for (const p of MODEL_PROVIDERS) {
       if (!GATEWAYS.includes(p.id)) {
@@ -1109,7 +1112,45 @@ describe("model-catalog", () => {
     // An id the catalog does not know — a user-added row — gets no cap either.
     expect(catalogImageLimit("abliteration", "someone/else")).toBeUndefined();
     expect(catalogImageLimit(undefined, "abliterated-model")).toBeUndefined();
-    const gateway = [...or, ...fw, ...sf, ...td, ...qtp, ...qpayg, ...ms, ...abl];
+    const ven = MODEL_CATALOG.filter((m) => m.provider === "venice");
+    // Venice AI's uncensored line, read 2026-11-22 from the vendor's own list endpoint
+    // (https://api.venice.ai/api/v1/models?type=text) as mirrored by models.dev's generated
+    // provider set: window, input modalities and per-million-token USD rates are that list's
+    // fields. Every row pins openai-chat and inlines the endpoint — the ids carrying a vendor
+    // substring (`deepseek-v4…`, `glm-5…`) would otherwise reach that vendor's own client,
+    // whose request shape assumes the vendor's service rather than a reseller's.
+    expect(
+      ven.map((m) => [
+        m.modelId,
+        m.contextWindow,
+        m.supportsVision,
+        m.pricing!.cache_read,
+        m.pricing!.cache_write,
+        m.pricing!.output,
+      ]),
+    ).toEqual([
+      ["abliteration-abliterated-model-large-flash", 1000000, true, 0.125, 1.25, 2.5],
+      ["abliteration-abliterated-model-large-v2", 1000000, false, 0.3, 3, 5],
+      ["deepseek-v4-1-flash-1017-uncensored", 1000000, true, 0.00825, 0.33, 1.32],
+      ["deepseek-v4-1-flash-uncensored", 1000000, true, 0.00825, 0.33, 1.32],
+      ["glm-5-3-flash-uncensored", 1048576, true, 0.033, 0.165, 0.55],
+      ["olafangensan-glm-4.7-flash-heretic", 200000, false, 0.035, 0.07, 0.4],
+      ["qwen-3-6-plus", 1000000, true, 0.0625, 0.78, 3.75],
+      ["venice-uncensored-1-2", 128000, true, 0.2, 0.2, 0.9],
+      ["venice-uncensored-role-play", 128000, true, 0.5, 0.5, 2],
+    ]);
+    for (const m of ven) {
+      expect(m.clientType, m.modelId).toBe("openai-chat");
+      expect(m.baseUrl, m.modelId).toBe("https://api.venice.ai/api/v1");
+      expect(resolveModelEnv(m.modelId, m.clientType)?.envKey, m.modelId).toBe("OPENAI_API_KEY");
+      // A gateway row: no promotion, nothing retired, and no image cap published.
+      expect(m.discount, m.modelId).toBeUndefined();
+      expect(m.retired, m.modelId).toBeUndefined();
+    }
+    // The one video-reading preset outside Volcengine: Venice's list gives qwen-3-6-plus video
+    // input alongside text and images.
+    expect(catalogEntryFor("venice", "qwen-3-6-plus")!.supportsVideo).toBe(true);
+    const gateway = [...or, ...fw, ...sf, ...td, ...qtp, ...qpayg, ...ms, ...abl, ...ven];
     // Pricing (USD, per the 2026-08-03 models-API re-read): MiMo v2.5 and Hy3 publish a real
     // cache-hit price and no per-token write premium, so cache_write carries the input price.
     const mimo = MODEL_CATALOG.find((m) => m.modelId === "xiaomi/mimo-v2.5")!.pricing!;

@@ -114,6 +114,7 @@ describe("groupModelRows", () => {
       "qwen-token-plan",
       "modelscope",
       "abliteration",
+      "venice",
       "vllm",
       "custom",
     ]);
