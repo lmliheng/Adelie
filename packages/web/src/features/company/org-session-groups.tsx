@@ -6,7 +6,8 @@
  * are its primary objects, and a desk is where a person is talked to. Every employee has a desk
  * session from the moment it is hired, so a row normally carries one; a row whose id these
  * caches have not learned yet still stands there and opens the desk on click, exactly as the
- * org chart's card does.
+ * org chart's card does — and a call it makes that comes back refused keeps the server's reason
+ * under that row, where the retry is (7.19's rule).
  *
  * Temporary: ticket sessions have no group of their own. Each exists because a ticket started
  * it, and it is opened from that ticket's dialog. The ones opened from there are listed below the
@@ -27,7 +28,7 @@
  * caches are only re-read on an organization event, and a run ending publishes none
  * (org-sessions.ts).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import {
   ActivityIcon,
@@ -50,7 +51,7 @@ import {
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
 import { sessionActivityLabel } from "../../lib/session-activity";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { toneDot, toneInk } from "../../lib/tone";
 import { useAuth } from "../../state/auth";
 import { useCompany } from "../../state/company";
@@ -104,12 +105,30 @@ const DESK_ROW_STATE: SessionRowState = { archived: false, pinned: false };
  * creates it — the same call the org chart's card makes, so the two entry points cannot
  * disagree about what "open the desk" means. `openSession` is how a Temporary row opens its
  * session.
+ *
+ * Only a row whose Session id these caches have not learned yet takes that call — every employee
+ * has a desk from the hire — so a refusal here is an answer to a row that is still standing
+ * (7.19: the reason belongs where the question was asked). `refusal` carries it back for the
+ * caller that has a row to draw it under; the collapsed rail has no line to put words on, so it
+ * asks for `sayInPlace: false` and keeps the notification. The line is cleared when another
+ * attempt starts and when the reader moves to another organization — one organization's answer
+ * must not follow them.
  */
-function useOpenDesk(projectId: string, orgId: string, onNavigate?: () => void) {
+function useOpenDesk(
+  projectId: string,
+  orgId: string,
+  { onNavigate, sayInPlace = false }: { onNavigate?: () => void; sayInPlace?: boolean } = {},
+) {
   const navigate = useNavigate();
   const company = useCompany();
   const { setCurrentAgentId } = useProject();
   const [opening, setOpening] = useState<string | null>(null);
+  /** The row whose desk could not be opened, and the server's reason in its own words. */
+  const [refusal, setRefusal] = useState<{ agentId: string; text: string } | null>(null);
+
+  useEffect(() => {
+    setRefusal(null);
+  }, [projectId, orgId]);
 
   /** Opens an existing Session: the current Agent follows it, as every other list does. */
   const openSession = (sessionId: string, agentId: string) => {
@@ -125,6 +144,7 @@ function useOpenDesk(projectId: string, orgId: string, onNavigate?: () => void) 
       return;
     }
     setOpening(agentId);
+    setRefusal(null);
     try {
       const desk = await api.getOrgDesk(projectId, orgId, agentId);
       // Freshly created: the row has to learn its Session id to mark itself as the open one.
@@ -132,12 +152,13 @@ function useOpenDesk(projectId: string, orgId: string, onNavigate?: () => void) 
       void company.reloadOrgSessions();
       openSession(desk.sessionId, agentId);
     } catch (e) {
-      toastError(apiErrorText(e));
+      if (sayInPlace) setRefusal({ agentId, text: refusalText(e) });
+      else toastError(apiErrorText(e));
     } finally {
       setOpening(null);
     }
   };
-  return { openDesk, openSession, opening };
+  return { openDesk, openSession, opening, refusal };
 }
 
 /**
@@ -149,6 +170,7 @@ function DeskRow({
   row,
   active,
   opening,
+  refusal,
   onOpen,
   onMessaging,
 }: {
@@ -156,6 +178,8 @@ function DeskRow({
   active: boolean;
   /** This row's desk is being created right now (the click that creates it is in flight). */
   opening: boolean;
+  /** Why this row's desk could not be opened, in the server's words; null when there is nothing to answer. */
+  refusal: string | null;
   onOpen: () => void;
   onMessaging: (sessionId: string) => void;
 }) {
@@ -276,6 +300,20 @@ function DeskRow({
           </>
         )}
       </div>
+      {/* The row asked, so the row answers: the reason sits directly under it, in the server's
+          words, and the same row is the retry — a notification would have walked away while the
+          row sat there looking exactly as it had before the click. Two lines at most in a
+          sidebar; the whole sentence on hover. */}
+      {refusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={S.common.refused(refusal)}
+          data-tooltip-content="text"
+          className={`line-clamp-2 break-words px-2.5 pb-1 text-xs ${toneInk.danger}`}
+        >
+          {S.common.refused(refusal)}
+        </p>
+      )}
     </li>
   );
 }
@@ -432,7 +470,11 @@ export function OrgSessionGroups({
   const live = useLiveSessionStatuses();
   const orgSessions = company.orgSessions.get(orgKey(projectId, orgId));
   const desks = deskRows(company.orgChart, orgSessions, live);
-  const { openDesk, openSession, opening } = useOpenDesk(projectId, orgId, onNavigate);
+  const { openDesk, openSession, opening, refusal } = useOpenDesk(projectId, orgId, {
+    ...(onNavigate ? { onNavigate } : {}),
+    // The rows are on screen and stay there: the answer goes under the row that asked.
+    sayInPlace: true,
+  });
   const tempRows = useTempRows(projectId, orgId, desks, activeSessionId);
   // Nothing has been read for this organization yet: a skeleton, not an "empty" claim.
   const chartFailed = company.orgChart === null && company.orgChartError !== null;
@@ -466,6 +508,7 @@ export function OrgSessionGroups({
                 row={d}
                 active={d.sessionId !== null && d.sessionId === activeSessionId}
                 opening={opening === d.agentId}
+                refusal={refusal !== null && refusal.agentId === d.agentId ? refusal.text : null}
                 onOpen={() => void openDesk(d.agentId, d.sessionId)}
                 onMessaging={setMessagingSessionId}
               />
@@ -529,6 +572,8 @@ export function DeskRailRows({ projectId, orgId }: { projectId: string; orgId: s
   const company = useCompany();
   const live = useLiveSessionStatuses();
   const desks = deskRows(company.orgChart, company.orgSessions.get(orgKey(projectId, orgId)), live);
+  // A 48 px rail item has no line to answer on, so a refused desk stays a notification here —
+  // the pinned sidebar's rows are the place the reason can wait under the row that asked.
   const { openDesk, opening } = useOpenDesk(projectId, orgId);
   if (desks.length === 0) return null;
   return (
