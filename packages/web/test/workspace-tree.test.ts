@@ -9,6 +9,9 @@
  *   and mark an open directory still loading or empty — or, when its listing failed, carry the
  *   reason that stands under the row; a whole-Workspace search draws a flat list of hits named
  *   by their whole path, carrying size and time.
+ * - A directory whose listing failed loses it, so the directories still open beneath it kept an
+ *   older listing; a landed retry names them so they are read again — strictly inside it,
+ *   prefix-sharing siblings excluded, and nothing through the root.
  * - A drop lands on a folder row, in a file row's directory, or in the current directory.
  * - Below the width threshold the panel is one column (two panes while unmeasured); an
  *   undragged tree takes about a third within readable bounds, and a dragged width is clamped.
@@ -47,6 +50,7 @@ import {
   looksLikeText,
   maxTreeWidth,
   needsDiscardConfirm,
+  openDirsUnder,
   parentDir,
   parseWrapLines,
   parseTreeVisible,
@@ -196,6 +200,20 @@ describe("flattenTree", () => {
     // A listed directory never carries a failure: the listing wins.
     const listed = flattenTree(LISTINGS, new Set(["a"]), failures);
     expect(listed.find((r) => r.path === "a")?.error).toBeUndefined();
+  });
+});
+
+describe("openDirsUnder", () => {
+  it("names the open directories strictly inside one, and nothing beside it", () => {
+    const expanded = new Set(["docs", "docs/api", "docs/api/v1", "docs-old", "src/lib"]);
+    expect(openDirsUnder(expanded, "docs")).toEqual(["docs/api", "docs/api/v1"]);
+    expect(openDirsUnder(expanded, "docs/api")).toEqual(["docs/api/v1"]);
+    expect(openDirsUnder(expanded, "docs/api/v1")).toEqual([]);
+    // The directory itself is not under itself, and a sibling sharing its prefix is not inside.
+    expect(openDirsUnder(expanded, "docs-old")).toEqual([]);
+    // The root's failure replaces the whole tree instead of a row, and Refresh re-reads every
+    // open directory by itself — so a retry of the root queues nothing through this.
+    expect(openDirsUnder(expanded, "")).toEqual([]);
   });
 });
 

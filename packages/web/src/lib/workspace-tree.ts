@@ -126,6 +126,22 @@ export function droppedFailures(
   return new Map([...failures].filter(([dir]) => !isWithin(dir, path)));
 }
 
+/**
+ * The open directories strictly inside `dir` — what a listing of `dir` that just landed has to
+ * read again when it was a retry. A directory whose listing failed loses that listing (the
+ * reason stands under its row instead), so whatever is still open beneath it keeps an older
+ * listing and is not drawn until `dir` itself lists again; when it does, that older listing
+ * cannot show what changed in between — and what changed in between is the usual cause of the
+ * failure (an Agent, or the reader in a shell, rewriting the tree).
+ *
+ * The root has no descendants by this spelling ("" gives "/"), which is right: its failure
+ * replaces the whole tree rather than a row, and its retry (Refresh) reads every open directory
+ * by itself.
+ */
+export function openDirsUnder(expanded: ReadonlySet<string>, dir: string): string[] {
+  return [...expanded].filter((d) => d.startsWith(`${dir}/`));
+}
+
 /** What a new text file is called until it is named. */
 export const DEFAULT_TEXT_FILE_NAME = "untitled.txt";
 

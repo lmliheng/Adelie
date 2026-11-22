@@ -142,6 +142,7 @@ import {
   movedSet,
   needsDiscardConfirm,
   newEntryName,
+  openDirsUnder,
   parentDir,
   pathReference,
   previewKindFor,
@@ -760,6 +761,11 @@ export function WorkspaceBrowser({
   currentDirRef.current = currentDir;
   const selectedPathRef = useRef(selectedPath);
   selectedPathRef.current = selectedPath;
+  /**
+   * The panel's own `loadDir`, for the retry branch that re-reads what is open under a row: a
+   * callback that named itself would have to list itself as its own dependency.
+   */
+  const loadDirRef = useRef<((dir: string) => Promise<boolean>) | null>(null);
   const previewRef = useRef(preview);
   previewRef.current = preview;
   const richViewRef = useRef(richView);
@@ -902,6 +908,9 @@ export function WorkspaceBrowser({
   const loadDir = useCallback(
     async (dir: string): Promise<boolean> => {
       const key = scopeKey;
+      // Read before this attempt clears it: a read that failed before is a retry, and a retry
+      // that lands must also bring back what is open under it (see the success branch).
+      const retrying = failedDirsRef.current.has(dir);
       const seq = (dirSeq.current.get(dir) ?? 0) + 1;
       dirSeq.current.set(dir, seq);
       const current = () => scopeKeyRef.current === key && dirSeq.current.get(dir) === seq;
@@ -919,6 +928,15 @@ export function WorkspaceBrowser({
         if (!current()) return false;
         setListings((m) => new Map(m).set(dir, res.entries));
         if (dir === "") setRootError(null);
+        if (retrying) {
+          // This was the reader's retry (a click on the row; Refresh re-reads every open
+          // directory by itself). While the row said it could not be read, the directories still
+          // open under it kept the listing they had before — older than whatever made this read
+          // fail in the first place, and invisible until this one landed. Read them again now
+          // that there is a parent to draw them under, rather than showing the reader a subtree
+          // that is once more on screen but no longer true.
+          for (const d of openDirsUnder(expandedRef.current, dir)) void loadDirRef.current?.(d);
+        }
         return true;
       } catch (err) {
         if (!current()) return false;
@@ -949,6 +967,7 @@ export function WorkspaceBrowser({
     },
     [scopeKey, files],
   );
+  loadDirRef.current = loadDir;
 
   useEffect(() => {
     void loadDir("");
