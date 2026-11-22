@@ -94,6 +94,9 @@ import type {
   ProjectUpdateResponse,
   ProxyProbeResponse,
   ProxyProbeTargetsResponse,
+  RealtimeConfigResponse,
+  RealtimeStatusResponse,
+  RealtimeTestResponse,
   RestartResponse,
   RetryNowResponse,
   ScheduleItem,
@@ -189,6 +192,22 @@ function asrEndpoint(baseUrl: string): string {
   const bailian = url.hostname === "aliyuncs.com" || url.hostname.endsWith(".aliyuncs.com");
   const scheme = url.protocol === "http:" ? "ws:" : "wss:";
   return `${scheme}//${url.host}${bailian ? "/api-ws/v1/inference" : "/gateway/alibaba/api-ws/v1/inference"}`;
+}
+
+/**
+ * Where the call's WebSocket sits for a configured site — the server's own rule again: only the
+ * site's origin is taken, the path is fixed, and the model rides in the query string. The gallery
+ * only needs a plausible string to render next to the check.
+ */
+function realtimeEndpoint(baseUrl: string, model: string): string {
+  let url: URL;
+  try {
+    url = new URL(baseUrl);
+  } catch {
+    return "wss://dashscope.aliyuncs.com/api-ws/v1/realtime?model=qwen3.8-omni-flash-realtime";
+  }
+  const scheme = url.protocol === "http:" ? "ws:" : "wss:";
+  return `${scheme}//${url.host}/api-ws/v1/realtime?model=${encodeURIComponent(model)}`;
 }
 
 /** Function declarations rather than arrows: only those narrow control flow as `never` calls. */
@@ -398,6 +417,42 @@ router
     // Every signed-in user may talk into the admin's key. The gallery has no such key, so it
     // answers with the one thing a demo can honestly say instead of a transcript.
     text: "The gallery has no speech provider behind it, so this is the recording's stand-in text.",
+  }))
+  // Real-time voice: the desktop pet's call. Same three shapes as the speech input above — the
+  // masked read, the save, the settings page's check — plus the status every signed-in session may
+  // read, which is what lets the pet offer a call. No provider is behind the gallery, so the check
+  // answers from what the form would save.
+  .get("/api/realtime/config", ({ store }): RealtimeConfigResponse => ({
+    config: store.f.realtimeConfig,
+  }))
+  .put("/api/realtime/config", ({ store, body }): RealtimeConfigResponse => {
+    const update = record(body);
+    const baseUrl = str(update.baseUrl).trim();
+    const model = str(update.model).trim();
+    const voice = str(update.voice).trim();
+    if (baseUrl !== "") store.f.realtimeConfig.baseUrl = baseUrl;
+    if (model !== "") store.f.realtimeConfig.model = model;
+    if (voice !== "") store.f.realtimeConfig.voice = voice;
+    if (str(update.apiKey).trim() !== "") store.f.realtimeConfig.hasKey = true;
+    return { config: store.f.realtimeConfig };
+  })
+  .post("/api/realtime/test", ({ store, body }): RealtimeTestResponse => {
+    const request = record(body);
+    const named = str(request.baseUrl).trim();
+    const baseUrl = named !== "" ? named : store.f.realtimeConfig.baseUrl;
+    const asked = str(request.model).trim();
+    const model = asked !== "" ? asked : store.f.realtimeConfig.model;
+    const ok = str(request.apiKey).trim() !== "" || store.f.realtimeConfig.hasKey;
+    return {
+      ok,
+      message: ok ? "" : "No real-time voice model is configured.",
+      endpoint: realtimeEndpoint(baseUrl, model),
+    };
+  })
+  .get("/api/realtime/status", ({ store }): RealtimeStatusResponse => ({
+    configured: store.f.realtimeConfig.hasKey,
+    model: store.f.realtimeConfig.model,
+    voice: store.f.realtimeConfig.voice,
   }))
   // The storage ledger's page, and the human-reviewed cleanup that reads it. The mode gates every
   // write here exactly as it does on the server, so the gallery can be walked through both pages:
