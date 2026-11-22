@@ -189,6 +189,13 @@ export interface RuntimeSession {
   ): AsyncGenerator<OmniMessage>;
   compact(opts: { signal: AbortSignal }): AsyncGenerator<OmniMessage>;
   /**
+   * The Workspace the Session runs in (core `Session.workspaceDir`): the one it was created with,
+   * or, after a resume, the one the Trace's Workspace was resolved to — a migrated conversation's
+   * disposable temp Workspace is recreated under this install, so this is the path that exists
+   * here. Optional: test fakes may omit it, in which case nothing reads it.
+   */
+  readonly workspaceDir?: string;
+  /**
    * The running context's model (core `Session.provider` / `Session.modelId`, getters over
    * the context's session_meta): the row's pair at creation, moved by each in-session switch
    * — and, after a restart, whatever the Trace resumed on. Optional: test fakes may omit them,

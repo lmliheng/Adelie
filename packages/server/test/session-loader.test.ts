@@ -95,7 +95,9 @@ describe("session-loader", () => {
       models: [{ provider: "anthropic", model_id: "claude-sonnet-4-6", context_window: 1000 }],
     });
     await writeTraceFile(root, PROJECT, AGENT, "2026-07-06", SID, 1, [
-      sessionMeta(meta({ provider: "anthropic", model_id: "claude-sonnet-4-6", workspace: foreign })),
+      sessionMeta(
+        meta({ provider: "anthropic", model_id: "claude-sonnet-4-6", workspace: foreign }),
+      ),
       userText("hi"),
     ]);
     const loader = createCoreSessionLoader(root);
