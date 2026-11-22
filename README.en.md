@@ -149,6 +149,7 @@ and local models with a custom endpoint.
 | Requirement | Support |
 | --- | --- |
 | Operating system — desktop app | Windows 10+ (x64), Linux (x64) |
+| Operating system — Android app | Android 7.0+ (arm64 / x86_64), beta sideload build, see "Android app" |
 | Operating system — CLI and Web app | Windows, Linux, macOS (arm64 / x64), installed from npm |
 | Runtime | Nothing to install for the desktop app — the installers bundle Node; the CLI from npm needs Node >= 24 |
 | Model | an API key for at least one model provider |
@@ -173,6 +174,15 @@ not receive updates (no `latest-mac.yml` is published either). On macOS, use the
 for now: `npm install -g @adelie/cli` (needs Node >= 24 on the machine), then `penguin web` opens
 the same interface.
 
+The desktop app also has a little penguin that **can make a call**: click "Call" and the window
+expands into a call view where the whole conversation is spoken — the model's voice streams out
+while its words appear sentence by sentence, and what you say is transcribed live. Cut in
+mid-sentence and the line being played stops at once, recorded as an interruption. The call is
+relayed by the server: the browser opens a single connection to the server and the provider's key
+is attached on that server hop, so the page never sees it. Four fields live together under
+**Settings › Server › Realtime voice** — endpoint, model, voice and key; with none configured, the
+penguin's row just says "not configured yet".
+
 The Windows installer is **not code-signed yet**, so SmartScreen shows its warning once
 ("More info → Run anyway"). The app checks for updates itself against this repo's GitHub Releases,
 so "Check for updates" inside the app is the normal way to upgrade.
@@ -180,6 +190,15 @@ so "Check for updates" inside the app is the normal way to upgrade.
 On first start the server prints a first-login link; open it to claim the built-in `admin` account and
 set its password (there is no initial password to type). Configure a model on the **Models** page —
 a new instance needs one API key before it can run a Task.
+
+### Android app
+
+The [`android/`](android/) directory holds an Android project that packs a bionic Node 24, Adelie
+itself and its own frontend into a single APK: no Termux and no proot, with the engine running
+entirely on the phone and no server connection. It ships arm64 and x86_64 only, has no `node-pty`
+(the sandbox degrades to direct execution), and is neither signed nor on any app store — this build
+is a **beta**: the system will warn about an unknown source at install time. The APK is **not
+published with GitHub Releases**; to build it yourself, follow [`android/README.md`](android/README.md).
 
 ## Contributing
 

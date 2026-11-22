@@ -3054,6 +3054,57 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       读者按的就是那一行的按钮，而原来的原因是六秒通知（改前实测：弹层里 0 条、通知区 1 条、七秒后
       通知区也空了）。见「第二百九十轮」一节。
 
+## 第二百九十一轮：正式发 v0.7.0、换装现网，并把两份 README 与改动声明补上（2026-11-22）
+
+用户 2026-11-22 定：「推。并且更新至 0.7.0，并更新现网」—— 把攒在五条分支上的东西（桌宠语音通话、
+安卓工程、密钥里非 ASCII 字符那条修复、从别的机器搬来的会话、0.6.12 的发布说明）落成 **0.7.0 正式版**，
+再把现网整棵换过去。发布完用户又指出「你没有更新文档和仓库 readme」，于是把两份 README 与 `FORK.md`
+的改动声明一并补上（本节的后半就是那笔补写）。这一版跳的是首位数字：进了新东西（桌宠实时语音通话、
+安卓端成包），不是补丁。
+
+- **线性史**：五条分支 cherry-pick 到 `main` 上（`319686e23` key-refusal → `31dbbc979` 迁移会话 →
+  `6c013be3d` 安卓 → `db5e4f5ae` 桌宠通话 → `c310d99b5` 发版），此后门禁又抓到两处真问题、各补一笔
+  （见下）。远端 `main` = **`a7517f716`**（tree `6cfacef4…`）。
+- **发布正文**：`docs/releases/RELEASE-v0.7.0.md`（照上游骨架：导读 / 安装 / 亮点 / 值得一提 / 兼容 /
+  要求 / 收尾一句）。发布提交 **`c310d99b5`**；标签 `v0.7.0`（远端标签对象 `055df21970…`）。
+- **门禁（在标签检出上跑）**：`/root/rel-070`（`git worktree add --detach v0.7.0`）上
+  `gates-070.sh` **rc=0、五步全绿**，各包用例累计 **10962 条通过**（`gates-070-green.log`）。
+  - **抓到的两处真问题**：① `packages/ui-gallery` 的假后端缺桌宠那四条接口（`GET/PUT
+    /api/realtime/config`、`POST /api/realtime/test`、`GET /api/realtime/status`），画廊会缺路由 ——
+    补上夹具与路由，提交 `ecca83b1d`；② `packages/server/test/session-loader.test.ts` 读了
+    `RuntimeSession` 上并不存在的 `workspaceDir`（`TS2339`）且一行超 100 列没过 prettier —— 给类型
+    补上该字段并格式化该用例，提交 `f8687591e`。两笔都推了，标签跟着挪到最终提交。
+- **打戳与产物**：`stamp-070.sh` 写 VERSION `0.7.0` / BUILD_DATE `2026-11-22` / BUILD_COMMIT
+  `a7517f716…`，`install.sh` 与 `install.ps1` 的 `EMBEDDED_RELEASE_VERSION="v0.7.0"`；再
+  `pnpm -r build` 出三件载荷（linux-x64 114M / universal 57M / win32-x64 150M）与三件安装包，
+  `validate-bundles.sh` 全过。**老坑照旧**：`dist-artifacts/` 要手工补 `install.sh` / `install.ps1`
+  （上游 workflow 从仓库根上传这两件，脚本只把它们放进安装包内部，少了最后那句 grep 会报缺文件）。
+- **桌面三件**：`packages/desktop/out/` 里 deb 122M、AppImage 155M、exe 162M（+ blockmap +
+  `latest*.yml`），都标 0.7.0；electron-builder 走 npmmirror，Windows 那个用 xvfb + wine。
+- **npm**：29 个包（core/server/cli/amsp + 25 个插件；四个 private `sandbox-*` 跳过）发到 `0.7.0`，
+  `PUBLISH-ALL-DONE`；注册表约 10 分钟后放出，已逐名确认 `@adelie/{core,cli,server,amsp,
+  use-seedream,…}` 的 latest 都是 0.7.0。
+- **GitHub Release**：**release id `454473256`**，14 件资产（762 MB）上传并逐件核 sha256 → 发布为
+  latest；另真下载一份 `install.sh` 比对字节一致。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.7.0`（保留 `android-test`
+  分组），本机那份 Windows 桌面包一并换新（旧清单留 `.bak-20261122-v0612`）；用
+  `chromium-headless-shell --dump-dom` 确认页面把 v0.7.0 与六件下载项都渲染出来了。
+- **现网换装**：`swap-live.sh` 把 `/root/.adelie` 换成 0.7.0 的整棵（`lib/package.json` 与
+  `bin/penguin --version` 都是 0.7.0，数据根没动）；装完**立刻把旧前端拷回去**（内存里当时还是旧服务端，
+  盘上要跟它同一代），随后瞬时单元 `adelie-live-restart-070` 在 **22:09:51** 重启服务端、装上
+  **新前端 `index-BaLfRc61.js`** 并自核验，证据写 `rel-070-live-restart-verify.txt`：`is-active:
+  active`、7777 在听、`GET /` 200 / 匿名 `/api/me` 401、公网 200、`penguin version` = v0.7.0、
+  core 戳 `BUILD_DATE 2026-11-22 / BUILD_COMMIT a7517f716…`，install 无残留。
+- **本轮补的文档**（用户「你没有更新文档和仓库 readme」之后）：`README.md` 与 `README.en.md` 补上
+  **桌宠通话**（点「打电话」进实时语音、密钥加在服务端那一跳、「设置 › 服务器 › 实时语音」四个字段）
+  与 **安卓端**（`android/` 的工程、内测侧载包、不上架、生成物不入库；正文不给下载地址），系统需求表
+  各加一行安卓；`docs/FORK.md` 的改动声明加两条（桌宠实时语音、`android/` —— 这两处上游没有的东西）。
+
+### 提交
+
+- 发布提交 `c310d99b5`；门禁两处修复 `ecca83b1d` / `f8687591e`（标签最终指 `a7517f716`）。
+- 文档与两份 README 一笔（`README.md`、`README.en.md`、`docs/FORK.md`、本台账）。
+
 ## 第二百九十轮：成员弹层里打不开的工位，原因留在问它的那一行下面（2026-11-22，条目 7.170）
 
 **为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c（剩下的是桌面壳写侧、既有部署单元
@@ -4744,6 +4795,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-22 | 7.168 | **重试一个读不出来的目录时，仍开着的后代也跟着重新列一遍**（**2026-11-22 第二百八十八轮**落地；`packages/web` 2 个源码文件（全改）＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `workspace-tree.ts` 新增 `openDirsUnder(expanded, dir)`（严格在目录下面的开着的目录；只共享前缀的兄弟不在、根不含），`loadDir` 开跑时先记住「这一次是一次重试」（趁这次尝试还没清掉失败记录）、成功那一支把这些后代排进读取队列（经 `loadDirRef`，回调不能把自己列进依赖），**不碰接口、不碰存储、无新依赖**）：第二百八十七轮「没做 / 留着」里点名的那处 —— 失败目录的列表被丢掉，它下面仍开着的目录的列表还留着，重试成功后那些行带着失败之前那一份回来，已删的还在、新写的不见，只有逐层收起再打开才更新（改前实测：点 docs 重试后 shallow.txt / deep.txt 仍在、fresh.txt / fresh-deep.txt 不在；改后相反、原因 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `oxlint` 4 个改动文件 **0 警告 0 错误** · 4 个改动文件与 changelog 一对 `prettier --check` 干净（新 spec 首跑一条，`--write` 后复检） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1456 通过 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3965 / 2 跳过**（基线 351 / 3964，**+1 即本笔新用例**） · **新 spec 2 passed（7.5 s）**（真服务端 9930 + 仓库自带 mock 模型 9931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r288-a`）：① `docs` 列表被拒 → 「刷新」→ 原因在行下、`docs/api` 不再画出 → 盘上两层都换文件 → 放开并点 `docs` 重试：`docs/api/fresh.txt` 与 `docs/api/v1/fresh-deep.txt` 出现、`shallow.txt` / `deep.txt` 消失、原因 0 条；② 后代 `docs/api` 自己也被拒 → 它的行仍在、`aria-expanded="true"`、原因只有它那一条、旧行不在，放开后点它又是重试 · **反证（同一份 spec，改前产物）**：两份源码退回 `HEAD` 后重建 → `r288/before-dist`（主包 `index-tZbMYBNi.js`，改后 `index-Bb4dP8M2.js`），放回改后源码重建，md5 `e44a8ab95543185baa9301d8f3aeaaf9` 与留底的 `after-dist` 逐字节相同；改前产物挂 9934（数据根 `/root/adelie-fork-data/r288-b3`）→ **2 failed**（`fresh.txt` 找不到；原因数期望 1 实得 0） · **两态探针**（`r288/probe.mjs`，同一脚本两条腿各挂自己的产物、读 DOM）：改后（9930）重试后 `api:true / apiExpanded:true / shallow:false / fresh:true / deep:false / freshDeep:true / reason:0`；改前（9934）重试后 `shallow:true / fresh:false / deep:true / freshDeep:false` —— 正是失败之前那一份 · **真看一眼**：`r288/shots/{after,before}-{1-failed,2-retried}.png` 肉眼看过（改后 `docs > api > v1` 下是 `fresh-d…` 与 `fresh.txt`，改前同一刻是 `deep.txt` 与 `shallow.txt`） · 两态 console 都是既有的 `GET …/machines` **403** 与刻意造的 500，**pageerror 0 条** · **相邻回归（真浏览器，一个进程 5 份 spec）**：`files-dir-error` 2 + `files-folders` 5 + `files-place-across-layout` 3 + 本笔 2 + `files-switch` 1，**13 passed（50.0 s）** · 顺带记：`page.unroute(fn)` 只认当初交给 `page.route` 的同一个函数（第一稿用新拼的箭头函数放开，500 路由一直挂着） · 端口只用 9930 / 9931 / 9934 / 9935 / 9940 / 9941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r288-*`，探针 / 两态产物 / 截图都在 scratchpad 的 `r288/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `5462e0a59` |
 | 2026-11-22 | 7.169 | **插件导入弹窗里，选中的 zip 超过上限 / 读不出来时，原因也留在弹窗里**（**2026-11-22 第二百八十九轮**落地；`packages/web` 2 个源码文件（全改，含一个新函数 `pluginPickRefusal`）＋ 两份词典各一句 ＋ 1 份单测 ＋ 1 个新 spec ＋ changelog 一对 —— `pluginPickRefusal(cause)` 把「超过 14 MB」与「浏览器读不出来」两种选择前的拒绝各给一句话，弹窗新增 `refusePick` 把选中的包连同句子一起丢掉并写进 `refusal` 槽，`onPickFile` 的上限与 `FileReader` 的失败都走它（原来各一句 `toastError`），**不碰接口、无新依赖**）：同一条路上另外两个 zip 入口（技能 / 钩子标签页）早就把读失败画在弹窗里，只有插件导入这两处仍只弹六秒通知，而选择行旁边没有任何文件名（改前实测：上限那条通知区 1 条、弹窗里 0 条、七秒后两边都是 0 条；读失败那条一句笼统的「请求失败，请稍后重试」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 6 个改动文件（含新 spec）**0 警告 0 错误** · 它们与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1456 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3967 / 2 跳过**（基线 351 / 3965，**+2 即本笔新用例**） · **新 spec 2 passed（26.2 s）**（真服务端 9950 + 仓库自带 mock 模型 9951 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r289-a`）：① 14 MB + 1 字节的 zip → 句子逐字「插件包不能超过 14 MB，请压缩后重试」在选择文件那一行下面、通知区没有它、七秒后仍在、没有「已选择」、确认按钮不可点，换一个装得下的文件 → 句子消失、文件名出现、按钮回来；② 读失败（`FileReader` 打桩）→「这个 zip 读不出来，请换一个文件」在同一处、七秒后仍在 · **反证（同一份 spec，改前产物）**：`r289/before-dist`（`index-Bb4dP8M2.js`，md5 `e44a8ab95543185baa9301d8f3aeaaf9`，与上一轮留底逐字节相同；改后 `index-BheNs-IH.js`）挂 9952（数据根 `/root/adelie-fork-data/r289-b`）→ **2 failed**，都死在 `getByRole("alert")` 找不到元素 · **两态探针**（`r289/probe.mjs`）：改后（9954）`alertCount:1 / confirmDisabled:true / toasts:[]`，七秒后一样，换小文件后 `alertCount:0 / pickedLine:true / confirmDisabled:false`；改前（9956）`alertCount:0`、通知区一句同样的句子、**七秒后通知区也空了**，读失败那句是「请求失败，请稍后重试」同样七秒后空 —— 正是缺口；两态 pageerror 0 条 · **真看一眼**：`r289/shots/{after-1-cap-7s,after-2-unreadable-7s,after-3-small-picked,before-1-cap-7s}.png` 肉眼看过 · **相邻回归（真浏览器，一个进程 4 份 spec）**：`plugin-card-refusal` 3 + `plugin-config-save-refusal` 1 + 本笔 2 + `plugin-import-refusal` 2，**8 passed（54.8 s）** · 端口只用 9950–9959（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r289-*`，探针 / 两态产物 / 截图都在 scratchpad 的 `r289/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `3b78d6ab9` |
 | 2026-11-22 | 7.170 | **成员弹层里打不开的工位，原因留在问它的那一行下面**（**2026-11-22 第二百九十轮**落地；`packages/web` 1 个源码文件（`channel-header.tsx`，`MemberPopover` 自己拿 `opening` 与 `refusal: {principal, text}`、`close()` 一并清掉，头部 `openDesk` 改为返回 `refusalText(e)` 不再 `toastError`）＋ 既有 spec +1 条 ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩五处 `openDesk`，这是其中**自有面板**的一处 —— 弹层本来就站在屏幕上，读者按的就是那一行的按钮，而原来的原因是六秒就走的通知（改前实测：弹层里 0 条、通知区 1 条、七秒后通知区也空了） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，197 接口 / 612 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1456 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **216 / 3143 / 6 跳过** · web **351 / 3967 / 2 跳过**（与上一轮基线逐项相同） · **新用例 3 passed（16.5 s）**（真服务端 9950 + 自带 mock 8931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r290-a`）：工位路由答 500 带上自己的话 → 句子在弹层里、量到落在那一行下缘之下（`gapUnderRow: 0`）且在弹层内、通知区没有它、**七秒后仍在**、弹层还站着且地址没变；Esc 关掉再打开 → `alert` 数 0；解除拦截后点同一个按钮 → 跳到 `/chat/<会话>` · **反证（改前产物 `r290/before-dist`，主包 `index-BheNs-IH.js`；改后 `index-CTvcdXeN.js`）**：挂 9951 / 数据根 `/root/adelie-fork-data/r290-b` → **1 failed**，弹层里找不到那行字 · **真看一眼**：`r290/shots/{1-popover-open,2-refused,3-refused-7s,4-reopened-clean,5-retry-opened}.png` 肉眼看过，pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `channel-join-refusal` / `channel-send-refusal` / `company.spec` / `company-rail-hints` / `channel-earlier-refusal` / `channel-live-day` **12 passed**（首次 4 红是命令漏了 `ADELIE_HOME`，补上即绿） · 端口只用 9950 / 9951 / 8931（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r290-*`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `e9162dfa5` |
+| 2026-11-22 | 发布 | **发 v0.7.0 并换装现网**（五条分支 cherry-pick 到 `main`：桌宠实时语音通话、安卓端第一次成包、密钥里非 ASCII 字符的修复、从别的机器搬来的会话、0.6.12 的发布说明 —— 跳首位数字，因为进了新东西；发布提交 `c310d99b5`，门禁在标签检出上 **rc=0 五步全绿**、各包累计 **10962 条通过**；门禁抓到两处真问题各修一笔 —— `ui-gallery` 假后端缺桌宠那四条 `/api/realtime/*` 接口（`ecca83b1d`）、`session-loader.test.ts` 读了 `RuntimeSession` 上不存在的 `workspaceDir` 且没过 prettier（`f8687591e`）→ 远端 `main` = `a7517f716`，标签 `v0.7.0` = 对象 `055df21970…`；三件载荷 linux-x64 114M / universal 57M / win32-x64 150M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.7.0；GitHub Release **id `454473256`** 14 件 762 MB 逐件核 sha256 后发布为 latest；3003 换上 v0.7.0 清单；现网 `/root/.adelie` 整棵换成 0.7.0、旧前端先拷回、瞬时单元 **22:09:51** 重启装上 `index-BaLfRc61.js` 并自核验；随后按用户「你没有更新文档和仓库 readme」补上两份 README 与 `FORK.md` 的改动声明） | 发布轮，逐项见「第二百九十一轮」一节；现网核验写 `rel-070-live-restart-verify.txt`：`penguin version` = v0.7.0、core 戳 `BUILD_DATE 2026-11-22 / BUILD_COMMIT a7517f716…`、7777 在听、`GET /` 200 / 匿名 `/api/me` 401 / 公网 200；`releases/latest` = v0.7.0 | `c310d99b5`（发布）+ 门禁两笔 `ecca83b1d` / `f8687591e` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
