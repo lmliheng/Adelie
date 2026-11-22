@@ -2239,6 +2239,15 @@ export const zh = {
      */
     testNoEndpoint:
       "连通失败：这个分组是自建的，没有现成的服务地址 —— 先把你自己服务的 base URL 填上再测。",
+    /**
+     * Connectivity test whose credential carries a character no request header can take: the
+     * transport refuses the header before anything is dialed, and the SDK reports that refusal as
+     * a network error naming a position inside the header value — a string the reader never sees.
+     * The line names the field to re-paste instead, and covers both places the key can come from:
+     * this entry, and the User-keys record it may have been assigned from.
+     */
+    testKeyNotLatin1:
+      "连通失败：这把 API key 里有一个字符发不出去 —— 请求头只收 ASCII，键里多半混进了中文、全角标点或看不见的字符。把密钥框里的 key 重新粘贴一次；它若来自「用户密钥」，那边也核对一遍。",
     addGroup: "新增分组",
     addGroupTitle: "新增分组",
     addGroupDesc:

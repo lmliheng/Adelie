@@ -89,6 +89,23 @@ describe("modelTestRefusal", () => {
     expect(modelTestRefusal(answer, null)).not.toContain("has no base URL");
   });
 
+  it("names the key, not the network, when the credential holds a character no header can carry", () => {
+    // undici refuses a header value above U+00FF, and AgentHub hands that back as a retryable
+    // network failure whose sentence points at a character position inside a string the reader
+    // never sees. Relayed verbatim it read as "连通失败：Cannot convert argument to a ByteString…",
+    // which says nothing about the one field that can fix it. The line says which field instead.
+    const answer = {
+      result: {
+        ok: false,
+        cause: "key_not_latin1" as const,
+        message:
+          "Cannot convert argument to a ByteString because the character at index 67 has a value of 32416 which is greater than 255.",
+      },
+    };
+    expect(modelTestRefusal(answer, null)).toBe(S.models.testKeyNotLatin1);
+    expect(modelTestRefusal(answer, null)).not.toContain("ByteString");
+  });
+
   it("speaks the active language", () => {
     setActiveStrings(EN);
     expect(modelTestRefusal({ result: { ok: false } }, null)).toBe(
@@ -97,6 +114,9 @@ describe("modelTestRefusal", () => {
     expect(modelTestRefusal({ result: { ok: false } }, "sync")).toBe(EN.models.testStalePin);
     expect(modelTestRefusal({ result: { ok: false, cause: "no_endpoint" } }, null)).toBe(
       EN.models.testNoEndpoint,
+    );
+    expect(modelTestRefusal({ result: { ok: false, cause: "key_not_latin1" } }, null)).toBe(
+      EN.models.testKeyNotLatin1,
     );
   });
 });

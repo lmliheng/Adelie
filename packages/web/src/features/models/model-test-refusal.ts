@@ -55,6 +55,12 @@ export function modelTestRefusal(
   // without one there was nowhere to send the probe. The sentence names the empty field.
   if (answer.result !== null && answer.result.cause === "no_endpoint")
     return S.models.testNoEndpoint;
+  // The second failure the server can name, and the other one worth a sentence of its own: the
+  // credential holds a character no request header can carry, which the transport reports as the
+  // position of that character inside a header value — a string the reader never sees, in a
+  // sentence that reads like a network problem. The line says which field to re-paste.
+  if (answer.result !== null && answer.result.cause === "key_not_latin1")
+    return S.models.testKeyNotLatin1;
   if (fix === "sync") return S.models.testStalePin;
   if (fix === "custom") return S.models.testNotRoutable;
   const message =

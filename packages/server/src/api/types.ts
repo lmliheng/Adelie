@@ -1077,11 +1077,13 @@ export interface ModelTestResponse {
   /**
    * Why the probe never left the server, when it refused before any request: `no_endpoint` is a
    * model whose group has no address of its own (vLLM, Custom) and whose entry, draft and
-   * environment carry none either, so there was nothing to connect to. A machine-readable reason
-   * because the sentence that belongs to it is the interface's to write (the UI's own languages),
-   * not the server's.
+   * environment carry none either, so there was nothing to connect to; `key_not_latin1` is a
+   * credential carrying a character no request header can hold, which the transport reports as
+   * the position of that character inside the header value. A machine-readable reason because the
+   * sentence that belongs to it is the interface's to write (the UI's own languages), not the
+   * server's.
    */
-  cause?: "no_endpoint";
+  cause?: "no_endpoint" | "key_not_latin1";
   latencyMs?: number;
   /** Time from request start to the first streamed content (thinking or text), ms. */
   ttftMs?: number;

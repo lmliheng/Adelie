@@ -2198,6 +2198,15 @@ export const en: Strings = {
      */
     testNoEndpoint:
       "Failed: this group is self-hosted and has no address of its own — fill in the base URL of your own service, then test again.",
+    /**
+     * Connectivity test whose credential carries a character no request header can take: the
+     * transport refuses the header before anything is dialed, and the SDK reports that refusal as
+     * a network error naming a position inside the header value — a string the reader never sees.
+     * The line names the field to re-paste instead, and covers both places the key can come from:
+     * this entry, and the User-keys record it may have been assigned from.
+     */
+    testKeyNotLatin1:
+      "Failed: this API key carries a character no request header can send — headers are ASCII only, so the key picked up a CJK or full-width character, or an invisible one, while being pasted. Paste the key again; if it comes from User keys, check that record too.",
     addGroup: "Add group",
     addGroupTitle: "Add group",
     addGroupDesc:

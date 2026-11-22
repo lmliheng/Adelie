@@ -1589,6 +1589,35 @@ describe("model-reference rekeying and the connectivity test", () => {
     }
   });
 
+  it("connectivity test: a key the transport cannot put in a header is named as a key problem", async () => {
+    // undici refuses a header value above U+00FF and AgentHub reports that refusal as a
+    // `retryable` network failure whose sentence points at a character position inside a header
+    // value — a string the reader never sees. Relayed verbatim, a key that had picked up a Chinese
+    // character mid-paste read as "连通失败：Cannot convert argument to a ByteString…", which sends
+    // the reader to their network instead of to the key field. The route now calls it what it is,
+    // and nothing may leave the process: the refusal happens while the SDK assembles the request.
+    // (The gateway presets its own address, so the probe is past the no-endpoint guard and reaches
+    // the credential.)
+    const network = stubFetch(() =>
+      jsonResponse({ error: { message: "the request never got this far" } }, 401),
+    );
+    try {
+      const res = await api.post(testUrl(), {
+        provider: "tokendance",
+        modelId: "deepseek-v4.1-flash",
+        apiKey: `sk-${"a".repeat(57)}纠b`,
+      });
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as ModelTestResponse;
+      expect(body.ok).toBe(false);
+      expect(body.cause).toBe("key_not_latin1");
+      expect(body.message).toMatch(/Cannot convert argument to a ByteString/);
+      expect(network.calls).toEqual([]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("connectivity test: a vendor group and a gateway still dial their own endpoint with an empty draft", async () => {
     // The other side of the rule: a row without an address does have somewhere to go there. A
     // vendor group's routed client defaults to that vendor's own endpoint, a gateway's endpoint is

@@ -1151,7 +1151,10 @@ export class ProjectConfigService implements ProjectConfigStore {
         const step = await gen.next();
         if (step.done) {
           const verdict = probeVerdict(step.value, sawContent);
-          if (!verdict.ok) return verdict;
+          if (!verdict.ok) {
+            const cause = headerRefusalCause(verdict.message);
+            return cause === undefined ? verdict : { ok: false, cause, message: verdict.message };
+          }
           const res: ModelTestResponse = { ok: true, latencyMs: Date.now() - startedAt };
           if (firstContentAt !== null) {
             res.ttftMs = firstContentAt - startedAt;
@@ -1175,10 +1178,9 @@ export class ProjectConfigService implements ProjectConfigStore {
       }
     } catch (err) {
       // Defensive: an unexpected exception during construction/iteration (the LLM layer promises not to throw; this is a fallback).
-      return {
-        ok: false,
-        message: (err instanceof Error ? err.message : String(err)).slice(0, 300),
-      };
+      const message = (err instanceof Error ? err.message : String(err)).slice(0, 300);
+      const cause = headerRefusalCause(message);
+      return cause === undefined ? { ok: false, message } : { ok: false, cause, message };
     }
   }
 
@@ -1974,6 +1976,26 @@ export function probeVerdict(
   if (outcome.status === "completed") return { ok: true };
   if (outcome.status === "retryable" && sawContent) return { ok: true };
   return { ok: false, message: outcomeDetail(outcome) };
+}
+
+/**
+ * The transport's refusal of a header value it cannot carry, recognized so the probe can name
+ * the field instead of relaying it.
+ *
+ * A request header holds Latin-1 only, and undici refuses anything above U+00FF with "Cannot
+ * convert argument to a ByteString because the character at index N has a value of X which is
+ * greater than 255". AgentHub surfaces that as a `retryable` network outcome, so it reached the
+ * dialog as a connection failure naming a character position in a string the reader never sees —
+ * the reader's key, which the SDK had already placed in an `authorization` header. In a model
+ * request the credential is the only header filled from the user's own data (the app attribution
+ * headers are constants), so this message means one thing: the key carries a character no header
+ * can send, usually a Chinese or full-width character, or an invisible one, picked up while
+ * pasting. The credential can come from the entry, the request draft, the environment, or the
+ * resolver that rotates it, so the message is classified rather than any one of those values
+ * checked.
+ */
+export function headerRefusalCause(message: string): "key_not_latin1" | undefined {
+  return /Cannot convert argument to a ByteString/i.test(message) ? "key_not_latin1" : undefined;
 }
 
 /**

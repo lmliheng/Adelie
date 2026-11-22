@@ -15,7 +15,12 @@ import {
   toolCall,
   emptyTokenCounts,
 } from "@adelie/core";
-import { isProbeContent, probeTps, probeVerdict } from "../src/services/project-config-service.js";
+import {
+  isProbeContent,
+  probeTps,
+  probeVerdict,
+  headerRefusalCause,
+} from "../src/services/project-config-service.js";
 
 describe("isProbeContent", () => {
   it("counts thinking and text content, partial or complete", () => {
@@ -95,5 +100,28 @@ describe("probeTps", () => {
 
   it("omits the rate when no usage was reported (malformed thinking-only ending)", () => {
     expect(probeTps(0, 5000)).toBeUndefined();
+  });
+});
+
+describe("headerRefusalCause", () => {
+  it("names the credential when the transport refused a header value", () => {
+    // Exactly what undici raises for a header carrying a character above U+00FF (here a key that
+    // picked up 「纠」 while being pasted), which AgentHub hands back as a retryable network
+    // outcome: without this the dialog relayed it as "连通失败：Cannot convert argument to a
+    // ByteString…" and the reader went looking at their network.
+    expect(
+      headerRefusalCause(
+        "Cannot convert argument to a ByteString because the character at index 67 has a value of 32416 which is greater than 255.",
+      ),
+    ).toBe("key_not_latin1");
+  });
+
+  it("leaves every other failure to the sentence it already has", () => {
+    expect(headerRefusalCause("unexpected EOF")).toBeUndefined();
+    expect(headerRefusalCause("401 unauthorized")).toBeUndefined();
+    expect(headerRefusalCause("fetch failed")).toBeUndefined();
+    // The refusal is recognized by the transport's own wording, so a message that merely mentions
+    // a character position is not one.
+    expect(headerRefusalCause('invalid character at index 3 in "sk-x"')).toBeUndefined();
   });
 });
