@@ -3094,6 +3094,8 @@ export const en: Strings = {
     /** Client-side refusal of a picked zip over the decoded-archive cap; the file is dropped unread, so the server's own 413 never has to be earned. */
     importTooLarge: (mb: number): string =>
       `A plugin archive cannot exceed ${mb} MB \u2014 compress it and try again`,
+    /** The other way a pick never becomes an import request: the browser could not read the file at all. Same slot as importTooLarge. */
+    importUnreadable: "That zip could not be read \u2014 please pick another file",
     /** The link at the foot of both import dialogs that opens the rules; see rulesTitle. */
     rulesLink: "Import and authoring rules",
     /** The dialog those rules now live in, where they used to be printed under the dialogs. */

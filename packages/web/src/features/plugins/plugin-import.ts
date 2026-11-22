@@ -34,6 +34,23 @@ export function pluginZipTooLarge(bytes: number): boolean {
 }
 
 /**
+ * What the upload dialog says when a picked zip never becomes an import request — the two ways a
+ * pick fails before anything is sent: the file is past the ceiling above, or the browser could not
+ * read it at all.
+ *
+ * Neither is an answer from the server, and both leave the picker naming no file, so neither may
+ * read like an error code came back (`pluginImportErrorText`'s table would say nothing useful
+ * about a file that never left the machine). The sentence is drawn under that picker, where the
+ * refused file would have been named — a notification over the open dialog said the same thing for
+ * six seconds and then left the dialog looking exactly as it had before the pick.
+ */
+export function pluginPickRefusal(cause: "too_large" | "unreadable"): string {
+  return cause === "too_large"
+    ? S.plugins.importTooLarge(PLUGIN_ZIP_LIMIT_MB)
+    : S.plugins.importUnreadable;
+}
+
+/**
  * The rule a plugin name has to satisfy, as a client copy of the server's own
  * (`PLUGIN_NAME_PATTERN` in core): the name IS the directory the plugin is installed under, so it
  * has to be one safe path segment. Copied rather than imported for the same reason as the ceiling

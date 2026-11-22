@@ -25,6 +25,7 @@ import {
   pluginNameFromError,
   pluginNameFromUrl,
   pluginNameInvalid,
+  pluginPickRefusal,
   pluginZipTooLarge,
 } from "../src/features/plugins/plugin-import";
 
@@ -36,6 +37,23 @@ describe("pluginZipTooLarge", () => {
     expect(pluginZipTooLarge(PLUGIN_ZIP_LIMIT_MB * MB_BYTES)).toBe(false);
     expect(pluginZipTooLarge(PLUGIN_ZIP_LIMIT_MB * MB_BYTES + 1)).toBe(true);
     expect(pluginZipTooLarge(0)).toBe(false);
+  });
+});
+
+describe("pluginPickRefusal", () => {
+  it("quotes the ceiling for a file refused before it is read", () => {
+    // The sentence is the reader's only account of a pick that produced nothing: it has to name
+    // the number the guard above applies, or the reader is left guessing how much to cut.
+    expect(pluginPickRefusal("too_large")).toBe(S.plugins.importTooLarge(PLUGIN_ZIP_LIMIT_MB));
+    expect(pluginPickRefusal("too_large")).toContain(String(PLUGIN_ZIP_LIMIT_MB));
+  });
+
+  it("gives a file the browser could not read its own sentence, not the server's blank one", () => {
+    // `S.common.unknownError` is what a bare refusalText would say for an Error with no message;
+    // a read that failed beside the picker is a different thing to tell the reader, and telling
+    // them to pick another file is the only thing that helps.
+    expect(pluginPickRefusal("unreadable")).toBe(S.plugins.importUnreadable);
+    expect(pluginPickRefusal("unreadable")).not.toBe(S.common.unknownError);
   });
 });
 

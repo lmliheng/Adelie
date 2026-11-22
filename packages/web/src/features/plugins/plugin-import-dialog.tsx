@@ -8,8 +8,11 @@
  * overwrite confirmation, whose confirm resends THAT request with `overwrite: true` (so the
  * user never picks the file twice, nor retypes the name), and any other failure keeps its
  * sentence inside the dialog that asked, under the source field it names (see
- * ImportRefusalLine and plugin-import-refusal.ts). The library list and the directory line are
- * re-read on success, which is how the new card appears.
+ * ImportRefusalLine and plugin-import-refusal.ts). A pick the dialog refuses on its own — over
+ * the zip ceiling, or a file the browser cannot read — lands in that same line, under the
+ * picker, because it never became a request and nothing else would say why (pluginPickRefusal).
+ * The library list and the directory line are re-read on success, which is how the new card
+ * appears.
  *
  * Each dialog carries the same optional name field, for the one case the archive cannot answer
  * itself: plugin.json at the very root of the zip has no directory to take a name from. Left
@@ -47,10 +50,10 @@ import { S } from "../../lib/strings";
 import { toneInk } from "../../lib/tone";
 import { UPLOAD_LABEL_CLASS } from "../agents/skills-tab";
 import {
-  PLUGIN_ZIP_LIMIT_MB,
   pluginNameBody,
   pluginNameFromUrl,
   pluginNameInvalid,
+  pluginPickRefusal,
   pluginZipTooLarge,
 } from "./plugin-import";
 import { importFailure } from "./plugin-import-refusal";
@@ -324,6 +327,16 @@ export function PluginImportActions({
   };
 
   /**
+   * A zip this dialog refused on its own, before anything was sent (pluginPickRefusal): the pick
+   * goes with the sentence, so the line is never drawn over an archive it was not about — once it
+   * is under the picker, no file is named and picking another one is the retry (which clears it).
+   */
+  const refusePick = (cause: "too_large" | "unreadable") => {
+    setPicked(null);
+    setRefusal({ source: "upload", text: pluginPickRefusal(cause) });
+  };
+
+  /**
    * Read the picked zip now, post it later: the dialog's confirm is what sends it, so the name
    * gets its say first. The fallback name is the picked file's stem, used only if the server's
    * 409 message does not name the plugin (see pluginNameFromError).
@@ -334,16 +347,17 @@ export function PluginImportActions({
     // change event (the Skills tab's import does the same, for the same reason).
     e.target.value = "";
     if (!file) return;
-    // Refused before reading: see pluginZipTooLarge.
+    // Picking is a new attempt: the sentence on screen was about the file before this one.
+    setRefusal(null);
+    // Refused before reading: see pluginZipTooLarge. The reason stays beside the picker rather
+    // than leaving with a toast — the picker names no file, and nothing beside it would say why.
     if (pluginZipTooLarge(file.size)) {
-      toastError(S.plugins.importTooLarge(PLUGIN_ZIP_LIMIT_MB));
+      refusePick("too_large");
       return;
     }
     const reader = new FileReader();
     reader.onload = () => {
       const dataUrl = reader.result as string;
-      // A newly picked archive starts without the previous one's reason.
-      setRefusal(null);
       // Strip the `data:…;base64,` prefix the FileReader adds.
       setPicked({
         dataBase64: dataUrl.slice(dataUrl.indexOf(",") + 1),
@@ -351,7 +365,9 @@ export function PluginImportActions({
         stem: file.name.replace(/\.zip$/i, ""),
       });
     };
-    reader.onerror = () => toastError(S.common.unknownError);
+    // Same slot as the size refusal: the browser could not read what was picked, and the dialog
+    // is where the picker is.
+    reader.onerror = () => refusePick("unreadable");
     reader.readAsDataURL(file);
   };
 

@@ -3157,6 +3157,8 @@ export const zh = {
     importDownloading: "下载中…",
     /** Client-side refusal of a picked zip over the decoded-archive cap; the file is dropped unread, so the server's own 413 never has to be earned. */
     importTooLarge: (mb: number): string => `插件包不能超过 ${mb} MB，请压缩后重试`,
+    /** The other way a pick never becomes an import request: the browser could not read the file at all. Same slot as importTooLarge — beside the picker, which named no file. */
+    importUnreadable: "这个 zip 读不出来，请换一个文件",
     /** The link at the foot of both import dialogs that opens the rules; see rulesTitle. */
     rulesLink: "导入与编写规则",
     /** The dialog those rules now live in, where they used to be printed under the dialogs. */
