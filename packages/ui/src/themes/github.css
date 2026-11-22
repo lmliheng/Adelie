@@ -79,6 +79,11 @@
 
     /* ---- Colour — lines ---- */
     --ui-line: var(--color-gray-200);
+    /* The faintest line is also a fill — the segmented control's well, the hover states, the
+       progress track — and muted ink on it measures 4.34:1; the 50 fill would give 4.53. It
+       stays on gray-100: gray-50 is already `--ui-surface-muted` and `--ui-inset`, so lifting it
+       would make every `border-line-muted` drawn on those surfaces (the changes card's header
+       rule, the tool-call card's `<pre>` rule) exactly the colour behind it. */
     --ui-line-muted: var(--color-gray-100);
     --ui-line-emphasis: var(--color-gray-300);
     --ui-divider: var(--color-gray-200);
