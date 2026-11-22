@@ -3072,6 +3072,127 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       用户 2026-11-22 点单「在模型库中加 https://venice.ai 这个服务商」，中途补一句「主要加 ds flash
       uncensored 等无审查模型」。见「第二百九十三轮」一节。
 
+- [x] **7.173 导入过主题的机器上，主题配方不再被应用自身样式盖住；四套主题里文字压在填充上读不清的取值一起调了**
+      （**2026-11-22 第二百九十四轮**落地，提交见「已完成的轮次」—— 本仓 `1b4bdde9b`、主题库 `eb53cf9`；
+      `packages/web` 1 个源码文件（`index.html` 头部一条 `@layer` 顺序声明，排在 `/api/themes.css` 链接
+      之前）＋ 1 个新测试 ＋ changelog 一对；主题库四套主题的井槽与徽章墨色共 20 处取值 ＋ 版本号；
+      检查脚本 `theme-tools/check-files.py` 补上「墨色压填充」这条口径，**不碰接口、无新依赖**）：
+      用户 2026-11-22 接过 Venice AI 那单之后甩两张截图报两个主题显示 bug，随后又要求「其他主题有
+      类似问题 要一起改」。见「第二百九十四轮」一节。
+
+## 第二百九十四轮：导入过主题的机器上主题配方不再被应用样式盖住；四套主题里文字压在填充上读不清的取值一起调了（2026-11-22，条目 7.173）
+
+**开工**：`git status --short` 干净，`HEAD` = 第二百九十三轮那两笔（`0ff955e9c` + 台账 `32976265a`）。
+`git fetch /root/adelie-fork HEAD` 对齐共用工作树的尖端，仍停在 `a0795854d`（第二百九十二轮），没有新
+的可 ff 提交、也没撞号，故本轮是**第二百九十四轮 / 7.173**。
+
+**为什么是这一条**：用户 2026-11-22 点单加完 Venice AI 分组，紧接着甩来两张截图报两个主题显示 bug：
+极客（内置主题）插件页那条提示的 `[WARN]` 标签压在正文上；手绘涂鸦（外置主题）顶部分段控件
+「开发 / 公司（内测版）」未选中那侧的文字与底色几乎同色。两条都是同一句话 —— 主题没落到该落的地方。
+
+### 一、极客那条：层叠层顺序被导入的主题表抢了先（本仓，`packages/web/index.html`）
+
+**根因**：`index.html` 把 `<link rel="stylesheet" href="/api/themes.css">` 放在应用自身样式表**之前**。
+`/api/themes.css` 是服务端把数据根 `themes/` 里的主题拼出来的一张表，用 `@layer ui-theme{…}` 包着
+（`packages/core/src/internal/external-theme.ts` 的 `externalThemeCss`），而**一组层名的先后由「每个名字
+第一次出现的位置」决定** —— 于是只要这台机器导入过任何一套主题，`ui-theme` 就成了文档里最早被点名的层，
+也就是优先级最低的一层，**所有主题配方都输给 Tailwind 的 utilities**：`.px-4` 压过配方里的
+`padding-inline-start`、`.border` 压过 `border:0`、`.flex` 压过 `[data-slot=icon]{display:none}`。而
+`::before` 画出来的那个 `[WARN]` 标签没有对手，照旧被画出来 —— 就压在正文上。圆角看着是直角也解释得通
+（`.rounded-lg` 读的 `--ui-radius-lg` 在极客就是 0）。
+
+**改动**：在 `themes.css` 链接**之前**插入一条把顺序钉死的声明，顺序取自应用自身样式表本来建立的那一套：
+
+```html
+<style>@layer properties, theme, base, components, utilities, ui-theme, ui-accent, ui-font;</style>
+```
+
+这样无论两张表按什么顺序加载，整个文档的层序都定住了，构建产物与开发服务器一致；顺带新增
+`packages/web/test/head-layers.test.ts` 两条用例把这条声明钉住（存在、排在主题链接之前、`ui-theme`
+连同 `ui-accent` / `ui-font` 都排在 `utilities` 之后）。
+
+**验证**：
+
+- 新用例 **2 passed**；`prettier --check` 起初对 `index.html` 报红（新 `<style>` 写成了一行），按 prettier
+  拆成多行后干净（`oxlint` 对该文件不适用，是 HTML）。
+- 用改后的头部重建 web 产物，产物 `index.html` 里顺序正确：`<style>`（25 行）→ `/api/themes.css`（31 行）
+  → 打包 CSS（39 行）。
+- **真产物两态探针**（无头 chromium，直接加载 `packages/web/dist` 那份 CSS，静态复刻 `ui-notice` 与
+  Tailwind 的 `px-4 / border / flex`，主题表写成 `@layer ui-theme{:root[data-theme="geek"]{…}}`）：
+
+  | 页面 | padding-inline-start | border-top-width | `[data-slot=icon]` display |
+  | --- | --- | --- | --- |
+  | 无顺序声明（＝改前） | 14.4px | 1px | flex |
+  | 有顺序声明（＝改后） | 74px | 0px | none |
+  | 对照：有声明、不挂主题表 | 74px | 0px | none |
+
+  改前那一行正是用户截图里的样子 —— 标签画在正文上、边框回来了、该藏的标记露出来。
+
+### 二、填充上的文字读不出来：四套主题的取值按同一口径对齐（主题库 `adelie-themes`）
+
+**根因**：`--ui-line-muted` 既当「淡线」，又被 **17 处 `bg-line-muted`**（含 hover 态）当**填充**用 ——
+分段控件的井槽就是它（`packages/ui/src/components/forms/segmented/segmented.tsx`，选项画在
+`bg-line-muted` 的井槽里，未选中的那侧写 `text-fg-muted`）。内置三套（modern `#f0f1f2`、github gray-100、
+geek `#efeded`）这个值都是近页面色的浅灰；外置主题里却有**浅色的画布本身就是中间调**的（拟物化是米色
+`#ddd5c6`、赛博朋克浅色是近黑加霓虹），`mix(线, 画布)` 落出来的淡线于是成了中调，压在上面的淡墨就读
+不出来：手绘涂鸦浅色 **2.11:1**、赛博朋克浅色 **2.50:1**、拟物化浅色 **3.61:1**（正文级要 ≥ 4.5）。
+
+**同一口径把整批量了一遍**（本轮新写审计脚本，把界面上真会发生的「墨色压填充」组合逐个算）：
+`--ui-surface-muted` / `--ui-inset` / `--ui-overlay` 上的淡墨都没问题；**徽章那一族** —— 每个 tone 的
+墨色压在自己那个浅底上（`badge.tsx` 的 `bg-tone-X-bg text-tone-X-fg`）—— 库里四套里有十几处 3.9–4.5:1。
+内置三套全过 4.5。两个不在口径里：`--ui-fg-subtle`（内置三套自己就低于 4.5，那是「最淡那一档」的设定）、
+确认弹窗那张圆盘（`aria-hidden` 的图形，WCAG 按 3:1 算，语气另由正文承担）。
+
+**改动**（主题库仓库 `/root/Adelie_develop/adelie-themes`，只动明度、不动色相）：
+
+| 主题 | 状态 | 令牌 | 旧 → 新 | 结果 |
+| --- | --- | --- | --- | --- |
+| cyber | 浅色 | `--ui-line-muted` | `#1c767c` → `#0d3a41` | 淡墨 2.50 → **5.80**（井槽对画布 1.59、选中块对井槽 1.50、圆盘 3.58） |
+| cyber | 浅色 / 深色 | `--ui-tone-done-fg` | `#b431ff`→`#c052ff` / `#c34dff`→`#c554ff` | 徽章 3.77 → 4.61 / 4.42 → 4.62 |
+| doodle | 浅色 | `--ui-line-muted` | `#9f9c96` → `#ece5d8` | 淡墨 2.11 → **4.60** |
+| doodle | 浅色 | 五支 `--ui-tone-*-fg` | danger `#c94d28`→`#b54524`、success `#39833c`→`#357a38`、attention `#947003`→`#8b6903`、done `#8c5fc8`→`#7f56b6`、info `#3079b6`→`#2c6fa7` | 3.90–4.18 → 4.60–4.65 |
+| doodle | 深色 | `--ui-tone-danger-fg` | `#ff8a6b` → `#ff9578` | 徽章 4.28 → 4.62 |
+| skeuo | 浅色 | `--ui-line-muted` | `#c8bead` → `#eae2d3` | 淡墨 3.61 → **5.15**（井槽对画布 1.13，与陶光一样） |
+| skeuo | 浅色 | 五支 `--ui-tone-*-fg` | danger `#a8321f`→`#942c1b`、success `#346830`→`#2e5d2b`、attention `#7e5315`→`#754d14`、done `#6a4e9c`→`#5d4589`、info `#2b618c`→`#26567d` | 3.87–4.15 → 4.60–4.65 |
+| skeuo | 深色 | `--ui-tone-danger-fg` | `#e0776a` → `#e58b80` | 徽章 3.88 → 4.61（圆盘 4.91） |
+| clay-glow | 浅色 | `--ui-tone-success-fg` / `-attention-fg` | `#4f7a4a`→`#4d7648` / `#946a17`→`#8e6616` | 4.46 / 4.31 → 4.70 / 4.60 |
+
+`index.json` 里 cyber / skeuo / doodle 都 1.0.0 → **1.0.1**、`updatedAt` 改 2026-11-22；`package.json`
+1.3.0 → **1.3.1**。
+
+**工具也补上了这条口径**：`theme-tools/check-files.py` 原先只查「墨色压画布」，这次加进上面那一批
+「墨色压填充」的组合，注释里写明为什么 `--ui-fg-subtle` 与圆盘那两对不在其中 —— **这条 bug 本就是
+从这个缺口漏过去的**。
+
+**验证**：
+
+- `check-files.py` 跑库里四套：**0 处低于 4.5、rc=0**。**反证**：把 doodle 浅色淡线改回 `#9f9c96`，
+  同一份脚本报 **3 处 LOW、rc=1**（`fg-muted on line-muted` 2.11、`danger-fg on line-muted` 2.14、
+  `neutral-fg on line-muted` 2.11）；改回来又绿。
+- 审计脚本与内置三套对照：改后库里四套 × 浅深只剩圆盘那两对低于 4.5（3.58–4.07，**图形按 3:1 过**），
+  其余全 ≥4.5。内置三套里 **github 浅色的淡墨 4.35** 是它自己的（`--ui-fg-muted` 走 Tailwind gray-500、
+  `--ui-line-muted` 走 gray-100），本轮**没动内置主题**。
+- **真产物两态探针**（无头 chromium 加载 `packages/web/dist` 那份 CSS ＋ 由主题文件生成的令牌表，静态
+  复刻分段控件、五支徽章与那张圆盘，读浏览器自己算出来的值）：cyber 浅色 `off=2.50 → 5.80`、
+  skeuo 浅色 `3.61 → 5.15`、doodle 浅色 `2.11 → 4.60`、doodle 深色圆盘 `3.77 → 4.07`；截图肉眼看过，
+  改后未选中那侧字都清楚、选中块仍看得出来（探针与截图在 scratchpad 的 `theme-fill-audit/` 与
+  `/tmp/theme-probe/`）。
+- **推送与发布**：`git push origin HEAD:main`（主题库）成功，远端 `eb53cf9`；`npm publish` 用 vault 里的
+  **`NPM_TOKEN_ADELIE`**（`NPM_TOKEN` 那把回 401）发出 **`@lmliheng/adelie-themes@1.3.1`**。发布后立刻查
+  registry 仍报 `latest: 1.3.0`（读副本还没跟上，按老规矩等几分钟到一小时，**别升版本号**）。
+  npmmirror 的 `/files/` 对这个包永久 403，所以真正会被读到的是 jsDelivr 的
+  `gh/lmliheng/adelie-themes@main/` —— 它按分支缓存（最长 12 小时），用户那台要早点看到新取值，
+  得先 purge 或等缓存过期。
+
+### 本轮没做
+
+- 现网 `/root/.adelie` 与 `/root/.penguin/data` 一个字节没碰；现网数据根那份 `themes/*.json` 与库里的
+  副本**现在不一样了**（库里改了，现网还是旧的），要不要一起换等用户拍板。
+- 内置三套主题（`packages/ui/src/themes/*.css`）一处没动，包括 github 浅色那 4.35 —— 那属于应用侧更
+  根本的一条口径（填充交给填充令牌，而不是拿淡线色去顶），另开。
+- `--ui-line-muted` 被当填充用这件事本身（17 处）没动 —— 只把取值调到在两种用法下都读得清。
+- 临时检出 `/root/rel-070` 里我拷进去跑验证的文件已还原（只 `git checkout --` 具体路径，探针页也清掉了）。
+
 ## 第二百九十三轮：模型库里多了一个 Venice AI 分组，收录它的无审查模型（2026-11-22，条目 7.172）
 
 **开工**：`git status --short` 干净。本轮与另一条线撞了号：两支都从 `2502b44a1` 往后走，对方先合上
@@ -4964,6 +5085,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-22 | 发布 | **发 v0.7.0 并换装现网**（五条分支 cherry-pick 到 `main`：桌宠实时语音通话、安卓端第一次成包、密钥里非 ASCII 字符的修复、从别的机器搬来的会话、0.6.12 的发布说明 —— 跳首位数字，因为进了新东西；发布提交 `c310d99b5`，门禁在标签检出上 **rc=0 五步全绿**、各包累计 **10962 条通过**；门禁抓到两处真问题各修一笔 —— `ui-gallery` 假后端缺桌宠那四条 `/api/realtime/*` 接口（`ecca83b1d`）、`session-loader.test.ts` 读了 `RuntimeSession` 上不存在的 `workspaceDir` 且没过 prettier（`f8687591e`）→ 远端 `main` = `a7517f716`，标签 `v0.7.0` = 对象 `055df21970…`；三件载荷 linux-x64 114M / universal 57M / win32-x64 150M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.7.0；GitHub Release **id `454473256`** 14 件 762 MB 逐件核 sha256 后发布为 latest；3003 换上 v0.7.0 清单；现网 `/root/.adelie` 整棵换成 0.7.0、旧前端先拷回、瞬时单元 **22:09:51** 重启装上 `index-BaLfRc61.js` 并自核验；随后按用户「你没有更新文档和仓库 readme」补上两份 README 与 `FORK.md` 的改动声明） | 发布轮，逐项见「第二百九十一轮」一节；现网核验写 `rel-070-live-restart-verify.txt`：`penguin version` = v0.7.0、core 戳 `BUILD_DATE 2026-11-22 / BUILD_COMMIT a7517f716…`、7777 在听、`GET /` 200 / 匿名 `/api/me` 401 / 公网 200；`releases/latest` = v0.7.0 | `c310d99b5`（发布）+ 门禁两笔 `ecca83b1d` / `f8687591e` |
 | 2026-11-22 | 7.171 | **日历编辑弹窗里打不开的工位，原因留在链接所在的那一行下面**（**2026-11-22 第二百九十二轮**落地；`packages/web` 1 个源码文件（`calendar-page.tsx`：新增 `deskRefusal`，`openDesk` 改经 `refusalText` 写进去、不再 `toastError`，句子画在元数据那一行下面，`openCreate` / `openEdit` 清掉它）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩四处 `openDesk`，这是其中**自有弹窗**的一处 —— 链接就在弹窗里、请求回来时弹窗仍站着，而原来的原因是一条盖在弹窗标题上、六秒就走的通知（改前实测：800 毫秒时通知区里就是那句话、弹窗里 0 条，七秒后两边都是 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑；ff 进来的新导出让旧 `packages/core/dist` 先红一次，重建 core 后全绿） · `npx oxlint` 2 个改动文件（源码 + 新 spec）**0 警告 0 错误** · 它们与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过** · **新 spec 1 passed（10.6 s）**（真服务端 9961 + 自带 mock 8932 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r292-a`）：工位路由 500 + 自己的话 → 句子在弹窗里、量到起点在链接下缘之下且在弹窗内、通知区没有它、七秒后仍在、弹窗还站着且地址没变；关掉再打开 → `alert` 数 0；解除拦截后同一颗链接打开工位并进入 `/chat/<会话>` · **反证（改前产物 `r292/before-dist`，主包 `index-BaLfRc61.js`；改后 `index-BbWX0Dsq.js`）**挂 9962 / 数据根 `/root/adelie-fork-data/r292-b` → **1 failed**，弹窗里找不到 `alert` · **两态探针**（`r292/shape-check.mjs`）：改前 800 毫秒时通知堆栈里就是那句话、弹窗里 null，七秒后堆栈空；改后通知堆栈只有内测提示、弹窗里是「操作被拒绝：…」，七秒后仍在；三种失败形状（500/400 + 未知码、500 + 表里有的码）改后都落在弹窗里 · 截图 `r292/life-{before,after}/shots/life-{1-800ms,2-7s}.png` 与 `r292/after/shots/` 肉眼看过，两态 pageerror 0 条 · **相邻回归**（真浏览器）`calendar-refusal` 2 + `company.spec` 1，**3 passed（38.5 s）** · 端口只用 9961 / 9962 / 8932（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r292-*`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `0f0dcea0a` |
 | 2026-11-22 | 7.172 | **模型库里多了一个 Venice AI 分组，收录它的无审查模型**（**2026-11-22 第二百九十三轮**落地；`packages/core` 1 个源码文件 ＋ 1 份单测 ＋ `packages/web` 1 份单测 ＋ `packages/docs` 两份模型页 ＋ changelog 一对 —— `MODEL_PROVIDERS` 新增 `venice`（label "Venice AI"、OpenAI 兼容的 `gatewayBaseUrl` `https://api.venice.ai/api/v1`、取 key 页 `https://venice.ai/settings/api` 与模型列表页 `https://docs.venice.ai/models/overview`），注释从「The seven gateway groups」改成 **eight**；`MODEL_CATALOG` 新增九条预置（`abliteration-abliterated-model-large-flash` 1M/视觉、`abliteration-abliterated-model-large-v2` 1M/纯文本、`deepseek-v4-1-flash-1017-uncensored` 与 `deepseek-v4-1-flash-uncensored` 各 1M/视觉、`glm-5-3-flash-uncensored` 1 048 576/视觉、`olafangensan-glm-4.7-flash-heretic` 200K/纯文本、`qwen-3-6-plus` 1M/视觉+视频、`venice-uncensored-1-2` 与 `venice-uncensored-role-play` 各 128K/视觉），每条 `clientType: "openai-chat"` 且内联端点，cluster 放在 abliteration 之后、custom 之前，**不碰接口、无新依赖**）：用户 2026-11-22 点单「在模型库中加 https://venice.ai 这个服务商」，中途 steering 补一句「主要加 ds flash uncensored等无审查模型」 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged` —— 本笔不碰服务契约） · `npx oxlint` 三个改动 `.ts` 文件 **0 警告 0 错误**、`prettier --check` 干净（`*.md` 不在 prettier 范围） · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 通过 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **351 / 3968 / 2 跳过**（基线 351 / 3965，**+3 即本笔**） · docs **8 / 62** · **协议实测**（`/root/rel-070` 带依赖树上直接构造 `AutoLLMClient`）：九条按 `clientType:"openai-chat"` 构造全 ok；改按 id 路由则 **6 条直接抛 `… is not supported`**，另 3 条（`deepseek-v4-1-flash-*` 两条、`glm-5-3-flash-uncensored`）不抛却被路由到那两家厂商的专属客户端 —— 故每条钉协议并内联端点 · **本机连不上 venice.ai**（curl 与 DoH 都被挡），模型事实与价格取自 models.dev 的 `venice` 提供方（其 toml 由 `https://api.venice.ai/api/v1/models?type=text` 同步生成），**真连上厂商那一步未做** · 没有切版本号、没发 npm、没发安装包、没发发布汇总；只进源码与文档，随下一版发出 | `0ff955e9c` |
+| 2026-11-22 | 7.173 | **导入过主题的机器上主题配方不再被应用自身样式盖住；四套主题里文字压在填充上读不清的取值一起调了**（**2026-11-22 第二百九十四轮**落地；本仓 `packages/web` 1 个源码文件（`index.html` 头部一条 `@layer` 顺序声明，排在 `/api/themes.css` 链接之前，并把各层名按应用自身样式表的顺序钉死）+ 1 个新测试 + changelog 一对；主题库仓库 `adelie-themes` 四套主题共 20 处取值（井槽 `--ui-line-muted` 三处 + 徽章墨色 `--ui-tone-*-fg` 十七处，只动明度）+ 三份 `index.json` 版本号 + `package.json`；另有 `theme-tools/check-files.py` 补上「墨色压填充」这条检查口径 —— **不碰接口、无新依赖、没有新文案**）：用户 2026-11-22 接过 Venice AI 那单之后甩两张截图报两个主题显示 bug，随后又要求「其他主题有类似问题 要一起改」 —— ①极客（内置）插件页那条提示的 `[WARN]` 标签压在正文上（`::before` 画出来的标签没有对手照旧画，配方的 `padding-inline-start` / `border:0` / `[data-slot=icon]{display:none}` 全被 Tailwind 的 `.px-4` / `.border` / `.flex` 压过，因为导入的主题表带着 `@layer ui-theme` 又必须排在最前，把 `ui-theme` 变成了优先级最低的一层）；②紧随其后：`--ui-line-muted` 既当淡线又被 17 处 `bg-line-muted` 当填充用（分段控件的井槽），画布本身就是中间调的几套浅色下淡墨读不出来（手绘涂鸦 2.11、赛博朋克 2.50、拟物化 3.61），徽章那一族（tone 墨色压各自浅底）也有十几处 3.9–4.5 | 本仓：新用例 `head-layers.test.ts` **2 passed** · `prettier --check` 起初对 `index.html` 报红（新 `<style>` 写成一行），按 prettier 拆行后干净 · 用改后头部重建 web 产物、产物 `index.html` 里顺序正确（`<style>` 25 行 → `/api/themes.css` 31 行 → 打包 CSS 39 行） · **真产物两态探针**（无头 chromium 加载 `packages/web/dist` 那份 CSS，静态复刻 `ui-notice` + `px-4/border/flex`）：无顺序声明 → `padStart=14.4px borderW=1px iconDisplay=flex`（＝用户截图），有顺序声明 → `74px / 0px / none`，对照（有声明、不挂主题表）→ `74px / 0px / none` · 主题库：`check-files.py`（已补上「墨色压填充」的组合）跑四套 **0 处低于 4.5、rc=0**，**反证**把 doodle 浅色淡线改回 `#9f9c96` 即报 **3 处 LOW、rc=1** · 审计脚本与内置三套对照：改后只剩圆盘那两对低于 4.5（3.58–4.07，图形按 3:1 过），内置 **github 浅色 4.35** 未动 · **真产物两态探针**读浏览器算出来的值：cyber 浅色 `2.50→5.80`、skeuo 浅色 `3.61→5.15`、doodle 浅色 `2.11→4.60`、doodle 深色圆盘 `3.77→4.07`，截图肉眼看过 · **推送与发布**：主题库 `push origin HEAD:main`（远端 `eb53cf9`）、`npm publish` 用 `NPM_TOKEN_ADELIE`（`NPM_TOKEN` 回 401）发出 `@lmliheng/adelie-themes@1.3.1`（发布后 registry 读副本仍报 1.3.0，等它跟上）；本仓 `push origin HEAD:main`（`a0795854d..` 之后的四笔：Venice 两笔 + 层序修复一笔 + 台账一笔）· 现网 `/root/.adelie` 与 `/root/.penguin/data` 一个字节没碰（现网数据根那份主题与库里的副本现在不同，等拍板） · 临时检出 `/root/rel-070` 里拷进去验证的文件已按具体路径还原、探针页清掉 | `1b4bdde9b`（本仓）+ `eb53cf9`（主题库） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
