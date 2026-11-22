@@ -3098,6 +3098,72 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       现网 7777 要不要增量换前端、现网数据根那四份主题要不要换成库里新版三件摆给用户拍板，用户答
       「按你的来」。见「第二百九十六轮」一节。
 
+- [x] **7.176 侧栏工位行打不开时，原因留在那一行下面**（**2026-11-23 第二百九十七轮**落地，
+      提交见「已完成的轮次」）：`packages/web` 1 个源码文件（`org-session-groups.tsx`：
+      `useOpenDesk` 留着 `refusal`（`{agentId,text}`，经 `refusalText` 写入、下一次尝试与换组织
+      时清掉），`OrgSessionGroups` 以 `sayInPlace: true` 把它画在对应 `DeskRow` 的 `<li>` 里；
+      竖栏 48 px 没有一行可写，默认仍 `toastError`）＋ 1 个新 spec ＋ changelog 一对 ——
+      **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处
+      `openDesk` 里，这是**侧栏自有行**的一处 —— 行还站在那里、按的就是它，而原来的原因是六秒就
+      走的通知。见「第二百九十七轮」一节。
+
+## 第二百九十七轮：侧栏工位行打不开时，原因留在那一行下面（2026-11-23，条目 7.176）
+
+**开工**：`git status --short` 干净（`3d504f2b8` 之上没有未提交改动）。`git fetch origin` 第一次被
+GnuTLS `-110` 掐断，按台账的老办法 `git -c http.version=HTTP/1.1 fetch origin` 一次就通；`git merge
+--ff-only origin/main` 报 `Already up to date`（与远端同为 `3d504f2b8`）。
+
+**为什么是这一条**：待办里 2.2c（写侧剩下的全在桌面壳一侧）、3.5（要用户拍板取哪个桌面壳）、3.6（要
+模型 key）、5.6（促销搬进 Project 配置要拍板）、5.10（要 mermaid 新依赖）都还卡着，4.1–4.3 明令不动；
+第 7 节到 7.175 已全勾。上一轮（第二百九十六轮 / 7.175）的「没做 / 留着」只列了主题刻度与 registry
+滞后两件事，而 7.174 那一轮把公司页那几处 `openDesk` 点名为这一族还在做的地方 —— 本轮就接着做这一族
+里**侧栏自有行**的那一处（`org-session-groups.tsx` 的工位组）。
+
+**做了什么**：工位组的行来自 `deskRows(chart, sessions)`；员工从入职起就有工位会话，所以只有「这两份
+缓存还没学到那个 id」的行会去读工位路由（`getOrgDesk`，没有就顺手建一个），失败过去只落在一条六秒就
+走的通知里 —— 而按过的那一行与点之前长得一模一样（这就是 7.19 要修的那种形状）。现在：
+
+- `useOpenDesk` 多一个 `refusal`（`{agentId, text}`，经 `refusalText` 写入、开头清掉），第三个参数从
+  位置参数 `onNavigate?` 改成 `{ onNavigate?, sayInPlace? }`；`sayInPlace` 为真时句子写进 `refusal`、
+  不再 `toastError`，换 `projectId` / `orgId` 时清空（一个组织的答复不该跟着读者走）。
+- `DeskRow` 多一个 `refusal: string | null`，画在那一行 `<li>` 里、行本身之下：`role="alert"`、危险
+  墨色、最多两行（`line-clamp-2`）、悬停得到整句 —— 与概览页 / 日历 / 成员弹层那几处同一套写法。
+- 折叠后的竖栏（`DeskRailRows`）一项 48 px，没有一行可以写字，所以那里保持默认（仍是 `toastError`），
+  注释写明为什么两种表面不一样。
+
+**验证**：
+
+- 六包 `typecheck` `EXIT=0`（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 /
+  613 类型）。
+- `npx oxlint` 两个改动文件 **0 警告 0 错误**；`prettier --check` 起初对 spec 报红，`--write` 一次后
+  干净；`git diff --check` 干净。
+- 逐包 test `EXIT=0`、0 失败：core **70 文件 / 1458 + 6 跳过**、ui **133 / 1115**、cli **39 / 566**、
+  server **217 / 3162 + 6 跳过**、web **352 / 3970 + 2 跳过**（与上一轮基线逐项相同）。
+- 新用例 `packages/web/e2e/desk-row-refusal.spec.mjs` **1 passed（8.9 s）**。
+- 反证（改前产物 `r297/before-dist`，主包 `index-C-C9Bj56.js`；改后 `index-Edeu7SeB.js`）：挂 9982 /
+  数据根 `/root/adelie-fork-data/r297-b` → **1 failed**，`getByRole("complementary").getByRole("alert")`
+  找不到那句话。
+- 两态探针（`r297/probe/shape.spec.mjs`，跑完已删）：行盒子 `y 429–461`、句子 `y 461–497`（**起点正好
+  在行下缘**）、宽 272 落在侧栏 288 之内、`rowDisabled false`；七秒后仍在；解除拦截后进
+  `/chat/session-…`；console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条。
+- 相邻回归（真浏览器）：`company.spec` 1 + `company-rail-hints` 2 + `overview-desk-refusal` 1
+  **4 passed**；另一批 `channel-{join,send,earlier}-refusal` / `channel-live-day` /
+  `calendar-desk-refusal` / `employee-refusal` / `org-chart-leave-refusal` / `org-delete-refusal` /
+  `org-settings-refusal` **17 passed（1.4 m）**。
+- 端口只用 9981 / 9982 / 8934（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r297-{a,b}`，产物与截图都在 scratchpad 的 `r297/` 下（`packages/*/dist`、
+  `packages/web/test-results/` 都是产物，未 `git add`）。
+
+**没做 / 留着**：
+
+- 公司页那几处 `openDesk` 现在只剩**组织图卡片菜单**那一处（`org-chart-page.tsx`：菜单一点就关，原因
+  该落在卡片上，而卡片的高度由 `org-chart-tree.ts` 的布局算好，属「要造新表面」的一笔）与竖栏（48 px，
+  有意留通知）。
+- 内置 github 浅色那对 4.34、三套外置主题的 `--ui-tree-guide`、registry 读副本滞后三件仍按上一轮的
+  理由留着。
+
+**提交**：代码 + spec + changelog 一对 + 本节 + 上表那一行 + 条目 7.176，随本文件另起一笔。
+
 ## 第二百九十六轮：默认主题那条淡线查过之后留在原处，层序修复与四套主题的新取值一起上了现网（2026-11-23，条目 7.175）
 
 **开工**：`git status --short` 干净（`7956fd93f` 之上没有未提交改动）。**这两笔 rebase 之后重编为第二百九十六轮 / 7.175**：第一次 `git push origin HEAD:main` 被拒（`non-fast-forward`），另一条线在这期间推了第二百九十五轮 / 7.174（概览页打不开的工位留在自己的答复行里），落地内容与我的两笔没有重叠，只有台账里的号改了。
@@ -5257,6 +5323,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-22 | 7.173 | **导入过主题的机器上主题配方不再被应用自身样式盖住；四套主题里文字压在填充上读不清的取值一起调了**（**2026-11-22 第二百九十四轮**落地；本仓 `packages/web` 1 个源码文件（`index.html` 头部一条 `@layer` 顺序声明，排在 `/api/themes.css` 链接之前，并把各层名按应用自身样式表的顺序钉死）+ 1 个新测试 + changelog 一对；主题库仓库 `adelie-themes` 四套主题共 20 处取值（井槽 `--ui-line-muted` 三处 + 徽章墨色 `--ui-tone-*-fg` 十七处，只动明度）+ 三份 `index.json` 版本号 + `package.json`；另有 `theme-tools/check-files.py` 补上「墨色压填充」这条检查口径 —— **不碰接口、无新依赖、没有新文案**）：用户 2026-11-22 接过 Venice AI 那单之后甩两张截图报两个主题显示 bug，随后又要求「其他主题有类似问题 要一起改」 —— ①极客（内置）插件页那条提示的 `[WARN]` 标签压在正文上（`::before` 画出来的标签没有对手照旧画，配方的 `padding-inline-start` / `border:0` / `[data-slot=icon]{display:none}` 全被 Tailwind 的 `.px-4` / `.border` / `.flex` 压过，因为导入的主题表带着 `@layer ui-theme` 又必须排在最前，把 `ui-theme` 变成了优先级最低的一层）；②紧随其后：`--ui-line-muted` 既当淡线又被 17 处 `bg-line-muted` 当填充用（分段控件的井槽），画布本身就是中间调的几套浅色下淡墨读不出来（手绘涂鸦 2.11、赛博朋克 2.50、拟物化 3.61），徽章那一族（tone 墨色压各自浅底）也有十几处 3.9–4.5 | 本仓：新用例 `head-layers.test.ts` **2 passed** · `prettier --check` 起初对 `index.html` 报红（新 `<style>` 写成一行），按 prettier 拆行后干净 · 用改后头部重建 web 产物、产物 `index.html` 里顺序正确（`<style>` 25 行 → `/api/themes.css` 31 行 → 打包 CSS 39 行） · **真产物两态探针**（无头 chromium 加载 `packages/web/dist` 那份 CSS，静态复刻 `ui-notice` + `px-4/border/flex`）：无顺序声明 → `padStart=14.4px borderW=1px iconDisplay=flex`（＝用户截图），有顺序声明 → `74px / 0px / none`，对照（有声明、不挂主题表）→ `74px / 0px / none` · 主题库：`check-files.py`（已补上「墨色压填充」的组合）跑四套 **0 处低于 4.5、rc=0**，**反证**把 doodle 浅色淡线改回 `#9f9c96` 即报 **3 处 LOW、rc=1** · 审计脚本与内置三套对照：改后只剩圆盘那两对低于 4.5（3.58–4.07，图形按 3:1 过），内置 **github 浅色 4.35** 未动 · **真产物两态探针**读浏览器算出来的值：cyber 浅色 `2.50→5.80`、skeuo 浅色 `3.61→5.15`、doodle 浅色 `2.11→4.60`、doodle 深色圆盘 `3.77→4.07`，截图肉眼看过 · **推送与发布**：主题库 `push origin HEAD:main`（远端 `eb53cf9`）、`npm publish` 用 `NPM_TOKEN_ADELIE`（`NPM_TOKEN` 回 401）发出 `@lmliheng/adelie-themes@1.3.1`（发布后 registry 读副本仍报 1.3.0，等它跟上）；本仓 `push origin HEAD:main`（`a0795854d..` 之后的四笔：Venice 两笔 + 层序修复一笔 + 台账一笔）· 现网 `/root/.adelie` 与 `/root/.penguin/data` 一个字节没碰（现网数据根那份主题与库里的副本现在不同，等拍板） · 临时检出 `/root/rel-070` 里拷进去验证的文件已按具体路径还原、探针页清掉 | `1b4bdde9b`（本仓）+ `eb53cf9`（主题库） |
 | 2026-11-23 | 7.174 | **概览页打不开的 CEO 工位，原因留在页面自己的答复行里**（**2026-11-23 第二百九十五轮**落地；`packages/web` 1 个源码文件（`overview-page.tsx`：新增 `deskRefusal`，`openCeoDesk` 的 `catch` 经 `refusalText` 写进去、不再 `toastError`，拒绝句收成 `deskRefusalLine`，页头有按钮那一版画在正文最上方（与刷新失败同一槽），新建组织那一版给 `StepCard` 加可选 `note`、画在指引第一步那张卡的按钮下面，两处因 `steps.fresh` 互斥）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩三处 `openDesk`，这是其中**页头按钮**的一处 —— 读失败时页面留在原处，而原来的原因只在一条六秒就走的通知里，按过的按钮与之前一模一样（改前实测：800 毫秒时通知堆栈里就是那句话、页面上 0 条，七秒后两边都是 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 改动源码 + 新 spec **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净（spec 首跑 `--write` 一次，复检全绿） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（含变基进来的另一条线那份 `head-layers` 用例） · **新用例 1 passed（9.5 s）**（真服务端 9971 + 自带 mock 8933 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r293-a`）：补一张工单让三步指引让位 → 工位路由答 500 带上自己的话 → 句子在页面上、量到起点在页头按钮下缘之下、通知区没有它、按钮回到可点且文字复原、七秒后仍在、地址没变；解除拦截后按同一颗按钮 → 进入 `/chat/<会话>` 且新页面上没有那句 · **反证（改前产物 `r293/before-dist`，主包 `index-BbWX0Dsq.js`；改后 `index-BJzpOryR.js`）** 挂 9972 / 数据根 `/root/adelie-fork-data/r293-b` → **1 failed**（`getByRole("alert")` 找不到） · **两态探针**（`r293/shape-check.mjs`）：改前 800 毫秒时通知堆栈里就是那句话、页面 `alert` 为 null，七秒后堆栈空；改后 800 毫秒时页面就是「操作被拒绝：…」、堆栈只有内测提示，七秒后仍在，量到在页头按钮下缘之下 17 px；**新建组织那条路**（`FRESH=1`）在三步指引第一步的按钮下面 8 px、七秒后仍在 · 截图 `r293/life-{before,after,fresh}/shots/life-{1-800ms,2-7s}.png` 肉眼看过，两态 pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `company-rail-hints` 2 + `org-delete-refusal` 1 + `org-settings-refusal` 2 + `company.spec` 1 **6 passed**；变基后在最终树上重建 web（`index-C-C9Bj56.js`）重跑本笔 1 + `company-rail-hints` 2 **3 passed** · 端口只用 9971 / 9972 / 9973 / 8933 / 8934（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r293-{a,b,c}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `faf079336` |
 | 2026-11-23 | 7.175 | **默认主题那条淡线查过之后留在原处，层序修复与四套主题的新取值一起上了现网**（**2026-11-23 第二百九十六轮**落地；本仓 `packages/ui` 1 处注释（`themes/github.css` 里 `--ui-line-muted` 旁边写清为什么不跟着调亮），**不改取值、不碰测试**；现网只换 `/root/.adelie/web/index.html` 与 `/root/.adelie/data/themes/` 四份 JSON，**不进源码**）：7.173 把「内置 github 浅色那条淡线要不要一起调、现网要不要增量换前端、现网数据根四份主题要不要换新版」三件摆给用户拍板，用户答「按你的来」 —— ①那条线（`--ui-fg-muted` `oklch(55.6% 0 0)` 压 `--ui-line-muted` `oklch(97% 0 0)`）只有 4.34，挪到 gray-50 能给 4.53，但该 token 还被 18 处 `bg-line-muted`（9 处悬停/选中态）当填充用，而 gray-50 正好等于 `--ui-surface-muted` 与 `--ui-inset`，挪过去会让画在这两种底上的 `border-line-muted`（改动卡表头线、工具卡前置块线）与底色同色、最淡的分隔线等于没了，且这条刻度是 `token-contract.test.ts` 钉住的「app always drew」，故维持原值、把理由写进注释；②层序修复（只动 HTML）上现网，不必重启（服务端没推送过 web 版本时直接从 `webDist` 读）；③现网数据根那四份与库里新版的差异**只有那 20 处取值**，整份换掉 | `prettier --check` 干净 · `oxlint` 对 CSS 无对象 · `pnpm --filter @adelie/ui exec vitest run test/contrast.test.ts test/token-contract.test.ts` **2 文件 / 114 passed（12.3 s）** · 现网 `index.html` **200 / 3948 B**（顺序声明 26 行 → `/api/themes.css` 33 行 → 打包 CSS 41 行），`/assets/index-BaLfRc61.js` **200 / 2 960 549 B**、`/assets/index-DdG-IiBW.css` **200 / 478 940 B**、`/api/themes.css` **200 / 39 890 B** · 重建产物的 CSS 与现网那份 **md5 同为 `f6cb5ab0984c5f536ce031f5e3f0673d`**（所以只换 HTML） · **现网真页面 CDP 探针**（`http://localhost:7777/`）：样式表顺序 `inline` → `/api/themes.css` → 打包 CSS，挂 `data-theme=geek` 插真通知条 → **`padStart 74px / borderTop 0px / iconDisplay none`** · **两态对照（现网两份产物）**：去掉顺序声明 → **`14.4px / 1px`**，与上一轮构建产物上的数字一致 · **分段控件未选中那侧压井槽**：doodle **4.60**、skeuo **5.15**、cyber **5.80**、clay-glow **5.57**、geek **5.68**（doodle 改前 2.11），github **4.34** 即①那条 · `theme-tools/check-files.py` **0 处低于 4.5、rc=0** · 备份在 scratchpad `live-swap-20261123/` · 没切版本号、没发 npm、没发安装包 | `7bffa05a0` |
+| 2026-11-23 | 7.176 | **侧栏工位行打不开时，原因留在那一行下面**（**2026-11-23 第二百九十七轮**落地；`packages/web` 1 个源码文件（`org-session-groups.tsx`：`useOpenDesk` 多一个 `refusal`（`{agentId,text}`，经 `refusalText` 写入、开头清掉、换组织清掉），第三个参数改成 `{ onNavigate?, sayInPlace? }`；`DeskRow` 多一个 `refusal: string \| null`，画在 `<li>` 里、行本身之下（`role="alert"`、危险墨色、`line-clamp-2`、悬停看整句）；`DeskRailRows` 一项 48 px 没有一行可写，保持 `toastError` 并写明理由）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处 `openDesk` 里还剩这处**侧栏自有行** —— 行还站在那里、按的就是它，而原来的原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净（spec 首跑 `--write` 一次）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（与上一轮基线逐项相同） · **新用例 1 passed（8.9 s）**（真服务端 9981 + 自带 mock 8934 + 数据根 `/root/adelie-fork-data/r297-a`）：侧栏画工位组用的两次读按「缓存还没学到」交回（员工不带 `desk`、会话路由 `desks` 为空）→ 工位路由答 500 并带上自己的话 → 句子在那一行下面、量到起点正好在行下缘（461 = 461）、宽 272 落在侧栏 288 之内、通知区没有它、七秒后仍在、那一行已恢复可点、地址没变；解除拦截后同一行进 `/chat/session-…` · **反证（改前产物 `r297/before-dist`，主包 `index-C-C9Bj56.js`；改后 `index-Edeu7SeB.js`）**挂 9982 / 数据根 `/root/adelie-fork-data/r297-b` → **1 failed**，侧栏里没有 `alert` · **两态探针**（`r297/probe/shape.spec.mjs`，跑完已删）：行 `y 429–461`、句子 `y 461–497`、`rowDisabled false`，截图 `r297/shots/{1-row,2-refused,3-refused-7s,4-retried}.png` 肉眼看过，pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `company.spec` 1 + `company-rail-hints` 2 + `overview-desk-refusal` 1 **4 passed**；`channel-{join,send,earlier}-refusal` / `channel-live-day` / `calendar-desk-refusal` / `employee-refusal` / `org-chart-leave-refusal` / `org-delete-refusal` / `org-settings-refusal` **17 passed（1.4 m）** · 端口只用 9981 / 9982 / 8934（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r297-{a,b}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `635b3e50c` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
