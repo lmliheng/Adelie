@@ -180,10 +180,10 @@ export function desktopTrayRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
 /**
  * The pet-window preference. GET reads what the shell last pushed — null until that first push,
  * which the page reads as off, the shell's own default. PUT relays a patch: the Settings switch,
- * or the pet window hiding itself, both of which mean the same thing to the shell. It applies it,
- * persists it and pushes the new state straight back, so the answer here is an acknowledgement and
- * the GET is what tells the truth. Like the relays above, the members are optional on a layer
- * older than the pet.
+ * the pet window hiding itself, or the pet page saying a call has started or ended. All of them
+ * mean the same thing to the shell — it applies the field and pushes the new state straight back —
+ * so the answer here is an acknowledgement and the GET is what tells the truth. Like the relays
+ * above, the members are optional on a layer older than the pet.
  */
 export function desktopPetRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
@@ -197,17 +197,26 @@ export function desktopPetRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
 
   app.put("/", async (c) => {
     const desktop = shellSessionOf(deps, c, refusal);
-    const body = (await c.req.json().catch(() => null)) as { showPet?: unknown } | null;
+    const body = (await c.req.json().catch(() => null)) as {
+      showPet?: unknown;
+      call?: unknown;
+    } | null;
     const patch: DesktopPetPatch = {};
-    if (body?.showPet !== undefined) {
-      if (typeof body.showPet !== "boolean") {
-        throw new HttpError(400, "invalid_show_pet", "showPet must be a boolean.");
+    for (const field of ["showPet", "call"] as const) {
+      const value = body?.[field];
+      if (value === undefined) continue;
+      if (typeof value !== "boolean") {
+        throw new HttpError(
+          400,
+          field === "showPet" ? "invalid_show_pet" : "invalid_pet_call",
+          `${field} must be a boolean.`,
+        );
       }
-      patch.showPet = body.showPet;
+      patch[field] = value;
     }
     // An empty patch is a caller bug, not a no-op worth relaying to the shell.
-    if (patch.showPet === undefined) {
-      throw new HttpError(400, "empty_pet_patch", "Pass showPet.");
+    if (patch.showPet === undefined && patch.call === undefined) {
+      throw new HttpError(400, "empty_pet_patch", "Pass showPet or call.");
     }
     if (!desktop.requestPetCommand?.(patch)) {
       throw new HttpError(503, "shell_unreachable", "The desktop shell is not listening.");

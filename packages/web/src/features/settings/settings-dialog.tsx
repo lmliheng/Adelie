@@ -27,6 +27,7 @@ import { AccountSection } from "./account-section";
 import { ProxySection } from "./proxy-section";
 import { UploadsSection } from "./uploads-section";
 import { AsrSection } from "./asr-section";
+import { RealtimeSection } from "./realtime-section";
 import { CompanySection } from "./company-section";
 import { AgentApiSection } from "./agent-api-section";
 import { PluginsSection } from "./plugins-section";
@@ -57,6 +58,9 @@ const SECTION_ICONS: Record<SettingsSectionKey, string> = {
   uploads: "M12 15V4m0 0L7 9m5-5l5 5M4 20h16",
   /** Microphone: speech input. */
   speech: ICONS.microphone,
+  /** A telephone handset: the pet's spoken call — the same medium as `speech`, a different use. */
+  realtime:
+    "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z",
   /** The building the mode switch wears: company mode. */
   company: ICONS.building,
   /** Angle brackets: programs calling the Agents. */
@@ -115,6 +119,7 @@ export function SettingsDialog({
     proxy: S.settings.proxyTitle,
     uploads: S.settings.uploadLimitsTitle,
     speech: S.settings.speechTitle,
+    realtime: S.settings.realtimeTitle,
     company: S.settings.companyModeTitle,
     agentApi: S.settings.agentApiTitle,
     plugins: S.settings.pluginsTitle,
@@ -132,6 +137,7 @@ export function SettingsDialog({
     proxy: S.settings.proxyInfo,
     uploads: S.settings.uploadLimitsInfo(uploadLimits.attachmentMaxCount, uploadLimits.imageMaxMb),
     speech: S.settings.speechInfo,
+    realtime: S.settings.realtimeInfo,
     company: S.settings.companyModeServerInfo,
     agentApi: S.settings.agentApiHint,
     plugins: S.settings.pluginsInfo,
@@ -180,6 +186,7 @@ export function SettingsDialog({
       {current === "proxy" && <ProxySection />}
       {current === "uploads" && <UploadsSection />}
       {current === "speech" && <AsrSection />}
+      {current === "realtime" && <RealtimeSection />}
       {current === "company" && <CompanySection />}
       {current === "agentApi" && <AgentApiSection />}
       {current === "plugins" && (

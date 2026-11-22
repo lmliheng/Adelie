@@ -97,9 +97,13 @@ describe("updatePetPrefs", () => {
 
 describe("the pet frame on the port", () => {
   it("wraps the state for the push", () => {
-    expect(petStatusMessage(true)).toEqual({
+    expect(petStatusMessage(true, false)).toEqual({
       type: "desktop-pet-status",
-      status: { showPet: true },
+      status: { showPet: true, call: false },
+    });
+    expect(petStatusMessage(true, true)).toEqual({
+      type: "desktop-pet-status",
+      status: { showPet: true, call: true },
     });
   });
 
@@ -107,10 +111,18 @@ describe("the pet frame on the port", () => {
     expect(parsePetCommand({ type: "desktop-pet-command", showPet: false })).toEqual({
       showPet: false,
     });
+    // The call flag is transient — the page reports it, the shell never persists it — but it rides
+    // the same frame as the switch.
+    expect(parsePetCommand({ type: "desktop-pet-command", call: true })).toEqual({ call: true });
+    expect(parsePetCommand({ type: "desktop-pet-command", showPet: true, call: true })).toEqual({
+      showPet: true,
+      call: true,
+    });
     // A frame of this build's own kind that carries nothing is an empty patch, not a non-frame:
     // the caller needs to tell those apart.
     expect(parsePetCommand({ type: "desktop-pet-command" })).toEqual({});
     expect(parsePetCommand({ type: "desktop-pet-command", showPet: "yes" })).toEqual({});
+    expect(parsePetCommand({ type: "desktop-pet-command", call: "yes" })).toEqual({});
     for (const data of [
       null,
       "pet",

@@ -61,6 +61,9 @@ function memorySettings(maxMb = 7): Settings {
     // Speech input is not what this file is about; the stub reads as "nothing configured".
     getAsrSettings: () => ({ baseUrl: "", model: "", apiKey: "" }),
     setAsrSettings: () => {},
+    // Nor is the pet's real-time voice: the same "nothing configured" reading.
+    getRealtimeSettings: () => ({ baseUrl: "", model: "", voice: "", apiKey: "" }),
+    setRealtimeSettings: () => {},
   };
 }
 

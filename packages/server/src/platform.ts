@@ -122,6 +122,7 @@ import { TerminalRelay } from "./machines/terminal-relay.js";
 import { ProjectAdminRoutes } from "./http/routes/projects.js";
 import { AdminRoutes } from "./http/routes/admin.js";
 import { AsrRoutes } from "./http/routes/asr.js";
+import { RealtimeRoutes } from "./http/routes/realtime.js";
 import { MeRoutes } from "./http/routes/me.js";
 import { UserVaultRoutes } from "./http/routes/user-vault.js";
 import { AuthRoutes } from "./http/routes/auth.js";
@@ -471,6 +472,7 @@ export class CompanyModule {}
     VersionRoutes,
     FeedbackRoutes,
     AsrRoutes,
+    RealtimeRoutes,
     HmrRoutes,
     DesktopRoutes,
     DesktopUpdateRoutes,

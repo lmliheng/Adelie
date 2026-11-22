@@ -849,6 +849,32 @@ export const zh = {
     speechTestOk: (endpoint: string): string => `连通正常，用的是 ${endpoint}`,
     /** Followed by the service's own sentence, untranslated. */
     speechTestFailed: (endpoint: string): string => `连不通，用的是 ${endpoint}：`,
+    realtimeTitle: "实时语音",
+    /** Disclosed at the pane heading: what a call is, and where the key lives. */
+    realtimeInfo:
+      "桌宠「打电话」用的语音对话模型：麦克风的声音交给下列服务商，回答也由它合成，一整条通话由服务器中转，" +
+      "服务商密钥只留在这台服务器上，不随页面下发。它和上面的「语音输入」是两回事——那个是听写，这个是对话。",
+    realtimeBaseUrl: "服务地址",
+    realtimeBaseUrlHint: "服务商的站点地址，例如 https://dashscope.aliyuncs.com",
+    realtimeModel: "实时模型",
+    realtimeModelHint: "服务商那边的模型 ID，例如 qwen3.8-omni-flash-realtime",
+    realtimeVoice: "音色",
+    realtimeVoiceHint: "模型回答时用的音色，例如 Tina",
+    realtimeApiKey: "API 密钥",
+    realtimeApiKeyHint: "留空表示沿用已保存的密钥",
+    /** The two states of the stored key, shown beside the key field. */
+    realtimeKeyStored: "已保存密钥",
+    realtimeKeyMissing: "尚未保存密钥，桌宠通话暂不可用",
+    /**
+     * The connectivity check: one session opened and closed against the site, so an operator learns
+     * before a call that the key, the site or the model is wrong. It checks what is on screen rather
+     * than what is stored, and both sentences name the endpoint the call would actually reach.
+     */
+    realtimeTest: "测试连通性",
+    realtimeTestRunning: "正在测试…",
+    realtimeTestOk: (endpoint: string): string => `连通正常，用的是 ${endpoint}`,
+    /** Followed by the service's own sentence, untranslated. */
+    realtimeTestFailed: (endpoint: string): string => `连不通，用的是 ${endpoint}：`,
     /** The fold holding the fields a settings group marks advanced. */
     pluginAdvanced: "高级选项",
     /** A table cell its row does not let change, beside the lock mark. */
@@ -1371,6 +1397,36 @@ export const zh = {
     approvalsWaiting: (count: number): string => `有 ${count} 个工具调用在等你批准`,
     budgetWarned: "有员工的花费接近预算上限了",
     budgetPaused: "有员工因预算被暂停了",
+    /**
+     * The call (real-time voice). The panel row starts one; the stage replaces the whole window
+     * while one is open, which is also when the shell grows that window.
+     */
+    callRow: "语音通话",
+    /** The panel row's action, and the stage's heading. */
+    callOpen: "打电话",
+    /** The panel row's own line when a call is possible. */
+    callReady: "点「打电话」，对着麦克风聊天。",
+    callTitle: "通话中",
+    /** The stage's one word about the call, per state. */
+    callIdle: "还没开始",
+    callConnecting: "正在接通…",
+    callListening: "我在听",
+    callThinking: "在想…",
+    callSpeaking: "我在说…",
+    callEnded: "通话已结束",
+    callEmpty: "对着麦克风说句话试试。",
+    /** The two speakers, as the transcript prefixes them. */
+    callYou: "你",
+    callPet: "Adelie",
+    /** Appended to a reply that was talked over, so the turn reads as half a sentence. */
+    callInterrupted: "（被打断）",
+    callHangUp: "挂断",
+    /** The stage's exit once the call is over — the same button slot, a different act. */
+    callClose: "关闭",
+    callMute: "静音",
+    callUnmute: "取消静音",
+    /** The call button where no key is stored — the admin has one place to fix it, and it is named. */
+    callNotConfigured: "还没配置实时语音：请管理员在「设置 › 服务器 › 实时语音」里填上密钥。",
   },
 
   common: {

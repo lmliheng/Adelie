@@ -165,6 +165,11 @@ import type {
   ProjectCreateRequest,
   ProjectCreateResponse,
   ProjectSchedulesResponse,
+  RealtimeConfigResponse,
+  RealtimeConfigUpdateRequest,
+  RealtimeStatusResponse,
+  RealtimeTestRequest,
+  RealtimeTestResponse,
   ProjectsResponse,
   ProjectUpdateRequest,
   ProjectUpdateResponse,
@@ -368,6 +373,29 @@ export const testAsrConfig = (body: AsrTestRequest) =>
  */
 export const asrTranscribe = (body: AsrTranscribeRequest) =>
   apiFetch<AsrTranscribeResponse>("/api/asr/transcribe", { method: "POST", body });
+
+/**
+ * Real-time voice (admin only): the site, the model, the voice and the key the desktop pet's call
+ * relays through. The read is masked — it carries `hasKey`, never the key.
+ */
+export const getRealtimeConfig = () => apiFetch<RealtimeConfigResponse>("/api/realtime/config");
+
+/** Stores the real-time voice settings; an omitted or empty `apiKey` keeps the stored one. */
+export const putRealtimeConfig = (body: RealtimeConfigUpdateRequest) =>
+  apiFetch<RealtimeConfigResponse>("/api/realtime/config", { method: "PUT", body });
+
+/**
+ * Asks the configured service whether it will open a session: one connection, no audio. An omitted
+ * field falls back to what is stored, so a check may be run on a form that has not been saved.
+ */
+export const testRealtimeConfig = (body: RealtimeTestRequest) =>
+  apiFetch<RealtimeTestResponse>("/api/realtime/test", { method: "POST", body });
+
+/**
+ * Whether a call is possible at all, and which model and voice it would use. Any signed-in session
+ * may read this — it is what lets the pet offer a call button only where one can lead somewhere.
+ */
+export const getRealtimeStatus = () => apiFetch<RealtimeStatusResponse>("/api/realtime/status");
 
 /*
  * Plugin configuration is kept by each server in its own database, so `server` names the

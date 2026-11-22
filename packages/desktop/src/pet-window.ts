@@ -43,6 +43,50 @@ export function petShotPath(mainShotPath: string): string {
  */
 export const PET_WINDOW_SIZE = { width: 260, height: 248 } as const;
 
+/**
+ * The size the window takes while a call is open. A call is a surface, not a corner companion: the
+ * stage shows the other side's state, the transcript of both speakers and the microphone's level,
+ * which needs a column rather than the resting window's three tight rows. The window is grown for
+ * as long as the call lasts and returned to {@link PET_WINDOW_SIZE} the moment it ends, so the
+ * desktop is covered only while someone is actually talking to it.
+ */
+export const PET_CALL_WINDOW_SIZE = { width: 320, height: 420 } as const;
+
+/** The size a pet window takes: resting, or the call's stage while one is open. */
+export function petWindowSize(showCall: boolean): {
+  width: number;
+  height: number;
+} {
+  return showCall ? PET_CALL_WINDOW_SIZE : PET_WINDOW_SIZE;
+}
+
+/** A window's rectangle, in Electron's shape. */
+export interface Rectangle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The rectangle a pet window takes when it changes size in place: the new size, positioned so the
+ * window's bottom-right corner — the one anchored to the desktop's corner — does not move, then
+ * pushed back inside the work area. Growing from the anchored corner is what keeps the pet where
+ * the user left it; clamping is the case where the window sits near an edge of a smaller display
+ * and the new size would otherwise put the bottom off it.
+ */
+export function petResizedBounds(
+  current: Rectangle,
+  size: { width: number; height: number },
+  workArea: WorkArea,
+): Rectangle {
+  const maxX = Math.max(workArea.x, workArea.x + workArea.width - size.width);
+  const maxY = Math.max(workArea.y, workArea.y + workArea.height - size.height);
+  const x = Math.min(Math.max(current.x + current.width - size.width, workArea.x), maxX);
+  const y = Math.min(Math.max(current.y + current.height - size.height, workArea.y), maxY);
+  return { x: Math.round(x), y: Math.round(y), width: size.width, height: size.height };
+}
+
 /** A display's work area, in Electron's shape (excludes the taskbar/dock). */
 export interface WorkArea {
   x: number;
@@ -61,10 +105,13 @@ export const PET_WINDOW_MARGIN = 24;
  * starting position, not a policy: the window is movable and the shell puts it back here only
  * when the preference is switched on again during the same run.
  */
-export function petWindowPosition(workArea: WorkArea): { x: number; y: number } {
+export function petWindowPosition(
+  workArea: WorkArea,
+  size: { width: number; height: number } = PET_WINDOW_SIZE,
+): { x: number; y: number } {
   return {
-    x: Math.round(workArea.x + workArea.width - PET_WINDOW_SIZE.width - PET_WINDOW_MARGIN),
-    y: Math.round(workArea.y + workArea.height - PET_WINDOW_SIZE.height - PET_WINDOW_MARGIN),
+    x: Math.round(workArea.x + workArea.width - size.width - PET_WINDOW_MARGIN),
+    y: Math.round(workArea.y + workArea.height - size.height - PET_WINDOW_MARGIN),
   };
 }
 

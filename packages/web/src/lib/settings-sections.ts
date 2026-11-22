@@ -35,6 +35,7 @@ export type SettingsSectionKey =
   | "proxy"
   | "uploads"
   | "speech"
+  | "realtime"
   | "company"
   | "agentApi"
   | "plugins"
@@ -79,6 +80,9 @@ const SECTION_RULES: ReadonlyArray<SettingsSection & { visible(viewer: SettingsV
     // Speech input: the key the server transcribes with is one per deployment, so this is the
     // admin's page too — the microphone in every composer then works for every member.
     { key: "speech", group: "server", visible: (v) => v.isAdmin },
+    // Real-time voice: the desktop pet's call. Server-global for the same reason — the relay runs
+    // here, so the key is the deployment's and every member's pet can talk through it.
+    { key: "realtime", group: "server", visible: (v) => v.isAdmin },
     // The company-mode master switch: server-global like the proxy and upload limits.
     { key: "company", group: "server", visible: (v) => v.isAdmin },
     // Whether any Agent's public API answers at all: server-global, like company mode.

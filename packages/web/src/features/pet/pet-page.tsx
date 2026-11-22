@@ -31,7 +31,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import type { DesktopUpdateStatus } from "@adelie/server/api";
+import type { DesktopUpdateStatus, RealtimeStatusResponse } from "@adelie/server/api";
 import { providerInfo } from "@adelie/core/model-catalog";
 import { usePointerDrag } from "@adelie/ui";
 import * as api from "../../api/endpoints";
@@ -54,6 +54,8 @@ import type { PetNotice } from "./pet-notice";
 import { DRAG_SLOP_PX, petStep, pupilShift } from "./pet-motion";
 import type { PetPoint } from "./pet-motion";
 import { Penguin } from "./penguin";
+import { CallStage } from "./voice/call-stage";
+import { usePetCall } from "./voice/use-pet-call";
 
 /** How long a bubble stays up before the pet stops talking. */
 const BUBBLE_MS = 8_000;
@@ -149,6 +151,43 @@ export function PetPage() {
   const [panelOpen, setPanelOpen] = useState(false);
   const [update, setUpdate] = useState<DesktopUpdateStatus | null>(null);
   const balance = usePetBalance(inShell);
+
+  // --- the call ------------------------------------------------------------
+  //
+  // Whether a call can be made at all is the server's answer, not a guess from a failed attempt:
+  // a deployment with no key configured says so up front, and the row explains where to fix it
+  // rather than letting the button lead into a refused socket. Read once on mount — a key is
+  // changed by an admin in another window, and the next visit to the pet picks it up.
+  const [realtime, setRealtime] = useState<RealtimeStatusResponse | null>(null);
+  useEffect(() => {
+    let live = true;
+    void api.getRealtimeStatus().then(
+      (res) => {
+        if (live) setRealtime(res);
+      },
+      () => {
+        if (live) setRealtime(null);
+      },
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+  const callConfigured = realtime?.configured ?? false;
+  const call = usePetCall({
+    configured: callConfigured,
+    unavailable: S.pet.callNotConfigured,
+  });
+
+  /**
+   * Tells the shell a call is open, so it can grow the window for as long as the stage is on
+   * screen. The page is the one that knows what it is doing; this only reports it. A browser tab
+   * cannot resize itself, and the relay refuses anyway — the catch is for that case alone.
+   */
+  useEffect(() => {
+    if (!inShell) return;
+    void api.setDesktopPet({ call: call.open }).catch(() => {});
+  }, [inShell, call.open]);
 
   // --- the penguin's own pointer work -------------------------------------
   //
@@ -323,10 +362,22 @@ export function PetPage() {
     void call().catch(() => {});
   };
 
+  // A call takes the whole window: the resting page is a penguin and three tight rows, and a
+  // conversation needs the column the shell grows the window into while this is up.
+  if (call.open) return <CallStage call={call} />;
+
   return (
     <div className="pet-drag flex h-screen w-screen flex-col items-center justify-end gap-1 overflow-hidden bg-transparent p-1">
       {panelOpen && (
         <div className="pet-no-drag w-full space-y-1 rounded-lg border border-gray-200 bg-white/95 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/95">
+          <Row
+            label={S.pet.callRow}
+            action={<PetButton label={S.pet.callOpen} onClick={call.start} />}
+          >
+            {/* Where a call stands without one being made: the row says why the button is there at
+                all, since an unconfigured deployment has nowhere for it to lead. */}
+            {callConfigured ? S.pet.callReady : S.pet.callNotConfigured}
+          </Row>
           <Row
             label={S.pet.balance}
             action={<PetButton label={S.pet.refresh} onClick={balance.refresh} />}

@@ -9,12 +9,15 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  PET_CALL_WINDOW_SIZE,
   PET_PAGE_PATH,
   PET_WINDOW_MARGIN,
   PET_WINDOW_OPTIONS,
   PET_WINDOW_SIZE,
+  petResizedBounds,
   petShotPath,
   petWindowPosition,
+  petWindowSize,
   petWindowUrl,
 } from "../src/pet-window.js";
 
@@ -56,6 +59,64 @@ describe("petWindowPosition", () => {
     expect(petWindowPosition({ x: 1920, y: 24, width: 1280, height: 720 })).toEqual({
       x: 1920 + 1280 - PET_WINDOW_SIZE.width - PET_WINDOW_MARGIN,
       y: 24 + 720 - PET_WINDOW_SIZE.height - PET_WINDOW_MARGIN,
+    });
+  });
+
+  it("places a call-sized window by the same corner rule", () => {
+    expect(
+      petWindowPosition({ x: 0, y: 0, width: 1920, height: 1080 }, PET_CALL_WINDOW_SIZE),
+    ).toEqual({
+      x: 1920 - PET_CALL_WINDOW_SIZE.width - PET_WINDOW_MARGIN,
+      y: 1080 - PET_CALL_WINDOW_SIZE.height - PET_WINDOW_MARGIN,
+    });
+  });
+});
+
+describe("petWindowSize", () => {
+  it("is the resting size until a call is open, and the stage's while one is", () => {
+    expect(petWindowSize(false)).toEqual(PET_WINDOW_SIZE);
+    expect(petWindowSize(true)).toEqual(PET_CALL_WINDOW_SIZE);
+    // The stage has to have room for a transcript column, which the resting window does not.
+    expect(PET_CALL_WINDOW_SIZE.width).toBeGreaterThan(PET_WINDOW_SIZE.width);
+    expect(PET_CALL_WINDOW_SIZE.height).toBeGreaterThan(PET_WINDOW_SIZE.height);
+  });
+});
+
+describe("petResizedBounds", () => {
+  const work = { x: 0, y: 0, width: 1920, height: 1080 };
+
+  it("grows from the anchored bottom-right corner, not the top-left", () => {
+    const resting = { x: 1000, y: 500, ...PET_WINDOW_SIZE };
+    const grown = petResizedBounds(resting, PET_CALL_WINDOW_SIZE, work);
+    expect(grown).toEqual({
+      x: 1000 + PET_WINDOW_SIZE.width - PET_CALL_WINDOW_SIZE.width,
+      y: 500 + PET_WINDOW_SIZE.height - PET_CALL_WINDOW_SIZE.height,
+      width: PET_CALL_WINDOW_SIZE.width,
+      height: PET_CALL_WINDOW_SIZE.height,
+    });
+    // Right and bottom edges are where the window was; growing moved only the other two.
+    expect(grown.x + grown.width).toBe(resting.x + resting.width);
+    expect(grown.y + grown.height).toBe(resting.y + resting.height);
+  });
+
+  it("returns to the resting size from the call's, and stays inside the work area", () => {
+    // A window pushed up against the work area's own corner: the grown rectangle would hang off
+    // the right and bottom edges, so it is clamped back in.
+    const atCorner = {
+      x: 1920 - PET_WINDOW_SIZE.width,
+      y: 1080 - PET_WINDOW_SIZE.height,
+      ...PET_WINDOW_SIZE,
+    };
+    const grown = petResizedBounds(atCorner, PET_CALL_WINDOW_SIZE, work);
+    expect(grown.x + grown.width).toBeLessThanOrEqual(work.width);
+    expect(grown.y + grown.height).toBeLessThanOrEqual(work.height);
+
+    const shrinking = petResizedBounds(grown, PET_WINDOW_SIZE, work);
+    expect(shrinking).toEqual({
+      x: grown.x + grown.width - PET_WINDOW_SIZE.width,
+      y: grown.y + grown.height - PET_WINDOW_SIZE.height,
+      width: PET_WINDOW_SIZE.width,
+      height: PET_WINDOW_SIZE.height,
     });
   });
 });
