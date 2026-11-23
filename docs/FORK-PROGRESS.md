@@ -3127,6 +3127,67 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       用户 2026-11-23 在会话里问「桌宠样式怎么换，我要换蓝色大肥鱼怎么办」，三条路里选了「做成可选
       形象、设置里切」，并让参考 DSH 社区那批桌宠插件。见「第二百九十九轮」一节。
 
+- [x] **7.179 机器卡上打开 ssh 配置失败时，原因留在那张卡上**（**2026-11-23 第三百轮**落地，
+      提交见「已完成的轮次」；`packages/web` 1 个源码文件 ＋ 1 个新 spec ＋ changelog 一对 ——
+      `machines-page.tsx`：`configure` 不再 `toastError`，失败经 `refusalText` 写进
+      `configureRefusal {alias,text}`（下一次尝试开始与换 Project 时清掉），只有别名对上的那张卡画
+      它，画在卡片自己那两行之下、展开的详情之外（`role="alert"`、危险墨色、两行截断、悬停看全文），
+      所以收起卡片也不会把它收走，**不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试
+      发生的地方）在机器页还剩这一处 —— 齿轮读 `getSshHost` 失败时卡片与齿轮和点之前一模一样，原因
+      只在一条六秒就走的通知里。见「第三百轮」一节。
+
+## 第三百轮：机器卡上打开 ssh 配置失败时，原因留在那张卡上（2026-11-23，条目 7.179）
+
+**开工**：`git status --short` 干净（`88cbcc7ec` 之上没有未提交改动）。`git -c http.version=HTTP/1.1
+fetch origin` 一次就通，`git merge --ff-only origin/main` 把另一条线那两笔带上（`4aee85bef` 桌宠形象
+＋ `700875997` 台账），HEAD 与远端同为 `700875997`。
+
+**为什么是这一条**：待办里 2.2c（写侧剩下的全在桌面壳一侧）、3.5（要用户拍板取哪个桌面壳）、3.6（要
+模型 key）、5.6（促销搬进 Project 配置要拍板）、5.10（要 mermaid 新依赖）都还卡着，4.1–4.3 明令不动；
+第 7 节到 7.178 已全勾。上一轮（7.178）是用户点单的桌宠形象，末尾没有点名候选，于是接着 7.19 的规矩
+（拒绝留在尝试发生的地方）收一处此前没碰过的页面 —— 机器页：`configure()` 的 `catch` 只有一句
+`toastError`，而卡片、齿轮、展开的详情在读失败后都和点之前一样，重试就是那颗齿轮。
+
+**做了什么**：
+
+- `machines-page.tsx` 新增 `configureRefusal`（`{ alias, text }`）：`configure` 开头清掉、`catch` 经
+  `refusalText` 写进去（不再 `toastError`），换 `projectId` 时清空；只把别名对上的那一份交给
+  `MachineCard`。
+- `MachineCard` 多一个可选 `refusal`，**画在卡片自己那两行之下、展开的详情之外**：`role="alert"`、
+  危险墨色、最多两行（`line-clamp-2`）、悬停得到整句。放在详情里也能写，但用户收起卡片（请求还在飞）
+  时句子会跟着被 `hidden` 收走 —— 画在卡上就没有这个洞；这条由 spec 里「收起后句子仍在」那一步守着。
+- 没动页面级错误条：`post()` / `load()` / 探针的失败本来就落在标题下面那条 `NoticeStrip` 里，它们
+  没有一张「按过的卡」可以归属。
+
+**验证**：
+
+- 六包 `typecheck` `EXIT=0`（`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务
+  模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）。
+- `npx oxlint` 2 个改动文件 **0 警告 0 错误**；`prettier --check` 源码与 spec 干净；`git diff --check`
+  干净。
+- 逐包 test `EXIT=0`、0 失败：core **70 文件 / 1458 + 6 跳过**、ui **133 / 1115**、cli **39 / 566**、
+  server **217 / 3162 + 6 跳过**、web **353 / 3980 + 2 跳过**；机器相关四个单测文件另跑一遍 **41 通过**。
+- 新用例 `packages/web/e2e/machines-configure-refusal.spec.mjs` **1 passed（7.9 s）**（真服务端 8940
+  + 真浏览器（Playwright 自带的 chromium）+ 数据根 `/root/adelie-fork-data/r300-a1`；机器清单是桩，研发数据根
+  的 ssh 配置里没有远程主机）：展开详情 → 点齿轮 → 读答 500 并带上自己的话 → 句子在卡片上、通知区
+  没有它、齿轮还在、**收起卡片后句子仍在**、六秒半后仍在；解除拦截后同一颗齿轮打开「配置 ssh 主机」
+  弹窗、句子消失。
+- 反证（改前产物 `r300/before-dist`，主包 `index-BnEuW_Ha.js`；改后 `index-BDEIHW93.js`）挂 8941 /
+  数据根 `/root/adelie-fork-data/r300-b1` → **1 failed**，卡片里找不到 `role="alert"`。
+- 两态探针（`r300/probe.mjs`）：改后句子 `734×16` 落在卡片 `768×271` 之内、通知区 0 条；截图
+  `r300/shots/{after-card,after-page}.png` 肉眼看过（句子在状态行下面一行、红色、详情表在它下面）；
+  console 只有探针自己拦的那条 500，pageerror 0 条。
+- 端口只用 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r300-{a1,b1}`，产物与截图都在 scratchpad 的 `r300/` 下（`packages/*/dist`、
+  `packages/web/test-results/` 都是产物，未 `git add`）。
+
+**没做 / 留着**：
+
+- 机器页另一类失败（启用 / 停用 / 批量、列表读、探针）本来就落在页面自己的 `NoticeStrip` 上，不动。
+- 「添加机器…」面板与新增主机的表单各有自己的校验与拒绝槽，不在这条里。
+
+**提交**：代码 + spec + changelog 一对 + 本节 + 上表那一行 + 条目 7.179，随本文件另起一笔。
+
 ## 第二百九十九轮：桌宠的形象可以选：还是那只企鹅，或者一条蓝色小鲸鱼（2026-11-23，条目 7.178）
 
 **开工**：`git status --short` 干净；本笔先按第二百九十七轮 / 7.176 编号，用户点头要推时按仓库的规矩
@@ -5486,6 +5547,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-23 | 7.176 | **侧栏工位行打不开时，原因留在那一行下面**（**2026-11-23 第二百九十七轮**落地；`packages/web` 1 个源码文件（`org-session-groups.tsx`：`useOpenDesk` 多一个 `refusal`（`{agentId,text}`，经 `refusalText` 写入、开头清掉、换组织清掉），第三个参数改成 `{ onNavigate?, sayInPlace? }`；`DeskRow` 多一个 `refusal: string \| null`，画在 `<li>` 里、行本身之下（`role="alert"`、危险墨色、`line-clamp-2`、悬停看整句）；`DeskRailRows` 一项 48 px 没有一行可写，保持 `toastError` 并写明理由）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处 `openDesk` 里还剩这处**侧栏自有行** —— 行还站在那里、按的就是它，而原来的原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净（spec 首跑 `--write` 一次）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（与上一轮基线逐项相同） · **新用例 1 passed（8.9 s）**（真服务端 9981 + 自带 mock 8934 + 数据根 `/root/adelie-fork-data/r297-a`）：侧栏画工位组用的两次读按「缓存还没学到」交回（员工不带 `desk`、会话路由 `desks` 为空）→ 工位路由答 500 并带上自己的话 → 句子在那一行下面、量到起点正好在行下缘（461 = 461）、宽 272 落在侧栏 288 之内、通知区没有它、七秒后仍在、那一行已恢复可点、地址没变；解除拦截后同一行进 `/chat/session-…` · **反证（改前产物 `r297/before-dist`，主包 `index-C-C9Bj56.js`；改后 `index-Edeu7SeB.js`）**挂 9982 / 数据根 `/root/adelie-fork-data/r297-b` → **1 failed**，侧栏里没有 `alert` · **两态探针**（`r297/probe/shape.spec.mjs`，跑完已删）：行 `y 429–461`、句子 `y 461–497`、`rowDisabled false`，截图 `r297/shots/{1-row,2-refused,3-refused-7s,4-retried}.png` 肉眼看过，pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `company.spec` 1 + `company-rail-hints` 2 + `overview-desk-refusal` 1 **4 passed**；`channel-{join,send,earlier}-refusal` / `channel-live-day` / `calendar-desk-refusal` / `employee-refusal` / `org-chart-leave-refusal` / `org-delete-refusal` / `org-settings-refusal` **17 passed（1.4 m）** · 端口只用 9981 / 9982 / 8934（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r297-{a,b}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `635b3e50c` |
 | 2026-11-23 | 7.177 | **组织图卡片菜单打不开的工位，原因留在卡片里**（**2026-11-23 第二百九十八轮**落地；`packages/web` 2 个源码文件（`org-chart-page.tsx`：新增 `deskRefusal`（`{agentId,text}`，`openDesk` 开头清空、`catch` 经 `refusalText` 写入、换组织清空，只给 `agentId` 对上的卡片）；`chart-card.tsx`：卡片多一个可选 `refusal`，画在脸上、盖住比例条（`role="alert"`、危险墨色、`line-clamp-2`、悬停看整句；外层定位、内层截断 —— 绝对定位会被块化、`-webkit-box` 不生效））＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处 `openDesk` 里还剩组织图**卡片菜单**这一处 —— 菜单一点就关、卡片定高、画布裁边，而原来的原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到，按 `@adelie/*` 跑） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 改动文件、spec 与 changelog 一对 `prettier --check` 干净、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（与上一轮基线逐项相同） · **新用例 1 passed（9.5 s）**（真服务端 8930 + 自带 mock 8931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r298-a1`）：工位路由答 500 并带上自己的话 → 句子在画布里的卡片上、量到整块落在卡片脸之内（`line 214×32` 落在外层 `238×45`、外层落在卡片 `240×92`）、通知区没有它、七秒后仍在、地址没变；解除拦截后同一套菜单进入 `/chat/session-…` · **反证（改前产物 `r298/before-dist`，`index-Edeu7SeB.js`；改后 `index-ClA9j0WL.js`）**挂 8932 / 数据根 `/root/adelie-fork-data/r298-b1` → **1 failed**，画布里没有 `alert` · **探针**（`r298/probe.mjs`）：第一版把 `absolute` 与 `line-clamp-2` 写在同一 `<p>` 上时**第三行漏在卡片外**（块化把 `display` 变成 `flow-root`、`clientH 44` / `scrollH 108`），拆成外层定位 + 内层截断后量到两行、收在卡片内，截图 `r298/shots/{card,chart-page}.png` 肉眼看过；console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条 · **相邻回归（真浏览器）** `org-chart-leave-refusal` 1 + `desk-row-refusal` 1 + `employee-refusal` 3 + `overview-desk-refusal` 1 **6 passed（38.1 s）** · 端口只用 8930 / 8931 / 8932（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r298-{a1,b1}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `4756243f4` |
 | 2026-11-23 | 7.178 | **桌宠的形象可以选：还是那只企鹅，或者一条蓝色小鲸鱼**（**2026-11-23 第二百九十九轮**落地；`packages/web` 4 个新源码文件（`features/pet/whale.tsx` 新形象、`features/pet/figures.ts` 名字到绘制组件的映射、`lib/pet-figure.ts` 键与读写＋订阅、`lib/use-pet-figure.ts` 挂钩）＋ 5 个改动源码文件（`pet-page.tsx` 改认映射、`settings/appearance-section.tsx` 在「桌面宠物」开关下面加「桌宠形象」一行、`lib/strings.ts` 与 `lib/strings-en.ts` 两本字典、`lib/install-scope.ts` 把新键登记为 browser 偏好）＋ 3 个测试（2 新 1 改）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖**）：用户在会话里问「桌宠样式怎么换，我要换蓝色大肥鱼怎么办」—— 桌宠此前只有 `features/pet/penguin.tsx` 一份内联 SVG、`pet-page.tsx` 写死 `<Penguin />`，桌面壳那边只存 `showPet` 一个开关，「它长什么样」根本没有入口；三条路（直接换掉内置形象 / 做成可选形象 / 只自己那台换）里用户选了「做成可选形象、设置里切」，并让参考 DSH 社区那批桌宠插件 —— 那是拿 DeepSeek 官方鲸鱼标志当宠物的两个 MIT 仓库（`2002yxy/dsh-nailong-desktop-pet`、`xiaoshihou514/dsh-desktop-pet`），单色侧视的一枚记号，做不了桌宠要的两件事（跟鼠标看的眼睛、72 像素下看得清的肚子），故照那个方向**自绘**一条圆身子的蓝鲸（`#4d6bfe`、一只大眼、背鳍与分叉尾鳍），与企鹅同一套约定（内联 SVG、固定配色不跟主题、`.pet-eyes` / `.pet-pupils` 两个类、同一个 `viewBox 0 0 100 108`，窗口尺寸与动效都不用改）；形象是**浏览器偏好**（键 `penguin.petFigure`，跟主题、字号一族），因为画它的 `/pet` 窗口与设置窗口同源、共享一份存储，靠浏览器自己的 `storage` 事件让另一头当场换过来；缺键 / 空串 / 大小写不对 / 乱填的名字一律退回企鹅，存储读不了（隐私模式）也不抛 | `pnpm --filter @adelie/web typecheck` **`EXIT=0`** · `npx oxlint` 改动的 10 个 `.ts` / `.tsx` **0 警告 0 错误** · 12 个改动文件与新 spec `prettier --check` 干净（`*.md` 不在 prettier 范围）、`git diff --check` 干净 · `vitest run test/pet-figure.test.ts test/icon-registry.test.ts test/install-scope.test.ts` **3 文件 / 33 passed**（新单测 10 条：默认值、读写回环、存储抛异常、订阅通知与退订、两张画经映射渲染） · 整包 web `vitest run --maxWorkers=4` **352 文件 / 351 绿 + 1 红**、**3977 passed / 2 skipped**（唯一那条红是 `test/model-grouping.test.ts`，与本笔 15 个文件无关：`/root/rel-070` 那棵验证树里 `@adelie/core` 的**注入副本比树新** —— 副本 18 处 `venice`，树里的 `model-catalog.ts` 与那条用例都是 0 处） · **真浏览器新 spec 1 passed（2.7 s）**（真服务端 8937 + 临时数据根 + 现树 `vite build --outDir /tmp`，没覆盖那棵树自己的 `dist`）：`/pet` 默认画企鹅（有 `fill="#f59e0b"`、无 `#4d6bfe`）→ 同一个浏览器上下文里的**另一个窗口**写 `penguin.petFigure=whale` → 桌宠窗口**不刷新**就换成鲸鱼（`#4d6bfe` 出现、企鹅那三条暖色路径从 DOM 里消失），这正是本笔最要紧的那条机制的真证据；`icon-registry` 的精确计数（新画 7 条路径）是它的静态守卫，多一条少一条都红 · 形象肉眼看过 `/root/Adelie_develop/pet-figure-preview.png`（浅色与深色桌面各一格，两种底色上都读得清），给用户挑候选的联系表在 `/root/Adelie_develop/pet-figure-candidates.png` · **没验的**：「设置 › 外观」里那一行只在桌面壳自己的窗口里出现（`desktopMode && sessionVia === "desktop"` 是服务端给的，浏览器伪造不了），本机没起桌面壳，所以那一行只做到类型与结构正确；`AppearanceSection` 要三个 Provider 与两次真请求才挂得上，仓库里没有可借的挂载用例，没有渲染测试 · 端口只用 8937（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `4aee85bef` |
+| 2026-11-23 | 7.179 | **机器卡上打开 ssh 配置失败时，原因留在那张卡上**（**2026-11-23 第三百轮**落地；`packages/web` 1 个源码文件 ＋ 1 个新 spec ＋ changelog 一对 —— `machines-page.tsx`：`configure` 不再 `toastError`，失败经 `refusalText` 写进 `configureRefusal {alias,text}`（下一次尝试与换 Project 时清掉），只画在别名对上的那张卡上、卡片两行之下、展开的详情之外（`role="alert"`、危险墨色、两行截断、悬停看全文），收起卡片也不收走；**不碰接口、无新依赖、没有新文案**）：7.19 的规矩在机器页的最后一处 —— 齿轮读 `getSshHost` 失败时卡片与齿轮和点之前一样，原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型）· `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 源码与 spec `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 + 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 + 6 跳过** · web **353 / 3980 + 2 跳过**；机器相关 4 个单测文件另跑 **41 通过** · **真服务端 + 真浏览器新 spec 1 passed（7.9 s）**（8940 + 数据根 `r300-a1`）：展开 → 齿轮 → 读答 500 → 句子在卡上、通知区 0 条、齿轮仍在、收起卡片后仍在、6.5 秒后仍在；解除拦截 → 弹窗「配置 ssh 主机」打开、句子消失 · **反证**：改前产物（`index-BnEuW_Ha.js`）挂 8941 / `r300-b1` → **1 failed**（卡片里没有 `role="alert"`）· 两态探针：句子 734×16 落在卡片 768×271 之内、通知区 0 条、console 只有探针自己拦的那条 500、pageerror 0 · 端口只用 8940 / 8941（跑完都已停） | `cd54e61e1` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
