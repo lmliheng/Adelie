@@ -75,7 +75,6 @@ import {
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
-import { ApiError } from "../../api/client";
 import { S } from "../../lib/strings";
 import { apiErrorText, refusalText } from "../../lib/api-error";
 import { useDocumentTitle } from "../../lib/use-document-title";
@@ -173,6 +172,7 @@ import type { ModelTestAnswer } from "./model-test-refusal";
 import { detectProtocolRefusal } from "./detect-refusal";
 import type { DetectPress } from "./detect-refusal";
 import { visionProbeRefusal } from "./vision-refusal";
+import { platformSyncFailure } from "./platform-sync-refusal";
 
 /**
  * The authorization flows a group's Connect dialog can run, keyed by the flow named in that
@@ -867,6 +867,16 @@ export function ModelsPage() {
    */
   const [deleteGroupRefusal, setDeleteGroupRefusal] = useState<string | null>(null);
   const [syncRefusal, setSyncRefusal] = useState<string | null>(null);
+  /**
+   * Why the last platform sync (a group header's Sync) was refused, and which group asked —
+   * drawn under that header, where the rows it was about and the button that retries it both
+   * still are (see platform-sync-refusal.ts). One attempt answers for itself: a new press clears
+   * the previous sentence, and a group leaving the page (a search) takes its sentence with it.
+   */
+  const [platformSyncRefusal, setPlatformSyncRefusal] = useState<{
+    providerId: string;
+    text: string;
+  } | null>(null);
   /** "Add group" popup (user-defined group): create-only hands off to that group's add-model dialog, import mode fills the group from its endpoint (see AddGroupDialog). */
   const [addGroupOpen, setAddGroupOpen] = useState(false);
   /** "Add models with AI" dialog: the prompt goes to the Project's default agent. */
@@ -983,6 +993,14 @@ export function ModelsPage() {
     () => (rows ? groupModelRows(rows, query, groupOrder) : []),
     [rows, query, groupOrder],
   );
+  // A refusal sentence belongs to the group that asked. Once that group leaves the page (a search
+  // filters it out), its header — the only place the sentence was drawn, and the retry — is gone
+  // with it, so the sentence goes too rather than waiting to reappear.
+  useEffect(() => {
+    if (platformSyncRefusal === null) return;
+    if (groups.some((group) => group.provider.id === platformSyncRefusal.providerId)) return;
+    setPlatformSyncRefusal(null);
+  }, [groups, platformSyncRefusal]);
   /**
    * Every group the library could show, empty built-ins included — the sequence a drop is
    * committed against, so a provider currently holding no models keeps its catalog place
@@ -1038,8 +1056,15 @@ export function ModelsPage() {
     return outcome;
   };
 
-  const syncPlatformModels = async () => {
+  /**
+   * Refreshes one group's rows from Penguin Go's catalog. `providerId` is the header the press
+   * came from: a refusal leaves its sentence under that header (platform-sync-refusal.ts), while
+   * the revoked-key code keeps its own answer — it opens the authorization flow.
+   */
+  const syncPlatformModels = async (providerId: string) => {
     if (!projectId) return;
+    // One attempt, one reason: the previous sentence described the previous press.
+    setPlatformSyncRefusal(null);
     setBusy(true);
     try {
       const res = await api.syncPlatformModels(projectId);
@@ -1049,11 +1074,12 @@ export function ModelsPage() {
       if (res.added === 0 && res.updated === 0) toastInfo(S.models.syncUpToDate);
       else toastSuccess(S.models.syncDone(res.added, res.updated));
     } catch (error) {
-      if (error instanceof ApiError && error.code === "platform_reauthorization_required") {
+      const failure = platformSyncFailure(error);
+      if (failure.kind === "authorize") {
         keyLanded.current = false;
         setOauthFor(PENGUIN_GO_PROVIDER_ID);
       } else {
-        toastError(apiErrorText(error));
+        setPlatformSyncRefusal({ providerId, text: failure.text });
       }
     } finally {
       setBusy(false);
@@ -1317,7 +1343,7 @@ export function ModelsPage() {
             disabled={busy}
             aria-label={`${S.models.platformSync} ${provider.label}`}
             title={S.models.platformSync}
-            onClick={() => void syncPlatformModels()}
+            onClick={() => void syncPlatformModels(provider.id)}
           >
             <GlyphIcon d={ICONS.rotateCw} size={ICON_SIZE.groupHeaderAction} />
             <span className={HEADER_LABEL}>{S.models.platformSync}</span>
@@ -1603,6 +1629,15 @@ export function ModelsPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* The refused sync's own words, under the header that asked: the button is the
+                    retry, and nothing was written. Drawn whether the group is folded or open —
+                    the action lives on the header, so the answer stays beside it. */}
+                  {platformSyncRefusal?.providerId === group.provider.id && (
+                    <NoticeStrip tone="danger" role="alert" className="border-t px-3 py-2 text-xs">
+                      <span data-slot="body">{S.common.refused(platformSyncRefusal.text)}</span>
+                    </NoticeStrip>
+                  )}
 
                   {/* Expand/collapse: grid-template-rows goes between 0fr and 1fr, with the
                     inner overflow-hidden handling clipping — no need to measure content height.
