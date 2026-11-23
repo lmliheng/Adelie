@@ -3156,6 +3156,48 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       用户 2026-11-23 在会话里问「腾讯 hunyuan 服务商和腾讯 tokenhub 是一回事吗」，查实**不是**（key 与
       控制台各自独立，混元直连拒 TokenHub 的 key），随后要求「你更新到模型库」。见「第三百零二轮」一节。
 
+## 第三百零三轮：正式发 v0.8.0、换装现网（2026-11-23）
+
+用户 2026-11-23 先点「adelie加通知功能，左下角可以看到管理员的单对单/全局 通知」，跟着问「腾讯
+hunyuan 服务商和腾讯 tokenhub 是一回事吗」并要求「你更新到模型库」，最后一句是「做好之后更新版本并
+更新现网」—— 于是把攒下的东西（管理员通知、可选桌宠形象、模型库的 Venice AI 与腾讯 TokenHub 两个
+分组、「被拒的原因留在按下去的地方」那一族收尾）落成 **0.8.0 正式版**，再把现网整棵换过去。
+
+- **线性史**：远端 `main` = **`0b66c4bd3`**（tree `c10b05846…`）。`eb60fd0ef` 通知 → `53bdb6b7b`
+  TokenHub 分组 → `53ad3bdbd` 台账 → `a165547b6` 发版；门禁抓到两处真问题又各补一笔
+  （`017a38546` 画廊模拟层缺通知那六条接口、`0b66c4bd3` 同一份文件两行超宽没过 prettier）。标签
+  `v0.8.0` 一路跟着挪到最终提交（远端标签对象 `3222d248f8…`）。
+- **发布正文**：`docs/releases/RELEASE-v0.8.0.md`（照上游骨架：导读 / 安装 / 亮点 / 值得一提 / 兼容 /
+  要求 / 收尾一句）。
+- **门禁（在标签检出上跑）**：`/root/rel-080`（`git checkout --detach v0.8.0`）上 `gates-080.sh`
+  **rc=0、五步全绿**，各包用例全过。
+  - **这一轮的教训**：第一遍 **rc=1 却「ALL TESTS PASS」**，照 `Failed|failed|error` grep 什么都找不到
+    —— 红的是 `format:check`：`packages/ui-gallery/src/app/mock/routes.ts` 有两行超过一行的上限。
+    门禁脚本每个步骤各自累加一遍退出码，所以「前面红了、后面全绿」照样以 rc=1 收场；找它要看
+    `[ELIFECYCLE]` 与每段末尾，不能只看测试那一段。
+- **打戳与产物**：`stamp-080.sh` 写 VERSION `0.8.0` / BUILD_DATE `2026-11-23` / BUILD_COMMIT
+  `0b66c4bd3…`，`install.sh` 与 `install.ps1` 的 `EMBEDDED_RELEASE_VERSION="v0.8.0"`；三件载荷
+  linux-x64 114M / universal 57M / win32-x64 150M 与三件安装包，`validate-bundles.sh` 全过。
+  **老坑照旧**：`dist-artifacts/` 要手工补 `install.sh` / `install.ps1`（上游 workflow 从仓库根上传
+  这两件，脚本只把它们放进安装包内部，少了这一步最后那句 grep 会报缺文件）。
+- **桌面三件**：`packages/desktop/out/` 里 deb 122M、AppImage 155M、exe 162M（+ blockmap +
+  `latest*.yml`），都标 0.8.0；electron-builder 走 npmmirror，Windows 那个用 xvfb + wine。
+- **npm**：29 个包（core/server/cli/amsp + 25 个插件；四个 private `sandbox-*` 跳过）发到 `0.8.0`，
+  `PUBLISH-ALL-DONE`。
+- **GitHub Release**：**release id `455206887`**，14 件资产（762 MB）逐件核 digest 后发布为 latest。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.8.0`（保留 `android-test`
+  分组），本机那份 Windows 桌面包一并换新（旧清单留 `.bak-20261123-v0700`）。
+- **现网换装**：`swap-live.sh` 把 `/root/.adelie` 换成 0.8.0 的整棵（`lib/package.json` 与
+  `bin/penguin --version` 都是 0.8.0，数据根没动）；装完**立刻把旧前端拷回去**（内存里当时还是旧
+  服务端），随后瞬时单元 `adelie-live-restart-080` 延后重启并装上**新前端 `index-B-HJLswc.js`**。
+  换装前先在**载荷**解出来的那棵树上冒烟（临时数据根）：`GET /` 200、通知两张表落库、
+  `user_version` 15 → 16。
+
+### 提交
+
+- 发布提交 `a165547b6`；门禁两处修复 `017a38546` / `0b66c4bd3`（标签最终指 `0b66c4bd3`）。
+- 台账一笔（本文件）。
+
 ## 第三百零二轮：模型库多一个腾讯 TokenHub 分组（2026-11-23，条目 7.181）
 
 **开工**：承接前几轮的同一个工作树 `/root/rel-070-src`（分支 `release/0.7.0`）。
@@ -5680,6 +5722,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-23 | 7.179 | **机器卡上打开 ssh 配置失败时，原因留在那张卡上**（**2026-11-23 第三百轮**落地；`packages/web` 1 个源码文件 ＋ 1 个新 spec ＋ changelog 一对 —— `machines-page.tsx`：`configure` 不再 `toastError`，失败经 `refusalText` 写进 `configureRefusal {alias,text}`（下一次尝试与换 Project 时清掉），只画在别名对上的那张卡上、卡片两行之下、展开的详情之外（`role="alert"`、危险墨色、两行截断、悬停看全文），收起卡片也不收走；**不碰接口、无新依赖、没有新文案**）：7.19 的规矩在机器页的最后一处 —— 齿轮读 `getSshHost` 失败时卡片与齿轮和点之前一样，原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型）· `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 源码与 spec `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 + 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 + 6 跳过** · web **353 / 3980 + 2 跳过**；机器相关 4 个单测文件另跑 **41 通过** · **真服务端 + 真浏览器新 spec 1 passed（7.9 s）**（8940 + 数据根 `r300-a1`）：展开 → 齿轮 → 读答 500 → 句子在卡上、通知区 0 条、齿轮仍在、收起卡片后仍在、6.5 秒后仍在；解除拦截 → 弹窗「配置 ssh 主机」打开、句子消失 · **反证**：改前产物（`index-BnEuW_Ha.js`）挂 8941 / `r300-b1` → **1 failed**（卡片里没有 `role="alert"`）· 两态探针：句子 734×16 落在卡片 768×271 之内、通知区 0 条、console 只有探针自己拦的那条 500、pageerror 0 · 端口只用 8940 / 8941（跑完都已停） | `cd54e61e1` |
 | 2026-11-23 | 7.180 | **管理员能发通知了：单对单或全体，收件人在左下角账号菜单里看到**（**2026-11-23 第三百零一轮**落地；服务端 4 个新源码文件（`db/repos/notifications.ts`、`mechanisms/notifications.ts`、`services/notification-service.ts`、`http/routes/notifications.ts`）＋ 4 个改动源码文件（`db/schema.ts` 两张表、`db/migrations.ts` 迁移 16 `admin-notifications`（`swapSafe`）、`api/types.ts` 类型与 `notification` 用户通道事件、`platform.ts` 挂 `NotificationsModule`）＋ 服务端用例 1 新（14 条）1 改（`db-migrations.test.ts` 九处夹具与版本钉子）；前端 3 个新源码文件（`state/notifications.tsx`、`features/account/notifications-dialog.tsx`、`features/admin/admin-notifications-section.tsx`）＋ 6 个改动源码文件（`api/endpoints.ts` 六个调用、`state/sessions.tsx` 事件分发与 `resync_required` 重取、`components/layout/user-menu.tsx` 带未读徽标的「通知」一行、`lib/settings-sections.ts` 与 `features/settings/settings-dialog.tsx`、两本词典）＋ 单测 1 新（13 条）1 改 ＋ 1 个新 spec（2 条）＋ `packages/ui-gallery` 模拟层 2 个文件（`routes.ts` 与 `fixtures.ts`：补上这六条接口与两条演示通知，画廊那条「每个包装函数都有模拟路由」的覆盖用例才不红）＋ changelog 一对 ＋ 文档两本 —— **新迁移只加两张表、不碰既有接口形状**）：用户 2026-11-23「adelie加通知功能，左下角可以看到管理员的单对单/全局 通知」—— 此前没有任何「管理员写给账号」的通道，用户通道上 `hello` 那条注释一直写着「reserved for automated task notifications」却没有存储、路由与界面；口径是本轮自定的：通知 =「标题 + 正文」**落库**（不是易失消息，发出之后新建的账号也看得到）、范围两档 `global` / `user`、收件人在左下角账号菜单里看带未读徽标的一行、发出时经用户通道推一条 `notification` 事件让徽标当场变、桌面模式隐藏这一行与设置页（管理员路由照既有规矩 403 `desktop_single_user`）；「发给谁」这条规则只写在 `services/notification-service.ts` 一处，空或超长的标题/正文（120 / 2000）在入库前拒绝、绝不截断，仓库最多留 500 条每 20 次插入清一次最旧的 | `packages/server` `tsc` **`EXIT=0`**、`packages/web` `tsc` `EXIT=0`、`packages/core` `tsc` `EXIT=0` · `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 全过 · 服务端 `vitest run test/notifications.test.ts test/db-migrations.test.ts` **2 文件 / 50 passed**（通知 14 条：全局通知人人可见且之后新建的账号也看得到、单对单只到那一个（连发件人自己的收件箱都没有）、未读按账号各算、看不到的 id 写不进已读、事件只发到被点名的地方、已发送列表带已读人数与上限、撤回连已读标记一并删、桌面模式整组拒绝；迁移 36 条含迁移 16 的旧库夹具与 `applied` 列表、版本钉子 `toBe(16)`）· web `vitest run test/notifications.test.ts test/settings-sections.test.ts` **2 文件 / 27 passed**（通知 13 条：含「首屏读收件箱还没回来时到达的通知被留住并计未读」与「答复里也带上它时不重复计数」；设置分区 14 条含 admin 可见性）· **真浏览器新 spec 2 passed**（`packages/web/e2e/notifications.spec.mjs`，真服务端 + 真浏览器 + 临时数据根，跑法 scratchpad `run-notifications-e2e.sh`）：管理员发全局通知 → 另一个账号徽标**不刷新**变 1 → 打开弹窗看到 → 标已读清掉；另一条用 `page.on("request")` 记下发送之后的 inbox GET，断言那次答复里没有刚发的通知、徽标为 1 · **服务端推送单独验过**（`sse-notification-probe.mjs`）：直接开 `/api/events` 观察，收到 `event: server_event` + `data: {"type":"notification",…}`（发 201、inbox `unread=1`）· 全量 web 只剩 `model-grouping.test.ts` 1 条红、server 全量 11 条红（`plugin-loader` / `plugin-apply` / `plugins-installed`），两条都已单独核实与本笔无关（后者用 `git stash` 对照，无改动时同样红甚至 21 条；前者是本树 `@adelie/core` 解析到 `/root/rel-070` 的旧源码）· **没验的**：桌面模式下这一行与设置页只做到「按 `desktopMode` 隐藏」，本机没起桌面壳 · 端口只用了 e2e 那套临时端口（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 | 2026-11-23 | 7.181 | **模型库多一个腾讯 TokenHub 分组**（**2026-11-23 第三百零二轮**落地；`packages/core` 1 个源码文件（`state/model-catalog.ts`：`MODEL_PROVIDERS` 新增 `tokenhub`、`TOKENHUB_BASE_URL = "https://tokenhub.tencentmaas.com/v1"`、`MODEL_CATALOG` 三条 Hy 预置 `hy4-flash` / `hy4` / `hy3`，都固定 `openai-chat` 并内联端点）＋ `packages/core/test/model-catalog.test.ts` 与 `packages/web/test/model-grouping.test.ts` 各改一处 ＋ `packages/docs/content/models.{zh,en}.md` 各加一行与一节 ＋ changelog 一对 —— **目录里多一个分组与三条预置，数据根 / Trace / 接口形状不变**）：用户在会话里问「腾讯 hunyuan 服务商和腾讯 tokenhub 是一回事吗」，实测查实**不是** —— `tencent`（混元直连 `https://api.hunyuan.cloud.tencent.com/v1`）与 TokenHub（腾讯云模型网关，有自己的控制台与 key）是两个服务，拿 TokenHub 的 key 请求混元直连端点回 `invalid_api_key`，故自成一个分组；只收录第一方 Hy 对话模型（转卖的 Kimi / GLM / DeepSeek / MiniMax 在别处已有「卖家即分组」的归属，网关的图片 / 视频 / 向量 / 重排模型会话承载不了），窗口取模型列表文档的「最大输入」、视觉标志按能力行（Hy4 一对读图、Hy3 不读）；**价格只写读得到的那一条**（`hy4` 用 models.dev 生成的 Tencent TokenHub 条目换算回人民币），`hy4-flash` 与 `hy3` 故意不带 `pricing` —— 腾讯价格页是前端渲染的、价格 PDF 已失效，写成 0 会被当成免费档 | `packages/core` `tsc` **`EXIT=0`** · `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/core` `vitest run test/model-catalog.test.ts` **65 passed**（含三条新预置的 id / 窗口 / 视觉 / 协议与内联端点断言） · `packages/web/test/model-grouping.test.ts` 在本树**红**（期望 22 个厂商、收到 23）：本树里 `@adelie/core` 解析到 `/root/rel-070/packages/core` 这棵同 commit 的另一棵树、注入副本比树新，看不到本树 core 源码里这个新分组 —— 子 Agent 用一次性 vitest alias 指到本树 core 后该用例**全过**，证明改动本身正确、这条红是本树的环境陈旧（第三百零一轮同一条红、同因）· 用户那把 TokenHub 的 key **没有入库** · **没做的**：`hy4-flash` / `hy3` 缺价（腾讯价格页能读出时再回填）、没有拿真 key 跑过一次真请求 · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
+| 2026-11-23 | 发布 | **发 v0.8.0 并换装现网**（把攒下的东西落成正式版：管理员通知（7.180）、模型库的 Venice AI（7.172）与腾讯 TokenHub（7.181）两个分组、可选桌宠形象（7.178），以及「被拒的原因留在按下去的地方」那一族收尾；发布提交 `a165547b6`，门禁在标签检出 `/root/rel-080` 上 **rc=0 五步全绿**，门禁两轮抓到两处真问题各补一笔 —— `ui-gallery` 模拟层缺通知那六条接口（`017a38546`）、同一份 `routes.ts` 两行超宽没过 prettier（`0b66c4bd3`，这一处正是第一遍 rc=1 却「ALL TESTS PASS」的真身）→ 远端 `main` = `0b66c4bd3`，标签 `v0.8.0` = 对象 `3222d248f8…`；三件载荷 linux-x64 114M / universal 57M / win32-x64 150M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.0；GitHub Release **id `455206887`** 14 件逐件核 sha256 后发布为 latest；3003 换上 v0.8.0 清单；现网 `/root/.adelie` 整棵换成 0.8.0、旧前端先拷回、瞬时单元 `adelie-live-restart-080` 延后重启装上 `index-B-HJLswc.js` 并自核验） | 发布轮，逐项见「第三百零三轮」一节；现网核验写 `rel-080-live-restart-verify.txt`：`penguin version` 与 `lib/package.json` = 0.8.0、core 戳 `BUILD_DATE 2026-11-23 / BUILD_COMMIT 0b66c4bd3…`、7777 在听、`GET /` 200 / 匿名 `/api/me` 401；冒烟另记：临时数据根上 `user_version` 15 → 16、通知两张表落库；`releases/latest` = v0.8.0 | `a165547b6`（发布）+ 门禁两笔 `017a38546` / `0b66c4bd3` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
