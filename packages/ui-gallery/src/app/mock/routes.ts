@@ -424,7 +424,8 @@ router
   .get("/api/notifications", ({ store }): NotificationsResponse => inboxOf(store))
   .post("/api/notifications/:id/read", ({ store, params }): NotificationsResponse => {
     const row = visibleNotices(store).find((n) => n.id === Number(params.id));
-    if (!row) return fail(404, "notification_not_found", `No notice ${params.id} for this account.`);
+    if (!row)
+      return fail(404, "notification_not_found", `No notice ${params.id} for this account.`);
     row.readAt = new Date().toISOString();
     return inboxOf(store);
   })
@@ -461,7 +462,8 @@ router
     const id = Number(params.id);
     const before = store.f.notices.length;
     store.f.notices = store.f.notices.filter((n) => n.id !== id);
-    if (store.f.notices.length === before) fail(404, "notification_not_found", `No notice ${params.id}.`);
+    if (store.f.notices.length === before)
+      fail(404, "notification_not_found", `No notice ${params.id}.`);
     return empty();
   })
   .get("/api/admin/settings", ({ store }): ServerSettingsResponse => ({
