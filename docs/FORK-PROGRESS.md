@@ -3119,6 +3119,93 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `org-chart-tree.ts`），画布又按自己的边缘裁切，挂在最下一排卡片底下的句子会被裁掉。见
       「第二百九十八轮」一节。
 
+- [x] **7.178 桌宠的形象可以选：还是那只企鹅，或者一条蓝色小鲸鱼**（**2026-11-23 第二百九十九轮**
+      落地，提交见「已完成的轮次」—— 本仓 `4aee85bef`；`packages/web` 4 个新源码文件（`whale.tsx` 新
+      形象、`figures.ts` 名字到绘制组件的映射、`lib/pet-figure.ts` 键与读写、`lib/use-pet-figure.ts`
+      挂钩）+ 4 个改动源码文件（`pet-page.tsx` 改认映射、`appearance-section.tsx` 加「桌宠形象」一行、
+      两本字典）＋ 3 个测试（2 新 1 改）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖**）：
+      用户 2026-11-23 在会话里问「桌宠样式怎么换，我要换蓝色大肥鱼怎么办」，三条路里选了「做成可选
+      形象、设置里切」，并让参考 DSH 社区那批桌宠插件。见「第二百九十九轮」一节。
+
+## 第二百九十九轮：桌宠的形象可以选：还是那只企鹅，或者一条蓝色小鲸鱼（2026-11-23，条目 7.178）
+
+**开工**：`git status --short` 干净；本笔先按第二百九十七轮 / 7.176 编号，用户点头要推时按仓库的规矩
+**先 `git fetch origin main`** —— 远端已经到 `88cbcc7ec`：另一条线在这期间推了两轮（7.176 侧栏工位行、
+7.177 组织图卡片菜单），与本笔没有一个重叠文件，于是按新基线重做台账、重编为**第二百九十九轮 / 7.178**
+（功能那一笔 `git cherry-pick` 过来，没冲突）。工作树在 `/root/rel-070-src`（分支 `release/0.7.0`），
+没动那条共用的 `/root/adelie-fork`。
+
+**为什么是这一条**：用户在会话里问「桌宠样式怎么换，我要换蓝色大肥鱼怎么办」—— 当时把三条路摆给他：
+A（直接换掉内置形象）／B（做成可选形象，设置里切）／C（只自己那台换），他选了 **B**，并补一句
+「参考图 去参考 dsh 的一些插件」。
+
+**缺口是什么**：桌宠的形象是 `packages/web/src/features/pet/penguin.tsx` 里一份内联 SVG，`pet-page.tsx`
+写死 `<Penguin />`，没有任何入口能换；桌面壳那边（`packages/desktop/src/pet-window.ts` 与
+`pet-prefs.ts`）只存 `showPet` 一个开关，所以「它长什么样」这件事此前根本不存在。
+
+### 做了什么
+
+- 新形象 `whale.tsx`：与企鹅同一套约定 —— 一份内联 SVG、固定配色（不跟主题走）、`.pet-eyes` /
+  `.pet-pupils` 两个由样式表驱动的类、同一个 `viewBox 0 0 100 108`，所以窗口尺寸与动效都不用改。DSH
+  社区那两个仓库（`2002yxy/dsh-nailong-desktop-pet`、`xiaoshihou514/dsh-desktop-pet`，都 MIT）拿
+  DeepSeek 官方的鲸鱼标志当宠物，那是单色侧视的一枚记号，做不了桌宠要的两件事（跟鼠标看的眼睛、
+  72 像素下看得清的肚子），所以照着那个方向**自绘**：圆身子、`#4d6bfe`、一只大眼、背鳍与分叉尾鳍。
+- `lib/pet-figure.ts`：一个键 `penguin.petFigure`，缺键 / 空串 / 大小写不对 / 乱填的名字（含以后删掉的
+  形象）一律退回企鹅；存储读不了（隐私模式、站点数据被挡）也不抛 —— `localStorage` 在 `try` 里取，与
+  `nav-group-collapse.ts` 同一口径。`lib/use-pet-figure.ts` 用 `useSyncExternalStore`，订阅函数里挂
+  浏览器自己的 `storage` 事件：桌宠窗口与设置窗口是**两个文档**，同一个键、同一份存储，写入方靠这个
+  事件让另一头当场换过来。
+- `features/pet/figures.ts` 做名字到组件的映射，`pet-page.tsx` 只认映射、不再点名某一张画；「设置 ›
+  外观」在「桌面宠物」开关下面加一行「桌宠形象」（只在桌面应用自己的窗口里出现，与开关同族），并把它
+  上面那行的说明从「小企鹅」改成不写死形象。分段控件只有两个选项，`cols={2}` 要显式写 —— 默认是 3 列，
+  不写会空着第三格（第一版就是这么写的，自查时改掉）。
+- 守卫跟着更新：`icon-registry.test.ts` 登记新画 7 条路径（多一条少一条都会红），
+  `install-scope.test.ts` 把新键登记为 browser 偏好 —— 换数据根不该擦掉别人挑的形象。
+
+**为什么不走桌面壳的 `pet.json`**：形象只由 `/pet` 页面画，而那个窗口与主窗口同源、共享 `localStorage`，
+所以它是浏览器偏好（跟主题、字号一族）；塞进壳里等于让壳学一个字段、存一遍再传回来，只为回答页面自己
+的一个问题。桌宠的**开关**仍旧归壳（托盘菜单与那一行开关）。
+
+### 验证
+
+- `pnpm --filter @adelie/web typecheck`（`tsc --noEmit`）**`EXIT=0`**；`npx oxlint` 改动的 10 个
+  `.ts` / `.tsx` **0 警告 0 错误**；`prettier --check` 对 12 个改动文件与新 spec **干净**（`*.md` 不在
+  prettier 范围）。
+- `pnpm --filter @adelie/web exec vitest run test/pet-figure.test.ts test/icon-registry.test.ts
+  test/install-scope.test.ts` → **3 文件 / 33 passed**（新用例 10 条全绿；`icon-registry` 的精确计数正是
+  「新画 7 条」这条事实）。
+- 整包 `vitest run --maxWorkers=4`：**352 文件 / 351 绿 + 1 红**，用例 **3977 passed / 2 skipped**。
+  那 1 条红是 `test/model-grouping.test.ts`（期望 22 个厂商、收到 23，多一个 `venice`）：本笔 15 个文件
+  与模型目录无关，红的原因是 `/root/rel-070` 那棵树里 `@adelie/core` 的**注入副本比树新** —— 副本里有
+  `venice` 18 处，而树里的 `packages/core/src/state/model-catalog.ts` 与那条用例都是 0 处，属于那棵树
+  的环境陈旧，不是代码问题。
+- **真浏览器两态（本笔新 spec）**：`packages/web/e2e/pet-figure.spec.mjs` **1 passed（2.7 s）** —— 真
+  服务端 8937 + 临时数据根 + 现树 `vite build` 出来的产物（`--outDir` 指到 `/tmp`，没覆盖 `/root/rel-070`
+  那份 dist）：`/pet` 默认画企鹅（有 `fill="#f59e0b"`、无 `#4d6bfe`）→ 同一个浏览器上下文里的**另一个
+  窗口**写 `penguin.petFigure=whale` → 桌宠窗口**不刷新**就换成鲸鱼（`#4d6bfe` 出现、企鹅那三条暖色
+  路径从 DOM 里消失）。这就是本笔最要紧的那条机制（跨窗口 `storage` 事件）的真证据。
+- 形象肉眼看过：`/root/Adelie_develop/pet-figure-preview.png`（浅色与深色桌面各一格，企鹅与鲸鱼对照，
+  两种底色上都能读）；给用户挑候选形象的联系表在 `/root/Adelie_develop/pet-figure-candidates.png`。
+- 桌面壳那一行（`offersShellChrome`）在浏览器里伪造不了（`desktopMode && sessionVia === "desktop"` 是
+  服务端给的），所以那一行只做到类型与结构正确 —— **没有在真 Electron 里看过这一行**。
+
+### 没做 / 留着
+
+- 设置页那一行没有渲染测试：`AppearanceSection` 要 `ThemeProvider` / `AuthProvider` /
+  `LocaleProvider` 与两次真请求，仓库里没有可借的挂载用例，本笔只由类型与渲染路径覆盖，如实记在这里。
+- 没在真 Electron 里跑（本机没起桌面壳），桌面端那一行与 `pet-window` 的行为没有真机证据。
+- 新形象的**中文名**定为「蓝色小鲸鱼」（用户当时说的是「蓝色大肥鱼」），要改就是一个字符串。
+- 形象只有两张；加第三张是 `PET_FIGURES` 加一个名字 + `figures.ts` 加一行 + 一个组件文件。**手动上传
+  自定义形象**（DSH 那边有）没做；用户随后问「还有其他的呢」并点了「豆包」，查过之后如实告诉他豆包
+  电脑版只有**桌面悬浮球**、没有角色形象也没有公开的形象资源，候选（DSH 那套预设）摆给他挑了，等回话。
+- 没有切版本号、没发 npm、没发安装包；本笔只进源码与文档，随下一版发出。
+
+### 提交
+
+- 功能一笔（15 个文件）：`4aee85bef`。
+- 台账（条目 7.178、上表那一行、本节）随本文件另起一笔。
+- 用户 2026-11-23 说「你先提交吧」，两笔按仓库的规矩 `git -c http.version=HTTP/1.1 push origin HEAD:main` 推上去。
+
 ## 第二百九十八轮：组织图卡片菜单打不开的工位，原因留在卡片里（2026-11-23，条目 7.177）
 
 **开工**：`git status --short` 干净（`67a10db63` 之上没有未提交改动）。`git -c http.version=HTTP/1.1
@@ -5398,6 +5485,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-23 | 7.175 | **默认主题那条淡线查过之后留在原处，层序修复与四套主题的新取值一起上了现网**（**2026-11-23 第二百九十六轮**落地；本仓 `packages/ui` 1 处注释（`themes/github.css` 里 `--ui-line-muted` 旁边写清为什么不跟着调亮），**不改取值、不碰测试**；现网只换 `/root/.adelie/web/index.html` 与 `/root/.adelie/data/themes/` 四份 JSON，**不进源码**）：7.173 把「内置 github 浅色那条淡线要不要一起调、现网要不要增量换前端、现网数据根四份主题要不要换新版」三件摆给用户拍板，用户答「按你的来」 —— ①那条线（`--ui-fg-muted` `oklch(55.6% 0 0)` 压 `--ui-line-muted` `oklch(97% 0 0)`）只有 4.34，挪到 gray-50 能给 4.53，但该 token 还被 18 处 `bg-line-muted`（9 处悬停/选中态）当填充用，而 gray-50 正好等于 `--ui-surface-muted` 与 `--ui-inset`，挪过去会让画在这两种底上的 `border-line-muted`（改动卡表头线、工具卡前置块线）与底色同色、最淡的分隔线等于没了，且这条刻度是 `token-contract.test.ts` 钉住的「app always drew」，故维持原值、把理由写进注释；②层序修复（只动 HTML）上现网，不必重启（服务端没推送过 web 版本时直接从 `webDist` 读）；③现网数据根那四份与库里新版的差异**只有那 20 处取值**，整份换掉 | `prettier --check` 干净 · `oxlint` 对 CSS 无对象 · `pnpm --filter @adelie/ui exec vitest run test/contrast.test.ts test/token-contract.test.ts` **2 文件 / 114 passed（12.3 s）** · 现网 `index.html` **200 / 3948 B**（顺序声明 26 行 → `/api/themes.css` 33 行 → 打包 CSS 41 行），`/assets/index-BaLfRc61.js` **200 / 2 960 549 B**、`/assets/index-DdG-IiBW.css` **200 / 478 940 B**、`/api/themes.css` **200 / 39 890 B** · 重建产物的 CSS 与现网那份 **md5 同为 `f6cb5ab0984c5f536ce031f5e3f0673d`**（所以只换 HTML） · **现网真页面 CDP 探针**（`http://localhost:7777/`）：样式表顺序 `inline` → `/api/themes.css` → 打包 CSS，挂 `data-theme=geek` 插真通知条 → **`padStart 74px / borderTop 0px / iconDisplay none`** · **两态对照（现网两份产物）**：去掉顺序声明 → **`14.4px / 1px`**，与上一轮构建产物上的数字一致 · **分段控件未选中那侧压井槽**：doodle **4.60**、skeuo **5.15**、cyber **5.80**、clay-glow **5.57**、geek **5.68**（doodle 改前 2.11），github **4.34** 即①那条 · `theme-tools/check-files.py` **0 处低于 4.5、rc=0** · 备份在 scratchpad `live-swap-20261123/` · 没切版本号、没发 npm、没发安装包 | `7bffa05a0` |
 | 2026-11-23 | 7.176 | **侧栏工位行打不开时，原因留在那一行下面**（**2026-11-23 第二百九十七轮**落地；`packages/web` 1 个源码文件（`org-session-groups.tsx`：`useOpenDesk` 多一个 `refusal`（`{agentId,text}`，经 `refusalText` 写入、开头清掉、换组织清掉），第三个参数改成 `{ onNavigate?, sayInPlace? }`；`DeskRow` 多一个 `refusal: string \| null`，画在 `<li>` 里、行本身之下（`role="alert"`、危险墨色、`line-clamp-2`、悬停看整句）；`DeskRailRows` 一项 48 px 没有一行可写，保持 `toastError` 并写明理由）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处 `openDesk` 里还剩这处**侧栏自有行** —— 行还站在那里、按的就是它，而原来的原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净（spec 首跑 `--write` 一次）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（与上一轮基线逐项相同） · **新用例 1 passed（8.9 s）**（真服务端 9981 + 自带 mock 8934 + 数据根 `/root/adelie-fork-data/r297-a`）：侧栏画工位组用的两次读按「缓存还没学到」交回（员工不带 `desk`、会话路由 `desks` 为空）→ 工位路由答 500 并带上自己的话 → 句子在那一行下面、量到起点正好在行下缘（461 = 461）、宽 272 落在侧栏 288 之内、通知区没有它、七秒后仍在、那一行已恢复可点、地址没变；解除拦截后同一行进 `/chat/session-…` · **反证（改前产物 `r297/before-dist`，主包 `index-C-C9Bj56.js`；改后 `index-Edeu7SeB.js`）**挂 9982 / 数据根 `/root/adelie-fork-data/r297-b` → **1 failed**，侧栏里没有 `alert` · **两态探针**（`r297/probe/shape.spec.mjs`，跑完已删）：行 `y 429–461`、句子 `y 461–497`、`rowDisabled false`，截图 `r297/shots/{1-row,2-refused,3-refused-7s,4-retried}.png` 肉眼看过，pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `company.spec` 1 + `company-rail-hints` 2 + `overview-desk-refusal` 1 **4 passed**；`channel-{join,send,earlier}-refusal` / `channel-live-day` / `calendar-desk-refusal` / `employee-refusal` / `org-chart-leave-refusal` / `org-delete-refusal` / `org-settings-refusal` **17 passed（1.4 m）** · 端口只用 9981 / 9982 / 8934（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r297-{a,b}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `635b3e50c` |
 | 2026-11-23 | 7.177 | **组织图卡片菜单打不开的工位，原因留在卡片里**（**2026-11-23 第二百九十八轮**落地；`packages/web` 2 个源码文件（`org-chart-page.tsx`：新增 `deskRefusal`（`{agentId,text}`，`openDesk` 开头清空、`catch` 经 `refusalText` 写入、换组织清空，只给 `agentId` 对上的卡片）；`chart-card.tsx`：卡片多一个可选 `refusal`，画在脸上、盖住比例条（`role="alert"`、危险墨色、`line-clamp-2`、悬停看整句；外层定位、内层截断 —— 绝对定位会被块化、`-webkit-box` 不生效））＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处 `openDesk` 里还剩组织图**卡片菜单**这一处 —— 菜单一点就关、卡片定高、画布裁边，而原来的原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到，按 `@adelie/*` 跑） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 改动文件、spec 与 changelog 一对 `prettier --check` 干净、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（与上一轮基线逐项相同） · **新用例 1 passed（9.5 s）**（真服务端 8930 + 自带 mock 8931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r298-a1`）：工位路由答 500 并带上自己的话 → 句子在画布里的卡片上、量到整块落在卡片脸之内（`line 214×32` 落在外层 `238×45`、外层落在卡片 `240×92`）、通知区没有它、七秒后仍在、地址没变；解除拦截后同一套菜单进入 `/chat/session-…` · **反证（改前产物 `r298/before-dist`，`index-Edeu7SeB.js`；改后 `index-ClA9j0WL.js`）**挂 8932 / 数据根 `/root/adelie-fork-data/r298-b1` → **1 failed**，画布里没有 `alert` · **探针**（`r298/probe.mjs`）：第一版把 `absolute` 与 `line-clamp-2` 写在同一 `<p>` 上时**第三行漏在卡片外**（块化把 `display` 变成 `flow-root`、`clientH 44` / `scrollH 108`），拆成外层定位 + 内层截断后量到两行、收在卡片内，截图 `r298/shots/{card,chart-page}.png` 肉眼看过；console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条 · **相邻回归（真浏览器）** `org-chart-leave-refusal` 1 + `desk-row-refusal` 1 + `employee-refusal` 3 + `overview-desk-refusal` 1 **6 passed（38.1 s）** · 端口只用 8930 / 8931 / 8932（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r298-{a1,b1}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `4756243f4` |
+| 2026-11-23 | 7.178 | **桌宠的形象可以选：还是那只企鹅，或者一条蓝色小鲸鱼**（**2026-11-23 第二百九十九轮**落地；`packages/web` 4 个新源码文件（`features/pet/whale.tsx` 新形象、`features/pet/figures.ts` 名字到绘制组件的映射、`lib/pet-figure.ts` 键与读写＋订阅、`lib/use-pet-figure.ts` 挂钩）＋ 5 个改动源码文件（`pet-page.tsx` 改认映射、`settings/appearance-section.tsx` 在「桌面宠物」开关下面加「桌宠形象」一行、`lib/strings.ts` 与 `lib/strings-en.ts` 两本字典、`lib/install-scope.ts` 把新键登记为 browser 偏好）＋ 3 个测试（2 新 1 改）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖**）：用户在会话里问「桌宠样式怎么换，我要换蓝色大肥鱼怎么办」—— 桌宠此前只有 `features/pet/penguin.tsx` 一份内联 SVG、`pet-page.tsx` 写死 `<Penguin />`，桌面壳那边只存 `showPet` 一个开关，「它长什么样」根本没有入口；三条路（直接换掉内置形象 / 做成可选形象 / 只自己那台换）里用户选了「做成可选形象、设置里切」，并让参考 DSH 社区那批桌宠插件 —— 那是拿 DeepSeek 官方鲸鱼标志当宠物的两个 MIT 仓库（`2002yxy/dsh-nailong-desktop-pet`、`xiaoshihou514/dsh-desktop-pet`），单色侧视的一枚记号，做不了桌宠要的两件事（跟鼠标看的眼睛、72 像素下看得清的肚子），故照那个方向**自绘**一条圆身子的蓝鲸（`#4d6bfe`、一只大眼、背鳍与分叉尾鳍），与企鹅同一套约定（内联 SVG、固定配色不跟主题、`.pet-eyes` / `.pet-pupils` 两个类、同一个 `viewBox 0 0 100 108`，窗口尺寸与动效都不用改）；形象是**浏览器偏好**（键 `penguin.petFigure`，跟主题、字号一族），因为画它的 `/pet` 窗口与设置窗口同源、共享一份存储，靠浏览器自己的 `storage` 事件让另一头当场换过来；缺键 / 空串 / 大小写不对 / 乱填的名字一律退回企鹅，存储读不了（隐私模式）也不抛 | `pnpm --filter @adelie/web typecheck` **`EXIT=0`** · `npx oxlint` 改动的 10 个 `.ts` / `.tsx` **0 警告 0 错误** · 12 个改动文件与新 spec `prettier --check` 干净（`*.md` 不在 prettier 范围）、`git diff --check` 干净 · `vitest run test/pet-figure.test.ts test/icon-registry.test.ts test/install-scope.test.ts` **3 文件 / 33 passed**（新单测 10 条：默认值、读写回环、存储抛异常、订阅通知与退订、两张画经映射渲染） · 整包 web `vitest run --maxWorkers=4` **352 文件 / 351 绿 + 1 红**、**3977 passed / 2 skipped**（唯一那条红是 `test/model-grouping.test.ts`，与本笔 15 个文件无关：`/root/rel-070` 那棵验证树里 `@adelie/core` 的**注入副本比树新** —— 副本 18 处 `venice`，树里的 `model-catalog.ts` 与那条用例都是 0 处） · **真浏览器新 spec 1 passed（2.7 s）**（真服务端 8937 + 临时数据根 + 现树 `vite build --outDir /tmp`，没覆盖那棵树自己的 `dist`）：`/pet` 默认画企鹅（有 `fill="#f59e0b"`、无 `#4d6bfe`）→ 同一个浏览器上下文里的**另一个窗口**写 `penguin.petFigure=whale` → 桌宠窗口**不刷新**就换成鲸鱼（`#4d6bfe` 出现、企鹅那三条暖色路径从 DOM 里消失），这正是本笔最要紧的那条机制的真证据；`icon-registry` 的精确计数（新画 7 条路径）是它的静态守卫，多一条少一条都红 · 形象肉眼看过 `/root/Adelie_develop/pet-figure-preview.png`（浅色与深色桌面各一格，两种底色上都读得清），给用户挑候选的联系表在 `/root/Adelie_develop/pet-figure-candidates.png` · **没验的**：「设置 › 外观」里那一行只在桌面壳自己的窗口里出现（`desktopMode && sessionVia === "desktop"` 是服务端给的，浏览器伪造不了），本机没起桌面壳，所以那一行只做到类型与结构正确；`AppearanceSection` 要三个 Provider 与两次真请求才挂得上，仓库里没有可借的挂载用例，没有渲染测试 · 端口只用 8937（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `4aee85bef` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
