@@ -3278,6 +3278,51 @@ origin/main` 前进到 `ff863f2be`（第三百零八轮 TokenHub 图标那笔）
 
 - 功能一笔（源码 2、用例 1、docs 2、changelog 2）；台账（5.63 那一条、上表那一行、本节）随本文件另起一笔。
 
+## 第三百一十一轮：正式发 v0.8.1、换装现网（2026-11-24）
+
+用户 2026-11-24 一句「可以更新小版本了，更新现网」—— 于是把 v0.8.0 之后攒下的几笔落成 **0.8.1
+正式版**（版本号口径：只进第三位），再把现网整棵换过去。这一版**没有新页面**，全是修整：模型库里
+两个新分组换掉字母牌、桌宠那条鱼改画并改名、「被拒的原因，留在你按下去的地方」在模型页补两处、
+命令行不再无条件丢掉颜色。
+
+- **线性史**：远端 `main` = **`69e085e3c`**（发布提交；父提交 `ad7e5f8ee`）。标签 `v0.8.1` 指向
+  同一提交（远端标签对象 `baf43a24f…`）。`github.com` 这一版转回可用，提交与标签都是**直推**的
+  （`git -c http.version=HTTP/1.1 push`，远端 SHA 与本地逐字节相同），没有走 Git Data API。
+- **发布正文**：`docs/releases/RELEASE-v0.8.1.md`（照上游骨架：导读 / 安装 / 亮点 / 值得一提 /
+  兼容 / 要求 / 收尾一句）。
+- **门禁（在标签检出上跑）**：`/root/rel-081`（`git worktree add --detach`，`pnpm install
+  --frozen-lockfile` 只花 5.3 秒，store 是热的）上 `gates-081.sh` **rc=0、五步全绿**：`build` 全包
+  `Done`；`typecheck` 全包 `Done`；`lint` **0 警告 0 错误**（2659 个文件）；`format:check`
+  「All matched files use Prettier code style」；测试步 **ALL TESTS PASS**（17 个有 `test` 脚本的包
+  全过，其余 22 个是纯技能/库插件、本来就没有测试脚本）：core 1460 + 6 跳过、server 3176 + 6 跳过、
+  web 3998 + 2 跳过、ui 1117、cli 566、amsp 72，加上插件与 `node:test` 的，**合计 11054 条通过**。
+- **打戳与产物**：`stamp-081.sh` 写 VERSION `0.8.1` / BUILD_DATE `2026-11-23`（`date -u` 的 UTC
+  日期）/ BUILD_COMMIT `69e085e3c…`，`install.sh` 与 `install.ps1` 的
+  `EMBEDDED_RELEASE_VERSION="v0.8.1"`。三件载荷 linux-x64 111M（114,403,539 字节）/ universal 56M /
+  win32-x64 144M，`validate-bundles.sh` 三件全过。**老坑照旧**：`dist-artifacts/` 要手工补
+  `install.sh` / `install.ps1`（跟 0.8.0 那轮一样，少了这步校验脚本最后那句 grep 会报缺文件）。
+- **桌面三件**：`packages/desktop/out/` 里 deb 122M、AppImage 155M、exe 162M（+ blockmap +
+  `latest*.yml`，都标 0.8.1）；electron-builder 走 npmmirror，Windows 那个用 xvfb + wine。**这三个
+  工具是这一轮现装的**（迁移后本机没有 wine/xvfb/zip，装了 `wine32:i386` 才跑得动 NSIS）。
+- **npm**：29 个包（core/server/cli/amsp + 25 个插件；四个 private `sandbox-*` 跳过）发到 `0.8.1`，
+  `PUBLISH-ALL-DONE`。发布片刻注册表索引还没放出 0.8.1（老毛病，等即可）。
+- **GitHub Release**：**release id `455961504`**，14 件资产（763 MB）逐件核 digest 后发布为 latest。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.8.1`（保留 `android-test`
+  分组，旧清单留 `.bak-20261124-v0800`），本机那份 Windows 桌面包一并换新；用 headless chromium
+  `--dump-dom` 验过首页下载区渲染出的就是 v0.8.1 的六件（尺寸与 sha256 对得上）。
+- **换装前冒烟**：从**载荷** `linux-x64.tar.gz` 解一棵树起临时实例（临时数据根、端口 8911）——
+  `GET /` 200、匿名路由 401、`lib` 版本 0.8.1、core 戳 `BUILD_DATE 2026-11-23 /
+  BUILD_COMMIT 69e085e3c…`、新前端入口 `index-B5Bwm2BR.js`、通知两张表在库里（这一版没有新迁移，
+  仍是 16）。
+- **现网换装**：`swap-live.sh` 把 `/root/.adelie` 换成 0.8.1 的整棵（`lib/package.json` 与
+  `bin/penguin --version` 都是 0.8.1，数据根没动）；装完**立刻把旧前端拷回去**（内存里当时还是旧
+  服务端 0.8.0），随后由瞬时单元 `adelie-live-restart-081` 延后重启、重启成功后再装新前端并自核验。
+
+### 提交
+
+- 发布提交 `69e085e3c`（版本号 37 个文件 + 发布正文）；标签 `v0.8.1` 指同一提交。
+- 台账一笔（本文件）。
+
 ## 第三百一十轮：平台同步被拒时，原因留在那个分组的表头下面（2026-11-24，条目 7.186）
 
 **开工**：`git status --short` 只显示 `packages/desktop/build/**` 那 18 个迁移清理留下的删除（第三百零八
@@ -6188,6 +6233,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.185 | **腾讯 TokenHub 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零八轮**落地；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS` 新增 `tokenhub` 一条，三条 `evenodd` 路径，`fillRule`/`clipRule` 一并保留，颜色走 `currentColor`，紧跟 `tencent` 之后）+ `test/logos.test.ts` 1 条新用例 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24「模型库加服务商图标」—— 数完 24 个分组，只有 `tokenhub` 没查过品牌资产（昨天 7.182 加进来时是灰底字母牌「T」，同排别的服务商都画各自的标记）；标记取自 `@lobehub/icons` 6.20.0 以 `TencentCloud` 发布的那一枚（腾讯云云朵标），**三条路径与原文逐字节一致**（脚本逐条比对）—— 用腾讯云的标而不是 TokenHub 自有的：它的产品页与控制台对这台机器只回验证码壳（HTTP 200、无 logo），而这一组的 key 与控制台本就挂在腾讯云账号下、用腾讯云的标正好与同行的混元圆环区分开；开工时这台迁移机缺 `git`/`pnpm`/`make`/`g++` 与浏览器运行库，一并补回 | `packages/ui` `tsc --noEmit` **rc=0** · `npx oxlint` 两个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/ui` `vitest run --maxWorkers=2` **133 文件 / 1117 passed、rc=0**（基线 1116，**+1 即本笔**；`logos.test.ts` 6 条） · **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup` 把 `tokenhub` / `tencent` / `anthropic` / `venice` / `iflytek` / `baidu` 六个图标一起出图（96px 格、64px 图标、2 倍像素密度），截图 `/root/Adelie_develop/tokenhub-logo-preview.png` —— `tokenhub` 是实心的腾讯云云朵标，与紧挨的 `tencent`（混元圆环）明显两个形状、也不是字母牌 · **没做的**：没起 7372 画廊在真界面上点开看，也没装进现网 —— 随下一版（0.8.1）发出 | `9b25a8d64` |
 | 2026-11-24 | 5.63 | **命令只在用户设了 `NO_COLOR` 时才丢颜色**（**2026-11-24 第三百零九轮**落地；`packages/core` 2 个源码/用例文件（`environment/tools/command/session-manager.ts` 的 `HARDENED_ENV` 去掉 `NO_COLOR: "1"` 并改两段注释；`test/exec-session.test.ts` 那条「FORCE_COLOR 被移除、NO_COLOR=1 才成立」改成 `it.each([undefined, "", "enabled"])` 三条，要求子进程分别读到 `missing` / 空 / `enabled`，三条里 `FORCE_COLOR` / `CLICOLOR_FORCE` 都必须为空）＋ `packages/web/src/lib/strip-ansi.ts` 文件头注释 ＋ `packages/docs/content/configuration.{zh,en}.md` 环境表一行 ＋ changelog 一对 —— **无新依赖、不碰接口、没有新文案**）：上游 `850062aaa` `#1745` 移植。`exec_command` / `input_command` 的子进程过去无条件带 `NO_COLOR=1`，用户想让它出颜色只能往保险柜里塞 `FORCE_COLOR`；现在宿主有就继承、没有就不给，保险柜照旧生效。`TERM=dumb` / `PAGER` / `GIT_EDITOR` 一个没动，`FORCE_COLOR` / `CLICOLOR_FORCE` 仍照旧移除（`#102` 不回退） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 3 个改动文件 **0 警告 0 错误** · 3 个源码/用例文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 + 6 跳过**（基线 1458，+2 即本笔）· ui **133 / 1117** · cli **39 / 566** · server **216 / 3176 + 6 跳过** · web **354 / 3995 + 2 跳过** · **真服务端两条腿**（mock 8981 + 真服务端 + `/usr/bin/chromium`，提示词 `files rewrite test printenv NO_COLOR || echo NC_UNSET`，断言读 Trace 里 `tool_call_output.output`）：宿主 `env -u NO_COLOR` 起的服务端（8982）→ 命令看到 **`NC_UNSET`**；宿主带 `NO_COLOR=1`（8980）→ 命令看到 **`1`**（照常继承）· **反证两层**：改前源码跑单测 **3 failed / 45 passed**（三条 `preserves NO_COLOR=…`），放回后 **48 全过**；改前 core 产物（8984 + `r309-nc-before` + `env -u NO_COLOR`）跑同一条期望 **1 failed**，收到 `"1"` · 踩过的坑：Adelie 给 agent 的 shell 自己就带 `NO_COLOR=1`，「宿主没设」必须 `env -u NO_COLOR`；断言不能读整份 Trace（命令文本里就写着 `NC_UNSET`）· 端口只用 8980 / 8981 / 8982 / 8984（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-nc-*`，探针与产物留底在 scratchpad `r309/`（`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包 | 见本节 |
 | 2026-11-24 | 7.186 | **模型库的平台同步被拒时，原因留在那个分组的表头下面**（**2026-11-24 第三百一十轮**落地；`packages/web` 1 个新模块（`features/models/platform-sync-refusal.ts`：`platformSyncFailure` 把撤销 key 那条交给授权流程、其余经 `refusalText` 留一句）＋ 1 个源码文件（`models-page.tsx`：`syncPlatformModels(providerId)` 记下提问的分组，句子画在该分组表头与模型卡之间的 `NoticeStrip`（`role="alert"`、危险色调）里，折叠时也看得见；分组被搜索滤掉时随之清掉）＋ 1 个单测（3 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「0 条 alert、通知区 1 条、七秒后消失」，改后「alert 1 条、通知区 0 条、七秒后同一句、按钮仍可再按」，反证把源码退回 `HEAD` 重建后同一 spec **2 failed**）· 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过；本笔单独验证时 1458，与并行落地的 5.63 合并后 +2）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过；基线 354 / 3995，**+1 文件 / +3 条即本笔**）· **新 spec 2 passed（11.8 s）** · **相邻回归 9 passed（34.1 s）**（`models-group-key-refusal` 2 + `models-save-refusal` 3 + `models-sync-order` 2 + 本笔 2）· **两态探针**：`alertCount 1`、`alertUnderHeader true`、`toastButtons 0`、七秒后同一句，截图 `r310/shots/refused.png` 肉眼看过；console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条 · 端口只用 8970–8975，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-*` | `45556f2b6` |
+| 2026-11-24 | 发布 | **发 v0.8.1 并换装现网**（把 v0.8.0 之后攒下的收成正式版：Venice AI（7.183）与腾讯 TokenHub（7.185）两个分组换掉字母牌、桌宠第二条形象改画成「蓝色大肥鱼」并改名（7.184）、「被拒的原因留在按下去的地方」在模型页补两处（7.182 分组密钥框、7.186 平台同步）、命令只在用户设了 `NO_COLOR` 时才丢颜色（5.63）；发布提交 `69e085e3c`（父 `ad7e5f8ee`），`github.com` 转回可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.1` = 对象 `baf43a24f…`；门禁在标签检出 `/root/rel-081` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 test 脚本的包全过、**合计 11054 条通过**）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.1（`PUBLISH-ALL-DONE`）；GitHub Release **id `455961504`** 14 件 763 MB 逐件核 digest 后发布为 latest；3003 换上 v0.8.1 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.1、旧前端先拷回、瞬时单元 `adelie-live-restart-081` 延后重启装上 `index-B5Bwm2BR.js` 并自核验） | 发布轮，逐项见「第三百一十一轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.1、core 戳 `BUILD_DATE 2026-11-23 / BUILD_COMMIT 69e085e3c…`、`GET /` 200、匿名路由 401、通知两张表在库里；现网核验写 `rel-081-live-restart-verify.txt`；`releases/latest` = v0.8.1 | `69e085e3c`（发布） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
