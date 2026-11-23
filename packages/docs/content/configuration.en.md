@@ -48,7 +48,7 @@ Commands an agent runs with `exec_command` inherit the host environment, with th
 - **Proxy:** in Sessions the server runs, the **Agent environment uses the proxy** switch in [Settings](/settings#proxy-options) decides the proxy variables. Off removes `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY`; on injects the configured proxy address, or passes the host's variables through when no address is set.
 - **Vault:** the agent's [Vault](#vault) is applied on top, so setting `PORT` or an `ADELIE_*` variable there does reach commands.
 - **Control variables:** a server-driven Session then injects `ADELIE_API_URL`, `ADELIE_API_TOKEN`, `ADELIE_PROJECT_ID`, `ADELIE_AGENT_ID` and `ADELIE_SESSION_ID` (plus `ADELIE_ORG_ID` in company mode), so the agent's own `penguin` calls reach the server that runs it. These override Vault entries of the same name. See [CLI Reference](/cli).
-- **Forced:** `GIT_EDITOR`, `GIT_TERMINAL_PROMPT`, `TERM`, `NO_COLOR`, `PAGER` and `GIT_PAGER` always get fixed values, so a command cannot hang waiting on an editor, a credential prompt or a pager. Nothing overrides them, the Vault included.
+- **Forced:** `GIT_EDITOR`, `GIT_TERMINAL_PROMPT`, `TERM`, `PAGER` and `GIT_PAGER` always get fixed values, so a command cannot hang waiting on an editor, a credential prompt or a pager. Nothing overrides them, the Vault included. `NO_COLOR` is not among them: it reaches a command when the host or the Vault sets it, and is absent otherwise.
 
 ### PATH launcher
 
