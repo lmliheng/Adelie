@@ -151,6 +151,13 @@
         兼容说明）的地方一次收干净 —— 5 份插件技能契约、2 份包 README、6 处源码注释改用 Adelie 的名字；
         并修掉需求箱安装脚本的**默认数据根**（无变量时算的是 `~/.penguin`，而 core 是 `~/.adelie/data`，
         等于把定时任务登记到服务端不读的根上）。细节与验证见「第十三轮」一节。
+      - **画廊演示路径收尾（2026-11-23，第三百零四轮）**：`packages/ui-gallery` 的演示数据里 14 处
+        `~/.penguin` 换成 `~/.adelie`（`app/mock/routes.ts` 3：Trace 路径、插件库目录、新建机器的根；
+        `app/mock/fixtures.ts` 9：机器卡的根 ×3、状态目录、工作区 ×2、记忆目录 ×2、`/home/demo` 下那个
+        隐藏目录；`app/mock/transcripts.ts` 1；`library/boards/data.tsx` 1 即 Foundations 的「数据根」
+        那两行）—— 路径结构与演示内容一个字没动，只换名字。**为什么**：它们是画廊里给人看的示例，
+        写的还是改名前的根，等于示范一个服务端不读的位置；它们不是任何东西读的契约，所以第十三轮留着，
+        本轮它是 2.2c 唯一还动得了的一处。
       - **还差什么（做这一条时要一起收的尾）**：
         1. **写侧剩下的全在桌面壳一侧**：`packages/desktop/src/{server-process,launcher,web-dist}.ts`
            仍导出 / 传 `PENGUIN_PROFILE` / `PENGUIN_CLI_ENTRY` / `PENGUIN_WEB_DIST` / `PENGUIN_DESKTOP_TOKEN` /
@@ -162,10 +169,9 @@
            里换新名得连单元一起改（发布动作）。
         3. 桌面壳自己的开关 `DESKTOP_SMOKE` / `DESKTOP_SMOKE_SHOT` / `NO_LOGIN_SHELL_ENV` /
            `UPDATE_FEED_URL` / `BB_SMOKE_BUNDLE`：只在桌面壳里读，与它同一批改。
-        4. **不是契约、也不影响跑起来的两处**（第十三轮有意留）：`packages/ui-gallery` 的 mock 数据
-           （`library/boards/data.tsx` 的 `~/.penguin/data`、`app/mock/fixtures.ts` 那几处演示路径）——
-           它们是画廊的示例内容，不是任何东西读的契约；`packages/docs/**` 的环境表与 `changelog/**` /
-           `RELEASE-*` 按 2.5 / 2.1c 的口径整体留到发布期那一轮。
+        4. **`packages/docs/**` 的环境表与 `changelog/**` / `RELEASE-*`** 按 2.5 / 2.1c 的口径整体
+           留到发布期那一轮。（原先这条里的 `packages/ui-gallery` 演示路径已于第三百零四轮收掉，
+           见上。）
 - [x] 2.3 **端口与 profile 默认值**（2026-10-06，第十轮）：把「人会见到的」两个端口换成 Adelie 自己的 ——
       服务器默认端口 `7364` → **`4000`**（旧 Adelie Web 的地址，也是本机 ufw 规则与
       `/root/egress-whitelist/config.json` 里写着「Adelie Web (4000)」的那一条），dev CLI 端口
@@ -3156,6 +3162,60 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       用户 2026-11-23 在会话里问「腾讯 hunyuan 服务商和腾讯 tokenhub 是一回事吗」，查实**不是**（key 与
       控制台各自独立，混元直连拒 TokenHub 的 key），随后要求「你更新到模型库」。见「第三百零二轮」一节。
 
+## 第三百零四轮：画廊的演示数据不再教人用旧数据根（2026-11-23，条目 2.2c）
+
+**开工**：`git status --short` 干净；`git fetch origin && git merge --ff-only origin/main` —— 远端
+`5bdcb00aa` → **`da1c3c9a7`**（另一条线的第三百零三轮：发 v0.8.0、换装现网），快进无冲突。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 **2.2c**。它的「还差什么」四条里，①写侧全在桌面壳
+（本轮纪律不许碰 desktop / electron）、②本机部署单元（发布动作，且 3004 不许动）、③桌面壳自己的开关
+（同①）一处都动不了；第 4 项里 `packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 的口径留到发布期，
+剩下就是 `packages/ui-gallery` 那批演示路径。它们不是任何东西读的契约，但**是画廊里显示给人看的示例** ——
+机器卡的数据根、插件库目录、工作区与记忆目录、Trace 路径、Foundations 的「数据根」两行，写的还是改名前的
+`~/.penguin/data`，等于示范一个服务端不读的位置。
+
+**做了什么**：4 个文件 14 处字符串 `~/.penguin` → `~/.adelie`，路径结构与演示内容一字未动：
+
+- `app/mock/routes.ts` 3 处：`tracePath`、`/api/plugins/directory` 的 `path`、新建机器的 `root`；
+- `app/mock/fixtures.ts` 9 处：三台机器的 `root`（`/home/demo`、`/home/ubuntu`、`~`）、agent 的
+  `stateDir`、两个 `workspace`、两个 `memoryDir`、`/home/demo` 下那个隐藏目录条目（`.penguin` → `.adelie`）；
+- `app/mock/transcripts.ts` 1 处：示例 Trace 的 `agent_state`；
+- `library/boards/data.tsx` 1 处：`ROOT` 常量（Foundations 的「数据根」显示两处）。
+
+台账里 2.2c 的「还差什么」第 4 项随之更新（画廊那半已收）。**不碰** `penguin.*` 那批浏览器偏好键与
+`penguin` 命令名 —— 它们属另一条线（2.2b / 2.3 的遗留口径），这一轮只换数据根。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 203 接口 / 627 类型；模板里的 `@prismshadow/penguin-*`
+  在本树匹配不到，按 `@adelie/*` 跑）。
+- 4 个改动文件 `prettier --check` 干净、`npx oxlint` **0 警告 0 错误**、`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 + 6 跳过**、ui **133 / 1115**、cli **39 / 566**、
+  server **218 / 3176 + 6 跳过**、web **354 / 3995 + 2 跳过**、ui-gallery **20 / 141**。
+- **顺手修掉一条环境红**：web 的 `test/model-grouping.test.ts` 首跑红（`MODEL_PROVIDERS` 期望 25 个、
+  收到 24，缺 `tokenhub`）—— 与第三百零一 / 三百零二轮同因：`packages/web` 经 pnpm 的 file: 链接读的是
+  `packages/core/dist`，那份产物停在 15:05、没有第三百零二轮加的分组。`pnpm --filter @adelie/core build`
+  重建后（tokenhub 5 处，注入副本与树同一 inode）该用例 **31 全过**，web 全量转绿。
+- **真看一眼**（画廊固定端口 7372：`pnpm exec vite --port 7372 --strictPort`，Playwright
+  `playwright-core@1.61.1` + `/usr/bin/chromium`）：`app.html?route=/machines`、
+  `app.html?route=/plugins`、`lib.html?topic=data&lang=zh` 三页 —— 页面文本里 `~/.penguin` /
+  `/home/demo/.penguin` **0 处**，插件页显示 `/home/demo/.adelie/data/plugins`，data board 的「数据根」
+  两行都是 `~/.adelie/data`；三页 console error **0**、pageerror **0**；截图 `r304/machines.png`、
+  `r304/plugins.png`、`r304/lib-data-root.png` 肉眼看过，版面正常。
+- 端口只用 7372（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；产物未 `git add`。
+
+### 没做 / 留着
+
+- **2.2c 仍不勾**：剩下的三处（桌面壳写侧 `packages/desktop/src/*`、`adelie-app.service` 里的旧名、
+  桌面壳自己的开关）都要等 3.5 定下桌面壳、或等发布动作，本轮一处都不能动。
+- `packages/docs/**` 的环境表与 `changelog/**` / `RELEASE-*` 仍按 2.5 / 2.1c 的口径留到发布期。
+- `packages/ui-gallery` 里另外两类旧名**有意未动**：`penguin.*` 浏览器偏好键（另一条线的口径）、
+  fixtures 里机器 `port: 7364`（上游端口的演示值，与 2.3 的端口表无关）。
+
+### 提交
+
+- 代码 4 个文件 + 台账（条目 2.2c 那一段、上表那一行、本节）随本文件另起一笔。
+
 ## 第三百零三轮：正式发 v0.8.0、换装现网（2026-11-23）
 
 用户 2026-11-23 先点「adelie加通知功能，左下角可以看到管理员的单对单/全局 通知」，跟着问「腾讯
@@ -5723,6 +5783,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-23 | 7.180 | **管理员能发通知了：单对单或全体，收件人在左下角账号菜单里看到**（**2026-11-23 第三百零一轮**落地；服务端 4 个新源码文件（`db/repos/notifications.ts`、`mechanisms/notifications.ts`、`services/notification-service.ts`、`http/routes/notifications.ts`）＋ 4 个改动源码文件（`db/schema.ts` 两张表、`db/migrations.ts` 迁移 16 `admin-notifications`（`swapSafe`）、`api/types.ts` 类型与 `notification` 用户通道事件、`platform.ts` 挂 `NotificationsModule`）＋ 服务端用例 1 新（14 条）1 改（`db-migrations.test.ts` 九处夹具与版本钉子）；前端 3 个新源码文件（`state/notifications.tsx`、`features/account/notifications-dialog.tsx`、`features/admin/admin-notifications-section.tsx`）＋ 6 个改动源码文件（`api/endpoints.ts` 六个调用、`state/sessions.tsx` 事件分发与 `resync_required` 重取、`components/layout/user-menu.tsx` 带未读徽标的「通知」一行、`lib/settings-sections.ts` 与 `features/settings/settings-dialog.tsx`、两本词典）＋ 单测 1 新（13 条）1 改 ＋ 1 个新 spec（2 条）＋ `packages/ui-gallery` 模拟层 2 个文件（`routes.ts` 与 `fixtures.ts`：补上这六条接口与两条演示通知，画廊那条「每个包装函数都有模拟路由」的覆盖用例才不红）＋ changelog 一对 ＋ 文档两本 —— **新迁移只加两张表、不碰既有接口形状**）：用户 2026-11-23「adelie加通知功能，左下角可以看到管理员的单对单/全局 通知」—— 此前没有任何「管理员写给账号」的通道，用户通道上 `hello` 那条注释一直写着「reserved for automated task notifications」却没有存储、路由与界面；口径是本轮自定的：通知 =「标题 + 正文」**落库**（不是易失消息，发出之后新建的账号也看得到）、范围两档 `global` / `user`、收件人在左下角账号菜单里看带未读徽标的一行、发出时经用户通道推一条 `notification` 事件让徽标当场变、桌面模式隐藏这一行与设置页（管理员路由照既有规矩 403 `desktop_single_user`）；「发给谁」这条规则只写在 `services/notification-service.ts` 一处，空或超长的标题/正文（120 / 2000）在入库前拒绝、绝不截断，仓库最多留 500 条每 20 次插入清一次最旧的 | `packages/server` `tsc` **`EXIT=0`**、`packages/web` `tsc` `EXIT=0`、`packages/core` `tsc` `EXIT=0` · `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 全过 · 服务端 `vitest run test/notifications.test.ts test/db-migrations.test.ts` **2 文件 / 50 passed**（通知 14 条：全局通知人人可见且之后新建的账号也看得到、单对单只到那一个（连发件人自己的收件箱都没有）、未读按账号各算、看不到的 id 写不进已读、事件只发到被点名的地方、已发送列表带已读人数与上限、撤回连已读标记一并删、桌面模式整组拒绝；迁移 36 条含迁移 16 的旧库夹具与 `applied` 列表、版本钉子 `toBe(16)`）· web `vitest run test/notifications.test.ts test/settings-sections.test.ts` **2 文件 / 27 passed**（通知 13 条：含「首屏读收件箱还没回来时到达的通知被留住并计未读」与「答复里也带上它时不重复计数」；设置分区 14 条含 admin 可见性）· **真浏览器新 spec 2 passed**（`packages/web/e2e/notifications.spec.mjs`，真服务端 + 真浏览器 + 临时数据根，跑法 scratchpad `run-notifications-e2e.sh`）：管理员发全局通知 → 另一个账号徽标**不刷新**变 1 → 打开弹窗看到 → 标已读清掉；另一条用 `page.on("request")` 记下发送之后的 inbox GET，断言那次答复里没有刚发的通知、徽标为 1 · **服务端推送单独验过**（`sse-notification-probe.mjs`）：直接开 `/api/events` 观察，收到 `event: server_event` + `data: {"type":"notification",…}`（发 201、inbox `unread=1`）· 全量 web 只剩 `model-grouping.test.ts` 1 条红、server 全量 11 条红（`plugin-loader` / `plugin-apply` / `plugins-installed`），两条都已单独核实与本笔无关（后者用 `git stash` 对照，无改动时同样红甚至 21 条；前者是本树 `@adelie/core` 解析到 `/root/rel-070` 的旧源码）· **没验的**：桌面模式下这一行与设置页只做到「按 `desktopMode` 隐藏」，本机没起桌面壳 · 端口只用了 e2e 那套临时端口（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 | 2026-11-23 | 7.181 | **模型库多一个腾讯 TokenHub 分组**（**2026-11-23 第三百零二轮**落地；`packages/core` 1 个源码文件（`state/model-catalog.ts`：`MODEL_PROVIDERS` 新增 `tokenhub`、`TOKENHUB_BASE_URL = "https://tokenhub.tencentmaas.com/v1"`、`MODEL_CATALOG` 三条 Hy 预置 `hy4-flash` / `hy4` / `hy3`，都固定 `openai-chat` 并内联端点）＋ `packages/core/test/model-catalog.test.ts` 与 `packages/web/test/model-grouping.test.ts` 各改一处 ＋ `packages/docs/content/models.{zh,en}.md` 各加一行与一节 ＋ changelog 一对 —— **目录里多一个分组与三条预置，数据根 / Trace / 接口形状不变**）：用户在会话里问「腾讯 hunyuan 服务商和腾讯 tokenhub 是一回事吗」，实测查实**不是** —— `tencent`（混元直连 `https://api.hunyuan.cloud.tencent.com/v1`）与 TokenHub（腾讯云模型网关，有自己的控制台与 key）是两个服务，拿 TokenHub 的 key 请求混元直连端点回 `invalid_api_key`，故自成一个分组；只收录第一方 Hy 对话模型（转卖的 Kimi / GLM / DeepSeek / MiniMax 在别处已有「卖家即分组」的归属，网关的图片 / 视频 / 向量 / 重排模型会话承载不了），窗口取模型列表文档的「最大输入」、视觉标志按能力行（Hy4 一对读图、Hy3 不读）；**价格只写读得到的那一条**（`hy4` 用 models.dev 生成的 Tencent TokenHub 条目换算回人民币），`hy4-flash` 与 `hy3` 故意不带 `pricing` —— 腾讯价格页是前端渲染的、价格 PDF 已失效，写成 0 会被当成免费档 | `packages/core` `tsc` **`EXIT=0`** · `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/core` `vitest run test/model-catalog.test.ts` **65 passed**（含三条新预置的 id / 窗口 / 视觉 / 协议与内联端点断言） · `packages/web/test/model-grouping.test.ts` 在本树**红**（期望 22 个厂商、收到 23）：本树里 `@adelie/core` 解析到 `/root/rel-070/packages/core` 这棵同 commit 的另一棵树、注入副本比树新，看不到本树 core 源码里这个新分组 —— 子 Agent 用一次性 vitest alias 指到本树 core 后该用例**全过**，证明改动本身正确、这条红是本树的环境陈旧（第三百零一轮同一条红、同因）· 用户那把 TokenHub 的 key **没有入库** · **没做的**：`hy4-flash` / `hy3` 缺价（腾讯价格页能读出时再回填）、没有拿真 key 跑过一次真请求 · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 | 2026-11-23 | 发布 | **发 v0.8.0 并换装现网**（把攒下的东西落成正式版：管理员通知（7.180）、模型库的 Venice AI（7.172）与腾讯 TokenHub（7.181）两个分组、可选桌宠形象（7.178），以及「被拒的原因留在按下去的地方」那一族收尾；发布提交 `a165547b6`，门禁在标签检出 `/root/rel-080` 上 **rc=0 五步全绿**，门禁两轮抓到两处真问题各补一笔 —— `ui-gallery` 模拟层缺通知那六条接口（`017a38546`）、同一份 `routes.ts` 两行超宽没过 prettier（`0b66c4bd3`，这一处正是第一遍 rc=1 却「ALL TESTS PASS」的真身）→ 远端 `main` = `0b66c4bd3`，标签 `v0.8.0` = 对象 `3222d248f8…`；三件载荷 linux-x64 114M / universal 57M / win32-x64 150M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.0；GitHub Release **id `455206887`** 14 件逐件核 sha256 后发布为 latest；3003 换上 v0.8.0 清单；现网 `/root/.adelie` 整棵换成 0.8.0、旧前端先拷回、瞬时单元 `adelie-live-restart-080` 延后重启装上 `index-B-HJLswc.js` 并自核验） | 发布轮，逐项见「第三百零三轮」一节；现网核验写 `rel-080-live-restart-verify.txt`：`penguin version` 与 `lib/package.json` = 0.8.0、core 戳 `BUILD_DATE 2026-11-23 / BUILD_COMMIT 0b66c4bd3…`、7777 在听、`GET /` 200 / 匿名 `/api/me` 401；冒烟另记：临时数据根上 `user_version` 15 → 16、通知两张表落库；`releases/latest` = v0.8.0 | `a165547b6`（发布）+ 门禁两笔 `017a38546` / `0b66c4bd3` |
+| 2026-11-23 | 2.2c | **画廊的演示数据不再教人用旧数据根**（**2026-11-23 第三百零四轮**落地；`packages/ui-gallery` 4 个文件 14 处字符串（`app/mock/routes.ts` 3：Trace 路径 `tracePath`、插件库目录 `/api/plugins/directory` 的 `path`、新建机器的 `root`；`app/mock/fixtures.ts` 9：三台机器的 `root`、agent 的 `stateDir`、两个工作区路径、两个 `memoryDir`、`/home/demo` 下那个隐藏目录条目；`app/mock/transcripts.ts` 1；`library/boards/data.tsx` 1 即 Foundations 的「数据根」两行）—— `~/.penguin` → `~/.adelie`，路径结构与演示内容一字未动，不碰接口、无新依赖、没有新文案）：2.2c 的剩余项里，写侧、`adelie-app.service`、桌面壳开关三处本轮都动不了（桌面壳按纪律不许碰、单元要等发布动作），`packages/docs/**` 按 2.5 留到发布期 —— 只剩画廊这批演示路径：它们在画廊里显示给人看，写的还是改名前的根，等于示范一个服务端不读的位置 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 203 接口 / 627 类型） · `npx prettier --check` 4 个改动文件干净 · `npx oxlint` 4 个文件 **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 + 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **354 文件 / 3995 + 2 跳过** · ui-gallery **20 文件 / 141** · **顺手修掉一条环境红**：web 的 `model-grouping.test.ts` 又缺 `tokenhub`（期望 25 收到 24），与第三百零一 / 三百零二轮同因 —— `packages/web` 经 pnpm 的 file: 链接读的 `packages/core/dist` 停在 15:05 的旧构建；`pnpm --filter @adelie/core build` 重建（tokenhub 5 处、注入副本与树同一 inode）后该用例 31 全过、web 全量转绿 · **真看一眼**（画廊固定端口 7372，`pnpm exec vite --port 7372` + `/usr/bin/chromium`）：`app.html?route=/machines`、`app.html?route=/plugins`、`lib.html?topic=data&lang=zh` 三页 —— 页面文本里 `~/.penguin` / `/home/demo/.penguin` **0 处**，插件页显示 `/home/demo/.adelie/data/plugins`、data board 的「数据根」两行都是 `~/.adelie/data`；三页 console error **0**、pageerror **0**；截图 `r304/{machines,plugins,lib-data-root}.png` · 端口只用 7372（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」

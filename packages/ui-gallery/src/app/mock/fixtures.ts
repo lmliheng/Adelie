@@ -401,7 +401,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
           ]
         : [],
     },
-    stateDir: `/home/demo/.penguin/data/projects/${IDS.project}/agents/${agent.agentId}/agent_state`,
+    stateDir: `/home/demo/.adelie/data/projects/${IDS.project}/agents/${agent.agentId}/agent_state`,
     activeSessionCount: agent.activeSessionCount,
   });
 
@@ -501,7 +501,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
     client: "web",
     ...extra,
   });
-  const tempWorkspace = `/home/demo/.penguin/data/projects/${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-7c1e9b2a`;
+  const tempWorkspace = `/home/demo/.adelie/data/projects/${IDS.project}/agents/${IDS.agents.docs}/workspaces/tmp-7c1e9b2a`;
   const sessions: SessionInfo[] = [
     session(
       IDS.sessions.approval,
@@ -600,7 +600,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       {
         // A Test Session the evaluation launched through `penguin run`.
         source: "cli",
-        workspace: `/home/demo/.penguin/data/projects/${IDS.project}/agents/${IDS.agents.docs}/workspaces/case-001`,
+        workspace: `/home/demo/.adelie/data/projects/${IDS.project}/agents/${IDS.agents.docs}/workspaces/case-001`,
       },
     ),
     session(
@@ -1050,7 +1050,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         connection: null,
         api: null,
         status: { state: "running", checkedAt: iso(ago(0, 1)), port: 7364 },
-        root: "/home/demo/.penguin/data",
+        root: "/home/demo/.adelie/data",
       },
       {
         id: "ssh:gpu-box",
@@ -1061,7 +1061,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         connection: { pid: 41_226 },
         api: { answeredAt: iso(ago(0, 3)) },
         status: { state: "running", checkedAt: iso(ago(0, 3)), port: 7364 },
-        root: "/home/ubuntu/.penguin/data",
+        root: "/home/ubuntu/.adelie/data",
       },
       {
         id: "ssh:office-mac",
@@ -1072,7 +1072,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
         connection: null,
         api: null,
         status: null,
-        root: "~/.penguin/data",
+        root: "~/.adelie/data",
       },
     ],
     imageVersion: "0.2.13",
@@ -1126,7 +1126,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       overview: {
         enabled: true,
         templateHasMemory: true,
-        memoryDir: `/home/demo/.penguin/data/projects/${IDS.project}/agents/${IDS.agents.docs}/agent_state/memory`,
+        memoryDir: `/home/demo/.adelie/data/projects/${IDS.project}/agents/${IDS.agents.docs}/agent_state/memory`,
         scopes: [
           { scopeKey: "user", kind: "user", fileCount: 3, hasIndex: true, updatedAt: iso(ago(1)) },
           {
@@ -1178,7 +1178,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       overview: {
         enabled: true,
         templateHasMemory: false,
-        memoryDir: `/home/demo/.penguin/data/projects/${IDS.project}/agents/${IDS.agents.notes}/agent_state/memory`,
+        memoryDir: `/home/demo/.adelie/data/projects/${IDS.project}/agents/${IDS.agents.notes}/agent_state/memory`,
         scopes: [{ scopeKey: "user", kind: "user", fileCount: 0, hasIndex: false }],
       },
       files: [],
@@ -1406,7 +1406,7 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
       path: "/home/demo",
       parent: "/home",
       entries: [
-        { name: ".penguin", path: "/home/demo/.penguin" },
+        { name: ".adelie", path: "/home/demo/.adelie" },
         { name: "projects", path: "/home/demo/projects" },
       ],
     },

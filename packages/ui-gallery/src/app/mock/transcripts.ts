@@ -43,7 +43,7 @@ export const meta = (
     model_id: ref.modelId,
     model_context_window: ref.contextWindow,
     system_prompt: "You are Docs Expert. Cite a real file for every claim.",
-    agent_state: `/home/demo/.penguin/data/projects/${IDS.project}/agents/${IDS.agents.docs}/agent_state`,
+    agent_state: `/home/demo/.adelie/data/projects/${IDS.project}/agents/${IDS.agents.docs}/agent_state`,
     workspace,
     source: "user",
   },

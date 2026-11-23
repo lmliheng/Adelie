@@ -1621,7 +1621,7 @@ router
     return {
       session: {
         ...session,
-        tracePath: `/home/demo/.penguin/data/traces/${session.sessionId}/001.jsonl`,
+        tracePath: `/home/demo/.adelie/data/traces/${session.sessionId}/001.jsonl`,
       },
     };
   })
@@ -2651,7 +2651,7 @@ const libraryPlugins = (store: DemoStore) => store.f.library.groups.flatMap((g) 
 router
   .get("/api/plugins", ({ store }): PluginLibraryResponse => store.f.library)
   .get("/api/plugins/directory", ({ store }): PluginDirectoryResponse => ({
-    path: "/home/demo/.penguin/data/plugins",
+    path: "/home/demo/.adelie/data/plugins",
     plugins: libraryPlugins(store)
       .filter((plugin) => plugin.source === "user")
       .map((plugin) => plugin.name)
@@ -2917,7 +2917,7 @@ router
       connection: null,
       api: null,
       status: null,
-      root: `~/.penguin/data`,
+      root: `~/.adelie/data`,
     });
     void hostName;
     return json(machinesResponse(store), 201);

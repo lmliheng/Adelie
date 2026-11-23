@@ -45,7 +45,7 @@ const MEMORIES = [
   },
   { id: "verify-patents-and-literature-before-citing", date: "2026-10-15" },
 ];
-const ROOT = "~/.penguin/data";
+const ROOT = "~/.adelie/data";
 const MACHINE_ID = "m_7f3a9c21";
 const LOG = [
   "Pulling penguin-harness 0.2.13",
