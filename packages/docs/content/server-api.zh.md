@@ -105,6 +105,25 @@ curl -H "Authorization: Bearer $(cat ~/.adelie/data/api-token)" \
 
 桌面模式（由桌面应用拉起的服务器）下，这组路由一律返回 `403`，错误码为 `desktop_single_user`。桌面应用面向单用户，不提供用户管理；数据根目录中已有的用户不受影响。
 
+## 通知
+
+管理员写给账号的通知：一条「标题 + 正文」，落在服务端（不是易失消息），收件人自己标已读。范围两档：`global`（所有账号，包含之后新建的账号，因为通知是存下来的而不是当场发一份出去）和 `user`（`userId` 指定的那一个账号）。收件人在左下角账号菜单里看到未读数徽标，点开是收件箱弹窗。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/notifications` | 这个账号的收件箱：全局的与发给它的，最新在前，附未读数 `{notifications, unread}` |
+| POST | `/api/notifications/:id/read` | 标一条已读；这个账号看不到的 id 返回 `404` `notification_not_found` |
+| POST | `/api/notifications/read-all` | 把未读的全部标已读 |
+| GET | `/api/admin/notifications` | 本服务器发过的全部通知，最新在前，每条带已读人数：`{notifications, limits}` |
+| POST | `/api/admin/notifications` | 发一条：`{scope, userId?, title, body}`，返回 `201` 与这条通知 |
+| DELETE | `/api/admin/notifications/:id` | 撤回一条，从每个收件箱移除 |
+
+两条 `read` 路由都以「操作之后的整个收件箱」作答，读者因此不必自己复制一套「这个账号能看到哪些行」的规则来更新列表。`limits` 给出标题与正文的长度上限，发送表单用它说明真实边界而不是自己再写一份；标题或正文为空、或超出上限，都在入库前拒绝（不截断成不是发件人写的东西），`global` 带上 `userId` 也会被拒绝。
+
+这组路由按账号而不是按 Project——一条通知属于账号。管理员那三条在桌面模式下返回 `403` `desktop_single_user`（单用户，没有人可发），非管理员返回 `403` `admin_required`。
+
+通知到达时，如果这个账号正好有用户事件流打开，会在 `GET /api/events` 上收到一条 `notification` 事件（见[流式传输（SSE）](#流式传输sse)）；那是锦上添花，可靠的那一份始终是 `GET /api/notifications`。
+
 ## 服务器设置（仅管理员）
 
 服务器全局的代理、附件、公司模式和 Agent API 设置，以及插件声明的设置分组。
@@ -1159,7 +1178,7 @@ Telegram 连接时会先清空积压，跳过无连接期间发送的消息。�
 | 通道 | 路径 | 内容 |
 | --- | --- | --- |
 | 每个 Session | `GET /api/sessions/:sessionId/stream` | Session 的消息流和运行事件，包括子 Agent Session 的 `session_created` 以及目标模式事件 |
-| 每个用户 | `GET /api/events` | `hello` 握手和跨 Session 的通知：`session_created`、`session_state`、`session_background`、`session_approvals`、`session_title`、`schedule_fired`、`schedule_queued`、`web_updated` 以及公司模式的 `org_*` 事件 |
+| 每个用户 | `GET /api/events` | `hello` 握手和跨 Session 的通知：`session_created`、`session_state`、`session_background`、`session_approvals`、`session_title`、`schedule_fired`、`schedule_queued`、`web_updated`、`notification` 以及公司模式的 `org_*` 事件 |
 
 ### 传输格式
 
@@ -1183,6 +1202,7 @@ export type ServerEvent =
   | { type: "session_approvals"; sessionId: string; count: number }
   | { type: "resync_required" }
   | { type: "credentials_updated" }
+  | { type: "notification"; notification: NotificationInfo }
   | { type: "hello" }
   | { type: "web_updated"; rev: string }
   | { type: "session_created"; projectId: string; agentId: string; sessionId: string; source: SessionSource }
@@ -1207,6 +1227,7 @@ export type ServerEvent =
 | `session_approvals` | Session 中等待审批的工具调用数变化 |
 | `resync_required` | `Last-Event-ID` 已被挤出缓冲区；客户端必须重新拉取历史 |
 | `credentials_updated` | Project 的模型凭据发生变化 |
+| `notification` | 管理员发出的一条通知到达了这个账号（见[通知](#通知)） |
 | `hello` | 用户通道上的握手 |
 | `web_updated` | 热更新替换了对外提供的 web 资源；客户端需重新加载 |
 | `session_created` | 一个 Session 现在存在了：由 Web App、CLI、定时任务或 Agent 派生子 Session 创建 |

@@ -260,6 +260,77 @@ export interface AdminPasswordResetRequest {
   password: string;
 }
 
+// ---------------------------------------------------------------------------
+// Admin notices (an admin writes them; every account reads its own inbox)
+// ---------------------------------------------------------------------------
+
+/**
+ * Who a notice is addressed to. `global` is every account — including the ones created later,
+ * because the notice is stored rather than fanned out — and `user` is the single account
+ * `userId` names.
+ */
+export type NotificationScope = "global" | "user";
+
+/** One notice as a reader's inbox holds it. */
+export interface NotificationInfo {
+  id: number;
+  scope: NotificationScope;
+  /** The account a `user` notice was addressed to; absent for a `global` one. */
+  userId?: string;
+  title: string;
+  body: string;
+  /** The admin account that sent it. */
+  sentBy: string;
+  sentAt: string;
+  /** When THIS reader read it; absent = unread. */
+  readAt?: string;
+}
+
+export interface NotificationsResponse {
+  /** The notices this account may read — the global ones and its own — newest first. */
+  notifications: NotificationInfo[];
+  /** How many of them are unread; what the account menu's badge shows. */
+  unread: number;
+}
+
+/** What a notice may hold, so the compose form states the real bounds without its own copy. */
+export interface NotificationLimits {
+  /** Characters, longest title accepted. */
+  title: number;
+  /** Characters, longest body accepted. */
+  body: number;
+}
+
+export interface NotificationCreateRequest {
+  scope: NotificationScope;
+  /** Required with scope `user` and refused with `global` (a global notice is addressed to nobody in particular). */
+  userId?: string;
+  title: string;
+  body: string;
+}
+
+/** One notice as its sender sees it: the reader's view, plus how many accounts have read it. */
+export interface AdminNotificationInfo extends NotificationInfo {
+  /** How many accounts have read it so far. */
+  readCount: number;
+  /**
+   * How many accounts it is addressed to as the accounts stand now — every account for a global
+   * one, one for a single-account one. Counted rather than frozen at send time, which is what the
+   * read marks mean too.
+   */
+  recipients: number;
+}
+
+export interface AdminNotificationsResponse {
+  /** Every notice this server holds, newest first. */
+  notifications: AdminNotificationInfo[];
+  limits: NotificationLimits;
+}
+
+export interface AdminNotificationResponse {
+  notification: AdminNotificationInfo;
+}
+
 /**
  * Admin-level server-global settings (SQLite server_settings):
  * two independent proxy switches sharing one optional explicit address. In every
@@ -3701,6 +3772,16 @@ export type ServerEvent =
   | { type: "credentials_updated" }
   /** Placeholder handshake on the user channel (reserved for automated task notifications). */
   | { type: "hello" }
+  /**
+   * An admin notice reaching this account while it has a user channel open — what `hello` above
+   * was reserved for. The notice is the READER's view of the row (`readAt` absent: nobody has
+   * read it yet, including this window), and the event is a courtesy on top of a durable copy,
+   * not the copy itself: an account with no channel open, or one that reconnects afterwards,
+   * learns the same fact from `GET /api/notifications`, which is also what the badge is counted
+   * from. Published per account — to the one a single-account notice names, and to every account
+   * for a global one.
+   */
+  | { type: "notification"; notification: NotificationInfo }
   /** The served web assets were hot-swapped by a platform upgrade: clients reload to pick them up. */
   | { type: "web_updated"; rev: string }
   /**

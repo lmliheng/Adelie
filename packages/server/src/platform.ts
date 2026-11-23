@@ -83,6 +83,7 @@ import { TraceIndexRepo } from "./db/repos/trace-index.js";
 import { MessagingBindingsRepo } from "./db/repos/messaging-bindings.js";
 import { OrgCacheRepo } from "./db/repos/organizations.js";
 import { ErrorsRepo } from "./db/repos/errors.js";
+import { NotificationsRepo } from "./db/repos/notifications.js";
 import { SessionSources } from "./runtime/session-sources.js";
 import { ErrorRecorder } from "./runtime/error-recorder.js";
 import { UsageRecorder } from "./runtime/usage-recorder.js";
@@ -101,6 +102,7 @@ import { ProjectNotifier } from "./services/project-events.js";
 import { ProjectService, ProjectRuns } from "./services/project-service.js";
 import { AuthService, InitialProjectProvisioner } from "./auth/service.js";
 import { AdminService } from "./services/admin-service.js";
+import { NotificationService } from "./services/notification-service.js";
 import { Scheduler, ScheduleSessionCreator, ScheduleTaskRunner } from "./runtime/scheduler.js";
 import { AgentConfigService } from "./services/agent-config-service.js";
 import { UserVaultService } from "./services/user-vault-service.js";
@@ -123,6 +125,7 @@ import { ProjectAdminRoutes } from "./http/routes/projects.js";
 import { AdminRoutes } from "./http/routes/admin.js";
 import { AsrRoutes } from "./http/routes/asr.js";
 import { RealtimeRoutes } from "./http/routes/realtime.js";
+import { NotificationsRoutes } from "./http/routes/notifications.js";
 import { MeRoutes } from "./http/routes/me.js";
 import { UserVaultRoutes } from "./http/routes/user-vault.js";
 import { AuthRoutes } from "./http/routes/auth.js";
@@ -144,6 +147,7 @@ import { SuggestIdRoutes } from "./http/routes/suggest-id.js";
 import { TerminalModule } from "./terminal/manager.js";
 import { SessionApiRoutes } from "./http/routes/sessions.js";
 import { Admin, Auth, AuthSessions, Users } from "./mechanisms/identity.js";
+import { NotificationStore, Notifications } from "./mechanisms/notifications.js";
 import {
   Access,
   AgentIndex,
@@ -307,6 +311,18 @@ export class RuntimeModule {}
   exports: [Users, AuthSessions, Auth, Admin, PasswordHasher, LiveStreams],
 })
 export class IdentityModule {}
+
+/**
+ * Admin notices as a group of its own: the two tables, the service that decides who a notice
+ * reaches, and the route group that carries both sides of it. It needs the accounts (that is who
+ * "everybody" is) and the channels (that is how a notice arrives without a reload), and it offers
+ * the mechanism the route group asks for.
+ */
+@Module({
+  children: [NotificationsRepo, NotificationService, NotificationsRoutes],
+  exports: [Notifications, NotificationStore],
+})
+export class NotificationsModule {}
 
 @Module({
   children: [
@@ -504,6 +520,7 @@ export class WorkflowsModule {}
     SettingsModule,
     PluginConfigModule,
     IdentityModule,
+    NotificationsModule,
     ProjectsModule,
     SessionRuntimeModule,
     ObservabilityModule,

@@ -89,6 +89,7 @@ function open024(): DatabaseSync {
   // `users` than this fixture and read as a rollback that lost something.
   dropProfileColumns(db);
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec(GOAL_STATE_DDL);
   return db;
 }
@@ -130,6 +131,7 @@ function open6(): DatabaseSync {
   db.exec("DROP TABLE IF EXISTS org_desk_notices");
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 6");
   return db;
 }
@@ -144,6 +146,7 @@ function open7(): DatabaseSync {
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS model_promotions");
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 7");
   return db;
 }
@@ -157,6 +160,7 @@ function open8(): DatabaseSync {
   db.exec("DROP TABLE IF EXISTS model_promotions");
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 8");
   return db;
 }
@@ -169,6 +173,7 @@ function open9(): DatabaseSync {
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 9");
   return db;
 }
@@ -183,6 +188,7 @@ function open12(): DatabaseSync {
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   dropAgentApi(db);
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 12");
   return db;
 }
@@ -202,6 +208,7 @@ function open029(): DatabaseSync {
   db.exec("DROP TABLE machine_project; DROP TABLE machines; DROP TABLE machine;");
   dropProfileColumns(db);
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 2");
   return db;
 }
@@ -222,6 +229,7 @@ function openPreProfile(): DatabaseSync {
   // profile's, so a database at 4 has none of their tables.
   dropCompanyTables(db);
   dropUsageCostColumns(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 4");
   return db;
 }
@@ -236,6 +244,7 @@ function openPreUsageCost(): DatabaseSync {
   db.exec(SCHEMA_SQL);
   dropUsageCostColumns(db);
   dropAgentApi(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 13");
   return db;
 }
@@ -255,6 +264,19 @@ function dropCompanyTables(db: DatabaseSync): void {
     DROP TABLE IF EXISTS org_calendar_state;
     DROP TABLE IF EXISTS org_ticket_sessions;
     DROP TABLE IF EXISTS org_sessions;
+  `);
+}
+
+/**
+ * Takes migration 16's two tables and their index off a database built from the current
+ * declaration: a fixture stamped before 16 must not carry the notice store, or the migration's
+ * own `down` would drop something the fixture never claimed to have and the shape comparison
+ * after a rollback would read as a lost table.
+ */
+function dropNotifications(db: DatabaseSync): void {
+  db.exec(`
+    DROP TABLE IF EXISTS notification_reads;
+    DROP TABLE IF EXISTS notifications;
   `);
 }
 
@@ -645,8 +667,9 @@ describe("migration 8 → current: model-promotions", () => {
         "company-mode-desk-mentions",
         "usage-record-cost",
         "agent-api",
+        "admin-notifications",
       ]);
-      expect(schemaVersion(db)).toBe(15);
+      expect(schemaVersion(db)).toBe(16);
       expect(promotionsTableExists()).toEqual({ "1": 1 });
       expect(authTokensTableExists()).toEqual({ "1": 1 });
 
@@ -670,8 +693,9 @@ describe("migration 8 → current: model-promotions", () => {
         "company-mode-desk-mentions",
         "usage-record-cost",
         "agent-api",
+        "admin-notifications",
       ]);
-      expect(schemaVersion(db)).toBe(15);
+      expect(schemaVersion(db)).toBe(16);
     } finally {
       db.close();
     }
@@ -695,8 +719,9 @@ describe("migration 9 → current: model-provider-auth-tokens", () => {
         "company-mode-desk-mentions",
         "usage-record-cost",
         "agent-api",
+        "admin-notifications",
       ]);
-      expect(schemaVersion(db)).toBe(15);
+      expect(schemaVersion(db)).toBe(16);
       expect(tableExists()).toEqual({ "1": 1 });
       db.exec(
         "INSERT INTO users (user_id, password_hash, is_admin, created_at)" +
@@ -743,6 +768,7 @@ describe("migration 12 → current: company-mode-desk-mentions", () => {
         "company-mode-desk-mentions",
         "usage-record-cost",
         "agent-api",
+        "admin-notifications",
       ]);
       expect(schemaVersion(db)).toBe(LATEST_VERSION);
       expect(shape(db)).toBe(shape(fresh));
@@ -849,6 +875,7 @@ function open13(): DatabaseSync {
   db.exec(SCHEMA_SQL);
   dropUsageCostColumns(db);
   dropAgentApi(db);
+  dropNotifications(db);
   db.exec("PRAGMA user_version = 13");
   return db;
 }
@@ -857,8 +884,12 @@ describe("migration 13 → current: agent-api", () => {
   it("creates the settings table while a pushed platform boots: one row per Agent, keyed and allow-all unless set", () => {
     const db = open13();
     try {
-      expect(migrate(db, { swapPath: true }).applied).toEqual(["usage-record-cost", "agent-api"]);
-      expect(schemaVersion(db)).toBe(15);
+      expect(migrate(db, { swapPath: true }).applied).toEqual([
+        "usage-record-cost",
+        "agent-api",
+        "admin-notifications",
+      ]);
+      expect(schemaVersion(db)).toBe(16);
       const enable = () =>
         db
           .prepare(

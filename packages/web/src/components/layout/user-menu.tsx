@@ -28,6 +28,7 @@ import { useNavigate } from "react-router";
 import {
   ActivityIcon,
   ConfirmModal,
+  Count,
   Dropdown,
   ICON_GAP,
   Menu,
@@ -42,6 +43,8 @@ import { useAuth } from "../../state/auth";
 import { UpdateRow } from "../account/update-row";
 import { UserVaultDialog } from "../account/user-vault-dialog";
 import { SessionLogDialog } from "../../features/account/session-log-dialog";
+import { NotificationsDialog } from "../../features/account/notifications-dialog";
+import { useNotifications } from "../../state/notifications";
 import { useRunningSessions } from "../../features/account/running-sessions";
 import { FeedbackDialog, useFeedbackChannel } from "../account/feedback-dialog";
 import { openFeedbackBoard } from "../../lib/feedback-board";
@@ -82,6 +85,8 @@ export function UserMenu({
   const [vaultOpen, setVaultOpen] = useState(false);
   /** The per-conversation usage dialog; mounted outside the panel like the rest. */
   const [logOpen, setLogOpen] = useState(false);
+  /** The admin notices inbox; likewise mounted outside the panel. */
+  const [noticesOpen, setNoticesOpen] = useState(false);
   /** The page a request asked for; the menu's own row asks for none (the viewer's first). */
   const [settingsSection, setSettingsSection] = useState<SettingsSectionKey | undefined>(undefined);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
@@ -90,6 +95,8 @@ export function UserMenu({
   const feedback = useFeedbackChannel();
   /** What is running right now, fetched on open and kept in step by the user channel. */
   const { sessions: running } = useRunningSessions(open);
+  /** The admin's notices for this account; the row's badge and the dialog behind it read this one. */
+  const notices = useNotifications(user?.userId ?? null);
   const agentNames = useMemo(() => {
     const map = new Map<string, string>();
     for (const a of agents) map.set(a.agentId, agentDisplayName(a));
@@ -186,6 +193,19 @@ export function UserMenu({
             {/* The run record, right under the live list it explains: days of usage, split by
                 conversation, in a dialog mounted outside this panel. */}
             <MenuSeparator />
+            {/* Admin notices: what the server's admin sent this account. Hidden in desktop mode,
+                where the install is single-user and nobody can send one (the routes are refused
+                there too). The count is the unread badge; the row opens the inbox dialog. */}
+            {!desktopMode && (
+              <MenuItem
+                label={S.account.notifications.row}
+                trailing={notices.unread > 0 ? <Count n={notices.unread} max={99} /> : undefined}
+                onSelect={() => {
+                  setOpen(false);
+                  setNoticesOpen(true);
+                }}
+              />
+            )}
             <MenuItem
               label={S.account.sessionLog.row}
               onSelect={() => {
@@ -285,6 +305,13 @@ export function UserMenu({
       {/* The run record, likewise outside the panel — and it survives its own row's menu
           closing, which is the point of mounting it here. */}
       <SessionLogDialog open={logOpen} onClose={() => setLogOpen(false)} />
+      {/* The notices inbox, mounted here for the same reason: its row closes the panel as it
+          opens this. */}
+      <NotificationsDialog
+        open={noticesOpen}
+        onClose={() => setNoticesOpen(false)}
+        state={notices}
+      />
       {/* Feedback, likewise outside the panel: its row closes the menu as it opens this. */}
       <FeedbackDialog open={feedback.open} onClose={() => feedback.setOpen(false)} />
       {/* Signing out is confirmed first: the row sits in a menu of harmless entries, and a

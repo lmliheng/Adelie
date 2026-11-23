@@ -105,6 +105,25 @@ Each row of the user list carries the account's nickname when it has one. Avatar
 
 In desktop mode (a server spawned by the desktop app), every route in this group answers `403` with code `desktop_single_user`. The desktop app is single-user, so user management is disabled; users already in the data root are untouched.
 
+## Notifications
+
+Notices an admin writes to accounts: one title and one body, stored on the server (not an ephemeral message), which each reader marks read. Two scopes: `global` (every account — including ones created later, because a notice is stored rather than fanned out at send time) and `user` (the single account `userId` names). Readers find them behind an unread badge in the account menu at the bottom left, which opens the inbox dialog.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | `/api/notifications` | This account's inbox: the global notices and its own, newest first, with the unread count: `{notifications, unread}` |
+| POST | `/api/notifications/:id/read` | Marks one read; an id this account cannot see answers `404` `notification_not_found` |
+| POST | `/api/notifications/read-all` | Marks every unread one read |
+| GET | `/api/admin/notifications` | Every notice this server has sent, newest first, each with its read count: `{notifications, limits}` |
+| POST | `/api/admin/notifications` | Sends one: `{scope, userId?, title, body}`, answering `201` with the notice |
+| DELETE | `/api/admin/notifications/:id` | Withdraws one from every inbox |
+
+Both `read` routes answer with the whole inbox as it stands afterwards, so a reader never has to keep its own copy of the audience rule ("which rows does this account see") to update a list. `limits` carries the title and body length caps, so the compose form states the real bounds instead of its own copy; a blank or over-long title or body is refused before anything is stored (never truncated into something the sender did not write), and a `global` notice that carries `userId` is refused too.
+
+These routes belong to the account, not to a Project — a notice belongs to the account. The three admin ones answer `403` `desktop_single_user` in desktop mode (single-user: there is nobody to notify) and `403` `admin_required` for a non-admin.
+
+When a notice reaches an account that happens to have the user event stream open, it arrives as a `notification` event on `GET /api/events` (see [Streaming (SSE)](#streaming-sse)); that is a courtesy, and the durable copy is always `GET /api/notifications`.
+
 ## Server Settings (admin only)
 
 Server-wide proxy, attachment, company-mode and Agent API settings, and the settings groups plugins declare.
@@ -1159,7 +1178,7 @@ Real-time delivery uses Server-Sent Events, not WebSocket, on two kinds of chann
 | Channel | Path | Contents |
 | --- | --- | --- |
 | Per Session | `GET /api/sessions/:sessionId/stream` | The Session's message stream and run events, including `session_created` for its subagent Sessions and the goal-mode events |
-| Per user | `GET /api/events` | The `hello` handshake and notifications across Sessions: `session_created`, `session_state`, `session_background`, `session_approvals`, `session_title`, `schedule_fired`, `schedule_queued`, `web_updated` and company mode's `org_*` events |
+| Per user | `GET /api/events` | The `hello` handshake and notifications across Sessions: `session_created`, `session_state`, `session_background`, `session_approvals`, `session_title`, `schedule_fired`, `schedule_queued`, `web_updated`, `notification` and company mode's `org_*` events |
 
 ### Wire Format
 
@@ -1183,6 +1202,7 @@ export type ServerEvent =
   | { type: "session_approvals"; sessionId: string; count: number }
   | { type: "resync_required" }
   | { type: "credentials_updated" }
+  | { type: "notification"; notification: NotificationInfo }
   | { type: "hello" }
   | { type: "web_updated"; rev: string }
   | { type: "session_created"; projectId: string; agentId: string; sessionId: string; source: SessionSource }
@@ -1207,6 +1227,7 @@ export type ServerEvent =
 | `session_approvals` | A Session's count of tool calls waiting for approval changes |
 | `resync_required` | The `Last-Event-ID` was evicted from the buffer; the client must refetch history |
 | `credentials_updated` | The Project's model credentials changed |
+| `notification` | An admin notice reached this account (see [Notifications](#notifications)) |
 | `hello` | Handshake on the user channel |
 | `web_updated` | A hot update replaced the served web assets; clients reload |
 | `session_created` | A Session now exists: created by the Web App, the CLI, a schedule, or an agent spawning a child |

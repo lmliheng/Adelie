@@ -263,6 +263,10 @@ import type {
   UsageResponse,
   UsageSessionDays,
   RunningSessionsResponse,
+  NotificationsResponse,
+  AdminNotificationsResponse,
+  AdminNotificationResponse,
+  NotificationCreateRequest,
   VaultResponse,
   VaultUpdateRequest,
   UserVaultAssignRequest,
@@ -345,6 +349,39 @@ export const adminResetPassword = (userId: string, body: AdminPasswordResetReque
 
 export const adminDeleteUser = (userId: string) =>
   apiFetch<void>(`/api/admin/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+
+// Admin notices (the account's inbox, and the admin's compose list) -------------------------
+
+/**
+ * This account's notices: the global ones and its own, newest first, with the unread count the
+ * account menu's badge shows. Not Project-scoped — a notice belongs to the account, which is why
+ * this is one call rather than a read per Project.
+ */
+export const listNotifications = () => apiFetch<NotificationsResponse>("/api/notifications");
+
+/**
+ * Mark one notice read; the answer is the whole inbox as it stands afterwards, so the caller
+ * never has to know which rows it may see to update a list. 404 `notification_not_found` for an
+ * id this account cannot see.
+ */
+export const markNotificationRead = (id: number) =>
+  apiFetch<NotificationsResponse>(`/api/notifications/${id}/read`, { method: "POST", body: {} });
+
+/** Mark every unread notice read; answers the whole inbox as it stands afterwards. */
+export const markAllNotificationsRead = () =>
+  apiFetch<NotificationsResponse>("/api/notifications/read-all", { method: "POST", body: {} });
+
+/** What this server has sent, newest first, with a read count per notice and the length limits. Admin only. */
+export const adminListNotifications = () =>
+  apiFetch<AdminNotificationsResponse>("/api/admin/notifications");
+
+/** Send one notice (every account, or the one `userId` names). Admin only. */
+export const adminCreateNotification = (body: NotificationCreateRequest) =>
+  apiFetch<AdminNotificationResponse>("/api/admin/notifications", { method: "POST", body });
+
+/** Withdraw one notice from every inbox. Admin only. */
+export const adminDeleteNotification = (id: number) =>
+  apiFetch<void>(`/api/admin/notifications/${id}`, { method: "DELETE" });
 
 /** Server-global settings (admin only): currently the "use system HTTP proxy" switch. */
 export const adminGetSettings = () => apiFetch<ServerSettingsResponse>("/api/admin/settings");

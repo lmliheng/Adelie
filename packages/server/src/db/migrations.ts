@@ -627,6 +627,48 @@ export const MIGRATIONS: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 16,
+    name: "admin-notifications",
+    // Additive: two new tables and an index. The admin's notices (a title and a body, addressed
+    // to every account or to one) and the per-account read marks. A predecessor build never reads
+    // them and serves no /api/notifications route, so a rollback survives it: callers get 404 and
+    // the notices sent in between are simply not shown until a build that knows the tables is
+    // back.
+    swapSafe: true,
+    up(db) {
+      // Frozen copy of the DDL as of the notice feature; do not re-derive from schema.ts.
+      // IF NOT EXISTS because the declarative track may already have created them (ADOPTION).
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS notifications (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          scope      TEXT NOT NULL CHECK (scope IN ('global','user')),
+          user_id    TEXT REFERENCES users(user_id) ON DELETE CASCADE,
+          title      TEXT NOT NULL,
+          body       TEXT NOT NULL,
+          created_by TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          CHECK ((scope = 'global' AND user_id IS NULL) OR (scope = 'user' AND user_id IS NOT NULL))
+        );
+        CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC, id DESC);
+        CREATE TABLE IF NOT EXISTS notification_reads (
+          notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+          user_id         TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+          read_at         TEXT NOT NULL,
+          PRIMARY KEY (notification_id, user_id)
+        );
+      `);
+    },
+    // LOSES every notice and every read mark. A notice exists nowhere else — it is not a message
+    // in a Project and no file holds a copy — so nothing can put them back or tell their readers
+    // again.
+    down(db) {
+      db.exec(`
+        DROP TABLE IF EXISTS notification_reads;
+        DROP TABLE IF EXISTS notifications;
+      `);
+    },
+  },
 ];
 
 /** The highest version this build knows how to reach. */

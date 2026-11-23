@@ -568,6 +568,14 @@ export const zh = {
     /** Under a number field whose box does not parse; the save is not sent. */
     pluginFieldNotNumber: "必须是数字",
     /**
+     * Admin-only sub-page (server-global): the notices the admin sends to the install's users —
+     * one compose form and the list already sent.
+     */
+    noticesTitle: "通知",
+    /** The page's "?" at the pane heading: what a notice is and where a recipient finds it. */
+    noticesInfo:
+      "管理员写给用户的站内通知：可以发给全体用户，也可以只发给某一个账号。收件人在左下角的账号菜单里看到，未读的会显示数量；通知是存下来的，离线期间发出的也还在。",
+    /**
      * Admin-only sub-page (server-global): the data root's storage ledger, and the human-reviewed
      * cleanup that reads it — a report on one side, a bill and its approval on the other.
      */
@@ -1664,6 +1672,23 @@ export const zh = {
       unknownSession: "已删除的会话",
       unpriced: "未计价",
     },
+    /**
+     * The admin notices (the account menu's 通知 row and the inbox behind it). A notice is stored,
+     * so the copy says what a reader gets: the admin's words, sent to everyone or to this account
+     * alone, marked unread until read.
+     */
+    notifications: {
+      row: "通知",
+      title: "通知",
+      desc: "管理员发来的通知：发给全体用户的，和只发给你的。未读的会标出来，可以逐条或一次性标为已读。",
+      empty: "还没有通知",
+      global: "全体",
+      direct: "单对单",
+      from: (user: string): string => `来自 ${user}`,
+      markRead: "标为已读",
+      markAllRead: "全部标为已读",
+      loadFailed: (reason: string): string => `读取失败：${reason}`,
+    },
   },
 
   /**
@@ -1718,6 +1743,39 @@ export const zh = {
     deleteUserTitle: (u: string): string => `删除用户 ${u}`,
     deleteUserConfirm: (u: string): string =>
       `将删除用户 ${u} 及其名下全部项目（含数据目录），不可恢复。`,
+    /**
+     * The notices the admin sends (the Settings dialog's 通知 page). One compose form on top and
+     * the list already sent under it; the length limits come from the server, so the page states
+     * the real bounds rather than its own.
+     */
+    notices: {
+      composeTitle: "发送通知",
+      scopeLabel: "发送范围",
+      scopeGlobal: "全体用户",
+      scopeUser: "指定用户",
+      targetUser: "目标用户",
+      targetPlaceholder: "选择用户",
+      titleLabel: "标题",
+      bodyLabel: "正文",
+      limits: (title: number, body: number): string => `标题最多 ${title} 字，正文最多 ${body} 字`,
+      send: "发送",
+      sending: "发送中…",
+      titleRequired: "标题不能为空",
+      bodyRequired: "正文不能为空",
+      /** The refusal stays where the send was asked for; the list below is unchanged. */
+      sendFailed: (reason: string): string => `没能发送：${reason}`,
+      historyTitle: "已发送",
+      empty: "还没有发送过通知",
+      colTitle: "标题",
+      colAudience: "范围",
+      colSentAt: "发送时间",
+      colRead: "已读",
+      readCount: (read: number, total: number): string => `${read}/${total}`,
+      delete: "撤回",
+      deleteTitle: (title: string): string => `撤回通知「${title}」`,
+      deleteConfirm: "撤回后所有收件人的收件箱里都不再显示这条通知，不可恢复。",
+      loadFailed: (reason: string): string => `读取失败：${reason}`,
+    },
   },
 
   project: {

@@ -69,6 +69,11 @@ import { probeSession } from "../api/session-probe";
 import { openUserEvents } from "../api/sse";
 import { isCompanyEvent, publishCompanyEvent, publishCompanyResync } from "./company";
 import {
+  isNotificationEvent,
+  publishNotificationEvent,
+  refreshNotifications,
+} from "./notifications";
+import {
   isBuiltinBrowserEvent,
   publishBuiltinBrowserEvent,
   publishBuiltinBrowserResync,
@@ -1382,6 +1387,9 @@ export function applyUserEvent(
     void store.getState().reload();
     publishCompanyResync();
     if (source === null) publishBuiltinBrowserResync();
+    // Notices may have been lost with the rest of the flips: re-read the inbox rather than leave
+    // the badge on whatever it happened to hold across the gap.
+    if (source === null) void refreshNotifications();
     return;
   }
   // The built-in browser's tabs, page requests and agent activity go to the browser layer in
@@ -1389,6 +1397,13 @@ export function applyUserEvent(
   // a machine's server drives no shell on this screen.
   if (isBuiltinBrowserEvent(ev)) {
     if (source === null) publishBuiltinBrowserEvent(ev);
+    return;
+  }
+  // An admin notice for this account: it goes to the notification store, which is what the
+  // account menu's badge and the inbox dialog read. Only this server's — a notice belongs to an
+  // account on the server that holds it, and a machine's copy of the account is a different one.
+  if (isNotificationEvent(ev)) {
+    if (source === null) publishNotificationEvent(ev.notification);
     return;
   }
   // Company-mode notifications fan out to the company store and any mounted organization page

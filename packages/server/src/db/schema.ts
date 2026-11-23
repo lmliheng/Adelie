@@ -2,8 +2,9 @@
  * SQLite table-creation SQL.
  *
  * SQLite stores only indexes and aggregates: users / login sessions / Project authorization /
- * Agent & Session indexes / usage summaries / error records / UI preferences. Agent State,
- * Trace, and Workspace still follow the local directory-based storage rules.
+ * Agent & Session indexes / usage summaries / error records / UI preferences / the admin's
+ * notices. Agent State, Trace, and Workspace still follow the local directory-based storage
+ * rules.
  * Product not yet released: no migration branches — everything is CREATE IF NOT EXISTS, formed
  * once. The one exception: columns added to an existing table after release of a web.db are
  * ALTERed in by the idempotent per-column guard in database.ts (ensureColumn), since CREATE
@@ -333,5 +334,22 @@ CREATE TABLE IF NOT EXISTS org_desk_mentions (  -- DERIVED CACHE (company mode):
   message_id TEXT NOT NULL,
   hop        INTEGER NOT NULL,
   UNIQUE (project_id, org_id, agent_id, channel_id, message_id)
+);
+CREATE TABLE IF NOT EXISTS notifications (      -- an admin's notice (a title and a body), addressed to every account or to one; NOT rebuildable from files and not a Project's, so an account deleted takes only its own row (cascade) and a global row outlives every account
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  scope      TEXT NOT NULL CHECK (scope IN ('global','user')),  -- 'global' = every account (user_id NULL); 'user' = that account alone
+  user_id    TEXT REFERENCES users(user_id) ON DELETE CASCADE,  -- whose notice a 'user' row is; NULL for 'global' (the CHECK below keeps the two from drifting apart)
+  title      TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  created_by TEXT NOT NULL,                                     -- the admin account that sent it (no FK: the notice stays readable after that account is deleted, which is why the sender is recorded rather than joined)
+  created_at TEXT NOT NULL,
+  CHECK ((scope = 'global' AND user_id IS NULL) OR (scope = 'user' AND user_id IS NOT NULL))
+);
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC, id DESC);
+CREATE TABLE IF NOT EXISTS notification_reads ( -- one row per (notice, account) that has read it: the ABSENCE of a row is what "unread" means, so a global notice addressed to everybody stores nothing per account until somebody opens it
+  notification_id INTEGER NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+  user_id         TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  read_at         TEXT NOT NULL,
+  PRIMARY KEY (notification_id, user_id)
 );
 `;

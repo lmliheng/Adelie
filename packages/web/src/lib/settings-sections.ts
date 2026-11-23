@@ -40,7 +40,8 @@ export type SettingsSectionKey =
   | "agentApi"
   | "plugins"
   | "storage"
-  | "users";
+  | "users"
+  | "notifications";
 
 /** Rail heading a page sits under: the viewer's own preferences vs. the whole server's. */
 export type SettingsGroupKey = "personal" | "server";
@@ -95,6 +96,9 @@ const SECTION_RULES: ReadonlyArray<SettingsSection & { visible(viewer: SettingsV
     { key: "storage", group: "server", visible: (v) => v.isAdmin },
     // Single-user under the desktop shell: the server rejects the admin user routes there.
     { key: "users", group: "server", visible: (v) => v.isAdmin && !v.desktopMode },
+    // The notices an admin sends this install's users: the same single-user rule, since a notice
+    // sent in a desktop window would be addressed to the admin alone.
+    { key: "notifications", group: "server", visible: (v) => v.isAdmin && !v.desktopMode },
   ];
 
 /** The pages this viewer may open, in rail order. */

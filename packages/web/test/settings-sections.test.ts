@@ -62,6 +62,7 @@ describe("visibleSettingsSections", () => {
       "plugins",
       "storage",
       "users",
+      "notifications",
     ]);
   });
 
@@ -144,6 +145,28 @@ describe("the storage report's place in the rail", () => {
   it("is never offered to a non-admin, and asking for it falls back like any forbidden page", () => {
     expect(plain.map((s) => s.key)).not.toContain("storage");
     expect(resolveSettingsSection("storage", plain)).toBe("profile");
+  });
+});
+
+/**
+ * The notices page sends to other accounts, so it shares user management's single-user rule: a
+ * desktop window has nobody to notify, and the server refuses its routes there with
+ * desktop_single_user.
+ */
+describe("the notices page's place in the rail", () => {
+  it("is a Server page an admin gets, and no desktop window does", () => {
+    expect(admin.find((s) => s.key === "notifications")).toEqual({
+      key: "notifications",
+      group: "server",
+    });
+    expect(shell.map((s) => s.key)).not.toContain("notifications");
+    expect(desktopBrowser.map((s) => s.key)).not.toContain("notifications");
+  });
+
+  it("is never offered to a non-admin, and asking for it falls back like any forbidden page", () => {
+    expect(plain.map((s) => s.key)).not.toContain("notifications");
+    expect(resolveSettingsSection("notifications", plain)).toBe("profile");
+    expect(resolveSettingsSection("notifications", shell)).toBe("profile");
   });
 });
 

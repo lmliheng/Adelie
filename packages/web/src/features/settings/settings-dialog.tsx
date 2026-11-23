@@ -33,6 +33,7 @@ import { AgentApiSection } from "./agent-api-section";
 import { PluginsSection } from "./plugins-section";
 import { StorageSection } from "./storage-section";
 import { AdminUsersSection } from "../admin/admin-users-page";
+import { AdminNotificationsSection } from "../admin/admin-notifications-section";
 import { CreditsSection } from "./credits-section";
 
 /** Rail glyphs, on the shared 24x24 stroke grid (see NAV_ICONS' conventions). */
@@ -73,6 +74,12 @@ const SECTION_ICONS: Record<SettingsSectionKey, string> = {
   /** Two people: user management. */
   users:
     "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+  /**
+   * A bell: dome, its flare and the clapper. `ICONS` has no bell, so the page draws its own here
+   * the way the profile, appearance, shortcuts, account and plugins pages above do — the rail's
+   * per-page drawings live in this map rather than in the registry.
+   */
+  notifications: "M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0",
 };
 
 export function SettingsDialog({
@@ -125,6 +132,7 @@ export function SettingsDialog({
     plugins: S.settings.pluginsTitle,
     storage: S.settings.storageTitle,
     users: S.admin.users,
+    notifications: S.settings.noticesTitle,
   };
   const groupLabel: Record<SettingsGroupKey, string> = {
     personal: S.settings.groupPersonal,
@@ -142,6 +150,7 @@ export function SettingsDialog({
     agentApi: S.settings.agentApiHint,
     plugins: S.settings.pluginsInfo,
     storage: S.settings.storageInfo,
+    notifications: S.settings.noticesInfo,
   };
 
   const groups: Array<PagedDialogGroup<SettingsSectionKey>> = settingsGroups(sections).map(
@@ -194,6 +203,7 @@ export function SettingsDialog({
       )}
       {current === "storage" && <StorageSection />}
       {current === "users" && <AdminUsersSection />}
+      {current === "notifications" && <AdminNotificationsSection />}
     </PagedDialog>
   );
 }

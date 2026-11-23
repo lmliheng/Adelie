@@ -497,6 +497,14 @@ export const en: Strings = {
     /** Under a number field whose box does not parse; the save is not sent. */
     pluginFieldNotNumber: "Must be a number",
     /**
+     * Admin-only sub-page (server-global): the notices the admin sends to the install's users —
+     * one compose form and the list already sent.
+     */
+    noticesTitle: "Notices",
+    /** The page's "?" at the pane heading: what a notice is and where a recipient finds it. */
+    noticesInfo:
+      "Admin notices to this install's users: send one to everyone, or to a single account. Recipients see them in the bottom-left account menu, with an unread count; a notice is stored, so one sent while a user was away is still there.",
+    /**
      * Admin-only sub-page (server-global): the data root's storage ledger, and the human-reviewed
      * cleanup that reads it — a report on one side, a bill and its approval on the other.
      */
@@ -1616,6 +1624,23 @@ export const en: Strings = {
       unknownSession: "Deleted conversation",
       unpriced: "unpriced",
     },
+    /**
+     * The admin notices (the account menu's Notices row and the inbox behind it). A notice is
+     * stored, so the copy says what a reader gets: the admin's words, sent to everyone or to this
+     * account alone, marked unread until read.
+     */
+    notifications: {
+      row: "Notices",
+      title: "Notices",
+      desc: "Notices from the admin — those sent to everyone and those sent to you alone. Unread ones are marked; read them one by one or all at once.",
+      empty: "No notices yet",
+      global: "Everyone",
+      direct: "Just you",
+      from: (user: string): string => `From ${user}`,
+      markRead: "Mark read",
+      markAllRead: "Mark all read",
+      loadFailed: (reason: string): string => `Could not load: ${reason}`,
+    },
   },
 
   /**
@@ -1672,6 +1697,41 @@ export const en: Strings = {
     deleteUserTitle: (u: string): string => `Delete user ${u}`,
     deleteUserConfirm: (u: string): string =>
       `This deletes user ${u} and every Project they own (including data directories). This cannot be undone.`,
+    /**
+     * The notices the admin sends (the Settings dialog's Notices page). One compose form on top
+     * and the list already sent under it; the length limits come from the server, so the page
+     * states the real bounds rather than its own.
+     */
+    notices: {
+      composeTitle: "Send a notice",
+      scopeLabel: "Send to",
+      scopeGlobal: "Everyone",
+      scopeUser: "One account",
+      targetUser: "Account",
+      targetPlaceholder: "Pick an account",
+      titleLabel: "Title",
+      bodyLabel: "Body",
+      limits: (title: number, body: number): string =>
+        `Title up to ${title} characters, body up to ${body}`,
+      send: "Send",
+      sending: "Sending…",
+      titleRequired: "A title is required",
+      bodyRequired: "A body is required",
+      /** The refusal stays where the send was asked for; the list below is unchanged. */
+      sendFailed: (reason: string): string => `Could not send: ${reason}`,
+      historyTitle: "Sent",
+      empty: "No notices sent yet",
+      colTitle: "Title",
+      colAudience: "Audience",
+      colSentAt: "Sent at",
+      colRead: "Read",
+      readCount: (read: number, total: number): string => `${read}/${total}`,
+      delete: "Withdraw",
+      deleteTitle: (title: string): string => `Withdraw "${title}"`,
+      deleteConfirm:
+        "Withdrawing removes this notice from every recipient's inbox. This cannot be undone.",
+      loadFailed: (reason: string): string => `Could not load: ${reason}`,
+    },
   },
 
   project: {
