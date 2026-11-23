@@ -108,6 +108,7 @@ describe("groupModelRows", () => {
       "xiaomi",
       "baidu",
       "tencent",
+      "tokenhub",
       "iflytek",
       "volcengine",
       "qwen-pay-as-you-go",

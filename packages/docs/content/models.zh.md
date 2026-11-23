@@ -452,6 +452,7 @@ Adelie 升级可能改变内置的预置模型目录。一旦发生，Project ow
 | abliteration | `OPENAI_API_KEY` | abliteration.ai 自家那批「abliterated」（去审查微调）模型，OpenAI 兼容，预置 base URL `https://api.abliteration.ai/v1`；key 形如 `ak_…`；四条预置都固定 Chat Completions 客户端。见 [Abliteration 分组](#abliteration-分组) |
 | venice | `OPENAI_API_KEY` | Venice AI（venice.ai）的 OpenAI 兼容网关，预置 base URL `https://api.venice.ai/api/v1`；这一组收录的是它的无审查模型 —— 自家产品线加上它转售的 abliterated / 「uncensored」微调，共 9 条预置，全部固定 Chat Completions 客户端。见 [Venice AI 分组](#venice-ai-分组) |
 | volcengine | `OPENAI_API_KEY` | 字节跳动的火山方舟（Volcengine Ark），OpenAI 兼容，预置 base URL `https://ark.cn-beijing.volces.com/api/v3`；Doubao Seed 系列，加上方舟转售的 GLM / Kimi / DeepSeek，共 11 条预置，全部固定 Chat Completions 客户端。见 [Volcengine Ark 分组](#volcengine-ark-分组) |
+| tokenhub | `OPENAI_API_KEY` | 腾讯云的模型网关 Tencent TokenHub（大模型服务平台），OpenAI 兼容，预置 base URL `https://tokenhub.tencentmaas.com/v1`；收录腾讯自家的 Hy 三条（`hy4-flash` / `hy4` / `hy3`），全部固定 Chat Completions 客户端。它和上面的 `tencent`（混元直连）是两个服务，key 与端点各自独立。见 [Tencent TokenHub 分组](#tencent-tokenhub-分组) |
 | vllm | `OPENAI_API_KEY` | 自托管 vLLM 服务器：协议固定为 `openai-chat-vllm-adapter`，无预置 base URL，八个预置模型价格均为 0（见[连接本地或自托管端点](#连接本地或自托管端点)） |
 | custom | `OPENAI_API_KEY` | 任意 OpenAI 协议端点；自带一个预置模型 Atria Dawn Preview（Anthropic Messages API，地址 `api.atria-asi.ai`，需要自己的 key，上下文窗口 256K，供应商公布价格之前定价 $0） |
 
@@ -520,6 +521,15 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - **价格。** 取自方舟定价页的「在线推理（常规）」表，人民币每百万 Token（输入非音频 / 缓存命中非音频 / 输出），按固定汇率 7 换算成美元存储。方舟按输入长度分档计价，这里只记录基础档；`deepseek-v4-1-flash-261017` 跟随 DeepSeek 的空闲时段，北京时间工作日 9:00–12:00、14:00–18:00 之外按半价计算。
 - **不在这个分组里的。** 方舟的图片生成（Seedream）、视频生成（Seedance）、3D 与向量化模型都不是对话模型，会话无法承载它们，因此不进模型库；需要生成视频时，见[插件库](/skills#内置插件库)里的 `use-seedance`：一句话让 Agent 生成一个 mp4 落到工作区。
 - **一次请求最多 4 张图。** 这是服务自己的限制，超过它会直接回 `400 … media_count_exceeded`，而对话里的图会被每一次请求重新带上——所以会话会一直失败。Adelie 因此在每次请求前把**最旧的**那几张换成一行 `[image omitted: …]` 文字占位，只保留最新的四张（新发出的图优先算进这四张；一轮自己就带了五张时，这一次输入里的旧图也一样换成占位）。对话本身和 Trace 里的图一张不少，改的只是这一次请求带过去的量。
+
+### Tencent TokenHub 分组
+
+`tokenhub` 是腾讯云的模型网关 **Tencent TokenHub**（大模型服务平台），端点是 OpenAI 兼容的 `https://tokenhub.tencentmaas.com/v1`，key 在 TokenHub 控制台领取，在分组标题栏用**填写密钥**设置一次即可。
+
+- **不是混元直连。** 这里和 `tencent` 分组（[内置供应商分组](#内置供应商分组)表里的 Tencent Hunyuan）是两个服务：混元直连的端点是 `https://api.hunyuan.cloud.tencent.com/v1`，用混元控制台的密钥；TokenHub 有自己的控制台和自己的 key，拿 TokenHub 的 key 请求混元直连端点会被回 `invalid_api_key`。TokenHub 除腾讯自家的混元（Hy）系列外还转售 Kimi、GLM、DeepSeek、MiniMax，但转售的模型各自已有分组，所以这个分组只收录腾讯自家的 Hy 对话模型（网关自己的图片、视频、向量与重排模型都不是对话模型，会话承载不了）。
+- **预置模型（3 条）。** `hy4-flash`（Hy4 flash）、`hy4`（Hy4）与 `hy3`（Hy3）。Hy4 两条的上下文窗口是 983,040 Token——文档里的「最大输入」，它另有一个最大输出 64K，目录的单一窗口放不下；Hy3 是 196,608（最大输出 128K）。Hy4 两条接受图像，Hy3 只收文本，与文档的能力行一致。
+- **协议。** 每个条目都固定 Chat Completions 客户端（`client_type = "openai-chat"`）并把端点写在条目上。和所有网关一样，没有 key 的条目会被拒绝，而不是把你的 OpenAI key 发过去。
+- **价格。** 三条里只有 `hy4` 有可核实的费率：缓存命中 ¥0.29、输入 ¥5.84、输出 ¥17.5 每百万 Token。腾讯的价格页是前端渲染的，本机读不到，其价格 PDF 也已失效，所以这一份取自 models.dev 生成的 Tencent TokenHub 条目（换算回人民币是整数价，因此可信）。`hy4-flash` 与 `hy3` 没有价格：它们的条目不带 `pricing`，模型页上不显示价格徽标，成本中心把用量报为未计价。写成三个 0 会被当成免费档，见[价格与促销](#价格与促销)。
 
 ### 预置模型
 

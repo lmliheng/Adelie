@@ -33,7 +33,11 @@
  * TokenDance group re-read whole — its ids, windows, modalities, protocols and prices, four
  * DeepSeek rows moved onto the vendor's schedule, the K3.1 Pro / V4 Pro / GLM-5.3 FlashX / V4.1
  * Flash 1017 rows added and the K3 promotion dropped — from the seller's own catalog API on
- * 2026-10-27.
+ * 2026-10-27; and the Tencent TokenHub group (three Hy rows), whose endpoint, windows and
+ * vision flags were read from TokenHub's own model-list document and the PDF it publishes, and
+ * whose one priced row comes from models.dev's generated Tencent TokenHub entry — the vendor's
+ * own price page is client-rendered and its price-list PDF is gone, so the other two rows are
+ * left unpriced rather than guessed: 2026-11-23.
  * Docs: packages/docs/content/models.{zh,en}.md (site path /docs/models) documents the
  * provider groups and credential resolution described here.
  *
@@ -328,6 +332,13 @@ const XIAOMI_BASE_URL = "https://api.xiaomimimo.com/v1";
 const BAIDU_BASE_URL = "https://qianfan.baidubce.com/v2";
 /** Tencent Hunyuan's OpenAI-compatible endpoint. */
 const HUNYUAN_BASE_URL = "https://api.hunyuan.cloud.tencent.com/v1";
+/**
+ * Tencent TokenHub's OpenAI-compatible endpoint — Tencent Cloud's 大模型服务平台, a model
+ * gateway rather than a vendor API. It is a different service from the Hunyuan direct endpoint
+ * above: TokenHub's console issues its own key, which the Hunyuan endpoint refuses as
+ * `invalid_api_key`, and TokenHub also resells Kimi, GLM, DeepSeek and MiniMax.
+ */
+const TOKENHUB_BASE_URL = "https://tokenhub.tencentmaas.com/v1";
 /** iFlytek Spark's OpenAI-compatible endpoint (the WebSocket API is a different, signed protocol). */
 const IFLYTEK_BASE_URL = "https://spark-api-open.xf-yun.com/v1";
 /**
@@ -551,6 +562,29 @@ export const MODEL_PROVIDERS: ModelProviderInfo[] = [
     apiKeyUrl: "https://console.cloud.tencent.com/hunyuan/start",
     modelsUrl: "https://cloud.tencent.com/document/product/1729/104753",
     clientType: "openai-chat",
+  },
+  {
+    // Tencent TokenHub (腾讯云大模型服务平台): Tencent Cloud's model gateway, OpenAI-compatible
+    // at the endpoint below. It is not a second name for the Hunyuan group above but a different
+    // service, with its own console and its own key — the Hunyuan direct endpoint answers a
+    // TokenHub key with `invalid_api_key` — which is why it takes a group of its own instead of
+    // more rows on that one. Besides Tencent's own Hy models it resells Kimi, GLM, DeepSeek and
+    // MiniMax; only its first-party Hy chat models are catalogued here (a resold model already
+    // has a group that is the seller for it, and the gateway's image, video, embedding and
+    // rerank models are not models a Session can hold a conversation on), and every row pins
+    // `openai-chat` with the endpoint inlined, like the other gateways AgentHub has no
+    // first-party client for.
+    // The console's API-key page sits behind a login and could not be read from here, so
+    // apiKeyUrl points at the vendor's document page for the key instead.
+    // https://cloud.tencent.com/document/product/1823/130090 (API key),
+    // https://cloud.tencent.com/document/product/1823/130051 (model list)
+    id: "tokenhub",
+    label: "Tencent TokenHub",
+    envKey: "OPENAI_API_KEY",
+    envBaseUrlKey: "OPENAI_BASE_URL",
+    apiKeyUrl: "https://cloud.tencent.com/document/product/1823/130090",
+    modelsUrl: "https://cloud.tencent.com/document/product/1823/130051",
+    gatewayBaseUrl: TOKENHUB_BASE_URL,
   },
   {
     // iFlytek Spark (讯飞星火). The OpenAI-compatible endpoint takes the console's APIPassword
@@ -3265,6 +3299,45 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     supportsVision: true,
     clientType: "openai-chat",
     baseUrl: HUNYUAN_BASE_URL,
+  },
+  // -- Tencent TokenHub. The same vendor's gateway rather than the group above (see that
+  // group's comment: its key and its console are its own), so these Hy rows live here while the
+  // hunyuan-* rows stay on the direct API. Windows are the model-list document's "maximum
+  // input" (the catalog's single window cannot also carry its separate maximum output), and the
+  // vision flags follow each row's documented capability line: the Hy4 pair reads images, Hy3
+  // does not. Only `hy4` has a rate that could be read — models.dev's generated Tencent
+  // TokenHub entry, whose USD figures are Tencent's round CNY ones at the 7:1 convention this
+  // catalog stores (cache hit 0.29 / input 5.84 / output 17.5 ¥ per million). `hy4-flash` and
+  // `hy3` are left unpriced rather than borrowed from a neighbouring model: the vendor's own
+  // price page is client-rendered and its price-list PDF is gone, so nobody here has read them.
+  // Re-read both when Tencent's price page can be read.
+  {
+    modelId: "hy4-flash",
+    displayName: "Hy4 flash",
+    provider: "tokenhub",
+    contextWindow: 983040,
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: TOKENHUB_BASE_URL,
+  },
+  {
+    modelId: "hy4",
+    displayName: "Hy4",
+    provider: "tokenhub",
+    contextWindow: 983040,
+    pricing: cny(0.29, 5.84, 17.5),
+    supportsVision: true,
+    clientType: "openai-chat",
+    baseUrl: TOKENHUB_BASE_URL,
+  },
+  {
+    modelId: "hy3",
+    displayName: "Hy3",
+    provider: "tokenhub",
+    contextWindow: 196608,
+    supportsVision: false,
+    clientType: "openai-chat",
+    baseUrl: TOKENHUB_BASE_URL,
   },
   // -- iFlytek Spark. The `model` values and the windows are the HTTP doc's own table (Ultra
   // 32K in / 32K out, Pro-128K 128K, Lite 8K; the Max pair the table also lists is left out —

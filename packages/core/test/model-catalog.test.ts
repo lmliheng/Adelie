@@ -72,6 +72,7 @@ describe("model-catalog", () => {
       "xiaomi",
       "baidu",
       "tencent",
+      "tokenhub",
       "iflytek",
       "volcengine",
       "qwen-pay-as-you-go",
@@ -393,6 +394,11 @@ describe("model-catalog", () => {
       // are recorded as unpriced rather than priced from a neighbouring model.
       "4.0Ultra",
       "pro-128k",
+      // Tencent TokenHub's own price page is client-rendered and its price-list PDF is gone, so
+      // these two rows were read as unpriced rather than guessed at (only the neighbouring
+      // `hy4` row has a rate, from models.dev's generated Tencent TokenHub entry).
+      "hy4-flash",
+      "hy3",
     ]);
     for (const m of MODEL_CATALOG) {
       if (m.pricing === undefined) {
@@ -1032,6 +1038,7 @@ describe("model-catalog", () => {
       "xiaomi",
       "baidu",
       "tencent",
+      "tokenhub",
       "iflytek",
       "volcengine",
     ]) {
@@ -1065,6 +1072,7 @@ describe("model-catalog", () => {
       "modelscope",
       "abliteration",
       "venice",
+      "tokenhub",
     ];
     for (const p of MODEL_PROVIDERS) {
       if (!GATEWAYS.includes(p.id)) {
@@ -1187,7 +1195,8 @@ describe("model-catalog", () => {
     // whose own id does not route — MiniMax M3 and DeepSeek deepseek-flash (no credentials) —
     // the custom group's preset, whose group implies no endpoint at all, and the five Chinese
     // first-party groups (Xiaomi MiMo, Baidu ERNIE, Tencent Hunyuan, iFlytek Spark and
-    // Volcengine Ark), whose endpoint AgentHub has no client for.
+    // Volcengine Ark), whose endpoint AgentHub has no client for, plus the Tencent TokenHub
+    // gateway, whose Hy rows pin the same way.
     const pinnedDirect = MODEL_CATALOG.filter((m) => m.provider === "deepseek" && m.baseUrl);
     expect(pinnedDirect.map((m) => m.modelId)).toEqual(["deepseek-flash"]);
     const customPresets = MODEL_CATALOG.filter((m) => m.provider === "custom");
@@ -1201,7 +1210,7 @@ describe("model-catalog", () => {
         ...MODEL_CATALOG.filter((m) => m.provider === "penguin-go"),
         ...MODEL_CATALOG.filter((m) => m.provider === "opencode-go"),
         ...MODEL_CATALOG.filter((m) =>
-          ["xiaomi", "baidu", "tencent", "iflytek", "volcengine"].includes(m.provider),
+          ["xiaomi", "baidu", "tencent", "iflytek", "volcengine", "tokenhub"].includes(m.provider),
         ),
       ]
         // A retired gateway row keeps its pin in the catalog but is not a preset.
