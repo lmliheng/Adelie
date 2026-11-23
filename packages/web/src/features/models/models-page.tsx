@@ -1683,26 +1683,29 @@ export function ModelsPage() {
           count={rows.filter((r) => r.provider === groupKeyFor).length}
           detectedEnvKeys={envKeysDetected}
           onClose={() => setGroupKeyFor(null)}
-          onSubmit={(key) => {
+          onSubmit={async (key) => {
             const target = groupKeyFor;
-            setGroupKeyFor(null);
             const affected = rows.filter((r) => r.provider === target);
-            if (affected.length === 0) return;
+            if (affected.length === 0) {
+              // Nothing to write (the group emptied under the dialog): closing is the whole answer.
+              setGroupKeyFor(null);
+              return null;
+            }
             const nextRows = rows.map((r) =>
               r.provider === target ? { ...r, apiKeyInput: key, clearApiKey: false } : r,
             );
-            // Success toast is shown inside persist (with "configured N" text); a refusal is
-            // raised here because this dialog closes on submit and has nothing left to draw it
-            // in (no false success report either — persist swallows the error, so a .then can't
-            // unconditionally report success).
-            void persist(
+            // Only a written key closes the dialog: a refused one leaves it standing with the
+            // typed key in place, and the reason is drawn there rather than in a toast (the
+            // success confirmation is the one persist shows once the write lands).
+            const outcome = await persist(
               nextRows,
               defaultModel,
               visionModel,
               S.models.groupKeyApplied(affected.length),
-            ).then((outcome) => {
-              if (!outcome.ok) toastError(outcome.reason);
-            });
+            );
+            if (!outcome.ok) return outcome.reason;
+            setGroupKeyFor(null);
+            return null;
           }}
         />
       )}
@@ -4078,7 +4081,13 @@ function ModelDialog({
 // Set a single API key for an entire provider group
 // ---------------------------------------------------------------------------
 
-/** Write the same API key to every model in a provider group (one account's key is usually valid for all of that provider's models). */
+/**
+ * Write the same API key to every model in a provider group (one account's key is usually valid
+ * for all of that provider's models). The dialog keeps itself open on a refusal: the sentence
+ * is about the key standing in this field and the button above it is the retry, so both stay
+ * where the reader can see them (a toast used to carry the reason away six seconds later, with
+ * the typed key already gone with the dialog).
+ */
 function GroupKeyDialog({
   provider,
   count,
@@ -4091,32 +4100,49 @@ function GroupKeyDialog({
   /** Env-fallback variables the server reported a value for (see detectedEnvKeys). */
   detectedEnvKeys: ReadonlySet<string>;
   onClose: () => void;
-  onSubmit: (apiKey: string) => void;
+  /** Writes the key onto the group: answers with the refusal to keep here, or null once written. */
+  onSubmit: (apiKey: string) => Promise<string | null>;
 }) {
   const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  /** Why the last attempt was refused, kept beside the field that asked. */
+  const [refusal, setRefusal] = useState<string | null>(null);
   const groupEnvKey = providerEnvFallbackKey(provider.id);
+  const submit = () => {
+    if (busy || !key.trim()) return;
+    setBusy(true);
+    // Any attempt makes the sentence about the last one stale, so it goes before this one can fail.
+    setRefusal(null);
+    void onSubmit(key.trim())
+      .then((reason) => {
+        // A written key closes the dialog from the page (it owns the rows); a refusal stays here.
+        if (reason !== null) setRefusal(reason);
+      })
+      .finally(() => setBusy(false));
+  };
   return (
     <Modal
       open
       title={S.models.groupApiKeyTitle(provider.label)}
-      onClose={onClose}
+      onClose={() => (busy ? undefined : onClose())}
       footer={
         <>
-          <Button size="sm" onClick={onClose}>
+          <Button size="sm" onClick={onClose} disabled={busy}>
             {S.common.cancel}
           </Button>
-          <Button
-            size="sm"
-            variant="primary"
-            disabled={!key.trim()}
-            onClick={() => onSubmit(key.trim())}
-          >
+          <Button size="sm" variant="primary" disabled={busy || !key.trim()} onClick={submit}>
             {S.common.confirm}
           </Button>
         </>
       }
     >
       <div className="space-y-2">
+        {refusal !== null && (
+          // The form's own words: a refusal is about the key still standing in the field below.
+          <NoticeStrip tone="danger" role="alert" className="rounded-md border px-2.5 py-2 text-xs">
+            <span data-slot="body">{S.common.refused(refusal)}</span>
+          </NoticeStrip>
+        )}
         <Input
           size="sm"
           label={S.models.apiKey}
