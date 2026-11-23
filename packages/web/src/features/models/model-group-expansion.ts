@@ -3,32 +3,30 @@
  *
  * The page stores the set of EXPANDED provider ids rather than collapsed ones: groups
  * are derived only after the model rows load (user-defined groups arrive with that
- * async response), so a collapsed-set default cannot express "everything collapsed
- * except the top group" without knowing every group id up front. An expanded set survives
- * late-arriving groups — anything not in it simply renders collapsed.
+ * async response), so an expanded set survives late-arriving groups — anything not in
+ * it simply renders collapsed, without every group id having to be known up front.
  *
- * The user's toggles persist per Project in localStorage (#224 follow-up: one group open
- * is the first-visit default, not a per-visit reset), mirroring the sidebar's persisted
- * group-collapse sets — a `penguin.…` key namespaced by projectId holding a JSON array
- * of ids. Unlike the sidebar sets, whose default IS the empty set, the default here is
- * non-empty, so "nothing stored / invalid" (fall back to the default) is distinguished
- * from a stored empty array (the user collapsed everything; honored as-is). Storage is
- * injectable (draft-cache.ts convention: vitest runs in Node, no localStorage); search
- * force-open below stays derived and never writes storage.
+ * Every group starts collapsed: the page used to open its first catalog group, and that
+ * stood in for "the one you probably want". Once the catalog grew past a handful of
+ * groups no single group answers that any more — whichever one leads the curated order
+ * is a guess about the user — and a non-empty default also made "nothing stored" and
+ * "the user collapsed everything" two states that had to be told apart. The default is
+ * the empty set now, exactly like the sidebar's own persisted group sets.
+ *
+ * The user's toggles persist per Project in localStorage, mirroring the sidebar's
+ * persisted group-collapse sets — a `penguin.…` key namespaced by projectId holding a
+ * JSON array of ids. "Nothing stored / no Project / corrupted storage" is therefore the
+ * same answer as a stored empty array: nothing expanded. Storage is injectable
+ * (draft-cache.ts convention: vitest runs in Node, no localStorage); search force-open
+ * below stays derived and never writes storage.
  */
-import { MODEL_PROVIDERS } from "@adelie/core/model-catalog";
 
 /**
- * Provider ids expanded on first visit (nothing persisted yet): the leading group of
- * MODEL_PROVIDERS and nothing else, so the page opens with exactly its top group
- * unfolded. Read from the catalog rather than named here — the curated order is what
- * decides which group leads, and a hard-coded id would quietly stop matching it.
- * Returns a fresh Set per call (React state must never share a module-level mutable
- * instance).
+ * Provider ids expanded on first visit (nothing persisted yet) — none. Returns a fresh
+ * Set per call (React state must never share a module-level mutable instance).
  */
 export function defaultExpandedProviders(): Set<string> {
-  const first = MODEL_PROVIDERS[0]?.id;
-  return new Set(first === undefined ? [] : [first]);
+  return new Set();
 }
 
 /**
@@ -81,7 +79,7 @@ export function serializeExpandedProviders(expanded: ReadonlySet<string>): strin
  * (absent, malformed JSON, non-array): the caller owns the fallback. A valid array
  * yields the set of its string elements (junk elements dropped), so a stored `[]`
  * round-trips to the empty set: "user collapsed everything" is a persisted choice,
- * never replaced by the default.
+ * kept as it was written rather than rewritten.
  */
 export function parseExpandedProviders(raw: string | null): Set<string> | null {
   if (raw === null) return null;
@@ -96,7 +94,7 @@ export function parseExpandedProviders(raw: string | null): Set<string> | null {
 
 /**
  * Reads a Project's persisted expanded set; no Project yet, nothing stored, or
- * corrupted storage falls back to the leading-group default. Stored ids of
+ * corrupted storage leaves every group collapsed. Stored ids of
  * since-deleted groups pass through unpruned — harmless, expansion is a pure
  * membership test and a group no longer rendered is never asked about.
  */

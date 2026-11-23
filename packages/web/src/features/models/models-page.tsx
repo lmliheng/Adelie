@@ -814,10 +814,9 @@ export function ModelsPage() {
   };
   const [query, setQuery] = useState("");
   /**
-   * Expanded vendor groups — hydrated from this Project's persisted set (DeepSeek-only
-   * on a first visit; every other group, including user-defined ones arriving with the
-   * async row load, starts collapsed), written back on every toggle so the user's
-   * choices survive a refresh. Searching force-opens the rendered groups without
+   * Expanded vendor groups — hydrated from this Project's persisted set (every group,
+   * user-defined ones included, starts collapsed), written back on every toggle so the
+   * user's choices survive a refresh. Searching force-opens the rendered groups without
    * touching this set (see model-group-expansion.ts).
    */
   const [expanded, setExpanded] = useState<Set<string>>(() => loadExpandedProviders(projectId));
@@ -1131,8 +1130,10 @@ export function ModelsPage() {
   };
 
   /**
-   * Import-mode landing from the add-group dialog: one table PUT with the appended rows,
-   * then the new group is opened so the result is visible immediately. The answer is
+   * Import-mode landing from the add-group dialog: one table PUT with the appended rows.
+   * No expansion preference is written for the new group — it starts collapsed like every
+   * other group, and a preference invented here would outlive the import as a choice the
+   * user never made. The answer is
    * persist's own verdict, not a boolean: the dialog stays up with its fields when the save
    * was refused, so it is also the card that carries the reason (see `groupImportRefusal`).
    *
@@ -1148,7 +1149,6 @@ export function ModelsPage() {
    */
   const importGroup = async (
     nextRows: RowState[],
-    name: string,
     added: number,
     skipped: number,
   ): Promise<WriteOutcome> => {
@@ -1165,12 +1165,6 @@ export function ModelsPage() {
     if (!outcome.ok) {
       setRows(before);
       return outcome;
-    }
-    if (!expanded.has(name)) {
-      const next = new Set(expanded);
-      next.add(name);
-      setExpanded(next);
-      saveExpandedProviders(projectId, next);
     }
     setAddGroupOpen(false);
     return outcome;
@@ -2094,12 +2088,7 @@ function AddGroupDialog({
    * Import landing: persist the appended rows. A refused save answers `ok: false` and leaves the
    * dialog open, so its reason has somewhere to be drawn (`groupImportRefusal`).
    */
-  onImport: (
-    nextRows: RowState[],
-    name: string,
-    added: number,
-    skipped: number,
-  ) => Promise<WriteOutcome>;
+  onImport: (nextRows: RowState[], added: number, skipped: number) => Promise<WriteOutcome>;
 }) {
   const [name, setName] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
@@ -2224,7 +2213,7 @@ function AddGroupDialog({
       // The verdict decides the dialog's fate: a written import closes it (the landing above
       // does that), a refused one keeps it up, so the reason goes into the slot this dialog
       // already uses for its own failures — under the button that retries it.
-      const outcome = await onImport([...rows, ...built.rows], n, built.added, built.skipped);
+      const outcome = await onImport([...rows, ...built.rows], built.added, built.skipped);
       const refusal = groupImportRefusal(n, outcome);
       if (refusal !== null) setError(refusal);
     } catch (e) {

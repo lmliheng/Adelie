@@ -17,7 +17,7 @@ Each Project has its own model table: the models its conversations can use, grou
 In the sidebar, select **Models**. Models are listed in groups, one per provider.
 
 - **Groups.** Built-in groups follow the order in [Built-in provider groups](#built-in-provider-groups). Groups you create follow them, sorted by name. A built-in group with no models is hidden; **Custom** is always shown.
-- **Open and close groups.** Select a group's header to open or close it. On your first visit only the TokenDance group is open. The browser remembers which groups you opened, per Project.
+- **Open and close groups.** Select a group's header to open or close it. On your first visit all groups are closed. The browser remembers which groups you opened, per Project.
 - **Reorder groups.** Drag a group's header to move it. The order is saved in this browser, per Project, and the model picker in the chat uses the same order. Dragging is not available on touch screens or while searching.
 - **Search.** Type in **Search models: id / name / provider** to show only the matching models. While you search, every matching group is open.
 
