@@ -3284,6 +3284,98 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
 
 - 源码 1 + 新 spec 1 + changelog 2 `d1109488a3be9b7dbdd1c224f2738339189bd036`；台账（7.187 那一条、上表那一行、本节）随本文件另起一笔。
 
+- [x] **7.188 模型库的分组一律从折叠开始**（上游 `02b871d25` `#1787`，**2026-11-24 第三百一十三轮**
+      落地，提交见「已完成的轮次」；`packages/web` 2 个源码文件（`features/models/model-group-expansion.ts`
+      的 `defaultExpandedProviders()` 改回空集合、整段注释按新默认值重写；`models-page.tsx` 的导入落地
+      不再为新分组写展开偏好，`importGroup` 因此掉了一个参数，`AddGroupDialog` 的 `onImport` 类型与
+      调用点一起跟上）＋ 1 个单测改写（仍 13 条）＋ 1 个新 spec（2 条）＋ 两份文档各一句 ＋ changelog
+      一对 —— **不碰接口、无新依赖、没有新文案**）：首次访问时展开目录里第一个分组、以及导入后顺手
+      展开新分组，都是用户没做过的选择；默认值现在是空集合，"什么都没存 / 没有 Project / 存储坏了 /
+      存了空数组"因此是同一个答案。见「第三百一十三轮」一节。
+
+## 第三百一十三轮：模型库的分组一律从折叠开始（2026-11-24，条目 7.188）
+
+**开工**：`git status --short` 只有 `packages/desktop/build/**` 那 18 个迁移清理留下的删除（第三百零八轮
+已查明、不属于任何在跑的一轮）；`git fetch origin && git merge --ff-only origin/main` → Already up to
+date（本地与远端都是 `4c904da5f`，第三百一十一轮那笔台账）。**开工之后**另一条线（`self_evolution`
+那个长会话）在同一棵树上改 `packages/desktop/src/pet-window.ts`、`packages/web/src/features/pet/pet-page.tsx`
+与 `packages/web/e2e/pet.spec.mjs` —— 按共存口径不碰、不 stash，本轮只按 pathspec 提交自己那八个文件。
+
+**让号**：收尾推远端时被退回 —— 另一条线先推了 `d1109488a` + `be1176745`（条目 7.187「频道里邀请成员
+被拒时，选择器留着，原因留在那位候选人的行下面」、第三百一十二轮）。本轮因此让号：条目 7.187 与
+第三百一十二轮都归它，这一条改记 **7.188 / 第三百一十三轮**。另外它那条 spec 也用了一次
+`/root/adelie-fork-data/r312-before` 这个一次性数据根，与我这边的探测同名前缀、不是同一个实例。
+
+**rebase 之后的重跑**：主工作树里另一条线的桌宠改动**又**在途（`features/pet/figures.ts` 还缺
+`picture` 那张图、`appearance-section.tsx` 的 `STYLE_LABELS` 还没跟上），所以直接在原地跑 web 的
+`typecheck` 会挂在这两处、与本笔无关。为了把结论钉在**提交进远端的那棵树上**，另开了一个 detached
+worktree（`/root/check-312`，`git worktree add --detach HEAD`）并建好 core / amsp / hmr / server，
+在那里跑：六包 `typecheck` **`EXIT=0`**（六个 `Done`，`ifaces.json unchanged` 203 接口 / 627 类型）、
+web 单测 **355 文件 / 3998 通过 + 2 跳过**（与上面逐项相同）。worktree 用完即删。
+
+**为什么是这一条**：待办里最靠前的未勾选项全部卡住（2.2c 剩下的三件分别等桌面壳 / 发布动作、
+3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 等促销搬家拍板、5.10 要接受
+`mermaid` 这个新依赖），于是照上一轮末尾的办法再从上游挑可做的一笔。上游 `02b871d25`（#1787）
+改的正是上一轮（7.186）刚碰过的模型页，`model-group-expansion.ts` 与本树逐字相同、只差一行包名，
+一轮做得完。
+
+### 做了什么
+
+- `packages/web/src/features/models/model-group-expansion.ts`：`defaultExpandedProviders()` 返回空集合
+  （原来返回 `MODEL_PROVIDERS[0]` 那一个，本仓是 `tokendance`）。文件头整段重写：为什么不再挑一个
+  分组默认展开（目录长到二十几个分组之后「第一个」不再代表「你大概想要的」；非空默认还让「什么都没存」
+  与「用户全折叠了」成为两种要分开处理的状态），以及默认就是空集合之后与侧栏自己的分组集合同一条规则。
+  读存储那一层的注释同步改成「没有 Project / 没存 / 存储坏了都等于全部折叠」。
+- `packages/web/src/features/models/models-page.tsx`：状态那段的注释按新默认值改；导入落地
+  （`importGroup`）不再为新分组写展开偏好 —— 那个偏好会以「用户做过的选择」的样子留在已存集合里。
+  它因此不再需要分组名参数，`AddGroupDialog` 的 `onImport` 类型与调用点一起改（连接仍由收集它的
+  那个对话框写）。
+- `packages/web/test/model-group-expansion.test.ts`：跟上游改写（仍是 13 条）—— 默认空集合、首次
+  访问不写存储、搜索临时展开后清空回到折叠、`toggleExpandedProvider` 用显式集合起步、损坏存储与
+  没存/没 Project 同一个答案。
+- 新 spec `packages/web/e2e/models-group-expansion.spec.mjs`（2 条）：真服务端上首次访问 0 个展开、
+  用键盘展开 DeepSeek 后重载仍展开且存储是 `["deepseek"]`；搜索展开 OpenRouter 但不写存储、清空后
+  收回；另一个端口上的临时 provider 供「导入模型」用，导入出来的分组是折叠着到的、存储仍是
+  `["deepseek"]`，点开它能被记住。
+- `packages/docs/content/models.{zh,en}.md` 各一句：「首次访问时所有分组都是折叠的」（原来写「只有
+  TokenDance 分组是展开的」）。
+- changelog 一对 `changelog/unreleased/2026-11-24-model-groups-start-collapsed.{md,zh.md}`。
+
+**有意没落**：上游同一笔里 e2e 用的 `data-slot="group"` / `data-slot="name"` / `data-slot="fold"`
+选择器与「收藏 / 其余 N 个分组」折叠条是本树没有的（那是上游后来的另一批改动），所以新 spec 按本树
+的 `section button[aria-expanded]` 结构写，不引入那些标记；`.agents/`（上游技能文档）按 2.1c / 2.5
+的口径不动。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 /
+  627 类型）。
+- `oxlint` 本轮 4 个源码 / 用例文件 **0 警告 0 错误**；`prettier --check` 八个改动文件（含两份文档与
+  changelog 一对）干净；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core 70 文件 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** ·
+  server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过）—— 与上一轮基线逐项相同（本笔改的是既有
+  用例、未增条数）。
+- **反证（单测）**：把 `model-group-expansion.ts` 换回 `HEAD` 那一版、只跑
+  `test/model-group-expansion.test.ts` → **7 failed / 6 passed**；换回本笔 → **13 全过**。
+- **本轮主证据（真服务端 + 真浏览器，改前 / 改后两态，同一套探针）**：只重建 web 产物，得到
+  `r312/after-dist`（本笔）与 `r312/before-dist`（两个源码文件退回 `HEAD`），两个一次性数据根
+  `/root/adelie-fork-data/r312-{after,before}` 分别起在 `localhost:8990` / `8991`
+  （`ADELIE_WEB_DIST` 指向各自的产物、`ADELIE_SEED_ADMIN_PASSWORD` + `POST /api/auth/login` 拿 cookie），
+  `/usr/bin/chromium` 上的探针逐项量 26 个分组头：**改前**首次访问 **1 个展开（TokenDance）**、
+  存储仍是 `null`；**改后**首次访问 **0 个展开**、存储 `null`。两态相同的那几项：点 DeepSeek 后展开并写
+  `["deepseek"]`（改前是 `["tokendance","deepseek"]`）、重载仍是它、搜索 `openrouter` 时该组展开且
+  只剩 1 个分组、清空后收回、存储全程不被搜索改写；console 各 **0 error**、**无一条 ≥400**；
+  截图 `r312/{before,after}/*-first-visit.png` 与 `*-toggled.png` 肉眼看过。
+- 新 spec **2 passed（6.7 s）**；相邻回归 `models-assign-user-key` 3 + `models-delete-model` 2 +
+  `models-group-import-refusal` 2 + `models-test-refusal` 2，合计 **9 passed（35.5 s）**。
+- 端口只用 8990 / 8991 / 8992 / 8933（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r312-*`，探针、两态产物与截图都在 scratchpad 的 `r312/` 下（`packages/*/dist`
+  与 `test-results/` 是构建 / 测试产物，未 `git add`）。
+
+### 提交
+
+- 本笔 `69ba6dee8`（8 个文件，+246 −75），台账一笔（本文件）。
+
 ## 第三百零九轮：命令只在用户设了 `NO_COLOR` 时才丢颜色（2026-11-24，条目 5.63）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b5de56be9`；`git fetch origin && git merge --ff-only
@@ -6309,6 +6401,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.186 | **模型库的平台同步被拒时，原因留在那个分组的表头下面**（**2026-11-24 第三百一十轮**落地；`packages/web` 1 个新模块（`features/models/platform-sync-refusal.ts`：`platformSyncFailure` 把撤销 key 那条交给授权流程、其余经 `refusalText` 留一句）＋ 1 个源码文件（`models-page.tsx`：`syncPlatformModels(providerId)` 记下提问的分组，句子画在该分组表头与模型卡之间的 `NoticeStrip`（`role="alert"`、危险色调）里，折叠时也看得见；分组被搜索滤掉时随之清掉）＋ 1 个单测（3 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「0 条 alert、通知区 1 条、七秒后消失」，改后「alert 1 条、通知区 0 条、七秒后同一句、按钮仍可再按」，反证把源码退回 `HEAD` 重建后同一 spec **2 failed**）· 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过；本笔单独验证时 1458，与并行落地的 5.63 合并后 +2）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过；基线 354 / 3995，**+1 文件 / +3 条即本笔**）· **新 spec 2 passed（11.8 s）** · **相邻回归 9 passed（34.1 s）**（`models-group-key-refusal` 2 + `models-save-refusal` 3 + `models-sync-order` 2 + 本笔 2）· **两态探针**：`alertCount 1`、`alertUnderHeader true`、`toastButtons 0`、七秒后同一句，截图 `r310/shots/refused.png` 肉眼看过；console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条 · 端口只用 8970–8975，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-*` | `45556f2b6` |
 | 2026-11-24 | 发布 | **发 v0.8.1 并换装现网**（把 v0.8.0 之后攒下的收成正式版：Venice AI（7.183）与腾讯 TokenHub（7.185）两个分组换掉字母牌、桌宠第二条形象改画成「蓝色大肥鱼」并改名（7.184）、「被拒的原因留在按下去的地方」在模型页补两处（7.182 分组密钥框、7.186 平台同步）、命令只在用户设了 `NO_COLOR` 时才丢颜色（5.63）；发布提交 `69e085e3c`（父 `ad7e5f8ee`），`github.com` 转回可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.1` = 对象 `baf43a24f…`；门禁在标签检出 `/root/rel-081` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 test 脚本的包全过、**合计 11054 条通过**）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.1（`PUBLISH-ALL-DONE`）；GitHub Release **id `455961504`** 14 件 763 MB 逐件核 digest 后发布为 latest；3003 换上 v0.8.1 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.1、旧前端先拷回、瞬时单元 `adelie-live-restart-081` 延后重启装上 `index-B5Bwm2BR.js` 并自核验） | 发布轮，逐项见「第三百一十一轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.1、core 戳 `BUILD_DATE 2026-11-23 / BUILD_COMMIT 69e085e3c…`、`GET /` 200、匿名路由 401、通知两张表在库里；现网核验写 `rel-081-live-restart-verify.txt`；`releases/latest` = v0.8.1 | `69e085e3c`（发布） |
 | 2026-11-24 | 7.187 | **频道里邀请成员被拒时，选择器留着，原因留在那位候选人的行下面**（**2026-11-24 第三百一十二轮**落地；`packages/web` 1 个源码文件（`features/company/channel-header.tsx`：`InvitePicker` 自己拿 `refusal {principal,text}`，`onPick` 改成交回「服务端的原话 / 写入成功的 `null`」，每次尝试先清上一次的句子、成功才关框并清搜索词，被拒时句子用 `role="alert"` + `toneInk.danger` 画在那位候选人的行下面；选择器按频道 id 作键）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在频道表头的最后一处 —— 「邀请」按一下选择器就关、写入随后才开始，被拒时原因只落在一条六秒就走、且浮在框外的通知里，通知一消失既没有原因、也没有刚点的那一行可以重试 | 六包 `typecheck` `EXIT=0`（`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件、新 spec 与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test `EXIT=0`、0 失败：core **70 文件 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **355 文件 / 3998 + 2 跳过** · **新 spec 2 passed（13.5 s）**（`packages/web/e2e/channel-invite-refusal.spec.mjs`，服务端 8975 + mock 8971 + 一次性数据根 `/root/adelie-fork-data/r312-before`）：被拒时选择器仍开着、`role="alert"` 逐字是服务端原话、按几何量过它在那位候选人的行下面且在框内、通知区不含那句话、POST 只发过一条、七秒后同一句仍在、服务端名册没变，Escape 关掉再开干净、解除拦截后从同一行重试落地；成功路径框关、成员数变「3 人」、重开时候选里没有他 · **反证**：改前源码 + 改前产物跑同一份 spec → 第一条 **failed**（框里 `getByRole('alert')` `element(s) not found`），放回后重建 **2 passed** · **两态探针**：改前 `pickerOpen 0`、框内 alert 0、原话只在通知区、七秒后通知也空了；改后 `pickerOpen 1`、alert 1 逐字、通知区只有内测提示、七秒后仍在（截图 `r312/{before,after}/…-2-refused.png` 肉眼看过）· **相邻回归**：本笔 2 + `channel-join-refusal` 2 + `channel-refusal` 3 = **7 passed（33.1 s）** · 端口只用 8975 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d1109488a3be9b7dbdd1c224f2738339189bd036` |
+| 2026-11-24 | 7.188 | **模型库的分组一律从折叠开始**（上游 `02b871d25` `#1787` 移植，照改动落、不是合分支；**2026-11-24 第三百一十三轮**落地；`packages/web` 2 个源码文件（`features/models/model-group-expansion.ts`：`defaultExpandedProviders()` 返回空集合、文件头按新默认值重写并写明「为什么不再挑一个分组默认展开」；`models-page.tsx`：导入落地不再为新分组写展开偏好，`importGroup` 少一个参数，`AddGroupDialog` 的 `onImport` 类型与调用点跟上）＋ 1 个单测改写（仍 13 条）＋ 1 个新 spec（2 条）＋ `packages/docs/content/models.{zh,en}.md` 各一句 ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；**改前实测首次访问 1 个分组展开（TokenDance）、改后 0 个**，两态「点开→写 ["deepseek"]→重载仍在」「搜索临时展开且不写存储」「清空回到折叠」一致） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · `prettier --check` 8 文件干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过，与基线逐项相同）· **反证（单测）**：源码退回 `HEAD` → 该文件 **7 failed / 6 passed**，放回 → **13 全过** · **两态探针（真服务端 ×2 + `/usr/bin/chromium`）**：改后 8990 首次访问 **0 展开 / 存储 null**，改前 8991 首次访问 **1 展开（TokenDance）/ 存储 null**；两态 console 各 0 error、无一条 ≥400；截图 `r312/{before,after}/*.png` · 新 spec **2 passed（6.7 s）**、相邻回归 9 passed（35.5 s）· 端口只用 8990 / 8991 / 8992 / 8933（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r312-*` | `69ba6dee8` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
