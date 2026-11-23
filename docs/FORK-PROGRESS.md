@@ -3201,6 +3201,15 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       TokenHub 这一组昨天（7.182）加进来时是字母牌「T」（和自建分组一样），而且紧挨着的 `tencent`
       画的是混元圆环，两行看着像一家。见「第三百零八轮」一节。
 
+- [x] **7.186 模型库的平台同步被拒时，原因留在那个分组的表头下面**（**2026-11-24 第三百一十轮**落地，
+      提交见「已完成的轮次」；`packages/web` 1 个新模块（`features/models/platform-sync-refusal.ts`：
+      `platformSyncFailure` 交回「打开授权流程」或「一句原因」，撤销 key 那条不留句子）＋ 1 个源码文件
+      （`models-page.tsx`：`syncPlatformModels` 收下分组 id，原因画在该分组表头与模型卡之间的 `NoticeStrip`
+      里，折叠时也看得见；分组被搜索滤掉时句子随之清掉）＋ 1 个单测（3 条）＋ 1 个新 spec（2 条）+
+      changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在
+      模型页的最后一处 —— 分组表头的「同步」按下后只弹一条六秒通知，通告消失后屏幕上没有任何痕迹。
+      见「第三百一十轮」一节。
+
 ## 第三百零九轮：命令只在用户设了 `NO_COLOR` 时才丢颜色（2026-11-24，条目 5.63）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b5de56be9`；`git fetch origin && git merge --ff-only
@@ -3253,7 +3262,7 @@ origin/main` 前进到 `ff863f2be`（第三百零八轮 TokenHub 图标那笔）
   `tool_call_output` 的 `output` 字段。
 - 端口只用 8980 / 8981 / 8982 / 8984（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
   `/root/adelie-fork-data/r309-nc-{unset,plain,before}`，探针 spec / playwright 配置 / 改前产物留底都在
-  scratchpad 的 `r309/` 下（`packages/web/test-results/` 是产物，未 `git add`）。
+  scratchpad 的 `r310/` 下（`packages/web/test-results/` 是产物，未 `git add`）。
 
 ### 没做 / 留着
 
@@ -3268,6 +3277,73 @@ origin/main` 前进到 `ff863f2be`（第三百零八轮 TokenHub 图标那笔）
 ### 提交
 
 - 功能一笔（源码 2、用例 1、docs 2、changelog 2）；台账（5.63 那一条、上表那一行、本节）随本文件另起一笔。
+
+## 第三百一十轮：平台同步被拒时，原因留在那个分组的表头下面（2026-11-24，条目 7.186）
+
+**开工**：`git status --short` 只显示 `packages/desktop/build/**` 那 18 个迁移清理留下的删除（第三百零八
+轮已查明、不属于任何在跑的一轮），分支 `main`，本地与远端 `main` 都是 `ff863f2be`（第三百零八轮那笔台账），
+`git fetch origin && git merge --ff-only origin/main` → Already up to date。
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 **2.2c**，它「还差什么」四条这一轮一条都动不了（写侧
+在桌面壳、部署单元等发布动作、桌面壳自己的开关同前，`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c
+留到发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖。
+第 7 节到 7.185 已全勾，于是接着第三百零五轮（7.182）在那节末尾点名的候选做：**同页 `syncPlatformModels`
+的失败仍是通知**——写的是「平台同步」这个多步动作、不是一张表单里的一处输入，当时单列了一条。
+
+**改前实测**（改前产物 + 一次性数据根 `r309-before`）：给 Penguin Go 分组种一把 key（表 PUT，让表头上
+出现「同步」），按下去时把 `POST …/platform-auth/sync` 按 500 交回 —— 页面上 `role="alert"` **0 条**、通知
+区 1 条、七秒后通知区 0 条，表头下没有任何痕迹。
+
+**做了什么**：
+
+- `packages/web/src/features/models/platform-sync-refusal.ts`（新）：`platformSyncFailure(error)` 交回
+  `{ kind: "authorize" }`（`platform_reauthorization_required`，页面照旧打开授权流程）或
+  `{ kind: "refused", text }`（其余一切走 `refusalText`，与全仓的拒绝槽位同一条规则）。
+- `packages/web/src/features/models/models-page.tsx`：`syncPlatformModels(providerId)` 每次尝试先清掉上次
+  的句子，被拒时记 `{ providerId, text }`；句子用 `NoticeStrip`（`role="alert"`、危险色调、
+  `S.common.refused(...)` 引导句）画在该分组表头与模型卡之间，折叠与否都看得见（动作在表头上）。分组被
+  搜索滤掉时 `useEffect` 把句子清掉 —— 它的宿主面与重试按钮都不在屏幕上了。成功路径不变。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）。
+- `npx oxlint` 4 个改动文件 **0 警告 0 错误**；5 个改动文件与 changelog 一对 `prettier --check` 干净
+  （首跑 3 个文件 `--write` 一次，复检通过；`*.md` 不在 prettier 范围）；`git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 + 6 跳过**（本笔单独时 1458；收尾与并行落地的
+  5.63 合并后 +2，见下）· ui **133 / 1117** · cli **39 / 566** ·
+  server **218 / 3176 + 6 跳过** · web **355 文件 / 3998 + 2 跳过**（基线 354 / 3995，**+1 文件 / +3 条即
+  本笔**的单测）。
+- **真服务端 + 真浏览器新 spec 2 passed（11.8 s）**（`packages/web/e2e/models-platform-sync-refusal.spec.mjs`，
+  服务端 8975 + mock 8971 + 一次性数据根 `/root/adelie-fork-data/r309-final`）：① `POST …/platform-auth/sync`
+  被按 500 交回 → 句子在表头下、逐字「操作被拒绝：服务器内部错误，请稍后重试。」、通知区 0 条、POST 只发过
+  一条、七秒后仍在、按钮仍可再按；② 解除拦截并回一份 200 的「表没变」→ 按同一个按钮，句子消失、通知写
+  「预置模型已是最新」。
+- **反证（同一份 spec，改前源码 + 改前产物）**：`models-page.tsx` 退回 `HEAD`、新模块移出、重建 web →
+  **2 failed**（两条都停在 `getByRole('alert')` 的 `element(s) not found`）；放回、重建后复跑 **2 passed**。
+- **两态探针（真服务端 + 真浏览器）**：`r310/probe.mjs` 量到 `alertCount 1`、句子逐字、`alertUnderHeader true`、
+  `toastButtons 0`、七秒后同一句；截图 `r310/shots/refused.png` 肉眼看过 —— 浅红条压在 Penguin Go 表头与
+  模型卡之间，页面上没有别的通知条。console 只有既有的 `/machines` **403**（非管理员账号）与本轮故意造的
+  500，pageerror 0 条。
+- **相邻回归（真浏览器，一个进程跑四份 spec）**：`models-group-key-refusal` 2 + `models-save-refusal` 3 +
+  `models-sync-order` 2 + 本笔 2 = **9 passed（34.1 s）**。
+- 本笔的验证是在 `ff863f2be` 的树上做的；收尾时远端多了并行落地的 5.63（`6cf7a014d`，core 的
+  `NO_COLOR` +2 条用例），`rebase` 到它之上后重建 core、重跑六包 `typecheck` 与 core 全量
+  **1460 / 6 跳过、rc=0**，其余包不受它影响。
+- 端口只用 8970–8975 与 8971（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r309-{after,before,probe,e2e,final}`，探针 / 截图 / 改前源码留底都在 scratchpad 的
+  `r310/` 下（`packages/*/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 同页其余 `toastError` 分支这一轮逐一读过，留下的都是「没有宿主面」的：整批进程动作、菜单行、读失败与
+  更新流程；没有顺手改。
+- 第 7 节到这里 7.186；若下一轮仍无条目可做，从这些「无宿主面」之外的读写对里再挑。
+
+### 提交
+
+- 源码 2 + 单测 1 + spec 1 + changelog 2 `45556f2b6`；台账（7.186 那一条、上表那一行、本节）随本文件
+  另起一笔。
 
 ## 第三百零八轮：腾讯 TokenHub 分组画它自己的标记（2026-11-24，条目 7.185）
 
@@ -6111,6 +6187,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.184 | **桌宠的第二个形象改画成「蓝色大肥鱼」：更胖更圆、大眼，名字也跟着改**（**2026-11-24 第三百零七轮**落地；`packages/web` 4 个改动文件（`features/pet/whale.tsx` 整幅重画：身子由半径约 30 的圆改成 72×67 的胖圆、两只大眼取代独眼、一大块浅色肚子、尾鳍由两片尖角改成一整片带凹口的；`lib/strings.ts` 与 `lib/strings-en.ts` 那一行说明与选项名；`e2e/pet-figure.spec.mjs` 的注释）+ `test/icon-registry.test.ts` 路径条数 7 → 6 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24 发来「蓝色大肥鱼」的资料图（DeepSeek 图标的社区二创，配文「蓝色大肥鱼形象」），三条路里选了「把现有那条鱼改画成大肥鱼本尊」；**形象在存储里的名字仍是 `whale`**，改名会让选过它的桌面退回企鹅，理由写进文件头注释 | `pnpm --filter @adelie/web typecheck` **`EXIT=0`** · `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净、`git diff --check` 干净 · `packages/web` `vitest run --maxWorkers=2` **354 文件 / 3995 passed / 2 跳过、rc=0**（中途 `test/icon-scale.test.ts` 真红一条：嘴的描边被顺手写到 2.4，允许的只有 1 / 1.5 / 1.7 / 2 / 2.2，改回 2.2 后全绿） · 三个直接相关用例 `pet-figure` 10 + `icon-registry` 3 + `install-scope` 20 **33 passed** · **真浏览器端到端 1 passed（2.9 s）**（当前源码 `vite build --outDir /tmp/fatfish-e2e/dist` + 仓库里已建的服务端，端口 8941、数据根 `/root/adelie-fork-data/fatfish-a`）：`/pet` 默认画企鹅 → 另一个窗口写 `penguin.petFigure=whale` → 桌宠窗口不刷新就换成这条鱼 · **肉眼看过**（esbuild + `renderToStaticMarkup`，72 / 148 / 260 像素、浅深两种桌面、三种瞳孔偏移）`/root/Adelie_develop/fatfish-preview.png` · **没验的**：设置里那一行仍只在桌面壳自己的窗口里出现（浏览器伪造不了），没装进现网，随下一版 0.8.1 发出 | `cdb4b31aa` |
 | 2026-11-24 | 7.185 | **腾讯 TokenHub 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零八轮**落地；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS` 新增 `tokenhub` 一条，三条 `evenodd` 路径，`fillRule`/`clipRule` 一并保留，颜色走 `currentColor`，紧跟 `tencent` 之后）+ `test/logos.test.ts` 1 条新用例 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24「模型库加服务商图标」—— 数完 24 个分组，只有 `tokenhub` 没查过品牌资产（昨天 7.182 加进来时是灰底字母牌「T」，同排别的服务商都画各自的标记）；标记取自 `@lobehub/icons` 6.20.0 以 `TencentCloud` 发布的那一枚（腾讯云云朵标），**三条路径与原文逐字节一致**（脚本逐条比对）—— 用腾讯云的标而不是 TokenHub 自有的：它的产品页与控制台对这台机器只回验证码壳（HTTP 200、无 logo），而这一组的 key 与控制台本就挂在腾讯云账号下、用腾讯云的标正好与同行的混元圆环区分开；开工时这台迁移机缺 `git`/`pnpm`/`make`/`g++` 与浏览器运行库，一并补回 | `packages/ui` `tsc --noEmit` **rc=0** · `npx oxlint` 两个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/ui` `vitest run --maxWorkers=2` **133 文件 / 1117 passed、rc=0**（基线 1116，**+1 即本笔**；`logos.test.ts` 6 条） · **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup` 把 `tokenhub` / `tencent` / `anthropic` / `venice` / `iflytek` / `baidu` 六个图标一起出图（96px 格、64px 图标、2 倍像素密度），截图 `/root/Adelie_develop/tokenhub-logo-preview.png` —— `tokenhub` 是实心的腾讯云云朵标，与紧挨的 `tencent`（混元圆环）明显两个形状、也不是字母牌 · **没做的**：没起 7372 画廊在真界面上点开看，也没装进现网 —— 随下一版（0.8.1）发出 | `9b25a8d64` |
 | 2026-11-24 | 5.63 | **命令只在用户设了 `NO_COLOR` 时才丢颜色**（**2026-11-24 第三百零九轮**落地；`packages/core` 2 个源码/用例文件（`environment/tools/command/session-manager.ts` 的 `HARDENED_ENV` 去掉 `NO_COLOR: "1"` 并改两段注释；`test/exec-session.test.ts` 那条「FORCE_COLOR 被移除、NO_COLOR=1 才成立」改成 `it.each([undefined, "", "enabled"])` 三条，要求子进程分别读到 `missing` / 空 / `enabled`，三条里 `FORCE_COLOR` / `CLICOLOR_FORCE` 都必须为空）＋ `packages/web/src/lib/strip-ansi.ts` 文件头注释 ＋ `packages/docs/content/configuration.{zh,en}.md` 环境表一行 ＋ changelog 一对 —— **无新依赖、不碰接口、没有新文案**）：上游 `850062aaa` `#1745` 移植。`exec_command` / `input_command` 的子进程过去无条件带 `NO_COLOR=1`，用户想让它出颜色只能往保险柜里塞 `FORCE_COLOR`；现在宿主有就继承、没有就不给，保险柜照旧生效。`TERM=dumb` / `PAGER` / `GIT_EDITOR` 一个没动，`FORCE_COLOR` / `CLICOLOR_FORCE` 仍照旧移除（`#102` 不回退） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 3 个改动文件 **0 警告 0 错误** · 3 个源码/用例文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 + 6 跳过**（基线 1458，+2 即本笔）· ui **133 / 1117** · cli **39 / 566** · server **216 / 3176 + 6 跳过** · web **354 / 3995 + 2 跳过** · **真服务端两条腿**（mock 8981 + 真服务端 + `/usr/bin/chromium`，提示词 `files rewrite test printenv NO_COLOR || echo NC_UNSET`，断言读 Trace 里 `tool_call_output.output`）：宿主 `env -u NO_COLOR` 起的服务端（8982）→ 命令看到 **`NC_UNSET`**；宿主带 `NO_COLOR=1`（8980）→ 命令看到 **`1`**（照常继承）· **反证两层**：改前源码跑单测 **3 failed / 45 passed**（三条 `preserves NO_COLOR=…`），放回后 **48 全过**；改前 core 产物（8984 + `r309-nc-before` + `env -u NO_COLOR`）跑同一条期望 **1 failed**，收到 `"1"` · 踩过的坑：Adelie 给 agent 的 shell 自己就带 `NO_COLOR=1`，「宿主没设」必须 `env -u NO_COLOR`；断言不能读整份 Trace（命令文本里就写着 `NC_UNSET`）· 端口只用 8980 / 8981 / 8982 / 8984（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-nc-*`，探针与产物留底在 scratchpad `r309/`（`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包 | 见本节 |
+| 2026-11-24 | 7.186 | **模型库的平台同步被拒时，原因留在那个分组的表头下面**（**2026-11-24 第三百一十轮**落地；`packages/web` 1 个新模块（`features/models/platform-sync-refusal.ts`：`platformSyncFailure` 把撤销 key 那条交给授权流程、其余经 `refusalText` 留一句）＋ 1 个源码文件（`models-page.tsx`：`syncPlatformModels(providerId)` 记下提问的分组，句子画在该分组表头与模型卡之间的 `NoticeStrip`（`role="alert"`、危险色调）里，折叠时也看得见；分组被搜索滤掉时随之清掉）＋ 1 个单测（3 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「0 条 alert、通知区 1 条、七秒后消失」，改后「alert 1 条、通知区 0 条、七秒后同一句、按钮仍可再按」，反证把源码退回 `HEAD` 重建后同一 spec **2 failed**）· 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过；本笔单独验证时 1458，与并行落地的 5.63 合并后 +2）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过；基线 354 / 3995，**+1 文件 / +3 条即本笔**）· **新 spec 2 passed（11.8 s）** · **相邻回归 9 passed（34.1 s）**（`models-group-key-refusal` 2 + `models-save-refusal` 3 + `models-sync-order` 2 + 本笔 2）· **两态探针**：`alertCount 1`、`alertUnderHeader true`、`toastButtons 0`、七秒后同一句，截图 `r310/shots/refused.png` 肉眼看过；console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条 · 端口只用 8970–8975，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-*` | `45556f2b6` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
