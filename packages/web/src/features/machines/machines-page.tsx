@@ -37,13 +37,12 @@ import {
   PageHeader,
   SearchInput,
   Skeleton,
-  toastError,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { useProject } from "../../state/project";
 import { useLocale } from "../../state/locale";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { useDocumentTitle } from "../../lib/use-document-title";
 import { formatDateTime, formatMessageTime } from "../../lib/format";
 import { toneDot, toneInk } from "../../lib/tone";
@@ -152,6 +151,15 @@ export function MachinesPage() {
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   /** The form that adds a host to the ssh config, or configures one; null while closed. */
   const [hostForm, setHostForm] = useState<HostFormMode | null>(null);
+  /**
+   * The card whose ssh record could not be read, with the server's words. The button that
+   * asked is still on that card, so the reason belongs there rather than in a toast that
+   * dismisses itself (7.19) — the retry is the same button.
+   */
+  const [configureRefusal, setConfigureRefusal] = useState<{
+    alias: string;
+    text: string;
+  } | null>(null);
 
   /** The picker panel; closing it always clears the query and its picks, so it reopens fresh. */
   const [pickerOpen, setPickerOpenState] = useState(false);
@@ -181,6 +189,11 @@ export function MachinesPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Switching Projects switches the cards: a sentence about a card that is gone has no place.
+  useEffect(() => {
+    setConfigureRefusal(null);
+  }, [projectId]);
 
   // Poll only while a job is queued or running. Chained timeouts rather than an interval: a
   // slow response must not stack requests behind itself.
@@ -311,10 +324,13 @@ export function MachinesPage() {
   const stopUsing = (ids: string[]) => post((project) => api.stopUsingMachines(project, ids));
   const configure = async (alias: string) => {
     if (projectId === null) return;
+    // A new question, not the last one: the previous refusal is not its answer.
+    setConfigureRefusal(null);
     try {
       setHostForm({ kind: "edit", host: await api.getSshHost(projectId, alias) });
     } catch (err) {
-      toastError(apiErrorText(err));
+      // The card is still on the page and the button is still on the card: say it there.
+      setConfigureRefusal({ alias, text: refusalText(err) });
     }
   };
 
@@ -561,6 +577,7 @@ export function MachinesPage() {
               open={expanded.has(machine.id)}
               onToggleOpen={() => toggleExpanded(machine.id)}
               busy={posting}
+              refusal={configureRefusal?.alias === machine.alias ? configureRefusal.text : null}
               onUse={(replaceProgram) => void use([machine.id], replaceProgram)}
               onStopUsing={() => void stopUsing([machine.id])}
               onConfigure={() => void configure(machine.alias)}
@@ -756,6 +773,7 @@ function MachineCard({
   open,
   onToggleOpen,
   busy,
+  refusal = null,
   onUse,
   onStopUsing,
   onConfigure,
@@ -769,6 +787,8 @@ function MachineCard({
   open: boolean;
   onToggleOpen: () => void;
   busy: boolean;
+  /** Why reading this card's ssh record failed, in the server's words; drawn on the card. */
+  refusal?: string | null;
   onUse: (replaceProgram: boolean) => void;
   onStopUsing: () => void;
   onConfigure: () => void;
@@ -822,6 +842,19 @@ function MachineCard({
         />
         <ExpandButton alias={machine.alias} open={open} controls={id} onClick={onToggleOpen} />
       </div>
+      {/* On the card itself rather than inside the unfolded block: the button that asked is in
+          there, but folding the card on the way out must not take the reason with it. Two lines
+          with the whole of it on hover — a server's reason runs long. */}
+      {refusal !== null && (
+        <p
+          role="alert"
+          data-tooltip={S.common.refused(refusal)}
+          data-tooltip-content="text"
+          className={`mt-1.5 line-clamp-2 text-xs leading-4 break-words ${toneInk.danger}`}
+        >
+          {S.common.refused(refusal)}
+        </p>
+      )}
       <div id={id} hidden={!open} onClick={(event) => event.stopPropagation()}>
         <Record machine={machine} locale={locale} />
         <div className="mt-3 flex flex-wrap items-center gap-2">
