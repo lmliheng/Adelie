@@ -3179,6 +3179,75 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       这一组 2026-11-22 加进来时是字母牌「V」（和自建分组一样），同排别的服务商都有各自的标记。见
       「第三百零六轮」一节。
 
+- [x] **7.184 桌宠那条自绘蓝鲸改画成「蓝色大肥鱼」**（**2026-11-24 第三百零七轮**落地，提交见
+      「已完成的轮次」；`packages/web` 4 个改动文件（`features/pet/whale.tsx` 整幅重画、`lib/strings.ts`
+      与 `lib/strings-en.ts` 两本字典、`e2e/pet-figure.spec.mjs` 的注释）+ 1 个守卫（`test/icon-registry.test.ts`
+      的路径条数 7 → 6）+ changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户
+      2026-11-24 发来「蓝色大肥鱼」的资料图，配文「蓝色大肥鱼形象」；三条路里选了「把现有那条鱼改画成
+      大肥鱼本尊」。见「第三百零七轮」一节。
+
+## 第三百零七轮：桌宠那条自绘蓝鲸改画成「蓝色大肥鱼」（2026-11-24，条目 7.184）
+
+**开工**：`git status --short` 干净（`/root/adelie-fork`，分支 `main`），本地与远端 `main` 都是
+`4c45c6407`（第三百零六轮）。
+
+**为什么是这一条**：用户 2026-11-24 发来一张「蓝色大肥鱼」的资料图（DeepSeek 图标的社区二创：蓝发
+鲸鱼娘、呆毛、鲸鳍与鲸尾，常穿蓝白女仆装，「吃白饭」的梗来自把算力 Token 比作白饭；两个常见版本是
+Q 版表情包与精致立绘版），配文只有四个字「蓝色大肥鱼形象」。这是第二百九十九轮（7.178）那条自绘
+小鲸鱼的后续 —— 当时用户的原话就是「我要换蓝色大肥鱼」，而画出来的是一条按官方鲸鱼标志侧影想的
+圆身子鲸鱼，不太像社区里那个本尊。
+
+三条路摆给用户拍板（①把现有那条鱼改画成大肥鱼本尊 ②按截图另加一个 Q 版拟人形象 ③两个都做），
+用户回「**A**」—— 把现有那条改画成大肥鱼本尊。
+
+**改动**（`packages/web`，4 个源码文件 + 1 个守卫 + changelog 一对）：
+
+- `features/pet/whale.tsx`：整幅重画。身子由半径约 30 的圆改成 72×67 的胖圆；两只大眼（r 8.5 的白
+  眼 + r 4 的瞳）取代原来那只独眼；肚子是一大块浅色，正好接住「肥」这个字；背鳍照旧；**尾鳍由两片
+  尖角改成一整片带凹口的尾鳍**（先画的那版在小尺寸下看成两颗尖刺，重画过一次）；胸鳍由镰刀形改成
+  圆一点的一片。约定一个没变：内联 SVG、固定配色（不跟主题走）、样式表驱动的 `.pet-eyes` /
+  `.pet-pupils` 两个类、同一个 `viewBox 0 0 100 108` —— 窗口尺寸、动效与页面代码都不用改。
+- **形象在存储里的名字仍是 `whale`**（文件与组件名也一样）：那是浏览器里已经存下的字符串（键
+  `penguin.petFigure`），改名会让所有选过它的桌面安静地退回企鹅。这条理由写进了文件头注释。
+- `lib/strings.ts` / `strings-en.ts`：那一行的说明「经典企鹅，或一条蓝色小鲸鱼」→「经典企鹅，或一条
+  蓝色大肥鱼」（英文 the classic penguin, or a blue fat fish），选项名「蓝色小鲸鱼」→「蓝色大肥鱼」
+  （英文 Blue whale → Blue fat fish）。
+- `test/icon-registry.test.ts`：这条守卫按文件数 `d="…"` 字面量，重画后 **7 → 6**（背鳍、尾鳍、胸鳍、
+  身子、肚子、嘴），跟着改。
+
+### 验证
+
+- `pnpm --filter @adelie/web typecheck` **`EXIT=0`**；`npx oxlint` 5 个改动文件 **0 警告 0 错误**；
+  改动文件与 changelog 一对 `prettier --check` 干净；`git diff --check` 干净。
+- `packages/web` 整包 `vitest run --maxWorkers=2` **354 文件 / 3995 passed / 2 跳过、rc=0**。中途红过
+  一条，是真红：`test/icon-scale.test.ts` 那条「线宽只许用这套图标族选过的那几个」抓到
+  `whale.tsx: 2.4` —— 嘴的描边我顺手加粗到 2.4，而允许的是 1 / 1.5 / 1.7 / 2 / 2.2；改回 2.2 之后整包
+  全绿（不是它误报，是确实有人顺手写了个没人选过的线宽）。
+- 三个直接相关的用例：`pet-figure.test.ts` 10 条、`icon-registry.test.ts` 3 条、`install-scope.test.ts`
+  20 条，共 **33 passed**。
+- **真浏览器端到端 1 passed（2.9 s）**：用当前源码 `vite build --outDir /tmp/fatfish-e2e/dist` 出前端，
+  起仓库里已建的服务端（端口 8941、数据根 `/root/adelie-fork-data/fatfish-a`），跑
+  `e2e/pet-figure.spec.mjs` —— `/pet` 默认画企鹅 → 另一个窗口写 `penguin.petFigure=whale` → 桌宠窗口
+  不刷新就换成这条鱼（`#4d6bfe` 出现、企鹅那三条暖色路径从 DOM 里消失）。
+- **画完肉眼看过**：esbuild 打临时入口 + `renderToStaticMarkup`，72 / 148 / 260 像素各一档、浅色与
+  深色两种桌面、带「眼神跟随」的三种瞳孔偏移，截图在 `/root/Adelie_develop/fatfish-preview.png`
+  —— 72 像素下仍一眼是「胖蓝鱼、大眼、白肚子」，与旁边那只企鹅画风一致。
+- **没验的**：「设置 › 外观」里那一行仍只在桌面壳自己的窗口里出现（`desktopMode && sessionVia ===
+  "desktop"` 是服务端给的，浏览器伪造不了），与上一轮同一处境，那一行只做到类型与结构正确；也没装
+  进现网 —— 这一笔随下一版（0.8.1）发出。
+
+### 口径：0.9.9 之后进 1.0.0（用户 2026-11-24 当天补答）
+
+第三百零六轮那节写的是「0.9.9 之后再往哪一位进，用户没说，到时候问他」；这一轮开工前用户补答：
+**进第一位，也就是 `1.0.0`**。口径的完整形状因此是：每次只进第三位（0.8.0 → 0.8.1 …），第三位走到
+9 进第二位（0.8.9 → 0.9.0），第二位走到 9 进第一位（0.9.9 → 1.0.0）。上一节那句「用户没说」已按
+这条改掉，不为它另开一笔。
+
+### 提交
+
+- 源码 4 个 + 守卫 1 个 + changelog 一对 `f32960be9`；台账（7.184 那一条、上表那一行、本节、上一节
+  口径那句的更正）随本笔。
+
 ## 第三百零六轮：Venice AI 分组换它自己的标记（2026-11-24，条目 7.183）
 
 **为什么是这一条**：用户 2026-11-24 一句「venice服务商图标更新一下」。Venice AI 那一组是 2026-11-22
@@ -3215,7 +3284,8 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
 用户看到这一版发成了 **0.8.0**，说「怎么更新到0.8.0了 下次更新都是更小版本，到9的时候更新到下一个
 大版本」——之前那条「有功能就进一位」（于是 0.7.0 直接跳到 0.8.0）作废。**现在的口径**：每次更新只
 进第三位（0.8.0 之后是 **0.8.1**、0.8.2 …），第三位走到 **9 再进第二位**，也就是 **0.8.9 之后是
-0.9.0**。**0.9.9 之后再往哪一位进，用户没说**（是 1.0.0 还是继续 0.9.10），到时候问他，别自己定。
+0.9.0**；第二位走到 9 再进第一位，**0.9.9 之后是 `1.0.0`**（这句一开始写的是「用户没说、到时候问
+他」，他 2026-11-24 当天补答了，见「第三百零七轮」一节）。
 本版之后的第一笔改动（本节这个 Venice AI 图标）就落在这里，**下一个版本号是 0.8.1**。
 
 ## 第三百零五轮：分组密钥那张框被拒时留着，密钥与原因一起留着（2026-11-23，条目 7.182）
@@ -5902,6 +5972,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-23 | 2.2c | **画廊的演示数据不再教人用旧数据根**（**2026-11-23 第三百零四轮**落地；`packages/ui-gallery` 4 个文件 14 处字符串（`app/mock/routes.ts` 3：Trace 路径 `tracePath`、插件库目录 `/api/plugins/directory` 的 `path`、新建机器的 `root`；`app/mock/fixtures.ts` 9：三台机器的 `root`、agent 的 `stateDir`、两个工作区路径、两个 `memoryDir`、`/home/demo` 下那个隐藏目录条目；`app/mock/transcripts.ts` 1；`library/boards/data.tsx` 1 即 Foundations 的「数据根」两行）—— `~/.penguin` → `~/.adelie`，路径结构与演示内容一字未动，不碰接口、无新依赖、没有新文案）：2.2c 的剩余项里，写侧、`adelie-app.service`、桌面壳开关三处本轮都动不了（桌面壳按纪律不许碰、单元要等发布动作），`packages/docs/**` 按 2.5 留到发布期 —— 只剩画廊这批演示路径：它们在画廊里显示给人看，写的还是改名前的根，等于示范一个服务端不读的位置 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 203 接口 / 627 类型） · `npx prettier --check` 4 个改动文件干净 · `npx oxlint` 4 个文件 **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 + 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **354 文件 / 3995 + 2 跳过** · ui-gallery **20 文件 / 141** · **顺手修掉一条环境红**：web 的 `model-grouping.test.ts` 又缺 `tokenhub`（期望 25 收到 24），与第三百零一 / 三百零二轮同因 —— `packages/web` 经 pnpm 的 file: 链接读的 `packages/core/dist` 停在 15:05 的旧构建；`pnpm --filter @adelie/core build` 重建（tokenhub 5 处、注入副本与树同一 inode）后该用例 31 全过、web 全量转绿 · **真看一眼**（画廊固定端口 7372，`pnpm exec vite --port 7372` + `/usr/bin/chromium`）：`app.html?route=/machines`、`app.html?route=/plugins`、`lib.html?topic=data&lang=zh` 三页 —— 页面文本里 `~/.penguin` / `/home/demo/.penguin` **0 处**，插件页显示 `/home/demo/.adelie/data/plugins`、data board 的「数据根」两行都是 `~/.adelie/data`；三页 console error **0**、pageerror **0**；截图 `r304/{machines,plugins,lib-data-root}.png` · 端口只用 7372（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `2aae27b1e` |
 | 2026-11-23 | 7.182 | **模型库分组密钥那张框被拒时留着，敲进去的密钥与原因也留着**（**2026-11-23 第三百零五轮**落地；`packages/web` 1 个源码文件（`features/models/models-page.tsx`：`GroupKeyDialog` 自己拿 `busy` 与 `refusal`，`onSubmit` 改成 `Promise<string \| null>` —— 被拒时答原话、写进去时答 `null`；页面只在写进去之后关框，在途时取消/确认都灰着、框点外面也不关；句子走库里既有的 `NoticeStrip`（`role="alert"`、危险墨色、正文在 `data-slot="body"`））＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在模型页的最后一处 —— 分组表头的「填写密钥」按一下就关框、写入随后才开始，被拒时原因只在一条六秒就走的通知里，刚敲的密钥跟着框一起不见（代码注释里自己写着「这个框按了就关、没地方画」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型） · 改动文件与 changelog 一对 `prettier --check` 干净 · `npx oxlint` 两个文件 **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 + 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **354 文件 / 3995 + 2 跳过** · **真服务端 + 真浏览器新 spec 2 passed（11.8 s）**（`models-group-key-refusal.spec.mjs`，服务端 8950 + mock 8951 + 数据根 `/tmp/r306data`）：整表 PUT 被按 500 → 句子在框里、框还开着、字段仍是刚敲的密钥、通知区 0 条、七秒后仍在、PUT 只一条且带那把密钥；解除拦截 → 框关掉、通知「已为 1 个模型配置 API key」、服务端那行密钥确实存下 · **反证**：`models-page.tsx` 退回 `HEAD` + 重建 web + 同一条 spec → **2 failed**（框里找不到 `role="alert"`） · **两态探针**（`r306/probe.mjs`）：改前 `dialogOpen:false`、通知区一条、七秒后 0 条，密钥在页面上找不到；改后 `dialogOpen:true`、红条 `操作被拒绝：服务器内部错误，请稍后重试。`、字段 `sk-probe-group`、通知区 0 条、七秒后逐项相同；截图 `r306/{before,after}/*.png` 肉眼看过 · **相邻回归**：`models-assign-user-key` 3 + `models-delete-group` 2 + `models-detect-refusal` 2 + `models-save-refusal` 3 + 本笔 2 = **12 passed** · 两态 console 只有既有的 `/machines` **403** 与探针自己拦的 500、pageerror 0 · 端口只用 8950 / 8951（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/tmp/r306data`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `7d370771b` |
 | 2026-11-24 | 7.183 | **Venice AI 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零六轮**落地；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS` 新增 `venice` 一条，两条 `evenodd` 路径，`fillRule`/`clipRule` 一并保留，颜色走 `currentColor`）+ `test/logos.test.ts` 1 条新用例 + changelog 一对 —— **纯路径、无新依赖、不碰接口**）：用户 2026-11-24「venice服务商图标更新一下」—— 这一组 7.172 加进来时没查过品牌资产，于是与自建分组一样落成灰底字母牌「V」；标记取自 `@lobehub/icons` 6.20.0（两把交叉的钥匙），**没有自己描** —— 厂商站点这台机器连不上（`venice.ai` 与 `docs.venice.ai` 都超时），`simple-icons` / `@iconify-json/logos` / `@iconify-json/simple-icons` 里都没有这一枚 | `packages/ui` `tsc --noEmit` **rc=0** · `npx oxlint` 两个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/ui` `vitest run --maxWorkers=2` **133 文件 / 1116 passed**（基线 1115，**+1 即本笔**；`logos.test.ts` 5 条） · **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup` 出 `venice` / `anthropic` / `tokenhub` 三个图标，20px 行内在浅色与深色两种底色上截图看过（venice 是两把交叉的钥匙、笔画重量与 Anthropic 相当；`tokenhub` 仍是字母牌，这轮没动它） · **没做的**：没起 7372 的画廊在真界面上点开看，也没装进现网 —— 这一笔随下一版（0.8.1）发出 | `66a13fa00` |
+| 2026-11-24 | 7.184 | **桌宠的第二个形象改画成「蓝色大肥鱼」：更胖更圆、大眼，名字也跟着改**（**2026-11-24 第三百零七轮**落地；`packages/web` 4 个改动文件（`features/pet/whale.tsx` 整幅重画：身子由半径约 30 的圆改成 72×67 的胖圆、两只大眼取代独眼、一大块浅色肚子、尾鳍由两片尖角改成一整片带凹口的；`lib/strings.ts` 与 `lib/strings-en.ts` 那一行说明与选项名；`e2e/pet-figure.spec.mjs` 的注释）+ `test/icon-registry.test.ts` 路径条数 7 → 6 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24 发来「蓝色大肥鱼」的资料图（DeepSeek 图标的社区二创，配文「蓝色大肥鱼形象」），三条路里选了「把现有那条鱼改画成大肥鱼本尊」；**形象在存储里的名字仍是 `whale`**，改名会让选过它的桌面退回企鹅，理由写进文件头注释 | `pnpm --filter @adelie/web typecheck` **`EXIT=0`** · `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净、`git diff --check` 干净 · `packages/web` `vitest run --maxWorkers=2` **354 文件 / 3995 passed / 2 跳过、rc=0**（中途 `test/icon-scale.test.ts` 真红一条：嘴的描边被顺手写到 2.4，允许的只有 1 / 1.5 / 1.7 / 2 / 2.2，改回 2.2 后全绿） · 三个直接相关用例 `pet-figure` 10 + `icon-registry` 3 + `install-scope` 20 **33 passed** · **真浏览器端到端 1 passed（2.9 s）**（当前源码 `vite build --outDir /tmp/fatfish-e2e/dist` + 仓库里已建的服务端，端口 8941、数据根 `/root/adelie-fork-data/fatfish-a`）：`/pet` 默认画企鹅 → 另一个窗口写 `penguin.petFigure=whale` → 桌宠窗口不刷新就换成这条鱼 · **肉眼看过**（esbuild + `renderToStaticMarkup`，72 / 148 / 260 像素、浅深两种桌面、三种瞳孔偏移）`/root/Adelie_develop/fatfish-preview.png` · **没验的**：设置里那一行仍只在桌面壳自己的窗口里出现（浏览器伪造不了），没装进现网，随下一版 0.8.1 发出 | `f32960be9` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
