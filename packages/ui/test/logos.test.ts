@@ -43,6 +43,17 @@ describe("ProviderLogo", () => {
     expect(html).not.toContain("<text");
     expect(html.match(/fill-rule="evenodd"/g)).toHaveLength(2);
   });
+
+  // TokenHub is Tencent Cloud's own model gateway, a different provider from the Hunyuan group
+  // above, so it carries 腾讯云's mark and not Hunyuan's circle: three evenodd paths from the icon
+  // set that traces it, and a drawing that is not the sibling row's.
+  it("draws Tencent TokenHub's own mark, not the Hunyuan row's", () => {
+    const hub = renderStatic(createElement(ProviderLogo, { provider: "tokenhub" }));
+    expect(hub).toContain('fill="currentColor"');
+    expect(hub).not.toContain("<text");
+    expect(hub.match(/fill-rule="evenodd"/g)).toHaveLength(3);
+    expect(hub).not.toBe(renderStatic(createElement(ProviderLogo, { provider: "tencent" })));
+  });
 });
 
 describe("AppLogo", () => {

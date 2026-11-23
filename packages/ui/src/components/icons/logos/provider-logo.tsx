@@ -38,6 +38,10 @@
  * icon (abliteration.ai/icon.svg) with the pale square behind them dropped. Both
  * viewBoxes are cropped to the mark's ink.
  *
+ * Tencent TokenHub — the cloud account's own model gateway, sibling of the Hunyuan
+ * group above — carries 腾讯云's mark (again from the icon set that traces it) rather
+ * than Hunyuan's circle, so the two Tencent rows do not read as one provider.
+ *
  * Venice AI carries the winged emblem @lobehub/icons publishes for the vendor
  * (its two evenodd paths kept as drawn, inked currentColor) — the vendor's own
  * site is not reachable from this machine (venice.ai times out), and a
@@ -205,6 +209,34 @@ const GLYPHS: Record<string, Glyph> = {
     // Tencent Hunyuan's mark (hy.tencent.ai), the one simple-icons publishes for the group.
     path: (
       <path d="M12 0a1 1 0 0 1 0 24 1 1 0 0 1 0-24m1.65 1.12c.533.097 1.023.233 1.41.404 6.086 2.686 7.398 9.217 1.603 14.341a3.782 3.782 0 0 1-6.126-1.75 3.66 3.66 0 0 1-.095-1.622c-1.934.6-3.295 2.305-3.524 4.45-.204 1.912.324 4.044 2.056 5.634A11 11 0 1 0 13.65 1.12M2.748 6.21A11 11 0 0 0 8.9 22.55c-5.377-4.022-6.06-8.4-2.43-13.87a2.234 2.234 0 1 0-3.722-2.47m10.157-5.172c4.408 1.33 3.61 5.41 2.447 6.924-.86 1.117-2.922 1.46-3.708 2.238a4.18 4.18 0 0 0-1.212 2.292A5.3 5.3 0 0 1 12 12.258a5.672 5.672 0 0 0 1.404-11.169 11 11 0 0 0-.5-.052" />
+    ),
+  },
+  tokenhub: {
+    // Tencent TokenHub (腾讯云大模型服务平台) is Tencent Cloud's own model gateway rather than
+    // Hunyuan resold: its key and console belong to the cloud account, and it proxies Kimi, GLM,
+    // DeepSeek and MiniMax beside Tencent's own Hy models. So it carries 腾讯云's mark and not the
+    // Hunyuan circle the `tencent` group above draws — two groups in one row should not read as
+    // the same provider. The three paths are @lobehub/icons' TencentCloud Mono, kept as drawn with
+    // the evenodd rule (drop it and the cloud's counter-shapes fill in and the mark turns into a
+    // blob), inked currentColor like the rest of this set.
+    path: (
+      <>
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M20.0483 17.1416C19.6945 17.4914 18.987 18.0161 17.7488 18.0161C17.2182 18.0161 16.5991 18.0161 16.3338 18.0161C15.98 18.0161 13.3268 18.0161 10.143 18.0161C12.4424 15.8298 14.3881 13.9932 14.565 13.8183C14.7419 13.6434 15.1841 13.2061 15.6263 12.8563C16.5107 12.0692 17.2182 11.9817 17.8373 11.9817C18.7217 11.9817 19.4292 12.3316 20.0483 12.8563C21.2864 13.9932 21.2864 16.0047 20.0483 17.1416ZM21.5518 11.457C20.6674 10.495 19.3408 9.88281 17.9257 9.88281C16.6875 9.88281 15.6263 10.3201 14.6534 11.0197C14.2997 11.3695 13.769 11.7194 13.3268 12.2441C12.9731 12.5939 5.36719 19.9401 5.36719 19.9401C5.80939 20.0276 6.34003 20.0276 6.78223 20.0276C7.22443 20.0276 16.0685 20.0276 16.4222 20.0276C17.1298 20.0276 17.6604 20.0276 18.191 19.9401C19.3408 19.8527 20.4905 19.4154 21.4633 18.5409C23.4975 16.6168 23.4975 13.381 21.5518 11.457Z"
+        />
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M9.1701 10.9323C8.19726 10.2326 7.22442 9.88281 6.07469 9.88281C4.65965 9.88281 3.33304 10.495 2.44864 11.457C0.502952 13.4685 0.502952 16.6168 2.53708 18.6283C3.42148 19.4154 4.30589 19.8527 5.36717 19.9401L7.4013 18.0161C7.04754 18.0161 6.60533 18.0161 6.25157 18.0161C5.10185 17.9287 4.39433 17.5789 3.95212 17.1416C2.71396 15.9172 2.71396 13.9932 3.86368 12.7688C4.48277 12.1566 5.19029 11.8943 6.07469 11.8943C6.60533 11.8943 7.4013 11.9817 8.19726 12.7688C8.55102 13.1186 9.52386 13.8183 9.87763 14.1681H9.96607L11.2927 12.8563V12.7688C10.6736 12.1566 9.70075 11.3695 9.1701 10.9323Z"
+        />
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M18.4564 8.74536C17.4836 6.12171 14.9188 4.28516 12.0003 4.28516C8.5511 4.28516 5.80945 6.82135 5.27881 9.96973C5.54413 9.96973 5.80945 9.88228 6.16321 9.88228C6.51697 9.88228 6.95917 9.96973 7.31294 9.96973C7.75514 7.78336 9.70082 6.20917 12.0003 6.20917C13.946 6.20917 15.6263 7.34608 16.4223 9.00773C16.4223 9.00773 16.5107 9.09518 16.5107 9.00773C17.1298 8.92027 17.8373 8.74536 18.4564 8.74536C18.4564 8.83282 18.4564 8.83282 18.4564 8.74536Z"
+        />
+      </>
     ),
   },
   iflytek: {
