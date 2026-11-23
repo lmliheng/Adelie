@@ -1180,6 +1180,14 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       旧服务端。**本地化**：16 个文件本树全有、三方试落零冲突，没有要舍弃的上游功能（机器侧终端外壳与
       `terminal-panel.tsx` 本就不在这一笔里）；changelog 按本仓写法改成 `2026-11-02-terminal-on-a-slow-link{,.zh}.md`、
       去掉上游 PR 行、写明移植来源。
+- [x] **5.63 命令只在用户设了 `NO_COLOR` 时才丢颜色**（上游 `850062aaa` `#1745`，**2026-11-24 第三百零九轮落地**，
+      提交见该节，照改动落、不是合分支）：`exec_command` / `input_command` 启的子进程过去无条件带
+      `NO_COLOR=1`（`HARDENED_ENV`），用户想让它出颜色只能往保险柜里塞 `FORCE_COLOR`；现在这条变量不再钉死 ——
+      宿主里有就继承、没有就不给，保险柜里的值照旧生效。`TERM=dumb` / `PAGER` / `GIT_EDITOR` 那几条治的是
+      「命令卡在等人输入」，一个没动；`FORCE_COLOR` / `CLICOLOR_FORCE` 仍照旧移除（不是置空），`#102` 那条
+      规则没有回退。**本地化**：上游的四份文件本树全有（core 源码与用例、web 的 `strip-ansi.ts` 注释、docs 的
+      中英配置表），三方试落零冲突；changelog 按本仓写法重写成一对 `2026-11-24-command-color-preference`。
+      细节与实测见「第三百零九轮」一节。
 - **不学**：阿里云 OSS 分发（`feat/aliyun-oss-release-distribution`）、模型库「官方推荐」与 TokenDance
   推荐分组（`FORK.md` 已写明不搬）、`web-mod-1…12` 那类大模块化重构（与我们改过的 77 个文件重叠，
   现在合进来是净亏）。
@@ -3192,6 +3200,74 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       changelog 一对 —— **纯路径、无新依赖、不碰接口**）：用户 2026-11-24「模型库加服务商图标」——
       TokenHub 这一组昨天（7.182）加进来时是字母牌「T」（和自建分组一样），而且紧挨着的 `tencent`
       画的是混元圆环，两行看着像一家。见「第三百零八轮」一节。
+
+## 第三百零九轮：命令只在用户设了 `NO_COLOR` 时才丢颜色（2026-11-24，条目 5.63）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 `b5de56be9`；`git fetch origin && git merge --ff-only
+origin/main` 前进到 `ff863f2be`（第三百零八轮 TokenHub 图标那笔）。
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c / 3.5 / 3.6 / 4.x / 5.6 / 5.10 —— 2.2c 的「还差什么」
+四条这一轮一条都动不了（写侧在桌面壳、部署单元等发布动作、桌面壳自己的开关同前、`packages/docs` 与
+`changelog` 留到发布期），3.5 要拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 / 5.10 要拍板 /
+新依赖。于是按 5.x 的判据看上游：这一轮按 URL 现拉到上游 `main` 已经是 **`50fbcaad0`**，比本地记的
+`2b8116ce` 多 **480 笔**（Workbench、应用中心、插件市场那几大块都在里面，不是一轮的量）。逐笔筛「小、本树
+文件全在、不引入新依赖、不碰桌面壳 / 包名 / 流水线」，`850062aaa`（`#1745`）正合：四份文件本树全有，
+`git apply -3 --check` 零冲突，而且是一条**用户看得见的真行为差异**。
+
+### 做了什么
+
+- `packages/core/src/environment/tools/command/session-manager.ts`：`HARDENED_ENV` 去掉 `NO_COLOR: "1"`，
+  两段注释跟着改（`hardening` 那段删掉「color」；`STRIPPED_ENV_KEYS` 那段把「`FORCE_COLOR` 会抵消
+  `NO_COLOR=1`」改成「`FORCE_COLOR` 能把 ANSI 塞进管道输出，用户自己设的 `NO_COLOR` 照常继承」）。
+- `packages/core/test/exec-session.test.ts`：原来那条「inherited FORCE_COLOR is removed, so the NO_COLOR=1
+  hardening actually wins」改成 `it.each([undefined, "", "enabled"])` 三条 —— 真起一个 `node -e` 读子进程
+  环境，三种宿主取值分别要求子进程读到 `missing` / 空 / `enabled`，而 `FORCE_COLOR` / `CLICOLOR_FORCE`
+  三条里都必须是空。一条用例变成了三条，是这一笔唯一的用例改动。
+- `packages/web/src/lib/strip-ansi.ts`：文件头那句「命令工具钉了 `NO_COLOR=1`」改成「`TERM=dumb`、
+  `FORCE_COLOR` 被移除」—— 渲染时剥 ANSI 仍然保留，防的是修复前录下的 Trace 与自己硬上色的程序。
+- `packages/docs/content/configuration.{zh,en}.md`：环境表那行把 `NO_COLOR` 从「始终取固定值」里移出，
+  写清它现在的规则（宿主或保险柜设了才继承）。
+- changelog 一对：`2026-11-24-command-color-preference.{zh,en}.md`（上游那一对按本仓写法重写）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（core / ui / hmr / server / cli / web 六个 `Done`；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，203 接口 / 627 类型）。
+- `oxlint` 3 个改动文件 **0 警告 0 错误**；3 个源码 / 用例文件与 changelog 一对 `prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test 全绿：core **70 文件 / 1460 通过 / 6 跳过**（基线 1458，**+2 即本笔** —— 用例由 1 条变 3 条）·
+  ui **133 / 1117** · cli **39 / 566** · server **216 / 3176 / 6 跳过** · web **354 / 3995 / 2 跳过**。
+- **真服务端两条腿（主证据）**：`packages/web/e2e` 下临时放一份探针 spec（跑完移回 scratchpad，未提交），
+  仓库自带 mock 模型（8981）+ 真服务端 + `/usr/bin/chromium`；提示词是 `files rewrite test printenv
+  NO_COLOR || echo NC_UNSET`，断言读的是服务端自己写的 Trace 里那条 `tool_call_output.output`：
+  - **宿主没有 `NO_COLOR`**（服务端用 `env -u NO_COLOR` 起，8982）：命令看到 **`NC_UNSET`**；
+  - **宿主有 `NO_COLOR=1`**（8980，我的 shell 自己就带着这个变量）：命令看到 **`1`** —— 用户设了照常继承。
+- **反证（两层）**：① 单测把 `session-manager.ts` 退回 `HEAD` → 同一文件 **3 failed / 45 passed**（三条
+  `preserves NO_COLOR=…` 全红），放回改后源码、重建 core → **48 全过**；② 真服务端那一层 —— 把 core 退到
+  `HEAD` 重建出改前产物（留底到 `r309/core-dist-after`）、另起 8984 数据根 `r309-nc-before`、宿主同样
+  `env -u NO_COLOR`，同一份 spec 同一条期望 → **1 failed**，收到的是 `"1"`（正是修复前那个行为）。跑完把
+  源码放回、core 重建（`packages/core/dist` 里 `NO_COLOR: "1"` 计数 0，且 `.pnpm` 那份硬链接副本跟着变）。
+- **一个自己踩过的坑（写下来免得下一轮再踩）**：Adelie 自己给 agent 的 shell 就设着 `NO_COLOR=1`，
+  所以「宿主没设」这一腿必须用 `env -u NO_COLOR` 起服务端，否则量到的是继承；另外第一版断言拿**整份**
+  Trace 文本找 `NC_UNSET`，而命令本身（`… || echo NC_UNSET`）就写着这个词，等于自己骗自己 —— 现在只读
+  `tool_call_output` 的 `output` 字段。
+- 端口只用 8980 / 8981 / 8982 / 8984（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r309-nc-{unset,plain,before}`，探针 spec / playwright 配置 / 改前产物留底都在
+  scratchpad 的 `r309/` 下（`packages/web/test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 上游这 480 笔里还有不少小件（`#1691` 存储清理、`#1746` 侧栏折叠箭头、`#1755` 全屏按钮图标等），
+  这一轮只取了一条；下一轮照同一判据继续量。`a044ab567`（`#1691`）要的 `plugins/storage/src/server/cleanup.ts`
+  本树没有，`f38828f65`（`#1746`）要的 Apps / Workspaces 分组本树也还没有 —— 两笔都不在桌上。
+- 「用户想强制上色」这条路仍只有保险柜里的 `FORCE_COLOR`（宿主里继承的会被移除），这是本笔**有意保留**的
+  `#102` 规则，不是缺口。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 功能一笔（源码 2、用例 1、docs 2、changelog 2）；台账（5.63 那一条、上表那一行、本节）随本文件另起一笔。
 
 ## 第三百零八轮：腾讯 TokenHub 分组画它自己的标记（2026-11-24，条目 7.185）
 
@@ -6034,6 +6110,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.183 | **Venice AI 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零六轮**落地；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS` 新增 `venice` 一条，两条 `evenodd` 路径，`fillRule`/`clipRule` 一并保留，颜色走 `currentColor`）+ `test/logos.test.ts` 1 条新用例 + changelog 一对 —— **纯路径、无新依赖、不碰接口**）：用户 2026-11-24「venice服务商图标更新一下」—— 这一组 7.172 加进来时没查过品牌资产，于是与自建分组一样落成灰底字母牌「V」；标记取自 `@lobehub/icons` 6.20.0（两把交叉的钥匙），**没有自己描** —— 厂商站点这台机器连不上（`venice.ai` 与 `docs.venice.ai` 都超时），`simple-icons` / `@iconify-json/logos` / `@iconify-json/simple-icons` 里都没有这一枚 | `packages/ui` `tsc --noEmit` **rc=0** · `npx oxlint` 两个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/ui` `vitest run --maxWorkers=2` **133 文件 / 1116 passed**（基线 1115，**+1 即本笔**；`logos.test.ts` 5 条） · **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup` 出 `venice` / `anthropic` / `tokenhub` 三个图标，20px 行内在浅色与深色两种底色上截图看过（venice 是两把交叉的钥匙、笔画重量与 Anthropic 相当；`tokenhub` 仍是字母牌，这轮没动它） · **没做的**：没起 7372 的画廊在真界面上点开看，也没装进现网 —— 这一笔随下一版（0.8.1）发出 | `66a13fa00` |
 | 2026-11-24 | 7.184 | **桌宠的第二个形象改画成「蓝色大肥鱼」：更胖更圆、大眼，名字也跟着改**（**2026-11-24 第三百零七轮**落地；`packages/web` 4 个改动文件（`features/pet/whale.tsx` 整幅重画：身子由半径约 30 的圆改成 72×67 的胖圆、两只大眼取代独眼、一大块浅色肚子、尾鳍由两片尖角改成一整片带凹口的；`lib/strings.ts` 与 `lib/strings-en.ts` 那一行说明与选项名；`e2e/pet-figure.spec.mjs` 的注释）+ `test/icon-registry.test.ts` 路径条数 7 → 6 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24 发来「蓝色大肥鱼」的资料图（DeepSeek 图标的社区二创，配文「蓝色大肥鱼形象」），三条路里选了「把现有那条鱼改画成大肥鱼本尊」；**形象在存储里的名字仍是 `whale`**，改名会让选过它的桌面退回企鹅，理由写进文件头注释 | `pnpm --filter @adelie/web typecheck` **`EXIT=0`** · `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净、`git diff --check` 干净 · `packages/web` `vitest run --maxWorkers=2` **354 文件 / 3995 passed / 2 跳过、rc=0**（中途 `test/icon-scale.test.ts` 真红一条：嘴的描边被顺手写到 2.4，允许的只有 1 / 1.5 / 1.7 / 2 / 2.2，改回 2.2 后全绿） · 三个直接相关用例 `pet-figure` 10 + `icon-registry` 3 + `install-scope` 20 **33 passed** · **真浏览器端到端 1 passed（2.9 s）**（当前源码 `vite build --outDir /tmp/fatfish-e2e/dist` + 仓库里已建的服务端，端口 8941、数据根 `/root/adelie-fork-data/fatfish-a`）：`/pet` 默认画企鹅 → 另一个窗口写 `penguin.petFigure=whale` → 桌宠窗口不刷新就换成这条鱼 · **肉眼看过**（esbuild + `renderToStaticMarkup`，72 / 148 / 260 像素、浅深两种桌面、三种瞳孔偏移）`/root/Adelie_develop/fatfish-preview.png` · **没验的**：设置里那一行仍只在桌面壳自己的窗口里出现（浏览器伪造不了），没装进现网，随下一版 0.8.1 发出 | `cdb4b31aa` |
 | 2026-11-24 | 7.185 | **腾讯 TokenHub 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零八轮**落地；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS` 新增 `tokenhub` 一条，三条 `evenodd` 路径，`fillRule`/`clipRule` 一并保留，颜色走 `currentColor`，紧跟 `tencent` 之后）+ `test/logos.test.ts` 1 条新用例 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24「模型库加服务商图标」—— 数完 24 个分组，只有 `tokenhub` 没查过品牌资产（昨天 7.182 加进来时是灰底字母牌「T」，同排别的服务商都画各自的标记）；标记取自 `@lobehub/icons` 6.20.0 以 `TencentCloud` 发布的那一枚（腾讯云云朵标），**三条路径与原文逐字节一致**（脚本逐条比对）—— 用腾讯云的标而不是 TokenHub 自有的：它的产品页与控制台对这台机器只回验证码壳（HTTP 200、无 logo），而这一组的 key 与控制台本就挂在腾讯云账号下、用腾讯云的标正好与同行的混元圆环区分开；开工时这台迁移机缺 `git`/`pnpm`/`make`/`g++` 与浏览器运行库，一并补回 | `packages/ui` `tsc --noEmit` **rc=0** · `npx oxlint` 两个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/ui` `vitest run --maxWorkers=2` **133 文件 / 1117 passed、rc=0**（基线 1116，**+1 即本笔**；`logos.test.ts` 6 条） · **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup` 把 `tokenhub` / `tencent` / `anthropic` / `venice` / `iflytek` / `baidu` 六个图标一起出图（96px 格、64px 图标、2 倍像素密度），截图 `/root/Adelie_develop/tokenhub-logo-preview.png` —— `tokenhub` 是实心的腾讯云云朵标，与紧挨的 `tencent`（混元圆环）明显两个形状、也不是字母牌 · **没做的**：没起 7372 画廊在真界面上点开看，也没装进现网 —— 随下一版（0.8.1）发出 | `9b25a8d64` |
+| 2026-11-24 | 5.63 | **命令只在用户设了 `NO_COLOR` 时才丢颜色**（**2026-11-24 第三百零九轮**落地；`packages/core` 2 个源码/用例文件（`environment/tools/command/session-manager.ts` 的 `HARDENED_ENV` 去掉 `NO_COLOR: "1"` 并改两段注释；`test/exec-session.test.ts` 那条「FORCE_COLOR 被移除、NO_COLOR=1 才成立」改成 `it.each([undefined, "", "enabled"])` 三条，要求子进程分别读到 `missing` / 空 / `enabled`，三条里 `FORCE_COLOR` / `CLICOLOR_FORCE` 都必须为空）＋ `packages/web/src/lib/strip-ansi.ts` 文件头注释 ＋ `packages/docs/content/configuration.{zh,en}.md` 环境表一行 ＋ changelog 一对 —— **无新依赖、不碰接口、没有新文案**）：上游 `850062aaa` `#1745` 移植。`exec_command` / `input_command` 的子进程过去无条件带 `NO_COLOR=1`，用户想让它出颜色只能往保险柜里塞 `FORCE_COLOR`；现在宿主有就继承、没有就不给，保险柜照旧生效。`TERM=dumb` / `PAGER` / `GIT_EDITOR` 一个没动，`FORCE_COLOR` / `CLICOLOR_FORCE` 仍照旧移除（`#102` 不回退） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 3 个改动文件 **0 警告 0 错误** · 3 个源码/用例文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 + 6 跳过**（基线 1458，+2 即本笔）· ui **133 / 1117** · cli **39 / 566** · server **216 / 3176 + 6 跳过** · web **354 / 3995 + 2 跳过** · **真服务端两条腿**（mock 8981 + 真服务端 + `/usr/bin/chromium`，提示词 `files rewrite test printenv NO_COLOR || echo NC_UNSET`，断言读 Trace 里 `tool_call_output.output`）：宿主 `env -u NO_COLOR` 起的服务端（8982）→ 命令看到 **`NC_UNSET`**；宿主带 `NO_COLOR=1`（8980）→ 命令看到 **`1`**（照常继承）· **反证两层**：改前源码跑单测 **3 failed / 45 passed**（三条 `preserves NO_COLOR=…`），放回后 **48 全过**；改前 core 产物（8984 + `r309-nc-before` + `env -u NO_COLOR`）跑同一条期望 **1 failed**，收到 `"1"` · 踩过的坑：Adelie 给 agent 的 shell 自己就带 `NO_COLOR=1`，「宿主没设」必须 `env -u NO_COLOR`；断言不能读整份 Trace（命令文本里就写着 `NC_UNSET`）· 端口只用 8980 / 8981 / 8982 / 8984（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-nc-*`，探针与产物留底在 scratchpad `r309/`（`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包 | 见本节 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
