@@ -3186,6 +3186,64 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       2026-11-24 发来「蓝色大肥鱼」的资料图，配文「蓝色大肥鱼形象」；三条路里选了「把现有那条鱼改画成
       大肥鱼本尊」。见「第三百零七轮」一节。
 
+- [x] **7.185 腾讯 TokenHub 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零八轮**落地，提交见
+      「已完成的轮次」；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS`
+      新增 `tokenhub` 一条 —— 三条 `evenodd` 路径，规则一并保留）+ 1 个用例（`test/logos.test.ts`）+
+      changelog 一对 —— **纯路径、无新依赖、不碰接口**）：用户 2026-11-24「模型库加服务商图标」——
+      TokenHub 这一组昨天（7.182）加进来时是字母牌「T」（和自建分组一样），而且紧挨着的 `tencent`
+      画的是混元圆环，两行看着像一家。见「第三百零八轮」一节。
+
+## 第三百零八轮：腾讯 TokenHub 分组画它自己的标记（2026-11-24，条目 7.185）
+
+**开工**：`git log -1` 是 `b5de56be9`（第三百零七轮那笔台账），分支 `main`。**这台机器刚被迁过来、
+服务还在往回捡**：`uptime` 只有一个多小时，`/root/migrate-config.tgz`、`/root/start_services.sh`
+（01:53）、`/root/ufw_restore.sh`（01:55，注释写「重建宁波机的 ufw 规则」）说明这是迁移的目标机；
+`7777` 的现网 Adelie、`3003`、`7778` 都在跑。**环境缺口比平时多**：所有 `node_modules` 被清掉、
+`pnpm` 与 `git` 都没了（corepack 缓存也没了），`make`/`g++` 也缺。开工先补：`npm i -g pnpm@11.18.0`、
+`apt-get install -y git make g++`，再 `pnpm install --frozen-lockfile`（`rc=0`，只剩 `@adelie/cli`
+的 bin 因未构建而 WARN，属正常）。工作树里另有**不属于本轮**的一批删除（`packages/desktop/build/**`
+十几个文件，是迁移清理留下的），**一个都没碰**，`git add` 只列自己的文件。
+
+**为什么是这一条**：用户 2026-11-24 一句「模型库加服务商图标」。先把缺口数清楚：`MODEL_PROVIDERS` 24
+个分组，`GLYPHS` 已有 25 个键（含目录外还用到的三个），**只差 `tokenhub`** —— 它昨天（7.182）才作为
+「腾讯云的模型网关」自成一组加进来，没查过品牌资产，于是和自建分组一样落成灰底字母牌「T」；同一排里
+别的预置服务商都画各自的标记。
+
+**改动**（`packages/ui`，1 个源码文件 + 1 个用例 + changelog 一对）：
+`packages/ui/src/components/icons/logos/provider-logo.tsx` 的 `GLYPHS` 加一条 `tokenhub`，紧挨在
+`tencent` 后面。
+
+**标记是从哪来的**：`@lobehub/icons` 6.20.0 里以 `TencentCloud` 发布的那一枚（腾讯云的云朵标）。
+**为什么用腾讯云的标、而不是 TokenHub 自己的**：TokenHub 的控制台与产品页对这台机器只回一个验证码壳
+（`cloud.tencent.com/product/tokenhub` 与 `console.cloud.tencent.com/tokenhub` 都是 HTTP 200、里面
+没有 logo），抓不到它自有的图；而 TokenHub 本来就是腾讯云自己的网关，key 与控制台都挂在腾讯云账号下，
+用腾讯云的标既真实、又正好和同行的 `tencent`（混元的圆环）区分开。三条路径原样拷入（含
+`fillRule`/`clipRule="evenodd"`：去掉规则，云朵里的镂空会填实，整枚糊成一团），颜色交给
+`currentColor`，**没有新增依赖** —— 这个文件一直是「纯路径、无外部图片资源」。
+
+### 验证
+
+- `pnpm --filter @adelie/ui typecheck` **rc=0**；`npx oxlint` 两个改动文件 **0 警告 0 错误**；改动文件与
+  changelog 一对 `prettier --check` 干净。
+- `packages/ui` 整包 `vitest run --maxWorkers=2` **133 文件 / 1117 passed、rc=0**（上一轮基线 133 /
+  1116，**+1 即本笔**；`test/logos.test.ts` 6 条）。
+- **三条路径与原文逐字节相同**：脚本从本文件 `tokenhub` 条目抽出三个 `d`，与
+  `@lobehub/icons/es/TencentCloud/components/Mono.mjs` 里的三个逐条比对，**顺序与内容都一致**。
+- **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup`，把 `tokenhub` / `tencent` /
+  `anthropic` / `venice` / `iflytek` / `baidu` 六个图标一起出了张图（96px 格子、64px 图标、
+  2 倍像素密度），截图在 `/root/Adelie_develop/tokenhub-logo-preview.png`：`tokenhub` 是实心的腾讯云
+  云朵标，与紧挨着的 `tencent`（混元圆环）明显是两个形状，也不是字母牌。顺带把 `packages/ui` 里
+  那次之前缺的浏览器依赖补了（`libnspr4` 等一批 + `fonts-wqy-zenhei`），否则 headless chromium 起不来。
+- **没验的**：没起 7372 的画廊在真界面上点开看，也没装进现网 —— 这一笔随下一版（0.8.1）发出。
+
+### 提交
+
+- 源码 1 个文件 + 用例 1 个文件 + changelog 一对 `9b25a8d64`；台账（7.185 那一条、上表那一行、本节）。
+  这一笔是**直推**的 —— `github.com` 转回可用（这台机器迁移后网络也跟着翻了个面），
+  `git -c http.version=HTTP/1.1 push origin main` 成功（`b5de56be9..9b25a8d64`），**没有走上一轮那套
+  GitHub Git Data API**，于是远端 SHA 与本地**相同**，不必再用 `repair-objects.py` 重建，也不必单开一
+  笔「记上最终提交号」。台账这一笔同样直推。
+
 ## 第三百零七轮：桌宠那条自绘蓝鲸改画成「蓝色大肥鱼」（2026-11-24，条目 7.184）
 
 **开工**：`git status --short` 干净（`/root/adelie-fork`，分支 `main`），本地与远端 `main` 都是
@@ -5975,6 +6033,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-23 | 7.182 | **模型库分组密钥那张框被拒时留着，敲进去的密钥与原因也留着**（**2026-11-23 第三百零五轮**落地；`packages/web` 1 个源码文件（`features/models/models-page.tsx`：`GroupKeyDialog` 自己拿 `busy` 与 `refusal`，`onSubmit` 改成 `Promise<string \| null>` —— 被拒时答原话、写进去时答 `null`；页面只在写进去之后关框，在途时取消/确认都灰着、框点外面也不关；句子走库里既有的 `NoticeStrip`（`role="alert"`、危险墨色、正文在 `data-slot="body"`））＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在模型页的最后一处 —— 分组表头的「填写密钥」按一下就关框、写入随后才开始，被拒时原因只在一条六秒就走的通知里，刚敲的密钥跟着框一起不见（代码注释里自己写着「这个框按了就关、没地方画」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型） · 改动文件与 changelog 一对 `prettier --check` 干净 · `npx oxlint` 两个文件 **0 警告 0 错误** · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1458 + 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **354 文件 / 3995 + 2 跳过** · **真服务端 + 真浏览器新 spec 2 passed（11.8 s）**（`models-group-key-refusal.spec.mjs`，服务端 8950 + mock 8951 + 数据根 `/tmp/r306data`）：整表 PUT 被按 500 → 句子在框里、框还开着、字段仍是刚敲的密钥、通知区 0 条、七秒后仍在、PUT 只一条且带那把密钥；解除拦截 → 框关掉、通知「已为 1 个模型配置 API key」、服务端那行密钥确实存下 · **反证**：`models-page.tsx` 退回 `HEAD` + 重建 web + 同一条 spec → **2 failed**（框里找不到 `role="alert"`） · **两态探针**（`r306/probe.mjs`）：改前 `dialogOpen:false`、通知区一条、七秒后 0 条，密钥在页面上找不到；改后 `dialogOpen:true`、红条 `操作被拒绝：服务器内部错误，请稍后重试。`、字段 `sk-probe-group`、通知区 0 条、七秒后逐项相同；截图 `r306/{before,after}/*.png` 肉眼看过 · **相邻回归**：`models-assign-user-key` 3 + `models-delete-group` 2 + `models-detect-refusal` 2 + `models-save-refusal` 3 + 本笔 2 = **12 passed** · 两态 console 只有既有的 `/machines` **403** 与探针自己拦的 500、pageerror 0 · 端口只用 8950 / 8951（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/tmp/r306data`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `7d370771b` |
 | 2026-11-24 | 7.183 | **Venice AI 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零六轮**落地；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS` 新增 `venice` 一条，两条 `evenodd` 路径，`fillRule`/`clipRule` 一并保留，颜色走 `currentColor`）+ `test/logos.test.ts` 1 条新用例 + changelog 一对 —— **纯路径、无新依赖、不碰接口**）：用户 2026-11-24「venice服务商图标更新一下」—— 这一组 7.172 加进来时没查过品牌资产，于是与自建分组一样落成灰底字母牌「V」；标记取自 `@lobehub/icons` 6.20.0（两把交叉的钥匙），**没有自己描** —— 厂商站点这台机器连不上（`venice.ai` 与 `docs.venice.ai` 都超时），`simple-icons` / `@iconify-json/logos` / `@iconify-json/simple-icons` 里都没有这一枚 | `packages/ui` `tsc --noEmit` **rc=0** · `npx oxlint` 两个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/ui` `vitest run --maxWorkers=2` **133 文件 / 1116 passed**（基线 1115，**+1 即本笔**；`logos.test.ts` 5 条） · **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup` 出 `venice` / `anthropic` / `tokenhub` 三个图标，20px 行内在浅色与深色两种底色上截图看过（venice 是两把交叉的钥匙、笔画重量与 Anthropic 相当；`tokenhub` 仍是字母牌，这轮没动它） · **没做的**：没起 7372 的画廊在真界面上点开看，也没装进现网 —— 这一笔随下一版（0.8.1）发出 | `66a13fa00` |
 | 2026-11-24 | 7.184 | **桌宠的第二个形象改画成「蓝色大肥鱼」：更胖更圆、大眼，名字也跟着改**（**2026-11-24 第三百零七轮**落地；`packages/web` 4 个改动文件（`features/pet/whale.tsx` 整幅重画：身子由半径约 30 的圆改成 72×67 的胖圆、两只大眼取代独眼、一大块浅色肚子、尾鳍由两片尖角改成一整片带凹口的；`lib/strings.ts` 与 `lib/strings-en.ts` 那一行说明与选项名；`e2e/pet-figure.spec.mjs` 的注释）+ `test/icon-registry.test.ts` 路径条数 7 → 6 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24 发来「蓝色大肥鱼」的资料图（DeepSeek 图标的社区二创，配文「蓝色大肥鱼形象」），三条路里选了「把现有那条鱼改画成大肥鱼本尊」；**形象在存储里的名字仍是 `whale`**，改名会让选过它的桌面退回企鹅，理由写进文件头注释 | `pnpm --filter @adelie/web typecheck` **`EXIT=0`** · `npx oxlint` 5 个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净、`git diff --check` 干净 · `packages/web` `vitest run --maxWorkers=2` **354 文件 / 3995 passed / 2 跳过、rc=0**（中途 `test/icon-scale.test.ts` 真红一条：嘴的描边被顺手写到 2.4，允许的只有 1 / 1.5 / 1.7 / 2 / 2.2，改回 2.2 后全绿） · 三个直接相关用例 `pet-figure` 10 + `icon-registry` 3 + `install-scope` 20 **33 passed** · **真浏览器端到端 1 passed（2.9 s）**（当前源码 `vite build --outDir /tmp/fatfish-e2e/dist` + 仓库里已建的服务端，端口 8941、数据根 `/root/adelie-fork-data/fatfish-a`）：`/pet` 默认画企鹅 → 另一个窗口写 `penguin.petFigure=whale` → 桌宠窗口不刷新就换成这条鱼 · **肉眼看过**（esbuild + `renderToStaticMarkup`，72 / 148 / 260 像素、浅深两种桌面、三种瞳孔偏移）`/root/Adelie_develop/fatfish-preview.png` · **没验的**：设置里那一行仍只在桌面壳自己的窗口里出现（浏览器伪造不了），没装进现网，随下一版 0.8.1 发出 | `cdb4b31aa` |
+| 2026-11-24 | 7.185 | **腾讯 TokenHub 分组画它自己的标记，不再是字母牌**（**2026-11-24 第三百零八轮**落地；`packages/ui` 1 个源码文件（`components/icons/logos/provider-logo.tsx`：`GLYPHS` 新增 `tokenhub` 一条，三条 `evenodd` 路径，`fillRule`/`clipRule` 一并保留，颜色走 `currentColor`，紧跟 `tencent` 之后）+ `test/logos.test.ts` 1 条新用例 + changelog 一对 —— **纯路径、无新依赖、不碰接口、没有新图片资源**）：用户 2026-11-24「模型库加服务商图标」—— 数完 24 个分组，只有 `tokenhub` 没查过品牌资产（昨天 7.182 加进来时是灰底字母牌「T」，同排别的服务商都画各自的标记）；标记取自 `@lobehub/icons` 6.20.0 以 `TencentCloud` 发布的那一枚（腾讯云云朵标），**三条路径与原文逐字节一致**（脚本逐条比对）—— 用腾讯云的标而不是 TokenHub 自有的：它的产品页与控制台对这台机器只回验证码壳（HTTP 200、无 logo），而这一组的 key 与控制台本就挂在腾讯云账号下、用腾讯云的标正好与同行的混元圆环区分开；开工时这台迁移机缺 `git`/`pnpm`/`make`/`g++` 与浏览器运行库，一并补回 | `packages/ui` `tsc --noEmit` **rc=0** · `npx oxlint` 两个改动文件 **0 警告 0 错误** · 改动文件与 changelog 一对 `prettier --check` 干净 · `packages/ui` `vitest run --maxWorkers=2` **133 文件 / 1117 passed、rc=0**（基线 1116，**+1 即本笔**；`logos.test.ts` 6 条） · **真组件渲染过一眼**：esbuild 打临时入口 + `renderToStaticMarkup` 把 `tokenhub` / `tencent` / `anthropic` / `venice` / `iflytek` / `baidu` 六个图标一起出图（96px 格、64px 图标、2 倍像素密度），截图 `/root/Adelie_develop/tokenhub-logo-preview.png` —— `tokenhub` 是实心的腾讯云云朵标，与紧挨的 `tencent`（混元圆环）明显两个形状、也不是字母牌 · **没做的**：没起 7372 画廊在真界面上点开看，也没装进现网 —— 随下一版（0.8.1）发出 | `9b25a8d64` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
