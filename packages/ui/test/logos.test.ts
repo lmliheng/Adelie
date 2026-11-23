@@ -33,6 +33,16 @@ describe("ProviderLogo", () => {
       expect(html, provider).not.toContain("<text");
     }
   });
+
+  // Venice AI shipped as a letter tile: the vendor's site cannot be reached from this machine,
+  // so its mark comes from the icon set that traces it. The two evenodd paths must survive the
+  // copy — without the rule the emblem's counter-shapes fill in and it reads as a blob.
+  it("draws Venice AI's mark, evenodd kept", () => {
+    const html = renderStatic(createElement(ProviderLogo, { provider: "venice" }));
+    expect(html).toContain('fill="currentColor"');
+    expect(html).not.toContain("<text");
+    expect(html.match(/fill-rule="evenodd"/g)).toHaveLength(2);
+  });
 });
 
 describe("AppLogo", () => {
