@@ -9,6 +9,9 @@
  * Grouped as endpoints.ts groups them, in its order.
  */
 import type {
+  AdminNotificationInfo,
+  AdminNotificationResponse,
+  AdminNotificationsResponse,
   AdminUserCreateResponse,
   AdminUsersResponse,
   AgentApiKeyCreateResponse,
@@ -78,6 +81,8 @@ import type {
   ModelTestResponse,
   ModelUserKeyAssignResponse,
   ModelVisionDetectResponse,
+  NotificationInfo,
+  NotificationsResponse,
   ImportedThemesResponse,
   ThemeRegistryResponse,
   OrganizationsResponse,
@@ -164,7 +169,7 @@ import { amspTryStream, dayKey, planId, trashId } from "./fixtures";
 import type { DemoFixtures, UsageDay } from "./fixtures";
 import { IDS } from "./ids";
 import { empty, fail, json, raw, Router } from "./router";
-import type { RequestContext } from "./router";
+import type { Answer, RequestContext } from "./router";
 import type { DemoStore } from "./store";
 import { payloadOf } from "./types";
 import type { OmniMessage } from "./types";
@@ -176,6 +181,34 @@ const record = (body: unknown): Record<string, unknown> =>
 
 const str = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;
+
+/**
+ * The account's inbox, derived from the sender's rows: the global notices plus the ones this
+ * account was named in, newest first. The admin-only fields (`readCount`, `recipients`) are
+ * dropped — the reader's view is what the server sends it.
+ */
+function inboxOf(store: DemoStore): NotificationsResponse {
+  const userId = store.f.user.userId;
+  const notifications: NotificationInfo[] = store.f.notices
+    .filter((row) => row.scope === "global" || row.userId === userId)
+    .map((row) => ({
+      id: row.id,
+      scope: row.scope,
+      ...(row.userId !== undefined ? { userId: row.userId } : {}),
+      title: row.title,
+      body: row.body,
+      sentBy: row.sentBy,
+      sentAt: row.sentAt,
+      ...(row.readAt !== undefined ? { readAt: row.readAt } : {}),
+    }));
+  return { notifications, unread: notifications.filter((row) => row.readAt === undefined).length };
+}
+
+/** The notices this account may act on — what `inboxOf` shows, as the rows themselves. */
+function visibleNotices(store: DemoStore): AdminNotificationInfo[] {
+  const userId = store.f.user.userId;
+  return store.f.notices.filter((row) => row.scope === "global" || row.userId === userId);
+}
 
 /**
  * Where the provider's WebSocket sits for a configured site — the server's own rule, minus its
@@ -383,6 +416,52 @@ router
   .post("/api/admin/users/:userId/password", () => empty())
   .delete("/api/admin/users/:userId", ({ store, params }) => {
     store.f.users = store.f.users.filter((u) => u.userId !== params.userId);
+    return empty();
+  })
+  // Admin notices: every signed-in account's own inbox, and the admin's sent list beside it. The
+  // server's audience rule is reproduced here — a `user` notice is only ever visible to the
+  // account it names, and a blank title or body is refused rather than stored.
+  .get("/api/notifications", ({ store }): NotificationsResponse => inboxOf(store))
+  .post("/api/notifications/:id/read", ({ store, params }): NotificationsResponse => {
+    const row = visibleNotices(store).find((n) => n.id === Number(params.id));
+    if (!row) return fail(404, "notification_not_found", `No notice ${params.id} for this account.`);
+    row.readAt = new Date().toISOString();
+    return inboxOf(store);
+  })
+  .post("/api/notifications/read-all", ({ store }): NotificationsResponse => {
+    const at = new Date().toISOString();
+    for (const row of visibleNotices(store)) row.readAt ??= at;
+    return inboxOf(store);
+  })
+  .get("/api/admin/notifications", ({ store }): AdminNotificationsResponse => ({
+    notifications: store.f.notices,
+    limits: { title: 120, body: 2000 },
+  }))
+  .post("/api/admin/notifications", ({ store, body }): Answer => {
+    const payload = record(body);
+    const scope = str(payload.scope) === "user" ? "user" : "global";
+    const title = str(payload.title).trim();
+    const text = str(payload.body).trim();
+    if (title === "" || text === "") fail(400, "bad_request", "title and body must not be blank.");
+    const row: AdminNotificationInfo = {
+      id: store.f.notices.reduce((max, n) => Math.max(max, n.id), 0) + 1,
+      scope,
+      ...(scope === "user" ? { userId: str(payload.userId, store.f.user.userId) } : {}),
+      title,
+      body: text,
+      sentBy: store.f.user.userId,
+      sentAt: new Date().toISOString(),
+      readCount: 0,
+      recipients: scope === "user" ? 1 : store.f.users.length,
+    };
+    store.f.notices.unshift(row);
+    return json({ notification: row } satisfies AdminNotificationResponse, 201);
+  })
+  .delete("/api/admin/notifications/:id", ({ store, params }): Answer => {
+    const id = Number(params.id);
+    const before = store.f.notices.length;
+    store.f.notices = store.f.notices.filter((n) => n.id !== id);
+    if (store.f.notices.length === before) fail(404, "notification_not_found", `No notice ${params.id}.`);
     return empty();
   })
   .get("/api/admin/settings", ({ store }): ServerSettingsResponse => ({

@@ -10,6 +10,7 @@ import type {
   AgentApiSettings,
   AgentConfigResponse,
   AgentSummary,
+  AdminNotificationInfo,
   AsrConfig,
   BenchmarkCaseSummary,
   BenchmarkSummary,
@@ -120,6 +121,11 @@ export interface DemoFixtures {
   now: number;
   user: UserInfo;
   users: UserInfo[];
+  /**
+   * The admin's notices, as the sender's list shows them (read count and recipients included).
+   * The reader's inbox is derived from these: the global ones plus the signed-in account's own.
+   */
+  notices: AdminNotificationInfo[];
   me: Omit<MeResponse, "user">;
   prefs: UiPrefs;
   serverSettings: ServerSettings;
@@ -1526,11 +1532,45 @@ export function buildFixtures(lang: Lang, now: number): DemoFixtures {
   const storageAppliedPlanMs = ago(1, 90);
   const storageStaleTrashMs = ago(20);
 
+  // The admin's two notices: one to everybody, already read by one account, and one to this
+  // account alone and still unread — so the account menu's badge shows 1 and both scopes render.
+  const notices: AdminNotificationInfo[] = [
+    {
+      id: 2,
+      scope: "user",
+      userId: IDS.users.admin,
+      title: L("密钥快到期了", "Your key expires soon"),
+      body: L(
+        "模型页那把 OpenAI 的 key 还有 5 天到期，记得换新的一把。",
+        "The OpenAI key on the Models page expires in five days — swap in a new one.",
+      ),
+      sentBy: IDS.users.member,
+      sentAt: iso(ago(0.05)),
+      readCount: 0,
+      recipients: 1,
+    },
+    {
+      id: 1,
+      scope: "global",
+      title: L("周六凌晨维护", "Maintenance on Saturday"),
+      body: L(
+        "这台服务器周六 02:00–04:00 做维护，期间会话可能短暂断开。",
+        "This server is under maintenance Saturday 02:00–04:00; Sessions may drop briefly.",
+      ),
+      sentBy: IDS.users.member,
+      sentAt: iso(ago(1.1)),
+      readAt: iso(ago(1.05)),
+      readCount: 1,
+      recipients: 2,
+    },
+  ];
+
   return {
     lang,
     now,
     user,
     users: [user, member],
+    notices,
     me: {
       previewIsolated: true,
       desktopMode: false,
