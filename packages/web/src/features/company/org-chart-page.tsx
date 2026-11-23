@@ -6,7 +6,9 @@
  * fresh desk session, and the workspace it runs in), leave. Every one of the personnel actions
  * confirms before it writes the chart file, and a confirmation that is refused keeps its card
  * standing with the server's words inside it (the leave card's own `refusal`), where the button
- * that retries them is. The card owns when that menu is open (three
+ * that retries them is. Opening the desk is the one row that can fail without a
+ * confirmation: its answer is drawn at the bottom of the card that asked (chart-card.tsx).
+ * The card owns when that menu is open (three
  * gestures reach it — see chart-card.tsx); this page only supplies the rows, against the
  * panel's own close, and bumps `viewEpoch` whenever the canvas moves the cards out from under
  * an open one.
@@ -41,13 +43,12 @@ import {
   MenuItem,
   MenuSeparator,
   Notice,
-  toastError,
   toastSuccess,
   usePointerDrag,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
 import { S } from "../../lib/strings";
-import { apiErrorText } from "../../lib/api-error";
+import { apiErrorText, refusalText } from "../../lib/api-error";
 import { useDocumentTitle } from "../../lib/use-document-title";
 import { toneInk } from "../../lib/tone";
 import { useCompany } from "../../state/company";
@@ -133,6 +134,8 @@ export function OrgChartPage() {
   const [leaveFor, setLeaveFor] = useState<OrgEmployeeItem | null>(null);
   /** The server's own words for a refused leave, drawn in the card that asked, next to its retry. */
   const [leaveRefusal, setLeaveRefusal] = useState<string | null>(null);
+  /** The card whose desk could not be opened, and the server's reason in its own words. */
+  const [deskRefusal, setDeskRefusal] = useState<{ agentId: string; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   /** The view the reader moved to; null follows the fit, which is what the chart opens at. */
   const [view, setView] = useState<CanvasView | null>(null);
@@ -163,6 +166,12 @@ export function OrgChartPage() {
   useEffect(() => {
     void load();
   }, [load, runs, tickets, budget]);
+
+  // One organization's answer is not another's: a sentence about an employee the next chart
+  // does not carry would hang under nothing.
+  useEffect(() => {
+    setDeskRefusal(null);
+  }, [projectId, orgId]);
 
   const layout = useMemo(
     () => (chart === null ? null : layoutOrgTree(chart.employees, chart.ceoAgentId)),
@@ -309,6 +318,8 @@ export function OrgChartPage() {
   };
 
   const openDesk = async (employee: OrgEmployeeItem) => {
+    // A new question, not the last one: the previous refusal is not its answer.
+    setDeskRefusal(null);
     try {
       const desk = await api.getOrgDesk(projectId, orgId, employee.agentId);
       // The call may have CREATED the desk: the sidebar's 工位 group has to learn its
@@ -319,7 +330,8 @@ export function OrgChartPage() {
       }
       navigate(`/chat/${desk.sessionId}`);
     } catch (e) {
-      toastError(apiErrorText(e));
+      // The card is on screen and stays there: the answer goes into the card that asked.
+      setDeskRefusal({ agentId: employee.agentId, text: refusalText(e) });
     }
   };
 
@@ -550,6 +562,11 @@ export function OrgChartPage() {
                     y={node.y}
                     detached={node.detached}
                     viewEpoch={viewEpoch}
+                    refusal={
+                      deskRefusal !== null && deskRefusal.agentId === employee.agentId
+                        ? deskRefusal.text
+                        : null
+                    }
                     menu={(close) => nodeMenu(employee, isCeo, close)}
                   />
                 );

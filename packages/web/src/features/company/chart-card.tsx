@@ -13,6 +13,11 @@
  * Every status colour is a tone picked by meaning; running and on-desk share emerald and
  * are told apart by motion (the running dot pulses) and by their labels.
  *
+ * A desk session the card could not open answers in the card: the sentence is drawn over the
+ * ratio bar at the bottom of the face. It cannot be a line under the card, the way a row's
+ * refusal is: the card's box is fixed (the layout is text-free — org-chart-tree.ts) and the
+ * canvas clips at its own edge, so a line hanging below the bottom row would be cut off.
+ *
  * Three ways into that one menu, all of them the same panel: the kebab in the top-right
  * corner (the only focusable thing on the card, and the pointer's discoverable route), a
  * secondary click anywhere on the card, and Shift+F10 from the focused kebab. The sidebar's
@@ -109,6 +114,7 @@ export function ChartCard({
   y,
   detached = false,
   viewEpoch,
+  refusal = null,
   menu,
 }: {
   employee: OrgEmployeeItem;
@@ -127,6 +133,12 @@ export function ChartCard({
    * container it sits in, or a resize of the window).
    */
   viewEpoch: number;
+  /**
+   * The server's words for a desk this card could not open — drawn at the bottom of the face.
+   * It belongs to the card that asked, so the reader sees which menu row came back empty and
+   * the same menu is the retry.
+   */
+  refusal?: string | null;
   /**
    * The personnel menu's rows, built against the panel's own close: a row runs after the
    * panel has gone, and the menu is the only keyboard route to these actions.
@@ -224,6 +236,22 @@ export function ChartCard({
             style={{ width: `${fill}%` }}
           />
         </span>
+        {/* A refused desk answers in the card (see the header): over the ratio bar, two lines at
+            most, the whole sentence on hover. The strip positions, the paragraph clamps: an
+            absolutely positioned box is blockified, and `-webkit-box` — what the clamp needs —
+            does not survive that. */}
+        {refusal !== null && (
+          <div className="absolute inset-x-0 bottom-0 rounded-b-lg border-t border-red-200 bg-white px-3 py-1.5 dark:border-red-800 dark:bg-gray-900">
+            <p
+              role="alert"
+              data-tooltip={S.common.refused(refusal)}
+              data-tooltip-content="text"
+              className={`line-clamp-2 text-xs leading-4 break-words ${toneInk.danger}`}
+            >
+              {S.common.refused(refusal)}
+            </p>
+          </div>
+        )}
       </div>
       {/* The personnel menu. Its own wrapper positions it — Dropdown's root is `relative` and
           would otherwise sit in flow. The kebab is the Dropdown's own trigger rather than a
