@@ -3107,6 +3107,79 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       `openDesk` 里，这是**侧栏自有行**的一处 —— 行还站在那里、按的就是它，而原来的原因是六秒就
       走的通知。见「第二百九十七轮」一节。
 
+- [x] **7.177 组织图卡片菜单打不开的工位，原因留在卡片里**（**2026-11-23 第二百九十八轮**落地，
+      提交见「已完成的轮次」）：`packages/web` 2 个源码文件（`org-chart-page.tsx`：新增 `deskRefusal`
+      `{agentId,text}`，`openDesk` 的 `catch` 经 `refusalText` 写入、开头与切换组织时清掉，只画在发起
+      那次读的卡片上；`chart-card.tsx`：卡片多一个 `refusal`，画在脸上、盖住底部的比例条，
+      `role="alert"`、危险墨色、`line-clamp-2`、悬停看整句；定位那一层与截断那一段分成两层写 ——
+      绝对定位的盒子会被块化，`-webkit-box` 撑不过去）＋ 1 个新 spec ＋ changelog 一对 ——
+      **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处
+      `openDesk` 里还剩**组织图卡片菜单**这一处 —— 菜单第一行是「打开工位会话」，读失败时卡片与点之前
+      一模一样，原因只在一条六秒就走的通知里。**为什么不在卡片下面**：卡片是定高的（布局不量文字，
+      `org-chart-tree.ts`），画布又按自己的边缘裁切，挂在最下一排卡片底下的句子会被裁掉。见
+      「第二百九十八轮」一节。
+
+## 第二百九十八轮：组织图卡片菜单打不开的工位，原因留在卡片里（2026-11-23，条目 7.177）
+
+**开工**：`git status --short` 干净（`67a10db63` 之上没有未提交改动）。`git -c http.version=HTTP/1.1
+fetch origin` 与 `git merge --ff-only origin/main` 都说 `Already up to date`（与远端同为 `67a10db63`）。
+
+**为什么是这一条**：待办里 2.2c（写侧剩下的全在桌面壳一侧）、3.5（要用户拍板取哪个桌面壳）、3.6（要
+模型 key）、5.6（促销搬进 Project 配置要拍板）、5.10（要 mermaid 新依赖）都还卡着，4.1–4.3 明令不动；
+第 7 节到 7.176 已全勾。上一轮（第二百九十七轮 / 7.176）的「没做 / 留着」把公司页剩下的 `openDesk`
+点名成两处：**组织图卡片菜单**（菜单一点就关，原因该落在卡片上，而卡片的高度由布局算好，属「要造新
+表面」的一笔）与竖栏（48 px，有意留通知）。本轮接着做前者。
+
+**做了什么**：卡片的菜单第一行是「打开工位会话」（`api.getOrgDesk`，没有就顺手建一个），失败过去只
+落在一条六秒就走的通知里，而卡片与点之前一模一样 —— 又是 7.19 要修的那种形状。现在：
+
+- `org-chart-page.tsx` 新增 `deskRefusal`（`{agentId, text}`）：`openDesk` 开头清掉、`catch` 经
+  `refusalText` 写进去（不再 `toastError`），换 `projectId` / `orgId` 时清空；传 `refusal` 时只给
+  `agentId` 对上的那张卡片。
+- `chart-card.tsx` 的卡片多一个 `refusal`（可选，默认 `null`），画在脸上、盖住底部比例条：
+  `role="alert"`、危险墨色、最多两行（`line-clamp-2`）、悬停得到整句 —— 与概览页 / 日历 / 侧栏那几处
+  同一套写法。
+- **为什么不在卡片下面**：卡片定高 92 px（布局不量文字），画布 `overflow-hidden`、高度正好到最下一排
+  卡片的下缘 + 16 px 内边距，挂在卡片底下的句子会被裁掉。所以答复带画在卡片自己脸上，盖住比例条与
+  它的上一行。
+- 第一版把 `absolute` 与 `line-clamp-2` 写在同一个 `<p>` 上，截图发现**第三行漏在卡片外面**：绝对定位
+  的盒子会被块化，`display` 从 `-webkit-box` 变成 `flow-root`，`-webkit-line-clamp` 因此不生效（探针读
+  到 `overflow: hidden`、`clientH 44` 而 `scrollH 108`）。改成外层定位、内层 `line-clamp-2` 之后，
+  探针读到 `line 214×32`（两行）、外层带 `238×45`，两者都落在卡片 `240×92` 之内，截图复核干净。
+
+**验证**：
+
+- 六包 `typecheck` `EXIT=0`（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 /
+  613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名
+  `@adelie/*` 跑）。
+- `npx oxlint` 2 个改动文件 **0 警告 0 错误**；`prettier --check` 改动文件与 spec 干净；
+  `git diff --check` 干净。
+- 逐包 test `EXIT=0`、0 失败：core **70 文件 / 1458 + 6 跳过**、ui **133 / 1115**、cli **39 / 566**、
+  server **217 / 3162 + 6 跳过**、web **352 / 3970 + 2 跳过**（与上一轮基线逐项相同）。
+- 新用例 `packages/web/e2e/org-chart-desk-refusal.spec.mjs` **1 passed（9.5 s）**（真服务端 8930 + 自带
+  mock 8931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r298-a1`）：工位路由答 500 并带上
+  自己的话 → 句子在画布里的卡片上、量到整块落在卡片脸的范围之内（`line 214×32` 落在外层 `238×45`、
+  外层落在卡片 `240×92`）、通知区没有它、七秒后仍在、地址没变；解除拦截后同一套菜单 → 进入
+  `/chat/session-…`。
+- 反证（改前产物 `r298/before-dist`，`index-Edeu7SeB.js`；改后 `index-ClA9j0WL.js`）挂 8932 / 数据根
+  `/root/adelie-fork-data/r298-b1` → **1 failed**，画布里没有 `alert`。
+- 两态探针（`r298/probe.mjs`）：改后 `line 214×32` / 外层 `238×45` / 卡片 `240×92`（起点都在卡片脸
+  之内），截图 `r298/shots/{card,chart-page}.png` 肉眼看过；console 只有既有 `/machines` 403 与探针自己
+  拦的 500，pageerror 0 条。
+- 相邻回归（真浏览器）：`org-chart-leave-refusal` 1 + `desk-row-refusal` 1 + `employee-refusal` 3 +
+  `overview-desk-refusal` 1 **6 passed（38.1 s）**。
+- 端口只用 8930 / 8931 / 8932（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r298-{a1,b1}`，产物与截图都在 scratchpad 的 `r298/` 下（`packages/*/dist`、
+  `packages/web/test-results/` 都是产物，未 `git add`）。
+
+**没做 / 留着**：
+
+- 公司竖栏（48 px）有意保持通知，理由与上一轮相同；组织图卡片菜单这一处到此收完。
+- 内置 github 浅色那对 4.34、三套外置主题的 `--ui-tree-guide`、registry 读副本滞后三件仍按上一轮的
+  理由留着。
+
+**提交**：代码 + spec + changelog 一对 + 本节 + 上表那一行 + 条目 7.177，随本文件另起一笔。
+
 ## 第二百九十七轮：侧栏工位行打不开时，原因留在那一行下面（2026-11-23，条目 7.176）
 
 **开工**：`git status --short` 干净（`3d504f2b8` 之上没有未提交改动）。`git fetch origin` 第一次被
@@ -5324,6 +5397,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-23 | 7.174 | **概览页打不开的 CEO 工位，原因留在页面自己的答复行里**（**2026-11-23 第二百九十五轮**落地；`packages/web` 1 个源码文件（`overview-page.tsx`：新增 `deskRefusal`，`openCeoDesk` 的 `catch` 经 `refusalText` 写进去、不再 `toastError`，拒绝句收成 `deskRefusalLine`，页头有按钮那一版画在正文最上方（与刷新失败同一槽），新建组织那一版给 `StepCard` 加可选 `note`、画在指引第一步那张卡的按钮下面，两处因 `steps.fresh` 互斥）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页还剩三处 `openDesk`，这是其中**页头按钮**的一处 —— 读失败时页面留在原处，而原来的原因只在一条六秒就走的通知里，按过的按钮与之前一模一样（改前实测：800 毫秒时通知堆栈里就是那句话、页面上 0 条，七秒后两边都是 0 条） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑） · `npx oxlint` 改动源码 + 新 spec **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净（spec 首跑 `--write` 一次，复检全绿） · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（含变基进来的另一条线那份 `head-layers` 用例） · **新用例 1 passed（9.5 s）**（真服务端 9971 + 自带 mock 8933 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r293-a`）：补一张工单让三步指引让位 → 工位路由答 500 带上自己的话 → 句子在页面上、量到起点在页头按钮下缘之下、通知区没有它、按钮回到可点且文字复原、七秒后仍在、地址没变；解除拦截后按同一颗按钮 → 进入 `/chat/<会话>` 且新页面上没有那句 · **反证（改前产物 `r293/before-dist`，主包 `index-BbWX0Dsq.js`；改后 `index-BJzpOryR.js`）** 挂 9972 / 数据根 `/root/adelie-fork-data/r293-b` → **1 failed**（`getByRole("alert")` 找不到） · **两态探针**（`r293/shape-check.mjs`）：改前 800 毫秒时通知堆栈里就是那句话、页面 `alert` 为 null，七秒后堆栈空；改后 800 毫秒时页面就是「操作被拒绝：…」、堆栈只有内测提示，七秒后仍在，量到在页头按钮下缘之下 17 px；**新建组织那条路**（`FRESH=1`）在三步指引第一步的按钮下面 8 px、七秒后仍在 · 截图 `r293/life-{before,after,fresh}/shots/life-{1-800ms,2-7s}.png` 肉眼看过，两态 pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `company-rail-hints` 2 + `org-delete-refusal` 1 + `org-settings-refusal` 2 + `company.spec` 1 **6 passed**；变基后在最终树上重建 web（`index-C-C9Bj56.js`）重跑本笔 1 + `company-rail-hints` 2 **3 passed** · 端口只用 9971 / 9972 / 9973 / 8933 / 8934（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r293-{a,b,c}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `faf079336` |
 | 2026-11-23 | 7.175 | **默认主题那条淡线查过之后留在原处，层序修复与四套主题的新取值一起上了现网**（**2026-11-23 第二百九十六轮**落地；本仓 `packages/ui` 1 处注释（`themes/github.css` 里 `--ui-line-muted` 旁边写清为什么不跟着调亮），**不改取值、不碰测试**；现网只换 `/root/.adelie/web/index.html` 与 `/root/.adelie/data/themes/` 四份 JSON，**不进源码**）：7.173 把「内置 github 浅色那条淡线要不要一起调、现网要不要增量换前端、现网数据根四份主题要不要换新版」三件摆给用户拍板，用户答「按你的来」 —— ①那条线（`--ui-fg-muted` `oklch(55.6% 0 0)` 压 `--ui-line-muted` `oklch(97% 0 0)`）只有 4.34，挪到 gray-50 能给 4.53，但该 token 还被 18 处 `bg-line-muted`（9 处悬停/选中态）当填充用，而 gray-50 正好等于 `--ui-surface-muted` 与 `--ui-inset`，挪过去会让画在这两种底上的 `border-line-muted`（改动卡表头线、工具卡前置块线）与底色同色、最淡的分隔线等于没了，且这条刻度是 `token-contract.test.ts` 钉住的「app always drew」，故维持原值、把理由写进注释；②层序修复（只动 HTML）上现网，不必重启（服务端没推送过 web 版本时直接从 `webDist` 读）；③现网数据根那四份与库里新版的差异**只有那 20 处取值**，整份换掉 | `prettier --check` 干净 · `oxlint` 对 CSS 无对象 · `pnpm --filter @adelie/ui exec vitest run test/contrast.test.ts test/token-contract.test.ts` **2 文件 / 114 passed（12.3 s）** · 现网 `index.html` **200 / 3948 B**（顺序声明 26 行 → `/api/themes.css` 33 行 → 打包 CSS 41 行），`/assets/index-BaLfRc61.js` **200 / 2 960 549 B**、`/assets/index-DdG-IiBW.css` **200 / 478 940 B**、`/api/themes.css` **200 / 39 890 B** · 重建产物的 CSS 与现网那份 **md5 同为 `f6cb5ab0984c5f536ce031f5e3f0673d`**（所以只换 HTML） · **现网真页面 CDP 探针**（`http://localhost:7777/`）：样式表顺序 `inline` → `/api/themes.css` → 打包 CSS，挂 `data-theme=geek` 插真通知条 → **`padStart 74px / borderTop 0px / iconDisplay none`** · **两态对照（现网两份产物）**：去掉顺序声明 → **`14.4px / 1px`**，与上一轮构建产物上的数字一致 · **分段控件未选中那侧压井槽**：doodle **4.60**、skeuo **5.15**、cyber **5.80**、clay-glow **5.57**、geek **5.68**（doodle 改前 2.11），github **4.34** 即①那条 · `theme-tools/check-files.py` **0 处低于 4.5、rc=0** · 备份在 scratchpad `live-swap-20261123/` · 没切版本号、没发 npm、没发安装包 | `7bffa05a0` |
 | 2026-11-23 | 7.176 | **侧栏工位行打不开时，原因留在那一行下面**（**2026-11-23 第二百九十七轮**落地；`packages/web` 1 个源码文件（`org-session-groups.tsx`：`useOpenDesk` 多一个 `refusal`（`{agentId,text}`，经 `refusalText` 写入、开头清掉、换组织清掉），第三个参数改成 `{ onNavigate?, sayInPlace? }`；`DeskRow` 多一个 `refusal: string \| null`，画在 `<li>` 里、行本身之下（`role="alert"`、危险墨色、`line-clamp-2`、悬停看整句）；`DeskRailRows` 一项 48 px 没有一行可写，保持 `toastError` 并写明理由）＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处 `openDesk` 里还剩这处**侧栏自有行** —— 行还站在那里、按的就是它，而原来的原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 两者与 changelog 一对 `prettier --check` 干净（spec 首跑 `--write` 一次）、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（与上一轮基线逐项相同） · **新用例 1 passed（8.9 s）**（真服务端 9981 + 自带 mock 8934 + 数据根 `/root/adelie-fork-data/r297-a`）：侧栏画工位组用的两次读按「缓存还没学到」交回（员工不带 `desk`、会话路由 `desks` 为空）→ 工位路由答 500 并带上自己的话 → 句子在那一行下面、量到起点正好在行下缘（461 = 461）、宽 272 落在侧栏 288 之内、通知区没有它、七秒后仍在、那一行已恢复可点、地址没变；解除拦截后同一行进 `/chat/session-…` · **反证（改前产物 `r297/before-dist`，主包 `index-C-C9Bj56.js`；改后 `index-Edeu7SeB.js`）**挂 9982 / 数据根 `/root/adelie-fork-data/r297-b` → **1 failed**，侧栏里没有 `alert` · **两态探针**（`r297/probe/shape.spec.mjs`，跑完已删）：行 `y 429–461`、句子 `y 461–497`、`rowDisabled false`，截图 `r297/shots/{1-row,2-refused,3-refused-7s,4-retried}.png` 肉眼看过，pageerror 0 条、console 只有既有 `/machines` 403 与探针自己拦的 500 · **相邻回归（真浏览器）** `company.spec` 1 + `company-rail-hints` 2 + `overview-desk-refusal` 1 **4 passed**；`channel-{join,send,earlier}-refusal` / `channel-live-day` / `calendar-desk-refusal` / `employee-refusal` / `org-chart-leave-refusal` / `org-delete-refusal` / `org-settings-refusal` **17 passed（1.4 m）** · 端口只用 9981 / 9982 / 8934（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r297-{a,b}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `635b3e50c` |
+| 2026-11-23 | 7.177 | **组织图卡片菜单打不开的工位，原因留在卡片里**（**2026-11-23 第二百九十八轮**落地；`packages/web` 2 个源码文件（`org-chart-page.tsx`：新增 `deskRefusal`（`{agentId,text}`，`openDesk` 开头清空、`catch` 经 `refusalText` 写入、换组织清空，只给 `agentId` 对上的卡片）；`chart-card.tsx`：卡片多一个可选 `refusal`，画在脸上、盖住比例条（`role="alert"`、危险墨色、`line-clamp-2`、悬停看整句；外层定位、内层截断 —— 绝对定位会被块化、`-webkit-box` 不生效））＋ 1 个新 spec ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在公司页那几处 `openDesk` 里还剩组织图**卡片菜单**这一处 —— 菜单一点就关、卡片定高、画布裁边，而原来的原因只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，198 接口 / 613 类型；模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到，按 `@adelie/*` 跑） · `npx oxlint` 2 个改动文件 **0 警告 0 错误** · 改动文件、spec 与 changelog 一对 `prettier --check` 干净、`git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1458 / 6 跳过** · ui **133 / 1115** · cli **39 / 566** · server **217 / 3162 / 6 跳过** · web **352 / 3970 / 2 跳过**（与上一轮基线逐项相同） · **新用例 1 passed（9.5 s）**（真服务端 8930 + 自带 mock 8931 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r298-a1`）：工位路由答 500 并带上自己的话 → 句子在画布里的卡片上、量到整块落在卡片脸之内（`line 214×32` 落在外层 `238×45`、外层落在卡片 `240×92`）、通知区没有它、七秒后仍在、地址没变；解除拦截后同一套菜单进入 `/chat/session-…` · **反证（改前产物 `r298/before-dist`，`index-Edeu7SeB.js`；改后 `index-ClA9j0WL.js`）**挂 8932 / 数据根 `/root/adelie-fork-data/r298-b1` → **1 failed**，画布里没有 `alert` · **探针**（`r298/probe.mjs`）：第一版把 `absolute` 与 `line-clamp-2` 写在同一 `<p>` 上时**第三行漏在卡片外**（块化把 `display` 变成 `flow-root`、`clientH 44` / `scrollH 108`），拆成外层定位 + 内层截断后量到两行、收在卡片内，截图 `r298/shots/{card,chart-page}.png` 肉眼看过；console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条 · **相邻回归（真浏览器）** `org-chart-leave-refusal` 1 + `desk-row-refusal` 1 + `employee-refusal` 3 + `overview-desk-refusal` 1 **6 passed（38.1 s）** · 端口只用 8930 / 8931 / 8932（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r298-{a1,b1}`，产物未 `git add` · 没有切版本号、没发 npm、没发安装包 | `4756243f4` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
