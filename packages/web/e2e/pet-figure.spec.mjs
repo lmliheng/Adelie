@@ -10,7 +10,7 @@ test.use({ viewport: { width: 260, height: 248 } });
 
 /** The penguin's beak and feet: the one warm fill in either figure. */
 const penguinWarm = 'svg [fill="#f59e0b"]';
-/** The whale's own blue. */
+/** The blue fat fish's own body colour (the figure's stored name is still `whale`). */
 const whaleBlue = 'svg [fill="#4d6bfe"]';
 
 test("the pet draws the figure the preference names, and follows another window", async ({
@@ -29,7 +29,7 @@ test("the pet draws the figure the preference names, and follows another window"
   await settings.goto("/");
   await settings.evaluate(() => localStorage.setItem("penguin.petFigure", "whale"));
 
-  // The pet window follows with no reload, and draws the whale whole.
+  // The pet window follows with no reload, and draws the fish whole.
   await expect(page.locator(whaleBlue).first()).toBeVisible();
   await expect(page.locator(penguinWarm)).toHaveCount(0);
 

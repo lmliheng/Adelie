@@ -1056,7 +1056,7 @@ export const zh = {
     /** Desktop shell only: which figure the companion window draws. */
     petFigure: "桌宠形象",
     petFigureInfo:
-      "桌宠长什么样：经典企鹅，或一条蓝色小鲸鱼。改完立即生效，不用重启，也不用重开桌宠窗口。",
+      "桌宠长什么样：经典企鹅，或一条蓝色大肥鱼。改完立即生效，不用重启，也不用重开桌宠窗口。",
     currencyInfo: "价格显示币种；存储始终为美元。",
     changePasswordInfo: "更改当前账号的登录密码。",
     /** Personal company-mode switch (general page) and the admin master switch (its own server page). */
@@ -1381,7 +1381,7 @@ export const zh = {
     /** The panel's footer action, which writes the same preference the Appearance switch does. */
     hide: "隐藏桌宠",
     /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
-    figureNames: { penguin: "企鹅", whale: "蓝色小鲸鱼" },
+    figureNames: { penguin: "企鹅", whale: "蓝色大肥鱼" },
     refresh: "刷新",
     balance: "模型余额",
     /** No balance is pinned to the account (see features/models/balance.ts). */

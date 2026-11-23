@@ -997,7 +997,7 @@ export const en: Strings = {
     /** Desktop shell only: which figure the companion window draws. */
     petFigure: "Pet figure",
     petFigureInfo:
-      "What the pet looks like: the classic penguin, or a blue whale. The change lands at once — no restart, and no need to reopen the pet's window.",
+      "What the pet looks like: the classic penguin, or a blue fat fish. The change lands at once — no restart, and no need to reopen the pet's window.",
     currencyInfo: "Display currency for prices; storage is always USD.",
     changePasswordInfo: "Change this account's sign-in password.",
     /** Personal company-mode switch (general page) and the admin master switch (its own server page). */
@@ -1329,7 +1329,7 @@ export const en: Strings = {
     /** The panel's footer action, which writes the same preference the Appearance switch does. */
     hide: "Hide the pet",
     /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
-    figureNames: { penguin: "Penguin", whale: "Blue whale" },
+    figureNames: { penguin: "Penguin", whale: "Blue fat fish" },
     refresh: "Refresh",
     balance: "Model balance",
     /** No balance is pinned to the account (see features/models/balance.ts). */
