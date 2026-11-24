@@ -14,10 +14,14 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const WEB_DIR = new URL("../", import.meta.url);
-const html = readFileSync(join(WEB_DIR.pathname, "index.html"), "utf8");
+// `new URL(...).pathname` keeps the drive letter's leading slash on Windows ("/D:/a/…"), and
+// `join` then reads `D:\D:\a\…` — the Windows job was red on exactly this. `fileURLToPath` is the
+// way the rest of this package's tests already turn a URL into a path.
+const WEB_DIR = fileURLToPath(new URL("../", import.meta.url));
+const html = readFileSync(join(WEB_DIR, "index.html"), "utf8");
 
 /** The one ordered `@layer a, b;` statement in the head, and where it sits. */
 function headStatement(): { names: string[]; at: number } | null {
