@@ -1326,6 +1326,26 @@ export function ModelsPage() {
           </span>
         );
       }
+      case "keyStatus":
+        // The one word the header says about a key written by hand. Enter key sits beside it and
+        // reports only the write it just made; the mask that proves the write is on a card inside
+        // the fold, so a folded group used to look exactly the same keyed and unkeyed. Same shape
+        // as the connect status next door — a dot, its words, and a tooltip when the words go.
+        return (
+          <span
+            data-tooltip={keyStored ? S.models.keyStored : S.models.keyMissing}
+            className={`${HEADER_TEXT} gap-1 whitespace-nowrap text-gray-500 dark:text-gray-400`}
+          >
+            <span
+              aria-hidden
+              className={`h-1.5 w-1.5 shrink-0 rounded-full ${keyStored ? toneDot.success : toneDot.muted}`}
+            />
+            {/* The words give way on a narrow header; the dot and its tooltip stay. */}
+            <span className="sr-only @2xl:not-sr-only">
+              {keyStored ? S.models.keyStored : S.models.keyMissing}
+            </span>
+          </span>
+        );
       case "platformSync":
         // A stored Penguin Go key enables catalog refresh, but connecting stays a separate
         // action so the owner can replace the key with another account's.

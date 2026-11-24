@@ -2647,6 +2647,14 @@ export const zh = {
     connectedStatus: "连接成功",
     notConnectedStatus: "未连接",
     /**
+     * The key status beside 填写密钥 — the groups whose key is written by hand rather than fetched
+     * by a flow. It reads the same stored key the connect status does; the difference is that here
+     * nothing else on the header would change when the key lands. The words give way on a narrow
+     * header, so the dot and its tooltip are what carry it there.
+     */
+    keyStored: "已配置密钥",
+    keyMissing: "未配置密钥",
+    /**
      * A group's account balance in its header (and pinned beside the user name): the tooltip
      * names the group, the vendor's own figures and the time of the reading. `amounts` and
      * `time` are already formatted.

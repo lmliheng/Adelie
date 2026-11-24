@@ -3,10 +3,15 @@
  * page renders it and the tests pin it without a DOM.
  *
  * The actions stand in a fixed order: the balance (where the catalog declares one), then a
- * divider, Connect with its status (groups whose key comes from an authorization flow), Sync (a
- * connected Penguin Go), Enter key, Assign a user key, the speed test, Add model (groups that take
- * hand-added models), Delete group (user-defined groups). A member sees what they can read — the
- * balance and the connection status, without its button; every action that writes is the owner's.
+ * divider, Connect with its status (groups whose key comes from an authorization flow), the key
+ * status (groups whose key is written by hand instead), Sync (a connected Penguin Go), Enter key,
+ * Assign a user key, the speed test, Add model (groups that take hand-added models), Delete group
+ * (user-defined groups). A member sees what they can read — the balance, the connection status and
+ * the key status, without their buttons; every action that writes is the owner's.
+ *
+ * Exactly one of the two status readings belongs to a group: a key comes through a flow or it is
+ * written by hand, never both. Custom has neither — its rows each reach their own endpoint, so
+ * there is no group key for a status to be about.
  */
 import {
   MODEL_PROVIDERS,
@@ -30,6 +35,7 @@ export const HEADER_LABEL = "hidden text-xs @3xl:inline";
 export type GroupHeaderAction =
   | "balance"
   | "connect"
+  | "keyStatus"
   | "platformSync"
   | "groupKey"
   | "assignUserKey"
@@ -75,6 +81,29 @@ export function connectionStatus(
   return groupKeyStored(rows) ? "connected" : "notConnected";
 }
 
+/**
+ * Whether this group's header reads out its key at all — the groups whose key is written by hand:
+ * the same ones that carry Enter key. A group with a connect flow says it through Connect's own
+ * status instead, and Custom has no group key for either to be about.
+ */
+export function hasKeyStatus(provider: ModelProviderInfo): boolean {
+  return !hasConnectFlow(provider) && provider.id !== "custom";
+}
+
+/**
+ * The key status beside Enter key, or null where the header does not read it out. It answers the
+ * one question the button beside it cannot — what this group holds right now: a stored key says
+ * so, and nothing stored says so too, rather than the header looking the same either way while the
+ * mask that proves the write sits inside the fold.
+ */
+export function keyStatus(
+  provider: ModelProviderInfo,
+  rows: readonly KeyedRowLike[],
+): "configured" | "missing" | null {
+  if (!hasKeyStatus(provider)) return null;
+  return groupKeyStored(rows) ? "configured" : "missing";
+}
+
 export interface GroupHeaderFacts {
   isOwner: boolean;
   /** The group holds a stored key (groupKeyStored). */
@@ -99,6 +128,10 @@ export function groupHeaderActions(
     actions.push("balance");
   }
   if (hasConnectFlow(provider)) actions.push("connect");
+  // A group keyed by hand reads out what it holds, the way a connect flow reads out whether it is
+  // connected: the button beside it only reports the write it just made, and the mask it wrote
+  // lives on a card inside the fold.
+  if (hasKeyStatus(provider)) actions.push("keyStatus");
   if (!isOwner) return actions;
   if (provider.id === PENGUIN_GO_PROVIDER_ID && keyStored) actions.push("platformSync");
   // Custom's rows each reach their own endpoint, so one key written across them is never right.

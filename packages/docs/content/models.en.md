@@ -41,13 +41,14 @@ A group's header shows the provider's logo, the group's name, its model count an
 
 - the group's balance, for TokenDance and DeepSeek once the group has a key, with a pin and a refresh icon before it and a divider after it; see [Account balances](#account-balances);
 - whether the group is connected, and **Connect**, for TokenDance, Penguin Go and ModelScope; see [Connect an account](#connect-an-account);
+- the key status, on every group but **Custom** and those three: **Key configured** with a green dot, or **No key** with a grey one, saying whether the group holds a stored key right now; see [Set API keys](#set-api-keys);
 - **Enter key**, on every group but **Custom**; see [Set API keys](#set-api-keys);
 - the speed test; see [Measure speed](#measure-speed);
 - **Add model**, on **Custom**, **vLLM** and groups you created; see [Add a model](#add-a-model).
 
 While the TokenDance group has no key, a banner above the groups offers to connect your TokenDance wallet, so the models there need no key set by hand. Its **Connect** runs the same flow as the group's. Select × to hide the banner in this browser.
 
-Only the Project owner can change models and credentials. Members can search, open and close groups, reorder them in their own browser, see balances and connection status, and open **Model settings** read-only.
+Only the Project owner can change models and credentials. Members can search, open and close groups, reorder them in their own browser, see balances, connection status and key status, and open **Model settings** read-only.
 
 ## Add a model group
 
@@ -208,7 +209,7 @@ The credential comes from the same chain as the connection test: the key typed i
 Each model carries its own API key, or none.
 
 - **One model.** In **Model settings**, enter the key in **API key**. Once saved, the key is shown masked; leave the field empty to keep it, or select **Clear stored API key** to remove it.
-- **A whole group.** On a group's header, select **Enter key** and enter the key. It is written to every model in the group, replacing the key each one had. **Custom** has no **Enter key**: its models each reach their own endpoint.
+- **A whole group.** On a group's header, select **Enter key** and enter the key. It is written to every model in the group, replacing the key each one had. Whether it landed is the key status on that header: **Key configured** once the group holds a stored key, however the key got there, and **No key** before. **Custom** has no **Enter key**: its models each reach their own endpoint.
 - **No key.** A model without a key uses the provider's environment variable on the server **only when its requests go to that provider's official endpoint**: the entry has no base URL (AgentHub's own `*_API_KEY` / `*_BASE_URL` pairing then applies), or its base URL is the vendor's own endpoint. A row with its own base URL is never covered by the environment, not even when `OPENAI_BASE_URL` names the same server. Gateway groups (TokenDance, OpenRouter, Fireworks AI, SiliconFlow, the Qwen gateways, ModelScope), **Custom**, **vLLM** and groups you created point at other endpoints, so their models need their own key: a Session, a connection test or a group speed test on a keyless row there fails with "has no API key" instead of borrowing `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`. The Penguin Go group is the exception that proves the rule — its rows fall back to its own `PENGUIN_GO_API_KEY`, never to a vendor's variable. The card and the dialog show when a key is read from an environment variable; see [Built-in provider groups](#built-in-provider-groups).
 
 A key you type is stored in the hidden Project config file, which has mode 0600. The Web App always masks it.
