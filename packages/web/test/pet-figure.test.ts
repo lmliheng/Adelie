@@ -10,11 +10,11 @@
  * - Storage that refuses every call (site data blocked) answers the default and swallows the write,
  *   rather than taking a render down with it.
  * - A write tells the renderers following it, and stops telling the one that unsubscribed.
- * - Both figures draw through the map, which is what the pet page looks the choice up in — and a
+ * - Every figure draws through the map, which is what the pet page looks the choice up in — and a
  *   name no figure answers to any more (the retired `whale`) draws the penguin like any other.
- * - The second figure is the reader's own picture: it lives in a key of its own, a write to either
- *   key is a change to both, and a `picture` choice with no picture stored draws the penguin rather
- *   than an empty box.
+ * - The figures after the penguin: the shipped whale girl, drawn from its own image, and the
+ *   reader's own picture, which lives in a key of its own — a write to either key is a change to
+ *   both, and a `picture` choice with no picture stored draws the penguin rather than an empty box.
  */
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
@@ -34,6 +34,7 @@ import {
 import { usePetFigure } from "../src/lib/use-pet-figure";
 import { PET_FIGURE_VIEWS } from "../src/features/pet/figures";
 import { PetPicture } from "../src/features/pet/picture";
+import { WhaleGirl } from "../src/features/pet/whale-girl";
 import { blockedStorage, memoryStorage, stubLocalStorage } from "./helpers/storage";
 
 /** A store holding `value` under the figure key, or nothing when it is null. */
@@ -99,6 +100,22 @@ describe("isPetFigure", () => {
     for (const value of ["", "Whale", "bird", 0, null, undefined, {}]) {
       expect(isPetFigure(value), String(value)).toBe(false);
     }
+  });
+});
+
+describe("the `whaleGirl` figure", () => {
+  const drawn = (): string =>
+    renderToStaticMarkup(createElement(WhaleGirl, { className: "h-full w-full" }));
+
+  it("draws the shipped illustration, contained and not draggable", () => {
+    const html = drawn();
+
+    expect(html).toContain('src="/pet-figures/whale-girl.png"');
+    expect(html).toContain("object-contain");
+    expect(html).toContain('draggable="false"');
+    // An image has no eyes for the pointer to move, so no drawing classes ride on it.
+    expect(html).not.toContain("<svg");
+    expect(html).not.toContain("pet-pupils");
   });
 });
 
@@ -193,6 +210,15 @@ describe("the figure a renderer draws", () => {
     expect(html).toContain("<svg");
     expect(html).toContain("#1f2937"); // the penguin's black silhouette
     expect(html).not.toContain("<img");
+  });
+
+  it("is the whale girl once that is the choice", () => {
+    stubLocalStorage(memoryStorage({ [PET_FIGURE_KEY]: "whaleGirl" }));
+
+    const html = drawn();
+
+    expect(html).toContain('src="/pet-figures/whale-girl.png"');
+    expect(html).not.toContain("<svg");
   });
 
   it("is the stored picture once that is the choice", () => {

@@ -3,11 +3,14 @@
  * with no reload — the `storage` event path the page relies on, because the shell's companion window
  * is a different document from the one the Appearance row is in.
  *
- * The second figure is the reader's own picture, which is the same path with a second key: the image
- * is written beside the choice, and the pet draws it as an image. That the image really decodes is
- * asserted (`naturalWidth`), not just that an `<img>` appeared — a broken `src` still has a box.
+ * Three figures, and the second one is the app's own: the classic penguin, the whale girl the app
+ * ships as an image (`/pet-figures/whale-girl.png`), and the reader's own picture.
  *
- * The drawn fish that used to be the third figure was retired on 2026-11-24 (the owner asked for the
+ * The reader's own picture is the same path with a second key: the image is written beside the
+ * choice, and the pet draws it as an image. That the image really decodes is asserted
+ * (`naturalWidth`), not just that an `<img>` appeared — a broken `src` still has a box.
+ *
+ * The drawn fish that used to be a third figure was retired on 2026-11-24 (the owner asked for the
  * community's anthropomorphic "blue fat fish", which is a picture rather than a drawing of the fish),
  * so a desktop that still has `whale` stored is the fallback case and is asserted here too.
  */
@@ -62,6 +65,32 @@ test("the pet draws the reader's own picture, and follows another window", async
     await settings.evaluate(() => localStorage.getItem("penguin.petFigurePicture")),
     "the picture survives a switch away from it",
   ).toBe(PICTURE);
+
+  await settings.close();
+});
+
+test("the whale girl is drawn from the app's own image, and follows another window", async ({
+  page,
+  context,
+}) => {
+  await provisionAndLogin(page.request, "petwhale", "petwhale-pw");
+  await page.goto("/pet");
+  await expect(page.locator(penguinWarm).first()).toBeVisible();
+
+  const settings = await context.newPage();
+  await settings.goto("/");
+  await settings.evaluate(() => localStorage.setItem("penguin.petFigure", "whaleGirl"));
+
+  const image = petOf(page).locator("img");
+  await expect(image).toHaveAttribute("src", "/pet-figures/whale-girl.png");
+  // The shipped file really decodes — the figure is the app's own, so it needs nothing stored here.
+  await expect.poll(() => image.evaluate((el) => el.naturalWidth)).toBeGreaterThan(0);
+  await expect(page.locator(penguinWarm)).toHaveCount(0);
+
+  // Back to the penguin, and the whale girl's image goes with it.
+  await settings.evaluate(() => localStorage.setItem("penguin.petFigure", "penguin"));
+  await expect(page.locator(penguinWarm).first()).toBeVisible();
+  await expect(image).toHaveCount(0);
 
   await settings.close();
 });

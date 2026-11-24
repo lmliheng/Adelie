@@ -1056,7 +1056,7 @@ export const zh = {
     /** Desktop shell only: which figure the companion window draws. */
     petFigure: "桌宠形象",
     petFigureInfo:
-      "桌宠长什么样：经典企鹅，或者你自己的图片。改完立即生效，不用重启，也不用重开桌宠窗口。",
+      "桌宠长什么样：经典企鹅、鲸鱼娘，或者你自己的图片。改完立即生效，不用重启，也不用重开桌宠窗口。",
     /** Desktop shell only: picking the picture the `picture` figure draws. */
     petPictureChoose: "选择图片",
     petPictureChange: "换一张",
@@ -1390,7 +1390,7 @@ export const zh = {
     /** The panel's footer action, which writes the same preference the Appearance switch does. */
     hide: "隐藏桌宠",
     /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
-    figureNames: { penguin: "企鹅", picture: "我的图片" },
+    figureNames: { penguin: "企鹅", whaleGirl: "鲸鱼娘", picture: "我的图片" },
     refresh: "刷新",
     balance: "模型余额",
     /** No balance is pinned to the account (see features/models/balance.ts). */

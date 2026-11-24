@@ -25,8 +25,15 @@
  * initializer (or a render) must not be taken down by it.
  */
 
-/** The figures the pet can be, in the order the settings row offers them (the default first). */
-export const PET_FIGURES = ["penguin", "picture"] as const;
+/**
+ * The figures the pet can be, in the order the settings row offers them (the default first).
+ *
+ * `whaleGirl` is the second, and deliberately NOT named `whale`: `whale` is the name the retired
+ * drawn fish had, and a name that comes back would resurrect a choice those desktops still hold
+ * under it. A figure added after the choice existed gets a name of its own, and a name the build no
+ * longer draws keeps meaning the penguin.
+ */
+export const PET_FIGURES = ["penguin", "whaleGirl", "picture"] as const;
 
 /** One of the pet's drawings; features/pet/figures.ts maps each to the component that draws it. */
 export type PetFigure = (typeof PET_FIGURES)[number];

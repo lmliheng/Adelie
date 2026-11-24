@@ -997,7 +997,7 @@ export const en: Strings = {
     /** Desktop shell only: which figure the companion window draws. */
     petFigure: "Pet figure",
     petFigureInfo:
-      "What the pet looks like: the classic penguin, or a picture of your own. The change lands at once — no restart, and no need to reopen the pet's window.",
+      "What the pet looks like: the classic penguin, the whale girl, or a picture of your own. The change lands at once — no restart, and no need to reopen the pet's window.",
     /** Desktop shell only: picking the picture the `picture` figure draws. */
     petPictureChoose: "Choose a picture",
     petPictureChange: "Choose another",
@@ -1339,7 +1339,7 @@ export const en: Strings = {
     /** The panel's footer action, which writes the same preference the Appearance switch does. */
     hide: "Hide the pet",
     /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
-    figureNames: { penguin: "Penguin", picture: "My picture" },
+    figureNames: { penguin: "Penguin", whaleGirl: "Whale girl", picture: "My picture" },
     refresh: "Refresh",
     balance: "Model balance",
     /** No balance is pinned to the account (see features/models/balance.ts). */
