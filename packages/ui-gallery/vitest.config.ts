@@ -18,5 +18,15 @@ export default defineConfig({
   // what the package's own tsconfig declares (`jsx: react-jsx`), so it is named here as well; the
   // difference only shows when the copy is injected rather than linked.
   esbuild: { jsx: "automatic" },
-  test: { environment: "node", include: ["test/**/*.test.ts"] },
+  test: {
+    environment: "node",
+    include: ["test/**/*.test.ts"],
+    // The coverage test walks every endpoint wrapper and re-seeds the demo store before each one
+    // (~150 fixture builds). That takes 1.2 s on Linux but was measured at 4.8 s on the Windows
+    // runner — one slower run and it crossed the default 5 s cap. A test that times out is not
+    // merely slow: it keeps looping in the background, so its resets land inside the tests that
+    // follow, and that single walk failed six tests. `ui` and `web` allow 30 s already; the other
+    // files here finish well under a second, so the longer cap costs nothing when it is not hit.
+    testTimeout: 30_000,
+  },
 });
