@@ -24,23 +24,36 @@ const REFUSED = "操作被拒绝：服务器内部错误，请稍后重试。";
 /**
  * Sign in as the seeded administrator (the section is admin-only) and give the Project a model —
  * the onboarding overlay covers the page without one.
+ *
+ * Its row is ADDED to the table, not swapped for the table: `default_project` is shared by every
+ * spec that signs in as the administrator, and this one runs first (alphabetically), so replacing
+ * the catalog with a single row left every later spec on a Project that offers one model — which
+ * is how `chat-defaults-save-refusal` came to fail in a full run while passing on its own
+ * ("the picker must offer a model that is not the default"). The row is set by its reference, so a
+ * rerun over the same data root replaces it instead of tripping the duplicate check.
  */
 async function ready(page) {
   await login(page.request, ADMIN_ID, ADMIN_PASSWORD);
   const projectId = (await (await page.request.get(`${BASE}/api/projects`)).json()).projects[0]
     .projectId;
+  const held = await (await page.request.get(`${BASE}/api/projects/${projectId}/models`)).json();
+  const rows = new Map(
+    held.models.map((m) => [
+      `${m.provider}/${m.modelId}`,
+      { provider: m.provider, modelId: m.modelId },
+    ]),
+  );
+  rows.set("custom/claude-4-8", {
+    provider: "custom",
+    modelId: "claude-4-8",
+    apiKey: "sk-mock",
+    baseUrl: MOCK,
+    contextWindow: 200000,
+  });
   const put = await page.request.put(`${BASE}/api/projects/${projectId}/models`, {
     data: {
       defaultModel: { provider: "custom", modelId: "claude-4-8" },
-      models: [
-        {
-          provider: "custom",
-          modelId: "claude-4-8",
-          apiKey: "sk-mock",
-          baseUrl: MOCK,
-          contextWindow: 200000,
-        },
-      ],
+      models: [...rows.values()],
     },
   });
   expect(put.ok(), "put models").toBeTruthy();

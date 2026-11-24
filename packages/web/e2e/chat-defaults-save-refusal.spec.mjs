@@ -18,6 +18,8 @@ import { test, expect } from "@playwright/test";
 import { ADMIN_ID, ADMIN_PASSWORD, login } from "./auth.mjs";
 
 const BASE = process.env.BASE_URL;
+/** Where the seeded picker rows point their key: the run's mock model, so a seeded row is a real one. */
+const MOCK = process.env.MOCK_URL;
 
 /** The shared notification region: a refusal must not also land in it. */
 const notices = (page) => page.getByRole("region", { name: "通知" });
@@ -56,6 +58,60 @@ const tooltipOf = (m) =>
     ? m.modelId
     : `${m.displayName} · ${m.modelId}`;
 
+/** The rows this spec puts in the Project's table when nothing else can be picked (see ensurePickerRows). */
+const PICKER_IDS = [
+  "adelie-e2e-picker-1",
+  "adelie-e2e-picker-2",
+  "adelie-e2e-picker-3",
+  "adelie-e2e-picker-4",
+];
+
+/**
+ * Guarantees the picker offers two rows besides the default, each with a key of its own.
+ *
+ * The suite's administrator Project arrives holding the whole model catalog, and that is why the
+ * count in `targetsOf` is "counted rather than pinned". But the picker only offers rows that HAVE
+ * a key (`visibleChatModels`), and on a freshly made data root none of the catalog rows has one —
+ * so the catalog alone satisfies `targetsOf` and still leaves the picker empty ("the picker must
+ * offer…" passed, then `pickModel` found no row). The seeds carry `sk-e2e-picker`, which is what
+ * makes them offerable; they use fixed ids so a rerun over the same root replaces them rather than
+ * growing the table, and four are seeded because the first test ends by saving its pick as the
+ * Project default (one of them then stops counting as "not the default").
+ */
+async function ensurePickerRows(page, projectId) {
+  const models = await modelsOf(page, projectId);
+  const carried = new Set(
+    models.models
+      .filter((m) => m.provider === "custom" && m.credential?.apiKeyMasked)
+      .map((m) => m.modelId),
+  );
+  const missing = PICKER_IDS.filter((id) => !carried.has(id));
+  if (!missing.length) return;
+  // Rows the table already holds go in by reference (their stored credentials stay); the seeds go
+  // in over their own ids, since the route refuses a duplicate reference.
+  const rows = new Map(tableOf(models).map((r) => [`${r.provider}/${r.modelId}`, r]));
+  for (const modelId of missing) {
+    rows.set(`custom/${modelId}`, {
+      provider: "custom",
+      modelId,
+      apiKey: "sk-e2e-picker",
+      baseUrl: MOCK,
+    });
+  }
+  const put = await page.request.put(`${BASE}/api/projects/${projectId}/models`, {
+    data: { models: [...rows.values()] },
+  });
+  expect(put.ok(), "seed the picker rows").toBeTruthy();
+}
+
+/**
+ * Whether the picker can offer this row at all: it hides rows without a configured key
+ * (`visibleChatModels`), so a catalog row nobody gave a key to satisfies a count of "a model that
+ * is not the default" and still cannot be clicked — which is exactly how the fix first read green
+ * in `targetsOf` and then failed in `pickModel`.
+ */
+const hasKey = (m) => !!m.credential?.apiKeyMasked || !!m.envKeyMasked;
+
 /**
  * Two models the picker offers that are NOT the current default, both from the default's own
  * provider group where possible — the dialog's picker opens on that group, so a same-group row
@@ -67,7 +123,7 @@ function targetsOf(models) {
   const dflt = models.defaultModel;
   const isDefault = (m) => m.provider === dflt.provider && m.modelId === dflt.modelId;
   const seenOnce = (m) => models.models.filter((x) => tooltipOf(x) === tooltipOf(m)).length === 1;
-  const usable = models.models.filter((m) => seenOnce(m) && !isDefault(m));
+  const usable = models.models.filter((m) => seenOnce(m) && !isDefault(m) && hasKey(m));
   const sameGroup = usable.filter((m) => m.provider === dflt.provider);
   const [a, b] = [...sameGroup, ...usable];
   expect(a, "the picker must offer a model that is not the default").toBeTruthy();
@@ -148,6 +204,7 @@ test("a Save refused at its model half says the defaults were saved, and the sam
 }) => {
   await login(page.request, ADMIN_ID, ADMIN_PASSWORD);
   const projectId = await projectIdOf(page);
+  await ensurePickerRows(page, projectId);
   const [target] = targetsOf(await modelsOf(page, projectId));
   const storedBefore = await chatDefaultsOf(page, projectId);
   const modelsBefore = await modelsOf(page, projectId);
@@ -204,6 +261,7 @@ test("a Save whose block was not touched does not claim the defaults were saved"
 }) => {
   await login(page.request, ADMIN_ID, ADMIN_PASSWORD);
   const projectId = await projectIdOf(page);
+  await ensurePickerRows(page, projectId);
   const [, target] = targetsOf(await modelsOf(page, projectId));
   const storedBefore = await chatDefaultsOf(page, projectId);
 
