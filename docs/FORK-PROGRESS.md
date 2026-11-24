@@ -3210,6 +3210,80 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       模型页的最后一处 —— 分组表头的「同步」按下后只弹一条六秒通知，通告消失后屏幕上没有任何痕迹。
       见「第三百一十轮」一节。
 
+- [x] **7.187 频道里邀请成员被拒时，选择器留着，原因留在那位候选人的行下面**（**2026-11-24 第三百一十二轮**
+      落地，提交见「已完成的轮次」；`packages/web` 1 个源码文件（`features/company/channel-header.tsx`：
+      `InvitePicker` 自己拿 `refusal {principal,text}`，`onPick` 改成交回「服务端的原话 / 写入成功的
+      `null`」，被拒时选择器站着、搜索词还在、句子画在那位候选人的行下面，同一行就是重试；选择器按频道
+      id 作键，换频道不带旧句子）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有
+      新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在频道表头的最后一处 —— 「邀请」按一下选择器就关、
+      写入随后才开始，被拒时原因只落在一条六秒就走、且浮在框外的通知里，通知一消失既没有原因、也没有
+      刚点的那一行可以重试。见「第三百一十二轮」一节。
+
+## 第三百一十二轮：频道邀请被拒时，选择器留着、原因留在那位候选人的行下面（2026-11-24，条目 7.187）
+
+**开工**：`git status --short` 干净，分支 `main`；`git fetch origin && git merge --ff-only origin/main`
+—— 本地 `797487009` → 远端 **`4c904da5f`**（另一条线的第三百一十一轮：发 v0.8.1、换装现网，fast-forward
+无冲突，45 文件 / +578 −43）。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 **2.2c**，它「还差什么」四条这一轮一条都动不了（写侧
+在桌面壳、部署单元等发布动作、桌面壳自己的开关同前，`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c
+留到发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 /
+新依赖。上一轮（第三百一十轮）末尾留的口径是「从这些『无宿主面』之外的读写对里再挑」，于是把 web 里
+仍在用 `toastError` 的写入逐一读过（`packages/web/src` 下 17 个文件、49 处）：`channel-header.tsx` 的
+`invite` 是其中最直的一处 —— 按下即关框、写入随后才开始，而那一行候选人与它的搜索词都跟着框没了。
+
+**改前实测**（改前产物 + 一次性数据根 `r312-before`，服务端 8975 + mock 8971，真浏览器）：造一个组织、
+一条频道、一位不在频道里的员工，点「邀请」→ 点他 → `POST …/channels/site/members` 按 500 交回：
+选择器**当场没了**（`pickerOpen 0`）、框内 `role="alert"` **0 条**、原话只在通知区
+（`the channel store is locked`）、七秒后通知区也空了（`toastText ""`）、候选行不再在屏幕上 —— 想重试
+得重新打开、重新找人。截图 `r312/before/before-2-refused.png`。
+
+**做了什么**：
+
+- `packages/web/src/features/company/channel-header.tsx`：`InvitePicker` 自己拿 `refusal`
+  `{ principal, text }`；`onPick` 的类型从 `(c) => void` 改成 `(c) => Promise<string | null>`，
+  `invite` 不再 `toastError`，而是把服务端原话交回发起的那一行。每次尝试先清掉上一次的句子（一次尝试
+  一个原因），**成功才关框**并清掉搜索词；被拒时选择器站着、查询还在、句子用与成员面板「打开工位会话」
+  同一条写法（`role="alert"` + `toneInk.danger`）画在那位候选人的行下面。
+- 选择器按 `detail.channelId` 作键：换一个频道就是另一份候选名单，上一个频道留下的句子不该跟过来。
+- 文件头的说明补上一句「邀请由问它的那个选择器作答」。
+
+**验证**：
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）。
+- `npx oxlint` 改动文件 **0 警告 0 错误**；改动文件、新 spec 与 changelog 一对 `prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **218 / 3176 + 6 跳过** · web **355 文件 / 3998 + 2 跳过**（本笔没有新增单测文件；用例是 e2e）。
+- **新 spec 2 passed（13.5 s）**（`packages/web/e2e/channel-invite-refusal.spec.mjs`）：① 被拒时选择器
+  仍开着、`role="alert"` 逐字是服务端原话、按几何量过它在这位候选人的行下面且在框内、通知区不含那句话、
+  POST 只发过一条、七秒后同一句仍在、服务端名册没变；Escape 关掉再开是干净的；解除拦截后从同一行重试
+  落地（框关、通知报「已邀请 何地」、名册里有他）。② 成功路径：框关、成员数变「3 人」、重开时候选里
+  已经没有他。
+- **反证（同一份 spec，改前源码 + 改前产物）**：把 `channel-header.tsx` 退回 `HEAD`、重建 web →
+  第一条 **failed**（`getByRole('alert')` 在框里 `element(s) not found`），第二条仍通过（成功路径两态
+  相同）；放回后重建，**2 passed**。
+- **相邻回归（真浏览器，一个进程三份 spec）**：本笔 2 + `channel-join-refusal` 2 + `channel-refusal` 3
+  （离开 / 归档 / 成员面板打开工位）= **7 passed（33.1 s）**。
+- 改后探针 `r312/after/after.json`：`pickerOpen 1`、`alertCount 1`、原话逐字、通知区只有内测提示
+  （不含服务端原话）、七秒后仍在；截图 `r312/after/after-2-refused.png` 肉眼看过 —— 红字正压在
+  「何地 · 站点工程师」那一行下面。两态 console 只有既有的 `/machines` **403**（非管理员账号）与本轮
+  故意造的 500，pageerror 0 条。
+- 端口只用 8975（服务端）与 8971（mock），跑完都已停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  数据只落在 `/root/adelie-fork-data/r312-before`，探针 / 截图 / 改前源码留底都在 scratchpad 的 `r312/` 下
+  （`packages/web/dist` 是构建产物，未 `git add`）。
+
+**没做 / 留着**：
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 同一遍扫下来的其余 `toastError` 写入都读过，留下的都是没有宿主面的：整批进程动作、菜单行（未归档）、
+  读失败的兜底、更新流程、把文件交给系统的文件管理器；没有顺手改。
+- 第 7 节到这里 7.187。
+
+### 提交
+
+- 源码 1 + 新 spec 1 + changelog 2 `d1109488a3be9b7dbdd1c224f2738339189bd036`；台账（7.187 那一条、上表那一行、本节）随本文件另起一笔。
+
 ## 第三百零九轮：命令只在用户设了 `NO_COLOR` 时才丢颜色（2026-11-24，条目 5.63）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b5de56be9`；`git fetch origin && git merge --ff-only
@@ -6234,6 +6308,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 5.63 | **命令只在用户设了 `NO_COLOR` 时才丢颜色**（**2026-11-24 第三百零九轮**落地；`packages/core` 2 个源码/用例文件（`environment/tools/command/session-manager.ts` 的 `HARDENED_ENV` 去掉 `NO_COLOR: "1"` 并改两段注释；`test/exec-session.test.ts` 那条「FORCE_COLOR 被移除、NO_COLOR=1 才成立」改成 `it.each([undefined, "", "enabled"])` 三条，要求子进程分别读到 `missing` / 空 / `enabled`，三条里 `FORCE_COLOR` / `CLICOLOR_FORCE` 都必须为空）＋ `packages/web/src/lib/strip-ansi.ts` 文件头注释 ＋ `packages/docs/content/configuration.{zh,en}.md` 环境表一行 ＋ changelog 一对 —— **无新依赖、不碰接口、没有新文案**）：上游 `850062aaa` `#1745` 移植。`exec_command` / `input_command` 的子进程过去无条件带 `NO_COLOR=1`，用户想让它出颜色只能往保险柜里塞 `FORCE_COLOR`；现在宿主有就继承、没有就不给，保险柜照旧生效。`TERM=dumb` / `PAGER` / `GIT_EDITOR` 一个没动，`FORCE_COLOR` / `CLICOLOR_FORCE` 仍照旧移除（`#102` 不回退） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 3 个改动文件 **0 警告 0 错误** · 3 个源码/用例文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 + 6 跳过**（基线 1458，+2 即本笔）· ui **133 / 1117** · cli **39 / 566** · server **216 / 3176 + 6 跳过** · web **354 / 3995 + 2 跳过** · **真服务端两条腿**（mock 8981 + 真服务端 + `/usr/bin/chromium`，提示词 `files rewrite test printenv NO_COLOR || echo NC_UNSET`，断言读 Trace 里 `tool_call_output.output`）：宿主 `env -u NO_COLOR` 起的服务端（8982）→ 命令看到 **`NC_UNSET`**；宿主带 `NO_COLOR=1`（8980）→ 命令看到 **`1`**（照常继承）· **反证两层**：改前源码跑单测 **3 failed / 45 passed**（三条 `preserves NO_COLOR=…`），放回后 **48 全过**；改前 core 产物（8984 + `r309-nc-before` + `env -u NO_COLOR`）跑同一条期望 **1 failed**，收到 `"1"` · 踩过的坑：Adelie 给 agent 的 shell 自己就带 `NO_COLOR=1`，「宿主没设」必须 `env -u NO_COLOR`；断言不能读整份 Trace（命令文本里就写着 `NC_UNSET`）· 端口只用 8980 / 8981 / 8982 / 8984（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-nc-*`，探针与产物留底在 scratchpad `r309/`（`test-results/` 未 `git add`）· 没有切版本号、没发 npm、没发安装包 | 见本节 |
 | 2026-11-24 | 7.186 | **模型库的平台同步被拒时，原因留在那个分组的表头下面**（**2026-11-24 第三百一十轮**落地；`packages/web` 1 个新模块（`features/models/platform-sync-refusal.ts`：`platformSyncFailure` 把撤销 key 那条交给授权流程、其余经 `refusalText` 留一句）＋ 1 个源码文件（`models-page.tsx`：`syncPlatformModels(providerId)` 记下提问的分组，句子画在该分组表头与模型卡之间的 `NoticeStrip`（`role="alert"`、危险色调）里，折叠时也看得见；分组被搜索滤掉时随之清掉）＋ 1 个单测（3 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「0 条 alert、通知区 1 条、七秒后消失」，改后「alert 1 条、通知区 0 条、七秒后同一句、按钮仍可再按」，反证把源码退回 `HEAD` 重建后同一 spec **2 failed**）· 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过；本笔单独验证时 1458，与并行落地的 5.63 合并后 +2）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过；基线 354 / 3995，**+1 文件 / +3 条即本笔**）· **新 spec 2 passed（11.8 s）** · **相邻回归 9 passed（34.1 s）**（`models-group-key-refusal` 2 + `models-save-refusal` 3 + `models-sync-order` 2 + 本笔 2）· **两态探针**：`alertCount 1`、`alertUnderHeader true`、`toastButtons 0`、七秒后同一句，截图 `r310/shots/refused.png` 肉眼看过；console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条 · 端口只用 8970–8975，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r309-*` | `45556f2b6` |
 | 2026-11-24 | 发布 | **发 v0.8.1 并换装现网**（把 v0.8.0 之后攒下的收成正式版：Venice AI（7.183）与腾讯 TokenHub（7.185）两个分组换掉字母牌、桌宠第二条形象改画成「蓝色大肥鱼」并改名（7.184）、「被拒的原因留在按下去的地方」在模型页补两处（7.182 分组密钥框、7.186 平台同步）、命令只在用户设了 `NO_COLOR` 时才丢颜色（5.63）；发布提交 `69e085e3c`（父 `ad7e5f8ee`），`github.com` 转回可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.1` = 对象 `baf43a24f…`；门禁在标签检出 `/root/rel-081` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 test 脚本的包全过、**合计 11054 条通过**）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.1（`PUBLISH-ALL-DONE`）；GitHub Release **id `455961504`** 14 件 763 MB 逐件核 digest 后发布为 latest；3003 换上 v0.8.1 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.1、旧前端先拷回、瞬时单元 `adelie-live-restart-081` 延后重启装上 `index-B5Bwm2BR.js` 并自核验） | 发布轮，逐项见「第三百一十一轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.1、core 戳 `BUILD_DATE 2026-11-23 / BUILD_COMMIT 69e085e3c…`、`GET /` 200、匿名路由 401、通知两张表在库里；现网核验写 `rel-081-live-restart-verify.txt`；`releases/latest` = v0.8.1 | `69e085e3c`（发布） |
+| 2026-11-24 | 7.187 | **频道里邀请成员被拒时，选择器留着，原因留在那位候选人的行下面**（**2026-11-24 第三百一十二轮**落地；`packages/web` 1 个源码文件（`features/company/channel-header.tsx`：`InvitePicker` 自己拿 `refusal {principal,text}`，`onPick` 改成交回「服务端的原话 / 写入成功的 `null`」，每次尝试先清上一次的句子、成功才关框并清搜索词，被拒时句子用 `role="alert"` + `toneInk.danger` 画在那位候选人的行下面；选择器按频道 id 作键）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在频道表头的最后一处 —— 「邀请」按一下选择器就关、写入随后才开始，被拒时原因只落在一条六秒就走、且浮在框外的通知里，通知一消失既没有原因、也没有刚点的那一行可以重试 | 六包 `typecheck` `EXIT=0`（`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件、新 spec 与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test `EXIT=0`、0 失败：core **70 文件 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **355 文件 / 3998 + 2 跳过** · **新 spec 2 passed（13.5 s）**（`packages/web/e2e/channel-invite-refusal.spec.mjs`，服务端 8975 + mock 8971 + 一次性数据根 `/root/adelie-fork-data/r312-before`）：被拒时选择器仍开着、`role="alert"` 逐字是服务端原话、按几何量过它在那位候选人的行下面且在框内、通知区不含那句话、POST 只发过一条、七秒后同一句仍在、服务端名册没变，Escape 关掉再开干净、解除拦截后从同一行重试落地；成功路径框关、成员数变「3 人」、重开时候选里没有他 · **反证**：改前源码 + 改前产物跑同一份 spec → 第一条 **failed**（框里 `getByRole('alert')` `element(s) not found`），放回后重建 **2 passed** · **两态探针**：改前 `pickerOpen 0`、框内 alert 0、原话只在通知区、七秒后通知也空了；改后 `pickerOpen 1`、alert 1 逐字、通知区只有内测提示、七秒后仍在（截图 `r312/{before,after}/…-2-refused.png` 肉眼看过）· **相邻回归**：本笔 2 + `channel-join-refusal` 2 + `channel-refusal` 3 = **7 passed（33.1 s）** · 端口只用 8975 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d1109488a3be9b7dbdd1c224f2738339189bd036` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
