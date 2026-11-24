@@ -3293,6 +3293,16 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       展开新分组，都是用户没做过的选择；默认值现在是空集合，"什么都没存 / 没有 Project / 存储坏了 /
       存了空数组"因此是同一个答案。见「第三百一十三轮」一节。
 
+- [x] **7.189 工单「追加进度」被拒时，原因留在那个输入框下面**（**2026-11-24 第三百一十六轮**落地，
+      提交见「已完成的轮次」；`packages/web` 1 个源码文件（`features/company/ticket-dialog.tsx`：追加框
+      有自己的 `progressRefusal`，`addProgress` 把拒绝交给它、句子用 `NoticeStrip`（`role="alert"`、危险
+      色调、`S.common.refused(...)` 引导句）画在输入行下面，每次都先清上一次的句子）＋ 1 个既有 spec
+      加一条（`e2e/ticket-refusal.spec.mjs` 第 6 条；夹具的模型条目补上三桶 0 的 `pricing` —— 工单 id
+      靠一条「$0 价」模型的补全建议，没有价的行算「未计价」而不是免费，缺了它建单直接 400
+      `slug_required`）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在
+      尝试发生的地方）在工单详情的最后一处 —— 追加框不是确认卡片、一直在页面上，按下去被拒时原因只落在
+      一条六秒就走的通知里，那句话还留在框里却没人说得清为什么没成。见「第三百一十六轮」一节。
+
 ## 第三百一十三轮：模型库的分组一律从折叠开始（2026-11-24，条目 7.188）
 
 **开工**：`git status --short` 只有 `packages/desktop/build/**` 那 18 个迁移清理留下的删除（第三百零八轮
@@ -3468,6 +3478,72 @@ origin/main` 前进到 `ff863f2be`（第三百零八轮 TokenHub 图标那笔）
 ### 提交
 
 - 功能一笔（源码 2、用例 1、docs 2、changelog 2）；台账（5.63 那一条、上表那一行、本节）随本文件另起一笔。
+
+## 第三百一十六轮：工单「追加进度」被拒时，原因留在那个输入框下面（2026-11-24，条目 7.189）
+
+**开工**：`git status --short` 只有 `packages/desktop/build/**` 那 18 个迁移清理留下的删除（第三百零八轮
+已查明、不属于任何在跑的一轮）；`git fetch origin && git merge --ff-only origin/main` → Already up to
+date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔台账）。
+
+**为什么是这一条**：待办表最靠前的未勾选条目仍是 2.2c，它「还差什么」四条这一轮一条都动不了（写侧在
+桌面壳、部署单元等发布动作、桌面壳自己的开关同前、`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c
+留到发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新
+依赖。上游那 60 笔未落提交这一轮逐笔按「本树文件全在」筛过 —— 只有三条纯测试调整（`e16f729c6`
+`#1757`、`95fadb7d4` `#1768`、`d89dbd777` `#1778`）触碰的文件本树全有，其余 57 笔都要本树没有的文件
+（上游 11 月那批把 web / ui 的目录重排过，第三百零九轮已记过 `#1691` / `#1746` 要的前置本树也没有）。
+于是接着第三百一十轮「没做 / 留着」的同一族找：`ticket-dialog.tsx` 的 `run(work, done?, refuse?)` 五
+处写里，保存 / 移动 / 解封 / 封禁四处都把拒绝交给各自卡片的 `refusal` 槽位，**只剩 `addProgress` 没
+传** —— 而追加框不是卡片，它一直在页面上、被拒时那句话也还在框里，原因却只进一条六秒就走的通知。
+
+**改前实测**（改前产物 + 探针 `r316/probe-shots.mjs`，一次性数据根 `r316-probe`）：建一张工单，在
+「进展」框里敲一句话、把 `POST …/progress` 按 500 交回 → 对话框里那句话 **0 条**、通知区 **1 条**、
+七秒后通知区 **0 条**且框里仍是那句话（屏幕上什么也没说）。截图 `r316/shots/before/refused.png`。
+
+**做了什么**：
+
+- `packages/web/src/features/company/ticket-dialog.tsx`：新增 `progressRefusal`（与四处确认框共用的
+  `refusal` 分开 —— 那一个画在各自卡片里，而追加框不是卡片）；`addProgress` 每次尝试先清掉上一次的
+  句子，把 `setProgressRefusal` 交给 `run` 的 `refuse`；句子画在输入行下面的 `NoticeStrip`
+  （`role="alert"`、危险色调、`S.common.refused(...)`）。
+- `packages/web/e2e/ticket-refusal.spec.mjs`：新增第 6 条（被拒时句子在框下、通知区 0 条、工单上没多
+  一行、框里仍是那句话；解除拦截再按一次，进展落到工单上、框清空、句子消失）。**同时修了夹具**：
+  模型条目补 `pricing: { cacheRead: 0, cacheWrite: 0, output: 0 }` —— 本树给工单起 id 要先要一条
+  「$0 价」模型的补全（`freeModelEntries` 只看条目自己的三桶价，没有价的行算「未计价」，不是免费），
+  夹具缺它时建单直接 400 `slug_required`，六条用例全在 `setUp` 就红。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，213 接口 /
+  644 类型）。
+- `oxlint` 2 个改动文件 **0 警告 0 错误**；4 个改动文件（含 changelog 一对）`prettier --check` 干净
+  （e2e 那份首查不过，`--write` 后复检通过）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **219 / 3191 + 6 跳过** · web **356 / 4014 + 2 跳过**（本笔不加单测，数即当前基线）。
+- **新 spec 一条 + 相邻五条（同一份 spec）6 passed（20.4 s）**（真服务端 8930 + mock 8931 + 一次性
+  数据根 `/root/adelie-fork-data/r316-e2e`）。
+- **反证**：源码退回 `HEAD`、重建产物（`r316/before-dist`）→ 第 6 条 **1 failed**（`dialog` 里那句
+  找不到）；放回改后源码重建 → `diff -rq` 与 `r316/after-dist` 逐字节相同、**6 passed**。
+- **两态探针（真浏览器）**：改前 `inDialog 0 / inToasts 1 / 7 秒后 0`，改后 `inDialog 1 / inToasts 0 /
+  7 秒后 1`；两态 console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条；截图
+  `r316/shots/{before,after}/refused.png` 肉眼看过（改后那句「操作被拒绝：the ticket files are
+  mid-rewrite」就压在输入框下面，框里那句话还在）。
+- 端口只用 8930 / 8931 / 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据
+  只落 `/root/adelie-fork-data/r316-*`，探针、两态产物与截图都在 scratchpad 的 `r316/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- **`ticket-create-refusal.spec.mjs` 同样是陈旧的夹具**：它的模型条目也没有 `pricing`，本轮顺跑它
+  **1 failed**（解除拦截后建单仍被拒 `slug_required`、卡片不关）。这与本笔无关（它走的是新建对话框，
+  不经过追加框），留给下一轮照同一处补上。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/AgentCode` 一律没碰（`upstream` 指向的
+  `/root/penguin-harness` 这台机器上已经不存在，上游最新那一撮取自仓库里既有的探针引用
+  `refs/adelie-tmp/up-20261124` = `ddf3d255f`）；没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 功能一笔（源码 1、spec 1、changelog 2）；台账（7.189 那一条、本节、表里那一行）随本文件另起一笔。
 
 ## 第三百一十五轮：正式发 v0.8.2、换装现网（2026-11-24）
 
@@ -6474,6 +6550,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.187 | **频道里邀请成员被拒时，选择器留着，原因留在那位候选人的行下面**（**2026-11-24 第三百一十二轮**落地；`packages/web` 1 个源码文件（`features/company/channel-header.tsx`：`InvitePicker` 自己拿 `refusal {principal,text}`，`onPick` 改成交回「服务端的原话 / 写入成功的 `null`」，每次尝试先清上一次的句子、成功才关框并清搜索词，被拒时句子用 `role="alert"` + `toneInk.danger` 画在那位候选人的行下面；选择器按频道 id 作键）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在频道表头的最后一处 —— 「邀请」按一下选择器就关、写入随后才开始，被拒时原因只落在一条六秒就走、且浮在框外的通知里，通知一消失既没有原因、也没有刚点的那一行可以重试 | 六包 `typecheck` `EXIT=0`（`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件、新 spec 与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test `EXIT=0`、0 失败：core **70 文件 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **355 文件 / 3998 + 2 跳过** · **新 spec 2 passed（13.5 s）**（`packages/web/e2e/channel-invite-refusal.spec.mjs`，服务端 8975 + mock 8971 + 一次性数据根 `/root/adelie-fork-data/r312-before`）：被拒时选择器仍开着、`role="alert"` 逐字是服务端原话、按几何量过它在那位候选人的行下面且在框内、通知区不含那句话、POST 只发过一条、七秒后同一句仍在、服务端名册没变，Escape 关掉再开干净、解除拦截后从同一行重试落地；成功路径框关、成员数变「3 人」、重开时候选里没有他 · **反证**：改前源码 + 改前产物跑同一份 spec → 第一条 **failed**（框里 `getByRole('alert')` `element(s) not found`），放回后重建 **2 passed** · **两态探针**：改前 `pickerOpen 0`、框内 alert 0、原话只在通知区、七秒后通知也空了；改后 `pickerOpen 1`、alert 1 逐字、通知区只有内测提示、七秒后仍在（截图 `r312/{before,after}/…-2-refused.png` 肉眼看过）· **相邻回归**：本笔 2 + `channel-join-refusal` 2 + `channel-refusal` 3 = **7 passed（33.1 s）** · 端口只用 8975 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d1109488a3be9b7dbdd1c224f2738339189bd036` |
 | 2026-11-24 | 7.188 | **模型库的分组一律从折叠开始**（上游 `02b871d25` `#1787` 移植，照改动落、不是合分支；**2026-11-24 第三百一十三轮**落地；`packages/web` 2 个源码文件（`features/models/model-group-expansion.ts`：`defaultExpandedProviders()` 返回空集合、文件头按新默认值重写并写明「为什么不再挑一个分组默认展开」；`models-page.tsx`：导入落地不再为新分组写展开偏好，`importGroup` 少一个参数，`AddGroupDialog` 的 `onImport` 类型与调用点跟上）＋ 1 个单测改写（仍 13 条）＋ 1 个新 spec（2 条）＋ `packages/docs/content/models.{zh,en}.md` 各一句 ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；**改前实测首次访问 1 个分组展开（TokenDance）、改后 0 个**，两态「点开→写 ["deepseek"]→重载仍在」「搜索临时展开且不写存储」「清空回到折叠」一致） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · `prettier --check` 8 文件干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过，与基线逐项相同）· **反证（单测）**：源码退回 `HEAD` → 该文件 **7 failed / 6 passed**，放回 → **13 全过** · **两态探针（真服务端 ×2 + `/usr/bin/chromium`）**：改后 8990 首次访问 **0 展开 / 存储 null**，改前 8991 首次访问 **1 展开（TokenDance）/ 存储 null**；两态 console 各 0 error、无一条 ≥400；截图 `r312/{before,after}/*.png` · 新 spec **2 passed（6.7 s）**、相邻回归 9 passed（35.5 s）· 端口只用 8990 / 8991 / 8992 / 8933（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r312-*` | `69ba6dee8` |
 | 2026-11-24 | 发布 | **发 v0.8.2 并换装现网**（把 v0.8.1 之后攒下的收成正式版：**外部应用鉴权（只有服务器端）** —— 服务器上的程序拿用户自己铸的令牌问「这是谁」，迁移 17 新增 `user_tokens`/`oauth_clients`/`oauth_audit` 三张表，端点 `POST /oauth/introspect` / `GET /oauth/userinfo` / `POST /oauth/revoke`（挂在 `/oauth/*`、不在 `/api/*` 下），命令行多 `penguin auth pat`，管理口 `/api/admin/tokens`、`/api/admin/oauth-clients`，自己的 `/api/me/tokens`，令牌只存 sha256、只给 `openid profile`、打不开 `/api/*`、没开 CORS；**桌宠面板不再被窗口切掉第一行**、自绘那条蓝色大鱼删掉（形象只剩企鹅与「我的图片」，选过它的偏好回落企鹅）；频道邀请被拒时**选择器留着、原因留在那位候选人的行下面**；模型库的分组**一律从折叠开始**（上游 `02b871d25` / `#1787` 移植）；docs 加一页「鉴权：外部应用接入」；发布提交 `aa211c599`（父 `b9edad76c`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.2` 指向同一提交；门禁在标签检出 `/root/rel-082` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 `test` 脚本的包全过）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.2（`PUBLISH-ALL-DONE`，四十来分钟后 29 个版本端点全 200）；GitHub Release **id `456235906`** 14 件逐件核 digest 后发布为 latest；3003 换上 v0.8.2 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.2、旧前端先拷回、瞬时单元 `adelie-live-restart-082` 延后重启装上 `index-BzKxPhAa.js`；单元顺带补上 `ADELIE_TRUST_PROXY=1`） | 发布轮，逐项见「第三百一十五轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.2、core 戳 `BUILD_DATE 2026-11-24 / BUILD_COMMIT aa211c599…`、`GET /` 200、匿名 `/api/me` 等 401、临时数据根 `PRAGMA user_version` = 17 且三张表在库里；现网核验写 `rel-082-live-restart-verify.txt`；`releases/latest` = v0.8.2 | `aa211c599`（发布） |
+| 2026-11-24 | 7.189 | **工单「追加进度」被拒时，原因留在那个输入框下面**（**2026-11-24 第三百一十六轮**落地；`packages/web` 1 个源码文件（`features/company/ticket-dialog.tsx`：追加框有自己的 `progressRefusal`，与四处确认框共用的 `refusal` 分开；`addProgress` 每次尝试先清上次的句子、把 `setProgressRefusal` 交给 `run` 的 `refuse`，句子用 `NoticeStrip`（`role="alert"`、危险色调、`S.common.refused(...)`）画在输入行下面）＋ 1 个既有 spec 加一条（`e2e/ticket-refusal.spec.mjs` 第 6 条）+ 夹具补 `pricing` 三桶 0（工单 id 靠「$0 价」模型的补全，没有价的行算「未计价」不是免费；缺它建单 400 `slug_required`）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「对话框里 0 条、通知区 1 条、七秒后通知区 0 条且框里仍有那句话」，改后「对话框里 1 条、通知区 0 条、七秒后同一句」，反证把源码退回 `HEAD` 重建后同一 spec **1 failed**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，213 接口 / 644 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 4 个改动文件（含 changelog 一对）`prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **219 / 3191 + 6 跳过** · web **356 / 4014 + 2 跳过** · **新 spec + 同一份 spec 的相邻五条 6 passed（20.4 s）**（真服务端 8930 + mock 8931 + `/root/adelie-fork-data/r316-e2e`）· **反证**：改前源码 + 改前产物（`r316/before-dist`）跑第 6 条 **1 failed**（`dialog` 里那句 `element(s) not found`），放回改后源码重建后产物与 `r316/after-dist` 逐字节相同、**6 passed** · **两态探针**：改前 `inDialog 0 / inToasts 1 / 7 s 后 0`，改后 `inDialog 1 / inToasts 0 / 7 s 后 1`；两态 console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条；截图 `r316/shots/{before,after}/refused.png` 肉眼看过 · 端口只用 8930 / 8931 / 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r316-*` | `9f634062f` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
