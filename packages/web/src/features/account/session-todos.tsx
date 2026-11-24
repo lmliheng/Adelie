@@ -15,6 +15,10 @@
  * - **The Agent may have rewritten the file.** So the list is re-read when the Session's run
  *   ends, which is when its edits are all in, and whenever the reader switches conversations.
  *   An idle Session's list is otherwise left alone: no timer runs here.
+ * - **A switch takes the list with it.** Everything read or written here belongs to one Session,
+ *   and the block shows that Session's list or none: a late answer for the conversation just left
+ *   — a tick landing, a rollback, a read that never came back — must not paint itself over the
+ *   one now open.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -47,27 +51,53 @@ export function remainingTodos(items: readonly SessionTodoItem[]): number {
   return items.filter((item) => !item.done).length;
 }
 
+/**
+ * The list as it stands, and the conversation it was read or written for. Keeping the two together
+ * is what makes a switch safe: every answer below belongs to one Session, and the list on screen is
+ * this Session's or none — never the one the reader just left, standing in while this one's read is
+ * in the air or after an answer for it came back late.
+ */
+interface TodosState {
+  session: string | null;
+  items: SessionTodoItem[];
+  failed: "read" | "write" | null;
+}
+
 /** The Session's to-do list, kept in step with the file behind it. */
 export function useSessionTodos(sessionId: string | null): {
   items: SessionTodoItem[];
   /** Which step failed — reading the list and saving it say different things. */
   failed: "read" | "write" | null;
+  /** The open conversation's list is not here yet — its read is in the air. */
+  loading: boolean;
   save: (next: SessionTodoItem[]) => void;
   reload: () => void;
 } {
-  const [items, setItems] = useState<SessionTodoItem[]>([]);
-  const [failed, setFailed] = useState<"read" | "write" | null>(null);
+  // The conversation open at mount starts loaded-and-empty, so a first read that finds entries
+  // opens the block exactly as it always has — no flash of an open block on every load.
+  const [state, setState] = useState<TodosState>(() => ({
+    session: sessionId,
+    items: [],
+    failed: null,
+  }));
   const [nonce, setNonce] = useState(0);
   const { liveStatuses } = useSessions();
   /** What the server last confirmed — where a failed edit goes back to. */
   const confirmed = useRef<SessionTodoItem[]>([]);
+  /**
+   * The conversation that is open right now, as of this render. A write answers later, and by then
+   * the reader may have opened another conversation: its answer — the tick landing, or the rollback
+   * of one that failed — belongs to the list it was written for, which is no longer the open one.
+   * Read off a ref rather than the closure for exactly that reason.
+   */
+  const open = useRef<string | null>(sessionId);
+  open.current = sessionId;
   /** The Session's run just ended (see the module comment): re-read rather than guess. */
   const settled = sessionId !== null && liveStatuses.get(sessionId) === "idle";
 
   useEffect(() => {
     if (sessionId === null) {
-      setItems([]);
-      setFailed(null);
+      setState({ session: null, items: [], failed: null });
       confirmed.current = [];
       return;
     }
@@ -76,13 +106,12 @@ export function useSessionTodos(sessionId: string | null): {
       .getSessionTodos(sessionId)
       .then((res) => {
         if (cancelled) return;
-        setItems(res.items);
+        setState({ session: sessionId, items: res.items, failed: null });
         confirmed.current = res.items;
-        setFailed(null);
       })
       // A failed read leaves an empty list rather than a stale one from the previous Session.
       .catch(() => {
-        if (!cancelled) setFailed("read");
+        if (!cancelled) setState({ session: sessionId, items: [], failed: "read" });
       });
     return () => {
       cancelled = true;
@@ -91,21 +120,30 @@ export function useSessionTodos(sessionId: string | null): {
 
   const save = (next: SessionTodoItem[]): void => {
     if (sessionId === null) return;
-    setItems(next);
-    setFailed(null);
+    setState({ session: sessionId, items: next, failed: null });
     api
       .putSessionTodos(sessionId, next)
       .then((res) => {
-        setItems(res.items);
+        if (open.current !== sessionId) return;
+        setState({ session: sessionId, items: res.items, failed: null });
         confirmed.current = res.items;
       })
       .catch(() => {
-        setItems(confirmed.current);
-        setFailed("write");
+        if (open.current !== sessionId) return;
+        setState({ session: sessionId, items: confirmed.current, failed: "write" });
       });
   };
 
-  return { items, failed, save, reload: () => setNonce((n) => n + 1) };
+  // This conversation's list, or nothing at all while its own read is in the air (or if it never
+  // answers): what is shown must never be another conversation's file.
+  const mine = state.session === sessionId;
+  return {
+    items: mine ? state.items : [],
+    failed: mine ? state.failed : null,
+    loading: sessionId !== null && !mine,
+    save,
+    reload: () => setNonce((n) => n + 1),
+  };
 }
 
 /** One entry: a tick, the text, and a way to drop it. */
@@ -158,7 +196,7 @@ function TodoRow({
  * for, and its id is not one the server would answer for.
  */
 export function SessionTodos({ sessionId }: { sessionId: string | null }): ReactNode {
-  const { items, failed, save, reload } = useSessionTodos(sessionId);
+  const { items, failed, loading, save, reload } = useSessionTodos(sessionId);
   const [draft, setDraft] = useState("");
   /** null: nobody has folded it — the list shows itself while it has entries. */
   const [folded, setFolded] = useState<boolean | null>(null);
@@ -170,8 +208,9 @@ export function SessionTodos({ sessionId }: { sessionId: string | null }): React
 
   const left = useMemo(() => remainingTodos(items), [items]);
   // An empty list folds itself away, but a failure must not: a read that failed while the
-  // block was empty would otherwise only be reachable by folding it open by hand.
-  const open = folded === null ? items.length > 0 || failed !== null : !folded;
+  // block was empty would otherwise only be reachable by folding it open by hand. A list still on
+  // its way holds it open too, so switching conversations does not flash it shut and open again.
+  const open = folded === null ? loading || items.length > 0 || failed !== null : !folded;
 
   if (sessionId === null) return null;
 
