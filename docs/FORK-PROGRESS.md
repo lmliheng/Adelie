@@ -3219,6 +3219,74 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       写入随后才开始，被拒时原因只落在一条六秒就走、且浮在框外的通知里，通知一消失既没有原因、也没有
       刚点的那一行可以重试。见「第三百一十二轮」一节。
 
+## 第三百二十一轮：新建工单那条用例一直红在夹具上，模型条目补上 $0 价（2026-11-24，条目 7.194）
+
+**开工**：`git status --short` 干净，分支 `main`，本地与远端 `main` 都是 **`aa5f64897`**（第三百一十九轮那笔
+台账）；`git fetch origin && git merge --ff-only origin/main` → Already up to date。
+
+**让号**：收尾推送前再 fetch，远端已经多了两笔 —— `9512d9761`（画廊补桌面标题栏的两条 mock 路由、令牌列表
+不再假定同一毫秒的先后）与它的台账 `175b0d5a1`，那一撮用的是**第三百二十轮**与**条目 7.193**。于是本轮让号
+改记 **7.194 / 第三百二十一轮**，两笔代码与台账无冲突地 rebase 到 `175b0d5a1` 之上（台账两处冲突：待办里它
+的 7.193 条目与我的并列、表格末尾各一行，都按「两条各留一处」合并）；让号后把那条 spec 在同一棵树上又跑
+了一次（别人那两笔只动画廊 mock 与 server 用例，与本笔无关）—— **1 passed**。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 2.2c，它「还差什么」四条这一轮一条都动不了（写侧全在
+桌面壳、部署单元等发布动作、桌面壳自己的开关同前、`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 留到
+发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖。
+第三百一十六轮的「没做 / 留着」里点名过一件具体的事：`ticket-create-refusal.spec.mjs` 的模型条目缺
+`pricing`，那条用例因此在 `setUp` 之后第一次真写就被服务器退回，留给下一轮照同一处补上 —— 第三百一十八 /
+三百一十九轮都没轮到它，而它是一条**一直红着**的浏览器回归（红着的用例会把真回归藏起来）。
+
+**缺口是什么**：本树给工单起 id 要先要一条**「$0 价」模型**的补全（`freeModelEntries` 只看条目自己的三桶价，
+没有价的行算「未计价」、不是免费），而这条 spec 的夹具只有 `provider` / `modelId` / `apiKey` / `baseUrl` /
+`contextWindow`。改前实测（起真服务端 + mock，数据根 `r320-before`）：`POST …/tickets 400 14ms`，用例挂在
+`await expect(again).toHaveCount(0)`（`新建工单` 那张框不关、因为建单根本没成功）—— **1 failed / 18.4 s**。
+
+**做了什么**：
+
+- `packages/web/e2e/ticket-create-refusal.spec.mjs`：模型条目补 `pricing: { cacheRead: 0, cacheWrite: 0, output: 0 }`
+  与一段「为什么」（与第三百一十六轮修 `ticket-refusal.spec.mjs` 的写法逐字同一口径）。只动夹具，没有改
+  任何源码、接口、文案。
+
+**验证**：
+
+- **两态探针**（`r320/probe-slug.mjs`，真服务端 8952 + mock 8951 + 数据根 `r320-probe`，同一个用户、同一张
+  工单，只换模型条目的价）：未计价那一行 → **400 `slug_required`**（`pass --slug: lowercase English words
+  joined by hyphens`）；补上 $0 三桶价 → **201**，工单落库（`ticketId` 由模型建议）。这就是这条 spec 一直
+  红的根因，而不是界面回归。
+- **用例两态**：改前 `r320-before` → **1 failed（18.4 s）**；只补这一处夹具后 `r320-after` → **1 passed（5.4 s）**。
+- **相邻回归**：`ticket-refusal.spec.mjs` 6 条 + 本条 1 条 = **7 passed（26.2 s）**（同一份 mock / 服务端，
+  数据根 `r320-neighbour`）。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过**（本笔只动 e2e 夹具，单测数即当前基线）。
+- 改动文件 `oxlint` **0 警告 0 错误**；`prettier --check` 干净；`git diff --check` 干净。
+- **整套浏览器 e2e 的当前基线**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，38.1 m）：**405 通过 / 9 失败**，
+  工单那两族（`ticket-refusal` 6 条、`ticket-create-refusal` 1 条）**都在通过的一侧**。那 9 条与本笔无关 ——
+  它们是 `chat-defaults-save-refusal` ×2、`dock-command-across-layout` ×1、`errors-ignore` ×4、
+  `scroll-follow-bounce` 的 Primer 一格、`server-switch-read-refusal` 的 company 一格；后两条是第二百六十一轮
+  就记过的既有红，`chat-defaults-save-refusal` 与 `errors-ignore` 单跑两态不一致（见「留着」）。
+- 端口只用 8950 / 8951 / 8952 / 8954 / 8956（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r320-*`，探针与配置在 scratchpad 的 `r320/` 下（没有产物进仓库）。
+
+**没做 / 留着**：
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- **整套 e2e 还剩 9 条红，且与本笔无关**，留给下一轮逐条分诊：`errors-ignore` 那一组单跑时是 **1 failed /
+  4 passed**，而失败的那一条（第 1 条，「一个失败回合要记账」）在套件里是绿的、套件里红的第 2–5 条单跑都绿
+  —— 是顺序 / 状态相关的老抖动（第 1 条背后是 mock 的 `auth dead test` 与 `DEDUP_WINDOW_MS = 2000` 那条去重
+  窗口）；`chat-defaults-save-refusal` ×2 与 `server-switch-read-refusal` 的 company 一格此前就记过同类；
+  `scroll-follow-bounce` 的 Primer 一格是既有红；`dock-command-across-layout` 那一条这一轮没单跑。
+- 工单这一族里**只有这两个** spec 会自己建工单，`channel-*` 那几份不经过 `ticketSlug`，所以这一类陈旧夹具
+  到这里是最后一处。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/AgentCode` 一律没碰；没有切版本号、没发 npm、
+  没发安装包、没发发布汇总。
+
+### 提交
+
+- 夹具一笔（`packages/web/e2e/ticket-create-refusal.spec.mjs`）；台账（7.194 那一条、本节、表里那一行）
+  随本文件另起一笔。
+
 ## 第三百一十二轮：频道邀请被拒时，选择器留着、原因留在那位候选人的行下面（2026-11-24，条目 7.187）
 
 **开工**：`git status --short` 干净，分支 `main`；`git fetch origin && git merge --ff-only origin/main`
@@ -3648,6 +3716,13 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       「自己的令牌列表」那条把名字按集合比、只对 `createdAt` 比顺序）—— **只动 mock 与测试、无新依赖、不碰接口、
       没有用户可见改动**）：`aa5f64897` 那次 CI 三平台一起红在画廊的「每个包装都有 mock 路由」那条（13:01 那笔
       桌面标题栏新增了两个包装），macOS 的 server 作业另外红在令牌列表的先后（两次重跑都红）。见「第三百二十轮」一节。
+- [x] **7.194 新建工单那条用例一直红在夹具上：模型条目补上 $0 价，回到绿**（**2026-11-24 第三百二十一轮**落地，
+      提交见「已完成的轮次」；`packages/web/e2e/ticket-create-refusal.spec.mjs` 一处夹具（模型条目加
+      `pricing: { cacheRead: 0, cacheWrite: 0, output: 0 }` 与一段为什么）—— **只动测试夹具、无新依赖、
+      不碰接口、没有用户可见改动**）：本树给工单起 id 要先要一条「$0 价」模型的补全（`freeModelEntries`
+      只看条目自己的三桶价，没有价的行算「未计价」、不是免费），夹具缺它时那张工单在第一次真写就被退回
+      400 `slug_required`，用例挂在「建立之后框该关」那一句上。第三百一十六轮点名留给下一轮，这一轮补上。
+      见「第三百二十一轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -6866,6 +6941,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 
 | 2026-11-24 | 7.192 | **对话的「远程控制」面板读不到设置时，原因留在面板里、下面就是重试**（**2026-11-24 第三百一十九轮**落地；`packages/web` 1 个新纯逻辑文件（`features/messaging/messaging-load-refusal.ts`：`messagingLoadRefusal(error, { saysInPlace })` 答 `{ text, toast }` —— `text` 走 `refusalText` 再包一层 `S.messaging.loadRefused(...)`，`toast` 默认等于 `text`，宿主声明自己会画时给 `null`）＋ 2 个改动源码文件（`messaging-binding-editor.tsx`：hook 多 `loadRefusal` / `reload()`，初始读失败记下句子、读到即清、换会话也清，`reload()` 先忘掉「这个会话已经读过」的标记再重跑初始读；`messaging-panel.tsx`：表单没到时画 `NoticeStrip`（`role="alert"`、危险色调）+ 下面一个「重试」，没句子才是骨架屏，并传 `saysLoadRefusal: true` 免得同一句话重复成通知）＋ 两本词典各一条 `messaging.loadRefused` ＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖**；顺带把 13:01 那三笔里的 `ui-title-bar` 类名改成 `adelie-title-bar`（`ui-*` 是主题 hook 的保留前缀，`packages/ui/test/hooks.test.ts` 因此红了一条；它不是主题 hook，规则是 `-webkit-app-region: drag`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · web **358 文件 / 4030 + 2 跳过**（让号后 rebase 到远端重跑）· server **220 / 3199 + 6 跳过** · 本笔单测 5 passed、相邻三份 37 passed · **新 spec 2 passed（13.3 s）**（真服务端 8960 + mock 8961 + `/usr/bin/chromium` + `/root/adelie-fork-data/r318-e2e`）：只拦 `GET …/messaging` 按 500 交回 → 面板里恰好一条句子、骨架 0 块、表单字段不在、通知区 0 条、七秒后还在、重试按钮在；解除拦截点重试 → 表单出现（App ID 就是库里存的那一个）、句子与按钮一起消失、读取确实又去了一趟服务端 · **反证**：4 个源码文件退回 `HEAD`、重建 web 挂 8970（`r318/before-dist`，`index-BTC9IvbJ.js`）→ 同一份 spec **2 failed**，放回后重建产物与 `r318/after-dist` **逐字节相同** · **两态探针**：改前 `alert 0 / 骨架 2 / 表单 0 / 重试 0 / 通知 1`，七秒后 `alert 0 / 骨架 2 / 通知 0`；改后 `alert 1（逐字）/ 骨架 0 / 重试 1 / 通知 0`，七秒后同，点重试后 `alert 0 / 表单 1 / 重试 0`；两态 console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条，截图 `r318/{before,after}/…png` 肉眼看过 · **相邻回归（真浏览器）** 14 passed（1.4 m）· 端口只用 8960 / 8961 / 8970（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-11-24 | 7.193 | **`main` 的 CI 两处红：画廊 mock 缺桌面标题栏两条路由；macOS 上个人令牌列表把同一毫秒的先后当契约**（**2026-11-24 第三百二十轮**落地；`packages/ui-gallery` 1 个源码文件（`src/app/mock/routes.ts`：desktop 那组补 `GET /api/desktop/title-bar` 答 `{ status: null }`、`PUT` 回 204，与 tray / pet / login-item 同一写法）＋ `packages/server` 1 个用例（`test/external-auth.test.ts`：「自己的令牌列表」那条名字按集合比、`createdAt` 仍比顺序，注释写明同一毫秒由随机 token id 决定先后）—— **只动 mock 与测试、无新依赖、不碰接口、没有用户可见改动**）：`aa5f64897` 那次 run 三平台一起红在画廊的「每个包装都有 mock 路由」（13:01 那笔桌面标题栏新加的两条包装没跟上），macOS 的 server 作业另红在令牌列表（两次尝试都红） | 改前本机复现画廊 **1 failed**（`wrappers with no mock route: expected [getDesktopTitleBar, …(1)]`，与三份 CI 日志逐字同形）· 令牌列表用脚手架的 `now` 钩子把时钟冻住复现：连铸 12 对、**12 对里 6 对反序**且 `createdAt` 全同（`ORDER BY created_at, token_id` + 随机 id）· 改后画廊 **20 / 141**、server 该文件 **15 passed**、冻钟用例换成新断言后 **12 对全过**（临时文件已删）· 六包 `typecheck` **`EXIT=0`**（214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 画廊 **20 / 141** · `oxlint` / `prettier --check` / `git diff --check` 干净 · 不碰界面（浏览器里标题栏本来就画空）、未切版本号、未发 npm、未发安装包 · 真正的验证是这一笔推上去后的 CI | `9512d9761` |
+| 2026-11-24 | 7.194 | **新建工单那条用例一直红在夹具上：模型条目补上 $0 价，回到绿**（**2026-11-24 第三百二十一轮**落地；`packages/web/e2e/ticket-create-refusal.spec.mjs` 一处夹具（模型条目加 `pricing: { cacheRead: 0, cacheWrite: 0, output: 0 }` 与一段为什么）—— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：本树给工单起 id 要先要一条「$0 价」模型的补全（`freeModelEntries` 只看条目自己的三桶价，没有价的行算「未计价」、不是免费），夹具缺它时建单直接 400 `slug_required`，这条 spec 因此一直红着（第三百一十六轮点名留给下一轮） | 两态探针（真服务端 8952 + mock 8951 + 数据根 `r320-probe`，同一用户同一张工单只换价）：未计价 → **400 `slug_required`**、补 $0 三桶价 → **201**（工单落库）· 用例两态：改前 `r320-before` **1 failed（18.4 s）**（挂在 `await expect(again).toHaveCount(0)`，服务端日志 `POST …/tickets 400`）→ 改后 `r320-after` **1 passed（5.4 s）** · 相邻回归 `ticket-refusal` 6 + 本条 1 = **7 passed（26.2 s）** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e 基线**（`SKIP_BUILD=1`，38.1 m）：**405 通过 / 9 失败**，工单两族都在通过的一侧，那 9 条是别的 spec 的顺序 / 既有红（`errors-ignore` 单跑 **1 failed / 4 passed**，失败的是套件里绿的那一条）· 端口只用 8950 / 8951 / 8952 / 8954 / 8956（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
