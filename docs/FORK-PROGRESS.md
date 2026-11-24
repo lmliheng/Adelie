@@ -3641,6 +3641,14 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       机器连不上）此前只有一条六秒就走的通知，而面板一直画着两块骨架屏 —— 对着一个已经回来的拒绝说「还在读」。
       见「第三百一十九轮」一节。
 
+- [x] **7.193 `main` 的 CI 两处红：画廊 mock 缺桌面标题栏两条路由；macOS 上个人令牌列表把同一毫秒的先后
+      当契约**（**2026-11-24 第三百二十轮**落地，提交见「已完成的轮次」；`packages/ui-gallery` 1 个源码文件
+      （`src/app/mock/routes.ts`：`desktop` 那一组补 `GET` / `PUT /api/desktop/title-bar`，读答 `{ status: null }`、
+      写照 tray / pet / login-item 的样子回 204）＋ `packages/server` 1 个用例（`test/external-auth.test.ts`：
+      「自己的令牌列表」那条把名字按集合比、只对 `createdAt` 比顺序）—— **只动 mock 与测试、无新依赖、不碰接口、
+      没有用户可见改动**）：`aa5f64897` 那次 CI 三平台一起红在画廊的「每个包装都有 mock 路由」那条（13:01 那笔
+      桌面标题栏新增了两个包装），macOS 的 server 作业另外红在令牌列表的先后（两次重跑都红）。见「第三百二十轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -3786,6 +3794,66 @@ the mocked API > routes every endpoint the app's wrappers name`，`Test timed ou
 
 - 功能一笔（新模块 1、源码 2、词典 2、单测 1 新 1 改、spec 1、changelog 2）＋ 桌面标题栏类名一笔；
   台账（7.191 条目、本节、表里那一行）随本文件另起一笔。
+
+## 第三百二十轮：`main` 的 CI 两处红（2026-11-24，条目 7.193）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 `4d31ec9f6`；`git fetch origin && git merge --ff-only
+origin/main` → **`aa5f64897`**（另一条线的第三百一十九轮与其台账，18 文件 / +1188 −4，fast-forward 无冲突）。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 2.2c，它「还差什么」四条这一轮一条都动不了（写侧在桌面壳、
+部署单元等发布动作、桌面壳自己的开关同前，`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 留到发布期）；
+3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖；第 7 节到 7.192
+全勾。于是先看 main 的 CI：最新一次 run **`45349721176`**（`aa5f64897`）红了四个作业，它们不是同一件事 ——
+`test (rest)` / `test-macos (rest)` / `test-windows (rest)` 红在画廊的同一条（三平台都红），`test-macos (server)`
+红在个人令牌列表的先后（两次尝试都红）。另一条 `Deploy docs site`（run `45349628888`）是 GitHub 侧的抖动：
+artifact 上传成功（947 623 字节、ID `14899458461`），紧接着 `deploy-pages` 报 `Found 0 artifact(s)`、
+「Fetching artifact metadata failed」—— 与本仓代码无关，这一轮没碰流水线。
+
+**改前实测**：
+
+- 画廊：本机 `pnpm --filter @adelie/ui-gallery test` → **1 failed**，与三份 CI 日志逐字同形 ——
+  `wrappers with no mock route: expected [getDesktopTitleBar, …(1)] to deeply equal []`。缺口就是 13:01 那笔
+  桌面标题栏（`29c507d92`）给 `packages/web/src/api/endpoints.ts` 新加的两条包装，画廊 mock 的 desktop 组没跟上。
+- 令牌列表：`test-macos (server)` 的 `external auth … > the person's own list and revoke` 报
+  `expected [ 'second', 'kate's own' ] to deeply equal [ 'kate's own', 'second' ]`。
+- 复现（本机 Linux，把时钟冻住）：测试脚手架本来就有 `now?: () => Date` 这个钩子，`createTestApp({ now: () =>
+  new Date("2026-01-01T00:00:00.000Z") })` 之后连铸 12 对令牌、每铸一对读一次 `/api/me/tokens`，按「这一对在
+  列表里的相对位置」数反序：**12 对里 6 对反**（恰好 50%），且所有行的 `createdAt` 逐字相同。
+  根因在 `listByUser` 的 `ORDER BY created_at, token_id`：`token_id` 是 `randomBytes(12)`，两条 mint 落在同一
+  毫秒时先后由这个随机 id 决定；macOS 上两次都在同一毫秒里，于是两次重跑都红。
+
+**做了什么**：
+
+- `packages/ui-gallery/src/app/mock/routes.ts`：desktop 那组补 `GET /api/desktop/title-bar`（答 `{ status: null }`，
+  即「没有人把标题栏交出来」—— 浏览器里的画廊不是桌面壳的窗口，这也正是 macOS 与更早的壳给出的答案，页面读它
+  就是「什么都不画」）与 `PUT /api/desktop/title-bar`（回 204，与 tray / pet / login-item 同一写法：没有窗口可
+  重画的确认），各一段为什么。
+- `packages/server/test/external-auth.test.ts`：「自己的令牌列表」那条把两个名字按集合比，`createdAt` 仍比顺序
+  （列表确实是最老在前），注释写明为什么不能断言插入序（同一毫秒 = 由随机 id 决定，macOS 正是在那里红的）。
+
+**验证**：
+
+- 画廊：`pnpm --filter @adelie/ui-gallery test` **20 文件 / 141 通过**（改前 1 failed）；`typecheck` `EXIT=0`。
+- server：`vitest run test/external-auth.test.ts` **15 passed**；冻住时钟的临时用例先量出 12 对里 6 对反序，
+  换成「新断言在同毫秒下恒成立」再跑 **12 对全过**，随后把临时文件删掉（`git status` 只剩两个改动文件）。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 画廊 **20 / 141**。
+- `oxlint` 2 个改动文件 **0 警告 0 错误**；`prettier --check` 干净；`git diff --check` 干净。
+- 没有起服务截图：本笔不碰界面 —— 画廊 mock 只多了两条回答，而 `DesktopTitleBar` 在浏览器里本来就画空
+  （`inShell` 为假时直接 `return null`）。
+- 真正的验证是 CI：这一笔推上去后三平台会各自重跑画廊那条、macOS 会重跑 server 那条。
+
+**没做 / 留着**：
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 令牌列表在同一毫秒里的先后仍由随机 `token_id` 决定。要不要改成插入序（`created_at, rowid`）或让 mint 的
+  `created_at` 单调递增，是产品语义的选择（行序、审计时间戳各有权衡），这一轮只把测试修成不假定它。
+- `Deploy docs site` 那条红是 GitHub 侧的 artifact 元数据抖动，没有改流水线（4.2 明令不动）。
+
+### 提交
+
+- 本笔（画廊 mock 1 + 用例 1）`9512d9761`；台账（条目 7.193、本节、表里那一行）随本文件另起一笔。
 
 ## 第三百一十五轮：正式发 v0.8.2、换装现网（2026-11-24）
 
@@ -6797,6 +6865,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.191 | **选中的文件没交出去时（超过上限、或拖进来的是文件夹），名字留在列表上方**（**2026-11-24 第三百一十八轮**落地；`packages/web` 1 个新模块（`features/chat/pick-skip-refusal.ts`：`pickSkipLine` 合成跳过句、`withPickSkips` 把跳过句接在服务端那句后面）＋ 1 个源码文件（`workspace-browser.tsx`：`stageUpload` 收下拖进来的文件夹、写进既有的 `uploadRefusal` 槽位并随批次带过覆盖确认；`doUpload` 的新一次选择只交回这一批自己跳过的名字）＋ 词条各一句（`files.pickSkipSeparator`）＋ 1 个新单测（7 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖**）：7.19 的规矩在文件面板的最后一处 —— 面板自己量出来的跳过与拖进来的文件夹，一个字节没读、一个请求没发，名字只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，213 接口 / 644 类型）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 6 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 / 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **219 / 3191 / 6 跳过** · web **357 / 4021 / 2 跳过**（基线 356 / 4014，+1 文件 +7 条） · **新 spec 2 passed（30.0 s）**（`e2e/files-pick-skip.spec.mjs`，真服务端 9900 + mock 9901 + 数据根 `r318-a1`，不挂拦截）：超限那一个 → 句子在列表上方、通知区不含它、写路由 PUT **0**、目录空、七秒后仍在；混合一批 → 能传的真的落地、超限的名字留着；下一次正常选择清掉它 · **反证**：`r318/before-dist` 挂 9902 → **2 failed**（面板里找不到 `alert`） · **两态探针**：改后面板 1 条、通知区空、9 s 后仍在；改前 面板 0 条、通知区 1 条、9 s 后空 · **相邻回归**：`files-folders` 5 + `upload-refusal` 2 = **7 passed（26.2 s）** · 端口只用 9900–9907（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r318-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r318/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `00e5c2b5f` |
 
 | 2026-11-24 | 7.192 | **对话的「远程控制」面板读不到设置时，原因留在面板里、下面就是重试**（**2026-11-24 第三百一十九轮**落地；`packages/web` 1 个新纯逻辑文件（`features/messaging/messaging-load-refusal.ts`：`messagingLoadRefusal(error, { saysInPlace })` 答 `{ text, toast }` —— `text` 走 `refusalText` 再包一层 `S.messaging.loadRefused(...)`，`toast` 默认等于 `text`，宿主声明自己会画时给 `null`）＋ 2 个改动源码文件（`messaging-binding-editor.tsx`：hook 多 `loadRefusal` / `reload()`，初始读失败记下句子、读到即清、换会话也清，`reload()` 先忘掉「这个会话已经读过」的标记再重跑初始读；`messaging-panel.tsx`：表单没到时画 `NoticeStrip`（`role="alert"`、危险色调）+ 下面一个「重试」，没句子才是骨架屏，并传 `saysLoadRefusal: true` 免得同一句话重复成通知）＋ 两本词典各一条 `messaging.loadRefused` ＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖**；顺带把 13:01 那三笔里的 `ui-title-bar` 类名改成 `adelie-title-bar`（`ui-*` 是主题 hook 的保留前缀，`packages/ui/test/hooks.test.ts` 因此红了一条；它不是主题 hook，规则是 `-webkit-app-region: drag`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · web **358 文件 / 4030 + 2 跳过**（让号后 rebase 到远端重跑）· server **220 / 3199 + 6 跳过** · 本笔单测 5 passed、相邻三份 37 passed · **新 spec 2 passed（13.3 s）**（真服务端 8960 + mock 8961 + `/usr/bin/chromium` + `/root/adelie-fork-data/r318-e2e`）：只拦 `GET …/messaging` 按 500 交回 → 面板里恰好一条句子、骨架 0 块、表单字段不在、通知区 0 条、七秒后还在、重试按钮在；解除拦截点重试 → 表单出现（App ID 就是库里存的那一个）、句子与按钮一起消失、读取确实又去了一趟服务端 · **反证**：4 个源码文件退回 `HEAD`、重建 web 挂 8970（`r318/before-dist`，`index-BTC9IvbJ.js`）→ 同一份 spec **2 failed**，放回后重建产物与 `r318/after-dist` **逐字节相同** · **两态探针**：改前 `alert 0 / 骨架 2 / 表单 0 / 重试 0 / 通知 1`，七秒后 `alert 0 / 骨架 2 / 通知 0`；改后 `alert 1（逐字）/ 骨架 0 / 重试 1 / 通知 0`，七秒后同，点重试后 `alert 0 / 表单 1 / 重试 0`；两态 console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条，截图 `r318/{before,after}/…png` 肉眼看过 · **相邻回归（真浏览器）** 14 passed（1.4 m）· 端口只用 8960 / 8961 / 8970（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
+| 2026-11-24 | 7.193 | **`main` 的 CI 两处红：画廊 mock 缺桌面标题栏两条路由；macOS 上个人令牌列表把同一毫秒的先后当契约**（**2026-11-24 第三百二十轮**落地；`packages/ui-gallery` 1 个源码文件（`src/app/mock/routes.ts`：desktop 那组补 `GET /api/desktop/title-bar` 答 `{ status: null }`、`PUT` 回 204，与 tray / pet / login-item 同一写法）＋ `packages/server` 1 个用例（`test/external-auth.test.ts`：「自己的令牌列表」那条名字按集合比、`createdAt` 仍比顺序，注释写明同一毫秒由随机 token id 决定先后）—— **只动 mock 与测试、无新依赖、不碰接口、没有用户可见改动**）：`aa5f64897` 那次 run 三平台一起红在画廊的「每个包装都有 mock 路由」（13:01 那笔桌面标题栏新加的两条包装没跟上），macOS 的 server 作业另红在令牌列表（两次尝试都红） | 改前本机复现画廊 **1 failed**（`wrappers with no mock route: expected [getDesktopTitleBar, …(1)]`，与三份 CI 日志逐字同形）· 令牌列表用脚手架的 `now` 钩子把时钟冻住复现：连铸 12 对、**12 对里 6 对反序**且 `createdAt` 全同（`ORDER BY created_at, token_id` + 随机 id）· 改后画廊 **20 / 141**、server 该文件 **15 passed**、冻钟用例换成新断言后 **12 对全过**（临时文件已删）· 六包 `typecheck` **`EXIT=0`**（214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 画廊 **20 / 141** · `oxlint` / `prettier --check` / `git diff --check` 干净 · 不碰界面（浏览器里标题栏本来就画空）、未切版本号、未发 npm、未发安装包 · 真正的验证是这一笔推上去后的 CI | `9512d9761` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
