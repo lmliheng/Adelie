@@ -3632,6 +3632,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
 - 功能一笔（新模块 1、源码 1、词典 2、单测 1、spec 1、changelog 2）：`00e5c2b5f`。
 - 台账（条目 7.191、上表那一行、本节）随本文件另起一笔。
 
+- [x] **7.192 对话的「远程控制」面板读不到设置时，原因留在面板里、下面就是重试**（**2026-11-24 第三百一十九轮**
+      落地，提交见「已完成的轮次」；`packages/web` 1 个新纯逻辑文件（`features/messaging/messaging-load-refusal.ts`：
+      `messagingLoadRefusal()` 答 `{ text, toast }`）+ 2 个改动源码文件（`messaging-binding-editor.tsx`：hook 多
+      `loadRefusal` / `reload()`，初始读失败记下句子、读到即清；`messaging-panel.tsx`：表单没到时画句子 + 重试，
+      没句子才骨架屏）+ 两本词典各一条 + 1 个新单测（5 条）+ 1 个新 spec（2 条）+ changelog 一对 ——
+      **不碰接口、无新依赖**）：停靠栏里的这块面板要先读一次会话的绑定设置，读失败（会话没了、没权限、500、
+      机器连不上）此前只有一条六秒就走的通知，而面板一直画着两块骨架屏 —— 对着一个已经回来的拒绝说「还在读」。
+      见「第三百一十九轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -3688,6 +3697,95 @@ the mocked API > routes every endpoint the app's wrappers name`，`Test timed ou
 ### 提交
 
 - 本笔 `4e59b2a83`，台账一笔（本文件）。
+
+## 第三百一十九轮：远程控制面板读不到设置时，原因留在面板里（2026-11-24，条目 7.192）
+
+**开工**：`git status --short` **不干净** —— 19 个 `packages/desktop/build/**` 的受跟踪文件显示为删除
+（`D`），没有任何修改内容；`ps` 里没有 electron-builder / tsup / pnpm 在跑，说明不是打包进行中，而
+`git diff` 里也没有一处改到这些文件（`git status` 只有 `D`）。核对后判定是某次打包或清理删掉的副产物、
+无未提交内容可丢，于是 `git restore -- packages/desktop/build` 把树恢复到 HEAD，工作区随即干净。
+`git fetch origin` 一次就通，`origin/main` 到了 **`f7fb42fa0`**（第三百一十七轮）；但本地有三笔 **13:01**
+提交（`2cbb20a35` 桌宠第二个形象、`b196f56a2` 模型分组表头的密钥提示、`29c507d92` 桌面标题栏）不在远端，
+`git merge --ff-only` 因此报 `Not possible to fast-forward`。这三笔是另一条线做完并提交、没推上去的一撮
+（作者、时间、changelog 齐备），按共存口径把它们 rebase 到 `origin/main` 上（无冲突），HEAD 变成
+**`4319d3999`**，工作区干净。
+
+**让号**：收尾推送时发现远端又多了两笔（`00e5c2b5f` 文件面板的跳过句、`4d31ec9f6` 它的台账），条目
+**7.191** 与**第三百一十八轮**已被那条线先用掉；于是本轮让号改记 **7.192 / 第三百一十九轮**，代码三笔
+无冲突地 rebase 到 **`4d31ec9f6`** 之上（只有台账两处冲突：它的 7.191 条目与我的并列、表格末尾各一行，
+都按「两条各留一处」合并）。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 2.2c，它「还差什么」四条这一轮一条都动不了（写侧在
+桌面壳、部署单元等发布动作、桌面壳自己的开关同前，`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 留到
+发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖；
+第 7 节的「被拒的原因留在按下去的地方」一族做到 7.190，于是把 `packages/web/src` 里剩下的 30 处
+`toastError(` 逐个看了一遍 —— 多数是动作之后的刷新（重读列表、揭示文件、拖入文件夹被跳过），不属于这一族；
+离这一族最近的一处是**对话右侧停靠栏的「远程控制」面板**。
+
+**缺口是什么**：这块面板挂载时要先 `GET /api/sessions/:id/messaging` 一次。读取失败（会话没了、没权限、
+服务端 500、机器连不上）时，代码走 `toastError(apiErrorText(e))` + `onLoadFailed`：会话行打开的弹窗会
+自己关掉（那里通知确实够了），但面板不关 —— 它留在原地画着两块骨架屏。**改前实测**：面板里 `alert` 0 条、
+骨架方块 **2** 块、通知区 **1** 个可点的 toast，**七秒后**骨架还是 2 块、通知区空了 —— 屏幕上没有任何
+东西说明这次读取已经被拒绝，看上去只是慢。
+
+**做了什么**：
+
+- `packages/web/src/features/messaging/messaging-load-refusal.ts`（新）：`messagingLoadRefusal(error, { saysInPlace })`
+  答 `{ text, toast }`。`text` 走 `refusalText` 再包一层 `S.messaging.loadRefused(...)`（服务端英文原文不上屏）；
+  `toast` 默认等于 `text`（弹窗那条路不变），宿主声明自己会画时给 `null`。
+- `messaging-binding-editor.tsx`：hook 多 `loadRefusal` / `reload()`。初始读失败记下句子（按纯函数决定要不要
+  再弹 toast），读到即清、换会话也清；`reload()` 先忘掉「这个会话已经读过」的标记再重跑初始读 —— 失败那次
+  本来故意把它标记成读过，免得轮询对着一直说不的服务端空转。
+- `messaging-panel.tsx`：表单没到时，有句子就画 `NoticeStrip`（`role="alert"`、危险色调）+ 下面一个「重试」，
+  没句子才是骨架屏；传 `saysLoadRefusal: true`，所以同一句话不再重复成通知。
+- 两本词典各一条 `messaging.loadRefused`；单测 5 条；e2e 2 条；changelog 一对。
+
+**顺手收的一处门禁红**：13:01 那三笔里的桌面标题栏用了 `ui-title-bar` 这个类，而 `ui-*` 是主题 hook 的
+保留前缀，`packages/ui/test/hooks.test.ts` 会扫 web 源码：**ui 包因此 1 条红**（`ui-title-bar` 没登记在
+`hooks.ts`）。它其实不是主题 hook（规则是 `-webkit-app-region: drag`，与主题无关），所以按最小改动把类名
+改成 `adelie-title-bar`（`desktop-title-bar.tsx` 与 `styles.css` 各一处 + 一行注释），登记成 hook 会多出
+三套主题配方与 Appendix A 的条目，属设计改动，不在这条线上。改完 ui **133 / 1117 全绿**。
+
+**验证**：
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  web **357 文件 / 4023 + 2 跳过**（基线 356 / 4014；+1 文件 / +9 条 = 本笔 5 条 + 那三笔带来的 4 条）·
+  server **220 文件 / 3199 + 6 跳过**（那三笔带来 `desktop-title-bar.test.ts` 等）。
+- 本笔单独：`vitest run test/messaging-load-refusal.test.ts` **5 passed**；相邻三份（新 + `messaging-binding-editor`
+  + `messaging-save-refusal`）**37 passed**。
+- `npx oxlint` 改动文件 **0 警告 0 错误**；改动文件与 changelog 一对 `prettier --check` 干净。
+- **新 spec 2 passed**（`packages/web/e2e/messaging-panel-load-refusal.spec.mjs`，真服务端 8960 + mock 8961 +
+  `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r318-e2e`）：只把 `GET …/messaging` 按 500 交回 → 面板
+  里恰好一条句子、骨架 0 块、表单字段不在、通知区 0 条、七秒后还在、重试按钮在；解除拦截点重试 → 表单出现
+  （App ID 就是库里存的那一个）、句子与按钮一起消失、读取确实又去了一趟服务端。
+- **反证**：把 4 个源码文件退回 `HEAD`、新模块与新单测挪走，重建 web 挂到 8970（`r318/before-dist`，
+  `index-BTC9IvbJ.js`）→ 同一份 spec **2 failed**（第一条死在面板里找不到 `alert`），放回后重建，产物与
+  留底 `r318/after-dist` **逐字节相同**（`diff -r` 无输出）。
+- **两态探针**（`r318/probe.mjs`，真服务端 + 真浏览器 1280×900）：**改前** `alert 0 / 骨架 2 / 表单 0 /
+  重试 0 / 通知 1`，七秒后 `alert 0 / 骨架 2 / 通知 0`；**改后** `alert 1（逐字「读不到这个对话的远程控制设置：
+  服务器内部错误，请稍后重试。」）/ 骨架 0 / 重试 1 / 通知 0`，七秒后同，点重试后 `alert 0 / 表单 1 /
+  App ID = 存的那一个 / 重试 0`；两态 console 只有既有的 `/machines` 403 与探针自己拦的 500，pageerror 0 条；
+  截图 `r318/{before,after}/…png` 肉眼看过（改前是两块灰方块，改后是红字条 + 重试按钮）。
+- **相邻回归（真浏览器）**：`messaging-form-across-layout` 3 + `messaging-save-refusal` 3 +
+  `messaging-test-message-refusal` 3 + `messaging-test-refusal` 3 + `messaging-toggle-refusal` 2 =
+  **14 passed（1.4 m）**。
+- 端口只用 8960 / 8961 / 8970（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r318-*`，探针 / 配置 / 两态产物在 scratchpad 的 `r318/` 下（`packages/web/dist`、
+  `test-results/` 是产物，未 `git add`）。
+- 没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+**没做 / 留着**：
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 非初始的轮询失败（面板开着时状态刷新失败）仍静默：那条路只影响「连接状态」几行，下一次轮询会再试，
+  没有需要留下的句子。`messaging-binding-editor.tsx` 里其余 `toastError` 都是动作之后的刷新。
+- 桌面壳那一侧的环境变量改名（2.2c 的第 1、3 条）仍等 3.5 拍板。
+
+### 提交
+
+- 功能一笔（新模块 1、源码 2、词典 2、单测 1 新 1 改、spec 1、changelog 2）＋ 桌面标题栏类名一笔；
+  台账（7.191 条目、本节、表里那一行）随本文件另起一笔。
 
 ## 第三百一十五轮：正式发 v0.8.2、换装现网（2026-11-24）
 
@@ -6697,6 +6795,8 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.189 | **工单「追加进度」被拒时，原因留在那个输入框下面**（**2026-11-24 第三百一十六轮**落地；`packages/web` 1 个源码文件（`features/company/ticket-dialog.tsx`：追加框有自己的 `progressRefusal`，与四处确认框共用的 `refusal` 分开；`addProgress` 每次尝试先清上次的句子、把 `setProgressRefusal` 交给 `run` 的 `refuse`，句子用 `NoticeStrip`（`role="alert"`、危险色调、`S.common.refused(...)`）画在输入行下面）＋ 1 个既有 spec 加一条（`e2e/ticket-refusal.spec.mjs` 第 6 条）+ 夹具补 `pricing` 三桶 0（工单 id 靠「$0 价」模型的补全，没有价的行算「未计价」不是免费；缺它建单 400 `slug_required`）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「对话框里 0 条、通知区 1 条、七秒后通知区 0 条且框里仍有那句话」，改后「对话框里 1 条、通知区 0 条、七秒后同一句」，反证把源码退回 `HEAD` 重建后同一 spec **1 failed**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，213 接口 / 644 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 4 个改动文件（含 changelog 一对）`prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **219 / 3191 + 6 跳过** · web **356 / 4014 + 2 跳过** · **新 spec + 同一份 spec 的相邻五条 6 passed（20.4 s）**（真服务端 8930 + mock 8931 + `/root/adelie-fork-data/r316-e2e`）· **反证**：改前源码 + 改前产物（`r316/before-dist`）跑第 6 条 **1 failed**（`dialog` 里那句 `element(s) not found`），放回改后源码重建后产物与 `r316/after-dist` 逐字节相同、**6 passed** · **两态探针**：改前 `inDialog 0 / inToasts 1 / 7 s 后 0`，改后 `inDialog 1 / inToasts 0 / 7 s 后 1`；两态 console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条；截图 `r316/shots/{before,after}/refused.png` 肉眼看过 · 端口只用 8930 / 8931 / 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r316-*` | `9f634062f` |
 | 2026-11-24 | 7.190 | **Windows 上遍历全部接口那条用例卡在 5 秒上限，一条慢用例连带六个**（**2026-11-24 第三百一十七轮**落地；`packages/ui-gallery` 1 个配置文件（`vitest.config.ts`：`testTimeout: 30_000` + 一段为什么，与 `ui` / `web` 同值）—— **只动测试配置、无新依赖、不碰接口、没有用户可见改动**）：CI 红在 `test-windows (rest)` —— `mock-api.test.ts > routes every endpoint the app's wrappers name` 5 秒超时、重试后仍红；那条遍历每遍历一个接口就 `resetStore` 建一整套夹具（150 多次），Linux 1.2 s、Windows 运行器实测 4.8 s（同一份作业上一次 run 里这个文件 15 条共 4817 ms），贴着默认上限，慢一次就超时；超时的用例在后台继续跑、继续换 store，把紧随其后的五条一起带红 | 本机 `--testTimeout=1000` 复现出与 Windows 日志同样的 **6 failed**（第一条 timed out，后五条是时间戳差 30 ms / `promise resolved instead of rejecting` / `expected … to be undefined`）· 临时在第一条用例开头插 6 秒延时：新配置下 **15 passed（7.3 s）**，按旧上限 `--testTimeout=5000` 跑则第一条 timed out；随后还原用例文件（`git diff --stat` 只剩配置）· `pnpm --filter @adelie/ui-gallery test` **20 文件 / 141 通过** · 六包 `typecheck` **`EXIT=0`**（213 接口 / 644 类型；先 `pnpm --filter @adelie/server build` 补上 `b9edad76c` 新增的 `auth/user-token`）· 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** · web 356 / **4014**（2 跳过）· server 219 / **3191**（6 跳过）· `oxlint` / `prettier --check` / `git diff --check` 干净 · 不碰界面、未切版本号、未发 npm、未发安装包 | `4e59b2a83` |
 | 2026-11-24 | 7.191 | **选中的文件没交出去时（超过上限、或拖进来的是文件夹），名字留在列表上方**（**2026-11-24 第三百一十八轮**落地；`packages/web` 1 个新模块（`features/chat/pick-skip-refusal.ts`：`pickSkipLine` 合成跳过句、`withPickSkips` 把跳过句接在服务端那句后面）＋ 1 个源码文件（`workspace-browser.tsx`：`stageUpload` 收下拖进来的文件夹、写进既有的 `uploadRefusal` 槽位并随批次带过覆盖确认；`doUpload` 的新一次选择只交回这一批自己跳过的名字）＋ 词条各一句（`files.pickSkipSeparator`）＋ 1 个新单测（7 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖**）：7.19 的规矩在文件面板的最后一处 —— 面板自己量出来的跳过与拖进来的文件夹，一个字节没读、一个请求没发，名字只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，213 接口 / 644 类型）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 6 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 / 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **219 / 3191 / 6 跳过** · web **357 / 4021 / 2 跳过**（基线 356 / 4014，+1 文件 +7 条） · **新 spec 2 passed（30.0 s）**（`e2e/files-pick-skip.spec.mjs`，真服务端 9900 + mock 9901 + 数据根 `r318-a1`，不挂拦截）：超限那一个 → 句子在列表上方、通知区不含它、写路由 PUT **0**、目录空、七秒后仍在；混合一批 → 能传的真的落地、超限的名字留着；下一次正常选择清掉它 · **反证**：`r318/before-dist` 挂 9902 → **2 failed**（面板里找不到 `alert`） · **两态探针**：改后面板 1 条、通知区空、9 s 后仍在；改前 面板 0 条、通知区 1 条、9 s 后空 · **相邻回归**：`files-folders` 5 + `upload-refusal` 2 = **7 passed（26.2 s）** · 端口只用 9900–9907（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r318-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r318/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `00e5c2b5f` |
+
+| 2026-11-24 | 7.192 | **对话的「远程控制」面板读不到设置时，原因留在面板里、下面就是重试**（**2026-11-24 第三百一十九轮**落地；`packages/web` 1 个新纯逻辑文件（`features/messaging/messaging-load-refusal.ts`：`messagingLoadRefusal(error, { saysInPlace })` 答 `{ text, toast }` —— `text` 走 `refusalText` 再包一层 `S.messaging.loadRefused(...)`，`toast` 默认等于 `text`，宿主声明自己会画时给 `null`）＋ 2 个改动源码文件（`messaging-binding-editor.tsx`：hook 多 `loadRefusal` / `reload()`，初始读失败记下句子、读到即清、换会话也清，`reload()` 先忘掉「这个会话已经读过」的标记再重跑初始读；`messaging-panel.tsx`：表单没到时画 `NoticeStrip`（`role="alert"`、危险色调）+ 下面一个「重试」，没句子才是骨架屏，并传 `saysLoadRefusal: true` 免得同一句话重复成通知）＋ 两本词典各一条 `messaging.loadRefused` ＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖**；顺带把 13:01 那三笔里的 `ui-title-bar` 类名改成 `adelie-title-bar`（`ui-*` 是主题 hook 的保留前缀，`packages/ui/test/hooks.test.ts` 因此红了一条；它不是主题 hook，规则是 `-webkit-app-region: drag`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · web **357 文件 / 4023 + 2 跳过** · server **220 / 3199 + 6 跳过** · 本笔单测 5 passed、相邻三份 37 passed · **新 spec 2 passed（13.3 s）**（真服务端 8960 + mock 8961 + `/usr/bin/chromium` + `/root/adelie-fork-data/r318-e2e`）：只拦 `GET …/messaging` 按 500 交回 → 面板里恰好一条句子、骨架 0 块、表单字段不在、通知区 0 条、七秒后还在、重试按钮在；解除拦截点重试 → 表单出现（App ID 就是库里存的那一个）、句子与按钮一起消失、读取确实又去了一趟服务端 · **反证**：4 个源码文件退回 `HEAD`、重建 web 挂 8970（`r318/before-dist`，`index-BTC9IvbJ.js`）→ 同一份 spec **2 failed**，放回后重建产物与 `r318/after-dist` **逐字节相同** · **两态探针**：改前 `alert 0 / 骨架 2 / 表单 0 / 重试 0 / 通知 1`，七秒后 `alert 0 / 骨架 2 / 通知 0`；改后 `alert 1（逐字）/ 骨架 0 / 重试 1 / 通知 0`，七秒后同，点重试后 `alert 0 / 表单 1 / 重试 0`；两态 console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条，截图 `r318/{before,after}/…png` 肉眼看过 · **相邻回归（真浏览器）** 14 passed（1.4 m）· 端口只用 8960 / 8961 / 8970（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
