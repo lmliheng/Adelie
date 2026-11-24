@@ -3219,6 +3219,83 @@ mock 路由导入序、`chat-page.tsx` 的旧探针体），自带 4 份用例�
       写入随后才开始，被拒时原因只落在一条六秒就走、且浮在框外的通知里，通知一消失既没有原因、也没有
       刚点的那一行可以重试。见「第三百一十二轮」一节。
 
+## 第三百二十二轮：错误表那条夹具跟服务端的异步写入赛跑，改为先等记录落库（2026-11-24，条目 7.195）
+
+**开工**：`git status --short` 干净，分支 `main`，本地与远端 `main` 都是 **`a2fc49658`**（第三百二十一轮那笔
+台账）；`git fetch origin && git merge --ff-only origin/main` → Already up to date。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 2.2c，它「还差什么」四条这一轮一条都动不了（写侧全在
+桌面壳、部署单元等发布动作、桌面壳自己的开关同前、`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 留到
+发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖。
+第 7 节到 7.194 全勾。第三百二十一轮末尾点名留给下一轮的事只有一件：整套浏览器 e2e 还剩 9 条红、与本笔
+无关，逐条分诊 —— 其中 `errors-ignore` 一族 4 条被记成「顺序 / 状态相关的老抖动」，而红着的用例会把真回归
+藏起来，所以从它入手。
+
+**缺口是什么**：`seedError()` 起一个失败回合、等到 Trace 里出现带 `error_code: "auth"` 的 `request_end`，
+就立刻读一次 `/usage/errors` 并断言「至少一条」。但这是**两笔写、两条路**：会话把 `request_end` 提交进
+Trace，`error_records` 的那一行是服务端 recorder 旁路读同一条输出流后另写的，落在几十毫秒之后。夹具只读
+一次等于跟那次写入赛跑，命中与否看机器当时多慢。
+
+**诊断（实测，不是推断）**：
+
+- 改前单跑整组：**2 failed / 3 passed**，红的是第 4、5 条，挂在 `expect(items.length, "one failed turn is
+  on the books").toBeGreaterThan(0)`，两条都只用 497 / 597 ms 就挂 —— 快得不像界面出了问题。
+- 探针 `r322/probe-lag.mjs`（真服务端 9382 + mock 9381 + 数据根 `r322-lag`，新用户一个失败回合后逐次读表）：
+  `request_end auth at 142 ms; table right after: 0` → `+158 ms 0` → `+190 ms 0` → `+221 ms 1 row`。同一份
+  服务端日志里那一行的 `ts` 与 Trace 事件相差几十毫秒，与探针一致。
+- 改前版本重复 6 次（`--repeat-each=6 --grep "refused 撤销|refused 取消忽略"`，新数据根 `r322-stress-before`）：
+  **2 failed / 10 passed**，红的正好是第 7、8 次那一对（同一轮里的两条），说明它按「那一轮的时序」成对命中，
+  不是某一条用例自己的毛病。
+- 落库确实发生（组跑数据根的 `error_records` 里留着 `ignorerefuseundo…` / `ignorerefuserow…` 那两行，
+  `ts` 15:01:10.706 / 15:01:12.209）—— 所以这不是「记录丢了」，是夹具读早了。
+
+**做了什么**：
+
+- `packages/web/e2e/errors-ignore.spec.mjs`：`seedError()` 在 `failedTurn` 之后加一段 `expect.poll`（上限
+  15 s）逐次读表，等到有记录再取 `items[0]`；注释写明两笔写在两条路上、实测的两个时间点，以及为什么
+  「读一次就断言」是夹具在赛跑而不是面板有问题。**只动夹具**，没有改源码、接口、文案与断言含义。
+
+**验证**：
+
+- 改后整组 **5 passed ×3**（一次新数据根 `r322-after`，随后同一数据根又跑两遍验证重跑幂等）。
+- 改后重复 6 次（12 条用例，`r322-stress-after`）**12 passed**；改前同一组参数 **2 failed / 10 passed**
+  （上面那次）。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过**（本笔只动 e2e 夹具，单测数即当前基线）。
+- **整套浏览器 e2e**（`SKIP_BUILD=1 pnpm -C packages/web test:e2e`，39.7 m）：**409 通过 / 5 失败**；上一轮的
+  9 条红里，`errors-ignore` 那 4 条已全部在通过的一侧（通过数 405 → 409），`dock-command-across-layout`
+  这一轮也是绿的。
+- 剩下 5 条（都别的 spec，本笔没碰）：`chat-defaults-save-refusal` ×2 —— 158 / 255 ms 就挂在
+  `targetsOf()` 的「the picker must offer a model that is not the default」，早于任何界面动作，是共享数据根下
+  admin 的 `default_project` 模型表被前面的 spec 改窄（整套日志里这个项目有一长串 `PUT …/models`）；
+  `scroll-follow-bounce` 的 Primer 一格（既有红，`gesture 5: the wheel scrolled up` 只到 52）；
+  `server-switch-read-refusal` 的 company 一格（既有红）；`subagent-composer-across-layout` 1 条（这一轮新
+  出现，卡在 `textarea` 90 s 不可见 —— 与 `dock` 的布局切换相关，先记为抖动，留给下一轮单跑两态）。
+- 改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净。
+- 端口只用 9381 / 9382（自起服务）与 `run.sh` 的 8930 / 8931（整套），跑完都已停，3003 / 3004 / 4000 /
+  7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r322-*`，探针 / 脚本 / 日志 / 留底都在 scratchpad
+  的 `r322/` 下（没有产物进仓库）。本轮没有用户可见改动，所以没有截图一说 —— 每一条用例本身就是真服务端 +
+  真浏览器跑出来的。
+
+**没做 / 留着**：
+
+- 剩下的 5 条红留给下一轮：先单跑 `subagent-composer-across-layout` 两态（新出现的那条），再做
+  `chat-defaults-save-refusal` 的夹具（`targetsOf()` 需要一个「非默认且 tooltip 唯一」的模型，整套跑时它
+  依赖前面 spec 没动过 admin 的模型表 —— 要么夹具自己把目标模型补进去、跑完再摘掉，要么查出是哪个 spec
+  改窄了表）。
+- `cost-center-read` / `cost-center-refresh` / `cost-center-clear` 三份 spec 里也有「失败回合之后马上
+  读表 / 等页面探针」的写法：它们等的是页面自己那一发探针，页面加载给了缓冲，这轮没动；若哪天也抖，照本笔
+  的 `expect.poll` 同一口径收。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 夹具一笔（`packages/web/e2e/errors-ignore.spec.mjs`）；台账（7.195 那一条、本节、表里那一行）随本文件
+  另起一笔。
+
 ## 第三百二十一轮：新建工单那条用例一直红在夹具上，模型条目补上 $0 价（2026-11-24，条目 7.194）
 
 **开工**：`git status --short` 干净，分支 `main`，本地与远端 `main` 都是 **`aa5f64897`**（第三百一十九轮那笔
@@ -3723,6 +3800,13 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       只看条目自己的三桶价，没有价的行算「未计价」、不是免费），夹具缺它时那张工单在第一次真写就被退回
       400 `slug_required`，用例挂在「建立之后框该关」那一句上。第三百一十六轮点名留给下一轮，这一轮补上。
       见「第三百二十一轮」一节。
+- [x] **7.195 错误表的「一个失败回合记账」竞态：夹具先等记录落库，那四条红回到绿**（**2026-11-24
+      第三百二十二轮**落地，提交见「已完成的轮次」；`packages/web/e2e/errors-ignore.spec.mjs` 一处夹具
+      （`seedError()` 在 `failedTurn` 之后加一段 `expect.poll` 逐次读表、等到有记录再取 `items[0]`，
+      带一段为什么）—— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：`request_end` 是会话
+      写进 Trace 的事件，`error_records` 的那一行由服务端 recorder 旁路读同一条输出流后另写，两者相差
+      几十毫秒（实测 `request_end` +142 ms 读 0 条、+221 ms 读到 1 条）；夹具只读一次就断言，于是随机
+      红在这一组的同一步上，红着的用例会把真回归藏起来。见「第三百二十二轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -6942,6 +7026,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.192 | **对话的「远程控制」面板读不到设置时，原因留在面板里、下面就是重试**（**2026-11-24 第三百一十九轮**落地；`packages/web` 1 个新纯逻辑文件（`features/messaging/messaging-load-refusal.ts`：`messagingLoadRefusal(error, { saysInPlace })` 答 `{ text, toast }` —— `text` 走 `refusalText` 再包一层 `S.messaging.loadRefused(...)`，`toast` 默认等于 `text`，宿主声明自己会画时给 `null`）＋ 2 个改动源码文件（`messaging-binding-editor.tsx`：hook 多 `loadRefusal` / `reload()`，初始读失败记下句子、读到即清、换会话也清，`reload()` 先忘掉「这个会话已经读过」的标记再重跑初始读；`messaging-panel.tsx`：表单没到时画 `NoticeStrip`（`role="alert"`、危险色调）+ 下面一个「重试」，没句子才是骨架屏，并传 `saysLoadRefusal: true` 免得同一句话重复成通知）＋ 两本词典各一条 `messaging.loadRefused` ＋ 1 个新单测（5 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖**；顺带把 13:01 那三笔里的 `ui-title-bar` 类名改成 `adelie-title-bar`（`ui-*` 是主题 hook 的保留前缀，`packages/ui/test/hooks.test.ts` 因此红了一条；它不是主题 hook，规则是 `-webkit-app-region: drag`） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · web **358 文件 / 4030 + 2 跳过**（让号后 rebase 到远端重跑）· server **220 / 3199 + 6 跳过** · 本笔单测 5 passed、相邻三份 37 passed · **新 spec 2 passed（13.3 s）**（真服务端 8960 + mock 8961 + `/usr/bin/chromium` + `/root/adelie-fork-data/r318-e2e`）：只拦 `GET …/messaging` 按 500 交回 → 面板里恰好一条句子、骨架 0 块、表单字段不在、通知区 0 条、七秒后还在、重试按钮在；解除拦截点重试 → 表单出现（App ID 就是库里存的那一个）、句子与按钮一起消失、读取确实又去了一趟服务端 · **反证**：4 个源码文件退回 `HEAD`、重建 web 挂 8970（`r318/before-dist`，`index-BTC9IvbJ.js`）→ 同一份 spec **2 failed**，放回后重建产物与 `r318/after-dist` **逐字节相同** · **两态探针**：改前 `alert 0 / 骨架 2 / 表单 0 / 重试 0 / 通知 1`，七秒后 `alert 0 / 骨架 2 / 通知 0`；改后 `alert 1（逐字）/ 骨架 0 / 重试 1 / 通知 0`，七秒后同，点重试后 `alert 0 / 表单 1 / 重试 0`；两态 console 只有既有 `/machines` 403 与探针自己拦的 500，pageerror 0 条，截图 `r318/{before,after}/…png` 肉眼看过 · **相邻回归（真浏览器）** 14 passed（1.4 m）· 端口只用 8960 / 8961 / 8970（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-11-24 | 7.193 | **`main` 的 CI 两处红：画廊 mock 缺桌面标题栏两条路由；macOS 上个人令牌列表把同一毫秒的先后当契约**（**2026-11-24 第三百二十轮**落地；`packages/ui-gallery` 1 个源码文件（`src/app/mock/routes.ts`：desktop 那组补 `GET /api/desktop/title-bar` 答 `{ status: null }`、`PUT` 回 204，与 tray / pet / login-item 同一写法）＋ `packages/server` 1 个用例（`test/external-auth.test.ts`：「自己的令牌列表」那条名字按集合比、`createdAt` 仍比顺序，注释写明同一毫秒由随机 token id 决定先后）—— **只动 mock 与测试、无新依赖、不碰接口、没有用户可见改动**）：`aa5f64897` 那次 run 三平台一起红在画廊的「每个包装都有 mock 路由」（13:01 那笔桌面标题栏新加的两条包装没跟上），macOS 的 server 作业另红在令牌列表（两次尝试都红） | 改前本机复现画廊 **1 failed**（`wrappers with no mock route: expected [getDesktopTitleBar, …(1)]`，与三份 CI 日志逐字同形）· 令牌列表用脚手架的 `now` 钩子把时钟冻住复现：连铸 12 对、**12 对里 6 对反序**且 `createdAt` 全同（`ORDER BY created_at, token_id` + 随机 id）· 改后画廊 **20 / 141**、server 该文件 **15 passed**、冻钟用例换成新断言后 **12 对全过**（临时文件已删）· 六包 `typecheck` **`EXIT=0`**（214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 画廊 **20 / 141** · `oxlint` / `prettier --check` / `git diff --check` 干净 · 不碰界面（浏览器里标题栏本来就画空）、未切版本号、未发 npm、未发安装包 · 真正的验证是这一笔推上去后的 CI | `9512d9761` |
 | 2026-11-24 | 7.194 | **新建工单那条用例一直红在夹具上：模型条目补上 $0 价，回到绿**（**2026-11-24 第三百二十一轮**落地；`packages/web/e2e/ticket-create-refusal.spec.mjs` 一处夹具（模型条目加 `pricing: { cacheRead: 0, cacheWrite: 0, output: 0 }` 与一段为什么）—— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：本树给工单起 id 要先要一条「$0 价」模型的补全（`freeModelEntries` 只看条目自己的三桶价，没有价的行算「未计价」、不是免费），夹具缺它时建单直接 400 `slug_required`，这条 spec 因此一直红着（第三百一十六轮点名留给下一轮） | 两态探针（真服务端 8952 + mock 8951 + 数据根 `r320-probe`，同一用户同一张工单只换价）：未计价 → **400 `slug_required`**、补 $0 三桶价 → **201**（工单落库）· 用例两态：改前 `r320-before` **1 failed（18.4 s）**（挂在 `await expect(again).toHaveCount(0)`，服务端日志 `POST …/tickets 400`）→ 改后 `r320-after` **1 passed（5.4 s）** · 相邻回归 `ticket-refusal` 6 + 本条 1 = **7 passed（26.2 s）** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e 基线**（`SKIP_BUILD=1`，38.1 m）：**405 通过 / 9 失败**，工单两族都在通过的一侧，那 9 条是别的 spec 的顺序 / 既有红（`errors-ignore` 单跑 **1 failed / 4 passed**，失败的是套件里绿的那一条）· 端口只用 8950 / 8951 / 8952 / 8954 / 8956（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
+| 2026-11-24 | 7.195 | **错误表那条夹具跟服务端的异步写入赛跑，改为先等记录落库**（**2026-11-24 第三百二十二轮**落地；`packages/web/e2e/errors-ignore.spec.mjs` 一处夹具（`seedError()` 里 `failedTurn` 之后加一段 `expect.poll`（15 s 上限）逐次读表、等到有记录再取 `items[0]`，注释写明两笔写在两条路上与实测的两个时间点）—— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：`request_end` 由会话写进 Trace，`error_records` 那一行由服务端 recorder 旁路读同一条输出流后另写，探针实测 `request_end` +142 ms 读 **0** 条、+221 ms 读到 **1** 条；夹具只读一次就断言，于是随机红在这一组「一个失败回合记账」的同一步上（上一轮整组 4 条红） | 探针 `r322/probe-lag.mjs`（真服务端 9382 + mock 9381）：`request_end auth at 142 ms; table right after: 0` → `+158 0` → `+190 0` → `+221 1 row`；组跑数据根 `error_records` 里那两行确实在（`ts` 15:01:10.706 / 15:01:12.209）· 两态：改前整组 **2 failed / 3 passed**、改前版重复 6 次（12 条）**2 failed / 10 passed**（红的正好是第 7、8 次那一对）→ 改后整组 **5 passed ×3**（含同一数据根重跑两遍）、改后重复 6 次 **12 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · **整套浏览器 e2e**（`SKIP_BUILD=1`，39.7 m）：**409 通过 / 5 失败**，`errors-ignore` 那 4 条已全在通过的一侧（405 → 409），剩下的 5 条是 `chat-defaults-save-refusal` ×2（`targetsOf()` 在 158/255 ms 就挂，共享数据根下 admin 的模型表被前面 spec 改窄）、`scroll-follow-bounce` 的 Primer 一格与 `server-switch-read-refusal` 的 company 一格（既有红）、`subagent-composer-across-layout` 1 条（新出现，`textarea` 90 s 不可见） · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · 端口只用 9381 / 9382 与 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰，数据只落 `/root/adelie-fork-data/r322-*` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
