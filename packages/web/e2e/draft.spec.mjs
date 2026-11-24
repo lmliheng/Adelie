@@ -18,7 +18,7 @@
  *   what actually forks the conversation onto the picked model / hands it to the picked Agent —
  *   carrying the text typed after the pick into the new conversation.
  */
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { test, expect } from "@playwright/test";
@@ -193,7 +193,18 @@ test("draft: pick model/approval -> reload restores them -> send creates the ses
 
   // A session in a named Workspace groups under that directory's basename, and its group
   // header's "+" pre-fills the draft's Workspace selection with the group's path.
-  const namedWs = mkdtempSync(join(tmpdir(), "penguin-e2e-ws-"));
+  //
+  // The Workspace sits two levels inside a directory of the test's own, because the finder opens
+  // on that Workspace's PARENT and draws every row it is handed: a directory made straight in
+  // the system temp dir opens the finder on `/tmp` itself, which on a machine that has been in
+  // use holds tens of thousands of entries (44 026 on this one, 4 MB) — the selected row took
+  // 21.9 s to arrive, past the 15 s an `expect` waits, while the same Workspace inside a
+  // directory holding exactly one entry lands in ~150 ms. The climb below is read at the same
+  // price, so it also stays inside this subtree: from `folder` up one level is the test's own
+  // root (one entry), never the shared temp dir.
+  const wsRoot = mkdtempSync(join(tmpdir(), "penguin-e2e-root-"));
+  const namedWs = join(wsRoot, "folder", "named-workspace");
+  mkdirSync(namedWs, { recursive: true });
   const namedRes = await page.request.post(
     `${BASE}/api/projects/${projectId}/agents/default_agent/sessions`,
     { data: { workspace: namedWs } },
