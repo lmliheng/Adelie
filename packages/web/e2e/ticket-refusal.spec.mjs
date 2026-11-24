@@ -67,6 +67,11 @@ async function setUp(page, tag) {
           apiKey: "sk-mock",
           baseUrl: MOCK,
           contextWindow: 200000,
+          // Free on all three buckets: a ticket's id is suggested by a utility completion, and
+          // the server walks only the Project's $0-priced rows for it (an entry with no pricing
+          // at all is "unpriced", not free), so without this row the ticket is refused
+          // `slug_required` before any card this spec is about is ever raised.
+          pricing: { cacheRead: 0, cacheWrite: 0, output: 0 },
         },
       ],
     },
@@ -366,4 +371,42 @@ test("a refused move from the board keeps the card, its sentence and the column"
   await expect(
     page.locator('[data-ticket-column="in_progress"]').getByText(TITLE, { exact: true }),
   ).toBeVisible();
+});
+
+test("a refused progress note keeps the box and what was typed, with the reason under it", async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const { projectId, ticketUrl, stored } = await setUp(page, "r316progress");
+  const NOTE = "市场站点已经备案，等审核";
+
+  await openBoard(page, projectId);
+  const dialog = await openTicket(page);
+  // The progress box is on the ticket itself, not in a confirmation: it stays either way.
+  const box = dialog.getByRole("textbox", { name: "追加进度", exact: true });
+  await box.fill(NOTE);
+  const sentence = await cardText(dialog);
+
+  const writes = [];
+  const pattern = await refuseWrite(page, ticketUrl, "POST", writes, "/progress");
+  await dialog.getByRole("button", { name: "追加进度", exact: true }).click();
+
+  // The reason is under the box that sent it, and it is not a toast: the notification region
+  // never carries the server's words, and the ticket reads exactly as before plus the one line.
+  await expect(dialog.getByText(REFUSAL.message)).toBeVisible();
+  await expect(page.getByRole("region", { name: "通知" })).not.toContainText(REFUSAL.message);
+  expect(writes).toHaveLength(1);
+  expect(await cardText(dialog)).toBe(sentence);
+
+  // Nothing was written: no note landed, and the box keeps what was typed for the retry.
+  expect((await stored()).progress).toEqual([]);
+  await expect(box).toHaveValue(NOTE);
+
+  // The retry lands: the note is on the ticket, the box empties, and the sentence goes with it.
+  await page.unroute(pattern);
+  await dialog.getByRole("button", { name: "追加进度", exact: true }).click();
+  await expect(dialog.getByText(NOTE, { exact: true })).toBeVisible();
+  await expect(box).toHaveValue("");
+  await expect(dialog.getByText(REFUSAL.message)).toHaveCount(0);
+  await expect.poll(async () => (await stored()).progress).toEqual([NOTE]);
 });

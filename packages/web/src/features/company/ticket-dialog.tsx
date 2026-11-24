@@ -179,6 +179,13 @@ function TicketDialog({
   const [blockReason, setBlockReason] = useState("");
   const [blockBy, setBlockBy] = useState("");
   const [progressText, setProgressText] = useState("");
+  /**
+   * The progress box's own refusal. That box is not a confirmation: it stays on the page with the
+   * note in it either way, so the sentence belongs under it — a toast would take the server's
+   * words away and leave a box that looks as if nothing had been sent. Kept apart from `refusal`,
+   * which the confirmations share inside their own cards.
+   */
+  const [progressRefusal, setProgressRefusal] = useState<string | null>(null);
   const [moveTarget, setMoveTarget] = useState("");
   const [pendingMove, setPendingMove] = useState<OrgTicketStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -342,12 +349,18 @@ function TicketDialog({
 
   const addProgress = () => {
     if (detail === null || !progressText.trim() || busy) return;
-    void run(async () => {
-      await api.progressOrgTicket(projectId, orgId, detail.ticketId, {
-        text: progressText.trim(),
-      });
-      setProgressText("");
-    });
+    // A new note, not the last one: the previous refusal is not its answer.
+    setProgressRefusal(null);
+    void run(
+      async () => {
+        await api.progressOrgTicket(projectId, orgId, detail.ticketId, {
+          text: progressText.trim(),
+        });
+        setProgressText("");
+      },
+      undefined,
+      setProgressRefusal,
+    );
   };
 
   /** The move the footer asked for, once its confirmation (a reason, when rejecting) is answered. */
@@ -794,6 +807,17 @@ function TicketDialog({
                     {S.company.tickets.addProgress}
                   </Button>
                 </div>
+                {/* Under the box that was refused: the note is still in it, and pressing the
+                    same button again is the retry. */}
+                {progressRefusal !== null && (
+                  <NoticeStrip
+                    tone="danger"
+                    role="alert"
+                    className="mt-2 rounded-md border px-2.5 py-2 text-xs"
+                  >
+                    <span data-slot="body">{S.common.refused(progressRefusal)}</span>
+                  </NoticeStrip>
+                )}
               </RuledSection>
 
               <RuledSection
