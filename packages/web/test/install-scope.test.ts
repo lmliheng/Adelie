@@ -87,7 +87,10 @@ const PREFERENCES: Record<string, string> = {
   "penguin.files.treeWidth": "220",
   "penguin.files.editorWrap": "1",
   "penguin.notifications": "1",
-  "penguin.petFigure": "whale",
+  "penguin.petFigure": "picture",
+  // The picture the `picture` figure draws: a preference beside that one, and a value that is
+  // itself large-ish (a data: URL) — the pair is what the Appearance row writes together.
+  "penguin.petFigurePicture": "data:image/png;base64,AAAA",
   "penguin.keybindings": '{"v":1,"linux":{"terminal.close":"Mod+Alt+KeyW"}}',
 };
 

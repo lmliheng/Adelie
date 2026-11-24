@@ -21,9 +21,10 @@
  *   makes the pet hop, so a drag never also opens the panel on top of wherever the pet was put.
  *
  * WHICH FIGURE IT IS comes from the reader's own choice (lib/pet-figure.ts): the penguin it has
- * always been, or the whale. It is looked up in features/pet/figures.ts, so this page names no
- * drawing of its own — the two are interchangeable and every behaviour below is written against
- * whichever one is in force.
+ * always been, or an image they picked themselves (features/pet/picture.tsx). It is looked up in
+ * features/pet/figures.ts, so this page names no drawing of its own — the two are interchangeable
+ * and every behaviour below is written against whichever one is in force. Only a drawn figure has
+ * the eye classes the pointer moves; an image simply does not follow.
  *
  * The pet moves on its own too: it bobs, it blinks, its pupils follow the pointer (all three in
  * styles.css, and the two classes each figure carries) and it hops when it has something to say.
@@ -379,7 +380,12 @@ export function PetPage() {
   return (
     <div className="pet-drag flex h-screen w-screen flex-col items-center justify-end gap-1 overflow-hidden bg-transparent p-1">
       {panelOpen && (
-        <div className="pet-no-drag w-full space-y-1 rounded-lg border border-gray-200 bg-white/95 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/95">
+        // `max-h` is the panel's floor, not its size: the shell sizes its window for these rows
+        // (packages/desktop's PET_WINDOW_SIZE), and the 76px the panel may not take are the gap and
+        // the pet under it. Without it a row too many — a notice that wraps, a fifth row — grows
+        // the panel upward, and `justify-end` plus the window's `overflow-hidden` cuts its first
+        // row in half instead of showing it. With it, a panel that outgrows the window scrolls.
+        <div className="pet-no-drag max-h-[calc(100%-76px)] w-full space-y-1 overflow-y-auto rounded-lg border border-gray-200 bg-white/95 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/95">
           <Row
             label={S.pet.callRow}
             action={<PetButton label={S.pet.callOpen} onClick={call.start} />}

@@ -12,7 +12,9 @@
  * window may reach them (see isDesktopShellWindow), so all of those rows are absent in a browser. The
  * figure is the one of them whose value is kept on this side: the pet is drawn by this app's own
  * /pet page, so the choice is a browser preference (lib/pet-figure.ts) rather than a field in the
- * shell's file.
+ * shell's file. One of the figures IS the reader's own picture, which sits beside that choice as a
+ * second preference — the image itself, shrunk to what the store and the companion window can carry
+ * (lib/pet-picture.ts).
  *
  * THEMES AN INSTALLATION IMPORTED are rows of the theme picker like the three the UI package
  * ships, and they arrive as data: this page lists them, paints their accents and says what a file
@@ -33,8 +35,10 @@
  * the folder row exactly as they were.
  */
 import { useEffect, useState, useSyncExternalStore } from "react";
+import type { ChangeEvent } from "react";
 import {
   Button,
+  HiddenFileInput,
   InfoPopover,
   PrefRow,
   PrefRowLabel,
@@ -48,14 +52,16 @@ import { FONT_CJK_OPTIONS, FONT_LATIN_OPTIONS, TEXT_SIZES } from "@adelie/ui/boo
 import { S } from "../../lib/strings";
 import * as api from "../../api/endpoints";
 import { isDesktopShellWindow } from "../../lib/account-menu";
-import { PET_FIGURES } from "../../lib/pet-figure";
-import { usePetFigure } from "../../lib/use-pet-figure";
+import { PET_FIGURES, writePetPicture } from "../../lib/pet-figure";
+import { pictureDataUrlFromFile } from "../../lib/pet-picture";
+import { usePetFigure, usePetPicture } from "../../lib/use-pet-figure";
 import {
   launcherHiddenVersion,
   readLauncherHidden,
   subscribeLauncherHidden,
   writeLauncherHidden,
 } from "../dock/dock-launcher-state";
+import { UPLOAD_LABEL_CLASS } from "../agents/skills-tab";
 import { useAuth } from "../../state/auth";
 import { useLocale } from "../../state/locale";
 import { useTheme } from "../../state/theme";
@@ -288,8 +294,44 @@ export function AppearanceSection() {
   const offersShellChrome = isDesktopShellWindow({ desktopMode, sessionVia });
   // The pet's figure: a preference of this browser rather than of the shell, because the drawing is
   // made by this app's own /pet page — so this row and the companion window share one localStorage
-  // key (lib/pet-figure.ts), and either window's change reaches the other.
+  // key (lib/pet-figure.ts), and either window's change reaches the other. The `picture` figure
+  // adds a second key beside it, which is why this row also reads and writes that one.
   const [petFigure, setPetFigure] = usePetFigure();
+  const petPicture = usePetPicture();
+  // Why the last pick did not become a picture. Kept beside the picker rather than raised as a
+  // toast: the sentence is about the file the user just chose, and the picker next to it shows
+  // nothing, so a notice that dismisses itself would leave nothing saying why.
+  const [petPictureError, setPetPictureError] = useState<string | null>(null);
+  const onPickPetPicture = (event: ChangeEvent<HTMLInputElement>): void => {
+    const file = event.target.files?.[0];
+    // Clear the picker's value so picking the SAME file again after a refusal still fires a change
+    // event (the theme import does the same, for the same reason).
+    event.target.value = "";
+    if (file === undefined) return;
+    setPetPictureError(null);
+    void (async () => {
+      const result = await pictureDataUrlFromFile(file);
+      if (!result.ok) {
+        setPetPictureError(
+          result.reason === "not_an_image"
+            ? S.settings.petPictureNotImage
+            : S.settings.petPictureUnreadable,
+        );
+        return;
+      }
+      writePetPicture(result.dataUrl);
+      // Picking is choosing it: a picture that landed but is not drawn would look like the pick
+      // did nothing, so the choice follows the file.
+      setPetFigure("picture");
+    })();
+  };
+  const clearPetPicture = (): void => {
+    writePetPicture(null);
+    setPetPictureError(null);
+    // Nothing left to draw, and the `picture` figure falls back to the penguin anyway — but saying
+    // so on the row is clearer than leaving a choice standing that draws something else.
+    if (petFigure === "picture") setPetFigure("penguin");
+  };
   // The shell owns this one, so it is fetched rather than read from a store. Anything the
   // shell has not told us — no push yet, a request that failed — reads as on, the shell's
   // own default, so the row never claims the icon is off while it is sitting in the tray.
@@ -492,13 +534,45 @@ export function AppearanceSection() {
         />
       )}
       {offersShellChrome && (
-        <PrefRow label={S.settings.petFigure} info={S.settings.petFigureInfo}>
-          <Segmented
-            options={PET_FIGURES.map((id) => ({ value: id, label: S.pet.figureNames[id] }))}
-            value={petFigure}
-            onChange={setPetFigure}
-            cols={2}
-          />
+        <PrefRow
+          label={S.settings.petFigure}
+          info={S.settings.petFigureInfo}
+          // The hint is about the picture only, so it follows the choice rather than standing under
+          // the label the other two figures also carry.
+          hint={
+            petFigure === "picture"
+              ? petPicture === null
+                ? S.settings.petPictureNone
+                : S.settings.petPictureHint
+              : undefined
+          }
+        >
+          {/* One column of controls: the three figures, and — under them, only while the picked
+              one is the picture — the two things to do about it. */}
+          <div className="flex flex-col items-end gap-2">
+            <Segmented
+              options={PET_FIGURES.map((id) => ({ value: id, label: S.pet.figureNames[id] }))}
+              value={petFigure}
+              onChange={setPetFigure}
+              cols={2}
+            />
+            {petFigure === "picture" && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <label className={UPLOAD_LABEL_CLASS}>
+                  <HiddenFileInput accept="image/*" onChange={onPickPetPicture} />
+                  {petPicture === null ? S.settings.petPictureChoose : S.settings.petPictureChange}
+                </label>
+                {petPicture !== null && (
+                  <Button variant="secondary" size="sm" onClick={clearPetPicture}>
+                    {S.settings.petPictureClear}
+                  </Button>
+                )}
+              </div>
+            )}
+            {petPictureError !== null && (
+              <p className="text-xs text-red-600 dark:text-red-400">{petPictureError}</p>
+            )}
+          </div>
         </PrefRow>
       )}
     </div>

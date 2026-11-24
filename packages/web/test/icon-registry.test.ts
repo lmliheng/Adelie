@@ -50,10 +50,6 @@ const ALLOWLIST: Readonly<Record<string, readonly [number, string]>> = {
   // penguin drawn for one window, with no registry entry to share a look with, and nothing else in
   // the app draws it. Listed like the rest so a path that moves or multiplies still shows up here.
   "features/pet/penguin.tsx": [5, "W10"],
-  // The pet's other figure (features/pet/whale.tsx): the blue fat fish, the same kind of drawing,
-  // told apart by the same entry — nobody else draws one either. Six paths: the fin on its back,
-  // the forked tail, the pectoral fin, the body, the belly and the mouth.
-  "features/pet/whale.tsx": [6, "W10"],
   "features/plugins/plugins-page.tsx": [2, "W4"],
   "features/schedules/schedule-row.tsx": [3, "W4"],
   "features/schedules/schedule-suggestions.tsx": [3, "W4"],

@@ -23,6 +23,15 @@ const MOCK = process.env.MOCK_URL;
 const U = "petuser";
 const P = "password123";
 
+/**
+ * The companion window the shell opens for this page (`PET_WINDOW_SIZE` in
+ * packages/desktop/src/pet-window.ts — a copy here, because that constant is TypeScript a spec
+ * cannot import). The panel and the pet under it are what size it, so the viewport is set to it
+ * below: Playwright's own default viewport is a browser window and would hide exactly the mistake
+ * that assertion pins.
+ */
+const PET_WINDOW_SIZE = { width: 260, height: 300 };
+
 // The penguin bobs — an infinite CSS animation — and Playwright refuses to click an element whose
 // box never settles. Reduced motion is the app's own answer to that preference (the global rule in
 // styles.css turns every animation off), so the spec emulates it per page; that also pins the pet
@@ -107,6 +116,16 @@ test("the pet shows its readings, and speaks up when a call needs the user", asy
   await expect(page.getByText("模型余额", { exact: true })).toBeVisible();
   await expect(page.getByText("客户端更新", { exact: true })).toBeVisible();
   await expect(page.getByText("通知", { exact: true })).toBeVisible();
+  // The panel fits the window the shell gives it. At a browser-sized viewport this reads as
+  // nothing, which is how the four-row panel came to be taller than the window: `justify-end`
+  // grows it upward and the window's `overflow-hidden` cut its first row — the voice-call row — in
+  // half. At the shell's own size the whole panel is inside it, and nothing has to be scrolled to.
+  await page.setViewportSize(PET_WINDOW_SIZE);
+  const panel = page.locator("div.pet-no-drag");
+  const firstRow = await page.getByText("语音通话", { exact: true }).boundingBox();
+  expect(firstRow.y, "the panel's first row is inside the window").toBeGreaterThanOrEqual(0);
+  const room = await panel.evaluate((el) => el.clientHeight - el.scrollHeight);
+  expect(room, "the panel fits the window, so it does not scroll").toBeGreaterThanOrEqual(0);
   // Both shell-owned readings say so rather than failing, and the pet's own hide action is not
   // offered where there is no pet window to hide.
   await expect(page.getByText("余额只在桌面应用里能读。", { exact: true })).toBeVisible();

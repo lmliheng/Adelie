@@ -245,6 +245,12 @@ export const KEY_RULES: readonly KeyRule[] = [
     scope: "browser",
     why: "Which figure the desktop pet draws; an appearance choice of this browser, naming nothing on the server — and the companion window shares it through this origin's storage, so a wipe has no business resetting it.",
   },
+  {
+    kind: "exact",
+    key: "penguin.petFigurePicture",
+    scope: "browser",
+    why: "The reader's own picture for the pet, as a data: URL: part of the appearance choice above, on the same origin's storage and for the same reason — it is not installation data and nothing on the server names it.",
+  },
 
   // --------------------------------------------------------------- install-scoped state
   {

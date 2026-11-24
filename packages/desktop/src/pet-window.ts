@@ -11,7 +11,7 @@
  * It is frameless, transparent and always on top, so the penguin appears to float on the desktop
  * rather than sit in a box; the page draws the fill and marks itself draggable. The window is NOT
  * click-through: its transparent corners still swallow a click that lands on them, which is why
- * the size below is kept as tight as the bubble and the pet together need. Drag from anywhere the
+ * the size below is kept as tight as the panel and the pet together need. Drag from anywhere the
  * pet is not — the page opts its own controls out of the drag region.
  */
 import path from "node:path";
@@ -38,10 +38,19 @@ export function petShotPath(mainShotPath: string): string {
 /**
  * The window's size. Small: the pet is a corner companion, and every pixel here is a pixel of
  * desktop it covers (see the click-through note above). Wide enough for the panel's longest line,
- * tall enough for that panel — three stacked rows and the hide action — with the penguin under it,
+ * tall enough for that panel — the four stacked rows and the hide action — with the pet under it,
  * which is what the page is laid out to.
+ *
+ * The height is the panel's own, measured against the built stylesheet at this width: 197px, and
+ * 212px in English, where the call row's line wraps to a second line. Above that are the 4px gap
+ * and the 72px pet the page puts under it, plus its own 8px padding: 300 leaves the panel a few
+ * pixels of air and the call row's promise ("点「打电话」，对着麦克风聊天。") fully drawn. It sat at
+ * 248 for as long as the panel had three rows — the voice-call row made it four, and from then on
+ * the window cut the panel's first row in half, because `justify-end` sends the overflow up and
+ * `overflow-hidden` hides it. The page also caps its own panel at the room left over, so a longer
+ * notice scrolls rather than disappearing behind the window's top edge.
  */
-export const PET_WINDOW_SIZE = { width: 260, height: 248 } as const;
+export const PET_WINDOW_SIZE = { width: 260, height: 300 } as const;
 
 /**
  * The size the window takes while a call is open. A call is a surface, not a corner companion: the

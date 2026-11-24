@@ -10,7 +10,11 @@
  * - Storage that refuses every call (site data blocked) answers the default and swallows the write,
  *   rather than taking a render down with it.
  * - A write tells the renderers following it, and stops telling the one that unsubscribed.
- * - Both figures draw through the map, which is what the pet page looks the choice up in.
+ * - Both figures draw through the map, which is what the pet page looks the choice up in — and a
+ *   name no figure answers to any more (the retired `whale`) draws the penguin like any other.
+ * - The second figure is the reader's own picture: it lives in a key of its own, a write to either
+ *   key is a change to both, and a `picture` choice with no picture stored draws the penguin rather
+ *   than an empty box.
  */
 import { describe, expect, it, vi } from "vitest";
 import { createElement } from "react";
@@ -20,12 +24,16 @@ import {
   isPetFigure,
   PET_FIGURES,
   PET_FIGURE_KEY,
+  PET_PICTURE_KEY,
   readPetFigure,
+  readPetPicture,
   subscribePetFigure,
   writePetFigure,
+  writePetPicture,
 } from "../src/lib/pet-figure";
 import { usePetFigure } from "../src/lib/use-pet-figure";
 import { PET_FIGURE_VIEWS } from "../src/features/pet/figures";
+import { PetPicture } from "../src/features/pet/picture";
 import { blockedStorage, memoryStorage, stubLocalStorage } from "./helpers/storage";
 
 /** A store holding `value` under the figure key, or nothing when it is null. */
@@ -60,21 +68,21 @@ describe("writePetFigure", () => {
     const storage = memoryStorage();
     expect(readPetFigure(storage)).toBe("penguin");
 
-    writePetFigure("whale", storage);
+    writePetFigure("picture", storage);
 
-    expect(storage.map.get(PET_FIGURE_KEY)).toBe("whale");
-    expect(readPetFigure(storage)).toBe("whale");
+    expect(storage.map.get(PET_FIGURE_KEY)).toBe("picture");
+    expect(readPetFigure(storage)).toBe("picture");
   });
 
   it("swallows a storage that refuses the write", () => {
-    expect(() => writePetFigure("whale", blockedStorage())).not.toThrow();
+    expect(() => writePetFigure("picture", blockedStorage())).not.toThrow();
   });
 
   it("tells the renderers following it, and stops telling one that unsubscribed", () => {
     const heard = vi.fn();
     const stop = subscribePetFigure(heard);
     try {
-      writePetFigure("whale", memoryStorage());
+      writePetFigure("picture", memoryStorage());
       expect(heard).toHaveBeenCalledTimes(1);
     } finally {
       stop();
@@ -94,6 +102,80 @@ describe("isPetFigure", () => {
   });
 });
 
+describe("the reader's own picture", () => {
+  const picture = "data:image/png;base64,iVBORw0KGgo=";
+  const storageWithPicture = (value: string | null) =>
+    memoryStorage(value === null ? {} : { [PET_PICTURE_KEY]: value });
+
+  it("is null until a picture is stored", () => {
+    expect(readPetPicture(storageWithPicture(null))).toBeNull();
+    expect(readPetPicture()).toBeNull();
+  });
+
+  it("is null for anything that is not a picture this page can draw", () => {
+    for (const raw of ["", " ", "blob:http://localhost/x", "/pet/cat.png", "data:text/plain;x"]) {
+      expect(readPetPicture(storageWithPicture(raw)), JSON.stringify(raw)).toBeNull();
+    }
+  });
+
+  it("hands back a stored data: URL", () => {
+    expect(readPetPicture(storageWithPicture(picture))).toBe(picture);
+  });
+
+  it("round-trips through the storage it was given, and clearing leaves nothing", () => {
+    const storage = memoryStorage();
+
+    writePetPicture(picture, storage);
+    expect(storage.map.get(PET_PICTURE_KEY)).toBe(picture);
+    expect(readPetPicture(storage)).toBe(picture);
+
+    writePetPicture(null, storage);
+    expect(readPetPicture(storage)).toBeNull();
+  });
+
+  it("answers null and swallows the write where storage is blocked", () => {
+    expect(readPetPicture(blockedStorage())).toBeNull();
+    expect(() => writePetPicture(picture, blockedStorage())).not.toThrow();
+  });
+
+  it("tells the renderers following the figure, because it is the same preference", () => {
+    const heard = vi.fn();
+    const stop = subscribePetFigure(heard);
+    try {
+      writePetPicture(picture, memoryStorage());
+      expect(heard).toHaveBeenCalledTimes(1);
+    } finally {
+      stop();
+    }
+  });
+});
+
+describe("the `picture` figure", () => {
+  const picture = "data:image/png;base64,iVBORw0KGgo=";
+  const drawn = (): string =>
+    renderToStaticMarkup(createElement(PetPicture, { className: "h-full w-full" }));
+
+  it("draws the stored image, contained and not draggable", () => {
+    stubLocalStorage(memoryStorage({ [PET_FIGURE_KEY]: "picture", [PET_PICTURE_KEY]: picture }));
+
+    const html = drawn();
+
+    expect(html).toContain(`src="${picture}"`);
+    expect(html).toContain("object-contain");
+    expect(html).toContain('draggable="false"');
+    expect(html).not.toContain("<svg");
+  });
+
+  it("is the penguin when the choice is the picture but none is stored", () => {
+    stubLocalStorage(memoryStorage({ [PET_FIGURE_KEY]: "picture" }));
+
+    const html = drawn();
+
+    expect(html).toContain("<svg");
+    expect(html).toContain("#1f2937"); // the penguin's black silhouette
+  });
+});
+
 describe("the figure a renderer draws", () => {
   /** The pet page's own two lines, without the page: the figure in force, drawn. */
   function Pet() {
@@ -110,17 +192,27 @@ describe("the figure a renderer draws", () => {
 
     expect(html).toContain("<svg");
     expect(html).toContain("#1f2937"); // the penguin's black silhouette
-    expect(html).not.toContain("#4d6bfe"); // the whale's blue
+    expect(html).not.toContain("<img");
   });
 
-  it("is the whale once one is, carrying the classes the stylesheet animates", () => {
+  it("is the stored picture once that is the choice", () => {
+    stubLocalStorage(
+      memoryStorage({ [PET_FIGURE_KEY]: "picture", [PET_PICTURE_KEY]: "data:image/png;base64,AA" }),
+    );
+
+    const html = drawn();
+
+    expect(html).toContain('src="data:image/png;base64,AA"');
+    expect(html).not.toContain("<svg");
+  });
+
+  it("falls back to the penguin for a figure a later release dropped", () => {
+    // `whale` is exactly that case: the drawn fish was retired on 2026-11-24.
     stubLocalStorage(memoryStorage({ [PET_FIGURE_KEY]: "whale" }));
 
     const html = drawn();
 
-    expect(html).toContain("#4d6bfe");
-    expect(html).toContain('class="pet-eyes"');
-    expect(html).toContain('class="pet-pupils"');
-    expect(html).not.toContain("#f59e0b"); // the penguin's beak and feet
+    expect(html).toContain("<svg");
+    expect(html).toContain("#1f2937");
   });
 });

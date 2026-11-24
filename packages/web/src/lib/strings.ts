@@ -1056,7 +1056,16 @@ export const zh = {
     /** Desktop shell only: which figure the companion window draws. */
     petFigure: "桌宠形象",
     petFigureInfo:
-      "桌宠长什么样：经典企鹅，或一条蓝色大肥鱼。改完立即生效，不用重启，也不用重开桌宠窗口。",
+      "桌宠长什么样：经典企鹅，或者你自己的图片。改完立即生效，不用重启，也不用重开桌宠窗口。",
+    /** Desktop shell only: picking the picture the `picture` figure draws. */
+    petPictureChoose: "选择图片",
+    petPictureChange: "换一张",
+    petPictureClear: "清除图片",
+    petPictureHint: "透明底的图片贴在桌面上最好看；图片只存在这个浏览器里，不会上传。",
+    /** Shown instead of {@link petPictureHint} while the `picture` figure has no picture yet. */
+    petPictureNone: "还没选图片，桌宠暂时还是企鹅。",
+    petPictureNotImage: "这个文件不是图片。",
+    petPictureUnreadable: "这张图片读不出来，换一张试试。",
     currencyInfo: "价格显示币种；存储始终为美元。",
     changePasswordInfo: "更改当前账号的登录密码。",
     /** Personal company-mode switch (general page) and the admin master switch (its own server page). */
@@ -1381,7 +1390,7 @@ export const zh = {
     /** The panel's footer action, which writes the same preference the Appearance switch does. */
     hide: "隐藏桌宠",
     /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
-    figureNames: { penguin: "企鹅", whale: "蓝色大肥鱼" },
+    figureNames: { penguin: "企鹅", picture: "我的图片" },
     refresh: "刷新",
     balance: "模型余额",
     /** No balance is pinned to the account (see features/models/balance.ts). */
