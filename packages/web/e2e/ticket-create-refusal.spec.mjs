@@ -63,6 +63,11 @@ async function setUp(page, tag) {
           apiKey: "sk-mock",
           baseUrl: MOCK,
           contextWindow: 200000,
+          // Free on all three buckets: a ticket's id is suggested by a utility completion, and
+          // the server walks only the Project's $0-priced rows for it (an entry with no pricing
+          // at all is "unpriced", not free), so without this row the very create this spec asks
+          // for is refused `slug_required` and the form it is about never gets an answer.
+          pricing: { cacheRead: 0, cacheWrite: 0, output: 0 },
         },
       ],
     },
