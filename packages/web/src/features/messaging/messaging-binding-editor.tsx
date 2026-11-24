@@ -72,6 +72,7 @@ import { WeChatScanConnect } from "./wechat-scan-connect";
 import { messagingTestRefusal } from "./messaging-test-refusal";
 import { messagingTestMessageRefusal } from "./messaging-test-message-refusal";
 import { messagingSaveRefusal } from "./messaging-save-refusal";
+import { messagingLoadRefusal } from "./messaging-load-refusal";
 import {
   forgetMessagingForm,
   recallMessagingForm,
@@ -266,6 +267,14 @@ export interface MessagingBindingEditorState {
    * which is what makes it readable after the attempt — see `messaging-save-refusal.ts`.
    */
   saveRefusal: string | null;
+  /**
+   * Why this Session's bindings could not be read at all (null when they arrived, or before a
+   * retry has failed). The dialog closes on one; the panel draws it where the form would be and
+   * offers `reload` under it — see `messaging-load-refusal.ts`.
+   */
+  loadRefusal: string | null;
+  /** Read the bindings again; the panel's notice offers this as its retry. */
+  reload(): void;
   /** The id hosts give their Save action, so a switch gated on unsaved edits can focus it. */
   saveButtonId: string;
   /**
@@ -375,8 +384,16 @@ export function useMessagingBinding(
     poll: boolean;
     /** Fired when the ENABLED channel changed (null = none); callers refresh their row/list indicator. */
     onChanged?: (sessionId: string, channel: MessagingChannel | null) => void;
-    /** Fired when the initial load fails (the dialog closes itself; the panel shows its own retry). */
+    /**
+     * Fired when the initial load fails (the dialog closes itself; the panel shows its own retry).
+     */
     onLoadFailed?: () => void;
+    /**
+     * The host draws the failed initial read itself — the dock panel puts the sentence where the
+     * form would be and offers `reload` under it — so the hook must not also pop a six-second
+     * toast that says the same thing and then leaves the panel shimmering as if still reading.
+     */
+    saysLoadRefusal?: boolean;
     /**
      * The dock surface the host is drawn on — only the dock panel passes one. With it, the form
      * the reader had typed is remembered and handed back when the panel moves to another surface
@@ -385,7 +402,7 @@ export function useMessagingBinding(
     surface?: DockSurface;
   },
 ): MessagingBindingEditorState {
-  const { poll, onChanged, onLoadFailed, surface } = opts;
+  const { poll, onChanged, onLoadFailed, surface, saysLoadRefusal } = opts;
   const [form, setForm] = useState<MessagingFormState | null>(null);
   /** What the form last loaded/saved — the dirty check compares against it. */
   const [baseline, setBaseline] = useState<MessagingFormState | null>(null);
@@ -417,6 +434,14 @@ export function useMessagingBinding(
    * probe: the two are answered by different buttons and one never stands for the other.
    */
   const [saveRefusal, setSaveRefusal] = useState<string | null>(null);
+  /**
+   * Why this Session's bindings never arrived (see `messaging-load-refusal.ts`). A host that draws
+   * it keeps the sentence; without one the panel is left on its skeleton, which reads as "still
+   * loading" long after the read came back refused.
+   */
+  const [loadRefusal, setLoadRefusal] = useState<string | null>(null);
+  /** Bumped by `reload` to run the initial load again (the failed one marked the session done). */
+  const [reloadNonce, setReloadNonce] = useState(0);
   const saveButtonId = useId();
 
   /** Which session the form was loaded for (the initial load runs once per session, not per poll flip). */
@@ -450,12 +475,19 @@ export function useMessagingBinding(
           setForm(kept.current ?? stored);
           setBaseline(stored);
           initialDone = true;
+          // A retry that lands clears the sentence the failed attempt left; the form is the answer
+          // now, and a line saying the read failed would accuse a read that succeeded.
+          setLoadRefusal(null);
         }
       } catch (e) {
         if (cancelled) return;
         if (initial) {
           initialDone = true; // reported; a retry is the host's call, not a silent loop
-          toastError(apiErrorText(e));
+          const refusal = messagingLoadRefusal(e, {
+            ...(saysLoadRefusal !== undefined ? { saysInPlace: saysLoadRefusal } : {}),
+          });
+          setLoadRefusal(refusal.text);
+          if (refusal.toast !== null) toastError(refusal.toast);
           onLoadFailed?.();
         }
       }
@@ -471,6 +503,8 @@ export function useMessagingBinding(
       setTestMessageRefusal(null);
       // Nor why that other conversation's save failed: this form is a different one.
       setSaveRefusal(null);
+      // Nor why that other conversation's bindings could not be read.
+      setLoadRefusal(null);
       void refresh(true);
     }
     const timer = poll ? setInterval(() => void refresh(false), STATUS_POLL_MS) : null;
@@ -481,10 +515,25 @@ export function useMessagingBinding(
       // the next run instead of leaving the form permanently unloaded.
       if (!initialDone && loadedFor.current === sessionId) loadedFor.current = null;
     };
-    // Only sessionId/poll may restart the effect: onLoadFailed's identity would
+    // Only sessionId/poll/reloadNonce may restart the effect: onLoadFailed's identity would
     // otherwise re-run it every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId, poll]);
+  }, [sessionId, poll, reloadNonce]);
+
+  /**
+   * Read the bindings again after a failed initial load.
+   *
+   * The load is keyed on `loadedFor`: a failed initial read marks the Session done so the poll
+   * will not re-run it (that would be a silent loop against a server that keeps saying no). A
+   * deliberate retry therefore has to forget the mark and re-run the effect, and it clears the
+   * sentence first — the skeleton comes back for the duration of the attempt, so a press is
+   * visibly answered before the answer arrives.
+   */
+  const reload = () => {
+    if (loadedFor.current === sessionId) loadedFor.current = null;
+    setLoadRefusal(null);
+    setReloadNonce((n) => n + 1);
+  };
 
   // Keep what the reader typed for the body that replaces this one when the layout moves the
   // panel (messaging-form-keep.ts). Written on every change rather than on the way out — a move
@@ -705,6 +754,8 @@ export function useMessagingBinding(
     testRefusal,
     testMessageRefusal,
     saveRefusal,
+    loadRefusal,
+    reload,
     saveButtonId,
     adoptBinding: (binding) =>
       applyChannel(binding.channel, binding, channels[binding.channel].status),

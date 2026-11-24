@@ -13,7 +13,7 @@
  * Status polling is gated on `active` (the dock keeps hidden tabs mounted): a hidden tab
  * neither polls nor loses the form state it accumulated.
  */
-import { Button, Skeleton } from "@adelie/ui";
+import { Button, NoticeStrip, Skeleton } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import {
   MessagingBindingBody,
@@ -35,15 +35,38 @@ export function MessagingPanel({
    */
   surface?: DockSurface;
 }) {
-  const b = useMessagingBinding(sessionId, { poll: active, surface });
+  // `saysLoadRefusal`: this panel keeps a failed read on screen (below), so the hook leaves the
+  // toast to the dialog host instead of repeating the sentence in a notification that erases.
+  const b = useMessagingBinding(sessionId, {
+    poll: active,
+    saysLoadRefusal: true,
+    ...(surface !== undefined ? { surface } : {}),
+  });
 
   return (
     <div className="h-full overflow-y-auto p-3">
       {b.form === null ? (
-        <div className="space-y-2">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-24 w-full" />
-        </div>
+        b.loadRefusal !== null ? (
+          <div className="space-y-2">
+            <NoticeStrip
+              tone="danger"
+              role="alert"
+              className="rounded-md border px-2.5 py-2 text-xs"
+            >
+              <span data-slot="body">{b.loadRefusal}</span>
+            </NoticeStrip>
+            {/* The read is what failed, so reading again is the retry — and the panel has no
+                other control that could stand in for it while the form has not arrived. */}
+            <Button size="sm" onClick={() => b.reload()}>
+              {S.common.retry}
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-24 w-full" />
+          </div>
+        )
       ) : (
         <div className="space-y-3">
           <MessagingBindingBody b={b} />

@@ -4680,6 +4680,13 @@ export const en: Strings = {
      * thing that says the write did not land once the six-second notification is gone.
      */
     saveRefused: (reason: string): string => `Save failed: ${reason}`,
+    /**
+     * This Session's bindings could not be read at all, drawn where the form would be
+     * (messaging-load-refusal.ts): the panel used to keep shimmering on its skeleton with the
+     * reason only in a notification that erased itself.
+     */
+    loadRefused: (reason: string): string =>
+      `Could not read this conversation's remote-control settings: ${reason}`,
     statusLabel: "Connection status",
     status: {
       disconnected: "Not connected",

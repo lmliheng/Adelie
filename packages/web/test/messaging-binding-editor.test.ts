@@ -90,6 +90,8 @@ function stateOf(
     testRefusal: null,
     testMessageRefusal: null,
     saveRefusal: null,
+    loadRefusal: null,
+    reload: () => {},
     saveButtonId: "save-under-test",
     adoptBinding: () => {},
     save: noop,

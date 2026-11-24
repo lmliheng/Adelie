@@ -4785,6 +4785,12 @@ export const zh = {
      * thing that says the write did not land once the six-second notification is gone.
      */
     saveRefused: (reason: string): string => `保存失败：${reason}`,
+    /**
+     * This Session's bindings could not be read at all, drawn where the form would be
+     * (messaging-load-refusal.ts): the panel used to keep shimmering on its skeleton with the
+     * reason only in a notification that erased itself.
+     */
+    loadRefused: (reason: string): string => `读不到这个对话的远程控制设置：${reason}`,
     statusLabel: "连接状态",
     status: {
       disconnected: "未连接",
