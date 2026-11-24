@@ -3376,6 +3376,31 @@ web 单测 **355 文件 / 3998 通过 + 2 跳过**（与上面逐项相同）。
 
 - 本笔 `69ba6dee8`（8 个文件，+246 −75），台账一笔（本文件）。
 
+## 第三百一十四轮：外置主题那条用例在 Windows 上拼错路径（2026-11-24）
+
+**开工**：`main` = `488224fae` = `origin/main`；工作树 36 项脏（另一条线桌宠的在途改动 + 第三百零八轮
+就已查明的 `packages/desktop/build/**` 迁移清理删除），按共存口径一处没碰。四道门禁在 `488224fae` 的
+隔离工作树里跑，全绿（`typecheck` / `lint` / `format:check` / `pnpm -r test`，11010 通过 / 20 跳过 /
+0 失败，原始输出在 `/root/evolution/runs/2026-11-24-0900/`）。**跑门禁期间另一条线提交并推了
+`333fab188` / `799e24b59`**（桌宠面板与鉴权文档页），这两个提交在 GitHub 上的 CI 都红在同一个 Windows 作业。
+
+**为什么是这一条**：`test-windows (rest)` 从 `1b4bdde9b`（11-22，外置主题的层序修复）起就红，日志里是
+`ENOENT … open 'D:\D:\a\Adelie\Adelie\packages\web\index.html'`，按 ci.yml 的重试再跑一次仍然红。
+原因在 `packages/web/test/head-layers.test.ts` 第 19–20 行：`new URL("../", import.meta.url).pathname`
+在 Windows 上带着盘符前那条斜杠（`/D:/…`），`join` 再拼就成 `D:\D:\…`；Linux 上这条路径是对的，
+所以本地四道门禁看不见它。
+
+**改动**（1 个文件，只动测试）：改用 `fileURLToPath(new URL("../", import.meta.url))` —— 本包
+`sidebar-batch-sessions` / `shortcut-guard` 等用例就是这么把 URL 变成路径的 —— 并补三行注释记下这个坑。
+
+**验证**：`path.win32.join('/D:/a/Adelie/Adelie/packages/web/', 'index.html')` 复算出同一种盘符拼接错误；
+改后 `vitest run test/head-layers.test.ts` **2 passed**；`prettier --check` 与 `oxlint` 对该文件
+0 警告 0 错误。CI 的 Windows 作业由这一笔推上去后自行验证。
+
+### 提交
+
+- 本笔 `5c3858afb`，台账一笔（本文件）。
+
 ## 第三百零九轮：命令只在用户设了 `NO_COLOR` 时才丢颜色（2026-11-24，条目 5.63）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b5de56be9`；`git fetch origin && git merge --ff-only
