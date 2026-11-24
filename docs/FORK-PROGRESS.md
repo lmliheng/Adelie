@@ -3554,6 +3554,84 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       （batch / 退出登录 / 写入 / Agent API 两处）一起红。CI 红在 `test-windows (rest)`，重试后仍红在同一条。
       见「第三百一十七轮」一节。
 
+- [x] **7.191 选中的文件没交出去时（超过上限、或拖进来的是文件夹），名字留在列表上方**（**2026-11-24
+      第三百一十八轮**落地，提交见「已完成的轮次」；`packages/web` 1 个新模块（`features/chat/pick-skip-refusal.ts`：
+      `pickSkipLine` 把一次选择里被跳过的两类名字合成一句，`withPickSkips` 把这一句接在服务端的句子后面）
+      ＋ 1 个源码文件（`workspace-browser.tsx`：`stageUpload` 收下拖进来的文件夹、算出这一句写进既有的
+      `uploadRefusal` 槽位并随批次带到覆盖确认之后的那次写入；`doUpload` 的「新的一次选择先清掉上一次的话」
+      保留，只把这一批自己跳过的名字交回来）＋ 两本词典各一句（`files.pickSkipSeparator`）＋ 1 个新单测
+      （7 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、上限本身没动**）：7.19 的
+      规矩（拒绝留在尝试发生的地方）在文件面板的最后一处 —— 面板自己量出来的跳过与拖进来的文件夹，一个
+      字节没读、一个请求没发，文件树还是那个目录，名字只在一条六秒就走的通知里。见「第三百一十八轮」一节。
+
+## 第三百一十八轮：选中的文件没交出去时，名字留在列表上方（2026-11-24，条目 7.191）
+
+**开工**：`git status --short` 干净，分支 `main`；`git fetch origin && git merge --ff-only origin/main`
+—— already up to date，本地 `f7fb42fa0`（第三百一十七轮）。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 **2.2c**，它「还差什么」四条这一轮一条都动不了（写侧
+在桌面壳、部署单元等发布动作、桌面壳自己的开关同前，`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c
+留到发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6（用量成本记账时就定价）
+与 5.10（A2UI）要拍板 / 新依赖；第 7 节到 7.190 全勾。于是把 7.19 那条线（拒绝留在尝试发生的地方）
+扫到底：`packages/web/src` 里还剩 48 处 `toastError`、17 个文件，逐个读过之后绝大多数是**没有宿主面**的
+（整批进程动作、菜单行、会话死掉之后的兜底、更新流程、打开内建浏览器、把文件交给系统的文件管理器、批量
+写完之后的重新读），**只剩文件面板这一处**：`stageUpload` 自己量出来的超限跳过，与拖进来的文件夹 ——
+两条路都一个字节没读、一个请求没发，所以面板上没有任何服务端的话可画，文件树还是选之前那个目录，名字
+只在那条六秒就走的通知里。
+
+**做了什么**：跳过句写进面板**既有的**拒绝槽位（`uploadRefusal`，就在列表面板上方那条 `role="alert"`，
+7.158 给上传被拒用的那个），不新开一个槽位 —— 同一块面板、同一种手势、同一个重试（再选一次）。两处
+细节：①一次选择可以两类都碰上（拖进来一个文件夹 + 一个超限文件），所以先合成一句、用新词条
+`files.pickSkipSeparator` 断开；②写请求随后也被拒时，服务端那句只说得清它试过的文件，于是 `withPickSkips`
+把那句接在后面，早就跳过的名字不会在这一刻消失。覆盖确认（同名文件）之后才开始写，所以这一句随批次
+带进 `pendingUpload`，确认按下去时一起交回 `doUpload`。
+
+**验证**：
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，213 接口 / 644 类型；
+  任务模板里的 `--filter @prismshadow/penguin-*` 在本树匹配不到任何项目，按仓库实际包名 `@adelie/*` 跑）。
+- `npx oxlint` 6 个改动文件 **0 警告 0 错误**；6 个改动文件与 changelog 一对 `prettier --check` 干净；
+  `git diff --check` 干净。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **219 / 3191 / 6 跳过** · web **357 文件 / 4021 通过 / 2 跳过**（基线 356 / 4014，本笔 **+1 文件
+  +7 条**：新模块 7 条）。
+- **新 spec 2 passed（14.4 s / 14.2 s）**（`e2e/files-pick-skip.spec.mjs`，真服务端 9900 + 仓库自带 mock 模型
+  9901 + `/usr/bin/chromium` + 数据根 `/root/adelie-fork-data/r318-a1`，**不挂拦截**）：① 选一个 15MB
+  （14MB 上限加一字节）的文件 → 列表上方逐字「超过 14MB 上传上限，已跳过：big.bin」、通知区不含它、
+  写路由上的 PUT 计数 **0**、目录仍是空的、树上没有那一行、**七秒后仍在**；② 一批里既有超限的又有一个
+  在限内的 → 限内那个真的落地（通知区「已上传 1 个文件」、树上出现那一行），超限的名字仍在上方、七秒后
+  仍在；再选一个正常文件 → 那句话清掉（下一次选择就是答案）。
+- **反证（同一份 spec，改前产物）**：`r318/before-dist`（三份源码 `git stash push --` 只带这三个路径后
+  重建，`index-*.js` 里没有 `pick-skip-refusal`）挂 9902 + mock 9903 + 数据根 `/root/adelie-fork-data/r318-b1`
+  → **2 failed**，两条都死在面板里 `getByRole("alert")` `element(s) not found`；`git stash pop` 后重建，
+  产物哈希与留底的 `after-dist` 一致。
+- **两态探针**（`r318/probe.mjs`，同一脚本两条腿各挂自己的产物、读 DOM，读数取选后 1.2 s 与 9 s）：
+  **改后**（9904）两刻都是面板里 1 条那句、通知区空、`writes: 0`、目录空；**改前**（9906）1.2 s 时面板
+  0 条、那句在通知区，9 s 后面板仍是 0 条、通知区也空了 —— 正是缺口。截图 `r318/shots/{after,before}-1-picked.png`
+  与 `-2-after-9s.png` 肉眼看过（改后红字在路径条与列表之间、面板里；改前同一位置空白、页面顶部浮着那条
+  通知）。两态 console 各一条既有的 `/machines` **403**（非管理员账号，与别的 spec 同一现象），pageerror 0 条。
+- **相邻回归（真浏览器，一个进程跑 2 份 spec）**：`files-folders` 5 + `upload-refusal` 2（同一个槽位、同一批
+  覆盖确认路径），**7 passed（26.2 s）**。
+- 端口只用 9900–9907（跑完全部已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r318-{a1,b1,pa,pb}`，探针 / 截图 / 两态产物都在 scratchpad 的 `r318/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。**一个小坑**：探针的 `TMPDIR` 一度指向
+  scratchpad，Chromium 的 `SingletonSocket` 路径超长直接 abort，改用 `/tmp/r318-probe-*` 才起得来。
+
+**没做 / 留着**：
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 另外两处同类但**没有宿主面**的留原样：拖进来的文件夹只在这一处（`files.folderDropSkipped` 已进这个槽位），
+  而「在文件夹里显示」失败（`revealInFolder`）与打开内建浏览器失败仍是通知 —— 它们动的不是这块面板里的
+  东西，且屏幕本来就会变（会开一个窗口），写在那里反而指错地方。
+- `components/layout/project-dialogs.tsx` 里 `toastError` **只剩一行导入**（文件里一次都没用）；`oxlint` 那
+  三条规则不报未用导入，所以一直没暴露。与这一笔无关，留作下一轮的第一顺位候选（一行的事，但要连跑
+  typecheck 与 web 全套）。
+
+### 提交
+
+- 功能一笔（新模块 1、源码 1、词典 2、单测 1、spec 1、changelog 2）：`00e5c2b5f`。
+- 台账（条目 7.191、上表那一行、本节）随本文件另起一笔。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -6618,6 +6696,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 发布 | **发 v0.8.2 并换装现网**（把 v0.8.1 之后攒下的收成正式版：**外部应用鉴权（只有服务器端）** —— 服务器上的程序拿用户自己铸的令牌问「这是谁」，迁移 17 新增 `user_tokens`/`oauth_clients`/`oauth_audit` 三张表，端点 `POST /oauth/introspect` / `GET /oauth/userinfo` / `POST /oauth/revoke`（挂在 `/oauth/*`、不在 `/api/*` 下），命令行多 `penguin auth pat`，管理口 `/api/admin/tokens`、`/api/admin/oauth-clients`，自己的 `/api/me/tokens`，令牌只存 sha256、只给 `openid profile`、打不开 `/api/*`、没开 CORS；**桌宠面板不再被窗口切掉第一行**、自绘那条蓝色大鱼删掉（形象只剩企鹅与「我的图片」，选过它的偏好回落企鹅）；频道邀请被拒时**选择器留着、原因留在那位候选人的行下面**；模型库的分组**一律从折叠开始**（上游 `02b871d25` / `#1787` 移植）；docs 加一页「鉴权：外部应用接入」；发布提交 `aa211c599`（父 `b9edad76c`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.2` 指向同一提交；门禁在标签检出 `/root/rel-082` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 `test` 脚本的包全过）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.2（`PUBLISH-ALL-DONE`，四十来分钟后 29 个版本端点全 200）；GitHub Release **id `456235906`** 14 件逐件核 digest 后发布为 latest；3003 换上 v0.8.2 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.2、旧前端先拷回、瞬时单元 `adelie-live-restart-082` 延后重启装上 `index-BzKxPhAa.js`；单元顺带补上 `ADELIE_TRUST_PROXY=1`） | 发布轮，逐项见「第三百一十五轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.2、core 戳 `BUILD_DATE 2026-11-24 / BUILD_COMMIT aa211c599…`、`GET /` 200、匿名 `/api/me` 等 401、临时数据根 `PRAGMA user_version` = 17 且三张表在库里；现网核验写 `rel-082-live-restart-verify.txt`；`releases/latest` = v0.8.2 | `aa211c599`（发布） |
 | 2026-11-24 | 7.189 | **工单「追加进度」被拒时，原因留在那个输入框下面**（**2026-11-24 第三百一十六轮**落地；`packages/web` 1 个源码文件（`features/company/ticket-dialog.tsx`：追加框有自己的 `progressRefusal`，与四处确认框共用的 `refusal` 分开；`addProgress` 每次尝试先清上次的句子、把 `setProgressRefusal` 交给 `run` 的 `refuse`，句子用 `NoticeStrip`（`role="alert"`、危险色调、`S.common.refused(...)`）画在输入行下面）＋ 1 个既有 spec 加一条（`e2e/ticket-refusal.spec.mjs` 第 6 条）+ 夹具补 `pricing` 三桶 0（工单 id 靠「$0 价」模型的补全，没有价的行算「未计价」不是免费；缺它建单 400 `slug_required`）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「对话框里 0 条、通知区 1 条、七秒后通知区 0 条且框里仍有那句话」，改后「对话框里 1 条、通知区 0 条、七秒后同一句」，反证把源码退回 `HEAD` 重建后同一 spec **1 failed**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，213 接口 / 644 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 4 个改动文件（含 changelog 一对）`prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **219 / 3191 + 6 跳过** · web **356 / 4014 + 2 跳过** · **新 spec + 同一份 spec 的相邻五条 6 passed（20.4 s）**（真服务端 8930 + mock 8931 + `/root/adelie-fork-data/r316-e2e`）· **反证**：改前源码 + 改前产物（`r316/before-dist`）跑第 6 条 **1 failed**（`dialog` 里那句 `element(s) not found`），放回改后源码重建后产物与 `r316/after-dist` 逐字节相同、**6 passed** · **两态探针**：改前 `inDialog 0 / inToasts 1 / 7 s 后 0`，改后 `inDialog 1 / inToasts 0 / 7 s 后 1`；两态 console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条；截图 `r316/shots/{before,after}/refused.png` 肉眼看过 · 端口只用 8930 / 8931 / 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r316-*` | `9f634062f` |
 | 2026-11-24 | 7.190 | **Windows 上遍历全部接口那条用例卡在 5 秒上限，一条慢用例连带六个**（**2026-11-24 第三百一十七轮**落地；`packages/ui-gallery` 1 个配置文件（`vitest.config.ts`：`testTimeout: 30_000` + 一段为什么，与 `ui` / `web` 同值）—— **只动测试配置、无新依赖、不碰接口、没有用户可见改动**）：CI 红在 `test-windows (rest)` —— `mock-api.test.ts > routes every endpoint the app's wrappers name` 5 秒超时、重试后仍红；那条遍历每遍历一个接口就 `resetStore` 建一整套夹具（150 多次），Linux 1.2 s、Windows 运行器实测 4.8 s（同一份作业上一次 run 里这个文件 15 条共 4817 ms），贴着默认上限，慢一次就超时；超时的用例在后台继续跑、继续换 store，把紧随其后的五条一起带红 | 本机 `--testTimeout=1000` 复现出与 Windows 日志同样的 **6 failed**（第一条 timed out，后五条是时间戳差 30 ms / `promise resolved instead of rejecting` / `expected … to be undefined`）· 临时在第一条用例开头插 6 秒延时：新配置下 **15 passed（7.3 s）**，按旧上限 `--testTimeout=5000` 跑则第一条 timed out；随后还原用例文件（`git diff --stat` 只剩配置）· `pnpm --filter @adelie/ui-gallery test` **20 文件 / 141 通过** · 六包 `typecheck` **`EXIT=0`**（213 接口 / 644 类型；先 `pnpm --filter @adelie/server build` 补上 `b9edad76c` 新增的 `auth/user-token`）· 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** · web 356 / **4014**（2 跳过）· server 219 / **3191**（6 跳过）· `oxlint` / `prettier --check` / `git diff --check` 干净 · 不碰界面、未切版本号、未发 npm、未发安装包 | `4e59b2a83` |
+| 2026-11-24 | 7.191 | **选中的文件没交出去时（超过上限、或拖进来的是文件夹），名字留在列表上方**（**2026-11-24 第三百一十八轮**落地；`packages/web` 1 个新模块（`features/chat/pick-skip-refusal.ts`：`pickSkipLine` 合成跳过句、`withPickSkips` 把跳过句接在服务端那句后面）＋ 1 个源码文件（`workspace-browser.tsx`：`stageUpload` 收下拖进来的文件夹、写进既有的 `uploadRefusal` 槽位并随批次带过覆盖确认；`doUpload` 的新一次选择只交回这一批自己跳过的名字）＋ 词条各一句（`files.pickSkipSeparator`）＋ 1 个新单测（7 条）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖**）：7.19 的规矩在文件面板的最后一处 —— 面板自己量出来的跳过与拖进来的文件夹，一个字节没读、一个请求没发，名字只在一条六秒就走的通知里 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，213 接口 / 644 类型）· `npx oxlint` 6 个改动文件 **0 警告 0 错误** · 6 个改动文件与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 / 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **219 / 3191 / 6 跳过** · web **357 / 4021 / 2 跳过**（基线 356 / 4014，+1 文件 +7 条） · **新 spec 2 passed（30.0 s）**（`e2e/files-pick-skip.spec.mjs`，真服务端 9900 + mock 9901 + 数据根 `r318-a1`，不挂拦截）：超限那一个 → 句子在列表上方、通知区不含它、写路由 PUT **0**、目录空、七秒后仍在；混合一批 → 能传的真的落地、超限的名字留着；下一次正常选择清掉它 · **反证**：`r318/before-dist` 挂 9902 → **2 failed**（面板里找不到 `alert`） · **两态探针**：改后面板 1 条、通知区空、9 s 后仍在；改前 面板 0 条、通知区 1 条、9 s 后空 · **相邻回归**：`files-folders` 5 + `upload-refusal` 2 = **7 passed（26.2 s）** · 端口只用 9900–9907（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r318-*`，探针 / 截图 / 两态产物都在 scratchpad 的 `r318/` 下（产物未 `git add`） · 没有切版本号、没发 npm、没发安装包、没发发布汇总 | `00e5c2b5f` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
