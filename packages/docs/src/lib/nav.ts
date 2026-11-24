@@ -77,7 +77,15 @@ export const DOCS_NAV: DocsSectionDef[] = [
   },
   {
     id: "reference",
-    pages: pages("cli", "server-api", "agent-api", "amsp", "configuration", "security"),
+    pages: pages(
+      "cli",
+      "server-api",
+      "agent-api",
+      "amsp",
+      "configuration",
+      "security",
+      "external-auth",
+    ),
   },
 ];
 
