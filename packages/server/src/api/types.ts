@@ -7264,3 +7264,64 @@ export interface FeedbackResponse {
   ok: true;
   id?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Program tokens and OAuth apps (external auth; /oauth/*, /api/me/tokens,
+// /api/admin/tokens)
+// ---------------------------------------------------------------------------
+
+/**
+ * One program token as a list shows it: what the person named it, its display prefix, its
+ * scope and its lifecycle. Never the raw token and never its hash — the raw token exists only
+ * in the response to the mint that created it.
+ */
+export interface UserTokenSummary {
+  tokenId: string;
+  name: string;
+  /** The token's first 16 characters, so a person can tell two apart without seeing either. */
+  prefix: string;
+  /** Space-separated; today only 'openid profile'. */
+  scope: string;
+  createdAt: string;
+  /** ISO, or null for a token minted with no expiry. */
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+}
+
+/** `GET /api/me/tokens` and `GET /api/admin/tokens?userId=…`. */
+export interface UserTokensResponse {
+  tokens: UserTokenSummary[];
+}
+
+/** The mint's answer: the one time the raw `token` is ever returned, plus its row as a summary. */
+export interface MintUserTokenResponse {
+  token: string;
+  entry: UserTokenSummary;
+}
+
+/**
+ * A registered external app as the admin list shows it. The raw secret appears only in
+ * {@link RegisterOAuthClientResponse}; here is its display prefix and the app's state.
+ */
+export interface OAuthClientSummary {
+  clientId: string;
+  clientName: string;
+  secretPrefix: string;
+  scopes: string;
+  disabled: boolean;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+/** `GET /api/admin/oauth-clients`. */
+export interface OAuthClientsResponse {
+  clients: OAuthClientSummary[];
+}
+
+/** The registration's answer: the one time the raw `clientSecret` is ever returned. */
+export interface RegisterOAuthClientResponse {
+  clientId: string;
+  clientSecret: string;
+  entry: OAuthClientSummary;
+}

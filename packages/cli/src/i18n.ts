@@ -878,6 +878,18 @@ export interface Messages {
     noServer(root: string): string;
     failed(detail: string): string;
   };
+  /** `penguin auth pat`: a program token for an external app. */
+  authPat: {
+    desc: string;
+    userId: string;
+    name: string;
+    scope: string;
+    ttlDays: string;
+    mark: string;
+    badTtl: string;
+    noServer(root: string): string;
+    failed(detail: string): string;
+  };
   /** `penguin server status`: help text. */
   serverStatus: {
     /** One-line description in `penguin server --help`. */
@@ -2005,6 +2017,18 @@ const en: Messages = {
       `${root} has no web.db — no server has ever run on this data root, so there is no account to mint for.`,
     failed: (detail) => `Could not mint a token: ${detail}`,
   },
+  authPat: {
+    desc: "Mint a program token for an external app (mint needs this machine's data root); the token is printed once",
+    userId: "Account the app will act for (default: admin)",
+    name: 'What you will recognise it by, e.g. "requirements box"',
+    scope: "Scopes to grant (default: openid,profile)",
+    ttlDays: "Lifetime in days (default: 90; 0 = no expiry, 365 cap)",
+    mark: "Print a fixed marker line before the token, for callers parsing it out of a shell",
+    badTtl: "--ttl-days must be 0 (no expiry) or a positive integer.",
+    noServer: (root) =>
+      `${root} has no web.db — no server has ever run on this data root, so there is no account to mint for.`,
+    failed: (detail) => `Could not mint a program token: ${detail}`,
+  },
   serverStatus: {
     desc: "Print this data root's server state and machine id as one line of JSON",
   },
@@ -3071,6 +3095,17 @@ const zh: Messages = {
     badTtl: "--ttl-seconds 必须是正整数。",
     noServer: (root) => `${root} 上没有 web.db——该数据根上从未运行过服务，因此没有可签发的账号。`,
     failed: (detail) => `签发失败：${detail}`,
+  },
+  authPat: {
+    desc: "为外部应用签发一把程序令牌（签发需要本机数据根权限）；令牌只打印这一次",
+    userId: "这把令牌代表哪个账号（默认 admin）",
+    name: "你用来认它的名字，例如「需求箱」",
+    scope: "授予的范围（默认 openid,profile）",
+    ttlDays: "有效期天数（默认 90；0 表示不过期，上限 365）",
+    mark: "在令牌前打印固定标记行，供需要从 shell 输出里解析它的调用方使用",
+    badTtl: "--ttl-days 必须是 0（不过期）或正整数。",
+    noServer: (root) => `${root} 上没有 web.db——该数据根上从未运行过服务，因此没有可签发的账号。`,
+    failed: (detail) => `签发程序令牌失败：${detail}`,
   },
   serverStatus: {
     desc: "以单行 JSON 打印本数据根目录的服务状态与本机 id",

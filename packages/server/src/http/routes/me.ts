@@ -19,11 +19,12 @@ import type {
   UiPrefs,
   UpdateProfileRequest,
   UpdateProfileResponse,
+  UserTokensResponse,
 } from "../../api/types.js";
 import { toUserInfo } from "../../auth/service.js";
 import { SESSION_COOKIE, cookieOptions } from "../../auth/middleware.js";
 import type { AppEnv } from "../../auth/middleware.js";
-import { badRequest, readJson, requireString } from "../validate.js";
+import { badRequest, pathParam, readJson, requireString } from "../validate.js";
 import { HttpError } from "../errors.js";
 import type { ServerConfig } from "../../config.js";
 import type { DesktopService } from "../../services/desktop-service.js";
@@ -37,6 +38,8 @@ export interface MeRouteDeps {
   serverSettingsRepo: Settings;
   /** The `users` table itself, for the one route that writes a column no service owns (PUT /api/me/profile). */
   usersRepo: Users;
+  /** Program tokens: a person's own list, and revoking one. See routes/oauth.ts and admin-oauth.ts. */
+  oauth: ExternalAuth;
 }
 import { resolvePreviewTarget } from "../../services/preview-token.js";
 import { validateDraftShortcuts } from "../../services/draft-shortcuts.js";
@@ -52,6 +55,7 @@ import { Bind, Component, Use } from "@adelie/core/kernel";
 import type { ClassCtx } from "@adelie/core/kernel";
 import { Config, Desktop } from "../../hmr/capabilities.js";
 import type { Auth, Users } from "../../mechanisms/identity.js";
+import type { ExternalAuth } from "../../mechanisms/oauth.js";
 import type { Settings, UiPrefsStore } from "../../mechanisms/settings.js";
 
 /** Nickname bounds, counted in user-perceived code points so a CJK name is 32 characters, not 96. */
@@ -254,6 +258,27 @@ export function meRoutes(deps: MeRouteDeps): Hono<AppEnv> {
     return c.json({ prefs: merged } satisfies PrefsResponse);
   });
 
+  /**
+   * Program tokens the signed-in person holds — what an external server-side app was given. This
+   * is the whole of the person's side of external auth: no page is involved, `curl` with the
+   * session cookie is enough. The raw token is never here; only its prefix and lifecycle.
+   */
+  app.get("/tokens", (c) => {
+    return c.json({
+      tokens: deps.oauth.listForUser(c.var.user.userId),
+    } satisfies UserTokensResponse);
+  });
+
+  app.delete("/tokens/:tokenId", (c) => {
+    // Scoped to this user: an id from someone else's list is a 404, not a cross-account revoke.
+    const done = deps.oauth.revoke(pathParam(c, "tokenId"), {
+      actor: c.var.user.userId,
+      ownerUserId: c.var.user.userId,
+    });
+    if (!done) throw new HttpError(404, "not_found", "No such token.");
+    return c.body(null, 204);
+  });
+
   return app;
 }
 
@@ -276,6 +301,7 @@ export class MeRoutes {
   @Use() private readonly prefs!: UiPrefsStore;
   @Use() private readonly settings!: Settings;
   @Use() private readonly users!: Users;
+  @Use() private readonly oauth!: ExternalAuth;
   @Bind("MeRoutes.routes") routes!: Hono<AppEnv>;
   setup() {
     this.routes = meRoutes({
@@ -285,6 +311,7 @@ export class MeRoutes {
       prefsRepo: this.prefs,
       serverSettingsRepo: this.settings,
       usersRepo: this.users,
+      oauth: this.oauth,
     });
   }
 }

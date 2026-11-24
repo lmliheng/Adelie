@@ -669,6 +669,69 @@ export const MIGRATIONS: readonly Migration[] = [
       `);
     },
   },
+  {
+    version: 17,
+    name: "external-auth-tokens",
+    // Additive: three new tables and two indexes, no column of an existing table touched. A
+    // predecessor build never reads them and serves no /oauth route, so a rollback survives it:
+    // an external app's introspection 404s until a build that knows the tables is back, and the
+    // tokens minted in between stay on disk.
+    swapSafe: true,
+    up(db) {
+      // Frozen copy of the DDL as of the external-auth server-side feature; do not re-derive
+      // from schema.ts. IF NOT EXISTS because the declarative track may already have created
+      // them (ADOPTION).
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS user_tokens (
+          token_id     TEXT PRIMARY KEY,
+          user_id      TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+          name         TEXT NOT NULL,
+          token_hash   TEXT NOT NULL UNIQUE,
+          prefix       TEXT NOT NULL,
+          scope        TEXT NOT NULL,
+          created_by   TEXT NOT NULL REFERENCES users(user_id),
+          created_at   TEXT NOT NULL,
+          expires_at   TEXT,
+          last_used_at TEXT,
+          revoked_at   TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id);
+        CREATE TABLE IF NOT EXISTS oauth_clients (
+          client_id     TEXT PRIMARY KEY,
+          client_name   TEXT NOT NULL,
+          secret_hash   TEXT NOT NULL,
+          secret_prefix TEXT NOT NULL,
+          scopes        TEXT NOT NULL,
+          disabled      INTEGER NOT NULL DEFAULT 0,
+          created_by    TEXT NOT NULL REFERENCES users(user_id),
+          created_at    TEXT NOT NULL,
+          last_used_at  TEXT
+        );
+        CREATE TABLE IF NOT EXISTS oauth_audit (
+          at        TEXT NOT NULL,
+          actor     TEXT,
+          client_id TEXT,
+          action    TEXT NOT NULL,
+          subject   TEXT,
+          detail    TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_oauth_audit_at ON oauth_audit(at DESC);
+      `);
+    },
+    // LOSES every program token and every registered app, and the audit trail. Neither the raw
+    // token nor the raw secret exists anywhere but in whoever was handed them at mint time, so
+    // nothing can recreate them: every external app needs a fresh registration and every person
+    // a fresh token once a build that knows the tables is back.
+    down(db) {
+      db.exec(`
+        DROP INDEX IF EXISTS idx_oauth_audit_at;
+        DROP TABLE IF EXISTS oauth_audit;
+        DROP TABLE IF EXISTS oauth_clients;
+        DROP INDEX IF EXISTS idx_user_tokens_user;
+        DROP TABLE IF EXISTS user_tokens;
+      `);
+    },
+  },
 ];
 
 /** The highest version this build knows how to reach. */

@@ -1,94 +1,117 @@
 ---
-title: "Authentication: connecting an external app"
-description: Letting another service use Adelie accounts to tell who a user is — the server-to-server channel, its credentials and endpoints, and what works today instead.
+title: Authentication: connecting an external app
+description: Let another service ask Adelie whose a request is — the server-to-server endpoints, the two credentials, and the rules they are held to.
 ---
 
-> [!WARNING]
-> This page is the design as of **2026-11-24 and is not implemented**: the endpoints, table names and commands below are not in the code yet, so nothing can be wired up against them today. To make an external service work now, use one of the three ways in the next section. Once the feature lands, this page becomes usage documentation.
+Adelie's identity layer is already there, and it is described in [Security](/security): passwords are stored as scrypt hashes, a session is a row on the server, every credential is revocable, and the four kinds of credential each have their own boundary. This page is about the **outward-facing layer**: letting a program that runs on a server (another backend, a script, a scheduled job) ask "whose is this key".
 
-Adelie's identity layer already exists — see [the security model](/security): passwords are stored as scrypt hashes, a session is one server-side row and can be revoked, and its four kinds of credential have their own boundaries. What is missing is only the **outward-facing half**: a way for an external program running on a server (another backend, a script, a cron job) to ask "whose key is this?".
+It answers **identity** only (who, nickname, avatar). It does not answer **capability** (read Sessions, run an Agent) — that is the [Agent API](/agent-api)'s job, and the two are orthogonal rather than alternatives.
 
-That half answers **identity** (who, display name, avatar) and never **capability** (read Sessions, run an agent turn). The latter has always been the job of the [Agent API](/agent-api); the two are orthogonal and neither replaces the other.
+> [!NOTE]
+> This is the **server-side-only** channel: the external app is a program on a server, and nothing on Adelie's side gets a new page — a token is minted through the CLI or the admin API, an app is registered through the admin API, and everything else is HTTP. For "a person clicks *Sign in with Adelie* in a browser", that is the redirect-and-consent flow, which has its own OIDC design note in the repository and is not this page.
 
-## Three ways that work today
-
-| Approach | What the app is given | Why it is not enough |
-| --- | --- | --- |
-| Share one Agent API key | the app calls `POST /api/amsp/v1/agents/:projectId/:agentId/runs` with `penguin_…` | the key belongs to **an Agent**, not to a user: it cannot answer "who is this person" |
-| Reuse a browser session | hand the signed-in cookie to the app (or let it read `cli-session.json` on the same box) | that is handing over the whole session; a leak is that person's leak, and revoking means revoking them |
-| The local API token | the app reads `<root>/api-token` on the **same machine** | there is one, it is always `admin`, and it does not distinguish users; it only fits "can read the data root = owns the machine" |
-
-None of the three separates one user from another, which is what the layer below adds.
-
-## The design: two credentials, three endpoints
+## Two credentials, three endpoints
 
 ```
-        user                          external app (server-side)        Adelie
-  ┌───────────────┐  ① the token is pasted  ┌────────────────┐  ③ introspect  ┌───────────┐
-  │ mint a PAT    │ ──────────────────────▶ │ store it in its │ ─────────────▶ │ /oauth/   │
-  │ (CLI/admin)   │                         │ own config      │ ◀───────────── │introspect │
-  └───────────────┘                         └────────────────┘    {sub,…}     └───────────┘
-                                                  │ ② the app's own identity
-                                                  └── client_id + client_secret (authenticates ③)
+        person                        external app (server-side)      Adelie
+  ┌───────────────┐  ① hand it over  ┌────────────────┐  ③ introspect ┌───────────┐
+  │ mint a PAT     │ ───────────────▶ │ store it as a   │ ────────────▶ │ /oauth/   │
+  │ (CLI/admin API)│                  │ secret, act for │ ◀──────────── │introspect │
+  └───────────────┘                  │ that person     │   {sub,…}    └───────────┘
+                                      └────────────────┘
+                                             │ ② the app's own identity
+                                             └── client_id + client_secret (authenticating ③)
 ```
 
-**The user's credential** is a personal access token (PAT): `adelie_pat_` plus 32 random bytes, of which **only the sha256 is stored**, together with a name, its scope, an expiry, a last-used time and a revocation flag. It is not a cookie and it never signs anyone into the Web App.
+A **person's credential** is a program token (PAT): `adelie_pat_` plus 32 random bytes, with **only its sha256 stored**, carrying a purpose name, its scopes, an expiry, a last-used stamp and a revocation mark. It is not a cookie and does not sign anyone into the Web App.
 
-**The app's credential** is a `client_id` + `client_secret` (a server-side program can keep a secret). It exists because the introspection endpoint cannot be open: otherwise anyone holding a stolen token could ask who it belongs to, and the endpoint would become a token oracle. With it, revocation can be per app and the audit trail can say which app asked about whose token, and when.
+An **app's credential** is `client_id` + `client_secret` (a server-side program can keep a secret). It exists because the introspection endpoint must not be naked: otherwise anyone holding a stolen token could ask "whose is this", and the endpoint would become a token prober. With it, an app can be cut off on its own and the audit can name who asked what, when, with whose token.
 
-**Three endpoints**, all under `/oauth/*`, all `application/x-www-form-urlencoded`:
+**Three endpoints** (all under `/oauth/*`, `application/x-www-form-urlencoded`):
 
-| Endpoint | Called by | Purpose |
+| Endpoint | Who calls it | What it does |
 | --- | --- | --- |
-| `POST /oauth/introspect` | the app, with its own client credentials | turn a PAT into an identity |
-| `GET /oauth/userinfo` | the app, with `Authorization: Bearer <PAT>` | the short path when it only wants the name and avatar |
-| `POST /oauth/revoke` | the app or the user | revoke a PAT |
+| `POST /oauth/introspect` | the external app (with its client credentials) | turn a PAT into an identity |
+| `GET /oauth/userinfo` | the external app (`Authorization: Bearer <PAT>`) | the direct route when only a name and avatar are wanted |
+| `POST /oauth/revoke` | the external app | end the PAT it was handed |
 
 ```bash
 curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
-  -d "token=$PAT" https://your-host/oauth/introspect
-# {"active":true,"sub":"lmliheng","name":"Li Heng","avatar":null,
+  -d "token=$PAT" https://your-domain/oauth/introspect
+# {"active":true,"sub":"lmliheng","username":"lmliheng","name":"Li Heng","avatar":null,
 #  "scope":"openid profile","client_id":"adelie_app_…","exp":"2027-02-22T00:00:00Z"}
 
-# Unknown / expired / revoked / outside what this app may ask about — all the same answer:
+# unknown / expired / revoked / account gone / outside what this app may read → all the same line:
 # {"active":false}
 ```
 
-An app needs three things: store the token like a secret, **cache the introspection for at most 60 seconds**, and send the user back to sign in when it reads `active:false`.
+The app's credentials go in HTTP Basic (`curl -u`), or as the `client_id` / `client_secret` form fields. **A wrong credential is 401**; anything about the token itself folds into the same `{"active":false}`.
 
-### Where a token comes from (no page involved)
+The app has three things to do: store the token as a secret, **cache the introspection result for no more than 60 seconds**, and on `active:false` make that person sign in again.
+
+## How the token is obtained
+
+Three ways, none of them a page.
 
 ```bash
-penguin auth token --user lmliheng --name "requirements box" --scope openid,profile --ttl-days 90
+# 1. The CLI (on the machine that has the data root; no running server needed)
+penguin auth pat --user-id lmliheng --name "requirements box" --scope openid,profile --ttl-days 90
 # → adelie_pat_…  (printed once)
+```
 
-# an admin minting for someone else (needs a human sign-in; the local API token is refused)
-POST   /api/admin/users/:userId/tokens
-# the user listing and revoking their own
+```text
+2. The admin's HTTP surface (for someone without a terminal, or for scripting)
+POST   /api/admin/tokens                    { userId, name, scope?, ttlDays? } → { token, entry }
+GET    /api/admin/tokens?userId=<id>        the list (prefix / name / scope / expiry / last used / revoked only)
+DELETE /api/admin/tokens/:tokenId           revoke
+
+3. The person's own list and revoke
 GET    /api/me/tokens
 DELETE /api/me/tokens/:tokenId
 ```
 
-The token's shape follows the existing session minting (32 random bytes, base64url, sha256 only — see [the security model](/security)), but it lives in a table of its own, `user_tokens`, rather than in `auth_sessions`: that one is the browser cookie's session table, and changing a password or signing a user out everywhere deletes all of it — an external app's tokens should not be taken along. The other two tables are `oauth_clients` for app registrations and `oauth_audit` for the trail.
+(2) is admin-only and refused entirely in desktop mode (single-user). **Minting and revoking also require the operator's own sign-in**: the machine's local API token (`<root>/api-token`) is refused with 403 `human_required`, because that token is what the harness hands an Agent's subprocesses and must not be able to issue an outside credential on a person's behalf.
 
-### Security posture
+### Registering an app
 
-- **TLS is a hard prerequisite.** These endpoints receive other people's tokens; over plain HTTP they cross the wire in the clear and the session cookie cannot carry `Secure`. Behind a reverse proxy, Adelie itself must be given `ADELIE_TRUST_PROXY=1` and the proxy must set `X-Forwarded-Proto` (see [the security model](/security)). By the spec these endpoints want `https`; only a loopback address is exempt.
-- **Every failure answers `{"active":false}`**, with no distinction between unknown, expired, revoked and not-yours, so the endpoint cannot be used to probe.
-- **Rate-limit introspection** per client, and back off on repeated client-credential failures.
-- **Only `openid profile` is allowed** as a scope; tokens default to 90 days and cap at one year.
-- **Revocation is immediate**: revoking a token, disabling an account or deleting an app makes the next introspection answer `active:false`; the only delay is the app's own 60-second cache.
-- **No password grant** (never hand a user's Adelie password to an external app). Signing in with Adelie inside a browser belongs to the other piece of work — the redirect-and-consent flow in the repository's OIDC design.
-- **A PAT cannot open `/api/*`**: it answers *who*, never *what they may do*. That boundary is deliberate.
+An admin registers an app and receives its `client_id` and `client_secret` (the secret is shown once):
 
-### Phases
+```text
+POST   /api/admin/oauth-clients        { clientName, scopes? } → { clientId, clientSecret, entry }
+GET    /api/admin/oauth-clients        the list (the secret's prefix only, never the secret)
+POST   /api/admin/oauth-clients/:clientId/disable    disable it (its introspection then answers 401)
+```
 
-| Phase | Contents |
+`scopes` is the most this app may ask for, `openid profile` by default. A token's scopes must fall inside what the app registered, or introspection answers `active:false`.
+
+## The tables
+
+Three tables, created by one database migration (`PRAGMA user_version` to 17):
+
+- `user_tokens`: the PAT above. **Deliberately not folded into `auth_sessions`** — that is the browser cookie's session table, and a password change or "sign out everywhere" clears it whole, which must not take an external app's token with it. The two have different lifetimes and different people revoking them.
+- `oauth_clients`: the app registry (client_id, the secret's sha256, scopes, a disabled flag).
+- `oauth_audit`: one row per introspection, revoke and mint, **refusals included** — the refusals are the ones worth reading. It carries no foreign keys, so a row outlives the account or app it names.
+
+## The rules it is held to
+
+- **TLS is a hard prerequisite.** These endpoints receive other people's tokens; over plain http they cross the wire in the clear and the cookie cannot carry `Secure`. Behind a reverse proxy, Adelie itself must set `ADELIE_TRUST_PROXY=1` and the proxy must set `X-Forwarded-Proto` (see [Security](/security)). In development, a loopback address is enough.
+- **Only the sha256 is stored**; the raw token appears once, at mint. The `adelie_pat_` / `adelie_app_` prefixes make a leaked key recognisable at a glance.
+- **Every failure is `{"active":false}`** — unknown, expired, revoked, account gone, scope not allowed — so the endpoint cannot be used to discover which tokens exist.
+- **Introspection is rate-limited per app** (the visible ceiling is 60 per minute; past that 429, and the refusal is audited). Repeated client-auth failures back off.
+- **Scopes are `openid profile` only**; 90 days by default, a one-year cap, and `--ttl-days 0` is the only way to no expiry.
+- **Revocation is immediate**: revoke a token, disable an app, delete an account, and the next introspection says `active:false`. The only delay is the app's own 60-second cache.
+- **A PAT cannot reach `/api/*`.** It answers "who", not "what may be done" — a deliberate boundary. Giving it API capability would be a separate scope and a separate review.
+- **No CORS**: server-to-server calls do not go through a browser, and this sends no `Access-Control-Allow-Origin`.
+- **No password grant** (handing a person's Adelie password to the external app): that moves the password into every app that integrates. Browser sign-in belongs to the other design.
+
+## Not built yet
+
+| Item | Notes |
 | --- | --- |
-| P0 | the three tables (with a database migration) + token minting (three CLI flags and the admin API) + `/oauth/introspect` + the audit trail |
-| P1 | app registration and its admin API, `/oauth/userinfo`, `/oauth/revoke`, rate limiting |
-| P2 | signed tokens (JWT) with a discovery document for offline verification; `client_credentials` (the app's own identity) |
+| Signed tokens (JWT) and a discovery document (`/.well-known/openid-configuration`, `/oauth/jwks.json`) | for callers that want to verify offline rather than depend on Adelie being up; it would share this table and this token |
+| `client_credentials` (the app's own identity, `sub` like `app:adelie_app_…`) | for jobs with no person to represent |
+| Redirect sign-in with a consent page, and device code | both need pages, so they belong to the OIDC design |
 
 ## How it divides work with the Agent API
 
-The [Agent API](/agent-api) answers whether a program may run a turn as a given Agent, and its credential is that Agent's key; this page's layer answers who a person is, and its credential is that person's token. An external app usually needs both: its own Agent key to do the work, and the user's PAT to know who asked for it.
+The [Agent API](/agent-api) answers "may a program run one round as this Agent", with a per-Agent key (`penguin_…`). This page answers "who is this person", with a per-user PAT (`adelie_pat_…`). A real integration usually needs both: its own Agent key to do the work, and the person's PAT to know who asked for it.

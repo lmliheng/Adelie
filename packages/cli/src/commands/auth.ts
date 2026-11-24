@@ -5,17 +5,21 @@
  *   penguin auth status [--root <dir>]
  *   penguin auth logout [--root <dir>]
  *   penguin auth token  [--user-id <id>] [--ttl-seconds <n>] [--root <dir>]
+ *   penguin auth pat    [--user-id <id>] [--name <n>] [--scope <s>] [--ttl-days <n>] [--root <dir>]
  *
  * `login` takes a password and asks a RUNNING server, so it works against a remote URL too.
- * `token` takes none: it mints from the data root on THIS machine, authorized by being able
- * to read it — for a hand-set admin password, a script that must not carry one, or a
- * controller reaching a managed machine over ssh (`--mark`).
+ * `token` takes none: it mints a short-lived SESSION from the data root on THIS machine,
+ * authorized by being able to read it — for a hand-set admin password, a script that must not
+ * carry one, or a controller reaching a managed machine over ssh (`--mark`). `pat` mints a
+ * PROGRAM token from the same root: what a person hands an external, server-side app so it can
+ * ask Adelie whose it is (see /docs § "Authentication: connecting an external app").
  *
  * The session lands in `<root>/cli-session.json` (0600) rather than a shell's history.
  * Docs: /docs/cli § "penguin auth".
  */
 import { boundaryEnv } from "@adelie/core";
 import { mintApiToken } from "@adelie/server/auth-token";
+import { mintUserToken } from "@adelie/server/auth/user-token";
 import { liveServerLock } from "@adelie/server/lock";
 import type { Command } from "commander";
 import {
@@ -253,4 +257,54 @@ export function registerAuthCommand(program: Command, t: Messages): void {
       if (opts.mark) process.stdout.write(TOKEN_MARK + "\n");
       process.stdout.write(result.token + "\n");
     });
+
+  // A different credential from `token` above, and deliberately its own subcommand: `token`
+  // mints a SHORT-LIVED SESSION for a controller on this machine, while a program token is what
+  // a person hands an EXTERNAL server-side app to represent them. Same table family, different
+  // lifetime, different people involved — folding them into one command with a flag would make
+  // both harder to reason about.
+  auth
+    .command("pat")
+    .description(t.authPat.desc)
+    .option("--user-id <id>", t.authPat.userId, DEFAULT_USER)
+    .option("--name <name>", t.authPat.name)
+    .option("--scope <scopes>", t.authPat.scope)
+    .option("--ttl-days <n>", t.authPat.ttlDays, (raw: string) => Number(raw))
+    .option("--mark", t.authPat.mark, false)
+    .option("--root <dir>", t.common.root)
+    .action(
+      async (opts: {
+        userId: string;
+        name?: string;
+        scope?: string;
+        ttlDays?: number;
+        mark: boolean;
+        root?: string;
+      }) => {
+        const ttlDays = opts.ttlDays;
+        if (ttlDays !== undefined && (!Number.isSafeInteger(ttlDays) || ttlDays < 0)) {
+          return fail(t.authPat.badTtl);
+        }
+        const name = opts.name ?? opts.userId;
+        const root = resolveRootOption(opts.root);
+        const dbPath = boundaryEnv(process.env, "webDb");
+        const result = mintUserToken(root, {
+          userId: opts.userId,
+          name,
+          ...(opts.scope === undefined ? {} : { scope: opts.scope }),
+          ...(ttlDays === undefined ? {} : { ttlDays }),
+          ...(dbPath ? { dbPath } : {}),
+        });
+        if (result.outcome === "no_server") {
+          return fail(t.authPat.noServer(root));
+        }
+        if (result.outcome === "failed") {
+          return fail(t.authPat.failed(result.detail));
+        }
+        // Bare so `PAT=$(penguin auth pat --name x)` works; the token is shown once and never
+        // again — the row keeps only its hash.
+        if (opts.mark) process.stdout.write(TOKEN_MARK + "\n");
+        process.stdout.write(result.token + "\n");
+      },
+    );
 }

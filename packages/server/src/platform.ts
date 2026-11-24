@@ -147,6 +147,13 @@ import { SuggestIdRoutes } from "./http/routes/suggest-id.js";
 import { TerminalModule } from "./terminal/manager.js";
 import { SessionApiRoutes } from "./http/routes/sessions.js";
 import { Admin, Auth, AuthSessions, Users } from "./mechanisms/identity.js";
+import { ExternalAuth, OAuthAudit, OAuthClients, UserTokens } from "./mechanisms/oauth.js";
+import { UserTokensRepo } from "./db/repos/user-tokens.js";
+import { OAuthClientsRepo } from "./db/repos/oauth-clients.js";
+import { OAuthAuditRepo } from "./db/repos/oauth-audit.js";
+import { OAuthService } from "./services/oauth-service.js";
+import { OAuthRoutes } from "./http/routes/oauth.js";
+import { AdminOAuthRoutes } from "./http/routes/admin-oauth.js";
 import { NotificationStore, Notifications } from "./mechanisms/notifications.js";
 import {
   Access,
@@ -299,16 +306,33 @@ export class RuntimeModule {}
   children: [
     UsersRepo,
     AuthSessionsRepo,
+    UserTokensRepo,
+    OAuthClientsRepo,
+    OAuthAuditRepo,
     ScryptHasher,
     LiveStreamRegistry,
     AuthService,
     AdminService,
+    OAuthService,
     AdminRoutes,
     MeRoutes,
     UserVaultRoutes,
     AuthRoutes,
+    OAuthRoutes,
+    AdminOAuthRoutes,
   ],
-  exports: [Users, AuthSessions, Auth, Admin, PasswordHasher, LiveStreams],
+  exports: [
+    Users,
+    AuthSessions,
+    Auth,
+    Admin,
+    PasswordHasher,
+    LiveStreams,
+    ExternalAuth,
+    UserTokens,
+    OAuthClients,
+    OAuthAudit,
+  ],
 })
 export class IdentityModule {}
 

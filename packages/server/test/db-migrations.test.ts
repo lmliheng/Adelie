@@ -77,6 +77,7 @@ function dropCompanyModeTables(db: DatabaseSync): void {
 function open024(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS model_promotions");
@@ -122,6 +123,7 @@ const PRE_CHANNEL_CHAT_DDL = `
 function open6(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS model_promotions");
@@ -140,6 +142,7 @@ function open6(): DatabaseSync {
 function open7(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS org_desk_notices");
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
@@ -155,6 +158,7 @@ function open7(): DatabaseSync {
 function open8(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS model_promotions");
@@ -169,6 +173,7 @@ function open8(): DatabaseSync {
 function open9(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
@@ -185,6 +190,7 @@ function open9(): DatabaseSync {
 function open12(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS org_desk_mentions");
   dropAgentApi(db);
   dropUsageCostColumns(db);
@@ -197,6 +203,7 @@ function open12(): DatabaseSync {
 function open029(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS model_promotions");
@@ -221,6 +228,7 @@ function open029(): DatabaseSync {
 function openPreProfile(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   db.exec("DROP TABLE IF EXISTS model_provider_auth_tokens");
   dropAgentApi(db);
   db.exec("DROP TABLE IF EXISTS model_promotions");
@@ -242,6 +250,7 @@ function openPreProfile(): DatabaseSync {
 function openPreUsageCost(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   dropUsageCostColumns(db);
   dropAgentApi(db);
   dropNotifications(db);
@@ -277,6 +286,22 @@ function dropNotifications(db: DatabaseSync): void {
   db.exec(`
     DROP TABLE IF EXISTS notification_reads;
     DROP TABLE IF EXISTS notifications;
+  `);
+}
+
+/**
+ * Takes migration 17's three tables and their indexes off a database built from the current
+ * declaration: a fixture stamped before 17 must not carry the program-token or app-registry
+ * tables, or the migration's own `down` would drop something the fixture never claimed to have
+ * and the shape comparison after a rollback would read as a lost table.
+ */
+function dropExternalAuth(db: DatabaseSync): void {
+  db.exec(`
+    DROP INDEX IF EXISTS idx_oauth_audit_at;
+    DROP TABLE IF EXISTS oauth_audit;
+    DROP TABLE IF EXISTS oauth_clients;
+    DROP INDEX IF EXISTS idx_user_tokens_user;
+    DROP TABLE IF EXISTS user_tokens;
   `);
 }
 
@@ -668,8 +693,9 @@ describe("migration 8 → current: model-promotions", () => {
         "usage-record-cost",
         "agent-api",
         "admin-notifications",
+        "external-auth-tokens",
       ]);
-      expect(schemaVersion(db)).toBe(16);
+      expect(schemaVersion(db)).toBe(17);
       expect(promotionsTableExists()).toEqual({ "1": 1 });
       expect(authTokensTableExists()).toEqual({ "1": 1 });
 
@@ -694,8 +720,9 @@ describe("migration 8 → current: model-promotions", () => {
         "usage-record-cost",
         "agent-api",
         "admin-notifications",
+        "external-auth-tokens",
       ]);
-      expect(schemaVersion(db)).toBe(16);
+      expect(schemaVersion(db)).toBe(17);
     } finally {
       db.close();
     }
@@ -720,8 +747,9 @@ describe("migration 9 → current: model-provider-auth-tokens", () => {
         "usage-record-cost",
         "agent-api",
         "admin-notifications",
+        "external-auth-tokens",
       ]);
-      expect(schemaVersion(db)).toBe(16);
+      expect(schemaVersion(db)).toBe(17);
       expect(tableExists()).toEqual({ "1": 1 });
       db.exec(
         "INSERT INTO users (user_id, password_hash, is_admin, created_at)" +
@@ -769,6 +797,7 @@ describe("migration 12 → current: company-mode-desk-mentions", () => {
         "usage-record-cost",
         "agent-api",
         "admin-notifications",
+        "external-auth-tokens",
       ]);
       expect(schemaVersion(db)).toBe(LATEST_VERSION);
       expect(shape(db)).toBe(shape(fresh));
@@ -873,6 +902,7 @@ describe("pre-cost → current: usage-record-cost", () => {
 function open13(): DatabaseSync {
   const db = new sqlite.DatabaseSync(":memory:");
   db.exec(SCHEMA_SQL);
+  dropExternalAuth(db);
   dropUsageCostColumns(db);
   dropAgentApi(db);
   dropNotifications(db);
@@ -888,8 +918,9 @@ describe("migration 13 → current: agent-api", () => {
         "usage-record-cost",
         "agent-api",
         "admin-notifications",
+        "external-auth-tokens",
       ]);
-      expect(schemaVersion(db)).toBe(16);
+      expect(schemaVersion(db)).toBe(17);
       const enable = () =>
         db
           .prepare(

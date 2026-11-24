@@ -352,4 +352,38 @@ CREATE TABLE IF NOT EXISTS notification_reads ( -- one row per (notice, account)
   read_at         TEXT NOT NULL,
   PRIMARY KEY (notification_id, user_id)
 );
+CREATE TABLE IF NOT EXISTS user_tokens (        -- a user's PROGRAM credential (personal access token): what a person hands an external server-side app so it can ask "whose is this". NOT a session row: auth_sessions is the browser cookie's table and deleteByUser / a password reset clears it whole, which would take these with it — the two live and are revoked on different terms. Only sha256 is stored; the raw token is shown once, at mint
+  token_id     TEXT PRIMARY KEY,               -- 12 base64url chars, what the list shows and revoke takes
+  user_id      TEXT NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,                  -- human-written purpose ("需求箱"), so a list of several is readable
+  token_hash   TEXT NOT NULL UNIQUE,           -- sha256(token) hex, like auth_sessions and agent_api_keys
+  prefix       TEXT NOT NULL,                  -- the token's first 16 characters ("adelie_pat_" + 6), shown in the list
+  scope        TEXT NOT NULL,                  -- space-separated; only 'openid profile' today (identity, no capability)
+  created_by   TEXT NOT NULL REFERENCES users(user_id),
+  created_at   TEXT NOT NULL,
+  expires_at   TEXT,                           -- NULL = no expiry (explicit --ttl-days 0); 90 days by default, 1 year cap
+  last_used_at TEXT,                           -- stamped on each successful introspection; NULL = never used
+  revoked_at   TEXT                            -- NULL = live; set by revoke, and introspection reads it as active:false
+);
+CREATE INDEX IF NOT EXISTS idx_user_tokens_user ON user_tokens(user_id);
+CREATE TABLE IF NOT EXISTS oauth_clients (      -- a registered EXTERNAL app (confidential client: it runs on a server and can keep a secret). Its id/secret authenticate the introspection call, so the endpoint is not a bare token-prober, revocation can be per-app, and the audit can name who asked
+  client_id     TEXT PRIMARY KEY,             -- 'adelie_app_' + 12 base64url chars
+  client_name   TEXT NOT NULL,                -- the app's own name ("需求箱")
+  secret_hash   TEXT NOT NULL,                -- sha256(client_secret) hex; the raw secret is shown once, at registration
+  secret_prefix TEXT NOT NULL,                -- the secret's first 16 characters, shown in the list
+  scopes        TEXT NOT NULL,                -- the most this app may ask for; an introspection token must be within it
+  disabled      INTEGER NOT NULL DEFAULT 0,
+  created_by    TEXT NOT NULL REFERENCES users(user_id),
+  created_at    TEXT NOT NULL,
+  last_used_at  TEXT
+);
+CREATE TABLE IF NOT EXISTS oauth_audit (        -- one row per introspection / revoke / mint, refusals included: the refusals are the ones worth reading. Append-only and deliberately FK-free, so it outlives the accounts and clients it names
+  at        TEXT NOT NULL,
+  actor     TEXT,                             -- the user id or client_id that started it (NULL when neither is known)
+  client_id TEXT,
+  action    TEXT NOT NULL,                    -- token_mint | introspect | introspect_denied | userinfo | revoke
+  subject   TEXT,                             -- whose token was asked about (a user id), when that is known
+  detail    TEXT                              -- why it was refused, or what was done
+);
+CREATE INDEX IF NOT EXISTS idx_oauth_audit_at ON oauth_audit(at DESC);
 `;
