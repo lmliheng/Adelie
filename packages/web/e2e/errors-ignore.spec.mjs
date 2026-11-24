@@ -101,6 +101,17 @@ async function failedTurn(page, sessionId, text, code) {
  * App loads, so the only record so far is this one (the shell's own 403 lands later). */
 async function seedError(page, projectId, sessionId) {
   await failedTurn(page, sessionId, "auth dead test", "auth");
+  // The Trace's terminal `request_end` and the record are two writes on two paths: the
+  // conversation commits the Trace event, while `error_records` is written by the server's
+  // recorder reading that same output stream on the side. The row lands tens of milliseconds
+  // later (measured: 0 rows right at `request_end` +142 ms, 1 at +221 ms), so a single read is
+  // a race against the write and fails this fixture, not the panel. Read until it is there.
+  await expect
+    .poll(async () => (await readTable(page, projectId)).items.length, {
+      message: "the failed turn reaches the error table",
+      timeout: 15_000,
+    })
+    .toBeGreaterThan(0);
   const { items } = await readTable(page, projectId);
   expect(items.length, "one failed turn is on the books").toBeGreaterThan(0);
   return items[0];
