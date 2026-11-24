@@ -475,7 +475,7 @@
    clickable, so no part of it needs `no-drag`; the window controls drawn over its right end are
    the window manager's and receive input above the page regardless. Inert in a browser tab, where
    the element is not rendered at all. */
-.ui-title-bar {
+.adelie-title-bar {
   -webkit-app-region: drag;
 }
 

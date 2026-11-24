@@ -33,7 +33,7 @@ const INK_TOKEN = "--ui-fg";
 
 /**
  * The strip itself: the window's title on the theme's chrome surface, as tall as the caption it
- * replaced, and the window's drag handle (see `.ui-title-bar` in styles.css).
+ * replaced, and the window's drag handle (see `.adelie-title-bar` in styles.css).
  */
 export function DesktopTitleBar() {
   const { desktopMode, sessionVia } = useAuth();
@@ -97,7 +97,7 @@ export function DesktopTitleBar() {
     // env(titlebar-area-height): the height the overlay gives the draggable area, so the strip is
     // exactly the caption's. The status height stands in where the variable is missing.
     <div
-      className="ui-title-bar flex shrink-0 items-center bg-surface-muted"
+      className="adelie-title-bar flex shrink-0 items-center bg-surface-muted"
       style={{ height: `env(titlebar-area-height, ${height}px)` }}
     >
       <span className="min-w-0 truncate px-3 text-xs font-medium text-fg-subtle">
