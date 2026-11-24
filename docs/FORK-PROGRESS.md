@@ -3545,6 +3545,72 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
 
 - 功能一笔（源码 1、spec 1、changelog 2）；台账（7.189 那一条、本节、表里那一行）随本文件另起一笔。
 
+- [x] **7.190 Windows 上遍历全部接口那条用例卡在 5 秒上限，一条慢用例连带六个**（**2026-11-24 第三百一十七轮**
+      落地，提交见「已完成的轮次」；`packages/ui-gallery` 1 个配置文件（`vitest.config.ts`：`testTimeout` 设成
+      30 s，附一段为什么，与 `ui` / `web` 的取值一致）—— **只动测试配置、无新依赖、不碰接口、没有用户可见
+      改动**）：`mock-api.test.ts` 的「routes every endpoint the app's wrappers name」每遍历一个接口就
+      `resetStore` 建一整套夹具、共 150 多次 —— Linux 上 1.2 s、Windows 运行器上实测 4.8 s，贴着默认的 5 s
+      上限，慢一次就超时；而超时的用例不会停，它在后台继续遍历、继续换 store，于是紧随其后的五条用例
+      （batch / 退出登录 / 写入 / Agent API 两处）一起红。CI 红在 `test-windows (rest)`，重试后仍红在同一条。
+      见「第三百一十七轮」一节。
+
+## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
+（第一次 `GnuTLS recv error (-110)`，第二次直接 connect 超时），本地因此停在 `b9edad76c`；按 GitHub API 看到
+远端 HEAD 是 `2e9b592c7`（第三百一十五轮，记 v0.8.2 那次发布）。收尾时改走 SSH（`git -c
+url."git@github.com:".insteadOf="https://github.com/" fetch origin`）才把 `origin/main` 拉到
+**`d42b51452`**（另一条线的第三百一十六轮：工单「追加进度」被拒时原因留在输入框下面，条目 7.189）。
+
+**让号**：本轮的条目与轮次因此改记 **7.190 / 第三百一十七轮**（开工时按 `2e9b592c7` 写的是 7.189 /
+第三百一十六轮，远端那一笔先到）；代码改动摘回新基线上重做了两笔提交。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 2.2c，它「还差什么」四条这一轮一条都动不了（写侧在
+桌面壳、部署单元等发布动作、桌面壳自己的开关同前，`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 留到
+发布期）；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖；
+第 7 节到 7.188 全勾。于是先看 main 的 CI：最新一次 run（`45314136451`，`2e9b592c7`）红在
+`test-windows (rest)`，ci.yml 的重试跑过一遍后仍红在同一条 —— `packages/ui-gallery/test/mock-api.test.ts >
+the mocked API > routes every endpoint the app's wrappers name`，`Test timed out in 5000ms`。同一份作业在
+上一次 run（`45305298348`，`b9edad76c`）里这个文件是绿的，15 条一共 **4817 ms**：离 5 s 的上限只差一点。
+
+**改前实测（本机复现出同一形状）**：`vitest run test/mock-api.test.ts --testTimeout=1000` → **6 failed**：
+第一条「timed out」，后面五条（batch 的逐条答复 / 退出登录 / 写入 / Agent API 两处）各自以「时间戳差
+30 ms」「promise resolved instead of rejecting」「expected … to be undefined」的形式挂掉，与 Windows 日志里
+那六条一一对应。**为什么一条会带出六条**：vitest 判定超时并不会停掉那个用例 —— 它还在后台继续遍历，每遍历
+一个接口就 `resetStore` 一次，于是后面几个用例手里的 store 被换掉了。
+
+**做了什么**：`packages/ui-gallery/vitest.config.ts` 的 `test` 里加 `testTimeout: 30_000`，并写清为什么
+（那条遍历每次重建一整套夹具、共 150 多次；Linux 1.2 s、Windows 运行器 4.8 s；超时的用例在后台继续跑，
+会把后面的用例一起带红；`ui` / `web` 早就允许 30 s，本包其余文件都远在 1 s 以内）。
+
+**验证**：
+
+- **复现**（见上）：`--testTimeout=1000` → 6 failed，与 Windows 日志同样六条。
+- **正证**：临时在第一条用例开头插一句 6 秒的 `setTimeout`，用新配置跑 `vitest run test/mock-api.test.ts`
+  → **15 passed（7.3 s）**；同一份文件按旧上限 `--testTimeout=5000` 跑 → 第一条 **timed out in 5000ms**。
+  随后把用例文件还原（`git diff --stat` 只剩 `vitest.config.ts` 一个文件）。
+- `pnpm --filter @adelie/ui-gallery test`：**20 文件 / 141 通过**，rc=0。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 213 接口 / 644 类型）。第一次跑时 cli 报
+  `Cannot find module '@adelie/server/auth/user-token'` —— 那是 `b9edad76c` 新增的子路径，而
+  `packages/server/dist` 还是那之前的产物；`pnpm --filter @adelie/server build` 后重跑六个全过。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  web **356 文件 / 4014 + 2 跳过**（台账上一行的 355 / 3998 是第三百一十二轮时的读数；`333fab188` 带来
+  `test/pet-picture.test.ts`，本笔只改配置、不增用例）· server **219 文件 / 3191 + 6 跳过**（基线 218 / 3176；
+  `b9edad76c` 带来 `test/external-auth.test.ts`）。
+- `oxlint` 该文件 **0 警告 0 错误**；`prettier --check` 干净；`git diff --check` 干净。
+- 本笔不碰界面，所以没有起服务截图；没有切版本号、没发 npm、没发安装包。
+
+**没做 / 留着**：
+
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 真正的根治（让那条遍历不必重建 150 次夹具）没做：它要重排用例与 store 的隔离方式，省下的只有几秒，
+  留给这条测试再长起来的那天。
+- Windows 那条 CI 由这一笔推上去后自行验证。
+
+### 提交
+
+- 本笔 `4e59b2a83`，台账一笔（本文件）。
+
 ## 第三百一十五轮：正式发 v0.8.2、换装现网（2026-11-24）
 
 用户 2026-11-24 一句「那就更新到0.8.2吧，现网也更新，目前没有什么对话在运行」—— 把 v0.8.1 之后攒下
@@ -6551,6 +6617,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.188 | **模型库的分组一律从折叠开始**（上游 `02b871d25` `#1787` 移植，照改动落、不是合分支；**2026-11-24 第三百一十三轮**落地；`packages/web` 2 个源码文件（`features/models/model-group-expansion.ts`：`defaultExpandedProviders()` 返回空集合、文件头按新默认值重写并写明「为什么不再挑一个分组默认展开」；`models-page.tsx`：导入落地不再为新分组写展开偏好，`importGroup` 少一个参数，`AddGroupDialog` 的 `onImport` 类型与调用点跟上）＋ 1 个单测改写（仍 13 条）＋ 1 个新 spec（2 条）＋ `packages/docs/content/models.{zh,en}.md` 各一句 ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；**改前实测首次访问 1 个分组展开（TokenDance）、改后 0 个**，两态「点开→写 ["deepseek"]→重载仍在」「搜索临时展开且不写存储」「清空回到折叠」一致） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · `prettier --check` 8 文件干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过，与基线逐项相同）· **反证（单测）**：源码退回 `HEAD` → 该文件 **7 failed / 6 passed**，放回 → **13 全过** · **两态探针（真服务端 ×2 + `/usr/bin/chromium`）**：改后 8990 首次访问 **0 展开 / 存储 null**，改前 8991 首次访问 **1 展开（TokenDance）/ 存储 null**；两态 console 各 0 error、无一条 ≥400；截图 `r312/{before,after}/*.png` · 新 spec **2 passed（6.7 s）**、相邻回归 9 passed（35.5 s）· 端口只用 8990 / 8991 / 8992 / 8933（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r312-*` | `69ba6dee8` |
 | 2026-11-24 | 发布 | **发 v0.8.2 并换装现网**（把 v0.8.1 之后攒下的收成正式版：**外部应用鉴权（只有服务器端）** —— 服务器上的程序拿用户自己铸的令牌问「这是谁」，迁移 17 新增 `user_tokens`/`oauth_clients`/`oauth_audit` 三张表，端点 `POST /oauth/introspect` / `GET /oauth/userinfo` / `POST /oauth/revoke`（挂在 `/oauth/*`、不在 `/api/*` 下），命令行多 `penguin auth pat`，管理口 `/api/admin/tokens`、`/api/admin/oauth-clients`，自己的 `/api/me/tokens`，令牌只存 sha256、只给 `openid profile`、打不开 `/api/*`、没开 CORS；**桌宠面板不再被窗口切掉第一行**、自绘那条蓝色大鱼删掉（形象只剩企鹅与「我的图片」，选过它的偏好回落企鹅）；频道邀请被拒时**选择器留着、原因留在那位候选人的行下面**；模型库的分组**一律从折叠开始**（上游 `02b871d25` / `#1787` 移植）；docs 加一页「鉴权：外部应用接入」；发布提交 `aa211c599`（父 `b9edad76c`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.2` 指向同一提交；门禁在标签检出 `/root/rel-082` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 `test` 脚本的包全过）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.2（`PUBLISH-ALL-DONE`，四十来分钟后 29 个版本端点全 200）；GitHub Release **id `456235906`** 14 件逐件核 digest 后发布为 latest；3003 换上 v0.8.2 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.2、旧前端先拷回、瞬时单元 `adelie-live-restart-082` 延后重启装上 `index-BzKxPhAa.js`；单元顺带补上 `ADELIE_TRUST_PROXY=1`） | 发布轮，逐项见「第三百一十五轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.2、core 戳 `BUILD_DATE 2026-11-24 / BUILD_COMMIT aa211c599…`、`GET /` 200、匿名 `/api/me` 等 401、临时数据根 `PRAGMA user_version` = 17 且三张表在库里；现网核验写 `rel-082-live-restart-verify.txt`；`releases/latest` = v0.8.2 | `aa211c599`（发布） |
 | 2026-11-24 | 7.189 | **工单「追加进度」被拒时，原因留在那个输入框下面**（**2026-11-24 第三百一十六轮**落地；`packages/web` 1 个源码文件（`features/company/ticket-dialog.tsx`：追加框有自己的 `progressRefusal`，与四处确认框共用的 `refusal` 分开；`addProgress` 每次尝试先清上次的句子、把 `setProgressRefusal` 交给 `run` 的 `refuse`，句子用 `NoticeStrip`（`role="alert"`、危险色调、`S.common.refused(...)`）画在输入行下面）＋ 1 个既有 spec 加一条（`e2e/ticket-refusal.spec.mjs` 第 6 条）+ 夹具补 `pricing` 三桶 0（工单 id 靠「$0 价」模型的补全，没有价的行算「未计价」不是免费；缺它建单 400 `slug_required`）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；改前实测「对话框里 0 条、通知区 1 条、七秒后通知区 0 条且框里仍有那句话」，改后「对话框里 1 条、通知区 0 条、七秒后同一句」，反证把源码退回 `HEAD` 重建后同一 spec **1 failed**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，213 接口 / 644 类型）· `oxlint` 2 个改动文件 **0 警告 0 错误** · 4 个改动文件（含 changelog 一对）`prettier --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **219 / 3191 + 6 跳过** · web **356 / 4014 + 2 跳过** · **新 spec + 同一份 spec 的相邻五条 6 passed（20.4 s）**（真服务端 8930 + mock 8931 + `/root/adelie-fork-data/r316-e2e`）· **反证**：改前源码 + 改前产物（`r316/before-dist`）跑第 6 条 **1 failed**（`dialog` 里那句 `element(s) not found`），放回改后源码重建后产物与 `r316/after-dist` 逐字节相同、**6 passed** · **两态探针**：改前 `inDialog 0 / inToasts 1 / 7 s 后 0`，改后 `inDialog 1 / inToasts 0 / 7 s 后 1`；两态 console 只有既有的 `/machines` 403 与本轮故意造的 500，pageerror 0 条；截图 `r316/shots/{before,after}/refused.png` 肉眼看过 · 端口只用 8930 / 8931 / 8940 / 8941（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r316-*` | `9f634062f` |
+| 2026-11-24 | 7.190 | **Windows 上遍历全部接口那条用例卡在 5 秒上限，一条慢用例连带六个**（**2026-11-24 第三百一十七轮**落地；`packages/ui-gallery` 1 个配置文件（`vitest.config.ts`：`testTimeout: 30_000` + 一段为什么，与 `ui` / `web` 同值）—— **只动测试配置、无新依赖、不碰接口、没有用户可见改动**）：CI 红在 `test-windows (rest)` —— `mock-api.test.ts > routes every endpoint the app's wrappers name` 5 秒超时、重试后仍红；那条遍历每遍历一个接口就 `resetStore` 建一整套夹具（150 多次），Linux 1.2 s、Windows 运行器实测 4.8 s（同一份作业上一次 run 里这个文件 15 条共 4817 ms），贴着默认上限，慢一次就超时；超时的用例在后台继续跑、继续换 store，把紧随其后的五条一起带红 | 本机 `--testTimeout=1000` 复现出与 Windows 日志同样的 **6 failed**（第一条 timed out，后五条是时间戳差 30 ms / `promise resolved instead of rejecting` / `expected … to be undefined`）· 临时在第一条用例开头插 6 秒延时：新配置下 **15 passed（7.3 s）**，按旧上限 `--testTimeout=5000` 跑则第一条 timed out；随后还原用例文件（`git diff --stat` 只剩配置）· `pnpm --filter @adelie/ui-gallery test` **20 文件 / 141 通过** · 六包 `typecheck` **`EXIT=0`**（213 接口 / 644 类型；先 `pnpm --filter @adelie/server build` 补上 `b9edad76c` 新增的 `auth/user-token`）· 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** · web 356 / **4014**（2 跳过）· server 219 / **3191**（6 跳过）· `oxlint` / `prettier --check` / `git diff --check` 干净 · 不碰界面、未切版本号、未发 npm、未发安装包 | `4e59b2a83` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
