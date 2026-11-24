@@ -3469,6 +3469,52 @@ origin/main` 前进到 `ff863f2be`（第三百零八轮 TokenHub 图标那笔）
 
 - 功能一笔（源码 2、用例 1、docs 2、changelog 2）；台账（5.63 那一条、上表那一行、本节）随本文件另起一笔。
 
+## 第三百一十五轮：正式发 v0.8.2、换装现网（2026-11-24）
+
+用户 2026-11-24 一句「那就更新到0.8.2吧，现网也更新，目前没有什么对话在运行」—— 把 v0.8.1 之后攒下
+的几笔落成 **0.8.2 正式版**（版本号口径：只进第三位），再把现网整棵换过去。这一版最重的一笔是**对外的
+身份通道**（外部应用拿用户令牌问「这是谁」，只有服务器端、页面没有新增），其余是桌宠面板那处裁切、
+以及「被拒的原因留在按下去的地方」的最后两处收尾。
+
+- **线性史**：远端 `main` = **`aa211c599`**（发布提交；父提交 `b9edad76c`）。标签 `v0.8.2` 指向同一提交。
+  `github.com` 仍可用，提交与标签都是**直推**（`git -c http.version=HTTP/1.1 push`，远端 SHA 与本地相同）。
+- **发布正文**：`docs/releases/RELEASE-v0.8.2.md`（照上游骨架：导读 / 安装 / 亮点 / 值得一提 / 兼容 /
+  要求 / 收尾一句）。
+- **门禁（在标签检出上跑）**：`/root/rel-082`（`git worktree add --detach`，`pnpm install --frozen-lockfile`
+  5.8 秒，store 是热的）上 `gates-082.sh` **rc=0、五步全绿**：`build` 全包 `Done`；`typecheck` 全包 `Done`；
+  `lint` **0 警告 0 错误**（2672 个文件）；`format:check`「All matched files use Prettier code style」；
+  测试步 **ALL TESTS PASS**（17 个有 `test` 脚本的包全过，其余是纯技能/库插件）：core 1460 + 6 跳过、
+  server **3191**（219 文件）+ 6 跳过、web 3998 + 2 跳过、ui 1117、cli 566、amsp 72，加上插件与
+  `node:test` 的。**逐段看过末尾**，没有藏在成功输出里的红。
+- **打戳与产物**：`stamp-082.sh` 写 VERSION `0.8.2` / BUILD_DATE `2026-11-24`（`date -u` 的 UTC 日期）/
+  BUILD_COMMIT `aa211c599…`，`install.sh` 与 `install.ps1` 的 `EMBEDDED_RELEASE_VERSION="v0.8.2"`；
+  打完戳**重新 `pnpm -r build`**，确认戳落进 `packages/core/dist`（`BUILD_DATE = "2026-11-24"`）。三件载荷
+  linux-x64 111M（114,434,209 字节）/ universal 56M（57,192,701）/ win32-x64 144M（150,484,801），
+  `validate-bundles.sh` 三件全过（成员与载荷一致、安装器逐字节相同）。**老坑照旧**：`dist-artifacts/`
+  要手工补 `install.sh` / `install.ps1`。
+- **桌面三件**：`packages/desktop/out/` 里 deb 122,554,668、AppImage 155,467,366、exe 162,407,763
+  （+ blockmap + `latest*.yml`，都标 0.8.2）；electron-builder 走 npmmirror，Windows 那个用 xvfb + wine。
+- **npm**：29 个包（core/server/cli/amsp + 25 个插件；四个 private `sandbox-*` 跳过）发到 `0.8.2`，
+  `PUBLISH-ALL-DONE`。**又中一次「发布了但索引要等」**：`@adelie/server@0.8.2` 发完十余分钟版本端点仍
+  404、再发报 409「Cannot publish over previously staged version」、`npm stage list` 又是空的；**实际是
+  读侧缓存**——再等两分钟 29 个包的版本端点**全部 200**（`latest` 也跟上），没有重发，也没有动版本号。
+- **GitHub Release**：**release id `456235906`**，14 件资产逐件核 digest 后发布为 latest
+  （`published_at` `2026-11-24T02:33:51Z`）。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.8.2`（保留 `android-test`），本机那份
+  Windows 桌面包一并换新（旧的留 `.bak-20261124-v0810`）。
+- **现网换装**：`/root/.adelie` 整棵换成 0.8.2（`install.sh --archive`），装完**立刻把旧前端拷回**
+  （内存里还是旧服务端），新的 `index-BzKxPhAa.js` 留在 `/root/rel-082/out/penguin/web/`。**顺带补上一处
+  缺了很久的配置**：systemd 单元加 `ADELIE_TRUST_PROXY=1`（前面是 nginx，会话 cookie 才会按
+  `X-Forwarded-Proto` 带上 `Secure`），旧单元留底 `/root/adelie-server.service.bak-20261124-v0810`，
+  `systemd-analyze verify` 过、`daemon-reload` 已做。重启交给瞬时单元 `adelie-live-restart-082`
+  （脚本自己 `sleep 900`，不叠 `--on-active`），核验写
+  `/root/Adelie_develop/rel-082-live-restart-verify.txt`（含重启后进程环境里 `ADELIE_TRUST_PROXY` 那一条）。
+- **换装前冒烟**：从载荷解出的树上 lib 版本 0.8.2、core 戳 `BUILD_DATE 2026-11-24 / BUILD_COMMIT
+  aa211c599…`、前端入口 `index-BzKxPhAa.js`、`GET /` 200、匿名 `/api/me` `/api/notifications`
+  `/api/admin/notifications` `/api/version` 全 401；临时数据根上 `PRAGMA user_version` = **17**，
+  `user_tokens` / `oauth_clients` / `oauth_audit` 三张表落库。
+- 发布树 `/root/rel-082` 与 `/root/rel-082-bundles` 收尾留到重启之后（重启脚本要用 `out/penguin/web`）。
+
 ## 第三百一十一轮：正式发 v0.8.1、换装现网（2026-11-24）
 
 用户 2026-11-24 一句「可以更新小版本了，更新现网」—— 于是把 v0.8.0 之后攒下的几笔落成 **0.8.1
@@ -6427,6 +6473,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 发布 | **发 v0.8.1 并换装现网**（把 v0.8.0 之后攒下的收成正式版：Venice AI（7.183）与腾讯 TokenHub（7.185）两个分组换掉字母牌、桌宠第二条形象改画成「蓝色大肥鱼」并改名（7.184）、「被拒的原因留在按下去的地方」在模型页补两处（7.182 分组密钥框、7.186 平台同步）、命令只在用户设了 `NO_COLOR` 时才丢颜色（5.63）；发布提交 `69e085e3c`（父 `ad7e5f8ee`），`github.com` 转回可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.1` = 对象 `baf43a24f…`；门禁在标签检出 `/root/rel-081` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 test 脚本的包全过、**合计 11054 条通过**）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.1（`PUBLISH-ALL-DONE`）；GitHub Release **id `455961504`** 14 件 763 MB 逐件核 digest 后发布为 latest；3003 换上 v0.8.1 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.1、旧前端先拷回、瞬时单元 `adelie-live-restart-081` 延后重启装上 `index-B5Bwm2BR.js` 并自核验） | 发布轮，逐项见「第三百一十一轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.1、core 戳 `BUILD_DATE 2026-11-23 / BUILD_COMMIT 69e085e3c…`、`GET /` 200、匿名路由 401、通知两张表在库里；现网核验写 `rel-081-live-restart-verify.txt`；`releases/latest` = v0.8.1 | `69e085e3c`（发布） |
 | 2026-11-24 | 7.187 | **频道里邀请成员被拒时，选择器留着，原因留在那位候选人的行下面**（**2026-11-24 第三百一十二轮**落地；`packages/web` 1 个源码文件（`features/company/channel-header.tsx`：`InvitePicker` 自己拿 `refusal {principal,text}`，`onPick` 改成交回「服务端的原话 / 写入成功的 `null`」，每次尝试先清上一次的句子、成功才关框并清搜索词，被拒时句子用 `role="alert"` + `toneInk.danger` 画在那位候选人的行下面；选择器按频道 id 作键）＋ 1 个新 spec（2 条）＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**）：7.19 的规矩（拒绝留在尝试发生的地方）在频道表头的最后一处 —— 「邀请」按一下选择器就关、写入随后才开始，被拒时原因只落在一条六秒就走、且浮在框外的通知里，通知一消失既没有原因、也没有刚点的那一行可以重试 | 六包 `typecheck` `EXIT=0`（`gen:ifaces` 报 `src/ifaces.json unchanged`，203 接口 / 627 类型）· `npx oxlint` 改动文件 **0 警告 0 错误** · 改动文件、新 spec 与 changelog 一对 `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test `EXIT=0`、0 失败：core **70 文件 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **218 / 3176 + 6 跳过** · web **355 文件 / 3998 + 2 跳过** · **新 spec 2 passed（13.5 s）**（`packages/web/e2e/channel-invite-refusal.spec.mjs`，服务端 8975 + mock 8971 + 一次性数据根 `/root/adelie-fork-data/r312-before`）：被拒时选择器仍开着、`role="alert"` 逐字是服务端原话、按几何量过它在那位候选人的行下面且在框内、通知区不含那句话、POST 只发过一条、七秒后同一句仍在、服务端名册没变，Escape 关掉再开干净、解除拦截后从同一行重试落地；成功路径框关、成员数变「3 人」、重开时候选里没有他 · **反证**：改前源码 + 改前产物跑同一份 spec → 第一条 **failed**（框里 `getByRole('alert')` `element(s) not found`），放回后重建 **2 passed** · **两态探针**：改前 `pickerOpen 0`、框内 alert 0、原话只在通知区、七秒后通知也空了；改后 `pickerOpen 1`、alert 1 逐字、通知区只有内测提示、七秒后仍在（截图 `r312/{before,after}/…-2-refused.png` 肉眼看过）· **相邻回归**：本笔 2 + `channel-join-refusal` 2 + `channel-refusal` 3 = **7 passed（33.1 s）** · 端口只用 8975 / 8971（跑完已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `d1109488a3be9b7dbdd1c224f2738339189bd036` |
 | 2026-11-24 | 7.188 | **模型库的分组一律从折叠开始**（上游 `02b871d25` `#1787` 移植，照改动落、不是合分支；**2026-11-24 第三百一十三轮**落地；`packages/web` 2 个源码文件（`features/models/model-group-expansion.ts`：`defaultExpandedProviders()` 返回空集合、文件头按新默认值重写并写明「为什么不再挑一个分组默认展开」；`models-page.tsx`：导入落地不再为新分组写展开偏好，`importGroup` 少一个参数，`AddGroupDialog` 的 `onImport` 类型与调用点跟上）＋ 1 个单测改写（仍 13 条）＋ 1 个新 spec（2 条）＋ `packages/docs/content/models.{zh,en}.md` 各一句 ＋ changelog 一对 —— **不碰接口、无新依赖、没有新文案**；**改前实测首次访问 1 个分组展开（TokenDance）、改后 0 个**，两态「点开→写 ["deepseek"]→重载仍在」「搜索临时展开且不写存储」「清空回到折叠」一致） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，203 接口 / 627 类型）· `oxlint` 4 文件 0 警告 0 错误 · `prettier --check` 8 文件干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core 70 / **1460**（6 跳过）· ui 133 / **1117** · cli 39 / **566** · server 218 / **3176**（6 跳过）· web 355 / **3998**（2 跳过，与基线逐项相同）· **反证（单测）**：源码退回 `HEAD` → 该文件 **7 failed / 6 passed**，放回 → **13 全过** · **两态探针（真服务端 ×2 + `/usr/bin/chromium`）**：改后 8990 首次访问 **0 展开 / 存储 null**，改前 8991 首次访问 **1 展开（TokenDance）/ 存储 null**；两态 console 各 0 error、无一条 ≥400；截图 `r312/{before,after}/*.png` · 新 spec **2 passed（6.7 s）**、相邻回归 9 passed（35.5 s）· 端口只用 8990 / 8991 / 8992 / 8933（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r312-*` | `69ba6dee8` |
+| 2026-11-24 | 发布 | **发 v0.8.2 并换装现网**（把 v0.8.1 之后攒下的收成正式版：**外部应用鉴权（只有服务器端）** —— 服务器上的程序拿用户自己铸的令牌问「这是谁」，迁移 17 新增 `user_tokens`/`oauth_clients`/`oauth_audit` 三张表，端点 `POST /oauth/introspect` / `GET /oauth/userinfo` / `POST /oauth/revoke`（挂在 `/oauth/*`、不在 `/api/*` 下），命令行多 `penguin auth pat`，管理口 `/api/admin/tokens`、`/api/admin/oauth-clients`，自己的 `/api/me/tokens`，令牌只存 sha256、只给 `openid profile`、打不开 `/api/*`、没开 CORS；**桌宠面板不再被窗口切掉第一行**、自绘那条蓝色大鱼删掉（形象只剩企鹅与「我的图片」，选过它的偏好回落企鹅）；频道邀请被拒时**选择器留着、原因留在那位候选人的行下面**；模型库的分组**一律从折叠开始**（上游 `02b871d25` / `#1787` 移植）；docs 加一页「鉴权：外部应用接入」；发布提交 `aa211c599`（父 `b9edad76c`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.2` 指向同一提交；门禁在标签检出 `/root/rel-082` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 `test` 脚本的包全过）；三件载荷 linux-x64 111M / universal 56M / win32-x64 144M + 三件安装包 `validate-bundles.sh` 全过，桌面三件 deb 122M / AppImage 155M / exe 162M；npm **29 个包**发到 0.8.2（`PUBLISH-ALL-DONE`，四十来分钟后 29 个版本端点全 200）；GitHub Release **id `456235906`** 14 件逐件核 digest 后发布为 latest；3003 换上 v0.8.2 清单（本机 Windows 包一并换新）；现网 `/root/.adelie` 整棵换成 0.8.2、旧前端先拷回、瞬时单元 `adelie-live-restart-082` 延后重启装上 `index-BzKxPhAa.js`；单元顺带补上 `ADELIE_TRUST_PROXY=1`） | 发布轮，逐项见「第三百一十五轮」一节；换装前冒烟：从载荷解出的树上 `lib` 版本 0.8.2、core 戳 `BUILD_DATE 2026-11-24 / BUILD_COMMIT aa211c599…`、`GET /` 200、匿名 `/api/me` 等 401、临时数据根 `PRAGMA user_version` = 17 且三张表在库里；现网核验写 `rel-082-live-restart-verify.txt`；`releases/latest` = v0.8.2 | `aa211c599`（发布） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
