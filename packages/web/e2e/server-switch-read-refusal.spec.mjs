@@ -24,23 +24,43 @@ const REFUSED = "操作被拒绝：服务器内部错误，请稍后重试。";
 /**
  * Sign in as the seeded administrator (both pages are admin-only) and give the Project a model —
  * the onboarding overlay covers the page without one.
+ *
+ * The two switches are also put back to what these tests read, and the model row is ADDED to the
+ * table instead of swapping the table for it. Both come from the same fact: the suite shares one
+ * data root, and `default_project` here is the one every admin-signed spec works on. Every
+ * company-mode spec turns that switch on server-wide and none turns it off again, so this spec's
+ * company test — which reads the switch's stored value back after the retry — was asserting
+ * whatever the spec before it left behind ("the server holds the mode off"): it passed alone and
+ * failed in a full run. Replacing the model table with a single row is the rule
+ * `asr-refusal-once` already learned its lesson on (7.196); the row is set by its reference, so a
+ * rerun over the same data root replaces it instead of tripping the duplicate check.
  */
 async function ready(page) {
   await login(page.request, ADMIN_ID, ADMIN_PASSWORD);
+  const reset = await page.request.put(`${BASE}/api/admin/settings`, {
+    data: { companyMode: false, agentApiEnabled: true },
+  });
+  expect(reset.ok(), await reset.text()).toBeTruthy();
   const projectId = (await (await page.request.get(`${BASE}/api/projects`)).json()).projects[0]
     .projectId;
+  const held = await (await page.request.get(`${BASE}/api/projects/${projectId}/models`)).json();
+  const rows = new Map(
+    held.models.map((m) => [
+      `${m.provider}/${m.modelId}`,
+      { provider: m.provider, modelId: m.modelId },
+    ]),
+  );
+  rows.set("custom/claude-4-8", {
+    provider: "custom",
+    modelId: "claude-4-8",
+    apiKey: "sk-mock",
+    baseUrl: MOCK,
+    contextWindow: 200000,
+  });
   const put = await page.request.put(`${BASE}/api/projects/${projectId}/models`, {
     data: {
       defaultModel: { provider: "custom", modelId: "claude-4-8" },
-      models: [
-        {
-          provider: "custom",
-          modelId: "claude-4-8",
-          apiKey: "sk-mock",
-          baseUrl: MOCK,
-          contextWindow: 200000,
-        },
-      ],
+      models: [...rows.values()],
     },
   });
   expect(put.ok(), "put models").toBeTruthy();
