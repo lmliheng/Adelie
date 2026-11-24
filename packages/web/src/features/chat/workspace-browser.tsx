@@ -169,6 +169,7 @@ import { PdfPreview } from "./pdf-preview";
 import { claimOnce } from "./dock-command-once";
 import { editorSaveRefusal, editorSaveTooLargeRefusal } from "./editor-save-refusal";
 import { uploadRefusalLine } from "./upload-refusal";
+import { pickSkipLine, withPickSkips } from "./pick-skip-refusal";
 import { recallWorkspaceView, rememberWorkspaceView } from "./workspace-view-memory";
 import type { DockSurface, WorkspaceReading, WorkspaceScroll } from "./workspace-view-memory";
 import { WorkspaceTreeView } from "./workspace-tree-view";
@@ -651,9 +652,10 @@ export function WorkspaceBrowser({
   // ------------------------------------------------------------------------ upload / drop
   const [uploading, setUploading] = useState<{ done: number; total: number } | null>(null);
   /**
-   * The words of an upload the server refused, drawn above the listing (see upload-refusal.ts):
-   * the file is not in the tree and the panel otherwise looks untouched, so a toast that dismisses
-   * itself would leave the reader with a directory that simply does not hold what they dropped.
+   * The words of an upload the server refused, and of the files this panel's pick would not hand
+   * over (see upload-refusal.ts, pick-skip-refusal.ts), drawn above the listing: the file is not in
+   * the tree and the panel otherwise looks untouched, so a toast that dismisses itself would leave
+   * the reader with a directory that simply does not hold what they dropped.
    */
   const [uploadRefusal, setUploadRefusal] = useState<string | null>(null);
   /** Picked files whose names collide with the target directory's listing (non-null shows the overwrite confirm). */
@@ -661,6 +663,8 @@ export function WorkspaceBrowser({
     files: File[];
     clashes: string[];
     dir: string;
+    /** What the pick had already skipped by name, carried to the write the confirmation starts. */
+    skipped: string | null;
   } | null>(null);
   const [drag, setDrag] = useState<{ active: boolean; targetDir: string }>({
     active: false,
@@ -1842,12 +1846,17 @@ export function WorkspaceBrowser({
 
   // ------------------------------------------------------------------------------ upload
 
-  const doUpload = async (picked: File[], dir: string): Promise<void> => {
+  const doUpload = async (
+    picked: File[],
+    dir: string,
+    /** What the pick itself refused by name before the upload began (see pick-skip-refusal.ts). */
+    skipped: string | null = null,
+  ): Promise<void> => {
     const key = scopeKey;
     setUploading({ done: 0, total: picked.length });
-    // A fresh pick answers the last refusal: whatever it said was about files that are no longer
-    // the ones being sent.
-    setUploadRefusal(null);
+    // A fresh pick answers the last refusal — except for the part of that answer this very pick
+    // produced: the files it skipped are still on the reader's disk and nowhere in the tree.
+    setUploadRefusal(skipped);
     const uploaded: string[] = [];
     try {
       for (const [i, file] of picked.entries()) {
@@ -1873,11 +1882,14 @@ export function WorkspaceBrowser({
       // picking them again is the retry — so the reason stays above the rows.
       if (scopeKeyRef.current === key) {
         setUploadRefusal(
-          uploadRefusalLine(
-            err,
-            dirLabel(dir),
-            uploaded.length,
-            picked.slice(uploaded.length).map((f) => f.name),
+          withPickSkips(
+            uploadRefusalLine(
+              err,
+              dirLabel(dir),
+              uploaded.length,
+              picked.slice(uploaded.length).map((f) => f.name),
+            ),
+            skipped,
           ),
         );
       }
@@ -1898,22 +1910,30 @@ export function WorkspaceBrowser({
    * names already present in the target directory — listed on demand, so the check is
    * against the real directory, not a stale or missing listing.
    */
-  const stageUpload = async (picked: File[], dir: string): Promise<void> => {
+  const stageUpload = async (
+    picked: File[],
+    dir: string,
+    /** Folders the drop could not turn into files (see pick-skip-refusal.ts). */
+    droppedDirs: readonly string[] = [],
+  ): Promise<void> => {
     if (uploadingRef.current !== null) return;
     const { accepted, rejected } = splitBySize(picked, WORKSPACE_UPLOAD_LIMIT_MB);
-    if (rejected.length > 0) {
-      toastError(
-        S.files.uploadTooLarge(rejected.map((f) => f.name).join(", "), WORKSPACE_UPLOAD_LIMIT_MB),
-      );
-    }
+    // The panel measured the pick itself — nothing was read, no request went out — so the sentence
+    // has to outlive the moment: it goes above the listing where a refused upload's reason goes,
+    // and it replaces the previous one for the same reason (that answer was about other files).
+    const skipped = pickSkipLine(
+      { dirs: droppedDirs, oversize: rejected.map((f) => f.name) },
+      WORKSPACE_UPLOAD_LIMIT_MB,
+    );
+    setUploadRefusal(skipped);
     if (accepted.length === 0) return;
     const key = scopeKey;
     if (!listingsRef.current.has(dir) && !(await loadDir(dir))) return;
     if (scopeKeyRef.current !== key) return;
     const existing = new Set((listingsRef.current.get(dir) ?? []).map((entry) => entry.name));
     const clashes = accepted.filter((f) => existing.has(f.name)).map((f) => f.name);
-    if (clashes.length > 0) setPendingUpload({ files: accepted, clashes, dir });
-    else void doUpload(accepted, dir);
+    if (clashes.length > 0) setPendingUpload({ files: accepted, clashes, dir, skipped });
+    else void doUpload(accepted, dir, skipped);
   };
 
   const onPick = (e: ChangeEvent<HTMLInputElement>): void => {
@@ -2198,8 +2218,10 @@ export function WorkspaceBrowser({
     const { accept, targetDir } = applyDrag("drop", e, true);
     if (!accept) return;
     const dropped = pickDroppedFiles(e.dataTransfer);
-    if (dropped.dirs.length > 0) toastError(S.files.folderDropSkipped(dropped.dirs.join(", ")));
-    if (dropped.files.length > 0) void stageUpload(dropped.files, targetDir);
+    // A folder dropped here is named in the same slot an upload's refusal uses: the drop wrote
+    // nothing and the tree is unchanged, so a toast would be the only trace of the gesture.
+    if (dropped.files.length > 0 || dropped.dirs.length > 0)
+      void stageUpload(dropped.files, targetDir, dropped.dirs);
   };
 
   // ------------------------------------------------------------------------------ render
@@ -3042,8 +3064,10 @@ export function WorkspaceBrowser({
         {fileRowActions}
       </div>
 
-      {/* An upload the server refused: nothing was written, so the panel looks untouched and
-          picking the files again is the retry — the reason stays above what it is about. */}
+      {/* An upload the server refused, or files the pick itself would not hand over (over the
+          ceiling, or a dropped folder — pick-skip-refusal.ts): nothing was written either way, so
+          the panel looks untouched and picking the files again is the retry — the reason stays
+          above what it is about. */}
       {uploadRefusal !== null && (
         <p
           role="alert"
@@ -3130,7 +3154,8 @@ export function WorkspaceBrowser({
         cancelLabel={S.common.cancel}
         onClose={() => setPendingUpload(null)}
         onConfirm={() => {
-          if (pendingUpload) void doUpload(pendingUpload.files, pendingUpload.dir);
+          if (pendingUpload)
+            void doUpload(pendingUpload.files, pendingUpload.dir, pendingUpload.skipped);
           setPendingUpload(null);
         }}
       >

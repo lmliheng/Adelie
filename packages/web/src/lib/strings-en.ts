@@ -4828,6 +4828,11 @@ export const en: Strings = {
     /** A dropped folder is not a file the upload endpoint can take; it is named and skipped. */
     folderDropSkipped: (names: string): string => `Folders cannot be uploaded, skipped: ${names}`,
     /**
+     * Breaks the two sentences above apart when one pick hit both, and again when the server also
+     * refused what the pick did hand over (see `pick-skip-refusal.ts`): one slot, one paragraph.
+     */
+    pickSkipSeparator: ". ",
+    /**
      * Above the listing after an upload the server refused: nothing landed, so the files are still
      * only where they were picked from, and picking them again is the retry.
      */

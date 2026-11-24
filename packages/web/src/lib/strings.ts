@@ -4937,6 +4937,11 @@ export const zh = {
     /** A dropped folder is not a file the upload endpoint can take; it is named and skipped. */
     folderDropSkipped: (names: string): string => `不支持上传文件夹，已跳过：${names}`,
     /**
+     * Breaks the two sentences above apart when one pick hit both, and again when the server also
+     * refused what the pick did hand over (see `pick-skip-refusal.ts`): one slot, one paragraph.
+     */
+    pickSkipSeparator: "。",
+    /**
      * Above the listing after an upload the server refused: nothing landed, so the files are still
      * only where they were picked from, and Save is not the retry — picking them again is.
      */
