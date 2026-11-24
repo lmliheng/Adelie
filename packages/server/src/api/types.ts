@@ -5505,6 +5505,56 @@ export interface DesktopLoginItemCommandMessage {
   openAtLogin?: boolean;
 }
 
+// Window title bar (desktop mode, Windows and Linux)
+//
+// The one strip of the window a theme cannot reach: the caption is drawn by the operating system,
+// in the operating system's colours, whatever theme the app is wearing. So the shell creates its
+// window without a caption and keeps only the window controls — Electron's Window Controls Overlay,
+// drawn over the page — and the Web App paints a strip of its own above both columns, in the
+// theme's surface.
+//
+// The shell says whether it handed the caption over (macOS keeps its own, so the page draws
+// nothing there and an older shell never asks); the page answers on every theme change with the two
+// colours the native controls need, because only the page can resolve a theme token to a colour.
+// Same utilityProcess message channel as the tray and the pet: GET /api/desktop/title-bar reads the
+// status, PUT relays the colours.
+
+/** What the shell says about the caption: whether the page draws one, and how tall it is. */
+export interface DesktopTitleBarStatus {
+  /**
+   * The shell's window has no caption of its own and the window controls sit over the page: the
+   * page draws the window's title bar. False on macOS, and on every shell older than this — see the
+   * page's own guard, which draws nothing rather than a strip under a caption that is still there.
+   */
+  enabled: boolean;
+  /** The strip's height in CSS pixels, as the shell set the overlay's. */
+  height: number;
+}
+
+/** What one PUT relays: the two colours the native controls are painted with. */
+export interface DesktopTitleBarPatch {
+  /** The CSS colour behind the window controls — the strip's own background, from the theme. */
+  color?: string;
+  /** The CSS colour of the window-control symbols, from the theme's ink. */
+  symbolColor?: string;
+}
+
+/** GET / PUT /api/desktop/title-bar (desktop-shell sessions only); null until the first push. */
+export interface DesktopTitleBarStatusResponse {
+  status: DesktopTitleBarStatus | null;
+}
+
+/** Shell → server push over the utilityProcess message channel. */
+export interface DesktopTitleBarStatusMessage {
+  type: "desktop-titlebar-status";
+  status: DesktopTitleBarStatus;
+}
+
+/** Server → shell command over the utilityProcess message channel (relayed from the PUT above). */
+export interface DesktopTitleBarCommandMessage extends DesktopTitleBarPatch {
+  type: "desktop-titlebar-command";
+}
+
 // Desktop folder access (desktop mode, macOS)
 //
 // macOS privacy protection (TCC) guards Desktop, Documents, Downloads and removable and network

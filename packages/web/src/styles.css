@@ -469,6 +469,16 @@
    penguin, and because everything here has to be switched off together by the reduced-motion block
    above. All of it is inert in a browser tab. */
 
+/* The desktop shell's own title bar (components/layout/desktop-title-bar.tsx): the strip the
+   window no longer has a caption for. Its whole surface is the drag handle — a caption is how a
+   window is moved, and the shell hands the page that job along with the strip. It holds nothing
+   clickable, so no part of it needs `no-drag`; the window controls drawn over its right end are
+   the window manager's and receive input above the page regardless. Inert in a browser tab, where
+   the element is not rendered at all. */
+.ui-title-bar {
+  -webkit-app-region: drag;
+}
+
 /* The whole window drags the pet around; the penguin and the panel opt out so they stay
    clickable. This is the OS drag region, and it covers what is left of the window — the margins
    around the penguin, the bubble. The penguin is NOT one of these handles: it drags the window

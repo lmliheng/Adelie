@@ -34,6 +34,8 @@ import type {
   DesktopPetPatch,
   DesktopPetStatus,
   DesktopPrivacyPane,
+  DesktopTitleBarPatch,
+  DesktopTitleBarStatus,
   DesktopTrayPatch,
   DesktopTrayStatus,
   DesktopUpdateStatus,
@@ -191,6 +193,37 @@ export class DesktopService {
   requestLoginItemCommand(patch: DesktopLoginItemPatch): boolean {
     if (!this.loginItemCommandSender) return false;
     this.loginItemCommandSender(patch);
+    return true;
+  }
+
+  // --- window-title-bar relay ------------------------------------------------
+
+  private titleBarStatus: DesktopTitleBarStatus | null = null;
+  private titleBarCommandSender: ((patch: DesktopTitleBarPatch) => void) | null = null;
+
+  /**
+   * What the shell said about the caption it handed over; null until its first push lands, which
+   * a page reads as "no strip of yours here" — the safe answer, since the shell that never pushes
+   * still has its native caption.
+   */
+  getTitleBarStatus(): DesktopTitleBarStatus | null {
+    return this.titleBarStatus;
+  }
+
+  /** index.ts stores each shell push here (already validated at the message port). */
+  setTitleBarStatus(status: DesktopTitleBarStatus): void {
+    this.titleBarStatus = status;
+  }
+
+  /** index.ts registers the message-port sender; absent outside a shell-forked process. */
+  onTitleBarCommand(sender: (patch: DesktopTitleBarPatch) => void): void {
+    this.titleBarCommandSender = sender;
+  }
+
+  /** Invoked by the title-bar route; false when no shell port is wired (tests, plain runs). */
+  requestTitleBarCommand(patch: DesktopTitleBarPatch): boolean {
+    if (!this.titleBarCommandSender) return false;
+    this.titleBarCommandSender(patch);
     return true;
   }
 

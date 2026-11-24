@@ -50,6 +50,7 @@ import {
 } from "../../features/company/company-nav";
 import { NEW_CHAT_ICON, Sidebar } from "./sidebar";
 import { UserMenu } from "./user-menu";
+import { DesktopTitleBar } from "./desktop-title-bar";
 import { isCurrentPath, renderRouterLink } from "./router-link";
 import { DRAFT_SESSION_ID } from "../../features/chat/chat-page";
 import { useNewChat } from "../../features/chat/use-new-chat";
@@ -419,111 +420,119 @@ export function AppLayout() {
   }, [collapsed, inCompany, newChat]);
 
   return (
-    <AppShell
-      navCollapsed={collapsed}
-      nav={
-        collapsed ? (
-          <CollapsedRail
-            onExpand={() => {
-              setOpenSearchOnExpand(false);
-              toggleCollapsed();
-            }}
-          />
-        ) : (
-          <Sidebar
-            onCollapse={() => {
-              setOpenSearchOnExpand(false);
-              toggleCollapsed();
-            }}
-            initialSearchOpen={openSearchOnExpand}
-          />
-        )
-      }
-      overlays={
-        <>
-          {/* The software-update modal, opened from the sidebar's update row and the draft
+    // The desktop shell's own title bar sits ABOVE the shell rather than inside a column: a caption
+    // belongs to the window, and it spans the navigation column and the page alike. It renders
+    // nothing anywhere else — a plain browser tab, or a shell that kept its native caption.
+    <div className="flex h-full flex-col">
+      <DesktopTitleBar />
+      <div className="min-h-0 flex-1">
+        <AppShell
+          navCollapsed={collapsed}
+          nav={
+            collapsed ? (
+              <CollapsedRail
+                onExpand={() => {
+                  setOpenSearchOnExpand(false);
+                  toggleCollapsed();
+                }}
+              />
+            ) : (
+              <Sidebar
+                onCollapse={() => {
+                  setOpenSearchOnExpand(false);
+                  toggleCollapsed();
+                }}
+                initialSearchOpen={openSearchOnExpand}
+              />
+            )
+          }
+          overlays={
+            <>
+              {/* The software-update modal, opened from the sidebar's update row and the draft
               page's version badge alike; mounted here so it outlives both. */}
-          <UpdateModal />
-          <ChangePasswordDialog
-            open={changePasswordOpen}
-            onClose={() => setChangePasswordOpen(false)}
-          />
-          {/* Mobile: the sidebar in a drawer, on the navigation column's own fill. */}
-          <Drawer
-            open={drawerOpen}
-            side="left"
-            title={S.appName}
-            onClose={() => setDrawerOpen(false)}
-          >
-            <div className="h-full bg-surface-muted">
-              <Sidebar onNavigate={() => setDrawerOpen(false)} />
-            </div>
-          </Drawer>
-        </>
-      }
-    >
-      {/* The outermost menu on a phone: it carries a dot for EITHER trail, so its wording is
+              <UpdateModal />
+              <ChangePasswordDialog
+                open={changePasswordOpen}
+                onClose={() => setChangePasswordOpen(false)}
+              />
+              {/* Mobile: the sidebar in a drawer, on the navigation column's own fill. */}
+              <Drawer
+                open={drawerOpen}
+                side="left"
+                title={S.appName}
+                onClose={() => setDrawerOpen(false)}
+              >
+                <div className="h-full bg-surface-muted">
+                  <Sidebar onNavigate={() => setDrawerOpen(false)} />
+                </div>
+              </Drawer>
+            </>
+          }
+        >
+          {/* The outermost menu on a phone: it carries a dot for EITHER trail, so its wording is
           the combined one — naming one of two updates would point at the wrong trail. Both
           trails continue inside the drawer's sidebar (the Agents entry, the user row's update
           entry). */}
-      <MobileTopBar
-        title={S.appName}
-        menuLabel={badges.note !== null ? `${drawerName} · ${badges.note}` : drawerName}
-        {...(badges.note !== null ? { menuHint: badges.note } : {})}
-        {...(badges.any ? { menuBadge: <UpdateDot /> } : {})}
-        onMenu={() => setDrawerOpen(true)}
-      />
+          <MobileTopBar
+            title={S.appName}
+            menuLabel={badges.note !== null ? `${drawerName} · ${badges.note}` : drawerName}
+            {...(badges.note !== null ? { menuHint: badges.note } : {})}
+            {...(badges.any ? { menuBadge: <UpdateDot /> } : {})}
+            onMenu={() => setDrawerOpen(true)}
+          />
 
-      {/* Initial-password notice banner (seed/admin-set password): disappears once passwordIsInitial clears after a successful change.
+          {/* Initial-password notice banner (seed/admin-set password): disappears once passwordIsInitial clears after a successful change.
           Hidden in desktop mode — the seed password there is random and never shown, so "change it" is meaningless nagging.
           Permanently dismissible via the X on the right (per-user ui_prefs); only rendered once
           hydrated prefs confirm it was never dismissed, so it does not flash-then-vanish on load. */}
-      {passwordBannerRelevant && passwordBannerDismissed === false && (
-        <NoticeStrip
-          banner
-          tone="attention"
-          className="relative flex shrink-0 items-center justify-center gap-3 border-b px-8 py-1.5 text-xs"
-        >
-          <span>{S.account.initialPasswordBanner}</span>
-          <button
-            type="button"
-            className="shrink-0 font-medium underline underline-offset-2 hover:text-amber-950 dark:hover:text-amber-100"
-            onClick={() => setChangePasswordOpen(true)}
-          >
-            {S.account.changeNow}
-          </button>
-          {/* Amber-toned twin of the shared CloseButton (same glyph + aria-label) — its hardcoded
+          {passwordBannerRelevant && passwordBannerDismissed === false && (
+            <NoticeStrip
+              banner
+              tone="attention"
+              className="relative flex shrink-0 items-center justify-center gap-3 border-b px-8 py-1.5 text-xs"
+            >
+              <span>{S.account.initialPasswordBanner}</span>
+              <button
+                type="button"
+                className="shrink-0 font-medium underline underline-offset-2 hover:text-amber-950 dark:hover:text-amber-100"
+                onClick={() => setChangePasswordOpen(true)}
+              >
+                {S.account.changeNow}
+              </button>
+              {/* Amber-toned twin of the shared CloseButton (same glyph + aria-label) — its hardcoded
               gray colors would clash here. Flat: hover feedback is icon-color-only (no background
               fill), same hover shades as the change-now link. Absolutely positioned at the right
               edge: near-full-height hit area without growing the banner and without transform (see
               the stacking-context note in the file header); the banner's symmetric px-8 keeps the
               centered text clear. */}
-          <button
-            type="button"
-            aria-label={S.common.close}
-            data-tooltip={S.common.close}
-            onClick={dismissPasswordBanner}
-            className="absolute inset-y-0.5 right-1.5 flex items-center rounded-md px-1 text-amber-500 transition-colors duration-150 hover:text-amber-950 dark:text-amber-400/70 dark:hover:text-amber-100"
-          >
-            <CloseIcon size={12} />
-          </button>
-        </NoticeStrip>
-      )}
+              <button
+                type="button"
+                aria-label={S.common.close}
+                data-tooltip={S.common.close}
+                onClick={dismissPasswordBanner}
+                className="absolute inset-y-0.5 right-1.5 flex items-center rounded-md px-1 text-amber-500 transition-colors duration-150 hover:text-amber-950 dark:text-amber-400/70 dark:hover:text-amber-100"
+              >
+                <CloseIcon size={12} />
+              </button>
+            </NoticeStrip>
+          )}
 
-      <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-        <Outlet />
-      </main>
-      {/* The docks themselves render inside the chat page (features/dock); the xterm
+          <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
+            <Outlet />
+          </main>
+          {/* The docks themselves render inside the chat page (features/dock); the xterm
           views live in this pool and are adopted into dock tab bodies by DOM handoff,
           so navigating between pages never reconnects a terminal. */}
-      <TerminalDockRuntime />
-      {/* Reconciles the shortcut mirror with the account's prefs and carries edits back. */}
-      <ShortcutRuntime />
-      {/* The built-in browser's pages (desktop app only): they live here, outside every page,
+          <TerminalDockRuntime />
+          {/* Reconciles the shortcut mirror with the account's prefs and carries edits back. */}
+          <ShortcutRuntime />
+          {/* The built-in browser's pages (desktop app only): they live here, outside every page,
           and are laid over the dock's browser tab by coordinates — a webview moved in the DOM
           reloads, so navigating the app must never re-parent one. */}
-      <BuiltinBrowserLayer />
-      <AppPalette />
-    </AppShell>
+          <BuiltinBrowserLayer />
+          <AppPalette />
+        </AppShell>
+      </div>
+    </div>
   );
 }

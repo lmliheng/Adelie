@@ -1,18 +1,20 @@
 /**
  * Shell↔server message-port relay (desktop mode only): client updates, the tray icon, the desktop
- * pet, the Windows login item, and the Workspace picker's macOS folder access.
+ * pet, the Windows login item, the window's own title bar, and the Workspace picker's macOS folder
+ * access.
  *
  * Under the desktop shell this server runs as an Electron utilityProcess, which injects
  * `process.parentPort` — an EventEmitter-ish port to the shell. The shell pushes its
- * updater snapshot, its tray state, its pet state and what Windows says about starting the app at
- * sign-in through it, and the routes forward the page's check/download/install commands, its tray
- * and pet switches and its sign-in switch back. Folder access is the one
+ * updater snapshot, its tray state, its pet state, what Windows says about starting the app at
+ * sign-in and whether it handed the window's caption over through it, and the routes forward the
+ * page's check/download/install commands, its tray and pet switches, its sign-in switch and the
+ * two colours its title bar needs back. Folder access is the one
  * request that is answered: the shell reads the folder and replies under the request's id.
  * Under a plain `penguin server|web` run the port does not exist and this module wires
  * nothing; those routes then answer 503 `shell_unreachable`.
  *
- * Wire shapes live in api/types.ts (the updater, tray, pet, login-item and folder-access messages)
- * so the shell imports the same contract.
+ * Wire shapes live in api/types.ts (the updater, tray, pet, login-item, title-bar and folder-access
+ * messages) so the shell imports the same contract.
  */
 import { randomUUID } from "node:crypto";
 import type {
@@ -26,6 +28,9 @@ import type {
   DesktopPetCommandMessage,
   DesktopPetStatus,
   DesktopPetStatusMessage,
+  DesktopTitleBarCommandMessage,
+  DesktopTitleBarStatus,
+  DesktopTitleBarStatusMessage,
   DesktopTrayCommandMessage,
   DesktopTrayStatus,
   DesktopTrayStatusMessage,
@@ -122,6 +127,19 @@ export function parseLoginItemStatusMessage(data: unknown): DesktopLoginItemStat
   return { supported: status.supported, openAtLogin: status.openAtLogin };
 }
 
+/** Validates one shell title-bar push. Same rule as the tray's: strict on the discriminator and on both fields. */
+export function parseTitleBarStatusMessage(data: unknown): DesktopTitleBarStatus | null {
+  if (typeof data !== "object" || data === null) return null;
+  const msg = data as Partial<DesktopTitleBarStatusMessage>;
+  if (msg.type !== "desktop-titlebar-status") return null;
+  const status = msg.status as Partial<DesktopTitleBarStatus> | undefined;
+  if (typeof status !== "object" || status === null) return null;
+  // Both fields, with no default for either: a shell that cannot say whether it handed the caption
+  // over would have the page draw a strip under a caption that may still be there.
+  if (typeof status.enabled !== "boolean" || typeof status.height !== "number") return null;
+  return { enabled: status.enabled, height: status.height };
+}
+
 /** Validates one shell reply to a folder-access request; null when the frame is not one. */
 export function parseFolderAccessResultMessage(
   data: unknown,
@@ -170,6 +188,11 @@ export function wireShellUpdatePort(desktop: DesktopService, port: ShellPort): v
         desktop.setLoginItemStatus(loginItem);
         return;
       }
+      const titleBar = parseTitleBarStatusMessage(e.data);
+      if (titleBar !== null) {
+        desktop.setTitleBarStatus(titleBar);
+        return;
+      }
       // A reply nobody waits for any more (its request timed out) is dropped.
       const access = parseFolderAccessResultMessage(e.data);
       if (access !== null) awaiting.get(access.id)?.(access);
@@ -200,6 +223,12 @@ export function wireShellUpdatePort(desktop: DesktopService, port: ShellPort): v
       type: "desktop-login-item-command",
       ...patch,
     } satisfies DesktopLoginItemCommandMessage);
+  });
+  desktop.onTitleBarCommand((patch) => {
+    port.postMessage({
+      type: "desktop-titlebar-command",
+      ...patch,
+    } satisfies DesktopTitleBarCommandMessage);
   });
   desktop.onFolderAccessRequest(
     (path) =>

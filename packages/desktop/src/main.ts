@@ -122,6 +122,12 @@ import {
 } from "./tray-prefs.js";
 import { parsePetCommand, petStatusMessage, readPetPrefs, updatePetPrefs } from "./pet-prefs.js";
 import {
+  overlayOptionsFor,
+  parseTitleBarCommand,
+  titleBarStatusMessage,
+  titleBarWindowOptions,
+} from "./title-bar.js";
+import {
   PET_WINDOW_OPTIONS,
   petResizedBounds,
   petShotPath,
@@ -262,6 +268,11 @@ function createWindow(url: string): void {
     height: 860,
     show: false,
     autoHideMenuBar: true,
+    // The caption is the one strip of the window no theme can reach, so the shell gives it to the
+    // page on the platforms that can (see title-bar.ts): the window is created without one, the
+    // window controls are kept over the page, and the page paints a strip of its own above both
+    // columns.
+    ...titleBarWindowOptions(process.platform),
     ...(iconPath !== null ? { icon: iconPath } : {}),
     webPreferences: {
       // The window is a plain browser: no Node, no preload — the minimal attack surface.
@@ -793,9 +804,10 @@ function pushLoginItemStatus(): void {
 /**
  * Shell relay over the utilityProcess port: forward the account-menu row's check/install
  * frames to the updater, the Appearance switch's frames to the tray, to the pet window and to
- * Windows' login item, the built-in browser's commands to its guests and the Workspace picker's
+ * Windows' login item, the page's title-bar colours to the window's own controls, the built-in
+ * browser's commands to its guests and the Workspace picker's
  * folder-access requests to folder-access.ts, push every updater status fold back, and push all
- * four current states now — the fresh child, restarts included, must not start blind. The
+ * five current states now — the fresh child, restarts included, must not start blind. The
  * subscription dies with the child; the next start wires the next one.
  */
 function wireShellRelay(child: EmbeddedServer["child"]): void {
@@ -823,6 +835,11 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
     if (loginItem !== null && loginItem.openAtLogin !== undefined) {
       setLoginItem(loginItem.openAtLogin);
     }
+    const titleBar = parseTitleBarCommand(message);
+    if (titleBar !== null) {
+      const options = overlayOptionsFor(titleBar);
+      if (options !== null) applyTitleBarOverlay(options);
+    }
   });
   const unsubscribe = onUpdaterStatus((status) => child.postMessage(updaterStatusMessage(status)));
   child.on("exit", () => {
@@ -833,6 +850,25 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
   pushTrayStatus();
   pushPetStatus();
   pushLoginItemStatus();
+  child.postMessage(titleBarStatusMessage(process.platform));
+}
+
+/**
+ * Paints the window controls the page is drawn under, in the page's own colours — the strip's
+ * background and the ink of its symbols, both read off the active theme by the page. Called on
+ * every theme change, so a theme switch (an imported one included) reaches the buttons too.
+ *
+ * Unsupported where the window kept its native caption: `setTitleBarOverlay` exists on Windows and
+ * Linux only, and a shell on macOS never gets here — it never told the page to draw a strip. A
+ * refusal is logged and dropped: a window that cannot be re-coloured is a cosmetic miss, not a
+ * reason to take down the shell.
+ */
+function applyTitleBarOverlay(options: { color?: string; symbolColor?: string }): void {
+  try {
+    win?.setTitleBarOverlay(options);
+  } catch (err) {
+    logLine(`[shell] could not re-colour the window controls: ${String(err)}`);
+  }
 }
 
 /** Starts (or restarts) the embedded server and points the window at the claim link. */

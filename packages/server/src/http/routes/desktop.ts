@@ -2,7 +2,7 @@
  * Desktop-mode routes: POST /api/desktop/shutdown, the client-update relay under
  * /api/desktop/update, the tray-icon preference at /api/desktop/tray, the pet-window
  * preference at /api/desktop/pet, the Windows sign-in switch at /api/desktop/login-item, the
- * Privacy & Security pane at
+ * window's own title bar at /api/desktop/title-bar, the Privacy & Security pane at
  * /api/desktop/privacy-settings, plus the shared desktop-mode guard that turns off
  * multi-user surfaces (see rejectInDesktopMode).
  *
@@ -10,9 +10,9 @@
  * shutdown route is authenticated by the shell's Bearer token, not the cookie session (the
  * shell holds no cookie), so its group is unauthenticated and checks the token itself; it
  * answers 202 first, then triggers the graceful shutdown a beat later so the response is not
- * cut off by the closing listener. The update, tray, pet, login-item and privacy-settings routes
- * are called by the page, so their groups sit behind the cookie gate and are further restricted
- * to the shell's own windows.
+ * cut off by the closing listener. The update, tray, pet, login-item, title-bar and
+ * privacy-settings routes are called by the page, so their groups sit behind the cookie gate and
+ * are further restricted to the shell's own windows.
  */
 import { Hono } from "hono";
 import type { Context, MiddlewareHandler } from "hono";
@@ -22,6 +22,8 @@ import type {
   DesktopLoginItemStatusResponse,
   DesktopPetPatch,
   DesktopPetStatusResponse,
+  DesktopTitleBarPatch,
+  DesktopTitleBarStatusResponse,
   DesktopTrayPatch,
   DesktopTrayStatusResponse,
   DesktopUpdateStatusResponse,
@@ -271,6 +273,57 @@ export function desktopLoginItemRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
 }
 
 /**
+ * The window's own title bar, which the page draws rather than the operating system (see
+ * api/types.ts for why). GET reads what the shell last pushed — null until that first push, which
+ * the page reads as "draw nothing", the honest answer for a shell that still has its native
+ * caption. PUT relays the two colours the native window controls are painted with, on every theme
+ * change; like the tray and the pet, the answer is an acknowledgement, and the overlay the shell
+ * re-colours is what tells the truth.
+ */
+export function desktopTitleBarRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
+  const refusal = "The window's title bar is managed from the desktop app's own window.";
+
+  app.get("/", (c) => {
+    const desktop = shellSessionOf(deps, c, refusal);
+    const status = desktop.getTitleBarStatus?.() ?? null;
+    return c.json({ status } satisfies DesktopTitleBarStatusResponse);
+  });
+
+  app.put("/", async (c) => {
+    const desktop = shellSessionOf(deps, c, refusal);
+    const body = (await c.req.json().catch(() => null)) as {
+      color?: unknown;
+      symbolColor?: unknown;
+    } | null;
+    const patch: DesktopTitleBarPatch = {};
+    for (const field of ["color", "symbolColor"] as const) {
+      const value = body?.[field];
+      if (value === undefined) continue;
+      // A colour the browser resolved is passed through as written; an empty or non-string one is a
+      // caller bug, and letting it through would paint the window controls a colour nobody chose.
+      if (typeof value !== "string" || value.trim() === "") {
+        throw new HttpError(
+          400,
+          field === "color" ? "invalid_title_bar_color" : "invalid_title_bar_symbol_color",
+          `${field} must be a non-empty CSS colour.`,
+        );
+      }
+      patch[field] = value.trim();
+    }
+    if (patch.color === undefined && patch.symbolColor === undefined) {
+      throw new HttpError(400, "empty_title_bar_patch", "Pass color, symbolColor, or both.");
+    }
+    if (!desktop.requestTitleBarCommand?.(patch)) {
+      throw new HttpError(503, "shell_unreachable", "The desktop shell is not listening.");
+    }
+    return c.body(null, 202);
+  });
+
+  return app;
+}
+
+/**
  * Opens System Settings at a Privacy & Security pane — Files and Folders, or Full Disk Access —
  * for the Workspace picker's box about a folder macOS refused. The shell opens it (on macOS
  * only) and sends nothing back, so the answer is an acknowledgement. Like the relays above, the
@@ -376,6 +429,26 @@ export class DesktopLoginItemRoutes {
   @Bind("DesktopLoginItemRoutes.routes") routes!: Hono<AppEnv>;
   setup() {
     this.routes = desktopLoginItemRoutes({ desktop: this.desktop.current() });
+  }
+}
+
+@Component({
+  contributes: {
+    "HttpModule.routes": [
+      {
+        id: "DesktopTitleBarRoutes.routes",
+        prefix: "/api/desktop/title-bar",
+        auth: "user",
+        order: 10,
+      },
+    ],
+  },
+})
+export class DesktopTitleBarRoutes {
+  @Use() private readonly desktop!: Desktop;
+  @Bind("DesktopTitleBarRoutes.routes") routes!: Hono<AppEnv>;
+  setup() {
+    this.routes = desktopTitleBarRoutes({ desktop: this.desktop.current() });
   }
 }
 

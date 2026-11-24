@@ -134,6 +134,7 @@ import {
   DesktopPetRoutes,
   DesktopPrivacySettingsRoutes,
   DesktopRoutes,
+  DesktopTitleBarRoutes,
   DesktopTrayRoutes,
   DesktopUpdateRoutes,
 } from "./http/routes/desktop.js";
@@ -519,6 +520,7 @@ export class CompanyModule {}
     DesktopTrayRoutes,
     DesktopPetRoutes,
     DesktopLoginItemRoutes,
+    DesktopTitleBarRoutes,
     DesktopPrivacySettingsRoutes,
     PluginRoutes,
     PluginRegistryRoutes,

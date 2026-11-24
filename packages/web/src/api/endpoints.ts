@@ -248,6 +248,8 @@ import type {
   DesktopLoginItemStatusResponse,
   DesktopPetPatch,
   DesktopPetStatusResponse,
+  DesktopTitleBarPatch,
+  DesktopTitleBarStatusResponse,
   DesktopTrayPatch,
   DesktopTrayStatusResponse,
   HookArchiveInstallRequest,
@@ -2787,6 +2789,25 @@ export const getDesktopLoginItem = () =>
 /** Relays the sign-in switch to the shell, which writes the entry and pushes back what Windows says. */
 export const setDesktopLoginItem = (patch: DesktopLoginItemPatch) =>
   apiFetch<void>("/api/desktop/login-item", { method: "PUT", body: patch });
+
+// Window title bar (desktop-shell sessions only, Windows and Linux) ----------------------
+
+/**
+ * What the shell said about the window's caption: whether it handed it to the page (so the page
+ * draws one), and how tall the strip is. `status` is null until the shell's first push lands, and
+ * a page reads null — like `enabled: false` — as "the shell still has its own caption, draw
+ * nothing", which is what an older shell and macOS need.
+ */
+export const getDesktopTitleBar = () =>
+  apiFetch<DesktopTitleBarStatusResponse>("/api/desktop/title-bar", { server: null });
+
+/**
+ * Tells the shell which colours the window controls are drawn in — the strip's own background and
+ * its symbols' ink. The page is the only side that can resolve a theme token to a colour, so it
+ * sends them on load and on every theme change; the shell repaints the overlay over the page.
+ */
+export const setDesktopTitleBar = (patch: DesktopTitleBarPatch) =>
+  apiFetch<void>("/api/desktop/title-bar", { method: "PUT", body: patch, server: null });
 
 // ---- Workflows (an Agent's own extension packages, served as tabs beside the chat) ----
 const workflowsBase = (projectId: string, agentId: string) =>
