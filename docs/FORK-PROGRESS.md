@@ -3825,6 +3825,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       的父目录就是 `/tmp` —— 这台机器上它有 **44 028 个条目**、`/dirs` 返回 4 MB，finder 一次画出 44 026 行，
       选中项 **21.9 s** 才到（断言只等 15 s）；换进「只有一条」的父目录后 **145 ms** 就到。见「第三百二十四轮」一节。
 
+- [x] **7.198 `server-switch-read-refusal` 的公司模式那格回到绿：夹具先把两个服务器开关摆回它断言的值，模型行改成追加**
+      （**2026-11-25 第三百二十五轮**落地，提交见「已完成的轮次」；`packages/web/e2e/server-switch-read-refusal.spec.mjs`
+      一处夹具 —— `ready()` 登录管理员后 `PUT /api/admin/settings {companyMode:false, agentApiEnabled:true}`，
+      模型行照 `asr-refusal-once` 的写法**追加**到既有表尾而不是整表替换 —— **只动测试、无新依赖、不碰接口、
+      没有用户可见改动**）：套件共用一个数据根，二十来份公司模式的 spec 各自把服务端全局的 `companyMode` 打开、
+      没有一份再关掉，于是这条用例最后那句「重试之后开关读回服务端的值、它还是关的」其实在断言前一个 spec 留下的
+      状态 —— 单跑 2 passed、整套里公司那格红（`not.toBeChecked()` 收到 checked），从 2026-11-04 起一直记成
+      「时序抖动」。见「第三百二十五轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7046,6 +7055,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-24 | 7.196 | **`chat-defaults-save-refusal` 那两族回到绿：`default_project` 的模型表不再被前面的 spec 换瘦，选择器的行自带密钥**（**2026-11-24 第三百二十三轮**落地；`packages/web/e2e` 两份 spec —— `asr-refusal-once.spec.mjs` 给管理员共享项目配模型时**追加**到既有表尾而不是整表替换（它按字母序最先跑，此前把全新数据根上 **221 行 / 26 个分组**的目录换成 1 行，后面所有用 `default_project` 的 spec 都只剩一个模型）；`chat-defaults-save-refusal.spec.mjs` 自带四条带密钥的 `custom/adelie-e2e-picker-*` 行（固定 id，重跑是替换不是增长），且 `targetsOf` 只从「有密钥、选择器真列得出」的行里挑（`visibleChatModels` 与 `hasConfiguredKey` 的同一把尺）—— **只动测试、无新依赖、不碰接口、没有用户可见改动**） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过**（都在合并树上跑：远端 7.195 那两笔与 `session-todos` 那笔已进来） · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **两态对照**（同一全新数据根，先跑 `asr-refusal-once` 再跑 `chat-defaults`）：改前 **2 failed**（`the picker must offer a model that is not the default`），改后 **2 passed** · **同一全新根连跑两遍**（asr + chat-defaults + errors-ignore + session-todos）**13 passed / 13 passed** · **整套浏览器 e2e**（`SKIP_BUILD=1`，39.0 m）：**414 通过 / 3 失败**（第三百二十二轮的基线 409 / 5）；红的 3 条全是记过的既有红：`draft.spec` 工作区选择器第 218 行、`scroll-follow-bounce` 的 Primer 一格、`server-switch-read-refusal` 的 company 一格 · 端口只用 8880 / 8900 / 8920 / 8940 / 8980 / 8990 与各自的 mock、外加套件自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r32{2,3}-*`，探针与日志在 scratchpad 的 `r322/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`） · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 | 2026-11-24 | 7.195 | **错误表那条夹具跟服务端的异步写入赛跑，改为先等记录落库**（**2026-11-24 第三百二十二轮**落地；`packages/web/e2e/errors-ignore.spec.mjs` 一处夹具（`seedError()` 里 `failedTurn` 之后加一段 `expect.poll`（15 s 上限）逐次读表、等到有记录再取 `items[0]`，注释写明两笔写在两条路上与实测的两个时间点）—— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：`request_end` 由会话写进 Trace，`error_records` 那一行由服务端 recorder 旁路读同一条输出流后另写，探针实测 `request_end` +142 ms 读 **0** 条、+221 ms 读到 **1** 条；夹具只读一次就断言，于是随机红在这一组「一个失败回合记账」的同一步上（上一轮整组 4 条红） | 探针 `r322/probe-lag.mjs`（真服务端 9382 + mock 9381）：`request_end auth at 142 ms; table right after: 0` → `+158 0` → `+190 0` → `+221 1 row`；组跑数据根 `error_records` 里那两行确实在（`ts` 15:01:10.706 / 15:01:12.209）· 两态：改前整组 **2 failed / 3 passed**、改前版重复 6 次（12 条）**2 failed / 10 passed**（红的正好是第 7、8 次那一对）→ 改后整组 **5 passed ×3**（含同一数据根重跑两遍）、改后重复 6 次 **12 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · **整套浏览器 e2e**（`SKIP_BUILD=1`，39.7 m）：**409 通过 / 5 失败**，`errors-ignore` 那 4 条已全在通过的一侧（405 → 409），剩下的 5 条是 `chat-defaults-save-refusal` ×2（`targetsOf()` 在 158/255 ms 就挂，共享数据根下 admin 的模型表被前面 spec 改窄）、`scroll-follow-bounce` 的 Primer 一格与 `server-switch-read-refusal` 的 company 一格（既有红）、`subagent-composer-across-layout` 1 条（新出现，`textarea` 90 s 不可见） · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · 端口只用 9381 / 9382 与 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰，数据只落 `/root/adelie-fork-data/r322-*` | 见本行提交 |
 | 2026-11-25 | 7.197 | **`draft.spec` 的 Workspace 那条红：finder 的父目录是装满东西的 `/tmp`，工作区挪进自己的小树里**（**2026-11-25 第三百二十四轮**落地；`packages/web/e2e/draft.spec.mjs` 一处夹具 —— 工作区从 `mkdtempSync(tmpdir(), "penguin-e2e-ws-")` 换成自己那个根下的 `folder/named-workspace`（两层：打开在 `folder`、连按两次上一级也仍在树内），断言一字未改 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：finder 打开就落在工作区的父目录并选中它，而直建在系统临时目录里的工作区的父目录是 `/tmp` —— 这台机器 **44 028** 个条目、`/dirs` **4 MB**、一次画 **44 026** 行，选中项 **21.9 s** 才到（断言只等 15 s） | 两态：改前全新根 `r324-b1` **1 failed（19.4 s，第 218 行）** → 改后全新根 `r324-d1` **1 passed（10.2 s）**；探针同一段路 `/tmp` **21 929 ms / 44 026 行** vs 小父目录 **145 ms / 1 行** · 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，214 接口 / 646 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，38.5 m）：**415 通过 / 2 失败**（上轮 414 / 3），`draft.spec` 已在通过的一侧；剩下两条是 `scroll-follow-bounce` 的 Primer 一格与 `server-switch-read-refusal` 第 159 行（company：读成功、句子按时消失、开关 enabled，但收尾那句 `not.toBeChecked()` 看到 `aria-checked="true"`；线索是共享数据根上排在它前面的 `company*.spec` 把全局公司模式打开了） · 端口只用 8960 / 8961 与套件自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `e71903835` |
+| 2026-11-25 | 7.198 | **`server-switch-read-refusal` 的公司模式那格回到绿：夹具先把两个服务器开关摆回它断言的值，模型行改成追加**（**2026-11-25 第三百二十五轮**落地；`packages/web/e2e/server-switch-read-refusal.spec.mjs` 一处夹具 —— `ready()` 登录管理员后 `PUT /api/admin/settings {companyMode:false, agentApiEnabled:true}`，模型行照 `asr-refusal-once` 的写法追加到既有表尾而不是整表替换 —— **只动测试、无新依赖、不碰接口、没有用户可见改动**）：套件共用一个数据根，二十来份公司模式的 spec 各自把全局 `companyMode` 打开、没有一份再关掉，于是那条「重试后开关读回服务端的值、它还是关的」其实在断言前一个 spec 留下的状态（台账从 2026-11-04 起记成「时序抖动」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · `npx oxlint` **0 警告 0 错误**（2685 文件）、`prettier --check` 干净、`git diff --check` 干净 · **两态对照**（全新数据根，先以管理员身份 `PUT {companyMode:true}` 模拟前面公司 spec 留下的状态）：改前 **1 failed / 1 passed（33.9 s）**（`not.toBeChecked()` 收到 checked），改后 **2 passed（19.1 s）** · **整套浏览器 e2e**（`SKIP_BUILD=1`，38.2 m）：**416 通过 / 1 失败**（改前基线 415 / 2），`server-switch-read-refusal` 两条都在通过的一侧（各 8.5 s），唯一红的是 `scroll-follow-bounce` 的 Primer 一格（满载下 `gesture 6` 只滚到 41 px，单跑三个主题都过） · 端口只用 8930 / 8931 与 8942–8947（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r324-*` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33293,6 +33303,83 @@ job 全过），所以这一轮从第三百二十二轮末尾点名的那件事�
 ### 提交
 
 - 测试一笔（`packages/web/e2e` 两份 spec）；台账（条目 7.196、上表那一行、本节）随本文件另起一笔。
+
+## 第三百二十五轮：公司模式那格的既有红，其实是前一个 spec 留下的开关（2026-11-25，条目 7.198）
+
+**开工**：`git status --short` 干净，分支 `main`；`git fetch origin && git merge --ff-only origin/main`
+—— `52ae1739b` → 远端 **`3119817c3`**（第三百二十三轮：`chat-defaults-save-refusal` 那两族回到绿）。
+
+**让号**：收尾推远端时 `origin/main` 又多了两笔（`e71903835` + `9b71db7b0`，另一条线的 **7.197 / 第三百二十四轮**：
+`draft.spec` 的具名工作区挪进自己的小树里，父目录不再是装满东西的 `/tmp`）。于是本轮让号改记
+**条目 7.198 / 第三百二十五轮**，代码与台账 rebase 到 `9b71db7b0` 之上。两边的读数互相印证：
+那条 `draft.spec` 在我的整套里这一天三次都过（整套、单跑、负载下再单跑），它查实的却是**父目录太大**
+（这台机器 `/tmp` 44 028 个条目、finder 一次画 44 026 行、选中项 21.9 s 才到，断言只等 15 s）——
+所以它不是「负载抖动」，是贴着超时线走的，换个跑法就翻面。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 **2.2c**，它「还差什么」四条这一轮一条都动不了（写侧全在桌面壳、
+部署单元等发布动作、桌面壳自己的开关同前、`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 留到发布期）；
+3.5 要用户拍板取哪个桌面壳、3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖。第 7 节到 7.196
+全勾。第三百二十三轮末尾点名的具体活是「剩下的 3 条既有红」，于是本轮先在这棵树上跑一遍整套拿到当天的真实基线，
+再逐条分诊；分诊到的那条与 `7.197` 那条不重叠（那条是 `draft.spec`，这条是 `server-switch-read-refusal`）。
+
+**当天的基线（实测，不沿用台账）**：`SKIP_BUILD=1` 整套 **415 通过 / 2 失败（38.6 m）**（在 `3119817c3` 上）——
+红的两条是 `scroll-follow-bounce` 的 Primer 一格（`gesture 6: the wheel scrolled up` 收到 **41**，阈值 > 100）
+与 `server-switch-read-refusal` 的公司模式那格。
+
+**缺口是什么（这条是真根因，不是抖动）**：`server-switch-read-refusal` 的公司那格最后断言「重试之后开关打开、
+读回服务端的值、它还是关的」（`not.toBeChecked()`）。可套件共用一个数据根，而 `companyMode` 是**服务端全局**
+的开关：`company.spec`、`calendar-desk-refusal`、`channel-*`、`ticket-*` 等二十来份 spec 各自把它打开，**没有
+一份再关掉**。于是这条用例从它们之后的所有整套跑都在断言前者留下的状态 —— 单跑（全新数据根、开关默认关）
+2 passed，整套里公司那格红；台账从 2026-11-04 的 `7.78` 起就一直把它记成「时序抖动（整套里 24.0 s、单跑
+9.4 s）」，其实那 24 s 正是最后那句 15 s 的断言等满。
+
+**两态实测**（同一份脚本：全新数据根上先以管理员身份 `PUT {companyMode:true}`，模拟前面那些 spec 留下的状态，
+再跑这份 spec）：
+
+- 改前（`git stash` 后的 `HEAD` 版本）：**1 failed / 1 passed（33.9 s）**，红的正是公司那格，报错与整套里那条
+  逐字同形 —— `expect(locator).not.toBeChecked()`、`Received: checked`、34 次解析到 `aria-checked="true"` 的开关。
+- 改后：**2 passed（19.1 s）**（同一个全新数据根、同一个「先把开关打开」的前置）。
+
+**做了什么**（只动测试，没碰源码、接口、文案）：
+
+- `packages/web/e2e/server-switch-read-refusal.spec.mjs` 的 `ready()`：登录管理员后先
+  `PUT /api/admin/settings {companyMode:false, agentApiEnabled:true}`，把这份 spec 要读的两个开关摆回它断言的
+  值（`agentApiEnabled` 那条走 `requireHuman`，这里用的是真人的登录 cookie，服务端照收）；模型行**追加**到
+  `default_project` 的既有表尾，不再整表替换（与第三百二十三轮 `asr-refusal-once` 同一写法：按引用建 Map、
+  重跑是替换不是增长），`defaultModel` 仍钉 `custom/claude-4-8`。注释写明「共用数据根 + 公司 spec 只开不关」的来由。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过**（本笔只动 e2e 夹具，单测数即当前基线）。
+- `npx oxlint` **0 警告 0 错误**（2685 文件）；改动文件 `prettier --check` 干净；`git diff --check` 干净。
+- **两态对照**：改前 **1 failed / 1 passed**（33.9 s）→ 改后 **2 passed**（19.1 s），前置与读数见上。
+- **整套浏览器 e2e（改后）**：`SKIP_BUILD=1` **416 通过 / 1 失败（38.2 m）**（改前基线 415 / 2）——
+  `server-switch-read-refusal` 的两条都在通过的一侧（各 8.5 s；改前公司那条在整套里红）；唯一红的是
+  `scroll-follow-bounce` 的 Primer 一格（`gesture 6: the wheel scrolled up` 收到 **41**，同一天单跑三个主题
+  都过、`textMovedDown` 231–411）。同时确认了把 `companyMode` 摆回 `false` 不伤后面的 spec：`session-*` /
+  `skills` / `steer-*` / `terminal` / `theme-*` / `ticket-*` 等全过（`ticket-*` 自己会再打开它）。
+  （这两趟整套都在 `3119817c3` 上，即还不含 7.197 那笔 `draft.spec` 夹具；它这一天三次都过，与那条不冲突。）
+- 端口只用 8930 / 8931（整套）、8942–8947（单跑与两态探针），跑完全部已停，3003 / 3004 / 4000 / 7364 / 7369
+  一个没碰；数据只落 `/root/adelie-fork-data/r324-*`，探针 / 日志 / 脚本都在 scratchpad 的 `r324/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- `scroll-follow-bounce` 的 Primer 一格是这台机器满载下的滚轮时序：同一条用例单跑（`BOUNCE_GESTURES=2`）三个主题
+  全绿、位移 231–411 px，整套里 `gesture 6` 只滚到 41 px（那一轮 `wheelLatency` 197 ms、`grewWhileStill` 0）。
+  夹具的「10 次 × -50、间隔 30 ms」在 CPU 限速 ×4 之上再叠整套负载时不够，行为断言（`bounces` 为空、
+  `stillDrift ≤ 0.5`）本身没错。留给下一轮：把「滚够」改成边滚边量、直到位移超过阈值（设上限步数），行为断言原样。
+- `layout.spec` 的 `railuser` 那处整表替换落在它自己那个用户的项目上（另一条线 7.197 已查实），没有共享面，不动。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 夹具一笔（`packages/web/e2e/server-switch-read-refusal.spec.mjs`）；台账（条目 7.198、本节、上表那一行）
+  随本文件另起一笔。
 
 ## 第三百二十四轮：工作区的父目录可能是装满东西的 `/tmp`，draft 那条用例把工作区挪进自己的小树里（2026-11-25，条目 7.197）
 
