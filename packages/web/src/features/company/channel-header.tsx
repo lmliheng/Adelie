@@ -19,7 +19,9 @@
  * row — so its refusal is a toast, like every other write here without a question of its own.
  * Opening a member's desk asks nothing, but it is answered in its own panel either way: a desk
  * that could not be opened keeps the reason under the row that asked, and that row's button is
- * the retry.
+ * the retry. Inviting is answered by the picker it was asked in: a refused invite leaves the
+ * picker standing with the reason under that candidate's row, so the same row is the retry and
+ * the query that found him is still there.
  */
 import { Fragment, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
@@ -229,16 +231,43 @@ function InvitePicker({
   candidates: readonly InviteCandidate[];
   query: string;
   onQuery: (value: string) => void;
-  onPick: (candidate: InviteCandidate) => void;
+  /**
+   * Invites one candidate; resolves with the server's reason it did not land, or null once he is
+   * in the channel. The picker answers for the row that asked, so the write's outcome comes back
+   * here rather than being toasted over a picker this would have closed first.
+   */
+  onPick: (candidate: InviteCandidate) => Promise<string | null>;
   busy: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  /**
+   * The candidate whose invite was refused, and the reason, kept with the row that asked. A
+   * picker that closed on the click took the reason away with it: the toast lived outside it and
+   * dismissed itself, leaving nothing to retry from.
+   */
+  const [refusal, setRefusal] = useState<{ principal: string; text: string } | null>(null);
+  // Closing the picker dismisses the question, so the answer goes too; the next open is clean.
+  const close = () => {
+    setOpen(false);
+    setRefusal(null);
+    onQuery("");
+  };
+  const pick = async (candidate: InviteCandidate) => {
+    if (busy) return;
+    // One attempt, one reason: the previous sentence belonged to the attempt before.
+    setRefusal(null);
+    const reason = await onPick(candidate);
+    if (reason === null) close();
+    // Kept open, query and all: the candidate is still the one to click again, and the sentence
+    // has to stay readable under his row for as long as the picker is up.
+    else setRefusal({ principal: candidate.principal, text: reason });
+  };
   return (
     <Dropdown
       open={open}
       setOpen={(v) => {
-        setOpen(v);
-        if (!v) onQuery("");
+        if (v) setOpen(true);
+        else close();
       }}
       portal={{ direction: "down", align: "right" }}
       menuClass="w-72"
@@ -267,24 +296,28 @@ function InvitePicker({
             </p>
           ) : (
             candidates.map((c) => (
-              <MenuItem
-                key={c.principal}
-                density="sm"
-                disabled={busy}
-                onSelect={() => {
-                  setOpen(false);
-                  onQuery("");
-                  onPick(c);
-                }}
-                glyph={
-                  <MemberAvatar
-                    member={{ principal: c.principal, name: c.name, kind: c.kind }}
-                    size={ICON_SIZE.rowLead}
-                  />
-                }
-                label={c.name}
-                trailing={c.detail ?? (c.kind === "user" ? S.company.channels.members : "")}
-              />
+              <Fragment key={c.principal}>
+                <MenuItem
+                  density="sm"
+                  disabled={busy}
+                  onSelect={() => void pick(c)}
+                  glyph={
+                    <MemberAvatar
+                      member={{ principal: c.principal, name: c.name, kind: c.kind }}
+                      size={ICON_SIZE.rowLead}
+                    />
+                  }
+                  label={c.name}
+                  trailing={c.detail ?? (c.kind === "user" ? S.company.channels.members : "")}
+                />
+                {/* The row asked, so the row answers: the reason sits under it, and it is the
+                    same row that retries. */}
+                {refusal !== null && refusal.principal === c.principal && (
+                  <p role="alert" className={`px-2.5 pb-1.5 text-xs ${toneInk.danger}`}>
+                    {refusal.text}
+                  </p>
+                )}
+              </Fragment>
             ))
           )}
         </div>
@@ -376,7 +409,12 @@ export function ChannelHeader({
     }
   };
 
-  const invite = async (candidate: InviteCandidate) => {
+  /**
+   * Adds one candidate to the channel. Returns the server's reason instead of shouting it: the
+   * picker that asked keeps the reason under that candidate's row (`InvitePicker`), the way the
+   * toast used to carry it away from a picker that closed on the click.
+   */
+  const invite = async (candidate: InviteCandidate): Promise<string | null> => {
     setBusy(true);
     try {
       await api.addOrgChannelMember(projectId, orgId, detail.channelId, {
@@ -384,8 +422,9 @@ export function ChannelHeader({
       });
       toastSuccess(S.company.channels.invited(candidate.name));
       onChanged();
+      return null;
     } catch (e) {
-      toastError(apiErrorText(e));
+      return apiErrorText(e);
     } finally {
       setBusy(false);
     }
@@ -489,10 +528,13 @@ export function ChannelHeader({
               button is absent rather than dead. */}
           {!allHands && detail.isMember && !detail.archived && (
             <InvitePicker
+              // One channel's picker, not the next one's: the sentence a refusal left belongs to
+              // the candidate list it was drawn in.
+              key={detail.channelId}
               candidates={candidates}
               query={query}
               onQuery={setQuery}
-              onPick={(c) => void invite(c)}
+              onPick={(c) => invite(c)}
               busy={busy}
             />
           )}
