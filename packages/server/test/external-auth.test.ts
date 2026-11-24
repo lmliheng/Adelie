@@ -211,7 +211,14 @@ describe("external auth: program tokens and introspection", () => {
     const mine = await mint("kate", "kate's own");
     await mint("kate", "second");
     const listed = (await (await kateApi.get("/api/me/tokens")).json()) as UserTokensResponse;
-    expect(listed.tokens.map((x) => x.name)).toEqual(["kate's own", "second"]);
+    // The list is oldest first — but two mints that land inside the SAME millisecond tie on
+    // `created_at`, and the list's total order breaks that tie by token id, which is random. So
+    // the names are compared as a set and only the stamps are compared as a sequence: macOS
+    // mints both inside one millisecond (that is where CI went red), and an "insertion order"
+    // assertion there is a coin flip (the repo's 12-pair check saw 6 reversed).
+    expect(listed.tokens.map((x) => x.name).sort()).toEqual(["kate's own", "second"].sort());
+    const stamps = listed.tokens.map((x) => x.createdAt);
+    expect(stamps).toEqual([...stamps].sort());
     // The raw token is never in a list.
     expect(JSON.stringify(listed)).not.toContain(mine.token);
 

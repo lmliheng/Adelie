@@ -49,6 +49,7 @@ import type {
   DefaultModelResponse,
   DesktopLoginItemStatusResponse,
   DesktopPetStatusResponse,
+  DesktopTitleBarStatusResponse,
   DesktopTrayStatusResponse,
   DesktopUpdateStatusResponse,
   DirectorySkillsResponse,
@@ -3004,6 +3005,12 @@ router
   // which is the honest answer for a browser gallery) and the write is acknowledged.
   .get("/api/desktop/login-item", (): DesktopLoginItemStatusResponse => ({ status: null }))
   .put("/api/desktop/login-item", () => empty())
+  // The window's own title bar, the same shape: a browser gallery is not the shell's window, so
+  // no caption was handed over (`status: null` draws nothing — the honest answer for macOS and
+  // for an older shell, which is the same thing the page reads it as) and the colours the page
+  // relays are acknowledged rather than repainting a window that is not there.
+  .get("/api/desktop/title-bar", (): DesktopTitleBarStatusResponse => ({ status: null }))
+  .put("/api/desktop/title-bar", () => empty())
   .post("/api/desktop/privacy-settings", () => notFound("Desktop mode"));
 
 // ---------------------------------------------------------------------------------------------
