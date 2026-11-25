@@ -1,16 +1,25 @@
 /**
  * The built-in browser as the routes drive it: one object per platform generation that owns
- * the shell link, the tab registry, the driver and actions over them, the history, the
- * settings, and the events the admins' windows hear.
+ * the shell link, the per-conversation tab registries, the driver and actions over them, the
+ * history, the settings, and the events the admins' windows hear.
+ *
+ * The browser is per-conversation. A "scope" is the conversation it belongs to — a Session id,
+ * or `""` for the default one (the CLI outside a session, a window showing no conversation).
+ * Each scope has its own tab registry (its own tab set and its own active pointer) and its own
+ * Chromium partition, so one conversation's pages, log-ins and actions never reach another's: an
+ * agent working in one conversation cannot focus, click or read a tab of another, and a window
+ * showing one conversation sees only that conversation's tabs.
  *
  * Availability comes first on every call that needs the shell: no port means this server is
  * not the desktop shell's child (`not_desktop`), an unanswered hello a shell too old to host
  * the browser (`shell_unsupported`), and an open nobody claims no window to put the tab in
  * (`no_window`). Tabs themselves are created by the Web App — a <webview> is an element of its
- * page — so opening one is a request published to the admins' windows, answered by a claim.
+ * page — so opening one is a request published to the admins' windows, answered by a claim. The
+ * request carries the scope, and the window creates the guest in the scope's partition.
  *
- * Every agent action names a tab (`active` included), makes it the active one, and is
- * bracketed by `builtin_browser_activity` events so the window can show the agent at work.
+ * Every agent action names a tab (`active` included), resolves it inside its own scope, makes it
+ * that scope's active one, and is bracketed by `builtin_browser_activity` events so the window
+ * can show the agent at work.
  *
  * Load: the shell measures its guests every ~10 s, and this turns each measurement into the
  * browser's `metrics` — the tabs' memory with the verdict of load.ts — for the status and the
@@ -36,6 +45,7 @@ import type {
   BuiltinBrowserTabsResponse,
   BuiltinBrowserUnavailableReason,
   DesktopBrowserEvent,
+  DesktopBrowserTab,
 } from "../api/types.js";
 import { HttpError } from "../http/errors.js";
 import { BrowserActions, DEFAULT_ACTION_TIMING } from "./actions.js";
@@ -44,6 +54,7 @@ import { BrowserDriver, mapLinkError, tabCrashedError } from "./driver.js";
 import { HistoryStore, historyFile, isWebUrl } from "./history.js";
 import { listImportSources, readCookies, readHistory } from "./import/index.js";
 import { assessLoad, systemMemory } from "./load.js";
+import { partitionForScope, scopeForPartition } from "./partitions.js";
 import { SettingsStore, settingsFile } from "./settings.js";
 import { ShellLink, ShellLinkError, parseTab } from "./shell-link.js";
 import type { BrowserShellPort, ShellLinkTiming } from "./shell-link.js";
@@ -64,9 +75,10 @@ export interface BrowserTiming extends ShellLinkTiming, ActionTiming {
 }
 
 /**
- * The most tabs the browser holds; an agent's new tab beyond them is refused. Twenty busy
- * shopping and news sites held 3.3 GB between them (measured on Linux), which is already more
- * than an 8 GB laptop can spare; the load warning speaks up well before this.
+ * The most tabs the browser holds — across every conversation, since it is one process's memory
+ * that is at stake; an agent's new tab beyond them is refused. Twenty busy shopping and news
+ * sites held 3.3 GB between them (measured on Linux), which is already more than an 8 GB laptop
+ * can spare; the load warning speaks up well before this.
  */
 export const MAX_TABS = 20;
 /** A page may open this many tabs (popups, target=_blank) in any POPUP_WINDOW_MS; more are dropped. */
@@ -99,7 +111,7 @@ const UNAVAILABLE: Record<BuiltinBrowserUnavailableReason, string> = {
   not_desktop:
     "The built-in browser needs the Adelie desktop app, and this server is not running inside it.",
   shell_unsupported:
-    "This installation of the desktop app is too old to host the built-in browser; update the app.",
+    "This installation of the desktop app is too old to host the per-conversation browser; update the app.",
   no_window: "No Adelie window took the tab; open the app window and try again.",
 };
 
@@ -231,11 +243,9 @@ export interface BuiltinBrowserDeps {
 interface Connected {
   link: ShellLink;
   driver: BrowserDriver;
-  actions: BrowserActions;
 }
 
 export class BuiltinBrowser {
-  readonly tabs: TabRegistry;
   readonly history: HistoryStore;
   readonly settings: SettingsStore;
   private readonly connected: Connected | null;
@@ -243,14 +253,22 @@ export class BuiltinBrowser {
   /** How long an opened web page gets to load before POST /tabs answers. */
   private readonly loadWaitMs: number;
   private readonly importer: Importer;
+  /** One registry per scope: that conversation's tab set and active tab. */
+  private readonly registries = new Map<string, TabRegistry>();
+  /** One actions object per scope, over the shared driver (it holds a scope's registry). */
+  private readonly actions = new Map<string, BrowserActions>();
+  /** Which scope each live tab belongs to — how a `tab-closed` / `tab-crashed` is routed. */
+  private readonly tabScope = new Map<number, string>();
+  /** The scope each open request was made for, so a claim lands the tab in the right registry. */
+  private readonly openScopes = new Map<string, string>();
   /** Agent actions in flight per tab, and the session the latest one came from. */
   private readonly inflight = new Map<number, { count: number; sessionId?: string }>();
   /** Per opener tab, when its recent popups were let through (see `openFromPage`). */
   private readonly popups = new Map<number, number[]>();
   private readonly now: () => number;
   private publishTimer: NodeJS.Timeout | null = null;
-  /** The last tab list the windows were sent, to skip sending the same one again. */
-  private published: string | null = null;
+  /** The last tab list the windows were sent per scope, to skip sending the same one again. */
+  private readonly published = new Map<string, string>();
   /** The shell's latest measurement with its verdict; null before the first. */
   private metrics: BuiltinBrowserMetrics | null = null;
   /** Per tab, when an agent last acted in it (or it opened): it runs unthrottled for a while after. */
@@ -270,7 +288,6 @@ export class BuiltinBrowser {
     this.timing = { ...DEFAULT_TIMING, ...deps.timing };
     this.loadWaitMs = deps.timing?.loadWaitMs ?? DEFAULT_ACTION_TIMING.loadWaitMs;
     this.importer = deps.importer ?? { listImportSources, readCookies, readHistory };
-    this.tabs = new TabRegistry(now);
     this.history = new HistoryStore(historyFile(deps.root), { now, log: deps.log });
     this.settings = new SettingsStore(settingsFile(deps.root), deps.log);
     if (deps.port === null) {
@@ -279,41 +296,83 @@ export class BuiltinBrowser {
     }
     const link = new ShellLink(deps.port, deps.timing, now, deps.log);
     const driver = new BrowserDriver(link, { now, ...(deps.sleep ? { sleep: deps.sleep } : {}) });
-    const actions = new BrowserActions({
-      driver,
-      tabs: this.tabs,
-      now,
-      ...(deps.sleep ? { sleep: deps.sleep } : {}),
-      ...(deps.timing ? { timing: deps.timing } : {}),
-    });
-    this.connected = { link, driver, actions };
+    this.connected = { link, driver };
     link.onEvent((event) => this.onShellEvent(event));
     link.onConnect(() => this.refreshTabs());
+  }
+
+  /** The registry of one scope, created on first use. */
+  private registryFor(scope: string): TabRegistry {
+    let registry = this.registries.get(scope);
+    if (registry === undefined) {
+      registry = new TabRegistry(this.now);
+      this.registries.set(scope, registry);
+    }
+    return registry;
+  }
+
+  /**
+   * The tab registry of one conversation, the default scope when none is named. The routes reach
+   * it through the methods above; this is for tests and diagnostics.
+   */
+  registry(scope = ""): TabRegistry {
+    return this.registryFor(scope);
+  }
+
+  /** The actions of one scope, over the shared driver and that scope's registry. */
+  private actionsFor(scope: string): BrowserActions {
+    let actions = this.actions.get(scope);
+    if (actions === undefined) {
+      actions = new BrowserActions({
+        driver: this.connected!.driver,
+        tabs: this.registryFor(scope),
+        now: this.now,
+        ...(this.deps.sleep ? { sleep: this.deps.sleep } : {}),
+        ...(this.deps.timing ? { timing: this.deps.timing } : {}),
+      });
+      this.actions.set(scope, actions);
+    }
+    return actions;
+  }
+
+  /** Every id open in any scope. */
+  private allTabIds(): number[] {
+    const ids: number[] = [];
+    for (const registry of this.registries.values()) ids.push(...registry.ids());
+    return ids;
+  }
+
+  /** The scope a live tab belongs to; the default scope for one not seen (a shell event race). */
+  private scopeOfTab(tabId: number): string {
+    return this.tabScope.get(tabId) ?? "";
   }
 
   // --- availability and tabs ------------------------------------------------
 
   /** GET /status: never an error — an unavailable browser says why. Retries a failed handshake. */
-  async status(): Promise<BuiltinBrowserStatus> {
+  async status(sessionId?: string): Promise<BuiltinBrowserStatus> {
     const reason = await this.unavailability(true);
+    const registry = this.registryFor(sessionId ?? "");
     return {
       available: reason === null,
       ...(reason !== null ? { reason } : {}),
-      tabs: this.tabs.list(),
-      activeTabId: this.tabs.activeTabId,
+      tabs: registry.list(),
+      activeTabId: registry.activeTabId,
       ...(this.metrics !== null ? { metrics: this.metrics } : {}),
     };
   }
 
   /** GET /tabs. */
-  async listTabs(): Promise<BuiltinBrowserTabsResponse> {
+  async listTabs(sessionId?: string): Promise<BuiltinBrowserTabsResponse> {
     await this.ready();
-    return { tabs: this.tabs.list(), activeTabId: this.tabs.activeTabId };
+    const registry = this.registryFor(sessionId ?? "");
+    return { tabs: registry.list(), activeTabId: registry.activeTabId };
   }
 
   /**
    * POST /tabs: asks the admins' windows for a tab — at the address given, else at the
    * homepage, else blank — waits for one to claim it, and, for a web page, for the page to load.
+   * The tab belongs to `sessionId`'s conversation.
    */
   async openTab(opts: {
     url?: unknown;
@@ -321,6 +380,8 @@ export class BuiltinBrowser {
     activate?: boolean;
   }): Promise<BuiltinBrowserTab> {
     const { driver } = await this.ready();
+    const scope = opts.sessionId ?? "";
+    const registry = this.registryFor(scope);
     const url = await this.newTabUrl(opts.url);
     if (this.tabsHeld() >= MAX_TABS) {
       throw new HttpError(
@@ -334,9 +395,10 @@ export class BuiltinBrowser {
       activate: opts.activate !== false,
       ...(opts.sessionId !== undefined ? { sessionId: opts.sessionId } : {}),
     });
-    const tabId = await this.tabs.waitForClaim(request.requestId, this.timing.openClaimMs);
+    const tabId = await registry.waitForClaim(request.requestId, this.timing.openClaimMs);
     if (tabId === null) throw new BrowserUnavailableError("no_window");
-    if (!this.tabs.has(tabId)) await this.refreshTabs().catch(() => undefined);
+    this.tabScope.set(tabId, scope);
+    if (!registry.has(tabId)) await this.refreshTabs().catch(() => undefined);
     // The agent's (or the panel's) new tab: its grace runs from now, as after an action.
     this.actedAt.set(tabId, this.now());
     this.syncThrottle();
@@ -344,16 +406,19 @@ export class BuiltinBrowser {
       // A window claims the tab as soon as it exists, on its initial empty document, which reads
       // as loaded: the page asked for is waited for once it has committed.
       const deadline = this.now() + this.loadWaitMs;
-      await this.tabs.waitForFirstPage(tabId, this.loadWaitMs);
+      await registry.waitForFirstPage(tabId, this.loadWaitMs);
       await driver.waitForLoad(tabId, Math.max(0, deadline - this.now()));
     }
-    return this.tabOrThrow(tabId);
+    return this.tabOrThrow(scope, tabId);
   }
 
   /** POST /tabs/claim: the window that created a requested tab names it. */
   async claim(requestId: string, tabId: number): Promise<void> {
     await this.ready();
-    const outcome = this.tabs.claim(requestId, tabId);
+    this.pruneOpenScopes();
+    const scope = this.openScopes.get(requestId) ?? this.scopeOfTab(tabId);
+    const registry = this.registryFor(scope);
+    const outcome = registry.claim(requestId, tabId);
     if (outcome === "duplicate") {
       throw new HttpError(
         409,
@@ -368,17 +433,30 @@ export class BuiltinBrowser {
         "No tab is waiting for this request any more; remove the tab.",
       );
     }
-    if (this.tabs.openRequest(requestId)?.activate === true && this.tabs.activate(tabId)) {
+    this.tabScope.set(tabId, scope);
+    if (registry.openRequest(requestId)?.activate === true && registry.activate(tabId)) {
       this.schedulePublish();
     }
   }
 
+  /** Forgets the scopes of open requests the registries have since dropped. */
+  private pruneOpenScopes(): void {
+    for (const [requestId, scope] of this.openScopes) {
+      // Skip the default scope's empty registry: a scope with no registry has no request either.
+      if (this.registries.get(scope)?.openRequest(requestId) === undefined) {
+        this.openScopes.delete(requestId);
+      }
+    }
+  }
+
   /** POST /tabs/:tab/activate: the user focused a tab, or the agent switched to one. */
-  async activate(tab: string): Promise<BuiltinBrowserTab> {
+  async activate(tab: string, sessionId?: string): Promise<BuiltinBrowserTab> {
     await this.ready();
-    const tabId = this.resolve(tab);
-    if (this.tabs.activate(tabId)) this.schedulePublish();
-    return this.tabOrThrow(tabId);
+    const scope = sessionId ?? "";
+    const registry = this.registryFor(scope);
+    const tabId = this.resolve(scope, tab);
+    if (registry.activate(tabId)) this.schedulePublish();
+    return this.tabOrThrow(scope, tabId);
   }
 
   /**
@@ -391,11 +469,13 @@ export class BuiltinBrowser {
   }
 
   /** DELETE /tabs/:tab: the window holding the tab removes it; this waits until it is gone. */
-  async close(tab: string): Promise<void> {
+  async close(tab: string, sessionId?: string): Promise<void> {
     await this.ready();
-    const tabId = this.resolve(tab);
+    const scope = sessionId ?? "";
+    const registry = this.registryFor(scope);
+    const tabId = this.resolve(scope, tab);
     this.deps.publish({ type: "builtin_browser_close", tabId });
-    if (!(await this.tabs.waitForClose(tabId, this.timing.closeWaitMs))) {
+    if (!(await registry.waitForClose(tabId, this.timing.closeWaitMs))) {
       throw new BrowserUnavailableError("no_window");
     }
   }
@@ -406,16 +486,16 @@ export class BuiltinBrowser {
   async navigate(tab: string, rawUrl: unknown, sessionId?: string): Promise<BuiltinBrowserTab> {
     const url = browserUrl(rawUrl, false);
     await this.ready();
-    if (tab === "active" && this.tabs.activeTabId === null) {
+    if (tab === "active" && this.registryFor(sessionId ?? "").activeTabId === null) {
       return this.openTab({
         url,
         activate: true,
         ...(sessionId !== undefined ? { sessionId } : {}),
       });
     }
-    return this.act(tab, "navigate", sessionId, async (tabId, actions) => {
+    return this.act(tab, "navigate", sessionId, async (tabId, actions, scope) => {
       await actions.navigate(tabId, url);
-      return this.tabOrThrow(tabId);
+      return this.tabOrThrow(scope, tabId);
     });
   }
 
@@ -424,12 +504,13 @@ export class BuiltinBrowser {
     opts: { textOnly?: boolean; maxChars?: number; instruction?: string },
     sessionId?: string,
   ): Promise<BuiltinBrowserScanResult> {
-    return this.act(tab, "scan", sessionId, async (tabId, actions) => {
+    return this.act(tab, "scan", sessionId, async (tabId, actions, scope) => {
       const { content, truncated } = await actions.scan(tabId, opts);
+      const registry = this.registryFor(scope);
       return {
-        tab: this.tabOrThrow(tabId),
-        tabs: this.tabs.list(),
-        activeTabId: this.tabs.activeTabId,
+        tab: this.tabOrThrow(scope, tabId),
+        tabs: registry.list(),
+        activeTabId: registry.activeTabId,
         content,
         ...(truncated ? { truncated } : {}),
       };
@@ -503,11 +584,14 @@ export class BuiltinBrowser {
   }
 
   /**
-   * POST /import: cookies go into the browser's session through the shell, history into the
-   * history file. With neither flag both are imported. `sourceId` may also name just a
+   * POST /import: cookies go into the conversation's own partition through the shell, history
+   * into the history file. With neither flag both are imported. `sourceId` may also name just a
    * browser (`chrome`), meaning its first profile.
    */
-  async importFrom(req: BuiltinBrowserImportRequest): Promise<BuiltinBrowserImportResult> {
+  async importFrom(
+    req: BuiltinBrowserImportRequest,
+    sessionId?: string,
+  ): Promise<BuiltinBrowserImportResult> {
     const sources = this.importer.listImportSources();
     const source =
       sources.find((s) => s.id === req.sourceId) ?? sources.find((s) => s.browser === req.sourceId);
@@ -528,7 +612,11 @@ export class BuiltinBrowser {
       if (read.cookies.length > 0) {
         try {
           written = (await link.request(
-            { op: "set-cookies", cookies: read.cookies },
+            {
+              op: "set-cookies",
+              partition: partitionForScope(sessionId ?? ""),
+              cookies: read.cookies,
+            },
             30_000 + read.cookies.length * 20,
           )) as typeof written;
         } catch (err) {
@@ -570,11 +658,17 @@ export class BuiltinBrowser {
     this.history.clear();
   }
 
-  /** POST /clear-data: the browser's cookies, cache or site storage. */
-  async clearData(storages: ("cookies" | "cache" | "storage")[]): Promise<void> {
+  /** POST /clear-data: one conversation's cookies, cache or site storage. */
+  async clearData(
+    storages: ("cookies" | "cache" | "storage")[],
+    sessionId?: string,
+  ): Promise<void> {
     const { link } = await this.ready();
     try {
-      await link.request({ op: "clear-data", storages }, 60_000);
+      await link.request(
+        { op: "clear-data", partition: partitionForScope(sessionId ?? ""), storages },
+        60_000,
+      );
     } catch (err) {
       throw mapLinkError(err, -1);
     }
@@ -588,7 +682,8 @@ export class BuiltinBrowser {
     if (this.throttleTimer !== null) clearTimeout(this.throttleTimer);
     this.throttleTimer = null;
     this.connected?.link.dispose();
-    this.tabs.dispose();
+    for (const registry of this.registries.values()) registry.dispose();
+    this.registries.clear();
     void this.history.dispose();
   }
 
@@ -605,23 +700,24 @@ export class BuiltinBrowser {
     return this.connected!;
   }
 
-  /** `active` or a tab id, to an open tab. */
-  private resolve(tab: string): number {
+  /** `active` (in `scope`) or a tab id, to an open tab of that scope. */
+  private resolve(scope: string, tab: string): number {
+    const registry = this.registryFor(scope);
     if (tab === "active") {
-      const id = this.tabs.activeTabId;
+      const id = registry.activeTabId;
       if (id === null)
         throw new HttpError(404, "no_tab", "No tab is open in the built-in browser.");
       return id;
     }
     const id = /^\d{1,15}$/.test(tab) ? Number(tab) : Number.NaN;
-    if (!this.tabs.has(id)) {
+    if (!registry.has(id)) {
       throw new HttpError(404, "no_such_tab", `Tab ${tab} is not open in the built-in browser.`);
     }
     return id;
   }
 
-  private tabOrThrow(tabId: number): BuiltinBrowserTab {
-    const tab = this.tabs.get(tabId);
+  private tabOrThrow(scope: string, tabId: number): BuiltinBrowserTab {
+    const tab = this.registryFor(scope).get(tabId);
     if (tab === undefined) {
       throw new HttpError(404, "no_such_tab", `Tab ${tabId} is not open in the built-in browser.`);
     }
@@ -635,30 +731,35 @@ export class BuiltinBrowser {
   }
 
   /**
-   * One agent action on one tab: made active, running unthrottled and announced busy while it
-   * runs. A tab whose page crashed answers `tab_crashed` at once, and so does an action whose
-   * page crashed under it, whatever error that left behind.
+   * One agent action on one tab, inside the caller's scope: made that scope's active tab,
+   * running unthrottled and announced busy while it runs. A tab whose page crashed answers
+   * `tab_crashed` at once, and so does an action whose page crashed under it, whatever error
+   * that left behind. A tab id that belongs to another conversation is `no_such_tab` — the
+   * pages of one conversation are not the agent's to touch from another.
    */
   private async act<T>(
     tab: string,
     action: BuiltinBrowserAction,
     sessionId: string | undefined,
-    run: (tabId: number, actions: BrowserActions) => Promise<T>,
+    run: (tabId: number, actions: BrowserActions, scope: string) => Promise<T>,
   ): Promise<T> {
-    const { actions } = await this.ready();
-    const tabId = this.resolve(tab);
-    const crashed = this.tabs.get(tabId)?.crashed;
+    await this.ready();
+    const scope = sessionId ?? "";
+    const registry = this.registryFor(scope);
+    const tabId = this.resolve(scope, tab);
+    const crashed = registry.get(tabId)?.crashed;
     if (crashed !== undefined) throw tabCrashedError(tabId, crashed);
-    if (this.tabs.activate(tabId)) this.schedulePublish();
+    if (registry.activate(tabId)) this.schedulePublish();
     this.activity(tabId, action, sessionId, 1);
     try {
-      return await run(tabId, actions);
+      return await run(tabId, this.actionsFor(scope), scope);
     } catch (err) {
       // The shell no longer has it: the registry catches up rather than waiting for the event.
-      if (err instanceof HttpError && err.code === "no_such_tab" && this.tabs.remove(tabId)) {
+      if (err instanceof HttpError && err.code === "no_such_tab" && registry.remove(tabId)) {
+        this.tabScope.delete(tabId);
         this.schedulePublish();
       }
-      const crashedNow = this.tabs.get(tabId)?.crashed;
+      const crashedNow = registry.get(tabId)?.crashed;
       if (crashedNow !== undefined) throw tabCrashedError(tabId, crashedNow);
       throw err;
     } finally {
@@ -696,16 +797,19 @@ export class BuiltinBrowser {
     openerTabId?: number;
     sessionId?: string;
   }): OpenRequest {
-    const request = this.tabs.createOpen({
+    const scope = opts.sessionId ?? "";
+    const request = this.registryFor(scope).createOpen({
       url: opts.url,
       activate: opts.activate,
       ...(opts.openerTabId !== undefined ? { openerTabId: opts.openerTabId } : {}),
     });
+    this.openScopes.set(request.requestId, scope);
     this.deps.publish({
       type: "builtin_browser_open",
       requestId: request.requestId,
       url: opts.url,
       activate: opts.activate,
+      partition: partitionForScope(scope),
       ...(opts.openerTabId !== undefined ? { openerTabId: opts.openerTabId } : {}),
       ...(opts.sessionId !== undefined ? { sessionId: opts.sessionId } : {}),
     });
@@ -713,10 +817,10 @@ export class BuiltinBrowser {
   }
 
   /**
-   * A popup, or "Open link in new tab". The session of an action running in the opener is the
-   * one that caused it. A page gets at most POPUP_LIMIT tabs in any POPUP_WINDOW_MS, and none
-   * while the browser holds MAX_TABS: one looping on window.open would otherwise open tabs
-   * without end. What goes over is dropped, with a log line.
+   * A popup, or "Open link in new tab". The conversation of an action running in the opener is
+   * the one that caused it, else the opener tab's own. A page gets at most POPUP_LIMIT tabs in
+   * any POPUP_WINDOW_MS, and none while the browser holds MAX_TABS: one looping on window.open
+   * would otherwise open tabs without end. What goes over is dropped, with a log line.
    */
   private openFromPage(event: { url: string; openerTabId: number; background?: boolean }): void {
     const now = this.now();
@@ -734,18 +838,23 @@ export class BuiltinBrowser {
       return;
     }
     this.popups.set(event.openerTabId, [...recent, now]);
-    const sessionId = this.inflight.get(event.openerTabId)?.sessionId;
+    const sessionId =
+      this.inflight.get(event.openerTabId)?.sessionId ?? this.scopeOfTab(event.openerTabId);
     this.requestOpen({
       url: event.url,
       activate: event.background !== true,
       openerTabId: event.openerTabId,
-      ...(sessionId !== undefined ? { sessionId } : {}),
+      ...(sessionId !== "" ? { sessionId } : {}),
     });
   }
 
   /** The tabs open, and those on their way (asked of a window, not yet claimed). */
   private tabsHeld(): number {
-    return this.tabs.list().length + this.tabs.pendingOpens();
+    let held = 0;
+    for (const registry of this.registries.values()) {
+      held += registry.list().length + registry.pendingOpens();
+    }
+    return held;
   }
 
   /** One shell event. Never throws: a failure is logged, and the next event starts clean. */
@@ -760,28 +869,37 @@ export class BuiltinBrowser {
   private applyShellEvent(event: DesktopBrowserEvent): void {
     switch (event.kind) {
       case "tab": {
-        const previous = this.tabs.upsert(event.tab);
+        const scope = scopeForPartition(event.tab.partition) ?? "";
+        const { partition: _partition, ...tab } = event.tab;
+        const registry = this.registryFor(scope);
+        const previous = registry.upsert(tab);
+        this.tabScope.set(tab.id, scope);
         if (previous === undefined) {
           // A new tab loads at full speed for the grace period, whoever opened it.
-          if (!this.actedAt.has(event.tab.id)) this.actedAt.set(event.tab.id, this.now());
+          if (!this.actedAt.has(tab.id)) this.actedAt.set(tab.id, this.now());
           this.syncThrottle();
         }
-        this.history.observe(previous, event.tab);
+        this.history.observe(previous, tab);
         this.schedulePublish();
         break;
       }
-      case "tab-closed":
-        if (this.tabs.remove(event.tabId)) this.schedulePublish();
+      case "tab-closed": {
+        const scope = this.scopeOfTab(event.tabId);
+        if (this.registryFor(scope).remove(event.tabId)) this.schedulePublish();
+        this.tabScope.delete(event.tabId);
         this.inflight.delete(event.tabId);
         this.popups.delete(event.tabId);
         this.actedAt.delete(event.tabId);
         this.syncThrottle();
         break;
+      }
       case "tab-crashed":
         this.deps.log(
           `builtin browser: tab ${event.tabId}'s page crashed (${event.reason}, exit code ${event.exitCode})`,
         );
-        if (this.tabs.markCrashed(event.tabId, event.reason)) this.schedulePublish();
+        if (this.registryFor(this.scopeOfTab(event.tabId)).markCrashed(event.tabId, event.reason)) {
+          this.schedulePublish();
+        }
         break;
       case "metrics":
         this.measure(event.tabs, event.totalKB);
@@ -800,6 +918,11 @@ export class BuiltinBrowser {
     }
   }
 
+  /**
+   * Rebuilds every scope from the shell's full tab list: each tab carries the partition it runs
+   * in, which is the conversation it belongs to. Called after each handshake — a new generation,
+   * a restarted server — so a window whose guests outlived the server is scoped again.
+   */
   private async refreshTabs(): Promise<void> {
     if (this.connected === null) return;
     const answer = (await this.connected.link.request(
@@ -808,10 +931,28 @@ export class BuiltinBrowser {
     )) as {
       tabs?: unknown;
     } | null;
-    const tabs = Array.isArray(answer?.tabs)
-      ? answer.tabs.map(parseTab).filter((tab): tab is BuiltinBrowserTab => tab !== null)
+    const parsed = Array.isArray(answer?.tabs)
+      ? answer.tabs.map(parseTab).filter((tab): tab is DesktopBrowserTab => tab !== null)
       : [];
-    if (this.tabs.replaceAll(tabs)) this.schedulePublish();
+    const byScope = new Map<string, BuiltinBrowserTab[]>();
+    for (const tab of parsed) {
+      const scope = scopeForPartition(tab.partition) ?? "";
+      const { partition: _partition, ...plain } = tab;
+      const list = byScope.get(scope);
+      if (list === undefined) byScope.set(scope, [plain]);
+      else list.push(plain);
+      this.tabScope.set(plain.id, scope);
+    }
+    for (const [scope, registry] of this.registries) {
+      if (registry.replaceAll(byScope.get(scope) ?? [])) this.schedulePublish();
+    }
+    for (const [scope, list] of byScope) {
+      if (this.registries.has(scope)) continue;
+      if (this.registryFor(scope).replaceAll(list)) this.schedulePublish();
+    }
+    // Tabs that vanished while the server was away leave no stale routing behind.
+    const live = new Set(parsed.map((tab) => tab.id));
+    for (const id of [...this.tabScope.keys()]) if (!live.has(id)) this.tabScope.delete(id);
     // A shell met again (a new generation, a restarted server) is told afresh which tabs to throttle.
     this.throttleSent = null;
     this.syncThrottle();
@@ -822,7 +963,7 @@ export class BuiltinBrowser {
     measured: { tabId: number; memoryKB: number; cpuPercent: number }[],
     totalKB: number,
   ) {
-    const open = new Set(this.tabs.ids());
+    const open = new Set(this.allTabIds());
     const read =
       this.deps.systemMemory ?? (() => ({ freeBytes: os.freemem(), totalBytes: os.totalmem() }));
     const { freeBytes, totalBytes } = read();
@@ -841,10 +982,10 @@ export class BuiltinBrowser {
   }
 
   /**
-   * Tells the shell which tabs may be throttled while out of sight: every open tab but the one on
-   * screen and those an agent is acting in or acted in within the grace period (new tabs
-   * included). Sent only when the list changes, and re-checked when the earliest grace runs out.
-   * A shell too old for the command leaves every tab at full speed, as before.
+   * Tells the shell which tabs may be throttled while out of sight: every open tab in every scope
+   * but the one on screen and those an agent is acting in or acted in within the grace period
+   * (new tabs included). Sent only when the list changes, and re-checked when the earliest grace
+   * runs out. A shell too old for the command leaves every tab at full speed, as before.
    */
   private syncThrottle(): void {
     const link = this.connected?.link;
@@ -853,7 +994,7 @@ export class BuiltinBrowser {
     const grace = this.timing.throttleGraceMs;
     let recheckAt = Number.POSITIVE_INFINITY;
     const throttled: number[] = [];
-    for (const id of this.tabs.ids()) {
+    for (const id of this.allTabIds()) {
       if (id === this.onScreen || this.inflight.has(id)) continue;
       const acted = this.actedAt.get(id);
       if (acted !== undefined && now - acted < grace) {
@@ -891,22 +1032,33 @@ export class BuiltinBrowser {
       });
   }
 
-  /** The tab list to the windows, once per burst of changes, and only when it differs from the last one sent. */
+  /**
+   * The tab lists to the windows, once per burst of changes, and only for the scopes whose list
+   * differs from the last one sent. One event per conversation, so a window showing one
+   * conversation hears only that conversation's tabs.
+   */
   private schedulePublish(): void {
     if (this.publishTimer !== null || this.disposed) return;
     this.publishTimer = setTimeout(() => {
       this.publishTimer = null;
       if (this.disposed) return;
-      const tabs = this.tabs.list();
-      const activeTabId = this.tabs.activeTabId;
-      const snapshot = JSON.stringify({ tabs, activeTabId });
-      if (snapshot === this.published) return;
-      this.published = snapshot;
-      try {
-        this.deps.publish({ type: "builtin_browser_tabs", tabs, activeTabId });
-      } catch (err) {
-        this.published = null;
-        this.deps.log(`builtin browser: the tab list could not be sent: ${messageOf(err)}`);
+      for (const [scope, registry] of this.registries) {
+        const tabs = registry.list();
+        const activeTabId = registry.activeTabId;
+        const snapshot = JSON.stringify({ tabs, activeTabId });
+        if (this.published.get(scope) === snapshot) continue;
+        this.published.set(scope, snapshot);
+        try {
+          this.deps.publish({
+            type: "builtin_browser_tabs",
+            tabs,
+            activeTabId,
+            ...(scope !== "" ? { sessionId: scope } : {}),
+          });
+        } catch (err) {
+          this.published.delete(scope);
+          this.deps.log(`builtin browser: the tab list could not be sent: ${messageOf(err)}`);
+        }
       }
     }, this.timing.publishDelayMs);
   }

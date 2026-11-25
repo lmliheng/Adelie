@@ -19,14 +19,15 @@
  */
 import { randomUUID } from "node:crypto";
 import type {
-  BuiltinBrowserTab,
   BuiltinBrowserTabMetrics,
   DesktopBrowserCommand,
   DesktopBrowserCommandMessage,
   DesktopBrowserEvent,
   DesktopBrowserReplyMessage,
+  DesktopBrowserTab,
 } from "../api/types.js";
 import type { ShellPort } from "../services/desktop-update-port.js";
+import { BROWSER_PARTITION_PREFIX } from "./partitions.js";
 
 type MessageListener = (e: { data: unknown }) => void;
 
@@ -66,6 +67,15 @@ export const DEFAULT_SHELL_LINK_TIMING: ShellLinkTiming = {
   defaultTimeoutMs: 30_000,
 };
 
+/**
+ * The oldest shell this platform can drive. Version 1 hosted every guest in one partition; from
+ * version 2 the browser is per-conversation (a `<webview>` per session's own cookie jar, tabs
+ * reported with the partition they run in). A shell that only answers `hello` with an older
+ * version cannot host what the server now asks of it, so it reads as one too old — the same
+ * "update the app" a shell that never answers gets.
+ */
+export const MIN_PROTOCOL_VERSION = 2;
+
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
@@ -89,7 +99,7 @@ function crashReasonOf(value: unknown): string | undefined {
 }
 
 /** A tab as the shell reports it; null for anything that does not have the shape. */
-export function parseTab(value: unknown): BuiltinBrowserTab | null {
+export function parseTab(value: unknown): DesktopBrowserTab | null {
   if (!isRecord(value)) return null;
   const { id, url, title, loading, canGoBack, canGoForward } = value;
   if (typeof id !== "number" || !Number.isSafeInteger(id)) return null;
@@ -98,6 +108,12 @@ export function parseTab(value: unknown): BuiltinBrowserTab | null {
   if (typeof canGoBack !== "boolean" || typeof canGoForward !== "boolean") return null;
   const favicon = faviconOf(value.favicon);
   const crashed = crashReasonOf(value.crashed);
+  // A shell that does not name a partition (one older than the per-conversation browser) put
+  // every guest in the original one, so that is what its tabs are.
+  const partition =
+    typeof value.partition === "string" && value.partition !== ""
+      ? value.partition
+      : BROWSER_PARTITION_PREFIX;
   return {
     id,
     url,
@@ -105,6 +121,7 @@ export function parseTab(value: unknown): BuiltinBrowserTab | null {
     loading,
     canGoBack,
     canGoForward,
+    partition,
     ...(favicon !== undefined ? { favicon } : {}),
     ...(crashed !== undefined ? { crashed } : {}),
   };
@@ -272,9 +289,20 @@ export class ShellLink {
       return Promise.resolve(false);
     }
     this.handshaking = (async () => {
+      let answer: unknown;
       try {
-        await this.request({ op: "hello" }, this.timing.helloTimeoutMs);
+        answer = await this.request({ op: "hello" }, this.timing.helloTimeoutMs);
       } catch {
+        if (!this.disposed) {
+          this.state = "unsupported";
+          this.failedAt = this.now();
+        }
+        return false;
+      }
+      // An answer from a shell older than the per-conversation browser (version 1, or none): it
+      // cannot host the guests this platform creates, so it is "too old", as if it never answered.
+      const version = isRecord(answer) ? answer.version : undefined;
+      if (typeof version !== "number" || version < MIN_PROTOCOL_VERSION) {
         if (!this.disposed) {
           this.state = "unsupported";
           this.failedAt = this.now();

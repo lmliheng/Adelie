@@ -103,6 +103,14 @@ function sessionIdOf(body: Body): string | undefined {
   return id === undefined || id === "" ? undefined : id.slice(0, 200);
 }
 
+/**
+ * The conversation a request acts in: the body's `sessionId`, else the query's. GETs and DELETEs
+ * have no body to carry it, and the CLI reaches every route with the same name for it.
+ */
+function scoped(c: Context<AppEnv>, body: Body = {}): string | undefined {
+  return sessionIdOf(body) ?? sessionIdOf({ sessionId: c.req.query("sessionId") });
+}
+
 const STORAGES = new Set(["cookies", "cache", "storage"]);
 
 export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
@@ -123,15 +131,17 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
     await next();
   });
 
-  app.get("/status", async (c) => c.json((await browser.status()) satisfies BuiltinBrowserStatus));
+  app.get("/status", async (c) =>
+    c.json((await browser.status(scoped(c))) satisfies BuiltinBrowserStatus),
+  );
 
-  app.get("/tabs", async (c) => c.json(await browser.listTabs()));
+  app.get("/tabs", async (c) => c.json(await browser.listTabs(scoped(c))));
 
   app.post("/tabs", async (c) => {
     const body = await jsonBody(c);
     const url = optString(body, "url");
     const activate = optBool(body, "activate");
-    const sessionId = sessionIdOf(body);
+    const sessionId = scoped(c, body);
     const tab = await browser.openTab({
       ...(url !== undefined ? { url } : {}),
       ...(activate !== undefined ? { activate } : {}),
@@ -163,18 +173,19 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
   });
 
   app.post("/tabs/:tab/activate", async (c) => {
-    const tab = await browser.activate(c.req.param("tab"));
+    const body = await jsonBody(c);
+    const tab = await browser.activate(c.req.param("tab"), scoped(c, body));
     return c.json({ tab } satisfies { tab: BuiltinBrowserTab });
   });
 
   app.delete("/tabs/:tab", async (c) => {
-    await browser.close(c.req.param("tab"));
+    await browser.close(c.req.param("tab"), scoped(c));
     return c.body(null, 204);
   });
 
   app.post("/tabs/:tab/navigate", async (c) => {
     const body = await jsonBody(c);
-    const tab = await browser.navigate(c.req.param("tab"), body.url, sessionIdOf(body));
+    const tab = await browser.navigate(c.req.param("tab"), body.url, scoped(c, body));
     return c.json({ tab } satisfies { tab: BuiltinBrowserTab });
   });
 
@@ -190,7 +201,7 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
         ...(maxChars !== undefined ? { maxChars } : {}),
         ...(instruction !== undefined ? { instruction } : {}),
       },
-      sessionIdOf(body),
+      scoped(c, body),
     );
     return c.json(result);
   });
@@ -209,7 +220,7 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
         ...(timeoutMs !== undefined ? { timeoutMs } : {}),
         ...(acceptDialogs !== undefined ? { acceptDialogs } : {}),
       },
-      sessionIdOf(body),
+      scoped(c, body),
     );
     return c.json(result);
   });
@@ -236,7 +247,7 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
         c.req.param("tab"),
         target,
         acceptDialogs !== undefined ? { acceptDialogs } : {},
-        sessionIdOf(body),
+        scoped(c, body),
       ),
     );
   });
@@ -256,7 +267,7 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
           ...(submit !== undefined ? { submit } : {}),
           ...(acceptDialogs !== undefined ? { acceptDialogs } : {}),
         },
-        sessionIdOf(body),
+        scoped(c, body),
       ),
     );
   });
@@ -267,7 +278,7 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
     const shot = await browser.screenshot(
       c.req.param("tab"),
       fullPage !== undefined ? { fullPage } : {},
-      sessionIdOf(body),
+      scoped(c, body),
     );
     return c.json(shot satisfies BuiltinBrowserScreenshot);
   });
@@ -289,7 +300,7 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
       c.req.param("tab"),
       method,
       params as Record<string, unknown> | undefined,
-      sessionIdOf(body),
+      scoped(c, body),
     );
     return c.json({ result });
   });
@@ -310,14 +321,17 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
     ) {
       throw badRequest("domains must be a list of site names.");
     }
-    const result = await browser.importFrom({
-      sourceId,
-      ...(cookies !== undefined ? { cookies } : {}),
-      ...(history !== undefined ? { history } : {}),
-      ...(Array.isArray(domains)
-        ? { domains: (domains as string[]).map((d) => d.trim()).filter((d) => d !== "") }
-        : {}),
-    });
+    const result = await browser.importFrom(
+      {
+        sourceId,
+        ...(cookies !== undefined ? { cookies } : {}),
+        ...(history !== undefined ? { history } : {}),
+        ...(Array.isArray(domains)
+          ? { domains: (domains as string[]).map((d) => d.trim()).filter((d) => d !== "") }
+          : {}),
+      },
+      scoped(c, body),
+    );
     return c.json(result satisfies BuiltinBrowserImportResult);
   });
 
@@ -359,7 +373,7 @@ export function builtinBrowserRoutes(browser: BuiltinBrowser): Hono<AppEnv> {
     ) {
       throw badRequest('storages is a non-empty list of "cookies", "cache" and "storage".');
     }
-    await browser.clearData(storages as ("cookies" | "cache" | "storage")[]);
+    await browser.clearData(storages as ("cookies" | "cache" | "storage")[], scoped(c, body));
     return c.body(null, 204);
   });
 

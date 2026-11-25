@@ -15,7 +15,13 @@ import {
 
 const EVENTS: BuiltinBrowserServerEvent[] = [
   { type: "builtin_browser_tabs", tabs: [], activeTabId: null },
-  { type: "builtin_browser_open", requestId: "r", url: "https://example.com/", activate: true },
+  {
+    type: "builtin_browser_open",
+    requestId: "r",
+    url: "https://example.com/",
+    activate: true,
+    partition: "persist:penguin-browser",
+  },
   { type: "builtin_browser_close", tabId: 1 },
   { type: "builtin_browser_activity", tabId: 1, busy: true, action: "scan" },
   {

@@ -191,8 +191,8 @@ describe("availability", () => {
 
   it("is available once the shell answers, with the tabs it already hosts", async () => {
     const shell = new FakeShell();
-    shell.guests.set(4, tab(4));
-    shell.guests.set(7, tab(7));
+    shell.host(tab(4));
+    shell.host(tab(7));
     const h = mount({ shell });
     const status = await json<BuiltinBrowserStatus>(await h.call("GET", "/status"));
     expect(status).toEqual({ available: true, tabs: [tab(4), tab(7)], activeTabId: 7 });
@@ -216,6 +216,8 @@ describe("tabs", () => {
   it("opens a tab through a window's claim, then waits for the page to load", async () => {
     const h = mount();
     h.shell.cdp = page(() => ({}));
+    // The window creates the guest in the partition the open event named — s1's own cookie jar.
+    h.shell.partition = "persist:penguin-browser:s1";
     const opening = h.call("POST", "/tabs", { url: "example.test/start", sessionId: "s1" });
     await until(() => h.events.some((e) => e.type === "builtin_browser_open"), "the open event");
     const open = openEvent(h.events);
@@ -238,7 +240,7 @@ describe("tabs", () => {
       id: 21,
       title: "Start",
     });
-    expect(h.browser.tabs.activeTabId).toBe(21);
+    expect(h.browser.registry("s1").activeTabId).toBe(21);
     await until(
       () => h.events.some((e) => e.type === "builtin_browser_tabs" && e.activeTabId === 21),
       "the tabs event",
@@ -337,7 +339,7 @@ describe("tabs", () => {
     expect(h.events).toContainEqual({ type: "builtin_browser_close", tabId: 1 });
     h.shell.close(1);
     expect((await closing).status).toBe(204);
-    expect(h.browser.tabs.ids()).toEqual([2]);
+    expect(h.browser.registry().ids()).toEqual([2]);
 
     // A window that does not remove the tab leaves it open: no_window.
     const stuck = await h.call("DELETE", "/tabs/2");
@@ -358,6 +360,8 @@ describe("tabs", () => {
 describe("agent actions", () => {
   it("navigates an open tab and returns it loaded", async () => {
     const h = mount();
+    h.shell.show(tab(3, { url: "https://before.test/" }));
+    h.shell.partition = "persist:penguin-browser:s9";
     h.shell.show(tab(3, { url: "https://before.test/" }));
     h.shell.cdp = page((tabId, method, params) => {
       if (method === "Page.navigate") {
@@ -457,6 +461,8 @@ describe("agent actions", () => {
 
   it("answers exec with the value, the transients and the diff", async () => {
     const h = mount();
+    h.shell.show(tab(2));
+    h.shell.partition = "persist:penguin-browser:s1";
     h.shell.show(tab(2));
     let script = "";
     h.shell.cdp = page(
@@ -675,6 +681,8 @@ describe("agent actions", () => {
   it("lists the popup a script opened as a new tab", async () => {
     const h = mount();
     h.shell.show(tab(2));
+    h.shell.partition = "persist:penguin-browser:s4";
+    h.shell.show(tab(2));
     h.shell.cdp = page((_tabId, _method, params) => {
       // The page calls window.open: the shell denies it and asks for a tab instead. Only the
       // script's own evaluate does: Page.enable and the monitor's round trips arrive first,
@@ -858,7 +866,7 @@ describe("agent actions", () => {
     const res = await h.call("POST", "/tabs/2/screenshot", {});
     expect(res.status).toBe(404);
     expect((await errorOf(res)).error.code).toBe("no_such_tab");
-    expect(h.browser.tabs.has(2)).toBe(false);
+    expect(h.browser.registry().has(2)).toBe(false);
   });
 });
 
@@ -986,7 +994,11 @@ describe("import, history and data", () => {
     expect((await h.call("POST", "/clear-data", { storages: ["cookies", "cache"] })).status).toBe(
       204,
     );
-    expect(h.shell.commands.at(-1)).toEqual({ op: "clear-data", storages: ["cookies", "cache"] });
+    expect(h.shell.commands.at(-1)).toEqual({
+      op: "clear-data",
+      partition: "persist:penguin-browser",
+      storages: ["cookies", "cache"],
+    });
     expect((await h.call("POST", "/clear-data", { storages: ["everything"] })).status).toBe(400);
   });
 
@@ -1121,5 +1133,90 @@ describe("browserUrl", () => {
     for (const bad of [undefined, "", "about:blank", "chrome://gpu", 7]) {
       expect(() => homepageUrl(bad)).toThrow(/not a web address a homepage can be/);
     }
+  });
+});
+
+/**
+ * The browser is per-conversation: each Session's tabs, active pointer and cookie jar are its
+ * own. These cover the isolation itself — the reason the browser is scoped at all: one
+ * conversation's agent cannot focus, read or click another conversation's pages, and a tab it
+ * names by id that belongs to another conversation is simply not there.
+ */
+describe("per-conversation isolation", () => {
+  it("keeps each conversation's tabs and active tab its own, whichever order they are used in", async () => {
+    const h = mount();
+    h.shell.partition = "persist:penguin-browser:a";
+    h.shell.show(tab(1, { title: "A's page" }));
+    h.shell.partition = "persist:penguin-browser:b";
+    h.shell.show(tab(2, { title: "B's page" }));
+
+    const a = await json<{ tabs: BuiltinBrowserTab[]; activeTabId: number | null }>(
+      await h.call("GET", "/tabs?sessionId=a"),
+    );
+    const b = await json<{ tabs: BuiltinBrowserTab[]; activeTabId: number | null }>(
+      await h.call("GET", "/tabs?sessionId=b"),
+    );
+    expect(a.tabs.map((t) => t.id)).toEqual([1]);
+    expect(a.activeTabId).toBe(1);
+    expect(b.tabs.map((t) => t.id)).toEqual([2]);
+    expect(b.activeTabId).toBe(2);
+
+    // An agent acting in `a` makes `a`'s tab active — and moves nothing in `b`.
+    h.shell.cdp = page(() => ({}));
+    await h.call("POST", "/tabs/active/scan", { sessionId: "a" });
+    expect(h.browser.registry("a").activeTabId).toBe(1);
+    expect(h.browser.registry("b").activeTabId).toBe(2);
+  });
+
+  it("refuses a tab id that belongs to another conversation", async () => {
+    const h = mount();
+    h.shell.partition = "persist:penguin-browser:a";
+    h.shell.show(tab(1));
+    h.shell.partition = "persist:penguin-browser:b";
+    h.shell.show(tab(2));
+    const res = await h.call("POST", "/tabs/2/scan", { sessionId: "a" });
+    expect(res.status).toBe(404);
+    expect((await errorOf(res)).error.code).toBe("no_such_tab");
+  });
+
+  it("opens a tab in the conversation's own partition, and tells the window which", async () => {
+    const h = mount();
+    h.shell.cdp = page(() => ({}));
+    const opening = h.call("POST", "/tabs", { url: "https://a.test/", sessionId: "a" });
+    await until(() => h.events.some((e) => e.type === "builtin_browser_open"), "the open event");
+    const open = openEvent(h.events);
+    expect(open).toMatchObject({
+      sessionId: "a",
+      partition: "persist:penguin-browser:a",
+    });
+    h.shell.partition = "persist:penguin-browser:a";
+    h.shell.show(tab(9, { url: "https://a.test/" }));
+    await h.call("POST", "/tabs/claim", { requestId: open.requestId, tabId: 9 });
+    expect((await opening).status).toBe(200);
+    expect(h.browser.registry("a").has(9)).toBe(true);
+    expect(h.browser.registry().has(9)).toBe(false);
+  });
+
+  it("carries the conversation on the tab list the windows hear", async () => {
+    const h = mount();
+    h.shell.partition = "persist:penguin-browser:a";
+    h.shell.show(tab(1));
+    await until(
+      () =>
+        h.events.some(
+          (e) => e.type === "builtin_browser_tabs" && e.sessionId === "a" && e.activeTabId === 1,
+        ),
+      "the conversation's tabs event",
+    );
+  });
+
+  it("clears the data of the conversation asked for, not the default one", async () => {
+    const h = mount();
+    await h.call("POST", "/clear-data", { storages: ["cookies"], sessionId: "a" });
+    expect(h.shell.commands.at(-1)).toEqual({
+      op: "clear-data",
+      partition: "persist:penguin-browser:a",
+      storages: ["cookies"],
+    });
   });
 });

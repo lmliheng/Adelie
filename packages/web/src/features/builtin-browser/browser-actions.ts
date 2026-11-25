@@ -1,6 +1,10 @@
 /**
  * The built-in browser's round trips to the server, each paired with the local change that
  * makes it feel immediate. Components call these; none of them throws.
+ *
+ * Every call names the conversation it acts in (its `scope`): the tabs, the cookies and the
+ * actions of one conversation never reach another's. The default scope `""` is the browser
+ * used with no conversation (a draft), and the Caller's own conversation otherwise (scope.ts).
  */
 import type { BuiltinBrowserTab } from "@adelie/server/api";
 import { toastError } from "@adelie/ui";
@@ -11,15 +15,20 @@ import { S } from "../../lib/strings";
 import { openPanel } from "../dock/dock-state";
 import { dispatchBrowser } from "./browser-store";
 import type { BrowserGuest } from "./browser-state";
+import { browserScope } from "./scope";
 
 /**
- * Reads availability and the registry. A refusal — an older server without the route, an
- * account that is not an admin — means the browser cannot be used from here; a network
- * failure says nothing either way and keeps what is known.
+ * Reads availability and `scope`'s registry. A refusal — an older server without the route, an
+ * account that is not an admin — means the browser cannot be used from here; a network failure
+ * says nothing either way and keeps what is known.
  */
-export async function refreshBrowserStatus(): Promise<void> {
+export async function refreshBrowserStatus(scope: string): Promise<void> {
   try {
-    dispatchBrowser({ type: "status", status: await api.getBuiltinBrowserStatus() });
+    dispatchBrowser({
+      type: "status",
+      scope,
+      status: await api.getBuiltinBrowserStatus(scope),
+    });
   } catch (err) {
     if (err instanceof ApiError && err.status !== 0) dispatchBrowser({ type: "unreachable" });
   }
@@ -38,16 +47,20 @@ export async function refreshBrowserSettings(): Promise<void> {
 }
 
 /**
- * Opens a tab and brings it to the front: at `url`, or else at the new-tab page the server
- * picks, the homepage, or a blank page without one. The tab once it exists, else null. While
- * the request is on its way the store counts it, so the panel does not open the new-tab page
- * beside it.
+ * Opens a tab in `scope` and brings it to the front: at `url`, or else at the new-tab page the
+ * server picks, the homepage, or a blank page without one. The tab once it exists, else null.
+ * While the request is on its way the store counts it, so the panel does not open the new-tab
+ * page beside it.
  */
-export async function openBrowserTab(url?: string): Promise<BuiltinBrowserTab | null> {
+export async function openBrowserTab(
+  url?: string,
+  scope = browserScope(),
+): Promise<BuiltinBrowserTab | null> {
   dispatchBrowser({ type: "opening", delta: 1 });
   try {
     const { tab } = await api.openBuiltinBrowserTab(
       url === undefined ? { activate: true } : { url, activate: true },
+      scope,
     );
     return tab;
   } catch (err) {
@@ -60,28 +73,28 @@ export async function openBrowserTab(url?: string): Promise<BuiltinBrowserTab | 
 
 /**
  * A link from the conversation, opened in the built-in browser: the Browser panel comes up in
- * the dock of the conversation on screen, and the link opens in a new tab there — the same
- * request as the panel's own new tab, so the page joins the one set of tabs.
+ * the dock of the conversation on screen, and the link opens in a new tab of that conversation —
+ * the same request as the panel's own new tab, so the page joins that conversation's tabs.
  */
 export function openLinkInBrowser(url: string): void {
   openPanel("builtin-browser");
-  void openBrowserTab(url);
+  void openBrowserTab(url, browserScope());
 }
 
-/** Brings a tab to the front here at once; the server's next registry snapshot confirms it. */
-export function activateBrowserTab(tabId: number): void {
+/** Brings a tab of `scope` to the front here at once; the server's next registry snapshot confirms it. */
+export function activateBrowserTab(tabId: number, scope = browserScope()): void {
   dispatchBrowser({ type: "activated", tabId });
-  void api.activateBuiltinBrowserTab(tabId).catch(() => undefined);
+  void api.activateBuiltinBrowserTab(tabId, scope).catch(() => undefined);
 }
 
 /**
- * Closes a tab. The page leaves this window at once — removing its element ends the guest,
- * and the shell reports that to the server itself — so the request only tells the server
+ * Closes a tab of `scope`. The page leaves this window at once — removing its element ends the
+ * guest, and the shell reports that to the server itself — so the request only tells the server
  * (and any other window) sooner; a 404 means the server had already dropped it.
  */
-export function closeBrowserTab(tabId: number): void {
+export function closeBrowserTab(tabId: number, scope = browserScope()): void {
   dispatchBrowser({ type: "closed", tabId });
-  void api.closeBuiltinBrowserTab(tabId).catch(() => undefined);
+  void api.closeBuiltinBrowserTab(tabId, scope).catch(() => undefined);
 }
 
 /**
@@ -100,5 +113,5 @@ export async function claimGuest(guest: BrowserGuest, tabId: number): Promise<vo
   }
   // Activating is idempotent server-side, and asking here does not depend on whether the
   // request that opened the tab already made it active.
-  if (guest.activate) activateBrowserTab(tabId);
+  if (guest.activate) activateBrowserTab(tabId, guest.scope);
 }

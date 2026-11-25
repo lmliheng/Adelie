@@ -2922,24 +2922,34 @@ export const uninstallPlugin = (
  */
 const builtinBrowserPath = (rest: string) => `/api/builtin-browser${rest}`;
 
+/**
+ * The conversation a browser request acts in, for a body or a query: the empty scope (no
+ * conversation) travels as nothing at all, which the server reads as the default scope.
+ */
+const browserScope = (scope: string): Record<string, string> =>
+  scope === "" ? {} : { sessionId: scope };
+
 /** What the storage-clearing route takes (the shell's own clear-data command). */
 export type BuiltinBrowserStorage = Extract<
   DesktopBrowserCommand,
   { op: "clear-data" }
 >["storages"][number];
 
-/** Whether the browser can be driven at all, and its tabs as they stand. */
-export const getBuiltinBrowserStatus = () =>
-  apiFetch<BuiltinBrowserStatus>(builtinBrowserPath("/status"), { server: null });
+/** Whether the browser can be driven at all, and a conversation's tabs as they stand. */
+export const getBuiltinBrowserStatus = (scope = "") =>
+  apiFetch<BuiltinBrowserStatus>(builtinBrowserPath("/status"), {
+    server: null,
+    query: browserScope(scope),
+  });
 /**
- * A new tab, at `url` or else at the homepage (blank without one). The server asks this window
- * (over the user channel) to create the page, and answers once the page is claimed — so this
- * resolves after the tab exists.
+ * A new tab in `scope`'s conversation, at `url` or else at the homepage (blank without one). The
+ * server asks this window (over the user channel) to create the page in the scope's partition,
+ * and answers once the page is claimed — so this resolves after the tab exists.
  */
-export const openBuiltinBrowserTab = (body: { url?: string; activate?: boolean }) =>
+export const openBuiltinBrowserTab = (body: { url?: string; activate?: boolean }, scope = "") =>
   apiFetch<{ tab: BuiltinBrowserTab }>(builtinBrowserPath("/tabs"), {
     method: "POST",
-    body,
+    body: { ...body, ...browserScope(scope) },
     server: null,
   });
 /** Ties a page this window created to the open request it answers; 409 when another window was first. */
@@ -2949,10 +2959,11 @@ export const claimBuiltinBrowserTab = (requestId: string, tabId: number) =>
     body: { requestId, tabId },
     server: null,
   });
-/** The user brought a tab to the front: it is also the one an agent's next command acts on. */
-export const activateBuiltinBrowserTab = (tabId: number) =>
+/** The user brought a tab of `scope` to the front: it is also the one an agent's next command acts on. */
+export const activateBuiltinBrowserTab = (tabId: number, scope = "") =>
   apiFetch<{ tab: BuiltinBrowserTab }>(builtinBrowserPath(`/tabs/${tabId}/activate`), {
     method: "POST",
+    body: browserScope(scope),
     server: null,
   });
 /** The tab this window shows on screen, or none: the server leaves that one unthrottled. */
@@ -2962,17 +2973,23 @@ export const setBuiltinBrowserOnScreen = (tabId: number | null) =>
     body: { tabId },
     server: null,
   });
-export const closeBuiltinBrowserTab = (tabId: number) =>
-  apiFetch<void>(builtinBrowserPath(`/tabs/${tabId}`), { method: "DELETE", server: null });
+/** Closes a tab of `scope`'s conversation. */
+export const closeBuiltinBrowserTab = (tabId: number, scope = "") =>
+  apiFetch<void>(builtinBrowserPath(`/tabs/${tabId}`), {
+    method: "DELETE",
+    query: browserScope(scope),
+    server: null,
+  });
 /** The system browsers' profiles on this computer that can be imported from. */
 export const getBuiltinBrowserImportSources = () =>
   apiFetch<BuiltinBrowserImportSourcesResponse>(builtinBrowserPath("/import/sources"), {
     server: null,
   });
-export const importIntoBuiltinBrowser = (body: BuiltinBrowserImportRequest) =>
+/** Imports into `scope`'s conversation: cookies land in its partition through the shell. */
+export const importIntoBuiltinBrowser = (body: BuiltinBrowserImportRequest, scope = "") =>
   apiFetch<BuiltinBrowserImportResult>(builtinBrowserPath("/import"), {
     method: "POST",
-    body,
+    body: { ...body, ...browserScope(scope) },
     server: null,
   });
 /** The browser's settings — its homepage. The server's own file: no desktop shell needed. */
@@ -2993,10 +3010,11 @@ export const searchBuiltinBrowserHistory = (q: string, limit: number) =>
   });
 export const clearBuiltinBrowserHistory = () =>
   apiFetch<void>(builtinBrowserPath("/history"), { method: "DELETE", server: null });
-export const clearBuiltinBrowserData = (storages: BuiltinBrowserStorage[]) =>
+/** Empties `scope`'s conversation's stores through the shell; history is server-side and global. */
+export const clearBuiltinBrowserData = (storages: BuiltinBrowserStorage[], scope = "") =>
   apiFetch<void>(builtinBrowserPath("/clear-data"), {
     method: "POST",
-    body: { storages },
+    body: { storages, ...browserScope(scope) },
     server: null,
   });
 

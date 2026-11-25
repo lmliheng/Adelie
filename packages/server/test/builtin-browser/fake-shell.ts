@@ -10,8 +10,10 @@ import type {
   DesktopBrowserCommandMessage,
   DesktopBrowserCookie,
   DesktopBrowserEvent,
+  DesktopBrowserTab,
 } from "../../src/api/types.js";
 import type { BrowserShellPort } from "../../src/builtin-browser/shell-link.js";
+import { BROWSER_PARTITION_PREFIX } from "../../src/builtin-browser/partitions.js";
 
 type Listener = (e: { data: unknown }) => void;
 
@@ -62,14 +64,24 @@ export function tab(id: number, patch: Partial<BuiltinBrowserTab> = {}): Builtin
   };
 }
 
+/** A tab as the shell reports it: the page plus the partition its guest runs in. */
+export function shellTab(
+  t: BuiltinBrowserTab,
+  partition = BROWSER_PARTITION_PREFIX,
+): DesktopBrowserTab {
+  return { ...t, partition };
+}
+
 /** A shell hosting guests: answers commands (hello, tabs, cdp, cookies, clear-data, throttle) and pushes events. */
 export class FakeShell {
   readonly port = new FakePort();
-  readonly guests = new Map<number, BuiltinBrowserTab>();
+  readonly guests = new Map<number, DesktopBrowserTab>();
   readonly cookies: DesktopBrowserCookie[] = [];
   readonly commands: DesktopBrowserCommand[] = [];
   /** The tab lists the `throttle` commands named, in order. */
   readonly throttled: number[][] = [];
+  /** The partition a guest is shown in when none is given — the window would use the open event's. */
+  partition = BROWSER_PARTITION_PREFIX;
   /** False plays a shell older than the browser: it never answers anything. */
   speaksBrowser = true;
   /** False plays a shell older than throttling: it refuses `throttle` as an unknown op. */
@@ -81,10 +93,16 @@ export class FakeShell {
     this.port.onPost = (message) => void this.handle(message);
   }
 
-  /** A guest attaches (or changes): the shell pushes its state. */
-  show(t: BuiltinBrowserTab): void {
-    this.guests.set(t.id, t);
-    this.event({ kind: "tab", tab: t });
+  /** A guest the shell already hosts, before any event (a tab that outlived a server restart). */
+  host(t: BuiltinBrowserTab, partition = this.partition): DesktopBrowserTab {
+    const guest = { ...t, partition };
+    this.guests.set(t.id, guest);
+    return guest;
+  }
+
+  /** A guest attaches (or changes): the shell pushes its state, with the partition it runs in. */
+  show(t: BuiltinBrowserTab, partition = this.partition): void {
+    this.event({ kind: "tab", tab: this.host(t, partition) });
   }
 
   /** A guest is destroyed. */
@@ -135,7 +153,7 @@ export class FakeShell {
       case "hello":
         this.reply(msg.id, {
           ok: true,
-          result: { version: 1, partition: "persist:penguin-browser" },
+          result: { version: 2, partition: BROWSER_PARTITION_PREFIX },
         });
         return;
       case "tabs":

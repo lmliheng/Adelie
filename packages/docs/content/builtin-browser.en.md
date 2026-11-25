@@ -3,7 +3,7 @@ title: Built-in Browser
 description: A browser in the desktop app's dock that you and your agents share, with sign-ins imported from your own browser and automation through penguin browser.
 ---
 
-The **Browser** panel is a web browser built into the desktop app's dock. You browse in it like in any browser, and your agents drive the same tabs from their shell with `penguin browser`: they read pages, click and type, and pull out data such as your Amazon orders, signed in with your own accounts. The browser keeps its own sign-ins and history, separate from your system browser, and can import both from Chrome, Edge, Brave, Arc, Vivaldi, Opera, Chromium or Firefox.
+The **Browser** panel is a web browser built into the desktop app's dock. You browse in it like in any browser, and your agents drive it from their shell with `penguin browser`: they read pages, click and type, and pull out data such as your Amazon orders, signed in with your own accounts. It works per conversation — each conversation has its own tabs and its own sign-ins, so one conversation's automation never disturbs another's — and keeps its sign-ins and history separate from your system browser, importing both from Chrome, Edge, Brave, Arc, Vivaldi, Opera, Chromium or Firefox.
 
 - To get started, see [Open the Browser panel](#open-the-browser-panel).
 - To let an agent use your accounts, see [Sign in](#sign-in) and [Import from your browser](#import-from-your-browser).
@@ -18,7 +18,7 @@ The browser is part of the desktop app on macOS, Windows and Linux. It is not av
 
 Open the panel from the top right of the chat toolbar: select **Right sidebar** or **Bottom panel**, then choose **Browser**. If the dock already shows other panels, use its **Add panel** menu. See [Use side panels](/chat#use-side-panels).
 
-There is one set of browser tabs for the whole app. Every conversation's dock shows the same tabs, so a page an agent opened in one conversation is still there when you switch to another.
+Each conversation has its own browser: its own tabs and its own sign-ins. The panel shows the tabs of the conversation you are in, and switching conversations switches the tabs with it. Two conversations can use the browser at once without seeing or disturbing each other's pages.
 
 When an agent opens a page from a conversation you are looking at, the dock switches to the Browser panel by itself, so you can watch.
 
@@ -63,7 +63,7 @@ The page on screen is laid out at the size of the panel, so in a narrow panel a 
 
 ## Sign in
 
-Sign in to websites in the panel as you would in any browser. Sign-ins and site data are kept between restarts, in the browser's own profile: signing in here does not sign you in to your system browser, and the other way round.
+Sign in to websites in the panel as you would in any browser. Each conversation keeps its own profile, kept between restarts: sign-ins and site data are shared by that conversation's tabs and by no other's, and they stay separate from your system browser — signing in here does not sign you in to your system browser, and the other way round.
 
 Agents never type your passwords. When a page an agent needs asks for a sign-in, the `browser-automation` skill has it stop and ask you to sign in in the panel, or to import your sign-in from the browser you normally use.
 
@@ -96,13 +96,13 @@ From a shell, `penguin browser import --list` lists the profiles and `penguin br
 
 ## Clear browsing data
 
-Select **Clear browsing data…** in the toolbar's menu and choose what to remove: cookies and sign-ins, cached files, site storage, or the browsing history. This affects only the built-in browser.
+Select **Clear browsing data…** in the toolbar's menu and choose what to remove: cookies and sign-ins, cached files, site storage, or the browsing history. The cookies, cache and site storage cleared are this conversation's own; another conversation's browser is left alone. The browsing history is shared by the whole browser.
 
 If the server refuses, the card stays: your selection stays with it, and the refusal is written inside the card, next to the button that retries it.
 
 ## Drive it from the command line
 
-`penguin browser` drives the tabs from a shell, and it is how agents use the browser. The preinstalled `browser-automation` plugin teaches them the loop: open a page, read it, act with JavaScript, and check what changed.
+`penguin browser` drives the tabs from a shell, and it is how agents use the browser. It acts in one conversation — the one named by `--session <id>`, else the caller's own (`ADELIE_SESSION_ID`), else the default scope with no conversation — so an agent never touches another conversation's pages. The preinstalled `browser-automation` plugin teaches it the loop: open a page, read it, act with JavaScript, and check what changed.
 
 ```bash
 penguin browser open https://www.amazon.com/your-orders/orders
@@ -136,10 +136,10 @@ Every tab is a whole web page with memory of its own: a busy shopping or news si
 
 ## How it works
 
-- Each tab is a Chromium page hosted by the desktop app, in its own persistent profile. Pages see an ordinary Chrome browser.
+- Each tab is a Chromium page hosted by the desktop app, in its conversation's own persistent profile — a Chromium partition per conversation, so one conversation's cookies and storage are invisible to another's. Pages see an ordinary Chrome browser.
 - The server drives pages through the Chrome DevTools Protocol, relayed by the desktop app. Reading, running scripts, clicking and typing all happen on the server's side of that link, so they improve with server updates.
 - Pages are read and changes are tracked by scripts adapted from [GenericAgent](https://github.com/lsdefine/genericagent) (MIT): its DOM simplification and its `web_scan` / `web_execute_js` design.
-- The history and the homepage are files in the data root, `builtin-browser/history.json` and `builtin-browser/settings.json`. Cookies and site storage live in the desktop app's own profile directory.
+- The history and the homepage are files in the data root, `builtin-browser/history.json` and `builtin-browser/settings.json`, shared by the whole browser. Cookies and site storage live in the desktop app's own profile directory, one profile per conversation.
 - Everything goes through the server's `/api/builtin-browser` routes, which only administrators may call. See [Server API](/server-api).
 
 ## Limits

@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
-  BUILTIN_BROWSER_PARTITION,
+  BUILTIN_BROWSER_PARTITION_PREFIX,
   GUEST_MENU_LABELS,
   MAX_DATA_FAVICON_CHARS,
   MAX_FAVICON_URL_CHARS,
   clearDataPlan,
   guestContextMenu,
   hardenGuestPreferences,
+  isBrowserPartition,
   isGrantedPermission,
   isOpenableUrl,
   mayAttachGuest,
@@ -20,6 +21,18 @@ import {
 } from "../src/builtin-browser-rules.js";
 import type { GuestMenuInput } from "../src/builtin-browser-rules.js";
 
+describe("isBrowserPartition", () => {
+  it("knows the default partition and each conversation's, and nothing else", () => {
+    expect(isBrowserPartition(BUILTIN_BROWSER_PARTITION_PREFIX)).toBe(true);
+    expect(isBrowserPartition(`${BUILTIN_BROWSER_PARTITION_PREFIX}:session-1`)).toBe(true);
+    expect(isBrowserPartition("persist:other")).toBe(false);
+    expect(isBrowserPartition(`${BUILTIN_BROWSER_PARTITION_PREFIX}:`)).toBe(false);
+    expect(isBrowserPartition(`${BUILTIN_BROWSER_PARTITION_PREFIX}:a b`)).toBe(false);
+    expect(isBrowserPartition(undefined)).toBe(false);
+    expect(isBrowserPartition(7)).toBe(false);
+  });
+});
+
 describe("mayAttachGuest", () => {
   it("admits the browser's partition with a web or blank start page", () => {
     for (const src of [
@@ -29,12 +42,26 @@ describe("mayAttachGuest", () => {
       "",
       undefined,
     ]) {
-      expect(mayAttachGuest({ partition: BUILTIN_BROWSER_PARTITION, src })).toBe(true);
+      expect(mayAttachGuest({ partition: BUILTIN_BROWSER_PARTITION_PREFIX, src })).toBe(true);
     }
+    // A conversation's own partition is the browser's too.
+    expect(
+      mayAttachGuest({
+        partition: `${BUILTIN_BROWSER_PARTITION_PREFIX}:session-1`,
+        src: "https://example.com/",
+      }),
+    ).toBe(true);
   });
 
   it("refuses any other partition, and non-web start pages", () => {
     expect(mayAttachGuest({ partition: "persist:other", src: "https://example.com/" })).toBe(false);
+    // A scope that is not a safe partition tail is not one of ours either.
+    expect(
+      mayAttachGuest({
+        partition: `${BUILTIN_BROWSER_PARTITION_PREFIX}:bad/scope`,
+        src: "https://example.com/",
+      }),
+    ).toBe(false);
     expect(mayAttachGuest({ src: "https://example.com/" })).toBe(false);
     for (const src of [
       "file:///etc/passwd",
@@ -42,7 +69,7 @@ describe("mayAttachGuest", () => {
       "chrome://gpu",
       "data:text/html,x",
     ]) {
-      expect(mayAttachGuest({ partition: BUILTIN_BROWSER_PARTITION, src })).toBe(false);
+      expect(mayAttachGuest({ partition: BUILTIN_BROWSER_PARTITION_PREFIX, src })).toBe(false);
     }
   });
 });
@@ -64,7 +91,7 @@ describe("hardenGuestPreferences", () => {
     };
     hardenGuestPreferences(prefs);
     expect(prefs).toEqual({
-      partition: BUILTIN_BROWSER_PARTITION,
+      partition: BUILTIN_BROWSER_PARTITION_PREFIX,
       nodeIntegration: false,
       nodeIntegrationInSubFrames: false,
       nodeIntegrationInWorker: false,
@@ -81,6 +108,14 @@ describe("hardenGuestPreferences", () => {
       // Untouched: not a security preference.
       plugins: true,
     });
+  });
+
+  it("keeps a conversation's own partition, never forcing the pages back into one jar", () => {
+    const prefs: Record<string, unknown> = {
+      partition: `${BUILTIN_BROWSER_PARTITION_PREFIX}:session-2`,
+    };
+    hardenGuestPreferences(prefs);
+    expect(prefs.partition).toBe(`${BUILTIN_BROWSER_PARTITION_PREFIX}:session-2`);
   });
 });
 
@@ -247,13 +282,16 @@ describe("parseBrowserCommand", () => {
       parseBrowserCommand(frame({ op: "cdp", tabId: 7, method: "Page.disable", events: [] })),
     ).toEqual({ id: "c1", command: { op: "cdp", tabId: 7, method: "Page.disable", events: [] } });
     const cookies = [{ url: "https://a.test/", name: "sid", value: "v", httpOnly: true }];
-    expect(parseBrowserCommand(frame({ op: "set-cookies", cookies }))).toEqual({
+    const partition = `${BUILTIN_BROWSER_PARTITION_PREFIX}:session-1`;
+    expect(parseBrowserCommand(frame({ op: "set-cookies", partition, cookies }))).toEqual({
       id: "c1",
-      command: { op: "set-cookies", cookies },
+      command: { op: "set-cookies", partition, cookies },
     });
-    expect(parseBrowserCommand(frame({ op: "clear-data", storages: ["cache"] }))).toEqual({
+    expect(
+      parseBrowserCommand(frame({ op: "clear-data", partition, storages: ["cache"] })),
+    ).toEqual({
       id: "c1",
-      command: { op: "clear-data", storages: ["cache"] },
+      command: { op: "clear-data", partition, storages: ["cache"] },
     });
     expect(parseBrowserCommand(frame({ op: "throttle", tabIds: [3, 7] }))).toEqual({
       id: "c1",
@@ -282,14 +320,18 @@ describe("parseBrowserCommand", () => {
         error: "bad_command",
       });
     }
-    expect(parseBrowserCommand(frame({ op: "set-cookies", cookies: [{ url: "x" }] }))).toEqual({
-      id: "c1",
-      error: "bad_command",
-    });
-    expect(parseBrowserCommand(frame({ op: "clear-data", storages: ["everything"] }))).toEqual({
-      id: "c1",
-      error: "bad_command",
-    });
+    // Neither cookie command runs without one of the browser's partitions.
+    const partition = `${BUILTIN_BROWSER_PARTITION_PREFIX}:session-1`;
+    for (const bad of [
+      { op: "set-cookies", cookies: [{ url: "x" }] },
+      { op: "set-cookies", partition: "persist:other", cookies: [] },
+      { op: "set-cookies", partition, cookies: [{ url: "x" }] },
+      { op: "clear-data", storages: ["everything"], partition },
+      { op: "clear-data", storages: ["cache"] },
+      { op: "clear-data", storages: ["cache"], partition: "persist:other" },
+    ]) {
+      expect(parseBrowserCommand(frame(bad))).toEqual({ id: "c1", error: "bad_command" });
+    }
     for (const tabIds of [
       undefined,
       "3",

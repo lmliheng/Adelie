@@ -32,7 +32,16 @@ function kindLabel(kind: ClearKind): string {
   }
 }
 
-export function ClearDataDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ClearDataDialog({
+  open,
+  scope,
+  onClose,
+}: {
+  open: boolean;
+  /** The conversation whose stores are emptied (its own partition); `""` for the default scope. */
+  scope: string;
+  onClose: () => void;
+}) {
   const [chosen, setChosen] = useState<ReadonlySet<ClearKind>>(() => new Set(KINDS));
   const [busy, setBusy] = useState(false);
   /** The words of the last attempt's failure, inside this card; null while none failed. */
@@ -61,7 +70,7 @@ export function ClearDataDialog({ open, onClose }: { open: boolean; onClose: () 
     // Retrying starts from a clean card: the reason belongs to the attempt that is running now.
     setRefusal(null);
     try {
-      if (storages.length > 0) await api.clearBuiltinBrowserData(storages);
+      if (storages.length > 0) await api.clearBuiltinBrowserData(storages, scope);
       if (chosen.has("history")) await api.clearBuiltinBrowserHistory();
       toastSuccess(S.builtinBrowser.clearDone);
       onClose();

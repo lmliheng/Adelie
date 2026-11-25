@@ -1,21 +1,31 @@
 /**
  * The built-in browser's state in this window, as a pure reducer.
  *
- * Two lists, from two sources:
- * - `tabs` is the SERVER's registry — what the desktop shell reports about every guest page
- *   (address, title, loading, history) and which one is active. The strip and the toolbar
- *   render from it, and the user channel's `builtin_browser_tabs` event replaces it whole.
- * - `guests` are the `<webview>` elements THIS window hosts, in creation order. A guest starts
- *   from a `builtin_browser_open` request, learns its tab id once it attaches, and is removed
- *   by a close. The order is the DOM order of the elements and must never change: moving a
- *   webview in the DOM reloads its page, so guests are only ever appended or removed.
+ * The browser is per-conversation: a "scope" is the conversation a set of pages belongs to — a
+ * Session id, or `""` for the default one (a draft, a page with no conversation). Two lists,
+ * from two sources:
+ * - `tabs`/`activeTabId`/`closing` are PER SCOPE. They are the SERVER's registry — what the
+ *   desktop shell reports about every guest page (address, title, loading, history) and which
+ *   one is active — and the user channel's `builtin_browser_tabs` event (which names its
+ *   conversation) replaces one scope's list whole. The strip and the toolbar render the list of
+ *   the conversation on screen and no other's.
+ * - `guests` are the `<webview>` elements THIS window hosts, in creation order, across every
+ *   conversation (a page an agent works in stays alive while the user is looking elsewhere). A
+ *   guest starts from a `builtin_browser_open` request, learns its tab id once it attaches, and
+ *   is removed by a close. The order is the DOM order of the elements and must never change:
+ *   moving a webview in the DOM reloads its page, so guests are only ever appended or removed.
  *
- * Activity (`builtin_browser_activity`) marks the tabs an agent is working in right now, the
- * homepage is the server's setting as this window last read or saved it, and the metrics are the
- * browser's load with the server's verdict on it (`builtin_browser_metrics`, about every 10 s).
+ * A guest carries the scope and the Chromium partition it runs in (from the open event), so its
+ * page lives in its conversation's own cookie jar and is shown only over that conversation's slot.
  *
- * The browser keeps a tab while its panel is on screen: with none open and none on its way, the
- * window opens the new-tab page by itself (`wantsNewTabPage`), the homepage or a blank page.
+ * Activity (`builtin_browser_activity`) marks the tabs an agent is working in right now (by tab
+ * id, across scopes), the homepage is the server's setting as this window last read or saved it,
+ * and the metrics are the browser's load with the server's verdict on it (`builtin_browser_metrics`,
+ * about every 10 s).
+ *
+ * The browser keeps a tab while its panel is on screen: with none open in the conversation shown
+ * and none on its way, the window opens the new-tab page by itself (`wantsNewTabPage`), the
+ * homepage or a blank page.
  */
 import type {
   BuiltinBrowserAction,
@@ -33,6 +43,10 @@ export interface BrowserGuest {
   key: string;
   /** The address the element was created with. Never changes, even as the page navigates. */
   src: string;
+  /** The Chromium partition the page runs in — its conversation's own cookie jar. */
+  partition: string;
+  /** The conversation this page belongs to (`""` = the default scope). */
+  scope: string;
   /** The open request this guest answers, claimed once it has a tab id. */
   requestId: string;
   /** The guest's webContents id, known once it attached. */
@@ -53,16 +67,18 @@ export interface BrowserState {
   available: boolean;
   /** Why not, when the server said so. */
   reason: BuiltinBrowserStatus["reason"] | null;
-  tabs: BuiltinBrowserTab[];
-  activeTabId: number | null;
+  /** The server's registry of each conversation's tabs, by scope (`""` = the default scope). */
+  tabs: Readonly<Record<string, BuiltinBrowserTab[]>>;
+  /** Each conversation's active tab, by scope. */
+  activeTabId: Readonly<Record<string, number | null>>;
   guests: BrowserGuest[];
-  /** Tabs an agent is acting on right now, by tab id. */
+  /** Tabs an agent is acting on right now, by tab id (a tab id belongs to one conversation). */
   activity: Readonly<Record<number, BrowserActivity>>;
   /**
-   * Tabs this window closed and the server has not yet dropped. A registry snapshot published
-   * before the close would otherwise put a closed tab back in the strip for a moment.
+   * Tabs this window closed and the server has not yet dropped, by scope. A registry snapshot
+   * published before the close would otherwise put a closed tab back in the strip for a moment.
    */
-  closing: readonly number[];
+  closing: Readonly<Record<string, readonly number[]>>;
   /** The page a new tab and the Home button open; null for none (new tabs are blank). */
   homepage: string | null;
   /** The browser's load as last measured, with the server's warnings; null before the first measurement. */
@@ -73,7 +89,8 @@ export interface BrowserState {
 
 export type BrowserAction =
   | { type: "supported"; supported: boolean }
-  | { type: "status"; status: BuiltinBrowserStatus }
+  /** A status read for one conversation (`scope`): its tabs and active one, the rest shared. */
+  | { type: "status"; scope: string; status: BuiltinBrowserStatus }
   /** The status could not be read at all (an older server, a member account, no network). */
   | { type: "unreachable" }
   | { type: "event"; event: BuiltinBrowserServerEvent }
@@ -96,11 +113,11 @@ export const INITIAL_BROWSER_STATE: BrowserState = {
   supported: false,
   available: false,
   reason: null,
-  tabs: [],
-  activeTabId: null,
+  tabs: {},
+  activeTabId: {},
   guests: [],
   activity: {},
-  closing: [],
+  closing: {},
   homepage: null,
   metrics: null,
   opening: 0,
@@ -109,6 +126,24 @@ export const INITIAL_BROWSER_STATE: BrowserState = {
 /** The key a guest is known by, from the request that created it. */
 export function guestKey(requestId: string): string {
   return `request:${requestId}`;
+}
+
+/** One conversation's tabs (the default scope when none is named). */
+export function tabsInScope(state: BrowserState, scope = ""): BuiltinBrowserTab[] {
+  return state.tabs[scope] ?? [];
+}
+
+/** One conversation's active tab id. */
+export function activeTabIdInScope(state: BrowserState, scope = ""): number | null {
+  return state.activeTabId[scope] ?? null;
+}
+
+/** The scope a listed tab belongs to; null for one no registry lists (yet). */
+function scopeOfTab(state: BrowserState, tabId: number): string | null {
+  for (const [scope, tabs] of Object.entries(state.tabs)) {
+    if (tabs.some((tab) => tab.id === tabId)) return scope;
+  }
+  return null;
 }
 
 function withoutActivity(
@@ -120,23 +155,31 @@ function withoutActivity(
   return rest;
 }
 
-/** A registry snapshot, minus the tabs this window is closing; a closing tab it no longer lists is gone for good. */
+/** One scope's registry snapshot, minus the tabs this window is closing; a closing tab it no longer lists is gone for good. */
 function applyTabs(
   state: BrowserState,
+  scope: string,
   tabs: BuiltinBrowserTab[],
   activeTabId: number | null,
 ): BrowserState {
   const listed = new Set(tabs.map((tab) => tab.id));
-  const closing = state.closing.filter((id) => listed.has(id));
+  const closing = (state.closing[scope] ?? []).filter((id) => listed.has(id));
   const shown = closing.length === 0 ? tabs : tabs.filter((tab) => !closing.includes(tab.id));
   const active = activeTabId !== null && closing.includes(activeTabId) ? null : activeTabId;
-  return { ...state, available: true, reason: null, tabs: shown, activeTabId: active, closing };
+  return {
+    ...state,
+    available: true,
+    reason: null,
+    tabs: { ...state.tabs, [scope]: shown },
+    activeTabId: { ...state.activeTabId, [scope]: active },
+    closing: { ...state.closing, [scope]: closing },
+  };
 }
 
 function applyEvent(state: BrowserState, event: BuiltinBrowserServerEvent): BrowserState {
   switch (event.type) {
     case "builtin_browser_tabs":
-      return applyTabs(state, event.tabs, event.activeTabId);
+      return applyTabs(state, event.sessionId ?? "", event.tabs, event.activeTabId);
     case "builtin_browser_open": {
       // Only a window that can host a guest takes the request; a replayed event must not
       // create a second guest for the same request.
@@ -146,6 +189,8 @@ function applyEvent(state: BrowserState, event: BuiltinBrowserServerEvent): Brow
         key: guestKey(event.requestId),
         // A webview with no address never creates its page, so it would never be claimed.
         src: event.url === "" ? BLANK_URL : event.url,
+        partition: event.partition,
+        scope: event.sessionId ?? "",
         requestId: event.requestId,
         tabId: null,
         activate: event.activate,
@@ -167,19 +212,23 @@ function applyEvent(state: BrowserState, event: BuiltinBrowserServerEvent): Brow
   }
 }
 
-/** Drops a tab everywhere this window knows it: its guest, its strip entry, its activity mark. */
+/** Drops a tab everywhere this window knows it: its guest, its conversation's strip entry, its activity mark. */
 function closeTab(state: BrowserState, tabId: number): BrowserState {
-  const tabs = state.tabs.filter((tab) => tab.id !== tabId);
+  const scope = scopeOfTab(state, tabId);
+  const guests = state.guests.filter((guest) => guest.tabId !== tabId);
+  const activity = withoutActivity(state.activity, tabId);
+  if (scope === null) return { ...state, guests, activity };
+  const tabs = tabsInScope(state, scope).filter((tab) => tab.id !== tabId);
   // The server names the next active tab in its next snapshot; until then the newest one
   // left stands in, which is the server's own fallback.
-  const activeTabId =
-    state.activeTabId === tabId ? (tabs[tabs.length - 1]?.id ?? null) : state.activeTabId;
+  const previous = state.activeTabId[scope] ?? null;
+  const activeTabId = previous === tabId ? (tabs[tabs.length - 1]?.id ?? null) : previous;
   return {
     ...state,
-    tabs,
-    activeTabId,
-    guests: state.guests.filter((guest) => guest.tabId !== tabId),
-    activity: withoutActivity(state.activity, tabId),
+    tabs: { ...state.tabs, [scope]: tabs },
+    activeTabId: { ...state.activeTabId, [scope]: activeTabId },
+    guests,
+    activity,
   };
 }
 
@@ -193,7 +242,7 @@ export function reduceBrowser(state: BrowserState, action: BrowserAction): Brows
         : { ...state, supported: false, guests: [], activity: {} };
     case "status": {
       const { status } = action;
-      const next = applyTabs(state, status.tabs, status.activeTabId);
+      const next = applyTabs(state, action.scope, status.tabs, status.activeTabId);
       return {
         ...next,
         available: status.available,
@@ -220,13 +269,19 @@ export function reduceBrowser(state: BrowserState, action: BrowserAction): Brows
     case "rejected":
       return { ...state, guests: state.guests.filter((guest) => guest.key !== action.key) };
     case "closed": {
+      const scope = scopeOfTab(state, action.tabId);
       const next = closeTab(state, action.tabId);
-      return next.closing.includes(action.tabId)
+      if (scope === null) return next;
+      const closing = next.closing[scope] ?? [];
+      return closing.includes(action.tabId)
         ? next
-        : { ...next, closing: [...next.closing, action.tabId] };
+        : { ...next, closing: { ...next.closing, [scope]: [...closing, action.tabId] } };
     }
-    case "activated":
-      return state.activeTabId === action.tabId ? state : { ...state, activeTabId: action.tabId };
+    case "activated": {
+      const scope = scopeOfTab(state, action.tabId);
+      if (scope === null || state.activeTabId[scope] === action.tabId) return state;
+      return { ...state, activeTabId: { ...state.activeTabId, [scope]: action.tabId } };
+    }
     case "resync":
       return { ...state, activity: {} };
     case "settings":
@@ -245,8 +300,9 @@ export function browserOffered(state: BrowserState): boolean {
   return state.supported && state.available;
 }
 
-export function activeTab(state: BrowserState): BuiltinBrowserTab | null {
-  return state.tabs.find((tab) => tab.id === state.activeTabId) ?? null;
+export function activeTab(state: BrowserState, scope = ""): BuiltinBrowserTab | null {
+  const id = state.activeTabId[scope] ?? null;
+  return tabsInScope(state, scope).find((tab) => tab.id === id) ?? null;
 }
 
 export function guestByKey(state: BrowserState, key: string): BrowserGuest | null {
@@ -267,30 +323,41 @@ export function addressOf(state: BrowserState, tab: BuiltinBrowserTab): string {
 }
 
 /**
- * Whether this window should open the new-tab page by itself: its browser panel is on screen,
- * the browser can be used, and it has no tab, none open and none on its way. A tab on its way
- * is a page this window is creating or has created and the registry does not list yet (from any
- * window's, the agent's or a page's request), or a request of its own not yet answered, whose
- * page this window has not been asked for yet.
+ * Whether this window should open the new-tab page by itself: its browser panel is on screen for
+ * `scope`, the browser can be used, and that conversation has no tab, none open and none on its
+ * way. A tab on its way is a page this window is creating or has created in `scope` and the
+ * registry does not list yet (from any window's, the agent's or a page's request), or a request
+ * of this window's not yet answered. Each conversation keeps its own page, so switching to one
+ * with none opens its own.
  */
-export function wantsNewTabPage(state: BrowserState, panelOnScreen: boolean): boolean {
+export function wantsNewTabPage(
+  state: BrowserState,
+  scope: string,
+  panelOnScreen: boolean,
+): boolean {
   return (
     panelOnScreen &&
     browserOffered(state) &&
-    state.tabs.length === 0 &&
-    state.guests.length === 0 &&
+    tabsInScope(state, scope).length === 0 &&
+    !state.guests.some((guest) => guest.scope === scope) &&
     state.opening === 0
   );
 }
 
-/** The mark of an agent working in the browser, the active tab's first when it is one of them. */
-export function currentActivity(state: BrowserState): BrowserActivity | null {
-  if (state.activeTabId !== null) {
-    const active = state.activity[state.activeTabId];
-    if (active !== undefined) return active;
+/**
+ * The mark of an agent working in `scope`'s browser, its active tab's first when it is one of
+ * them. A mark belongs to the conversation its action came from (the event's `sessionId`), so an
+ * agent working in another conversation's browser never raises this one's.
+ */
+export function currentActivity(state: BrowserState, scope = ""): BrowserActivity | null {
+  const mine = (mark: BrowserActivity): boolean => (mark.sessionId ?? "") === scope;
+  const active = state.activeTabId[scope] ?? null;
+  if (active !== null) {
+    const mark = state.activity[active];
+    if (mark !== undefined && mine(mark)) return mark;
   }
-  const first = Object.values(state.activity)[0];
-  return first ?? null;
+  for (const mark of Object.values(state.activity)) if (mine(mark)) return mark;
+  return null;
 }
 
 /** Whether an agent is working in this tab right now. */

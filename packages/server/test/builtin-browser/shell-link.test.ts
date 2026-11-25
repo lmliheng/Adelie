@@ -12,7 +12,7 @@ import {
   parseBrowserReply,
   parseTab,
 } from "../../src/builtin-browser/shell-link.js";
-import { FakePort, FakeShell, tab } from "./fake-shell.js";
+import { FakePort, FakeShell, shellTab, tab } from "./fake-shell.js";
 
 const lastCommand = (port: FakePort) => port.sent.at(-1) as DesktopBrowserCommandMessage;
 
@@ -173,10 +173,10 @@ describe("ShellLink events", () => {
     unsubscribe();
     shell.close(5);
     expect(a).toEqual([
-      { kind: "tab", tab: tab(5) },
+      { kind: "tab", tab: shellTab(tab(5)) },
       { kind: "tab-closed", tabId: 5 },
     ]);
-    expect(b).toEqual([{ kind: "tab", tab: tab(5) }]);
+    expect(b).toEqual([{ kind: "tab", tab: shellTab(tab(5)) }]);
     link.dispose();
   });
 
@@ -190,7 +190,7 @@ describe("ShellLink events", () => {
     });
     link.onEvent((e) => after.push(e));
     expect(() => shell.show(tab(5))).not.toThrow();
-    expect(after).toEqual([{ kind: "tab", tab: tab(5) }]);
+    expect(after).toEqual([{ kind: "tab", tab: shellTab(tab(5)) }]);
     expect(logs).toEqual(["builtin browser: a 'tab' event from the shell failed: boom"]);
     // A frame no parser can read (a getter that throws) is dropped the same way.
     const hostile = {
@@ -208,9 +208,9 @@ describe("ShellLink events", () => {
 describe("wire parsing", () => {
   it("reads tabs strictly and keeps only a non-empty favicon", () => {
     expect(parseTab(tab(1, { favicon: "https://a.test/f.ico" }))).toEqual(
-      tab(1, { favicon: "https://a.test/f.ico" }),
+      shellTab(tab(1, { favicon: "https://a.test/f.ico" })),
     );
-    expect(parseTab({ ...tab(1), favicon: "" })).toEqual(tab(1));
+    expect(parseTab({ ...tab(1), favicon: "" })).toEqual(shellTab(tab(1)));
     expect(parseTab({ ...tab(1), loading: "no" })).toBeNull();
     expect(parseTab({ ...tab(1), id: 1.5 })).toBeNull();
   });
@@ -224,9 +224,9 @@ describe("wire parsing", () => {
   });
 
   it("reads why a tab crashed, and nothing that is not a reason", () => {
-    expect(parseTab(tab(1, { crashed: "oom" }))).toEqual(tab(1, { crashed: "oom" }));
-    expect(parseTab({ ...tab(1), crashed: "Out of memory!" })).toEqual(tab(1));
-    expect(parseTab({ ...tab(1), crashed: 3 })).toEqual(tab(1));
+    expect(parseTab(tab(1, { crashed: "oom" }))).toEqual(shellTab(tab(1, { crashed: "oom" })));
+    expect(parseTab({ ...tab(1), crashed: "Out of memory!" })).toEqual(shellTab(tab(1)));
+    expect(parseTab({ ...tab(1), crashed: 3 })).toEqual(shellTab(tab(1)));
   });
 
   it("reads a crash and a measurement", () => {

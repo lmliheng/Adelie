@@ -1,8 +1,9 @@
 /**
  * The built-in browser's dock panel: its tab strip, its toolbar, and the viewport slot the
- * browser layer (browser-layer.tsx) lays the page on screen over. The browser is one set of
- * pages shared by every conversation, so every dock that shows this panel shows the same
- * tabs — the panel holds no page itself, it only registers where the page should appear.
+ * browser layer (browser-layer.tsx) lays the page on screen over. The panel is the conversation
+ * it sits in: it shows that conversation's tabs (and no other's), and a conversation switch
+ * swaps the strip with it — the panel holds no page itself, it only registers where the page
+ * should appear.
  *
  * The panel always has a tab: the layer opens the new-tab page when it shows none. A new tab
  * opens the homepage when one is set, and reads as that homepage while it loads. A blank one
@@ -14,15 +15,18 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button, EmptyState } from "@adelie/ui";
 import { S } from "../../lib/strings";
+import { dockVersion, subscribeDock } from "../dock/dock-state";
 import { isBlankUrl, isWebUrl } from "./address";
 import { activateBrowserTab, closeBrowserTab, openBrowserTab } from "./browser-actions";
 import {
   activeTab,
+  activeTabIdInScope,
   addressOf,
   browserOffered,
   currentActivity,
   guestForTab,
   tabBusy,
+  tabsInScope,
   type BrowserState,
 } from "./browser-state";
 import { browserState, subscribeBrowser } from "./browser-store";
@@ -32,6 +36,7 @@ import { ClearDataDialog } from "./clear-data-dialog";
 import { HomepageDialog } from "./homepage-dialog";
 import { ImportDialog } from "./import-dialog";
 import { heavyTabMemory, loadWarningText } from "./load";
+import { browserScope } from "./scope";
 import { registerSlot, setSlotVisible } from "./slot-registry";
 import { webviewForTab, type WebviewElement } from "./webview-registry";
 
@@ -78,6 +83,9 @@ function unavailableDetail(state: BrowserState): string | undefined {
 
 export function BuiltinBrowserPanel({ active }: { active: boolean }) {
   const state = useSyncExternalStore(subscribeBrowser, browserState);
+  // The conversation this panel belongs to: a switch changes which tabs it shows.
+  useSyncExternalStore(subscribeDock, dockVersion);
+  const scope = browserScope();
   if (!browserOffered(state)) {
     const detail = unavailableDetail(state);
     return (
@@ -89,11 +97,19 @@ export function BuiltinBrowserPanel({ active }: { active: boolean }) {
       </div>
     );
   }
-  return <BrowserSurface state={state} active={active} />;
+  return <BrowserSurface state={state} scope={scope} active={active} />;
 }
 
-function BrowserSurface({ state, active }: { state: BrowserState; active: boolean }) {
-  const tab = activeTab(state);
+function BrowserSurface({
+  state,
+  scope,
+  active,
+}: {
+  state: BrowserState;
+  scope: string;
+  active: boolean;
+}) {
+  const tab = activeTab(state, scope);
   const tabId = tab?.id ?? null;
   const [importOpen, setImportOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
@@ -123,11 +139,11 @@ function BrowserSurface({ state, active }: { state: BrowserState; active: boolea
   useEffect(() => {
     if (blankOnScreen !== null && !typingElsewhere(rootRef.current)) addressRef.current?.focus();
   }, [blankOnScreen]);
-  const newTab = () => void openBrowserTab();
+  const newTab = () => void openBrowserTab(undefined, scope);
 
   const navigate = (url: string) => {
     if (tabId === null) {
-      void openBrowserTab(url);
+      void openBrowserTab(url, scope);
       return;
     }
     drive(tabId, (view) => {
@@ -144,24 +160,25 @@ function BrowserSurface({ state, active }: { state: BrowserState; active: boolea
   const { homepage } = state;
   const goHome = homepage !== null ? () => navigate(homepage) : null;
   const reload = () => drive(tabId, (view) => view.reload());
+  const tabs = tabsInScope(state, scope);
 
   return (
     <div ref={rootRef} className="flex h-full min-h-0 flex-col">
       <BrowserTabStrip
-        tabs={state.tabs}
-        activeTabId={state.activeTabId}
+        tabs={tabs}
+        activeTabId={activeTabIdInScope(state, scope)}
         address={(shown) => addressOf(state, shown)}
         busy={(id) => tabBusy(state, id)}
         heavyMemory={(id) => heavyTabMemory(state.metrics, id)}
-        onSelect={activateBrowserTab}
-        onClose={closeBrowserTab}
+        onSelect={(id) => activateBrowserTab(id, scope)}
+        onClose={(id) => closeBrowserTab(id, scope)}
         onNew={newTab}
       />
       <BrowserToolbar
         tab={tab}
         address={address}
-        activity={currentActivity(state)}
-        loadWarning={loadWarningText(state.metrics, state.tabs.length)}
+        activity={currentActivity(state, scope)}
+        loadWarning={loadWarningText(state.metrics, tabs.length)}
         hostsPage={guestForTab(state, tabId) !== null}
         addressRef={addressRef}
         onBack={() => drive(tabId, (view) => view.goBack())}
@@ -198,8 +215,8 @@ function BrowserSurface({ state, active }: { state: BrowserState; active: boolea
           </div>
         )}
       </div>
-      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
-      <ClearDataDialog open={clearOpen} onClose={() => setClearOpen(false)} />
+      <ImportDialog open={importOpen} scope={scope} onClose={() => setImportOpen(false)} />
+      <ClearDataDialog open={clearOpen} scope={scope} onClose={() => setClearOpen(false)} />
       {homepageOpen && (
         <HomepageDialog
           homepage={homepage}

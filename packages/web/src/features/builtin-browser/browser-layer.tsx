@@ -45,7 +45,13 @@ import type { CSSProperties } from "react";
 import type { BuiltinBrowserLoadWarning } from "@adelie/server/api";
 import { DOCK_FULLSCREEN_Z, toastAttention } from "@adelie/ui";
 import { toneInk } from "../../lib/tone";
-import { currentDockScope, isTabShown, openPanel } from "../dock/dock-state";
+import {
+  currentDockScope,
+  dockVersion,
+  isTabShown,
+  openPanel,
+  subscribeDock,
+} from "../dock/dock-state";
 import { isBlankUrl } from "./address";
 import {
   claimGuest,
@@ -57,11 +63,14 @@ import {
 import { subscribeBuiltinBrowserEvents, subscribeBuiltinBrowserResync } from "./browser-events";
 import {
   activeTab,
+  activeTabIdInScope,
   guestByKey,
   shouldReveal,
+  tabsInScope,
   wantsNewTabPage,
   type BrowserGuest,
 } from "./browser-state";
+import { browserScope } from "./scope";
 import { browserState, dispatchBrowser, subscribeBrowser } from "./browser-store";
 import {
   DEFAULT_PARK_SIZE,
@@ -78,12 +87,7 @@ import { watchGuestId } from "./guest-id";
 import { loadWarningText, newWarnings } from "./load";
 import { forgetOnScreenReport, reportOnScreenTab } from "./on-screen-report";
 import { hasVisibleSlot, slotsVersion, subscribeSlots, visibleSlot } from "./slot-registry";
-import {
-  BROWSER_PARTITION,
-  registerWebview,
-  webviewSupported,
-  type WebviewElement,
-} from "./webview-registry";
+import { registerWebview, webviewSupported, type WebviewElement } from "./webview-registry";
 
 /** The dock tab of the browser panel. */
 const BROWSER_TAB = "builtin-browser";
@@ -170,7 +174,11 @@ function writeRect(style: CSSStyleDeclaration, rect: Rect): void {
  */
 function placePages(ring: HTMLDivElement | null): void {
   const state = browserState();
-  const tab = activeTab(state);
+  // Every hosted page is laid out, but only the conversation on screen shows one: its active
+  // tab over the visible slot, every other scope's pages (and this scope's others) parked.
+  const scope = browserScope();
+  const tab = activeTab(state, scope);
+  const activeTabId = activeTabIdInScope(state, scope);
   const slot = tab === null ? null : visibleSlot();
   const onScreen =
     slot === null
@@ -194,7 +202,7 @@ function placePages(ring: HTMLDivElement | null): void {
     const host = hosts.get(guest.key);
     if (host === undefined || host.frame === null || host.view === null) continue;
     const shown =
-      showPage && onScreen !== null && guest.tabId !== null && guest.tabId === state.activeTabId;
+      showPage && onScreen !== null && guest.tabId !== null && guest.tabId === activeTabId;
     const placement = shown ? onScreen : parkedPlacement(host.parkSize);
     if ((shown && lifted) !== host.lifted) {
       host.lifted = shown && lifted;
@@ -251,8 +259,9 @@ const GuestPage = memo(function GuestPage({ guest }: { guest: BrowserGuest }) {
       });
       // The page asked to close itself (window.close()).
       const close = () => {
-        const tabId = guestByKey(browserState(), key)?.tabId ?? null;
-        if (tabId !== null) closeBrowserTab(tabId);
+        const current = guestByKey(browserState(), key);
+        if (current !== null && current.tabId !== null)
+          closeBrowserTab(current.tabId, current.scope);
       };
       // A press inside the page reaches the page alone, yet to the app it is a press outside
       // every open menu: replayed on the element as the page takes focus, the app's own
@@ -275,8 +284,9 @@ const GuestPage = memo(function GuestPage({ guest }: { guest: BrowserGuest }) {
 
   return (
     <div ref={frameRef} data-testid="builtin-browser-page" data-guest={key} style={FRAME_STYLE}>
-      {/* partition before src: the page's profile has to be set before its first load. */}
-      <webview ref={viewRef} partition={BROWSER_PARTITION} src={guest.src} style={VIEW_STYLE} />
+      {/* partition before src: the page's profile has to be set before its first load. The
+          partition is the guest's conversation's own cookie jar, given by the server. */}
+      <webview ref={viewRef} partition={guest.partition} src={guest.src} style={VIEW_STYLE} />
     </div>
   );
 });
@@ -290,6 +300,9 @@ export function BuiltinBrowserLayer() {
 function LayerHost() {
   const state = useSyncExternalStore(subscribeBrowser, browserState);
   useSyncExternalStore(subscribeSlots, slotsVersion);
+  // The conversation on screen: a switch re-places the pages and reads the new scope's tabs.
+  useSyncExternalStore(subscribeDock, dockVersion);
+  const scope = browserScope();
   const slotShown = hasVisibleSlot();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const ringRef = useRef<HTMLDivElement | null>(null);
@@ -300,7 +313,6 @@ function LayerHost() {
   // forgets them with it.
   useEffect(() => {
     dispatchBrowser({ type: "supported", supported: true });
-    void refreshBrowserStatus();
     void refreshBrowserSettings();
     const revealed = new Set<string>();
     const offEvents = subscribeBuiltinBrowserEvents((event) => {
@@ -315,7 +327,7 @@ function LayerHost() {
     const offResync = subscribeBuiltinBrowserResync(() => {
       forgetOnScreenReport();
       dispatchBrowser({ type: "resync" });
-      void refreshBrowserStatus();
+      void refreshBrowserStatus(browserScope());
       void refreshBrowserSettings();
     });
     return () => {
@@ -324,6 +336,13 @@ function LayerHost() {
       dispatchBrowser({ type: "supported", supported: false });
     };
   }, []);
+
+  // The conversation on screen: read its registry, so its tabs show even if its event was missed
+  // (a window that loaded while another conversation was on screen, a scope switched back to).
+  // Runs on mount too — the first scope read.
+  useEffect(() => {
+    void refreshBrowserStatus(scope);
+  }, [scope]);
 
   const available = state.available;
   useEffect(() => {
@@ -335,7 +354,10 @@ function LayerHost() {
       const delay = STATUS_RETRY_MS[attempt];
       if (cancelled || delay === undefined) return;
       attempt += 1;
-      timer = window.setTimeout(() => void refreshBrowserStatus().then(schedule), delay);
+      timer = window.setTimeout(
+        () => void refreshBrowserStatus(browserScope()).then(schedule),
+        delay,
+      );
     };
     schedule();
     return () => {
@@ -364,7 +386,7 @@ function LayerHost() {
     warned.current = next;
     if (fresh.length === 0) return;
     const now = browserState();
-    const text = loadWarningText(now.metrics, now.tabs.length);
+    const text = loadWarningText(now.metrics, tabsInScope(now, browserScope()).length);
     if (text !== null) toastAttention(text);
   }, [warnings]);
 
@@ -390,17 +412,17 @@ function LayerHost() {
   const panelOnScreen = slotShown && windowShown;
   const newTabPageFailed = useRef(false);
   useEffect(() => {
-    if (!panelOnScreen || state.tabs.length > 0) newTabPageFailed.current = false;
+    if (!panelOnScreen || tabsInScope(state, scope).length > 0) newTabPageFailed.current = false;
     // Whether the panel is on screen is asked of the docks as they stand now, not of this
     // render's slot: a conversation switch moves the docks first, while the outgoing
     // conversation's panel still holds a visible slot until the render after — a page opened
     // here would be the conversation switched to opening one it never asked for.
     const browserShown = panelOnScreen && isTabShown(BROWSER_TAB);
-    if (newTabPageFailed.current || !wantsNewTabPage(browserState(), browserShown)) return;
-    void openBrowserTab().then((tab) => {
+    if (newTabPageFailed.current || !wantsNewTabPage(browserState(), scope, browserShown)) return;
+    void openBrowserTab(undefined, scope).then((tab) => {
       if (tab === null) newTabPageFailed.current = true;
     });
-  }, [state, panelOnScreen]);
+  }, [state, scope, panelOnScreen]);
 
   // While a browser panel is on screen, follow its slot every frame.
   useEffect(() => {
@@ -443,8 +465,8 @@ function LayerHost() {
   }, []);
 
   // The agent-at-work ring frames the page on screen while an agent acts in that tab.
-  const ringShown =
-    slotShown && state.activeTabId !== null && state.activity[state.activeTabId] !== undefined;
+  const ringTabId = activeTabIdInScope(state, scope);
+  const ringShown = slotShown && ringTabId !== null && state.activity[ringTabId] !== undefined;
 
   return (
     <div ref={rootRef} data-testid="builtin-browser-layer">

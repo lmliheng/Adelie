@@ -110,9 +110,9 @@ async function until(ready: () => boolean, what: string): Promise<void> {
 }
 /** Connected, with these tabs in the registry. */
 async function connected(h: Harness, ...ids: number[]): Promise<void> {
-  for (const id of ids) h.shell.guests.set(id, tab(id));
+  for (const id of ids) h.shell.host(tab(id));
   await h.call("GET", "/status");
-  await until(() => ids.every((id) => h.browser.tabs.has(id)), "the tabs");
+  await until(() => ids.every((id) => h.browser.registry().has(id)), "the tabs");
 }
 const lastTabs = (h: Harness) =>
   h.events.filter((e) => e.type === "builtin_browser_tabs").at(-1) as
@@ -165,9 +165,9 @@ describe("a crashed tab", () => {
     const h = mount();
     await connected(h, 6);
     h.shell.crash(6);
-    await until(() => h.browser.tabs.get(6)?.crashed !== undefined, "the crash");
+    await until(() => h.browser.registry().get(6)?.crashed !== undefined, "the crash");
     h.shell.show(tab(6));
-    await until(() => h.browser.tabs.get(6)?.crashed === undefined, "the reload");
+    await until(() => h.browser.registry().get(6)?.crashed === undefined, "the reload");
     h.shell.cdp = (_tabId, method) =>
       method === "Runtime.evaluate" ? evaluated(JSON.stringify({ ok: true, data: 42 })) : {};
     const res = await h.call("POST", "/tabs/6/exec", { script: "return 42", noMonitor: true });
@@ -320,9 +320,9 @@ describe("the tab list to the windows", () => {
     const small = `data:image/png;base64,${"A".repeat(1_000)}`;
     const large = `data:image/png;base64,${"A".repeat(8_000)}`;
     h.shell.show(tab(1, { favicon: small }));
-    await until(() => h.browser.tabs.get(1)?.favicon === small, "the small icon");
+    await until(() => h.browser.registry().get(1)?.favicon === small, "the small icon");
     h.shell.show(tab(1, { favicon: large }));
-    await until(() => h.browser.tabs.get(1)?.favicon === undefined, "the large icon dropped");
+    await until(() => h.browser.registry().get(1)?.favicon === undefined, "the large icon dropped");
   });
 });
 
@@ -338,7 +338,7 @@ describe("shell traffic that fails", () => {
     expect(h.logs).toContain("builtin browser: the shell's 'tab' event failed: boom");
     h.browser.history.observe = observe;
     h.shell.show(tab(1, { title: "Fine again" }));
-    expect(h.browser.tabs.get(1)?.title).toBe("Fine again");
+    expect(h.browser.registry().get(1)?.title).toBe("Fine again");
   });
 
   it("keeps going when sending to the windows fails", async () => {

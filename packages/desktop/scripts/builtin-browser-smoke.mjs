@@ -226,7 +226,7 @@ async function run() {
   const hello = await send({ op: "hello" });
   check(
     "hello",
-    hello.ok && hello.result.version === 1 && hello.result.partition === "persist:penguin-browser",
+    hello.ok && hello.result.version === 2 && hello.result.partition === "persist:penguin-browser",
     hello,
   );
   const tabs = await send({ op: "tabs" });

@@ -25,20 +25,21 @@ import fs from "node:fs";
 import { BrowserWindow, Menu, app, clipboard, session } from "electron";
 import type { ContextMenuParams, MenuItemConstructorOptions, Session, WebContents } from "electron";
 import type {
-  BuiltinBrowserTab,
   DesktopBrowserCommand,
   DesktopBrowserCookie,
   DesktopBrowserEvent,
   DesktopBrowserEventMessage,
   DesktopBrowserReplyMessage,
+  DesktopBrowserTab,
 } from "@adelie/server/api";
 import {
-  BUILTIN_BROWSER_PARTITION,
+  BUILTIN_BROWSER_PARTITION_PREFIX,
   BUILTIN_BROWSER_PROTOCOL_VERSION,
   METRICS_INTERVAL_MS,
   clearDataPlan,
   guestContextMenu,
   hardenGuestPreferences,
+  isBrowserPartition,
   isGrantedPermission,
   isOpenableUrl,
   mayAttachGuest,
@@ -82,6 +83,8 @@ interface Guest {
   /** The guest's webContents id, kept because a destroyed webContents can no longer be asked. */
   id: number;
   wc: WebContents;
+  /** The Chromium partition the page runs in — its conversation's own cookie jar. */
+  partition: string;
   favicon?: string;
   /** The CDP events relayed to the server, as the last `cdp` command's `events` set them. */
   relayed: ReadonlySet<string>;
@@ -118,7 +121,10 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
   const hosted = new WeakSet<BrowserWindow>();
   /** The pages of the hosted windows: the only embedders a guest may attach to. */
   const embedders = new WeakSet<WebContents>();
-  let partitionSession: Session | null = null;
+  /** One Session per partition: a conversation's own cookie jar, kept for the window's life. */
+  const partitionSessions = new Map<string, Session>();
+  /** The partition each Session is, so a guest's partition can be read back from its webContents. */
+  const sessionPartitions = new Map<Session, string>();
   let metricsTimer: NodeJS.Timeout | null = null;
   let metricsSoon: NodeJS.Timeout | null = null;
 
@@ -135,20 +141,28 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
   });
 
   /**
-   * The guests' session, set up once before the first guest is created: the user agent sites
-   * see, and which permission prompts a page is granted. Downloads keep Electron's own save
+   * One partition's session, set up the first time it is asked for: the user agent sites see, and
+   * which permission prompts a page is granted. A conversation has its own — its own cookies and
+   * site storage — set up the same way as the default one. Downloads keep Electron's own save
    * dialog.
    */
-  function browserSession(): Session {
-    if (partitionSession !== null) return partitionSession;
-    const ses = session.fromPartition(BUILTIN_BROWSER_PARTITION);
+  function browserSession(partition: string): Session {
+    const existing = partitionSessions.get(partition);
+    if (existing !== undefined) return existing;
+    const ses = session.fromPartition(partition);
     ses.setUserAgent(plainChromeUserAgent(ses.getUserAgent()));
     ses.setPermissionRequestHandler((_wc, permission, callback) =>
       callback(isGrantedPermission(permission)),
     );
     ses.setPermissionCheckHandler((_wc, permission) => isGrantedPermission(permission));
-    partitionSession = ses;
+    partitionSessions.set(partition, ses);
+    sessionPartitions.set(ses, partition);
     return ses;
+  }
+
+  /** The partition a guest's page runs in: the one this window gave its session, else the default. */
+  function partitionOf(wc: WebContents): string {
+    return sessionPartitions.get(wc.session) ?? BUILTIN_BROWSER_PARTITION_PREFIX;
   }
 
   function emit(event: DesktopBrowserEvent): void {
@@ -166,7 +180,7 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
     } satisfies DesktopBrowserReplyMessage);
   }
 
-  function tabOf(guest: Guest): BuiltinBrowserTab {
+  function tabOf(guest: Guest): DesktopBrowserTab {
     const { wc } = guest;
     const crashed = wc.isCrashed() ? (guest.crashReason ?? "crashed") : undefined;
     return {
@@ -176,6 +190,7 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
       loading: wc.isLoading(),
       canGoBack: wc.navigationHistory.canGoBack(),
       canGoForward: wc.navigationHistory.canGoForward(),
+      partition: guest.partition,
       ...(guest.favicon !== undefined ? { favicon: guest.favicon } : {}),
       ...(crashed !== undefined ? { crashed } : {}),
     };
@@ -234,7 +249,7 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
   function adopt(wc: WebContents): void {
     const id = wc.id;
     if (guests.has(id)) return;
-    const guest: Guest = { id, wc, relayed: new Set() };
+    const guest: Guest = { id, wc, partition: partitionOf(wc), relayed: new Set() };
     guests.set(id, guest);
     // The CDP events the server asked for, and only those: the debugger's session sees every
     // event of the domains enabled on it.
@@ -338,9 +353,13 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
     return (await dbg.sendCommand(method, params ?? {})) as unknown;
   }
 
-  /** Writes cookies one by one, so a bad one costs itself only. Failures name the cookie, never its value. */
-  async function setCookies(cookies: DesktopBrowserCookie[]) {
-    const ses = browserSession();
+  /**
+   * Writes cookies one by one into a partition's session, so a bad one costs itself only. The
+   * partition is the conversation's (or the default one): imported log-ins land in the jar they
+   * were imported for, never in another conversation's. Failures name the cookie, never its value.
+   */
+  async function setCookies(partition: string, cookies: DesktopBrowserCookie[]) {
+    const ses = browserSession(partition);
     let set = 0;
     let failed = 0;
     const errors: string[] = [];
@@ -398,10 +417,11 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
     }
   }
 
-  async function clearData(storages: readonly string[]) {
+  /** Clears one partition's cookies, cache or site storage — a conversation's own, or the default. */
+  async function clearData(partition: string, storages: readonly string[]) {
     const plan = clearDataPlan(storages);
     if (plan === null) throw new Error("bad_command");
-    const ses = browserSession();
+    const ses = browserSession(partition);
     if (plan.storageData.length > 0) await ses.clearStorageData({ storages: plan.storageData });
     if (plan.cache) await ses.clearCache();
     return {};
@@ -410,7 +430,10 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
   async function run(command: DesktopBrowserCommand): Promise<unknown> {
     switch (command.op) {
       case "hello":
-        return { version: BUILTIN_BROWSER_PROTOCOL_VERSION, partition: BUILTIN_BROWSER_PARTITION };
+        return {
+          version: BUILTIN_BROWSER_PROTOCOL_VERSION,
+          partition: BUILTIN_BROWSER_PARTITION_PREFIX,
+        };
       case "tabs":
         return {
           tabs: [...guests.values()].filter((g) => !g.wc.isDestroyed()).map((g) => tabOf(g)),
@@ -423,9 +446,9 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
         return sendCdp(guest, command.method, command.params);
       }
       case "set-cookies":
-        return setCookies(command.cookies);
+        return setCookies(command.partition, command.cookies);
       case "clear-data":
-        return clearData(command.storages);
+        return clearData(command.partition, command.storages);
       case "throttle":
         return throttle(command.tabIds);
     }
@@ -525,7 +548,9 @@ export function createBuiltinBrowserShell(opts: BuiltinBrowserShellOptions): Bui
           );
           return;
         }
-        browserSession();
+        // The conversation's own partition, set up before its first guest: the page's profile has
+        // to be ready before its first load.
+        browserSession(params.partition!);
         hardenGuestPreferences(webPreferences as unknown as Record<string, unknown>);
       });
       embedder.on("did-attach-webview", (_event, wc) => adopt(wc));

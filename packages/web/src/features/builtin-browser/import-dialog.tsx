@@ -20,7 +20,16 @@ import {
 /** The option rows' ink. */
 const optionInk = "text-gray-700 dark:text-gray-300";
 
-export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function ImportDialog({
+  open,
+  scope,
+  onClose,
+}: {
+  open: boolean;
+  /** The conversation the import lands in (its own cookie jar); `""` for the default scope. */
+  scope: string;
+  onClose: () => void;
+}) {
   const [sources, setSources] = useState<BuiltinBrowserImportSource[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [sourceId, setSourceId] = useState<string | null>(null);
@@ -63,7 +72,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
     setRunning(true);
     setError(null);
     try {
-      setResult(await api.importIntoBuiltinBrowser(request));
+      setResult(await api.importIntoBuiltinBrowser(request, scope));
     } catch (err) {
       setError(S.builtinBrowser.importFailed(apiErrorText(err)));
     } finally {

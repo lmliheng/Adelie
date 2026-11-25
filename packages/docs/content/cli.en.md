@@ -560,7 +560,7 @@ penguin browser history [<query>] [-n <count>]
 
 - `--tab <id>` names the tab that `open`, `scan`, `exec`, `click`, `type`, `screenshot` and `cdp` act on: a tab id from `tabs`, or `active`, the default.
 - `--json` prints the response as one line of JSON, and `--server` works as everywhere.
-- Inside a session, `open`, `exec`, `click` and `type` send `ADELIE_SESSION_ID`, so the app opens the Browser panel in the conversation that is driving it.
+- `--session <id>` names the conversation the command acts in; without it the caller's own `ADELIE_SESSION_ID` stands, and without either the default scope (no conversation) does. The browser works per conversation — each has its own tabs and its own sign-ins — so one conversation's commands never touch another's pages. Inside a session the agent needs no flag: `ADELIE_SESSION_ID` is its conversation.
 - These commands never auto-start a server, because a server started that way would have no desktop app to host the browser. With no server running they fail with `browser_unavailable`.
 - The labels and messages follow the CLI's language. The examples here are the English output; with `ADELIE_LANG=zh` they are in Chinese.
 

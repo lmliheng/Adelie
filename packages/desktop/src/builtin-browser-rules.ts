@@ -16,11 +16,28 @@ import type {
 } from "@adelie/server/api";
 import type { TrayLocale } from "./tray-menu.js";
 
-/** The guests' own session: independent sign-ins and profile, persisted under userData. */
-export const BUILTIN_BROWSER_PARTITION = "persist:penguin-browser";
+/**
+ * The partition family the browser's guests run in. The prefix alone — `persist:penguin-browser`
+ * — is the default scope (the CLI outside a session, a window showing no conversation); the form
+ * `persist:penguin-browser:<session>` is one conversation's. Each partition is its own cookie jar
+ * and site-storage store, so two conversations logged into the same site are two independent
+ * sign-ins and one conversation's pages never see another's. The server names the partition in
+ * the `builtin_browser_open` event, the window sets it on the `<webview>`, and the shell reports
+ * it back on every tab so the server can scope its tabs again after a restart.
+ */
+export const BUILTIN_BROWSER_PARTITION_PREFIX = "persist:penguin-browser";
+
+/** Whether a value is one of the browser's partitions: the prefix itself, or `<prefix>:<scope>`. */
+export function isBrowserPartition(partition: unknown): partition is string {
+  if (typeof partition !== "string") return false;
+  if (partition === BUILTIN_BROWSER_PARTITION_PREFIX) return true;
+  const prefix = `${BUILTIN_BROWSER_PARTITION_PREFIX}:`;
+  if (!partition.startsWith(prefix)) return false;
+  return /^[A-Za-z0-9._-]{1,160}$/.test(partition.slice(prefix.length));
+}
 
 /** What the shell answers `hello` with; the server learns from it that this shell hosts guests. */
-export const BUILTIN_BROWSER_PROTOCOL_VERSION = 1;
+export const BUILTIN_BROWSER_PROTOCOL_VERSION = 2;
 
 function schemeOf(url: string): string | null {
   const match = /^([a-z][a-z0-9+.-]*):/i.exec(url.trim());
@@ -28,11 +45,12 @@ function schemeOf(url: string): string | null {
 }
 
 /**
- * Whether a <webview> may attach at all: only in the browser's partition, and only starting on
- * a web page or a blank one. An element with no `src` yet starts blank, which is harmless.
+ * Whether a <webview> may attach at all: only in one of the browser's partitions (the default one
+ * or a conversation's), and only starting on a web page or a blank one. An element with no `src`
+ * yet starts blank, which is harmless.
  */
 export function mayAttachGuest(params: { partition?: string; src?: string }): boolean {
-  if (params.partition !== BUILTIN_BROWSER_PARTITION) return false;
+  if (!isBrowserPartition(params.partition)) return false;
   const src = params.src ?? "";
   if (src === "" || src === "about:blank") return true;
   const scheme = schemeOf(src);
@@ -41,10 +59,11 @@ export function mayAttachGuest(params: { partition?: string; src?: string }): bo
 
 /**
  * Forces a guest's webPreferences into the one hardened shape, whatever the element's
- * attributes asked for: the browser's partition (a `webpreferences` attribute is spread over
- * the one `partition` set), no preload and no Node, isolated and sandboxed, web security on,
- * no nested <webview>, and no background throttling — the agent works in tabs nobody is
- * looking at. Mutates, as `will-attach-webview` expects.
+ * attributes asked for: a browser partition (the one it named, or the default when it named
+ * none — a `webpreferences` attribute is spread over the one `partition` set), no preload and no
+ * Node, isolated and sandboxed, web security on, no nested <webview>, and no background
+ * throttling — the agent works in tabs nobody is looking at. Mutates, as `will-attach-webview`
+ * expects.
  *
  * Opaque, too: Electron makes a guest transparent by default, which lets the app's own surface
  * show through a page that sets no background of its own — dark text on the dark theme. An
@@ -57,7 +76,9 @@ export function mayAttachGuest(params: { partition?: string; src?: string }): bo
  * then denies every one of them (builtin-browser.ts), so no guest ever opens a window.
  */
 export function hardenGuestPreferences(prefs: Record<string, unknown>): void {
-  prefs.partition = BUILTIN_BROWSER_PARTITION;
+  prefs.partition = isBrowserPartition(prefs.partition)
+    ? prefs.partition
+    : BUILTIN_BROWSER_PARTITION_PREFIX;
   delete prefs.preload;
   delete prefs.preloadURL;
   prefs.nodeIntegration = false;
@@ -246,17 +267,22 @@ export function parseBrowserCommand(data: unknown): ParsedBrowserCommand | null 
       };
     }
     case "set-cookies": {
-      const { cookies } = command;
-      if (!Array.isArray(cookies) || !cookies.every(isCookie)) return { id, error: "bad_command" };
-      return { id, command: { op: "set-cookies", cookies } };
+      const { partition, cookies } = command;
+      if (!isBrowserPartition(partition) || !Array.isArray(cookies) || !cookies.every(isCookie)) {
+        return { id, error: "bad_command" };
+      }
+      return { id, command: { op: "set-cookies", partition, cookies } };
     }
     case "clear-data": {
       const plan = clearDataPlan(command.storages);
-      if (plan === null) return { id, error: "bad_command" };
+      if (plan === null || !isBrowserPartition(command.partition)) {
+        return { id, error: "bad_command" };
+      }
       return {
         id,
         command: {
           op: "clear-data",
+          partition: command.partition,
           storages: command.storages as ("cookies" | "cache" | "storage")[],
         },
       };

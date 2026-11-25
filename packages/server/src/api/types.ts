@@ -7001,6 +7001,18 @@ export interface BuiltinBrowserTab {
   crashed?: string;
 }
 
+/**
+ * A tab as the desktop shell reports it: the same page, plus the Chromium partition it runs in.
+ * The partition is what makes the browser per-conversation — each conversation's pages live in
+ * their own cookie jar (see builtin-browser/rules) — and it is how the server decides which
+ * conversation a tab belongs to when the shell hands it the full list after a restart. It never
+ * crosses to a client: responses and events are already scoped to one conversation.
+ */
+export interface DesktopBrowserTab extends BuiltinBrowserTab {
+  /** The `<webview>` partition the page runs in (`persist:penguin-browser`, or `…:<session>`). */
+  partition: string;
+}
+
 /** Why the built-in browser cannot be driven: not under the desktop shell, a shell too old to host it, or no app window to host a new tab. */
 export type BuiltinBrowserUnavailableReason = "not_desktop" | "shell_unsupported" | "no_window";
 
@@ -7178,13 +7190,29 @@ export type BuiltinBrowserAction =
 
 /** User-channel events of the built-in browser (admins only). */
 export type BuiltinBrowserServerEvent =
-  | { type: "builtin_browser_tabs"; tabs: BuiltinBrowserTab[]; activeTabId: number | null }
+  /**
+   * One conversation's tabs and active one. The browser is per-conversation: each session has
+   * its own tab set and its own active pointer, so a window shows the list of the conversation
+   * it is displaying and no other's. `sessionId` is that conversation; absent means the default
+   * scope (no conversation — the CLI outside a session).
+   */
+  | {
+      type: "builtin_browser_tabs";
+      tabs: BuiltinBrowserTab[];
+      activeTabId: number | null;
+      sessionId?: string;
+    }
   /** Create a guest for `url`, then POST /tabs/claim with `requestId` once it has a webContents id. */
   | {
       type: "builtin_browser_open";
       requestId: string;
       url: string;
       activate: boolean;
+      /**
+       * The Chromium partition the guest's `<webview>` must be created in — the conversation's
+       * own cookie jar. The server decides it from `sessionId`; the window only applies it.
+       */
+      partition: string;
       openerTabId?: number;
       sessionId?: string;
     }
@@ -7215,9 +7243,9 @@ export interface DesktopBrowserCookie {
 
 /** Server → shell: what the shell does with its guests. Mechanism only — the product logic stays on the server. */
 export type DesktopBrowserCommand =
-  /** Reply: `{ version: 1, partition: string }`. An older shell never answers. */
+  /** Reply: `{ version: 1, partition: string }` (the partition prefix every guest runs under). An older shell never answers. */
   | { op: "hello" }
-  /** Reply: `{ tabs: BuiltinBrowserTab[] }`. */
+  /** Reply: `{ tabs: DesktopBrowserTab[] }`. */
   | { op: "tabs" }
   /**
    * Reply: the CDP method's result object. `events` names the tab's CDP events the shell relays
@@ -7233,9 +7261,9 @@ export type DesktopBrowserCommand =
       events?: string[];
     }
   /** Reply: `{ set: number; failed: number; errors: string[] }` (at most 10 errors). */
-  | { op: "set-cookies"; cookies: DesktopBrowserCookie[] }
+  | { op: "set-cookies"; partition: string; cookies: DesktopBrowserCookie[] }
   /** Reply: `{}`. */
-  | { op: "clear-data"; storages: ("cookies" | "cache" | "storage")[] }
+  | { op: "clear-data"; partition: string; storages: ("cookies" | "cache" | "storage")[] }
   /**
    * Reply: `{}`. The tabs whose pages may be throttled while out of sight (Electron's background
    * throttling, applied at once); every other tab runs at full speed. It replaces the list
@@ -7259,7 +7287,7 @@ export interface DesktopBrowserReplyMessage {
 }
 
 export type DesktopBrowserEvent =
-  | { kind: "tab"; tab: BuiltinBrowserTab }
+  | { kind: "tab"; tab: DesktopBrowserTab }
   | { kind: "tab-closed"; tabId: number }
   /**
    * window.open / target=_blank inside a guest (the shell denied it and asks for a tab instead),

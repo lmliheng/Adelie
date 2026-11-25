@@ -226,6 +226,38 @@ describe("open, switch, close", () => {
   });
 });
 
+describe("the conversation a command acts in", () => {
+  beforeEach(() => {
+    routes["GET /status"] = () => ({
+      body: { available: true, tabs: [ORDERS], activeTabId: 12 },
+    });
+    routes["GET /tabs"] = () => ({ body: { tabs: [ORDERS], activeTabId: 12 } });
+    routes["DELETE /tabs/15"] = () => ({ status: 204 });
+  });
+
+  it("--session names it for the routes that carry no body", async () => {
+    expect(await cli(["browser", "status", "--session", SESSION])).toBe(0);
+    expect(browserRequests().at(-1)?.search).toBe(`?sessionId=${SESSION}`);
+    expect(await cli(["browser", "tabs", "--session", SESSION])).toBe(0);
+    expect(browserRequests().at(-1)?.search).toBe(`?sessionId=${SESSION}`);
+    expect(await cli(["browser", "close", "15", "--session", SESSION])).toBe(0);
+    expect(browserRequests().at(-1)?.search).toBe(`?sessionId=${SESSION}`);
+  });
+
+  it("--session overrides ADELIE_SESSION_ID and travels in a body", async () => {
+    process.env.ADELIE_SESSION_ID = "session-2026-09-24-10-00-00-env00001";
+    routes["POST /tabs/active/exec"] = () => ({ body: execResult({ value: 1 }) });
+    expect(await cli(["browser", "exec", "return 1", "--session", SESSION])).toBe(0);
+    expect(lastBody()).toEqual({ script: "return 1", sessionId: SESSION });
+    // Without --session, the environment's session stands.
+    await cli(["browser", "exec", "return 1"]);
+    expect(lastBody()).toEqual({
+      script: "return 1",
+      sessionId: "session-2026-09-24-10-00-00-env00001",
+    });
+  });
+});
+
 describe("scan", () => {
   it("prints the header, the tab list, a rule and the page", async () => {
     routes["POST /tabs/12/scan"] = () => ({

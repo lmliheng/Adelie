@@ -16,9 +16,11 @@
  *   penguin browser history [<query>] [-n <count>]
  *
  * Every command takes `--json` (the response DTO as one line) and `--server`; the commands that
- * act on a page take `--tab <id|active>`, `active` by default. Inside a session,
- * ADELIE_SESSION_ID travels as `sessionId`, so the app can show which conversation is driving
- * the browser. What is printed is browser-output.ts; an error is one line on stderr,
+ * act on a page take `--tab <id|active>`, `active` by default. The browser is per-conversation:
+ * a command acts in the conversation named by `--session <id>`, else this process's
+ * ADELIE_SESSION_ID, else the default scope (no conversation). Each conversation keeps its own
+ * tabs and its own sign-ins, so one conversation's agent never touches another's pages. What is
+ * printed is browser-output.ts; an error is one line on stderr,
  * `error: <code>: <message>`, with exit code 1.
  *
  * The CLI never auto-starts a server for these commands: the browser lives in the desktop app,
@@ -73,6 +75,7 @@ interface CommonOpts {
   json?: boolean;
   server?: string;
   tab?: string;
+  session?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -175,10 +178,27 @@ function normalizeUrl(raw: string): string {
   return raw.trim();
 }
 
-/** The calling session (ADELIE_SESSION_ID), for the bodies that accept one. */
-function session(): { sessionId?: string } {
+/**
+ * The conversation this command acts in: `--session <id>`, else this process's
+ * ADELIE_SESSION_ID; undefined for the default scope (no conversation).
+ */
+function scopedSession(opts: CommonOpts): string | undefined {
+  const explicit = opts.session?.trim();
+  if (explicit !== undefined && explicit !== "") return explicit;
   const id = process.env.ADELIE_SESSION_ID?.trim();
-  return id ? { sessionId: id } : {};
+  return id !== undefined && id !== "" ? id : undefined;
+}
+
+/** The bodies that accept a conversation. */
+function session(opts: CommonOpts): { sessionId?: string } {
+  const id = scopedSession(opts);
+  return id === undefined ? {} : { sessionId: id };
+}
+
+/** `?sessionId=…` for the GET and DELETE routes, which carry no body. */
+function sessionQuery(opts: CommonOpts): string {
+  const id = scopedSession(opts);
+  return id === undefined ? "" : `?sessionId=${enc(id)}`;
 }
 
 function print(text: string): void {
@@ -378,16 +398,22 @@ function pngSize(png: Buffer): string | null {
 
 export function registerBrowserCommand(program: Command, t: Messages): void {
   const browser = program.command("browser").description(t.browser.desc);
-  /** `--json` and `--server`, which every leaf takes, after its own options. */
+  /** `--json`, `--server` and `--session`, which every leaf takes, after its own options. */
   const leaf = (cmd: Command): Command =>
-    cmd.option("--json", t.common.json).option("--server <url>", t.common.server);
+    cmd
+      .option("--json", t.common.json)
+      .option("--server <url>", t.common.server)
+      .option("--session <id>", t.browser.session);
   /** A leaf acting on a page: `--tab` too. */
   const onTab = (cmd: Command): Command => leaf(cmd.option("--tab <id>", t.browser.tab));
 
   leaf(browser.command("status").description(t.browser.statusDesc)).action(
     action(t, async (opts: CommonOpts) => {
       const client = await connect(opts, t);
-      const res = await client.request<BuiltinBrowserStatus>("GET", `${BASE}/status`);
+      const res = await client.request<BuiltinBrowserStatus>(
+        "GET",
+        `${BASE}/status${sessionQuery(opts)}`,
+      );
       if (opts.json === true) printJson(res);
       else print(renderStatus(res, t));
       if (!res.available) process.exitCode = 1;
@@ -397,7 +423,10 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
   leaf(browser.command("tabs").description(t.browser.tabsDesc)).action(
     action(t, async (opts: CommonOpts) => {
       const client = await connect(opts, t);
-      const res = await client.request<BuiltinBrowserTabsResponse>("GET", `${BASE}/tabs`);
+      const res = await client.request<BuiltinBrowserTabsResponse>(
+        "GET",
+        `${BASE}/tabs${sessionQuery(opts)}`,
+      );
       if (opts.json === true) printJson(res);
       else print(renderTabs(res, t));
     }),
@@ -420,12 +449,12 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
           ? await client.request<{ tab: BuiltinBrowserTab }>("POST", `${BASE}/tabs`, {
               url,
               activate: true,
-              ...session(),
+              ...session(opts),
             })
           : await client.request<{ tab: BuiltinBrowserTab }>(
               "POST",
               `${BASE}/tabs/${tab}/navigate`,
-              { url, ...session() },
+              { url, ...session(opts) },
             );
       if (opts.json === true) printJson(res);
       else print(`${tabHead(res.tab, t)}\n`);
@@ -445,6 +474,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
       const res = await client.request<{ tab: BuiltinBrowserTab }>(
         "POST",
         `${BASE}/tabs/${tab}/activate`,
+        session(opts),
       );
       if (opts.json === true) printJson(res);
       else print(`${tabHead(res.tab, t)}\n`);
@@ -460,7 +490,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
     action(t, async (raw: string | undefined, opts: CommonOpts) => {
       const tab = tabRef(raw, t);
       const client = await connect(opts, t);
-      await client.request("DELETE", `${BASE}/tabs/${tab}`);
+      await client.request("DELETE", `${BASE}/tabs/${tab}${sessionQuery(opts)}`);
       if (opts.json === true) printJson({ closed: tab === "active" ? tab : Number(tab) });
       else print(`${tab === "active" ? t.browser.closedActive() : t.browser.closed(tab)}\n`);
     }),
@@ -484,6 +514,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
         {
           ...(opts.text === true ? { textOnly: true } : {}),
           ...(maxChars !== undefined ? { maxChars } : {}),
+          ...session(opts),
         },
       );
       if (opts.json === true) printJson(res);
@@ -526,7 +557,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
             ...(opts.monitor === false ? { noMonitor: true } : {}),
             ...(timeoutMs !== undefined ? { timeoutMs } : {}),
             ...(opts.acceptDialogs === true ? { acceptDialogs: true } : {}),
-            ...session(),
+            ...session(opts),
           },
         );
         const savedTo =
@@ -573,7 +604,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
           {
             ...target,
             ...(opts.acceptDialogs === true ? { acceptDialogs: true } : {}),
-            ...session(),
+            ...session(opts),
           },
         );
         if (opts.json === true) printJson(res);
@@ -608,7 +639,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
             ...(opts.selector !== undefined ? { selector: opts.selector } : {}),
             ...(opts.submit === true ? { submit: true } : {}),
             ...(opts.acceptDialogs === true ? { acceptDialogs: true } : {}),
-            ...session(),
+            ...session(opts),
           },
         );
         if (opts.json === true) printJson(res);
@@ -631,7 +662,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
       const res = await client.request<BuiltinBrowserScreenshot>(
         "POST",
         `${BASE}/tabs/${tab}/screenshot`,
-        opts.fullPage === true ? { fullPage: true } : {},
+        { ...(opts.fullPage === true ? { fullPage: true } : {}), ...session(opts) },
       );
       if (opts.json === true && opts.output === undefined) {
         printJson(res);
@@ -671,6 +702,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
       const res = await client.request<{ result: unknown }>("POST", `${BASE}/tabs/${tab}/cdp`, {
         method,
         ...(params !== undefined ? { params } : {}),
+        ...session(opts),
       });
       if (opts.json === true) printJson(res);
       else print(renderCdpResult(res.result, t));
@@ -718,6 +750,7 @@ export function registerBrowserCommand(program: Command, t: Messages): void {
           cookies: both || opts.cookies === true,
           history: both || opts.history === true,
           ...(opts.domain.length > 0 ? { domains: opts.domain } : {}),
+          ...session(opts),
         });
         if (opts.json === true) printJson(res);
         else print(renderImportResult(res, t));

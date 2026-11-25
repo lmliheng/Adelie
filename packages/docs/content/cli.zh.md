@@ -560,7 +560,7 @@ penguin browser history [<query>] [-n <count>]
 
 - `--tab <id>` 指定 `open`、`scan`、`exec`、`click`、`type`、`screenshot` 和 `cdp` 作用的标签页：取 `tabs` 列出的标签页 id，或 `active`（默认值）。
 - `--json` 把响应打印为一行 JSON；`--server` 与其他命令相同。
-- 在会话内部，`open`、`exec`、`click` 和 `type` 会发送 `ADELIE_SESSION_ID`，应用据此在正在驱动浏览器的那个对话里打开浏览器面板。
+- `--session <id>` 指定命令在哪个对话中操作；不给时取调用方自己的 `ADELIE_SESSION_ID`，都没有时为默认作用域（没有对话）。浏览器按对话隔离——每个对话有自己的标签页与自己的登录状态——所以一个对话的命令碰不到另一个对话的页面。在会话内部，Agent 不必给出这个选项：`ADELIE_SESSION_ID` 就是它所在的对话。
 - 这些命令从不自动启动服务器，因为这样启动的服务器没有桌面应用来承载浏览器。没有服务器在运行时，命令以 `browser_unavailable` 失败。
 - 输出的标签与提示跟随 CLI 的语言。本节示例是英文输出；`ADELIE_LANG=zh` 时改用中文，例如 `状态：success   标签页：12`。
 

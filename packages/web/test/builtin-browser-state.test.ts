@@ -1,9 +1,10 @@
 /**
  * The built-in browser's state in a window (features/builtin-browser/browser-state.ts): the
- * server's tab registry, the pages this window hosts, the agent's activity, the homepage and the
- * browser's load — driven by the user channel's five events and the window's own actions
- * (claim, close, activate, settings read or saved, a new tab asked for) — and the rule that keeps
- * a tab open while the panel is on screen.
+ * server's per-conversation tab registries, the pages this window hosts, the agent's activity,
+ * the homepage and the browser's load — driven by the user channel's five events and the
+ * window's own actions (claim, close, activate, settings read or saved, a new tab asked for) —
+ * and the rule that keeps a tab open while the panel is on screen. Two conversations of the same
+ * window keep their tabs, active pointers and closings apart.
  */
 import { describe, expect, it } from "vitest";
 import type {
@@ -14,6 +15,7 @@ import type {
 import {
   INITIAL_BROWSER_STATE,
   activeTab,
+  activeTabIdInScope,
   addressOf,
   browserOffered,
   currentActivity,
@@ -23,6 +25,7 @@ import {
   reduceBrowser,
   shouldReveal,
   tabBusy,
+  tabsInScope,
   wantsNewTabPage,
   type BrowserAction,
   type BrowserState,
@@ -46,36 +49,59 @@ function run(state: BrowserState, ...actions: BrowserAction[]): BrowserState {
 
 const event = (e: BuiltinBrowserServerEvent): BrowserAction => ({ type: "event", event: e });
 
-const open = (requestId: string, over: Partial<{ url: string; activate: boolean }> = {}) =>
+const open = (
+  requestId: string,
+  over: Partial<{ url: string; activate: boolean; sessionId: string; partition: string }> = {},
+) =>
   event({
     type: "builtin_browser_open",
     requestId,
     url: over.url ?? "https://example.com/",
     activate: over.activate ?? true,
+    partition: over.partition ?? "persist:penguin-browser",
+    ...(over.sessionId !== undefined ? { sessionId: over.sessionId } : {}),
   });
 
+/** A tabs event of one conversation (`scope` absent = the default scope). */
+const listed = (tabs: BuiltinBrowserTab[], scope?: string): BrowserAction =>
+  event({
+    type: "builtin_browser_tabs",
+    tabs,
+    activeTabId: tabs.at(-1)?.id ?? null,
+    ...(scope !== undefined ? { sessionId: scope } : {}),
+  });
+
+/** A status read (of the default scope unless one is named). */
+const status = (
+  over: Partial<{
+    tabs: BuiltinBrowserTab[];
+    activeTabId: number | null;
+    reason: "shell_unsupported";
+  }>,
+  scope = "",
+): BrowserAction => ({
+  type: "status",
+  scope,
+  status: {
+    available: over.reason === undefined,
+    ...(over.reason !== undefined ? { reason: over.reason } : {}),
+    tabs: over.tabs ?? [],
+    activeTabId: over.activeTabId ?? null,
+  },
+});
+
 /** A desktop window whose server said the browser is available, with no tabs yet. */
-const READY = run(
-  INITIAL_BROWSER_STATE,
-  { type: "supported", supported: true },
-  { type: "status", status: { available: true, tabs: [], activeTabId: null } },
-);
+const READY = run(INITIAL_BROWSER_STATE, { type: "supported", supported: true }, status({}));
 
 describe("availability", () => {
   it("offers the browser only where it can be hosted and the server can drive it", () => {
     expect(browserOffered(INITIAL_BROWSER_STATE)).toBe(false);
     expect(browserOffered(READY)).toBe(true);
-    const shellTooOld = reduceBrowser(READY, {
-      type: "status",
-      status: { available: false, reason: "shell_unsupported", tabs: [], activeTabId: null },
-    });
+    const shellTooOld = reduceBrowser(READY, status({ reason: "shell_unsupported" }));
     expect(browserOffered(shellTooOld)).toBe(false);
     expect(shellTooOld.reason).toBe("shell_unsupported");
     // A plain browser tab: the server may be fine, but there is no <webview> here.
-    const noWebview = reduceBrowser(INITIAL_BROWSER_STATE, {
-      type: "status",
-      status: { available: true, tabs: [], activeTabId: null },
-    });
+    const noWebview = reduceBrowser(INITIAL_BROWSER_STATE, status({}));
     expect(browserOffered(noWebview)).toBe(false);
   });
 
@@ -83,28 +109,40 @@ describe("availability", () => {
     expect(browserOffered(reduceBrowser(READY, { type: "unreachable" }))).toBe(false);
   });
 
-  it("takes the registry from the status", () => {
-    const state = reduceBrowser(READY, {
-      type: "status",
-      status: { available: true, tabs: [tab(3), tab(5)], activeTabId: 5 },
-    });
-    expect(state.tabs.map((t) => t.id)).toEqual([3, 5]);
+  it("takes the registry of the conversation the status was read for", () => {
+    const state = reduceBrowser(READY, status({ tabs: [tab(3), tab(5)], activeTabId: 5 }));
+    expect(tabsInScope(state).map((t) => t.id)).toEqual([3, 5]);
     expect(activeTab(state)?.id).toBe(5);
+    // The same read for a conversation leaves the default scope's tabs alone.
+    const scoped = reduceBrowser(state, status({ tabs: [tab(9)], activeTabId: 9 }, "s1"));
+    expect(tabsInScope(scoped).map((t) => t.id)).toEqual([3, 5]);
+    expect(tabsInScope(scoped, "s1").map((t) => t.id)).toEqual([9]);
   });
 });
 
 describe("pages this window hosts", () => {
-  it("creates a page for an open request, keyed by the request", () => {
+  it("creates a page for an open request, keyed by the request, in its conversation's partition", () => {
     const state = run(READY, open("r1", { url: "https://amazon.com/" }));
     expect(state.guests).toEqual([
       {
         key: guestKey("r1"),
         src: "https://amazon.com/",
+        partition: "persist:penguin-browser",
+        scope: "",
         requestId: "r1",
         tabId: null,
         activate: true,
       },
     ]);
+  });
+
+  it("keeps a conversation's page in that conversation's scope and partition", () => {
+    const state = run(
+      READY,
+      open("r1", { sessionId: "s1", partition: "persist:penguin-browser:s1" }),
+    );
+    expect(state.guests[0]?.scope).toBe("s1");
+    expect(state.guests[0]?.partition).toBe("persist:penguin-browser:s1");
   });
 
   it("starts a page asked for with no address on the blank page", () => {
@@ -173,41 +211,101 @@ describe("tabs and closing", () => {
       withTabs,
       event({ type: "builtin_browser_tabs", tabs: [tab(2, { title: "Renamed" })], activeTabId: 2 }),
     );
-    expect(next.tabs).toEqual([tab(2, { title: "Renamed" })]);
+    expect(tabsInScope(next)).toEqual([tab(2, { title: "Renamed" })]);
   });
 
   it("removes a tab the server closed, page and all", () => {
     const next = reduceBrowser(withTabs, event({ type: "builtin_browser_close", tabId: 2 }));
-    expect(next.tabs.map((t) => t.id)).toEqual([1]);
+    expect(tabsInScope(next).map((t) => t.id)).toEqual([1]);
     expect(next.guests.map((g) => g.tabId)).toEqual([1]);
-    expect(next.activeTabId).toBe(1);
+    expect(activeTabIdInScope(next)).toBe(1);
   });
 
   it("closes a tab here at once, and keeps a stale snapshot from bringing it back", () => {
     const closed = reduceBrowser(withTabs, { type: "closed", tabId: 2 });
-    expect(closed.tabs.map((t) => t.id)).toEqual([1]);
+    expect(tabsInScope(closed).map((t) => t.id)).toEqual([1]);
     expect(closed.guests.map((g) => g.tabId)).toEqual([1]);
-    expect(closed.activeTabId).toBe(1);
+    expect(activeTabIdInScope(closed)).toBe(1);
     // A snapshot published before the close still lists tab 2.
     const stale = reduceBrowser(
       closed,
       event({ type: "builtin_browser_tabs", tabs: [tab(1), tab(2)], activeTabId: 2 }),
     );
-    expect(stale.tabs.map((t) => t.id)).toEqual([1]);
-    expect(stale.activeTabId).toBeNull();
+    expect(tabsInScope(stale).map((t) => t.id)).toEqual([1]);
+    expect(activeTabIdInScope(stale)).toBeNull();
     // Once the server stops listing it, the tab id is no longer held back.
     const settled = reduceBrowser(
       stale,
       event({ type: "builtin_browser_tabs", tabs: [tab(1)], activeTabId: 1 }),
     );
-    expect(settled.closing).toEqual([]);
-    expect(settled.activeTabId).toBe(1);
+    expect(settled.closing[""]).toEqual([]);
+    expect(activeTabIdInScope(settled)).toBe(1);
   });
 
   it("brings a tab to the front here before the server confirms", () => {
     const next = reduceBrowser(withTabs, { type: "activated", tabId: 1 });
     expect(activeTab(next)?.id).toBe(1);
     expect(reduceBrowser(next, { type: "activated", tabId: 1 })).toBe(next);
+  });
+});
+
+describe("per-conversation isolation", () => {
+  // One window, two conversations, each with its own page.
+  const twoScopes = run(
+    READY,
+    open("a", { sessionId: "s1", partition: "persist:penguin-browser:s1" }),
+    { type: "attached", key: guestKey("a"), tabId: 11 },
+    open("b", { sessionId: "s2", partition: "persist:penguin-browser:s2" }),
+    { type: "attached", key: guestKey("b"), tabId: 22 },
+    listed([tab(11)], "s1"),
+    listed([tab(22)], "s2"),
+  );
+
+  it("keeps each conversation's tabs and active tab apart", () => {
+    expect(tabsInScope(twoScopes, "s1").map((t) => t.id)).toEqual([11]);
+    expect(tabsInScope(twoScopes, "s2").map((t) => t.id)).toEqual([22]);
+    expect(activeTab(twoScopes, "s1")?.id).toBe(11);
+    expect(activeTab(twoScopes, "s2")?.id).toBe(22);
+    // The default scope never picked up either conversation's tab.
+    expect(tabsInScope(twoScopes)).toEqual([]);
+  });
+
+  it("scopes a tabs event by its sessionId, leaving the other conversation alone", () => {
+    const next = reduceBrowser(twoScopes, listed([tab(22, { title: "Renamed" })], "s2"));
+    expect(tabsInScope(next, "s1").map((t) => t.title)).toEqual(["Page 11"]);
+    expect(tabsInScope(next, "s2").map((t) => t.title)).toEqual(["Renamed"]);
+  });
+
+  it("closes a tab in its own conversation only", () => {
+    const next = reduceBrowser(twoScopes, { type: "closed", tabId: 11 });
+    expect(tabsInScope(next, "s1")).toEqual([]);
+    expect(next.closing["s1"]).toEqual([11]);
+    expect(tabsInScope(next, "s2").map((t) => t.id)).toEqual([22]);
+    expect(guestForTab(next, 11)).toBeNull();
+    expect(guestForTab(next, 22)?.scope).toBe("s2");
+  });
+
+  it("brings a tab to the front in its own conversation only", () => {
+    const next = reduceBrowser(twoScopes, { type: "activated", tabId: 11 });
+    expect(activeTabIdInScope(next, "s1")).toBe(11);
+    expect(activeTabIdInScope(next, "s2")).toBe(22);
+  });
+
+  it("marks activity by tab id across conversations", () => {
+    const next = run(
+      twoScopes,
+      event({
+        type: "builtin_browser_activity",
+        tabId: 22,
+        busy: true,
+        action: "scan",
+        sessionId: "s2",
+      }),
+    );
+    expect(tabBusy(next, 22)).toBe(true);
+    expect(tabBusy(next, 11)).toBe(false);
+    expect(currentActivity(next, "s2")).toEqual({ action: "scan", sessionId: "s2" });
+    expect(currentActivity(next, "s1")).toBeNull();
   });
 });
 
@@ -224,10 +322,10 @@ describe("agent activity", () => {
   it("marks a tab while an agent acts in it", () => {
     const state = run(READY, busy(4, true, "s1"));
     expect(tabBusy(state, 4)).toBe(true);
-    expect(currentActivity(state)).toEqual({ action: "scan", sessionId: "s1" });
+    expect(currentActivity(state, "s1")).toEqual({ action: "scan", sessionId: "s1" });
     const done = reduceBrowser(state, busy(4, false));
     expect(tabBusy(done, 4)).toBe(false);
-    expect(currentActivity(done)).toBeNull();
+    expect(currentActivity(done, "s1")).toBeNull();
   });
 
   it("names the active tab's activity first", () => {
@@ -259,6 +357,7 @@ describe("shouldReveal", () => {
     requestId: "r",
     url: "https://example.com/",
     activate: true,
+    partition: "persist:penguin-browser",
     ...(sessionId !== undefined ? { sessionId } : {}),
   });
   const acting = (busy: boolean, sessionId = "s1"): BuiltinBrowserServerEvent => ({
@@ -341,10 +440,17 @@ describe("load", () => {
   });
 
   it("takes the status's measurement, and keeps the last one when a status has none", () => {
-    const status = { available: true, tabs: [tab(1), tab(2)], activeTabId: 1 };
-    const read = run(READY, { type: "status", status: { ...status, metrics: heavy } });
-    expect(read.metrics).toEqual(heavy);
-    expect(run(read, { type: "status", status }).metrics).toEqual(heavy);
+    const listedTabs = [tab(1), tab(2)];
+    const read = reduceBrowser(READY, status({ tabs: listedTabs, activeTabId: 1 }));
+    const withMetrics = reduceBrowser(read, {
+      type: "status",
+      scope: "",
+      status: { available: true, tabs: listedTabs, activeTabId: 1, metrics: heavy },
+    });
+    expect(withMetrics.metrics).toEqual(heavy);
+    expect(
+      reduceBrowser(withMetrics, status({ tabs: listedTabs, activeTabId: 1 })).metrics,
+    ).toEqual(heavy);
   });
 
   it("shows a crashed tab as the server reports it", () => {
@@ -357,34 +463,39 @@ describe("load", () => {
 });
 
 describe("the new-tab page", () => {
-  const listed = (...tabs: BuiltinBrowserTab[]) =>
-    event({ type: "builtin_browser_tabs", tabs, activeTabId: tabs.at(-1)?.id ?? null });
-
   it("is opened for a panel on screen with no tab: the first time, or after a restart", () => {
-    expect(wantsNewTabPage(READY, true)).toBe(true);
+    expect(wantsNewTabPage(READY, "", true)).toBe(true);
   });
 
   it("is not opened out of sight, or where the browser cannot be used", () => {
-    expect(wantsNewTabPage(READY, false)).toBe(false);
-    expect(wantsNewTabPage(INITIAL_BROWSER_STATE, true)).toBe(false);
-    expect(wantsNewTabPage(reduceBrowser(READY, { type: "unreachable" }), true)).toBe(false);
+    expect(wantsNewTabPage(READY, "", false)).toBe(false);
+    expect(wantsNewTabPage(INITIAL_BROWSER_STATE, "", true)).toBe(false);
+    expect(wantsNewTabPage(reduceBrowser(READY, { type: "unreachable" }), "", true)).toBe(false);
   });
 
   it("is not opened beside a tab that is open", () => {
-    expect(wantsNewTabPage(run(READY, listed(tab(1))), true)).toBe(false);
+    expect(wantsNewTabPage(run(READY, listed([tab(1)])), "", true)).toBe(false);
+  });
+
+  it("is opened in a conversation that has none, though another one has a tab", () => {
+    const other = run(READY, listed([tab(1)], "s2"));
+    expect(wantsNewTabPage(other, "", true)).toBe(true);
+    expect(wantsNewTabPage(other, "s2", true)).toBe(false);
   });
 
   it("is not opened beside a tab on its way", () => {
     // Asked for by any window, the agent or a page: the page is being created here.
     const creating = run(READY, open("r1"));
-    expect(wantsNewTabPage(creating, true)).toBe(false);
+    expect(wantsNewTabPage(creating, "", true)).toBe(false);
     // Claimed, not yet in the registry.
     const claimed = run(creating, { type: "attached", key: guestKey("r1"), tabId: 4 });
-    expect(wantsNewTabPage(claimed, true)).toBe(false);
+    expect(wantsNewTabPage(claimed, "", true)).toBe(false);
     // This window's own request, before the server has asked it for the page.
     const asking = reduceBrowser(READY, { type: "opening", delta: 1 });
-    expect(wantsNewTabPage(asking, true)).toBe(false);
-    expect(wantsNewTabPage(reduceBrowser(asking, { type: "opening", delta: -1 }), true)).toBe(true);
+    expect(wantsNewTabPage(asking, "", true)).toBe(false);
+    expect(wantsNewTabPage(reduceBrowser(asking, { type: "opening", delta: -1 }), "", true)).toBe(
+      true,
+    );
   });
 
   it("replaces the last tab once it closes, however it closed", () => {
@@ -392,15 +503,15 @@ describe("the new-tab page", () => {
       READY,
       open("r1"),
       { type: "attached", key: guestKey("r1"), tabId: 4 },
-      listed(tab(4)),
+      listed([tab(4)]),
     );
-    expect(wantsNewTabPage(one, true)).toBe(false);
+    expect(wantsNewTabPage(one, "", true)).toBe(false);
     // Its × here, or the agent's close through the server.
-    expect(wantsNewTabPage(reduceBrowser(one, { type: "closed", tabId: 4 }), true)).toBe(true);
+    expect(wantsNewTabPage(reduceBrowser(one, { type: "closed", tabId: 4 }), "", true)).toBe(true);
     const byAgent = run(one, event({ type: "builtin_browser_close", tabId: 4 }));
-    expect(wantsNewTabPage(byAgent, true)).toBe(true);
+    expect(wantsNewTabPage(byAgent, "", true)).toBe(true);
     // Closed while the panel was out of sight: nothing until it is shown again.
-    expect(wantsNewTabPage(byAgent, false)).toBe(false);
+    expect(wantsNewTabPage(byAgent, "", false)).toBe(false);
   });
 
   it("counts this window's requests on their way, and never below none", () => {

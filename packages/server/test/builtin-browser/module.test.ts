@@ -51,7 +51,7 @@ describe("the built-in browser in the platform tree", () => {
 
   it("reaches the shell in desktop mode and tells the admin's event stream about tabs", async () => {
     const shell = new FakeShell();
-    shell.guests.set(3, tab(3));
+    shell.host(tab(3));
     const t = await createDesktopApp({ browserShellPort: shell.port });
     try {
       const cookie = await desktopLoginCookie(t.app);

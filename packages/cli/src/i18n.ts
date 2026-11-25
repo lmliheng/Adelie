@@ -683,6 +683,8 @@ export interface Messages {
     historyDesc: string;
     /** --tab: which tab the command acts on. */
     tab: string;
+    /** --session: the conversation the command acts in, overriding ADELIE_SESSION_ID. */
+    session: string;
     urlArg: string;
     newTab: string;
     tabIdArg: string;
@@ -1812,6 +1814,8 @@ const en: Messages = {
       "Import cookies (sign-ins) and history from a browser installed on this machine (neither flag: both)",
     historyDesc: "Search the built-in browser's history (most visited first, then most recent)",
     tab: 'Tab id, or "active" (default)',
+    session:
+      "Conversation to act in (default: $ADELIE_SESSION_ID, or none — its own tabs and sign-ins)",
     urlArg: "URL to open; https:// is added to a bare host",
     newTab: "Open it in a new tab",
     tabIdArg: "Tab id",
@@ -2898,6 +2902,8 @@ const zh: Messages = {
     importDesc: "从本机安装的浏览器导入 Cookie（登录状态）与历史记录（两个开关都不给时两者都导入）",
     historyDesc: "搜索内置浏览器的历史记录（访问次数多的在前，次数相同时较近的在前）",
     tab: "标签页 id，或 active（缺省）",
+    session:
+      "在哪个会话中操作（缺省取 $ADELIE_SESSION_ID，都没有时为默认作用域——有各自的标签页与登录状态）",
     urlArg: "要打开的 URL；只写主机名时自动补上 https://",
     newTab: "在新标签页中打开",
     tabIdArg: "标签页 id",

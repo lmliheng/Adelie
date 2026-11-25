@@ -5,7 +5,7 @@ description: Drive the Adelie desktop app's built-in browser from the shell with
 
 # Browser automation
 
-The desktop app has a built-in browser in its side panel: the **Browser** tab of the dock. `penguin browser` drives it from your shell. Its tabs are shared by every conversation and keep the sign-ins made in them, so a page you open is one the user can watch and take over. Every command acts on the active tab unless `--tab <id>` names another.
+The desktop app has a built-in browser in its side panel: the **Browser** tab of the dock. `penguin browser` drives it from your shell. It works per conversation — each conversation has its own tabs and its own sign-ins, so the pages you drive are this conversation's own, kept apart from any other's, and they are the ones the user can watch and take over. Inside a session every command acts in it already (ADELIE_SESSION_ID); on its own, name it with `--session <id>`. Every command acts on the active tab of that conversation unless `--tab <id>` names another.
 
 The browser exists only inside the desktop app. A server started any other way (`penguin web`, Docker, a remote machine) has none.
 
