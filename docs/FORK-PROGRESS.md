@@ -3863,6 +3863,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       换掉卡片实例，卡片自己持有的弹窗跟着实例走 —— 读者在快照到达前点开的那个框就自己关掉了。
       见「第三百三十轮」一节。
 
+- [x] **7.203 桌宠的通话界面改成气泡对话、挂断与静音换成圆形按钮，桌宠大小可设，动作重写**
+      （**2026-11-25 第三百三十一轮**落地，提交见「已完成的轮次」，用户点单；`packages/desktop` 3 个源码文件
+      （`pet-window.ts` 三档尺寸与 `petWindowSize(showCall, size)`、`pet-prefs.ts` 的 `size`、`main.ts` 的
+      `setPetSize`）＋ `packages/server` 3 个（`api/types.ts` 的 `DesktopPetSize` 与三处 `size?`、`http/routes/desktop.ts`
+      的 PUT、`services/desktop-update-port.ts` 的推送解析）＋ `packages/ui` 1 个（两个新图标）＋ `packages/web`
+      （通话页重写、新 `features/pet/pet-size.ts`、`pet-page.tsx`、设置页一行、`styles.css` 动效、字符串一对））：
+      原来的通话是一块面板 —— 一条标题、一条状态、一列纯文本，挂断与静音两个小方框，不像在跟宠物说话；桌宠的
+      大小写死在代码里，谁也改不了；动作只有上下呼吸与一次 hop。见「第三百三十一轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7091,6 +7100,8 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.201 | **内置浏览器按对话隔离：每个对话自己的标签集、活动标签与 Chromium 分区**（**2026-11-25 第三百二十八轮**，用户点单；`packages/server/src/builtin-browser/`（新 `partitions.ts` 定「作用域↔分区」+ `service.ts` 改成 `Map<scope, TabRegistry>` 与 `tabId→scope` 路由、`routes.ts`/`shell-link.ts` 读作用域）、`packages/server/src/api/types.ts`（壳侧 tab 带 `partition`、命令带 `partition`、`tabs` 事件带 `sessionId`、`MIN_PROTOCOL_VERSION` 1→2）、`packages/desktop/src/builtin-browser{,-rules}.ts`（分区族 + 每分区一个 `Session`，协议报 2）、`packages/web/src/features/builtin-browser/`（新 `scope.ts`；store 按作用域存标签/活动标签/关闭中，面板·标签条·工具栏·`<webview partition>` 只读当前对话）、`packages/cli/src/commands/browser.ts`（`--session <id>` 优先于 `ADELIE_SESSION_ID`）、文档与 browser-automation 技能 + changelog 一对 —— **接口新增、协议升版、缺省作用域沿用旧分区不迁移**）：桌面应用里的内置浏览器原来整个应用只有一份 —— 一个标签池、一个全局「活动标签」指针、一个 `persist:penguin-browser` 分区。两个对话同时用就互相抢：面板来回跳、甲正在填的表单被乙的动作打断/失焦、危险操作可能落到乙的页面；cookie 共用，甲在某个站点登录后乙再去就是登录态；`penguin browser` 也没有绑定本会话的选项 | 四道门禁全绿：`pnpm gen:ifaces && pnpm -r typecheck` 全 `Done`、`pnpm lint`（oxlint）**0 警告 0 错误**（2688 文件）、`pnpm format:check` **`PRETTIER_EXIT=0`**、`pnpm -r test` **`EXIT=0`**（17 个有 test 的包全过）：web **359 / 4039 + 2 跳过** · server **220 / 3204 + 6 跳过** · cli **39 / 568** · core **70 / 1460 + 6 跳过** · ui **133 / 1117** · desktop **28 / 331** · ui-gallery **20 / 141** · amsp **2 / 72** · docs **8 / 62** · 新增用例：server 5 条按对话隔离（各自标签集/活动指针/分区、重启按分区还原作用域）、web 状态 5 条 + scope 2 条、cli 2 条「命令作用于哪个对话」；未跑整套浏览器 e2e（桌面壳本机无 Electron、纯函数单测覆盖） | `40117ba0b` |
 | 2026-11-25 | 发布 | **发 v0.8.3 并换装现网**（把 v0.8.2 之后攒下的收成正式版：**内置浏览器按对话隔离** —— 每个对话自己的标签集、活动标签与 Chromium 分区，cookie/站点存储不再互串；`penguin browser` 子命令多 `--session <id>`；桌面壳内置浏览器连接协议 1→2，旧壳判 `shell_unsupported`；发布提交 `f1bd60dd5`（父 `2ddf42b71`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.3` 指向同一提交；门禁在标签检出 `/root/rel-083` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 `test` 脚本的包全过）；三件载荷 linux-x64 111M（114,498,626 字节）/ universal 56M（57,256,862）/ win32-x64 144M（150,562,138）+ `validate-bundles.sh` 三件全过，桌面三件 deb 122,593,188 / AppImage 155,537,152 / exe 162,478,455；npm **29 个包**发到 0.8.3（`PUBLISH-ALL-DONE`）；GitHub Release **id `457603978`** 14 件 764 MB 逐件核 digest 后发布为 latest；3003 换上 v0.8.3 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261125-v0820`）；现网 `/root/.adelie` 整棵换成 0.8.3、旧前端先拷回、瞬时单元 `adelie-live-restart-083` 延后 1500 秒重启装新前端并自核验） | 发布轮，逐项见「第三百二十九轮」一节；换装前冒烟（从载荷解出的树，端口 8913、临时数据根）：`lib` 版本 0.8.3、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT f1bd60dd5…`、前端入口 `index-Bm6Jpj7B.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401、通知两张表在库里（本版无新迁移，`user_version` 仍 17）；现网核验写 `rel-083-live-restart-verify.txt`；`releases/latest` = v0.8.3 | `f1bd60dd5`（发布） |
 | 2026-11-25 | 7.202 | **插件卡片的三个自开弹窗（管理安装 / 详情 / 删除确认）不再在安装快照落地时自己关掉**（**2026-11-25 第三百三十轮**落地；`packages/web` 1 个源码文件（`features/plugins/plugins-page.tsx`：页面新增 `cardDialog`（`{plugin, kind}` = `installs` / `detail` / `delete`）取代卡片里的三个 `useState`，`PluginCard` 收 `dialog` / `onDialog`；`closeAfterWrite(agentId)` 只在那次写动了当前 Agent 时关掉列表 —— 从前这一步是重挂载顺带做的）＋ 1 个新 spec（`e2e/plugin-card-dialogs-hold.spec.mjs`，3 条）＋ changelog 一对 —— **不碰接口、无新依赖、无新文案**）：页面进来时安装快照是空的、读到才填，填上之后 `splitPluginRows` 把卡片归到另一个分区、React 换掉卡片实例，卡片自己持有的弹窗跟着实例走 —— 读者在快照到达之前点开的那个框就自己关掉了（第三百二十七轮末尾留给下一轮的 `plugin-card-refusal:220` 正是它） | 探针（真服务端 8940 + 数据根 `r328-a1`，skills 读按住 1.5 s）：改前 dialog 在 `23591` 出现、快照 `24925` 落地、`24990` 消失（65 ms 之后）；改后 4 s 后仍在 · **新 spec 两态**：改前（`r328/before-dist`，8942 `r328-b1` 与 8948 `r328-b2` 各跑一次）**3 failed** → 改后（8946 `r328-a3`、8950 `r328-a4` 与定稿整套里）**3 passed** · 相邻全绿：`plugin-card-refusal` 3 + `plugin-install-refusal` 2 + `plugins-install-refusal` 2 + 其余 8 份插件 spec 13；`skills.spec`（在管理安装列表里给另一个 Agent 装 / 卸）在定稿版里也绿 —— 第一版 `closeAfterWrite` 对每一次写都关，整套里把它红了（`卸载 agent_helper` 找不到：装到别的 Agent 之后列表被关掉），改成只关当前 Agent 那条路后复跑通过 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e（合并树 + 定稿，`SKIP_BUILD=1`，41.2 m）**：**417 通过 / 3 失败**，三条红都与本条无关：`builtin-browser-clear-refusal` 与 `builtin-browser-homepage-refusal`（另一条线 0.8.3 的新功能，停靠面板里 `dock-pick-builtin-browser` 90 s 没出现）、`scroll-follow-bounce` 的 Primer 一格（`grewWhileStill` 2 < 3，既有的负载敏感）· 截图 `r328/final-shots/{held,after}.png` 肉眼看过：弹窗留着、卡片已在「已安装的插件 (1)」、行上是「已安装」，console / pageerror **0** · 端口只用 8940–8960（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r328-*` | 见本行提交 |
+
+| 2026-11-25 | 7.203 | **桌宠的通话界面改成气泡对话、挂断与静音换成圆形按钮，桌宠大小可设（小 / 中 / 大三档），动作重写**（**2026-11-25 第三百三十一轮**，用户点单；`packages/desktop`（`pet-window.ts`：`PetSize` / `PET_SIZES` / `PET_PET_PX`（56 / 72 / 96）/ `isPetSize` / `petWindowSize(showCall, size)` 按档加高度；`pet-prefs.ts`：`PetPrefs.size` 默认 `medium`、`parsePetCommand` 与 `petStatusMessage` 带上它；`main.ts`：`petSize`、`setPetSize` 落盘 + `applyPetSize()` + 推送）、`packages/server`（`api/types.ts`：新 `DesktopPetSize`，状态 / 补丁 / 命令三处加 `size?`；`http/routes/desktop.ts`：PUT 收 `size`、乱值 400 `invalid_pet_size`、空补丁判据带上它；`services/desktop-update-port.ts`：推送解析按字段逐个读、读不出的丢掉）、`packages/ui`（`icons.ts` 加 `microphoneOff` / `phone`）、`packages/web`（`features/pet/voice/call-stage.tsx` 整文件重写；新 `features/pet/pet-size.ts`；`pet-page.tsx` 按档画形象与算面板留白并加入场动画；`features/settings/appearance-section.tsx` 加「桌宠大小」一行；`styles.css` 重写呼吸 / hop 并加通话动效；`lib/strings{,-en}.ts`）—— **不碰数据库、无新依赖，字符串删一条（`callTitle`）、加两条**）：原来的实时语音通话是一块面板 —— 一条「通话中」标题、一条状态、一列「谁说了什么」的纯文本，挂断与静音是两个小方框，看着不像在跟宠物说话；桌宠的大小写死在 `pet-page.tsx` 的 `72px` 与 `pet-window.ts` 的 `300` 里，界面上没有任何地方能改；动作只有 3.6 s 的上下呼吸、一次 hop 与眨眼 | 见「第三百三十一轮」一节（单测：desktop 28 文件 / 334、server 220 / 3205 + 6 跳过、ui 133 / 1117、web **360 / 4042 + 2 跳过**；`pnpm lint` 0 警告 0 错误、`format:check` 过、全仓 `typecheck` 全 `Done`；真浏览器：`pet.spec.mjs` 通过、六张通话态截图 + 一张三档大小图 + 真实 `/pet` 量到 72×72 与 `calc(100% - 76px)`） | `8090f7d61` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33831,3 +33842,64 @@ cookie 与站点存储都归各自那个对话；命令行多 `--session`。相�
 - 代码一笔 `8a5e1d9f4`（`packages/web/src/features/plugins/plugins-page.tsx` +
   `packages/web/e2e/plugin-card-dialogs-hold.spec.mjs` + changelog 一对）；台账（条目 7.202、上表那一行、本节）
   随本文件另起一笔。
+
+## 第三百三十一轮：桌宠的通话界面改成气泡对话、按钮重做、大小可设、动作重写（2026-11-25，条目 7.203）
+
+**开工**：`git status --short` 里只有 ` M packages/web/e2e/project-switch.spec.mjs` —— **另一条线的**改动
+（7.202 那件事的 spec 夹具），本轮一个字节没碰、也没提交。本地 `main` 停在 `e9e8c910e`（第三百二十九轮，v0.8.3
+的发布台账）。选活期间 `git fetch` 把 `origin/main` 推到 **`d5dd81c69`** —— 另一条线的 **第三百三十轮 / 条目
+7.202**（插件卡片的三个自开弹窗不再自己关掉）已经占了号。于是**让号**：本轮改记 **7.203 / 第三百三十一轮**，代码
+提交在 `d5dd81c69` 之上重建（`git rebase --autostash`，那条 spec 的改动由 autostash 带过、rebase 完原样放回工作树）。
+
+**为什么是这一条**：用户 2026-11-25 带着截图点单 —— 桌宠的实时语音通话「有点丑，就不能做成宠物对话的形式吗，还有
+这几个按钮，挂断静音很丑」，随后补两句「桌宠大小没法设置」「动效太差了」。三件事都落在桌宠这一块，一起做。
+
+**做了什么**：
+
+- **通话界面改成宠物对话**（`packages/web/src/features/pet/voice/call-stage.tsx` 整文件重写）：原来是一条「通话中」
+  标题 + 一条状态 + 一列纯文本 + 两个小方框按钮。现在页头是桌宠形象做头像 + 名字 + 状态字（通话结束后右侧才出现
+  `×`），中间是左右分边的气泡（桌宠在左、带小头像；用户在右、强调色实底；正在识别 / 正在说的那句同款但淡一档），
+  想事时桌宠那侧的气泡里是三个跳动的点，底部一排两个 40 px 圆按钮 —— 左边静音（`microphone` / `microphoneOff`，
+  静音时实底、再点取消），右边红色挂断（`phone` 转 135°），通话结束后这两个换成一个「关闭」药丸按钮。删掉了
+  `S.pet.callTitle`（中英各一条）。
+- **桌宠大小可设**（壳 + 服务端 + 界面）：`small / medium / large` = 56 / 72 / 96 px，默认 `medium`（原来的大小）。
+  壳 `pet.json` 多存一个 `size`（非法值回落），`pet-window.ts` 按档算休息窗高度（宽度还是 260，通话窗固定尺寸不
+  动），`main.ts` 收到就立刻改窗口并保持右下角；服务端 `/api/desktop/pet` 的 PUT 收 `size`（乱值 400
+  `invalid_pet_size`），推送解析按字段逐个读、读不出的丢掉（老壳只推开关也照样能用）；「外观」里多一行「桌宠大小」
+  （小 / 中 / 大），桌宠页按壳报来的档位画形象，并把面板留给宠物的空间从写死的 76 px 改成按档算
+  （`features/pet/pet-size.ts`）。
+- **动作重写**（`packages/web/src/styles.css`）：呼吸从单纯的上下浮动改成 4.6 s 的起伏 + 轻微左右摆 + 压扁拉伸；
+  窗口出现加一个 440 ms 的上浮入场（休息页与通话页都有）；点击的 hop 从 620 ms 改成 680 ms、带下蹲与落地压扁；
+  通话里加了气泡进场、三个点、说话头像脉冲与电平条。
+
+### 验证
+
+- 单测（`systemd-run --scope -p MemoryMax=8G`）：desktop **28 文件 / 334** · server **220 / 3205 + 6 跳过** ·
+  ui **133 / 1117** · web **360 / 4042 + 2 跳过**。新增用例：desktop `pet-window.test.ts` 的两组尺寸（三档只加在
+  休息窗、通话窗不受影响；`isPetSize` 只认三个值）、`pet-prefs.test.ts` 的 `size` 读写与非法回落、server
+  `desktop-pet.test.ts` 的 PUT `size` 与推送解析、web `test/pet-size.test.ts` 三档像素与面板留白。
+- 门禁：`pnpm lint`（oxlint）**0 警告 0 错误**；`pnpm format:check`「All matched files use Prettier code style」；
+  全仓 `pnpm typecheck` 全 `Done`（`ifaces.json unchanged`）。
+- 真浏览器：`pet.spec.mjs`（真服务端 + 临时数据根）**1 passed**；真实 `/pet` 上量到宠物按钮 **72 × 72**（medium，
+  与改动前一致）、面板 `max-height: calc(100% - 76px)` 且 `clientHeight - scrollHeight ≥ 0`。
+- **通话态截图**：本机没有 Electron 会话，通话页要能用真浏览器看图，就用 esbuild 打了一个只渲染 `CallStage` 的
+  探针页（吃构建出的那份样式表），六个状态各截一张 —— `pet-call-shots/call-{connecting,listening,thinking,speaking,ended,error}.png`，
+  外加一张三档大小并排的 `pet-sizes.png`。肉眼看过：气泡左右分边、三个点、红色圆挂断都在。
+- 起服务一律用真服务端（`packages/server/dist/index.js`）+ 各自的数据根；端口只用 8930 / 8931 / 8941 / 8950 / 8951，
+  跑完全停，3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
+
+### 没做 / 留着
+
+- **桌面壳里那半没能在真环境里跑**：本机没有 Electron 会话，所以「设置页那一行长什么样」与「窗口真的跟着变大变小」
+  只有纯函数单测（`pet-window.ts` / `pet-prefs.ts` / `pet-size.ts`），没有真机截图；三档的像素与窗口高度两边都有
+  用例钉住。
+- 面板留给宠物的 76 px 与 `PET_WINDOW_SIZE` 的 300 是照着 medium 量的，改档时两边一起按 `PET_PET_PX` 走；small /
+  large 下「面板够不够高」只在算术上成立（高度 = 300 + 档位差），没有真机量过。
+- 文档没动：`packages/docs` 的「外观」表格本来就没写桌宠（只有托盘图标一行），本轮也不动。
+- 没切版本号、没发 npm、没发安装包、没打标签、**没动现网**（用户只说「提交」）；整套浏览器 e2e 没跑（只跑了
+  `pet.spec.mjs` 这一份）。`legacy/main`、`/root/Adelie`、`/root/penguin-harness` 一律没碰。
+
+### 提交
+
+- 代码一笔 `8090f7d61`（壳 + 服务端 + 图标 + 界面，18 个文件）；台账（条目 7.203、上表那一行、本节）随本文件
+  另起一笔。
