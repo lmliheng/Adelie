@@ -7078,6 +7078,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.199 | **`scroll-follow-bounce` 在整套里那一格红，是夹具三处不自洽：视口不在扫描窗口里、滚的次数是死的、鼠标只对准一次**（**2026-11-25 第三百二十六轮**落地；`packages/web/e2e/scroll-follow-bounce.spec.mjs` 一处夹具 —— `onScreen()` 从「只扫最后 60 个段落」改成对段落二分再扫视口内那一段；手势从固定 10 × 50px 改成「同样 10 次一组，停 120 ms 重算位移、不到 200px 再补一组、最多 3 组」；每个手势前把指针重新对准 transcript 的中心 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：第三百二十五轮点名留给这一轮的活；动手时又查实两处会让判据失真 —— 只扫最后 60 段在会话攒到 480 段、视图滚远之后整个视口都不在那 60 段里（读数冻住，改前单跑 6 个手势读到 **-8**），鼠标只在第 1 个手势对准一次、之后可能落在 transcript 外面（`page` 仍记到 wheel，滚动容器收不到） | 两态（同一份服务端 / mock 与数据根，`git stash` 取改前）：**无负载**改前 **1 failed / 2 passed**（Primer 第 6 个手势 `textMovedDown` **-8**）→ 改后 **3 passed**（各手势 231–437）；**带负载**（3 个 `yes` 占 3/4 vCPU，模拟整套）改前 **1 failed / 2 passed**（Primer 第 6 个手势 **91**，正是滚不够那种红）→ 改后 **3 passed**（Primer 231–321；Console 第 4 个手势第一组 141、补一组到 641），`yes` 已停 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，一次性数据根，38.3 m）：**416 通过 / 1 失败**，`scroll-follow-bounce` 三主题全过（32.7 s / 35.6 s / 35.1 s，`BOUNCE-SUMMARY` 三行 `0/6 gestures bounced`；改前基线里 Primer 是红的），唯一红换成 `project-switch.spec` 第 128 行（同一数据根重跑 409，全新数据根单跑 **4.8 s 通过**，共享数据根顺序问题、与本轮无关）· 端口只用 8930 / 8931 / 8932（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r325-*`，日志在 scratchpad 的 `r325/` 下 · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 
 | 2026-11-25 | 7.200 | **`dock-command-across-layout` 的暖场等待不再一个选择器撞两个活动按钮**（**2026-11-25 第三百二十七轮**落地；`packages/web/e2e/dock-command-across-layout.spec.mjs` 一句 —— `getByRole("button", { name: /运行完毕/ })` 取 `.first()`，与 `subagent.spec` 同一写法 —— **只动测试、无新依赖、不碰接口、没有用户可见改动**）：一条回复可以同时给出活动分组表头（念「运行完毕 120ms」）与组里那一行（「运行完毕 思考 120ms」），strict 模式因此解析到两个元素 | 两态（全新数据根 `/root/adelie-fork-data/r326-b1`，端口 8944 / 8945）：改前七次单跑**三次红**（`strict mode violation … resolved to 2 elements`，指向第 176 行）→ 改后**连跑十次全绿**（每次 2 passed、6.4–6.7 s） · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，三趟，各自一次性数据根）：第一趟 **416 通过 / 1 失败（38.1 m）**—— 红的就是本条这一处（`dock-command-across-layout:176` 的 strict 解析）；改完第二趟 **416 / 1（38.6 m）**里它两条全绿，剩下的红换成 `plugin-card-refusal:220`（「管理安装」框 15 s 没出现，同一份 spec 全新数据根单跑六次全绿）；第三趟在合并树上（另一条线的 7.199 + 本条）**416 / 1（38.3 m）**，它仍全绿，红落在 `scroll-follow-bounce` 的 `grewWhileStill` 那一句（6 次手势里只有 2 次在停留窗里还在长、要 ≥ 3） · 端口只用 8930 / 8931 与 8942–8947（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r326-*` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
+| 2026-11-25 | 7.201 | **内置浏览器按对话隔离：每个对话自己的标签集、活动标签与 Chromium 分区**（**2026-11-25 第三百二十八轮**，用户点单；`packages/server/src/builtin-browser/`（新 `partitions.ts` 定「作用域↔分区」+ `service.ts` 改成 `Map<scope, TabRegistry>` 与 `tabId→scope` 路由、`routes.ts`/`shell-link.ts` 读作用域）、`packages/server/src/api/types.ts`（壳侧 tab 带 `partition`、命令带 `partition`、`tabs` 事件带 `sessionId`、`MIN_PROTOCOL_VERSION` 1→2）、`packages/desktop/src/builtin-browser{,-rules}.ts`（分区族 + 每分区一个 `Session`，协议报 2）、`packages/web/src/features/builtin-browser/`（新 `scope.ts`；store 按作用域存标签/活动标签/关闭中，面板·标签条·工具栏·`<webview partition>` 只读当前对话）、`packages/cli/src/commands/browser.ts`（`--session <id>` 优先于 `ADELIE_SESSION_ID`）、文档与 browser-automation 技能 + changelog 一对 —— **接口新增、协议升版、缺省作用域沿用旧分区不迁移**）：桌面应用里的内置浏览器原来整个应用只有一份 —— 一个标签池、一个全局「活动标签」指针、一个 `persist:penguin-browser` 分区。两个对话同时用就互相抢：面板来回跳、甲正在填的表单被乙的动作打断/失焦、危险操作可能落到乙的页面；cookie 共用，甲在某个站点登录后乙再去就是登录态；`penguin browser` 也没有绑定本会话的选项 | 四道门禁全绿：`pnpm gen:ifaces && pnpm -r typecheck` 全 `Done`、`pnpm lint`（oxlint）**0 警告 0 错误**（2688 文件）、`pnpm format:check` **`PRETTIER_EXIT=0`**、`pnpm -r test` **`EXIT=0`**（17 个有 test 的包全过）：web **359 / 4039 + 2 跳过** · server **220 / 3204 + 6 跳过** · cli **39 / 568** · core **70 / 1460 + 6 跳过** · ui **133 / 1117** · desktop **28 / 331** · ui-gallery **20 / 141** · amsp **2 / 72** · docs **8 / 62** · 新增用例：server 5 条按对话隔离（各自标签集/活动指针/分区、重启按分区还原作用域）、web 状态 5 条 + scope 2 条、cli 2 条「命令作用于哪个对话」；未跑整套浏览器 e2e（桌面壳本机无 Electron、纯函数单测覆盖） | `40117ba0b` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33628,3 +33629,71 @@ Expected: visible / Error: element(s) not found（15 s 等到超时）
 
 - 夹具一笔（`packages/web/e2e/dock-command-across-layout.spec.mjs`）；台账（条目 7.200、上表那一行、本节）
   随本文件另起一笔。
+
+## 第三百二十八轮：内置浏览器按对话隔离，每个对话自己的标签集、活动标签与 Chromium 分区（2026-11-25，条目 7.201）
+
+**开工**：这一轮是**用户点单**（2026-11-25 的那段报障 + steering「做好之后发小版本更新，并更新现网」），
+不是自进化巡检。本地 `main` 停在 `3119817c3`（第三百二十三轮），改动全在会话工作树里未提交。
+收尾推远端时另一条线已把 `origin/main` 推到 `8c71fb98c`（**第三百二十七轮 / 条目 7.200**，动的是
+`packages/docs` 台账与 `packages/web/e2e` 夹具），与我的文件不重叠，rebase 到它之上后直推，
+远端 SHA 与本地相同（`40117ba0b`）。
+
+### 问题（用户原话）
+
+桌面应用的内置浏览器是**全应用一个实例**：一个标签池 + 一个全局「活动标签」指针，不归属于某个
+对话；`penguin browser` 也没有任何「绑定到本会话」的选项；`exec`/`scan`/`cdp` 的 `--tab` 默认值是
+全局共享的 `active`，写死 `--tab 2` 也会把那个标签变成活动标签、UI 面板跟着跳；`click`/`type` 是
+可信鼠标键盘事件，落点在共享窗口。后果：两个对话同时用浏览器时面板来回跳、甲正在填的表单被乙的
+动作打断/失焦、危险操作可能落到乙的页面上；**cookie 也共享，同一站点的登录态被另一个对话继承**。
+
+### 做了什么
+
+作用域 = 对话 id（`sessionId`），无对话时是缺省作用域 `""`。链路：
+
+- **契约**（`packages/server/src/api/types.ts`）：新增 `DesktopBrowserTab extends BuiltinBrowserTab
+  { partition: string }`；`builtin_browser_tabs` 事件加 `sessionId?`；`builtin_browser_open` 加必填
+  `partition`；`set-cookies` / `clear-data` 命令加 `partition`；`tab` 事件改用 `DesktopBrowserTab`。
+- **服务端**（`packages/server/src/builtin-browser/`）：新 `partitions.ts` 是「作用域↔分区」的唯一
+  落点（缺省作用域 `persist:penguin-browser`、某对话 `persist:penguin-browser:<sessionId>`，分区反查
+  作用域时按 Session id 的字符集校验）；`service.ts` 由单一 `TabRegistry` 改成 `Map<scope,
+  TabRegistry>` + `tabId→scope` 路由，动作在各自作用域内解析 `active`，`schedulePublish()` 每作用域发
+  一条 `builtin_browser_tabs`；`routes.ts` 新增 `scoped(c, body)`，`/status`、`/tabs`、激活、关闭、导入、
+  清除数据都带上作用域；`shell-link.ts` 的 `parseTab` 返回 `DesktopBrowserTab`、`MIN_PROTOCOL_VERSION`
+  1 → **2**。
+- **桌面壳**（`packages/desktop/src/builtin-browser{,-rules}.ts`）：前缀常量改名、新增
+  `isBrowserPartition()`、每个分区一个 `Session`、`hello` 回 `version: 2`。
+- **前端**（`packages/web`）：新 `features/builtin-browser/scope.ts`（`browserScope()` = 当前对话若以
+  `session-` 开头则取它，否则 `""`）；`browser-state.ts` 把标签、活动标签、关闭中状态都改成按作用域
+  存（`Record<scope, …>`），`BrowserGuest` 带 `partition` 与 `scope`；`browser-layer.tsx` 订阅
+  dock 变化、切换作用域就 `refreshBrowserStatus(scope)`、`<webview partition={guest.partition}>`；
+  `browser-panel.tsx` 与标签条/工具栏/`ImportDialog`/`ClearDataDialog` 全都只读当前对话的作用域；
+  `api/endpoints.ts` 各函数带 `scope` 并新增 `browserScope(scope)` 辅助。
+- **命令行**（`packages/cli/src/commands/browser.ts`）：新增 `--session <id>`（优先于
+  `ADELIE_SESSION_ID`）、`sessionQuery(opts)` 给 query、`session(opts)` 给 body；`status`/`tabs`/`close`
+  用 query，其余子命令的 body 带上——**不改这些会因按作用域解析而回归 `no_such_tab`**。
+- **文档**：`packages/docs/content/builtin-browser.{en,zh}.md` 与 `cli.{en,zh}.md`、
+  `plugins/browser-automation` 技能的 SKILL.md 都改为按对话隔离 + `--session`；changelog 一对。
+
+### 验证
+
+- `pnpm gen:ifaces && pnpm -r typecheck`：全部 `Done`（含 server/cli/web/desktop/ui-gallery）。
+- `pnpm lint`（oxlint）：**0 警告 0 错误**，2688 文件。
+- `pnpm format:check`：先报 5 个文件（含 `packages/desktop/test/builtin-browser-rules.test.ts`），
+  `prettier --write` 修复后复查 **`PRETTIER_EXIT=0`**。
+- `pnpm -r test`（`systemd-run --scope -p MemoryMax=8G`，日志 scratchpad `full-test.log`）：**`EXIT=0`**，
+  17 个有 test 的包全过 —— web **359 文件 / 4039 + 2 跳过** · server **220 / 3204 + 6 跳过** ·
+  cli **39 / 568** · core **70 / 1460 + 6 跳过** · ui **133 / 1117** · desktop **28 / 331** ·
+  ui-gallery **20 / 141** · docs **8 / 62**。新增：server 5 条按对话隔离、web 状态 5 条 + scope 2 条、
+  cli 2 条「命令作用于哪个对话」。
+- **没跑的**：整套浏览器 e2e（桌面壳本机没有 Electron 会话，只做纯函数单测 + 严格按契约改）。
+
+### 没做 / 留着
+
+- 老壳（协议 1）不与新服务端兼容：壳连上来报版本、低于 2 判 `shell_unsupported`，人看到「当前桌面
+  应用版本过旧，请更新后使用内置浏览器」。桌面应用与服务端同一版本一起发，正常路径无需人操作。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+
+### 提交
+
+- 代码与 changelog 一笔 `40117ba0b`（契约·服务端·壳·前端·命令行·文档）；台账（条目 7.201、上表那一行、
+  本节）随本文件另起一笔。发版与换装现网见下一节。
