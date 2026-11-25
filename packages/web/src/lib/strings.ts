@@ -4517,6 +4517,14 @@ export const zh = {
     dictateUnavailable: "无法使用麦克风，请再试一次。",
     removeFile: "移除文件",
     /**
+     * The corner card following a message out (the UI package's progress card, see
+     * features/chat/message-upload-progress.ts). The title says what is going on; the line under
+     * the bar is the pair of byte readings — sent, then the whole body — whose difference the
+     * reader can see shrinking.
+     */
+    uploadingMessage: "正在上传消息",
+    uploadProgressDetail: (sent: string, total: string): string => `${sent} / ${total}`,
+    /**
      * The composer's refusal line for files it turned away before reading them, one sentence per
      * ceiling (a pick can refuse an image at 20MB and a clip at 32MB at once). Names are every file
      * that ceiling refused, in picking order; the limit is admin-settable for attachments and

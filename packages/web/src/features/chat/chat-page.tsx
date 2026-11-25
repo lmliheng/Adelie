@@ -114,6 +114,7 @@ import type { SendRefusal } from "./message-send-refusal";
 import { sendRefusalReason } from "./first-send-refusal";
 import { steerVideoFields } from "../../lib/video-input";
 import type { ComposerVideo } from "../../lib/video-input";
+import { postSteerWithUploadProgress, postTaskWithUploadProgress } from "./message-upload-progress";
 import { SEEDREAM_SKILL, replyImageActionBuilder } from "../../lib/image-actions";
 import { onPluginConfigSaved } from "../../lib/plugin-config-event";
 import { approvalModeChoices } from "./approval-mode";
@@ -1369,7 +1370,7 @@ export function ChatPage() {
       try {
         // No thinking level rides a task: the level belongs to the model context (pinned on
         // the Session through PATCH, see applyTurnThinkingLevel).
-        const res = await api.postTask(sessionId, {
+        const res = await postTaskWithUploadProgress(sessionId, {
           input,
           ...(goal ? { goal } : {}),
         });
@@ -1448,7 +1449,7 @@ export function ChatPage() {
             ref,
           );
           if (deskId !== null) {
-            const res = await api.postTask(deskId, { input: [origin, ...input] });
+            const res = await postTaskWithUploadProgress(deskId, { input: [origin, ...input] });
             discardSessionDraft();
             void company.reloadOrgChart();
             void company.reloadOrgSessions();
@@ -1485,7 +1486,7 @@ export function ChatPage() {
           machineForSession(selected.sessionId),
         );
         createdId = created.session.sessionId;
-        const res = await api.postTask(createdId, { input: [origin, ...input] });
+        const res = await postTaskWithUploadProgress(createdId, { input: [origin, ...input] });
         addSession(created.session);
         // The remainder text has been carried into the new chat: discard the source session's input draft along with it.
         discardSessionDraft();
@@ -1532,7 +1533,7 @@ export function ChatPage() {
           sandbox: selected.sandbox,
         });
         createdId = created.session.sessionId;
-        const res = await api.postTask(createdId, { input: [origin, ...input] });
+        const res = await postTaskWithUploadProgress(createdId, { input: [origin, ...input] });
         addSession(created.session);
         // The text body has been handed off into the new chat: discard the current session's input draft along with it.
         discardSessionDraft();
@@ -1583,7 +1584,7 @@ export function ChatPage() {
       const sessionId = selected.sessionId;
       setSendRefusal(null);
       try {
-        const res = await api.postTask(sessionId, { input, queueIfBusy: true });
+        const res = await postTaskWithUploadProgress(sessionId, { input, queueIfBusy: true });
         discardSessionDraft();
         await syncHealedSessionId(sessionId, res.sessionId);
         return true;
@@ -1635,7 +1636,7 @@ export function ChatPage() {
         // is the only shape the server accepts there — it refuses an inline video rather than
         // handing a provider a request it would reject. The choice itself is steerVideoFields'.
         const clip = steerVideoFields(videos, video);
-        await api.postSteer(sessionId, {
+        await postSteerWithUploadProgress(sessionId, {
           text,
           ...(images.length > 0 ? { images } : {}),
           ...(clip.videos ? { videos: clip.videos } : {}),

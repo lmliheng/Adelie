@@ -74,6 +74,8 @@ An admin can change both sizes under [Settings › Upload limits](/settings#uplo
 
 On send, attached files are written into the Session's scratchpad, which is deleted with the Session. The conversation shows an "Attached files" notice; the file contents never enter the conversation, and the model opens each file by path with its file tools. On a model without image input, images are saved to the scratchpad the same way and passed as file paths, and a hint above the composer says so.
 
+Attachments travel with that one request's body (base64-encoded), so a big one takes a while to go out by itself. While it does, a progress card appears in the bottom-right corner with how much has been sent of how much there is, and it takes itself away as soon as the send is over; a message of a few hundred KB never raises one.
+
 ### Drag files onto the chat
 
 Drag files onto the conversation or the composer, on the chat page or the draft page.

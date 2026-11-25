@@ -10,6 +10,7 @@
 import { S } from "../lib/strings";
 import { apiUrl } from "../lib/server-context";
 import { machineForPath } from "../lib/session-machines";
+import { xhrUpload } from "./xhr-upload";
 
 /** Unified API error: carries the HTTP status code and server error code (server error body {error:{code,message}}). */
 export class ApiError extends Error {
@@ -44,6 +45,12 @@ export interface ApiFetchOptions {
   body?: unknown;
   /** Query parameters (undefined values are skipped). */
   query?: Record<string, string | number | undefined>;
+  /**
+   * Reports how much of the request body has gone out, for the one call that can carry a
+   * message's attachments inline (see api/xhr-upload.ts for why that needs XHR). Passing it is
+   * what selects the XHR transport; without it nothing about the call changes.
+   */
+  onUploadProgress?: (sent: number, total: number) => void;
   /**
    * Which machine answers this call, when the caller knows and the path does not say.
    *
@@ -149,7 +156,11 @@ export async function apiFetchWithMeta<T>(
 
   let response: Response;
   try {
-    response = await fetch(url, requestInit(options));
+    const init = requestInit(options);
+    response =
+      options.onUploadProgress === undefined
+        ? await fetch(url, init)
+        : await xhrUpload(url, init, options.onUploadProgress);
   } catch {
     throw new ApiError(0, "network_error", S.errors.networkError);
   }

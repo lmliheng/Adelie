@@ -71,6 +71,7 @@ import { versionBadgeFor } from "../../lib/update-flow";
 import { openUpdateModal, useUpdateFlow } from "../../lib/use-update-flow";
 import { ChatInput } from "./chat-input";
 import type { ComposerControl } from "./chat-input";
+import { postTaskWithUploadProgress } from "./message-upload-progress";
 import { APPROVAL_MODES } from "./approval-mode";
 import { adoptDockScope, currentDockScope } from "../dock/dock-state";
 import { setDockCwd } from "../dock/dock-terminal";
@@ -794,7 +795,10 @@ export function DraftView({
         // Created ON the machine that owns the workspace: that server runs the agent in it.
         const created = await api.createSession(projectId, agentId, body, workspaceMachine);
         createdId = created.session.sessionId;
-        const res = await api.postTask(createdId, { input, ...(goal ? { goal } : {}) });
+        const res = await postTaskWithUploadProgress(createdId, {
+          input,
+          ...(goal ? { goal } : {}),
+        });
         // postTask answers with the CURRENT id: a Session with no Trace whose process
         // restarted in between self-heals into a new one. Everything recorded a moment ago
         // under the id we created is then about a Session that no longer answers to it, and

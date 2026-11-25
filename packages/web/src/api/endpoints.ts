@@ -1357,10 +1357,15 @@ export const getMessages = (sessionId: string, page?: MessagesPageQuery) => {
 
 // Task execution, approval, abort, compaction ------------------------------------------------------
 
-export const postTask = (sessionId: string, body: TaskCreateRequest) =>
+export const postTask = (
+  sessionId: string,
+  body: TaskCreateRequest,
+  onUploadProgress?: (sent: number, total: number) => void,
+) =>
   apiFetch<TaskCreateResponse>(`/api/sessions/${encodeURIComponent(sessionId)}/tasks`, {
     method: "POST",
     body,
+    ...(onUploadProgress !== undefined ? { onUploadProgress } : {}),
   });
 
 export const getGoal = (sessionId: string) =>
@@ -1430,10 +1435,15 @@ export const removeSessionProcess = (sessionId: string, processId: string) =>
   );
 
 /** Mid-run steering: queues a message for the running Task (delivered between turns as a standalone `[user_steering]` user message); 409 not_running when no Task is in progress. */
-export const postSteer = (sessionId: string, body: SteerRequest) =>
+export const postSteer = (
+  sessionId: string,
+  body: SteerRequest,
+  onUploadProgress?: (sent: number, total: number) => void,
+) =>
   apiFetch<void>(`/api/sessions/${encodeURIComponent(sessionId)}/steer`, {
     method: "POST",
     body,
+    ...(onUploadProgress !== undefined ? { onUploadProgress } : {}),
   });
 
 /** Panel message to one subagent child (#272) — a user input on the child, whatever its state: steered mid-run, started on an idle child, resumed when the released session was revived (the child runs at its own Session's thinking level; pin it with patchSession). 404 subagent_gone when nothing can be revived, 409 subagent_busy when the child cannot take it right now. */

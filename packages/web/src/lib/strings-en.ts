@@ -4407,6 +4407,9 @@ export const en: Strings = {
     /** The catch-all: a refusal this product has no name for, said without blaming the user. */
     dictateUnavailable: "The microphone could not be used — please try again.",
     removeFile: "Remove file",
+    /** The corner card following a message out — see the Chinese file for what the two keys say. */
+    uploadingMessage: "Uploading message",
+    uploadProgressDetail: (sent: string, total: string): string => `${sent} / ${total}`,
     attachmentTooLarge: (names: readonly string[], limitMb: number): string =>
       `${names.join(", ")} ${names.length === 1 ? "exceeds" : "exceed"} the ${limitMb}MB limit and ${names.length === 1 ? "was" : "were"} not attached.`,
     /** Overlay covering the chat area while files are dragged over it (drag-and-drop upload). */

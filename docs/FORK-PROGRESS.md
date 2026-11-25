@@ -3950,6 +3950,19 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       该会话的记录。`packages/web` 两处 ＋ 新用例一条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**。
       见「第三百四十一轮」一节。
 
+- [x] **7.212 大文件附件的上传有了进度：发送时右下角一张进度卡片**（**2026-11-26 第三百四十二轮**落地，
+      提交见「已完成的轮次」，用户点单；`packages/web` —— 新 `api/xhr-upload.ts`（带 `upload.onprogress`
+      的 XHR 传输，答案包回一个真 `Response`）、`api/client.ts` 的 `ApiFetchOptions.onUploadProgress`
+      （给了它才走 XHR）、`api/endpoints.ts` 的 `postTask` / `postSteer` 透传、新
+      `features/chat/message-upload-progress.ts`（`inputBytes` / `steerBytes` 估请求体大小 +
+      `postTaskWithUploadProgress` / `postSteerWithUploadProgress` 两个包装）、六个调用点、
+      `lib/strings{,-en}.ts` 各两个槽位、新单测 **13 条**、新 spec 1 条、changelog 一对、
+      `packages/docs/content/chat.{zh,en}.md` 各一段 —— **不碰接口、无新依赖**）：用户附了一个 177.3MB
+      的文件，说「上传没有进度」。附件是**按 base64 塞在请求体里**发的（服务端 `attachment-limits.ts`
+      上限 200MB，177MB 在线上是约 236MB 的请求体），而发它的 `fetch` 根本没有上传进度事件 —— 输入框只是
+      被禁用，慢链路上就是几分钟没有任何读数。见「第三百四十二轮」一节。
+      （编号让给先到的远端 7.211；本节在 rebase 时改记 7.212 / 第三百四十二轮。）
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7189,6 +7202,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 发布 | **发 v0.8.4 并换装现网**（把 v0.8.3 之后攒下的收成正式版：**内置模型库补上 Google Gemini 4 的四条**（Carbon / Argon / Neon / Hydrogen，模型配置里那个锁住的 base URL 框也把内置接入地址显示出来）；**被中断的那一轮重发时输入里的图片不再被丢掉**；**桌面端桌宠的实时语音通话改成气泡对话、大小可设**，**托盘菜单改成自己画的并多了「重启」**；**插件卡片自己打开的弹窗在安装快照落地时不再自己关掉**。发布提交 `e48db0b11`（父 `16fc5cb2b`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.4` 指向同一提交；门禁在 `/root/rel-084`（`git worktree add -b release-084`）上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests）；三件载荷 linux-x64 109M（114,507,227 字节）/ universal 55M（57,265,128）/ win32-x64 144M（150,569,939）+ `validate-bundles.sh` 三件全过，桌面三件 deb 122,592,768 / AppImage 155,545,589 / exe 162,485,878；npm **29 个包**发到 0.8.4（`PUBLISH-ALL-DONE`，一次过）；GitHub Release **id `458407310`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-25T17:16:28Z）；3003 换上 v0.8.4 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v0830`）；现网 `/root/.adelie` 整棵换成 0.8.4、旧前端先拷回、瞬时单元 `adelie-live-restart-084` 延后 1500 秒重启装新前端并自核验） | 发布轮，逐项见「第三百三十九轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 版本 0.8.4、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT e48db0b11…`、前端入口 `index-Y3RPCIun.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401、通知两张表在库里（本版无新迁移）；现网核验写 `rel-084-live-restart-verify.txt`；`releases/latest` = v0.8.4 | `e48db0b11`（发布） |
 | 2026-11-26 | 7.210 | **文件面板的 Edit 打不开编辑器时，原因留在预览上方，不再只靠六秒就消失的 toast**（**2026-11-26 第三百四十轮**落地，接手 11-25 23:00 那轮被中断的半成品；`packages/web` —— 新 `features/chat/edit-open-refusal.ts`（`editOpenTooLargeRefusal` / `editOpenFailedRefusal`，后者走 `refusalText`）、`features/chat/workspace-browser.tsx` 的 `editRefusal` 状态按路径记、编辑器没开时画在预览上方（替换 `startEdit` 里两处 `toastError`）、`fetchTextPreview` 抛出 `HTTP <状态>`、`lib/strings{,-en}.ts` 一个槽位；新单测 6 条、新 spec 2 条、changelog 一对 —— **不碰接口、无新依赖**） | 见「第三百四十轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`）；逐包 test **`EXIT=0`、0 失败**：core **70 / 1462 + 6 跳过**、server **220 / 3205 + 6 跳过**、web **362 / 4052 + 2 跳过**、ui **133 / 1117**、cli **39 / 568**；真服务端 8975 + 真浏览器两态：改后 **2 passed**（超上限那句在面板上、8 秒后仍在、通知区 0 条；读被 500 拒 → 「无法打开编辑器：HTTP 500」，通知区 0 条），改前 dist 反证 **2 failed**；新 spec 单跑 **2 passed**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
 | 2026-11-26 | 7.211 | **stop hook 派生的游离会话不再在对话里画出一条智能体行**（上游 `751624eb4` `#1869` 移植，照改动落、不是合分支；上游 4 文件 / +61 → 本树落下 4 个跟踪文件（2 改 2 新）：`packages/web/src/lib/omni/stream-model.ts`（`StreamModel.detachedChildren`、`handleEvent` 新增 `hook` 分支从 `stop` 事件的 `output.session_id` 填入、`pushMessage` 的 origin 分支在 `routeNested` 之前丢掉第一跳正是该会话的记录）、`packages/web/test/stream-model.test.ts`（+1 用例）、changelog 一对）：本树的 stop hook 循环与上游同形（`hooks/stop-hook.ts` 把子会话 id 写进 `hook` 事件的`output`、紧接着推子会话的 `session_meta`），而父会话 Trace 不为此保留子智能体指针，流模型于是给这个不认识的 origin 头建嵌套模型、补一条独立子智能体项 —— 长 Task 结束后回复下方那条「General Agent + 短 id」点开是空面板。**上游路径 `lib/amsp/stream-model.ts` 在本树叫 `lib/omni/`，夹具名也不同，其余逐字相同** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）· `npx oxlint` 两个文件 **0 警告 0 错误** · 两个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **361 / 4047 + 2 跳过**（本笔 +1；rebase 到 `ce428d6a6` 后并入另一条线的 7.210，重跑 **362 / 4053 + 2 跳过**）· server **220 / 3205 + 6 跳过** · **反证（单测）**：源码不改、只加新用例 → `test/stream-model.test.ts` 那条 **1 failed**（`expected true to be false`，画出 `subagent` 项），源码改后 **126 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：一次性数据根 `/root/adelie-fork-data/r340-{after,before}`（复制出两份），手写一个会话的 Trace —— 一轮对话后跟`hook: "stop"` 事件（`output.session_id = hooked-abc123`）与带 `origin: ["hooked-abc123"]` 的子会话`session_meta`，不需要模型 key（即 3.6 那个卡点）；两份 web 产物 `r340/{after,before}-dist`（入口 `index-DpmYv-TM.js` / `index-Y3RPCIun.js`，两端核过是两份不同的东西）分别挂在两个根上，**改后 8963 / 改前 8964**：**改前** 对话区 `done` 下方多一条「General Agent d-abc123」（截图 `r340/before.png`；`d-abc123` 出现 1 处、`General Agent` 出现 2 处），**改后** 该行消失（`after.png`；`d-abc123` 0 处、`General Agent` 1 处即侧栏那一行），两态 console 各 **0 error**、无一条 ≥400 · 端口只用 8963 / 8964（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r340-{after,before}`，探针 / 两份产物 / 截图都在 scratchpad 的 `r340/` 下（`packages/web/dist` 是构建产物，未 `git add`） | `842b03529` |
+| 2026-11-26 | 7.212 | **大文件附件的上传有了进度：发送时右下角一张进度卡片**（**2026-11-26 第三百四十二轮**落地，用户点单；rebasing 时让号：远端已先占 7.211 / 第三百四十一轮；`packages/web` —— 新 `api/xhr-upload.ts`（`upload.onprogress` → 真 `Response`）、`api/client.ts` 的 `ApiFetchOptions.onUploadProgress`（给了才走 XHR）、`api/endpoints.ts` 的 `postTask` / `postSteer` 透传、新 `features/chat/message-upload-progress.ts`（`inputBytes` / `steerBytes` + 两个包装）、发送 / 排队 / 换模型 / 交接 / 草稿首条 / 插话六个调用点、`lib/strings{,-en}.ts` 两个槽位、新单测 13 条、新 spec 1 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **不碰接口、无新依赖**） | 见「第三百四十二轮」一节（web `vitest run` **364 文件 / 4065 通过 / 2 跳过**，本笔 +2 文件 +13 条；`pnpm -r typecheck` **`EXIT=0`**；`pnpm lint` 0 警告 0 错误；改动文件 `prettier --check` 干净；docs **8 文件 / 62 通过**；真服务端 + 真浏览器，CDP 把上行限到 700KB/s：改后 **1 passed**（卡片起来、`aria-valuenow` 两次读数递增、字节对那行在、发完卡片消失、消息进了对话），拿现网 0.8.4 的改前产物同一条 spec 反证 **1 failed**（`getByRole('progressbar', { name: '正在上传消息' })` 找不到）） | 见「第三百四十二轮」一节 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34622,3 +34636,86 @@ Session id 写进 `hook` 事件的 `output`，紧接着把子会话的 `session_
 
 - 代码一笔 **`842b03529`**（`packages/web/src/lib/omni/stream-model.ts`、`packages/web/test/stream-model.test.ts`、
   changelog 一对）；台账（条目 7.211、上表那一行、本节）随本文件另起一笔。
+
+## 第三百四十二轮：大文件附件的上传有了进度（2026-11-26，条目 7.212，用户点单）
+
+**开工自检**：`git status --short` 干净，分支 `main`，本地 = 远端 = `ce428d6a6`（另一条线的第三百四十轮）。
+没有别的进程在写这棵工作树。**收尾时另一次 rebase 让了号**：远端的第三百四十一轮（7.211，stop hook 派生的游离会话）先到，
+本轮的条目与轮次因此改记 **7.212 / 第三百四十二轮**（条目、表格行与本节标题都已改过来），基座也随之前移到 `147397fbc`。
+本轮为追横向滚动条新写的三份探针（`content-7-widths.spec.mjs`、`dpr.spec.mjs`、
+`real-transcripts.spec.mjs`）与本条点单的计时探针都在**收尾时从仓库删除**、归档在 scratchpad 的
+`hscroll-r341/`（见文末）。
+
+**用户的两条点单，与先报那条被暂停**：用户本轮先报的是「聊天列底部出现一条横向滚动条」（截图：侧栏 + 一条气泡
++ 统计行 + 一条几乎满宽的滚动条 + 输入框），随后两条 steering —— 一条说「这个问题不在美国服务器上，在我客户端」
+（要求只在前端修），一条把本轮切到**真正要做**的第二条：「先解决这个问题，170MB 大文件上传没有进度」（截图：
+输入框上一个附件 chip，回形针 + `session-2026-…` + `177.3MB` + ×，下面气泡「查看这个」）。**横向滚动条那条
+被暂停在本轮末尾**，调查结论见文末，未改代码。
+
+**选活与诊断**：附件是**按 base64 塞在请求体里**发的（服务端 `packages/server/src/services/attachment-limits.ts`：
+单文件默认 100MB、上限 200MB；177.3MB 一个文件在线上就是约 236MB 的请求体），而发它的 `fetch` **没有任何
+上传进度事件** —— 输入框只是被禁用，慢链路上就是几分钟一页什么读数都没有。先量本地读取+编码本身：128MB
+读 1251ms + 拼串 328ms，8MB 88/18、32MB 357/101、64MB 687/179（毫秒），都是两秒量级 —— 所以静默的是**发送
+那一段**，不是准备那一段。这一量决定了做法：换传输，而不是加计时器或转圈。
+
+**做了什么**（`packages/web`，**不碰接口、无新依赖**）：
+
+- 新 `api/xhr-upload.ts`：用 `XMLHttpRequest` 发这**一个**请求，`upload.onprogress` 取读数（无
+  `lengthComputable` 就不报），答案包回一个**真 `Response`**（含 status / statusText / headers / body，
+  204/205/304/101 无体），好让下游 —— 非 2xx → ApiError 的映射、`Date`/`ETag` 读取、空体处理 —— 与 `fetch`
+  那条路是**同一份代码**，两条不会在含义上跑偏。`XhrFactory = () => XMLHttpRequest`，构造函数是参数，node
+  单测传假的（node 里根本没有 `XMLHttpRequest`）。
+- `api/client.ts`：`ApiFetchOptions.onUploadProgress?` —— **给了它才走 XHR**，没给一行不变（普通消息仍
+  走 `fetch`）。`api/endpoints.ts`：`postTask` / `postSteer` 各加第三个可选参数透传。
+- 新 `features/chat/message-upload-progress.ts`：`inputBytes(parts)` / `steerBytes(body)` 按各部分的
+  **字符串长度**估请求体大小（不去 `stringify` 那份 236MB 的 part 列表，那只为量它会再分配一整份副本）；
+  `UPLOAD_PROGRESS_MIN_BYTES = 2MB`（卡片自己就有 600ms 的显示延迟，比它小的一定在卡片出现前发完，这个阈值
+  只是把机器 —— 连 XHR 一起 —— 挡在普通消息之外）；`postTaskWithUploadProgress` /
+  `postSteerWithUploadProgress` 用 `startProgress({ title: S.chat.uploadingMessage })` 起**右下角那张
+  进度卡**（与删 Agent 同一张），成功与失败都 `card.close()` —— 成功不必报（消息落进对话就是成功），
+  失败也不必（原因由输入框上方那句拒发话来说）。
+- 六个调用点换成包装函数：`chat-page.tsx` 的 onSend / onQueueFollowUp / onSwitchModel / onHandoff /
+  onSteer，`draft-view.tsx` 的首条发送。`chat-page.tsx` 里 `askWithPicture`（纯文本、无附件）**有意保留**
+  `api.postTask`，不进这条路。
+- `lib/strings{,-en}.ts` 各加两个槽位（`uploadingMessage`「正在上传消息」/"Uploading message"、
+  `uploadProgressDetail(sent, total)`）；`packages/docs/content/chat.{zh,en}.md` 各加一段（附件随请求体
+  base64 发出、右下角进度卡）；changelog 一对。
+- 新单测 **13 条**：`test/xhr-upload.test.ts`（7 条）+ `test/message-upload-progress.test.ts`（6 条），
+  新 helper `test/helpers/xhr.ts`（`FakeXhr` / `stubXhr()` / `fakeXhrFactory()`）。
+
+**验证**：全仓 `pnpm -r typecheck` **`EXIT=0`**；`pnpm --filter @adelie/web build` **`EXIT=0`**（入口
+`index-DfC4b_VY.js`，与下面 e2e 用的正是这一份）；新 spec **1 passed**；`packages/web` `vitest run`
+**364 文件 / 4065 通过 / 2 跳过**（本笔 +2 文件 +13 条）。`pnpm lint`（oxlint）0 警告 0 错误；改动文件
+`prettier --check` 干净；`git diff --check` 干净；`packages/docs` test **62 通过**。
+
+**真看一眼**（真服务端 + 真浏览器）：新 `e2e/attachment-upload-progress.spec.mjs` 用 CDP
+`Network.emulateNetworkConditions({ uploadThroughput: 700*1024, downloadThroughput: -1 })` 把上行限到
+约 700KB/s，附一个 3MB 文件发送 —— 断言 `getByRole("progressbar", { name: "正在上传消息" })` 出现、
+`aria-valuenow` > 0 且 700ms 后**递增**、`aria-valuemax` > 3MB、字节对那行在、卡片发完消失、消息进了对话。
+**1 passed**。**反证**：同一条 spec 对着**现网 0.8.4 的改前产物**（`run-one-spec-live.sh`，
+`ADELIE_WEB_DIST=/root/.adelie/web`）→ **1 failed**，红在 `getByRole('progressbar', { name: '正在上传消息' })`
+找不到 —— 改前确实没有任何进度可言。
+
+**没做 / 留着**：进度卡落在**右下角角落**（复用了包自己的长操作卡），没有挪到输入框上那个附件 chip 上 ——
+要挪得把发送中的字节数再过一层状态到 composer，本轮没做。`askWithPicture`（纯文本）有意不走这条路。
+
+**另一条点单（横向滚动条）的调查，本轮已做未解、已暂停**：读了相关代码 —— scroller 是
+`features/chat/message-stream.tsx` 的 `anim-fade h-full overflow-y-auto …`（`data-stream-scroll`），内层
+`mx-auto max-w-3xl`；`task-stats-line.tsx` 外层 `overflow-hidden`、内层 `no-scrollbar overflow-x-auto`
+（`styles.css` 里隐藏滚动条）；`prose.css` 对 `.md-body` 的 pre / table / img / katex 都已有 `overflow-x:auto`
+或 `max-width:100%` 保护；`CodeBlock` 外层 `overflow-hidden`。三个探针都**复现不出**（探针归档在 scratchpad
+的 `hscroll-r341/`）：（1）七档宽度 1280…768 × 两种正文（默认真回合含 170 字符长 URL 与 118 字符不可断
+token 的表格；400 个 Z 的长粘贴）—— `[data-stream-scroll]` 一律 over=0、无右缘超出元素，只有 `.sr-only`
+与 `truncate` 标题有 `scrollWidth>clientWidth`（都被 `overflow:hidden` 裁着）；（2）小数 DPR 扫描
+1/1.1/1.25/1.5/1.75/2（1280×800，对现网 0.8.4 产物）—— 每档 clientWidth / offsetWidth / scrollWidth
+都是 992（over=0），**小数 DPR 假设不成立**；（3）真轨迹回放（把 7 份真 jsonl 拷进临时数据根）—— 服务端
+没把它索引出来（`listed sessions: 0`），页面上没有 `data-stream-scroll`，这条路要重来（得把会话喂进
+`trace_files` / `trace_sessions`，或对着拷贝出来的数据根起实例并用 `penguin server reset-admin-password`
+登录真会话）。**备而未用的最小修法假设（未验证）**：给 scroller 加 `overflow-x-hidden`（`overflow-y-auto`
+会把 `overflow-x` 算成 `auto`，内容多 1px 就会画出横向滚动条）。下一步：先找一条**能重现**的正文。
+
+**提交**：一笔 —— 代码（`api/xhr-upload.ts`、`api/client.ts`、`api/endpoints.ts`、
+`features/chat/message-upload-progress.ts`、六个调用点、`lib/strings{,-en}.ts`、
+`packages/docs/content/chat.{zh,en}.md`、`test/xhr-upload.test.ts`、
+`test/message-upload-progress.test.ts`、`test/helpers/xhr.ts`、
+`e2e/attachment-upload-progress.spec.mjs`、changelog 一对）＋ 台账（条目 7.212、上表那一行、本节）。
