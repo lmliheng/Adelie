@@ -3675,7 +3675,6 @@ export const zh = {
     /** The finder's no-folder button; `workspaceTempRule` is its tooltip while the folder it would get is unknown. */
     workspaceClear: "从临时工作区开始",
     workspaceTempRule: "在 Agent 目录的 workspaces/ 下新建一个空目录",
-    workspaceDirInvalid: "目录不存在或无法访问，已回退",
     /** The Workspace finder: the modal the Workspace pickers open (workspace-finder.tsx). */
     finder: {
       choose: "选择",

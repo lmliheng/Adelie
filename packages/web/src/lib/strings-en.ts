@@ -3599,7 +3599,6 @@ export const en: Strings = {
     /** The finder's no-folder button; `workspaceTempRule` is its tooltip while the folder it would get is unknown. */
     workspaceClear: "Start in a temporary workspace",
     workspaceTempRule: "A new empty folder inside the agent's workspaces/ folder",
-    workspaceDirInvalid: "Directory does not exist or is inaccessible; reverted",
     /** The Workspace finder: the modal the Workspace pickers open (workspace-finder.tsx). */
     finder: {
       choose: "Choose",

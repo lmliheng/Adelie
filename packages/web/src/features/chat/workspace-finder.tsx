@@ -36,7 +36,10 @@
  * A New folder the server refuses keeps its reason where the name is. The box stays open with
  * the name that was typed, because the name is the thing to change, so the sentence belongs
  * under that box rather than in a notification that dismisses itself over it: it goes when the
- * box goes, and nothing on screen then claims a folder was made.
+ * box goes, and nothing on screen then claims a folder was made. The address bar answers a
+ * path the same way: a path that is not a folder is a typo in the field that holds it, so the
+ * field comes back holding that path and the reason stays under the bar, instead of leaving the
+ * old path on screen and taking both the reason and the text away.
  */
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
@@ -288,6 +291,19 @@ export function WorkspaceFinder({
   /** The address bar is a path field (clicked, or ⌘⇧G) rather than breadcrumbs; the draft is what it holds. */
   const [addressEditing, setAddressEditing] = useState(false);
   const [addressDraft, setAddressDraft] = useState("");
+  /**
+   * Why the path the field was given is not a folder, drawn under the bar while the field holds
+   * that path. The field is where the fix goes — a typo is what lands here — so the sentence
+   * belongs under it rather than in a notification that dismisses itself over a bar already back
+   * to the old path, with the typed text gone (the same rule as the new-folder box's).
+   */
+  const [addressRefusal, setAddressRefusal] = useState<string | null>(null);
+  /**
+   * Id of the newest address attempt. An answer only puts the field back while it is still the
+   * attempt on record: the user may have taken the field back (⌘⇧G) or left it meanwhile, and
+   * their own typing must not be replaced by an answer to what was typed before it.
+   */
+  const addressAttempt = useRef(0);
   /** The address bar's root menu: the machine's locations, from the caret before the path. */
   const [rootMenuOpen, setRootMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -707,6 +723,9 @@ export function WorkspaceFinder({
   const editAddress = () => {
     setAddressDraft(view.listing?.path ?? view.path);
     setAddressEditing(true);
+    // The sentence described the last attempt, and this field holds a path of its own now.
+    setAddressRefusal(null);
+    addressAttempt.current += 1;
     // The field replaces the segments and the caret before them, menu and all.
     setRootMenuOpen(false);
   };
@@ -723,19 +742,31 @@ export function WorkspaceFinder({
   /** Leaves the field as it was: Escape, or focus moving elsewhere, as in Explorer. */
   const cancelAddress = () => {
     setAddressEditing(false);
+    setAddressRefusal(null);
+    addressAttempt.current += 1;
   };
 
   const commitAddress = () => {
     const target = resolveGoTo(addressDraft, homeListing?.path ?? null);
     setAddressEditing(false);
+    setAddressRefusal(null);
     listRef.current?.focus();
     if (target === "" || target === view.listing?.path) return;
+    const attempt = (addressAttempt.current += 1);
     load(target, {
       // A path that is not there (or not a path) keeps the finder where it was; a folder that
       // is there and refuses to be read is somewhere, and the pane says why it shows nothing.
       onError: (err) => {
+        // The field is back to the old path and this answer is for text nothing holds any more:
+        // the user has taken the field back or left it, and that is theirs to finish.
+        if (attempt !== addressAttempt.current) return true;
         if (err instanceof ApiError && err.code === "dir_permission_denied") return false;
-        toastError(S.chat.workspaceDirInvalid);
+        // A typo is what lands here, and the field is where it is fixed: the field comes back
+        // holding the text that was typed — selected, as when the field is opened — and the
+        // reason stays under the bar. The list keeps the folder it did show; nothing claims the
+        // one that was asked for.
+        setAddressRefusal(refusalText(err));
+        setAddressEditing(true);
         return true;
       },
     });
@@ -1471,7 +1502,23 @@ export function WorkspaceFinder({
           </button>
         )}
       </div>
-      {addressBar}
+      {/* The address field and the sentence it can leave behind: the sentence sits under the
+          field the path was typed into, so the reason and the thing to fix are one block. It is
+          clipped rather than wrapped past two lines so the toolbar keeps its height. */}
+      <div className="min-w-0 flex-1">
+        {addressBar}
+        {addressRefusal !== null && (
+          <p
+            role="alert"
+            data-testid="finder-address-refusal"
+            data-tooltip={addressRefusal}
+            data-tooltip-content="text"
+            className={`mt-1 px-2.5 line-clamp-2 break-words text-xs ${toneInk.danger}`}
+          >
+            {addressRefusal}
+          </p>
+        )}
+      </div>
       <label className="relative flex shrink-0 items-center">
         <GlyphIcon
           d={FILTER_ICON}
