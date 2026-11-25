@@ -5,10 +5,11 @@
  * Console grow the reply every reveal frame, so the resize observer snaps it):
  *
  * - Given a reply streaming a paragraph every 50ms with the view following the bottom, and a
- *   renderer slowed four times, when the reader wheels up from the bottom in small steps, the
- *   view never moves back down: no snap to the bottom lands after the browser was free to put
- *   the gesture on screen, no frame shows a snap composed with the gesture, and once the
- *   gesture has moved the text down no frame moves it back up.
+ *   renderer slowed four times, when the reader wheels up from the bottom in small steps until
+ *   the text has really moved (see the gesture loop: how much of each wheel lands depends on the
+ *   load), the view never moves back down: no snap to the bottom lands after the browser was
+ *   free to put the gesture on screen, no frame shows a snap composed with the gesture, and once
+ *   the gesture has moved the text down no frame moves it back up.
  * - For the second after the gesture, while the reply keeps growing below, the text on screen
  *   does not move at all: following stays off until the reader scrolls back down.
  *
@@ -75,10 +76,22 @@ function installRecorder(selector) {
   const onScreen = () => {
     const box = el.getBoundingClientRect();
     const ps = el.querySelectorAll("p");
+    // Paragraphs are in document order, so bisect for the first one that ends below the top of the
+    // viewport, then walk forward to the first that starts below its bottom. Scanning only the
+    // last 60 stopped covering the screen once a gesture had wheeled far enough up a conversation
+    // with several replies (the gesture's readout then froze while the wheels kept moving the
+    // view), and a reply that streams off the bottom of the screen is not in that list either.
+    let lo = 0;
+    let hi = ps.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (ps[mid].getBoundingClientRect().bottom > box.top) hi = mid;
+      else lo = mid + 1;
+    }
     const seen = [];
-    for (let i = Math.max(0, ps.length - 60); i < ps.length; i += 1) {
+    for (let i = lo; i < ps.length; i += 1) {
       const r = ps[i].getBoundingClientRect();
-      if (r.bottom <= box.top || r.top >= box.bottom) continue;
+      if (r.top >= box.bottom) break;
       if (!ids.has(ps[i])) ids.set(ps[i], (nextId += 1));
       seen.push([ids.get(ps[i]), r.top]);
     }
@@ -128,6 +141,29 @@ function installRecorder(selector) {
     },
     toBottom() {
       el.scrollTop = el.scrollHeight;
+    },
+    /**
+     * How far the text on screen has moved down since the gesture began — the same measure
+     * `analyze()` computes from the whole recording (the median paragraph's move between two
+     * frames, summed from the first wheel on), so the gesture loop and the assertions below read
+     * one number. Recomputing it after a pause keeps it stable: while the wheels are still being
+     * applied quickly, most of a frame's move falls between frames the recorder can pair up.
+     */
+    moved() {
+      const first = rec.wheels[0];
+      if (first === undefined) return 0;
+      let travel = 0;
+      for (let i = 1; i < rec.frames.length; i += 1) {
+        const prev = rec.frames[i - 1];
+        const f = rec.frames[i];
+        if (f.t < first.ts) continue;
+        const was = new Map(prev.seen);
+        const d = f.seen.filter(([id]) => was.has(id)).map(([id, top]) => top - was.get(id));
+        if (d.length === 0) continue;
+        d.sort((x, y) => x - y);
+        travel += d[Math.floor(d.length / 2)];
+      }
+      return travel;
     },
     following(minHeight) {
       return (
@@ -238,9 +274,12 @@ for (const [theme, name] of Object.entries(THEMES)) {
       if (i === 1) {
         // The transcript mounts with the conversation's first message.
         await page.evaluate(installRecorder, SCROLLER);
-        const box = await page.locator(SCROLLER).boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       }
+      // Every gesture starts with the pointer back over the transcript: its box moves as the
+      // toolbar, the composer and the notices change height across gestures, and a wheel over
+      // something else is still recorded by the page but never reaches the transcript.
+      const box = await page.locator(SCROLLER).boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
       // Following: put the view at the bottom and watch it stay there while the reply grows.
       // A commit can land between the jump and its scroll event and leave the view short of
@@ -267,9 +306,23 @@ for (const [theme, name] of Object.entries(THEMES)) {
       // Following was just confirmed on a commit, so start each gesture at a different point of
       // the commit cycle (a golden-ratio walk over 0–140ms): the race is with the next commit.
       await page.waitForTimeout(100 + Math.round(((i * 0.618034) % 1) * 140));
-      for (let k = 0; k < 10; k += 1) {
-        await page.mouse.wheel(0, -50);
-        await page.waitForTimeout(30);
+      // A wheel does not land in full when the machine is busy: under the whole suite's load plus
+      // the ×4 throttle, 10 × 50px once arrived as 41px on screen (BOUNCE line, 2026-11-25), and
+      // the gesture then failed on "the wheel scrolled up" rather than on the behaviour. So the
+      // same burst is repeated until the text has really moved — the same measure the assertions
+      // read, taken after a pause so a burst of wheels is not lost between frames — with a round
+      // cap, so a page that keeps snapping back ends on the behaviour assertion instead of
+      // spinning. One burst is what a quiet machine needs, so its rhythm is unchanged.
+      const SCROLL_GOAL = 200; // the text has to move more than 100px; reflow costs some of this
+      for (let round = 0; round < 3; round += 1) {
+        for (let k = 0; k < 10; k += 1) {
+          await page.mouse.wheel(0, -50);
+          await page.waitForTimeout(30);
+        }
+        await page.waitForTimeout(120);
+        const moved = await page.evaluate(() => window.__bounce.moved());
+        console.log(`SCROLL gesture ${i} round ${round}: moved ${Math.round(moved)}`);
+        if (moved > SCROLL_GOAL) break;
       }
       await page.waitForTimeout(400);
       const stillFrom = await page.evaluate(() => performance.now());
