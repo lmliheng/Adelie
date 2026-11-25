@@ -5007,6 +5007,11 @@ export const zh = {
     saveConfirm: (name: string): string => `保存对 ${name} 的修改？Workspace 中的该文件将被覆盖。`,
     editTooLarge: (kb: number): string => `文件超过 ${kb}KB，无法在此编辑，请下载后编辑`,
     /**
+     * Above the preview when Edit could not open the editor: the read that click started failed
+     * (see edit-open-refusal.ts). A reason, like every other slot in this panel.
+     */
+    editOpenFailed: (reason: string): string => `无法打开编辑器：${reason}`,
+    /**
      * Why a save never left the panel: the draft is over the write limit. A reason, not a whole
      * sentence — `editorSaveTooLargeRefusal` is what puts it under the editor's header.
      */

@@ -168,6 +168,7 @@ import { PAPERCLIP_ICON } from "./attached-files-banner";
 import { PdfPreview } from "./pdf-preview";
 import { claimOnce } from "./dock-command-once";
 import { editorSaveRefusal, editorSaveTooLargeRefusal } from "./editor-save-refusal";
+import { editOpenFailedRefusal, editOpenTooLargeRefusal } from "./edit-open-refusal";
 import { uploadRefusalLine } from "./upload-refusal";
 import { pickSkipLine, withPickSkips } from "./pick-skip-refusal";
 import { recallWorkspaceView, rememberWorkspaceView } from "./workspace-view-memory";
@@ -277,7 +278,9 @@ async function fetchTextPreview(
   sniff: boolean,
 ): Promise<{ content: string; truncated: boolean; version: string } | null> {
   const res = await fetch(url, { credentials: "same-origin" });
-  if (!res.ok) throw new Error(String(res.status));
+  // The status alone is not a sentence, and the body is the file's bytes rather than an error
+  // payload; "HTTP 500" is what the reader's panel can say about this read (edit-open-refusal.ts).
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   if (res.body === null) throw new Error("no response body");
   const version = res.headers.get("etag");
   if (version === null) throw new Error("no version header");
@@ -620,6 +623,13 @@ export function WorkspaceBrowser({
    * path so a different file's editor can never show it.
    */
   const [saveRefusal, setSaveRefusal] = useState<{ path: string; text: string } | null>(null);
+  /**
+   * The words of an Edit that could not open the editor, and the file they are about: the panel
+   * looks untouched either way (same preview, same Edit button), so the sentence is drawn above
+   * the preview rather than in a toast that outlives nothing (see edit-open-refusal.ts). Keyed by
+   * path so another file's preview can never show it.
+   */
+  const [editRefusal, setEditRefusal] = useState<{ path: string; text: string } | null>(null);
   const [saveConfirm, setSaveConfirm] = useState(false);
   /** A save the server refused because the file had changed (non-null shows the conflict dialog). */
   const [conflict, setConflict] = useState<{ name: string } | null>(null);
@@ -1671,6 +1681,9 @@ export function WorkspaceBrowser({
   const startEdit = async (): Promise<void> => {
     const current = previewRef.current;
     if (current === null || !canEditPreview(current)) return;
+    // This attempt replaces the sentence of the last one (edit-open-refusal.ts): the words on
+    // screen are always about a click the reader can still see the button for.
+    setEditRefusal(null);
     const body = previewBodyRef.current;
     const at = body === null ? undefined : { top: body.scrollTop, left: body.scrollLeft };
     // Content and version are read together and stored together, so one missing means both
@@ -1683,7 +1696,10 @@ export function WorkspaceBrowser({
       try {
         const result = await fetchTextPreview(files.fileUrl(current.path), false);
         if (result === null || result.truncated) {
-          toastError(S.files.editTooLarge(TEXT_PREVIEW_LIMIT / 1024));
+          setEditRefusal({
+            path: current.path,
+            text: editOpenTooLargeRefusal(TEXT_PREVIEW_LIMIT / 1024),
+          });
           return;
         }
         ({ content, version } = result);
@@ -1692,8 +1708,8 @@ export function WorkspaceBrowser({
             ? { ...p, content: result.content, truncated: false, version: result.version }
             : p,
         );
-      } catch {
-        toastError(S.files.loadFailed);
+      } catch (err) {
+        setEditRefusal({ path: current.path, text: editOpenFailedRefusal(err) });
         return;
       }
     }
@@ -3063,6 +3079,20 @@ export function WorkspaceBrowser({
         />
         {fileRowActions}
       </div>
+
+      {/* An Edit that could not open the editor: nothing on screen moved, the preview and its
+          Edit button are still there, and pressing it again is the retry — so the reason stays
+          above the preview it is about (edit-open-refusal.ts), never in a toast that goes away. */}
+      {editor === null && editRefusal !== null && editRefusal.path === preview?.path && (
+        <p
+          role="alert"
+          data-tooltip={editRefusal.text}
+          data-tooltip-content="text"
+          className={`shrink-0 border-b border-gray-200 px-3 py-1 line-clamp-2 break-words text-xs dark:border-gray-800 ${toneInk.danger}`}
+        >
+          {editRefusal.text}
+        </p>
+      )}
 
       {/* An upload the server refused, or files the pick itself would not hand over (over the
           ceiling, or a dropped folder — pick-skip-refusal.ts): nothing was written either way, so

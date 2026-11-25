@@ -4902,6 +4902,7 @@ export const en: Strings = {
       `Save changes to ${name}? The file in the Workspace will be overwritten.`,
     editTooLarge: (kb: number): string =>
       `The file is larger than ${kb}KB and cannot be edited here — download it instead`,
+    editOpenFailed: (reason: string): string => `Could not open the editor: ${reason}`,
     saveTooLarge: (mb: number): string => `The content is larger than the ${mb}MB write limit`,
     /** Under the header after a refused save: the server's reason, and that Save is the retry. */
     saveRefused: (reason: string): string => `Could not save: ${reason}`,

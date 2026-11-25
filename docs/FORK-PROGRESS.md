@@ -3932,6 +3932,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       输入框因此是空的**，旁边还写着「接入地址由内置目录固定」—— 声明了一个从不显示的地址，所以顺手把它
       写出来。见「第三百三十八轮」一节。
 
+- [x] **7.210 文件面板的 Edit 打不开编辑器时，原因留在预览上方，不再只靠六秒就消失的 toast**
+      （**2026-11-26 第三百四十轮**落地，提交见「已完成的轮次」；`packages/web` 三处源码 ＋ 新模块 ＋
+      新单测 6 条 ＋ 新 spec 2 条 ＋ changelog 一对 —— **不碰接口、无新依赖**）：隔离的 HTML 预览不带正文，
+      Edit 那一下才去读源码；超过预览上限的文件读不全、读本身也会失败（Agent 刚重写或删掉那个文件）。
+      两种情况下面板看上去一模一样 —— 没有编辑器、同一个预览、同一个按钮 —— 唯一的回答是一条六秒后
+      自己消失、且浮在面板上方的 toast，读者回头看时像没按过。现在那句留在预览上方、按它的按钮旁边，
+      下一次尝试替换它：超上限说「下载后编辑」（下载才是重试），读失败说「无法打开编辑器：」加原因
+      （走 `refusalText`，7.19 的规矩）。见「第三百四十轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7169,6 +7178,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.208 | **中断的那一轮重发时，图还在**（**2026-11-25 第三百三十七轮**落地；`packages/core` 两处 —— `src/engine/context-engine.ts` 的 `flattenCarryOver` 把输入里的图片消息（`image_url`，以及媒体类型是图片的 `inline_data`）与它一直保留的结构化 `tool_call_output` 并列留下、放在 `[turn_aborted]` 文本**之前**，那一段文本的第一行写着图就在上面；已经折叠过的 carry-over 再折叠时丢掉上一份的那行说明，计数永远是这次请求的。`test/engine.test.ts` 两条用例（图与说明都在、位置在块前；第二次中断不重复）＋ changelog 一对 —— **不碰界面、不碰接口、无新依赖**）：撞上上游自己留的 `TODO(multimodal)` —— Case B 只取 `type === "text"` 的消息折成 `[turn_aborted]`，图片被静默丢掉，读者发一张图问「这是什么」、中途按停止或供应商回致命错误，下一条消息就让模型回答一张不在请求里的图 | **反证（core 真 ReAct 循环，两态）**：`src/engine/context-engine.ts` 退回 `HEAD`、只留新用例 → `test/engine.test.ts` **2 failed / 57 passed**（两条都红在 `images` 长度 0），恢复本笔 → **59 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型；改过 core 先 `pnpm --filter @adelie/core build`）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过**（本笔 +2）· server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净（changelog 一对一并查过）、`git diff --check` 干净 · 本笔不改界面、不碰服务契约，未起服务 / 未开浏览器；没有端口与数据根占用，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-11-26 | 7.209 | **内置模型库加上 Google Gemini 4 的四条，模型弹窗把内置模型的接入地址显示出来**（**2026-11-26 第三百三十八轮**落地，用户点单；`packages/core`（`state/model-catalog.ts`：`google` 分组新增 `gemini-4-carbon` / `gemini-4-argon` / `gemini-4-neon` / `gemini-4-hydrogen`，四条都 `clientType: "gemini-3.8"`、`contextWindow: 1048576`、`supportsVision`、不写端点）＋ `packages/core/test/model-catalog.test.ts` ＋ `packages/web`（新 `features/models/official-endpoint.ts`；`models-page.tsx` 那个锁住的 base URL 输入框用它作占位）＋ 新单测 `test/official-endpoint.test.ts`（4 条）＋ `packages/docs/content/models.{zh,en}.md` ＋ changelog 一对 —— **不碰接口、无新依赖，字符串一个没加**）：用户要「加 google gemini 4 的几个模型」，还问「google 端点为什么不写出来」。**端点那一问是设计如此**：直连厂商分组（google / openai / anthropic / deepseek / zhipu / moonshot）的条目从不写 `base_url`，地址由 AgentHub 对应客户端自己带（Gemini 是 `https://generativelanguage.googleapis.com`，可用 `GEMINI_BASE_URL` 覆盖），只有 OpenAI 兼容网关才把端点预置到 `gatewayBaseUrl`、用来预填新增弹窗；**但模型弹窗里那个锁住的 base URL 输入框因此是空的**，旁边却写着「接入地址由内置目录固定」—— 声明了一个从不显示的地址，所以把它显示出来。见「第三百三十八轮」一节 | `packages/core` `vitest run` **70 文件 / 1462 通过 / 6 跳过**、`test/model-catalog.test.ts` 65 条全过 · `packages/web` `vitest run` **362 文件 / 4052 通过 / 2 跳过**（含新 `official-endpoint.test.ts` 4 条）· 全仓 `pnpm -r typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 全仓 `pnpm lint` 0 警告 0 错误（2700 文件）· 改动文件 `prettier --check` 干净（整仓 `format:check` 只因另一条线的两个新文件而红）· 路由探针（真装 agenthub 0.4.15 的 `AutoLLMClient`）：不 pin `gemini-4-argon` → 「is not supported」，pin `gemini-3.8` → `Gemini3_8Client` | 见本行提交 |
 | 2026-11-26 | 发布 | **发 v0.8.4 并换装现网**（把 v0.8.3 之后攒下的收成正式版：**内置模型库补上 Google Gemini 4 的四条**（Carbon / Argon / Neon / Hydrogen，模型配置里那个锁住的 base URL 框也把内置接入地址显示出来）；**被中断的那一轮重发时输入里的图片不再被丢掉**；**桌面端桌宠的实时语音通话改成气泡对话、大小可设**，**托盘菜单改成自己画的并多了「重启」**；**插件卡片自己打开的弹窗在安装快照落地时不再自己关掉**。发布提交 `e48db0b11`（父 `16fc5cb2b`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.4` 指向同一提交；门禁在 `/root/rel-084`（`git worktree add -b release-084`）上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests）；三件载荷 linux-x64 109M（114,507,227 字节）/ universal 55M（57,265,128）/ win32-x64 144M（150,569,939）+ `validate-bundles.sh` 三件全过，桌面三件 deb 122,592,768 / AppImage 155,545,589 / exe 162,485,878；npm **29 个包**发到 0.8.4（`PUBLISH-ALL-DONE`，一次过）；GitHub Release **id `458407310`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-25T17:16:28Z）；3003 换上 v0.8.4 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v0830`）；现网 `/root/.adelie` 整棵换成 0.8.4、旧前端先拷回、瞬时单元 `adelie-live-restart-084` 延后 1500 秒重启装新前端并自核验） | 发布轮，逐项见「第三百三十九轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 版本 0.8.4、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT e48db0b11…`、前端入口 `index-Y3RPCIun.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401、通知两张表在库里（本版无新迁移）；现网核验写 `rel-084-live-restart-verify.txt`；`releases/latest` = v0.8.4 | `e48db0b11`（发布） |
+| 2026-11-26 | 7.210 | **文件面板的 Edit 打不开编辑器时，原因留在预览上方，不再只靠六秒就消失的 toast**（**2026-11-26 第三百四十轮**落地，接手 11-25 23:00 那轮被中断的半成品；`packages/web` —— 新 `features/chat/edit-open-refusal.ts`（`editOpenTooLargeRefusal` / `editOpenFailedRefusal`，后者走 `refusalText`）、`features/chat/workspace-browser.tsx` 的 `editRefusal` 状态按路径记、编辑器没开时画在预览上方（替换 `startEdit` 里两处 `toastError`）、`fetchTextPreview` 抛出 `HTTP <状态>`、`lib/strings{,-en}.ts` 一个槽位；新单测 6 条、新 spec 2 条、changelog 一对 —— **不碰接口、无新依赖**） | 见「第三百四十轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`）；逐包 test **`EXIT=0`、0 失败**：core **70 / 1462 + 6 跳过**、server **220 / 3205 + 6 跳过**、web **362 / 4052 + 2 跳过**、ui **133 / 1117**、cli **39 / 568**；真服务端 8975 + 真浏览器两态：改后 **2 passed**（超上限那句在面板上、8 秒后仍在、通知区 0 条；读被 500 拒 → 「无法打开编辑器：HTTP 500」，通知区 0 条），改前 dist 反证 **2 failed**；新 spec 单跑 **2 passed**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34481,3 +34491,49 @@ URL 输入框是 `disabled`、旁边写着「接入地址与三档价格由内�
 
 - 发布提交 `e48db0b11`（版本号 37 个文件 + 发布正文）；标签 `v0.8.4` 指同一提交。
 - 台账一笔（本文件，条目 = 发布）。
+
+## 第三百四十轮：文件面板的 Edit 打不开编辑器时，原因留在预览上方（2026-11-26，条目 7.210）
+
+**开工**：`git status --short` **不干净** —— 3 处修改（`packages/web/src/features/chat/workspace-browser.tsx`、
+`packages/web/src/lib/strings{,-en}.ts`）与 3 个新文件（`features/chat/edit-open-refusal.ts`、
+`test/edit-open-refusal.test.ts`、`e2e/files-edit-open-refusal.spec.mjs`）。按台账里的判据查过：这些文件的
+mtime 停在 11-25 23:02–23:15，之后近四小时没有写入；`traces/2026-11-25/` 里那一轮的记录
+（`session-2026-11-25-23-00-28-b1af2c8b`）**末尾是 23:21 的 `abort`（`user_abort`）**，当时它正在跑 web 与
+server 单测（core / ui / cli 已经全绿）；没有相关进程，`agents/` 下只有 `default_agent`，11-26 除本轮外
+也没有别的会话。第三百三十八轮（7.209）的「提交」一节本身就写明「**没有**把另一条线在同一工作树里未提交的
+`edit-open-refusal` 那几处带上」—— 说明它当时就认出了这几处属于别人。判断为**无主半成品**，本轮接手做完。
+
+**选活**：2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍全是卡点（与上一轮相同），第 7 节全勾；剩下最靠前又能
+真正做完的，就是这份已经写到九成、只差记录、changelog 与整套验证的活。
+
+**做了什么**（`packages/web` 三处源码 ＋ 一个新模块 ＋ 新单测 ＋ 新 spec ＋ changelog 一对，**不碰接口、
+无新依赖**）：文件面板的 Edit 打不开编辑器时，原因留在预览上方，不再只靠六秒就消失的 toast ——
+`features/chat/edit-open-refusal.ts` 两个纯函数（超上限用 `editTooLarge`，读失败用新的
+`files.editOpenFailed(reason)` 包一层 `refusalText`，服务端回答按错误码本地化、面板自己抛的值保留原话）；
+`workspace-browser.tsx` 里 `startEdit` 的两处 `toastError` 换成一份按路径记的 `editRefusal` 状态
+（另一个文件的预览不可能显示它），每次尝试开始时清掉，只在编辑器没开着时画在预览上方；
+`fetchTextPreview` 抛出的消息从裸状态码改成 `HTTP <状态>`（那句话就是要显示的）；`lib/strings{,-en}.ts`
+各加一个槽位；单测 6 条钉住两种情形与两种语言；`e2e/files-edit-open-refusal.spec.mjs` 两条（超上限的
+HTML 文件、读被 500 拒）断言句子在面板上、通知区 0 条、预览与按钮还在、句子活过 toast 的六秒。
+
+**验证**：六包 `typecheck` **`EXIT=0`**（六个 `Done`）。逐包 test **`EXIT=0`、0 失败**：core **70 / 1462
+＋ 6 跳过** · server **220 / 3205 ＋ 6 跳过** · web **362 / 4052 ＋ 2 跳过**（本笔 ＋1 文件 6 条；基线
+360 / 4042，另一条线的 `official-endpoint.test.ts` 已在 7.209 记过）· ui **133 / 1117** · cli **39 / 568**。
+`oxlint` 5 个改动文件 **0 警告 0 错误**；`prettier --write` 把半成品留下的两处格式整理后 `--check` 干净；
+`git diff --check` 干净。
+
+**真看一眼**（真服务端 + 真浏览器，`packages/web/dist` 是改后重建的；数据根 `/root/adelie-fork-data/r340-*`，
+端口 8975，探针与截图在 scratchpad 的 `r340/`）：超上限的 `big.html` —— 面板顶部红字
+「文件超过 1024KB，无法在此编辑，请下载后编辑」，预览与「编辑」按钮原处，通知区 **0** 条，**8 秒后仍在**；
+读被 500 拒的 `small.html` —— 「无法打开编辑器：HTTP 500」，通知区 **0** 条，按钮仍是重试。两条都 **passed**。
+**反证**：把同一份探针挂到改前的构建（`r337/before-dist`，端口 8976）→ **2 failed**，面板上没有那句
+（改前只有 toast）。console 里唯一的 error 是会话页自身读 `/api/projects/<id>/machines` 的 **403** ——
+那条路由是管理员专用，探针里的读者不是管理员；改前改后都在，与本笔无关。新 spec 单跑 **2 passed**（端口
+8971 / 8972）。
+
+**没做 / 留着**：2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 原样不勾，卡点与上一轮相同。`startEdit` 之外
+仍以 `toastError` 收尾的几处（插件导入、工作区选择器、工单弹窗、错误面板）是同一族的下一批候选，本轮没碰。
+
+**提交**：一笔 —— 代码（`edit-open-refusal.ts`、`workspace-browser.tsx`、`strings{,-en}.ts`、
+`test/edit-open-refusal.test.ts`、`e2e/files-edit-open-refusal.spec.mjs`、changelog 一对）＋ 台账
+（条目 7.210、上表那一行、本节）。
