@@ -4,7 +4,7 @@
  * In each theme (Primer shows each commit at once, so the commit snaps the view; Frost and
  * Console grow the reply every reveal frame, so the resize observer snaps it):
  *
- * - Given a reply streaming a paragraph every 50ms with the view following the bottom, and a
+ * - Given a reply streaming a paragraph every 125ms with the view following the bottom, and a
  *   renderer slowed four times, when the reader wheels up from the bottom in small steps until
  *   the text has really moved (see the gesture loop: how much of each wheel lands depends on the
  *   load), the view never moves back down: no snap to the bottom lands after the browser was
@@ -252,7 +252,7 @@ for (const [theme, name] of Object.entries(THEMES)) {
   test(`${name}: wheeling up while a reply streams never moves the view back down`, async ({
     page,
   }) => {
-    test.setTimeout(60_000 + GESTURES * 20_000);
+    test.setTimeout(60_000 + GESTURES * 30_000);
     await page.addInitScript((id) => localStorage.setItem("penguin.themeId", id), theme);
     await login(page.request, USER, PASSWORD);
     const created = await page.request.post(
@@ -324,6 +324,11 @@ for (const [theme, name] of Object.entries(THEMES)) {
         console.log(`SCROLL gesture ${i} round ${round}: moved ${Math.round(moved)}`);
         if (moved > SCROLL_GOAL) break;
       }
+      // The reply streams ~10s (mock: 80 paragraphs every 125ms), so this second still has text
+      // arriving below it even when the setup above plus the extra rounds took several seconds
+      // under the throttle — the "while the reply grows" half of the check means something only
+      // then, and a reply that had already finished made the aggregate check fail on a loaded
+      // machine (2026-11-25: the window started at +4.6s to +6.8s while the 4s stream was over).
       await page.waitForTimeout(400);
       const stillFrom = await page.evaluate(() => performance.now());
       await page.waitForTimeout(1000);
