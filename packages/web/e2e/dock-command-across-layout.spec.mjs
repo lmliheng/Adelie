@@ -173,7 +173,12 @@ test("a layout change does not pull the Memory panel back to the note it was lan
   // the Trace — a page loaded onto an empty Session holds none until it is loaded again. (The
   // card is a Task summary; the reply the warm-up leaves behind is not read.)
   await say(page, "warm up");
-  await expect(page.getByRole("button", { name: /运行完毕/ })).toBeVisible({ timeout: 30_000 });
+  // A reply can show both the activity group's header and the row inside it, and both read
+  // 运行完毕; either one being on screen is the same news that the turn settled (subagent.spec
+  // takes `.first()` for the same wait).
+  await expect(page.getByRole("button", { name: /运行完毕/ }).first()).toBeVisible({
+    timeout: 30_000,
+  });
   await page.reload();
   await composer(page).waitFor();
 
