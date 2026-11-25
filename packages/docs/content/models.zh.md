@@ -539,6 +539,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - `deepseek-flash` / `deepseek-v4-pro` / `deepseek-v4.1-flash-1017`
 - `MiniMax-M3`
 - `gemini-3.8-flash`
+- `gemini-4-carbon` / `gemini-4-argon` / `gemini-4-neon` / `gemini-4-hydrogen`（Google Gemini 直连）
 - `claude-opus-5` / `claude-opus-4-8` / `claude-sonnet-5`
 - `gpt-6-astra` / `gpt-5.6` / `gpt-5.5`
 - `glm-5.3` / `glm-5.3-flash` / `glm-5.3-flashx` / `glm-4.7-flash`（智谱官方免费档）
@@ -558,6 +559,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 - **GLM-5.3 Flash 出现六次。** 分别是直连的 `glm-5.3-flash`、TokenDance 与 OpenCode Go 上的同名条目，以及 OpenRouter 的 `z-ai/glm-5.3-flash`、Fireworks AI 的 `accounts/fireworks/models/glm-5p3-flash` 和 Qwen 按量付费的 `ZHIPU/GLM-5.3-Flash`。每一条都接受图像：AgentHub 的 GLM 客户端只对这一个 GLM id 转发图像内容，其他所有 GLM id 都拒收图像；各网关条目走通用的 OpenAI 兼容客户端，对任何 id 都会携带图像。各条不一致的是价格：每条记录的都是自己卖家收取的价格，所以促销期间彼此不同。
 - **OpenRouter 免费档。** 目录收录了 `:free` 变体 `nvidia/nemotron-3-ultra-550b-a55b:free`，以及 `openrouter/free` 这个统一的免费模型路由（Free Models Router）。它们不花钱，但 OpenRouter 免费档的限流和数据政策仍然适用。
 - **智谱的免费档。** `glm-4.7-flash` 是 Z.AI 分组里唯一的 $0 条目：Z.AI 的价格页四项都写 `Free`，智谱开放平台也把它列在免费模型里。文本输入、文本输出，200K 上下文、128K 输出上限。它的 id 不含 AgentHub 路由 GLM 所需的 `glm-5` 子串，所以这一条像 `deepseek-flash` 与 MiniMax M3 一样固定了 GLM 客户端；端点不固定——两个平台用同一个 id 提供服务，走哪个由 `ZAI_BASE_URL` 决定。它排在 GLM-5 各行之下是因为更早：Z.AI 的发布记录把 GLM-4.7-Flash 记在 2026-01-19，GLM-5 记在 2026-02-12。
+- **Gemini 4 四条。** Google 的四个 Gemini 4 id（`gemini-4-carbon`、`gemini-4-argon`、`gemini-4-neon`、`gemini-4-hydrogen`）上下文窗口都是 1,048,576 Token，也都读图。四条都固定同一个 Gemini 客户端（`client_type = "gemini-3.8"`），理由和 `deepseek-flash`、`glm-4.7-flash` 一样：这些 id 不含 AgentHub 路由 Gemini 所需的 `gemini-3` 子串，不固定就按 id 走不通，运行时会直接报「is not supported」。**端点不写在条目上**：直连 Gemini 的地址由客户端自己带，缺省是 Google 官方的 `https://generativelanguage.googleapis.com`，要经代理时用 `GEMINI_BASE_URL` 覆盖；模型弹窗里那个锁住的 base URL 输入框会把这个缺省地址显示出来，不必去猜。Carbon 与 Argon 是旗舰推理档，牌价 $4 / $20 / $0.20 每百万 Token（缓存命中 $0.20），Google 在 2026-11-30 之前一律按半价收；Neon（$3 / $15 / $0.15）与 Hydrogen（$1.5 / $7.5 / $0.075）只有一个公布费率。
 
 ### 价格与促销
 
@@ -575,7 +577,7 @@ OpenAI 兼容网关分组（openrouter / fireworks / siliconflow / tokendance / 
 
   折扣会结束：`kimi-k3` 的 6 折和 `deepseek-v4-flash-0731`、`deepseek-v4-pro-0813` 的 9 折在 2026-10-27 核查时都已停止，这三条的促销字段随之删掉，价格照旧记录卖家的牌价。
 
-  Gemini 3.8 Flash、3.7 Flash 和 3.6 Flash 也打 5 折，google 分组和 OpenRouter 上（`google/gemini-3.8-flash`、`google/gemini-3.7-flash`、`google/gemini-3.6-flash`）都是如此，因为 Google 在 2026-12-31 之前对它们一律减半。Project 预置的是**牌价**：折扣率由服务端另行保存，存在它自己的数据库里，而不写入 `.project_config.toml`，计算成本时再从牌价中扣除，因此成本中心按卖家实际收取的价格计费。模型卡片用标签标出当前实际计费的费率，模型弹窗则写明**此处为牌价，当前促销在此基础上省 N%；修改价格会取消促销**。
+  Gemini 3.8 Flash、3.7 Flash 和 3.6 Flash 也打 5 折，google 分组和 OpenRouter 上（`google/gemini-3.8-flash`、`google/gemini-3.7-flash`、`google/gemini-3.6-flash`）都是如此，因为 Google 在 2026-12-31 之前对它们一律减半。Project 预置的是**牌价**：折扣率由服务端另行保存，存在它自己的数据库里，而不写入 `.project_config.toml`，计算成本时再从牌价中扣除，因此成本中心按卖家实际收取的价格计费。模型卡片用标签标出当前实际计费的费率，模型弹窗则写明**此处为牌价，当前促销在此基础上省 N%；修改价格会取消促销**。Gemini 4 Carbon 与 Argon 也是 5 折，但窗口更短：折到 2026-11-30 为止，12-01 起回到 $4 / $20 / $0.20 的牌价。
 - **你自己的价格。** 修改条目的价格会取消它的促销，卡片上的折扣标签也随之消失：此后这个数字由你自己定，不再代表卖家。
 
 ## Project 模型表

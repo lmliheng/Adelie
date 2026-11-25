@@ -37,7 +37,10 @@
  * vision flags were read from TokenHub's own model-list document and the PDF it publishes, and
  * whose one priced row comes from models.dev's generated Tencent TokenHub entry — the vendor's
  * own price page is client-rendered and its price-list PDF is gone, so the other two rows are
- * left unpriced rather than guessed: 2026-11-23.
+ * left unpriced rather than guessed: 2026-11-23; and the direct Gemini 4 rows (Carbon, Argon,
+ * Neon, Hydrogen), whose windows, modalities and rates were read from Google's own model and
+ * pricing pages and cross-checked against models.dev's google provider, Carbon's and Argon's
+ * launch discount through 2026-11-30 included: 2026-11-26.
  * Docs: packages/docs/content/models.{zh,en}.md (site path /docs/models) documents the
  * provider groups and credential resolution described here.
  *
@@ -2730,6 +2733,61 @@ export const MODEL_CATALOG: ModelCatalogEntry[] = [
     baseUrl: MINIMAX_BASE_URL,
   },
   // -- Google Gemini (official USD pricing) --
+  // -- Gemini 4 (2026-11-26). Four rows, read from Google's model and pricing pages and
+  //    cross-checked against models.dev's google provider on the same day. Every id pins
+  //    `gemini-3.8` and no endpoint: AgentHub 0.4.15 hands a model to its single unified
+  //    Gemini client on the `gemini-3` substring alone, which `gemini-4-*` does not carry, so
+  //    an unpinned row throws "<id> is not supported" (verified by constructing AutoLLMClient
+  //    on each id). The pin is the client's name only — the client reads GEMINI_BASE_URL
+  //    itself, the same rule the Penguin Go Gemini rows follow. Carbon and Argon are a launch
+  //    promotion shaped exactly like the 3.6/3.7/3.8 Flash discounts below: Google bills
+  //    $2/$10/$0.10 through 2026-11-30 and $4/$20/$0.20 from 2026-12-01, so the row stores the
+  //    list price and declares the half-off fraction (one field to delete when it lapses).
+  //    Neon and Hydrogen publish a single rate and carry no promotion. All four take images;
+  //    like every other Gemini row here they do not declare video, though the vendor lists it. --
+  {
+    modelId: "gemini-4-carbon",
+    displayName: "Gemini 4 Carbon",
+    provider: "google",
+    contextWindow: 1048576,
+    pricing: usd(0.2, 4, 20),
+    discount: 0.5,
+    supportsVision: true,
+    clientType: "gemini-3.8",
+  },
+  {
+    // Google's efficient Gemini 4 frontier reasoning model: the same list rates as Carbon, on
+    // the same launch promotion, at lower token spend per turn.
+    modelId: "gemini-4-argon",
+    displayName: "Gemini 4 Argon",
+    provider: "google",
+    contextWindow: 1048576,
+    pricing: usd(0.2, 4, 20),
+    discount: 0.5,
+    supportsVision: true,
+    clientType: "gemini-3.8",
+  },
+  {
+    // The fast frontier Gemini 4: one published rate, no promotion.
+    modelId: "gemini-4-neon",
+    displayName: "Gemini 4 Neon",
+    provider: "google",
+    contextWindow: 1048576,
+    pricing: usd(0.15, 3, 15),
+    supportsVision: true,
+    clientType: "gemini-3.8",
+  },
+  {
+    // Gemini 4 for everyday coding and agentic work: the cheapest of the four, one published
+    // rate, no promotion.
+    modelId: "gemini-4-hydrogen",
+    displayName: "Gemini 4 Hydrogen",
+    provider: "google",
+    contextWindow: 1048576,
+    pricing: usd(0.075, 1.5, 7.5),
+    supportsVision: true,
+    clientType: "gemini-3.8",
+  },
   {
     // Same list price and same launch discount as the gemini-3.7-flash and gemini-3.6-flash
     // rows below: Google halves all three rates through 2026-12-31. Like those rows this one

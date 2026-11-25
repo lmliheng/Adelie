@@ -3918,6 +3918,20 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       `[turn_aborted]` 文本时只取 `type === "text"` 的消息，图片被静默丢掉 —— 读者发一张图问「这是什么」，
       中途按停止或供应商回致命错误，下一条消息就让模型回答一张已经不在请求里的图。见「第三百三十七轮」一节。
 
+- [x] **7.209 内置模型库加上 Google Gemini 4 的四条，模型弹窗把内置模型的接入地址显示出来**
+      （**2026-11-26 第三百三十八轮**落地，提交见「已完成的轮次」，用户点单；`packages/core`
+      （`state/model-catalog.ts`：`google` 分组新增 `gemini-4-carbon` / `gemini-4-argon` / `gemini-4-neon` /
+      `gemini-4-hydrogen`，四条都 `clientType: "gemini-3.8"`）＋ `packages/core/test/model-catalog.test.ts`
+      ＋ `packages/web`（新 `features/models/official-endpoint.ts`，`models-page.tsx` 锁住的 base URL 输入框
+      用它作占位）＋ 新单测 `test/official-endpoint.test.ts` ＋ `packages/docs/content/models.{zh,en}.md`
+      ＋ changelog 一对 —— **不碰接口、无新依赖，字符串一个没加**）：用户要「加 google gemini 4 的几个模型」，
+      并问「google 端点为什么不写出来」。**端点那一问的答案是设计如此**：直连厂商分组（google / openai /
+      anthropic / deepseek / zhipu / moonshot）的条目从不写 `base_url`，地址由 AgentHub 对应的客户端自己带
+      （Gemini 是 `https://generativelanguage.googleapis.com`，可用 `GEMINI_BASE_URL` 覆盖），只有
+      OpenAI 兼容网关才把端点预置到 `gatewayBaseUrl`、用来预填新增弹窗；**但模型弹窗里那个锁住的 base URL
+      输入框因此是空的**，旁边还写着「接入地址由内置目录固定」—— 声明了一个从不显示的地址，所以顺手把它
+      写出来。见「第三百三十八轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7153,6 +7167,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.206 | **`scroll-follow-bounce` 在整套里那一格红是夹具的时限：答复在量「还在长」的那一秒之前就结束了**（**2026-11-25 第三百三十五轮**落地；`packages/web` 两处 —— `e2e/mock-llm.mjs` 的「scroll bounce test」答复从每 50ms 一段、约 4s 改成每 125ms 一段、约 10s（分支与文件头注释写明它必须比手势长），`e2e/scroll-follow-bounce.spec.mjs` 的头注同步、每主题超时 `60s + 6×20s` → `60s + 6×30s`、「停住那一秒」之前写明判据成立条件 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：手势的准备与补滚在 ×4 降速下要 2–5s，4s 的答复已经流完，`grewWhileStill` 读到 0、聚合那句「至少半数手势在窗口里长过」就红；行为侧 `bounces` 全空、`stillDrift` 全 0，一次回弹都没有 | **改前**（老夹具 + 3 个压测核）：计时探针 `r334/timing` 量到「停住那一秒」起于发消息 +4.6s…+6.8s 而答复 ~4.0s 已结束，Primer 三格 `grewWhileStill` 全 0（`BOUNCE-SUMMARY Primer: 0/3`）；6 格那趟红在同一句 `Expected: >= 3 / Received: 1`（`test-results/…/error-context.md`）· **改后**：空机器 6 格 × 3 主题 **3 passed（3.4 min）**，18 格 `bounces` 全空、`stillDrift` 0、`grewWhileStill` **627–752**；压 1 个核 **3 passed（3.4 min）**、654–806；压 2 个核 **3 passed（3.5 min）**、627–779 · **已知边界**：4 核里压 3 个空转时仍有主题读到 0（一秒内一帧都没画出来的渲染饥饿，不是答复结束；整套只有一个 worker，量过的是 1–2 个核）· 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **360 文件 / 4042 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · 端口只用 8960 / 8961，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r334-scroll`；没有界面改动，没跑整套（只有这一份 spec 读 mock 的那个分支） | `ffd772de8` |
 | 2026-11-25 | 7.207 | **`scroll-follow-bounce` 的停留窗由夹具自己收尾，往上弹只从手势落地那一刻起算**（**2026-11-25 第三百三十六轮**落地；`packages/web` 两处 —— `e2e/mock-llm.mjs` 的「scroll bounce test」分支从提示词读段数（`scroll bounce test <n> <paragraphs>`，缺省 80）、客户端走了不再往关掉的 socket 写，`e2e/scroll-follow-bounce.spec.mjs` 里 `STREAM_PARAGRAPHS = 160`（~20s）随提示词发给替身、补滚上限 3 轮 → 5 轮、每个手势量完窗自己按「停止」并等伺服端不再把它列为运行中、`analyze()` 的「文字动过」门槛 0.5px → 2px 且「往上弹」只从 `freeAt` 起算 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：7.206 的 ~10s 是统计性不变式，手势路径实测 3.2–12.5s、一次 20s，答复仍可能先结束；abort 异步落地，按完停止立刻发下一条会被当成后续消息（那一轮没有「停止」）；`after-up` 从事件戳起算会把页面处理前的正常吸底读成回弹（实测 +224ms，同一份录制 2 条 → 0 条） | **改前复现**：`BOUNCE_DUMP` 录制里生长停在第一个 wheel 后 3.5s，而停留窗开在 3.3–5.0s，Primer 6 格只有 1 格窗内有生长（聚合红）；`r334/analyze-compare.mjs` 同一份录制旧规则 2 条 after-up、新规则 0 条；Primer 第 3 个手势的提示词早于 abort 0.15s 落地，用例死在「the reply is still streaming」 · **改后**：连跑 6 遍（`r334-v6`…`r334-v10`、`r334-after-counter`）**6/6 全 3 passed（各 1.7 min）**，108 格 `bounces` 全空、`stillDrift` 0、`grewWhileStill` **626–807** · **反证（真界面）**：把 `stream-follow.ts` 的 `wheel()` 与 `scrolled()` 里「向上滚动退出跟随」一起关掉、重建 web → **3 failed**（Primer / Frost / Console 各 3/3 手势 bounced，late-snap / after-up / composed 各数十条，`stillDrift` 681）；还原重建 → **3 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **360 文件 / 4042 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，38.7 m）：**421 通过 / 0 失败** · 单跑只占 8960 / 8961（跑完全停），整套用 8930 / 8931 与自己的临时数据根；3003 / 3004 / 4000 / 7364 / 7369 一个没碰，数据只落 `/root/adelie-fork-data/r334-*` | `136546971` |
 | 2026-11-25 | 7.208 | **中断的那一轮重发时，图还在**（**2026-11-25 第三百三十七轮**落地；`packages/core` 两处 —— `src/engine/context-engine.ts` 的 `flattenCarryOver` 把输入里的图片消息（`image_url`，以及媒体类型是图片的 `inline_data`）与它一直保留的结构化 `tool_call_output` 并列留下、放在 `[turn_aborted]` 文本**之前**，那一段文本的第一行写着图就在上面；已经折叠过的 carry-over 再折叠时丢掉上一份的那行说明，计数永远是这次请求的。`test/engine.test.ts` 两条用例（图与说明都在、位置在块前；第二次中断不重复）＋ changelog 一对 —— **不碰界面、不碰接口、无新依赖**）：撞上上游自己留的 `TODO(multimodal)` —— Case B 只取 `type === "text"` 的消息折成 `[turn_aborted]`，图片被静默丢掉，读者发一张图问「这是什么」、中途按停止或供应商回致命错误，下一条消息就让模型回答一张不在请求里的图 | **反证（core 真 ReAct 循环，两态）**：`src/engine/context-engine.ts` 退回 `HEAD`、只留新用例 → `test/engine.test.ts` **2 failed / 57 passed**（两条都红在 `images` 长度 0），恢复本笔 → **59 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型；改过 core 先 `pnpm --filter @adelie/core build`）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过**（本笔 +2）· server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净（changelog 一对一并查过）、`git diff --check` 干净 · 本笔不改界面、不碰服务契约，未起服务 / 未开浏览器；没有端口与数据根占用，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
+| 2026-11-26 | 7.209 | **内置模型库加上 Google Gemini 4 的四条，模型弹窗把内置模型的接入地址显示出来**（**2026-11-26 第三百三十八轮**落地，用户点单；`packages/core`（`state/model-catalog.ts`：`google` 分组新增 `gemini-4-carbon` / `gemini-4-argon` / `gemini-4-neon` / `gemini-4-hydrogen`，四条都 `clientType: "gemini-3.8"`、`contextWindow: 1048576`、`supportsVision`、不写端点）＋ `packages/core/test/model-catalog.test.ts` ＋ `packages/web`（新 `features/models/official-endpoint.ts`；`models-page.tsx` 那个锁住的 base URL 输入框用它作占位）＋ 新单测 `test/official-endpoint.test.ts`（4 条）＋ `packages/docs/content/models.{zh,en}.md` ＋ changelog 一对 —— **不碰接口、无新依赖，字符串一个没加**）：用户要「加 google gemini 4 的几个模型」，还问「google 端点为什么不写出来」。**端点那一问是设计如此**：直连厂商分组（google / openai / anthropic / deepseek / zhipu / moonshot）的条目从不写 `base_url`，地址由 AgentHub 对应客户端自己带（Gemini 是 `https://generativelanguage.googleapis.com`，可用 `GEMINI_BASE_URL` 覆盖），只有 OpenAI 兼容网关才把端点预置到 `gatewayBaseUrl`、用来预填新增弹窗；**但模型弹窗里那个锁住的 base URL 输入框因此是空的**，旁边却写着「接入地址由内置目录固定」—— 声明了一个从不显示的地址，所以把它显示出来。见「第三百三十八轮」一节 | `packages/core` `vitest run` **70 文件 / 1462 通过 / 6 跳过**、`test/model-catalog.test.ts` 65 条全过 · `packages/web` `vitest run` **362 文件 / 4052 通过 / 2 跳过**（含新 `official-endpoint.test.ts` 4 条）· 全仓 `pnpm -r typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 全仓 `pnpm lint` 0 警告 0 错误（2700 文件）· 改动文件 `prettier --check` 干净（整仓 `format:check` 只因另一条线的两个新文件而红）· 路由探针（真装 agenthub 0.4.15 的 `AutoLLMClient`）：不 pin `gemini-4-argon` → 「is not supported」，pin `gemini-3.8` → `Gemini3_8Client` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34315,3 +34330,101 @@ scratchpad 并换成 `[attached image: …]` 行，那类会话根本不会有 `
 
 - 代码一笔 `67926bab2`（`packages/core/src/engine/context-engine.ts`、`packages/core/test/engine.test.ts`、
   changelog 一对）；台账（条目 7.208、上表那一行、本节）随本文件另起一笔。
+
+## 第三百三十八轮：内置模型库加上 Google Gemini 4 的四条，模型弹窗把内置模型的接入地址显示出来（2026-11-26，条目 7.209）
+
+**开工**：本会话开工时 `git status --short` 里是本轮的九处改动（`packages/core` / `packages/web` /
+`packages/docs` 各自的内容见下），分支 `main`，本地 HEAD 是 **`615f4028c`**（第三百三十六轮 / 7.207）。
+收尾前 `git -c http.version=HTTP/1.1 fetch origin main` 通（github.com 现在直连可用），看到远端已前进两笔：
+
+- `67926bab2` fix(core) **7.208**：`engine/context-engine.ts` 的 `flattenCarryOver` 把被中断那一轮输入里的图片带上；
+- `21972f6ce` docs(progress)：**第三百三十七轮 / 7.208** 的台账。
+
+7.208 与第三百三十七轮都被它用了，本轮因此改记 **7.209 / 第三百三十八轮**：先把自己的台账编辑放回 `HEAD`
+（本文件回到不含我那次插入的版本），`git merge --ff-only origin/main` 把基座快进到 `21972f6ce`
+（我改动的文件都不在它那一笔里，原样保留），再在新基座上写条目、表行与本节。
+
+**选活 / 本轮性质**：这是**用户点单**，不是从待办清单挑的 —— 用户在一条消息里要「加 google gemini 4 的几个
+模型」，并问「google 端点为什么不写出来」，收尾要求「做好之后提交代码更新小版本，更新现网」。所以第 2–7 节的
+活动位这一轮不动，待办里只加条目 7.209；此前那条「聊天列出现横向滚动条」按用户的 steering 暂停，未提交任何改动。
+
+**用户问的第二件事，答案是设计如此**：直连厂商分组（google / openai / anthropic / deepseek / zhipu /
+moonshot）的条目**从不写 `base_url`** —— 地址由 AgentHub 对应的客户端自己带（Gemini 客户端读
+`GEMINI_BASE_URL`，缺省 `https://generativelanguage.googleapis.com`），只有 OpenAI 兼容网关才把端点预置到
+分组的 `gatewayBaseUrl`（用来预填「新增模型」弹窗的 base URL，走 `models-page.tsx` 的 `providerInfo`）。
+取舍写在 `model-catalog.ts` 的 `ProviderInfo.gatewayBaseUrl` 注释里：预置的地址是给用户看的，直连分组既然
+不请用户填地址，就没有可预置的字段。**但顺手发现一处真缺陷**：内置（目录）条目在**模型配置**弹窗里那个 base
+URL 输入框是 `disabled`、旁边写着「接入地址与三档价格由内置目录固定」，可框里**是空的** —— 声明了一个它从不
+显示的地址。于是新加一处只读展示把它写出来。
+
+**做了什么**（`packages/core`、`packages/web`、`packages/docs`）：
+
+- `packages/core/src/state/model-catalog.ts`：`google` 分组、`gemini-3.8-flash` **之前**新增四条（旗舰在前）：
+
+  | modelId | 显示名 | 牌价（输入 / 输出 / 缓存命中） | 折扣 |
+  | --- | --- | --- | --- |
+  | `gemini-4-carbon` | Gemini 4 Carbon | $0.2 / $4 / $20 | 5 折（2026-11-30 止）|
+  | `gemini-4-argon` | Gemini 4 Argon | $0.2 / $4 / $20 | 5 折（2026-11-30 止）|
+  | `gemini-4-neon` | Gemini 4 Neon | $0.15 / $3 / $15 | — |
+  | `gemini-4-hydrogen` | Gemini 4 Hydrogen | $0.075 / $1.5 / $7.5 | — |
+
+  四条都是 `provider: "google"`、`contextWindow: 1048576`、`supportsVision: true`、`clientType: "gemini-3.8"`、
+  **不写 `baseUrl`**。窗口、模态与费率取自 Google 自己的模型页与定价页，并与 models.dev 的 `google` 供应商对过
+  （2026-11-26）；文件头「数据核对日期」补了这一段。为什么 pin：AgentHub 0.4.15 只在 `client_type` 或模型 id
+  含 `gemini-3` 子串时才派给唯一的 Gemini 客户端，`gemini-4-*` 不带这个子串，不 pin 会直接抛
+  「is not supported」；pin 的是**客户端名**，不是端点 —— Gemini 客户端自己读 `GEMINI_BASE_URL`。Carbon 与
+  Argon 的 5 折和 3.6/3.7/3.8 Flash 是同一形状的促销：Google 在 2026-11-30 之前按半价收、12-01 起回牌价，所以
+  存牌价 + 声明 `discount: 0.5`（促销结束删一个字段即可）。Neon 与 Hydrogen 只有一个公布费率，无折扣。
+- `packages/core/test/model-catalog.test.ts`：「直连分组不写 `client_type` / `base_url`」那条把这四条列入例外
+  （连同 `glm-4.7-flash`）并逐条断言 `["gemini-3.8", undefined]` 与 `[1048576, true]`；`google` 分组的 id 顺序
+  钉子改成四条 `gemini-4-*` 在最前 + 原八条；补两段价格断言（Carbon / Argon 的牌价 `[0.2,4,20]`、`discount 0.5`、
+  `effectivePricing` 为 `[0.1,2,10]`；Neon / Hydrogen 的 `[0.15,3,15]` / `[0.075,1.5,7.5]` 无折扣），并修正那句
+  「没有别的 Gemini 行带发布折扣」的注释。
+- `packages/web/src/features/models/official-endpoint.ts`（新）：`officialEndpoint(info)` —— `info.addable`
+  或 `info` 为空返回 `undefined`，否则 `info.gatewayBaseUrl ?? VENDOR_ENDPOINTS[info.envKey]?.[0]`（网关取预置
+  端点、直连厂商取 `VENDOR_ENDPOINTS` 的第一个主机，和凭据回退读同一张表；Z.AI / Moonshot 这种双端点厂商取
+  国际 / 大陆那一个）。`custom` 与 vLLM 沉默：那里的地址是用户自己的，借一个 OpenAI 主机写上去是假话。
+- `packages/web/test/official-endpoint.test.ts`（新，4 条）：网关四条、直连厂商五条、双端点厂商取第一个、
+  `custom` / vLLM / 自建 / `undefined` 沉默。
+- `packages/web/src/features/models/models-page.tsx`：`ModelDialog` 里 `const builtInEndpoint = official ?
+  officialEndpoint(dialogProvider) : undefined;`，锁住的 base URL 输入框在条目自带地址为空时用它作占位，而不是
+  那句「留空使用厂商默认地址」。字符串一个没加（用现成的 `S.models.*`）。
+- `packages/docs/content/models.{zh,en}.md`：预置模型清单各加一行四条；「智谱的免费档」之后新增一节
+  「Gemini 4 四条 / The four Gemini 4 rows」（为什么 pin、端点为什么不写在条目上、弹窗会显示缺省地址、
+  Carbon / Argon 促销到 2026-11-30）；「价格与促销」那段的 Gemini 折扣句尾补「Carbon 与 Argon 也 5 折，折到
+  2026-11-30」。
+- `changelog/unreleased/2026-11-26-gemini-4-models.{md,zh.md}`（新一对，格式照 2026-11-25 那一对）。
+
+### 验证
+
+- `packages/core`：`pnpm build` **`BUILD_EXIT=0`**；`npx vitest run` **`TEST_EXIT=0`，70 文件 / 1462 通过 /
+  6 跳过**（`test/model-catalog.test.ts` 65 条全过）。这里的 1462 是**合并另一条线 7.208 的两条用例之后**的数。
+- `packages/web`：`npx vitest run` **`WEB_TEST_EXIT=0`，362 文件 / 4052 通过 / 2 跳过**（含新
+  `test/official-endpoint.test.ts` 4 条）。
+- 全仓 `pnpm -r typecheck` **`TYPECHECK_EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，
+  214 接口 / 647 类型）。
+- 全仓 `pnpm lint` **`LINT_EXIT=0`**（0 警告 0 错误，2700 文件）。
+- 我改动的十个文件 `npx prettier --check` **干净**（整仓 `format:check` 只因另一条线未提交的两个新文件而红，
+  与本轮无关）。
+- **路由探针**（真装 agenthub 0.4.15 的 `AutoLLMClient`，在 `packages/core` 里跑）：不 pin `gemini-4-argon`
+  → 抛 `<id> is not supported`；pin `gemini-3.8` → 得到 `Gemini3_8Client`。探针脚本在 scratchpad 的 `r337/`。
+
+### 没做 / 留着
+
+- `packages/server` / `cli` / `ui` / `desktop` / `ui-gallery` / `docs` 的测试本轮**不在工作树里单跑** —— 它们
+  随后随 0.8.4 的发布树门禁整跑一遍。
+- 用户的另一条点单「聊天列出现横向滚动条」按 steering 暂停，本机复现不出，探针在 scratchpad 的
+  `hscroll-probe.spec.mjs`，机制猜测在 `message-stream.tsx` 的 `data-stream-scroll` 容器；未提交任何改动。
+- 四条 Gemini 4 的 `supportsVideo` 沿本组惯例没写（`gemini-3.x` 行也没写），尽管 models.dev 列了视频输入模态。
+- 上一轮点名的插件卡片 `pendingUpdate` / `pendingUninstall`、画库里 `builtin-browser` 替身仍留作候选。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰。
+
+### 提交
+
+- **一笔**：代码（`packages/core/src/state/model-catalog.ts`、`packages/core/test/model-catalog.test.ts`、
+  `packages/web/src/features/models/official-endpoint.ts`、`packages/web/src/features/models/models-page.tsx`、
+  `packages/web/test/official-endpoint.test.ts`、`packages/docs/content/models.{zh,en}.md`、changelog 一对）
+  ＋ 台账（条目 7.209、上表那一行、本节）同落一次提交 —— 用户 2026-10-22 的口径是台账合进那一轮自己那一笔。
+  **没有**把另一条线在同一工作树里未提交的 `edit-open-refusal` 那几处带上。
+- 随后按用户要求进 **0.8.4** 并换装现网：发布动作自己记成「发布」那一行与专节（照第三百二十九轮发 v0.8.3 的记法）。

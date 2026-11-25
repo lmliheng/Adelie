@@ -1222,14 +1222,38 @@ describe("model-catalog", () => {
 
   it("direct-vendor groups: auto-routed (no client_type / base_url), newest series first", () => {
     // These groups' ids are auto-routed by AgentHub, so they carry neither client_type nor a
-    // preset base URL — the opposite of the gateway groups above.
+    // preset base URL — the opposite of the gateway groups above. Two families are exceptions,
+    // both because the released AgentHub routes them on a substring their own id does not
+    // carry: Z.AI's glm-4.7-flash and Google's four Gemini 4 rows (each asserted below).
+    const pinnedExceptions = new Set([
+      "glm-4.7-flash",
+      "gemini-4-carbon",
+      "gemini-4-argon",
+      "gemini-4-neon",
+      "gemini-4-hydrogen",
+    ]);
     for (const id of ["google", "anthropic", "zhipu", "moonshot"]) {
       for (const m of MODEL_CATALOG.filter(
-        (e) => e.provider === id && e.modelId !== "glm-4.7-flash",
+        (e) => e.provider === id && !pinnedExceptions.has(e.modelId),
       )) {
         expect(m.clientType, m.modelId).toBeUndefined();
         expect(m.baseUrl, m.modelId).toBeUndefined();
       }
+    }
+    // Google's Gemini 4 family: AgentHub 0.4.15 hands a model to its single unified Gemini
+    // client on the `gemini-3` substring alone, which `gemini-4-*` does not carry, so all four
+    // rows pin the client and no endpoint (the client reads GEMINI_BASE_URL itself). Verified
+    // by constructing AutoLLMClient on each id: unpinned each throws "is not supported", pinned
+    // `gemini-3.8` each yields Gemini3_8Client (2026-11-26).
+    for (const modelId of [
+      "gemini-4-carbon",
+      "gemini-4-argon",
+      "gemini-4-neon",
+      "gemini-4-hydrogen",
+    ]) {
+      const row = catalogEntryFor("google", modelId)!;
+      expect([row.clientType, row.baseUrl], modelId).toEqual(["gemini-3.8", undefined]);
+      expect([row.contextWindow, row.supportsVision], modelId).toEqual([1048576, true]);
     }
     // Z.AI's free GLM-4.7-Flash is the one pinned row of those four groups, and for the
     // same reason as DeepSeek's below: AgentHub 0.4.15 hands a model to its unified GLM
@@ -1266,8 +1290,15 @@ describe("model-catalog", () => {
     // Dictionary order by tier with newer versions of a tier first (same rule the OpenRouter
     // block follows for the identical Claude line-up). The GLM-4.7 line comes last because
     // it is older than every GLM-5 row, not because it is smaller: Z.AI dates
-    // GLM-4.7-Flash to 2026-01-19 and GLM-5 to 2026-02-12.
+    // GLM-4.7-Flash to 2026-01-19 and GLM-5 to 2026-02-12. The Gemini 4 family leads the
+    // google group (a newer series than the 3.x line) and is ordered flagship-first by the
+    // tiers Google itself describes: Carbon (most capable), Argon (efficient frontier), Neon
+    // (fast frontier), Hydrogen (everyday).
     expect(MODEL_CATALOG.filter((m) => m.provider === "google").map((m) => m.modelId)).toEqual([
+      "gemini-4-carbon",
+      "gemini-4-argon",
+      "gemini-4-neon",
+      "gemini-4-hydrogen",
       "gemini-3.8-flash",
       "gemini-3.7-flash",
       "gemini-3.6-flash",
@@ -1312,9 +1343,39 @@ describe("model-catalog", () => {
         0.075, 0.75, 3.75,
       ]);
     }
+    // Gemini 4 Carbon and Argon run the same shape of launch promotion, ending sooner: Google
+    // bills $2 / $10 / $0.10 through 2026-11-30 and the list $4 / $20 / $0.20 from 2026-12-01,
+    // so both rows store the list price and declare the half-off fraction. Neon and Hydrogen
+    // publish a single rate and bill it as stored.
+    for (const [modelId, list, billed] of [
+      ["gemini-4-carbon", [0.2, 4, 20], [0.1, 2, 10]],
+      ["gemini-4-argon", [0.2, 4, 20], [0.1, 2, 10]],
+    ] as const) {
+      const row = catalogEntryFor("google", modelId)!;
+      expect(row.discount, modelId).toBe(0.5);
+      expect(
+        [row.pricing!.cache_read, row.pricing!.cache_write, row.pricing!.output],
+        modelId,
+      ).toEqual(list);
+      const eff = effectivePricing(row)!;
+      expect([eff.cache_read, eff.cache_write, eff.output], modelId).toEqual(billed);
+    }
+    for (const [modelId, list] of [
+      ["gemini-4-neon", [0.15, 3, 15]],
+      ["gemini-4-hydrogen", [0.075, 1.5, 7.5]],
+    ] as const) {
+      const row = catalogEntryFor("google", modelId)!;
+      expect(row.discount, modelId).toBeUndefined();
+      expect(
+        [row.pricing!.cache_read, row.pricing!.cache_write, row.pricing!.output],
+        modelId,
+      ).toEqual(list);
+      expect(effectivePricing(row), modelId).toEqual(row.pricing);
+    }
     // No other Gemini row carries a launch discount: Google's pricing page marks one on the
-    // 3.6 / 3.7 / 3.8 Flash generations and on nothing else in this catalog, so these rows
-    // bill exactly the list price they store. The numbers are pinned because none of them is
+    // 3.6 / 3.7 / 3.8 Flash generations plus Gemini 4 Carbon and Argon, and on nothing else in
+    // this catalog, so these rows bill exactly the list price they store. The numbers are
+    // pinned because none of them is
     // the Flash list price above and each is a genuine other tier, not a hidden promotion —
     // re-read 2026-09-09: 3.5 Flash $1.50 / $9.00 / $0.15 cache hit, 3.5 Flash-Lite
     // $0.30 / $2.50 / $0.03, 3.1 Flash-Lite $0.25 / $1.50 / $0.025, 3.1 Pro Preview ≤200K

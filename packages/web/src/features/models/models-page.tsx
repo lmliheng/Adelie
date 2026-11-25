@@ -119,6 +119,7 @@ import {
   saveModelGroupOrder,
 } from "./model-group-order";
 import { TAG_INK, TAG_SHAPE, modelTags } from "./model-tags";
+import { officialEndpoint } from "./official-endpoint";
 import { protocolPathForModel } from "./protocol-path";
 import { ProtocolSuffixMenu } from "./protocol-suffix";
 import {
@@ -3276,6 +3277,10 @@ function ModelDialog({
   // the model id and API key labels in both the add and edit dialogs; custom
   // and self-defined groups have no link).
   const dialogProvider = providerInfo(form.provider);
+  // The address a built-in row actually talks to, so the read-only base URL field can show it
+  // instead of only saying the catalog fixed it (see official-endpoint.ts). Empty for a
+  // user-defined or custom group, whose rows carry their own URL.
+  const builtInEndpoint = official ? officialEndpoint(dialogProvider) : undefined;
   // The variable a blank key may be PRESENTED as covered by, for the entry as drafted (core's
   // modelEnvPreviewKey, which the server's masked preview reads too): undefined for every row
   // whose endpoint is not the vendor's own — a gateway's preset base URL, a custom or vLLM
@@ -3777,7 +3782,13 @@ function ModelDialog({
               // is still shown (the row does route that way), but what the reader needs to know
               // is why the field will not take an edit.
               title={official ? S.models.officialLockedHint : S.models.baseUrlSuffixTitle}
-              placeholder={preset ? S.models.baseUrlHint : "https://…"}
+              placeholder={
+                official && form.baseUrl === "" && builtInEndpoint !== undefined
+                  ? builtInEndpoint
+                  : preset
+                    ? S.models.baseUrlHint
+                    : "https://…"
+              }
             />
             {showProtocolPicker ? (
               <div className="absolute inset-y-0 right-1 flex items-center">

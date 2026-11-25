@@ -540,6 +540,7 @@ The preset catalog includes, among others:
 - `deepseek-flash` / `deepseek-v4-pro` / `deepseek-v4.1-flash-1017`
 - `MiniMax-M3`
 - `gemini-3.8-flash`
+- `gemini-4-carbon` / `gemini-4-argon` / `gemini-4-neon` / `gemini-4-hydrogen` (direct Google Gemini)
 - `claude-opus-5` / `claude-opus-4-8` / `claude-sonnet-5`
 - `gpt-6-astra` / `gpt-5.6` / `gpt-5.5`
 - `glm-5.3` / `glm-5.3-flash` / `glm-5.3-flashx` / `glm-4.7-flash` (Z.AI's free tier)
@@ -559,6 +560,7 @@ The list is not exhaustive.
 - **GLM-5.3 Flash six times.** It appears directly as `glm-5.3-flash`, under the same id on TokenDance and OpenCode Go, and as OpenRouter's `z-ai/glm-5.3-flash`, Fireworks AI's `accounts/fireworks/models/glm-5p3-flash` and Qwen pay-as-you-go's `ZHIPU/GLM-5.3-Flash`. Every row accepts images: AgentHub's GLM client forwards image parts for this one GLM id, every other GLM id refuses them, and the gateway rows go through the generic OpenAI-compatible clients, which carry images for any id. What the rows do not share is the price: each records what its own seller charges, so they disagree while a promotion runs.
 - **OpenRouter free tier.** The catalog carries the `:free` model variant `nvidia/nemotron-3-ultra-550b-a55b:free` and the `openrouter/free` unified Free Models Router. They cost nothing, but OpenRouter's free-tier rate limits and data policy apply.
 - **Zhipu's free tier.** `glm-4.7-flash` is the Z.AI group's one $0 row: Z.AI's price list reads `Free` on all four of its buckets, and 智谱开放平台 files the model under its free-model list. Text in, text out, 200K context with a 128K output cap. Its id carries none of the `glm-5` substring AgentHub routes GLM on, so the row pins the GLM client the way `deepseek-flash` and MiniMax M3 pin theirs; it pins no endpoint, since both platforms serve the same id — `ZAI_BASE_URL` picks which one is billed. It sits below the GLM-5 rows because it is older: Z.AI dates GLM-4.7-Flash to 2026-01-19 and GLM-5 to 2026-02-12.
+- **The four Gemini 4 rows.** Google's four Gemini 4 ids (`gemini-4-carbon`, `gemini-4-argon`, `gemini-4-neon`, `gemini-4-hydrogen`) all carry a 1,048,576-token window and all read images. Each pins the same Gemini client (`client_type = "gemini-3.8"`), for the same reason `deepseek-flash` and `glm-4.7-flash` pin theirs: the ids carry none of the `gemini-3` substring AgentHub routes Gemini on, so unrouted they fail outright at run time with "is not supported". **The endpoint is not written on the rows**: the direct Gemini client brings its own, `https://generativelanguage.googleapis.com` by default, and `GEMINI_BASE_URL` overrides it behind a proxy; the model dialog's locked base URL field shows that default rather than leaving you to guess. Carbon and Argon are the flagship reasoning tier at a list price of $4 / $20 / $0.20 per million tokens ($0.20 cache hit), which Google halves through 2026-11-30; Neon ($3 / $15 / $0.15) and Hydrogen ($1.5 / $7.5 / $0.075) publish a single rate.
 
 ### Prices and promotions
 
@@ -576,7 +578,7 @@ The list is not exhaustive.
 
   Promotions do end: `kimi-k3`'s 40% and the 10% on `deepseek-v4-flash-0731` and `deepseek-v4-pro-0813` had all stopped by the 2026-10-27 check, so those rows dropped the field and go on recording the seller's list price.
 
-  Gemini 3.8 Flash, 3.7 Flash and 3.6 Flash are also 50% off, both in the google group and on OpenRouter (`google/gemini-3.8-flash`, `google/gemini-3.7-flash`, `google/gemini-3.6-flash`), because Google halves them through 2026-12-31. A Project is preset with the **list** price: the server keeps the promotion beside it, in its own database rather than in `.project_config.toml`, and takes it off when usage is priced, so the cost center charges what the seller charges. The model card shows the rate being billed right now as a tag, and the model dialog says **These are list prices. A running promotion takes N% off them; changing a price cancels it**.
+  Gemini 3.8 Flash, 3.7 Flash and 3.6 Flash are also 50% off, both in the google group and on OpenRouter (`google/gemini-3.8-flash`, `google/gemini-3.7-flash`, `google/gemini-3.6-flash`), because Google halves them through 2026-12-31. A Project is preset with the **list** price: the server keeps the promotion beside it, in its own database rather than in `.project_config.toml`, and takes it off when usage is priced, so the cost center charges what the seller charges. The model card shows the rate being billed right now as a tag, and the model dialog says **These are list prices. A running promotion takes N% off them; changing a price cancels it**. Gemini 4 Carbon and Argon are 50% off too, on a shorter window: through 2026-11-30, back to the $4 / $20 / $0.20 list price from 2026-12-01.
 - **Your own prices.** Editing a row's price cancels its promotion and takes the discount tag off the card: the figure is then yours, not the seller's.
 
 ## The per-Project model table
