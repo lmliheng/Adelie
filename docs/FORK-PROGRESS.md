@@ -33828,6 +33828,6 @@ cookie 与站点存储都归各自那个对话；命令行多 `--session`。相�
 
 ### 提交
 
-- 代码一笔 `d7d3a2f15`（`packages/web/src/features/plugins/plugins-page.tsx` +
+- 代码一笔 `8a5e1d9f4`（`packages/web/src/features/plugins/plugins-page.tsx` +
   `packages/web/e2e/plugin-card-dialogs-hold.spec.mjs` + changelog 一对）；台账（条目 7.202、上表那一行、本节）
   随本文件另起一笔。
