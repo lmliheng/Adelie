@@ -46,6 +46,7 @@ import {
   buildBackgroundTaskDoneMessage,
   compactionBegin,
   compactionEnd,
+  hookEvent,
   imageUrlMessage,
   mcpConnectBegin,
   mcpConnectEnd,
@@ -1339,6 +1340,22 @@ describe("origin nested routing", () => {
     expect(standalone).toBeDefined();
     expect(standalone.sessionId).toBe("childX");
     expect((items(m)[0] as ToolCallItem).subagent).toBeUndefined();
+  });
+
+  it("draws no subagent row for the detached Session a stop hook spawned", () => {
+    const m = createStreamModel();
+    pushMessages(m, [
+      userText("optimise the app"),
+      requestBegin(),
+      assistantText("done"),
+      requestEnd("completed"),
+      // What a stop hook's `subagent` answer streams at the end of the Task: its event naming
+      // the child, then the child's session_meta. No child record follows either.
+      hookEvent({ hook: "stop", name: "continual-learning", output: { session_id: "hooked" } }),
+      withOrigin(meta("hooked"), "hooked"),
+    ]);
+    expect(items(m).some((i) => i.kind === "subagent")).toBe(false);
+    expect(m.subagents.has("hooked")).toBe(false);
   });
 
   it("child-session token_usage counts toward parent stats (tokens include child sessions, context does not)", () => {
