@@ -40,8 +40,9 @@
  *    (reload-midstream.spec reloads while the TEXT streams)
  *  - "read deep path test <path>" -> tool_use(read_file) on <path>, then a short final text
  *    (path-hints.spec: the card's shortened subtitle keeps the whole path one hover away)
- *  - "scroll bounce test" -> a three-line paragraph every 125ms for ~10s, for every request of
- *    that conversation (scroll-follow-bounce.spec wheels up while each reply streams)
+ *  - "scroll bounce test <n> <paragraphs>" -> a three-line paragraph every 125ms, <paragraphs>
+ *    of them (80 when absent, ~10s), for every request of that conversation
+ *    (scroll-follow-bounce.spec wheels up while each reply streams)
  *  - "image reply test" -> one text answer carrying three image srcs: a Workspace file, a path
  *    outside the Workspace, and another site's (reply-image.spec: only the first is fetched from
  *    the Session's file route)
@@ -737,14 +738,15 @@ const server = http.createServer((req, res) => {
     }
 
     // Scroll-bounce test case (scroll-follow-bounce.spec): a reply that grows by a visible step
-    // on every commit — one three-line paragraph every 125ms for ~10s — so the reader can wheel up
-    // from the bottom while the transcript is still following new text. Every request of that
-    // conversation answers this way, so the spec can stream one reply per gesture. The reply is
-    // this long on purpose: the gesture's setup and its extra wheel rounds take several seconds
-    // under the spec's ×4 CPU throttle (up to ~5s on a loaded machine), and the second the spec
-    // measures "the text stays put while the reply grows" has to fall inside the stream — with
-    // the old ~4s reply it sometimes started after the last paragraph had arrived.
+    // on every commit — one three-line paragraph every 125ms — so the reader can wheel up from
+    // the bottom while the transcript is still following new text. Every request of that
+    // conversation answers this way, so the spec can stream one reply per gesture. The prompt
+    // carries the paragraph count ("scroll bounce test <n> <paragraphs>", 80 when absent): the
+    // spec sizes the reply to outlast its gesture (measured 3.2–12.5s, once 20s, under the ×4
+    // throttle) and then presses Stop, so the length is the spec's business, not this file's.
     if (flat.includes("scroll bounce test")) {
+      const asked = /scroll bounce test\s+\d+\s+(\d+)/.exec(lastMessage);
+      const paragraphs = asked ? Number(asked[1]) : 80;
       sse(res, "content_block_start", {
         type: "content_block_start",
         index: 0,
@@ -756,13 +758,16 @@ const server = http.createServer((req, res) => {
         "arrives below, until they scroll back down or press the button that returns them.";
       let n = 0;
       const tick = () => {
+        // The spec presses Stop once its window is measured; the socket goes away mid-stream, and
+        // writing to it afterwards only logged write-after-end noise.
+        if (res.destroyed) return;
         n += 1;
         sse(res, "content_block_delta", {
           type: "content_block_delta",
           index: 0,
           delta: { type: "text_delta", text: `Paragraph ${n}. ${filler}\n\n` },
         });
-        if (n < 80) {
+        if (n < paragraphs) {
           setTimeout(tick, 125);
         } else {
           sse(res, "content_block_stop", { type: "content_block_stop", index: 0 });

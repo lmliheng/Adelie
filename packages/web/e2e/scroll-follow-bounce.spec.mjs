@@ -33,6 +33,17 @@ const MOCK = process.env.MOCK_URL;
 const USER = "scrollbounce";
 const PASSWORD = "password123";
 const GESTURES = Number(process.env.BOUNCE_GESTURES ?? 6);
+/**
+ * How many paragraphs each reply streams (the mock reads the count from the prompt, one paragraph
+ * every 125ms), so 160 is ~20s of text. 7.206 (第三百三十五轮) sized the reply to be longer than a
+ * gesture; that is a property of the machine's load, not of this file, and the measurement says
+ * the path can be much longer than its 10s: a gesture's recording (arm → first wheel → up to
+ * five bursts → the settle and the window) came to 3.2–12.5s, and once to 20s, on this machine
+ * (2026-11-25, `BOUNCE-DUMP` recordings). The fixture therefore ends the turn itself right after
+ * the window instead of waiting for the last paragraph: the reply only has to outlast the path,
+ * not the whole test, so a reply that is comfortably too long costs nothing.
+ */
+const STREAM_PARAGRAPHS = 160;
 /** The three themes: stored id → name. */
 const THEMES = { github: "Primer", modern: "Frost", geek: "Console" };
 /** The transcript's scroller (message-stream.tsx marks it for the specs that watch a gesture). */
@@ -220,8 +231,15 @@ function analyze({ frames, wheels, writes }, stillFrom) {
     const d = moved(prev, f);
     travel += d;
     path.push({ t: f.t, travel });
-    if (d > 0.5) movedDown = true;
-    else if (movedDown && d < -0.5) {
+    // "The text moved down" is armed by a real move, not by the ±1px the median wobbles through
+    // while the reply keeps growing (a still transcript reflows a pixel or two on most frames).
+    if (d > 2) movedDown = true;
+    // And the up-move is only a bounce once the browser was free to put the gesture on screen —
+    // the same clock the header gives late snaps. Before that point (the input is stamped up to a
+    // couple of hundred ms before the page handles it) a following view still snapping to the
+    // bottom is doing its job: measured 2026-11-25, the first wheel was stamped at 0 and handled
+    // at +224ms, and the legit snaps at +92 / +200 were read as "moved back up".
+    else if (movedDown && f.t >= freeAt && d < -0.5) {
       bounces.push({ kind: "after-up", t: Math.round(f.t - first.ts), by: -d });
     }
   }
@@ -268,7 +286,7 @@ for (const [theme, name] of Object.entries(THEMES)) {
     const cdp = await page.context().newCDPSession(page);
     const results = [];
     for (let i = 1; i <= GESTURES; i += 1) {
-      await input.fill(`scroll bounce test ${i}`);
+      await input.fill(`scroll bounce test ${i} ${STREAM_PARAGRAPHS}`);
       await page.keyboard.press("Enter");
       await paragraphShown(page, 6, i);
       if (i === 1) {
@@ -312,9 +330,10 @@ for (const [theme, name] of Object.entries(THEMES)) {
       // same burst is repeated until the text has really moved — the same measure the assertions
       // read, taken after a pause so a burst of wheels is not lost between frames — with a round
       // cap, so a page that keeps snapping back ends on the behaviour assertion instead of
-      // spinning. One burst is what a quiet machine needs, so its rhythm is unchanged.
+      // spinning; STREAM_PARAGRAPHS is sized to outlast this cap. One burst is what a quiet
+      // machine needs, so its rhythm is unchanged.
       const SCROLL_GOAL = 200; // the text has to move more than 100px; reflow costs some of this
-      for (let round = 0; round < 3; round += 1) {
+      for (let round = 0; round < 5; round += 1) {
         for (let k = 0; k < 10; k += 1) {
           await page.mouse.wheel(0, -50);
           await page.waitForTimeout(30);
@@ -324,11 +343,12 @@ for (const [theme, name] of Object.entries(THEMES)) {
         console.log(`SCROLL gesture ${i} round ${round}: moved ${Math.round(moved)}`);
         if (moved > SCROLL_GOAL) break;
       }
-      // The reply streams ~10s (mock: 80 paragraphs every 125ms), so this second still has text
-      // arriving below it even when the setup above plus the extra rounds took several seconds
-      // under the throttle — the "while the reply grows" half of the check means something only
-      // then, and a reply that had already finished made the aggregate check fail on a loaded
-      // machine (2026-11-25: the window started at +4.6s to +6.8s while the 4s stream was over).
+      // The reply streams ~20s (STREAM_PARAGRAPHS paragraphs every 125ms), so this second still
+      // has text arriving below it even when the setup above plus the extra rounds took several
+      // seconds under the throttle — the "while the reply grows" half of the check means
+      // something only then. This is what 7.206 measured with the old fixed ~4s reply: the
+      // window opened at +4.6s to +6.8s, after the stream was over, and the aggregate check went
+      // red on a loaded machine.
       await page.waitForTimeout(400);
       const stillFrom = await page.evaluate(() => performance.now());
       await page.waitForTimeout(1000);
@@ -338,11 +358,39 @@ for (const [theme, name] of Object.entries(THEMES)) {
       results.push(r);
       console.log(`BOUNCE ${JSON.stringify(r)}`);
       if (process.env.BOUNCE_DUMP) console.log(`BOUNCE-DUMP ${JSON.stringify(recording)}`);
-      // The reply finishes before the next one is sent.
-      await paragraphShown(page, 80, i);
-      await expect(page.getByRole("button", { name: "停止", exact: true })).toHaveCount(0, {
-        timeout: 30_000,
-      });
+      // The turn ends before the next one is sent. The reply is sized to outlast the window
+      // (STREAM_PARAGRAPHS), so it is still streaming here: the fixture stops it rather than
+      // waiting for its remaining seconds — a reader who wheels up and then presses Stop is an
+      // ordinary turn, and the next prompt must start a new one, not queue behind this one.
+      const stop = page.getByRole("button", { name: "停止", exact: true });
+      await expect(stop, `gesture ${i}: the reply is still streaming`).toBeVisible();
+      await stop.click();
+      await expect(stop).toHaveCount(0, { timeout: 30_000 });
+      // A prompt typed before the abort has really landed is queued as a follow-up of the dying
+      // turn, and a run started that way has no Stop in the composer — on 2026-11-25 gesture 3 of
+      // Primer was sent 0.15s after the previous abort, streamed its whole reply that way, and
+      // the still-streaming check above found nothing to press. The composer's own Send is not
+      // enough to go by (it goes idle before the server does), so wait for the server to stop
+      // listing this Session as running, then for that idle Send.
+      await expect
+        .poll(
+          // Asked from inside the page: a same-origin fetch goes over the origin the app itself
+          // uses, while the test's own request context resolves `localhost` on its own and can
+          // land on ::1, where this server does not listen (measured: ECONNREFUSED ::1, and a
+          // pooled keep-alive socket the server had already closed surfaced as ECONNRESET).
+          () =>
+            page.evaluate(
+              async ([url, id]) => {
+                const res = await fetch(url);
+                const rows = (await res.json()).sessions ?? [];
+                return rows.some((row) => row.sessionId === id);
+              },
+              [`${BASE}/api/projects/${projectId}/sessions/running`, sessionId],
+            ),
+          { timeout: 30_000 },
+        )
+        .toBe(false);
+      await expect(page.getByRole("button", { name: "发送", exact: true })).toBeVisible();
     }
 
     const bounced = results.filter((r) => r.bounces.length > 0).length;
