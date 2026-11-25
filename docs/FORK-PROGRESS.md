@@ -3963,6 +3963,16 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       被禁用，慢链路上就是几分钟没有任何读数。见「第三百四十二轮」一节。
       （编号让给先到的远端 7.211；本节在 rebase 时改记 7.212 / 第三百四十二轮。）
 
+- [x] **7.213 工作区选择器的地址栏进不去的路径留在原地，原因留在它下面**（**2026-11-26 第三百四十三轮**
+      落地，提交见「已完成的轮次」；`packages/web` 1 个源码文件 ＋ 两本词典各删一句 ＋ 新 spec 2 条 ＋
+      changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：地址栏被点成路径输入框后，输入一条进不去的
+      路径 —— 多数时候是打错了一个字母 —— 回车就把输入框关掉：地址栏退回原来那个文件夹，打的那一整条随
+      输入框一起没了，原因只剩一条六秒后自己消失的通知（`workspaceDirInvalid`，那句还写着「已回退」）。
+      现在输入框带着那条路径回来（整条选中，和打开时一样），服务器按错误码给的那句话压在它下面；改对再
+      回车就走到那里去，Esc 或离开输入框则退回分段、那句话一起收走。「目录在那儿但不许读」
+      （`dir_permission_denied`）照旧：选择器停在那儿，它自己的面板说明为什么什么都没显示。见
+      「第三百四十三轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7203,6 +7213,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.210 | **文件面板的 Edit 打不开编辑器时，原因留在预览上方，不再只靠六秒就消失的 toast**（**2026-11-26 第三百四十轮**落地，接手 11-25 23:00 那轮被中断的半成品；`packages/web` —— 新 `features/chat/edit-open-refusal.ts`（`editOpenTooLargeRefusal` / `editOpenFailedRefusal`，后者走 `refusalText`）、`features/chat/workspace-browser.tsx` 的 `editRefusal` 状态按路径记、编辑器没开时画在预览上方（替换 `startEdit` 里两处 `toastError`）、`fetchTextPreview` 抛出 `HTTP <状态>`、`lib/strings{,-en}.ts` 一个槽位；新单测 6 条、新 spec 2 条、changelog 一对 —— **不碰接口、无新依赖**） | 见「第三百四十轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`）；逐包 test **`EXIT=0`、0 失败**：core **70 / 1462 + 6 跳过**、server **220 / 3205 + 6 跳过**、web **362 / 4052 + 2 跳过**、ui **133 / 1117**、cli **39 / 568**；真服务端 8975 + 真浏览器两态：改后 **2 passed**（超上限那句在面板上、8 秒后仍在、通知区 0 条；读被 500 拒 → 「无法打开编辑器：HTTP 500」，通知区 0 条），改前 dist 反证 **2 failed**；新 spec 单跑 **2 passed**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
 | 2026-11-26 | 7.211 | **stop hook 派生的游离会话不再在对话里画出一条智能体行**（上游 `751624eb4` `#1869` 移植，照改动落、不是合分支；上游 4 文件 / +61 → 本树落下 4 个跟踪文件（2 改 2 新）：`packages/web/src/lib/omni/stream-model.ts`（`StreamModel.detachedChildren`、`handleEvent` 新增 `hook` 分支从 `stop` 事件的 `output.session_id` 填入、`pushMessage` 的 origin 分支在 `routeNested` 之前丢掉第一跳正是该会话的记录）、`packages/web/test/stream-model.test.ts`（+1 用例）、changelog 一对）：本树的 stop hook 循环与上游同形（`hooks/stop-hook.ts` 把子会话 id 写进 `hook` 事件的`output`、紧接着推子会话的 `session_meta`），而父会话 Trace 不为此保留子智能体指针，流模型于是给这个不认识的 origin 头建嵌套模型、补一条独立子智能体项 —— 长 Task 结束后回复下方那条「General Agent + 短 id」点开是空面板。**上游路径 `lib/amsp/stream-model.ts` 在本树叫 `lib/omni/`，夹具名也不同，其余逐字相同** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）· `npx oxlint` 两个文件 **0 警告 0 错误** · 两个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **361 / 4047 + 2 跳过**（本笔 +1；rebase 到 `ce428d6a6` 后并入另一条线的 7.210，重跑 **362 / 4053 + 2 跳过**）· server **220 / 3205 + 6 跳过** · **反证（单测）**：源码不改、只加新用例 → `test/stream-model.test.ts` 那条 **1 failed**（`expected true to be false`，画出 `subagent` 项），源码改后 **126 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：一次性数据根 `/root/adelie-fork-data/r340-{after,before}`（复制出两份），手写一个会话的 Trace —— 一轮对话后跟`hook: "stop"` 事件（`output.session_id = hooked-abc123`）与带 `origin: ["hooked-abc123"]` 的子会话`session_meta`，不需要模型 key（即 3.6 那个卡点）；两份 web 产物 `r340/{after,before}-dist`（入口 `index-DpmYv-TM.js` / `index-Y3RPCIun.js`，两端核过是两份不同的东西）分别挂在两个根上，**改后 8963 / 改前 8964**：**改前** 对话区 `done` 下方多一条「General Agent d-abc123」（截图 `r340/before.png`；`d-abc123` 出现 1 处、`General Agent` 出现 2 处），**改后** 该行消失（`after.png`；`d-abc123` 0 处、`General Agent` 1 处即侧栏那一行），两态 console 各 **0 error**、无一条 ≥400 · 端口只用 8963 / 8964（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r340-{after,before}`，探针 / 两份产物 / 截图都在 scratchpad 的 `r340/` 下（`packages/web/dist` 是构建产物，未 `git add`） | `842b03529` |
 | 2026-11-26 | 7.212 | **大文件附件的上传有了进度：发送时右下角一张进度卡片**（**2026-11-26 第三百四十二轮**落地，用户点单；rebasing 时让号：远端已先占 7.211 / 第三百四十一轮；`packages/web` —— 新 `api/xhr-upload.ts`（`upload.onprogress` → 真 `Response`）、`api/client.ts` 的 `ApiFetchOptions.onUploadProgress`（给了才走 XHR）、`api/endpoints.ts` 的 `postTask` / `postSteer` 透传、新 `features/chat/message-upload-progress.ts`（`inputBytes` / `steerBytes` + 两个包装）、发送 / 排队 / 换模型 / 交接 / 草稿首条 / 插话六个调用点、`lib/strings{,-en}.ts` 两个槽位、新单测 13 条、新 spec 1 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **不碰接口、无新依赖**） | 见「第三百四十二轮」一节（web `vitest run` **364 文件 / 4065 通过 / 2 跳过**，本笔 +2 文件 +13 条；`pnpm -r typecheck` **`EXIT=0`**；`pnpm lint` 0 警告 0 错误；改动文件 `prettier --check` 干净；docs **8 文件 / 62 通过**；真服务端 + 真浏览器，CDP 把上行限到 700KB/s：改后 **1 passed**（卡片起来、`aria-valuenow` 两次读数递增、字节对那行在、发完卡片消失、消息进了对话），拿现网 0.8.4 的改前产物同一条 spec 反证 **1 failed**（`getByRole('progressbar', { name: '正在上传消息' })` 找不到）） | 见「第三百四十二轮」一节 |
+| 2026-11-26 | 7.213 | **工作区选择器的地址栏把进不去的路径留在输入框里，原因也留在它下面**（**2026-11-26 第三百四十三轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各删一句 ＋ 新 spec 2 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/chat/workspace-finder.tsx` 新增 `addressRefusal`（那句按错误码本地化的原因，画在地址输入框这一列里、与输入框左对齐）与 `addressAttempt`（只有仍是当前这次尝试的答复才把输入框放回来 —— 用户可能已自己拿回输入框或离开）；`commitAddress` 的失败分支 `dir_permission_denied` 照旧（选择器停在那儿、面板自己说明），其余情形用 `refusalText(err)` 并把输入框带着原来那条路径重新打开（整条选中）；`editAddress` / `cancelAddress` 清句并结束尝试；`lib/strings{,-en}.ts` 删掉不再使用的 `workspaceDirInvalid`（那句写着「已回退」，而今不再回退） | 见「第三百四十三轮」一节（rebase 到 `cd7473fe3` 后重跑：六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **364 文件 / 4066 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 改动文件 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；真服务端 + 真浏览器：**改后 2 passed**（输入框带着 `/tmp/…/typo-here` 回来、整条选中、焦点在框里；那句逐字「该目录不存在或不可访问。」、类名 `text-red-600 dark:text-red-400`；7 秒后仍在；同一字段改对回车即走到 `real` 并列到 `kept.txt`；通知区 0 条、console 除这次故意请求的 404 外 0 error），**改前 dist 反证 2 failed**（`finder-address-refusal` 元素不存在）；三份 finder spec 回归 **6 passed**） | `dbff1fbd6` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34719,3 +34730,102 @@ token 的表格；400 个 Z 的长粘贴）—— `[data-stream-scroll]` 一律 
 `packages/docs/content/chat.{zh,en}.md`、`test/xhr-upload.test.ts`、
 `test/message-upload-progress.test.ts`、`test/helpers/xhr.ts`、
 `e2e/attachment-upload-progress.spec.mjs`、changelog 一对）＋ 台账（条目 7.212、上表那一行、本节）。
+
+## 第三百四十三轮：工作区选择器的地址栏把进不去的路径留在输入框里（2026-11-26，条目 7.213）
+
+**让号**：本轮按第 7 节末尾的下一个号写的是 7.212 / 第三百四十二轮；收尾时远端已先到另一条线的
+`cd7473fe3`（同一个号 7.212 / 第三百四十二轮：「附大文件的消息发送时显示上传进度」，用户点单），
+按台账惯例把号让给它，本轮改记 **7.213 / 第三百四十三轮**（条目、表格行与本节标题都已改过来）。
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `147397fbc`（第三百四十一轮的两笔台账修正）。
+`git fetch origin && git merge --ff-only origin/main` → **Already up to date**（远端当时也是 `147397fbc`）。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧全在桌面壳一侧、部署单元要等发布动作、文档面留到
+发布期；3.5 要用户拍板取哪个桌面壳、3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要用户拍板），第 7 节到
+7.211 全勾。先照前几轮的路子去上游找小件：按 URL 拉上游 `main` 到 `refs/adelie-tmp/upstream-main-r342` →
+仍是 **`93b9d5056`**，与第三百四十一轮拉到的**同一个提交**，上游这两天没有新提交，这条路这一轮是干的。
+于是取第三百四十轮「没做 / 留着」点名的那一族里的下一条 —— 与 7.210 同一条规矩（`7.19` 的 `refusalText`、
+拒绝句压在它所属的控件旁边），这次落在工作区选择器的地址栏上。
+
+**为什么它是真的**：地址栏被点成路径输入框（⌘⇧G / Ctrl+Shift+G）之后，回车就无条件
+`setAddressEditing(false)`，然后才去问服务器。路径进不去（`dir_not_found` —— 打错一个字母、或者那条路径
+其实是个文件）时：地址栏退回原来那个文件夹，**刚打的那一整条随输入框一起没了**（要改一个字母得整条重打），
+原因是一条六秒后自己消失的通知，而那句文案本身还写着「已回退」。读者回头看时，地址栏上什么问题也看不出来。
+
+**做了什么**（`packages/web` 1 个源码文件 ＋ 两本词典各删一句 ＋ 新 spec 2 条 ＋ changelog 一对，**不碰接口、
+不碰服务端、无新依赖**）：
+
+- `features/chat/workspace-finder.tsx`：
+  - 新增 `addressRefusal`（那句原因）与 `addressAttempt`（第几次尝试的编号：只有仍是当前这次尝试的答复才
+    把输入框放回来 —— 用户可能已经按 ⌘⇧G 自己拿回输入框、或已经离开，那时答复说的是没人拿着的那段文字）；
+  - `commitAddress` 的失败分支：`dir_permission_denied` **照旧**（目录在那儿、选择器停在那儿，面板自己
+    说明为什么什么都没显示），其余情形 `setAddressRefusal(refusalText(err))` ＋ `setAddressEditing(true)`；
+  - `editAddress` / `cancelAddress` 清掉那句并结束这次尝试（Esc 与离开输入框都走后者）；
+  - 那句画在地址栏这一列里（`{addressBar}` 外面包一层 `min-w-0 flex-1` 的块，句子 `mt-1 px-2.5`、`text-xs`、
+    `toneInk.danger`、`line-clamp-2`），所以它与输入框左对齐、宽度也一致，不横跨整个工具栏；
+  - 文件头那段注释补一句地址栏的同一条规矩。
+- `lib/strings{,-en}.ts`：删掉 `workspaceDirInvalid`（唯一引用就是这里；那句写着「已回退」，且把
+  「不存在」和「没权限」糊成一句）—— 现在按错误码本地化：`dir_not_found`「该目录不存在或不可访问。」、
+  `dir_not_absolute`「目录必须是绝对路径。」。
+- `e2e/finder-address-refusal.spec.mjs`：两条（见下）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** ·
+  web **364 文件 / 4066 通过 / 2 跳过**（本笔只加 spec，不增单测；另一条线的 7.212 带来 +2 文件 / +13 条）·
+  server **220 文件 / 3205 通过 / 6 跳过**。core / server / cli / ui 这四个包的源码在 rebase 里一个字节没变
+  （另一条线的 17 个文件全在 `packages/web`、`packages/docs/content`、`changelog` 与台账里），四包的读数是
+  rebase 之前那一天内同一份源码上跑的；web 与六包 `typecheck` 是 **rebase 之后重跑**的。
+- 改动文件 `oxlint` **0 警告 0 错误**；`prettier --write` 后 `git diff --stat` 只有 3 个源码/词典文件
+  （**+50 / −5**，没有整片重排）；`git diff --check` 干净。
+- **新 spec 2 passed**（真服务端 8977 + `/usr/bin/chromium` + 一次性数据根 `/root/adelie-fork-data/r342-*`；
+  空数据根不需要模型 key —— 即 3.6 那个卡点）：
+  1. 打一条不存在的路径回车 → 输入框**还在**、值就是那条（整条选中）、那句逐字
+     「该目录不存在或不可访问。」、通知区 **0** 条、列表仍是原来那个文件夹的 `real`；**等 7 秒**（toast 的
+     寿命）后三者都还在；接着在**同一个字段**里打对的那条回车 → 句子与输入框一起消失、列表列到 `kept.txt`。
+  2. Esc 与 Tab（离开字段）都把地址栏退回分段、那句一并收走，选择器本身不关。
+- **反证**：把源码退回 `HEAD`、重建 web（产物 `r342/before-dist`，与改后 `r342/after-dist` 两份不同），
+  挂 **8969** 跑同一份 spec → **2 failed**，两条都停在 `getByTestId("finder-address-refusal")`
+  `element(s) not found`（改前根本没有那句话）。
+- **回归**：`finder-delete-folder-refusal` 与 `finder-new-folder-refusal` 两份老 spec 一起跑 → 与新 spec 合计
+  **6 passed**（这两份的 `openFinder` 正是「Ctrl+L → 打路径 → Enter」，成功那条路一个字节没变）。
+- **真看一眼**（真服务端 + 真浏览器，`r342/probe.mjs`，端口 8979，rebase 之后的产物）：输入框仍在、
+  `fieldFocused: true`、`selectionLength` = 整条路径长度、那句在、`stripClass` 里
+  `text-red-600 dark:text-red-400`、通知区读不到（`null` 即没有那块）、console 只有这次故意请求的那一条
+  **404**（`…/dirs?path=…/typo-here`），其余 0 error、0 pageerror；截图 `r342/shots/{after2,rebased}-*.png`
+  （`1-walked` / `2-typo` / `3-after-7s` / `4-fixed`）肉眼看过：红字左边缘与输入框里的路径文字同一列、
+  行高只多一行、导航按钮与筛选框没有被挤压、没有溢出。
+- 端口只用 8967–8980（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r342*`（每次一个一次性根），探针 / 两态产物 / 截图 / 临时 playwright 配置都在
+  scratchpad 的 `r342/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 收尾时的网络与让号
+
+提交之后 `git push origin main` 连试三次都失败：`GnuTLS recv error (-110)` → `http.version=HTTP/1.1` 是
+「连不上 443」（134 s 超时）→ 换 SSH 报 `The key you are authenticating with has been marked as read only`。
+于是按台账里那条老路走 **GitHub API**：`GET /commits` 看到远端 `main` 已到 **`cd7473fe3`**（另一条线的
+7.212，父提交正是本轮的 `147397fbc`）。`git fetch` 也挂死（120 s 超时），所以用 API 在本地**复刻**那一笔：
+逐文件取 `contents?ref=` 的原文写进对象库（blob 全与 API 报的 SHA 对上）→ 用一次性 index 从父树 `read-tree`
+再 `update-index` 出树（树 SHA `4e69ee27` 与远端一致）→ `commit-tree` 按原 author/committer 与 **+0800**
+时区重建提交（`+0000` 复算不出来，`+0800` 得到 **`cd7473fe3`** 逐字节相同）。随后在本轮两笔上 `rebase`，
+唯一冲突是台账的两处「两边各加一段」，并排接上、让号成 7.213 / 第三百四十三轮，再重跑上面的门禁。
+
+### 没做 / 留着
+
+- 同族里仍以 `toastError` 收尾的其余几处（插件页的部署失败、工单弹窗里没有卡片可挂的那次写入、
+  错误面板的两处重试、模型页、聊天页发不出去的那几处）**这一轮没碰** —— 它们各有各的形状（有的背后
+  没有控件可挂句子），要一条一条看。
+- 路径指向一个**文件**时，服务端与 ENOENT 一样回 `dir_not_found`，所以那句读作「该目录不存在或不可访问」。
+  要不要给 `ENOTDIR` 单独一句（「那是个文件」）留作候选，这一轮不改服务端。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同；上游 `main` 仍是 `93b9d5056`。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`dbff1fbd6`**（rebase 后；rebase 前是 `3c89d8be0`）：
+  `packages/web/src/features/chat/workspace-finder.tsx`、`packages/web/src/lib/strings{,-en}.ts`、
+  `packages/web/e2e/finder-address-refusal.spec.mjs`、changelog 一对；台账（条目 7.213、上表那一行、本节）
+  随本文件另起一笔。
