@@ -243,9 +243,10 @@ const BUILTIN_DOCK_PANELS: readonly DockPanelDefinition[] = [
     order: 60,
     Body: SchedulesPanelBody,
   },
-  // The browser is one set of pages shared by every conversation, not a Session's view, so it
-  // needs no Session and works on the draft page too. It exists only where this window can
-  // host it and the server can drive it (the desktop app).
+  // The browser belongs to the conversation on screen — its own tabs, active tab and cookie
+  // jar — and a window with no conversation (a draft) falls back to the default scope, so the
+  // panel needs no Session to mount. It exists only where this window can host a page and the
+  // server can drive it (the desktop app).
   {
     id: "builtin-browser",
     label: () => S.builtinBrowser.panelTitle,

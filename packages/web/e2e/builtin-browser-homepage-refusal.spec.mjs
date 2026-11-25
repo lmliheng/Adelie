@@ -88,7 +88,9 @@ test("built-in browser: a refused homepage save keeps the dialog and its reason,
   const sessionId = (await created.json()).session.sessionId;
 
   await page.addInitScript(STUB_WEBVIEW);
-  await page.route("**/api/builtin-browser/status", (route) =>
+  // The status read names the conversation it acts in (`?sessionId=…`, empty for the default
+  // scope), so the pattern has to allow a query: the bare path is only the first, scoped-less read.
+  await page.route("**/api/builtin-browser/status**", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",

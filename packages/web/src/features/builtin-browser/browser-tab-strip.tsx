@@ -1,7 +1,7 @@
 /**
  * The built-in browser's own tab strip, under the dock's header: one tab per page — favicon,
- * title, an always-visible × — and a "+" for a new tab. The tabs are the server's registry,
- * shared by every conversation, so every dock that shows the browser shows the same strip.
+ * title, an always-visible × — and a "+" for a new tab. The tabs are the server's registry of
+ * the conversation the panel sits in, so two conversations never show each other's pages here.
  *
  * It is shaped like a browser's rather than like the dock's pills right above it, so the two
  * strips never read as one: it sits on the sidebar's surface, and the active tab takes the
