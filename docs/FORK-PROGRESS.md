@@ -7168,6 +7168,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.207 | **`scroll-follow-bounce` 的停留窗由夹具自己收尾，往上弹只从手势落地那一刻起算**（**2026-11-25 第三百三十六轮**落地；`packages/web` 两处 —— `e2e/mock-llm.mjs` 的「scroll bounce test」分支从提示词读段数（`scroll bounce test <n> <paragraphs>`，缺省 80）、客户端走了不再往关掉的 socket 写，`e2e/scroll-follow-bounce.spec.mjs` 里 `STREAM_PARAGRAPHS = 160`（~20s）随提示词发给替身、补滚上限 3 轮 → 5 轮、每个手势量完窗自己按「停止」并等伺服端不再把它列为运行中、`analyze()` 的「文字动过」门槛 0.5px → 2px 且「往上弹」只从 `freeAt` 起算 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：7.206 的 ~10s 是统计性不变式，手势路径实测 3.2–12.5s、一次 20s，答复仍可能先结束；abort 异步落地，按完停止立刻发下一条会被当成后续消息（那一轮没有「停止」）；`after-up` 从事件戳起算会把页面处理前的正常吸底读成回弹（实测 +224ms，同一份录制 2 条 → 0 条） | **改前复现**：`BOUNCE_DUMP` 录制里生长停在第一个 wheel 后 3.5s，而停留窗开在 3.3–5.0s，Primer 6 格只有 1 格窗内有生长（聚合红）；`r334/analyze-compare.mjs` 同一份录制旧规则 2 条 after-up、新规则 0 条；Primer 第 3 个手势的提示词早于 abort 0.15s 落地，用例死在「the reply is still streaming」 · **改后**：连跑 6 遍（`r334-v6`…`r334-v10`、`r334-after-counter`）**6/6 全 3 passed（各 1.7 min）**，108 格 `bounces` 全空、`stillDrift` 0、`grewWhileStill` **626–807** · **反证（真界面）**：把 `stream-follow.ts` 的 `wheel()` 与 `scrolled()` 里「向上滚动退出跟随」一起关掉、重建 web → **3 failed**（Primer / Frost / Console 各 3/3 手势 bounced，late-snap / after-up / composed 各数十条，`stillDrift` 681）；还原重建 → **3 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **360 文件 / 4042 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，38.7 m）：**421 通过 / 0 失败** · 单跑只占 8960 / 8961（跑完全停），整套用 8930 / 8931 与自己的临时数据根；3003 / 3004 / 4000 / 7364 / 7369 一个没碰，数据只落 `/root/adelie-fork-data/r334-*` | `136546971` |
 | 2026-11-25 | 7.208 | **中断的那一轮重发时，图还在**（**2026-11-25 第三百三十七轮**落地；`packages/core` 两处 —— `src/engine/context-engine.ts` 的 `flattenCarryOver` 把输入里的图片消息（`image_url`，以及媒体类型是图片的 `inline_data`）与它一直保留的结构化 `tool_call_output` 并列留下、放在 `[turn_aborted]` 文本**之前**，那一段文本的第一行写着图就在上面；已经折叠过的 carry-over 再折叠时丢掉上一份的那行说明，计数永远是这次请求的。`test/engine.test.ts` 两条用例（图与说明都在、位置在块前；第二次中断不重复）＋ changelog 一对 —— **不碰界面、不碰接口、无新依赖**）：撞上上游自己留的 `TODO(multimodal)` —— Case B 只取 `type === "text"` 的消息折成 `[turn_aborted]`，图片被静默丢掉，读者发一张图问「这是什么」、中途按停止或供应商回致命错误，下一条消息就让模型回答一张不在请求里的图 | **反证（core 真 ReAct 循环，两态）**：`src/engine/context-engine.ts` 退回 `HEAD`、只留新用例 → `test/engine.test.ts` **2 failed / 57 passed**（两条都红在 `images` 长度 0），恢复本笔 → **59 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型；改过 core 先 `pnpm --filter @adelie/core build`）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过**（本笔 +2）· server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净（changelog 一对一并查过）、`git diff --check` 干净 · 本笔不改界面、不碰服务契约，未起服务 / 未开浏览器；没有端口与数据根占用，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 | 2026-11-26 | 7.209 | **内置模型库加上 Google Gemini 4 的四条，模型弹窗把内置模型的接入地址显示出来**（**2026-11-26 第三百三十八轮**落地，用户点单；`packages/core`（`state/model-catalog.ts`：`google` 分组新增 `gemini-4-carbon` / `gemini-4-argon` / `gemini-4-neon` / `gemini-4-hydrogen`，四条都 `clientType: "gemini-3.8"`、`contextWindow: 1048576`、`supportsVision`、不写端点）＋ `packages/core/test/model-catalog.test.ts` ＋ `packages/web`（新 `features/models/official-endpoint.ts`；`models-page.tsx` 那个锁住的 base URL 输入框用它作占位）＋ 新单测 `test/official-endpoint.test.ts`（4 条）＋ `packages/docs/content/models.{zh,en}.md` ＋ changelog 一对 —— **不碰接口、无新依赖，字符串一个没加**）：用户要「加 google gemini 4 的几个模型」，还问「google 端点为什么不写出来」。**端点那一问是设计如此**：直连厂商分组（google / openai / anthropic / deepseek / zhipu / moonshot）的条目从不写 `base_url`，地址由 AgentHub 对应客户端自己带（Gemini 是 `https://generativelanguage.googleapis.com`，可用 `GEMINI_BASE_URL` 覆盖），只有 OpenAI 兼容网关才把端点预置到 `gatewayBaseUrl`、用来预填新增弹窗；**但模型弹窗里那个锁住的 base URL 输入框因此是空的**，旁边却写着「接入地址由内置目录固定」—— 声明了一个从不显示的地址，所以把它显示出来。见「第三百三十八轮」一节 | `packages/core` `vitest run` **70 文件 / 1462 通过 / 6 跳过**、`test/model-catalog.test.ts` 65 条全过 · `packages/web` `vitest run` **362 文件 / 4052 通过 / 2 跳过**（含新 `official-endpoint.test.ts` 4 条）· 全仓 `pnpm -r typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 全仓 `pnpm lint` 0 警告 0 错误（2700 文件）· 改动文件 `prettier --check` 干净（整仓 `format:check` 只因另一条线的两个新文件而红）· 路由探针（真装 agenthub 0.4.15 的 `AutoLLMClient`）：不 pin `gemini-4-argon` → 「is not supported」，pin `gemini-3.8` → `Gemini3_8Client` | 见本行提交 |
+| 2026-11-26 | 发布 | **发 v0.8.4 并换装现网**（把 v0.8.3 之后攒下的收成正式版：**内置模型库补上 Google Gemini 4 的四条**（Carbon / Argon / Neon / Hydrogen，模型配置里那个锁住的 base URL 框也把内置接入地址显示出来）；**被中断的那一轮重发时输入里的图片不再被丢掉**；**桌面端桌宠的实时语音通话改成气泡对话、大小可设**，**托盘菜单改成自己画的并多了「重启」**；**插件卡片自己打开的弹窗在安装快照落地时不再自己关掉**。发布提交 `e48db0b11`（父 `16fc5cb2b`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.4` 指向同一提交；门禁在 `/root/rel-084`（`git worktree add -b release-084`）上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests）；三件载荷 linux-x64 109M（114,507,227 字节）/ universal 55M（57,265,128）/ win32-x64 144M（150,569,939）+ `validate-bundles.sh` 三件全过，桌面三件 deb 122,592,768 / AppImage 155,545,589 / exe 162,485,878；npm **29 个包**发到 0.8.4（`PUBLISH-ALL-DONE`，一次过）；GitHub Release **id `458407310`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-25T17:16:28Z）；3003 换上 v0.8.4 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v0830`）；现网 `/root/.adelie` 整棵换成 0.8.4、旧前端先拷回、瞬时单元 `adelie-live-restart-084` 延后 1500 秒重启装新前端并自核验） | 发布轮，逐项见「第三百三十九轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 版本 0.8.4、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT e48db0b11…`、前端入口 `index-Y3RPCIun.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401、通知两张表在库里（本版无新迁移）；现网核验写 `rel-084-live-restart-verify.txt`；`releases/latest` = v0.8.4 | `e48db0b11`（发布） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34428,3 +34429,55 @@ URL 输入框是 `disabled`、旁边写着「接入地址与三档价格由内�
   ＋ 台账（条目 7.209、上表那一行、本节）同落一次提交 —— 用户 2026-10-22 的口径是台账合进那一轮自己那一笔。
   **没有**把另一条线在同一工作树里未提交的 `edit-open-refusal` 那几处带上。
 - 随后按用户要求进 **0.8.4** 并换装现网：发布动作自己记成「发布」那一行与专节（照第三百二十九轮发 v0.8.3 的记法）。
+
+## 第三百三十九轮：正式发 v0.8.4、换装现网（2026-11-26）
+
+承接上一轮（用户点单的 Gemini 4），把 v0.8.3 之后攒下的几笔一起落成 **0.8.4 正式版**（版本号口径：
+只进第三位），再把现网整棵换过去。这一版攒了四件事：**内置模型库补上 Google Gemini 4 的四条**（外加
+模型配置里显示内置接入地址）、**被中断的那一轮重发时输入里的图片不再被丢掉**、**桌面端桌宠实时语音
+通话改成气泡对话 + 大小可设、托盘菜单自己画并加「重启」**、**插件卡片自开弹窗在安装快照落地时不再
+自己关掉**。相随的接口只有一处向前兼容的增量（桌面宠物的 `size` 可选字段），**没有数据库迁移**，数据
+根与配置文件格式一个字节没动。
+
+- **线性史**：远端 `main` = **`e48db0b11`**（发布提交；父 `16fc5cb2b`，即上一轮那笔）。标签 `v0.8.4`
+  指向同一提交。`github.com` 可用，提交与标签都是**直推**（远端 SHA 与本地逐字节相同）。
+- **发布正文**：`docs/releases/RELEASE-v0.8.4.md`（照上游骨架：导读 / 安装 / 亮点 / 值得一提 / 兼容 /
+  要求 / 收尾一句）。
+- **门禁**：`/root/rel-084`（`git worktree add -b release-084`，`pnpm install --frozen-lockfile`
+  5.6 秒）上 `gates-084.sh` **rc=0、五步全绿**：`build` 全包 `Done`；`typecheck` 全包 `Done`；`lint`
+  **0 警告 0 错误**；`format:check`「All matched files use Prettier code style」；测试步
+  **ALL TESTS PASS** —— core **70 / 1462 + 6 跳过** · server **220 / 3205 + 6 跳过** · web
+  **361 / 4046 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · desktop **29 / 352** · ui-gallery
+  **20 / 141** · docs **8 / 62** · amsp **2 / 72**，加上四个 `sandbox-*` 与三个 `node:test` 插件。
+  逐段看过末尾，无藏在成功输出里的红。**内存**：本机这轮没有 swap、可用内存只有约 3.9G，门禁与桌面
+  打包都放进 `systemd-run --scope`（`MemoryHigh=5G`、`MemoryMax=6G`）跑，免得把现网服务挤到 OOM；峰值
+  4.1G（门禁）/ 1.3G（桌面），现网服务没被碰。
+- **打戳与产物**：`stamp-084.sh` 写 VERSION `0.8.4` / BUILD_DATE `2026-11-25`（`date -u`）/
+  BUILD_COMMIT `e48db0b11…`，`install.sh` 与 `install.ps1` 的 `EMBEDDED_RELEASE_VERSION="v0.8.4"`；
+  打完戳**重新 `pnpm -r build`**（这一步就是门禁的 build），确认戳落进 `packages/core/dist`。三件载荷
+  linux-x64 109M（114,507,227 字节）/ universal 55M（57,265,128）/ win32-x64 144M（150,569,939），
+  `validate-bundles.sh` 三件全过（成员与载荷一致、安装器逐字节相同）；**老坑照旧**：`dist-artifacts/`
+  手工补了 `install.sh` / `install.ps1` / `install.cmd`。
+- **桌面三件**：`packages/desktop/out/` 里 deb 122,592,768、AppImage 155,545,589、exe 162,485,878
+  （+ blockmap + `latest*.yml`，都标 0.8.4）；electron-builder 走 npmmirror，Windows 那个用 xvfb + wine。
+- **npm**：29 个包（core/server/cli/amsp + 25 个插件；四个 private `sandbox-*` 跳过）发到 `0.8.4`，
+  `PUBLISH-ALL-DONE`（一次过，没有撞上「发布了但索引要等」）。
+- **GitHub Release**：**release id `458407310`**，先建草稿、4 路并发传 14 件 763 MB、逐件核 digest
+  后 PATCH `draft=false` 发布为 latest（`published_at` `2026-11-25T17:16:28Z`）。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.8.4`（保留 `android-test` 分组，旧
+  清单留 `.bak-20261126-v0830`），本机那份 Windows 桌面包一并换新。
+- **换装前冒烟**：从**载荷** `linux-x64.tar.gz` 解一棵树起临时实例（临时数据根、端口 8911）—— `lib`
+  版本 0.8.4、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT e48db0b11…`、新前端入口
+  `index-Y3RPCIun.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications`
+  `/api/version` 全 401、通知两张表在库里。
+- **现网换装**：`swap-live.sh` 把 `/root/.adelie` 整棵换成 0.8.4（`lib/package.json` 与
+  `bin/penguin --version` 都是 0.8.4，数据根没动）；装完**立刻把旧前端拷回**（内存里还是旧服务端
+  0.8.3，旧入口 `index-Bm6Jpj7B.js`），新的 `index-Y3RPCIun.js` 留在 `/root/rel-084/out/penguin/web/`，
+  由瞬时单元 `adelie-live-restart-084` 延后 **1500 秒**重启、重启成功后再装新前端并自核验（写
+  `/root/Adelie_develop/rel-084-live-restart-verify.txt`）。`ADELIE_TRUST_PROXY=1` 上一版已补在单元里，
+  这一版不用再动。`/root/rel-084` 留到重启成功之后再删。
+
+### 提交
+
+- 发布提交 `e48db0b11`（版本号 37 个文件 + 发布正文）；标签 `v0.8.4` 指同一提交。
+- 台账一笔（本文件，条目 = 发布）。
