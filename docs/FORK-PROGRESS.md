@@ -3940,6 +3940,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       自己消失、且浮在面板上方的 toast，读者回头看时像没按过。现在那句留在预览上方、按它的按钮旁边，
       下一次尝试替换它：超上限说「下载后编辑」（下载才是重试），读失败说「无法打开编辑器：」加原因
       （走 `refusalText`，7.19 的规矩）。见「第三百四十轮」一节。
+- [x] **7.211 stop hook 派生的游离会话不再在对话里画出一条智能体行**（上游 `751624eb4` `#1869`，
+      **2026-11-26 第三百四十一轮**落地，提交见「已完成的轮次」，照改动落、不是合分支）：长 Task 结束后，
+      最后一条回复下方会多出一条「General Agent + 短 id」的智能体行，点开面板却是空的 —— 它是 stop hook
+      派生的那个游离会话（本树的 stop hook 循环同样把子会话 id 写进 `hook` 事件、再把子会话的 `session_meta`
+      推到父会话的流上，而父会话的 Trace 不为此保留指针）。Web App 的流模型给任何不认识的 origin 头都建
+      嵌套模型、找不到可绑的 `run_subagent` 卡片就补一条独立项。现在它记下 `stop` 事件点名的会话 id
+      （`StreamModel.detachedChildren`），`pushMessage` 的 origin 分支在 `routeNested` 之前丢掉第一跳正是
+      该会话的记录。`packages/web` 两处 ＋ 新用例一条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**。
+      见「第三百四十一轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -7179,6 +7188,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.209 | **内置模型库加上 Google Gemini 4 的四条，模型弹窗把内置模型的接入地址显示出来**（**2026-11-26 第三百三十八轮**落地，用户点单；`packages/core`（`state/model-catalog.ts`：`google` 分组新增 `gemini-4-carbon` / `gemini-4-argon` / `gemini-4-neon` / `gemini-4-hydrogen`，四条都 `clientType: "gemini-3.8"`、`contextWindow: 1048576`、`supportsVision`、不写端点）＋ `packages/core/test/model-catalog.test.ts` ＋ `packages/web`（新 `features/models/official-endpoint.ts`；`models-page.tsx` 那个锁住的 base URL 输入框用它作占位）＋ 新单测 `test/official-endpoint.test.ts`（4 条）＋ `packages/docs/content/models.{zh,en}.md` ＋ changelog 一对 —— **不碰接口、无新依赖，字符串一个没加**）：用户要「加 google gemini 4 的几个模型」，还问「google 端点为什么不写出来」。**端点那一问是设计如此**：直连厂商分组（google / openai / anthropic / deepseek / zhipu / moonshot）的条目从不写 `base_url`，地址由 AgentHub 对应客户端自己带（Gemini 是 `https://generativelanguage.googleapis.com`，可用 `GEMINI_BASE_URL` 覆盖），只有 OpenAI 兼容网关才把端点预置到 `gatewayBaseUrl`、用来预填新增弹窗；**但模型弹窗里那个锁住的 base URL 输入框因此是空的**，旁边却写着「接入地址由内置目录固定」—— 声明了一个从不显示的地址，所以把它显示出来。见「第三百三十八轮」一节 | `packages/core` `vitest run` **70 文件 / 1462 通过 / 6 跳过**、`test/model-catalog.test.ts` 65 条全过 · `packages/web` `vitest run` **362 文件 / 4052 通过 / 2 跳过**（含新 `official-endpoint.test.ts` 4 条）· 全仓 `pnpm -r typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 全仓 `pnpm lint` 0 警告 0 错误（2700 文件）· 改动文件 `prettier --check` 干净（整仓 `format:check` 只因另一条线的两个新文件而红）· 路由探针（真装 agenthub 0.4.15 的 `AutoLLMClient`）：不 pin `gemini-4-argon` → 「is not supported」，pin `gemini-3.8` → `Gemini3_8Client` | 见本行提交 |
 | 2026-11-26 | 发布 | **发 v0.8.4 并换装现网**（把 v0.8.3 之后攒下的收成正式版：**内置模型库补上 Google Gemini 4 的四条**（Carbon / Argon / Neon / Hydrogen，模型配置里那个锁住的 base URL 框也把内置接入地址显示出来）；**被中断的那一轮重发时输入里的图片不再被丢掉**；**桌面端桌宠的实时语音通话改成气泡对话、大小可设**，**托盘菜单改成自己画的并多了「重启」**；**插件卡片自己打开的弹窗在安装快照落地时不再自己关掉**。发布提交 `e48db0b11`（父 `16fc5cb2b`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.4` 指向同一提交；门禁在 `/root/rel-084`（`git worktree add -b release-084`）上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests）；三件载荷 linux-x64 109M（114,507,227 字节）/ universal 55M（57,265,128）/ win32-x64 144M（150,569,939）+ `validate-bundles.sh` 三件全过，桌面三件 deb 122,592,768 / AppImage 155,545,589 / exe 162,485,878；npm **29 个包**发到 0.8.4（`PUBLISH-ALL-DONE`，一次过）；GitHub Release **id `458407310`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-25T17:16:28Z）；3003 换上 v0.8.4 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v0830`）；现网 `/root/.adelie` 整棵换成 0.8.4、旧前端先拷回、瞬时单元 `adelie-live-restart-084` 延后 1500 秒重启装新前端并自核验） | 发布轮，逐项见「第三百三十九轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 版本 0.8.4、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT e48db0b11…`、前端入口 `index-Y3RPCIun.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401、通知两张表在库里（本版无新迁移）；现网核验写 `rel-084-live-restart-verify.txt`；`releases/latest` = v0.8.4 | `e48db0b11`（发布） |
 | 2026-11-26 | 7.210 | **文件面板的 Edit 打不开编辑器时，原因留在预览上方，不再只靠六秒就消失的 toast**（**2026-11-26 第三百四十轮**落地，接手 11-25 23:00 那轮被中断的半成品；`packages/web` —— 新 `features/chat/edit-open-refusal.ts`（`editOpenTooLargeRefusal` / `editOpenFailedRefusal`，后者走 `refusalText`）、`features/chat/workspace-browser.tsx` 的 `editRefusal` 状态按路径记、编辑器没开时画在预览上方（替换 `startEdit` 里两处 `toastError`）、`fetchTextPreview` 抛出 `HTTP <状态>`、`lib/strings{,-en}.ts` 一个槽位；新单测 6 条、新 spec 2 条、changelog 一对 —— **不碰接口、无新依赖**） | 见「第三百四十轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`）；逐包 test **`EXIT=0`、0 失败**：core **70 / 1462 + 6 跳过**、server **220 / 3205 + 6 跳过**、web **362 / 4052 + 2 跳过**、ui **133 / 1117**、cli **39 / 568**；真服务端 8975 + 真浏览器两态：改后 **2 passed**（超上限那句在面板上、8 秒后仍在、通知区 0 条；读被 500 拒 → 「无法打开编辑器：HTTP 500」，通知区 0 条），改前 dist 反证 **2 failed**；新 spec 单跑 **2 passed**；`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
+| 2026-11-26 | 7.211 | **stop hook 派生的游离会话不再在对话里画出一条智能体行**（上游 `751624eb4` `#1869` 移植，照改动落、不是合分支；上游 4 文件 / +61 → 本树落下 4 个跟踪文件（2 改 2 新）：`packages/web/src/lib/omni/stream-model.ts`（`StreamModel.detachedChildren`、`handleEvent` 新增 `hook` 分支从 `stop` 事件的 `output.session_id` 填入、`pushMessage` 的 origin 分支在 `routeNested` 之前丢掉第一跳正是该会话的记录）、`packages/web/test/stream-model.test.ts`（+1 用例）、changelog 一对）：本树的 stop hook 循环与上游同形（`hooks/stop-hook.ts` 把子会话 id 写进 `hook` 事件的`output`、紧接着推子会话的 `session_meta`），而父会话 Trace 不为此保留子智能体指针，流模型于是给这个不认识的 origin 头建嵌套模型、补一条独立子智能体项 —— 长 Task 结束后回复下方那条「General Agent + 短 id」点开是空面板。**上游路径 `lib/amsp/stream-model.ts` 在本树叫 `lib/omni/`，夹具名也不同，其余逐字相同** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）· `npx oxlint` 两个文件 **0 警告 0 错误** · 两个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **361 / 4047 + 2 跳过**（+1 即本笔新用例）· server **220 / 3205 + 6 跳过** · **反证（单测）**：源码不改、只加新用例 → `test/stream-model.test.ts` 那条 **1 failed**（`expected true to be false`，画出 `subagent` 项），源码改后 **126 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：一次性数据根 `/root/adelie-fork-data/r340-{after,before}`（复制出两份），手写一个会话的 Trace —— 一轮对话后跟`hook: "stop"` 事件（`output.session_id = hooked-abc123`）与带 `origin: ["hooked-abc123"]` 的子会话`session_meta`，不需要模型 key（即 3.6 那个卡点）；两份 web 产物 `r340/{after,before}-dist`（入口 `index-DpmYv-TM.js` / `index-Y3RPCIun.js`，两端核过是两份不同的东西）分别挂在两个根上，**改后 8963 / 改前 8964**：**改前** 对话区 `done` 下方多一条「General Agent d-abc123」（截图 `r340/before.png`；`d-abc123` 出现 1 处、`General Agent` 出现 2 处），**改后** 该行消失（`after.png`；`d-abc123` 0 处、`General Agent` 1 处即侧栏那一行），两态 console 各 **0 error**、无一条 ≥400 · 端口只用 8963 / 8964（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r340-{after,before}`，探针 / 两份产物 / 截图都在 scratchpad 的 `r340/` 下（`packages/web/dist` 是构建产物，未 `git add`） | `842b03529` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34537,3 +34547,78 @@ HTML 文件、读被 500 拒）断言句子在面板上、通知区 0 条、预�
 **提交**：一笔 —— 代码（`edit-open-refusal.ts`、`workspace-browser.tsx`、`strings{,-en}.ts`、
 `test/edit-open-refusal.test.ts`、`e2e/files-edit-open-refusal.spec.mjs`、changelog 一对）＋ 台账
 （条目 7.210、上表那一行、本节）。
+
+## 第三百四十一轮：stop hook 派生的游离会话不再在对话里画出一条智能体行（2026-11-26，条目 7.211）
+
+**让号**：本轮按第 7 节末尾的下一个号写的是 7.210 / 第三百四十轮；收尾时远端已先到另一条线的
+`ce428d6a6`（同一个号 7.210 / 第三百四十轮：「文件面板的 Edit 打不开编辑器」那一条），按台账惯例把号
+让给它，本轮改记 **7.211 / 第三百四十一轮**（条目、表格行与本节标题都已改过来）。
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD 是 **`21972f6ce`**（第三百三十七轮 / 7.208）。
+`git fetch origin && git merge --ff-only origin/main` 把基座快进到 **`352f123eb`**（另一条线：第三百三十八轮 /
+7.209 的 Gemini 4 四条，与第三百三十九轮的 v0.8.4 发布，共三笔）。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧全在桌面壳一侧、部署单元要等发布动作、文档面留到发布期；
+3.5 要用户拍板取哪个桌面壳、3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要用户拍板），第 7 节此前全勾。
+照那几句的通行做法从上游取：按 URL 现拉上游 `main` 到 `refs/adelie-tmp/upstream-main-r340`
+（**`93b9d5056`**，`git log 50fbcaad0..r340` 共 112 笔，大多是 App Center / workbench / landing 那几件大改，
+要本树没有的上游结构）。逐笔量过小件后取 `751624eb4`（`#1869`，4 文件 / +61）：真缺陷 + 本树文件全在
+（只是路径 `lib/amsp/` → `lib/omni/`）+ 不引入新依赖 + 自带能在本机真跑的用例。
+
+**为什么它是真的**：长 Task 结束后回复下方会多出一条「General Agent + 短 id」的智能体行，点开面板却是空的。
+它是 stop hook 派生的游离会话 —— 本树的 `hooks/stop-hook.ts` 与上游同形：hook 以子智能体作答时，把子会话的
+Session id 写进 `hook` 事件的 `output`，紧接着把子会话的 `session_meta` 推到父会话的流上（好让宿主登记它），
+**除此之外父会话的 Trace 里没有指向它的子智能体指针**。Web App 的流模型给任何不认识的 origin 头都建嵌套模型
+（`routeNested`），`bindSubagent` 找不到可绑的、仍在跑的 `run_subagent` 卡片时就补一条独立的子智能体项 ——
+那条行就是这么来的。
+
+**做了什么**（`packages/web` 两处 + 一条用例 + changelog 一对）：
+
+- `packages/web/src/lib/omni/stream-model.ts`：
+  - 新增 `StreamModel.detachedChildren: Set<string>`（`newModel` 里初始化）；
+  - `handleEvent` 新增 `case "hook"`：`p.hook === "stop"` 时把 `p.output?.session_id`（`HookPayload.output`
+    的值域包含 string）记进去，其它 hook 点不看；
+  - `pushMessage` 的 origin 分支在 `routeNested` 之前先查：第一跳正是这个会话的记录直接丢掉。
+    注释写明「它是来给宿主登记的、不是这个会话的子智能体」。
+- `packages/web/test/stream-model.test.ts`：一条用例按 stop hook 作答后的真实记录顺序推进
+  （`userText` / `requestBegin` / `assistantText` / `requestEnd`，再 `hookEvent({hook:"stop", name:"continual-learning",
+  output:{session_id:"hooked"}})`，最后 `withOrigin(meta("hooked"), "hooked")`），断言没有 `subagent` 项、
+  `subagents` 里也没有它。
+- `changelog/unreleased/2026-11-26-detached-hook-child.{md,zh.md}`（新一对，照 2026-11-26 那一对）。
+- **有意未取**：上游同一提交没有别的改动面；上游写的那条「hook 子会话沿用这一轮的审批回调、在需要询问的档下
+  会等一个没有界面能答的审批」是既有行为，本笔不动，只在 changelog 的备注里写明。
+
+### 验证
+
+- **反证（单测）**：源码不改、只加新用例 → `test/stream-model.test.ts` 那条 **1 failed**
+  （`expected true to be false`，`items` 里确实有 `subagent`）；源码改动落上 → **126 passed**。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** ·
+  web **361 / 4047 + 2 跳过**（+1 即本笔新用例）· server **220 / 3205 + 6 跳过**。
+- 两个改动文件 `oxlint` **0 警告 0 错误**、与一对 changelog 一起 `prettier --check` 干净、`git diff --check` 干净。
+- **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：改的虽是流模型，画出来的是界面，所以真看两眼。
+  一次性数据根 `/root/adelie-fork-data/r340-{after,before}`（前后两份），**手写**一个会话的 Trace：一轮对话之后
+  跟 `hook: "stop"` 事件（`output.session_id = hooked-abc123`）与带 `origin: ["hooked-abc123"]` 的子会话
+  `session_meta`，再用 sqlite 补 `sessions` 行 —— 不需要模型 key（即 3.6 那个卡点）。两份 web 产物
+  `r340/{after,before}-dist`（入口 `index-DpmYv-TM.js` / `index-Y3RPCIun.js`，两端核过是两份不同的东西）分别挂在
+  两个根上，**改后 8963 / 改前 8964**（`ADELIE_SEED_ADMIN_PASSWORD`，`ADELIE_WEB_DIST` 指到各自产物 ——
+  `packages/server/web-dist` 是旧副本，不指它）。**改前**：对话区 `done` 下方多一条「General Agent d-abc123」
+  （截图 `r340/before.png`，页面文本里 `d-abc123` 1 处、`General Agent` 2 处）；**改后**：该行消失
+  （`after.png`，`d-abc123` 0 处、`General Agent` 1 处即侧栏那一行）。两态 console 各 **0 error**、无一条 ≥400。
+- 端口只用 8963 / 8964（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在
+  `/root/adelie-fork-data/r340-{after,before}`，探针 / 两份产物 / 截图都在 scratchpad 的 `r340/` 下
+  （`packages/web/dist` 是构建产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 上游这一轮新提交里的大件（App Center、workbench、RSI 工具包、landing 改版、`#1718` 的服务层搬家）都没取：
+  要本树没有的上游结构或整片重写，不是一轮的量。
+- hook 子会话在「需要询问」的审批档下会等一个没有界面能答的审批 —— 上游这一笔也明说不在范围内，留着。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`842b03529`**（`packages/web/src/lib/omni/stream-model.ts`、`packages/web/test/stream-model.test.ts`、
+  changelog 一对）；台账（条目 7.211、上表那一行、本节）随本文件另起一笔。
