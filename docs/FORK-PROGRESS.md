@@ -7079,6 +7079,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 
 | 2026-11-25 | 7.200 | **`dock-command-across-layout` 的暖场等待不再一个选择器撞两个活动按钮**（**2026-11-25 第三百二十七轮**落地；`packages/web/e2e/dock-command-across-layout.spec.mjs` 一句 —— `getByRole("button", { name: /运行完毕/ })` 取 `.first()`，与 `subagent.spec` 同一写法 —— **只动测试、无新依赖、不碰接口、没有用户可见改动**）：一条回复可以同时给出活动分组表头（念「运行完毕 120ms」）与组里那一行（「运行完毕 思考 120ms」），strict 模式因此解析到两个元素 | 两态（全新数据根 `/root/adelie-fork-data/r326-b1`，端口 8944 / 8945）：改前七次单跑**三次红**（`strict mode violation … resolved to 2 elements`，指向第 176 行）→ 改后**连跑十次全绿**（每次 2 passed、6.4–6.7 s） · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，三趟，各自一次性数据根）：第一趟 **416 通过 / 1 失败（38.1 m）**—— 红的就是本条这一处（`dock-command-across-layout:176` 的 strict 解析）；改完第二趟 **416 / 1（38.6 m）**里它两条全绿，剩下的红换成 `plugin-card-refusal:220`（「管理安装」框 15 s 没出现，同一份 spec 全新数据根单跑六次全绿）；第三趟在合并树上（另一条线的 7.199 + 本条）**416 / 1（38.3 m）**，它仍全绿，红落在 `scroll-follow-bounce` 的 `grewWhileStill` 那一句（6 次手势里只有 2 次在停留窗里还在长、要 ≥ 3） · 端口只用 8930 / 8931 与 8942–8947（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r326-*` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 | 2026-11-25 | 7.201 | **内置浏览器按对话隔离：每个对话自己的标签集、活动标签与 Chromium 分区**（**2026-11-25 第三百二十八轮**，用户点单；`packages/server/src/builtin-browser/`（新 `partitions.ts` 定「作用域↔分区」+ `service.ts` 改成 `Map<scope, TabRegistry>` 与 `tabId→scope` 路由、`routes.ts`/`shell-link.ts` 读作用域）、`packages/server/src/api/types.ts`（壳侧 tab 带 `partition`、命令带 `partition`、`tabs` 事件带 `sessionId`、`MIN_PROTOCOL_VERSION` 1→2）、`packages/desktop/src/builtin-browser{,-rules}.ts`（分区族 + 每分区一个 `Session`，协议报 2）、`packages/web/src/features/builtin-browser/`（新 `scope.ts`；store 按作用域存标签/活动标签/关闭中，面板·标签条·工具栏·`<webview partition>` 只读当前对话）、`packages/cli/src/commands/browser.ts`（`--session <id>` 优先于 `ADELIE_SESSION_ID`）、文档与 browser-automation 技能 + changelog 一对 —— **接口新增、协议升版、缺省作用域沿用旧分区不迁移**）：桌面应用里的内置浏览器原来整个应用只有一份 —— 一个标签池、一个全局「活动标签」指针、一个 `persist:penguin-browser` 分区。两个对话同时用就互相抢：面板来回跳、甲正在填的表单被乙的动作打断/失焦、危险操作可能落到乙的页面；cookie 共用，甲在某个站点登录后乙再去就是登录态；`penguin browser` 也没有绑定本会话的选项 | 四道门禁全绿：`pnpm gen:ifaces && pnpm -r typecheck` 全 `Done`、`pnpm lint`（oxlint）**0 警告 0 错误**（2688 文件）、`pnpm format:check` **`PRETTIER_EXIT=0`**、`pnpm -r test` **`EXIT=0`**（17 个有 test 的包全过）：web **359 / 4039 + 2 跳过** · server **220 / 3204 + 6 跳过** · cli **39 / 568** · core **70 / 1460 + 6 跳过** · ui **133 / 1117** · desktop **28 / 331** · ui-gallery **20 / 141** · amsp **2 / 72** · docs **8 / 62** · 新增用例：server 5 条按对话隔离（各自标签集/活动指针/分区、重启按分区还原作用域）、web 状态 5 条 + scope 2 条、cli 2 条「命令作用于哪个对话」；未跑整套浏览器 e2e（桌面壳本机无 Electron、纯函数单测覆盖） | `40117ba0b` |
+| 2026-11-25 | 发布 | **发 v0.8.3 并换装现网**（把 v0.8.2 之后攒下的收成正式版：**内置浏览器按对话隔离** —— 每个对话自己的标签集、活动标签与 Chromium 分区，cookie/站点存储不再互串；`penguin browser` 子命令多 `--session <id>`；桌面壳内置浏览器连接协议 1→2，旧壳判 `shell_unsupported`；发布提交 `f1bd60dd5`（父 `2ddf42b71`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.3` 指向同一提交；门禁在标签检出 `/root/rel-083` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 `test` 脚本的包全过）；三件载荷 linux-x64 111M（114,498,626 字节）/ universal 56M（57,256,862）/ win32-x64 144M（150,562,138）+ `validate-bundles.sh` 三件全过，桌面三件 deb 122,593,188 / AppImage 155,537,152 / exe 162,478,455；npm **29 个包**发到 0.8.3（`PUBLISH-ALL-DONE`）；GitHub Release **id `457603978`** 14 件 764 MB 逐件核 digest 后发布为 latest；3003 换上 v0.8.3 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261125-v0820`）；现网 `/root/.adelie` 整棵换成 0.8.3、旧前端先拷回、瞬时单元 `adelie-live-restart-083` 延后 1500 秒重启装新前端并自核验） | 发布轮，逐项见「第三百二十九轮」一节；换装前冒烟（从载荷解出的树，端口 8913、临时数据根）：`lib` 版本 0.8.3、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT f1bd60dd5…`、前端入口 `index-Bm6Jpj7B.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401、通知两张表在库里（本版无新迁移，`user_version` 仍 17）；现网核验写 `rel-083-live-restart-verify.txt`；`releases/latest` = v0.8.3 | `f1bd60dd5`（发布） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33697,3 +33698,50 @@ Expected: visible / Error: element(s) not found（15 s 等到超时）
 
 - 代码与 changelog 一笔 `40117ba0b`（契约·服务端·壳·前端·命令行·文档）；台账（条目 7.201、上表那一行、
   本节）随本文件另起一笔。发版与换装现网见下一节。
+
+## 第三百二十九轮：正式发 v0.8.3、换装现网（2026-11-25）
+
+承接上一轮（用户点单的内置浏览器按对话隔离），把那一笔落成 **0.8.3 正式版**（版本号口径：只进第三位），
+再把现网整棵换过去。这一版只有一件事：桌面应用里的**内置浏览器按对话分开** —— 标签集、活动标签、
+cookie 与站点存储都归各自那个对话；命令行多 `--session`。相随的接口新增、协议升版与迁移都没有，
+数据根与配置文件格式一个字节没动（**本版没有数据库迁移**，`user_version` 仍 17）。
+
+- **线性史**：远端 `main` = **`f1bd60dd5`**（发布提交；父提交 `2ddf42b71`，即上一轮的台账那笔）。
+  标签 `v0.8.3` 指向同一提交。`github.com` 可用，提交与标签都是**直推**（远端 SHA 与本地逐字节相同）。
+- **发布正文**：`docs/releases/RELEASE-v0.8.3.md`（照上游骨架：导读 / 安装 / 亮点 / 值得一提 / 兼容 /
+  要求 / 收尾一句）。
+- **门禁（在标签检出上跑）**：`/root/rel-083`（`git worktree add -b release-083`，`pnpm install
+  --frozen-lockfile` 5.6 秒）上 `gates-083.sh` **rc=0、五步全绿**：`build` 全包 `Done`；`typecheck` 全包
+  `Done`；`lint` **0 警告 0 错误**；`format:check`「All matched files use Prettier code style」；测试步
+  **ALL TESTS PASS** —— core **70 / 1460 + 6 跳过** · server **220 / 3204 + 6 跳过** · web
+  **359 / 4039 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · desktop **28 / 331** · ui-gallery
+  **20 / 141** · docs **8 / 62** · amsp **2 / 72**，加上插件与 `node:test` 的。逐段看过末尾，无藏在
+  成功输出里的红。
+- **打戳与产物**：`stamp-083.sh` 写 VERSION `0.8.3` / BUILD_DATE `2026-11-25`（`date -u`）/ BUILD_COMMIT
+  `f1bd60dd5…`，`install.sh` 与 `install.ps1` 的 `EMBEDDED_RELEASE_VERSION="v0.8.3"`；打完戳**重新
+  `pnpm -r build`**，确认戳落进 `packages/core/dist`（`BUILD_DATE = "2026-11-25"`）。三件载荷 linux-x64
+  111M（114,498,626 字节）/ universal 56M（57,256,862）/ win32-x64 144M（150,562,138），
+  `validate-bundles.sh` 三件全过（成员与载荷一致、安装器逐字节相同）；**老坑照旧**：`dist-artifacts/`
+  手工补了 `install.sh` / `install.ps1`。
+- **桌面三件**：`packages/desktop/out/` 里 deb 122,593,188、AppImage 155,537,152、exe 162,478,455
+  （+ blockmap + `latest*.yml`，都标 0.8.3）；electron-builder 走 npmmirror，Windows 那个用 xvfb + wine。
+- **npm**：29 个包（core/server/cli/amsp + 25 个插件；四个 private `sandbox-*` 跳过）发到 `0.8.3`，
+  `PUBLISH-ALL-DONE`（一次过，没有撞上「发布了但索引要等」）。
+- **GitHub Release**：**release id `457603978`**，14 件 764 MB 逐件核 digest 后发布为 latest
+  （`published_at` `2026-11-25T03:21:36Z`）。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.8.3`（保留 `android-test` 分组，旧
+  清单留 `.bak-20261125-v0820`），本机那份 Windows 桌面包一并换新（同样留备份）。
+- **换装前冒烟**：从**载荷** `linux-x64.tar.gz` 解一棵树起临时实例（临时数据根、端口 8913）—— `lib`
+  版本 0.8.3、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT f1bd60dd5…`、新前端入口
+  `index-Bm6Jpj7B.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications`
+  `/api/version` 全 401、通知两张表在库里。
+- **现网换装**：`swap-live.sh` 把 `/root/.adelie` 整棵换成 0.8.3（`lib/package.json` 与
+  `bin/penguin --version` 都是 0.8.3，数据根没动）；装完**立刻把旧前端拷回**（内存里还是旧服务端
+  0.8.2），新的 `index-Bm6Jpj7B.js` 留在 `/root/rel-083/out/penguin/web/`，由瞬时单元
+  `adelie-live-restart-083` 延后 **1500 秒**重启、重启成功后再装新前端并自核验。`ADELIE_TRUST_PROXY=1`
+  上一版已补在单元里，这一版不用再动。`/root/rel-083` 留到重启成功之后再删。
+
+### 提交
+
+- 发布提交 `f1bd60dd5`（版本号 37 个文件 + 发布正文）；标签 `v0.8.3` 指同一提交。
+- 台账一笔（本文件，条目 = 发布）。
