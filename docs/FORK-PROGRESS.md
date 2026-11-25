@@ -3845,6 +3845,14 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       冻住，改前单跑 6 个手势时 `textMovedDown` 读到 **-8**），而鼠标只在第 1 个手势对准一次，之后工具栏 /
       输入区高度一变就可能落在 transcript 外面（`page` 仍记到 wheel，但滚动容器收不到）。见「第三百二十六轮」一节。
 
+- [x] **7.200 `dock-command-across-layout` 的暖场等待不再一个选择器撞两个活动按钮**
+      （**2026-11-25 第三百二十七轮**落地，提交见「已完成的轮次」；`packages/web/e2e/dock-command-across-layout.spec.mjs`
+      一句 —— `getByRole("button", { name: /运行完毕/ })` 取 `.first()`，与 `subagent.spec` 早就这么取的写法一致
+      —— **只动测试、无新依赖、不碰接口、没有用户可见改动**）：一条回复可以同时给出活动分组表头
+      （`data-group-header="true"`，念「运行完毕 120ms」）与组里那一行（「运行完毕 思考 120ms」），strict 模式
+      因此解析到两个按钮、这一条在整套里偶发红；两处都念同一件事（这一回合结束了），任一在屏幕上即可。
+      见「第三百二十七轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7068,6 +7076,8 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.197 | **`draft.spec` 的 Workspace 那条红：finder 的父目录是装满东西的 `/tmp`，工作区挪进自己的小树里**（**2026-11-25 第三百二十四轮**落地；`packages/web/e2e/draft.spec.mjs` 一处夹具 —— 工作区从 `mkdtempSync(tmpdir(), "penguin-e2e-ws-")` 换成自己那个根下的 `folder/named-workspace`（两层：打开在 `folder`、连按两次上一级也仍在树内），断言一字未改 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：finder 打开就落在工作区的父目录并选中它，而直建在系统临时目录里的工作区的父目录是 `/tmp` —— 这台机器 **44 028** 个条目、`/dirs` **4 MB**、一次画 **44 026** 行，选中项 **21.9 s** 才到（断言只等 15 s） | 两态：改前全新根 `r324-b1` **1 failed（19.4 s，第 218 行）** → 改后全新根 `r324-d1` **1 passed（10.2 s）**；探针同一段路 `/tmp` **21 929 ms / 44 026 行** vs 小父目录 **145 ms / 1 行** · 六包 `typecheck` **`EXIT=0`**（`ifaces.json unchanged`，214 接口 / 646 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，38.5 m）：**415 通过 / 2 失败**（上轮 414 / 3），`draft.spec` 已在通过的一侧；剩下两条是 `scroll-follow-bounce` 的 Primer 一格与 `server-switch-read-refusal` 第 159 行（company：读成功、句子按时消失、开关 enabled，但收尾那句 `not.toBeChecked()` 看到 `aria-checked="true"`；线索是共享数据根上排在它前面的 `company*.spec` 把全局公司模式打开了） · 端口只用 8960 / 8961 与套件自己的 8930 / 8931（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | `e71903835` |
 | 2026-11-25 | 7.198 | **`server-switch-read-refusal` 的公司模式那格回到绿：夹具先把两个服务器开关摆回它断言的值，模型行改成追加**（**2026-11-25 第三百二十五轮**落地；`packages/web/e2e/server-switch-read-refusal.spec.mjs` 一处夹具 —— `ready()` 登录管理员后 `PUT /api/admin/settings {companyMode:false, agentApiEnabled:true}`，模型行照 `asr-refusal-once` 的写法追加到既有表尾而不是整表替换 —— **只动测试、无新依赖、不碰接口、没有用户可见改动**）：套件共用一个数据根，二十来份公司模式的 spec 各自把全局 `companyMode` 打开、没有一份再关掉，于是那条「重试后开关读回服务端的值、它还是关的」其实在断言前一个 spec 留下的状态（台账从 2026-11-04 起记成「时序抖动」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型） · 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · `npx oxlint` **0 警告 0 错误**（2685 文件）、`prettier --check` 干净、`git diff --check` 干净 · **两态对照**（全新数据根，先以管理员身份 `PUT {companyMode:true}` 模拟前面公司 spec 留下的状态）：改前 **1 failed / 1 passed（33.9 s）**（`not.toBeChecked()` 收到 checked），改后 **2 passed（19.1 s）** · **整套浏览器 e2e**（`SKIP_BUILD=1`，38.2 m）：**416 通过 / 1 失败**（改前基线 415 / 2），`server-switch-read-refusal` 两条都在通过的一侧（各 8.5 s），唯一红的是 `scroll-follow-bounce` 的 Primer 一格（满载下 `gesture 6` 只滚到 41 px，单跑三个主题都过） · 端口只用 8930 / 8931 与 8942–8947（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r324-*` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 | 2026-11-25 | 7.199 | **`scroll-follow-bounce` 在整套里那一格红，是夹具三处不自洽：视口不在扫描窗口里、滚的次数是死的、鼠标只对准一次**（**2026-11-25 第三百二十六轮**落地；`packages/web/e2e/scroll-follow-bounce.spec.mjs` 一处夹具 —— `onScreen()` 从「只扫最后 60 个段落」改成对段落二分再扫视口内那一段；手势从固定 10 × 50px 改成「同样 10 次一组，停 120 ms 重算位移、不到 200px 再补一组、最多 3 组」；每个手势前把指针重新对准 transcript 的中心 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：第三百二十五轮点名留给这一轮的活；动手时又查实两处会让判据失真 —— 只扫最后 60 段在会话攒到 480 段、视图滚远之后整个视口都不在那 60 段里（读数冻住，改前单跑 6 个手势读到 **-8**），鼠标只在第 1 个手势对准一次、之后可能落在 transcript 外面（`page` 仍记到 wheel，滚动容器收不到） | 两态（同一份服务端 / mock 与数据根，`git stash` 取改前）：**无负载**改前 **1 failed / 2 passed**（Primer 第 6 个手势 `textMovedDown` **-8**）→ 改后 **3 passed**（各手势 231–437）；**带负载**（3 个 `yes` 占 3/4 vCPU，模拟整套）改前 **1 failed / 2 passed**（Primer 第 6 个手势 **91**，正是滚不够那种红）→ 改后 **3 passed**（Primer 231–321；Console 第 4 个手势第一组 141、补一组到 641），`yes` 已停 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，一次性数据根，38.3 m）：**416 通过 / 1 失败**，`scroll-follow-bounce` 三主题全过（32.7 s / 35.6 s / 35.1 s，`BOUNCE-SUMMARY` 三行 `0/6 gestures bounced`；改前基线里 Primer 是红的），唯一红换成 `project-switch.spec` 第 128 行（同一数据根重跑 409，全新数据根单跑 **4.8 s 通过**，共享数据根顺序问题、与本轮无关）· 端口只用 8930 / 8931 / 8932（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r325-*`，日志在 scratchpad 的 `r325/` 下 · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
+
+| 2026-11-25 | 7.200 | **`dock-command-across-layout` 的暖场等待不再一个选择器撞两个活动按钮**（**2026-11-25 第三百二十七轮**落地；`packages/web/e2e/dock-command-across-layout.spec.mjs` 一句 —— `getByRole("button", { name: /运行完毕/ })` 取 `.first()`，与 `subagent.spec` 同一写法 —— **只动测试、无新依赖、不碰接口、没有用户可见改动**）：一条回复可以同时给出活动分组表头（念「运行完毕 120ms」）与组里那一行（「运行完毕 思考 120ms」），strict 模式因此解析到两个元素 | 两态（全新数据根 `/root/adelie-fork-data/r326-b1`，端口 8944 / 8945）：改前七次单跑**三次红**（`strict mode violation … resolved to 2 elements`，指向第 176 行）→ 改后**连跑十次全绿**（每次 2 passed、6.4–6.7 s） · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，三趟，各自一次性数据根）：第一趟 **416 通过 / 1 失败（38.1 m）**—— 红的就是本条这一处（`dock-command-across-layout:176` 的 strict 解析）；改完第二趟 **416 / 1（38.6 m）**里它两条全绿，剩下的红换成 `plugin-card-refusal:220`（「管理安装」框 15 s 没出现，同一份 spec 全新数据根单跑六次全绿）；第三趟在合并树上（另一条线的 7.199 + 本条）**416 / 1（38.3 m）**，它仍全绿，红落在 `scroll-follow-bounce` 的 `grewWhileStill` 那一句（6 次手势里只有 2 次在停留窗里还在长、要 ≥ 3） · 端口只用 8930 / 8931 与 8942–8947（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r326-*` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33550,3 +33560,71 @@ Expected: visible / Error: element(s) not found（15 s 等到超时）
 ### 提交
 
 - 测试一笔 `e71903835`（`packages/web/e2e/draft.spec.mjs`）；台账（条目 7.197、上表那一行、本节）随本文件另起一笔。
+
+## 第三百二十七轮：`dock-command-across-layout` 的暖场等待不再一个选择器撞两个活动按钮（2026-11-25，条目 7.200）
+
+**开工**：`git status --short` 干净，分支 `main`，本地与远端都是 **`d4dc86381`**（第三百二十五轮那笔）；
+`git fetch origin && git merge --ff-only origin/main` → Already up to date。
+
+**让号（这一轮最要紧的一件事）**：收尾推远端时 `origin/main` 多出两笔 —— `ee08c1461` + `9b8d5dd45`，
+另一条线的 **第三百二十六轮 / 条目 7.199**，改的正是本轮开头挑中的同一份
+`scroll-follow-bounce.spec.mjs`、同一条「把滚够改成边滚边量」（第三百二十五轮末尾点名的那条）。两边的判据
+一致（都落在「位移到了再停」上），但**他们的改法更完整**：除了手势改成「一组十次、停 120 ms 重算、不到
+200px 再补一组、最多 3 组」之外，还查实并修掉了同一个夹具里两处让读数失真的地方 —— `onScreen()` 只扫最后
+60 个段落（会话攒到 480 段、视图滚远之后整个视口都不在那 60 段里，读数冻住，改前单跑 6 个手势读到 **-8**），
+以及鼠标只在第 1 个手势对准一次（之后工具栏 / 输入区高度一变，指针落在 transcript 外面时「滚了却不动」）。
+本轮自己那版只做了手势这一半，于是**让出 7.199**：那份 spec 取 `origin/main` 的版本，本节只记本轮真正留下的
+那一处；本条改记为 **7.200 / 第三百二十七轮**。（本轮前两次整套 e2e 用的都是自己那版滚轮夹具，两次
+`scroll-follow-bounce` 三主题都在通过的一侧；换成他们的版本后，判据与读数覆盖都只多不少。）
+
+**为什么还留着这一条**：第一次整套跑（下面「验证」第一条）的红不在滚轮上，而是
+`dock-command-across-layout.spec.mjs` 暖场后那句等待：`getByRole("button", { name: /运行完毕/ })` 在 strict
+模式下解析到**两个**元素 —— 一个活动分组的表头（`data-group-header="true"`，念「运行完毕 120ms」）与组里
+那一行（「运行完毕 思考 120ms」）。一条回复带两个活动（思考 + 正文）时就会这样，而这两处念的是同一件事：
+这一回合结束了。它不是本轮改出来的：改之前同一个文件单跑七次里红了三次，第三百二十五轮那趟整套里它恰好在
+通过的一侧，所以一直没露出来。第三百二十五轮末尾把「整套最后那条红」当成一件事交给下一轮，这条正好是同一
+族 —— 等待写得比它想等的条件更窄。
+
+**做了什么**（只动 `packages/web/e2e/dock-command-across-layout.spec.mjs` 一句，断言一字未改）：
+
+- 那一句取 `.first()`，注释写明「分组表头与组里那一行都念运行完毕，任一在屏幕上就是同一件事：这一回合
+  结束了」，并点出 `subagent.spec` 早就这么取同一条等待（`page.getByRole("button", { name: /运行完毕/ }).first()`）
+  —— 这不是新写法，是把这一处对齐到仓库里已有的那一处。
+
+### 验证
+
+- **两态（全新数据根 `/root/adelie-fork-data/r326-b1`，端口 8944 / 8945，同一份服务端与 mock）**：
+  改前七次单跑**三次红**（`Error: strict mode violation … resolved to 2 elements`，指向第 176 行那句）→
+  改后**连跑十次全绿**（每次 2 passed，6.4–6.7 s）。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** ·
+  server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过**。
+- 改动文件 `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净（先 `--write` 过一次）、`git diff --check` 干净。
+- **整套浏览器 e2e（三趟，各一次性数据根）**：第一趟 **416 通过 / 1 失败（38.1 m）**，红的就是本条这一处；
+  改完第二趟 **416 / 1（38.6 m）** 里它两条全绿（剩下的红是 `plugin-card-refusal:220`，与本条无关的偶发）；
+  第三趟在合并树（另一条线的 7.199 + 本条）上 **416 / 1（38.3 m）**，它仍全绿，红落在
+  `scroll-follow-bounce` 的 `grewWhileStill` 那一句（6 次手势里只有 2 次在停留窗里还在长、要 ≥ 3 ——
+  满载下手势本身耗掉了回复剩下的生长时间，是那条 spec 自己的负载敏感，不是本条这处）。
+- 起服务一律用仓库自带的 mock（`e2e/mock-llm.mjs`）+ 真服务端；端口只用 8930 / 8931 与 8942–8947，
+  **跑完全部已停**，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r326-*`，
+  日志与两态记录都在 scratchpad 的 `r325/` 下（`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+- **没真看一眼界面**：本笔只动一份 e2e 夹具，产品代码一个字节没改（`git diff HEAD --stat` 只有这一个
+  `e2e/*.spec.mjs` 与台账），页面表现由这份夹具自己在真浏览器里覆盖。
+
+### 没做 / 留着
+
+- **整套 e2e 每一趟都还会各红一条**，但每趟红的都不是同一条 —— 第 1 趟 `dock-command-across-layout:176`
+  （本轮修掉）、第 2 趟 `plugin-card-refusal:220`（「管理安装：probe-plugin」那张框 15 s 没出现，16.1 s；
+  同一份 spec 在全新数据根上单跑六次全绿、每次 6.5 s）、另一条线自己那趟是 `project-switch:128`（全新
+  数据根单跑 4.8 s 通过）。三处同一副面孔：共享数据根 + 38 分钟满载下，某一步「该出现的东西」晚了一步。
+  要收要么把这几处的等待都改成「等它自己要等的东西」（像本轮这一句），要么让整套跑在一个不被别的线整段
+  争用的机器上 —— 都是一条一条的单独立项。
+- `scroll-follow-bounce` 已由另一条线的 7.199 收掉，本轮不再重复记。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 夹具一笔（`packages/web/e2e/dock-command-across-layout.spec.mjs`）；台账（条目 7.200、上表那一行、本节）
+  随本文件另起一笔。
