@@ -3853,6 +3853,16 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       因此解析到两个按钮、这一条在整套里偶发红；两处都念同一件事（这一回合结束了），任一在屏幕上即可。
       见「第三百二十七轮」一节。
 
+- [x] **7.202 插件卡片的三个自开弹窗（管理安装 / 详情 / 删除确认）不再在安装快照落地时自己关掉**
+      （**2026-11-25 第三百三十轮**落地，提交见「已完成的轮次」；`packages/web` 1 个源码文件
+      （`features/plugins/plugins-page.tsx`：页面新增 `cardDialog`（`{plugin, kind}`，`kind` 取
+      `installs` / `detail` / `delete`）取代卡片里的三个 `useState`，`PluginCard` 收 `dialog` / `onDialog`；
+      行上的写结算后由 `closeAfterWrite(agentId)` 关掉列表 —— 只在那次写动了「当前 Agent」时才关，
+      那是从前重挂载顺带关掉的那一半）＋ 1 个新 spec（3 条）＋ changelog 一对 —— **不碰接口、无新依赖**）：
+      页面进来时安装快照是空的，读到才填；填上之后 `splitPluginRows` 把卡片归到另一个分区，React
+      换掉卡片实例，卡片自己持有的弹窗跟着实例走 —— 读者在快照到达前点开的那个框就自己关掉了。
+      见「第三百三十轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7080,6 +7090,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.200 | **`dock-command-across-layout` 的暖场等待不再一个选择器撞两个活动按钮**（**2026-11-25 第三百二十七轮**落地；`packages/web/e2e/dock-command-across-layout.spec.mjs` 一句 —— `getByRole("button", { name: /运行完毕/ })` 取 `.first()`，与 `subagent.spec` 同一写法 —— **只动测试、无新依赖、不碰接口、没有用户可见改动**）：一条回复可以同时给出活动分组表头（念「运行完毕 120ms」）与组里那一行（「运行完毕 思考 120ms」），strict 模式因此解析到两个元素 | 两态（全新数据根 `/root/adelie-fork-data/r326-b1`，端口 8944 / 8945）：改前七次单跑**三次红**（`strict mode violation … resolved to 2 elements`，指向第 176 行）→ 改后**连跑十次全绿**（每次 2 passed、6.4–6.7 s） · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 566** · server **220 / 3199 + 6 跳过** · web **358 / 4030 + 2 跳过** · `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，三趟，各自一次性数据根）：第一趟 **416 通过 / 1 失败（38.1 m）**—— 红的就是本条这一处（`dock-command-across-layout:176` 的 strict 解析）；改完第二趟 **416 / 1（38.6 m）**里它两条全绿，剩下的红换成 `plugin-card-refusal:220`（「管理安装」框 15 s 没出现，同一份 spec 全新数据根单跑六次全绿）；第三趟在合并树上（另一条线的 7.199 + 本条）**416 / 1（38.3 m）**，它仍全绿，红落在 `scroll-follow-bounce` 的 `grewWhileStill` 那一句（6 次手势里只有 2 次在停留窗里还在长、要 ≥ 3） · 端口只用 8930 / 8931 与 8942–8947（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r326-*` · 没有切版本号、没发 npm、没发安装包 | 见本行提交 |
 | 2026-11-25 | 7.201 | **内置浏览器按对话隔离：每个对话自己的标签集、活动标签与 Chromium 分区**（**2026-11-25 第三百二十八轮**，用户点单；`packages/server/src/builtin-browser/`（新 `partitions.ts` 定「作用域↔分区」+ `service.ts` 改成 `Map<scope, TabRegistry>` 与 `tabId→scope` 路由、`routes.ts`/`shell-link.ts` 读作用域）、`packages/server/src/api/types.ts`（壳侧 tab 带 `partition`、命令带 `partition`、`tabs` 事件带 `sessionId`、`MIN_PROTOCOL_VERSION` 1→2）、`packages/desktop/src/builtin-browser{,-rules}.ts`（分区族 + 每分区一个 `Session`，协议报 2）、`packages/web/src/features/builtin-browser/`（新 `scope.ts`；store 按作用域存标签/活动标签/关闭中，面板·标签条·工具栏·`<webview partition>` 只读当前对话）、`packages/cli/src/commands/browser.ts`（`--session <id>` 优先于 `ADELIE_SESSION_ID`）、文档与 browser-automation 技能 + changelog 一对 —— **接口新增、协议升版、缺省作用域沿用旧分区不迁移**）：桌面应用里的内置浏览器原来整个应用只有一份 —— 一个标签池、一个全局「活动标签」指针、一个 `persist:penguin-browser` 分区。两个对话同时用就互相抢：面板来回跳、甲正在填的表单被乙的动作打断/失焦、危险操作可能落到乙的页面；cookie 共用，甲在某个站点登录后乙再去就是登录态；`penguin browser` 也没有绑定本会话的选项 | 四道门禁全绿：`pnpm gen:ifaces && pnpm -r typecheck` 全 `Done`、`pnpm lint`（oxlint）**0 警告 0 错误**（2688 文件）、`pnpm format:check` **`PRETTIER_EXIT=0`**、`pnpm -r test` **`EXIT=0`**（17 个有 test 的包全过）：web **359 / 4039 + 2 跳过** · server **220 / 3204 + 6 跳过** · cli **39 / 568** · core **70 / 1460 + 6 跳过** · ui **133 / 1117** · desktop **28 / 331** · ui-gallery **20 / 141** · amsp **2 / 72** · docs **8 / 62** · 新增用例：server 5 条按对话隔离（各自标签集/活动指针/分区、重启按分区还原作用域）、web 状态 5 条 + scope 2 条、cli 2 条「命令作用于哪个对话」；未跑整套浏览器 e2e（桌面壳本机无 Electron、纯函数单测覆盖） | `40117ba0b` |
 | 2026-11-25 | 发布 | **发 v0.8.3 并换装现网**（把 v0.8.2 之后攒下的收成正式版：**内置浏览器按对话隔离** —— 每个对话自己的标签集、活动标签与 Chromium 分区，cookie/站点存储不再互串；`penguin browser` 子命令多 `--session <id>`；桌面壳内置浏览器连接协议 1→2，旧壳判 `shell_unsupported`；发布提交 `f1bd60dd5`（父 `2ddf42b71`），`github.com` 可用所以提交与标签都是**直推**、远端 SHA 与本地相同，标签 `v0.8.3` 指向同一提交；门禁在标签检出 `/root/rel-083` 上 **rc=0 五步全绿**（build/typecheck/lint/format:check/tests，17 个有 `test` 脚本的包全过）；三件载荷 linux-x64 111M（114,498,626 字节）/ universal 56M（57,256,862）/ win32-x64 144M（150,562,138）+ `validate-bundles.sh` 三件全过，桌面三件 deb 122,593,188 / AppImage 155,537,152 / exe 162,478,455；npm **29 个包**发到 0.8.3（`PUBLISH-ALL-DONE`）；GitHub Release **id `457603978`** 14 件 764 MB 逐件核 digest 后发布为 latest；3003 换上 v0.8.3 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261125-v0820`）；现网 `/root/.adelie` 整棵换成 0.8.3、旧前端先拷回、瞬时单元 `adelie-live-restart-083` 延后 1500 秒重启装新前端并自核验） | 发布轮，逐项见「第三百二十九轮」一节；换装前冒烟（从载荷解出的树，端口 8913、临时数据根）：`lib` 版本 0.8.3、core 戳 `BUILD_DATE 2026-11-25 / BUILD_COMMIT f1bd60dd5…`、前端入口 `index-Bm6Jpj7B.js`、`GET /` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401、通知两张表在库里（本版无新迁移，`user_version` 仍 17）；现网核验写 `rel-083-live-restart-verify.txt`；`releases/latest` = v0.8.3 | `f1bd60dd5`（发布） |
+| 2026-11-25 | 7.202 | **插件卡片的三个自开弹窗（管理安装 / 详情 / 删除确认）不再在安装快照落地时自己关掉**（**2026-11-25 第三百三十轮**落地；`packages/web` 1 个源码文件（`features/plugins/plugins-page.tsx`：页面新增 `cardDialog`（`{plugin, kind}` = `installs` / `detail` / `delete`）取代卡片里的三个 `useState`，`PluginCard` 收 `dialog` / `onDialog`；`closeAfterWrite(agentId)` 只在那次写动了当前 Agent 时关掉列表 —— 从前这一步是重挂载顺带做的）＋ 1 个新 spec（`e2e/plugin-card-dialogs-hold.spec.mjs`，3 条）＋ changelog 一对 —— **不碰接口、无新依赖、无新文案**）：页面进来时安装快照是空的、读到才填，填上之后 `splitPluginRows` 把卡片归到另一个分区、React 换掉卡片实例，卡片自己持有的弹窗跟着实例走 —— 读者在快照到达之前点开的那个框就自己关掉了（第三百二十七轮末尾留给下一轮的 `plugin-card-refusal:220` 正是它） | 探针（真服务端 8940 + 数据根 `r328-a1`，skills 读按住 1.5 s）：改前 dialog 在 `23591` 出现、快照 `24925` 落地、`24990` 消失（65 ms 之后）；改后 4 s 后仍在 · **新 spec 两态**：改前（`r328/before-dist`，8942 `r328-b1` 与 8948 `r328-b2` 各跑一次）**3 failed** → 改后（8946 `r328-a3`、8950 `r328-a4` 与定稿整套里）**3 passed** · 相邻全绿：`plugin-card-refusal` 3 + `plugin-install-refusal` 2 + `plugins-install-refusal` 2 + 其余 8 份插件 spec 13；`skills.spec`（在管理安装列表里给另一个 Agent 装 / 卸）在定稿版里也绿 —— 第一版 `closeAfterWrite` 对每一次写都关，整套里把它红了（`卸载 agent_helper` 找不到：装到别的 Agent 之后列表被关掉），改成只关当前 Agent 那条路后复跑通过 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e（合并树 + 定稿，`SKIP_BUILD=1`，41.2 m）**：**417 通过 / 3 失败**，三条红都与本条无关：`builtin-browser-clear-refusal` 与 `builtin-browser-homepage-refusal`（另一条线 0.8.3 的新功能，停靠面板里 `dock-pick-builtin-browser` 90 s 没出现）、`scroll-follow-bounce` 的 Primer 一格（`grewWhileStill` 2 < 3，既有的负载敏感）· 截图 `r328/final-shots/{held,after}.png` 肉眼看过：弹窗留着、卡片已在「已安装的插件 (1)」、行上是「已安装」，console / pageerror **0** · 端口只用 8940–8960（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r328-*` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33745,3 +33756,78 @@ cookie 与站点存储都归各自那个对话；命令行多 `--session`。相�
 
 - 发布提交 `f1bd60dd5`（版本号 37 个文件 + 发布正文）；标签 `v0.8.3` 指同一提交。
 - 台账一笔（本文件，条目 = 发布）。
+## 第三百三十轮：插件卡片的「管理安装 / 详情 / 删除确认」不再在安装快照落地时自己关掉（2026-11-25，条目 7.202）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 `8c71fb98c`（第三百二十七轮 / 7.200）。`git fetch origin`
+第一次仍报 `GnuTLS recv error (-110)`，`git merge --ff-only origin/main` 就地说「Already up to date」（本地就是
+`8c71fb98c`）；选活、两态与门禁都先在这棵树上做。收尾推之前又 fetch 了一次，远端已到 **`f1bd60dd5`** —— 另一条
+线的 **第三百二十八轮 / 条目 7.201**（内置浏览器按对话隔离 + 发 0.8.3）。于是**让号**：7.201 / 第三百二十八轮归它，
+本轮改记 **7.202 / 第三百三十轮**；`git merge --ff-only` 跟上（它没碰 `features/plugins/` 与 `e2e/plugin-*`），
+在合并树上重建 core / server / cli / web，六包门禁、插件族与整套 e2e 都在合并树上重跑一遍（下面那些数字都是那棵树上的）。
+推送时远端又往前走了一笔 **`e9e8c910e`**：**第三百二十九轮**被那一笔占了（同一个 0.8.3 发版动作的台账 —— 它先到，
+本轮**再让一号**，改记 **第三百三十轮**；条目号 7.202 没人和它撞，未动）。
+
+**选活**：第 2–5 节剩下的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 这几条卡点（与上一轮相同）；第 7 节的清单停在
+7.200（7.201 只记在表里，本轮照样在清单上补了一条 7.202）。第三百二十七轮末尾点名留给下一轮的两条里最靠前的一条是
+`plugin-card-refusal:220` —— 整套里「管理安装：probe-plugin」那张框 15 s 没出现（16.1 s），同一份 spec 在全新数据根上
+单跑六次全绿。它看起来像「满载下某一步晚了一步」，查下去却是**产品缺陷**，不是夹具。
+
+**根因**（探针 `r328/probe.mjs`：真服务端 8940 + `/usr/bin/chromium`，把 skills 读按住 1.5 s）：`plugins-page.tsx`
+进来时 `setInstalled(new Map())`，等每个 Agent 的 skills/hooks 读回来才填；填上之后 `splitPluginRows` 按 `marketState`
+把卡片归到「已安装的插件」那一段 —— **另一个 `<PluginList>`**，React 因此卸载原卡片、在那边挂一个新实例。卡片自己的
+三个 `useState`（管理安装列表、详情、删除确认）跟着旧实例一起没了：探针里弹窗 `23591` 出现、快照 `24925` 落地、
+`24990` 弹窗消失（65 ms 之后）。这不是满载才有的 —— 首次读慢一点、读者点得快一点，就会看到框自己关掉，而那次点击
+已经花掉了。
+
+**做了什么**（`packages/web/src/features/plugins/plugins-page.tsx`，一个文件）：
+
+- 页面新增 `cardDialog: { plugin, kind } | null`（`kind` = `installs` / `detail` / `delete`），`PluginCard` 收
+  `dialog` / `onDialog`，三个弹窗都按它画 —— 与「安装拒绝句」放在页面同一个理由（那句的注释本来就把这次重挂载写成
+  理由）。弹窗都是模态的，一次开一个就够。
+- 行上的写（安装 / 卸载）结算后由 `closeAfterWrite(agentId)` 关掉列表，**只在那次写动了当前 Agent 时**才关：那是
+  从前重挂载顺带做的那一半（拒绝时原因画在卡片下面，列表压在上面就看不见）；给别的 Agent 装 / 卸不动卡片的位置，
+  列表留着 —— 那正是这个列表存在的意义（给第二个 Agent 也装上）。`confirmUninstall` 先把 `pendingUninstall` 收进
+  局部变量，关列表时用它的值。
+
+### 验证
+
+- **探针两态**（`r328/probe.mjs`，服务端 8940 / 数据根 `r328-a1`）：改前弹窗 `23591` 出现、快照 `24925` 落地、
+  `24990` 消失；改后 `dialogVisibleAfter4s: true`、`closedAt: null`。
+- **新 spec 两态**（`packages/web/e2e/plugin-card-dialogs-hold.spec.mjs`，三条：安装列表 / 详情 / 删除确认）：
+  夹具把 skills 读写按住，弹窗到了屏幕上才 `release()`，再用分区表头的计数（「已安装的插件 (0)」→「(1)」）确认重新
+  归档真的发生。改前挂 `r328/before-dist` 的服务端（8942 `r328-b1`、8948 `r328-b2` 各一次）**3 failed**（都红在
+  `expect(dialog).toBeVisible()`）；改后（8946 `r328-a3`、8950 `r328-a4` 与定稿整套里）**3 passed**。
+- **一处过程记录**：第一版 `closeAfterWrite` 对每一次写都关列表，整套里把 `skills.spec` 弄红了 ——
+  `卸载 agent_helper` 找不到，因为给 `agent_helper`（不是当前 Agent）装完之后列表被关掉了。改成只关当前 Agent
+  那条路后，`skills.spec` 在全新根 + mock 下 **1 passed（6.3 s）**，定稿整套里也绿。
+- **相邻回归**（真服务端 8950 / 8956，全新根）：`plugin-card-refusal` 3 + `plugin-install-refusal` 2 +
+  `plugins-install-refusal` 2 = **7 passed**；另有 8 份插件 spec **13 passed**；`skills.spec` **1 passed**。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** ·
+  server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过**。
+- 改动文件 `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净（源码、spec、changelog 一对）、`git diff --check` 干净。
+- **整套浏览器 e2e**（合并树 + 定稿，`SKIP_BUILD=1`，**41.2 m**）：**417 通过 / 3 失败**。三条红都与本条无关：
+  `builtin-browser-clear-refusal` 与 `builtin-browser-homepage-refusal`（另一条线 0.8.3 的新功能 —— 停靠面板里
+  `dock-pick-builtin-browser` 90 s 没出现）、`scroll-follow-bounce` 的 Primer 一格（`grewWhileStill` 2 < 3，既有
+  负载敏感，7.199 记过同一处）。本条三条、`skills.spec` 与全部插件 spec 都在通过的一侧。
+- **真看一眼界面**（`r328/final-shots/`）：按住快照时截一张、放开后再截一张 —— 后一张里弹窗还在、卡片已经在
+  「已安装的插件 (1)」、弹窗里的行写着「已安装」；两态 console / pageerror **0** 条。
+- 起服务一律用真服务端（`packages/server/dist/index.js`）+ 各自的数据根；端口只用 8940–8960 与套件自己的
+  8930 / 8931，**跑完全部已停**，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r328-*`，探针、两态产物与截图都在 scratchpad 的 `r328/` 下（未 `git add`）。
+
+### 没做 / 留着
+
+- 卡片里另两处仍随实例走的：`pendingUpdate` / `pendingUninstall` 两个确认框与它们各自的拒绝句。它们只能从管理安装
+  列表里打开，而那个列表现在只在「当前 Agent 被写动」时才关，所以它们暴露的范围比列表小得多；本轮没动，留作候选。
+- 整套 e2e 那三条红：两条 `builtin-browser-*-refusal` 属于另一条线的新功能（本机停靠面板里挑不出内置浏览器面板，
+  下一轮该查是 spec 的桩不够还是真缺陷）；`scroll-follow-bounce` 的 Primer 一格是记过的负载敏感。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；没有切版本号、
+  没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 代码一笔 `d7d3a2f15`（`packages/web/src/features/plugins/plugins-page.tsx` +
+  `packages/web/e2e/plugin-card-dialogs-hold.spec.mjs` + changelog 一对）；台账（条目 7.202、上表那一行、本节）
+  随本文件另起一笔。
