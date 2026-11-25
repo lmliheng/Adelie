@@ -3880,6 +3880,16 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       后者那条红（「卸载 default_agent」15 s 没出现）是**同一个根因**在另一份 spec 上的表现 ——
       快照落地时卡片换分区、React 换掉实例，卡片自己持有的框随之卸载。见「第三百三十二轮」一节。
 
+- [x] **7.205 内置浏览器的浏览器套件跟上「按对话隔离」：两条红了一天的老 spec 修回绿，再补一条「每个对话各看各的标签」**
+      （**2026-11-25 第三百三十三轮**落地，提交见「已完成的轮次」；`packages/web` 两个既有 spec 各改一处
+      （`e2e/builtin-browser-{clear,homepage}-refusal.spec.mjs` 的 status 桩从裸路径改成 `…/status**`）＋
+      1 个新 spec（`e2e/builtin-browser-scope.spec.mjs`，1 条）＋ 2 处源码注释纠正（`features/builtin-browser/
+      browser-tab-strip.tsx` 与 `features/chat/builtin-dock-panels.tsx` 里还写着「标签集由所有对话共用」）
+      —— **只动测试与注释、无新依赖、不碰接口、没有用户可见改动**）：7.201 把内置浏览器改成按对话隔离之后，
+      状态读取多带了 `?sessionId=<这一段对话>`，而两条 spec 的桩只认裸路径 —— 面板因此拿不到 `available: true`、
+      停靠面板里挑不出内置浏览器，两条自 2026-10-27 / 11-04 起全绿的老用例从 0.8.3 起一直红着（第三百三十轮
+      整套里记的就是这两条）。见「第三百三十三轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7111,6 +7121,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 
 | 2026-11-25 | 7.203 | **桌宠的通话界面改成气泡对话、挂断与静音换成圆形按钮，桌宠大小可设（小 / 中 / 大三档），动作重写**（**2026-11-25 第三百三十一轮**，用户点单；`packages/desktop`（`pet-window.ts`：`PetSize` / `PET_SIZES` / `PET_PET_PX`（56 / 72 / 96）/ `isPetSize` / `petWindowSize(showCall, size)` 按档加高度；`pet-prefs.ts`：`PetPrefs.size` 默认 `medium`、`parsePetCommand` 与 `petStatusMessage` 带上它；`main.ts`：`petSize`、`setPetSize` 落盘 + `applyPetSize()` + 推送）、`packages/server`（`api/types.ts`：新 `DesktopPetSize`，状态 / 补丁 / 命令三处加 `size?`；`http/routes/desktop.ts`：PUT 收 `size`、乱值 400 `invalid_pet_size`、空补丁判据带上它；`services/desktop-update-port.ts`：推送解析按字段逐个读、读不出的丢掉）、`packages/ui`（`icons.ts` 加 `microphoneOff` / `phone`）、`packages/web`（`features/pet/voice/call-stage.tsx` 整文件重写；新 `features/pet/pet-size.ts`；`pet-page.tsx` 按档画形象与算面板留白并加入场动画；`features/settings/appearance-section.tsx` 加「桌宠大小」一行；`styles.css` 重写呼吸 / hop 并加通话动效；`lib/strings{,-en}.ts`）—— **不碰数据库、无新依赖，字符串删一条（`callTitle`）、加两条**）：原来的实时语音通话是一块面板 —— 一条「通话中」标题、一条状态、一列「谁说了什么」的纯文本，挂断与静音是两个小方框，看着不像在跟宠物说话；桌宠的大小写死在 `pet-page.tsx` 的 `72px` 与 `pet-window.ts` 的 `300` 里，界面上没有任何地方能改；动作只有 3.6 s 的上下呼吸、一次 hop 与眨眼 | 见「第三百三十一轮」一节（单测：desktop 28 文件 / 334、server 220 / 3205 + 6 跳过、ui 133 / 1117、web **360 / 4042 + 2 跳过**；`pnpm lint` 0 警告 0 错误、`format:check` 过、全仓 `typecheck` 全 `Done`；真浏览器：`pet.spec.mjs` 通过、六张通话态截图 + 一张三档大小图 + 真实 `/pet` 量到 72×72 与 `calc(100% - 76px)`） | `8090f7d61` |
 | 2026-11-25 | 7.204 | **`project-switch` 在整套里那条红与 7.202 是同一个根因，产品侧已经修好，夹具一个字节不动**（**2026-11-25 第三百三十二轮**核查收口；`packages/web/e2e/project-switch.spec.mjs` **没有改动** —— 工作区里那份「等 skills / hooks 响应」的残留补丁实测会引入新竞态，已 `git stash` 留底、不入库；**这一笔只有台账**）：第三百二十七轮末尾点名留给下一轮的两处里，`plugin-card-refusal:220` 已由 7.202 从产品侧修掉，`project-switch:128`（「卸载 default_agent」15 s 没出现）是同一个根因在另一份 spec 上的表现 —— 快照落地时卡片换分区、React 换掉实例，卡片自己持有的框随之卸载 | **反证**（`plugins-page.tsx` 退回 `8a5e1d9f4^` 并重建 web、跑 HEAD 的 spec + 把 skills / hooks 读按住 8 s）：**1 failed（19.6 s）**，红在「卸载 default_agent」没出现，与 327 轮记的那一行逐字一致 · **现产品**：同一份 spec、8 s 慢读 + 4 个 `yes` 占满 4 核 → **三次全绿（16.2 / 16.0 / 16.4 s）**，无负载 8 s 慢读也绿（9.4 s），真实配置单跑 **1 passed（5.3 s）** · **残留补丁两态**：慢读 8 s、无负载 → **红在第二半**（「安装 default_agent」没出现，等响应返回时 React 还没换分区，点击落在上一个 Project 的状态上）；把它换成「等分区标题的 DOM 事实」也不成立 —— 采样显示切到 target 后标题先 `已安装的插件 (0)`（空快照瞬时态）、约 155 ms 后变 `(11)`，等 `(0)` 只在读被按住时才等到，读失败（500）形态则红在等 `(0)` 上 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过** · 端口只用 8960–9011（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r332-*` | 见本行提交 |
+| 2026-11-25 | 7.205 | **内置浏览器的浏览器套件跟上「按对话隔离」：两条老 spec 修回绿，再补一条每个对话各看各的标签**（**2026-11-25 第三百三十三轮**落地；`packages/web` 两个既有 spec 各一处（`e2e/builtin-browser-{clear,homepage}-refusal.spec.mjs` 的 status 桩从 `**/api/builtin-browser/status` 改成 `…/status**`，并写明查询串带的是哪一段对话）＋ 1 个新 spec（`e2e/builtin-browser-scope.spec.mjs`，1 条：两个真会话各看各的标签、点标签的激活请求带自己那一段对话）＋ 2 处源码注释纠正（`features/builtin-browser/browser-tab-strip.tsx`、`features/chat/builtin-dock-panels.tsx` 里还写着「所有对话共用一个标签集」）—— **只动测试与注释、无新依赖、不碰接口、没有用户可见改动**）：7.201 之后状态读取多带 `?sessionId=…`，而两条 spec 的桩只认裸路径 —— Playwright 的 glob 按整条 URL 匹配，带查询串那次没被拦住、落到真服务端；本机没有桌面壳、回 `available: false`，面板的挑选行里就没有内置浏览器，用例死在 `dock-pick-builtin-browser` 上（第三百三十轮整套里记的「90 s 没出现」正是它） | 探针 `r331/probe-status-url.mjs`（真服务端 8970）：`GET …/status` 裸路径 1 次（默认作用域）+ 带 `sessionId` 的 2 次，`bareGlobHits` **1** · 改前两条老 spec 各 **1 failed**（都红在 `dock-pick-builtin-browser` 90 s）→ 改后 **2 passed**（2.5 s / 9.1 s）；新 spec **1 passed**（3.5 s），连跑三次 **3/3**（8.5–8.6 s） · **反证**：`browserScope()` 改成恒返回 `""`、重建 web → 新 spec **1 failed**（「A 的停靠面板里标签数 0 ≠ 1」），源码放回重建 → **1 passed** · 三张截图（`r331/{a,b,back}-strip.png`，1280×800）：A 里只有「甲站」/alpha.example、B 里只有「乙站」/beta.example、回到 A 又是「甲站」，三态 console error / pageerror **0** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，一次性数据根 `r331-e2e`，38.7 m）：**420 通过 / 1 失败**，唯一红是 `scroll-follow-bounce` 的 Primer 一格（`grewWhileStill` 不够半数，同一数据根单跑仍 1 failed / 2 passed，既有负载敏感，与本条无关）；两条老 spec 与新 spec 都在通过的一侧 · 端口只用 8970 / 8971 与 8930 / 8931（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r331*` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33977,3 +33988,83 @@ cookie 与站点存储都归各自那个对话；命令行多 `--session`。相�
 ### 提交
 
 - 台账一笔：条目 7.204、上表那一行、本节（本文件）。本轮没有代码改动 —— 这是核查过的结论，不是漏做。
+
+## 第三百三十三轮：内置浏览器的浏览器套件跟上「按对话隔离」（2026-11-25，条目 7.205）
+
+**开工**：`git status --short` 干净，分支 `main`，本地与远端 `main` 都是 **`d5dd81c69`**（第三百三十轮那笔台账）；
+`git fetch origin` 第一次仍报 `GnuTLS recv error (-110)`，`git merge --ff-only origin/main` 就地「Already up to date」。
+
+**让号**：收尾推之前再 fetch，远端已到 **`cbe59ad3c`** —— 另一条线先占了 **7.203 / 第三百三十一轮**（桌宠的通话
+界面重做）与 **7.204 / 第三百三十二轮**（`project-switch` 那条红与 7.202 同根因）。本轮的条目与轮次因此改记
+**7.205 / 第三百三十三轮**；代码那一笔没有冲突，两笔提交按「它在先、我在后」rebase 到 `cbe59ad3c` 之上（台账两处
+冲突 —— 待办清单与末尾的轮次小节 —— 都是「两边各加一段」，并排接上）。
+
+**选活**：第 2–5 节剩下的仍是 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 这几条卡点（与上一轮相同：2.2c 的写侧全在
+桌面壳、部署单元等发布动作、`packages/docs/**` 与 `changelog/**` 留到发布期；3.5 / 5.6 / 5.10 要用户拍板、
+3.6 要模型 key、4.1–4.3 明令不动）。第三百三十轮末尾「没做 / 留着」点了两件，更靠前也更要紧的是整套里那两条
+`builtin-browser-*-refusal` 的红 —— 那是 **7.201（内置浏览器按对话隔离）把两条老用例打红的**，不是本仓已知的
+负载敏感：也就是说内置浏览器这一块在浏览器套件里当时一条在跑的回归都没有。
+
+**根因**（探针 `r331/probe-status-url.mjs`，真服务端 8970 + 数据根 `r331`，`addr` 用 `HOST=::` 让 `localhost`
+落到 ::1）：打开 `/chat/<会话>` 之后 App 对着
+`GET /api/builtin-browser/status?sessionId=session-…` 读**这一段对话**的注册表（首屏还有一次裸路径，那是默认
+作用域）。两条 spec 的桩写的是 `**/api/builtin-browser/status` —— Playwright 的 glob 按整条 URL 匹配，带查询串
+的那次**没被拦住**（探针里 `bareGlobHits` 只有那 1 次），落到真服务端：本机没有桌面壳，服务端回
+`available: false`，`browserOffered()` 因此为假，停靠面板的挑选行里根本没有内置浏览器 —— 用例就死在那句
+`dock-pick-builtin-browser` 上（与第三百三十轮记的「90 s 没出现」一致）。
+
+**做了什么**（全部在 `packages/web`）：
+
+- 两条既有 spec 的 status 桩从 `**/api/builtin-browser/status` 改成 `**/api/builtin-browser/status**`，并写明
+  为什么：查询串带的是这一段对话，裸路径只是首屏那次默认作用域。
+- 新增 `e2e/builtin-browser-scope.spec.mjs`（1 条）：两个**真**会话 A / B，桩按 `sessionId` 各给一个标签；A 的
+  停靠面板里只有「甲站」、点它时 `POST …/tabs/41/activate` 的请求体是 `{sessionId: A}`；B 的只有「乙站」、
+  点它是 `{sessionId: B}`；回到 A 又是「甲站」；所有状态读取只可能出现 A / B / 默认三种名字。停靠布局是**按对话
+  记忆**的，所以回到 A 时挑选行已经不在、面板直接就是打开的 —— 辅助函数先给恢复留 3 秒再决定要不要按那个开关
+  （恢复途中按下去，按的正是它刚恢复的那一次）。
+- 顺带纠正两处从 7.201 起就不再成立的注释：`features/builtin-browser/browser-tab-strip.tsx` 的头注还写着
+  「标签集由所有对话共用」，`features/chat/builtin-dock-panels.tsx` 里还写着「一套页面，所有对话共用」。
+  只改注释 —— 行为、文案、接口都没动。
+
+### 验证
+
+- **探针**（`r331/probe-status-url.mjs`）：`seen` 里按顺序是 `settings`、裸 `status`、带 `sessionId` 的 `status`
+  两次、`tabs/on-screen`；`bareGlobHits` **1**（裸桩只拦到首屏那一次）。
+- **改前**（同一份 spec、同一数据根 `r331`）：`builtin-browser-clear-refusal` 与 `builtin-browser-homepage-refusal`
+  各 **1 failed**，都红在同一句 `dock-pick-builtin-browser`（90 s 超时）。
+- **改后**：两条老 spec **2 passed（2.5 s / 9.1 s）**，新 spec **1 passed（3.5 s）**；新 spec 连跑三次 **3/3 绿**
+  （8.5 s / 8.6 s / 8.6 s）。
+- **反证（新 spec）**：把 `features/builtin-browser/scope.ts` 的 `browserScope()` 改成恒返回 `""`（7.201 之前的
+  单浏览器语义）、重建 web → 同一条用例 **1 failed**，死在「A 的停靠面板里标签数 0 ≠ 1」；源码放回重建后 **1 passed**。
+- **真看一眼**（`r331/{a,b,back}-strip.png`，1280×800，探针 `r331/shots.mjs`）：A 的停靠面板里一条「甲站」、
+  地址栏 `https://alpha.example/`；B 的只有「乙站」、`https://beta.example/`；回到 A 又是「甲站」。三态 console
+  error / pageerror 各 **0** 条。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 646 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过** ·
+  ui **133 / 1117** · cli **39 / 568**（hmr 无测试文件）。
+- 五个改动文件 `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净。
+- **整套浏览器 e2e**（`SKIP_BUILD=1`，一次性数据根 `r331-e2e`，服务端 8930 + mock 8931，38.7 m）：**420 通过 / 1 失败** ——
+  唯一的红是 `scroll-follow-bounce` 的 Primer 那一格（`grewWhileStill` 少于半数手势），与 7.199 / 第三百三十轮记的是
+  同一处负载敏感，本轮源码只改了两处注释、那条 spec 一个字没动；同一数据根单跑它仍是 **1 failed / 2 passed**。
+  两条老 spec（`builtin-browser-clear-refusal` / `builtin-browser-homepage-refusal`）与新的 `builtin-browser-scope`
+  都在通过的一侧（整套里依次 2.2 s / 9.1 s / 8.3 s）。
+- 端口只用 8970 / 8971（改动与反证）与 8930 / 8931（整套），跑完全停；3003 / 3004 / 4000 / 7364 / 7369 一个没碰；
+  探针、两态产物与截图都在 scratchpad 的 `r331/` 下（未 `git add`）。
+
+### 没做 / 留着
+
+- 第三百三十轮点名的另一件 —— 插件卡片里 `pendingUpdate` / `pendingUninstall` 两个确认框仍随卡片实例走 —— 这轮
+  没动。它俩只能从「管理安装」列表里打开，而那个列表现在只在**当前 Agent** 被写动时才关，所以在卡上能触发的
+  只有「更新之后卡片换分区」这一种重挂载，而更新不改变「装没装」，本轮没有量到可复现的失面，留着当候选。
+- `ui-gallery` 的 mock 里 `GET /api/builtin-browser/status` 仍不读查询串（回 `available: false` 的演示态），
+  那是画廊自己的替身、与这条无关，没动。
+- 整套里那唯一一条红值得下一轮查：`scroll-follow-bounce` 的 Primer 那一格在**单跑**时也红（本机，38.7 m 那趟与
+  1.8 m 那趟都是 `grewWhileStill` 不够半数），7.199 当时是 3/3 绿的 —— 要么是那之后某笔改动了「停留窗里还在长」
+  的量法，要么是这台机器的负载基线又变了。它不在本轮范围内（本轮没碰那条 spec，也没碰转录的滚动），留作候选。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；没有切版本号、
+  没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 代码一笔 `b4c72bcb0`（两个既有 spec、新 spec、两处注释）；台账（条目 7.205、上表那一行、本节）随本文件另起一笔。
