@@ -3890,6 +3890,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       停靠面板里挑不出内置浏览器，两条自 2026-10-27 / 11-04 起全绿的老用例从 0.8.3 起一直红着（第三百三十轮
       整套里记的就是这两条）。见「第三百三十三轮」一节。
 
+- [x] **7.206 `scroll-follow-bounce` 的假红：答复在量「还在长」的那一秒之前就结束了**
+      （**2026-11-25 第三百三十五轮**落地，提交见「已完成的轮次」；`packages/web` 两处 ——
+      `e2e/mock-llm.mjs` 的「scroll bounce test」答复从「每 50ms 一段、约 4s」改成「每 125ms 一段、约 10s」
+      （分支注释与文件头注同步，写明它为什么必须比手势长），`e2e/scroll-follow-bounce.spec.mjs` 的头注跟上、
+      每个主题的超时从 `60s + 6×20s` 放宽到 `60s + 6×30s`、并在「停住那一秒」之前写明这条判据的成立条件
+      —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：mock 原来只流约 4s，而每个手势的准备
+      与补滚在 ×4 降速下要 2–5s，「文字不动而回复仍在长」的那一秒因此常常落在答复结束之后，读到的增长是 0；
+      行为本身一次回弹都没有，红的是夹具。见「第三百三十五轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7122,6 +7131,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.203 | **桌宠的通话界面改成气泡对话、挂断与静音换成圆形按钮，桌宠大小可设（小 / 中 / 大三档），动作重写**（**2026-11-25 第三百三十一轮**，用户点单；`packages/desktop`（`pet-window.ts`：`PetSize` / `PET_SIZES` / `PET_PET_PX`（56 / 72 / 96）/ `isPetSize` / `petWindowSize(showCall, size)` 按档加高度；`pet-prefs.ts`：`PetPrefs.size` 默认 `medium`、`parsePetCommand` 与 `petStatusMessage` 带上它；`main.ts`：`petSize`、`setPetSize` 落盘 + `applyPetSize()` + 推送）、`packages/server`（`api/types.ts`：新 `DesktopPetSize`，状态 / 补丁 / 命令三处加 `size?`；`http/routes/desktop.ts`：PUT 收 `size`、乱值 400 `invalid_pet_size`、空补丁判据带上它；`services/desktop-update-port.ts`：推送解析按字段逐个读、读不出的丢掉）、`packages/ui`（`icons.ts` 加 `microphoneOff` / `phone`）、`packages/web`（`features/pet/voice/call-stage.tsx` 整文件重写；新 `features/pet/pet-size.ts`；`pet-page.tsx` 按档画形象与算面板留白并加入场动画；`features/settings/appearance-section.tsx` 加「桌宠大小」一行；`styles.css` 重写呼吸 / hop 并加通话动效；`lib/strings{,-en}.ts`）—— **不碰数据库、无新依赖，字符串删一条（`callTitle`）、加两条**）：原来的实时语音通话是一块面板 —— 一条「通话中」标题、一条状态、一列「谁说了什么」的纯文本，挂断与静音是两个小方框，看着不像在跟宠物说话；桌宠的大小写死在 `pet-page.tsx` 的 `72px` 与 `pet-window.ts` 的 `300` 里，界面上没有任何地方能改；动作只有 3.6 s 的上下呼吸、一次 hop 与眨眼 | 见「第三百三十一轮」一节（单测：desktop 28 文件 / 334、server 220 / 3205 + 6 跳过、ui 133 / 1117、web **360 / 4042 + 2 跳过**；`pnpm lint` 0 警告 0 错误、`format:check` 过、全仓 `typecheck` 全 `Done`；真浏览器：`pet.spec.mjs` 通过、六张通话态截图 + 一张三档大小图 + 真实 `/pet` 量到 72×72 与 `calc(100% - 76px)`） | `8090f7d61` |
 | 2026-11-25 | 7.204 | **`project-switch` 在整套里那条红与 7.202 是同一个根因，产品侧已经修好，夹具一个字节不动**（**2026-11-25 第三百三十二轮**核查收口；`packages/web/e2e/project-switch.spec.mjs` **没有改动** —— 工作区里那份「等 skills / hooks 响应」的残留补丁实测会引入新竞态，已 `git stash` 留底、不入库；**这一笔只有台账**）：第三百二十七轮末尾点名留给下一轮的两处里，`plugin-card-refusal:220` 已由 7.202 从产品侧修掉，`project-switch:128`（「卸载 default_agent」15 s 没出现）是同一个根因在另一份 spec 上的表现 —— 快照落地时卡片换分区、React 换掉实例，卡片自己持有的框随之卸载 | **反证**（`plugins-page.tsx` 退回 `8a5e1d9f4^` 并重建 web、跑 HEAD 的 spec + 把 skills / hooks 读按住 8 s）：**1 failed（19.6 s）**，红在「卸载 default_agent」没出现，与 327 轮记的那一行逐字一致 · **现产品**：同一份 spec、8 s 慢读 + 4 个 `yes` 占满 4 核 → **三次全绿（16.2 / 16.0 / 16.4 s）**，无负载 8 s 慢读也绿（9.4 s），真实配置单跑 **1 passed（5.3 s）** · **残留补丁两态**：慢读 8 s、无负载 → **红在第二半**（「安装 default_agent」没出现，等响应返回时 React 还没换分区，点击落在上一个 Project 的状态上）；把它换成「等分区标题的 DOM 事实」也不成立 —— 采样显示切到 target 后标题先 `已安装的插件 (0)`（空快照瞬时态）、约 155 ms 后变 `(11)`，等 `(0)` 只在读被按住时才等到，读失败（500）形态则红在等 `(0)` 上 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过** · 端口只用 8960–9011（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r332-*` | 见本行提交 |
 | 2026-11-25 | 7.205 | **内置浏览器的浏览器套件跟上「按对话隔离」：两条老 spec 修回绿，再补一条每个对话各看各的标签**（**2026-11-25 第三百三十三轮**落地；`packages/web` 两个既有 spec 各一处（`e2e/builtin-browser-{clear,homepage}-refusal.spec.mjs` 的 status 桩从 `**/api/builtin-browser/status` 改成 `…/status**`，并写明查询串带的是哪一段对话）＋ 1 个新 spec（`e2e/builtin-browser-scope.spec.mjs`，1 条：两个真会话各看各的标签、点标签的激活请求带自己那一段对话）＋ 2 处源码注释纠正（`features/builtin-browser/browser-tab-strip.tsx`、`features/chat/builtin-dock-panels.tsx` 里还写着「所有对话共用一个标签集」）—— **只动测试与注释、无新依赖、不碰接口、没有用户可见改动**）：7.201 之后状态读取多带 `?sessionId=…`，而两条 spec 的桩只认裸路径 —— Playwright 的 glob 按整条 URL 匹配，带查询串那次没被拦住、落到真服务端；本机没有桌面壳、回 `available: false`，面板的挑选行里就没有内置浏览器，用例死在 `dock-pick-builtin-browser` 上（第三百三十轮整套里记的「90 s 没出现」正是它） | 探针 `r331/probe-status-url.mjs`（真服务端 8970）：`GET …/status` 裸路径 1 次（默认作用域）+ 带 `sessionId` 的 2 次，`bareGlobHits` **1** · 改前两条老 spec 各 **1 failed**（都红在 `dock-pick-builtin-browser` 90 s）→ 改后 **2 passed**（2.5 s / 9.1 s）；新 spec **1 passed**（3.5 s），连跑三次 **3/3**（8.5–8.6 s） · **反证**：`browserScope()` 改成恒返回 `""`、重建 web → 新 spec **1 failed**（「A 的停靠面板里标签数 0 ≠ 1」），源码放回重建 → **1 passed** · 三张截图（`r331/{a,b,back}-strip.png`，1280×800）：A 里只有「甲站」/alpha.example、B 里只有「乙站」/beta.example、回到 A 又是「甲站」，三态 console error / pageerror **0** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，一次性数据根 `r331-e2e`，38.7 m）：**420 通过 / 1 失败**，唯一红是 `scroll-follow-bounce` 的 Primer 一格（`grewWhileStill` 不够半数，同一数据根单跑仍 1 failed / 2 passed，既有负载敏感，与本条无关）；两条老 spec 与新 spec 都在通过的一侧 · 端口只用 8970 / 8971 与 8930 / 8931（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r331*` | 见本行提交 |
+| 2026-11-25 | 7.206 | **`scroll-follow-bounce` 在整套里那一格红是夹具的时限：答复在量「还在长」的那一秒之前就结束了**（**2026-11-25 第三百三十五轮**落地；`packages/web` 两处 —— `e2e/mock-llm.mjs` 的「scroll bounce test」答复从每 50ms 一段、约 4s 改成每 125ms 一段、约 10s（分支与文件头注释写明它必须比手势长），`e2e/scroll-follow-bounce.spec.mjs` 的头注同步、每主题超时 `60s + 6×20s` → `60s + 6×30s`、「停住那一秒」之前写明判据成立条件 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：手势的准备与补滚在 ×4 降速下要 2–5s，4s 的答复已经流完，`grewWhileStill` 读到 0、聚合那句「至少半数手势在窗口里长过」就红；行为侧 `bounces` 全空、`stillDrift` 全 0，一次回弹都没有 | **改前**（老夹具 + 3 个压测核）：计时探针 `r334/timing` 量到「停住那一秒」起于发消息 +4.6s…+6.8s 而答复 ~4.0s 已结束，Primer 三格 `grewWhileStill` 全 0（`BOUNCE-SUMMARY Primer: 0/3`）；6 格那趟红在同一句 `Expected: >= 3 / Received: 1`（`test-results/…/error-context.md`）· **改后**：空机器 6 格 × 3 主题 **3 passed（3.4 min）**，18 格 `bounces` 全空、`stillDrift` 0、`grewWhileStill` **627–752**；压 1 个核 **3 passed（3.4 min）**、654–806；压 2 个核 **3 passed（3.5 min）**、627–779 · **已知边界**：4 核里压 3 个空转时仍有主题读到 0（一秒内一帧都没画出来的渲染饥饿，不是答复结束；整套只有一个 worker，量过的是 1–2 个核）· 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **360 文件 / 4042 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · 端口只用 8960 / 8961，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r334-scroll`；没有界面改动，没跑整套（只有这一份 spec 读 mock 的那个分支） | `ffd772de8` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34068,3 +34078,68 @@ cookie 与站点存储都归各自那个对话；命令行多 `--session`。相�
 ### 提交
 
 - 代码一笔 `b4c72bcb0`（两个既有 spec、新 spec、两处注释）；台账（条目 7.205、上表那一行、本节）随本文件另起一笔。
+
+## 第三百三十五轮：`scroll-follow-bounce` 的假红 —— 答复在量「还在长」的那一秒之前就结束了（2026-11-25，条目 7.206）
+
+**开工**：`git status --short` 干净，分支 `main`，HEAD 是 **`e6b7438ed`**（另一条线 16:10 的桌面壳提交：托盘菜单
+改成自己画、加「重启」，**没进台账**）—— 按「工作区干净、但 HEAD 有一笔没入台账的提交」的口径，
+**第三百三十四轮留空号**给它补记，本轮记 **第三百三十五轮 / 7.206**。`git fetch origin` 一次即通，
+`git merge --ff-only origin/main` 报 `Already up to date`。没切分支、没碰 `legacy/main`、没推 upstream。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 只剩桌面壳一侧、部署单元与文档面；3.5 桌面壳按纪律不碰、
+3.6 要模型 key、4.1–4.3 明令不动、5.6 / 5.10 要用户拍板），第 7 节一个未勾选的也没有。于是接第三百三十三轮
+「没做 / 留着」里点名「值得下一轮查」的那一件：**整套里唯一一条红**，`scroll-follow-bounce` 的 Primer 一格。
+
+**根因（夹具的时限，不是行为）**：mock 的「scroll bounce test」答复原来只流 **80 段 × 50ms ≈ 4s**，而一份手势
+「读第 6 段 → 确认跟底 → 起录 → 抖动 100–240ms → 每轮 10×50px、不到 200px 再补一轮（至多 3 轮）→ 停 400ms」
+在 ×4 CPU 降速下要 **2–5s**（每个 `mouse.wheel` 在降速下要 100–700ms，三轮就是几秒），于是「停住那一秒」
+常常落在答复**结束之后** —— 那一秒的 `grewWhileStill` 自然是 0，聚合那句「至少半数手势在窗口里长过」
+（`results.filter(r => r.grewWhileStill > 0).length >= ceil(n/2)`）就红。**行为侧从来没有坏过**：所有跑过的格子里
+`bounces` 全空、`stillDrift` 全 0。
+
+**证据（改前）**：给用例临时加阶段计时（已撤）后在 3 个压测核下量到「停住那一秒」起于**发消息后 +4.6s…+6.8s**，
+而答复 ~4.0s 已结束；Primer 三格 `grewWhileStill` 全 0（`BOUNCE-SUMMARY Primer: 0/3`），6 格那趟红的正是
+`Expected: >= 3 / Received: 1`。空机器上第 1 格也已贴着边（+4.6s，答复 ~4.0–4.4s），这就是一条「机器一忙
+就红、机器空着有时候也红」的假红。
+
+**做了什么**（两处，全在 `packages/web/e2e`）：
+
+- `mock-llm.mjs` 的「scroll bounce test」分支：`setTimeout(tick, 50)` → **125**，即 80 段 × 125ms ≈ **10s**；
+  分支注释与文件头注同步，写明**为什么答复必须比手势长**（×4 降速下手势准备 + 补滚要几秒，判据那一秒
+  得落在流里）。
+- `scroll-follow-bounce.spec.mjs`：头注的「every 50ms」跟上成 125ms；每个主题的超时
+  `60_000 + GESTURES * 20_000` → `60_000 + GESTURES * 30_000`（答复变长，单格最长也要 15s 上下）；
+  「停住那一秒」之前补一段注释，写明这条判据只在回复仍在长时成立，以及 2026-11-25 量到的 +4.6s…+6.8s 与
+  4s 流的对照。
+
+### 验证
+
+- **空机器，6 格 × 3 主题**：**3 passed（3.4 min）**，18 格 `bounces` 全空、`stillDrift` 0、`grewWhileStill` **627–752**。
+- **压 1 个核，6 格 × 3 主题**：**3 passed（3.4 min）**，`grewWhileStill` **654–806**，`bounces` 全空。
+- **压 2 个核，6 格 × 3 主题**：**3 passed（3.5 min）**，`grewWhileStill` **627–779**，`bounces` 全空。
+- **反证（改前夹具）**：同样 3 个压测核、3 格 × 3 主题 → Primer **0/3** 格有增长（`BOUNCE-SUMMARY Primer: 0/3`）；
+  6 格那趟红在聚合那句（`Expected: >= 3 / Received: 1`）。
+- **已知边界**：4 核里压 3 个空转时，仍会有一个主题读到 0 —— 计时显示那不是答复结束，而是页面**一帧都没画出来**
+  的渲染饥饿（那趟的 `wheelLatency` 到 300–675ms）；整套只有一个 worker，量过 18/18 的是 1–2 个核的负载。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** ·
+  cli **39 / 568** · web **360 文件 / 4042 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过**（hmr 无测试文件）。
+- 两个改动文件 `npx oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净。
+- 端口只用 **8960**（真服务端）/ **8961**（mock），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r334-scroll`，探针与脚本在 scratchpad 的 `r334/` 下（未 `git add`）。
+- 本轮没有界面改动，所以没有另开浏览器截图；跑的是真服务端 + 真浏览器（Playwright）里的那一份 spec。
+
+### 没做 / 留着
+
+- 3 个压测核那种极端负载下，1 秒窗口里可能一帧都画不出来，`grewWhileStill` 仍会读到 0。这是压测机的渲染饥饿，
+  夹具改不掉；要彻底消掉得把判据改成「服务端那边的流是否还在」而不是「这一秒里画出了多少」—— 那是另一种
+  形状的判据，留给哪天它真的在整套里再红一次再说。
+- 第三百三十三轮点名的另一件（插件卡片的 `pendingUpdate` / `pendingUninstall` 确认框随卡片实例走）仍留着当候选。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 代码一笔 `ffd772de8`（`packages/web/e2e/mock-llm.mjs`、`packages/web/e2e/scroll-follow-bounce.spec.mjs`）；
+  台账（条目 7.206、上表那一行、本节）随本文件另起一笔。
