@@ -998,6 +998,10 @@ export const en: Strings = {
     petFigure: "Pet figure",
     petFigureInfo:
       "What the pet looks like: the classic penguin, the whale girl, or a picture of your own. The change lands at once — no restart, and no need to reopen the pet's window.",
+    /** Desktop shell only: how big the companion window draws the pet. */
+    petSize: "Pet size",
+    petSizeInfo:
+      "How big the pet is drawn: small, medium or large. The change lands at once — the pet's window grows or shrinks with it, no restart and no need to reopen it.",
     /** Desktop shell only: picking the picture the `picture` figure draws. */
     petPictureChoose: "Choose a picture",
     petPictureChange: "Choose another",
@@ -1340,6 +1344,8 @@ export const en: Strings = {
     hide: "Hide the pet",
     /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
     figureNames: { penguin: "Penguin", whaleGirl: "Whale girl", picture: "My picture" },
+    /** The sizes the Appearance row offers, by name (features/pet/pet-size.ts). */
+    sizeNames: { small: "Small", medium: "Medium", large: "Large" },
     refresh: "Refresh",
     balance: "Model balance",
     /** No balance is pinned to the account (see features/models/balance.ts). */
@@ -1382,7 +1388,6 @@ export const en: Strings = {
     callOpen: "Call",
     /** The panel row's own line when a call is possible. */
     callReady: "Press Call and talk into the microphone.",
-    callTitle: "On a call",
     /** The stage's one word about the call, per state. */
     callIdle: "Not started",
     callConnecting: "Connecting…",
@@ -1391,7 +1396,7 @@ export const en: Strings = {
     callSpeaking: "Speaking…",
     callEnded: "Call ended",
     callEmpty: "Say something into the microphone.",
-    /** The two speakers, as the transcript prefixes them. */
+    /** The two speakers, as each bubble names its own for a screen reader. */
     callYou: "You",
     callPet: "Adelie",
     /** Appended to a reply that was talked over, so the turn reads as half a sentence. */

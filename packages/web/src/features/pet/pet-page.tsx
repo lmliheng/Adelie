@@ -61,6 +61,8 @@ import {
 import type { PetNotice } from "./pet-notice";
 import { DRAG_SLOP_PX, petStep, pupilShift } from "./pet-motion";
 import type { PetPoint } from "./pet-motion";
+import { PET_SIZE_PX, petPanelReservePx } from "./pet-size";
+import type { PetSize } from "./pet-size";
 import { CallStage } from "./voice/call-stage";
 import { usePetCall } from "./voice/use-pet-call";
 
@@ -75,10 +77,10 @@ const NOTICE_KEEP = 5;
  */
 const UPDATE_POLL_MS = 60_000;
 /**
- * How long a hop's class stays on. A little longer than the hop itself (520ms, styles.css): the
+ * How long a hop's class stays on. A little longer than the hop itself (680ms, styles.css): the
  * class is what starts it, and taking it off mid-flight would stop the pet in the air.
  */
-const HOP_MS = 620;
+const HOP_MS = 740;
 
 /**
  * One line of the panel: a muted label with its optional action on the first line, and the value
@@ -157,6 +159,30 @@ export function PetPage() {
   // "the pet" — it is the window's handle, its size and its animations either way.
   const [figure] = usePetFigure();
   const Figure = PET_FIGURE_VIEWS[figure];
+  // How big the shell draws the pet, read off its status push rather than guessed: the shell sizes
+  // its window from the same number, so the figure fills the room it was given. The shell resizes
+  // the window when the size changes and a window resize is the page's only signal for it, so the
+  // read runs again on every resize; a browser tab has no shell and keeps the size that shipped.
+  const [petSize, setPetSize] = useState<PetSize>("medium");
+  useEffect(() => {
+    if (!inShell) return;
+    let live = true;
+    const read = (): void => {
+      void api.getDesktopPet().then(
+        (res) => {
+          if (live && res.status?.size !== undefined) setPetSize(res.status.size);
+        },
+        () => {},
+      );
+    };
+    read();
+    window.addEventListener("resize", read);
+    return () => {
+      live = false;
+      window.removeEventListener("resize", read);
+    };
+  }, [inShell]);
+  const petPx = PET_SIZE_PX[petSize];
   const [notices, setNotices] = useState<readonly PetNotice[]>([]);
   const [bubble, setBubble] = useState<PetNotice | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -378,14 +404,19 @@ export function PetPage() {
   if (call.open) return <CallStage call={call} />;
 
   return (
-    <div className="pet-drag flex h-screen w-screen flex-col items-center justify-end gap-1 overflow-hidden bg-transparent p-1">
+    <div className="pet-drag pet-in flex h-screen w-screen flex-col items-center justify-end gap-1 overflow-hidden bg-transparent p-1">
       {panelOpen && (
         // `max-h` is the panel's floor, not its size: the shell sizes its window for these rows
         // (packages/desktop's PET_WINDOW_SIZE), and the 76px the panel may not take are the gap and
-        // the pet under it. Without it a row too many — a notice that wraps, a fifth row — grows
-        // the panel upward, and `justify-end` plus the window's `overflow-hidden` cuts its first
-        // row in half instead of showing it. With it, a panel that outgrows the window scrolls.
-        <div className="pet-no-drag max-h-[calc(100%-76px)] w-full space-y-1 overflow-y-auto rounded-lg border border-gray-200 bg-white/95 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/95">
+        // the pet under it — both of which grow with the pet, so the reserve is computed from the
+        // size the shell reported (pet-size.ts). Without it a row too many — a notice that wraps, a
+        // fifth row — grows the panel upward, and `justify-end` plus the window's `overflow-hidden`
+        // cuts its first row in half instead of showing it. With it, a panel that outgrows the
+        // window scrolls.
+        <div
+          className="pet-no-drag w-full space-y-1 overflow-y-auto rounded-lg border border-gray-200 bg-white/95 p-2 shadow-lg dark:border-gray-700 dark:bg-gray-900/95"
+          style={{ maxHeight: `calc(100% - ${petPanelReservePx(petPx)}px)` }}
+        >
           <Row
             label={S.pet.callRow}
             action={<PetButton label={S.pet.callOpen} onClick={call.start} />}
@@ -457,7 +488,8 @@ export function PetPage() {
         data-tooltip={S.pet.open}
         onClick={onPetClick}
         {...petDragProps}
-        className={`pet-no-drag block h-[72px] w-[72px] shrink-0 cursor-grab touch-none outline-none active:cursor-grabbing ${
+        style={{ width: petPx, height: petPx }}
+        className={`pet-no-drag block shrink-0 cursor-grab touch-none outline-none active:cursor-grabbing ${
           hopping ? "pet-hop" : "pet-bob"
         }`}
       >

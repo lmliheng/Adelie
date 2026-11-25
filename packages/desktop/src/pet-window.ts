@@ -49,6 +49,9 @@ export function petShotPath(mainShotPath: string): string {
  * the window cut the panel's first row in half, because `justify-end` sends the overflow up and
  * `overflow-hidden` hides it. The page also caps its own panel at the room left over, so a longer
  * notice scrolls rather than disappearing behind the window's top edge.
+ *
+ * This is the `medium` size — the one the pet shipped with — and {@link petWindowSize} grows the
+ * height from it for the two sizes beside it.
  */
 export const PET_WINDOW_SIZE = { width: 260, height: 300 } as const;
 
@@ -61,12 +64,45 @@ export const PET_WINDOW_SIZE = { width: 260, height: 300 } as const;
  */
 export const PET_CALL_WINDOW_SIZE = { width: 320, height: 420 } as const;
 
-/** The size a pet window takes: resting, or the call's stage while one is open. */
-export function petWindowSize(showCall: boolean): {
+/**
+ * The three sizes the pet is drawn at, from the Appearance row that picks one. `medium` is the
+ * size the pet shipped with, so an install that has never visited the row is not changed by it.
+ */
+export type PetSize = "small" | "medium" | "large";
+
+/** The sizes in the order the settings row offers them, smallest first. */
+export const PET_SIZES: readonly PetSize[] = ["small", "medium", "large"];
+
+/**
+ * The pet figure's own pixels, per size. The page draws the figure at exactly this (the Web App
+ * keeps the same three numbers in features/pet/pet-size.ts — the two have to move together, the
+ * shell sizing the window to fit and the page filling it).
+ */
+export const PET_PET_PX: Record<PetSize, number> = { small: 56, medium: 72, large: 96 };
+
+/** Whether a value off the wire is a size this build knows. */
+export function isPetSize(value: unknown): value is PetSize {
+  return value === "small" || value === "medium" || value === "large";
+}
+
+/**
+ * The resting window is the panel plus the pet under it, so its height follows the pet: the panel
+ * keeps the height it was measured at (see {@link PET_WINDOW_SIZE}) and the pet's own pixels are
+ * added on top of what `medium` already left room for. The width is unchanged — the panel's longest
+ * line, not the pet, is what sets it.
+ */
+export function petWindowSize(
+  showCall: boolean,
+  size: PetSize = "medium",
+): {
   width: number;
   height: number;
 } {
-  return showCall ? PET_CALL_WINDOW_SIZE : PET_WINDOW_SIZE;
+  if (showCall) return PET_CALL_WINDOW_SIZE;
+  return {
+    width: PET_WINDOW_SIZE.width,
+    height: PET_WINDOW_SIZE.height + PET_PET_PX[size] - PET_PET_PX.medium,
+  };
 }
 
 /** A window's rectangle, in Electron's shape. */

@@ -501,46 +501,83 @@ body.pet-body #root {
   background: transparent;
 }
 
-/* The pet's idle bob: a slow breathe in place, so it reads as alive rather than as an icon.
-   `prefers-reduced-motion` switches it off with everything else (the global block above), which
-   leaves the penguin standing still. */
+/* The pet's idle: a slow breathe in place, so it reads as alive rather than as an icon. The
+   figure rises a little, its weight shifts from one foot to the other (the slight tilt), and it
+   settles — three things on one clock rather than the one rise the pet started with, because a
+   companion that only goes up and down reads as a loading indicator. `prefers-reduced-motion`
+   switches it off with everything else (the global block above), which leaves the figure standing
+   still. */
 @keyframes pet-bob {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) rotate(0deg) scale(1, 1);
   }
-  50% {
-    transform: translateY(-3px) scale(1.02);
+  28% {
+    transform: translateY(-3px) rotate(-1.1deg) scale(0.99, 1.02);
+  }
+  54% {
+    transform: translateY(-1px) rotate(0deg) scale(1.02, 0.985);
+  }
+  78% {
+    transform: translateY(-2.5px) rotate(1.1deg) scale(0.995, 1.012);
   }
 }
 .pet-bob {
-  animation: pet-bob 3.6s ease-in-out infinite;
+  animation: pet-bob 4.6s ease-in-out infinite;
 }
 
 /* The hop: the pet's answer to a click and to a notice arriving, so a press says something even
    before the panel appears. The page swaps this in for `.pet-bob` for as long as it lasts
    (HOP_MS, pet-page.tsx) — one element, one animation, so the landing never fights the idle bob.
-   A hop is a jump with the weight in it: off the ground with a stretch, down with a squash, and a
-   small second bounce. */
+   A hop is a jump with the weight in it: it crouches first, stretches off the ground, squashes on
+   landing, and gives one small bounce before it is still. */
 @keyframes pet-hop {
   0% {
     transform: translateY(0) scale(1, 1);
   }
-  25% {
-    transform: translateY(-13px) scale(0.95, 1.06);
+  14% {
+    transform: translateY(1.5px) scale(1.06, 0.92);
   }
-  55% {
-    transform: translateY(0) scale(1.07, 0.93);
+  42% {
+    transform: translateY(-15px) scale(0.94, 1.08);
   }
-  80% {
-    transform: translateY(-3px) scale(0.99, 1.01);
+  64% {
+    transform: translateY(0) scale(1.08, 0.9);
+  }
+  82% {
+    transform: translateY(-4px) scale(0.99, 1.02);
+  }
+  93% {
+    transform: translateY(0) scale(1.03, 0.98);
   }
   100% {
     transform: translateY(0) scale(1, 1);
   }
 }
 .pet-hop {
-  animation: pet-hop 520ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  animation: pet-hop 680ms cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* Arriving: the pet window is created and shown in one go, and a figure that simply appears reads
+   as a paint rather than as the pet stepping out. One pop — up and in, a touch of overshoot, then
+   still — on whichever surface is being mounted (the resting page, or the call stage when the
+   window grows for it). */
+@keyframes pet-in {
+  0% {
+    transform: translateY(9px) scale(0.86);
+    opacity: 0;
+  }
+  62% {
+    transform: translateY(-2px) scale(1.03);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+.pet-in {
+  animation: pet-in 440ms cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 
 /* The eyes, the one part of the drawing that is not still: the pair blinks on its own slow cycle,
@@ -569,4 +606,73 @@ body.pet-body #root {
 }
 .pet-pupils {
   transform: translate(var(--pet-look-x, 0px), var(--pet-look-y, 0px));
+}
+
+/* ---------- The pet's call ---------- */
+
+/* The pet's avatar on the call stage (voice/call-stage.tsx): its figure in a round frame, and the
+   one part of that surface that moves on its own. While the pet is speaking it pulses with the
+   output level — `--pet-level` is written on the element by the stage on every audio frame, and it
+   is not tweened here for the same reason the meter's width is not: the level is a measurement,
+   not a beat. It is named for what it is (the pet speaking), not `pulse`: the `ui-live` hook is
+   the four components Appendix B names, and this is not one of them. */
+.pet-avatar[data-live="true"] {
+  animation: pet-avatar-speak 720ms ease-in-out infinite;
+}
+@keyframes pet-avatar-speak {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--ui-accent-muted);
+  }
+  50% {
+    transform: scale(calc(1 + var(--pet-level, 0.6) * 0.12));
+    box-shadow: 0 0 0 3px var(--ui-accent-muted);
+  }
+}
+
+/* A bubble arriving: the newest line slides up into the column rather than appearing under the
+   reader's eyes, so a call reads as a conversation even at the pace a transcript updates. On the
+   bubble alone, not on the avatar beside it — an avatar is not a line. */
+.pet-bubble {
+  animation: pet-bubble-in 220ms ease-out;
+}
+@keyframes pet-bubble-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Thinking: three dots in the pet's bubble, one after another, for as long as the reply is not
+   here yet. */
+.pet-thinking i {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: pet-dot 1.15s ease-in-out infinite;
+}
+.pet-thinking i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.pet-thinking i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+@keyframes pet-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
 }

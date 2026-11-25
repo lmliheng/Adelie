@@ -1057,6 +1057,10 @@ export const zh = {
     petFigure: "桌宠形象",
     petFigureInfo:
       "桌宠长什么样：经典企鹅、鲸鱼娘，或者你自己的图片。改完立即生效，不用重启，也不用重开桌宠窗口。",
+    /** Desktop shell only: how big the companion window draws the pet. */
+    petSize: "桌宠大小",
+    petSizeInfo:
+      "桌宠画多大：小、中、大。改完立即生效，桌宠窗口会跟着变大变小，不用重启，也不用重开桌宠窗口。",
     /** Desktop shell only: picking the picture the `picture` figure draws. */
     petPictureChoose: "选择图片",
     petPictureChange: "换一张",
@@ -1391,6 +1395,8 @@ export const zh = {
     hide: "隐藏桌宠",
     /** The figures the Appearance row offers, by name (features/pet/figures.ts draws each one). */
     figureNames: { penguin: "企鹅", whaleGirl: "鲸鱼娘", picture: "我的图片" },
+    /** The sizes the Appearance row offers, by name (features/pet/pet-size.ts). */
+    sizeNames: { small: "小", medium: "中", large: "大" },
     refresh: "刷新",
     balance: "模型余额",
     /** No balance is pinned to the account (see features/models/balance.ts). */
@@ -1429,7 +1435,6 @@ export const zh = {
     callOpen: "打电话",
     /** The panel row's own line when a call is possible. */
     callReady: "点「打电话」，对着麦克风聊天。",
-    callTitle: "通话中",
     /** The stage's one word about the call, per state. */
     callIdle: "还没开始",
     callConnecting: "正在接通…",
@@ -1438,7 +1443,7 @@ export const zh = {
     callSpeaking: "我在说…",
     callEnded: "通话已结束",
     callEmpty: "对着麦克风说句话试试。",
-    /** The two speakers, as the transcript prefixes them. */
+    /** The two speakers, as each bubble names its own for a screen reader. */
     callYou: "你",
     callPet: "Adelie",
     /** Appended to a reply that was talked over, so the turn reads as half a sentence. */

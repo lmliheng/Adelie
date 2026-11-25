@@ -287,6 +287,19 @@ export const ICONS = {
    */
   microphone:
     "M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zM19 11a7 7 0 0 1-14 0M12 18v3M9 21h6",
+  /**
+   * The same microphone with a slash across it: muted. The slash runs corner to corner for the
+   * reason `eyeOff`'s does — the open microphone is usually drawn beside it, and the slash is the
+   * only thing telling the two apart.
+   */
+  microphoneOff:
+    "M12 14a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3zM19 11a7 7 0 0 1-14 0M12 18v3M9 21h6M3 3l18 18",
+  /**
+   * A telephone handset (lucide phone): the receiver and the ear/mouth cups at its ends. A voice
+   * call, and — turned on its head by the caller — the one mark everyone reads as "end it".
+   */
+  phone:
+    "M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z",
   /** Three sliders set at different heights (feather sliders): how something behaves, adjustable. */
   sliders: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
   /** A four-pointed spark: effort and thought, the dial a model thinks harder on. */

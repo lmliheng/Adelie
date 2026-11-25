@@ -5412,6 +5412,9 @@ export interface DesktopTrayCommandMessage {
 // same origin, so it is signed in by the same cookie and reads everything the page reads —
 // there is no renderer IPC bridge, and no separately-served page.
 
+/** How big the shell draws the pet (pet-window.ts's PetSize). */
+export type DesktopPetSize = "small" | "medium" | "large";
+
 /** What the shell is currently doing about its pet window. */
 export interface DesktopPetStatus {
   /** The pet window is on screen (or about to be) while the shell runs. */
@@ -5422,18 +5425,24 @@ export interface DesktopPetStatus {
    * "no call" — the only honest reading when the window has no call to show.
    */
   call?: boolean;
+  /**
+   * How big the pet is drawn, and so how big the resting window is. Optional: a shell older
+   * than the size row pushes no such field, which reads as the size that shipped.
+   */
+  size?: DesktopPetSize;
 }
 
 /**
- * What one PUT asks the shell to change. `showPet` is a preference the shell persists; `call` is
- * not — it is the pet page saying a call has started or ended, so the shell resizes the window
- * for as long as the call lasts and nothing survives a restart. Unlike the tray patch beside it,
- * this one is transient in half its fields, which is why the route accepts either alone rather
- * than requiring the pair.
+ * What one PUT asks the shell to change. `showPet` and `size` are preferences the shell persists;
+ * `call` is not — it is the pet page saying a call has started or ended, so the shell resizes the
+ * window for as long as the call lasts and nothing survives a restart. Unlike the tray patch beside
+ * it, this one is transient in one of its fields, which is why the route accepts any of them alone
+ * rather than requiring a particular one.
  */
 export interface DesktopPetPatch {
   showPet?: boolean;
   call?: boolean;
+  size?: DesktopPetSize;
 }
 
 /**
@@ -5456,6 +5465,7 @@ export interface DesktopPetCommandMessage {
   type: "desktop-pet-command";
   showPet?: boolean;
   call?: boolean;
+  size?: DesktopPetSize;
 }
 
 // Windows login item (desktop mode, Windows only)

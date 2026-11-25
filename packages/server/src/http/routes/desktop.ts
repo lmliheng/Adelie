@@ -182,10 +182,10 @@ export function desktopTrayRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
 /**
  * The pet-window preference. GET reads what the shell last pushed — null until that first push,
  * which the page reads as off, the shell's own default. PUT relays a patch: the Settings switch,
- * the pet window hiding itself, or the pet page saying a call has started or ended. All of them
- * mean the same thing to the shell — it applies the field and pushes the new state straight back —
- * so the answer here is an acknowledgement and the GET is what tells the truth. Like the relays
- * above, the members are optional on a layer older than the pet.
+ * the Settings size, the pet window hiding itself, or the pet page saying a call has started or
+ * ended. All of them mean the same thing to the shell — it applies the field and pushes the new
+ * state straight back — so the answer here is an acknowledgement and the GET is what tells the
+ * truth. Like the relays above, the members are optional on a layer older than the pet.
  */
 export function desktopPetRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
   const app = new Hono<AppEnv>();
@@ -202,6 +202,7 @@ export function desktopPetRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
     const body = (await c.req.json().catch(() => null)) as {
       showPet?: unknown;
       call?: unknown;
+      size?: unknown;
     } | null;
     const patch: DesktopPetPatch = {};
     for (const field of ["showPet", "call"] as const) {
@@ -216,9 +217,16 @@ export function desktopPetRoutes(deps: DesktopRouteDeps): Hono<AppEnv> {
       }
       patch[field] = value;
     }
+    if (body?.size !== undefined) {
+      const size = body.size;
+      if (size !== "small" && size !== "medium" && size !== "large") {
+        throw new HttpError(400, "invalid_pet_size", 'size must be "small", "medium" or "large".');
+      }
+      patch.size = size;
+    }
     // An empty patch is a caller bug, not a no-op worth relaying to the shell.
-    if (patch.showPet === undefined && patch.call === undefined) {
-      throw new HttpError(400, "empty_pet_patch", "Pass showPet or call.");
+    if (patch.showPet === undefined && patch.call === undefined && patch.size === undefined) {
+      throw new HttpError(400, "empty_pet_patch", "Pass showPet, call or size.");
     }
     if (!desktop.requestPetCommand?.(patch)) {
       throw new HttpError(503, "shell_unreachable", "The desktop shell is not listening.");

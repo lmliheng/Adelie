@@ -87,6 +87,21 @@ describe("PUT /api/desktop/pet", () => {
     }
   });
 
+  it("forwards the size to the shell as well, on its own", async () => {
+    const t = await createDesktopApp();
+    try {
+      const cookie = await desktopLoginCookie(t.app);
+      const sent: DesktopPetPatch[] = [];
+      t.deps.desktop!.onPetCommand((patch) => sent.push(patch));
+
+      const res = await t.app.request("/api/desktop/pet", put(cookie, '{"size":"large"}'));
+      expect(res.status).toBe(202);
+      expect(sent).toEqual([{ size: "large" }]);
+    } finally {
+      await t.cleanup();
+    }
+  });
+
   it("refuses a field it cannot read, and a request that asks for nothing", async () => {
     const t = await createDesktopApp();
     try {
@@ -96,6 +111,8 @@ describe("PUT /api/desktop/pet", () => {
       const cases: Array<[string, string]> = [
         ['{"showPet":"yes"}', "invalid_show_pet"],
         ['{"showPet":1}', "invalid_show_pet"],
+        ['{"size":"huge"}', "invalid_pet_size"],
+        ['{"size":72}', "invalid_pet_size"],
         // Nothing to do is a caller bug, not a no-op worth waking the shell for. An
         // unparseable body lands here too: it asks for nothing this route understands.
         ["{}", "empty_pet_patch"],
@@ -137,7 +154,15 @@ describe("the pet half of the shell port", () => {
     expect(
       parsePetStatusMessage({ type: "desktop-pet-status", status: { showPet: true } }),
     ).toEqual({ showPet: true });
-    // A push carrying more than this build knows about still reads as what it says.
+    // The call flag and the size ride the same push; both are carried when the shell sends them.
+    expect(
+      parsePetStatusMessage({
+        type: "desktop-pet-status",
+        status: { showPet: true, call: true, size: "large" },
+      }),
+    ).toEqual({ showPet: true, call: true, size: "large" });
+    // A field this build cannot read is dropped on its own, leaving the switch it can: a push
+    // carrying something unexpected still reads as what it says.
     expect(
       parsePetStatusMessage({
         type: "desktop-pet-status",

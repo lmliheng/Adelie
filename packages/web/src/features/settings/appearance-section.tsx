@@ -53,6 +53,8 @@ import { S } from "../../lib/strings";
 import * as api from "../../api/endpoints";
 import { isDesktopShellWindow } from "../../lib/account-menu";
 import { PET_FIGURES, writePetPicture } from "../../lib/pet-figure";
+import { PET_SIZES } from "../pet/pet-size";
+import type { PetSize } from "../pet/pet-size";
 import { pictureDataUrlFromFile } from "../../lib/pet-picture";
 import { usePetFigure, usePetPicture } from "../../lib/use-pet-figure";
 import {
@@ -359,13 +361,18 @@ export function AppearanceSection() {
   // The pet window, read the same way and from the shell's own default the other way round: the
   // pet is off unless something says otherwise, so an answer that has not arrived yet reads as
   // off — the row must not claim a penguin is on the desktop when there is none.
+  // The pet window's size, read the same way and from the shell's own default: the size that
+  // shipped (`medium`), so a shell that has not told us yet is not shown as something else.
+  const [petSize, setPetSize] = useState<PetSize>("medium");
   const [showPet, setShowPet] = useState(false);
   useEffect(() => {
     if (!offersShellChrome) return;
     let live = true;
     void api.getDesktopPet().then(
       (res) => {
-        if (live) setShowPet(res.status?.showPet ?? false);
+        if (!live) return;
+        setShowPet(res.status?.showPet ?? false);
+        setPetSize(res.status?.size ?? "medium");
       },
       () => {},
     );
@@ -376,6 +383,13 @@ export function AppearanceSection() {
   const changeShowPet = (next: boolean): void => {
     setShowPet(next);
     void api.setDesktopPet({ showPet: next }).catch(() => setShowPet(!next));
+  };
+  // Optimistic like the switch: the row answers the click, and a refused write snaps it back rather
+  // than leaving the row showing a size the pet is not drawn at.
+  const changePetSize = (next: PetSize): void => {
+    const previous = petSize;
+    setPetSize(next);
+    void api.setDesktopPet({ size: next }).catch(() => setPetSize(previous));
   };
 
   // Starting at sign-in. This one has no default to fall back on, so `null` — nothing read yet,
@@ -573,6 +587,22 @@ export function AppearanceSection() {
               <p className="text-xs text-red-600 dark:text-red-400">{petPictureError}</p>
             )}
           </div>
+        </PrefRow>
+      )}
+      {offersShellChrome && (
+        <PrefRow
+          label={S.settings.petSize}
+          info={S.settings.petSizeInfo}
+          // The shell owns this one too, so it is read from the same fetch as the switch above and
+          // written back through the same patch — the size goes to the shell, which redraws its
+          // window, and the page's own figure follows the window it is given.
+        >
+          <Segmented
+            options={PET_SIZES.map((id) => ({ value: id, label: S.pet.sizeNames[id] }))}
+            value={petSize}
+            onChange={changePetSize}
+            cols={3}
+          />
         </PrefRow>
       )}
     </div>

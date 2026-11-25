@@ -135,6 +135,7 @@ import {
   petWindowSize,
   petWindowUrl,
 } from "./pet-window.js";
+import type { PetSize } from "./pet-window.js";
 import { getUpdaterStatus, handleUpdaterCommand, initUpdater, onUpdaterStatus } from "./updater.js";
 import { parseUpdaterCommand, updaterStatusMessage } from "./updater-status.js";
 import {
@@ -183,6 +184,11 @@ let showPet = false;
  * so it starts false on every launch and returns to false when the window goes.
  */
 let petCall = false;
+/**
+ * How big the pet is drawn, from the Appearance row (pet-window.ts's PetSize). It IS a
+ * preference: it decides the resting window's size, and it is read back at the next launch.
+ */
+let petSize: PetSize = "medium";
 /**
  * The language the tray menu is drawn in. Seeded from the stored report, or from the device
  * when there is none, so the first menu of a fresh launch is already right — the Web App's
@@ -669,8 +675,8 @@ function openPet(): void {
       : screen.getPrimaryDisplay();
   const pet = new BrowserWindow({
     ...PET_WINDOW_OPTIONS,
-    ...petWindowSize(petCall),
-    ...petWindowPosition(display.workArea, petWindowSize(petCall)),
+    ...petWindowSize(petCall, petSize),
+    ...petWindowPosition(display.workArea, petWindowSize(petCall, petSize)),
   });
   petWin = pet;
   // Chrome, not a browsing surface: it opens no window, and a navigation that leaves the app
@@ -726,7 +732,24 @@ function setShowPet(next: boolean): void {
 
 /** Tells the page what the pet window is actually doing, which is what its switch renders. */
 function pushPetStatus(): void {
-  relayChild?.postMessage(petStatusMessage(showPet, petCall));
+  relayChild?.postMessage(petStatusMessage(showPet, petCall, petSize));
+}
+
+/**
+ * Applies Settings › Appearance's pet size: the window is resized in place (bottom-right corner
+ * kept) and the page draws the figure at the new size it reads back off the status push. Persisted
+ * like the switch beside it, so the next launch opens at the size that was chosen.
+ */
+function setPetSize(next: PetSize): void {
+  if (next === petSize) return;
+  petSize = next;
+  try {
+    updatePetPrefs(app.getPath("userData"), { size: next });
+  } catch (err) {
+    logLine(`[shell] the pet size could not be saved: ${String(err)}`);
+  }
+  applyPetSize();
+  pushPetStatus();
 }
 
 /**
@@ -751,7 +774,9 @@ function applyPetSize(): void {
   const pet = petWin;
   if (pet === null || pet.isDestroyed()) return;
   const display = screen.getDisplayMatching(pet.getBounds());
-  pet.setBounds(petResizedBounds(pet.getBounds(), petWindowSize(petCall), display.workArea));
+  pet.setBounds(
+    petResizedBounds(pet.getBounds(), petWindowSize(petCall, petSize), display.workArea),
+  );
 }
 
 // --- the Windows login item -------------------------------------------------
@@ -830,6 +855,7 @@ function wireShellRelay(child: EmbeddedServer["child"]): void {
     if (pet !== null) {
       if (pet.showPet !== undefined) setShowPet(pet.showPet);
       if (pet.call !== undefined) setPetCall(pet.call);
+      if (pet.size !== undefined) setPetSize(pet.size);
     }
     const loginItem = parseLoginItemCommand(message);
     if (loginItem !== null && loginItem.openAtLogin !== undefined) {
@@ -1079,7 +1105,9 @@ if (!app.requestSingleInstanceLock()) {
       if (startHidden) logLine("[shell] started by the sign-in entry; waiting in the tray");
       // The pet's preference, read before boot for the same reason: the window it decides about
       // is opened by the main window's first load, which boot is what starts.
-      showPet = readPetPrefs(app.getPath("userData")).showPet;
+      const petPrefs = readPetPrefs(app.getPath("userData"));
+      showPet = petPrefs.showPet;
+      petSize = petPrefs.size;
       initUpdater(() => win);
       await boot();
       // Install or repair the bundled 'penguin' command. Runs every launch: that is what

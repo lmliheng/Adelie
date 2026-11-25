@@ -106,12 +106,14 @@ export function parsePetStatusMessage(data: unknown): DesktopPetStatus | null {
   const status = msg.status as Partial<DesktopPetStatus> | undefined;
   if (typeof status !== "object" || status === null) return null;
   if (typeof status.showPet !== "boolean") return null;
-  // The call flag is carried only when the shell had one to say: a shell older than the call
-  // feature pushes the switch alone, and reading that as "no call" is what keeps its window
-  // working rather than rejected.
-  return typeof status.call === "boolean"
-    ? { showPet: status.showPet, call: status.call }
-    : { showPet: status.showPet };
+  // The optional fields are carried only when the shell had something this build understands:
+  // a shell older than the call feature or the size row pushes the switch alone, and reading that
+  // as "no call" and the size that shipped is what keeps its window working rather than rejected.
+  const pet: DesktopPetStatus = { showPet: status.showPet };
+  if (typeof status.call === "boolean") pet.call = status.call;
+  const size = status.size;
+  if (size === "small" || size === "medium" || size === "large") pet.size = size;
+  return pet;
 }
 
 /** Validates one shell login-item push. Same rule as the tray's: strict on the discriminator and on every field it carries. */

@@ -11,9 +11,12 @@ import { describe, expect, it } from "vitest";
 import {
   PET_CALL_WINDOW_SIZE,
   PET_PAGE_PATH,
+  PET_PET_PX,
+  PET_SIZES,
   PET_WINDOW_MARGIN,
   PET_WINDOW_OPTIONS,
   PET_WINDOW_SIZE,
+  isPetSize,
   petResizedBounds,
   petShotPath,
   petWindowPosition,
@@ -79,6 +82,34 @@ describe("petWindowSize", () => {
     // The stage has to have room for a transcript column, which the resting window does not.
     expect(PET_CALL_WINDOW_SIZE.width).toBeGreaterThan(PET_WINDOW_SIZE.width);
     expect(PET_CALL_WINDOW_SIZE.height).toBeGreaterThan(PET_WINDOW_SIZE.height);
+  });
+
+  it("grows the resting window with the pet, and leaves the call's size alone", () => {
+    // The width is the panel's, not the pet's: it does not move with the size.
+    for (const size of PET_SIZES) {
+      expect(petWindowSize(false, size).width).toBe(PET_WINDOW_SIZE.width);
+    }
+    // The height gains exactly what the pet gained over the medium it was measured with.
+    expect(petWindowSize(false, "medium")).toEqual(PET_WINDOW_SIZE);
+    expect(petWindowSize(false, "small").height).toBe(
+      PET_WINDOW_SIZE.height - (PET_PET_PX.medium - PET_PET_PX.small),
+    );
+    expect(petWindowSize(false, "large").height).toBe(
+      PET_WINDOW_SIZE.height + (PET_PET_PX.large - PET_PET_PX.medium),
+    );
+    // A call is a surface with its own size; the pet's size does not touch it.
+    expect(petWindowSize(true, "large")).toEqual(PET_CALL_WINDOW_SIZE);
+    expect(petWindowSize(true, "small")).toEqual(PET_CALL_WINDOW_SIZE);
+  });
+});
+
+describe("isPetSize", () => {
+  it("knows the three sizes and nothing else", () => {
+    expect(PET_SIZES).toEqual(["small", "medium", "large"]);
+    for (const size of PET_SIZES) expect(isPetSize(size)).toBe(true);
+    for (const value of ["big", "Medium", "", 72, null, undefined, {}]) {
+      expect(isPetSize(value), String(value)).toBe(false);
+    }
   });
 });
 
