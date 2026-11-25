@@ -410,6 +410,19 @@ export function PluginsPage() {
   } | null>(null);
 
   /**
+   * Which of a card's own dialogs is open — its install list, its detail, its delete
+   * confirmation — and for which plugin. It lives here rather than in the card for the reason
+   * the install refusal above does: the card is refiled into the other section the moment the
+   * install snapshot lands (splitPluginRows; the page starts with an empty snapshot), so a
+   * dialog held in the card instance closed itself under the reader if that read arrived after
+   * the click. One at a time is enough: they are modal, so the page behind them is not reachable
+   * while one is up.
+   */
+  const [cardDialog, setCardDialog] = useState<{ plugin: string; kind: CardDialogKind } | null>(
+    null,
+  );
+
+  /**
    * The server's words for the last "add to the library" it refused, and the row they belong to.
    * It has to outlive a toast: the write changed nothing, so that row is still on the shelf with
    * the same button, and the sentence belongs in it (library-add-refusal.ts).
@@ -915,6 +928,8 @@ export function PluginsPage() {
       marketSpecifier={marketEntryFor(row.plugin, index ?? [])?.name ?? null}
       canDelete={isAdmin}
       installRefusal={installRefusalFor(installRefusal, row.plugin.name)}
+      dialog={cardDialog?.plugin === row.plugin.name ? cardDialog.kind : null}
+      onDialog={(kind) => setCardDialog(kind === null ? null : { plugin: row.plugin.name, kind })}
       onQuickInvoke={quickInvoke}
       onToggleInstall={toggleInstall}
       onUpdateOutdated={updateOutdated}
@@ -1760,6 +1775,13 @@ function PluginDirectoryLine({
   );
 }
 
+/**
+ * The dialogs a plugin card opens itself, named by what they show. The page holds which one is
+ * open (see its `cardDialog` state) so that refiling the card between the two sections does not
+ * take an open dialog with it.
+ */
+type CardDialogKind = "installs" | "detail" | "delete";
+
 /** A single plugin card: metadata display (contents badges + a semantic metadata line) + update reminder + quick start + "manage installs" Modal. */
 function PluginCard({
   plugin,
@@ -1768,6 +1790,8 @@ function PluginCard({
   marketSpecifier,
   canDelete,
   installRefusal,
+  dialog,
+  onDialog,
   onQuickInvoke,
   onToggleInstall,
   onUpdateOutdated,
@@ -1789,6 +1813,14 @@ function PluginCard({
    * sentence held here would go with the instance that sent it. Undefined when there is none.
    */
   installRefusal?: string;
+  /**
+   * Which of this card's own dialogs is open, as the page holds it (null = none). Same reason as
+   * the refusal above: the card is refiled when the install snapshot lands, so the dialog cannot
+   * live in the instance that opened it.
+   */
+  dialog: CardDialogKind | null;
+  /** Open or close one of them; null closes whichever is open. */
+  onDialog: (kind: CardDialogKind | null) => void;
   onQuickInvoke: (skillName: string) => void;
   onToggleInstall: (agentId: string, plugin: PluginItem, on: boolean) => Promise<WriteOutcome>;
   onUpdateOutdated: (name: string, agentIds: string[]) => Promise<WriteOutcome>;
@@ -1797,15 +1829,12 @@ function PluginCard({
 }) {
   const { locale } = useLocale();
   const { agents, currentAgent } = useProject();
-  const [installOpen, setInstallOpen] = useState(false);
   // Agents pending an update confirmation (null = none): an update is an overwriting reinstall, so it needs a confirm + a per-agent version list before it runs.
   const [pendingUpdate, setPendingUpdate] = useState<string[] | null>(null);
   const [updating, setUpdating] = useState(false);
   // Agent pending an uninstall confirmation (null = none): uninstalling deletes the installed files, local edits included.
   const [pendingUninstall, setPendingUninstall] = useState<string | null>(null);
   const [uninstalling, setUninstalling] = useState(false);
-  // Whether this card's delete confirmation is open: deleting a user plugin removes its directory from disk, so it confirms first, like the uninstall above.
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   /**
    * The server's words for the last write each of this card's three confirmations asked for and
@@ -1836,8 +1865,20 @@ function PluginCard({
     setUninstallRefusal(null);
   };
   const askDelete = () => {
-    setDeleteOpen(true);
+    onDialog("delete");
     setDeleteRefusal(null);
+  };
+  /**
+   * A write from a row closes the install list when it moves the Agent the page works with — the
+   * only one whose state decides which section this card is filed in. That refile used to close
+   * the list on its way, because it unmounted the card; the list is held on the page now (see
+   * `dialog`), so it is closed here for that case alone. A write aimed at another Agent leaves the
+   * card where it is and the list stays open — installing onto a second Agent is one of the things
+   * this list is for. The current Agent's write closes on the answer either way, because a refused
+   * install's reason is drawn under the card (install-refusal.ts) and this list would sit over it.
+   */
+  const closeAfterWrite = (agentId: string) => {
+    if (agentId === currentAgent?.agentId) onDialog(null);
   };
 
   /**
@@ -1858,18 +1899,21 @@ function PluginCard({
 
   const confirmUninstall = async () => {
     if (pendingUninstall === null) return;
+    const agentId = pendingUninstall;
     setUninstalling(true);
-    const outcome = await onToggleInstall(pendingUninstall, plugin, false);
+    const outcome = await onToggleInstall(agentId, plugin, false);
     setUninstalling(false);
-    if (outcome.ok) setPendingUninstall(null);
-    else setUninstallRefusal(outcome.reason);
+    if (outcome.ok) {
+      setPendingUninstall(null);
+      closeAfterWrite(agentId);
+    } else setUninstallRefusal(outcome.reason);
   };
 
   const confirmDelete = async () => {
     setDeleting(true);
     const outcome = await onDelete(plugin);
     setDeleting(false);
-    if (outcome.ok) setDeleteOpen(false);
+    if (outcome.ok) onDialog(null);
     else setDeleteRefusal(outcome.reason);
   };
 
@@ -1921,7 +1965,6 @@ function PluginCard({
 
   // The card's detail Modal (the model library's card pattern): what the plugin ships,
   // with a per-skill SKILL.md reader.
-  const [detailOpen, setDetailOpen] = useState(false);
   // Short description takes priority, falling back to the full description
   // when missing (per UI language); title carries the full description for hover reading.
   const description = localizedShortText(locale, plugin);
@@ -1943,7 +1986,7 @@ function PluginCard({
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onClick={() => setDetailOpen(true)}
+          onClick={() => onDialog("detail")}
           className="min-w-0 flex-1 text-left"
         >
           {/* Header: the plugin icon centered across the two text rows (rounded tile in the plugin's
@@ -2007,12 +2050,12 @@ function PluginCard({
             )}
           </div>
         </button>
-        {detailOpen && (
+        {dialog === "detail" && (
           <PluginDetailModal
             plugin={plugin}
             meta={meta}
             marketSpecifier={marketSpecifier}
-            onClose={() => setDetailOpen(false)}
+            onClose={() => onDialog(null)}
           />
         )}
         {/* Actions: equal-square light icon buttons in a single row, vertically centered at the
@@ -2086,7 +2129,7 @@ function PluginCard({
             className="h-8 w-8 shrink-0 justify-center p-0"
             aria-label={`${S.skills.manageInstall} ${plugin.name}`}
             title={S.skills.manageInstall}
-            onClick={() => setInstallOpen(true)}
+            onClick={() => onDialog("installs")}
           >
             <GlyphIcon d={INSTALL_ICON} size={ICON_SIZE.iconButton} />
           </Button>
@@ -2149,12 +2192,8 @@ function PluginCard({
           {exportRefusal}
         </p>
       )}
-      {installOpen && (
-        <Modal
-          open
-          title={S.skills.manageInstallTitle(plugin.name)}
-          onClose={() => setInstallOpen(false)}
-        >
+      {dialog === "installs" && (
+        <Modal open title={S.skills.manageInstallTitle(plugin.name)} onClose={() => onDialog(null)}>
           <div className="space-y-1">
             {agents.length === 0 && (
               <p className="py-1.5 text-xs text-gray-400">{S.common.loading}</p>
@@ -2168,7 +2207,11 @@ function PluginCard({
                 outdated={outdated.includes(a.agentId)}
                 onToggle={(on) => {
                   // Install runs directly; uninstall deletes the installed files, so it confirms first.
-                  if (on) void onToggleInstall(a.agentId, plugin, true);
+                  // A write that moves the current Agent closes this list (see closeAfterWrite).
+                  if (on)
+                    void onToggleInstall(a.agentId, plugin, true).then(() =>
+                      closeAfterWrite(a.agentId),
+                    );
                   else askUninstall(a.agentId);
                 }}
                 onUpdate={() => askUpdate([a.agentId])}
@@ -2234,14 +2277,14 @@ function PluginCard({
       )}
       {/* Delete confirmation: unlike an uninstall, this takes the plugin's directory — and with
           it every skill and hook it ships — off the machine, so it asks first and says so. */}
-      {deleteOpen && (
+      {dialog === "delete" && (
         <ConfirmModal
           open
           title={S.plugins.deleteConfirmTitle(plugin.name)}
           confirmLabel={S.plugins.deletePluginAction}
           cancelLabel={S.common.cancel}
           busy={deleting}
-          onClose={() => setDeleteOpen(false)}
+          onClose={() => onDialog(null)}
           onConfirm={() => void confirmDelete()}
           refusal={deleteRefusal === null ? undefined : S.common.refused(deleteRefusal)}
         >
