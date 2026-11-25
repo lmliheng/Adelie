@@ -16,6 +16,9 @@
  * - `dist/icon.png`, `dist/tray/*.png` — the runtime window and tray icons, read
  *   app-path-relative (see src/app-icon.ts). build/ is electron-builder's buildResources
  *   directory and does not ship inside the app.
+ * - `dist/tray-menu-preload.cjs` — the tray menu window's bridge, copied verbatim: Electron
+ *   loads a sandboxed preload as plain CommonJS, so it cannot be one of the bundled entries
+ *   above (see src/tray-menu-window.ts).
  * - `bin/penguin`, `bin/penguin.cmd` — the CLI launchers, whose script text lives in
  *   src/launcher.ts so it is unit-tested with the rest of the shell.
  * - `dist/install.sh`, `dist/install.ps1` — the release installers, which the Machines page
@@ -88,6 +91,16 @@ for (const name of trayIcons) {
   fs.copyFileSync(path.join(traySrcDir, name), path.join(trayDistDir, name));
 }
 
+// The tray menu's preload bridge (src/tray-menu-window.ts resolves it, and tray.ts falls back to
+// the native menu when it is absent). Copied rather than bundled: a sandboxed preload is loaded
+// as plain CJS, and this package's bundles are ESM.
+const trayMenuPreloadSrc = path.join(pkgDir, "src", "tray-menu-preload.cjs");
+if (!fs.existsSync(trayMenuPreloadSrc)) {
+  console.error("[build-assets] src/tray-menu-preload.cjs is missing from the package.");
+  process.exit(1);
+}
+fs.copyFileSync(trayMenuPreloadSrc, path.join(distDir, "tray-menu-preload.cjs"));
+
 // node-pty, resolved from the package that depends on it: under pnpm it is installed into
 // packages/server/node_modules, out of reach of any lookup anchored in this package.
 const serverRequire = createRequire(path.resolve(pkgDir, "..", "server", "package.json"));
@@ -137,5 +150,5 @@ fs.chmodSync(path.join(binDir, "penguin"), 0o755);
 fs.writeFileSync(path.join(binDir, "penguin.cmd"), windowsLauncherScript());
 
 console.log(
-  `[build-assets] done: plugins/ (${builtPlugins.plugins.length} builtin plugins), dist/icon.png, dist/tray/ (${trayIcons.length} icons), dist/install.{sh,ps1}, bin/, ${NODE_PTY_RELDIR.join("/")} (${ptyFiles.length} files, bindings: ${bindings.join(", ")})`,
+  `[build-assets] done: plugins/ (${builtPlugins.plugins.length} builtin plugins), dist/icon.png, dist/tray/ (${trayIcons.length} icons), dist/tray-menu-preload.cjs, dist/install.{sh,ps1}, bin/, ${NODE_PTY_RELDIR.join("/")} (${ptyFiles.length} files, bindings: ${bindings.join(", ")})`,
 );

@@ -1,13 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import {
-  TRAY_LABELS,
-  TRAY_NAV_PATHS,
-  resolveTrayLocale,
-  trayMenuTemplate,
-} from "../src/tray-menu.js";
+import { TRAY_LABELS, resolveTrayLocale, trayMenuTemplate } from "../src/tray-menu.js";
 import type { TrayLocale } from "../src/tray-menu.js";
 
 describe("trayMenuTemplate", () => {
@@ -20,11 +12,9 @@ describe("trayMenuTemplate", () => {
     expect(template.map((item) => item.action ?? item.type)).toEqual([
       "open",
       "separator",
-      "new-session",
-      "models",
-      "separator",
       "toggle-close-to-tray",
       "separator",
+      "restart",
       "quit",
     ]);
   });
@@ -52,21 +42,11 @@ describe("trayMenuTemplate", () => {
     }
   });
 
-  it("navigates inside the window, so every destination is an app-origin path", () => {
-    for (const target of Object.values(TRAY_NAV_PATHS)) expect(target.startsWith("/")).toBe(true);
-  });
-
-  it("opens a draft for New Session, not the last conversation", () => {
-    // `/chat` with no session in the path redirects to the most recent conversation, so the
-    // entry has to name the Web App's draft sentinel. This package cannot import it — it does
-    // not depend on the Web App — so the literal is checked against the source that owns it.
-    const chatPage = readFileSync(
-      resolve(dirname(fileURLToPath(import.meta.url)), "../../web/src/features/chat/chat-page.tsx"),
-      "utf8",
+  it("restarts the app", () => {
+    const item = trayMenuTemplate({ appName: "Adelie", closeToTray: true, locale: "en" }).find(
+      (entry) => entry.action === "restart",
     );
-    const draftId = /export const DRAFT_SESSION_ID = "([^"]+)"/.exec(chatPage)?.[1];
-    expect(draftId, "DRAFT_SESSION_ID moved or was renamed in the Web App").toBeDefined();
-    expect(TRAY_NAV_PATHS["new-session"]).toBe(`/chat/${draftId}`);
+    expect(item).toEqual({ action: "restart", label: TRAY_LABELS.en.restart });
   });
 
   it("draws every entry in the language it is given", () => {
@@ -77,11 +57,9 @@ describe("trayMenuTemplate", () => {
     expect(zh.map((i) => i.label)).toEqual([
       "打开 Adelie",
       undefined,
-      "新建会话",
-      "模型",
-      undefined,
       "关闭窗口后继续在托盘中运行",
       undefined,
+      "重启",
       "退出",
     ]);
     // The app name is a proper noun and survives translation.

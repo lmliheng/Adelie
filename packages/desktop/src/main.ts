@@ -112,6 +112,7 @@ import { startEmbeddedServer, stopEmbeddedServer } from "./server-process.js";
 import type { EmbeddedServer } from "./server-process.js";
 import { resolveTrayLocale } from "./tray-menu.js";
 import type { TrayLocale } from "./tray-menu.js";
+import { resolveTrayMenuPreload } from "./tray-menu-window.js";
 import { installTray } from "./tray.js";
 import type { TrayHandle } from "./tray.js";
 import {
@@ -480,24 +481,15 @@ function showMainWindow(): void {
 }
 
 /**
- * Tray navigation. The window is a plain browser, so a destination is just a URL to load —
- * no IPC channel into the Web App. Before boot resolves an origin there is nowhere to go, and
- * showing the window is the whole action. A window that has to be created starts on the
- * destination rather than on the app root: loading `/` first would boot the whole Web App
- * only to abort it a tick later, with the aborted load's rejection going unhandled.
+ * The tray's Restart: a fresh process takes over as this one exits, for the times only a
+ * clean start helps — a wedged window, a server the shell stopped listening to. `relaunch`
+ * reuses this process's own arguments, so a `--dev` (or smoke-test) launch comes back the
+ * same way, and the graceful stop in before-quit still runs: it holds this quit back, not
+ * the relaunch already queued behind it.
  */
-function navigateMainWindow(target: string): void {
-  if (appOrigin === null) {
-    showMainWindow();
-    return;
-  }
-  const url = `${appOrigin}${target}`;
-  if (win === null) {
-    createWindow(url);
-    return;
-  }
-  showMainWindow();
-  void win.loadURL(url);
+function restartApp(): void {
+  app.relaunch();
+  app.quit();
 }
 
 // --- signing the window in -------------------------------------------------
@@ -597,10 +589,11 @@ function openTray(): void {
   tray = installTray({
     userDataDir: app.getPath("userData"),
     iconPath: resolveTrayIcon(app.getAppPath(), process.platform),
+    preloadPath: resolveTrayMenuPreload(app.getAppPath()),
     appName: app.name,
     locale: trayLocale,
     onShowWindow: showMainWindow,
-    onNavigate: navigateMainWindow,
+    onRestart: restartApp,
     onQuit: () => app.quit(),
     log: (line) => logLine(`[shell] ${line}`),
   });
@@ -1088,9 +1081,8 @@ if (!app.requestSingleInstanceLock()) {
         onInstallCli: () => void installCliCommand(win),
       });
       // Before boot, and whatever the window is doing: the icon is there for as long as the
-      // app runs. Its menu's navigation entries tolerate an origin that is not resolved yet,
-      // and the close-to-tray preference has to be in hand before the first window close can
-      // happen.
+      // app runs. None of its entries needs the Web App, and the close-to-tray preference has
+      // to be in hand before the first window close can happen.
       const trayPrefs = readTrayPrefs(app.getPath("userData"));
       showTrayIcon = trayPrefs.showTrayIcon;
       // Nothing has reported a language yet on a first launch, so the device decides — the

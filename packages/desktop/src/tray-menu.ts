@@ -3,18 +3,29 @@
  * into a native menu and binds the actions.
  *
  * The entries are deliberately few: the window is the product, and the tray is the way back
- * to it. The two navigation entries are ordinary in-window URL loads, so the window stays a
- * plain browser and the shell gains no channel into the Web App.
+ * to it. Restart and quit are process-level actions, so the window stays a plain browser and
+ * the shell gains no channel into the Web App.
  *
  * The labels are written twice here rather than read from the Web App's catalogs: the shell
  * is a separate process that starts before any page is loaded and must draw a menu whether or
  * not one ever is, and it cannot import from `packages/web` — nothing in this package depends
- * on it. Six strings is the whole surface, and the type below makes a missing translation a
+ * on it. Four strings is the whole surface, and the type below makes a missing translation a
  * compile error rather than a menu that silently falls back to English.
  */
 
 /** What a menu entry does when it is clicked. */
-export type TrayAction = "open" | "new-session" | "models" | "toggle-close-to-tray" | "quit";
+export type TrayAction = "open" | "toggle-close-to-tray" | "restart" | "quit";
+
+/**
+ * Whether a value off the wire names an action this build knows. The custom menu window reports
+ * its clicks as strings (see tray-menu-window.ts), and an action nothing binds is dropped rather
+ * than performed.
+ */
+export function isTrayAction(value: unknown): value is TrayAction {
+  return (
+    value === "open" || value === "toggle-close-to-tray" || value === "restart" || value === "quit"
+  );
+}
 
 export interface TrayMenuItem {
   action?: TrayAction;
@@ -23,46 +34,29 @@ export interface TrayMenuItem {
   checked?: boolean;
 }
 
-/**
- * In-window destinations of the navigation entries, relative to the app origin.
- *
- * "New Session" is the draft route and not `/chat`: the chat page with no session in the path
- * redirects to the most recent conversation, so a bare `/chat` reopens the last session rather
- * than starting one. `new` is the Web App's draft sentinel (`DRAFT_SESSION_ID` in
- * features/chat/chat-page.tsx), repeated here because this package does not depend on the Web
- * App — the test pins the two together.
- */
-export const TRAY_NAV_PATHS: Record<"new-session" | "models", string> = {
-  "new-session": "/chat/new",
-  models: "/models",
-};
-
 /** The two languages the Web App has, which the tray follows. */
 export type TrayLocale = "zh" | "en";
 
 /** One language's menu wording. `open` takes the app name, which carries a dev suffix unpackaged. */
 interface TrayLabels {
   open: (appName: string) => string;
-  newSession: string;
-  models: string;
   closeToTray: string;
+  restart: string;
   quit: string;
 }
 
 export const TRAY_LABELS: Record<TrayLocale, TrayLabels> = {
   en: {
     open: (appName) => `Open ${appName}`,
-    newSession: "New Session",
-    models: "Models",
     closeToTray: "Keep running in the tray when the window closes",
+    restart: "Restart",
     quit: "Quit",
   },
   zh: {
     // The app name is a proper noun and stays as it is, here as everywhere else.
     open: (appName) => `打开 ${appName}`,
-    newSession: "新建会话",
-    models: "模型",
     closeToTray: "关闭窗口后继续在托盘中运行",
+    restart: "重启",
     quit: "退出",
   },
 };
@@ -86,9 +80,6 @@ export function trayMenuTemplate(opts: {
   return [
     { action: "open", label: t.open(opts.appName) },
     { type: "separator" },
-    { action: "new-session", label: t.newSession },
-    { action: "models", label: t.models },
-    { type: "separator" },
     {
       action: "toggle-close-to-tray",
       label: t.closeToTray,
@@ -96,6 +87,7 @@ export function trayMenuTemplate(opts: {
       checked: opts.closeToTray,
     },
     { type: "separator" },
+    { action: "restart", label: t.restart },
     { action: "quit", label: t.quit },
   ];
 }

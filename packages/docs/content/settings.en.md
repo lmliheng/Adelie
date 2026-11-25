@@ -133,7 +133,7 @@ About **imported themes**: a theme is only a set of values, which is why a machi
 
 About **the theme library**: an admin sees one more row of cards under the theme list — a **remote catalogue of themes** the server reads. Each card paints what that theme looks like in both light and dark: canvas, surface, ink and accent. Press **Import** and the server fetches that theme's file, checks it the same way it checks an imported file, and writes it into this machine's `themes/` folder, so it appears in the **Imported** group above straight away; a card already installed says so, and pressing it again asks before replacing anything. The default catalogue is the `@lmliheng/adelie-themes` package on npm (the mainland mirror first, jsDelivr's GitHub copy when that does not answer yet); point `ADELIE_THEME_REGISTRY` at your own mirror to use another. A library with nothing you want, or a machine with no route to it, leaves the themes and imports above untouched — the library is one more way in, not a dependency.
 
-About **Tray icon**: the desktop app keeps an icon in the system tray: the Windows notification area, the macOS menu bar, or the Linux tray. It stays there for as long as the app runs. Click the icon to come back to the window. Right-click it to start a new Session or quit.
+About **Tray icon**: the desktop app keeps an icon in the system tray: the Windows notification area, the macOS menu bar, or the Linux tray. It stays there for as long as the app runs. Click the icon to come back to the window. Right-click it to restart the app or quit.
 
 Turning it off removes the icon at once, with no restart. Closing the window then no longer hides it there: the app stays in the Dock on macOS, and quits on Windows and Linux.
 
