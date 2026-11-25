@@ -3872,6 +3872,14 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       原来的通话是一块面板 —— 一条标题、一条状态、一列纯文本，挂断与静音两个小方框，不像在跟宠物说话；桌宠的
       大小写死在代码里，谁也改不了；动作只有上下呼吸与一次 hop。见「第三百三十一轮」一节。
 
+- [x] **7.204 `project-switch` 在整套里那条红，与 7.202 是同一个根因；产品侧已修好，夹具一个字节不动**
+      （**2026-11-25 第三百三十二轮**核查收口；`packages/web/e2e/project-switch.spec.mjs` **没有改动** ——
+      工作区里那份「等 skills / hooks 响应」的残留补丁实测会引入新竞态，已 `git stash` 留底、不入库）：
+      第三百二十七轮末尾把「整套每趟各红一条」的两处点名留给下一轮（`plugin-card-refusal:220` 与
+      `project-switch:128`），第三百三十轮从产品侧修掉了前者（`plugins-page.tsx` 的 `cardDialog`）；
+      后者那条红（「卸载 default_agent」15 s 没出现）是**同一个根因**在另一份 spec 上的表现 ——
+      快照落地时卡片换分区、React 换掉实例，卡片自己持有的框随之卸载。见「第三百三十二轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7102,6 +7110,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.202 | **插件卡片的三个自开弹窗（管理安装 / 详情 / 删除确认）不再在安装快照落地时自己关掉**（**2026-11-25 第三百三十轮**落地；`packages/web` 1 个源码文件（`features/plugins/plugins-page.tsx`：页面新增 `cardDialog`（`{plugin, kind}` = `installs` / `detail` / `delete`）取代卡片里的三个 `useState`，`PluginCard` 收 `dialog` / `onDialog`；`closeAfterWrite(agentId)` 只在那次写动了当前 Agent 时关掉列表 —— 从前这一步是重挂载顺带做的）＋ 1 个新 spec（`e2e/plugin-card-dialogs-hold.spec.mjs`，3 条）＋ changelog 一对 —— **不碰接口、无新依赖、无新文案**）：页面进来时安装快照是空的、读到才填，填上之后 `splitPluginRows` 把卡片归到另一个分区、React 换掉卡片实例，卡片自己持有的弹窗跟着实例走 —— 读者在快照到达之前点开的那个框就自己关掉了（第三百二十七轮末尾留给下一轮的 `plugin-card-refusal:220` 正是它） | 探针（真服务端 8940 + 数据根 `r328-a1`，skills 读按住 1.5 s）：改前 dialog 在 `23591` 出现、快照 `24925` 落地、`24990` 消失（65 ms 之后）；改后 4 s 后仍在 · **新 spec 两态**：改前（`r328/before-dist`，8942 `r328-b1` 与 8948 `r328-b2` 各跑一次）**3 failed** → 改后（8946 `r328-a3`、8950 `r328-a4` 与定稿整套里）**3 passed** · 相邻全绿：`plugin-card-refusal` 3 + `plugin-install-refusal` 2 + `plugins-install-refusal` 2 + 其余 8 份插件 spec 13；`skills.spec`（在管理安装列表里给另一个 Agent 装 / 卸）在定稿版里也绿 —— 第一版 `closeAfterWrite` 对每一次写都关，整套里把它红了（`卸载 agent_helper` 找不到：装到别的 Agent 之后列表被关掉），改成只关当前 Agent 那条路后复跑通过 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e（合并树 + 定稿，`SKIP_BUILD=1`，41.2 m）**：**417 通过 / 3 失败**，三条红都与本条无关：`builtin-browser-clear-refusal` 与 `builtin-browser-homepage-refusal`（另一条线 0.8.3 的新功能，停靠面板里 `dock-pick-builtin-browser` 90 s 没出现）、`scroll-follow-bounce` 的 Primer 一格（`grewWhileStill` 2 < 3，既有的负载敏感）· 截图 `r328/final-shots/{held,after}.png` 肉眼看过：弹窗留着、卡片已在「已安装的插件 (1)」、行上是「已安装」，console / pageerror **0** · 端口只用 8940–8960（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r328-*` | 见本行提交 |
 
 | 2026-11-25 | 7.203 | **桌宠的通话界面改成气泡对话、挂断与静音换成圆形按钮，桌宠大小可设（小 / 中 / 大三档），动作重写**（**2026-11-25 第三百三十一轮**，用户点单；`packages/desktop`（`pet-window.ts`：`PetSize` / `PET_SIZES` / `PET_PET_PX`（56 / 72 / 96）/ `isPetSize` / `petWindowSize(showCall, size)` 按档加高度；`pet-prefs.ts`：`PetPrefs.size` 默认 `medium`、`parsePetCommand` 与 `petStatusMessage` 带上它；`main.ts`：`petSize`、`setPetSize` 落盘 + `applyPetSize()` + 推送）、`packages/server`（`api/types.ts`：新 `DesktopPetSize`，状态 / 补丁 / 命令三处加 `size?`；`http/routes/desktop.ts`：PUT 收 `size`、乱值 400 `invalid_pet_size`、空补丁判据带上它；`services/desktop-update-port.ts`：推送解析按字段逐个读、读不出的丢掉）、`packages/ui`（`icons.ts` 加 `microphoneOff` / `phone`）、`packages/web`（`features/pet/voice/call-stage.tsx` 整文件重写；新 `features/pet/pet-size.ts`；`pet-page.tsx` 按档画形象与算面板留白并加入场动画；`features/settings/appearance-section.tsx` 加「桌宠大小」一行；`styles.css` 重写呼吸 / hop 并加通话动效；`lib/strings{,-en}.ts`）—— **不碰数据库、无新依赖，字符串删一条（`callTitle`）、加两条**）：原来的实时语音通话是一块面板 —— 一条「通话中」标题、一条状态、一列「谁说了什么」的纯文本，挂断与静音是两个小方框，看着不像在跟宠物说话；桌宠的大小写死在 `pet-page.tsx` 的 `72px` 与 `pet-window.ts` 的 `300` 里，界面上没有任何地方能改；动作只有 3.6 s 的上下呼吸、一次 hop 与眨眼 | 见「第三百三十一轮」一节（单测：desktop 28 文件 / 334、server 220 / 3205 + 6 跳过、ui 133 / 1117、web **360 / 4042 + 2 跳过**；`pnpm lint` 0 警告 0 错误、`format:check` 过、全仓 `typecheck` 全 `Done`；真浏览器：`pet.spec.mjs` 通过、六张通话态截图 + 一张三档大小图 + 真实 `/pet` 量到 72×72 与 `calc(100% - 76px)`） | `8090f7d61` |
+| 2026-11-25 | 7.204 | **`project-switch` 在整套里那条红与 7.202 是同一个根因，产品侧已经修好，夹具一个字节不动**（**2026-11-25 第三百三十二轮**核查收口；`packages/web/e2e/project-switch.spec.mjs` **没有改动** —— 工作区里那份「等 skills / hooks 响应」的残留补丁实测会引入新竞态，已 `git stash` 留底、不入库；**这一笔只有台账**）：第三百二十七轮末尾点名留给下一轮的两处里，`plugin-card-refusal:220` 已由 7.202 从产品侧修掉，`project-switch:128`（「卸载 default_agent」15 s 没出现）是同一个根因在另一份 spec 上的表现 —— 快照落地时卡片换分区、React 换掉实例，卡片自己持有的框随之卸载 | **反证**（`plugins-page.tsx` 退回 `8a5e1d9f4^` 并重建 web、跑 HEAD 的 spec + 把 skills / hooks 读按住 8 s）：**1 failed（19.6 s）**，红在「卸载 default_agent」没出现，与 327 轮记的那一行逐字一致 · **现产品**：同一份 spec、8 s 慢读 + 4 个 `yes` 占满 4 核 → **三次全绿（16.2 / 16.0 / 16.4 s）**，无负载 8 s 慢读也绿（9.4 s），真实配置单跑 **1 passed（5.3 s）** · **残留补丁两态**：慢读 8 s、无负载 → **红在第二半**（「安装 default_agent」没出现，等响应返回时 React 还没换分区，点击落在上一个 Project 的状态上）；把它换成「等分区标题的 DOM 事实」也不成立 —— 采样显示切到 target 后标题先 `已安装的插件 (0)`（空快照瞬时态）、约 155 ms 后变 `(11)`，等 `(0)` 只在读被按住时才等到，读失败（500）形态则红在等 `(0)` 上 · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过** · 端口只用 8960–9011（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r332-*` | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -33903,3 +33912,68 @@ cookie 与站点存储都归各自那个对话；命令行多 `--session`。相�
 
 - 代码一笔 `8090f7d61`（壳 + 服务端 + 图标 + 界面，18 个文件）；台账（条目 7.203、上表那一行、本节）随本文件
   另起一笔。
+
+## 第三百三十二轮：`project-switch` 在整套里那条红，与 7.202 是同一个根因（2026-11-25，条目 7.204）
+
+**开工**：`git status --short` 里只有 ` M packages/web/e2e/project-switch.spec.mjs`。第三百三十一轮的台账
+（14:36 那一笔）明写它是「另一条线的改动（7.202 的 spec 夹具），本轮一个字节没碰、也没提交」，第三百三十轮
+（12:56）也只提交了 `plugins-page.tsx` + `plugin-card-dialogs-hold.spec.mjs` + changelog —— 两边都不认它。
+判据都对得上：脏文件的 mtime 14:36:41 正好是另一条线 `git rebase --autostash` 把未提交改动放回工作树的时刻
+（`reflog` 里 `rebase (finish)` 在 14:36:38，之后 git 只被写了两笔提交）；没有进程持有这棵树，数据根
+`/root/adelie-fork-data` 当天最后一次活动是 11:47。于是判定它是 **7.202 早期方案遗落、无人认领的半成品**，
+按「无主半成品」的口径接手核查。分支 `main`，`git fetch origin && git merge --ff-only origin/main` → 已是最新
+（`dc75b2571`，第三百三十一轮）。没切分支、没碰 `legacy/main`、没推 upstream。
+
+**为什么是这一条**：待办里最靠前的未勾选条目仍是 2.2c，它「还差什么」四条这一轮一条都动不了（写侧全在桌面壳、
+部署单元等发布动作、`packages/docs/**` 与 `changelog/**` 按 2.5 / 2.1c 留到发布期）；3.5 要用户拍板取哪个桌面壳、
+3.6 要模型 key、4.1–4.3 明令不动、5.6 与 5.10 要拍板 / 新依赖；第 7 节到 7.203 全勾。第三百二十七轮末尾把「整套
+每趟各红一条」的两处点名留给下一轮 —— `plugin-card-refusal:220` 已由第三百三十轮从产品侧修掉（7.202），
+剩下的 `project-switch:128` 正是工作区里那份半成品冲着的目标。
+
+**查清的过程**（真服务端 `packages/server/dist/index.js` + `/usr/bin/chromium`；每跑一次一个全新数据根，
+因为这条 spec 自己建 Project、不幂等）：
+
+1. **先看它自己会不会红**。把 skills / hooks 两条读按住 8 s（满载机器上那两条读晚到的形态），HEAD 的 spec 在
+   **现产品**上跑：无负载 **1 passed（9.4 s）**，4 个 `yes` 占满 4 核时 **三次全绿（16.2 / 16.0 / 16.4 s）**。
+2. **反证，确认那条红属于哪一份代码**：把 `plugins-page.tsx` 退回 `8a5e1d9f4^`（7.202 之前）、重建 `packages/web`
+   产物，同一份 spec、同样的 8 s 慢读 → **1 failed（19.6 s）**，红在「卸载 default_agent」15 s 没出现
+   （`e2e/project-switch.spec.mjs` 第 140 行）—— 与第三百二十七轮记下的失败逐字一致。恢复源码并重建后再跑，
+   **1 passed（5.3 s）**。这条红就是 7.202 那个根因（快照落地 → 卡片换分区 → React 换掉实例 → 卡片自己持有的
+   框随之卸载）在另一份 spec 上的表现，产品侧修好之后它自己消失了。
+3. **工作区里那份补丁实测有害**。它等的不是 DOM 事实而是 `skills` / `hooks` 两条响应：慢读 8 s、无负载
+   → **红在第二半**（「安装 default_agent」没出现，第 163 行）—— 响应到达与 React 换分区之间还有一帧，这期间
+   点下去读到的是上一个 Project 的状态（实测 target 的框里念的是「卸载」）。
+4. **换成「等 DOM 事实」也不成立**。采样切到 target 之后分区标题每 100 ms 的读数：
+   `已安装的插件 (0)` → 155 ms 后 `已安装的插件 (11)` 并一直保持 —— `(0)` 是页面拿到快照之前的**空快照瞬时态**，
+   不是「快照已落地」；等 `(0)` 只在读被按住时才等到，真实环境会错过窗口（无 route 的真实配置里等 `(0)` 直接红），
+   读失败（500）形态则红在等 `(0)` 上。
+
+**结论**：`packages/web/e2e/project-switch.spec.mjs` **一个字节没改** —— 它依赖的状态由 7.202 从产品侧保证，
+再叠一层等待只会多出一个竞态窗口（第 3 条的实测）。工作区那份半成品用
+`git stash push -m "r332: project-switch 残留的『等响应』补丁（实测慢读 8s 无负载即红在第二半，未入库）"`
+留底（`stash@{0}`，patch 另存 scratchpad 的 `r332/residual.patch`），工作树随即干净。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** ·
+  server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过**。
+- 真浏览器单点共 **8 次**：HEAD spec + 现产品（无负载 8 s 慢读、满载 8 s 慢读 ×3、真实配置 ×2 全绿）、
+  旧产物反证 1 次（红，19.6 s）、残留补丁两态各 1 次（慢读 8 s 无负载红在第二半；0 延迟下绿）。
+- 起服务一律用真服务端 + 各自的数据根；端口只用 8960 / 8962 / 8971–8973 / 8981–8984 / 8991–8996 / 9001–9002 /
+  9010 / 9011，**跑完全部已停**，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r332-*`，日志、两态 spec 副本、patch 与采样都在 scratchpad 的 `r332/` 下（未 `git add`）。
+- 没跑整套浏览器 e2e：本轮不改产品代码、也不改任何 spec，单点与反证已覆盖要判的那一处；整套最近一次是
+  第三百三十轮的 **417 通过 / 3 失败**（41.2 m），`project-switch` 在通过的一侧，那三条红与这处无关。
+
+### 没做 / 留着
+
+- 整套 e2e 里剩下的已知红（`builtin-browser-clear-refusal` / `builtin-browser-homepage-refusal` 两条、
+  `scroll-follow-bounce` 的 Primer 一格）原样留着，与上一轮的记录一致。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 台账一笔：条目 7.204、上表那一行、本节（本文件）。本轮没有代码改动 —— 这是核查过的结论，不是漏做。
