@@ -355,6 +355,48 @@ export interface ContextEngineDeps {
 const isImageMessage = (m: OmniMessage): boolean =>
   (m.payload as { type?: string }).type === "image_url";
 
+/**
+ * A picture the interruption carry-over keeps as a message of its own: an `image_url` (any
+ * address or data URL) or an `inline_data` blob whose media type is an image. An `inline_data`
+ * of some other kind (a document, audio) stays out — it has no counterpart here, and keeping it
+ * would be a decision of its own.
+ */
+const isImageInput = (m: OmniMessage): boolean => {
+  const p = m.payload as { type?: string; mime_type?: string };
+  return (
+    p.type === "image_url" || (p.type === "inline_data" && (p.mime_type ?? "").startsWith("image/"))
+  );
+};
+
+/** What makes two picture messages the same picture: the address for an `image_url`, the media type and bytes for an inline blob. */
+const imageIdentity = (m: OmniMessage): string => {
+  const p = m.payload as { type?: string; image_url?: string; mime_type?: string; data?: string };
+  return p.type === "image_url"
+    ? `url:${p.image_url ?? ""}`
+    : `inline:${p.mime_type ?? ""}:${p.data ?? ""}`;
+};
+
+/** The line a `[turn_aborted]` block opens with when its carry-over also keeps pictures above it. */
+const imageNoteLine = (count: number): string =>
+  `(the input also carried ${count} image${count === 1 ? "" : "s"}, kept above this block as image message${count === 1 ? "" : "s"})`;
+
+/** The same line, matched so a re-flattened carry-over can drop the one it already holds (see `buildTurnAbortedText`). */
+const IMAGE_NOTE_LINE =
+  /^\(the input also carried \d+ image(?:s)?, kept above this block as image message(?:s)?\)$/;
+
+/** One entry per distinct picture, in first-seen order (see `flattenCarryOver` for why). */
+const keepOnePerImage = (messages: OmniMessage[]): OmniMessage[] => {
+  const seen = new Set<string>();
+  const kept: OmniMessage[] = [];
+  for (const m of messages) {
+    const id = imageIdentity(m);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    kept.push(m);
+  }
+  return kept;
+};
+
 /** Whether a message carries steering of its own — an image, a video, or text that isn't blank. */
 const carriesSteering = (m: OmniMessage): boolean => {
   const p = m.payload as { type?: string; text?: string };
@@ -2199,16 +2241,19 @@ export class ContextEngine {
 
   /**
    * Case B: flattens this attempt's input and its produced content into carry-over. Structured
-   * `tool_call_output` in the input (paired with the previous completed turn) is kept as-is;
-   * everything else (text input, model thinking/text, this attempt's tool calls/results) is
-   * transcribed into a single `[turn_aborted]` plain-text user message (includes all
-   * completed and incomplete messages, including partial thinking/text). If the input text is
-   * itself already a `[turn_aborted]` block (from a previous attempt or a previous run's
-   * carry-over), its content is unwrapped and merged in, keeping a single-level structure.
+   * `tool_call_output` in the input (paired with the previous completed turn) and images are
+   * kept as messages of their own; everything else (text input, model thinking/text, this
+   * attempt's tool calls/results) is transcribed into a single `[turn_aborted]` plain-text user
+   * message (includes all completed and incomplete messages, including partial thinking/text).
+   * If the input text is itself already a `[turn_aborted]` block (from a previous attempt or a
+   * previous run's carry-over), its content is unwrapped and merged in, keeping a single-level
+   * structure.
    *
-   * TODO(multimodal): only text input is currently kept — `image_url` / `inline_data` input is
-   * lost during flatten (the `[turn_aborted]` structure has no corresponding transcription yet);
-   * multimodal carry-over support to be added later.
+   * Images are kept rather than transcribed because a transcription cannot stand in for one:
+   * the model was asked about the picture itself, and an interrupted turn resent without it
+   * answers a question whose subject is gone. A picture is identified by its bytes/address, so
+   * a carry-over that already holds one (a second interruption re-flattens it) keeps it once —
+   * re-sending it per interruption would spend the seller's per-request image budget on copies.
    */
   private flattenCarryOver(
     attemptInput: OmniMessage[],
@@ -2219,33 +2264,49 @@ export class ContextEngine {
     const structured = attemptInput.filter(
       (m) => (m.payload as { type?: string }).type === "tool_call_output",
     );
+    const images = keepOnePerImage(attemptInput.filter(isImageInput));
     const textInputs = attemptInput.filter((m) => (m.payload as { type?: string }).type === "text");
     const flattened = userText(
-      this.buildTurnAbortedText(textInputs, assistantSegments, toolCalls, toolOutputs),
+      this.buildTurnAbortedText(
+        textInputs,
+        assistantSegments,
+        toolCalls,
+        toolOutputs,
+        images.length,
+      ),
     );
     // flatten is sent to the model only and not written to Trace (synthetic carry-over isn't
     // persisted): resumption replay resends the discarded turn's **original input** as-is
     // (best-effort), with no dependency on this synthetic message.
-    return [...structured, flattened];
+    // The images go first: they were the head of the input this block transcribes, and the
+    // block opens with a line saying they are above it.
+    return [...images, ...structured, flattened];
   }
 
-  /** Transcribes the interrupted turn's input, model thinking/text, and tool calls/results into a single `[turn_aborted]` plain-text block. */
+  /** Transcribes the interrupted turn's input, model thinking/text, and tool calls/results into a single `[turn_aborted]` plain-text block. `images` is how many picture messages the carry-over keeps above it. */
   private buildTurnAbortedText(
     textInputs: OmniMessage[],
     assistantSegments: OmniMessage[],
     toolCalls: OmniMessage<ToolCallPayload>[],
     toolOutputs: OmniMessage[],
+    images = 0,
   ): string {
     const lines: string[] = [];
+    if (images > 0) lines.push(imageNoteLine(images));
     for (const m of textInputs) {
       const t = (m.payload as TextPayload).text;
       // If this text is itself already a synthetic block — a previous run's `[turn_aborted]`,
       // or this turn's reconnect-appended `[turn_retried]` — extract its inner lines and merge
       // them in directly, avoiding layered nesting / unbounded growth (keeping a single-level
-      // structure).
+      // structure). Its own image note is dropped on the way: that sentence counted the
+      // pictures of the carry-over this one re-flattens, and the line above counts this one's.
       const inner = unwrapSyntheticBlock(t);
       if (inner !== null) {
-        if (inner) lines.push(inner);
+        const kept = inner
+          .split("\n")
+          .filter((line) => !IMAGE_NOTE_LINE.test(line.trim()))
+          .join("\n");
+        if (kept) lines.push(kept);
       } else {
         lines.push(transcribeUserInput(t));
       }

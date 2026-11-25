@@ -2409,6 +2409,103 @@ describe("ContextEngine LLM timeout / network interruption (PRN-012)", () => {
     expect(text).toContain("next");
   });
 
+  it("flatten carry-over keeps an interrupted turn's image input, and says where it is", async () => {
+    let calls = 0;
+    const inputs: OmniMessage[][] = [];
+    const llm: LLMInterface = {
+      async *streamGenerate(params) {
+        calls += 1;
+        inputs.push(params.newMessages);
+        if (calls === 1) {
+          // Fatal exits straight to the flatten path, before any model output exists: the
+          // carry-over is this turn's input alone.
+          return { status: "fatal", errorMessage: "boom" };
+        }
+        yield assistantText("ok");
+        yield tokenUsage(emptyTokenCounts(), {
+          cache_read: 0,
+          cache_write: 0,
+          output: 1,
+          total: 1,
+        });
+        return { status: "completed" };
+      },
+    };
+    const environment = new Environment({
+      workspaceDir: workspace,
+      toolConfig: execCommandToolConfig(),
+    });
+    const engine = new ContextEngine({ llm, environment, reconnectBackoffMs: 0 });
+
+    await collectRun(engine, [imageUrlMessage(PNG_DATA_URL), userText("what is this")], allowAll);
+    expect(calls).toBe(1);
+
+    // Next run: the picture is a message of its own, ahead of the block that transcribes the
+    // text input — the model is asked about the picture again, not about a sentence describing
+    // one that is gone.
+    await collectRun(engine, [userText("next")], allowAll);
+    const carried = inputs[1]!;
+    const images = carried.filter((m) => (m.payload as { type?: string }).type === "image_url");
+    expect(images).toHaveLength(1);
+    expect((images[0]!.payload as { image_url?: string }).image_url).toBe(PNG_DATA_URL);
+    const textIndex = carried.findIndex((m) =>
+      ((m.payload as { text?: string }).text ?? "").startsWith("[turn_aborted]"),
+    );
+    expect(textIndex).toBeGreaterThan(carried.indexOf(images[0]!));
+    const text = (carried[textIndex]!.payload as { text?: string }).text ?? "";
+    expect(text).toContain("kept above this block");
+    expect(text).toContain("[user_input]what is this[/user_input]");
+    // This run's own input is not part of the carry-over: the block transcribes the turn that
+    // was interrupted, and "next" is only sent after it.
+    expect(text).not.toContain("next");
+  });
+
+  it("a second interruption re-flattens the carry-over without duplicating its picture", async () => {
+    let calls = 0;
+    const inputs: OmniMessage[][] = [];
+    const llm: LLMInterface = {
+      async *streamGenerate(params) {
+        calls += 1;
+        inputs.push(params.newMessages);
+        if (calls <= 2) return { status: "fatal", errorMessage: "boom" };
+        yield assistantText("ok");
+        yield tokenUsage(emptyTokenCounts(), {
+          cache_read: 0,
+          cache_write: 0,
+          output: 1,
+          total: 1,
+        });
+        return { status: "completed" };
+      },
+    };
+    const environment = new Environment({
+      workspaceDir: workspace,
+      toolConfig: execCommandToolConfig(),
+    });
+    const engine = new ContextEngine({ llm, environment, reconnectBackoffMs: 0 });
+
+    await collectRun(engine, [imageUrlMessage(PNG_DATA_URL), userText("look")], allowAll);
+    // The second run carries [picture, [turn_aborted] block] and is interrupted in turn.
+    await collectRun(engine, [userText("next")], allowAll);
+    await collectRun(engine, [userText("again")], allowAll);
+
+    // The third run's input is the re-flattened carry-over: the picture is still there once,
+    // and the block still talks about one picture (its count is what this request carries).
+    const carried = inputs[2]!;
+    const images = carried.filter((m) => (m.payload as { type?: string }).type === "image_url");
+    expect(images).toHaveLength(1);
+    const text = carried
+      .map((m) => (m.payload as { text?: string }).text ?? "")
+      .filter((t) => t.startsWith("[turn_aborted]"));
+    expect(text).toHaveLength(1);
+    expect((text[0]!.match(/kept above this block/g) ?? []).length).toBe(1);
+    expect(text[0]).toContain("1 image,");
+    expect(text[0]).toContain("look");
+    expect(text[0]).toContain("next");
+    // "again" is this run's own input, sent after the carry-over rather than folded into it.
+    expect(carried.map((m) => (m.payload as { text?: string }).text ?? "")).toContain("again");
+  });
+
   it("carry-over after exhausted retries: raw original input + [turn_retried] with all attempts' products", async () => {
     let calls = 0;
     const inputs: OmniMessage[][] = [];
