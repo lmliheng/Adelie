@@ -3909,6 +3909,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       7.206 把答复拉到 ~10s 是统计性不变式，而手势路径实测能到 12.5s、一次 20s；abort 异步落地，
       按完停止立刻发下一条会被当成后续消息。见「第三百三十六轮」一节。
 
+- [x] **7.208 中断的那一轮重发时，图还在**（**2026-11-25 第三百三十七轮**落地，提交见「已完成的轮次」；
+      `packages/core` 两处 —— `src/engine/context-engine.ts` 的 `flattenCarryOver` 把输入里的图片消息
+      （`image_url`，以及媒体类型是图片的 `inline_data`）与它一直保留的结构化 `tool_call_output` 并列留下、
+      放在 `[turn_aborted]` 文本**之前**，那段文本的第一行说明图就在上面；再折叠时丢掉上一份的那行说明。
+      `test/engine.test.ts` 两条用例 ＋ changelog 一对 —— **不碰界面、不碰接口、无新依赖**）：
+      读 `context-engine.ts` 时撞上的 `TODO(multimodal)`（上游自己留的）：Case B 把那一轮的输入折成一段
+      `[turn_aborted]` 文本时只取 `type === "text"` 的消息，图片被静默丢掉 —— 读者发一张图问「这是什么」，
+      中途按停止或供应商回致命错误，下一条消息就让模型回答一张已经不在请求里的图。见「第三百三十七轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7143,6 +7152,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-25 | 7.205 | **内置浏览器的浏览器套件跟上「按对话隔离」：两条老 spec 修回绿，再补一条每个对话各看各的标签**（**2026-11-25 第三百三十三轮**落地；`packages/web` 两个既有 spec 各一处（`e2e/builtin-browser-{clear,homepage}-refusal.spec.mjs` 的 status 桩从 `**/api/builtin-browser/status` 改成 `…/status**`，并写明查询串带的是哪一段对话）＋ 1 个新 spec（`e2e/builtin-browser-scope.spec.mjs`，1 条：两个真会话各看各的标签、点标签的激活请求带自己那一段对话）＋ 2 处源码注释纠正（`features/builtin-browser/browser-tab-strip.tsx`、`features/chat/builtin-dock-panels.tsx` 里还写着「所有对话共用一个标签集」）—— **只动测试与注释、无新依赖、不碰接口、没有用户可见改动**）：7.201 之后状态读取多带 `?sessionId=…`，而两条 spec 的桩只认裸路径 —— Playwright 的 glob 按整条 URL 匹配，带查询串那次没被拦住、落到真服务端；本机没有桌面壳、回 `available: false`，面板的挑选行里就没有内置浏览器，用例死在 `dock-pick-builtin-browser` 上（第三百三十轮整套里记的「90 s 没出现」正是它） | 探针 `r331/probe-status-url.mjs`（真服务端 8970）：`GET …/status` 裸路径 1 次（默认作用域）+ 带 `sessionId` 的 2 次，`bareGlobHits` **1** · 改前两条老 spec 各 **1 failed**（都红在 `dock-pick-builtin-browser` 90 s）→ 改后 **2 passed**（2.5 s / 9.1 s）；新 spec **1 passed**（3.5 s），连跑三次 **3/3**（8.5–8.6 s） · **反证**：`browserScope()` 改成恒返回 `""`、重建 web → 新 spec **1 failed**（「A 的停靠面板里标签数 0 ≠ 1」），源码放回重建 → **1 passed** · 三张截图（`r331/{a,b,back}-strip.png`，1280×800）：A 里只有「甲站」/alpha.example、B 里只有「乙站」/beta.example、回到 A 又是「甲站」，三态 console error / pageerror **0** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 646 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1460 + 6 跳过** · server **220 / 3204 + 6 跳过** · web **359 / 4039 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · 改动文件 `oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，一次性数据根 `r331-e2e`，38.7 m）：**420 通过 / 1 失败**，唯一红是 `scroll-follow-bounce` 的 Primer 一格（`grewWhileStill` 不够半数，同一数据根单跑仍 1 failed / 2 passed，既有负载敏感，与本条无关）；两条老 spec 与新 spec 都在通过的一侧 · 端口只用 8970 / 8971 与 8930 / 8931（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r331*` | 见本行提交 |
 | 2026-11-25 | 7.206 | **`scroll-follow-bounce` 在整套里那一格红是夹具的时限：答复在量「还在长」的那一秒之前就结束了**（**2026-11-25 第三百三十五轮**落地；`packages/web` 两处 —— `e2e/mock-llm.mjs` 的「scroll bounce test」答复从每 50ms 一段、约 4s 改成每 125ms 一段、约 10s（分支与文件头注释写明它必须比手势长），`e2e/scroll-follow-bounce.spec.mjs` 的头注同步、每主题超时 `60s + 6×20s` → `60s + 6×30s`、「停住那一秒」之前写明判据成立条件 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：手势的准备与补滚在 ×4 降速下要 2–5s，4s 的答复已经流完，`grewWhileStill` 读到 0、聚合那句「至少半数手势在窗口里长过」就红；行为侧 `bounces` 全空、`stillDrift` 全 0，一次回弹都没有 | **改前**（老夹具 + 3 个压测核）：计时探针 `r334/timing` 量到「停住那一秒」起于发消息 +4.6s…+6.8s 而答复 ~4.0s 已结束，Primer 三格 `grewWhileStill` 全 0（`BOUNCE-SUMMARY Primer: 0/3`）；6 格那趟红在同一句 `Expected: >= 3 / Received: 1`（`test-results/…/error-context.md`）· **改后**：空机器 6 格 × 3 主题 **3 passed（3.4 min）**，18 格 `bounces` 全空、`stillDrift` 0、`grewWhileStill` **627–752**；压 1 个核 **3 passed（3.4 min）**、654–806；压 2 个核 **3 passed（3.5 min）**、627–779 · **已知边界**：4 核里压 3 个空转时仍有主题读到 0（一秒内一帧都没画出来的渲染饥饿，不是答复结束；整套只有一个 worker，量过的是 1–2 个核）· 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **360 文件 / 4042 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · 端口只用 8960 / 8961，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r334-scroll`；没有界面改动，没跑整套（只有这一份 spec 读 mock 的那个分支） | `ffd772de8` |
 | 2026-11-25 | 7.207 | **`scroll-follow-bounce` 的停留窗由夹具自己收尾，往上弹只从手势落地那一刻起算**（**2026-11-25 第三百三十六轮**落地；`packages/web` 两处 —— `e2e/mock-llm.mjs` 的「scroll bounce test」分支从提示词读段数（`scroll bounce test <n> <paragraphs>`，缺省 80）、客户端走了不再往关掉的 socket 写，`e2e/scroll-follow-bounce.spec.mjs` 里 `STREAM_PARAGRAPHS = 160`（~20s）随提示词发给替身、补滚上限 3 轮 → 5 轮、每个手势量完窗自己按「停止」并等伺服端不再把它列为运行中、`analyze()` 的「文字动过」门槛 0.5px → 2px 且「往上弹」只从 `freeAt` 起算 —— **只动测试夹具、无新依赖、不碰接口、没有用户可见改动**）：7.206 的 ~10s 是统计性不变式，手势路径实测 3.2–12.5s、一次 20s，答复仍可能先结束；abort 异步落地，按完停止立刻发下一条会被当成后续消息（那一轮没有「停止」）；`after-up` 从事件戳起算会把页面处理前的正常吸底读成回弹（实测 +224ms，同一份录制 2 条 → 0 条） | **改前复现**：`BOUNCE_DUMP` 录制里生长停在第一个 wheel 后 3.5s，而停留窗开在 3.3–5.0s，Primer 6 格只有 1 格窗内有生长（聚合红）；`r334/analyze-compare.mjs` 同一份录制旧规则 2 条 after-up、新规则 0 条；Primer 第 3 个手势的提示词早于 abort 0.15s 落地，用例死在「the reply is still streaming」 · **改后**：连跑 6 遍（`r334-v6`…`r334-v10`、`r334-after-counter`）**6/6 全 3 passed（各 1.7 min）**，108 格 `bounces` 全空、`stillDrift` 0、`grewWhileStill` **626–807** · **反证（真界面）**：把 `stream-follow.ts` 的 `wheel()` 与 `scrolled()` 里「向上滚动退出跟随」一起关掉、重建 web → **3 failed**（Primer / Frost / Console 各 3/3 手势 bounced，late-snap / after-up / composed 各数十条，`stillDrift` 681）；还原重建 → **3 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1460 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **360 文件 / 4042 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **整套浏览器 e2e**（`SKIP_BUILD=1`，38.7 m）：**421 通过 / 0 失败** · 单跑只占 8960 / 8961（跑完全停），整套用 8930 / 8931 与自己的临时数据根；3003 / 3004 / 4000 / 7364 / 7369 一个没碰，数据只落 `/root/adelie-fork-data/r334-*` | `136546971` |
+| 2026-11-25 | 7.208 | **中断的那一轮重发时，图还在**（**2026-11-25 第三百三十七轮**落地；`packages/core` 两处 —— `src/engine/context-engine.ts` 的 `flattenCarryOver` 把输入里的图片消息（`image_url`，以及媒体类型是图片的 `inline_data`）与它一直保留的结构化 `tool_call_output` 并列留下、放在 `[turn_aborted]` 文本**之前**，那一段文本的第一行写着图就在上面；已经折叠过的 carry-over 再折叠时丢掉上一份的那行说明，计数永远是这次请求的。`test/engine.test.ts` 两条用例（图与说明都在、位置在块前；第二次中断不重复）＋ changelog 一对 —— **不碰界面、不碰接口、无新依赖**）：撞上上游自己留的 `TODO(multimodal)` —— Case B 只取 `type === "text"` 的消息折成 `[turn_aborted]`，图片被静默丢掉，读者发一张图问「这是什么」、中途按停止或供应商回致命错误，下一条消息就让模型回答一张不在请求里的图 | **反证（core 真 ReAct 循环，两态）**：`src/engine/context-engine.ts` 退回 `HEAD`、只留新用例 → `test/engine.test.ts` **2 failed / 57 passed**（两条都红在 `images` 长度 0），恢复本笔 → **59 passed** · 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型；改过 core 先 `pnpm --filter @adelie/core build`）· 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过**（本笔 +2）· server **220 / 3205 + 6 跳过** · web **360 / 4042 + 2 跳过** · ui **133 / 1117** · cli **39 / 568** · 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净（changelog 一对一并查过）、`git diff --check` 干净 · 本笔不改界面、不碰服务契约，未起服务 / 未开浏览器；没有端口与数据根占用，3003 / 3004 / 4000 / 7364 / 7369 一个没碰 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34240,3 +34250,68 @@ key、4.1–4.3 明令不动、5.6 / 5.10 要用户拍板），第 7 节全勾�
 
 - 代码一笔 `136546971`（`packages/web/e2e/mock-llm.mjs`、`packages/web/e2e/scroll-follow-bounce.spec.mjs`）；
   台账（条目 7.207、上表那一行、本节）随本文件另起一笔。
+
+## 第三百三十七轮：中断的那一轮重发时，图还在（2026-11-25，条目 7.208）
+
+**开工**：`git status --short` 干净，分支 `main`，HEAD 是 **`615f4028c`**（第三百三十六轮 / 7.207）。
+`git fetch origin && git merge --ff-only origin/main` → `Already up to date`，本地就是远端。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧全在桌面壳一侧、部署单元要等发布动作、文档面留到发布期；
+3.5 要用户拍板取哪个桌面壳、3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要用户拍板），第 7 节全勾。
+上一轮「没做 / 留着」点名的两个候选逐个核过都不成立：插件卡片的 `pendingUpdate` / `pendingUninstall`
+只能从「管理安装」列表打开，而更新不改「装没装」、卡片不换分区，`ui-gallery` 的
+`GET /api/builtin-browser/status` 回 `available: false` 是画廊替身的诚实答案（那里本来就没有桌面壳）。
+于是按「读一遍真源码找真缺陷」选了这一条：`packages/core/src/engine/context-engine.ts` 里**上游自己留的**
+`TODO(multimodal)` —— Case B 把被中断那一轮的输入折成 `[turn_aborted]` 时只取 `type === "text"` 的消息，
+图片被静默丢掉。
+
+**为什么它是真的**：读者发一张图问「这是什么」，模型还没收尾就结束（按停止、供应商回致命、某次尝试被放弃），
+下一条消息的 carry-over 里只剩那句文本 —— 模型被要求回答一张已经不在请求里的图。Case A（模型输出已完成）
+不受影响：那一轮的 user 输入已经进了历史，carry-over 只需要补齐配对的 `tool_call_output`。会话模型不支持图片时
+也另有路：`foldInputImages`（`internal/session-support.ts` 的 `imagesToScratchpadPaths`）已经把输入图写到
+scratchpad 并换成 `[attached image: …]` 行，那类会话根本不会有 `image_url` 消息进到引擎。
+
+**做了什么**（`packages/core` 两处）：
+
+- `src/engine/context-engine.ts`：`flattenCarryOver` 在原来只留结构化 `tool_call_output` 的基础上，把输入里的
+  图片消息（`image_url` 任意地址、`inline_data` 里媒体类型是 `image/*` 的）也留下，放在 `[turn_aborted]`
+  文本**之前** —— 它们本来就在那个输入的开头。`buildTurnAbortedText` 多收一个 `images` 计数，块的第一行写
+  `(the input also carried 1 image, kept above this block as image message)`，读者与模型都知道图在哪。
+- **不按中断次数翻倍**：图片按「地址」或「媒体类型 + 字节」认同一张（`imageIdentity` / `keepOnePerImage`），
+  第二次中断是把**已经带着图的那份 carry-over** 再折一次，去重后仍只有一份；上一份块里那行说明在合并
+  inner 时按 `IMAGE_NOTE_LINE` 丢掉，所以计数说的一直是这次请求实际带的张数。为什么在意：供应商按请求计
+  图片数（`fitReplayedImages` / `capMessageImages`），每中断一次多一份副本就是在拿预算换重复。
+- `test/engine.test.ts`：两条用例。第一条：第一次 `fatal` 退出（没有任何模型产出，carry-over 就是这一轮输入），
+  下一次 run 的 `newMessages` 里有那张 `image_url`、位置在 `[turn_aborted]` 之前、块里有那行说明与
+  `[user_input]what is this[/user_input]`。第二条：连续两次中断，第三次 run 的输入里图还是 **1** 张、
+  块只有一段、说明行只出现一次。
+
+### 验证
+
+- **反证（core 真 ReAct 循环，两态）**：`git checkout HEAD -- packages/core/src/engine/context-engine.ts`
+  只留两条新用例 → `test/engine.test.ts` **2 failed / 57 passed**（两条都红在 `images` 长度 1 ≠ 0）；
+  源码放回 → **59 passed**。
+- 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型；
+  改过 core 先 `pnpm --filter @adelie/core build`，否则 server 读的还是旧 dist）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过**（本笔 +2）· server **220 / 3205 + 6 跳过** ·
+  web **360 / 4042 + 2 跳过** · ui **133 / 1117** · cli **39 / 568**（hmr 无测试文件）。
+- 两个改动文件 `oxlint` **0 警告 0 错误**、`prettier --check` 干净（changelog 一对也查过）、`git diff --check` 干净。
+- 本笔不改界面、不碰服务契约，因此没有起服务端、没有开浏览器；也就没有端口与数据根占用，
+  3003 / 3004 / 4000 / 7364 / 7369 一个没碰。**这一轮没跑整套浏览器 e2e**：改动只在 core 的
+  carry-over 折叠（`packages/web/e2e` 没有一条用例走到 Case B 的图片路径），六包单测已是它的全部证据。
+
+### 没做 / 留着
+
+- `video_url` 输入在 Case B 里仍按原样丢掉：上游那一行 TODO 只点了图片，视频有自己的按请求预算
+  （`fitReplayedVideos`）与「哪些模型收视频」的门，要不要一起带上是另一个决定，没在本笔里顺手做。
+- `inline_data` 里非图片的媒体类型（文档、音频）同样仍被丢掉，理由同上：它们在 carry-over 里没有对应形态。
+- 上一轮点名的插件卡片 `pendingUpdate` / `pendingUninstall` 与画廊的 `builtin-browser` 替身仍留作候选，
+  理由写在上面的「选活」里。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  没有切版本号、没发 npm、没发安装包、没发发布汇总。
+
+### 提交
+
+- 代码一笔 `67926bab2`（`packages/core/src/engine/context-engine.ts`、`packages/core/test/engine.test.ts`、
+  changelog 一对）；台账（条目 7.208、上表那一行、本节）随本文件另起一笔。
