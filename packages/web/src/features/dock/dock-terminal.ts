@@ -17,6 +17,7 @@ import { machineForTerminal, rememberTerminalMachine } from "../../lib/terminal-
 import {
   addTerminalTab,
   currentDockScope,
+  dockViews,
   docksOnScreen,
   removeTab,
   restoreTerminalTab,
@@ -71,18 +72,104 @@ function isBadCwd(err: unknown): boolean {
 }
 
 /**
+ * The sentence a failed create left where the dock's picker draws it, or null.
+ *
+ * The picker's terminal row is a surface that ASKED for the shell, and a create that fails
+ * leaves that picker exactly as it was — same row, same place. So the sentence belongs under
+ * it, where it stays until the next attempt, rather than in a notice that dismisses itself
+ * six seconds after a click that looked like it did nothing (the rule every refusal slot in
+ * the app follows). Module-level because the create is raised from places with no React
+ * context: the picker's own row, the terminal.toggle command, the sidebar's menu.
+ *
+ * Only the empty dock writes here (see pickerOnScreen): a "+" over an existing tab has no
+ * surface of its own, and its failure keeps going to the toast it always had.
+ */
+let createRefusal: string | null = null;
+const createRefusalListeners = new Set<() => void>();
+
+/** Subscribed by the dock panel, through useSyncExternalStore. */
+export function subscribeTerminalCreateRefusal(listener: () => void): () => void {
+  createRefusalListeners.add(listener);
+  return () => {
+    createRefusalListeners.delete(listener);
+  };
+}
+
+/** The sentence the picker is to draw; null when the last create landed or was never refused. */
+export function readTerminalCreateRefusal(): string | null {
+  return createRefusal;
+}
+
+/**
+ * Drops the sentence. A new attempt replaces it (its answer is the one that describes the
+ * screen), and the picker leaving the screen retires it: it described a click made from
+ * there, so it must not turn up again on a later, unrelated one.
+ */
+export function clearTerminalCreateRefusal(): void {
+  if (createRefusal === null) return;
+  createRefusal = null;
+  for (const listener of createRefusalListeners) listener();
+}
+
+function setCreateRefusal(text: string): void {
+  createRefusal = text;
+  for (const listener of createRefusalListeners) listener();
+}
+
+/**
+ * The line a refused create is reported with, built from the failure's own detail
+ * ("POST /api/terminals → 500 {"error":{"code":…,"message":…}}", see HttpStatusError).
+ *
+ * The picker's sentence stays on screen until the next attempt, so it carries the server's
+ * reason and not the wire truth: the message inside the body when there is one (every API
+ * refusal has `error.message`), and the whole detail when the body is not that shape (an
+ * HTML error page, a dropped connection). Exported for its own test.
+ */
+export function terminalCreateRefused(detail: string): string {
+  const body = detail.slice(detail.indexOf("{"));
+  if (body.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(body) as {
+        error?: { message?: unknown };
+        message?: unknown;
+      };
+      const message = parsed.error?.message ?? parsed.message;
+      if (typeof message === "string" && message.trim() !== "") {
+        return S.terminal.createRefused(message.trim());
+      }
+    } catch {
+      // Not JSON after all (a proxy's HTML page, half a body): the detail as it came.
+    }
+  }
+  return S.terminal.createRefused(detail);
+}
+
+/**
+ * Whether an empty dock — the picker — is on screen right now: exactly the views
+ * dockViews() lists with no tabs (one open dock with no tabs draws its picker).
+ */
+function pickerOnScreen(): boolean {
+  return dockViews().some((view) => view.tabs.length === 0);
+}
+
+/**
  * Creates a fresh shell and tabs it into `position` (the bottom dock by default). The
  * shell starts in the current Workspace; a Workspace the server rejects (deleted since,
  * or a path this server cannot see) falls back to home rather than leaving the user with
  * no terminal at all.
- * Failures surface as a toast — with no tab created there is no surface of its own to
- * carry the error, and a swallowed create looks like nothing happened, which is exactly
- * how a server-side spawn failure used to present.
+ * Failures surface where the click came from: the empty dock's picker keeps the sentence
+ * under its terminal row, and any other caller (a "+" over a running tab, the toggle with
+ * the dock hidden) still gets the toast — with no tab created there is no surface of its
+ * own to carry the error, and a swallowed create looks like nothing happened, which is
+ * exactly how a server-side spawn failure used to present.
  */
 export async function createShellInDock(position?: DockPosition): Promise<void> {
   // The machine is named explicitly: there is no terminal id yet for the routing rule to
   // read, which is the one call in this feature that cannot use it.
   const machine = workspaceMachine;
+  // This attempt's answer is the one that describes the screen: the last attempt's sentence
+  // was about another try, possibly another shape of failure.
+  clearTerminalCreateRefusal();
   const create = (cwd: string): Promise<TerminalInfo> =>
     fetchJson<TerminalInfo>(
       "/api/terminals",
@@ -113,7 +200,13 @@ export async function createShellInDock(position?: DockPosition): Promise<void> 
         ? `${message} — ${S.terminal.noTerminalApi}`
         : message;
     console.error("[terminal] create failed:", detail);
-    toastError(`${S.terminal.createFailed}: ${detail}`);
+    if (pickerOnScreen()) {
+      // The picker is the surface that asked: its row is still there to press again, so the
+      // sentence stays under it (dock-panel) instead of dismissing itself in six seconds.
+      setCreateRefusal(terminalCreateRefused(detail));
+    } else {
+      toastError(`${S.terminal.createFailed}: ${detail}`);
+    }
   } finally {
     void refreshTerminals();
   }

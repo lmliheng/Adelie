@@ -223,6 +223,8 @@ export const zh = {
     killShell: "关闭此终端",
     /** Pane body when creating/attaching a shell failed (the server message follows). */
     createFailed: "终端创建失败",
+    /** The same failure where the dock's picker can keep it: under the row that asked. */
+    createRefused: (reason: string): string => `无法打开终端：${reason}`,
     /** A create that 404s: the server predates the terminal API (or the shell attached to an older one). */
     noTerminalApi:
       "该服务端没有终端接口：运行中的 runtime 早于该功能。热更新只替换平台与前端，终端接口属于 runtime，需更新 runtime 本身（重启无效）",

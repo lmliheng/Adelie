@@ -74,6 +74,7 @@ import {
 import type { DockPickerChoice, DockTabItem } from "@adelie/ui";
 import { S } from "../../lib/strings";
 import { refusalText } from "../../lib/api-error";
+import { toneInk } from "../../lib/tone";
 import { NAV_ICONS } from "../../lib/nav-icons";
 import { chordKeys } from "../../components/ui/chord-kbd";
 import { useDisplayedBinding, useShortcutLabel } from "../../lib/shortcuts/use-keymap";
@@ -94,7 +95,14 @@ import {
 import type { TerminalInfo } from "../terminal/terminal-view";
 import { invalidateSlotClips } from "../builtin-browser/slot-registry";
 import { confirmClose } from "./close-guard";
-import { createShellInDock, detachTerminal, openTerminalInDock } from "./dock-terminal";
+import {
+  clearTerminalCreateRefusal,
+  createShellInDock,
+  detachTerminal,
+  openTerminalInDock,
+  readTerminalCreateRefusal,
+  subscribeTerminalCreateRefusal,
+} from "./dock-terminal";
 import { DockDragOverlay, dockDropCandidate } from "./dock-drag";
 import { DockPanelProvider } from "./panel-context";
 import type { DockPanelHandle } from "./panel-context";
@@ -290,6 +298,13 @@ export function DockPanel({
 }: DockPanelProps) {
   useSyncExternalStore(subscribeDock, dockVersion);
   const terminals = useSyncExternalStore(subscribeTerminals, liveTerminals);
+  // A shell create raised from this dock's picker that failed: its sentence stays under that
+  // picker (see dock-terminal), the way every other refusal in the app stays beside the
+  // control that raised it.
+  const createRefusal = useSyncExternalStore(
+    subscribeTerminalCreateRefusal,
+    readTerminalCreateRefusal,
+  );
   const closeShortcut = useShortcutLabel("terminal.close");
   const toggleChord = useDisplayedBinding("terminal.toggle");
   // The panels offered here, in registry order: what the "+" menu and the picker list, and
@@ -302,6 +317,12 @@ export function DockPanel({
   const [addOpen, setAddOpen] = useState(false);
 
   const activeTab = tabs.find((tab) => tabKey(tab) === activeKey) ?? null;
+
+  // A sentence the picker left is retired once a tab takes the picker's place: it described a
+  // click made at that picker, and that surface is gone.
+  useEffect(() => {
+    if (tabs.length > 0) clearTerminalCreateRefusal();
+  }, [tabs.length]);
 
   // The store decides which surface (if any) is fullscreen; this one is it while it is open and
   // the store names its position (the merged view's is "bottom", like the bottom dock's).
@@ -819,7 +840,23 @@ export function DockPanel({
 
   const bodies =
     tabs.length === 0 ? (
-      <DockPicker choices={pickerChoices} horizontal={horizontal} />
+      <div className="flex min-h-0 flex-1 flex-col">
+        <DockPicker choices={pickerChoices} horizontal={horizontal} />
+        {/* The picker drew the terminal row that was pressed: a create that failed leaves its
+            sentence here, under that row, until the next attempt or until a tab replaces the
+            picker (the effect below retires it then, so it cannot reappear later). */}
+        {createRefusal !== null && (
+          <p
+            role="alert"
+            data-testid="dock-terminal-create-refusal"
+            data-tooltip={createRefusal}
+            data-tooltip-content="text"
+            className={`mx-4 mb-3 line-clamp-2 break-words text-center text-xs ${toneInk.danger}`}
+          >
+            {createRefusal}
+          </p>
+        )}
+      </div>
     ) : (
       <div className="relative min-h-0 flex-1">
         {tabs.map((tab) => {

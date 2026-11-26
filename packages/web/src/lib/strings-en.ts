@@ -205,6 +205,8 @@ export const en: Strings = {
     /** Hover menu when the user has no live terminal yet. */
     /** Pane body when creating/attaching a shell failed (the server message follows). */
     createFailed: "Could not start a terminal",
+    /** The same failure where the dock's picker can keep it: under the row that asked. */
+    createRefused: (reason: string): string => `Could not open a terminal: ${reason}`,
     /** A create that 404s: the server predates the terminal API (or the shell attached to an older one). */
     noTerminalApi:
       "this server has no terminal API: the running runtime predates it. A hot push replaces the platform and Web App, but the terminal endpoints are runtime-owned — the runtime itself has to be updated (restarting will not help)",
