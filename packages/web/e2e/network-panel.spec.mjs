@@ -94,3 +94,31 @@ test("the Network panel opens from the dock picker with its controls", async ({ 
   await expect(dock.getByRole("button", { name: "模型" })).toBeVisible();
   await expect(dock.getByRole("searchbox", { name: "搜索" })).toBeVisible();
 });
+
+test("a row opens its detail inside the panel, tabs and back included", async ({ page }) => {
+  await openSessionWithOneTurn(page);
+
+  await page.locator('[data-net-turn="1"]').click();
+  const dock = onScreenDock(page);
+  await expect(dock.getByText("记录中")).toBeVisible();
+
+  // Open one real API call's row: the detail replaces the list inside the same panel.
+  await dock.getByRole("button").filter({ hasText: "/api/" }).first().click();
+  for (const label of ["概述", "请求", "响应", "事件流", "关联"]) {
+    await expect(dock.getByRole("button", { name: label, exact: true })).toBeVisible();
+  }
+
+  // What was sent: the header table, masked by default.
+  await dock.getByRole("button", { name: "请求", exact: true }).click();
+  await expect(dock.getByText("请求头")).toBeVisible();
+
+  // What the stream delivered: the browser's side is counted, the server's is still a placeholder.
+  await dock.getByRole("button", { name: "事件流", exact: true }).click();
+  await expect(dock.getByText("服务端写出", { exact: true })).toBeVisible();
+  await expect(dock.getByText("未采集").first()).toBeVisible();
+
+  // ← goes back to the list, which is still recording.
+  await dock.getByRole("button", { name: "返回" }).click();
+  await expect(dock.getByRole("button", { name: "本次回复", exact: true })).toBeVisible();
+  await expect(dock.getByText("记录中")).toBeVisible();
+});
