@@ -3982,6 +3982,15 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       **描边档当填充**用，而手绘涂鸦的 `--ui-line` 是它那条深色手绘描边（`#3f3a34`），于是选中态的底色与
       文字（`--ui-fg` `#332f2a`）同色、对比度 1.18。改成读令牌（`bg-fill-neutral` + `text-fg`，未选中
       `text-fg-muted hover:text-fg`）。见「第三百四十五轮」一节。
+- [x] **7.215 停靠面板选择器里开的终端起不来时，原因留在选择器下面**（**2026-11-26 第三百四十六轮**
+      落地，提交见「已完成的轮次」；`packages/web` 2 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 5 条 ＋
+      新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：空着的停靠面板显示的是选择器，
+      它的「终端」行就是发起请求的那个表面；服务端起不来 shell 时，屏幕过去与点之前一模一样 —— 那行还在、
+      终端没出现，原因只在一条六秒后自己消失的通知里（`dock-terminal.ts` 的头注释当时写着「没有标签页就没有
+      可挂的表面」，可这一次选择器本身就还在屏幕上）。现在那句话留在选择器下面（`role="alert"`、危险色、限
+      两行），措辞是界面自己的加上服务端的 `error.message`（取不到时保留整行详情），直到下一次尝试；有标签页
+      取代选择器时收走。已有标签页上的「+」与收起时的快捷键照旧走通知（那里确实没有自己的表面）。见
+      「第三百四十六轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -7226,6 +7235,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.213 | **工作区选择器的地址栏把进不去的路径留在输入框里，原因也留在它下面**（**2026-11-26 第三百四十三轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各删一句 ＋ 新 spec 2 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/chat/workspace-finder.tsx` 新增 `addressRefusal`（那句按错误码本地化的原因，画在地址输入框这一列里、与输入框左对齐）与 `addressAttempt`（只有仍是当前这次尝试的答复才把输入框放回来 —— 用户可能已自己拿回输入框或离开）；`commitAddress` 的失败分支 `dir_permission_denied` 照旧（选择器停在那儿、面板自己说明），其余情形用 `refusalText(err)` 并把输入框带着原来那条路径重新打开（整条选中）；`editAddress` / `cancelAddress` 清句并结束尝试；`lib/strings{,-en}.ts` 删掉不再使用的 `workspaceDirInvalid`（那句写着「已回退」，而今不再回退） | 见「第三百四十三轮」一节（rebase 到 `cd7473fe3` 后重跑：六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **364 文件 / 4066 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 改动文件 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；真服务端 + 真浏览器：**改后 2 passed**（输入框带着 `/tmp/…/typo-here` 回来、整条选中、焦点在框里；那句逐字「该目录不存在或不可访问。」、类名 `text-red-600 dark:text-red-400`；7 秒后仍在；同一字段改对回车即走到 `real` 并列到 `kept.txt`；通知区 0 条、console 除这次故意请求的 404 外 0 error），**改前 dist 反证 2 failed**（`finder-address-refusal` 元素不存在）；三份 finder spec 回归 **6 passed**） | `dbff1fbd6` |
 | 2026-11-26 | 发布 | **发 v0.8.5 并换装现网**（v0.8.4 之后攒下的四笔，**全在 Web 端**：**大文件附件的上传有了进度**（用户点单，发送时右下角一张进度卡）、**文件面板的 Edit 打不开编辑器时，原因留在预览上方**、**工作区选择器的地址栏把进不去的路径留在原地**、**stop hook 派生的游离会话不再画出一条空的智能体行**；服务端源码自 v0.8.4 以来没改，这一版**没有数据库迁移**。发布提交 `18c66addc`（父 `8f1261d3e`），`main` 与带注解的标签 `v0.8.5` 都是**直推**；门禁在 `/root/rel-085` 上 **rc=0 五步全绿**（build / typecheck 六个 `Done` / lint 0 警告 0 错误 2707 文件 / format:check / tests `ALL TESTS PASS`）；三件载荷 linux-x64 111M（114,498,922）/ universal 56M（57,257,420）/ win32-x64 144M（150,570,901）+ `validate-bundles.sh` 三件全过，桌面 deb 122,593,664 / AppImage 155,545,569 / exe 162,540,372；npm **29 个包**发到 0.8.5（`PUBLISH-ALL-DONE`，0 跳过）；GitHub Release **id `458889958`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-26T02:58:59Z）；3003 换上 v0.8.5 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v1030`）；现网 `/root/.adelie` 整棵换成 0.8.5、旧前端先拷回、瞬时单元 `adelie-live-restart-085` 延后 900 秒重启装新前端并自核验） | 发布轮，逐项见「第三百四十四轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 0.8.5、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 18c66addc…`、前端入口 `index-DlxipY7i.js`、`GET /` 200、入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401；现网核验写 `rel-085-live-restart-verify.txt`；`releases/latest` = v0.8.5 | `18c66addc`（发布） |
 | 2026-11-26 | 7.214 | **手绘涂鸦（与赛博朋克）主题下，输入框「+」菜单里「运行中发送方式」的选中按钮不再被自己的底色吃掉**（**2026-11-26 第三百四十五轮**落地，用户点单；`packages/web` 1 个文件 1 处类名 —— **不碰接口、不碰服务端、无新依赖**）：选中那枚小按钮原先用 Tailwind 调色板档 `bg-gray-200 dark:bg-gray-700` 当填充，而外置主题的调色板桥（`external-theme.ts` 的 `PALETTE_BRIDGE_*`）把 `--color-gray-200` 映到 `--ui-line`；手绘涂鸦的 `--ui-line` 是它那条深色手绘描边（`#3f3a34`），文字 `--ui-fg` 是 `#332f2a`，于是底色与字同色。改成读令牌 `bg-fill-neutral` + `text-fg`（未选中 `text-fg-muted hover:text-fg`） | 见「第三百四十五轮」一节（真服务端 + 真浏览器，四套库主题 × 明暗两种模式量选中按钮的底色/文字 WCAG 对比度：改前 手绘涂鸦浅色 **1.18**、赛博朋克浅色 **1.40** / 深色 **1.47** 字被吃掉；改后八组全部 **≥ 9.9**；`packages/web` 单测 **364 文件 / 4066 通过 / 2 跳过**、`typecheck` rc=0、`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
+| 2026-11-26 | 7.215 | **停靠面板选择器里开的终端起不来时，原因留在选择器下面，不再只活六秒**（**2026-11-26 第三百四十六轮**落地；`packages/web` 2 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 5 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/dock/dock-terminal.ts` 新增模块级 store（`subscribeTerminalCreateRefusal` / `readTerminalCreateRefusal` / `clearTerminalCreateRefusal`）与纯函数 `terminalCreateRefused(detail)`（响应体带 `error.message` 就念它，否则保留整行详情）；`createShellInDock` 失败时，若 `dockViews()` 里有一个没有标签页的视图（即选择器在屏）就把句子写进 store，否则照旧 `toastError`；`features/dock/dock-panel.tsx` 在选择器下面画那一行（`role="alert"`、`data-testid="dock-terminal-create-refusal"`、危险色、限两行、悬停看全文），有标签页取代选择器时经 `clearTerminalCreateRefusal` 收走；`lib/strings{,-en}.ts` 各加 `terminal.createRefused(reason)`。头注释那句「没有标签页就没有可挂的表面」改成两种情形 | 见「第三百四十六轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4071 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 364 / 4066） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 6 个改动文件 0 警告 0 错误、`prettier --check` 8 个文件干净、`git diff --check` 干净；新单测 **5 passed**；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「无法打开终端：Could not start a shell: posix_spawn failed (mock)」、选择器仍在、通知区 0 条、7 秒后仍在、恢复后一次成功把句子清掉）；**改前 dist 反证 1 failed**（`dock-terminal-create-refusal` 元素不存在）；`dock.spec.mjs` 回归 **10 passed**（含「failed shell create surfaces as a toast」那条，快捷键路径没变）；rebase 到 `7b58cbd66` 后重跑：六包 `typecheck` 六个 `Done`、web **365 / 4071 + 2 跳过**、新 spec **1 passed**、`dock.spec` **10 passed**；探针量到句子在选择器正下方（y=872，选择器 589–872）、console 只有既有的 `/machines` 403 与本轮故意造的 500 两条 + 本模块自己的 `console.error`、pageerror 0 条） | `41ff5451a` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34958,4 +34968,106 @@ chip）、`features/traces/trace-panel.tsx` 与 `sse-frame-list.tsx`（选中的
 ### 提交
 
 - 代码一笔：`packages/web/src/features/chat/chat-input.tsx`（一处类名）；台账（条目 7.214、上表那一行、
+## 第三百四十六轮：停靠面板选择器里开的终端起不来，原因留在选择器下面（2026-11-26，条目 7.215）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `8f1261d3e`（第三百四十三轮的两笔）。
+`git fetch origin` 三次都不通（`GnuTLS recv error (-110)` → `http.version=HTTP/1.1` 连接超时 135 s），
+改走 SSH（`git -c url."git@github.com:".insteadOf="https://github.com/" fetch origin`）拿到
+`origin/main` —— 当时 `HEAD..origin/main` 为 **0**，本地就是远端。
+
+**让号**：本轮开工时按第三百四十四轮 / 7.214 写的；收尾时推送被拒（远端先到三笔），SSH 拉下来是
+`7b58cbd66` —— 第三百四十四轮是**发布轮**（v0.8.5，表行不编号）、7.214 是「手绘涂鸦主题下运行中发送方式」
+那笔（第三百四十五轮）。按台账惯例把号让给先到的，本轮改记 **7.215 / 第三百四十六轮**（条目、表行、本节
+标题与正文里的编号都已改过来），两笔提交 rebase 到 `7b58cbd66` 上。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳、部署单元等发布动作、文档面留到发布期；
+3.5 要用户拍板取哪个桌面壳、3.6 要模型 key；4.1–4.3 明令不动；5.3 的②③④要第二台机器；5.6 / 5.10 要拍板），
+第 7 节到 7.213 全勾（收尾时远端又先到 7.214）；上游 `main` 仍是 `93b9d5056`（与第三百四十一轮同一个提交），
+从上游取小件这条路是干的。
+于是接第三百四十轮「没做 / 留着」点名的同族下一批：插件导入、工作区选择器、工单弹窗、错误面板。
+逐个量过：插件导入的 `importFailure` 已按「确认框 / 就地 / 通知」三种分流（通知只剩对话框已关的那一次）；
+工单弹窗的五个 `run` 全部传了 `refuse`（`toastError` 只在没人传 `refuse` 的兜底分支里，实际走不到）；
+错误面板的「清空」先数一遍那一步失败时没有卡片可挂。剩下最确凿、且能在本机真看真验的，是停靠面板的
+终端创建失败 —— 它自己的注释就写着「没有标签页就没有可挂的表面」，可这一次**选择器本身就还在屏幕上**。
+
+**为什么它是真的**：空着的停靠面板显示的是选择器（「选择在这里打开什么」），在它上面点「终端」
+（`dock-pick-terminal`）时，`createShellInDock` 被拒后：没有标签页被创建，dock 不打开也不变化 —— 屏幕
+与点之前**一模一样**，只有一条六秒后自己消失的通知说「终端创建失败：…」。再点一次是唯一能做的事，而
+屏幕上没有一句话说发生了什么；选择器这一行还在那里，正是下一次尝试的位置。
+
+**做了什么**（`packages/web` 2 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 5 条 ＋ 新 spec 1 条 ＋ changelog
+一对，**不碰接口、不碰服务端、无新依赖**）：
+
+- `features/dock/dock-terminal.ts`：
+  - 模块级 store（`workspaceCwd` 同一处）：`subscribeTerminalCreateRefusal` / `readTerminalCreateRefusal` /
+    `clearTerminalCreateRefusal`，由 `useSyncExternalStore` 订阅 —— 创建是从没有 React 上下文的地方发起的
+    （选择器那一行、`terminal.toggle` 命令、侧栏菜单）；
+  - 纯函数 `terminalCreateRefused(detail)`：`HttpStatusError` 的 detail 是
+    `POST /api/terminals → 500 {"error":{…}}`，句子念响应体里的 `error.message`（反代/旧路由的扁平
+    `message` 也认），取不到就保留整行 —— 这句话要一直留在屏幕上，不能带着整段 JSON；
+  - `createShellInDock`：开头先清掉上一句；失败时若 `pickerOnScreen()`（`dockViews()` 里有一个没有标签页的
+    视图）就写进 store，否则照旧 `toastError` —— 已有标签页上的「+」与收起时的快捷键确实没有自己的表面；
+  - 文件头与函数注释改掉「没有标签页就没有可挂的表面」那半句。
+- `features/dock/dock-panel.tsx`：选择器下面的 `role="alert"` 一行
+  （`data-testid="dock-terminal-create-refusal"`、`data-tooltip` 全文、危险色、限两行、居中），
+  外加一条 effect：有标签页取代选择器时 `clearTerminalCreateRefusal()` —— 那句话说的是那次点击，
+  表面没了它也就不该在，免得下一次无关的空面板突然出现一句旧话。
+- `lib/strings{,-en}.ts`：`terminal.createRefused(reason)`（「无法打开终端：…」/ “Could not open a terminal: …”）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** ·
+  cli **39 / 568** · web **365 文件 / 4071 通过 / 2 跳过**（本笔 +1 文件 / +5 条；基线 364 / 4066）·
+  server **220 文件 / 3205 通过 / 6 跳过**。
+- `oxlint` 6 个改动文件 **0 警告 0 错误**；`prettier --check` 8 个文件（含 spec 与 changelog 一对）干净
+  （新单测与 spec 首跑 `--write` 一次，复检通过）；`git diff --check` 干净；`git diff --stat` 只有
+  4 个源码/词典文件（**+140 −6**，没有整片重排）。
+- **新单测 5 passed**（`test/dock-terminal-create-refusal.test.ts`）：① 空 dock（picker 在屏）里创建被拒 ——
+  句子逐字「无法打开终端：Could not start a shell: posix_spawn failed (mock)」、没有标签页、**通知栈 0 条**、
+  POST 只打了一次；② 新的尝试替换它、后来那次成功把它清空并真的加上标签页；③ dock 已有标签页时被拒 ——
+  store 仍为空、通知栈里有一条「终端创建失败：…」；④⑤ `terminalCreateRefused` 的两种形状
+  （`error.message`、扁平 `message`）与「不是那个形状就保留整行」。
+- **新 spec 1 passed**（真服务端 8977 + mock 8978 + `/usr/bin/chromium`，数据根
+  `/root/adelie-fork-data/r343-a`；空数据根不需要模型 key —— 即 3.6 那个卡点）：`POST /api/terminals`
+  被 `page.route` 答成 500（服务端自己的 body 形状）→ 打开底部 dock、点选择器里的「终端」→ 那句逐字、
+  选择器仍在、通知区 **0** 个按钮；**等 7 秒**（toast 的寿命）后三者都还在；放开拦截再点同一行 → 真 pty
+  起来（`data-status="ready"`）、句子 0 条。
+- **反证**：把 4 个源码文件退回 `HEAD`、重建 web，同一份 spec → **1 failed**，停在
+  `getByTestId('dock-terminal-create-refusal')` `element(s) not found`（改前根本没有那句话）。
+- **回归**：`dock.spec.mjs` 十条一起跑 **10 passed**，其中「a failed shell create surfaces as a toast,
+  and a later attempt recovers」正是收起状态下的快捷键路径 —— 那条照旧，行为没有倒退。
+- **rebase 到 `7b58cbd66` 之后重跑**（远端那三笔只动了各包 `package.json` 的版本、`core/src/index.ts` 的
+  两行与 `chat-input.tsx` 的一处类名）：六包 `typecheck` 仍是六个 `Done`、web 单测 **365 / 4071 + 2 跳过**
+  （与本笔上基座时的读数相同）、重建 web 产物后新 spec **1 passed**、`dock.spec.mjs` **10 passed**。
+- **真看一眼**（`r343/zz-probe-r343.spec.mjs`，跑完即删；真服务端 + 真浏览器 1280×900）：句子盒子
+  x=304 / y=872 / 960×16，选择器盒子 288 / 589 / 992×283 —— 就在选择器正下方、同一列居中、没有被裁；
+  7 秒后仍在、文案不变、通知区 0 条；恢复后终端起来、句子 0 条。console 只有既有的
+  `GET …/machines` **403**（管理员专用，探针读者不是管理员）、本轮故意造的 **500**、以及本模块自己的
+  `[terminal] create failed` 一条；pageerror **0**。截图 `r343/{1-picker,2-refused,3-after-7s,4-recovered}.png`
+  看过：红字左边缘与选择器列表同列、行高只多一行、没有任何挤压或溢出。
+- 端口只用 8977 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r343-a`，探针 / 两态产物 / 截图都在 scratchpad 的 `r343/` 下
+  （`packages/web/dist`、`test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- **顺带核过一条旧记录（不成立，记下来免得下一轮再追）**：第三百四十三轮末尾写「路径指向一个文件时，
+  服务端与 ENOENT 一样回 `dir_not_found`」—— 实际 `resolveBrowsableDir` 先用 `stat().isDirectory()`
+  把「存在但不是一个目录」判成 `400 not_a_dir`（前端已有「该路径不是目录。」），`ENOTDIR` 只在**路径中间
+  穿过一个文件**（`/a/file.txt/sub`）时出现，那时它与「不存在」读起来差别不大。所以这条候选可以划掉。
+- 同族里仍以 `toastError` 收尾的其余几处（插件页的部署失败、聊天页发不出去的那几处、错误面板的两处重试）
+  这一轮没碰 —— 前两处量过：卡片/对话里已经就地写着原因，通知是补充；错误面板「清空」先数一遍那一步
+  没有卡片可挂，可以挂在页脚那个按钮旁边，留作候选。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同；上游 `main` 仍是 `93b9d5056`。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`41ff5451a`**：`packages/web/src/features/dock/dock-terminal.ts`、
+  `packages/web/src/features/dock/dock-panel.tsx`、`packages/web/src/lib/strings{,-en}.ts`、
+  `packages/web/test/dock-terminal-create-refusal.test.ts`、
+  `packages/web/e2e/dock-terminal-create-refusal.spec.mjs`、changelog 一对；台账（条目 7.215、上表那一行、
   本节）随本文件另起一笔。
