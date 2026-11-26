@@ -7214,6 +7214,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.211 | **stop hook 派生的游离会话不再在对话里画出一条智能体行**（上游 `751624eb4` `#1869` 移植，照改动落、不是合分支；上游 4 文件 / +61 → 本树落下 4 个跟踪文件（2 改 2 新）：`packages/web/src/lib/omni/stream-model.ts`（`StreamModel.detachedChildren`、`handleEvent` 新增 `hook` 分支从 `stop` 事件的 `output.session_id` 填入、`pushMessage` 的 origin 分支在 `routeNested` 之前丢掉第一跳正是该会话的记录）、`packages/web/test/stream-model.test.ts`（+1 用例）、changelog 一对）：本树的 stop hook 循环与上游同形（`hooks/stop-hook.ts` 把子会话 id 写进 `hook` 事件的`output`、紧接着推子会话的 `session_meta`），而父会话 Trace 不为此保留子智能体指针，流模型于是给这个不认识的 origin 头建嵌套模型、补一条独立子智能体项 —— 长 Task 结束后回复下方那条「General Agent + 短 id」点开是空面板。**上游路径 `lib/amsp/stream-model.ts` 在本树叫 `lib/omni/`，夹具名也不同，其余逐字相同** | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）· `npx oxlint` 两个文件 **0 警告 0 错误** · 两个文件与一对 changelog `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **361 / 4047 + 2 跳过**（本笔 +1；rebase 到 `ce428d6a6` 后并入另一条线的 7.210，重跑 **362 / 4053 + 2 跳过**）· server **220 / 3205 + 6 跳过** · **反证（单测）**：源码不改、只加新用例 → `test/stream-model.test.ts` 那条 **1 failed**（`expected true to be false`，画出 `subagent` 项），源码改后 **126 全过** · **本轮主证据（真服务端 ×2 + 真浏览器，两态同一套探针）**：一次性数据根 `/root/adelie-fork-data/r340-{after,before}`（复制出两份），手写一个会话的 Trace —— 一轮对话后跟`hook: "stop"` 事件（`output.session_id = hooked-abc123`）与带 `origin: ["hooked-abc123"]` 的子会话`session_meta`，不需要模型 key（即 3.6 那个卡点）；两份 web 产物 `r340/{after,before}-dist`（入口 `index-DpmYv-TM.js` / `index-Y3RPCIun.js`，两端核过是两份不同的东西）分别挂在两个根上，**改后 8963 / 改前 8964**：**改前** 对话区 `done` 下方多一条「General Agent d-abc123」（截图 `r340/before.png`；`d-abc123` 出现 1 处、`General Agent` 出现 2 处），**改后** 该行消失（`after.png`；`d-abc123` 0 处、`General Agent` 1 处即侧栏那一行），两态 console 各 **0 error**、无一条 ≥400 · 端口只用 8963 / 8964（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落在 `/root/adelie-fork-data/r340-{after,before}`，探针 / 两份产物 / 截图都在 scratchpad 的 `r340/` 下（`packages/web/dist` 是构建产物，未 `git add`） | `842b03529` |
 | 2026-11-26 | 7.212 | **大文件附件的上传有了进度：发送时右下角一张进度卡片**（**2026-11-26 第三百四十二轮**落地，用户点单；rebasing 时让号：远端已先占 7.211 / 第三百四十一轮；`packages/web` —— 新 `api/xhr-upload.ts`（`upload.onprogress` → 真 `Response`）、`api/client.ts` 的 `ApiFetchOptions.onUploadProgress`（给了才走 XHR）、`api/endpoints.ts` 的 `postTask` / `postSteer` 透传、新 `features/chat/message-upload-progress.ts`（`inputBytes` / `steerBytes` + 两个包装）、发送 / 排队 / 换模型 / 交接 / 草稿首条 / 插话六个调用点、`lib/strings{,-en}.ts` 两个槽位、新单测 13 条、新 spec 1 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **不碰接口、无新依赖**） | 见「第三百四十二轮」一节（web `vitest run` **364 文件 / 4065 通过 / 2 跳过**，本笔 +2 文件 +13 条；`pnpm -r typecheck` **`EXIT=0`**；`pnpm lint` 0 警告 0 错误；改动文件 `prettier --check` 干净；docs **8 文件 / 62 通过**；真服务端 + 真浏览器，CDP 把上行限到 700KB/s：改后 **1 passed**（卡片起来、`aria-valuenow` 两次读数递增、字节对那行在、发完卡片消失、消息进了对话），拿现网 0.8.4 的改前产物同一条 spec 反证 **1 failed**（`getByRole('progressbar', { name: '正在上传消息' })` 找不到）） | 见「第三百四十二轮」一节 |
 | 2026-11-26 | 7.213 | **工作区选择器的地址栏把进不去的路径留在输入框里，原因也留在它下面**（**2026-11-26 第三百四十三轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各删一句 ＋ 新 spec 2 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/chat/workspace-finder.tsx` 新增 `addressRefusal`（那句按错误码本地化的原因，画在地址输入框这一列里、与输入框左对齐）与 `addressAttempt`（只有仍是当前这次尝试的答复才把输入框放回来 —— 用户可能已自己拿回输入框或离开）；`commitAddress` 的失败分支 `dir_permission_denied` 照旧（选择器停在那儿、面板自己说明），其余情形用 `refusalText(err)` 并把输入框带着原来那条路径重新打开（整条选中）；`editAddress` / `cancelAddress` 清句并结束尝试；`lib/strings{,-en}.ts` 删掉不再使用的 `workspaceDirInvalid`（那句写着「已回退」，而今不再回退） | 见「第三百四十三轮」一节（rebase 到 `cd7473fe3` 后重跑：六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **364 文件 / 4066 通过 / 2 跳过** · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 改动文件 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净；真服务端 + 真浏览器：**改后 2 passed**（输入框带着 `/tmp/…/typo-here` 回来、整条选中、焦点在框里；那句逐字「该目录不存在或不可访问。」、类名 `text-red-600 dark:text-red-400`；7 秒后仍在；同一字段改对回车即走到 `real` 并列到 `kept.txt`；通知区 0 条、console 除这次故意请求的 404 外 0 error），**改前 dist 反证 2 failed**（`finder-address-refusal` 元素不存在）；三份 finder spec 回归 **6 passed**） | `dbff1fbd6` |
+| 2026-11-26 | 发布 | **发 v0.8.5 并换装现网**（v0.8.4 之后攒下的四笔，**全在 Web 端**：**大文件附件的上传有了进度**（用户点单，发送时右下角一张进度卡）、**文件面板的 Edit 打不开编辑器时，原因留在预览上方**、**工作区选择器的地址栏把进不去的路径留在原地**、**stop hook 派生的游离会话不再画出一条空的智能体行**；服务端源码自 v0.8.4 以来没改，这一版**没有数据库迁移**。发布提交 `18c66addc`（父 `8f1261d3e`），`main` 与带注解的标签 `v0.8.5` 都是**直推**；门禁在 `/root/rel-085` 上 **rc=0 五步全绿**（build / typecheck 六个 `Done` / lint 0 警告 0 错误 2707 文件 / format:check / tests `ALL TESTS PASS`）；三件载荷 linux-x64 111M（114,498,922）/ universal 56M（57,257,420）/ win32-x64 144M（150,570,901）+ `validate-bundles.sh` 三件全过，桌面 deb 122,593,664 / AppImage 155,545,569 / exe 162,540,372；npm **29 个包**发到 0.8.5（`PUBLISH-ALL-DONE`，0 跳过）；GitHub Release **id `458889958`** 14 件 763 MB 逐件核 digest 后发布为 latest（`published_at` 2026-11-26T02:58:59Z）；3003 换上 v0.8.5 清单（本机 Windows 包一并换新，旧清单留 `.bak-20261126-v1030`）；现网 `/root/.adelie` 整棵换成 0.8.5、旧前端先拷回、瞬时单元 `adelie-live-restart-085` 延后 900 秒重启装新前端并自核验） | 发布轮，逐项见「第三百四十四轮」一节；换装前冒烟（从**载荷**解出的树，端口 8911、临时数据根）：`lib` 0.8.5、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 18c66addc…`、前端入口 `index-DlxipY7i.js`、`GET /` 200、入口 JS 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications` `/api/version` 全 401；现网核验写 `rel-085-live-restart-verify.txt`；`releases/latest` = v0.8.5 | `18c66addc`（发布） |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -34829,3 +34830,68 @@ token 的表格；400 个 Z 的长粘贴）—— `[data-stream-scroll]` 一律 
   `packages/web/src/features/chat/workspace-finder.tsx`、`packages/web/src/lib/strings{,-en}.ts`、
   `packages/web/e2e/finder-address-refusal.spec.mjs`、changelog 一对；台账（条目 7.213、上表那一行、本节）
   随本文件另起一笔。
+
+## 第三百四十四轮：正式发 v0.8.5、换装现网（2026-11-26）
+
+**开工自检**：`git status --short` **不干净** —— 另一条线（同一棵 `/root/adelie-fork`）正在写
+`input-subagent` 那一笔（`packages/core/src/environment/tools/{input-subagent,run-subagent,subagent/session}.ts`、
+`packages/docs/content/tools.{zh,en}.md`、changelog 一对、`packages/core/test/background-execution.test.ts`），
+**一个字没碰**。开工时本地 `main` = `cd7473fe3`、远端 `origin/main` = `8f1261d3e`；本会话上一轮那笔
+（条目 7.212，大附件上传进度）在 rebase 时被另一条线改写成 `cd7473fe3`、已随远端回到 main 上，
+所以用户说的「提交」其实**已经在远端**，这一轮只需要发版。
+
+**选活**：用户点单「提交并发小版本，发布到现网，我等会测试 win 端 s 的横线问题」。按版本号口径
+（只进第三位）发 **0.8.5**；发布在隔离工作树 `/root/rel-085`（`git worktree add -b release-085 … origin/main`）
+里做，**共用工作树一动没动**。
+
+**这一版收的是什么**：v0.8.4（`e48db0b11`）之后攒下的四笔，**全在 Web 端** —— 7.210 文件面板的 Edit
+打不开编辑器时，原因留在预览上方；7.211 stop hook 派生的游离会话不再画出一条空的智能体行；7.212 大文件
+附件的上传有了进度（用户点单）；7.213 工作区选择器的地址栏把进不去的路径留在原地、原因留在它下面。
+**服务端源码自 v0.8.4 以来没有改动**，所以这一版没有数据库迁移。
+
+**发布链**（脚本按 v0.8.4 那套复制、`sed` 换版本号，在 `release-085/` 下）：
+
+- 版本戳 **37 个文件**（root + 10 个包 + 25 个对外插件 + core 的 `VERSION`；四个 private `sandbox-*` 停在
+  0.2.3）。
+- 发布正文 `docs/releases/RELEASE-v0.8.5.md`（照骨架：导读 / 安装 / 亮点 / 值得一提 / 兼容 / 要求 / 收尾）。
+- 提交 **`18c66addc`**（父 `8f1261d3e`）；`main` 与标签 `v0.8.5` 都**直推**（`github.com` 通），远端 SHA
+  与本地相同；标签按既往风格是**带注解**的（`Adelie v0.8.5`）。
+- 门禁在 `/root/rel-085` 上：build / typecheck（六个 `Done`）/ lint（0 警告 0 错误，2707 文件）/
+  format:check / tests 五步 **`rc=0`、`ALL TESTS PASS`**（`/tmp/r085-gates.log`）。
+- **先 stamp 再 build**（0.6.7 那轮的教训）：`VERSION=0.8.5 BUILD_DATE=2026-11-26 BUILD_COMMIT=18c66addc…`，
+  `install.sh`/`install.ps1` 的 `__PENGUIN_RELEASE_VERSION__` → `v0.8.5`。
+- 三件载荷：linux-x64 **111M**（114,498,922）、universal **56M**（57,257,420）、win32-x64 **144M**
+  （150,570,901）。
+- 三件安装包 + `validate-bundles.sh` 三件全过（外层校验和、平铺成员集合、安装器逐字节一致、内层载荷校验和）；
+  `install.sh`/`install.ps1` 另补一份进 `dist-artifacts/`（`upload_rest.py` 的 14 件清单要读它）。
+- 桌面三件：deb **122,593,664**、AppImage **155,545,569**、exe **162,540,372**（+ blockmap + `latest*.yml`），
+  都标 0.8.5；Windows 那个走 wine + xvfb。
+- **npm**：29 个包（`amsp`/`core`/`server`/`cli` + 25 个插件）发到 `0.8.5`，`PUBLISH-ALL-DONE`、29 行
+  `Published package`、0 个跳过（`NPM_TOKEN_ADELIE`）。
+- **GitHub Release**：草稿 id **`458889958`**、4 路并发传 14 件 763 MB、逐件核过 digest 后
+  PATCH `draft=false` 发布为 latest（`published_at` `2026-11-26T02:58:59Z`）。
+- **3003 下载区**：`/opt/adelie-design/downloads/index.json` 换到 `v0.8.5`（保留 `android-test` 分组，旧清单留
+  `.bak-20261126-v1030`），本机那份 Windows 桌面包一并换新。
+- **换装前冒烟**：从**载荷** `linux-x64.tar.gz` 解一棵树起临时实例（临时数据根、端口 8911）—— `lib` 版本
+  0.8.5、core 戳 `BUILD_DATE 2026-11-26 / BUILD_COMMIT 18c66addc…`、前端入口 `index-DlxipY7i.js`、
+  `GET /` 200、`GET /assets/<入口>` 200、匿名 `/api/me` `/api/notifications` `/api/admin/notifications`
+  `/api/version` 全 401。
+- **现网换装**：`swap-live.sh` 把 `/root/.adelie` 整棵换成 0.8.5（`lib/package.json` 与 `bin/penguin --version`
+  都是 0.8.5，数据根没动）；装完**立刻把旧前端拷回**（内存里还是旧服务端 0.8.4，旧入口 `index-Y3RPCIun.js`），
+  新的 `index-DlxipY7i.js` 留在 `/root/rel-085/out/penguin/web/`，由瞬时单元 `adelie-live-restart-085`
+  延后 **900 秒**重启、重启成功后再装新前端并自核验（写 `/root/Adelie_develop/rel-085-live-restart-verify.txt`）。
+  `ADELIE_TRUST_PROXY=1` 上一版已补在单元里，这一版不用再动。
+
+**没做 / 留着**：
+
+- npm 写完当场逐包探版本端点：`@adelie/cli` 已 200，`core`/`server`/`amsp` 仍 404、`dist-tags.latest` 还是
+  0.8.4 —— 是那套「发布了但读侧要等几分钟」的滞后，**不升版本号**，起来之后再复探。
+- 换装后到重启成功前，`/root/rel-085` 不能删（重启脚本要用它的 `out/penguin/web`）；重启核验过了再清
+  （`/root/rel-084` 的前一轮同理，一并清）。
+- 横向滚动条那条（用户先报、后被 steering 切走的点单）本轮没碰；调查结论（三条已排除的假设、备而未用
+  的最小修法）记在条目 7.212 那一节里。
+
+### 提交
+
+- 发布提交 **`18c66addc`**（版本号 37 个文件 + 发布正文）；标签 `v0.8.5` 指同一提交。
+- 台账一笔（本文件，条目 = 发布）。
