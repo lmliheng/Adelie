@@ -4030,6 +4030,19 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       `overflow-wrap: anywhere`。真浏览器两态：`label` 面板 `scrollWidth` 474 → **254**（= `clientWidth`），
       面板高度 58 → 74（多折的那一行收在面板里）。见「第三百五十一轮」一节。
 
+- [x] **7.222 默认提示词精修：交付物亲自核对、卡住的检查先分清原因、精修前先落一份可用候选**
+      （上游 `ef6c8ce99` `#1880` 移植，**2026-11-27 第三百五十三轮**落地，提交见「已完成的轮次」；
+      `packages/core` 2 个源码文件 ＋ changelog 一对 —— **不碰接口、不动已存数据、无新依赖**）：
+      `# Success criteria` 原来只说「检查每个问题都解决了」，**没说拿什么去比**，字面量 / 路径 / 筛选条件 /
+      要求的输出差一点也会被报成「已验证」。现在写明核对用户的明确要求（指定确切内容时整份比对，转换或筛选
+      各查一个该被改动 / 该被包含与一个该被保留 / 该被排除的用例），项目有文档的检查照跑、覆盖不到的要求或
+      具体风险补一个针对性的检查；`# Stop rules` 加一条「同一失败反复出现且上次检查没缩小原因时，先用便宜的
+      办法分清原因再重跑整套」；`# Tool use` 加一条「候选已具备要求格式时先存到要求的路径再继续精修」。
+      **内核前进**：`KERNEL_VERSION` `2026-11-18` → `2026-11-27`，旧提示词哈希 `bdfdd83c…a2af2` 移进
+      `KERNEL_SUPERSEDED_TAB_HASHES.prompt`，新哈希 `72be07b0…24c5c` 写进 `KERNEL_DEFAULT_TAB_HASHES.prompt`，
+      世代清单加一行；只有提示词一个 tab 移动。反证：只改提示词不推内核 → `kernel-version.test.ts`
+      **1 failed / 18 passed**（门禁精确点名 `prompt`），补齐哈希后 **19 全过**。见「第三百五十三轮」一节。
+
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
 **开工**：`git status --short` 干净，分支 `main`，本地 `b9edad76c`。`git fetch origin` 经 https 一直不通
@@ -7280,6 +7293,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.219 | **桌宠通话失败时说的是这个窗口的语言；socket 的关闭原因不再覆盖那句话**（**2026-11-26 第三百五十轮**落地；`packages/web` 新 `features/pet/voice/call-failure.ts`、`realtime-client.ts` 的 `RealtimeConnectError`（`connect_failed` / `closed`）、`use-pet-call.ts` 改读词典、两本词典各加 7 条；`packages/server/src/realtime/ws.ts` 的 `proxy.error` 带 `code` / `detail`、一次通话只报一次拒绝＋ 新单测 14 条 ＋ 服务端用例 2 条 ＋ changelog 一对 —— **帧里新增两个字段、无新依赖**）：打不通的通话此前用错的语言说明原因（中继那句是服务端的英文，传输层兜底句是写死的中文），而 socket 的关闭原因 `upstream` 会被当成一句话写进那一行、把刚说过原因的句子覆盖掉 | 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`ifaces.json unchanged`，214 接口 / 647 类型）· 逐包 test **`EXIT=0`、0 失败**：core **70 / 1464 + 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 / 3206 + 6 跳过**（+1 条即本笔）· web **367 / 4089 + 2 跳过**（+2 文件 / +14 条）· `oxlint` 9 个改动文件 **0 警告 0 错误**、`prettier --check` 干净、`git diff --check` 干净 · **真服务端 8979 + 真浏览器（`/usr/bin/chromium`）四格两态**：改前（`HEAD` 的 4 个源码文件、重建 web 产物）四格全是 `upstream` → 改后「语音服务拒绝了这次连接（HTTP 401: no）」/「连不上语音服务。」/「The speech service refused the connection (HTTP 401: no).」/「Could not reach the speech service.」，四张截图看过、console error / pageerror 全 0 · 端口只用 8978 / 8979（跑完全停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r349-a` | 见本行提交 |
 | 2026-11-26 | 7.220 | **悬停提示里没有断点的长串在面板边缘折断，不再跑出面板**（上游 `20b9715a3` `#1893` 移植，照改动落、不是合分支；4 个文件 / +37 −2，其中源码 2 个（`packages/ui/src/components/overlays/tooltip/tooltip.tsx` 的 `contentClass`：`label` 由 `""` 改成 `wrap-anywhere`、`text` 由 `wrap-break-word` 改成 `wrap-anywhere`，并在类型注释里写下这条口径；`packages/ui-gallery/src/library/boards/tooltips.tsx` 的「被截断的一行」那一组加一条 `label` 型长路径示例）＋ 1 条新用例 ＋ changelog 一对，**纯排版、无新依赖、不碰接口**）：提示按用途分三种面板，`label`（控件名）这一类此前完全没有 `overflow-wrap` —— 一条没有空格的串（文件路径、长标识符）没有可折的地方，整条文字跑出圆角面板、压在页面别处；`text` 那一类用的是 `wrap-break-word`，它在计算内在宽度时不算断点，与「面板先长到上限、再折行」的写法对不齐。三种面板现在一律 `overflow-wrap: anywhere`：面板边缘就是断点，普通单词照旧整词换行。**本地化**：无（全在 `packages/ui` 与画廊内，无跨包 import、无 scope 引用点；画廊示例的路径按本仓数据根写成 `~/.adelie`，changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」） | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，本笔不动服务契约）· `oxlint` 0 警告 0 错误（438 文件）· `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 文件 / 1119 通过**（本笔新用例 1 条） · cli **39 / 568** · server **220 文件 / 3206 通过 / 6 跳过** · web **367 文件 / 4089 通过 / 2 跳过** · 画廊 `typecheck` + **20 文件 / 141 通过** · **反证（单测）**：把 `tooltip.tsx` 退回 `HEAD`、只跑 `test/tooltip.test.ts` → **1 failed / 26 passed**（新用例：`label` 的类名里没有 `wrap-anywhere`），换回本笔 → **27 全过** · **真服务端 + 真浏览器两态**（服务端 8985，数据根 `/root/adelie-fork-data/r351`，`ADELIE_WEB_DIST` 指 `packages/web/dist`，`/usr/bin/chromium`）：先关掉首次登录那张「尚未配置模型 credential」提示框，再往页面里注入一个只带 `data-tooltip`（`label` 型）／带 `data-tooltip-content` 的长路径触发器，悬停后读 `[data-testid="tooltip"]` —— **改前**：`label` 面板 `w=256 clientWidth=254 scrollWidth=474`（**溢出 220 px**、`overflow-wrap: normal`、高 58）、`code` 384/382/382、`text` 384/382/382（`overflow-wrap: break-word`）；**改后**：`label` `w=256 clientWidth=254 scrollWidth=254`（**不溢出**、`overflow-wrap: anywhere`、高 **74**，多折的那一行收在面板里）、`code` / `text` 与改前同宽同高（这两类本来就不溢出，回归对照）；两态 console error **0**。截图 `r351/out/{before,after}-label.png` 里看得很清楚：改前那句长路径越过面板右缘压到鲸鱼图标上，改后四折全在圆角框内 · 端口只用 8985，3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落 `/root/adelie-fork-data/r351` | 见本行提交 |
 | 2026-11-26 | 7.221 | **一个 177MB 的附件不再把浏览器拖死：大文件改走独立直传，小文件照旧**（**2026-11-26 第三百五十二轮**落地，用户点单；`packages/server` —— 新路由 `POST /api/sessions/:sessionId/attachments`（原始字节直传、边收边计上限）、`services/task-attachments.ts` 的 `receiveAttachment` / `openSessionScratchpad` / `resolveUploadedFile` 与 `{type:"file"}` 的 `path` 形态、`api/types.ts` 三个类型、`runtime/messaging/bridge.ts` 与 `test/session-manager.test.ts` 跟随、新用例 9 条；`packages/web` —— 新 `lib/upload-limits.ts`（`DIRECT_UPLOAD_MIN_BYTES` 2MB / `splitByTransport`）、`features/chat/message-upload-progress.ts`（`ComposerFile` / `resolveComposerFiles` / `filePartsOf` / `steerFileAttachmentsOf`）、`api/client.ts` 的 `rawBody`、`api/xhr-upload.ts`、`api/endpoints.ts` 的 `uploadSessionAttachment`、发送/排队/换模型/交接/草稿/插话六处各多一个 `files` 参数、`lib/video-input.ts`、`lib/strings{,-en}.ts`、新单测 8 条、e2e spec 重写 2 条、changelog 一对、`packages/docs/content/chat.{zh,en}.md` —— **接口契约未变**（`src/ifaces.json` unchanged），CSRF 未放宽；**两次 rebase 到 `7a2dc1b41`（编号让给先到的 7.215–7.220）**） | 见「第三百五十二轮」一节（六包 `typecheck` **`EXIT=0`**（`gen:ifaces` 报 `src/ifaces.json unchanged`）；逐包 test **`EXIT=0`、0 失败**：server **220 文件 / 3215 通过 / 6 跳过**（本笔 +9）· web **367 文件 / 4097 通过 / 2 跳过**（本笔 +8）· docs **8 / 62**；`oxlint` 0 警告 0 错误 · 改动文件 `prettier --check` 干净 · `git diff --check` 干净；**整套 web e2e 全量（rebase 后重建 core/server/web 再跑）**：**429 passed，38.5 分钟，`E2E_RC=0`，零失败**；新 / 重写的 e2e 两条单跑 **2 passed**：3MB 走直传（CDP 上行限 700KB/s、卡片名 `正在上传 session-2026-11-23-big.jsonl`、`aria-valuemax == 3MB`、`POST …/attachments?name=…`、消息 `附加文件：<名>`、scratchpad `GET` 回长度 3MB）、1MB 走内联（无 `/attachments?` 请求）；相关回归单跑通过 attachment-refusal 2 / upload-refusal 2 / draft 1 / queued-recall-refusal 3 / video-input 1 / steer-reload 1 / handoff-send-refusal 2） | 见本行提交 |
+| 2026-11-27 | 7.222 | **默认提示词精修：交付物亲自核对、卡住的检查先分清原因、精修前先落一份可用候选**（上游 `ef6c8ce99` `#1880` 移植，照改动落、不是合分支；4 个文件 / +36 −6，其中源码 2 个（`packages/core/src/state/default-config.ts` 的 `DEFAULT_SYSTEM_PROMPT`：`# Success criteria` 两行重写、`# Stop rules` 与 `# Tool use` 各加一行、非交互命令那一行补上无人值守 Debian 安装 / 活过会话的服务 / 后台完成通知 / 退出状态；`packages/core/src/state/kernel-history.ts`：`KERNEL_VERSION` `2026-11-18` → `2026-11-27`、旧提示词哈希移进 superseded、新哈希写进 current、世代清单加一行）＋ changelog 一对，**不碰接口、不动已存数据、无新依赖**）：`# Success criteria` 原来只说「检查每个问题都解决了」，没说拿什么去比，字面量 / 路径 / 筛选条件 / 要求的输出差一点也会被报成「已验证」；现在写明核对用户的明确要求（指定确切内容时整份比对，转换或筛选各查一个该被改动 / 该被包含与一个该被保留 / 该被排除的用例），项目有文档的检查照跑、覆盖不到的要求或具体风险补一个针对性的检查，并且只报观察到的结果。**本地化**：全文照落，提示词本来就是英文；changelog 按本仓写法改名到本轮日期、去掉上游 PR 行、写明移植来源与「接口 / 已存数据都没变」 | 六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型 —— 本笔不动服务契约）· `oxlint` 2 个改动文件 **0 警告 0 错误** · `prettier --check` 干净 · `git diff --check` 干净 · 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1119** · cli **39 / 568** · server **220 文件 / 3215 通过 / 6 跳过** · web **367 文件 / 4097 通过 / 2 跳过**（四个包与本笔之前逐项相同 —— 本笔只动默认提示词与内核记录，没有新增用例）· **反证（单测）**：只改提示词、`kernel-history.ts` 保持 `HEAD`，跑 `test/kernel-version.test.ts` → **1 failed / 18 passed**（门禁精确点名 `prompt` 一个 tab 移动），把内核前进写回 → **19 全过** · **真值检查**：`tsx` 直接读 `defaultSystemConfig()` —— `kernel_version` 是 `2026-11-27`，五条新句（两条 Success criteria、Stop rules、Tool use、DEBIAN_FRONTEND 那句）都在 `system_prompt` 里，旧句 `Before delivering the result` 已不存在；`computeKernelTabHashes` 的 prompt 是 `72be07b0…24c5c`，其余六个 tab 与上一代逐字相同 · 没改界面，故不起浏览器；没碰桌面壳 / `legacy/main` / `/root/Adelie` / `/root/penguin-harness` / `/root/AgentCode`；不切版本号、不发 npm、不发安装包 | 见本行提交 |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35621,3 +35635,82 @@ Web 端按大小分流，阈值 `DIRECT_UPLOAD_MIN_BYTES = 2MB`（`lib/upload-li
   `test/session-manager.test.ts` / `test/task-attachments.test.ts`）与 `packages/web`（`src/api/*`、
   `src/features/chat/*`、`src/lib/*` 共 11 个源文件 + 3 个测试 + 1 个 e2e spec）与
   `packages/docs/content/chat.{zh,en}.md`；台账（条目 7.221、上表那一行、本节）随本文件另起一笔。
+
+## 第三百五十三轮：默认提示词精修——交付物亲自核对、卡住的检查先分清原因、精修前先落一份可用候选（2026-11-27，条目 7.222）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `7a2dc1b41`（第三百五十一轮）。
+`git fetch origin` 经 https 又断在 `GnuTLS recv error (-110)`，改走 SSH
+（`git fetch git@github.com:lmliheng/Adelie.git main:refs/adelie-tmp/main`）一次就通 —— 远端比本地多一笔
+**另一条线的 7.221**（`010144536` 大文件直传 + `9665de8d7` 台账），`git merge --ff-only` 快进到
+`9665de8d7`，工作区仍干净。
+
+**选活**：第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、
+3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板），第 7 节到 7.220 全勾。上一轮列出的上游余件里先量了
+最小的 `6097cab0c`（插件安装失败报 npm 的错误行而不是它先打印的警告），**量完发现搬不了**：它改的
+`packages/server/src/plugin/install.ts` 与 `packages/server/test/plugin-source-settings.test.ts` 在本树
+**根本不存在**（`installPluginSource` / `setNpmRegistry` 全仓零命中）—— 那整条「插件源 + npm registry」
+的线是更晚上游才有的，本树没有前置，属另一个量级。于是取 **`ef6c8ce99`（`#1880`，core 默认 system prompt
+精修）**：4 个文件 / +36 −6、只动 `packages/core` 两个源码文件 ＋ changelog 一对，`git apply -3 --check`
+对 `default-config.ts` 逐字干净、`kernel-history.ts` 的冲突只在世代注释里（本树的版本停在 `2026-11-18`，
+上游那行写的是它自己的 `2026-11-25`），不碰桌面壳 / 包名 / 流水线、不引入新依赖。
+
+**为什么它是真的**：现网的默认提示词就是这份，`# Success criteria` 只说「检查请求里的每个问题都解决了」
+「用项目自己的命令验证」—— 两句话都没说**拿什么去比**。于是一个把字面量、路径、筛选条件或要求的输出差
+一点的交付物，照样会被报成「已验证」。这不是理论问题：上几轮里「反证」被反复要求，正是因为只跑测试不等于
+对着要求核对过。
+
+**做了什么**（照上游落，不是合分支）：
+
+- `packages/core/src/state/default-config.ts` 的 `DEFAULT_SYSTEM_PROMPT`：
+  - `# Success criteria` 两行重写：核对用户的明确要求（含字面量、路径、筛选条件、要求的输出）；指定了
+    确切内容时整份比对文件 / 回复 / 字段；转换或筛选各查一个该被改动 / 该被包含与一个该被保留 / 该被排除
+    的用例；项目有文档的检查照跑并复用已有结果，覆盖不到的要求或具体风险补一个针对性的检查（自测恰好
+    排除掉的、可能改变结果的允许用例，就用它来查）；只报观察到的结果。
+  - `# Stop rules` 加一行：同一失败反复出现、上一次检查没缩小原因时，先用便宜的办法分清最可能的几种原因，
+    再重跑整套。
+  - `# Tool use` 加一行：候选已具备要求的格式、该有的部分都在时，先存到要求的路径再继续精修，且保持那份
+    文件有效；「命令非交互运行」那一行补上无人值守 Debian 安装（`DEBIAN_FRONTEND=noninteractive`）、要活过
+    会话的服务从独立客户端验、长命令只要最终结果时用后台完成通知、投递依赖命令时查退出状态与结果。
+- `packages/core/src/state/kernel-history.ts`：`KERNEL_VERSION` `2026-11-18` → **`2026-11-27`**；旧提示词
+  tab 哈希 `bdfdd83c…a2af2` 移进 `KERNEL_SUPERSEDED_TAB_HASHES.prompt`（冻结，是「它曾经发出过」的记录），
+  重算出的 `72be07b0…24c5c` 写进 `KERNEL_DEFAULT_TAB_HASHES.prompt`，世代清单加一行说明移动了什么。
+  **只有提示词这一个 tab 移动**，其余六个 tab 的哈希逐字未变。落到 Agent 上的效果：提示词 tab 没被用户
+  改过的配置下次装载时自动前进，改过的整块保留。
+- 没有碰 `packages/desktop`、没有切版本号、没有发 npm / 安装包。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1119** ·
+  cli **39 / 568** · server **220 文件 / 3215 通过 / 6 跳过** · web **367 文件 / 4097 通过 / 2 跳过**。
+  四个包与本笔之前逐项相同 —— 本笔没有新增用例（默认值的变化由内核守卫测试钉住）。
+- `oxlint` 2 个改动文件 **0 警告 0 错误**；`prettier --check` 干净（含 changelog 两份）；`git diff --check` 干净。
+- **反证（单测）**：只改提示词、`kernel-history.ts` 保持 `HEAD`，跑 `test/kernel-version.test.ts` →
+  **1 failed / 18 passed**，红的那条正是「the current defaults hash exactly to KERNEL_DEFAULT_TAB_HASHES」，
+  失败信息精确点名 `["prompt"]`；把内核前进写回 → **19 全过**。
+- **真值检查**：`tsx` 直接读 `defaultSystemConfig()` —— `kernel_version` 是 `2026-11-27`，五条新句都在
+  `system_prompt` 里，旧句 `Before delivering the result` 已不存在；`computeKernelTabHashes` 的 prompt 是
+  `72be07b0…24c5c`，其余六个 tab 与上一代逐字相同。
+- 没改界面，故不起服务端 / 浏览器；端口 3003 / 3004 / 4000 / 7364 / 7369 一个没碰。
+
+### 没做 / 留着
+
+- **上游余下的四笔**：`6097cab0c`（插件安装失败的错误行）本树**没有前置**（`plugin/install.ts` 与
+  插件源设置整条线都不存在），先记在这里备查，别下一轮再量它；`f5928243e`（工作台加载失败的
+  Fix with AI / 报告问题，18 文件）、`c46f48ea0`（压缩缺全文时落定行显示交接，14 文件）、
+  `5b5772c59`（插件索引行的 npm 渠道与源失败原因，13 文件）、`c42a54fea`（等机器服务起完并说出拒绝原因，
+  13 文件）各是一轮的量 —— 其中 `c46f48ea0` 与 `5b5772c59` 也各有一批本树没有的新文件
+  （`lib/amsp/stream-model.ts`、`core/src/plugin/index-document.ts`），落地前要先量前置。
+- **`clear-data` 卡片的范围**（上一轮留下的）：按对话隔离之后，卡片的 Cookie / 缓存 / 站点数据只清当前
+  对话那一个分区，而「历史记录」是全库共用，卡片说明却写成「从内置浏览器中删除的数据」—— 要不要把历史
+  按对话切开是语义上的一个决定，留给用户一句话。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔：`packages/core/src/state/default-config.ts`、`packages/core/src/state/kernel-history.ts`、
+  `changelog/unreleased/2026-11-27-default-prompt-deliverable-check{,.zh}.md`；台账（条目 7.222、上表那一行、
+  本节）随本文件另起一笔。
