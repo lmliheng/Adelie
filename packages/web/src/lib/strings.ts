@@ -461,6 +461,93 @@ export const zh = {
     transportSilence: (gap: string) => `静默 ${gap}`,
   },
 
+  /** The conversation's "网络" dock panel (features/network/network-panel.tsx). */
+  network: {
+    panelTitle: "网络",
+    statusRecording: "记录中",
+    statusPaused: "已暂停",
+    pause: "暂停",
+    resume: "继续",
+    clear: "清空",
+    export: "导出",
+    /** The panel's "⋯" menu. */
+    menu: "更多",
+    menuInlineRow: "在助手消息下显示请求行",
+    scopeTurn: "本次回复",
+    scopeRecent: "最近 5 回合",
+    scopeAll: "全部",
+    filterAll: "全部",
+    filterHttp: "接口",
+    filterModel: "模型",
+    filterStream: "流",
+    filterUpload: "上传",
+    searchPlaceholder: "路径、状态码、模型",
+    search: "搜索",
+    summary: (requests: number, models: number, duration: string, failures: number): string =>
+      `${requests} 请求 · ${models} 模型调用 · ${duration}${failures > 0 ? ` · ${failures} 失败` : ""}`,
+    /** `turn` is the turn's ordinal. */
+    turnHeading: (turn: number): string => `第 ${turn} 回合`,
+    /** The group holding requests made before this page opened a turn (a listing fetch, the stream). */
+    turnBefore: "回合开始前",
+    turnSummary: (requests: number, duration: string, failures: number): string =>
+      `${requests} 请求 · ${duration}${failures > 0 ? ` · ${failures} 失败` : ""}`,
+    emptyTitle: "还没有请求",
+    emptyHint: "从下一条消息开始记录",
+    emptyPrivacy: "记录只保存在本页内存，刷新即清空，不会上传到任何地方。",
+    privacyNote: "记录只在本页内存 · 刷新即清空",
+    /** A row's tags and cells. */
+    frames: (n: number): string => `${n} 帧`,
+    slow: "慢",
+    retry: (n: number): string => `×${n}`,
+    inflight: "接收中",
+    modelCall: "模型调用",
+    /** Detail header actions. */
+    back: "返回",
+    copyCurl: "复制 cURL",
+    copyJson: "复制 JSON",
+    /** Detail tabs. */
+    tabOverview: "概述",
+    tabRequest: "请求",
+    tabResponse: "响应",
+    tabEvents: "事件流",
+    tabRelated: "关联",
+    /** Detail — overview. */
+    waterfall: "时间分解",
+    waterfallTotal: "总耗时",
+    waterfallHint: "分段耗时（排队 / 首字节 / 流式）需要服务端写帧采集，随后续版本补上。",
+    fieldRequestId: "请求号",
+    fieldTurn: "回合",
+    fieldMethod: "方法",
+    fieldUrl: "地址",
+    fieldStatus: "状态",
+    fieldDuration: "耗时",
+    fieldSize: "大小",
+    fieldFrames: "帧",
+    fieldAttempts: "重试",
+    /** Detail — request / response. */
+    headers: "请求头",
+    responseHeaders: "响应头",
+    requestBody: "请求体",
+    responseBody: "响应体",
+    noBody: "（空）",
+    truncated: "已截断",
+    reveal: "显示原文",
+    hide: "隐藏原文",
+    revealConfirmTitle: "显示原文？",
+    revealConfirmBody: "此处会显示未遮罩的密钥或凭据，只对当前这一条生效，切换即复位。",
+    revealConfirmAction: "显示",
+    /** Detail — events. */
+    serverWrote: "服务端写出",
+    browserGot: "浏览器收到",
+    notCaptured: "未采集",
+    eventsHint: "浏览器收到的一侧来自本页记录；服务端写出的一侧要等写帧采集点，随后续版本补上。",
+    /** Nothing recorded for this Session yet, said inside the detail's related tab. */
+    relatedEmpty: "这一回合没有其它请求。",
+    /** Export. */
+    exportJson: "导出 JSON",
+    exported: "已导出",
+  },
+
   settings: {
     language: "语言",
     languageInfo: "界面语言，可跟随浏览器设置。",
@@ -513,6 +600,41 @@ export const zh = {
     importTraceDone: (target: string) => `轨迹已导入到 ${target}`,
     importTraceTooLarge: "文件超过 14MB 上限。",
     importTraceBundleTooLarge: "整会话包超过 48MB 上限。",
+    /**
+     * Settings › 网络记录 (personal): the conversation's "网络" panel's own rules. Recording is
+     * always on (there is no debug-mode switch); this page adjusts the ring's size, what is kept,
+     * and the inline request row.
+     */
+    networkTitle: "网络记录",
+    networkInfo: "对话侧边栏的「网络」标签会记录当前会话的请求。这里调整保留范围与记录内容。",
+    networkBanner:
+      "记录包含对话内容与工具参数，只保存在当前页面内存里，刷新即清空，不会上传到任何地方。共享屏幕或录屏前请先清空。",
+    networkSectionRecord: "记录",
+    networkRecordInfo: "记录一直开着，打开「网络」标签就能看；暂停只用于临时排查。",
+    networkCapacity: "保留条数",
+    networkCapacityHint: "环形缓冲，满了丢最旧的；响应体每条最多 64 KB，超出截断。",
+    networkContent: "记录内容",
+    networkContentRequests: "页面请求（fetch / XHR）",
+    networkContentModels: "模型调用（流事件）",
+    networkContentStreams: "流式帧（浏览器收到）",
+    networkContentBodies: "响应体",
+    networkUi: "界面",
+    networkInlineRow: "在助手消息下显示请求行",
+    networkSlowHighlight: "慢请求高亮（> 2 秒）",
+    networkSectionMask: "脱敏",
+    networkMaskInfo: "默认全部开启。显示原文需要每一条单独确认，切换请求后复位。",
+    networkMaskHeaders: "请求头",
+    networkMaskParams: "URL 参数",
+    networkMaskStyle: "遮罩样式",
+    networkMaskSample: "Authorization: ••••••••••••••••a3f9",
+    networkSectionCurrent: "本次记录",
+    networkCurrentInfo: "只对当前页面有效，刷新、退出登录或切换账号都会清空。",
+    networkRecorded: "已记录",
+    networkRecordedLine: (requests: number, models: number, size: string): string =>
+      `${requests} 请求 · ${models} 模型调用 · ${size}`,
+    networkFailures: (n: number) => `${n} 失败`,
+    networkExportJson: "导出 JSON",
+    networkClear: "清空",
     /** Admin-only sub-page (server-global); its explanation is disclosed at the pane heading. */
     proxyTitle: "代理选项",
     proxyInfo:
@@ -4183,6 +4305,14 @@ export const zh = {
     statCached: "已缓存",
     statOutput: "输出 tokens",
     statTps: "输出 TPS",
+    /**
+     * The inline request line under an assistant reply (features/network/net-inline-row.tsx):
+     * how many HTTP / stream requests this turn made, its model calls, and how long it took.
+     * Clicking it opens the turn's group in the "网络" panel.
+     */
+    netRequestsLine: (requests: number, models: number, duration: string): string =>
+      `${requests} 个请求${models > 0 ? ` · ${models} 次模型调用` : ""} · ${duration}`,
+    netRequestsTooltip: "在「网络」面板里看这一回合的请求",
     /** Copied-stats-line parenthesis wrappers around the cached amount (fullwidth for zh typography). */
     statParenOpen: "（",
     statParenClose: "）",

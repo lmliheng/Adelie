@@ -391,6 +391,86 @@ export const en: Strings = {
     transportSilence: (gap: string) => `silent ${gap}`,
   },
 
+  /** The conversation's "Network" dock panel (features/network/network-panel.tsx). */
+  network: {
+    panelTitle: "Network",
+    statusRecording: "Recording",
+    statusPaused: "Paused",
+    pause: "Pause",
+    resume: "Resume",
+    clear: "Clear",
+    export: "Export",
+    menu: "More",
+    menuInlineRow: "Show the request line under assistant replies",
+    scopeTurn: "This reply",
+    scopeRecent: "Last 5 turns",
+    scopeAll: "All",
+    filterAll: "All",
+    filterHttp: "HTTP",
+    filterModel: "Model",
+    filterStream: "Stream",
+    filterUpload: "Upload",
+    searchPlaceholder: "Path, status, model",
+    search: "Search",
+    summary: (requests: number, models: number, duration: string, failures: number): string =>
+      `${requests} requests · ${models} model calls · ${duration}${failures > 0 ? ` · ${failures} failed` : ""}`,
+    turnHeading: (turn: number): string => `Turn ${turn}`,
+    turnBefore: "Before any turn",
+    turnSummary: (requests: number, duration: string, failures: number): string =>
+      `${requests} requests · ${duration}${failures > 0 ? ` · ${failures} failed` : ""}`,
+    emptyTitle: "No requests yet",
+    emptyHint: "Recording starts with your next message",
+    emptyPrivacy:
+      "The record lives in this page's memory only: it clears on reload and is never uploaded.",
+    privacyNote: "Memory only · clears on reload",
+    frames: (n: number): string => `${n} frames`,
+    slow: "slow",
+    retry: (n: number): string => `×${n}`,
+    inflight: "receiving",
+    modelCall: "Model call",
+    back: "Back",
+    copyCurl: "Copy cURL",
+    copyJson: "Copy JSON",
+    tabOverview: "Overview",
+    tabRequest: "Request",
+    tabResponse: "Response",
+    tabEvents: "Event stream",
+    tabRelated: "Related",
+    waterfall: "Timing",
+    waterfallTotal: "Total",
+    waterfallHint:
+      "Per-phase timings (queued / first byte / streaming) need the server's write capture, which lands in a later version.",
+    fieldRequestId: "Request",
+    fieldTurn: "Turn",
+    fieldMethod: "Method",
+    fieldUrl: "URL",
+    fieldStatus: "Status",
+    fieldDuration: "Duration",
+    fieldSize: "Size",
+    fieldFrames: "Frames",
+    fieldAttempts: "Retries",
+    headers: "Request headers",
+    responseHeaders: "Response headers",
+    requestBody: "Request body",
+    responseBody: "Response body",
+    noBody: "(empty)",
+    truncated: "truncated",
+    reveal: "Show raw",
+    hide: "Hide raw",
+    revealConfirmTitle: "Show raw values?",
+    revealConfirmBody:
+      "Unmasked keys or credentials will be shown. This applies to the current request only and resets when you switch.",
+    revealConfirmAction: "Show",
+    serverWrote: "Server wrote",
+    browserGot: "Browser received",
+    notCaptured: "not captured",
+    eventsHint:
+      "The received side comes from this page's record; the written side waits on the server's write capture, in a later version.",
+    relatedEmpty: "No other requests in this turn.",
+    exportJson: "Export JSON",
+    exported: "Exported",
+  },
+
   settings: {
     language: "Language",
     languageInfo: "Interface language; can follow the browser.",
@@ -438,6 +518,46 @@ export const en: Strings = {
     importTraceDone: (target: string) => `Trace imported into ${target}`,
     importTraceTooLarge: "The file exceeds the 14MB limit.",
     importTraceBundleTooLarge: "The session bundle exceeds the 48MB limit.",
+    /**
+     * Settings › Network record (personal): the conversation's "Network" panel's own rules.
+     * Recording is always on (there is no debug-mode switch); this page adjusts the ring's size,
+     * what is kept, and the inline request row.
+     */
+    networkTitle: "Network record",
+    networkInfo:
+      "The conversation's Network tab records the current session's requests. This page adjusts what is kept and how.",
+    networkBanner:
+      "The record holds conversation content and tool arguments, lives in the current page's memory only, clears on reload, and is never uploaded. Clear it before sharing or recording your screen.",
+    networkSectionRecord: "Record",
+    networkRecordInfo:
+      "Recording is always on — open the Network tab to see it; pausing is only for a one-off investigation.",
+    networkCapacity: "Kept entries",
+    networkCapacityHint:
+      "A ring buffer: the oldest fall out first. A body is kept up to 64 KB and cut beyond that.",
+    networkContent: "What is recorded",
+    networkContentRequests: "Page requests (fetch / XHR)",
+    networkContentModels: "Model calls (stream events)",
+    networkContentStreams: "Stream frames (received)",
+    networkContentBodies: "Response bodies",
+    networkUi: "Interface",
+    networkInlineRow: "Show the request line under assistant replies",
+    networkSlowHighlight: "Highlight slow requests (> 2 s)",
+    networkSectionMask: "Masking",
+    networkMaskInfo:
+      "All on by default. Showing a raw value takes a per-request confirmation and resets when you switch requests.",
+    networkMaskHeaders: "Headers",
+    networkMaskParams: "URL parameters",
+    networkMaskStyle: "Mask style",
+    networkMaskSample: "Authorization: ••••••••••••••••a3f9",
+    networkSectionCurrent: "This session's record",
+    networkCurrentInfo:
+      "Valid for this page only: a reload, a sign-out or an account switch clears it.",
+    networkRecorded: "Recorded",
+    networkRecordedLine: (requests: number, models: number, size: string): string =>
+      `${requests} requests · ${models} model calls · ${size}`,
+    networkFailures: (n: number) => `${n} failed`,
+    networkExportJson: "Export JSON",
+    networkClear: "Clear",
     /** Admin-only sub-page (server-global); its explanation is disclosed at the pane heading. */
     proxyTitle: "Proxy options",
     proxyInfo:
@@ -4075,6 +4195,14 @@ export const en: Strings = {
     statCached: "cached",
     statOutput: "Output tokens",
     statTps: "Output TPS",
+    /**
+     * The inline request line under an assistant reply (features/network/net-inline-row.tsx):
+     * how many HTTP / stream requests this turn made, its model calls, and how long it took.
+     * Clicking it opens the turn's group in the Network panel.
+     */
+    netRequestsLine: (requests: number, models: number, duration: string): string =>
+      `${requests} request${requests === 1 ? "" : "s"}${models > 0 ? ` · ${models} model call${models === 1 ? "" : "s"}` : ""} · ${duration}`,
+    netRequestsTooltip: "See this turn's requests in the Network panel",
     /** Copied-stats-line parenthesis wrappers around the cached amount (ASCII with a leading space for en). */
     statParenOpen: " (",
     statParenClose: ")",

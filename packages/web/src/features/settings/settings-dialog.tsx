@@ -22,6 +22,7 @@ import { Icon } from "../../components/ui/group-list";
 import { ProfileSection } from "./profile-section";
 import { GeneralSection } from "./general-section";
 import { AppearanceSection } from "./appearance-section";
+import { NetworkSection } from "./network-section";
 import { ShortcutsSection } from "./shortcuts-section";
 import { AccountSection } from "./account-section";
 import { ProxySection } from "./proxy-section";
@@ -45,6 +46,8 @@ const SECTION_ICONS: Record<SettingsSectionKey, string> = {
   /** Sun: appearance. */
   appearance:
     "M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10zM12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4m11.4-11.4l1.4-1.4",
+  /** An activity line: the Network panel's own record. */
+  network: "M3 12h4l2.5-7 5 14L17 12h4",
   /** Keyboard: a rounded plate, two rows of keys and a space bar. */
   shortcuts:
     "M3 6h18a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zM6 9.5h.01M9.5 9.5h.01M13 9.5h.01M16.5 9.5h.01M6 12.5h.01M9.5 12.5h.01M13 12.5h.01M16.5 12.5h.01M8.5 15.5h7",
@@ -120,6 +123,7 @@ export function SettingsDialog({
     profile: S.settings.profile,
     general: S.settings.generalTitle,
     appearance: S.settings.appearanceTitle,
+    network: S.settings.networkTitle,
     shortcuts: S.settings.shortcutsTitle,
     account: S.settings.accountTitle,
     credits: S.settings.creditsTitle,
@@ -141,6 +145,7 @@ export function SettingsDialog({
   // Page-level explanations, disclosed by the "?" the shell draws beside the pane heading.
   // Pages whose rows explain themselves one by one carry none.
   const sectionInfo: Partial<Record<SettingsSectionKey, string>> = {
+    network: S.settings.networkInfo,
     shortcuts: S.settings.shortcutsInfo,
     proxy: S.settings.proxyInfo,
     uploads: S.settings.uploadLimitsInfo(uploadLimits.attachmentMaxCount, uploadLimits.imageMaxMb),
@@ -189,6 +194,7 @@ export function SettingsDialog({
       {current === "profile" && <ProfileSection />}
       {current === "general" && <GeneralSection />}
       {current === "appearance" && <AppearanceSection />}
+      {current === "network" && <NetworkSection />}
       {current === "shortcuts" && <ShortcutsSection />}
       {current === "account" && <AccountSection />}
       {current === "credits" && <CreditsSection />}

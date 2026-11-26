@@ -62,6 +62,14 @@ export interface StreamRenderContext {
   /** Converts this turn's stats into cost (USD) at the current pricing of `model`, the model the turn ran on (the Session's own when the turn names none); returns null when no price is configured (cost is hidden). */
   taskCost?: (stats: TaskStats, model?: { provider: string; modelId: string }) => number | null;
   /**
+   * This turn's ordinal within the loaded transcript (1-based), set on the context of a turn's
+   * own container only. The assistant reply's inline request line (net-inline-row.tsx) uses it to
+   * find the turn's recorded requests — the recorder numbers a Session's turns the same way, from
+   * the page's own view of the transcript. Undefined outside the main conversation (a subagent's
+   * items never carry it), where there is nothing to open.
+   */
+  netTurn?: number;
+  /**
    * "Retry now" on the live reconnect countdown: skips the remaining backoff wait
    * server-side (POST /retry-now); the line flips to "retrying" when the request_begin
    * arrives. Only honored on main-session items — a subagent's backoff belongs to the
@@ -131,16 +139,16 @@ export function MessageItems({ items, ctx }: { items: ChatItem[]; ctx: StreamRen
   }
   flushRun();
 
-  const renderSeg = (seg: Seg, i: number): ReactNode =>
+  const renderSeg = (seg: Seg, i: number, renderCtx: StreamRenderContext): ReactNode =>
     seg.type === "group" ? (
       <SessionWorkGroup
         key={`wg-${seg.items[0]!.id}`}
         items={seg.items}
-        ctx={ctx}
+        ctx={renderCtx}
         isLast={i === segs.length - 1}
       />
     ) : (
-      <MessageItem key={seg.item.id} item={seg.item} ctx={ctx} />
+      <MessageItem key={seg.item.id} item={seg.item} ctx={renderCtx} />
     );
 
   /**
@@ -167,15 +175,22 @@ export function MessageItems({ items, ctx }: { items: ChatItem[]; ctx: StreamRen
    */
   const nodes: ReactNode[] = [];
   let turn: { seg: Seg; i: number }[] = [];
+  // The ordinal of the turn being collected: bumped at each user prompt, so a turn container's
+  // items carry it (See StreamRenderContext.netTurn). 0 until the first prompt.
+  let turnOrdinal = 0;
+  let containerTurn = 0;
   const flushTurn = () => {
     if (turn.length === 0) return;
     const first = turn[0]!.seg;
     const key = first.type === "group" ? first.items[0]!.id : first.item.id;
     const body = turn;
     turn = [];
+    // The inline request line reads this turn's ordinal from the context; a nested render
+    // (a subagent's items) belongs to no main-conversation turn and gets none.
+    const bodyCtx = ctx.origin.length === 0 ? { ...ctx, netTurn: containerTurn } : ctx;
     nodes.push(
       <div key={`turn-${key}`} className="group">
-        {body.map((t) => renderSeg(t.seg, t.i))}
+        {body.map((t) => renderSeg(t.seg, t.i, bodyCtx))}
       </div>,
     );
   };
@@ -189,6 +204,8 @@ export function MessageItems({ items, ctx }: { items: ChatItem[]; ctx: StreamRen
         seg.item.kind === "user_video");
     if (isUserMsg) {
       flushTurn();
+      turnOrdinal += 1;
+      containerTurn = turnOrdinal;
       // Outline jump anchor, top level only (ctx.origin is empty just for the main
       // conversation): item ids restart per model, so stamping nested renders — subagent
       // conversations in the panel — would duplicate anchor values; the outline queries
@@ -198,10 +215,10 @@ export function MessageItems({ items, ctx }: { items: ChatItem[]; ctx: StreamRen
       nodes.push(
         ctx.origin.length === 0 ? (
           <div key={`anchor-${seg.item.id}`} data-outline-anchor={seg.item.id}>
-            {renderSeg(seg, i)}
+            {renderSeg(seg, i, ctx)}
           </div>
         ) : (
-          renderSeg(seg, i)
+          renderSeg(seg, i, ctx)
         ),
       );
       continue;

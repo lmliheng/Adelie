@@ -1,11 +1,11 @@
 /**
  * The built-in dock panels as registry definitions: the conversation's views (subagents,
- * Files, Memory, Trace, messaging, schedules) and the built-in browser. A definition names its
- * panel once — the label and glyph every surface that lists panels reads — and carries the
- * tab's body. The conversation's bodies read the chat page's state through useChatDock (the
- * page provides it around both docks); the browser needs none of it.
+ * Files, Memory, Trace, Network, messaging, schedules) and the built-in browser. A definition
+ * names its panel once — the label and glyph every surface that lists panels reads — and
+ * carries the tab's body. The conversation's bodies read the chat page's state through
+ * useChatDock (the page provides it around both docks); the browser needs none of it.
  *
- * Importing the module registers the seven — chat-page.tsx does, so they are in the registry
+ * Importing the module registers the eight — chat-page.tsx does, so they are in the registry
  * before any dock renders.
  */
 import { EmptyState, ICONS } from "@adelie/ui";
@@ -17,6 +17,7 @@ import { useDockPanel } from "../dock/panel-context";
 import { isBrowserOffered, subscribeBrowser } from "../builtin-browser/browser-store";
 import { BuiltinBrowserPanel } from "../builtin-browser/browser-panel";
 import { TracePanel } from "../traces/trace-panel";
+import { NetworkPanel } from "../network/network-panel";
 import { MessagingPanel } from "../messaging/messaging-panel";
 import { SchedulePanel } from "../schedules/schedule-panel";
 import { approvalModeChoices } from "./approval-mode";
@@ -228,6 +229,16 @@ const BUILTIN_DOCK_PANELS: readonly DockPanelDefinition[] = [
     glyph: NAV_ICONS.traces,
     order: 40,
     Body: TracePanelBody,
+  },
+  // The conversation's own requests (features/network/network-panel.tsx), beside Trace: Trace
+  // says what a run did, this says how it went out. Recording is always on and needs no Session
+  // to mount (the draft shows the same empty state), so it is offered everywhere.
+  {
+    id: "network",
+    label: () => S.network.panelTitle,
+    glyph: ICONS.network,
+    order: 45,
+    Body: NetworkPanel,
   },
   {
     id: "messaging",

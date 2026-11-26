@@ -156,6 +156,7 @@ export function setNetLogPrefs(patch: Partial<NetLogPrefs>): void {
 let entries: NetRequest[] = [];
 let nextId = 1;
 let paused = false;
+let version = 0;
 /** The turn each Session is currently on (set by beginTurn). */
 const turnBySession = new Map<string, number>();
 /** Model calls opened by a stream's `request_begin` and not yet closed by its `request_end`, in arrival order. */
@@ -171,7 +172,13 @@ export function subscribeNetLog(listener: () => void): () => void {
 }
 
 function notify(): void {
+  version += 1;
   for (const listener of [...listeners]) listener();
+}
+
+/** Monotonic change counter — the `useSyncExternalStore` snapshot (entries mutate in place). */
+export function netLogVersion(): number {
+  return version;
 }
 
 /** The recorded entries, oldest first. */
@@ -202,7 +209,9 @@ export function clearNetLog(): void {
 
 /** Sets the turn new requests on `sessionId` belong to (the chat page computes it on send). */
 export function beginTurn(sessionId: string, turn: number): void {
+  if (turnBySession.get(sessionId) === turn) return;
   turnBySession.set(sessionId, turn);
+  notify();
 }
 
 /** The turn `sessionId` is currently on (0 when none was opened on this page). */

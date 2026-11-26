@@ -29,6 +29,7 @@ export type SettingsSectionKey =
   | "profile"
   | "general"
   | "appearance"
+  | "network"
   | "shortcuts"
   | "account"
   | "credits"
@@ -68,6 +69,9 @@ const SECTION_RULES: ReadonlyArray<SettingsSection & { visible(viewer: SettingsV
     { key: "profile", group: "personal", visible: () => true },
     { key: "general", group: "personal", visible: () => true },
     { key: "appearance", group: "personal", visible: () => true },
+    // The conversation's Network panel's own rules (ring size, what is kept, the inline request
+    // row). Every signed-in session owns them, like appearance: nothing here is server-side.
+    { key: "network", group: "personal", visible: () => true },
     // Keyboard shortcuts are the account's, and apply in every session of it.
     { key: "shortcuts", group: "personal", visible: () => true },
     // The desktop shell's own window has no password to change; a password-established

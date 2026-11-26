@@ -52,6 +52,7 @@ import {
   toastSuccess,
 } from "@adelie/ui";
 import * as api from "../../api/endpoints";
+import { beginTurn } from "../../api/net-log";
 import { switchDeskModel } from "../company/desk-model";
 import { useCompany } from "../../state/company";
 import { ApiError } from "../../api/client";
@@ -1027,6 +1028,15 @@ export function ChatPage() {
    * Files browser and the Trace panel; every bump means "re-read".
    */
   const [settledTurnSignal, setSettledTurnSignal] = useState(0);
+  /**
+   * How many turns the loaded transcript holds — the outline's entry count, kept in a ref so a
+   * send reads the latest without taking a dependency on the memo. The network recorder numbers
+   * a Session's turns the same way (api/net-log.ts's beginTurn): a prompt that goes out now opens
+   * turn `outlineCount + 1`, which is the ordinal the message stream stamps on the reply's own
+   * turn container, so the reply's inline request line finds the requests it made.
+   */
+  const outlineCountRef = useRef(0);
+  outlineCountRef.current = outline.length;
   useEffect(() => {
     const prev = prevTaskRef.current;
     const sameSession = prev.id === selectedSessionId;
@@ -1384,6 +1394,9 @@ export function ChatPage() {
         const resolved = await resolveComposerFiles(sessionId, files);
         // No thinking level rides a task: the level belongs to the model context (pinned on
         // the Session through PATCH, see applyTurnThinkingLevel).
+        // This prompt opens the next turn: the requests it makes are stamped with it, so the
+        // reply's inline request line can hand the panel the group (api/net-log.ts).
+        beginTurn(sessionId, outlineCountRef.current + 1);
         const res = await postTaskWithUploadProgress(sessionId, {
           input: [...input, ...filePartsOf(resolved)],
           ...(goal ? { goal } : {}),
@@ -1464,6 +1477,8 @@ export function ChatPage() {
           );
           if (deskId !== null) {
             const resolved = await resolveComposerFiles(deskId, files);
+            // A renewed desk is a fresh conversation: its first turn is 1.
+            beginTurn(deskId, 1);
             const res = await postTaskWithUploadProgress(deskId, {
               input: [origin, ...input, ...filePartsOf(resolved)],
             });
@@ -1504,6 +1519,7 @@ export function ChatPage() {
         );
         createdId = created.session.sessionId;
         const resolved = await resolveComposerFiles(createdId, files);
+        beginTurn(createdId, 1);
         const res = await postTaskWithUploadProgress(createdId, {
           input: [origin, ...input, ...filePartsOf(resolved)],
         });
@@ -1558,6 +1574,7 @@ export function ChatPage() {
         });
         createdId = created.session.sessionId;
         const resolved = await resolveComposerFiles(createdId, files);
+        beginTurn(createdId, 1);
         const res = await postTaskWithUploadProgress(createdId, {
           input: [origin, ...input, ...filePartsOf(resolved)],
         });
@@ -1612,6 +1629,7 @@ export function ChatPage() {
       setSendRefusal(null);
       try {
         const resolved = await resolveComposerFiles(sessionId, files);
+        beginTurn(sessionId, outlineCountRef.current + 1);
         const res = await postTaskWithUploadProgress(sessionId, {
           input: [...input, ...filePartsOf(resolved)],
           queueIfBusy: true,

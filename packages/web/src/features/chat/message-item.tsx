@@ -40,6 +40,7 @@ import {
 } from "./agent-handoff";
 import { parseSkillsMessage } from "./skill-use";
 import { TaskStatsLine } from "./task-stats-line";
+import { NetInlineRow } from "../network/net-inline-row";
 import type { StreamRenderContext } from "./message-stream";
 
 /**
@@ -446,6 +447,14 @@ export function MessageItem({ item, ctx }: { item: ChatItem; ctx: StreamRenderCo
               : {})}
             {...(item.forkPosition !== undefined ? { forkPosition: item.forkPosition } : {})}
           />
+          {/* This turn's requests, right above its stats row (features/network/net-inline-row):
+              only the main conversation has a recorder to read, and only a turn whose ordinal
+              the stream stamped (see StreamRenderContext.netTurn). */}
+          {ctx.origin.length === 0 && ctx.netTurn !== undefined && (
+            <div className="mt-1 flex">
+              <NetInlineRow turn={ctx.netTurn} />
+            </div>
+          )}
         </>
       );
   }
