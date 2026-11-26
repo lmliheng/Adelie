@@ -5046,6 +5046,14 @@ export const en: Strings = {
     errorsClearDone: (count: number): string =>
       `Deleted ${count} error record${count === 1 ? "" : "s"}`,
     /**
+     * The clear's first step — reading the count the confirmation will name — was refused. Drawn
+     * beside the button that asked (7.19's rule): the card never opened, so without this line the
+     * press would leave the panel looking exactly as it did before, with only a six-second notice
+     * to say otherwise.
+     */
+    errorsClearCountRefused: (reason: string): string =>
+      `Could not count the records to clear, so nothing was cleared: ${reason}`,
+    /**
      * Ignoring: the fourth view of the table, the row action that silences a class, and the rule
      * list that says what is being held back. The records are never deleted — which is why this
      * action takes no confirmation where clearing does, and why the notice below says so outright.

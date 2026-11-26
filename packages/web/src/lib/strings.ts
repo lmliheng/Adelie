@@ -5158,6 +5158,14 @@ export const zh = {
     errorsClearIrreversible: "此操作不可恢复。",
     errorsClearDone: (count: number): string => `已删除 ${count} 条错误记录`,
     /**
+     * The clear's first step — reading the count the confirmation will name — was refused. Drawn
+     * beside the button that asked (7.19's rule): the card never opened, so without this line the
+     * press would leave the panel looking exactly as it did before, with only a six-second notice
+     * to say otherwise.
+     */
+    errorsClearCountRefused: (reason: string): string =>
+      `没能读出要清空的记录数，清空没有开始：${reason}`,
+    /**
      * Ignoring: the fourth view of the table, the row action that silences a class, and the rule
      * list that says what is being held back. The records are never deleted — which is why this
      * action takes no confirmation where clearing does, and why the notice below says so outright.

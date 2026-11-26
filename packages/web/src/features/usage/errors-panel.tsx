@@ -297,6 +297,29 @@ export function IgnoreRulesBox({
   );
 }
 
+/**
+ * The refused count read — the clear's first step — drawn beside the button that asked.
+ *
+ * A component of its own for the reason `IgnoreRulesBox` is: the panel only holds this sentence in
+ * state after a click, and this package's vitest runs in `node`, so the slot itself has to be
+ * renderable with a sentence in hand. `line-clamp-2` keeps a long server sentence from stretching
+ * the footer row, the whole text stays on the hover title, and the remaining width (`flex-1`,
+ * `min-w-0`) is the room it is allowed to take beside the action and the pager.
+ */
+export function ClearCountRefusal({ text }: { text: string }) {
+  return (
+    <p
+      role="alert"
+      data-testid="errors-clear-count-refusal"
+      data-tooltip={text}
+      data-tooltip-content="text"
+      className={`min-w-0 flex-1 line-clamp-2 break-words ${toneInk.danger}`}
+    >
+      {text}
+    </p>
+  );
+}
+
 /** A single small stat: name + value, one row side by side (not turned into a chart). */
 function Stat({
   label,
@@ -350,7 +373,10 @@ function Th({ children, className = "" }: { children?: React.ReactNode; classNam
  * not the Project's whole history — and the confirmation says which set that is and how many
  * records it holds, because a deleted error record has no other copy anywhere. That count is
  * read when the action is clicked and the delete stops at the newest record it saw, so the
- * sentence stays true even across the records the page itself creates while it loads.
+ * sentence stays true even across the records the page itself creates while it loads. That read
+ * can itself be refused — the card then never opens, and the reason stands beside the button
+ * (see `ClearCountRefusal`): the press is the only thing on screen that would otherwise look as
+ * if nothing had happened.
  */
 export function ErrorsPanel({
   errors,
@@ -486,6 +512,12 @@ export function ErrorsPanel({
   // itself after six seconds reads as "nothing happened" — with the same sentence waiting to be
   // confirmed again. Cleared when the attempt starts and when the card closes.
   const [clearRefusal, setClearRefusal] = useState<string | null>(null);
+  // Why the count the confirmation names could not be read. This failure happens before the card
+  // opens, so the card is not a surface for it — the button that asked is still right there in
+  // the footer, and that is where the sentence goes (7.19's rule). It goes when the attempt starts
+  // again, and when the filter changes: it names the set that read was about.
+  const [countRefusal, setCountRefusal] = useState<string | null>(null);
+  useEffect(() => setCountRefusal(null), [activeFilters]);
 
   /**
    * Reads the count the dialog will name, then opens it. `limit: 1` is all it needs: `total`
@@ -494,8 +526,10 @@ export function ErrorsPanel({
   const openClear = async () => {
     setCounting(true);
     // A card that closed on a refusal and is being opened again starts clean: its sentence was
-    // about the previous count, which this read has just replaced.
+    // about the previous count, which this read has just replaced. The footer's sentence goes with
+    // it, for the same reason — it was about the press before this one.
     setClearRefusal(null);
+    setCountRefusal(null);
     try {
       const res = await api.getUsageErrors(projectId, { offset: 0, limit: 1, ...activeFilters });
       const newest = res.items[0]?.ts;
@@ -514,7 +548,9 @@ export function ErrorsPanel({
       // fails.
       onReload();
     } catch (e) {
-      toastError(apiErrorText(e));
+      // No card to hold this one: the read that would have opened it failed, so the reason stays
+      // beside the action that made the press.
+      setCountRefusal(apiErrorText(e));
     } finally {
       setCounting(false);
     }
@@ -905,6 +941,11 @@ export function ErrorsPanel({
             >
               {S.usage.errorsClear}
             </button>
+          )}
+          {/* The refused count read, beside the button that asked: the card never opened, so this
+              is the only place on screen that can say the press did anything at all. */}
+          {countRefusal !== null && (
+            <ClearCountRefusal text={S.usage.errorsClearCountRefused(countRefusal)} />
           )}
           {pageError !== null && (
             <span className="text-red-600 dark:text-red-400">{pageError}</span>

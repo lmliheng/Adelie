@@ -17,6 +17,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { UsageErrorIgnoreRule, UsageErrorItem, UsageErrors } from "@adelie/server/api";
 import {
+  ClearCountRefusal,
   ErrorsPanel,
   IgnoreRulesBox,
   errorCopyText,
@@ -102,6 +103,46 @@ describe("ErrorsPanel clear action", () => {
     expect(onePage).toContain(S.usage.errorsClear);
     expect(onePage).not.toContain(S.usage.errorsOlder);
   });
+});
+
+/**
+ * The clear's first step — the count its confirmation names — has no card to land in when it is
+ * refused: the card is what the read was for. So the sentence goes beside the button that asked,
+ * and this component is that slot; it takes the sentence as a prop because the panel only holds
+ * one after a click, and a click is not something this package's `node` vitest can make.
+ */
+describe("ClearCountRefusal", () => {
+  const slot = (text: string): string =>
+    renderToStaticMarkup(createElement(ClearCountRefusal, { text }));
+
+  it("is an alert carrying the whole sentence, with the full text on the hover title", () => {
+    const text = S.usage.errorsClearCountRefused("boom");
+    const html = slot(text);
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('data-testid="errors-clear-count-refusal"');
+    expect(html).toContain(text);
+    // A long server sentence is clamped to two lines, so the rest has to stay reachable.
+    expect(html).toContain(`data-tooltip="${text}"`);
+    expect(html).toContain("line-clamp-2");
+  });
+
+  it("is absent until the count read is refused", () => {
+    expect(render({ items: [item("internal")] })).not.toContain(
+      'data-testid="errors-clear-count-refusal"',
+    );
+  });
+
+  // The two things the sentence has to say: what failed, and that nothing was deleted — a reader
+  // who took a refused count for a refused clear would think the rows were gone.
+  for (const [locale, dict] of Object.entries({ zh, en })) {
+    it(`${locale}: names the count read, keeps the reason, and says nothing was cleared`, () => {
+      setActiveStrings(dict);
+      const text = dict.usage.errorsClearCountRefused("boom");
+      expect(text).toContain("boom");
+      expect(text).not.toContain("undefined");
+      expect(text).not.toBe(dict.usage.errorsClearDone(0));
+    });
+  }
 });
 
 describe("ErrorsPanel rows", () => {
