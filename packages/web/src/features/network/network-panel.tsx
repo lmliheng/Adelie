@@ -22,10 +22,12 @@ import {
   Dropdown,
   EmptyState,
   GlyphIcon,
+  Dot,
   ICON_SIZE,
   ICONS,
   Menu,
   MenuItem,
+  ProgressBar,
   Segmented,
 } from "@adelie/ui";
 import {
@@ -146,12 +148,14 @@ function Waterfall({ entry }: { entry: NetRequest }) {
     <div className="space-y-1.5">
       <div className="flex items-center gap-2">
         <span className="w-20 shrink-0 text-xs text-fg-muted">{S.network.waterfallTotal}</span>
-        <div className="h-2 min-w-0 flex-1 rounded-full bg-line-muted">
-          <div
-            className={`h-2 rounded-full ${inflight ? "ui-live animate-pulse bg-accent" : "bg-fg-muted"}`}
-            style={{ width: inflight ? "100%" : total > 0 ? "100%" : "0%" }}
-          />
-        </div>
+        <ProgressBar
+          className="min-w-0 flex-1"
+          size="md"
+          label={S.network.waterfallTotal}
+          {...(inflight
+            ? { indeterminate: true }
+            : { value: total > 0 ? 1 : 0, max: 1, tone: "neutral" as const })}
+        />
         <span
           className={`shrink-0 font-mono text-xs text-fg ${
             total >= NET_VERY_SLOW_MS ? "font-semibold" : ""
@@ -413,14 +417,7 @@ function RequestRow({ entry, onOpen }: { entry: NetRequest; onOpen: () => void }
       <span className="w-20 shrink-0 font-mono text-xs text-fg-subtle">
         {formatTime(entry.startedAt)}
       </span>
-      {pending ? (
-        <span
-          aria-hidden
-          className={`size-1.5 shrink-0 rounded-full ${toneDot.busy} ui-live animate-pulse`}
-        />
-      ) : (
-        <span className="w-1.5 shrink-0" />
-      )}
+      {pending ? <Dot tone="info" size="xs" pulse /> : <span className="w-1.5 shrink-0" />}
       <span
         className={`w-12 shrink-0 font-mono text-xs font-medium ${
           entry.kind === "model" ? "text-fg-muted" : "text-fg"

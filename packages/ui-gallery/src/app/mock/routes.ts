@@ -35,6 +35,7 @@ import type {
   AsrConfigResponse,
   AsrTestResponse,
   AsrTranscribeResponse,
+  AttachmentUploadResponse,
   AuthResponse,
   BenchmarkCasesResponse,
   BuiltinBrowserHistoryResponse,
@@ -1728,6 +1729,20 @@ router
     }
     store.startTask(sessionId, text || "…");
     return json({ sessionId } satisfies TaskCreateResponse, 202);
+  })
+  // A large attachment goes straight into the Session's scratchpad: the demo keeps nothing on disk,
+  // and the answer carries the name and path the message's `file` part would then name.
+  .post("/api/sessions/:sessionId/attachments", ({ store, params, query }): Answer => {
+    if (!store.session(params.sessionId!)) notFound("Session");
+    const name = query.get("name") ?? "attachment";
+    return json(
+      {
+        fileName: name,
+        path: `/demo/scratchpad/${name}`,
+        bytes: 0,
+      } satisfies AttachmentUploadResponse,
+      201,
+    );
   })
   .get("/api/sessions/:sessionId/goal", (): GoalResponse => ({ goal: null }))
   // The sidebar foot's 待做 block reads every open conversation. The demo starts the list empty
