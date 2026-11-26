@@ -3991,6 +3991,14 @@ date，本地与远端 `main` 都是 `2e9b592c7`（第三百一十五轮那笔�
       两行），措辞是界面自己的加上服务端的 `error.message`（取不到时保留整行详情），直到下一次尝试；有标签页
       取代选择器时收走。已有标签页上的「+」与收起时的快捷键照旧走通知（那里确实没有自己的表面）。见
       「第三百四十六轮」一节。
+- [x] **7.217 「清空」第一步没读出记录数时，原因留在那个按钮旁边**（**2026-11-26 第三百四十八轮**落地，
+      提交见「已完成的轮次」；`packages/web` 1 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 4 条 ＋ 新 spec 1 条
+      ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：清空是两个请求 —— 先读一遍当前筛选出的集合
+      （确认框必须报出这个数，删除只吃表格显示的这些行），再删。读那一步被拒时确认框根本没打开，面板和按之前
+      一模一样（行还在、按钮仍是唯一能再试的地方），原因只在一条六秒后自己消失的通知里，而卡片这次不存在、
+      做不成载体。现在那句话留在发起的那个按钮旁边、表格下面那一行（`role="alert"`、危险色、限两行、悬停看
+      全文），措辞是「清空没有开始」加服务端的理由；每次尝试开始与筛选条件改变时清掉，读通了照旧打开确认框。
+      见「第三百四十八轮」一节。
 
 ## 第三百一十七轮：Windows 上遍历全部接口那条用例卡在 5 秒上限（2026-11-24，条目 7.190）
 
@@ -7237,6 +7245,7 @@ v0.2.2」——它只加台账里 v0.2.2 那一节与两行表格，**跟本轮�
 | 2026-11-26 | 7.214 | **手绘涂鸦（与赛博朋克）主题下，输入框「+」菜单里「运行中发送方式」的选中按钮不再被自己的底色吃掉**（**2026-11-26 第三百四十五轮**落地，用户点单；`packages/web` 1 个文件 1 处类名 —— **不碰接口、不碰服务端、无新依赖**）：选中那枚小按钮原先用 Tailwind 调色板档 `bg-gray-200 dark:bg-gray-700` 当填充，而外置主题的调色板桥（`external-theme.ts` 的 `PALETTE_BRIDGE_*`）把 `--color-gray-200` 映到 `--ui-line`；手绘涂鸦的 `--ui-line` 是它那条深色手绘描边（`#3f3a34`），文字 `--ui-fg` 是 `#332f2a`，于是底色与字同色。改成读令牌 `bg-fill-neutral` + `text-fg`（未选中 `text-fg-muted hover:text-fg`） | 见「第三百四十五轮」一节（真服务端 + 真浏览器，四套库主题 × 明暗两种模式量选中按钮的底色/文字 WCAG 对比度：改前 手绘涂鸦浅色 **1.18**、赛博朋克浅色 **1.40** / 深色 **1.47** 字被吃掉；改后八组全部 **≥ 9.9**；`packages/web` 单测 **364 文件 / 4066 通过 / 2 跳过**、`typecheck` rc=0、`oxlint` 0 警告 0 错误、`prettier --check` 干净、`git diff --check` 干净） | 见本行提交 |
 | 2026-11-26 | 7.215 | **停靠面板选择器里开的终端起不来时，原因留在选择器下面，不再只活六秒**（**2026-11-26 第三百四十六轮**落地；`packages/web` 2 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 5 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/dock/dock-terminal.ts` 新增模块级 store（`subscribeTerminalCreateRefusal` / `readTerminalCreateRefusal` / `clearTerminalCreateRefusal`）与纯函数 `terminalCreateRefused(detail)`（响应体带 `error.message` 就念它，否则保留整行详情）；`createShellInDock` 失败时，若 `dockViews()` 里有一个没有标签页的视图（即选择器在屏）就把句子写进 store，否则照旧 `toastError`；`features/dock/dock-panel.tsx` 在选择器下面画那一行（`role="alert"`、`data-testid="dock-terminal-create-refusal"`、危险色、限两行、悬停看全文），有标签页取代选择器时经 `clearTerminalCreateRefusal` 收走；`lib/strings{,-en}.ts` 各加 `terminal.createRefused(reason)`。头注释那句「没有标签页就没有可挂的表面」改成两种情形 | 见「第三百四十六轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4071 通过 / 2 跳过**（+1 文件 / +5 条即本笔，基线 364 / 4066） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 6 个改动文件 0 警告 0 错误、`prettier --check` 8 个文件干净、`git diff --check` 干净；新单测 **5 passed**；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「无法打开终端：Could not start a shell: posix_spawn failed (mock)」、选择器仍在、通知区 0 条、7 秒后仍在、恢复后一次成功把句子清掉）；**改前 dist 反证 1 failed**（`dock-terminal-create-refusal` 元素不存在）；`dock.spec.mjs` 回归 **10 passed**（含「failed shell create surfaces as a toast」那条，快捷键路径没变）；rebase 到 `7b58cbd66` 后重跑：六包 `typecheck` 六个 `Done`、web **365 / 4071 + 2 跳过**、新 spec **1 passed**、`dock.spec` **10 passed**；探针量到句子在选择器正下方（y=872，选择器 589–872）、console 只有既有的 `/machines` 403 与本轮故意造的 500 两条 + 本模块自己的 `console.error`、pageerror 0 条） | `41ff5451a` |
 | 2026-11-26 | 7.216 | **`input_subagent` 留在后台的续跑轮会回报完成**（上游 `992c986e0` `#1864` 移植，照改动落、不是合分支；本树落下 8 个文件（3 改源码 + 1 改用例 + 2 份文档 + changelog 一对）：`packages/core/src/environment/tools/run-subagent.ts`（导出的 `leaveSubagentUnattended` 把「完成回报 + 常驻审批出口 + 实时消息转发」收在一处，后台启动与前台转后台共用）、`input-subagent.ts`（`startedRound` 标记这次调用真正发起的一轮，窗口结束时仍在跑就交给它并告知完成会以 `[background_task_done]` 送达）、`subagent/session.ts`（注释口径改为「无人看管的会话」）、用例 +151 行、`packages/docs/content/tools.{zh,en}.md` 各一句 —— **不碰接口、不碰界面、无新依赖**；接手 07:00 那一轮被 `user_abort` 中止的半成品，整片留底 `r349/r345-halfwork.patch`）：槽位被腾走后又恢复的子会话、一直只靠轮询访问的子会话，`input_subagent` 发起的续跑轮跑完时父 Session 一声不响 —— 只有以 `run_in_background` 启动、并且一直没让出过槽位的子会话例外。现在这样的一轮与后台启动拿到的东西相同。见「第三百四十七轮」一节 | 见「第三百四十七轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · server **220 文件 / 3205 通过 / 6 跳过** · web **364 文件 / 4066 通过 / 2 跳过** · docs **8 / 62**；`oxlint` **0 警告 0 错误**、改动 4 个 ts 文件 `prettier --check` 干净；**反证（单测）**：3 个源码文件退回 `HEAD` → `test/background-execution.test.ts` **2 failed / 34 passed**，拷回 → **36 passed**；上游 `992c986e0` 与本树 diff 逐行对过，8 文件名单一致、差异只在基座命名与行号；本笔不改界面，未起服务 / 未开浏览器，端口与数据根一个没碰） | `46615d48b` |
+| 2026-11-26 | 7.217 | **「清空」第一步没读出记录数时，原因留在那个按钮旁边，不再只活六秒**（**2026-11-26 第三百四十八轮**落地；`packages/web` 1 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 4 条 ＋ 新 spec 1 条 ＋ changelog 一对 —— **不碰接口、不碰服务端、无新依赖**）：`features/usage/errors-panel.tsx` 的 `openClear` 在读到计数（`offset=0&limit=1`，确认框要报的那个数）失败时不再 `toastError`，改写入新的 `countRefusal` 状态；新增导出的 `ClearCountRefusal` 画在页脚「清空」按钮与翻页器之间（`role="alert"`、`data-testid="errors-clear-count-refusal"`、危险色、`line-clamp-2`、悬停看全文、`flex-1 min-w-0` 占可用宽度），每次尝试开始与筛选条件变化时清空；`lib/strings{,-en}.ts` 各加 `usage.errorsClearCountRefused(reason)`（「清空没有开始」＋理由） | 见「第三百四十八轮」一节（六包 `typecheck` **`EXIT=0`**（六个 `Done`；`gen:ifaces` 报 `src/ifaces.json unchanged`，214 接口 / 647 类型）；合并远端两笔后逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1464 通过 / 6 跳过** · ui **133 / 1117** · cli **39 / 568** · web **365 文件 / 4075 通过 / 2 跳过**（+4 条即本笔，基线 4071） · server **220 文件 / 3205 通过 / 6 跳过**；`oxlint` 5 个文件 0 警告 0 错误、`prettier --check` 7 个文件干净、`git diff --check` 干净；真服务端 8977 + mock 8978 + 真浏览器：新 spec **1 passed**（句子逐字「没能读出要清空的记录数，清空没有开始：errors store is closed」、就在按钮右边同一行（按钮 x=325–367，句子 x=375）、确认框 0 个、通知区 0 条、7 秒后仍在、放开拦截再按确认框打开且句子收走）；**改前 dist 反证 1 failed**（`errors-clear-count-refusal` 元素不存在）；`errors-ignore.spec.mjs` 回归 **5 passed**（合并后在 `9c707fd3d` 上重跑：新 spec **1 passed** 与那 5 条 **5 passed**）；探针 console 只有既有的 `/machines` 403 与本轮故意造的 500 两条、pageerror 0 条） | `ad51fbfef` |
 
 > **2026-10-11 与另一条线的交汇（第三十七轮）**：定时任务触发时（07:00）`git status --short` **不干净**
 > —— 另一条线（会话 `session-2026-10-05-20-32-50-2ee69aba`）正在做**用户点单**的「回复能复制成纯文本」
@@ -35128,3 +35137,83 @@ prettier 全绿），只差提交与台账；③ 用户这轮的任务书写明�
 - 代码一笔 **`46615d48b`**：`packages/core/src/environment/tools/{input-subagent,run-subagent}.ts`、
   `packages/core/src/environment/tools/subagent/session.ts`、`packages/core/test/background-execution.test.ts`、
   `packages/docs/content/tools.{zh,en}.md`、changelog 一对；台账（条目 7.216、上表那一行、本节）随本文件另起一笔。
+
+## 第三百四十八轮：「清空」的第一步没读出记录数时，原因留在那个按钮旁边（2026-11-26，条目 7.217）
+
+**开工**：`git status --short` 干净，分支 `main`，本地 HEAD `7a6e62f4d`（第三百四十六轮），
+`git fetch origin` 一次即通，`HEAD..origin/main` 为 0；收尾前再 fetch 拿到另一条线的两笔
+（`46615d48b` + `9c707fd3d`，第三百四十七轮 / 条目 7.216），按台账惯例把号让给先到的，
+本轮改记 **7.217 / 第三百四十八轮**，代码改动原样留在工作区、台账改动撤掉后快进过去再重做。
+
+**选活**：上一轮「没做 / 留着」点名的候选之一。第 2–5 节剩下的仍是那几条卡点（2.2c 的写侧在
+桌面壳 / 部署单元 / 文档面；3.5 要用户拍板、3.6 要模型 key；4.1–4.3 明令不动；5.6 / 5.10 要拍板），
+第 7 节全勾，上游 `main` 仍是 `93b9d5056`（从上游取小件这条路是干的）。同族里以 `toastError`
+收尾的其余几处也逐个量过：插件页的部署失败与聊天页那几处，卡片 / 对话里已经就地写着原因；
+错误面板「清空」的**第一步**（读计数）失败时却**没有卡片** —— 卡片就是这次读的目的。
+
+**为什么它是真的**：清空是两个请求。先 `GET …/usage/errors?offset=0&limit=1` 读「这次要删多少条、
+停在哪一条」（确认框必须报出这个数，删除只吃表格显示的那些行，所以别的读都数不出），再删。读那一步被拒时
+（500 / 会话掉了 / 服务端死了），确认框**根本没打开**，屏幕和按之前一模一样：行还在、按钮仍是唯一能再试的
+地方，唯一说明只在一条六秒后自己消失的通知里。而这次卡片不存在，做不成载体。
+
+**做了什么**（`packages/web` 1 个源码文件 ＋ 两本词典各加一句 ＋ 新单测 4 条 ＋ 新 spec 1 条 ＋
+changelog 一对，**不碰接口、不碰服务端、无新依赖**）：
+
+- `features/usage/errors-panel.tsx`：
+  - `openClear` 的 `catch` 不再 `toastError`，改写入新的 `countRefusal` 状态；每次尝试开始清空它，
+    另有一条 effect 在 `activeFilters` 变化时清空（那句话说的是上一次读的那个集合）；
+  - 新增导出组件 `ClearCountRefusal`：`role="alert"`、`data-testid="errors-clear-count-refusal"`、
+    危险色、`line-clamp-2`、`data-tooltip` 全文、`flex-1 min-w-0` 占按钮与翻页器之间的可用宽度 ——
+    导出成组件是因为面板只在**点击之后**才持有这句话，而本包的 vitest 跑在 `node` 里、点不了；
+  - 页脚在「清空」按钮与 `pageError` 之间画它；头注释补上「这次读本身也可能被拒、卡片于是不打开」。
+- `lib/strings{,-en}.ts`：`usage.errorsClearCountRefused(reason)`
+  （「没能读出要清空的记录数，清空没有开始：…」/ “Could not count the records to clear, so nothing was cleared: …”）。
+
+### 验证
+
+- 六包 `typecheck` **`EXIT=0`**（`grep -c "typecheck: Done"` = **6**；`gen:ifaces` 报
+  `src/ifaces.json unchanged`，214 接口 / 647 类型）。
+- 合并前逐包 test **`EXIT=0`、0 失败**：core **70 文件 / 1462 通过 / 6 跳过** · ui **133 / 1117** ·
+  cli **39 / 568** · web **365 文件 / 4075 通过 / 2 跳过**（+4 条即本笔，基线 4071）·
+  server **220 文件 / 3205 通过 / 6 跳过**。
+- **合并远端两笔后在 `9c707fd3d` 上重跑**：六包 `typecheck` 六个 `Done`、`ifaces.json unchanged`；
+  core **70 / 1464**（另一条线 +2）· ui **133 / 1117** · cli **39 / 568** · web **365 / 4075** ·
+  server **220 / 3205**，全 `EXIT=0`。
+- `oxlint` 5 个改动文件 **0 警告 0 错误**；`prettier --check` 7 个文件干净；`git diff --check` 干净；
+  `git diff --stat` 只有 1 个源码文件 +44 −3（词典各 +8、用例 +41）。
+- **新单测 4 passed**（`test/errors-panel.test.ts` 的 `ClearCountRefusal` 一组）：① 是 `role="alert"`、
+  带 testid、整句与悬停全文、`line-clamp-2`；② 没被拒时面板里没有这个槽位；③④ 中英两种措辞都带上理由、
+  不出现 `undefined`、也不会念成「已删除 0 条」。
+- **新 spec 1 passed**（真服务端 8977 + mock 8978 + `/usr/bin/chromium`，数据根
+  `/root/adelie-fork-data/r347-a`；空数据根不需要模型 key —— 即 3.6 那个卡点）：把**只有确认框那一次**
+  的读（`limit=1`）用 `page.route` 答成 500（服务端自己的 body 形状）→ 点「清空」→ 句子逐字、就在按钮
+  右边同一行、确认框 **0** 个、通知区 **0** 个按钮；**等 7 秒**后仍在、通知区仍 0；放开拦截再按同一按钮 →
+  确认框打开、句子 **0** 条。
+- **改前 dist 反证**：三个源码文件退回 `HEAD`、重建 web，同一份 spec → **1 failed**，停在
+  `getByTestId('errors-clear-count-refusal')` `element(s) not found`；放回、重建 → **1 passed**。
+- **回归**：`errors-ignore.spec.mjs` **5 passed**（同一条真服务端，含三处既有的拒绝留在原地那条）；
+  合并后又把新 spec 与它一起跑了一遍：**1 + 5 全过**。
+- **真看一眼**（`r347/zz-probe-r347.spec.mjs`，跑完即删）：句子盒子 x=375 / y=632 / 868×16，
+  「清空」按钮 325 / 629 / 42×22，页脚那一行 325 / 629 / 918×22 —— **同一行、按钮右边 8px、只占一行、
+  没有被裁**；7 秒后仍在；放开拦截再按，确认框正文「将删除本项目 近 7 天内的 N 条错误记录…」、
+  句子 0 条。console 只有既有的 `/machines` **403** 与本轮故意造的 **500** 两条、pageerror **0** 条。
+  截图 `r347/{1-before,2-refused,3-after-7s,4-dialog}.png` 看过：红字与按钮同基线、没有被挤压。
+- 端口只用 8977 / 8978（跑完都已停），3003 / 3004 / 4000 / 7364 / 7369 一个没碰；数据只落
+  `/root/adelie-fork-data/r347-{a,b}`，探针 / 截图都在 scratchpad 的 `r347/` 下（`packages/web/dist`、
+  `test-results/` 是产物，未 `git add`）。
+
+### 没做 / 留着
+
+- 同一族（7.19 的规矩）里仍以 `toastError` 收尾的两处，这一轮逐个量过、**都不成立**：插件页的部署失败
+  与聊天页发不出去的那几处，卡片 / 对话框 / 对话里已经就地写着原因，通知只是补充；错误面板的分页读失败
+  本来就有自己的 `pageError` 槽位（页脚里，就在清空按钮旁边）。
+- 2.2c / 3.5 / 3.6 / 4.1–4.3 / 5.6 / 5.10 仍原样不勾，卡点与上一轮相同；上游 `main` 仍是 `93b9d5056`。
+- 桌面壳、`legacy/main`、`/root/Adelie` 的工作区、`/root/penguin-harness`、`/root/AgentCode` 一律没碰；
+  不切版本号、不发 npm、不发安装包、不发发布汇总。
+
+### 提交
+
+- 代码一笔 **`ad51fbfef`**：`packages/web/src/features/usage/errors-panel.tsx`、
+  `packages/web/src/lib/strings{,-en}.ts`、`packages/web/test/errors-panel.test.ts`、
+  `packages/web/e2e/errors-clear-count-refusal.spec.mjs`、changelog 一对；台账（条目 7.217、上表那一行、
+  本节）随本文件另起一笔。
