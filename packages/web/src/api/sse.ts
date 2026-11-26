@@ -33,6 +33,8 @@ import type { OmniMessage } from "@adelie/core/omnimessage";
 import type { ServerEvent } from "@adelie/server/api";
 import { apiUrl } from "../lib/server-context";
 import { machineForSession } from "../lib/session-machines";
+import { finishNetRequest, noteNetModelEvent, startNetRequest } from "./net-log";
+import type { NetRequest } from "./net-log";
 import { lifecycleEntry, noteSseFrame, receivedEntry } from "./sse-frames";
 import type { SseChannel } from "./sse-frames";
 
@@ -86,12 +88,23 @@ export interface StreamConnection {
 }
 
 function subscribe(
+  path: string,
   url: string,
   channel: SseChannel,
   sessionId: string | null,
   handlers: StreamHandlers,
 ): StreamConnection {
   let source: EventSource | undefined;
+  /** The "网络" panel's row for the CURRENT connection (a reconnect starts a new one). */
+  let net: NetRequest | null = null;
+  /** Frames this connection has delivered. */
+  let frames = 0;
+  /** Closes the current connection's row (no-op when there is none) and opens a fresh one. */
+  const nextNetRow = () => {
+    finishNetRequest(net, { frameCount: frames });
+    net = startNetRequest({ kind: "stream", method: "GET", path, url, sessionId });
+    frames = 0;
+  };
   /** The newest event id seen on any of this subscription's connections. */
   let lastEventId = "";
   let lastHeard = 0;
@@ -126,13 +139,18 @@ function subscribe(
   /** One frame off the wire: counted as heard, and handed to the recorder. */
   const received = (event: string, e: MessageEvent<string>) => {
     heard(e);
+    frames += 1;
     noteSseFrame(receivedEntry(channel, sessionId, event, e.lastEventId || null, e.data));
   };
   const onMessage = (e: MessageEvent<string>) => {
     received("message", e);
     try {
       // Every server event carries an `id:` line; lastEventId is "" only if none did.
-      handlers.onOmniMessage(JSON.parse(e.data) as OmniMessage, e.lastEventId || null);
+      const msg = JSON.parse(e.data) as OmniMessage;
+      // Model calls happen server-side; the stream is where this page can see them, and the
+      // "网络" panel shows each request_begin/request_end pair as a row under its turn.
+      noteNetModelEvent(sessionId, msg);
+      handlers.onOmniMessage(msg, e.lastEventId || null);
     } catch {
       // Ignore lines that fail to parse (the protocol guarantees single-line JSON data, so this shouldn't normally happen).
     }
@@ -152,6 +170,12 @@ function subscribe(
   };
   const onError = () => {
     const closed = source?.readyState === EventSource.CLOSED;
+    if (closed) {
+      // The browser gave up on the connection: close the panel's row as a failure (a later
+      // probe opens its own).
+      finishNetRequest(net, { frameCount: frames, error: "closed" });
+      net = null;
+    }
     noteSseFrame(lifecycleEntry(channel, sessionId, closed ? "closed" : "error"));
     // The browser gave up on the connection: what happens next is the caller's call, as before —
     // except while the stream is stalled, where the probe is the only thing still trying and the
@@ -166,6 +190,9 @@ function subscribe(
     source?.close();
     openedAt = Date.now();
     gotFrame = false;
+    // A fresh connection is a fresh row in the network panel (the previous one's frame count
+    // is settled here).
+    nextNetRow();
     source = new EventSource(
       lastEventId ? `${url}?lastEventId=${encodeURIComponent(lastEventId)}` : url,
     );
@@ -245,6 +272,8 @@ function subscribe(
       clearTimeout(probe);
       document.removeEventListener("visibilitychange", onVisibility);
       source?.close();
+      finishNetRequest(net, { frameCount: frames });
+      net = null;
     },
   };
 }
@@ -253,7 +282,13 @@ function subscribe(
 export function openSessionStream(sessionId: string, handlers: StreamHandlers): StreamConnection {
   // Routed like every other Session call: the stream comes from the machine running it.
   const path = `/api/sessions/${encodeURIComponent(sessionId)}/stream`;
-  return subscribe(apiUrl(path, machineForSession(sessionId)), "session", sessionId, handlers);
+  return subscribe(
+    path,
+    apiUrl(path, machineForSession(sessionId)),
+    "session",
+    sessionId,
+    handlers,
+  );
 }
 
 /**
@@ -266,5 +301,5 @@ export function openUserEvents(
   handlers: StreamHandlers,
   machineId: string | null = null,
 ): StreamConnection {
-  return subscribe(apiUrl("/api/events", machineId), "events", null, handlers);
+  return subscribe("/api/events", apiUrl("/api/events", machineId), "events", null, handlers);
 }

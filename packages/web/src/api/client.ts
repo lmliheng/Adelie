@@ -10,6 +10,7 @@
 import { S } from "../lib/strings";
 import { apiUrl } from "../lib/server-context";
 import { machineForPath } from "../lib/session-machines";
+import { finishNetRequest, startNetRequest } from "./net-log";
 import { xhrUpload } from "./xhr-upload";
 
 /** Unified API error: carries the HTTP status code and server error code (server error body {error:{code,message}}). */
@@ -164,6 +165,18 @@ export async function apiFetchWithMeta<T>(
     if (qs) url += `?${qs}`;
   }
 
+  // Recorded as it goes out, completed below on every path (the "网络" panel's source).
+  const net = startNetRequest({
+    // A call carrying an upload-progress callback goes out as XHR (api/xhr-upload.ts) — the
+    // panel marks those apart, since a big inline body is its own thing to see.
+    kind: options.onUploadProgress === undefined ? "http" : "upload",
+    method: options.method ?? "GET",
+    path,
+    url,
+    headers: options.body !== undefined ? [["content-type", "application/json"]] : [],
+    body: options.body,
+  });
+
   let response: Response;
   try {
     const init = requestInit(options);
@@ -172,17 +185,27 @@ export async function apiFetchWithMeta<T>(
         ? await fetch(url, init)
         : await xhrUpload(url, init, options.onUploadProgress);
   } catch {
+    finishNetRequest(net, { error: S.errors.networkError });
     throw new ApiError(0, "network_error", S.errors.networkError);
   }
 
-  if (!response.ok) throw await failureOf(response, path, target);
+  const responseHeaders = [...response.headers.entries()];
+  if (!response.ok) {
+    const failure = await failureOf(response, path, target);
+    finishNetRequest(net, { status: response.status, error: failure.message });
+    throw failure;
+  }
 
   const headerDate = Date.parse(response.headers.get("date") ?? "");
   const serverNowMs = Number.isFinite(headerDate) ? headerDate : null;
   const etag = response.headers.get("etag");
 
-  if (response.status === 204) return { data: undefined as T, serverNowMs, etag };
+  if (response.status === 204) {
+    finishNetRequest(net, { status: response.status, responseHeaders, responseBody: "" });
+    return { data: undefined as T, serverNowMs, etag };
+  }
   const text = await response.text();
+  finishNetRequest(net, { status: response.status, responseHeaders, responseBody: text });
   if (!text) return { data: undefined as T, serverNowMs, etag };
   return { data: JSON.parse(text) as T, serverNowMs, etag };
 }
@@ -207,13 +230,36 @@ export async function apiFetchStream(
   options: ApiFetchStreamOptions = {},
 ): Promise<Response> {
   const target = machineForPath(path);
+  const url = apiUrl(path, target);
+  const net = startNetRequest({
+    kind: "stream",
+    method: options.method ?? "GET",
+    path,
+    url,
+    headers: options.body !== undefined ? [["content-type", "application/json"]] : [],
+    body: options.body,
+  });
   let response: Response;
   try {
-    response = await fetch(apiUrl(path, target), requestInit(options));
+    response = await fetch(url, requestInit(options));
   } catch (err) {
+    // An abort is the caller's own stop, not a failure — the row records neither.
+    finishNetRequest(net, {
+      error: options.signal?.aborted ? "aborted" : S.errors.networkError,
+    });
     if (options.signal?.aborted) throw err;
     throw new ApiError(0, "network_error", S.errors.networkError);
   }
-  if (!response.ok) throw await failureOf(response, path, target);
+  if (!response.ok) {
+    const failure = await failureOf(response, path, target);
+    finishNetRequest(net, { status: response.status, error: failure.message });
+    throw failure;
+  }
+  // The body is unread here (the caller consumes it): the row records the connection, and the
+  // frames it delivers show up in the panel's event stream, not on this row.
+  finishNetRequest(net, {
+    status: response.status,
+    responseHeaders: [...response.headers.entries()],
+  });
   return response;
 }
